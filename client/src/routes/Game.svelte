@@ -84,6 +84,7 @@
   import { actionsDisabled } from "../lib/connectionBanner";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
+  import ControlledPlaySheet from "../lib/components/board/ControlledPlaySheet.svelte";
   import DamageAutoAssign from "../lib/components/board/DamageAutoAssign.svelte";
   import AutoAnswerNotice from "../lib/components/board/AutoAnswerNotice.svelte";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
@@ -2825,6 +2826,7 @@
         </DockSheet>
       {/if}
       <DiscardPromptModal snap={view} {viewerID} {sendAction} />
+      <ControlledPlaySheet snap={view} {viewerID} {sendAction} />
       <!-- lastError too: this modal's backdrop covers the board's
            rejection toast, so it shows a refusal of its own answer. -->
       <ChoicePromptModal

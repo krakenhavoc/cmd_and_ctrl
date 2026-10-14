@@ -2883,6 +2883,15 @@ phasedOut.cards[].unlocked	number:uint8
 phasedOut.cards[].variableToughness	bool
 phasedOut.kind	string
 phasedOut.owner	custom(uuid.UUID)
+playerControls	array
+playerControls[]	object
+playerControls[].card	custom(uuid.UUID)
+playerControls[].controlled	custom(uuid.UUID)
+playerControls[].controller	custom(uuid.UUID)
+playerControls[].prompt	custom(uuid.UUID)
+playerControls[].source	custom(uuid.UUID)
+playerControls[].sourceName	string
+playerControls[].stage	string
 preventionFollowUps	array
 preventionFollowUps[]	object
 preventionFollowUps[].batch	number:uint64

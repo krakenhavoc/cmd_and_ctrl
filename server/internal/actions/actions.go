@@ -363,6 +363,13 @@ type Action struct {
 	Caller uuid.UUID
 	Admin  bool
 	Params json.RawMessage
+
+	// Actor is the seat that actually sent the action. It equals
+	// Caller unless the sender controls another player (CR 723, ADR
+	// 0164) and is acting as them, in which case Caller is the
+	// controlled player, so every per-seat gate reads that seat, and
+	// Actor is the controller. Set by dispatch.
+	Actor uuid.UUID
 }
 
 // Decode parses a protocol.ActionPayload-shaped map into an Action.
@@ -574,6 +581,12 @@ func dispatch(g *game.Game, a Action) error {
 	if _, ok := openingRollActions[a.Type]; !ok && g.OpeningRollOpen() {
 		return game.ErrOpeningRollOpen
 	}
+	// ADR 0166, CR 723.5: a player another player controls makes no
+	// decisions, and the controller makes them as that player.
+	a, err := routeControlledPlayer(g, a)
+	if err != nil {
+		return err
+	}
 	// Player-scoped guard: a seated player may not target a different
 	// seat. Admin / spectator (Caller == uuid.Nil) bypasses so a
 	// trusted moderator can advance any seat.
@@ -609,18 +622,19 @@ func dispatch(g *game.Game, a Action) error {
 		if a.Player == uuid.Nil {
 			return ErrInvalidPlayer
 		}
-		if err := requirePriorityHolder(g, a.Caller); err != nil {
-			return err
-		}
 		var p struct {
-			InstanceID   string           `json:"instance_id"`
-			FromZone     string           `json:"from_zone,omitempty"`
-			Targets      []castTargetWire `json:"targets,omitempty"`
-			Modes        []int            `json:"modes,omitempty"`
-			XValue       int              `json:"x_value,omitempty"`
-			Distribution map[string]int   `json:"distribution,omitempty"`
-			HoldPriority bool             `json:"hold_priority,omitempty"`
-			SplitSecond  bool             `json:"split_second,omitempty"`
+			// ADR 0166 §4: the controlled_play prompt this cast answers.
+			// Word of Command's forced play is cast during its
+			// resolution (CR 608.2g), so nobody holds priority for it.
+			ControlledPlay string           `json:"controlled_play,omitempty"`
+			InstanceID     string           `json:"instance_id"`
+			FromZone       string           `json:"from_zone,omitempty"`
+			Targets        []castTargetWire `json:"targets,omitempty"`
+			Modes          []int            `json:"modes,omitempty"`
+			XValue         int              `json:"x_value,omitempty"`
+			Distribution   map[string]int   `json:"distribution,omitempty"`
+			HoldPriority   bool             `json:"hold_priority,omitempty"`
+			SplitSecond    bool             `json:"split_second,omitempty"`
 			// S15 sub-PR 3 — strict-mode flag + override hatch.
 			// Strict comes from the client's gameplay.strictMana
 			// setting; ForceCast is set by the override toast that
@@ -716,6 +730,16 @@ func dispatch(g *game.Game, a Action) error {
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
+		}
+		if p.ControlledPlay == "" {
+			if a.Actor != a.Caller {
+				// A controller casts as the player they control only to
+				// make the play the effect demands.
+				return game.ErrPlayerControlled
+			}
+			if err := requirePriorityHolder(g, a.Caller); err != nil {
+				return err
+			}
 		}
 		instanceID, err := uuid.Parse(p.InstanceID)
 		if err != nil {
@@ -844,6 +868,13 @@ func dispatch(g *game.Game, a Action) error {
 			return fmt.Errorf("cast_spell %w", err)
 		}
 		params.Distribution = dist
+		if p.ControlledPlay != "" {
+			choiceID, err := uuid.Parse(p.ControlledPlay)
+			if err != nil {
+				return fmt.Errorf("cast_spell controlled_play: %w", err)
+			}
+			return g.ControlledPlayCast(a.Actor, choiceID, instanceID, params)
+		}
 		return g.CastSpell(a.Player, instanceID, params)
 
 	case TypeMoveCard:

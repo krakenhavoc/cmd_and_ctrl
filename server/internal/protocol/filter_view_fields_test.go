@@ -121,8 +121,9 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		Log:     []LogEvent{{Seq: 1, Kind: LogCast, Turn: 3}},
 		Reveals: []RevealView{{Seq: 1, Turn: 3, Seat: 0, Source: "Fact or Fiction"}},
 
-		LoopNotice: &LoopNoticeView{Source: ownerID, Label: "loop", Controller: ownerID, Count: 3},
-		Outcome:    &OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect"},
+		LoopNotice:     &LoopNoticeView{Source: ownerID, Label: "loop", Controller: ownerID, Count: 3},
+		PlayerControls: []PlayerControlView{{Controller: ownerID, Controlled: ownerID, Source: ownerID}},
+		Outcome:        &OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect"},
 	}
 	v.legalBySeat = map[string][]LegalMoveView{
 		ownerID: {{Type: "pass_priority", Player: uuid.MustParse(ownerID), Label: "Pass"}},

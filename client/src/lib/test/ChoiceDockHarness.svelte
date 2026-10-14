@@ -7,6 +7,7 @@
   import type { ActionType, GameView } from "../protocol";
   import type { ServerErrorLike } from "../choiceRejection";
   import ChoicePromptModal from "../components/board/ChoicePromptModal.svelte";
+  import ControlledPlaySheet from "../components/board/ControlledPlaySheet.svelte";
   import ActionDock from "../components/board/ActionDock.svelte";
 
   const {
@@ -23,6 +24,7 @@
 </script>
 
 <ChoicePromptModal {snap} {viewerID} {sendAction} {lastError} />
+<ControlledPlaySheet {snap} {viewerID} {sendAction} />
 <ActionDock
   view={snap}
   viewerHasPriority={false}

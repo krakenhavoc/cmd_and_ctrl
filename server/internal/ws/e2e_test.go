@@ -183,6 +183,7 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	out.GraveyardTargetBans = v.GraveyardTargetBans
 	out.DiscardPending = n.idKeyedIntMap(v.DiscardPending)
 	out.LoopNotice = n.loopNotice(v.LoopNotice)
+	out.PlayerControls = n.playerControls(v.PlayerControls)
 	out.Outcome = n.outcome(v.Outcome)
 	// ADR 0122 §6.1: a flag, no IDs.
 	out.LegalMovesTruncated = v.LegalMovesTruncated
@@ -302,6 +303,21 @@ func (n *normalizer) outcome(v *protocol.OutcomeView) *protocol.OutcomeView {
 	out.Winner = n.id(v.Winner)
 	out.Source = n.id(v.Source)
 	return &out
+}
+
+func (n *normalizer) playerControls(v []protocol.PlayerControlView) []protocol.PlayerControlView {
+	if len(v) == 0 {
+		return nil
+	}
+	out := make([]protocol.PlayerControlView, len(v))
+	for i, pc := range v {
+		out[i] = protocol.PlayerControlView{
+			Controller: n.id(pc.Controller),
+			Controlled: n.id(pc.Controlled),
+			Source:     n.id(pc.Source),
+		}
+	}
+	return out
 }
 
 func (n *normalizer) loopNotice(v *protocol.LoopNoticeView) *protocol.LoopNoticeView {
@@ -576,8 +592,9 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 			Cards: []protocol.RevealedCardView{{Name: "Island"}}, Count: 1,
 		}},
 
-		LoopNotice: &protocol.LoopNoticeView{Source: ownerID, Label: "loop", Controller: ownerID, Count: 3},
-		Outcome:    &protocol.OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect", Source: cardID},
+		LoopNotice:     &protocol.LoopNoticeView{Source: ownerID, Label: "loop", Controller: ownerID, Count: 3},
+		PlayerControls: []protocol.PlayerControlView{{Controller: ownerID, Controlled: ownerID, Source: ownerID}},
+		Outcome:        &protocol.OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect", Source: cardID},
 	}
 }
 

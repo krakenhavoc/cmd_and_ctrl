@@ -488,6 +488,10 @@ export interface GameView {
   // discarder. Each entry carries its own options[] already filtered
   // per the viewer's visibility.
   pending_choices?: PendingChoiceView[];
+  // ADR 0166 (CR 723): who is making whose decisions right now. A
+  // prompt the controlled player owes arrives with `chooser` set to the
+  // controller and `on_behalf_of` to the controlled player.
+  player_controls?: { controller: string; controlled: string; source?: string }[];
   // S31: the closed list of moves THE VIEWER'S OWN SEAT may make
   // right now, enumerated server-side by `internal/legal`. The server
   // never ships another seat's list — an opponent's moves name the
@@ -754,6 +758,11 @@ export interface LegalMoveView {
   // list already promises. Automated seats use it as the way out of a
   // prompt whose other answers keep being rejected.
   always_legal?: boolean;
+  // ADR 0166 §4: the controlled_play prompt this move answers — one way
+  // of making Word of Command's forced play, or "it can't be played".
+  // ControlledPlaySheet lists exactly these, and the server never folds
+  // them into the capped list's one-per-card.
+  controlled_play?: string;
   // #1307: true on a cast or activation whose chosen targets include
   // an object on the stack — a counterspell, a Stifle, a redirect.
   // Smart autopass reads it to tell "can answer the thing on the
@@ -1215,6 +1224,12 @@ export interface PendingChoiceView {
     // (`pick_from_graveyard`). Answered with {choice_id, card_ids}, an
     // empty list when choosing nothing.
     | "revealed_hand_pick"
+    // ADR 0166 §4: Word of Command's forced play. `from_player` is the
+    // player you control, `options` the one card. Answered by one of
+    // the legal moves naming it (`controlled_play`): a cast_spell sent
+    // as that player, or {choice_id} with no cards, "it can't be
+    // played", which the server takes only when that is true.
+    | "controlled_play"
     | "mana_pick"
     | "replacement_order"
     | "optional_replacement"
@@ -1470,6 +1485,10 @@ export interface PendingChoiceView {
     | "mode_pick"
     | string;
   chooser: string;
+  // ADR 0166, CR 723.5: the player who owes this prompt when another
+  // player controls them. `chooser` is then the controller, who
+  // answers it.
+  on_behalf_of?: string;
   from_player: string;
   count: number;
   source?: string;
@@ -1490,7 +1509,7 @@ export interface PendingChoiceView {
   eligible_label?: string;
   // #2115: for "revealed_hand_pick", where the chosen card goes —
   // "discard", or "exile", which is not a discard.
-  pick_destination?: "discard" | "exile" | string;
+  pick_destination?: "discard" | "exile" | "keep" | string;
   // #2115: for "revealed_hand_pick", `options` ends with the revealing
   // player's graveyard, every card of which may be chosen.
   pick_from_graveyard?: boolean;

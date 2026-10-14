@@ -396,6 +396,11 @@ type Game struct {
 	// Added in S10.
 	Vote *Vote
 
+	// PlayerControls is the live player-controlling effects (CR 723,
+	// ADR 0166): who makes whose decisions, and for how long. See
+	// player_control.go.
+	PlayerControls []PlayerControl
+
 	// PendingChoices is the S14 generic "someone needs to pick"
 	// queue. Populated by effect cards that defer a decision
 	// (Thoughtseize → caster picks from target's revealed hand).

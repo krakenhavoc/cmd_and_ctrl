@@ -137,6 +137,11 @@ type Move struct {
 	// in doubt leave a kind unmarked: the cost is a bot that sleeps,
 	// which is what it did before.
 	AlwaysLegal bool `json:"always_legal,omitempty"`
+	// ControlledPlay is the controlled_play prompt this move answers
+	// (ADR 0166 §4): one of the ways to make Word of Command's forced
+	// play, or "it can't be played". The client lists exactly these
+	// moves in that prompt, and the wire cap never folds them away.
+	ControlledPlay string `json:"controlled_play,omitempty"`
 	// Cost is what the move charges its own controller beyond the
 	// mana, in the components Params cannot name. Nil — most moves
 	// that are not casts — means "nothing but mana and the choices
@@ -714,6 +719,12 @@ func newEnumerator(g *game.Game, seat uuid.UUID, opts Options) *enumerator {
 	if p == nil || p.Eliminated {
 		return nil
 	}
+	// ADR 0166, CR 723.5: a seat another player controls decides
+	// nothing; its controller is offered its prompts instead
+	// (controlledChoiceMoves).
+	if g.ControllerOfPlayerLocked(seat) != seat {
+		return nil
+	}
 	e := &enumerator{g: g, p: p, seat: seat, opts: opts}
 	e.leave()
 	return e
@@ -749,6 +760,10 @@ func (e *enumerator) run() {
 	// the question is already in front of them, and answering it is one
 	// dispatch, after which the next window offers everything else.
 	if e.choiceMoves() {
+		return
+	}
+	// ADR 0166: the prompts a player this seat controls owes.
+	if e.controlledChoiceMoves() {
 		return
 	}
 	// Somebody else's prompt. Only a blocking one empties this seat's
