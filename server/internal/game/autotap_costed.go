@@ -471,29 +471,41 @@ func (s *costedSolver) colored(ri int) bool {
 		return s.generic()
 	}
 	r := s.reqs[ri]
-	for i := range s.srcs {
-		// The cycle rule: only mana made before the owner pays it.
-		if s.srcs[i].pos >= r.owner {
-			continue
-		}
-		wasUsed := s.used[i]
-		if !wasUsed && !s.usable(i) {
-			continue
-		}
-		for _, k := range matchingFreeSlots(s.srcs[i].tapSource, s.consumed[i], r.req) {
-			if !wasUsed {
-				s.use(i)
+	// #3604: a source the plan already spends is tried before one it
+	// would have to tap. The chain members and the floating pool are
+	// used from the start, so this is what makes a filter land fill
+	// BOTH of its own slots with the {W}{W} the spell asked for rather
+	// than book one and tap a further land for the other (the second
+	// slot then floats a colour nobody asked for). Both passes try every
+	// source, so which plans exist is unchanged; only the first one found.
+	for pass := 0; pass < 2; pass++ {
+		for i := range s.srcs {
+			// The cycle rule: only mana made before the owner pays it.
+			if s.srcs[i].pos >= r.owner {
+				continue
 			}
-			s.book(i, k, r.owner, slotColorFor(s.srcs[i].Slots[k], r.req))
-			if s.colored(ri + 1) {
-				return true
+			wasUsed := s.used[i]
+			if wasUsed != (pass == 0) {
+				continue
 			}
-			s.unbook(i, k)
-			if !wasUsed {
-				s.unuse(i)
+			if !wasUsed && !s.usable(i) {
+				continue
 			}
-			if *s.budget <= 0 {
-				return false
+			for _, k := range matchingFreeSlots(s.srcs[i].tapSource, s.consumed[i], r.req) {
+				if !wasUsed {
+					s.use(i)
+				}
+				s.book(i, k, r.owner, slotColorFor(s.srcs[i].Slots[k], r.req))
+				if s.colored(ri + 1) {
+					return true
+				}
+				s.unbook(i, k)
+				if !wasUsed {
+					s.unuse(i)
+				}
+				if *s.budget <= 0 {
+					return false
+				}
 			}
 		}
 	}
