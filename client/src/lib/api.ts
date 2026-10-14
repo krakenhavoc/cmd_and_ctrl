@@ -663,6 +663,33 @@ export async function removeSeat(
   return (await res.json()) as GameMeta;
 }
 
+// ADR 0177: the table moves on without a player who has been offline
+// for its away time. The host (or, while the host is gone too, any
+// present player; the admin always) answers for the seat: a bot plays
+// it, it is conceded for them, or the table keeps waiting. A seat that
+// is no longer movable (it came back, or someone answered first) is a
+// 409. Returns the table as it now stands.
+export async function answerAwaySeat(
+  gameID: string,
+  playerID: string,
+  action: "stand_in" | "concede" | "wait",
+): Promise<GameMeta> {
+  const res = await authFetch(
+    `/games/${encodeURIComponent(gameID)}/seats/${encodeURIComponent(playerID)}/away`,
+    { method: "POST", body: JSON.stringify({ action }) },
+  );
+  return (await res.json()) as GameMeta;
+}
+
+// takeBackSeat gives the caller's own seat back from the bot that has
+// been playing it while they were away (ADR 0177 §6).
+export async function takeBackSeat(gameID: string): Promise<GameMeta> {
+  const res = await authFetch(`/games/${encodeURIComponent(gameID)}/seats/me/take-back`, {
+    method: "POST",
+  });
+  return (await res.json()) as GameMeta;
+}
+
 // reportPlayer files a report against another seat at the table (#2984),
 // or, with kind "spectator", against a spectator watching it (#3113: the
 // id is the one GET /games/{id}/spectators gave). A seat at that table

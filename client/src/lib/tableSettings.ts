@@ -142,7 +142,12 @@ export const DEFAULT_TABLE_SETTINGS: TableSettingsView = {
   bot_pace: "normal",
   allow_spawn: false,
   free_mulligans: 0,
+  away_after: 3,
 };
+
+// ADR 0177 §7: the away time, in minutes, 0 for never; the engine's
+// game.MaxAwayAfter.
+export const MAX_AWAY_AFTER_MINUTES = 30;
 
 // Free mulligans (#3387): -1 is unlimited, otherwise 0..7, the
 // engine's game.MaxFreeMulligans.
@@ -306,6 +311,12 @@ export function settingsPatchError(
     }
     if (startingLifeLocked(state)) {
       return "The game has already started, so free mulligans are fixed.";
+    }
+  }
+  if (patch.away_after !== undefined) {
+    const n = patch.away_after;
+    if (!Number.isInteger(n) || n < 0 || n > MAX_AWAY_AFTER_MINUTES) {
+      return `The away time is 0 for never, or 1–${MAX_AWAY_AFTER_MINUTES} minutes.`;
     }
   }
   if (patch.commander_damage !== undefined) {
