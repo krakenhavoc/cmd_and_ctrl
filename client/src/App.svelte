@@ -54,11 +54,14 @@
   // Discord placement stays hidden.
   void loadCommunity();
 
-  // Ambient music spans the entire app shell (login → lobby →
-  // game), so arm it here rather than in Game.svelte where SFX
-  // live. The first pointerdown / keydown anywhere unlocks playback;
-  // music.ts no-ops on subsequent calls.
-  armMusicOnFirstGesture();
+  // Ambient music arms only once the table is open (the game route,
+  // which the practice table also uses), so the front page and the
+  // rest of the shell neither play it nor download its track. The
+  // first pointerdown / keydown after that starts it; music.ts no-ops
+  // on subsequent calls.
+  $effect(() => {
+    if ($route.name === "game") armMusicOnFirstGesture();
+  });
 
   // Enforce the auth gate as a side effect of routing. Running this
   // inside $effect ensures it re-evaluates on hash change + session
