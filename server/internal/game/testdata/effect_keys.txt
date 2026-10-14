@@ -233,3 +233,4 @@ body paradigm/copy
 body shirei/return-if-still-on-the-battlefield
 body auron-venerated-guardian/exile
 body yunas-whistle/counters
+body shield-counter/remove

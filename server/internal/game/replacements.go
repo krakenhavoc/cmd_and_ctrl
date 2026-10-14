@@ -490,6 +490,13 @@ type ReplacementEvent struct {
 	// meaningful alongside Destruction.
 	CantBeRegenerated bool
 
+	// StateBasedDestruction marks a Destruction performed by a
+	// state-based action (lethal damage, deathtouch) rather than by an
+	// effect. CR 122.1c's shield counter replaces only a destruction
+	// "as the result of an effect", so it reads this (#2000). Set from
+	// the route (sbaDestroyRoute in simultaneous.go).
+	StateBasedDestruction bool
+
 	// EntersTapped is mutated by enters-tapped replacements
 	// (Kismet). Only meaningful when NewZone == ZoneBattlefield.
 	// The battlefield-entry path reads this and sets Card.Tapped
@@ -1417,8 +1424,7 @@ type ReplacementEffect struct {
 	// and prevents nothing: its Replace is not run, so the damage and
 	// a charged shield's charge are both left as they were. A
 	// replacement that is NOT a prevention effect — a doubler, a
-	// redirection, a shield counter's "remove a counter instead" — is
-	// untouched by "can't be prevented", which is why the flag is
+	// redirection — is untouched by "can't be prevented", which is why the flag is
 	// declared rather than inferred from what Replace does.
 	//
 	// TestDamageReplacementsDeclareWhetherTheyPrevent
@@ -1501,6 +1507,14 @@ type ReplacementEffect struct {
 	// replacement. Unexported: the catalog grants the KEYWORD, and the
 	// gather derives the replacement from the entry look-ahead.
 	entryKeyword string
+
+	// thenOnDamaged makes a BUILT-IN prevention effect's Then owed on the
+	// permanent the damage would be dealt to, since a built-in has no
+	// source object of its own: CR 122.1c's shield counter
+	// (shield_counters.go). Its follow-up is keyed on that permanent and
+	// builtinFollowUpSlot, so it never merges with the permanent's own
+	// prevention static. Unexported: no catalog effect declares it.
+	thenOnDamaged bool
 
 	// DrawInstead, on a RepEventDraw replacement, replaces the draw with
 	// an effect that may need to ask something (draw_instead.go). The
