@@ -267,11 +267,11 @@ func TestIssue1158CapstoneResolvesOffMalcolmsFreeCast(t *testing.T) {
 	if perm == nil || perm.Cost != "{0}" || !perm.CastOnly {
 		t.Errorf("the exiled card carries no free-cast grant: %+v", perm)
 	}
-	if !me.Graveyard.Contains(capstone) {
-		t.Error("the Capstone did not reach the graveyard — Paradigm's self-exile is a declared gap, so the graveyard is right")
+	if !g.Exile.Contains(capstone) {
+		t.Error("the Capstone was not exiled by its own paradigm (CR 702.192a)")
 	}
-	// CR 400.7: what came back to the graveyard is a new object, so
-	// Malcolm's grant must not pay for it twice.
+	// Malcolm's grant was over the graveyard card, and the Capstone is
+	// in exile now: it must not pay for it twice.
 	if err := g.CastSpell(me.ID, capstone, game.CastSpellParams{
 		Strict: true, FromZone: "graveyard",
 	}); err == nil {

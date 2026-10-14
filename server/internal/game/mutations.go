@@ -4020,7 +4020,12 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// rule, not by an effect).
 		Cause: MoveCause{Kind: MoveCauseRule},
 	}
-	if altCostExilesFromStack(c, item) {
+	if resolved && spellHasParadigm(c, item) {
+		// CR 702.192a: the spell exiles itself as part of its own
+		// resolution, so nothing is left for flashback, rebound,
+		// buyback or the Adventure to replace (paradigm.go).
+		paradigmRouteLocked(c, item, &r)
+	} else if altCostExilesFromStack(c, item) {
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
 	} else if resolved {
 		// The three "as it resolves" exits (resolution_exits.go). Two

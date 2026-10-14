@@ -13,8 +13,7 @@ package effects
 // a removal spell costs the opponent a card and costs you one untap.
 //
 // The Lesson subtype is type-line data only; there is no Learn in the
-// catalog (see the Paradigm row in docs/engine-seams.md for the other
-// Lesson-adjacent gap, which is a different keyword).
+// catalog.
 //
 // EVERYTHING IS THE KEYWORD ACTION. The animation, the haste, the four
 // counters and the delayed return all live in

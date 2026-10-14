@@ -183,6 +183,11 @@ var (
 	// (Tilonalli's Summoner, #2727).
 	exileListedUnlessCitysBlessingBody = game.SimpleDelayedBody("ascend/exile-listed-unless-citys-blessing",
 		exileListedUnlessCitysBlessing)
+
+	// Return the card <Object> names from a graveyard to the battlefield
+	// if the source is still on the battlefield as the object <Amount>
+	// names, and its owner says yes (Shirei, Shizo's Caretaker).
+	shireiReturnBody = game.DelayedBody("shirei/return-if-still-on-the-battlefield", shireiReturn)
 )
 
 // maxManaDrainRefund bounds the refund a restored Mana Drain may add. No

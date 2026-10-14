@@ -26,10 +26,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The caster is read at resolution off the item's carried trigger
 // context (item.Trigger.Event.Actor, #1223) rather than captured when
 // the trigger fired.
+//
+// Reviewed for the Y'shtola deck request (#3248).
+//
+// No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "4987c458-604a-4727-b360-170616e91e67",
-		Name:     "Kambal, Consul of Allocation",
+		OracleID:     "4987c458-604a-4727-b360-170616e91e67",
+		Name:         "Kambal, Consul of Allocation",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

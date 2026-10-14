@@ -28,6 +28,20 @@ import (
 // controller over the permanents `match` admits (the source is excluded
 // when `another` is set). Nothing to sacrifice means no question.
 func maySacrificeOne(g *game.Game, item *game.StackItem, question string, match CardPredicate, another bool, then func(ctx *Context, sacrificed uuid.UUID) error) error {
+	return sacrificeOneThen(g, item, question, match, another, 0, then)
+}
+
+// mustSacrificeOne is maySacrificeOne without the "may": "sacrifice a
+// non-Demon creature. If you do, …" (Dreadfeast Demon). The prompt has
+// a floor of one, and a controller with nothing that matches is not
+// asked and `then` does not run.
+func mustSacrificeOne(g *game.Game, item *game.StackItem, question string, match CardPredicate, then func(ctx *Context, sacrificed uuid.UUID) error) error {
+	return sacrificeOneThen(g, item, question, match, false, 1, then)
+}
+
+// sacrificeOneThen is the shared body: a prompt over the controller's
+// matching permanents with the given floor and a ceiling of one.
+func sacrificeOneThen(g *game.Game, item *game.StackItem, question string, match CardPredicate, another bool, floor int, then func(ctx *Context, sacrificed uuid.UUID) error) error {
 	self := item.SourceCardID
 	return ChoosePermanents{
 		Question: question,
@@ -39,7 +53,10 @@ func maySacrificeOne(g *game.Game, item *game.StackItem, question string, match 
 				}
 				out = append(out, id)
 			}
-			return out, 0, 1
+			if len(out) == 0 {
+				return nil, 0, 0
+			}
+			return out, floor, 1
 		},
 		Then: func(ctx *Context, picked game.PromptedPicks) error {
 			cards := picked.Cards()

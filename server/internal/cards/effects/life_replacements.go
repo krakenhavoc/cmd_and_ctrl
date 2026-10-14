@@ -54,9 +54,8 @@ const (
 	// Faithmender, Alhammarret's Archive.
 	LifeGainByController LifeGainScope = "controller"
 
-	// LifeGainByOpponents is "if an OPPONENT would gain life". No
-	// printed card in this family, but it is the third of three and
-	// costs one arm.
+	// LifeGainByOpponents is "if an OPPONENT would gain life" —
+	// Plague Drone's Rot Fly, which turns the gain into a loss.
 	LifeGainByOpponents LifeGainScope = "opponents"
 )
 

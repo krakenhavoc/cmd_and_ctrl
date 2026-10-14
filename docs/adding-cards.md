@@ -2515,6 +2515,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"undying"`, `"persist"` | Undying (CR 702.93) and persist (CR 702.79) — #2075, DIES keywords: `harvestLTB` derives one trigger per instance from the departed permanent's LAST-KNOWN ability list (`game/undying_persist.go`, CR 603.10a), checks the counters it last had, and the keyed bodies `undying/return` / `persist/return` return the card only while it is still the graveyard object it became (CR 400.7e), under its owner's control with the counter on the entry event (so Hardened Scales applies). Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is undying or persist and other tokens here needs no card file. Never write a "return it with a counter" dies trigger for either by hand ([ADR 0113 §4](decisions/0113-small-seams-for-the-s58-deck-requests.md#4-undying-and-persist-2075)) |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
 | `"rebound"` | Rebound (CR 702.88) — #1854, a SPELL's keyword read as it RESOLVES: `spellRebounds` (`game/rebound.go`) exiles a spell cast from its controller's hand instead of putting it into the graveyard, and the upkeep delayed trigger `rebound/cast` offers the free cast. Declare it on an instant or sorcery; the card file writes only the rest of its text. To GIVE a spell rebound (or any keyword) on the stack, use `ThatSpellGains{Keywords}` for "that spell gains …" from a cast trigger, and `SpellsYouControlHave(pred, kw…)` for "… spells you control have …" (a static with `AffectsSpells`, which never reaches a permanent); both are applied by the stack step of the layer pass (`game/spell_keywords.go`) ([ADR 0107 §3](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#3-rebound-1854)) |
+| `"paradigm"` | Paradigm (CR 702.192) — #1866, a SPELL's keyword read as it RESOLVES: `spellHasParadigm` (`game/paradigm.go`) exiles the resolved spell, and the first resolution of a name by a player schedules the delayed trigger `paradigm/copy`, which fires at each of that player's precombat main phases for the rest of the game and offers a free cast of a copy of the exiled card (`CopyCardsAndOfferCastsForEffect`, #3258). Declare it on an instant or sorcery; the card file writes only the rest of its text (Decorum Dissertation) |
 | `"ascend"` | Ascend (CR 702.131) — #2696, read by the engine, never by a card file: a permanent with ascend gives its controller the city's blessing as soon as they control ten permanents, and an instant or sorcery with ascend gives it as the spell resolves (`game/citys_blessing.go`). Declare it as `game.KeywordAscend`; the card reads the designation, not the keyword. See "Ascend and the city's blessing" below ([ADR 0096 amendment 2026-10-08](decisions/0096-the-monarch-from-a-card-effect.md)) |
 | `"start your engines!"` | Start your engines! (CR 702.179) — #2122, the state-based action that gives a player with no speed a speed of 1 while they control a permanent with it (`game/speed.go`, CR 704.5aa). Declare it as `game.KeywordStartYourEngines`. The deck importer stamps it from Scryfall, so a speed card with no catalog entry still sets its controller's speed; its "Max speed —" ability still needs one. "Max speed — …" is NOT a keyword token: it is the `effects.MaxSpeed…` wrappers. See "Speed" below ([ADR 0138](decisions/0138-speed.md)) |
 
@@ -9332,6 +9333,22 @@ ctx.SourcePermanent()                                                           
 - **"<Spells> you cast have convoke"** is `GrantedTapCosts: []game.GrantedTapCost{SpellsYouCastHaveConvoke(label,
   FromZone(game.ZoneExile))}` (Hoarding Broodlord) or `SpellIs(Creature())` (Dazzling Theater, in its
   `Door.GrantedTapCosts`); `convoke_grant.go`, ADR 0073 amendment 2026-10-14.
+
+### Pieces from the Wilhelt deck (#3209)
+
+- **"<Type> spells you cast cost {1} less"** is `CostsLess(1, label, YourSpell(), SpellOfCreatureType("Zombie"))`
+  (Undead Warchief); `OtherSpellOfCreatureType` is the "other" form.
+- **"Once during each of your turns, you may cast a <type> creature spell from your graveyard"** is a standing
+  `CastPermission` with `PerType: []string{game.PermissionTypeCreature}` and a `Filter` naming the type (Gisa and
+  Geralf): Muldrotha's one-per-type budget with one type in it, kept per granting object.
+- **"You may pay {0} rather than pay the mana cost for <type> creature spells you cast"** is
+  `PayZeroForZombieCreatureSpellsYouCast()` (Rooftop Storm, `granted_alternative_cost.go`).
+- **"If it didn't have <keyword>"** on a dies trigger is `diedWithKeyword(ev, g, kw)` (Wilhelt): the departed object's
+  post-layer abilities from its battlefield record, so a granted keyword counts.
+- **"Copies of the sacrificed creature"** is `g.TokenCopyTemplateForObjectForEffect(ctx.Paid().SacrificedObjects[0])`
+  (Cleaver Skaab): the last-known copiable values, not the card in the graveyard.
+- **"Enters tapped unless a player has N or less life"** is `SelfEntersTappedUnless(aPlayerHasLifeAtMost(N))`
+  (Murky Sewer).
 
 ### Statics that read block status or this turn's events, "can't be attacked", any-type mana, flash-if-it-targets (#3172, cav-h2)
 
