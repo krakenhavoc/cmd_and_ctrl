@@ -2527,6 +2527,7 @@
   style:--coach-h={coachShown ? `${coachSize.h}px` : undefined}
   class:sheet-open={dockShown && sheetW > 0}
   style:--sheet-w={dockShown && sheetW > 0 ? `${sheetW}px` : undefined}
+  style:--stage-log-w={showGameLog ? "min(380px, 92vw)" : undefined}
   class:playing-as={actingAsOther}
   style:--playing-as-color={actingAsOther && actingSeat ? seatColor(actingSeat.seat) : undefined}
   bind:this={sectionEl}
