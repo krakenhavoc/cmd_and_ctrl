@@ -723,3 +723,35 @@ func TestGameOverCarriesTheLogAndSaysWhenItWasCut(t *testing.T) {
 		t.Errorf("game over lost the newest entry or the report:\n%s", r.Text)
 	}
 }
+
+// A seat older than the revision its server advertises says so in join's
+// answer and in its log, and still joins (#3608).
+func TestJoinWarnsWhenTheSeatIsOlderThanTheServerExpects(t *testing.T) {
+	f := newFakeServer(t)
+	f.seatRev = "5"
+	s := newTestSeat(t, func(c *Config) { c.Revision = 2; c.Build = "v0.1.0-rc.1, commit 84d51ef" })
+	text := joinFake(t, f, s)[0]
+	for _, want := range []string{
+		"joined: true",
+		"note: this seat is mcpseat v0.1.0-rc.1, commit 84d51ef, seat revision 2; the server expects revision 5 or later",
+		"docs/mcp-seat.md#download",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("join does not say %q:\n%s", want, text)
+		}
+	}
+	if !strings.Contains(s.logBuf.String(), "older than the server expects") {
+		t.Errorf("the seat log does not record it:\n%s", s.logBuf.String())
+	}
+}
+
+func TestJoinStaysQuietWhenTheSeatIsCurrentOrTheServerSaysNothing(t *testing.T) {
+	for name, rev := range map[string]string{"silent server": "", "same revision": "1", "older server": "0"} {
+		f := newFakeServer(t)
+		f.seatRev = rev
+		s := newTestSeat(t, func(c *Config) { c.Revision = 1 })
+		if text := joinFake(t, f, s)[0]; strings.Contains(text, "note:") {
+			t.Errorf("%s: join warns:\n%s", name, text)
+		}
+	}
+}

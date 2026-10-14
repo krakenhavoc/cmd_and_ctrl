@@ -8,10 +8,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
 // api is the lobby's HTTP surface, as far as a guest seat uses it. Every
@@ -23,6 +27,9 @@ type api struct {
 	// joinBackoff is the 429 retry ladder for the join routes (§8).
 	joinBackoff []time.Duration
 	sleep       func(context.Context, time.Duration) error
+	// serverRev is the newest seat revision the server has advertised
+	// (protocol.SeatRevisionHeader), 0 until it has said.
+	serverRev atomic.Int64
 }
 
 func newAPI(c *http.Client) *api {
@@ -97,6 +104,9 @@ func (a *api) do(ctx context.Context, method, url, token string, body, out any) 
 		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
+	if n, err := strconv.ParseInt(resp.Header.Get(protocol.SeatRevisionHeader), 10, 64); err == nil && n > 0 {
+		a.serverRev.Store(n)
+	}
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxBody))
 	if err != nil {
 		return err

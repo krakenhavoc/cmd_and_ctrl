@@ -67,6 +67,8 @@ type fakeServer struct {
 	// wsDown refuses every WebSocket dial with 503, as a restarting server
 	// does, so the seat stays disconnected until the test clears it.
 	wsDown bool
+	// seatRev is what the server advertises as the newest seat revision.
+	seatRev string
 }
 
 func newFakeServer(t *testing.T) *fakeServer {
@@ -87,7 +89,15 @@ func newFakeServer(t *testing.T) *fakeServer {
 	mux.HandleFunc("GET /me", f.handleMe)
 	mux.HandleFunc("GET /cards/{id}", f.handleCard)
 	mux.HandleFunc("GET /ws", f.handleWS)
-	f.srv = httptest.NewServer(mux)
+	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		f.mu.Lock()
+		rev := f.seatRev
+		f.mu.Unlock()
+		if rev != "" {
+			w.Header().Set(protocol.SeatRevisionHeader, rev)
+		}
+		mux.ServeHTTP(w, r)
+	}))
 	t.Cleanup(f.srv.Close)
 	return f
 }
