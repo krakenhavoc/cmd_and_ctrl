@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 )
 
 // myGamesResponse is the body of GET /me/games.
@@ -71,6 +72,7 @@ func myStats(c Config, w http.ResponseWriter, r *http.Request) error {
 		c.logger().Error("reading a user's game statistics failed", "err", err)
 		return httpError(http.StatusInternalServerError, "could not load your statistics; try again")
 	}
+	metrics.StatsPageLoaded()
 	return writeJSON(w, http.StatusOK, stats)
 }
 

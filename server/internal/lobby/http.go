@@ -38,6 +38,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/supportlinks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/usersettings"
@@ -170,6 +171,10 @@ type Config struct {
 	// 0179), checked at boot and served by GET /config. Nil or empty:
 	// the client renders no shop link.
 	Shops []shoplinks.Shop
+	// Support is the optional Ko-fi and Patreon links
+	// (CMDCTRL_SUPPORT_*, #3558), checked at boot and served by GET
+	// /config. The zero value shows none.
+	Support supportlinks.Links
 	// DiscordVoice is ADR 0159's table voice rooms. The zero value is
 	// off: GET /community says so and the client offers no room.
 	DiscordVoice discord.Voice
@@ -374,6 +379,8 @@ type GameEvictor interface {
 //	GET  /games/{id}/spectators — a seat / host / creator / admin: who is watching
 //	DELETE /games/{id}/spectators/{spectator} — host / creator / admin: remove one (?block=true)
 //	POST /games/{id}/seats/{player}/reclaim — admin: mint a seat-reclaim link
+//	POST /games/{id}/seats/{player}/away — answer the away offer: stand_in, concede or wait (ADR 0177)
+//	POST /games/{id}/seats/me/take-back — take your seat back from the bot playing it (ADR 0177)
 //	POST /games/{id}/reclaim — redeem one: a session for that seat
 //	POST /games/{id}/invites/rotate — admin: revoke + re-mint one invite kind
 //	POST /games/{id}/invites/dm — seated / creator / admin: DM a person the game's invite link
@@ -673,6 +680,10 @@ func Handler(c Config) http.Handler {
 	// seat from an unstarted table; an admin alone from a started game, by
 	// conceding it out (#3093, seat_remove.go).
 	mux.Handle("DELETE /games/{id}/seats/{player}", auth.Middleware(c.Auth)(handlerFunc(c, removeSeat)))
+	// ADR 0177: the table moves on without a player who is gone, and
+	// the player takes their seat back from the bot (away.go).
+	mux.Handle("POST /games/{id}/seats/{player}/away", auth.Middleware(c.Auth)(handlerFunc(c, answerAwaySeat)))
+	mux.Handle("POST /games/{id}/seats/me/take-back", auth.Middleware(c.Auth)(handlerFunc(c, takeBackSeat)))
 	// #3113: the block list and the unblock (blocks_http.go), and
 	// spectators: who is watching, and removing one (spectators.go).
 	mux.Handle("GET /games/{id}/blocks", auth.Middleware(c.Auth)(handlerFunc(c, listBlocks)))

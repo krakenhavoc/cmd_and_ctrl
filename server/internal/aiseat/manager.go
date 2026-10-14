@@ -77,7 +77,14 @@ type Manager struct {
 
 	mu    sync.Mutex
 	games map[uuid.UUID]*botGame
+	// standIns are the runners playing a person's seat while they are
+	// away (ADR 0177 §4), one per seat, each with its own context so
+	// one can stop without the table's other bots. Kept apart from
+	// games because StartBots replaces that set whole.
+	standIns map[standInKey]*botGame
 }
+
+type standInKey struct{ game, seat uuid.UUID }
 
 type botGame struct {
 	game    uuid.UUID
@@ -140,7 +147,7 @@ func NewManager(bc Broadcaster, log *slog.Logger) *Manager {
 	if log == nil {
 		log = slog.Default()
 	}
-	return &Manager{bc: bc, log: log, games: make(map[uuid.UUID]*botGame)}
+	return &Manager{bc: bc, log: log, games: make(map[uuid.UUID]*botGame), standIns: make(map[standInKey]*botGame)}
 }
 
 // NewManagerWithConfig is NewManager with one pacing for every tier.
@@ -348,9 +355,88 @@ func (m *Manager) StartBots(room *ws.Room, seats []SeatSpec) {
 	m.log.Info("bot runners started", "game", gameID.String(), "seats", len(bg.runners))
 }
 
-// StopBots cancels every runner on the game and waits for them to
-// exit. Idempotent.
+// StartStandIn starts a runner on seat, a person's seat that a bot
+// plays while they are away (ADR 0177 §4), beside the table's own bots
+// and without touching them. A second call for the same seat replaces
+// the first runner. A seat whose tier has no policy is logged and not
+// started.
+func (m *Manager) StartStandIn(room *ws.Room, seat SeatSpec) {
+	if room == nil {
+		return
+	}
+	gameID := room.Game.ID
+	k := standInKey{gameID, seat.PlayerID}
+	m.StopStandIn(gameID, seat.PlayerID)
+	tier, ok := LookupTier(seat.Tier)
+	if !ok {
+		m.log.Error("stand-in seat has an unknown tier; seat will not act",
+			"game", gameID.String(), "seat", seat.PlayerID.String(), "tier", seat.Tier)
+		return
+	}
+	factory := m.policyFactory()
+	seat.GameID = gameID
+	policy, err := factory.NewPolicy(seat)
+	if err != nil {
+		m.log.Error("stand-in seat has no policy; seat will not act",
+			"game", gameID.String(), "seat", seat.PlayerID.String(), "tier", seat.Tier, "err", err)
+		return
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	bg := &botGame{game: gameID, cancel: cancel}
+	r := Start(ctx, room, seat.PlayerID, policy, m.configFor(factory, tier), m.bc, m.log.With("game", gameID.String()))
+	bg.runners = []*Runner{r}
+	m.mu.Lock()
+	m.standIns[k] = bg
+	m.mu.Unlock()
+	go func(bg *botGame, log *slog.Logger) {
+		<-r.Done()
+		bg.finish(log)
+	}(bg, m.log)
+	m.log.Info("stand-in runner started",
+		"game", gameID.String(), "seat", seat.PlayerID.String(), "tier", seat.Tier, "policy", policy.Name())
+}
+
+// StopStandIn stops seat's stand-in runner and waits for it to exit.
+// The runner checks its context between decisions, never between
+// choosing a move and sending it, so it stops at a decision boundary.
+// Idempotent.
+func (m *Manager) StopStandIn(gameID, seat uuid.UUID) {
+	k := standInKey{gameID, seat}
+	m.mu.Lock()
+	bg, ok := m.standIns[k]
+	if ok {
+		delete(m.standIns, k)
+	}
+	m.mu.Unlock()
+	if ok {
+		bg.cancel()
+		for _, r := range bg.runners {
+			<-r.Done()
+		}
+		bg.finish(m.log)
+		m.log.Info("stand-in runner stopped", "game", gameID.String(), "seat", seat.String())
+	}
+}
+
+// stopStandIns stops every stand-in runner on the game.
+func (m *Manager) stopStandIns(gameID uuid.UUID) {
+	m.mu.Lock()
+	var seats []uuid.UUID
+	for k := range m.standIns {
+		if k.game == gameID {
+			seats = append(seats, k.seat)
+		}
+	}
+	m.mu.Unlock()
+	for _, s := range seats {
+		m.StopStandIn(gameID, s)
+	}
+}
+
+// StopBots cancels every runner on the game, its stand-ins included,
+// and waits for them to exit. Idempotent.
 func (m *Manager) StopBots(gameID uuid.UUID) {
+	m.stopStandIns(gameID)
 	m.mu.Lock()
 	bg, ok := m.games[gameID]
 	if ok {
@@ -371,10 +457,16 @@ func (m *Manager) StopBots(gameID uuid.UUID) {
 func (m *Manager) Runners(gameID uuid.UUID) []*Runner {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	var out []*Runner
 	if bg, ok := m.games[gameID]; ok {
-		return append([]*Runner(nil), bg.runners...)
+		out = append(out, bg.runners...)
 	}
-	return nil
+	for k, bg := range m.standIns {
+		if k.game == gameID {
+			out = append(out, bg.runners...)
+		}
+	}
+	return out
 }
 
 // MaxOwed is the longest any live bot seat has had a legal move to make
@@ -386,6 +478,9 @@ func (m *Manager) MaxOwed() time.Duration {
 	m.mu.Lock()
 	var runners []*Runner
 	for _, bg := range m.games {
+		runners = append(runners, bg.runners...)
+	}
+	for _, bg := range m.standIns {
 		runners = append(runners, bg.runners...)
 	}
 	m.mu.Unlock()
@@ -401,8 +496,16 @@ func (m *Manager) MaxOwed() time.Duration {
 func (m *Manager) Shutdown() {
 	m.mu.Lock()
 	ids := make([]uuid.UUID, 0, len(m.games))
+	seen := make(map[uuid.UUID]bool)
 	for id := range m.games {
 		ids = append(ids, id)
+		seen[id] = true
+	}
+	for k := range m.standIns {
+		if !seen[k.game] {
+			ids = append(ids, k.game)
+			seen[k.game] = true
+		}
 	}
 	m.mu.Unlock()
 	for _, id := range ids {

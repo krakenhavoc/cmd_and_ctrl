@@ -5547,6 +5547,7 @@ seats[].undosRemaining	number:int
 seats[].upkeepsBegun	number:int
 settings	object
 settings.allowSpawn	bool
+settings.awayAfter	number:int
 settings.botPace	string
 settings.commanderDamage	number:int
 settings.freeFirstMulligan	bool

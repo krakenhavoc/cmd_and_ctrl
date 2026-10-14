@@ -13,6 +13,7 @@
   import { FAN_CONTENT_POLICY_URL } from "../legalNotice";
   import { PRIVACY_HASH } from "../privacy";
   import { TERMS_HASH } from "../terms";
+  import { FUNDING_HASH } from "../funding";
   import { ABOUT_HASH, GUIDE_HASH, REPO_URL } from "../about";
   import { community } from "../community";
 </script>
@@ -31,6 +32,7 @@
            the table; the table's own copy is in the ⋯ menu's Legal notice. -->
       <a href={PRIVACY_HASH}>Privacy</a>
       <a href={TERMS_HASH}>Terms</a>
+      <a href={FUNDING_HASH}>Funding</a>
       <a href={REPO_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
     </nav>
     <div class="fine">

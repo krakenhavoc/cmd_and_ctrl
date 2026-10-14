@@ -11,6 +11,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/model"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 )
 
 // SeatClient is the model client for one bot seat that runs on its
@@ -80,6 +81,7 @@ func (c *seatClient) stopLocked(reason string, record bool) {
 		return
 	}
 	c.dead = reason
+	metrics.OwnKeyFallback(reasonCode(reason))
 	c.inner, c.secret = nil, ""
 	c.notice = "I can't use my owner's model key any more, so I'm playing on CMD & CTRL's built-in heuristic for the rest of this game. " + reason
 	c.svc.log.Info("own-key bot seat stopped using its model key; playing the heuristic",

@@ -95,6 +95,10 @@ const (
 	// limit of LegalMovesRequestsPerSecond (ADR 0122 §6.1). Nothing was
 	// enumerated; wait and ask again.
 	CodeRateLimited = "rate_limited"
+	// CodeStandIn — an action from a seat a bot is playing because its
+	// player was away (ADR 0177 §6). Nothing was applied. The player
+	// takes the seat back first (POST /games/{id}/seats/me/take-back).
+	CodeStandIn = "stand_in"
 )
 
 // LegalMovesRequestsPerSecond is how many legal_moves_request frames

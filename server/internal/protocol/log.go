@@ -390,6 +390,13 @@ const (
 	// has to be written down. A budget that quietly halved mid-game is
 	// the argument this line exists to prevent.
 	LogSettings LogKind = "settings"
+	// LogAwaySeat — the table moved on without a player who was gone
+	// (ADR 0177). `Label` is "stand_in" (a bot took the seat),
+	// "concede" (the seat was conceded for them) or "take_back" (the
+	// player took their seat back from the bot); `TargetSeat` is the
+	// seat, the actor who decided (no seat for the server admin), and
+	// `Amount` the whole minutes the seat had been offline.
+	LogAwaySeat LogKind = "away_seat"
 	// LogSpawn — the host or the admin put cards or tokens onto the
 	// table from nowhere (ADR 0075 §2.4). `Label` is the card or
 	// token name, `Amount` the count, `NewZone` where they went and
@@ -1550,6 +1557,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventAwaySeat:
+		base.Kind = LogAwaySeat
+		base.Label = ev.Label
+		base.Amount = ev.Amount
+		base.setTarget(ev.Target, seatOf)
+		return base, true
+
 	case game.EventSpawned:
 		// ADR 0075 §2.4. The whole justification for allowing a
 		// production spawn is that the table can see it happen: a
@@ -2584,6 +2598,8 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s is fully unlocked", card)
 	case LogSettings:
 		return renderSettingsText(*e)
+	case LogAwaySeat:
+		return renderAwaySeatText(*e, actor, target)
 	case LogSpawn:
 		return renderSpawnText(*e, target)
 	case LogStorm:
@@ -2752,11 +2768,42 @@ func renderSettingsText(e LogEvent) string {
 			return fmt.Sprintf("%s made the first mulligan free", who)
 		}
 		return fmt.Sprintf("%s made the first %s mulligans free", who, e.Choice)
+	case game.SettingAwayAfter:
+		// ADR 0177 §7.
+		switch e.Choice {
+		case "0":
+			return fmt.Sprintf("%s turned off moving on without an away player", who)
+		case "1":
+			return fmt.Sprintf("%s set the away time to 1 minute", who)
+		}
+		return fmt.Sprintf("%s set the away time to %s minutes", who, e.Choice)
 	}
 	if e.Label == "" {
 		return fmt.Sprintf("%s changed a table setting", who)
 	}
 	return fmt.Sprintf("%s set %s to %s", who, e.Label, nameOr(e.Choice, "its default"))
+}
+
+// renderAwaySeatText words ADR 0177's three lines: "Ana handed Bo's
+// seat to a bot (offline 3m)", "Ana conceded for Bo (offline 3m)" and
+// "Bo took their seat back". An actor with no seat is the server admin.
+func renderAwaySeatText(e LogEvent, actor, target string) string {
+	if e.Seat == NoSeat {
+		actor = "The admin"
+	}
+	away := ""
+	if e.Amount > 0 {
+		away = fmt.Sprintf(" (offline %dm)", e.Amount)
+	}
+	switch e.Label {
+	case game.AwayStandIn:
+		return fmt.Sprintf("%s handed %s's seat to a bot%s", actor, target, away)
+	case game.AwayConcede:
+		return fmt.Sprintf("%s conceded for %s%s", actor, target, away)
+	case game.AwayTakeBack:
+		return fmt.Sprintf("%s took their seat back", target)
+	}
+	return fmt.Sprintf("%s moved %s's seat on", actor, target)
 }
 
 // renderSpawnText words a spawn (ADR 0075 §2.4): who did it, under
