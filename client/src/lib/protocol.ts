@@ -2921,6 +2921,11 @@ export interface ExilePlayView {
   // unconditional grant.
   condition?: string;
   condition_unmet?: boolean;
+  // #3490: the holder's next pass of priority ends this grant (rebound,
+  // suspend, discover and cascade's free casts; ADR 0099 section 4).
+  // Passing is the decline, so autopass holds while the viewer may cast
+  // a card that carries it (priority.ts owesFreeCast). Absent otherwise.
+  closes_on_pass?: boolean;
 }
 
 // #2559: the windows `exile_play.until` names.

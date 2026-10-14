@@ -220,6 +220,7 @@ describe("the verdict it produces", () => {
     hasPendingChoice: false,
     owesBlockDecision: false,
     owesAttackRequirement: false,
+    owesFreeCast: false,
     loopSuspended: false,
     step: v.turn?.step,
     autopassToggle: false,

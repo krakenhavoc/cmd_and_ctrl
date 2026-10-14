@@ -2073,6 +2073,16 @@ button while `condition_unmet` is set (the cast would be refused), and
 the per-holder `castable_here` is absent for the same reason. Both absent
 for an unconditional grant.
 
+**`exile_play.closes_on_pass` (#3490).** `true` on a grant the holder's
+next pass of priority ends (`CastPermission.LapseOnPass`): the free casts
+of rebound, suspend, discover and cascade ([ADR 0099](decisions/0099-discover.md)
+§4). Passing is the decline there, and the card goes where its keyword
+sends it. A client that passes on the holder's behalf must therefore not
+pass while the viewer has a card in exile with `castable_here` and this
+flag: the web client's auto-pass holds (`owesFreeCast`), and a manual
+"next" still passes. Public, like the rest of the grant; absent on a grant
+that outlasts a pass (impulse exile, warp, foretell).
+
 **`exile_play.any_type` (#1573).** "Mana of any TYPE can be spent to
 cast it" (Hostage Taker, Gonti, Night Minister, Outrageous Robbery) is
 wider than `any_color`: colorless is a type and not a color (CR

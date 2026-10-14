@@ -20,6 +20,7 @@ function gates(overrides: Partial<AutopassGates> = {}): AutopassGates {
     hasPendingChoice: false,
     owesBlockDecision: false,
     owesAttackRequirement: false,
+    owesFreeCast: false,
     loopSuspended: false,
     step: "upkeep",
     autopassToggle: false,
@@ -189,6 +190,14 @@ describe("autopassDecision — guards above every toggle", () => {
       "hold",
     );
     expect(autopassDecision(gates({ owesBlockDecision: true, autopassToggle: true }))).toBe("hold");
+  });
+
+  // #3490: rebound's upkeep cast. The pass IS the decline, so every
+  // toggle and pass mode waits for the cast or a deliberate pass.
+  it("holds a free cast the viewer can still make (#3490), toggle or not", () => {
+    expect(autopassDecision(gates({ owesFreeCast: true }))).toBe("hold");
+    expect(autopassDecision(gates({ owesFreeCast: true, autopassToggle: true }))).toBe("hold");
+    expect(autopassDecision(gates({ owesFreeCast: false }))).toBe("pass");
   });
 
   it("holds while the CR 732 loop breaker is up (#628)", () => {

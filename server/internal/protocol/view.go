@@ -3922,6 +3922,15 @@ type ExilePlayView struct {
 	// for an unconditional grant. Public, like the rest of the grant.
 	Condition      string `json:"condition,omitempty"`
 	ConditionUnmet bool   `json:"condition_unmet,omitempty"`
+
+	// ClosesOnPass is true on a grant its holder's next pass of priority
+	// ends (CastPermission.LapseOnPass): the free casts of rebound,
+	// suspend, discover and cascade (ADR 0099 section 4). Passing is the
+	// decline there, so a client that passes on the holder's behalf
+	// (auto-pass) would throw the cast away before the holder has chosen
+	// targets (#3490). The client holds auto-pass while a card the viewer
+	// may cast now carries it. Absent on every grant that outlasts a pass.
+	ClosesOnPass bool `json:"closes_on_pass,omitempty"`
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a
@@ -10855,6 +10864,7 @@ func exilePlayViewOf(g *game.Game, card game.Card, perm *game.CastPermission) *E
 		// will read (ADR 0034).
 		XLockedAtZero: game.CastCostFor(grantedFace(card, perm), perm.AlternativeCostFor(card), perm).LocksXAtZero(),
 		Until:         until,
+		ClosesOnPass:  perm.LapseOnPass != "",
 	}
 	if untilPlayer != uuid.Nil {
 		view.UntilPlayer = untilPlayer.String()
