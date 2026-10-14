@@ -1036,6 +1036,40 @@ only.
 The in-process bot seat does not use any of this. It enumerates in
 process, never reads the wire, and keeps its own caps.
 
+### `visibility` (client → server) — ADR 0162 §2
+
+Says whether the browser tab behind this connection is in front. The
+client sends it on every `visibilitychange` and once right after the
+connection opens. The server never answers it.
+
+```json
+{
+  "v": 0,
+  "kind": "visibility",
+  "id": "0b6f3a1e-6c2d-4a7b-9e1f-2d3c4b5a6f70",
+  "payload": { "visible": false }
+}
+```
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `payload.visible` | bool | yes | `false` when the tab is hidden, `true` when it is in front again. |
+
+- **Latest value per connection.** The hub keeps the last one each
+  connection sent. A connection that never sends one counts as
+  **visible**, so a client from before this frame is never taken for
+  away while it is connected.
+- **What it is for.** Discord DM notifications
+  ([ADR 0162](decisions/0162-discord-dm-notifications.md),
+  [lobby.md](lobby.md#get-menotifications-and-put-menotifications-adr-0162)):
+  a seat is **away** when no connection is bound to it, or every one
+  bound to it is hidden. Nothing else reads it, and other players never
+  see it.
+- **Refusals**, each an `error` frame with the frame's `id`:
+  `bad_request` for a missing payload or a missing or `null` `visible`,
+  and `bad_json` for a payload that is not an object or a `visible` that
+  is not a boolean. A refused frame changes nothing.
+
 ### `chat` (both directions) — added in S07
 
 A chat message addressed to every client bound to the same game.

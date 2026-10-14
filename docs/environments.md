@@ -884,6 +884,24 @@ the table and backfills the active mat into slot 1, so a person who had
 three is back to one. `TestMigration0013RollbackByHand` runs exactly
 this sequence and then rolls forward.
 
+Migration 0022 (ADR 0162, Discord DM notifications) adds the
+`notification_prefs` table: each person's three notification switches
+and when Discord last refused a DM to them. An older binary refuses the
+v22 schema. Drop it by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE notification_prefs; DELETE FROM schema_migrations WHERE version = 22;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs every switch: rolling forward again recreates the table empty,
+so everyone is back to off and has to opt in again.
+`TestMigration0022RollbackByHand` runs exactly this sequence and then
+rolls forward.
+
 Migration 0021 (ADR 0161, the #lfg board) adds `games.lfg` (0 or 1,
 default 0) and `games.lfg_message_id` (nullable). An older binary refuses
 the v21 schema. Drop them by hand:

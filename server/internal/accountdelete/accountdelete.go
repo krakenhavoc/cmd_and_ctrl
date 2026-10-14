@@ -9,7 +9,8 @@
 //
 //  1. Refuse if the person holds a seat at a table that has not ended
 //     (a lobby or an active game). SeatedError names the table.
-//  2. Delete: decks, user_settings, table_setups, user_playmats, the
+//  2. Delete: decks, user_settings, table_setups, notification_prefs,
+//     user_playmats, the
 //     identities row (Discord id, name, avatar hash and the encrypted
 //     refresh token), the person's deck_request_asks rows, the player
 //     reports they filed or are the subject of, and the table blocks
@@ -90,6 +91,7 @@ type Counts struct {
 	Seats           int
 	SettingsRows    int
 	SetupRows       int
+	NotifyPrefRows  int
 	Identities      int
 	Reports         int
 	Blocks          int
@@ -265,6 +267,9 @@ func (s *SQLStore) Delete(ctx context.Context, id uuid.UUID) (Result, error) {
 		return Result{}, err
 	}
 	if err := exec(&res.Counts.SetupRows, `DELETE FROM table_setups WHERE user_id = ?`, uid); err != nil {
+		return Result{}, err
+	}
+	if err := exec(&res.Counts.NotifyPrefRows, `DELETE FROM notification_prefs WHERE user_id = ?`, uid); err != nil {
 		return Result{}, err
 	}
 	if err := exec(&res.Counts.Playmats, `DELETE FROM user_playmats WHERE user_id = ?`, uid); err != nil {

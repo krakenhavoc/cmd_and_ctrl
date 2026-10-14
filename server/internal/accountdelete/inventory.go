@@ -104,6 +104,8 @@ var Inventory = join(
 		"user_id", "version", "revision", "body", "updated_at"),
 	cols("table_setups", Deleted, "the person's last table setup",
 		"user_id", "body", "game_id", "updated_at"),
+	cols("notification_prefs", Deleted, "the person's Discord DM notification switches and when Discord last refused one (ADR 0162)",
+		"user_id", "turn", "table_ready", "table_filled", "dm_failed_at", "updated_at"),
 	cols("user_playmats", Deleted, "the rows; the image files are removed by the caller",
 		"user_id", "slot", "playmat_id", "width", "height", "created_at"),
 

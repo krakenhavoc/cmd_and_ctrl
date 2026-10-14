@@ -52,8 +52,13 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * Neither is about a person; the Discord row now says what a post shows
  * the community server (the host's Discord account among it) and when
  * it is deleted (ADR 0161 §8).
+ *
+ * 22 (#3320, ADR 0162 §5) adds notification_prefs: a person's three
+ * Discord DM notification switches and when Discord last refused one.
+ * The notice's "Your Discord notifications" row names it, and the
+ * Discord paragraph says what the messages carry (§6).
  */
-export const PRIVACY_SCHEMA_VERSION = 21;
+export const PRIVACY_SCHEMA_VERSION = 22;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

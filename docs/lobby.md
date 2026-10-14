@@ -2953,6 +2953,73 @@ always a 412.
 - A failed write never blocks the UI. It is retried with a backoff, and
   again when the browser comes back online.
 
+### `GET /me/notifications` and `PUT /me/notifications` (ADR 0162)
+
+The caller's **Discord DM notification switches**
+([ADR 0162](decisions/0162-discord-dm-notifications.md)). Three, every
+one **off** until the person turns it on:
+
+| Switch | A DM is sent when |
+|---|---|
+| `turn` | the game has waited on you for **2 minutes** while you are away |
+| `table_ready` | a table you sit at has filled (every seat taken) or started while you are away |
+| `table_filled` | a table you host has filled while you are away |
+
+**Away** means no open game socket for your seat, or every one reports
+its tab hidden (the `visibility` frame, [protocol.md](protocol.md)). At
+most **one DM per player per table per 10 minutes**, across all three.
+Never to a bot, an agent seat, a guest or a spectator, and never about a
+practice table. The message is one line naming the table (and the turn,
+for `turn`) and a link to `/#/games/{id}`, which rejoins a signed-in
+player's seat the usual way (`POST /me/games/{id}/session`).
+
+Same caller rule as the rest of `/me/*`: a signed-in person. No
+credential is **401**; a guest's seat, a spectator link and the admin
+token are **403**.
+
+**`GET /me/notifications` → 200**
+
+```json
+{ "available": true, "turn": true, "table_ready": false, "table_filled": false, "dm_failed": false }
+```
+
+- `available` is whether this server sends notifications at all. It
+  needs `CMDCTRL_DISCORD_BOT_TOKEN` (production only),
+  `CMDCTRL_PUBLIC_BASE_URL` and the database. Without them both routes
+  answer **503** with `{"error": "…", "available": false}`, and the
+  client hides the section.
+- `dm_failed` is true when Discord refused the last DM (its code 50007:
+  DMs from server members switched off, the bot blocked, or the person
+  left the server). Nothing is sent while it is set. Turning any switch
+  on that was off clears it.
+
+Responses carry `Cache-Control: no-store`.
+
+**`PUT /me/notifications`**
+
+```json
+{ "turn": true }
+```
+
+Any of the three booleans; a switch left out keeps its value. The body
+must name at least one, and unknown fields are refused.
+
+| Status | When | Body |
+|---|---|---|
+| 200 | Saved | The new switches, as `GET` returns them |
+| 400 | The body is malformed, names no switch, or names an unknown field | `{error}` |
+| 429 | Over the per-person bucket: 1 write a second, a burst of 5 | `{error}` |
+| 503 | Notifications are off on this server | `{error, available: false}` |
+
+The switches live in `notification_prefs` (migration 0022), not in the
+synced settings body, which the server never reads (ADR 0110 §4).
+Account deletion deletes the row. The rate window and the two-minute
+clocks are in memory: a restart forgets them, which at worst sends one
+extra DM. Every attempt is counted in
+`cmdctrl_dm_notifications_total{kind, result}`, `result` being `sent`,
+`refused` (50007) or `error`. A 429 from Discord waits once, up to five
+seconds; anything else is logged and dropped, never retried late.
+
 ### Playmats (ADR 0128)
 
 A signed-in person can keep up to **three playmats** and show one of
@@ -3352,7 +3419,8 @@ session's), so only the caller's own can be deleted, and an admin gets
 no extra reach.
 
 It removes the person's decks, deck-request history, playmats (rows and
-image files), synced settings, last table setup, and the Discord
+image files), synced settings, last table setup, notification switches,
+and the Discord
 identity (id, name, avatar hash, encrypted refresh token); turns every
 seat they held into `"Deleted player"` in the lobby, the live room, the
 games' files on disk (crash dump, replay, restore point) and the

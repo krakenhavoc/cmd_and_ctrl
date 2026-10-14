@@ -195,6 +195,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/notify"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
@@ -652,6 +653,7 @@ func main() {
 		log.Warn("discord DM invites cannot send — set CMDCTRL_PUBLIC_BASE_URL (or CMDCTRL_CLIENT_BASE_URL) " +
 			"so the invite link has an origin; POST /games/{id}/invites/dm returns 503 until then")
 	}
+	notifications := startNotifier(ctx, log, discordBot, publicBase, database, l, hub, userStore)
 	bugStore := bugstore.New(bugDir, publicBase)
 	if bugStore.Enabled() {
 		if bugStore.AttachmentsEnabled() {
@@ -705,6 +707,7 @@ func main() {
 		LiveSockets:       hub,
 		DeckLibrary:       deckLibrary,
 		UserSettings:      newUserSettingsStore(database),
+		Notifications:     notifications,
 		Playmats:          playmats,
 		TableSetups:       newTableSetupStore(database),
 		Accounts:          newAccountDeleter(database),
@@ -1286,6 +1289,41 @@ func newDeckLibraryStore(database *db.DB) decklibrary.Store {
 		return decklibrary.NoStore{}
 	}
 	return decklibrary.NewSQLStore(database)
+}
+
+// startNotifier starts ADR 0162's Discord DM notifications when this
+// server can send them: the bot token, the public origin the link is
+// built against, and the database the switches live in. It returns the
+// switches' store for /me/notifications, or nil when the feature is off,
+// which the routes answer with 503 and "available": false. Off is said
+// once here, at boot, like the DM invites.
+func startNotifier(ctx context.Context, log *slog.Logger, bot discord.Bot, publicBase string, database *db.DB,
+	l *lobby.Lobby, hub *ws.Hub, recipients notify.Recipients) notify.Store {
+	switch {
+	case !bot.Enabled():
+		log.Info("discord DM notifications off: "+discord.BotTokenEnv+" is not set", "env", discord.BotTokenEnv)
+		return nil
+	case publicBase == "":
+		log.Warn("discord DM notifications off: set CMDCTRL_PUBLIC_BASE_URL (or CMDCTRL_CLIENT_BASE_URL) so the link has an origin")
+		return nil
+	case database == nil:
+		log.Info("discord DM notifications off: there is no database to keep the switches in")
+		return nil
+	}
+	store := notify.NewSQLStore(database)
+	n := notify.New(notify.Config{
+		Tables:     l.NotifyTables(),
+		Presence:   hub,
+		Store:      store,
+		Recipients: recipients,
+		Sender:     notify.BotSender{Bot: bot},
+		BaseURL:    publicBase,
+		Log:        log,
+	})
+	l.SetTableEvents(n)
+	go n.Run(ctx)
+	log.Info("discord DM notifications on: players may opt in under Settings, Notifications")
+	return store
 }
 
 // newUserSettingsStore builds the account settings store (ADR 0110
