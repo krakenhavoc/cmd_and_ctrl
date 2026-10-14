@@ -63,6 +63,42 @@ describe("settings", () => {
     expect(s.gameplay.confirmExit).toBe(true);
   });
 
+  // #3344: music is off for a new visitor, but sound effects are not
+  // muted (they follow audio.muted, which the default leaves false).
+  it("starts a new visitor with music off and effects on", async () => {
+    const { settings, defaultSettings } = await freshModule();
+    expect(defaultSettings().audio.musicVolume).toBe(0);
+    const s = get(settings);
+    expect(s.audio.musicVolume).toBe(0);
+    expect(s.audio.muted).toBe(false);
+  });
+
+  // #3344: a stored preference wins over the new default, both when
+  // music was on and when the visitor had turned it off.
+  it("respects a stored music volume over the default", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({
+        __version: 27,
+        audio: { muted: false, masterVolume: 80, effectsVolume: 100, musicVolume: 60 },
+      }),
+    );
+    const { settings } = await freshModule();
+    expect(get(settings).audio.musicVolume).toBe(60);
+  });
+
+  it("keeps music off when a visitor stored it at zero", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({
+        __version: 27,
+        audio: { muted: false, masterVolume: 80, effectsVolume: 100, musicVolume: 0 },
+      }),
+    );
+    const { settings } = await freshModule();
+    expect(get(settings).audio.musicVolume).toBe(0);
+  });
+
   // #956 / ADR 0077. Pinned as its own test rather than folded into
   // the shape check above, because these three are the defaults that
   // decide what a new player's table LOOKS like, and the ADR's
