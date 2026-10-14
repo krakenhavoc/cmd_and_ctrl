@@ -115,6 +115,7 @@ registered, or when this file is stale.
 | `newSpectatorLink` | `new spectator link` | button | aria | `routes/Lobby.svelte` | the ↻ part of the spectator split button: mints a new spectator link after a confirm, then copies it |
 | `tableSettingsLine` | `table settings: <summary>` (starts with `table settings: `) | button | aria | `routes/Lobby.svelte` | a table card's rules line, e.g. 30 life · no undos: opens the table settings panel (read-only for a non-host) |
 | `tableMenu` | `actions for <table name>` (starts with `actions for `) | menu | aria | `routes/Lobby.svelte` | a table card's right-click menu (also the Menu key, Shift+F10 or a long press) |
+| `reportABug` | `Report a bug or idea` | button | aria | `routes/Game.svelte`<br>`lib/components/SiteHeader.svelte` | the bug button: the table's command bar, and the site header on every other page for someone signed in with Discord (#3492); the Guide and About name it |
 | `navTables` | `Tables` | link | text | `lib/components/SiteHeader.svelte` | the site header's link to #/lobby, first in the signed-in nav (it read Lobby before ADR 0156) |
 | `signInWithDiscord` | `Sign in with Discord` | link | text | `routes/FrontPage.svelte` | the front page's Discord sign-in, shown when the server has Discord sign-in configured |
 | `joinDiscordServer` | `Join our Discord server` | link | text | `routes/FrontPage.svelte` | the front page's link to the C2 Discord invite; hidden when GET /community names none |

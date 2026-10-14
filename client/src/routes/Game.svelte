@@ -24,10 +24,10 @@
   import { seatColor } from "../lib/colors";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
+  import { bugReportConfig } from "../lib/bugReportConfig";
   import {
     discordAuthEnabled,
     discordLinkHref,
-    fetchBugReportConfig,
     reportPlayer,
     fetchSpectators,
     removeSpectator,
@@ -408,7 +408,7 @@
     reset();
   }
   onMount(() => {
-    void fetchBugReportConfig().then((cfg) => {
+    void bugReportConfig().then((cfg) => {
       bugReportAvailable = cfg.enabled;
       bugReportAttachments = cfg.attachments;
     });
@@ -2591,8 +2591,8 @@
       {#if bugReportAvailable}
         <button
           class="ibtn"
-          title="Report a bug or idea"
-          aria-label="Report a bug or idea"
+          title={L.reportABug}
+          aria-label={L.reportABug}
           onclick={() => (bugReportOpen = true)}><Icon name="bug" size={17} /></button
         >
       {/if}

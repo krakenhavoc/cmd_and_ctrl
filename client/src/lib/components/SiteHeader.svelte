@@ -38,6 +38,8 @@
   import Icon from "./Icon.svelte";
   import AdminChip from "./AdminChip.svelte";
   import HelpMenu from "./HelpMenu.svelte";
+  import BugReportModal from "./BugReportModal.svelte";
+  import { bugReportConfig } from "../bugReportConfig";
   import DeleteAccountDialog from "./DeleteAccountDialog.svelte";
   import { PRIVACY_HASH } from "../privacy";
   import { ABOUT_HASH, GUIDE_HASH } from "../about";
@@ -64,6 +66,22 @@
     if (isSignedIn && !hasLinkedUser) return;
     void discordAuthEnabled().then((on) => {
       discordEnabled = on;
+    });
+  });
+
+  // Report a bug on every page outside the table (#3492), for someone
+  // signed in with Discord: the report names them, and a guest's
+  // reports have nobody to follow up with. The table keeps its own
+  // button, which attaches the game. Shown only when this server files
+  // reports at all.
+  let bugReportOn = $state(false);
+  let bugAttachments = $state(false);
+  let bugOpen = $state(false);
+  $effect(() => {
+    if (!hasLinkedUser) return;
+    void bugReportConfig().then((cfg) => {
+      bugReportOn = cfg.enabled;
+      bugAttachments = cfg.attachments;
     });
   });
 
@@ -227,6 +245,17 @@
           <Icon name="discord" size={18} />
         </a>
       {/if}
+      {#if hasLinkedUser && bugReportOn}
+        <button
+          type="button"
+          class="bug-btn"
+          aria-label={L.reportABug}
+          title="Report a bug or suggest an improvement"
+          onclick={() => (bugOpen = true)}
+        >
+          <Icon name="bug" size={17} />
+        </button>
+      {/if}
       <!-- Help (ADR 0125 §6), for everyone: tips, a practice game, the keymap. -->
       <HelpMenu />
       <div class="acct" bind:this={accountEl}>
@@ -314,6 +343,19 @@
 
 {#if deleteOpen}
   <DeleteAccountDialog onclose={() => (deleteOpen = false)} />
+{/if}
+
+{#if bugOpen}
+  <BugReportModal
+    gameID=""
+    view={null}
+    seq={0}
+    connection=""
+    wsLog={[]}
+    attachments={bugAttachments}
+    page={$route.name}
+    onclose={() => (bugOpen = false)}
+  />
 {/if}
 
 <style>
@@ -419,6 +461,26 @@
     background: color-mix(in srgb, #5865f2 18%, transparent);
   }
   .discord-link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .bug-btn {
+    display: inline-grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--fg-muted);
+    cursor: pointer;
+  }
+  .bug-btn:hover {
+    color: var(--fg);
+    background: var(--overlay);
+  }
+  .bug-btn:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
