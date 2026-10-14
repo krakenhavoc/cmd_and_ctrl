@@ -98,9 +98,10 @@ type assignParam struct {
 // permutation-shaped; they are offered as a small canonical set
 // rather than every permutation: the declared order, its reverse,
 // and for scry each "bottom exactly this card" plus keep-all and
-// bottom-all. Damage assignment is offered as the single canonical
-// lethal-in-order split (plus trample overflow), which is what a
-// player does almost every time.
+// bottom-all. Damage assignment is offered as the canonical
+// most-kills split (plus trample overflow) first, which is what a
+// player does almost every time, then one split per maximal set of
+// blockers that can all take lethal damage (#3620, DamageSplits).
 func (e *enumerator) choiceMoves() bool {
 	g := e.g
 	owed := false
@@ -444,8 +445,18 @@ func (e *enumerator) choiceMoves() bool {
 			}
 
 		case game.PendingChoiceDamageAssignment:
-			if m, ok := e.canonicalDamageAssignment(c, base()); ok {
-				e.addChoice(c, reason+": assign combat damage", m)
+			// #3620: the canonical split first (the bots' answer and the
+			// engine's own suggestion), then the other meaningful
+			// divisions, so a text seat can pick which blockers die.
+			for _, ds := range DamageSplits(e.g, c) {
+				m := base()
+				m.TrampleTo = ds.Split.TrampleTo
+				assigns := make([]assignParam, 0, len(ds.Split.Assignments))
+				for _, a := range ds.Split.Assignments {
+					assigns = append(assigns, assignParam{BlockerID: a.BlockerID.String(), Amount: a.Amount})
+				}
+				m.Assignments = assigns
+				e.addChoice(c, reason+": assign combat damage — "+ds.Label, m)
 			}
 
 		// ADR 0108 §7 decision 6, CR 615.7: divide a charged shield
@@ -1864,23 +1875,6 @@ func shieldDivisionLabel(p *game.DivideShieldPrompt, dist map[uuid.UUID]int) str
 	return "prevent " + strings.Join(parts, ", ")
 }
 
-// canonicalDamageAssignment builds the one split the enumerator offers
-// for a damage-assignment prompt: CanonicalDamageSplit, as the
-// resolve_choice params.
-func (e *enumerator) canonicalDamageAssignment(c *game.PendingChoice, p choiceParams) (choiceParams, bool) {
-	split, ok := CanonicalDamageSplit(e.g, c)
-	if !ok {
-		return p, false
-	}
-	p.TrampleTo = split.TrampleTo
-	assigns := make([]assignParam, 0, len(split.Assignments))
-	for _, a := range split.Assignments {
-		assigns = append(assigns, assignParam{BlockerID: a.BlockerID.String(), Amount: a.Amount})
-	}
-	p.Assignments = assigns
-	return p, true
-}
-
 // DamageShare is one blocker's share of a DamageSplit.
 type DamageShare struct {
 	BlockerID uuid.UUID
@@ -1908,12 +1902,13 @@ type DamageSplit struct {
 	CoversLethal bool
 }
 
-// CanonicalDamageSplit is the one split the enumerator offers for a
+// CanonicalDamageSplit is the first split the enumerator offers for a
 // damage-assignment prompt: the one that kills the most the attacker's
 // power can buy (#2692). The bots answer with it, and the view ships it
 // to the chooser as the prompt's pre-filled answer and, when it covers
 // lethal for every blocker, as the answer the client may send for them
-// (#2956, ADR 0147).
+// (#2956, ADR 0147). DamageSplits adds the other meaningful divisions
+// after it (#3620).
 //
 // CR 510.1c divides a blocked creature's damage among its blockers "as
 // its controller chooses among them", and CR 510.1d does the same for
@@ -1932,56 +1927,208 @@ type DamageSplit struct {
 //
 // Caller must hold g's lock (read or write).
 func CanonicalDamageSplit(g *game.Game, c *game.PendingChoice) (DamageSplit, bool) {
-	if c == nil || c.DamageAssignment == nil {
+	pl, ok := planDamage(g, c)
+	if !ok {
 		return DamageSplit{}, false
+	}
+	return pl.canonical()
+}
+
+// maxDamageSplitBlockers is the most blockers whose kill sets
+// DamageSplits enumerates (2^n masks); a bigger block keeps the
+// canonical split alone, as KillingSet falls back to the declared order
+// past killingSetExact.
+const maxDamageSplitBlockers = 8
+
+// maxDamageSplits bounds the moves one damage-assignment prompt offers.
+const maxDamageSplits = 12
+
+// OfferedDamageSplit is one answer to a damage-assignment prompt with
+// a label that says who takes what.
+type OfferedDamageSplit struct {
+	Split DamageSplit
+	Label string
+}
+
+// DamageSplits is every split the enumerator offers for a
+// damage-assignment prompt (#3620), the canonical one first. CR
+// 510.1c-d let the chooser divide the damage however they like, so
+// which blockers die is a real choice, but the space is a partition of
+// the power, not a list, so the offer is the meaningful divisions: each
+// MAXIMAL set of blockers that can all be assigned lethal damage at
+// once (no further blocker fits in what is left), with the remainder on
+// one survivor. Survivors that are the same creature to the attacker
+// (equal lethal damage and equal kill value) count once.
+//
+// Power enough to assign lethal to every blocker has nothing left to
+// choose (#2956): there is one split, and a trampler's remainder goes
+// over. Past maxDamageSplitBlockers blockers, or maxDamageSplits
+// answers, the rest are dropped.
+//
+// Caller must hold g's lock (read or write).
+func DamageSplits(g *game.Game, c *game.PendingChoice) []OfferedDamageSplit {
+	pl, ok := planDamage(g, c)
+	if !ok {
+		return nil
+	}
+	canon, ok := pl.canonical()
+	if !ok {
+		return nil
+	}
+	out := []OfferedDamageSplit{{Split: canon, Label: pl.label(canon)}}
+	n := len(pl.f.BlockerIDs)
+	if pl.covers || n < 2 || n > maxDamageSplitBlockers {
+		return out
+	}
+	seen := map[string]bool{splitKey(canon): true}
+	type cand struct {
+		split DamageSplit
+		value int
+	}
+	type sig struct{ cost, value int }
+	var cands []cand
+	for mask := 0; mask < 1<<n; mask++ {
+		sum, val := 0, 0
+		okMask := true
+		for i := 0; i < n && okMask; i++ {
+			if mask&(1<<i) != 0 {
+				if pl.value[i] == 0 {
+					okMask = false
+				}
+				sum += pl.cost[i]
+				val += pl.value[i]
+			}
+		}
+		if !okMask || sum > pl.f.AttackerPower {
+			continue
+		}
+		maximal := true
+		for i := 0; i < n; i++ {
+			if mask&(1<<i) == 0 && pl.value[i] > 0 && sum+pl.cost[i] <= pl.f.AttackerPower {
+				maximal = false
+				break
+			}
+		}
+		if !maximal {
+			continue
+		}
+		kill := make([]bool, n)
+		for i := range kill {
+			kill[i] = mask&(1<<i) != 0
+		}
+		sinks := map[sig]bool{}
+		for i := 0; i < n; i++ {
+			if kill[i] || sinks[sig{pl.cost[i], pl.value[i]}] {
+				continue
+			}
+			sinks[sig{pl.cost[i], pl.value[i]}] = true
+			if sp, ok := pl.build(kill, i); ok {
+				cands = append(cands, cand{sp, val})
+			}
+		}
+	}
+	sort.SliceStable(cands, func(i, j int) bool { return cands[i].value > cands[j].value })
+	for _, cd := range cands {
+		if len(out) >= maxDamageSplits {
+			break
+		}
+		k := splitKey(cd.split)
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, OfferedDamageSplit{Split: cd.split, Label: pl.label(cd.split)})
+	}
+	return out
+}
+
+// splitKey identifies a split by what each blocker takes, ignoring the
+// order the shares are listed in.
+func splitKey(s DamageSplit) string {
+	parts := make([]string, 0, len(s.Assignments))
+	for _, a := range s.Assignments {
+		parts = append(parts, fmt.Sprintf("%s=%d", a.BlockerID, a.Amount))
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ",") + fmt.Sprintf("|%d", s.TrampleTo)
+}
+
+// splitPlan is what a damage-assignment prompt costs: each blocker's
+// lethal damage and what killing it is worth.
+type splitPlan struct {
+	g       *game.Game
+	f       *game.DamageAssignmentFrame
+	cost    []int
+	value   []int
+	covers  bool
+	trample bool
+}
+
+func planDamage(g *game.Game, c *game.PendingChoice) (splitPlan, bool) {
+	if c == nil || c.DamageAssignment == nil {
+		return splitPlan{}, false
 	}
 	f := c.DamageAssignment
 	n := len(f.BlockerIDs)
 	attacker := findBattlefield(g, f.AttackerID)
-	cost := make([]int, n)
-	value := make([]int, n)
+	pl := splitPlan{g: g, f: f, cost: make([]int, n), value: make([]int, n)}
 	need := 0
 	for i, id := range f.BlockerIDs {
-		cost[i] = 1
+		pl.cost[i] = 1
 		if b := findBattlefield(g, id); b != nil {
 			if !f.HasDeathtouch {
-				cost[i] = max(b.CurrentToughness()-b.DamageMarked, 1)
+				pl.cost[i] = max(b.CurrentToughness()-b.DamageMarked, 1)
 			}
-			value[i] = killValue(b, attacker)
+			pl.value[i] = killValue(b, attacker)
 		}
-		need += cost[i]
+		need += pl.cost[i]
 	}
-	kill := KillingSet(cost, value, f.AttackerPower)
-	covers := n > 0 && need <= f.AttackerPower
-	if covers {
+	pl.covers = n > 0 && need <= f.AttackerPower
+	pl.trample = f.AllowTrample && !f.BlockerDivides
+	return pl, true
+}
+
+// canonical is the split that kills the most the power can buy.
+func (pl splitPlan) canonical() (DamageSplit, bool) {
+	n := len(pl.f.BlockerIDs)
+	kill := KillingSet(pl.cost, pl.value, pl.f.AttackerPower)
+	if pl.covers {
 		for i := range kill {
 			kill[i] = true
-		}
-	}
-	trample := f.AllowTrample && !f.BlockerDivides
-	remaining := f.AttackerPower
-	amount := make([]int, n)
-	for i := range f.BlockerIDs {
-		if kill[i] {
-			amount[i] = cost[i]
-			remaining -= cost[i]
 		}
 	}
 	// sink takes whatever is left: the survivor worth most, else the
 	// last blocker killed.
 	sink := -1
-	for i := range f.BlockerIDs {
-		if !kill[i] && (sink < 0 || value[i] > value[sink]) {
+	for i := 0; i < n; i++ {
+		if !kill[i] && (sink < 0 || pl.value[i] > pl.value[sink]) {
 			sink = i
 		}
 	}
 	if sink < 0 {
 		sink = n - 1
 	}
-	out := DamageSplit{Lethal: cost, CoversLethal: covers}
+	return pl.build(kill, sink)
+}
+
+// build is the split that assigns lethal damage to each blocker in
+// kill and the rest to sink (or, for a trampler that covers every
+// blocker, to the player or permanent it is attacking).
+func (pl splitPlan) build(kill []bool, sink int) (DamageSplit, bool) {
+	f := pl.f
+	n := len(f.BlockerIDs)
+	remaining := f.AttackerPower
+	amount := make([]int, n)
+	for i := range f.BlockerIDs {
+		if kill[i] {
+			amount[i] = pl.cost[i]
+			remaining -= pl.cost[i]
+		}
+	}
+	out := DamageSplit{Lethal: pl.cost, CoversLethal: pl.covers}
 	if remaining > 0 {
 		switch {
-		case trample && covers:
+		case pl.trample && pl.covers:
 			out.TrampleTo = remaining
 		case n > 0:
 			amount[sink] += remaining
@@ -2010,6 +2157,37 @@ func CanonicalDamageSplit(g *game.Game, c *game.PendingChoice) (DamageSplit, boo
 		return DamageSplit{}, false
 	}
 	return out, true
+}
+
+// label says who takes what, so a seat choosing between splits sees
+// the difference: "3 to Tidus (lethal), 3 to Gatta".
+func (pl splitPlan) label(s DamageSplit) string {
+	idx := make(map[uuid.UUID]int, len(pl.f.BlockerIDs))
+	for i, id := range pl.f.BlockerIDs {
+		idx[id] = i
+	}
+	var parts []string
+	for _, a := range s.Assignments {
+		if a.Amount == 0 {
+			continue
+		}
+		name := "a blocker"
+		if b := findBattlefield(pl.g, a.BlockerID); b != nil {
+			name = b.Name
+		}
+		part := fmt.Sprintf("%d to %s", a.Amount, name)
+		if i, ok := idx[a.BlockerID]; ok && a.Amount >= pl.cost[i] && pl.value[i] > 0 {
+			part += " (lethal)"
+		}
+		parts = append(parts, part)
+	}
+	if s.TrampleTo > 0 {
+		parts = append(parts, fmt.Sprintf("%d trample over", s.TrampleTo))
+	}
+	if len(parts) == 0 {
+		return "no damage"
+	}
+	return strings.Join(parts, ", ")
 }
 
 // killValue is what destroying blocker b is worth to the attacker's
