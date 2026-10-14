@@ -89,6 +89,7 @@ func init() {
 		},
 		Replacements: []game.ReplacementEffect{GraveyardBecomesExile{
 			OpponentsOnly:      true,
+			CardsOnly:          true,
 			NotControlledByYou: true,
 			LinkExiled:         true,
 			Label:              "Valgavoth, Terror Eater — exile it instead",

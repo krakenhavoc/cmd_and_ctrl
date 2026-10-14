@@ -39,6 +39,7 @@ func init() {
 		OpeningHand:  BeginTheGameOnTheBattlefield(),
 		Replacements: []game.ReplacementEffect{GraveyardBecomesExile{
 			OpponentsOnly: true,
+			CardsOnly:     true,
 			Label:         "Leyline of the Void: exile instead of an opponent's graveyard",
 		}.Build()},
 	})
