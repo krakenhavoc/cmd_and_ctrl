@@ -46,11 +46,7 @@ func TestDeathRecursionCardsAreRegistered(t *testing.T) {
 			t.Errorf("%s is not registered", want)
 			continue
 		}
-		wantCompleteness := CompletenessFull
-		if oracle == drcNetherTraitor {
-			wantCompleteness = CompletenessCaveats
-		}
-		if spec.Name != want || spec.Completeness != wantCompleteness {
+		if spec.Name != want || spec.Completeness != CompletenessFull {
 			t.Errorf("%s: name %q completeness %v", want, spec.Name, spec.Completeness)
 		}
 	}
