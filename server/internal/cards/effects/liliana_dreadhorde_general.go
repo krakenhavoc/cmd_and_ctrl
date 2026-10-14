@@ -30,6 +30,10 @@ import (
 // the artifact and the creature), per the War of the Spark release
 // notes. An opponent who would keep everything anyway is not asked.
 //
+// Battle is a permanent type (CR 110.4), so it counts: permanentTypeNames
+// includes it, and the card's "each permanent type" is not limited to the
+// five the ruling lists. Supertypes (legendary, basic, snow) never count.
+//
 // No simplification.
 func init() {
 	Register(Spec{
@@ -74,6 +78,33 @@ func apnapLivingSeats(g *game.Game) []uuid.UUID {
 	return out
 }
 
+// opponentsInTurnOrder lists the living opponents of `controller` in turn
+// order starting with the next player after them (the -9 ruling: "the next
+// opponent in turn order makes all of their choices, then each other
+// opponent in turn order does the same"). This is the controller's own
+// seat, not the active player's, so it stays right if the ability is ever
+// activated off-turn.
+func opponentsInTurnOrder(g *game.Game, controller uuid.UUID) []uuid.UUID {
+	n := len(g.Seats)
+	start := -1
+	for i, p := range g.Seats {
+		if p != nil && p.ID == controller {
+			start = i
+		}
+	}
+	if start < 0 {
+		return nil
+	}
+	var out []uuid.UUID
+	for i := 1; i < n; i++ {
+		p := g.Seats[(start+i)%n]
+		if p != nil && !p.Eliminated {
+			out = append(out, p.ID)
+		}
+	}
+	return out
+}
+
 func lilianaEachPlayerSacrificesTwo(g *game.Game, item *game.StackItem) error {
 	var legs []game.ChooseCardsPrompt
 	source := item.SourceCardID
@@ -105,10 +136,7 @@ func lilianaEachPlayerSacrificesTwo(g *game.Game, item *game.StackItem) error {
 func lilianaOpponentsKeepOneOfEachType(g *game.Game, item *game.StackItem) error {
 	var legs []game.ChooseCardsPrompt
 	asked := map[uuid.UUID]bool{}
-	for _, seat := range apnapLivingSeats(g) {
-		if seat == item.Controller {
-			continue
-		}
+	for _, seat := range opponentsInTurnOrder(g, item.Controller) {
 		if !g.CanEffectCauseSacrificeForEffect(seat) {
 			continue
 		}
@@ -150,7 +178,7 @@ func lilianaOpponentsKeepOneOfEachType(g *game.Game, item *game.StackItem) error
 			kept[id] = true
 		}
 		var rest []uuid.UUID
-		for _, seat := range apnapLivingSeats(g) {
+		for _, seat := range opponentsInTurnOrder(g, item.Controller) {
 			if !asked[seat] {
 				continue
 			}
