@@ -253,6 +253,44 @@ func TestLogNarratesTheLastCounterComingOff(t *testing.T) {
 	}
 }
 
+// The CR 704.5q cancel (#3668). Plague Belcher puts two -1/-1 counters
+// on Carrion Feeder, which has three +1/+1: the placement line reads
+// "now has 2 -1/-1 counters", and the cancel that follows must say what
+// is left, so the last word on each kind is the state the board shows.
+func TestLogNarratesTheCR704_5qCancel(t *testing.T) {
+	g := buildActiveGame(t)
+	owner := g.Seats[0]
+	feeder := uuid.New()
+	known := map[uuid.UUID]bool{}
+	for _, p := range g.Seats {
+		known[p.ID] = true
+	}
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(game.Card{
+			InstanceID: feeder, Name: "Carrion Feeder", TypeLine: "Creature — Zombie",
+			Power: 2, Toughness: 2, Owner: owner.ID, Controller: owner.ID, KnownBy: known,
+			Counters: map[string]int{game.CounterPlusOne: 3},
+		})
+	})
+	if err := g.AddCounter(feeder, game.CounterMinusOne, 2); err != nil {
+		t.Fatalf("AddCounter: %v", err)
+	}
+	g.RunStateChecksForTest()
+
+	last := map[string]string{}
+	for _, e := range ViewOfGame(g).Log {
+		if e.Kind == LogCounters {
+			last[e.Label] = e.Text
+		}
+	}
+	if want := "Carrion Feeder now has 1 +1/+1 counter"; last[game.CounterPlusOne] != want {
+		t.Errorf("last +1/+1 line: got %q, want %q", last[game.CounterPlusOne], want)
+	}
+	if want := "Carrion Feeder has no -1/-1 counters left"; last[game.CounterMinusOne] != want {
+		t.Errorf("last -1/-1 line: got %q, want %q", last[game.CounterMinusOne], want)
+	}
+}
+
 // counterKindIsNarrated is the rule #1021 asked for before this arm
 // could exist: loyalty and lore are already lines somewhere else, and
 // a Commander turn moves dozens of both.

@@ -10910,7 +10910,19 @@ func (g *Game) MoveCardByIDToBottom(src, dst ZoneRef, cardID uuid.UUID, asComman
 // count. Reports whether it removed any.
 //
 // Caller must hold g.mu.
+//
+// Each cancelled card emits EventCounterPlaced for both kinds, Amount
+// the count left on it AFTER the cancel (zero when that kind is gone).
+// The public log narrates them as the counter lines a player reads
+// ("now has 1 +1/+1 counter", "has no -1/-1 counters left"), so the
+// line that announced the -1/-1 placement is not the last word on it.
+// They are emitted after the sweep, not during it.
 func (g *Game) cancelPlusMinusCountersLocked() (fired bool) {
+	type cancelled struct {
+		id          uuid.UUID
+		plus, minus int
+	}
+	var done []cancelled
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if !c.IsCreature() || c.Counters == nil {
@@ -10918,10 +10930,14 @@ func (g *Game) cancelPlusMinusCountersLocked() (fired bool) {
 		}
 		if c.Counters[CounterPlusOne] > 0 && c.Counters[CounterMinusOne] > 0 {
 			*c = afterPlusMinusCancel(*c)
-			fired = true
+			done = append(done, cancelled{c.InstanceID, c.Counters[CounterPlusOne], c.Counters[CounterMinusOne]})
 		}
 	}
-	return fired
+	for _, d := range done {
+		g.EmitEvent(Event{Kind: EventCounterPlaced, Target: d.id, Label: CounterPlusOne, Amount: d.plus})
+		g.EmitEvent(Event{Kind: EventCounterPlaced, Target: d.id, Label: CounterMinusOne, Amount: d.minus})
+	}
+	return len(done) > 0
 }
 
 // afterPlusMinusCancel is the card as CR 704.5q leaves it: N of each of
