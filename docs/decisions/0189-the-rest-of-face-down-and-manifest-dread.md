@@ -1,7 +1,7 @@
 # ADR 0189 — The rest of face-down cards and manifest dread: manifesting from a hand, both ways back up, survival, and a graveyard-exile cast cost
 
 Date: 2026-10-14
-Status: Proposed
+Status: Accepted (owner decisions 2026-10-14, recorded below)
 Sprint: none (engine seam ADR, Backlog)
 Issues: #3523 (this seam: what is left of the face-down and manifest dread rows), #1948 (exile a card from your graveyard as an additional cost). History: #886, #95, #658, #1194, #2570, #2590 (all closed).
 Builds on: [ADR 0069](0069-face-down-objects.md) (the face-down object model), [ADR 0082](0082-casting-face-down-and-turning-face-up.md) (the turn-face-up offer, decision 5, and the manifest dread amendment), [ADR 0059](0059-turn-machinery.md) Decision 8 (`Turn.PhaseOrdinal`), [ADR 0021](0021-additional-costs.md) and #3402 (a spell's additional costs, and the shape #3412 used to put an ability's cost component on a cast), [ADR 0062](0062-abilities-and-special-actions-from-the-hand.md) Decision 4 (one special-action verb).
@@ -106,15 +106,18 @@ Out of scope, and left on #1948's row: the X forms (Skeletal Scrying, Harvest Py
 - `game.TurnFaceUpOffers(c Card) []SpecialAction` (`game/face_down.go`). For `FaceDownManifested` and `FaceDownCloaked` it returns:
   1. The **mana-cost route** when `c.PrintedIsCreature()`, exactly as today (CR 701.40b / 701.58b).
   2. The **keyword route** when the card declares a morph or disguise face-down cast. This is the same `FaceDownCastFor(faceUpCatalogKey(c))` lookup the `FaceDownTurned` arm already makes, without the kind-equality guard, for that arm's reason: CR 702.37e and 702.168d key on the card having the ability. It carries `FaceUpCounter` for megamorph.
-- **Same cost**: when both routes print the same cost string, only the keyword route is offered. It is identical, or better because of megamorph's counter, so each offer on a card has a unique cost, and `SpecialActionParams.Cost` stays a complete disambiguator.
+- **Every route is offered, even at the same cost** (owner decision 2). Each turn-face-up offer carries a route: `SpecialAction.Route`, of type `game.TurnFaceUpRoute`, with the values `"mana_cost"`, `"morph"` (megamorph included) and `"disguise"`. Every arm of `TurnFaceUpOffers` stamps it: morphed, disguised and turned permanents get their keyword's route, and manifested and cloaked ones get `"mana_cost"` and, when the card has one, the keyword route too. A Den Protector manifested face down offers both {1}{G} routes, and only the megamorph one adds the +1/+1 counter.
 - **Order**: lower mana value first. On a tie, the keyword route comes first.
-- **Labels**: with two offers, each label adds its route: "Turn face up {2}{U} (morph)" or "(disguise)", and "Turn face up {3}{U}{U} (mana cost)". With one offer the label is unchanged, so no existing log line or test changes.
-- `TurnFaceUpOffer(c)` stays and returns `TurnFaceUpOffers(c)[0]` (or nil), so `SpecialActionOffered` and every other single-offer reader is untouched. `SpecialActionsOfferedByCard` appends all of them. `specialActionOfferLocked` already filters by `cost`, and the performer `turnFaceUpLocked` already reads `sa.FaceUpCounter` off the chosen offer, so the special action itself needs no change.
-- **Enumerator** (`legal/special_actions.go`): send `params.Cost` whenever the card offers the same kind more than once. This replaces the `sa.Zone != ""` condition with "`sa.Zone != ""` or the kind is duplicated", so Fblthp keeps working.
-- **Client** (`contextMenu.logic.ts specialActionItems`): when two offers share a kind, the id becomes `special-<kind>-<cost>` and the payload carries `cost`. With one offer, nothing changes.
+- **Labels**: when a permanent has two offers, each label names its route, so a player can tell them apart: "Turn face up {1}{G} (megamorph, +1/+1 counter)", "Turn face up {2}{U} (morph)", "Turn face up {2}{U} (disguise)", "Turn face up {1}{G} (mana cost)". With one offer the label is unchanged, so no existing log line or test changes.
+- **Choosing a route**: `SpecialActionParams.Route` (`game/special_action.go`). `specialActionOfferLocked` (`game/special_action_grant.go`) filters by it as it filters by `Door`. It is refused on any kind other than `turn_face_up`, an unknown value is refused by the action parser, and an empty route takes the first offer, so every existing caller and saved client keeps working. The performer `turnFaceUpLocked` already reads `sa.FaceUpCounter` off the chosen offer, so turning face up itself needs no change.
+- `TurnFaceUpOffer(c)` stays and returns `TurnFaceUpOffers(c)[0]` (or nil), so `SpecialActionOffered` and every other single-offer reader is untouched. `SpecialActionsOfferedByCard` appends all of them.
+- **Wire**: `SpecialActionView.route` (`route,omitempty`, `protocol/view.go`), and `special_action.route` on the action (`actions/actions.go`, beside `door`). Both are documented in `docs/protocol.md`.
+- **Enumerator** (`legal/special_actions.go`): when a card offers `turn_face_up` more than once, each move's params carry its `route`. Its label is the offer's label, which names the route.
+- **Heuristic** (`aiseat/heuristic/moves.go`): the turn-face-up arm keeps the flat `SpecialActionValue`, adds a small bonus for an offer with `FaceUpCounter` (a megamorph route), and so takes the counter when the two cost the same and the cheaper offer otherwise.
+- **Client** (`contextMenu.logic.ts specialActionItems`, `protocol.ts`): the id becomes `special-<kind>-<route>` when a route is set, and the payload carries `route`. Both rows show at once, each with its own label and cost note, so the two choices are visibly different.
 - ADR 0082 decision 5's "CR 701.40c is out of scope" is superseded by this section.
 
-**Rejected:** a `Route` field on `SpecialActionParams`. Once same-cost routes collapse, cost already disambiguates, and #1391 already built and wired it. **Rejected:** leaving it out. The Kozilek and manifest dread rulings both state the double offer, and today the engine is weaker than printed.
+**Rejected:** collapsing equal-cost routes into the keyword route and telling offers apart by `cost` alone. That was the draft's recommendation. The owner chose to show both, and `cost` cannot tell two equal-cost offers apart, so a route parameter is needed. **Rejected:** leaving it out. The Kozilek and manifest dread rulings both state the double offer, and today the engine is weaker than printed.
 
 ### 5. Snapshot, restore, undo and the closure ratchet
 
@@ -127,17 +130,17 @@ Out of scope, and left on #1948's row: the X forms (Skeletal Scrying, Harvest Py
 
 | | Survival (1) | Cast cost (2) | Hand manifest (3) | Both routes (4) |
 |---|---|---|---|---|
-| Wire | none | `AdditionalCostView.exile_cost_n/label/options/zone` (the ability view's names); `cast_spell.exile_ids` | `choose_cards` with `destination: "manifest"` | duplicated `special_actions` rows, distinct `cost` and `label` |
-| Enumerator | none | one payment per cast: the policy's cheapest fuel, named in the move label (#3412) | existing `choose_cards` enumeration | one move per offer, with `cost` |
-| Heuristic | none | the existing fuel pricer for graveyard cards | `ChooseManifest` scored as cards given up | flat `SpecialActionValue`; order puts the cheaper offer first |
+| Wire | none | `AdditionalCostView.exile_cost_n/label/options/zone` (the ability view's names); `cast_spell.exile_ids` | `choose_cards` with `destination: "manifest"` | duplicated `special_actions` rows, each with `route` and a label naming it; `special_action.route` |
+| Enumerator | none | one payment per cast: the policy's cheapest fuel, named in the move label (#3412) | existing `choose_cards` enumeration | one move per offer, with `route` |
+| Heuristic | none | the existing fuel pricer for graveyard cards | `ChooseManifest` scored as cards given up | flat value, plus a small bonus for a megamorph route; otherwise the cheaper offer |
 | MCP seat | none | move label names the exiled cards | prompt question names the count | two numbered moves with distinct labels |
-| Client | none | reuse `exileCost.ts` and the graveyard picker in the cast flow; the cast gate (`timing.ts`) greys a spell with too few graveyard cards | verb "Manifest" on the picker | menu ids include cost when duplicated |
+| Client | none | reuse `exileCost.ts` and the graveyard picker in the cast flow; the cast gate (`timing.ts`) greys a spell with too few graveyard cards | verb "Manifest" on the picker | one menu row per route, id `special-<kind>-<route>`, payload `route` |
 
-`docs/protocol.md` gets the new `cast_spell.exile_ids` and the `"manifest"` destination.
+`docs/protocol.md` gets the new `cast_spell.exile_ids`, the `"manifest"` destination, and `route` on `special_actions` and `special_action`.
 
 ## Delivery plan
 
-Slices 1, 2, 4 and 5 are independent. Slice 3 depends on slice 2. Each slice updates `server/internal/roadmap/registry.go` for its cards and regenerates `docs/engine-seams.md` (`scripts/go-docker.sh go test ./internal/roadmap/ -update`). **Row rule:** the slice that empties a row's `Waiting` and `Missing` flips its `Status` to `StatusImplemented` and moves its history to `docs/engine-seams/closed/`, following the sibling entries there. The face-down row closes with slices 4 and 5. The manifest dread row closes with slices 1 and 2. #1948's row closes with slice 3. Every card ships with `Completeness` declared truthfully and its oracle fixture generated alone (`-update-oracle -oracle-ids=<id>`).
+Slices 1, 2, 4 and 5 are independent. Slice 3 depends on slice 2. Each slice updates `server/internal/roadmap/registry.go` for its cards and regenerates `docs/engine-seams.md` (`scripts/go-docker.sh go test ./internal/roadmap/ -update`). **Row rule:** the slice that empties a row's `Waiting` and `Missing` flips its `Status` to `StatusImplemented` and moves its history to `docs/engine-seams/closed/`, following the sibling entries there. The face-down row closes with slices 4 and 5. The manifest dread row closes with slices 1 and 2. #1948's row closes its fixed-count form with slice 3; #1948 itself stays open as the tracker for slices 2 and 3. Every card ships with `Completeness` declared truthfully and its oracle fixture generated alone (`-update-oracle -oracle-ids=<id>`).
 
 ### Slice 1 — `feat(cards): survival and your second main phase, and defiant survivor` · tier:1-mechanical
 
@@ -184,7 +187,7 @@ Slices 1, 2, 4 and 5 are independent. Slice 3 depends on slice 2. Each slice upd
 
 ### Slice 3 — `feat(cards): draconic intervention and relentless skaabs` · tier:1-mechanical
 
-- **Scope:** new `effects/draconic_intervention.go` (X is the mana value of the card in `ctx.Exiled()`; the exile-instead-of-dying rider; self-exile) and `effects/relentless_skaabs.go` (the cost and undying). Registry: close `exile-from-graveyard-additional-cost` (#1948) for its fixed-count form and keep the X forms in `Missing`. The PR body says `Closes #1948` only if the owner accepts question 1's answer.
+- **Scope:** new `effects/draconic_intervention.go` (X is the mana value of the card in `ctx.Exiled()`; the exile-instead-of-dying rider; self-exile) and `effects/relentless_skaabs.go` (the cost and undying). Registry: close `exile-from-graveyard-additional-cost` (#1948) for its fixed-count form and keep the X forms in `Missing`. The PR body refers to #1948 (`Refs #1948`) but does not close it: it is the tracker for slices 2 and 3.
 - **Acceptance (tests):**
   - Exiling a 3-mana-value instant deals 3 to each non-Dragon creature, and a creature dealt damage this way that would die is exiled instead.
   - Relentless Skaabs refuses a graveyard with no creature card.
@@ -217,26 +220,34 @@ Slices 1, 2, 4 and 5 are independent. Slice 3 depends on slice 2. Each slice upd
 ### Slice 5 — `feat(server): turn a manifested or cloaked card up by its morph or disguise cost too` · tier:2-standard
 
 - **Scope:**
-  - `game/face_down.go`: `TurnFaceUpOffers`, plus the dedupe, the order and the labels. `TurnFaceUpOffer` delegates to it, and the decision-5 comment is updated.
-  - `game/special_action.go`: `SpecialActionsOfferedByCard` appends all offers.
-  - `legal/special_actions.go`: the duplicated-kind `cost` param.
-  - `client/src/lib/contextMenu.logic.ts`: id and payload.
+  - `game/face_down.go`: `TurnFaceUpRoute` and its three values, `TurnFaceUpOffers` (every arm stamps `Route`; the order; the route-naming labels when there are two offers). `TurnFaceUpOffer` delegates to it, and the decision-5 comment is updated.
+  - `game/special_action.go`: `SpecialAction.Route`, `SpecialActionParams.Route` (refused on other kinds), and `SpecialActionsOfferedByCard` appends all offers.
+  - `game/special_action_grant.go`: `specialActionOfferLocked` filters by route.
+  - `actions/actions.go`: parse `route` on `special_action`, refusing an unknown value.
+  - `protocol/view.go`: `SpecialActionView.Route`.
+  - `legal/special_actions.go`: `route` in the params when the card offers `turn_face_up` twice.
+  - `aiseat/heuristic/moves.go` and `params.go`: decode `route`, and add the megamorph bonus.
+  - Client: `protocol.ts` (`route` on the special-action view), `contextMenu.logic.ts` (id and payload).
+  - `docs/protocol.md`.
   - Registry: the double-offer clause out of `face-down-objects` `Missing`.
 - **Acceptance (tests):**
-  - A manifested megamorph creature card (for example Den Protector, megamorph {1}{G}, mana cost {1}{G}) offers one route, megamorph, because the costs are equal. Turning it up adds the +1/+1 counter.
-  - A manifested morph creature whose costs differ offers two routes. Each one turns it up for its own price, and only the megamorph route adds the counter.
-  - A cloaked disguise card offers both its disguise cost and its mana cost.
-  - A manifested noncreature card with no morph offers nothing.
-  - A morphed (cast face down) card still offers one route.
-  - The enumerator emits one move per offer, each with `cost`. A `special_action` with no `cost` takes the first offer, which is the cheaper one.
-  - Client unit test: two menu rows with distinct ids, each sending its `cost`.
+  - A manifested Den Protector (megamorph {1}{G}, mana cost {1}{G}) offers two routes, `morph` and `mana_cost`, both {1}{G}, with labels "Turn face up {1}{G} (megamorph, +1/+1 counter)" and "Turn face up {1}{G} (mana cost)". `route: "morph"` turns it up with the counter, and `route: "mana_cost"` turns it up without one.
+  - A manifested morph creature whose costs differ offers two routes, the cheaper first. Each turns it up for its own price.
+  - A cloaked disguise card offers `disguise` and `mana_cost`.
+  - A manifested noncreature card with no morph offers nothing. A manifested noncreature card with morph offers only `morph`.
+  - A morphed (cast face down) card offers one route, `morph`, and its label is unchanged.
+  - `special_action` with no `route` takes the first offer. An unknown route is refused by the parser. `route` on a `foretell` is refused.
+  - The enumerator emits one move per offer, each with its `route`, and the move labels differ.
+  - The bot, given both Den Protector routes and enough mana, takes the megamorph route.
+  - The view lists both offers to the controller only, each with its `route`.
+  - Client unit test: two menu rows with distinct ids and labels, each sending its `route`.
 - **Depends on:** nothing. It is more useful after slice 4.
 
-## Open owner questions
+## Owner decisions (2026-10-14)
 
-1. **Fold #1948 into this ADR?** Recommended: yes. Abhorrent Oculus waits on exactly #1948's component, and slice 3 closes #1948's fixed-count form. Alternative: keep #1948 separate, ship only the Oculus half here, and leave Draconic Intervention and Relentless Skaabs for later.
-2. **Equal-cost routes (slice 5): one offer or two?** Recommended: collapse to the keyword route. It is never worse, and each offer then has a unique cost. Alternative: show both, and add a `route` param to tell them apart.
-3. **A hand of N cards or fewer (slice 4): ask anyway?** Recommended: don't ask; manifest them all. The ruling says it happens, and a prompt with one legal answer is noise (ADR 0127's spirit). Alternative: always ask, for a uniform flow.
-4. **Fix Scheming Silvertongue's third-main-phase trigger in slice 1?** Recommended: yes. It is a one-line move to the new condition, and the same ruling text applies. Alternative: leave it, and file a separate fix.
-5. **Ship Scroll of Fate in slice 4?** Recommended: yes. It is the second user of the hand-manifest effect, at no extra engine cost. Alternative: leave it uncatalogued until someone asks for it.
-6. **Allow the hand form ("exile a card from your hand") as a spell's additional cost?** Recommended: no. No waiting card prints it, and `Register` should refuse what nothing tests. Alternative: allow it now, since the component already supports the hand.
+1. **#1948 is folded in.** Slices 2 and 3 ship its fixed-count form, and #1948 stays open as their tracker.
+2. **Equal-cost turn-face-up routes: offer both, told apart by a `route` parameter.** This overrides the draft's recommendation to collapse them. Decision 4, the wire table and slice 5 are written to it.
+3. **A hand of N cards or fewer is not asked:** the player manifests all of them (decision 3).
+4. **Scheming Silvertongue moves to the second-main-phase condition in slice 1.**
+5. **Scroll of Fate ships in slice 4.**
+6. **Graveyard only:** `Register` refuses the hand form of `ExileCards` on a spell (decision 2).
