@@ -236,6 +236,16 @@ surface tiny.
    `ctx.ModeTargets(occurrence)` — never `item.Targets[0]`, which
    belongs to whichever bullet was chosen first.
 
+   **"Choose one at random" (#3399, CR 700.2)** is
+   `ChooseOneAtRandom(…)` on a **trigger's** `Modes` (Cult of Skaro,
+   Umaro, Raging Yeti). The engine draws the bullet as the trigger goes
+   on the stack, among the bullets that have a legal target, from the
+   keyed random stream, so an undo replays it. No `mode_pick` prompt is
+   queued; the picked bullet's own target clause is asked as usual. It
+   is a plain choose-one: `Register` refuses it on a spell, an
+   activated ability, a `Repeatable` spec or a raised count. A card
+   that lets someone choose instead (Typhoid Mary) is not this.
+
    **"Choose one that hasn't been chosen [this turn]" (#1749,
    [ADR 0097](decisions/0097-modes-that-havent-been-chosen.md))**
    is a constructor, not a tally in the card file:

@@ -2147,13 +2147,11 @@ var items = []Item{
 		Examples: []string{"Summon: Yojimbo"},
 	},
 	{
-		Slug: "random-modes", Name: "Modes chosen at random", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "A modal ability whose mode is chosen at random, such as Summon: Magus Sisters' \"Choose one at random\".",
-		Missing:     "A modal spell or ability's mode is always chosen by a player; it can't be picked at random.",
-		Rules:       []string{"700.2"},
-		Issue:       3399,
-		Waiting:     []string{"Summon: Magus Sisters"},
-		EngineNotes: "every `game.ModeSpec` is chosen by a player (a spell at CR 601.2b, an activation at 602.2b, a trigger through the `mode_pick` prompt at 603.3c). \"Choose one at random\" needs the engine to pick among the bullets with a legal target, from the keyed random stream (`ChooseAtRandomForEffect`) so undo replays it, as the trigger goes on the stack and before its targets are chosen. Summon: Magus Sisters also waits on shield counters (#2000). Found building the Tidus deck request (#3246).",
+		Slug: "random-modes", Name: "Modes chosen at random", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "A modal triggered ability whose mode is chosen at random, such as Cult of Skaro's \"choose one at random\": the engine picks among the bullets that can be taken, from the game's seeded random stream, as the trigger goes on the stack.",
+		Rules:    []string{"700.2"},
+		Issue:    3399,
+		Examples: []string{"Cult of Skaro", "Umaro, Raging Yeti"},
 	},
 	{
 		Slug: "resolved-cant-attack-you", Name: "\"Can't attack you\" from a spell, held by a counter", Kind: KindSeam, Status: StatusImplemented,
