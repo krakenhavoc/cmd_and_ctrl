@@ -471,3 +471,18 @@ func CostsLessPerSacrificed(per string, label string) game.CostModifier {
 		return unit.Generic * q.Sacrificing
 	}, label)
 }
+
+// CardTypesAmongCardsInYourGraveyard counts the distinct card types
+// among the cards in the caster's graveyard, never counting the card
+// being cast — Emrakul, the Promised End's "{1} less to cast for each
+// card type among cards in your graveyard". Printed type lines, as
+// b16CardTypesInGraveyard reads them: a card in a graveyard has no
+// layers.
+func CardTypesAmongCardsInYourGraveyard() func(q game.CostQuery) int {
+	return func(q game.CostQuery) int {
+		if q.Game == nil {
+			return 0
+		}
+		return cardTypesInGraveyardExcept(q.Game, q.Controller, q.Card.InstanceID)
+	}
+}
