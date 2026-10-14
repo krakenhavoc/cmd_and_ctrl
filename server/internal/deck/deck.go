@@ -212,7 +212,7 @@ func (l *List) SettleCompanion() { settleCompanionSideboard(l) }
 func settleCompanionSideboard(list *List) {
 	if list.Companion != nil {
 		for i, c := range list.Sideboard {
-			if c.OracleID == list.Companion.OracleID {
+			if sameCard(c, *list.Companion) {
 				list.Sideboard = append(list.Sideboard[:i:i], list.Sideboard[i+1:]...)
 				break
 			}
@@ -225,6 +225,15 @@ func settleCompanionSideboard(list *List) {
 		list.Sideboard = nil
 		list.CompanionFromSideboard = true
 	}
+}
+
+// sameCard reports whether two resolved records are the same card: the
+// same oracle ID, or the same name when either record has none.
+func sameCard(a, b cards.Card) bool {
+	if a.OracleID != uuid.Nil && b.OracleID != uuid.Nil {
+		return a.OracleID == b.OracleID
+	}
+	return strings.EqualFold(a.Name, b.Name)
 }
 
 // printsCompanion reports whether a card has a companion ability (CR

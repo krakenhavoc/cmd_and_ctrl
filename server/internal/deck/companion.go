@@ -155,7 +155,7 @@ func companionViolations(list *List) []Violation {
 		})
 	}
 	for _, cmd := range list.Commanders {
-		if cmd.OracleID == c.OracleID {
+		if sameCard(cmd, *c) {
 			vs = append(vs, Violation{
 				Code:    CodeCompanionIsCommander,
 				Card:    c.Name,
