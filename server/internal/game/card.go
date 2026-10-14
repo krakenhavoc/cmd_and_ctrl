@@ -1740,6 +1740,43 @@ func (c Card) PowerForComparison() int {
 	return p
 }
 
+// CountedPower is what this creature counts for when it is tapped to
+// pay a crew or saddle cost (ADR 0186 Decision 4): the number the
+// payment sums, which is NOT always its power. use names the cost
+// (CostPowerCrew or CostPowerSaddle); zero means "plain power", which is
+// what teamwork and every other total-power cost count.
+//
+//  1. Start from PowerForComparison (layers and P/T counters, not
+//     clamped). If a rule for this use says UseToughness, start from the
+//     toughness instead.
+//  2. Add the Bonus of every rule for this use. Two rules add up.
+//  3. Clamp at zero, as CurrentPower does: a creature never takes power
+//     away from a total, but the bonus is added BEFORE the clamp, so a
+//     -1/1 with "+2" counts 1, not 2 (owner decision 2, 2026-10-14).
+//
+// The order of 1 and 2 is the ADR's reading; no ruling says how the two
+// combine and no Commander-legal card gives a creature both. Same caller
+// responsibility as CurrentPower: layers must be fresh.
+func (c Card) CountedPower(use CostPowerUse) int {
+	eff := effectiveOf(&c)
+	p, t := ptWithCounters(eff, c.Counters)
+	if use == 0 {
+		return clampPower(p)
+	}
+	for _, r := range eff.CostPower {
+		if r.Uses&use != 0 && r.UseToughness {
+			p = t
+			break
+		}
+	}
+	for _, r := range eff.CostPower {
+		if r.Uses&use != 0 {
+			p = SaturatingAdd(p, r.Bonus)
+		}
+	}
+	return clampPower(ClampCount(p))
+}
+
 // ptWithCounters adds every P/T counter on the object to its
 // effective power and toughness — #1664: every P/T counter kind
 // (CR 122.1a), not just +1/+1 and -1/-1 — see pt_counters.go. The one

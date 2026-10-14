@@ -90,7 +90,7 @@ var activatedRowScopes = map[string]rowScope{
 	"CantActivate": rowPublic, "TimingClosed": rowPublic,
 	// Option lists read off the BATTLEFIELD, which every viewer can
 	// count for themselves.
-	"SacrificeOptions": rowPublic, "CrewOptions": rowPublic, "ReturnOptions": rowPublic,
+	"SacrificeOptions": rowPublic, "CrewOptions": rowPublic, "CrewPower": rowPublic, "ReturnOptions": rowPublic,
 	"Waterbend": rowPublic, "TapOthersOptions": rowPublic,
 	// #1600: "Exile a creature you control" — its words, and the
 	// permanents on the battlefield that could pay.

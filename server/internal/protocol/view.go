@@ -4146,7 +4146,19 @@ type ActivatedAbilityView struct {
 	// creatures).
 	CrewCost    int               `json:"crew_cost,omitempty"`
 	CrewOptions *LegalTargetsView `json:"crew_options,omitempty"`
-	Saddle      bool              `json:"saddle,omitempty"`
+	// CrewPower is what each creature in CrewOptions counts for when it
+	// pays this cost (ADR 0186 Decision 6, #2705), keyed by card ID.
+	// It differs from the creature's `power` when a rule makes it count
+	// differently: "crews Vehicles as though its power were 2 greater"
+	// (a Pilot token) or "using its toughness rather than its power".
+	// Sent on every crew and saddle ability, for the cost the ability
+	// pays: a creature that crews for 3 but saddles for 1 shows 3 on a
+	// Vehicle and 1 on a Mount. Absent on every other ability and on a
+	// teamwork prompt, which counts plain power. A client that ignores
+	// it sums `power` and under-counts such a creature, never
+	// over-counts.
+	CrewPower map[string]int `json:"crew_power,omitempty"`
+	Saddle    bool           `json:"saddle,omitempty"`
 	// CounterCostView is the counter half of the cost — embedded, so
 	// its fields sit at the top level of the JSON exactly as they did
 	// before #789 split them out, and so a mana ability can carry the
@@ -11321,12 +11333,12 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		}
 		if a.Cost.Crew > 0 {
 			v.CrewCost = a.Cost.Crew
-			v.CrewOptions = crewOptions(g, caster, uuid.Nil)
+			v.CrewOptions, v.CrewPower = crewOptions(g, caster, uuid.Nil, game.CostPowerCrew)
 		}
 		if a.Cost.Saddle > 0 {
 			v.CrewCost = a.Cost.Saddle
 			v.Saddle = true
-			v.CrewOptions = crewOptions(g, caster, c.InstanceID)
+			v.CrewOptions, v.CrewPower = crewOptions(g, caster, c.InstanceID, game.CostPowerSaddle)
 		}
 		v.CounterCostView = counterCostView(g, caster, c.InstanceID, a.Cost.RemoveCounters, a.Cost.AddCounter)
 		if a.Cost.DemandsX() {
@@ -11457,15 +11469,27 @@ func cardIDStrings(ids []uuid.UUID) []string {
 //
 // Summoning-sick creatures are included deliberately — tapping to
 // crew is not paying a {T} cost (CR 702.122b). Caller must hold g.mu.
-func crewOptions(g *game.Game, caster, except uuid.UUID) *LegalTargetsView {
+//
+// The second result is what each offered creature counts for when it
+// pays this cost, keyed by card ID (ADR 0186 Decision 6): the same
+// Card.CountedPower the engine's validateCrewCostLocked sums, so the
+// client's running total and the server's agree. use is
+// game.CostPowerCrew or game.CostPowerSaddle. Nil when nobody is offered.
+func crewOptions(g *game.Game, caster, except uuid.UUID, use game.CostPowerUse) (*LegalTargetsView, map[string]int) {
 	out := &LegalTargetsView{Min: 1, Max: 0}
+	var counted map[string]int
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != caster || !c.IsCreature() || c.Tapped || c.InstanceID == except {
 			continue
 		}
-		out.Cards = append(out.Cards, c.InstanceID.String())
+		id := c.InstanceID.String()
+		out.Cards = append(out.Cards, id)
+		if counted == nil {
+			counted = make(map[string]int)
+		}
+		counted[id] = c.CountedPower(use)
 	}
-	return out
+	return out, counted
 }
 
 // counterCostOptions projects game.CounterCostOptionsForEffect — the

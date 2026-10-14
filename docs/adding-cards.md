@@ -8919,6 +8919,25 @@ mount)` asks the same about a Mount on the battlefield now. Read the
 state a trigger needs when it is BUILT, not when it resolves, if the
 Mount might leave in response (`caustic_bronco.go` carries it on
 `item.Params`); the saddlers need no such care.
+
+**A creature that counts for more when it crews or saddles (ADR 0186
+Decision 4, #3549).** "This creature crews Vehicles as though its power
+were 2 greater" and "… using its toughness rather than its power" are
+statics on the creature itself, built with
+`CrewsAsThoughPowerGreater(n, uses)` and `CrewsUsingToughness(uses)` in
+[vehicles.go](../server/internal/cards/effects/vehicles.go); `uses` is
+`game.CostPowerCrew`, or `game.CostPowerCrew|game.CostPowerSaddle` for
+"saddles Mounts and crews Vehicles". Each writes a
+`Characteristic.CostPower` rule at layer 6 and changes nothing else: the
+creature's power is not changed (Dynamite Diver's ruling), so "where X is
+its power" reads the real number. Only the crew and saddle payment reads
+the rule, through `Card.CountedPower(use)`, which adds the bonus before it
+clamps at zero. Two rules add up, a creature that loses all abilities loses
+its rule (the static is the creature's own), and the enumerator, the
+view's `crew_power` and the engine's validator all count the same
+number. Until the client sums `crew_power` too (#3550), its crew picker
+under-counts such a creature and never over-counts it.
+
 ### Explore (CR 701.44, #2720)
 
 "<Permanent> explores" is `Game.ExploreForEffect(source, explorer
