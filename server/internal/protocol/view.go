@@ -197,6 +197,12 @@ type GameView struct {
 	// every client sees what its viewer is legally allowed to).
 	// Drained by resolve_choice actions. Added in S14 sub-PR 5.
 	PendingChoices []PendingChoiceView `json:"pending_choices,omitempty"`
+	// PlayerControls is who is making whose decisions right now (CR
+	// 723, ADR 0164): Word of Command's controller while its forced play
+	// happens and while the spell it forced resolves. FilterViewFor
+	// shows a controller every card the player they control can see
+	// (CR 723.4).
+	PlayerControls []PlayerControlView `json:"player_controls,omitempty"`
 	// LegalMoves is the closed list of things the VIEWER'S OWN seat
 	// may do right now, straight out of internal/legal. Empty
 	// whenever that seat owes no decision — which is most frames,
@@ -327,9 +333,13 @@ type LegalMoveView = legal.Move
 // discard_from_hand targeting an opponent's hand) or the raw
 // IDs plus redacted characteristics.
 type PendingChoiceView struct {
-	ID         string `json:"id"`
-	Kind       string `json:"kind"`
-	Chooser    string `json:"chooser"`
+	ID      string `json:"id"`
+	Kind    string `json:"kind"`
+	Chooser string `json:"chooser"`
+	// OnBehalfOf is the player who owes the prompt when another player
+	// controls them (CR 723.5, ADR 0164): Chooser is then the
+	// controller, who answers it. Empty otherwise.
+	OnBehalfOf string `json:"on_behalf_of,omitempty"`
 	FromPlayer string `json:"from_player"`
 	Count      int    `json:"count"`
 	Source     string `json:"source,omitempty"`
@@ -4845,6 +4855,7 @@ func ViewOfGame(g *game.Game) GameView {
 			GraveyardTargetBans:   graveyardTargetBanLines(g),
 			DiscardPending:        viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:        viewOfPendingChoices(g),
+			PlayerControls:        viewOfPlayerControls(g),
 			LoopNotice:            viewOfLoopNotice(g.LoopNotice),
 		}
 		// #1279: where each defender's block declaration stands.
@@ -5025,6 +5036,12 @@ func capLegalMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 	seen := make(map[key]bool, len(moves))
 	out := make([]LegalMoveView, 0, legalMovesWireCap)
 	for _, m := range moves {
+		// ADR 0164: a forced play's ways are the whole of the decision
+		// its prompt shows, so none of them is an alternative to fold.
+		if m.ControlledPlay != "" {
+			out = append(out, m)
+			continue
+		}
 		k := key{m.Source, m.Kind, m.TargetsStack, m.HasTargets, m.Interacts, m.CombatInteracts, m.CombatDefenderOnly}
 		if seen[k] {
 			continue
@@ -7973,10 +7990,12 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c == nil {
 			continue
 		}
+		// ADR 0164: the prompt is shown to whoever answers it now.
+		answerer := g.ControllerOfPlayerLocked(c.Chooser)
 		v := PendingChoiceView{
 			ID:            c.ID.String(),
 			Kind:          string(c.Kind),
-			Chooser:       c.Chooser.String(),
+			Chooser:       answerer.String(),
 			FromPlayer:    c.FromPlayer.String(),
 			Count:         c.Count,
 			Source:        uuidStringOrEmpty(c.Source),
@@ -8046,6 +8065,21 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if subject := c.TradeSubject(); subject != uuid.Nil {
 				v.TradeFor = subject.String()
 			}
+		}
+		if answerer != c.Chooser {
+			v.OnBehalfOf = c.Chooser.String()
+		}
+		// ADR 0164 §4: Word of Command's forced play shows the one card,
+		// which its chooser looked at.
+		if c.Kind == game.PendingChoiceControlledPlay && len(c.DiscardOptions) == 1 {
+			if fromP := g.PlayerByIDForEffect(c.FromPlayer); fromP != nil && fromP.Hand != nil {
+				for _, card := range fromP.Hand.Cards {
+					if card.InstanceID == c.DiscardOptions[0] {
+						v.Options = []CardView{viewOfCard(card)}
+					}
+				}
+			}
+			v.Eligible = cardIDStrings(c.DiscardOptions)
 		}
 		// For discard_from_hand, inline the source player's hand
 		// as Options. Per-viewer redaction in FilterViewFor
@@ -9079,6 +9113,14 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 			seatIDs = append(seatIDs, p.ID)
 		}
 	}
+	// ADR 0164, CR 723.4: a controller sees what the player they
+	// control can see.
+	var controlled []string
+	for _, pc := range v.PlayerControls {
+		if pc.Controller == viewerID {
+			controlled = append(controlled, pc.Controlled)
+		}
+	}
 	isKnower := func(c CardView) bool {
 		switch viewerID {
 		case "":
@@ -9086,7 +9128,15 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		case SpectatorViewerID:
 			return knownToEverySeat(c, seatIDs)
 		}
-		return c.knowers[viewerID]
+		if c.knowers[viewerID] {
+			return true
+		}
+		for _, id := range controlled {
+			if c.knowers[id] {
+				return true
+			}
+		}
+		return false
 	}
 
 	seats := make([]PlayerView, len(v.Seats))
@@ -9239,6 +9289,10 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// #628: public, and identical for every seat — see the field
 		// comment. Nothing in it names a card in a hidden zone.
 		LoopNotice: v.LoopNotice,
+		// ADR 0164: public, and identical for every seat: who is making
+		// whose decisions. What it lets the controller see is applied
+		// through isKnower above.
+		PlayerControls: v.PlayerControls,
 		// ADR 0057: public, and identical for every seat. The source
 		// name was resolved from public zones only.
 		Outcome: v.Outcome,

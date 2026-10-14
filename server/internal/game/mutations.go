@@ -1407,7 +1407,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// one. CR 305's "during your main phase, when the stack is empty"
 	// is the whole of its window.
 	if card.IsLand() {
-		if !g.SorcerySpeedOpenLocked(playerID) {
+		if !g.LandPlayWindowOpenLocked(playerID, cardID) {
 			return ErrSorcerySpeedRequired
 		}
 	} else if !g.CastTimingForOfferOpenLocked(playerID, card, src.Kind, grant, alt) {
@@ -4876,9 +4876,16 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 	// prompts has not. Hold the whole boundary (the sweep and the
 	// CR 603.3 drain) until the answer finishes it. See
 	// resolution_pause.go.
+	// ADR 0164: a player-controlling effect that no longer applies
+	// ends here. Ahead of the hold, because the resolution it would
+	// hold for can be the forced play itself, whose players have gone.
+	g.prunePlayerControlsLocked()
 	if g.holdForOpenResolutionLocked() {
 		return false
 	}
+	// Again now the resolution has closed: control over a forced spell
+	// lasts only while it resolves.
+	g.prunePlayerControlsLocked()
 	// #2165, CR 724.1: an effect ended the turn during the resolution
 	// this boundary follows. The rest of the process — the 724.1c
 	// check, the skip to the cleanup step and that step itself — is
@@ -6879,6 +6886,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
+	}
+	// ADR 0164: Word of Command's forced play lets the player activate
+	// only their lands' mana abilities.
+	if g.LandManaOnlyLocked(playerID) && (srcZone != ZoneBattlefield || !card.IsLand()) {
+		return ErrCantActivate
 	}
 	// Resolve the ability shape — catalog first, synthetic basic-land
 	// fallback second. A catalog spec with ManaAbilities overrides

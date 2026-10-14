@@ -527,6 +527,10 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// was picking from their own hand, and CR 800.4a takes that hand
 	// out of the game with them.
 	PendingChoiceRevealedHandPick: {reassign: true},
+	// ADR 0164 §6: CR 800.4a ends the control when its controller
+	// leaves, and the card leaves with a controlled player who does.
+	// Either way the forced play is over.
+	PendingChoiceControlledPlay: {},
 	// option_pick: the second half of a pile split is a living
 	// player's cards. Torment of Hailfire's "each opponent chooses"
 	// is the same KIND and is still dropped — by the material test in

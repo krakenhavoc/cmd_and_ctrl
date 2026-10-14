@@ -169,6 +169,9 @@
       ) {
         continue;
       }
+      // ADR 0164: Word of Command's forced play has its own sheet
+      // (ControlledPlaySheet.svelte).
+      if (c.kind === "controlled_play") continue;
       if (c.chooser === viewerID) return c;
     }
     return null;
@@ -394,6 +397,9 @@
   // Agonizing Remorse — the revealing player's graveyard after the hand.
   const isRevealedVariant = $derived(active?.kind === "revealed_hand_pick");
   const isExilePick = $derived(isRevealedVariant && active?.pick_destination === "exile");
+  // ADR 0164: Word of Command looks at the hand (only you see it) and
+  // the chosen card stays there, to be played.
+  const isKeepPick = $derived(isRevealedVariant && active?.pick_destination === "keep");
   // Which options are the graveyard's, for their caption.
   const graveyardIDs = $derived.by<Set<string>>(() => {
     if (!isRevealedVariant || !active?.pick_from_graveyard) return new Set();
@@ -2596,6 +2602,9 @@
           be chosen — a permanent, a spell on the stack, or a card that something on the stack still
           refers to. If the card names a kind of source, that is checked again when the damage would
           be dealt.
+        {:else if isKeepPick}
+          Pick a card from <strong>{fromName}</strong>'s hand. Only you can see it. They keep the
+          card, and then they play it with you making their choices.
         {:else if isRevealedVariant}
           {#if isSelfSource}
             Pick {pickWhat} from your revealed hand{active.pick_from_graveyard

@@ -186,6 +186,7 @@ func (g *Game) cloneLocked() *Game {
 	if g.Vote != nil {
 		out.Vote = cloneVote(g.Vote)
 	}
+	out.PlayerControls = clonePlayerControls(g.PlayerControls)
 	// PendingChoices: deep-copy pointers.
 	if len(g.PendingChoices) > 0 {
 		out.PendingChoices = make([]*PendingChoice, len(g.PendingChoices))
@@ -1143,6 +1144,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.DiscardPending = src.DiscardPending
 	g.Promises = src.Promises
 	g.Vote = src.Vote
+	g.PlayerControls = src.PlayerControls
 	// The event log is TRUNCATED to the snapshot's length, not
 	// copied back into place: src.Events is the same backing array
 	// this game has been appending to, capped at the length it had

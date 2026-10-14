@@ -6573,6 +6573,43 @@ shape, so leave the card out and put it on `revealed-hand-pick-variants`:
 one pick of two cards under two different filters (Distended
 Mindbender).
 
+### Controlling another player (ADR 0164, #2164, CR 723)
+
+Word of Command is the one card: a look-only, keep-the-card pick, then
+the forced play.
+
+```go
+OnResolve: func(_ *game.StackItem, ctx *Context) error {
+	return ChooseFromRevealedHand{
+		Player: TargetedPlayer(ctx), Label: "card",
+		Look: true, // only you see the hand (CR 701.20e)
+		Keep: true, // the chosen card stays in the hand
+		Then: wordOfCommandPlay,
+	}.Apply(ctx)
+},
+```
+
+and the continuation calls `ctx.Game.BeginControlledPlayForEffect(
+game.ControlledPlay{Controller, Controlled, Source, SourceName, Card})`.
+What the engine does for you:
+
+- It records the control (`Game.PlayerControls`) and asks the
+  controller a `controlled_play` prompt, mid-resolution, so the
+  resolution waits and nobody gets priority (CR 608.2g). A card that
+  can't be played under the restrictions raises no prompt at all.
+- The play is a `cast_spell` sent as the controlled player that names
+  the prompt: the card's type timing is lifted, a land needs only its
+  owner's turn and a land play (CR 305.3), and mana comes from their
+  lands alone (`Game.LandManaOnlyLocked`, which the auto-tapper and
+  `ActivateManaAbility` read).
+- While the forced spell resolves, the controller answers the
+  controlled player's prompts (CR 723.5). The actions layer re-addresses
+  the answer; no resolver changes. The controlled player can only
+  concede (CR 723.6).
+
+A turn-long control (CR 723.1, Emrakul, the Promised End) is not built:
+leave the card out and keep it on `control-another-player`.
+
 ### Adding a `PendingChoiceKind` (#730, #794)
 
 A new prompt kind owes two answers, and neither has a compiler behind

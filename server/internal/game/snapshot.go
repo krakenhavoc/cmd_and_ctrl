@@ -408,6 +408,11 @@ type GameSnapshot struct {
 
 	Vote *Vote `json:"vote,omitempty"`
 
+	// PlayerControls is ADR 0164's record list. Carried: a restore
+	// that dropped it would leave a forced play's prompt answerable by
+	// nobody, or the controlled player making their own decisions.
+	PlayerControls []PlayerControl `json:"playerControls,omitempty"`
+
 	PendingChoices []pendingChoiceSnapshot `json:"pendingChoices,omitempty"`
 
 	Events   []Event `json:"events,omitempty"`
@@ -1957,6 +1962,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	if g.Vote != nil {
 		s.Vote = cloneVote(g.Vote)
 	}
+	s.PlayerControls = clonePlayerControls(g.PlayerControls)
 
 	if len(g.PendingChoices) > 0 {
 		s.PendingChoices = make([]pendingChoiceSnapshot, 0, len(g.PendingChoices))
@@ -2912,6 +2918,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	if s.Vote != nil {
 		g.Vote = cloneVote(s.Vote)
 	}
+	g.PlayerControls = clonePlayerControls(s.PlayerControls)
 
 	if len(s.PendingChoices) > 0 {
 		g.PendingChoices = make([]*PendingChoice, len(s.PendingChoices))
