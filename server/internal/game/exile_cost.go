@@ -64,17 +64,22 @@ import "github.com/google/uuid"
 // ExileSelfZoneSupported reports whether a CR 602 activated ability's
 // ExileSelf component can be paid from `z` (#1404): the graveyard
 // (scavenge, embalm and eternalize's "Exile this card from your
-// graveyard", #1221) or the battlefield (Perpetual Timepiece's "Exile
-// this artifact", #1404). effects.Register refuses the component on an
-// ability that functions from anywhere else, at boot, and the validator
-// below refuses an activation from anywhere else at runtime — one
-// predicate, so the two cannot disagree.
+// graveyard", #1221), the battlefield (Perpetual Timepiece's "Exile
+// this artifact", #1404) or, since #3520, the hand (Emrakul, the
+// Exigent Doom's "{3}, Exile this card from your hand"). effects.Register
+// refuses the component on an ability that functions from anywhere else,
+// at boot, and the validator below refuses an activation from anywhere
+// else at runtime — one predicate, so the two cannot disagree.
 //
-// The HAND is not here, and not by accident: the only printed "Exile
-// this card from your hand" is a MANA ability (the Spirit Guides,
-// #1228), which has its own owner and its own validator below.
+// The hand was left out until Emrakul because the only printed "Exile
+// this card from your hand" then was a MANA ability (the Spirit Guides,
+// #1228), which has its own owner and its own validator below. An
+// activated ability from the hand is the same move: the card is the
+// activator's own (CR 108.4), the exile is a plain CR 406 move and not a
+// discard, and the effect reads the card back out of exile by instance
+// ID, where the cost put it.
 func ExileSelfZoneSupported(z ZoneKind) bool {
-	return z == ZoneBattlefield || z == ZoneGraveyard
+	return z == ZoneBattlefield || z == ZoneGraveyard || z == ZoneHand
 }
 
 // validateExileSelfCostLocked checks a CR 602 activated ability's

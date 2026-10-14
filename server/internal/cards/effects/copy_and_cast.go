@@ -13,15 +13,16 @@ import (
 // It is the card-facing door onto game.CopyCardsAndOfferCastsForEffect,
 // the one place the engine makes a copy of a CARD and offers a cast of it.
 // Mizzix's Mastery and Arcane Bombardment use it for a set of any size,
-// and Kaervek, the Punisher with a price and a follow-up; Spellweaver
-// Volute and Uldaros Theorix are the same call with a budget added when
-// they ship. It is NOT
-// CopySpellForEffect (a copy of a spell already on the stack, which is
-// cast already) and NOT CreateTokenCopy (a permanent on the battlefield).
+// Kaervek, the Punisher with a price and a follow-up, and Uldaros Theorix
+// with a total mana value budget (#2017); Spellweaver Volute is the same
+// call when it ships. It is NOT CopySpellForEffect (a copy of a spell
+// already on the stack, which is cast already) and NOT CreateTokenCopy (a
+// permanent on the battlefield).
 //
-// The copies are offered to Player together, with no total cap, and Player
-// casts them in the order they like — each is its own grant, so casting one
-// never touches another. An instant or sorcery copy ceases to exist as it
+// The copies are offered to Player together, and Player casts them in the
+// order they like. With no total each is its own grant, so casting one
+// never touches another; with TotalManaValueAtMost they are ONE grant that
+// every cast spends from. An instant or sorcery copy ceases to exist as it
 // resolves; a permanent copy becomes a token (CR 707.10b). Every copy not
 // cast when the window closes, on Player's next priority pass, ceases to
 // exist too (CR 704.5e).
@@ -45,6 +46,13 @@ type CopyAndCast struct {
 	// FollowUp is a registered body (game.RegisterCastFollowUp) run when a
 	// copy is cast because of this offer — "if you do, you lose 2 life".
 	FollowUp game.CastFollowUpKey
+
+	// TotalManaValueAtMost is "any number of spells with total mana value
+	// N or less from among the copies" (Uldaros Theorix, #2017): the casts
+	// share one running total, each spending its mana value (X at 0, as a
+	// free cast locks it) and refused once it would pass N. Nil is no
+	// total, the ordinary "any number of the copies".
+	TotalManaValueAtMost *int
 }
 
 // Apply makes the copies and the offers.
@@ -59,6 +67,10 @@ func (c CopyAndCast) Apply(ctx *Context) error {
 		Timing:   game.TimingFlash,
 		Lapse:    game.LapseStaysInExile,
 		FollowUp: c.FollowUp,
+	}
+	if c.TotalManaValueAtMost != nil {
+		n := *c.TotalManaValueAtMost
+		offer.ManaValueBudget = &n
 	}
 	if src, ok := ctx.Game.LookupCardForEffect(ctx.Source()); ok {
 		offer.SourceName = src.Name

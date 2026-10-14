@@ -218,6 +218,11 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		if ch.Kind == "optional_replacement" && ch.PlayableFromZone {
 			b.WriteString(" (if you say no it goes to your hand, where you can cast it without the commander tax)")
 		}
+		// #3015: why the order was asked, the sentence the browser's
+		// prompt shows. The moves name each ordering by its triggers.
+		if ch.Kind == "trigger_order" && ch.TriggerOrderWhy != "" {
+			fmt.Fprintf(&b, " (%s)", ch.TriggerOrderWhy)
+		}
 		// ADR 0129 §3: what an energy payment asks, beside the energy
 		// the seat line already shows.
 		if ch.PayEnergy != nil {
@@ -667,6 +672,20 @@ func nameOfInstance(v *protocol.GameView, id string) string {
 	for i := range v.Stack.Cards {
 		if v.Stack.Cards[i].InstanceID == id {
 			return CardName(&v.Stack.Cards[i])
+		}
+	}
+	// A graveyard or exile target is public too: Animate Dead, Victimize
+	// and Eternal Witness read "targets: something" until 2026-10-14.
+	for _, s := range v.Seats {
+		for i := range s.Graveyard.Cards {
+			if s.Graveyard.Cards[i].InstanceID == id {
+				return CardName(&s.Graveyard.Cards[i]) + " (in a graveyard)"
+			}
+		}
+	}
+	for i := range v.Exile.Cards {
+		if v.Exile.Cards[i].InstanceID == id {
+			return CardName(&v.Exile.Cards[i]) + " (in exile)"
 		}
 	}
 	return "something"

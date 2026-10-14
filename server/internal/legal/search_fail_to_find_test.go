@@ -98,8 +98,10 @@ func TestUpToTwoSearchEnumeratesEveryCount(t *testing.T) {
 	for _, m := range takes {
 		sizes[len(pickedCardIDs(t, m))]++
 	}
-	if len(fail) != 1 || sizes[1] != 2 || sizes[2] != 1 {
-		t.Fatalf("want fail-to-find, two singles and one pair; got %v", labels(moves))
+	// The two Forests are interchangeable, so taking one is one move
+	// (interchangeableSearchPool), and taking both is the other.
+	if len(fail) != 1 || sizes[1] != 1 || sizes[2] != 1 {
+		t.Fatalf("want fail-to-find, one single and one pair; got %v", labels(moves))
 	}
 	dispatchAll(t, g, active.ID, moves)
 }

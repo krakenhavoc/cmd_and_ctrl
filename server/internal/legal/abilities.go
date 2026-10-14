@@ -1549,6 +1549,19 @@ func sacrificeLabel(g *game.Game, ids []uuid.UUID) string {
 	return " (sacrificing " + strings.Join(names, ", ") + ")"
 }
 
+// discardLabel is sacrificeLabel one verb over: the cards a cast's
+// additional cost discards.
+func discardLabel(g *game.Game, ids []uuid.UUID) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	names := make([]string, len(ids))
+	for i, id := range ids {
+		names[i] = cardName(g, id)
+	}
+	return " (discarding " + strings.Join(names, ", ") + ")"
+}
+
 // exileLabel is sacrificeLabel one verb over (#1600): the permanents
 // an "Exile a creature you control" cost names.
 func exileLabel(g *game.Game, ids []uuid.UUID) string {

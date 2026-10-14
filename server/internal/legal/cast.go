@@ -1605,9 +1605,16 @@ func (e *enumerator) castMoveEmitter(
 			// #2097: said outright, so a model seat or an MCP client
 			// reading the move list sees it gives up its whole board.
 			label += sacrificeAllLabel(g, paying, sacs)
-		} else if paying != nil && game.SacrificeCostVariable(paying.Sacrifice) {
+		} else {
+			// Every sacrifice is named, a fixed "sacrifice a creature"
+			// too: until 2026-10-14 only a variable count was, so
+			// Village Rites and Diabolic Intent were a run of identical
+			// "Cast" moves and an agent seat sacrificed its own
+			// commander without knowing.
 			label += sacrificeLabel(g, sacs)
 		}
+		// The same for a discard paid as an additional cost.
+		label += discardLabel(g, discards)
 		// #2681: the modes, so two moves with the same targets and
 		// different modes are told apart (Prismari Command's [0,1] and
 		// [0,2] at the same two targets).
