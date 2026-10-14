@@ -1,7 +1,7 @@
 # ADR 0188 — Turn machinery, the rest: skipped turns, effects bound to one turn or one combat, and showing the turn
 
 Date: 2026-10-14
-Status: Proposed
+Status: Accepted (owner answers 2026-10-14, recorded under [Owner decisions](#owner-decisions-2026-10-14); answer 4 adds [Decision 12](#12-asking-which-skip-takes-an-extra-turn-cr-6161) and two slices)
 Sprint: none (unscheduled card-coverage seam, #753; outside docs/sprints.md)
 Issues: #753 (turn machinery). Registry rows: `extra-turns` (Ugin's Nexus, Savor the Moment, Magosi, the Waterveil, Lethal Vapors, Alchemist's Gambit) and `extra-combats` (World at War; Moraug, Fury of Akoum).
 Builds on: [ADR 0059](0059-turn-machinery.md) (turn identity, the rotation seam, the extra-turn queue, the turn plan, and its amendments of 2026-09-30, 2026-10-05 and 2026-10-07), [ADR 0041](0041-game-persistence.md) phase 3 (ScopedEffect records, unknown-key refusal), [ADR 0063](0063-durations-and-control.md) (durations), [ADR 0178](0178-life-instructions-after-a-replaced-move.md) (instructions after a replaced move), [ADR 0126](0126-bots-that-play-their-decks.md) §6 (Purpose).
@@ -120,7 +120,7 @@ func (g *Game) TurnSkipsFor(player uuid.UUID) int
 - **"Next turn" means the next turn that player would begin, extra or normal.** That falls out of spending at the seam, and it is the Magosi ruling: the extra turn from the fourth ability is the one skipped.
 - **A skip created during the player's own turn waits for the next one** (CR 614.10). The current turn has already begun and never passes through the seam again.
 - **Two effects skip two turns** (CR 614.10a). Each record carries its own charge; Eater of Days writes Amount 2; Ral Zarek, Guest Lecturer writes Amount X.
-- **Order against an extra-turn skip.** When a player owes a skip and an extra-turn replacement (Trouble in Pairs, Ugin's Nexus) also applies to the same turn, both are replacements on one event and CR 616.1 lets the affected player choose. Spending the player's own debt first is never worse for them: the turn is skipped either way, and the debt is paid. So the seam spends the debt first and does not open the window for that turn. No prompt is needed, which matters because the window cannot pause (ADR 0059 amendment 2026-10-07 §3).
+- **Order against an extra-turn skip.** When a player owes a skip and an extra-turn replacement (Trouble in Pairs, Ugin's Nexus, Gerrard's Hourglass Pendant) also applies to the same turn, both are replacements on one event, and CR 616.1 lets the affected player choose. The owner decided to ask (answer 4): [Decision 12](#12-asking-which-skip-takes-an-extra-turn-cr-6161) pauses the turn change for that question, with "use my skip" recommended. Until the slice that builds it lands (slice 3), slice 1 spends the debt first without asking, which is the recommended answer. With only one of the two applying, nobody is asked, ever.
 - **Termination.** Every pass through the loop spends a charge, passes a departed seat, or begins a turn. Charges are finite, so the loop ends. A loop guard of `len(g.Seats) + total charges + len(g.ExtraTurns) + 1` turns a bug into a logged fault, not a hang.
 - **A departed player's records** are dropped by the seam as it passes the seat (they can never be spent; CR 800.4k).
 
@@ -175,7 +175,7 @@ func (g *Game) SkipStepOfExtraTurnForEffect(ref int, step Step, source uuid.UUID
 ```
 
 - **Spent at step entry.** In `runStepEntryHooksLocked` (`game/game.go`), after the `stepExistsLocked` walk-through and **before** the `RepEventStepTransition` window: if a record's `ExtraTurn == g.Turn.ExtraRef` and `Step == g.Turn.Step`, remove the record (copy on write) and take the cancelled-step path (`advanceCursorLocked`, then recurse), which is what Stasis' cancel does. Nothing in the untap step happens: no phasing (CR 502.1), no day/night check (CR 502.2), no untap (CR 502.3).
-- **Once.** The record is spent by the first matching step of that turn. An untap step in a beginning phase added later in the same turn (Sphinx of the Second Sun) still happens. See owner question 2.
+- **Once.** The record is spent by the first matching step of that turn. An untap step in a beginning phase added later in the same turn (Sphinx of the Second Sun) still happens. Decided by the owner (answer 2).
 - **Swept** with the bound delayed triggers: `sweepUnreachableBoundTriggersLocked` also removes `skipExtraTurnStep` records whose ref is neither the turn now beginning nor still queued, so a record of a skipped or finished extra turn does not linger.
 - **Summoning sickness still clears.** It is cleared in `onTurnBeganLocked`, not in the untap step (ADR 0059 Decision 7), so Savor's turn lets last turn's creatures attack, as it should.
 - **"Next untap step" markers wait** (CR 614.10a): `SkipNextUntapStepsForEffect`'s markers are spent only by `performUntapStepLocked`, which does not run.
@@ -281,12 +281,13 @@ Unchanged from ADR 0059, now that skips exist:
 
 - The phase track's current group caption reads "Combat 2" / "Main 3" when `phase_ordinal > 1` (CR 505.1b counting).
 - Added phases still to come (entries of `upcoming` whose `phase_id > 5`) show as small "+ Combat", "+ Main", "+ Begin" markers after the current group. They are not new step buttons: per-step stops stay keyed by step name, and an added combat's declare attackers stops where the first did (ADR 0059 Decision 11).
-- Turn skips: see owner question 1.
+- **Turn skips** (owner answer 1): a "Skips next turn" / "Skips next 2 turns" chip on that player's panel, from `turn_skips`. The turn bar's "Next:" line names `next_seat` whenever it is not the plain next seat clockwise: "Next: Alice (extra)" for an extra turn as today, and "Next: Carol" when a skip or a departed seat moves the turn on. With neither, there is no line, as today. No reveal-strip cue.
+- **Between turns** (Decision 12): while `TurnView.between_turns` is set, the step label reads "Choosing the next turn" instead of the cleanup step's.
 - Every label is an `L.<key>` in `client/src/lib/labels.ts` and listed in `docs/labels.md`.
 
 ### 10. Enumerator, heuristic bot and MCP seat
 
-- **Enumerator** (`internal/legal`): no change in behaviour. A skip is spent at the seam, not offered. Add the agreement test ADR 0059 Decision 13 left: declare-attackers moves are offered in an added combat, and `dispatchAll` accepts them.
+- **Enumerator** (`internal/legal`): a skip is spent at the seam, not offered. The only new move is Decision 12's two answers. Add the agreement test ADR 0059 Decision 13 left: declare-attackers moves are offered in an added combat, and `dispatchAll` accepts them.
 - **Heuristic**:
   - `nextTurnSeat` reads `TurnView.next_seat`, falling back to today's walk when it is absent. This fixes the extra-turn rotation bug above.
   - `game.Purpose` gains `ExtraTurns int` and `SkipsTurns int` (the caster's own turns). Declared on the shipped extra-turn cards and on every card this ADR adds. The heuristic prices them with one new weight, `Weights.Turn` (a whole turn), positive for `ExtraTurns`, negative for `SkipsTurns`, tuned with an arena measurement. An any-player row such as Lethal Vapors' declares no Purpose, so a bot never activates another player's copy (ADR 0106 decision 2).
@@ -306,21 +307,97 @@ All additive within `SnapshotSchemaVersion` 8, recorded in `game/testdata/snapsh
 | `skipExtraTurnStep` mod, `step`, `extraTurn` | `scopedEffects[].mods[]` | refuses the file, as above |
 | deferred effects | `extraTurns[].effects` | drops them: damage can be prevented in that turn (weaker), until the next deploy |
 | phase binding | `delayedTriggers[].onSeq`, `.onPhaseId` | refuses the file: both binding cards use body keys an older binary lacks |
+| a turn change waiting on Decision 12's question | `turnChangePending`, `pendingChoices[]` of kind `turn_skip_order` (`turnSkipOrder` object) | refuses the file: the pending-choice kind is unknown to it (`snapshot_scoped_effects.go`'s kind check) |
 | extra turn after a move | `ReplacementEvent.extraTurnsAfterMove` | not persisted. It lives only between a Replace callback and the move's finisher, the same window as ADR 0178's `lifeAfterMove` |
 
 - **Why skips are records, not a counter.** A rollback that dropped a skip would hand the player a turn their card made them pay away. That is stronger than printed, which the project never ships (AGENTS.md §7). A new mod kind makes the older binary refuse the file instead.
 - **Clone / undo.** `ScopedEffects` and `DelayedTriggers` already clone, so spending a charge copy-on-write (`setShieldChargeLocked`) lets an undo rewind it. `cloneExtraTurns` must deep-copy `Effects`. The drift test (`snapshot_drift_test.go`) needs no new top-level rows, because every new field sits inside an already-`carried` one. Its shape coverage must show the nested paths.
-- **Closure ratchet.** No new route from `Game` to a func or an interface: the records and the instruction slice are plain data. `testdata/closure_fields.txt` and the `census:` / `transient` counts are unchanged (`TestClosureFieldsReachableFromGame`).
+- **Closure ratchet.** No new route from `Game` to a func or an interface: the records, the instruction slice, `TurnChangePending` and the `turn_skip_order` prompt are plain data, and the prompt is resumed by its kind's resolver, not by a stored continuation. `testdata/closure_fields.txt` and the `census:` / `transient` counts are unchanged (`TestClosureFieldsReachableFromGame`).
+
+### 12. Asking which skip takes an extra turn (CR 616.1)
+
+Owner answer 4: when a player owes a "skip your next turn" and an extra-turn skip (Trouble in Pairs, Ugin's Nexus, Gerrard's Hourglass Pendant) also applies to the same extra turn, the player is asked. "Use my skip-next-turn" is preselected and labelled recommended.
+
+**When it is asked: only when both apply.** In `popExtraTurnLocked`, once a candidate extra turn of a seat still in the game is chosen:
+
+1. The seat owes no skip: today's path. The `RepEventExtraTurn` window runs as now.
+2. The seat owes a skip, and `extraTurnSkipAppliesLocked(et)` is false: spend the charge (Decision 1). No prompt. `extraTurnSkipAppliesLocked` builds the same `RepEventExtraTurn` event the window would and calls `gatherActiveReplacementsLocked`, applying nothing.
+3. The seat owes a skip, and some replacement applies: **pause**. That is the only case that asks.
+
+Every answer skips that turn. The question is only which effect is used up, and so whether the player still owes a skip afterwards. When several extra-turn replacements apply (Trouble and a Nexus), which of them takes the turn cannot be seen (all are pure cancels), so the prompt has exactly two answers.
+
+**The pause: a turn change waiting on one question.**
+
+- `beginNextTurnLocked` is split into two parts:
+  - `closeTurnLocked` runs once per ended turn: `endTurnControlsLocked`, `recordLastTurnAttacksLocked`, `recordPrevTurnSpellsLocked`.
+  - `chooseNextTurnLocked() (paused bool)` is the selection loop: extra turns, then normal rotation, then `startTurnLocked`.
+  
+  `beginNextTurnLocked` runs both, and reports `paused`.
+- On a pause, the candidate goes back on top of `ExtraTurns`, built as a fresh slice. `Game.TurnChangePending` (bool, cloned, snapshot `turnChangePending`) is set. One prompt is queued:
+
+```go
+PendingChoiceTurnSkipOrder PendingChoiceKind = "turn_skip_order"
+
+type TurnSkipOrder struct {            // PendingChoice.TurnSkipOrder, plain data
+    ExtraTurnRef int       `json:"extraTurnRef"`
+    SkipSource   uuid.UUID `json:"skipSource"`   // the oldest skipTurns record's source
+    SkipSeq      int64     `json:"skipSeq"`      // and its Seq
+    Others       []string  `json:"others"`       // labels of the replacements that apply
+}
+```
+
+  The chooser is the extra turn's player (CR 616.1). Answer 0 is "Use my skip (Magosi, the Waterveil)", and it is `Recommended`. Answer 1 is "Let Trouble in Pairs skip it".
+- **The cursor stays where the old turn left it**: on its cleanup step (or on the departed player's step), with `PriorityHolder = NoPriority`. `TurnView.between_turns` is true. Nothing begins: no `Seq`, no untap, no triggers.
+- **Every caller stops when it pauses.** `advanceCursorLocked`'s caller, `advancePastEliminatedLocked` and `PassTurn` skip `runStepEntryHooksLocked` when `beginNextTurnLocked` reports `paused`. The pause can only happen where the seam already runs, at an action boundary, so never inside a resolution (ADR 0059 Decision 6).
+- **The resume is the answer.** `ResolveTurnSkipOrder(choiceID, useSkip bool)` dequeues the prompt and pops the entry again (it is still on top). Then:
+  - **Answer 0:** spend the charge of the `SkipSeq` record, or the oldest record if that one is gone, and emit `EventTurnSkipped`.
+  - **Answer 1:** run `extraTurnSkippedLocked(et)` as today, which cancels and emits `EventExtraTurnSkipped`. If it no longer cancels (the Nexus left the battlefield while the question was open), spend the charge instead, because the turn must still be skipped once.
+  
+  Either way it then clears `TurnChangePending` and calls `chooseNextTurnLocked` again. That call may pause again for the next candidate, a second Time Stretch turn for instance. If it does not pause, the resume runs `runStepEntryHooksLocked`. It is a player action, so it is an action boundary.
+
+**What can happen while it is open:**
+
+| Who | May |
+|---|---|
+| The chooser | answer, concede, chat, change settings, undo their own top commit (the normal undo rules) |
+| Other seats | concede, chat, change settings, undo their own top commit. No priority, no sandbox step verbs |
+| Anyone | `pass_turn`, `advance_step` and any other cursor verb are refused with `ErrTurnChangePending`. `legal` offers nothing but the chooser's two answers |
+| The admin | as today, plus undo |
+
+- **A departure while it is open.** `advancePastEliminatedLocked` returns at once while `TurnChangePending` is set: the pending resume will choose the turn, and running the seam twice would end a turn twice.
+  - **The chooser leaves.** The prompt's drop action (`choiceDepartureDecisions`: `dropDefault`) runs the resume with answer 0. The popped turn then belongs to a departed seat, so it is dropped (CR 800.4k), and rotation continues.
+  - **Any other player leaves.** The question stays open.
+- **Undo.** The pause is created by the commit that ended the turn, and `Clone` / `RestoreFrom` carry `TurnChangePending` and the prompt. Undoing that commit returns to before the turn ended. Undoing the answer returns to the open question. Neither needs special handling.
+- **Snapshot.** `turnChangePending` and the prompt are plain data, additive in v8 (Decision 11's table). A restore point taken mid-question restores mid-question. An older binary refuses it (unknown pending-choice kind).
+
+**The default, everywhere it can be applied:**
+
+- **The dock** (slice 4) draws it as a two-button prompt. "Use my skip" has focus and a "Recommended" tag, so Enter takes it. A one-line explanation reads: "Your extra turn is skipped either way. Use it to pay off your own 'skip your next turn'?"
+- **A standing answer** (ADR 0127). The prompt is covered with a fixed engine key, `engine|turn_skip_order`, which is the one exception to ADR 0127 §2's "no catalog row, no key". Always is answer 0 and Never is answer 1. The "Remember this answer" toggle sets it, and `NextAutoAnswer` answers it without asking.
+- **Bots.** The heuristic picks answer 0. The model seat's prompt marks it "(recommended)". The MCP seat lists it first, as "(recommended)".
+- **Away and disconnected players.** C2 has no prompt timer. The away flow (ADR 0177) is the timeout: a seat handed to the heuristic stand-in picks answer 0. Conceding for the seat drops the prompt, which runs answer 0 as above.
+
+**Log.** No line for the question. The answer's effect logs as today: `turn_skipped` for answer 0, `extra_turn_skipped` for answer 1. An automatic answer adds ADR 0127's "(automatic)" line.
+
+## Owner decisions (2026-10-14)
+
+Recorded from the owner's answers to the four questions this ADR asked. They are binding. The options not chosen are kept under [Open owner questions (answered)](#open-owner-questions-answered).
+
+1. **Showing a pending turn skip: (a).** A "Skips next turn" chip on the player's panel, and the "Next:" line names the real next player. Applied in Decision 9 and slice 9.
+2. **Savor the Moment with an added beginning phase: (a).** Only the turn's first untap step is skipped. Applied in Decision 3a and slice 5.
+3. **Card scope: (a).** The seven registry cards, Gerrard's Hourglass Pendant, and the nine off-registry skip cards (slice 7).
+4. **The player's own skip against an extra-turn skip: ask.** It is a real CR 616.1 prompt, asked only when both apply. "Use my skip-next-turn first" is preselected and labelled recommended. Bots, the MCP seat's suggestion, ADR 0127 standing answers, and an away or departed seat all take it. The turn change pauses and resumes for it (Decision 12), in two slices of its own ordered after slices 1 and 2.
 
 ## Alternatives considered
 
-- **A. A replaceable "a turn would begin" event (`RepEventTurnBegin`), with "skip your next turn" as a replacement gathered into it.** This is closest to CR 614.10's wording. Rejected: the seam's windows cannot pause, so CR 616's order among a player's own skip and Trouble in Pairs' cancel would be fixed by gather order anyway. A charge is not a pure cancel, so gather order would decide which effect is spent. Decision 1 fixes that order to the affected player's dominant choice with no window at all.
+- **A. A replaceable "a turn would begin" event (`RepEventTurnBegin`), with "skip your next turn" as a replacement gathered into it.** This is closest to CR 614.10's wording. Rejected: every turn change would open a window, and the only CR 616 question that window can ever raise is the one Decision 12 asks. A general window would make every turn change pausable, when only the "own skip against an extra-turn skip" case needs it. Decision 12 pauses for that case alone, and only when both apply.
 - **B. A plain counter, `Player.TurnsToSkip int`.** Rejected: no source for the log line, and an older binary would silently drop it, which is stronger than printed (Decision 11).
 - **C. `ExtraTurn.SkipSteps []Step` for Savor the Moment.** This is simpler, but rejected for the same rollback reason: an older binary drops it and the caster untaps.
 - **D. A duration kind that starts in a future turn (`DuringExtraTurn`).** Rejected: 27 call sites read `!durationExpiredLocked` as "in force" (`grep durationExpiredLocked game/*.go`). A dormant-then-active duration would need each one to learn a third state, and each sweep would have to keep a record it now drops. Deferring the registration to the turn's start has one reader.
 - **E. World at War anchored by template index ("after phase id 4").** Rejected: CR 505.1b counts main phases that occurred, and an added main phase (Relentless Assault earlier in the turn) is the second main phase. Only the plan walk is right.
 - **F. Moraug's untap as Full Throttle's "each combat this turn" trigger, filtered to added combats.** Rejected: two Moraug landfalls add two combats and each untaps only at its own. The ruling's precombat case also needs "this added combat, not the regular one".
-- **G. Asking the player to order their own skip against Trouble in Pairs.** Rejected: it is a prompt with one sensible answer, in a window that cannot pause.
+- **G. Never asking: always spend the player's own skip first.** This was the draft's recommendation. The owner chose to ask (answer 4), since CR 616.1 gives the choice to the player. The default stays the recommended answer, so a table that never sees the question gets the same result.
+- **H. Asking through the existing `replacement_order` prompt.** Rejected: its resume is a stored replacement frame with a continuation, which a restore point cannot hold in the turn seam. It also lists effects to reorder, where this question has exactly two answers. A data-only kind with its own resolver restores and undoes like any other prompt.
 
 ## Delivery plan
 
@@ -346,7 +423,7 @@ Acceptance (tests):
 - Amount 2, or two records of 1: the next two turns are skipped (CR 614.10a). The oldest record is spent first.
 - Magosi ruling: a skip and a queued extra turn of the same player; the extra turn is the one skipped, and normal rotation then continues.
 - A skip created during the player's own turn does not end that turn.
-- A player owing a skip, whose extra turn an opponent's Trouble in Pairs would also skip: the charge is spent, and no `EventExtraTurnSkipped` is emitted.
+- A player owing a skip, whose extra turn an opponent's Trouble in Pairs would also skip: the charge is spent, and no `EventExtraTurnSkipped` is emitted. This is the interim default; slice 3 replaces it with the question, and changes this test.
 - A skipped turn: no `EventTurnBegan`, no untap. `recordPrevTurnSpellsLocked` and `LastTurnAttacks` still describe the last turn taken. A rebound upkeep trigger waits to the next real upkeep. An `UntilYourNextTurn` effect survives the skip. A skipped extra turn's Final Fortune trigger is swept, and the game is not lost.
 - The departed-seat path is unchanged, and a departed player's records are dropped.
 - Snapshot round trip, undo across the rotation restores the charge, and a file naming `skipTurns` is refused by a mod table without it.
@@ -371,11 +448,62 @@ Acceptance (tests):
 - Destroying the Nexus exiles it and queues one extra turn for its controller, which is taken. The `extra_turn` log line follows the exile line.
 - Two Nexuses destroyed together: one is exiled with an extra turn, the other stays, and that turn is skipped only if the remaining Nexus is still there (ruling).
 - With Rest in Peace, the CR 616 order prompt is asked of the Nexus' controller, and choosing Rest in Peace first gives no extra turn.
-- With a player who owes a skip (slice 1), the debt is spent before the Nexus' window.
+- With a player who owes a skip (slice 1), the debt is spent before the Nexus' window (the interim default until slice 3).
 
 Depends on: slice 1, for the last test only.
 
-### Slice 3 — `feat(server): a step skipped and an effect during one extra turn` · tier:2-standard
+### Slice 3 — `feat(server): ask which skip takes an extra turn (CR 616.1)` · tier:2-standard
+
+Decision 12, server side. The dock comes in slice 4.
+
+Scope:
+- `game/rotation.go`: split `beginNextTurnLocked` into `closeTurnLocked` and `chooseNextTurnLocked() (paused bool)`, and have `beginNextTurnLocked` report `paused`. `advancePastEliminatedLocked` returns early while `TurnChangePending` is set, and every caller skips `runStepEntryHooksLocked` on a pause.
+- `game/extra_turns.go`: `extraTurnSkipAppliesLocked`, and the three cases in `popExtraTurnLocked`.
+- `game/turn_skip_order.go` (new):
+  - `PendingChoiceTurnSkipOrder`, `TurnSkipOrder`, `Game.TurnChangePending`;
+  - `ResolveTurnSkipOrder(choiceID, useSkip)` with the resume;
+  - the departure entry (`dropDefault` → answer 0);
+  - `ErrTurnChangePending`, returned by `PassTurn`, `AdvanceStep` and the other cursor verbs.
+- `game/clone.go`, `game/snapshot.go`: `turnChangePending` and the prompt's `turnSkipOrder` object, additive v8; the shape file; drift rows.
+- `actions`: the `resolve_choice` route for the kind.
+- `protocol/view.go`: `PendingChoiceView.turn_skip_order` (`skip_source` name, `others` labels, `recommended: 0`) and `TurnView.between_turns`; `docs/protocol.md`; `client/src/lib/protocol.ts` (types only).
+- `internal/legal`: the chooser's two answers, and nothing else while it is open.
+- `aiseat/heuristic`: pick answer 0.
+- `aiseat/boardtext`: the "(recommended)" mark, and the MCP seat lists answer 0 first.
+- ADR 0127's covered-prompt table (`game/auto_answer*.go`): the fixed key `engine|turn_skip_order`, Always = 0, Never = 1.
+
+Acceptance (tests):
+- Magosi debt plus an opponent's Trouble in Pairs on that player's extra turn: a `turn_skip_order` prompt is queued and nothing begins (`Seq` unchanged, no untap, `between_turns` set).
+  - Answer 0: the charge is spent, there is no `EventExtraTurnSkipped`, and the next turn begins with its step hooks.
+  - Answer 1: `EventExtraTurnSkipped`, and the charge is still owed.
+- Only one of the two applies: no prompt, in both directions.
+- Two queued extra turns of the same player, both meeting the condition: two questions in turn, and a single debt is spent at most once.
+- The Nexus leaves the battlefield while the question is open, and answer 1 is chosen: the charge is spent instead, so the turn is still skipped.
+- While open:
+  - `pass_turn` and `advance_step` are refused with `ErrTurnChangePending`;
+  - `legal` offers only the chooser's two moves;
+  - another player's concede does not rotate twice;
+  - the chooser's concede resolves answer 0, drops the turn (CR 800.4k), and rotation continues.
+- Undo of the turn-ending commit leaves no pause. Undo of the answer restores the open question. A restore point taken mid-question restores mid-question, and an older pending-choice table refuses the file.
+- A standing Always answers it without a prompt, with an "(automatic)" log line. The heuristic answers 0.
+- Never raised inside a resolution: Final Fortune's end-step loss, with the next player owing a skip and Trouble in Pairs out, pauses only at the SBA pass's rotation.
+
+Depends on: slices 1 and 2.
+
+### Slice 4 — `feat(client): the which-skip question in the dock` · tier:2-standard
+
+Scope:
+- `client/src/lib/choiceDock.ts`: `turn_skip_order` as a two-button prompt. "Use my skip (<card>)" has focus and a "Recommended" tag, and the other button is "Let <card> skip it". There is a one-line explanation, and the ADR 0127 "Remember this answer" toggle.
+- PhaseDisplay's step label shows "Choosing the next turn" while `between_turns` is set.
+- `client/src/lib/labels.ts` keys, `docs/labels.md`; vitest for the derivation.
+- An e2e hint if the dock tour lists prompt kinds.
+
+Acceptance (tests):
+- Vitest: the two labels, the recommended flag on answer 0, initial focus on answer 0, the remember toggle sending Always for answer 0, and the between-turns label.
+
+Depends on: slice 3.
+
+### Slice 5 — `feat(server): a step skipped and an effect during one extra turn` · tier:2-standard
 
 Scope:
 - `game/scoped_effects.go`: `ModSkipExtraTurnStep`, plus `Mod.Step` and `Mod.ExtraTurn`.
@@ -391,7 +519,7 @@ Scope:
 Acceptance (tests):
 - Savor: in the extra turn nothing untaps, phases in, or flips day/night. Summoning sickness from the previous turn is gone. A "doesn't untap during its controller's next untap step" marker survives to the next real untap step. The next turn's day/night check reads Savor's turn.
 - Savor under Stasis behaves the same.
-- Savor, then Sphinx of the Second Sun in that turn: the added beginning phase's untap step untaps (owner question 2, recommended answer).
+- Savor, then Sphinx of the Second Sun in that turn: the added beginning phase's untap step untaps (owner answer 2).
 - Savor's extra turn skipped by Trouble in Pairs leaves no record behind.
 - Alchemist's Gambit: damage can be prevented for the rest of the current turn and cannot during the extra turn. A Fog cast in that turn prevents nothing, and the effect ends at that turn's cleanup.
 - Alchemist's Gambit cast for cleave: no loss. The extra turn skipped: no effect and no loss (ruling).
@@ -399,7 +527,7 @@ Acceptance (tests):
 
 Depends on: nothing (the row closes only after slices 1 and 2).
 
-### Slice 4 — `feat(server): after the second main phase, and a trigger bound to that combat` · tier:2-standard
+### Slice 6 — `feat(server): after the second main phase, and a trigger bound to that combat` · tier:2-standard
 
 Scope:
 - `game/turn_plan.go`: `AnchorNthMainPhase`, `PhaseAnchor.N`.
@@ -425,19 +553,21 @@ Acceptance (tests):
 
 Depends on: nothing.
 
-### Slice 5 — `feat(server): more cards that skip your next turn` · tier:1-mechanical
+### Slice 7 — `feat(server): more cards that skip your next turn` · tier:1-mechanical
 
-Scope: one file each for Meditate, Chronatog, Chronatog Totem, Eater of Days, Wormfang Manta, Waterspout Elemental, Chronosavant, Unstable Hulk and Ral Zarek, Guest Lecturer, using `SkipYourNextTurns` / `TargetPlayerSkipsNextTurns` and existing shapes (kicker, morph, coin flips, once-each-turn). Each card is `Full` or drops out with a registry note. `Purpose.SkipsTurns` is declared once slice 6 has added it, or added to these files in slice 6.
+Scope: one file each for Meditate, Chronatog, Chronatog Totem, Eater of Days, Wormfang Manta, Waterspout Elemental, Chronosavant, Unstable Hulk and Ral Zarek, Guest Lecturer, using `SkipYourNextTurns` / `TargetPlayerSkipsNextTurns` and existing shapes (kicker, morph, coin flips, once-each-turn). Each card is `Full` or drops out with a registry note. `Purpose.SkipsTurns` is declared once slice 8 has added it, or added to these files in slice 8.
 
 Acceptance: one test per card that the right player skips the right number of turns, plus each card's other clause.
 
-Depends on: slice 1 (owner question 3 decides whether this slice exists).
+Depends on: slice 1 (in scope by owner answer 3).
 
-### Slice 6 — `feat(bot): see the next turn and price extra and skipped turns` · tier:2-standard
+### Slice 8 — `feat(bot): see the next turn and price extra and skipped turns` · tier:2-standard
+
+This slice also fixes a **live bug**. The heuristic's `nextTurnSeat` (`aiseat/heuristic/heuristic.go:1108`) rotates from `ActiveSeat` instead of the turn-order seat. During seat 2's extra turn after seat 0's (four seats), it names seat 3, not seat 1, so `beforeMyUntap` and `leftover` misjudge whose turn is next.
 
 Scope:
 - `game`: `NextTurnSeatForEffect`; `protocol`: `TurnView.next_seat`.
-- `aiseat/heuristic`: `nextTurnSeat` reads `next_seat`.
+- `aiseat/heuristic`: `nextTurnSeat` reads `next_seat` (the bug fix).
 - `game/purpose.go`: `ExtraTurns`, `SkipsTurns`, plus `effects/purpose.go` slot checks; declared on the shipped extra-turn cards and the new skip cards.
 - Heuristic: `Weights.Turn`.
 - `aiseat/boardtext`: "(combat 2)", "skips their next turn", "next turn: <seat>".
@@ -449,15 +579,15 @@ Acceptance (tests):
 - The heuristic's `beforeMyUntap` is true in seat 0's end step when seat 0's extra turn is next.
 - Boardtext golden lines for an added combat, a skip, and the next turn.
 - `legal` offers declare-attackers moves in an added combat and `dispatchAll` accepts them.
-- Arena measurement in the PR body for `Weights.Turn`, with a bot holding Time Warp casting it and one holding Meditate (if slice 5 shipped) not casting it at an even board.
+- Arena measurement in the PR body for `Weights.Turn`, with a bot holding Time Warp casting it and one holding Meditate (if slice 7 shipped) not casting it at an even board.
 
 Depends on: slice 1.
 
-### Slice 7 — `feat(client): label repeated phases and show turn skips` · tier:2-standard
+### Slice 9 — `feat(client): label repeated phases and show turn skips` · tier:2-standard
 
 Scope:
 - `client/src/lib/components/board/PhaseDisplay.svelte`: the "Combat 2" / "Main 3" caption, "+ Combat" markers from `upcoming`, the "Next:" line from `next_seat`.
-- The player panel's turn-skip chip (owner question 1).
+- The player panel's "Skips next turn" chip (owner answer 1).
 - `client/src/lib/labels.ts`, `docs/labels.md`; vitest for the derivations (pure functions in `client/src/lib/turn.ts`).
 
 Acceptance (tests):
@@ -468,11 +598,17 @@ Acceptance (tests):
 - Vitest: the chip text for 1 and 2 skips.
 - The render test that every step sits in one group still passes.
 
-Depends on: slices 1 and 6.
+Depends on: slices 1 and 8.
 
-Order: 1 → 2 → 3, and 4, in any order after; 5 and 6 after 1; 7 last.
+Order:
+- 1 → 2 → 3 → 4.
+- 5 and 6 at any time (the `extra-turns` row closes with the last of 1, 2 and 5).
+- 7 and 8 after 1.
+- 9 last.
 
-## Open owner questions
+## Open owner questions (answered)
+
+Kept as asked. The answers are under [Owner decisions](#owner-decisions-2026-10-14). Questions 1–3 took the recommended option. Question 4 took (b), asking, with the recommended answer as the default (Decision 12). The slice numbers below are the draft's: its slices 3–7 are now slices 5–9.
 
 1. **How does the table show a pending turn skip?**
    - (a) A "Skips next turn" / "Skips next 2 turns" chip on that player's panel, and the turn bar's "Next:" line names the real next player whenever it is not the plain next seat (a skip, or an extra turn as today). **Recommended**: the information that changes who acts next sits where players already look for it, and a game without skips looks exactly as it does now.
@@ -490,6 +626,14 @@ Order: 1 → 2 → 3, and 4, in any order after; 5 and 6 after 1; 7 last.
 
 ## Consequences
 
-- The `extra-turns` and `extra-combats` rows close. #753 stays open as the tracker until slice 7 lands.
-- Two rules mod kinds, one `ExtraTurn` field, two `DelayedTrigger` fields, one anchor kind, two events, two log lines and two view fields. Everything on disk is additive in v8, and every addition that could make a card stronger after a rollback makes an older binary refuse the file instead.
+- The `extra-turns` and `extra-combats` rows close. #753 stays open as the tracker until slice 9 lands.
+- The additions:
+  - two rules mod kinds;
+  - one `ExtraTurn` field;
+  - two `DelayedTrigger` fields;
+  - one anchor kind;
+  - one prompt kind and a between-turns flag;
+  - two events and two log lines;
+  - four view fields.
+- The rotation seam can now pause, for exactly one question (Decision 12). Everything on disk is additive in v8, and every addition that could make a card stronger after a rollback makes an older binary refuse the file instead.
 - **The thing most likely to be got wrong later.** Spending a skip anywhere but the rotation seam: in `onTurnBeganLocked`, say, or in the untap step. By then the turn has begun, and CR 614.10 says it can no longer be skipped. Its `Seq`, resets and triggers would already have happened. A skip is spent while the next turn is being chosen, and never after.
