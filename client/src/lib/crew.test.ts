@@ -30,6 +30,22 @@ const crew4: ActivatedAbilityView = {
   crew_options: { cards: ["c-bear", "c-cat", "c-wall"] },
 };
 
+describe("crew_power (ADR 0186 Decision 6)", () => {
+  const pilot = creature("c-pilot", "Pilot", 1);
+
+  it("counts a creature at its crew_power rather than its power", () => {
+    expect(crewPower([pilot, bear], ["c-pilot", "c-bear"], { "c-pilot": 3 })).toBe(5);
+    expect(crewAvailablePower([pilot, bear], { "c-pilot": 3 })).toBe(5);
+    expect(crewSatisfied([pilot], ["c-pilot"], 3, { "c-pilot": 3 })).toBe(true);
+  });
+
+  it("falls back to power when crew_power is absent or does not name the creature", () => {
+    expect(crewPower([pilot, bear], ["c-pilot", "c-bear"])).toBe(3);
+    expect(crewPower([pilot, bear], ["c-pilot", "c-bear"], { "c-other": 9 })).toBe(3);
+    expect(crewSatisfied([pilot], ["c-pilot"], 3)).toBe(false);
+  });
+});
+
 describe("crewPower", () => {
   it("adds the chosen creatures' power", () => {
     expect(crewPower([bear, cat, wall], ["c-bear", "c-cat"])).toBe(4);

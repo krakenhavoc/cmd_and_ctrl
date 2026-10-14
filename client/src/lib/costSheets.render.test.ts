@@ -515,3 +515,41 @@ describe("an emerge sacrifice picker", () => {
     expect(text).toContain("MV 4 · costs {1}{U}{U}");
   });
 });
+
+// ADR 0186 Decision 6 (#3550): the crew picker counts what the server
+// counts. A lone 1/1 that crews "as though its power were 2 greater"
+// pays crew 3, and the row says so only when the counted power differs.
+describe("the crew picker's counted power", () => {
+  const pilot = card("pilot", "Pilot", { power: 1, toughness: 1 });
+  const props = (c: Calls, crewPower?: Record<string, number>, threshold?: number) => ({
+    card: card("cart", "Smuggler's Copter"),
+    ability: threshold === undefined ? { index: 0, crew_cost: 3, crew_power: crewPower } : null,
+    threshold,
+    options: [pilot],
+    onConfirm: (ids: string[]) => c.confirmed.push([ids]),
+    onCancel: () => c.cancelled++,
+  });
+  const open = (p: unknown) => {
+    render(DockHarness as never, { component: CrewCostModal as never, props: p } as never);
+    flushSync();
+  };
+
+  it("enables Crew with a lone 1/1 counted as 3 on a crew-3 Vehicle, and says so", () => {
+    open(props({ confirmed: [], cancelled: 0 }, { pilot: 3 }));
+    expect(sheetPanel()!.textContent).toContain("counts as 3");
+    expect(sheetPanel()!.textContent).not.toContain("not enough");
+    click(sheetPanel()!.querySelector<HTMLElement>(".prompt-options .prompt-opt")!);
+    expect(barPrimary()!.disabled).toBe(false);
+  });
+
+  it("shows no note when the counted power equals the power", () => {
+    open(props({ confirmed: [], cancelled: 0 }, { pilot: 1 }));
+    expect(sheetPanel()!.textContent).not.toContain("counts as");
+  });
+
+  it("leaves a teamwork prompt on plain power", () => {
+    open(props({ confirmed: [], cancelled: 0 }, undefined, 3));
+    expect(sheetPanel()!.textContent).not.toContain("counts as");
+    expect(sheetPanel()!.textContent).toContain("not enough");
+  });
+});
