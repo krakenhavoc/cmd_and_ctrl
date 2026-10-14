@@ -341,3 +341,28 @@ func TestTheSinceLogCollapsesRepeatsAndCountsWhatItCuts(t *testing.T) {
 		t.Errorf("the cut is not stated:\n%s", board)
 	}
 }
+
+// get_state(full) titles its log LOG, not "since your last decision", and
+// says how many older entries it did not carry (#3607).
+func TestFullBoardTitlesItsLogAndSaysWhenEntriesWereCut(t *testing.T) {
+	me := uuid.NewString()
+	v := &protocol.GameView{State: "active", Seats: []protocol.PlayerView{{ID: me, Name: "Agent"}}}
+	for i := 0; i < 30; i++ {
+		v.Log = append(v.Log, protocol.LogEvent{Seq: uint64(i + 1), Text: fmt.Sprintf("entry %d", i)})
+	}
+	full := fullBoard(v, me)
+	if strings.Contains(full, "SINCE YOUR LAST DECISION") {
+		t.Errorf("full view calls its log since the last decision:\n%s", full)
+	}
+	if !strings.Contains(full, "LOG (last 24 entries, oldest first)\n  … 6 earlier entries not shown\n") {
+		t.Errorf("full view does not say the log was cut:\n%s", full)
+	}
+	if !strings.Contains(full, "entry 29") || strings.Contains(full, "entry 5»") {
+		t.Errorf("full view carries the wrong entries:\n%s", full)
+	}
+
+	short := &protocol.GameView{State: "active", Seats: v.Seats, Log: v.Log[:5]}
+	if got := fullBoard(short, me); !strings.Contains(got, "LOG (last 5 entries, oldest first)\n") || strings.Contains(got, "not shown") {
+		t.Errorf("a short log is mislabelled:\n%s", got)
+	}
+}

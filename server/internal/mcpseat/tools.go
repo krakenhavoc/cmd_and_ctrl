@@ -494,6 +494,10 @@ func (s *Seat) gameOverLocked() Result {
 	} else {
 		lines = append(lines, "outcome: the table ended with no result")
 	}
+	since := unshownLog(v, s.logSeqShown, newViewerNameWrapper(v, s.sess.PlayerID.String()))
+	if block := compactLogBlock(since); block != "" {
+		lines = append(lines, "", untrustedNote, strings.TrimSuffix(block, "\n"))
+	}
 	lines = append(lines, "", s.stats.report(), "Call leave to disconnect.")
 	return textResult(lines...)
 }

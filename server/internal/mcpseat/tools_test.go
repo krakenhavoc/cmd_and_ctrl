@@ -3,6 +3,7 @@ package mcpseat
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -655,5 +656,26 @@ func TestTheSignedInRefusalIsNamed(t *testing.T) {
 	r, _ := s.Join(context.Background(), JoinInput{InviteURL: f.inviteURL()})
 	if !r.IsError || !strings.Contains(r.Text, "joins as a guest") {
 		t.Fatalf("join: %s", r.Text)
+	}
+}
+
+// #3607: the game-over answer carries the log since the seat's last
+// decision, with the same cut marker the decision window uses.
+func TestGameOverCarriesTheLogAndSaysWhenItWasCut(t *testing.T) {
+	f := newFakeServer(t)
+	s := newTestSeat(t, nil)
+	joinFake(t, f, s)
+	v := f.baseView("ended")
+	v.Outcome = &protocol.OutcomeView{Kind: "win", Winner: f.oppID.String(), Cause: "last_standing"}
+	for i := 0; i < 40; i++ {
+		v.Log = append(v.Log, protocol.LogEvent{Seq: uint64(i + 1), Text: fmt.Sprintf("final entry %d", i)})
+	}
+	f.setState(v, nil, false)
+	r, _ := s.WaitForDecision(context.Background(), WaitInput{TimeoutS: 5})
+	if !strings.Contains(r.Text, "SINCE YOUR LAST DECISION (public log, oldest first)\n  … 10 earlier log entries not shown") {
+		t.Fatalf("game over does not show the cut log:\n%s", r.Text)
+	}
+	if !strings.Contains(r.Text, "final entry 39") || !strings.Contains(r.Text, "SEAT REPORT") {
+		t.Errorf("game over lost the newest entry or the report:\n%s", r.Text)
 	}
 }
