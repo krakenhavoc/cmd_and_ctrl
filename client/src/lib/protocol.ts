@@ -1425,6 +1425,12 @@ export interface PendingChoiceView {
     // candidates are the chooser's own permanents, so every seat sees
     // them.
     | "entry_sacrifice"
+    // ADR 0170: "as this enters, put a phylactery counter on an artifact
+    // you control" (Phylactery Lich), "remove all counters from any
+    // number of artifacts, creatures, and enchantments" (Sin). Public
+    // permanents, answered with card_ids before the permanent is on the
+    // battlefield; choose_suggested is the card's recommended pick.
+    | "entry_choose_permanents"
     // #1214 CR 608.2 / CR 701.20: an opponent picks from a set you
     // revealed — "target opponent chooses two of those cards" (Gifts
     // Ungiven), and the first leg of a Fact or Fiction pile split.
@@ -1784,7 +1790,8 @@ export interface PendingChoiceView {
   // your hand without paying its mana cost" — answering with a card
   // opens its cast at once). Absent on a plain discard or look.
   choose_destination?: string;
-  // #2525: kind "proliferate" only. The seats on offer beside
+  // #2525: kind "proliferate" (and ADR 0170's "entry_choose_permanents",
+  // suggestion only). The seats on offer beside
   // `options` (player IDs), and the engine's suggested answer
   // (instance IDs and player IDs) for the modal to pre-select. A
   // default, not a rule: any subset is a legal answer.
