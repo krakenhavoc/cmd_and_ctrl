@@ -6336,6 +6336,14 @@ life. Same prompt underneath — the same `option_pick`, so the choice
 gate, the enumerator, the wire and the CR 800.4a seat pruning all apply
 unchanged.
 
+**`ChoosePlayersAsEnters(label, pool)`** is the two-player form —
+"As this enters, choose two players" (Sower of Discord), #3389. Two
+prompts in a row, the second leaving out the first, stored on
+`Card.ChosenPlayer` and `Card.ChosenSecondPlayer` and read with
+`ChosenPlayersOf(g, sourceID)`. Both slots follow the three rules below.
+`sower_of_discord.go` shows the trigger half: a fill-in Build records
+the other player on the item's payload as the ability triggers.
+
 Three rules for reading a stored player, and they are `ChosenColor`'s
 verbatim: **read it LIVE on every check** (the answer arrives after the
 permanent does, and a bounced permanent chooses again); **treat

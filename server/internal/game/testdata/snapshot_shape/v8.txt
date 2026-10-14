@@ -59,6 +59,7 @@ battlefield.cards[].chosenPermanent	object
 battlefield.cards[].chosenPermanent.epoch	number:int
 battlefield.cards[].chosenPermanent.id	custom(uuid.UUID)
 battlefield.cards[].chosenPlayer	custom(uuid.UUID)
+battlefield.cards[].chosenSecondPlayer	custom(uuid.UUID)
 battlefield.cards[].classLevel	number:int
 battlefield.cards[].colorCDADropped	bool
 battlefield.cards[].colorIdentity	array
@@ -574,6 +575,7 @@ exile.cards[].chosenPermanent	object
 exile.cards[].chosenPermanent.epoch	number:int
 exile.cards[].chosenPermanent.id	custom(uuid.UUID)
 exile.cards[].chosenPlayer	custom(uuid.UUID)
+exile.cards[].chosenSecondPlayer	custom(uuid.UUID)
 exile.cards[].classLevel	number:int
 exile.cards[].colorCDADropped	bool
 exile.cards[].colorIdentity	array
@@ -1212,6 +1214,7 @@ lastKnownStack[].card.chosenPermanent	object
 lastKnownStack[].card.chosenPermanent.epoch	number:int
 lastKnownStack[].card.chosenPermanent.id	custom(uuid.UUID)
 lastKnownStack[].card.chosenPlayer	custom(uuid.UUID)
+lastKnownStack[].card.chosenSecondPlayer	custom(uuid.UUID)
 lastKnownStack[].card.classLevel	number:int
 lastKnownStack[].card.colorCDADropped	bool
 lastKnownStack[].card.colorIdentity	array
@@ -2586,6 +2589,7 @@ phasedOut.cards[].chosenPermanent	object
 phasedOut.cards[].chosenPermanent.epoch	number:int
 phasedOut.cards[].chosenPermanent.id	custom(uuid.UUID)
 phasedOut.cards[].chosenPlayer	custom(uuid.UUID)
+phasedOut.cards[].chosenSecondPlayer	custom(uuid.UUID)
 phasedOut.cards[].classLevel	number:int
 phasedOut.cards[].colorCDADropped	bool
 phasedOut.cards[].colorIdentity	array
@@ -3275,6 +3279,7 @@ seats[].command.cards[].chosenPermanent	object
 seats[].command.cards[].chosenPermanent.epoch	number:int
 seats[].command.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].command.cards[].chosenPlayer	custom(uuid.UUID)
+seats[].command.cards[].chosenSecondPlayer	custom(uuid.UUID)
 seats[].command.cards[].classLevel	number:int
 seats[].command.cards[].colorCDADropped	bool
 seats[].command.cards[].colorIdentity	array
@@ -3619,6 +3624,7 @@ seats[].emblems.cards[].chosenPermanent	object
 seats[].emblems.cards[].chosenPermanent.epoch	number:int
 seats[].emblems.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].emblems.cards[].chosenPlayer	custom(uuid.UUID)
+seats[].emblems.cards[].chosenSecondPlayer	custom(uuid.UUID)
 seats[].emblems.cards[].classLevel	number:int
 seats[].emblems.cards[].colorCDADropped	bool
 seats[].emblems.cards[].colorIdentity	array
@@ -3954,6 +3960,7 @@ seats[].graveyard.cards[].chosenPermanent	object
 seats[].graveyard.cards[].chosenPermanent.epoch	number:int
 seats[].graveyard.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].graveyard.cards[].chosenPlayer	custom(uuid.UUID)
+seats[].graveyard.cards[].chosenSecondPlayer	custom(uuid.UUID)
 seats[].graveyard.cards[].classLevel	number:int
 seats[].graveyard.cards[].colorCDADropped	bool
 seats[].graveyard.cards[].colorIdentity	array
@@ -4287,6 +4294,7 @@ seats[].hand.cards[].chosenPermanent	object
 seats[].hand.cards[].chosenPermanent.epoch	number:int
 seats[].hand.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].hand.cards[].chosenPlayer	custom(uuid.UUID)
+seats[].hand.cards[].chosenSecondPlayer	custom(uuid.UUID)
 seats[].hand.cards[].classLevel	number:int
 seats[].hand.cards[].colorCDADropped	bool
 seats[].hand.cards[].colorIdentity	array
@@ -4632,6 +4640,7 @@ seats[].library.cards[].chosenPermanent	object
 seats[].library.cards[].chosenPermanent.epoch	number:int
 seats[].library.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].library.cards[].chosenPlayer	custom(uuid.UUID)
+seats[].library.cards[].chosenSecondPlayer	custom(uuid.UUID)
 seats[].library.cards[].classLevel	number:int
 seats[].library.cards[].colorCDADropped	bool
 seats[].library.cards[].colorIdentity	array
@@ -5200,6 +5209,7 @@ stack.cards[].chosenPermanent	object
 stack.cards[].chosenPermanent.epoch	number:int
 stack.cards[].chosenPermanent.id	custom(uuid.UUID)
 stack.cards[].chosenPlayer	custom(uuid.UUID)
+stack.cards[].chosenSecondPlayer	custom(uuid.UUID)
 stack.cards[].classLevel	number:int
 stack.cards[].colorCDADropped	bool
 stack.cards[].colorIdentity	array

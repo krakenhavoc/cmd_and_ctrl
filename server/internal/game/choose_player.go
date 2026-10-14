@@ -272,6 +272,103 @@ func (g *Game) setChosenPlayerLocked(source, chosen uuid.UUID) error {
 	return nil
 }
 
+// QueueChooseTwoPlayersAsEntersForEffect queues "As this permanent
+// enters, choose two players" (CR 614.12), Sower of Discord (#3389).
+//
+// Two prompts in a row, the same option_pick the one-player form uses:
+// the first stores Card.ChosenPlayer, then the second is offered the
+// remaining candidates and stores Card.ChosenSecondPlayer. The pair is
+// two DIFFERENT players, because the second prompt leaves the first
+// out. Both prompts go through seatChoiceOptionsLocked, so a seat that
+// leaves the game while either is open is pruned off it (CR 800.4a,
+// #994) like every other player choice. Nothing can act between the
+// two answers (an open choice stops priority), so the permanent is
+// never read half-chosen; the declared as-enters simplification of
+// QueueChoosePlayerAsEntersForEffect applies unchanged.
+//
+// With one candidate the first prompt is the only one and the second
+// player stays uuid.Nil, which the readers treat as "no pair". Returns
+// the first choice's ID, or uuid.Nil when nothing was queued.
+//
+// Caller must hold g.mu (an AsEnters hook does).
+func (g *Game) QueueChooseTwoPlayersAsEntersForEffect(chooser, source uuid.UUID, question string, among []uuid.UUID) uuid.UUID {
+	eligible := g.eligibleChosenPlayersLocked(among)
+	if len(eligible) == 0 {
+		return uuid.Nil
+	}
+	permanent := source
+	return g.QueueOptionPickForEffect(OptionPickPrompt{
+		Chooser:  chooser,
+		Source:   source,
+		Question: question + " (first)",
+		Options:  g.seatChoiceOptionsLocked(eligible),
+		ThenSeat: func(g *Game, first uuid.UUID) error {
+			if err := g.setChosenPlayerLocked(permanent, first); err != nil {
+				return err
+			}
+			rest := g.eligibleChosenPlayersLocked(without(eligible, first))
+			if len(rest) == 0 {
+				return nil
+			}
+			g.QueueOptionPickForEffect(OptionPickPrompt{
+				Chooser:  chooser,
+				Source:   source,
+				Question: question + " (second)",
+				Options:  g.seatChoiceOptionsLocked(rest),
+				ThenSeat: func(g *Game, second uuid.UUID) error {
+					return g.setChosenSecondPlayerLocked(permanent, second)
+				},
+			})
+			return nil
+		},
+	})
+}
+
+// without is ids with every occurrence of drop removed.
+func without(ids []uuid.UUID, drop uuid.UUID) []uuid.UUID {
+	out := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if id != drop {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+// setChosenSecondPlayerLocked stamps the second answer of a two-player
+// as-enters choice, located live for setChosenPlayerLocked's reason.
+//
+// Caller must hold g.mu.
+func (g *Game) setChosenSecondPlayerLocked(source, chosen uuid.UUID) error {
+	var actor uuid.UUID
+	if i := findCardOnBattlefield(g, source); i >= 0 {
+		g.Battlefield.Cards[i].ChosenSecondPlayer = chosen
+		actor = g.Battlefield.Cards[i].Controller
+		g.layerVersion.Add(1)
+	}
+	g.EmitEvent(Event{
+		Kind:   EventPlayerChosen,
+		Actor:  actor,
+		CardID: source,
+		Target: chosen,
+		Label:  g.seatLabelLocked(chosen),
+	})
+	return nil
+}
+
+// ChosenPlayersOf returns the pair chosen for the permanent `sourceID`
+// currently on the battlefield: first, second. Either is uuid.Nil while
+// it has not been chosen (or the permanent is gone).
+//
+// Caller must hold either lock.
+func (g *Game) ChosenPlayersOf(sourceID uuid.UUID) (first, second uuid.UUID) {
+	if i := findCardOnBattlefield(g, sourceID); i >= 0 {
+		c := g.Battlefield.Cards[i]
+		return c.ChosenPlayer, c.ChosenSecondPlayer
+	}
+	return uuid.Nil, uuid.Nil
+}
+
 // ChosenPlayerOf returns the player chosen for the permanent `sourceID`
 // currently on the battlefield, or uuid.Nil when none has been chosen
 // (or the permanent is gone).
