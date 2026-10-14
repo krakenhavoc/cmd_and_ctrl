@@ -160,6 +160,26 @@ const (
 	// permission by object identity (ADR 0066 decision 2).
 	UntilSourceExilesAnother
 
+	// UntilCardCast is "until this card is cast from exile" (#3520, ADR
+	// 0063's 2026-10-14 amendment): Emrakul, the Exigent Doom's "Target
+	// land gains '{T}: Add {C}{C}' until this card is cast from exile".
+	// The window ends on an EVENT, the cast of the one exile OBJECT it
+	// names (CR 611.2b), and on nothing else: a card that leaves exile
+	// without being cast leaves the effect running (ruling 2026-08-21),
+	// and a new object of the same card never matches (CR 400.7).
+	//
+	// The ninth kind, appended after UntilSourceExilesAnother so every
+	// persisted int keeps its meaning; a binary from before it refuses a
+	// file carrying it through Known.
+	//
+	// The duration names the object (Source plus SourceEpoch, the shape
+	// UntilSourceExilesAnother uses). CastSpell, as a card in exile goes
+	// to the stack, calls endCardCastDurationsLocked, which sets Ended on
+	// every scoped effect whose duration names that object and sweeps
+	// them, so the layer pass drops the grant before anyone can use it
+	// again. durationExpiredLocked reads only the flag.
+	UntilCardCast
+
 	// durationKindEnd is a sentinel, not a kind: every kind this binary
 	// knows is below it. Keep it LAST. DurationKind is persisted as a
 	// bare int (a restore point's `duration.Kind`), so a kind a newer
@@ -324,11 +344,14 @@ func (d Duration) Problem() string {
 	if d.Kind != UntilEndOfCombat && (d.CombatTurn != 0 || d.CombatPhase != 0) {
 		return fmt.Sprintf("a combat stamp on a %s duration", d.Kind)
 	}
-	if d.Kind != UntilSourceExilesAnother && (d.SourceEpoch != 0 || d.Ended) {
+	if d.Kind != UntilSourceExilesAnother && d.Kind != UntilCardCast && (d.SourceEpoch != 0 || d.Ended) {
 		return fmt.Sprintf("a source-exile stamp on a %s duration", d.Kind)
 	}
 	if d.Kind == UntilSourceExilesAnother && d.Source == uuid.Nil {
 		return "an until-you-exile-another duration names no source"
+	}
+	if d.Kind == UntilCardCast && (d.Source == uuid.Nil || d.SourceEpoch == 0) {
+		return "an until-this-card-is-cast duration names no card object"
 	}
 	if d.Kind != ForAsLongAs {
 		if len(d.Also) > 0 {
@@ -839,6 +862,62 @@ func UntilYouLoseControlOfDuration(source, player uuid.UUID) Duration {
 // function.
 func IndefiniteDuration() Duration { return Duration{Kind: Indefinite} }
 
+// UntilCardCastDuration is "until this card is cast from exile" for the
+// exile object `card` (#3520): it ends when that object is cast and at
+// no other time. Needs the object's epoch, so it reads the game.
+// A card that is not in exile gives the zero Duration, which the caller
+// reads as "nothing to start" — CR 611.2b: an effect whose end condition
+// can never come true because its card is not where it must be is not
+// started as an unending one.
+//
+// Caller must hold g.mu.
+func (g *Game) UntilCardCastDuration(card uuid.UUID) (Duration, bool) {
+	z := g.findCardZoneLocked(card)
+	if z == nil || z.Kind != ZoneExile {
+		return Duration{}, false
+	}
+	c, ok := g.cardInZoneLocked(z, card)
+	if !ok {
+		return Duration{}, false
+	}
+	return Duration{Kind: UntilCardCast, Source: card, SourceEpoch: c.ObjectEpoch}, true
+}
+
+// endCardCastDurationsLocked ends every UntilCardCast duration that
+// names `card` as the exile object it is now (#3520). Called by
+// CastSpell once a card cast from exile is on the stack, with the card
+// as it sat in exile, epoch and all.
+//
+// Writes a fresh slice, because the backing array is shared with every
+// undo snapshot (sweepScopedEffectsLocked says why), then sweeps so the
+// ended grants leave the layer pass now and not at its next recompute.
+//
+// Caller must hold g.mu (write).
+func (g *Game) endCardCastDurationsLocked(card Card) {
+	matches := func(d Duration) bool {
+		return d.Kind == UntilCardCast && !d.Ended && d.Source == card.InstanceID && d.SourceEpoch == card.ObjectEpoch
+	}
+	found := false
+	for _, e := range g.ScopedEffects {
+		if matches(e.Duration) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return
+	}
+	next := make([]ScopedEffect, len(g.ScopedEffects))
+	for i, e := range g.ScopedEffects {
+		if matches(e.Duration) {
+			e.Duration.Ended = true
+		}
+		next[i] = e
+	}
+	g.ScopedEffects = next
+	g.sweepScopedStaticsLocked(false)
+}
+
 // PinnedTo returns a copy of d that also ends when `object` stops
 // being the same object on the battlefield. Callers that move exactly
 // one permanent use it; see Duration.Pinned.
@@ -938,6 +1017,10 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 		// leaving the battlefield does not end it, which is the
 		// ruling; the card leaving exile ends the permission through
 		// its object check, not here.
+		return d.Ended
+	case UntilCardCast:
+		// Over once CastSpell marked it (#3520). The card leaving
+		// exile uncast does NOT end it (ruling 2026-08-21).
 		return d.Ended
 	case Indefinite, WhileInZone:
 		// Neither ends on a turn boundary. WhileInZone ends on a ZONE
@@ -1149,6 +1232,8 @@ func (k DurationKind) String() string {
 		return "until end of combat"
 	case UntilSourceExilesAnother:
 		return "until you exile another card with it"
+	case UntilCardCast:
+		return "until the card is cast from exile"
 	}
 	return "unknown duration"
 }

@@ -131,6 +131,7 @@ func TestZoneCardsAreWrittenOnlyAtKnownPoints(t *testing.T) {
 		"snapshotZone":                            "zoneSnapshot.Cards",
 		"QueueReselectAttackForEffect":            "an option's Cards []uuid.UUID",
 		"GrantCastPermissionToCardsForEffect":     "CastPermission.Cards",
+		"spendManaValueBudget":                    "CastPermission.Cards: the cast card struck from a budgeted permission's named objects (#2017)",
 		"cloneCastPermissions":                    "CastPermission.Cards",
 		"ScheduleDelayedTriggerForEffect":         "DelayedTrigger.Cards",
 		"cloneDelayedTrigger":                     "DelayedTrigger.Cards",

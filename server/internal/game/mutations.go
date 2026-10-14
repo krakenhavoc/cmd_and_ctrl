@@ -2044,6 +2044,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if grant != nil && grant.LapseOnPass != "" {
 		g.consumePassClosedGrantLocked(playerID, card)
 	}
+	// #3520: "until this card is cast from exile" ends with this cast,
+	// after the mana it granted has paid for it.
+	if src.Kind == ZoneExile {
+		g.endCardCastDurationsLocked(card)
+	}
 	if spendsGrant {
 		g.consumeLimitedGrantLocked(playerID, grantCard, grant)
 	}
