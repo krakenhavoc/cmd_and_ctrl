@@ -84,6 +84,10 @@ const LOG_TONE: Record<LogKind, string> = {
   game_over: "tone-step",
   win_prevented: "tone-bad",
   reveal: "tone-cast",
+  // A mill moves cards out of a library into a graveyard: a zone change.
+  mill: "tone-zone",
+  // A search or shuffle is bookkeeping, like a draw.
+  search: "tone-quiet",
   roll: "tone-cast",
   flip: "tone-cast",
   // ADR 0121 §3. A tie or a winner of the opening roll reads like the

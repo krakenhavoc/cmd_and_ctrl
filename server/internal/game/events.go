@@ -359,6 +359,12 @@ const (
 	// Archivist of Oghma, etc.).
 	EventSearchLibrary EventKind = "search_library"
 
+	// SearchShuffledLabel is the Label on an EventSearchLibrary whose
+	// search also shuffled the library, so the log can say both. It is
+	// not "shuffle": that label is a plain shuffle with no search, which
+	// the search triggers ignore (AnOpponentSearchesTheirOwnLibrary).
+	SearchShuffledLabel = "search_shuffled"
+
 	// EventCounterSpell — a stack item was countered (spell or
 	// ability). Source is the counter itself; Target is the
 	// countered item's ID. Routed to owner's graveyard by default,

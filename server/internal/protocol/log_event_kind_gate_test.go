@@ -69,7 +69,6 @@ var silentEventKinds = map[string]string{
 	"EventConcede":         "the EventPlayerEliminated that follows it (Label \"concede\") is the one line a concession writes (ADR 0057 Decision 1)",
 	"EventETB":             silentAlreadyToldAsAZoneMove,
 	"EventLTB":             silentAlreadyToldAsAZoneMove,
-	"EventMill":            silentAlreadyToldAsAZoneMove,
 	"EventDiscardCard":     silentAlreadyToldAsAZoneMove,
 	"EventBecomesTarget":   "the cast or activation line already named the spell; targeting is announce-time bookkeeping the stack view carries",
 	"EventSpellCopied":     "the copy is a spell on the stack the table is looking at, and whatever made it (a storm trigger, a Twincast) is a log line of its own; the kind exists for magecraft (CR 207.2c)",
@@ -146,9 +145,6 @@ var silentEventKinds = map[string]string{
 	"EventRegenerated":     silentImpliedByAnotherLine,
 	"EventBattleDefeated":  silentBoardStateIsVisible,
 	"EventEvolved":         silentImpliedByAnotherLine, // #1805: the +1/+1 counter is the `counters` line
-
-	// --- hidden-zone work ----------------------------------------------
-	"EventSearchLibrary": "the number of matches is itself hidden information about a hidden zone (see the search_library prompt's redaction)",
 
 	// --- waiting on the PR that writes the line ------------------------
 	// The same posture as EventSettingsChanged above, and the same

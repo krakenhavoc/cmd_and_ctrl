@@ -928,6 +928,13 @@ export type LogKind =
   // is set when the reveal was to one player only, in which case the
   // text names no card for anyone.
   | "reveal"
+  // A player milled cards from their library (CR 701.17a). The milled cards
+  // are named in `text`; no card_id, and `amount` is the card count.
+  | "mill"
+  // A player searched a library, or shuffled one. `label` "shuffle" is a plain
+  // shuffle; "search_shuffled" is a search that also shuffled. Names no card;
+  // `target_seat` is set when the library was another player's.
+  | "search"
   // S30 random effects: the server-rendered public outcome of a die
   // roll or coin flip. The event text is already redacted and ready
   // for both the log and the attention strip.
