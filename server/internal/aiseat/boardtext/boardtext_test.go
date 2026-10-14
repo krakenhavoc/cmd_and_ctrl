@@ -133,6 +133,36 @@ func TestRenderCompoundWardLifeCost(t *testing.T) {
 	}
 }
 
+// A stack item aimed at a card in a graveyard names it: agent seats read
+// Animate Dead, Victimize and Eternal Witness as "targets: something".
+func TestRenderNamesAGraveyardTarget(t *testing.T) {
+	v := view()
+	v.Seats[1].Graveyard.Cards = []protocol.CardView{{InstanceID: "gy-1", Name: "Blood Artist", Owner: "b"}}
+	v.StackItems = []protocol.StackItemView{{
+		ID: "s-1", Kind: "spell", Label: "Animate Dead", Controller: "a",
+		Targets: []protocol.TargetRefView{{Kind: "card", ID: "gy-1"}},
+	}}
+	got := boardtext.Render(v, "a", boardtext.Options{})
+	if !strings.Contains(got, "targets: Blood Artist (in a graveyard)") {
+		t.Fatalf("the graveyard target is not named: %s", got)
+	}
+}
+
+// #3015: a trigger-order prompt says why it was asked, as the browser's
+// prompt does. An agent seat saw only "Order your triggers (choose 2)".
+func TestRenderSaysWhyTheTriggerOrderWasAsked(t *testing.T) {
+	v := view()
+	why := "Tireless Provisioner's trigger is handled by the players, so the game can't tell whether the order matters."
+	v.PendingChoices = []protocol.PendingChoiceView{{
+		ID: "order", Kind: "trigger_order", Chooser: "a", Reason: "Order your triggers", Count: 2,
+		TriggerOrderWhy: why,
+	}}
+	got := boardtext.Render(v, "a", boardtext.Options{})
+	if !strings.Contains(got, "Order your triggers ("+why+")") {
+		t.Fatalf("the reason is missing: %s", got)
+	}
+}
+
 // #2794: the MCP seat asks for each owed choice's id, the handle its
 // legal_moves(choice) takes; the bot's prompt keeps the kind alone.
 func TestRenderChoiceIDsOnlyWhenAsked(t *testing.T) {

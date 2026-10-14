@@ -43,6 +43,7 @@ func init() {
 		PrintedKeywords: []string{"shadow"},
 		Replacements: []game.ReplacementEffect{GraveyardBecomesExile{
 			OpponentsOnly: true,
+			CardsOnly:     true,
 			ExileCounter:  dauthiVoidCounter,
 			Label:         "Dauthi Voidwalker: exile with a void counter instead of an opponent's graveyard",
 		}.Build()},

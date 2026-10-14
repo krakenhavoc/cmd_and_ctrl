@@ -247,12 +247,15 @@ func (e *enumerator) choiceMoves() bool {
 
 		case game.PendingChoiceTriggerOrder:
 			ids := c.TriggerOrderIDs
-			for _, order := range canonicalOrders(len(ids)) {
+			// Copies of one trigger can still differ in what they read
+			// (#3021's Valkyries), so every ordering stays a move.
+			for _, order := range triggerOrders(len(ids)) {
+				label := triggerOrderLabel(g, reason, ids, order)
 				p := base()
 				for _, i := range order {
 					p.Order = append(p.Order, ids[i].String())
 				}
-				e.addChoice(c, fmt.Sprintf("%s: resolve triggers in order %v", reason, order), p)
+				e.addChoice(c, label, p)
 			}
 
 		case game.PendingChoiceOptionalReplacement, game.PendingChoiceTriggerPrompt,
@@ -623,9 +626,16 @@ func (e *enumerator) choiceMoves() bool {
 			// type" — and enumerating a pick the resolver will reject
 			// breaks this package's one promise (#544). The rule is
 			// not re-derived here; the engine is asked.
-			picks := e.filteredCombos(c.SearchCards, max(floor, 1), c.SearchMax, e.opts.MaxExpansionPerSource,
+			pool, keyOf := interchangeableSearchPool(g, c.SearchCards, max(c.SearchMax, 1))
+			picks := e.filteredCombos(pool, max(floor, 1), c.SearchMax, e.opts.MaxExpansionPerSource,
 				func(set []uuid.UUID) bool { return g.SearchPickLegalLocked(c, set) })
+			seenPick := map[string]bool{}
 			for _, set := range picks {
+				if k := pickKey(set, keyOf); seenPick[k] {
+					continue
+				} else {
+					seenPick[k] = true
+				}
 				p := base()
 				p.CardIDs = idStrings(set)
 				label := reason + ": take"
@@ -1061,7 +1071,10 @@ func (e *enumerator) choiceMoves() bool {
 			cards := c.ScryCards
 			p := base()
 			p.TopOrder = idStrings(cards)
-			e.addChoice(c, reason+": leave the order alone", p)
+			// Each label names the whole pile, top first: until
+			// 2026-10-14 "leave the order alone" never named the card
+			// already on top, so a seat reading text could not see it.
+			e.addChoice(c, reason+": leave the order alone (top to bottom: "+pileOrder(g, cards, -1)+")", p)
 			for i, id := range cards {
 				if i == 0 {
 					continue
@@ -1073,7 +1086,7 @@ func (e *enumerator) choiceMoves() bool {
 						p.TopOrder = append(p.TopOrder, other.String())
 					}
 				}
-				e.addChoice(c, reason+": put "+cardName(g, id)+" on top", p)
+				e.addChoice(c, reason+": put "+cardName(g, id)+" on top (top to bottom: "+pileOrder(g, cards, i)+")", p)
 			}
 
 		case game.PendingChoicePutInLibrary:
@@ -1122,7 +1135,7 @@ func (e *enumerator) choiceMoves() bool {
 			}
 			p := base()
 			lane(&p, all)
-			e.addChoice(c, reason+": leave the order alone", p)
+			e.addChoice(c, reason+": leave the order alone (in this order: "+pileOrder(g, cards, -1)+")", p)
 			for i, id := range cards {
 				if i == 0 {
 					continue
@@ -1321,6 +1334,104 @@ func (e *enumerator) choiceMoves() bool {
 // modeLabel renders a mode selection for the move list: the chosen
 // bullets in order, so a bot's log says what it picked rather than
 // which indexes it picked.
+// interchangeableSearchPool trims a search's matches to at most `keep`
+// copies of each interchangeable card (the same name and oracle, read
+// off the card and not the seat's view of it, so hidden cards are never
+// merged) and returns, for every card kept, its interchangeability key.
+// A Commander library repeats only its basics, so an Evolving Wilds
+// search was twelve "take Swamp" moves, and Cultivate's pairs spent
+// the expansion budget on interchangeable Forest pairs. Any copy of a
+// card answers the search the same way.
+func interchangeableSearchPool(g *game.Game, cards []uuid.UUID, keep int) ([]uuid.UUID, map[uuid.UUID]string) {
+	keyOf := make(map[uuid.UUID]string, len(cards))
+	kept := map[string]int{}
+	pool := make([]uuid.UUID, 0, len(cards))
+	for _, id := range cards {
+		key := id.String()
+		if card, ok := g.LookupCardForEffect(id); ok && card.Name != "" && !card.FaceDown {
+			// The zone too: a search of the library and the graveyard
+			// offers the same card from each.
+			zone := ""
+			if z := g.FindCardZoneForEffect(id); z != nil {
+				zone = string(z.Kind)
+			}
+			key = zone + "|" + card.OracleID + "|" + card.Name
+		}
+		if kept[key] >= keep {
+			continue
+		}
+		kept[key]++
+		keyOf[id] = key
+		pool = append(pool, id)
+	}
+	return pool, keyOf
+}
+
+// pickKey is a search pick as a multiset of interchangeability keys, so
+// two picks of the same kinds of card are one move.
+func pickKey(set []uuid.UUID, keyOf map[uuid.UUID]string) string {
+	keys := make([]string, len(set))
+	for i, id := range set {
+		keys[i] = keyOf[id]
+	}
+	sort.Strings(keys)
+	return strings.Join(keys, "\x00")
+}
+
+// pileOrder names a pile in the order an answer leaves it, with the card
+// at index first pulled to the front (-1 leaves it as it is): "A, B, C".
+func pileOrder(g *game.Game, cards []uuid.UUID, first int) string {
+	names := make([]string, 0, len(cards))
+	if first >= 0 {
+		names = append(names, cardName(g, cards[first]))
+	}
+	for i, id := range cards {
+		if i != first {
+			names = append(names, cardName(g, id))
+		}
+	}
+	return strings.Join(names, ", ")
+}
+
+// triggerOrderLabel names one ordering of a CR 603.3b prompt by its
+// triggers, in resolution order (the answer's order: first resolves
+// first, Game.ResolveTriggerOrder): "Order your triggers: resolve A
+// first, then B". A move list read as text (the MCP seat, a model bot)
+// has no other way to tell which trigger is which; until 2026-10-14 the
+// label was the bare index permutation "[1 0]". A trigger no longer in
+// the queue keeps its index as its name.
+func triggerOrderLabel(g *game.Game, reason string, ids []uuid.UUID, order []int) string {
+	byIndex := make([]string, len(ids))
+	count := map[string]int{}
+	for i, id := range ids {
+		byIndex[i] = fmt.Sprintf("trigger %d", i+1)
+		for _, t := range g.PendingTriggers {
+			if t != nil && t.ID == id && t.Label != "" {
+				byIndex[i] = t.Label
+				break
+			}
+		}
+		count[byIndex[i]]++
+	}
+	// Copies of one trigger read alike; their place in the collected
+	// order (the log's order) tells them apart.
+	for i := range byIndex {
+		if count[byIndex[i]] > 1 {
+			byIndex[i] += fmt.Sprintf(" (trigger %d)", i+1)
+		}
+	}
+	names := make([]string, len(order))
+	for n, i := range order {
+		names[n] = byIndex[i]
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s: resolve %s first", reason, names[0])
+	for _, n := range names[1:] {
+		b.WriteString(", then " + n)
+	}
+	return b.String()
+}
+
 func modeLabel(c *game.PendingChoice, sel []int) string {
 	if len(sel) == 0 {
 		return ": none"
@@ -1608,6 +1719,67 @@ func canonicalOrders(n int) [][]int {
 		rev[i] = n - 1 - i
 	}
 	return [][]int{id, rev}
+}
+
+// triggerOrders is the CR 603.3b orderings a seat is offered: every
+// permutation of three triggers or fewer, and for a longer batch the
+// collected order, its reverse, and each trigger moved first and moved
+// last (at most 2n+2), which is the choice that usually matters. The
+// collected order stays first, so a bot that takes the first ordering
+// is unchanged. canonicalOrders' two were "enough for a bot", but an
+// agent seat (ADR 0122) plays as a player and has no drag-to-reorder:
+// an arena agent with three landfall triggers could not put the one it
+// wanted first.
+func triggerOrders(n int) [][]int {
+	if n <= 3 {
+		return permutations(n)
+	}
+	out := canonicalOrders(n)
+	for i := 0; i < n; i++ {
+		first := []int{i}
+		var last []int
+		for j := 0; j < n; j++ {
+			if j != i {
+				first = append(first, j)
+				last = append(last, j)
+			}
+		}
+		out = append(out, first, append(last, i))
+	}
+	seen := map[string]bool{}
+	uniq := out[:0]
+	for _, o := range out {
+		k := fmt.Sprint(o)
+		if !seen[k] {
+			seen[k] = true
+			uniq = append(uniq, o)
+		}
+	}
+	return uniq
+}
+
+// permutations lists every ordering of 0..n-1, the identity first.
+func permutations(n int) [][]int {
+	if n == 0 {
+		return [][]int{{}}
+	}
+	var out [][]int
+	var rec func(cur []int, used []bool)
+	rec = func(cur []int, used []bool) {
+		if len(cur) == n {
+			out = append(out, append([]int(nil), cur...))
+			return
+		}
+		for i := 0; i < n; i++ {
+			if !used[i] {
+				used[i] = true
+				rec(append(cur, i), used)
+				used[i] = false
+			}
+		}
+	}
+	rec(nil, make([]bool, n))
+	return out
 }
 
 // protectiveShieldDivision is the division a player protecting
