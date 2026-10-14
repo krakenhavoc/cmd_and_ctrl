@@ -7268,6 +7268,15 @@ not append the ~345 entries of `game.AllCreatureTypes` to
 `Characteristic.Subtypes`: it makes the wire type line unreadable
 and every subtype loop quadratic, for a property one flag answers.
 
+**A resolving effect that SETS creature types** ("becomes a blue
+Frog", "it becomes a Halfling Scout") is `game.SetCreatureTypesMod`
+in a `ScopedEffect` record (#2144): the creature types are replaced
+and the every-creature-type fact cleared, but the card types,
+supertypes and other subtypes stay (CR 205.1a). Put the card's other
+changes in the same record, one timestamp (Polymorphist's Jest,
+Frodo, Sauron's Bane). Don't use `SetTypesMod` for this: it sets the
+card types too, so an artifact creature would stop being an artifact.
+
 Ask "do these two creatures share a type" with
 `game.SharesCreatureType`, never with a subtype-slice intersection —
 the helper knows Forest on Dryad Arbor is a land type and that a

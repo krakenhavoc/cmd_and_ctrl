@@ -3023,13 +3023,12 @@ var items = []Item{
 		Examples: []string{"Grudge Keeper", "Model of Unity", "Erestor of the Council"},
 	},
 	{
-		Slug: "set-creature-types", Name: "Effects that set a creature's types", Kind: KindSeam, Status: StatusMissing,
+		Slug: "set-creature-types", Name: "Effects that set a creature's types", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Effects that make a creature become a new creature type, replacing its old ones, such as Frodo, Sauron's Bane becoming a Halfling Scout.",
-		Missing:     "An effect can add creature types to a creature, but can't replace them with new ones.",
 		Rules:       []string{"205.1a", "613.1d"},
 		Issue:       2144,
-		Waiting:     []string{"Frodo, Sauron's Bane", "Polymorphist's Jest"},
-		EngineNotes: "layer 4: the `ScopedEffect` vocabulary has `AddSubtypesMod`, `AllCreatureTypesMod` and `SetBasicLandTypesMod`, but no mod that replaces a permanent's creature types. Frodo's granted lose-the-game trigger can ride on ADR 0093's duration grants. Sauron, Dino Devotee is held for the same reason (abilities-granted-to-other-permanents row). Found landing ADR 0114 PR 5. Polymorphist's Jest (S58 deck requests, #2077) makes each creature target player controls lose all abilities and become a blue Frog with base power and toughness 1/1 until end of turn: the abilities, the colour and the base power and toughness are scoped mods today (Sudden Spoiling's), and \"becomes a Frog\" is this row.",
+		Examples:    []string{"Polymorphist's Jest", "Frodo, Sauron's Bane"},
+		EngineNotes: "**Shipped** (#2144): `game.SetCreatureTypesMod` (`game/set_creature_types.go`) is a layer-4 `ScopedEffect` mod that replaces the object's creature types and clears \"is every creature type\" (changeling's baseline, or an earlier `AllCreatureTypesMod`), keeping its card types, supertypes and subtypes of other kinds (CR 205.1a). It is not `SetTypesMod`, The Irencrag's, which also sets the card types. A noncreature object gets no creature type (CR 205.3d). Registration and restore refuse an empty list or a type that isn't a creature type. Cards: Polymorphist's Jest (with Sudden Spoiling's colour, ability and base power mods in one record) and Frodo, Sauron's Bane (each \"becomes\" an indefinite record pinned to Frodo, the Rogue's trigger an ADR 0093 duration grant), both Full. Sauron, Dino Devotee's \"it's a green Dinosaur\" is this mod, but the card is still held on the counter-held row for its duration.",
 	},
 	{
 		Slug: "protection-from-ring-bearers", Name: "Protection from Ring-bearers", Kind: KindSeam, Status: StatusImplemented,
