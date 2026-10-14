@@ -215,6 +215,12 @@
       who: "Card shops, if you follow a shop link",
       what: `Where the site is set up for them, the Decks and Catalog pages show links to buy the cards at a shop such as TCGplayer or Card Kingdom. ${SHOP_DISCLOSURE} Following one takes you to the shop’s own site, sometimes through the shop’s partner network on the way, and from there the shop’s own privacy terms and cookies apply. The link holds card names and nothing about you, and it opens without telling the shop which page you came from. CMD & CTRL does not track the click: following a link sends nothing to this server and nothing is recorded. You can hide the links in Settings, under Display. That choice is kept with your settings: with your account if you are signed in, otherwise only in this browser.`,
     },
+    {
+      // #3558: routes/Funding.svelte. Plain links with rel="noopener
+      // noreferrer"; no server route sees the click.
+      who: "GitHub Sponsors, Ko-fi or Patreon, if you follow a support link",
+      what: "The funding page may link to a place where you can choose to support CMD & CTRL. Following a link takes you to that site, under its own terms, privacy policy and cookies. The link holds nothing about you and opens without telling that site which page you came from. CMD & CTRL does not track the click: following a link sends nothing to this server and nothing is recorded.",
+    },
   ];
 </script>
 

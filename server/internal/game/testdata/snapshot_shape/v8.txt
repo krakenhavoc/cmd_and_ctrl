@@ -3269,6 +3269,7 @@ seats[].castPermissions[].filter.sorceryOnly	bool
 seats[].castPermissions[].filter.withCounter	string
 seats[].castPermissions[].followUp	string
 seats[].castPermissions[].grantsHaste	bool
+seats[].castPermissions[].ifNotCast	string
 seats[].castPermissions[].label	string
 seats[].castPermissions[].lapseOnPass	string
 seats[].castPermissions[].lifeEqualToManaValue	bool
@@ -5547,6 +5548,7 @@ seats[].undosRemaining	number:int
 seats[].upkeepsBegun	number:int
 settings	object
 settings.allowSpawn	bool
+settings.awayAfter	number:int
 settings.botPace	string
 settings.commanderDamage	number:int
 settings.freeFirstMulligan	bool

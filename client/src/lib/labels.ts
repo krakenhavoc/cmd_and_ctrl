@@ -1012,6 +1012,20 @@ export const LABEL_SPECS = {
     owners: ["lib/autoAnswerPref.ts"],
     doc: "the automatic-answer notice's undo; greyed once anything else is the top undo entry",
   }),
+  autoPassNotice: label({
+    name: "auto-pass notice",
+    kind: "aria",
+    role: "dialog",
+    owners: ["lib/passReason.ts"],
+    doc: 'the dock\'s chip after the client passed priority for you ("Passed for you: nothing to respond with", #3343), for about six seconds',
+  }),
+  undoAutoPass: label({
+    name: "Take back the pass",
+    kind: "aria",
+    role: "button",
+    owners: ["lib/passReason.ts"],
+    doc: 'the auto-pass chip\'s Undo (visible text "Undo"); sends the ordinary undo and is shown only while that undo would take the pass back. Named apart from the dock\'s "Undo (N left)" so a /^Undo/ locator still finds one button',
+  }),
   askMeNextTime: label({
     name: "Ask me next time",
     kind: "text",

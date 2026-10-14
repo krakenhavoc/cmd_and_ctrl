@@ -24,13 +24,20 @@ import (
 // `name` heads the question and labels the grant. Nothing is queued when
 // the hand holds no candidate.
 func offerFreeHandCast(ctx *Context, controller uuid.UUID, name, clause string, pred CardPredicate) {
+	offerFreeHandCastFrom(ctx.Game, controller, ctx.Source(), name, clause, pred)
+}
+
+// offerFreeHandCastFrom is offerFreeHandCast for a continuation that has
+// the game and the source but no Context: a "draw, then ..." body
+// (Cecily, Haunted Mage, #2110).
+func offerFreeHandCastFrom(g *game.Game, controller, source uuid.UUID, name, clause string, pred CardPredicate) {
 	var candidates []uuid.UUID
-	for _, id := range allHandCardIDs(ctx.Game, controller) {
-		c, ok := ctx.Game.LookupCardForEffect(id)
+	for _, id := range allHandCardIDs(g, controller) {
+		c, ok := g.LookupCardForEffect(id)
 		if !ok || c.IsLand() {
 			continue
 		}
-		if pred != nil && !pred(ctx.Game, controller, c) {
+		if pred != nil && !pred(g, controller, c) {
 			continue
 		}
 		candidates = append(candidates, id)
@@ -38,8 +45,7 @@ func offerFreeHandCast(ctx *Context, controller uuid.UUID, name, clause string, 
 	if len(candidates) == 0 {
 		return
 	}
-	source := ctx.Source()
-	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:     controller,
 		Source:      source,
 		Question:    name + " — cast " + clause + " from your hand without paying its mana cost?",

@@ -73,6 +73,11 @@
 //	                        an https URL holding {url} once after the
 //	                        host, or {url} first plus &name=value pairs.
 //	                        Unset: no shop links. Malformed: boot fails.
+//	CMDCTRL_SUPPORT_KOFI / CMDCTRL_SUPPORT_PATREON — optional supporter
+//	                        links (#3558), served by GET /config: an
+//	                        https URL on ko-fi.com / patreon.com (www
+//	                        allowed). Unset: the link is not shown.
+//	                        Malformed: boot fails.
 //	CMDCTRL_SEED_DEMO   — if "1", seed a 4-player demo game at startup.
 //	                        Useful for the gamecli dev loop when you want a
 //	                        ready-to-go room without going through the lobby.
@@ -212,6 +217,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/supportlinks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/usersettings"
@@ -405,6 +411,9 @@ func main() {
 	// Lobby HTTP mutations (join/deck/start) broadcast through the
 	// hub so clients already on the game page see them immediately.
 	l.SetStateBroadcaster(hub)
+	// ADR 0177: who is away, and moving the table on without them.
+	l.SetAwayPresence(hub)
+	go l.RunAway(ctx)
 	// The rematch offer closes when every human it waits on has left the
 	// results screen, which only the hub can see (#3285, ADR 0164).
 	l.SetSeatPresence(hub)
@@ -620,6 +629,12 @@ func main() {
 		}
 		log.Info("shop links on outside games", "shops", strings.Join(ids, ","))
 	}
+	// #3558: said once, either way.
+	if cfg.Support == (supportlinks.Links{}) {
+		log.Info("support links off: no CMDCTRL_SUPPORT_* link is set, so the funding page shows none")
+	} else {
+		log.Info("support links on", "kofi", cfg.Support.Kofi != "", "patreon", cfg.Support.Patreon != "")
+	}
 	// ADR 0161 §7: said once, either way.
 	switch {
 	case cfg.LFG.Enabled() && publicBaseURL() == "":
@@ -747,6 +762,8 @@ func main() {
 		CommunityInviteURL: cfg.CommunityInviteURL,
 		// GET /config's shop link templates (ADR 0179).
 		Shops: cfg.Shops,
+		// GET /config's supporter links (#3558).
+		Support: cfg.Support,
 		// Table voice rooms (ADR 0159).
 		DiscordVoice: cfg.Voice,
 		// The DM invite's link is built against the same public origin
@@ -976,6 +993,9 @@ type config struct {
 	// variable per retailer. Unset: no shop links. A malformed template
 	// fails the boot, naming the variable.
 	Shops []shoplinks.Shop
+	// Support is #3558's optional Ko-fi and Patreon links. Unset: not
+	// shown. A malformed value fails the boot, naming the variable.
+	Support supportlinks.Links
 	// SessionTTL is the lifetime of a session with no user: guest
 	// seats and spectators, admin-token and reclaim-ticket sessions
 	// (CMDCTRL_SESSION_TTL). Default 12h.
@@ -1258,6 +1278,13 @@ func loadConfig(log *slog.Logger) config {
 		os.Exit(1)
 	}
 	c.Shops = shops
+	// #3558: likewise for a supporter link.
+	support, uerr := supportlinks.FromEnv(os.Getenv)
+	if uerr != nil {
+		log.Error("support link config invalid", "err", uerr)
+		os.Exit(1)
+	}
+	c.Support = support
 
 	if c.AdminToken == "" {
 		log.Error("CMDCTRL_ADMIN_TOKEN is required — set it to a long random string before starting the server")

@@ -69,7 +69,7 @@ func init() {
 			{
 				Label:   "+1: Draw a card, then discard a card.",
 				Cost:    LoyaltyCost(1),
-				Purpose: game.Purpose{Draws: 1, Discards: 1},
+				Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1, Discards: 1},
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return b16DrawThenDiscard(g, item, 1)
 				},
@@ -88,8 +88,9 @@ func init() {
 				},
 			},
 			{
-				Label: "−10: Take two extra turns after this one.",
-				Cost:  LoyaltyCost(-10),
+				Label:   "−10: Take two extra turns after this one.",
+				Cost:    LoyaltyCost(-10),
+				Purpose: game.Purpose{Answers: game.AnswerValue},
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return TakeExtraTurn{N: 2}.Apply(NewContext(g, item))
 				},

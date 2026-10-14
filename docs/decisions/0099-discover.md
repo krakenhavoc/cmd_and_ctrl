@@ -340,3 +340,22 @@ Beseech the Mirror, bargained: "you may cast the exiled card without paying its 
 **Back-out.** Dropping `LapseOnPass` from the grant fails `TestBeseechTheMirrorAcceptedGrantLapsesToHand`; dropping the cap test sends a five-mana card to the prompt and fails `TestBeseechTheMirrorBargainedOverFourGoesToHand`.
 
 **Snapshot impact.** None. The grant, the prompt and the keyword string are existing persisted shapes.
+
+## Amendment 2026-10-14: a PAID cast during the resolution, with an "if you don't" (#3510)
+
+Chandra, Torch of Defiance's first +1: "Exile the top card of your library. You may cast that card. If you don't, Chandra deals 2 damage to each opponent." CR 608.2g puts the cast inside the resolution, so its timing is ignored, but unlike every cast in this ADR so far it is PAID at the card's own mana cost (and mana abilities may be activated during it, CR 601.2g). "If you don't" is judged by whether that cast was made. The registry row read a `CastPermission` as the wrong shape because one is offered at normal timing and outlasts the resolution; §4's pass-closed window is neither, so it is the right shape, and what was missing was a consequence for not casting.
+
+**Decision.**
+
+1. **`CastPermission.IfNotCast`**, a `CastFollowUpKey` beside `FollowUp`: the body that runs when a pass-closed (`LapseOnPass`) permission ends without its cast, from `lapseCastPermissionLocked`, so the holder's pass and the end-of-turn backstop sweep both run it, once, after the card has gone where its lapse sends it. A cast spends the grant (`consumePassClosedGrantLocked`) and runs nothing. A key, not a func, for `FollowUp`'s reason: the permission is persisted.
+2. **One helper.** `Game.ExileTopThenPaidCastOrElseForEffect(PaidCastOrElse)` (`game/cast_paid_or_else.go`) exiles the top card (a commander's CR 903.9 question pauses it) and calls `OfferPaidCastFromExileForEffect`, which asks a `may_cast` under the new keyword `MayCastKeywordPaidOrElse` (`"paid_or_else"`). Accept grants `PaidCastOrElsePermission`: no `Cost` (the printed cost), `TimingFlash`, `CastOnly`, `LapseOnPass: LapseStaysInExile`, `IfNotCast`. Decline runs the body at once. A land, an empty library, or a commander sent to the command zone instead asks nothing and runs the body: none of them can be "that card" cast.
+3. **Client.** `mayCast.ts` words `paid_or_else` as a paid cast, takes the server's decline label ("Don't cast it (2 damage to each opponent)"), and `mayCastKeywordsThatOpenACast` lists it, so accepting starts the ordinary cast chain from exile, payment included.
+4. **Bot.** The enumerator already offers both answers to a `may_cast`, the decline always legal. The heuristic's yes stands: accepting is never worse than declining, because a pass without the cast runs the same consequence. The enumerator then offers the paid cast from exile like any other.
+
+The SANDBOX SIMPLIFICATION of §Decision 4 stands, and it is a little wider for a paid cast: the holder may take other actions (play a land, cast another spell) before the exiled card or instead of it. The player never gets both the cast and no damage without casting, so nothing is stronger than printed in what it produces; only the sequencing is looser.
+
+**Cecily, Haunted Mage (#2110).** The #3270 pick already is her shape. She ships on `offerFreeHandCastFrom`, the Context-free form of `offerFreeHandCast`, called from a `DrawThen` body so the life loss and the eleven-card count wait for the draw.
+
+**Back-out.** Removing the `IfNotCast` block from `lapseCastPermissionLocked` fails `TestPaidCastOrElsePassingWithoutCastingRunsIfNotCastOnce`, `TestPaidCastOrElseSweepBackstopRunsIfNotCast` and `TestChandraTorchAcceptThenPassDealsTheDamage`; dropping `TimingFlash` or `LapseOnPass` from the grant fails `TestPaidCastOrElseAcceptGrantsAPaidPassClosedCast`; setting `Cost: "{0}"` fails `TestChandraTorchAcceptPaysTheCostAndDealsNoDamage`.
+
+**Snapshot impact.** One new omitempty field on a persisted shape (`ifNotCast`). An old snapshot reads it empty, which is every permission written before this.

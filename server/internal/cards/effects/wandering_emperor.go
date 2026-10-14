@@ -71,6 +71,7 @@ func init() {
 				Label:   "+1: Put a +1/+1 counter on up to one target creature. It gains first strike until end of turn.",
 				Cost:    LoyaltyCost(1),
 				Targets: upToOneCreature(),
+				Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					// "Up to one" with nothing chosen: the ability
@@ -100,8 +101,9 @@ func init() {
 				},
 			},
 			{
-				Label: "−1: Create a 2/2 white Samurai creature token with vigilance.",
-				Cost:  LoyaltyCost(-1),
+				Label:   "−1: Create a 2/2 white Samurai creature token with vigilance.",
+				Cost:    LoyaltyCost(-1),
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					return CreateToken{

@@ -103,6 +103,12 @@ func seatRecords(seats []SeatInfo) []SeatRecord {
 		if s.IsAgent {
 			rec.AgentClient = NormalizeAgentClient(s.AgentClient)
 		}
+		// ADR 0177 §4: a bot standing in for an away player comes back
+		// after a restart with the table's other bots.
+		if s.StandIn != "" {
+			rec.StandIn = s.StandIn
+			rec.StandInSince = s.StandInSince
+		}
 		out = append(out, rec)
 	}
 	return out
@@ -410,6 +416,9 @@ func (l *Lobby) adoptRestored(log *slog.Logger, o ws.RestoreOutcome) bool {
 	// restart (ADR 0075 §2.1).
 	o.Room.SetHost(entry.meta.HostPlayerID)
 	l.mu.Lock()
+	// ADR 0177 §4: the room learns which seats a bot plays for their
+	// person, so the mark and the action gate survive the restart.
+	markStandInsLocked(entry)
 	l.games[o.GameID] = entry
 	// The engine is authoritative for lifecycle state; the row can
 	// be stale if the process died between the two writes.
@@ -427,17 +436,22 @@ func (l *Lobby) adoptRestored(log *slog.Logger, o ws.RestoreOutcome) bool {
 	// and SetArchived stopped its runners on the way out. Booting
 	// them again here would resurrect exactly the goroutines
 	// archiving exists to stop.
-	var startBots func()
+	var startBots, startStandIns func()
 	if o.Room.Game.CurrentState() == game.StateActive {
 		l.startWatchLocked(entry)
 		if !entry.meta.Archived() {
 			startBots = l.botStartLocked(entry)
+			startStandIns = l.standInStartLocked(entry)
 		}
 	}
 	l.mu.Unlock()
 	if startBots != nil {
 		startBots()
 		log.Info("relaunched bot runners for a restored game", "game_id", o.GameID)
+	}
+	if startStandIns != nil {
+		startStandIns()
+		log.Info("relaunched stand-in runners for a restored game", "game_id", o.GameID)
 	}
 	return true
 }
@@ -504,6 +518,9 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 			// The own-key binding rides the row only (ADR 0182).
 			BotKeyOwner: parseUUIDOrNil(s.BotKeyUserID),
 			BotKeyModel: s.BotKeyModel,
+			// ADR 0177 §4.
+			StandIn:      s.StandIn,
+			StandInSince: s.StandInSince,
 		}
 		info.BotOwnKey = info.BotKeyOwner != uuid.Nil
 		if p := room.Game.PlayerByID(s.PlayerID); p != nil {
