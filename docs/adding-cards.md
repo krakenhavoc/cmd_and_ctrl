@@ -9334,6 +9334,22 @@ ctx.SourcePermanent()                                                           
   FromZone(game.ZoneExile))}` (Hoarding Broodlord) or `SpellIs(Creature())` (Dazzling Theater, in its
   `Door.GrantedTapCosts`); `convoke_grant.go`, ADR 0073 amendment 2026-10-14.
 
+### Pieces from the Wilhelt deck (#3209)
+
+- **"<Type> spells you cast cost {1} less"** is `CostsLess(1, label, YourSpell(), SpellOfCreatureType("Zombie"))`
+  (Undead Warchief); `OtherSpellOfCreatureType` is the "other" form.
+- **"Once during each of your turns, you may cast a <type> creature spell from your graveyard"** is a standing
+  `CastPermission` with `PerType: []string{game.PermissionTypeCreature}` and a `Filter` naming the type (Gisa and
+  Geralf): Muldrotha's one-per-type budget with one type in it, kept per granting object.
+- **"You may pay {0} rather than pay the mana cost for <type> creature spells you cast"** is
+  `PayZeroForZombieCreatureSpellsYouCast()` (Rooftop Storm, `granted_alternative_cost.go`).
+- **"If it didn't have <keyword>"** on a dies trigger is `diedWithKeyword(ev, g, kw)` (Wilhelt): the departed object's
+  post-layer abilities from its battlefield record, so a granted keyword counts.
+- **"Copies of the sacrificed creature"** is `g.TokenCopyTemplateForObjectForEffect(ctx.Paid().SacrificedObjects[0])`
+  (Cleaver Skaab): the last-known copiable values, not the card in the graveyard.
+- **"Enters tapped unless a player has N or less life"** is `SelfEntersTappedUnless(aPlayerHasLifeAtMost(N))`
+  (Murky Sewer).
+
 ### Statics that read block status or this turn's events, "can't be attacked", any-type mana, flash-if-it-targets (#3172, cav-h2)
 
 Pieces that used to be caveats; the engine notes are in the 2026-10-13 amendments of [ADR 0045](decisions/0045-combat-restrictions.md),
