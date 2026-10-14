@@ -430,6 +430,7 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		PhyrexianSymbols:        1,
 		PhyrexianGranted:        1,
 		CastableHere:            true,
+		ClosesOnPass:            true,
 		OptionalCosts:           []OptionalCostView{{Index: 0, Key: "kicker", Label: "Kicker {4}", ManaCost: "{4}", MaxTimes: 1}},
 		// ADR 0073 §7: the cast gate's stamp. Redacted like the rest
 		// of the cost surface — a legendary-sorcery clause says more
@@ -839,6 +840,7 @@ const (
 var castSurfaceScopes = map[string]castSurfaceScope{
 	// #1055: the three that answer "what may YOU announce".
 	"CastableHere": surfacePrivate,
+	"ClosesOnPass": surfacePrivate,
 	"LegalTargets": surfacePrivate,
 	"Clauses":      surfacePrivate,
 	// #1389: what the asking seat would be charged. A cost modifier

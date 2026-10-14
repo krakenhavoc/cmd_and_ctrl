@@ -3740,6 +3740,11 @@ export interface CastSurfaceView {
   // `target_cost_notes`, `phyrexian_symbols` and `cant_cast`, because
   // a card in a graveyard is a card every player may read.
   castable_here?: boolean;
+  // #3625: a HAND card the viewer holds a pass-closed free cast over
+  // (Buster Sword, Rishkar's Expertise; #3270): their next pass ends the
+  // window and the card stays in hand. The hand twin of
+  // `exile_play.closes_on_pass`; per viewer, absent otherwise.
+  closes_on_pass?: boolean;
   // #1389: what THIS viewer would be charged to cast the card out of
   // EXILE right now — one entry per price the cast may claim, cheapest
   // first, each the total AFTER every CR 601.2f cost modifier (the
