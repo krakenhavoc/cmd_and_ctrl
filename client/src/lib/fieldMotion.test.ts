@@ -11,6 +11,7 @@ import {
   ArrivalClock,
   combatCards,
   departureCaption,
+  departureCaptions,
   emptyFieldTracker,
   fieldDestination,
   fieldLandingSelectors,
@@ -37,6 +38,7 @@ function view(opts: {
   exile?: CardView[];
   phased?: CardView[];
   log?: LogEvent[];
+  eliminated?: string[];
 }): GameView {
   return {
     battlefield: zone(opts.field),
@@ -44,6 +46,7 @@ function view(opts: {
     phased_out: opts.phased ? zone(opts.phased) : undefined,
     seats: [ME, OPP].map((id) => ({
       id,
+      eliminated: opts.eliminated?.includes(id) === true,
       graveyard: zone(opts.graveyard?.[id]),
       hand: zone(opts.hand?.[id]),
       command: zone(opts.command?.[id]),
@@ -277,6 +280,35 @@ describe("fieldLandingSelectors", () => {
     expect(
       fieldLandingSelectors({ zone: "battlefield", seat: OPP, cardVisible: true }, "x"),
     ).toEqual(['[data-instance-id="x"]']);
+  });
+});
+
+describe("departure captions", () => {
+  it("says a card left the game with its eliminated owner (CR 800.4a)", () => {
+    const t = primedOn([card("a"), card("tok", { is_token: true })]);
+    const res = trackField(
+      t,
+      view({ log: [entry(2)], eliminated: [OPP] }),
+      ME,
+      drawnOf(drawnCard("a"), drawnCard("tok", { isToken: true })),
+    );
+    expect(res.departures.map(departureCaption)).toEqual(["left the game", "left the game"]);
+  });
+
+  it("gives a board wipe one counted caption per board and destination", () => {
+    const dep = (id: string, controller: string, zone: "exile" | "graveyard") => ({
+      card: drawnCard(id, { controller }),
+      dest: { zone, seat: controller, cardVisible: false },
+    });
+    expect(
+      departureCaptions([
+        dep("a", OPP, "exile"),
+        dep("b", OPP, "exile"),
+        dep("c", ME, "exile"),
+        dep("d", OPP, "exile"),
+        dep("e", OPP, "graveyard"),
+      ]),
+    ).toEqual(["exiled ×3", null, "exiled", null, "to graveyard"]);
   });
 });
 

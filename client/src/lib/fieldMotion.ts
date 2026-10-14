@@ -84,6 +84,8 @@ export interface FieldDeparture {
   card: FieldCard;
   /** Null: fade in place. */
   dest: FieldDestination | null;
+  /** CR 800.4a: its owner left the game, and the card with them. */
+  ownerLeft?: boolean;
 }
 
 export interface FieldTracker {
@@ -208,7 +210,8 @@ export function trackField(
     }
     // CR 111.7: a token that leaves the battlefield ceases to exist.
     const dest = card.isToken ? null : fieldDestination(view, card, logged.fresh);
-    departures.push({ card, dest });
+    const ownerLeft = (view.seats ?? []).some((s) => s.id === card.owner && s.eliminated);
+    departures.push(ownerLeft ? { card, dest, ownerLeft } : { card, dest });
   }
 
   const arrivals: string[] = [];
@@ -246,7 +249,10 @@ export function fieldLandingSelectors(dest: FieldDestination, cardID: string): s
 
 /** A plain-words line for what happened, for the copy's caption. */
 export function departureCaption(d: FieldDeparture): string {
-  if (!d.dest) return d.card.isToken ? "gone" : "left";
+  if (!d.dest) {
+    if (d.ownerLeft) return "left the game";
+    return d.card.isToken ? "gone" : "left";
+  }
   switch (d.dest.zone) {
     case "graveyard":
       return "to graveyard";
@@ -261,6 +267,30 @@ export function departureCaption(d: FieldDeparture): string {
     case "battlefield":
       return "changed control";
   }
+}
+
+/**
+ * The caption each copy of one frame's departures shows. A board wipe
+ * sends many small tiles at once, and a caption under each overlapped
+ * its neighbours into noise ("EXILED ILED XILED"). So departures from
+ * one board with the same caption share one, on the first of them,
+ * counted ("exiled ×8"); the rest show none. Aligned with `deps`.
+ */
+export function departureCaptions(deps: readonly FieldDeparture[]): (string | null)[] {
+  const groups = new Map<string, number[]>();
+  const captions = deps.map(departureCaption);
+  deps.forEach((d, i) => {
+    const key = `${d.card.controller}|${captions[i]}`;
+    const at = groups.get(key);
+    if (at) at.push(i);
+    else groups.set(key, [i]);
+  });
+  const out: (string | null)[] = deps.map(() => null);
+  for (const idx of groups.values()) {
+    const c = captions[idx[0]];
+    out[idx[0]] = idx.length > 1 ? `${c} ×${idx.length}` : c;
+  }
+  return out;
 }
 
 /**
