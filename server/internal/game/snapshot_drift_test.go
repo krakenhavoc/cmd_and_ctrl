@@ -471,6 +471,9 @@ var cardFields = plan(
 	// entered. A player's choice, so nothing can rebuild it — and it
 	// is the whole of what True-Name Nemesis's protection reads.
 	"ChosenPlayer", carried, "",
+	// #3389: the second player of "choose two players". A player's
+	// choice, so nothing can rebuild it.
+	"ChosenSecondPlayer", carried, "",
 	// #1210, CR 614.12: the card NAME named as the permanent entered.
 	// A player's choice, so nothing can rebuild it — and unlike the
 	// three above there is not even a vocabulary to rebuild it from,

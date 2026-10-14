@@ -886,6 +886,12 @@ type cardSnapshot struct {
 	// say what went. Old snapshots have no key and their zero uuid
 	// reads correctly as "nobody chosen".
 	ChosenPlayer uuid.UUID `json:"chosenPlayer,omitempty"`
+	// ChosenSecondPlayer is the second answer of "as this enters,
+	// choose two players" (#3389). Carried for ChosenPlayer's reason:
+	// it is half of what Sower of Discord's trigger reads, so a restore
+	// that lost it would silently turn the pair into one player. Old
+	// snapshots have no key and read "nobody chosen".
+	ChosenSecondPlayer uuid.UUID `json:"chosenSecondPlayer,omitempty"`
 	// ChosenName is the CR 614.12 "as this enters, choose a card
 	// name" answer (#1210). Carried for ChosenPlayer's reason and one
 	// more: it is free text, so there is not even a vocabulary a
@@ -2196,6 +2202,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		MeldSplitFrom:            objectRefPtr(c.MeldSplitFrom),
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
+		ChosenSecondPlayer:       c.ChosenSecondPlayer,
 		ChosenName:               c.ChosenName,
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
@@ -3087,6 +3094,7 @@ func restoreCard(c *cardSnapshot) Card {
 		MeldSplitFrom:            objectRefValue(c.MeldSplitFrom),
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
+		ChosenSecondPlayer:       c.ChosenSecondPlayer,
 		ChosenName:               c.ChosenName,
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
