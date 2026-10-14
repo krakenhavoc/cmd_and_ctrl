@@ -6616,8 +6616,49 @@ What the engine does for you:
   the answer; no resolver changes. The controlled player can only
   concede (CR 723.6).
 
-A turn-long control (CR 723.1, Emrakul, the Promised End) is not built:
-leave the card out and keep it on `control-another-player`.
+**A whole turn (CR 723.1, [ADR 0167](decisions/0167-controlling-another-players-turn-emrakul-the-promised-end.md)).**
+"You gain control of target opponent during that player's next turn.
+After that turn, that player takes an extra turn" is Emrakul, the
+Promised End: a target on the effect, then one call.
+
+```go
+cast := WhenYouCastThisSpell("Emrakul, the Promised End — you gain control of target opponent during that player's next turn",
+	func(g *game.Game, item *game.StackItem) error {
+		for _, ref := range NewContext(g, item).LegalTargets() {
+			if ref.Kind == game.TargetPlayer {
+				g.BeginTurnControlForEffect(game.TurnControl{
+					Controller: item.Controller, Controlled: ref.ID,
+					Source: item.SourceCardID, SourceName: "Emrakul, the Promised End",
+				})
+				return nil
+			}
+		}
+		return nil
+	})
+cast.Targets = TargetPlayer("target opponent", Opponent())
+```
+
+What the engine and the client do for you:
+
+- The record waits for the next turn the player actually takes
+  (CR 723.1b, a skipped turn included), begins before that turn's
+  untap step, and ends as the next turn is chosen. The extra turn it
+  owes goes directly after the controlled turn (CR 500.7), below any
+  extra turn created during it. Several such effects over one player
+  each give their own extra turn, and the newest controls the turn
+  (CR 723.1a). Either player leaving ends the control; the extra turn
+  never begins for a controlled player who has left (CR 800.4a, 800.4k).
+- The controller plays the turn from their own board. It swaps to the
+  controlled seat ("Playing as Bob", `client/src/lib/playingAs.ts`):
+  that seat's hand at the bottom, face up (CR 723.4), and the dock,
+  combat and click to act sending its actions with `player` set to it.
+  The sandbox is closed to both players for the turn (CR 723.5b), and
+  the controlled player may only concede (CR 723.6).
+- A bot that controls a turn plays it passively (`aiseat.controlledTurnPolicy`).
+
+`BeginTurnControlForEffect` always owes an extra turn. A card with no
+extra turn (Mindslaver, Sorin Markov's −7) needs a `TurnControl` option
+for it first.
 
 ### Adding a `PendingChoiceKind` (#730, #794)
 

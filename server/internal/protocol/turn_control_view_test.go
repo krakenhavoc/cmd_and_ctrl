@@ -122,6 +122,50 @@ func TestTurnControlViewAndTheControllersMoves(t *testing.T) {
 	}
 }
 
+// ADR 0167 §9: while Alice plays Bob's turn, Bob's per-seat cast stamps
+// reach her for the cards she has no answer of her own for, so her
+// "Playing as Bob" board can announce his spells. Carol gets nothing.
+func TestTurnControllerGetsTheControlledSeatsCastStamps(t *testing.T) {
+	g, alice, bob, carol := turnControlTable(t)
+	if err := g.PassTurn(); err != nil {
+		t.Fatalf("PassTurn: %v", err)
+	}
+	for i := 0; g.Turn.Step != game.StepPrecombatMain; i++ {
+		if i > 8 {
+			t.Fatalf("never reached Bob's main phase (at %v)", g.Turn.Step)
+		}
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	full := ViewOfGame(g)
+	av := FilterViewFor(full, alice.String())
+	bv := FilterViewFor(full, bob.String())
+	cv := FilterViewFor(full, carol.String())
+	// The command zone carries the seat's price list for its commander
+	// (#2202): Bob's own answer, which only Bob's frame gets.
+	mine := seatViewOf(t, bv, bob).Command.Cards
+	hers := seatViewOf(t, av, bob).Command.Cards
+	if len(mine) == 0 || len(mine) != len(hers) {
+		t.Fatalf("Alice sees %d of Bob's %d command cards", len(hers), len(mine))
+	}
+	priced := 0
+	for i := range mine {
+		if len(hers[i].CastPrices) != len(mine[i].CastPrices) {
+			t.Errorf("%s: %d cast prices for Alice, %d for Bob", mine[i].Name, len(hers[i].CastPrices), len(mine[i].CastPrices))
+		}
+		priced += len(mine[i].CastPrices)
+	}
+	if priced == 0 {
+		t.Fatal("Bob's commander has no price, so the test proves nothing")
+	}
+	for _, c := range seatViewOf(t, cv, bob).Command.Cards {
+		if len(c.CastPrices) != 0 {
+			t.Errorf("Carol is handed Bob's prices for %s", c.Name)
+		}
+	}
+}
+
 // The wire cap is per player: Alice's own moves can't fold Bob's away.
 func TestCapLegalMovesIsPerPlayer(t *testing.T) {
 	alice, bob := uuid.New(), uuid.New()

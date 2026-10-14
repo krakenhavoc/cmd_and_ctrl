@@ -262,12 +262,22 @@ func b16CreatedATokenThisTurn(g *game.Game, player uuid.UUID) bool {
 // type lines: a card in a graveyard has no layer cache and nothing
 // changes its types there.
 func b16CardTypesInGraveyard(g *game.Game, player uuid.UUID) int {
+	return cardTypesInGraveyardExcept(g, player, uuid.Nil)
+}
+
+// cardTypesInGraveyardExcept is b16CardTypesInGraveyard leaving out the
+// card `except` (uuid.Nil leaves out nothing): a cost amount must not
+// count the card being cast (self_cost_modifier.go).
+func cardTypesInGraveyardExcept(g *game.Game, player, except uuid.UUID) int {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return 0
 	}
 	seen := map[string]bool{}
 	for _, c := range p.Graveyard.Cards {
+		if except != uuid.Nil && c.InstanceID == except {
+			continue
+		}
 		_, types, _ := game.ParseTypeLine(c.TypeLine)
 		for _, t := range types {
 			seen[t] = true

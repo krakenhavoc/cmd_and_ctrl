@@ -9233,9 +9233,18 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 	// ADR 0166, CR 723.4: a controller sees what the player they
 	// control can see.
 	var controlled []string
+	// ADR 0167 §9: the seats whose whole turn the viewer is playing.
+	// Their per-seat cast stamps and ability rows reach the viewer as a
+	// fallback for any card the viewer has no answer of their own for,
+	// so the "Playing as" board can announce the controlled player's
+	// spells and abilities with their own targets and prices.
+	var playingFor []string
 	for _, pc := range v.PlayerControls {
 		if pc.Controller == viewerID {
 			controlled = append(controlled, pc.Controlled)
+			if pc.Until == string(game.ControlUntilTurn) {
+				playingFor = append(playingFor, pc.Controlled)
+			}
 		}
 	}
 	isKnower := func(c CardView) bool {
@@ -9272,7 +9281,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// Hand + library still get their wholesale-hide (S04
 		// zone-default heuristic) for opponents, but the per-card
 		// pass below covers all visible zones uniformly.
-		out.Library = applyCastStampsFor(redactZone(p.Library, isKnower), viewerID)
+		out.Library = applyCastStampsFor(redactZone(p.Library, isKnower), viewerID, playingFor...)
 		// #1166: and the hand, for the reason the graveyard is
 		// promoted below. A hand card's announce surface is the HAND
 		// OWNER's answer, and a card another seat is a knower of —
@@ -9281,7 +9290,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// them carrying the owner's `legal_targets`, which hexproof,
 		// shroud, protection and "target opponent" all narrow by who
 		// is asking.
-		out.Hand = applyCastStampsFor(redactZone(p.Hand, isKnower), viewerID)
+		out.Hand = applyCastStampsFor(redactZone(p.Hand, isKnower), viewerID, playingFor...)
 		if viewerID != "" && viewerID != SpectatorViewerID && p.ID == viewerID {
 			out.Hand = stampKnownBySeats(out.Hand, p.Hand, seatIDs, viewerID)
 		}
@@ -9290,12 +9299,12 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// the stamps it produced come off for everybody else — the
 		// pass exile has ridden since #978, now on the one per-seat
 		// zone that can carry a foreign holder's stamps.
-		out.Graveyard = applyCastStampsFor(redactZone(p.Graveyard, isKnower), viewerID)
+		out.Graveyard = applyCastStampsFor(redactZone(p.Graveyard, isKnower), viewerID, playingFor...)
 		// #1166: the command zone is public and CR 903.4's permission
 		// is its owner's alone, so the same split applies — the
 		// commander's price list is a fact about the card, and the
 		// legal targets of a cast only that seat may make are not.
-		out.Command = applyCastStampsFor(redactZone(p.Command, isKnower), viewerID)
+		out.Command = applyCastStampsFor(redactZone(p.Command, isKnower), viewerID, playingFor...)
 		// Opponent hand: strip only UNREVEALED cards (seated-viewer
 		// path — Thoughtseize-style reveals survive via KnownBy);
 		// wholesale-hide for spectator / admin (viewerID empty)
@@ -9346,13 +9355,13 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// they reach the controller's frame alone.
 		// ADR 0155 Decision 10: and a borrowed row's lender in a hidden
 		// zone reaches the seats that may see it there.
-		Battlefield: applyLenderKnowersFor(applyAbilityOffersFor(redactZone(v.Battlefield, isKnower), viewerID), viewerID, seatIDs),
+		Battlefield: applyLenderKnowersFor(applyAbilityOffersFor(redactZone(v.Battlefield, isKnower), viewerID, playingFor...), viewerID, seatIDs),
 		Stack:       redactZone(v.Stack, isKnower),
 		// #978: exile is the one SHARED zone that carries
 		// announce-time cast stamps, and they were computed for one
 		// seat — the holder of the CastPermission that opened the
 		// card. Everyone else gets the card without them.
-		Exile: applyCastStampsFor(redactZone(v.Exile, isKnower), viewerID),
+		Exile: applyCastStampsFor(redactZone(v.Exile, isKnower), viewerID, playingFor...),
 		// #1199: shared and public like the battlefield, and redacted
 		// the same way — a permanent can phase out face down, and the
 		// card under it is no more knowable for having phased.
@@ -9735,20 +9744,42 @@ func stampKnownBySeats(out, src ZoneView, seatIDs []string, ownerID string) Zone
 //
 // The map is cleared on the way out exactly as `knowers` is, so
 // repeated FilterViewFor calls stay stable.
-func applyCastStampsFor(z ZoneView, viewerID string) ZoneView {
+//
+// `playingFor` are the seats whose whole turn the viewer is playing
+// (ADR 0167 §9, CR 723.5): a card the viewer has no answer of their own
+// for takes the first of those seats' answers instead, so the
+// controller can announce the controlled player's spells with that
+// player's targets and prices. The viewer is a knower of every card
+// those seats know (CR 723.4), so the knower rule still holds.
+func applyCastStampsFor(z ZoneView, viewerID string, playingFor ...string) ZoneView {
 	for i := range z.Cards {
 		c := &z.Cards[i]
 		mine := viewerID != "" && c.KnownByYou
 		if c.castOffers != nil {
-			stamps, ok := c.castOffers[viewerID]
+			stamps, ok := offerFor(c.castOffers, viewerID, playingFor)
 			c.castOffers = nil
 			if ok && mine {
 				stamps.applyTo(c)
 			}
 		}
-		applyFaceCastStampsFor(c, viewerID, mine)
+		applyFaceCastStampsFor(c, viewerID, mine, playingFor)
 	}
 	return z
+}
+
+// offerFor picks a per-seat answer out of `offers`: the viewer's own,
+// else the first seat in `playingFor` that has one (ADR 0167 §9).
+func offerFor[T any](offers map[string]T, viewerID string, playingFor []string) (T, bool) {
+	if v, ok := offers[viewerID]; ok {
+		return v, true
+	}
+	for _, id := range playingFor {
+		if v, ok := offers[id]; ok {
+			return v, true
+		}
+	}
+	var zero T
+	return zero, false
 }
 
 // applyAbilityOffersFor hands a battlefield permanent's CONTROLLER
@@ -9768,13 +9799,16 @@ func applyCastStampsFor(z ZoneView, viewerID string) ZoneView {
 // nothing written through them, so the unfiltered view and every other
 // viewer's frame are untouched. The map is cleared on the way out, as
 // castOffers is, so repeated FilterViewFor calls stay stable.
-func applyAbilityOffersFor(z ZoneView, viewerID string) ZoneView {
+//
+// `playingFor` is applyCastStampsFor's (ADR 0167 §9): the controller of
+// a whole turn gets the controlled player's rows for their permanents.
+func applyAbilityOffersFor(z ZoneView, viewerID string, playingFor ...string) ZoneView {
 	for i := range z.Cards {
 		c := &z.Cards[i]
 		if c.abilityOffers == nil {
 			continue
 		}
-		rows, ok := c.abilityOffers[viewerID]
+		rows, ok := offerFor(c.abilityOffers, viewerID, playingFor)
 		c.abilityOffers = nil
 		if ok && viewerID != "" && c.KnownByYou {
 			c.ActivatedAbilities = rows.ActivatedAbilities
@@ -9800,12 +9834,12 @@ func applyAbilityOffersFor(z ZoneView, viewerID string) ZoneView {
 //
 // One allocation per multi-face card per viewer, and none at all for
 // a single-faced card or one whose faces carry no stamps.
-func applyFaceCastStampsFor(c *CardView, viewerID string, mine bool) {
+func applyFaceCastStampsFor(c *CardView, viewerID string, mine bool, playingFor []string) {
 	// ADR 0103: the fused block is one more face, promoted the same
 	// way off a copy of the pointer.
 	if c.Fused != nil && c.Fused.castOffers != nil {
 		f := *c.Fused
-		stamps, ok := f.castOffers[viewerID]
+		stamps, ok := offerFor(f.castOffers, viewerID, playingFor)
 		f.castOffers = nil
 		if ok && mine {
 			stamps.applyToFace(&f)
@@ -9826,7 +9860,7 @@ func applyFaceCastStampsFor(c *CardView, viewerID string, mine bool) {
 	copy(faces, c.Faces)
 	for i := range faces {
 		f := &faces[i]
-		stamps, ok := f.castOffers[viewerID]
+		stamps, ok := offerFor(f.castOffers, viewerID, playingFor)
 		f.castOffers = nil
 		if ok && mine {
 			stamps.applyToFace(f)
