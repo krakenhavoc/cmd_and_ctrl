@@ -919,6 +919,8 @@ var modKinds = map[ModKind]modKindSpec{
 	// key before the pass (text_box.go).
 	ModExchangeText: {reader: readerText, layer: Layer3Text},
 	ModSetTypes:     {layer: Layer4Type},
+	// #2144: "becomes a Frog" (set_creature_types.go).
+	ModSetCreatureTypes: {layer: Layer4Type},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1318,6 +1320,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := becomeNamedModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := setCreatureTypesModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := textBoxModProblem(m); problem != "" {
@@ -1778,6 +1783,11 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		types, subtypes, supertypes := m.Types, m.Subtypes, m.Supertypes
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.setTypes(types, subtypes, supertypes)
+		}
+	case ModSetCreatureTypes:
+		subtypes := m.Subtypes
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.setCreatureTypes(subtypes)
 		}
 	case ModSetName:
 		name := m.Text

@@ -1106,7 +1106,7 @@ var characteristicModKinds = map[ModKind]bool{
 	ModSetBasicLandTypes: true, ModLoseLandTypes: true, ModCantHaveKeywords: true,
 	ModBecomeCopy: true, ModExchangeText: true, ModCantBeBlockedExceptBy: true,
 	ModLimitBlockersPerDefender: true, ModCantBeBlockedByPlayer: true,
-	ModCantBeBlockedByPower: true,
+	ModCantBeBlockedByPower: true, ModSetCreatureTypes: true,
 }
 
 // knownBuiltinReplacementLabels are the engine's own replacement effects

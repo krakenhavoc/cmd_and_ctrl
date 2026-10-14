@@ -214,6 +214,13 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("type line = %v %v — %v, want Legendary Artifact — Equipment", c.Supertypes, c.Types, c.Subtypes)
 			}
 		}},
+		// #2144: CR 205.1a for the creature types alone: the Bear goes,
+		// the Frog comes, and the card types stay.
+		{"setCreatureTypes", []Mod{SetCreatureTypesMod("Frog")}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if !reflect.DeepEqual(c.Types, []string{"Creature"}) || !reflect.DeepEqual(c.Subtypes, []string{"Frog"}) {
+				t.Errorf("type line = %v — %v, want Creature — Frog", c.Types, c.Subtypes)
+			}
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -324,6 +331,8 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModVoteChooser: true,
 		// #2562: cases above.
 		ModSetName: true, ModSetTypes: true,
+		// #2144: case above.
+		ModSetCreatureTypes: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {
