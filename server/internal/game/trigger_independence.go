@@ -1207,6 +1207,15 @@ func (g *Game) reactorLocked(emits map[EventKind]bool) (card string, kind EventK
 	for i := range g.BuiltinReplacements {
 		r := &g.BuiltinReplacements[i]
 		k, ok := watches(r.Watches)
+		if r.Label == shieldCounterLabel {
+			// CR 122.1c's effects apply only to a permanent with a
+			// shield counter on it (#2000, ADR 0173): set aside on a
+			// board with none.
+			if ok && g.anyShieldCounterLocked() {
+				return "", k, true
+			}
+			continue
+		}
 		if !knownBuiltinReplacementLabels[r.Label] && (len(r.Watches) == 0 || ok) {
 			return "", k, true
 		}

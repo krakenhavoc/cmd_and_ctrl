@@ -365,7 +365,7 @@ func (g *Game) settleUnpreventableLocked(ev *ReplacementEvent, applicable []acti
 //
 // Caller must hold g.mu (write).
 func (g *Game) preventionAppliedToUnpreventableLocked(ev *ReplacementEvent, a activeReplacement) {
-	if a.source != nil {
+	if a.source != nil || a.effect.thenOnDamaged {
 		g.oweStaticFollowUpLocked(ev, a, 0, ev.DamageAmount)
 		return
 	}

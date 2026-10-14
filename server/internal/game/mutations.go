@@ -5633,8 +5633,9 @@ func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, r zoneRou
 		// re-derived downstream, because every exit off the
 		// battlefield ends in the same graveyard by the same route
 		// and nothing else can tell a destruction from a sacrifice.
-		Destruction:       r.Destruction,
-		CantBeRegenerated: r.CantBeRegenerated,
+		Destruction:           r.Destruction,
+		CantBeRegenerated:     r.CantBeRegenerated,
+		StateBasedDestruction: r.StateBased,
 		// A sacrifice paid as a cost is an indivisible CR 602.2b
 		// payment. Carry the route's posture onto the replacement
 		// event just as routeCardToZoneLocked does for non-battlefield

@@ -2086,6 +2086,19 @@ effect. (A shielded COMMANDER used to prompt because CR 903.9 applied
 to the same event; since ADR 0115 a destroyed commander is not
 replaced, so the shield alone applies and no order is asked.)
 
+**A shield counter is engine-owned too** (#2000, ADR 0173, CR 122.1c). Put one on
+with `AddCounter{Target: id, Kind: game.CounterShield, N: 1}`; that is
+the whole card side. The two built-ins in
+`server/internal/game/shield_counters.go` do the rest: a destruction by
+an effect is cancelled and a counter removed (a state-based destruction,
+from lethal damage or deathtouch, is not), and damage is prevented and a
+counter removed. Damage that can't be prevented is dealt and a counter is
+still removed (CR 615.12). Damage from several sources at the same time
+costs one counter.
+"For as long as it has a shield counter on it" (Shield Broker) is the
+counter-held duration, `DurationWhileItHasCounter(ctx, id,
+game.CounterShield)`.
+
 **"It can't be regenerated" is a rider on the destroy, not a keyword**
 (CR 701.19c). Write `DestroyTarget{Target: id, CantBeRegenerated:
 true}` or `DestroyAllMatching{Match: …, CantBeRegenerated: true}` on
