@@ -30,6 +30,7 @@
     castableFaceIndex,
     displayName,
     faceOptions,
+    isSidewaysArt,
   } from "../../faces";
   import { hasSatisfiableTargets } from "../../timing";
   import { cancelAction, confirmAction } from "../../dock";
@@ -167,7 +168,9 @@
             }}
           >
             {#if art}
-              <img class="face-art" src={art} alt="" use:cardArt={art} />
+              <div class="face-art-wrap" class:sideways={isSidewaysArt(card)}>
+                <img class="face-art" src={art} alt="" use:cardArt={art} />
+              </div>
             {:else}
               <div class="face-art face-art-blank" aria-hidden="true"></div>
             {/if}
@@ -244,6 +247,27 @@
     object-fit: cover;
     border-radius: 6px;
     display: block;
+  }
+
+  /* #3518: a split card's one image has its text sideways; turn it a
+     quarter-turn clockwise inside a landscape box so the whole card
+     reads correctly and fills the tile. */
+  .face-art-wrap.sideways {
+    container-type: size;
+    position: relative;
+    aspect-ratio: 88 / 63;
+    overflow: hidden;
+    border-radius: 6px;
+  }
+
+  .face-art-wrap.sideways .face-art {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100cqh;
+    height: 100cqw;
+    aspect-ratio: auto;
+    transform: translate(-50%, -50%) rotate(90deg);
   }
 
   .face-art-blank {
