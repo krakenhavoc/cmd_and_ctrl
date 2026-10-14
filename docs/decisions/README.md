@@ -22,8 +22,8 @@ the partner pairings; 0145 meld: one permanent, two cards; 0146 voting: will of 
 council's dilemma; 0147 auto-assign combat damage, and assigning it on the blockers; 0148 capacity 
 limits for a public launch; … 0165 game statistics: a record derived from every finished game; 0167 
 controlling another player's turn: Emrakul, the Promised End; 0171 one mana and life ward payment; 
-0172 companion: a card outside the game; 0173 shield counters; 0176 a movable stack panel; 0179 
-shop links for the real cards; 0180 secret council; 0181 deploy credentials: deploy runners, environment keys, and failing closed; 0182 your own model key for AI seats
+0172 companion: a card outside the game; 0173 shield counters; 0176 a movable stack panel; 0178 life 
+instructions after a replaced move; 0179 shop links for the real cards; 0180 secret council; 0181 deploy credentials: deploy runners, environment keys, and failing closed; 0182 your own model key for AI seats
 
 ## Picking a number
 

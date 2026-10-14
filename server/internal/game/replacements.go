@@ -767,6 +767,13 @@ type ReplacementEvent struct {
 	// it. Added in #529 so CR 903.9 could move down to the primitive.
 	zoneRoute *zoneRoute
 
+	// lifeAfterMove is ADR 0178's list of life changes a replacement
+	// declared as part of the modified move ("instead exile it and you
+	// gain 2 life"), set only through ChangeLifeAfterReplacedMoveForEffect.
+	// They run after the card has landed and before the route's
+	// continuation (runMoveTailLocked). Unexported engine plumbing.
+	lifeAfterMove []lifeInstruction
+
 	// asCommanderMove is an unexported breadcrumb set by
 	// MoveCardByIDAsCommander when the caller flagged the move as
 	// a commander-initiated one. It is NOT a gate on the CR 903.9
