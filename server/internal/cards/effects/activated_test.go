@@ -215,6 +215,43 @@ func TestCarrionFeederGrowsAndCanEatItself(t *testing.T) {
 	passPriorityAroundTable(t, g)
 }
 
+// #3667: an earlier activation still on the stack when the Feeder eats
+// itself names a permanent that is gone (CR 400.7, CR 608.2b): no counter
+// lands on the graveyard card.
+func TestCarrionFeederSacrificedInResponseGetsNoGraveyardCounter(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	feeder := pushCatalogPermanent(g, me.ID, "Carrion Feeder", "Creature — Zombie", carrionFeederOracle, false)
+	fodder := pushCatalogPermanent(g, me.ID, "Fodder", "Creature — Goblin", "", false)
+
+	if err := g.ActivateCatalogAbility(me.ID, feeder, 0, game.ActivateAbilityParams{
+		SacrificeIDs: []uuid.UUID{fodder},
+	}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, feeder, 0, game.ActivateAbilityParams{
+		SacrificeIDs: []uuid.UUID{feeder},
+	}); err != nil {
+		t.Fatalf("self-sacrifice: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	passPriorityAroundTable(t, g)
+
+	found := false
+	for _, c := range me.Graveyard.Cards {
+		if c.InstanceID != feeder {
+			continue
+		}
+		found = true
+		if n := c.Counters["+1/+1"]; n != 0 {
+			t.Errorf("graveyard Feeder has %d +1/+1 counters, want 0", n)
+		}
+	}
+	if !found {
+		t.Fatalf("Feeder should be in the graveyard")
+	}
+}
+
 // --- Krenko ------------------------------------------------------
 
 func TestKrenkoCountsGoblinsAtResolution(t *testing.T) {

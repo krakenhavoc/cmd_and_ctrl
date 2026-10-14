@@ -910,6 +910,12 @@ func (a AddCounter) Apply(ctx *Context) error {
 	if ctx.isNewSourceObject(a.Target) {
 		return nil
 	}
+	// #3667: "this creature" sacrificed or killed in response is a new
+	// object in another zone (CR 400.7); the instruction does nothing
+	// (CR 608.2b).
+	if ctx.sourceLeftBattlefield(a.Target) {
+		return nil
+	}
 	err := ctx.Game.AddCounterForEffect(a.Target, a.Kind, a.N)
 	// #2611: a target that no longer exists anywhere — a token that
 	// died, or one that left in response — has nothing to take the

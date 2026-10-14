@@ -35,8 +35,8 @@ func init() {
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				// The source may have been the sacrifice, or died in
-				// response; AddCounter no-ops on a card that isn't
-				// there.
+				// response; AddCounter no-ops once the source has left
+				// the battlefield (#3667).
 				return AddCounter{
 					Target: ctx.Source(),
 					Kind:   "+1/+1",
