@@ -21,6 +21,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "365548fb-5acc-4a8a-b20b-26d28b7d029f",
 		Name:           "Village Rites",
+		Completeness:   CompletenessFull,
 		Purpose:        game.Purpose{Draws: 2},
 		AdditionalCost: SacrificeCost("a creature", Creature()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
