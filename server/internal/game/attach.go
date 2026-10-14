@@ -114,19 +114,22 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 	if g.Battlefield == nil {
 		return ErrCardNotFound
 	}
-	// offEpoch is the host's CR 400.7 epoch when the host is a card
-	// OFF the battlefield (ADR 0154), and stays 0 for a battlefield host.
-	offEpoch := 0
+	// hostEpoch is the card host's CR 400.7 epoch, the object the link
+	// is pinned to (ADR 0154 decision 3; every card host since #3159).
+	// Zero for a player host.
+	hostEpoch := 0
 	offBattlefield := false
 	switch host.Kind {
 	case TargetCard:
-		if findCardOnBattlefield(g, host.ID) < 0 {
+		if hi := findCardOnBattlefield(g, host.ID); hi >= 0 {
+			hostEpoch = g.Battlefield.Cards[hi].ObjectEpoch
+		} else {
 			epoch, ok := g.offBattlefieldHostLocked(attachmentID, host)
 			if !ok {
 				g.emitAttachSkippedLocked(attachmentID, host, "host is not on the battlefield")
 				return nil
 			}
-			offEpoch, offBattlefield = epoch, true
+			hostEpoch, offBattlefield = epoch, true
 		}
 	case TargetPlayer:
 		if g.playerByIDLocked(host.ID) == nil {
@@ -157,11 +160,14 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 	}
 	// CR 400.7, CR 701.3c: the same instance ID as a NEW OBJECT is a
 	// different object, so re-attaching to it is a move (a new timestamp,
-	// and the "As this becomes attached" clause runs). The epoch is only
-	// recorded for an off-battlefield host (ADR 0154 Question 2), so an
-	// Aura that leaves a graveyard card for the permanent that card became
-	// moves too.
-	moved := c.AttachedTo != host || c.AttachedEpoch != offEpoch
+	// and the "As this becomes attached" clause runs). That covers an
+	// Aura that leaves a graveyard card for the permanent that card
+	// became (ADR 0154), and an Equipment re-equipped onto a creature
+	// that left and came back with its ID (#3159). The epoch is compared
+	// only when the existing link recorded one: an unpinned link (set by
+	// hand, or restored from an older file) to the same ID is not a move.
+	moved := c.AttachedTo != host ||
+		((c.AttachedPinned || offBattlefield) && c.AttachedEpoch != hostEpoch)
 	// CR 701.3b (#3160): an Aura, Equipment or Fortification that is
 	// already attached and would be moved onto an object or player it
 	// can't legally be attached to does not move. Only a MOVE: an Aura
@@ -170,12 +176,13 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 	// on the battlefield", and it keeps the attach-then-state-based-action
 	// path. The test is the one CR 704.5m/n asks of the finished
 	// attachment, run against the host it would have.
-	if moved && c.IsAttached() && !g.attachmentLegalOnLocked(c, host, offEpoch) {
+	if moved && c.IsAttached() && !g.attachmentLegalOnLocked(c, host, hostEpoch) {
 		g.emitAttachSkippedLocked(attachmentID, host, "this permanent can't be attached to that host")
 		return nil
 	}
 	c.AttachedTo = host
-	c.AttachedEpoch = offEpoch
+	c.AttachedEpoch = hostEpoch
+	c.AttachedPinned = host.Kind == TargetCard
 	c.AttachedAt = timeNowUnixNano()
 	g.EmitEvent(Event{
 		Kind:   EventAttach,
@@ -198,14 +205,18 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 }
 
 // attachmentLegalOnLocked asks CR 704.5m/n's question of the attachment
-// as if it were attached to `host` (with the host's off-battlefield
-// epoch, zero for a battlefield host), without attaching it.
+// as if it were attached to `host` (with the host's epoch, which only an
+// off-battlefield host is judged by here), without attaching it. The
+// probe is unpinned: it asks about the host as it is now, so the #3159
+// pin, which asks whether the host is still the object a link was made
+// to, has nothing to say.
 //
 // Caller must hold g.mu.
 func (g *Game) attachmentLegalOnLocked(c *Card, host TargetRef, epoch int) bool {
 	probe := *c
 	probe.AttachedTo = host
 	probe.AttachedEpoch = epoch
+	probe.AttachedPinned = false
 	return g.attachmentLegalLocked(&probe)
 }
 
@@ -329,6 +340,7 @@ func (g *Game) UnattachForEffect(attachmentID uuid.UUID) error {
 	c.AttachedTo = TargetRef{}
 	c.AttachedAt = 0
 	c.AttachedEpoch = 0
+	c.AttachedPinned = false
 	g.EmitEvent(Event{
 		Kind:   EventUnattach,
 		Actor:  c.Controller,
@@ -499,9 +511,21 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 	// battlefield (Animate Dead's graveyard card) is the object it was at
 	// the attach only while its epoch is unchanged. A card that left the
 	// graveyard and came back is a new object the Aura never enchanted.
-	// Battlefield hosts are not pinned here (#3159).
-	if c.AttachedTo.Kind == TargetCard && findCardOnBattlefield(g, c.AttachedTo.ID) < 0 {
-		if epoch := g.cardObjectEpochLocked(c.AttachedTo.ID); epoch < 0 || epoch != c.AttachedEpoch {
+	//
+	// #3159 (ADR 0154's 2026-10-14 amendment): the same for a battlefield
+	// host whose link is pinned. A host that left and came back with the
+	// same instance ID inside one resolution (Chaos Warp revealing the
+	// card it tucked) is a new object, and no state-based check ran while
+	// it was gone. Its Auras go to the graveyard (CR 303.4c) and its
+	// Equipment becomes unattached (CR 301.5c), through the ordinary
+	// CR 704.5m/n branches of attachmentSBALocked; a bestowed Aura
+	// unbestows there (CR 702.103f).
+	if c.AttachedTo.Kind == TargetCard {
+		if hi := findCardOnBattlefield(g, c.AttachedTo.ID); hi < 0 {
+			if epoch := g.cardObjectEpochLocked(c.AttachedTo.ID); epoch < 0 || epoch != c.AttachedEpoch {
+				return false
+			}
+		} else if c.AttachedPinned && g.Battlefield.Cards[hi].ObjectEpoch != c.AttachedEpoch {
 			return false
 		}
 	}
@@ -680,6 +704,7 @@ func (g *Game) attachmentSBALocked() bool {
 			c.AttachedTo = TargetRef{}
 			c.AttachedAt = 0
 			c.AttachedEpoch = 0
+			c.AttachedPinned = false
 			g.EmitEvent(Event{
 				Kind:   EventUnattach,
 				Actor:  controller,
