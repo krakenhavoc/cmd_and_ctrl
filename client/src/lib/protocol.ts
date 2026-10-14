@@ -1601,6 +1601,10 @@ export interface PendingChoiceView {
   // entering permanent away does to the seat that receives it. The
   // picker reads it only for its wording.
   control_purpose?: "harm" | "benefit" | string;
+  // #3309: populated for kind "aura_host" — what the entering Aura does
+  // to the permanent it enchants. Absent when the card declares none.
+  // The bot reads it; the client ignores it.
+  aura_purpose?: "harm" | "benefit" | string;
   // ADR 0109 §10: on an "entry_riot" or "optional_replacement" prompt,
   // the entry keyword it asks about — "riot" or "unleash" — and on an
   // "entry_read_ahead" prompt "read ahead" (#2123). Absent on every
@@ -3325,6 +3329,8 @@ export interface ActivatedAbilityView {
 // docs/protocol.md "Declared purpose"). Bot data; the client does not
 // read it. Every field is absent when zero.
 export interface PurposeView {
+  // #3309: on an Aura card, what it does to the permanent it enchants.
+  aura?: "benefit" | "harm" | string;
   draws?: number;
   controller_loses_life?: number;
   discards?: number;

@@ -30,6 +30,7 @@ func init() {
 		Name:         "Giant Inheritance",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
+		Purpose:      game.Purpose{Aura: game.AuraBenefit},
 		Static: []game.StaticAbility{
 			PumpAttached(5, 5),
 			GrantAbilitiesToAttached(giantInheritanceGrant),

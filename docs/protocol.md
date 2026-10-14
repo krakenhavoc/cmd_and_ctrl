@@ -918,7 +918,9 @@ battlefield any way other than by resolving as an Aura spell — Sun
 Titan returning Animate Dead, Replenish, a fetched or a token-copied
 Aura — chooses what it enchants as it enters, and this is that
 question, addressed to the player it is entering under. `source` is the
-Aura (still in the zone it is leaving).
+Aura (still in the zone it is leaving). `aura_purpose` is `"benefit"` or
+`"harm"` when the card declares what it does to its host (#3309), else
+absent; the bot reads it, the client ignores it.
 
 It carries and is answered exactly like `pick_target`: `pick_target:
 {players, cards, min: 1, max: 1}` with the legal hosts, answered with

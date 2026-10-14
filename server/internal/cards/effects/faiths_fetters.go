@@ -47,6 +47,7 @@ func init() {
 		Name:         "Faith's Fetters",
 		Completeness: CompletenessFull,
 		Targets:      EnchantPermanent(),
+		Purpose:      game.Purpose{Aura: game.AuraHarm},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Faith's Fetters — you gain 4 life", Do(GainLife{Amount: 4})),
 		},

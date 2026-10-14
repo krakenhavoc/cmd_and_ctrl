@@ -19,6 +19,7 @@ func init() {
 		Name:         "Ethereal Armor",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
+		Purpose:      game.Purpose{Aura: game.AuraBenefit},
 		Static: []game.StaticAbility{
 			PumpAttachedPer(1, 1, enchantmentsControlledBy),
 			GrantToAttached("first strike"),

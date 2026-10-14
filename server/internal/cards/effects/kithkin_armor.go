@@ -21,6 +21,7 @@ func init() {
 		Name:         "Kithkin Armor",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
+		Purpose:      game.Purpose{Aura: game.AuraBenefit},
 		BlockRules:   []game.BlockRule{CantBeBlockedBy(OnAttached(), PowerGE(3), "creatures with power 3 or greater")},
 		Activated: []ActivatedAbility{nextDamageShieldRow(
 			"Sacrifice this Aura: The next time a source of your choice would deal damage to enchanted creature this turn, prevent that damage.",

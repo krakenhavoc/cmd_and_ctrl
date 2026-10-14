@@ -20,6 +20,7 @@ func init() {
 		Name:         "Lashknife",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
+		Purpose:      game.Purpose{Aura: game.AuraBenefit},
 		AlternativeCosts: []game.AlternativeCost{
 			TapInstead(1, "an untapped creature you control", ControlsA("Plains"), Creature()),
 		},

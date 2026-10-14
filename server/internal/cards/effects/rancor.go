@@ -40,6 +40,7 @@ func init() {
 		Name:         "Rancor",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
+		Purpose:      game.Purpose{Aura: game.AuraBenefit},
 		Static: []game.StaticAbility{
 			PumpAttached(2, 0),
 			GrantToAttached("trample"),

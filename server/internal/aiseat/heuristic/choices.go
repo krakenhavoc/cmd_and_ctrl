@@ -227,7 +227,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		if t == nil && len(cp.Targets) == 1 {
 			t = &cp.Targets[0]
 		}
-		return st.auraHostValue(p.cfg, t)
+		purpose := ""
+		if ch != nil {
+			purpose = ch.AuraPurpose
+		}
+		return st.auraHostValue(p.cfg, purpose, t)
 
 	case choicePickTarget:
 		targets := cp.Targets

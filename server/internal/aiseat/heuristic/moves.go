@@ -549,6 +549,9 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	// a creature it removes (bestow.go).
 	if p.isBestowCast(cp) {
 		targetV, targetsPriced = p.bestowTargetsValue(st, card, targets), false
+	} else if a := auraPurposeOf(card); a != "" && p.cfg.PriceAuraPurpose && !targetsPriced {
+		// #3309: an Aura that declares a buff or a curse (aura_host.go).
+		targetV = st.auraTargetsValue(p.cfg, a, targets)
 	}
 	var v float64
 	reason := "cast"
