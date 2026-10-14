@@ -357,6 +357,29 @@ groups:
           summary: "{{ $labels.env }}: no off-site backup has ever been reported"
           description: "The off-site backup's success timestamp has been missing from {{ $labels.env }} for 2 hours: the backup has never run there, or the node scrape does not carry its textfile. systemctl list-timers cmd-and-ctrl-backup.timer on the host says whether it is scheduled."
 
+      # scripts/restore-rehearsal.sh (monthly timer) restores the latest
+      # snapshot into a scratch dir, opens and migrates the database and
+      # re-applies the deletion ledger (#3340). Two rules, told apart by
+      # `cause`: no passing rehearsal for 35 days (a monthly timer plus
+      # five days' slack), or the last one failed.
+      - alert: RestoreRehearsalStale
+        expr: time() - cmdctrl_restore_rehearsal_last_success_timestamp_seconds{job="node"} > 35 * 86400
+        labels:
+          severity: warning
+          cause: stale
+        annotations:
+          summary: "{{ $labels.env }}: no restore rehearsal on {{ $labels.host }} for {{ $value | humanizeDuration }}"
+          description: "The monthly restore rehearsal on {{ $labels.host }} ({{ $labels.env }}) last passed {{ $value | humanizeDuration }} ago. An untested backup is not a backup: docs/environments.md#restore-rehearsal."
+
+      - alert: RestoreRehearsalStale
+        expr: cmdctrl_restore_rehearsal_last_exit_code{job="node"} != 0
+        labels:
+          severity: warning
+          cause: failed
+        annotations:
+          summary: "{{ $labels.env }}: the last restore rehearsal on {{ $labels.host }} failed (exit {{ $value }})"
+          description: "scripts/restore-rehearsal.sh on {{ $labels.host }} ({{ $labels.env }}) exited {{ $value }}. journalctl -u cmd-and-ctrl-restore-rehearsal says why; the latest backup may not restore."
+
       # Every real filesystem on every host, the monitoring VM's included.
       - alert: DiskFilling
         expr: >-

@@ -31,6 +31,12 @@ The route is rate limited per caller (one try every ten seconds, burst three).
 
 ### 2. A tombstone, not a delete
 
+> Addendum (#3340): every committed deletion also appends the account id and
+> time, nothing else, to `data/deletions/ledger.jsonl`, which the off-site
+> backup carries. A restore of an older database copy re-applies it with
+> `restorecheck reapply` (docs/environments.md#deletions-survive-a-restore), so
+> the promise survives a disaster.
+
 The `users` row is **not** deleted. It is scrubbed: display name `Deleted player`, no avatar, no last deck, no playmat, `admin_mode_at` zero, `last_seen_at` set to the deletion time, and the new `users.deleted_at` stamped (migration 0015). The id stays.
 
 Two reasons, both load-bearing:

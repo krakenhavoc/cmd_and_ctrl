@@ -14,6 +14,7 @@ cmd_and_ctrl/
 │   │   ├── server/      # main package — serves :8080 with lobby + hub + cards routes
 │   │   ├── mcpseat/     # local MCP seat: an MCP client plays a guest seat, badged as an AI agent (ADR 0122) — see docs/mcp-seat.md
 │   │   ├── gamecli/     # dev WebSocket client for driving a game via v0 actions
+│   │   ├── restorecheck/ # restore rehearsal and real-restore step: verify a restored tree, re-apply the account-deletion ledger (#3340)
 │   │   └── snapshotscrub/ # strips player data from a restore point before it joins the snapshot corpus (#522)
 │   ├── internal/
 │   │   ├── game/        # authoritative domain: Game, Player, Zone, Card, Turn, mutations

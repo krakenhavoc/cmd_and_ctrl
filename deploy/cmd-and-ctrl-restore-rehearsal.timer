@@ -1,0 +1,22 @@
+# Monthly trigger for cmd-and-ctrl-restore-rehearsal.service (#3340). See
+# that unit for what runs, and docs/environments.md#restore-rehearsal.
+#
+# Enabled by CD ("Ensure off-site backup") together with the backup timer.
+#
+#   systemctl list-timers cmd-and-ctrl-restore-rehearsal.timer
+
+[Unit]
+Description=Monthly cmd_and_ctrl restore rehearsal
+
+[Timer]
+# The 1st at 06:00 host time, after the 03:30 nightly backup (plus its
+# 30 minutes of delay) has finished, spread so prod and dev do not hit
+# the uplink together.
+OnCalendar=*-*-01 06:00:00
+RandomizedDelaySec=1h
+# A month missed while the VM was down runs at the next boot.
+Persistent=true
+Unit=cmd-and-ctrl-restore-rehearsal.service
+
+[Install]
+WantedBy=timers.target

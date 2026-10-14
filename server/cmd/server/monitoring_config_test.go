@@ -38,11 +38,13 @@ const monitoringDir = "../../../deploy/monitoring"
 // textfileMetrics are cmdctrl_ names the server does not register:
 // files other jobs write for Alloy's textfile collector.
 var textfileMetrics = map[string]string{
-	"cmdctrl_offsite_backup_last_success_timestamp_seconds":  "scripts/backup-offsite.sh",
-	"cmdctrl_offsite_backup_last_exit_code":                  "scripts/backup-offsite.sh",
-	"cmdctrl_monitoring_sync_last_success_timestamp_seconds": "the monitoring VM's config sync (HomeLab)",
-	"cmdctrl_monitoring_sync_last_run_timestamp_seconds":     "the monitoring VM's config sync (HomeLab)",
-	"cmdctrl_monitoring_sync_last_run_success":               "the monitoring VM's config sync (HomeLab)",
+	"cmdctrl_offsite_backup_last_success_timestamp_seconds":    "scripts/backup-offsite.sh",
+	"cmdctrl_offsite_backup_last_exit_code":                    "scripts/backup-offsite.sh",
+	"cmdctrl_restore_rehearsal_last_success_timestamp_seconds": "scripts/restore-rehearsal.sh",
+	"cmdctrl_restore_rehearsal_last_exit_code":                 "scripts/restore-rehearsal.sh",
+	"cmdctrl_monitoring_sync_last_success_timestamp_seconds":   "the monitoring VM's config sync (HomeLab)",
+	"cmdctrl_monitoring_sync_last_run_timestamp_seconds":       "the monitoring VM's config sync (HomeLab)",
+	"cmdctrl_monitoring_sync_last_run_success":                 "the monitoring VM's config sync (HomeLab)",
 }
 
 // datasourceUIDs are the monitoring VM's Grafana datasources.

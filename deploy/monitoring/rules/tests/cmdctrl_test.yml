@@ -320,6 +320,57 @@ tests:
               summary: "prod: no off-site backup from cmd-and-ctrl for 1d 16h 0m 0s"
               description: "The nightly off-site backup on cmd-and-ctrl (prod) last succeeded 1d 16h 0m 0s ago."
 
+  # ------------------------------------------------- RestoreRehearsalStale
+  - name: RestoreRehearsalStale, no pass for 36 days
+    interval: 1d
+    input_series:
+      - series: 'cmdctrl_restore_rehearsal_last_success_timestamp_seconds{job="node", env="prod", host="cmd-and-ctrl"}'
+        values: "0x40"
+      - series: 'cmdctrl_restore_rehearsal_last_exit_code{job="node", env="prod", host="cmd-and-ctrl"}'
+        values: "0x40"
+    alert_rule_test:
+      - eval_time: 30d
+        alertname: RestoreRehearsalStale
+        exp_alerts: []
+      - eval_time: 36d
+        alertname: RestoreRehearsalStale
+        exp_alerts:
+          - exp_labels:
+              alertname: RestoreRehearsalStale
+              severity: warning
+              cause: stale
+              job: node
+              env: prod
+              host: cmd-and-ctrl
+            exp_annotations:
+              summary: "prod: no restore rehearsal on cmd-and-ctrl for 36d 0h 0m 0s"
+              description: "The monthly restore rehearsal on cmd-and-ctrl (prod) last passed 36d 0h 0m 0s ago. An untested backup is not a backup: docs/environments.md#restore-rehearsal."
+
+  - name: RestoreRehearsalStale, the last rehearsal failed
+    interval: 1h
+    input_series:
+      - series: 'cmdctrl_restore_rehearsal_last_success_timestamp_seconds{job="node", env="dev", host="cmd-and-ctrl-dev"}'
+        values: "0x4"
+      - series: 'cmdctrl_restore_rehearsal_last_exit_code{job="node", env="dev", host="cmd-and-ctrl-dev"}'
+        values: "0 0 1 1 1"
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: RestoreRehearsalStale
+        exp_alerts: []
+      - eval_time: 3h
+        alertname: RestoreRehearsalStale
+        exp_alerts:
+          - exp_labels:
+              alertname: RestoreRehearsalStale
+              severity: warning
+              cause: failed
+              job: node
+              env: dev
+              host: cmd-and-ctrl-dev
+            exp_annotations:
+              summary: "dev: the last restore rehearsal on cmd-and-ctrl-dev failed (exit 1)"
+              description: "scripts/restore-rehearsal.sh on cmd-and-ctrl-dev (dev) exited 1. journalctl -u cmd-and-ctrl-restore-rehearsal says why; the latest backup may not restore."
+
   - name: OffsiteBackupStale, the last run failed
     interval: 1h
     input_series:

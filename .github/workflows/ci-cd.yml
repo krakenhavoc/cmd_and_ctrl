@@ -611,6 +611,9 @@ jobs:
         run: |
           mkdir -p bin
           go build -o bin/cmd_and_ctrl-server ./cmd/server
+          # The restore rehearsal's application half (#3340); shipped with
+          # the server because it links the same migrations.
+          go build -o bin/cmd_and_ctrl-restorecheck ./cmd/restorecheck
 
       - name: Bot — build
         if: needs.changes.outputs.server == 'true'
@@ -642,7 +645,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cmdctrl-server-bin
-          path: server/bin/cmd_and_ctrl-server
+          path: |
+            server/bin/cmd_and_ctrl-server
+            server/bin/cmd_and_ctrl-restorecheck
           retention-days: ${{ github.ref == 'refs/heads/main' && 7 || 1 }}
 
       - name: Upload bot binary
@@ -1192,7 +1197,7 @@ jobs:
           path: client/dist
 
       - name: Restore server binary exec bit
-        run: chmod +x server/bin/cmd_and_ctrl-server server/bin/cmd_and_ctrl-bot
+        run: chmod +x server/bin/cmd_and_ctrl-server server/bin/cmd_and_ctrl-restorecheck server/bin/cmd_and_ctrl-bot
 
       # Set the live release aside before replacing it (#3339), so the
       # rollback-prod workflow can put it back in minutes. One release
@@ -1213,7 +1218,7 @@ jobs:
       - name: Deploy server binary
         run: |
           rsync -a -e "ssh ${SSH_OPTS}" \
-            server/bin/cmd_and_ctrl-server \
+            server/bin/cmd_and_ctrl-server server/bin/cmd_and_ctrl-restorecheck \
             krkn@${CMDCTRL_HOST}:${DEPLOY_ROOT}/server/bin/
 
       # Production only, on purpose -- this, "Install bot systemd unit",
@@ -2114,6 +2119,7 @@ jobs:
           RESTIC_PASSWORD: ${{ secrets.CMDCTRL_RESTIC_PASSWORD }}
           BACKUP_ENV_FILE: /etc/cmd_and_ctrl/backup.env
           BACKUP_UNIT: cmd-and-ctrl-backup
+          REHEARSAL_UNIT: cmd-and-ctrl-restore-rehearsal
         run: |
           # Where each value lives, for the messages below.
           where="GitHub environment '${APP_ENV}'"
@@ -2125,11 +2131,12 @@ jobs:
           # with "Deploy scripts".
           rsync -a -e "ssh ${SSH_OPTS}" \
             deploy/${BACKUP_UNIT}.service deploy/${BACKUP_UNIT}.timer \
+            deploy/${REHEARSAL_UNIT}.service deploy/${REHEARSAL_UNIT}.timer \
             krkn@${CMDCTRL_HOST}:/tmp/
           ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} "
             set -eu
             changed=0
-            for u in ${BACKUP_UNIT}.service ${BACKUP_UNIT}.timer; do
+            for u in ${BACKUP_UNIT}.service ${BACKUP_UNIT}.timer ${REHEARSAL_UNIT}.service ${REHEARSAL_UNIT}.timer; do
               new=/tmp/\$u; dst=/etc/systemd/system/\$u
               if [ -f \"\$dst\" ] && cmp -s \"\$new\" \"\$dst\" \
                  && [ \"\$(stat -c '%U:%G %a' \"\$dst\")\" = 'root:root 644' ]; then
@@ -2159,7 +2166,7 @@ jobs:
               echo "::warning title=Off-site backup not configured::${m} in ${where} is unset or still a REPLACE_ME placeholder, so ${CMDCTRL_HOST} (${APP_ENV}) has NO off-site backup. See docs/environments.md#backups."
             done
             ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
-              "sudo systemctl disable --now ${BACKUP_UNIT}.timer 2>/dev/null || true"
+              "sudo systemctl disable --now ${BACKUP_UNIT}.timer ${REHEARSAL_UNIT}.timer 2>/dev/null || true"
             echo "${BACKUP_UNIT}.timer stopped and disabled until all four values are set."
             exit 0
           fi
@@ -2221,8 +2228,8 @@ jobs:
           # backup surfaces without someone reading the journal.
           last=$(ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} "
             set -eu
-            sudo systemctl enable --now ${BACKUP_UNIT}.timer >&2
-            systemctl list-timers ${BACKUP_UNIT}.timer --no-pager >&2
+            sudo systemctl enable --now ${BACKUP_UNIT}.timer ${REHEARSAL_UNIT}.timer >&2
+            systemctl list-timers ${BACKUP_UNIT}.timer ${REHEARSAL_UNIT}.timer --no-pager >&2
             systemctl show -p Result --value ${BACKUP_UNIT}.service
           ")
           case "${last}" in

@@ -1,0 +1,70 @@
+# cmd_and_ctrl monthly restore rehearsal (#3340). Started by
+# cmd-and-ctrl-restore-rehearsal.timer; runs scripts/restore-rehearsal.sh
+# once and exits: restores the latest snapshot into a scratch directory,
+# opens and migrates the database, re-applies the deletion ledger. A
+# failed run leaves this unit in the failed state:
+#
+#   systemctl status cmd-and-ctrl-restore-rehearsal
+#   journalctl -u cmd-and-ctrl-restore-rehearsal -n 100 --no-pager
+#
+# Installed on BOTH hosts by CD with the backup units ("Ensure off-site
+# backup" in .github/workflows/ci-cd.yml), and enabled only when the
+# backup is. Runbook: docs/environments.md#restore-rehearsal.
+
+[Unit]
+Description=cmd_and_ctrl restore rehearsal (latest snapshot into a scratch dir)
+Documentation=https://github.com/krakenhavoc/cmd_and_ctrl/blob/main/docs/environments.md#restore-rehearsal
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=cmdctrl
+Group=cmdctrl
+# The same credentials as the backup (a read-only token would do).
+EnvironmentFile=/etc/cmd_and_ctrl/backup.env
+Environment=CMDCTRL_DATA_DIR=/var/lib/cmd_and_ctrl/data
+CacheDirectory=cmd-and-ctrl-backup
+CacheDirectoryMode=0700
+Environment=RESTIC_CACHE_DIR=%C/cmd-and-ctrl-backup
+# The scratch directory; the script empties it on every exit.
+StateDirectory=cmd-and-ctrl-restore-rehearsal
+StateDirectoryMode=0700
+ExecStart=/opt/cmd_and_ctrl/scripts/restore-rehearsal.sh
+TimeoutStartSec=2h
+Nice=10
+IOSchedulingClass=idle
+CPUSchedulingPolicy=batch
+StandardOutput=journal
+StandardError=journal
+
+# Hardening, as the backup unit. It writes only its state and cache
+# directories (and the metrics file); the live data dir is not even
+# mounted writable.
+ProtectSystem=strict
+ReadOnlyPaths=/var/lib/cmd_and_ctrl/data
+ReadWritePaths=-/var/lib/cmdctrl-metrics
+InaccessiblePaths=-/etc/cmd_and_ctrl/env -/etc/cmd_and_ctrl/bot.env
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+NoNewPrivileges=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077
