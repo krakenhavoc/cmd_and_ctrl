@@ -1,6 +1,6 @@
 # cmd_and_ctrl — Project Plan
 
-A high-polish digital client for **Magic: The Gathering Commander (EDH)** multiplayer, built for personal use with friends.
+A high-polish digital client for **Magic: The Gathering Commander (EDH)** multiplayer. Built first for the author and friends, and in an open beta since October 2026.
 
 ---
 
@@ -8,10 +8,10 @@ A high-polish digital client for **Magic: The Gathering Commander (EDH)** multip
 
 **Goal.** Build something that feels as good as MTG Arena but is tailored to 4-player Commander — a format Arena has never supported and MTGO serves poorly.
 
-**Hard constraint: personal use only.** This is a private tool for the author and friends. Not a public product. Not distributed, not monetised, not advertised. This reframes the project significantly:
+**Hard constraint: free and non-commercial.** This started as a private tool for the author and friends. Since S70 (October 2026) it is an open beta: strangers can play a practice game, and joining the C2 Discord and getting the player role lets them create tables ([ADR 0156](docs/decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md)). It is still not a product. Nothing is ever sold, and no tier or feature is paid. This reframes the project significantly:
 
-- Legal risk is low. Cockatrice and XMage have existed for 15+ years in this same territory. Scryfall card images and data, card names, and mana symbols are all acceptable for private use.
-- Scale is trivial. Target is ≤8 concurrent users on a single small VPS.
+- It is unofficial fan content under the Wizards Fan Content Policy, which requires free access and lets Wizards revoke permission at any time. Cockatrice, Forge and XMage are tolerated in the same territory rather than licensed. Scryfall's guidelines add: no paywall or chat-server gate on card data, and no cropping of the artist credit. Keep guest play, the notices and the artist credit (S70, [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2985)).
+- Scale is small and capped. One 2 vCPU / 4 GB VM holds about 30 tables / 120 players ([ADR 0148](docs/decisions/0148-capacity-limits-for-a-public-launch.md)). Growing past that is a decision made from measured load.
 - No content treadmill. New cards can lag official releases by days or weeks.
 - Realistic hobby-project scope. Not a startup.
 
