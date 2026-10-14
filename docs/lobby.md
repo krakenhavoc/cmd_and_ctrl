@@ -998,7 +998,7 @@ out is untouched, which is why this is a `PATCH` and not a `PUT`.
 | `commander_damage` | 1..99 | Damage from one commander that loses the game. Read at the next state-based action check, so lowering it can lose somebody the game at that check. |
 | `bot_pace` | `"fast"` \| `"normal"` \| `"slow"` | The table pace (shown as **Table pace**, formerly "Bot speed"): bot think time, and the stack hold every seat, person or bot, waits before auto-passing another player's spell: fast 0 s, normal 2 s, slow 3 s ([ADR 0143](decisions/0143-gameplay-settings-overhaul.md) §2.6). |
 | `allow_spawn` | bool | Whether the host and admin may spawn cards and tokens on a live table. |
-| `free_first_mulligan` | bool | Gives a two-player table the free first mulligan a multiplayer game has by the rules (CR 103.5c; [ADR 0168](decisions/0168-the-london-mulligan.md)'s amendment, #3387). Default false. Omitted from the response when false. **Rejected once the game is active.** |
+| `free_mulligans` | `-1`, or 0..7 | How many of each seat's mulligans are free (#3387; [ADR 0168](decisions/0168-the-london-mulligan.md)'s amendments). `0`, the default, is the rules: one free in a game of three or more (CR 103.5c), none at two players. `N` gives N at any table, never fewer than the rules. `-1` makes every mulligan free. Omitted from the response when 0. **Rejected once the game is active.** |
 
 The **whole patch is validated first**, so a patch with one bad field changes
 nothing — including the good fields beside it.
@@ -1034,7 +1034,7 @@ settings forward rather than rolling them back.
 | 401 | unauthenticated |
 | 403 | caller is neither the host of this table nor the admin |
 | 404 | game not found |
-| 422 | `starting_life` changed after the game started — the value has already been applied; use the life controls to adjust totals. Likewise `free_first_mulligan`, because the mulligan window opens at `start` |
+| 422 | `starting_life` changed after the game started — the value has already been applied; use the life controls to adjust totals. Likewise `free_mulligans`, because the mulligan window opens at `start` |
 
 ### `POST /games/{id}/spawn`
 

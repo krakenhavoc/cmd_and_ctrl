@@ -198,15 +198,15 @@ func TestLondonMulliganConcedeWhileBottoming(t *testing.T) {
 	}
 }
 
-// #3387: the house rule. A two-player table with FreeFirstMulligan on
-// gets the free first mulligan a multiplayer game has by the rules: the
+// #3387: the house rule. A two-player table with FreeMulligans 1 gets
+// the free first mulligan a multiplayer game has by the rules: the
 // first mulligan owes nothing, the second owes one card.
-func TestLondonMulliganTwoPlayersFreeFirstMulliganSetting(t *testing.T) {
+func TestLondonMulliganTwoPlayersOneFreeMulligan(t *testing.T) {
 	g := startMulliganTable(t, 2, 0)
 	// Set directly, as a lobby patch would have before Start.
-	g.Settings.FreeFirstMulligan = true
+	g.Settings.FreeMulligans = 1
 	if got := g.MulliganNextBottomLocked(g.Seats[0]); got != 0 {
-		t.Fatalf("cost of a first mulligan with the setting on = %d, want 0", got)
+		t.Fatalf("cost of a first mulligan with one free = %d, want 0", got)
 	}
 	mulligan(t, g, 0)
 	if got := g.MulliganBottomCountLocked(g.Seats[0]); got != 0 {
@@ -227,5 +227,66 @@ func TestLondonMulliganTwoPlayersFreeFirstMulliganSetting(t *testing.T) {
 	}
 	if got := len(g.Seats[0].Hand.Cards); got != OpeningHandSize {
 		t.Fatalf("opening hand = %d cards, want %d", got, OpeningHandSize)
+	}
+}
+
+// A count gives that many free mulligans, and the first counted one
+// after them owes one card, at any table size.
+func TestLondonMulliganFreeMulligansCount(t *testing.T) {
+	for _, seats := range []int{2, 4} {
+		g := startMulliganTable(t, seats, 0)
+		g.Settings.FreeMulligans = 3
+		for i := 0; i < 3; i++ {
+			g.Seats[0].MulligansTaken = i
+			if got := g.MulliganNextBottomLocked(g.Seats[0]); got != 0 {
+				t.Fatalf("%d seats, mulligan %d of 3 free costs %d, want 0", seats, i+1, got)
+			}
+		}
+		g.Seats[0].MulligansTaken = 3
+		if got := g.MulliganBottomCountLocked(g.Seats[0]); got != 0 {
+			t.Fatalf("%d seats, bottom after 3 free mulligans = %d, want 0", seats, got)
+		}
+		if got := g.MulliganNextBottomLocked(g.Seats[0]); got != 1 {
+			t.Fatalf("%d seats, the fourth mulligan costs %d, want 1", seats, got)
+		}
+		// Free ones do not count toward the limit (CR 103.5c's logic).
+		g.Seats[0].MulligansTaken = 3 + OpeningHandSize - 1
+		if !g.MulliganAllowedLocked(g.Seats[0]) {
+			t.Fatalf("%d seats: refused with %d counted mulligans", seats, OpeningHandSize-1)
+		}
+	}
+}
+
+// The rules floor: a multiplayer game keeps its free first mulligan
+// whatever the count says, so 0 there still means one.
+func TestLondonMulliganCountNeverBelowTheRules(t *testing.T) {
+	g := startMulliganTable(t, 4, 0)
+	g.Settings.FreeMulligans = 0
+	if got := g.MulliganNextBottomLocked(g.Seats[0]); got != 0 {
+		t.Fatalf("first mulligan at a four-seat table costs %d, want 0", got)
+	}
+}
+
+// Unlimited: every mulligan is free, nothing is ever bottomed, and the
+// zero-card limit never refuses.
+func TestLondonMulliganUnlimitedFreeMulligans(t *testing.T) {
+	g := startMulliganTable(t, 2, 0)
+	g.Settings.FreeMulligans = FreeMulligansUnlimited
+	for i := 0; i < 3*OpeningHandSize; i++ {
+		g.Seats[0].MulligansTaken = i
+		if got := g.MulliganNextBottomLocked(g.Seats[0]); got != 0 {
+			t.Fatalf("unlimited: mulligan %d costs %d, want 0", i+1, got)
+		}
+		if !g.MulliganAllowedLocked(g.Seats[0]) {
+			t.Fatalf("unlimited: mulligan %d refused", i+1)
+		}
+	}
+	g.Seats[0].MulligansTaken = 0
+	mulligan(t, g, 0)
+	mulligan(t, g, 1)
+	keep(t, g, 0)
+	keep(t, g, 1)
+	if g.MulligansOpen {
+		t.Fatal("a keep after free mulligans held the window")
 	}
 }

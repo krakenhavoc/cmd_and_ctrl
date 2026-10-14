@@ -5,6 +5,7 @@ import {
   mulliganDecider,
   mulliganWaitingText,
   nextMulliganBottom,
+  freeMulliganCount,
 } from "./mulliganTurn";
 
 describe("the London mulligan's cost (ADR 0168)", () => {
@@ -14,19 +15,43 @@ describe("the London mulligan's cost (ADR 0168)", () => {
     expect(keepCostText(2)).toBe("Keep: put 2 cards from this hand on the bottom of your library.");
   });
 
-  it("makes only the first mulligan free, and only when the table has one", () => {
-    expect(nextMulliganBottom(0, 0, true)).toBe(0);
-    expect(nextMulliganBottom(0, 0, false)).toBe(1);
-    expect(nextMulliganBottom(1, 0, true)).toBe(1);
-    expect(nextMulliganBottom(2, 1, true)).toBe(2);
-    expect(nextMulliganBottom(1, 1, false)).toBe(2);
+  it("counts the table's free mulligans: the rules' one, or the setting when it gives more", () => {
+    expect(freeMulliganCount(2, undefined)).toBe(0);
+    expect(freeMulliganCount(2, 0)).toBe(0);
+    expect(freeMulliganCount(4, 0)).toBe(1);
+    expect(freeMulliganCount(2, 1)).toBe(1);
+    expect(freeMulliganCount(4, 3)).toBe(3);
+    expect(freeMulliganCount(2, -1)).toBe(Infinity);
+  });
+
+  it("makes a mulligan free while the seat has free ones left", () => {
+    expect(nextMulliganBottom(0, 0, 1)).toBe(0);
+    expect(nextMulliganBottom(0, 0, 0)).toBe(1);
+    expect(nextMulliganBottom(1, 0, 1)).toBe(1);
+    expect(nextMulliganBottom(2, 1, 1)).toBe(2);
+    expect(nextMulliganBottom(1, 1, 0)).toBe(2);
+    expect(nextMulliganBottom(2, 0, 3)).toBe(0);
+    expect(nextMulliganBottom(3, 0, 3)).toBe(1);
+    expect(nextMulliganBottom(10, 0, Infinity)).toBe(0);
+  });
+
+  it("says how many free mulligans are left, or that they are unlimited", () => {
+    expect(mulliganCostText(1, 0, 3)).toBe(
+      "Mulligan: free (2 free mulligans left). Shuffle this hand away and draw 7.",
+    );
+    expect(mulliganCostText(2, 0, 3)).toBe(
+      "Mulligan: free (1 free mulligan left). Shuffle this hand away and draw 7.",
+    );
+    expect(mulliganCostText(5, 0, Infinity)).toBe(
+      "Mulligan: mulligans are free at this table. Shuffle this hand away and draw 7.",
+    );
   });
 
   it("says what one more mulligan costs", () => {
-    expect(mulliganCostText(0, 0, true)).toBe(
+    expect(mulliganCostText(0, 0, 1)).toBe(
       "Mulligan: your first mulligan is free. Shuffle this hand away and draw 7.",
     );
-    expect(mulliganCostText(1, 0, true)).toBe(
+    expect(mulliganCostText(1, 0, 1)).toBe(
       "Mulligan: shuffle this hand away, draw 7, then put 1 card on the bottom when you keep.",
     );
   });

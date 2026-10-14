@@ -110,10 +110,10 @@ var (
 	ErrStartingLifeLocked = errors.New("game: starting life cannot change once the game has started")
 
 	// ErrFreeMulliganLocked is returned by UpdateSettings when a patch
-	// changes FreeFirstMulligan after Start: the mulligan window opens
+	// changes FreeMulligans after Start: the mulligan window opens
 	// at Start, and a cost that moved mid-decision would be unfair.
 	// Nothing in the patch is applied. Added for #3387.
-	ErrFreeMulliganLocked = errors.New("game: the free first mulligan cannot change once the game has started")
+	ErrFreeMulliganLocked = errors.New("game: free mulligans cannot change once the game has started")
 
 	// ErrNoPriority is returned by PassPriority when called during a
 	// step that does not grant priority (currently Untap and Cleanup

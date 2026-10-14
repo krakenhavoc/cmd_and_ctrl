@@ -11732,10 +11732,10 @@ type TableSettingsView struct {
 	BotPace string `json:"bot_pace"`
 	// AllowSpawn is the production spawn switch.
 	AllowSpawn bool `json:"allow_spawn"`
-	// FreeFirstMulligan gives a two-player table the free first
-	// mulligan (#3387). Fixed once the game is active. Omitted when
-	// off, which is the rules.
-	FreeFirstMulligan bool `json:"free_first_mulligan,omitempty"`
+	// FreeMulligans is the table's free-mulligan house rule (#3387):
+	// 0 (omitted) is the rules, N gives N free mulligans at any table,
+	// -1 makes every mulligan free. Fixed once the game is active.
+	FreeMulligans int `json:"free_mulligans,omitempty"`
 }
 
 // ViewOfTableSettings projects one table's settings for a caller
@@ -11757,7 +11757,7 @@ func viewOfTableSettings(s game.TableSettings) *TableSettingsView {
 		BotPace:         string(s.BotPace),
 		AllowSpawn:      s.AllowSpawn,
 
-		FreeFirstMulligan: s.FreeFirstMulligan,
+		FreeMulligans: s.EffectiveFreeMulligans(),
 	}
 }
 
