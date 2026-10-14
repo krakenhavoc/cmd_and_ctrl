@@ -649,6 +649,14 @@ type PendingChoice struct {
 	// candidate, in DiscardOptions order, taken as the pick was raised.
 	// Nil when the card measures nothing.
 	PickMeasures []int
+	// PickExiledWith is the source OBJECT a PickExile pick links its
+	// exiled card to (CR 607.2a, #3516): Null Summoner's "exile that
+	// card ... you may cast the exiled card". Captured when the pick
+	// goes up, because the prompt is answered after the ability has
+	// resolved and the source may have changed by then (CR 400.7). The
+	// zero value links nothing, which is every prompt raised before the
+	// field existed. Plain data, so the prompt stays a restore point.
+	PickExiledWith PermissionCardRef
 
 	// promptRun links this prompt to the RUN it is one leg of — the
 	// printed instruction whose continuation waits for every seat it
@@ -2914,6 +2922,14 @@ type RevealedHandDiscard struct {
 	// would see; nothing else can change in between, since the prompt
 	// stops the table. Like Filter, the func is never stored.
 	Measure func(Card) int
+	// ExiledWith links a PickExile pick's exiled card to this source
+	// OBJECT (CR 607.2a, #3516): the card lands in exile with
+	// Card.ExiledWith naming it, through the one linked-exile route
+	// (ExileLinkedThenForEffect), so a standing cast permission filtered
+	// on PermissionFilter.ExiledWithSource finds it. The zero ObjectRef
+	// links nothing. Refused with any other Destination: a discard or a
+	// card left in the hand is not exiled with anything.
+	ExiledWith ObjectRef
 }
 
 // isVariant reports whether d needs the variant prompt rather than the

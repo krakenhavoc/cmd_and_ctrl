@@ -225,6 +225,10 @@ func (g *Game) RevealedHandPickForEffect(d RevealedHandDiscard) (uuid.UUID, erro
 	if !knownPickDestination(d.Destination) {
 		return uuid.Nil, fmt.Errorf("%w: revealed-hand pick destination %q", ErrInvalidParam, d.Destination)
 	}
+	if d.ExiledWith.ID != uuid.Nil && d.Destination != PickExile {
+		// Only an exile is "exiled with" anything (CR 607.2a).
+		return uuid.Nil, fmt.Errorf("%w: a revealed-hand pick links only an exile", ErrInvalidParam)
+	}
 	if d.FromGraveyard && d.Destination != PickExile {
 		// A card in a graveyard cannot be discarded (CR 701.9a): the one
 		// printed graveyard variant, Agonizing Remorse, exiles.
@@ -282,6 +286,7 @@ func (g *Game) RevealedHandPickForEffect(d RevealedHandDiscard) (uuid.UUID, erro
 		return uuid.Nil, g.settleRevealedPickLocked(revealedPickSettle{
 			chooser: d.Chooser, from: d.FromPlayer, source: d.Source,
 			destination: d.Destination, then: d.Then.key,
+			exiledWith: PermissionCardRef(d.ExiledWith),
 		}, nil, nil)
 	}
 	if options == nil {
@@ -310,6 +315,7 @@ func (g *Game) RevealedHandPickForEffect(d RevealedHandDiscard) (uuid.UUID, erro
 		PickFromGraveyard: d.FromGraveyard,
 		PickThen:          d.Then.key,
 		PickMeasures:      measures,
+		PickExiledWith:    PermissionCardRef(d.ExiledWith),
 	})
 	return id, nil
 }
@@ -410,6 +416,7 @@ func (g *Game) resolveRevealedHandPickLocked(idx int, c *PendingChoice, picks []
 	s := revealedPickSettle{
 		chooser: c.Chooser, from: c.FromPlayer, source: c.Source,
 		destination: c.PickDestination, then: c.PickThen,
+		exiledWith: c.PickExiledWith,
 	}
 	g.dequeueChoiceLocked(idx)
 	g.emitChoiceEffectErrorLocked(s.chooser, s.source, g.settleRevealedPickLocked(s, chosen, measures))
@@ -422,6 +429,9 @@ type revealedPickSettle struct {
 	chooser, from, source uuid.UUID
 	destination           PickDestination
 	then                  string
+	// exiledWith is the source object a PickExile links its card to
+	// (RevealedHandDiscard.ExiledWith); zero links nothing.
+	exiledWith PermissionCardRef
 }
 
 // settleRevealedPickLocked moves the chosen cards and runs the
@@ -479,6 +489,11 @@ func (g *Game) moveRevealedPickLocked(s revealedPickSettle, ids []uuid.UUID, aft
 	}
 	switch s.destination {
 	case PickExile:
+		if s.exiledWith.ID != uuid.Nil {
+			// CR 607.2a (#3516): the card is "exiled with" the source, so
+			// a standing permission can name it (Null Summoner).
+			return g.ExileLinkedThenForEffect(ObjectRef(s.exiledWith), ids, next)
+		}
 		return g.ExileCardsThenForEffect(ids, next)
 	case PickKeep:
 		return next(g, nil)
@@ -492,4 +507,22 @@ func (g *Game) moveRevealedPickLocked(s revealedPickSettle, ids []uuid.UUID, aft
 			then:   next,
 		})
 	}
+}
+
+// pickExiledWithSnapshot is the snapshot's spelling of
+// PendingChoice.PickExiledWith: nil for the zero ref, so a prompt that
+// links nothing writes nothing (#3516).
+func pickExiledWithSnapshot(r PermissionCardRef) *PermissionCardRef {
+	if r.ID == uuid.Nil {
+		return nil
+	}
+	return &r
+}
+
+// pickExiledWithRestored is its inverse.
+func pickExiledWithRestored(r *PermissionCardRef) PermissionCardRef {
+	if r == nil {
+		return PermissionCardRef{}
+	}
+	return *r
 }

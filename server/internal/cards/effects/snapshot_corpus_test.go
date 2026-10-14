@@ -330,6 +330,17 @@ func corpusBoards() []corpusBoard {
 		// Carthalion's cantBecomeMonarch record naming his controller,
 		// beside the opponent he crowned.
 		{"cant_become_monarch", corpusCantBecomeMonarch},
+		// v8, added by #3515 (ADR 0032 amendment 2026-10-14) as a new
+		// file: a resolved Hall of Echoes — the legendRuleDoesntApply
+		// record naming the activator (a game-scope rule kind), beside
+		// the land that is a copy of the legend until end of turn and
+		// the legend itself, which is the pair the record keeps.
+		{"legend_rule_doesnt_apply", corpusLegendRuleDoesntApply},
+		// v8, added by #3516 (ADR 0116 amendment 2026-10-14) as a new
+		// file: a Null Summoner's revealed-hand pick waiting on the
+		// controller, whose exile is linked to the Summoner object
+		// (pickExiledWith).
+		{"revealed_hand_pick_exile_linked", corpusRevealedHandPickExileLinked},
 		// v8, added by #2928 (ADR 0146 amendment 2026-10-13) as a new
 		// file: a vote over cards in a graveyard (Custodi Squire's
 		// councilVote.zone) waiting on a ballot that Illusion of Choice
@@ -1444,6 +1455,48 @@ func corpusCantBecomeMonarch(t *testing.T) *game.Game {
 			t.Fatal(err)
 		}
 	})
+	return g
+}
+
+// corpusLegendRuleDoesntApply is a resolved Hall of Echoes (#3515): the
+// land is a copy of the legend until end of turn, and the activator's
+// legend rule is suspended for the turn by a stored record.
+func corpusLegendRuleDoesntApply(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	hall := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Hall of Echoes", TypeLine: "Land",
+		OracleID: oracleHallOfEchoes, Owner: me.ID, Controller: me.ID,
+	})
+	legend := b12Creature(g, me.ID, legendName, legendTypeLine, 2, 2)
+	g.WithWriteLock(func() {
+		if err := g.AddManaForEffect(me.ID, uuid.Nil, "{C}{C}{C}{C}{C}"); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if err := g.ActivateCatalogAbility(me.ID, hall, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: legend}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	return g
+}
+
+// corpusRevealedHandPickExileLinked is #3516's prompt: Null Summoner's
+// enters trigger has resolved and the controller has yet to choose, so
+// the pick carries the Summoner object it will link the exiled card to.
+func corpusRevealedHandPickExileLinked(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	revealHand(opp, rhForest(), rhBolt(),
+		game.Card{Name: "Big Bear", TypeLine: "Creature — Bear", ManaCost: "{3}{R}{R}", Colors: []string{"R"}, Power: 3, Toughness: 3})
+	castCatalogSpell(t, g, "Null Summoner", "Creature — Human Warlock", nullSummonerOracle, nil)
+	passPriorityAroundTable(t, g)
+	pickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	openVariant(t, g)
 	return g
 }
 

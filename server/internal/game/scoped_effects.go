@@ -332,6 +332,16 @@ const (
 	// playerCantBecomeMonarchLocked, which becomeMonarchLocked and the
 	// CR 725.4 hand-on ask. Reads Player.
 	ModCantBecomeMonarch ModKind = "cantBecomeMonarch"
+	// ModLegendRuleDoesntApply is "the legend rule doesn't apply to
+	// permanents you control this turn" (CR 704.5j; #3515, ADR 0032's
+	// amendment of 2026-10-14): Hall of Echoes. Scope ScopeGame with
+	// Player set to the player whose permanents it covers (zero covers
+	// every player's). Read by legendRuleExemptControllersLocked beside
+	// the printed Spec.LegendRuleExemptions, so the two compose. A stored
+	// record because the printed form has no duration and the ability's
+	// source is a land that is not the one granting it; swept at cleanup
+	// (CR 514.2). Reads Player.
+	ModLegendRuleDoesntApply ModKind = "legendRuleDoesntApply"
 	// ModVoteChooser is "you choose how each player votes this turn"
 	// (ADR 0146 amendment 2026-10-13, #2928; CR 701.38): Illusion of
 	// Choice. Scope ScopeGame with Player set to the player who chooses.
@@ -927,6 +937,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantPlayFromHand: {reader: readerRule},
 	// ADR 0096 amendment (#2039): the monarch gate.
 	ModCantBecomeMonarch: {reader: readerRule},
+	// ADR 0032 amendment (#3515): the turn-limited legend-rule exemption.
+	ModLegendRuleDoesntApply: {reader: readerRule},
 	// ADR 0146 amendment (#2928): who casts each player's ballot.
 	ModVoteChooser: {reader: readerRule},
 	// ADR 0108 §2 (#1887): the regeneration gate.
