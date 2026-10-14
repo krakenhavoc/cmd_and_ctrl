@@ -569,3 +569,44 @@ snapshot round trip with and without the field.
 `legal/priority_succession_test.go` shows the bot's side: the active
 seat is offered Counterspell against an opponent's Bolt it never used
 to see.
+
+## Amendment 2026-10-14 — split second granted by a static, read live (#3502)
+
+**Context.** The 2026-09-24 amendment reads split second off the cast
+card and says no effect can grant it off the battlefield. Samut, Tyrant
+of Naktamun prints "Instant and sorcery spells you control have split
+second", a static ability of a permanent that gives it to spells on the
+stack.
+
+**Decision 16. A grant is live, not stamped.** `StackItem.SplitSecond`
+stays the spell's OWN fact (its printed keyword or the sandbox flag,
+written once at announce). A grant is `Spec.SplitSecondGrants`
+(`game.SplitSecondGrant`: a `PermissionFilter` and the oracle sentence),
+read off the battlefield through `CatalogSplitSecondGrants` by
+`spellGrantedSplitSecondLocked` and folded into
+`recomputeSplitSecondLocked`. CR 702.61a makes split second a static
+ability that functions while the spell is on the stack, and CR 611.3a
+says a continuous effect from a static ability "isn't locked in; it
+applies at any given moment to whatever its text indicates". So the
+grant exists exactly while a source is on the battlefield under the
+spell's controller with its abilities (`CatalogAbilityKey`): a Samut
+sacrificed to an altar in response (a mana ability, which split second
+does not stop, CR 702.61b) takes it off the spell, and one that arrives
+under a spell already on the stack gives it. Stamping at announce would
+have kept it after she left, which is stronger than printed. "Spells you
+control" is the spell's current controller, so a copy you control has
+it and an opponent's spell does not.
+
+**Refresh points.** The cache `Game.SplitSecondActive` is re-derived on
+every stack exit (as before), when a spell lands on the stack, and on a
+battlefield zone move or a control change while anything is on the stack
+(`refreshSplitSecondForBoardChangeLocked`, called from the layer-version
+listener), so no reader sees a stale answer after the board changes. A
+source that loses its abilities (Humility) while a spell is on the stack
+is refreshed at the next stack change, not at that moment: that is the
+one gap, and it can only be reached through a triggered ability or a
+mana ability, since split second shuts every other response.
+
+**Wire.** None added. `stack_items[].split_second` is true for a spell
+that has it from either source (`Game.SpellHasSplitSecondForEffect`), and
+`split_second_active` is the cache.

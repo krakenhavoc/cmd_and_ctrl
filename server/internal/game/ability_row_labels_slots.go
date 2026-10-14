@@ -124,8 +124,11 @@ func (gr GrantedAlternativeCost) rowLabel() string {
 	}
 	fromHand := len(gr.Zones) == 1 && gr.Zones[0] == ZoneHand
 	var limit string
-	if gr.MaxManaValue != nil {
+	switch {
+	case gr.MaxManaValue != nil:
 		limit = fmt.Sprintf(" with mana value %d or less", *gr.MaxManaValue)
+	case gr.MaxManaValueFunc != nil && gr.MaxManaValueText != "":
+		limit = " with mana value less than or equal to " + gr.MaxManaValueText
 	}
 	if fromHand {
 		limit += " from your hand"
