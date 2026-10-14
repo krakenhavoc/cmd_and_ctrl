@@ -62,6 +62,8 @@ var Inventory = join(
 		"host_discord_id"),
 	cols("games", NotPersonal, "the table's choice of a Discord voice room and the room's channel id (ADR 0159); neither names a person",
 		"voice_room", "voice_channel_id"),
+	cols("games", NotPersonal, "the table's choice of the Discord #lfg board and its post's message id (ADR 0161); neither names a person",
+		"lfg", "lfg_message_id"),
 
 	cols("seats", Kept, "the seat keeps its place in the game",
 		"game_id", "seat", "player_id", "bot_tier", "agent_client", "deck_name"),
@@ -102,6 +104,8 @@ var Inventory = join(
 		"user_id", "version", "revision", "body", "updated_at"),
 	cols("table_setups", Deleted, "the person's last table setup",
 		"user_id", "body", "game_id", "updated_at"),
+	cols("notification_prefs", Deleted, "the person's Discord DM notification switches and when Discord last refused one (ADR 0162)",
+		"user_id", "turn", "table_ready", "table_filled", "dm_failed_at", "updated_at"),
 	cols("user_playmats", Deleted, "the rows; the image files are removed by the caller",
 		"user_id", "slot", "playmat_id", "width", "height", "created_at"),
 
@@ -117,6 +121,15 @@ var Inventory = join(
 		"excerpt"),
 	cols("player_reports", NotPersonal, "when and where; the table's name is already part of the game record",
 		"created_at", "game_id", "game_name"),
+
+	cols("game_stats", Kept, "a finished game's statistics (ADR 0165) are part of the record the other players keep; they hold no name or user id",
+		"game_id", "stats_version", "source", "log_complete", "turns", "rounds", "starting_seat", "computed_at"),
+	cols("seat_stats", Kept, "a seat's statistics are part of the game record; they name no one, and the seat's person is seats.user_id, which already points at the tombstone",
+		"game_id", "seat", "result", "place", "eliminated_turn", "conceded", "final_life", "life_gained", "life_lost",
+		"damage_to_players", "combat_damage_to_players", "commander_damage_dealt", "commander_damage_taken",
+		"spells_cast", "cards_drawn", "attacks", "tokens_created", "mulligans", "commanders"),
+	cols("seat_card_stats", Kept, "which cards a seat cast, by card name; part of the game record and names no one",
+		"game_id", "seat", "name", "scryfall_id", "casts", "first_cast_turn"),
 
 	cols("bot_model_budget", NotPersonal, "server-wide token counters",
 		"key", "value", "updated_at"),

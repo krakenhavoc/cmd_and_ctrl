@@ -102,6 +102,8 @@ One log line, `account deleted`, with our own user id and counts of what was rem
 
 No contact address has been chosen, and none is invented. The page says "Contact: see the project's GitHub" and links the repository. `TODO(owner): contact` marks the constant in `client/src/lib/privacy.ts` to replace.
 
+**Amendment (owner, 2026-10-13, #3358):** the contact is **legal@labxp.io**, and the site is run by **KrakenKey LLC**, a Florida limited liability company. Both live in `client/src/lib/legalNotice.ts`, shared with the terms of service (`#/terms`), and `privacy.ts` takes its contact from there. The TODO is gone.
+
 ## Consequences
 
 - A person can read what is kept and remove it. The other players' games survive intact, with one seat renamed.

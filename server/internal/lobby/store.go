@@ -97,6 +97,12 @@ type GameRecord struct {
 	// VoiceChannelID is the table's live voice room, "" (NULL) for none
 	// (ADR 0159 §5). Mutable.
 	VoiceChannelID string
+	// LFG is whether the host opted the table in to the Discord #lfg
+	// board (ADR 0161 §1, migration 0021). Mutable.
+	LFG bool
+	// LFGMessageID is the table's live #lfg post, "" (NULL) for none
+	// (ADR 0161 §6). Mutable.
+	LFGMessageID string
 }
 
 // SeatRecord is one seats row.

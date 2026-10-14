@@ -227,3 +227,4 @@ condition caveat-h2/vizkopa-guildmage-you-gain-life
 body agathas-soul-cauldron/counter
 body havengul-lich/gains-its-abilities
 condition havengul-lich/you-cast-it
+body casualty/copy

@@ -36,6 +36,7 @@ type Door struct {
 	GatedCastPermissions []game.CastPermissionGate
 	Replacements         []game.ReplacementEffect
 	UntapStep            []game.UntapStepPermission
+	GrantedTapCosts      []game.GrantedTapCost
 	NoMaxHandSize        bool
 }
 
@@ -100,6 +101,10 @@ func Room(r RoomSpec) Spec {
 		for _, u := range d.UntapStep {
 			u.ActiveWhen = gate
 			s.UntapStep = append(s.UntapStep, u)
+		}
+		for _, gr := range d.GrantedTapCosts {
+			gr.ActiveWhen = gate
+			s.GrantedTapCosts = append(s.GrantedTapCosts, gr)
 		}
 		if d.NoMaxHandSize {
 			// One door at most prints it; two would need two gates.

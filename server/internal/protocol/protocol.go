@@ -31,6 +31,10 @@ const (
 	// connection that sent it, carrying the action's id (ADR 0122
 	// §6.4). It always follows the snapshot of the state it names.
 	KindAck Kind = "ack"
+	// KindVisibility (client → server) says whether the tab behind the
+	// connection is in front (ADR 0162 §2). Sent on visibilitychange
+	// and once on connect; never answered. See VisibilityPayload.
+	KindVisibility Kind = "visibility"
 )
 
 // Error codes for Kind == KindError. Kept deliberately small at v0.
@@ -120,6 +124,13 @@ type Frame struct {
 	Kind    Kind            `json:"kind"`
 	ID      string          `json:"id"`
 	Payload json.RawMessage `json:"payload,omitempty"`
+}
+
+// VisibilityPayload is the payload of a KindVisibility frame. Visible
+// is required: a frame without it is refused, so a client cannot hide
+// itself by accident.
+type VisibilityPayload struct {
+	Visible *bool `json:"visible"`
 }
 
 // PingPayload is the payload body for a Kind == KindPing frame.

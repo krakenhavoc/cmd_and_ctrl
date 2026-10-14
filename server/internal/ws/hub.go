@@ -30,6 +30,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/clientip"
 )
 
 // Timing constants mirror the canonical gorilla/websocket chat example
@@ -105,6 +106,11 @@ type Hub struct {
 	// maxConns is the live-connection ceiling (ADR 0148, #2977). 0 is
 	// no cap. Read on every upgrade, so it is an atomic.
 	maxConns atomic.Int64
+
+	// seatLeft is when each seat last stopped being present: a seat
+	// connection closed, or reported its tab hidden (ADR 0162 §2,
+	// presence.go). Guarded by mu.
+	seatLeft map[seatKey]time.Time
 }
 
 // Binding is what the upgrade authorizer hands to the hub: the
@@ -307,6 +313,9 @@ func (h *Hub) unregister(c *Client) {
 	if _, ok := h.clients[c]; ok {
 		delete(h.clients, c)
 		close(c.send)
+		if !c.hidden {
+			h.markLeftLocked(c)
+		}
 	}
 }
 
@@ -343,6 +352,10 @@ type LiveSocket struct {
 	Admin    bool
 	// ConnectedAt is when the hub admitted the connection.
 	ConnectedAt time.Time
+	// Hidden is the connection's latest visibility frame (ADR 0162
+	// §2): true once it said its tab is hidden. A connection that never
+	// sent one is visible.
+	Hidden bool
 }
 
 // Role is the connection's role label (metrics.WSRole): seat,
@@ -373,7 +386,28 @@ func (h *Hub) LiveSockets() []LiveSocket {
 			ReadOnly:    c.readOnly,
 			Admin:       c.admin,
 			ConnectedAt: c.connectedAt,
+			Hidden:      c.hidden,
 		})
+	}
+	return out
+}
+
+// ConnectedSeats is the set of seats at gameID that hold a live, non-
+// spectator socket: who is still on the table's page. The lobby's rematch
+// watcher reads it to tell when every human has left the results screen
+// (#3285). Like LiveSockets it copies under the hub's read lock and takes
+// no other lock.
+func (h *Hub) ConnectedSeats(gameID uuid.UUID) map[uuid.UUID]bool {
+	out := map[uuid.UUID]bool{}
+	if gameID == uuid.Nil {
+		return out
+	}
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for c := range h.clients {
+		if c.gameID == gameID && c.playerID != uuid.Nil && !c.readOnly {
+			out[c.playerID] = true
+		}
 	}
 	return out
 }
@@ -415,7 +449,7 @@ func (h *Hub) refuseFull(w http.ResponseWriter, r *http.Request) {
 	metrics.CapacityRefused(metrics.RefuseWSConnections)
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		h.log.Warn("ws upgrade failed while refusing at the connection cap", "err", err, "remote", r.RemoteAddr)
+		h.log.Warn("ws upgrade failed while refusing at the connection cap", "err", err, "remote", clientip.FromRequest(r))
 		return
 	}
 	defer func() { _ = conn.Close() }()
@@ -468,7 +502,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// resolveBinding logs nothing — we log here so that auth
 		// failures are visible at exactly one level.
-		h.log.Warn("ws upgrade rejected", "err", err, "remote", r.RemoteAddr)
+		h.log.Warn("ws upgrade rejected", "err", err, "remote", clientip.FromRequest(r))
 		status := statusFor(err)
 		metrics.WSUpgradeRejected(rejectReasonFor(status))
 		http.Error(w, err.Error(), status)
@@ -521,14 +555,14 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		metrics.WSUpgradeRejected(metrics.RejectUpgradeFailed)
-		h.log.Error("ws upgrade failed", "err", err, "remote", r.RemoteAddr)
+		h.log.Error("ws upgrade failed", "err", err, "remote", clientip.FromRequest(r))
 		return
 	}
 	client := &Client{
 		hub:      h,
 		conn:     conn,
 		send:     make(chan []byte, 16),
-		log:      h.log.With("remote", r.RemoteAddr, "game", gameID.String(), "player", playerID.String()),
+		log:      h.log.With("remote", clientip.FromRequest(r), "game", gameID.String(), "player", playerID.String()),
 		gameID:   gameID,
 		playerID: playerID,
 		readOnly: binding.ReadOnly,
@@ -916,6 +950,11 @@ type Client struct {
 	// legalMoves rate-limits legal_moves_request frames (ADR 0122
 	// §6.1, legal_moves.go). Read goroutine only.
 	legalMoves legalMovesLimiter
+
+	// hidden is the latest `visibility` frame's answer (ADR 0162 §2,
+	// presence.go): true while the client's tab is hidden. False until
+	// the client says otherwise. Guarded by hub.mu.
+	hidden bool
 }
 
 // role is the connection's role label (ADR 0123 §3): seat, spectator
@@ -996,6 +1035,8 @@ func (c *Client) handleFrame(raw []byte) {
 		c.handleChat(frame)
 	case protocol.KindLegalMovesRequest:
 		c.handleLegalMovesRequest(frame)
+	case protocol.KindVisibility:
+		c.handleVisibility(frame)
 	default:
 		c.sendError(frame.ID, protocol.CodeBadRequest,
 			"unknown or unsupported kind")

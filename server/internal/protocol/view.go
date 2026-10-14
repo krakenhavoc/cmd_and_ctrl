@@ -96,6 +96,10 @@ type GameView struct {
 	// the room and reduced per viewer by FilterViewFor. Nil when the
 	// feature is off on this server.
 	Voice *VoiceView `json:"voice,omitempty"`
+	// Rematch is the host's rematch offer on an ended table (#3285, ADR
+	// 0164), stamped by the room and reduced per viewer by FilterViewFor.
+	// Nil until a rematch is offered, and for a spectator.
+	Rematch *RematchView `json:"rematch,omitempty"`
 	// StartingSeat is the seat index that took the first turn. Used
 	// by the server to enforce the CR 103.8a turn-1 skip-draw rule
 	// (two-player games only — CR 103.8c);
@@ -6019,7 +6023,13 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// ADR 0073: the optional costs this card OFFERS. Stamped next to
 	// the mandatory one and read by the same modal the alternative
 	// costs open, because CR 601.2b announces all of them together.
-	out.OptionalCosts = viewOfOptionalCosts(g, caster, src, key)
+	optional := game.OptionalCostsFor(key)
+	if haveLive {
+		// #3245: a permanent may grant this spell an optional cost
+		// (Silverquill's casualty), appended after the card's own.
+		optional = g.OptionalCostsForCastLocked(caster, live)
+	}
+	out.OptionalCosts = viewOfOptionalCosts(g, caster, src, optional)
 	// ADR 0150 §5: assist's "choose another player", asked in the same
 	// modal as the gift's opponent. The total is the engine's own
 	// (AssistGenericLocked), so "up to {N}" is the cap the park uses.
@@ -6039,7 +6049,13 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// S22: convoke / waterbend. Stamped before the target clause
 	// because the caster pays it first, and the count of a "X target
 	// creatures" clause depends on what they paid.
-	if tc := game.TapPermanentsCostFor(key); !tc.Empty() {
+	tc := game.TapPermanentsCostFor(key)
+	if haveLive {
+		// A permanent may grant this spell convoke (Hoarding Broodlord's
+		// "spells you cast from exile", Dazzling Theater's creature spells).
+		tc = g.TapPermanentsCostForCastLocked(caster, live, kind)
+	}
+	if !tc.Empty() {
 		out.TapCost = viewOfTapCost(g, caster, f.manaCost, tc)
 	}
 	// ADR 0100 §4: delve. The options walk is the engine's own
@@ -6963,8 +6979,7 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 // optional cost that rewrites the target clause carries the rewritten
 // clause's legal set — `src` is the spell as its own source (#662),
 // exactly as the alternative-cost stamp reads it.
-func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, key string) []OptionalCostView {
-	costs := game.OptionalCostsFor(key)
+func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, costs []game.AdditionalCost) []OptionalCostView {
 	if len(costs) == 0 {
 		return nil
 	}
@@ -9202,6 +9217,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// ADR 0159 §6: the viewer's own access, and the link only when
 		// they may use it.
 		Voice:        filterVoiceFor(v.Voice, viewerID),
+		Rematch:      filterRematchFor(v.Rematch, viewerID),
 		StartingSeat: v.StartingSeat,
 		// ADR 0121 §3: every die is public the moment it lands.
 		OpeningRoll:           v.OpeningRoll,

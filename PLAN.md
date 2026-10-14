@@ -60,6 +60,9 @@ operating one public host safely: capacity caps, monitoring, backups.
 - **Generated card art or card text.** Card data and images come from
   Scryfall, credited, within the Wizards **Fan Content Policy** (the S70 terms
   check on [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2985)).
+- **Gating card data.** Scryfall's guidelines allow no paywall and no sign-in or
+  chat-server gate in front of card data, and no cropping of the artist credit.
+  Guest play stays, and so do the legal notices and the artist credit.
 - **Phone-width table layouts.** A tablet is the minimum screen.
 - **Other formats** (1v1 constructed, limited, cubes) and native app stores.
 - **Scale beyond one VM** before the beta goals call for it.

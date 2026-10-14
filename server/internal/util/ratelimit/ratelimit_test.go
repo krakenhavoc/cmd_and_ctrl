@@ -63,48 +63,33 @@ func TestMiddleware429(t *testing.T) {
 	}
 }
 
-// TestKeyForTrustForwarded covers the CMDCTRL_TRUST_FORWARDED opt-in:
-// off → RemoteAddr host; on → the proxy-appended (last) X-Forwarded-For
-// hop, never the spoofable client-supplied prefix; on with no header →
-// RemoteAddr fallback.
-func TestKeyForTrustForwarded(t *testing.T) {
-	req := httptest.NewRequest(http.MethodPost, "/", nil)
-	req.RemoteAddr = "10.0.0.1:4242"
-	// The client sent its own "X-Forwarded-For: spoofed.example"; the
-	// trusted proxy appended the real client IP after it.
-	req.Header.Set("X-Forwarded-For", "spoofed.example, 203.0.113.7")
-
-	// Default (unset / falsy): header ignored, proxy address keys.
-	t.Setenv("CMDCTRL_TRUST_FORWARDED", "")
-	if got := keyFor(req); got != "10.0.0.1" {
-		t.Errorf("untrusted keyFor: got %q, want %q", got, "10.0.0.1")
-	}
-	t.Setenv("CMDCTRL_TRUST_FORWARDED", "0")
-	if got := keyFor(req); got != "10.0.0.1" {
-		t.Errorf("falsy keyFor: got %q, want %q", got, "10.0.0.1")
-	}
-
-	// Trusted: the last hop — the entry the proxy itself appended —
-	// is the client; the attacker-controlled first hop is ignored.
+// TestMiddlewareKeysOnTheClientBehindCloudflare is #3334: behind the
+// hosts' proxies every request arrives from loopback, and two visitors
+// must not share a bucket. The header chain itself is pinned in
+// internal/util/clientip.
+func TestMiddlewareKeysOnTheClientBehindCloudflare(t *testing.T) {
 	t.Setenv("CMDCTRL_TRUST_FORWARDED", "1")
-	if got := keyFor(req); got != "203.0.113.7" {
-		t.Errorf("trusted keyFor: got %q, want %q", got, "203.0.113.7")
+	l := New(0, 1)
+	h := l.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	hit := func(cf string) int {
+		req := httptest.NewRequest(http.MethodPost, "/", nil)
+		req.RemoteAddr = "127.0.0.1:51234"
+		req.Header.Set("X-Forwarded-For", "127.0.0.1")
+		req.Header.Set("CF-Connecting-IP", cf)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec.Code
 	}
-
-	// A single-entry header (honest client, one trusted proxy) keys
-	// on that entry.
-	honest := httptest.NewRequest(http.MethodPost, "/", nil)
-	honest.RemoteAddr = "10.0.0.1:4242"
-	honest.Header.Set("X-Forwarded-For", "198.51.100.9")
-	if got := keyFor(honest); got != "198.51.100.9" {
-		t.Errorf("trusted single-hop keyFor: got %q, want %q", got, "198.51.100.9")
+	if got := hit("203.0.113.7"); got != http.StatusOK {
+		t.Fatalf("first visitor: got %d, want 200", got)
 	}
-
-	// Trusted but header absent → RemoteAddr fallback.
-	bare := httptest.NewRequest(http.MethodPost, "/", nil)
-	bare.RemoteAddr = "10.0.0.2:9999"
-	if got := keyFor(bare); got != "10.0.0.2" {
-		t.Errorf("trusted no-header keyFor: got %q, want %q", got, "10.0.0.2")
+	if got := hit("198.51.100.9"); got != http.StatusOK {
+		t.Errorf("second visitor shares the first one's bucket: got %d, want 200", got)
+	}
+	if got := hit("203.0.113.7"); got != http.StatusTooManyRequests {
+		t.Errorf("first visitor again: got %d, want 429", got)
 	}
 }
 

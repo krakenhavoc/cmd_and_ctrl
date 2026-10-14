@@ -134,6 +134,21 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 		}
 		out.Voice = &voice
 	}
+	// #3285: the rematch offer names the old table's seats and the new
+	// table, each by id.
+	if v.Rematch != nil {
+		rematch := *v.Rematch
+		rematch.GameID = n.id(v.Rematch.GameID)
+		rematch.Host = n.id(v.Rematch.Host)
+		rematch.Accepted, rematch.Left = nil, nil
+		for _, id := range v.Rematch.Accepted {
+			rematch.Accepted = append(rematch.Accepted, n.id(id))
+		}
+		for _, id := range v.Rematch.Left {
+			rematch.Left = append(rematch.Left, n.id(id))
+		}
+		out.Rematch = &rematch
+	}
 	for i, p := range v.Seats {
 		out.Seats[i] = n.player(p, out.Seats[i].ID)
 	}
@@ -526,6 +541,8 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 		Settings:  &protocol.TableSettingsView{UndoLimit: 3, UndoScope: "own", StartingLife: 40, BotPace: "normal"},
 		Voice: &protocol.VoiceView{Enabled: true, Status: protocol.VoiceStatusReady, URL: "https://discord.com/channels/1/2",
 			Access: map[string]string{ownerID: protocol.VoiceAccessGranted}},
+		Rematch: &protocol.RematchView{GameID: "55555555-5555-5555-5555-555555555555", Host: ownerID, HostName: "Owner", Open: true,
+			Accepted: []string{oppID}},
 		StartingSeat: 1,
 		OpeningRoll: &protocol.OpeningRollView{Rounds: []protocol.OpeningRollRoundView{
 			{Seats: []int{0, 1}, Rolls: []protocol.OpeningRollDieView{{Seat: 0, Result: 12}}},

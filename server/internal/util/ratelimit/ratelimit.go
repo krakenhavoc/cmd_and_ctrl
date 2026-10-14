@@ -11,14 +11,11 @@
 package ratelimit
 
 import (
-	"net"
 	"net/http"
-	"os"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/envflag"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/clientip"
 )
 
 // sweepInterval bounds how often Allow walks the whole bucket map
@@ -99,11 +96,10 @@ func (l *Limiter) sweepLocked(now time.Time) {
 
 // Middleware wraps next and enforces the limiter keyed by client IP.
 // A throttled request returns 429 with a short JSON error body. The
-// key is derived from r.RemoteAddr (host portion only); deployments
-// sitting behind a reverse proxy should set CMDCTRL_TRUST_FORWARDED
-// to a truthy value so the key derives from the proxy-appended hop of
-// X-Forwarded-For instead (RemoteAddr would collapse every caller
-// into the proxy's single bucket).
+// key is clientip.FromRequest: r.RemoteAddr's host, or, with
+// CMDCTRL_TRUST_FORWARDED set, the address Cloudflare saw (#3334).
+// Without that flag behind a proxy, RemoteAddr would collapse every
+// caller into the proxy's single bucket.
 func (l *Limiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !l.AllowRequest(r) {
@@ -123,36 +119,7 @@ func (l *Limiter) Middleware(next http.Handler) http.Handler {
 // one of POST /deck-coverage's tokens only when it must fetch a deck,
 // ADR 0112 §3 item 4).
 func (l *Limiter) AllowRequest(r *http.Request) bool {
-	return l.Allow(keyFor(r))
-}
-
-// keyFor extracts a stable per-client key from the request. Host-only
-// (strip the ephemeral port) so retries from the same source share a
-// bucket. With CMDCTRL_TRUST_FORWARDED set (truthy), the LAST hop of
-// X-Forwarded-For wins — that's the one entry the trusted reverse
-// proxy appended itself. Everything left of it arrived in the
-// client's own header, so keying on the first hop would let a caller
-// mint a fresh bucket per request with a random X-Forwarded-For and
-// bypass the limiter entirely. Falls back to RemoteAddr when the
-// header is absent. The env var is read per request (matching the
-// other CMDCTRL runtime knobs) so flipping it doesn't need a restart.
-func keyFor(r *http.Request) string {
-	if envflag.Truthy(os.Getenv("CMDCTRL_TRUST_FORWARDED")) {
-		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-			last := xff
-			if i := strings.LastIndexByte(xff, ','); i >= 0 {
-				last = xff[i+1:]
-			}
-			if last = strings.TrimSpace(last); last != "" {
-				return last
-			}
-		}
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
+	return l.Allow(clientip.FromRequest(r))
 }
 
 func minf(a, b float64) float64 {

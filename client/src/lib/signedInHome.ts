@@ -42,6 +42,9 @@ const PUBLIC_ROUTES: ReadonlySet<Route["name"]> = new Set<Route["name"]>([
   // The privacy notice (#2983): readable before signing in, linked from
   // the sign-in screen.
   "privacy",
+  // The terms of service (#3358): readable before signing in, as the
+  // privacy notice is.
+  "terms",
   // The About page (#2981): the first thing a stranger from a post reads.
   "about",
   // The getting-started guide: written for someone not signed in yet.
