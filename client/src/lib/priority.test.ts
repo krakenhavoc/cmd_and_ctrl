@@ -483,6 +483,37 @@ describe("owesFreeCast", () => {
     expect(owesFreeCast(withExile([rebound({}, false)]), "p0")).toBe(false);
   });
 
+  // #3625: Buster Sword / Rishkar's Expertise leave the card in hand.
+  describe("a free cast from hand", () => {
+    const granted = (extras: Partial<CardView> = {}): CardView =>
+      card("Lightning Bolt", "Instant", {
+        closes_on_pass: true,
+        alternative_costs: [{ key: "granted-cost", label: "Free" } as never],
+        ...extras,
+      });
+    const withHand = (cards: CardView[]): GameView => snap({ step: "upkeep", hand: cards });
+
+    it("is true for a hand card with a pass-closed free offer", () => {
+      expect(owesFreeCast(withHand([granted()]), "p0")).toBe(true);
+    });
+
+    it("is false without the flag, without the offer, or once timing closes the offer", () => {
+      expect(owesFreeCast(withHand([granted({ closes_on_pass: undefined })]), "p0")).toBe(false);
+      expect(owesFreeCast(withHand([granted({ alternative_costs: [] })]), "p0")).toBe(false);
+      expect(
+        owesFreeCast(
+          withHand([
+            granted({
+              alternative_costs: [{ key: "granted-cost", timing_closed: true } as never],
+            }),
+          ]),
+          "p0",
+        ),
+      ).toBe(false);
+      expect(owesFreeCast(withHand([granted()]), "p1")).toBe(false);
+    });
+  });
+
   it("is false when nothing can be cast now (no legal target), or it is another seat's grant", () => {
     expect(owesFreeCast(withExile([rebound({ castable_here: false })]), "p0")).toBe(false);
     expect(owesFreeCast(withExile([rebound()]), "p1")).toBe(false);

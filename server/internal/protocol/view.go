@@ -3650,6 +3650,15 @@ type CastSurfaceView struct {
 	// `modes[i].legal_targets`, `modes[i].clauses` and
 	// `alternative_costs[i].legal_targets` / `.pay_options`.
 	CastableHere bool `json:"castable_here,omitempty"`
+	// ClosesOnPass is true on a HAND card the viewer holds a free-cast
+	// grant over that their next pass of priority ends
+	// (CastPermission.LapseOnPass == LapseStaysInHand, #3270: Buster
+	// Sword, Rishkar's Expertise). The hand-zone twin of
+	// `exile_play.closes_on_pass`: a hand grant is not an `exile_play`
+	// block, so the client could not see it, and auto-pass could pass the
+	// window closed (#3625). PER VIEWER, like `castable_here`: it names
+	// a window only the holder has, so it is never public.
+	ClosesOnPass bool `json:"closes_on_pass,omitempty"`
 	// OptionalCosts are the "you may pay an additional cost" offers
 	// this card makes (CR 601.2b, ADR 0073) — kicker, multikicker,
 	// buyback. Absent for nearly every card. Stamped alongside
@@ -5734,6 +5743,8 @@ func (s castStamps) applyPublicToFace(f *CardFaceView, kind game.ZoneKind) {
 // player".
 func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	s.CastableHere = false
+	// #3625: a pass-closed hand grant is the holder's window alone.
+	s.ClosesOnPass = false
 	// #2167: which types a per-type permission leaves is the holder's
 	// answer about their own budget.
 	s.PermissionTypes = nil
@@ -6230,6 +6241,8 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// card, so every zone builds it the same way; a card cast off
 	// somebody else's grant is still its own source.
 	var out castStamps
+	// #3625: a hand card under a pass-closed grant (LapseStaysInHand).
+	out.ClosesOnPass = kind == game.ZoneHand && grant != nil && grant.LapseOnPass != ""
 	src := castSourceOf(g, caster, c.InstanceID)
 	// The engine's own card, faced the way the cast path would face
 	// it (ADR 0034): a permission that names a face opens that face
@@ -10304,6 +10317,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// card the same weak way `unimplemented` does. Cleared with the
 	// rest of the cost surface.
 	out.CastableHere = false
+	out.ClosesOnPass = false
 	// #1389: a foretold card's price is its foretell cost, which names
 	// the card as loudly as its mana cost does.
 	out.CastPrices = nil

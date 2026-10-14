@@ -2089,6 +2089,14 @@ flag: the web client's auto-pass holds (`owesFreeCast`), and a manual
 "next" still passes. Public, like the rest of the grant; absent on a grant
 that outlasts a pass (impulse exile, warp, foretell).
 
+**`closes_on_pass` on a hand card (#3625).** The hand twin: `true` on a card
+in the viewer's own hand that a pass-closed free cast covers (`LapseStaysInHand`,
+#3270: Buster Sword, Rishkar's Expertise), where the holder's next pass ends
+the window and the card stays in hand. A hand grant is not an `exile_play`
+block, so the flag rides the card itself. Per viewer, like `castable_here`;
+absent for everyone else. The web client's `owesFreeCast` reads it together
+with the granted free offer in `alternative_costs`.
+
 **`exile_play.any_type` (#1573).** "Mana of any TYPE can be spent to
 cast it" (Hostage Taker, Gonti, Night Minister, Outrageous Robbery) is
 wider than `any_color`: colorless is a type and not a color (CR

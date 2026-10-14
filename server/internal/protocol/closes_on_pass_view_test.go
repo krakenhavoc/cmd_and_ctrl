@@ -54,3 +54,55 @@ func TestExileGrantShipsClosesOnPass(t *testing.T) {
 		})
 	}
 }
+
+// #3625: the hand twin. A LapseStaysInHand grant (Buster Sword,
+// Rishkar's Expertise) is not an exile_play block, so the hand card
+// itself must say its holder's next pass ends the cast. It is the
+// holder's window: a viewer who merely sees the revealed card gets none.
+func TestHandGrantShipsClosesOnPass(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		grant bool
+		want  bool
+	}{
+		{"a pass-closed free cast from hand", true, true},
+		{"a hand card nothing grants", false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := buildActiveGame(t)
+			me, opp := g.Seats[0], g.Seats[1]
+			c := game.NewCard("Test Hand Spell", me.ID)
+			c.TypeLine = "Sorcery"
+			c.ManaCost = "{4}{U}"
+			c.KnownBy = map[uuid.UUID]bool{me.ID: true, opp.ID: true}
+			g.WithWriteLock(func() {
+				me.Hand.PushTop(c)
+				if tc.grant {
+					g.FreeCastFromHandForEffect(me.ID, uuid.Nil, c.InstanceID, "Buster Sword")
+				}
+			})
+			g.BumpLayerVersionForTest()
+			v := ViewOfGame(g)
+
+			handOf := func(viewer uuid.UUID) *CardView {
+				f := FilterViewFor(v, viewer.String())
+				for _, s := range f.Seats {
+					if s.ID == me.ID.String() {
+						return findCardView(t, s.Hand, c.InstanceID)
+					}
+				}
+				return nil
+			}
+			mine := handOf(me.ID)
+			if mine == nil {
+				t.Fatal("the holder's hand card is missing")
+			}
+			if mine.ClosesOnPass != tc.want {
+				t.Errorf("holder: closes_on_pass = %v, want %v", mine.ClosesOnPass, tc.want)
+			}
+			if theirs := handOf(opp.ID); theirs != nil && theirs.ClosesOnPass {
+				t.Error("closes_on_pass reached a viewer who does not hold the grant")
+			}
+		})
+	}
+}

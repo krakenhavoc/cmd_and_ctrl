@@ -219,6 +219,7 @@ export function castSurfaceOf(s: CastSurfaceView) {
     phyrexian_symbols: s.phyrexian_symbols,
     phyrexian_granted: s.phyrexian_granted,
     castable_here: s.castable_here,
+    closes_on_pass: s.closes_on_pass,
     cast_prices: s.cast_prices,
     x_max: s.x_max,
   } satisfies Record<keyof CastSurfaceView, unknown>;
