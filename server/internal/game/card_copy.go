@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strconv"
+
+	"github.com/google/uuid"
+)
 
 // card_copy.go — "copy that card, and you may cast the copy" (CR 707.12;
 // ADR 0066's 2026-10-13 card-copy amendment, #3258).
@@ -80,6 +84,13 @@ type CardCopyOffer struct {
 	// copy is cast because of this offer — Kaervek's "if you do, you
 	// lose 2 life".
 	FollowUp CastFollowUpKey
+
+	// ManaValueBudget is "total mana value N or less" over the copies
+	// (Uldaros Theorix, #2017): one permission names every copy and the
+	// casts made through it spend a shared running total
+	// (CastPermission.ManaValueBudget). Nil keeps the one-offer-per-copy
+	// shape, where each copy is its own free cast and there is no total.
+	ManaValueBudget *int
 }
 
 // CopyCardsAndOfferCastsForEffect makes a copy of each named card
@@ -100,6 +111,7 @@ func (g *Game) CopyCardsAndOfferCastsForEffect(offer CardCopyOffer, cards []uuid
 		return nil
 	}
 	var copies []uuid.UUID
+	var made []Card
 	for _, id := range cards {
 		src := g.findCardZoneLocked(id)
 		if src == nil || (src.Kind != ZoneExile && src.Kind != ZoneGraveyard) {
@@ -121,9 +133,13 @@ func (g *Game) CopyCardsAndOfferCastsForEffect(offer CardCopyOffer, cards []uuid
 		// Public: a copy is made of a card that was face up in exile or
 		// in a graveyard, and everything on it is printed on that card.
 		g.markCardKnownInZoneLocked(dst, cp.InstanceID)
-		g.GrantCastPermissionToCardsForEffect(CastPermission{
+		made = append(made, cp)
+		copies = append(copies, cp.InstanceID)
+	}
+	grant := func(cards []Card, zone ZoneKind, label string) {
+		perm := CastPermission{
 			Player:      offer.Player,
-			Zone:        dst.Kind,
+			Zone:        zone,
 			Duration:    g.UntilEndOfTurnDuration(),
 			Cost:        offer.Cost,
 			Timing:      offer.Timing,
@@ -132,9 +148,39 @@ func (g *Game) CopyCardsAndOfferCastsForEffect(offer CardCopyOffer, cards []uuid
 			FollowUp:    offer.FollowUp,
 			Source:      offer.Source,
 			SourceName:  offer.SourceName,
-			Label:       offer.SourceName + " — cast a copy of " + cp.Name,
-		}, []Card{cp})
-		copies = append(copies, cp.InstanceID)
+			Label:       label,
+		}
+		if offer.ManaValueBudget != nil {
+			left := *offer.ManaValueBudget
+			perm.ManaValueBudget = &left
+		}
+		g.GrantCastPermissionToCardsForEffect(perm, cards)
+	}
+	if offer.ManaValueBudget != nil {
+		// One permission over the whole set: the budget is shared, so the
+		// copies cannot be separate offers. A permission has one zone, so
+		// a set whose copies sit in two (exile and a graveyard) gets one
+		// per zone; the card that asks for a budget draws from one.
+		byZone := map[ZoneKind][]Card{}
+		var order []ZoneKind
+		for _, cp := range made {
+			z := ZoneExile
+			if g.findCardZoneLocked(cp.InstanceID).Kind == ZoneGraveyard {
+				z = ZoneGraveyard
+			}
+			if _, ok := byZone[z]; !ok {
+				order = append(order, z)
+			}
+			byZone[z] = append(byZone[z], cp)
+		}
+		for _, z := range order {
+			grant(byZone[z], z, offer.SourceName+" — cast copies with total mana value "+strconv.Itoa(*offer.ManaValueBudget)+" or less")
+		}
+		return copies
+	}
+	for _, cp := range made {
+		z := g.findCardZoneLocked(cp.InstanceID)
+		grant([]Card{cp}, z.Kind, offer.SourceName+" — cast a copy of "+cp.Name)
 	}
 	return copies
 }

@@ -1073,6 +1073,14 @@ naming an unregistered bundle is refused with `ErrUnknownEffectKey`. A
 "return it to the battlefield tapped [with a counter]" dies trigger is
 `returnThisCreatureFromGraveyard`. See `feign_death.go`,
 `fake_your_own_death.go`, `retraction_helix.go` and `urzas_saga.go`.
+
+"…until this card is cast from exile" (Emrakul, the Exigent Doom) is a
+`GrantAbilitiesFor` whose `Duration` comes from `g.UntilCardCastDuration(card)`
+(#3520, ADR 0063's 2026-10-14 amendment). It names the exile OBJECT, ends when
+`CastSpell` casts exactly that object from exile, and does not end if the card
+leaves exile uncast. The ability that exiles the card from the hand is
+`Plus(ManaCost("{3}"), ExileThis())` with `Zones: {ZoneHand}`; the hand is a
+supported zone for `ExileThis` since that card.
 "For as long as it has a <kind> counter on it" is a counter-held
 `Duration` (`GrantWhileItHasCounter`, ADR 0109 §2).
 
@@ -7312,6 +7320,23 @@ exist, and a cast one ceases on resolution (a permanent becomes a token). It
 is an exact copy, so the catalog resolves it as the original. See ADR 0066's
 2026-10-13 amendment.
 
+"Any number of spells with total mana value N or less from among the copies"
+(Uldaros Theorix) adds `TotalManaValueAtMost`:
+
+```go
+budget := 6
+CopyAndCast{Cards: exiled, Free: true, TotalManaValueAtMost: &budget}.Apply(ctx)
+```
+
+The copies then share ONE permission (`CastPermission.ManaValueBudget`) rather
+than one each, so every cast spends its spell's mana value (X at 0) and the
+gate refuses a copy over what is left. That is the cast path, the client's
+offers and the bot enumerator at once: nothing else asks a budget question.
+"One target card of each card type" is not a new target shape: it is one
+`Distinct(...)` clause per type under `Clauses(...)`, each `WithCount(0, 1)`
+(see `uldaros_theorix.go`), so a card with two types fills the one slot the
+player picks it for. See ADR 0066's 2026-10-14 amendment.
+
 ### Adding a hideaway card (S43+, ADR 0091)
 
 Hideaway is two linked abilities (CR 607.2a), and a card file writes
@@ -8575,6 +8600,20 @@ FaceVillainousChoice{Players: ctx.Opponents(), Choice: damoclesBaseChoice}.Apply
   `Game.DiedPowerWithSubtypeThisTurn("Dalek")`, a per-turn tally of each
   dying creature's last-known power by creature type, so a token that
   has already ceased to exist still counts.
+- **"If a Phyrexian died under your control this turn"** is
+  `Game.DiedWithSubtypeThisTurn(player, "Phyrexian")` (#3592, Brimaz,
+  Blight of Oreskos): the same last-known creature types, counted per
+  controller it died under (CR 603.10a). Check it on the trigger and
+  again on resolution.
+- **"If they do, you incubate 2"** after a counter-unless-pays is
+  `CounterUnlessPaid{OnPaid: …}` (#3591, Assimilate Essence): it runs only
+  after the payment was made, with the caster as the controller, and is
+  dropped with the decline when the spell has left the stack.
+- **"A permanent you control enters transformed"** has no event of its
+  own: read the entering card's face as the ETB is harvested with
+  `enteredTransformedUnderYourControl` (#3593, Corruption of Towashi).
+  A converted entry and a modal double-faced card cast back face up are
+  not transformed.
 
 ### Day and night, daybound and nightbound (ADR 0132, #2561, CR 731 / 702.145)
 
@@ -9571,8 +9610,7 @@ g.CommanderIdentityColorsForEffect(controller)                                  
   Never write the pick and a keyless `CastPermission` by hand: the pick would open nothing and the card would stay
   castable all turn.
 - **Cards that stay caveated**, with the gap named: Damping Sphere (mana production windows open per slot, not per activation),
-  Emrakul, the Exigent Doom (a hand ability whose granted mana ability lasts "until this card is cast from exile"; durations
-  have no such kind), Cloudsteel Kirin (the quoted "can't lose" is a granted game-end gate and grants carry none) and Ajani's
+  Cloudsteel Kirin (the quoted "can't lose" is a granted game-end gate and grants carry none) and Ajani's
   Aid (no combined library-and-graveyard search).
 
 ### Any amount of {R}, a return with a tail, a copy that isn't a creature, a token that sizes itself and a Siege's window (#3172, cav-g2)

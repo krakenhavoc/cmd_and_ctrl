@@ -94,6 +94,21 @@ type CounterUnlessPaidPrompt struct {
 	// asked, so it must capture no game state.
 	OnDecline func(g *Game) error
 
+	// OnPaid is the consequence of a payment that was actually made
+	// (#3591): Assimilate Essence's "If they do, you incubate 2". Nil is
+	// every other counter-unless-pays card, where paying just lets the
+	// object resolve.
+	//
+	// It is the paid half of the same answer OnDecline is the unpaid
+	// half of, so exactly one of the two runs, and it runs under the
+	// same stack guard: answerPayUnlessLocked drops BOTH branches when
+	// the guarded object has left the stack, because the "unless" then
+	// bought off nothing and there is nothing to be paid for. A "Pay"
+	// the chooser cannot fund is a decline, not a payment, so it never
+	// reaches here. Like OnDecline it receives the *Game the answer
+	// arrives at and must capture no game state.
+	OnPaid func(g *Game) error
+
 	// Cost is the printed payment ("{1}", "{2}"), parsed by
 	// ParseCost and auto-tapped for like any other pay-unless.
 	Cost string
@@ -158,7 +173,7 @@ func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error 
 	}
 	return g.queuePayUnlessLocked(chooser, p.Source, p.Cost, p.Question,
 		decline,
-		TurnStep{}, stackID, p.Waterbend, payUnlessExtras{lifeCost: p.LifeCost})
+		TurnStep{}, stackID, p.Waterbend, payUnlessExtras{lifeCost: p.LifeCost, onPay: p.OnPaid})
 }
 
 // counterIfStillOnStackLocked counters `stackID` unless it has

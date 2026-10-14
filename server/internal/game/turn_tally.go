@@ -236,6 +236,21 @@ type TurnTally struct {
 	// time anything asks (CR 704.5d), and a card there has none of the
 	// power or types it died with. Additive within the current schema.
 	DiedPowerBySubtype map[string]int `json:"diedPowerBySubtype,omitempty"`
+	// DiedSubtypes counts the creatures that died this turn (went from
+	// the battlefield to a graveyard), per the player they died UNDER and
+	// per creature type they had as they died, keyed by subtypeTallyKey
+	// (#3592): Brimaz, Blight of Oreskos's "if a Phyrexian died under
+	// your control this turn". A creature with every creature type is
+	// counted once under enteredAllCreatureTypes. Read through
+	// Game.DiedWithSubtypeThisTurn.
+	//
+	// "Under your control" is the controller the exit stamped on the
+	// event (CR 603.10a), exactly as PlayerTurnTally.CreaturesDied reads
+	// it, and the types are the event's last-known ones, so a token that
+	// died, and a creature that has since been exiled from the graveyard,
+	// still answer. Recorded as the creature dies for DiedPowerBySubtype's
+	// reason (CR 704.5d). Additive within the current schema.
+	DiedSubtypes map[string]int `json:"diedSubtypes,omitempty"`
 	// CombatDamagedPlayers records which players were dealt combat
 	// damage this turn and by WHAT, keyed by combatDamageTallyKey:
 	// one cell per (the dealing creature's controller, an identity it
@@ -1098,6 +1113,66 @@ func (g *Game) DiedPowerWithSubtypeThisTurn(subtype string) int {
 	return n
 }
 
+// diedSubtypesLocked is the creature types a creature had as it died
+// and whether it had every one of them (CR 603.10a): the event's own
+// last-known types, or the battlefield snapshot's for an event that
+// carries none (a hand-built fixture moving a card by hand). Shared by
+// the two per-type death tallies so they cannot disagree.
+//
+// Caller must hold g.mu.
+func (g *Game) diedSubtypesLocked(ev Event) (subtypes []string, all bool) {
+	if lki, ok := g.lastKnownBattlefield[ev.CardID]; ok {
+		subtypes, all = lki.Subtypes, lki.AllCreatureTypes
+	}
+	if ev.LastKnownTypes != nil {
+		subtypes, all = ev.LastKnownSubtypes, ev.LastKnownAllCreatureTypes
+	}
+	return subtypes, all
+}
+
+// recordDiedSubtypesLocked adds the creature an EventLTB to the
+// graveyard names to TurnTally.DiedSubtypes under `controller`, once
+// per creature type it had as it died. The caller has already decided
+// it was a creature and who it died under.
+//
+// Caller must hold g.mu.
+func (g *Game) recordDiedSubtypesLocked(ev Event, controller uuid.UUID) {
+	if controller == uuid.Nil {
+		return
+	}
+	subtypes, all := g.diedSubtypesLocked(ev)
+	bump := func(subtype string) {
+		if g.TurnTally.DiedSubtypes == nil {
+			g.TurnTally.DiedSubtypes = map[string]int{}
+		}
+		g.TurnTally.DiedSubtypes[subtypeTallyKey(controller, subtype)]++
+	}
+	for _, s := range subtypes {
+		if all && IsCreatureType(s) {
+			continue
+		}
+		bump(s)
+	}
+	if all {
+		bump(enteredAllCreatureTypes)
+	}
+}
+
+// DiedWithSubtypeThisTurn reports how many creatures died under
+// playerID's control this turn having creature type `subtype` as they
+// died — "if a Phyrexian died under your control this turn" (Brimaz,
+// Blight of Oreskos). A creature with every creature type counts for any
+// creature type. Tokens count: the tally was taken as they died, before
+// CR 704.5d removed them.
+//
+// Caller must hold g.mu.
+func (g *Game) DiedWithSubtypeThisTurn(playerID uuid.UUID, subtype string) int {
+	if playerID == uuid.Nil || subtype == "" {
+		return 0
+	}
+	return subtypeTallyCount(g.TurnTally.DiedSubtypes, playerID, subtype)
+}
+
 // recordDiedPowerLocked adds the creature an EventLTB to the graveyard
 // names to TurnTally.DiedPowerBySubtype, once per creature type it
 // had, with the power it last had on the battlefield. The caller has
@@ -1111,14 +1186,10 @@ func (g *Game) DiedPowerWithSubtypeThisTurn(subtype string) int {
 //
 // Caller must hold g.mu.
 func (g *Game) recordDiedPowerLocked(ev Event) {
-	var subtypes []string
-	all := false
+	subtypes, all := g.diedSubtypesLocked(ev)
 	power := 0
 	if lki, ok := g.lastKnownBattlefield[ev.CardID]; ok {
-		subtypes, all, power = lki.Subtypes, lki.AllCreatureTypes, lki.Power
-	}
-	if ev.LastKnownTypes != nil {
-		subtypes, all = ev.LastKnownSubtypes, ev.LastKnownAllCreatureTypes
+		power = lki.Power
 	}
 	if info, ok := g.LastKnownPermanentForEffect(ev.CardID); ok {
 		power = info.Power
@@ -1340,6 +1411,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.EnteredCardTypes = copyStringIntMap(t.EnteredCardTypes)
 	out.Entered = copyUUIDIntMap(t.Entered)
 	out.SacrificedSubtypes = copyStringIntMap(t.SacrificedSubtypes)
+	out.DiedSubtypes = copyStringIntMap(t.DiedSubtypes)
 	out.AttackedSubtypes = copyStringIntMap(t.AttackedSubtypes)
 	if len(t.LoreCounterPut) > 0 {
 		out.LoreCounterPut = append([]PermissionCardRef(nil), t.LoreCounterPut...)
@@ -1608,6 +1680,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			controller = c.Owner
 		}
 		g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.CreaturesDied++ })
+		g.recordDiedSubtypesLocked(ev, controller)
 	case EventResolve:
 		if ev.Source == uuid.Nil {
 			return

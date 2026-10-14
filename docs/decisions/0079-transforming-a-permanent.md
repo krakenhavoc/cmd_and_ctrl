@@ -656,3 +656,13 @@ non-Aura, the answer attaching) and `cards/effects/curse_of_leeches_test.go` (ca
 by day, the upkeep drain on the enchanted player only, the Lurker letting go at
 night, the question and its 704.5m hold, the chosen player taking the drain, a
 protected seat not offered, no legal player, two Curses at once).
+
+## Amendment 2026-10-14 (#3593): "enters transformed" needs no event, and a convert is not a transform
+
+Corruption of Towashi ("Whenever a permanent you control transforms or a permanent you control enters transformed, you may draw a card. Do this only once each turn.") shipped with the second half missing.
+
+1. **No new event.** Every way a permanent enters transformed leaves the entering card on its back face before its `EventETB` is harvested: the three "return it transformed" verbs set the face while the card is still in its zone (CR 712.14a), `dayNightListener` turns a daybound permanent entering at night on the zone move (CR 702.145b), and a card cast transformed (disturb, CR 702.146a) is on the stack back face up. The harvest runs inside the emit, so a trigger's `AppliesTo` reads the face the permanent entered on. `effects.cardEnteredTransformed` is that read: a `transform` layout card on face 1. It excludes a modal double-faced card cast as its back face (a chosen face), a melded permanent, and a More Than Meets the Eye cast (the front face's keyword), which enters converted (CR 701.28).
+2. **A convert is not a transform.** `EventTransform` with `Converted` set is what `Event.Converted`'s comment says a plain "whenever this transforms" reader must skip. Corruption's transform half now does.
+3. **"Do this only once each turn" limits the doing, at resolution.** The draw moves from a trigger-time `Optional` and a gate that counted a declined or countered trigger as the turn's use, onto `MayChoice` at resolution with `Game.NoteDoneThisTurn` recorded only when the card is drawn, read at the trigger and again as it resolves. This is G'raha Tia's and Pantlaza's shape, so it is equal to the printed ability except that a second trigger that would do nothing is never put on the stack.
+
+No engine change. **Back-outs.** `TestCorruptionOfTowashiDrawsWhenAPermanentEntersTransformed` and `TestCorruptionOfTowashiDrawsForADayboundPermanentEnteringAtNight` fail without the entry arm, `TestCorruptionOfTowashiIgnoresAConvertAndCountsATransform` without the `Converted` skip, `TestCorruptionOfTowashiDrawsOnlyOncePerTurn` without the done mark, and `TestCardEnteredTransformedFollowsTheEntryFace` without the More Than Meets the Eye exclusion.

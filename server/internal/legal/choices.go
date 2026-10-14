@@ -626,9 +626,16 @@ func (e *enumerator) choiceMoves() bool {
 			// type" — and enumerating a pick the resolver will reject
 			// breaks this package's one promise (#544). The rule is
 			// not re-derived here; the engine is asked.
-			picks := e.filteredCombos(c.SearchCards, max(floor, 1), c.SearchMax, e.opts.MaxExpansionPerSource,
+			pool, keyOf := interchangeableSearchPool(g, c.SearchCards, max(c.SearchMax, 1))
+			picks := e.filteredCombos(pool, max(floor, 1), c.SearchMax, e.opts.MaxExpansionPerSource,
 				func(set []uuid.UUID) bool { return g.SearchPickLegalLocked(c, set) })
+			seenPick := map[string]bool{}
 			for _, set := range picks {
+				if k := pickKey(set, keyOf); seenPick[k] {
+					continue
+				} else {
+					seenPick[k] = true
+				}
 				p := base()
 				p.CardIDs = idStrings(set)
 				label := reason + ": take"
@@ -1064,7 +1071,10 @@ func (e *enumerator) choiceMoves() bool {
 			cards := c.ScryCards
 			p := base()
 			p.TopOrder = idStrings(cards)
-			e.addChoice(c, reason+": leave the order alone", p)
+			// Each label names the whole pile, top first: until
+			// 2026-10-14 "leave the order alone" never named the card
+			// already on top, so a seat reading text could not see it.
+			e.addChoice(c, reason+": leave the order alone (top to bottom: "+pileOrder(g, cards, -1)+")", p)
 			for i, id := range cards {
 				if i == 0 {
 					continue
@@ -1076,7 +1086,7 @@ func (e *enumerator) choiceMoves() bool {
 						p.TopOrder = append(p.TopOrder, other.String())
 					}
 				}
-				e.addChoice(c, reason+": put "+cardName(g, id)+" on top", p)
+				e.addChoice(c, reason+": put "+cardName(g, id)+" on top (top to bottom: "+pileOrder(g, cards, i)+")", p)
 			}
 
 		case game.PendingChoicePutInLibrary:
@@ -1125,7 +1135,7 @@ func (e *enumerator) choiceMoves() bool {
 			}
 			p := base()
 			lane(&p, all)
-			e.addChoice(c, reason+": leave the order alone", p)
+			e.addChoice(c, reason+": leave the order alone (in this order: "+pileOrder(g, cards, -1)+")", p)
 			for i, id := range cards {
 				if i == 0 {
 					continue
@@ -1324,6 +1334,65 @@ func (e *enumerator) choiceMoves() bool {
 // modeLabel renders a mode selection for the move list: the chosen
 // bullets in order, so a bot's log says what it picked rather than
 // which indexes it picked.
+// interchangeableSearchPool trims a search's matches to at most `keep`
+// copies of each interchangeable card (the same name and oracle, read
+// off the card and not the seat's view of it, so hidden cards are never
+// merged) and returns, for every card kept, its interchangeability key.
+// A Commander library repeats only its basics, so an Evolving Wilds
+// search was twelve "take Swamp" moves, and Cultivate's pairs spent
+// the expansion budget on interchangeable Forest pairs. Any copy of a
+// card answers the search the same way.
+func interchangeableSearchPool(g *game.Game, cards []uuid.UUID, keep int) ([]uuid.UUID, map[uuid.UUID]string) {
+	keyOf := make(map[uuid.UUID]string, len(cards))
+	kept := map[string]int{}
+	pool := make([]uuid.UUID, 0, len(cards))
+	for _, id := range cards {
+		key := id.String()
+		if card, ok := g.LookupCardForEffect(id); ok && card.Name != "" && !card.FaceDown {
+			// The zone too: a search of the library and the graveyard
+			// offers the same card from each.
+			zone := ""
+			if z := g.FindCardZoneForEffect(id); z != nil {
+				zone = string(z.Kind)
+			}
+			key = zone + "|" + card.OracleID + "|" + card.Name
+		}
+		if kept[key] >= keep {
+			continue
+		}
+		kept[key]++
+		keyOf[id] = key
+		pool = append(pool, id)
+	}
+	return pool, keyOf
+}
+
+// pickKey is a search pick as a multiset of interchangeability keys, so
+// two picks of the same kinds of card are one move.
+func pickKey(set []uuid.UUID, keyOf map[uuid.UUID]string) string {
+	keys := make([]string, len(set))
+	for i, id := range set {
+		keys[i] = keyOf[id]
+	}
+	sort.Strings(keys)
+	return strings.Join(keys, "\x00")
+}
+
+// pileOrder names a pile in the order an answer leaves it, with the card
+// at index first pulled to the front (-1 leaves it as it is): "A, B, C".
+func pileOrder(g *game.Game, cards []uuid.UUID, first int) string {
+	names := make([]string, 0, len(cards))
+	if first >= 0 {
+		names = append(names, cardName(g, cards[first]))
+	}
+	for i, id := range cards {
+		if i != first {
+			names = append(names, cardName(g, id))
+		}
+	}
+	return strings.Join(names, ", ")
+}
+
 // triggerOrderLabel names one ordering of a CR 603.3b prompt by its
 // triggers, in resolution order (the answer's order: first resolves
 // first, Game.ResolveTriggerOrder): "Order your triggers: resolve A

@@ -10,25 +10,38 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 At the beginning of each end step, if a Phyrexian died under your
 //	 control this turn, proliferate."
 //
-// The first ability is complete. The second is NOT implemented: the
-// engine tallies "a creature died this turn" table-wide
-// (TurnTally.CreaturesDied) but not per subtype or per controller, so an
-// intervening-if on "a Phyrexian died under your control" has nothing to
-// read. Shipping it as "any creature died" would be stronger than
-// printed, so the card ships without the proliferate. The seam is a
-// per-controller, per-subtype death tally beside EnteredSubtypes.
+// The second ability is every player's end step (it does not read the
+// event's actor) with an intervening if (CR 603.4): checked when the end
+// step begins and again as the trigger resolves, off
+// TurnTally.DiedSubtypes (#3592), the per-controller tally of the
+// creature types that died this turn. "Under your control" is the
+// controller the creature had as it left (CR 603.10a), a token that died
+// counts, and a changeling is a Phyrexian. The check names the trigger's
+// controller, so Brimaz changing hands before the end step asks the new
+// controller, as printed.
+//
+// "Died" is a creature going from the battlefield to a graveyard, which
+// is every Phyrexian that exists as a card or token with a creature
+// type; a Phyrexian that is not a creature does not occur in the card
+// pool. No simplification.
 func init() {
+	const label = "Brimaz, Blight of Oreskos — proliferate"
 	Register(Spec{
 		OracleID:     "a6e7cbfc-6d5a-4a67-9dad-d512d3c97bda",
 		Name:         "Brimaz, Blight of Oreskos",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The end-step proliferate isn't implemented — only the incubate on casting a Phyrexian creature or artifact creature spell happens.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(And(Creature(), Or(HasSubtype("Phyrexian"), Artifact())),
 				"Brimaz, Blight of Oreskos — incubate X, where X is that spell's mana value",
 				incubateThatSpellsManaValue),
+			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return b15EndStepBegan(ev) && source != nil && g.DiedWithSubtypeThisTurn(source.Controller, "Phyrexian") > 0
+			}, label, func(g *game.Game, item *game.StackItem) error {
+				if g.DiedWithSubtypeThisTurn(item.Controller, "Phyrexian") == 0 {
+					return nil
+				}
+				return Proliferate{}.Apply(NewContext(g, item))
+			}),
 		},
 	})
 }

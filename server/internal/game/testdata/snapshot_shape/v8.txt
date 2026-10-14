@@ -3277,6 +3277,7 @@ seats[].castPermissions[].ifNotCast	string
 seats[].castPermissions[].label	string
 seats[].castPermissions[].lapseOnPass	string
 seats[].castPermissions[].lifeEqualToManaValue	bool
+seats[].castPermissions[].manaValueBudget	number:int
 seats[].castPermissions[].maxSpellManaValue	number:int
 seats[].castPermissions[].notBeforeSeq	number:int
 seats[].castPermissions[].notBeforeTurn	number:int
@@ -6199,6 +6200,8 @@ turnTally.damageDealers[].source	custom(uuid.UUID)
 turnTally.damageDealers[].victim	custom(uuid.UUID)
 turnTally.diedPowerBySubtype	map:string
 turnTally.diedPowerBySubtype{}	number:int
+turnTally.diedSubtypes	map:string
+turnTally.diedSubtypes{}	number:int
 turnTally.entered	map:array
 turnTally.enteredCardTypes	map:string
 turnTally.enteredCardTypes{}	number:int

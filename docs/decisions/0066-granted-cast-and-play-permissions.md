@@ -3678,3 +3678,43 @@ borrow reads its lenders on every layer pass, where the event-log walk (`b27Exil
   or the stack (a move from the battlefield or a graveyard already bumped).
 
 No snapshot change: `Card.ExiledWith` is already carried.
+
+## Amendment — 2026-10-14 (#2017): a total mana value budget over the copies of a card
+
+Uldaros Theorix prints "You may cast any number of spells with total mana value 6 or less from among the copies without paying
+their mana costs." The 2026-10-13 card-copy amendment (#3258) left this as the separate `budgeted-free-casts` seam: the copies
+were one independent permission each, so there was nothing to share a total.
+
+### Decision 1 — `CastPermission.ManaValueBudget` is the REMAINING total one permission may still open
+
+A `*int` on a `ScopeCards` permission (nil, which is every earlier permission, means no budget). It is not a cap on one spell
+(`MaxSpellManaValue` is, and does not change); it is what is left of the printed total after the casts already made through the
+permission. `spellManaValueWithinCap`, the one test `validateCastPathLocked` makes for the cast path, the view's offers and the
+bot enumerator, refuses a spell whose mana value (the face being cast, X at zero) is more than what is left. Any set with a total of
+at most N can be cast in some order without going over, so the running total and the printed "total mana value N or less" accept
+the same casts, whatever order the caster takes them in.
+
+### Decision 2 — one permission over the whole set, spent by `consumePassClosedGrantLocked`
+
+`CardCopyOffer.ManaValueBudget` (`effects.CopyAndCast.TotalManaValueAtMost`) makes ONE permission naming every copy, per zone
+the copies sit in, instead of one per copy. A cast through it keeps the permission with the cast card struck from its named
+objects and the budget reduced (`CastPermission.spendManaValueBudget`): a fresh `Cards` slice and a fresh budget pointer, never
+written in place, because the originals are shared with the undo snapshots. A permission that names only the card just cast is
+removed whole, as every pass-closed grant always was. The window is unchanged: it closes when the holder next passes priority, and
+a copy not cast ceases to exist (CR 704.5e).
+
+### Decision 3 — what the budget does not do
+
+It is not a per-type budget (`PerType`, Decision 2 of the 2026-10-09 amendment): a card is cast through it once, for its whole mana
+value. Primeval Spawn's "from among them" over cards an ordinary impulse exile put in exile is the same budget over cards that are
+not copies; `ExileTopWithPermissionForEffect` still grants one permission per card, so it needs a helper that grants one budgeted
+permission over the landed cards (the seam stays `partial` for that card).
+
+### Snapshot
+
+Additive within v8, omitted when nil: `seats[].castPermissions[].manaValueBudget`. A binary from before it drops the key on restore
+and reads the permission as having no total, as it reads a `CastsLeft` or `PerType` it does not know.
+
+Back-out: remove the budget test in `spellManaValueWithinCap` and `TestManaValueBudgetIsOnePermissionSpentByEachCast` fails; write
+the budget in place in `spendManaValueBudget` and `TestManaValueBudgetIsNeverSpentInPlace` fails; make the offer per copy and both of
+those fail.
