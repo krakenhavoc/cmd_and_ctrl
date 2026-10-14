@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Codex Shredder — Artifact {1} (EDHREC rank 2400):
 //
 //	"{T}: Target player mills a card. (They put the top card of their
@@ -27,15 +25,7 @@ func init() {
 				Label:   "{T}: Target player mills a card.",
 				Cost:    TapCost(),
 				Targets: TargetPlayer("target player"),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind == game.TargetPlayer {
-							return MillCards{Player: t.ID, N: 1}.Apply(ctx)
-						}
-					}
-					return nil
-				},
+				Effect:  TargetPlayerMills(1),
 			},
 			{
 				Label:   "{5}, {T}, Sacrifice this artifact: Return target card from your graveyard to your hand.",

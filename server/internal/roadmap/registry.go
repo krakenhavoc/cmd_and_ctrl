@@ -1651,6 +1651,16 @@ var items = []Item{
 		EngineNotes: "cost: `game.AdditionalCost` has no component that exiles a card from a graveyard (`ExileFromGraveyard` is on alternative costs and activated-ability costs only), and `ctx.Exiled()` is filled only by an activation. Draconic Intervention's X is the exiled card's mana value; its damage, ADR 0108 PR 1's \"if a creature dealt damage this way would die this turn, exile it instead\" and its self-exile are expressible.",
 	},
 	{
+		Slug: "exile-permanent-additional-cost", Name: "Exiling a permanent you control as an additional cost", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Spells that ask you to exile a creature you control as an additional cost to cast them, such as Soul Exchange.",
+		Missing:     "A spell can't yet ask for a permanent you control to be exiled as an additional cost.",
+		Rules:       []string{"601.2b", "601.2h", "118.3"},
+		Issue:       3402,
+		Tracked:     "#3402 (deck request #3209)",
+		Waiting:     []string{"Soul Exchange"},
+		EngineNotes: "cost: activated abilities exile permanents as a cost (`AbilityCost.ExilePermanents`, `game.ExilePermanentsCost`, `game/exile_permanent_cost.go`), but `game.AdditionalCost` has no such component, so the cast path, `CastSpellParams`, the client's cost picker and the enumerator never reach it for a spell. Soul Exchange also reads the exiled creature's last-known subtypes (\"if the exiled creature was a Thrull\"); its reanimation is `reanimateSingleTarget`.",
+	},
+	{
 		// #2135 (ADR 0113's 2026-10-08 amendment). Closed; history in
 		// Closed seams.
 		Slug: "enters-from-a-graveyard", Name: "Triggers on entering from a graveyard", Kind: KindSeam, Status: StatusImplemented,
