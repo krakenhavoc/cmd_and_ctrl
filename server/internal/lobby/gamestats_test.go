@@ -72,6 +72,10 @@ func (c *countingStats) Get(context.Context, uuid.UUID) (gamestats.Game, error) 
 	return gamestats.Game{}, gamestats.ErrNotFound
 }
 
+func (c *countingStats) ForUser(context.Context, string) (gamestats.UserStats, error) {
+	return gamestats.UserStats{}, nil
+}
+
 // A practice table has no games row, so it gets no record; and with no
 // store wired in, nothing is computed at all.
 func TestStatsSkipPracticeTablesAndServersWithoutAStore(t *testing.T) {

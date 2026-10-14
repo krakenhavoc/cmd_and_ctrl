@@ -68,6 +68,9 @@ export type Route =
   // section (ADR 0158 §1 item 5): #/lobby?show=history, where the old
   // #/my-games redirects.
   | { name: "lobby"; show?: "history" }
+  // Your own game statistics (ADR 0165 §7, #3366): record, average
+  // place, by deck and by commander, recent games. Signed-in only.
+  | { name: "stats" }
   // The tutorial's practice table (ADR 0076 §2.2): opening this route
   // opens a fresh practice game for the signed-in session and moves on
   // to it (routes/Practice.svelte, lib/practiceTable.ts). It is the
@@ -165,6 +168,8 @@ export function parseHash(hash: string): Route {
       return params.get("show") === "history"
         ? { name: "lobby", show: "history" }
         : { name: "lobby" };
+    case "stats":
+      return { name: "stats" };
     case "practice":
       return { name: "practice" };
     case "catalog": {

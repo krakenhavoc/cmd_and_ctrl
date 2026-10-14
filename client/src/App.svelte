@@ -17,6 +17,7 @@
   import Game from "./routes/Game.svelte";
   import Catalog from "./routes/Catalog.svelte";
   import Decks from "./routes/Decks.svelte";
+  import Stats from "./routes/Stats.svelte";
   import Roadmap from "./routes/Roadmap.svelte";
   import Privacy from "./routes/Privacy.svelte";
   import Terms from "./routes/Terms.svelte";
@@ -170,6 +171,8 @@
   <Decks />
 {:else if $route.name === "lobby"}
   <Lobby />
+{:else if $route.name === "stats"}
+  <Stats />
 {:else if $route.name === "practice"}
   <Practice />
 {:else if $route.name === "catalog"}
