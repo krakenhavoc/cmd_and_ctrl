@@ -39,6 +39,15 @@ const (
 	// and it names no damage source, so it has no lifelink, infect,
 	// wither or toxic question (#3013).
 	FootprintLoseLifeEachOpponent FootprintKind = "lose_life_each_opponent"
+	// FootprintDamageController: the item's source deals N damage to the
+	// item's controller (City of Brass, Midnight Reaper). The same damage
+	// source questions as FootprintDamageEachOpponent.
+	FootprintDamageController FootprintKind = "damage_controller"
+	// FootprintTargetPlayerLosesLife: the player the item targets loses
+	// N life (Blood Artist's and Falkenrath Noble's half of a drain).
+	// Life loss, named to no damage source, like
+	// FootprintLoseLifeEachOpponent.
+	FootprintTargetPlayerLosesLife FootprintKind = "target_player_loses_life"
 	// FootprintCounterOnSource: N counters of kind Counter on the item's
 	// source, if it is still on the battlefield.
 	FootprintCounterOnSource FootprintKind = "counter_on_source"
@@ -156,9 +165,14 @@ type triggerAccess struct {
 	// rather than rules when it bears rules (#3013).
 	pumped map[uuid.UUID]bool
 	// Players.
-	life        map[uuid.UUID]lifeDirection
-	lifeLoss    map[uuid.UUID]int
-	cards       map[uuid.UUID]bool // library, hand and graveyard order
+	life     map[uuid.UUID]lifeDirection
+	lifeLoss map[uuid.UUID]int
+	cards    map[uuid.UUID]bool // library, hand and graveyard order
+	// beyondDraw are the players in cards whose library the item does
+	// more to than draw from the top: a mill, scry or surveil. Two items
+	// that only draw from one library give the same hand and library
+	// in either order; anything else that touches it does not.
+	beyondDraw  map[uuid.UUID]bool
 	draws       map[uuid.UUID]int
 	playerReads map[uuid.UUID]bool // a player target
 	// monarch is the one game-wide designation a step writes.
@@ -274,6 +288,7 @@ func newTriggerAccess(controller uuid.UUID) triggerAccess {
 		life:         map[uuid.UUID]lifeDirection{},
 		lifeLoss:     map[uuid.UUID]int{},
 		cards:        map[uuid.UUID]bool{},
+		beyondDraw:   map[uuid.UUID]bool{},
 		draws:        map[uuid.UUID]int{},
 		playerReads:  map[uuid.UUID]bool{},
 		emits:        map[EventKind]bool{},
@@ -549,8 +564,11 @@ func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.U
 			return triggerOrderWhy{reason: TriggerOrderReasonElimination, player: p}
 		}
 	}
+	// Two draws commute: the same cards reach the hand whichever item
+	// takes them. A draw that empties the library is the elimination
+	// rule's, and a "whenever you draw" watcher the reactor rule's.
 	for p := range a.cards {
-		if b.cards[p] {
+		if b.cards[p] && (a.beyondDraw[p] || b.beyondDraw[p]) {
 			return triggerOrderWhy{reason: TriggerOrderReasonLibrary}
 		}
 	}
@@ -838,18 +856,9 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 		a.life[you] |= lifeUp
 		a.emit(EventChangeLife)
 	case FootprintDamageEachOpponent:
-		z := g.findCardZoneLocked(t.SourceCardID)
-		src, ok := g.LookupCardForEffect(t.SourceCardID)
-		if !ok || z == nil || z.Kind != ZoneBattlefield {
+		if !g.footprintDamageSourceLocked(a, t.SourceCardID) {
 			return false
 		}
-		// Damage that does more than cost life — lifelink (CR
-		// 702.15b), infect, wither, toxic — is not on the list.
-		tr := damageSourceTraitsOfCard(&src)
-		if tr.lifelink || tr.result != (DamageResultSource{}) {
-			return false
-		}
-		a.reads[t.SourceCardID] = true
 		for _, p := range g.Seats {
 			if p == nil || p.Eliminated || p.ID == you {
 				continue
@@ -857,8 +866,32 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 			a.life[p.ID] |= lifeDown
 			a.lifeLoss[p.ID] += s.N
 		}
-		a.traitReads = true
 		a.emit(EventDealDamage, EventChangeLife)
+	case FootprintDamageController:
+		if !g.footprintDamageSourceLocked(a, t.SourceCardID) {
+			return false
+		}
+		a.life[you] |= lifeDown
+		a.lifeLoss[you] += s.N
+		a.emit(EventDealDamage, EventChangeLife)
+	case FootprintTargetPlayerLosesLife:
+		// The first player target, the one the step acts on. An item
+		// with none declares nothing to lose, and is refused rather than
+		// read as a no-op.
+		var target uuid.UUID
+		for _, ref := range t.Targets {
+			if ref.Kind == TargetPlayer {
+				target = ref.ID
+				break
+			}
+		}
+		if target == uuid.Nil {
+			return false
+		}
+		a.playerReads[target] = true
+		a.life[target] |= lifeDown
+		a.lifeLoss[target] += s.N
+		a.emit(EventChangeLife)
 	case FootprintLoseLifeEachOpponent:
 		// The source is passed on as the loss's attribution and nothing
 		// else reads it, so the step reads no object.
@@ -887,12 +920,15 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 		a.emit(EventDrawCard)
 	case FootprintMill:
 		a.cards[you] = true
+		a.beyondDraw[you] = true
 		a.emit(EventMill, EventZoneMove)
 	case FootprintScry:
 		a.cards[you] = true
+		a.beyondDraw[you] = true
 		a.emit(EventScry)
 	case FootprintSurveil:
 		a.cards[you] = true
+		a.beyondDraw[you] = true
 		// The graveyard leg emits EventMill per card, as an ordinary
 		// mill does (ResolveSurveil): a "card put into your graveyard
 		// from your library" watcher sees it. Found by the footprint
@@ -922,6 +958,32 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 	default:
 		return false
 	}
+	return true
+}
+
+// footprintDamageSourceLocked is the read a damage step makes of its
+// source, the item's source card, or false when the check cannot say
+// what that damage does. It asks the damage tail the step will build
+// (effectDamageTailLocked, as dealDamageToPlayerLocked does), so the two
+// cannot disagree about the source's traits: the permanent's while it is
+// on the battlefield, its last-known record once it has left (CR 608.2h),
+// and none once the card has moved on and no record matches. The last
+// two are the aristocrats case: Syr Konrad dies in the wipe whose deaths
+// he triggers on, and as a commander goes on to the command zone. A
+// departed source's traits cannot change, but another item that moves
+// the card again (back to the battlefield) changes which object deals the
+// damage, so the source is a read either way. Damage that does more than
+// cost life — lifelink (CR 702.15b), infect, wither, toxic — is not on
+// the list.
+//
+// Caller must hold g.mu.
+func (g *Game) footprintDamageSourceLocked(a *triggerAccess, source uuid.UUID) bool {
+	tail := g.effectDamageTailLocked(damageTailPlayer, source, nil)
+	if tail.lifelinkTo != uuid.Nil || tail.result != (DamageResultSource{}) {
+		return false
+	}
+	a.reads[source] = true
+	a.traitReads = true
 	return true
 }
 

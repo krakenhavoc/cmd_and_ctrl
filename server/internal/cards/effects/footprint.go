@@ -96,6 +96,14 @@ func (s DamageEachOpponent) footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintDamageEachOpponent, N: s.N}, s.N > 0
 }
 
+func (s DamageController) footprint() (game.FootprintStep, bool) {
+	return game.FootprintStep{Kind: game.FootprintDamageController, N: s.N}, s.N > 0
+}
+
+func (s TargetPlayerLosesLife) footprint() (game.FootprintStep, bool) {
+	return game.FootprintStep{Kind: game.FootprintTargetPlayerLosesLife, N: s.N}, s.N > 0
+}
+
 func (ExileChosenTarget) footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintExileTargets}, true
 }
@@ -122,7 +130,7 @@ func footprintOfRow(t game.TriggeredAbility) []game.FootprintStep {
 		}
 		// A step that acts on the chosen target needs a declared
 		// target clause to choose it from.
-		if step.Kind == game.FootprintExileTargets && t.Targets == nil {
+		if (step.Kind == game.FootprintExileTargets || step.Kind == game.FootprintTargetPlayerLosesLife) && t.Targets == nil {
 			return nil
 		}
 		out = append(out, step)
@@ -232,6 +240,40 @@ type DamageEachOpponent struct {
 
 func (s DamageEachOpponent) Apply(ctx *Context) error {
 	return damageToEachOpponent(ctx.Game, ctx.Item, s.N)
+}
+
+// DamageController is "<this> deals N damage to you": one damage event
+// from the item's source to the item's controller (City of Brass,
+// Midnight Reaper). A source that has left the battlefield deals it as it
+// last existed there (CR 608.2h), as every effect damage does.
+type DamageController struct {
+	N int
+}
+
+func (s DamageController) Apply(ctx *Context) error {
+	if s.N <= 0 {
+		return nil
+	}
+	return ctx.Game.DealDamageToPlayerForEffect(ctx.Source(), ctx.Controller(), s.N)
+}
+
+// TargetPlayerLosesLife is "target player loses N life": the first player
+// among the item's targets that is still legal as it resolves (CR
+// 608.2b), as a life change that names the item's source and no damage.
+// The drain is Do(TargetPlayerLosesLife{N: 1}, GainLife{Amount: 1})
+// (Blood Artist, Falkenrath Noble).
+type TargetPlayerLosesLife struct {
+	N int
+}
+
+func (s TargetPlayerLosesLife) Apply(ctx *Context) error {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetPlayer {
+			continue
+		}
+		return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), t.ID, -s.N)
+	}
+	return nil
 }
 
 // ExileChosenTarget is "exile [the] target <whatever>": the first card

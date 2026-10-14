@@ -20,13 +20,8 @@ func init() {
 		Name:         "Tatyova, Benthic Druid",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			LandfallPaying("Tatyova — gain 1 life and draw a card (landfall)", game.LandfallPayoff{Draws: 1, LifeGain: 1}, func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (GainLife{Player: item.Controller, Amount: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-			}),
+			LandfallPaying("Tatyova — gain 1 life and draw a card (landfall)", game.LandfallPayoff{Draws: 1, LifeGain: 1},
+				Do(GainLife{Amount: 1}, DrawCards{N: 1})),
 		},
 	})
 }

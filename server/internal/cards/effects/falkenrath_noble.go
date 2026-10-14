@@ -29,16 +29,7 @@ func init() {
 			Targets: TargetPlayer("target player"),
 			Key:     "Falkenrath Noble — drain 1",
 			Purpose: game.Purpose{DeathPayoff: true},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-					return nil
-				}
-				if err := g.ChangePlayerLifeForEffect(ctx.Source(), item.Targets[0].ID, -1); err != nil {
-					return err
-				}
-				return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
-			},
+			Effect:  Do(TargetPlayerLosesLife{N: 1}, GainLife{Amount: 1}),
 		}},
 	})
 }
