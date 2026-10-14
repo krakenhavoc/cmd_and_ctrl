@@ -527,6 +527,8 @@ events[].loyalty	bool
 events[].new_zone	string
 events[].old_zone	string
 events[].played	bool
+events[].public_names	map:array
+events[].public_names{}	string
 events[].resolved_stack_item_id	custom(uuid.UUID)
 events[].reveal_seq	number:uint64
 events[].reveal_to	string
@@ -1721,6 +1723,8 @@ lastKnownStack[].item.trigger.Event.loyalty	bool
 lastKnownStack[].item.trigger.Event.new_zone	string
 lastKnownStack[].item.trigger.Event.old_zone	string
 lastKnownStack[].item.trigger.Event.played	bool
+lastKnownStack[].item.trigger.Event.public_names	map:array
+lastKnownStack[].item.trigger.Event.public_names{}	string
 lastKnownStack[].item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.reveal_seq	number:uint64
 lastKnownStack[].item.trigger.Event.reveal_to	string
@@ -2006,6 +2010,8 @@ pausedModeWalk.item.trigger.Event.loyalty	bool
 pausedModeWalk.item.trigger.Event.new_zone	string
 pausedModeWalk.item.trigger.Event.old_zone	string
 pausedModeWalk.item.trigger.Event.played	bool
+pausedModeWalk.item.trigger.Event.public_names	map:array
+pausedModeWalk.item.trigger.Event.public_names{}	string
 pausedModeWalk.item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.reveal_seq	number:uint64
 pausedModeWalk.item.trigger.Event.reveal_to	string
@@ -2561,6 +2567,8 @@ pendingTriggers[].trigger.Event.loyalty	bool
 pendingTriggers[].trigger.Event.new_zone	string
 pendingTriggers[].trigger.Event.old_zone	string
 pendingTriggers[].trigger.Event.played	bool
+pendingTriggers[].trigger.Event.public_names	map:array
+pendingTriggers[].trigger.Event.public_names{}	string
 pendingTriggers[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.reveal_seq	number:uint64
 pendingTriggers[].trigger.Event.reveal_to	string
@@ -6460,6 +6468,8 @@ stackMeta[].trigger.Event.loyalty	bool
 stackMeta[].trigger.Event.new_zone	string
 stackMeta[].trigger.Event.old_zone	string
 stackMeta[].trigger.Event.played	bool
+stackMeta[].trigger.Event.public_names	map:array
+stackMeta[].trigger.Event.public_names{}	string
 stackMeta[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 stackMeta[].trigger.Event.reveal_seq	number:uint64
 stackMeta[].trigger.Event.reveal_to	string
