@@ -404,6 +404,17 @@ func (g *Game) lapseCastPermissionLocked(holder uuid.UUID, perm CastPermission) 
 			}
 		}
 	}
+	// #3510: "if you don't [cast it]" is now true. Run once per
+	// permission, after the card has gone where its lapse sends it,
+	// whether or not the card was still there to cast: a card that left
+	// the zone was not cast either.
+	if perm.IfNotCast != "" {
+		var card uuid.UUID
+		if len(perm.Cards) > 0 {
+			card = perm.Cards[0].ID
+		}
+		_ = g.runCastFollowUpLocked(perm.IfNotCast, CastFollowUp{Player: holder, Source: perm.Source, Spell: card})
+	}
 }
 
 // consumePassClosedGrantLocked removes the pass-closed permission a

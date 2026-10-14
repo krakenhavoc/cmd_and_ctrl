@@ -9652,7 +9652,14 @@ ctx.SourcePermanent()                                                           
   `offerFreeHandCast` in `free_hand_cast.go`: a `choose_cards` pick tagged `ChooseCastFree`, whose answer grants it.
   The client opens the cast chain the moment the pick is answered, the bot prices the pick as a cast and the
   enumerator offers the cast. "Every card in your hand" (The Great Synthesis) writes the same grant over each card with
-  its own `AltCostKey` and no pick (#3270).
+  its own `AltCostKey` and no pick (#3270). A pick behind a draw (Cecily, Haunted Mage) runs from a
+  `game.DrawThen` body through `offerFreeHandCastFrom(g, controller, source, ...)`, the Context-free form (#2110).
+- **"Exile the top card of your library. You may cast that card. If you don't, X"** (Chandra, Torch of Defiance) is
+  `g.ExileTopThenPaidCastOrElseForEffect(game.PaidCastOrElse{Player, Source, SourceName, IfNotCast, DeclineLabel})`
+  (`game/cast_paid_or_else.go`, #3510). The cast is PAID at the card's own cost and ignores timing (CR 608.2g); X is a
+  body registered with `game.RegisterCastFollowUp` and named in `IfNotCast`. It runs on the "don't" answer, with no
+  question for a land or an empty library, and when an accepted cast's pass-closed window lapses without the cast
+  (`CastPermission.IfNotCast`). Over a card already in exile, use `OfferPaidCastFromExileForEffect`.
 
 ### Pieces from the Mass Casualty deck (#3245)
 
