@@ -371,11 +371,21 @@
   >
     {#if style === "pile" && collapsed}
       <section class="stack-lane collapsed" bind:this={laneEl} aria-label={L.stackPile(stackCount)}>
+        <!-- #3429: the folded tab is a handle too. A press that moves is a
+             drag; one that does not is the click that unfolds it. -->
         <button
           type="button"
           class="stack-tab"
+          class:movable={boardEl !== null}
+          data-stack-handle
           aria-label="show the stack"
-          onclick={() => (collapsed = false)}
+          onpointerdown={move.onPointerDown}
+          onpointermove={move.onPointerMove}
+          onpointerup={move.onPointerUp}
+          onpointercancel={move.onPointerCancel}
+          onclick={() => {
+            if (!move.consumeDrag()) collapsed = false;
+          }}
         >
           Stack · {stackCount}
         </button>
@@ -532,11 +542,13 @@
     box-shadow: var(--shadow-lg), var(--ring);
     user-select: none;
   }
-  .head.movable {
+  .head.movable,
+  .stack-tab.movable {
     cursor: grab;
     touch-action: none;
   }
-  .lane-host.dragging .head.movable {
+  .lane-host.dragging .head.movable,
+  .lane-host.dragging .stack-tab.movable {
     cursor: grabbing;
   }
   .reset-pos {

@@ -54,6 +54,10 @@ export function createStackPlacement(o: StackPlacementOptions) {
   let drag: { id: number; dx: number; dy: number; x0: number; y0: number; moved: boolean } | null =
     null;
 
+  // Whether the last press moved: a handle that is also a button reads it
+  // to ignore the click that follows a drag.
+  let dragged = false;
+
   function spotAt(e: PointerEvent): StackPositionView | null {
     const panel = o.panel();
     const board = o.board();
@@ -82,6 +86,12 @@ export function createStackPlacement(o: StackPlacementOptions) {
     get placed(): StackPositionView | null {
       return placed;
     },
+    /** True once for the click that follows a drag, so it can be ignored. */
+    consumeDrag(): boolean {
+      const d = dragged;
+      dragged = false;
+      return d;
+    },
     get dragging(): boolean {
       return dragging !== null;
     },
@@ -89,7 +99,11 @@ export function createStackPlacement(o: StackPlacementOptions) {
     onPointerDown(e: PointerEvent): void {
       const panel = o.panel();
       if (e.button !== 0 || !panel || !o.board()) return;
-      if ((e.target as Element | null)?.closest("button")) return;
+      // A button inside the handle keeps its click; the handle being the
+      // button (the folded pile's tab) is a drag that may still be a click.
+      const btn = (e.target as Element | null)?.closest("button");
+      if (btn && btn !== e.currentTarget) return;
+      dragged = false;
       o.before?.();
       const r = panel.getBoundingClientRect();
       drag = {
@@ -112,6 +126,7 @@ export function createStackPlacement(o: StackPlacementOptions) {
     onPointerUp(e: PointerEvent): void {
       if (!drag || e.pointerId !== drag.id) return;
       const spot = drag.moved ? spotAt(e) : null;
+      dragged = drag.moved;
       drag = null;
       dragging = null;
       if (!spot) return;

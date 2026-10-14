@@ -38,7 +38,7 @@ Double-clicking the header, or the "Reset stack position" button that shows once
 
 ### 6. How each style maps onto the spot
 
-The saved spot is the top-left corner of the stack's box in every style. With nothing saved each style keeps the placement [ADR 0119](0119-a-stack-you-can-follow.md) gave it (the pile at the board's left edge beside the seam, the others centred across the table). With a spot saved the lane leaves that anchor for the spot: the pile keeps its card-sized width; `fan`, `spotlight` and `ribbon`, which are 1040px wide centred, come in to 640px (or the board's width less 32px), since a full-width lane could only move up and down. A pile folded to its tab sits at the saved spot but has no header to drag; unfold it first. The pile's phone and short-board fallback to the docked card is unchanged, and there the docked card uses the same spot.
+The saved spot is the top-left corner of the stack's box in every style. With nothing saved each style keeps the placement [ADR 0119](0119-a-stack-you-can-follow.md) gave it (the pile at the board's left edge beside the seam, the others centred across the table). With a spot saved the lane leaves that anchor for the spot: the pile keeps its card-sized width; `fan`, `spotlight` and `ribbon`, which are 1040px wide centred, come in to 640px (or the board's width less 32px), since a full-width lane could only move up and down. A pile folded to its tab sits at the saved spot and the tab is a handle too: a press that moves 3px or more drags and saves, a plain click unfolds it as before; reset is on the unfolded header. The pile's phone and short-board fallback to the docked card is unchanged, and there the docked card uses the same spot.
 
 ## Not decided here
 

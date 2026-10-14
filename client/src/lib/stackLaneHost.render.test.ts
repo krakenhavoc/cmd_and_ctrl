@@ -282,3 +282,52 @@ describe("the lane header handle", () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 });
+
+describe("the folded pile tab", () => {
+  const fold = (c: HTMLElement) => {
+    c.querySelector<HTMLButtonElement>(".collapse")!.click();
+    flushSync();
+  };
+  const tab = (c: HTMLElement) => c.querySelector<HTMLElement>(".stack-tab")!;
+
+  it("drags and saves, and stays folded", () => {
+    const onSave = vi.fn();
+    const { r } = mountLane("pile", { onSave });
+    fold(r.container);
+    pointer(tab(r.container), "pointerdown", 50, 20);
+    pointer(tab(r.container), "pointermove", 350, 220);
+    pointer(tab(r.container), "pointerup", 350, 220);
+    // The click a browser sends after the release must not unfold it.
+    tab(r.container).click();
+    flushSync();
+    expect(onSave).toHaveBeenCalledTimes(1);
+    const saved = onSave.mock.calls[0][0] as StackPositionView;
+    expect(saved.x).toBeCloseTo(0.3);
+    expect(saved.y).toBeCloseTo(200 / 600);
+    expect(tab(r.container)).not.toBeNull();
+    expect(host(r.container).style.left).toBe("300px");
+    expect(host(r.container).style.top).toBe("200px");
+  });
+
+  it("a plain click unfolds it and saves nothing", () => {
+    const onSave = vi.fn();
+    const { r } = mountLane("pile", { onSave });
+    fold(r.container);
+    pointer(tab(r.container), "pointerdown", 50, 20);
+    pointer(tab(r.container), "pointerup", 51, 21);
+    tab(r.container).click();
+    flushSync();
+    expect(onSave).not.toHaveBeenCalled();
+    expect(r.container.querySelector(".stack-tab")).toBeNull();
+    expect(handle(r.container)).not.toBeNull();
+  });
+
+  it("sits at the saved spot, and reset is on the unfolded header", () => {
+    const { r } = mountLane("pile", { position: { x: 0.5, y: 0.25 } });
+    fold(r.container);
+    expect(host(r.container).style.left).toBe("500px");
+    tab(r.container).click();
+    flushSync();
+    expect(r.container.querySelector(".reset-pos")).not.toBeNull();
+  });
+});
