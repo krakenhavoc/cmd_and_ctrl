@@ -1389,6 +1389,41 @@ jobs:
           printf '%s' "${BUGREPORT_TOKEN}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
             "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh CMDCTRL_GITHUB_TOKEN ${ENV_FILE}"
 
+      # The GitHub App that files reports as its bot (#3493), which the
+      # server prefers over the PAT above. All three or none: none skips
+      # (the PAT, if any, keeps filing); a partial set fails the run,
+      # since the server refuses to boot on one. The key secret is the
+      # app's .pem pasted as is; the env file is line-oriented, so it is
+      # base64-encoded onto one line here (the server reads either).
+      # Over stdin like the token, never argv.
+      - name: Sync server env (GitHub App)
+        env:
+          APP_ID: ${{ vars.CMDCTRL_GITHUB_APP_ID }}
+          APP_INSTALLATION_ID: ${{ vars.CMDCTRL_GITHUB_APP_INSTALLATION_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.CMDCTRL_GITHUB_APP_PRIVATE_KEY }}
+        run: |
+          set_n=0
+          for v in "${APP_ID}" "${APP_INSTALLATION_ID}" "${APP_PRIVATE_KEY}"; do
+            [ -n "$v" ] && set_n=$((set_n + 1))
+          done
+          if [ "$set_n" -eq 0 ]; then
+            echo "GitHub App not configured; skipping (reports file with CMDCTRL_GITHUB_TOKEN, if set)."
+            exit 0
+          fi
+          if [ "$set_n" -ne 3 ]; then
+            echo "::error::CMDCTRL_GITHUB_APP_ID, CMDCTRL_GITHUB_APP_INSTALLATION_ID (variables) and CMDCTRL_GITHUB_APP_PRIVATE_KEY (secret) must all be set, or none"
+            exit 1
+          fi
+          for pair in "CMDCTRL_GITHUB_APP_ID:${APP_ID}" "CMDCTRL_GITHUB_APP_INSTALLATION_ID:${APP_INSTALLATION_ID}"; do
+            case "${pair#*:}" in
+              ''|*[!0-9]*) echo "::error::${pair%%:*} must be a number"; exit 1 ;;
+            esac
+            printf '%s' "${pair#*:}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+              "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${pair%%:*} ${ENV_FILE}"
+          done
+          printf '%s' "${APP_PRIVATE_KEY}" | base64 -w0 | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh CMDCTRL_GITHUB_APP_PRIVATE_KEY ${ENV_FILE}"
+
       # Bug-report screenshots need a PUBLIC origin: a GitHub issue can
       # only render an image its proxy can fetch, so the server has to
       # know the URL it is reachable at from the outside. Not a secret —
