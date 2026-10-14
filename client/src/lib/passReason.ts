@@ -50,6 +50,8 @@ export const HOLD_PASS_REASON = "stack hold ended, nothing to respond with";
 /** The reason for a pass that is the second half of the player's own click. */
 export const ATTACK_PASS_REASON = "attackers declared";
 export const NO_BLOCKS_PASS_REASON = "no blocks declared";
+/** The reason for the empty declaration the "No attacks" setting sends (#3586). */
+export const NO_ATTACKS_PASS_REASON = "no attacks, by your setting";
 
 /** The reason a direct click (Next, the key, End turn's pass) logs. */
 export const MANUAL_PASS_REASON = "you passed";
