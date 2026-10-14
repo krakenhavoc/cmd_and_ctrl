@@ -90,12 +90,12 @@ environment: `develop` deploys to cmd-dev, `main` to prod
 
 ## 6. Beta goals (four weeks)
 
-The numbers are **PROPOSED**. The owner sets them. Each one can be computed
+The owner set these on 2026-10-13. Each one can be computed
 from data the server already keeps: the `games` and `seats` tables (practice
 tables are never stored, so they're excluded from all three), the
 `cmdctrl_*` metrics, and the `player-report` label on GitHub issues.
 
-| Goal | Target (PROPOSED) | How it is measured |
+| Goal | Target | How it is measured |
 |---|---|---|
 | **People come back** | ≥ 15 signed-in players a week by week 4, and ≥ 40% of each week's players also played in an earlier beta week | Distinct `seats.user_id` at tables with `games.started_at` in the week; "returning" means also seated in an earlier week. `cmdctrl_users_played{window="7d"}` is the live view of the first number |
 | **Games reach an end** | ≥ 60% of started tables end with a result | Tables started in the window with `games.outcome IN ('win','draw')`, over all tables started. The live view is `cmdctrl_games_ended_total{outcome}` against `cmdctrl_games_started_total` |
