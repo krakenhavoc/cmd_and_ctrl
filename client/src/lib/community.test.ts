@@ -21,7 +21,14 @@ describe("parseCommunity", () => {
       gate: true,
       voice: false,
       lfg: false,
+      results: false,
     });
+  });
+
+  it("reads whether the results feed is offered, and only a literal true (ADR 0174 §6)", () => {
+    expect(parseCommunity({ invite_url: INVITE, gate: false, results: true }).results).toBe(true);
+    expect(parseCommunity({ invite_url: INVITE, gate: false, results: 1 }).results).toBe(false);
+    expect(parseCommunity({ invite_url: INVITE, gate: false }).results).toBe(false);
   });
 
   it("reads whether the #lfg board is offered, and only a literal true (ADR 0161 §7)", () => {
@@ -65,7 +72,13 @@ describe("loadCommunity", () => {
     vi.stubGlobal("fetch", f);
     await Promise.all([loadCommunity(), loadCommunity()]);
     await loadCommunity();
-    expect(get(community)).toEqual({ invite_url: INVITE, gate: true, voice: false, lfg: false });
+    expect(get(community)).toEqual({
+      invite_url: INVITE,
+      gate: true,
+      voice: false,
+      lfg: false,
+      results: false,
+    });
     expect(f).toHaveBeenCalledTimes(1);
     expect(f.mock.calls[0][0]).toBe("/community");
   });

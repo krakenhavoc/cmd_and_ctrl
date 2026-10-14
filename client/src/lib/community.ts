@@ -21,10 +21,18 @@ export interface Community {
   voice?: boolean;
   /** A host may post a table to the Discord's #lfg board (ADR 0161 §7). */
   lfg?: boolean;
+  /** A host may opt a table in to a results post in #game-results (ADR 0174 §6). */
+  results?: boolean;
 }
 
 /** The initial value, and the value every failure resolves to. */
-export const NO_COMMUNITY: Community = { invite_url: null, gate: false, voice: false, lfg: false };
+export const NO_COMMUNITY: Community = {
+  invite_url: null,
+  gate: false,
+  voice: false,
+  lfg: false,
+  results: false,
+};
 
 const store = guardedWritable<Community>(NO_COMMUNITY, "community");
 
@@ -38,12 +46,19 @@ export const community: Readable<Community> = { subscribe: store.subscribe };
  */
 export function parseCommunity(body: unknown): Community {
   if (typeof body !== "object" || body === null) return NO_COMMUNITY;
-  const b = body as { invite_url?: unknown; gate?: unknown; voice?: unknown; lfg?: unknown };
+  const b = body as {
+    invite_url?: unknown;
+    gate?: unknown;
+    voice?: unknown;
+    lfg?: unknown;
+    results?: unknown;
+  };
   return {
     invite_url: inviteURL(b.invite_url),
     gate: b.gate === true,
     voice: b.voice === true,
     lfg: b.lfg === true,
+    results: b.results === true,
   };
 }
 
