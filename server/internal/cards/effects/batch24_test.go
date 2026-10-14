@@ -572,15 +572,18 @@ func TestB24WillOfTheAbzanEdictsTheBiggestOrReanimates(t *testing.T) {
 		t.Errorf("the life loss landed while the sacrifice prompts were open: %d→%d, %d→%d",
 			aLife, a.Life, bLife, b.Life)
 	}
-	pa := sacrificeChoiceFor(g, a.ID)
-	if pa == nil || len(pa.SacrificeOptions) != 1 || pa.SacrificeOptions[0] != aBig {
-		t.Fatalf("A must sacrifice the Giant, the only greatest-power creature: %+v", pa)
+	// A's Giant is the only greatest-power creature, so A's pick is
+	// forced and collected unasked (ADR 0175, #3664); it waits for B.
+	if pa := sacrificeChoiceFor(g, a.ID); pa != nil {
+		t.Errorf("A has no choice to make and is asked anyway: %+v", pa)
+	}
+	if !g.Battlefield.Contains(aBig) {
+		t.Error("A's Giant was sacrificed before B had chosen")
 	}
 	pb := sacrificeChoiceFor(g, b.ID)
-	if pb == nil || len(pb.SacrificeOptions) != 2 {
+	if pb == nil || len(sacrificeOptions(pb)) != 2 {
 		t.Fatalf("B's two Bears tie for greatest and B chooses: %+v", pb)
 	}
-	answerSacrifice(t, g, a.ID, aBig)
 	answerSacrifice(t, g, b.ID, bTwo)
 	if g.Battlefield.Contains(aBig) || !g.Battlefield.Contains(aSmall) || !g.Battlefield.Contains(bOne) || g.Battlefield.Contains(bTwo) {
 		t.Error("exactly the chosen creatures are sacrificed")
@@ -952,17 +955,23 @@ func TestB24WitchOfTheMoorsEdictsAndReturnsWhenYouGainedLife(t *testing.T) {
 	}
 	pickCard(t, g, me.ID, dead)
 	passPriorityAroundTable(t, g)
-	if sacrificeChoiceFor(g, a.ID) == nil || sacrificeChoiceFor(g, b.ID) == nil || sacrificeChoiceFor(g, me.ID) != nil {
+	// Each opponent has one creature, so neither is asked (ADR 0175's
+	// forced pick, #3664) and both go.
+	if sacrificeChoiceFor(g, me.ID) != nil {
 		t.Fatal("each opponent — not you — sacrifices a creature of their choice")
+	}
+	if g.Battlefield.Contains(aBear) || findBattlefieldByName(g, "B's Bear") != uuid.Nil {
+		t.Error("each opponent sacrifices their creature")
+	}
+	if !g.Battlefield.Contains(witch) {
+		t.Error("the Witch's controller is not an opponent")
 	}
 	if !me.Hand.Contains(dead) {
 		t.Error("the chosen creature card returns to hand")
 	}
-	answerSacrifice(t, g, a.ID, aBear)
-	answerSacrifice(t, g, b.ID, findBattlefieldByName(g, "B's Bear"))
 	// Gained life, no creature card: the untargeted twin still
 	// edicts.
-	b12Creature(g, a.ID, "A's Second Bear", "Creature — Bear", 2, 2)
+	second := b12Creature(g, a.ID, "A's Second Bear", "Creature — Bear", 2, 2)
 	advanceToPrecombatMainOf(t, g, 0)
 	g.WithWriteLock(func() { _ = g.ChangePlayerLifeForEffect(uuid.Nil, me.ID, 1) })
 	advanceToEndStepOf(t, g, 0)
@@ -970,7 +979,7 @@ func TestB24WitchOfTheMoorsEdictsAndReturnsWhenYouGainedLife(t *testing.T) {
 	if latestPickTarget(g, me.ID) != nil {
 		t.Error("nothing to target: no prompt")
 	}
-	if sacrificeChoiceFor(g, a.ID) == nil {
+	if g.Battlefield.Contains(second) {
 		t.Error("with an empty graveyard the edict still comes")
 	}
 }

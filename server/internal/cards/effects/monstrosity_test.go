@@ -462,12 +462,15 @@ func TestEmberSwallowerEachPlayerSacrificesThreeLands(t *testing.T) {
 		if c == nil {
 			break
 		}
-		if hasID(c.SacrificeOptions, swallower) || hasID(c.SacrificeOptions, theirBear) {
+		opts := sacrificeOptions(c)
+		if hasID(opts, swallower) || hasID(opts, theirBear) {
 			t.Fatal("a nonland permanent is offered to a land edict")
 		}
-		if err := g.ResolveSacrificeChoice(c.ID, c.Chooser, c.SacrificeOptions[0]); err != nil {
-			t.Fatalf("ResolveSacrificeChoice: %v", err)
+		// #3664: a seat owing three lands names all three in one pick.
+		if c.ChooseMax != 3 || len(opts) < 3 {
+			t.Fatalf("the pick takes %d of %d lands, want 3", c.ChooseMax, len(opts))
 		}
+		answerSacrifice(t, g, c.Chooser, opts[:3]...)
 	}
 	passPriorityAroundTable(t, g)
 

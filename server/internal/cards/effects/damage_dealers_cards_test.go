@@ -61,8 +61,8 @@ func TestWitchKingMakesEachOpponentSacrificeACreatureThatConnected(t *testing.T)
 	if c1 == nil {
 		t.Fatal("opponent one was not asked to sacrifice")
 	}
-	if len(c1.SacrificeOptions) != 2 {
-		t.Errorf("opponent one is offered %d creatures, want only the two that connected", len(c1.SacrificeOptions))
+	if len(sacrificeOptions(c1)) != 2 {
+		t.Errorf("opponent one is offered %d creatures, want only the two that connected", len(sacrificeOptions(c1)))
 	}
 	if sacrificeChoiceFor(g, opp3.ID) != nil || sacrificeChoiceFor(g, me.ID) != nil {
 		t.Error("a seat with no creature that connected, or the controller, was asked")

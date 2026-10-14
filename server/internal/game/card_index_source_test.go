@@ -124,6 +124,7 @@ func TestZoneCardsAreWrittenOnlyAtKnownPoints(t *testing.T) {
 		"ChoosePermanentsInOrderThenForEffect":    "ChooseCardsPrompt.Cards: copied candidate UUIDs, no zone mutation (#2948)",
 		"collectPermanentChoicesLocked":           "ChooseCardsPrompt.Cards: live candidate UUIDs, no zone mutation (#2948)",
 		"permanentChoicePicksLocked":              "SeatCards.Cards: original-object receipt UUIDs, no zone mutation (#2948)",
+		"sacrificeTogetherLocked":                 "SeatCards.Cards: a seat's picks that were sacrificed, no zone mutation (#3664)",
 		"LegalTargetsForClauseForEffect":          "LegalTargets.Cards: candidate UUIDs, not zone cards",
 		"LegalTargetsForAnnouncedClauseForEffect": "LegalTargets.Cards: candidate UUIDs, not zone cards",
 		"queueRelatedRetargetLocked":              "LegalTargets.Cards: candidate UUIDs, not zone cards",

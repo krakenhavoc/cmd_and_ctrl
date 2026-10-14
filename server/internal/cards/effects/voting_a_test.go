@@ -167,9 +167,12 @@ func TestCapitalPunishmentSacrificesPerDeathVoteAndDiscardsPerTaxesVote(t *testi
 	passPriorityAroundTable(t, g)
 	// two death votes, two taxes votes
 	voteRound(t, g, "death", "taxes", "death", "taxes")
-	for i := 0; i < 2; i++ {
-		answerSacrifice(t, g, opp.ID, votingAFirstCreatureOf(g, opp))
+	// #3664: two death votes are one pick of two creatures.
+	pick := sacrificeChoiceFor(g, opp.ID)
+	if pick == nil || pick.ChooseMax != 2 || len(sacrificeOptions(pick)) < 2 {
+		t.Fatalf("the opponent should name two of their creatures at once: %+v", pick)
 	}
+	answerSacrifice(t, g, opp.ID, sacrificeOptions(pick)[:2]...)
 	if got := votingACreaturesOf(g, opp); got != 1 {
 		t.Errorf("the opponent has %d creatures after two death votes, want 1", got)
 	}

@@ -213,17 +213,14 @@ func TestPharikasSpawnOnlyEatsACreatureWhenItEscaped(t *testing.T) {
 				t.Fatal("Pharika's Spawn never landed")
 			}
 
-			pick := sacrificeChoiceFor(g, opp.ID)
+			// The bear is the opponent's only non-Gorgon creature, so the
+			// pick is forced and collected unasked (ADR 0175, #3664).
 			if !escaped {
-				if pick != nil {
-					t.Fatal("a hard-cast Pharika's Spawn asked an opponent to sacrifice")
+				if !g.Battlefield.Contains(bear) || sacrificeChoiceFor(g, opp.ID) != nil {
+					t.Fatal("a hard-cast Pharika's Spawn made an opponent sacrifice")
 				}
 				return
 			}
-			if pick == nil {
-				t.Fatal("an escaped Pharika's Spawn asked nobody to sacrifice")
-			}
-			answerSacrifice(t, g, opp.ID, bear)
 			if g.Battlefield.Contains(bear) {
 				t.Error("the chosen creature was not sacrificed")
 			}

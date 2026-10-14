@@ -369,27 +369,41 @@ func TestB17RiseOfTheWitchKingEdictsEveryoneAndReturnsThePick(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	mine := b16Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2, "G")
+	spare := b16Creature(g, me.ID, "Spare Bear", "Creature — Bear", 2, 2, "G")
 	theirs := b16Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2, "G")
+	b16Creature(g, opp.ID, "Their Spare", "Creature — Bear", 2, 2, "G")
 	rock := b17GraveyardCard(me, "Sol Ring", "Artifact", "{1}")
+	// returnOffer is the return pick, never the sacrifice pick (both are
+	// choose_cards since #3664).
+	returnOffer := func() *game.PendingChoice {
+		if c := chooseCardsChoiceFor(g, me.ID); c != nil && !isSacrificePrompt(c) {
+			return c
+		}
+		return nil
+	}
 	castCatalogSpell(t, g, "Rise of the Witch-king", "Sorcery", b17RiseOfTheWitchKingOracle, nil)
 	passPriorityAroundTable(t, g)
-	if sacrificeChoiceFor(g, me.ID) == nil || sacrificeChoiceFor(g, opp.ID) == nil {
-		t.Fatal("each player with a creature is asked to sacrifice one")
+	// #3664: one player at a time, in APNAP order.
+	if sacrificeChoiceFor(g, me.ID) == nil || sacrificeChoiceFor(g, opp.ID) != nil {
+		t.Fatal("the active player is asked to sacrifice first, and alone")
 	}
 	// #1019: "if you sacrificed a creature this way" is about the
 	// SACRIFICE, so nothing is offered while the prompts are open.
-	if chooseCardsChoiceFor(g, me.ID) != nil {
+	if returnOffer() != nil {
 		t.Error("the return was offered before anybody had chosen a creature")
 	}
 	answerSacrifice(t, g, me.ID, mine)
-	if chooseCardsChoiceFor(g, me.ID) != nil {
+	if returnOffer() != nil {
 		t.Error("the run waits for every asked seat, not just the controller")
+	}
+	if !g.Battlefield.Contains(mine) {
+		t.Error("the controller's pick was sacrificed before the opponent had chosen")
 	}
 	answerSacrifice(t, g, opp.ID, theirs)
 	// #2863: the card is chosen now, from the graveyard as it is after
 	// the sacrifices — the Bear just sacrificed is on offer, the
 	// opponent's is not.
-	pick := chooseCardsChoiceFor(g, me.ID)
+	pick := returnOffer()
 	if pick == nil {
 		t.Fatal("the controller chooses the permanent card on resolution")
 	}
@@ -410,6 +424,7 @@ func TestB17RiseOfTheWitchKingEdictsEveryoneAndReturnsThePick(t *testing.T) {
 
 	// With no creature of your own there is nothing to sacrifice, and
 	// so nothing is offered.
+	g.WithWriteLock(func() { _ = g.ExileCardForEffect(spare) })
 	rock2 := b17GraveyardCard(me, "Mind Stone", "Artifact", "{2}")
 	castCatalogSpell(t, g, "Rise of the Witch-king", "Sorcery", b17RiseOfTheWitchKingOracle, nil)
 	passPriorityAroundTable(t, g)

@@ -205,15 +205,18 @@ func TestSheoldredEdictSkipsTokensAndLetsEachOpponentChoose(t *testing.T) {
 	castAndResolveCreature(t, g, "Sheoldred", "Legendary Creature — Phyrexian Praetor", sheoldredTrueScripturesOracleID)
 	passPriorityAroundTable(t, g)
 
-	pa := sacrificeChoiceFor(g, a.ID)
-	if pa == nil || len(pa.SacrificeOptions) != 1 || pa.SacrificeOptions[0] != aBear {
-		t.Fatalf("A may sacrifice only the nontoken Bear: %+v", pa)
+	// A's nontoken Bear is their only candidate: a forced pick, collected
+	// unasked, that waits for B (ADR 0175, #3664).
+	if pa := sacrificeChoiceFor(g, a.ID); pa != nil {
+		t.Errorf("A may sacrifice only the nontoken Bear and is asked anyway: %+v", pa)
+	}
+	if !g.Battlefield.Contains(aBear) {
+		t.Error("A's Bear was sacrificed before B had chosen")
 	}
 	pb := sacrificeChoiceFor(g, b.ID)
-	if pb == nil || len(pb.SacrificeOptions) != 2 {
+	if pb == nil || len(sacrificeOptions(pb)) != 2 {
 		t.Fatalf("B chooses between a creature and a planeswalker: %+v", pb)
 	}
-	answerSacrifice(t, g, a.ID, aBear)
 	answerSacrifice(t, g, b.ID, bWalker)
 	if g.Battlefield.Contains(aBear) || g.Battlefield.Contains(bWalker) {
 		t.Error("the chosen permanents were not sacrificed")

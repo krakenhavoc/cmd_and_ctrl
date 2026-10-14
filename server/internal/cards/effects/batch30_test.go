@@ -375,28 +375,18 @@ func TestB30PickYourPoisonEdictsEachOpponentByMode(t *testing.T) {
 	bRock := b12Permanent(g, b.ID, "B's Rock", "Artifact")
 	castModal(t, g, "Pick Your Poison", "Sorcery", b30PickYourPoisonOracle, []int{2}, nil)
 	passPriorityAroundTable(t, g)
-	c := sacrificeChoiceFor(g, a.ID)
-	if c == nil {
-		t.Fatal("an opponent with a flyer is asked to sacrifice one")
+	// A's only flyer is a forced pick, collected unasked (ADR 0175,
+	// #3664): only creatures with flying are candidates.
+	if sacrificeChoiceFor(g, a.ID) != nil || sacrificeChoiceFor(g, b.ID) != nil || sacrificeChoiceFor(g, me.ID) != nil {
+		t.Error("nobody has a real choice, so nobody is asked")
 	}
-	if hasID(c.SacrificeOptions, aBear) || !hasID(c.SacrificeOptions, aFlyer) {
-		t.Error("only creatures with flying are offered")
-	}
-	if sacrificeChoiceFor(g, b.ID) != nil || sacrificeChoiceFor(g, me.ID) != nil {
-		t.Error("an opponent with no flyer, and the caster, are not asked")
-	}
-	answerSacrifice(t, g, a.ID, aFlyer)
-	if g.Battlefield.Contains(aFlyer) || !g.Battlefield.Contains(myFlyer) {
-		t.Error("their flyer is sacrificed; yours stays")
+	if g.Battlefield.Contains(aFlyer) || !g.Battlefield.Contains(aBear) || !g.Battlefield.Contains(myFlyer) {
+		t.Error("their flyer is sacrificed; their Bear and your flyer stay")
 	}
 	castModal(t, g, "Pick Your Poison", "Sorcery", b30PickYourPoisonOracle, []int{0}, nil)
 	passPriorityAroundTable(t, g)
-	if c := sacrificeChoiceFor(g, b.ID); c == nil || !hasID(c.SacrificeOptions, bRock) {
-		t.Fatal("mode one asks for an artifact")
-	}
-	answerSacrifice(t, g, b.ID, bRock)
 	if g.Battlefield.Contains(bRock) {
-		t.Error("the artifact is sacrificed")
+		t.Error("mode one sacrifices the artifact")
 	}
 }
 

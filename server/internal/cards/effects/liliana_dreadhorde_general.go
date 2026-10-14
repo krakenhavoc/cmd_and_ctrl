@@ -122,6 +122,7 @@ func lilianaEachPlayerSacrificesTwo(g *game.Game, item *game.StackItem) error {
 			Chooser: seat, FromPlayer: seat, Source: source,
 			Question: "Liliana, Dreadhorde General — choose two creatures to sacrifice",
 			Cards:    candidates, Min: n, Max: n, Zone: game.ZoneBattlefield,
+			Destination: game.ChooseSacrifice,
 		})
 	}
 	return g.ChoosePermanentsInOrderThenForEffect(legs, func(g *game.Game, picks game.PromptedPicks) error {

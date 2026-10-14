@@ -470,7 +470,7 @@ func TestB04TatyovaGainsAndDrawsOnLandfall(t *testing.T) {
 
 func TestB04AccursedMarauderEdictsNontokenCreaturesOnly(t *testing.T) {
 	g := newCatalogGame(t)
-	me, opp1, opp2 := g.Seats[0], g.Seats[1], g.Seats[2]
+	opp1, opp2 := g.Seats[1], g.Seats[2]
 	bear := seedCreature(g, "Bear", opp1.ID)
 	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(opp2.ID, RedGoblinToken(), 1) })
 	passPriorityAroundTable(t, g)
@@ -478,14 +478,19 @@ func TestB04AccursedMarauderEdictsNontokenCreaturesOnly(t *testing.T) {
 	marauder := castCatalogSpell(t, g, "Accursed Marauder", "Creature — Zombie Warrior", b04AccursedMarauderOracle, nil)
 	passPriorityAroundTable(t, g)
 
-	if c := sacrificeChoiceFor(g, opp1.ID); c == nil || len(c.SacrificeOptions) != 1 || c.SacrificeOptions[0] != bear {
-		t.Errorf("opponent 1 should be offered exactly their Bear, got %+v", c)
-	}
+	// Every seat has at most one nontoken creature, so every pick is
+	// forced and collected unasked (ADR 0175, #3664).
 	if sacrificeChoiceFor(g, opp2.ID) != nil {
 		t.Error("a player whose only creature is a token has nothing to sacrifice")
 	}
-	if c := sacrificeChoiceFor(g, me.ID); c == nil || len(c.SacrificeOptions) != 1 || c.SacrificeOptions[0] != marauder {
-		t.Errorf("the caster's only nontoken creature is the Marauder itself, got %+v", c)
+	if g.Battlefield.Contains(bear) {
+		t.Error("opponent 1's only nontoken creature, their Bear, is sacrificed")
+	}
+	if findBattlefieldByName(g, "Goblin") == uuid.Nil {
+		t.Error("a token is not a nontoken creature")
+	}
+	if g.Battlefield.Contains(marauder) {
+		t.Error("the caster's only nontoken creature is the Marauder itself")
 	}
 }
 

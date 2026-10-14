@@ -527,6 +527,11 @@ func TestB21DemonsDiscipleEdictsCreaturesAndPlaneswalkers(t *testing.T) {
 	if len(mine) != 2 || !hasID(mine, bear) || !hasID(mine, disciple) {
 		t.Errorf("EACH player, the Disciple itself included: %v", mine)
 	}
+	answerSacrifice(t, g, me.ID, disciple)
+	// #3664: the opponent chooses next, and the Disciple waits for them.
+	if !g.Battlefield.Contains(disciple) {
+		t.Error("the Disciple was sacrificed before the opponent had chosen")
+	}
 	opts := b19SacrificeOptions(g, opp.ID)
 	if len(opts) != 2 || !hasID(opts, theirs) || !hasID(opts, walker) {
 		t.Errorf("a creature OR a planeswalker: %v", opts)
@@ -534,7 +539,6 @@ func TestB21DemonsDiscipleEdictsCreaturesAndPlaneswalkers(t *testing.T) {
 	if sacrificeChoiceFor(g, other.ID) != nil || sacrificeChoiceFor(g, third.ID) != nil {
 		t.Error("a player with only an artifact, or nothing, is skipped")
 	}
-	answerSacrifice(t, g, me.ID, disciple)
 	answerSacrifice(t, g, opp.ID, walker)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(disciple) || g.Battlefield.Contains(walker) {

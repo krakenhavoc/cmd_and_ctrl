@@ -39,12 +39,16 @@ func TestOpponentsEdictSkipsProtectedPlayerOnly(t *testing.T) {
 	if c := sacrificeChoiceFor(g, shielded.ID); c != nil {
 		t.Fatalf("the protected player was asked to sacrifice: %+v", c)
 	}
-	if sacrificeChoiceFor(g, other.ID) == nil || sacrificeChoiceFor(g, me.ID) == nil {
-		t.Fatal("the other opponent and the controller are still asked")
+	// The controller (Bear and Marauder) chooses; the other opponent's
+	// only creature is a forced pick (ADR 0175, #3664).
+	if sacrificeChoiceFor(g, me.ID) == nil {
+		t.Fatal("the controller is still asked")
 	}
-	answerSacrifice(t, g, other.ID, otherBear)
 	answerSacrifice(t, g, me.ID, mine)
 	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(otherBear) || g.Battlefield.Contains(mine) {
+		t.Error("the other opponent and the controller still sacrifice")
+	}
 	if n := annCountOn(g, shielded.ID); n != 2 {
 		t.Errorf("the protected player still controls %d permanents, want 2", n)
 	}
@@ -67,14 +71,15 @@ func TestProtectionEndsWhenItLeaves(t *testing.T) {
 	g := newCatalogGame(t)
 	shielded := g.Seats[1]
 	preserver := pushTajuru(g, shielded.ID)
-	pushCatalogPermanent(g, shielded.ID, "Shielded Bear", "Creature — Bear", "", false)
+	bear := pushCatalogPermanent(g, shielded.ID, "Shielded Bear", "Creature — Bear", "", false)
 	g.WithWriteLock(func() { _ = g.SacrificePermanentForEffect(preserver) })
 	passPriorityAroundTable(t, g)
 
 	castCatalogSpell(t, g, "Fleshbag Marauder", "Creature — Zombie Warrior", fleshbagMarauderOracle, nil)
 	passPriorityAroundTable(t, g)
-	if sacrificeChoiceFor(g, shielded.ID) == nil {
-		t.Fatal("with the Preserver gone the player must be asked again")
+	// Their only creature is a forced pick (ADR 0175, #3664).
+	if g.Battlefield.Contains(bear) {
+		t.Fatal("with the Preserver gone the player must sacrifice again")
 	}
 }
 

@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Will of the Abzan — Sorcery {3}{B} (EDHREC rank 2605):
 //
@@ -18,8 +22,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // no-op; each still-legal one chooses a creature with the greatest
 // power among their own (GreatestPowerYouControl evaluated for the
 // chooser through the sacrifice prompt, so ties are theirs to break —
-// b24PlayerSacrificesGreatestPowerCreatureAndLosesLife) and loses 3
-// life, in announce order. The second returns the chosen creature
+// b24PlayersSacrificeGreatestPowerCreatureAndLoseLife). The targets
+// choose in APNAP order and their creatures are sacrificed together
+// (CR 101.4, #3664); then each loses 3 life, in announce order. The
+// second returns the chosen creature
 // card under its owner's control, which is the caster's: the clause
 // says "your graveyard".
 //
@@ -41,11 +47,14 @@ func init() {
 		).OrUpToIf(2, YouControlACommander),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if ctx.HasMode(0) {
+				var players []uuid.UUID
 				for _, t := range OptionTargets(ctx, 0) {
-					if t.Kind != game.TargetPlayer {
-						continue
+					if t.Kind == game.TargetPlayer {
+						players = append(players, t.ID)
 					}
-					if err := b24PlayerSacrificesGreatestPowerCreatureAndLosesLife(ctx.Game, item, t.ID, 3); err != nil {
+				}
+				if len(players) > 0 {
+					if err := b24PlayersSacrificeGreatestPowerCreatureAndLoseLife(ctx.Game, item, players, 3); err != nil {
 						return err
 					}
 				}

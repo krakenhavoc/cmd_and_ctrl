@@ -2617,6 +2617,9 @@
             The cards you pick go on the bottom of your library{pickMax > 1
               ? ", and you choose their order next"
               : ""}. The rest are your opening hand.
+          {:else if active.choose_destination === "sacrifice"}
+            <!-- #3664: an "each player sacrifices" edict (CR 101.4). -->
+            The permanents you pick are sacrificed once every player has chosen, all at the same time.
           {:else if active.choose_destination === "outside"}
             <!-- ADR 0191: a pick over the cards your deck owns outside the game. -->
             These are the cards you own outside the game: your sideboard. Only you can see them, and the

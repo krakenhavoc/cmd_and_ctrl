@@ -13,18 +13,15 @@ import (
 //	 When this creature becomes monstrous, each player sacrifices
 //	 three lands of their choice."
 //
-// "Each player" includes you. The edict is one prompted run with each
-// seat asked three times in APNAP order (PlayersSacrificeThenForEffect
-// asks a seat once per time it is named); a player with fewer than
-// three lands is asked for what they have and the surplus prompts are
-// withdrawn as their lands run out (CR 701.21a, "if you can"). Not
-// targeted, so a hexproof land is as sacrificeable as any other.
+// "Each player" includes you. Each seat names three lands, one seat at
+// a time in APNAP order, and every named land is sacrificed together
+// once the last has chosen (PlayersSacrificeThenForEffect owes a seat
+// one permanent per time it is named; CR 101.4, #3664). A player with
+// fewer than three lands sacrifices what they have (CR 701.21a, "if
+// you can"). Not targeted, so a hexproof land is as sacrificeable as
+// any other.
 //
-// No simplification beyond the engine's standing one for every
-// "each player sacrifices": the choices are made and carried out one
-// prompt at a time rather than all chosen first and then sacrificed
-// together (CR 101.4), which nothing observes here — no player's
-// choice can change another's options.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "0cdc86c4-8c68-4ba6-8165-511f32156a4c",

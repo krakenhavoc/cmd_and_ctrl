@@ -59,6 +59,26 @@ func TestChoicesReadTheKindNotThePayloadShape(t *testing.T) {
 		}
 	})
 
+	// #3664: an "each player sacrifices" edict asks with a choose_cards
+	// pick tagged "sacrifice", priced exactly like the kind above.
+	t.Run("an edict's choose_cards pick gives up the least", func(t *testing.T) {
+		v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)},
+			withBattlefield(dragon, mountain),
+			withChoice(protocol.PendingChoiceView{
+				ID: choiceID, Kind: "choose_cards", Chooser: seatID(0).String(),
+				FromPlayer: seatID(0).String(), Reason: "Sacrifice a permanent",
+				Options: []protocol.CardView{dragon, mountain}, ChooseMin: 1, ChooseMax: 1, Count: 1,
+				ChooseDestination: "sacrifice",
+			}))
+		in := input(0, v,
+			choiceMove(t, 0, choiceID, "sacrifice the dragon", map[string]any{"card_ids": []string{cardID(1)}}),
+			choiceMove(t, 0, choiceID, "sacrifice the land", map[string]any{"card_ids": []string{cardID(2)}}),
+		)
+		if got := chose(t, in, decide(t, heuristic.New(), in)); got != "sacrifice the land" {
+			t.Fatalf("chose %q", got)
+		}
+	})
+
 	t.Run("pick_target points away from us", func(t *testing.T) {
 		mine := creature(cardID(10), 0, "Mine", 3, 3)
 		theirs := creature(cardID(20), 1, "Theirs", 3, 3)

@@ -579,9 +579,12 @@ func TestPortalToPhyrexiaMakesEachOpponentSacrificeThree(t *testing.T) {
 		if c.Chooser == me.ID {
 			t.Fatal("the Portal's controller is not asked")
 		}
-		if err := g.ResolveSacrificeChoice(c.ID, c.Chooser, c.SacrificeOptions[0]); err != nil {
-			t.Fatalf("ResolveSacrificeChoice: %v", err)
+		// #3664: a seat owing three creatures names all three in one pick.
+		opts := sacrificeOptions(c)
+		if c.ChooseMax != 3 || len(opts) < 3 {
+			t.Fatalf("the pick takes %d of %d creatures, want 3", c.ChooseMax, len(opts))
 		}
+		answerSacrifice(t, g, c.Chooser, opts[:3]...)
 	}
 	if got := countBattlefieldNamed(g, opp1.ID, "Their Bear"); got != 1 {
 		t.Errorf("opponent with four creatures keeps %d, want 1", got)

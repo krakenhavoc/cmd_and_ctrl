@@ -32,27 +32,88 @@ const (
 	butcherOfMalakirOracle = "a85197ab-dc94-4b72-9716-8dbdbbe90ff8"
 )
 
-// sacrificeChoiceFor returns the queued sacrifice prompt addressed to a
-// player, or nil.
-func sacrificeChoiceFor(g *game.Game, chooser uuid.UUID) *game.PendingChoice {
-	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
-		c := g.PendingChoices[i]
-		if c != nil && c.Kind == game.PendingChoiceSacrifice && c.Chooser == chooser {
+// isSacrificePrompt reports whether c asks its chooser to sacrifice:
+// the single-seat sacrifice_choice kind, or an edict's choose_cards leg
+// (#3664, game.ChooseSacrifice).
+func isSacrificePrompt(c *game.PendingChoice) bool {
+	if c == nil {
+		return false
+	}
+	return c.Kind == game.PendingChoiceSacrifice ||
+		(c.Kind == game.PendingChoiceChooseCards && c.ChooseDestination == game.ChooseSacrifice)
+}
+
+// sacrificeOptions is the candidate list of a sacrifice prompt of
+// either kind.
+func sacrificeOptions(c *game.PendingChoice) []uuid.UUID {
+	if c == nil {
+		return nil
+	}
+	if c.Kind == game.PendingChoiceChooseCards {
+		return c.ChooseCards
+	}
+	return c.SacrificeOptions
+}
+
+// returnPickFor is the open choose_cards prompt owed by chooser that is
+// NOT an edict's sacrifice pick (both are choose_cards since #3664), or
+// nil.
+func returnPickFor(g *game.Game, chooser uuid.UUID) *game.PendingChoice {
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceChooseCards && c.Chooser == chooser && !isSacrificePrompt(c) {
 			return c
 		}
 	}
 	return nil
 }
 
-// answerSacrifice answers a player's sacrifice prompt with one of their
+// edictOffers reports whether id is among opts.
+func edictOffers(opts []uuid.UUID, id uuid.UUID) bool {
+	for _, o := range opts {
+		if o == id {
+			return true
+		}
+	}
+	return false
+}
+
+// sacrificeChoiceFor returns the queued sacrifice prompt addressed to a
+// player, or nil.
+func sacrificeChoiceFor(g *game.Game, chooser uuid.UUID) *game.PendingChoice {
+	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
+		c := g.PendingChoices[i]
+		if isSacrificePrompt(c) && c.Chooser == chooser {
+			return c
+		}
+	}
+	return nil
+}
+
+// answerSacrifice answers a player's sacrifice prompt with their
 // permanents.
-func answerSacrifice(t *testing.T, g *game.Game, chooser, cardID uuid.UUID) {
+//
+// An edict asks one player at a time in APNAP order and collects a
+// player with exactly as many candidates as they owe without asking
+// (ADR 0175, #3664). So when the player holds no prompt at all, this
+// does nothing: the pick was forced (or that player's turn to choose
+// has not come), and the test's later assertions on the board are what
+// check it.
+func answerSacrifice(t *testing.T, g *game.Game, chooser uuid.UUID, cardIDs ...uuid.UUID) {
 	t.Helper()
 	c := sacrificeChoiceFor(g, chooser)
 	if c == nil {
-		t.Fatalf("no sacrifice prompt for %s", chooser)
+		return
 	}
-	if err := g.ResolveSacrificeChoice(c.ID, chooser, cardID); err != nil {
+	if c.Kind == game.PendingChoiceChooseCards {
+		if err := g.ResolveChooseCards(c.ID, chooser, cardIDs); err != nil {
+			t.Fatalf("ResolveChooseCards: %v", err)
+		}
+		return
+	}
+	if len(cardIDs) != 1 {
+		t.Fatalf("a sacrifice_choice takes one permanent, got %d", len(cardIDs))
+	}
+	if err := g.ResolveSacrificeChoice(c.ID, chooser, cardIDs[0]); err != nil {
 		t.Fatalf("ResolveSacrificeChoice: %v", err)
 	}
 }
@@ -68,12 +129,14 @@ func TestGravePactAsksEveryOpponentButNotYou(t *testing.T) {
 	mine := pushCatalogPermanent(g, me.ID, "My Keeper", "Creature — Bear", "", false)
 
 	type opp struct {
-		p    *game.Player
-		bear uuid.UUID
+		p           *game.Player
+		bear, spare uuid.UUID
 	}
 	var opps []opp
 	for _, s := range g.Seats[1:] {
-		opps = append(opps, opp{p: s, bear: pushCatalogPermanent(g, s.ID, "Their Bear", "Creature — Bear", "", false)})
+		opps = append(opps, opp{p: s,
+			bear:  pushCatalogPermanent(g, s.ID, "Their Bear", "Creature — Bear", "", false),
+			spare: pushCatalogPermanent(g, s.ID, "Their Spare", "Creature — Bear", "", false)})
 	}
 	if len(opps) == 0 {
 		t.Fatal("test needs at least one opponent")
@@ -86,19 +149,17 @@ func TestGravePactAsksEveryOpponentButNotYou(t *testing.T) {
 	if c := sacrificeChoiceFor(g, me.ID); c != nil {
 		t.Error("Grave Pact asked its own controller to sacrifice")
 	}
-	// Every opponent is, and only with their own creature on offer.
+	// Every opponent is, one at a time in turn order (CR 101.4), and
+	// only with their own creatures on offer.
 	for _, o := range opps {
 		c := sacrificeChoiceFor(g, o.p.ID)
 		if c == nil {
 			t.Fatalf("no prompt for opponent %s", o.p.ID)
 		}
-		if len(c.SacrificeOptions) != 1 || c.SacrificeOptions[0] != o.bear {
-			t.Errorf("opponent %s offered %v, want just their own %v",
-				o.p.ID, c.SacrificeOptions, o.bear)
+		opts := sacrificeOptions(c)
+		if len(opts) != 2 || !edictOffers(opts, o.bear) || !edictOffers(opts, o.spare) {
+			t.Errorf("opponent %s offered %v, want just their own two", o.p.ID, opts)
 		}
-	}
-
-	for _, o := range opps {
 		answerSacrifice(t, g, o.p.ID, o.bear)
 	}
 	passPriorityAroundTable(t, g)
@@ -106,6 +167,9 @@ func TestGravePactAsksEveryOpponentButNotYou(t *testing.T) {
 	for _, o := range opps {
 		if _, ok := battlefieldCard(g, o.bear); ok {
 			t.Errorf("opponent %s's creature survived", o.p.ID)
+		}
+		if _, ok := battlefieldCard(g, o.spare); !ok {
+			t.Errorf("opponent %s's unchosen creature died", o.p.ID)
 		}
 	}
 	if _, ok := battlefieldCard(g, mine); !ok {
@@ -124,6 +188,7 @@ func TestGravePactCannotSacrificeSomeoneElsesCreature(t *testing.T) {
 	fodder := pushCatalogPermanent(g, me.ID, "Doomed Traveler", "Creature — Human Soldier", "", false)
 	mine := pushCatalogPermanent(g, me.ID, "My Keeper", "Creature — Bear", "", false)
 	theirs := pushCatalogPermanent(g, opp.ID, "Their Bear", "Creature — Bear", "", false)
+	pushCatalogPermanent(g, opp.ID, "Their Spare", "Creature — Bear", "", false)
 
 	g.WithWriteLock(func() { _ = g.SacrificePermanentForEffect(fodder) })
 	passPriorityAroundTable(t, g)
@@ -133,11 +198,11 @@ func TestGravePactCannotSacrificeSomeoneElsesCreature(t *testing.T) {
 		t.Fatal("no prompt for the opponent")
 	}
 	// Their prompt, my creature.
-	if err := g.ResolveSacrificeChoice(c.ID, opp.ID, mine); err == nil {
+	if err := g.ResolveChooseCards(c.ID, opp.ID, []uuid.UUID{mine}); err == nil {
 		t.Error("opponent sacrificed a creature they don't control")
 	}
 	// My hand on their prompt.
-	if err := g.ResolveSacrificeChoice(c.ID, me.ID, theirs); err == nil {
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{theirs}); err == nil {
 		t.Error("a player answered someone else's sacrifice prompt")
 	}
 	if _, ok := battlefieldCard(g, mine); !ok {
@@ -164,7 +229,7 @@ func TestGravePactSkipsPlayersWithNoCreature(t *testing.T) {
 	passPriorityAroundTable(t, g)
 
 	if c := sacrificeChoiceFor(g, empty.ID); c != nil {
-		t.Errorf("player with no creature was prompted (offered %v)", c.SacrificeOptions)
+		t.Errorf("player with no creature was prompted (offered %v)", sacrificeOptions(c))
 	}
 	if _, ok := battlefieldCard(g, rock); !ok {
 		t.Error("a noncreature permanent was eaten by a creature clause")
@@ -194,6 +259,7 @@ func TestGravePactIgnoresHexproof(t *testing.T) {
 			Keywords:   []string{"hexproof"},
 		})
 	})
+	pushCatalogPermanent(g, opp.ID, "Their Spare", "Creature — Bear", "", false)
 
 	g.WithWriteLock(func() { _ = g.SacrificePermanentForEffect(fodder) })
 	passPriorityAroundTable(t, g)
@@ -202,8 +268,8 @@ func TestGravePactIgnoresHexproof(t *testing.T) {
 	if c == nil {
 		t.Fatal("hexproof creature's controller was not prompted")
 	}
-	if len(c.SacrificeOptions) != 1 || c.SacrificeOptions[0] != hexproof {
-		t.Fatalf("offered %v, want the hexproof creature %v", c.SacrificeOptions, hexproof)
+	if !edictOffers(sacrificeOptions(c), hexproof) {
+		t.Fatalf("offered %v, want the hexproof creature %v among them", sacrificeOptions(c), hexproof)
 	}
 	answerSacrifice(t, g, opp.ID, hexproof)
 	if _, ok := battlefieldCard(g, hexproof); ok {
@@ -219,6 +285,8 @@ func TestFleshbagMarauderAsksEveryoneIncludingYou(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	theirs := pushCatalogPermanent(g, opp.ID, "Their Bear", "Creature — Bear", "", false)
+	pushCatalogPermanent(g, opp.ID, "Their Spare", "Creature — Bear", "", false)
+	pushCatalogPermanent(g, me.ID, "My Keeper", "Creature — Bear", "", false)
 
 	marauder := castCatalogSpell(t, g, "Fleshbag Marauder", "Creature — Zombie Warrior",
 		fleshbagMarauderOracle, nil)
@@ -228,15 +296,9 @@ func TestFleshbagMarauderAsksEveryoneIncludingYou(t *testing.T) {
 	if mine == nil {
 		t.Fatal("controller was not prompted; Fleshbag says EACH player")
 	}
-	offered := false
-	for _, id := range mine.SacrificeOptions {
-		if id == marauder {
-			offered = true
-		}
-	}
-	if !offered {
+	if !edictOffers(sacrificeOptions(mine), marauder) {
 		t.Errorf("the Marauder isn't a legal answer to its own trigger (offered %v)",
-			mine.SacrificeOptions)
+			sacrificeOptions(mine))
 	}
 	answerSacrifice(t, g, me.ID, marauder)
 	answerSacrifice(t, g, opp.ID, theirs)
@@ -259,6 +321,7 @@ func TestButcherOfMalakirTriggersOnItsOwnDeath(t *testing.T) {
 	butcher := pushCatalogPermanent(g, me.ID, "Butcher of Malakir", "Creature — Vampire Warrior",
 		butcherOfMalakirOracle, false)
 	theirs := pushCatalogPermanent(g, opp.ID, "Their Bear", "Creature — Bear", "", false)
+	pushCatalogPermanent(g, opp.ID, "Their Spare", "Creature — Bear", "", false)
 
 	g.WithWriteLock(func() { _ = g.SacrificePermanentForEffect(butcher) })
 	passPriorityAroundTable(t, g)
@@ -305,6 +368,7 @@ func TestSacrificePromptIsDroppedWhenTheBoardEmpties(t *testing.T) {
 	pushCatalogPermanent(g, me.ID, "Grave Pact", "Enchantment", gravePactOracle, false)
 	fodder := pushCatalogPermanent(g, me.ID, "Doomed Traveler", "Creature — Human Soldier", "", false)
 	theirs := pushCatalogPermanent(g, opp.ID, "Their Bear", "Creature — Bear", "", false)
+	spare := pushCatalogPermanent(g, opp.ID, "Their Spare", "Creature — Bear", "", false)
 
 	g.WithWriteLock(func() { _ = g.SacrificePermanentForEffect(fodder) })
 	passPriorityAroundTable(t, g)
@@ -312,12 +376,15 @@ func TestSacrificePromptIsDroppedWhenTheBoardEmpties(t *testing.T) {
 	if sacrificeChoiceFor(g, opp.ID) == nil {
 		t.Fatal("no prompt for the opponent")
 	}
-	// Their creature dies to something else before they answer.
-	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(theirs) })
+	// Their creatures die to something else before they answer.
+	g.WithWriteLock(func() {
+		_ = g.DestroyPermanentForEffect(theirs)
+		_ = g.DestroyPermanentForEffect(spare)
+	})
 	passPriorityAroundTable(t, g)
 
 	if c := sacrificeChoiceFor(g, opp.ID); c != nil {
-		t.Errorf("stale prompt survived with options %v; the queue is wedged", c.SacrificeOptions)
+		t.Errorf("stale prompt survived with options %v; the queue is wedged", sacrificeOptions(c))
 	}
 }
 
@@ -330,6 +397,7 @@ func TestSacrificePromptViewCarriesTheOptions(t *testing.T) {
 	fodder := pushCatalogPermanent(g, me.ID, "Doomed Traveler", "Creature — Human Soldier", "", false)
 	pushCatalogPermanent(g, me.ID, "My Keeper", "Creature — Bear", "", false)
 	theirs := pushCatalogPermanent(g, opp.ID, "Their Bear", "Creature — Bear", "", false)
+	spare := pushCatalogPermanent(g, opp.ID, "Their Spare", "Creature — Bear", "", false)
 
 	g.WithWriteLock(func() { _ = g.SacrificePermanentForEffect(fodder) })
 	passPriorityAroundTable(t, g)
@@ -337,19 +405,23 @@ func TestSacrificePromptViewCarriesTheOptions(t *testing.T) {
 	view := protocol.ViewOfGameFor(g, opp.ID.String())
 	var found *protocol.PendingChoiceView
 	for i := range view.PendingChoices {
-		if view.PendingChoices[i].Kind == "sacrifice_choice" &&
+		if view.PendingChoices[i].Kind == "choose_cards" &&
 			view.PendingChoices[i].Chooser == opp.ID.String() {
 			found = &view.PendingChoices[i]
 		}
 	}
 	if found == nil {
-		t.Fatal("sacrifice_choice missing from the opponent's view")
+		t.Fatal("the sacrifice pick is missing from the opponent's view")
 	}
-	if len(found.Options) != 1 {
-		t.Fatalf("view offered %d options, want 1", len(found.Options))
+	if found.ChooseDestination != "sacrifice" {
+		t.Errorf("choose_destination = %q, want sacrifice (#3664)", found.ChooseDestination)
 	}
-	if found.Options[0].InstanceID != theirs.String() {
-		t.Errorf("view offered %s, want their own %s", found.Options[0].InstanceID, theirs)
+	got := map[string]bool{}
+	for _, o := range found.Options {
+		got[o.InstanceID] = true
+	}
+	if len(found.Options) != 2 || !got[theirs.String()] || !got[spare.String()] {
+		t.Errorf("view offered %v, want their own two creatures", found.Options)
 	}
 	if found.Reason == "" {
 		t.Error("no reason string; the picker has no banner copy")
