@@ -425,7 +425,9 @@ type Game struct {
 
 	// eventLogGen names the history Events holds (#1401): bumped by
 	// RestoreFrom, which replaces the log with a shorter one that the
-	// next emit regrows under the same Seq values. Never copied — it
+	// next emit regrows under the same Seq values, and by
+	// deferResolveLogLineLocked, which edits one event in place
+	// (#3613). Never copied — it
 	// belongs to this *Game, not to the history — so it only moves
 	// forward. See projection_cache.go.
 	eventLogGen uint64
@@ -841,6 +843,13 @@ type Game struct {
 	// 608.2c). Non-nil only while a resolution is open and paused.
 	// Clone and the persisted snapshot carry it. See mode_walk.go.
 	pausedModeWalk *modeWalk
+
+	// pausedResolutionTail is the end of a resolution parked behind one
+	// of its own prompts (#3613, CR 608.2n): a spell's exit from the
+	// stack and the log's "resolved" line. Non-nil only while a
+	// resolution is open and paused. Clone and the persisted snapshot
+	// carry it. See resolution_tail.go.
+	pausedResolutionTail *resolutionTail
 
 	// promptKeys is the transient bookkeeping behind the keys of the
 	// prompts a resolution or an answered prompt's branch queues (ADR

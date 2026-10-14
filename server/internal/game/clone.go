@@ -510,6 +510,8 @@ func (g *Game) cloneLocked() *Game {
 	out.resolutionOpen = g.resolutionOpen
 	// #2789: the bullets parked behind that paused prompt.
 	out.pausedModeWalk = cloneModeWalk(g.pausedModeWalk)
+	// #3613: the end of that resolution, parked behind the same prompt.
+	out.pausedResolutionTail = cloneResolutionTail(g.pausedResolutionTail)
 	if len(g.replacementsAppliedThisEvent) > 0 {
 		out.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool, len(g.replacementsAppliedThisEvent))
 		for evID, set := range g.replacementsAppliedThisEvent {
@@ -1232,6 +1234,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.resolving = src.resolving
 	g.resolutionOpen = src.resolutionOpen
 	g.pausedModeWalk = src.pausedModeWalk
+	g.pausedResolutionTail = src.pausedResolutionTail
 	// The randomness rewinds with everything else: the key, the
 	// per-stream draw counters and the turn they belong to (ADR 0054
 	// Decision 4). Adopted like the other fields — src is consumed.

@@ -129,6 +129,9 @@ func TestSnapcasterFlashbackCastExilesOnResolution(t *testing.T) {
 		t.Fatalf("granted flashback cast: %v", err)
 	}
 	passPriorityAroundTable(t, g)
+	// #3613: Faithless Looting's discard is part of its resolution; the
+	// card leaves the stack once it is answered.
+	discardFromHand(t, g, active.ID)
 	if !g.Exile.Contains(looting) {
 		t.Errorf("the flashed-back card is not in exile")
 	}

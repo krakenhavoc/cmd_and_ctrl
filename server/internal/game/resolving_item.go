@@ -24,15 +24,15 @@ import "github.com/google/uuid"
 // reachable any more:
 //
 //   - the meta is out of StackMeta (this file's whole subject);
-//   - the CARD is out of the Stack zone, because the copy decision is
-//     a prompt. Chain of Vapor's "may sacrifice a land" pauses
-//     resolution, resolveTopOfStackLocked carries on and routes the
-//     spell to its owner's graveyard, and the answer arrives later.
-//     What the copy is made from is therefore last-known information
-//     (CR 608.2n — the spell is put into the graveyard as the final
-//     step of its own resolution, so in the rules it is still on the
-//     stack when the copy is created; here it is not, and LKI is how
-//     that difference is spelled).
+//   - the CARD has no meta behind it, because the copy decision is a
+//     prompt. Chain of Vapor's "may sacrifice a land" pauses
+//     resolution, and the answer arrives later. Since #3613 the card
+//     waits in the Stack zone for that answer (CR 608.2n — the spell
+//     is put into the graveyard as the final step of its own
+//     resolution; resolution_tail.go), but its StackMeta entry is
+//     gone, so stackSpellLocked's stack scan cannot pair the two and
+//     falls back here. The copy is made from the card as it was when
+//     the resolution began, which is the same card.
 //
 // The slot is SET when an item begins to resolve and CLEARED by
 // beginEventBatchLocked — which runs at exactly the points where play

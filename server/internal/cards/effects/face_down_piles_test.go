@@ -126,9 +126,11 @@ func TestSauronsRansomEachPileChoice(t *testing.T) {
 			if got := me.Hand.Size() - hand; got != tc.wantHand {
 				t.Errorf("hand +%d, want +%d", got, tc.wantHand)
 			}
-			// The spell is already in the graveyard when the baseline is taken.
-			if got := me.Graveyard.Size() - graves; got != 4-tc.wantHand {
-				t.Errorf("graveyard +%d, want +%d", got, 4-tc.wantHand)
+			// #3613, CR 608.2n: the spell waits on the stack for the pile
+			// choice, so it reaches the graveyard after the piles: the
+			// pile not taken plus the spell itself.
+			if got := me.Graveyard.Size() - graves; got != 4-tc.wantHand+1 {
+				t.Errorf("graveyard +%d, want +%d", got, 4-tc.wantHand+1)
 			}
 			taken := up
 			if tc.take == 1 {

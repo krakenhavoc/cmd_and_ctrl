@@ -684,3 +684,50 @@ a turn with fewer steps than before, the original fixtures still restore
 unchanged, and the amendment is written first. A rules change that
 alters what a snapshot key means, or makes an old file restore wrongly,
 is a schema bump.
+
+## Amendment 2026-10-14 (#3613): a fourth sanctioned regeneration — a resolution that finishes after its prompt
+
+Same shape as the 2026-10-12 amendment: a **rules change** altered what
+four scripted boards play through, and no snapshot key changed meaning.
+
+**What happened.** [ADR 0007](0007-stack-foundation.md)'s 2026-10-14
+amendment (CR 608.2c, 608.2n): a spell or ability that asks something as
+it resolves finishes after the answer. Its "resolved" log line moves to a
+new `resolution_finished` event, its `resolve` event carries
+`log_deferred: true`, and a spell's exit from the stack follows the
+answer. Four corpus boards answer such a prompt on their way to the
+state they freeze: `duration_copy` (Cytoshape's choice of creature),
+`land_types` (a land-type choice on an activated ability),
+`rebound_free_cast_grant` (rebound's cast offer) and `suspend_haste`
+(suspend's cast offer). The other boards answer no prompt inside a
+resolution and are untouched.
+
+**Why this is not a compatibility break.** Decision P10's test, applied
+as before: the four ORIGINAL v8 files, unmodified from `origin/develop`,
+still pass `TestSnapshotCorpusRestores` under the binary that carries
+the change (verified before touching any of them: all four PASS). The
+two fields this change adds, `GameSnapshot.pausedResolutionTail` and
+`Event.log_deferred`, are additive and `omitempty`. A file written
+without them restores with no parked tail and no deferred line, which
+is exactly what such a file describes: its resolution already finished
+by the old rule, its spell already off the stack. No schema bump.
+
+**What changed in the files.** Each file gains one `resolution_finished`
+event and a `log_deferred` mark on the matching `resolve`, every later
+event `seq` and `eventSeq` move up by one, and in `duration_copy`
+Cytoshape's `stack` → `graveyard` move now follows the `copy_applied`
+event its choice produced, so the scoped effect it registered records
+the spell's on-stack object (`source.epoch` 1, was 2 after the early
+graveyard move). The writer renders the whole board, so the files also
+pick up keys other changes added within v8 since they were written
+(`chosenSecondPlayer`, `crime_committed`, `turnTally.instantSorcery`,
+`diedPowerBySubtype`, `diedSubtypes`, `BorrowedAbilities`), all additive
+and already present in every newer fixture.
+
+**What was done.** The four files under
+`internal/game/testdata/snapshots/v8/` named above were deleted and
+rewritten by `TestWriteSnapshotCorpus -write-corpus`, in the same PR as
+this amendment. No other fixture was touched.
+
+**What this does not authorise.** The same boundary as the amendments
+above.

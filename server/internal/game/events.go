@@ -54,6 +54,17 @@ const (
 	// names the ability off those two (#1257).
 	EventResolve EventKind = "resolve"
 
+	// EventResolutionFinished — a resolution that waited on one of its
+	// own prompts has finished (#3613, CR 608.2c, 608.2n). Same fields
+	// as the item's EventResolve. EventResolve still fires as the item
+	// begins to resolve, because card code finds "the item resolving
+	// now" by scanning back to it; when the resolution then pauses, that
+	// event is marked LogDeferred and the public log writes its
+	// "… resolved" line here instead, after the answer. A resolution
+	// that never pauses emits no EventResolutionFinished. See
+	// resolution_tail.go.
+	EventResolutionFinished EventKind = "resolution_finished"
+
 	// EventFizzle — a spell or ability resolved but did nothing
 	// (all targets illegal, or the effect short-circuited). CR
 	// 608.2b's "countered by game rules."
@@ -1445,6 +1456,13 @@ type Event struct {
 	// snapshot fixtures. A spell's resolve and fizzle leave it unset:
 	// CardID is its item ID.
 	ResolvedStackItemID uuid.UUID `json:"resolved_stack_item_id,omitempty"`
+
+	// LogDeferred marks an EventResolve whose resolution paused on one
+	// of its own prompts (#3613). The public log writes no line for it;
+	// the item's EventResolutionFinished, after the answer, carries the
+	// "… resolved" line instead. Set under the lock that emitted the
+	// event, before anything reads it (resolution_tail.go).
+	LogDeferred bool `json:"log_deferred,omitempty"`
 
 	// Amount is the signed / count payload: damage dealt, life
 	// delta, number of cards, counter count after the change.

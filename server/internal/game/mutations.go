@@ -3606,6 +3606,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 		Source: top.InstanceID,
 		CardID: top.InstanceID,
 	})
+	resolveSeq := g.eventSeq
 	// S14: run the catalog's OnResolve hook between target re-check
 	// and zone routing. Non-catalog cards return nil (no-op); catalog
 	// spells fire their effect here. Errors emit EventEffectError
@@ -3620,6 +3621,25 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// its OnResolve on ctx.HasMode declares no ModeOption.Effect and
 	// this is a no-op for it (#764).
 	g.runChosenModeEffectsLocked(item, ModeSpecFor(CatalogKey(top)), CatalogKey(top))
+	// #3613, CR 608.2c / 608.2n: an effect that asked something is not
+	// finished until the answer is in, so neither is the spell. The
+	// rest of this resolution — the exit below and the log's
+	// "resolved" line — waits on the stack for it (resolution_tail.go).
+	if g.holdResolutionTailLocked(item, resolveSeq) {
+		return nil
+	}
+	return g.finishSpellResolutionLocked(top, item)
+}
+
+// finishSpellResolutionLocked is the end of a spell's resolution, after
+// its effect and its bullets: the battlefield entry of a permanent
+// spell, a copy ceasing to exist, or the graveyard exit (CR 608.2n,
+// 608.3). resolveTopOfStackLocked runs it inline, and the resolution
+// tail runs it after the answer when the effect asked something
+// (#3613, resolution_tail.go). `top` is the spell as the stack holds it.
+//
+// Caller must hold g.mu, inside a resolution function.
+func (g *Game) finishSpellResolutionLocked(top Card, item *StackItem) error {
 	// #489, CR 608.2n: the spell may have MOVED ITSELF. Everything
 	// below this line routes the object that is still on the stack —
 	// to the battlefield, out of existence, or to a graveyard — and a
@@ -3961,6 +3981,7 @@ func (g *Game) resolveTopAbilityLocked() {
 		Label:               top.Label,
 		ResolvedStackItemID: top.ID,
 	})
+	resolveSeq := g.eventSeq
 	if top.Effect != nil {
 		if err := top.Effect(g, top); err != nil {
 			g.EmitEvent(Event{
@@ -3975,6 +3996,9 @@ func (g *Game) resolveTopAbilityLocked() {
 	// chosen bullets in printed order, after whatever body the item
 	// itself carries (#764).
 	g.runChosenModeEffectsLocked(top, top.modeSpec, "")
+	// #3613: an ability that asked something has not resolved until the
+	// answer is in; its log line waits for it (resolution_tail.go).
+	g.holdResolutionTailLocked(top, resolveSeq)
 }
 
 // routeStackCardToGraveyardLocked moves a card off Game.Stack and

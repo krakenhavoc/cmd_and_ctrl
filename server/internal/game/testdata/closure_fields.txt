@@ -89,6 +89,7 @@ Game.enteringTokens                          census:ChoiceResumeFrames          
 Game.lastKnownStack                          census:IntrinsicAbilityCards       # Game.lastKnownStack
 Game.logProjection                           rebuilt                            # Game.logProjection
 Game.pausedModeWalk                          keyed                              # Game.pausedModeWalk
+Game.pausedResolutionTail                    keyed                              # Game.pausedResolutionTail
 Game.promptRuns                              census:ChoiceResumeFrames          # Game.promptRuns
 Game.resolving                               census:ChoiceResumeFrames          # Game.resolving
 Game.scopedEffectMemo                        rebuilt                            # Game.scopedEffectMemo
@@ -221,6 +222,7 @@ pickTargetFrame.steps                        census:ChoiceResumeFrames          
 promptRun.then                               census:ChoiceResumeFrames          # Game.promptRuns.then
 replacementResumeFrame.applicable            census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.applicable
 replacementResumeFrame.ev                    census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev
+resolutionTail.item                          keyed                              # Game.pausedResolutionTail.item
 resolvingItem.card                           census:ChoiceResumeFrames          # Game.resolving.card
 resolvingItem.item                           census:ChoiceResumeFrames          # Game.resolving.item
 scopedEffectAdapterMemo.effects              rebuilt                            # Game.scopedEffectMemo.effects
