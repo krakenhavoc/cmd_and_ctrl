@@ -960,17 +960,15 @@ jobs:
   # develop red with the broken build on the preview until the fix
   # lands, which is what the preview is for.
   cmdctrl-cd-dev:
-    # Which self-hosted runners may take a deploy (#3335). Until the
-    # repository variable CMDCTRL_DEPLOY_RUNNER_LABEL is set this is any
-    # self-hosted runner, exactly as before. Once the owner has given the
-    # chosen runners that label (Settings -> Actions -> Runners) and set
-    # the variable to it, a deploy runs only there. Label first, variable
-    # second: the other order queues every deploy with no runner to take
-    # it. No test job uses a self-hosted runner any more (the nightly's
-    # moved to hosted in the same change), so the deploy runners run
-    # only this, cmdctrl-cd-prod and scryfall-refresh.yml.
+    # Only the self-hosted runners labelled `deploy` take a deploy
+    # (#3335, ADR 0181). The label is written here, not read from a
+    # variable: an unset variable used to mean "any self-hosted runner",
+    # so deleting it quietly reopened the hole. No test job uses a
+    # self-hosted runner, so the deploy runners run only this,
+    # cmdctrl-cd-prod and scryfall-refresh.yml. Never put the `deploy`
+    # label on a runner that runs anything else.
     # docs/environments.md#runners-and-credentials.
-    runs-on: ${{ vars.CMDCTRL_DEPLOY_RUNNER_LABEL && fromJSON(format('["self-hosted","{0}"]', vars.CMDCTRL_DEPLOY_RUNNER_LABEL)) || 'self-hosted' }}
+    runs-on: [self-hosted, deploy]
     needs: build
     # actions: write is only for deleting this run's artifacts at the end.
     permissions:
@@ -1102,10 +1100,10 @@ jobs:
           echo "Env file:      ${ENV_FILE}"
 
       # The key krkn logs in with, from this job's environment (`dev` or
-      # `prod`), not from the runner's ~/.ssh (#3335). Each environment
-      # admits only its own branch, so a topic branch, a pull request or
-      # a nightly test job never sees it. Unset falls back to the
-      # runner's own key with a ::warning::; the script says why.
+      # `prod`), not from the runner's ~/.ssh (#3335, ADR 0181). Each
+      # environment admits only its own branch, so a topic branch, a
+      # pull request or a nightly test job never sees it. Unset fails
+      # the deploy; the script says why.
       - name: Load the deploy SSH key
         env:
           DEPLOY_SSH_KEY: ${{ secrets.CMDCTRL_DEPLOY_SSH_KEY }}
@@ -2285,7 +2283,7 @@ jobs:
   # promotion, so it can afford to wait.
   cmdctrl-cd-prod:
     # Same runners as cmdctrl-cd-dev; see there.
-    runs-on: ${{ vars.CMDCTRL_DEPLOY_RUNNER_LABEL && fromJSON(format('["self-hosted","{0}"]', vars.CMDCTRL_DEPLOY_RUNNER_LABEL)) || 'self-hosted' }}
+    runs-on: [self-hosted, deploy]
     needs: [build, cmdctrl-ci]
     permissions:
       contents: read
