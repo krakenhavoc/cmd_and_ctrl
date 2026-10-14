@@ -213,3 +213,24 @@ describe("the seat's maximum hand size badge", () => {
     expect(badges(container).map((b) => b.text)).toEqual(["HAND MAX 2"]);
   });
 });
+
+// #3262: two text badges beside the life chip widened its centred row
+// until the life total slid out of the panel. The badges now hang on
+// their own line under the chip, and the avatar makes room for them;
+// the chip itself holds only the number. Layout is the CSS's job, so
+// this pins the structure the CSS relies on.
+describe("badges and the life total (#3262)", () => {
+  it("keeps the life number in its own chip and gives the badges their own line", () => {
+    const s = { ...seat(), cant_gain_life: true, max_hand_size: -1 } as PlayerView;
+    const { container } = render(PlayerIdentity as never, props(s) as never);
+    expect(badges(container).map((b) => b.text)).toEqual(["NO GAIN", "NO HAND MAX"]);
+    expect(container.querySelector(".life-chip .life")?.textContent).toBe("40");
+    expect(container.querySelector(".life-chip .seat-keywords")).toBeNull();
+    expect(container.querySelector(".avatar-wrap")?.classList.contains("has-keywords")).toBe(true);
+  });
+
+  it("makes no room under the avatar when there are no badges", () => {
+    const { container } = render(PlayerIdentity as never, props(seat()) as never);
+    expect(container.querySelector(".avatar-wrap")?.classList.contains("has-keywords")).toBe(false);
+  });
+});

@@ -298,6 +298,7 @@
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
     <div
       class="avatar-wrap"
+      class:has-keywords={keywordBadges.length > 0}
       data-seat-id={seat.id}
       role={interactive ? "button" : "group"}
       tabindex={interactive ? 0 : undefined}
@@ -755,10 +756,11 @@
   }
 
   /* Life row overlays the bottom third of the avatar circle: the life
-     chip itself, plus (#1201) any keyword badges beside it. Anchored
-     as a row rather than each child positioning itself, so the
-     badges sit flush against the chip instead of needing their own
-     copy of this math. */
+     chip itself, centred on the avatar whatever else is shown. Any
+     keyword badges (#1201) hang on their own wrapping line under the
+     chip (#3262): beside it, two text badges ("NO GAIN", "NO HAND
+     MAX") widened the centred row until the life total slid out of
+     the panel. */
   .life-row {
     position: absolute;
     left: 50%;
@@ -766,7 +768,11 @@
     transform: translateX(-50%);
     display: flex;
     align-items: center;
-    gap: 4px;
+  }
+  /* Room under the circle for the badge line, so it pushes what is
+     below down instead of covering it. */
+  .avatar-wrap.has-keywords {
+    margin-bottom: 18px;
   }
   /* Ellipse backdrop sits flush with the circle's lower arc so the
      number reads as part of the identity disc rather than a floating
@@ -794,9 +800,17 @@
      which has nothing to do with sitting beside a life chip, so only
      the class names and their declarations are reused here. */
   .seat-keywords {
+    position: absolute;
+    top: calc(100% + 3px);
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     align-items: center;
     gap: 2px;
+    width: max-content;
+    max-width: calc(var(--avatar-size) * 1.8);
   }
   .kw-badge {
     display: inline-flex;
