@@ -57,6 +57,64 @@ func TestAssimilateEssenceCountersAnUnpaidCreatureSpell(t *testing.T) {
 	}
 }
 
+// castAssimilateAtTheirBear has seat 0 cast a creature spell and seat 1
+// answer with Assimilate Essence, then passes until seat 0 is asked for
+// the {4}. It returns the creature spell and the Assimilate Essence.
+func castAssimilateAtTheirBear(t *testing.T, g *game.Game) (victim, assimilate uuid.UUID) {
+	t.Helper()
+	me, them := g.Seats[0], g.Seats[1]
+	toMainForCost(t, g)
+	victim = castCatalogSpell(t, g, "Their Bear", "Creature — Bear", "", nil)
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("PassPriority: %v", err)
+	}
+	assimilate = castFromSeat(t, g, them, "Assimilate Essence", "Instant", assimilateEssenceOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: victim}})
+	passUntilTaxed(t, g, me.ID)
+	return victim, assimilate
+}
+
+// Paying the {4} is the whole of "if they do": the spell resolves AND
+// the caster incubates 2. The payer incubates nothing.
+func TestAssimilateEssenceIncubatesTwoForTheCasterWhenTheTaxIsPaid(t *testing.T) {
+	g := newCatalogGame(t)
+	me, them := g.Seats[0], g.Seats[1]
+	victim, _ := castAssimilateAtTheirBear(t, g)
+	me.ManaPool.AddMana(game.ManaToken{Color: "C"}, game.ManaToken{Color: "C"}, game.ManaToken{Color: "C"}, game.ManaToken{Color: "C"})
+	if n := len(incubatorsOf(g, them.ID)); n != 0 {
+		t.Fatalf("%d Incubators before the answer; the incubate waits for the payment", n)
+	}
+	answerPayUnless(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	if g.Stack.Contains(victim) {
+		t.Error("the spell is still on the stack after the payment")
+	}
+	if !battlefieldHas(g, victim) {
+		t.Error("a paid spell must resolve, not be countered")
+	}
+	if got := theIncubator(t, g, them.ID).Counters["+1/+1"]; got != 2 {
+		t.Errorf("the caster's Incubator has %d counters, want 2", got)
+	}
+	if n := len(incubatorsOf(g, me.ID)); n != 0 {
+		t.Errorf("the payer got %d Incubators; \"you incubate 2\" is the caster", n)
+	}
+}
+
+// "Pay" without the mana is a decline: countered, and no incubate.
+func TestAssimilateEssenceTreatsAnUnaffordablePaymentAsADecline(t *testing.T) {
+	g := newCatalogGame(t)
+	me, them := g.Seats[0], g.Seats[1]
+	victim, _ := castAssimilateAtTheirBear(t, g)
+	answerPayUnless(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	if battlefieldHas(g, victim) || g.Stack.Contains(victim) {
+		t.Error("a payment that could not be made must still counter the spell")
+	}
+	if n := len(incubatorsOf(g, them.ID)); n != 0 {
+		t.Errorf("an unaffordable payment made %d Incubators", n)
+	}
+}
+
 func TestBlightTitanMillsTwoThenIncubatesForCreatureCardsInYourGraveyard(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -202,8 +260,7 @@ func TestCorruptionOfTowashiIncubatesFourAndDrawsOncePerTurnOnATransform(t *test
 	}
 	handBefore := me.Hand.Size()
 	transformIncubator(t, g, me, inc.InstanceID)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
-	passPriorityAroundTable(t, g)
+	towashiAnswer(t, g, me, true)
 	if got := me.Hand.Size() - handBefore; got != 1 {
 		t.Fatalf("hand grew by %d on the first transform, want 1", got)
 	}
