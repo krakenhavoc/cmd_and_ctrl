@@ -1,3 +1,4 @@
+import type { MyStats } from "./myStats";
 import {
   authFetch,
   clearSavedIdentity,
@@ -788,6 +789,14 @@ export async function installPrebuiltDeck(
 export async function fetchMyDecks(): Promise<MyDecksResponse> {
   const res = await authFetch("/me/decks");
   return (await res.json()) as MyDecksResponse;
+}
+
+// fetchMyStats reads the signed-in caller's own game statistics (ADR
+// 0165 §7, GET /me/stats). A guest or an admin gets a 403 whose message
+// the page shows.
+export async function fetchMyStats(): Promise<MyStats> {
+  const res = await authFetch("/me/stats");
+  return (await res.json()) as MyStats;
 }
 
 // renameMyDeck renames a saved deck (PATCH /me/decks/{id}). A name the

@@ -22,6 +22,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
@@ -676,5 +677,93 @@ func TestDiscordLinkRefusesASecondSeatForOnePerson(t *testing.T) {
 	}
 	if uid, _ := seatRow(t, s, meta.ID, bob); uid.Valid {
 		t.Errorf("Bob's seat was linked: %q", uid.String)
+	}
+}
+
+// GET /me/stats (ADR 0165 §7) is the caller's own record: the same
+// caller rule as /me/games, and a person with no finished games gets
+// an empty record, not an error.
+func TestMyStatsNeedsASignedInUserAndStartsEmpty(t *testing.T) {
+	s := newMyGamesStack(t)
+	s.lobby.SetGameStats(gamestats.NewSQLStore(s.db))
+	idTok := identityTokenFromCallback(t, s.srv, s.state)
+
+	for name, tc := range map[string]struct {
+		tok  string
+		want int
+	}{
+		"no session": {"", http.StatusUnauthorized},
+		"admin":      {adminSession(t, s.auth), http.StatusForbidden},
+		"signed in":  {idTok, http.StatusOK},
+	} {
+		resp := doGet(t, s.srv, "/me/stats", tc.tok)
+		raw, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if resp.StatusCode != tc.want {
+			t.Errorf("%s: GET /me/stats = %d, want %d (%s)", name, resp.StatusCode, tc.want, raw)
+		}
+		if tc.want == http.StatusOK {
+			var body gamestats.UserStats
+			if err := json.Unmarshal(raw, &body); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if body.Games != 0 || body.AvgPlace != nil || body.Recent == nil || body.ByDeck == nil || body.ByCommander == nil {
+				t.Errorf("a new player's stats = %s, want an empty record with empty lists", raw)
+			}
+		}
+	}
+}
+
+// A finished game the caller sat at appears; one they did not never does.
+func TestMyStatsShowsOnlyTheCallersSeats(t *testing.T) {
+	s := newMyGamesStack(t)
+	s.lobby.SetGameStats(gamestats.NewSQLStore(s.db))
+	idTok := identityTokenFromCallback(t, s.srv, s.state)
+
+	mine, _ := s.lobby.Create("Mine")
+	sess := decodeSession(t, postJSON(t, s.srv, "/join", idTok, map[string]string{"invite_token": mine.InviteToken}), http.StatusOK)
+	theirs, _ := s.lobby.Create("Theirs")
+	decodeSession(t, postJSON(t, s.srv, "/join", "", map[string]string{"invite_token": theirs.InviteToken, "name": "Bob"}), http.StatusOK)
+
+	for _, g := range []struct {
+		id  uuid.UUID
+		cmd string
+	}{{mine.ID, `["My Commander"]`}, {theirs.ID, `["Bobs Commander"]`}} {
+		for _, q := range []string{
+			`INSERT INTO game_stats VALUES (?, 1, 'live', 1, 8, 2, 0, 5)`,
+		} {
+			if _, err := s.db.Exec(q, g.id.String()); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if _, err := s.db.Exec(`INSERT INTO seat_stats VALUES (?, 0, 'win', 1, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ?)`, g.id.String(), g.cmd); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The caller took seat 1 at "Mine" (Bob was not there), so write
+	// their stats on whichever seat they hold.
+	var seat int
+	if err := s.db.QueryRow(`SELECT seat FROM seats WHERE game_id = ? AND player_id = ?`, mine.ID.String(), sess.PlayerID.String()).Scan(&seat); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.db.Exec(`UPDATE seat_stats SET seat = ? WHERE game_id = ?`, seat, mine.ID.String()); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := doGet(t, s.srv, "/me/stats", idTok)
+	raw, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /me/stats = %d: %s", resp.StatusCode, raw)
+	}
+	var body gamestats.UserStats
+	if err := json.Unmarshal(raw, &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Games != 1 || body.Wins != 1 || len(body.Recent) != 1 || body.Recent[0].GameID != mine.ID.String() {
+		t.Errorf("stats = %s, want exactly the caller's one win", raw)
+	}
+	if strings.Contains(string(raw), "Bobs Commander") || strings.Contains(string(raw), theirs.ID.String()) {
+		t.Errorf("GET /me/stats leaked another person's game: %s", raw)
 	}
 }

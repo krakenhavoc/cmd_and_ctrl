@@ -2525,6 +2525,40 @@ authenticated, you are just not a person.
   process and not archived. It is the path to POST for a seat session.
 - No invite token appears anywhere in the response.
 
+### `GET /me/stats`
+
+The caller's own game statistics ([ADR 0165](decisions/0165-game-statistics-a-record-derived-from-every-finished-game.md)
+§7): `seat_stats` joined to `seats` on the caller's `user_id`, so only
+seats that person held. Same caller rule as `GET /me/games` (401 with no
+credential, 403 for anyone who is not a signed-in person). A person with
+no finished games gets an empty record, not an error.
+
+**Response 200**
+
+```json
+{
+  "games": 12, "wins": 4, "losses": 7, "draws": 1, "avg_place": 2.4,
+  "unfinished": 1,
+  "by_deck": [{ "name": "Atraxa Superfriends", "games": 8, "wins": 3, "losses": 5, "draws": 0, "avg_place": 2.1 }],
+  "by_commander": [{ "name": "Atraxa, Praetors' Voice", "games": 8, "wins": 3, "losses": 5, "draws": 0, "avg_place": 2.1 }],
+  "recent": [
+    {
+      "game_id": "<game uuid>", "name": "Friday Night Commander", "ended_at": 1789825000000,
+      "result": "win", "place": 1, "turns": 9, "players": 4,
+      "deck": "Atraxa Superfriends", "commanders": ["Atraxa, Praetors' Voice"]
+    }
+  ]
+}
+```
+
+- A game counts when the seat's result is `win`, `loss` or `draw`; a
+  table that ended with no outcome is only `unfinished`.
+- `avg_place` is the mean over counted seats that have a place, and
+  `null` when none do. `place` is `null` when unknown.
+- `by_deck` groups by the seat's saved deck id (its name when none),
+  `by_commander` by the commander names joined with ` / `. Both list the
+  most-played first. `recent` is the latest 20, newest first.
+
 ### `POST /me/games/{id}/session`
 
 Seat reclaim by user ([ADR 0051](decisions/0051-user-database.md)

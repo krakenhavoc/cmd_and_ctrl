@@ -714,6 +714,7 @@ func Handler(c Config) http.Handler {
 	// /me/* is in deploy/Caddyfile's @api matcher; /me in the Vite
 	// proxy and the service worker's API_PATH already covers it.
 	mux.Handle("GET /me/games", auth.Middleware(c.Auth)(handlerFunc(c, myGames)))
+	mux.Handle("GET /me/stats", auth.Middleware(c.Auth)(handlerFunc(c, myStats)))
 	// The invite picker's list (ADR 0051 decision 8, S34 sub-PR 6):
 	// the people the caller has shared a table with. Same caller rule
 	// as the rest of /me/*.
