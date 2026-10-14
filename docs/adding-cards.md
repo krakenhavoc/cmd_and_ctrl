@@ -9404,8 +9404,9 @@ What is still missing: Karn, the Great Creator's "or choose a face-up
 artifact card you own in exile", Spawnsire of Ulamog's {20} (casting from
 outside the game), Research // Development (shuffling cards in from outside
 the game), learn, and the wishes that put a cost or a type clause beside
-the same shape (Cunning, Glittering, Golden and Death Wish, Fae of Wishes,
-Coax from the Blind Eternities, Wish).
+the same shape (Coax from the Blind Eternities, Wish). Cunning, Glittering,
+Golden and Death Wish and Fae of Wishes // Granted are the same
+`TakeFromOutside` with their own clause (#3525).
 
 ### Renown (CR 702.112, #2049)
 
