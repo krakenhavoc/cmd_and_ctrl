@@ -43,6 +43,8 @@
   import PlaymatSettings from "./PlaymatSettings.svelte";
   import NotificationSettings from "./NotificationSettings.svelte";
   import { loadNotifications, notificationPrefs } from "../notifications";
+  import ModelKeySettings from "./ModelKeySettings.svelte";
+  import { loadModelKey, modelKeyState } from "../modelKey";
   import AutoAnswersSettings from "./AutoAnswersSettings.svelte";
   import HintSlot from "./hints/HintSlot.svelte";
   import { showAllTipsAgain } from "../hints/runtime";
@@ -128,6 +130,7 @@
     | "display"
     | "playmat"
     | "notifications"
+    | "ai"
     | "gameplay"
     | "shortcuts"
     | "accessibility"
@@ -180,6 +183,11 @@
   // tab is left out until it says yes.
   $effect(() => {
     if ($settingsOpen) void loadNotifications();
+  });
+  // ADR 0182: the same for your own model key. The AI opponents tab is
+  // left out until the server says it can keep a key here.
+  $effect(() => {
+    if ($settingsOpen) void loadModelKey();
   });
   // …and forget the deep link on close, so the next plain open is
   // back on the first tab the way it always was.
@@ -470,6 +478,13 @@
               class:active={activeTab === "notifications"}
               aria-current={activeTab === "notifications" ? "page" : undefined}
               onclick={() => (activeTab = "notifications")}>Notifications</button
+            >
+          {/if}
+          {#if $modelKeyState.available}
+            <button
+              class:active={activeTab === "ai"}
+              aria-current={activeTab === "ai" ? "page" : undefined}
+              onclick={() => (activeTab = "ai")}>AI opponents</button
             >
           {/if}
           <button
@@ -870,6 +885,8 @@
             <PlaymatSettings />
           {:else if activeTab === "notifications" && $notificationPrefs.available}
             <NotificationSettings />
+          {:else if activeTab === "ai" && $modelKeyState.available}
+            <ModelKeySettings />
           {:else if activeTab === "gameplay"}
             <h3>Gameplay</h3>
 

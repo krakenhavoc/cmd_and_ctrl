@@ -1495,6 +1495,7 @@ export type SettingsTab =
   | "display"
   | "playmat"
   | "notifications"
+  | "ai"
   | "gameplay"
   | "shortcuts"
   | "accessibility"

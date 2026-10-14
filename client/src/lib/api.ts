@@ -119,6 +119,9 @@ export interface SeatInfo {
   is_bot?: boolean;
   bot_tier?: string;
   bot_deck?: string;
+  // bot_own_key marks a bot running on the model key of the player who
+  // added it (ADR 0182). Whose key is not sent.
+  bot_own_key?: boolean;
   // AI agent seat (ADR 0122 §7), same two fields as PlayerView. Never
   // set together with is_bot, never on a seat with a user.
   is_agent?: boolean;
@@ -165,6 +168,17 @@ export interface BotOptions {
   tiers: BotTierInfo[];
   decks: BotDeckInfo[];
   enabled: boolean;
+  // own_key is present when this person can run a model bot on their
+  // own model key (ADR 0182, Settings › AI opponents).
+  own_key?: OwnKeyOption;
+}
+
+// OwnKeyOption mirrors lobby.ownKeyOption.
+export interface OwnKeyOption {
+  provider_label: string;
+  model: string;
+  // games_left is false once the key's games-a-day limit is used up.
+  games_left: boolean;
 }
 
 // AddBotResponse mirrors lobby.addBotResponse.
@@ -601,7 +615,17 @@ export async function fetchBotOptions(): Promise<BotOptions> {
 // so a seated human can add at most three. Added in S31.
 export async function addBotSeat(
   gameID: string,
-  body: { tier: string; deck?: string; name?: string; format?: string; source?: string },
+  body: {
+    tier: string;
+    deck?: string;
+    name?: string;
+    format?: string;
+    source?: string;
+    // ADR 0182: run the seat on the caller's own model key, asking for
+    // `model` (empty: the key's own).
+    own_key?: boolean;
+    model?: string;
+  },
 ): Promise<AddBotResponse> {
   const res = await authFetch(`/games/${gameID}/seats/bot`, {
     method: "POST",

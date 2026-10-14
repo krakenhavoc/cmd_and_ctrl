@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/model"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/rules"
@@ -82,6 +84,10 @@ type FactoryOptions struct {
 	// Meter is the shared Layer A absorption meter. Nil allocates
 	// one, so Factory.Meter is always readable.
 	Meter *rules.Meter
+	// OwnKeys builds the client for a seat that runs on its owner's own
+	// model key (ADR 0182, *modelkeys.Service). Nil means the feature
+	// is off on this server.
+	OwnKeys OwnKeyClients
 }
 
 // ModelGate reports whether model calls are being made. Blocked is
@@ -187,6 +193,9 @@ func (f *Factory) NewPolicy(seat aiseat.SeatSpec) (aiseat.Policy, error) {
 	tier, err := Parse(seat.Tier)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %q", aiseat.ErrUnknownTier, seat.Tier)
+	}
+	if seat.KeyOwner != uuid.Nil && tier.NeedsModel() {
+		return f.ownKeyPolicy(tier, seat)
 	}
 	if st := f.buildable(aiseat.Tier(tier)); !st.Available {
 		return nil, fmt.Errorf("%w: %q: %s", aiseat.ErrTierUnavailable, tier, st.Reason)

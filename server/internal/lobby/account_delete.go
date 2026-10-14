@@ -224,6 +224,11 @@ func finishAccountDeletion(ctx context.Context, c Config, id uuid.UUID, res acco
 		c.Lobby.anonymiseDeletedSeats(res.Seats, res.DiscordSubject)
 		c.Lobby.forgetBlocksOf(id, res.DiscordSubject)
 	}
+	// ADR 0182: the key row went in the transaction; a bot seat that had
+	// already opened the key stops using it from its next call.
+	if c.ModelKeys != nil {
+		c.ModelKeys.Forget(id)
+	}
 	if c.Playmats != nil {
 		if err := c.Playmats.ForgetFiles(res.PlaymatIDs); err != nil {
 			log.Warn("account deletion: removing playmat files failed", "user_id", id, "err", err)
@@ -246,6 +251,7 @@ func finishAccountDeletion(ctx context.Context, c Config, id uuid.UUID, res acco
 		"settings_rows", res.Counts.SettingsRows,
 		"setup_rows", res.Counts.SetupRows,
 		"notification_pref_rows", res.Counts.NotifyPrefRows,
+		"model_key_rows", res.Counts.ModelKeyRows,
 		"identities", res.Counts.Identities,
 		"reports", res.Counts.Reports,
 		"table_blocks", res.Counts.Blocks,

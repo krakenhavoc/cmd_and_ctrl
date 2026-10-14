@@ -1828,6 +1828,18 @@ one sentence saying so and, for a cap, when it resets, and each model
 tier's `reason` carries the same text. Absent otherwise. See
 [bot.md](bot.md#spend-caps-the-kill-switch-and-what-is-never-charged-for-2980).
 
+For a signed-in caller who has saved their own model key (ADR 0182), the
+response also carries `own_key`:
+
+```json
+"own_key": { "provider_label": "Anthropic", "model": "claude-haiku-4-5", "games_left": true }
+```
+
+The picker then offers "Run on my model key", with `assisted` and
+`strong` playable on it even where `tiers` says the server has no model.
+`games_left` is `false` once today's games-a-day limit is used up. Absent
+for a guest, without a key, or while the feature is off.
+
 Every declared tier is listed, including the ones THIS server cannot
 play. `available: false` is what the picker greys out — asking for one
 is a 422, never a silent downgrade to a weaker tier, because a bot
@@ -1905,6 +1917,16 @@ A named deck resolves to its decklist text server-side and then runs
 the identical parse / resolve / validate pipeline, so there is one
 code path and a curated deck that rots (a renamed card, a new ban)
 fails exactly where a human's upload would.
+
+**On your own model key (ADR 0182).** `"own_key": true` runs the seat on
+the caller's own key from Settings › AI opponents, and `"model"`
+optionally names the model it asks for (default: the key's). The key
+owner is always the caller, taken from their session; there is no field
+to name anyone else's. Refusals: 503 while the feature is off; 403 for a
+caller who is not signed in; 422 for a tier other than `assisted` or
+`strong`, for a caller with no key, or once the key's games-a-day limit
+is used up. `model` without `own_key` is a 400. The seat in the answer
+carries `"bot_own_key": true`; whose key it is never leaves the server.
 
 **Response** `201 Created`
 
@@ -3267,6 +3289,57 @@ seconds; anything else is logged and dropped, never retried late.
   browser the person signs in on.
 - The game socket sends `visibility` once on connect and on every
   `visibilitychange` ([protocol.md](protocol.md)).
+
+### `/me/model-key` (ADR 0182)
+
+A signed-in person's own model API key for the AI seats they add. Every
+route is signed-in only (a guest or the admin token gets 403) and answers
+503 with `"available": false` while the feature is off: no database, or no
+`CMDCTRL_IDENTITY_KEY` to seal keys with. The key is never in an answer.
+
+**`GET /me/model-key` → 200**
+
+```json
+{
+  "available": true,
+  "key": {
+    "provider": "anthropic", "provider_label": "Anthropic", "model": "claude-haiku-4-5",
+    "last4": "cdef", "games_per_day": 10, "calls_per_game": 500, "games_today": 1,
+    "created_at": "…", "updated_at": "…", "last_used_at": "…",
+    "last_error": "The provider refused the key. Check it, or paste a new one.", "last_error_at": "…"
+  },
+  "providers": [ { "id": "anthropic", "label": "Anthropic", "transport": "anthropic", "base_url": "https://api.anthropic.com/v1/messages", "model_hint": "claude-haiku-4-5" }, … , { "id": "custom", "label": "Other (OpenAI-compatible)", "transport": "openai" } ],
+  "limits": { "min_games_per_day": 1, "max_games_per_day": 100, "default_games_per_day": 10, "min_calls_per_game": 1, "max_calls_per_game": 5000, "default_calls_per_game": 500 }
+}
+```
+
+`key` is `null` when none is saved. `base_url` appears on a `custom` key.
+
+**`PUT /me/model-key`** — add, replace, or change the model and limits.
+
+```json
+{ "provider": "custom", "base_url": "https://api.example.com/v1", "model": "my-model",
+  "key": "sk-…", "games_per_day": 10, "calls_per_game": 500 }
+```
+
+`key` may be left out to keep the saved key, only while the provider (and
+a custom `base_url`) is unchanged. Answers 200 with the `GET` body. A
+refusal of what was typed is a 422 with a sentence to show (a custom
+address that is not https on port 443, has a user name, a query, or is an
+IP address or a local name; a key of the wrong shape; limits out of
+range); a body that does not decode is a 400 "invalid body", never quoted
+back. One bucket per person, 1 a second.
+
+**`DELETE /me/model-key`** → 200 with `"key": null`, whether or not one
+was saved.
+
+**`POST /me/model-key/test`** → 200 `{"ok": true|false, "message": "…", "key": {…}}`:
+one small call to the provider with the saved key, through the same guard
+a seat's calls take (https only, a public address checked at connect time,
+no redirects, a 15 s timeout, a 256 KiB reply cap). `message` is one of
+the server's fixed sentences, never the provider's text; a failure is
+also stored as the key's `last_error`. 404 with no key saved; its own
+bucket, one per ten seconds with a burst of 3.
 
 ### Playmats (ADR 0128)
 

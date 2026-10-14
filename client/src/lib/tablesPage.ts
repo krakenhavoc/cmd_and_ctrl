@@ -84,9 +84,8 @@ export function seatLine(
   const life = g.state === "active" && typeof p.life === "number" ? `${p.life} life` : "";
   let deck: string;
   if (p.is_bot) {
-    deck = [p.bot_tier || "bot", botDeckName(p.bot_deck) || p.deck_name || ""]
-      .filter(Boolean)
-      .join(" · ");
+    const tier = p.bot_own_key ? `${p.bot_tier || "bot"} (own key)` : p.bot_tier || "bot";
+    deck = [tier, botDeckName(p.bot_deck) || p.deck_name || ""].filter(Boolean).join(" · ");
   } else if (p.deck_uploaded) {
     deck = p.deck_name || "deck ready";
   } else if (g.state === "lobby") {

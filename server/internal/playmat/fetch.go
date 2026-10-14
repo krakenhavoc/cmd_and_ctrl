@@ -12,6 +12,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/netguard"
 )
 
 const (
@@ -237,68 +239,10 @@ func unwrapFetchErr(err error) error {
 	return err
 }
 
-// Blocked ranges beyond what netip's own predicates cover.
-var blockedPrefixes = func() []netip.Prefix {
-	var out []netip.Prefix
-	for _, s := range []string{
-		"0.0.0.0/8",       // "this network"
-		"100.64.0.0/10",   // carrier-grade NAT (RFC 6598)
-		"192.0.0.0/24",    // IETF protocol assignments
-		"192.0.2.0/24",    // TEST-NET-1
-		"198.18.0.0/15",   // benchmarking
-		"198.51.100.0/24", // TEST-NET-2
-		"203.0.113.0/24",  // TEST-NET-3
-		"240.0.0.0/4",     // reserved, and the broadcast address
-		"100::/64",        // discard-only
-		"2001:db8::/32",   // documentation
-	} {
-		out = append(out, netip.MustParsePrefix(s))
-	}
-	return out
-}()
-
-var (
-	nat64Prefix = netip.MustParsePrefix("64:ff9b::/96")
-	sixToFour   = netip.MustParsePrefix("2002::/16")
-)
-
 // AddrAllowed reports whether the server may connect to ip on behalf
-// of a person who pasted a link. It is a deny list of every address
-// that is not a public unicast address: loopback, private (RFC 1918
-// and IPv6 unique-local), link-local (which includes 169.254.169.254,
-// the cloud metadata address), carrier-grade NAT, multicast,
-// unspecified, and the reserved and documentation ranges.
-//
-// An IPv4 address written as IPv6 (::ffff:127.0.0.1), through NAT64
-// (64:ff9b::7f00:1) or 6to4 (2002:7f00:1::) is judged by the IPv4
-// address inside it, so the IPv6 spelling is not a way round.
-func AddrAllowed(ip netip.Addr) bool {
-	if !ip.IsValid() {
-		return false
-	}
-	// A zone ("fe80::1%eth0") has no meaning for a public host.
-	if ip.Zone() != "" {
-		return false
-	}
-	ip = ip.Unmap()
-	if ip.Is6() {
-		b := ip.As16()
-		switch {
-		case nat64Prefix.Contains(ip):
-			return AddrAllowed(netip.AddrFrom4([4]byte{b[12], b[13], b[14], b[15]}))
-		case sixToFour.Contains(ip):
-			return AddrAllowed(netip.AddrFrom4([4]byte{b[2], b[3], b[4], b[5]}))
-		}
-	}
-	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
-		ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() ||
-		ip.IsMulticast() || ip.IsUnspecified() {
-		return false
-	}
-	for _, p := range blockedPrefixes {
-		if p.Contains(ip) {
-			return false
-		}
-	}
-	return true
-}
+// of a person who pasted a link. It is netguard.AddrAllowed, the one
+// address policy every person-chosen outbound request shares (ADR 0128
+// §3, ADR 0182 §3): loopback, private, link-local (the cloud metadata
+// address among it), carrier-grade NAT, multicast, unspecified and the
+// reserved ranges are refused, in any IPv6 spelling.
+func AddrAllowed(ip netip.Addr) bool { return netguard.AddrAllowed(ip) }

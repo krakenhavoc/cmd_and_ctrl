@@ -562,6 +562,38 @@ one that (like Ollama's) does not. `CMDCTRL_OPENAI_SEND_THINK=0` stops
 both fields being sent, for a server that rejects one of them — at the
 cost of getting the behaviour above back.
 
+### Your own model key (ADR 0182)
+
+A signed-in player can run the `assisted` and `strong` bots **they** add on
+their own model API key, on any server with a database and
+`CMDCTRL_IDENTITY_KEY` set — whether or not the server has a model of its
+own.
+
+1. **Settings › AI opponents.** Pick a provider (Anthropic, OpenAI,
+   OpenRouter, Groq, Together AI, Mistral, DeepSeek, or another
+   OpenAI-compatible API by its https address), a model, and paste the key.
+   Set your limits: games a day, and model calls per game. **Test key**
+   makes one small call and says whether it worked.
+2. **At a table**, open **Add bot** and tick **Run on my model key**. The
+   tier list becomes `assisted` and `strong`; the model field starts at your
+   key's model and can be changed for this seat. The seat is marked "own
+   key" in the lobby.
+
+The key is stored encrypted, never shown again (Settings shows the provider,
+the model and the last four characters), never logged, and used only by bots
+you add: there is no way to put a seat on somebody else's key. The calls go
+to the provider you chose, on your account, and do not count against the
+server's spend caps above.
+
+If the provider refuses the key, says it is out of quota or does not know the
+model, or one of your limits is reached, the bot keeps playing on the
+built-in heuristic for the rest of the game, says so once in chat, and the
+reason is shown under the key in Settings. A rate limit or a slow answer
+only costs that one move. A custom address is held to the same guard as
+every request on a key: https only, a public address checked when the
+connection is made, no redirects, a short timeout and a size cap on the
+reply. See [ADR 0182](decisions/0182-your-own-model-key-for-ai-seats.md).
+
 ### Letting the model think (#2196)
 
 `CMDCTRL_BOT_THINK=1` (or `--think` on `boteval probe`, `suite run`

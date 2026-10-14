@@ -32,6 +32,16 @@ type SeatSpec struct {
 	// player's own first turn. Nil — every other table — leaves the
 	// choice to the tier, as ADR 0121 §4 has it. See first_turn.go.
 	FirstTurnTo *int
+	// GameID is the table the seat plays at. The Manager fills it in
+	// from the room before it asks the factory for a policy; a caller
+	// building a SeatSpec leaves it zero.
+	GameID uuid.UUID
+	// KeyOwner, when set, is the signed-in person whose own model key
+	// this seat runs on (ADR 0182): the person who added it. Only a
+	// model tier reads it. KeyModel is the model id the seat asks for,
+	// empty for the key's own default.
+	KeyOwner uuid.UUID
+	KeyModel string
 }
 
 // Manager owns the runners for every bot seat on the server: one
@@ -284,6 +294,7 @@ func (m *Manager) StartBots(room *ws.Room, seats []SeatSpec) {
 				"game", gameID.String(), "seat", seat.PlayerID.String(), "tier", seat.Tier)
 			continue
 		}
+		seat.GameID = gameID
 		policy, err := factory.NewPolicy(seat)
 		if err != nil {
 			m.log.Error("bot seat has no policy; seat will not act",

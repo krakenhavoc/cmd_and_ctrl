@@ -67,8 +67,15 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * results post in the Discord server. The column names no one; the
  * post it leads to does, and the notice's "Results post in Discord"
  * row covers it.
+ *
+ * 25 (#3460, ADR 0182) adds model_keys, a person's own model API key
+ * for the AI seats they add (sealed, last four characters, provider,
+ * model, limits, dates, last error), and seats.bot_key_user_id /
+ * bot_key_model on a bot that ran on it. The notice's "Your own model
+ * key for AI opponents" row covers them; account deletion deletes the
+ * key row.
  */
-export const PRIVACY_SCHEMA_VERSION = 24;
+export const PRIVACY_SCHEMA_VERSION = 25;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each
