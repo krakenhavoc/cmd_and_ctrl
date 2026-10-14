@@ -164,31 +164,41 @@ func TestWaitForDecisionRejectsAnUnknownPassUntil(t *testing.T) {
 // the round trip: smart passes an idle own step with an instant in hand,
 // survives the start of the seat's own turn (my_turn_or_stack does not),
 // and still gives the seat its main phase.
+//
+// Nothing here waits on timing. The table starts in an opponent's end step
+// holding an instant, which is a real decision (no Layer A pass goes out,
+// so the fake server has seen no action), the seat is switched to smart,
+// and each later step is awaited by the observable it produces: exactly
+// one action for the idle upkeep, then the decision window of the snapshot
+// just sent for the main phase. The earlier version opened with a forced
+// window whose Layer A pass could reach the fake server after the count
+// was read, which made the final count comparison race.
 func TestSmartPassPassesIdleStepsOfTheSeatsOwnTurnAndKeepsThroughTheTurn(t *testing.T) {
 	f := newFakeServer(t)
 	s := newTestSeat(t, nil)
 	joinFake(t, f, s)
 
-	// The opponent's turn ends; the seat's own turn starts at upkeep.
 	theirs := activeView(f)
 	theirs.Turn.Step = "end"
-	f.setState(theirs, []legal.Move{f.pass()}, false)
-	waitFor(t, "the opponent's end step", func() bool {
+	f.setState(theirs, twoChoices(f), false)
+	waitFor(t, "the opponent's end step to open a decision", func() bool {
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		return s.view != nil && s.view.Turn.Step == "end"
+		return s.win != nil && s.win.state == winDecision && s.view != nil && s.view.Turn.Step == "end"
 	})
+	if n := f.actionCount(); n != 0 {
+		t.Fatalf("%d actions before smart was switched on", n)
+	}
 	s.mu.Lock()
 	s.passMode = passSmart
-	s.win = nil
 	s.mu.Unlock()
 
+	// The seat's own turn starts at upkeep.
 	mine := activeView(f)
 	mine.Turn.ActiveSeat = 0
 	mine.Turn.Step = "upkeep"
-	sent := f.actionCount()
 	f.setState(mine, twoChoices(f), false)
-	waitFor(t, "the upkeep pass", func() bool { return f.actionCount() > sent })
+	waitFor(t, "the upkeep pass", func() bool { return f.actionCount() == 1 })
 	if a := f.lastAction(); a.Type != legal.TypePassPriority {
 		t.Fatalf("smart sent %+v at the seat's own upkeep", a)
 	}
@@ -201,14 +211,16 @@ func TestSmartPassPassesIdleStepsOfTheSeatsOwnTurnAndKeepsThroughTheTurn(t *test
 
 	main := mine
 	main.Turn.Step = "precombat_main"
-	sent = f.actionCount()
 	f.setState(main, twoChoices(f), false)
-	waitFor(t, "the main-phase window to open", func() bool {
+	f.mu.Lock()
+	seq := f.seq
+	f.mu.Unlock()
+	waitFor(t, "the main-phase snapshot's decision window", func() bool {
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		return s.win != nil && s.win.state == winDecision && s.view.Turn.Step == "precombat_main"
+		return s.win != nil && s.win.state == winDecision && s.win.key.seq == seq
 	})
-	if f.actionCount() != sent {
-		t.Error("smart passed the seat's own main phase")
+	if n := f.actionCount(); n != 1 {
+		t.Errorf("smart passed the seat's own main phase (%d actions, want the upkeep pass alone)", n)
 	}
 }
