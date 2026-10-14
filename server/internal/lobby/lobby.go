@@ -180,6 +180,12 @@ type SeatInfo struct {
 	// when the seat is still using the placeholder deck handed out
 	// at join time.
 	DeckName string `json:"deck_name,omitempty"`
+	// DeckPower is the seated library deck's estimated power level on
+	// the Commander Bracket scale, 1 to 5 in half steps, or 0 (omitted)
+	// when the deck is unrated or did not come from a library (#3671,
+	// decks.power_level). Public: the table sees how strong the decks
+	// are before it starts.
+	DeckPower float64 `json:"deck_power,omitempty"`
 	// DeckUploaded reports whether the seat has uploaded a real deck
 	// (vs. the placeholder). Start refuses to transition the game
 	// until every seat has DeckUploaded == true.
@@ -1224,8 +1230,9 @@ func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []gam
 }
 
 // SetSeatDeckID records which library deck (ADR 0051 decision 7, S34
-// sub-PR 5) a seat's cards came from, alongside the deck contents
-// SetDeck installs. Callers pass "" to clear it — an ad-hoc paste, a
+// sub-PR 5) a seat's cards came from, and that deck's power level
+// (#3671, 0 when unrated), alongside the deck contents SetDeck
+// installs. Callers pass "" and 0 to clear them — an ad-hoc paste, a
 // guest's upload, or a switch to a pre-built catalog deck has no
 // library row behind it, and a stale id left over from a seat's
 // previous deck would be worse than none.
@@ -1234,7 +1241,7 @@ func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []gam
 // SetDeck mutates the engine (ReplaceDeck) and is shared with every
 // deck-install caller; a library id is purely lobby bookkeeping that
 // only the HTTP layer's two deck-library routes know about.
-func (l *Lobby) SetSeatDeckID(gameID, playerID uuid.UUID, deckID string) error {
+func (l *Lobby) SetSeatDeckID(gameID, playerID uuid.UUID, deckID string, power float64) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -1245,6 +1252,7 @@ func (l *Lobby) SetSeatDeckID(gameID, playerID uuid.UUID, deckID string) error {
 	for i := range entry.meta.Players {
 		if entry.meta.Players[i].PlayerID == playerID {
 			entry.meta.Players[i].DeckID = deckID
+			entry.meta.Players[i].DeckPower = power
 			l.persistSeatsLocked(entry)
 			return nil
 		}
@@ -1263,6 +1271,22 @@ func (l *Lobby) ForgetLibraryDeck(deckID string) {
 		for i := range entry.meta.Players {
 			if entry.meta.Players[i].DeckID == deckID {
 				entry.meta.Players[i].DeckID = ""
+				entry.meta.Players[i].DeckPower = 0
+			}
+		}
+	}
+}
+
+// SetLibraryDeckPower updates the power level shown on every seat
+// holding deckID after an admin rates it (#3671), so a table already
+// seated with the deck shows the new rating on its next listing.
+func (l *Lobby) SetLibraryDeckPower(deckID string, power float64) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for _, entry := range l.games {
+		for i := range entry.meta.Players {
+			if entry.meta.Players[i].DeckID == deckID {
+				entry.meta.Players[i].DeckPower = power
 			}
 		}
 	}

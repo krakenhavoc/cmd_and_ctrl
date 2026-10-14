@@ -78,8 +78,12 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * 26 (#3337, ADR 0177) adds seats.stand_in / stand_in_since: the bot
  * tier playing an away player's seat, and since when. Neither names a
  * person, and nothing on the notice changes.
+ *
+ * 27 (#3671) adds decks.power_level: an admin's estimate of a saved
+ * deck's power, shown at the table. It is about the deck, goes with
+ * the deck row, and the "Your decks" row now names it.
  */
-export const PRIVACY_SCHEMA_VERSION = 26;
+export const PRIVACY_SCHEMA_VERSION = 27;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

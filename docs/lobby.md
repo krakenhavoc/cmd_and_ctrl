@@ -3191,6 +3191,28 @@ optional.
 The route rides the `/me/decks*` bucket (1 request per second, burst 5,
 per client).
 
+### `PUT /admin/decks/{id}/power` (#3671)
+
+Admin only (`requireAdmin`). Rates any saved deck's estimated power
+level on the Commander Bracket scale: 1 to 5 in half steps, where a
+half step is the strong end of a bracket (3.5 is a high 3). An admin
+makes the rating by hand, on demand; the server never computes one.
+
+```json
+{ "power_level": 3.5 }
+```
+
+`0` or `null` clears it. Answers `{"deck_id", "name", "power_level"}`;
+**400** for a value off the scale, **404** for an unknown deck, **503**
+with no database. It does not touch `updated_at`. Seats already holding
+the deck show the new rating on their next listing.
+
+The rating lives in `decks.power_level` (migration 0027). Saving the
+deck again with a changed list clears it, since it described the old
+list; saving the same list keeps it. A seat holding a rated library
+deck carries it as `SeatInfo.deck_power`, and the table's seat line
+shows it after the deck name (`Atraxa · power 3.5`).
+
 ### `GET /me/decks/{id}/coverage` (ADR 0110 section 6)
 
 The full ADR 0095 coverage report for one saved deck (the same body as

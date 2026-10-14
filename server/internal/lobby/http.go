@@ -945,6 +945,8 @@ func Handler(c Config) http.Handler {
 	// Moderation for a playmat on a shared table (ADR 0128 section 9).
 	mux.Handle("DELETE /admin/users/{id}/playmat", requireAdmin(c, handlerFunc(c, adminRemovePlaymat)))
 	mux.Handle("DELETE /admin/users/{id}/playmats/{slot}", requireAdmin(c, handlerFunc(c, adminRemovePlaymatSlot)))
+	// A saved deck's estimated power level (#3671, deck_power.go).
+	mux.Handle("PUT /admin/decks/{id}/power", requireAdmin(c, handlerFunc(c, adminSetDeckPower)))
 	// The admin views (ADR 0124 §2, admin_views.go): read-only, behind
 	// requireAdmin like every admin route, so the same-answer census
 	// finds each pattern. No rate limit of their own: only admins reach
@@ -3339,7 +3341,7 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	if errors.Is(libraryErr, decklibrary.ErrLibraryFull) {
 		libraryNote = fmt.Sprintf("Your deck library is full (%d decks), so this deck was seated but not saved. Delete one on the Decks page to make room.", decklibrary.MaxDecks)
 	}
-	if serr := c.Lobby.SetSeatDeckID(id, body.PlayerID, libraryDeckID); serr != nil {
+	if serr := c.Lobby.SetSeatDeckID(id, body.PlayerID, libraryDeckID, libraryDeckPower(r.Context(), c, libraryDeckID)); serr != nil {
 		logDeckLibraryWarning(c, "set seat deck_id failed", serr, "game_id", id, "player_id", body.PlayerID)
 	}
 	switch {
@@ -3435,6 +3437,21 @@ func saveToLibrary(ctx context.Context, c Config, p auth.Principal, gameID, play
 		return "", err
 	}
 	return saved.ID.String(), nil
+}
+
+// libraryDeckPower is the power level of the library deck an upload
+// just saved (#3671), or 0 when there is none or it is unrated. A save
+// that changed the list has already cleared it.
+func libraryDeckPower(ctx context.Context, c Config, deckID string) float64 {
+	id, err := uuid.Parse(deckID)
+	if err != nil || c.DeckLibrary == nil {
+		return 0
+	}
+	d, err := c.DeckLibrary.Get(ctx, id)
+	if err != nil {
+		return 0
+	}
+	return d.PowerLevel
 }
 
 // libraryFallbackName names a deck being saved to the library when
@@ -3539,7 +3556,7 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if serr := c.Lobby.SetSeatDeckID(id, p.PlayerID, saved.ID.String()); serr != nil {
+	if serr := c.Lobby.SetSeatDeckID(id, p.PlayerID, saved.ID.String(), saved.PowerLevel); serr != nil {
 		logDeckLibraryWarning(c, "set seat deck_id failed", serr, "game_id", id, "player_id", p.PlayerID)
 	}
 	recordLastDeck(r.Context(), c, p, id, p.PlayerID, users.LastDeck{Kind: users.LastDeckLibrary, ID: saved.ID.String()})

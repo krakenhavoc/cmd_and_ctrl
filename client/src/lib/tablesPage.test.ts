@@ -67,6 +67,16 @@ describe("the Now card's head (ADR 0158 §1 item 2)", () => {
   it("gives a seat its deck in the lobby and its deck and life in play", () => {
     const name = (id?: string) => (id === "raid" ? "Raid" : "");
     expect(seatLine(meta(), seat(0, { deck_name: "Atraxa" }), name).text).toBe("Atraxa");
+    expect(seatLine(meta(), seat(0, { deck_name: "Atraxa", deck_power: 3.5 }), name).text).toBe(
+      "Atraxa · power 3.5",
+    );
+    expect(
+      seatLine(
+        meta({ state: "active" }),
+        seat(0, { deck_name: "Atraxa", deck_power: 4, life: 31 }),
+        name,
+      ).text,
+    ).toBe("Atraxa · power 4 · 31 life");
     expect(seatLine(meta(), seat(0, { deck_uploaded: false }), name)).toEqual({
       text: "deck pending",
       pending: true,

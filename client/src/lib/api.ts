@@ -106,6 +106,10 @@ export interface SeatInfo {
   name: string;
   seat: number;
   deck_name?: string;
+  // The seated saved deck's estimated power level (#3671): the Commander
+  // Bracket scale, 1 to 5 in half steps (3.5 is a strong 3). Absent when
+  // unrated or not a saved deck.
+  deck_power?: number;
   deck_uploaded: boolean;
   // Discord OAuth seats (S12.5): the client builds the cached avatar
   // URL from discord_id + discord_avatar_hash; display_name carries
