@@ -23,15 +23,28 @@
 // same available:false-with-a-reason a keyless server gives (ADR 0033
 // §6, amendment 2026-10-12).
 //
-// # Tokens, not dollars
+// # Weighted tokens (#3476)
 //
-// The cap counts tokens: input + output + cache reads + cache writes.
-// The code has no price table, prices differ by model and change, and
-// a dollar cap built on a stale table fails silently in whichever
-// direction is worse. Tokens are what the response reports, so they
-// need no table. The sum over-counts a little (a cache read is billed
-// at a tenth of an input token and counted as one), which errs toward
-// stopping early, the safe side for a cap.
+// The cap counts WEIGHTED tokens: each token class the response
+// reports (input, output, cache read, cache write) is multiplied by
+// that model's list price per million tokens (weights.go), so a token
+// is a micro-dollar at list price and a cap of 5,000,000 is five
+// dollars. An output token of the strongest model is worth twenty-five
+// cache reads of the cheapest. It is a weight table and not a bill:
+// list prices change, so it is overridable (CMDCTRL_BOT_MODEL_PRICES)
+// and a model it does not recognise is priced as the most expensive
+// family, which errs toward stopping early, the safe side for a cap.
+// The metric and field names still say "tokens".
+//
+// # A share for each table (#3476)
+//
+// One server-wide pool lets a single table drain it for everyone. A
+// table (a game id) may use at most TableSharePercent of the DAILY cap
+// per UTC day. Past it, that table's model seats get
+// model.ErrBudgetExceeded and play the heuristic, exactly as over a
+// cap, while other tables keep their model seats. The per-table counts
+// are in memory: a restart gives a table a fresh share, but the pool's
+// own counters are persisted and still bound the sum.
 //
 // # What it deliberately does not do
 //
@@ -59,28 +72,49 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/model"
 )
 
-// Default caps, in tokens. Conservative on purpose: a deployment that
-// wants more says so in its env file; one that wants none sets 0.
+// Default caps, in weighted tokens (micro-dollars at list price).
+// Conservative on purpose: a deployment that wants more says so in its
+// env file; one that wants none sets 0.
 //
-// The figures are an order of magnitude, not a measurement. ADR 0033's
-// per-game spend number is still pending a keyed run (#735), so what
-// this pair buys is a ceiling: at a cheap hosted model's rates a
-// million tokens is a few dollars at the very worst, and the month
-// holds ten of those days.
+// The figures are a ceiling, not a measurement: ADR 0033's per-game
+// spend number is still pending a keyed run (#735). Five dollars a day
+// and fifty a month is the same order as the plain-token pair this
+// replaced (1M and 10M tokens), restated in the unit the cap now uses.
 const (
-	DefaultDailyTokens   int64 = 1_000_000
-	DefaultMonthlyTokens int64 = 10_000_000
+	DefaultDailyTokens   int64 = 5_000_000
+	DefaultMonthlyTokens int64 = 50_000_000
+	// DefaultTableSharePercent is the part of the daily cap one table
+	// may use: a quarter, so four busy tables fill the pool and one
+	// cannot.
+	DefaultTableSharePercent = 25
 )
 
 // Limits are the caps. Zero means "no cap" for that window.
 type Limits struct {
 	DailyTokens   int64
 	MonthlyTokens int64
+	// TableSharePercent is the part of DailyTokens one table may use,
+	// 1 to 99. Zero or 100 means no per-table limit. It does nothing
+	// while DailyTokens is zero.
+	TableSharePercent int
 }
 
-// DefaultLimits is the shipped pair.
+// DefaultLimits is the shipped set.
 func DefaultLimits() Limits {
-	return Limits{DailyTokens: DefaultDailyTokens, MonthlyTokens: DefaultMonthlyTokens}
+	return Limits{DailyTokens: DefaultDailyTokens, MonthlyTokens: DefaultMonthlyTokens, TableSharePercent: DefaultTableSharePercent}
+}
+
+// TableLimit is the most one table may count in a UTC day, or 0 for no
+// limit.
+func (l Limits) TableLimit() int64 {
+	if l.DailyTokens <= 0 || l.TableSharePercent <= 0 || l.TableSharePercent >= 100 {
+		return 0
+	}
+	n := l.DailyTokens * int64(l.TableSharePercent) / 100
+	if n < 1 {
+		n = 1
+	}
+	return n
 }
 
 // The env vars that set the caps. Unset takes the default; 0 turns
@@ -90,6 +124,10 @@ func DefaultLimits() Limits {
 const (
 	EnvDailyTokens   = "CMDCTRL_BOT_MODEL_DAILY_TOKENS"
 	EnvMonthlyTokens = "CMDCTRL_BOT_MODEL_MONTHLY_TOKENS"
+	// EnvTableShare is the per-table share of the daily cap, a whole
+	// percent. Unset takes DefaultTableSharePercent; 0 or 100 turns the
+	// per-table limit off; anything outside 0-100 fails the boot.
+	EnvTableShare = "CMDCTRL_BOT_MODEL_TABLE_SHARE_PERCENT"
 )
 
 // LimitsFromEnv reads the two caps from the environment.
@@ -112,6 +150,13 @@ func limitsFrom(getenv func(string) string) (Limits, error) {
 			return Limits{}, fmt.Errorf("%s=%q: want a whole number of tokens, or 0 for no cap", f.name, raw)
 		}
 		*f.dst = n
+	}
+	if raw := strings.TrimSpace(getenv(EnvTableShare)); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 0 || n > 100 {
+			return Limits{}, fmt.Errorf("%s=%q: want a whole percent from 0 to 100 (0 or 100 for no per-table limit)", EnvTableShare, raw)
+		}
+		lim.TableSharePercent = n
 	}
 	return lim, nil
 }
@@ -154,10 +199,15 @@ type Status struct {
 	// Note is the sentence a player sees. Empty when State is ok.
 	Note string `json:"note,omitempty"`
 
+	// The counts are weighted tokens (micro-dollars at list price).
 	DailyTokens   int64 `json:"daily_tokens"`
 	DailyLimit    int64 `json:"daily_limit"`
 	MonthlyTokens int64 `json:"monthly_tokens"`
 	MonthlyLimit  int64 `json:"monthly_limit"`
+	// TableLimit is what one table may use in a day (0: no limit) and
+	// TablesAtShare how many tables have reached it today.
+	TableLimit    int64 `json:"table_limit"`
+	TablesAtShare int   `json:"tables_at_share"`
 	// DayResetsAt and MonthResetsAt are when each counter next
 	// starts from zero (UTC).
 	DayResetsAt   time.Time `json:"day_resets_at"`
@@ -168,6 +218,7 @@ type Status struct {
 type Budget struct {
 	mu    sync.Mutex
 	lim   Limits
+	w     Weights
 	store Store
 	log   *slog.Logger
 	now   func() time.Time
@@ -176,6 +227,9 @@ type Budget struct {
 	dayTokens   int64
 	monthTokens int64
 	disabled    bool
+	// tables is each table's weighted count today, by game id. Reset at
+	// the UTC day boundary, so it holds one day's tables.
+	tables map[string]int64
 }
 
 // Option adjusts a Budget at construction.
@@ -183,6 +237,9 @@ type Option func(*Budget)
 
 // WithClock replaces the wall clock, for tests.
 func WithClock(now func() time.Time) Option { return func(b *Budget) { b.now = now } }
+
+// WithWeights replaces the price table. The default is DefaultWeights.
+func WithWeights(w Weights) Option { return func(b *Budget) { b.w = w } }
 
 // WithLogger sets the logger for persistence failures and cap events.
 func WithLogger(l *slog.Logger) Option { return func(b *Budget) { b.log = l } }
@@ -192,7 +249,7 @@ func WithLogger(l *slog.Logger) Option { return func(b *Budget) { b.log = l } }
 // that fails to load is logged and ignored: the guard then starts from
 // zero, which is the lesser evil next to refusing to boot.
 func New(lim Limits, store Store, opts ...Option) *Budget {
-	b := &Budget{lim: lim, store: store, now: time.Now}
+	b := &Budget{lim: lim, w: DefaultWeights(), store: store, now: time.Now, tables: map[string]int64{}}
 	for _, o := range opts {
 		o(b)
 	}
@@ -224,6 +281,7 @@ func (b *Budget) rollLocked() {
 	day, month := periodKeys(b.now())
 	if day != b.day {
 		b.day, b.dayTokens = day, 0
+		b.tables = map[string]int64{}
 	}
 	if month != b.month {
 		b.month, b.monthTokens = month, 0
@@ -242,25 +300,40 @@ func (b *Budget) stateLocked() State {
 	return StateOK
 }
 
-// Check returns model.ErrBudgetExceeded when a call must not be made.
-func (b *Budget) Check() error {
+// Check returns model.ErrBudgetExceeded when a call must not be made
+// at all: the pool is capped or the switch is off.
+func (b *Budget) Check() error { return b.CheckTable("") }
+
+// CheckTable is Check for one table (a game id; empty for no table):
+// it also refuses once that table has used its share of the day.
+func (b *Budget) CheckTable(table string) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.rollLocked()
 	if b.stateLocked() != StateOK {
 		return model.ErrBudgetExceeded
 	}
+	if tl := b.lim.TableLimit(); tl > 0 && table != "" && b.tables[table] >= tl {
+		return model.ErrBudgetExceeded
+	}
 	return nil
 }
 
-// Tokens is what one response counts against the caps.
-func Tokens(u model.Usage) int64 {
-	return int64(u.InputTokens) + int64(u.OutputTokens) + int64(u.CacheReadTokens) + int64(u.CacheWriteTokens)
+// Tokens is what one response counts against the caps for a model id:
+// each token class times that model's price (weights.go).
+func (b *Budget) Tokens(modelID string, u model.Usage) int64 {
+	return b.w.For(modelID).Weigh(u)
 }
 
-// Record counts one response's usage and persists the totals.
-func (b *Budget) Record(u model.Usage) {
-	n := Tokens(u)
+// Record counts one response's usage against the pool, priced as an
+// unrecognised model (the dearest family unless the weights say
+// otherwise) and charged to no table.
+func (b *Budget) Record(u model.Usage) { b.RecordTable("", "", u) }
+
+// RecordTable counts one response from modelID at a table and persists
+// the totals.
+func (b *Budget) RecordTable(table, modelID string, u model.Usage) {
+	n := b.Tokens(modelID, u)
 	if n <= 0 {
 		return
 	}
@@ -270,6 +343,15 @@ func (b *Budget) Record(u model.Usage) {
 	before := b.stateLocked()
 	b.dayTokens += n
 	b.monthTokens += n
+	if table != "" {
+		tl := b.lim.TableLimit()
+		was := b.tables[table]
+		b.tables[table] = was + n
+		if tl > 0 && was < tl && was+n >= tl {
+			b.log.Warn("bot model budget: a table used its share of the day; its model seats now play the heuristic until the day resets",
+				"table", table, "table_tokens", was+n, "table_limit", tl)
+		}
+	}
 	if after := b.stateLocked(); after != StateOK && before == StateOK {
 		b.log.Warn("bot model budget reached: the model tiers now play the heuristic until it resets",
 			"state", string(after), "day_tokens", b.dayTokens, "month_tokens", b.monthTokens,
@@ -307,7 +389,18 @@ func (b *Budget) Status() Status {
 	defer b.mu.Unlock()
 	b.rollLocked()
 	now := b.now().UTC()
+	tl := b.lim.TableLimit()
+	atShare := 0
+	if tl > 0 {
+		for _, n := range b.tables {
+			if n >= tl {
+				atShare++
+			}
+		}
+	}
 	st := Status{
+		TableLimit:    tl,
+		TablesAtShare: atShare,
 		State:         b.stateLocked(),
 		Enabled:       !b.disabled,
 		DailyTokens:   b.dayTokens,
@@ -355,18 +448,35 @@ func (b *Budget) Wrap(c model.Client) model.Client {
 	return &guarded{inner: c, b: b}
 }
 
+// ForTable binds a client that Wrap returned to one table, so its
+// calls count against that table's share as well as the pool. Any
+// other client, including a seat's own-key client, comes back
+// untouched: those calls spend the owner's account and never reach the
+// pool (ADR 0182), and must not be charged to one either.
+func (b *Budget) ForTable(c model.Client, table string) model.Client {
+	if g, ok := c.(*guarded); ok && g.b == b && table != "" {
+		return &guarded{inner: g.inner, b: b, table: table}
+	}
+	return c
+}
+
 type guarded struct {
 	inner model.Client
 	b     *Budget
+	table string
 }
 
 func (g *guarded) Name() string { return g.inner.Name() }
 
 func (g *guarded) Complete(ctx context.Context, req model.Request) (model.Response, error) {
-	if err := g.b.Check(); err != nil {
+	if err := g.b.CheckTable(g.table); err != nil {
 		return model.Response{}, err
 	}
 	resp, err := g.inner.Complete(ctx, req)
-	g.b.Record(resp.Usage)
+	id := resp.Model
+	if id == "" {
+		id = req.Model
+	}
+	g.b.RecordTable(g.table, id, resp.Usage)
 	return resp, err
 }

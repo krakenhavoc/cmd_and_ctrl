@@ -751,7 +751,7 @@ tests:
               period: day
             exp_annotations:
               summary: "prod: hosted-model spend is at 90% of the day cap"
-              description: "The prod bots have used 90% of this day's token cap. At 100% the model tiers stop and the bots play the heuristic. The 80% is a first guess."
+              description: "The prod bots have used 90% of this day's weighted-token cap (micro-dollars at list price). At 100% the model tiers stop and the bots play the heuristic. The 80% is a first guess."
 
   - name: BotModelSpendHigh, no cap at all (limit 0) never fires
     interval: 1m
@@ -789,7 +789,7 @@ tests:
               instance: 127.0.0.1:9464
             exp_annotations:
               summary: "prod: hosted-model calls have been refused for 15 minutes"
-              description: "The prod spend guard is refusing model calls: a daily or monthly token cap is reached, or the kill switch is off. Model-backed bots play the heuristic meanwhile. GET /admin/bot/model says which."
+              description: "The prod spend guard is refusing model calls: a daily or monthly weighted-token cap is reached, or the kill switch is off. (One table reaching its own share does not set this.) Model-backed bots play the heuristic meanwhile. GET /admin/bot/model says which."
 
   # ------------------------------------------------------------ BotSeatWedged
   - name: BotSeatWedged, a bot seat owing a move over 2 minutes; prod after 1 minute, dev after 5
