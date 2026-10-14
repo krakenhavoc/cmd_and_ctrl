@@ -145,3 +145,56 @@ func TestMiddlewareSaysRevoked(t *testing.T) {
 		t.Errorf("body %q", body)
 	}
 }
+
+// tickClock is an HMAC clock the test steps by hand.
+type tickClock struct{ at time.Time }
+
+// A session minted in the same millisecond as its user's watermark is
+// minted again after the tick, so it validates; tokens minted at or
+// before the watermark stay refused. Both sides of the boundary, with no
+// real clock involved.
+func TestWithRevocationMintsStrictlyAfterTheWatermark(t *testing.T) {
+	ctx := context.Background()
+	h := newTestHMAC(t, testKey)
+	w := time.Date(2026, 9, 19, 12, 0, 0, 0, time.UTC)
+	clk := &tickClock{at: w.Add(-time.Millisecond)}
+	h.now = func() time.Time { return clk.at }
+
+	user := uuid.New()
+	list := mapList{}
+	a := WithRevocation(h, list).(*revokingAuthenticator)
+	a.pause = func() { clk.at = clk.at.Add(time.Millisecond) }
+	p := Principal{Role: RoleIdentified, UserID: user}
+
+	// Issued the millisecond before the revoke, and in the revoke's own.
+	before, _, _ := a.Issue(ctx, p, time.Hour)
+	clk.at = w
+	sameTick, _, _ := a.Issue(ctx, p, time.Hour)
+	list[user] = w // the revoke lands at w
+
+	for name, tok := range map[string]string{"before": before, "same tick": sameTick} {
+		if _, err := a.Validate(ctx, tok); !errors.Is(err, ErrRevokedCredential) {
+			t.Errorf("%s token after the revoke: %v, want revoked", name, err)
+		}
+	}
+
+	// The clock is still on the watermark's millisecond: a sign-in now
+	// waits out the tick rather than coming back revoked.
+	tok, issued, err := a.Issue(ctx, p, time.Hour)
+	if err != nil {
+		t.Fatalf("Issue: %v", err)
+	}
+	if !issued.IssuedAt.After(w) {
+		t.Errorf("IssuedAt %v, want strictly after the watermark %v", issued.IssuedAt, w)
+	}
+	if _, err := a.Validate(ctx, tok); err != nil {
+		t.Errorf("fresh sign-in on the watermark tick: %v, want valid", err)
+	}
+
+	// A clock stuck behind the watermark gives up instead of looping.
+	clk.at = w.Add(-time.Hour)
+	a.pause = func() {}
+	if _, _, err := a.Issue(ctx, p, time.Hour); err != nil {
+		t.Errorf("Issue with a clock behind the watermark: %v", err)
+	}
+}

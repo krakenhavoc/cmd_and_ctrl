@@ -30,7 +30,7 @@ jobs:
   report:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Measure the integration branch, not the release branch the
           # schedule runs from: develop is where the work lands.

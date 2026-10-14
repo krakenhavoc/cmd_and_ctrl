@@ -205,6 +205,14 @@ type SeatInfo struct {
 	IsBot   bool   `json:"is_bot,omitempty"`
 	BotTier string `json:"bot_tier,omitempty"`
 	BotDeck string `json:"bot_deck,omitempty"`
+	// BotOwnKey marks a bot seat that runs on the model key of the
+	// person who added it (ADR 0182). Public, so the table can see
+	// whose model a bot is, in the sense of "a player's own", without
+	// learning whose: BotKeyOwner (the users.id) and BotKeyModel stay
+	// on the server, in seats.bot_key_user_id and bot_key_model.
+	BotOwnKey   bool      `json:"bot_own_key,omitempty"`
+	BotKeyOwner uuid.UUID `json:"-"`
+	BotKeyModel string    `json:"-"`
 
 	// IsAgent / AgentClient mark a seat played by an AI agent through
 	// an MCP client (ADR 0122 §7): a guest seat whose join declared
@@ -1348,6 +1356,10 @@ func (l *Lobby) botStartLocked(entry *gameEntry) func() {
 				Tier:        seat.BotTier,
 				Deck:        seat.BotDeck,
 				FirstTurnTo: firstTurnTo,
+				// ADR 0182: the person whose own key the seat runs on,
+				// set only by the person themselves at add time.
+				KeyOwner: seat.BotKeyOwner,
+				KeyModel: seat.BotKeyModel,
 			})
 		}
 	}
@@ -1366,6 +1378,21 @@ func (l *Lobby) botStartLocked(entry *gameEntry) func() {
 // itself is started by Start, through the BotHost. Added in S31
 // sub-PR 4.
 func (l *Lobby) AddBot(id uuid.UUID, name, tier, deckID, deckName string, cards []game.Card) (GameMeta, uuid.UUID, error) {
+	return l.addBot(id, name, tier, deckID, deckName, cards, uuid.Nil, "")
+}
+
+// AddBotOnKey is AddBot for a seat that runs on keyOwner's own model
+// key (ADR 0182), asking for modelID ("" for the key's default). The
+// HTTP layer passes the CALLER's own user id and nobody else's: that is
+// the whole of "only the key owner's own seats use it".
+func (l *Lobby) AddBotOnKey(id uuid.UUID, name, tier, deckID, deckName string, cards []game.Card, keyOwner uuid.UUID, modelID string) (GameMeta, uuid.UUID, error) {
+	if keyOwner == uuid.Nil {
+		return GameMeta{}, uuid.Nil, errors.New("lobby: an own-key bot needs its key owner")
+	}
+	return l.addBot(id, name, tier, deckID, deckName, cards, keyOwner, modelID)
+}
+
+func (l *Lobby) addBot(id uuid.UUID, name, tier, deckID, deckName string, cards []game.Card, keyOwner uuid.UUID, modelID string) (GameMeta, uuid.UUID, error) {
 	name = trimToLimit(name, 40)
 	if name == "" {
 		return GameMeta{}, uuid.Nil, ErrEmptyName
@@ -1431,6 +1458,9 @@ func (l *Lobby) AddBot(id uuid.UUID, name, tier, deckID, deckName string, cards 
 		IsBot:        true,
 		BotTier:      tier,
 		BotDeck:      deckID,
+		BotOwnKey:    keyOwner != uuid.Nil,
+		BotKeyOwner:  keyOwner,
+		BotKeyModel:  modelID,
 	})
 	l.persistSeatsLocked(entry)
 	l.noteFilledLocked(entry, uuid.Nil)

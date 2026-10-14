@@ -767,6 +767,13 @@ type ReplacementEvent struct {
 	// it. Added in #529 so CR 903.9 could move down to the primitive.
 	zoneRoute *zoneRoute
 
+	// lifeAfterMove is ADR 0178's list of life changes a replacement
+	// declared as part of the modified move ("instead exile it and you
+	// gain 2 life"), set only through ChangeLifeAfterReplacedMoveForEffect.
+	// They run after the card has landed and before the route's
+	// continuation (runMoveTailLocked). Unexported engine plumbing.
+	lifeAfterMove []lifeInstruction
+
 	// asCommanderMove is an unexported breadcrumb set by
 	// MoveCardByIDAsCommander when the caller flagged the move as
 	// a commander-initiated one. It is NOT a gate on the CR 903.9
@@ -974,6 +981,13 @@ type ReplacementEvent struct {
 	// It is also the CR 616.1 affected player: see
 	// affectedPlayerForEvent.
 	CounterPlayer uuid.UUID
+
+	// StartingLoyalty marks the one counter placement that is a
+	// planeswalker's starting loyalty as it enters (CR 306.5b), the
+	// event stampStartingLoyaltyLocked opens. Compleated reads it
+	// (CR 702.150a, ADR 0183), so it never touches a later +1. Doublers
+	// ignore it and see the placement they always saw.
+	StartingLoyalty bool
 
 	// counterTail is the counter half's answer to lifeTail and
 	// tokenTail: the rest of the effect that asked for the placement,

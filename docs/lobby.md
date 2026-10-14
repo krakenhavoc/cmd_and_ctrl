@@ -1810,8 +1810,8 @@ answer for every table — so the client fetches it once.
   "tiers": [
     { "tier": "random", "label": "Random", "description": "…", "available": true },
     { "tier": "heuristic", "label": "Heuristic", "description": "…", "available": true },
-    { "tier": "assisted", "label": "Assisted", "description": "…", "available": false, "reason": "needs a model: set CMDCTRL_OPENAI_ENDPOINT … or CMDCTRL_ANTHROPIC_API_KEY …" },
-    { "tier": "strong", "label": "Strong", "description": "…", "available": false, "reason": "needs a model: …" }
+    { "tier": "assisted", "label": "Assisted (experimental)", "description": "…", "available": false, "reason": "needs a model: set CMDCTRL_OPENAI_ENDPOINT … or CMDCTRL_ANTHROPIC_API_KEY …" },
+    { "tier": "strong", "label": "Strong (experimental)", "description": "…", "available": false, "reason": "needs a model: …" }
   ],
   "decks": [
     { "id": "mono-red-aggro", "name": "Forge and Fury", "description": "aggro — …", "colors": ["R"], "commander": "Purphoros, God of the Forge" },
@@ -1827,6 +1827,18 @@ switched model calls off (#2980), the response also carries `model_note`,
 one sentence saying so and, for a cap, when it resets, and each model
 tier's `reason` carries the same text. Absent otherwise. See
 [bot.md](bot.md#spend-caps-the-kill-switch-and-what-is-never-charged-for-2980).
+
+For a signed-in caller who has saved their own model key (ADR 0182), the
+response also carries `own_key`:
+
+```json
+"own_key": { "provider_label": "Anthropic", "model": "claude-haiku-4-5", "games_left": true }
+```
+
+The picker then offers "Run on my model key", with `assisted` and
+`strong` playable on it even where `tiers` says the server has no model.
+`games_left` is `false` once today's games-a-day limit is used up. Absent
+for a guest, without a key, or while the feature is off.
 
 Every declared tier is listed, including the ones THIS server cannot
 play. `available: false` is what the picker greys out — asking for one
@@ -1905,6 +1917,16 @@ A named deck resolves to its decklist text server-side and then runs
 the identical parse / resolve / validate pipeline, so there is one
 code path and a curated deck that rots (a renamed card, a new ban)
 fails exactly where a human's upload would.
+
+**On your own model key (ADR 0182).** `"own_key": true` runs the seat on
+the caller's own key from Settings › AI opponents, and `"model"`
+optionally names the model it asks for (default: the key's). The key
+owner is always the caller, taken from their session; there is no field
+to name anyone else's. Refusals: 503 while the feature is off; 403 for a
+caller who is not signed in; 422 for a tier other than `assisted` or
+`strong`, for a caller with no key, or once the key's games-a-day limit
+is used up. `model` without `own_key` is a 400. The seat in the answer
+carries `"bot_own_key": true`; whose key it is never leaves the server.
 
 **Response** `201 Created`
 
@@ -3267,6 +3289,57 @@ seconds; anything else is logged and dropped, never retried late.
   browser the person signs in on.
 - The game socket sends `visibility` once on connect and on every
   `visibilitychange` ([protocol.md](protocol.md)).
+
+### `/me/model-key` (ADR 0182)
+
+A signed-in person's own model API key for the AI seats they add. Every
+route is signed-in only (a guest or the admin token gets 403) and answers
+503 with `"available": false` while the feature is off: no database, or no
+`CMDCTRL_IDENTITY_KEY` to seal keys with. The key is never in an answer.
+
+**`GET /me/model-key` → 200**
+
+```json
+{
+  "available": true,
+  "key": {
+    "provider": "anthropic", "provider_label": "Anthropic", "model": "claude-haiku-4-5",
+    "last4": "cdef", "games_per_day": 10, "calls_per_game": 500, "games_today": 1,
+    "created_at": "…", "updated_at": "…", "last_used_at": "…",
+    "last_error": "The provider refused the key. Check it, or paste a new one.", "last_error_at": "…"
+  },
+  "providers": [ { "id": "anthropic", "label": "Anthropic", "transport": "anthropic", "base_url": "https://api.anthropic.com/v1/messages", "model_hint": "claude-haiku-4-5" }, … , { "id": "custom", "label": "Other (OpenAI-compatible)", "transport": "openai" } ],
+  "limits": { "min_games_per_day": 1, "max_games_per_day": 100, "default_games_per_day": 10, "min_calls_per_game": 1, "max_calls_per_game": 5000, "default_calls_per_game": 500 }
+}
+```
+
+`key` is `null` when none is saved. `base_url` appears on a `custom` key.
+
+**`PUT /me/model-key`** — add, replace, or change the model and limits.
+
+```json
+{ "provider": "custom", "base_url": "https://api.example.com/v1", "model": "my-model",
+  "key": "sk-…", "games_per_day": 10, "calls_per_game": 500 }
+```
+
+`key` may be left out to keep the saved key, only while the provider (and
+a custom `base_url`) is unchanged. Answers 200 with the `GET` body. A
+refusal of what was typed is a 422 with a sentence to show (a custom
+address that is not https on port 443, has a user name, a query, or is an
+IP address or a local name; a key of the wrong shape; limits out of
+range); a body that does not decode is a 400 "invalid body", never quoted
+back. One bucket per person, 1 a second.
+
+**`DELETE /me/model-key`** → 200 with `"key": null`, whether or not one
+was saved.
+
+**`POST /me/model-key/test`** → 200 `{"ok": true|false, "message": "…", "key": {…}}`:
+one small call to the provider with the saved key, through the same guard
+a seat's calls take (https only, a public address checked at connect time,
+no redirects, a 15 s timeout, a 256 KiB reply cap). `message` is one of
+the server's fixed sentences, never the provider's text; a failure is
+also stored as the key's `last_error`. 404 with no key saved; its own
+bucket, one per ten seconds with a burst of 3.
 
 ### Playmats (ADR 0128)
 
@@ -4959,3 +5032,9 @@ the plain URL once after ~2 s, then shows a click-to-retry marker
 (`client/src/lib/cardArt.ts`, #33). A cache-busting query parameter
 would be wrong here: the service worker keys card art on the full
 query string.
+
+## Endpoint index
+
+The routes the lobby and the server serve, with the API reference above.
+
+- Endpoints: `GET /healthz`, `GET /ws` (protocol v0, see [docs/protocol.md](protocol.md)), `POST /admin/login`, `/games*` lobby routes (see [docs/lobby.md](lobby.md)) — including `POST /games` (any signed-in person or the admin token; a person is the table's creator and is held to 3 open tables and 1 creation per 30 s, the token to neither; `"setup": "last"` applies their last setup — [ADR 0110](decisions/0110-remember-me.md) §5), `POST /games/{id}/setup` (the caller's last setup on an unstarted table: host, creator or admin; skipped bots are named, never downgraded), `POST /games/{id}/rematch` + `/rematch/accept` + `/rematch/leave` (a seat at a finished table: the host offers the same game again as a new private lobby table with the old settings, decks and bots, the other humans accept or leave until all have left the results screen; the offer rides `GameView.rematch`; [ADR 0164](decisions/0164-rematch-the-host-offers-the-same-game-again.md), [docs/lobby.md](lobby.md)), `POST /games/practice/guest` (public, no session: mints a guest session named "Player" and opens a practice table for it in one step; the same table, decks, caps and response as `POST /games/practice`; one live table per guest session, a repeat call replaces it; 3 per 10 minutes per IP; ADR 0156 §2, [docs/lobby.md](lobby.md)), and `POST /games/practice` + `POST /games/{id}/practice/leave`, the tutorial's practice table (any session; unlisted, never persisted, reaped when idle; [ADR 0076](decisions/0076-tutorial.md)) — `GET /me/setup` + `GET /me/last-deck` (the setup captured when a table you created starts, and the deck you last seated, for the create form and the deck panel to pre-fill; ADR 0110 §5), `GET /me/games` + `POST /me/games/{id}/session` (a signed-in user's games and seat reclaim, ADR 0051 sub-PR 4), `PUT /me/admin-mode` (an allowlisted person switches admin mode on for 12 hours, or off; everyone else 403; `GET /me` adds `admin_allowed`, `admin_mode` and `admin_mode_ends_at` — [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §2), `GET /admin/users` (`?played=1d|7d|30d`) + `GET /admin/users/{id}` and `GET /admin/games` (`?state=`, `?archived=`, `?practice=exclude|include|only`, default `exclude`, `?user=`, `?limit=`, `?cursor=`) + `GET /admin/games/{id}` (the admin views of accounts and games: read-only, behind `requireAdmin`, so player mode gets a non-admin's 403; 503 with no database; an unknown filter value is a 400 naming it; every field pinned by `TestAdminViewsServeOnlyTheirFields` — [ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md), [docs/lobby.md](lobby.md#admin-views-adr-0124)), `POST /me/session` (a signed-in session's cookie reinstall and renewal on use, ADR 0110 §1 items 5 and 6), `GET /me/decks` (+ `/{id}/coverage`, `PATCH`, `DELETE`: the saved deck library with coverage computed on read, ADR 0110 §6), `POST /me/decks` (a signed-in person saves a checked link or pasted list to that library: a link the check's cache holds fetches nothing, one that must be fetched spends a `POST /deck-coverage` token, a name already used replaces that deck (`replaced`), and a new deck past 200 is a 409; [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §3), `GET /me/tablemates` + `POST /games/{id}/invites/dm` (the people you have played with, and DMing one of them this table's existing invite link — ADR 0051 decisions 8 and 5, S34 sub-PR 6), `GET` + `PUT /me/settings` (a signed-in user's per-person settings on their account, `If-Match` revision, 32 KiB, 1 write/s per person; 403 for everyone else, who keep browser-only settings — [ADR 0110](decisions/0110-remember-me.md) §4), `GET /me/playmats`, `PUT /me/playmats/{slot}`, `POST /me/playmats/{slot}/link`, `POST /me/playmats/{slot}/fit`, `DELETE /me/playmats/{slot}`, `PUT /me/playmats/active` and `PATCH /me/playmats` (a signed-in person's up to three saved playmat images, slots 1 to 3, one of them active and drawn behind their battlefield for the whole table: the server decodes and re-encodes whatever is sent and fetches a pasted `https` link itself, once, behind an SSRF guard on the resolved address; an image that is not the best shape, 2400x1400, comes back with a `suggestion` and `POST …/fit` crops it, never upscaling; 403 for a guest, the admin token and a server with no database, `enabled:false` with no data dir; `PATCH` sets the owner-chosen darkness, `{"wash": 30..90}`, one per account, that the whole table sees), `GET /playmats/{id}` (the image; any session, uuid-keyed, immutable), `DELETE /admin/users/{id}/playmats/{slot}` and `DELETE /admin/users/{id}/playmat` (admin moderation: one slot, or all) — [ADR 0128](decisions/0128-playmats.md) §11, [docs/lobby.md](lobby.md#playmats-adr-0128), `GET /admin/live` (admin only, read-only: who is connected now, by table, as seat, spectator or admin, plus bot and agent seats; read from `Hub.LiveSockets` then `Lobby.LiveTables`, one lock at a time, with names from one `users` query and none needed without a database; its totals come from `metrics.Tally`, the function the Overview's tiles are reported from, so they match Grafana — [ADR 0124](decisions/0124-admin-views-accounts-games-and-who-is-on-now.md) §3.4), `GET /auth/discord/link` (link Discord to a held seat), `/cards/*` image + metadata routes, `GET /catalog` + `GET /catalog/image/{id}` (public, no session — the card catalogue, [ADR 0042](decisions/0042-card-catalog-page.md); the image route serves catalogue cards only, and `main.go` says why a Discord-gated session must not guard it), `GET /community` (public, no session, cached 5 minutes — the C2 Discord invite and whether sign-up is gated, [ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md) §6), `GET /roadmap` (public, no session — the engine roadmap: card names and caveats only, never art or oracle text, [ADR 0092](decisions/0092-public-roadmap-and-site-portal.md)), `POST /deck-coverage` (public, no session, per-IP limited — a Moxfield/Archidekt link or pasted list bucketed into `manual` / `unreviewed` / `caveats` / `automated` / `no_effect`; names, oracle IDs and caveats only) and `POST /deck-requests` (a Discord-signed-in user, or the bot's admin session naming the member — files or joins a GitHub issue listing the deck's missing cards, 3 asks per person per 24 h, none for an admin (allowlisted and in admin mode; through the bot, only when the named member's own account is one), #2052; a person may name one of their saved decks as `deck_id` instead of a link or a list, ADR 0112 §3 item 5; [ADR 0095](decisions/0095-deck-coverage-and-deck-requests.md), [docs/lobby.md](lobby.md))

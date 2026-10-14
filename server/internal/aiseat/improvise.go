@@ -432,6 +432,32 @@ func (r *Runner) announce(kind, text, reason string) {
 	})
 }
 
+// Noticer is an optional Policy extension: a seat with something to
+// tell the table that is not a move. ADR 0182's own-key seat is the one
+// implementer: when its owner's key stops working it says so once, in
+// chat, as it falls back to the heuristic, so the owner is not left to
+// work out why their bot got worse.
+//
+// TakeNotice returns the pending line and clears it; "" means nothing
+// to say. It is asked after every decision.
+type Noticer interface {
+	TakeNotice() string
+}
+
+// postNotice posts the policy's pending notice, if it has one, as a
+// bot_notice line from this seat. Not a plain "say": no client renders
+// a bot's say line (the chat panel is gone; BotFeed shows only the bot
+// kinds), so the owner would never see why their bot got worse.
+func (r *Runner) postNotice() {
+	n, ok := Capability[Noticer](r.policy)
+	if !ok {
+		return
+	}
+	if line := n.TakeNotice(); line != "" {
+		r.announce(protocol.ChatKindBotNotice, line, "")
+	}
+}
+
 // seatName resolves this seat's display name, or the short seat ID if
 // the player has gone (conceded and been reaped, say).
 func (r *Runner) seatName() string {

@@ -164,9 +164,9 @@ refresh) checks the host's key against a repo variable (#1739):
 `scripts/pin-host-key.sh` writes the variable into a `known_hosts`
 file private to the job and connects with `StrictHostKeyChecking=yes`
 against that file only. Nothing reads a runner's own
-`~/.ssh/known_hosts`. That matters because these jobs run on any of the
-self-hosted runners, and before this each runner held its own copy of
-the old key.
+`~/.ssh/known_hosts`. That matters because these jobs can run on any
+runner labelled `deploy`, and before this each runner held its own copy
+of the old key.
 
 **A rebuild changes the host key.** Every deploy then fails at its
 first ssh with `REMOTE HOST IDENTIFICATION HAS CHANGED`. That is the
@@ -190,10 +190,9 @@ check working: nothing trusts a new key until you do. After a
    ```
 4. Re-run the failed deploy (`gh run rerun <id> --failed`).
 
-A variable that is unset falls back to the old behaviour: the runner's
-own `known_hosts` with `accept-new`, plus a `::warning::` naming the
-variable. A value that is not a parseable public key fails the job
-before any ssh.
+A variable that is unset, or not a parseable public key, fails the job
+before any ssh ([ADR 0181](decisions/0181-deploy-credentials-fail-closed.md)).
+There is no `accept-new` fallback any more.
 
 ### Secrets
 
@@ -207,9 +206,9 @@ before any ssh.
 | this repo | `CMDCTRL_HOST`, `CMDCTRL_DEV_HOST` | Actions **variables**, not secrets; CD fails the run if the one for the branch is unset, or if the two are equal |
 | this repo | `CMDCTRL_PUBLIC_BASE_URL`, `CMDCTRL_DEV_PUBLIC_BASE_URL` | variables; default to the two fqdns |
 | this repo | `CMDCTRL_DISCORD_REDIRECT_URI`, `CMDCTRL_DEV_DISCORD_REDIRECT_URI` | variables; no default — unset means sign-in stays off on that host |
-| **environments `prod` and `dev`** | `CMDCTRL_DEPLOY_SSH_KEY` | environment secret, one per environment; the private key the deploy jobs (and, from `prod`, the Scryfall refresh) log in to the host as `krkn` with. Unset falls back to the runner's own `~/.ssh` key with a `::warning::`. See [Runners and credentials](#runners-and-credentials) |
-| this repo, or (preferred, #3335) **environments `prod` and `dev`** | `CMDCTRL_DISCORD_CLIENT_ID`, `CMDCTRL_DISCORD_CLIENT_SECRET`, `CMDCTRL_GITHUB_TOKEN` | secrets; shared by both hosts. Only the deploy jobs read them, so they can live in both environments instead of at repository level, where any branch's workflow run can read them |
-| this repo, or (preferred, #3335) **environment `prod`** | `CMDCTRL_DISCORD_BOT_TOKEN` | secret; **production only**, written to **both** `bot.env` (the gateway bot) and `/etc/cmd_and_ctrl/env` (the server's DM-invite route — see below). Unset skips the bot env sync with a notice; set turns a host that cannot run the bot into a CD warning (never a failure) |
+| **environments `prod` and `dev`** | `CMDCTRL_DEPLOY_SSH_KEY` | environment secret, one per environment; the private key the deploy jobs (and, from `prod`, the Scryfall refresh) log in to the host as `krkn` with. Unset fails the job ([ADR 0181](decisions/0181-deploy-credentials-fail-closed.md)). See [Runners and credentials](#runners-and-credentials) |
+| **environments `prod` and `dev`** | `CMDCTRL_DISCORD_CLIENT_ID`, `CMDCTRL_DISCORD_CLIENT_SECRET`, `CMDCTRL_GITHUB_TOKEN` | secrets; the same values in both environments, never at repository level, where any branch's workflow run could read them (#3335) |
+| **environment `prod`** | `CMDCTRL_DISCORD_BOT_TOKEN` | secret; **production only**, written to **both** `bot.env` (the gateway bot) and `/etc/cmd_and_ctrl/env` (the server's DM-invite route — see below). Unset skips the bot env sync with a notice; set turns a host that cannot run the bot into a CD warning (never a failure) |
 | this repo | `CMDCTRL_DISCORD_APP_ID`, `CMDCTRL_DISCORD_GUILD_IDS` | variables; **production only**, written to `bot.env`. The app ID equals the sign-in client ID; guild IDs are comma-separated |
 | this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_ADMIN_USER_IDS` | variable; comma-separated Discord user snowflakes. The **server's admin allowlist** on **both** hosts ([ADR 0110](decisions/0110-remember-me.md) §3; a listed person is an admin only while they have admin mode on, [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §2), written to `/etc/cmd_and_ctrl/env` on every deploy, **empty included**, by "Sync server env (admin allowlist)", which refuses a malformed value before writing it. On production it is also written to `bot.env`: who may run `/c2-end` (#614). An environment-level value overrides the repo-level one, so the two hosts can differ. Unset is supported: only the shared token is admin, and `/c2-end` refuses every caller rather than failing open |
 | this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID`, `CMDCTRL_DISCORD_PLAYER_ROLE_ID` | variables; Discord snowflakes. The **sign-up gate** on **both** hosts ([ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md) §1): with both set, an account needs that role (Elder Dragon Highlander on the C2 server) in that server. Written to `/etc/cmd_and_ctrl/env` on every deploy, **empty included**, by "Sync server env (community)", which refuses one without the other or a malformed id before writing. Both unset is supported: the gate is off |
@@ -354,12 +353,22 @@ binary runs where a deploy credential is. Keep it that way: a new job
 that wants a self-hosted runner and is not a deploy is a design
 question, not a `runs-on` line.
 
-The deploy jobs run on the runners that carry the label named by the
-repository variable `CMDCTRL_DEPLOY_RUNNER_LABEL` (`deploy`). Unset,
-they run on any self-hosted runner, as before #3335. To set it, label
-the runners first (Settings → Actions → Runners → the runner → Labels),
-then set the variable. The other order queues every deploy with no
-runner to take it. Unsetting the variable is the undo.
+The deploy jobs run only on the runners labelled `deploy`
+(`runs-on: [self-hosted, deploy]`, written into each job). Today that
+is `gunner-0` and `gunner-1`. To add or swap a deploy runner, give it
+the label (Settings → Actions → Runners → the runner → Labels) before
+taking the label off the old one; with no runner labelled `deploy`,
+every deploy queues. The label used to come from the repository
+variable `CMDCTRL_DEPLOY_RUNNER_LABEL`, and unset meant any self-hosted
+runner. That fallback is gone
+([ADR 0181](decisions/0181-deploy-credentials-fail-closed.md)) and the
+variable is unused.
+
+Any new job that must reach the hosts (a rollback, a backup check) is
+a deploy job and follows the same three rules: `runs-on:
+[self-hosted, deploy]`, `environment: dev` or `prod`, and
+`scripts/pin-host-key.sh` then `scripts/load-deploy-key.sh` before its
+first ssh, with the key removed in an `if: always()` last step.
 
 Two settings still send test jobs to self-hosted runners: making the
 repository private (the `github.event.repository.private` fallback)
@@ -369,13 +378,22 @@ included if the runners share a host or a user. Do neither without
 first giving test jobs runners of their own, on a machine or user that
 holds no deploy key.
 
+**Actions.** Every workflow uses only GitHub's own `actions/*`, and
+the repository allows no others (Settings → Actions → General). Each
+`uses:` is pinned to a full commit SHA, with its release tag in a
+trailing comment (`actions/checkout@<sha> # v7.0.1`), so a moved tag
+cannot change what runs in a job that holds a deploy key. Dependabot
+(`.github/dependabot.yml`) opens one grouped PR into `develop` a week
+that bumps the SHAs and their comments. Pin a new `uses:` line the
+same way, with the SHA from `gh api repos/<owner>/<repo>/commits/<tag> -q .sha`.
+
 **Credentials.**
 
 | Credential | Where it lives | Who can read it |
 |---|---|---|
-| SSH key for `krkn` on each host | environment secret `CMDCTRL_DEPLOY_SSH_KEY` in `dev` and `prod` (until set: the runner user's `~/.ssh`) | a job that names the environment, on that environment's branch: `develop` for `dev`, `main` for `prod` |
+| SSH key for `krkn` on each host | environment secret `CMDCTRL_DEPLOY_SSH_KEY` in `dev` and `prod`; each host's `authorized_keys` holds only its own environment's key and the owner's | a job that names the environment, on that environment's branch: `develop` for `dev`, `main` for `prod` |
 | Host public keys | variables `CMDCTRL_HOST_KEY`, `CMDCTRL_DEV_HOST_KEY` | public; see [SSH host keys](#ssh-host-keys) |
-| Server and bot secrets | `prod` and `dev` environment secrets (repository secrets until moved) | as above. A repository secret is readable by any same-repository run, on any branch |
+| Server and bot secrets | `prod` and `dev` environment secrets only; the repository-level copies were deleted on 2026-10-14 | as above. Never add one back at repository level: a repository secret is readable by any same-repository run, on any branch |
 | Census deploy key | environment secret `CENSUS_DEPLOY_KEY` in `census` | `census-publish`, on `develop` |
 | Alert webhook | repository secret `CMDCTRL_ALERT_DISCORD_WEBHOOK` | any same-repository run. `uptime.yml` runs every 10 minutes and on pull requests, so it has no environment and the secret stays here; it can only post to the one Discord channel |
 
@@ -822,6 +840,43 @@ sudo systemctl start cmd-and-ctrl
 Check `hostname` first. The command is identical on both boxes, which
 is convenient right up until it isn't.
 
+### Rolling back production
+
+(#3339.) Every deploy sets the release it replaces aside on the host, under
+`/opt/cmd_and_ctrl` (owned by `krkn`): `server/bin/cmd_and_ctrl-server.prev`,
+`bot/bin/cmd_and_ctrl-bot.prev` (production) and `prev/client/` (a copy of
+the web root). One release back, no more. A re-run of the same release
+(a failed job, a retry) leaves them alone, so they always hold the last
+*different* release. `scripts/keep-previous-release.sh` does it.
+
+To undo a bad production deploy: Actions, "cmd_and_ctrl rollback prod",
+Run workflow on branch `main`, type `rollback`. It uses the `prod`
+environment, so it has the same deploy key, branch policy and reviewers
+as `cmdctrl-cd-prod`. It swaps server, client and bot back
+(`scripts/rollback-release.sh`), restarts, and runs the authenticated
+smoke request (`scripts/smoke-release.sh`: `GET /config` reports the
+right env, then an admin login and `GET /games`). That is the same
+request every deploy now makes after its restart. No build, no CI.
+
+- **It is a swap.** The release you rolled back from becomes the new
+  `.prev`, so running it again rolls forward.
+- **Revert main next.** The rollback moves the host, not the branch; the
+  next promotion would redeploy the bad release. Open a `hotfix/*` PR
+  reverting it first.
+- **The database is not rolled back.** If the bad release ran a migration
+  the older binary may refuse to start, and the smoke request then fails.
+  Follow "Rolling back past ..." below for that migration (stop the
+  service, run its steps, start it), then re-run the smoke by hand.
+- **Nothing kept yet?** On a host that has not deployed since #3339 landed
+  there is no `.prev` and the job fails saying so. The first deploy
+  after it writes one.
+- **Further back than one release.** `main` builds are kept 7 days as
+  workflow artifacts (develop's are still deleted after the deploy): download
+  `cmdctrl-server-bin` from the run page, or revert and promote.
+- **A hand rollback** is the same swap: `mv` each `.prev` over its file,
+  `rsync -a --delete /opt/cmd_and_ctrl/prev/client/ /var/www/cmdctrl-client/`,
+  `sudo systemctl restart cmd-and-ctrl`.
+
 **Rolling back past the lobby database.** Since S34 sub-PR 3
 ([ADR 0051](decisions/0051-user-database.md) decision 4) the lobby's
 half of a game is rows in `db/cmdctrl.sqlite`. The first boot of that
@@ -1066,6 +1121,27 @@ recreates the column with every table opted out.
 `TestMigration0024RollbackByHand` runs exactly this sequence and then rolls
 forward.
 
+Migration 0025 (ADR 0182, your own model key for AI seats) adds the
+`model_keys` table (each person's sealed key, its last four characters,
+provider, model, limits, counts and dates) and two nullable columns,
+`seats.bot_key_user_id` and `seats.bot_key_model`, on a bot that runs on
+its owner's key. An older binary refuses the v25 schema. First end any
+active table with an own-key bot if the server has no model of its own
+(the older binary cannot build that seat). Then drop them by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE model_keys; ALTER TABLE seats DROP COLUMN bot_key_user_id; ALTER TABLE seats DROP COLUMN bot_key_model; DELETE FROM schema_migrations WHERE version = 25;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs every saved key: rolling forward again recreates the table empty,
+so everyone who had added one adds it again in Settings › AI opponents.
+`TestMigration0025RollbackByHand` runs exactly this sequence and then rolls
+forward.
+
 Migration 0021 (ADR 0161, the #lfg board) adds `games.lfg` (0 or 1,
 default 0) and `games.lfg_message_id` (nullable). An older binary refuses
 the v21 schema. Drop them by hand:
@@ -1192,6 +1268,7 @@ to both hosts on every deploy.
 | Script | [`scripts/backup-offsite.sh`](../scripts/backup-offsite.sh), deployed to `/opt/cmd_and_ctrl/scripts/` |
 | Units | [`deploy/cmd-and-ctrl-backup.service`](../deploy/cmd-and-ctrl-backup.service) and [`.timer`](../deploy/cmd-and-ctrl-backup.timer), installed by the CD step "Ensure off-site backup" |
 | Credentials | `/etc/cmd_and_ctrl/backup.env`, `root:cmdctrl 0640`, rewritten by CD on every deploy from the Actions secrets below. It is a separate file from the server's `env`, so the game server never loads R2 credentials |
+| Rehearsal | [`scripts/restore-rehearsal.sh`](../scripts/restore-rehearsal.sh) with its [service](../deploy/cmd-and-ctrl-restore-rehearsal.service) and [timer](../deploy/cmd-and-ctrl-restore-rehearsal.timer); see [Restore rehearsal](#restore-rehearsal) |
 | restic cache | `/var/cache/cmd-and-ctrl-backup` (the unit's `CacheDirectory=`) |
 
 The unit runs as `cmdctrl` with the data dir mounted read-only. It has
@@ -1210,6 +1287,8 @@ Relative to `/var/lib/cmd_and_ctrl/data`, whichever of these exist:
 | `lobby/` | game metadata and invite tokens |
 | `replays/` | replay logs |
 | `bugreports/` | reporter screenshots and pinned replays |
+| `playmats/` | uploaded playmat images (ADR 0128). The database only holds the pointer, so without this directory a restore leaves every uploaded mat a dead link (#3340) |
+| `deletions/` | the account-deletion ledger (ADR 0149, #3340): one line per deleted account, ids only. A restore re-applies it ([below](#restore-rehearsal)) |
 
 **Not backed up:**
 
@@ -1355,6 +1434,73 @@ In place of `restic snapshots` you can run:
 - `/opt/cmd_and_ctrl/scripts/backup-offsite.sh --check`, which runs a
   full backup with the check on any day of the week.
 
+### Restore rehearsal
+
+A backup nobody has restored is a hope. `scripts/restore-rehearsal.sh`,
+run on the 1st of each month at about 06:00 host time by
+`cmd-and-ctrl-restore-rehearsal.timer` (installed and enabled by CD
+together with the backup timer), restores the **latest snapshot of that
+host's own bucket** into a scratch directory under
+`/var/lib/cmd-and-ctrl-restore-rehearsal` and runs
+`/opt/cmd_and_ctrl/server/bin/cmd_and_ctrl-restorecheck verify` on it:
+
+- opens the database copy with the *current* binary, which applies every
+  pending migration, so a migration that cannot run on real data fails
+  here and not in a disaster;
+- `PRAGMA integrity_check` and `foreign_key_check`;
+- re-applies the deletion ledger (below) to the scratch copy;
+- checks every `user_playmats` row has its image file in the snapshot.
+
+It never touches the live data dir. The result goes to
+`/var/lib/cmdctrl-metrics/restore-rehearsal.prom`:
+`cmdctrl_restore_rehearsal_last_exit_code` and
+`cmdctrl_restore_rehearsal_last_success_timestamp_seconds`. Alert
+`RestoreRehearsalStale` (warning) fires when the last run failed or no run
+has passed for 35 days. A host with no backup configured has no rehearsal
+either: the timer is disabled with the backup timer.
+
+```sh
+systemctl list-timers cmd-and-ctrl-restore-rehearsal.timer
+sudo systemctl start cmd-and-ctrl-restore-rehearsal      # run it now; blocks until done
+journalctl -u cmd-and-ctrl-restore-rehearsal -n 50 --no-pager
+```
+
+To rehearse an older snapshot, add
+`Environment=CMDCTRL_REHEARSAL_SNAPSHOT=<id>` with a drop-in
+(`systemctl edit`), run it, and remove the drop-in.
+
+### Deletions survive a restore
+
+Self-serve account deletion (ADR 0149) leaves a tombstone **in the
+database only**, so restoring an older database copy would bring
+deleted accounts back with their decks, settings and Discord links. The
+server therefore appends one line to `data/deletions/ledger.jsonl` after
+every committed deletion: the account id and the time, and nothing else
+(no name, no Discord id). The file is append-only and part of the
+nightly backup, so the latest snapshot's ledger is a superset of any
+older one's.
+
+After **any** restore of the database, and before starting the server,
+re-apply it:
+
+```sh
+sudo -u cmdctrl /opt/cmd_and_ctrl/server/bin/cmd_and_ctrl-restorecheck reapply \
+  -data-dir /var/lib/cmd_and_ctrl/data -dry-run      # what it would delete
+sudo -u cmdctrl /opt/cmd_and_ctrl/server/bin/cmd_and_ctrl-restorecheck reapply \
+  -data-dir /var/lib/cmd_and_ctrl/data
+```
+
+It runs the same deletion transaction as the server (it skips the
+"still seated at a live table" refusal, since the person asked to be
+deleted before the restore point), removes the playmat files, and is safe
+to run twice. If the database came from an *older* snapshot than the
+ledger, restore the ledger from `latest` and pass it with
+`-ledger /path/to/ledger.jsonl`. Limits: it covers the database and the
+playmat files; the engine files of past games (replays, restore points)
+that name the person are not rewritten, and a deletion in the last hours
+before a total loss is only as safe as the last nightly snapshot (up to
+about 25 hours).
+
 ### Restore runbook: production's latest snapshot onto the dev host
 
 Rehearse this at least once, which is the #1031 exit criterion, and
@@ -1409,7 +1555,7 @@ Run everything below **on the dev host**. Check `hostname` first.
 
    ```sh
    D=/var/lib/cmd_and_ctrl/data S=/var/tmp/cmdctrl-restore
-   for d in restore replays lobby bugreports games; do
+   for d in restore replays lobby bugreports games playmats deletions; do
      if [ -d "$S/$d" ]; then sudo rm -rf "$D/$d"; sudo cp -a "$S/$d" "$D/$d"; fi
    done
    sudo install -d -o cmdctrl -g cmdctrl -m 0700 "$D/db"
@@ -1421,10 +1567,14 @@ Run everything below **on the dev host**. Check `hostname` first.
    owners, which need not match dev's `cmdctrl` user.
 
    ```sh
-   sudo chown -R cmdctrl:cmdctrl "$D/db" "$D/restore" "$D/replays" "$D/lobby" "$D/bugreports" "$D/games"
+   sudo chown -R cmdctrl:cmdctrl "$D/db" "$D/restore" "$D/replays" "$D/lobby" "$D/bugreports" "$D/games" "$D/playmats" "$D/deletions"
    sudo chmod 0700 "$D/db"
    sudo chmod 0600 "$D/db/cmdctrl.sqlite"
    ```
+
+   Then **re-apply the account deletions** ([Deletions survive a
+   restore](#deletions-survive-a-restore)): `restorecheck reapply`,
+   dry run first. Skipping this is how deleted accounts come back.
 
 5. **Start and verify.**
 
@@ -1450,7 +1600,7 @@ Run everything below **on the dev host**. Check `hostname` first.
 
    ```sh
    sudo systemctl stop cmd-and-ctrl
-   for d in games lobby restore replays bugreports; do
+   for d in games lobby restore replays bugreports playmats deletions; do
      sudo find "/var/lib/cmd_and_ctrl/data/$d" -mindepth 1 -delete
    done
    sudo rm -f /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite* /var/lib/cmd_and_ctrl/data/db/cmdctrl.backup.sqlite

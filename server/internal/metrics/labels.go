@@ -61,6 +61,8 @@ var labelSets = map[string]labelSet{
 	"cause":     oneOf(botFallbackCauseLabels()...),
 	// Capacity (capacity.go).
 	"resource": oneOf(capacityResources...),
+	// Bot model budget (botwatch.go).
+	"period": oneOf(budgetPeriods...),
 }
 
 // familyLabelSets are rows for one metric family only, consulted
@@ -98,6 +100,9 @@ var familyLabelSets = map[string]map[string]labelSet{
 	},
 	"cmdctrl_bot_model_tokens_total": {
 		"direction": oneOf(directionLabels...),
+	},
+	"cmdctrl_auth_failures_total": {
+		"reason": oneOf(authFailureReasons...),
 	},
 	"cmdctrl_dm_notifications_total": {
 		"kind":   oneOf(dmKindLabels...),

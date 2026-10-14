@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -32,6 +33,16 @@ type SeatSpec struct {
 	// player's own first turn. Nil — every other table — leaves the
 	// choice to the tier, as ADR 0121 §4 has it. See first_turn.go.
 	FirstTurnTo *int
+	// GameID is the table the seat plays at. The Manager fills it in
+	// from the room before it asks the factory for a policy; a caller
+	// building a SeatSpec leaves it zero.
+	GameID uuid.UUID
+	// KeyOwner, when set, is the signed-in person whose own model key
+	// this seat runs on (ADR 0182): the person who added it. Only a
+	// model tier reads it. KeyModel is the model id the seat asks for,
+	// empty for the key's own default.
+	KeyOwner uuid.UUID
+	KeyModel string
 }
 
 // Manager owns the runners for every bot seat on the server: one
@@ -284,6 +295,7 @@ func (m *Manager) StartBots(room *ws.Room, seats []SeatSpec) {
 				"game", gameID.String(), "seat", seat.PlayerID.String(), "tier", seat.Tier)
 			continue
 		}
+		seat.GameID = gameID
 		policy, err := factory.NewPolicy(seat)
 		if err != nil {
 			m.log.Error("bot seat has no policy; seat will not act",
@@ -363,6 +375,26 @@ func (m *Manager) Runners(gameID uuid.UUID) []*Runner {
 		return append([]*Runner(nil), bg.runners...)
 	}
 	return nil
+}
+
+// MaxOwed is the longest any live bot seat has had a legal move to make
+// and made none (Runner.OwedFor), zero when none is waiting. It backs
+// the cmdctrl_bot_seat_owed_seconds_max gauge: a seat that stays above
+// a couple of minutes is wedged. Runners are read under the manager's
+// lock and asked outside it.
+func (m *Manager) MaxOwed() time.Duration {
+	m.mu.Lock()
+	var runners []*Runner
+	for _, bg := range m.games {
+		runners = append(runners, bg.runners...)
+	}
+	m.mu.Unlock()
+	now := time.Now()
+	var longest time.Duration
+	for _, r := range runners {
+		longest = max(longest, r.OwedFor(now))
+	}
+	return longest
 }
 
 // Shutdown stops every game's runners.

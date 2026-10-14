@@ -13,6 +13,74 @@ automatically at the right stack boundary. Each card is one `init()` in its
 own file — one-file-per-card keeps `git blame` clean and the merge-conflict
 surface tiny.
 
+## Index of subsections
+
+Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points here.
+
+  - [Recipe](#recipe)
+  - [Random effects (#744)](#random-effects-744)
+  - [Adding a mana ability (S15+)](#adding-a-mana-ability-s15)
+  - [Adding a static ability (S16+)](#adding-a-static-ability-s16)
+  - [Granting an ability to another permanent (ADR 0093, #754)](#granting-an-ability-to-another-permanent-adr-0093-754)
+  - [Alternative costs for every spell you cast (ADR 0118, #2163)](#alternative-costs-for-every-spell-you-cast-adr-0118-2163)
+  - [Abilities any player may activate (ADR 0106, #1793)](#abilities-any-player-may-activate-adr-0106-1793)
+  - [Declaring what a card does: Purpose (ADR 0126 §6)](#declaring-what-a-card-does-purpose-adr-0126-6)
+  - [Declaring what an ability answers (ADR 0142)](#declaring-what-an-ability-answers-adr-0142)
+  - [Paying energy (ADR 0129, #1995)](#paying-energy-adr-0129-1995)
+  - [Adding a replacement effect (S17+)](#adding-a-replacement-effect-s17)
+  - [Adding a copy effect (S16.5+)](#adding-a-copy-effect-s165)
+  - [Adding a combat-keyword card (S18+)](#adding-a-combat-keyword-card-s18)
+  - [Adding a "can't" card (S24+)](#adding-a-cant-card-s24)
+  - ["Players can't play lands" (ADR 0109 §4, #1895)](#players-cant-play-lands-adr-0109-4-1895)
+  - ["Each player may play the cards they exiled" and "can't play cards from your hand" (ADR 0066, #2559)](#each-player-may-play-the-cards-they-exiled-and-cant-play-cards-from-your-hand-adr-0066-2559)
+  - ["Cards in graveyards can't be targeted" (ADR 0109 §6, #1885)](#cards-in-graveyards-cant-be-targeted-adr-0109-6-1885)
+  - ["Spells you control can't be countered" (ADR 0106, #1806)](#spells-you-control-cant-be-countered-adr-0106-1806)
+  - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
+  - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
+  - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
+  - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
+  - [State triggers (ADR 0107, #1858)](#state-triggers-adr-0107-1858)
+  - [Choices made at resolution (#796, #568)](#choices-made-at-resolution-796-568)
+  - ["Reveals their hand. You choose a … card from it" (ADR 0116, #2078)](#reveals-their-hand-you-choose-a--card-from-it-adr-0116-2078)
+  - [Adding a `PendingChoiceKind` (#730, #794)](#adding-a-pendingchoicekind-730-794)
+  - [Cumulative upkeep (#567, CR 702.24)](#cumulative-upkeep-567-cr-70224)
+  - [Echo (ADR 0108 §5, #1888, CR 702.30)](#echo-adr-0108-5-1888-cr-70230)
+  - [The CR 732 loop breaker (#628)](#the-cr-732-loop-breaker-628)
+  - [Untapping in another player's untap step (#74)](#untapping-in-another-players-untap-step-74)
+  - [Phasing (#1199, CR 702.26)](#phasing-1199-cr-70226)
+  - [Adding a preparation card (S46+, ADR 0090)](#adding-a-preparation-card-s46-adr-0090)
+  - [Adding a hideaway card (S43+, ADR 0091)](#adding-a-hideaway-card-s43-adr-0091)
+  - [Adding a creature-type card (S26+)](#adding-a-creature-type-card-s26)
+  - [Adding a choose-a-color card (#742)](#adding-a-choose-a-color-card-742)
+  - [Shared vocabulary, and the clone gate](#shared-vocabulary-and-the-clone-gate)
+  - [Winning, losing, and "can't lose" (S40, ADR 0057)](#winning-losing-and-cant-lose-s40-adr-0057)
+  - [Exert (ADR 0130, #2048, CR 701.43)](#exert-adr-0130-2048-cr-70143)
+  - [When NOT to add a catalog entry](#when-not-to-add-a-catalog-entry)
+  - [Adding a trigger doubler (#752)](#adding-a-trigger-doubler-752)
+  - [Emblems (#623)](#emblems-623)
+  - [A loyalty cost of −X (ADR 0032 amendment 2026-10-10, #1944)](#a-loyalty-cost-of-x-adr-0032-amendment-2026-10-10-1944)
+  - [Planeswalker statics, eminence and loyalty timing (ADR 0140 and amendments, #2797)](#planeswalker-statics-eminence-and-loyalty-timing-adr-0140-and-amendments-2797)
+  - [The Ring tempts you (ADR 0114, #2076)](#the-ring-tempts-you-adr-0114-2076)
+  - [Voting: will of the council and council's dilemma (ADR 0146, #2143, CR 701.38)](#voting-will-of-the-council-and-councils-dilemma-adr-0146-2143-cr-70138)
+  - [Designations: Class levels, solved Cases, station thresholds (#757, #759)](#designations-class-levels-solved-cases-station-thresholds-757-759)
+  - [Bestow (ADR 0141, #2862, CR 702.103)](#bestow-adr-0141-2862-cr-702103)
+  - [Auras that enchant a card in a graveyard (ADR 0154, #1780)](#auras-that-enchant-a-card-in-a-graveyard-adr-0154-1780)
+  - [Suspect (CR 701.60, #2698)](#suspect-cr-70160-2698)
+  - [Meld (ADR 0145, #2699, CR 701.42)](#meld-adr-0145-2699-cr-70142)
+  - [More Than Meets the Eye, convert and living metal (ADR 0152, #1856)](#more-than-meets-the-eye-convert-and-living-metal-adr-0152-1856)
+  - ["If a spell or ability an opponent controls causes you to discard" (ADR 0153, #1861)](#if-a-spell-or-ability-an-opponent-controls-causes-you-to-discard-adr-0153-1861)
+  - [Partner with (CR 702.124j, #2142)](#partner-with-cr-702124j-2142)
+  - [Choose a Background, partner and Doctor's companion (ADR 0144, #2874)](#choose-a-background-partner-and-doctors-companion-adr-0144-2874)
+  - [Companion (CR 702.139, ADR 0172, #3401)](#companion-cr-702139-adr-0172-3401)
+  - [Renown (CR 702.112, #2049)](#renown-cr-702112-2049)
+  - [Adding a Room or a split card (ADR 0103, #1756)](#adding-a-room-or-a-split-card-adr-0103-1756)
+  - [Abilities from the hand (#660)](#abilities-from-the-hand-660)
+  - [Special actions from the hand (#658, #659)](#special-actions-from-the-hand-658-659)
+  - [Dash, freerunning, a flash surcharge, training, expend, encore and connive (#3172)](#dash-freerunning-a-flash-surcharge-training-expend-encore-and-connive-3172)
+  - [Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)](#attacking-statics-tokens-that-enter-attacking-or-blocking-magecraft-copies-and-damage-by-toughness-3172)
+  - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
+  - [When in doubt](#when-in-doubt)
+
 ### Recipe
 
 1. **Find the oracle ID.** The Scryfall bulk dump at
@@ -2220,6 +2288,29 @@ object whose static it is, CR 400.7); "that creature" (the recipient) is
 `Then` without `ThenPer`, and `TestPreventionStaticsOnlyPrevent` fails a
 prevention static whose `Replace` does anything but change the event.
 
+#### "Instead exile it and you gain 2 life" (ADR 0178, #2950)
+
+A zone-change replacement whose modified event also changes a player's
+life (The Darkness Crystal) must not change the life inside `Replace`.
+The gain is a life event of its own: it can pause on a CR 616 question,
+and it has to land after the card moves (CR 608.2c). Declare it on the
+event instead:
+
+```go
+Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
+    ev.NewZone = game.ZoneExile
+    ev.NewZoneOwner = uuid.Nil
+    return g.ChangeLifeAfterReplacedMoveForEffect(ev, src.InstanceID, src.Controller, 2)
+},
+```
+
+The move's finisher lands the card, then runs each declared change
+through the life pipeline, then the move's own continuation (the
+destroying spell's "then draw a card"), which waits if a change asks a
+question. Player and source are fixed when the replacement applies. The
+change still happens if a later replacement redirects or cancels the
+move (CR 614.6). A move paid as a cost settles it without asking.
+
 ### "Enters under the control of an opponent of your choice" (ADR 0102, #1759)
 
 Captive Audience, Pendant of Prosperity, Abby, Merciless Soldier and
@@ -2961,6 +3052,19 @@ creature, timed by an ADR 0063 Duration. The same pricer reads it beside
 the battlefield statics, so the declaration, the enumerator and the bot
 all see it, and it is plain data, so a table holding one is a restore
 point. It defends the player only, not their planeswalkers.
+
+**A tax on EVERY attack** ("This turn, creatures can't attack unless
+their controller pays {X} for each attacking creature they control", War
+Tax, #3456) is the same record with a zero `Player`:
+
+```go
+g.AnyAttackTaxForEffect(item.SourceCardID, fmt.Sprintf("{%d}", item.XValue),
+    g.UntilEndOfTurnDuration(), label)
+```
+
+It taxes an attack on any player or planeswalker. Pass the mana already
+resolved from X: each activation writes its own record, so they stack,
+and `{0}` writes nothing.
 
 **A PLAYER who can't attack you** (every creature they control, including
 ones that arrive later) is a grant on that player, not a bit on their
@@ -8172,6 +8276,23 @@ Three things to know:
   source, so a scope's "your" is the emblem's owner, and a refusal names
   the emblem by its label.
 
+### Compleated (CR 702.150a, ADR 0183, #2946)
+
+A compleated planeswalker declares the keyword and its replacement, and
+nothing else:
+
+```go
+PrintedKeywords: []string{"compleated"},
+Replacements:    []game.ReplacementEffect{Compleated()},
+```
+
+`Compleated()` lowers the starting-loyalty placement
+(`ReplacementEvent.StartingLoyalty`) by two for each printed Phyrexian
+symbol the cast paid with life (`Card.PhyrexianLifePaid`). It cancels
+the placement at zero. A planeswalker that was not cast enters with its
+printed loyalty. Doubling Season and other loyalty replacements are
+ordered against it by the controller (CR 616).
+
 ### A loyalty cost of −X (ADR 0032 amendment 2026-10-10, #1944)
 
 A "−X:" loyalty ability is `Cost: LoyaltyMinusX()`. The activator announces X with the activation
@@ -8363,8 +8484,27 @@ var pleaForPowerVoted = VoteResultThen("vote/plea-for-power", func(ctx *Context,
 
 The engine asks every player in turn order from the controller, logs
 each vote as it is cast, shows the tally on every seat's dock, and skips
-a player who has left. Secret council (#2926) and "whenever players
-finish voting" (#2927) are not this shape.
+a player who has left. "Whenever players finish voting" (#2927) is
+`WheneverPlayersFinishVoting`, a trigger, not this shape.
+
+**Secret council** ([ADR 0180](decisions/0180-secret-council.md),
+#2926): "each player secretly votes for …, then those votes are
+revealed" is the same `Vote` with `Secret: true`. Write nothing else:
+the engine keeps every ballot off the wire, the log and the bot's view
+until the last one is in, then reveals them on one log line before
+`Then` runs. Three more fields cover what the secret council cards print:
+
+- `OthersOnly: true` is "votes for **another** player" (Mob Verdict):
+  no voter is offered themselves. Build player options with
+  `VoteForPlayers(g)` and read them back with `VotesReceived(r)`.
+- `Abstain: "No creature"` is "votes for **up to one** creature" (Vault
+  11: Voter's Dilemma): every ballot offers a vote for nothing, which
+  is no ballot, so `r.MostVotes()` is empty when nobody chose a creature.
+- `SelfBest: true` tells the bot a voter wants the option naming them
+  (Círdan the Shipwright: the votes you receive draw you cards).
+
+"They gain 'This creature can't attack its owner'" (Elrond) is
+`ScopedEffectFor{Mods: []game.Mod{game.CantAttackOwnerMod()}}`.
 
 ### A villainous choice (ADR 0018 amendment 2026-10-13, #3140, CR 701.55)
 

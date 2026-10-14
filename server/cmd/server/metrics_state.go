@@ -5,6 +5,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/budget"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
@@ -36,5 +37,29 @@ func registerGameMetrics(reg prometheus.Registerer, log *slog.Logger, mgr *ws.Ro
 	reg.MustRegister(metrics.NewDBCollector(database, log))
 	if sqlUsers, ok := userStore.(*users.SQLStore); ok {
 		reg.MustRegister(metrics.NewUsersCollector(sqlUsers, l, log))
+	}
+}
+
+// registerBotMetrics registers the bot watch gauges (docs/monitoring.md):
+// the longest a bot seat has owed an action, always, and the hosted-model
+// spend against its caps when there is a spend guard (b is nil on a
+// server with no model transport, and the families are then absent
+// rather than zero).
+func registerBotMetrics(reg prometheus.Registerer, seats metrics.BotSeatSource, b lobby.BotModelBudget) {
+	reg.MustRegister(metrics.NewBotSeatCollector(seats))
+	if b != nil {
+		reg.MustRegister(metrics.NewBudgetCollector(budgetSource{b}))
+	}
+}
+
+// budgetSource reads the spend guard's Status for the budget collector.
+type budgetSource struct{ b lobby.BotModelBudget }
+
+func (s budgetSource) BudgetReading() metrics.BudgetReading {
+	st := s.b.Status()
+	return metrics.BudgetReading{
+		DayTokens: st.DailyTokens, DayLimit: st.DailyLimit,
+		MonthTokens: st.MonthlyTokens, MonthLimit: st.MonthlyLimit,
+		Blocked: st.State != budget.StateOK,
 	}
 }

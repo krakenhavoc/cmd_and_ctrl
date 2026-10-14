@@ -404,6 +404,20 @@ func (l *Lobby) makeRematchTable(name string, seats []SeatInfo, decks map[uuid.U
 		}
 		// A bot that cannot be seated (its tier gone, the load cap) is
 		// skipped: the host can add another from the new table.
+		if s.BotKeyOwner != uuid.Nil {
+			// ADR 0182: a bot on someone's own model key comes along
+			// only when that someone is the one asking for the
+			// rematch. Nobody else may put a seat on their key, and
+			// the seat without it would be a model tier this server
+			// may not be able to play.
+			if s.BotKeyOwner != parseUUIDOrNil(hostSeat.UserID) {
+				continue
+			}
+			if _, _, err := l.AddBotOnKey(newID, s.Name, s.BotTier, s.BotDeck, s.DeckName, cards, s.BotKeyOwner, s.BotKeyModel); err != nil {
+				slog.Default().Warn("rematch: seating a bot failed", "game_id", newID, "bot", s.Name, "err", err)
+			}
+			continue
+		}
 		if _, _, err := l.AddBot(newID, s.Name, s.BotTier, s.BotDeck, s.DeckName, cards); err != nil {
 			slog.Default().Warn("rematch: seating a bot failed", "game_id", newID, "bot", s.Name, "err", err)
 		}

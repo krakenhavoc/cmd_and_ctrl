@@ -89,6 +89,12 @@ func seatRecords(seats []SeatInfo) []SeatRecord {
 		}
 		if s.IsBot {
 			rec.BotTier = s.BotTier
+			// ADR 0182: whose own model key the seat runs on, so a
+			// restart brings it back on the same key.
+			if s.BotKeyOwner != uuid.Nil {
+				rec.BotKeyUserID = s.BotKeyOwner.String()
+				rec.BotKeyModel = s.BotKeyModel
+			}
 		}
 		// ADR 0124 §6: the agent badge gets a column, so a table whose
 		// restore point is gone still shows its agent seat as one.
@@ -495,7 +501,11 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 			DiscordID: s.PendingDiscordID,
 			IsBot:     s.BotTier != "",
 			BotTier:   s.BotTier,
+			// The own-key binding rides the row only (ADR 0182).
+			BotKeyOwner: parseUUIDOrNil(s.BotKeyUserID),
+			BotKeyModel: s.BotKeyModel,
 		}
+		info.BotOwnKey = info.BotKeyOwner != uuid.Nil
 		if p := room.Game.PlayerByID(s.PlayerID); p != nil {
 			info.DeckUploaded = p.DeckImported
 			if p.DiscordID != "" {

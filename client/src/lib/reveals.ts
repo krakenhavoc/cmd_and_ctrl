@@ -71,13 +71,25 @@ export function isRandomLog(log: LogEvent): boolean {
   return log.kind === "roll" || log.kind === "flip";
 }
 
+// isVoteRevealLog is a secret vote's reveal (ADR 0180): every ballot at
+// once, on one server-rendered line. It rides the same strip as a roll,
+// with no die to wait for.
+export function isVoteRevealLog(log: LogEvent): boolean {
+  return log.kind === "votes_revealed";
+}
+
+// isAnnouncedLog is every log kind the strip announces as a line.
+function isAnnouncedLog(log: LogEvent): boolean {
+  return isRandomLog(log) || isVoteRevealLog(log);
+}
+
 // Reconnecting clients prime the current log window. Those outcomes
 // already happened before the client was watching, so they must not
 // appear as fresh announcements.
 export function primeRandomEvents(logs: readonly LogEvent[] | undefined): RandomState {
   const seen = new Set<number>();
   for (const log of logs ?? []) {
-    if (isRandomLog(log)) seen.add(log.seq);
+    if (isAnnouncedLog(log)) seen.add(log.seq);
   }
   return { seen, cues: [] };
 }
@@ -94,7 +106,7 @@ export function trackRandomEvents(
   const newest = logs === undefined ? Infinity : Math.max(0, ...logs.map((log) => log.seq));
   const cues = prev.cues.filter((c) => c.log.seq <= newest && now - c.shownAt < RANDOM_CUE_TTL_MS);
   for (const log of logs ?? []) {
-    if (!isRandomLog(log) || seen.has(log.seq)) continue;
+    if (!isAnnouncedLog(log) || seen.has(log.seq)) continue;
     seen.add(log.seq);
     // ADR 0121 §6: the strip's `opening roll` banner already shows
     // every opening die, so none raises a cue of its own.

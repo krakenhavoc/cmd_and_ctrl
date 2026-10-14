@@ -22,10 +22,16 @@ import (
 //   - The replacement is Liesa's "if a creature an opponent controls
 //     would die, exile it instead" narrowed to nontoken creatures,
 //     with the exile linked to the Crystal (ReplacementEvent.ExiledWith,
-//     CR 607.2a) and the 2 life gained as the replacement applies. The
-//     creature never died (CR 700.4), so its dies-triggers do not fire.
-//     A commander is exiled too and its owner then decides about the
-//     command zone (CR 903.9a).
+//     CR 607.2a). The creature never died (CR 700.4), so its
+//     dies-triggers do not fire. A commander is exiled too and its
+//     owner then decides about the command zone (CR 903.9a).
+//   - "And you gain 2 life" is the second instruction of the modified
+//     event (CR 608.2c, 614.6; ADR 0178, #2950): declared with
+//     ChangeLifeAfterReplacedMoveForEffect, it lands after the exile,
+//     through the life pipeline, and whatever the destroying effect does
+//     next waits for it, including a CR 616 question between two life
+//     replacements. The player and source are fixed as the replacement
+//     applies, so the Crystal leaving afterwards changes nothing.
 //   - The ability TARGETS a creature card whose link names this Crystal
 //     (#3259): TargetCardInExile narrowed by ExiledWithThis, which is
 //     the object, so a second Crystal's exiles are not offered. The card
@@ -59,7 +65,7 @@ func init() {
 				ev.NewZone = game.ZoneExile
 				ev.NewZoneOwner = uuid.Nil
 				ev.ExiledWith = game.PermissionCardRef{ID: src.InstanceID, Epoch: src.ObjectEpoch}
-				return g.ChangePlayerLifeForEffect(src.InstanceID, src.Controller, 2)
+				return g.ChangeLifeAfterReplacedMoveForEffect(ev, src.InstanceID, src.Controller, 2)
 			},
 			Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
 				return src.Controller

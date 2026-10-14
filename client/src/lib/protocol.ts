@@ -343,7 +343,7 @@ export interface ChatPayload {
 
 // ChatKind mirrors protocol.ChatKind* in
 // server/internal/protocol/protocol.go.
-export type ChatKind = "say" | "bot_improvisation" | "bot_reasoning";
+export type ChatKind = "say" | "bot_improvisation" | "bot_reasoning" | "bot_notice";
 
 // A bot disclosing that it applied an effect by hand because the
 // rules engine can't run the card. Never hidden: an unannounced
@@ -352,6 +352,10 @@ export const CHAT_BOT_IMPROVISATION = "bot_improvisation";
 // A bot narrating why it chose a move. Debug output, hidden unless
 // the viewer turns on "show bot reasoning".
 export const CHAT_BOT_REASONING = "bot_reasoning";
+// A bot telling the table about the seat itself, not a move: an
+// own-key seat falling back to the heuristic (ADR 0182). Always shown,
+// and dismissable.
+export const CHAT_BOT_NOTICE = "bot_notice";
 
 // View types mirror server/internal/protocol/view.go.
 
@@ -972,6 +976,13 @@ export type LogKind =
   // the card prints it (a word, or the name of the permanent or player
   // voted for) and `card_id` the card that called the vote.
   | "vote"
+  // ADR 0180: `seat` cast a ballot in a secret vote; the line says
+  // nothing about what they voted for. `card_id` is the card.
+  | "vote_secret"
+  // ADR 0180: a secret vote's ballots, revealed together on one line.
+  // `seat` is the vote's controller, `card_id` the card, and `seats` and
+  // `votes` are parallel: each voter and what they voted for.
+  | "votes_revealed"
   // ADR 0150 §5: `seat` paid, or didn't pay, an "unless any player pays"
   // offer. `label` is the payment ("{2}") and `card_id` the card whose
   // effect it was.
@@ -1227,8 +1238,11 @@ export interface LogEvent {
   call?: "heads" | "tails" | "pay" | "dont_pay" | "yes" | "no";
   wins?: number;
   // ADR 0121 §3: the seats an `opening_roll` entry names — the seats
-  // that tied, or the seats the host rolled for.
+  // that tied, or the seats the host rolled for. On `votes_revealed`
+  // (ADR 0180), each vote's voter, parallel to `votes`.
   seats?: number[];
+  // ADR 0180: what each seat in `seats` voted for, on `votes_revealed`.
+  votes?: string[];
   // ADR 0121 §5: a `table_roll` entry's identity, the game's table-roll
   // count after it (1 for the first). An undo of an earlier action
   // writes the line again under a new `seq` and the same `roll_id`, so
@@ -2068,9 +2082,21 @@ export interface CouncilVoteView {
   // The vote's choices in printed order, and the votes each has so far.
   options: string[];
   tally: number[];
+  // In a secret vote, only the viewer's own ballots (option -2 is a vote
+  // for nothing).
   ballots?: { voter: string; option: number }[];
+  // ADR 0180: a secret vote. The tally is all zeros and `ballots` holds
+  // the viewer's own; `voted` lists who has voted so far. The votes are
+  // revealed together in the log (`votes_revealed`) when the last is in.
+  secret?: boolean;
+  voted?: string[];
+  // ADR 0180: the "vote for nothing" option of a vote for up to one.
+  abstain?: string;
+  // ADR 0180, a bot hint: a voter wants the option naming themselves.
+  self_best?: boolean;
   // Each of the prompt's pick_options as an index into `options`; -1 is
-  // the "Don't vote again" option of an extra vote the voter may decline.
+  // the "Don't vote again" option of an extra vote the voter may decline,
+  // -2 the "vote for nothing" option of a vote for up to one.
   offered: number[];
   optional?: boolean;
   votes_left?: number;
@@ -2184,10 +2210,11 @@ export interface PlayerView {
   undo_auto_answer?: number;
   // Why an `undo` from this seat would be refused by the undo stack
   // right now (#2963): "nothing" (nothing on the stack), "not_yours"
-  // (the most recent action is another seat's) or "game_over". Absent
+  // (the most recent action is another seat's), "game_over" or
+  // "secret_vote" (it revealed a secret vote, ADR 0180). Absent
   // means the stack allows it; the per-turn budget is separate
   // (undos_remaining). Own view only.
-  undo_blocked?: "nothing" | "not_yours" | "game_over";
+  undo_blocked?: "nothing" | "not_yours" | "game_over" | "secret_vote";
   // Number of mulligans this player has taken in the current
   // opening-hand window. Omitempty on the wire — absent means 0.
   // Added in S08.

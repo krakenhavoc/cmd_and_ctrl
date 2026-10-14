@@ -78,6 +78,13 @@ describe("the Now card's head (ADR 0158 §1 item 2)", () => {
       seatLine(meta(), seat(1, { is_bot: true, bot_tier: "heuristic", bot_deck: "raid" }), name)
         .text,
     ).toBe("heuristic · Raid");
+    expect(
+      seatLine(
+        meta(),
+        seat(2, { is_bot: true, bot_tier: "assisted", bot_deck: "raid", bot_own_key: true }),
+        name,
+      ).text,
+    ).toBe("assisted (own key) · Raid");
   });
 
   it("keeps ended and archived tables out of Now", () => {

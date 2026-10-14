@@ -69,6 +69,8 @@ export function undoBlockedReason(seat: PlayerView | null, isAdmin: boolean): st
       return "the last action was not yours — you can only undo your own most recent action";
     case "game_over":
       return "the game is over — only the admin can undo past its end";
+    case "secret_vote":
+      return "the last action revealed a secret vote — it can't be taken back";
   }
   if (!hasUndoBudget(seat, false)) {
     return "no undos remaining this turn (refreshes on your next untap)";

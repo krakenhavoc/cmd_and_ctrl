@@ -14,6 +14,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/budget"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
@@ -36,11 +38,13 @@ const monitoringDir = "../../../deploy/monitoring"
 // textfileMetrics are cmdctrl_ names the server does not register:
 // files other jobs write for Alloy's textfile collector.
 var textfileMetrics = map[string]string{
-	"cmdctrl_offsite_backup_last_success_timestamp_seconds":  "scripts/backup-offsite.sh",
-	"cmdctrl_offsite_backup_last_exit_code":                  "scripts/backup-offsite.sh",
-	"cmdctrl_monitoring_sync_last_success_timestamp_seconds": "the monitoring VM's config sync (HomeLab)",
-	"cmdctrl_monitoring_sync_last_run_timestamp_seconds":     "the monitoring VM's config sync (HomeLab)",
-	"cmdctrl_monitoring_sync_last_run_success":               "the monitoring VM's config sync (HomeLab)",
+	"cmdctrl_offsite_backup_last_success_timestamp_seconds":    "scripts/backup-offsite.sh",
+	"cmdctrl_offsite_backup_last_exit_code":                    "scripts/backup-offsite.sh",
+	"cmdctrl_restore_rehearsal_last_success_timestamp_seconds": "scripts/restore-rehearsal.sh",
+	"cmdctrl_restore_rehearsal_last_exit_code":                 "scripts/restore-rehearsal.sh",
+	"cmdctrl_monitoring_sync_last_success_timestamp_seconds":   "the monitoring VM's config sync (HomeLab)",
+	"cmdctrl_monitoring_sync_last_run_timestamp_seconds":       "the monitoring VM's config sync (HomeLab)",
+	"cmdctrl_monitoring_sync_last_run_success":                 "the monitoring VM's config sync (HomeLab)",
 }
 
 // datasourceUIDs are the monitoring VM's Grafana datasources.
@@ -82,6 +86,8 @@ func serverMetricNames(t *testing.T) map[string]bool {
 	// With a database, so the users and database collectors register too.
 	registerGameMetrics(rec, log, mgr, lobby.NewLobbyWithStore(mgr, lobby.NewSQLStore(database)), ws.NewHub(log),
 		database, users.NewSQLStore(database, nil))
+	// With a spend guard, so the budget gauges register too.
+	registerBotMetrics(rec, aiseat.NewManager(ws.NewHub(log), log), budget.New(budget.DefaultLimits(), nil))
 	if len(rec.collectors) == 0 {
 		t.Fatal("registerGameMetrics registered nothing")
 	}

@@ -42,6 +42,11 @@ const STATIC_PRECACHE = [
   // worth having before the first request for it.
   "/card-back.jpg",
   "/card-back-small.jpg",
+  // The self-hosted type (app.css @font-face): the shell paints in its own
+  // fonts offline too.
+  "/fonts/bricolage-grotesque-latin.woff2",
+  "/fonts/instrument-sans-latin.woff2",
+  "/fonts/jetbrains-mono-latin.woff2",
 ];
 
 function sha256(data: string | Buffer): string {

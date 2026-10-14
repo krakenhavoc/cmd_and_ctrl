@@ -207,6 +207,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/modelkeys"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/notify"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap"
@@ -327,7 +328,10 @@ func main() {
 	// sign-in upserts a users + identities row and the session carries
 	// the user's id. Without a database there is nowhere to put them,
 	// and sign-in mints a session with a zero UserID, as before.
-	userStore := newUserStore(log, database)
+	userStore, sealer := newUserStore(log, database)
+	// ADR 0182: a person's own model key for their AI seats, sealed
+	// with the same key. Nil (off) without the database or the key.
+	modelKeys := newModelKeys(log, database, sealer)
 	// Decks (ADR 0051 decision 7, S34 sub-PR 5): a signed-in player's
 	// saved decklists. Without a database there is nowhere to put
 	// them, and every principal already carries a zero UserID (see
@@ -478,8 +482,14 @@ func main() {
 	// carries its own decklist with oracle text, and before
 	// RestoreFromDisk because a restored bot seat relaunches its
 	// runner and must get the policy its tier names.
-	botPolicies, botBudget := botFactory(log, cfg, cardIdx, database)
+	var ownKeys tiers.OwnKeyClients
+	if modelKeys != nil {
+		ownKeys = modelKeys
+	}
+	botPolicies, botBudget := botFactory(log, cfg, cardIdx, database, ownKeys)
 	bots.SetPolicyFactory(botPolicies)
+	// The bot watch gauges: a wedged bot seat and the model spend caps.
+	registerBotMetrics(metrics.Registry, bots, botBudget)
 	// The decision log, when an operator asked for one. Off by
 	// default; a failure to open the directory is logged and the
 	// server boots without it, because a diagnostic is never worth a
@@ -755,9 +765,10 @@ func main() {
 		DeckLibrary:       deckLibrary,
 		UserSettings:      newUserSettingsStore(database),
 		Notifications:     notifications,
+		ModelKeys:         modelKeys,
 		Playmats:          playmats,
 		TableSetups:       newTableSetupStore(database),
-		Accounts:          newAccountDeleter(database),
+		Accounts:          newAccountDeleter(database, cfg.DataDir),
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
 		DeckRequestFiler:  deckRequestFiler,
@@ -1291,19 +1302,33 @@ func newAuthenticator(log *slog.Logger, cfg config) auth.Authenticator {
 // With the key absent the store still works and refresh tokens are
 // discarded (ADR 0051 decision 5); NewSealerFromEnv has already
 // warned, naming the variable.
-func newUserStore(log *slog.Logger, database *db.DB) users.Store {
+func newUserStore(log *slog.Logger, database *db.DB) (users.Store, *users.Sealer) {
 	sealer, err := users.NewSealerFromEnv(os.Getenv, log)
 	if err != nil {
 		log.Error("identity key invalid", "var", users.IdentityKeyEnv, "err", err)
 		os.Exit(1)
 	}
 	if database == nil {
-		return users.NoStore{}
+		return users.NoStore{}, nil
 	}
 	if sealer != nil {
 		log.Info("Discord refresh tokens are stored encrypted", "var", users.IdentityKeyEnv)
 	}
-	return users.NewSQLStore(database, sealer)
+	return users.NewSQLStore(database, sealer), sealer
+}
+
+// newModelKeys builds ADR 0182's own-model-key service: a signed-in
+// person's API key for the AI seats they add, sealed under the same key
+// as the refresh tokens. It needs the database and the sealing key; with
+// either missing the feature is off (nil), and a key is never stored in
+// the clear.
+func newModelKeys(log *slog.Logger, database *db.DB, sealer *users.Sealer) *modelkeys.Service {
+	if database == nil || sealer == nil {
+		log.Info("own model keys for AI seats are off: they need the database and a sealing key", "var", users.IdentityKeyEnv)
+		return nil
+	}
+	log.Info("own model keys for AI seats are on; keys are stored encrypted", "var", users.IdentityKeyEnv)
+	return modelkeys.New(database, sealer, modelkeys.Options{Log: log})
 }
 
 // newRevocations loads the per-user revocation watermarks (ADR 0051
@@ -1444,11 +1469,17 @@ func newTableSetupStore(database *db.DB) tablesetups.Store {
 // migration 0015). No database returns nil, which keeps it a nil
 // interface: with no database no session has a user, so the route
 // answers 403 before it would ask.
-func newAccountDeleter(database *db.DB) accountdelete.Store {
+func newAccountDeleter(database *db.DB, dataDir string) accountdelete.Store {
 	if database == nil {
 		return nil
 	}
-	return accountdelete.NewSQLStore(database)
+	store := accountdelete.NewSQLStore(database)
+	// The ledger (#3340) survives a restore of an older database copy;
+	// without a data dir there is no backup to restore from.
+	if dataDir != "" {
+		store.WithLedger(accountdelete.NewLedger(dataDir))
+	}
+	return store
 }
 
 // newDeckRequestStore builds ADR 0095's deck-request store (migration
@@ -1521,7 +1552,7 @@ const (
 //     path.
 //   - neither — `random` and `heuristic` only. Not a broken server:
 //     a smaller one, which says so in the picker.
-func botFactory(log *slog.Logger, cfg config, idx *cards.Index, database *db.DB) (*tiers.Factory, lobby.BotModelBudget) {
+func botFactory(log *slog.Logger, cfg config, idx *cards.Index, database *db.DB, ownKeys tiers.OwnKeyClients) (*tiers.Factory, lobby.BotModelBudget) {
 	var client model.Client
 	local := false
 	switch oc, ac := model.NewOpenAIClient(), model.NewAnthropicClient(); {
@@ -1627,6 +1658,7 @@ func botFactory(log *slog.Logger, cfg config, idx *cards.Index, database *db.DB)
 		gate = guard
 	}
 	f := tiers.NewFactory(tiers.FactoryOptions{
+		OwnKeys:     ownKeys,
 		Client:      client,
 		Gate:        gate,
 		Models:      models,

@@ -10,7 +10,7 @@
 //  1. Refuse if the person holds a seat at a table that has not ended
 //     (a lobby or an active game). SeatedError names the table.
 //  2. Delete: decks, user_settings, table_setups, notification_prefs,
-//     user_playmats, the
+//     model_keys, user_playmats, the
 //     identities row (Discord id, name, avatar hash and the encrypted
 //     refresh token), the person's deck_request_asks rows, the player
 //     reports they filed or are the subject of, and the table blocks
@@ -43,6 +43,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -92,6 +93,7 @@ type Counts struct {
 	SettingsRows    int
 	SetupRows       int
 	NotifyPrefRows  int
+	ModelKeyRows    int
 	Identities      int
 	Reports         int
 	Blocks          int
@@ -125,6 +127,8 @@ type Store interface {
 type SQLStore struct {
 	db  *sql.DB
 	now func() time.Time
+	// ledger, when set, records each committed deletion (ledger.go).
+	ledger *Ledger
 }
 
 // NewSQLStore wraps an opened, migrated database. The caller owns d.
@@ -132,10 +136,30 @@ func NewSQLStore(d *db.DB) *SQLStore {
 	return &SQLStore{db: d.DB, now: func() time.Time { return time.Now().UTC() }}
 }
 
+// WithLedger makes every committed deletion also append to l, so a
+// restore from an older database copy can re-apply it (ledger.go).
+func (s *SQLStore) WithLedger(l *Ledger) *SQLStore {
+	s.ledger = l
+	return s
+}
+
 var _ Store = (*SQLStore)(nil)
 
 // Delete implements Store.
 func (s *SQLStore) Delete(ctx context.Context, id uuid.UUID) (Result, error) {
+	return s.delete(ctx, id, false)
+}
+
+// Reapply runs the deletion for an account a restore brought back
+// (ledger.go). It differs from Delete in two ways: the active-table
+// rule is skipped, because the person asked to be deleted before the
+// restore point and the table may only look live in an old copy; and it
+// writes no ledger entry, because the entry is already in the ledger.
+func (s *SQLStore) Reapply(ctx context.Context, id uuid.UUID) (Result, error) {
+	return s.delete(ctx, id, true)
+}
+
+func (s *SQLStore) delete(ctx context.Context, id uuid.UUID, reapply bool) (Result, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return Result{}, fmt.Errorf("accountdelete: begin: %w", err)
@@ -169,7 +193,7 @@ func (s *SQLStore) Delete(ctx context.Context, id uuid.UUID) (Result, error) {
 	}
 	res.DiscordSubject, res.AvatarHash = subject.String, hash.String
 
-	// 1. The active-table rule.
+	// 1. The active-table rule (not for a re-application).
 	var (
 		gid, gname, gstate string
 	)
@@ -179,10 +203,10 @@ func (s *SQLStore) Delete(ctx context.Context, id uuid.UUID) (Result, error) {
 		 ORDER BY g.created_at DESC LIMIT 1`,
 		uid, res.DiscordSubject, res.DiscordSubject).Scan(&gid, &gname, &gstate)
 	switch {
-	case err == nil:
+	case err == nil && !reapply:
 		parsed, _ := uuid.Parse(gid)
 		return Result{}, &SeatedError{GameID: parsed, GameName: gname, State: gstate}
-	case !errors.Is(err, sql.ErrNoRows):
+	case err != nil && !errors.Is(err, sql.ErrNoRows):
 		return Result{}, fmt.Errorf("accountdelete: check active seats: %w", err)
 	}
 
@@ -272,6 +296,13 @@ func (s *SQLStore) Delete(ctx context.Context, id uuid.UUID) (Result, error) {
 	if err := exec(&res.Counts.NotifyPrefRows, `DELETE FROM notification_prefs WHERE user_id = ?`, uid); err != nil {
 		return Result{}, err
 	}
+	// The person's own model key (ADR 0182, migration 0025), sealed
+	// key and all. A bot seat that ran on it keeps pointing at the
+	// tombstone (seats.bot_key_user_id), which carries no identity and
+	// has no key, so a restored seat plays the heuristic.
+	if err := exec(&res.Counts.ModelKeyRows, `DELETE FROM model_keys WHERE user_id = ?`, uid); err != nil {
+		return Result{}, err
+	}
 	if err := exec(&res.Counts.Playmats, `DELETE FROM user_playmats WHERE user_id = ?`, uid); err != nil {
 		return Result{}, err
 	}
@@ -309,6 +340,16 @@ func (s *SQLStore) Delete(ctx context.Context, id uuid.UUID) (Result, error) {
 
 	if err := tx.Commit(); err != nil {
 		return Result{}, fmt.Errorf("accountdelete: commit: %w", err)
+	}
+	if s.ledger != nil && !reapply {
+		// After the commit, never before: an entry for a deletion that
+		// rolled back would delete a live account at the next restore.
+		// A failure here is logged, not returned: the database half of
+		// the promise is kept, and only the next restore would miss it.
+		if err := s.ledger.Append(id, at); err != nil {
+			slog.Error("account deletion: ledger append failed; a restore would bring this account back",
+				"user_id", id, "err", err)
+		}
 	}
 	return res, nil
 }

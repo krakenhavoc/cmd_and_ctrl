@@ -38,12 +38,8 @@ func TestYshtolaSliceAIsRegistered(t *testing.T) {
 		if spec.Name != name {
 			t.Errorf("%s registered as %q", oracle, spec.Name)
 		}
-		want := CompletenessFull
-		if oracle == ysGrahaTiaOracle {
-			want = CompletenessCaveats
-		}
-		if spec.Completeness != want {
-			t.Errorf("%s: Completeness = %v, want %v", name, spec.Completeness, want)
+		if spec.Completeness != CompletenessFull {
+			t.Errorf("%s: Completeness = %v, want full", name, spec.Completeness)
 		}
 	}
 }
@@ -225,24 +221,39 @@ func ysCastNoncreature(t *testing.T, g *game.Game, me *game.Player, manaCost str
 }
 
 func ysGrahaPromptOpen(g *game.Game) bool {
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceTriggerPrompt {
-			return true
-		}
-	}
-	return false
+	return latestChoiceOfKind(g, game.PendingChoiceConfirm) != nil
 }
 
-func TestGrahaTiaPaysXLifeForAHeroOnceEachTurn(t *testing.T) {
+// ysGrahaAnswer answers G'raha's resolution-time prompt and settles
+// the stack.
+func ysGrahaAnswer(t *testing.T, g *game.Game, me *game.Player, pay bool) {
+	t.Helper()
+	ask := latestChoiceOfKind(g, game.PendingChoiceConfirm)
+	if ask == nil || ask.Chooser != me.ID {
+		t.Fatalf("expected G'raha Tia's pay prompt, got %+v", g.PendingChoices)
+	}
+	if err := g.ResolveConfirm(ask.ID, me.ID, pay); err != nil {
+		t.Fatalf("ResolveConfirm(%v): %v", pay, err)
+	}
+	passPriorityAroundTable(t, g)
+}
+
+func TestGrahaTiaPaysXLifeAtResolutionForAHeroOnceEachTurn(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	pushCatalogPermanent(g, me.ID, "G'raha Tia, Scion Reborn", "Legendary Creature — Cat Wizard", ysGrahaTiaOracle, false)
 	advanceToMain(t, g)
 	life := me.Life
 
+	// The "may" is not asked as the trigger goes on the stack.
 	ysCastNoncreature(t, g, me, "{2}{U}")
-	answerLatestTriggerPrompt(t, g, me.ID, true)
-	passPriorityAroundTable(t, g)
+	if me.Life != life {
+		t.Fatalf("life paid before resolution: %d → %d", life, me.Life)
+	}
+	if latestChoiceOfKind(g, game.PendingChoiceTriggerPrompt) != nil {
+		t.Fatal("the trigger was asked about when it went on the stack")
+	}
+	ysGrahaAnswer(t, g, me, true)
 	if me.Life != life-3 {
 		t.Errorf("life %d → %d, want -3 for a mana value 3 spell", life, me.Life)
 	}
@@ -278,17 +289,61 @@ func TestGrahaTiaDeclinedStaysAvailableAndIgnoresCreatures(t *testing.T) {
 	}
 
 	ysCastNoncreature(t, g, me, "{1}{U}")
-	answerLatestTriggerPrompt(t, g, me.ID, false)
-	passPriorityAroundTable(t, g)
+	ysGrahaAnswer(t, g, me, false)
 	if n := len(gl1bNamed(g, me.ID, "Hero")); n != 0 {
 		t.Fatalf("declined, yet %d Hero tokens", n)
 	}
 	life := me.Life
 	ysCastNoncreature(t, g, me, "{1}{U}")
-	answerLatestTriggerPrompt(t, g, me.ID, true)
-	passPriorityAroundTable(t, g)
+	ysGrahaAnswer(t, g, me, true)
 	if me.Life != life-2 || len(gl1bNamed(g, me.ID, "Hero")) != 1 {
 		t.Errorf("after a decline the next spell should still pay out: life %d → %d, heroes %d", life, me.Life, len(gl1bNamed(g, me.ID, "Hero")))
+	}
+}
+
+// A payment that can't be made is not offered and does nothing, and it
+// does not use up the turn: the next, cheaper spell still pays out.
+func TestGrahaTiaCannotPayDoesNothingAndKeepsTheTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	pushCatalogPermanent(g, me.ID, "G'raha Tia, Scion Reborn", "Legendary Creature — Cat Wizard", ysGrahaTiaOracle, false)
+	advanceToMain(t, g)
+	me.Life = 2
+
+	ysCastNoncreature(t, g, me, "{2}{U}")
+	if ysGrahaPromptOpen(g) {
+		t.Fatal("asked to pay 3 life with 2 life")
+	}
+	if me.Life != 2 || len(gl1bNamed(g, me.ID, "Hero")) != 0 {
+		t.Fatalf("unpayable: life %d, heroes %d, want 2 and 0", me.Life, len(gl1bNamed(g, me.ID, "Hero")))
+	}
+
+	ysCastNoncreature(t, g, me, "{U}")
+	ysGrahaAnswer(t, g, me, true)
+	if me.Life != 1 || len(gl1bNamed(g, me.ID, "Hero")) != 1 {
+		t.Errorf("a payable spell after an unpayable one: life %d, heroes %d, want 1 and 1", me.Life, len(gl1bNamed(g, me.ID, "Hero")))
+	}
+}
+
+// Life lost between the trigger and its answer: saying yes no longer
+// pays, so no Hero, and the turn's use is still there.
+func TestGrahaTiaLifeGoneBeforeTheYesPaysNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	pushCatalogPermanent(g, me.ID, "G'raha Tia, Scion Reborn", "Legendary Creature — Cat Wizard", ysGrahaTiaOracle, false)
+	advanceToMain(t, g)
+
+	ysCastNoncreature(t, g, me, "{2}{U}")
+	me.Life = 1
+	ysGrahaAnswer(t, g, me, true)
+	if me.Life != 1 || len(gl1bNamed(g, me.ID, "Hero")) != 0 {
+		t.Fatalf("life %d, heroes %d, want 1 and 0", me.Life, len(gl1bNamed(g, me.ID, "Hero")))
+	}
+	me.Life = 2
+	ysCastNoncreature(t, g, me, "{U}")
+	ysGrahaAnswer(t, g, me, true)
+	if me.Life != 1 || len(gl1bNamed(g, me.ID, "Hero")) != 1 {
+		t.Errorf("turn's use was spent by an unpaid answer: life %d, heroes %d", me.Life, len(gl1bNamed(g, me.ID, "Hero")))
 	}
 }
 

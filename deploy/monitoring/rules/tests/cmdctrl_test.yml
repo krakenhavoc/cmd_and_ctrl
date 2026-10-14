@@ -320,6 +320,57 @@ tests:
               summary: "prod: no off-site backup from cmd-and-ctrl for 1d 16h 0m 0s"
               description: "The nightly off-site backup on cmd-and-ctrl (prod) last succeeded 1d 16h 0m 0s ago."
 
+  # ------------------------------------------------- RestoreRehearsalStale
+  - name: RestoreRehearsalStale, no pass for 36 days
+    interval: 1d
+    input_series:
+      - series: 'cmdctrl_restore_rehearsal_last_success_timestamp_seconds{job="node", env="prod", host="cmd-and-ctrl"}'
+        values: "0x40"
+      - series: 'cmdctrl_restore_rehearsal_last_exit_code{job="node", env="prod", host="cmd-and-ctrl"}'
+        values: "0x40"
+    alert_rule_test:
+      - eval_time: 30d
+        alertname: RestoreRehearsalStale
+        exp_alerts: []
+      - eval_time: 36d
+        alertname: RestoreRehearsalStale
+        exp_alerts:
+          - exp_labels:
+              alertname: RestoreRehearsalStale
+              severity: warning
+              cause: stale
+              job: node
+              env: prod
+              host: cmd-and-ctrl
+            exp_annotations:
+              summary: "prod: no restore rehearsal on cmd-and-ctrl for 36d 0h 0m 0s"
+              description: "The monthly restore rehearsal on cmd-and-ctrl (prod) last passed 36d 0h 0m 0s ago. An untested backup is not a backup: docs/environments.md#restore-rehearsal."
+
+  - name: RestoreRehearsalStale, the last rehearsal failed
+    interval: 1h
+    input_series:
+      - series: 'cmdctrl_restore_rehearsal_last_success_timestamp_seconds{job="node", env="dev", host="cmd-and-ctrl-dev"}'
+        values: "0x4"
+      - series: 'cmdctrl_restore_rehearsal_last_exit_code{job="node", env="dev", host="cmd-and-ctrl-dev"}'
+        values: "0 0 1 1 1"
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: RestoreRehearsalStale
+        exp_alerts: []
+      - eval_time: 3h
+        alertname: RestoreRehearsalStale
+        exp_alerts:
+          - exp_labels:
+              alertname: RestoreRehearsalStale
+              severity: warning
+              cause: failed
+              job: node
+              env: dev
+              host: cmd-and-ctrl-dev
+            exp_annotations:
+              summary: "dev: the last restore rehearsal on cmd-and-ctrl-dev failed (exit 1)"
+              description: "scripts/restore-rehearsal.sh on cmd-and-ctrl-dev (dev) exited 1. journalctl -u cmd-and-ctrl-restore-rehearsal says why; the latest backup may not restore."
+
   - name: OffsiteBackupStale, the last run failed
     interval: 1h
     input_series:
@@ -327,6 +378,11 @@ tests:
         values: "0x4"
       - series: 'cmdctrl_offsite_backup_last_exit_code{job="node", env="dev", host="cmd-and-ctrl-dev"}'
         values: "0 0 3 3 3"
+      # Prod is reporting and healthy, so the missing-series rule is quiet.
+      - series: 'cmdctrl_offsite_backup_last_success_timestamp_seconds{job="node", env="prod", host="cmd-and-ctrl"}'
+        values: "0x4"
+      - series: 'cmdctrl_offsite_backup_last_exit_code{job="node", env="prod", host="cmd-and-ctrl"}'
+        values: "0x4"
     alert_rule_test:
       - eval_time: 1h
         alertname: OffsiteBackupStale
@@ -512,4 +568,352 @@ tests:
       # Resolved once the window has moved past it.
       - eval_time: 40m
         alertname: PlayerReportFiled
+        exp_alerts: []
+
+  # ------------------------------------------------------------ HighErrorRate
+  - name: HighErrorRate, over 5% 5xx for 5 minutes on prod, with enough traffic to mean it
+    interval: 1m
+    input_series:
+      # 90 good and 10 bad requests a minute: 10% errors.
+      - series: 'cmdctrl_http_requests_total{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", route="GET /games", method="GET", code="2xx"}'
+        values: "0+90x40"
+      - series: 'cmdctrl_http_requests_total{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", route="GET /games", method="GET", code="5xx"}'
+        values: "0+10x40"
+      # A quiet host: one failed request out of one is 100% but not traffic.
+      - series: 'cmdctrl_http_requests_total{job="cmdctrl-server", env="prod", host="cmd-and-ctrl-b", instance="127.0.0.1:9464", route="GET /games", method="GET", code="2xx"}'
+        values: "0x40"
+      - series: 'cmdctrl_http_requests_total{job="cmdctrl-server", env="prod", host="cmd-and-ctrl-b", instance="127.0.0.1:9464", route="GET /games", method="GET", code="5xx"}'
+        values: "0 1x39"
+      # Dev failing as badly: ignored.
+      - series: 'cmdctrl_http_requests_total{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464", route="GET /games", method="GET", code="2xx"}'
+        values: "0+10x40"
+      - series: 'cmdctrl_http_requests_total{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464", route="GET /games", method="GET", code="5xx"}'
+        values: "0+90x40"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: HighErrorRate
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: HighErrorRate
+        exp_alerts:
+          - exp_labels:
+              alertname: HighErrorRate
+              severity: critical
+              env: prod
+              host: cmd-and-ctrl
+            exp_annotations:
+              summary: "prod: 10% of requests on cmd-and-ctrl are failing (5xx)"
+              description: "More than 5% of HTTP requests to the prod server on cmd-and-ctrl have been answered 5xx for 5 minutes (now 10%). The 5% is a first guess."
+
+  # ------------------------------------------------------------ HighLatency
+  - name: HighLatency, a busy route with a p95 over 2 seconds for 10 minutes; fast and quiet routes are ignored
+    interval: 1m
+    input_series:
+      # POST /games: every request lands in the 2.5 to 5 s bucket, 10 a minute.
+      - series: 'cmdctrl_http_request_seconds_bucket{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", route="POST /games", le="1"}'
+        values: "0x50"
+      - series: 'cmdctrl_http_request_seconds_bucket{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", route="POST /games", le="2.5"}'
+        values: "0x50"
+      - series: 'cmdctrl_http_request_seconds_bucket{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", route="POST /games", le="5"}'
+        values: "0+10x50"
+      - series: 'cmdctrl_http_request_seconds_bucket{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", route="POST /games", le="+Inf"}'
+        values: "0+10x50"
+      - series: 'cmdctrl_http_request_seconds_count{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", route="POST /games"}'
+        values: "0+10x50"
+      # GET /cards/{name}: 100 a minute, all under 100 ms.
+      - series: 'cmdctrl_http_request_seconds_bucket{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", route="GET /cards/{name}", le="0.1"}'
+        values: "0+100x50"
+      - series: 'cmdctrl_http_request_seconds_bucket{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", route="GET /cards/{name}", le="+Inf"}'
+        values: "0+100x50"
+      - series: 'cmdctrl_http_request_seconds_count{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", route="GET /cards/{name}"}'
+        values: "0+100x50"
+      # A slow route nobody uses: one request a minute, under the floor.
+      - series: 'cmdctrl_http_request_seconds_bucket{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", route="GET /replays/{id}", le="2.5"}'
+        values: "0x50"
+      - series: 'cmdctrl_http_request_seconds_bucket{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", route="GET /replays/{id}", le="+Inf"}'
+        values: "0+1x50"
+      - series: 'cmdctrl_http_request_seconds_count{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", route="GET /replays/{id}"}'
+        values: "0+1x50"
+      # Dev is as slow as POST /games: ignored.
+      - series: 'cmdctrl_http_request_seconds_bucket{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464", route="POST /games", le="2.5"}'
+        values: "0x50"
+      - series: 'cmdctrl_http_request_seconds_bucket{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464", route="POST /games", le="5"}'
+        values: "0+10x50"
+      - series: 'cmdctrl_http_request_seconds_bucket{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464", route="POST /games", le="+Inf"}'
+        values: "0+10x50"
+      - series: 'cmdctrl_http_request_seconds_count{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464", route="POST /games"}'
+        values: "0+10x50"
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: HighLatency
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: HighLatency
+        exp_alerts:
+          - exp_labels:
+              alertname: HighLatency
+              severity: warning
+              env: prod
+              host: cmd-and-ctrl
+              route: "POST /games"
+            exp_annotations:
+              summary: "prod: POST /games on cmd-and-ctrl is slow (p95 4.875s)"
+              description: "The 95th-percentile time to serve POST /games on cmd-and-ctrl (prod) has been over 2 seconds for 10 minutes (now 4.875s). The 2 s is a first guess."
+
+  # ------------------------------------------------------------ RateLimitSpike
+  - name: RateLimitSpike, over 100 429s in 5 minutes for 5 minutes on prod
+    interval: 1m
+    input_series:
+      # 50 a minute from minute 0: 250 per 5 minutes.
+      - series: 'cmdctrl_http_rate_limited_total{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", route="POST /games"}'
+        values: "0+50x40"
+      # A trickle on another host.
+      - series: 'cmdctrl_http_rate_limited_total{job="cmdctrl-server", env="prod", host="cmd-and-ctrl-b", instance="127.0.0.1:9464", route="POST /games"}'
+        values: "0+2x40"
+      - series: 'cmdctrl_http_rate_limited_total{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464", route="POST /games"}'
+        values: "0+50x40"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: RateLimitSpike
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: RateLimitSpike
+        exp_alerts:
+          - exp_labels:
+              alertname: RateLimitSpike
+              severity: warning
+              env: prod
+              host: cmd-and-ctrl
+            exp_annotations:
+              summary: "prod: 250 requests on cmd-and-ctrl were rate limited (429) in 5 minutes"
+              description: "The prod server on cmd-and-ctrl answered over 100 requests 429 in 5 minutes, for 5 minutes running. Either one client is hammering a route, or a limiter is too tight for real players. cmdctrl_http_rate_limited_total by route says which. The 100 is a first guess."
+
+  # ------------------------------------------------------------ AuthFailures
+  - name: AuthFailures, three or more failed sign-ins in 10 minutes on prod; one is quiet
+    interval: 1m
+    input_series:
+      - series: 'cmdctrl_auth_failures_total{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", reason="gate_check"}'
+        values: "0x5 5x40"
+      - series: 'cmdctrl_auth_failures_total{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", reason="oauth_exchange"}'
+        values: "0x5 1x40"
+      - series: 'cmdctrl_auth_failures_total{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464", reason="gate_check"}'
+        values: "0x5 5x40"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: AuthFailures
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: AuthFailures
+        exp_alerts:
+          - exp_labels:
+              alertname: AuthFailures
+              severity: warning
+              job: cmdctrl-server
+              env: prod
+              host: cmd-and-ctrl
+              instance: 127.0.0.1:9464
+              reason: gate_check
+            exp_annotations:
+              summary: "prod: Discord sign-in is failing on cmd-and-ctrl (gate_check)"
+              description: "5 sign-ins failed with reason gate_check on cmd-and-ctrl (prod) in the last 10 minutes. oauth_exchange and oauth_profile: Discord or the client secret. gate_check: Discord did not answer the role check, so sign-in fails closed. signin_record: the database. The 3-in-10-minutes is a first guess."
+      # Resolved once the burst is out of the window.
+      - eval_time: 30m
+        alertname: AuthFailures
+        exp_alerts: []
+
+  # ------------------------------------------------------------ BotModelSpendHigh
+  - name: BotModelSpendHigh, a token cap over 80% used for 5 minutes; a cap that is off is ignored
+    interval: 1m
+    input_series:
+      - series: 'cmdctrl_bot_budget_tokens{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", period="day"}'
+        values: "0 500 700 900x40"
+      - series: 'cmdctrl_bot_budget_limit_tokens{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", period="day"}'
+        values: "1000x43"
+      # Plenty of month left.
+      - series: 'cmdctrl_bot_budget_tokens{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", period="month"}'
+        values: "1000x43"
+      - series: 'cmdctrl_bot_budget_limit_tokens{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", period="month"}'
+        values: "10000x43"
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: BotModelSpendHigh
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: BotModelSpendHigh
+        exp_alerts:
+          - exp_labels:
+              alertname: BotModelSpendHigh
+              severity: warning
+              job: cmdctrl-server
+              env: prod
+              host: cmd-and-ctrl
+              instance: 127.0.0.1:9464
+              period: day
+            exp_annotations:
+              summary: "prod: hosted-model spend is at 90% of the day cap"
+              description: "The prod bots have used 90% of this day's token cap. At 100% the model tiers stop and the bots play the heuristic. The 80% is a first guess."
+
+  - name: BotModelSpendHigh, no cap at all (limit 0) never fires
+    interval: 1m
+    input_series:
+      - series: 'cmdctrl_bot_budget_tokens{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", period="day"}'
+        values: "5000000x30"
+      - series: 'cmdctrl_bot_budget_limit_tokens{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", period="day"}'
+        values: "0x30"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: BotModelSpendHigh
+        exp_alerts: []
+
+  # ------------------------------------------------------------ BotModelBlocked
+  - name: BotModelBlocked, model calls refused for 15 minutes on prod
+    interval: 1m
+    input_series:
+      - series: 'cmdctrl_bot_budget_blocked{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464"}'
+        values: "0x10 1x40"
+      - series: 'cmdctrl_bot_budget_blocked{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464"}'
+        values: "1x50"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: BotModelBlocked
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: BotModelBlocked
+        exp_alerts:
+          - exp_labels:
+              alertname: BotModelBlocked
+              severity: warning
+              job: cmdctrl-server
+              env: prod
+              host: cmd-and-ctrl
+              instance: 127.0.0.1:9464
+            exp_annotations:
+              summary: "prod: hosted-model calls have been refused for 15 minutes"
+              description: "The prod spend guard is refusing model calls: a daily or monthly token cap is reached, or the kill switch is off. Model-backed bots play the heuristic meanwhile. GET /admin/bot/model says which."
+
+  # ------------------------------------------------------------ BotSeatWedged
+  - name: BotSeatWedged, a bot seat owing a move over 2 minutes; prod after 1 minute, dev after 5
+    interval: 1m
+    input_series:
+      # Healthy for two minutes, then owed for good.
+      - series: 'cmdctrl_bot_seat_owed_seconds_max{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464"}'
+        values: "0 0 200x40"
+      - series: 'cmdctrl_bot_seat_owed_seconds_max{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464"}'
+        values: "0 0 200x40"
+      # Slow but under two minutes.
+      - series: 'cmdctrl_bot_seat_owed_seconds_max{job="cmdctrl-server", env="prod", host="cmd-and-ctrl-b", instance="127.0.0.1:9464"}'
+        values: "100x40"
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: BotSeatWedged
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: BotSeatWedged
+        exp_alerts:
+          - exp_labels:
+              alertname: BotSeatWedged
+              severity: critical
+              job: cmdctrl-server
+              env: prod
+              host: cmd-and-ctrl
+              instance: 127.0.0.1:9464
+            exp_annotations:
+              summary: "prod: a bot seat on cmd-and-ctrl has been stuck for 3m 20s"
+              description: "A bot seat on the prod server on cmd-and-ctrl has had a legal move for 3m 20s and played none, so its table is waiting. The Logs dashboard has the bot's WARN lines; GET /games/{id}/bot/stats shows its counters. Archiving the table frees the players."
+      - eval_time: 12m
+        alertname: BotSeatWedged
+        exp_alerts:
+          - exp_labels:
+              alertname: BotSeatWedged
+              severity: critical
+              job: cmdctrl-server
+              env: prod
+              host: cmd-and-ctrl
+              instance: 127.0.0.1:9464
+            exp_annotations:
+              summary: "prod: a bot seat on cmd-and-ctrl has been stuck for 3m 20s"
+              description: "A bot seat on the prod server on cmd-and-ctrl has had a legal move for 3m 20s and played none, so its table is waiting. The Logs dashboard has the bot's WARN lines; GET /games/{id}/bot/stats shows its counters. Archiving the table frees the players."
+          - exp_labels:
+              alertname: BotSeatWedged
+              severity: warning
+              job: cmdctrl-server
+              env: dev
+              host: cmd-and-ctrl-dev
+              instance: 127.0.0.1:9464
+            exp_annotations:
+              summary: "dev: a bot seat on cmd-and-ctrl-dev has been stuck for 3m 20s"
+              description: "A bot seat on the dev server on cmd-and-ctrl-dev has had a legal move for 3m 20s and played none."
+
+  # ------------------------------------------------------------ BotFallbackRising
+  - name: BotFallbackRising, over 10% of a tier's moves are runner fallbacks, with at least 10 of them
+    interval: 1m
+    input_series:
+      # strong: 3 fallbacks in 20 decisions a minute is 15%.
+      - series: 'cmdctrl_bot_fallbacks_total{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", tier="strong", cause="timeout"}'
+        values: "0+3x50"
+      - series: 'cmdctrl_bot_decisions_total{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", tier="strong", layer="C"}'
+        values: "0+20x50"
+      # The model funnel's own fallbacks are not this alert.
+      - series: 'cmdctrl_bot_fallbacks_total{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", tier="assisted", cause="model-error"}'
+        values: "0+50x50"
+      - series: 'cmdctrl_bot_decisions_total{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", tier="assisted", layer="B"}'
+        values: "0+100x50"
+      # heuristic: 1% fallbacks.
+      - series: 'cmdctrl_bot_fallbacks_total{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", tier="heuristic", cause="policy-error"}'
+        values: "0+1x50"
+      - series: 'cmdctrl_bot_decisions_total{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", tier="heuristic", layer="B"}'
+        values: "0+100x50"
+      # A near-idle tier where three of three moves fell back: under the floor of 10.
+      - series: 'cmdctrl_bot_fallbacks_total{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", tier="random", cause="out-of-range"}'
+        values: "0x10 3x40"
+      - series: 'cmdctrl_bot_decisions_total{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", tier="random", layer="random"}'
+        values: "0x10 3x40"
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: BotFallbackRising
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: BotFallbackRising
+        exp_alerts:
+          - exp_labels:
+              alertname: BotFallbackRising
+              severity: warning
+              env: prod
+              host: cmd-and-ctrl
+              tier: strong
+            exp_annotations:
+              summary: "prod: 15% of strong bot moves on cmd-and-ctrl are fallbacks"
+              description: "The runner replaced the policy's answer (timeout, policy-error or out-of-range) for 15% of strong bot decisions on cmd-and-ctrl (prod) over 15 minutes. cmdctrl_bot_fallbacks_total by cause says which; the Engine and bots dashboard has the model's latency. The 10% is a first guess."
+
+  # ------------------------------------------------- OffsiteBackupStale, missing
+  - name: OffsiteBackupStale (missing), no backup series at all for 2 hours on prod
+    interval: 5m
+    input_series:
+      - series: 'up{job="node", env="prod", host="cmd-and-ctrl"}'
+        values: "1x60"
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: OffsiteBackupStale
+        exp_alerts: []
+      - eval_time: 3h
+        alertname: OffsiteBackupStale
+        exp_alerts:
+          - exp_labels:
+              alertname: OffsiteBackupStale
+              severity: warning
+              cause: missing
+              job: node
+              env: prod
+            exp_annotations:
+              summary: "prod: no off-site backup has ever been reported"
+              description: "The off-site backup's success timestamp has been missing from prod for 2 hours: the backup has never run there, or the node scrape does not carry its textfile. systemctl list-timers cmd-and-ctrl-backup.timer on the host says whether it is scheduled."
+
+  - name: OffsiteBackupStale (missing), the series is there so it stays quiet
+    interval: 5m
+    input_series:
+      - series: 'cmdctrl_offsite_backup_last_success_timestamp_seconds{job="node", env="prod", host="cmd-and-ctrl"}'
+        values: "0+300x60"
+    alert_rule_test:
+      - eval_time: 3h
+        alertname: OffsiteBackupStale
         exp_alerts: []

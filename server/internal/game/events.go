@@ -1539,6 +1539,11 @@ type Event struct {
 	// and on a vote nobody cast a ballot in.
 	Ballots []VoteBallot `json:"ballots,omitempty"`
 
+	// VoteOptions are the labels of a secret vote's options, in printed
+	// order, on EventVotesRevealed (ADR 0180), so the reveal can name
+	// what each ballot was for. Empty on every other kind.
+	VoteOptions []string `json:"vote_options,omitempty"`
+
 	// RollID is an EventTableRoll's identity (ADR 0121 §5): the
 	// game's tableRollNext after the roll, so 1 for the first table
 	// roll of a game. It survives the re-emission an undo makes, where

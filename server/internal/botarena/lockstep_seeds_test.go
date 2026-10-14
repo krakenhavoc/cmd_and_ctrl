@@ -24,7 +24,8 @@ import (
 // Gated on CMDCTRL_SCRYFALL_DUMP like the other curated-deck tests: the
 // four decks are built from the real catalog, and four games of ~2,000
 // to ~4,000 moves each are far too slow for the PR gate (about ten
-// seconds a game without -race). The nightly sets the dump.
+// seconds a game without -race). The nightly runs it in the
+// curated-decks job of e2e-nightly.yml, which sets the dump.
 func TestLockstepRotatedSeedsReplay(t *testing.T) {
 	dump := os.Getenv("CMDCTRL_SCRYFALL_DUMP")
 	if dump == "" {

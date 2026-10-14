@@ -75,6 +75,10 @@ var Inventory = join(
 		"user_id"),
 	cols("seats", Deleted, "set to NULL when the deck is deleted",
 		"deck_id", "pending_discord_id"),
+	cols("seats", Anonymised, "a bot seat that ran on the person's own model key (ADR 0182) points at the tombstone, which carries no identity and no key; restored, it plays the heuristic",
+		"bot_key_user_id"),
+	cols("seats", Kept, "the model id an own-key bot seat asked for names no one",
+		"bot_key_model"),
 
 	cols("invites", NotPersonal, "an invite token hash and its clock",
 		"token_hash", "game_id", "kind", "created_at", "expires_at", "revoked_at"),
@@ -108,6 +112,9 @@ var Inventory = join(
 		"user_id", "body", "game_id", "updated_at"),
 	cols("notification_prefs", Deleted, "the person's Discord DM notification switches and when Discord last refused one (ADR 0162)",
 		"user_id", "turn", "table_ready", "table_filled", "dm_failed_at", "updated_at"),
+	cols("model_keys", Deleted, "the person's own model key for their AI seats (ADR 0182): the sealed key, its last four characters, the provider, address, model, limits, counts, dates and last error",
+		"user_id", "provider", "base_url", "model", "sealed_key", "last4", "games_per_day", "calls_per_game",
+		"day", "day_games", "created_at", "updated_at", "last_used_at", "last_error", "last_error_at"),
 	cols("user_playmats", Deleted, "the rows; the image files are removed by the caller",
 		"user_id", "slot", "playmat_id", "width", "height", "created_at"),
 

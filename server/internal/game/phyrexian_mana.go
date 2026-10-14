@@ -76,6 +76,19 @@ func (c ParsedCost) PhyrexianSymbols() int {
 	return n
 }
 
+// printedPhyrexianSymbols counts the cost's printed Phyrexian symbols,
+// hybrid Phyrexian included, leaving out the slots a life-for-mana
+// grant marked (ADR 0131's LifeGranted). ADR 0183.
+func (c ParsedCost) printedPhyrexianSymbols() int {
+	n := 0
+	for _, req := range c.Required {
+		if req.Phyrexian {
+			n++
+		}
+	}
+	return n
+}
+
 // PhyrexianLifePlan returns `cost` with `n` of its Phyrexian symbols
 // struck out — the ones the caster announced they are paying with
 // life — and the life that costs (CR 107.4f: 2 each).
@@ -179,6 +192,9 @@ func (g *Game) strikePhyrexianLifeLocked(p *Player, sourceName string, cost Pars
 	}
 	if paid != nil {
 		paid.LifePaid += life
+		// ADR 0183: the printed Phyrexian symbols among those struck,
+		// for compleated. A K'rrik-granted {B} is not one.
+		paid.PhyrexianLife += cost.printedPhyrexianSymbols() - reduced.printedPhyrexianSymbols()
 	}
 	return reduced, life, nil
 }

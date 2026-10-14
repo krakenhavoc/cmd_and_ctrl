@@ -51,50 +51,87 @@
 	# the client receives index.html, JSON parsing fails, and the feature
 	# quietly disappears instead of erroring.
 	@api path /ws /healthz /me /me/* /logout /logout/* /config /games /games/* /join /cards/ /cards/* /admin/* /auth/* /avatars/* /playmats/* /bugreport /bugreport/* /dev /dev/* /bot /bot/* /catalog /catalog/* /decks /roadmap /deck-coverage /deck-requests /community
-	reverse_proxy @api 127.0.0.1:8080
 
-	# Do NOT add `header_up Host`. Caddy forwards the original Host by default,
-	# and the server's WebSocket CheckOrigin compares the Origin header's host
-	# against the request Host. Rewriting Host to the upstream 403s every /ws
-	# upgrade while ordinary HTTP keeps working -- an unpleasant way to spend
-	# an afternoon.
-
-	# --- PWA (docs/decisions/0031-progressive-web-app.md) ------------------
-	#
-	# No `try_files` is needed and none should be added: the client routes on
-	# location.hash (see client/src/lib/router.ts), so every deep link --
-	# invite links included -- is requested from this server as `/`. Adding a
-	# catch-all rewrite here would instead start answering unknown paths with
-	# index.html, which is precisely the silent failure the @api comment above
-	# describes.
-	#
-	# Content-Type: Go's mime table does not know .webmanifest on every host,
-	# and file_server would fall back to sniffing it as text/plain. Caddy's
-	# header handler runs before file_server, which only sets a Content-Type
-	# when one is not already present.
-	#
-	# Cache-Control: the deploy rsyncs with --delete, so a browser that has an
-	# old index.html or an old sw.js in its HTTP cache can be pinned to a
-	# build whose hashed assets no longer exist on the origin. The entry
-	# points below must always be revalidated. (The service worker registers
-	# with updateViaCache: "none" as well; this is the belt to that's braces,
-	# and covers browsers with no service worker at all.)
-	@shell path / /index.html /sw.js /offline.html
-	header @shell {
-		Cache-Control "no-cache"
+	# `handle` makes the two branches exclusive: API routes are proxied, and
+	# everything else is the static app shell, which alone gets the security
+	# headers below. The proxied responses keep whatever headers the server
+	# set (the bugstore and playmat images carry their own sandboxed CSP).
+	handle @api {
+		reverse_proxy 127.0.0.1:8080
 	}
 
-	header /manifest.webmanifest {
-		Content-Type "application/manifest+json"
-		Cache-Control "no-cache"
-	}
+	handle {
+		# --- Security headers on the app shell (#3349) ----------------------
+		#
+		# The client keeps a 30-day session in localStorage, so an XSS in the
+		# shell would read it; script-src 'self' is what stops an injected
+		# inline or remote script from running. Keep the policy in step with
+		# what the shell loads:
+		#   - fonts: self-hosted under /fonts/ (#3345), so font-src is 'self'
+		#     and style-src names no font origin.
+		#   - style-src 'unsafe-inline': Svelte renders static style="" and
+		#     style bindings as attributes, which a strict style-src blocks.
+		#     Inline styles cannot run script, so this is the accepted trade.
+		#   - connect-src 'self' covers the same-origin WebSocket (ws/wss to
+		#     this host) and the service worker's same-origin fetches. The
+		#     worker bypasses cross-origin requests, so it needs no origins.
+		#   - Discord sign-in is a top-level navigation, which CSP does not
+		#     govern, so it needs no entry here.
+		#   - frame-ancestors 'none' (with X-Frame-Options for old browsers):
+		#     nothing frames the shell, so no one can clickjack the table.
+		# HSTS is one year without includeSubDomains or preload, since this
+		# shares a parent domain with other hosts.
+		header {
+			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+			X-Frame-Options "DENY"
+			X-Content-Type-Options "nosniff"
+			Strict-Transport-Security "max-age=31536000"
+		}
 
-	# Vite content-hashes everything under /assets/, so those URLs are
-	# immutable by construction and safe to pin for a year.
-	header /assets/* {
-		Cache-Control "public, max-age=31536000, immutable"
-	}
+		# Do NOT add `header_up Host`. Caddy forwards the original Host by default,
+		# and the server's WebSocket CheckOrigin compares the Origin header's host
+		# against the request Host. Rewriting Host to the upstream 403s every /ws
+		# upgrade while ordinary HTTP keeps working -- an unpleasant way to spend
+		# an afternoon.
 
-	root * /var/www/cmdctrl-client
-	file_server
+		# --- PWA (docs/decisions/0031-progressive-web-app.md) ------------------
+		#
+		# No `try_files` is needed and none should be added: the client routes on
+		# location.hash (see client/src/lib/router.ts), so every deep link --
+		# invite links included -- is requested from this server as `/`. Adding a
+		# catch-all rewrite here would instead start answering unknown paths with
+		# index.html, which is precisely the silent failure the @api comment above
+		# describes.
+		#
+		# Content-Type: Go's mime table does not know .webmanifest on every host,
+		# and file_server would fall back to sniffing it as text/plain. Caddy's
+		# header handler runs before file_server, which only sets a Content-Type
+		# when one is not already present.
+		#
+		# Cache-Control: the deploy rsyncs with --delete, so a browser that has an
+		# old index.html or an old sw.js in its HTTP cache can be pinned to a
+		# build whose hashed assets no longer exist on the origin. The entry
+		# points below must always be revalidated. (The service worker registers
+		# with updateViaCache: "none" as well; this is the belt to that's braces,
+		# and covers browsers with no service worker at all.)
+		@shell path / /index.html /sw.js /offline.html
+		header @shell {
+			Cache-Control "no-cache"
+		}
+
+		header /manifest.webmanifest {
+			Content-Type "application/manifest+json"
+			Cache-Control "no-cache"
+		}
+
+		# Vite content-hashes everything under /assets/, so those URLs are
+		# immutable by construction and safe to pin for a year.
+		header /assets/* {
+			Cache-Control "public, max-age=31536000, immutable"
+		}
+
+		root * /var/www/cmdctrl-client
+		file_server
+	}
 }
+

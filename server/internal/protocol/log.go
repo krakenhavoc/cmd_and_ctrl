@@ -255,6 +255,17 @@ const (
 	// card that called the vote. One line per vote, as it is cast, so
 	// the table sees the tally move.
 	LogVote LogKind = "vote"
+	// LogVoteSecret — a player cast a ballot in a secret vote (ADR
+	// 0180). `Seat` voted and `CardID` is the card that called the
+	// vote; what they voted for is not on the entry, by design.
+	LogVoteSecret LogKind = "vote_secret"
+	// LogVotesRevealed — a secret vote's ballots, revealed together
+	// once the last one is in (ADR 0180): ONE entry for the whole vote.
+	// `Seat` is the vote's controller, `CardID` the card, and `Seats`
+	// and `Votes` are parallel, one pair per vote in the order cast:
+	// the voter's seat and what they voted for ("nothing" for a vote
+	// for nothing).
+	LogVotesRevealed LogKind = "votes_revealed"
 	// LogAnyPlayerPaid / LogAnyPlayerDeclined — one player's answer to
 	// an "unless any player pays" offer (ADR 0150 §5). `Seat` answered,
 	// `CardID` is the card whose effect it was and `Label` the payment
@@ -675,6 +686,9 @@ type LogEvent struct {
 	// Seats are the seats a LogOpeningRoll entry names: the seats that
 	// tied, or the seats the host rolled for (ADR 0121 §3).
 	Seats []int `json:"seats,omitempty"`
+	// Votes are what each seat in Seats voted for, on a LogVotesRevealed
+	// entry (ADR 0180): a word, or the name of a permanent or player.
+	Votes []string `json:"votes,omitempty"`
 	// RollID identifies a LogTableRoll entry across an undo (ADR 0121
 	// §5): an undo re-emits a table roll's line under a new Seq, and a
 	// client keys the roll's animation on this, so it plays once.
@@ -1447,6 +1461,28 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Kind = LogVote
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		base.Choice = ev.Label
+		return base, true
+
+	case game.EventSecretVoteCast:
+		// ADR 0180. Actor voted in secret; the event carries no option,
+		// and neither does the line.
+		base.Kind = LogVoteSecret
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		return base, true
+
+	case game.EventVotesRevealed:
+		// ADR 0180: the whole secret vote on one line, once the last
+		// ballot is in. Option -1 is a vote for nothing.
+		base.Kind = LogVotesRevealed
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		for _, b := range ev.Ballots {
+			base.Seats = append(base.Seats, seatOf(b.Voter))
+			label := "nothing"
+			if b.Option >= 0 && b.Option < len(ev.VoteOptions) {
+				label = ev.VoteOptions[b.Option]
+			}
+			base.Votes = append(base.Votes, label)
+		}
 		return base, true
 
 	case game.EventControlChanged:
@@ -2267,6 +2303,24 @@ func shortCardName(name string) string {
 	return name
 }
 
+// votesRevealedText is a secret vote's reveal (ADR 0180): "Votes
+// revealed (Mob Verdict): Alice for Bob, Bob for Carol". A vote nobody
+// cast a ballot in says so.
+func votesRevealedText(e *LogEvent, card string) string {
+	if len(e.Votes) == 0 {
+		return fmt.Sprintf("Votes revealed (%s): nobody voted", card)
+	}
+	parts := make([]string, len(e.Votes))
+	for i, choice := range e.Votes {
+		who := "someone"
+		if i < len(e.seatNames) {
+			who = nameOr(e.seatNames[i], who)
+		}
+		parts[i] = who + " for " + choice
+	}
+	return fmt.Sprintf("Votes revealed (%s): %s", card, strings.Join(parts, ", "))
+}
+
 // renderLogText writes the human-readable line. cardName / targetName
 // are passed in rather than read off e so the same function serves
 // both the unredacted build and the per-viewer re-render.
@@ -2424,6 +2478,10 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		}
 	case LogVote:
 		return fmt.Sprintf("%s voted for %s (%s)", actor, nameOr(e.Choice, "an option"), card)
+	case LogVoteSecret:
+		return fmt.Sprintf("%s cast a secret vote (%s)", actor, card)
+	case LogVotesRevealed:
+		return votesRevealedText(e, card)
 	case LogAnyPlayerPaid, LogAnyPlayerDeclined:
 		return anyPlayerAnswerText(e.Kind == LogAnyPlayerPaid, actor, e.Label, card)
 	case LogRingTempted:
