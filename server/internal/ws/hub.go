@@ -1127,10 +1127,17 @@ func (c *Client) handleChat(frame protocol.Frame) {
 		c.sendError(frame.ID, protocol.CodeInternal, "failed to encode chat payload")
 		return
 	}
+	// The client keys its chat log by the frame ID. A sender that sends
+	// none (an AI agent seat's say tool does not) would give every line
+	// the empty key, and the second one crashes the board (#3619).
+	chatID := frame.ID
+	if chatID == "" {
+		chatID = uuid.NewString()
+	}
 	stamped, err := json.Marshal(protocol.Frame{
 		V:       protocol.Version,
 		Kind:    protocol.KindChat,
-		ID:      frame.ID,
+		ID:      chatID,
 		Payload: payload,
 	})
 	if err != nil {
