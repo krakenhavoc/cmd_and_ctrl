@@ -7,7 +7,7 @@
   // lib/signedInHome.ts: most unauthenticated routes redirect to
   // /login (the front page), and a session on it goes to the Lobby.
 
-  import { applyFavicon } from "./lib/favicon";
+  import { applyFavicon, rootFaviconColours } from "./lib/favicon";
   import RouteLoading from "./lib/components/RouteLoading.svelte";
   import FrontPage from "./routes/FrontPage.svelte";
   import RequestAccess from "./routes/RequestAccess.svelte";
@@ -145,12 +145,7 @@
     const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
     if (bg) document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bg);
     // The tab icon is the mark redrawn in the skin's --bg, --accent and --fg.
-    const cs = getComputedStyle(document.documentElement);
-    applyFavicon(document, {
-      bg,
-      accent: cs.getPropertyValue("--accent"),
-      mark: cs.getPropertyValue("--fg"),
-    });
+    applyFavicon(document, rootFaviconColours(document));
   });
 </script>
 
