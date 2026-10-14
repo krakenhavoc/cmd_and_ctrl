@@ -127,9 +127,13 @@ test.describe("full game", () => {
       await expect(p.page.getByRole("dialog", { name: /keep or mulligan/i })).toBeVisible({
         timeout: 10_000,
       });
-      // Each player sees 7 cards in their opening hand. The count
-      // also surfaces in the dialog header, so assert on both.
-      await expect(p.page.getByText(/Hand size: 7/)).toBeVisible();
+      // Each player sees 7 cards in their opening hand, and what a
+      // mulligan would cost (ADR 0166: the London mulligan draws 7).
+      const opening = p.page.getByRole("dialog", { name: /keep or mulligan/i });
+      await expect(
+        opening.getByRole("list", { name: "your opening hand" }).getByRole("listitem"),
+      ).toHaveCount(7);
+      await expect(opening).toContainText("Mulligan: shuffle this hand away, draw 7");
       // The roll call's pill reads the winner's choice.
       await expect(
         p.page
