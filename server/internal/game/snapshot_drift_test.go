@@ -441,6 +441,11 @@ var cardFields = plan(
 	// ADR 0154 decision 3: the epoch of an off-battlefield host (Animate
 	// Dead's graveyard card), carried for AttachedTo's reason.
 	"AttachedEpoch", carried, "",
+	// #3159: whether a battlefield host is judged by AttachedEpoch.
+	// Carried: a restore that dropped it would let a host that came back
+	// as a new object keep its Auras. Absent means unpinned, so a file
+	// written before it restores to the old behaviour.
+	"AttachedPinned", carried, "",
 	// The layer-2 control baseline. Carried rather than rebuilt: a
 	// restore that dropped it would re-capture the CURRENT (stolen)
 	// controller as the base, and the creature would never go home.
