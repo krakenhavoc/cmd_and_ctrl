@@ -159,17 +159,31 @@ func TokenCopyTemplate(g *game.Game, cardID uuid.UUID) (game.Card, bool) {
 	if src.OracleID == "" && src.TokenKey != "" {
 		// A copy of a TOKEN (CR 707.2) takes the token's catalog
 		// identity: with no oracle ID the key is the only thing its
-		// abilities are found by. It also takes a double-faced token's
-		// BOTH faces and which one is up (CR 707.8a, ADR 0185): a copy
-		// of an Incubator is an Incubator that can transform, entering
-		// with whichever face the original shows, and none of the
-		// original's counters (counters are not copiable).
+		// abilities are found by.
 		out.TokenKey = src.TokenKey
 		out.PrintedPTKnown = src.PrintedPTKnown
-		if src.Layout == game.LayoutTransform && len(src.Faces) == 2 {
-			out.Layout = src.Layout
-			out.Faces = game.CopiableValuesOf(src).Clone().Faces
-			out.ActiveFace = src.ActiveFace
+	}
+	if src.Layout == game.LayoutTransform && len(src.Faces) == 2 {
+		// CR 707.8a, ADR 0185: a token copy of a transforming permanent
+		// or card, a token or a real card, is a transforming token with
+		// both faces, entering with whichever face the original shows
+		// and none of its counters (not copiable). Each face carries the
+		// Token supertype, or a transform would turn the token into a
+		// card.
+		out.Layout = src.Layout
+		out.Faces = game.CopiableValuesOf(src).Clone().Faces
+		for i := range out.Faces {
+			out.Faces[i].TypeLine = tokenTypeLine(out.Faces[i].TypeLine)
+		}
+		out.ActiveFace = src.ActiveFace
+	} else if sv := game.SingleFacedCopiableValuesOf(src); sv.OracleID != src.OracleID || sv.TokenKey != src.TokenKey {
+		// A token copy of the back face of a modal double-faced
+		// permanent is single-faced (CR 707.8) but keeps that face's
+		// catalog entry.
+		if sv.OracleID != "" {
+			out.OracleID = sv.OracleID
+		} else {
+			out.TokenKey = sv.TokenKey
 		}
 	}
 	return out, true

@@ -112,7 +112,7 @@ func (g *Game) CopiableValuesForEffect(cardID uuid.UUID) (PrintedValues, bool) {
 	if !ok {
 		return PrintedValues{}, false
 	}
-	return CopiableValuesOf(c), true
+	return SingleFacedCopiableValuesOf(c), true
 }
 
 // BecomeCopyForEffect makes each permanent in `targets` a copy of `v`

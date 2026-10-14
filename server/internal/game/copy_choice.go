@@ -244,7 +244,7 @@ func (g *Game) ResolveCopyTarget(choiceID, chooserID, cardID uuid.UUID) error {
 		ev.exchangeTextWith = cardID
 	} else if cardID != uuid.Nil && g.copyCandidateStillLegalLocked(ev, chosen, cardID) {
 		if src, ok := g.battlefieldCardLocked(cardID); ok {
-			values := CopiableValuesOf(*src)
+			values := SingleFacedCopiableValuesOf(*src)
 			if sel := chosen.effect.CopySelector; sel != nil && sel.Except != nil {
 				sel.Except(ev, &values, g, chosen.source)
 			}

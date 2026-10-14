@@ -203,6 +203,41 @@ func CopiableValuesOf(src Card) PrintedValues {
 	return printedValuesOf(src)
 }
 
+// SingleFacedCopiableValuesOf is CopiableValuesOf for a permanent that
+// BECOMES a copy of `src` (Clone, Mirage Mirror, "enters as a copy"), as
+// opposed to a spell copy or a token copy. CR 707.8: a copy that is not
+// itself a double-faced card takes the characteristics of the face that
+// is up and no other, so it is single-faced and cannot transform (CR
+// 712.9): a Clone of a werewolf stays a Human Werewolf, and a Clone of a
+// modal double-faced land is a land.
+//
+// The face-up values are already the flat printed fields, so this drops
+// Layout, Faces and ActiveFace. The one thing that would be lost with
+// them is WHICH catalog entry the copy reads its abilities from: a back
+// face keys as "<oracle id>#1" and CatalogKey derives that suffix from
+// ActiveFace. A copy of a back face keeps the key by carrying it in the
+// OracleID (or TokenKey) itself, which every consumer reads as a catalog
+// identity.
+func SingleFacedCopiableValuesOf(src Card) PrintedValues {
+	v := CopiableValuesOf(src)
+	if !isDoubleFacedPermanent(src) || src.FaceDownIsPermanent() {
+		return v
+	}
+	if v.ActiveFace != 0 {
+		// A key is on exactly one of the two fields (see TokenKey);
+		// CatalogKeyForFace leaves an empty one empty.
+		if v.TokenKey != "" {
+			v.TokenKey = CatalogKeyForFace(v.TokenKey, v.ActiveFace)
+		} else {
+			v.OracleID = CatalogKeyForFace(v.OracleID, v.ActiveFace)
+		}
+	}
+	v.Layout = ""
+	v.Faces = nil
+	v.ActiveFace = 0
+	return v
+}
+
 // faceDownCopiableValues is CR 708.2's copiable values for a CR 708.2
 // object: its body — listed or CR 708.2a's default — and nothing else.
 // No name, no mana cost, no colour, no oracle ID (so no catalog
