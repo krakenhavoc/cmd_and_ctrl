@@ -594,6 +594,7 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - ["If a spell or ability an opponent controls causes you to discard" (ADR 0153, #1861)](docs/adding-cards.md#if-a-spell-or-ability-an-opponent-controls-causes-you-to-discard-adr-0153-1861)
   - [Partner with (CR 702.124j, #2142)](docs/adding-cards.md#partner-with-cr-702124j-2142)
   - [Choose a Background, partner and Doctor's companion (ADR 0144, #2874)](docs/adding-cards.md#choose-a-background-partner-and-doctors-companion-adr-0144-2874)
+  - [Companion (CR 702.139, ADR 0172, #3401)](docs/adding-cards.md#companion-cr-702139-adr-0172-3401)
   - [Renown (CR 702.112, #2049)](docs/adding-cards.md#renown-cr-702112-2049)
   - [Adding a Room or a split card (ADR 0103, #1756)](docs/adding-cards.md#adding-a-room-or-a-split-card-adr-0103-1756)
   - [Abilities from the hand (#660)](docs/adding-cards.md#abilities-from-the-hand-660)

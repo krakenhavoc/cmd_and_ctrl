@@ -533,6 +533,10 @@
               )}
             </p>
           {/if}
+          {#if report.companion}
+            <!-- ADR 0172 §2: the companion, outside the 100. -->
+            <p class="commanders">Companion: {report.companion.name}</p>
+          {/if}
           {#if report.source_url}
             <a
               class="source-link"

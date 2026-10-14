@@ -40,6 +40,11 @@ var (
 	// ErrEmptyDeck is returned when a player is added without a deck.
 	ErrEmptyDeck = errors.New("game: deck cannot be empty")
 
+	// ErrTooManyCompanions is returned when a deck carries more than
+	// one companion card: a player reveals at most one (CR 103.2b,
+	// ADR 0172 §3).
+	ErrTooManyCompanions = errors.New("game: a deck can have only one companion")
+
 	// ErrCardNotFound is returned when a zone operation references a
 	// card instance that does not exist in the zone.
 	ErrCardNotFound = errors.New("game: card instance not found in zone")

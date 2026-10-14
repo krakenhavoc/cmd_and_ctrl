@@ -1245,6 +1245,14 @@ type Card struct {
 	// Commanders live in the command zone at game start.
 	IsCommander bool
 
+	// IsCompanion marks the card a deck revealed as its companion (CR
+	// 702.139a, ADR 0172 §3). It routes the card into Player.Companion
+	// when the deck is seated, the way IsCommander routes a commander
+	// into the command zone, and it stays on the card after the
+	// companion special action puts it into a hand: the log, the game
+	// statistics and the client's badge read it. It grants nothing.
+	IsCompanion bool
+
 	// CommanderReturnDue is CR 903.9a's "put into that zone since the
 	// last time state-based actions were checked" for a commander in a
 	// graveyard or in exile (ADR 0115 decision 1). MoveCard sets it as a

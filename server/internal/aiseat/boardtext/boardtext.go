@@ -162,6 +162,18 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		if ex := cardNames(playableExileOf(v, s.ID), max, opts); ex != "" {
 			fmt.Fprintf(&b, "  may play from exile: %s\n", ex)
 		}
+		// ADR 0172 §7: a revealed companion is public, so every seat's
+		// is shown while it waits outside the game; the seat's own with
+		// its text, since it is a card that seat can take.
+		if s.Companion != nil {
+			describe := cardNames
+			if s.ID == me {
+				describe = describeCards
+			}
+			if co := describe([]protocol.CardView{*s.Companion}, max, opts); co != "" {
+				fmt.Fprintf(&b, "  companion (outside the game): %s\n", co)
+			}
+		}
 		if s.ID == me {
 			if hand := describeCards(s.Hand.Cards, max, opts); hand != "" {
 				fmt.Fprintf(&b, "  your hand: %s\n", hand)

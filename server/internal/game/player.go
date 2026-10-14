@@ -129,6 +129,20 @@ type Player struct {
 	// S40 (#623).
 	Emblems *Zone
 
+	// Companion holds the companion this player revealed (CR 702.139a,
+	// 103.2b), zero or one card, outside the game: kind ZoneOutside
+	// (ADR 0172 §4). Built the way Emblems is, and for the same
+	// reason: no ZoneRef resolves to it and the card index does not
+	// cover it, so no effect, move verb or admin tool can reach the
+	// card (CR 400.11c). The companion special action (companion.go)
+	// is the only way out, and nothing puts a card back, so an empty
+	// container is "no companion, or already taken" — CR 116.2g's
+	// once per game, with no separate flag. Nil until a deck with a
+	// companion is seated (seatDeckCard), and nil again after a restore
+	// of a seat with none: every reader asks CompanionCard, which
+	// answers both the same way.
+	Companion *Zone
+
 	// CommanderDamage maps commander INSTANCE ID → total damage that
 	// one commander has dealt to this player across the game
 	// (CR 903.10a). See the note above the struct.

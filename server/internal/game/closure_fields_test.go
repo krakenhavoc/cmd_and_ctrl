@@ -123,7 +123,15 @@ var closureClassCeilings = map[string]int{
 	// into (owner decision, 2026-09-25): Game.StackMeta,
 	// Game.PendingTriggers, Game.lastKnownStack and lastKnownSpell.card.
 	// The sixth line, lastKnownSpell.item, became keyed.
-	"census:IntrinsicAbilityCards": 49,
+	//
+	// 50: + Player.Companion (ADR 0172 §4, #3401), the revealed
+	// companion's container, built like Player.Emblems. It is a new
+	// container of ordinary cards, not a new kind of blocker: the
+	// census walks it (GameSnapshot's card walk and the ability-ref
+	// lookup both include it) and counts its cards exactly as it
+	// counts a hand's. The owner chose this container over putting the
+	// companion in the command zone (ADR 0172, Option B).
+	"census:IntrinsicAbilityCards": 50,
 	"transient":                    1,
 }
 

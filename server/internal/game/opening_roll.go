@@ -448,6 +448,10 @@ func (g *Game) chooseStartingSeatLocked(seat int) {
 // draw on each seat's shuffle stream — the same draw it was when the
 // deal came first.
 func (g *Game) dealAndBeginLocked(startingSeat int) {
+	// CR 103.2b: companions are revealed once the starting player is
+	// known, before the libraries are shuffled and hands drawn (ADR
+	// 0172 §5).
+	g.revealCompanionsLocked(startingSeat)
 	for _, p := range g.Seats {
 		if p == nil || p.Eliminated {
 			continue

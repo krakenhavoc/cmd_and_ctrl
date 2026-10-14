@@ -163,26 +163,6 @@ func TestParseMoxfieldBasic(t *testing.T) {
 	}
 }
 
-func TestParseMoxfieldRejectsCompanion(t *testing.T) {
-	raw := []byte(`{
-		"boards": {
-			"commanders": { "count": 1, "cards": {
-				"c1": { "quantity": 1, "card": { "name": "Atraxa" } }
-			}},
-			"mainboard":  { "count": 1, "cards": {
-				"m1": { "quantity": 1, "card": { "name": "Sol Ring" } }
-			}},
-			"companions": { "count": 1, "cards": {
-				"o1": { "quantity": 1, "card": { "name": "Lurrus of the Dream-Den" } }
-			}}
-		}
-	}`)
-	_, _, err := ParseMoxfield(raw)
-	if !errors.Is(err, ErrUnsupportedMechanic) {
-		t.Errorf("companion: got %v, want ErrUnsupportedMechanic", err)
-	}
-}
-
 func TestParseMoxfieldBadJSON(t *testing.T) {
 	_, _, err := ParseMoxfield([]byte("not json"))
 	if err == nil {
@@ -216,20 +196,6 @@ func TestResolveUnknownNamesBatched(t *testing.T) {
 	}
 }
 
-// TestResolveCompanionSniff covers the oracle-text heuristic for
-// catching cards with unsupported mechanics: a commander that prints
-// companion is refused (#2874 left it the only one). Uses a synthetic
-// card because the keyword depends on real oracle text.
-func TestResolveCompanionSniff(t *testing.T) {
-	lurrus := basicLegal("Lurrus of the Dream-Den", "Legendary Creature — Cat Nightmare", "W", "B")
-	lurrus.OracleText = "Companion \u2014 Each permanent card in your starting deck has mana value 2 or less.\nLifelink"
-	idx := indexWith(lurrus)
-	_, err := Resolve(idx, "t", []Entry{{Name: "Lurrus of the Dream-Den", Count: 1, IsCommander: true}})
-	if !errors.Is(err, ErrUnsupportedMechanic) {
-		t.Errorf("companion: got %v, want ErrUnsupportedMechanic", err)
-	}
-}
-
 // TestResolvePartnerSniffCommanderOnly guards against the false-
 // positive where a non-commander mainboard card whose oracle text
 // references the partner keyword (e.g. a tutor that targets partner
@@ -245,32 +211,6 @@ func TestResolvePartnerSniffCommanderOnly(t *testing.T) {
 	})
 	if err != nil {
 		t.Errorf("mainboard partner reference: got %v, want nil", err)
-	}
-}
-
-// TestResolveUnsupportedMechanicErrorShape covers the new structured
-// error that Resolve returns for companion so the HTTP layer can emit
-// `{"violations": [...]}` without pattern-matching messages.
-func TestResolveUnsupportedMechanicErrorShape(t *testing.T) {
-	lurrus := basicLegal("Lurrus of the Dream-Den", "Legendary Creature", "W", "B")
-	lurrus.OracleText = "Companion \u2014 Each permanent card in your starting deck has mana value 2 or less."
-	idx := indexWith(lurrus)
-	_, err := Resolve(idx, "t", []Entry{{Name: "Lurrus of the Dream-Den", Count: 1, IsCommander: true}})
-	var ume *UnsupportedMechanicError
-	if !errors.As(err, &ume) {
-		t.Fatalf("Resolve: got %v, want *UnsupportedMechanicError", err)
-	}
-	if ume.Card != "Lurrus of the Dream-Den" {
-		t.Errorf("card: got %q, want Lurrus", ume.Card)
-	}
-	vs := ume.Violations()
-	if len(vs) != 1 || vs[0].Code != CodeUnsupportedMechanic {
-		t.Errorf("Violations: got %+v, want one %s", vs, CodeUnsupportedMechanic)
-	}
-	// errors.Is must still unwrap to the sentinel so existing tests
-	// and switch statements keep working.
-	if !errors.Is(err, ErrUnsupportedMechanic) {
-		t.Errorf("errors.Is: unwrap to ErrUnsupportedMechanic failed")
 	}
 }
 

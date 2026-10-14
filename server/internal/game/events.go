@@ -119,6 +119,13 @@ const (
 	// #658 / #659.
 	EventSpecialAction EventKind = "special_action"
 
+	// EventCompanionRevealed — Actor revealed CardID as their companion
+	// as the game began (CR 103.2b, ADR 0172 §5). Label is the card's
+	// name. One per seat with a companion, in turn order from the
+	// starting player. The card stays outside the game; nothing watches
+	// this event but the public log.
+	EventCompanionRevealed EventKind = "companion_revealed"
+
 	// EventBecomesPlotted — CardID, a card in exile, became plotted
 	// (CR 702.170c/d). Actor is the player who plotted it: the owner
 	// for the plot special action (CR 702.170a), the resolving item's

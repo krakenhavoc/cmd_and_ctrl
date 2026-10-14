@@ -76,6 +76,12 @@ export interface CoverageReport {
   /** Names the card index could not resolve. */
   unknown: string[];
   violations: DeckCoverageViolation[];
+  /**
+   * ADR 0172 §2: the deck's companion, bucketed like any card but not
+   * one of the 100, so it is in neither `cards` nor the counts. Absent
+   * for a deck with none.
+   */
+  companion?: CoverageCard;
 }
 
 export type DeckCheckRequest = { url: string } | { text: string };

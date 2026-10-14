@@ -126,6 +126,7 @@ PendingChoice.scryResume                     census:ChoiceResumeFrames          
 PendingChoice.searchResume                   census:ChoiceResumeFrames          # Game.PendingChoices.searchResume
 PendingChoice.triggerResume                  census:ChoiceResumeFrames          # Game.PendingChoices.triggerResume
 Player.Command                               census:IntrinsicAbilityCards       # Game.Seats.Command
+Player.Companion                             census:IntrinsicAbilityCards       # Game.Seats.Companion
 Player.Emblems                               census:IntrinsicAbilityCards       # Game.Seats.Emblems
 Player.Graveyard                             census:IntrinsicAbilityCards       # Game.Seats.Graveyard
 Player.Hand                                  census:IntrinsicAbilityCards       # Game.Seats.Hand

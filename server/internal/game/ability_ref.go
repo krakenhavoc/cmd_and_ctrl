@@ -606,7 +606,7 @@ func (s *GameSnapshot) cardNameOf(id uuid.UUID) string {
 	}
 	for i := range s.Seats {
 		p := &s.Seats[i]
-		for _, z := range []*zoneSnapshot{p.Library, p.Hand, p.Graveyard, p.Command, p.Emblems} {
+		for _, z := range []*zoneSnapshot{p.Library, p.Hand, p.Graveyard, p.Command, p.Emblems, p.Companion} {
 			if n, ok := find(z); ok {
 				return n
 			}

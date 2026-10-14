@@ -10566,7 +10566,10 @@ func (g *Game) RemovePlayer(playerID uuid.UUID) error {
 		p.Seat = i
 		// Lobby seats compact after a departure. Keep deck source ordinals
 		// aligned so a later join cannot reuse a surviving card's ordinal.
-		for _, zone := range []*Zone{p.Library, p.Command} {
+		for _, zone := range []*Zone{p.Library, p.Command, p.Companion} {
+			if zone == nil {
+				continue
+			}
 			for _, card := range zone.Cards {
 				if ordinal, ok := g.sourceOrdinals[card.InstanceID]; ok && ordinal>>32 == 0 {
 					g.setDeckSourceOrdinalLocked(card.InstanceID, i, int(ordinal&0xffff))

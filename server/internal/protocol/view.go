@@ -2190,6 +2190,19 @@ type PlayerView struct {
 	// life_history. Added in S40 (#623, ADR 0064).
 	Emblems []EmblemView `json:"emblems,omitempty"`
 
+	// Companion is the companion this seat revealed, while it waits
+	// outside the game (CR 702.139a, ADR 0172 §5). Absent for a seat
+	// with none, and once the companion special action has put it into
+	// the hand, where it is an ordinary card.
+	//
+	// PUBLIC and unredacted, the posture of emblems: a revealed
+	// companion stays revealed, so every viewer sees the whole card.
+	// Its `special_actions` (the {3} row) are the owner's alone, and
+	// FilterViewFor drops them for everyone else, as it does for a
+	// hand card someone else can see. Its `card_id` is what the
+	// owner's `special_action {kind: "companion"}` names.
+	Companion *CardView `json:"companion,omitempty"`
+
 	// Keywords are the abilities this PLAYER has right now
 	// (CR 702.11d, CR 702.16i) — engine tokens, "hexproof" or
 	// "protection from everything". Derived grants from a controlled
@@ -2464,6 +2477,10 @@ type CardView struct {
 	NoUntap     *NoUntapView   `json:"no_untap,omitempty"`
 	Counters    map[string]int `json:"counters,omitempty"`
 	IsCommander bool           `json:"is_commander,omitempty"`
+	// IsCompanion marks a deck's revealed companion (ADR 0172 §3),
+	// outside the game or after it has come into the game. Public: the
+	// card was revealed to the table. The client's "Companion" badge.
+	IsCompanion bool `json:"is_companion,omitempty"`
 	// DamageMarked is the damage currently noted on this creature
 	// (S13.1 — feeds the lethal-damage SBA). Cleared by the
 	// cleanup-step turn-based action and on zone exit. Only
@@ -7533,6 +7550,7 @@ func stampZoneAbilities(g *game.Game, seats []PlayerView, exile *ZoneView) {
 			c.SpecialActions = viewOfSpecialActions(g, *card, owner, game.ZoneHand)
 		}
 		stampLibraryTopSpecialActions(g, &seat.Library, owner)
+		stampCompanionSpecialActions(g, seat, owner)
 		stampZoneAbilitiesInPile(g, &seat.Graveyard, game.ZoneGraveyard, owner, restricted)
 		stampZoneAbilitiesInPile(g, &seat.Command, game.ZoneCommand, owner, restricted)
 	}
@@ -7632,6 +7650,27 @@ func stampLibraryTopSpecialActions(g *game.Game, lib *ZoneView, owner uuid.UUID)
 		return
 	}
 	c.SpecialActions = viewOfSpecialActions(g, card, owner, game.ZoneLibrary)
+}
+
+// stampCompanionSpecialActions puts the companion's {3} row on the
+// seat's companion view (ADR 0172 §6). The card is outside the game,
+// in no zone the other stampers walk, and the engine answers for
+// ZoneOutside. FilterViewFor keeps the row for the owner alone.
+//
+// Runs under the read lock ViewOfGame already holds.
+func stampCompanionSpecialActions(g *game.Game, seat *PlayerView, owner uuid.UUID) {
+	if seat.Companion == nil {
+		return
+	}
+	for _, p := range g.Seats {
+		if p == nil || p.ID != owner {
+			continue
+		}
+		if card, ok := p.CompanionCard(); ok {
+			seat.Companion.SpecialActions = viewOfSpecialActions(g, card, owner, game.ZoneOutside)
+		}
+		return
+	}
 }
 
 // viewOfSpecialActions projects the CR 116.2 special actions a card
@@ -8918,6 +8957,12 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		}
 		emblems = append(emblems, ev)
 	}
+	// ADR 0172 §5: the companion waiting outside the game, public.
+	var companion *CardView
+	if c, ok := p.CompanionCard(); ok {
+		cv := viewOfCard(c)
+		companion = &cv
+	}
 	return PlayerView{
 		ID:                    p.ID.String(),
 		Name:                  p.Name,
@@ -8961,6 +9006,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		LandsPlayedThisTurn: g.LandsPlayedThisTurnFor(p.ID),
 		ManaPool:            manaPool,
 		Emblems:             emblems,
+		Companion:           companion,
 		Keywords:            g.PlayerAbilitiesForEffect(p),
 		LifeTotalLocked:     g.PlayerLifeTotalCantChangeLocked(p),
 		CantGainLife:        g.PlayerCantGainLifeLocked(p),
@@ -9349,6 +9395,17 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// commander's price list is a fact about the card, and the
 		// legal targets of a cast only that seat may make are not.
 		out.Command = applyCastStampsFor(redactZone(p.Command, isKnower), viewerID, playingFor...)
+		// ADR 0172 §5: the companion is public, and its {3} row is its
+		// owner's to take — or the controller's, while they play the
+		// owner's whole turn (ADR 0167 §9).
+		if p.Companion != nil {
+			c := *p.Companion
+			if p.ID != viewerID && !slices.Contains(playingFor, p.ID) {
+				c.SpecialActions = nil
+			}
+			c.knowers = nil
+			out.Companion = &c
+		}
 		// Opponent hand: strip only UNREVEALED cards (seated-viewer
 		// path — Thoughtseize-style reveals survive via KnownBy);
 		// wholesale-hide for spectator / admin (viewerID empty)
@@ -9956,6 +10013,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.Toughness = 0
 	out.Counters = nil
 	out.IsCommander = false
+	out.IsCompanion = false
 	out.ManaCost = ""
 	out.Abilities = nil
 	// ADR 0109 §10: "its haste came from riot" says the card has riot,
@@ -10383,6 +10441,7 @@ func viewOfCardPtr(c *game.Card) CardView {
 		Tapped:        c.Tapped,
 		Counters:      counters,
 		IsCommander:   c.IsCommander,
+		IsCompanion:   c.IsCompanion,
 		// BattleX / BattleY are deliberately NOT stamped here: they
 		// are battlefield-only, and viewOfCard has no idea which zone
 		// it is projecting. viewOfZone fills them in for the

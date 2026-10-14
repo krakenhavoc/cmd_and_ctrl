@@ -254,3 +254,13 @@ The owner answered the draft's nine questions on 2026-10-14. Each answer is a de
 9. **Ship together.** The deck format and validation, the engine zone and special action, and the client, bot and MCP pieces go live together, never separately.
 
 The owner also asked the implementation to lift `deck.Resolve`'s refusal of Jegantha as a commander (§1) and to fix `special_action.go`'s citation for turning a card face up (CR 116.2b; 116.2g is companion).
+
+## Implementation notes (2026-10-14, #3401)
+
+Where the implementation differs from the text above, or settles what it left open:
+
+- **`Player.Companion` is nil when there is no companion**, not an empty container: `newPlayer` does not create it, `seatDeckCard` creates it for a deck that has one, `ReplaceDeck` clears it, and a restore leaves it nil when the file has no `companion` key. Every reader asks `Player.CompanionCard()`, which answers nil and empty the same way. The snapshot writes the key only while it holds a card.
+- **The closure ratchet did see a new route.** §4 said it would not. `Player.Companion` is a new container of cards, so it is a new route to `Card`'s closure-bearing fields, classified `census:IntrinsicAbilityCards` like `Player.Emblems` and `Player.Hand`. The census walks it, and `closureClassCeilings` for that class went from 49 to 50 with the reason written beside it.
+- **The trailing commander block** (Import formats, above) is in `ParseText`, so a Moxfield or MTGO text export parses its commander.
+- **The board text** shows each seat's waiting companion; it does not say "taken" once one has been, because a taken companion is an ordinary card on the board.
+- **Bots (owner decision 8) are not done.** Jegantha's colour identity is all five colours, so owner decision 2 lets it be the companion only of a five-colour commander, and none of the built-in decks is five-colour. Giving one a companion means a new five-colour deck or a new commander for an existing one, which is a picker change for the owner to decide. The heuristic, the enumerator and the MCP seat take the companion in any game where a deck has one.

@@ -186,6 +186,9 @@ func (g *Game) removeObjectsOwnedByLocked(playerID uuid.UUID) int {
 		// zone, so they leave with their owner like everything else.
 		// This is the ONLY thing in the game that removes one.
 		sweep(p.Emblems)
+		// ADR 0172: a companion still outside the game goes with its
+		// owner too.
+		sweep(p.Companion)
 	}
 	if removed > 0 {
 		g.recomputeSplitSecondLocked()

@@ -353,6 +353,8 @@ var cardFields = plan(
 	"Counters", carried, "",
 	"CounterStampedAt", carried, "",
 	"IsCommander", carried, "",
+	// ADR 0172 §4: the companion stamp; the badge reads it.
+	"IsCompanion", carried, "",
 	// ADR 0115 §8: CR 903.9a's "put into that zone since the last
 	// check" mark. Carried: a restore that dropped it would skip the
 	// owner's question.
@@ -622,6 +624,10 @@ var playerFields = plan(
 	// anything else on the board, and a restore that dropped them
 	// would quietly un-ultimate a planeswalker.
 	"Emblems", carried, "",
+	// ADR 0172 §4: the companion waiting outside the game. Carried:
+	// whether a player still has the option is not derivable from the
+	// board. Written only while it holds a card.
+	"Companion", carried, "",
 	"CommanderDamage", carried, "",
 	"LifeHistory", carried, "",
 	// The seat-turn counter "until your next turn" durations end on
