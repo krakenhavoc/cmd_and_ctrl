@@ -3110,8 +3110,13 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 		}
 		return nil
 	}
+	label := ""
+	if spec.Shuffle {
+		label = SearchShuffledLabel
+	}
 	g.EmitEvent(Event{
 		Kind:  EventSearchLibrary,
+		Label: label,
 		Actor: spec.Player,
 		// #1335: `p` is always the library owner (SearchLibraryThenForEffect
 		// resolves it via libraryOwnerID before calling here), which
