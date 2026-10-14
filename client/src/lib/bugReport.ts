@@ -145,19 +145,27 @@ export interface BugReportContext {
   step?: string;
   seq?: number;
   connection?: string;
+  // The page a report was filed from, outside a game (#3492): the
+  // route's NAME ("lobby", "decks"), never the URL, whose hash can hold
+  // an invite token, and the issue is public.
+  page?: string;
 }
 
 // buildBugContext snapshots the game situation at click time. Null
 // view (connection still opening, or the game evaporated) degrades
 // to just the game ID + connection status — a report with thin
-// context beats no report.
+// context beats no report. Outside a game, gameID is "" and `page`
+// says where the report came from instead.
 export function buildBugContext(
   gameID: string,
   view: GameView | null,
   seq: number,
   connection: string,
+  page = "",
 ): BugReportContext {
-  const ctx: BugReportContext = { game_id: gameID };
+  const ctx: BugReportContext = {};
+  if (gameID) ctx.game_id = gameID;
+  if (page) ctx.page = page;
   if (connection) ctx.connection = connection;
   if (seq > 0) ctx.seq = seq;
   if (view?.turn) {
@@ -178,6 +186,7 @@ export function redactBugContext(ctx: BugReportContext | undefined): BugReportCo
   if (out.phase !== undefined) out.phase = redactSecrets(out.phase);
   if (out.step !== undefined) out.step = redactSecrets(out.step);
   if (out.connection !== undefined) out.connection = redactSecrets(out.connection);
+  if (out.page !== undefined) out.page = redactSecrets(out.page);
   return out;
 }
 

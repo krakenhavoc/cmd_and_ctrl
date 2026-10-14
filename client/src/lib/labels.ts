@@ -856,6 +856,14 @@ export const LABEL_SPECS = {
     doc: "a table card's right-click menu (also the Menu key, Shift+F10 or a long press)",
   }),
 
+  reportABug: label({
+    name: "Report a bug or idea",
+    kind: "aria",
+    role: "button",
+    owners: ["routes/Game.svelte", "lib/components/SiteHeader.svelte"],
+    doc: "the bug button: the table's command bar, and the site header on every other page for someone signed in with Discord (#3492); the Guide and About name it",
+  }),
+
   // -- The site header (ADR 0156 §3) --
   navTables: label({
     name: "Tables",
