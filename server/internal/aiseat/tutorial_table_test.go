@@ -36,7 +36,8 @@ import (
 // interleaving a real table has.
 //
 // Gated like the catalog soak: AISEAT_GAME_TESTS, and
-// CMDCTRL_SCRYFALL_DUMP for the cards. AISEAT_TUTORIAL_GAMES widens the
+// CMDCTRL_SCRYFALL_DUMP for the cards; the nightly's curated-decks job
+// (e2e-nightly.yml) sets both. AISEAT_TUTORIAL_GAMES widens the
 // sample (default 10), AISEAT_TUTORIAL_SEED moves it (default 7600).
 func TestTutorialTablePlaysSafely(t *testing.T) {
 	requireGameTests(t)
