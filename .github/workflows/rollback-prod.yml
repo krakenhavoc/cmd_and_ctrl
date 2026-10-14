@@ -34,9 +34,9 @@ concurrency:
 
 jobs:
   rollback:
-    # Same deploy runners as cmdctrl-cd-prod; see cmdctrl-cd-dev in
-    # ci-cd.yml (#3335).
-    runs-on: ${{ vars.CMDCTRL_DEPLOY_RUNNER_LABEL && fromJSON(format('["self-hosted","{0}"]', vars.CMDCTRL_DEPLOY_RUNNER_LABEL)) || 'self-hosted' }}
+    # The deploy runners only, like cmdctrl-cd-prod (#3335, ADR 0181);
+    # see cmdctrl-cd-dev in ci-cd.yml.
+    runs-on: [self-hosted, deploy]
     if: github.ref == 'refs/heads/main' && inputs.confirm == 'rollback'
     environment: prod
     env:
