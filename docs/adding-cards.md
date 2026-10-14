@@ -8904,12 +8904,21 @@ is the gate `Saddled()` (`SaddledKeywords(kw…)` is the keyword shape).
 saddle of a turn, so "for the first time each turn" needs no counting. A
 card that says "[target Mount] becomes saddled" uses `BecomeSaddled{}`,
 which does nothing to a permanent that is not a Mount. "Creatures that
-saddled it this turn" is `SaddlersOf(ctx, mount)` (survivors only; a
-creature that left is a new object): a card-set prompt at resolution can
-offer it (`rambling_possum.go`); a TARGET that must be one of them cannot
-be written yet (#2704). Read the state a trigger needs when it is BUILT,
-not when it resolves, if the Mount might leave in response
-(`caustic_bronco.go` carries it on `item.Params`).
+saddled it this turn" is `SaddlersOfThis(ctx)` (ADR 0186): the creatures
+tapped to pay for this Mount's saddle ability, read from the turn tally
+(`TurnTally.Crews`) by the source's `ObjectRef`, so it still answers when
+the Mount left or was bounced in response, and answers nothing for the
+same card back as a new object. Only the creatures still on the
+battlefield as the same objects come back (a creature that left is a new
+object). `CrewersOfThis(ctx)` is the same for a Vehicle. The records are
+written when the creatures are TAPPED, not when the ability resolves, so
+a countered saddle or crew ability still left them. A card-set prompt at
+resolution can offer them (`rambling_possum.go`); a TARGET that must be
+one of them cannot be written yet (ADR 0186 slice 4). `SaddlersOf(ctx,
+mount)` asks the same about a Mount on the battlefield now. Read the
+state a trigger needs when it is BUILT, not when it resolves, if the
+Mount might leave in response (`caustic_bronco.go` carries it on
+`item.Params`); the saddlers need no such care.
 ### Explore (CR 701.44, #2720)
 
 "<Permanent> explores" is `Game.ExploreForEffect(source, explorer

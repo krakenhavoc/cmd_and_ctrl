@@ -312,6 +312,8 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Monstrous:         true,
 		Renowned:          true,
 		Saddled:           true,
+		CrewedBy:          []string{"crewer"},
+		SaddledBy:         []string{"saddler"},
 		RingBearer:        true,
 		Suspected:         true,
 		Prepared:          true,

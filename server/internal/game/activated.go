@@ -1894,6 +1894,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		if c := findBattlefieldCard(g, id); c != nil {
 			c.Tapped = true
 			g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: id})
+			// ADR 0186 §1: the creature crewed or saddled the source as
+			// it was tapped to pay (CR 702.122b-c, CR 702.171c), so the
+			// record is written here and not when the ability resolves:
+			// a crew ability that is countered still had its creatures
+			// crew the Vehicle.
+			g.recordCrewLocked(ab.Cost.Saddle > 0,
+				sourceObject,
+				ObjectRef{ID: id, Epoch: c.ObjectEpoch})
 			if ab.Cost.Saddle > 0 {
 				// #2695: who saddled it, as the objects they were, for
 				// CR 702.171c.

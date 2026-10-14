@@ -415,6 +415,17 @@ type TurnTally struct {
 	// ExertedThisTurn (Combat Celebrant's "if this creature hasn't
 	// been exerted this turn"). Additive within v7: omitted when empty.
 	Exerts []ExertRecord `json:"exerts,omitempty"`
+	// Crews is every creature tapped to pay a crew or saddle cost this
+	// turn, in payment order (ADR 0186 §1, CR 702.122b-c, CR 702.171c):
+	// one record per creature per payment, naming the Vehicle or Mount
+	// and the creature as the OBJECTS they were when the cost was paid.
+	// Written only by recordCrewLocked, at payment and not at resolution,
+	// so a crew ability that was countered still left its records. It
+	// outlives both objects, which is why "creatures that saddled it"
+	// survives the Mount leaving (Fortune, Loyal Steed's ruling). Read
+	// through CrewRecordsForEffect and the two creature readers built on
+	// it. Additive within v8: omitted when empty.
+	Crews []CrewRecord `json:"crews,omitempty"`
 	// StepsBegun and PhasesBegun count the steps and phase families
 	// that have begun this turn; PhaseStarted is the PhaseID of the
 	// phase the last count opened. They are what Turn.StepOrdinal and
@@ -1439,6 +1450,9 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	}
 	if len(t.Exerts) > 0 {
 		out.Exerts = append([]ExertRecord(nil), t.Exerts...)
+	}
+	if len(t.Crews) > 0 {
+		out.Crews = append([]CrewRecord(nil), t.Crews...)
 	}
 	if len(t.StepsBegun) > 0 {
 		out.StepsBegun = make(map[Step]int, len(t.StepsBegun))
