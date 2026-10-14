@@ -3812,7 +3812,7 @@
             "auto_tap": true
           },
           "kind": "cast",
-          "label": "Cast Village Rites",
+          "label": "Cast Village Rites (sacrificing Sacrificial Bear)",
           "source": "00000068-0000-4000-8000-000000000000",
           "cost": {
             "mana": "{B}"
