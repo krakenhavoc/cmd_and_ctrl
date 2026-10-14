@@ -33,6 +33,10 @@ import (
 // table rooms are created in (ADR 0159 §7).
 const VoiceCategoryEnv = "CMDCTRL_DISCORD_VOICE_CATEGORY_ID"
 
+// VoicePullInEnv turns on moving seated players who are in another voice
+// channel into their table's room (#3311). Off unless it is a true value.
+const VoicePullInEnv = "CMDCTRL_DISCORD_VOICE_PULL_IN"
+
 // Discord permission bits a room's overwrites use. Discord sends and
 // takes permission sets as decimal strings of these bits.
 const (
@@ -139,6 +143,10 @@ type Voice struct {
 	GuildID string
 	// CategoryID is where rooms go (CMDCTRL_DISCORD_VOICE_CATEGORY_ID).
 	CategoryID string
+	// PullIn is whether a seated, granted player who is in another voice
+	// channel of the server is moved into the table's room
+	// (CMDCTRL_DISCORD_VOICE_PULL_IN, default off).
+	PullIn bool
 }
 
 // Enabled reports whether all three are set.
@@ -173,7 +181,16 @@ func VoiceFromEnv(getenv func(string) string) (Voice, error) {
 		Token:      BotFromEnv(getenv).Token,
 		GuildID:    guild,
 		CategoryID: category,
+		PullIn:     truthy(getenv(VoicePullInEnv)),
 	}, nil
+}
+
+func truthy(v string) bool {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
 }
 
 // MissingToken reports the one supported half-configured state: a
@@ -327,25 +344,54 @@ func (v Voice) IsMember(ctx context.Context, client *http.Client, userID string)
 	return true, nil
 }
 
-// ConnectedChannel is the voice channel a member is connected to in the
-// community server, or "" when they are in none.
-// GET /guilds/{guild}/voice-states/{user}.
-func (v Voice) ConnectedChannel(ctx context.Context, client *http.Client, userID string) (string, error) {
+// VoiceState is a member's voice connection in the community server.
+type VoiceState struct {
+	// ChannelID is the channel they are connected to, "" for none.
+	ChannelID string
+	// Muted is true when they are muted or deafened, by themselves or by
+	// the server.
+	Muted bool
+}
+
+// VoiceStateOf is a member's voice connection in the community server.
+// GET /guilds/{guild}/voice-states/{user}. A member in no channel is the
+// zero VoiceState.
+func (v Voice) VoiceStateOf(ctx context.Context, client *http.Client, userID string) (VoiceState, error) {
 	var vs struct {
 		ChannelID *string `json:"channel_id"`
+		Deaf      bool    `json:"deaf"`
+		Mute      bool    `json:"mute"`
+		SelfDeaf  bool    `json:"self_deaf"`
+		SelfMute  bool    `json:"self_mute"`
 	}
 	err := v.call(ctx, client, http.MethodGet, "/guilds/"+v.GuildID+"/voice-states/"+userID, nil, &vs, nil)
 	var nf *notFoundError
 	if errors.As(err, &nf) && (nf.code == codeUnknownVoiceState || nf.code == codeUnknownMember || nf.code == codeUnknownUser) {
-		return "", nil
+		return VoiceState{}, nil
 	}
 	if err != nil {
-		return "", err
+		return VoiceState{}, err
 	}
 	if vs.ChannelID == nil {
-		return "", nil
+		return VoiceState{}, nil
 	}
-	return *vs.ChannelID, nil
+	return VoiceState{ChannelID: *vs.ChannelID, Muted: vs.Deaf || vs.Mute || vs.SelfDeaf || vs.SelfMute}, nil
+}
+
+// ConnectedChannel is the voice channel a member is connected to in the
+// community server, or "" when they are in none.
+func (v Voice) ConnectedChannel(ctx context.Context, client *http.Client, userID string) (string, error) {
+	st, err := v.VoiceStateOf(ctx, client, userID)
+	return st.ChannelID, err
+}
+
+// MoveTo moves a member who is connected to some voice channel into
+// channelID (PATCH /guilds/{guild}/members/{user}, Move Members). Discord
+// refuses it for a member in no channel; the caller checks first.
+func (v Voice) MoveTo(ctx context.Context, client *http.Client, channelID, userID string) error {
+	body := map[string]any{"channel_id": channelID}
+	return v.call(ctx, client, http.MethodPatch, "/guilds/"+v.GuildID+"/members/"+userID, body, nil,
+		[]int{codeUnknownMember, codeUnknownUser})
 }
 
 // DisconnectFrom takes a member out of voice, but only if they are

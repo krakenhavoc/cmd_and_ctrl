@@ -6,7 +6,7 @@
   // the click never happens.
 
   import type { VoiceView } from "../protocol";
-  import { voiceStatusLine, voiceYouLine } from "../voiceRoom";
+  import { voiceOpen, voiceStatusLine, voiceYouLine } from "../voiceRoom";
 
   interface Props {
     voice: VoiceView;
@@ -49,8 +49,15 @@
 
   <div class="voice-actions">
     {#if voice.url && you === "granted" && voice.status === "ready"}
-      <a class="btn primary" href={voice.url} target="_blank" rel="noopener noreferrer"
-        >Open in Discord</a
+      <a
+        class="btn primary"
+        href={voice.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onclick={(e) => {
+          e.preventDefault();
+          voiceOpen(voice.url!);
+        }}>Open in Discord</a
       >
     {/if}
     {#if you === "not_in_server"}

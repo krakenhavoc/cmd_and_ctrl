@@ -49,6 +49,11 @@ const (
 	voiceMaxAttempts = 3
 	// voiceCallTimeout bounds one Discord call.
 	voiceCallTimeout = 10 * time.Second
+	// voicePollEvery is how often the worker reads who is connected to
+	// each live room (#3311). The server holds no gateway connection, so
+	// this is a REST read per granted seat; a change is pushed only when
+	// the answer differs from the last one.
+	voicePollEvery = 20 * time.Second
 	// voiceMaxRetryWait caps a 429's wait.
 	voiceMaxRetryWait = 30 * time.Second
 )
@@ -69,6 +74,8 @@ type voiceAPI interface {
 	Rooms(ctx context.Context, client *http.Client) ([]discord.Room, error)
 	IsMember(ctx context.Context, client *http.Client, userID string) (bool, error)
 	ConnectedChannel(ctx context.Context, client *http.Client, userID string) (string, error)
+	VoiceStateOf(ctx context.Context, client *http.Client, userID string) (discord.VoiceState, error)
+	MoveTo(ctx context.Context, client *http.Client, channelID, userID string) error
 	DisconnectFrom(ctx context.Context, client *http.Client, channelID, userID string) (bool, error)
 	RoomURL(channelID string) string
 }
@@ -95,6 +102,18 @@ type voiceReport struct {
 	status string
 	url    string
 	access map[string]string // Discord id → protocol.VoiceAccess*
+	// connected is each Discord id connected to the room, to
+	// protocol.VoiceConnLive or VoiceConnMuted (#3311).
+	connected map[string]string
+}
+
+// connection is Discord id d's connection to the room, "" for none. Safe
+// on a nil report.
+func (r *voiceReport) connection(d string) string {
+	if r == nil {
+		return ""
+	}
+	return r.connected[d]
 }
 
 // voiceRoomState is the manager's own record of one table.
@@ -116,6 +135,9 @@ type voiceRoomState struct {
 	lastSeq     uint64
 	lastActive  time.Time
 	lastMembers map[string]bool
+	// connected is who was last seen connected to the room (#3311):
+	// Discord id → protocol.VoiceConn*.
+	connected map[string]string
 }
 
 // VoiceManager runs the voice rooms of one lobby. Construct it with
@@ -136,12 +158,17 @@ type VoiceManager struct {
 	refreshes map[uuid.UUID][]string
 	botID     string
 	kick      chan struct{}
+	// pullIn moves a granted player who is in another voice channel into
+	// the table's room (#3311). Set before Start.
+	pullIn bool
 }
 
 // NewVoiceManager builds a manager over the configured Discord voice
 // calls (ADR 0159 slice 2).
 func NewVoiceManager(v discord.Voice, log *slog.Logger) *VoiceManager {
-	return newVoiceManager(v, &http.Client{Timeout: voiceCallTimeout}, log, time.Now)
+	vm := newVoiceManager(v, &http.Client{Timeout: voiceCallTimeout}, log, time.Now)
+	vm.pullIn = v.PullIn
+	return vm
 }
 
 func newVoiceManager(api voiceAPI, client *http.Client, log *slog.Logger, now func() time.Time) *VoiceManager {
@@ -183,6 +210,8 @@ func (vm *VoiceManager) Start(ctx context.Context) {
 func (vm *VoiceManager) run(ctx context.Context) {
 	ticker := time.NewTicker(voiceSweepEvery)
 	defer ticker.Stop()
+	poll := time.NewTicker(voicePollEvery)
+	defer poll.Stop()
 	for {
 		select {
 		case <-ctx.Done():
@@ -192,6 +221,8 @@ func (vm *VoiceManager) run(ctx context.Context) {
 		case <-ticker.C:
 			vm.sweep(ctx)
 			vm.drain(ctx)
+		case <-poll.C:
+			vm.pollConnections(ctx)
 		}
 	}
 }
@@ -407,6 +438,7 @@ func (vm *VoiceManager) deleteRoom(ctx context.Context, st *voiceRoomState) erro
 	}
 	st.channelID = ""
 	st.granted = map[string]bool{}
+	st.connected = nil
 	return nil
 }
 
@@ -414,6 +446,7 @@ func (vm *VoiceManager) deleteRoom(ctx context.Context, st *voiceRoomState) erro
 func (vm *VoiceManager) forgetRoom(id uuid.UUID, st *voiceRoomState) {
 	st.channelID = ""
 	st.granted = map[string]bool{}
+	st.connected = nil
 	vm.lobby.setVoiceChannel(id, "")
 	vm.notify(id)
 }
@@ -463,11 +496,14 @@ func (vm *VoiceManager) failed(id uuid.UUID, st *voiceRoomState, step string, er
 // publish tells the lobby the table's room status and each member's
 // access, which restamps the game view.
 func (vm *VoiceManager) publish(id uuid.UUID, t voiceTable, st *voiceRoomState) {
-	rep := voiceReport{access: map[string]string{}}
+	rep := voiceReport{access: map[string]string{}, connected: map[string]string{}}
 	for d := range t.members {
 		switch {
 		case st.granted[d]:
 			rep.access[d] = protocol.VoiceAccessGranted
+			if c := st.connected[d]; c != "" && st.channelID != "" {
+				rep.connected[d] = c
+			}
 		case st.notMember[d]:
 			rep.access[d] = protocol.VoiceAccessNotInServer
 		default:
@@ -530,6 +566,82 @@ func (vm *VoiceManager) sweep(ctx context.Context) {
 		st.idle = true
 		vm.notify(id)
 	}
+}
+
+// pollConnections reads who is connected to each live room and publishes
+// the tables where that changed (#3311). With pull-in on, a granted
+// player found in a different voice channel is moved into the room; a
+// player already in the room is never touched. Worker only.
+func (vm *VoiceManager) pollConnections(ctx context.Context) {
+	vm.mu.Lock()
+	ids := make([]uuid.UUID, 0, len(vm.rooms))
+	for id, st := range vm.rooms {
+		if st.channelID != "" {
+			ids = append(ids, id)
+		}
+	}
+	vm.mu.Unlock()
+	sort.Slice(ids, func(i, j int) bool { return ids[i].String() < ids[j].String() })
+	for _, id := range ids {
+		if ctx.Err() != nil {
+			return
+		}
+		t, ok := vm.lobby.voiceTable(id)
+		st := vm.state(id)
+		if !ok || !t.enabled || st.channelID == "" {
+			continue
+		}
+		next := map[string]string{}
+		for _, d := range sortedKeys(st.granted) {
+			if !t.members[d] {
+				continue
+			}
+			cctx, cancel := vm.call(ctx)
+			vs, err := vm.api.VoiceStateOf(cctx, vm.client, d)
+			cancel()
+			if err != nil {
+				// Keep what was last seen for this seat.
+				if c := st.connected[d]; c != "" {
+					next[d] = c
+				}
+				continue
+			}
+			if vs.ChannelID != "" && vs.ChannelID != st.channelID && vm.pullIn {
+				mctx, mcancel := vm.call(ctx)
+				merr := vm.api.MoveTo(mctx, vm.client, st.channelID, d)
+				mcancel()
+				if merr != nil {
+					vm.log.Info("voice pull-in failed", "game_id", id, "err", merr)
+				} else {
+					vs.ChannelID = st.channelID
+				}
+			}
+			if vs.ChannelID != st.channelID {
+				continue
+			}
+			if vs.Muted {
+				next[d] = protocol.VoiceConnMuted
+			} else {
+				next[d] = protocol.VoiceConnLive
+			}
+		}
+		if !mapsEqual(st.connected, next) {
+			st.connected = next
+			vm.publish(id, t, st)
+		}
+	}
+}
+
+func mapsEqual(a, b map[string]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, v := range a {
+		if b[k] != v {
+			return false
+		}
+	}
+	return true
 }
 
 // anyoneConnected reports whether a granted member is in the room. A

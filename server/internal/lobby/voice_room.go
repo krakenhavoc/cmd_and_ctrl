@@ -139,6 +139,19 @@ func (l *Lobby) voiceViewFor(entry *gameEntry) *protocol.VoiceView {
 			}
 		}
 		v.Access[p.ID.String()] = access
+		if access != protocol.VoiceAccessGranted {
+			continue
+		}
+		v.Granted++
+		// Only while the room exists: a stale report never claims a seat
+		// is in a room that has gone.
+		if conn := rep.connection(p.DiscordID); conn != "" && v.Status == protocol.VoiceStatusReady {
+			if v.Connected == nil {
+				v.Connected = map[string]string{}
+			}
+			v.Connected[p.ID.String()] = conn
+			v.InRoom++
+		}
 	}
 	return v
 }
