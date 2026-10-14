@@ -90,7 +90,12 @@ describe("openingRollModel", () => {
     expect(m.roundIndex).toBe(1);
     expect(m.tieResult).toBe(17);
     expect(m.waiting).toEqual([0]);
-    expect(m.chips.map(openingChipText)).toEqual(["rolling…", "—", "11", "—"]);
+    expect(m.chips.map(openingChipText)).toEqual([
+      "rolling…",
+      "9 in round 1",
+      "11",
+      "4 in round 1",
+    ]);
     expect(m.chips.map((c) => c.tied)).toEqual([true, false, true, false]);
   });
 
@@ -161,13 +166,13 @@ describe("openingRollAsk", () => {
 describe("the words", () => {
   it("names the table's wait in the status line", () => {
     expect(openingRollStatus(view(ROUND_ONE))).toBe("Waiting for Bob and Dave to roll");
-    expect(openingRollStatus(view(CHOSEN))).toBe("Alice is choosing who goes first");
+    expect(openingRollStatus(view(CHOSEN))).toContain("Alice won the reroll");
     expect(openingRollStatus(view())).toBe("");
   });
 
   it("is what the dock's status line says while the roll is open", () => {
     const v = { ...view(CHOSEN), mulligans_open: true } as unknown as GameView;
-    expect(passHint(v, false)).toBe("Alice is choosing who goes first");
+    expect(passHint(v, false)).toContain("Alice won the reroll");
   });
 
   it("lists the chooser's buttons in turn order, their own as 'I go first'", () => {
@@ -180,6 +185,23 @@ describe("the words", () => {
       "Bob goes first",
       "I go first",
     ]);
+  });
+
+  it("says a reroll decided the roll, and what the seats tied on", () => {
+    const m = openingRollModel(view(CHOSEN))!;
+    expect(chooserLead(20, m, seats)).toBe(
+      "You won the reroll with 20 (you and Carol tied at 17). Choose who takes the first turn.",
+    );
+    expect(openingRollStatus(view(CHOSEN))).toBe(
+      "Alice won the reroll with 20 (Alice and Carol tied at 17) and is choosing who goes first",
+    );
+  });
+
+  it("labels a knocked-out seat's die with the round it was rolled in", () => {
+    const chips = openingRollModel(view(REROLL))!.chips;
+    expect(openingChipText(chips[1])).toBe("9 in round 1");
+    expect(openingChipText(chips[3])).toBe("4 in round 1");
+    expect(openingChipText(openingRollModel(view(ROUND_ONE))!.chips[1])).toBe("rolling…");
   });
 
   it("phrases the confirm, the lead and the lists", () => {
