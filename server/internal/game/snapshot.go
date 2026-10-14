@@ -200,7 +200,7 @@ import (
 //     the reading binary is not a schema question at all: restore flags
 //     it and reports it (abilityShortfallOf), and the corpus fails on it.
 //
-// AGENTS.md ("Snapshot compatibility") has the commands.
+// docs/snapshots.md has the commands.
 //
 // Restore REFUSES anything it does not recognise rather than guessing.
 // See ErrSchemaTooNew / ErrSchemaUnsupported and ADR 0041 for the
