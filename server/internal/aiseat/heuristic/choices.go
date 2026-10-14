@@ -752,7 +752,12 @@ func (st *state) valueKeptInHand(cfg Config, ch *protocol.PendingChoiceView, nam
 	if ch == nil || len(ch.Options) == 0 || ch.FromPlayer != st.me || st.seat == nil {
 		return 0, false
 	}
-	forced := st.opponentForcedDiscard(ch)
+	// A manifest (game.ChooseManifest, ADR 0189) gives the card up the
+	// way a discard does, which is why this rule prices it: the named
+	// cards leave the hand, and a face-down 2/2 is not the card. But
+	// nothing is discarded, so no discard payoff is owed for them.
+	manifest := ch.ChooseDestination == chooseManifest
+	forced := !manifest && st.opponentForcedDiscard(ch)
 	hand := st.seatHand()
 	held := make(map[string]*protocol.CardView, len(hand))
 	for i := range hand {
@@ -768,6 +773,9 @@ func (st *state) valueKeptInHand(cfg Config, ch *protocol.PendingChoiceView, nam
 			return 0, false
 		}
 		if slices.Contains(named, id) {
+			if manifest {
+				continue
+			}
 			// Named is discarded: what the bot's own discard payoffs
 			// pay for it (discard_payoff.go) is kept too.
 			kept += st.discardPayoff(cfg, c) + st.forcedDiscardCredit(cfg, c, forced)
@@ -961,6 +969,10 @@ func (st *state) valueTakenFromOutside(cfg Config, ch *protocol.PendingChoiceVie
 
 // chooseFromOutside is game.ChooseFromOutside on the wire.
 const chooseFromOutside = "outside"
+
+// chooseManifest is game.ChooseManifest on the wire: the named cards
+// from the bot's own hand are manifested (Kozilek, the Broken Reality).
+const chooseManifest = "manifest"
 
 // --- "choose a color" (#780) -----------------------------------------
 

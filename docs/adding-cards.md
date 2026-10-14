@@ -7396,6 +7396,27 @@ colorless creature it will be (Curator Beastie).
 Not here: turning a permanent face up as an EFFECT (no cost) has no
 door yet, so cards that say "you may turn it face up" wait on it.
 
+### Manifesting cards from a hand (ADR 0189 decision 3, #3538)
+
+"Manifest N cards from your hand" (Kozilek, the Broken Reality; Scroll of
+Fate) is `EachManifestsFromHand` in
+[manifest_from_hand.go](../server/internal/cards/effects/manifest_from_hand.go):
+
+```go
+Do(EachManifestsFromHand{Players: kozilekTargetPlayers, N: 2, Then: kozilekDrawPerManifest}) // "up to two target players each manifest two cards from their hands. For each card manifested this way, you draw a card."
+Do(EachManifestsFromHand{N: 1})                                                               // "Manifest a card from your hand."
+```
+
+`Players` nil is the controller. Each player is asked for exactly `N` cards
+(a `choose_cards` tagged `game.ChooseManifest`), all at once and in
+secret, as one run; a hand of `N` cards or fewer is not asked and
+manifests everything; an empty hand is skipped. The picks then enter in
+ONE batch (`Game.ManifestFromHandsThenForEffect`), each under its owner,
+so a CR 614 window sees the board as it was before any of them arrived.
+`Then` is told the permanents that actually entered, so "for each card
+manifested this way" counts what arrived and not what was picked. Do
+not loop `ManifestForEffect` for a hand: it takes a library's top card.
+
 ### Craft (ADR 0137, #2124, CR 702.167)
 
 A craft card is a transform DFC: the front face's spec carries the

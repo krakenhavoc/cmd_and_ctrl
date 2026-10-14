@@ -572,6 +572,17 @@ chooser's sideboard. Its `options[]` are those cards, sent to the chooser only
 (every other seat gets the open prompt and nothing about its cards), and the
 answer is the usual `resolve_choice { choice_id, card_ids }`.
 
+`choose_destination: "manifest"` is "manifest N cards from your hand"
+(Kozilek, the Broken Reality; Scroll of Fate; [ADR 0189](decisions/0189-the-rest-of-face-down-and-manifest-dread.md)
+decision 3): the picked hand cards are put onto the battlefield face down as
+2/2 creatures under their owner's control, and the client's confirm verb is
+"Manifest". `choose_min` and `choose_max` are both N. A player whose hand holds
+N cards or fewer is not asked: they manifest all of them. Every targeted player
+gets this prompt at once and nothing moves until all have answered, so no seat
+learns another's picks first (CR 101.4a). The answer is the usual
+`resolve_choice { choice_id, card_ids }`. The value rides the open
+`ChooseDestination` vocabulary, so nothing in the saved snapshot changes.
+
 ### The sideboard: `sideboard` and `sideboard_count` (ADR 0191)
 
 A deck's sideboard is the player's pool of cards owned from outside the

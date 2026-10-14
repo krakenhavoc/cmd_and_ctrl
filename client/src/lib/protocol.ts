@@ -1829,7 +1829,9 @@ export interface PendingChoiceView {
   // Where the named card goes when the card says so: "battlefield",
   // "battlefield_tapped", or "cast_free" ("you may cast a spell from
   // your hand without paying its mana cost" — answering with a card
-  // opens its cast at once). Absent on a plain discard or look.
+  // opens its cast at once), or "manifest" (ADR 0189: the named hand
+  // cards are put onto the battlefield face down as 2/2 creatures).
+  // Absent on a plain discard or look.
   choose_destination?: string;
   // #2525: kind "proliferate" (and ADR 0170's "entry_choose_permanents",
   // suggestion only). The seats on offer beside
