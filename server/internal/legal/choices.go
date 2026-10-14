@@ -252,7 +252,7 @@ func (e *enumerator) choiceMoves() bool {
 				for _, i := range order {
 					p.Order = append(p.Order, ids[i].String())
 				}
-				e.addChoice(c, fmt.Sprintf("%s: resolve triggers in order %v", reason, order), p)
+				e.addChoice(c, triggerOrderLabel(g, reason, ids, order), p)
 			}
 
 		case game.PendingChoiceOptionalReplacement, game.PendingChoiceTriggerPrompt,
@@ -1321,6 +1321,32 @@ func (e *enumerator) choiceMoves() bool {
 // modeLabel renders a mode selection for the move list: the chosen
 // bullets in order, so a bot's log says what it picked rather than
 // which indexes it picked.
+// triggerOrderLabel names one ordering of a CR 603.3b prompt by its
+// triggers, in resolution order (the answer's order: first resolves
+// first, Game.ResolveTriggerOrder): "Order your triggers: resolve A
+// first, then B". A move list read as text (the MCP seat, a model bot)
+// has no other way to tell which trigger is which; until 2026-10-14 the
+// label was the bare index permutation "[1 0]". A trigger no longer in
+// the queue keeps its index as its name.
+func triggerOrderLabel(g *game.Game, reason string, ids []uuid.UUID, order []int) string {
+	names := make([]string, len(order))
+	for n, i := range order {
+		names[n] = fmt.Sprintf("trigger %d", i)
+		for _, t := range g.PendingTriggers {
+			if t != nil && t.ID == ids[i] && t.Label != "" {
+				names[n] = t.Label
+				break
+			}
+		}
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s: resolve %s first", reason, names[0])
+	for _, n := range names[1:] {
+		b.WriteString(", then " + n)
+	}
+	return b.String()
+}
+
 func modeLabel(c *game.PendingChoice, sel []int) string {
 	if len(sel) == 0 {
 		return ": none"
