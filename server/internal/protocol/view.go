@@ -8815,6 +8815,7 @@ func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
 			if item, ok := g.StackMeta[c.InstanceID]; ok && item != nil {
 				v := viewOfStackItem(item)
 				v.CantBeCountered = g.SpellCantBeCounteredForEffect(item.ID)
+				v.SplitSecond = g.SpellHasSplitSecondForEffect(item.ID)
 				v.DamageCantBePrevented = g.SpellDamageCantBePreventedForEffect(item.ID)
 				entries = append(entries, entry{item.Seq, v})
 				seen[item.ID] = true

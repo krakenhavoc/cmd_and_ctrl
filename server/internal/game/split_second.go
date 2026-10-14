@@ -1,5 +1,7 @@
 package game
 
+import "github.com/google/uuid"
+
 // split_second.go — CR 702.61, read off the card (#1519).
 //
 // The rule was built in S13.1 and never switched on. Every consumer
@@ -52,8 +54,10 @@ const KeywordSplitSecond = "split second"
 //     for a deck-imported card and CatalogPrintedKeywords for a
 //     catalog entry that declares it (which is how a fixture with no
 //     Scryfall data gets it). Off the battlefield there is no layer
-//     engine, so no effect can grant or remove it — no card in print
-//     grants split second to a spell anyway;
+//     engine, so the cast card carries no granted keyword; a GRANT
+//     (Samut, Tyrant of Naktamun) is a battlefield static and is read
+//     live by spellGrantedSplitSecondLocked, not stamped here (ADR
+//     0007's amendment of 2026-10-14);
 //   - the sandbox `split_second` flag on cast_spell (S13.1), kept so
 //     a table playing a card the catalog has never heard of can still
 //     say so by hand.
@@ -68,4 +72,97 @@ func castHasSplitSecond(card *Card, faceDown FaceDownKind, sandboxFlag bool) boo
 		return false
 	}
 	return sandboxFlag || HasKeyword(card, KeywordSplitSecond)
+}
+
+// SplitSecondGrant is a static ability of a permanent that gives split
+// second to the spells its controller controls: "Instant and sorcery
+// spells you control have split second." (Samut, Tyrant of Naktamun,
+// #3502). A catalog declaration (Spec.SplitSecondGrants).
+type SplitSecondGrant struct {
+	// Spells narrows which spells the grant reaches, judged against the
+	// card the spell is on the stack as (so a spell cast face down, a
+	// 2/2 creature with no text, matches nothing but "creature").
+	Spells PermissionFilter
+
+	// Label is the oracle sentence the card's ability row shows.
+	Label string
+}
+
+// CatalogSplitSecondGrants returns the split-second grants a battlefield
+// permanent with the given catalog ABILITY key makes. Installed at init
+// to read CardDef.SplitSecondGrants; a game-package test may stub it.
+var CatalogSplitSecondGrants func(abilityKey string) []SplitSecondGrant
+
+// spellGrantedSplitSecondLocked reports whether a permanent on the
+// battlefield gives split second to the spell `item` right now.
+//
+// LIVE, not stamped: CR 611.3a says a continuous effect from a static
+// ability "isn't locked in; it applies at any given moment to whatever
+// its text indicates", and CR 702.61a makes split second a static
+// ability that functions only while the spell is on the stack. So the
+// grant exists exactly while a source is on the battlefield, under the
+// spell's controller, with its abilities: a Samut sacrificed to an
+// altar in response (a mana ability, which split second does not stop)
+// takes split second off the spell, and one that arrives with a spell
+// already on the stack gives it. StackItem.SplitSecond stays the
+// spell's OWN fact (its printed keyword or the sandbox flag, written
+// once at announce). recomputeSplitSecondLocked folds the two together
+// and refreshSplitSecondForBoardChangeLocked re-runs it when the board
+// changes under a spell.
+//
+// "Spells you control" is the spell's current controller
+// (StackItem.Controller, CR 112.2), the CounterShieldYouControl
+// reading: a copy you control is a spell you control.
+//
+// Caller must hold g.mu.
+func (g *Game) spellGrantedSplitSecondLocked(item *StackItem) bool {
+	if item == nil || item.Kind != StackItemSpell || CatalogSplitSecondGrants == nil || g.Battlefield == nil {
+		return false
+	}
+	spell := g.spellCardOnStackLocked(item.ID)
+	if spell == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		src := &g.Battlefield.Cards[i]
+		if src.Controller != item.Controller {
+			continue
+		}
+		key := catalogAbilityKeyOf(src)
+		if key == "" {
+			continue
+		}
+		for _, gr := range CatalogSplitSecondGrants(key) {
+			if gr.Spells.Matches(*spell) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// SpellHasSplitSecondForEffect reports whether the spell on the stack
+// with this ID has split second from any source, for a caller that
+// already holds the lock: the view projection, which shows the chip on
+// a spell Samut gave it to. Anything that is not a spell answers false.
+func (g *Game) SpellHasSplitSecondForEffect(id uuid.UUID) bool {
+	item := g.StackMeta[id]
+	if item == nil || item.Kind != StackItemSpell {
+		return false
+	}
+	return item.SplitSecond || g.spellGrantedSplitSecondLocked(item)
+}
+
+// refreshSplitSecondForBoardChangeLocked re-derives SplitSecondActive
+// when the battlefield changes while something is on the stack, which
+// is the only way a granted split second can start or stop without the
+// stack itself changing. Cheap: one length test when nothing is on the
+// stack or no grant is declared anywhere.
+//
+// Caller must hold g.mu.
+func (g *Game) refreshSplitSecondForBoardChangeLocked() {
+	if CatalogSplitSecondGrants == nil || len(g.StackMeta) == 0 {
+		return
+	}
+	g.recomputeSplitSecondLocked()
 }

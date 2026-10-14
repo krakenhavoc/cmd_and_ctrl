@@ -81,6 +81,21 @@ type GrantedAlternativeCost struct {
 	// CR 202.3).
 	MaxManaValue *int
 
+	// MaxManaValueFunc is a cap that follows the board: Omnipresence's
+	// "mana value less than or equal to the number of creatures you
+	// control" (#3503). It is asked with the game and the CASTER every
+	// time the offer is derived, so the cap is whatever the count is at
+	// that moment, never a number frozen when the permanent arrived. It
+	// takes the Game, so it must be a pure read of it: the caller holds
+	// g.mu. Nil means this static has no computed cap; with MaxManaValue
+	// also set, both apply. Needs MaxManaValueText (Register panics
+	// without it), the words the ability row shows for it.
+	MaxManaValueFunc func(g *Game, caster uuid.UUID) int
+
+	// MaxManaValueText words MaxManaValueFunc for the ability row:
+	// "the number of creatures you control".
+	MaxManaValueText string
+
 	// PricedAtManaCost is Herigast, Erupting Nullkite's "The emerge
 	// cost is equal to its mana cost" (ADR 0135 §4 and PR 6, CR
 	// 702.119a): the offer's ManaCost is the mana cost of the spell
@@ -94,12 +109,21 @@ type GrantedAlternativeCost struct {
 	PricedAtManaCost bool
 }
 
-// covers reports whether this static's offer reaches a cast of `card`.
-func (gr GrantedAlternativeCost) covers(card Card) bool {
+// covers reports whether this static's offer reaches a cast of `card`
+// by `caster`. The one reader of both caps, so the cast gate, the
+// bot's move list and the view's picker, which all derive their offers
+// through grantedAlternativeCostsLocked, cannot disagree about a
+// computed one.
+//
+// Caller must hold g.mu.
+func (gr GrantedAlternativeCost) covers(g *Game, caster uuid.UUID, card Card) bool {
 	if !gr.Spells.Matches(card) {
 		return false
 	}
-	return gr.MaxManaValue == nil || card.ManaValue() <= *gr.MaxManaValue
+	if gr.MaxManaValue != nil && card.ManaValue() > *gr.MaxManaValue {
+		return false
+	}
+	return gr.MaxManaValueFunc == nil || card.ManaValue() <= gr.MaxManaValueFunc(g, caster)
 }
 
 // reaches reports whether this static covers a cast out of `zone`.
@@ -158,7 +182,7 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 			continue
 		}
 		for _, gr := range CatalogGrantedAlternativeCosts(key) {
-			if gr.Offer.Key == "" || !gr.reaches(zone) || !gr.covers(card) || seen[gr.Offer.Key] {
+			if gr.Offer.Key == "" || !gr.reaches(zone) || !gr.covers(g, playerID, card) || seen[gr.Offer.Key] {
 				continue
 			}
 			if gr.PricedAtManaCost && !pricedAtManaCostOK(card) {

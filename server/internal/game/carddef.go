@@ -115,6 +115,11 @@ type CardDef struct {
 	// delve" (Teval, Arbiter of Virtue; ADR 0100 sub-PR 2). Read from
 	// the battlefield through DelveForLocked.
 	SpellsYouCastHaveDelve bool
+	// SplitSecondGrants are a permanent's "<spells> you control have
+	// split second" (Samut, Tyrant of Naktamun; #3502). Read live off
+	// the battlefield through CatalogSplitSecondGrants; see
+	// split_second.go.
+	SplitSecondGrants []SplitSecondGrant
 	// GrantedOptionalCosts are a permanent's "each <kind of> spell you
 	// cast has <optional-cost keyword>" (Silverquill, the Disputant's
 	// casualty 1; granted_optional_cost.go). Read from the battlefield
@@ -999,6 +1004,12 @@ func init() {
 	CatalogCastTimings = func(key string) []CastTimingRule {
 		if d := catalogDef(key); d != nil {
 			return d.CastTimings
+		}
+		return nil
+	}
+	CatalogSplitSecondGrants = func(key string) []SplitSecondGrant {
+		if d := catalogDef(key); d != nil {
+			return d.SplitSecondGrants
 		}
 		return nil
 	}

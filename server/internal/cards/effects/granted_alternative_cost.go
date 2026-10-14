@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -87,6 +88,51 @@ func CastFromHandWithoutPayingManaCost() game.GrantedAlternativeCost {
 		},
 		Zones: []game.ZoneKind{game.ZoneHand},
 	}
+}
+
+// GrantedAltCostFreeUpToCreatureCount is "You may cast spells with mana
+// value less than or equal to the number of creatures you control from
+// your hand without paying their mana costs." (Omnipresence, #3503).
+// Its own key, not Omniscience's "granted-free": a table with both has
+// two free offers whose reach differs, and a claim is stored by key.
+const GrantedAltCostFreeUpToCreatureCount = "granted-free-up-to-creature-count"
+
+// CastFromHandWithoutPayingManaCostUpToCreatureCount is Omnipresence's
+// static. Omniscience's free cast from hand with a cap that FOLLOWS THE
+// BOARD (GrantedAlternativeCost.MaxManaValueFunc): the number of
+// creatures its controller controls right now, counted as the offer is
+// derived, so the cast gate, the move list and the view's picker all
+// see the same count and none of them holds a stale one. The caster is
+// the one the offer is derived for (CR 601.2), so "you" is the caster.
+// The mana value is the spell's as the offer replaces its mana cost, an
+// {X} counting as 0 (CR 107.3b).
+func CastFromHandWithoutPayingManaCostUpToCreatureCount() game.GrantedAlternativeCost {
+	return game.GrantedAlternativeCost{
+		Offer: game.AlternativeCost{
+			Key:   GrantedAltCostFreeUpToCreatureCount,
+			Label: "Cast it without paying its mana cost",
+		},
+		Zones:            []game.ZoneKind{game.ZoneHand},
+		MaxManaValueFunc: creaturesControlledCount,
+		MaxManaValueText: "the number of creatures you control",
+	}
+}
+
+// creaturesControlledCount is the number of creatures `controller`
+// controls, off effective characteristics, so a type-changing effect
+// counts. Caller must hold g.mu.
+func creaturesControlledCount(g *game.Game, controller uuid.UUID) int {
+	if g == nil || g.Battlefield == nil || controller == uuid.Nil {
+		return 0
+	}
+	n := 0
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller == controller && c.IsCreature() {
+			n++
+		}
+	}
+	return n
 }
 
 // PayEightEnergyForPermanentSpellsYouCast is Nissa, Worldsoul Speaker's
@@ -199,6 +245,9 @@ func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost)
 		}
 		if gr.MaxManaValue != nil && *gr.MaxManaValue < 0 {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q has a negative MaxManaValue", name, o.Key))
+		}
+		if gr.MaxManaValueFunc != nil && gr.MaxManaValueText == "" {
+			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q has a MaxManaValueFunc and no MaxManaValueText — the ability row words it", name, o.Key))
 		}
 		if gr.PricedAtManaCost && o.ManaCost != "" {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q is priced at the spell's mana cost and also declares ManaCost %q", name, o.Key, o.ManaCost))

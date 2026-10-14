@@ -210,6 +210,9 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 	case EventZoneMove:
 		if ev.OldZone == ZoneBattlefield || ev.NewZone == ZoneBattlefield {
 			g.layerVersion.Add(1)
+			// A permanent that grants split second to spells (Samut)
+			// came or went under a spell already on the stack.
+			g.refreshSplitSecondForBoardChangeLocked()
 		}
 		if ev.NewZone == ZoneBattlefield {
 			stampBattlefieldEntryLocked(g, ev.CardID)
@@ -338,6 +341,7 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// goes out, so no listener reads a half-turned board.
 		g.layerVersion.Add(1)
 	case EventControlChanged:
+		g.refreshSplitSecondForBoardChangeLocked()
 		// #990: who controls a permanent is an AppliesTo input for
 		// every "creatures you control" static and for every
 		// ForAsLongAs duration keyed on control (suspend's haste,
