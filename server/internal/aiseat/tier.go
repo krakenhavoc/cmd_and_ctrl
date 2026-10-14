@@ -45,6 +45,11 @@ const (
 	TierStrong Tier = "strong"
 )
 
+// NeedsModel reports whether a seat at this tier calls a model: the two
+// tiers a person's own model key can run (ADR 0182). It agrees with
+// tiers.Tier.NeedsModel, which this package cannot import.
+func (t Tier) NeedsModel() bool { return t == TierAssisted || t == TierStrong }
+
 var (
 	// ErrTierUnavailable is returned for a tier this build declares
 	// but this server cannot play — because no policy factory is

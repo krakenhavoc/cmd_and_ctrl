@@ -34,6 +34,8 @@ cmd_and_ctrl/
 │   │   ├── catalog/     # /catalog routes (public) — what the engine automates + how completely (ADR 0042)
 │   │   ├── roadmap/     # the curated registry of keywords, mechanics and engine seams behind the public roadmap; generates docs/engine-seams.md's open table (ADR 0092) and its closed list from docs/engine-seams/closed/ (#1461)
 │   │   ├── playmat/     # a signed-in person's playmat (ADR 0128): decode + re-encode, SSRF-guarded link fetch, uuid-keyed files, users.playmat_id
+│   │   ├── netguard/    # the outbound guard for an address a person chose: https only, public unicast checked at dial time (DNS rebinding), no redirects, timeout and body cap; AddrAllowed is shared with playmat (ADR 0182 §3)
+│   │   ├── modelkeys/   # a signed-in person's own model key for their AI seats (ADR 0182, migration 0025): provider allowlist, sealed store, the seat client with the owner's limits and fixed failure sentences
 │   │   ├── bugstore/    # bug-report artifacts: reporter screenshots (public, Camo-reachable) + pinned replays (admin-only)
 │   │   ├── deck/        # decklist parsers (Moxfield, plain text) + Commander validation
 │   │   ├── deckcoverage/ # a decklist's coverage report: every card bucketed manual / unreviewed / caveats / automated / no_effect (ADR 0095)

@@ -86,7 +86,13 @@
   import AgentChip from "../lib/components/AgentChip.svelte";
   import Page from "../lib/components/Page.svelte";
   import { noteMyGames } from "../lib/hints/endedGame";
-  import { defaultBotTier, tierNote, tierOptionLabel } from "../lib/botTier";
+  import {
+    defaultBotTier,
+    ownKeyTierChoices,
+    tierForOwnKey,
+    tierNote,
+    tierOptionLabel,
+  } from "../lib/botTier";
 
   // Tables, the signed-in home (ADR 0112 §1, ADR 0158 §1). The page
   // head holds the join box and + New table. Under it, two sections:
@@ -252,13 +258,25 @@
   let botDeck = $state("");
   let botBusy = $state(false);
   let botError = $state("");
+  // ADR 0182: "run on my model key", offered when GET /bot/options says
+  // this person has a key saved in Settings › AI opponents.
+  let botOwnKey = $state(false);
+  let botModel = $state("");
 
   const botTiersAvailable = $derived((botOptions?.tiers ?? []).filter((t) => t.available));
   const botsOfferable = $derived(
     botOptions?.enabled === true &&
-      botTiersAvailable.length > 0 &&
+      (botTiersAvailable.length > 0 || botOptions?.own_key !== undefined) &&
       (botOptions?.decks.length ?? 0) > 0,
   );
+  const botTierChoices = $derived(
+    botOwnKey ? ownKeyTierChoices(botOptions?.tiers ?? []) : (botOptions?.tiers ?? []),
+  );
+
+  function onOwnKeyToggle(on: boolean): void {
+    botOwnKey = on;
+    botTier = on ? tierForOwnKey(botTier) : defaultBotTier(botOptions?.tiers ?? []);
+  }
 
   // canManageBots: admin, or a player seated at this table. Mirrors
   // the server gate; the endpoint is authoritative.
@@ -356,7 +374,11 @@
   function openBotPicker(gameID: string): void {
     botError = "";
     botPickerFor = gameID;
+    botOwnKey = false;
+    botModel = botOptions?.own_key?.model ?? "";
     botTier = defaultBotTier(botOptions?.tiers ?? []);
+    // A server with no tier of its own to offer starts on the key.
+    if (!botTier && botOptions?.own_key?.games_left) onOwnKeyToggle(true);
     botDeck = botOptions?.decks[0]?.id ?? "";
   }
 
@@ -365,7 +387,12 @@
     botBusy = true;
     botError = "";
     try {
-      await addBotSeat(gameID, { tier: botTier, deck: botDeck });
+      await addBotSeat(
+        gameID,
+        botOwnKey
+          ? { tier: botTier, deck: botDeck, own_key: true, model: botModel.trim() || undefined }
+          : { tier: botTier, deck: botDeck },
+      );
       botPickerFor = null;
       await refresh();
     } catch (err) {
@@ -1317,7 +1344,7 @@
                   <label>
                     <span>tier</span>
                     <select bind:value={botTier} disabled={botBusy}>
-                      {#each botOptions?.tiers ?? [] as t (t.tier)}
+                      {#each botTierChoices as t (t.tier)}
                         <option value={t.tier} disabled={!t.available} title={t.description}>
                           {tierOptionLabel(t)}
                         </option>
@@ -1332,6 +1359,37 @@
                       {/each}
                     </select>
                   </label>
+                  {#if botOptions?.own_key}
+                    <label class="own-key">
+                      <input
+                        type="checkbox"
+                        checked={botOwnKey}
+                        disabled={botBusy || (!botOptions.own_key.games_left && !botOwnKey)}
+                        onchange={(e) => onOwnKeyToggle(e.currentTarget.checked)}
+                      />
+                      <span>Run on my model key ({botOptions.own_key.provider_label})</span>
+                    </label>
+                    {#if !botOptions.own_key.games_left}
+                      <p class="deck-desc tier-warning">
+                        Your model key has played all the games you allowed it today (Settings › AI
+                        opponents).
+                      </p>
+                    {/if}
+                    {#if botOwnKey}
+                      <label>
+                        <span>model</span>
+                        <input
+                          type="text"
+                          autocomplete="off"
+                          spellcheck="false"
+                          maxlength="128"
+                          placeholder={botOptions.own_key.model}
+                          bind:value={botModel}
+                          disabled={botBusy}
+                        />
+                      </label>
+                    {/if}
+                  {/if}
                   {#if botTierNote}
                     <p class="deck-desc" class:tier-warning={botTierNote.warning}>
                       {botTierNote.text}
@@ -2351,6 +2409,27 @@
     font-size: 11px;
     color: var(--fg-muted);
     min-width: 150px;
+  }
+  /* ADR 0182: the own-key switch takes its own line, as a row. */
+  .bot-picker label.own-key {
+    flex: 1 0 100%;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--fg);
+    min-width: 0;
+  }
+  .bot-picker input[type="text"] {
+    font: inherit;
+    font-size: 12.5px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-raised);
+    color: var(--fg);
+    min-width: 0;
+    max-width: 100%;
   }
   .bot-picker select {
     font: inherit;

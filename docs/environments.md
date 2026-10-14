@@ -1121,6 +1121,27 @@ recreates the column with every table opted out.
 `TestMigration0024RollbackByHand` runs exactly this sequence and then rolls
 forward.
 
+Migration 0025 (ADR 0182, your own model key for AI seats) adds the
+`model_keys` table (each person's sealed key, its last four characters,
+provider, model, limits, counts and dates) and two nullable columns,
+`seats.bot_key_user_id` and `seats.bot_key_model`, on a bot that runs on
+its owner's key. An older binary refuses the v25 schema. First end any
+active table with an own-key bot if the server has no model of its own
+(the older binary cannot build that seat). Then drop them by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE model_keys; ALTER TABLE seats DROP COLUMN bot_key_user_id; ALTER TABLE seats DROP COLUMN bot_key_model; DELETE FROM schema_migrations WHERE version = 25;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs every saved key: rolling forward again recreates the table empty,
+so everyone who had added one adds it again in Settings › AI opponents.
+`TestMigration0025RollbackByHand` runs exactly this sequence and then rolls
+forward.
+
 Migration 0021 (ADR 0161, the #lfg board) adds `games.lfg` (0 or 1,
 default 0) and `games.lfg_message_id` (nullable). An older binary refuses
 the v21 schema. Drop them by hand:

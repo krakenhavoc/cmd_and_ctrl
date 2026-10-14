@@ -10,7 +10,7 @@
 //  1. Refuse if the person holds a seat at a table that has not ended
 //     (a lobby or an active game). SeatedError names the table.
 //  2. Delete: decks, user_settings, table_setups, notification_prefs,
-//     user_playmats, the
+//     model_keys, user_playmats, the
 //     identities row (Discord id, name, avatar hash and the encrypted
 //     refresh token), the person's deck_request_asks rows, the player
 //     reports they filed or are the subject of, and the table blocks
@@ -93,6 +93,7 @@ type Counts struct {
 	SettingsRows    int
 	SetupRows       int
 	NotifyPrefRows  int
+	ModelKeyRows    int
 	Identities      int
 	Reports         int
 	Blocks          int
@@ -293,6 +294,13 @@ func (s *SQLStore) delete(ctx context.Context, id uuid.UUID, reapply bool) (Resu
 		return Result{}, err
 	}
 	if err := exec(&res.Counts.NotifyPrefRows, `DELETE FROM notification_prefs WHERE user_id = ?`, uid); err != nil {
+		return Result{}, err
+	}
+	// The person's own model key (ADR 0182, migration 0025), sealed
+	// key and all. A bot seat that ran on it keeps pointing at the
+	// tombstone (seats.bot_key_user_id), which carries no identity and
+	// has no key, so a restored seat plays the heuristic.
+	if err := exec(&res.Counts.ModelKeyRows, `DELETE FROM model_keys WHERE user_id = ?`, uid); err != nil {
 		return Result{}, err
 	}
 	if err := exec(&res.Counts.Playmats, `DELETE FROM user_playmats WHERE user_id = ?`, uid); err != nil {

@@ -136,6 +136,12 @@ type SeatRecord struct {
 	// every other seat. The engine snapshot stays the authority for a
 	// restored table; see loadEntry.
 	AgentClient string
+	// BotKeyUserID is the users.id whose own model key a bot seat runs
+	// on (seats.bot_key_user_id, migration 0025, ADR 0182), and
+	// BotKeyModel the model it asks for. Both "" (NULL) for every other
+	// seat.
+	BotKeyUserID string
+	BotKeyModel  string
 }
 
 // InviteRecord is one invites row.

@@ -73,6 +73,15 @@
       source: "migration 0022 notification_prefs; notify/notifier.go; ws/presence.go",
     },
     {
+      what: "Your own model key for AI opponents",
+      details:
+        "If you add one in Settings › AI opponents: the API key, stored encrypted, and its last four characters; the provider and model you chose (and the address, for another OpenAI-compatible provider); your games-a-day and calls-per-game limits; how many games used it today; when you added it and last used it; and the last error, as one of CMD & CTRL's own sentences. A bot seat you ran on it records that it was yours and the model it asked for. The key is never shown again, logged, or put in a replay.",
+      why: "So the AI seats you add play on your account with the provider, used only for your own seats. Each request goes to the provider you chose, under its own terms and privacy policy, and carries the game the bot is looking at.",
+      howLong:
+        "Until you remove the key or delete your account. Deleting your account deletes the key; a past bot seat then points at the anonymous “Deleted player”.",
+      source: "migration 0025 model_keys, seats.bot_key_user_id, seats.bot_key_model; modelkeys/",
+    },
+    {
       what: "Your playmats",
       details: `Up to ${F.playmatSlots} images you upload (or fetch once from a link you give), stored as picture files, and which one is active.`,
       why: "So the table can show your playmat to the other players.",

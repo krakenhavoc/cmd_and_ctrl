@@ -861,6 +861,7 @@ func (r *Runner) decide(ctx context.Context, in Input, maxThink time.Duration) o
 	}
 	out := outcome{decision: d, err: err, traced: traced, trace: tr, latency: time.Since(started)}
 	r.observeLatency(out.latency)
+	r.postNotice()
 	// ADR 0123 §3: the bot totals, counted here beside this runner's
 	// own counters. One decision when r.decisions moves, one fallback
 	// when the window ends with a runner fallback cause.

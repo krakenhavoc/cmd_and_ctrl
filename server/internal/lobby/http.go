@@ -32,6 +32,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/modelkeys"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/notify"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
@@ -248,6 +249,13 @@ type Config struct {
 	// bot token, the public origin and the database are all there.
 	Notifications notify.Store
 
+	// ModelKeys is a signed-in person's own model key for the AI seats
+	// they add (ADR 0182, migration 0025), behind /me/model-key and the
+	// own_key option of POST /games/{id}/seats/bot. Nil means the
+	// feature is off: no database, or no CMDCTRL_IDENTITY_KEY to seal
+	// keys with (never plaintext).
+	ModelKeys *modelkeys.Service
+
 	// Playmats is a signed-in person's saved playmats, up to three
 	// (ADR 0128, migrations 0011, 0012 and 0013), behind /me/playmats
 	// and GET /playmats/{id}. Nil, or a service with no data directory
@@ -386,6 +394,10 @@ type GameEvictor interface {
 //	PUT  /me/settings       — signed in: replace them, If-Match: <revision>
 //	GET  /me/notifications  — signed in: the caller's Discord DM notification switches (ADR 0162)
 //	PUT  /me/notifications  — signed in: change them
+//	GET  /me/model-key      — signed in: the caller's own model key for AI seats, never the key itself (ADR 0182)
+//	PUT  /me/model-key      — signed in: add or replace it, or change its model and limits
+//	DELETE /me/model-key    — signed in: remove it
+//	POST /me/model-key/test — signed in: make one small call with it
 //	GET  /me/playmats       — signed in: the caller's saved playmats (ADR 0128 §11), up to three, which is active, and the wash
 //	PUT  /me/playmats/{slot}        — signed in: upload one into a slot (multipart, part "file")
 //	POST /me/playmats/{slot}/link   — signed in: fetch one from an https URL, once, and store it
@@ -783,6 +795,14 @@ func Handler(c Config) http.Handler {
 	notificationsLimit := newLimiter(1, 5)
 	mux.Handle("GET /me/notifications", auth.Middleware(c.Auth)(handlerFunc(c, myNotifications)))
 	mux.Handle("PUT /me/notifications", auth.Middleware(c.Auth)(handlerFunc(c, putMyNotifications(notificationsLimit))))
+	// ADR 0182: a person's own model key. Writes share one bucket; the
+	// test, which is a real request to a provider, has a slower one.
+	modelKeyLimit := newLimiter(1, 5)
+	modelKeyTestLimit := newLimiter(0.1, 3)
+	mux.Handle("GET /me/model-key", auth.Middleware(c.Auth)(handlerFunc(c, myModelKey)))
+	mux.Handle("PUT /me/model-key", auth.Middleware(c.Auth)(handlerFunc(c, putMyModelKey(modelKeyLimit))))
+	mux.Handle("DELETE /me/model-key", auth.Middleware(c.Auth)(handlerFunc(c, deleteMyModelKey(modelKeyLimit))))
+	mux.Handle("POST /me/model-key/test", auth.Middleware(c.Auth)(handlerFunc(c, testMyModelKey(modelKeyTestLimit))))
 	// Playmats (ADR 0128, §11: three slots). The writes that decode an
 	// image (upload, link, fit) are rate-limited per person (a burst of
 	// 5, then one per 6 s) inside auth, and per IP outside it, so a
@@ -3780,6 +3800,12 @@ type addBotRequest struct {
 	// Deck or Source must be set.
 	Format string `json:"format,omitempty"`
 	Source string `json:"source,omitempty"`
+	// OwnKey runs the seat on the caller's own model key (ADR 0182):
+	// signed in, a key saved in Settings › AI opponents, and a model
+	// tier. The server's own model need not be configured. Model, when
+	// set, is the model id the seat asks for instead of the key's.
+	OwnKey bool   `json:"own_key,omitempty"`
+	Model  string `json:"model,omitempty"`
 }
 
 // addBotResponse is the accepted seat.
@@ -3876,10 +3902,15 @@ type botOptionsResponse struct {
 	// model tier's own reason carries the same text. Omitted
 	// otherwise.
 	ModelNote string `json:"model_note,omitempty"`
+	// OwnKey is set when the caller can run a model bot on their own
+	// model key (ADR 0182): signed in, a key saved, and the feature on.
+	// The model tiers are then playable on the key even where Tiers
+	// says the server has no model of its own.
+	OwnKey *ownKeyOption `json:"own_key,omitempty"`
 }
 
 // botOptions handles GET /bot/options. Added in S31 sub-PR 4.
-func botOptions(c Config, w http.ResponseWriter, _ *http.Request) error {
+func botOptions(c Config, w http.ResponseWriter, r *http.Request) error {
 	out := botOptionsResponse{Tiers: aiseat.Tiers(), Decks: []aiseat.DeckInfo{}, Enabled: c.Bots != nil}
 	if c.Bots != nil {
 		// The host is the authority on what can actually play, so
@@ -3913,6 +3944,9 @@ func botOptions(c Config, w http.ResponseWriter, _ *http.Request) error {
 	}
 	if c.BotBudget != nil {
 		out.ModelNote = c.BotBudget.Status().Note
+	}
+	if c.Bots != nil {
+		out.OwnKey = ownKeyOptionFor(c, r)
 	}
 	return writeJSON(w, http.StatusOK, out)
 }
@@ -3951,15 +3985,25 @@ func addBot(c Config, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	tier := strings.ToLower(strings.TrimSpace(body.Tier))
-	known := false
-	for _, t := range c.Bots.Tiers() {
-		if t == tier {
-			known = true
-			break
+	var own ownKeySeat
+	if body.OwnKey {
+		if own, err = ownKeyForSeat(c, r, tier, body.Model); err != nil {
+			return err
 		}
-	}
-	if !known {
-		return fmt.Errorf("%w: %q (available: %s)", ErrUnknownBotTier, body.Tier, strings.Join(c.Bots.Tiers(), ", "))
+	} else {
+		if strings.TrimSpace(body.Model) != "" {
+			return httpError(http.StatusBadRequest, "model is only for a seat on your own key (own_key)")
+		}
+		known := false
+		for _, t := range c.Bots.Tiers() {
+			if t == tier {
+				known = true
+				break
+			}
+		}
+		if !known {
+			return fmt.Errorf("%w: %q (available: %s)", ErrUnknownBotTier, body.Tier, strings.Join(c.Bots.Tiers(), ", "))
+		}
 	}
 
 	list, warnings, written, err := resolveDeckSource(r.Context(), c, w, format, source)
@@ -3981,7 +4025,15 @@ func addBot(c Config, w http.ResponseWriter, r *http.Request) error {
 		name = fmt.Sprintf("Bot %d", bots+1)
 	}
 	gameCards := list.ToGameCards()
-	meta, playerID, err := c.Lobby.AddBot(id, name, tier, deckID, list.Name, gameCards)
+	var (
+		meta     GameMeta
+		playerID uuid.UUID
+	)
+	if body.OwnKey {
+		meta, playerID, err = c.Lobby.AddBotOnKey(id, name, tier, deckID, list.Name, gameCards, own.owner, own.model)
+	} else {
+		meta, playerID, err = c.Lobby.AddBot(id, name, tier, deckID, list.Name, gameCards)
+	}
 	if err != nil {
 		return err
 	}

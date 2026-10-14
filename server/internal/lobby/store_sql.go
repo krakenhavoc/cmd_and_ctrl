@@ -108,11 +108,11 @@ func insertSeats(ctx context.Context, x execer, gameID uuid.UUID, seats []SeatRe
 	for _, st := range seats {
 		if _, err := x.ExecContext(ctx,
 			`INSERT INTO seats (game_id, seat, player_id, user_id, guest_name, bot_tier, deck_id, deck_name, pending_discord_id,
-			                    agent_client)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			                    agent_client, bot_key_user_id, bot_key_model)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			gameID.String(), st.Seat, st.PlayerID.String(), nullString(st.UserID), nullString(st.GuestName),
 			nullString(st.BotTier), nullString(st.DeckID), nullString(st.DeckName), nullString(st.PendingDiscordID),
-			nullString(st.AgentClient)); err != nil {
+			nullString(st.AgentClient), nullString(st.BotKeyUserID), nullString(st.BotKeyModel)); err != nil {
 			return err
 		}
 	}
@@ -250,7 +250,8 @@ func (s *SQLStore) LoadGame(ctx context.Context, id uuid.UUID) (GameRecord, []Se
 	g.Results = results == 1
 
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT seat, player_id, user_id, guest_name, bot_tier, deck_id, deck_name, pending_discord_id, agent_client
+		`SELECT seat, player_id, user_id, guest_name, bot_tier, deck_id, deck_name, pending_discord_id, agent_client,
+		        bot_key_user_id, bot_key_model
 		 FROM seats WHERE game_id = ? ORDER BY seat`, id.String())
 	if err != nil {
 		return GameRecord{}, nil, err
@@ -262,10 +263,10 @@ func (s *SQLStore) LoadGame(ctx context.Context, id uuid.UUID) (GameRecord, []Se
 			st                                                   SeatRecord
 			playerID                                             string
 			userID, guestName, botTier, deckID, deckName, discID sql.NullString
-			agentClient                                          sql.NullString
+			agentClient, keyUser, keyModel                       sql.NullString
 		)
 		if err := rows.Scan(&st.Seat, &playerID, &userID, &guestName, &botTier, &deckID, &deckName, &discID,
-			&agentClient); err != nil {
+			&agentClient, &keyUser, &keyModel); err != nil {
 			return GameRecord{}, nil, err
 		}
 		pid, err := uuid.Parse(playerID)
@@ -276,6 +277,7 @@ func (s *SQLStore) LoadGame(ctx context.Context, id uuid.UUID) (GameRecord, []Se
 		st.UserID, st.GuestName, st.BotTier = userID.String, guestName.String, botTier.String
 		st.DeckID, st.DeckName, st.PendingDiscordID = deckID.String, deckName.String, discID.String
 		st.AgentClient = agentClient.String
+		st.BotKeyUserID, st.BotKeyModel = keyUser.String, keyModel.String
 		seats = append(seats, st)
 	}
 	if err := rows.Err(); err != nil {

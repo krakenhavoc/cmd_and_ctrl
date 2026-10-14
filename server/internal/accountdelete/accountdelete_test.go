@@ -172,6 +172,10 @@ func seed(t *testing.T) fixture {
 		exec(t, d, `INSERT INTO user_settings (user_id, version, revision, body, updated_at) VALUES (?, 1, 1, '{}', 1)`, u.String())
 		exec(t, d, `INSERT INTO table_setups (user_id, body, game_id, updated_at) VALUES (?, '{}', NULL, 1)`, u.String())
 		exec(t, d, `INSERT INTO notification_prefs (user_id, turn, table_ready, table_filled, dm_failed_at, updated_at) VALUES (?, 1, 1, 0, 5, 1)`, u.String())
+		exec(t, d, `INSERT INTO model_keys (user_id, provider, base_url, model, sealed_key, last4, games_per_day, calls_per_game,
+				day, day_games, created_at, updated_at, last_used_at, last_error, last_error_at)
+			VALUES (?, 'custom', 'https://llm.example.test/v1', 'm', ?, 'abcd', 5, 50, '2026-10-14', 1, 1, 1, 2, 'refused', 3)`,
+			u.String(), make([]byte, 40))
 		exec(t, d, `INSERT INTO user_playmats (user_id, slot, playmat_id, created_at) VALUES (?, 1, ?, 1)`, u.String(), "mat-"+map[bool]string{true: "Ian", false: "Bea"}[u == f.user])
 	}
 	exec(t, d, `INSERT INTO deck_request_asks (deck_key, requester, at) VALUES ('moxfield:a', ?, 1), ('moxfield:b', ?, 1)`,
@@ -186,6 +190,9 @@ func seed(t *testing.T) fixture {
 		f.endedGame.String(), otherPlayer.String(), f.other.String(), otherDeck.String())
 	exec(t, d, `INSERT INTO invites (token_hash, game_id, kind, created_by, created_at) VALUES (x'aa', ?, 'player', ?, 1)`,
 		f.endedGame.String(), f.user.String())
+	// A bot the person ran on their own model key (ADR 0182).
+	exec(t, d, `INSERT INTO seats (game_id, seat, player_id, guest_name, bot_tier, bot_key_user_id, bot_key_model) VALUES (?, 3, ?, 'Bot 1', 'assisted', ?, 'm')`,
+		f.endedGame.String(), uuid.NewString(), f.user.String())
 
 	// An ended table only the other person sat at, to prove it is untouched.
 	exec(t, d, `INSERT INTO games (id, name, created_by, state, created_at, ended_at) VALUES (?, 'Other pod', ?, 'ended', 1, 2)`,
@@ -240,6 +247,7 @@ func TestDeleteRemovesOrAnonymisesEveryTable(t *testing.T) {
 		"user_settings":      `SELECT COUNT(*) FROM user_settings WHERE user_id = ?`,
 		"table_setups":       `SELECT COUNT(*) FROM table_setups WHERE user_id = ?`,
 		"notification_prefs": `SELECT COUNT(*) FROM notification_prefs WHERE user_id = ?`,
+		"model_keys":         `SELECT COUNT(*) FROM model_keys WHERE user_id = ?`,
 		"user_playmats":      `SELECT COUNT(*) FROM user_playmats WHERE user_id = ?`,
 		"identities":         `SELECT COUNT(*) FROM identities WHERE user_id = ?`,
 		"deck_request_asks":  `SELECT COUNT(*) FROM deck_request_asks WHERE requester = 'discord:` + userSubject + `' AND ? <> ''`,
@@ -320,6 +328,12 @@ func TestDeleteRemovesOrAnonymisesEveryTable(t *testing.T) {
 	if n := count(t, f.d, `SELECT COUNT(*) FROM seats WHERE game_id = ? AND user_id = ?`, f.endedGame.String(), u); n != 1 {
 		t.Errorf("the seat must still point at the tombstone, got %d", n)
 	}
+	if n := count(t, f.d, `SELECT COUNT(*) FROM seats WHERE game_id = ? AND bot_key_user_id = ? AND bot_key_model = 'm'`, f.endedGame.String(), u); n != 1 {
+		t.Errorf("the own-key bot seat must still point at the tombstone, got %d", n)
+	}
+	if res.Counts.ModelKeyRows != 1 {
+		t.Errorf("ModelKeyRows = %d, want 1", res.Counts.ModelKeyRows)
+	}
 	if n := count(t, f.d, `SELECT COUNT(*) FROM invites WHERE created_by = ?`, u); n != 1 {
 		t.Errorf("the invite must stay, got %d", n)
 	}
@@ -336,6 +350,7 @@ func TestDeleteRemovesOrAnonymisesEveryTable(t *testing.T) {
 		`SELECT COUNT(*) FROM decks WHERE owner_id = ?`, `SELECT COUNT(*) FROM user_settings WHERE user_id = ?`,
 		`SELECT COUNT(*) FROM table_setups WHERE user_id = ?`, `SELECT COUNT(*) FROM user_playmats WHERE user_id = ?`,
 		`SELECT COUNT(*) FROM identities WHERE user_id = ?`, `SELECT COUNT(*) FROM notification_prefs WHERE user_id = ?`,
+		`SELECT COUNT(*) FROM model_keys WHERE user_id = ?`,
 	} {
 		if n := count(t, f.d, q, o); n != 1 {
 			t.Errorf("%s = %d for the other person, want 1", q, n)
