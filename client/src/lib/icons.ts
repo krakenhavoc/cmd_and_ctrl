@@ -186,6 +186,10 @@ export const ICONS = {
     p("M4 12H2"),
     p("M22 12h-2"),
   ],
+  // #3499, the table card's toolbar: the spectator link (an eye) and
+  // Invite by DM (an envelope).
+  eye: [p("M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"), c(12, 12, 3)],
+  mail: [{ t: "rect", x: 3, y: 5, w: 18, h: 14, rx: 2 } as IconPrimitive, p("M3 7l9 6 9-6")],
 } satisfies Record<string, IconPrimitive[]>;
 
 export type IconName = keyof typeof ICONS;

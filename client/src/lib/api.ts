@@ -1772,19 +1772,14 @@ export async function patchTableSettings(
 // fetchTableSettings reads a table's settings from the LOBBY page,
 // where there is no socket to carry them.
 //
-// It is an empty patch, because the lobby has no GET: the settings
-// are public over the game view (protocol.GameView.settings), and the
-// HTTP surface only ever needed a write. An empty patch changes
-// nothing and logs nothing — the engine emits one event per field
-// that ACTUALLY changed — but it is still a commit, so this is called
-// when the panel opens and not on every lobby refresh.
-//
-// It inherits the write's gate, so a non-manager gets a 403 rather
-// than a read. That is the one place the lobby panel falls short of
-// "everyone sees it read-only": at the table, where GameView carries
-// the settings to every viewer, it does not.
+// GET /games/{id}/settings (#3499) answers anyone at the table (a seat
+// or a spectator), its creator and the admin, so the table card shows
+// every one of them the rules summary. It used to be an empty PATCH,
+// which inherited the write's host-only gate and was a commit, so it
+// could not run on every refresh.
 export async function fetchTableSettings(gameID: string): Promise<TableSettingsView> {
-  return await patchTableSettings(gameID, {});
+  const res = await authFetch(`/games/${encodeURIComponent(gameID)}/settings`);
+  return ((await res.json()) as TableSettingsResponse).settings;
 }
 
 export interface SpawnRequest {

@@ -632,6 +632,12 @@ func Handler(c Config) http.Handler {
 	// (starting life is fixed once the game is active) are the
 	// engine's, not the route's.
 	mux.Handle("PATCH /games/{id}/settings", auth.Middleware(c.Auth)(handlerFunc(c, updateTableSettings)))
+	// #3499: read the table's settings without changing them, so the
+	// lobby card can show everyone at the table the rules it will be
+	// played under. Anyone at the table (a seat or a spectator), its
+	// creator, or an admin: the people the game view already shows
+	// them to once the board is open.
+	mux.Handle("GET /games/{id}/settings", auth.Middleware(c.Auth)(handlerFunc(c, getTableSettings)))
 	// ADR 0075 §2.4: spawning on a LIVE table. Deliberately NOT
 	// behind requireDevFeature — this is the production spawner, and
 	// its two gates are its own: CanManageTable, and the table's
@@ -1411,6 +1417,48 @@ func updateTableSettings(c Config, w http.ResponseWriter, r *http.Request) error
 	return writeJSON(w, http.StatusOK, tableSettingsResponse{
 		Settings: protocol.ViewOfTableSettings(settings),
 	})
+}
+
+// getTableSettings handles GET /games/{id}/settings (#3499): the
+// table's rules, read-only. Before it, the lobby's only read was an
+// empty PATCH, which inherited the write's host-or-admin gate and left
+// everyone else at the table unable to see the rules until the board
+// opened.
+func getTableSettings(c Config, w http.ResponseWriter, r *http.Request) error {
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
+	meta, err := c.Lobby.Get(id)
+	if err != nil {
+		return err
+	}
+	if !canReadTableSettings(p, meta, c.isAdmin(p)) {
+		return httpError(http.StatusForbidden, "only someone at this table can read its settings")
+	}
+	settings, err := c.Lobby.Settings(id)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, tableSettingsResponse{
+		Settings: protocol.ViewOfTableSettings(settings),
+	})
+}
+
+// canReadTableSettings: an admin, a session bound to this table (a
+// seat or a spectator), or the signed-in person who created it.
+func canReadTableSettings(p auth.Principal, meta GameMeta, admin bool) bool {
+	if admin {
+		return true
+	}
+	if p.GameID == meta.ID && (p.Role == auth.RolePlayer || p.Role == auth.RoleSpectator) {
+		return true
+	}
+	return p.UserID != uuid.Nil && meta.CreatedBy != uuid.Nil && p.UserID == meta.CreatedBy
 }
 
 // joinGame is the primary onboarding path: a player clicks an invite

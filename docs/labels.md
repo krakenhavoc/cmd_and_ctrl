@@ -109,6 +109,12 @@ registered, or when this file is stale.
 | `searchCatalogue` | `search the catalogue` | textbox | aria | `routes/Catalog.svelte` | the Catalogue's search field; the catalog.search hint points at it |
 | `searchRoadmap` | `search the roadmap` | textbox | aria | `routes/Roadmap.svelte` | the Roadmap's search field; the roadmap.search hint points at it |
 | `lobbyTitle` | `cmd_and_ctrl · lobby` | heading | aria | `routes/Lobby.svelte` | the Lobby's title (its visible text is Tables); the lobby.practice hint anchors here |
+| `copyInvite` | `Copy invite` | button | text | `routes/Lobby.svelte` | the wide part of a lobby table's invite split button: copies the player invite link; the lobby.create hint names it |
+| `newInviteLink` | `new invite link` | button | aria | `routes/Lobby.svelte` | the ↻ part of the invite split button: mints a new player invite after a confirm, then copies it |
+| `copySpectatorLink` | `Copy spectator link` | button | text | `routes/Lobby.svelte` | the wide part of a table's spectator split button: copies the read-only link |
+| `newSpectatorLink` | `new spectator link` | button | aria | `routes/Lobby.svelte` | the ↻ part of the spectator split button: mints a new spectator link after a confirm, then copies it |
+| `tableSettingsLine` | `table settings: <summary>` (starts with `table settings: `) | button | aria | `routes/Lobby.svelte` | a table card's rules line, e.g. 30 life · no undos: opens the table settings panel (read-only for a non-host) |
+| `tableMenu` | `actions for <table name>` (starts with `actions for `) | menu | aria | `routes/Lobby.svelte` | a table card's right-click menu (also the Menu key, Shift+F10 or a long press) |
 | `navTables` | `Tables` | link | text | `lib/components/SiteHeader.svelte` | the site header's link to #/lobby, first in the signed-in nav (it read Lobby before ADR 0156) |
 | `signInWithDiscord` | `Sign in with Discord` | link | text | `routes/FrontPage.svelte` | the front page's Discord sign-in, shown when the server has Discord sign-in configured |
 | `joinDiscordServer` | `Join our Discord server` | link | text | `routes/FrontPage.svelte` | the front page's link to the C2 Discord invite; hidden when GET /community names none |
