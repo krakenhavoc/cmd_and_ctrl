@@ -298,44 +298,46 @@
       onkeydown={onMenuKey}
     >
       {#if props.seated}
-        <div class="menu-h">Sandbox</div>
-        <button class="mi" role="menuitem" onclick={via(props.onDraw)} title={props.drawTitle}>
-          <Icon name="draw" size={15} /> Draw a card
-          {#if props.drawKey}<span class="mi-r">{props.drawKey}</span>{/if}
-        </button>
-        <button class="mi" role="menuitem" onclick={via(props.onUntapAll)}>
-          <Icon name="untap" size={15} /> Untap all
-        </button>
-        <button class="mi" role="menuitem" onclick={via(props.onShuffle)}>
-          <Icon name="shuffle" size={15} /> Shuffle library
-        </button>
-        {#if props.sandboxPassTurn && props.onSandboxPassTurn}
-          <!-- ADR 0143 §4.2: the old Pass turn, a sandbox jump. The
-               dock's End turn is the rules-faithful way to end a turn. -->
-          <button
-            class="mi"
-            role="menuitem"
-            onclick={via(props.onSandboxPassTurn)}
-            title="jump straight to the next turn: no end step, no end-step triggers, no cleanup discard. The log shows the table you did it"
-          >
-            <Icon name="chevronRight" size={15} />
-            {L.sandboxPassTurn}
+        {#if props.sandbox !== false}
+          <div class="menu-h">Sandbox</div>
+          <button class="mi" role="menuitem" onclick={via(props.onDraw)} title={props.drawTitle}>
+            <Icon name="draw" size={15} /> Draw a card
+            {#if props.drawKey}<span class="mi-r">{props.drawKey}</span>{/if}
           </button>
+          <button class="mi" role="menuitem" onclick={via(props.onUntapAll)}>
+            <Icon name="untap" size={15} /> Untap all
+          </button>
+          <button class="mi" role="menuitem" onclick={via(props.onShuffle)}>
+            <Icon name="shuffle" size={15} /> Shuffle library
+          </button>
+          {#if props.sandboxPassTurn && props.onSandboxPassTurn}
+            <!-- ADR 0143 §4.2: the old Pass turn, a sandbox jump. The
+               dock's End turn is the rules-faithful way to end a turn. -->
+            <button
+              class="mi"
+              role="menuitem"
+              onclick={via(props.onSandboxPassTurn)}
+              title="jump straight to the next turn: no end step, no end-step triggers, no cleanup discard. The log shows the table you did it"
+            >
+              <Icon name="chevronRight" size={15} />
+              {L.sandboxPassTurn}
+            </button>
+          {/if}
+          <div class="mi mi-row">
+            <Icon name="hand" size={15} />
+            <span>Mulligan to</span>
+            <input
+              type="number"
+              min="0"
+              max="20"
+              bind:value={mulliganTo}
+              aria-label="mulligan hand size"
+            />
+            <button class="sm" onclick={via(() => props.onMulligan(clampMulligan(mulliganTo)))}
+              >Go</button
+            >
+          </div>
         {/if}
-        <div class="mi mi-row">
-          <Icon name="hand" size={15} />
-          <span>Mulligan to</span>
-          <input
-            type="number"
-            min="0"
-            max="20"
-            bind:value={mulliganTo}
-            aria-label="mulligan hand size"
-          />
-          <button class="sm" onclick={via(() => props.onMulligan(clampMulligan(mulliganTo)))}
-            >Go</button
-          >
-        </div>
         <button class="mi" role="menuitem" onclick={via(props.onLifeHistory)}>
           <Icon name="drop" size={15} /> Life history
         </button>
@@ -410,7 +412,7 @@
           <Icon name="spark" size={15} /> Spawn a card or token…
         </button>
       {/if}
-      {#if props.seated && !props.voteOpen}
+      {#if props.seated && !props.voteOpen && props.sandbox !== false}
         <!-- The vote launcher, out of the board's top-left corner (ADR
              0111 inventory, "Vote launcher"). An open vote is the dock's
              own request, so this stands down while one is open. -->
