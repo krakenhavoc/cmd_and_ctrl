@@ -7859,9 +7859,28 @@ Skipping an EXTRA turn is `SkipOpponentsExtraTurns()` in `Spec.Replacements`
 the window the rotation seam opens when a queued extra turn would begin.
 A cancel is the skip, and a delayed trigger bound to that turn goes with
 it (CR 614.10a). The window cannot pause (ADR 0059 amendment 2026-10-07),
-so write the replacement as a pure cancel. Skipping a NORMAL turn ("skip
-your next turn": Magosi, Lethal Vapors) and a step of a named turn (Savor
-the Moment) have no shape yet. Declare those as a caveat.
+so write the replacement as a pure cancel.
+
+"Skip your next turn" (CR 614.10: Magosi, the Waterveil; Lethal Vapors) is
+a different shape, a debt rather than a replacement, and it is two
+primitives in [skip_turns.go](../server/internal/cards/effects/skip_turns.go)
+(ADR 0188 Decision 1, #3559):
+
+```go
+return SkipYourNextTurns{}.Apply(ctx)                 // "You skip your next turn." N: 2 for "next two turns"
+return TargetPlayerSkipsNextTurns{N: x}.Apply(ctx)    // "Target player skips their next X turns."
+```
+
+"You" is the resolving item's controller, which on an `AnyPlayer` row
+(Lethal Vapors) is whoever activated it. Neither primitive moves the turn
+cursor: each writes a `skipTurns` ScopedEffect record that the rotation
+seam spends when that player's next turn, extra or normal, would begin. So
+the turn in progress is never cut short, two skips skip two turns (CR
+614.10a), and a skip plus a queued extra turn of the same player skips the
+extra turn (the Magosi ruling). A card that says "skip" in its own
+sentence ("Put a counter. Skip your next turn.") writes the skip whether or
+not the rest of the effect happened. A skipped step of a named turn (Savor
+the Moment) has no shape yet (ADR 0188 slice 5). Declare that as a caveat.
 
 ### Extra combats, phases and steps (#753, ADR 0059 sub-PR 2b)
 

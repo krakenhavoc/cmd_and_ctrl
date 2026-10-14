@@ -366,6 +366,17 @@ const (
 	// (assigns_no_combat_damage.go), where the combat damage pass builds
 	// its per-combatant amount. Reads nothing.
 	ModAssignsNoCombatDamage ModKind = "assignsNoCombatDamage"
+	// ModSkipTurns is "<player> skips their next <Amount> turns" (ADR
+	// 0188 Decision 1, #3559; CR 614.10, 614.10a): Magosi, the
+	// Waterveil's and Lethal Vapors' "skip your next turn". Scope
+	// ScopeGame with Player set to the player who skips and Amount the
+	// turns still owed; each turn skipped spends one charge, the oldest
+	// record first, and a record at zero is removed. Read only by the
+	// rotation seam (consumeTurnSkipLocked). A ScopedEffect and not a
+	// counter on the player, so an older binary refuses the file
+	// instead of handing the player a turn their card took. Reads
+	// Player and Amount.
+	ModSkipTurns ModKind = "skipTurns"
 )
 
 // The block-rule kinds (ADR 0041 P8, tier 3b, #1497). These are not
@@ -977,6 +988,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSetCreatureTypes: {layer: Layer4Type},
 	// #3398: a duration-bound attack tax, read by the attack pricer.
 	ModAttackTax: {reader: readerRule},
+	// ADR 0188 Decision 1 (#3559): the skip-your-next-turn debt.
+	ModSkipTurns: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1404,6 +1417,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := borrowModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := skipTurnsModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy && r != readerText {

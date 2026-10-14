@@ -1001,6 +1001,23 @@ const (
 	// begins, and a queued turn of a player who leaves never does.
 	EventExtraTurnAdded EventKind = "extra_turn_added"
 
+	// EventTurnSkipAdded — an effect made a player skip their next
+	// turns (CR 614.10, ADR 0188 Decision 1, #3559: Magosi, the
+	// Waterveil, Lethal Vapors). Actor is the player who will skip,
+	// Source the card whose effect wrote the debt, Amount how many
+	// turns it adds. Emitted as the debt is RECORDED; EventTurnSkipped
+	// follows once per turn actually skipped.
+	EventTurnSkipAdded EventKind = "turn_skip_added"
+
+	// EventTurnSkipped — a player's turn was skipped because they owed
+	// a skip (CR 614.10a, ADR 0188 Decision 1). Actor is the player who
+	// would have taken the turn, Source the card whose effect wrote the
+	// debt that was spent. Label is "extra" and Amount the turn's
+	// ExtraTurn.Ref when the turn skipped was an extra turn, and both
+	// are empty for a normal one. Emitted by the rotation seam; no
+	// EventTurnBegan follows, because the turn never began.
+	EventTurnSkipped EventKind = "turn_skipped"
+
 	// EventPlayerControlScheduled — an effect will give a player control
 	// of another player during that player's next turn (CR 723.1, ADR
 	// 0167 §1: Emrakul, the Promised End). Actor is the controller,
