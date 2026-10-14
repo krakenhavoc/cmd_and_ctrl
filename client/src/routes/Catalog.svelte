@@ -228,60 +228,58 @@
   lede="Every card wired into the rules engine, and how completely each one is implemented. Cards not listed here still work in the sandbox — you just resolve them by hand."
   width="wide"
 >
-  {#if loading}
-    <!-- The search box is the catalog.search hint's anchor: it must exist before the data
-         does (#3305). The facets need the data, so only the box shows, disabled. -->
-    {#if narrow}
-      <div class="bar">{@render searchBox()}</div>
-    {:else}
-      <div class="layout">
-        <aside class="sidebar" aria-label="Filters">
-          {@render searchBox()}
-        </aside>
-        <div class="main">
-          <p class="help" aria-live="polite">Loading the catalogue…</p>
-        </div>
-      </div>
-    {/if}
-    {#if narrow}<p class="help" aria-live="polite">Loading the catalogue…</p>{/if}
-  {:else if error}
+  {#if !loading && error}
     <p class="notice err" role="alert">
       <Icon name="x" size={14} />
       <span>Couldn't load the catalogue ({error}).</span>
     </p>
   {:else}
+    <!-- The search box is the catalog.search hint's anchor: it must exist before the data
+         does (#3305), and it must be the SAME element before and after, or the tip's anchor
+         is torn out from under it when the data lands (#3343: the hints e2e saw "Element is
+         not attached"). So the layout, the box and the bar it sits in are one block for the
+         whole load; the facets, the count and the grid come and go inside it, and while
+         loading the box is disabled. -->
     <div class="layout">
       {#if !narrow}
         <aside class="sidebar" aria-label="Filters">
           {@render searchBox()}
-          {@render facetPanel()}
+          {#if !loading}{@render facetPanel()}{/if}
         </aside>
       {/if}
 
       <div class="main">
         <div class="bar">
           {#if narrow}
-            <button
-              type="button"
-              class="filters-btn"
-              bind:this={filtersBtn}
-              aria-haspopup="dialog"
-              aria-expanded={sheetOpen}
-              onclick={openSheet}
-            >
-              Filters{#if chips.length > 0}<span class="filters-n">{chips.length}</span>{/if}
-            </button>
+            {#if !loading}
+              <button
+                type="button"
+                class="filters-btn"
+                bind:this={filtersBtn}
+                aria-haspopup="dialog"
+                aria-expanded={sheetOpen}
+                onclick={openSheet}
+              >
+                Filters{#if chips.length > 0}<span class="filters-n">{chips.length}</span>{/if}
+              </button>
+            {/if}
             {@render searchBox()}
           {/if}
-          <p class="count" aria-live="polite">
-            <strong>{shown.length}</strong>
-            {shown.length === 1 ? "card" : "cards"}
-            {#if chips.length > 0 && counts}<span class="dim">of {counts.total}</span>{/if}
-          </p>
-          <p class="sort">Sorted by name</p>
+          {#if !loading}
+            <p class="count" aria-live="polite">
+              <strong>{shown.length}</strong>
+              {shown.length === 1 ? "card" : "cards"}
+              {#if chips.length > 0 && counts}<span class="dim">of {counts.total}</span>{/if}
+            </p>
+            <p class="sort">Sorted by name</p>
+          {/if}
         </div>
 
-        {#if chips.length > 0}
+        {#if loading}
+          <p class="help" aria-live="polite">Loading the catalogue…</p>
+        {/if}
+
+        {#if !loading && chips.length > 0}
           <ul class="active" aria-label="Active filters">
             {#each chips as chip (chip.kind + ":" + chip.value)}
               <li>
@@ -308,7 +306,9 @@
           </ul>
         {/if}
 
-        {#if shown.length === 0}
+        {#if loading}
+          <!-- the line above is the whole body until the data lands -->
+        {:else if shown.length === 0}
           <p class="help">No card matches those filters.</p>
         {:else}
           <!-- ADR 0179: one disclosure for the Buy links on every tile.
@@ -360,7 +360,7 @@
       </div>
     </div>
 
-    {#if narrow && sheetOpen}
+    {#if !loading && narrow && sheetOpen}
       <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
       <div class="backdrop" onclick={closeSheet}></div>
       <div

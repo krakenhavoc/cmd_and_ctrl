@@ -74,8 +74,12 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * bot_key_model on a bot that ran on it. The notice's "Your own model
  * key for AI opponents" row covers them; account deletion deletes the
  * key row.
+ *
+ * 26 (#3337, ADR 0177) adds seats.stand_in / stand_in_since: the bot
+ * tier playing an away player's seat, and since when. Neither names a
+ * person, and nothing on the notice changes.
  */
-export const PRIVACY_SCHEMA_VERSION = 25;
+export const PRIVACY_SCHEMA_VERSION = 26;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

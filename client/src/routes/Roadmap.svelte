@@ -147,19 +147,13 @@
     and you resolve that part yourself.
   {/snippet}
   <div class="stack">
-    {#if loading}
-      <!-- The search box is the roadmap.search hint's anchor: it must exist before the
-           data does, or a slow load makes the hint engine skip the page's own tip (#3305). -->
-      <div class="filters">
-        {@render searchBox()}
-      </div>
-      <p class="help" aria-live="polite">Loading the roadmap…</p>
-    {:else if error}
+    {#if !loading && error}
       <p class="notice err" role="alert">
         <Icon name="x" size={14} />
         <span>Couldn't load the roadmap ({error}).</span>
       </p>
-    {:else if data}
+    {/if}
+    {#if data}
       <ul class="legend">
         {#each STATUSES as s (s)}
           <li class="lg-item {s}">
@@ -226,57 +220,73 @@
           </ol>
         </section>
       {/if}
+    {/if}
 
+    <!-- The search box is the roadmap.search hint's anchor: it must exist before the
+           data does, or a slow load makes the hint engine skip the page's own tip (#3305),
+           and it must be the SAME element before and after, or the tip's anchor is torn
+           out from under it when the data lands (#3343: the hints e2e saw "Element is not
+           attached"). So it sits in one block that is open for the whole load and only the
+           facets and the count come and go inside it. -->
+    {#if loading || data}
       <div class="filters">
         {@render searchBox()}
-        <div class="facets">
-          <fieldset class="facet">
-            <legend>Kind</legend>
-            <div class="chips">
-              {#each KINDS as k (k)}
-                <button
-                  type="button"
-                  class="fchip"
-                  class:on={kinds.includes(k)}
-                  aria-pressed={kinds.includes(k)}
-                  onclick={() => (kinds = toggle(kinds, k))}
-                >
-                  {KIND_LABELS[k]}
-                </button>
-              {/each}
-            </div>
-          </fieldset>
-          <fieldset class="facet">
-            <legend>Status</legend>
-            <div class="chips">
-              {#each STATUSES as s (s)}
-                <button
-                  type="button"
-                  class="fchip {s}"
-                  class:on={statuses.includes(s)}
-                  aria-pressed={statuses.includes(s)}
-                  onclick={() => (statuses = toggle(statuses, s))}
-                >
-                  {STATUS_LABELS[s]}
-                </button>
-              {/each}
-            </div>
-          </fieldset>
-        </div>
-        <div class="countbar">
-          <p class="count" aria-live="polite">
-            <strong>{shown.length}</strong>
-            {shown.length === 1 ? "entry" : "entries"}
-            {#if filtered}<span class="dim">of {items.length}</span>{/if}
-          </p>
-          {#if filtered}
-            <button type="button" class="ghost sm" onclick={reset}>
-              <Icon name="x" size={12} /> clear filters
-            </button>
-          {/if}
-        </div>
+        {#if data}
+          <div class="facets">
+            <fieldset class="facet">
+              <legend>Kind</legend>
+              <div class="chips">
+                {#each KINDS as k (k)}
+                  <button
+                    type="button"
+                    class="fchip"
+                    class:on={kinds.includes(k)}
+                    aria-pressed={kinds.includes(k)}
+                    onclick={() => (kinds = toggle(kinds, k))}
+                  >
+                    {KIND_LABELS[k]}
+                  </button>
+                {/each}
+              </div>
+            </fieldset>
+            <fieldset class="facet">
+              <legend>Status</legend>
+              <div class="chips">
+                {#each STATUSES as s (s)}
+                  <button
+                    type="button"
+                    class="fchip {s}"
+                    class:on={statuses.includes(s)}
+                    aria-pressed={statuses.includes(s)}
+                    onclick={() => (statuses = toggle(statuses, s))}
+                  >
+                    {STATUS_LABELS[s]}
+                  </button>
+                {/each}
+              </div>
+            </fieldset>
+          </div>
+          <div class="countbar">
+            <p class="count" aria-live="polite">
+              <strong>{shown.length}</strong>
+              {shown.length === 1 ? "entry" : "entries"}
+              {#if filtered}<span class="dim">of {items.length}</span>{/if}
+            </p>
+            {#if filtered}
+              <button type="button" class="ghost sm" onclick={reset}>
+                <Icon name="x" size={12} /> clear filters
+              </button>
+            {/if}
+          </div>
+        {/if}
       </div>
+    {/if}
 
+    {#if loading}
+      <p class="help" aria-live="polite">Loading the roadmap…</p>
+    {/if}
+
+    {#if data}
       {#if shown.length === 0}
         <p class="help">Nothing on the roadmap matches those filters.</p>
       {/if}

@@ -26,6 +26,7 @@ func TestSettingsVisibleToEveryViewer(t *testing.T) {
 		CommanderDamage: game.CommanderDamageLethal,
 		BotPace:         "normal",
 		AllowSpawn:      true,
+		AwayAfter:       game.DefaultAwayAfter,
 	}
 	for _, viewer := range []string{g.Seats[0].ID.String(), g.Seats[1].ID.String(), ""} {
 		v := ViewOfGameFor(g, viewer)

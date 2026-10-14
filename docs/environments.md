@@ -1142,6 +1142,22 @@ so everyone who had added one adds it again in Settings › AI opponents.
 `TestMigration0025RollbackByHand` runs exactly this sequence and then rolls
 forward.
 
+Migration 0026 (ADR 0177, a bot standing in for an away player) adds two
+nullable columns, `seats.stand_in` and `seats.stand_in_since`. An older
+binary refuses the v26 schema. Drop them by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "ALTER TABLE seats DROP COLUMN stand_in; ALTER TABLE seats DROP COLUMN stand_in_since; DELETE FROM schema_migrations WHERE version = 26;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+A seat a bot was playing comes back with nobody playing it, and its
+player plays it again when they rejoin. `TestMigration0026RollbackByHand`
+runs exactly this sequence and then rolls forward.
+
 Migration 0021 (ADR 0161, the #lfg board) adds `games.lfg` (0 or 1,
 default 0) and `games.lfg_message_id` (nullable). An older binary refuses
 the v21 schema. Drop them by hand:

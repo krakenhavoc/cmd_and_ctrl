@@ -1349,8 +1349,10 @@ stops its controller on every opponent's spell. Every catalog row in
 scope must declare.
 
 **Which rows.** Every activated row (a card's own, a granted bundle's, a
-token template's) that is not sorcery speed or a loyalty ability, and
-that can be announced with no target: it has no `Targets`, or its target
+token template's) that is not sorcery speed or a loyalty ability (a
+loyalty row counts when its card opens its own loyalty abilities at
+instant speed: `ThisSourcesLoyaltyAbilitiesAtInstantSpeed`, Teferi,
+Master of Time), and that can be announced with no target: it has no `Targets`, or its target
 clause allows zero ("up to one", "any number of": `Min` 0), or it is
 modal with at least one such mode. Also every mana ability whose
 cost sacrifices another permanent, which declares `ManaAbility.Answers`.
@@ -3581,8 +3583,11 @@ footprint, and the registry derives one only from an `effects.Do` of
 primitives that declare a step (`cards/effects/footprint.go`):
 `CounterOnThis`, `GainLife`, `DrawCards`, `MillCards`, `Scry`,
 `Surveil`, `GetEnergy`, `CreateToken`, `BecomeTheMonarch`,
-`DamageEachOpponent`, `EachOpponentLosesLife` (a drain is
+`DamageEachOpponent`, `DamageController` ("~ deals N damage to
+you"), `EachOpponentLosesLife` (a drain is
 `Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})`),
+`TargetPlayerLosesLife` (the targeted drain is
+`Do(TargetPlayerLosesLife{N: 1}, GainLife{Amount: 1})`),
 `ExileChosenTarget` and `GainLifeEqualToSubject`
 ("you gain life equal to its toughness", read off the trigger's
 subject as it resolves). A hand-written closure
