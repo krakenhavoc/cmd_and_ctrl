@@ -982,8 +982,8 @@ var items = []Item{
 		Summary:     "Reality Fracture cards that wait on a mechanic the engine doesn't have yet.",
 		Missing:     "These cards need a rule the game doesn't have yet, so they can't be played.",
 		Issue:       2795,
-		Waiting:     []string{"Extrapolate the Impossible", "Uldaros Theorix"},
-		EngineNotes: "Extrapolate the Impossible: \"You may reveal exactly two cards you own with different names from outside the game\" has no zone to read from. A table starts with a deck and no sideboard, so there is no outside-the-game collection to offer, and a sandbox stand-in (a free pick from the card index) would be stronger than printed. Uldaros Theorix: its enters trigger exiles up to one nonland card of each card type from your graveyard, copies them, and lets you cast any number of the copies with total mana value 6 or less without paying their mana costs, permanent spells becoming tokens. Casting a copy of a card, as against a copy of a spell, exists nowhere in the engine: every cast permission opens the card itself, and `CreateTokenCopy` mints a permanent rather than a spell on the stack. A stand-in that put the copies onto the battlefield or resolved them directly would skip the stack and the casting triggers. Each blocker is listed here by card as slices land.",
+		Waiting:     []string{"Extrapolate the Impossible"},
+		EngineNotes: "Extrapolate the Impossible: \"You may reveal exactly two cards you own with different names from outside the game\" has no zone to read from. A table starts with a deck and no sideboard, so there is no outside-the-game collection to offer, and a sandbox stand-in (a free pick from the card index) would be stronger than printed.Each blocker is listed here by card as slices land.",
 	},
 	{
 		// #2012: a NUMBERED dies-and-entry keyword the engine derives
@@ -2224,14 +2224,15 @@ var items = []Item{
 		EngineNotes: "Worms of the Earth's \"Lands can't enter the battlefield\" is a prohibition on a zone change, not a land play (CR 305.4: putting a land onto the battlefield is not playing it), so `LandPlayGateLocked` does not reach a fetched, reanimated or flickered land. It needs a gate on the CR 614 entry window. Its first line (\"Players can't play lands\") is the shipped land-play gate, and its upkeep clause is an any-player choice.",
 	},
 	{
-		Slug: "budgeted-free-casts", Name: "Free casts with a total mana value budget", Kind: KindSeam, Status: StatusMissing,
+		Slug: "budgeted-free-casts", Name: "Free casts with a total mana value budget", Kind: KindSeam, Status: StatusPartial,
 		Summary:     "Effects that let you cast any number of spells for free as long as their total mana value stays under a limit, such as Primeval Spawn's.",
-		Missing:     "Free casts can't share one total mana value limit yet, so a card that offers them that way can't be added.",
+		Missing:     "A total mana value limit is shared by the copies of cards a card makes, but not yet by the cards an effect exiles, so Primeval Spawn can't be added.",
 		Rules:       []string{"601.2", "608.2g", "202.3"},
 		Issue:       2017,
 		Tracked:     "#2017 (found landing ADR 0109 PR 10, #1552)",
+		Printed:     `(?i)any number of spells with total mana value`,
 		Waiting:     []string{"Primeval Spawn"},
-		EngineNotes: "cast permission: `GrantCastPermissionOverCardForEffect` grants one independent free cast per card (Improvisation Capstone), and `game.CastPermission` has nothing that ties several grants to one running mana-value total, so a grant per exiled card would let Primeval Spawn's controller cast all ten. A likely shape is a permission group with a budget each cast through it spends, read by the cast gate and the enumerator (ADR 0033 §1), ending with the resolving ability's cast window (CR 608.2g). Primeval Spawn's first line ships with ADR 0109 PR 10: `Game.EntrySpentForEffect(ev).None()` inside the entry window.",
+		EngineNotes: "**Built for card copies** (#2017, ADR 0066 amendment of 2026-10-14): `game.CastPermission.ManaValueBudget` is the REMAINING total one `ScopeCards` permission may still open across every card it names. `CardCopyOffer.ManaValueBudget` (`effects.CopyAndCast.TotalManaValueAtMost`) makes ONE permission over all the copies instead of one per copy; `spellManaValueWithinCap`, the gate `validateCastPathLocked` shares with the view and the bot enumerator, refuses a copy whose mana value is more than what is left; and a cast spends it through `consumePassClosedGrantLocked`, which keeps the permission with the cast card struck out and the budget reduced (a fresh pointer, never written in place). Uldaros Theorix ships in full on it. **Still waiting:** Primeval Spawn. Its cards are exiled by `ExileTopWithPermissionForEffect`, which grants one independent permission per card, so it needs a helper that grants one budgeted permission over the cards that landed, plus the card file itself (not in the catalog).",
 	},
 	{
 		Slug: "ignore-an-effect-until-end-of-turn", Name: "Ignoring an effect by sacrificing a permanent", Kind: KindSeam, Status: StatusMissing,

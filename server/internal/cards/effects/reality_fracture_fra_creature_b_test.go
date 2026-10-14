@@ -44,7 +44,7 @@ func TestFraCreatureBCardsAreRegistered(t *testing.T) {
 		rfcbDraconicVisitor:       {"Draconic Visitor", CompletenessFull},
 		rfcbEardrumRattler:        {"Eardrum Rattler", CompletenessFull},
 		rfcbEdgar:                 {"Edgar, Moonlit Sovereign", CompletenessFull},
-		rfcbEmrakul:               {"Emrakul, the Exigent Doom", CompletenessCaveats},
+		rfcbEmrakul:               {"Emrakul, the Exigent Doom", CompletenessFull},
 		rfcbFateshaperAspirant:    {"Fateshaper Aspirant", CompletenessFull},
 		rfcbFblthpImpossiblyLost:  {"Fblthp, Impossibly Lost", CompletenessFull},
 		rfcbFblthpKnowsTheWay:     {"Fblthp, Knows the Way", CompletenessFull},
