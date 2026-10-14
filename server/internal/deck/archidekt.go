@@ -37,7 +37,15 @@ type archidektCard struct {
 	Quantity   int      `json:"quantity"`
 	Categories []string `json:"categories"`
 	Card       struct {
-		OracleCard struct {
+		// UID is the Scryfall printing id of the printing the
+		// deck's owner chose; Edition and CollectorNumber name the
+		// same printing for a deck whose UID the index lacks.
+		UID     string `json:"uid"`
+		Edition struct {
+			EditionCode string `json:"editioncode"`
+		} `json:"edition"`
+		CollectorNumber string `json:"collectorNumber"`
+		OracleCard      struct {
 			Name string `json:"name"`
 		} `json:"oracleCard"`
 	} `json:"card"`
@@ -63,7 +71,13 @@ func ParseArchidekt(raw []byte) (name string, entries []Entry, err error) {
 		if name == "" {
 			continue
 		}
-		entry := Entry{Name: name, Count: c.Quantity}
+		entry := Entry{
+			Name:        name,
+			Count:       c.Quantity,
+			PrintingID:  parsePrintingID(c.Card.UID),
+			SetCode:     c.Card.Edition.EditionCode,
+			CollectorNo: c.Card.CollectorNumber,
+		}
 		switch archidektBoard(c.Categories) {
 		case boardCommander:
 			entry.IsCommander = true

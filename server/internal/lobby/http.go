@@ -3718,7 +3718,7 @@ func libraryDeckInfo(c Config, d decklibrary.Deck, verdicts map[string]catalog.E
 		UpdatedAt:  d.UpdatedAt,
 		SourceURL:  d.SourceURL,
 	}
-	info.CommanderCards, info.ColorIdentity = libraryCommanders(c.Cards, d.Commanders)
+	info.CommanderCards, info.ColorIdentity = libraryCommanders(c.Cards, d.Commanders, libraryCommanderPrintings(c.Cards, d))
 	if verdicts != nil {
 		if rep, rerr := libraryDeckReport(c, d, verdicts); rerr == nil {
 			n, m := rep.AsPrinted()
@@ -3821,14 +3821,43 @@ func renameMyDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	})
 }
 
+// libraryCommanderPrintings reads the printing a saved deck's source
+// names for each commander (ADR 0192 §3), keyed by lower-cased name.
+// The library row stores commander names only, so the printing is read
+// back off the stored list; one that no longer parses names no
+// printing and the Decks page falls back to the default art.
+func libraryCommanderPrintings(idx *cards.Index, d decklibrary.Deck) map[string]deck.Entry {
+	entries, err := libraryDeckEntries(d)
+	if err != nil {
+		return nil
+	}
+	out := map[string]deck.Entry{}
+	for _, e := range entries {
+		if !e.IsCommander {
+			continue
+		}
+		out[strings.ToLower(strings.TrimSpace(e.Name))] = e
+		// The row stores the card's printed name, which can differ from
+		// the name a list used (a double-faced commander's front face).
+		if idx != nil {
+			if card, ok := idx.FindByName(e.Name); ok {
+				out[strings.ToLower(strings.TrimSpace(card.Name))] = e
+			}
+		}
+	}
+	return out
+}
+
 // libraryCommanders resolves a saved deck's commander names against
 // idx for the Decks page's art and aura (ADR 0158 §2). The index's
 // name lookup already prefers a playable printing; when that printing
 // carries no image, the oracle's representative printing is tried
 // before giving up, so the client gets an id it can always draw or no
 // id at all, never one that 404s. A name that does not resolve keeps
-// its row, with no id and no colours.
-func libraryCommanders(idx *cards.Index, names []string) ([]myDeckCommander, []string) {
+// its row, with no id and no colours. printings, when it holds an
+// entry for a commander, names the printing the deck chose (ADR 0192
+// §3) and wins over the default whenever the index has it.
+func libraryCommanders(idx *cards.Index, names []string, printings map[string]deck.Entry) ([]myDeckCommander, []string) {
 	if idx == nil || len(names) == 0 {
 		return nil, nil
 	}
@@ -3840,6 +3869,11 @@ func libraryCommanders(idx *cards.Index, names []string) ([]myDeckCommander, []s
 		}
 		cmd := myDeckCommander{Name: name}
 		if card, ok := idx.FindByName(name); ok {
+			if hint, has := printings[strings.ToLower(strings.TrimSpace(name))]; has {
+				if p, found := idx.FindPrintingOf(card, hint.PrintingID, hint.SetCode, hint.CollectorNo); found {
+					card = p
+				}
+			}
 			cmd.ColorIdentity = nonNil(card.ColorIdentity)
 			for _, l := range card.ColorIdentity {
 				seen[l] = true

@@ -62,7 +62,7 @@ Sideboard:
 		{Name: "Sol Ring", Count: 1},
 		{Name: "Forest", Count: 4},
 		{Name: "Lightning Bolt", Count: 1},
-		{Name: "Mana Crypt", Count: 1},
+		{Name: "Mana Crypt", Count: 1, SetCode: "LTC", CollectorNo: "367"},
 		{Name: "Relic of Progenitus", Count: 1, IsSideboard: true},
 	}
 	assertEntries(t, want, entries)

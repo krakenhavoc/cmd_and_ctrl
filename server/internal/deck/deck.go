@@ -97,6 +97,15 @@ type Entry struct {
 	// `Companion` text section, Moxfield's `companions` board or an
 	// Archidekt `Companion` category.
 	IsCompanion bool
+	// PrintingID, SetCode and CollectorNo name the printing the deck's
+	// source chose, when it said: an Archidekt `uid`, a Moxfield
+	// `scryfall_id`, a text line's "(SNC) 213". All zero when the
+	// source names none, and Resolve then takes the index's default
+	// printing for the name. They pick a picture and nothing else
+	// (ADR 0192 §2).
+	PrintingID  uuid.UUID
+	SetCode     string
+	CollectorNo string
 }
 
 // UnknownCardError is returned when a decklist references a card the
@@ -154,6 +163,11 @@ func Resolve(idx *cards.Index, name string, entries []Entry) (*List, error) {
 		if !ok {
 			unknown = append(unknown, e.Name)
 			continue
+		}
+		// ADR 0192 §2: the printing the deck named, when the index
+		// has it and it is the same card. Otherwise the default.
+		if p, found := idx.FindPrintingOf(c, e.PrintingID, e.SetCode, e.CollectorNo); found {
+			c = p
 		}
 		switch {
 		case e.IsCommander:
@@ -998,4 +1012,15 @@ func faceColors(f cards.CardFace) []string {
 		return nil
 	}
 	return game.ColorsInManaCost(f.ManaCost)
+}
+
+// parsePrintingID reads a Scryfall printing id off an importer's JSON.
+// An empty or malformed value is uuid.Nil: a deck whose source sends
+// junk loses its picture choice, never the import (ADR 0192 §2).
+func parsePrintingID(s string) uuid.UUID {
+	id, err := uuid.Parse(strings.TrimSpace(s))
+	if err != nil {
+		return uuid.Nil
+	}
+	return id
 }
