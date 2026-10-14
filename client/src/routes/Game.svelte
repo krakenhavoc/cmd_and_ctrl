@@ -87,6 +87,15 @@
   import ControlledPlaySheet from "../lib/components/board/ControlledPlaySheet.svelte";
   import DamageAutoAssign from "../lib/components/board/DamageAutoAssign.svelte";
   import AutoAnswerNotice from "../lib/components/board/AutoAnswerNotice.svelte";
+  import AutoPassNotice from "../lib/components/board/AutoPassNotice.svelte";
+  import {
+    ATTACK_PASS_REASON,
+    MANUAL_PASS_REASON,
+    NO_BLOCKS_PASS_REASON,
+    autopassReason,
+    timedPassReason,
+    type PassNotice,
+  } from "../lib/passReason";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
   import AttackDeclarationModal from "../lib/components/board/AttackDeclarationModal.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
@@ -286,8 +295,18 @@
   // their improvisations over it, and an announcement nobody can see
   // is not an announcement. BotFeed renders those lines and nothing
   // else. A full chat panel, when it returns, subsumes it.
-  const { status, snapshot, lastSeq, lastError, log, chat, reconnectAttempt, rewindNotice } =
-    client;
+  const {
+    status,
+    snapshot,
+    lastSeq,
+    lastError,
+    lastAck,
+    actionCount,
+    log,
+    chat,
+    reconnectAttempt,
+    rewindNotice,
+  } = client;
 
   $effect(() => {
     client.disconnect();
@@ -502,6 +521,21 @@
     setPassStatus(null);
   }
 
+  // #3343: the ONE place the client sends pass_priority. Every pass goes
+  // through here with a reason, which lands in the client log line a bug
+  // report attaches. `notice` is true for a pass the client decided on
+  // its own (autopass, a timed bluff, a stack hold): it also raises the
+  // dock chip "Passed for you: <reason>" with its Undo. A pass that is
+  // the second half of the player's own click (Attack with N, No blocks)
+  // or a click on Next logs its reason and raises no chip.
+  let passNotice = $state<PassNotice | null>(null);
+  function sendPass(player: string | undefined, reason: string, notice: boolean): void {
+    const frame = client.sendAction("pass_priority", player, undefined, reason);
+    if (notice && frame) {
+      passNotice = { frame, reason, actionsSent: client.actionsSent };
+    }
+  }
+
   // armTimedPass starts the countdown for this frame, once per kind.
   function armTimedPass(kind: PassWait, delayFor: () => number): void {
     const seq = $lastSeq;
@@ -542,7 +576,7 @@
       return;
     }
     lastAutoPassedSeq = seq;
-    client.sendAction("pass_priority", autopassPlayer);
+    sendPass(autopassPlayer, timedPassReason(p.kind, v, latestGates), true);
   }
 
   onMount(() => {
@@ -700,7 +734,7 @@
     const seq = $lastSeq;
     if (seq === lastAutoPassedSeq) return;
     lastAutoPassedSeq = seq;
-    client.sendAction("pass_priority", autopassPlayer);
+    sendPass(autopassPlayer, autopassReason(gates), true);
   });
 
   function toggleAutopass(): void {
@@ -1184,9 +1218,11 @@
     muted = isMuted();
   }
 
-  function passPriority(): void {
+  // A pass the viewer asked for. `reason` is only for the client log; the
+  // two declaration follow-ups below name theirs, a click names none.
+  function passPriority(reason: string = MANUAL_PASS_REASON): void {
     cancelPendingPass();
-    client.sendAction("pass_priority", actingPlayer);
+    sendPass(actingPlayer, reason, false);
   }
 
   // #2881, ADR 0143 §4.2: the dock's End turn walks the rest of the turn. The server
@@ -1644,7 +1680,7 @@
     if (view.pending_choices?.some((c) => c.chooser === viewerID)) return;
     if (seq === lastAutoPassedSeq) return;
     lastAutoPassedSeq = seq;
-    passPriority();
+    passPriority(ATTACK_PASS_REASON);
   });
   // The stage lives for one declaration: it empties when the step ends,
   // and a creature that can no longer attack drops out of it.
@@ -1886,7 +1922,7 @@
     if (view.pending_choices?.some((c) => c.chooser === viewerID)) return;
     if (seq === lastAutoPassedSeq) return;
     lastAutoPassedSeq = seq;
-    passPriority();
+    passPriority(NO_BLOCKS_PASS_REASON);
   });
 
   function declareBlockTarget(attackerCardID: string): void {
@@ -3018,6 +3054,19 @@
         docked={dockShown}
       />
       <AutoAnswerNotice view={$snapshot} {viewerID} live={!replaying} onUndo={undo} />
+      <AutoPassNotice
+        notice={passNotice}
+        facts={{
+          ack: $lastAck,
+          lastSeq: $lastSeq,
+          actionsSent: $actionCount,
+          seat: viewerSeat,
+          undoBlocked,
+        }}
+        refusedFrame={$lastError?.replyTo ?? null}
+        live={!replaying}
+        onUndo={undo}
+      />
       <DamageAutoAssign
         view={$snapshot}
         {viewerID}
