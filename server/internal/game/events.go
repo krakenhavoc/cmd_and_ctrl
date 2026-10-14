@@ -1444,6 +1444,11 @@ type Event struct {
 	// zero value is the ordinary case: an event written before this field
 	// existed (a restore point's queued trigger, this turn's log) reads as
 	// the life loss it was taken for when it was written.
+	//
+	// NEGATIVE when the damage cost MORE life than it dealt (ADR 0169 §4):
+	// a "lose twice that much life" replacement (Bloodletter of Aclazotz)
+	// turns 3 damage into 6 life lost, recorded as -3, so DamageLifeLoss
+	// reads 6 with no new field and no snapshot change.
 	DamageNotLifeLoss int `json:"damage_not_life_loss,omitempty"`
 
 	// DamageInstance is the ADR 0108 damage instance an EventDealDamage
@@ -1826,7 +1831,8 @@ type Event struct {
 // DamageLifeLoss is the life an EventDealDamage cost the player it was
 // dealt to (#2105, CR 119.2, CR 120.3a): its Amount less the part that
 // cost no life (DamageNotLifeLoss: infect, or a life total that can't
-// change). 0 for any other kind of event. Damage to a permanent is the
+// change), or plus the extra a life-loss replacement added (a negative
+// DamageNotLifeLoss, ADR 0169). 0 for any other kind of event. Damage to a permanent is the
 // caller's to rule out by checking that Target is a player, as every
 // life-loss reader already does.
 func (ev Event) DamageLifeLoss() int {

@@ -61,13 +61,15 @@ import (
 //     exactly as they did before. The CR 616 resume runs its own,
 //     because answering a prompt is an action boundary like every
 //     other Resolve* handler.
-//   - DAMAGE does not fire this window. Damage dealt to a player
-//     reduces life directly once the DAMAGE replacements have settled
-//     (CR 120.3), inside applyResolvedDamageToPlayerLocked, and a
-//     life-change replacement must not get a second bite at the same
-//     event. Lifelink is the one part of a damage event that IS a life
-//     change (CR 702.15b: "causes that source's controller to gain
-//     that much life") and it is the one part routed here.
+//   - DAMAGE does not land here. Damage dealt to a player reduces life
+//     inside applyResolvedDamageToPlayerLocked once the DAMAGE
+//     replacements have settled (CR 120.3), and no life replacement
+//     gets a second bite at the damage itself. Two RESULTS of a damage
+//     event are life changes and run this window as events of their
+//     own: the life the damage costs (CR 120.3a, ADR 0169,
+//     damageLifeLossThroughReplacementsLocked, so Bloodletter of
+//     Aclazotz doubles it) and the lifelink credit (CR 702.15b: "causes
+//     that source's controller to gain that much life").
 
 // changeLifeThroughReplacementsLocked runs the CR 614 window on a
 // life-change event and lands it through the one tail. The shared body

@@ -1149,7 +1149,10 @@ type ReplacementEvent struct {
 	// the announcement if they cannot all be paid, so a CR 616 ordering
 	// prompt in the middle would leave it half paid — and a mana
 	// ability's own resolution (CR 605.3b, produce_mana.go), which has
-	// no priority window at all for a prompt to occupy.
+	// no priority window at all for a prompt to occupy. The life a
+	// damage event costs (ADR 0169, damage_tail.go) is in the second
+	// family: the damage tail has no resume between the damage and its
+	// result.
 	//
 	// What it costs the affected player is the CR 616 ordering choice
 	// and any "may" on the event: the apply-loop applies the
