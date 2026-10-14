@@ -281,6 +281,11 @@ type AbilityCostSubject struct {
 	// Berserker).
 	Boast bool
 
+	// Equip says this is an equip ability (CR 702.6): "Equip abilities
+	// you activate cost {1} less to activate" (Danitha Capashen,
+	// Paragon, #3666).
+	Equip bool
+
 	// Mana says this is a CR 605 mana ability rather than a CR 602
 	// activation. Always false today — the mana path prices its cost
 	// without this pass at all — and present so that a predicate
@@ -834,6 +839,7 @@ func (g *Game) abilityCostQueryLocked(activator uuid.UUID, source Card, zone Zon
 			Label:   ab.Label,
 			Exhaust: ab.Exhaust,
 			Boast:   ab.Boast,
+			Equip:   ab.Equip,
 			own:     ab.CostModifiers,
 		},
 		Targets: targets,
