@@ -1017,7 +1017,15 @@ func (g *Game) stampStartingLoyaltyLocked(cardID uuid.UUID, oracleID string) {
 		// value here would make planeswalkers unkillable.
 		return
 	}
-	if err := g.AddCounterForEffect(cardID, CounterLoyalty, loyalty); err != nil {
+	// ADR 0183: the event is marked as the starting loyalty, so
+	// compleated (CR 702.150a) can tell it from any later placement.
+	if err := g.placeCountersThroughReplacementsLocked(&ReplacementEvent{
+		Kind:            RepEventCounter,
+		CounterTarget:   cardID,
+		CounterName:     CounterLoyalty,
+		CounterDelta:    loyalty,
+		StartingLoyalty: true,
+	}); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Source:   cardID,

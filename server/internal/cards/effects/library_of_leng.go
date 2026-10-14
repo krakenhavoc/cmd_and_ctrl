@@ -40,17 +40,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // It is a "may", so a yes/no prompt is offered per card,
 // which is the printed granularity when one effect discards several.
 //
-// Sandbox simplification, declared: when one effect discards several
-// cards and more than one is sent to the library, they go in the order
-// the discard batch fixed rather than in an order Leng's controller
-// chooses. Nothing about which cards are saved changes — only the
-// library order of cards nobody has seen.
+// When one effect discards several cards and more than one is sent to
+// the library, they were put on top at the same time, so their owner
+// orders them (CR 401.4). The discard batch raises ADR 0088's
+// put-in-library prompt over exactly those cards once the last of them
+// has landed, and the rest of the effect ("then draw") waits for it
+// (ADR 0088 amendment 2026-10-14, #2949). Only the owner sees the order.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:      "867def48-4be8-4056-bcf1-d6b00450b9a3",
 		Name:          "Library of Leng",
-		Completeness:  CompletenessCaveats,
-		Caveats:       []string{"When one effect discards several cards and you send more than one to your library, you don't choose the order they end up in."},
+		Completeness:  CompletenessFull,
 		NoMaxHandSize: true,
 		Replacements: []game.ReplacementEffect{
 			DiscardBecomes{

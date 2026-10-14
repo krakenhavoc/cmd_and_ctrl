@@ -206,6 +206,12 @@ type CastProvenance struct {
 	// between them.
 	X int `json:"x,omitempty"`
 
+	// PhyrexianLife is PaidCost.PhyrexianLife carried across the entry
+	// (CR 400.7d, ADR 0183): how many printed Phyrexian symbols the
+	// caster paid with life. Compleated reads it as the permanent enters
+	// (CR 702.150a). Zero for anything not cast.
+	PhyrexianLife int `json:"phyrexianLife,omitempty"`
+
 	// ManaOnPaper is PaidCost.OnPaper carried across the entry: the
 	// engine WAIVED the charge (an insufficient permissive pool or
 	// ForceCast) and has no record of what was paid.
@@ -234,7 +240,7 @@ func (p CastProvenance) Spent() ManaSpent {
 // Any reports whether this record says anything at all.
 func (p CastProvenance) Any() bool {
 	return p.AltCost != "" || p.FromZone != "" || len(p.OptionalCosts) > 0 ||
-		len(p.Mana) > 0 || p.ManaOnPaper || p.GiftOpponent != uuid.Nil || p.X != 0 ||
+		len(p.Mana) > 0 || p.ManaOnPaper || p.GiftOpponent != uuid.Nil || p.X != 0 || p.PhyrexianLife != 0 ||
 		p.Caster != uuid.Nil || len(p.Delved) > 0 || len(p.AltCostObjects) > 0
 }
 
@@ -286,6 +292,11 @@ func (p CastProvenance) Clone() CastProvenance {
 func (p CastProvenance) Escaped() bool {
 	return p.AltCost == AltCostKeyEscape
 }
+
+// PhyrexianLifePaid is how many printed Phyrexian mana symbols the
+// player who cast this permanent paid with life (CR 702.150a, ADR 0183).
+// Zero for a permanent that was not cast.
+func (c Card) PhyrexianLifePaid() int { return c.Provenance.PhyrexianLife }
 
 // Escaped is the same question asked of a card. On Card rather than
 // only on the record so a catalog reader can say `c.Escaped()`.
@@ -388,6 +399,9 @@ func (g *Game) stampCastProvenanceLocked(cardID uuid.UUID, item *StackItem) {
 		// #1312 (CR 107.3m): X, for the same reason and at the same
 		// last moment.
 		X: item.XValue,
+		// ADR 0183 (CR 702.150a): the Phyrexian symbols paid with life,
+		// which compleated reads as the permanent enters.
+		PhyrexianLife: item.Paid.PhyrexianLife,
 	}
 	// ADR 0100 sub-PR 2 (CR 607.2q): the cards delve exiled, its own
 	// backing array for the reason OptionalCosts has one.

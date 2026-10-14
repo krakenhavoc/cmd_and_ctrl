@@ -81,6 +81,13 @@ type PaidCost struct {
 	// with neither.
 	LifePaid int
 
+	// PhyrexianLife is how many PRINTED Phyrexian mana symbols (hybrid
+	// Phyrexian included, CR 107.4f) the announcement chose to pay with
+	// life (ADR 0183). Compleated reads it (CR 702.150a): life paid for
+	// a {B} under K'rrik's grant, or for a fixed life cost, is in
+	// LifePaid and not here.
+	PhyrexianLife int `json:",omitempty"`
+
 	// Sacrificed is how many permanents a sacrifice component
 	// actually took — the source when the cost sacrificed it, and the
 	// permanents the clause named (#1213).

@@ -343,7 +343,7 @@ export interface ChatPayload {
 
 // ChatKind mirrors protocol.ChatKind* in
 // server/internal/protocol/protocol.go.
-export type ChatKind = "say" | "bot_improvisation" | "bot_reasoning";
+export type ChatKind = "say" | "bot_improvisation" | "bot_reasoning" | "bot_notice";
 
 // A bot disclosing that it applied an effect by hand because the
 // rules engine can't run the card. Never hidden: an unannounced
@@ -352,6 +352,10 @@ export const CHAT_BOT_IMPROVISATION = "bot_improvisation";
 // A bot narrating why it chose a move. Debug output, hidden unless
 // the viewer turns on "show bot reasoning".
 export const CHAT_BOT_REASONING = "bot_reasoning";
+// A bot telling the table about the seat itself, not a move: an
+// own-key seat falling back to the heuristic (ADR 0182). Always shown,
+// and dismissable.
+export const CHAT_BOT_NOTICE = "bot_notice";
 
 // View types mirror server/internal/protocol/view.go.
 

@@ -409,6 +409,8 @@ func chatLine(p protocol.ChatPayload) string {
 		prefix = "bot disclosure from "
 	case protocol.ChatKindBotReasoning:
 		prefix = "bot reasoning from "
+	case protocol.ChatKindBotNotice:
+		prefix = "bot notice from "
 	}
 	return prefix + untrusted(who, maxNameLen) + ": " + untrusted(p.Text, maxChatLen)
 }

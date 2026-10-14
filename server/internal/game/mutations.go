@@ -5672,8 +5672,10 @@ func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, r zoneRou
 		// granted mid-window, "it isn't destroyed instead". Terminal,
 		// so a caller sequencing a batch through the continuation is
 		// told; it reads the board, finds the permanent still on the
-		// battlefield, and counts no destruction (#815).
-		return g.runRouteTailLocked(ev.zoneRoute)
+		// battlefield, and counts no destruction (#815). A life change a
+		// replacement declared before the cancel still happens
+		// (ADR 0178, CR 614.6).
+		return g.runMoveTailLocked(ev)
 	}
 	return g.finishBattlefieldLeaveLocked(out, owner)
 }
@@ -5697,7 +5699,10 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 	}
 	defer closeBatch()
 	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, ev.ExiledWith, ev.ExileCounter)
-	tailErr := g.runRouteTailLocked(ev.zoneRoute)
+	// ADR 0178: a replacement's declared life change ("instead exile it
+	// and you gain 2 life") lands after the move and before the route's
+	// continuation, which waits for it if it pauses.
+	tailErr := g.runMoveTailLocked(ev)
 	if moveErr != nil {
 		return moveErr
 	}
@@ -6595,7 +6600,9 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
 	if out == nil || out.Canceled {
-		return nil
+		// ADR 0178: a declared life change survives the cancel. The
+		// sandbox move carries no route, so this is the life alone.
+		return g.runMoveTailLocked(out)
 	}
 	// Resolve the (possibly rewritten) destination.
 	dst = ZoneRef{Kind: out.NewZone, Owner: out.NewZoneOwner}
@@ -6676,6 +6683,10 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 	// destination (routeDestinationLocked), so no move can run it
 	// twice.
 	g.pruneChoicesAfterArrivalLocked()
+	// ADR 0178: and a replacement's declared life change, after the move.
+	if err := g.runMoveTailLocked(out); err != nil {
+		return err
+	}
 	// A sandbox move is a special action: the mover keeps priority
 	// afterwards (CR 116.3), and CR 117.5 puts SBAs + the APNAP
 	// trigger drain at that boundary. Without this, a catalog

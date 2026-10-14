@@ -246,6 +246,11 @@ const (
 	// the bot accepts, not an information leak: a policy never sees
 	// another seat's hidden state, so it has none to spill.
 	ChatKindBotReasoning = "bot_reasoning"
+	// ChatKindBotNotice is a bot telling the table something about the
+	// seat itself rather than a move: an own-key seat falling back to
+	// the heuristic (ADR 0182). Clients show it with no setting, the
+	// way they show an improvisation, but a viewer may dismiss it.
+	ChatKindBotNotice = "bot_notice"
 )
 
 // MaxChatTextLen caps the text size of a single chat message. Messages

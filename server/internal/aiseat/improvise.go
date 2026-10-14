@@ -444,15 +444,17 @@ type Noticer interface {
 	TakeNotice() string
 }
 
-// postNotice posts the policy's pending notice, if it has one, as an
-// ordinary chat line from this seat.
+// postNotice posts the policy's pending notice, if it has one, as a
+// bot_notice line from this seat. Not a plain "say": no client renders
+// a bot's say line (the chat panel is gone; BotFeed shows only the bot
+// kinds), so the owner would never see why their bot got worse.
 func (r *Runner) postNotice() {
 	n, ok := Capability[Noticer](r.policy)
 	if !ok {
 		return
 	}
 	if line := n.TakeNotice(); line != "" {
-		r.announce(protocol.ChatKindSay, line, "")
+		r.announce(protocol.ChatKindBotNotice, line, "")
 	}
 }
 

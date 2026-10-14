@@ -172,6 +172,7 @@
   } from "../lib/attackAll";
   import { hasPassMove, stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
+  import { shouldSignal, showTurnSignal } from "../lib/turnSignal";
   import {
     autopassDecision,
     isBluff,
@@ -966,6 +967,23 @@
       : (sess?.playerID ?? null),
   );
   const viewerSeat = $derived(seats.find((s) => s.id === viewerID) ?? null);
+
+  // #3342: in a background tab, a table waiting on the viewer shows in the
+  // tab title and the favicon; both are put back when it stops holding.
+  let docHidden = $state(typeof document !== "undefined" && document.hidden);
+  onMount(() => {
+    const sync = () => (docHidden = document.hidden);
+    document.addEventListener("visibilitychange", sync);
+    window.addEventListener("focus", sync);
+    return () => {
+      document.removeEventListener("visibilitychange", sync);
+      window.removeEventListener("focus", sync);
+    };
+  });
+  $effect(() => {
+    if (replaying || !shouldSignal(view, viewerID, docHidden)) return;
+    return showTurnSignal(document);
+  });
   const viewerHasPriority = $derived(viewerID !== null && priorityPlayer?.id === viewerID);
   // The same id under a name the autopass gates can read while they
   // shadow `viewerID` with the seat they pass for.
