@@ -730,6 +730,9 @@ func Handler(c Config) http.Handler {
 	// proxy and the service worker's API_PATH already covers it.
 	mux.Handle("GET /me/games", auth.Middleware(c.Auth)(handlerFunc(c, myGames)))
 	mux.Handle("GET /me/stats", auth.Middleware(c.Auth)(handlerFunc(c, myStats)))
+	// The cards an ended game's opponents cast, for the shop links
+	// after a game (ADR 0179 §7). Under /me/, so already in the proxies.
+	mux.Handle("GET /me/games/{id}/cards", auth.Middleware(c.Auth)(handlerFunc(c, myGameCards)))
 	// The invite picker's list (ADR 0051 decision 8, S34 sub-PR 6):
 	// the people the caller has shared a table with. Same caller rule
 	// as the rest of /me/*.

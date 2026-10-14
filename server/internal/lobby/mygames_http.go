@@ -5,6 +5,7 @@ package lobby
 // signed-in person as themselves. ADR 0051 sub-PR 4.
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
@@ -71,6 +72,31 @@ func myStats(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusInternalServerError, "could not load your statistics; try again")
 	}
 	return writeJSON(w, http.StatusOK, stats)
+}
+
+// myGameCards is GET /me/games/{id}/cards: the commanders and cards the
+// caller's opponents cast in a game that has ended, for the shop links
+// after a game (ADR 0179 §7). Only a person who held a seat there, and
+// never while the game runs; no opponent is named.
+func myGameCards(c Config, w http.ResponseWriter, r *http.Request) error {
+	p, err := signedInUser(r)
+	if err != nil {
+		return err
+	}
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	cards, err := c.Lobby.GameCards(p.UserID, id)
+	if err != nil {
+		var se *httpStatusError
+		if !errors.Is(err, ErrPlayerNotInGame) && !errors.As(err, &se) {
+			c.logger().Error("reading a game's cards failed", "err", err)
+			return httpError(http.StatusInternalServerError, "could not load the cards; try again")
+		}
+		return err
+	}
+	return writeJSON(w, http.StatusOK, cards)
 }
 
 // adminStats is GET /admin/stats: every game's statistics for an

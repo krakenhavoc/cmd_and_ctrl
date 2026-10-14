@@ -7,6 +7,7 @@
     createGame,
     deleteGame,
     fetchBotOptions,
+    fetchPrebuiltDecks,
     fetchMySetup,
     fetchMyGames,
     getGame,
@@ -66,6 +67,10 @@
   import type { TableSettingsView } from "../lib/protocol";
   import type { TableSettingsPatch } from "../lib/tableSettings";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
+  import GameCardsPanel from "../lib/components/GameCardsPanel.svelte";
+  import ShopLinks from "../lib/components/ShopLinks.svelte";
+  import { visibleShops } from "../lib/shopLinksStore";
+  import type { PrebuiltDeck } from "../lib/prebuiltDecks";
   import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
   import TablematePicker from "../lib/components/TablematePicker.svelte";
   import LfgPost from "../lib/components/LfgPost.svelte";
@@ -423,6 +428,11 @@
   const botDeckDescription = $derived(
     botOptions?.decks.find((d) => d.id === botDeck)?.description ?? "",
   );
+
+  // The bot decks are the pre-built decks, so GET /decks holds each
+  // one's list for "Play this deck in paper" (ADR 0179 §7).
+  let prebuiltDecks = $state<PrebuiltDeck[]>([]);
+  const botDeckCards = $derived(prebuiltDecks.find((d) => d.id === botDeck)?.cards ?? []);
 
   // --- archiving and deleting (admin) ------------------------------
   //
@@ -879,8 +889,22 @@
     return allowed ? replayURL(r.id) : null;
   }
 
+  // "Cards from this game" (ADR 0179 §7): the ended games whose panel is
+  // open. Offered only for an ended game the person sat at, and only
+  // where they see shop links; the server refuses a game still running.
+  let cardsOpen = $state<string[]>([]);
+  function toggleCards(id: string): void {
+    cardsOpen = cardsOpen.includes(id) ? cardsOpen.filter((x) => x !== id) : [...cardsOpen, id];
+  }
+
   function historyMore(r: HistoryRow): MoreItem[] {
     const items: MoreItem[] = [];
+    if (r.state === "ended" && r.seated && $visibleShops.length > 0) {
+      items.push({
+        label: cardsOpen.includes(r.id) ? "Hide cards from this game" : "Cards from this game",
+        onclick: () => toggleCards(r.id),
+      });
+    }
     if (rejoinsHere(r.id)) {
       items.push({
         label: "Open",
@@ -926,6 +950,9 @@
     }
     void fetchBotOptions()
       .then((o) => (botOptions = o))
+      .catch(() => undefined);
+    void fetchPrebuiltDecks()
+      .then((r) => (prebuiltDecks = r.decks ?? []))
       .catch(() => undefined);
     const t = setInterval(() => {
       if (now.length > 0) void refresh();
@@ -1313,6 +1340,9 @@
                   {#if botDeckDescription}
                     <p class="deck-desc">{botDeckDescription}</p>
                   {/if}
+                  {#if botDeckCards.length > 0}
+                    <ShopLinks list={botDeckCards} label="Play this deck in paper" />
+                  {/if}
                   <div class="bot-actions">
                     <button
                       class="primary"
@@ -1592,6 +1622,7 @@
                     <DeckUploadForm
                       gameID={g.id}
                       playerID={$session.playerID}
+                      shopLinks
                       onSuccess={() => void refresh()}
                     />
                   </div>
@@ -1657,6 +1688,11 @@
                     <MoreMenu label={`more for ${r.name}`} items={ritems} />
                   {/if}
                 </span>
+                {#if r.state === "ended" && cardsOpen.includes(r.id)}
+                  <div class="hconfirm">
+                    <GameCardsPanel gameID={r.id} />
+                  </div>
+                {/if}
                 {#if confirmDelete === r.id}
                   <div class="confirm danger hconfirm" role="alert">
                     <p>

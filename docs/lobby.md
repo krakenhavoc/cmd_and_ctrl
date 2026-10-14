@@ -1746,6 +1746,7 @@ deck, not an empty picker implying there are none.
       "commander": "Purphoros, God of the Forge",
       "colors": ["R"],
       "card_count": 100,
+      "cards": [{ "name": "Purphoros, God of the Forge", "count": 1 }, { "name": "Mountain", "count": 30 }],
       "coverage": {
         "cards": 88,
         "full": 55,
@@ -1762,6 +1763,11 @@ deck, not an empty picker implying there are none.
   ]
 }
 ```
+
+`cards` is the whole list, commander first, one row per distinct card
+with its copies. It feeds the optional "Play this deck in paper" shop
+links ([ADR 0179](decisions/0179-shop-links-for-real-cards.md) §7); it
+carries no price.
 
 **Reading the coverage block.** Counts are per distinct card, not per
 copy, which is why they do not add up to `card_count`: a deck's ten
@@ -2651,9 +2657,15 @@ no finished games gets an empty record, not an error.
       "result": "win", "place": 1, "turns": 9, "players": 4,
       "deck": "Atraxa Superfriends", "commanders": ["Atraxa, Praetors' Voice"]
     }
-  ]
+  ],
+  "top_cards": [{ "name": "Sol Ring", "casts": 31 }]
 }
 ```
+
+`top_cards` is the caller's most-cast cards (at most 10, most casts
+first, then by name) over the same counted human seats; a bot's or an
+agent's seat and an unfinished table add nothing
+([ADR 0179](decisions/0179-shop-links-for-real-cards.md) §7).
 
 - A game counts when the seat's result is `win`, `loss` or `draw`; a
   table that ended with no outcome is only `unfinished`.
@@ -2662,6 +2674,30 @@ no finished games gets an empty record, not an error.
 - `by_deck` groups by the seat's saved deck id (its name when none),
   `by_commander` by the commander names joined with ` / `. Both list the
   most-played first. `recent` is the latest 20, newest first.
+
+### `GET /me/games/{id}/cards`
+
+The commanders and the cards the caller's **opponents** cast in a game
+that has ended, from `seat_card_stats`
+([ADR 0165](decisions/0165-game-statistics-a-record-derived-from-every-finished-game.md),
+[ADR 0179](decisions/0179-shop-links-for-real-cards.md) §7), for the
+optional shop links in History. Same caller rule as `GET /me/games`
+(401 with no credential, 403 for anyone who is not a signed-in person,
+and 403 when the person held no seat at that game). **409 while the
+game has not ended**: nothing is ever returned during play. The
+caller's own seat is left out and no opponent is named.
+
+```json
+{
+  "ready": true,
+  "opponents": [
+    { "commanders": ["Atraxa, Praetors' Voice"], "cards": [{ "name": "Sol Ring", "casts": 2 }] }
+  ]
+}
+```
+
+`ready` is false (and `opponents` empty) while the game's record is not
+written yet, or on a server that keeps none.
 
 ### `POST /me/games/{id}/session`
 

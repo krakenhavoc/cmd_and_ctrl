@@ -11,6 +11,9 @@ import { tick } from "svelte";
 import Stats from "./Stats.svelte";
 import { session, type Session } from "../lib/session";
 import type { MyStats } from "../lib/myStats";
+import { loadAppConfig, resetAppConfigForTests } from "../lib/env";
+import { updateSettings } from "../lib/settings";
+import { SHOP_DISCLOSURE } from "../lib/shopLinks";
 import { cleanup, flushSync, render } from "../lib/test/render.svelte";
 
 const realFetch = globalThis.fetch;
@@ -154,5 +157,61 @@ describe("the stats page", () => {
     await settle();
     expect(container.querySelector("[role=alert]")).not.toBeNull();
     expect(container.textContent).toContain("Try again");
+  });
+});
+
+// ADR 0179 §7: Buy links on the most-cast cards, only with a shop.
+describe("the stats page's shop links", () => {
+  const WITH_CARDS: MyStats = {
+    ...FULL,
+    top_cards: [
+      { name: "Sol Ring", casts: 31 },
+      { name: "Arcane Signet", casts: 1 },
+    ],
+  };
+
+  async function configure(shops: unknown[]): Promise<void> {
+    resetAppConfigForTests();
+    globalThis.fetch = vi.fn(
+      async () => new Response(JSON.stringify({ env: "prod", shops })),
+    ) as never;
+    await loadAppConfig();
+    flushSync();
+  }
+
+  afterEach(() => {
+    resetAppConfigForTests();
+    updateSettings("display", "shopLinks", true);
+  });
+
+  it("links each most-cast card to the shops, with the disclosure", async () => {
+    await configure([{ id: "tcgplayer", template: "{url}&partner=c2" }]);
+    serve(WITH_CARDS);
+    const { container } = render(Stats as never, {} as never);
+    await settle();
+    const panel = container.querySelector("[data-testid=top-cards]")!;
+    expect(panel.textContent).toContain("Sol Ring");
+    expect(panel.textContent).toContain("31 casts");
+    expect(panel.textContent).toContain("1 cast");
+    expect(panel.querySelectorAll("a").length).toBe(2);
+    expect(panel.querySelector("a")!.getAttribute("href")).toContain("tcgplayer.com");
+    expect(panel.textContent).toContain(SHOP_DISCLOSURE);
+    expect(panel.textContent).not.toMatch(/\$\d/);
+  });
+
+  it("renders nothing without a configured shop or when hidden", async () => {
+    await configure([]);
+    serve(WITH_CARDS);
+    let r = render(Stats as never, {} as never);
+    await settle();
+    expect(r.container.querySelector("[data-testid=top-cards]")).toBeNull();
+    cleanup();
+
+    await configure([{ id: "tcgplayer", template: "{url}&partner=c2" }]);
+    updateSettings("display", "shopLinks", false);
+    serve(WITH_CARDS);
+    r = render(Stats as never, {} as never);
+    await settle();
+    expect(r.container.querySelector("[data-testid=top-cards]")).toBeNull();
   });
 });

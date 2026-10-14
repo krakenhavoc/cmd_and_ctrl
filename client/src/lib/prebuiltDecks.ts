@@ -56,6 +56,8 @@ export interface PrebuiltDeck {
   colors?: string[];
   /** Physical size, counting every copy of a basic land. 100. */
   card_count: number;
+  /** The whole list, commander first, for the shop links (ADR 0179 §7). */
+  cards?: { name: string; count: number }[];
   coverage: DeckCoverage;
 }
 

@@ -1,3 +1,4 @@
+import type { GameCards } from "./gameCards";
 import type { MyStats } from "./myStats";
 import {
   authFetch,
@@ -819,6 +820,14 @@ export async function fetchMyDecks(): Promise<MyDecksResponse> {
 export async function fetchMyStats(): Promise<MyStats> {
   const res = await authFetch("/me/stats");
   return (await res.json()) as MyStats;
+}
+
+// fetchGameCards reads the commanders and cards a finished game's
+// opponents cast (GET /me/games/{id}/cards, ADR 0179 §7). A game that is
+// still running is a 409 and a game the caller did not sit at a 403.
+export async function fetchGameCards(gameID: string): Promise<GameCards> {
+  const res = await authFetch(`/me/games/${encodeURIComponent(gameID)}/cards`);
+  return (await res.json()) as GameCards;
 }
 
 // renameMyDeck renames a saved deck (PATCH /me/decks/{id}). A name the

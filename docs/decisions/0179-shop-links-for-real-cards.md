@@ -63,7 +63,7 @@ Checked on 2026-10-14: Card Kingdom's search returned Sol Ring results, and its 
 | Decks: a saved deck's report | "Buy this deck" |
 | Catalog | a small per-shop Buy link on each tile |
 
-**Never on the game table while a game is running.** None of these routes is the table, and the in-game card zoom (`HoverZoomOverlay`, the only card zoom; there is none outside a game) has no shop links. A future placement on a table (#3445: an ended game) must check the game has ended first. `ShopLinks.svelte` carries the rule in its header.
+**Never on the game table while a game is running.** None of these routes is the table, and the in-game card zoom (`HoverZoomOverlay`, the only card zoom; there is none outside a game) has no shop links. A placement for an ended game (§7) must check the game has ended first, and does so on the server. `ShopLinks.svelte` carries the rule in its header.
 
 "Buy missing cards" is not built: the site does not know which cards a person owns, so the deck check cannot know what is missing. "Request missing cards" is about cards the engine does not automate, which is a different thing. The placement waits for an owned-cards list, if one ever exists.
 
@@ -80,6 +80,21 @@ The Terms (a "Shop links" section; `TERMS_UPDATED` 2026-10-14) and the Privacy n
 ### 6. For #3445
 
 Reuse, unchanged: `shopLinks.ts` (`cardShopLinks`, `listShopLinks`, `SHOP_DISCLOSURE`), `shopLinksStore.ts` (`visibleShops`), `ShopLinks.svelte` and `ShopNote.svelte`. A new retailer is a line in `shoplinks.Retailers`, a case in each client builder, and a CD variable.
+
+### 7. More placements (#3445)
+
+The same builder, store, `ShopLinks.svelte` and `ShopNote.svelte`; the rules of §3 and §4 stand (nothing without a configured shop or when hidden, no prices, no `purchase_uris`, the disclosure with every group). No migration.
+
+| Where | What |
+|---|---|
+| Lobby › History, an ended game the person sat at (More menu › "Cards from this game") | A "Cards from this game" panel: the opponents' commanders and the cards each cast, a Buy link per card, and a "Buy these cards" list cart (one copy of each distinct card) with one disclosure |
+| Decks › the pre-built decks, the lobby's pre-built deck picker and the Add bot deck picker | "Play this deck in paper": a list cart for the whole deck, commander included |
+| Stats (`#/stats`) | "Your most-cast cards": a Buy link per card |
+
+- **Never while a game runs.** The panel reads `GET /me/games/{id}/cards`, which answers 409 until the game's state is `ended`, and 403 unless the caller holds a seat there (a signed-in person, as `/me/games`). The panel only mounts from History. The deck modal on the table route (`Game.svelte`) does not get the pre-built deck links: `DeckUploadForm` and `PrebuiltDeckPicker` take a `shopLinks` prop that is off unless the lobby sets it.
+- **Opponents stay unnamed** (ADR 0165 §9): the route returns each opponent's commanders and casts under "Opponent 1", "Opponent 2" and so on, leaves the caller's own seat out, and carries no seat number, name or user id. History already lists co-players' names, but the panel adds none.
+- **The pre-built decks' lists** ride on `GET /decks` as `cards` (name and copies, commander first). Bot decks are the same registry, so the Add bot picker looks its list up there.
+- **Most-cast cards.** `GET /me/stats` gains `top_cards`: at most ten, most casts first, from `seat_card_stats` over the caller's own counted human seats only (the filter `user.go` already applies: no `bot_tier`, no `agent_client`, a result other than `none`).
 
 ## Calls made here
 

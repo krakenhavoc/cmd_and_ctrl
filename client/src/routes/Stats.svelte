@@ -10,6 +10,9 @@
   // so it sees a line saying to sign in with Discord.
   import { onMount } from "svelte";
   import Page from "../lib/components/Page.svelte";
+  import ShopLinks from "../lib/components/ShopLinks.svelte";
+  import ShopNote from "../lib/components/ShopNote.svelte";
+  import { visibleShops } from "../lib/shopLinksStore";
   import { fetchMyStats } from "../lib/api";
   import { LobbyApiError, session } from "../lib/session";
   import { signedInUserID } from "../lib/myGames";
@@ -136,6 +139,22 @@
         {@render breakdown("By deck", "by-deck", stats.by_deck)}
         {@render breakdown("By commander", "by-commander", stats.by_commander)}
 
+        {#if (stats.top_cards ?? []).length > 0 && $visibleShops.length > 0}
+          <section class="card" aria-labelledby="top-cards" data-testid="top-cards">
+            <h2 id="top-cards">Your most-cast cards</h2>
+            <ShopNote />
+            <ul class="top">
+              {#each stats.top_cards ?? [] as c (c.name)}
+                <li>
+                  <span class="cname">{c.name}</span>
+                  <span class="casts">{c.casts} {c.casts === 1 ? "cast" : "casts"}</span>
+                  <ShopLinks card={c.name} compact note={false} />
+                </li>
+              {/each}
+            </ul>
+          </section>
+        {/if}
+
         <section class="card" aria-labelledby="recent">
           <h2 id="recent">Recent games</h2>
           <ul class="recent">
@@ -244,6 +263,32 @@
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
   }
+  .top {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    display: grid;
+  }
+  .top li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 4px 12px;
+    align-items: baseline;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .top li:last-child {
+    border-bottom: 0;
+  }
+  .cname {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  .casts {
+    color: var(--fg-dim);
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
   .recent {
     list-style: none;
     margin: 0;
@@ -292,6 +337,12 @@
     color: var(--accent);
   }
   @media (max-width: 640px) {
+    .top li {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .top li :global(.shop) {
+      grid-column: 1 / -1;
+    }
     .game {
       grid-template-columns: 1fr;
       gap: 4px;

@@ -98,6 +98,16 @@ func TestPrebuiltDecksListsEveryDeckWithItsCoverage(t *testing.T) {
 		if got.CardCount != 100 {
 			t.Errorf("%s: card_count %d, want 100", got.ID, got.CardCount)
 		}
+		// The list the "Play this deck in paper" links are built from:
+		// commander first, every copy counted.
+		total := 0
+		for _, c := range got.Cards {
+			total += c.Count
+		}
+		if len(got.Cards) == 0 || got.Cards[0].Name != got.Commander || total != got.CardCount {
+			t.Errorf("%s: cards = %d rows holding %d copies, first %q; want the commander first and %d copies",
+				got.ID, len(got.Cards), total, got.Cards[0].Name, got.CardCount)
+		}
 		// The coverage profile is the point of the route. A zeroed
 		// one would render as "0 cards" and quietly promise nothing.
 		if got.Coverage.Cards == 0 {
