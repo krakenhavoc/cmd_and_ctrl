@@ -1325,14 +1325,13 @@ var items = []Item{
 	{
 		Slug: "face-down-objects", Name: "Face-down cards", Kind: KindSeam, Status: StatusPartial,
 		Summary:     "Morph, megamorph, disguise, manifest, cloak, foretell, hideaway, and effects that turn permanents face down all work.",
-		Missing:     "Manifesting cards from a hand isn't supported, and a manifested card that also has morph can only be turned face up for its mana cost.",
+		Missing:     "A manifested card that also has morph or disguise can only be turned face up for its mana cost.",
 		Issue:       886,
 		Tracked:     "#886 (the S43 tracker; #95 and #658 closed)",
 		ADR:         "0069-face-down-objects.md",
-		Waiting:     []string{"Kozilek, the Broken Reality"},
 		Probe:       altCost("morph", "megamorph", "disguise"),
 		Examples:    []string{"Aerie Bowmasters"},
-		EngineNotes: "**Nearly all of this row has shipped** — see Closed seams for #1194 (morph, megamorph, manifest, disguise, cloak), #1209 (turning a permanent face down), #1270 / #1271 (listed characteristics, CR 613.7f), #658 (foretell) and #1331 (hideaway); the object model is [ADR 0069](decisions/0069-face-down-objects.md). Re-checked 2026-09-24, two gaps are left. (1) `ManifestForEffect` (`game/battlefield_put.go`) manifests the top card of a LIBRARY and nothing else, so \"each manifest two cards from their hands\" (Kozilek, the Broken Reality) has no primitive. (2) The double offer for a manifested card that also has morph: `TurnFaceUpOffer` offers the manifest's mana-cost route and not the card's own morph cost. Voidmage Apprentice was listed here and is not waiting on anything any more — morph and the turned-face-up trigger both exist — so it is off the row. The audit's 26 only-blocker cards were the morph / manifest / disguise families that have since shipped, so Unblocks is 0.",
+		EngineNotes: "**Nearly all of this row has shipped** — see Closed seams for #1194 (morph, megamorph, manifest, disguise, cloak), #1209 (turning a permanent face down), #1270 / #1271 (listed characteristics, CR 613.7f), #658 (foretell) and #1331 (hideaway); the object model is [ADR 0069](decisions/0069-face-down-objects.md). Re-checked 2026-10-14, one gap is left: the double offer for a manifested card that also has morph or disguise. `TurnFaceUpOffer` offers the manifest's mana-cost route and not the card's own morph cost (ADR 0189 decision 4, slice 5). Manifesting from a HAND shipped in #3538: `Game.ManifestFromHandsThenForEffect` (`game/battlefield_put.go`) and `effects.EachManifestsFromHand` (`effects/manifest_from_hand.go`) put the chosen cards onto the battlefield face down in one entry, each under its owner, which is Kozilek, the Broken Reality and Scroll of Fate. Voidmage Apprentice was listed here and is not waiting on anything any more — morph and the turned-face-up trigger both exist — so it is off the row. The audit's 26 only-blocker cards were the morph / manifest / disguise families that have since shipped, so Unblocks is 0.",
 	},
 	{
 		Slug: "manifest-dread", Name: "Manifest dread", Kind: KindSeam, Status: StatusPartial,

@@ -682,4 +682,10 @@ const (
 	// than one — the London mulligan's cost (ADR 0168). The client says
 	// so; the bot prices the pick as the hand it keeps.
 	ChooseLibraryBottom ChooseDestination = "library_bottom"
+	// ChooseManifest: the named cards from the chooser's own hand are
+	// manifested — put onto the battlefield face down as 2/2 creatures
+	// (CR 701.40a; Kozilek, the Broken Reality, ADR 0189 decision 3).
+	// The client says "Manifest"; the bot prices the pick as cards it
+	// gives up, because a face-down 2/2 is not the card.
+	ChooseManifest ChooseDestination = "manifest"
 )

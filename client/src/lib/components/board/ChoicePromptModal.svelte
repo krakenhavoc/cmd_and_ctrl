@@ -326,6 +326,9 @@
   // it does NOT share is a fixed count, because its floor and ceiling
   // are sent separately and can differ.
   const isChooseCards = $derived(active?.kind === "choose_cards");
+  // ADR 0189: Kozilek, the Broken Reality and Scroll of Fate ask which of
+  // your hand cards to manifest. The pick is a choose_cards that says so.
+  const isManifestPick = $derived(isChooseCards && active?.choose_destination === "manifest");
 
   // ADR 0175: a later seat making a simultaneous choice can see what
   // earlier seats chose. This is viewer-filtered protocol data; only
@@ -1797,22 +1800,24 @@
                   ? [c.reason || "Sacrifice so it enters", "sacrifice · CR 614"]
                   : isEntryChoose
                     ? [c.reason || "Choose permanents as it enters", "as it enters · CR 614"]
-                    : isChooseCards
-                      ? [c.reason || "Choose cards", "choose"]
-                      : isRevealPick
-                        ? [c.reason || "Choose from the revealed cards", "reveal · CR 701.20"]
-                        : isPermanentPick
-                          ? [c.reason || "Choose permanents", "choose · CR 608.2"]
-                          : isChooseSource
-                            ? [c.reason || "Choose a source of damage", "source · CR 609.7a"]
-                            : isRingBearer
-                              ? [c.reason || "choose your Ring-bearer", "the Ring · CR 701.54"]
-                              : isProliferate
-                                ? [c.reason || "Proliferate", "proliferate · CR 701.34"]
-                                : [
-                                    `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
-                                    isExilePick ? "exile" : isSelfSource ? "discard" : "reveal",
-                                  ];
+                    : isManifestPick
+                      ? [c.reason || "Choose cards to manifest", "manifest · CR 701.40"]
+                      : isChooseCards
+                        ? [c.reason || "Choose cards", "choose"]
+                        : isRevealPick
+                          ? [c.reason || "Choose from the revealed cards", "reveal · CR 701.20"]
+                          : isPermanentPick
+                            ? [c.reason || "Choose permanents", "choose · CR 608.2"]
+                            : isChooseSource
+                              ? [c.reason || "Choose a source of damage", "source · CR 609.7a"]
+                              : isRingBearer
+                                ? [c.reason || "choose your Ring-bearer", "the Ring · CR 701.54"]
+                                : isProliferate
+                                  ? [c.reason || "Proliferate", "proliferate · CR 701.34"]
+                                  : [
+                                      `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
+                                      isExilePick ? "exile" : isSelfSource ? "discard" : "reveal",
+                                    ];
     const verb = isSacrifice
       ? L.sacrifice
       : isSearch
@@ -1847,11 +1852,13 @@
                         ? none
                           ? "Proliferate nothing"
                           : "Proliferate"
-                        : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
-                          ? "Choose"
-                          : isRevealedVariant && none && pickMin === 0
-                            ? "Choose nothing"
-                            : "Confirm";
+                        : isManifestPick
+                          ? "Manifest"
+                          : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
+                            ? "Choose"
+                            : isRevealedVariant && none && pickMin === 0
+                              ? "Choose nothing"
+                              : "Confirm";
     const clearable =
       isSearch || isCopyTarget || ((isCardSetPick || isRevealedVariant) && pickMin === 0);
     return {
@@ -2601,6 +2608,10 @@
             The card you pick is cast right now without paying its mana cost, whatever its timing,
             and you choose its targets next. If you don't cast it now you can't later. Pick none to
             cast nothing.
+          {:else if isManifestPick}
+            <!-- ADR 0189: Kozilek, the Broken Reality; Scroll of Fate. -->
+            The cards you pick are put onto the battlefield face down as 2/2 creatures under your control.
+            Only you can look at them.
           {:else if active.choose_destination === "library_bottom"}
             <!-- ADR 0168: the London mulligan's cost. -->
             The cards you pick go on the bottom of your library{pickMax > 1
