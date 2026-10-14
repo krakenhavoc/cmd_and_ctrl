@@ -3291,6 +3291,13 @@ adds a target clause; the effect then reads `item.Targets[0]`, so it
 is a closure rather than `Do`. Add a missing shape or predicate to
 `triggers_common.go`, not to the card file.
 
+For a graveyard watcher that must have been there before a creature died,
+use `g.InSameSimultaneousExitForEffect(source.InstanceID, ev.CardID)` to
+exclude an actual shared exit (#3417, ADR 0018 amendment). `Event.Batch`
+spans an entire resolution and cannot distinguish its separate instructions.
+Check both IDs: an outer exit can stay published while a later instruction
+runs. Keep the usual graveyard, owner and object-identity checks too.
+
 **Triggers in other zones (#925, CR 113.6):** a trigger watches from
 the battlefield unless it says otherwise, and the ones that say
 otherwise wrap the shape: `InGraveyard(Landfall(...))` is Bloodghast,

@@ -24,28 +24,23 @@ import (
 //	    creature card or token counts, since a token is put into the
 //	    graveyard before it ceases to exist.
 //	  - The Traitor must already be in the graveyard when the other
-//	    creature is put there. One that died in the same wipe, or after
-//	    the creature, never saw it (netherTraitorWasThere).
+//	    creature is put there. One that died in the same simultaneous
+//	    exit, or after the creature, never saw it.
 //	  - "You may pay {B}" is asked when the ability RESOLVES (MayPay), not
 //	    when it triggers (#2494), and a payment is only offered while the
 //	    Traitor is still the graveyard object that triggered the ability.
 //	    The card is checked again after the payment, so one that left in
 //	    the meantime stays gone (CR 400.7).
 //
-// Sandbox simplification, declared: "at the same time" is read off the
-// event batch (Event.Batch), and the batch is one whole resolution or
-// state-based-action pass. A Traitor that dies EARLIER in the same
-// spell or ability than the creature, as a separate instruction, is
-// treated as dying together with it and does not see it; printed, it
-// would already be in the graveyard. The wipes, combat damage and
-// sacrifices the card is played against are all simultaneous and
-// exact.
+// "At the same time" is read from the actual simultaneous-exit set,
+// not Event.Batch, which spans an entire resolution. A Traitor that
+// entered its owner's graveyard in an earlier instruction sees a later
+// creature arrive during that same resolution.
 func init() {
 	Register(Spec{
 		OracleID:        "6f16c3ac-a9b8-47e6-b18b-ae37c74d44a0",
 		Name:            "Nether Traitor",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"If it dies earlier in the same spell or ability as another creature, it still counts as dying together with it and doesn't see that creature."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste", "shadow"},
 		Triggered: []game.TriggeredAbility{
 			InGraveyard(On(game.EventLTB, netherTraitorSeesACreatureArrive,
@@ -69,25 +64,11 @@ func netherTraitorSeesACreatureArrive(ev game.Event, source *game.Card, lki game
 }
 
 // netherTraitorWasThere reports whether the Traitor sat in the
-// graveyard before the creature arrived. Two events in one event batch
-// happened at the same time as far as the rules go (CR 603.2c,
-// Event.Batch), so a Traitor whose own trip to the graveyard is in the
-// batch of the qualifying event died together with that creature and
-// never saw it (CR 603.10a looks back only for what was on the
-// battlefield). A Traitor that died in an earlier batch, this turn or
-// before, was already there.
+// graveyard before the creature arrived. Only membership of both
+// objects in the same simultaneous exit means they died together;
+// Event.Batch may cover several sequential instructions.
 func netherTraitorWasThere(g *game.Game, source *game.Card, ev game.Event) bool {
-	events := g.EventsThisTurn()
-	for i := len(events) - 1; i >= 0; i-- {
-		prev := events[i]
-		if prev.Batch < ev.Batch {
-			break
-		}
-		if prev.Kind == game.EventLTB && prev.CardID == source.InstanceID && prev.Batch == ev.Batch {
-			return false
-		}
-	}
-	return true
+	return !g.InSameSimultaneousExitForEffect(source.InstanceID, ev.CardID)
 }
 
 func netherTraitorMayPay(g *game.Game, item *game.StackItem) error {
