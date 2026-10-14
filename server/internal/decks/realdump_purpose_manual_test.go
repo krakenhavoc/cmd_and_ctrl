@@ -132,6 +132,7 @@ var reviewedNotAWipe = map[string]string{
 	"Time Stop":                                "ends the turn",
 	"Ugin's Binding":                           "a single target, and an exile from the graveyard",
 	"Ugin, the Spirit Dragon":                  "the -X sweep is not registered (its caveat says so)",
+	"Vault 11: Voter's Dilemma":                "destroys only the creatures with the most votes, one per voter, or draws if none: removal by vote, not a wipe (as Council's Judgment)",
 	"Watchdog":                                 "-1/-0 to attackers kills nothing",
 }
 
