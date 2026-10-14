@@ -880,6 +880,7 @@ var delayedTriggerFields = plan(
 	"OncePerBatch", carried, "", // #3172, CR 603.2c
 	"ManaTapSubtype", carried, "", // #2169, CR 605.1b
 	"ManaAdds", carried, "",
+	"ManaTapControllerOnly", carried, "", // #3504, CR 605.1b
 )
 
 var pendingChoiceFields = plan(

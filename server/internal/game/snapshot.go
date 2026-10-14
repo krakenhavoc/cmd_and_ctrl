@@ -1462,6 +1462,12 @@ type delayedTriggerSnapshot struct {
 	OncePerBatch   bool   `json:"oncePerBatch,omitempty"`
 	ManaTapSubtype string `json:"manaTapSubtype,omitempty"`
 	ManaAdds       string `json:"manaAdds,omitempty"`
+
+	// #3504: the triggered-mana record fires for its controller's taps
+	// only. Additive: an older binary drops the key and fires for every
+	// player's tap (stronger than printed for the caster's opponents, so
+	// a stale snapshot is the only way to see it).
+	ManaTapControllerOnly bool `json:"manaTapControllerOnly,omitempty"`
 }
 
 // pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
@@ -2524,6 +2530,8 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		OncePerBatch:       d.OncePerBatch,
 		ManaTapSubtype:     d.ManaTapSubtype,
 		ManaAdds:           d.ManaAdds,
+
+		ManaTapControllerOnly: d.ManaTapControllerOnly,
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
@@ -3410,6 +3418,8 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		OncePerBatch:     d.OncePerBatch,
 		ManaTapSubtype:   d.ManaTapSubtype,
 		ManaAdds:         d.ManaAdds,
+
+		ManaTapControllerOnly: d.ManaTapControllerOnly,
 	}
 	if d.Duration != nil {
 		dur := *d.Duration

@@ -210,10 +210,15 @@ func copyTheSpellYouJustCast(g *game.Game, item *game.StackItem) error {
 // turn. It never uses the stack (CR 605.4a), reads the producing
 // permanent as it was when it was tapped, and is not tied to the spell
 // that made it. See DelayedTrigger.ManaTapSubtype.
+//
+// ControllerOnly narrows it to the caster's own taps: "whenever YOU tap a
+// Mountain for mana" (Pyre Rhymer // Molten Tide). Leave it unset for "a
+// player" (High Tide, Bubbling Muck).
 type TurnManaTrigger struct {
-	Label   string
-	Subtype string
-	Adds    string
+	Label          string
+	Subtype        string
+	Adds           string
+	ControllerOnly bool
 }
 
 func (t TurnManaTrigger) Apply(ctx *Context) error {
@@ -224,6 +229,8 @@ func (t TurnManaTrigger) Apply(ctx *Context) error {
 		ManaTapSubtype: t.Subtype,
 		ManaAdds:       t.Adds,
 		Repeats:        true,
+
+		ManaTapControllerOnly: t.ControllerOnly,
 	})
 	return nil
 }
