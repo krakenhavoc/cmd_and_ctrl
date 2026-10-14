@@ -236,7 +236,7 @@ A version bump records the new shape. Run:
 
   go test ./internal/game -run TestSnapshotShapeIsRecorded -args -update-shape
 
-and write the v%d fixture set (AGENTS.md, "Snapshot compatibility").`,
+and write the v%d fixture set (docs/snapshots.md).`,
 			SnapshotSchemaVersion, shapeGoldenPath(SnapshotSchemaVersion), SnapshotSchemaVersion)
 	}
 	added, removed := shapeDiff(want, got)
