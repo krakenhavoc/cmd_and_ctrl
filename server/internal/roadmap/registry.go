@@ -624,9 +624,12 @@ var items = []Item{
 	},
 	{
 		Slug: "ward", Name: "Ward", Kind: KindMechanic, Status: StatusImplemented,
-		Summary: "When a permanent with ward becomes the target of an opponent's spell or ability, that spell or ability is countered unless its controller pays the ward cost.",
-		Rules:   []string{"702.21"},
-		Printed: printedLine("ward"),
+		ADR:         "0171-one-mana-and-life-ward-payment.md",
+		Examples:    []string{"Gisa, the Hellraiser", "Captain Howler, Sea Scourge"},
+		EngineNotes: "WardManaAndLife combines mana and fixed life in one pay-unless offer (#2945). The shared payment validates both components, includes optional Phyrexian-symbol life, and charges no component on decline or failure. Legal moves, human prompts and bot/MCP text carry the life cost.",
+		Summary:     "When a permanent with ward becomes the target of an opponent's spell or ability, that spell or ability is countered unless its controller pays the ward cost.",
+		Rules:       []string{"702.21"},
+		Printed:     printedLine("ward"),
 	},
 	{
 		Slug: "crimes", Name: "Committing a crime", Kind: KindMechanic, Status: StatusImplemented,

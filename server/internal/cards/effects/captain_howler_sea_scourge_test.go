@@ -98,10 +98,10 @@ func TestCaptainHowlerSeaScourgeChosenCreatureHitDrawsACard(t *testing.T) {
 	}
 }
 
-// The ward is the one declared gap.
-func TestCaptainHowlerSeaScourgeKeepsOnlyTheWardCaveat(t *testing.T) {
+// Compound ward closes the final printed-rule gap (#2945).
+func TestCaptainHowlerSeaScourgeIsComplete(t *testing.T) {
 	spec, ok := Lookup(captainHowlerOracle)
-	if !ok || spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Fatalf("want exactly the ward caveat: %v %v", spec.Completeness, spec.Caveats)
+	if !ok || spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Fatalf("want full implementation without caveats: %v %v", spec.Completeness, spec.Caveats)
 	}
 }

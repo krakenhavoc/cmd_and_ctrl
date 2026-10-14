@@ -44,7 +44,7 @@ import (
 // not in the catalog still flags as unimplemented, which is the
 // honest answer.
 //
-// SCOPE. Four printed cost shapes ship, and each one is charged by
+// SCOPE. These printed cost shapes ship, and each one is charged by
 // the prompt that already fits it:
 //
 //   - "Ward {N}" (Hulking Raptor) — PendingChoicePayUnless, which
@@ -66,12 +66,12 @@ import (
 // Confirm and ChooseCards kinds take any Chooser, have bot enumerator
 // cases in legal/, and are rendered by the client. The waterbend shape
 // did — the pay-unless prompt learned a tap list (game.
-// CounterUnlessPaidPrompt.Waterbend, ResolvePayUnlessWithTaps). What a ward cost still cannot be is a mix of
-// components ("{1}, pay 1 life" is not a printed ward), and Ward()
-// refuses one rather than charging half of it.
+// CounterUnlessPaidPrompt.Waterbend, ResolvePayUnlessWithTaps). Mana
+// plus fixed life is one compound payment (Gisa, #2945);
+// other mixtures remain unsupported and are rejected.
 
-// WardCost is the payment a ward demands. Exactly one field is set;
-// build it with WardMana, WardWaterbend, WardLife or WardSacrifice
+// WardCost is the payment a ward demands. One field or Mana plus Life is set;
+// build it with WardMana, WardManaAndLife, WardWaterbend, WardLife or WardSacrifice
 // rather than by hand.
 type WardCost struct {
 	// Mana is "ward {N}": a mana cost string for the pay-unless prompt.
@@ -81,7 +81,7 @@ type WardCost struct {
 	// artifacts and creatures they control, each paying {1} of the
 	// generic (CR 701.67a). A mana cost string, like Mana.
 	Waterbend string
-	// Life is "ward—pay N life".
+	// Life is "ward—pay N life", alone or alongside Mana.
 	Life int
 	// Sacrifice is "ward—sacrifice a <thing>".
 	Sacrifice *WardSacrificeCost
@@ -122,6 +122,14 @@ func (s WardSacrificeCost) count() int {
 // WardMana builds the "ward {N}" cost.
 func WardMana(cost string) WardCost { return WardCost{Mana: cost} }
 
+// WardManaAndLife declares one indivisible mana-plus-life payment.
+func WardManaAndLife(cost string, life int) WardCost {
+	if cost == "" || life <= 0 {
+		panic("effects: compound ward needs mana and positive life")
+	}
+	return WardCost{Mana: cost, Life: life}
+}
+
 // WardWaterbend builds the "Ward—Waterbend {N}" cost (#1311). The
 // payment is the pay-unless prompt's mana payment with a tap picker
 // beside it: charging a plain {N} instead would make the ward harder to
@@ -151,10 +159,13 @@ func WardSacrificeN(n int, label string, preds ...CardPredicate) WardCost {
 // all (CR 118.3), so the spell is countered with no prompt.
 func WardDiscard(n int) WardCost { return WardCost{Discard: n} }
 
-// validate panics on a cost with zero or several components. It runs
+// validate panics on an empty cost or an unsupported mixture. It runs
 // from Ward() at catalog init, so a malformed card fails at boot rather
 // than charging the first component it happens to check.
 func (c WardCost) validate() {
+	if c.Life < 0 {
+		panic("effects: a ward life cost cannot be negative")
+	}
 	n := 0
 	if c.Mana != "" {
 		n++
@@ -171,8 +182,9 @@ func (c WardCost) validate() {
 	if c.Discard > 0 {
 		n++
 	}
-	if n != 1 || (c.Sacrifice != nil && c.Sacrifice.OK == nil) {
-		panic(fmt.Sprintf("effects: a ward cost needs exactly one of Mana, Waterbend, Life, Sacrifice or Discard: %+v", c))
+	compound := n == 2 && c.Mana != "" && c.Life > 0
+	if (n != 1 && !compound) || (c.Sacrifice != nil && c.Sacrifice.OK == nil) {
+		panic(fmt.Sprintf("effects: a ward cost needs one component, or Mana plus Life: %+v", c))
 	}
 }
 
@@ -339,7 +351,7 @@ func wardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer u
 		return g.CounterTargetForEffect(targetingItem)
 	}
 	switch {
-	case cost.Life > 0:
+	case cost.Life > 0 && cost.Mana == "":
 		return wardPayLifeOrCounter(g, item.SourceCardID, payer, cost.Life, targetingItem, counter)
 	case cost.Sacrifice != nil:
 		return wardSacrificeOrCounter(g, item.SourceCardID, payer, *cost.Sacrifice, targetingItem, counter)
@@ -362,12 +374,17 @@ func wardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer u
 			Waterbend: Waterbend(cost.Waterbend),
 		})
 	}
+	question := "Ward — pay " + cost.Mana
+	if cost.Life > 0 {
+		question += fmt.Sprintf(" and %d life", cost.Life)
+	}
 	return g.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{
 		StackItem: targetingItem,
 		Chooser:   payer,
 		Source:    item.SourceCardID,
 		Cost:      cost.Mana,
-		Question:  "Ward — pay " + cost.Mana + " or the spell is countered",
+		LifeCost:  cost.Life,
+		Question:  question + " or the spell is countered",
 	})
 }
 

@@ -115,6 +115,24 @@ func TestRenderEnergyPrompts(t *testing.T) {
 	}
 }
 
+func TestRenderCompoundWardLifeCost(t *testing.T) {
+	v := view()
+	v.PendingChoices = []protocol.PendingChoiceView{{
+		ID: "ward", Kind: "pay_unless", Chooser: "a", Reason: "Ward — pay {2}",
+		PayCost: "{2}", LifeCost: 2,
+	}}
+	for _, blocked := range []bool{false, true} {
+		v.PendingChoices[0].LifeCostUnpayable = blocked
+		got := boardtext.Render(v, "a", boardtext.Options{})
+		if !strings.Contains(got, "Ward — pay {2} (also pay 2 life)") {
+			t.Fatalf("mandatory life payment missing: %s", got)
+		}
+		if strings.Contains(got, "life payment unavailable") != blocked {
+			t.Fatalf("life payment availability missing: %s", got)
+		}
+	}
+}
+
 // #2794: the MCP seat asks for each owed choice's id, the handle its
 // legal_moves(choice) takes; the bot's prompt keeps the kind alone.
 func TestRenderChoiceIDsOnlyWhenAsked(t *testing.T) {
