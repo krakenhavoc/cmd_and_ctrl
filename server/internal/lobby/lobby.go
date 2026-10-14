@@ -157,6 +157,11 @@ type GameMeta struct {
 	// or unavailable (lfg_board.go). Never persisted; the LFG manager
 	// reports it.
 	LFGStatus string `json:"lfg_status,omitempty"`
+	// Results is whether the host opted the table in to a results post
+	// in the Discord #game-results channel when its game ends (ADR 0174
+	// §1). Public: the table's seats should see that the result of
+	// their game will be posted with their names.
+	Results bool `json:"results,omitempty"`
 }
 
 // Archived reports whether the table has been retired from the
@@ -319,6 +324,9 @@ type Lobby struct {
 	// lfg is the #lfg manager (ADR 0161 §5), nil when the board is
 	// off. Set once at boot by SetLFGManager.
 	lfg *LFGManager
+	// results is the results feed (ADR 0174), nil when it is off. Set
+	// once at boot by SetResultsFeed.
+	results *ResultsFeed
 	// store is where the lobby's half of a game survives the process:
 	// games, seats and invites rows (ADR 0051 decision 4). Also the
 	// only place an invite is validated against — see resolveInvite.

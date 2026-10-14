@@ -62,6 +62,12 @@
 //	                        guild; the role needs the channel; a malformed
 //	                        id fails the boot. Off without the bot token
 //	                        or CMDCTRL_PUBLIC_BASE_URL.
+//	CMDCTRL_DISCORD_RESULTS_CHANNEL_ID — the results feed (ADR 0174): the
+//	                        channel the bot posts a finished game's
+//	                        results to, for the tables whose host opted
+//	                        in. Needs the community guild (boot fails
+//	                        without it, or on a malformed id) and the bot
+//	                        token (off without it).
 //	CMDCTRL_SEED_DEMO   — if "1", seed a 4-player demo game at startup.
 //	                        Useful for the gamecli dev loop when you want a
 //	                        ready-to-go room without going through the lobby.
@@ -421,6 +427,11 @@ func main() {
 		lfgBoard = lobby.NewLFGManager(cfg.LFG, publicBaseURL(), log)
 		l.SetLFGManager(lfgBoard)
 	}
+	// The results feed (ADR 0174): one post when an opted-in game ends,
+	// made from the statistics goroutine, so there is nothing to start.
+	if cfg.Results.Enabled() {
+		l.SetResultsFeed(lobby.NewResultsFeed(cfg.Results, log))
+	}
 	// The state gauges (ADR 0123 §3): restore points, games, players and
 	// WebSocket, read from the rooms, the lobby, the hub and the
 	// database at scrape time.
@@ -571,6 +582,17 @@ func main() {
 			" is not (it is provisioned on production only)", "var", discord.BotTokenEnv)
 	default:
 		log.Info("table voice rooms off; set "+discord.VoiceCategoryEnv+" to enable", "var", discord.VoiceCategoryEnv)
+	}
+	// ADR 0174 §6: said once, either way.
+	switch {
+	case cfg.Results.Enabled():
+		log.Info("results feed on: hosts may opt a table in to a results post when its game ends",
+			"var", discord.ResultsChannelEnv)
+	case cfg.Results.MissingToken():
+		log.Info("results feed off: "+discord.ResultsChannelEnv+" is set but "+discord.BotTokenEnv+
+			" is not (it is provisioned on production only)", "var", discord.BotTokenEnv)
+	default:
+		log.Info("results feed off; set "+discord.ResultsChannelEnv+" to enable", "var", discord.ResultsChannelEnv)
 	}
 	// ADR 0161 §7: said once, either way.
 	switch {
@@ -916,6 +938,11 @@ type config struct {
 	// guild, or the role without the channel fails the boot; no bot
 	// token leaves it off.
 	LFG discord.LFG
+	// Results is ADR 0174 §6's results feed:
+	// CMDCTRL_DISCORD_RESULTS_CHANNEL_ID in the community guild, with the
+	// bot token. A malformed id, or the channel without the guild, fails
+	// the boot; no bot token leaves it off.
+	Results discord.Results
 	// SessionTTL is the lifetime of a session with no user: guest
 	// seats and spectators, admin-token and reclaim-ticket sessions
 	// (CMDCTRL_SESSION_TTL). Default 12h.
@@ -1184,6 +1211,12 @@ func loadConfig(log *slog.Logger) config {
 		os.Exit(1)
 	}
 	c.LFG = lfgBoard
+	resultsFeed, rerr := discord.ResultsFromEnv(os.Getenv)
+	if rerr != nil {
+		log.Error("results feed config invalid", "err", rerr)
+		os.Exit(1)
+	}
+	c.Results = resultsFeed
 
 	if c.AdminToken == "" {
 		log.Error("CMDCTRL_ADMIN_TOKEN is required — set it to a long random string before starting the server")

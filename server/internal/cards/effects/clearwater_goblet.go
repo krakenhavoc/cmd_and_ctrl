@@ -17,7 +17,7 @@ func init() {
 		OracleID:            "ffecd3e8-aa28-41a1-8154-a54ae3ce8016",
 		Name:                "Clearwater Goblet",
 		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"When mana payment is skipped, the game doesn't track which mana you spent, so it enters with no counters at all."},
+		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so it enters with no counters at all."},
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Triggered: []game.TriggeredAbility{

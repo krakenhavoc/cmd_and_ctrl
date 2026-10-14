@@ -98,6 +98,15 @@
         "migration 0023 game_stats, seat_stats, seat_card_stats; gamestats/gamestats.go Compute",
     },
     {
+      what: "Results post in Discord",
+      details:
+        "Only if the host of a table turns it on, and only on a server that has a results channel: when the game ends, the bot posts the table’s name, each seat’s name, its commander names and how it placed, the turn count and how long the game ran, in the CMD & CTRL Discord server’s results channel. Seat names are whatever each person set at the table, guests and AI agents included. Nobody is mentioned or pinged. A table’s page shows when this is on.",
+      why: "So a finished game can be shown off to the community.",
+      howLong:
+        "The server keeps only the host’s on or off choice, with the table. The post itself is a Discord message that stays until a Discord moderator deletes it; deleting your account or the table does not remove a post already made.",
+      source: "migration 0024 games.results; lobby/results_feed.go; discord/results.go",
+    },
+    {
       what: "Chat",
       details: `Table chat is not stored. The server holds the last ${F.chatRecentLines} lines of each table in memory, with the seat names they were written under, and only so that a player report can attach them. They are gone when the server restarts. A listed slur is replaced with asterisks before anyone sees the line.`,
       why: "So a report about what someone said has the words in it, and so slurs do not reach the table.",

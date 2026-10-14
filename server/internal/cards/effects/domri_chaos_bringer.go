@@ -30,7 +30,7 @@ func init() {
 		OracleID:        "2a5408ed-8b47-4896-97e4-aa102a4b85c9",
 		Name:            "Domri, Chaos Bringer",
 		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"When mana payment is skipped, the game doesn't see which mana you spent, so the creature spell its +1 mana pays for never gets its choice of a +1/+1 counter or haste."},
+		Caveats:         []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so the creature spell its +1 mana pays for never gets its choice of a +1/+1 counter or haste."},
 		StartingLoyalty: 5,
 		Emblem: &EmblemSpec{
 			Label: "Domri, Chaos Bringer emblem",

@@ -30,7 +30,7 @@ func init() {
 		Name:         "Tecutlan, the Searing Rift",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"When mana payment is skipped, the game doesn't see which mana you spent, so casting a permanent spell with Tecutlan's mana does nothing extra.",
+			"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so casting a permanent spell with Tecutlan's mana does nothing extra.",
 		},
 		Discovers: true,
 		ManaAbilities: []ManaAbility{{

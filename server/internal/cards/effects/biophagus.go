@@ -29,7 +29,7 @@ func init() {
 		OracleID:     "7c06a368-3306-48e0-825e-a8fdc81fa343",
 		Name:         "Biophagus",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so the creature enters without the extra +1/+1 counter."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so the creature enters without the extra +1/+1 counter."},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",

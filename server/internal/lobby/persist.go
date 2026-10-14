@@ -126,6 +126,8 @@ func gameRecordLocked(entry *gameEntry) GameRecord {
 		// ADR 0161 §6.
 		LFG:          entry.meta.LFG,
 		LFGMessageID: entry.lfgMessageID,
+		// ADR 0174 §1.
+		Results: entry.meta.Results,
 	}
 	return rec
 }
@@ -473,6 +475,8 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 		// ADR 0161 §6: and the #lfg choice. The manager reports the
 		// post's status once it has looked.
 		LFG: rec.LFG,
+		// ADR 0174 §1: and the results opt-in.
+		Results: rec.Results,
 		// CreatedBy (#1098): rec.CreatedBy is "" for an admin-created
 		// or file-imported game (Nil, matching CreateWith), and a
 		// stored UUID otherwise. A row somehow holding something

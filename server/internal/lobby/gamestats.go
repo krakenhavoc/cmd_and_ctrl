@@ -31,10 +31,16 @@ func (l *Lobby) SetGameStats(s gamestats.Store) {
 // Callers hold l.mu; the work runs on its own goroutine, and a failure
 // is logged and touches nothing else.
 func (l *Lobby) recordStatsLocked(entry *gameEntry) {
-	if l.gameStats == nil || entry.practice || entry.room == nil {
+	if entry.practice || entry.room == nil {
 		return
 	}
-	store, room, id := l.gameStats, entry.room, entry.meta.ID
+	// The results post (ADR 0174) rides the same computation, so it is
+	// decided here, under the lock, from the entry as it is now.
+	store, results := l.gameStats, l.resultsJobLocked(entry)
+	if store == nil && results == nil {
+		return
+	}
+	room, id := entry.room, entry.meta.ID
 	outcome, winner := entry.outcome, entry.winnerSeat
 	l.statsWG.Add(1)
 	go func() {
@@ -50,10 +56,15 @@ func (l *Lobby) recordStatsLocked(entry *gameEntry) {
 			LogComplete: true,
 			Now:         time.Now(),
 		})
-		ctx, cancel := context.WithTimeout(context.Background(), statsTimeout)
-		defer cancel()
-		if err := store.Put(ctx, rec); err != nil {
-			slog.Default().Warn("game stats: write failed", "game_id", id, "err", err)
+		if store != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), statsTimeout)
+			defer cancel()
+			if err := store.Put(ctx, rec); err != nil {
+				slog.Default().Warn("game stats: write failed", "game_id", id, "err", err)
+			}
+		}
+		if results != nil {
+			results.run(view, rec)
 		}
 	}()
 }

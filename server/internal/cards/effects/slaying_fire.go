@@ -29,7 +29,7 @@ func init() {
 		OracleID:     "1e94e647-9150-4b22-aa9f-d195f64fb20a",
 		Name:         "Slaying Fire",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so Slaying Fire always deals 3 rather than 4."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so Slaying Fire always deals 3 rather than 4."},
 		Targets:      TargetAny(),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			damage := 3

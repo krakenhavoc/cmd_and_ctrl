@@ -114,7 +114,8 @@
   import { castAnywayConfirmRequest } from "../../targetingDock";
   import { castAnywayPending, clearCastAnyway } from "../../castAnyway";
   import { payLifeRequest } from "../../payLifeForMana";
-  import { fetchAutoTapPreview } from "../../api";
+  import { clearStackPosition, fetchAutoTapPreview, saveStackPosition } from "../../api";
+  import { savedStackPosition } from "../../stackPosition";
   import {
     targeting,
     begin as beginTargeting,
@@ -3594,6 +3595,10 @@
         splitSecondActive={view.split_second_active === true}
         onCounter={counterStackItem}
         onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
+        {boardEl}
+        position={savedStackPosition(view, viewerID)}
+        onSave={isSpectator ? undefined : (pos) => saveStackPosition(view.id, pos)}
+        onReset={isSpectator ? undefined : () => clearStackPosition(view.id)}
       />
     {/if}
     {@render attention?.()}

@@ -120,3 +120,30 @@ func TestForUserNeverShowsAnotherPersonsSeats(t *testing.T) {
 		t.Errorf("u-other recent = %+v", other.Recent)
 	}
 }
+
+// A bot or agent seat that carries the caller's user id is not a game
+// they played themselves (ADR 0165 §9).
+func TestForUserExcludesAgentAndBotSeats(t *testing.T) {
+	s, d := openStore(t)
+	if _, err := d.Exec(`INSERT INTO users (id, display_name, created_at, last_seen_at) VALUES ('u-me', 'me', 1, 1)`); err != nil {
+		t.Fatal(err)
+	}
+	seedSeat(t, d, 1000, "Mine", "u-me", "", "", "win", 1, 5, `["Mine"]`)
+	seedSeat(t, d, 2000, "Agent", "u-me", "", "", "win", 1, 5, `["Agent Cmdr"]`)
+	seedSeat(t, d, 3000, "Bot", "u-me", "", "", "win", 1, 5, `["Bot Cmdr"]`)
+	for _, q := range []string{
+		`UPDATE seats SET agent_client = 'claude-code' WHERE seat = 0 AND game_id = (SELECT id FROM games WHERE name = 'Agent')`,
+		`UPDATE seats SET bot_tier = 'heuristic' WHERE seat = 0 AND game_id = (SELECT id FROM games WHERE name = 'Bot')`,
+	} {
+		if _, err := d.Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := s.ForUser(context.Background(), "u-me")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Games != 1 || len(got.Recent) != 1 || got.Recent[0].Name != "Mine" || len(got.ByCommander) != 1 {
+		t.Errorf("got %+v, want only the caller's own game", got)
+	}
+}

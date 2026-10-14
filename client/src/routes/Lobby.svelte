@@ -70,6 +70,8 @@
   import TablematePicker from "../lib/components/TablematePicker.svelte";
   import LfgPost from "../lib/components/LfgPost.svelte";
   import { LFG_GUEST_HINT, lfgHeader, setLFG } from "../lib/lfgPost";
+  import ResultsPost from "../lib/components/ResultsPost.svelte";
+  import { setResults } from "../lib/resultsPost";
   import Icon from "../lib/components/Icon.svelte";
   import MoreMenu, { type MoreItem } from "../lib/components/MoreMenu.svelte";
   import RemovedNotice from "../lib/components/RemovedNotice.svelte";
@@ -216,6 +218,10 @@
   // shared admin token has none, and gets the box disabled.
   let wantLFG = $state(false);
   const lfgCreateBlocked = $derived(signedInUserID($session) === null);
+  // ADR 0174 §1: shown only when the server has a results channel, off
+  // by default. The post names the seats, not accounts, so a guest host
+  // may tick it.
+  let wantResults = $state(false);
   // The table this page just created: its tablemate picker starts open.
   let justCreated = $state<string | null>(null);
   // What applying the setup did, shown on the new table's card.
@@ -304,6 +310,23 @@
       lfgErrorFor = gameID;
     } finally {
       lfgBusy = false;
+    }
+  }
+
+  // The table's results post (ADR 0174). The answer is the table's meta;
+  // the list's next poll carries it.
+  let resultsBusy = $state(false);
+  let resultsError = $state<string | null>(null);
+  async function toggleResults(gameID: string, enabled: boolean): Promise<void> {
+    resultsBusy = true;
+    resultsError = null;
+    try {
+      await setResults(gameID, enabled);
+      await refresh();
+    } catch (e) {
+      resultsError = lobbyErrorMessage(e, "the results request failed");
+    } finally {
+      resultsBusy = false;
     }
   }
 
@@ -509,6 +532,7 @@
         ...(withSetup ? { setup: "last" as const } : {}),
         voiceRoom: $community.voice && wantVoiceRoom,
         lfg: $community.lfg === true && !lfgCreateBlocked && wantLFG,
+        results: $community.results === true && wantResults,
       });
       if (meta.invite_token) recentInvites.set(meta.id, meta.invite_token);
       if (meta.spectator_invite) recentSpectatorInvites.set(meta.id, meta.spectator_invite);
@@ -1031,6 +1055,17 @@
             </span>
           </label>
         {/if}
+        {#if $community.results}
+          <label class="use-setup">
+            <input type="checkbox" bind:checked={wantResults} />
+            <span>
+              Post the result to the CMD & CTRL Discord
+              <span class="setup-sum"
+                >when the game ends: the table's name, seat names, commanders and who won</span
+              >
+            </span>
+          </label>
+        {/if}
         {#if createError}
           <p class="error nt-error" role="alert">{createError}</p>
         {/if}
@@ -1325,6 +1360,15 @@
                       ontoggle={(enabled) => toggleLFG(g.id, enabled)}
                       busy={lfgBusy}
                       error={lfgError}
+                    />
+                  {/if}
+                  {#if $community.results}
+                    <ResultsPost
+                      game={g}
+                      canManage={canManageTableFor(g)}
+                      ontoggle={(enabled) => toggleResults(g.id, enabled)}
+                      busy={resultsBusy}
+                      error={resultsError}
                     />
                   {/if}
                 </div>

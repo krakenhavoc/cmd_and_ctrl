@@ -149,6 +149,13 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 		}
 		out.Rematch = &rematch
 	}
+	// #3429: the viewer's own stack placement, keyed by seat id.
+	if v.StackPositions != nil {
+		out.StackPositions = make(map[string]protocol.StackPositionView, len(v.StackPositions))
+		for id, p := range v.StackPositions {
+			out.StackPositions[n.id(id)] = p
+		}
+	}
 	for i, p := range v.Seats {
 		out.Seats[i] = n.player(p, out.Seats[i].ID)
 	}
@@ -584,7 +591,8 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 			Access: map[string]string{ownerID: protocol.VoiceAccessGranted}},
 		Rematch: &protocol.RematchView{GameID: "55555555-5555-5555-5555-555555555555", Host: ownerID, HostName: "Owner", Open: true,
 			Accepted: []string{oppID}},
-		StartingSeat: 1,
+		StackPositions: map[string]protocol.StackPositionView{ownerID: {X: 0.5, Y: 0.25}},
+		StartingSeat:   1,
 		OpeningRoll: &protocol.OpeningRollView{Rounds: []protocol.OpeningRollRoundView{
 			{Seats: []int{0, 1}, Rolls: []protocol.OpeningRollDieView{{Seat: 0, Result: 12}}},
 		}},

@@ -32,7 +32,7 @@ func init() {
 		OracleID:     "f074c0d0-8455-484d-ae75-820fdfbc4740",
 		Name:         "Ribbons of Night",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so Ribbons of Night never draws the card."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so Ribbons of Night never draws the card."},
 		Targets:      TargetCreature("target creature"),
 		Purpose:      ForTargets(DamageToTarget(0, 4)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

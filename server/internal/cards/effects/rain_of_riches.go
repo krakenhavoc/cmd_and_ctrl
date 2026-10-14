@@ -30,7 +30,7 @@ func init() {
 		OracleID:     "ef1e2d3d-e977-4729-9430-eba6242e5dfe",
 		Name:         "Rain of Riches",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so Rain of Riches never gives a spell its bonus."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so Rain of Riches never gives a spell its bonus."},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Rain of Riches — create two Treasure tokens",
 				Do(CreateToken{Template: TreasureToken(), N: 2})),

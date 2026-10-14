@@ -62,8 +62,13 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * numbers and card names derived from a finished game, keyed by game
  * and seat, with no names or user ids. The notice's "Game statistics"
  * row covers them.
+ *
+ * 24 (#3322, ADR 0174) adds games.results: the host's choice of a
+ * results post in the Discord server. The column names no one; the
+ * post it leads to does, and the notice's "Results post in Discord"
+ * row covers it.
  */
-export const PRIVACY_SCHEMA_VERSION = 23;
+export const PRIVACY_SCHEMA_VERSION = 24;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

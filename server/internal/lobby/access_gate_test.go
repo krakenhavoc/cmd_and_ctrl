@@ -627,7 +627,7 @@ func TestCommunityIsPublicCacheableAndNamesNoIDs(t *testing.T) {
 	if err := json.Unmarshal(raw, &body); err != nil {
 		t.Fatal(err)
 	}
-	if len(body) != 4 || body["invite_url"] != "https://discord.gg/c2table" || body["gate"] != true || body["voice"] != true || body["lfg"] != false {
+	if len(body) != 5 || body["invite_url"] != "https://discord.gg/c2table" || body["gate"] != true || body["voice"] != true || body["lfg"] != false || body["results"] != false {
 		t.Errorf("body = %s", raw)
 	}
 	if strings.Contains(string(raw), gateGuild) || strings.Contains(string(raw), gateRole) ||

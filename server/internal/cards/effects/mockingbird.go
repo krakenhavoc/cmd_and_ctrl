@@ -58,7 +58,7 @@ func init() {
 		Completeness:    CompletenessCaveats,
 		PrintedKeywords: []string{"flying"},
 		Caveats: []string{
-			"When mana payment is skipped, the game doesn't track how much mana you spent, so Mockingbird can only copy a creature with mana value 0 — turn strict mana on for it to count.",
+			"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track how much mana you spent, so Mockingbird can only copy a creature with mana value 0 — turn on “Charge mana costs” for it to count.",
 		},
 		Replacements: []game.ReplacementEffect{
 			EntersAsCopyOfFromCast(

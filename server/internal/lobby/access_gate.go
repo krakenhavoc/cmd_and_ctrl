@@ -252,6 +252,9 @@ type communityResponse struct {
 	// LFG is whether a host may post a table to the community server's
 	// #lfg board (ADR 0161 §7).
 	LFG bool `json:"lfg"`
+	// Results is whether a host may opt a table in to a results post in
+	// the community server's #game-results channel (ADR 0174 §6).
+	Results bool `json:"results"`
 }
 
 // community is GET /community: public, no session, cacheable for five
@@ -263,5 +266,6 @@ func community(c Config, w http.ResponseWriter, _ *http.Request) error {
 		Gate:      c.Discord.Gate.Enabled(),
 		Voice:     c.DiscordVoice.Enabled(),
 		LFG:       c.Lobby.LFGEnabled(),
+		Results:   c.Lobby.ResultsEnabled(),
 	})
 }

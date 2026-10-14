@@ -176,7 +176,7 @@
         </div>
       {/if}
 
-      <h3>Top commanders by games</h3>
+      <h3>Top commanders by games <span class="dim">(human seats only)</span></h3>
       {#if data.commanders_by_games.length === 0}
         <p class="empty">No commanders recorded.</p>
       {:else}
@@ -194,7 +194,7 @@
         </div>
       {/if}
 
-      <h3>Top commanders by wins</h3>
+      <h3>Top commanders by wins <span class="dim">(human seats only)</span></h3>
       {#if data.commanders_by_wins.length > 0}
         <div class="scroll">
           <table aria-label="commanders by wins">
@@ -212,7 +212,7 @@
         <p class="empty">No commanders recorded.</p>
       {/if}
 
-      <h3>Most-cast cards</h3>
+      <h3>Most-cast cards <span class="dim">(human seats only)</span></h3>
       {#if data.cards.length === 0}
         <p class="empty">No casts recorded.</p>
       {:else}

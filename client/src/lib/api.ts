@@ -26,7 +26,7 @@ import type { MySetupResponse, SetupResult } from "./tableSetup";
 import type { LastDeck } from "./lastDeck";
 import type { AutoTapCastParams } from "./castPreview";
 import type { TableSettingsPatch, SpawnZone } from "./tableSettings";
-import type { TableSettingsView, TargetRefView } from "./protocol";
+import type { StackPositionView, TableSettingsView, TargetRefView } from "./protocol";
 import {
   accountsQuery,
   gamesQuery,
@@ -86,6 +86,10 @@ export interface GameMeta {
   // absent when the table is not posted.
   lfg?: boolean;
   lfg_status?: "pending" | "posted" | "unavailable";
+  // ADR 0174 §1: the host opted the table in to a results post in the
+  // Discord's #game-results channel when its game ends
+  // (lib/resultsPost.ts). Absent when the table is not opted in.
+  results?: boolean;
   // The tutorial's practice table (ADR 0076 §2.2): one seat, one
   // `random` bot, never listed and never persisted. Mirrors
   // lobby.GameMeta.Practice.
@@ -285,15 +289,23 @@ export interface CreateGameResponse extends GameMeta {
 // when they already have three, and a 429 says they are creating too
 // quickly. `setup: "last"` applies their remembered setup to it,
 // `voiceRoom` asks for a Discord voice room (ADR 0159 §1), and `lfg`
-// posts it to the Discord's #lfg board (ADR 0161 §1).
+// posts it to the Discord's #lfg board (ADR 0161 §1), and `results` opts
+// it in to a results post when its game ends (ADR 0174 §1).
 export async function createGame(
   name: string,
-  opts: { setup?: "last"; voiceRoom?: boolean; lfg?: boolean } = {},
+  opts: { setup?: "last"; voiceRoom?: boolean; lfg?: boolean; results?: boolean } = {},
 ): Promise<CreateGameResponse> {
-  const body: { name: string; setup?: string; voice_room?: boolean; lfg?: boolean } = { name };
+  const body: {
+    name: string;
+    setup?: string;
+    voice_room?: boolean;
+    lfg?: boolean;
+    results?: boolean;
+  } = { name };
   if (opts.setup) body.setup = opts.setup;
   if (opts.voiceRoom) body.voice_room = true;
   if (opts.lfg) body.lfg = true;
+  if (opts.results) body.results = true;
   const res = await authFetch("/games", {
     method: "POST",
     body: JSON.stringify(body),
@@ -1157,6 +1169,20 @@ export function acceptRematch(gameID: string): Promise<Session> {
 
 export async function leaveRematch(gameID: string): Promise<void> {
   await authFetch(`/games/${encodeURIComponent(gameID)}/rematch/leave`, { method: "POST" });
+}
+
+// The stack panel's placement (#3429, ADR 0176). The caller is the seat;
+// the server keeps the spot for the rest of the game and sends it back on
+// that seat's own view (GameView.stack_positions). Both answer 204.
+export async function saveStackPosition(gameID: string, pos: StackPositionView): Promise<void> {
+  await authFetch(`/games/${encodeURIComponent(gameID)}/stack-position`, {
+    method: "PUT",
+    body: JSON.stringify({ x: pos.x, y: pos.y }),
+  });
+}
+
+export async function clearStackPosition(gameID: string): Promise<void> {
+  await authFetch(`/games/${encodeURIComponent(gameID)}/stack-position`, { method: "DELETE" });
 }
 
 // fetchTablemates reads the people the signed-in caller has shared a

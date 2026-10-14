@@ -95,12 +95,12 @@ type execer interface {
 func insertGame(ctx context.Context, x execer, g GameRecord) error {
 	_, err := x.ExecContext(ctx,
 		`INSERT INTO games (id, name, created_by, state, created_at, started_at, ended_at, archived_at, winner_seat,
-		                    outcome, host_player_id, host_discord_id, voice_room, voice_channel_id, lfg, lfg_message_id)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		                    outcome, host_player_id, host_discord_id, voice_room, voice_channel_id, lfg, lfg_message_id, results)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		g.ID.String(), g.Name, nullString(g.CreatedBy), g.State, toMillis(g.CreatedAt),
 		nullMillis(g.StartedAt), nullMillis(g.EndedAt), nullMillis(g.ArchivedAt), nullInt(g.WinnerSeat),
 		nullString(g.Outcome), nullUUID(g.HostPlayerID), nullString(g.HostDiscordID),
-		boolInt(g.VoiceRoom), nullString(g.VoiceChannelID), boolInt(g.LFG), nullString(g.LFGMessageID))
+		boolInt(g.VoiceRoom), nullString(g.VoiceChannelID), boolInt(g.LFG), nullString(g.LFGMessageID), boolInt(g.Results))
 	return err
 }
 
@@ -161,11 +161,11 @@ func (s *SQLStore) UpdateGame(ctx context.Context, g GameRecord) error {
 	res, err := s.db.ExecContext(ctx,
 		`UPDATE games SET name = ?, state = ?, started_at = ?, ended_at = ?, archived_at = ?, winner_seat = ?,
 		                  outcome = ?, host_player_id = ?, host_discord_id = ?, voice_room = ?, voice_channel_id = ?,
-		                  lfg = ?, lfg_message_id = ?
+		                  lfg = ?, lfg_message_id = ?, results = ?
 		 WHERE id = ?`,
 		g.Name, g.State, nullMillis(g.StartedAt), nullMillis(g.EndedAt), nullMillis(g.ArchivedAt),
 		nullInt(g.WinnerSeat), nullString(g.Outcome), nullUUID(g.HostPlayerID), nullString(g.HostDiscordID),
-		boolInt(g.VoiceRoom), nullString(g.VoiceChannelID), boolInt(g.LFG), nullString(g.LFGMessageID), g.ID.String())
+		boolInt(g.VoiceRoom), nullString(g.VoiceChannelID), boolInt(g.LFG), nullString(g.LFGMessageID), boolInt(g.Results), g.ID.String())
 	if err != nil {
 		return err
 	}
@@ -215,13 +215,14 @@ func (s *SQLStore) LoadGame(ctx context.Context, id uuid.UUID) (GameRecord, []Se
 		voiceChannel                   sql.NullString
 		lfg                            int
 		lfgMessage                     sql.NullString
+		results                        int
 	)
 	err := s.db.QueryRowContext(ctx,
 		`SELECT name, created_by, state, created_at, started_at, ended_at, archived_at, winner_seat,
-		        outcome, host_player_id, host_discord_id, voice_room, voice_channel_id, lfg, lfg_message_id
+		        outcome, host_player_id, host_discord_id, voice_room, voice_channel_id, lfg, lfg_message_id, results
 		 FROM games WHERE id = ?`, id.String()).
 		Scan(&g.Name, &createdBy, &g.State, &createdAt, &startedAt, &endedAt, &archivedAt, &winner,
-			&outcome, &hostPlayer, &hostDiscord, &voiceRoom, &voiceChannel, &lfg, &lfgMessage)
+			&outcome, &hostPlayer, &hostDiscord, &voiceRoom, &voiceChannel, &lfg, &lfgMessage, &results)
 	if errors.Is(err, sql.ErrNoRows) {
 		return GameRecord{}, nil, ErrStoreNotFound
 	}
@@ -246,6 +247,7 @@ func (s *SQLStore) LoadGame(ctx context.Context, id uuid.UUID) (GameRecord, []Se
 	g.VoiceChannelID = voiceChannel.String
 	g.LFG = lfg == 1
 	g.LFGMessageID = lfgMessage.String
+	g.Results = results == 1
 
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT seat, player_id, user_id, guest_name, bot_tier, deck_id, deck_name, pending_discord_id, agent_client

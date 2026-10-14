@@ -26,7 +26,7 @@ func init() {
 		Name:         "Kurbis, Harvest Celebrant",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"When mana payment is skipped, the game doesn't track how much mana you spent, so Kurbis enters with no counters — turn strict mana on for it to count.",
+			"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track how much mana you spent, so Kurbis enters with no counters — turn on “Charge mana costs” for it to count.",
 		},
 		EntersWithCountersFromCast: []game.EntryCountersFromCast{{
 			Kind:  game.CounterPlusOne,
