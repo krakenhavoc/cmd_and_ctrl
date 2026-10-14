@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { GameMeta, SeatInfo } from "./api";
 import {
   canRemoveSeat,
+  leaveSeatConsequence,
   REMOVE_SEAT_CONSEQUENCE,
   removeSeatConsequence,
   removeSeatQuestion,
@@ -61,9 +62,30 @@ describe("canRemoveSeat", () => {
     expect(canRemoveSeat(game(), bot, { isAdmin: true, mySeat: host })).toBe(false);
   });
 
-  it("is never on your own seat", () => {
-    const g = game({ is_creator: true });
-    expect(canRemoveSeat(g, carol, { isAdmin: false, mySeat: carol })).toBe(false);
+  // #3494: leaving your own seat before the start, the host's included.
+  it("is on your own seat in the lobby for the host, the creator and an admin", () => {
+    expect(canRemoveSeat(game(), host, { isAdmin: false, mySeat: host })).toBe(true);
+    const mine = game({ is_creator: true });
+    expect(canRemoveSeat(mine, carol, { isAdmin: false, mySeat: carol })).toBe(true);
+    expect(canRemoveSeat(game(), carol, { isAdmin: true, mySeat: carol })).toBe(true);
+  });
+
+  it("is not on your own seat for a plain seat, or once the game starts", () => {
+    expect(canRemoveSeat(game(), carol, { isAdmin: false, mySeat: carol })).toBe(false);
+    const started = game({ state: "active", is_creator: true });
+    expect(canRemoveSeat(started, host, { isAdmin: true, mySeat: host })).toBe(false);
+  });
+
+  it("words leaving for the creator, another host and a plain seat", () => {
+    expect(leaveSeatConsequence(game({ is_creator: true }), true)).toMatch(/stays yours/);
+    expect(leaveSeatConsequence(game(), true)).toMatch(/hosting passes/);
+    expect(leaveSeatConsequence(game(), false)).not.toMatch(/hosting/);
+  });
+
+  it("never offers the host's seat to anyone else", () => {
+    const mine = game({ is_creator: true });
+    expect(canRemoveSeat(mine, host, { isAdmin: false, mySeat: bob })).toBe(false);
+    expect(canRemoveSeat(mine, host, { isAdmin: true, mySeat: null })).toBe(false);
   });
 
   it("is hidden once the game has ended", () => {

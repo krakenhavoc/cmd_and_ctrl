@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import Lobby from "../routes/Lobby.svelte";
 import { DEFAULT_TABLE_SETTINGS } from "./tableSettings";
-import { setSession, type Session } from "./session";
+import { currentSession, setSession, type Session } from "./session";
 import { cleanup, click, flushSync, render } from "./test/render.svelte";
 
 const USER = "6f9619ff-8b86-d011-b42d-00c04fc964ff";
@@ -372,5 +372,117 @@ describe("the card's right-click menu", () => {
     const e = rightClick(field);
     expect(e.defaultPrevented).toBe(false);
     expect(menu()).toBeNull();
+  });
+});
+
+// #3494: every seat's × asks first, a bot's and the host's own included.
+describe("removing a seat", () => {
+  const BOT = "c0c0c0c0-0000-4000-8000-000000000003";
+  const withBot = {
+    players: [
+      { player_id: HOST, name: "Alice", seat: 1, deck_uploaded: true, is_host: true },
+      { player_id: BOT, name: "Robo", seat: 2, deck_uploaded: true, is_bot: true },
+    ],
+  };
+
+  it("asks before removing a bot, then uses the bot route", async () => {
+    setSession(seated(HOST));
+    hostRoutes(withBot);
+    routes["GET /bot/options"] = () => ({
+      enabled: true,
+      tiers: [{ tier: "random", available: true }],
+      decks: [{ id: "raid", name: "Raid" }],
+    });
+    stubServer();
+    const { container } = render(Lobby as never, {} as never);
+    await settle();
+
+    click(button(card(container), /^remove Robo$/)!);
+    flushSync();
+    expect(posted).toEqual([]);
+    expect(card(container).textContent).toMatch(/Remove Robo from this table\?/);
+    // No "block" for a bot.
+    expect(card(container).querySelector(".block-opt")).toBeNull();
+    click(button(card(container), /remove from table/)!);
+    await settle();
+    expect(posted).toContainEqual({ url: `/games/${GAME}/seats/bot/${BOT}`, body: undefined });
+  });
+
+  it("lets the host leave their own seat, and keeps them signed in", async () => {
+    setSession(seated(HOST));
+    hostRoutes(withBot);
+    const exp = new Date(Date.now() + 86_400_000).toISOString();
+    routes[`DELETE /games/${GAME}/seats/${HOST}`] = () => ({
+      ...meta(),
+      players: [],
+      session: {
+        token: "identity-tok",
+        expires_at: exp,
+        principal: { role: "identified", user_id: USER, name: "Alice", expires_at: exp },
+      },
+    });
+    stubServer();
+    const { container } = render(Lobby as never, {} as never);
+    await settle();
+
+    click(button(card(container), /^leave your seat$/)!);
+    flushSync();
+    expect(card(container).textContent).toMatch(/Leave your seat at this table\?/);
+    expect(card(container).textContent).toMatch(/The table stays yours/);
+    click(button(card(container), /leave my seat/)!);
+    await settle();
+
+    expect(posted).toContainEqual({ url: `/games/${GAME}/seats/${HOST}`, body: undefined });
+    const now = currentSession();
+    expect(now?.token).toBe("identity-tok");
+    expect(now?.playerID).toBeUndefined();
+  });
+});
+
+describe("creating a table seats its creator", () => {
+  it("installs the seat session the create answers with", async () => {
+    const exp = new Date(Date.now() + 86_400_000).toISOString();
+    setSession({
+      token: "identity",
+      expiresAt: exp,
+      principal: { role: "identified", user_id: USER, name: "Alice", expires_at: exp },
+    } as Session);
+    const one = { players: [meta().players[0]] };
+    let created = false;
+    routes = {
+      "GET /games": () => ({ games: created ? [meta(one)] : [] }),
+      "GET /me": () => ({ admin: false }),
+      "GET /me/setup": () => ({ setup: null }),
+      "POST /games": () => {
+        created = true;
+        return {
+          ...meta(one),
+          invite_token: "inv-player",
+          spectator_invite: "inv-spec",
+          seat: {
+            token: "seat-tok",
+            expires_at: exp,
+            principal: { role: "player", user_id: USER, game_id: GAME, player_id: HOST },
+            game: { id: GAME },
+            player_id: HOST,
+          },
+        };
+      },
+    };
+    stubServer();
+    const { container } = render(Lobby as never, {} as never);
+    await settle();
+    click(container.querySelector<HTMLButtonElement>('button[aria-label="new table"]')!);
+    flushSync();
+    container
+      .querySelector<HTMLFormElement>('form[aria-label="create game"]')!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await settle();
+
+    expect(currentSession()?.token).toBe("seat-tok");
+    expect(currentSession()?.playerID).toBe(HOST);
+    // Seated already: no Take a seat, and no second call to join.
+    expect(card(container).textContent).not.toMatch(/Take a seat/);
+    expect(posted.some((p) => p.url.endsWith("/join"))).toBe(false);
   });
 });
