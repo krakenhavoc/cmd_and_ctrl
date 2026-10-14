@@ -8,7 +8,8 @@ S58 — Deck requests, October batch follow-up.
 ## Audit — 2026-10-13
 
 Measured with `deck.ParseArchidekt` and `deckcoverage.Build` using the fresh
-deck export, local Scryfall index, and this branch's live catalog. Sideboard
+deck export, local Scryfall index, and the implementation catalog before the
+latest develop integration (`2b11bb1f`). Sideboard
 and maybeboard cards are excluded. The report has no unresolved names.
 
 | Coverage bucket | Distinct cards | Copies in the 100-card deck |
@@ -19,7 +20,8 @@ and maybeboard cards are excluded. The report has no unresolved names.
 | Manual only | 4 | 4 |
 | Unreviewed | 0 | 0 |
 
-**94 of 100 copies are complete on this branch.** The previously merged
+**The implementation audit reported 94 of 100 copies complete before the
+latest develop integration.** The previously merged
 19-card batches, review stamps, and Forsaken Miner crime fix are present.
 This change adds Gisa, the Hellraiser with one payment for both ward costs,
 her once-per-turn crime trigger, two tapped blue and black Zombie Rogue
@@ -39,3 +41,12 @@ The shared ward also removes Captain Howler's last caveat outside this deck.
 
 The deck request remains open. No remaining caveat or manual card has been
 relabeled complete to increase the reported percentage.
+
+## Later integration
+
+Newer merged deck batches register Liliana, Dreadhorde General and The
+Darkness Crystal as Full. Their tracked simultaneous-sacrifice and paused
+life-replacement cases (#2948 and #2950) remain open for regression
+verification. Nether Traitor's separate fix is tracked by #3417. Refresh the
+live report after these branches merge; this audit does not count an
+unmerged fix or close a behavior gap based only on its catalog declaration.
