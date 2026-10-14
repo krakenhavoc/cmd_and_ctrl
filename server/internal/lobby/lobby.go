@@ -1480,6 +1480,9 @@ func (l *Lobby) addBot(id uuid.UUID, name, tier, deckID, deckName string, cards 
 	})
 	l.persistSeatsLocked(entry)
 	l.noteFilledLocked(entry, uuid.Nil)
+	if keyOwner != uuid.Nil {
+		metrics.OwnKeySeatAdded()
+	}
 	return copyMeta(entry.meta), p.ID, nil
 }
 

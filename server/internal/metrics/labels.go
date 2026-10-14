@@ -50,6 +50,8 @@ var labelSets = map[string]labelSet{
 	"account":  oneOf(accountLabels...),
 	"seats":    oneOf(seatsLabels...),
 	"window":   oneOf(windowLabels...),
+	// Growth (growth.go): whole weeks since signup.
+	"age": oneOf(ageLabels...),
 	// WebSocket (ws.go, tables.go).
 	"role":   oneOf(roleLabels...),
 	"reason": oneOf(rejectLabels...),
@@ -100,6 +102,12 @@ var familyLabelSets = map[string]map[string]labelSet{
 	},
 	"cmdctrl_bot_model_tokens_total": {
 		"direction": oneOf(directionLabels...),
+	},
+	"cmdctrl_tables_started_total": {
+		"kind": oneOf(tableKindLabels...),
+	},
+	"cmdctrl_own_key_fallbacks_total": {
+		"reason": oneOf(ownKeyReasonLabels...),
 	},
 	"cmdctrl_auth_failures_total": {
 		"reason": oneOf(authFailureReasons...),
