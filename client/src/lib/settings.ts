@@ -169,6 +169,11 @@ export interface Settings {
     // about the person. Having a playmat of your own is an account
     // matter and lives on the server (PUT /me/playmat), not here.
     playmats: PlaymatsMode;
+    // ADR 0179: show the links to buy the real cards (Decks, Catalog),
+    // when the operator has configured a shop. Default on; off hides
+    // every one. Per person: a signed-in account's choice follows it,
+    // a guest's stays in this browser.
+    shopLinks: boolean;
   };
 
   gameplay: {
@@ -501,6 +506,8 @@ export function defaultSettings(): Settings {
       // ADR 0128: every player's playmat is drawn, until the player
       // turns them down.
       playmats: DEFAULT_PLAYMATS_MODE,
+      // ADR 0179 default: shown (owner rule, #3444).
+      shopLinks: true,
     },
     gameplay: {
       confirmExit: true,
@@ -647,6 +654,8 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     handArt: "synced",
     // ADR 0128: about this screen, not the person.
     playmats: "device",
+    // ADR 0179: the person's choice, on every device.
+    shopLinks: "synced",
   },
   gameplay: {
     confirmExit: "synced",
@@ -1203,6 +1212,12 @@ function migrate(raw: unknown): Settings {
   if (typeof merged.gameplay.autoAssignCombatDamage !== "boolean") {
     merged.gameplay.autoAssignCombatDamage = true;
   }
+  // ADR 0179: display.shopLinks fills from the default (shown) through
+  // the shallow merge, so SETTINGS_VERSION stands. Anything but a
+  // boolean is the default.
+  if (typeof merged.display.shopLinks !== "boolean") {
+    merged.display.shopLinks = true;
+  }
   return absorbLegacy(merged);
 }
 
@@ -1325,7 +1340,13 @@ function absorbLegacy(s: Settings): Settings {
 
 function loadSettings(): Settings {
   if (typeof localStorage === "undefined") return defaultSettings();
-  const raw = localStorage.getItem(STORAGE_KEY);
+  let raw: string | null;
+  try {
+    // Reading can throw too (blocked site data, some private modes).
+    raw = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return defaultSettings();
+  }
   if (!raw) return absorbLegacy(defaultSettings());
   try {
     return migrate(JSON.parse(raw));

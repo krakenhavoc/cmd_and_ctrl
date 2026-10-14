@@ -1,8 +1,8 @@
 <script lang="ts">
   // Terms — the terms of service (#3358): who runs the site, who may use
   // it, how to behave at a table, what happens to what you put on it,
-  // copyright notices, the fan-content position, the source offer, and
-  // the usual limits.
+  // copyright notices, the fan-content position, the shop links (ADR
+  // 0179), the source offer, and the usual limits.
   //
   // Public on purpose (lib/signedInHome.ts), like the privacy notice: a
   // stranger has to be able to read it before signing in. The operator
@@ -27,6 +27,7 @@
   } from "../lib/terms";
   import { PRIVACY_HASH } from "../lib/privacy";
   import { REPO_URL } from "../lib/about";
+  import { SHOP_DISCLOSURE } from "../lib/shopLinks";
 
   const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
 </script>
@@ -179,6 +180,19 @@
         These terms give you no rights in Wizards of the Coast’s material or Scryfall’s data. They
         belong to their owners. The rules engine is unofficial and can be wrong, and the site is not
         for sanctioned or prize play.
+      </p>
+    </section>
+
+    <!-- ADR 0179: the shop links, and the same disclosure the links carry
+         (lib/shopLinks.ts SHOP_DISCLOSURE). -->
+    <section aria-labelledby="shops-title">
+      <h2 id="shops-title">Shop links</h2>
+      <p>
+        Where the site is set up for it, the Decks and Catalog pages show optional links to buy the
+        real cards at a card shop, such as TCGplayer or Card Kingdom. {SHOP_DISCLOSURE} A link opens the
+        shop’s own site: anything you buy there is between you and the shop, under its own terms and privacy
+        policy. We don’t sell cards, set or show prices, or choose what a shop has in stock. The links
+        never appear on the game table during a game, and you can hide them in Settings.
       </p>
     </section>
 

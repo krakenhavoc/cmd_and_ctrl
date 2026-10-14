@@ -16,6 +16,7 @@
 import { type Readable } from "svelte/store";
 
 import { guardedDerived, guardedWritable } from "./guardedStore";
+import { parseShops, type Shop } from "./shopLinks";
 
 export type EnvName = "prod" | "dev";
 
@@ -31,6 +32,9 @@ export interface DevFeatures {
 export interface AppConfig {
   env: EnvName;
   features: DevFeatures;
+  // ADR 0179: the operator's shop link templates, on any deployment.
+  // Empty (the default, and every failure path) renders no shop link.
+  shops: Shop[];
 }
 
 export const NO_FEATURES: DevFeatures = {
@@ -42,7 +46,7 @@ export const NO_FEATURES: DevFeatures = {
 
 // PROD_CONFIG is both the initial value and the value every failure
 // path resolves to.
-export const PROD_CONFIG: AppConfig = { env: "prod", features: NO_FEATURES };
+export const PROD_CONFIG: AppConfig = { env: "prod", features: NO_FEATURES, shops: [] };
 
 const store = guardedWritable<AppConfig>(PROD_CONFIG, "appConfig");
 
@@ -77,9 +81,11 @@ export function devFeature(name: keyof DevFeatures): Readable<boolean> {
 // feature this client knows about) never breaks the boot path.
 export function parseConfig(body: unknown): AppConfig {
   if (typeof body !== "object" || body === null) return PROD_CONFIG;
-  const b = body as { env?: unknown; features?: unknown };
+  const b = body as { env?: unknown; features?: unknown; shops?: unknown };
+  // Shop links are not a dev surface: production serves them too.
+  const shops = parseShops(b.shops);
   // Only the exact string "dev" opts in. Unknown env names are prod.
-  if (b.env !== "dev") return PROD_CONFIG;
+  if (b.env !== "dev") return shops.length > 0 ? { ...PROD_CONFIG, shops } : PROD_CONFIG;
   const raw = (typeof b.features === "object" && b.features !== null ? b.features : {}) as Record<
     string,
     unknown
@@ -92,6 +98,7 @@ export function parseConfig(body: unknown): AppConfig {
       frame_inspector: raw.frame_inspector === true,
       replay_scrubber: raw.replay_scrubber === true,
     },
+    shops,
   };
 }
 

@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/appenv"
 )
 
@@ -24,6 +26,32 @@ func TestClientConfigProdReportsNoFeatures(t *testing.T) {
 	}
 	if body.Features != (appenv.Features{}) {
 		t.Errorf("features = %+v, want all false", body.Features)
+	}
+}
+
+// ADR 0179: no shop configured serves an empty list, never null, and a
+// configured one is served on any deployment, production included.
+func TestClientConfigServesShops(t *testing.T) {
+	c := Config{Env: appenv.EnvProd, Features: appenv.LoadFeatures(appenv.EnvProd)}
+	rec := httptest.NewRecorder()
+	if err := clientConfig(c, rec, httptest.NewRequest(http.MethodGet, "/config", nil)); err != nil {
+		t.Fatalf("clientConfig: %v", err)
+	}
+	if !strings.Contains(rec.Body.String(), `"shops":[]`) {
+		t.Errorf("body = %s, want \"shops\":[]", rec.Body.String())
+	}
+
+	c.Shops = []shoplinks.Shop{{ID: "tcgplayer", Name: "TCGplayer", Template: "{url}&partner=c2"}}
+	rec = httptest.NewRecorder()
+	if err := clientConfig(c, rec, httptest.NewRequest(http.MethodGet, "/config", nil)); err != nil {
+		t.Fatalf("clientConfig: %v", err)
+	}
+	var body clientConfigResponse
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(body.Shops) != 1 || body.Shops[0] != c.Shops[0] {
+		t.Errorf("shops = %+v, want %+v", body.Shops, c.Shops)
 	}
 }
 

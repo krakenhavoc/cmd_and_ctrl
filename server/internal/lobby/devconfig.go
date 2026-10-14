@@ -3,6 +3,7 @@ package lobby
 import (
 	"net/http"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/appenv"
 )
 
@@ -15,9 +16,14 @@ import (
 // every dev route and dev action when Env is not dev (requireDev,
 // and the action registry's own gate). A client that lies to itself
 // about the flags gets a 404, not a cheat.
+//
+// Shops is the operator's shop link templates (ADR 0179), on every
+// deployment: [] when none is configured, and then the client renders
+// no shop link anywhere.
 type clientConfigResponse struct {
-	Env      string          `json:"env"`
-	Features appenv.Features `json:"features"`
+	Env      string           `json:"env"`
+	Features appenv.Features  `json:"features"`
+	Shops    []shoplinks.Shop `json:"shops"`
 }
 
 // clientConfig serves GET /config. Unauthenticated, mirroring
@@ -29,7 +35,17 @@ func clientConfig(c Config, w http.ResponseWriter, _ *http.Request) error {
 	return writeJSON(w, http.StatusOK, clientConfigResponse{
 		Env:      c.Env.String(),
 		Features: c.Features,
+		Shops:    shopsOrEmpty(c.Shops),
 	})
+}
+
+// shopsOrEmpty keeps the wire shape a list: a Config built without
+// shops (every test, and a server with none configured) serves [].
+func shopsOrEmpty(s []shoplinks.Shop) []shoplinks.Shop {
+	if s == nil {
+		return []shoplinks.Shop{}
+	}
+	return s
 }
 
 // requireDev wraps a handler so it exists only in a dev deployment.

@@ -6,7 +6,7 @@
 export const TERMS_HASH = "#/terms";
 
 /** When the terms last changed. Bump it with any change to what they say. */
-export const TERMS_UPDATED = "2026-10-13";
+export const TERMS_UPDATED = "2026-10-14";
 
 /** The youngest a person may be to use the site: Discord's own floor. */
 export const MIN_AGE = 13;

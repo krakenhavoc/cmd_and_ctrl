@@ -19,6 +19,8 @@
   import { onMount, tick } from "svelte";
   import Icon from "../lib/components/Icon.svelte";
   import Page from "../lib/components/Page.svelte";
+  import ShopLinks from "../lib/components/ShopLinks.svelte";
+  import ShopNote from "../lib/components/ShopNote.svelte";
   import { cardArt } from "../lib/cardArt";
   import { route } from "../lib/router";
   import { L } from "../lib/labels";
@@ -309,6 +311,9 @@
         {#if shown.length === 0}
           <p class="help">No card matches those filters.</p>
         {:else}
+          <!-- ADR 0179: one disclosure for the Buy links on every tile.
+               Renders nothing with no shop configured or links hidden. -->
+          <ShopNote />
           <ul class="grid">
             {#each shown as c (c.oracle_id)}
               {@const img = catalogImageURL(c, "normal")}
@@ -347,6 +352,7 @@
                   <span class="cchip k-{c.completeness}">{COMPLETENESS_LABELS[c.completeness]}</span
                   >
                 </div>
+                <ShopLinks card={c.name} compact note={false} />
               </li>
             {/each}
           </ul>
