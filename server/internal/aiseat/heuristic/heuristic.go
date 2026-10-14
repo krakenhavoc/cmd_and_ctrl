@@ -1333,11 +1333,14 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 // KeepNeedsCast, a hand at the floor must also hold a spell it can cast
 // soon, or it takes the free mulligan (#2693, mulligan.go).
 //
-// The engine's mulligan (the multiplayer free first mulligan, as
-// legal.mulliganMoves offers it) redraws a full seven the first time
-// and one card fewer each time after; nothing goes to the bottom
-// (game.Mulligan). So `next` below is the size of the hand a mulligan
-// would draw, and a mulligan is free while next is the hand's size.
+// The engine's mulligan is the London mulligan (ADR 0166): it always
+// draws seven, and a keep puts MulliganBottom cards on the bottom (the
+// bot picks them through its choose_cards scoring, which keeps the most
+// valuable). So the hand the bot would play is `eff`, seven less what a
+// keep bottoms, and it can bottom surplus lands: a hand is keepable when
+// some way of bottoming leaves a land count in range. `next` below is
+// the hand a mulligan leads to (legal.mulliganMoves' hand_size), and a
+// mulligan is free while next is eff.
 func (p *Policy) decideMulligan(st *state, moves []legal.Move) aiseat.Decision {
 	keep := indexOfType(moves, legal.TypeKeepHand)
 	mull := indexOfType(moves, legal.TypeMulligan)
@@ -1361,18 +1364,22 @@ func (p *Policy) decideMulligan(st *state, moves []legal.Move) aiseat.Decision {
 		// Digging below six costs more than a bad hand does.
 		return aiseat.Decision{Index: keep, Reason: "keep (not digging past six)"}
 	}
+	bottom := min(st.seat.MulliganBottom, size)
+	eff := size - bottom
 	lo, hi := p.cfg.KeepMinLands, p.cfg.KeepMaxLands
-	if size > 0 && size < 7 {
+	if eff > 0 && eff < 7 {
 		// A smaller hand needs proportionally fewer lands.
-		hi = size - 1
+		hi = eff - 1
 	}
-	if lands < lo || lands > hi {
+	// Bottoming can shed up to `bottom` lands but never adds one, so
+	// the kept hand's lands run from lands-bottom to lands.
+	if lands < lo || lands-bottom > hi {
 		return aiseat.Decision{
 			Index:  mull,
-			Reason: fmt.Sprintf("mulligan: %d lands in %d", lands, size),
+			Reason: fmt.Sprintf("mulligan: %d lands in %d, keeping %d", lands, size, eff),
 		}
 	}
-	if p.cfg.KeepNeedsCast && lands == lo && next >= size && !p.castableSoon(st.seat.Hand.Cards, lands) {
+	if p.cfg.KeepNeedsCast && lands == lo && next >= eff && !p.castableSoon(st.seat.Hand.Cards, lands) {
 		return aiseat.Decision{
 			Index:  mull,
 			Reason: fmt.Sprintf("mulligan: %d lands in %d and nothing castable by %d mana", lands, size, lands+p.cfg.KeepCastReach),

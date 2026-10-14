@@ -9951,9 +9951,15 @@ func (g *Game) PassTurn() error {
 }
 
 // Mulligan shuffles the player's entire hand back into their library
-// and draws newHandSize cards. This is the simplified "London
-// mulligan" shape without the card-to-bottom penalty — S08 keeps the
-// penalty out of scope; rules enforcement arrives in S13+.
+// and draws a new hand.
+//
+// Inside the opening-hand window it is the London mulligan (CR 103.5,
+// ADR 0166): the new hand is always OpeningHandSize, newHandSize is
+// ignored, and the cost is paid at KeepHand, which puts the counted
+// mulligans' worth of cards on the bottom. Once the counted mulligans
+// reach the starting hand size it is refused with ErrNoMoreMulligans.
+// Outside the window it is the ⋯ menu's sandbox "Mulligan to N" and
+// draws newHandSize, as it always did.
 //
 // Mulligan increments MulligansTaken and resets HandKept to false:
 // taking a mulligan is a fresh decision, so the player must commit
@@ -9978,6 +9984,14 @@ func (g *Game) Mulligan(playerID uuid.UUID, newHandSize int) error {
 	if g.MulligansOpen && g.MulliganDeciderLocked() != p.Seat {
 		// CR 103.5: decisions go in turn order.
 		return ErrNotYourMulligan
+	}
+	if g.MulligansOpen {
+		// ADR 0166 decision 1: the window's mulligan draws seven, and
+		// stops where the opening hand would be zero cards.
+		if !g.MulliganAllowedLocked(p) {
+			return ErrNoMoreMulligans
+		}
+		newHandSize = OpeningHandSize
 	}
 	for _, c := range p.Hand.Cards {
 		p.Library.PushTop(c)
@@ -10045,8 +10059,13 @@ func (g *Game) KeepHand(playerID uuid.UUID) error {
 	}
 	p.HandKept = true
 	p.MulliganDecided = true
-	// Close the window once every live seat has kept; otherwise move
-	// the turn to the next decider. Eliminated seats don't gate it.
+	if g.MulligansOpen {
+		// ADR 0166 decision 2: the London mulligan's cost, paid now.
+		g.queueMulliganBottomLocked(p, g.MulliganBottomCountLocked(p))
+	}
+	// Close the window once every live seat has kept (and bottomed);
+	// otherwise move the turn to the next decider. Eliminated seats
+	// don't gate it.
 	g.settleMulliganLocked()
 	return nil
 }

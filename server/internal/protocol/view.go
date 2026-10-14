@@ -1977,6 +1977,11 @@ type PlayerView struct {
 	// mulligan (CR 103.5, #2237). At most one seat has it; none does
 	// outside the mulligan window or while the opening roll is open.
 	MulliganTurn bool `json:"mulligan_turn,omitempty"`
+	// MulliganBottom is how many cards this seat puts on the bottom of
+	// its library if it keeps now: the London mulligan's cost (CR 103.5,
+	// ADR 0166). Zero, and omitted, outside the window and once the
+	// seat has kept. Public, like MulligansTaken, which it follows from.
+	MulliganBottom int `json:"mulligan_bottom,omitempty"`
 	// TriggerOrder reflects Player.TriggerOrder (#1968): "always" or
 	// "never", omitted for the default, "when_it_matters". Private to
 	// its seat: FilterViewFor clears it for every other viewer. The
@@ -8790,6 +8795,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		Eliminated:            p.Eliminated,
 		HandKept:              p.HandKept,
 		MulliganTurn:          g.MulliganDeciderLocked() == p.Seat,
+		MulliganBottom:        viewOfMulliganBottom(g, p),
 		TriggerOrder:          viewOfTriggerOrder(p.TriggerOrder),
 		TriggerOrderAlwaysAsk: p.TriggerOrder == game.TriggerOrderAlways,
 		AutoAnswers:           viewOfAutoAnswers(p.AutoAnswers),
@@ -11707,6 +11713,16 @@ func emergePricesView(g *game.Game, caster uuid.UUID, card game.Card, zone game.
 		return nil
 	}
 	return out
+}
+
+// viewOfMulliganBottom is SeatView.MulliganBottom: the London
+// mulligan's cost if the seat keeps now, and zero once it has kept or
+// outside the window (ADR 0166). The caller holds g's lock.
+func viewOfMulliganBottom(g *game.Game, p *game.Player) int {
+	if !g.MulligansOpen || p.HandKept || p.Eliminated {
+		return 0
+	}
+	return g.MulliganBottomCountLocked(p)
 }
 
 // viewOfTriggerOrder is a seat's trigger-order mode as PlayerView
