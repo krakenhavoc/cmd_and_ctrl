@@ -55,6 +55,28 @@ func TestClientConfigServesShops(t *testing.T) {
 	}
 }
 
+// #3558: supporter links ride on GET /config as "support": {} when none
+// is set, and only the configured ones when some are.
+func TestClientConfigServesSupportLinks(t *testing.T) {
+	c := Config{Env: appenv.EnvProd, Features: appenv.LoadFeatures(appenv.EnvProd)}
+	rec := httptest.NewRecorder()
+	if err := clientConfig(c, rec, httptest.NewRequest(http.MethodGet, "/config", nil)); err != nil {
+		t.Fatalf("clientConfig: %v", err)
+	}
+	if !strings.Contains(rec.Body.String(), `"support":{}`) {
+		t.Errorf("body = %s, want \"support\":{}", rec.Body.String())
+	}
+
+	c.Support.Kofi = "https://ko-fi.com/cmdctrl"
+	rec = httptest.NewRecorder()
+	if err := clientConfig(c, rec, httptest.NewRequest(http.MethodGet, "/config", nil)); err != nil {
+		t.Fatalf("clientConfig: %v", err)
+	}
+	if !strings.Contains(rec.Body.String(), `"support":{"kofi":"https://ko-fi.com/cmdctrl"}`) {
+		t.Errorf("body = %s, want the ko-fi link and no patreon key", rec.Body.String())
+	}
+}
+
 func TestClientConfigDevReportsFeatures(t *testing.T) {
 	c := Config{Env: appenv.EnvDev, Features: appenv.LoadFeatures(appenv.EnvDev)}
 	rec := httptest.NewRecorder()
