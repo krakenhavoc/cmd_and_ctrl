@@ -67,9 +67,8 @@
 		# shell would read it; script-src 'self' is what stops an injected
 		# inline or remote script from running. Keep the policy in step with
 		# what the shell loads:
-		#   - fonts: index.html links the Google Fonts stylesheet and files.
-		#     Drop the fonts.googleapis/gstatic entries if the fonts are
-		#     self-hosted (#3345).
+		#   - fonts: self-hosted under /fonts/ (#3345), so font-src is 'self'
+		#     and style-src names no font origin.
 		#   - style-src 'unsafe-inline': Svelte renders static style="" and
 		#     style bindings as attributes, which a strict style-src blocks.
 		#     Inline styles cannot run script, so this is the accepted trade.
@@ -83,7 +82,7 @@
 		# HSTS is one year without includeSubDomains or preload, since this
 		# shares a parent domain with other hosts.
 		header {
-			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 			X-Frame-Options "DENY"
 			X-Content-Type-Options "nosniff"
 			Strict-Transport-Security "max-age=31536000"
