@@ -1545,9 +1545,13 @@ type pendingChoiceSnapshot struct {
 	PickFromGraveyard bool            `json:"pickFromGraveyard,omitempty"`
 	PickThen          string          `json:"pickThen,omitempty"`
 	PickMeasures      []int           `json:"pickMeasures,omitempty"`
-	CopyOptions       []uuid.UUID     `json:"copyOptions,omitempty"`
-	ExchangesText     bool            `json:"exchangesText,omitempty"`
-	ScryCards         []uuid.UUID     `json:"scryCards,omitempty"`
+	// #3516: the source object a PickExile pick links its exiled card to
+	// (CR 607.2a). A pointer so a prompt that links nothing writes
+	// nothing; additive within the version.
+	PickExiledWith *PermissionCardRef `json:"pickExiledWith,omitempty"`
+	CopyOptions    []uuid.UUID        `json:"copyOptions,omitempty"`
+	ExchangesText  bool               `json:"exchangesText,omitempty"`
+	ScryCards      []uuid.UUID        `json:"scryCards,omitempty"`
 	// ADR 0088: which lanes a put_in_library answer may use.
 	LibraryPlacement LibraryPlacement `json:"libraryPlacement,omitempty"`
 	// #1298: the put_in_library top lane's exact count and depth.
@@ -2608,6 +2612,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PickFromGraveyard:    c.PickFromGraveyard,
 		PickThen:             c.PickThen,
 		PickMeasures:         copyInts(c.PickMeasures),
+		PickExiledWith:       pickExiledWithSnapshot(c.PickExiledWith),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ExchangesText:        c.ExchangesText,
 		ScryCards:            copyUUIDs(c.ScryCards),
@@ -3487,6 +3492,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickFromGraveyard:    c.PickFromGraveyard,
 		PickThen:             c.PickThen,
 		PickMeasures:         copyInts(c.PickMeasures),
+		PickExiledWith:       pickExiledWithRestored(c.PickExiledWith),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ExchangesText:        c.ExchangesText,
 		ScryCards:            copyUUIDs(c.ScryCards),
