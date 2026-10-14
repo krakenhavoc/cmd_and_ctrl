@@ -652,4 +652,9 @@ const (
 	// the moment the pick is submitted, and the bot prices the pick
 	// as the cast it is rather than as a discard.
 	ChooseCastFree ChooseDestination = "cast_free"
+	// ChooseLibraryBottom: the named cards go on the bottom of their
+	// owner's library, in an order asked for next when there is more
+	// than one — the London mulligan's cost (ADR 0168). The client says
+	// so; the bot prices the pick as the hand it keeps.
+	ChooseLibraryBottom ChooseDestination = "library_bottom"
 )

@@ -2558,6 +2558,11 @@
             The card you pick is cast right now without paying its mana cost, whatever its timing,
             and you choose its targets next. If you don't cast it now you can't later. Pick none to
             cast nothing.
+          {:else if active.choose_destination === "library_bottom"}
+            <!-- ADR 0168: the London mulligan's cost. -->
+            The cards you pick go on the bottom of your library{pickMax > 1
+              ? ", and you choose their order next"
+              : ""}. The rest are your opening hand.
           {:else}
             What happens to them is the card's business, and it will tell you next — choosing them
             costs nothing on its own.

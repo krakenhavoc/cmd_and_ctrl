@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 type mulliganParams struct {
@@ -11,10 +13,13 @@ type mulliganParams struct {
 }
 
 // mulliganMoves enumerates the opening-hand window: keep, or
-// mulligan. The engine's mulligan is sandbox-shaped (the player
-// names the new hand size); we offer the multiplayer London rule
-// (CR 103.5b): the first mulligan is free (seven again), each
-// further one is a card fewer.
+// mulligan. The London mulligan (CR 103.5, ADR 0168): a mulligan
+// draws seven, and a keep puts the counted mulligans' worth of cards
+// on the bottom, the first mulligan of a multiplayer game free
+// (CR 103.5c). The labels say what each costs. The mulligan's
+// hand_size is the opening hand it leads to (seven less what it would
+// bottom), which is what the bot's keep rules reason about; the engine
+// ignores it inside the window.
 func (e *enumerator) mulliganMoves() {
 	p := e.p
 	if p.HandKept {
@@ -27,25 +32,31 @@ func (e *enumerator) mulliganMoves() {
 	if e.g.MulliganDeciderLocked() != p.Seat {
 		return
 	}
+	keep := "Keep hand"
+	if n := e.g.MulliganBottomCountLocked(p); n > 0 {
+		keep = fmt.Sprintf("Keep hand (put %d on the bottom)", n)
+	}
 	e.add(Move{
 		Type:   TypeKeepHand,
 		Player: e.seat,
 		Kind:   KindMulligan,
-		Label:  "Keep hand",
+		Label:  keep,
 	})
-	next := 7 - p.MulligansTaken
-	if next < 0 {
-		next = 0
+	if !e.g.MulliganAllowedLocked(p) {
+		return
 	}
-	if next > 0 {
-		e.add(Move{
-			Type:   TypeMulligan,
-			Player: e.seat,
-			Kind:   KindMulligan,
-			Label:  fmt.Sprintf("Mulligan to %d", next),
-			Params: mustJSON(mulliganParams{HandSize: next}),
-		})
+	bottom := e.g.MulliganNextBottomLocked(p)
+	label := "Mulligan (draw 7, free)"
+	if bottom > 0 {
+		label = fmt.Sprintf("Mulligan (draw 7, then put %d on the bottom)", bottom)
 	}
+	e.add(Move{
+		Type:   TypeMulligan,
+		Player: e.seat,
+		Kind:   KindMulligan,
+		Label:  label,
+		Params: mustJSON(mulliganParams{HandSize: game.OpeningHandSize - bottom}),
+	})
 }
 
 type discardSelectionParams struct {

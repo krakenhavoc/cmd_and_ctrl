@@ -209,7 +209,7 @@
   import { devFeature } from "../lib/env";
   import { gameWSURL } from "../lib/gameURL";
   import { firstTurnHeadline, openingRollText, openingRollWinner } from "../lib/startingPlayer";
-  import { mulliganWaitingText } from "../lib/mulliganTurn";
+  import { keepCostText, mulliganCostText, mulliganWaitingText } from "../lib/mulliganTurn";
   import DevDock from "../lib/components/dev/DevDock.svelte";
   import type { ReplayFrame } from "../lib/replay";
   import { L } from "../lib/labels";
@@ -1811,8 +1811,9 @@
 
   function mulliganDecide(): void {
     if (!viewerID) return;
-    // Simplified London — redraw to OpeningHandSize (7) every time.
-    // No card-to-bottom penalty; that lands with rules enforcement.
+    // The London mulligan (ADR 0168): the server draws seven inside the
+    // window whatever hand_size says, and asks for the cards to bottom
+    // when this seat keeps.
     client.sendAction("mulligan", viewerID, { hand_size: 7 });
     play("shuffle");
   }
@@ -2811,17 +2812,19 @@
           <!-- What each button does, under the fan, as Arena writes the
                mulligan's cost under its button. -->
           <div class="mulligan-copy mulligan-cost">
-            {#if (viewerSeat?.mulligans_taken ?? 0) > 0}
-              <p class="muted">
-                Mulligans taken: {viewerSeat?.mulligans_taken}. You'll redraw 7 cards (simplified
-                London — no bottom-N penalty yet).
-              </p>
-            {:else}
-              <p class="muted">
-                Hand size: {viewerSeat?.hand.count ?? 0}. A mulligan shuffles this hand away and
-                deals you a new 7.
-              </p>
+            <!-- ADR 0168: the London mulligan. A keep bottoms
+                 mulligan_bottom cards; the dock asks which, and in what
+                 order, once the seat has kept. -->
+            {#if keepCostText(viewerSeat?.mulligan_bottom ?? 0)}
+              <p class="muted">{keepCostText(viewerSeat?.mulligan_bottom ?? 0)}</p>
             {/if}
+            <p class="muted">
+              {mulliganCostText(
+                viewerSeat?.mulligans_taken ?? 0,
+                viewerSeat?.mulligan_bottom ?? 0,
+                seats.length,
+              )}
+            </p>
           </div>
         </DockSheet>
       {/if}

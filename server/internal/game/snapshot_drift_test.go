@@ -643,6 +643,7 @@ var playerFields = plan(
 	"TriggerOrder", carried, "",
 	"AutoAnswers", carried, "",
 	"MulligansTaken", carried, "",
+	"mulliganBottoming", dropped, "ADR 0168: set only from a keep until the London mulligan's bottom cards are down, while the choose_cards and put_in_library prompts that clear it are open; their continuations are counted in ContinuationCensus.ChoiceResumeFrames, so no restore point is taken with it set",
 	"DeckImported", carried, "",
 	"UndosRemaining", carried, "",
 	"DiscordID", carried, "",
