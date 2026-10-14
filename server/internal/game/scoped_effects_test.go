@@ -306,6 +306,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0108 §1 and §2: a replacement and a rules gate. Their
 		// cases are in exile_if_dies_test.go.
 		ModExileIfWouldDie: true, ModCantBeRegenerated: true,
+		// ADR 0187 §4: a rules gate read in the combat damage pass. Its
+		// cases are in assigns_no_combat_damage_test.go.
+		ModAssignsNoCombatDamage: true,
 		// ADR 0108 §4: Yawgmoth's Will's replacement. Its cases are in
 		// scoped_exile_your_graveyard_test.go.
 		ModExileInsteadOfYourGraveyard: true,

@@ -356,6 +356,16 @@ const (
 	// PinnedTo the duration (CR 400.7, 514.2). Read at one gate,
 	// permanentCantBeRegeneratedLocked (regeneration.go). Reads nothing.
 	ModCantBeRegenerated ModKind = "cantBeRegenerated"
+	// ModAssignsNoCombatDamage is "<that creature> assigns no combat
+	// damage this turn" (ADR 0187 §4, #3569; CR 510.1a): Carrion Rats,
+	// Carrion Wurm. It is a rule about how damage is ASSIGNED, not a
+	// prevention (CR 615), so "damage can't be prevented" does not undo
+	// it and nothing that watches for prevented damage sees it. Pinned to
+	// the creature, with PinnedTo the duration (CR 400.7, 514.2). Read at
+	// one gate, permanentAssignsNoCombatDamageLocked
+	// (assigns_no_combat_damage.go), where the combat damage pass builds
+	// its per-combatant amount. Reads nothing.
+	ModAssignsNoCombatDamage ModKind = "assignsNoCombatDamage"
 )
 
 // The block-rule kinds (ADR 0041 P8, tier 3b, #1497). These are not
@@ -943,6 +953,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModVoteChooser: {reader: readerRule},
 	// ADR 0108 §2 (#1887): the regeneration gate.
 	ModCantBeRegenerated: {reader: readerRule},
+	// ADR 0187 §4 (#3569): the combat-damage assignment gate.
+	ModAssignsNoCombatDamage: {reader: readerRule},
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
 	ModCantBeBlockedExceptBy:    {reader: readerBlockRule},
 	ModLimitBlockersPerDefender: {reader: readerBlockRule},

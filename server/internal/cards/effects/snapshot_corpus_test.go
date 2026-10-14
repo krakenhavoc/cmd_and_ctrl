@@ -347,6 +347,12 @@ func corpusBoards() []corpusBoard {
 		// puts to its caster (a voteChooser record, and a prompt owed by
 		// the chooser for another voter).
 		{"vote_zone_chooser", corpusVoteZoneChooser},
+		// v8, added by #3569 (ADR 0187 §4) as a new file: a creature
+		// marked "assigns no combat damage this turn" — the
+		// assignsNoCombatDamage rule kind, pinned to the creature (a
+		// new vocabulary value an older binary must refuse rather than
+		// read as nothing).
+		{"assigns_no_combat_damage", corpusAssignsNoCombatDamage},
 		// v7, added by #2559 (ADR 0066 amendment 2026-10-10) as a new
 		// file: a resolved Memory Vessel — the cantPlayFromHand record
 		// (a game-scope rule kind naming every player) and each player's
@@ -1538,6 +1544,20 @@ func corpusLegendRuleDoesntApply(t *testing.T) *game.Game {
 		t.Fatal(err)
 	}
 	passPriorityAroundTable(t, g)
+	return g
+}
+
+// corpusAssignsNoCombatDamage is #3569's one stored shape: a pinned
+// assignsNoCombatDamage record on a creature (Carrion Rats' mark).
+func corpusAssignsNoCombatDamage(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	rats := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Carrion Rats", 2, 1))
+	g.WithWriteLock(func() {
+		if !g.AssignsNoCombatDamageThisTurnForEffect(uuid.Nil, rats, "Carrion Rats — assigns no combat damage this turn") {
+			t.Fatal("setup: no record written")
+		}
+	})
 	return g
 }
 

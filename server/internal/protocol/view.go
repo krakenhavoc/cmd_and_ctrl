@@ -2577,6 +2577,10 @@ type CardView struct {
 	// regenerated this turn (ADR 0108 §2 decision 5, CR 701.19c):
 	// Incinerate's or Whippoorwill's mark. Public; battlefield only.
 	CantBeRegenerated bool `json:"cant_be_regenerated,omitempty"`
+	// AssignsNoCombatDamage is true for a creature that assigns no combat
+	// damage this turn (ADR 0187 §4, CR 510.1a): Carrion Rats' or Carrion
+	// Wurm's mark. Public; battlefield only.
+	AssignsNoCombatDamage bool `json:"assigns_no_combat_damage,omitempty"`
 	// RiotHaste is true for a permanent whose haste came from its own
 	// riot (CR 702.136a, ADR 0109 §10 decision 7): the client labels
 	// its haste chip "Riot". Public; battlefield only.
@@ -8110,6 +8114,7 @@ func stampDeathMarks(g *game.Game, view *ZoneView) {
 		id := g.Battlefield.Cards[i].InstanceID
 		view.Cards[i].ExiledIfItDies = g.ExileIfItWouldDieLabels(id)
 		view.Cards[i].CantBeRegenerated = g.PermanentCantBeRegeneratedForEffect(id)
+		view.Cards[i].AssignsNoCombatDamage = g.PermanentAssignsNoCombatDamageForEffect(id)
 		view.Cards[i].RiotHaste = g.RiotHasteForEffect(id)
 	}
 }

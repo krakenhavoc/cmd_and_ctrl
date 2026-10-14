@@ -45,6 +45,7 @@
   import { autoTapHighlight } from "../../dragCast";
   import { noUntapAppliesToController } from "../../noUntap";
   import { deathMarkBadge } from "../../deathMarks";
+  import { noCombatDamageBadge } from "../../combatMarks";
   import { landTypeBadge } from "../../landTypes";
   import { damageBadge } from "../../damageBadge";
   import { KEYWORD_ICONS } from "../../keywordIcons";
@@ -540,6 +541,8 @@
   // ADR 0108: "exiled if it dies this turn" / "can't be regenerated
   // this turn" — what killing this permanent does is already decided.
   const deathMark = $derived(deathMarkBadge(card));
+  // ADR 0187 §4: "assigns no combat damage this turn" (Carrion Rats).
+  const noCombatDamage = $derived(noCombatDamageBadge(card));
   // ADR 0109 §1: a resolved effect changed this land's land types
   // ("Island until end of turn — Tidal Warrior").
   const landTypeMark = $derived(landTypeBadge(card));
@@ -1124,6 +1127,13 @@
         >{deathMark.text}</span
       >
     {/if}
+    {#if noCombatDamage}
+      <span
+        class="badge no-combat-damage"
+        title={noCombatDamage.title}
+        aria-label="no combat damage">{noCombatDamage.text}</span
+      >
+    {/if}
     {#if landTypeMark}
       <span class="badge land-type" title={landTypeMark.title} aria-label="land type"
         >{landTypeMark.text}</span
@@ -1286,6 +1296,13 @@
     {#if deathMark}
       <span class="badge death-mark" title={deathMark.title} aria-label="death mark"
         >{deathMark.text}</span
+      >
+    {/if}
+    {#if noCombatDamage}
+      <span
+        class="badge no-combat-damage"
+        title={noCombatDamage.title}
+        aria-label="no combat damage">{noCombatDamage.text}</span
       >
     {/if}
     {#if landTypeMark}
@@ -1982,6 +1999,25 @@
     color: #e6dfd3;
     background: rgba(40, 34, 30, 0.9);
     border-color: rgba(210, 196, 176, 0.55);
+    letter-spacing: 0.01em;
+    font-size: 7px;
+  }
+  .badge.no-combat-damage {
+    /* ADR 0187 §4. Top-centre, on the land-type row (a creature that
+       is also a land under a type-changing effect is the one overlap,
+       and rare): a fact about what this creature deals in combat this
+       turn, in a muted red. */
+    top: calc(52px + var(--face-top, 0px));
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    max-width: calc(100% - 6px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #ffd9d4;
+    background: rgba(70, 18, 14, 0.9);
+    border-color: rgba(230, 130, 120, 0.55);
     letter-spacing: 0.01em;
     font-size: 7px;
   }

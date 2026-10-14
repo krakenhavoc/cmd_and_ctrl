@@ -125,7 +125,7 @@ func effectiveToughness(c *protocol.CardView) int {
 // kills reports whether attacker-or-blocker `a` destroys `b` in one
 // combat exchange.
 func kills(a, b *protocol.CardView) bool {
-	return damageKills(a, b, a.Power)
+	return damageKills(a, b, combatPower(a))
 }
 
 // damageKills reports whether `dmg` damage from `source` destroys
@@ -423,12 +423,12 @@ func (p *Policy) opposingCreatures(st *state) int {
 func declaredAgainst(st *state, defender string, powered bool) (count, power int) {
 	for i := range st.view.Battlefield.Cards {
 		c := &st.view.Battlefield.Cards[i]
-		if powered && c.Power <= 0 {
+		if powered && combatPower(c) <= 0 {
 			continue
 		}
 		if c.Controller == st.me && c.AttackingTarget == defender {
 			count++
-			power += c.Power
+			power += combatPower(c)
 		}
 	}
 	return count, power
@@ -525,7 +525,7 @@ func unblockedPower(st *state, defender string, attackers, blockers []*protocol.
 		return couldBlock(st, defender, a, b)
 	})
 	for _, a := range attackers {
-		if hasKeyword(a, "trample") && a.Power > 0 {
+		if hasKeyword(a, "trample") && combatPower(a) > 0 {
 			return max(through, trampleBound(st, defender, attackers, blockers))
 		}
 	}
@@ -568,7 +568,7 @@ func matchBlocks(attackers, blockers []*protocol.CardView, can func(a, b *protoc
 	through := 0
 	for _, ai := range byPower(attackers) {
 		if !augment(ai, make([]bool, len(blockers))) {
-			through += attackers[ai].Power
+			through += combatPower(attackers[ai])
 		}
 	}
 	stoppedBy := make([]int, len(attackers))
@@ -591,7 +591,7 @@ func byPower(attackers []*protocol.CardView) []int {
 		order[i] = i
 	}
 	sort.SliceStable(order, func(i, j int) bool {
-		return attackers[order[i]].Power > attackers[order[j]].Power
+		return combatPower(attackers[order[i]]) > combatPower(attackers[order[j]])
 	})
 	return order
 }
@@ -607,9 +607,9 @@ func byPower(attackers []*protocol.CardView) []int {
 // commander kill it and lose the Soldier, and neither kills it alone.
 // A commander attacker that dies also costs its next cast's tax.
 func (p *Policy) attackValue(st *state, atk *protocol.CardView, def *SeatEval, declared, declaredPower int) (float64, string) {
-	damage := float64(atk.Power) * p.cfg.DamageToOpponent
+	damage := float64(combatPower(atk)) * p.cfg.DamageToOpponent
 	if hasKeyword(atk, "lifelink") && st.myEval != nil {
-		damage += float64(atk.Power) * st.w.MarginalLife(st.myEval.Life)
+		damage += float64(combatPower(atk)) * st.w.MarginalLife(st.myEval.Life)
 	}
 
 	// The defender's untapped creatures that could legally block THIS
@@ -625,7 +625,7 @@ func (p *Policy) attackValue(st *state, atk *protocol.CardView, def *SeatEval, d
 	// to spend; what is left over is what can answer THIS attacker.
 	free := len(blockers) - declared
 	if free <= 0 {
-		if declaredPower+atk.Power >= def.Life {
+		if declaredPower+combatPower(atk) >= def.Life {
 			return damage + p.cfg.LethalBonus, "lethal, unblockable"
 		}
 		if len(blockers) == 0 {
@@ -648,7 +648,7 @@ func (p *Policy) attackValue(st *state, atk *protocol.CardView, def *SeatEval, d
 			gain -= st.w.CombatValue(b)
 		}
 		// …and the damage the block saves them.
-		gain += float64(atk.Power) * st.w.MarginalLife(def.Life)
+		gain += float64(combatPower(atk)) * st.w.MarginalLife(def.Life)
 		if gain > worst {
 			worst = gain
 		}
@@ -662,7 +662,7 @@ func (p *Policy) attackValue(st *state, atk *protocol.CardView, def *SeatEval, d
 			for _, i := range join {
 				gang = append(gang, blockers[i])
 			}
-			gain := killed - st.lossValue(atk, gang) + float64(atk.Power)*st.w.MarginalLife(def.Life)
+			gain := killed - st.lossValue(atk, gang) + float64(combatPower(atk))*st.w.MarginalLife(def.Life)
 			if gain > worst {
 				worst, reason = gain, "gang-blocked at a loss"
 			}
@@ -935,4 +935,18 @@ func (p *Policy) decideBlock(st *state, moves []legal.Move) (aiseat.Decision, bo
 		}, true
 	}
 	return aiseat.Decision{}, false
+}
+
+// combatPower is the combat damage a creature assigns (CR 510.1a): its
+// power, or 0 for a creature that assigns no combat damage this turn
+// (ADR 0187 §4, Carrion Rats). The attack and block scorers read this
+// wherever Power means "damage it deals", so a creature with the mark is
+// priced as the 0-power attacker it is, and a blocker is not asked to
+// stop damage that will never be assigned. Power read as a size
+// (skulk's comparison, the cheaper-body tie-break) stays Power.
+func combatPower(c *protocol.CardView) int {
+	if c == nil || c.AssignsNoCombatDamage {
+		return 0
+	}
+	return c.Power
 }

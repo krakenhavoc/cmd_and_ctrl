@@ -3897,6 +3897,9 @@ export interface CardView extends CastSurfaceView {
   // ADR 0108 §2 (CR 701.19c): this permanent can't be regenerated this
   // turn (Incinerate, Whippoorwill). Public; battlefield only.
   cant_be_regenerated?: boolean;
+  // ADR 0187 §4 (CR 510.1a): this creature assigns no combat damage this
+  // turn (Carrion Rats, Carrion Wurm). Public; battlefield only.
+  assigns_no_combat_damage?: boolean;
   // ADR 0109 §10 (CR 702.136a): this permanent's haste came from its
   // own riot, so its haste chip is labelled "Riot". Public;
   // battlefield only.
