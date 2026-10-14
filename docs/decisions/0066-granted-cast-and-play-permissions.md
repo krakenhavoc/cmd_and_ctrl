@@ -3678,3 +3678,70 @@ borrow reads its lenders on every layer pass, where the event-log walk (`b27Exil
   or the stack (a move from the battlefield or a graveyard already bumped).
 
 No snapshot change: `Card.ExiledWith` is already carried.
+
+## Amendment — 2026-10-14 (#2947, #2910): an optional copy cast during resolution
+
+The 2026-10-13 card-copy amendment deliberately used a permission until the
+holder's next priority pass as a stand-in for CR 608.2g. Kaervek, the Punisher
+was subsequently declared Full under that composition (#3478), but resolving
+a real crime trigger leaves no pending cast decision: the trigger finishes
+and the copy is cast later. `TestKaervekResolutionQueuesOptionalCastDecision`
+reproduces the missing boundary. CR 707.12 requires casting the copy while the
+other spell or ability resolves; CR 608.2g grants no intervening priority.
+
+### Decision
+
+1. Add an explicit `CopyCardsAndOfferResolutionCastsForEffect` door. Reuse
+   `CopyCardsAndOfferCastsForEffect` for the copy objects and exact per-object
+   permissions, then queue a blocking `resolution_cast` choice over those
+   copies. The existing pass-window door retains its declared sandbox
+   semantics for callers not migrated by this change. Kaervek uses the new
+   door with its printed mana cost and existing successful-cast follow-up.
+2. A resolution choice uses existing persisted PendingChoice data: chooser,
+   source, FromPlayer and the candidate card-ID list. It owns only the exact
+   copy permissions created for its candidates. A chosen card still has to
+   match its permission's object epoch. No Go continuation field is added;
+   answering the last resolution choice lets the existing resolution
+   bookend continue. ResolutionOpen and midResolution already persist.
+3. The cast answer names the choice through a `resolution_cast` parameter
+   on `cast_spell`. A locking engine entry point validates the chooser,
+   choice kind and candidate before calling the existing `castSpellLocked`.
+   It uses strict payment and normal targets, modes, X and additional costs;
+   force-cast is refused. It does not call the public lock-taking CastSpell
+   from a locked callback and does not note a priority action.
+4. The chosen candidate receives the existing during-resolution timing
+   override, shared with Word of Command's cast path. No player-control
+   record is invented: the casting player retains their own choices and
+   all ordinary legal mana abilities, rather than Word's land-only rule.
+   Cast prohibitions and cost/path validation still apply.
+5. Declining is always legal. For a set of copies, each successful cast
+   consumes only its own offer and leaves the remaining choices open; an
+   empty resolve_choice declines every remainder. Revoke the choice's
+   leftover permissions on decline, withdrawal or departure and run the
+   existing card-copy cleanup. Originals stay where the prior instruction
+   put them. A failed cast leaves its choice open for retry or decline.
+6. A successful cast uses the existing permission follow-up once. Kaervek's
+   loss of 2 life occurs after the actual cast, during the same open crime
+   resolution; a life replacement choice must hold that boundary too.
+   Spell-cast triggers and state-based actions wait for the original
+   resolution bookend, and the copy becomes the next stack object.
+7. Legal moves reuse the normal cast enumerator over each scoped candidate
+   and carry the resolution choice ID. Human and bot/MCP clients receive
+   those normal, fully formed casts plus an explicit decline. Reuse the
+   existing dock and cast-move presentation without exposing engine details.
+8. Add departure, choice-gate, protocol and snapshot handling for the new
+   data-only kind. No new persisted field or schema bump is required. Keep
+   the frozen corpus untouched, preserve Word of Command's mandatory cast
+   and mana restriction tests, and verify clone/undo of the open choice.
+
+### Validation
+
+Keep the failing crime-trigger reproduction, then prove that the cast or
+explicit decline happens before priority resumes. Test printed cost,
+unpayable cost, illegal target and retry, normal nonland mana sources,
+additional costs, a copied permanent becoming a token, declined copy
+cleanup, successful-only life loss, a life replacement pause, multiple
+copies, departed players, stale object epochs, snapshot/restore and undo.
+Client and legal-move tests must cover casting and declining the actual
+resolution choice. This amendment is the design record before implementation;
+a catalog Full declaration alone does not close #2947.
