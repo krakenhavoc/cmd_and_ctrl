@@ -2962,6 +2962,19 @@ the battlefield statics, so the declaration, the enumerator and the bot
 all see it, and it is plain data, so a table holding one is a restore
 point. It defends the player only, not their planeswalkers.
 
+**A tax on EVERY attack** ("This turn, creatures can't attack unless
+their controller pays {X} for each attacking creature they control", War
+Tax, #3456) is the same record with a zero `Player`:
+
+```go
+g.AnyAttackTaxForEffect(item.SourceCardID, fmt.Sprintf("{%d}", item.XValue),
+    g.UntilEndOfTurnDuration(), label)
+```
+
+It taxes an attack on any player or planeswalker. Pass the mana already
+resolved from X: each activation writes its own record, so they stack,
+and `{0}` writes nothing.
+
 **A PLAYER who can't attack you** (every creature they control, including
 ones that arrive later) is a grant on that player, not a bit on their
 creatures ([ADR 0063](decisions/0063-durations-and-control.md)'s

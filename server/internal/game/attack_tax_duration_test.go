@@ -65,11 +65,10 @@ func TestATimedAttackTaxEndsWithItsDuration(t *testing.T) {
 	}
 }
 
-func TestAnAttackTaxModWithoutAPlayerOrCostPanics(t *testing.T) {
+func TestAnAttackTaxModWithoutACostPanics(t *testing.T) {
 	for name, m := range map[string]Mod{
-		"no player": {Kind: ModAttackTax, Text: "{2}"},
-		"no cost":   {Kind: ModAttackTax, Player: uuid.New()},
-		"bad cost":  {Kind: ModAttackTax, Player: uuid.New(), Text: "{zz}"},
+		"no cost":  {Kind: ModAttackTax, Player: uuid.New()},
+		"bad cost": {Kind: ModAttackTax, Player: uuid.New(), Text: "{zz}"},
 	} {
 		if attackTaxModProblem(m) == "" {
 			t.Errorf("%s: accepted", name)

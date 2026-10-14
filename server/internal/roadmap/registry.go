@@ -2156,7 +2156,7 @@ var items = []Item{
 		Rules:    []string{"508.1h", "611.2"},
 		Issue:    3398,
 		ADR:      "0080-attack-taxes.md",
-		Examples: []string{"Summon: Yojimbo"},
+		Examples: []string{"Summon: Yojimbo", "War Tax"},
 	},
 	{
 		Slug: "random-modes", Name: "Modes chosen at random", Kind: KindSeam, Status: StatusImplemented,
