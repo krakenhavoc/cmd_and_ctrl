@@ -9529,6 +9529,15 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.AttackingTarget != uuid.Nil || c.BlockingTarget != uuid.Nil {
+			// ADR 0187 §4, CR 510.1a: a combatant told it assigns no
+			// combat damage this turn assigns 0, whatever its power or
+			// DamageByToughness say. Everything below reads this map, so
+			// trample, lifelink, deathtouch, commander damage and the
+			// assignment prompt all see a combatant with nothing to assign.
+			if g.permanentAssignsNoCombatDamageLocked(c) {
+				power[c.InstanceID] = 0
+				continue
+			}
 			power[c.InstanceID] = c.combatDamagePower()
 		}
 	}
@@ -9611,7 +9620,9 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 						g.dealCombatDamageToAttackTargetLocked(atk.AttackingTarget, atkID, toPlayer, step)
 					}
 				}
-			} else {
+			} else if atkPower > 0 {
+				// A multi-blocked attacker that assigns 0 has nothing to
+				// divide (CR 510.1a), so it queues no prompt.
 				// Multi-blocker → queue damage-assignment prompt.
 				// Server pauses here; the resume path fires the actual
 				// marks. The prompt blocks the table

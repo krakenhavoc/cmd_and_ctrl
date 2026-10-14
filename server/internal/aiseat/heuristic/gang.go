@@ -65,7 +65,7 @@ func gangKills(atk *protocol.CardView, blockers []*protocol.CardView) bool {
 	first, dealt := 0, false
 	var second []hit
 	for _, b := range blockers {
-		if b.Power <= 0 || protectedFrom(atk, b) {
+		if combatPower(b) <= 0 || protectedFrom(atk, b) {
 			continue
 		}
 		dealt = true
@@ -74,12 +74,12 @@ func gangKills(atk *protocol.CardView, blockers []*protocol.CardView) bool {
 			if dt {
 				return true // dies in the first step, whatever it does
 			}
-			first += b.Power
+			first += combatPower(b)
 			if !hasKeyword(b, "double strike") {
 				continue
 			}
 		}
-		h := hit{damage: b.Power, deathtouch: dt, cost: -1}
+		h := hit{damage: combatPower(b), deathtouch: dt, cost: -1}
 		if firstStrikes(atk) {
 			h.cost = lethalFrom(atk, b)
 		}
@@ -94,7 +94,7 @@ func gangKills(atk *protocol.CardView, blockers []*protocol.CardView) bool {
 	// Kill every deathtoucher first — any one left alive is lethal —
 	// and spend what is left of the power on the most regular damage
 	// it can remove (0/1 knapsack over cost).
-	budget := atk.Power
+	budget := combatPower(atk)
 	total := first
 	var items []hit
 	for _, h := range second {
@@ -133,7 +133,7 @@ func gangKills(atk *protocol.CardView, blockers []*protocol.CardView) bool {
 // destroy it at all — no power, an indestructible blocker, or one
 // protected from atk.
 func lethalFrom(atk, b *protocol.CardView) int {
-	if atk.Power <= 0 || hasKeyword(b, "indestructible") || protectedFrom(b, atk) {
+	if combatPower(atk) <= 0 || hasKeyword(b, "indestructible") || protectedFrom(b, atk) {
 		return -1
 	}
 	if hasKeyword(atk, "deathtouch") {
@@ -150,13 +150,13 @@ func diesFirst(atk *protocol.CardView, blockers []*protocol.CardView) bool {
 	}
 	first := 0
 	for _, b := range blockers {
-		if b.Power <= 0 || !firstStrikes(b) || protectedFrom(atk, b) {
+		if combatPower(b) <= 0 || !firstStrikes(b) || protectedFrom(atk, b) {
 			continue
 		}
 		if hasKeyword(b, "deathtouch") {
 			return true
 		}
-		first += b.Power
+		first += combatPower(b)
 	}
 	return first > 0 && first >= effectiveToughness(atk)
 }
@@ -168,12 +168,12 @@ func diesFirst(atk *protocol.CardView, blockers []*protocol.CardView) bool {
 // strike destroyed then deals nothing (CR 510.4, #1549); one with it
 // deals its first-strike damage at the same time, and no more.
 func assignable(atk *protocol.CardView, blockers []*protocol.CardView) int {
-	if atk.Power <= 0 {
+	if combatPower(atk) <= 0 {
 		return 0
 	}
 	if diesFirst(atk, blockers) {
 		if firstStrikes(atk) {
-			return atk.Power
+			return combatPower(atk)
 		}
 		return 0
 	}
@@ -223,7 +223,7 @@ func orderedKills(atk *protocol.CardView, blockers []*protocol.CardView) []*prot
 // blocker on a chumped Wurm saves damage too: a Bear in front of a 7/7
 // lets 5 through, a Bear and an Ogre let 1.
 func connects(atk *protocol.CardView, blockers []*protocol.CardView) int {
-	left := max(atk.Power, 0)
+	left := max(combatPower(atk), 0)
 	if len(blockers) == 0 {
 		return left
 	}
@@ -353,7 +353,7 @@ func (st *state) gangJoin(a *protocol.CardView, have, cands []*protocol.CardView
 // sameBlocker reports whether two creatures are the same choice to
 // gangJoin: equal in everything gangKills, losses and CombatValue read.
 func sameBlocker(a, b *protocol.CardView) bool {
-	return a.Power == b.Power && a.Toughness == b.Toughness && a.DamageMarked == b.DamageMarked &&
+	return a.Power == b.Power && a.AssignsNoCombatDamage == b.AssignsNoCombatDamage && a.Toughness == b.Toughness && a.DamageMarked == b.DamageMarked &&
 		a.TypeLine == b.TypeLine && slices.Equal(a.Abilities, b.Abilities) &&
 		slices.Equal(a.Colors, b.Colors) && slices.Equal(a.Protection, b.Protection)
 }
@@ -367,7 +367,7 @@ func mightKill(atk *protocol.CardView, have, cands []*protocol.CardView) bool {
 	total := 0
 	for _, group := range [][]*protocol.CardView{have, cands} {
 		for _, b := range group {
-			if b.Power <= 0 || protectedFrom(atk, b) {
+			if combatPower(b) <= 0 || protectedFrom(atk, b) {
 				continue
 			}
 			if hasKeyword(b, "deathtouch") {
