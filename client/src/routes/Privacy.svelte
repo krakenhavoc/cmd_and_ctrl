@@ -88,6 +88,16 @@
         "migrations 0002, 0004, 0007, 0010; ws/persist.go EndedTableRetention; ws/room.go snapshotPath, replayPath",
     },
     {
+      what: "Game statistics",
+      details:
+        "When a table ends, the server works out numbers about the game from its record: how many turns it took, and for each seat its result and place, when it was knocked out, its life gained and lost, the damage it dealt, the spells it cast and which cards by name, the cards it drew, its attacks, tokens and mulligans, and its commanders. They are stored by game and seat, with no names, and point at your seat through the game record above.",
+      why: "So you can see how your decks and games go.",
+      howLong:
+        "As long as the game’s record is kept. Deleting the table deletes them. Deleting your account turns your seat into “Deleted player”, and these numbers then belong to that seat, as the rest of the game does.",
+      source:
+        "migration 0023 game_stats, seat_stats, seat_card_stats; gamestats/gamestats.go Compute",
+    },
+    {
       what: "Chat",
       details: `Table chat is not stored. The server holds the last ${F.chatRecentLines} lines of each table in memory, with the seat names they were written under, and only so that a player report can attach them. They are gone when the server restarts. A listed slur is replaced with asterisks before anyone sees the line.`,
       why: "So a report about what someone said has the words in it, and so slurs do not reach the table.",

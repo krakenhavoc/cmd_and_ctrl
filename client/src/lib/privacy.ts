@@ -57,8 +57,13 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * Discord DM notification switches and when Discord last refused one.
  * The notice's "Your Discord notifications" row names it, and the
  * Discord paragraph says what the messages carry (§6).
+ *
+ * 23 (#3364, ADR 0165) adds game_stats, seat_stats and seat_card_stats:
+ * numbers and card names derived from a finished game, keyed by game
+ * and seat, with no names or user ids. The notice's "Game statistics"
+ * row covers them.
  */
-export const PRIVACY_SCHEMA_VERSION = 22;
+export const PRIVACY_SCHEMA_VERSION = 23;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

@@ -884,6 +884,24 @@ the table and backfills the active mat into slot 1, so a person who had
 three is back to one. `TestMigration0013RollbackByHand` runs exactly
 this sequence and then rolls forward.
 
+Migration 0023 (ADR 0165, game statistics) adds three tables,
+`game_stats`, `seat_stats` and `seat_card_stats`, derived from finished
+games. An older binary refuses the v23 schema. Drop them by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE seat_card_stats; DROP TABLE seat_stats; DROP TABLE game_stats; DELETE FROM schema_migrations WHERE version = 23;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+Nothing is lost that cannot be computed again: every row is derived from
+a game's record and replay. Rolling forward recreates the tables empty,
+and games that end afterwards get a record. Older games need the
+backfill (#3365). `TestMigration0023RollbackByHand` runs exactly this
+sequence and then rolls forward.
+
 Migration 0022 (ADR 0162, Discord DM notifications) adds the
 `notification_prefs` table: each person's three notification switches
 and when Discord last refused a DM to them. An older binary refuses the

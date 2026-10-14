@@ -122,6 +122,15 @@ var Inventory = join(
 	cols("player_reports", NotPersonal, "when and where; the table's name is already part of the game record",
 		"created_at", "game_id", "game_name"),
 
+	cols("game_stats", Kept, "a finished game's statistics (ADR 0165) are part of the record the other players keep; they hold no name or user id",
+		"game_id", "stats_version", "source", "log_complete", "turns", "rounds", "starting_seat", "computed_at"),
+	cols("seat_stats", Kept, "a seat's statistics are part of the game record; they name no one, and the seat's person is seats.user_id, which already points at the tombstone",
+		"game_id", "seat", "result", "place", "eliminated_turn", "conceded", "final_life", "life_gained", "life_lost",
+		"damage_to_players", "combat_damage_to_players", "commander_damage_dealt", "commander_damage_taken",
+		"spells_cast", "cards_drawn", "attacks", "tokens_created", "mulligans", "commanders"),
+	cols("seat_card_stats", Kept, "which cards a seat cast, by card name; part of the game record and names no one",
+		"game_id", "seat", "name", "scryfall_id", "casts", "first_cast_turn"),
+
 	cols("bot_model_budget", NotPersonal, "server-wide token counters",
 		"key", "value", "updated_at"),
 )

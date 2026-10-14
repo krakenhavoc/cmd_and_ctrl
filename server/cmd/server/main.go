@@ -192,6 +192,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
@@ -399,6 +400,9 @@ func main() {
 	// table's seats get their owners' mats back.
 	playmats := newPlaymatService(log, cfg.DataDir, database)
 	l.SetPlaymats(playmats)
+	// Game statistics (ADR 0165): a record for every stored game that
+	// ends. No database, no records.
+	l.SetGameStats(newGameStatsStore(database))
 	// Table voice rooms (ADR 0159): the manager is attached before
 	// RestoreFromDisk, so a resumed table's game view carries its voice
 	// state again, and started after it, so its boot reconcile sees
@@ -1357,6 +1361,15 @@ func newPlaymatService(log *slog.Logger, dataDir string, database *db.DB) *playm
 // migration 0008's table_setups). No database: tablesetups.NoStore,
 // which remembers nothing; with no database no session has a user, so
 // nothing would ask it anyway.
+// newGameStatsStore is the game statistics store (ADR 0165, migration
+// 0023), or nil with no database, which leaves recording off.
+func newGameStatsStore(database *db.DB) gamestats.Store {
+	if database == nil {
+		return nil
+	}
+	return gamestats.NewSQLStore(database)
+}
+
 func newTableSetupStore(database *db.DB) tablesetups.Store {
 	if database == nil {
 		return tablesetups.NoStore{}
