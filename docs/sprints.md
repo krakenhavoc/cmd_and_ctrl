@@ -3830,7 +3830,7 @@ Opened at the 2026-10-14 triage, from four-agent MCP-seat games on cmd-dev and a
 - [ ] [#3608](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3608): warn on join when the seat binary is older than the server expects
 - [ ] [#3606](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3606): wait_for_decision serves a window that act can't answer while reconnecting
 - [ ] [#3607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3607): full state's log heading, and a log on game_over
-- [ ] [#3603](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3603): a pass_until that also skips idle steps of the seat's own turn
+- [x] [#3603](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3603): a pass_until that also skips idle steps of the seat's own turn
 - [ ] [#3612](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3612): board text names what an aura, equipment or O-Ring is on
 - [x] [#3489](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3489): send max_completion_tokens to models that refuse max_tokens (PR #3507)
 - [ ] [#3521](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3521): the heuristic takes a pass-closed cast before spending the mana elsewhere
