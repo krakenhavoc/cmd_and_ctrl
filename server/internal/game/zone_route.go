@@ -654,7 +654,13 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 	if out == nil || out.Canceled {
 		// CR 614.10 with a null replacement: the move simply does not
 		// happen. The caller's continuation still runs — see
-		// runRouteTailLocked.
+		// runRouteTailLocked — from the deferred call above, unless a
+		// replacement declared a life change before the cancel: that
+		// still happens (ADR 0178, CR 614.6), and the continuation
+		// waits for it.
+		if out != nil && len(out.lifeAfterMove) > 0 {
+			return false, g.runMoveTailLocked(out)
+		}
 		return false, nil
 	}
 	return false, g.executeZoneRouteLocked(out)
@@ -703,7 +709,9 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	// unbatched move, where publishing is a no-op.
 	defer g.publishSimultaneousExitLocked(ev.zoneRoute.simultaneousExit)()
 	defer func() {
-		if tailErr := g.runRouteTailLocked(ev.zoneRoute); tailErr != nil && err == nil {
+		// ADR 0178: a replacement's declared life change runs first, and
+		// the route's continuation waits for it (runMoveTailLocked).
+		if tailErr := g.runMoveTailLocked(ev); tailErr != nil && err == nil {
 			err = tailErr
 		}
 	}()

@@ -234,12 +234,15 @@ type lifeTail struct {
 //
 // Caller must hold g.mu.
 func (g *Game) runLifeTailLocked(ev *ReplacementEvent, applied int) error {
-	if ev == nil || ev.lifeTail == nil || ev.lifeTail.then == nil {
+	if ev == nil || ev.lifeTail == nil {
 		return nil
 	}
-	then := ev.lifeTail.then
+	tail := ev.lifeTail
 	ev.lifeTail = nil
-	return then(g, applied)
+	if tail.then == nil {
+		return nil
+	}
+	return tail.then(g, applied)
 }
 
 // payLifeAsCostLocked pays `amount` life as a COST (CR 118.3) rather

@@ -2288,6 +2288,29 @@ object whose static it is, CR 400.7); "that creature" (the recipient) is
 `Then` without `ThenPer`, and `TestPreventionStaticsOnlyPrevent` fails a
 prevention static whose `Replace` does anything but change the event.
 
+#### "Instead exile it and you gain 2 life" (ADR 0178, #2950)
+
+A zone-change replacement whose modified event also changes a player's
+life (The Darkness Crystal) must not change the life inside `Replace`.
+The gain is a life event of its own: it can pause on a CR 616 question,
+and it has to land after the card moves (CR 608.2c). Declare it on the
+event instead:
+
+```go
+Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
+    ev.NewZone = game.ZoneExile
+    ev.NewZoneOwner = uuid.Nil
+    return g.ChangeLifeAfterReplacedMoveForEffect(ev, src.InstanceID, src.Controller, 2)
+},
+```
+
+The move's finisher lands the card, then runs each declared change
+through the life pipeline, then the move's own continuation (the
+destroying spell's "then draw a card"), which waits if a change asks a
+question. Player and source are fixed when the replacement applies. The
+change still happens if a later replacement redirects or cancels the
+move (CR 614.6). A move paid as a cost settles it without asking.
+
 ### "Enters under the control of an opponent of your choice" (ADR 0102, #1759)
 
 Captive Audience, Pendant of Prosperity, Abby, Merciless Soldier and
@@ -8252,6 +8275,23 @@ Three things to know:
   every seat's emblems after the battlefield, with the emblem as the
   source, so a scope's "your" is the emblem's owner, and a refusal names
   the emblem by its label.
+
+### Compleated (CR 702.150a, ADR 0183, #2946)
+
+A compleated planeswalker declares the keyword and its replacement, and
+nothing else:
+
+```go
+PrintedKeywords: []string{"compleated"},
+Replacements:    []game.ReplacementEffect{Compleated()},
+```
+
+`Compleated()` lowers the starting-loyalty placement
+(`ReplacementEvent.StartingLoyalty`) by two for each printed Phyrexian
+symbol the cast paid with life (`Card.PhyrexianLifePaid`). It cancels
+the placement at zero. A planeswalker that was not cast enters with its
+printed loyalty. Doubling Season and other loyalty replacements are
+ordered against it by the controller (CR 616).
 
 ### A loyalty cost of −X (ADR 0032 amendment 2026-10-10, #1944)
 

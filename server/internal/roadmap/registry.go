@@ -330,6 +330,16 @@ var items = []Item{
 		Examples: []string{"Karumonix, the Rat King"},
 	},
 	{
+		Slug: "compleated", Name: "Compleated", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "A planeswalker with compleated enters with two fewer loyalty counters for each Phyrexian mana symbol its caster paid with life. Life paid for anything else doesn't count, and other effects on its starting loyalty, such as Doubling Season, apply in the order its controller chooses.",
+		Rules:    []string{"702.150a", "306.5b"},
+		Issue:    2946,
+		ADR:      "0183-compleated-entry-loyalty.md",
+		Probe:    hasKeyword("compleated"),
+		Printed:  printedLine("Compleated"),
+		Examples: []string{"Vraska, Betrayal's Sting"},
+	},
+	{
 		Slug: "annihilator", Name: "Annihilator", Kind: KindKeyword, Status: StatusImplemented,
 		Summary:  "Whenever a creature with annihilator attacks, the defending player sacrifices that many permanents of their choice, once for each instance of annihilator it has.",
 		Rules:    []string{"702.86", "508.3a", "508.5"},
