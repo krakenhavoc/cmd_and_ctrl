@@ -146,6 +146,36 @@ describe("settings", () => {
     expect(SYNCED_FIELDS.animations.combat).toBe("synced");
   });
 
+  // #3586: v27 → v28 adds gameplay.attackDefault. Existing players stay
+  // on today's behaviour ("ask"); a chosen mode survives; junk is "ask".
+  it("migrates v27 to v28 with attackDefault on Choose each time", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 27, gameplay: { strictMana: false } }),
+    );
+    const { settings, defaultSettings, SYNCED_FIELDS, SETTINGS_VERSION } = await freshModule();
+    expect(SETTINGS_VERSION).toBe(28);
+    expect(defaultSettings().gameplay.attackDefault).toBe("ask");
+    const s = get(settings);
+    expect(s.__version).toBe(28);
+    expect(s.gameplay.attackDefault).toBe("ask");
+    expect(s.gameplay.strictMana).toBe(false);
+    expect(SYNCED_FIELDS.gameplay.attackDefault).toBe("synced");
+  });
+
+  it("keeps a chosen attackDefault and resets an unknown one", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 28, gameplay: { attackDefault: "all" } }),
+    );
+    expect(get((await freshModule()).settings).gameplay.attackDefault).toBe("all");
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 28, gameplay: { attackDefault: "everyone" } }),
+    );
+    expect(get((await freshModule()).settings).gameplay.attackDefault).toBe("ask");
+  });
+
   it("absorbs the legacy cmdctrl.muted=1 key on first load", async () => {
     localStorage.setItem("cmdctrl.muted", "1");
     const { settings } = await freshModule();
