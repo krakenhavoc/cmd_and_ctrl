@@ -28,6 +28,14 @@
   import { creditText, useArtist } from "../../artistCredit.svelte";
   import { showsCardBack } from "../../cardBack";
   import { hoveredCard } from "../../cardTypes";
+  import {
+    LONG_PRESS_MS,
+    LONG_PRESS_SLOP_PX,
+    isZoomPinned,
+    pinZoom,
+    togglePinnedZoom,
+    unpinZoom,
+  } from "../../touchInspect";
   import { animateTap } from "../../animations";
   import { useCombatCues } from "../../combatCues.svelte";
   import { play } from "../../sounds";
@@ -657,12 +665,14 @@
     }
   }
 
-  function handleEnter(): void {
+  function handleEnter(ev?: PointerEvent): void {
     // Suppress hover-zoom for any back-rendered card: the explicit
     // faceDown prop AND the server-redacted case (known_by_you ===
     // false). Either way the viewer doesn't have the characteristics
     // to reveal in the overlay.
     if (showBack) return;
+    // #3338: a finger has no hover. Its zoom is the long-press below.
+    if (ev?.pointerType === "touch") return;
     cancelHoverTimer();
     const delay = $settings.display.hoverDelayMs;
     if (delay <= 0) {
@@ -679,13 +689,69 @@
     // Cancel any pending delayed-show so the zoom doesn't pop up
     // after the cursor has already left.
     cancelHoverTimer();
+    cancelPress();
+    // #3338: a pinned zoom outlives the finger lifting off the card.
+    if (isZoomPinned(card.instance_id)) return;
     // Only clear if we still own the slot — guards against a snapshot
     // rebuild that swaps the hovered card out from under us before the
     // pointerleave fires.
     hoveredCard.update((c) => (c?.instance_id === card.instance_id ? null : c));
   }
 
+  // #3338: a long-press reads the card. A touch or pen resting on it for
+  // LONG_PRESS_MS pins its zoom (touchInspect.ts) and eats the click the
+  // lift ends in, so reading never casts or taps. Drifting past
+  // LONG_PRESS_SLOP_PX is a scroll, and cancels it. A mouse keeps its
+  // hover zoom and right-click, untouched.
+  let pressTimer: ReturnType<typeof setTimeout> | null = null;
+  let pressStart: { x: number; y: number; id: number } | null = null;
+  // Set when a long-press pinned the zoom, until the next press. While
+  // set, the click the lift ends in (however long the finger was held)
+  // and the contextmenu a long-press also raises on Android are eaten.
+  let pressFired = false;
+
+  function cancelPress(): void {
+    if (pressTimer !== null) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+    pressStart = null;
+  }
+
+  function handlePointerDown(ev: PointerEvent): void {
+    if (ev.pointerType === "mouse" || showBack || phasedOut) return;
+    cancelPress();
+    pressFired = false;
+    pressStart = { x: ev.clientX, y: ev.clientY, id: ev.pointerId };
+    pressTimer = setTimeout(() => {
+      pressTimer = null;
+      pressStart = null;
+      pressFired = true;
+      pinZoom(card);
+    }, LONG_PRESS_MS);
+  }
+
+  function handlePointerMove(ev: PointerEvent): void {
+    if (!pressStart || ev.pointerId !== pressStart.id) return;
+    if (Math.hypot(ev.clientX - pressStart.x, ev.clientY - pressStart.y) > LONG_PRESS_SLOP_PX) {
+      cancelPress();
+    }
+  }
+
+  $effect(() => () => {
+    cancelPress();
+    // A card that leaves the board takes its pinned zoom with it.
+    if (isZoomPinned(card.instance_id)) unpinZoom();
+  });
+
   function handleClick(ev: MouseEvent): void {
+    // #3338: the click a long-press ends in was a read, not a play.
+    if (pressFired) {
+      pressFired = false;
+      ev.preventDefault();
+      ev.stopPropagation();
+      return;
+    }
     // Close any open mana-ability menu on a regular click; the
     // outer-click dismiss fires BEFORE the menu receives its
     // button click because the menu's onclick uses stopPropagation.
@@ -706,6 +772,12 @@
   // setting off (the default) the historic ability popover is the
   // only thing right-click does.
   function handleContextMenu(ev: MouseEvent): void {
+    // #3338: Android raises contextmenu on the same long-press that
+    // pinned the zoom. The press was a read, not a request for the menu.
+    if (pressFired) {
+      ev.preventDefault();
+      return;
+    }
     if ($settings.gameplay.adminOverrides) {
       ev.preventDefault();
       ev.stopPropagation();
@@ -779,6 +851,15 @@
   }
 
   function handleKeydown(ev: KeyboardEvent): void {
+    // #3338: Z reads the focused card, the keyboard's way to the zoom a
+    // mouse gets by resting on it. Z again, Escape, or a click closes it.
+    if ((ev.key === "z" || ev.key === "Z") && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
+      if (ev.target !== ev.currentTarget || showBack) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      togglePinnedZoom(card);
+      return;
+    }
     if (ev.key !== "Enter" && ev.key !== " ") return;
     // ADR 0117: Enter on the card can open its popover, whose rows are
     // buttons inside this element. Their own Enter must reach them, not
@@ -848,6 +929,10 @@
   title={showBack ? "" : ready && idleHint ? `${displayName(card)} — ${idleHint}` : tipName}
   onpointerenter={handleEnter}
   onpointerleave={handleLeave}
+  onpointerdown={handlePointerDown}
+  onpointermove={handlePointerMove}
+  onpointerup={cancelPress}
+  onpointercancel={cancelPress}
   onclick={handleClick}
   oncontextmenu={handleContextMenu}
   onkeydown={handleKeydown}
@@ -1394,6 +1479,9 @@
     width: var(--card-w, 80px);
     height: var(--card-h, 112px);
     border-radius: 8px;
+    /* #3338: a long-press reads the card; iOS's own callout (save
+       image, copy) would cover the zoom. */
+    -webkit-touch-callout: none;
     border: 1px solid #0a0e1a;
     background: #0d1220;
     overflow: hidden;
