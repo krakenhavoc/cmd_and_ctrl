@@ -1899,15 +1899,14 @@ var items = []Item{
 		EngineNotes: "Found by the Transformers batch (#3195). `game.CounterRemovalCost` has `Variable` (RemoveCountersXFromThis) and `Among` (RemoveCountersAmong) but `effects.Register` refuses the two together (\"no printed card splits a variable count\"). Jetfire: \"Remove one or more +1/+1 counters from among artifacts you control: Target player adds that much {C}. This mana can't be spent to cast nonartifact spells.\" The activator announces the total (floor 1) and the per-permanent split, validated as a set; the total reaches the effect as `ctx.CountersRemoved()`. The restricted mana already exists (`game.ManaRestrictNotNonartifactSpell`).",
 	},
 	{
-		Slug: "bolster", Name: "Bolster", Kind: KindSeam, Status: StatusMissing,
+		Slug: "bolster", Name: "Bolster", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Bolster puts counters on the creature you control with the least toughness, and some cards then do something with the creature it chose.",
-		Missing:     "Bolster isn't supported, so Optimus Prime, Hero isn't available.",
 		Rules:       []string{"701.39"},
 		Issue:       3277,
 		ADR:         "0152-more-than-meets-the-eye-convert-and-living-metal.md",
 		Printed:     "(?i)\\bbolster\\b",
-		Waiting:     []string{"Optimus Prime, Hero"},
-		EngineNotes: "Found by the Transformers batch (#3195). No bolster primitive exists. Bolster N chooses, as it resolves, a creature with the least toughness among those you control (a tie is the controller's choice) and puts N +1/+1 counters on it. Optimus Prime, Hero also needs the chosen creature carried on: \"The chosen creature gains trample until end of turn. When that creature deals combat damage to a player this turn, convert Optimus Prime\" is a delayed this-turn trigger on the chosen object (CR 603.7) whose convert records the source's turn-over count when it is created (CR 701.28e).",
+		Examples:    []string{"Optimus Prime, Hero"},
+		EngineNotes: "**Shipped** (#3277). `effects.Bolster{N, Then}` reads toughness after the layers, asks the controller only on a tie, puts the counters on the choice, and hands `Then` the chosen creature so the rest of the resolution can refer to it. Optimus Prime's back face uses that to grant trample and to bind a one-shot delayed trigger (CR 603.7) to the chosen object, whose convert is ignored if Optimus Prime turned over meanwhile (CR 701.28e).",
 	},
 	{
 		Slug: "choose-two-players-as-enters", Name: "\"As this enters, choose two players\"", Kind: KindSeam, Status: StatusImplemented,

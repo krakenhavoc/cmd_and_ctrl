@@ -9236,6 +9236,13 @@ Static: []game.StaticAbility{LivingMetal()},
   checks `!ev.Converted`.
 - **Living metal sets no power or toughness.** The Vehicle's printed ones
   apply while it is a creature (CR 301.7b).
+- **"Bolster N" is `Bolster{N, Then}`** (CR 701.39, #3277). It reads
+  toughness after the layers, asks the controller only when creatures are
+  tied for least, and puts the counters on the choice. "The chosen
+  creature" is `Then`'s argument: put the sentences that follow ("gains
+  trample until end of turn", a delayed trigger bound to that object, as
+  Optimus Prime, Autobot Leader does) inside it. With no creature, `Then`
+  does not run.
 
 ### "If a spell or ability an opponent controls causes you to discard" (ADR 0153, #1861)
 
