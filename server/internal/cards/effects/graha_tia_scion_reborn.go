@@ -15,51 +15,81 @@ import (
 //	 create a 1/1 colorless Hero creature token and put X +1/+1
 //	 counters on it. Do this only once each turn."
 //
-// Lifelink is printed data. Throw Wide the Gates is Pantlaza,
-// Sun-Favored's "you may … do this only once each turn" shape: the
-// "may" is the trigger's optional prompt, and the ability is offered
-// only while it has not resolved this turn, so declining leaves it
-// free for the next noncreature spell. Two triggers put on the stack
-// before either resolves are both offered; the second does nothing
-// once the first has resolved.
+// Lifelink is printed data. The ability triggers on every noncreature
+// spell you cast (CR 603.2); the "may" and the payment are made as it
+// resolves (CR 603.5, 608.2d, MayChoice with a LifeCost), not when it
+// goes on the stack. "Do this only once each turn" limits the DOING,
+// as Pantlaza, Sun-Favored's does its discover: a trigger whose "may"
+// is declined, or whose life cannot be paid, does nothing and leaves
+// the turn's one use for a later spell. The use is therefore recorded
+// (Game.NoteDoneThisTurn) only when the life is paid and the Hero made,
+// and it is read when the ability triggers (so no trigger is put on the
+// stack once it is spent) and again as it resolves (so the second of
+// two triggers stacked before either resolved does nothing).
 //
 // X is Monstrous Vortex's "that spell's mana value", read as the
 // ability resolves, so an X the spell was cast for counts (CR 202.3e)
 // and a spell countered in response is read where it went. Paying the
-// life is a payment (CR 119.4): it needs X life or more, and "if you
-// do" creates the token only once it is paid. X of 0 is a payment of
-// nothing and still makes the 1/1. The counters arrive as the token
-// enters.
+// life is a payment (CR 119.4): a player with less than X life is not
+// asked, and the payment is re-checked after a "Yes". X of 0 is a
+// payment of nothing and still makes the 1/1. The counters arrive as
+// the token enters.
 //
-// The simplification: "you may" is answered when the ability
-// triggers rather than as it resolves, as every optional trigger in
-// the catalog is. Answered yes, it uses up the once even when the
-// life is no longer there to pay by the time it resolves.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:        "f558c758-8f12-45f9-8683-eee33ba1fb0d",
 		Name:            "G'raha Tia, Scion Reborn",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"If you can no longer pay the life when Throw Wide the Gates resolves, it still counts as your once this turn."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"lifelink"},
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventCast, AllOf(YouCast(Noncreature()), pantlazaNotYetThisTurn(grahaTiaLabel)), grahaTiaLabel, grahaTiaThrowWideTheGates),
-				"G'raha Tia — pay X life, where X is that spell's mana value, to create a 1/1 Hero with X +1/+1 counters?"),
+			On(game.EventCast, AllOf(YouCast(Noncreature()), grahaTiaNotYetDone), grahaTiaLabel, grahaTiaThrowWideTheGates),
 		},
 	})
 }
 
-const grahaTiaLabel = "G'raha Tia — Throw Wide the Gates: pay X life to create a Hero with X +1/+1 counters"
+const (
+	grahaTiaLabel = "G'raha Tia — Throw Wide the Gates: you may pay X life to create a Hero with X +1/+1 counters"
+	// grahaTiaDoneLabel is the tally the once-each-turn limit reads.
+	grahaTiaDoneLabel = "G'raha Tia — Throw Wide the Gates (done)"
+)
 
-// grahaTiaThrowWideTheGates pays X life and, only if that was paid,
-// makes the Hero with X counters.
+// grahaTiaNotYetDone keeps the trigger off the stack once the turn's
+// one use has been spent.
+func grahaTiaNotYetDone(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return source != nil && g.ResolvedThisTurn(source.InstanceID, grahaTiaDoneLabel) == 0
+}
+
+// grahaTiaThrowWideTheGates asks, as the ability resolves, whether to
+// pay X life, and makes the Hero only if that was paid.
 func grahaTiaThrowWideTheGates(g *game.Game, item *game.StackItem) error {
-	if g.ResolvedThisTurn(item.SourceCardID, grahaTiaLabel) > 1 {
+	if g.ResolvedThisTurn(item.SourceCardID, grahaTiaDoneLabel) > 0 {
 		return nil
 	}
 	x := triggeringSpellManaValue(g, item)
+	if !grahaTiaCanPay(g, item, x) {
+		return nil
+	}
+	return MayChoice{
+		Question: "G'raha Tia — pay X life, where X is that spell's mana value, to create a 1/1 Hero with X +1/+1 counters?",
+		LifeCost: x,
+		OnYes: func(ctx *Context) error {
+			return grahaTiaPayAndCreate(ctx, x)
+		},
+	}.Apply(NewContext(g, item))
+}
+
+func grahaTiaCanPay(g *game.Game, item *game.StackItem, x int) bool {
 	p := g.PlayerByIDForEffect(item.Controller)
-	if p == nil || p.Eliminated || p.Life < x {
+	return p != nil && !p.Eliminated && p.Life >= x
+}
+
+// grahaTiaPayAndCreate is the "Yes" branch: the payment is re-checked
+// (CR 119.4), and only a payment that is made makes the Hero and uses
+// up the turn.
+func grahaTiaPayAndCreate(ctx *Context, x int) error {
+	g, item := ctx.Game, ctx.Item
+	if g.ResolvedThisTurn(item.SourceCardID, grahaTiaDoneLabel) > 0 || !grahaTiaCanPay(g, item, x) {
 		return nil
 	}
 	if err := g.PayLifeForEffect(item.SourceCardID, item.Controller, x); err != nil {
@@ -68,6 +98,7 @@ func grahaTiaThrowWideTheGates(g *game.Game, item *game.StackItem) error {
 		}
 		return err
 	}
+	g.NoteDoneThisTurn(item.SourceCardID, grahaTiaDoneLabel)
 	opts := game.TokenEntryOptions{}
 	if x > 0 {
 		opts.Counters = map[string]int{game.CounterPlusOne: x}

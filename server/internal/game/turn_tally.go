@@ -631,6 +631,20 @@ func (g *Game) ResolvedThisTurn(source uuid.UUID, label string) int {
 	return sumTally(g.TurnTally.Resolved, g.objectTallyPrefixLocked(source), label)
 }
 
+// NoteDoneThisTurn records that the instruction the ability labelled
+// `label` from `source` carries out ("Do this only once each turn")
+// has been performed, for ResolvedThisTurn to read under that same
+// label. Use a label of its own, distinct from the stack label: the
+// ability's resolution is counted under the stack label whether or not
+// the instruction was carried out. Per OBJECT, like the tally it
+// writes. Caller must hold g.mu.
+func (g *Game) NoteDoneThisTurn(source uuid.UUID, label string) {
+	if g.TurnTally.Resolved == nil {
+		g.TurnTally.Resolved = map[string]int{}
+	}
+	g.TurnTally.Resolved[g.objectTallyKeyLocked(source, label)]++
+}
+
 // TriggeredThisTurn reports how many times the ability labelled
 // `label` from `source` has been announced this turn. An empty label
 // sums every ability of the source. Per OBJECT, like its sibling
