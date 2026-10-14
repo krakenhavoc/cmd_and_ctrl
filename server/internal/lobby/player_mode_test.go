@@ -1078,6 +1078,7 @@ func sameAnswerProbes() []sameAnswerProbe {
 			return fx.call(t, "GET", "/admin/games/"+fx.table.ID.String(), nil)
 		}},
 		{"GET /admin/live", []string{"route:GET /admin/live"}, true, httpProbe("GET", "/admin/live", nil)},
+		{"GET /admin/stats", []string{"route:GET /admin/stats"}, true, httpProbe("GET", "/admin/stats", nil)},
 		// The hot restore of deferred tables (ADR 0148, #3103).
 		{"POST /admin/capacity/restore-deferred", []string{"route:POST /admin/capacity/restore-deferred"}, true, httpProbe("POST", "/admin/capacity/restore-deferred", nil)},
 		// Player reports (#2984).

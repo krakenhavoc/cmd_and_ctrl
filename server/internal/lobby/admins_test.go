@@ -482,6 +482,7 @@ func TestRequireAdminOnEveryAdminRoute(t *testing.T) {
 		{"GET", "/admin/games?state=active", nil},
 		{"GET", "/admin/games/" + meta.ID.String(), nil},
 		{"GET", "/admin/live", nil},
+		{"GET", "/admin/stats", nil},
 		{"POST", "/admin/capacity/restore-deferred", nil},
 		// Last: it deletes the table the others use.
 		{"DELETE", "/games/" + meta.ID.String(), nil},

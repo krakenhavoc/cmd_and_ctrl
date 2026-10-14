@@ -72,6 +72,15 @@ A signed-in person sees their own record at `#/stats` (ADR 0158's page frame, in
 - **Recent games** are the latest 20 counted games, newest first, with turns, place, deck and commanders.
 - **Empty state.** A person with no counted games gets zeros and empty lists, and the page says to play a game.
 
+### 8. An admin view of every game (#3425)
+
+Operators read the statistics from the **Stats** tab of the admin page (`#/admin/stats`, ADR 0124's tab strip), with no shell on the database.
+
+- **Route.** `GET /admin/stats`, read-only, behind `requireAdmin` like every other `/admin/` route (the shared token, or an allowlisted person with admin mode on). It is documented in docs/lobby.md.
+- **What it shows.** Totals: games with a record, by `source` and by `log_complete`, and the count of ended games with a `games` row but no record (what `cmd/statsbackfill` would fill in). The latest 25 games with turns and rounds. A record per person (accounts by display name, guests by seat name, bots by tier). The top 25 commanders by games and by wins, and the 25 most-cast cards (sum of casts, distinct games).
+- **Definitions are §7's.** Only a win, loss or draw counts, average place is over counted seats that have a place, and a commander is the seat's commander names joined with ` / `. The aggregation is `gamestats.Tally`, shared with `GET /me/stats`.
+- **Privacy.** This is the one place stats are read against other people's seats, and it shows display names beside records, so the privacy notice's "Game statistics" row says server admins can read them. No new table and no new stored column.
+
 ## Consequences
 
 - A game's stats exist seconds after it ends, from the complete log, with no new engine state and no change to the wire protocol.

@@ -3782,6 +3782,36 @@ A blocked person who tries to watch is refused **403**
 `{"error": "you were removed from this table and can't watch it again",
 "code": "blocked_from_table"}`.
 
+### `GET /admin/stats` *(admin only)*
+
+Game statistics across every game, for the admin **Stats** tab
+(`#/admin/stats`; [ADR 0165](decisions/0165-game-statistics-a-record-derived-from-every-finished-game.md)
+§8). `requireAdmin`, so an allowlisted person in player mode gets a
+non-admin's 403 and a signed-out caller a 401. Read-only. With no stats
+store it answers an empty overview.
+
+```json
+{
+  "totals": { "games": 40, "live": 38, "replay": 2, "log_complete": 39, "log_incomplete": 1, "unrecorded": 3 },
+  "recent": [{ "game_id": "<uuid>", "name": "Friday night", "ended_at": 1791868000000, "turns": 21, "rounds": 6, "source": "live" }],
+  "people": [{ "name": "Alice", "kind": "account", "games": 12, "wins": 4, "losses": 7, "draws": 1, "avg_place": 2.4 }],
+  "commanders_by_games": [{ "name": "Atraxa, Praetors' Voice", "games": 8, "wins": 3, "losses": 5, "draws": 0, "avg_place": 2.1 }],
+  "commanders_by_wins": [],
+  "cards": [{ "name": "Sol Ring", "casts": 61, "games": 30 }]
+}
+```
+
+- `totals.unrecorded` counts ended games with a `games` row and no
+  record: run `statsbackfill` to fill them in.
+- `people` is keyed by account (its display name), else a guest's seat
+  name (`kind: "guest"`), else a bot tier (`"bot"`). The counting rules
+  are `GET /me/stats`'s: only a win, loss or draw counts, and
+  `avg_place` is over seats that have a place.
+- Commanders are the seat's commander names joined with ` / `. Every list
+  is capped at 25 rows (`gamestats.AdminListMax`): `recent` newest first,
+  `people` and `commanders_by_games` most games first,
+  `commanders_by_wins` most wins first, `cards` most casts first.
+
 ### `GET /admin/reports` *(admin only)*
 
 The reports, newest first, for the admin **Reports** tab (`#/admin/reports`).

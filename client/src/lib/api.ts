@@ -36,6 +36,7 @@ import {
   type AdminGameResponse,
   type AdminGamesResponse,
   type AdminReportsResponse,
+  type AdminStatsResponse,
   type GamesFilter,
   type LiveNowResponse,
 } from "./adminViews";
@@ -708,6 +709,12 @@ export async function removeSpectator(
 export async function fetchAdminReports(): Promise<AdminReportsResponse> {
   const res = await authFetch("/admin/reports", { method: "GET" });
   return (await res.json()) as AdminReportsResponse;
+}
+
+// fetchAdminStats reads the game statistics overview (ADR 0165 §8). Admin only.
+export async function fetchAdminStats(): Promise<AdminStatsResponse> {
+  const res = await authFetch("/admin/stats", { method: "GET" });
+  return (await res.json()) as AdminStatsResponse;
 }
 
 // dismissAdminReport removes one report. Admin only.

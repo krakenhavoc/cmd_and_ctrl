@@ -2,7 +2,7 @@
   // Admin: the admin views (ADR 0124 §7). One page with a tab strip
   // (`navigation "admin views"`: Live now, Games, Accounts, Reports) and one
   // child per view under lib/components/admin/: Live now, Games, one table,
-  // Accounts, one account and Reports (#2984). The Grafana Overview's tiles
+  // Accounts, one account, Reports (#2984) and Stats (#3425). The Grafana Overview's tiles
   // link here.
   //
   // Who sees what:
@@ -24,6 +24,7 @@
   import AccountsList from "../lib/components/admin/AccountsList.svelte";
   import AccountDetail from "../lib/components/admin/AccountDetail.svelte";
   import ReportsList from "../lib/components/admin/ReportsList.svelte";
+  import StatsView from "../lib/components/admin/StatsView.svelte";
   import { isAdmin, isAdminAllowed, refreshAdminStatus } from "../lib/admin";
   import {
     accountsHash,
@@ -31,6 +32,7 @@
     gamesHash,
     LIVE_HASH,
     REPORTS_HASH,
+    STATS_HASH,
     tabOf,
     type AdminView,
   } from "../lib/adminViews";
@@ -69,7 +71,9 @@
             ? "Accounts"
             : view.view === "reports"
               ? "Reports"
-              : "One account",
+              : view.view === "stats"
+                ? "Game statistics"
+                : "One account",
   );
 
   const TABS = [
@@ -77,6 +81,7 @@
     { id: "games", label: L.adminGamesTab, href: gamesHash() },
     { id: "accounts", label: L.adminAccountsTab, href: accountsHash() },
     { id: "reports", label: L.adminReportsTab, href: REPORTS_HASH },
+    { id: "stats", label: L.adminStatsTab, href: STATS_HASH },
   ] as const;
 </script>
 
@@ -107,6 +112,8 @@
             <AccountsList filter={view.filter} {onforbidden} />
           {:else if view.view === "reports"}
             <ReportsList {onforbidden} />
+          {:else if view.view === "stats"}
+            <StatsView {onforbidden} />
           {:else}
             <AccountDetail id={view.id} {onforbidden} />
           {/if}
