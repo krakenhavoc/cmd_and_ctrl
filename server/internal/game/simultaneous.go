@@ -413,7 +413,12 @@ func (g *Game) landedInZoneLocked(cardID uuid.UUID, dst ZoneKind, dstOwner uuid.
 // all of them end in the same graveyard through the same primitive
 // (#667, regeneration.go).
 var (
-	destroyRoute         = zoneRoute{ViaBattlefieldLeave: true, Destruction: true}
+	destroyRoute = zoneRoute{ViaBattlefieldLeave: true, Destruction: true}
+	// sbaDestroyRoute is a destruction by a state-based action (CR
+	// 704.5g lethal damage, CR 704.5h deathtouch): regenerated like any
+	// other, but not "as the result of an effect", so a shield counter
+	// does not replace it (CR 122.1c, #2000).
+	sbaDestroyRoute      = zoneRoute{ViaBattlefieldLeave: true, Destruction: true, StateBased: true}
 	battlefieldExitRoute = zoneRoute{ViaBattlefieldLeave: true}
 	exileRoute           = zoneRoute{Dst: ZoneExile}
 	bounceRoute          = zoneRoute{Dst: ZoneHand}
@@ -818,7 +823,7 @@ func (g *Game) sweepDoomedPermanentsLocked(doomed []doomedPermanent) {
 	}
 	g.routeAllLandedPerLegLocked(ids, func(id uuid.UUID) zoneRoute {
 		if destruction[id] {
-			return destroyRoute
+			return sbaDestroyRoute
 		}
 		return battlefieldExitRoute
 	})

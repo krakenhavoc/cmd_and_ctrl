@@ -55,9 +55,11 @@ Every ended, non-practice game with a `games` row, including bot and guest seats
 - The privacy notice gains a "Game statistics" row. `PRIVACY_SCHEMA_VERSION` moves to 23.
 - Showing stats (#3366, §7) shows a person their own seats, and other players only in aggregate or by consent. Rankings or leaderboards will be **opt-in**, in their own ADR.
 
-### 6. Backfill (#3365, next PR)
+### 6. Backfill (#3365)
 
 A one-shot `cmd/statsbackfill` reads each ended game's replay JSONL, merges the `log` arrays by `Seq`, takes the last line's view as the final view, and runs the same `Compute` with `source = replay`. A gap in `Seq` sets `log_complete = 0`. It skips games with a current-version record, and recomputes records with an older `stats_version`.
+
+As built: a Seq gap cannot be read off consecutive numbers, because a collapsed run of draws and the events that log nothing leave holes in a whole log. Each frame's `log` is a window of the last 200 entries (`protocol.PublicLogMax`), so the tool merges windows and sets `log_complete = 0` when a full window starts above the previous frame's newest `Seq` (frames were lost) or the first window is already full (older entries had been dropped). A later frame replaces everything at or above its window's lowest `Seq`, so a growing draw run keeps its latest `Amount` and an undo's rewound `Seq`s leave no stale entries. Only games with a `games` row in state `ended` are considered, so practice tables never are.
 
 ### 7. A stats page for your own games (#3366)
 
@@ -79,4 +81,4 @@ A signed-in person sees their own record at `#/stats` (ADR 0158's page frame, in
 
 ## Sprint
 
-Outside the numbered sprints: the owner asked for game statistics on 2026-10-13, ahead of S72/S73. It touches no engine rules and no client yet, so it does not compete with S70/S71's front-door work.
+Outside the numbered sprints: the owner asked for game statistics on 2026-10-13, ahead of S72/S73. It touches no engine rules, and its one client page (§7) is small, so it does not compete with S70/S71's front-door work.

@@ -291,6 +291,13 @@ type zoneRoute struct {
 	Destruction       bool
 	CantBeRegenerated bool
 
+	// StateBased marks a Destruction performed by a state-based action
+	// (CR 704.5g, 704.5h) rather than by an effect. It rides onto
+	// ReplacementEvent.StateBasedDestruction, where the CR 122.1c
+	// shield-counter built-in reads it (#2000). Meaningless without
+	// Destruction.
+	StateBased bool
+
 	// simultaneousExit carries the pre-move copies for a destroy batch
 	// whose current leg may pause. The snapshot has to be active around
 	// the physical move on BOTH paths: the inline path and the later

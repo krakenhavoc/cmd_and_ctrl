@@ -6,10 +6,11 @@ import "github.com/google/uuid"
 // effects — the ones that live in the rules themselves, not on
 // any particular card. Registered on every game at NewGame.
 //
-// Three today: commanderZoneReplacement (CR 903.9), refactored from
-// S13.1's inline applyCommanderZoneReplacementLocked,
-// regenerationShieldReplacement (CR 701.19), and
-// protectionPreventsDamageReplacement (CR 702.16e). Future built-ins
+// commanderZoneReplacement (CR 903.9), refactored from S13.1's inline
+// applyCommanderZoneReplacementLocked, regenerationShieldReplacement
+// (CR 701.19), protectionPreventsDamageReplacement (CR 702.16e),
+// lifeTotalCantChangeReplacement (CR 119.7) and the two shield-counter
+// effects (CR 122.1c, shield_counters.go). Future built-ins
 // (e.g. the "if a card would be exiled by an effect that replaces it
 // with something else" meta-replacement) would live here too.
 //
