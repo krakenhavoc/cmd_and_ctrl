@@ -1089,6 +1089,11 @@ type createGameResponse struct {
 	GameMeta
 	// Setup is present only when the request asked for one.
 	Setup *setupResult `json:"setup,omitempty"`
+	// Seat is the creator's own seat at the new table (#3494): the
+	// session for it, as POST /games/{id}/join would answer. Absent for
+	// the admin token, which is not a person, and when seating failed
+	// (the table is created anyway; Take a seat is still offered).
+	Seat *sessionResponse `json:"seat,omitempty"`
 }
 
 // transferHostRequest is the body of POST /games/{id}/host.
@@ -1280,6 +1285,12 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 		}
 
 		out := createGameResponse{GameMeta: meta}
+		if !server {
+			// #3494: almost every host plays, so the creator sits down
+			// in seat 1 at once, as themselves, before the last setup's
+			// bots and before an #lfg post counts the seats.
+			out.Seat = seatCreator(c, w, r, p, meta)
+		}
 		if body.VoiceRoom {
 			// ADR 0159 §1. The creator is the table's manager until a
 			// host sits down; a server with voice off ignores the ask.
@@ -1316,9 +1327,59 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 			if fresh, gerr := c.Lobby.Get(meta.ID); gerr == nil {
 				out.GameMeta = fresh
 			}
+		} else if out.Seat != nil {
+			// The seat is on the table now; Get still carries both invites.
+			if fresh, gerr := c.Lobby.Get(meta.ID); gerr == nil {
+				out.GameMeta.Players = fresh.Players
+				out.GameMeta.HostPlayerID = fresh.HostPlayerID
+			}
 		}
 		out.GameMeta = redactMetaFor(p, c.isAdmin(p), meta.ID, out.GameMeta)
 		return writeJSON(w, http.StatusCreated, out)
+	}
+}
+
+// seatCreator sits the creator down at the table they just made
+// (#3494), exactly as their own invite click would: the seat takes the
+// Discord identity and the user from the session, and the seat session
+// is minted from it. A failure leaves the table unseated and is only
+// logged: the create itself succeeded, and the card still offers Take
+// a seat.
+func seatCreator(c Config, w http.ResponseWriter, r *http.Request, p auth.Principal, meta GameMeta) *sessionResponse {
+	if c.Lobby.ConnectionsFull() {
+		return nil
+	}
+	identity := principalIdentity(p)
+	name := ""
+	if !identity.Populated() {
+		name = p.Name
+	}
+	seated, playerID, err := c.Lobby.JoinAs(meta.ID, meta.InviteToken, name, identity, p.UserID)
+	if err != nil {
+		c.logger().Warn("seating the creator failed", "game_id", meta.ID.String(), "err", err)
+		return nil
+	}
+	sp := withIdentity(auth.Principal{
+		Role:     auth.RolePlayer,
+		UserID:   p.UserID,
+		GameID:   seated.ID,
+		PlayerID: playerID,
+		Name:     name,
+	}, identity)
+	tok, issued, err := issueFor(r.Context(), c, sp, &p)
+	if err != nil {
+		c.logger().Warn("a session for the creator's seat failed", "game_id", meta.ID.String(), "err", err)
+		return nil
+	}
+	setSessionCookie(c, w, tok, issued.ExpiresAt)
+	seated.InviteToken = ""
+	seated.SpectatorInvite = ""
+	return &sessionResponse{
+		Token:     tok,
+		ExpiresAt: issued.ExpiresAt,
+		Principal: issued,
+		Game:      &seated,
+		PlayerID:  playerID,
 	}
 }
 

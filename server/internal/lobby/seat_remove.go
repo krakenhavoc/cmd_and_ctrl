@@ -139,6 +139,25 @@ func (l *Lobby) RemoveSeat(id, playerID uuid.UUID) (GameMeta, error) {
 // RemoveSeatBlocking is RemoveSeat that also, when block is true, blocks
 // the removed seat from taking a seat at this table again (blocks.go).
 func (l *Lobby) RemoveSeatBlocking(id, playerID uuid.UUID, block bool) (GameMeta, error) {
+	return l.removeLobbySeat(id, playerID, block, false)
+}
+
+// LeaveSeat takes a seat off an unstarted table at that seat's own
+// request, the host's included (#3494): a host who sat down by default
+// and meant only to run the table. The caller has checked at the HTTP
+// layer that the request comes from the seat itself.
+//
+// Hosting after a host leaves: when the host is the table's creator,
+// the table is held for them. It has no seated host, and their Discord
+// identity becomes the named host again (as it was at create), so they
+// take the table back when they sit down; meanwhile they manage it as
+// its creator. Any other host's seat passes hosting on by the usual
+// rule (ws.pickHost).
+func (l *Lobby) LeaveSeat(id, playerID uuid.UUID) (GameMeta, error) {
+	return l.removeLobbySeat(id, playerID, false, true)
+}
+
+func (l *Lobby) removeLobbySeat(id, playerID uuid.UUID, block, self bool) (GameMeta, error) {
 	var broadcast func()
 	defer func() {
 		if broadcast != nil {
@@ -170,12 +189,24 @@ func (l *Lobby) RemoveSeatBlocking(id, playerID uuid.UUID, block bool) (GameMeta
 	}
 	// Read the host from the room, not the cached flag: hosting moves in
 	// the engine and the meta mirrors it lazily.
-	if entry.room.HostPlayerID() == playerID {
+	leaving := entry.meta.Players[idx]
+	isHost := entry.room.HostPlayerID() == playerID
+	if isHost && !self {
 		return GameMeta{}, ErrCannotRemoveHost
 	}
+	keepForCreator := isHost && leaving.DiscordID != "" &&
+		entry.meta.CreatedBy != uuid.Nil && leaving.UserID == entry.meta.CreatedBy.String()
 	var err error
 	if broadcast, err = l.applyLocked(id, entry, func() error {
-		return entry.room.Game.RemovePlayer(playerID)
+		if rmErr := entry.room.Game.RemovePlayer(playerID); rmErr != nil {
+			return rmErr
+		}
+		if keepForCreator {
+			// Inside the apply, so this commit's capture already shows
+			// no seat hosting.
+			entry.room.SetHost(uuid.Nil)
+		}
+		return nil
 	}); err != nil {
 		if errors.Is(err, game.ErrGameNotInLobby) {
 			return GameMeta{}, ErrGameStarted
@@ -189,8 +220,14 @@ func (l *Lobby) RemoveSeatBlocking(id, playerID uuid.UUID, block bool) (GameMeta
 	for i := range entry.meta.Players {
 		entry.meta.Players[i].Seat = i
 	}
+	if keepForCreator {
+		entry.meta.HostDiscordID = leaving.DiscordID
+	}
 	l.syncHostLocked(entry)
 	l.persistSeatsLocked(entry)
+	if keepForCreator {
+		l.persistGameLocked(entry)
+	}
 	return copyMeta(entry.meta), nil
 }
 
@@ -298,6 +335,11 @@ func removeSeat(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !CanRemoveSeat(p, meta, admin) {
 		return ErrNotSeatManager
 	}
+	// A seat taking itself off an unstarted table (#3494), the host's
+	// included. Nobody blocks themselves.
+	if meta.State == string(game.StateLobby) && p.GameID == id && p.PlayerID == playerID {
+		return leaveOwnSeat(c, w, r, p, admin, id, playerID)
+	}
 	// ?block=true also blocks the removed seat from this table (#2984).
 	block := r.URL.Query().Get("block") == "true"
 	if meta.State == string(game.StateLobby) {
@@ -316,4 +358,45 @@ func removeSeat(c Config, w http.ResponseWriter, r *http.Request) error {
 		c.SeatEvictor.EvictSeat(id, playerID)
 	}
 	return writeJSON(w, http.StatusOK, redactMetaFor(p, admin, id, meta))
+}
+
+// leaveSeatResponse is DELETE /games/{id}/seats/{player}'s answer when
+// the seat removed itself: the table as before, plus, for a signed-in
+// person, the session to carry on with. Their seat session stops
+// validating with the seat, and without a replacement the page would
+// fall back to signing them out.
+type leaveSeatResponse struct {
+	GameMeta
+	Session *sessionResponse `json:"session,omitempty"`
+}
+
+// leaveOwnSeat is removeSeat's self-removal (#3494).
+func leaveOwnSeat(c Config, w http.ResponseWriter, r *http.Request, p auth.Principal, admin bool, id, playerID uuid.UUID) error {
+	meta, err := c.Lobby.LeaveSeat(id, playerID)
+	if err != nil {
+		return err
+	}
+	out := leaveSeatResponse{GameMeta: redactMetaFor(p, admin, id, meta)}
+	if p.UserID != uuid.Nil {
+		// The identity-only session a Discord sign-in gives, from the
+		// seat session it replaces, so it lives no longer than that did.
+		next := withIdentity(auth.Principal{
+			Role:   auth.RoleIdentified,
+			UserID: p.UserID,
+			Name:   p.Name,
+		}, principalIdentity(p))
+		tok, issued, ierr := issueFor(r.Context(), c, next, &p)
+		if ierr != nil {
+			return ierr
+		}
+		setSessionCookie(c, w, tok, issued.ExpiresAt)
+		out.Session = &sessionResponse{Token: tok, ExpiresAt: issued.ExpiresAt, Principal: issued}
+		// Seen from the new session the caller is the creator, or not,
+		// rather than a seat.
+		out.GameMeta = redactMetaFor(issued, admin, id, meta)
+	}
+	if c.SeatEvictor != nil {
+		c.SeatEvictor.EvictSeat(id, playerID)
+	}
+	return writeJSON(w, http.StatusOK, out)
 }

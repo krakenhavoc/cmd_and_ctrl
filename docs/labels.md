@@ -145,3 +145,8 @@ registered, or when this file is stale.
 | `alwaysAskCombatDamage` | `Always ask` | button | text | `lib/damageAssignment.ts` | the combat-damage notice's button that turns Auto-assign combat damage off; the assignment just made stands |
 | `addDamage` | `Add 1 damage to <name>` (starts with `Add 1 damage to `) | button | aria | `lib/components/board/DamageStepper.svelte`<br>`lib/components/board/ChoicePromptModal.svelte` | the + on a blocker (on the board and in the damage sheet) while you assign combat damage; the defending player's trample line uses it too |
 | `removeDamage` | `Remove 1 damage from <name>` (starts with `Remove 1 damage from `) | button | aria | `lib/components/board/DamageStepper.svelte`<br>`lib/components/board/ChoicePromptModal.svelte` | the − beside addDamage |
+| `awayOffer` | `move on without an away player` | dialog | aria | `lib/away.ts` | the dock sheet a decider sees when a seat the table waits on has been offline for the away time (ADR 0177 §2) |
+| `awayStandIn` | `Hand <name>'s seat to a bot` (ends with `'s seat to a bot`) | button | text | `lib/away.ts` | the away offer's hand-over: a heuristic bot plays the seat until its player takes it back |
+| `awayConcede` | `Concede for <name>` (starts with `Concede for `) | button | text | `lib/away.ts` | the away offer's concession, made for the away player |
+| `awayWait` | `Keep waiting` | button | text | `lib/away.ts` | the away offer's third answer: hide the offer for another away time |
+| `takeBackSeat` | `Take it back` | button | text | `lib/components/board/StandInBanner.svelte` | the banner a player sees on their own seat while a bot plays it: they play it again (ADR 0177 §6) |

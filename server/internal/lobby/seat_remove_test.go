@@ -159,9 +159,10 @@ func TestRemoveSeatRefusals(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The host's own seat can't be removed, not even by the admin.
-	s.wantStatus(t, s.del(t, meta.ID, alice.PlayerID, alice.Token), http.StatusUnprocessableEntity)
+	// The host's seat can't be removed by anyone else, not even the
+	// admin. (The host may leave it themselves, #3494: creator_seat_test.go.)
 	s.wantStatus(t, s.del(t, meta.ID, alice.PlayerID, admin), http.StatusUnprocessableEntity)
+	s.wantStatus(t, s.del(t, meta.ID, alice.PlayerID, bob.Token), http.StatusForbidden)
 	// A bot has its own route.
 	s.wantStatus(t, s.del(t, meta.ID, botID, admin), http.StatusUnprocessableEntity)
 	// A player id that is not a seat here.

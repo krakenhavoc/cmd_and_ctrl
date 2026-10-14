@@ -663,6 +663,14 @@ only an admin:
   tablemates its link, and end it with `/c2-end`, and `GET /games` and
   `GET /games/{id}` mark it `is_creator: true` for them. The table also names
   its creator as host, so they host it once they sit down, whoever sat first.
+  **They sit down at once** (#3494): the server seats them in seat 1 as
+  themselves, exactly as their own invite click would, before the last
+  setup's bots, and the response carries that seat's session under `seat`
+  (the `POST /games/{id}/join` body: `token`, `expires_at`, `principal`,
+  `game`, `player_id`), with the session cookie set to it. Should seating
+  fail (the server is at its connection cap, say), the table is still
+  created and `seat` is absent. A host who meant only to run the table
+  leaves the seat with `DELETE /games/{id}/seats/{player_id}`.
   A person may have at most **3 open tables** (created, unstarted, unarchived)
   and may create **one table per 30 seconds**, with a burst of 3.
 - **The shared admin token** is the Discord bot's `/c2-invite` and an
@@ -2069,7 +2077,21 @@ bot's id sent here is refused rather than handled under this gate.
 | 403 | caller is not the host, the creator or an admin; or `player_id` is not a seat here |
 | 404 | game not found |
 | 409 | the game has started and the caller is not an admin; or the game has ended |
-| 422 | the seat is the host's (transfer the host first, `POST /games/{id}/host`), or a bot's (use the bot route) |
+| 422 | the seat is the host's and someone else asked (transfer the host first, `POST /games/{id}/host`), or a bot's (use the bot route) |
+
+**Leaving your own seat** (#3494). On an unstarted table a caller who may
+use this route may also remove their **own** seat, the host's included:
+a host who sat down by default and meant only to run the table. It never
+blocks. The seat goes as above, and the answer adds `session`: for a
+signed-in person, an identity-only session (the shape a Discord sign-in
+gives, expiring with the seat session it replaces), with the cookie set
+to it, since the seat session stops validating. A guest gets no `session`.
+
+Hosting afterwards: when the leaving host is the table's **creator**, the
+table is held for them. No seat hosts, their Discord identity becomes the
+named host again (as at create), and they take the table back by sitting
+down; meanwhile they manage it as its creator. Any other host's seat passes
+hosting to the next human seat, as a concession would.
 
 ### `POST /games/{id}/seats/{player_id}/away` and `POST /games/{id}/seats/me/take-back` (ADR 0177)
 
