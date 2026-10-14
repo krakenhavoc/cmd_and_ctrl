@@ -3213,6 +3213,12 @@ export interface ActivatedAbilityView {
   // The picks ride activate_ability as `crew_ids`.
   crew_cost?: number;
   crew_options?: LegalTargetsView;
+  // ADR 0186 Decision 6 (#3549): what each creature in crew_options counts
+  // for on THIS cost, keyed by card ID. Differs from `power` when a rule
+  // says so ("crews Vehicles as though its power were 2 greater"). Absent
+  // on a teamwork prompt, which counts plain power; when absent a client
+  // sums `power`.
+  crew_power?: Record<string, number>;
   // #2695: a Mount's saddle ability (CR 702.171a) rides the two crew
   // fields above — the same many-pick, floor-on-total-power prompt and
   // the same `crew_ids` payload — and sets this flag so the prompt says
