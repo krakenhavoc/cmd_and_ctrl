@@ -21,6 +21,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 // An extra vote it may decline ("Don't vote again") is worth half of
 // its favourite: it always casts it, for the option it likes best, and
 // would rather decline than vote for its least favourite.
+//
+// A secret vote (ADR 0180) is scored by the same rules. The bot reads
+// its seat's filtered view, where a secret vote's tally is all zeros
+// and only its own ballots are listed, so the lean towards an option
+// with votes does nothing and no other seat's ballot can steer it. A
+// vote for "up to one" offers a vote for nothing, which it casts only
+// when nothing else is on offer. With `self_best` (Círdan) it votes
+// for itself.
 
 // voteValue scores answering ballot `ch` with offered option `index`.
 // The second return is false for an option pick that is not a ballot.
@@ -34,8 +42,20 @@ func (st *state) voteValue(ch *protocol.PendingChoiceView, index *int) (float64,
 		return 0, "", false
 	}
 	opt := v.Offered[i]
+	if opt == -2 {
+		// "Up to one" (ADR 0180): a vote for nothing is the last resort.
+		return 0.1, "vote for nothing", true
+	}
 	if opt < 0 {
 		return 0.5, "decline the extra vote", true
+	}
+	if v.SelfBest && ch.PickOptions[i].Player != "" {
+		// ADR 0180: the votes a player receives are good for them
+		// (Círdan the Shipwright), so every player votes for themselves.
+		if ch.PickOptions[i].Player == st.me {
+			return 2, "vote for ourselves", true
+		}
+		return 0.25, "vote: " + v.Options[opt], true
 	}
 	hints := v.ForOpponents
 	if v.Controller == st.me {

@@ -1,0 +1,6 @@
+---
+title: "Secret council"
+date: 2026-10-14
+issues: [2926]
+---
+**Secret council** (#2926, CR 701.38, [ADR 0180](decisions/0180-secret-council.md)) — ADR 0146's vote with `CouncilVote.Secret` set, and no ballot on any channel until the last one is in. A ballot is logged as "Alice cast a secret vote" (`EventSecretVoteCast`, no option); the wire carries a zero tally and who has voted, and `FilterViewFor` gives each seat back its own ballots only, so other seats, spectators, the admin view, the bot and the MCP seat see none. When the last ballot is in, `EventVotesRevealed` is one `votes_revealed` log line naming every vote, shown in the board's attention strip too. A restore point keeps the hidden ballots and resumes mid-vote; a seat's undo of the commit that revealed the vote is refused (ADR 0054's "undo can't be used to fish"). The vote also learned "another player" (`OthersOnly`), "up to one" (`Abstain`, a vote for nothing) and the bot hint `SelfBest`. "This creature can't attack its owner" granted by a resolved effect is the `cantAttackOwner` mod kind. **Cards:** Elrond of the White Council, Mob Verdict, Círdan the Shipwright, Trap the Trespassers, Truth or Consequences and Vault 11: Voter's Dilemma (Full).

@@ -176,6 +176,17 @@ const ModCantAttackUnlessDefenderControls ModKind = "cantAttackUnlessDefenderCon
 // source is the creature itself, with "loses all abilities".
 const ModCantAttackPlayer ModKind = "cantAttackPlayer" // layer 6
 
+// ModCantAttackOwner is "<affected> gains 'This creature can't attack
+// its owner'" from a resolved effect (Elrond of the White Council, ADR
+// 0180 decision 6): ADR 0106 §2's AttackTargetRestriction{NotOwner},
+// with the owner read live when an attack is declared. Reads nothing.
+//
+// Layer 6, in the record's timestamp slot. The restriction is
+// attributed to the affected creature itself, because what it gains is
+// an ability of its own: a later "loses all abilities" takes it (CR
+// 613.1f, dropSelfAttackTargetRestrictions) and an earlier one does not.
+const ModCantAttackOwner ModKind = "cantAttackOwner" // layer 6
+
 // ModSetBasicLandTypes is CR 305.7 from a resolved effect (ADR 0109 §1,
 // #1881): "target land becomes an Island until end of turn" (Tidal
 // Warrior), "becomes the basic land type of your choice" (Reef Shaman),
@@ -877,6 +888,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantAttackUnlessDefenderControls: {layer: Layer6Ability},
 	// #3400: Promise of Loyalty's "can't attack you".
 	ModCantAttackPlayer: {layer: Layer6Ability},
+	// ADR 0180: Elrond's granted "can't attack its owner".
+	ModCantAttackOwner: {layer: Layer6Ability},
 	// ADR 0109 §1 (#1881): CR 305.7 from a resolved effect.
 	ModSetBasicLandTypes: {layer: Layer4Type, removes: true},
 	// ADR 0109 §2 (#1604): "loses all land types", Ultima's.
@@ -1195,6 +1208,12 @@ func CantAttackUnlessDefenderControlsMod(qs ...PermanentQuery) Mod {
 // control" from a resolved effect (#3400). Reads Player.
 func CantAttackPlayerMod(player uuid.UUID) Mod {
 	return Mod{Kind: ModCantAttackPlayer, Player: player}
+}
+
+// CantAttackOwnerMod is "gains 'This creature can't attack its owner'"
+// from a resolved effect (ADR 0180 decision 6).
+func CantAttackOwnerMod() Mod {
+	return Mod{Kind: ModCantAttackOwner}
 }
 
 // defenderControlsModProblem is the registration and restore check for
@@ -1932,6 +1951,15 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 			r := AttackTargetRestriction{NotPlayer: protected}
 			if src != nil {
 				r.Source, r.SourceName = src.InstanceID, src.Name
+			}
+			ch.AttackTargetRestrictions = append(ch.AttackTargetRestrictions, r)
+		}
+	case ModCantAttackOwner:
+		return func(ch *Characteristic, c *Card, _ *Game, _ *Card) {
+			r := AttackTargetRestriction{NotOwner: true}
+			if c != nil {
+				// The creature's own (granted) ability: see the kind.
+				r.Source, r.SourceName = c.InstanceID, c.Name
 			}
 			ch.AttackTargetRestrictions = append(ch.AttackTargetRestrictions, r)
 		}

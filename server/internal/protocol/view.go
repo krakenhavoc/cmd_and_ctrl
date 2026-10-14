@@ -781,8 +781,9 @@ type PendingChoiceView struct {
 	DoubledByName string `json:"doubled_by_name,omitempty"`
 	// CouncilVote marks an option_pick as one player's BALLOT in a
 	// vote (CR 701.38, ADR 0146) and carries the vote so far. Public:
-	// every seat sees each vote as it is cast. Absent on every other
-	// prompt.
+	// every seat sees each vote as it is cast, except in a secret vote
+	// (ADR 0180), where each seat sees only its own ballots until the
+	// reveal. Absent on every other prompt.
 	CouncilVote *CouncilVoteView `json:"council_vote,omitempty"`
 	// AnyPlayerOffer marks a pay_unless as one link of an "unless any
 	// player pays" offer (ADR 0150 §5) and says whose effect it is and
@@ -829,13 +830,32 @@ type CouncilVoteView struct {
 	Controller string `json:"controller"`
 	Voter      string `json:"voter"`
 	// Options are the vote's choices in printed order, and Tally the
-	// votes each has so far.
+	// votes each has so far (all zero in a secret vote).
 	Options []string `json:"options"`
 	Tally   []int    `json:"tally"`
-	// Ballots are the votes cast so far, in order.
+	// Ballots are the votes cast so far, in order. In a secret vote,
+	// only the viewer's own (FilterViewFor puts them back per seat).
 	Ballots []CouncilBallotView `json:"ballots,omitempty"`
+	// Secret marks secret council (ADR 0180): the ballots are hidden
+	// until every player has voted, then revealed together in the log.
+	// Voted lists the players who have cast a ballot so far, which the
+	// log says anyway.
+	Secret bool     `json:"secret,omitempty"`
+	Voted  []string `json:"voted,omitempty"`
+	// secretBallots are a secret vote's ballots, kept off the wire:
+	// FilterViewFor copies the viewer's own into Ballots, and nothing
+	// else reads them.
+	secretBallots []CouncilBallotView
+	// Abstain is the label of the "vote for nothing" option of a vote
+	// for "up to one" (ADR 0180), which `offered` marks -2. Absent
+	// otherwise.
+	Abstain string `json:"abstain,omitempty"`
+	// SelfBest is a bot hint (ADR 0180): the option naming the voter is
+	// the one the voter wants (Círdan the Shipwright).
+	SelfBest bool `json:"self_best,omitempty"`
 	// Offered maps each of the prompt's pick_options to its index in
-	// Options; -1 is the "don't vote again" option of an optional vote.
+	// Options; -1 is the "don't vote again" option of an optional vote,
+	// -2 the "vote for nothing" option of a vote for up to one.
 	Offered []int `json:"offered"`
 	// Zone is where the cards the options name are, when it is not the
 	// battlefield ("graveyard", Custodi Squire's vote). Absent for a
@@ -1981,6 +2001,9 @@ const (
 	UndoBlockedNothing  = "nothing"
 	UndoBlockedNotYours = "not_yours"
 	UndoBlockedGameOver = "game_over"
+	// UndoBlockedSecretVote: the action that would be taken back
+	// revealed a secret vote (ADR 0180 decision 4).
+	UndoBlockedSecretVote = "secret_vote"
 )
 
 // PlayerView is the wire representation of a Player. Full-fidelity
@@ -2125,8 +2148,9 @@ type PlayerView struct {
 	// UndoBlocked says why an `undo` from this seat would be refused
 	// by the undo stack right now, or is empty when the stack would
 	// allow it: UndoBlockedNothing (nothing on the stack),
-	// UndoBlockedNotYours (the most recent action is another seat's)
-	// or UndoBlockedGameOver (the game has ended). It does not cover
+	// UndoBlockedNotYours (the most recent action is another seat's),
+	// UndoBlockedGameOver (the game has ended) or UndoBlockedSecretVote
+	// (it revealed a secret vote, ADR 0180). It does not cover
 	// the per-turn budget, which the client reads from
 	// UndosRemaining. The client disables its Undo from this and shows
 	// the reason, so the badge never offers an undo the server
@@ -9206,15 +9230,40 @@ func viewOfCouncilVote(v *game.CouncilVote, offered []game.ChoiceOption) *Counci
 		VotesLeft:     v.VotesLeft,
 		ForController: append([]int(nil), v.ForController...),
 		ForOpponents:  append([]int(nil), v.ForOpponents...),
+		Secret:        v.Secret,
+		Abstain:       v.Abstain,
+		SelfBest:      v.SelfBest,
 	}
 	for i, o := range v.Options {
 		out.Options[i] = o.Label
 	}
-	for _, b := range v.Ballots {
-		if b.Option >= 0 && b.Option < len(out.Tally) {
-			out.Tally[b.Option]++
+	if v.Secret {
+		// ADR 0180: no tally and no ballot in the shared view. Who has
+		// voted is public; what they voted for rides an unexported
+		// field that FilterViewFor hands back to its own voter only. A
+		// vote for nothing is a ballot of -2 there, so the voter sees it.
+		seen := map[uuid.UUID]bool{}
+		note := func(voter uuid.UUID) {
+			if !seen[voter] {
+				seen[voter] = true
+				out.Voted = append(out.Voted, voter.String())
+			}
 		}
-		out.Ballots = append(out.Ballots, CouncilBallotView{Voter: b.Voter.String(), Option: b.Option})
+		for _, b := range v.Ballots {
+			note(b.Voter)
+			out.secretBallots = append(out.secretBallots, CouncilBallotView{Voter: b.Voter.String(), Option: b.Option})
+		}
+		for _, voter := range v.Abstained {
+			note(voter)
+			out.secretBallots = append(out.secretBallots, CouncilBallotView{Voter: voter.String(), Option: game.VoteAbstainIndex})
+		}
+	} else {
+		for _, b := range v.Ballots {
+			if b.Option >= 0 && b.Option < len(out.Tally) {
+				out.Tally[b.Option]++
+			}
+			out.Ballots = append(out.Ballots, CouncilBallotView{Voter: b.Voter.String(), Option: b.Option})
+		}
 	}
 	for i, o := range offered {
 		out.Offered[i] = v.OptionIndex(o)
@@ -9627,6 +9676,12 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 	out := make([]PendingChoiceView, len(src))
 	for i, c := range src {
 		out[i] = c
+		// ADR 0180: a secret vote's ballots go back to their own voter
+		// and to nobody else — not another seat, not a spectator, not
+		// the admin's omniscient view.
+		if v := c.CouncilVote; v != nil && v.Secret {
+			out[i].CouncilVote = secretCouncilVoteFor(v, viewerID)
+		}
 		// ADR 0127 §8: the standing-answer fields are the chooser's.
 		if c.Chooser != viewerID {
 			out[i].AutoAnswerKey = ""
@@ -9707,6 +9762,23 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 		}
 	}
 	return out
+}
+
+// secretCouncilVoteFor is a secret vote as `viewerID` may see it (ADR
+// 0180): a copy carrying the viewer's own ballots and no one else's.
+// The admin ("") and a spectator are no voter, so they get none.
+func secretCouncilVoteFor(v *CouncilVoteView, viewerID string) *CouncilVoteView {
+	cp := *v
+	cp.Ballots = nil
+	cp.secretBallots = nil
+	if viewerID != "" && viewerID != SpectatorViewerID {
+		for _, b := range v.secretBallots {
+			if b.Voter == viewerID {
+				cp.Ballots = append(cp.Ballots, b)
+			}
+		}
+	}
+	return &cp
 }
 
 // keepOptionIDs is ids restricted to the instance IDs present in

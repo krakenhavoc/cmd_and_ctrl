@@ -8376,8 +8376,27 @@ var pleaForPowerVoted = VoteResultThen("vote/plea-for-power", func(ctx *Context,
 
 The engine asks every player in turn order from the controller, logs
 each vote as it is cast, shows the tally on every seat's dock, and skips
-a player who has left. Secret council (#2926) and "whenever players
-finish voting" (#2927) are not this shape.
+a player who has left. "Whenever players finish voting" (#2927) is
+`WheneverPlayersFinishVoting`, a trigger, not this shape.
+
+**Secret council** ([ADR 0180](decisions/0180-secret-council.md),
+#2926): "each player secretly votes for …, then those votes are
+revealed" is the same `Vote` with `Secret: true`. Write nothing else:
+the engine keeps every ballot off the wire, the log and the bot's view
+until the last one is in, then reveals them on one log line before
+`Then` runs. Three more fields cover what the secret council cards print:
+
+- `OthersOnly: true` is "votes for **another** player" (Mob Verdict):
+  no voter is offered themselves. Build player options with
+  `VoteForPlayers(g)` and read them back with `VotesReceived(r)`.
+- `Abstain: "No creature"` is "votes for **up to one** creature" (Vault
+  11: Voter's Dilemma): every ballot offers a vote for nothing, which
+  is no ballot, so `r.MostVotes()` is empty when nobody chose a creature.
+- `SelfBest: true` tells the bot a voter wants the option naming them
+  (Círdan the Shipwright: the votes you receive draw you cards).
+
+"They gain 'This creature can't attack its owner'" (Elrond) is
+`ScopedEffectFor{Mods: []game.Mod{game.CantAttackOwnerMod()}}`.
 
 ### A villainous choice (ADR 0018 amendment 2026-10-13, #3140, CR 701.55)
 

@@ -539,6 +539,8 @@ events[].stack_item_id	custom(uuid.UUID)
 events[].step	string
 events[].target	custom(uuid.UUID)
 events[].unpaid	bool
+events[].vote_options	array
+events[].vote_options[]	string
 events[].won	bool
 exile	object
 exile.cards	array
@@ -1722,6 +1724,8 @@ lastKnownStack[].item.trigger.Event.stack_item_id	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.step	string
 lastKnownStack[].item.trigger.Event.target	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.unpaid	bool
+lastKnownStack[].item.trigger.Event.vote_options	array
+lastKnownStack[].item.trigger.Event.vote_options[]	string
 lastKnownStack[].item.trigger.Event.won	bool
 lastKnownStack[].item.trigger.Object	object
 lastKnownStack[].item.trigger.Object.AltCost	string
@@ -2004,6 +2008,8 @@ pausedModeWalk.item.trigger.Event.stack_item_id	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.step	string
 pausedModeWalk.item.trigger.Event.target	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.unpaid	bool
+pausedModeWalk.item.trigger.Event.vote_options	array
+pausedModeWalk.item.trigger.Event.vote_options[]	string
 pausedModeWalk.item.trigger.Event.won	bool
 pausedModeWalk.item.trigger.Object	object
 pausedModeWalk.item.trigger.Object.AltCost	string
@@ -2068,6 +2074,9 @@ pendingChoices[].controlPurpose	string
 pendingChoices[].copyOptions	array
 pendingChoices[].copyOptions[]	custom(uuid.UUID)
 pendingChoices[].councilVote	object
+pendingChoices[].councilVote.abstain	string
+pendingChoices[].councilVote.abstained	array
+pendingChoices[].councilVote.abstained[]	custom(uuid.UUID)
 pendingChoices[].councilVote.ballots	array
 pendingChoices[].councilVote.ballots[]	object
 pendingChoices[].councilVote.ballots[].option	number:int
@@ -2089,7 +2098,10 @@ pendingChoices[].councilVote.options[].Label	string
 pendingChoices[].councilVote.options[].LifeCost	number:int
 pendingChoices[].councilVote.options[].ManaCost	string
 pendingChoices[].councilVote.options[].Player	custom(uuid.UUID)
+pendingChoices[].councilVote.othersOnly	bool
 pendingChoices[].councilVote.question	string
+pendingChoices[].councilVote.secret	bool
+pendingChoices[].councilVote.selfBest	bool
 pendingChoices[].councilVote.source	custom(uuid.UUID)
 pendingChoices[].councilVote.then	string
 pendingChoices[].councilVote.voter	custom(uuid.UUID)
@@ -2546,6 +2558,8 @@ pendingTriggers[].trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.step	string
 pendingTriggers[].trigger.Event.target	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.unpaid	bool
+pendingTriggers[].trigger.Event.vote_options	array
+pendingTriggers[].trigger.Event.vote_options[]	string
 pendingTriggers[].trigger.Event.won	bool
 pendingTriggers[].trigger.Object	object
 pendingTriggers[].trigger.Object.AltCost	string
@@ -6077,6 +6091,8 @@ stackMeta[].trigger.Event.stack_item_id	custom(uuid.UUID)
 stackMeta[].trigger.Event.step	string
 stackMeta[].trigger.Event.target	custom(uuid.UUID)
 stackMeta[].trigger.Event.unpaid	bool
+stackMeta[].trigger.Event.vote_options	array
+stackMeta[].trigger.Event.vote_options[]	string
 stackMeta[].trigger.Event.won	bool
 stackMeta[].trigger.Object	object
 stackMeta[].trigger.Object.AltCost	string
