@@ -2826,8 +2826,21 @@ per-attacker list (`AttackTargetsForAttackerForEffect`) share one check,
 its owner to attack owes nothing. A reselection (CR 508.7b) and a
 creature put onto the battlefield attacking (CR 508.4c) ignore it. The
 card shows a "CAN'T ATTACK <name>" chip. A RESOLVED effect that grants
-it (Elrond of the White Council) has no mod kind yet. See
-`xantcha_sleeper_agent.go` for the printed card.
+"can't attack <a fixed player>" is `game.CantAttackPlayerMod(player)` (#3400,
+below); one that grants "can't attack its owner" (Elrond of the White
+Council) has no mod kind yet. See `xantcha_sleeper_agent.go` for the printed card.
+
+**"Can't attack you or planeswalkers you control", from a spell**
+(#3400, CR 508.1c) is a layer-6 `ScopedEffect` mod,
+`game.CantAttackPlayerMod(caster)`, that appends an
+`AttackTargetRestriction{NotPlayer}` to each pinned creature. Pin it with
+`CounterThenWhileItHasIt` so it lasts "for as long as it has a vow counter on
+it" (CR 611.2b), as Promise of Loyalty does
+(`promise_of_loyalty.go`): the protected player is fixed as the spell
+resolves, and the restriction covers that player and the planeswalkers
+they control, not a battle they protect. It is read by the same check as
+the printed form, so declaration, the requirement search, the
+enumerator and the chip all follow.
 
 **"Can't attack unless defending player controls an Island"**
 ([ADR 0107 §2](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md),
