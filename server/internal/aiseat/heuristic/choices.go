@@ -157,8 +157,9 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 	case choiceEntryRiot:
 		return st.riotValue(ch, cp.Apply)
 	case choiceDamageAssignment:
-		// The enumerator offers exactly one canonical split: the
-		// prefix-lethal one a player makes almost every time.
+		// The enumerator offers the canonical most-kills split first and
+		// the other divisions after it (#3620). Equal values go to the
+		// lowest index, so the bot keeps answering with the canonical one.
 		return 1, "canonical damage assignment"
 
 	case choiceMana:
@@ -226,7 +227,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		if t == nil && len(cp.Targets) == 1 {
 			t = &cp.Targets[0]
 		}
-		return st.auraHostValue(p.cfg, t)
+		purpose := ""
+		if ch != nil {
+			purpose = ch.AuraPurpose
+		}
+		return st.auraHostValue(p.cfg, purpose, t)
 
 	case choicePickTarget:
 		targets := cp.Targets

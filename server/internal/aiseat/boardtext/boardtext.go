@@ -364,7 +364,7 @@ func battlefieldOf(v *protocol.GameView, seat, viewer string, opts Options) stri
 		if c.Controller != seat {
 			continue
 		}
-		label := PermanentLabel(c, opts)
+		label := permanentLabelWith(c, opts, relationPhrases(v, c))
 		g := byLabel[label]
 		if g == nil {
 			g = &group{label: label, class: permanentClass(c)}
@@ -437,6 +437,12 @@ func permanentClass(c *protocol.CardView) int {
 }
 
 func PermanentLabel(c *protocol.CardView, opts Options) string {
+	return permanentLabelWith(c, opts, nil)
+}
+
+// permanentLabelWith is PermanentLabel plus relation phrases the view
+// alone can answer ("attached to X", "exiling Y"), appended last.
+func permanentLabelWith(c *protocol.CardView, opts Options, extra []string) string {
 	var b strings.Builder
 	b.WriteString(CardName(c))
 	if isCreatureLine(c.TypeLine) {
@@ -484,6 +490,7 @@ func PermanentLabel(c *protocol.CardView, opts Options) string {
 	if len(c.Abilities) > 0 {
 		flags = append(flags, strings.Join(c.Abilities, " "))
 	}
+	flags = append(flags, extra...)
 	if len(flags) > 0 {
 		b.WriteString(" (" + strings.Join(flags, ", ") + ")")
 	}
@@ -764,4 +771,47 @@ func PlayerCounters(counters map[string]int) string {
 		parts[i] = strconv.Itoa(counters[name]) + " " + name
 	}
 	return strings.Join(parts, ", ")
+}
+
+// relationPhrases are the board relations a permanent's own fields
+// cannot say (#3612): what an Aura, Equipment or Fortification is
+// attached to, and which card an "until this leaves" exile (Oblivion
+// Ring, Banisher Priest) is holding. Both are public state already on
+// the wire (CardView.AttachedTo; the delayed-trigger queue's source and
+// cards), so no seat learns anything it could not read off the frame.
+//
+// A held card is named only when the viewer can see it: a face-down
+// exile is neither named nor counted, so the line never confirms that
+// a hidden card is there.
+func relationPhrases(v *protocol.GameView, c *protocol.CardView) []string {
+	var out []string
+	if c.AttachedTo != nil && c.AttachedTo.ID != "" {
+		switch c.AttachedTo.Kind {
+		case "player":
+			out = append(out, "attached to "+SeatLabelByID(v, c.AttachedTo.ID, ""))
+		default:
+			out = append(out, "attached to "+nameOfPermanent(v, c.AttachedTo.ID))
+		}
+	}
+	var held []string
+	for _, dt := range v.DelayedTriggers {
+		// An "until" return carries no step; a step-keyed trigger
+		// (flicker-back at end of turn) is not a hold.
+		if dt.Source != c.InstanceID || dt.At != "" {
+			continue
+		}
+		for _, id := range dt.Cards {
+			for i := range v.Exile.Cards {
+				x := &v.Exile.Cards[i]
+				if x.InstanceID != id || x.Name == "" || (x.FaceDown && !x.FaceVisible) {
+					continue
+				}
+				held = append(held, CardName(x))
+			}
+		}
+	}
+	if len(held) > 0 {
+		out = append(out, "exiling "+strings.Join(held, " and "))
+	}
+	return out
 }

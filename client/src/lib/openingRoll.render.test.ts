@@ -447,7 +447,7 @@ describe("the strip during and after the opening roll", () => {
     expect(chips.map((ch) => ch.querySelector(".result")!.textContent)).toEqual([
       "rolling…",
       "11",
-      "—",
+      "6 in round 1",
     ]);
     // The round's tied leaders are outlined.
     expect(chips.map((ch) => ch.classList.contains("tied"))).toEqual([true, true, false]);

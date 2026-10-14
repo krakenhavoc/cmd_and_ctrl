@@ -80,7 +80,7 @@ const rulePassUntil = "pass_until"
 //     (ADR 0055); the notice asks a person to decide, and here the agent
 //     is the person;
 //   - a rule the owner left out of --absorb escalates.
-func decideAutomatically(v *protocol.GameView, me uuid.UUID, moves []legal.Move, absorb map[string]bool, passUntil bool) (autoAnswer, bool) {
+func decideAutomatically(v *protocol.GameView, me uuid.UUID, moves []legal.Move, absorb map[string]bool, mode passMode) (autoAnswer, bool) {
 	if len(moves) == 0 {
 		return autoAnswer{}, false
 	}
@@ -90,12 +90,50 @@ func decideAutomatically(v *protocol.GameView, me uuid.UUID, moves []legal.Move,
 			return autoAnswer{index: verdict.Index, rule: verdict.Rule}, true
 		}
 	}
-	if passUntil {
+	switch mode {
+	case passOthers:
 		if i, ok := passUntilApplies(v, me.String(), moves); ok {
+			return autoAnswer{index: i, rule: rulePassUntil}, true
+		}
+	case passSmart:
+		if i, ok := smartPassApplies(v, me.String(), moves); ok {
 			return autoAnswer{index: i, rule: rulePassUntil}, true
 		}
 	}
 	return autoAnswer{}, false
+}
+
+// passMode is what the model last asked wait_for_decision's pass_until
+// to do.
+type passMode uint8
+
+const (
+	// passNone passes nothing beyond Layer A.
+	passNone passMode = iota
+	// passOthers is "my_turn_or_stack" (§4).
+	passOthers
+	// passSmart is "smart" (#3603): the browser's smart auto-pass.
+	passSmart
+)
+
+// Wire values of pass_until.
+const (
+	passUntilNone   = "none"
+	passUntilOthers = "my_turn_or_stack"
+	passUntilSmart  = "smart"
+)
+
+// parsePassUntil reads wait_for_decision's pass_until.
+func parsePassUntil(s string) (passMode, bool) {
+	switch s {
+	case "", passUntilNone:
+		return passNone, true
+	case passUntilOthers:
+		return passOthers, true
+	case passUntilSmart:
+		return passSmart, true
+	}
+	return passNone, false
 }
 
 // passUntilApplies is pass_until "my_turn_or_stack" (§4): pass a priority
@@ -104,24 +142,39 @@ func decideAutomatically(v *protocol.GameView, me uuid.UUID, moves []legal.Move,
 // the stack, a pending choice, a combat declaration or the loop notice.
 // The start of the seat's own turn clears the setting (seat.go).
 func passUntilApplies(v *protocol.GameView, me string, moves []legal.Move) (int, bool) {
-	if v.LoopNotice != nil || len(v.StackItems) > 0 || len(v.PendingTriggers) > 0 {
+	if len(v.StackItems) > 0 {
 		return 0, false
+	}
+	self, ok := passGuards(v, me, moves)
+	if !ok || v.Turn.ActiveSeat == self.Seat {
+		return 0, false
+	}
+	pass := aiseat.PassIndex(moves)
+	return pass, pass >= 0
+}
+
+// passGuards is what stops every pass_until mode: the loop notice,
+// triggers still being put on the stack, a choice the seat owes, a combat
+// declaration, a mulligan, or a seat the view does not list. On success it
+// returns the seat's own row.
+func passGuards(v *protocol.GameView, me string, moves []legal.Move) (*protocol.PlayerView, bool) {
+	if v.LoopNotice != nil || len(v.PendingTriggers) > 0 {
+		return nil, false
 	}
 	for i := range v.PendingChoices {
 		if v.PendingChoices[i].Chooser == me {
-			return 0, false
+			return nil, false
 		}
 	}
 	self := mySeat(v, me)
-	if self == nil || v.Turn.ActiveSeat == self.Seat {
-		return 0, false
+	if self == nil {
+		return nil, false
 	}
 	for _, m := range moves {
 		switch m.Kind {
 		case legal.KindAttack, legal.KindBlock, legal.KindFinishBlocks, legal.KindChoice, legal.KindMulligan:
-			return 0, false
+			return nil, false
 		}
 	}
-	pass := aiseat.PassIndex(moves)
-	return pass, pass >= 0
+	return self, true
 }

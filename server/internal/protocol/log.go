@@ -788,6 +788,12 @@ type LogEvent struct {
 	// may not identify the source. Unexported because the wire already
 	// says it: only the ability path puts a label on these kinds.
 	ability bool
+	// cardHint / targetHint are the public names the engine captured on
+	// the event (game.Event.PublicNames, #3609): tokens every seat could
+	// see. resolveLogNames falls back to them only when the view has no
+	// such card, which is exactly a token that has ceased to exist.
+	cardHint   string
+	targetHint string
 	// cardFound says resolveLogNames found CardID in the view, which is
 	// what separates "the viewer may not identify this card" from "the
 	// card has ceased to exist" when cardKnowers is empty. Read only
@@ -1000,6 +1006,12 @@ func (f *logFold) feed(events []game.Event) int {
 		if !ok {
 			continue
 		}
+		if names := events[i].PublicNames; len(names) > 0 {
+			// #3609: the names the engine captured while the objects
+			// could still be found, keyed by the IDs the entry carries.
+			e.cardHint = publicNameFor(names, e.CardID)
+			e.targetHint = publicNameFor(names, e.Target)
+		}
 		e.Turn = f.turn
 		if e.Kind == LogStep {
 			e.Step = f.step
@@ -1128,6 +1140,18 @@ func (f *logFold) entries() []LogEvent {
 // draw / step runs in projectEvents). A second grouping key on the
 // wire would be a second thing to keep consistent for no rendering
 // gain. RevealSeq stays the one grouping the client reads.
+// publicNameFor reads an event's captured public name for a log ID.
+func publicNameFor(names map[uuid.UUID]string, id string) string {
+	if id == "" {
+		return ""
+	}
+	u, err := uuid.Parse(id)
+	if err != nil {
+		return ""
+	}
+	return names[u]
+}
+
 func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *string, sacrificed *uuid.UUID) (LogEvent, bool) {
 	base := LogEvent{Seq: ev.Seq, Seat: seatOf(ev.Actor)}
 	// Anything but the zone move that follows a sacrifice clears the
@@ -1226,6 +1250,15 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Kind = LogCounter
 		// Source is the counter; Target the countered item.
 		base.CardID = uuidStringOrEmpty(ev.Source)
+		if ev.Source == uuid.Nil && ev.Label == "" && ev.Cause == game.MoveCauseEffect {
+			// #3609: the spell path never stamps Source, so every
+			// counterspell line read "a card countered X". It does stamp
+			// the cause, and for a resolving SPELL the cause item is the
+			// spell's own card ID (a spell's item ID is its card's), which
+			// is the counter. An ability's item ID names no card, so the
+			// view misses it and that line stays "a card", as before.
+			base.CardID = uuidStringOrEmpty(ev.CauseItem)
+		}
 		base.Target = uuidStringOrEmpty(ev.Target)
 		// Target is the countered item's ID for a spell and an ability
 		// both, before the ability case below clears it from Target.
@@ -2059,10 +2092,14 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 			e.cardName = logNameOf(*c)
 			e.cardKnowers = c.knowers
 			e.cardFound = true
+		} else if e.cardHint != "" {
+			e.cardName, e.cardKnowers = e.cardHint, allSeatKnowers(v)
 		}
 		if c, ok := cards[e.Target]; ok {
 			e.targetName = logNameOf(*c)
 			e.targetKnowers = c.knowers
+		} else if e.targetHint != "" {
+			e.targetName, e.targetKnowers = e.targetHint, allSeatKnowers(v)
 		}
 		// Revealed cards are looked up in every zone, hands and
 		// libraries included, without a knower check: see
@@ -2083,6 +2120,18 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 			e.revealIDs = nil
 		}
 	}
+}
+
+// allSeatKnowers is the knower set of a captured public name: every
+// seat. The capture only ever names an object all seats knew, so
+// redactLogForViewer keeps the name for every seated viewer, exactly as
+// it would have for the token while it was on the board.
+func allSeatKnowers(v *GameView) map[string]bool {
+	k := make(map[string]bool, len(v.Seats))
+	for _, s := range v.Seats {
+		k[s.ID] = true
+	}
+	return k
 }
 
 // seatIndexer returns a player-UUID → seat-index lookup over the
@@ -2447,7 +2496,7 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 			}
 			return fmt.Sprintf("%s won the game", actor)
 		}
-		return fmt.Sprintf("%s won the game: every opponent has left", actor)
+		return fmt.Sprintf("%s won the game: last player standing", actor)
 	case LogWinPrevented:
 		return fmt.Sprintf("%s would have won the game (%s), but can't (%s)",
 			actor, nameOr(cardName, "an effect"), nameOr(targetName, "an effect"))
@@ -2993,6 +3042,12 @@ func renderZoneText(e LogEvent, card string) string {
 		return fmt.Sprintf("%s was put into a library from %s", card, prettyZone(e.OldZone))
 	case game.ZoneCommand:
 		return fmt.Sprintf("%s was put into the command zone", card)
+	case "":
+		// An EventZoneMove with no destination is an object ceasing to
+		// exist (CR 111.7 / CR 704.5d): a token that left the
+		// battlefield, or a spell copy. "Moved to elsewhere" read as if
+		// it had gone somewhere.
+		return fmt.Sprintf("%s ceased to exist", card)
 	default:
 		return fmt.Sprintf("%s moved from %s to %s", card, prettyZone(e.OldZone), prettyZone(e.NewZone))
 	}

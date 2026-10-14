@@ -163,18 +163,18 @@ func TestDecideAutomaticallyFollowsTheTable(t *testing.T) {
 		name      string
 		moves     []legal.Move
 		absorb    map[string]bool
-		passUntil bool
+		passUntil passMode
 		wantAuto  bool
 		wantRule  string
 	}{
-		{"forced", []legal.Move{pass}, def, false, true, rules.RuleForced},
-		{"mana-only", []legal.Move{pass, mana}, def, false, true, rules.RuleManaOnly},
-		{"same-land escalates by default", []legal.Move{pass, land, land}, def, false, false, ""},
-		{"same-land when switched on", []legal.Move{pass, land, land}, map[string]bool{rules.RuleSameLand: true}, false, true, rules.RuleSameLand},
-		{"a removed rule escalates", []legal.Move{pass}, map[string]bool{}, false, false, ""},
-		{"a real choice", []legal.Move{pass, cast}, def, false, false, ""},
-		{"pass_until on another's turn", []legal.Move{pass, cast}, def, true, true, rulePassUntil},
-		{"pass_until never answers a declaration", []legal.Move{attack, attack}, def, true, false, ""},
+		{"forced", []legal.Move{pass}, def, passNone, true, rules.RuleForced},
+		{"mana-only", []legal.Move{pass, mana}, def, passNone, true, rules.RuleManaOnly},
+		{"same-land escalates by default", []legal.Move{pass, land, land}, def, passNone, false, ""},
+		{"same-land when switched on", []legal.Move{pass, land, land}, map[string]bool{rules.RuleSameLand: true}, passNone, true, rules.RuleSameLand},
+		{"a removed rule escalates", []legal.Move{pass}, map[string]bool{}, passNone, false, ""},
+		{"a real choice", []legal.Move{pass, cast}, def, passNone, false, ""},
+		{"pass_until on another's turn", []legal.Move{pass, cast}, def, passOthers, true, rulePassUntil},
+		{"pass_until never answers a declaration", []legal.Move{attack, attack}, def, passOthers, false, ""},
 	} {
 		ans, ok := decideAutomatically(v, me, tc.moves, tc.absorb, tc.passUntil)
 		if ok != tc.wantAuto || (ok && ans.rule != tc.wantRule) {
@@ -188,29 +188,29 @@ func TestDecideAutomaticallyFollowsTheTable(t *testing.T) {
 	roll := legal.Move{Type: legal.TypeRollOpening, Kind: legal.KindOpeningRoll, Label: "Roll a d20 for the first turn", AlwaysLegal: true}
 	chooseOther := legal.Move{Type: legal.TypeChooseStartingPlayer, Kind: legal.KindOpeningRoll, Label: "Them goes first", Params: json.RawMessage(`{"seat":1}`)}
 	chooseMe := legal.Move{Type: legal.TypeChooseStartingPlayer, Kind: legal.KindOpeningRoll, Label: "I go first", Params: json.RawMessage(`{"seat":0}`), AlwaysLegal: true}
-	if ans, ok := decideAutomatically(v, me, []legal.Move{roll}, def, false); !ok || ans.rule != rules.RuleOpeningRoll {
+	if ans, ok := decideAutomatically(v, me, []legal.Move{roll}, def, passNone); !ok || ans.rule != rules.RuleOpeningRoll {
 		t.Errorf("the opening die: auto=%v rule=%q, want absorbed as %q", ok, ans.rule, rules.RuleOpeningRoll)
 	}
-	if ans, ok := decideAutomatically(v, me, []legal.Move{chooseOther, chooseMe}, def, true); ok {
+	if ans, ok := decideAutomatically(v, me, []legal.Move{chooseOther, chooseMe}, def, passOthers); ok {
 		t.Errorf("the opening roll's choice was answered without the model (%q); CR 103.1 makes it a real choice", ans.rule)
 	}
-	if ans, ok := decideAutomatically(v, me, []legal.Move{chooseOther, chooseMe}, map[string]bool{rules.RuleOpeningChoice: true}, false); !ok || ans.rule != rules.RuleOpeningChoice || ans.index != 1 {
+	if ans, ok := decideAutomatically(v, me, []legal.Move{chooseOther, chooseMe}, map[string]bool{rules.RuleOpeningChoice: true}, passNone); !ok || ans.rule != rules.RuleOpeningChoice || ans.index != 1 {
 		t.Errorf("opening-choice switched on: %+v %v, want the seat's own first turn (1)", ans, ok)
 	}
 
 	stacked := *v
 	stacked.StackItems = []protocol.StackItemView{{ID: "x"}}
-	if _, ok := decideAutomatically(&stacked, me, []legal.Move{pass, cast}, def, true); ok {
+	if _, ok := decideAutomatically(&stacked, me, []legal.Move{pass, cast}, def, passOthers); ok {
 		t.Error("pass_until passed with something on the stack")
 	}
 	own := *v
 	own.Turn.ActiveSeat = 0
-	if _, ok := decideAutomatically(&own, me, []legal.Move{pass, cast}, def, true); ok {
+	if _, ok := decideAutomatically(&own, me, []legal.Move{pass, cast}, def, passOthers); ok {
 		t.Error("pass_until passed on the seat's own turn")
 	}
 	loop := *v
 	loop.LoopNotice = &protocol.LoopNoticeView{Label: "x", Count: 3}
-	if _, ok := decideAutomatically(&loop, me, []legal.Move{pass}, def, true); ok {
+	if _, ok := decideAutomatically(&loop, me, []legal.Move{pass}, def, passOthers); ok {
 		t.Error("a pass went out under the loop notice")
 	}
 }
@@ -339,5 +339,30 @@ func TestTheSinceLogCollapsesRepeatsAndCountsWhatItCuts(t *testing.T) {
 	board := compactBoard(v, me, got, nil)
 	if !strings.Contains(board, "SINCE YOUR LAST DECISION (public log, oldest first)\n  … 7 earlier log entries not shown (get_state(detail: \"full\") has the last 24)\n  «Avenger") {
 		t.Errorf("the cut is not stated:\n%s", board)
+	}
+}
+
+// get_state(full) titles its log LOG, not "since your last decision", and
+// says how many older entries it did not carry (#3607).
+func TestFullBoardTitlesItsLogAndSaysWhenEntriesWereCut(t *testing.T) {
+	me := uuid.NewString()
+	v := &protocol.GameView{State: "active", Seats: []protocol.PlayerView{{ID: me, Name: "Agent"}}}
+	for i := 0; i < 30; i++ {
+		v.Log = append(v.Log, protocol.LogEvent{Seq: uint64(i + 1), Text: fmt.Sprintf("entry %d", i)})
+	}
+	full := fullBoard(v, me)
+	if strings.Contains(full, "SINCE YOUR LAST DECISION") {
+		t.Errorf("full view calls its log since the last decision:\n%s", full)
+	}
+	if !strings.Contains(full, "LOG (last 24 entries, oldest first)\n  … 6 earlier entries not shown\n") {
+		t.Errorf("full view does not say the log was cut:\n%s", full)
+	}
+	if !strings.Contains(full, "entry 29") || strings.Contains(full, "entry 5»") {
+		t.Errorf("full view carries the wrong entries:\n%s", full)
+	}
+
+	short := &protocol.GameView{State: "active", Seats: v.Seats, Log: v.Log[:5]}
+	if got := fullBoard(short, me); !strings.Contains(got, "LOG (last 5 entries, oldest first)\n") || strings.Contains(got, "not shown") {
+		t.Errorf("a short log is mislabelled:\n%s", got)
 	}
 }

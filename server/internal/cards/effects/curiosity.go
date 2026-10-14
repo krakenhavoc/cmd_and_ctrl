@@ -33,6 +33,7 @@ func init() {
 		Name:         "Curiosity",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
+		Purpose:      game.Purpose{Aura: game.AuraBenefit},
 		Triggered: []game.TriggeredAbility{
 			Optional(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return attachedCreatureDealtDamageToOpponent(ev, source, g)

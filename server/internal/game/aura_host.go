@@ -372,6 +372,29 @@ func (g *Game) ResolveAuraHost(choiceID, chooserID uuid.UUID, host TargetRef) er
 	return g.finishSettledReplacementLocked(ev, out)
 }
 
+// AuraHostPurpose is what the Aura an open aura_host prompt is about
+// does to the permanent it enchants, as its card declares it (#3309,
+// Purpose.Aura): the empty string for a card that declares none, or that
+// is no longer in a zone. A view reads it so a policy can tell a buff
+// from a curse when it picks the host.
+//
+// Caller must hold g.mu.
+func (g *Game) AuraHostPurpose(c *PendingChoice) AuraPurpose {
+	if c == nil || c.Kind != PendingChoiceAuraHost {
+		return ""
+	}
+	z := g.findCardZoneLocked(c.Source)
+	if z == nil {
+		return ""
+	}
+	for i := range z.Cards {
+		if z.Cards[i].InstanceID == c.Source {
+			return CardPurposeOfPtr(&z.Cards[i]).Aura
+		}
+	}
+	return ""
+}
+
 // singleAuraHost is the one card or player in a resolving Aura spell's
 // targets, the host attachResolvedAuraLocked would attach it to. False
 // for none or several, which attachResolvedAuraLocked leaves alone.

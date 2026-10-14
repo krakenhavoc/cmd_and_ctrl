@@ -36,6 +36,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Targets:         EnchantCreature(),
+		Purpose:         game.Purpose{Aura: game.AuraBenefit},
 		Static: []game.StaticAbility{
 			PumpAttached(1, 0),
 			GrantToAttached("flying"),

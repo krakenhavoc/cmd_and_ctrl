@@ -883,11 +883,15 @@ type cardSnapshot struct {
 	AttachedTo               TargetRef `json:"attachedTo,omitempty"`
 	AttachedAt               int64     `json:"attachedAt,omitempty"`
 	// AttachedEpoch is Card.AttachedEpoch (ADR 0154 decision 3): the
-	// CR 400.7 epoch of an off-battlefield host (Animate Dead's graveyard
-	// card) at the attach. Additive within v8 and absent at zero, which is
-	// every battlefield host and every file written before it: no
-	// catalogued Aura could be attached off the battlefield then.
-	AttachedEpoch  int              `json:"attachedEpoch,omitempty"`
+	// CR 400.7 epoch of the host at the attach. Additive within v8 and
+	// absent at zero. A file written before #3159 has it only for an
+	// off-battlefield host (Animate Dead's graveyard card).
+	AttachedEpoch int `json:"attachedEpoch,omitempty"`
+	// AttachedPinned is Card.AttachedPinned (#3159): a battlefield host
+	// is judged by AttachedEpoch. Additive within v8 and absent when
+	// false, which is every link in a file written before it, so those
+	// links restore unpinned and keep their old behaviour.
+	AttachedPinned bool             `json:"attachedPinned,omitempty"`
 	BaseController uuid.UUID        `json:"baseController,omitempty"`
 	FaceDownListed *FaceDownListing `json:"faceDownListed,omitempty"`
 	FaceTurnedAt   int64            `json:"faceTurnedAt,omitempty"`
@@ -2251,6 +2255,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
 		AttachedEpoch:            c.AttachedEpoch,
+		AttachedPinned:           c.AttachedPinned,
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
@@ -3150,6 +3155,7 @@ func restoreCard(c *cardSnapshot) Card {
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
 		AttachedEpoch:            c.AttachedEpoch,
+		AttachedPinned:           c.AttachedPinned,
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),

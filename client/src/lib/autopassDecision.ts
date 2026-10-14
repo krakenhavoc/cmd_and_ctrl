@@ -22,7 +22,7 @@
 //     what the viewer *may* do: no priority, mulligans open, game
 //     over, eliminated, an open pending choice, an owed
 //     declare-blockers decision (#328), an owed attack requirement
-//     (#1571), the CR 732 loop breaker (#628). None of these can be out-voted by any toggle.
+//     (#1571), an owed free cast (#3490), the CR 732 loop breaker (#628). None of these can be out-voted by any toggle.
 //  2. The safety belt (ADR 0009 §7, always on since ADR 0143 §4.2): entering the viewer's
 //     own precombat_main clears Skip to my turn instead of passing.
 //  3. A manual one-time stop on this step → hold (#526). Beats the
@@ -100,6 +100,9 @@ export interface AutopassGates {
   // #1571: the viewer owes an attack a CR 508.1d requirement asks for
   // (a creature stamped must_attack); the server refuses their pass.
   owesAttackRequirement: boolean;
+  // #3490: the viewer holds a free cast their next pass would throw
+  // away (rebound, suspend, discover, cascade); see priority.ts.
+  owesFreeCast: boolean;
   // #628 / CR 732: the server suspended automatic passing table-wide.
   loopSuspended: boolean;
   // The snapshot's current step, or null/undefined if unknown.
@@ -176,6 +179,7 @@ export function autopassDecision(g: AutopassGates): AutopassVerdict {
   if (g.hasPendingChoice) return "hold";
   if (g.owesBlockDecision) return "hold";
   if (g.owesAttackRequirement) return "hold";
+  if (g.owesFreeCast) return "hold";
   if (g.loopSuspended) return "hold";
   if (!g.step) return "hold";
 

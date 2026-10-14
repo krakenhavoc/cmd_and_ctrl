@@ -27,9 +27,10 @@ import (
 //	}
 //
 // Card records carry more fields than we need (mana cost, colors,
-// Scryfall ID, etc.); we read only quantity + card.name. Switching
-// to Scryfall-UUID-based resolution is a later change — see the
-// `card.scryfall_id` field in the response.
+// etc.); we read quantity, card.name and the printing the owner chose
+// (card.scryfall_id, falling back to card.set + card.cn). The name is
+// still what identifies the card; the printing only picks its picture
+// (ADR 0192 §2).
 func ParseMoxfield(raw []byte) (name string, entries []Entry, err error) {
 	var doc struct {
 		Name   string `json:"name"`
@@ -70,7 +71,10 @@ type moxfieldBoard struct {
 type moxfieldBoardEntry struct {
 	Quantity int `json:"quantity"`
 	Card     struct {
-		Name string `json:"name"`
+		Name       string `json:"name"`
+		ScryfallID string `json:"scryfall_id"`
+		Set        string `json:"set"`
+		CN         string `json:"cn"`
 	} `json:"card"`
 }
 
@@ -87,7 +91,13 @@ func collectMoxfieldBoard(b moxfieldBoard, tag func(*Entry)) []Entry {
 		if e.Quantity <= 0 || e.Card.Name == "" {
 			continue
 		}
-		entry := Entry{Name: e.Card.Name, Count: e.Quantity}
+		entry := Entry{
+			Name:        e.Card.Name,
+			Count:       e.Quantity,
+			PrintingID:  parsePrintingID(e.Card.ScryfallID),
+			SetCode:     e.Card.Set,
+			CollectorNo: e.Card.CN,
+		}
 		if tag != nil {
 			tag(&entry)
 		}

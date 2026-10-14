@@ -32,6 +32,10 @@ func playableNow(g *Game, seat *Player, id uuid.UUID) bool {
 // and locks the declaration in, which is what emits EventAttack.
 func condDeclareAttack(t *testing.T, g *Game, ids ...uuid.UUID) {
 	t.Helper()
+	// These subtests declare several attackers one after another, each
+	// call its own declaration; #3621 closes a declaration once it is
+	// locked in, so each call starts a fresh one.
+	reopenAttackDeclarationForTest(g)
 	for _, id := range ids {
 		if err := g.DeclareAttacker(id, g.Seats[1].ID); err != nil {
 			t.Fatalf("DeclareAttacker: %v", err)

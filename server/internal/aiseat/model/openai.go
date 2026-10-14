@@ -174,13 +174,17 @@ type OpenAIClient struct {
 	// carrying response_format with a 400 and the same request
 	// without it with a 2xx. See the file comment.
 	schemaRefused atomic.Bool
-
-	// maxCompletion holds the model names (string -> struct{}) that
-	// refused max_tokens and took max_completion_tokens instead. It is
-	// per model, not per client: one endpoint can serve several models,
-	// and only the newer ones refuse max_tokens. See Complete.
-	maxCompletion sync.Map
 }
+
+// maxCompletionModels remembers, for the life of the process, which
+// endpoint and model refused max_tokens and took max_completion_tokens
+// instead. It is package-level, not a field of OpenAIClient, because the
+// own-key path builds a fresh client for every Test press and every time
+// a seat re-reads its key (modelkeys.Service.clientFor), and the answer
+// belongs to the provider and model, not to one client. See Complete.
+var maxCompletionModels sync.Map // maxCompletionKey -> struct{}
+
+type maxCompletionKey struct{ endpoint, model string }
 
 // SchemaRefused reports whether this server refused the json_schema
 // response_format, so the client has stopped sending it.
@@ -439,7 +443,7 @@ func (c *OpenAIClient) Complete(ctx context.Context, req Request) (Response, err
 	if maxTokens <= 0 {
 		maxTokens = 256
 	}
-	if c.usesMaxCompletionTokens(req.Model) {
+	if _, ok := maxCompletionModels.Load(maxCompletionKey{c.URL(), req.Model}); ok {
 		body.MaxCompletionTokens = maxTokens
 	} else {
 		body.MaxTokens = maxTokens
@@ -485,7 +489,7 @@ func (c *OpenAIClient) Complete(ctx context.Context, req Request) (Response, err
 		retry.MaxTokens, retry.MaxCompletionTokens = 0, body.MaxTokens
 		body = retry
 		if resp, err = c.post(ctx, body); err == nil {
-			c.maxCompletion.Store(req.Model, struct{}{})
+			maxCompletionModels.Store(maxCompletionKey{c.URL(), req.Model}, struct{}{})
 		}
 	}
 	if body.ResponseFormat != nil && errors.As(err, &apiErr) && apiErr.Status == http.StatusBadRequest {
@@ -498,13 +502,6 @@ func (c *OpenAIClient) Complete(ctx context.Context, req Request) (Response, err
 		}
 	}
 	return resp, err
-}
-
-// usesMaxCompletionTokens reports whether an earlier call to this model
-// was refused max_tokens and answered max_completion_tokens.
-func (c *OpenAIClient) usesMaxCompletionTokens(model string) bool {
-	_, ok := c.maxCompletion.Load(model)
-	return ok
 }
 
 // refusesMaxTokens reports whether a 400 says the server does not take

@@ -1647,6 +1647,12 @@ type Event struct {
 	CauseController uuid.UUID     `json:"cause_controller,omitempty"`
 	CauseItem       uuid.UUID     `json:"cause_item,omitempty"`
 
+	// PublicNames maps a referenced token's ID to its name, captured
+	// when the event was emitted so the log can still name a token that
+	// has since ceased to exist (#3609, public_names.go). Only tokens
+	// every seat could see; never a hidden or face-down card.
+	PublicNames map[uuid.UUID]string `json:"public_names,omitempty"`
+
 	// ErrorMsg carries the failure reason on EventEffectError.
 	ErrorMsg string `json:"error_msg,omitempty"`
 
@@ -1967,6 +1973,7 @@ func (g *Game) EmitEvent(ev Event) {
 	// undo and every consumer see the same grouping the trigger
 	// harvester saw.
 	ev.Batch = g.currentEventBatchLocked()
+	g.stampPublicNamesLocked(&ev)
 	g.Events = append(g.Events, ev)
 	// S17 sub-PR 6 diagnostic: effect-error events are otherwise
 	// silent (no client toast yet). Surfacing them in the server log

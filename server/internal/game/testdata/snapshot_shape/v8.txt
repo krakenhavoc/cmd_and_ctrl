@@ -33,6 +33,7 @@ battlefield.cards[].alsoBlocking	array
 battlefield.cards[].alsoBlocking[]	custom(uuid.UUID)
 battlefield.cards[].attachedAt	number:int64
 battlefield.cards[].attachedEpoch	number:int
+battlefield.cards[].attachedPinned	bool
 battlefield.cards[].attachedTo	object
 battlefield.cards[].attachedTo.ID	custom(uuid.UUID)
 battlefield.cards[].attachedTo.Kind	string
@@ -527,6 +528,8 @@ events[].loyalty	bool
 events[].new_zone	string
 events[].old_zone	string
 events[].played	bool
+events[].public_names	map:array
+events[].public_names{}	string
 events[].resolved_stack_item_id	custom(uuid.UUID)
 events[].reveal_seq	number:uint64
 events[].reveal_to	string
@@ -556,6 +559,7 @@ exile.cards[].alsoBlocking	array
 exile.cards[].alsoBlocking[]	custom(uuid.UUID)
 exile.cards[].attachedAt	number:int64
 exile.cards[].attachedEpoch	number:int
+exile.cards[].attachedPinned	bool
 exile.cards[].attachedTo	object
 exile.cards[].attachedTo.ID	custom(uuid.UUID)
 exile.cards[].attachedTo.Kind	string
@@ -1203,6 +1207,7 @@ lastKnownStack[].card.alsoBlocking	array
 lastKnownStack[].card.alsoBlocking[]	custom(uuid.UUID)
 lastKnownStack[].card.attachedAt	number:int64
 lastKnownStack[].card.attachedEpoch	number:int
+lastKnownStack[].card.attachedPinned	bool
 lastKnownStack[].card.attachedTo	object
 lastKnownStack[].card.attachedTo.ID	custom(uuid.UUID)
 lastKnownStack[].card.attachedTo.Kind	string
@@ -1721,6 +1726,8 @@ lastKnownStack[].item.trigger.Event.loyalty	bool
 lastKnownStack[].item.trigger.Event.new_zone	string
 lastKnownStack[].item.trigger.Event.old_zone	string
 lastKnownStack[].item.trigger.Event.played	bool
+lastKnownStack[].item.trigger.Event.public_names	map:array
+lastKnownStack[].item.trigger.Event.public_names{}	string
 lastKnownStack[].item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.reveal_seq	number:uint64
 lastKnownStack[].item.trigger.Event.reveal_to	string
@@ -2006,6 +2013,8 @@ pausedModeWalk.item.trigger.Event.loyalty	bool
 pausedModeWalk.item.trigger.Event.new_zone	string
 pausedModeWalk.item.trigger.Event.old_zone	string
 pausedModeWalk.item.trigger.Event.played	bool
+pausedModeWalk.item.trigger.Event.public_names	map:array
+pausedModeWalk.item.trigger.Event.public_names{}	string
 pausedModeWalk.item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.reveal_seq	number:uint64
 pausedModeWalk.item.trigger.Event.reveal_to	string
@@ -2561,6 +2570,8 @@ pendingTriggers[].trigger.Event.loyalty	bool
 pendingTriggers[].trigger.Event.new_zone	string
 pendingTriggers[].trigger.Event.old_zone	string
 pendingTriggers[].trigger.Event.played	bool
+pendingTriggers[].trigger.Event.public_names	map:array
+pendingTriggers[].trigger.Event.public_names{}	string
 pendingTriggers[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.reveal_seq	number:uint64
 pendingTriggers[].trigger.Event.reveal_to	string
@@ -2614,6 +2625,7 @@ phasedOut.cards[].alsoBlocking	array
 phasedOut.cards[].alsoBlocking[]	custom(uuid.UUID)
 phasedOut.cards[].attachedAt	number:int64
 phasedOut.cards[].attachedEpoch	number:int
+phasedOut.cards[].attachedPinned	bool
 phasedOut.cards[].attachedTo	object
 phasedOut.cards[].attachedTo.ID	custom(uuid.UUID)
 phasedOut.cards[].attachedTo.Kind	string
@@ -3310,6 +3322,7 @@ seats[].command.cards[].alsoBlocking	array
 seats[].command.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].command.cards[].attachedAt	number:int64
 seats[].command.cards[].attachedEpoch	number:int
+seats[].command.cards[].attachedPinned	bool
 seats[].command.cards[].attachedTo	object
 seats[].command.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].command.cards[].attachedTo.Kind	string
@@ -3652,6 +3665,7 @@ seats[].companion.cards[].alsoBlocking	array
 seats[].companion.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].companion.cards[].attachedAt	number:int64
 seats[].companion.cards[].attachedEpoch	number:int
+seats[].companion.cards[].attachedPinned	bool
 seats[].companion.cards[].attachedTo	object
 seats[].companion.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].companion.cards[].attachedTo.Kind	string
@@ -3997,6 +4011,7 @@ seats[].emblems.cards[].alsoBlocking	array
 seats[].emblems.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].emblems.cards[].attachedAt	number:int64
 seats[].emblems.cards[].attachedEpoch	number:int
+seats[].emblems.cards[].attachedPinned	bool
 seats[].emblems.cards[].attachedTo	object
 seats[].emblems.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].emblems.cards[].attachedTo.Kind	string
@@ -4337,6 +4352,7 @@ seats[].graveyard.cards[].alsoBlocking	array
 seats[].graveyard.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].graveyard.cards[].attachedAt	number:int64
 seats[].graveyard.cards[].attachedEpoch	number:int
+seats[].graveyard.cards[].attachedPinned	bool
 seats[].graveyard.cards[].attachedTo	object
 seats[].graveyard.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].graveyard.cards[].attachedTo.Kind	string
@@ -4675,6 +4691,7 @@ seats[].hand.cards[].alsoBlocking	array
 seats[].hand.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].hand.cards[].attachedAt	number:int64
 seats[].hand.cards[].attachedEpoch	number:int
+seats[].hand.cards[].attachedPinned	bool
 seats[].hand.cards[].attachedTo	object
 seats[].hand.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].hand.cards[].attachedTo.Kind	string
@@ -5025,6 +5042,7 @@ seats[].library.cards[].alsoBlocking	array
 seats[].library.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].library.cards[].attachedAt	number:int64
 seats[].library.cards[].attachedEpoch	number:int
+seats[].library.cards[].attachedPinned	bool
 seats[].library.cards[].attachedTo	object
 seats[].library.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].library.cards[].attachedTo.Kind	string
@@ -5400,6 +5418,7 @@ seats[].sideboard.cards[].alsoBlocking	array
 seats[].sideboard.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].sideboard.cards[].attachedAt	number:int64
 seats[].sideboard.cards[].attachedEpoch	number:int
+seats[].sideboard.cards[].attachedPinned	bool
 seats[].sideboard.cards[].attachedTo	object
 seats[].sideboard.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].sideboard.cards[].attachedTo.Kind	string
@@ -5939,6 +5958,7 @@ stack.cards[].alsoBlocking	array
 stack.cards[].alsoBlocking[]	custom(uuid.UUID)
 stack.cards[].attachedAt	number:int64
 stack.cards[].attachedEpoch	number:int
+stack.cards[].attachedPinned	bool
 stack.cards[].attachedTo	object
 stack.cards[].attachedTo.ID	custom(uuid.UUID)
 stack.cards[].attachedTo.Kind	string
@@ -6460,6 +6480,8 @@ stackMeta[].trigger.Event.loyalty	bool
 stackMeta[].trigger.Event.new_zone	string
 stackMeta[].trigger.Event.old_zone	string
 stackMeta[].trigger.Event.played	bool
+stackMeta[].trigger.Event.public_names	map:array
+stackMeta[].trigger.Event.public_names{}	string
 stackMeta[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 stackMeta[].trigger.Event.reveal_seq	number:uint64
 stackMeta[].trigger.Event.reveal_to	string

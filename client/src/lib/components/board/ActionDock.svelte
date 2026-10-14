@@ -1345,7 +1345,9 @@
     width: auto;
     min-width: 0;
     max-height: none;
-    padding: max(12px, calc(6vh - 45px)) 24px 220px;
+    /* #2409: with the game log open the stage's fan narrows to the room
+       the drawer leaves (Game.svelte sets --stage-log-w to its width). */
+    padding: max(12px, calc(6vh - 45px)) calc(24px + var(--stage-log-w, 0px)) 220px 24px;
     align-items: center;
     border: none;
     border-radius: 0;

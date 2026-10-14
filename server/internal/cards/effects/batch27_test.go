@@ -857,8 +857,15 @@ func TestB27RevengeOfRavensDrainsPerAttacker(t *testing.T) {
 	other := g.Seats[2]
 	advanceToMainOf(t, g, 1)
 	meBefore, oppBefore, otherBefore := me.Life, opp.Life, other.Life
-	declareAttack(t, g, me.ID, a, b)
-	declareAttack(t, g, other.ID, c)
+	// One declaration (CR 508.1, #3621): all three attackers are staged
+	// before it locks in.
+	advanceTo(t, g, game.StepDeclareAttackers)
+	for _, d := range []struct{ id, at uuid.UUID }{{a, me.ID}, {b, me.ID}, {c, other.ID}} {
+		if err := g.DeclareAttacker(d.id, d.at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	lockInAttacks(t, g)
 	passPriorityAroundTable(t, g)
 	if opp.Life != oppBefore-2 {
 		t.Errorf("attacker's controller lost %d, want 2 (one per creature attacking you)", oppBefore-opp.Life)

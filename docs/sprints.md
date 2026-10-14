@@ -3801,7 +3801,7 @@ Opened at the 2026-10-14 triage, mostly from player reports and an agent's game 
 - [ ] [#3609](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3609): log lines name a token "a card" once the token is gone
 - [ ] [#3490](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3490): rebound (Quantum Misalignment) prompts but never casts
 - [ ] [#3601](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3601): the arrival ring is measured mid-ETB-pop and drawn shrunk
-- [ ] [#3605](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3605): imported decks lose their printing and default to gimmick reprint art
+- [x] [#3605](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3605): imported decks lose their printing and default to gimmick reprint art ([ADR 0192](decisions/0192-a-deck-names-its-printing.md))
 - [ ] [#3518](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3518): double-faced cards show each face as a whole card
 - [ ] [#3449](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3449): after a tied opening roll, show the tie and the first-round dice
 - [ ] [#3380](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3380): tie each stack item to its caster's seat, and stop the panel covering a board (needs a design call)
@@ -3830,7 +3830,7 @@ Opened at the 2026-10-14 triage, from four-agent MCP-seat games on cmd-dev and a
 - [ ] [#3608](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3608): warn on join when the seat binary is older than the server expects
 - [ ] [#3606](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3606): wait_for_decision serves a window that act can't answer while reconnecting
 - [ ] [#3607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3607): full state's log heading, and a log on game_over
-- [ ] [#3603](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3603): a pass_until that also skips idle steps of the seat's own turn
+- [x] [#3603](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3603): a pass_until that also skips idle steps of the seat's own turn
 - [ ] [#3612](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3612): board text names what an aura, equipment or O-Ring is on
 - [x] [#3489](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3489): send max_completion_tokens to models that refuse max_tokens (PR #3507)
 - [ ] [#3521](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3521): the heuristic takes a pass-closed cast before spending the mana elsewhere

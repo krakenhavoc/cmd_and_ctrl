@@ -40,6 +40,8 @@ import (
 //     activated row, or a Pump that gives nothing (ADR 0130's
 //     amendment of 2026-10-07);
 //   - AwakenLand anywhere but an alternative cost (ADR 0135 §3);
+//   - Aura anywhere but the card, or a value other than benefit or
+//     harm (#3309);
 //   - ExtraLandDrops anywhere but the card, or on a card whose
 //     AdditionalLandPlays says a different number (#2678);
 //   - a Sweep with an unknown class or verb, an amount on a verb that
@@ -80,6 +82,12 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	}
 	if p.LandsUntapped > p.Lands {
 		fail("says more lands enter untapped (LandsUntapped) than it puts onto the battlefield (Lands) (ADR 0136 §2)")
+	}
+	if p.Aura != "" && slot != purposeOnCard {
+		fail("sets Aura off the card — whether an Aura helps or hurts its host is the card's own (#3309)")
+	}
+	if p.Aura != "" && p.Aura != game.AuraBenefit && p.Aura != game.AuraHarm {
+		fail("sets an Aura other than benefit or harm (#3309)")
 	}
 	if p.ExtraLandDrops != 0 && slot != purposeOnCard {
 		fail("sets ExtraLandDrops off the card — an additional land drop is the card's own static or its spell's effect (#2678)")

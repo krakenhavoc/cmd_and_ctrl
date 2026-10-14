@@ -596,15 +596,22 @@ type Card struct {
 	AttachedAt int64
 
 	// AttachedEpoch is the host's Card.ObjectEpoch at the moment of the
-	// attach, for a host that is NOT on the battlefield: the creature card
-	// in a graveyard an Animate Dead enchants (ADR 0154 decision 3,
-	// CR 400.7). attachmentLegalLocked reads it only for an off-battlefield
-	// host, where a card that left the graveyard and came back with the
-	// same instance ID is a new object the Aura never enchanted
-	// (CR 303.4c). Zero for every battlefield host: the epoch pin on
-	// battlefield attachments is #3159, not this field.
+	// attach (ADR 0154 decision 3, CR 400.7): which OBJECT of the host the
+	// link was made to, since an instance ID survives a zone change.
+	// attachmentLegalLocked reads it for an off-battlefield host always
+	// (the creature card in a graveyard an Animate Dead enchants), and for
+	// a battlefield host when AttachedPinned is set (#3159, the 2026-10-14
+	// amendment): a host that left and came back with the same instance ID
+	// inside one resolution is a new object the attachment was never
+	// attached to (CR 303.4c, CR 301.5c).
 	//
 	// Set by AttachForEffect and cleared wherever AttachedTo is.
+	//
+	// AttachedPinned (in the bool block at the end of Card) says the
+	// epoch was recorded. It is a separate flag because epoch 0 is a real
+	// epoch (a card that has never moved), so a zero AttachedEpoch cannot
+	// mean "not recorded": a link set by hand (a fixture) or restored from
+	// a file written before #3159 is unpinned and keeps the old behaviour.
 	AttachedEpoch int
 
 	// EnchantReturned is the creature the resolution of Animate Dead's
@@ -1648,6 +1655,12 @@ type Card struct {
 	// EnchantReturned (the creature it names) sits beside AttachedEpoch,
 	// for alignment.
 	EnchantSwapped bool
+
+	// AttachedPinned says AttachedEpoch was recorded for this link, so a
+	// battlefield host is judged by it (#3159; documented beside
+	// AttachedEpoch, kept here for alignment). AttachForEffect sets it
+	// for every card host. Cleared wherever AttachedTo is.
+	AttachedPinned bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for

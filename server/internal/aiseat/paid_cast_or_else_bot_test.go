@@ -27,14 +27,30 @@ import (
 const botChandraTorchOracle = "12cc800c-c7be-4811-8207-fd01a99cc892"
 
 func TestHeuristicSeatAnswersChandraTorchAndCastsTheExiledCard(t *testing.T) {
-	g := newSettledTable(t, 3510)
+	chandraPaidCast(t, 3510, false)
+}
+
+// #3521: a better spell in hand wants the same two mana. The exiled card
+// is the one the next pass loses, so it is cast first.
+func TestHeuristicSeatTakesThePassClosedCastBeforeSpendingTheManaElsewhere(t *testing.T) {
+	chandraPaidCast(t, 3521, true)
+}
+
+func chandraPaidCast(t *testing.T, seed uint64, rival bool) {
+	t.Helper()
+	g := newSettledTable(t, seed)
 	me := g.Seats[g.Turn.ActiveSeat]
 	advanceToStep(t, g, game.StepPrecombatMain)
 	// Nothing else to spend the mana on: the decision under test is the
-	// exiled card against the pass. (The heuristic does not yet rank a
-	// pass-closed cast above an ordinary one; see the PR.)
+	// exiled card against the pass, unless rival asks for a competitor.
 	me.Hand.Cards = nil
 	me.Command.Cards = nil
+	if rival {
+		hand := game.Card{InstanceID: uuid.New(), Name: "Runeclaw Bear", TypeLine: "Creature — Bear",
+			ManaCost: "{1}{G}", Power: 5, Toughness: 5, Colors: []string{"G"}, Owner: me.ID, Controller: me.ID}
+		hand.AddKnowersAll(seatIDs(g))
+		me.Hand.PushTop(hand)
+	}
 
 	chandra := uuid.New()
 	g.Battlefield.PushTop(game.Card{

@@ -30,6 +30,7 @@ func init() {
 		Name:         "Timely Ward",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
+		Purpose:      game.Purpose{Aura: game.AuraBenefit},
 		AlternativeCosts: []game.AlternativeCost{
 			FlashIfTargets("{2}{W}", "a commander", EnchantCreature(ACommander())),
 		},

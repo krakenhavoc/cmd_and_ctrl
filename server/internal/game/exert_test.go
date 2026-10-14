@@ -418,6 +418,9 @@ func TestStagedExertAndExertsSurviveARestore(t *testing.T) {
 		t.Fatalf("declare a: %v", err)
 	}
 	lockInAttackDeclaration(t, g)
+	// A second declaration in the same step (#3621 closes the first at
+	// its lock-in): the test wants a staged exert beside a paid one.
+	reopenAttackDeclarationForTest(g)
 	if err := g.DeclareAttackerDeclWith(AttackDeclaration{Attacker: b, Target: opp.ID, Exert: true}, DeclareAttackersParams{}); err != nil {
 		t.Fatalf("declare b: %v", err)
 	}

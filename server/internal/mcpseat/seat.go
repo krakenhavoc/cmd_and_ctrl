@@ -142,7 +142,7 @@ type Seat struct {
 
 	win          *window
 	lastCounted  windowKey
-	passUntil    bool
+	passMode     passMode
 	lastActive   int
 	reportedOver bool
 	noMoveReq    bool // the server answered legal_moves_request as unknown
@@ -434,9 +434,11 @@ func (s *Seat) onSnapshot(raw json.RawMessage) {
 	s.truncated = view.LegalMovesTruncated
 	if self := s.selfLocked(); self != nil {
 		// The start of the seat's own turn clears pass_until (§4), as
-		// the browser's safety belt does.
-		if view.Turn.ActiveSeat == self.Seat && s.lastActive != self.Seat {
-			s.passUntil = false
+		// the browser's safety belt does. "smart" (#3603) is not cleared:
+		// it stops at the windows that matter on the seat's own turn
+		// itself.
+		if view.Turn.ActiveSeat == self.Seat && s.lastActive != self.Seat && s.passMode == passOthers {
+			s.passMode = passNone
 		}
 	}
 	s.lastActive = view.Turn.ActiveSeat
@@ -585,7 +587,7 @@ func (s *Seat) step(ctx context.Context) {
 		return
 	}
 	view, me := s.view, s.sess.PlayerID
-	ans, auto := decideAutomatically(view, me, w.moves, s.cfg.Absorb, s.passUntil)
+	ans, auto := decideAutomatically(view, me, w.moves, s.cfg.Absorb, s.passMode)
 	if !auto {
 		s.openDecisionLocked(w)
 		s.mu.Unlock()

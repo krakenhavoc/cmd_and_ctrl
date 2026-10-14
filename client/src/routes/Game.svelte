@@ -162,6 +162,7 @@
     loopNoticeText,
     owesBlockDecision,
     owesAttackRequirement,
+    owesFreeCast,
   } from "../lib/priority";
   import { hasPlay, hasResponse, keyWindow, type ResponseCategories } from "../lib/responseWindow";
   import { engineMayMissMana } from "../lib/engineMayMissMana";
@@ -637,6 +638,8 @@
       // #1571: nor a declare-attackers window with a creature the
       // server marks must_attack — the pass would be refused.
       owesAttackRequirement: owesAttackRequirement(view, viewerID),
+      // #3490: nor a pass-closed free cast the viewer can make now.
+      owesFreeCast: owesFreeCast(view, viewerID),
       // #628 (CR 732): the server has spotted a trigger loop and
       // suspended AUTOMATIC passing for the whole table. The "next"
       // button still passes by hand.
@@ -2524,6 +2527,7 @@
   style:--coach-h={coachShown ? `${coachSize.h}px` : undefined}
   class:sheet-open={dockShown && sheetW > 0}
   style:--sheet-w={dockShown && sheetW > 0 ? `${sheetW}px` : undefined}
+  style:--stage-log-w={showGameLog ? "min(380px, 92vw)" : undefined}
   class:playing-as={actingAsOther}
   style:--playing-as-color={actingAsOther && actingSeat ? seatColor(actingSeat.seat) : undefined}
   bind:this={sectionEl}

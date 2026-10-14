@@ -174,6 +174,24 @@ type Card struct {
 	// deliberately NOT the per-frame CardView. Empty for the few
 	// records that print none; omitted on the wire then.
 	Artist string `json:"artist,omitempty"`
+	// The next six fields describe HOW a printing looks, not what the
+	// card is. They exist for one reader, printingRank, which decides
+	// which printing stands for a card name when a deck names none
+	// (ADR 0192 §1). Nothing in the rules reads them. All omitted on
+	// the wire when empty.
+	//
+	// ReleasedAt is Scryfall's "YYYY-MM-DD" release date, which sorts
+	// as a string.
+	ReleasedAt string `json:"released_at,omitempty"`
+	// Promo, FullArt, Digital and Oversized are Scryfall's flags of
+	// the same names.
+	Promo     bool `json:"promo,omitempty"`
+	FullArt   bool `json:"full_art,omitempty"`
+	Digital   bool `json:"digital,omitempty"`
+	Oversized bool `json:"oversized,omitempty"`
+	// FrameEffects is Scryfall's frame_effects list ("showcase",
+	// "extendedart", "legendary", ...).
+	FrameEffects []string `json:"frame_effects,omitempty"`
 	// AllParts is Scryfall's all_parts list, KEPT ONLY for its meld
 	// entries (component "meld_part" / "meld_result"): Load drops every
 	// other related card (tokens, combo pieces) as it decodes, so the
@@ -340,8 +358,10 @@ type Index struct {
 	// byName resolves a case-insensitive card name to the best-match
 	// Card for deck imports. Scryfall may ship multiple printings of
 	// the same name (different sets); the bulk-dump load path keeps
-	// the last one seen, which is usually the most recent printing —
-	// good enough for a sandbox. Split / double-faced cards are
+	// the best-ranked one (printingRank, ADR 0192 §1) — the newest
+	// printing from the most ordinary kind of set, not a Secret Lair
+	// or promo reprint. A deck that names a printing gets that one
+	// instead (FindPrintingOf). Split / double-faced cards are
 	// indexed by both the full printed name ("Fire // Ice") and the
 	// front-face name ("Fire") so common deck-list shorthand still
 	// resolves.
@@ -358,6 +378,10 @@ type Index struct {
 	// playable print over a junk one and then takes the last seen,
 	// which in the bulk dump's ordering is the most recent printing.
 	byOracle map[uuid.UUID]Card
+	// bySetNo resolves a printing by its set code and collector number
+	// (setNoKey) to its ID, so a text list's "(SNC) 213" finds the
+	// printing it names (ADR 0192 §2).
+	bySetNo map[string]uuid.UUID
 	// tokenPool is the ADR 0078 decision 3a eligible pool: every
 	// English, black-bordered, art-bearing "token" layout record,
 	// minus the joke / minigame / memorabilia set types. Built once
@@ -382,13 +406,44 @@ var tokenPoolExcludedSetTypes = map[string]bool{
 }
 
 // isTokenArtPoolCandidate reports whether c belongs in the ADR 0078
-// decision 3a eligible pool.
+// decision 3a eligible pool. A printed double-faced token (the
+// Incubator, #2417) is eligible too, #3511: its art lives on
+// card_faces, not on the top level.
 func isTokenArtPoolCandidate(c Card) bool {
-	return c.Layout == "token" &&
+	return (c.Layout == "token" || c.Layout == "double_faced_token") &&
 		c.Lang == "en" &&
-		len(c.ImageURIs) > 0 &&
+		tokenPoolHasArt(c) &&
 		c.BorderColor == "black" &&
 		!tokenPoolExcludedSetTypes[c.SetType]
+}
+
+// tokenPoolHasArt reports whether c carries an image the pool can show:
+// its top-level image for a token, or its front face's image for a
+// double_faced_token.
+func tokenPoolHasArt(c Card) bool {
+	if len(c.ImageURIs) > 0 {
+		return true
+	}
+	return c.Layout == "double_faced_token" && len(c.CardFaces) > 0 && len(c.CardFaces[0].ImageURIs) > 0
+}
+
+// tokenPoolPrinting returns the pool record for c, with its identity
+// taken from the front face (ADR 0078 decision 10, #3511). A
+// double_faced_token has no top-level name, type line or colours; the
+// token a player mints is the front face (the Incubator), so that face's
+// fields are the ones the resolver must match. The image route still
+// reads the original record by ID, where face 0 is the front.
+func tokenPoolPrinting(c Card) Card {
+	if c.Layout != "double_faced_token" || len(c.CardFaces) == 0 {
+		return c
+	}
+	front := c.CardFaces[0]
+	c.Name = front.Name
+	c.TypeLine = front.TypeLine
+	c.Power = front.Power
+	c.Toughness = front.Toughness
+	c.Colors = front.Colors
+	return c
 }
 
 // NewIndex returns an empty Index. Call Load to populate it from a
@@ -398,6 +453,7 @@ func NewIndex() *Index {
 		byID:     make(map[uuid.UUID]Card),
 		byName:   make(map[string]Card),
 		byOracle: make(map[uuid.UUID]Card),
+		bySetNo:  make(map[string]uuid.UUID),
 	}
 }
 
@@ -430,6 +486,7 @@ func (i *Index) Load(path string) (int, error) {
 	loaded := make(map[uuid.UUID]Card, 40_000) // ballpark for default_cards
 	byName := make(map[string]Card, 40_000)
 	byOracle := make(map[uuid.UUID]Card, 40_000)
+	bySetNo := make(map[string]uuid.UUID, 40_000)
 	var tokenPool []Card // ADR 0078 decision 3a/5: one pass, built here
 	for dec.More() {
 		var c Card
@@ -441,8 +498,9 @@ func (i *Index) Load(path string) (int, error) {
 		}
 		c.AllParts = meldParts(c.AllParts)
 		loaded[c.ID] = c
+		indexSetNo(bySetNo, loaded, c)
 		if isTokenArtPoolCandidate(c) {
-			tokenPool = append(tokenPool, c)
+			tokenPool = append(tokenPool, tokenPoolPrinting(c))
 		}
 		// Build the name index. Index both the full printed name and
 		// the front-face name for split / double-faced cards, since
@@ -497,6 +555,7 @@ func (i *Index) Load(path string) (int, error) {
 	i.byID = loaded
 	i.byName = byName
 	i.byOracle = byOracle
+	i.bySetNo = bySetNo
 	i.tokenPool = tokenPool
 	i.loaded = time.Now().UTC()
 	i.path = path
@@ -632,9 +691,10 @@ func (i *Index) Search(q string, limit int) []Card {
 // preferIncoming reports whether `incoming` should replace `existing`
 // under the same byName key. Playable printings (real sets, real
 // layouts) always win against non-playable records (tokens, art
-// series, memorabilia, minigame, vanguard). Among same-class records
-// the incoming wins — preserving the existing "most recent printing
-// wins" behavior for legitimate reprints.
+// series, memorabilia, minigame, vanguard). Among playable records
+// printingRank picks the one a player would expect to see (ADR 0192
+// §1), and on a tie the incoming wins — which keeps "the later record
+// in the dump wins" for printings the ranking cannot tell apart.
 func preferIncoming(existing, incoming Card) bool {
 	eP := isPlayablePrint(existing)
 	iP := isPlayablePrint(incoming)
@@ -644,7 +704,146 @@ func preferIncoming(existing, incoming Card) bool {
 	if !iP && eP {
 		return false
 	}
-	return true
+	if !iP {
+		return true
+	}
+	return printingRank(incoming).atLeast(printingRank(existing))
+}
+
+// rank is printingRank's result: lower is better, compared field by
+// field in declaration order.
+type rank struct {
+	foreign  bool   // not an English printing
+	tier     int    // setTypeTier
+	physical bool   // digital-only or oversized
+	promo    bool   // a promo printing
+	fancy    bool   // showcase, borderless, full art, extended art, etched...
+	released string // YYYY-MM-DD; newer is better
+}
+
+// atLeast reports whether r is as good as or better than o.
+func (r rank) atLeast(o rank) bool {
+	switch {
+	case r.foreign != o.foreign:
+		return !r.foreign
+	case r.tier != o.tier:
+		return r.tier < o.tier
+	case r.physical != o.physical:
+		return !r.physical
+	case r.promo != o.promo:
+		return !r.promo
+	case r.fancy != o.fancy:
+		return !r.fancy
+	}
+	return r.released >= o.released
+}
+
+// fancyFrameEffects are the frame_effects that dress a printing up:
+// the card is the same and the picture is not the one on the
+// expansion's regular frame.
+var fancyFrameEffects = map[string]bool{
+	"showcase": true, "extendedart": true, "etched": true,
+	"inverted": true, "textless": true, "shatteredglass": true,
+	"fullart": true,
+}
+
+// setTypeTier orders Scryfall's set types by how likely a printing in
+// one is the picture a deck's owner means: 0 the ordinary sets, 1 the
+// reprint and bundle products, 2 everything else unfamiliar, 3 the
+// gimmick and promotional ones (Secret Lair is set_type "box").
+func setTypeTier(setType string) int {
+	switch setType {
+	case "expansion", "core", "commander", "draft_innovation":
+		return 0
+	case "masters", "eternal", "starter", "duel_deck", "from_the_vault",
+		"premium_deck", "planechase", "archenemy", "spellbook":
+		return 1
+	case "box", "promo", "funny", "treasure_chest", "arsenal", "alchemy":
+		return 3
+	}
+	return 2
+}
+
+// printingRank scores one printing for "which picture stands for this
+// card when a deck names none" (ADR 0192 §1). It only orders printings
+// of one card, so it is never asked about legality or rules text.
+func printingRank(c Card) rank {
+	fancy := c.FullArt || c.BorderColor == "borderless"
+	for _, e := range c.FrameEffects {
+		if fancyFrameEffects[e] {
+			fancy = true
+		}
+	}
+	return rank{
+		foreign:  c.Lang != "" && c.Lang != "en",
+		tier:     setTypeTier(c.SetType),
+		physical: c.Digital || c.Oversized,
+		promo:    c.Promo,
+		fancy:    fancy,
+		released: c.ReleasedAt,
+	}
+}
+
+// setNoKey is the bySetNo key: the set code and collector number,
+// case-folded.
+func setNoKey(set, number string) string {
+	return strings.ToLower(strings.TrimSpace(set)) + "\x00" + strings.ToLower(strings.TrimSpace(number))
+}
+
+// indexSetNo records c under its set code and collector number. When
+// two records share one (a non-English copy beside the English one) the
+// better-ranked printing keeps the key.
+func indexSetNo(m map[string]uuid.UUID, byID map[uuid.UUID]Card, c Card) {
+	if c.SetCode == "" || c.CollectorNo == "" {
+		return
+	}
+	key := setNoKey(c.SetCode, c.CollectorNo)
+	if prev, ok := m[key]; ok && prev != c.ID {
+		if old, ok := byID[prev]; ok && !printingRank(c).atLeast(printingRank(old)) {
+			return
+		}
+	}
+	m[key] = c.ID
+}
+
+// FindPrintingOf resolves the printing a deck names for card like: by
+// Scryfall printing id when id is set, else by set code and collector
+// number. It answers only for a printing of the same card (same
+// oracle_id, falling back to the same name) that is itself a playable
+// print, so a wrong or stale id in a deck can only ever cost the
+// player a picture and never change which card they hold. ok is false
+// when nothing usable matches, and the caller keeps like (ADR 0192 §2).
+func (i *Index) FindPrintingOf(like Card, id uuid.UUID, set, number string) (Card, bool) {
+	i.mu.RLock()
+	defer i.mu.RUnlock()
+	try := func(p Card, ok bool) (Card, bool) {
+		if !ok || !isPlayablePrint(p) {
+			return Card{}, false
+		}
+		if like.OracleID != uuid.Nil && p.OracleID != uuid.Nil {
+			if p.OracleID != like.OracleID {
+				return Card{}, false
+			}
+		} else if normalizeName(p.Name) != normalizeName(like.Name) {
+			return Card{}, false
+		}
+		return p, true
+	}
+	if id != uuid.Nil {
+		if p, known := i.byID[id]; known {
+			// A printing the dump knows is the deck's answer even
+			// when it is unusable; its set and number would only
+			// name some other card.
+			return try(p, true)
+		}
+	}
+	if set != "" && number != "" {
+		if pid, ok := i.bySetNo[setNoKey(set, number)]; ok {
+			p, found := i.byID[pid]
+			return try(p, found)
+		}
+	}
+	return Card{}, false
 }
 
 // isPlayablePrint reports whether c is a printing a player could
@@ -759,6 +958,10 @@ func (i *Index) Put(c Card) {
 		defer attachMeldResults(i.byID, i.byName, i.byOracle)
 	}
 	i.byID[c.ID] = c
+	if i.bySetNo == nil {
+		i.bySetNo = make(map[string]uuid.UUID)
+	}
+	indexSetNo(i.bySetNo, i.byID, c)
 	if c.OracleID != uuid.Nil {
 		if existing, ok := i.byOracle[c.OracleID]; !ok || preferIncoming(existing, c) {
 			i.byOracle[c.OracleID] = c

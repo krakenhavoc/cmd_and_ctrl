@@ -21,7 +21,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 // blocker's toughness less the damage already marked on it, and 1
 // from a deathtouch source (CR 702.19c, 702.2c). The single-blocker
 // path in assignAndDealCombatDamageLocked floors lethal at 0; the
-// canonical multi-blocker answer (legal.canonicalDamageAssignment)
+// canonical multi-blocker answer (legal.CanonicalDamageSplit)
 // floors it at 1. Flooring at 1 here is the larger of the two, so the
 // estimate never counts a point the engine would not send over.
 //

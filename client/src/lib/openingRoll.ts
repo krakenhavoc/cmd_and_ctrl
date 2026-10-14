@@ -40,6 +40,12 @@ export interface OpeningChip {
   tied: boolean;
   /** The seat that chooses who takes the first turn. */
   chooser: boolean;
+  /**
+   * A seat that is out of this round but rolled in an earlier one: its
+   * last die and that round (1-based), so the settled die does not read
+   * as the deciding round.
+   */
+  earlier?: { result: number; round: number };
 }
 
 export interface OpeningRollModel {
@@ -69,6 +75,18 @@ function maxResult(or: OpeningRollView, round: number, seats: readonly number[])
   return best;
 }
 
+function earlierRoll(
+  or: OpeningRollView,
+  before: number,
+  seat: number,
+): { result: number; round: number } | undefined {
+  for (let r = before - 1; r >= 0; r--) {
+    const d = or.rounds[r].rolls.find((x) => x.seat === seat);
+    if (d) return { result: d.result, round: r + 1 };
+  }
+  return undefined;
+}
+
 /** The model of an open opening roll, or null when none is open. */
 export function openingRollModel(
   view: Pick<GameView, "opening_roll"> & { seats: SeatLike[] },
@@ -94,11 +112,13 @@ export function openingRollModel(
         : result !== undefined
           ? "rolled"
           : "rolling";
+      const earlier = inRound ? undefined : earlierRoll(or, roundIndex, s.seat);
       return {
         seat: s.seat,
         name: s.name,
         state,
         ...(result !== undefined ? { result } : {}),
+        ...(earlier ? { earlier } : {}),
         tied: chooser === null && roundIndex > 0 && inRound,
         chooser: chooser === s.seat,
       };
@@ -119,6 +139,7 @@ export function openingRollModel(
 export function openingChipText(chip: OpeningChip): string {
   if (chip.state === "rolled") return String(chip.result);
   if (chip.state === "rolling") return "rolling…";
+  if (chip.earlier) return `${chip.earlier.result} in round ${chip.earlier.round}`;
   return "—";
 }
 
@@ -196,7 +217,11 @@ export function openingRollStatus(
   const model = openingRollModel(view);
   if (!model) return "";
   if (model.chooser !== null) {
-    return `${nameOf(view.seats, model.chooser)} is choosing who goes first`;
+    const name = nameOf(view.seats, model.chooser);
+    const won = rerollWin(model, view.seats, false);
+    return won
+      ? `${name} ${won} and is choosing who goes first`
+      : `${name} is choosing who goes first`;
   }
   return waitingText(model, view.seats);
 }
@@ -233,8 +258,33 @@ export function giveAwayQuestion(name: string): string {
   return L.giveFirstTurn(name);
 }
 
-/** The chooser sheet's lead line. */
-export function chooserLead(result: number | null): string {
+/**
+ * "won the reroll with 7 (Alice and Bob tied at 18)" once a reroll
+ * decided the roll, or "" when the first round did. `you` names the
+ * chooser "you", for the sheet.
+ */
+function rerollWin(model: OpeningRollModel, seats: readonly SeatLike[], you: boolean): string {
+  if (model.chooser === null || model.roundIndex === 0 || model.tieResult === null) return "";
+  const names = [
+    you ? "you" : nameOf(seats, model.chooser),
+    ...model.roundSeats.filter((s) => s !== model.chooser).map((s) => nameOf(seats, s)),
+  ];
+  const with_ = model.winResult === null ? "" : ` with ${model.winResult}`;
+  return `won the reroll${with_} (${nameList(names)} tied at ${model.tieResult})`;
+}
+
+/**
+ * The chooser sheet's lead line. After a reroll it says so, and what
+ * the seats tied on, so the reroll's die does not read as beating a
+ * higher first-round die.
+ */
+export function chooserLead(
+  result: number | null,
+  model?: OpeningRollModel | null,
+  seats: readonly SeatLike[] = [],
+): string {
+  const won = model ? rerollWin(model, seats, true) : "";
+  if (won) return `You ${won}. Choose who takes the first turn.`;
   return result === null
     ? "You won the roll. Choose who takes the first turn."
     : `You won the roll with ${result}. Choose who takes the first turn.`;

@@ -441,6 +441,11 @@ type PendingChoiceView struct {
 	// Absent on every other kind.
 	ControlPurpose string `json:"control_purpose,omitempty"`
 
+	// AuraPurpose populates the "aura_host" kind (#3309): what the
+	// entering Aura does to its host, "benefit" or "harm", from the
+	// card's declared Purpose.Aura. Absent when it declares none.
+	AuraPurpose string `json:"aura_purpose,omitempty"`
+
 	// EntryKeyword names the entry keyword an "entry_riot",
 	// "entry_read_ahead" or "optional_replacement" prompt is asking
 	// about — "riot", "unleash" (ADR 0109 §10) or "read ahead" (#2123)
@@ -3922,6 +3927,15 @@ type ExilePlayView struct {
 	// for an unconditional grant. Public, like the rest of the grant.
 	Condition      string `json:"condition,omitempty"`
 	ConditionUnmet bool   `json:"condition_unmet,omitempty"`
+
+	// ClosesOnPass is true on a grant its holder's next pass of priority
+	// ends (CastPermission.LapseOnPass): the free casts of rebound,
+	// suspend, discover and cascade (ADR 0099 section 4). Passing is the
+	// decline there, so a client that passes on the holder's behalf
+	// (auto-pass) would throw the cast away before the holder has chosen
+	// targets (#3490). The client holds auto-pass while a card the viewer
+	// may cast now carries it. Absent on every grant that outlasts a pass.
+	ClosesOnPass bool `json:"closes_on_pass,omitempty"`
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a
@@ -8625,6 +8639,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c.Kind == game.PendingChoiceEntryController {
 			v.ControlPurpose = string(c.ControlPurpose)
 		}
+		if c.Kind == game.PendingChoiceAuraHost {
+			v.AuraPurpose = string(g.AuraHostPurpose(c))
+		}
 		// ADR 0109 §10: riot's two answers, and which keyword a riot or
 		// unleash question is about.
 		if c.Kind == game.PendingChoiceEntryRiot {
@@ -10855,6 +10872,7 @@ func exilePlayViewOf(g *game.Game, card game.Card, perm *game.CastPermission) *E
 		// will read (ADR 0034).
 		XLockedAtZero: game.CastCostFor(grantedFace(card, perm), perm.AlternativeCostFor(card), perm).LocksXAtZero(),
 		Until:         until,
+		ClosesOnPass:  perm.LapseOnPass != "",
 	}
 	if untilPlayer != uuid.Nil {
 		view.UntilPlayer = untilPlayer.String()

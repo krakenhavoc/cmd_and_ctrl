@@ -30,7 +30,7 @@
   import { BOARD_EXPANDED_ATTR, findAnchor, hasSize } from "../../boardAnchor";
   import { cardImageURL } from "../../cardImage";
   import { flyTo } from "../../animations";
-  import { cancelAnimations } from "../../motion";
+  import { cancelAnimations, settled } from "../../motion";
   import { flightAllowed, flightTransform, type Box } from "../../stackLinger";
   import {
     ArrivalClock,
@@ -158,6 +158,21 @@
     paintRings();
   }
 
+  // An arriving card is still in its entrance pop (etbPulse scales it
+  // down from 0.55), and a rect read now carries that transform. Measure
+  // again once the pop has settled so the ring frames the whole card.
+  function remeasureArrivals(v: GameView, ids: readonly string[]): void {
+    if (ids.length === 0) return;
+    const tiles = tilesFor(fieldCards(v));
+    const waits = ids.flatMap((id) => {
+      const el = tiles.get(id);
+      return el ? [settled(el)] : [];
+    });
+    void Promise.all(waits).then(() => {
+      if (!destroyed) measure(view);
+    });
+  }
+
   function measureSoon(): void {
     if (typeof requestAnimationFrame === "undefined") return;
     cancelAnimationFrame(raf);
@@ -264,6 +279,7 @@
     } else {
       depart(res.departures);
       clock.ring(res.arrivals, Date.now());
+      remeasureArrivals(v, res.arrivals);
     }
     measure(v);
     measureSoon();

@@ -59,3 +59,15 @@ A blocker drawn as part of a stacked token group gets no stepper; the sheet stil
 - The reported case is no clicks at all, and the canonical split is one click when the setting is off.
 - The wire grows by three omitempty fields on one prompt kind. `docs/protocol.md` lists them.
 - A future server-side auto-answer can reuse `CanonicalDamageSplit` unchanged.
+
+## Amendment (2026-10-14): the move list offers the other splits (#3620)
+
+**Status:** Accepted · S75 — Agents at the table. **Issue:** [#3620](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3620).
+
+§4 said the bots and the MCP seat answer with the one canonical split. That was wrong for a seat that has an opinion. An MCP agent's 6/6 was blocked by two 4/4s and a 3/3; the seat wanted the 3/3 dead (it was a commander) with the other 3 on a 4/4, but the window had one legal move, `aiseat/rules` classed it `forced`, and `mcpseat` absorbs `forced` by default. CR 510.1c-d let the chooser divide the damage as they like, so no text seat could ever make that choice.
+
+**Decision.** `legal.DamageSplits` replaces the single move. It returns the canonical split first (so the heuristic, which breaks ties toward the lowest index, still answers as before, and `Suggested` on the wire is unchanged), then one split per **maximal kill set**: a set of blockers whose lethal damage fits in the power and to which no further killable blocker can be added, with the remainder on one survivor. Survivors with equal lethal damage and equal kill value count once, so two identical 4/4s do not double the list. Each move's label says who takes what ("3 to Tidus (lethal), 3 to Gatta"). The remainder is never spread: spreading it is the same kill set with a different amount of damage marked, and a seat that wants that can say so in the free-form browser sheet.
+
+**Bounds.** Power that covers lethal for every blocker still has one split (#2956). Past 8 blockers only the canonical split is offered (2^8 masks is the most the search walks), and a prompt offers at most 12 splits.
+
+**Consequences.** A window with a real choice is no longer `forced`, so Layer A leaves it to the seat. `resolve_choice` params are unchanged (`assignments`, `trample_to_player`), and `ResolveDamageAssignment` checks every answer as before, so there is no wire change and no snapshot change.

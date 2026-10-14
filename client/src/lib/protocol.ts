@@ -1601,6 +1601,10 @@ export interface PendingChoiceView {
   // entering permanent away does to the seat that receives it. The
   // picker reads it only for its wording.
   control_purpose?: "harm" | "benefit" | string;
+  // #3309: populated for kind "aura_host" — what the entering Aura does
+  // to the permanent it enchants. Absent when the card declares none.
+  // The bot reads it; the client ignores it.
+  aura_purpose?: "harm" | "benefit" | string;
   // ADR 0109 §10: on an "entry_riot" or "optional_replacement" prompt,
   // the entry keyword it asks about — "riot" or "unleash" — and on an
   // "entry_read_ahead" prompt "read ahead" (#2123). Absent on every
@@ -2921,6 +2925,11 @@ export interface ExilePlayView {
   // unconditional grant.
   condition?: string;
   condition_unmet?: boolean;
+  // #3490: the holder's next pass of priority ends this grant (rebound,
+  // suspend, discover and cascade's free casts; ADR 0099 section 4).
+  // Passing is the decline, so autopass holds while the viewer may cast
+  // a card that carries it (priority.ts owesFreeCast). Absent otherwise.
+  closes_on_pass?: boolean;
 }
 
 // #2559: the windows `exile_play.until` names.
@@ -3320,6 +3329,8 @@ export interface ActivatedAbilityView {
 // docs/protocol.md "Declared purpose"). Bot data; the client does not
 // read it. Every field is absent when zero.
 export interface PurposeView {
+  // #3309: on an Aura card, what it does to the permanent it enchants.
+  aura?: "benefit" | "harm" | string;
   draws?: number;
   controller_loses_life?: number;
   discards?: number;

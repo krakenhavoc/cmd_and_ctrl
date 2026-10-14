@@ -72,7 +72,7 @@ func TestConcedeLogsOneLineAndAnOutcome(t *testing.T) {
 		t.Fatalf("outcome %+v", v.Outcome)
 	}
 	over := logOfKind(v, LogGameOver)
-	if len(over) != 1 || over[0].Text != "B won the game: every opponent has left" {
+	if len(over) != 1 || over[0].Text != "B won the game: last player standing" {
 		t.Errorf("game_over lines %+v", over)
 	}
 	// Filtered views carry it too, for every seat.
