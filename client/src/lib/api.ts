@@ -189,6 +189,9 @@ export interface UploadDeckResponse {
   // player pressed, rather than inferring it from the name.
   deck_id?: string;
   commanders: string[];
+  // ADR 0172 §3: the deck's companion, which seats outside the game
+  // rather than in the library. Absent for none.
+  companion?: string;
   warnings?: ApiViolation[];
   // Distinct names of the accepted deck's cards that print rules the
   // engine will not carry out. Not an error and not a warning — the

@@ -481,7 +481,78 @@ func corpusBoards() []corpusBoard {
 		// UntilSourceExilesAnother naming the Amulet object
 		// (duration.Source, duration.SourceEpoch).
 		{"until_you_exile_another", corpusUntilYouExileAnother},
+		// v8, added by ADR 0172 (#3401) as a new file: a companion
+		// waiting outside the game (seats[].companion) for seat 0, and
+		// seat 1's companion already taken into its hand
+		// (cards[].isCompanion). Additive within v8: an older binary
+		// drops both keys.
+		{"companion_waiting", corpusCompanionWaiting},
 	}
+}
+
+// corpusCompanionWaiting is newCorpusGame with a Jegantha, the
+// Wellspring revealed by each seat (ADR 0172): seat 0's still outside
+// the game, seat 1's taken with the companion special action.
+func corpusCompanionWaiting(t *testing.T) *game.Game {
+	t.Helper()
+	g := game.NewGame()
+	for i, name := range []string{"P1", "P2"} {
+		deck := []game.Card{{
+			InstanceID:  uuid.New(),
+			Name:        fmt.Sprintf("Test Commander %d", i+1),
+			TypeLine:    "Legendary Creature — Test",
+			Power:       3,
+			Toughness:   3,
+			IsCommander: true,
+		}}
+		for range 11 {
+			deck = append(deck, game.Card{InstanceID: uuid.New(), Name: "Forest", TypeLine: "Basic Land — Forest"})
+		}
+		deck = append(deck, game.Card{
+			InstanceID:  uuid.New(),
+			Name:        "Jegantha, the Wellspring",
+			OracleID:    "f0587c55-06c1-4930-a62e-668f37464ce9",
+			TypeLine:    "Legendary Creature — Elemental Elk",
+			ManaCost:    "{4}{R/G}",
+			Power:       5,
+			Toughness:   5,
+			IsCompanion: true,
+		})
+		if _, err := g.AddPlayer(name, deck); err != nil {
+			t.Fatalf("AddPlayer: %v", err)
+		}
+	}
+	if err := g.StartWithSource(rand.NewPCG(522, 6)); err != nil {
+		t.Fatalf("StartWithSource: %v", err)
+	}
+	for _, p := range g.Seats {
+		if err := g.KeepHand(p.ID); err != nil {
+			t.Fatalf("KeepHand: %v", err)
+		}
+	}
+	// Seat 1 has already paid {3} for its companion.
+	p := g.Seats[1]
+	c, ok := p.CompanionCard()
+	if !ok {
+		t.Fatal("setup: seat 1 has no companion waiting")
+	}
+	g.WithWriteLock(func() {
+		g.Turn.ActiveSeat = 1
+		g.Turn.PriorityHolder = 1
+		g.Turn.Phase = game.PhasePrecombatMain
+		g.Turn.Step = game.StepPrecombatMain
+		for range 3 {
+			p.ManaPool.AddMana(game.ManaToken{Color: "G"})
+		}
+	})
+	if err := g.PerformSpecialAction(p.ID, c.InstanceID, game.SpecialActionCompanion, game.SpecialActionParams{Strict: true}); err != nil {
+		t.Fatalf("take seat 1's companion: %v", err)
+	}
+	g.WithWriteLock(func() {
+		g.Turn.ActiveSeat = 0
+		g.Turn.PriorityHolder = 0
+	})
+	return g
 }
 
 // corpusExaltedTriggerPending is a real Noble Hierarch's exalted

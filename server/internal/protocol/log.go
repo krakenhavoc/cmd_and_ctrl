@@ -272,6 +272,11 @@ const (
 	// it ("Foretell {2}"), and the entry is the only thing that
 	// says WHICH action a card leaving a hand for exile was.
 	LogSpecialAction LogKind = "special_action"
+	// LogCompanionRevealed — a player revealed their companion as the
+	// game began (CR 103.2b, ADR 0172 §5): "Alice revealed Jegantha,
+	// the Wellspring as their companion". `card_id` is the companion,
+	// which is public from then on.
+	LogCompanionRevealed LogKind = "companion_revealed"
 	// LogActivateAcross — a player activated the "Any player may
 	// activate this ability" row of a permanent ANOTHER player controls
 	// (ADR 0106 §1 decision 6, CR 602.2): "Bob activated Alice's Xantcha,
@@ -1502,6 +1507,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventCompanionRevealed:
+		// ADR 0172 §5. The card is public, so the line names it.
+		base.Kind = LogCompanionRevealed
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Label = ev.Label
+		return base, true
+
 	case game.EventSpawned:
 		// ADR 0075 §2.4. The whole justification for allowing a
 		// production spawn is that the table can see it happen: a
@@ -1973,6 +1985,11 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 		indexCardPtrsInto(cards, wanted, v.Battlefield, v.Stack, v.Exile)
 		for _, s := range v.Seats {
 			indexCardPtrsInto(cards, wanted, s.Hand, s.Library, s.Graveyard, s.Command)
+			// ADR 0172: a companion still outside the game is in no
+			// zone, and its reveal line names it.
+			if c := s.Companion; c != nil && wanted[c.InstanceID] {
+				cards[c.InstanceID] = c
+			}
 		}
 	}
 
@@ -2437,6 +2454,16 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s took a special action on %s", actor, card)
 		}
 		return fmt.Sprintf("%s used %s on %s", actor, e.Label, card)
+	case LogCompanionRevealed:
+		// The view always holds a revealed companion, outside the game
+		// or later in play, so the name comes from the card; the label
+		// is the name as it was revealed, for a card the view no longer
+		// holds (a seat that left).
+		name := cardName
+		if name == "" {
+			name = nameOr(e.Label, "a card")
+		}
+		return fmt.Sprintf("%s revealed %s as their companion", actor, name)
 	case LogActivateAcross:
 		// "Bob activated Alice's Xantcha, Sleeper Agent". `target` is
 		// the controller's seat name (or "a player").

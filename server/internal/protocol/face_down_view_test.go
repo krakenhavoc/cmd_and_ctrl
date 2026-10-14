@@ -249,6 +249,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Tapped:              true,
 		Counters:            map[string]int{"+1/+1": 1},
 		IsCommander:         true,
+		IsCompanion:         true,
 		DamageMarked:        1,
 		RegenerationShields: 2,
 		ExiledIfItDies:      []string{"Lava Coil"},

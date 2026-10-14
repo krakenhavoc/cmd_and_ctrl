@@ -23,17 +23,18 @@ package effects
 // player taps Jegantha by hand and the mana floats; weaker than printed,
 // never stronger.
 //
-// The companion clause is not modelled. It is a deck-building condition
-// and a special action from outside the game, and the engine has no
-// companion zone; deck.Resolve rejects a companion named as a commander
-// and checks no companion condition anywhere. In the main deck Jegantha
-// is simply a creature, which is weaker than printed.
+// Companion (ADR 0172, #3401) is not this file's business. It is a
+// deck-building condition and a special action from outside the game,
+// and neither is a card ability the catalog declares: the condition is
+// checked by internal/deck's companion registry, keyed by this oracle
+// ID, and the {3} special action is offered by the engine to any
+// revealed companion (game/companion.go). In the main deck, or as a
+// commander, Jegantha's companion ability does nothing, as printed.
 func init() {
 	Register(Spec{
 		OracleID:     "f0587c55-06c1-4930-a62e-668f37464ce9",
 		Name:         "Jegantha, the Wellspring",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Companion isn't supported — Jegantha can't be put into your hand from outside the game, and the deck checker doesn't enforce its deck-building condition."},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:         ManaAbilityCost{Tap: true},
 			Produced:     "{W}{U}{B}{R}{G}",

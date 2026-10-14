@@ -2888,6 +2888,22 @@ nothing new. The Ring's other three lines (ADR 0114 PR 3) are ordinary
 triggers the seat controls: the loot's discard is the usual discard
 prompt, and the end-of-combat sacrifice and the life loss ask nothing.
 
+## Taking the companion (ADR 0172 §7)
+
+A deck may reveal a companion that waits outside the game
+([ADR 0172](decisions/0172-companion-a-card-outside-the-game.md)). The
+enumerator offers its special action (`kind: "companion"`, "Pay {3}: put
+<name> into your hand (companion)") from the seat's own
+`Player.Companion`, through the same per-card walk as a hand card's
+foretell, so the timing (your main phase, empty stack) and the {3} are
+the engine's own answer. The heuristic prices it as a known card drawn
+(`valueOfCompanion`): `Weights.Hand`, plus a tenth of that per point of
+the card's mana value. That is above the flat special-action price, so
+the seat takes it with mana it would otherwise not use, and below a real
+spell of the same size, so it does not skip a cast for it. The model
+tiers see every seat's companion in the board text, one
+`companion (outside the game): <name>` line per seat that has one.
+
 ## Never offered a banned cast (#760)
 
 The announce-time cast gate (`game.CastGateLocked`) is called once per

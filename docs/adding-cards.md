@@ -9071,6 +9071,35 @@ with `commanderCreatureYouOwn` as its `AppliesTo` (Raised by Giants).
 "Whenever this creature attacks a player, if no opponent has more life
 than that player" is `wheneverThisAttacksAPlayerNoOpponentRicher`.
 
+### Companion (CR 702.139, ADR 0172, #3401)
+
+Companion is a deck-construction condition plus a special action from
+outside the game, and neither is a card ability: a companion's card file
+declares nothing for it. The engine offers the {3} special action to any
+revealed companion (`game/companion.go`), and in the main deck or as a
+commander the companion ability does nothing, as printed. Write the rest
+of the card and declare it Full if the rest is.
+
+What a new companion does need is its **condition**, one entry in
+`companionConditions` (`server/internal/deck/companion.go`), keyed by
+oracle ID. A companion with no entry is refused as
+`unsupported_mechanic` when a deck names it. The condition reads the
+starting deck, the commanders plus the main deck (CR 702.139b), as
+Scryfall records, and returns the offending card names:
+
+```go
+"<oracle id>": {
+    Text:      "each permanent card in your starting deck must have mana value 2 or less",
+    Offenders: offendersEach(func(c cards.Card) bool { /* true when c breaks it */ }),
+},
+```
+
+A card's mana cost as a condition sees it is `companionManaCosts` (a
+split card's halves separately, a double-faced card's front face, an
+adventurer's main face). ADR 0172 §9 lists the other nine companions
+and how each condition would be written. Test the condition in
+`deck/companion_test.go` against the edge cases it names.
+
 ### Renown (CR 702.112, #2049)
 
 Renown is a keyword the engine runs (`"renown N"` in `PrintedKeywords`), and

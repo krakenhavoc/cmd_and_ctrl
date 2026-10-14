@@ -988,6 +988,10 @@ export type LogKind =
   // the chapter or level in `amount`.
   | "control"
   | "special_action"
+  // ADR 0172 §5: a seat revealed its companion as the game began
+  // ("Alice revealed Jegantha, the Wellspring as their companion").
+  // `card_id` is the companion, public from then on.
+  | "companion_revealed"
   // ADR 0106 §1 decision 6 (#1793): a player activated the "Any player
   // may activate this ability" row of a permanent another player
   // controls — "Bob activated Alice's Xantcha, Sleeper Agent".
@@ -2274,6 +2278,13 @@ export interface PlayerView {
   // The board shows these as chips beside the player identity, with
   // `text` as the hover. Public: every seat sees every emblem.
   emblems?: EmblemView[];
+  // ADR 0172 §5: the companion this seat revealed, while it waits
+  // outside the game (CR 702.139a). Absent for a seat with none and
+  // once it has been put into the hand. Public: every seat sees the
+  // card. Its `special_actions` carry the {3} row ("Put into your hand
+  // (companion)", kind "companion") for the owner only, and the row
+  // sends `special_action { card_id, kind: "companion" }`.
+  companion?: CardView;
   // #1197/#1201 (CR 702.11d, CR 702.16i): the abilities this SEAT has
   // right now — bare engine tokens, "hexproof" or a general
   // "protection from <quality>" ("protection from everything" is the
@@ -3800,6 +3811,9 @@ export interface CardView extends CastSurfaceView {
   no_untap?: NoUntapView;
   counters?: Record<string, number>;
   is_commander?: boolean;
+  // ADR 0172 §3: a deck's revealed companion, outside the game or after
+  // it has come into the game. Public; drives the "Companion" badge.
+  is_companion?: boolean;
   // Damage marked on this creature for the lethal-damage SBA (S13.1,
   // CR 704.5g). Cleaned up in cleanup step (S13.2, CR 514.2). Only
   // meaningful on the battlefield; omitted when zero.

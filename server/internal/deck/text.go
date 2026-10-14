@@ -22,6 +22,7 @@ import (
 // Section headers are also recognised:
 //
 //	Commander:                 // or "Commanders:" or "// Commander"
+//	Companion:                 // or "// Companion" (ADR 0172 §1)
 //	Mainboard:                 // or "Deck:"
 //	Sideboard:
 //
@@ -29,8 +30,22 @@ import (
 // section is ignored — the parser is deliberately forgiving so
 // pasted lists with stray blank lines or separators still go
 // through.
+//
+// Moxfield's text export (and MTGO's Commander export) names no
+// commander at all: it ends with the commander rows after a blank
+// line, with no header, below the mainboard and any `SIDEBOARD:`
+// block. So when no row anywhere is marked commander, a final block of
+// one or two rows that has no header of its own is read as the
+// commanders (trailingCommanderBlock). A list like that used to parse
+// with no commander and fail `missing_commander`, so the rule changes
+// nothing that was accepted before. ADR 0172 records the export shape.
 func ParseText(src string) ([]Entry, error) {
 	var entries []Entry
+	// block numbers each blank-line-separated run of lines; headed
+	// says whether that run opened with a section header.
+	var blocks []int
+	headed := map[int]bool{}
+	block, blankSeen := 0, false
 	section := sectionMain
 	sc := bufio.NewScanner(strings.NewReader(src))
 	// Bump the buffer: 99-card decklists fit comfortably, but pasting
@@ -40,23 +55,65 @@ func ParseText(src string) ([]Entry, error) {
 	for sc.Scan() {
 		lineNo++
 		line := strings.TrimSpace(sc.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
+		if line == "" {
+			blankSeen = true
 			continue
+		}
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+		if blankSeen {
+			block++
+			blankSeen = false
 		}
 		if s, ok := parseSectionHeader(line); ok {
 			section = s
+			headed[block] = true
 			continue
 		}
 		if entry, ok, err := parseLine(line, section); err != nil {
 			return nil, fmt.Errorf("deck: line %d: %w", lineNo, err)
 		} else if ok {
 			entries = append(entries, entry)
+			blocks = append(blocks, block)
 		}
 	}
 	if err := sc.Err(); err != nil {
 		return nil, fmt.Errorf("deck: scan: %w", err)
 	}
+	trailingCommanderBlock(entries, blocks, headed)
 	return entries, nil
+}
+
+// trailingCommanderBlock marks the last block's rows as commanders when
+// the list names no commander, the list has more than one block, and
+// the last block is one or two rows with no section header of its own.
+// See ParseText for the export it reads.
+func trailingCommanderBlock(entries []Entry, blocks []int, headed map[int]bool) {
+	if len(entries) == 0 {
+		return
+	}
+	for _, e := range entries {
+		if e.IsCommander {
+			return
+		}
+	}
+	last := blocks[len(blocks)-1]
+	if last == blocks[0] || headed[last] {
+		return
+	}
+	first := len(entries)
+	for first > 0 && blocks[first-1] == last {
+		first--
+	}
+	if n := len(entries) - first; n < 1 || n > 2 {
+		return
+	}
+	for i := first; i < len(entries); i++ {
+		entries[i].IsCommander = true
+		entries[i].IsSideboard = false
+		entries[i].IsCompanion = false
+	}
 }
 
 type section int
@@ -65,6 +122,7 @@ const (
 	sectionMain section = iota
 	sectionCommander
 	sectionSideboard
+	sectionCompanion
 )
 
 // parseSectionHeader recognises the various ways Moxfield / Archidekt
@@ -84,6 +142,8 @@ func parseSectionHeader(line string) (section, bool) {
 		return sectionMain, true
 	case "sideboard", "side":
 		return sectionSideboard, true
+	case "companion", "companions":
+		return sectionCompanion, true
 	}
 	return 0, false
 }
@@ -155,6 +215,7 @@ func parseLine(line string, sec section) (Entry, bool, error) {
 		Count:       qty,
 		IsCommander: isCommander,
 		IsSideboard: isSideboard && !isCommander,
+		IsCompanion: sec == sectionCompanion && !isCommander && !isSideboard,
 	}, true, nil
 }
 
@@ -208,6 +269,13 @@ func (l *List) Text() string {
 		}
 	}
 	section("Commander:", l.Commanders)
+	// ADR 0172 §1: the companion is saved in its own section, so a
+	// deck fetched from a link reseats with it. A companion read off a
+	// lone sideboard card is written here too, which makes the saved
+	// text say what the table will see.
+	if l.Companion != nil {
+		section("Companion:", []cards.Card{*l.Companion})
+	}
 	section("Mainboard:", l.Mainboard)
 	section("Sideboard:", l.Sideboard)
 	return b.String()

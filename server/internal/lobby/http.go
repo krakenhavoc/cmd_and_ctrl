@@ -2903,6 +2903,9 @@ type uploadDeckResponse struct {
 	// name.
 	DeckID     string   `json:"deck_id,omitempty"`
 	Commanders []string `json:"commanders"`
+	// Companion names the deck's companion (ADR 0172 §3), which seats
+	// outside the game rather than in the library. Empty for none.
+	Companion string `json:"companion,omitempty"`
 	// Warnings is a non-fatal violation list (e.g. sideboard ignored).
 	// The accepted deck is already installed when warnings is
 	// non-empty; treat it as advisory.
@@ -2999,10 +3002,8 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 				}
 				return nil, nil, true, writeDeckViolations(w, perr.Error(), []deck.Violation{v}, nil)
 			}
-			// Unknown-mechanic inside the fetched payload (e.g. a
-			// Moxfield deck with a companion slot) bubbles through
-			// here; fall into the existing Resolve-failure path
-			// below by leaving perr set.
+			// Anything else falls into the parse-failure path below
+			// by leaving perr set.
 		}
 	default:
 		return nil, nil, false, httpError(http.StatusBadRequest, fmt.Sprintf("unknown deck format %q", format))
@@ -3019,10 +3020,6 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 		var uce *deck.UnknownCardError
 		if errors.As(err, &uce) {
 			return nil, nil, true, writeDeckViolations(w, err.Error(), uce.Violations(), nil)
-		}
-		var ume *deck.UnsupportedMechanicError
-		if errors.As(err, &ume) {
-			return nil, nil, true, writeDeckViolations(w, err.Error(), ume.Violations(), nil)
 		}
 		return nil, nil, false, httpError(http.StatusBadRequest, err.Error())
 	}
@@ -3058,8 +3055,12 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 				// says so. Rejecting a whole deck over a card that
 				// is merely cosmetically simplified is the wrong
 				// trade; saying nothing is what produced #265.
+				//
+				// ADR 0172 adds the third: a lone sideboard card read
+				// as the companion is said, not refused.
 				if v.Code == deck.CodeSideboardUnsupported ||
-					v.Code == deck.CodeUnsupportedLayout {
+					v.Code == deck.CodeUnsupportedLayout ||
+					v.Code == deck.CodeCompanionFromSideboard {
 					warnings = append(warnings, v)
 					continue
 				}
@@ -3074,6 +3075,14 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 	}
 
 	return list, warnings, false, nil
+}
+
+// companionName is the list's companion, or "" (ADR 0172 §3).
+func companionName(list *deck.List) string {
+	if list == nil || list.Companion == nil {
+		return ""
+	}
+	return list.Companion.Name
 }
 
 // uploadDeck handles POST /games/{id}/decks. Accepts either plain-
@@ -3190,6 +3199,7 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		CardCount:     len(list.Commanders) + len(list.Mainboard),
 		DeckID:        deckID,
 		Commanders:    commanders,
+		Companion:     companionName(list),
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
 		LibraryNote:   libraryNote,
@@ -3387,6 +3397,7 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		CardCount:     len(list.Commanders) + len(list.Mainboard),
 		DeckID:        saved.ID.String(),
 		Commanders:    commanders,
+		Companion:     companionName(list),
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
 	})

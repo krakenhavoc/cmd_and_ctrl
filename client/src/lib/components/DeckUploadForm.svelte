@@ -117,7 +117,7 @@
     clearFeedback();
     try {
       const res = await uploadDeck(gameID, playerID, source);
-      successMessage = `uploaded ${res.deck_name || "deck"}: ${res.card_count} cards, ${res.commanders.length === 1 ? "commander" : "commanders"}: ${res.commanders.join(" / ")}`;
+      successMessage = `uploaded ${res.deck_name || "deck"}: ${res.card_count} cards, ${res.commanders.length === 1 ? "commander" : "commanders"}: ${res.commanders.join(" / ")}${res.companion ? `, companion: ${res.companion}` : ""}`;
       if (res.warnings && res.warnings.length > 0) warnings = res.warnings;
       if (res.unimplemented && res.unimplemented.length > 0) unimplemented = res.unimplemented;
       if (res.library_note) libraryNote = res.library_note;

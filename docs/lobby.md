@@ -1529,7 +1529,18 @@ Private decks (upstream 401/403) and unsupported hosts surface as
 ```
 
 `deck_id` echoes the pre-built deck that was installed and is absent
-for an uploaded list.
+for an uploaded list. `companion` ([ADR 0172](decisions/0172-companion-a-card-outside-the-game.md),
+omitempty) names the deck's companion, which is seated outside the
+game rather than in the library; `card_count` never counts it.
+
+A list declares its companion in a `Companion` section (`Companion`,
+`Companion:` or `// Companion`), on Moxfield's `companions` board or in
+an Archidekt `Companion` category. A list with no companion declared
+whose sideboard is exactly one card with a companion ability reads that
+card as the companion, with a `companion_from_sideboard` warning. A
+pasted text with no row marked commander reads a last block of one or
+two rows after a blank line as its commanders, which is how Moxfield's
+and MTGO's text exports end.
 
 **Errors**
 
@@ -1582,9 +1593,21 @@ Violation codes (stable strings, keyable by the client):
   Two commanders with no partner ability and no Background are
   `too_many_commanders`, and a Background alone is
   `not_a_legal_commander` (CR 702.124k)
-- `unsupported_mechanic` — resolved commander uses companion, deferred
-  to a later sprint (carries `card`). Every partner ability is
-  supported (ADR 0144)
+- `unsupported_mechanic` — a companion whose deck condition the server
+  does not check yet (carries `card`). Jegantha, the Wellspring is the
+  one companion supported so far ([ADR 0172](decisions/0172-companion-a-card-outside-the-game.md)).
+  A card that prints companion is an ordinary commander and an ordinary
+  card in the deck
+- `not_a_companion`, `too_many_companions`, `companion_is_commander`,
+  `companion_condition_not_met`, `companion_not_legal`,
+  `companion_color_identity` — the companion is judged on its own,
+  outside the 100 (ADR 0172 §2): it must print companion, be the only
+  one, not be the commander's own card, meet its condition over the
+  commanders and the main deck (one `companion_condition_not_met` row
+  per offending card, up to ten, each naming it), be legal in
+  Commander, and fit the commander's colour identity. All fatal
+- `companion_from_sideboard` — **warning only**: a lone companion card
+  in the sideboard was read as the companion
 - `unknown_source` — URL-based import (S06.5+) whose host is not one
   of the supported deck-builders; carries the URL in `card`
 - `deck_not_found` — URL-based import where the upstream returned

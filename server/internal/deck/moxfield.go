@@ -47,14 +47,11 @@ func ParseMoxfield(raw []byte) (name string, entries []Entry, err error) {
 		return "", nil, errors.New("deck: moxfield export had no commanders or mainboard — maybe the wrong JSON shape?")
 	}
 
-	// Companion slot is unsupported at S05 — Resolve would catch the
-	// mechanic via oracle text anyway, but failing here gives a
-	// clearer error message up front.
-	if len(doc.Boards.Companions.Cards) > 0 {
-		return "", nil, ErrUnsupportedMechanic
-	}
-
 	entries = append(entries, collectMoxfieldBoard(doc.Boards.Commanders, func(e *Entry) { e.IsCommander = true })...)
+	// ADR 0172 §1: the companions board is the deck's companion.
+	// Moxfield usually lists the same card on the sideboard board as
+	// well; Resolve drops that copy (settleCompanionSideboard).
+	entries = append(entries, collectMoxfieldBoard(doc.Boards.Companions, func(e *Entry) { e.IsCompanion = true })...)
 	entries = append(entries, collectMoxfieldBoard(doc.Boards.Mainboard, nil)...)
 	entries = append(entries, collectMoxfieldBoard(doc.Boards.Sideboard, func(e *Entry) { e.IsSideboard = true })...)
 	return doc.Name, entries, nil
@@ -79,8 +76,8 @@ type moxfieldBoardEntry struct {
 
 // collectMoxfieldBoard walks a board and emits one Entry per card.
 // tag, when non-nil, is invoked on each entry before append so the
-// caller can stamp IsCommander / IsSideboard without a per-board loop
-// duplicated three times.
+// caller can stamp IsCommander / IsSideboard / IsCompanion without a
+// per-board loop duplicated four times.
 func collectMoxfieldBoard(b moxfieldBoard, tag func(*Entry)) []Entry {
 	if len(b.Cards) == 0 {
 		return nil

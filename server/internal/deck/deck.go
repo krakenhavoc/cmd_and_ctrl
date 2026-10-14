@@ -44,9 +44,24 @@ type List struct {
 	// partner—[text], partner with [name], choose a Background,
 	// Doctor's companion; #2142, #2874). Validate judges the pair; a
 	// Background is listed after the commander that chose it.
-	// Companion is still deferred (the parser emits an explicit
-	// "unsupported" error).
 	Commanders []cards.Card `json:"commanders"`
+
+	// Companion is the card the deck reveals as its companion (CR
+	// 702.139a, ADR 0172 §1), or nil. It is NOT one of the 100 cards:
+	// the count, singleton and colour-identity checks of the deck never
+	// see it, and Validate judges it on its own (companion.go). It
+	// seats outside the game (game.Player.Companion), never in the
+	// library.
+	Companion *cards.Card `json:"companion,omitempty"`
+
+	// CompanionFromSideboard is true when Companion was not declared
+	// but read off a sideboard holding that one companion card (ADR
+	// 0172 owner decision 3). Validate says so with a warning.
+	CompanionFromSideboard bool `json:"companion_from_sideboard,omitempty"`
+
+	// extraCompanions names every companion row past the first: a list
+	// reveals at most one (CR 103.2b), so Validate refuses the rest.
+	extraCompanions []string
 
 	// Mainboard is the 99 (or more, pre-validation) cards placed in
 	// the library. Order is the original decklist order; the game's
@@ -73,13 +88,11 @@ type Entry struct {
 	Count       int
 	IsCommander bool
 	IsSideboard bool
+	// IsCompanion marks the deck's companion row (ADR 0172 §1): a
+	// `Companion` text section, Moxfield's `companions` board or an
+	// Archidekt `Companion` category.
+	IsCompanion bool
 }
-
-// ErrUnsupportedMechanic is returned when a decklist advertises
-// companion, which the server doesn't model. Surfaced as a parse error
-// (not a validation error) because the parser bails out before
-// producing a List. Every partner ability is supported since #2874.
-var ErrUnsupportedMechanic = errors.New("deck: unsupported mechanic (companion) — deferred to a later sprint")
 
 // UnknownCardError is returned when a decklist references a card the
 // Scryfall index doesn't know about. Surfaces all unknown names at
@@ -112,32 +125,15 @@ func (e *UnknownCardError) Violations() []Violation {
 	return out
 }
 
-// UnsupportedMechanicError is returned when Resolve finds a card
-// whose oracle text leans on a mechanic (companion) the server
-// doesn't model yet. Carries the offending card name so the
-// HTTP layer can surface it as a structured violation.
-type UnsupportedMechanicError struct {
-	Card string
-}
-
-func (e *UnsupportedMechanicError) Error() string {
-	return fmt.Sprintf("%s: %s", ErrUnsupportedMechanic.Error(), e.Card)
-}
-
-func (e *UnsupportedMechanicError) Unwrap() error { return ErrUnsupportedMechanic }
-
-func (e *UnsupportedMechanicError) Violations() []Violation {
-	return []Violation{{
-		Code:    CodeUnsupportedMechanic,
-		Card:    e.Card,
-		Message: fmt.Sprintf("%q uses companion, which is deferred to a later sprint", e.Card),
-	}}
-}
-
 // Resolve turns a slice of Entry rows into a List by looking each
 // name up in idx. Unknown names are collected into a single
 // UnknownCardError so a bad decklist fails in one shot rather than
 // name-by-name. ResolveName is case-insensitive (see cards.Index).
+//
+// A commander that prints companion (Jegantha as a commander) is an
+// ordinary commander: it is in the starting deck, so its companion
+// ability does nothing (ADR 0172 §1). Companion rows fill
+// List.Companion, the first one; Validate refuses any more.
 func Resolve(idx *cards.Index, name string, entries []Entry) (*List, error) {
 	if idx == nil {
 		return nil, errors.New("deck: no card index available — run scryfall-refresh.sh")
@@ -154,16 +150,14 @@ func Resolve(idx *cards.Index, name string, entries []Entry) (*List, error) {
 			unknown = append(unknown, e.Name)
 			continue
 		}
-		// Unsupported-mechanic sniff: a commander that prints
-		// companion leans on a mechanic we don't model yet. Bail
-		// rather than silently coerce it into the command zone.
-		if e.IsCommander && mentionsUnsupportedMechanic(c) {
-			return nil, &UnsupportedMechanicError{Card: c.Name}
-		}
 		switch {
 		case e.IsCommander:
 			for range e.Count {
 				list.Commanders = append(list.Commanders, c)
+			}
+		case e.IsCompanion:
+			for range e.Count {
+				list.AddCompanion(c)
 			}
 		case e.IsSideboard:
 			for range e.Count {
@@ -180,29 +174,83 @@ func Resolve(idx *cards.Index, name string, entries []Entry) (*List, error) {
 		return nil, &UnknownCardError{Names: unknown}
 	}
 	backgroundsLast(list.Commanders)
+	list.SettleCompanion()
 	return list, nil
 }
 
-// mentionsUnsupportedMechanic returns true if a card advertises a
-// mechanic we defer to a later sprint: companion. Match is on the
-// top-level oracle text as well as each face's oracle text. Companion
-// uses the em-dash delimiter that Scryfall ships (U+2014) to introduce
-// its restriction. The partner abilities are not flagged: Validate
-// judges a pair (partner.go, #2142, #2874).
-func mentionsUnsupportedMechanic(c cards.Card) bool {
-	if hasUnsupportedPhrase(c.OracleText) {
+// AddCompanion records one companion row on the list: the first fills
+// Companion, and any more are kept for Validate to refuse (CR 103.2b).
+// Exported for callers that build a List by hand, as the deck checker
+// does (deckcoverage).
+func (l *List) AddCompanion(c cards.Card) {
+	if l.Companion == nil {
+		companion := c
+		l.Companion = &companion
+		return
+	}
+	l.extraCompanions = append(l.extraCompanions, c.Name)
+}
+
+// SettleCompanion reconciles the companion with the sideboard once
+// every row is in (settleCompanionSideboard). Resolve calls it; a
+// caller that builds a List by hand calls it too, so both read a list
+// the same way.
+
+// settleCompanionSideboard reconciles the companion with the sideboard
+// (ADR 0172 §1 and owner decision 3):
+//
+//   - a declared companion that is ALSO a sideboard row is one card,
+//     not two. Moxfield lists the companion on both its `companions`
+//     and `sideboard` boards in most public decks, so one sideboard
+//     copy of the companion is dropped;
+//   - with no companion declared, a sideboard of exactly one card that
+//     prints a companion ability is read as the companion, and
+//     CompanionFromSideboard makes Validate say so. Any other sideboard
+//     is left alone and keeps the ordinary sideboard warning.
+func (l *List) SettleCompanion() { settleCompanionSideboard(l) }
+
+func settleCompanionSideboard(list *List) {
+	if list.Companion != nil {
+		for i, c := range list.Sideboard {
+			if c.OracleID == list.Companion.OracleID {
+				list.Sideboard = append(list.Sideboard[:i:i], list.Sideboard[i+1:]...)
+				break
+			}
+		}
+		return
+	}
+	if len(list.Sideboard) == 1 && printsCompanion(list.Sideboard[0]) {
+		companion := list.Sideboard[0]
+		list.Companion = &companion
+		list.Sideboard = nil
+		list.CompanionFromSideboard = true
+	}
+}
+
+// printsCompanion reports whether a card has a companion ability (CR
+// 702.139a): Scryfall's keyword list, or a "Companion — " line on the
+// card or any face, for a record whose keyword list is missing.
+func printsCompanion(c cards.Card) bool {
+	for _, kw := range c.Keywords {
+		if strings.EqualFold(strings.TrimSpace(kw), "companion") {
+			return true
+		}
+	}
+	if hasCompanionLine(c.OracleText) {
 		return true
 	}
 	for _, face := range c.CardFaces {
-		if hasUnsupportedPhrase(face.OracleText) {
+		if hasCompanionLine(face.OracleText) {
 			return true
 		}
 	}
 	return false
 }
 
-func hasUnsupportedPhrase(text string) bool {
-	return strings.Contains(text, "Companion \u2014 ")
+// hasCompanionLine is the oracle-text half of printsCompanion. Scryfall
+// introduces the condition with an em dash (U+2014).
+func hasCompanionLine(text string) bool {
+	return strings.Contains(text, "Companion — ")
 }
 
 // ToGameCards converts a resolved List into the []game.Card slice
@@ -210,15 +258,22 @@ func hasUnsupportedPhrase(text string) bool {
 // fresh InstanceID (game uses these to distinguish physical copies
 // of the same printed card), the Scryfall UUID is stamped for
 // client-side image lookup, and IsCommander is set on each
-// commander card. Owner / Controller are left as uuid.Nil — the
+// commander card. The companion, when there is one, comes last with
+// IsCompanion set, which seats it outside the game rather than in the
+// library (ADR 0172 §3). Owner / Controller are left as uuid.Nil — the
 // game package re-stamps them at seat time.
 func (l *List) ToGameCards() []game.Card {
-	out := make([]game.Card, 0, len(l.Commanders)+len(l.Mainboard))
+	out := make([]game.Card, 0, len(l.Commanders)+len(l.Mainboard)+1)
 	for _, c := range l.Commanders {
 		out = append(out, toGameCard(c, true))
 	}
 	for _, c := range l.Mainboard {
 		out = append(out, toGameCard(c, false))
+	}
+	if l.Companion != nil {
+		companion := toGameCard(*l.Companion, false)
+		companion.IsCompanion = true
+		out = append(out, companion)
 	}
 	return out
 }

@@ -1,0 +1,740 @@
+{
+ "name": "🦌 Sisay Elk 2025 | THIS DECK IS BAD | cEDH",
+ "publicId": "WuFgkXDyCUOl8kMaiqIioA",
+ "boards": {
+  "commanders": {
+   "count": 1,
+   "cards": {
+    "Lm2Nx": {
+     "quantity": 1,
+     "boardType": "commanders",
+     "card": {
+      "name": "Sisay, Weatherlight Captain"
+     }
+    }
+   }
+  },
+  "companions": {
+   "count": 1,
+   "cards": {
+    "YN01l": {
+     "quantity": 1,
+     "boardType": "companions",
+     "card": {
+      "name": "Jegantha, the Wellspring"
+     }
+    }
+   }
+  },
+  "mainboard": {
+   "count": 99,
+   "cards": {
+    "k9PZa": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Agatha's Soul Cauldron"
+     }
+    },
+    "EW9zZ": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Ancient Tomb"
+     }
+    },
+    "L3MKN": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Ancient Ziggurat"
+     }
+    },
+    "k9vvg": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Arcane Signet"
+     }
+    },
+    "YNVbZ": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Archivist of Oghma"
+     }
+    },
+    "LG24x": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Arid Mesa"
+     }
+    },
+    "ErnNK": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Birds of Paradise"
+     }
+    },
+    "LwR84": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Bloodstained Mire"
+     }
+    },
+    "LK6za": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Bonecrusher Giant // Stomp"
+     }
+    },
+    "LVz9R": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Boseiju, Who Endures"
+     }
+    },
+    "LGwnx": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Cavern of Souls"
+     }
+    },
+    "EPo7n": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Chance for Glory"
+     }
+    },
+    "LG8n4": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "City of Brass"
+     }
+    },
+    "kaN92": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Command Tower"
+     }
+    },
+    "Yn0yy": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Conqueror's Flail"
+     }
+    },
+    "EW9nG": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Cryptolith Rite"
+     }
+    },
+    "kAx5a": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Damping Sphere"
+     }
+    },
+    "ky8gX": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Deathrite Shaman"
+     }
+    },
+    "k7P8Z": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Defense Grid"
+     }
+    },
+    "ka8D9": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Deflecting Swat"
+     }
+    },
+    "YvZ0x": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Delighted Halfling"
+     }
+    },
+    "EWxqx": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Derevi, Empyrial Tactician"
+     }
+    },
+    "LR0o2": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Destiny Spinner"
+     }
+    },
+    "YdV2v": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Drannith Magistrate"
+     }
+    },
+    "Y8mXw": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Eladamri's Call"
+     }
+    },
+    "YxopG": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Enlightened Tutor"
+     }
+    },
+    "YnoAB": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Ertai Resurrected"
+     }
+    },
+    "YjQDl": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Esper Sentinel"
+     }
+    },
+    "Y2RvV": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Exotic Orchard"
+     }
+    },
+    "Y2P61": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Faeburrow Elder"
+     }
+    },
+    "kpajO": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Fierce Guardianship"
+     }
+    },
+    "YnAaA": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Flooded Strand"
+     }
+    },
+    "k70Ml": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Frostcliff Siege"
+     }
+    },
+    "Yn6dx": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Gaea's Cradle"
+     }
+    },
+    "LD3Mp": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Galadriel's Dismissal"
+     }
+    },
+    "EJXP4": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Gemstone Caverns"
+     }
+    },
+    "Y2jBj": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Hall of the Bandit Lord"
+     }
+    },
+    "kaMmd": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Ignoble Hierarch"
+     }
+    },
+    "EgXyv": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Jirina, Dauntless General"
+     }
+    },
+    "Ye1Am": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Katilda, Dawnhart Prime"
+     }
+    },
+    "EQXg3": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Kutzil, Malamet Exemplar"
+     }
+    },
+    "E5qNa": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Lavinia, Azorius Renegade"
+     }
+    },
+    "kyZx6": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Legolas's Quick Reflexes"
+     }
+    },
+    "kyZAr": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Lotho, Corrupt Shirriff"
+     }
+    },
+    "E5Bna": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Mana Confluence"
+     }
+    },
+    "YelKO": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Mana Vault"
+     }
+    },
+    "LwQ79": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Marsh Flats"
+     }
+    },
+    "YM4nw": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Marvin, Murderous Mimic"
+     }
+    },
+    "EWN85": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Meddling Mage"
+     }
+    },
+    "kpJxq": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Minamo, School at Water's Edge"
+     }
+    },
+    "kpQDp": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Misty Rainforest"
+     }
+    },
+    "LR6lJ": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Mother of Runes"
+     }
+    },
+    "EZ8bN": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Mox Amber"
+     }
+    },
+    "EWvjV": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Myrel, Shield of Argive"
+     }
+    },
+    "L3jwJ": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Mystic Remora"
+     }
+    },
+    "YeXJR": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Najeela, the Blade-Blossom"
+     }
+    },
+    "kyVa6": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Noble Hierarch"
+     }
+    },
+    "LGp2o": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Oko, Thief of Crowns"
+     }
+    },
+    "LVpqq": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Opposition Agent"
+     }
+    },
+    "LGKmn": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Orcish Bowmasters"
+     }
+    },
+    "LRomz": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Otawara, Soaring City"
+     }
+    },
+    "kXoOr": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Pippin, Guard of the Citadel"
+     }
+    },
+    "LzKd6": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Plateau"
+     }
+    },
+    "E1Kda": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Plaza of Heroes"
+     }
+    },
+    "Ydj1a": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Reflecting Pool"
+     }
+    },
+    "E5XRv": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Reki, the History of Kamigawa"
+     }
+    },
+    "LK4lo": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Relic of Legends"
+     }
+    },
+    "kpvDp": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Rhystic Study"
+     }
+    },
+    "LmvwB": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Rhythm of the Wild"
+     }
+    },
+    "LmBlq": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Rising of the Day"
+     }
+    },
+    "LD30N": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Rona, Herald of Invasion // Rona, Tolarian Obliterator"
+     }
+    },
+    "Yx48m": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Samut, Voice of Dissent"
+     }
+    },
+    "YM76w": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Savannah"
+     }
+    },
+    "ka9NK": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Scrubland"
+     }
+    },
+    "kAxjx": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Shalai, Voice of Plenty"
+     }
+    },
+    "YxZyy": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Sigarda, Font of Blessings"
+     }
+    },
+    "YNO1M": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Silence"
+     }
+    },
+    "YedJP": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Skrelv, Defector Mite"
+     }
+    },
+    "k9Xb4": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Sneak Attack"
+     }
+    },
+    "EZyKV": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Sol Ring"
+     }
+    },
+    "L3XGl": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Spellskite"
+     }
+    },
+    "kO62o": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Starting Town"
+     }
+    },
+    "Y2RBm": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Swords to Plowshares"
+     }
+    },
+    "YejyR": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Taiga"
+     }
+    },
+    "Yl9oe": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Talon Gates of Madara"
+     }
+    },
+    "LKrmg": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Tataru Taru"
+     }
+    },
+    "kOAm0": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Teferi, Time Raveler"
+     }
+    },
+    "YdKDG": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Thalia, Guardian of Thraben"
+     }
+    },
+    "kOo3X": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Thalia, Heretic Cathar"
+     }
+    },
+    "YeB7K": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "The One Ring"
+     }
+    },
+    "YdJ3z": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Timeless Lotus"
+     }
+    },
+    "EZdNB": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Tundra"
+     }
+    },
+    "E64Wq": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Unclaimed Territory"
+     }
+    },
+    "LGwVB": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Vampiric Tutor"
+     }
+    },
+    "YNjll": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Voice of Victory"
+     }
+    },
+    "Eb9gg": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Wandering Archaic // Explore the Vastlands"
+     }
+    },
+    "kO3OW": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Windswept Heath"
+     }
+    },
+    "E1R1e": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Wooded Foothills"
+     }
+    },
+    "Ye2gK": {
+     "quantity": 1,
+     "boardType": "mainboard",
+     "card": {
+      "name": "Worldly Tutor"
+     }
+    }
+   }
+  },
+  "sideboard": {
+   "count": 1,
+   "cards": {
+    "YN01l": {
+     "quantity": 1,
+     "boardType": "sideboard",
+     "card": {
+      "name": "Jegantha, the Wellspring"
+     }
+    }
+   }
+  }
+ }
+}

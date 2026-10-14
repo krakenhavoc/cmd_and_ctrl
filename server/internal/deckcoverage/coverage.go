@@ -91,7 +91,7 @@ type Report struct {
 	// request's checklist.
 	Copies map[Bucket]int `json:"copies"`
 	// UnknownCopies is the copies the card index could not resolve,
-	// sideboard rows excluded. They are in no bucket, but they are
+	// sideboard and companion rows excluded. They are in no bucket, but they are
 	// part of the deck's size.
 	UnknownCopies int `json:"unknown_copies"`
 	// Cards is sorted by bucket (see Buckets), then by name.
@@ -103,6 +103,11 @@ type Report struct {
 	// blocking: the checker answers "how much of this is automated",
 	// not "is this legal".
 	Violations []deck.Violation `json:"violations"`
+	// Companion is the deck's companion (ADR 0172 §2), bucketed like
+	// any card but kept out of Cards, Counts and Copies: it is not one
+	// of the 100, so Copies still totals 100 for a legal deck. Absent
+	// for a deck with none. Additive (ADR 0095 §1 style).
+	Companion *Card `json:"companion,omitempty"`
 }
 
 // AsPrinted is how many distinct cards play exactly as printed
@@ -223,7 +228,7 @@ func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Re
 				unknownSeen[k] = true
 				r.Unknown = append(r.Unknown, n)
 			}
-			if !e.IsSideboard {
+			if !e.IsSideboard && !e.IsCompanion {
 				r.UnknownCopies += e.Count
 			}
 			continue
@@ -232,13 +237,15 @@ func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Re
 			switch {
 			case e.IsCommander:
 				list.Commanders = append(list.Commanders, c)
+			case e.IsCompanion:
+				list.AddCompanion(c)
 			case e.IsSideboard:
 				list.Sideboard = append(list.Sideboard, c)
 			default:
 				list.Mainboard = append(list.Mainboard, c)
 			}
 		}
-		if e.IsSideboard {
+		if e.IsSideboard || e.IsCompanion {
 			continue
 		}
 		if e.IsCommander {
@@ -281,6 +288,18 @@ func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Re
 	for _, c := range r.Cards {
 		r.Counts[c.Bucket]++
 		r.Copies[c.Bucket] += c.Count
+	}
+
+	// ADR 0172: the companion, read the way deck.Resolve reads it (a
+	// lone companion in the sideboard counts), bucketed on its own.
+	list.SettleCompanion()
+	if c := list.Companion; c != nil {
+		bucket, caveats := bucketOf(*c, false, verdicts)
+		oracle := ""
+		if c.OracleID != uuid.Nil {
+			oracle = c.OracleID.String()
+		}
+		r.Companion = &Card{Name: c.Name, OracleID: oracle, Count: 1, Bucket: bucket, Caveats: caveats}
 	}
 
 	if err := deck.Validate(list); err != nil {

@@ -38,8 +38,8 @@ func TestJeganthaAddsRestrictedFiveColorMana(t *testing.T) {
 		}
 	}
 	spec, ok := Lookup(jeganthaOracle)
-	if !ok || spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Errorf("Jegantha is %v with caveats %v, want the one companion caveat", spec.Completeness, spec.Caveats)
+	if !ok || spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Errorf("Jegantha is %v with caveats %v, want full with none (ADR 0172)", spec.Completeness, spec.Caveats)
 	}
 }
 
