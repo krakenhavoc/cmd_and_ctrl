@@ -998,7 +998,7 @@ out is untouched, which is why this is a `PATCH` and not a `PUT`.
 | `commander_damage` | 1..99 | Damage from one commander that loses the game. Read at the next state-based action check, so lowering it can lose somebody the game at that check. |
 | `bot_pace` | `"fast"` \| `"normal"` \| `"slow"` | The table pace (shown as **Table pace**, formerly "Bot speed"): bot think time, and the stack hold every seat, person or bot, waits before auto-passing another player's spell: fast 0 s, normal 2 s, slow 3 s ([ADR 0143](decisions/0143-gameplay-settings-overhaul.md) §2.6). |
 | `allow_spawn` | bool | Whether the host and admin may spawn cards and tokens on a live table. |
-| `free_first_mulligan` | bool | Gives a two-player table the free first mulligan a multiplayer game has by the rules (CR 103.5c; [ADR 0166](decisions/0166-the-london-mulligan.md)'s amendment, #3387). Default false. Omitted from the response when false. **Rejected once the game is active.** |
+| `free_first_mulligan` | bool | Gives a two-player table the free first mulligan a multiplayer game has by the rules (CR 103.5c; [ADR 0168](decisions/0168-the-london-mulligan.md)'s amendment, #3387). Default false. Omitted from the response when false. **Rejected once the game is active.** |
 
 The **whole patch is validated first**, so a patch with one bad field changes
 nothing — including the good fields beside it.

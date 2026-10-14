@@ -93,7 +93,7 @@ type TableSettings struct {
 	AllowSpawn bool `json:"allowSpawn"`
 	// FreeFirstMulligan gives a two-player table the free first
 	// mulligan CR 103.5c gives a multiplayer one: the house rule many
-	// Commander playgroups use (ADR 0166's amendment, #3387). Off by
+	// Commander playgroups use (ADR 0168's amendment, #3387). Off by
 	// default, which is the rules. A multiplayer game has the free
 	// mulligan either way. Fixed once the game is active, because the
 	// mulligan window opens at Start.
