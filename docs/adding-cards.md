@@ -4720,6 +4720,21 @@ permanent WAS sacrificed. `EventSacrifice` still fires before the move,
 so a "whenever you sacrifice" payoff is unaffected either way. See
 [ADR 0013 §5r](decisions/0013-replacement-effects.md).
 
+**Public choices followed by a simultaneous action (#2948).** Use
+`ChoosePermanentsInOrderThenForEffect(legs, then)` for one chooser per board.
+Pass ordinary `ChooseCardsPrompt` legs in APNAP order, with battlefield
+candidates and exact counts or a set validator. Only the current leg is queued;
+earlier public card IDs are shown to later players. No card moves until `then`.
+Use `EffectSacrificeCandidatesForEffect` to preserve protection against forced
+sacrifices, and call `SacrificeAllThenForEffect` once with the collected set.
+Liliana, Dreadhorde General demonstrates both exact-two and keep-by-type choices.
+Empty and departed legs advance; valid forced sets are collected without a
+prompt. Receipts bind to object epochs, and dropped choices continue with an
+empty pick. A leg's own `Then` is rejected because the final action belongs to
+the collector's one continuation. Existing prompted-sacrifice runs below still
+move cards as individual answers arrive; they do not provide this simultaneity.
+See [ADR 0175](decisions/0175-players-choose-before-simultaneous-sacrifices.md).
+
 **A PROMPTED sacrifice returns a count of QUESTIONS, and nothing may
 be gated on it (#1019).** `g.PlayerSacrificesForEffect` and
 `g.EachPlayerSacrificesForEffect` do not sacrifice anything — they

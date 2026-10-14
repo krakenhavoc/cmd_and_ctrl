@@ -537,6 +537,16 @@ condition — check its text and choose again"`. (`search_library` still
 answers with the generic `"invalid parameter"`.) Every set listed in
 `legal_moves` for such a prompt already passes the rule.
 
+### Earlier public permanent choices (#2948)
+
+An ordered `choose_cards` prompt may carry `earlier_choices`, an array of
+`{player_id, card_ids}` entries in choice order. These are public selections
+made by earlier players, shown to every viewer. Only the current chooser's
+prompt is queued. The cards remain on the battlefield until all choices finish;
+clients resolve their IDs against the viewer's filtered battlefield. A
+face-down card's public selection never reveals its hidden name. The field is
+computed from the transient continuation and adds no saved snapshot field.
+
 ### Where a `choose_cards` pick goes: `choose_destination` (#2680, #3270)
 
 A `choose_cards` prompt may say what happens to the cards it names, in

@@ -178,9 +178,13 @@ type confirmFrame struct {
 // The frame is already counted in ContinuationCensus, so a second
 // closure on it costs restorability nothing it was not already paying.
 type chooseCardsFrame struct {
-	zone     ZoneKind
-	validate func(picked []Card) bool
-	then     func(g *Game, picked []uuid.UUID) error
+	// Ordered permanent choices carry immutable public receipts and initial
+	// object epochs. Other card-set prompts leave both fields nil.
+	earlierPermanentChoices []SeatCards
+	permanentEpochs         map[uuid.UUID]int
+	zone                    ZoneKind
+	validate                func(picked []Card) bool
+	then                    func(g *Game, picked []uuid.UUID) error
 }
 
 // runWithNoChoice runs the frame as though the chooser picked nothing.
@@ -340,6 +344,10 @@ type ChooseCardsPrompt struct {
 	// (#1027) and ChooseCardsRunThenForEffect (#1743), and the catalog
 	// never builds a run by hand.
 	promptRun uuid.UUID
+	// Set only by the ordered public permanent collector. Immutable,
+	// transient frame data rather than persisted PendingChoice fields.
+	earlierPermanentChoices []SeatCards
+	permanentEpochs         map[uuid.UUID]int
 }
 
 // QueueChooseCardsForEffect queues a card-set pick and returns its ID.
@@ -382,9 +390,11 @@ func (g *Game) QueueChooseCardsForEffect(p ChooseCardsPrompt) uuid.UUID {
 
 		ChooseDestination: p.Destination,
 		chooseCardsResume: &chooseCardsFrame{
-			zone:     p.Zone,
-			validate: p.Validate,
-			then:     p.Then,
+			earlierPermanentChoices: p.earlierPermanentChoices,
+			permanentEpochs:         p.permanentEpochs,
+			zone:                    p.Zone,
+			validate:                p.Validate,
+			then:                    p.Then,
 		},
 	})
 }
@@ -598,6 +608,13 @@ func (g *Game) checkChooseCardsPicksLocked(choice *PendingChoice, picks []uuid.U
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) pickStillInPickZoneLocked(choice *PendingChoice, zone ZoneKind, id uuid.UUID) bool {
+	if frame := choice.chooseCardsResume; frame != nil && frame.permanentEpochs != nil {
+		c := findBattlefieldCard(g, id)
+		epoch, exists := frame.permanentEpochs[id]
+		if c == nil || !exists || c.ObjectEpoch != epoch {
+			return false
+		}
+	}
 	z := g.findCardZoneLocked(id)
 	if z == nil || z.Kind != zone {
 		return false

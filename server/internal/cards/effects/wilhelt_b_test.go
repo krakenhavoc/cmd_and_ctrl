@@ -85,14 +85,15 @@ func TestLilianaDreadhordeGeneralMinusFourEachPlayerSacrificesTwo(t *testing.T) 
 
 	b16Activate(t, g, me.ID, lili, 1, game.ActivateAbilityParams{})
 	passPriorityAroundTable(t, g)
-	answerSacrifice(t, g, me.ID, mine[0])
-	answerSacrifice(t, g, me.ID, mine[1])
-	for _, id := range theirs {
-		if g.Battlefield.Contains(id) {
-			if c := sacrificeChoiceFor(g, opp.ID); c != nil {
-				answerSacrifice(t, g, opp.ID, id)
-			}
-		}
+	if prompt := latestChooseCardsFor(g, me.ID); prompt == nil || prompt.ChooseMin != 2 || prompt.ChooseMax != 2 {
+		t.Fatalf("controller's choice = %+v, want exactly two of three", prompt)
+	}
+	answerChooseCards(t, g, me.ID, mine[0], mine[1])
+	if g.Battlefield.Contains(mine[0]) || g.Battlefield.Contains(mine[1]) {
+		t.Fatal("the controller's chosen creatures survived after all required choices were collected")
+	}
+	if prompt := latestChooseCardsFor(g, opp.ID); prompt != nil {
+		t.Fatalf("opponent with exactly two creatures should have a forced set, got prompt %+v", prompt)
 	}
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(mine[0]) || g.Battlefield.Contains(mine[1]) || !g.Battlefield.Contains(mine[2]) {

@@ -31,8 +31,9 @@ needed. Existing forced-sacrifice protection must remain authoritative.
 2. Each receipt keeps the chosen permanent's object epoch. The final
    `PromptedPicks` excludes an object that left and returned before the action.
    The continuation receives choices in leg order and runs once. A dropped
-   leg continues with no picks, so concessions or stale choices cannot strand
-   the resolution. Closures capture only fresh immutable values and use the
+   leg continues with no picks while its source survives, so an affected
+   player's concession or a stale choice cannot strand the resolution. A
+   departed caster cancels its own resolution through existing departure rules. Closures capture only fresh immutable values and use the
    live Game supplied to them, preserving clone/undo behavior.
 3. Carry earlier public choices in the existing private choose-cards frame.
    A computed protocol field `earlier_choices` contains player/card IDs;

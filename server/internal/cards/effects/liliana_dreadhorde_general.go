@@ -15,14 +15,14 @@ import (
 //	 −9: Each opponent chooses a permanent they control of each permanent
 //	 type and sacrifices the rest."
 //
-// −4 is one sacrifice run with every seat named twice, in APNAP order
-// (PlayersSacrificeThenForEffect): each player picks their own two, and
-// a player with one creature sacrifices that one.
+// −4 gathers each living player's choice in APNAP order, then sacrifices
+// all chosen creatures together. A player with fewer than two creatures
+// chooses all of them.
 //
-// −9 is a keep-set (keep_creatures_sacrifice_rest.go's shape over every
-// permanent): each opponent is asked once, over their whole board, for
-// the permanents they keep, and when everyone has answered, everything
-// else those opponents control is sacrificed at once. The set rule is
+// −9 is a keep-set: each eligible opponent is asked once, over their
+// whole board, for the permanents they keep, and when everyone has
+// answered, everything else those opponents control is sacrificed at
+// once. The set rule is
 // lilianaKeepsOneOfEachType: every permanent type the opponent controls
 // has a kept permanent of that type, and every kept permanent stands for
 // at least one of those types on its own. A permanent with several
@@ -75,12 +75,31 @@ func apnapLivingSeats(g *game.Game) []uuid.UUID {
 }
 
 func lilianaEachPlayerSacrificesTwo(g *game.Game, item *game.StackItem) error {
-	var seats []uuid.UUID
-	for _, id := range apnapLivingSeats(g) {
-		seats = append(seats, id, id)
+	var legs []game.ChooseCardsPrompt
+	source := item.SourceCardID
+	spec := sacrificeSpec("a creature", Creature())
+	for _, seat := range apnapLivingSeats(g) {
+		if !g.CanEffectCauseSacrificeForEffect(seat) {
+			continue
+		}
+		candidates := g.EffectSacrificeCandidatesForEffect(seat, spec)
+		if len(candidates) == 0 {
+			continue
+		}
+		n := min(2, len(candidates))
+		legs = append(legs, game.ChooseCardsPrompt{
+			Chooser: seat, FromPlayer: seat, Source: source,
+			Question: "Liliana, Dreadhorde General — choose two creatures to sacrifice",
+			Cards:    candidates, Min: n, Max: n, Zone: game.ZoneBattlefield,
+		})
 	}
-	return g.PlayersSacrificeThenForEffect(item.SourceCardID, seats, sacrificeSpec("a creature", Creature()),
-		"Sacrifice a creature", nil)
+	return g.ChoosePermanentsInOrderThenForEffect(legs, func(g *game.Game, picks game.PromptedPicks) error {
+		chosen := picks.Cards()
+		if len(chosen) == 0 {
+			return nil
+		}
+		return g.SacrificeAllThenForEffect(source, chosen, nil)
+	})
 }
 
 func lilianaOpponentsKeepOneOfEachType(g *game.Game, item *game.StackItem) error {
@@ -90,7 +109,10 @@ func lilianaOpponentsKeepOneOfEachType(g *game.Game, item *game.StackItem) error
 		if seat == item.Controller {
 			continue
 		}
-		board := permanentsControlledByMatching(g, seat, nil)
+		if !g.CanEffectCauseSacrificeForEffect(seat) {
+			continue
+		}
+		board := g.EffectSacrificeCandidatesForEffect(seat, nil)
 		if len(board) == 0 {
 			continue
 		}
@@ -122,7 +144,7 @@ func lilianaOpponentsKeepOneOfEachType(g *game.Game, item *game.StackItem) error
 		return nil
 	}
 	source := item.SourceCardID
-	_, err := g.ChooseCardsRunThenForEffect(legs, func(g *game.Game, picks game.PromptedPicks) error {
+	return g.ChoosePermanentsInOrderThenForEffect(legs, func(g *game.Game, picks game.PromptedPicks) error {
 		kept := map[uuid.UUID]bool{}
 		for _, id := range picks.Cards() {
 			kept[id] = true
@@ -143,7 +165,6 @@ func lilianaOpponentsKeepOneOfEachType(g *game.Game, item *game.StackItem) error
 		}
 		return g.SacrificeAllThenForEffect(source, rest, nil)
 	})
-	return err
 }
 
 // permanentTypeNames are the permanent types (CR 110.4a), lowercase.

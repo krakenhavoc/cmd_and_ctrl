@@ -121,6 +121,9 @@ func TestZoneCardsAreWrittenOnlyAtKnownPoints(t *testing.T) {
 	// Other types in the package have a Cards field too. The check is
 	// syntactic, so they are listed here by function, with the type.
 	notZones := map[string]string{
+		"ChoosePermanentsInOrderThenForEffect":    "ChooseCardsPrompt.Cards: copied candidate UUIDs, no zone mutation (#2948)",
+		"collectPermanentChoicesLocked":           "ChooseCardsPrompt.Cards: live candidate UUIDs, no zone mutation (#2948)",
+		"permanentChoicePicksLocked":              "SeatCards.Cards: original-object receipt UUIDs, no zone mutation (#2948)",
 		"LegalTargetsForClauseForEffect":          "LegalTargets.Cards: candidate UUIDs, not zone cards",
 		"LegalTargetsForAnnouncedClauseForEffect": "LegalTargets.Cards: candidate UUIDs, not zone cards",
 		"queueRelatedRetargetLocked":              "LegalTargets.Cards: candidate UUIDs, not zone cards",

@@ -195,6 +195,7 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		if ch.Reason != "" {
 			fmt.Fprintf(&b, " — %s", ch.Reason)
 		}
+		earlier := earlierChoicesText(v, ch.EarlierChoices, me)
 		// ADR 0115 decision 4: the one fact the CR 903.9a question
 		// carries beyond its card.
 		if ch.Kind == "commander_return" && ch.PlayableFromZone {
@@ -229,9 +230,44 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 			fmt.Fprintf(&b, " (choose %d)", ch.Count)
 		}
 		b.WriteByte('\n')
+		if earlier != "" {
+			fmt.Fprintf(&b, "  earlier choices: %s\n", earlier)
+		}
 	}
 
 	return b.String()
+}
+
+// earlierChoicesText names prior selectors and their chosen permanents
+// from the viewer-filtered battlefield. CardName preserves the public
+// face-down object description without exposing its underlying identity.
+func earlierChoicesText(v *protocol.GameView, choices []protocol.EarlierChoiceView, me string) string {
+	if len(choices) == 0 {
+		return ""
+	}
+	entries := make([]string, 0, len(choices))
+	for _, choice := range choices {
+		selected := make([]string, 0, len(choice.CardIDs))
+		for _, id := range choice.CardIDs {
+			selected = append(selected, nameOfPermanent(v, id))
+		}
+		what := "nothing"
+		if len(selected) > 0 {
+			what = strings.Join(selected, ", ")
+		}
+		entries = append(entries, SeatLabelByID(v, choice.PlayerID, me)+" chose "+what)
+	}
+	return strings.Join(entries, "; ")
+}
+
+func nameOfPermanent(v *protocol.GameView, id string) string {
+	for i := range v.Battlefield.Cards {
+		card := &v.Battlefield.Cards[i]
+		if card.InstanceID == id {
+			return CardName(card)
+		}
+	}
+	return "a permanent"
 }
 
 // writePayAmount describes a pay_amount prompt's answers (ADR 0129 §3
