@@ -213,6 +213,7 @@
   import type { ReplayFrame } from "../lib/replay";
   import { L } from "../lib/labels";
   import { provideDiceQueue } from "../lib/diceQueue.svelte";
+  import { BOARD_ACTION_SELECTOR, sheetCoversBoardAction, type Box } from "../lib/sheetCover";
 
   interface Props {
     gameID: string;
@@ -1369,6 +1370,51 @@
   function onDockStage(up: boolean): void {
     if (up !== stageUp) stageUp = up;
   }
+
+  // #2959 / #3095: whether the open sheet covers something on the board
+  // the player can act on (a target, a choice's permanent, a damage
+  // stepper). The dock folds such a sheet down once (its
+  // `sheetCoversBoard`); lib/sheetCover.ts says why. Measured at most
+  // once a frame, only while a sheet is open, and never on a phone,
+  // whose sheet is a full-width bar with its own layout (§8).
+  let sectionEl: HTMLElement | null = $state(null);
+  let sheetCovers = $state(false);
+  $effect(() => {
+    const root = sectionEl;
+    if (!root || !dockShown || sheetW <= 0 || stageUp) {
+      sheetCovers = false;
+      return;
+    }
+    const phone = typeof matchMedia === "function" ? matchMedia("(max-width: 599px)") : null;
+    const box = (el: Element): Box => el.getBoundingClientRect();
+    let frame = 0;
+    const check = (): void => {
+      frame = 0;
+      const sheet = root.querySelector(".dock-sheet:not([hidden]):not(.stage)");
+      const board = root.querySelector(".board");
+      sheetCovers =
+        !(phone?.matches ?? false) &&
+        sheetCoversBoardAction(
+          sheet ? box(sheet) : null,
+          board ? [...board.querySelectorAll(BOARD_ACTION_SELECTOR)].map(box) : [],
+        );
+    };
+    const schedule = (): void => {
+      if (!frame) frame = requestAnimationFrame(check);
+    };
+    schedule();
+    const mo = new MutationObserver(schedule);
+    mo.observe(root, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => {
+      mo.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
+  });
   // ADR 0105 §7: how many of the viewer's cards wear a highlight, for
   // the dock header's "N actions available".
   const readyActions = $derived(viewerID ? actionableCount(legalHighlights, view, viewerID) : 0);
@@ -2180,6 +2226,7 @@
   style:--coach-h={coachShown ? `${coachSize.h}px` : undefined}
   class:sheet-open={dockShown && sheetW > 0}
   style:--sheet-w={dockShown && sheetW > 0 ? `${sheetW}px` : undefined}
+  bind:this={sectionEl}
 >
   <header class="bar" class:menu-in-bar={barMenuShown}>
     <button class="ghost bar-nav" onclick={back}><Icon name="chevronLeft" size={14} /> Lobby</button
@@ -2687,6 +2734,7 @@
           onUndo={undo}
           onSize={onDockSize}
           onSheet={onDockSheet}
+          sheetCoversBoard={sheetCovers}
           onStage={onDockStage}
           menu={menuOptions}
         />

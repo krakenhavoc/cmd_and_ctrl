@@ -96,9 +96,18 @@ test.describe("#2880 choose permanents on the board", () => {
     await expect(sacrifice).toBeDisabled();
 
     // Fold the sheet down: the board is in full view, and the dock's
-    // Sacrifice stays in the bar.
-    await sheet.getByRole("button", { name: "minimise" }).click();
-    await expect(sheet.getByRole("button", { name: /^restore: /i })).toBeVisible();
+    // Sacrifice stays in the bar. #2959: a sheet that lies over the
+    // creatures it offers folds by itself, a frame or two after it
+    // opens; wait for that, then fold it by hand if it did not.
+    const restore = sheet.getByRole("button", { name: /^restore: /i });
+    await page.evaluate(
+      () =>
+        new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))),
+    );
+    if (!(await restore.isVisible())) {
+      await sheet.getByRole("button", { name: "minimise" }).click();
+    }
+    await expect(restore).toBeVisible();
 
     // The two creatures are highlighted on the caster's own board.
     const board = page.getByRole("region", { name: L.yourBoard, exact: true });

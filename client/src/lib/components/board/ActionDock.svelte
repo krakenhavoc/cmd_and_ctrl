@@ -115,6 +115,10 @@
     // #2374: whether a stage sheet (the opening hand) is up and not
     // folded away, so the log drawer, opened over it, draws above it.
     onStage?: (up: boolean) => void;
+    // #2959 / #3095: the open sheet lies over something the player can
+    // act on, on the board (Game.svelte measures it; lib/sheetCover.ts).
+    // The sheet folds to its question line, once per sheet.
+    sheetCoversBoard?: boolean;
     // PR 7 (owner decision 3): the ⋯ menu, last on the toggles row.
     // Game.svelte builds it; omitted, the row has no ⋯.
     menu?: GameMenuOptions;
@@ -139,6 +143,7 @@
     onSize,
     onSheet,
     onStage,
+    sheetCoversBoard = false,
     menu,
   }: Props = $props();
 
@@ -277,6 +282,19 @@
     await tick();
     focusIntoSheet();
   }
+
+  // #2959 / #3095: a sheet that opens over something the player has to
+  // click on the board folds down to its question line, so the board is
+  // reachable. Once per sheet: a player who brings it back keeps it up.
+  // Not a stage, which covers the table on purpose.
+  let autoFoldedKey: string | null = null;
+  $effect(() => {
+    const key = currentSheetKey;
+    if (!sheetCoversBoard || !sheetOpen || minimised || req?.sheet?.stage || !key) return;
+    if (autoFoldedKey === key) return;
+    autoFoldedKey = key;
+    void minimise();
+  });
 
   // Focus goes into the sheet when it opens (ADR 0111 PR 6): to the
   // field or control the body marks `data-sheet-focus` (the creature-
