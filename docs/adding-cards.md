@@ -9349,6 +9349,21 @@ ctx.SourcePermanent()                                                           
   (Cleaver Skaab): the last-known copiable values, not the card in the graveyard.
 - **"Enters tapped unless a player has N or less life"** is `SelfEntersTappedUnless(aPlayerHasLifeAtMost(N))`
   (Murky Sewer).
+- **"Each opponent chooses a permanent they control of each permanent type and sacrifices the rest"** is a
+  `ChooseCardsPrompt` keep-set over the whole board with `Validate: lilianaKeepsOneOfEachType(present)` (Liliana,
+  Dreadhorde General); `permanentTypesOf` / `permanentTypesAmong` list the CR 110.4a types.
+- **"Each player sacrifices two creatures"** is one `g.PlayersSacrificeThenForEffect` run naming each seat twice.
+- **"Create a token that's a copy of that creature"** on an entry trigger is
+  `g.TokenCopyTemplateForObjectForEffect(ctx.Trigger().Object.Ref())` (Necroduality).
+- **"The number of nontoken creatures that died this turn"** is `nontokenCreaturesDiedThisTurn(g)` (Rise of the
+  Dread Marn); "for each other <type> that entered under your control this turn" is
+  `g.EnteredWithSubtypeThisTurn(player, type) - 1` (Geralf, the Fleshwright).
+- **"If a <type> you control would deal combat damage to a player, instead that player mills that many cards"** is a
+  `RepEventDamage` replacement that cancels the event and mills (Undead Alchemist).
+- **"Creature tokens you control lose all abilities and have base power and toughness N/N"** is
+  `LosesAllAbilitiesAndHas(creatureTokensYouControl)` plus a `SubLayer7B_Set` static (Poppet Factory).
+- **A trigger condition must not call a locking `*Game` method** such as `ActivePlayer()`: the harvest already holds
+  the lock. Read `g.Seats[g.Turn.ActiveSeat]`.
 
 ### Statics that read block status or this turn's events, "can't be attacked", any-type mana, flash-if-it-targets (#3172, cav-h2)
 
