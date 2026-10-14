@@ -582,6 +582,11 @@ func Handler(c Config) http.Handler {
 	mux.Handle("POST /games/{id}/rematch", auth.Middleware(c.Auth)(handlerFunc(c, offerRematch)))
 	mux.Handle("POST /games/{id}/rematch/accept", auth.Middleware(c.Auth)(handlerFunc(c, acceptRematch)))
 	mux.Handle("POST /games/{id}/rematch/leave", auth.Middleware(c.Auth)(handlerFunc(c, leaveRematch)))
+	// #3429, ADR 0176: where a seat has dragged its stack panel. The caller
+	// is the seat; one drag is one write, so the cheap bucket's rate.
+	stackPosLimit := newLimiter(2, 10)
+	mux.Handle("PUT /games/{id}/stack-position", auth.Middleware(c.Auth)(perCallerLimit(stackPosLimit, handlerFunc(c, putStackPosition))))
+	mux.Handle("DELETE /games/{id}/stack-position", auth.Middleware(c.Auth)(perCallerLimit(stackPosLimit, handlerFunc(c, deleteStackPosition))))
 	// ADR 0075 §2.1: hand the table to another seat. Host or admin;
 	// authorised inside the handler with CanManageTable.
 	mux.Handle("POST /games/{id}/host", auth.Middleware(c.Auth)(handlerFunc(c, transferHost)))
@@ -4247,6 +4252,12 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusForbidden
 	case errors.Is(err, ErrNoRematch):
 		status = http.StatusNotFound
+	case errors.Is(err, ErrStackPositionNotSeated):
+		status = http.StatusForbidden
+	case errors.Is(err, ErrBadStackPosition):
+		status = http.StatusBadRequest
+	case errors.Is(err, ErrStackPositionEnded):
+		status = http.StatusConflict
 	case errors.Is(err, ErrRematchNotEnded), errors.Is(err, ErrRematchUnavailable), errors.Is(err, ErrRematchOffered),
 		errors.Is(err, ErrRematchClosed), errors.Is(err, ErrRematchAccepted):
 		status = http.StatusConflict

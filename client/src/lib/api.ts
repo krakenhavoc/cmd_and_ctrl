@@ -26,7 +26,7 @@ import type { MySetupResponse, SetupResult } from "./tableSetup";
 import type { LastDeck } from "./lastDeck";
 import type { AutoTapCastParams } from "./castPreview";
 import type { TableSettingsPatch, SpawnZone } from "./tableSettings";
-import type { TableSettingsView, TargetRefView } from "./protocol";
+import type { StackPositionView, TableSettingsView, TargetRefView } from "./protocol";
 import {
   accountsQuery,
   gamesQuery,
@@ -1157,6 +1157,20 @@ export function acceptRematch(gameID: string): Promise<Session> {
 
 export async function leaveRematch(gameID: string): Promise<void> {
   await authFetch(`/games/${encodeURIComponent(gameID)}/rematch/leave`, { method: "POST" });
+}
+
+// The stack panel's placement (#3429, ADR 0176). The caller is the seat;
+// the server keeps the spot for the rest of the game and sends it back on
+// that seat's own view (GameView.stack_positions). Both answer 204.
+export async function saveStackPosition(gameID: string, pos: StackPositionView): Promise<void> {
+  await authFetch(`/games/${encodeURIComponent(gameID)}/stack-position`, {
+    method: "PUT",
+    body: JSON.stringify({ x: pos.x, y: pos.y }),
+  });
+}
+
+export async function clearStackPosition(gameID: string): Promise<void> {
+  await authFetch(`/games/${encodeURIComponent(gameID)}/stack-position`, { method: "DELETE" });
 }
 
 // fetchTablemates reads the people the signed-in caller has shared a

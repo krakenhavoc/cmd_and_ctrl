@@ -100,6 +100,10 @@ type GameView struct {
 	// 0164), stamped by the room and reduced per viewer by FilterViewFor.
 	// Nil until a rematch is offered, and for a spectator.
 	Rematch *RematchView `json:"rematch,omitempty"`
+	// StackPositions is where each seat dragged the stack panel (#3429,
+	// ADR 0176), keyed by seat id, stamped by the room. FilterViewFor
+	// keeps only the viewer's own entry; a spectator gets none.
+	StackPositions map[string]StackPositionView `json:"stack_positions,omitempty"`
 	// StartingSeat is the seat index that took the first turn. Used
 	// by the server to enforce the CR 103.8a turn-1 skip-draw rule
 	// (two-player games only — CR 103.8c);
@@ -9417,9 +9421,11 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		Settings:      v.Settings,
 		// ADR 0159 §6: the viewer's own access, and the link only when
 		// they may use it.
-		Voice:        filterVoiceFor(v.Voice, viewerID),
-		Rematch:      filterRematchFor(v.Rematch, viewerID),
-		StartingSeat: v.StartingSeat,
+		Voice:   filterVoiceFor(v.Voice, viewerID),
+		Rematch: filterRematchFor(v.Rematch, viewerID),
+		// #3429: only the viewer's own placement of the stack panel.
+		StackPositions: filterStackPositionsFor(v.StackPositions, viewerID),
+		StartingSeat:   v.StartingSeat,
 		// ADR 0121 §3: every die is public the moment it lands.
 		OpeningRoll:           v.OpeningRoll,
 		StackItems:            v.StackItems,

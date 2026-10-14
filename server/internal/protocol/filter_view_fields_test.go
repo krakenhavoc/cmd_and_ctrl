@@ -48,7 +48,9 @@ func filterViewDeliberatelyZeroed(viewerID string) map[string]bool {
 	// §6.1), the flag that says the list was cut.
 	// ControlledLegalActions (ADR 0167 §7) is the digest of the moves in
 	// that list made for a seat the viewer controls, under the same rule.
-	return map[string]bool{"LegalMoves": true, "LegalActions": true, "LegalMovesTruncated": true, "ControlledLegalActions": true}
+	// StackPositions (#3429) is a seat's own placement; the fixture gives
+	// it to the owner only, so this unseated viewer has none.
+	return map[string]bool{"LegalMoves": true, "LegalActions": true, "LegalMovesTruncated": true, "ControlledLegalActions": true, "StackPositions": true}
 }
 
 // everyFieldGameView returns a GameView with every top-level exported
@@ -98,7 +100,8 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 			Access: map[string]string{ownerID: VoiceAccessGranted, oppID: VoiceAccessNotInServer}},
 		Rematch: &RematchView{GameID: uuid.NewString(), Host: ownerID, HostName: "Owner", Open: true,
 			Accepted: []string{oppID}, Left: []string{}},
-		StartingSeat: 1,
+		StackPositions: map[string]StackPositionView{ownerID: {X: 0.5, Y: 0.25}},
+		StartingSeat:   1,
 		OpeningRoll: &OpeningRollView{Rounds: []OpeningRollRoundView{
 			{Seats: []int{0, 1}, Rolls: []OpeningRollDieView{{Seat: 1, Result: 17}}},
 		}},

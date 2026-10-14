@@ -1330,6 +1330,34 @@ closes, and for four hours after the game ended if nobody offers.
 | 409 | the game is not over; a rematch was already offered; the table cannot be rematched any more (a practice or archived table, a restart, or too long ago); the offer is closed or already answered; the new table is full or has started; leaving after accepting |
 | 503 | the server is at its capacity |
 
+### Stack position: `PUT` and `DELETE /games/{id}/stack-position` (ADR 0176, #3429)
+
+A seat drags the stack card somewhere else on its board and the table remembers
+where for the rest of the game. Called with a **seat session at the table**; the
+seat is the session's, never one named in the request, so nobody can place
+another seat's card. The admin token and a spectator are refused (403), and so is
+a bot or an agent seat.
+
+| Route | Body | Answers |
+|---|---|---|
+| `PUT /games/{id}/stack-position` | `{"x": 0..1, "y": 0..1}`, both required | 204 |
+| `DELETE /games/{id}/stack-position` | none | 204, also when nothing was saved |
+
+`x` and `y` are the card's top-left corner as fractions of the board's width and
+height. The spot is kept on the room, in memory, and rides the game view as
+`GameView.stack_positions` ([protocol.md](protocol.md)), reduced to the caller's
+own entry; it is not in the snapshot, `undo` does not touch it, it is dropped
+when the game ends, and a server restart forgets it. Rate limited per caller.
+
+| Status | Reason |
+|---|---|
+| 400 | `x` or `y` missing or outside 0..1; an unknown field |
+| 401 | no session |
+| 403 | not a seat in this game (a spectator, the admin token) |
+| 404 | game not found |
+| 409 | the game is over |
+| 429 | too many requests |
+
 ### `POST /games/{id}/setup` (ADR 0110 §5)
 
 Apply the caller's last setup to an unstarted table: its settings through the
