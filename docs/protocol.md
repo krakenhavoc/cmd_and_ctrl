@@ -1158,7 +1158,7 @@ client distinguishes spectator messages by the missing `author_id`.
 | `payload.author_id` | string (UUID) | no | Server-stamped from the connection's player principal. Empty for spectator connections. Ignored on inbound frames. |
 | `payload.author_name` | string | yes (server) | Server-stamped from the seated player's name (or `"spectator"`). Ignored on inbound frames. |
 | `payload.timestamp` | string (RFC3339) | yes (server) | Server wall clock at broadcast time. Ignored on inbound frames. |
-| `payload.kind` | string | no | `"say"` (or absent) for a human message; `"bot_improvisation"` / `"bot_reasoning"` for the server-originated bot lines below. Ignored on inbound frames — a player who sends one gets `"say"`. Added in S31 sub-PR 8. |
+| `payload.kind` | string | no | `"say"` (or absent) for a human message; `"bot_improvisation"` / `"bot_reasoning"` / `"bot_notice"` for the server-originated bot lines below. Ignored on inbound frames — a player who sends one gets `"say"`. Added in S31 sub-PR 8. |
 | `payload.reason` | string | no | A bot policy's `Decision.Reason`. Present only on bot lines. Added in S31 sub-PR 8. |
 
 The originating client receives the server-stamped frame with the
@@ -1192,6 +1192,12 @@ There are two kinds and they are not interchangeable:
   accepts rather than a leak — a policy is handed the same filtered
   view a human at that seat gets and never sees another seat's hidden
   state.
+- `"bot_notice"` — the bot telling the table about the seat itself
+  rather than a move: an own-key seat falling back to the heuristic
+  because its owner's key stopped working or its limit was reached
+  ([ADR 0182](decisions/0182-your-own-model-key-for-ai-seats.md)).
+  Posted once per seat per game. The reference client always shows it
+  in the bot feed, with no setting, and lets the viewer dismiss it.
 
 `payload.reason` rides along on both, split out of `text` so a client
 can show the announcement while keeping the reasoning behind the

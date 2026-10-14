@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { visibleBotLines, isBotLine, isImprovisation, BOT_FEED_LIMIT } from "./botChat";
+import {
+  visibleBotLines,
+  isBotLine,
+  isImprovisation,
+  dismissable,
+  BOT_FEED_LIMIT,
+} from "./botChat";
 import type { ChatMessage } from "./ws";
 import type { ChatKind } from "./protocol";
 
@@ -42,6 +48,17 @@ describe("visibleBotLines", () => {
   it("hides reasoning unless the viewer asked for it", () => {
     expect(visibleBotLines([reasoning], false)).toHaveLength(0);
     expect(visibleBotLines([reasoning], true)).toHaveLength(1);
+  });
+
+  it("always shows a seat notice, and lets the viewer dismiss it", () => {
+    const notice = msg("bot_notice", "I can't use my owner's model key any more…");
+    expect(isBotLine(notice)).toBe(true);
+    for (const show of [false, true]) {
+      const lines = visibleBotLines([human, notice], show);
+      expect(lines).toHaveLength(1);
+      expect(lines[0].improvised).toBe(false);
+      expect(dismissable(lines[0])).toBe(true);
+    }
   });
 
   it("attaches an improvisation's reason only behind the setting", () => {
