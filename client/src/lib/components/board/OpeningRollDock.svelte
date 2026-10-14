@@ -159,7 +159,7 @@
       title="Choose who goes first"
       width={440}
       sheetKey="opening-roll-choice"
-      question={chooserLead(ask.result)}
+      question={chooserLead(ask.result, model, view.seats)}
     >
       <div class="choices">
         {#each choices as c (c.seat)}
