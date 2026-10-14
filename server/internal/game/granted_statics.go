@@ -53,7 +53,8 @@ func GrantedStaticProblem(s StaticAbility) string {
 	case len(s.Zones) > 0 || s.AffectsSpells || s.GrantZone != "":
 		return "a granted static functions on the battlefield over permanents only"
 	case s.DependsOnHandSize || s.DependsOnLifeTotal || s.DependsOnAttackingStatus ||
-		s.DependsOnSpellsCast || s.DependsOnExile || s.DependsOnManaPool || len(s.DependsOnEvents) > 0:
+		s.DependsOnSpellsCast || s.DependsOnExile || s.DependsOnManaPool || s.DependsOnLibraryTop ||
+		len(s.DependsOnEvents) > 0:
 		return "a granted static cannot declare an invalidation hint — the hints are read off the battlefield's own statics"
 	}
 	return ""

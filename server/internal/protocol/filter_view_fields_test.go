@@ -46,7 +46,9 @@ func filterViewDeliberatelyZeroed(viewerID string) map[string]bool {
 	// LegalActions (ADR 0105) is the digest of that same list and
 	// follows the same rule, and so does LegalMovesTruncated (ADR 0122
 	// §6.1), the flag that says the list was cut.
-	return map[string]bool{"LegalMoves": true, "LegalActions": true, "LegalMovesTruncated": true}
+	// ControlledLegalActions (ADR 0167 §7) is the digest of the moves in
+	// that list made for a seat the viewer controls, under the same rule.
+	return map[string]bool{"LegalMoves": true, "LegalActions": true, "LegalMovesTruncated": true, "ControlledLegalActions": true}
 }
 
 // everyFieldGameView returns a GameView with every top-level exported
@@ -94,6 +96,8 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		Settings:      &TableSettingsView{UndoLimit: 3, UndoScope: "own", StartingLife: 40, BotPace: "normal"},
 		Voice: &VoiceView{Enabled: true, Status: VoiceStatusReady, URL: "https://discord.com/channels/1/2",
 			Access: map[string]string{ownerID: VoiceAccessGranted, oppID: VoiceAccessNotInServer}},
+		Rematch: &RematchView{GameID: uuid.NewString(), Host: ownerID, HostName: "Owner", Open: true,
+			Accepted: []string{oppID}, Left: []string{}},
 		StartingSeat: 1,
 		OpeningRoll: &OpeningRollView{Rounds: []OpeningRollRoundView{
 			{Seats: []int{0, 1}, Rolls: []OpeningRollDieView{{Seat: 1, Result: 17}}},
@@ -119,8 +123,13 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		Log:     []LogEvent{{Seq: 1, Kind: LogCast, Turn: 3}},
 		Reveals: []RevealView{{Seq: 1, Turn: 3, Seat: 0, Source: "Fact or Fiction"}},
 
-		LoopNotice: &LoopNoticeView{Source: ownerID, Label: "loop", Controller: ownerID, Count: 3},
-		Outcome:    &OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect"},
+		LoopNotice:              &LoopNoticeView{Source: ownerID, Label: "loop", Controller: ownerID, Count: 3},
+		PlayerControls:          []PlayerControlView{{Controller: ownerID, Controlled: ownerID, Source: ownerID, Until: "turn"}},
+		ScheduledPlayerControls: []ScheduledPlayerControlView{{Controller: ownerID, Controlled: oppID, SourceName: "Emrakul, the Promised End"}},
+		Outcome:                 &OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect"},
+	}
+	v.controlledLegalActionsBySeat = map[string]map[string]*LegalActionsView{
+		ownerID: {oppID: {Pass: true}},
 	}
 	v.legalBySeat = map[string][]LegalMoveView{
 		ownerID: {{Type: "pass_priority", Player: uuid.MustParse(ownerID), Label: "Pass"}},
@@ -146,7 +155,7 @@ func assertGameViewFixtureComplete(t *testing.T, v GameView) {
 	rt := rv.Type()
 	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)
-		if !f.IsExported() || f.Name == "LegalMoves" || f.Name == "LegalActions" || f.Name == "LegalMovesTruncated" {
+		if !f.IsExported() || f.Name == "LegalMoves" || f.Name == "LegalActions" || f.Name == "LegalMovesTruncated" || f.Name == "ControlledLegalActions" {
 			continue
 		}
 		if rv.Field(i).IsZero() {

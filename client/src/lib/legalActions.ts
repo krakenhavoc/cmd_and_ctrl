@@ -36,6 +36,7 @@ import type {
   ManaAbilityView,
 } from "./protocol";
 import type { AutopassVerdict } from "./autopassDecision";
+import { viewForSeat } from "./playingAs";
 
 /** A zone a card can be "ready" in — the piles, the hand, the table. */
 export type ReadyZone = "hand" | "graveyard" | "exile" | "library" | "command" | "battlefield";
@@ -299,9 +300,19 @@ export const NO_LEGAL_ACTIONS: LegalActions = lookup(null, new Map(), undefined)
  * legalActionsOf builds the frame's lookup: from `legal_actions` when
  * the server sent the digest, else from `legal_moves`, else
  * NO_LEGAL_ACTIONS.
+ *
+ * ADR 0167 §9: `actingID` is the seat the board acts for. While the
+ * viewer plays another seat's turn, that seat's moves are its own
+ * digest (`controlled_legal_actions`) and the `legal_moves` whose
+ * `player` names it (lib/playingAs.ts viewForSeat). Omitted, the
+ * frame is read as it came.
  */
-export function legalActionsOf(view: GameView | null | undefined): LegalActions {
-  if (!view) return NO_LEGAL_ACTIONS;
+export function legalActionsOf(
+  frame: GameView | null | undefined,
+  actingID?: string | null,
+): LegalActions {
+  if (!frame) return NO_LEGAL_ACTIONS;
+  const view = actingID ? viewForSeat(frame, actingID) : frame;
   if (view.legal_actions) {
     return lookup(view, fromDigest(view.legal_actions), view.legal_actions.pass === true, true);
   }

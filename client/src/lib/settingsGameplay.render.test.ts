@@ -67,7 +67,7 @@ describe("Settings → Gameplay: the sections (ADR 0143 §3.1)", () => {
     const passing = section("gp-passing");
     expect(passing.querySelectorAll('input[type="radio"][name="pass-mode"]')).toHaveLength(3);
     expect(labelsIn(passing)).toEqual(
-      expect.arrayContaining(["Auto-pass", "Smart", "Careful", "Manual", "Stop at these steps"]),
+      expect.arrayContaining(["Auto-pass", "Smart", "Careful", "Off", "Stop at these steps"]),
     );
     expect(passing.querySelector("table.step-stops-table")).not.toBeNull();
 
@@ -199,7 +199,7 @@ describe("Settings → Gameplay: Advanced (ADR 0143 §3.1)", () => {
       (f) => f.querySelector("legend")?.textContent?.trim() === "Bluffing",
     )!;
     expect(bluff.disabled).toBe(true);
-    expect(bluff.textContent).toContain("Bluffing needs Smart auto-pass: in Careful");
+    expect(bluff.textContent).toContain("Bluffing needs Smart auto-pass: on Careful");
   });
 
   it("never disables the response categories", () => {

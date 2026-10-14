@@ -96,6 +96,10 @@ type GameView struct {
 	// the room and reduced per viewer by FilterViewFor. Nil when the
 	// feature is off on this server.
 	Voice *VoiceView `json:"voice,omitempty"`
+	// Rematch is the host's rematch offer on an ended table (#3285, ADR
+	// 0164), stamped by the room and reduced per viewer by FilterViewFor.
+	// Nil until a rematch is offered, and for a spectator.
+	Rematch *RematchView `json:"rematch,omitempty"`
 	// StartingSeat is the seat index that took the first turn. Used
 	// by the server to enforce the CR 103.8a turn-1 skip-draw rule
 	// (two-player games only — CR 103.8c);
@@ -197,6 +201,18 @@ type GameView struct {
 	// every client sees what its viewer is legally allowed to).
 	// Drained by resolve_choice actions. Added in S14 sub-PR 5.
 	PendingChoices []PendingChoiceView `json:"pending_choices,omitempty"`
+	// PlayerControls is who is making whose decisions right now (CR
+	// 723, ADR 0166): Word of Command's controller while its forced play
+	// happens and while the spell it forced resolves. FilterViewFor
+	// shows a controller every card the player they control can see
+	// (CR 723.4).
+	PlayerControls []PlayerControlView `json:"player_controls,omitempty"`
+	// ScheduledPlayerControls is every turn-long control still waiting
+	// for the controlled player's next turn (ADR 0167 §8): Emrakul, the
+	// Promised End's "during that player's next turn". Public, and it
+	// grants no visibility; the turn strip and the controlled player's
+	// warning read it.
+	ScheduledPlayerControls []ScheduledPlayerControlView `json:"scheduled_player_controls,omitempty"`
 	// LegalMoves is the closed list of things the VIEWER'S OWN seat
 	// may do right now, straight out of internal/legal. Empty
 	// whenever that seat owes no decision — which is most frames,
@@ -237,6 +253,13 @@ type GameView struct {
 	// not already hand the same viewer. Absent whenever the seat owes
 	// no decision, so a quiet frame costs 0 bytes.
 	LegalActions *LegalActionsView `json:"legal_actions,omitempty"`
+	// ControlledLegalActions is the same digest for each seat whose
+	// turn the viewer is playing (ADR 0167 §7, §9), keyed by that seat's
+	// player ID: the moves in LegalMoves whose `player` is that seat.
+	// LegalActions keeps the viewer's own moves only. Projected out of
+	// controlledLegalActionsBySeat exactly as LegalActions is, so only
+	// the controller ever carries it.
+	ControlledLegalActions map[string]*LegalActionsView `json:"controlled_legal_actions,omitempty"`
 	// legalBySeat is the per-seat enumeration, keyed by player UUID
 	// string. Unexported, so encoding/json never writes it: the only
 	// way a move list reaches a client is through FilterViewFor
@@ -250,6 +273,9 @@ type GameView struct {
 	// legalTruncatedBySeat names the seats whose wire list
 	// capLegalMoves degraded, keyed and projected as legalBySeat is.
 	legalTruncatedBySeat map[string]bool
+	// controlledLegalActionsBySeat is ControlledLegalActions per
+	// viewer seat, keyed and projected as legalBySeat is.
+	controlledLegalActionsBySeat map[string]map[string]*LegalActionsView
 	// Log is the public game log: the last PublicLogMax table-visible
 	// events, oldest first. A projection of game.Game.Events, not a
 	// stored buffer — see log.go. Every card reference in it goes
@@ -327,9 +353,13 @@ type LegalMoveView = legal.Move
 // discard_from_hand targeting an opponent's hand) or the raw
 // IDs plus redacted characteristics.
 type PendingChoiceView struct {
-	ID         string `json:"id"`
-	Kind       string `json:"kind"`
-	Chooser    string `json:"chooser"`
+	ID      string `json:"id"`
+	Kind    string `json:"kind"`
+	Chooser string `json:"chooser"`
+	// OnBehalfOf is the player who owes the prompt when another player
+	// controls them (CR 723.5, ADR 0166): Chooser is then the
+	// controller, who answers it. Empty otherwise.
+	OnBehalfOf string `json:"on_behalf_of,omitempty"`
 	FromPlayer string `json:"from_player"`
 	Count      int    `json:"count"`
 	Source     string `json:"source,omitempty"`
@@ -498,7 +528,7 @@ type PendingChoiceView struct {
 	// AutoAnswerCard and AutoAnswerPrompt are its display copies: the
 	// card's name and the question, which the client keeps beside the
 	// rule in Settings. AskedByHand says why a prompt that has a rule
-	// is asked anyway ("no_mana", "empty_library", "loop", "undone").
+	// is asked anyway ("no_mana", "empty_library", "loop", "undone", "controlled").
 	// All four are the chooser's alone: FilterViewFor clears them for
 	// every other viewer.
 	AutoAnswerKey    string `json:"auto_answer_key,omitempty"`
@@ -1188,6 +1218,17 @@ type AdditionalCostView struct {
 	// "sacrifice X lands" ships count_from_x, the number picked being
 	// the x_value the same cast_spell announces.
 	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
+	// ExilePermanentLabel / ExilePermanentOptions describe an "exile a
+	// creature you control" additional cost (#3402, Soul Exchange): the
+	// activated ability's field of the same names, off the same engine
+	// walk (game.ExilePermanentsOptionsForEffect). min / max are the
+	// clause's count, the cards come in payment order, and the picks ride
+	// back on cast_spell as `exile_permanent_ids`. Absent when the cost has
+	// no such component; present-and-empty means it cannot be paid right
+	// now, which makes the spell uncastable (CR 118.3). Not a target list:
+	// a hexproof creature you control is on it (CR 601.2h).
+	ExilePermanentLabel   string            `json:"exile_permanent_label,omitempty"`
+	ExilePermanentOptions *LegalTargetsView `json:"exile_permanent_options,omitempty"`
 	// DemandsX marks a "pay X life" clause (Toxic Deluge). The
 	// client must open its X prompt for this card even though the
 	// printed mana cost has no {X} in it, and the announced X is
@@ -1963,6 +2004,11 @@ type PlayerView struct {
 	// mulligan (CR 103.5, #2237). At most one seat has it; none does
 	// outside the mulligan window or while the opening roll is open.
 	MulliganTurn bool `json:"mulligan_turn,omitempty"`
+	// MulliganBottom is how many cards this seat puts on the bottom of
+	// its library if it keeps now: the London mulligan's cost (CR 103.5,
+	// ADR 0168). Zero, and omitted, outside the window and once the
+	// seat has kept. Public, like MulligansTaken, which it follows from.
+	MulliganBottom int `json:"mulligan_bottom,omitempty"`
 	// TriggerOrder reflects Player.TriggerOrder (#1968): "always" or
 	// "never", omitted for the default, "when_it_matters". Private to
 	// its seat: FilterViewFor clears it for every other viewer. The
@@ -4845,6 +4891,7 @@ func ViewOfGame(g *game.Game) GameView {
 			GraveyardTargetBans:   graveyardTargetBanLines(g),
 			DiscardPending:        viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:        viewOfPendingChoices(g),
+			PlayerControls:        viewOfPlayerControls(g),
 			LoopNotice:            viewOfLoopNotice(g.LoopNotice),
 		}
 		// #1279: where each defender's block declaration stands.
@@ -4885,7 +4932,9 @@ func ViewOfGame(g *game.Game) GameView {
 		stampDeathMarks(g, &view.Battlefield)
 		stampLandTypeEffects(g, &view.Battlefield)
 		stampDefenderRefusals(g, &view.Battlefield)
-		view.legalBySeat, view.legalActionsBySeat, view.legalTruncatedBySeat = enumerateLegalMoves(g)
+		view.legalBySeat, view.legalActionsBySeat, view.legalTruncatedBySeat, view.controlledLegalActionsBySeat = enumerateLegalMoves(g)
+		// ADR 0167 §8: public, the turn-long controls still waiting.
+		view.ScheduledPlayerControls = viewOfScheduledPlayerControls(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
 		// sets out of the view that was just assembled, so it must run
 		// last — and inside the same read lock, so the log and the
@@ -4928,10 +4977,17 @@ func ViewOfGame(g *game.Game) GameView {
 // ADR 0122 §6: the enumeration carries its cut report, which the digest
 // files under each card (legal_actions.sources[id].truncated), and the
 // third map says which seats' wire lists the cap degraded.
-func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*LegalActionsView, map[string]bool) {
+//
+// ADR 0167 §7: a seat playing another seat's turn is also offered that
+// seat's moves, each with `player` set to it. The digest is split the
+// same way: the seat's own moves make its legal_actions, and each
+// controlled seat's make an entry of the fourth map,
+// controlled_legal_actions.
+func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*LegalActionsView, map[string]bool, map[string]map[string]*LegalActionsView) {
 	var out map[string][]LegalMoveView
 	var digests map[string]*LegalActionsView
 	var truncated map[string]bool
+	var controlled map[string]map[string]*LegalActionsView
 	for _, p := range g.Seats {
 		if p == nil {
 			continue
@@ -4941,12 +4997,27 @@ func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*
 		if len(all) == 0 {
 			continue
 		}
-		if d := digestLegalMoves(all); d != nil {
+		own, others := splitMovesByPlayer(all, p.ID)
+		if d := digestLegalMoves(own); d != nil {
 			fileDigestCuts(d, rep.Cuts)
 			if digests == nil {
 				digests = make(map[string]*LegalActionsView, len(g.Seats))
 			}
 			digests[p.ID.String()] = d
+		}
+		for _, grp := range others {
+			d := digestLegalMoves(grp)
+			if d == nil {
+				continue
+			}
+			fileDigestCuts(d, rep.Cuts)
+			if controlled == nil {
+				controlled = make(map[string]map[string]*LegalActionsView)
+			}
+			if controlled[p.ID.String()] == nil {
+				controlled[p.ID.String()] = make(map[string]*LegalActionsView)
+			}
+			controlled[p.ID.String()][grp[0].Player.String()] = d
 		}
 		if out == nil {
 			out = make(map[string][]LegalMoveView, len(g.Seats))
@@ -4960,7 +5031,31 @@ func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*
 			truncated[p.ID.String()] = true
 		}
 	}
-	return out, digests, truncated
+	return out, digests, truncated, controlled
+}
+
+// splitMovesByPlayer separates seat's own moves from the moves it makes
+// for the players it controls (ADR 0166, ADR 0167 §7), grouped by
+// player in first-seen order.
+func splitMovesByPlayer(moves []LegalMoveView, seat uuid.UUID) (own []LegalMoveView, others [][]LegalMoveView) {
+	var at map[uuid.UUID]int
+	for _, m := range moves {
+		if m.Player == seat || m.Player == uuid.Nil {
+			own = append(own, m)
+			continue
+		}
+		if at == nil {
+			at = make(map[uuid.UUID]int)
+		}
+		i, ok := at[m.Player]
+		if !ok {
+			i = len(others)
+			at[m.Player] = i
+			others = append(others, nil)
+		}
+		others[i] = append(others[i], m)
+	}
+	return own, others
 }
 
 // legalMovesWireCap bounds how many moves one seat's list may put on
@@ -5009,7 +5104,39 @@ const legalMovesWireCap = 48
 // The second result says whether anything was dropped, which the view
 // carries as legal_moves_truncated (ADR 0122 §6.1): a list over the cap
 // whose every move has its own key keeps them all and is not truncated.
+//
+// ADR 0167 §7: the cap is per player. A seat playing another seat's
+// turn carries both seats' moves, and each list is capped on its own,
+// so the controller's own moves can never fold the controlled seat's
+// away, or the other way round.
 func capLegalMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
+	if len(moves) <= legalMovesWireCap {
+		return moves, false
+	}
+	first := moves[0].Player
+	mixed := false
+	for _, m := range moves {
+		if m.Player != first {
+			mixed = true
+			break
+		}
+	}
+	if !mixed {
+		return capOnePlayersMoves(moves)
+	}
+	lead, others := splitMovesByPlayer(moves, first)
+	out := make([]LegalMoveView, 0, len(moves))
+	cut := false
+	for _, grp := range append([][]LegalMoveView{lead}, others...) {
+		capped, c := capOnePlayersMoves(grp)
+		out = append(out, capped...)
+		cut = cut || c
+	}
+	return out, cut
+}
+
+// capOnePlayersMoves is capLegalMoves over one player's moves.
+func capOnePlayersMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 	if len(moves) <= legalMovesWireCap {
 		return moves, false
 	}
@@ -5025,6 +5152,12 @@ func capLegalMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 	seen := make(map[key]bool, len(moves))
 	out := make([]LegalMoveView, 0, legalMovesWireCap)
 	for _, m := range moves {
+		// ADR 0166: a forced play's ways are the whole of the decision
+		// its prompt shows, so none of them is an alternative to fold.
+		if m.ControlledPlay != "" {
+			out = append(out, m)
+			continue
+		}
 		k := key{m.Source, m.Kind, m.TargetsStack, m.HasTargets, m.Interacts, m.CombatInteracts, m.CombatDefenderOnly}
 		if seen[k] {
 			continue
@@ -6019,7 +6152,13 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// ADR 0073: the optional costs this card OFFERS. Stamped next to
 	// the mandatory one and read by the same modal the alternative
 	// costs open, because CR 601.2b announces all of them together.
-	out.OptionalCosts = viewOfOptionalCosts(g, caster, src, key)
+	optional := game.OptionalCostsFor(key)
+	if haveLive {
+		// #3245: a permanent may grant this spell an optional cost
+		// (Silverquill's casualty), appended after the card's own.
+		optional = g.OptionalCostsForCastLocked(caster, live)
+	}
+	out.OptionalCosts = viewOfOptionalCosts(g, caster, src, optional)
 	// ADR 0150 §5: assist's "choose another player", asked in the same
 	// modal as the gift's opponent. The total is the engine's own
 	// (AssistGenericLocked), so "up to {N}" is the cap the park uses.
@@ -6039,7 +6178,13 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// S22: convoke / waterbend. Stamped before the target clause
 	// because the caster pays it first, and the count of a "X target
 	// creatures" clause depends on what they paid.
-	if tc := game.TapPermanentsCostFor(key); !tc.Empty() {
+	tc := game.TapPermanentsCostFor(key)
+	if haveLive {
+		// A permanent may grant this spell convoke (Hoarding Broodlord's
+		// "spells you cast from exile", Dazzling Theater's creature spells).
+		tc = g.TapPermanentsCostForCastLocked(caster, live, kind)
+	}
+	if !tc.Empty() {
 		out.TapCost = viewOfTapCost(g, caster, f.manaCost, tc)
 	}
 	// ADR 0100 §4: delve. The options walk is the engine's own
@@ -6550,11 +6695,24 @@ type AttackTargetRestrictionView struct {
 // restrictions. Nil for nearly every card, and for a restriction that
 // names the creature's own controller, which CR 506.2 already forbids.
 func viewOfAttackTargetRestrictions(c *game.Card, eff game.Characteristic) []AttackTargetRestrictionView {
-	if len(eff.AttackTargetRestrictions) == 0 || c.Owner == uuid.Nil || c.Owner == c.Controller {
+	if len(eff.AttackTargetRestrictions) == 0 {
 		return nil
 	}
 	var out []AttackTargetRestrictionView
 	for _, r := range eff.AttackTargetRestrictions {
+		// #3400: a fixed player the creature can't attack, and their
+		// planeswalkers (Promise of Loyalty). Not the creature's own
+		// controller, whom CR 506.2 already forbids.
+		if r.NotPlayer != uuid.Nil && r.NotPlayer != c.Controller {
+			out = append(out, AttackTargetRestrictionView{
+				Player:        r.NotPlayer.String(),
+				Planeswalkers: true,
+				Source:        r.SourceName,
+			})
+		}
+		if c.Owner == uuid.Nil || c.Owner == c.Controller {
+			continue
+		}
 		// Every printed owner row forbids the owner; a planeswalkers-only
 		// row has no card behind it and no chip that would say it right.
 		// A "defending player controls" row (ADR 0107 §2) needs the
@@ -6921,6 +7079,15 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 			out.SacrificeOptions = &LegalTargetsView{Min: len(all), Max: len(all), All: true, Cards: cardIDStrings(all)}
 		}
 	}
+	if ec := ac.ExilePermanents; !ec.Empty() {
+		// #3402: the activation's own walk and view, so the picker offers
+		// exactly the permanents the validator accepts (#544).
+		out.ExilePermanentLabel = ec.Label
+		out.ExilePermanentOptions = exilePermanentCostOptions(g, caster, castID, ec)
+		if out.ExilePermanentOptions == nil {
+			out.ExilePermanentOptions = &LegalTargetsView{Min: ec.Count, Max: ec.Count}
+		}
+	}
 	if ac.BlightX {
 		// #2174: the same creature walk, and the ceiling the validator
 		// and the bot enumerator read (BlightXCeilingForEffect).
@@ -6963,8 +7130,7 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 // optional cost that rewrites the target clause carries the rewritten
 // clause's legal set — `src` is the spell as its own source (#662),
 // exactly as the alternative-cost stamp reads it.
-func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, key string) []OptionalCostView {
-	costs := game.OptionalCostsFor(key)
+func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, costs []game.AdditionalCost) []OptionalCostView {
 	if len(costs) == 0 {
 		return nil
 	}
@@ -7973,10 +8139,12 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c == nil {
 			continue
 		}
+		// ADR 0166: the prompt is shown to whoever answers it now.
+		answerer := g.ControllerOfPlayerLocked(c.Chooser)
 		v := PendingChoiceView{
 			ID:            c.ID.String(),
 			Kind:          string(c.Kind),
-			Chooser:       c.Chooser.String(),
+			Chooser:       answerer.String(),
 			FromPlayer:    c.FromPlayer.String(),
 			Count:         c.Count,
 			Source:        uuidStringOrEmpty(c.Source),
@@ -8046,6 +8214,21 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if subject := c.TradeSubject(); subject != uuid.Nil {
 				v.TradeFor = subject.String()
 			}
+		}
+		if answerer != c.Chooser {
+			v.OnBehalfOf = c.Chooser.String()
+		}
+		// ADR 0166 §4: Word of Command's forced play shows the one card,
+		// which its chooser looked at.
+		if c.Kind == game.PendingChoiceControlledPlay && len(c.DiscardOptions) == 1 {
+			if fromP := g.PlayerByIDForEffect(c.FromPlayer); fromP != nil && fromP.Hand != nil {
+				for _, card := range fromP.Hand.Cards {
+					if card.InstanceID == c.DiscardOptions[0] {
+						v.Options = []CardView{viewOfCard(card)}
+					}
+				}
+			}
+			v.Eligible = cardIDStrings(c.DiscardOptions)
 		}
 		// For discard_from_hand, inline the source player's hand
 		// as Options. Per-viewer redaction in FilterViewFor
@@ -8246,8 +8429,10 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// PendingChoiceProliferate — #2525. The permanents ride Options
 		// above (battlefield cards, public); the seats on offer and the
 		// engine's suggested answer ride beside them. All of it is
-		// public information: counters are on the table.
-		if c.Kind == game.PendingChoiceProliferate {
+		// public information: counters are on the table. ADR 0170's
+		// entry_choose_permanents carries a suggestion the same way
+		// (public permanents, no seats).
+		if c.Kind == game.PendingChoiceProliferate || c.Kind == game.PendingChoiceEntryChoosePermanents {
 			for _, id := range c.ChoosePlayers {
 				v.ChoosePlayers = append(v.ChoosePlayers, id.String())
 			}
@@ -8741,6 +8926,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		Eliminated:            p.Eliminated,
 		HandKept:              p.HandKept,
 		MulliganTurn:          g.MulliganDeciderLocked() == p.Seat,
+		MulliganBottom:        viewOfMulliganBottom(g, p),
 		TriggerOrder:          viewOfTriggerOrder(p.TriggerOrder),
 		TriggerOrderAlwaysAsk: p.TriggerOrder == game.TriggerOrderAlways,
 		AutoAnswers:           viewOfAutoAnswers(p.AutoAnswers),
@@ -9079,6 +9265,23 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 			seatIDs = append(seatIDs, p.ID)
 		}
 	}
+	// ADR 0166, CR 723.4: a controller sees what the player they
+	// control can see.
+	var controlled []string
+	// ADR 0167 §9: the seats whose whole turn the viewer is playing.
+	// Their per-seat cast stamps and ability rows reach the viewer as a
+	// fallback for any card the viewer has no answer of their own for,
+	// so the "Playing as" board can announce the controlled player's
+	// spells and abilities with their own targets and prices.
+	var playingFor []string
+	for _, pc := range v.PlayerControls {
+		if pc.Controller == viewerID {
+			controlled = append(controlled, pc.Controlled)
+			if pc.Until == string(game.ControlUntilTurn) {
+				playingFor = append(playingFor, pc.Controlled)
+			}
+		}
+	}
 	isKnower := func(c CardView) bool {
 		switch viewerID {
 		case "":
@@ -9086,7 +9289,15 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		case SpectatorViewerID:
 			return knownToEverySeat(c, seatIDs)
 		}
-		return c.knowers[viewerID]
+		if c.knowers[viewerID] {
+			return true
+		}
+		for _, id := range controlled {
+			if c.knowers[id] {
+				return true
+			}
+		}
+		return false
 	}
 
 	seats := make([]PlayerView, len(v.Seats))
@@ -9105,7 +9316,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// Hand + library still get their wholesale-hide (S04
 		// zone-default heuristic) for opponents, but the per-card
 		// pass below covers all visible zones uniformly.
-		out.Library = applyCastStampsFor(redactZone(p.Library, isKnower), viewerID)
+		out.Library = applyCastStampsFor(redactZone(p.Library, isKnower), viewerID, playingFor...)
 		// #1166: and the hand, for the reason the graveyard is
 		// promoted below. A hand card's announce surface is the HAND
 		// OWNER's answer, and a card another seat is a knower of —
@@ -9114,7 +9325,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// them carrying the owner's `legal_targets`, which hexproof,
 		// shroud, protection and "target opponent" all narrow by who
 		// is asking.
-		out.Hand = applyCastStampsFor(redactZone(p.Hand, isKnower), viewerID)
+		out.Hand = applyCastStampsFor(redactZone(p.Hand, isKnower), viewerID, playingFor...)
 		if viewerID != "" && viewerID != SpectatorViewerID && p.ID == viewerID {
 			out.Hand = stampKnownBySeats(out.Hand, p.Hand, seatIDs, viewerID)
 		}
@@ -9123,12 +9334,12 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// the stamps it produced come off for everybody else — the
 		// pass exile has ridden since #978, now on the one per-seat
 		// zone that can carry a foreign holder's stamps.
-		out.Graveyard = applyCastStampsFor(redactZone(p.Graveyard, isKnower), viewerID)
+		out.Graveyard = applyCastStampsFor(redactZone(p.Graveyard, isKnower), viewerID, playingFor...)
 		// #1166: the command zone is public and CR 903.4's permission
 		// is its owner's alone, so the same split applies — the
 		// commander's price list is a fact about the card, and the
 		// legal targets of a cast only that seat may make are not.
-		out.Command = applyCastStampsFor(redactZone(p.Command, isKnower), viewerID)
+		out.Command = applyCastStampsFor(redactZone(p.Command, isKnower), viewerID, playingFor...)
 		// Opponent hand: strip only UNREVEALED cards (seated-viewer
 		// path — Thoughtseize-style reveals survive via KnownBy);
 		// wholesale-hide for spectator / admin (viewerID empty)
@@ -9177,13 +9388,15 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// #1369: a permanent is public, but the cost options its
 		// ability rows read out of its controller's HAND are not, so
 		// they reach the controller's frame alone.
-		Battlefield: applyAbilityOffersFor(redactZone(v.Battlefield, isKnower), viewerID),
+		// ADR 0155 Decision 10: and a borrowed row's lender in a hidden
+		// zone reaches the seats that may see it there.
+		Battlefield: applyLenderKnowersFor(applyAbilityOffersFor(redactZone(v.Battlefield, isKnower), viewerID, playingFor...), viewerID, seatIDs),
 		Stack:       redactZone(v.Stack, isKnower),
 		// #978: exile is the one SHARED zone that carries
 		// announce-time cast stamps, and they were computed for one
 		// seat — the holder of the CastPermission that opened the
 		// card. Everyone else gets the card without them.
-		Exile: applyCastStampsFor(redactZone(v.Exile, isKnower), viewerID),
+		Exile: applyCastStampsFor(redactZone(v.Exile, isKnower), viewerID, playingFor...),
 		// #1199: shared and public like the battlefield, and redacted
 		// the same way — a permanent can phase out face down, and the
 		// card under it is no more knowable for having phased.
@@ -9200,6 +9413,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// ADR 0159 §6: the viewer's own access, and the link only when
 		// they may use it.
 		Voice:        filterVoiceFor(v.Voice, viewerID),
+		Rematch:      filterRematchFor(v.Rematch, viewerID),
 		StartingSeat: v.StartingSeat,
 		// ADR 0121 §3: every die is public the moment it lands.
 		OpeningRoll:           v.OpeningRoll,
@@ -9220,6 +9434,9 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		LegalMovesTruncated: legalTruncatedFor(v.legalTruncatedBySeat, viewerID),
 		// ADR 0105: the digest of the same list, under the same rule.
 		LegalActions: legalActionsFor(v.legalActionsBySeat, viewerID),
+		// ADR 0167 §7: the digests of the turns the viewer plays, under
+		// the same rule.
+		ControlledLegalActions: controlledLegalActionsFor(v.controlledLegalActionsBySeat, viewerID),
 		// S31 sub-PR 0: the public log rides the same isKnower closure
 		// as every zone above it. Not a parallel visibility model —
 		// literally the same predicate, applied to the card each entry
@@ -9237,6 +9454,13 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// #628: public, and identical for every seat — see the field
 		// comment. Nothing in it names a card in a hidden zone.
 		LoopNotice: v.LoopNotice,
+		// ADR 0166: public, and identical for every seat: who is making
+		// whose decisions. What it lets the controller see is applied
+		// through isKnower above.
+		PlayerControls: v.PlayerControls,
+		// ADR 0167 §8: public, and identical for every seat. It grants
+		// no visibility.
+		ScheduledPlayerControls: v.ScheduledPlayerControls,
 		// ADR 0057: public, and identical for every seat. The source
 		// name was resolved from public zones only.
 		Outcome: v.Outcome,
@@ -9555,20 +9779,42 @@ func stampKnownBySeats(out, src ZoneView, seatIDs []string, ownerID string) Zone
 //
 // The map is cleared on the way out exactly as `knowers` is, so
 // repeated FilterViewFor calls stay stable.
-func applyCastStampsFor(z ZoneView, viewerID string) ZoneView {
+//
+// `playingFor` are the seats whose whole turn the viewer is playing
+// (ADR 0167 §9, CR 723.5): a card the viewer has no answer of their own
+// for takes the first of those seats' answers instead, so the
+// controller can announce the controlled player's spells with that
+// player's targets and prices. The viewer is a knower of every card
+// those seats know (CR 723.4), so the knower rule still holds.
+func applyCastStampsFor(z ZoneView, viewerID string, playingFor ...string) ZoneView {
 	for i := range z.Cards {
 		c := &z.Cards[i]
 		mine := viewerID != "" && c.KnownByYou
 		if c.castOffers != nil {
-			stamps, ok := c.castOffers[viewerID]
+			stamps, ok := offerFor(c.castOffers, viewerID, playingFor)
 			c.castOffers = nil
 			if ok && mine {
 				stamps.applyTo(c)
 			}
 		}
-		applyFaceCastStampsFor(c, viewerID, mine)
+		applyFaceCastStampsFor(c, viewerID, mine, playingFor)
 	}
 	return z
+}
+
+// offerFor picks a per-seat answer out of `offers`: the viewer's own,
+// else the first seat in `playingFor` that has one (ADR 0167 §9).
+func offerFor[T any](offers map[string]T, viewerID string, playingFor []string) (T, bool) {
+	if v, ok := offers[viewerID]; ok {
+		return v, true
+	}
+	for _, id := range playingFor {
+		if v, ok := offers[id]; ok {
+			return v, true
+		}
+	}
+	var zero T
+	return zero, false
 }
 
 // applyAbilityOffersFor hands a battlefield permanent's CONTROLLER
@@ -9588,13 +9834,16 @@ func applyCastStampsFor(z ZoneView, viewerID string) ZoneView {
 // nothing written through them, so the unfiltered view and every other
 // viewer's frame are untouched. The map is cleared on the way out, as
 // castOffers is, so repeated FilterViewFor calls stay stable.
-func applyAbilityOffersFor(z ZoneView, viewerID string) ZoneView {
+//
+// `playingFor` is applyCastStampsFor's (ADR 0167 §9): the controller of
+// a whole turn gets the controlled player's rows for their permanents.
+func applyAbilityOffersFor(z ZoneView, viewerID string, playingFor ...string) ZoneView {
 	for i := range z.Cards {
 		c := &z.Cards[i]
 		if c.abilityOffers == nil {
 			continue
 		}
-		rows, ok := c.abilityOffers[viewerID]
+		rows, ok := offerFor(c.abilityOffers, viewerID, playingFor)
 		c.abilityOffers = nil
 		if ok && viewerID != "" && c.KnownByYou {
 			c.ActivatedAbilities = rows.ActivatedAbilities
@@ -9620,12 +9869,12 @@ func applyAbilityOffersFor(z ZoneView, viewerID string) ZoneView {
 //
 // One allocation per multi-face card per viewer, and none at all for
 // a single-faced card or one whose faces carry no stamps.
-func applyFaceCastStampsFor(c *CardView, viewerID string, mine bool) {
+func applyFaceCastStampsFor(c *CardView, viewerID string, mine bool, playingFor []string) {
 	// ADR 0103: the fused block is one more face, promoted the same
 	// way off a copy of the pointer.
 	if c.Fused != nil && c.Fused.castOffers != nil {
 		f := *c.Fused
-		stamps, ok := f.castOffers[viewerID]
+		stamps, ok := offerFor(f.castOffers, viewerID, playingFor)
 		f.castOffers = nil
 		if ok && mine {
 			stamps.applyToFace(&f)
@@ -9646,7 +9895,7 @@ func applyFaceCastStampsFor(c *CardView, viewerID string, mine bool) {
 	copy(faces, c.Faces)
 	for i := range faces {
 		f := &faces[i]
-		stamps, ok := f.castOffers[viewerID]
+		stamps, ok := offerFor(f.castOffers, viewerID, playingFor)
 		f.castOffers = nil
 		if ok && mine {
 			stamps.applyToFace(f)
@@ -11478,6 +11727,10 @@ type TableSettingsView struct {
 	BotPace string `json:"bot_pace"`
 	// AllowSpawn is the production spawn switch.
 	AllowSpawn bool `json:"allow_spawn"`
+	// FreeFirstMulligan gives a two-player table the free first
+	// mulligan (#3387). Fixed once the game is active. Omitted when
+	// off, which is the rules.
+	FreeFirstMulligan bool `json:"free_first_mulligan,omitempty"`
 }
 
 // ViewOfTableSettings projects one table's settings for a caller
@@ -11498,6 +11751,8 @@ func viewOfTableSettings(s game.TableSettings) *TableSettingsView {
 		CommanderDamage: s.CommanderDamage,
 		BotPace:         string(s.BotPace),
 		AllowSpawn:      s.AllowSpawn,
+
+		FreeFirstMulligan: s.FreeFirstMulligan,
 	}
 }
 
@@ -11635,6 +11890,16 @@ func emergePricesView(g *game.Game, caster uuid.UUID, card game.Card, zone game.
 		return nil
 	}
 	return out
+}
+
+// viewOfMulliganBottom is SeatView.MulliganBottom: the London
+// mulligan's cost if the seat keeps now, and zero once it has kept or
+// outside the window (ADR 0168). The caller holds g's lock.
+func viewOfMulliganBottom(g *game.Game, p *game.Player) int {
+	if !g.MulligansOpen || p.HandKept || p.Eliminated {
+		return 0
+	}
+	return g.MulliganBottomCountLocked(p)
 }
 
 // viewOfTriggerOrder is a seat's trigger-order mode as PlayerView

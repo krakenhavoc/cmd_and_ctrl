@@ -470,3 +470,12 @@ func ArtifactInstantOrSorcerySpell() CostPredicate {
 		return q.Card.IsArtifact() || q.Card.IsInstant() || q.Card.IsSorcery()
 	}
 }
+
+// SpellOfCreatureType passes on a spell of the named creature type,
+// the source's own included — Undead Warchief's "Zombie spells you
+// cast". OtherSpellOfCreatureType is the "other" form. The subtype is
+// read off the spell as it sits on the stack, so a changeling counts
+// (CR 702.73a) and so does a kindred spell of the type (CR 308.3).
+func SpellOfCreatureType(subtype string) CostPredicate {
+	return func(q game.CostQuery) bool { return q.Card.HasSubtype(subtype) }
+}

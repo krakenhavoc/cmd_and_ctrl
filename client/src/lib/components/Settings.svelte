@@ -41,6 +41,8 @@
   import { openShortcutsHelp } from "../shortcutRuntime";
   import ModalLayer from "./ModalLayer.svelte";
   import PlaymatSettings from "./PlaymatSettings.svelte";
+  import NotificationSettings from "./NotificationSettings.svelte";
+  import { loadNotifications, notificationPrefs } from "../notifications";
   import AutoAnswersSettings from "./AutoAnswersSettings.svelte";
   import HintSlot from "./hints/HintSlot.svelte";
   import { showAllTipsAgain } from "../hints/runtime";
@@ -58,14 +60,14 @@
   const PASS_MODE_CHOICES: readonly { mode: PassMode; label: string }[] = [
     { mode: "smart", label: "Smart" },
     { mode: "careful", label: "Careful" },
-    { mode: "manual", label: "Manual" },
+    { mode: "manual", label: "Off" },
   ];
   const PASS_MODE_HELP: Record<PassMode, string> = {
     smart:
       "Stops where you can do something, and whenever you can respond to an opponent. Passes everything else.",
     careful:
       "Smart, and also stops at every opponent spell and ability, even when you can't respond. Slower, but you see everything, and a pause never gives anything away.",
-    manual: "Never passes for you. Click next every time you get priority.",
+    manual: "Off: never passes for you. Click Pass or Next every time you get priority.",
   };
 
   // Steps that grant priority — the only ones the per-step stops UI
@@ -123,6 +125,7 @@
     | "animations"
     | "display"
     | "playmat"
+    | "notifications"
     | "gameplay"
     | "shortcuts"
     | "accessibility"
@@ -169,6 +172,12 @@
   // the same store without looping.
   $effect(() => {
     if ($settingsOpen) activeTab = get(settingsTab);
+  });
+  // ADR 0162: whether this server sends Discord notifications to this
+  // person is the server's answer, asked each time the panel opens. The
+  // tab is left out until it says yes.
+  $effect(() => {
+    if ($settingsOpen) void loadNotifications();
   });
   // …and forget the deep link on close, so the next plain open is
   // back on the first tab the way it always was.
@@ -454,6 +463,13 @@
             aria-current={activeTab === "playmat" ? "page" : undefined}
             onclick={() => (activeTab = "playmat")}>Playmat</button
           >
+          {#if $notificationPrefs.available}
+            <button
+              class:active={activeTab === "notifications"}
+              aria-current={activeTab === "notifications" ? "page" : undefined}
+              onclick={() => (activeTab = "notifications")}>Notifications</button
+            >
+          {/if}
           <button
             class:active={activeTab === "gameplay"}
             aria-current={activeTab === "gameplay" ? "page" : undefined}
@@ -837,6 +853,8 @@
             </label>
           {:else if activeTab === "playmat"}
             <PlaymatSettings />
+          {:else if activeTab === "notifications" && $notificationPrefs.available}
+            <NotificationSettings />
           {:else if activeTab === "gameplay"}
             <h3>Gameplay</h3>
 
@@ -899,7 +917,7 @@
                 </table>
                 <p class="help">
                   {#if $settings.gameplay.passMode === "manual"}
-                    In Manual every step stops, so these do nothing.
+                    With auto-pass off every step stops, so these do nothing.
                   {:else}
                     A ticked step is skipped when you have nothing to do there. You always get a
                     chance to respond to an opponent's spell, an attack, and an opponent's end step,
@@ -1173,9 +1191,9 @@
                     >B</kbd
                   >).
                   {#if $settings.gameplay.passMode !== "smart"}
-                    Bluffing needs Smart auto-pass: in {$settings.gameplay.passMode === "manual"
-                      ? "Manual"
-                      : "Careful"} you stop anyway.
+                    Bluffing needs Smart auto-pass: {$settings.gameplay.passMode === "manual"
+                      ? "with auto-pass off"
+                      : "on Careful"} you stop anyway.
                   {/if}
                 </p>
               </fieldset>

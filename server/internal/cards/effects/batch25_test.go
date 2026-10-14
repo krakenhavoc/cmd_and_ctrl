@@ -126,8 +126,10 @@ func TestBatch25CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The nine remaining declared skips must stay out until their seam
-	// lands: a counter-removal cost, an untap-step event, an
+	// The eight remaining declared skips must stay out until their seam
+	// lands (Scholar of New Horizons, skipped for a counter-removal
+	// cost, shipped with the Tidus deck request, #3246): an untap-step
+	// event, an
 	// opponent's non-mana choice at resolution (three cards), a
 	// reveal-from-hand entry choice, a per-player "as though it had
 	// flash" plus a trigger replacement, a legendary-sorcery cast
@@ -147,7 +149,6 @@ func TestBatch25CardsAreRegistered(t *testing.T) {
 	// ordinary primitives — see currency_converter.go — with no new
 	// engine seam needed.
 	for oracle, name := range map[string]string{
-		"3c7ea603-c985-4107-806b-a467b5fcca36": "Scholar of New Horizons",
 		"61d28182-498f-4bbc-bb7a-c5e1ef872dda": "Murkfiend Liege",
 		"8e356df5-ca92-4be2-871e-8965c2510fbe": "Tempt with Vengeance",
 		"42b9d383-3fe2-4fc8-ab86-f80a288d502b": "Murmuring Bosk",

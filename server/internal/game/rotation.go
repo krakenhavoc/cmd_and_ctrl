@@ -169,6 +169,10 @@ func (g *Game) beginNextTurnLocked() {
 	if n == 0 {
 		return
 	}
+	// ADR 0167 §2: a turn-long player control ends as the next turn
+	// begins (CR 723.1), and queues the extra turn it owes before the
+	// next turn is chosen below.
+	g.endTurnControlsLocked()
 	// ADR 0108 §6: the turn that is ending is its player's last turn
 	// from here on. Before g.Turn and the tally are replaced.
 	g.recordLastTurnAttacksLocked()
@@ -236,6 +240,10 @@ func (g *Game) startTurnLocked() {
 	g.resetTurnPlanLocked()
 	g.noteTurnBegunLocked(g.Turn.ActiveSeat)
 	g.sweepUnreachableBoundTriggersLocked()
+	// ADR 0167 §2: a turn-long player control waiting for this player's
+	// turn begins with it, before any step entry hook asks them
+	// anything. Only a turn that really begins gets here (CR 723.1b).
+	g.beginTurnControlsLocked()
 	g.onTurnBeganLocked()
 }
 

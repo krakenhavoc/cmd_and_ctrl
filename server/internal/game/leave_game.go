@@ -527,6 +527,10 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// was picking from their own hand, and CR 800.4a takes that hand
 	// out of the game with them.
 	PendingChoiceRevealedHandPick: {reassign: true},
+	// ADR 0166 §6: CR 800.4a ends the control when its controller
+	// leaves, and the card leaves with a controlled player who does.
+	// Either way the forced play is over.
+	PendingChoiceControlledPlay: {},
 	// option_pick: the second half of a pile split is a living
 	// player's cards. Torment of Hailfire's "each opponent chooses"
 	// is the same KIND and is still dropped — by the material test in
@@ -641,6 +645,10 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// it would have named went with them (CR 800.4a).
 	PendingChoiceEntryDiscardFromHand: {},
 	PendingChoiceEntrySacrifice:       {},
+	// ADR 0170: the entering permanent is the departed player's own and
+	// leaves the game with them (CR 800.4a); the frame rides
+	// replacementResume like its three siblings'.
+	PendingChoiceEntryChoosePermanents: {},
 	// aura_host (CR 303.4f, #3158) is entry_controller's row for its
 	// reason: the chooser is the would-be controller of the entering
 	// Aura, normally their own card, which leaves the game with them

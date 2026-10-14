@@ -23,6 +23,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
@@ -149,6 +150,13 @@ type GameMeta struct {
 	// (ADR 0159 §1). Public: a table list may show which tables have
 	// voice. The room's own state rides the game view (§6).
 	VoiceRoom bool `json:"voice_room,omitempty"`
+	// LFG is whether the host posted the table to the Discord #lfg
+	// board (ADR 0161 §1). Public: the post itself is.
+	LFG bool `json:"lfg,omitempty"`
+	// LFGStatus is the post's state while LFG is on: pending, posted
+	// or unavailable (lfg_board.go). Never persisted; the LFG manager
+	// reports it.
+	LFGStatus string `json:"lfg_status,omitempty"`
 }
 
 // Archived reports whether the table has been retired from the
@@ -292,6 +300,11 @@ type Lobby struct {
 	// at boot via SetPlaymats, before RestoreFromDisk; nil means no seat
 	// carries one.
 	playmats PlaymatSource
+	// gameStats, when non-nil, keeps each stored game's statistics
+	// record (ADR 0165); recordStatsLocked writes it when the game ends.
+	// statsWG counts the writes still running (WaitGameStats).
+	gameStats gamestats.Store
+	statsWG   sync.WaitGroup
 	// reclaims holds the outstanding seat-reclaim tickets, keyed by
 	// the SHA-256 of the token (never the token). In memory only and
 	// deliberately so — see reclaim.go.
@@ -303,6 +316,9 @@ type Lobby struct {
 	// voice is the voice manager (ADR 0159 §4), nil when voice rooms
 	// are off. Set once at boot by SetVoiceManager.
 	voice *VoiceManager
+	// lfg is the #lfg manager (ADR 0161 §5), nil when the board is
+	// off. Set once at boot by SetLFGManager.
+	lfg *LFGManager
 	// store is where the lobby's half of a game survives the process:
 	// games, seats and invites rows (ADR 0051 decision 4). Also the
 	// only place an invite is validated against — see resolveInvite.
@@ -328,10 +344,19 @@ type Lobby struct {
 	limits    capacity.Limits
 	connCount func() int
 	reserved  int
+	// presence answers "who is on this game's results screen" for the
+	// rematch watcher (rematch.go). Set once at boot via SetSeatPresence.
+	presence SeatPresence
+	// rematchPoll and rematchGrace are the watcher's clocks; zero is the
+	// default. Tests shrink them.
+	rematchPoll, rematchGrace time.Duration
 	// restoreMu serialises RestoreDeferred (restore_deferred.go), so two
 	// admin clicks cannot both rebuild the same deferred table. It is
 	// taken before l.mu and never while holding it.
 	restoreMu sync.Mutex
+	// events is told when a table fills or starts (ADR 0162, notify.go).
+	// Set once at boot by SetTableEvents; nil tells nobody.
+	events TableEvents
 }
 
 // SetEvictor wires the hub in after construction, for the deletes the
@@ -380,6 +405,8 @@ func (l *Lobby) applyLocked(id uuid.UUID, entry *gameEntry, fn func() error) (fu
 	if err != nil {
 		return nil, err
 	}
+	// ADR 0161 §4: a settings change shows on the table's #lfg post.
+	l.lfgChangedLocked(entry)
 	if l.broadcast == nil {
 		return func() {}, nil
 	}
@@ -439,6 +466,19 @@ type gameEntry struct {
 	// activity.
 	voiceReport  *voiceReport
 	voicePushSeq uint64
+
+	// lfgMessageID is the table's live #lfg post
+	// (games.lfg_message_id, ADR 0161 §6), "" for none. Written by the
+	// LFG manager; the lobby only persists it.
+	lfgMessageID string
+
+	// rematchDecks is a deep copy of every seat's deck, kept from Start so
+	// a rematch (rematch.go) can seat them again; nil once released, and
+	// for a table restored from disk. rematch is the host's offer, and
+	// rematchTimer drops the decks if none is made.
+	rematchDecks map[uuid.UUID][]game.Card
+	rematch      *rematchOffer
+	rematchTimer *time.Timer
 }
 
 // NewLobby constructs an empty Lobby backed by mgr and an in-memory
@@ -672,6 +712,9 @@ func (l *Lobby) RotateInvite(id uuid.UUID, kind InviteKind) (string, GameMeta, e
 	case InviteSpectator:
 		entry.meta.SpectatorInvite = newToken
 	}
+	// ADR 0161 §4: the #lfg post must not keep a link that stopped
+	// working.
+	l.lfgChangedLocked(entry)
 	return newToken, copyMeta(entry.meta), nil
 }
 
@@ -946,6 +989,7 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 	}
 	entry.meta.Players = append(entry.meta.Players, seat)
 	l.persistSeatsLocked(entry)
+	l.noteFilledLocked(entry, p.ID)
 	if bindNamedHost {
 		entry.meta.HostDiscordID = ""
 		l.persistGameLocked(entry)
@@ -1231,6 +1275,7 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 		}
 	}
 	var err error
+	l.keepRematchDecksLocked(entry)
 	// ADR 0121 §1: the table rolls for the first turn itself. Each seat
 	// presses Roll (a bot rolls on its own clock), the high roll chooses
 	// who goes first, and only then are libraries shuffled and hands
@@ -1245,6 +1290,7 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 	}
 	l.syncStateLocked(entry)
 	l.startWatchLocked(entry)
+	l.noteStartedLocked(entry)
 	// Chained onto the broadcast thunk so it runs after l.mu is
 	// released: StartBots spawns goroutines that begin committing to
 	// the room immediately, and holding the lobby-wide mutex across
@@ -1379,6 +1425,7 @@ func (l *Lobby) AddBot(id uuid.UUID, name, tier, deckID, deckName string, cards 
 		BotDeck:      deckID,
 	})
 	l.persistSeatsLocked(entry)
+	l.noteFilledLocked(entry, uuid.Nil)
 	return copyMeta(entry.meta), p.ID, nil
 }
 

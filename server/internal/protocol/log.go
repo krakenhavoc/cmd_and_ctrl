@@ -526,6 +526,18 @@ const (
 	// to cleanup, and without this line the exile lines and the jump
 	// arrive unexplained. A turn that ends normally has no such line.
 	LogTurnEnded LogKind = "turn_ended"
+	// LogPlayerControlScheduled — a player will control another during
+	// that player's next turn (CR 723.1, ADR 0167: Emrakul, the Promised
+	// End). `seat` is the controller, `target_seat` the controlled
+	// player and `card_id` the card whose effect it is. Narrated because
+	// it decides who plays a turn the table has not reached yet.
+	LogPlayerControlScheduled LogKind = "player_control_scheduled"
+	// LogPlayerControlBegan — that turn began, and the controller makes
+	// the controlled player's decisions for all of it. Fields as above.
+	LogPlayerControlBegan LogKind = "player_control_began"
+	// LogPlayerControlEnded — the controlled turn is over and the
+	// control with it, as the next turn begins. Fields as above.
+	LogPlayerControlEnded LogKind = "player_control_ended"
 )
 
 // The three choose-a-value kinds are separate rather than one "chose
@@ -1804,6 +1816,23 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		return base, true
 
+	case game.EventPlayerControlScheduled, game.EventPlayerControlBegan, game.EventPlayerControlEnded:
+		// ADR 0167. Actor controls Target. Not setTarget, for
+		// EventPlayerChosen's reason: the controlled player is a seat.
+		switch ev.Kind {
+		case game.EventPlayerControlScheduled:
+			base.Kind = LogPlayerControlScheduled
+		case game.EventPlayerControlBegan:
+			base.Kind = LogPlayerControlBegan
+		default:
+			base.Kind = LogPlayerControlEnded
+		}
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		if seat := seatOf(ev.Target); seat != NoSeat {
+			base.TargetSeat = &seat
+		}
+		return base, true
+
 	case game.EventTurnEnded:
 		base.Kind = LogTurnEnded
 		base.CardID = uuidStringOrEmpty(ev.Source)
@@ -2511,6 +2540,22 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s's turn ends", actor)
 		}
 		return fmt.Sprintf("%s's turn ends (%s)", actor, card)
+	case LogPlayerControlScheduled, LogPlayerControlBegan, LogPlayerControlEnded:
+		// `target` is the controlled player's seat name (or "a
+		// player"), as in LogChoosePlayer.
+		var line string
+		switch e.Kind {
+		case LogPlayerControlScheduled:
+			line = fmt.Sprintf("%s will control %s during %s's next turn", actor, target, target)
+		case LogPlayerControlBegan:
+			line = fmt.Sprintf("%s controls %s this turn", actor, target)
+		default:
+			line = fmt.Sprintf("%s no longer controls %s", actor, target)
+		}
+		if e.CardID == "" {
+			return line
+		}
+		return fmt.Sprintf("%s (%s)", line, card)
 	case LogExtraPhase:
 		what := describeAddedPhases(e.Label)
 		if e.CardID == "" {
@@ -2612,6 +2657,11 @@ func renderSettingsText(e LogEvent) string {
 			return fmt.Sprintf("%s allowed spawning", who)
 		}
 		return fmt.Sprintf("%s disallowed spawning", who)
+	case game.SettingFreeMulligan:
+		if e.Choice == "true" {
+			return fmt.Sprintf("%s made the first mulligan free", who)
+		}
+		return fmt.Sprintf("%s made the first mulligan cost a card", who)
 	}
 	if e.Label == "" {
 		return fmt.Sprintf("%s changed a table setting", who)

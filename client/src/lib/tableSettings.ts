@@ -139,6 +139,7 @@ export const DEFAULT_TABLE_SETTINGS: TableSettingsView = {
   commander_damage: 21,
   bot_pace: "normal",
   allow_spawn: false,
+  free_first_mulligan: false,
 };
 
 // ADR 0143 §2.6: the pace of the table on screen, for Settings →
@@ -252,6 +253,11 @@ export function settingsPatchError(
     if (startingLifeLocked(state)) {
       return "The game has already started, so starting life is fixed. Use the life controls on each seat.";
     }
+  }
+  // #3387: the mulligan window opens at Start, so the free first
+  // mulligan is fixed from then on, like starting life.
+  if (patch.free_first_mulligan !== undefined && startingLifeLocked(state)) {
+    return "The game has already started, so the free first mulligan is fixed.";
   }
   if (patch.commander_damage !== undefined) {
     const n = patch.commander_damage;

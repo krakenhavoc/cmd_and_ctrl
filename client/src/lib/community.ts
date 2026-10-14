@@ -19,10 +19,12 @@ export interface Community {
   gate: boolean;
   /** A host may give a table a Discord voice room (ADR 0159 §7). */
   voice?: boolean;
+  /** A host may post a table to the Discord's #lfg board (ADR 0161 §7). */
+  lfg?: boolean;
 }
 
 /** The initial value, and the value every failure resolves to. */
-export const NO_COMMUNITY: Community = { invite_url: null, gate: false, voice: false };
+export const NO_COMMUNITY: Community = { invite_url: null, gate: false, voice: false, lfg: false };
 
 const store = guardedWritable<Community>(NO_COMMUNITY, "community");
 
@@ -36,8 +38,13 @@ export const community: Readable<Community> = { subscribe: store.subscribe };
  */
 export function parseCommunity(body: unknown): Community {
   if (typeof body !== "object" || body === null) return NO_COMMUNITY;
-  const b = body as { invite_url?: unknown; gate?: unknown; voice?: unknown };
-  return { invite_url: inviteURL(b.invite_url), gate: b.gate === true, voice: b.voice === true };
+  const b = body as { invite_url?: unknown; gate?: unknown; voice?: unknown; lfg?: unknown };
+  return {
+    invite_url: inviteURL(b.invite_url),
+    gate: b.gate === true,
+    voice: b.voice === true,
+    lfg: b.lfg === true,
+  };
 }
 
 function inviteURL(v: unknown): string | null {

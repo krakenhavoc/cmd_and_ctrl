@@ -413,7 +413,11 @@ answer of its own (`aiseat/heuristic/replacement.go`, `dredge.go`):
 Mox Diamond, the reveal lands, the sacrifice lands and devour have prompt
 kinds of their own (`entry_discard_from_hand`, `entry_reveal_from_hand`,
 `entry_sacrifice`), priced in `choices.go`, and never reached the old
-default.
+default. So does ADR 0170's `entry_choose_permanents` (Phylactery Lich's
+artifact, Sin's "any number of" countered permanents): the card sends its
+recommended pick as `choose_suggested`, and the bot scores overlap with it
+exactly as it scores a proliferate (`proliferateValue`). The enumerator
+always offers the suggested set, so it survives the subset cap.
 
 **Devour (`entry_sacrifice` with `devour`, CR 702.82a, #2419).** "You may
 sacrifice any number of creatures; it enters with N +1/+1 counters for

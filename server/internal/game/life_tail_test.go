@@ -146,37 +146,50 @@ func TestLifelinkCreditRunsTheLifeWindow(t *testing.T) {
 	}
 }
 
-// TestDamageDoesNotFireTheLifeWindow — the split that keeps the fix
-// honest. Damage to a player reduces life inside the damage tail once
-// the DAMAGE replacements have settled (CR 120.3); it is not a second,
-// separately replaceable life-change event. If it were, every doubler
-// in the lifegain deck would also double every Lightning Bolt aimed at
-// its controller.
-func TestDamageDoesNotFireTheLifeWindow(t *testing.T) {
-	fired := 0
+// TestDamageLifeLossRunsTheLifeWindowOnce — ADR 0169. The life a
+// damage event costs is a life LOSS (CR 120.3a), so it runs the CR 614
+// life window once, as a loss: a "would lose life" replacement sees it
+// and a gain replacement never matches it. The damage itself is not a
+// second life event, so the window fires exactly once and the damage
+// event's Amount is unchanged.
+func TestDamageLifeLossRunsTheLifeWindowOnce(t *testing.T) {
+	var saw []int
 	g := newActiveGame(t)
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(ReplacementEffect{
 			Watches: []EventKind{EventChangeLife},
 			AppliesTo: func(ev *ReplacementEvent, _ *Game, _ *Card) bool {
-				return ev.Kind == RepEventLife
+				if ev.Kind != RepEventLife {
+					return false
+				}
+				saw = append(saw, ev.LifeDelta)
+				return ev.LifeDelta < 0
 			},
-			Replace: func(*ReplacementEvent, *Game, *Card) error {
-				fired++
+			Replace: func(ev *ReplacementEvent, _ *Game, _ *Card) error {
+				ev.LifeDelta *= 2
 				return nil
 			},
-			Label: "count life events",
+			Label: "lose twice that much",
 		})
 		if err := g.DealDamageToPlayerForEffect(uuid.Nil, g.Seats[1].ID, 3); err != nil {
 			t.Fatalf("DealDamageToPlayerForEffect: %v", err)
 		}
 	})
-	if fired != 0 {
-		t.Errorf("a life replacement fired %d times on a damage event, want 0 — "+
-			"damage reduces life directly after the DAMAGE replacements (CR 120.3)", fired)
+	if len(saw) != 1 || saw[0] != -3 {
+		t.Errorf("life window saw %v, want one loss of 3", saw)
 	}
-	if got := g.Seats[1].Life; got != StartingLife-3 {
-		t.Errorf("life = %d, want %d", got, StartingLife-3)
+	if got := g.Seats[1].Life; got != StartingLife-6 {
+		t.Errorf("life = %d, want %d", got, StartingLife-6)
+	}
+	var dealt Event
+	for _, ev := range g.Events {
+		if ev.Kind == EventDealDamage {
+			dealt = ev
+		}
+	}
+	if dealt.Amount != 3 || dealt.DamageNotLifeLoss != -3 || dealt.DamageLifeLoss() != 6 {
+		t.Errorf("damage event: Amount %d, DamageNotLifeLoss %d, DamageLifeLoss %d; want 3, -3, 6",
+			dealt.Amount, dealt.DamageNotLifeLoss, dealt.DamageLifeLoss())
 	}
 }
 
@@ -244,10 +257,12 @@ func runLifeScenario(t *testing.T, sc lifeScenario, paused bool) (*Game, *lifeEv
 			// Two applicable replacements on one event is what makes
 			// CR 616 prompt. Registration order is gather order, so
 			// the prompt offers plus-one-then-double and answering it
-			// as offered gives (d+1)*2.
+			// as offered gives (d+1)*2. Gains only: since ADR 0169
+			// the life a damage event costs runs this window too, and
+			// the lifelink scenario's damage must stay undoubled.
 			g.RegisterReplacementForTest(ReplacementEffect{
 				Watches:   []EventKind{EventChangeLife},
-				AppliesTo: func(ev *ReplacementEvent, _ *Game, _ *Card) bool { return ev.Kind == RepEventLife },
+				AppliesTo: func(ev *ReplacementEvent, _ *Game, _ *Card) bool { return ev.Kind == RepEventLife && ev.LifeDelta > 0 },
 				Replace: func(ev *ReplacementEvent, _ *Game, _ *Card) error {
 					ev.LifeDelta++
 					return nil
@@ -256,7 +271,7 @@ func runLifeScenario(t *testing.T, sc lifeScenario, paused bool) (*Game, *lifeEv
 			})
 			g.RegisterReplacementForTest(ReplacementEffect{
 				Watches:   []EventKind{EventChangeLife},
-				AppliesTo: func(ev *ReplacementEvent, _ *Game, _ *Card) bool { return ev.Kind == RepEventLife },
+				AppliesTo: func(ev *ReplacementEvent, _ *Game, _ *Card) bool { return ev.Kind == RepEventLife && ev.LifeDelta > 0 },
 				Replace: func(ev *ReplacementEvent, _ *Game, _ *Card) error {
 					ev.LifeDelta *= 2
 					return nil
@@ -266,7 +281,7 @@ func runLifeScenario(t *testing.T, sc lifeScenario, paused bool) (*Game, *lifeEv
 		} else {
 			g.RegisterReplacementForTest(ReplacementEffect{
 				Watches:   []EventKind{EventChangeLife},
-				AppliesTo: func(ev *ReplacementEvent, _ *Game, _ *Card) bool { return ev.Kind == RepEventLife },
+				AppliesTo: func(ev *ReplacementEvent, _ *Game, _ *Card) bool { return ev.Kind == RepEventLife && ev.LifeDelta > 0 },
 				Replace: func(ev *ReplacementEvent, _ *Game, _ *Card) error {
 					ev.LifeDelta = (ev.LifeDelta + 1) * 2
 					return nil

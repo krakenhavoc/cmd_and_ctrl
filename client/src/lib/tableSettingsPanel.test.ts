@@ -98,6 +98,11 @@ describe("settingsPatchError", () => {
     expect(settingsPatchError({ starting_life: 30 }, "lobby")).toBeNull();
   });
 
+  it("refuses a free-first-mulligan change once the game has started (#3387)", () => {
+    expect(settingsPatchError({ free_first_mulligan: true }, "active")).toMatch(/already started/i);
+    expect(settingsPatchError({ free_first_mulligan: true }, "lobby")).toBeNull();
+  });
+
   it("says nothing about the fields that are always legal", () => {
     expect(
       settingsPatchError({ bot_pace: "slow", undo_scope: "host_any", allow_spawn: true }, "active"),

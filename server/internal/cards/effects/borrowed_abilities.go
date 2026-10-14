@@ -3,6 +3,8 @@ package effects
 import (
 	"fmt"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -269,4 +271,158 @@ func exileLinkedTargets(ctx *Context) error {
 		}
 	}
 	return nil
+}
+
+// --- library-top and chosen-permanent lenders (ADR 0155 PR 4, #3202) -----
+
+// TopOfLibraryLender is "… the activated abilities of the top card of your
+// library, as long as it is [a card matching P]" (Conspicuous Snoop's
+// Goblin card, Skill Borrower's artifact or creature card): the top card
+// of the borrowing source's controller's library, when it matches. The
+// card is read where it is, so it lends its printed abilities (ADR 0155
+// Decision 3).
+//
+// The static that uses it declares DependsOnLibraryTop, so the borrow is
+// re-read the moment that library's top card changes — a draw, a cast
+// from the top, a scry, a shuffle (game/library_top_watch.go).
+func TopOfLibraryLender(p LenderPredicate) func(g *game.Game, source *game.Card) []*game.Card {
+	return func(g *game.Game, source *game.Card) []*game.Card {
+		if g == nil || source == nil {
+			return nil
+		}
+		for _, seat := range g.Seats {
+			if seat == nil || seat.ID != source.Controller || seat.Library == nil {
+				continue
+			}
+			n := len(seat.Library.Cards)
+			if n == 0 {
+				return nil
+			}
+			top := &seat.Library.Cards[n-1]
+			if top.InstanceID == source.InstanceID || !p(g, source, *top) {
+				return nil
+			}
+			return []*game.Card{top}
+		}
+		return nil
+	}
+}
+
+// ChosenPermanentLender is "… the activated abilities of the chosen
+// permanent" (Scheming Fence): the permanent chosen as the source entered
+// (game.Card.ChosenPermanent), while it is still that object on the
+// battlefield. Nothing chosen, or a chosen permanent that has left, lends
+// nothing.
+func ChosenPermanentLender() func(g *game.Game, source *game.Card) []*game.Card {
+	return func(g *game.Game, source *game.Card) []*game.Card {
+		if g == nil {
+			return nil
+		}
+		if c := g.ChosenPermanentOf(source); c != nil && c.InstanceID != source.InstanceID {
+			return []*game.Card{c}
+		}
+		return nil
+	}
+}
+
+// ChoosePermanentAsEnters builds the Spec.AsEnters for "As this permanent
+// enters, you may choose a [permanent matching P]" (CR 614.12, Scheming
+// Fence): a pick of at most one, the empty pick being "choose nothing".
+// The answer is stored on the permanent (game.Card.ChosenPermanent) as
+// the object it was.
+func ChoosePermanentAsEnters(question string, p CardPredicate) func(*game.Card, *Context) error {
+	return func(card *game.Card, ctx *Context) error {
+		var ids []uuid.UUID
+		for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+			if c.InstanceID != card.InstanceID && p(ctx.Game, card.Controller, c) {
+				ids = append(ids, c.InstanceID)
+			}
+		}
+		ctx.Game.QueueChoosePermanentAsEntersForEffect(card.Controller, card.InstanceID, question, ids)
+		return nil
+	}
+}
+
+// ChosenPermanentCantActivate is "Activated abilities of the chosen
+// permanent can't be activated" (Scheming Fence), mana abilities
+// included: the gate judges the SOURCE object of an activation, so the
+// chosen permanent is stopped and a copy of its ability on the borrower
+// is not (that copy's source is the borrower). Nothing chosen stops
+// nothing.
+func ChosenPermanentCantActivate(label string) game.ActivationRestriction {
+	return game.ActivationRestriction{
+		Label: label,
+		Forbids: func(q game.ActivationQuery) bool {
+			if q.FromZone != game.ZoneBattlefield {
+				return false
+			}
+			chosen := q.Source.ChosenPermanent
+			return chosen.ID != uuid.Nil && q.Card.InstanceID == chosen.ID && q.Card.ObjectEpoch == chosen.Epoch
+		},
+	}
+}
+
+// BorrowAbilitiesFor is "<affected> gains all activated abilities of
+// <lender> until end of turn" from a resolving ability (ADR 0155
+// Decision 9): Quicksilver Elemental, Grell Philosopher, Havengul Lich.
+// Both sets are fixed as it resolves (CR 608.2h, 611.2c): the affected
+// set by Target or Match, the lent rows read off Lender now. A lender with
+// no activated ability registers nothing; one the catalog has no entry
+// for registers a record that lends nothing and names it, so the
+// recipient's menu says "<lender>: not automated" (ADR 0155 owner
+// decision 2).
+type BorrowAbilitiesFor struct {
+	// Target pins the effect to one permanent. Ignored when Match is set.
+	Target uuid.UUID
+	// Match selects the affected permanents, evaluated once, now.
+	Match CardPredicate
+	// Lender is the object whose rows are lent.
+	Lender *game.Card
+	// Printed reads the lender as printed, wherever it is now (Havengul
+	// Lich's "that card", the spell as it was cast) rather than with its
+	// layered rows on the battlefield (Quicksilver Elemental's target).
+	Printed bool
+	// SpendFrom is the effect's own "you may spend <colour> mana as
+	// though it were mana of any color to activate those abilities" —
+	// Grell Philosopher's "U" — or empty.
+	SpendFrom string
+	// Duration is how long it lasts; zero is until end of turn.
+	Duration game.Duration
+	// Label is the borrow's printed clause, for the wire's
+	// granted_abilities line and the borrow's identity.
+	Label string
+}
+
+// Apply registers the borrow.
+//
+// Caller must be inside the resolution frame (holds g.mu write).
+func (s BorrowAbilitiesFor) Apply(ctx *Context) error {
+	if s.Lender == nil {
+		return nil
+	}
+	var rows []game.LentRow
+	if s.Printed {
+		rows = game.PrintedLentRowsForEffect(*s.Lender)
+	} else {
+		rows = game.LentRowsForEffect(s.Lender)
+	}
+	mod := game.BorrowAbilitiesMod(s.SpendFrom, rows...)
+	if len(rows) == 0 {
+		m := game.UnautomatedBorrowMod(s.Lender)
+		if m == nil {
+			return nil
+		}
+		mod = *m
+	}
+	d := s.Duration
+	if d.IsZero() {
+		d = DurationUntilEndOfTurn(ctx)
+	}
+	return ScopedEffectFor{
+		Target:   s.Target,
+		Match:    s.Match,
+		Mods:     []game.Mod{mod},
+		Duration: d,
+		Label:    s.Label,
+	}.Apply(ctx)
 }

@@ -27,10 +27,9 @@
 //     own precombat_main clears Skip to my turn instead of passing.
 //  3. A manual one-time stop on this step → hold (#526). Beats the
 //     autopass toggle, the stops grid, and the pass mode.
-//  4. Skip to my turn (the session toggle): an opponent's stack item, or an
-//     empty-stack combat or opponent's-end-step key window, the viewer can
-//     answer → hold; an opponent's item they could bluff at → bluff;
-//     else pass.
+//  4. Skip to my turn (the session toggle) → pass. Every priority
+//     window, answer in hand or not, and no bluffs (#3316). Only rule
+//     1's choices and rule 3's pin stop it.
 //  5. passMode "manual" → hold (ADR 0143 §2.1).
 //  6. A non-empty stack: hold-priority armed → hold; entirely the
 //     viewer's own → the #323 carve-out; passMode "careful" → hold;
@@ -195,7 +194,6 @@ export function autopassDecision(g: AutopassGates): AutopassVerdict {
   // immediately afterwards without another click.
   if (g.manualStop) return "hold";
 
-  const stackOpp = !g.stackEmpty && !g.ownsEveryStackItem;
   const bluff: BluffVerdict = { kind: "bluff", manual: g.bluffManual };
   // ADR 0143 §4.3: only Smart bluffs, under the toggle as well. The
   // bluff chip is disabled in Careful and Manual, and a bluff left armed
@@ -203,20 +201,15 @@ export function autopassDecision(g: AutopassGates): AutopassVerdict {
   const smart = g.passMode === "smart";
 
   // 4. Skip to my turn (ADR 0143 §4.2; the session toggle that was
-  // "autopass"): "pass for me until my turn" — except where the viewer
-  // can actually answer something (#1307). It is Smart's passing until
-  // the viewer is next active (ADR 0143 §4.1), so it keeps Smart's key
-  // windows: an opponent's spell or ability, combat once attackers are
-  // declared, and an opponent's end step, each only with a response in
-  // hand. Ticked steps pass: the toggle is the player saying they have
-  // nothing planned there. A choice the table waits on is rule 1 and
-  // never reaches here.
-  if (g.autopassToggle) {
-    if (stackOpp && g.hasResponse) return "hold";
-    if (g.stackEmpty && (g.combatWindow || g.oppEndWindow) && g.hasResponse) return "hold";
-    if (stackOpp && smart && (g.bluffCounter || g.bluffInstant)) return bluff;
-    return "pass";
-  }
+  // "autopass"): "pass for me until my turn", and it means it (#3316).
+  // It passes every priority window — an opponent's spell the viewer
+  // could answer, combat, an opponent's end step, ticked steps, the
+  // viewer's own stack — and never bluffs. What stops it is a decision
+  // only the viewer can make: rule 1's open choice, owed block or owed
+  // attack, and rule 3's pin. Until #3316 it held wherever the viewer
+  // had a response, so a player holding any instant or activated
+  // ability stopped at nearly every opponent spell.
+  if (g.autopassToggle) return "pass";
 
   // 5. Manual: every priority window waits for a click.
   if (g.passMode === "manual") return "hold";

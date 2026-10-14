@@ -55,6 +55,13 @@
 //	                        0159). Needs CMDCTRL_DISCORD_COMMUNITY_GUILD_ID
 //	                        (boot fails without it, or on a malformed id)
 //	                        and the bot token (off without it).
+//	CMDCTRL_DISCORD_LFG_CHANNEL_ID / CMDCTRL_DISCORD_LFG_ROLE_ID — the
+//	                        #lfg board (ADR 0161): the channel hosts post
+//	                        tables to, and the role a new post pings
+//	                        (optional). The channel needs the community
+//	                        guild; the role needs the channel; a malformed
+//	                        id fails the boot. Off without the bot token
+//	                        or CMDCTRL_PUBLIC_BASE_URL.
 //	CMDCTRL_SEED_DEMO   — if "1", seed a 4-player demo game at startup.
 //	                        Useful for the gamecli dev loop when you want a
 //	                        ready-to-go room without going through the lobby.
@@ -185,9 +192,11 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/github"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/notify"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
@@ -380,6 +389,9 @@ func main() {
 	// Lobby HTTP mutations (join/deck/start) broadcast through the
 	// hub so clients already on the game page see them immediately.
 	l.SetStateBroadcaster(hub)
+	// The rematch offer closes when every human it waits on has left the
+	// results screen, which only the hub can see (#3285, ADR 0164).
+	l.SetSeatPresence(hub)
 	// A practice table the lobby reaps on its own (idle, or replaced
 	// by the same person's next one) closes its sockets through the
 	// hub, as an operator delete does (ADR 0076 §2.2).
@@ -388,6 +400,9 @@ func main() {
 	// table's seats get their owners' mats back.
 	playmats := newPlaymatService(log, cfg.DataDir, database)
 	l.SetPlaymats(playmats)
+	// Game statistics (ADR 0165): a record for every stored game that
+	// ends. No database, no records.
+	l.SetGameStats(newGameStatsStore(database))
 	// Table voice rooms (ADR 0159): the manager is attached before
 	// RestoreFromDisk, so a resumed table's game view carries its voice
 	// state again, and started after it, so its boot reconcile sees
@@ -396,6 +411,15 @@ func main() {
 	if cfg.Voice.Enabled() {
 		voiceRooms = lobby.NewVoiceManager(cfg.Voice, log)
 		l.SetVoiceManager(voiceRooms)
+	}
+	// The #lfg board (ADR 0161), wired like the voice rooms: attached
+	// before RestoreFromDisk so a resumed table's post is adopted, and
+	// started after it. A post is a copy of the invite link, so it
+	// needs the public origin the invite DM uses.
+	var lfgBoard *lobby.LFGManager
+	if cfg.LFG.Enabled() && publicBaseURL() != "" {
+		lfgBoard = lobby.NewLFGManager(cfg.LFG, publicBaseURL(), log)
+		l.SetLFGManager(lfgBoard)
 	}
 	// The state gauges (ADR 0123 §3): restore points, games, players and
 	// WebSocket, read from the rooms, the lobby, the hub and the
@@ -501,6 +525,9 @@ func main() {
 	if voiceRooms != nil {
 		voiceRooms.Start(ctx)
 	}
+	if lfgBoard != nil {
+		lfgBoard.Start(ctx)
+	}
 
 	// Optional demo game for the gamecli dev path. Creates a game
 	// directly (bypassing the lobby's invite flow) so you can dial
@@ -544,6 +571,23 @@ func main() {
 			" is not (it is provisioned on production only)", "var", discord.BotTokenEnv)
 	default:
 		log.Info("table voice rooms off; set "+discord.VoiceCategoryEnv+" to enable", "var", discord.VoiceCategoryEnv)
+	}
+	// ADR 0161 §7: said once, either way.
+	switch {
+	case cfg.LFG.Enabled() && publicBaseURL() == "":
+		log.Warn("#lfg board off: a post is a copy of the invite link, which needs CMDCTRL_PUBLIC_BASE_URL (or CMDCTRL_CLIENT_BASE_URL)",
+			"var", discord.LFGChannelEnv)
+	case cfg.LFG.Enabled() && cfg.LFG.RoleID == "":
+		log.Info("#lfg board on: hosts may post a table; "+discord.LFGRoleEnv+" is unset, so posts ping nobody",
+			"var", discord.LFGChannelEnv)
+	case cfg.LFG.Enabled():
+		log.Info("#lfg board on: hosts may post a table, and a new post pings the LFG role",
+			"var", discord.LFGChannelEnv)
+	case cfg.LFG.MissingToken():
+		log.Info("#lfg board off: "+discord.LFGChannelEnv+" is set but "+discord.BotTokenEnv+
+			" is not (it is provisioned on production only)", "var", discord.BotTokenEnv)
+	default:
+		log.Info("#lfg board off; set "+discord.LFGChannelEnv+" to enable", "var", discord.LFGChannelEnv)
 	}
 
 	// The bot token the server itself uses for direct-message invites
@@ -608,10 +652,7 @@ func main() {
 	if cfg.DataDir != "" {
 		bugDir = filepath.Join(cfg.DataDir, "bugreports")
 	}
-	publicBase := os.Getenv("CMDCTRL_PUBLIC_BASE_URL")
-	if publicBase == "" {
-		publicBase = os.Getenv("CMDCTRL_CLIENT_BASE_URL")
-	}
+	publicBase := publicBaseURL()
 	// The same origin is what a DM invite's link is built against. A
 	// bot token with nowhere to point it still cannot send: the route
 	// 503s naming this variable rather than DMing a broken link.
@@ -619,6 +660,7 @@ func main() {
 		log.Warn("discord DM invites cannot send — set CMDCTRL_PUBLIC_BASE_URL (or CMDCTRL_CLIENT_BASE_URL) " +
 			"so the invite link has an origin; POST /games/{id}/invites/dm returns 503 until then")
 	}
+	notifications := startNotifier(ctx, log, discordBot, publicBase, database, l, hub, userStore)
 	bugStore := bugstore.New(bugDir, publicBase)
 	if bugStore.Enabled() {
 		if bugStore.AttachmentsEnabled() {
@@ -672,6 +714,7 @@ func main() {
 		LiveSockets:       hub,
 		DeckLibrary:       deckLibrary,
 		UserSettings:      newUserSettingsStore(database),
+		Notifications:     notifications,
 		Playmats:          playmats,
 		TableSetups:       newTableSetupStore(database),
 		Accounts:          newAccountDeleter(database),
@@ -807,29 +850,28 @@ func newPublicHandler(hub *ws.Hub, authenticator auth.Authenticator, cardIdx *ca
 	// The card catalog: a browsable list of every card the engine
 	// actually automates, with each entry's declared completeness.
 	//
-	// Behind auth.Middleware, like /cards/. It was built unauthenticated
-	// as a public showcase, and it is gated because AGENTS.md §1 and §8
-	// describe this project as private and personal-use: serving card
-	// art to anonymous visitors is a different posture from the one the
-	// repo states, and the page is no less useful to a signed-in
-	// player. Not behind requireDev — it ships in production, it is
-	// simply not public.
+	// Public, as ADR 0042 built it: NOT behind auth.Middleware, unlike
+	// /cards/. It was gated for a while because the repo described
+	// itself as private, and that gate became a Discord-membership gate
+	// on Scryfall data once sign-up needed a role on the C2 server (ADR
+	// 0156). Scryfall's guidelines rule that out, so the catalogue is
+	// open again (S70, #2985).
 	//
 	// catalog.Handler's own doc explains why its image route is scoped
 	// to registered cards rather than proxying all ~35k Scryfall UUIDs;
-	// that scoping still matters, since a session is cheap to obtain.
-	// Both patterns are more specific than "/", so the lobby catch-all
-	// below does not shadow them.
-	mux.Handle("GET /catalog", auth.Middleware(authenticator)(catalog.Handler(cardIdx, imgCache)))
-	mux.Handle("/catalog/", auth.Middleware(authenticator)(catalog.Handler(cardIdx, imgCache)))
+	// that scope is what makes the route safe to leave open. /cards/
+	// is the general proxy and keeps its session. Both patterns are
+	// more specific than "/", so the lobby catch-all below does not
+	// shadow them.
+	mux.Handle("GET /catalog", catalog.Handler(cardIdx, imgCache))
+	mux.Handle("/catalog/", catalog.Handler(cardIdx, imgCache))
 	// The engine roadmap: what the engine supports, keyword by keyword
 	// and seam by seam (ADR 0092).
 	//
-	// Deliberately NOT behind auth.Middleware, unlike /catalog above.
+	// Deliberately NOT behind auth.Middleware, like /catalog above.
 	// ADR 0092 Decision 1: the roadmap carries card NAMES and caveat
 	// sentences this repo wrote, and never card art, an image URL, a
-	// Scryfall printing ID or oracle text, so it does not reopen the
-	// question the catalog's gate answers. roadmap's handler tests fail
+	// Scryfall printing ID or oracle text. roadmap's handler tests fail
 	// if any of those keys reaches the body. If you want to add one,
 	// it belongs on the catalog, not here.
 	//
@@ -868,6 +910,12 @@ type config struct {
 	// bot token. A malformed id, or a category without the guild, fails
 	// the boot; no bot token leaves it off.
 	Voice discord.Voice
+	// LFG is ADR 0161 §7's #lfg board: CMDCTRL_DISCORD_LFG_CHANNEL_ID
+	// (and the optional CMDCTRL_DISCORD_LFG_ROLE_ID) in the community
+	// guild, with the bot token. A malformed id, the channel without the
+	// guild, or the role without the channel fails the boot; no bot
+	// token leaves it off.
+	LFG discord.LFG
 	// SessionTTL is the lifetime of a session with no user: guest
 	// seats and spectators, admin-token and reclaim-ticket sessions
 	// (CMDCTRL_SESSION_TTL). Default 12h.
@@ -1130,6 +1178,12 @@ func loadConfig(log *slog.Logger) config {
 		os.Exit(1)
 	}
 	c.Voice = voice
+	lfgBoard, lerr := discord.LFGFromEnv(os.Getenv)
+	if lerr != nil {
+		log.Error("#lfg board config invalid", "err", lerr)
+		os.Exit(1)
+	}
+	c.LFG = lfgBoard
 
 	if c.AdminToken == "" {
 		log.Error("CMDCTRL_ADMIN_TOKEN is required — set it to a long random string before starting the server")
@@ -1244,6 +1298,41 @@ func newDeckLibraryStore(database *db.DB) decklibrary.Store {
 	return decklibrary.NewSQLStore(database)
 }
 
+// startNotifier starts ADR 0162's Discord DM notifications when this
+// server can send them: the bot token, the public origin the link is
+// built against, and the database the switches live in. It returns the
+// switches' store for /me/notifications, or nil when the feature is off,
+// which the routes answer with 503 and "available": false. Off is said
+// once here, at boot, like the DM invites.
+func startNotifier(ctx context.Context, log *slog.Logger, bot discord.Bot, publicBase string, database *db.DB,
+	l *lobby.Lobby, hub *ws.Hub, recipients notify.Recipients) notify.Store {
+	switch {
+	case !bot.Enabled():
+		log.Info("discord DM notifications off: "+discord.BotTokenEnv+" is not set", "env", discord.BotTokenEnv)
+		return nil
+	case publicBase == "":
+		log.Warn("discord DM notifications off: set CMDCTRL_PUBLIC_BASE_URL (or CMDCTRL_CLIENT_BASE_URL) so the link has an origin")
+		return nil
+	case database == nil:
+		log.Info("discord DM notifications off: there is no database to keep the switches in")
+		return nil
+	}
+	store := notify.NewSQLStore(database)
+	n := notify.New(notify.Config{
+		Tables:     l.NotifyTables(),
+		Presence:   hub,
+		Store:      store,
+		Recipients: recipients,
+		Sender:     notify.BotSender{Bot: bot},
+		BaseURL:    publicBase,
+		Log:        log,
+	})
+	l.SetTableEvents(n)
+	go n.Run(ctx)
+	log.Info("discord DM notifications on: players may opt in under Settings, Notifications")
+	return store
+}
+
 // newUserSettingsStore builds the account settings store (ADR 0110
 // section 4, migration 0008). No database means no store, and no
 // principal with a UserID to own a copy, so GET and PUT /me/settings
@@ -1272,6 +1361,15 @@ func newPlaymatService(log *slog.Logger, dataDir string, database *db.DB) *playm
 // migration 0008's table_setups). No database: tablesetups.NoStore,
 // which remembers nothing; with no database no session has a user, so
 // nothing would ask it anyway.
+// newGameStatsStore is the game statistics store (ADR 0165, migration
+// 0023), or nil with no database, which leaves recording off.
+func newGameStatsStore(database *db.DB) gamestats.Store {
+	if database == nil {
+		return nil
+	}
+	return gamestats.NewSQLStore(database)
+}
+
 func newTableSetupStore(database *db.DB) tablesetups.Store {
 	if database == nil {
 		return tablesetups.NoStore{}
@@ -1549,4 +1647,14 @@ func seedDemoGame(log *slog.Logger) *game.Game {
 		os.Exit(1)
 	}
 	return g
+}
+
+// publicBaseURL is the origin links to this deployment are built
+// against: bug-report attachments, DM invites and #lfg posts.
+// CMDCTRL_PUBLIC_BASE_URL, else CMDCTRL_CLIENT_BASE_URL, else "".
+func publicBaseURL() string {
+	if base := os.Getenv("CMDCTRL_PUBLIC_BASE_URL"); base != "" {
+		return base
+	}
+	return os.Getenv("CMDCTRL_CLIENT_BASE_URL")
 }

@@ -96,7 +96,7 @@ const FrameOther = "other"
 // kind counts as other until it is added here.
 var frameTypeLabels = []string{
 	"ping", "pong", "error", "action", "snapshot", "chat",
-	"legal_moves_request", "legal_moves", "ack", FrameOther,
+	"legal_moves_request", "legal_moves", "ack", "visibility", FrameOther,
 }
 
 var (

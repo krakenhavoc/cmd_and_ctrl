@@ -53,6 +53,9 @@ func Register(spec Spec) {
 		if spec.Modes.NotChosen != game.ModeMemoryNone {
 			panic(fmt.Sprintf("effects.Register: %q declares \"that hasn't been chosen\" on a spell's Modes — only a triggered or activated ability has an object to remember with", spec.Name))
 		}
+		if spec.Modes.AtRandom {
+			panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" on a spell's Modes — only a triggered ability's mode can be picked by the engine (#3399)", spec.Name))
+		}
 		for i, o := range spec.Modes.Options {
 			if o.Label == "" {
 				panic(fmt.Sprintf("effects.Register: %q mode %d has no label — the bullet is the whole of what the picker shows", spec.Name, i))
@@ -93,6 +96,9 @@ func Register(spec Spec) {
 			}
 			checkRaisedModeMax(spec.Name, "an activated ability's Modes", a.Modes)
 			checkNotChosen(spec.Name, "an activated ability's Modes", a.Modes, a.Label)
+			if a.Modes.AtRandom {
+				panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" on an activated ability — only a triggered ability's mode can be picked by the engine (#3399)", spec.Name))
+			}
 			for i, o := range a.Modes.Options {
 				if o.Label == "" {
 					panic(fmt.Sprintf("effects.Register: %q activated mode %d has no label", spec.Name, i))
@@ -121,6 +127,7 @@ func Register(spec Spec) {
 		if t.Modes != nil {
 			checkRaisedModeMax(spec.Name, "a trigger's Modes", t.Modes)
 			checkNotChosen(spec.Name, "a trigger's Modes", t.Modes, t.Key)
+			checkAtRandom(spec.Name, t.Modes)
 			for i, o := range t.Modes.Options {
 				checkModeCost(spec.Name, "trigger mode", i, o.Cost, false)
 			}
@@ -1605,6 +1612,19 @@ func checkRaisedModeMax(name, owner string, ms *game.ModeSpec) {
 	// printed minimum — either would be a count no printed card has.
 	if ms.RaisedMin != 0 && (ms.RaisedMin <= ms.Min || ms.RaisedMin > ms.RaisedMax) {
 		panic(fmt.Sprintf("effects.Register: %q %s raises Min %d to %d with a raised Max of %d", name, owner, ms.Min, ms.RaisedMin, ms.RaisedMax))
+	}
+}
+
+// checkAtRandom validates "choose one at random" (CR 700.2, #3399) on
+// a trigger's modes: exactly one bullet, never repeated, and no count
+// raise or "hasn't been chosen" memory, none of which a random pick
+// can honour.
+func checkAtRandom(name string, ms *game.ModeSpec) {
+	if ms == nil || !ms.AtRandom {
+		return
+	}
+	if ms.Min != 1 || ms.Max != 1 || ms.Repeatable || ms.RaisedMax != 0 || ms.NotChosen != game.ModeMemoryNone {
+		panic(fmt.Sprintf("effects.Register: %q declares \"choose one at random\" that is not a plain choose-one — build it with ChooseOneAtRandom", name))
 	}
 }
 

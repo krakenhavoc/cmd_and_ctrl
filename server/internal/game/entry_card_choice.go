@@ -2,6 +2,8 @@ package game
 
 import (
 	"errors"
+	"fmt"
+	"sync"
 
 	"github.com/google/uuid"
 )
@@ -29,6 +31,18 @@ import (
 // tapped; goes to the graveyard); naming cards is what AVOIDS it. That
 // inversion is EntryLifeCost's, and it is why declineIsReplace
 // (replacements.go) lists both.
+//
+// ADR 0170 adds a fourth shape: a choice of OTHER permanents that the
+// engine does nothing to. The declaration's Then acts on them instead:
+//
+//	"As this creature enters, put a phylactery counter on an artifact
+//	 you control."                                         (Phylactery
+//	 Lich, #1893)
+//	"As Sin enters, remove all counters from any number of artifacts,
+//	 creatures, and enchantments. Sin enters with X +1/+1 counters on
+//	 it, where X is twice the number of counters removed this way."
+//	                                                       (Sin,
+//	 Unending Cataclysm)
 //
 // Everything here runs PRE-push, so what is replaced is the
 // permanent's entry itself: a Mox Diamond that is not paid for never
@@ -83,14 +97,24 @@ const PendingChoiceEntryDiscardFromHand PendingChoiceKind = "entry_discard_from_
 // permanents, so it is not redacted.
 const PendingChoiceEntrySacrifice PendingChoiceKind = "entry_sacrifice"
 
-// isEntryCardChoiceKind reports the three kinds whose continuation is
+// PendingChoiceEntryChoosePermanents is "as this enters, <do something
+// to> <permanents you choose>" (ADR 0170, #1893): Phylactery Lich's
+// artifact, Sin's any number of artifacts, creatures and enchantments.
+// The engine does nothing to what is named; the declaration's Then
+// does, before the permanent is on the battlefield. Its candidates are
+// public permanents, so it is not redacted, and ChooseSuggested carries
+// the declaration's recommended answer for the client and the bot.
+const PendingChoiceEntryChoosePermanents PendingChoiceKind = "entry_choose_permanents"
+
+// isEntryCardChoiceKind reports the four kinds whose continuation is
 // a paused CR 614 ENTRY. The stale-candidate prune and the chained
 // resolver both leave them alone: dropping one would strand the entry
 // it is pausing, and none of them can need the prune (see
 // pruneCardSetChoicesLocked).
 func isEntryCardChoiceKind(kind PendingChoiceKind) bool {
 	switch kind {
-	case PendingChoiceEntryRevealFromHand, PendingChoiceEntryDiscardFromHand, PendingChoiceEntrySacrifice:
+	case PendingChoiceEntryRevealFromHand, PendingChoiceEntryDiscardFromHand, PendingChoiceEntrySacrifice,
+		PendingChoiceEntryChoosePermanents:
 		return true
 	}
 	return false
@@ -111,6 +135,12 @@ const (
 	// EntryCardSacrifice sacrifices permanents the chooser controls
 	// (CR 701.21a), as an effect.
 	EntryCardSacrifice EntryCardAction = "sacrifice"
+	// EntryCardChoose names permanents on the battlefield and does
+	// nothing to them itself (ADR 0170). Then is the whole effect
+	// ("put a phylactery counter on", "remove all counters from").
+	// There is no "if you don't": Replace is normally nil, and an empty
+	// answer (or no candidates) skips Then.
+	EntryCardChoose EntryCardAction = "choose"
 )
 
 // EntryCardChoice is the declaration on ReplacementEffect: "as this
@@ -162,8 +192,36 @@ type EntryCardChoice struct {
 	// For a discard or a sacrifice it is handed the cards that really
 	// left (discardedThisWayLocked / sacrificedThisWayLocked).
 	//
+	// `ev` is the paused ENTRY (ADR 0170). Then may change how the
+	// permanent enters (ev.AddCounterAtETB for "it enters with X +1/+1
+	// counters"), and since nothing has seen the permanent yet, those
+	// counters are on it as it arrives (CR 614.1c, 614.12).
+	//
+	// Then runs while the entry is paused, so whatever it does to OTHER
+	// objects must settle inline: use the MustSettleNow forms
+	// (AddCounterByMustSettleNowForEffect). A primitive that can pause
+	// here would let the entry finish before its own prompt is
+	// answered.
+	//
 	// Runs with g.mu held.
-	Then func(g *Game, picked []uuid.UUID) error
+	Then func(g *Game, ev *ReplacementEvent, picked []uuid.UUID) error
+
+	// AnyController widens an EntryCardChoose's candidates from the
+	// permanents the chooser controls to every permanent on the
+	// battlefield ("any number of artifacts, creatures, and
+	// enchantments"). Only meaningful for EntryCardChoose.
+	AnyController bool
+
+	// SuggestKey, when set, names an EntryChoiceSuggestion filed with
+	// RegisterEntryChoiceSuggestion: the declaration's recommended
+	// answer to an EntryCardChoose prompt. It rides the prompt as
+	// ChooseSuggested (proliferate's field, #2525): the client
+	// pre-selects it, the enumerator always offers it, and the
+	// heuristic bot answers with it. A default, never a rule.
+	//
+	// A KEY rather than a func (state triggers' reason, ADR 0107 §1):
+	// the declaration gains no closure for the ADR 0041 ratchet.
+	SuggestKey string
 
 	// AnyNumber makes this a sacrifice of "any number of" matching
 	// permanents, zero included (CR 702.82a, devour): the floor is Min
@@ -195,7 +253,7 @@ type EntryCardChoice struct {
 
 // zone is where the choice's candidates live.
 func (s *EntryCardChoice) zone() ZoneKind {
-	if s.Action == EntryCardSacrifice {
+	if s.Action == EntryCardSacrifice || s.Action == EntryCardChoose {
 		return ZoneBattlefield
 	}
 	return ZoneHand
@@ -208,6 +266,8 @@ func (s *EntryCardChoice) kind() PendingChoiceKind {
 		return PendingChoiceEntryDiscardFromHand
 	case EntryCardSacrifice:
 		return PendingChoiceEntrySacrifice
+	case EntryCardChoose:
+		return PendingChoiceEntryChoosePermanents
 	}
 	return PendingChoiceEntryRevealFromHand
 }
@@ -222,7 +282,7 @@ func (s *EntryCardChoice) bounds(candidates int) (lo, hi int) {
 	if lo < 0 {
 		lo = 0
 	}
-	if s.Action == EntryCardSacrifice && s.AnyNumber {
+	if (s.Action == EntryCardSacrifice || s.Action == EntryCardChoose) && s.AnyNumber {
 		return lo, candidates
 	}
 	if s.Action == EntryCardSacrifice {
@@ -293,7 +353,8 @@ func (g *Game) runEntryChoiceDeclineLocked(ev *ReplacementEvent, chosen activeRe
 
 // entryChoiceCandidatesLocked is every card the clause admits, in zone
 // order: the chooser's hand for a reveal or a discard, the permanents
-// the chooser controls for a sacrifice.
+// the chooser controls for a sacrifice or a choose, and every permanent
+// for a choose with AnyController (ADR 0170).
 //
 // CR 614.13a: "You can't choose the object that will become that
 // permanent or any other object entering the battlefield at the same
@@ -317,7 +378,7 @@ func (g *Game) entryChoiceCandidatesLocked(ev *ReplacementEvent, spec *EntryCard
 	var pool []Card
 	if spec.zone() == ZoneBattlefield {
 		for _, c := range g.Battlefield.Cards {
-			if c.Controller == chooser {
+			if c.Controller == chooser || (spec.Action == EntryCardChoose && spec.AnyController) {
 				pool = append(pool, c)
 			}
 		}
@@ -363,6 +424,12 @@ func (g *Game) queueEntryCardChoicePromptLocked(
 	if chosen.source != nil {
 		source = chosen.source.InstanceID
 	}
+	var suggested []uuid.UUID
+	if spec.Action == EntryCardChoose {
+		if suggest, ok := EntryChoiceSuggestionFor(spec.SuggestKey); ok {
+			suggested = keepCandidates(suggest(g, chooser, append([]uuid.UUID(nil), candidates...)), candidates)
+		}
+	}
 	return g.QueueChoiceForEffect(PendingChoice{
 		Kind:    spec.kind(),
 		Chooser: chooser,
@@ -377,6 +444,7 @@ func (g *Game) queueEntryCardChoicePromptLocked(
 		ChooseCards:          append([]uuid.UUID(nil), candidates...),
 		ChooseMin:            lo,
 		ChooseMax:            hi,
+		ChooseSuggested:      suggested,
 		ReplacementEffectIDs: []ReplacementEffectID{chosen.id},
 		chooseCardsResume: &chooseCardsFrame{
 			// The zone, and no `then`: the continuation of this
@@ -394,6 +462,69 @@ func (g *Game) queueEntryCardChoicePromptLocked(
 	}) != uuid.Nil
 }
 
+// EntryChoiceSuggestion is an EntryCardChoose declaration's recommended
+// answer: a subset of `candidates` for `chooser`. Called once, as the
+// prompt is queued, under the write lock. It may read the game and must
+// not change it.
+type EntryChoiceSuggestion func(g *Game, chooser uuid.UUID, candidates []uuid.UUID) []uuid.UUID
+
+var entryChoiceSuggestions struct {
+	sync.RWMutex
+	m map[string]EntryChoiceSuggestion
+}
+
+// RegisterEntryChoiceSuggestion files `fn` under `key` for an
+// EntryCardChoice.SuggestKey to name. Call it at init, from a card's
+// declaration. Panics on an empty key, a nil func or a key already
+// taken, as RegisterStateCondition does.
+func RegisterEntryChoiceSuggestion(key string, fn EntryChoiceSuggestion) {
+	if key == "" {
+		panic("game: an entry-choice suggestion needs a key")
+	}
+	if fn == nil {
+		panic(fmt.Sprintf("game: entry-choice suggestion %q has no function", key))
+	}
+	entryChoiceSuggestions.Lock()
+	defer entryChoiceSuggestions.Unlock()
+	if entryChoiceSuggestions.m == nil {
+		entryChoiceSuggestions.m = make(map[string]EntryChoiceSuggestion)
+	}
+	if _, dup := entryChoiceSuggestions.m[key]; dup {
+		panic(fmt.Sprintf("game: entry-choice suggestion %q is already registered", key))
+	}
+	entryChoiceSuggestions.m[key] = fn
+}
+
+// EntryChoiceSuggestionFor is the suggestion registered under key.
+// False for an empty or unknown key, which suggests nothing.
+func EntryChoiceSuggestionFor(key string) (EntryChoiceSuggestion, bool) {
+	if key == "" {
+		return nil, false
+	}
+	entryChoiceSuggestions.RLock()
+	defer entryChoiceSuggestions.RUnlock()
+	fn, ok := entryChoiceSuggestions.m[key]
+	return fn, ok
+}
+
+// keepCandidates is `ids` with every member that is not in `candidates`
+// dropped, and duplicates dropped, in the order `ids` gave. A
+// declaration's suggestion can only recommend what the prompt offers.
+func keepCandidates(ids, candidates []uuid.UUID) []uuid.UUID {
+	in := make(map[uuid.UUID]bool, len(candidates))
+	for _, id := range candidates {
+		in[id] = true
+	}
+	var out []uuid.UUID
+	for _, id := range ids {
+		if in[id] {
+			out = append(out, id)
+			delete(in, id)
+		}
+	}
+	return out
+}
+
 // ResolveEntryRevealFromHand is ResolveEntryCardChoice under the name
 // #1198 gave it.
 //
@@ -403,7 +534,7 @@ func (g *Game) ResolveEntryRevealFromHand(choiceID, chooserID uuid.UUID, picks [
 }
 
 // ResolveEntryCardChoice processes a resolve_choice action for any of
-// the three entry card-choice kinds. `picks` are the cards the chooser
+// the four entry card-choice kinds. `picks` are the cards the chooser
 // names:
 //
 //	none        — declined; the replacement fires (enters tapped, or
@@ -478,6 +609,10 @@ func (g *Game) ResolveEntryCardChoice(choiceID, chooserID uuid.UUID, picks []uui
 		return g.SacrificeAllThenForEffect(source, append([]uuid.UUID(nil), picks...), func(g *Game, sacrificed []uuid.UUID) error {
 			return g.resumeEntryAfterActionLocked(frozen, len(sacrificed) == len(picks), sacrificed)
 		})
+	case spec != nil && spec.Action == EntryCardChoose:
+		// ADR 0170: nothing happens to the named permanents except what
+		// Then does to them, inline, before the entry resumes.
+		g.runEntryThenLocked(spec, ev, picks)
 	default:
 		// CR 701.20: the table sees them and is entitled to remember.
 		// Through the one reveal primitive, so the knower set and the
@@ -613,7 +748,7 @@ func (g *Game) DevouredBy(sourceID uuid.UUID) int {
 // Caller must hold g.mu.
 func (g *Game) runEntryThenLocked(spec *EntryCardChoice, ev *ReplacementEvent, moved []uuid.UUID) {
 	if spec.Then != nil {
-		if err := spec.Then(g, append([]uuid.UUID(nil), moved...)); err != nil {
+		if err := spec.Then(g, ev, append([]uuid.UUID(nil), moved...)); err != nil {
 			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
 		}
 	}

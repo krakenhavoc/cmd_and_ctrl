@@ -186,6 +186,20 @@ type ModeSpec struct {
 	// Nil for every other modal card. Build it with effects.Escalate /
 	// EscalateDiscard / EscalateTapCreature.
 	Escalate *EscalateCost
+
+	// AtRandom is CR 700.2's "choose one at random" (Summon: Magus
+	// Sisters, #3399): the engine, not a player, picks the mode, as the
+	// triggered ability is put on the stack (CR 603.3c) and before its
+	// targets are chosen, so the picked bullet's own target clause is
+	// what is asked afterwards. The pick is among the bullets that can
+	// be taken (one with no legal target can't be chosen), drawn from
+	// the keyed random stream so undo and restore replay it.
+	//
+	// A triggered ability only, with Min == Max == 1 and not
+	// Repeatable: no printed activated ability or spell says it, and
+	// effects.Register refuses the others. Build it with
+	// effects.ChooseOneAtRandom.
+	AtRandom bool
 }
 
 // EscalateCost is the price of CR 702.120a's escalate: what ONE mode

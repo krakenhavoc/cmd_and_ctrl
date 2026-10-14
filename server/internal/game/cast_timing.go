@@ -407,6 +407,12 @@ func (g *Game) castTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind
 	if g.SplitSecondActive {
 		return false
 	}
+	// ADR 0166, CR 608.2g: a card Word of Command makes a player play
+	// is cast during that resolution, so its type's timing does not
+	// apply.
+	if g.ControlledPlayCardLocked(playerID, card.InstanceID) {
+		return true
+	}
 	// 0. A plotted card (CR 702.170d, #1318) is cast in its owner's
 	// main phase with the stack empty and at no other time: the window
 	// belongs to the permission, so neither the card's own flash nor a

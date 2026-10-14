@@ -276,13 +276,13 @@ func (g *Game) lifeChangeIsLockedLocked(ev *ReplacementEvent) bool {
 // thing if it were ordered first. No printed card in this catalog is
 // that shape.
 //
-// DAMAGE IS NOT THIS WINDOW and must not be. Damage reduces life
-// directly once the DAMAGE replacements have settled (CR 120.3), so a
-// life replacement getting a second bite would halve a Bolt twice. The
-// damage half of this rule is four lines in
-// applyResolvedDamageToPlayerLocked: the damage is still DEALT —
+// THE DAMAGE ITSELF IS NOT THIS WINDOW. Damage reduces life once the
+// DAMAGE replacements have settled (CR 120.3). Since ADR 0169 the life
+// the damage COSTS runs this window as its own event, so this built-in
+// cancels it there; applyResolvedDamageToPlayerLocked still asks the
+// same predicate directly. Either way the damage is still DEALT:
 // EventDealDamage fires, the CR 903.10a commander tally accrues,
-// lifelink credits — and only the life total stays put.
+// lifelink credits, and only the life total stays put.
 //
 // No Controller: CR 616.1 would ask the affected player, and a
 // preemptive effect is never ordered against anything, so there is

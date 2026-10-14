@@ -394,6 +394,14 @@ func (v Voice) call(ctx context.Context, client *http.Client, method, path strin
 	if !v.Enabled() {
 		return ErrVoiceNotConfigured
 	}
+	return botREST(ctx, client, v.Token, auditReason, method, path, body, out, goneOK)
+}
+
+// botREST is the one bot-token REST call the voice rooms and the LFG
+// board (lfg.go) share. reason labels a change in the server's audit
+// log. The errors are voice.go's sentinels; lfg.go renames the two
+// that read differently for a message.
+func botREST(ctx context.Context, client *http.Client, token, reason, method, path string, body, out any, goneOK []int) error {
 	if client == nil {
 		client = &http.Client{Timeout: 10 * time.Second}
 	}
@@ -411,13 +419,13 @@ func (v Voice) call(ctx context.Context, client *http.Client, method, path strin
 	}
 	// The only place the token appears. Never logged, never wrapped
 	// into a returned error.
-	req.Header.Set("Authorization", "Bot "+v.Token)
+	req.Header.Set("Authorization", "Bot "+token)
 	req.Header.Set("Accept", "application/json")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
 	if method != http.MethodGet {
-		req.Header.Set("X-Audit-Log-Reason", auditReason)
+		req.Header.Set("X-Audit-Log-Reason", reason)
 	}
 
 	resp, err := client.Do(req)
@@ -469,6 +477,6 @@ func (v Voice) call(ctx context.Context, client *http.Client, method, path strin
 	case resp.StatusCode >= 500:
 		return fmt.Errorf("%w: status %d", ErrVoiceUnavailable, resp.StatusCode)
 	default:
-		return fmt.Errorf("discord: voice call failed: status %d", resp.StatusCode)
+		return fmt.Errorf("discord: bot call failed: status %d", resp.StatusCode)
 	}
 }

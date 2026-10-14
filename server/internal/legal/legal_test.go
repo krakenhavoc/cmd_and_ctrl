@@ -224,8 +224,10 @@ func TestMulliganWindow(t *testing.T) {
 		if countKind(moves, legal.KindMulligan) != 2 {
 			t.Fatalf("%s: want keep + mulligan, got %v", p.Name, labels(moves))
 		}
-		if !hasLabel(moves, "Mulligan to 7") {
-			t.Errorf("%s: first mulligan should be free (to 7): %v", p.Name, labels(moves))
+		// ADR 0168: a two-player game has no free mulligan (CR 103.5c),
+		// so the first already costs a card at keep.
+		if !hasLabel(moves, "Mulligan (draw 7, then put 1 on the bottom)") {
+			t.Errorf("%s: first mulligan should cost one card: %v", p.Name, labels(moves))
 		}
 		dispatchAll(t, g, p.ID, moves)
 	}
@@ -244,13 +246,28 @@ func TestMulliganWindow(t *testing.T) {
 		}
 	}
 	moves := legal.EnumerateFor(g, p.ID)
-	if !hasLabel(moves, "Mulligan to 6") {
-		t.Errorf("second mulligan should go to 6: %v", labels(moves))
+	if !hasLabel(moves, "Keep hand (put 1 on the bottom)") ||
+		!hasLabel(moves, "Mulligan (draw 7, then put 2 on the bottom)") {
+		t.Errorf("after one mulligan, keep costs one and another costs two: %v", labels(moves))
 	}
-	// A seat that has kept has nothing left to do in the window.
 	if err := g.KeepHand(p.ID); err != nil {
 		t.Fatal(err)
 	}
+	// The keep owes a card: its prompt is the seat's only move, and the
+	// window waits for it.
+	moves = legal.EnumerateFor(g, p.ID)
+	if len(moves) == 0 || countKind(moves, legal.KindChoice) != len(moves) {
+		t.Fatalf("a keeper owing a card should be offered its pick only: %v", labels(moves))
+	}
+	if !g.MulligansOpen {
+		t.Fatal("the window closed before the card was on the bottom")
+	}
+	if err := actions.Dispatch(g, actions.Action{
+		Type: actions.Type(moves[0].Type), Player: moves[0].Player, Caller: p.ID, Params: moves[0].Params,
+	}); err != nil {
+		t.Fatalf("answering the bottom pick: %v", err)
+	}
+	// A seat that has kept and bottomed has nothing left to do.
 	// Seat 0 was the last to keep, so the window is shut and the turn
 	// machinery has the table.
 	if g.MulligansOpen || g.MulliganDecider() != -1 {

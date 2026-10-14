@@ -161,6 +161,21 @@ const ModGrantAbilities ModKind = "grantAbilities" // layer 6
 // (dropSelfAttackTargetRestrictions) and an earlier one does not.
 const ModCantAttackUnlessDefenderControls ModKind = "cantAttackUnlessDefenderControls" // layer 6
 
+// ModCantAttackPlayer is "<affected> can't attack you or planeswalkers
+// you control" given by a resolved effect (#3400, CR 508.1c): Promise of
+// Loyalty's creatures can't attack its caster for as long as they keep a
+// vow counter. Reads Player, the protected player, which the card fixes
+// when the spell resolves (CR 611.2c) and must name a seat.
+//
+// Layer 6, in the record's timestamp slot, like ModCantAttackUnlessDefenderControls:
+// it appends an AttackTargetRestriction{NotPlayer} attributed to the
+// record's source, read by canAttackTargetWithLocked with every other
+// restriction, so both declaration verbs, the CR 508.1d search, the
+// enumerator and the chip follow. The restriction is on the creature, so
+// it is lost with the creature (a new object, CR 400.7) and, when the
+// source is the creature itself, with "loses all abilities".
+const ModCantAttackPlayer ModKind = "cantAttackPlayer" // layer 6
+
 // ModSetBasicLandTypes is CR 305.7 from a resolved effect (ADR 0109 §1,
 // #1881): "target land becomes an Island until end of turn" (Tidal
 // Warrior), "becomes the basic land type of your choice" (Reef Shaman),
@@ -490,6 +505,17 @@ type Mod struct {
 	Player       uuid.UUID   `json:"player,omitempty"`
 	// Grants is ModGrantAbilities' bundle keys, in GrantKey form.
 	Grants []string `json:"grants,omitempty"`
+	// Borrows is ModBorrowAbilities' lent rows, captured as the effect
+	// resolved (ADR 0155 Decision 9), and SpendFrom its "you may spend
+	// <colour> mana as though it were mana of any color to activate
+	// those abilities" rider, a WUBRG letter or empty.
+	Borrows   []LentRow `json:"borrows,omitempty"`
+	SpendFrom string    `json:"spendFrom,omitempty"`
+	// Unautomated names, by Lender and LenderName alone, the lenders a
+	// borrowAbilities mod could not lend from because the catalog has no
+	// entry for them (ADR 0155 owner decision 2): the recipient's menu
+	// shows "<lender>: not automated" while the record lasts.
+	Unautomated []LentRow `json:"unautomated,omitempty"`
 	// Amount is ModPreventDamage's charge LEFT (tier 3b). A shield that
 	// absorbs damage is replaced by a record with a lower Amount, never
 	// mutated in place (see ScopedEffect's contract).
@@ -845,8 +871,12 @@ var modKinds = map[ModKind]modKindSpec{
 	ModBlockAnyNumber:   {layer: Layer6Ability},
 	// #1584, ADR 0093 PR 4
 	ModGrantAbilities: {layer: Layer6Ability},
+	// ADR 0155 Decision 9 (#3202)
+	ModBorrowAbilities: {layer: Layer6Ability},
 	// #1879: Veiled Serpent's granted attack restriction.
 	ModCantAttackUnlessDefenderControls: {layer: Layer6Ability},
+	// #3400: Promise of Loyalty's "can't attack you".
+	ModCantAttackPlayer: {layer: Layer6Ability},
 	// ADR 0109 §1 (#1881): CR 305.7 from a resolved effect.
 	ModSetBasicLandTypes: {layer: Layer4Type, removes: true},
 	// ADR 0109 §2 (#1604): "loses all land types", Ultima's.
@@ -906,6 +936,10 @@ var modKinds = map[ModKind]modKindSpec{
 	// key before the pass (text_box.go).
 	ModExchangeText: {reader: readerText, layer: Layer3Text},
 	ModSetTypes:     {layer: Layer4Type},
+	// #2144: "becomes a Frog" (set_creature_types.go).
+	ModSetCreatureTypes: {layer: Layer4Type},
+	// #3398: a duration-bound attack tax, read by the attack pricer.
+	ModAttackTax: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1157,6 +1191,12 @@ func CantAttackUnlessDefenderControlsMod(qs ...PermanentQuery) Mod {
 	return Mod{Kind: ModCantAttackUnlessDefenderControls, Queries: clonePermanentQueries(qs)}
 }
 
+// CantAttackPlayerMod is "can't attack <player> or planeswalkers they
+// control" from a resolved effect (#3400). Reads Player.
+func CantAttackPlayerMod(player uuid.UUID) Mod {
+	return Mod{Kind: ModCantAttackPlayer, Player: player}
+}
+
 // defenderControlsModProblem is the registration and restore check for
 // ModCantAttackUnlessDefenderControls: at least one query, since a
 // restriction that asks for nothing would refuse every target. "" when
@@ -1164,6 +1204,10 @@ func CantAttackUnlessDefenderControlsMod(qs ...PermanentQuery) Mod {
 func defenderControlsModProblem(m Mod) string {
 	if m.Kind == ModCantAttackUnlessDefenderControls && len(m.Queries) == 0 {
 		return "a cantAttackUnlessDefenderControls mod names no permanent"
+	}
+	// #3400: a restriction naming nobody would refuse nothing.
+	if m.Kind == ModCantAttackPlayer && m.Player == uuid.Nil {
+		return "a cantAttackPlayer mod names no player"
 	}
 	return ""
 }
@@ -1307,7 +1351,16 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		if problem := becomeNamedModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
+		if problem := setCreatureTypesModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
 		if problem := textBoxModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := attackTaxModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := borrowModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy && r != readerText {
@@ -1363,6 +1416,8 @@ func cloneMods(mods []Mod) []Mod {
 		m.Keywords = copyStrings(m.Keywords)
 		m.Supertypes = copyStrings(m.Supertypes)
 		m.Grants = copyStrings(m.Grants)
+		m.Borrows = append([]LentRow(nil), m.Borrows...)
+		m.Unautomated = append([]LentRow(nil), m.Unautomated...)
 		m.Objects = append([]ObjectRef(nil), m.Objects...)
 		m.To = append([]ObjectRef(nil), m.To...)
 		m.Queries = clonePermanentQueries(m.Queries)
@@ -1569,13 +1624,19 @@ func adaptScopedEffects(records []ScopedEffect) []ContinuousEffect {
 				// pass is over (foldRuleScopedRestrictionsLocked).
 				continue
 			}
+			apply := modApply(m)
+			if m.Kind == ModBorrowAbilities {
+				// ADR 0155 Decision 9: the captured rows, written in
+				// this record's timestamp slot.
+				apply = borrowModApply(m, e.Label)
+			}
 			out = append(out, staticContinuousEffect{
 				ability: StaticAbility{
 					Layer:            spec.layer,
 					SubLayer:         spec.subLayer,
 					RemovesAbilities: spec.removes,
 					AppliesTo:        applies,
-					Apply:            modApply(m),
+					Apply:            apply,
 					// ModGrantAbilities (ADR 0093 PR 4): the same
 					// declaration a granting static makes, so the
 					// engine writes the grant in this slot with the
@@ -1755,6 +1816,11 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.setTypes(types, subtypes, supertypes)
 		}
+	case ModSetCreatureTypes:
+		subtypes := m.Subtypes
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.setCreatureTypes(subtypes)
+		}
 	case ModSetName:
 		name := m.Text
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
@@ -1855,6 +1921,15 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		qs := clonePermanentQueries(m.Queries)
 		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
 			r := AttackTargetRestriction{DefenderMustControl: qs}
+			if src != nil {
+				r.Source, r.SourceName = src.InstanceID, src.Name
+			}
+			ch.AttackTargetRestrictions = append(ch.AttackTargetRestrictions, r)
+		}
+	case ModCantAttackPlayer:
+		protected := m.Player
+		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
+			r := AttackTargetRestriction{NotPlayer: protected}
 			if src != nil {
 				r.Source, r.SourceName = src.InstanceID, src.Name
 			}

@@ -1102,11 +1102,11 @@ var characteristicModKinds = map[ModKind]bool{
 	ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
 	ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModGoad: true,
 	ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
-	ModGrantAbilities: true, ModCantAttackUnlessDefenderControls: true,
+	ModGrantAbilities: true, ModBorrowAbilities: true, ModCantAttackUnlessDefenderControls: true, ModCantAttackPlayer: true,
 	ModSetBasicLandTypes: true, ModLoseLandTypes: true, ModCantHaveKeywords: true,
 	ModBecomeCopy: true, ModExchangeText: true, ModCantBeBlockedExceptBy: true,
 	ModLimitBlockersPerDefender: true, ModCantBeBlockedByPlayer: true,
-	ModCantBeBlockedByPower: true,
+	ModCantBeBlockedByPower: true, ModSetCreatureTypes: true,
 }
 
 // knownBuiltinReplacementLabels are the engine's own replacement effects
@@ -1367,7 +1367,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"ManaTriggers": defFieldInert, "AdditionalCost": defFieldInert,
 	"OptionalCosts": defFieldInert, "AlternativeCosts": defFieldInert,
 	"TapCost": defFieldInert, "Delve": defFieldInert, "SpendOnly": defFieldInert,
-	"SpendOnlySources": defFieldInert, "SpellsYouCastHaveDelve": defFieldInert,
+	"SpendOnlySources": defFieldInert, "SpellsYouCastHaveDelve": defFieldInert, "GrantedOptionalCosts": defFieldInert, "GrantedTapCosts": defFieldInert,
 	"CostModifiers": defFieldInert, "SelfCostModifiers": defFieldInert,
 	"ExhaustPermissions": defFieldInert, "BoastLimits": defFieldInert,
 	"AttackTaxes": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,

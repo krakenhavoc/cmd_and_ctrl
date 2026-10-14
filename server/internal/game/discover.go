@@ -361,16 +361,21 @@ func (g *Game) lapsePassClosedGrantsLocked(holder uuid.UUID) bool {
 
 // lapseCastPermissionLocked is one pass-closed permission ending
 // unused: its card, if it is still the object the permission named and
-// still in exile, goes to the lapse destination. A discover grant
-// completes its discover either way.
+// still in the zone the permission opens, goes to the lapse
+// destination. A discover grant completes its discover either way.
+//
+// The zone is the permission's own. Every grant but one opens exile;
+// Sunbird's Invocation leaves its pick on top of the library it was
+// revealed from and casts it from there, so its uncast card is bottomed
+// out of the library rather than out of exile.
 //
 // Caller must hold g.mu (write).
 func (g *Game) lapseCastPermissionLocked(holder uuid.UUID, perm CastPermission) {
 	for _, ref := range perm.Cards {
 		present := false
-		if g.Exile != nil {
-			for i := range g.Exile.Cards {
-				if perm.NamesCard(g.Exile.Cards[i]) {
+		if zone := g.findCardZoneLocked(ref.ID); zone != nil && zone.Kind == perm.Zone {
+			for i := range zone.Cards {
+				if perm.NamesCard(zone.Cards[i]) {
 					present = true
 					break
 				}
@@ -395,7 +400,7 @@ func (g *Game) lapseCastPermissionLocked(holder uuid.UUID, perm CastPermission) 
 			_ = g.BounceToHandForEffect(ref.ID)
 		case LapseToLibraryBottom:
 			if present {
-				_ = g.PutOnBottomInRandomOrderForEffect(holder, ZoneExile, []uuid.UUID{ref.ID})
+				_ = g.PutOnBottomInRandomOrderForEffect(holder, perm.Zone, []uuid.UUID{ref.ID})
 			}
 		}
 	}

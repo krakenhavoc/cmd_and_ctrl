@@ -408,6 +408,11 @@ type GameSnapshot struct {
 
 	Vote *Vote `json:"vote,omitempty"`
 
+	// PlayerControls is ADR 0166's record list. Carried: a restore
+	// that dropped it would leave a forced play's prompt answerable by
+	// nobody, or the controlled player making their own decisions.
+	PlayerControls []PlayerControl `json:"playerControls,omitempty"`
+
 	PendingChoices []pendingChoiceSnapshot `json:"pendingChoices,omitempty"`
 
 	Events   []Event `json:"events,omitempty"`
@@ -881,6 +886,12 @@ type cardSnapshot struct {
 	// say what went. Old snapshots have no key and their zero uuid
 	// reads correctly as "nobody chosen".
 	ChosenPlayer uuid.UUID `json:"chosenPlayer,omitempty"`
+	// ChosenSecondPlayer is the second answer of "as this enters,
+	// choose two players" (#3389). Carried for ChosenPlayer's reason:
+	// it is half of what Sower of Discord's trigger reads, so a restore
+	// that lost it would silently turn the pair into one player. Old
+	// snapshots have no key and read "nobody chosen".
+	ChosenSecondPlayer uuid.UUID `json:"chosenSecondPlayer,omitempty"`
 	// ChosenName is the CR 614.12 "as this enters, choose a card
 	// name" answer (#1210). Carried for ChosenPlayer's reason and one
 	// more: it is free text, so there is not even a vocabulary a
@@ -899,6 +910,11 @@ type cardSnapshot struct {
 	// paid. Carried for ChosenPlayer's reason: a player chose it and
 	// nothing can re-derive it. Old snapshots have no key and read zero.
 	ChosenNumber int `json:"chosenNumber,omitempty"`
+	// ChosenPermanent is the permanent chosen as this one entered
+	// (ADR 0155 §8, #3202) — Scheming Fence's. Carried for
+	// ChosenPlayer's reason: a player chose it and nothing can
+	// re-derive it. Old snapshots have no key and read "none chosen".
+	ChosenPermanent *ObjectRef `json:"chosenPermanent,omitempty"`
 	// Devoured is CR 702.82b's count of creatures this permanent
 	// devoured as it entered. Old snapshots have no key and read zero.
 	Devoured int `json:"devoured,omitempty"`
@@ -1952,6 +1968,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	if g.Vote != nil {
 		s.Vote = cloneVote(g.Vote)
 	}
+	s.PlayerControls = clonePlayerControls(g.PlayerControls)
 
 	if len(g.PendingChoices) > 0 {
 		s.PendingChoices = make([]pendingChoiceSnapshot, 0, len(g.PendingChoices))
@@ -2185,9 +2202,11 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		MeldSplitFrom:            objectRefPtr(c.MeldSplitFrom),
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
+		ChosenSecondPlayer:       c.ChosenSecondPlayer,
 		ChosenName:               c.ChosenName,
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
+		ChosenPermanent:          objectRefPtr(c.ChosenPermanent),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
@@ -2906,6 +2925,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	if s.Vote != nil {
 		g.Vote = cloneVote(s.Vote)
 	}
+	g.PlayerControls = clonePlayerControls(s.PlayerControls)
 
 	if len(s.PendingChoices) > 0 {
 		g.PendingChoices = make([]*PendingChoice, len(s.PendingChoices))
@@ -3074,9 +3094,11 @@ func restoreCard(c *cardSnapshot) Card {
 		MeldSplitFrom:            objectRefValue(c.MeldSplitFrom),
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
+		ChosenSecondPlayer:       c.ChosenSecondPlayer,
 		ChosenName:               c.ChosenName,
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
+		ChosenPermanent:          objectRefValue(c.ChosenPermanent),
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,

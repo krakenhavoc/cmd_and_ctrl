@@ -445,59 +445,38 @@ describe("autopassDecision — #1307: key windows", () => {
   });
 });
 
-// #1307 — the Shift+P toggle stops for a real answer to an
-// opponent's stack item, and bluffs there if asked. Everywhere else
-// it passes as before.
-describe("autopassDecision — #1307: the autopass toggle", () => {
+// #3316 — Skip to my turn passes every priority window: an answer in
+// hand, a key window or a ticked step is no reason to stop, and it
+// never bluffs. (#1307 had it hold for a response.)
+describe("autopassDecision — #3316: Skip to my turn passes everything", () => {
   const oppStack = (overrides: Partial<AutopassGates> = {}) =>
     gates({ autopassToggle: true, stackEmpty: false, ownsEveryStackItem: false, ...overrides });
 
-  it("holds an opponent's stack item the viewer can answer", () => {
-    expect(autopassDecision(oppStack({ hasResponse: true }))).toBe("hold");
-  });
-
-  it("passes one the viewer cannot answer", () => {
+  it("passes an opponent's stack item, answer in hand or not", () => {
+    expect(autopassDecision(oppStack({ hasResponse: true }))).toBe("pass");
     expect(autopassDecision(oppStack())).toBe("pass");
   });
 
-  it("bluffs at one when a bluff is armed", () => {
-    expect(isBluff(autopassDecision(oppStack({ bluffCounter: true })))).toBe(true);
+  it("never bluffs", () => {
+    expect(autopassDecision(oppStack({ bluffCounter: true, bluffInstant: true }))).toBe("pass");
   });
 
-  // ADR 0143 §4.1/§4.2: Skip to my turn is Smart's passing until you
-  // are next active, so it keeps Smart's key windows. With a response
-  // in hand it stops; with none, it passes, ticked step or not.
-  it("stops at a key window when the viewer can respond", () => {
+  it("passes the viewer's own stack, hold-priority or not", () => {
+    const own = oppStack({ ownsEveryStackItem: true, autoPassOwnStack: false, holdPriority: true });
+    expect(autopassDecision(own)).toBe("pass");
+  });
+
+  it("passes key windows and ticked steps", () => {
     const end = gates({ autopassToggle: true, step: "end", oppEndWindow: true });
-    expect(autopassDecision({ ...end, hasResponse: true })).toBe("hold");
-    expect(autopassDecision({ ...end, hasResponse: false })).toBe("pass");
+    expect(autopassDecision({ ...end, hasResponse: true, bluffInstant: true })).toBe("pass");
     for (const step of ["declare_attackers", "declare_blockers"]) {
-      const combat = gates({ autopassToggle: true, step, combatWindow: true });
-      expect(autopassDecision({ ...combat, hasResponse: true }), step).toBe("hold");
-      expect(autopassDecision({ ...combat, hasResponse: false }), step).toBe("pass");
+      const combat = gates({ autopassToggle: true, step, combatWindow: true, hasResponse: true });
+      expect(autopassDecision(combat), step).toBe("pass");
     }
-  });
-
-  it("passes ticked steps and quiet windows, and never bluffs a key window", () => {
-    const g = gates({
-      autopassToggle: true,
-      step: "end",
-      oppEndWindow: true,
-      hasResponse: false,
-      stepStop: true,
-      hasPlay: true,
-      bluffInstant: true,
-    });
-    expect(autopassDecision(g)).toBe("pass");
     expect(
       autopassDecision(
         gates({ autopassToggle: true, step: "upkeep", stepStop: true, hasPlay: true }),
       ),
-    ).toBe("pass");
-    // A response outside the key windows (an opponent's main phase with
-    // an instant in hand) is not a reason to stop.
-    expect(
-      autopassDecision(gates({ autopassToggle: true, step: "precombat_main", hasResponse: true })),
     ).toBe("pass");
   });
 
@@ -522,10 +501,10 @@ describe("autopassDecision — #1307: the autopass toggle", () => {
     ).toBe("pass");
   });
 
-  it("ignores Careful and Manual", () => {
+  it("ignores Careful and Off", () => {
     expect(autopassDecision(oppStack({ passMode: "careful" }))).toBe("pass");
     expect(autopassDecision(oppStack({ passMode: "manual" }))).toBe("pass");
-    expect(autopassDecision(oppStack({ passMode: "careful", hasResponse: true }))).toBe("hold");
+    expect(autopassDecision(oppStack({ passMode: "careful", hasResponse: true }))).toBe("pass");
   });
 
   it("bluffs only in Smart (ADR 0143 §4.3)", () => {
@@ -686,19 +665,13 @@ describe("autopassDecision — #2853: an untargeted value ability is not a respo
     expect(autopassDecision({ ...gatesFor(frame(valueBoard)), holdPriority: true })).toBe("hold");
   });
 
-  // ADR 0143 finding 3: the categories decide the autopass toggle's
-  // hold too, in every mode, so the UI never greys them out.
-  it("the autopass toggle reads the categories, in every mode", () => {
+  // #3316: Skip to my turn passes whatever the categories say, in
+  // every mode.
+  it("the autopass toggle passes whatever the categories say", () => {
     const view = frame([...valueBoard, mv("cast", { source: "instant" })]);
     for (const passMode of ["smart", "careful", "manual"] as const) {
       const on = { ...gatesFor(view), autopassToggle: true, passMode };
-      expect(autopassDecision(on), passMode).toBe("hold");
-      const off = {
-        ...gatesFor(view, { ...DEFAULT_RESPONSES, instant: false }),
-        autopassToggle: true,
-        passMode,
-      };
-      expect(autopassDecision(off), passMode).toBe("pass");
+      expect(autopassDecision(on), passMode).toBe("pass");
     }
   });
 });

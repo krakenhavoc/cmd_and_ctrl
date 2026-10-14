@@ -64,7 +64,7 @@ import "github.com/google/uuid"
 // nil for none.
 func CastAutoTapExclusions(params CastSpellParams, alt *AlternativeCost) map[uuid.UUID]bool {
 	full := [][]uuid.UUID{params.LockedSources, params.TapIDs, params.DiscardIDs,
-		params.TeamworkIDs, params.BlightIDs}
+		params.TeamworkIDs, params.BlightIDs, params.ExilePermanentIDs}
 	sacrificed := [][]uuid.UUID{params.SacrificeIDs}
 	if alt != nil && alt.Sacrifice != nil {
 		sacrificed = append(sacrificed, params.AltCostIDs)

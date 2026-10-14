@@ -287,6 +287,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// nobody — which is also what stops the protection reader
 		// having to ask what zone it is in.
 		c.ChosenPlayer = uuid.Nil
+		c.ChosenSecondPlayer = uuid.Nil
 		// #1210 / CR 614.12: and so does the chosen card NAME. A
 		// Pithing Needle that is bounced and recast names a card
 		// again, and one in a graveyard restricts nobody — which is
@@ -301,6 +302,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// entered. A Phyrexian Processor that is bounced and recast
 		// pays life again.
 		c.ChosenNumber = 0
+		c.ChosenPermanent = ObjectRef{}
 		c.Devoured = 0
 		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
 		// about the permanent that spell became, and CR 400.7d's

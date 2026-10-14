@@ -417,3 +417,12 @@ func legalActionsFor(bySeat map[string]*LegalActionsView, viewerID string) *Lega
 	}
 	return bySeat[viewerID]
 }
+
+// controlledLegalActionsFor picks the viewer's controlled-seat digests
+// (ADR 0167 §7) under legalActionsFor's rule.
+func controlledLegalActionsFor(bySeat map[string]map[string]*LegalActionsView, viewerID string) map[string]*LegalActionsView {
+	if viewerID == "" || viewerID == SpectatorViewerID || len(bySeat) == 0 {
+		return nil
+	}
+	return bySeat[viewerID]
+}
