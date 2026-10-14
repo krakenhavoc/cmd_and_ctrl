@@ -172,6 +172,20 @@ func CrewEffect(cardName string) func(g *game.Game, item *game.StackItem) error 
 	}
 }
 
+// CrewersOfThis is "the creatures that crewed it this turn" for the
+// object this ability came from (CR 702.122c, ADR 0186 §1): the distinct
+// creatures tapped to pay a crew cost of that Vehicle object that are
+// still on the battlefield as the same objects. Read by the source's
+// ObjectRef, so it survives the Vehicle leaving; a Vehicle that came back
+// is a new object that nobody crewed (CR 400.7).
+func CrewersOfThis(ctx *Context) []uuid.UUID {
+	ref, ok := ctx.SourceRef()
+	if !ok {
+		return nil
+	}
+	return ctx.Game.CreaturesThatCrewedForEffect(ref)
+}
+
 // eotHasType reports whether a type / subtype token is already in the
 // list, case-insensitively. Keeps the grant idempotent when a
 // Vehicle is crewed twice in a turn, which is legal and common — the

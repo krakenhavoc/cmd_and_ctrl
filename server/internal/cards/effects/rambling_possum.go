@@ -14,9 +14,10 @@ import (
 //	 Saddle 1"
 //
 // The only proof card that reads "creatures that saddled it this turn"
-// (CR 702.171c): the candidates are Game.SaddlersOf, taken when the
-// trigger resolves, so a saddler that has since left the battlefield is
-// not offered, and the choice is a card-set prompt with a floor of zero
+// (CR 702.171c): the candidates are SaddlersOfThis, taken when the
+// trigger resolves and read by the Possum's object (ADR 0186), so a
+// Possum bounced in response still offers them and a saddler that has
+// since left the battlefield is not offered, and the choice is a card-set prompt with a floor of zero
 // ("any number" includes none). The pump comes first and does not wait
 // for the prompt, as printed.
 //
@@ -33,7 +34,7 @@ func init() {
 				if err := (BoostUntilEOT{Target: item.SourceCardID, Power: 1, Toughness: 2, Label: "Rambling Possum — +1/+2"}).Apply(ctx); err != nil {
 					return err
 				}
-				saddlers := g.SaddlersOf(item.SourceCardID)
+				saddlers := SaddlersOfThis(ctx)
 				if len(saddlers) == 0 {
 					return nil
 				}

@@ -3094,6 +3094,16 @@ type CardView struct {
 	// card like Monstrous: the table can see the Mount is saddled, which
 	// is what the attack triggers read.
 	Saddled bool `json:"saddled,omitempty"`
+	// CrewedBy and SaddledBy are, on a Vehicle or a Mount on the
+	// battlefield, the card IDs of the creatures that crewed or saddled
+	// it this turn and are still on the battlefield as the same objects
+	// (ADR 0186 §6, owner decision 3; CR 702.122c, CR 702.171c), in the
+	// order they were tapped. Derived from the turn tally's crew records,
+	// not read off the card, and not on disk. Tapping to pay is public,
+	// so every viewer and spectator gets them; cleared with Saddled on a
+	// face-down permanent. Absent the next turn, because the tally resets.
+	CrewedBy  []string `json:"crewed_by,omitempty"`
+	SaddledBy []string `json:"saddled_by,omitempty"`
 	// Suspected is a permanent's CR 701.60 suspected designation
 	// (ADR 0071 amendment 2026-10-08, #2698): it has menace and can't
 	// block for as long as it is set. Public, and set straight off the
@@ -5040,6 +5050,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampDeathMarks(g, &view.Battlefield)
 		stampLandTypeEffects(g, &view.Battlefield)
 		stampDefenderRefusals(g, &view.Battlefield)
+		stampCrewedAndSaddledBy(g, &view.Battlefield)
 		view.legalBySeat, view.legalActionsBySeat, view.legalTruncatedBySeat, view.controlledLegalActionsBySeat = enumerateLegalMoves(g)
 		// ADR 0167 §8: public, the turn-long controls still waiting.
 		view.ScheduledPlayerControls = viewOfScheduledPlayerControls(g)
@@ -8145,6 +8156,40 @@ func stampLandTypeEffects(g *game.Game, view *ZoneView) {
 	}
 }
 
+// stampCrewedAndSaddledBy sets CardView.CrewedBy / SaddledBy on each
+// battlefield permanent from the turn tally's crew records (ADR 0186 §6).
+// Asked of the permanent's current object, so a Vehicle that left and came
+// back shows nobody. The tally is empty on most frames, which is the
+// early return.
+func stampCrewedAndSaddledBy(g *game.Game, view *ZoneView) {
+	if g == nil || g.Battlefield == nil || view == nil || len(g.TurnTally.Crews) == 0 {
+		return
+	}
+	for i := range view.Cards {
+		if i >= len(g.Battlefield.Cards) {
+			break
+		}
+		card := &g.Battlefield.Cards[i]
+		if card.FaceDown {
+			continue
+		}
+		ref := game.ObjectRef{ID: card.InstanceID, Epoch: card.ObjectEpoch}
+		view.Cards[i].CrewedBy = crewIDStrings(g.CreaturesThatCrewedForEffect(ref))
+		view.Cards[i].SaddledBy = crewIDStrings(g.CreaturesThatSaddledForEffect(ref))
+	}
+}
+
+func crewIDStrings(ids []uuid.UUID) []string {
+	if len(ids) == 0 {
+		return nil
+	}
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = id.String()
+	}
+	return out
+}
+
 func stampNoUntap(g *game.Game, view *ZoneView) {
 	if g == nil || g.Battlefield == nil || view == nil {
 		return
@@ -10365,6 +10410,8 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// #2695: cleared with the other designations rather than trusted to
 	// be false — a face-down permanent is not a Mount (CR 708.2).
 	out.Saddled = false
+	out.CrewedBy = nil
+	out.SaddledBy = nil
 	// ADR 0090: a face-down permanent has no prepare spell (CR 708.2)
 	// and cannot be prepared, but the field is cleared with the other
 	// designations rather than trusted to be false.

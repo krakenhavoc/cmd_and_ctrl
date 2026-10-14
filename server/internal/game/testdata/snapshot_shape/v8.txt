@@ -6563,6 +6563,15 @@ turnTally.casts[]	custom(uuid.UUID)
 turnTally.combatDamagedPlayers	map:string
 turnTally.combatDamagedPlayers{}	number:int
 turnTally.creaturesDied	number:int
+turnTally.crews	array
+turnTally.crews[]	object
+turnTally.crews[].creature	object
+turnTally.crews[].creature.epoch	number:int
+turnTally.crews[].creature.id	custom(uuid.UUID)
+turnTally.crews[].permanent	object
+turnTally.crews[].permanent.epoch	number:int
+turnTally.crews[].permanent.id	custom(uuid.UUID)
+turnTally.crews[].saddle	bool
 turnTally.damageDealers	array
 turnTally.damageDealers[]	object
 turnTally.damageDealers[].combat	bool
