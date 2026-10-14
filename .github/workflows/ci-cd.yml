@@ -1941,6 +1941,7 @@ jobs:
           CMDCTRL_DISCORD_GUILD_IDS: ${{ vars.CMDCTRL_DISCORD_GUILD_IDS }}
           CMDCTRL_DISCORD_ADMIN_USER_IDS: ${{ vars.CMDCTRL_DISCORD_ADMIN_USER_IDS }}
           CMDCTRL_DISCORD_ADMIN_ROLE_IDS: ${{ vars.CMDCTRL_DISCORD_ADMIN_ROLE_IDS }}
+          CMDCTRL_DISCORD_CARD_CHANNEL_IDS: ${{ vars.CMDCTRL_DISCORD_CARD_CHANNEL_IDS }}
         run: |
           if [ "${BOT_TOKEN_SET}" != "true" ]; then
             echo "::notice::CMDCTRL_DISCORD_BOT_TOKEN secret not set; skipping bot env sync (the bot stays unconfigured)."
@@ -2001,7 +2002,7 @@ jobs:
           # 8). They do not add to `missing`: that counter feeds the "bot
           # will refuse to start" notice below, and the bot starts fine with
           # no configured admins.
-          for KEY in CMDCTRL_DISCORD_ADMIN_USER_IDS CMDCTRL_DISCORD_ADMIN_ROLE_IDS; do
+          for KEY in CMDCTRL_DISCORD_ADMIN_USER_IDS CMDCTRL_DISCORD_ADMIN_ROLE_IDS CMDCTRL_DISCORD_CARD_CHANNEL_IDS; do
             VALUE="${!KEY}"
             printf '%s' "${VALUE}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
               "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${KEY} ${BOT_ENV_FILE}"

@@ -53,6 +53,13 @@ func main() {
 	// guild that was added while the process was running. Not
 	// privileged; no portal approval required.
 	session.Identify.Intents = discordgo.IntentsGuilds
+	// The [[Card Name]] watcher (#3324) reads message text, which needs the
+	// privileged Message Content intent, switched on in the Developer
+	// Portal. Ask for it only when card channels are configured: asking
+	// for it un-enabled makes Discord refuse the connection (4014).
+	if len(cfg.CardChannelIDs) > 0 {
+		session.Identify.Intents |= discordgo.IntentsGuildMessages | discordgo.IntentsMessageContent
+	}
 
 	client := bot.NewServerClient(cfg.ServerBaseURL, cfg.AdminToken)
 	handler := bot.NewHandler(cfg, client, log)
@@ -61,6 +68,9 @@ func main() {
 	// AddHandler is goroutine-safe but adding after Open risks
 	// dropping events during the race window.
 	session.AddHandler(handler.Dispatch)
+	if len(cfg.CardChannelIDs) > 0 {
+		session.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) { handler.HandleMessage(s, m) })
+	}
 
 	// Guild allow-list enforcement happens in two places:
 	//  1. On Ready, register commands on every guild in the

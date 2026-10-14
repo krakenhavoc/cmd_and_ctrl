@@ -80,6 +80,12 @@ type Config struct {
 	// Handler.mayEnd (end.go), not by this Config alone.
 	AdminUserIDs []string
 	AdminRoleIDs []string
+
+	// CardChannelIDs lists the channels where the bot watches for
+	// [[Card Name]] and replies with the card (#3324). Empty turns the
+	// watcher off, and then the bot does not ask Discord for the
+	// privileged Message Content intent at all. /c2-card works either way.
+	CardChannelIDs []string
 }
 
 // ConfigFromEnv reads the CMDCTRL_* env vars. Missing optional
@@ -87,14 +93,15 @@ type Config struct {
 // Validate can surface them all at once.
 func ConfigFromEnv() Config {
 	return Config{
-		BotToken:      strings.TrimSpace(os.Getenv("CMDCTRL_DISCORD_BOT_TOKEN")),
-		AppID:         strings.TrimSpace(os.Getenv("CMDCTRL_DISCORD_APP_ID")),
-		GuildIDs:      splitGuildIDs(os.Getenv("CMDCTRL_DISCORD_GUILD_IDS")),
-		ServerBaseURL: orDefault(os.Getenv("CMDCTRL_SERVER_BASE_URL"), defaultServerBaseURL),
-		AdminToken:    strings.TrimSpace(os.Getenv("CMDCTRL_ADMIN_TOKEN")),
-		ClientBaseURL: orDefault(os.Getenv("CMDCTRL_CLIENT_BASE_URL"), defaultClientBaseURL),
-		AdminUserIDs:  splitGuildIDs(os.Getenv("CMDCTRL_DISCORD_ADMIN_USER_IDS")),
-		AdminRoleIDs:  splitGuildIDs(os.Getenv("CMDCTRL_DISCORD_ADMIN_ROLE_IDS")),
+		BotToken:       strings.TrimSpace(os.Getenv("CMDCTRL_DISCORD_BOT_TOKEN")),
+		AppID:          strings.TrimSpace(os.Getenv("CMDCTRL_DISCORD_APP_ID")),
+		GuildIDs:       splitGuildIDs(os.Getenv("CMDCTRL_DISCORD_GUILD_IDS")),
+		ServerBaseURL:  orDefault(os.Getenv("CMDCTRL_SERVER_BASE_URL"), defaultServerBaseURL),
+		AdminToken:     strings.TrimSpace(os.Getenv("CMDCTRL_ADMIN_TOKEN")),
+		ClientBaseURL:  orDefault(os.Getenv("CMDCTRL_CLIENT_BASE_URL"), defaultClientBaseURL),
+		AdminUserIDs:   splitGuildIDs(os.Getenv("CMDCTRL_DISCORD_ADMIN_USER_IDS")),
+		AdminRoleIDs:   splitGuildIDs(os.Getenv("CMDCTRL_DISCORD_ADMIN_ROLE_IDS")),
+		CardChannelIDs: splitGuildIDs(os.Getenv("CMDCTRL_DISCORD_CARD_CHANNEL_IDS")),
 	}
 }
 
@@ -134,14 +141,15 @@ func (c Config) Validate() error {
 // by a length indicator. Safe to pass to slog.
 func (c Config) Redacted() map[string]any {
 	return map[string]any{
-		"app_id":          c.AppID,
-		"guild_ids":       c.GuildIDs,
-		"server_base_url": c.ServerBaseURL,
-		"client_base_url": c.ClientBaseURL,
-		"bot_token":       fmt.Sprintf("<%d chars>", len(c.BotToken)),
-		"admin_token":     fmt.Sprintf("<%d chars>", len(c.AdminToken)),
-		"admin_user_ids":  c.AdminUserIDs,
-		"admin_role_ids":  c.AdminRoleIDs,
+		"app_id":           c.AppID,
+		"guild_ids":        c.GuildIDs,
+		"server_base_url":  c.ServerBaseURL,
+		"client_base_url":  c.ClientBaseURL,
+		"bot_token":        fmt.Sprintf("<%d chars>", len(c.BotToken)),
+		"admin_token":      fmt.Sprintf("<%d chars>", len(c.AdminToken)),
+		"admin_user_ids":   c.AdminUserIDs,
+		"admin_role_ids":   c.AdminRoleIDs,
+		"card_channel_ids": c.CardChannelIDs,
 	}
 }
 
@@ -176,6 +184,17 @@ func (c Config) IsAdmin(i *discordgo.Interaction) bool {
 // message /c2-end gives an unauthorized caller.
 func (c Config) HasAdmins() bool {
 	return len(c.AdminUserIDs) > 0 || len(c.AdminRoleIDs) > 0
+}
+
+// CardChannelAllowed reports whether the [[Card Name]] watcher is on in
+// the channel.
+func (c Config) CardChannelAllowed(channelID string) bool {
+	for _, id := range c.CardChannelIDs {
+		if id == channelID {
+			return true
+		}
+	}
+	return false
 }
 
 // GuildAllowed reports whether the given guild ID is in the
