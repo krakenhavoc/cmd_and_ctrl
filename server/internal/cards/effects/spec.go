@@ -654,6 +654,15 @@ type Spec struct {
 	//	SpellsYouCastHaveDelve: true, // Teval, Arbiter of Virtue
 	SpellsYouCastHaveDelve bool
 
+	// GrantedOptionalCosts are a permanent's "<spells> you cast have
+	// <optional cost>" (#3245): Silverquill, the Disputant's casualty 1.
+	// Build each with SpellsYouCastHave (casualty.go). Read from the
+	// battlefield by game.OptionalCostsForCastLocked.
+	//
+	//	GrantedOptionalCosts: []game.GrantedOptionalCost{SpellsYouCastHave(
+	//	    "Each instant and sorcery spell you cast has casualty 1.", Or(Instant(), Sorcery()), Casualty(1))},
+	GrantedOptionalCosts []game.GrantedOptionalCost
+
 	// CostModifiers is the S28 "spells cost {N} more / {N} less to
 	// cast" static (CR 601.2f) the card contributes while it is on
 	// the battlefield — Sphere of Resistance, Thalia, Goblin

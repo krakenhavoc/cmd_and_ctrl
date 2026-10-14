@@ -68,6 +68,8 @@
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
   import TablematePicker from "../lib/components/TablematePicker.svelte";
+  import LfgPost from "../lib/components/LfgPost.svelte";
+  import { LFG_GUEST_HINT, setLFG } from "../lib/lfgPost";
   import Icon from "../lib/components/Icon.svelte";
   import MoreMenu, { type MoreItem } from "../lib/components/MoreMenu.svelte";
   import RemovedNotice from "../lib/components/RemovedNotice.svelte";
@@ -209,6 +211,11 @@
   let useLastSetup = $state(true);
   // ADR 0159 §1: shown only when the server offers voice rooms.
   let wantVoiceRoom = $state(false);
+  // ADR 0161 §1: shown only when the server has an #lfg board, off by
+  // default. The post names its host, so it needs a Discord sign-in: the
+  // shared admin token has none, and gets the box disabled.
+  let wantLFG = $state(false);
+  const lfgCreateBlocked = $derived(signedInUserID($session) === null);
   // The table this page just created: its tablemate picker starts open.
   let justCreated = $state<string | null>(null);
   // What applying the setup did, shown on the new table's card.
@@ -275,6 +282,24 @@
       settingsError = e instanceof Error ? e.message : String(e);
     } finally {
       settingsBusy = false;
+    }
+  }
+
+  // The table's #lfg post (ADR 0161). The answer is the table's meta;
+  // the list's next poll carries the post's status as the server
+  // reports it.
+  let lfgBusy = $state(false);
+  let lfgError = $state<string | null>(null);
+  async function toggleLFG(gameID: string, enabled: boolean): Promise<void> {
+    lfgBusy = true;
+    lfgError = null;
+    try {
+      await setLFG(gameID, enabled);
+      await refresh();
+    } catch (e) {
+      lfgError = lobbyErrorMessage(e, "the #lfg request failed");
+    } finally {
+      lfgBusy = false;
     }
   }
 
@@ -479,6 +504,7 @@
       const meta = await createGame(newName.trim(), {
         ...(withSetup ? { setup: "last" as const } : {}),
         voiceRoom: $community.voice && wantVoiceRoom,
+        lfg: $community.lfg === true && !lfgCreateBlocked && wantLFG,
       });
       if (meta.invite_token) recentInvites.set(meta.id, meta.invite_token);
       if (meta.spectator_invite) recentSpectatorInvites.set(meta.id, meta.spectator_invite);
@@ -980,6 +1006,19 @@
             </span>
           </label>
         {/if}
+        {#if $community.lfg}
+          <label class="use-setup">
+            <input type="checkbox" bind:checked={wantLFG} disabled={lfgCreateBlocked} />
+            <span>
+              Post to the CMD & CTRL Discord (#lfg)
+              <span class="setup-sum"
+                >{lfgCreateBlocked
+                  ? LFG_GUEST_HINT
+                  : "the table's name, you as host and the open seats, so players can join"}</span
+              >
+            </span>
+          </label>
+        {/if}
         {#if createError}
           <p class="error nt-error" role="alert">{createError}</p>
         {/if}
@@ -1247,6 +1286,15 @@
                     <p class="muted">loading settings…</p>
                   {:else}
                     <p class="error">{settingsError ?? "couldn't load this table's settings"}</p>
+                  {/if}
+                  {#if $community.lfg}
+                    <LfgPost
+                      game={g}
+                      canManage={canManageTableFor(g)}
+                      ontoggle={(enabled) => toggleLFG(g.id, enabled)}
+                      busy={lfgBusy}
+                      error={lfgError}
+                    />
                   {/if}
                 </div>
               {/if}

@@ -47,7 +47,11 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * paragraph comes with the voice manager (ADR 0159 §8), which is what
  * sends seated players' Discord ids to Discord.
  *
- * 21 is the LFG board's migration (#3361), checked when it lands.
+ * 21 (#3319, ADR 0161 §6) adds games.lfg and games.lfg_message_id: a
+ * table's choice of the Discord #lfg board and its post's message id.
+ * Neither is about a person; the Discord row now says what a post shows
+ * the community server (the host's Discord account among it) and when
+ * it is deleted (ADR 0161 §8).
  *
  * 22 (#3364, ADR 0164) adds game_stats, seat_stats and seat_card_stats:
  * numbers and card names derived from a finished game, keyed by game

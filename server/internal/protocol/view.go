@@ -6019,7 +6019,13 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// ADR 0073: the optional costs this card OFFERS. Stamped next to
 	// the mandatory one and read by the same modal the alternative
 	// costs open, because CR 601.2b announces all of them together.
-	out.OptionalCosts = viewOfOptionalCosts(g, caster, src, key)
+	optional := game.OptionalCostsFor(key)
+	if haveLive {
+		// #3245: a permanent may grant this spell an optional cost
+		// (Silverquill's casualty), appended after the card's own.
+		optional = g.OptionalCostsForCastLocked(caster, live)
+	}
+	out.OptionalCosts = viewOfOptionalCosts(g, caster, src, optional)
 	// ADR 0150 §5: assist's "choose another player", asked in the same
 	// modal as the gift's opponent. The total is the engine's own
 	// (AssistGenericLocked), so "up to {N}" is the cap the park uses.
@@ -6963,8 +6969,7 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 // optional cost that rewrites the target clause carries the rewritten
 // clause's legal set — `src` is the spell as its own source (#662),
 // exactly as the alternative-cost stamp reads it.
-func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, key string) []OptionalCostView {
-	costs := game.OptionalCostsFor(key)
+func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, costs []game.AdditionalCost) []OptionalCostView {
 	if len(costs) == 0 {
 		return nil
 	}

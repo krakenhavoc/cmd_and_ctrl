@@ -55,6 +55,13 @@
 //	                        0159). Needs CMDCTRL_DISCORD_COMMUNITY_GUILD_ID
 //	                        (boot fails without it, or on a malformed id)
 //	                        and the bot token (off without it).
+//	CMDCTRL_DISCORD_LFG_CHANNEL_ID / CMDCTRL_DISCORD_LFG_ROLE_ID — the
+//	                        #lfg board (ADR 0161): the channel hosts post
+//	                        tables to, and the role a new post pings
+//	                        (optional). The channel needs the community
+//	                        guild; the role needs the channel; a malformed
+//	                        id fails the boot. Off without the bot token
+//	                        or CMDCTRL_PUBLIC_BASE_URL.
 //	CMDCTRL_SEED_DEMO   — if "1", seed a 4-player demo game at startup.
 //	                        Useful for the gamecli dev loop when you want a
 //	                        ready-to-go room without going through the lobby.
@@ -401,6 +408,15 @@ func main() {
 		voiceRooms = lobby.NewVoiceManager(cfg.Voice, log)
 		l.SetVoiceManager(voiceRooms)
 	}
+	// The #lfg board (ADR 0161), wired like the voice rooms: attached
+	// before RestoreFromDisk so a resumed table's post is adopted, and
+	// started after it. A post is a copy of the invite link, so it
+	// needs the public origin the invite DM uses.
+	var lfgBoard *lobby.LFGManager
+	if cfg.LFG.Enabled() && publicBaseURL() != "" {
+		lfgBoard = lobby.NewLFGManager(cfg.LFG, publicBaseURL(), log)
+		l.SetLFGManager(lfgBoard)
+	}
 	// The state gauges (ADR 0123 §3): restore points, games, players and
 	// WebSocket, read from the rooms, the lobby, the hub and the
 	// database at scrape time.
@@ -505,6 +521,9 @@ func main() {
 	if voiceRooms != nil {
 		voiceRooms.Start(ctx)
 	}
+	if lfgBoard != nil {
+		lfgBoard.Start(ctx)
+	}
 
 	// Optional demo game for the gamecli dev path. Creates a game
 	// directly (bypassing the lobby's invite flow) so you can dial
@@ -548,6 +567,23 @@ func main() {
 			" is not (it is provisioned on production only)", "var", discord.BotTokenEnv)
 	default:
 		log.Info("table voice rooms off; set "+discord.VoiceCategoryEnv+" to enable", "var", discord.VoiceCategoryEnv)
+	}
+	// ADR 0161 §7: said once, either way.
+	switch {
+	case cfg.LFG.Enabled() && publicBaseURL() == "":
+		log.Warn("#lfg board off: a post is a copy of the invite link, which needs CMDCTRL_PUBLIC_BASE_URL (or CMDCTRL_CLIENT_BASE_URL)",
+			"var", discord.LFGChannelEnv)
+	case cfg.LFG.Enabled() && cfg.LFG.RoleID == "":
+		log.Info("#lfg board on: hosts may post a table; "+discord.LFGRoleEnv+" is unset, so posts ping nobody",
+			"var", discord.LFGChannelEnv)
+	case cfg.LFG.Enabled():
+		log.Info("#lfg board on: hosts may post a table, and a new post pings the LFG role",
+			"var", discord.LFGChannelEnv)
+	case cfg.LFG.MissingToken():
+		log.Info("#lfg board off: "+discord.LFGChannelEnv+" is set but "+discord.BotTokenEnv+
+			" is not (it is provisioned on production only)", "var", discord.BotTokenEnv)
+	default:
+		log.Info("#lfg board off; set "+discord.LFGChannelEnv+" to enable", "var", discord.LFGChannelEnv)
 	}
 
 	// The bot token the server itself uses for direct-message invites
@@ -612,10 +648,7 @@ func main() {
 	if cfg.DataDir != "" {
 		bugDir = filepath.Join(cfg.DataDir, "bugreports")
 	}
-	publicBase := os.Getenv("CMDCTRL_PUBLIC_BASE_URL")
-	if publicBase == "" {
-		publicBase = os.Getenv("CMDCTRL_CLIENT_BASE_URL")
-	}
+	publicBase := publicBaseURL()
 	// The same origin is what a DM invite's link is built against. A
 	// bot token with nowhere to point it still cannot send: the route
 	// 503s naming this variable rather than DMing a broken link.
@@ -871,6 +904,12 @@ type config struct {
 	// bot token. A malformed id, or a category without the guild, fails
 	// the boot; no bot token leaves it off.
 	Voice discord.Voice
+	// LFG is ADR 0161 §7's #lfg board: CMDCTRL_DISCORD_LFG_CHANNEL_ID
+	// (and the optional CMDCTRL_DISCORD_LFG_ROLE_ID) in the community
+	// guild, with the bot token. A malformed id, the channel without the
+	// guild, or the role without the channel fails the boot; no bot
+	// token leaves it off.
+	LFG discord.LFG
 	// SessionTTL is the lifetime of a session with no user: guest
 	// seats and spectators, admin-token and reclaim-ticket sessions
 	// (CMDCTRL_SESSION_TTL). Default 12h.
@@ -1133,6 +1172,12 @@ func loadConfig(log *slog.Logger) config {
 		os.Exit(1)
 	}
 	c.Voice = voice
+	lfgBoard, lerr := discord.LFGFromEnv(os.Getenv)
+	if lerr != nil {
+		log.Error("#lfg board config invalid", "err", lerr)
+		os.Exit(1)
+	}
+	c.LFG = lfgBoard
 
 	if c.AdminToken == "" {
 		log.Error("CMDCTRL_ADMIN_TOKEN is required — set it to a long random string before starting the server")
@@ -1561,4 +1606,14 @@ func seedDemoGame(log *slog.Logger) *game.Game {
 		os.Exit(1)
 	}
 	return g
+}
+
+// publicBaseURL is the origin links to this deployment are built
+// against: bug-report attachments, DM invites and #lfg posts.
+// CMDCTRL_PUBLIC_BASE_URL, else CMDCTRL_CLIENT_BASE_URL, else "".
+func publicBaseURL() string {
+	if base := os.Getenv("CMDCTRL_PUBLIC_BASE_URL"); base != "" {
+		return base
+	}
+	return os.Getenv("CMDCTRL_CLIENT_BASE_URL")
 }

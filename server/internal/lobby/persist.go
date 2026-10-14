@@ -123,6 +123,9 @@ func gameRecordLocked(entry *gameEntry) GameRecord {
 		// ADR 0159 §5.
 		VoiceRoom:      entry.meta.VoiceRoom,
 		VoiceChannelID: entry.voiceChannelID,
+		// ADR 0161 §6.
+		LFG:          entry.meta.LFG,
+		LFGMessageID: entry.lfgMessageID,
 	}
 	return rec
 }
@@ -138,6 +141,7 @@ func (l *Lobby) persistSeatsLocked(entry *gameEntry) {
 		return // practice.go: a practice table has no rows
 	}
 	l.voiceChangedLocked(entry)
+	l.lfgChangedLocked(entry)
 	ctx, cancel := storeCtx()
 	defer cancel()
 	if err := l.store.ReplaceSeats(ctx, entry.meta.ID, seatRecords(entry.meta.Players)); err != nil {
@@ -153,6 +157,7 @@ func (l *Lobby) persistGameLocked(entry *gameEntry) {
 		return // practice.go: a practice table has no rows
 	}
 	l.voiceChangedLocked(entry)
+	l.lfgChangedLocked(entry)
 	ctx, cancel := storeCtx()
 	defer cancel()
 	if err := l.store.UpdateGame(ctx, gameRecordLocked(entry)); err != nil {
@@ -244,6 +249,8 @@ func (l *Lobby) dropEntryLocked(id uuid.UUID) {
 		if l.voice != nil && !e.practice {
 			l.voice.notify(id)
 		}
+		// ADR 0161 §4: and its #lfg post.
+		l.lfgChangedLocked(e)
 	}
 }
 
@@ -462,6 +469,9 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 		HostDiscordID: rec.HostDiscordID,
 		// ADR 0159 §5: the host's choice survives a restart.
 		VoiceRoom: rec.VoiceRoom,
+		// ADR 0161 §6: and the #lfg choice. The manager reports the
+		// post's status once it has looked.
+		LFG: rec.LFG,
 		// CreatedBy (#1098): rec.CreatedBy is "" for an admin-created
 		// or file-imported game (Nil, matching CreateWith), and a
 		// stored UUID otherwise. A row somehow holding something
@@ -529,6 +539,8 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 		// ADR 0159 §5: the voice manager adopts it if the channel is
 		// still in the category.
 		voiceChannelID: rec.VoiceChannelID,
+		// ADR 0161 §6: the LFG manager's boot pass adopts it.
+		lfgMessageID: rec.LFGMessageID,
 	}
 	l.restampVoice(entry)
 	return entry, nil

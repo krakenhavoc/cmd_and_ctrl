@@ -150,6 +150,13 @@ type GameMeta struct {
 	// (ADR 0159 §1). Public: a table list may show which tables have
 	// voice. The room's own state rides the game view (§6).
 	VoiceRoom bool `json:"voice_room,omitempty"`
+	// LFG is whether the host posted the table to the Discord #lfg
+	// board (ADR 0161 §1). Public: the post itself is.
+	LFG bool `json:"lfg,omitempty"`
+	// LFGStatus is the post's state while LFG is on: pending, posted
+	// or unavailable (lfg_board.go). Never persisted; the LFG manager
+	// reports it.
+	LFGStatus string `json:"lfg_status,omitempty"`
 }
 
 // Archived reports whether the table has been retired from the
@@ -309,6 +316,9 @@ type Lobby struct {
 	// voice is the voice manager (ADR 0159 §4), nil when voice rooms
 	// are off. Set once at boot by SetVoiceManager.
 	voice *VoiceManager
+	// lfg is the #lfg manager (ADR 0161 §5), nil when the board is
+	// off. Set once at boot by SetLFGManager.
+	lfg *LFGManager
 	// store is where the lobby's half of a game survives the process:
 	// games, seats and invites rows (ADR 0051 decision 4). Also the
 	// only place an invite is validated against — see resolveInvite.
@@ -386,6 +396,8 @@ func (l *Lobby) applyLocked(id uuid.UUID, entry *gameEntry, fn func() error) (fu
 	if err != nil {
 		return nil, err
 	}
+	// ADR 0161 §4: a settings change shows on the table's #lfg post.
+	l.lfgChangedLocked(entry)
 	if l.broadcast == nil {
 		return func() {}, nil
 	}
@@ -445,6 +457,11 @@ type gameEntry struct {
 	// activity.
 	voiceReport  *voiceReport
 	voicePushSeq uint64
+
+	// lfgMessageID is the table's live #lfg post
+	// (games.lfg_message_id, ADR 0161 §6), "" for none. Written by the
+	// LFG manager; the lobby only persists it.
+	lfgMessageID string
 }
 
 // NewLobby constructs an empty Lobby backed by mgr and an in-memory
@@ -678,6 +695,9 @@ func (l *Lobby) RotateInvite(id uuid.UUID, kind InviteKind) (string, GameMeta, e
 	case InviteSpectator:
 		entry.meta.SpectatorInvite = newToken
 	}
+	// ADR 0161 §4: the #lfg post must not keep a link that stopped
+	// working.
+	l.lfgChangedLocked(entry)
 	return newToken, copyMeta(entry.meta), nil
 }
 

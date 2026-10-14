@@ -200,6 +200,13 @@ type PaidCost struct {
 	// and clears the rest. Added in ADR 0073 (#664).
 	OptionalCosts []int `json:"optionalCosts,omitempty"`
 
+	// GrantedOptional is the Key of each optional cost a PERMANENT gave
+	// this spell that was paid (granted_optional_cost.go, #3245) —
+	// Silverquill's casualty. Kept apart from OptionalCosts, whose
+	// indices name the card's own list, and read by key with
+	// GrantedOptionalTimesPaid.
+	GrantedOptional []string `json:"grantedOptional,omitempty"`
+
 	// GiftOpponent is the opponent the caster chose while paying a
 	// gift cost (CR 702.174a) — the player the gift was PROMISED to —
 	// or uuid.Nil when no gift was promised. Non-nil is exactly CR
@@ -451,6 +458,9 @@ func clonePaidCost(p PaidCost) PaidCost {
 	out.Mana = cloneManaTokens(p.Mana)
 	if len(p.OptionalCosts) > 0 {
 		out.OptionalCosts = append([]int(nil), p.OptionalCosts...)
+	}
+	if len(p.GrantedOptional) > 0 {
+		out.GrantedOptional = append([]string(nil), p.GrantedOptional...)
 	}
 	if len(p.TappedOthers) > 0 {
 		out.TappedOthers = append([]PaidTap(nil), p.TappedOthers...)
