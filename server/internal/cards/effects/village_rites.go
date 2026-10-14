@@ -17,6 +17,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // it does: the creature dies with Village Rites still on the stack, so
 // a Blood Artist trigger drains before the cards are drawn, and
 // countering the spell does not hand the creature back.
+//
+// No simplification. Reviewed for the Shirei deck request (#3173).
 func init() {
 	Register(Spec{
 		OracleID:       "365548fb-5acc-4a8a-b20b-26d28b7d029f",

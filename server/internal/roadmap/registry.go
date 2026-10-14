@@ -1880,6 +1880,16 @@ var items = []Item{
 		EngineNotes: "Found by the Transformers batch (#3195). No bolster primitive exists. Bolster N chooses, as it resolves, a creature with the least toughness among those you control (a tie is the controller's choice) and puts N +1/+1 counters on it. Optimus Prime, Hero also needs the chosen creature carried on: \"The chosen creature gains trample until end of turn. When that creature deals combat damage to a player this turn, convert Optimus Prime\" is a delayed this-turn trigger on the chosen object (CR 603.7) whose convert records the source's turn-over count when it is created (CR 701.28e).",
 	},
 	{
+		Slug: "choose-two-players-as-enters", Name: "\"As this enters, choose two players\"", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Permanents that name two players as they enter and link them, like Sower of Discord.",
+		Missing:     "A permanent can remember one chosen player but not two, so Sower of Discord isn't available.",
+		Rules:       []string{"614.12", "120.3"},
+		Issue:       3389,
+		ADR:         "0072-protection.md",
+		Waiting:     []string{"Sower of Discord"},
+		EngineNotes: "Found by the Shirei deck request (#3173). `Card.ChosenPlayer` (ADR 0072 §7) holds one player, written by `QueueChoosePlayerAsEntersForEffect` and read with `effects.ChosenPlayerOf`. Sower of Discord: \"As this creature enters, choose two players. Whenever damage is dealt to one of the chosen players, the other chosen player also loses that much life.\" Needs a second persisted slot (snapshot rules, clone, cleared on leaving the battlefield, not copiable) and a two-player as-enters prompt. The trigger is an ordinary `EventDealDamage` watch.",
+	},
+	{
 		Slug: "exiled-with-ability-exiles", Name: "Cards an ability exiled, played later", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Permanents that exile cards with an ability and care when those cards are played later, like Prowl, Stoic Strategist.",
 		Missing:     "An ability can exile a card and let its owner play it, but the game does not remember which permanent exiled it, so Prowl, Stoic Strategist isn't available.",

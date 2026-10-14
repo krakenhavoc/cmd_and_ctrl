@@ -230,3 +230,4 @@ condition havengul-lich/you-cast-it
 pick revealed-pick/word-of-command-play
 body casualty/copy
 body paradigm/copy
+body shirei/return-if-still-on-the-battlefield

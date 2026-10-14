@@ -194,3 +194,31 @@ func retypedTypeLine(printed string, subtypes ...string) string {
 	}
 	return line + " — " + strings.Join(subtypes, " ")
 }
+
+// ExileTargetThenTokenCopy is "Exile target creature card from a
+// graveyard. Create a token that's a copy of it, except …" (The Scarab
+// God, Ardyn, the Usurper): the first still-legal card target is exiled,
+// and only a card that really was exiled is copied, under the resolving
+// item's controller, with `except` applied to the copy.
+func ExileTargetThenTokenCopy(g *game.Game, item *game.StackItem, except func(t *game.Card)) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		id := t.ID
+		controller := item.Controller
+		return ExileTarget{Target: id, Then: func(ctx *Context, exiled bool) error {
+			if !exiled {
+				return nil
+			}
+			return CreateTokenCopy{
+				Controller: controller,
+				Copy:       id,
+				N:          1,
+				Except:     except,
+			}.Apply(ctx)
+		}}.Apply(ctx)
+	}
+	return nil
+}
