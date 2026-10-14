@@ -105,11 +105,10 @@ function classify(url, method, mode) {
   //    DELETE /games/x, the whole mutating surface: untouched.
   if (method !== "GET") return "bypass";
 
-  // 2. Cross-origin is never cached. That includes the Google Fonts CDN:
-  //    those responses are opaque, so their status cannot be inspected and
-  //    their size is padded against the origin quota. app.css declares a
-  //    metric-close fallback for all three families, so a blocked or offline
-  //    font host degrades to system type rather than breaking.
+  // 2. Cross-origin is never cached. The fonts are
+  //    self-hosted (same-origin, precached), so no font CDN is involved; any
+  //    cross-origin response is opaque, so its status cannot be inspected and
+  //    its size is padded against the origin quota.
   if (url.origin !== SELF_ORIGIN) return "bypass";
 
   // 3. Card art: immutable, and the single biggest repeat-visit win.

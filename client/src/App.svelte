@@ -8,23 +8,19 @@
   // /login (the front page), and a session on it goes to the Lobby.
 
   import { applyFavicon } from "./lib/favicon";
+  import RouteLoading from "./lib/components/RouteLoading.svelte";
   import FrontPage from "./routes/FrontPage.svelte";
   import RequestAccess from "./routes/RequestAccess.svelte";
   import AdminLogin from "./routes/AdminLogin.svelte";
   import Lobby from "./routes/Lobby.svelte";
   import Join from "./routes/Join.svelte";
   import Reclaim from "./routes/Reclaim.svelte";
-  import Game from "./routes/Game.svelte";
-  import Catalog from "./routes/Catalog.svelte";
-  import Decks from "./routes/Decks.svelte";
   import Stats from "./routes/Stats.svelte";
-  import Roadmap from "./routes/Roadmap.svelte";
   import Privacy from "./routes/Privacy.svelte";
   import Terms from "./routes/Terms.svelte";
   import About from "./routes/About.svelte";
   import Guide from "./routes/Guide.svelte";
   import Practice from "./routes/Practice.svelte";
-  import Admin from "./routes/Admin.svelte";
   import Settings from "./lib/components/Settings.svelte";
   import ShortcutLayer from "./lib/components/ShortcutLayer.svelte";
   import UpdatePrompt from "./lib/components/UpdatePrompt.svelte";
@@ -42,6 +38,16 @@
   import { armMusicOnFirstGesture } from "./lib/music";
   import { loadAppConfig } from "./lib/env";
   import { loadCommunity } from "./lib/community";
+
+  // The heavy views are split out of the first bundle (#3345): the front
+  // page, lobby and the small static pages stay in it, while the table, the
+  // admin views, the decks page, the catalog and the roadmap load on first
+  // visit. The service worker precaches every chunk, so they work offline too.
+  const loadGame = () => import("./routes/Game.svelte");
+  const loadAdmin = () => import("./routes/Admin.svelte");
+  const loadDecks = () => import("./routes/Decks.svelte");
+  const loadCatalog = () => import("./routes/Catalog.svelte");
+  const loadRoadmap = () => import("./routes/Roadmap.svelte");
 
   // Ask the server which deployment this is, once, at shell mount.
   // Deliberately not awaited: every consumer defaults to production
@@ -156,9 +162,21 @@
 {:else if $route.name === "adminLogin"}
   <div class="app-column"><AdminLogin /></div>
 {:else if $route.name === "adminViews"}
-  <Admin view={$route.view} />
+  {#await loadAdmin()}
+    <RouteLoading />
+  {:then { default: Admin }}
+    <Admin view={$route.view} />
+  {:catch}
+    <RouteLoading failed />
+  {/await}
 {:else if $route.name === "roadmap"}
-  <Roadmap />
+  {#await loadRoadmap()}
+    <RouteLoading />
+  {:then { default: Roadmap }}
+    <Roadmap />
+  {:catch}
+    <RouteLoading failed />
+  {/await}
 {:else if $route.name === "privacy"}
   <Privacy />
 {:else if $route.name === "terms"}
@@ -168,7 +186,13 @@
 {:else if $route.name === "guide"}
   <Guide />
 {:else if $route.name === "decks"}
-  <Decks />
+  {#await loadDecks()}
+    <RouteLoading />
+  {:then { default: Decks }}
+    <Decks />
+  {:catch}
+    <RouteLoading failed />
+  {/await}
 {:else if $route.name === "lobby"}
   <Lobby />
 {:else if $route.name === "stats"}
@@ -176,7 +200,13 @@
 {:else if $route.name === "practice"}
   <Practice />
 {:else if $route.name === "catalog"}
-  <Catalog />
+  {#await loadCatalog()}
+    <RouteLoading />
+  {:then { default: Catalog }}
+    <Catalog />
+  {:catch}
+    <RouteLoading failed />
+  {/await}
 {:else if $route.name === "join"}
   <Join
     gameID={$route.gameID}
@@ -191,7 +221,13 @@
        the route (fresh GameClient, fresh per-game local state)
        instead of reusing the old component with a swapped prop. -->
   {#key $route.gameID}
-    <Game gameID={$route.gameID} />
+    {#await loadGame()}
+      <RouteLoading />
+    {:then { default: Game }}
+      <Game gameID={$route.gameID} />
+    {:catch}
+      <RouteLoading failed />
+    {/await}
   {/key}
 {/if}
 
