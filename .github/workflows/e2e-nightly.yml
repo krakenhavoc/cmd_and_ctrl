@@ -334,6 +334,108 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # The curated decks and the tutorial table, played to completion
+  # (#3347). These are what a stranger plays first: the Add-bot picker,
+  # the human deck picker and the practice table. Every other bot job
+  # here deals a synthetic battle deck, a random catalog deck or random
+  # seats, and the tests below skip without the dump, so before this job
+  # nothing played them and a stall in one would have reached a player
+  # first.
+  #
+  #   1. TestTutorialTablePlaysSafely: the two fixed tutorial decks,
+  #      random seats, no stall, no effect error, player still healthy.
+  #   2. TestLockstepRotatedSeedsReplay: #2904's two seeds replay move
+  #      for move on four curated decks.
+  #   3. boteval arena, 16 four-seat heuristic games in lockstep per
+  #      table, over all eight curated decks (two tables of four,
+  #      rotated), failing on any stall. The arena REPORTS a stall
+  #      rather than failing on it, so scripts/curated-arena.sh reads
+  #      summary.json. A game the turn budget stops is not a stall.
+  #
+  # The deck ids in the two arena steps are the registry in
+  # server/internal/decks/decks.go; a new curated deck needs adding
+  # here. No -race, like the other dump jobs: this is about the cards
+  # the games reach, and `bot-games` covers the runner under it. Seeds
+  # are fixed and lockstep, so a red night replays move for move with
+  # the same command. A test job: it holds no secrets.
+  curated-decks:
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 60
+    env:
+      AISEAT_GAME_TESTS: "1"
+      CMDCTRL_DATA_DIR: ${{ github.workspace }}/data
+      CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TESTED_REF }}
+
+      # Cached on a hosted runner only (#1434); see bot-games above for
+      # why a self-hosted one stays cache: false.
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: "1.27"
+          cache: ${{ runner.environment == 'github-hosted' }}
+          cache-dependency-path: server/go.sum
+
+      - name: Compute Scryfall cache key
+        id: scryfall-stamp
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Scryfall bulk data
+        uses: actions/cache@v6
+        with:
+          path: data/scryfall
+          key: scryfall-default-cards-${{ steps.scryfall-stamp.outputs.date }}
+          restore-keys: |
+            scryfall-default-cards-
+
+      - name: Refresh Scryfall bulk data
+        run: scripts/scryfall-refresh.sh
+
+      # -count=1 so a cached pass never stands in for tonight's run;
+      # -v so a skip (a missing dump) shows in the log, not a quiet ok.
+      - name: Tutorial table and lockstep seeds
+        working-directory: server
+        run: >
+          go test ./internal/aiseat/ ./internal/botarena/
+          -run 'TestTutorialTablePlaysSafely|TestLockstepRotatedSeedsReplay'
+          -count=1 -v -timeout 30m
+
+      - name: Curated decks, table A, 16 lockstep games
+        if: ${{ !cancelled() }}
+        working-directory: server
+        run: >-
+          ../scripts/curated-arena.sh
+          "$RUNNER_TEMP/arena-a"
+          mono-red-aggro,simic-ramp,esper-control,mono-black-aristocrats
+
+      - name: Curated decks, table B, 16 lockstep games
+        if: ${{ !cancelled() }}
+        working-directory: server
+        run: >-
+          ../scripts/curated-arena.sh
+          "$RUNNER_TEMP/arena-b"
+          mono-green-stompy,mono-white-weenie,boros-voltron,wubrg-dragons
+
+      # games.jsonl names the castable cards in every hand of a stalled
+      # game (operator-only, see docs/bot.md), so only the summaries go
+      # up. Kept on a green run too: the turn counts are the trend.
+      - name: Upload arena summaries
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: curated-arena
+          path: |
+            ${{ runner.temp }}/arena-a/**/summary.md
+            ${{ runner.temp }}/arena-a/**/summary.json
+            ${{ runner.temp }}/arena-b/**/summary.md
+            ${{ runner.temp }}/arena-b/**/summary.json
+          if-no-files-found: ignore
+          retention-days: 14
+
   # The three checks that compare checked-in data with the real
   # Scryfall dump. They used to be the playwright job's first steps,
   # ~4 minutes the browser suite waited behind every night; #2661 gave
