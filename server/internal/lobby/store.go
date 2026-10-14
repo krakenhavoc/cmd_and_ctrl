@@ -142,6 +142,12 @@ type SeatRecord struct {
 	// seat.
 	BotKeyUserID string
 	BotKeyModel  string
+	// StandIn is the bot tier playing a person's seat while they are
+	// away (seats.stand_in, migration 0026, ADR 0177 §4), and
+	// StandInSince when it took the seat. "" and nil for every other
+	// seat.
+	StandIn      string
+	StandInSince *time.Time
 }
 
 // InviteRecord is one invites row.

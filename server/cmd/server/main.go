@@ -405,6 +405,9 @@ func main() {
 	// Lobby HTTP mutations (join/deck/start) broadcast through the
 	// hub so clients already on the game page see them immediately.
 	l.SetStateBroadcaster(hub)
+	// ADR 0177: who is away, and moving the table on without them.
+	l.SetAwayPresence(hub)
+	go l.RunAway(ctx)
 	// The rematch offer closes when every human it waits on has left the
 	// results screen, which only the hub can see (#3285, ADR 0164).
 	l.SetSeatPresence(hub)
