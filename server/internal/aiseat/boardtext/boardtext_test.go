@@ -133,6 +133,21 @@ func TestRenderCompoundWardLifeCost(t *testing.T) {
 	}
 }
 
+// A stack item aimed at a card in a graveyard names it: agent seats read
+// Animate Dead, Victimize and Eternal Witness as "targets: something".
+func TestRenderNamesAGraveyardTarget(t *testing.T) {
+	v := view()
+	v.Seats[1].Graveyard.Cards = []protocol.CardView{{InstanceID: "gy-1", Name: "Blood Artist", Owner: "b"}}
+	v.StackItems = []protocol.StackItemView{{
+		ID: "s-1", Kind: "spell", Label: "Animate Dead", Controller: "a",
+		Targets: []protocol.TargetRefView{{Kind: "card", ID: "gy-1"}},
+	}}
+	got := boardtext.Render(v, "a", boardtext.Options{})
+	if !strings.Contains(got, "targets: Blood Artist (in a graveyard)") {
+		t.Fatalf("the graveyard target is not named: %s", got)
+	}
+}
+
 // #3015: a trigger-order prompt says why it was asked, as the browser's
 // prompt does. An agent seat saw only "Order your triggers (choose 2)".
 func TestRenderSaysWhyTheTriggerOrderWasAsked(t *testing.T) {
