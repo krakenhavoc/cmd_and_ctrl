@@ -120,6 +120,13 @@ that came back active.
 
 ## The four tiers
 
+> **The model tiers are not the stronger ones yet.** Until an arena run shows
+> `assisted` or `strong` at or above the heuristic, the picker labels both
+> "(experimental)" with their measured result, and `heuristic` is the
+> default (#3341). Tier names run weakest-first in the picker's order, not
+> in strength. Drop the label from `tierCatalog` in
+> `server/internal/aiseat/tier.go` when a measurement justifies it.
+
 The tier is the difficulty slider, set per bot at add time and shown
 on the seat's chip. All four names are declared by the API from the
 first release so the wire shape never changes as policies land.
@@ -128,8 +135,8 @@ first release so the wire shape never changes as policies land.
 |---|---|---|---|
 | `random` | Picks uniformly among its legal moves. | 2s | nothing |
 | `heuristic` | Scores the board and plays the best move it can see. Free and deterministic. | 2s | nothing |
-| `assisted` | The heuristic, with a model consulted on the close calls. The intended default. | 2s | a model endpoint |
-| `strong` | A model on every window that survives the rules filter, over a wider candidate list. | **5s** | a model endpoint |
+| `assisted` | The heuristic, with a model consulted on the close calls. **Experimental**: it lost 58 of 60 games to the heuristic (#3059), so the client defaults to `heuristic` and the picker labels it so. | 2s | a model endpoint |
+| `strong` | A model on every window that survives the rules filter, over a wider candidate list. **Experimental and never measured**; it may play worse than the heuristic. | **5s** | a model endpoint |
 
 `MinThink` is 700ms for every tier: a fast decision is held so the
 table does not feel precognitive. A seat whose only legal move is to pass has no decision to hide, so it

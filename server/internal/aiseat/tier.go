@@ -145,7 +145,9 @@ func (builtinFactory) TierStatus(t Tier) TierStatus {
 	}
 }
 
-// tierCatalog is the declared order, weakest-first, which is also the
+// tierCatalog is the declared order, weakest-first (by design; the
+// model tiers are labelled experimental because no arena run has shown
+// them at or above the heuristic, #3341 / #3059), which is also the
 // order the picker renders. Availability is deliberately NOT a field
 // of the literal: it is a property of the server's factory, filled in
 // by tiersFor.
@@ -162,13 +164,13 @@ var tierCatalog = []TierInfo{
 	},
 	{
 		Tier:        TierAssisted,
-		Label:       "Assisted",
-		Description: "Heuristic play with a model consulted on the close calls. Needs a model API key on the server.",
+		Label:       "Assisted (experimental)",
+		Description: "Experimental: weaker than Heuristic in testing (it lost 58 of 60 games to it). A model is consulted on the close calls. Needs a model API key on the server.",
 	},
 	{
 		Tier:        TierStrong,
-		Label:       "Strong",
-		Description: "Every close call goes to the frontier model with a wider candidate list, and a longer think to pay for it.",
+		Label:       "Strong (experimental)",
+		Description: "Experimental and not yet measured: it may play worse than Heuristic. Every close call goes to the frontier model with a wider candidate list, and a longer think.",
 	},
 }
 
