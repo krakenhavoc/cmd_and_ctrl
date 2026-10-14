@@ -23,7 +23,7 @@ func init() {
 		OracleID:            "03436524-197a-4941-a2a1-c7c4b71c4709",
 		Name:                "Arcbound Wanderer",
 		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"When mana payment is skipped, the game doesn't track which mana you spent, so it enters with no counters at all."},
+		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so it enters with no counters at all."},
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Triggered: []game.TriggeredAbility{

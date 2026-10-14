@@ -38,7 +38,7 @@ func init() {
 		OracleID:     "cbd76b22-d04e-48e7-bcab-c7f5466d67d8",
 		Name:         "Lux Artillery",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When mana payment is skipped, the game doesn't track which mana you spent, so the artifact creatures you cast get no counters from it."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so the artifact creatures you cast get no counters from it."},
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(And(Artifact(), Creature()), "Lux Artillery — it gains sunburst",
 				Do(ThatSpellGains{Keywords: []string{game.KeywordSunburst}})),

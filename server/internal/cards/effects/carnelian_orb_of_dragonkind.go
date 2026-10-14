@@ -20,7 +20,7 @@ func init() {
 		OracleID:     "651c967c-8f71-4eb5-b22f-545e55ea050e",
 		Name:         "Carnelian Orb of Dragonkind",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so the Dragon never gains haste."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so the Dragon never gains haste."},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{R}",

@@ -36,7 +36,7 @@ func init() {
 		Name:         "Abby, Merciless Soldier",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"When mana payment is skipped, the game doesn't track what you spent, so Abby makes no Cordyceps Infected tokens — turn strict mana on for it to count.",
+			"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track what you spent, so Abby makes no Cordyceps Infected tokens — turn on “Charge mana costs” for it to count.",
 		},
 		Replacements: []game.ReplacementEffect{
 			EntersUnderTheControlOfAnOpponentOfYourChoice("Abby, Merciless Soldier", game.ControlForHarm),

@@ -28,7 +28,7 @@ func init() {
 		Name:         "Primal Wellspring",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"When mana payment is skipped, the game doesn't see which mana you spent, so the spell is never copied.",
+			"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so the spell is never copied.",
 		},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

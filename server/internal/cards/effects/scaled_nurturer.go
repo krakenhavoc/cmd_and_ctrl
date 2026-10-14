@@ -28,7 +28,7 @@ func init() {
 		OracleID:     "13b96709-0e88-476b-9485-956e682bb818",
 		Name:         "Scaled Nurturer",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so the 2 life is never gained."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so the 2 life is never gained."},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{G}",

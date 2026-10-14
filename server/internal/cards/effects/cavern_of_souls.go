@@ -43,7 +43,7 @@ func init() {
 		OracleID:     "89ca686a-7c72-4d8f-9290-e89635624a83",
 		Name:         "Cavern of Souls",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so a spell cast with Cavern's colored mana can still be countered."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so a spell cast with Cavern's colored mana can still be countered."},
 		AsEnters:     ChooseCreatureTypeAsEnters("Cavern of Souls"),
 		ManaAbilities: []ManaAbility{
 			{

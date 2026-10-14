@@ -32,7 +32,7 @@ func init() {
 		OracleID:     "34f83b7a-45a7-40a8-abcb-31d7aae4cea1",
 		Name:         "Roiling Vortex",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When mana payment is skipped, the game doesn't track what was spent, so a spell cast for no mana isn't punished — turn strict mana on for that ability to work."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track what was spent, so a spell cast for no mana isn't punished — turn on “Charge mana costs” for that ability to work."},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginUpkeep, func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor != uuid.Nil

@@ -34,7 +34,7 @@ func init() {
 		OracleID:     "f76bcbfe-483f-4e63-8425-76feca1abf3e",
 		Name:         "Pyromancer's Goggles",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so the spell is never copied."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so the spell is never copied."},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{R}",
