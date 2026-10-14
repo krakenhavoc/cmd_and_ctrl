@@ -1385,7 +1385,7 @@ closes, and for four hours after the game ended if nobody offers.
 
 ### Stack position: `PUT` and `DELETE /games/{id}/stack-position` (ADR 0176, #3429)
 
-A seat drags the stack card somewhere else on its board and the table remembers
+A seat drags the stack (the docked card or the floating lane, whichever style it plays) somewhere else on its board and the table remembers
 where for the rest of the game. Called with a **seat session at the table**; the
 seat is the session's, never one named in the request, so nobody can place
 another seat's card. The admin token and a spectator are refused (403), and so is

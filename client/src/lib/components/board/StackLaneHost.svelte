@@ -30,10 +30,22 @@
   // tutorial's coach card, the dev dock), with its card sized to the
   // room it has (lib/stackPile.ts). It also gets a collapse button on
   // the header, and shrinks while the viewer chooses a target.
+  //
+  // #3429, ADR 0176: movable. The header is a drag handle for every
+  // style, and a seat's saved spot (the same one the docked card uses,
+  // so it follows the style) is the lane's top-left corner as a fraction
+  // of the board, clamped on screen at the lane's size now without
+  // rewriting the saved value. Each style's natural anchor maps onto it
+  // by being a top-left too: the pile's is (12px, its computed top), the
+  // other three's is the centred box's top-left. With a spot saved the
+  // lane leaves its anchor for it (the three centred styles shrink to
+  // 640px wide, since a full-width lane would have nowhere to move to);
+  // with none, placement is untouched. The drag, save and reset are
+  // lib/stackPlacement.svelte.ts, shared with the docked card.
 
   import type { Component } from "svelte";
   import { untrack } from "svelte";
-  import type { CardView, GameView, StackItemView } from "../../protocol";
+  import type { CardView, GameView, StackItemView, StackPositionView } from "../../protocol";
   import {
     buildStackLane,
     type StackLaneControls,
@@ -51,6 +63,8 @@
     pileTop,
     stripContentBottom,
   } from "../../stackPile";
+  import { stackPixels } from "../../stackPosition";
+  import { createStackPlacement } from "../../stackPlacement.svelte";
   import { createStackHover } from "../../stackHover";
   import { previewableCard } from "../../stackPreview";
   import { hoveredCard } from "../../cardTypes";
@@ -74,6 +88,11 @@
     considering?: boolean;
     onCounter: (item: StackItemView) => void;
     onTargetStackItem?: (item: StackItemView) => void;
+    // #3429: the seat's saved spot and what a drop and a reset do about
+    // it; a spectator passes no onSave / onReset.
+    position?: StackPositionView | null;
+    onSave?: (pos: StackPositionView) => void | Promise<void>;
+    onReset?: () => void | Promise<void>;
   }
 
   const {
@@ -84,6 +103,9 @@
     considering = false,
     onCounter,
     onTargetStackItem,
+    position = null,
+    onSave,
+    onReset,
   }: Props = $props();
 
   // A design is a component taking StackLaneStyleProps; adding one is
@@ -218,6 +240,7 @@
   let boardH = $state(0);
   let boardW = $state(0);
   let laneH = $state(0);
+  let laneW = $state(0);
   // ADR 0119 §1, the pile's clamps: the attention strip's content
   // bottom and a bottom-left fixture's top, in board pixels.
   let stripBottom = $state<number | null>(null);
@@ -237,6 +260,7 @@
       seamY = self.getBoundingClientRect().top - b.top - 4;
     }
     laneH = laneEl?.offsetHeight ?? 0;
+    laneW = laneEl?.offsetWidth ?? 0;
     if (style === "pile") {
       stripBottom = stripContentBottom(boardEl);
       fixtureTop = bottomLeftFixtureTop(boardEl, PILE_INSET + (laneEl?.offsetWidth ?? 0));
@@ -282,6 +306,23 @@
     return Math.max(margin, Math.min(top, boardH - laneH - margin));
   });
 
+  // ---- #3429 movable ---------------------------------------------------
+  const move = createStackPlacement({
+    position: () => position,
+    onSave: () => onSave,
+    onReset: () => onReset,
+    panel: () => laneEl,
+    board: () => boardEl,
+    before: () => measure(),
+  });
+  // The lane's drawn top-left in board pixels, or null while it sits at
+  // its style's anchor (nothing saved, or the board not measured yet).
+  const placedPx = $derived.by(() => {
+    const p = move.placed;
+    if (!p || boardH <= 0 || boardW <= 0 || laneW <= 0) return null;
+    return stackPixels(p, { width: boardW, height: boardH }, { width: laneW, height: laneH });
+  });
+
   const stackCount = $derived(model.stackItems.length);
 
   // ---- the pile's size, collapse and shrink (ADR 0119 §1) -------------
@@ -322,7 +363,10 @@
   <div
     class="lane-host"
     class:measured={laneTop !== null}
-    style:top={laneTop !== null ? `${laneTop}px` : null}
+    class:placed={placedPx !== null}
+    class:dragging={move.dragging}
+    style:top={placedPx ? `${placedPx.top}px` : laneTop !== null ? `${laneTop}px` : null}
+    style:left={placedPx ? `${placedPx.left}px` : null}
     data-stack-style={style}
   >
     {#if style === "pile" && collapsed}
@@ -338,7 +382,21 @@
       </section>
     {:else}
       <section class="stack-lane" bind:this={laneEl} aria-label={L.stackPile(stackCount)}>
-        <header class="head">
+        <!-- #3429: the header is the drag handle; double-click resets. The
+             keyboard route is the reset button, so the pointer handlers
+             need no role. -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <header
+          class="head"
+          class:movable={boardEl !== null}
+          data-stack-handle
+          title={boardEl ? "drag to move the stack · double-click to reset" : undefined}
+          onpointerdown={move.onPointerDown}
+          onpointermove={move.onPointerMove}
+          onpointerup={move.onPointerUp}
+          onpointercancel={move.onPointerCancel}
+          ondblclick={boardEl ? move.reset : undefined}
+        >
           <span class="label">the stack <b class="count">{stackCount}</b></span>
           {#if model.splitSecond}
             <span class="status split-second" title="no responses allowed (split second is active)">
@@ -358,6 +416,17 @@
           <!-- ADR 0111 §7: no hold or Pass on the lane. Both live in the
              action dock (bottom right), and its `next` is the one pass
              button. -->
+          {#if move.placed}
+            <button
+              type="button"
+              class="reset-pos"
+              title="Reset position"
+              aria-label="Reset stack position"
+              onclick={move.reset}
+            >
+              <Icon name="undo" size={12} />
+            </button>
+          {/if}
           {#if style === "pile"}
             <button
               type="button"
@@ -449,6 +518,49 @@
   }
   .lane-host[data-stack-style="pile"] .summary {
     font-size: 12.5px;
+  }
+  /* #3429: a placed lane leaves its anchor for the saved spot, which the
+     script sets as left and top. The centred styles come in to a width
+     that leaves room to move; the pile is already as wide as its card. */
+  .lane-host[data-stack-style].placed {
+    transform: none;
+  }
+  .lane-host.placed:not([data-stack-style="pile"]) {
+    width: min(640px, calc(100% - 32px));
+  }
+  .lane-host.dragging .stack-lane {
+    box-shadow: var(--shadow-lg), var(--ring);
+    user-select: none;
+  }
+  .head.movable {
+    cursor: grab;
+    touch-action: none;
+  }
+  .lane-host.dragging .head.movable {
+    cursor: grabbing;
+  }
+  .reset-pos {
+    flex: 0 0 auto;
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface-raised);
+    color: var(--fg-dim);
+    cursor: pointer;
+  }
+  .reset-pos:hover,
+  .reset-pos:focus-visible {
+    color: var(--fg);
+    border-color: var(--border-strong);
+  }
+  .reset-pos + .collapse {
+    margin-left: 0;
   }
   .collapse {
     margin-left: auto;
