@@ -4881,7 +4881,7 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 	// prompts has not. Hold the whole boundary (the sweep and the
 	// CR 603.3 drain) until the answer finishes it. See
 	// resolution_pause.go.
-	// ADR 0164: a player-controlling effect that no longer applies
+	// ADR 0166: a player-controlling effect that no longer applies
 	// ends here. Ahead of the hold, because the resolution it would
 	// hold for can be the forced play itself, whose players have gone.
 	g.prunePlayerControlsLocked()
@@ -6892,7 +6892,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	// ADR 0164: Word of Command's forced play lets the player activate
+	// ADR 0166: Word of Command's forced play lets the player activate
 	// only their lands' mana abilities.
 	if g.LandManaOnlyLocked(playerID) && (srcZone != ZoneBattlefield || !card.IsLand()) {
 		return ErrCantActivate

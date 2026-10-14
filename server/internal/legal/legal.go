@@ -138,7 +138,7 @@ type Move struct {
 	// which is what it did before.
 	AlwaysLegal bool `json:"always_legal,omitempty"`
 	// ControlledPlay is the controlled_play prompt this move answers
-	// (ADR 0164 §4): one of the ways to make Word of Command's forced
+	// (ADR 0166 §4): one of the ways to make Word of Command's forced
 	// play, or "it can't be played". The client lists exactly these
 	// moves in that prompt, and the wire cap never folds them away.
 	ControlledPlay string `json:"controlled_play,omitempty"`
@@ -719,7 +719,7 @@ func newEnumerator(g *game.Game, seat uuid.UUID, opts Options) *enumerator {
 	if p == nil || p.Eliminated {
 		return nil
 	}
-	// ADR 0164, CR 723.5: a seat another player controls decides
+	// ADR 0166, CR 723.5: a seat another player controls decides
 	// nothing; its controller is offered its prompts instead
 	// (controlledChoiceMoves).
 	if g.ControllerOfPlayerLocked(seat) != seat {
@@ -762,7 +762,7 @@ func (e *enumerator) run() {
 	if e.choiceMoves() {
 		return
 	}
-	// ADR 0164: the prompts a player this seat controls owes.
+	// ADR 0166: the prompts a player this seat controls owes.
 	if e.controlledChoiceMoves() {
 		return
 	}

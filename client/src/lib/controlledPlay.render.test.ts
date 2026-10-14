@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 //
-// ADR 0164 §4 (#2164): Word of Command's forced play. The controller is
+// ADR 0166 §4 (#2164): Word of Command's forced play. The controller is
 // shown the chosen card and the server's ways of playing it (the legal
 // moves naming the prompt), and each one is sent exactly as the server
 // wrote it, as the controlled player. With one way it is the bar's
@@ -113,7 +113,7 @@ function mount(moves: LegalMoveView[]): { container: HTMLElement; sent: Sent[] }
   return { container: view.container, sent };
 }
 
-describe("ControlledPlaySheet — Word of Command's forced play (ADR 0164)", () => {
+describe("ControlledPlaySheet — Word of Command's forced play (ADR 0166)", () => {
   it("names the card and the player you control", () => {
     mount([castAt("them", "Cast Lightning Bolt targeting Bob")]);
     const dialog = document.querySelector('[role="dialog"][aria-label^="Word of Command"]');

@@ -581,7 +581,7 @@ func dispatch(g *game.Game, a Action) error {
 	if _, ok := openingRollActions[a.Type]; !ok && g.OpeningRollOpen() {
 		return game.ErrOpeningRollOpen
 	}
-	// ADR 0164, CR 723.5: a player another player controls makes no
+	// ADR 0166, CR 723.5: a player another player controls makes no
 	// decisions, and the controller makes them as that player.
 	a, err := routeControlledPlayer(g, a)
 	if err != nil {
@@ -623,7 +623,7 @@ func dispatch(g *game.Game, a Action) error {
 			return ErrInvalidPlayer
 		}
 		var p struct {
-			// ADR 0164 §4: the controlled_play prompt this cast answers.
+			// ADR 0166 §4: the controlled_play prompt this cast answers.
 			// Word of Command's forced play is cast during its
 			// resolution (CR 608.2g), so nobody holds priority for it.
 			ControlledPlay string           `json:"controlled_play,omitempty"`

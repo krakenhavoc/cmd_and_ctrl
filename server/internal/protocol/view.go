@@ -202,7 +202,7 @@ type GameView struct {
 	// Drained by resolve_choice actions. Added in S14 sub-PR 5.
 	PendingChoices []PendingChoiceView `json:"pending_choices,omitempty"`
 	// PlayerControls is who is making whose decisions right now (CR
-	// 723, ADR 0164): Word of Command's controller while its forced play
+	// 723, ADR 0166): Word of Command's controller while its forced play
 	// happens and while the spell it forced resolves. FilterViewFor
 	// shows a controller every card the player they control can see
 	// (CR 723.4).
@@ -341,7 +341,7 @@ type PendingChoiceView struct {
 	Kind    string `json:"kind"`
 	Chooser string `json:"chooser"`
 	// OnBehalfOf is the player who owes the prompt when another player
-	// controls them (CR 723.5, ADR 0164): Chooser is then the
+	// controls them (CR 723.5, ADR 0166): Chooser is then the
 	// controller, who answers it. Empty otherwise.
 	OnBehalfOf string `json:"on_behalf_of,omitempty"`
 	FromPlayer string `json:"from_player"`
@@ -5040,7 +5040,7 @@ func capLegalMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 	seen := make(map[key]bool, len(moves))
 	out := make([]LegalMoveView, 0, legalMovesWireCap)
 	for _, m := range moves {
-		// ADR 0164: a forced play's ways are the whole of the decision
+		// ADR 0166: a forced play's ways are the whole of the decision
 		// its prompt shows, so none of them is an alternative to fold.
 		if m.ControlledPlay != "" {
 			out = append(out, m)
@@ -8005,7 +8005,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c == nil {
 			continue
 		}
-		// ADR 0164: the prompt is shown to whoever answers it now.
+		// ADR 0166: the prompt is shown to whoever answers it now.
 		answerer := g.ControllerOfPlayerLocked(c.Chooser)
 		v := PendingChoiceView{
 			ID:            c.ID.String(),
@@ -8084,7 +8084,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if answerer != c.Chooser {
 			v.OnBehalfOf = c.Chooser.String()
 		}
-		// ADR 0164 §4: Word of Command's forced play shows the one card,
+		// ADR 0166 §4: Word of Command's forced play shows the one card,
 		// which its chooser looked at.
 		if c.Kind == game.PendingChoiceControlledPlay && len(c.DiscardOptions) == 1 {
 			if fromP := g.PlayerByIDForEffect(c.FromPlayer); fromP != nil && fromP.Hand != nil {
@@ -9128,7 +9128,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 			seatIDs = append(seatIDs, p.ID)
 		}
 	}
-	// ADR 0164, CR 723.4: a controller sees what the player they
+	// ADR 0166, CR 723.4: a controller sees what the player they
 	// control can see.
 	var controlled []string
 	for _, pc := range v.PlayerControls {
@@ -9305,7 +9305,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// #628: public, and identical for every seat — see the field
 		// comment. Nothing in it names a card in a hidden zone.
 		LoopNotice: v.LoopNotice,
-		// ADR 0164: public, and identical for every seat: who is making
+		// ADR 0166: public, and identical for every seat: who is making
 		// whose decisions. What it lets the controller see is applied
 		// through isKnower above.
 		PlayerControls: v.PlayerControls,

@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// player_control.go — one player controlling another (CR 723, ADR 0164,
+// player_control.go — one player controlling another (CR 723, ADR 0166,
 // #2164).
 //
 // Word of Command is the one card that uses it today (CR 723.2's
@@ -192,7 +192,7 @@ func (g *Game) ControlledPlayCardLocked(p, card uuid.UUID) bool {
 }
 
 // LandPlayWindowOpenLocked is CR 305's window for p to play card: their
-// main phase with the stack empty, or (ADR 0164) the card is the one
+// main phase with the stack empty, or (ADR 0166) the card is the one
 // Word of Command is making them play and it is their turn (CR 305.3).
 // The land play allowance is asked separately. Caller must hold g.mu.
 func (g *Game) LandPlayWindowOpenLocked(p, card uuid.UUID) bool {
@@ -236,7 +236,7 @@ type ControlledPlay struct {
 }
 
 // BeginControlledPlayForEffect starts Word of Command's control and its
-// forced play (ADR 0164 §4). The record goes in first, because the
+// forced play (ADR 0166 §4). The record goes in first, because the
 // probe asks the enumerator whether the card can be played under it
 // (land mana only, the type's timing lifted). A card that can't be
 // played ends the control at once: "The player plays that card if

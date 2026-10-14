@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 card. If the chosen card is cast as a spell, you control the player
 //	 while that spell is resolving."
 //
-// CR 723.2's limited control of a player (ADR 0164, #2164). You look at
+// CR 723.2's limited control of a player (ADR 0166, #2164). You look at
 // the hand (nobody else sees it) and choose any card, which stays where
 // it is. Then you control that player while their forced play happens,
 // still inside Word of Command's resolution: a controlled_play prompt

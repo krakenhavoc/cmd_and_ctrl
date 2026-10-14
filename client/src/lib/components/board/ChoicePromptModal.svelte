@@ -169,7 +169,7 @@
       ) {
         continue;
       }
-      // ADR 0164: Word of Command's forced play has its own sheet
+      // ADR 0166: Word of Command's forced play has its own sheet
       // (ControlledPlaySheet.svelte).
       if (c.kind === "controlled_play") continue;
       if (c.chooser === viewerID) return c;
@@ -397,7 +397,7 @@
   // Agonizing Remorse — the revealing player's graveyard after the hand.
   const isRevealedVariant = $derived(active?.kind === "revealed_hand_pick");
   const isExilePick = $derived(isRevealedVariant && active?.pick_destination === "exile");
-  // ADR 0164: Word of Command looks at the hand (only you see it) and
+  // ADR 0166: Word of Command looks at the hand (only you see it) and
   // the chosen card stays there, to be played.
   const isKeepPick = $derived(isRevealedVariant && active?.pick_destination === "keep");
   // Which options are the graveyard's, for their caption.

@@ -1,5 +1,5 @@
 <script lang="ts">
-  // ControlledPlaySheet is Word of Command's forced play (ADR 0164 §4,
+  // ControlledPlaySheet is Word of Command's forced play (ADR 0166 §4,
   // CR 723.2): you control another player, and they must play the card
   // you chose from their hand, with you making every choice.
   //

@@ -810,7 +810,7 @@ func gatherSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool, p
 	// pricing below is a gather per colour per slot per source. See
 	// producesManaReplacementsExistLocked.
 	priceProduction := g.producesManaReplacementsExistLocked()
-	// ADR 0164: while Word of Command makes this player play a card,
+	// ADR 0166: while Word of Command makes this player play a card,
 	// only their lands' mana abilities may be activated.
 	landsOnly := g.LandManaOnlyLocked(controller)
 	for _, c := range g.Battlefield.Cards {

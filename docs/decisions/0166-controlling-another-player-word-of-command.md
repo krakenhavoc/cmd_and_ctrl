@@ -1,9 +1,9 @@
-# ADR 0164 — Controlling another player: Word of Command
+# ADR 0166 — Controlling another player: Word of Command
 
 **Status:** Accepted · 2026-10-13 · Backlog.
 **Issues:** [#2164](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2164) (the `control-another-player` seam). Requested card: Word of Command ([#2032](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2032), the Valgavoth deck, whose last manual card it is).
 **Owner decisions behind it (2026-10-13):** the forced play is cast inside Word of Command's resolution, not offered as a later window, and it can't be declined while it can be played; the seam is built for Word of Command now, with Emrakul, the Promised End's turn-long control left for a follow-up. See [Owner decisions](#owner-decisions-2026-10-13).
-**Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-13. I ran `git fetch --all --prune` and listed `docs/decisions/` on all 15 remote heads. The highest number anywhere is 0163, so this ADR takes **0164**.
+**Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-13. I ran `git fetch --all --prune` and listed `docs/decisions/` on all 15 remote heads. The highest number anywhere is 0165, so this ADR takes **0166**. (It was drafted as 0164, which the rematch ADR took first.)
 **Builds on:** [ADR 0010](0010-card-effect-catalog.md) §10 (the `PendingChoices` queue), [ADR 0018](0018-triggers-on-the-stack.md) §6 (prompts that block the table), [ADR 0033](0033-ai-bot-seat.md) (the legal-move enumerator), [ADR 0041](0041-game-persistence.md) (restore points), [ADR 0060](0060-leaving-the-game.md) (CR 800.4g), [ADR 0066](0066-granted-cast-and-play-permissions.md) (casting during a resolution) and [ADR 0116](0116-a-card-filter-on-the-revealed-hand-pick.md) (the revealed-hand pick).
 
 ---

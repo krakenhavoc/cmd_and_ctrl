@@ -155,7 +155,7 @@ func (e *enumerator) choiceMoves() bool {
 			}
 
 		case game.PendingChoiceControlledPlay:
-			// ADR 0164 §4: Word of Command's forced play.
+			// ADR 0166 §4: Word of Command's forced play.
 			e.controlledPlayMoves(c)
 		case game.PendingChoiceRevealedHandPick:
 			// #2115: the variants. The pool is what the prompt offered,

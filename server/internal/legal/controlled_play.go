@@ -9,7 +9,7 @@ import (
 )
 
 // controlled_play.go — moves for a player another player controls (CR
-// 723, ADR 0164 §2 and §4).
+// 723, ADR 0166 §2 and §4).
 //
 //   - A controlled seat is offered nothing: its decisions are its
 //     controller's (newEnumerator).

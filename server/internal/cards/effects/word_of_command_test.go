@@ -12,7 +12,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
 
-// ADR 0164, #2164: Word of Command and the control of a player it
+// ADR 0166, #2164: Word of Command and the control of a player it
 // gives (CR 723.2).
 
 const wordOfCommandOracle = "e8ad3a77-b293-4d69-b080-27ca9f95d443"

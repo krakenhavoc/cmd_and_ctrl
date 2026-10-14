@@ -318,7 +318,7 @@ func (e *enumerator) landPlayMove(card game.Card, kind game.ZoneKind, from strin
 	// land-play allowance. The engine enforces all four since #500;
 	// the check stays here so a bot is never OFFERED a move that would
 	// be refused.
-	// ADR 0164: a land Word of Command makes its player play needs only
+	// ADR 0166: a land Word of Command makes its player play needs only
 	// their turn (CR 305.3), not the main phase or an empty stack.
 	if !landOwed || !(speed || e.g.LandPlayWindowOpenLocked(e.seat, card.InstanceID)) {
 		return

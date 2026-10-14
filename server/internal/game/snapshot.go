@@ -408,7 +408,7 @@ type GameSnapshot struct {
 
 	Vote *Vote `json:"vote,omitempty"`
 
-	// PlayerControls is ADR 0164's record list. Carried: a restore
+	// PlayerControls is ADR 0166's record list. Carried: a restore
 	// that dropped it would leave a forced play's prompt answerable by
 	// nobody, or the controlled player making their own decisions.
 	PlayerControls []PlayerControl `json:"playerControls,omitempty"`

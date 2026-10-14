@@ -527,7 +527,7 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// was picking from their own hand, and CR 800.4a takes that hand
 	// out of the game with them.
 	PendingChoiceRevealedHandPick: {reassign: true},
-	// ADR 0164 §6: CR 800.4a ends the control when its controller
+	// ADR 0166 §6: CR 800.4a ends the control when its controller
 	// leaves, and the card leaves with a controlled player who does.
 	// Either way the forced play is over.
 	PendingChoiceControlledPlay: {},

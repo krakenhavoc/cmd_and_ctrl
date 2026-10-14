@@ -488,7 +488,7 @@ export interface GameView {
   // discarder. Each entry carries its own options[] already filtered
   // per the viewer's visibility.
   pending_choices?: PendingChoiceView[];
-  // ADR 0164 (CR 723): who is making whose decisions right now. A
+  // ADR 0166 (CR 723): who is making whose decisions right now. A
   // prompt the controlled player owes arrives with `chooser` set to the
   // controller and `on_behalf_of` to the controlled player.
   player_controls?: { controller: string; controlled: string; source?: string }[];
@@ -758,7 +758,7 @@ export interface LegalMoveView {
   // list already promises. Automated seats use it as the way out of a
   // prompt whose other answers keep being rejected.
   always_legal?: boolean;
-  // ADR 0164 §4: the controlled_play prompt this move answers — one way
+  // ADR 0166 §4: the controlled_play prompt this move answers — one way
   // of making Word of Command's forced play, or "it can't be played".
   // ControlledPlaySheet lists exactly these, and the server never folds
   // them into the capped list's one-per-card.
@@ -1224,7 +1224,7 @@ export interface PendingChoiceView {
     // (`pick_from_graveyard`). Answered with {choice_id, card_ids}, an
     // empty list when choosing nothing.
     | "revealed_hand_pick"
-    // ADR 0164 §4: Word of Command's forced play. `from_player` is the
+    // ADR 0166 §4: Word of Command's forced play. `from_player` is the
     // player you control, `options` the one card. Answered by one of
     // the legal moves naming it (`controlled_play`): a cast_spell sent
     // as that player, or {choice_id} with no cards, "it can't be
@@ -1485,7 +1485,7 @@ export interface PendingChoiceView {
     | "mode_pick"
     | string;
   chooser: string;
-  // ADR 0164, CR 723.5: the player who owes this prompt when another
+  // ADR 0166, CR 723.5: the player who owes this prompt when another
   // player controls them. `chooser` is then the controller, who
   // answers it.
   on_behalf_of?: string;

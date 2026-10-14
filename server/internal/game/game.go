@@ -397,7 +397,7 @@ type Game struct {
 	Vote *Vote
 
 	// PlayerControls is the live player-controlling effects (CR 723,
-	// ADR 0164): who makes whose decisions, and for how long. See
+	// ADR 0166): who makes whose decisions, and for how long. See
 	// player_control.go.
 	PlayerControls []PlayerControl
 

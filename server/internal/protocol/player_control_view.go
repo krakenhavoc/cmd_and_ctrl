@@ -3,7 +3,7 @@ package protocol
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // PlayerControlView is one player making another's decisions right now
-// (CR 723, ADR 0164). Public: the whole table can see who is deciding.
+// (CR 723, ADR 0166). Public: the whole table can see who is deciding.
 type PlayerControlView struct {
 	Controller string `json:"controller"`
 	Controlled string `json:"controlled"`

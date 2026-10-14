@@ -1442,7 +1442,7 @@ func (g *Game) ResolvePendingChoice(choiceID, chooserID uuid.UUID, picks []uuid.
 		return g.resolveRevealedHandPickLocked(idx, choice, picks)
 	}
 	if choice.Kind == PendingChoiceControlledPlay {
-		// ADR 0164 §4: the empty answer, "it can't be played". The
+		// ADR 0166 §4: the empty answer, "it can't be played". The
 		// play itself is ControlledPlayCast.
 		return g.resolveControlledPlayLocked(idx, choice, picks)
 	}
@@ -2891,7 +2891,7 @@ type RevealedHandDiscard struct {
 	Optional bool
 	// Look is "Look at target opponent's hand" rather than "reveals
 	// their hand": only the chooser learns the hand (Word of Command,
-	// ADR 0164).
+	// ADR 0166).
 	Look bool
 	// FromGraveyard is "or a card from their graveyard" (Agonizing
 	// Remorse): every card in FromPlayer's graveyard is a candidate as

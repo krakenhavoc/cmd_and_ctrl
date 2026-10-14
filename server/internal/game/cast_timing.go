@@ -407,7 +407,7 @@ func (g *Game) castTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind
 	if g.SplitSecondActive {
 		return false
 	}
-	// ADR 0164, CR 608.2g: a card Word of Command makes a player play
+	// ADR 0166, CR 608.2g: a card Word of Command makes a player play
 	// is cast during that resolution, so its type's timing does not
 	// apply.
 	if g.ControlledPlayCardLocked(playerID, card.InstanceID) {

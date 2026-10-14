@@ -6573,7 +6573,7 @@ shape, so leave the card out and put it on `revealed-hand-pick-variants`:
 one pick of two cards under two different filters (Distended
 Mindbender).
 
-### Controlling another player (ADR 0164, #2164, CR 723)
+### Controlling another player (ADR 0166, #2164, CR 723)
 
 Word of Command is the one card: a look-only, keep-the-card pick, then
 the forced play.
