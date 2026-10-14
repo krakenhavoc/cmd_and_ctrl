@@ -29,6 +29,12 @@ import (
 // AdditionalCost is what a spell demands on top of its mana cost.
 // The zero value demands nothing.
 type AdditionalCost struct {
+	// Granted marks an optional cost a permanent gave this spell
+	// (granted_optional_cost.go) rather than one the card prints. Set by
+	// OptionalCostsForCastLocked, never by a card file: a paid granted
+	// cost is recorded by Key on PaidCost.GrantedOptional.
+	Granted bool
+
 	// DiscardCards is "discard a card" (Thrill of Possibility) or
 	// "discard two cards". The caster names them in
 	// CastSpellParams.DiscardIDs. The spell being cast is never a
@@ -623,7 +629,11 @@ func castCostPayments(mandatory *AdditionalCost, optional []AdditionalCost, chos
 // what makes the snapshot round-trip and the undo comparison stable.
 func paidWithOptionalCosts(paid PaidCost, plan []costPayment) PaidCost {
 	for _, pay := range plan {
-		if pay.index >= 0 {
+		switch {
+		case pay.index < 0:
+		case pay.cost.Granted:
+			paid.GrantedOptional = append(paid.GrantedOptional, pay.cost.Key)
+		default:
 			paid.OptionalCosts = append(paid.OptionalCosts, pay.index)
 		}
 	}

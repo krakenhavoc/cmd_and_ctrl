@@ -94,6 +94,8 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		Settings:      &TableSettingsView{UndoLimit: 3, UndoScope: "own", StartingLife: 40, BotPace: "normal"},
 		Voice: &VoiceView{Enabled: true, Status: VoiceStatusReady, URL: "https://discord.com/channels/1/2",
 			Access: map[string]string{ownerID: VoiceAccessGranted, oppID: VoiceAccessNotInServer}},
+		Rematch: &RematchView{GameID: uuid.NewString(), Host: ownerID, HostName: "Owner", Open: true,
+			Accepted: []string{oppID}, Left: []string{}},
 		StartingSeat: 1,
 		OpeningRoll: &OpeningRollView{Rounds: []OpeningRollRoundView{
 			{Seats: []int{0, 1}, Rolls: []OpeningRollDieView{{Seat: 1, Result: 17}}},

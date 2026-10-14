@@ -1663,14 +1663,13 @@ var items = []Item{
 		EngineNotes: "**Shipped** (ADR 0113 amendment 2026-10-08 (fourth), #2136): `game.ManaRestrictNotType(types...)` is a negated card-type tag. `matchesRestriction` admits it only for a cast whose spell has none of the named types; an activation, an unlock and an unknown purpose are refused. Cards pair it with `ManaRestrictCast`.",
 	},
 	{
-		Slug: "grant-convoke", Name: "Giving spells convoke", Kind: KindSeam, Status: StatusMissing,
+		Slug: "grant-convoke", Name: "Giving spells convoke", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Effects that give other spells convoke, such as Eirdu, Carrier of Dawn's.",
-		Missing:     "A permanent can't yet give other spells convoke.",
+		Examples:    []string{"Hoarding Broodlord", "Dazzling Theater // Prop Room"},
 		Rules:       []string{"702.51a"},
 		Issue:       2137,
 		Tracked:     "#2137 (found landing the undying and persist pool, #2075)",
-		Waiting:     []string{"Eirdu, Carrier of Dawn // Isilu, Carrier of Twilight"},
-		EngineNotes: "cost: convoke is a `TapCost` on the casting card's own Spec (`effects/tap_cost.go`, key \"convoke\"), not a keyword token the stack step of the layer pass can grant (`SpellsYouControlHave` reaches keyword tokens only). Isilu's \"each other nontoken creature you control has persist\" and the first-main-phase transforms are expressible.",
+		EngineNotes: "**Shipped** (ADR 0073 amendment 2026-10-14, #3245): `CardDef.GrantedTapCosts` / `effects.SpellsYouCastHaveConvoke(label, filter)` with `FromZone` and `SpellIs` filters, and `Door.GrantedTapCosts` for a Room. `Game.TapPermanentsCostForCastLocked(caster, card, from)` returns the card's own tap cost or the first grant from a permanent the caster controls whose gate holds; every cast-time reader (validation, the tap budget, pricing, the convoked record, the cast view) asks it. Eirdu, Carrier of Dawn is unblocked: its other text was already expressible.",
 	},
 	{
 		Slug: "stickers", Name: "Stickers and ticket counters", Kind: KindSeam, Status: StatusMissing,

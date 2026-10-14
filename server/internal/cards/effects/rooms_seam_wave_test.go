@@ -29,9 +29,10 @@ func TestRoomsSeamWaveDeclareTheirGaps(t *testing.T) {
 	// Moldering Gym, Ticket Booth and Underwater Tunnel are not here any
 	// more: their manifest-dread doors shipped with #2570 and they are
 	// complete. So is Experimental Lab // Staff Room, whose Staff Room
-	// turns a creature face up since #2590.
+	// turns a creature face up since #2590, and Dazzling Theater // Prop
+	// Room, whose Theater gives creature spells convoke since #2137.
 	for _, id := range []string{
-		charredFoyerOracle, crampedVentsOracle, dazzlingOracle, secretArcadeOracle} {
+		charredFoyerOracle, crampedVentsOracle, secretArcadeOracle} {
 		spec, ok := Lookup(id)
 		if !ok {
 			t.Fatalf("%s is not registered", id)

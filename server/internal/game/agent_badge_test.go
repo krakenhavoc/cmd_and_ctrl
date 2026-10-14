@@ -153,6 +153,9 @@ var agentBadgeWriters = map[string]int{
 	// the admin views' copy, onto a fresh LiveSeat for an agent seat
 	// only (ADR 0124 §5).
 	"internal/lobby/live_tables.go:LiveTables": 1,
+	// The DM notifier's copy (ADR 0162 §2), onto a fresh notify.Seat,
+	// so an agent seat is never messaged.
+	"internal/lobby/notify.go:notifyTableLocked": 1,
 	// The admin views' copies (ADR 0124 §3.3), each a read of a badge
 	// that exists onto a fresh value: LiveSeat into adminview's overlay,
 	// seats.agent_client into a fresh SeatRow, and a row's or memory's

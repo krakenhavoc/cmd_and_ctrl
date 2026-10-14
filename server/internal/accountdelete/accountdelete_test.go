@@ -171,6 +171,7 @@ func seed(t *testing.T) fixture {
 	for _, u := range []uuid.UUID{f.user, f.other} {
 		exec(t, d, `INSERT INTO user_settings (user_id, version, revision, body, updated_at) VALUES (?, 1, 1, '{}', 1)`, u.String())
 		exec(t, d, `INSERT INTO table_setups (user_id, body, game_id, updated_at) VALUES (?, '{}', NULL, 1)`, u.String())
+		exec(t, d, `INSERT INTO notification_prefs (user_id, turn, table_ready, table_filled, dm_failed_at, updated_at) VALUES (?, 1, 1, 0, 5, 1)`, u.String())
 		exec(t, d, `INSERT INTO user_playmats (user_id, slot, playmat_id, created_at) VALUES (?, 1, ?, 1)`, u.String(), "mat-"+map[bool]string{true: "Ian", false: "Bea"}[u == f.user])
 	}
 	exec(t, d, `INSERT INTO deck_request_asks (deck_key, requester, at) VALUES ('moxfield:a', ?, 1), ('moxfield:b', ?, 1)`,
@@ -235,12 +236,13 @@ func TestDeleteRemovesOrAnonymisesEveryTable(t *testing.T) {
 
 	// Deleted.
 	for table, q := range map[string]string{
-		"decks":             `SELECT COUNT(*) FROM decks WHERE owner_id = ?`,
-		"user_settings":     `SELECT COUNT(*) FROM user_settings WHERE user_id = ?`,
-		"table_setups":      `SELECT COUNT(*) FROM table_setups WHERE user_id = ?`,
-		"user_playmats":     `SELECT COUNT(*) FROM user_playmats WHERE user_id = ?`,
-		"identities":        `SELECT COUNT(*) FROM identities WHERE user_id = ?`,
-		"deck_request_asks": `SELECT COUNT(*) FROM deck_request_asks WHERE requester = 'discord:` + userSubject + `' AND ? <> ''`,
+		"decks":              `SELECT COUNT(*) FROM decks WHERE owner_id = ?`,
+		"user_settings":      `SELECT COUNT(*) FROM user_settings WHERE user_id = ?`,
+		"table_setups":       `SELECT COUNT(*) FROM table_setups WHERE user_id = ?`,
+		"notification_prefs": `SELECT COUNT(*) FROM notification_prefs WHERE user_id = ?`,
+		"user_playmats":      `SELECT COUNT(*) FROM user_playmats WHERE user_id = ?`,
+		"identities":         `SELECT COUNT(*) FROM identities WHERE user_id = ?`,
+		"deck_request_asks":  `SELECT COUNT(*) FROM deck_request_asks WHERE requester = 'discord:` + userSubject + `' AND ? <> ''`,
 	} {
 		if n := count(t, f.d, q, u); n != 0 {
 			t.Errorf("%s: %d rows left for the deleted user", table, n)
@@ -333,7 +335,7 @@ func TestDeleteRemovesOrAnonymisesEveryTable(t *testing.T) {
 	for _, q := range []string{
 		`SELECT COUNT(*) FROM decks WHERE owner_id = ?`, `SELECT COUNT(*) FROM user_settings WHERE user_id = ?`,
 		`SELECT COUNT(*) FROM table_setups WHERE user_id = ?`, `SELECT COUNT(*) FROM user_playmats WHERE user_id = ?`,
-		`SELECT COUNT(*) FROM identities WHERE user_id = ?`,
+		`SELECT COUNT(*) FROM identities WHERE user_id = ?`, `SELECT COUNT(*) FROM notification_prefs WHERE user_id = ?`,
 	} {
 		if n := count(t, f.d, q, o); n != 1 {
 			t.Errorf("%s = %d for the other person, want 1", q, n)

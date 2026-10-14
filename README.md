@@ -6,8 +6,10 @@ engine knows what thousands of catalog cards do, pays costs for you, and asks on
 player would have to answer at a real table. A card the engine doesn't automate yet still plays,
 by hand.
 
-It's a hobby project, built for a small group of friends and played at
-[cmd.labxp.io](https://cmd.labxp.io). Tables are joined by invite.
+It's a free hobby project, played at [cmd.labxp.io](https://cmd.labxp.io) and in an open beta.
+Anyone can play a practice game against the bot or sit at a friend's table from an invite link.
+To create your own tables, join the [C2 Discord](https://discord.gg/z7x9Ehpnjw) and ask for the
+player role.
 
 [![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-db61a2?logo=githubsponsors)](https://github.com/sponsors/krakenhavoc)
 

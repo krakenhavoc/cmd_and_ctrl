@@ -437,7 +437,7 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 	// optionalCostSets is [nil] for every card that offers none,
 	// which is every card in the catalog before #664 — so this loop
 	// runs exactly once for them and the enumeration is unchanged.
-	optional := game.OptionalCostsFor(game.CatalogKey(card))
+	optional := e.g.OptionalCostsForCastLocked(e.seat, card)
 	for _, chosen := range e.optionalCostSets(optional) {
 		// ADR 0129 §5, CR 118.3: a replicate paid more times than the
 		// seat has energy for (with the offer's own, Nissa's eight) is
@@ -704,7 +704,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// ADR 0089 §3: and a paid optional cost may swap it again — a
 	// promised gift's "instead … target …" (CR 702.174m). The same
 	// function, in the same order, the engine applies at announce.
-	cardSpec = game.TargetSpecUnderOptionalCosts(cardSpec, game.OptionalCostsFor(game.CatalogKey(card)), chosen)
+	cardSpec = game.TargetSpecUnderOptionalCosts(cardSpec, e.g.OptionalCostsForCastLocked(e.seat, card), chosen)
 
 	// A card the catalog marks as targeted the S13.1 way (free-form
 	// target_mode, no structured spec) cannot be enumerated: the
@@ -784,7 +784,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	if game.HasNoManaCost(card) && offer == nil && (perm == nil || perm.Cost == "") {
 		return
 	}
-	optional := game.OptionalCostsFor(game.CatalogKey(card))
+	optional := e.g.OptionalCostsForCastLocked(e.seat, card)
 	// S28: the board's cost modifiers (CR 601.2f). Same reasoning as
 	// the parse gate above — a move enumerated at the printed price
 	// while a Sphere of Resistance sits on the table is a move the
@@ -1682,7 +1682,7 @@ func (e *enumerator) idleCastHint(card game.Card, offer *game.AlternativeCost, c
 		return ""
 	}
 	key := game.CatalogKey(card)
-	spec := game.TargetSpecUnderOptionalCosts(game.TargetSpecFor(key), game.OptionalCostsFor(key), chosen)
+	spec := game.TargetSpecUnderOptionalCosts(game.TargetSpecFor(key), e.g.OptionalCostsForCastLocked(e.seat, card), chosen)
 	if spec == nil {
 		return ""
 	}

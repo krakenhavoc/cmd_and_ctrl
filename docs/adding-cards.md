@@ -9324,6 +9324,14 @@ ctx.SourcePermanent()                                                           
   counting the trues (Abdel Adrian).
 - **A preparation card's prepare spell that prints an existing spell's text** reuses that spell's body: Grave
   Researcher's Reanimate is `OnResolve: reanimateLosingItsManaValue`.
+- **Casualty N** is `OptionalCosts: []game.AdditionalCost{Casualty(N)}` (`casualty.go`); the copy is the engine's
+  trigger, so declare nothing else. **"<Spells> you cast have <optional cost>"** on a permanent is
+  `GrantedOptionalCosts: []game.GrantedOptionalCost{SpellsYouCastHave(label, Or(Instant(), Sorcery()), Casualty(1))}`
+  (Silverquill, the Disputant; ADR 0073 amendment 2026-10-13). A paid granted cost is on `PaidCost.GrantedOptional`, by
+  key, never among the card's own indices.
+- **"<Spells> you cast have convoke"** is `GrantedTapCosts: []game.GrantedTapCost{SpellsYouCastHaveConvoke(label,
+  FromZone(game.ZoneExile))}` (Hoarding Broodlord) or `SpellIs(Creature())` (Dazzling Theater, in its
+  `Door.GrantedTapCosts`); `convoke_grant.go`, ADR 0073 amendment 2026-10-14.
 
 ### Statics that read block status or this turn's events, "can't be attacked", any-type mana, flash-if-it-targets (#3172, cav-h2)
 
