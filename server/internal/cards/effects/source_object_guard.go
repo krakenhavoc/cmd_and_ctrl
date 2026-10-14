@@ -100,6 +100,18 @@ func (c *Context) isNewSourceObjectAsThis(target uuid.UUID) bool {
 	return c.Game.AbilitySourceIsNewObjectForEffect(c.Item)
 }
 
+// sourceLeftBattlefield reports whether `target` is this context's own
+// source and that source left the battlefield while the ability waited
+// (#3667): "put a counter on this creature" after the creature was
+// sacrificed in response has nothing to land on. Honours asGroupMember
+// like isNewSourceObject.
+func (c *Context) sourceLeftBattlefield(target uuid.UUID) bool {
+	if c == nil || c.groupMember || c.Item == nil || c.Game == nil || target == uuid.Nil || target != c.Item.SourceCardID {
+		return false
+	}
+	return c.Game.AbilitySourceLeftBattlefieldForEffect(c.Item)
+}
+
 // sourceIsNewObject is isNewSourceObject for a body written against
 // (g, item) — the shape every triggered and activated Effect has — and
 // the check a card file makes before it calls a game mutator on its
