@@ -1084,7 +1084,9 @@ export class GameClient {
           break;
         }
         const msg: ChatMessage = {
-          id: frame.id,
+          // A server that sends no id (#3619) must not give every line the
+          // same key: the chat feed is a keyed each.
+          id: frame.id || uuid(),
           authorID: p.author_id ?? "",
           authorName: p.author_name,
           text: p.text,

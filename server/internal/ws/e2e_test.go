@@ -895,6 +895,47 @@ func TestChatBroadcast(t *testing.T) {
 	}
 }
 
+// TestChatBroadcastIDlessFramesGetDistinctIDs: a sender that puts no ID
+// on its chat frame (an AI agent seat's say tool) must still produce
+// lines with distinct, non-empty IDs, because the client keys its chat
+// log by them and a repeated key crashes the board (#3619).
+func TestChatBroadcastIDlessFramesGetDistinctIDs(t *testing.T) {
+	wsURL, g, cleanup := newE2EServer(t)
+	defer cleanup()
+
+	conn := dialAs(t, wsURL, g.Seats[0].ID)
+	defer conn.Close()
+	_ = readSnapshotFrame(t, conn)
+
+	ids := map[string]bool{}
+	for _, text := range []string{"one", "two"} {
+		payload, err := json.Marshal(protocol.ChatPayload{Text: text})
+		if err != nil {
+			t.Fatalf("marshal: %v", err)
+		}
+		raw, err := json.Marshal(protocol.Frame{V: protocol.Version, Kind: protocol.KindChat, Payload: payload})
+		if err != nil {
+			t.Fatalf("marshal: %v", err)
+		}
+		if err := conn.WriteMessage(websocket.TextMessage, raw); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+		_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+		_, back, err := conn.ReadMessage()
+		if err != nil {
+			t.Fatalf("read: %v", err)
+		}
+		var f protocol.Frame
+		if err := json.Unmarshal(back, &f); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if f.Kind != protocol.KindChat || f.ID == "" || ids[f.ID] {
+			t.Fatalf("chat %q: kind=%q id=%q (seen=%v), want a fresh non-empty id", text, f.Kind, f.ID, ids[f.ID])
+		}
+		ids[f.ID] = true
+	}
+}
+
 // TestE2EScriptedTurn is the S03 exit-criteria test: drive a scripted
 // turn (draw, play, tap, pass_turn) through the real hub via an
 // actual WebSocket dial, then diff the final normalized snapshot
