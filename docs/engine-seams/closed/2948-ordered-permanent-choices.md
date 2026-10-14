@@ -2,6 +2,7 @@
 title: "Ordered public permanent choices"
 date: 2026-10-14
 issues: [2948]
+pr: 3442
 ---
 **Ordered public permanent choices** (#2948,
 [ADR 0175](decisions/0175-players-choose-before-simultaneous-sacrifices.md)) —
