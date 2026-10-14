@@ -57,6 +57,7 @@
   import StackOverlay from "./StackOverlay.svelte";
   import StackLaneHost from "./StackLaneHost.svelte";
   import StackLinger from "./StackLinger.svelte";
+  import FieldMotion from "./FieldMotion.svelte";
   import {
     DEFAULT_STACK_STYLE,
     isStackStyle,
@@ -3567,6 +3568,9 @@
        went. One overlay for every style, aria-hidden and outside the
        labelled regions above. -->
   <StackLinger {view} {viewerID} {boardEl} {beatsPrimeKey} />
+  <!-- A permanent leaving the battlefield flies to where it went, and
+       one new on someone else's board is ringed (fieldMotion.ts). -->
+  <FieldMotion {view} {viewerID} {boardEl} {beatsPrimeKey} />
   <VotingPanel {view} {viewerID} sendAction={guardedSendAction} {docked} />
   <SacrificeCostModal
     source={sacrificePrompt?.card ?? null}
