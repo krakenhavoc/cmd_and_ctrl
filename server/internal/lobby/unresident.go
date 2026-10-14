@@ -181,14 +181,15 @@ func metaFromRecords(rec GameRecord, seats []SeatRecord) GameMeta {
 	}
 	for _, s := range seats {
 		meta.Players = append(meta.Players, SeatInfo{
-			PlayerID: s.PlayerID,
-			Name:     s.GuestName,
-			Seat:     s.Seat,
-			DeckID:   s.DeckID,
-			DeckName: s.DeckName,
-			UserID:   s.UserID,
-			IsBot:    s.BotTier != "",
-			BotTier:  s.BotTier,
+			PlayerID:  s.PlayerID,
+			Name:      s.GuestName,
+			Seat:      s.Seat,
+			DeckID:    s.DeckID,
+			DeckName:  s.DeckName,
+			DeckPower: s.DeckPower,
+			UserID:    s.UserID,
+			IsBot:     s.BotTier != "",
+			BotTier:   s.BotTier,
 		})
 	}
 	return meta

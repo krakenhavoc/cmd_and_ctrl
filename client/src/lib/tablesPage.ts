@@ -74,8 +74,16 @@ export function contextLine(
   return parts.join(" · ");
 }
 
-// seatLine is a taken seat's second line: the deck in the lobby, the
-// deck and life total in play. A bot names its tier and deck.
+// deckWithPower is a seated deck's name and, once an admin has rated
+// it, its power level: "Atraxa · power 3.5" (#3671).
+export function deckWithPower(p: Pick<SeatInfo, "deck_name" | "deck_power">): string {
+  const name = p.deck_name || "deck ready";
+  return p.deck_power ? `${name} · power ${p.deck_power}` : name;
+}
+
+// seatLine is a taken seat's second line: the deck and its power level
+// in the lobby, with the life total in play. A bot names its tier and
+// deck.
 export function seatLine(
   g: GameMeta,
   p: SeatInfo,
@@ -87,7 +95,7 @@ export function seatLine(
     const tier = p.bot_own_key ? `${p.bot_tier || "bot"} (own key)` : p.bot_tier || "bot";
     deck = [tier, botDeckName(p.bot_deck) || p.deck_name || ""].filter(Boolean).join(" · ");
   } else if (p.deck_uploaded) {
-    deck = p.deck_name || "deck ready";
+    deck = deckWithPower(p);
   } else if (g.state === "lobby") {
     return { text: "deck pending", pending: true };
   } else {

@@ -1065,6 +1065,10 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"DELETE /admin/users/{id}/playmats/{slot}", []string{"route:DELETE /admin/users/{id}/playmats/{slot}"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "DELETE", "/admin/users/"+uuid.New().String()+"/playmats/2", nil)
 		}},
+		// A saved deck's power level (#3671).
+		{"PUT /admin/decks/{id}/power", []string{"route:PUT /admin/decks/{id}/power"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "PUT", "/admin/decks/"+uuid.New().String()+"/power", map[string]any{"power_level": 3})
+		}},
 		// The hosted-model spend guard (#2980).
 		{"GET /admin/bot/model", []string{"route:GET /admin/bot/model"}, true, httpProbe("GET", "/admin/bot/model", nil)},
 		{"PUT /admin/bot/model", []string{"route:PUT /admin/bot/model"}, true, httpProbe("PUT", "/admin/bot/model", func(*probeFixture) any {

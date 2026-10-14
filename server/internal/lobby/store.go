@@ -125,6 +125,9 @@ type SeatRecord struct {
 	// guest's upload, an ad-hoc paste, or a pre-built catalog deck.
 	DeckID   string
 	DeckName string
+	// DeckPower is decks.power_level of DeckID (#3671), read through a
+	// join on load and never written: the rating lives on the deck.
+	DeckPower float64
 	// PendingDiscordID is the snowflake of a seat claimed through
 	// Discord, waiting for a users row to link to (ADR 0051,
 	// "Migration"). Never set alongside UserID: the next sign-in with

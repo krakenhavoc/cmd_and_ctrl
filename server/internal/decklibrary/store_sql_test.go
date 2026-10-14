@@ -332,3 +332,71 @@ func TestNoStoreSaveFails(t *testing.T) {
 		t.Error("NoStore.Save: want an error")
 	}
 }
+
+func TestSetPowerLevelRatesClearsAndRefusesOffScale(t *testing.T) {
+	s, d := openStore(t)
+	ctx := context.Background()
+	owner := mustUser(t, d, "Alice")
+	deck, err := s.Upsert(ctx, owner, "Atraxa", "text", "v1", []string{"Atraxa, Praetors' Voice"}, 100)
+	if err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+	if deck.PowerLevel != 0 {
+		t.Fatalf("a new deck is rated %v; want 0 (unrated)", deck.PowerLevel)
+	}
+	got, err := s.SetPowerLevel(ctx, deck.ID, 3.5)
+	if err != nil || got.PowerLevel != 3.5 {
+		t.Fatalf("SetPowerLevel(3.5) = %v, %v", got.PowerLevel, err)
+	}
+	if !got.UpdatedAt.Equal(deck.UpdatedAt) {
+		t.Errorf("rating moved updated_at from %v to %v", deck.UpdatedAt, got.UpdatedAt)
+	}
+	if again, _ := s.Get(ctx, deck.ID); again.PowerLevel != 3.5 {
+		t.Errorf("Get after rating = %v; want 3.5", again.PowerLevel)
+	}
+	for _, bad := range []float64{0.5, 3.25, 5.5, -1} {
+		if _, err := s.SetPowerLevel(ctx, deck.ID, bad); !errors.Is(err, ErrInvalidPowerLevel) {
+			t.Errorf("SetPowerLevel(%v) = %v; want ErrInvalidPowerLevel", bad, err)
+		}
+	}
+	if _, err := s.SetPowerLevel(ctx, uuid.New(), 3); !errors.Is(err, ErrNotFound) {
+		t.Errorf("SetPowerLevel(unknown) = %v; want ErrNotFound", err)
+	}
+	if got, err := s.SetPowerLevel(ctx, deck.ID, 0); err != nil || got.PowerLevel != 0 {
+		t.Errorf("SetPowerLevel(0) = %v, %v; want cleared", got.PowerLevel, err)
+	}
+}
+
+func TestResavingKeepsTheRatingUnlessTheListChanged(t *testing.T) {
+	s, d := openStore(t)
+	ctx := context.Background()
+	owner := mustUser(t, d, "Alice")
+	deck, err := s.Upsert(ctx, owner, "Atraxa", "text", "v1", []string{"Atraxa, Praetors' Voice"}, 100)
+	if err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+	if _, err := s.SetPowerLevel(ctx, deck.ID, 4); err != nil {
+		t.Fatal(err)
+	}
+	same, err := s.Upsert(ctx, owner, "Atraxa", "text", "v1", []string{"Atraxa, Praetors' Voice"}, 100)
+	if err != nil || same.PowerLevel != 4 {
+		t.Errorf("re-saving the same list: rating %v, %v; want 4 kept", same.PowerLevel, err)
+	}
+	changed, err := s.Upsert(ctx, owner, "Atraxa", "text", "v2", []string{"Atraxa, Praetors' Voice"}, 100)
+	if err != nil || changed.PowerLevel != 0 {
+		t.Errorf("saving a changed list: rating %v, %v; want cleared", changed.PowerLevel, err)
+	}
+}
+
+func TestValidPowerLevel(t *testing.T) {
+	for _, ok := range []float64{0, 1, 1.5, 3, 3.5, 4.5, 5} {
+		if !ValidPowerLevel(ok) {
+			t.Errorf("ValidPowerLevel(%v) = false", ok)
+		}
+	}
+	for _, bad := range []float64{0.5, 2.25, 5.5, -3, 6} {
+		if ValidPowerLevel(bad) {
+			t.Errorf("ValidPowerLevel(%v) = true", bad)
+		}
+	}
+}

@@ -39,6 +39,10 @@ var ErrNameTaken = errors.New("decklibrary: you already have a deck with that na
 // MaxDecks. Updating an existing deck is never refused.
 var ErrLibraryFull = errors.New("decklibrary: your deck library is full")
 
+// ErrInvalidPowerLevel is returned by SetPowerLevel for a rating off the
+// scale ValidPowerLevel describes.
+var ErrInvalidPowerLevel = errors.New("decklibrary: power level must be 0 (unrated) or 1 to 5 in half steps")
+
 // MaxDecks is the most decks one person may keep (ADR 0110 section 6).
 const MaxDecks = 200
 
@@ -55,8 +59,22 @@ type Deck struct {
 	SourceURL  string
 	Commanders []string
 	CardCount  int
+	// PowerLevel is the deck's estimated power on the Commander Bracket
+	// scale, 1 to 5 in half steps (3.5 is a strong 3), or 0 while
+	// unrated (#3671). An admin sets it with SetPowerLevel; a save that
+	// changes SourceText clears it, since it described the old list.
+	PowerLevel float64
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+}
+
+// ValidPowerLevel reports whether level is a rating SetPowerLevel
+// accepts: 0 (unrated), or 1 to 5 in half steps.
+func ValidPowerLevel(level float64) bool {
+	if level == 0 {
+		return true
+	}
+	return level >= 1 && level <= 5 && level*2 == float64(int(level*2))
 }
 
 // Store reads and writes a person's deck library. Implementations are
@@ -92,6 +110,11 @@ type Store interface {
 	// ErrNotFound as for Delete; ErrNameTaken if owner has another deck
 	// with that name (renaming to its own name is a no-op).
 	Rename(ctx context.Context, owner, id uuid.UUID, name string) (Deck, error)
+	// SetPowerLevel rates any person's deck by id (an admin route, so
+	// no owner check), 0 to clear it, without touching updated_at.
+	// ErrNotFound if there is no such deck; ErrInvalidPowerLevel unless
+	// ValidPowerLevel(level).
+	SetPowerLevel(ctx context.Context, id uuid.UUID, level float64) (Deck, error)
 	// Get reads one deck by id. ErrNotFound if there is none.
 	Get(ctx context.Context, id uuid.UUID) (Deck, error)
 	// List returns owner's decks, most recently updated first.
@@ -129,6 +152,11 @@ func (NoStore) Delete(context.Context, uuid.UUID, uuid.UUID) error { return ErrN
 
 // Rename always reports ErrNotFound: there are no decks.
 func (NoStore) Rename(context.Context, uuid.UUID, uuid.UUID, string) (Deck, error) {
+	return Deck{}, ErrNotFound
+}
+
+// SetPowerLevel always reports ErrNotFound: there are no decks.
+func (NoStore) SetPowerLevel(context.Context, uuid.UUID, float64) (Deck, error) {
 	return Deck{}, ErrNotFound
 }
 

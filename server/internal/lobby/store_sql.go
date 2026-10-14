@@ -251,9 +251,10 @@ func (s *SQLStore) LoadGame(ctx context.Context, id uuid.UUID) (GameRecord, []Se
 	g.Results = results == 1
 
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT seat, player_id, user_id, guest_name, bot_tier, deck_id, deck_name, pending_discord_id, agent_client,
-		        bot_key_user_id, bot_key_model, stand_in, stand_in_since
-		 FROM seats WHERE game_id = ? ORDER BY seat`, id.String())
+		`SELECT s.seat, s.player_id, s.user_id, s.guest_name, s.bot_tier, s.deck_id, s.deck_name, s.pending_discord_id, s.agent_client,
+		        s.bot_key_user_id, s.bot_key_model, s.stand_in, s.stand_in_since, d.power_level
+		 FROM seats s LEFT JOIN decks d ON d.id = s.deck_id
+		 WHERE s.game_id = ? ORDER BY s.seat`, id.String())
 	if err != nil {
 		return GameRecord{}, nil, err
 	}
@@ -266,9 +267,10 @@ func (s *SQLStore) LoadGame(ctx context.Context, id uuid.UUID) (GameRecord, []Se
 			userID, guestName, botTier, deckID, deckName, discID sql.NullString
 			agentClient, keyUser, keyModel, standIn              sql.NullString
 			standInSince                                         sql.NullInt64
+			deckPower                                            sql.NullFloat64
 		)
 		if err := rows.Scan(&st.Seat, &playerID, &userID, &guestName, &botTier, &deckID, &deckName, &discID,
-			&agentClient, &keyUser, &keyModel, &standIn, &standInSince); err != nil {
+			&agentClient, &keyUser, &keyModel, &standIn, &standInSince, &deckPower); err != nil {
 			return GameRecord{}, nil, err
 		}
 		pid, err := uuid.Parse(playerID)
@@ -278,6 +280,7 @@ func (s *SQLStore) LoadGame(ctx context.Context, id uuid.UUID) (GameRecord, []Se
 		st.PlayerID = pid
 		st.UserID, st.GuestName, st.BotTier = userID.String, guestName.String, botTier.String
 		st.DeckID, st.DeckName, st.PendingDiscordID = deckID.String, deckName.String, discID.String
+		st.DeckPower = deckPower.Float64
 		st.AgentClient = agentClient.String
 		st.BotKeyUserID, st.BotKeyModel = keyUser.String, keyModel.String
 		st.StandIn = standIn.String
