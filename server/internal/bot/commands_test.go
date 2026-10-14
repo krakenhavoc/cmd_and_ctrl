@@ -54,14 +54,14 @@ func TestStringOption(t *testing.T) {
 
 func TestCommandDefinitions(t *testing.T) {
 	defs := commandDefinitions()
-	if len(defs) != 6 {
-		t.Fatalf("want 6 definitions, got %d", len(defs))
+	if len(defs) != 7 {
+		t.Fatalf("want 7 definitions, got %d", len(defs))
 	}
 	names := make([]string, len(defs))
 	for i, d := range defs {
 		names[i] = d.Name
 	}
-	for _, want := range []string{CmdInvite, CmdInviteDM, CmdGames, CmdEnd, CmdDeckCheck, CmdDeckReq} {
+	for _, want := range []string{CmdInvite, CmdInviteDM, CmdGames, CmdEnd, CmdDeckCheck, CmdDeckReq, CmdCard} {
 		if !contains(names, want) {
 			t.Errorf("missing expected command name %q: %v", want, names)
 		}
