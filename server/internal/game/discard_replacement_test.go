@@ -259,6 +259,14 @@ func TestUndoAcrossAnOptionalDiscardReplacementReplaysTheSameWay(t *testing.T) {
 		t.Helper()
 		for len(g.PendingChoices) > 0 {
 			c := g.PendingChoices[0]
+			if c.Kind == PendingChoicePutInLibrary {
+				// #2949: both cards went to the library, so their owner
+				// orders them (CR 401.4) before the "then" runs.
+				if err := g.ResolvePutInLibrary(c.ID, c.Chooser, nil, c.ScryCards); err != nil {
+					t.Fatalf("ResolvePutInLibrary: %v", err)
+				}
+				continue
+			}
 			if err := g.ResolveOptionalReplacement(c.ID, c.Chooser, true); err != nil {
 				t.Fatalf("ResolveOptionalReplacement: %v", err)
 			}

@@ -270,8 +270,64 @@ func (g *Game) discardBatchLocked(playerID uuid.UUID, cards, landed []uuid.UUID,
 		})
 		return err
 	}
+	// ADR 0088 amendment 2026-10-14 (#2949): CR 401.4 — the cards of
+	// one discard that a replacement put on top of the library (Library
+	// of Leng) were put there at the same time, so their owner arranges
+	// them. The rest of the effect waits for that order.
+	if top := g.discardBatchOnTopOfLibraryLocked(playerID, landed); len(top) >= 2 {
+		then := opts.then
+		return g.PutInLibraryInChosenOrderThenForEffect(PutInLibrarySpec{
+			Chooser:   playerID,
+			Source:    opts.source,
+			Cards:     top,
+			From:      ZoneLibrary,
+			Placement: LibraryPlaceTop,
+			Reason:    "Put the discarded cards on top of your library in any order",
+			Then: func(g *Game) error {
+				if then == nil {
+					return nil
+				}
+				return then(g, landed)
+			},
+		})
+	}
 	if opts.then == nil {
 		return nil
 	}
 	return opts.then(g, landed)
+}
+
+// discardBatchOnTopOfLibraryLocked lists the cards of a finished
+// discard batch that a replacement sent to the top of the discarding
+// player's library, top-first, when they are exactly the top of that
+// library: each was put on top as its leg landed, and nothing else in
+// the batch puts a card there. A card the window sent anywhere else in
+// the library (a shuffle-in) breaks that, and then nothing is offered,
+// because the cards are no longer one placement at one position.
+//
+// Caller must hold g.mu.
+func (g *Game) discardBatchOnTopOfLibraryLocked(playerID uuid.UUID, landed []uuid.UUID) []uuid.UUID {
+	p := g.playerByIDLocked(playerID)
+	if p == nil || p.Library == nil || len(landed) < 2 {
+		return nil
+	}
+	inLibrary := make(map[uuid.UUID]bool, len(landed))
+	for _, id := range landed {
+		if p.Library.Contains(id) {
+			inLibrary[id] = true
+		}
+	}
+	n := len(inLibrary)
+	if n < 2 || n > len(p.Library.Cards) {
+		return nil
+	}
+	top := make([]uuid.UUID, 0, n)
+	for i := len(p.Library.Cards) - 1; i >= len(p.Library.Cards)-n; i-- {
+		id := p.Library.Cards[i].InstanceID
+		if !inLibrary[id] {
+			return nil
+		}
+		top = append(top, id)
+	}
+	return top
 }
