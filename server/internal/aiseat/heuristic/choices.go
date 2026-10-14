@@ -667,7 +667,10 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// or cascade grant closes on the seat's next pass and the card
 		// goes where declining would have sent it, and a rebound grant
 		// (#1854) does the same and leaves the card in exile, so
-		// accepting is never worse than declining — say yes.
+		// accepting is never worse than declining — say yes. A paid
+		// "you may cast that card. If you don't, ..." (paid_or_else,
+		// Chandra, Torch of Defiance, #3510) is the same: a pass without
+		// the cast runs the "if you don't", exactly as declining does.
 		if cp.Apply != nil && *cp.Apply {
 			return 1, "may cast: take the free cast"
 		}

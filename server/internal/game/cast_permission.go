@@ -688,6 +688,20 @@ type CastPermission struct {
 	// follows", which is every permission written before #2173.
 	FollowUp CastFollowUpKey `json:"followUp,omitempty"`
 
+	// IfNotCast names a registered body (RegisterCastFollowUp) that runs
+	// when a PASS-CLOSED permission (LapseOnPass) ends without the cast
+	// having been made: its holder passed, or the backstop sweep lapsed
+	// it. It is FollowUp's other branch, "you may cast that card. If you
+	// don't, ..." (Chandra, Torch of Defiance, #3510, CR 608.2g). The
+	// body is told the holder, the permission's Source and, as Spell,
+	// the card that was not cast. A permission without LapseOnPass never
+	// runs it: only a pass-closed window has a moment at which "you
+	// didn't" becomes true.
+	//
+	// A key for FollowUp's reason. Empty is "nothing happens", which is
+	// every permission written before #3510.
+	IfNotCast CastFollowUpKey `json:"ifNotCast,omitempty"`
+
 	// RequiresNoSpellsCast ends the permission the moment its holder
 	// has cast any spell this turn. It is the "if you haven't cast a
 	// spell this turn, you may cast that card" half of Conduit of
