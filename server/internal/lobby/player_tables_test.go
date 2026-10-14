@@ -209,9 +209,9 @@ func TestSignedInPlayerCreatesATableAndIsItsCreator(t *testing.T) {
 	}
 }
 
-// TestPlayerCreatedTableIsHostedByItsCreator: the table names its
-// creator as host, so they host it once seated even when someone sat
-// down first, and a host_discord_id naming somebody else is ignored.
+// TestPlayerCreatedTableIsHostedByItsCreator: the creator sits down at
+// create (#3494) and hosts, and a host_discord_id naming somebody else
+// is ignored, so a later arrival does not take the table.
 func TestPlayerCreatedTableIsHostedByItsCreator(t *testing.T) {
 	s := newTableStack(t)
 	alice, _ := s.signIn(t, "discord-99", "Alice")
@@ -219,11 +219,13 @@ func TestPlayerCreatedTableIsHostedByItsCreator(t *testing.T) {
 	if code != http.StatusCreated {
 		t.Fatalf("create: %d %s", code, raw)
 	}
-	s.join(t, "", created.GameMeta, "Early guest")
-	seat := s.join(t, alice, created.GameMeta, "")
+	if created.Seat == nil {
+		t.Fatalf("the creator was not seated: %s", raw)
+	}
+	s.join(t, "", created.GameMeta, "Later guest")
 	meta, _ := s.lobby.Get(created.ID)
-	if meta.HostPlayerID != seat.PlayerID {
-		t.Errorf("host = %s, want the creator's seat %s", meta.HostPlayerID, seat.PlayerID)
+	if meta.HostPlayerID != created.Seat.PlayerID {
+		t.Errorf("host = %s, want the creator's seat %s", meta.HostPlayerID, created.Seat.PlayerID)
 	}
 }
 

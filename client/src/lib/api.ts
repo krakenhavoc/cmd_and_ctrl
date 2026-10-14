@@ -300,6 +300,9 @@ export async function getGame(id: string): Promise<GameMeta> {
 // asked for (ADR 0110 §5 item 2).
 export interface CreateGameResponse extends GameMeta {
   setup?: SetupResult;
+  // The creator's own seat (#3494): the server sits a signed-in creator
+  // down at once, and this is that seat's session. createGame installs it.
+  seat?: SessionResponse;
 }
 
 // createGame creates a table (POST /games). Any signed-in person may
@@ -328,7 +331,9 @@ export async function createGame(
     method: "POST",
     body: JSON.stringify(body),
   });
-  return (await res.json()) as CreateGameResponse;
+  const out = (await res.json()) as CreateGameResponse;
+  if (out.seat) setSession(sessionFrom(out.seat));
+  return out;
 }
 
 // fetchNameSuggestion asks for a generated table name (GET
@@ -378,16 +383,20 @@ export async function joinGame(
     method: "POST",
     body: JSON.stringify({ invite_token: inviteToken, name }),
   });
-  const body = (await res.json()) as SessionResponse;
-  const s: Session = {
+  const s = sessionFrom((await res.json()) as SessionResponse);
+  setSession(s);
+  return s;
+}
+
+// sessionFrom is the Session a SessionResponse describes.
+function sessionFrom(body: SessionResponse): Session {
+  return {
     token: body.token,
     expiresAt: body.expires_at,
     principal: body.principal,
     playerID: body.player_id,
     gameID: body.game?.id,
   };
-  setSession(s);
-  return s;
 }
 
 // createPracticeTable opens the tutorial's practice table (POST
@@ -645,9 +654,11 @@ export async function removeBotSeat(gameID: string, playerID: string): Promise<G
 // On an unstarted table the server lets the table host, the game's
 // creator or an admin do it. On a started game only an admin may, and
 // it concedes the seat out of the game (CR 800.4a); the host and the
-// creator are answered 409. An ended game (409), the host's own seat
-// and a bot (422) are refused. The seat's session stops working and its
-// sockets close; the invite is untouched.
+// creator are answered 409. An ended game (409), a bot (422), and the
+// host's seat when someone else asks (422) are refused. The seat's
+// session stops working and its sockets close; the invite is untouched.
+// A seat may remove itself on an unstarted table, the host's included
+// (#3494); the answer then carries a signed-in person's next session.
 //
 // With `block: true` (#2984) the same call also blocks the removed seat
 // from taking a seat at THIS table again: the account, for a signed-in
@@ -660,7 +671,11 @@ export async function removeSeat(
 ): Promise<GameMeta> {
   const q = opts.block ? "?block=true" : "";
   const res = await authFetch(`/games/${gameID}/seats/${playerID}${q}`, { method: "DELETE" });
-  return (await res.json()) as GameMeta;
+  const out = (await res.json()) as GameMeta & { session?: SessionResponse };
+  // Leaving your own seat (#3494): its session ends with it, and a
+  // signed-in person gets their sign-in back to carry on with.
+  if (out.session) setSession(sessionFrom(out.session));
+  return out;
 }
 
 // ADR 0177: the table moves on without a player who has been offline
