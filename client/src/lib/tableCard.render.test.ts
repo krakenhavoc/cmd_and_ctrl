@@ -306,6 +306,31 @@ describe("the card's right-click menu", () => {
     expect(document.activeElement).toBe(copy);
   });
 
+  // The e2e caught this: the browser scrolls the card into view, and the
+  // scroll event lands after the menu has mounted.
+  it("stays open for a late scroll event, and closes once the page moves", async () => {
+    setSession(seated(HOST));
+    hostRoutes();
+    stubServer();
+    const { container } = render(Lobby as never, {} as never);
+    await settle();
+
+    rightClick(card(container));
+    await settle();
+    window.dispatchEvent(new Event("scroll"));
+    flushSync();
+    expect(menu()).not.toBeNull();
+
+    Object.defineProperty(window, "scrollY", { configurable: true, value: 300 });
+    try {
+      window.dispatchEvent(new Event("scroll"));
+      flushSync();
+      expect(menu()).toBeNull();
+    } finally {
+      Object.defineProperty(window, "scrollY", { configurable: true, value: 0 });
+    }
+  });
+
   it("runs an item and closes", async () => {
     setSession(seated(HOST));
     hostRoutes();

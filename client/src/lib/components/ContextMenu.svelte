@@ -30,6 +30,15 @@
   let left = $state(0);
   let top = $state(0);
   let closed = false;
+  // Where the page was scrolled when the menu opened. A scroll event can
+  // land a frame after the menu mounts for a scroll that finished before
+  // it (the browser bringing the right-clicked card into view), so the
+  // menu closes only once the page has actually moved.
+  const scrolledAt = { x: window.scrollX, y: window.scrollY };
+
+  function onWindowScroll(): void {
+    if (window.scrollX !== scrolledAt.x || window.scrollY !== scrolledAt.y) close();
+  }
 
   function close(restoreFocus = false): void {
     if (closed) return;
@@ -58,7 +67,7 @@
   onMount(() => {
     void tick().then(() => {
       place();
-      enabled()[0]?.focus();
+      enabled()[0]?.focus({ preventScroll: true });
     });
   });
 
@@ -88,7 +97,7 @@
     else if (e.key === "End") next = all.length - 1;
     if (next === null) return;
     e.preventDefault();
-    all[next].focus();
+    all[next].focus({ preventScroll: true });
   }
 
   function onWindowPointer(e: PointerEvent): void {
@@ -99,7 +108,7 @@
 <svelte:window
   onpointerdown={onWindowPointer}
   onresize={() => close()}
-  onscroll={() => close()}
+  onscroll={onWindowScroll}
   onblur={() => close()}
 />
 
