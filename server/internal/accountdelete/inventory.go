@@ -79,6 +79,8 @@ var Inventory = join(
 		"bot_key_user_id"),
 	cols("seats", Kept, "the model id an own-key bot seat asked for names no one",
 		"bot_key_model"),
+	cols("seats", NotPersonal, "the bot tier standing in for an away player and when it took the seat (ADR 0177); neither names a person",
+		"stand_in", "stand_in_since"),
 
 	cols("invites", NotPersonal, "an invite token hash and its clock",
 		"token_hash", "game_id", "kind", "created_at", "expires_at", "revoked_at"),

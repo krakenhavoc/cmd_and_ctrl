@@ -96,6 +96,7 @@ func (c Config) tableSetups() tablesetups.Store {
 // settings whatever the new table's defaults are.
 func completeSettingsPatch(ts game.TableSettings) game.SettingsPatch {
 	free := ts.EffectiveFreeMulligans()
+	away := ts.EffectiveAwayAfter()
 	return game.SettingsPatch{
 		UndoLimit:       &ts.UndoLimit,
 		UndoScope:       &ts.UndoScope,
@@ -105,6 +106,7 @@ func completeSettingsPatch(ts game.TableSettings) game.SettingsPatch {
 		AllowSpawn:      &ts.AllowSpawn,
 
 		FreeMulligans: &free,
+		AwayAfter:     &away,
 	}
 }
 

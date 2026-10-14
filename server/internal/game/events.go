@@ -1340,6 +1340,17 @@ const (
 	// actually changed. Public. Added in S35 (#1032).
 	EventSettingsChanged EventKind = "settings_changed"
 
+	// EventAwaySeat — the table moved on without a player who was
+	// gone (ADR 0177). Label is AwayStandIn (a bot took the seat),
+	// AwayConcede (the seat was conceded for them) or AwayTakeBack
+	// (the player came back and took their seat from the bot). Target
+	// is the seat; Actor is who decided (uuid.Nil for the server
+	// admin; the seat itself for a take-back); Amount is how many
+	// whole minutes the seat had been offline. Public. Nothing in the
+	// rules reads it: the concession that follows AwayConcede is an
+	// ordinary EventConcede.
+	EventAwaySeat EventKind = "away_seat"
+
 	// EventSpawned — somebody put cards or tokens onto the table from
 	// nowhere (ADR 0075 §2.4). Actor is who asked (uuid.Nil for the
 	// server admin), Target the seat the cards belong to, NewZone

@@ -129,6 +129,14 @@ type Room struct {
 	// host. See rematch.go.
 	rematchMu sync.Mutex
 	rematch   *protocol.RematchView
+
+	// awayMu guards the away state of ADR 0177 (away.go): which seats
+	// a bot is standing in for, and which the table may move on
+	// without. The lobby sets both; never guarded by mu, so the lobby
+	// may set them from inside an ApplyExternal fn.
+	awayMu   sync.Mutex
+	standIns map[uuid.UUID]standIn
+	movable  map[uuid.UUID]bool
 	// stackPos is where each seat dragged the stack panel (#3429, ADR
 	// 0176), set by the lobby through SetStackPosition and stamped on
 	// every capture. Guarded by stackPosMu, never by mu, for the same
@@ -788,6 +796,7 @@ func (r *Room) ViewFor(viewerID string) protocol.GameView {
 	r.stampVoiceLocked(&view)
 	r.stampRematchLocked(&view)
 	r.stampStackPositionsLocked(&view)
+	r.stampStandInsLocked(&view)
 	r.mu.Unlock()
 	return protocol.FilterViewFor(view, viewerID)
 }
@@ -836,6 +845,7 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 	r.stampVoiceLocked(&view)
 	r.stampRematchLocked(&view)
 	r.stampStackPositionsLocked(&view)
+	r.stampStandInsLocked(&view)
 
 	// Consume any annotation the committing caller left for this
 	// capture. Cleared unconditionally — including on the Snapshot
