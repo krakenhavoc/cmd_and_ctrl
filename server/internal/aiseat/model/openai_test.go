@@ -507,6 +507,38 @@ func TestOpenAIFallsBackToMaxCompletionTokens(t *testing.T) {
 	}
 }
 
+// The refusal is remembered for the process, not for one client: the
+// own-key path builds a fresh OpenAIClient per Test press and per seat
+// key read, so a second client on the same endpoint and model must not
+// pay the refused request again.
+func TestOpenAIRemembersMaxCompletionTokensAcrossClients(t *testing.T) {
+	var calls []map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var got map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		calls = append(calls, got)
+		if _, ok := got["max_tokens"]; ok {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":{"type":"invalid_request_error","message":"Unsupported parameter: 'max_tokens'. Use 'max_completion_tokens' instead."}}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"0"},"finish_reason":"stop"}]}`))
+	}))
+	t.Cleanup(srv.Close)
+	first := &OpenAIClient{Endpoint: srv.URL, HTTP: srv.Client()}
+	if _, err := first.Complete(context.Background(), Request{Model: "gpt-y", User: "u", MaxTokens: 64}); err != nil {
+		t.Fatalf("first client: %v", err)
+	}
+	calls = nil
+	second := &OpenAIClient{Endpoint: srv.URL, HTTP: srv.Client()}
+	if _, err := second.Complete(context.Background(), Request{Model: "gpt-y", User: "u", MaxTokens: 64}); err != nil {
+		t.Fatalf("second client: %v", err)
+	}
+	if len(calls) != 1 || calls[0]["max_completion_tokens"] != float64(64) {
+		t.Errorf("second client calls = %v, want one request with max_completion_tokens only", calls)
+	}
+}
+
 // A server that takes max_tokens gets it, and is never retried.
 func TestOpenAIKeepsMaxTokensForAnOrdinaryServer(t *testing.T) {
 	var calls []map[string]any
