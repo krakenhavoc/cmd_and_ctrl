@@ -482,9 +482,13 @@ export function findTargetMarks(
   board: ParentNode,
   items: readonly StackLaneItem[],
 ): MarkedTarget[] {
+  return findMarks(board, planTargetMarks(items));
+}
+
+function findMarks(board: ParentNode, plans: readonly TargetMarkPlan[]): MarkedTarget[] {
   const out: MarkedTarget[] = [];
   const seen = new Set<HTMLElement>();
-  for (const plan of planTargetMarks(items)) {
+  for (const plan of plans) {
     const el = findAnchor(board, targetSelector(plan.kind, plan.id), {
       accept: (e) => hasSize(e) && e.closest(STACK_SURFACES) === null,
     });
@@ -493,4 +497,83 @@ export function findTargetMarks(
     out.push({ el, color: plan.color, fromTop: plan.fromTop });
   }
   return out;
+}
+
+// ---------------------------------------------------------------- //
+// Who put it there (#3380)
+//
+// The rings above tie an item to what it targets. Its other end, the
+// player who cast it and, for an ability, the permanent it came from,
+// had no mark on the table: the stack names "Bot 3", but Bot 3's seat
+// can be across the screen. Each stack item's caster avatar, and an
+// ability's source (CR 113.7), now glows in the caster's seat colour.
+// The glow is its own attribute, not the target ring, so an element
+// that is both (a player who targets themself) shows both.
+
+/** The attribute set on a caster's avatar or an ability's source. */
+export const SOURCE_ATTR = "data-stack-source";
+/** The custom property that carries that element's glow colour. */
+export const SOURCE_GLOW_VAR = "--stack-source-glow";
+
+/**
+ * The board elements the stack glows, before they are found in the
+ * DOM: every stack item's caster, and every ability's source card,
+ * once each. The top item's mark wins over a lower item's (it is the
+ * one that resolves next); otherwise the first item to reach an
+ * element colours it. The colour is always the caster's seat colour,
+ * never the top item's gold, which already means "targeted next". A
+ * spell's own card is on the stack, so a spell marks only its caster.
+ * A pending trigger is not on the stack yet and marks nothing.
+ */
+export function planSourceMarks(items: readonly StackLaneItem[]): TargetMarkPlan[] {
+  const out = new Map<string, TargetMarkPlan>();
+  const add = (kind: "permanent" | "player", id: string, item: StackLaneItem): void => {
+    if (!id) return;
+    const key = `${kind}:${id}`;
+    const prev = out.get(key);
+    if (prev && (prev.fromTop || !item.isTop)) return;
+    out.set(key, { kind, id, color: item.casterColor, fromTop: item.isTop });
+  };
+  for (const item of items) {
+    if (item.position === null) continue;
+    add("player", item.casterSeat, item);
+    if (item.kind === "activated" || item.kind === "triggered") {
+      add("permanent", item.raw.source_card_id, item);
+    }
+  }
+  return [...out.values()];
+}
+
+/**
+ * planSourceMarks found on the board, exactly as findTargetMarks finds
+ * the targets: an expanded overlay's copy first, nothing without size,
+ * nothing inside the stack's own surfaces, nothing off screen.
+ */
+export function findSourceMarks(
+  board: ParentNode,
+  items: readonly StackLaneItem[],
+): MarkedTarget[] {
+  return findMarks(board, planSourceMarks(items));
+}
+
+/**
+ * syncTargetMarks for the source glow: mark exactly `next`'s elements
+ * ("next" for the top item's, "" for the rest) and unmark the others.
+ */
+export function syncSourceMarks(
+  prev: ReadonlySet<HTMLElement>,
+  next: readonly MarkedTarget[],
+): Set<HTMLElement> {
+  const now = new Set<HTMLElement>();
+  for (const t of next) {
+    t.el.setAttribute(SOURCE_ATTR, t.fromTop ? "next" : "");
+    t.el.style.setProperty(SOURCE_GLOW_VAR, t.color);
+    now.add(t.el);
+  }
+  for (const el of prev) {
+    if (now.has(el)) continue;
+    el.removeAttribute(SOURCE_ATTR);
+    el.style.removeProperty(SOURCE_GLOW_VAR);
+  }
+  return now;
 }

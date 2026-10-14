@@ -17,7 +17,7 @@ import Board from "./components/board/Board.svelte";
 import { updateSettings } from "./settings";
 import { targeting, type TargetingState } from "./targeting";
 import { STACK_STYLES } from "./stackLane";
-import { TARGET_ATTR, TARGET_RING_VAR } from "./stackArrows";
+import { SOURCE_ATTR, SOURCE_GLOW_VAR, TARGET_ATTR, TARGET_RING_VAR } from "./stackArrows";
 import { seatColor } from "./colors";
 import type { ActionType, CardView, GameView, PlayerView, StackItemView } from "./protocol";
 import { render, cleanup } from "./test/render.svelte";
@@ -261,6 +261,44 @@ describe("rings on what the stack targets (ADR 0119 §4)", () => {
     b.destroy();
     expect(viviEl.hasAttribute(TARGET_ATTR)).toBe(false);
   });
+});
+
+describe("the caster's seat and an ability's source glow (#3380)", () => {
+  // Bottom first: Vivi's triggered ability (the opponent's), then my
+  // Giant Growth on top.
+  const items = [
+    {
+      id: "vivi-trig",
+      kind: "triggered",
+      controller: OPP,
+      owner: OPP,
+      source_card_id: "vivi",
+      label: "Vivi Ornitier — add mana",
+    } as StackItemView,
+    spell("growth", ME, [{ kind: "card", id: "birds" }]),
+  ];
+
+  for (const style of STACK_STYLES) {
+    it(`glows each caster and the ability's source in the ${style} style`, () => {
+      updateSettings("display", "stackStyle", style);
+      const b = mountBoard(gameView(items, [growth]));
+      const oppEl = b.q(`.board [data-seat-id="${OPP}"]`)!;
+      const viviEl = b.q('.board [data-instance-id="vivi"]')!;
+      expect(oppEl.getAttribute(SOURCE_ATTR)).toBe("");
+      expect(oppEl.style.getPropertyValue(SOURCE_GLOW_VAR)).toBe(seatColor(1));
+      expect(viviEl.getAttribute(SOURCE_ATTR)).toBe("");
+      expect(viviEl.style.getPropertyValue(SOURCE_GLOW_VAR)).toBe(seatColor(1));
+      // A spell's caster glows, but nothing of a spell's own card does.
+      expect(b.q('.board [data-instance-id="birds"]')!.hasAttribute(SOURCE_ATTR)).toBe(false);
+
+      // Growth resolves: the trigger is the top item now, so it pulses.
+      b.setProps({ view: gameView([items[0]]) } as never);
+      expect(b.q('.board [data-instance-id="vivi"]')!.getAttribute(SOURCE_ATTR)).toBe("next");
+
+      b.setProps({ view: gameView([]) } as never);
+      expect(b.qa(`[${SOURCE_ATTR}]`)).toHaveLength(0);
+    });
+  }
 });
 
 describe("arrows while choosing targets (ADR 0119 §4)", () => {

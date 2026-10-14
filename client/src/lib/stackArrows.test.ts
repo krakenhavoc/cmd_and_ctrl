@@ -22,11 +22,16 @@ import {
   insideBox,
   laneArc,
   laneExit,
+  SOURCE_ATTR,
+  SOURCE_GLOW_VAR,
+  findSourceMarks,
   findTargetMarks,
   measureStackArrows,
   planArrows,
+  planSourceMarks,
   planTargetMarks,
   relativeTo,
+  syncSourceMarks,
   syncTargetMarks,
   targetSelector,
   type Box,
@@ -443,6 +448,99 @@ describe("planTargetMarks (ADR 0119 §4: rings in every style)", () => {
     try {
       const marks = findTargetMarks(board, model().stackItems);
       expect(marks.map((m) => m.el.id)).toEqual(["bot-header", "on-table"]);
+    } finally {
+      Element.prototype.getBoundingClientRect = realRect;
+      board.remove();
+    }
+  });
+});
+
+// #3380: the other end of an item, its caster and an ability's source.
+describe("planSourceMarks (#3380: tie each item to its caster's seat)", () => {
+  // Bottom first: the bot's Birds activates (an ability, its source on
+  // the table), then I cast Bolt on top. A pending trigger of mine
+  // waits to go on the stack.
+  function withAbility() {
+    return buildStackLane({
+      stack: zone("stack", [bolt]),
+      stackItems: [
+        {
+          id: "ab1",
+          kind: "activated",
+          controller: BOT,
+          owner: BOT,
+          source_card_id: "birds",
+          label: "Add G",
+        } as StackItemView,
+        spell("bolt", ME, [{ kind: "card", id: "birds" }]),
+      ],
+      pendingTriggers: [
+        {
+          id: "pt1",
+          kind: "triggered",
+          controller: ME,
+          owner: ME,
+          source_card_id: "buried",
+        } as StackItemView,
+      ],
+      seats: [seat(ME, "Me", 0), seat(BOT, "Bot 2", 1)],
+      battlefield: zone("battlefield", [birds, buried]),
+      viewerID: ME,
+      priorityHolder: ME,
+      splitSecondActive: false,
+    });
+  }
+
+  it("marks each caster, and an ability's source, in the caster's seat colour", () => {
+    expect(planSourceMarks(withAbility().items)).toEqual([
+      { kind: "player", id: ME, color: seatColor(0), fromTop: true },
+      { kind: "player", id: BOT, color: seatColor(1), fromTop: false },
+      { kind: "permanent", id: "birds", color: seatColor(1), fromTop: false },
+    ]);
+  });
+
+  it("never marks a spell's own card, and marks a repeated caster once", () => {
+    // model(): Shock (me, top), Counterspell (bot), Bolt (me).
+    expect(planSourceMarks(model().stackItems)).toEqual([
+      { kind: "player", id: ME, color: seatColor(0), fromTop: true },
+      { kind: "player", id: BOT, color: seatColor(1), fromTop: false },
+    ]);
+  });
+
+  it("finds the marks on the board, glows them, and clears them", () => {
+    const board = document.createElement("div");
+    board.innerHTML = `
+      <section class="stack-lane"><div data-seat-id="${BOT}" id="in-lane"></div></section>
+      <div data-seat-id="${ME}" id="me"></div>
+      <div data-seat-id="${BOT}" id="bot"></div>
+      <div data-instance-id="birds" id="birds"></div>
+      <div data-instance-id="buried" id="buried"></div>`;
+    document.body.appendChild(board);
+    const realRect = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 10, height: 10 }) as DOMRect;
+    try {
+      const marks = findSourceMarks(board, withAbility().items);
+      expect(marks.map((m) => m.el.id)).toEqual(["me", "bot", "birds"]);
+
+      let glowing = syncSourceMarks(new Set(), marks);
+      const me = board.querySelector("#me") as HTMLElement;
+      const birdsEl = board.querySelector("#birds") as HTMLElement;
+      expect(me.getAttribute(SOURCE_ATTR)).toBe("next");
+      expect(me.style.getPropertyValue(SOURCE_GLOW_VAR)).toBe(seatColor(0));
+      expect(birdsEl.getAttribute(SOURCE_ATTR)).toBe("");
+      expect(birdsEl.style.getPropertyValue(SOURCE_GLOW_VAR)).toBe(seatColor(1));
+      // The pending trigger's source is not on the stack yet.
+      expect(board.querySelector("#buried")!.hasAttribute(SOURCE_ATTR)).toBe(false);
+      // The glow is its own mark; the target ring is untouched.
+      expect(birdsEl.hasAttribute(TARGET_ATTR)).toBe(false);
+
+      glowing = syncSourceMarks(glowing, [marks[0]]);
+      expect(birdsEl.hasAttribute(SOURCE_ATTR)).toBe(false);
+      expect(birdsEl.style.getPropertyValue(SOURCE_GLOW_VAR)).toBe("");
+
+      syncSourceMarks(glowing, []);
+      expect(me.hasAttribute(SOURCE_ATTR)).toBe(false);
     } finally {
       Element.prototype.getBoundingClientRect = realRect;
       board.remove();
