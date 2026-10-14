@@ -1,4 +1,4 @@
-# ADR 0161 — One mana and life ward payment
+# ADR 0171 — One mana and life ward payment
 
 Date: 2026-10-13
 Status: Accepted
@@ -64,3 +64,12 @@ Initially reserved 0158 after checking all 13 remote refs on 2026-10-13.
 A signed-in-pages ADR merged with that number before this PR. Renumbered this
 ADR and its inbound links to 0161 after fetching and checking all 12 remaining
 remote refs; 0158–0160 were occupied, so 0161 was the first unused number.
+
+Before merging, the updated base also contained the LFG-board ADR 0161.
+Renumbered this document to **0171** after another `fetch --all --prune`
+and all-12-ref check; every number 0157–0170 was occupied. References checked:
+origin, origin/ci/3335-deploy-lockdown, origin/cost-ledger, origin/develop,
+origin/docs/issue-audit, origin/feat/2945-compound-ward,
+origin/feat/750-conditional-block-restrictions, origin/feat/playmats,
+origin/fix/3159-3160-attachments, origin/fix/caddy-reload-admin-off,
+origin/main, origin/wip/836-one-click-default.

@@ -2700,7 +2700,7 @@ variant (Knight of Grace), and never the broad `hexproof` beside it.
 `WardWaterbend`, `WardLife(2)`, `WardSacrifice("a creature", Creature())`
 and, since #3172, `WardDiscard(1)` ("Ward—Discard a card"). Each is one
 component. `WardManaAndLife("{2}", 2)` declares one compound cost
-(Gisa and Captain Howler, #2945, ADR 0161): one prompt requires both
+(Gisa and Captain Howler, #2945, ADR 0171): one prompt requires both
 components, checks the complete mana plan and life total before charging,
 and combines mandatory life with any optional Phyrexian-symbol payment.
 `CounterUnlessPaidPrompt.LifeCost` carries the fixed amount; the legal

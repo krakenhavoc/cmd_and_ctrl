@@ -32,7 +32,7 @@ import (
 //     schedules a second, independent watch, as the card reads.
 //
 // Ward uses the single mana-and-life payment shared with Gisa (#2945,
-// ADR 0161). All printed behavior is implemented.
+// ADR 0171). All printed behavior is implemented.
 func init() {
 	Register(Spec{
 		OracleID:     "46c99d67-8307-4af0-afd0-377714806614",
