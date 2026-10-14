@@ -76,7 +76,7 @@ const SETUP: TableSetup = {
     commander_damage: 21,
     bot_pace: "fast",
     allow_spawn: true,
-    free_first_mulligan: true,
+    free_mulligans: 2,
   },
   bots: [
     { tier: "random", deck_id: "raid", name: "Robo" },
@@ -89,7 +89,7 @@ describe("setupSummary", () => {
   it("names the bots, their decks, and the settings that differ from a new table", () => {
     const names: Record<string, string> = { raid: "Raid and Ransack" };
     expect(setupSummary(SETUP, (id) => names[id] ?? id)).toBe(
-      "2 bots: Robo (random, Raid and Ransack), Pasted (heuristic) · starting life 30 · fast table pace · spawning on · free first mulligan",
+      "2 bots: Robo (random, Raid and Ransack), Pasted (heuristic) · starting life 30 · fast table pace · spawning on · 2 free mulligans",
     );
   });
 

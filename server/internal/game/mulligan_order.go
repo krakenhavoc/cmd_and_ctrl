@@ -3,6 +3,7 @@ package game
 import (
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/google/uuid"
 )
@@ -54,14 +55,20 @@ var ErrNoMoreMulligans = errors.New("game: no further mulligans: your opening ha
 // deciding meanwhile: a seat that kept is not the decider any more.
 
 // freeMulligansLocked is how many of a seat's mulligans cost nothing:
-// one in a multiplayer game (CR 103.5c), none in a two-player game
-// unless the table's FreeFirstMulligan house rule gives it one too
-// (#3387). Caller must hold g.mu.
+// one in a multiplayer game (CR 103.5c), none in a two-player game,
+// or the table's FreeMulligans house rule when it gives more (#3387).
+// Unlimited is math.MaxInt: no count of mulligans reaches it. Caller
+// must hold g.mu.
 func (g *Game) freeMulligansLocked() int {
-	if g.Settings.FreeFirstMulligan || g.startingPlayerCountLocked() > 2 {
-		return 1
+	set := g.Settings.EffectiveFreeMulligans()
+	if set == FreeMulligansUnlimited {
+		return math.MaxInt
 	}
-	return 0
+	rules := 0
+	if g.startingPlayerCountLocked() > 2 {
+		rules = 1
+	}
+	return max(rules, set)
 }
 
 // countedMulligansLocked is p's mulligans that count toward the cards

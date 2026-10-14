@@ -228,7 +228,12 @@
   import { devFeature } from "../lib/env";
   import { gameWSURL } from "../lib/gameURL";
   import { firstTurnHeadline, openingRollText, openingRollWinner } from "../lib/startingPlayer";
-  import { keepCostText, mulliganCostText, mulliganWaitingText } from "../lib/mulliganTurn";
+  import {
+    freeMulliganCount,
+    keepCostText,
+    mulliganCostText,
+    mulliganWaitingText,
+  } from "../lib/mulliganTurn";
   import DevDock from "../lib/components/dev/DevDock.svelte";
   import type { ReplayFrame } from "../lib/replay";
   import { L } from "../lib/labels";
@@ -2989,7 +2994,7 @@
                 viewerSeat?.mulligans_taken ?? 0,
                 viewerSeat?.mulligan_bottom ?? 0,
                 // CR 103.5c, or the table's house rule (#3387).
-                seats.length > 2 || tableSettings.free_first_mulligan === true,
+                freeMulliganCount(seats.length, tableSettings.free_mulligans),
               )}
             </p>
           </div>

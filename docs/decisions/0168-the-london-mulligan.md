@@ -73,6 +73,15 @@ The owner's call: the default follows the CR, and the host can turn on a free fi
 - **Where it shows.** The table settings panel has a checkbox for it. The log says "made the first mulligan free" or "made the first mulligan cost a card". A saved setup carries it, and an LFG post lists it when it is on. The client's mulligan cost line treats the first mulligan as free when the table has more than two seats or the setting is on.
 - **Snapshot.** An additive field, `settings.freeFirstMulligan`, omitted when false. An older snapshot reads as off, which is the rules. No schema bump (the `snapshot_shape` rule for additive fields).
 
+## Amendment, 2026-10-14: free mulligans as a count
+
+The owner widened the switch above into a count.
+
+- **The setting.** `TableSettings.FreeMulligans` (wire `free_mulligans`) replaces the bool: `0`, the default, is the rules; `N` (1 to 7, `MaxFreeMulligans`) makes each seat's first N mulligans free at any table size; `-1` (`FreeMulligansUnlimited`) makes every mulligan free. `freeMulligansLocked` is the larger of the rules' count and the setting, so a multiplayer table never drops below its CR 103.5c free mulligan, and unlimited is `math.MaxInt`. Free mulligans count toward neither the cards bottomed nor the zero-card limit, so with unlimited a seat may mulligan as often as it likes, and nothing goes to the bottom.
+- **Fixed at Start,** as before, with `ErrFreeMulliganLocked`.
+- **Where it shows.** The panel has a number field with an ∞ chip, like take-backs. The log says "made the first mulligan free", "made the first 3 mulligans free", "made every mulligan free" or "set mulligans to follow the rules". The cost line under Mulligan says how many free mulligans are left. Setups and LFG posts carry the count.
+- **Snapshot.** `settings.freeMulligans` is additive (no bump). The bool's key `settings.freeFirstMulligan` stays in the shape, decoded into `LegacyFreeFirstMulligan`: a snapshot from the day it existed reads as one free mulligan through `EffectiveFreeMulligans`, and the next `free_mulligans` patch clears it. The bool only ever reached develop.
+
 ## Out of scope
 
 - CR 103.5b, actions "any time you could mulligan" (Serum Powder). Nothing in the catalog prints one.

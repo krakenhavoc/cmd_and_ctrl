@@ -4670,10 +4670,11 @@ export interface TableSettingsView {
   // Whether the host and admin may spawn cards and tokens on a live
   // table (every spawn is announced in the log).
   allow_spawn: boolean;
-  // A two-player table's free first mulligan, the house rule (#3387).
-  // A multiplayer table has it by the rules either way. Fixed once the
-  // game is active. Absent from an older server.
-  free_first_mulligan?: boolean;
+  // Free mulligans, the house rule (#3387): 0 or absent is the rules
+  // (one free in a multiplayer game, none at two players), N gives N
+  // free at any table, -1 makes every mulligan free. Fixed once the
+  // game is active.
+  free_mulligans?: number;
 }
 
 // ADR 0127: why a prompt with a standing answer is asked by hand.
