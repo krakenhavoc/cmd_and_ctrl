@@ -1,8 +1,8 @@
-# ADR 0166 — The London mulligan: cards to the bottom after keep, and the free first mulligan
+# ADR 0168 — The London mulligan: cards to the bottom after keep, and the free first mulligan
 
 **Status:** Accepted · 2026-10-13 · S72 — Smoother table play
 **Issue:** [#2799](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2799) (found by the shuffle-fairness work, #2787 and #2788).
-**Numbering:** the AGENTS.md §4 sweep on 2026-10-13 listed `docs/decisions/` on all 15 remote heads; the highest number was **0165**. The claim comment on #2799 reserved **0166**.
+**Numbering:** first claimed as **0166** on #2799, which collided with Word of Command's 0166 when that landed on develop; 0167 was taken on another head. The AGENTS.md §4 sweep on 2026-10-13 (13 remote heads) found **0167** the highest, so this is **0168**, re-claimed on #2799.
 **Builds on:** the turn-ordered mulligan window of `game/mulligan_order.go` (#2237), [ADR 0088](0088-ordered-library-placement.md) (ordering a pile headed to the bottom of a library), the chained-choice prompts Brainstorm uses (`effects/library_order.go`), and [ADR 0133](0133-opening-hand-actions.md) (prompts raised as the window closes).
 
 ---

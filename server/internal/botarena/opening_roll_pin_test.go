@@ -110,7 +110,7 @@ import (
 // attacked in: its first attack now comes after 399 moves instead of
 // 479.
 //
-// ADR 0166 (#2799, the London mulligan): a mulligan now draws seven
+// ADR 0168 (#2799, the London mulligan): a mulligan now draws seven
 // and a keep owes cards to the bottom (a two-player game has no free
 // mulligan, CR 103.5c), so the openings of seeds 31 and 1503 play out
 // differently from their mulligans on. Seed 1503

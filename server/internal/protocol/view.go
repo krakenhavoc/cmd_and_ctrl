@@ -1979,7 +1979,7 @@ type PlayerView struct {
 	MulliganTurn bool `json:"mulligan_turn,omitempty"`
 	// MulliganBottom is how many cards this seat puts on the bottom of
 	// its library if it keeps now: the London mulligan's cost (CR 103.5,
-	// ADR 0166). Zero, and omitted, outside the window and once the
+	// ADR 0168). Zero, and omitted, outside the window and once the
 	// seat has kept. Public, like MulligansTaken, which it follows from.
 	MulliganBottom int `json:"mulligan_bottom,omitempty"`
 	// TriggerOrder reflects Player.TriggerOrder (#1968): "always" or
@@ -11723,7 +11723,7 @@ func emergePricesView(g *game.Game, caster uuid.UUID, card game.Card, zone game.
 
 // viewOfMulliganBottom is SeatView.MulliganBottom: the London
 // mulligan's cost if the seat keeps now, and zero once it has kept or
-// outside the window (ADR 0166). The caller holds g's lock.
+// outside the window (ADR 0168). The caller holds g's lock.
 func viewOfMulliganBottom(g *game.Game, p *game.Player) int {
 	if !g.MulligansOpen || p.HandKept || p.Eliminated {
 		return 0

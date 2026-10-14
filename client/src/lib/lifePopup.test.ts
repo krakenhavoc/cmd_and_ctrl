@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  LIFE_POPUP_HOLD_CAUSE_MS,
   LIFE_POPUP_HOLD_MAX_MS,
   LIFE_POPUP_HOLD_MS,
   LIFE_POPUP_HOLD_PER_EXTRA_MS,
@@ -8,6 +9,7 @@ import {
   emptyLifeTracker,
   lifePopupLabel,
   lifePopupView,
+  shortCause,
   trackLife,
 } from "./lifePopup";
 import type { LifeChangeView } from "./protocol";
@@ -216,5 +218,48 @@ describe("lifePopupView", () => {
       "lost 3, lost 3 — lost 6 life in all, now 34",
     );
     expect(lifePopupView(popup([-3, +3])).label).toBe("lost 3, gained 3 — no net change, now 40");
+  });
+
+  // #3379: what caused each change.
+  it("captions each line with its cause and says it", () => {
+    const view = lifePopupView(popup([-1, +2]), LIFE_POPUP_MAX_LINES, ["Prismatic Vista", null]);
+    expect(view.lines).toEqual([
+      { text: "-1", tone: "loss", cause: "Prismatic Vista" },
+      { text: "+2", tone: "gain" },
+    ]);
+    expect(view.label).toBe("lost 1 from Prismatic Vista, gained 2 — gained 1 life in all, now 41");
+    expect(lifePopupView(popup([-3]), LIFE_POPUP_MAX_LINES, ["Lightning Bolt"]).label).toBe(
+      "lost 3 life from Lightning Bolt, now 37",
+    );
+  });
+
+  it("keeps a collapsed run's cause only when every change shares it", () => {
+    const deltas = Array(LIFE_POPUP_MAX_LINES + 1).fill(-1);
+    const same = Array(deltas.length).fill("Goblin Bombardment");
+    expect(lifePopupView(popup(deltas), LIFE_POPUP_MAX_LINES, same).lines[0].cause).toBe(
+      "Goblin Bombardment",
+    );
+    const mixed = [...same.slice(1), "Shock"];
+    expect(
+      lifePopupView(popup(deltas), LIFE_POPUP_MAX_LINES, mixed).lines[0].cause,
+    ).toBeUndefined();
+  });
+
+  it("prints a short name and announces the full one", () => {
+    expect(shortCause("Purphoros, God of the Forge")).toBe("Purphoros");
+    expect(shortCause("Fire // Ice")).toBe("Fire");
+    expect(shortCause("Sign in Blood")).toBe("Sign in Blood");
+    const view = lifePopupView(popup([-2]), LIFE_POPUP_MAX_LINES, ["Purphoros, God of the Forge"]);
+    expect(view.lines[0].cause).toBe("Purphoros");
+    expect(view.label).toBe("lost 2 life from Purphoros, God of the Forge, now 38");
+  });
+
+  it("holds a named cause a little longer, under the cap", () => {
+    expect(lifePopupView(popup([-1]), LIFE_POPUP_MAX_LINES, ["Shock"]).holdMs).toBe(
+      LIFE_POPUP_HOLD_MS + LIFE_POPUP_HOLD_CAUSE_MS,
+    );
+    expect(
+      lifePopupView(popup([-1, -1, -1, -1]), LIFE_POPUP_MAX_LINES, ["a", "b", "c", "d"]).holdMs,
+    ).toBeLessThanOrEqual(LIFE_POPUP_HOLD_MAX_MS);
   });
 });

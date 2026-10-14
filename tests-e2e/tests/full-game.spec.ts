@@ -128,7 +128,7 @@ test.describe("full game", () => {
         timeout: 10_000,
       });
       // Each player sees 7 cards in their opening hand, and what a
-      // mulligan would cost (ADR 0166: the London mulligan draws 7).
+      // mulligan would cost (ADR 0168: the London mulligan draws 7).
       const opening = p.page.getByRole("dialog", { name: /keep or mulligan/i });
       await expect(
         opening.getByRole("list", { name: "your opening hand" }).getByRole("listitem"),

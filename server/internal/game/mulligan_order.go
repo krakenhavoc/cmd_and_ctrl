@@ -34,10 +34,10 @@ var ErrNotYourMulligan = errors.New("game: it is not your turn to decide on your
 
 // ErrNoMoreMulligans is returned by Mulligan inside the window once the
 // seat's counted mulligans have reached the starting hand size: its
-// opening hand would be zero cards (CR 103.5, ADR 0166 decision 1).
+// opening hand would be zero cards (CR 103.5, ADR 0168 decision 1).
 var ErrNoMoreMulligans = errors.New("game: no further mulligans: your opening hand would be zero cards")
 
-// The London mulligan (CR 103.5, ADR 0166).
+// The London mulligan (CR 103.5, ADR 0168).
 //
 // A mulligan inside the window always draws OpeningHandSize. The cost
 // is paid when the seat keeps: it puts N cards from its hand on the
@@ -45,7 +45,7 @@ var ErrNoMoreMulligans = errors.New("game: no further mulligans: your opening ha
 // mulligans taken less the free first one of a multiplayer game
 // (CR 103.5c, CR 800.6; a game that began with more than two players,
 // CR 100.1b). The rule's own order bottoms as part of each mulligan;
-// bottoming once at keep leads to the same games (ADR 0166 decision 2).
+// bottoming once at keep leads to the same games (ADR 0168 decision 2).
 //
 // The keep raises Brainstorm's pair of prompts: pick N of the hand,
 // then order them on the bottom. Player.mulliganBottoming is true from
@@ -216,7 +216,7 @@ func (g *Game) settleMulliganLocked() {
 		return
 	}
 	if bottoming {
-		// ADR 0166 decision 4: the hands are not final until every
+		// ADR 0168 decision 4: the hands are not final until every
 		// keeper's cards are on the bottom. The last one to finish
 		// settles the window again.
 		return

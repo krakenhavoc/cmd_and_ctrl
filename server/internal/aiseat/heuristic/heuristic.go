@@ -1333,7 +1333,7 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 // KeepNeedsCast, a hand at the floor must also hold a spell it can cast
 // soon, or it takes the free mulligan (#2693, mulligan.go).
 //
-// The engine's mulligan is the London mulligan (ADR 0166): it always
+// The engine's mulligan is the London mulligan (ADR 0168): it always
 // draws seven, and a keep puts MulliganBottom cards on the bottom (the
 // bot picks them through its choose_cards scoring, which keeps the most
 // valuable). So the hand the bot would play is `eff`, seven less what a

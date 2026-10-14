@@ -251,12 +251,12 @@ type Player struct {
 	// MulligansTaken is the count of Mulligan calls this player has
 	// made in the current opening-hand window. Reset at Start. The UI
 	// shows it, and it is what the London mulligan's bottom count is
-	// read from (MulliganBottomCountLocked, ADR 0166).
+	// read from (MulliganBottomCountLocked, ADR 0168).
 	MulligansTaken int
 
 	// mulliganBottoming is true from this player's keep until the cards
 	// the London mulligan owes are on the bottom of its library (ADR
-	// 0166 decision 4): the window does not close while it is set. Not
+	// 0168 decision 4): the window does not close while it is set. Not
 	// persisted: it is set only while the bottoming prompts are open,
 	// and a table waiting on them is not a restore point.
 	mulliganBottoming bool
