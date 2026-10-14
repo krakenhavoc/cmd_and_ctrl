@@ -3573,6 +3573,9 @@
       considering={consideringSeatID !== null && consideringSeatID === prioritySeatID}
       onCounter={counterStackItem}
       onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
+      position={savedStackPosition(view, viewerID)}
+      onSave={isSpectator ? undefined : (pos) => saveStackPosition(view.id, pos)}
+      onReset={isSpectator ? undefined : () => clearStackPosition(view.id)}
     />
   {/if}
   <!-- ADR 0111 §4 / §10 (PR 4): the attention strip is `region

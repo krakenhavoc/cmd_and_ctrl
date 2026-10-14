@@ -48,7 +48,8 @@
   // bookkeeping is lib/stackHover.ts for the same reason.
 
   import type { PlayerView, StackItemView, StackPositionView, ZoneView } from "../../protocol";
-  import { stackFractions, stackPixels, type Size } from "../../stackPosition";
+  import { stackPixels, type Size } from "../../stackPosition";
+  import { createStackPlacement } from "../../stackPlacement.svelte";
   import { cardImageURL } from "../../cardImage";
   import { cardArt } from "../../cardArt";
   import Icon from "../Icon.svelte";
@@ -139,24 +140,20 @@
   const visible = $derived(displayItems.length > 0 || triggers.length > 0 || stack.count > 0);
 
   // ---- #3429 movable --------------------------------------------
-  // `local` is what this tab has put down that the server has not echoed
-  // yet (a spot, or null for a reset); undefined means none. A new saved
-  // `position` from the server replaces it. A spectator has nothing saved,
-  // so theirs stays.
-  let local = $state<StackPositionView | null | undefined>(undefined);
-  let dragging = $state<StackPositionView | null>(null);
+  // The drag, save and reset are lib/stackPlacement.svelte.ts, shared with
+  // the floating lane.
   let overlayEl = $state<HTMLDivElement | undefined>();
   let geom = $state<{ board: Size; panel: Size; ox: number; oy: number } | null>(null);
 
-  // Keyed on the values, not the object: every state frame hands in a new
-  // one, and only a changed spot is the server's answer.
-  const positionKey = $derived(position ? `${position.x},${position.y}` : "");
-  $effect(() => {
-    void positionKey;
-    local = undefined;
+  const move = createStackPlacement({
+    position: () => position,
+    onSave: () => onSave,
+    onReset: () => onReset,
+    panel: () => overlayEl,
+    board: () => boardEl,
+    before: () => measure(),
   });
-
-  const placed = $derived(dragging ?? (local !== undefined ? local : position));
+  const placed = $derived(move.placed);
   const placedStyle = $derived.by(() => {
     if (!placed || !geom) return null;
     const px = stackPixels(placed, geom.board, geom.panel);
@@ -205,75 +202,6 @@
     return () => ro.disconnect();
   });
 
-  // A drag below this many pixels is a click on the header, not a move.
-  const DRAG_SLOP = 3;
-  let drag: { id: number; dx: number; dy: number; x0: number; y0: number; moved: boolean } | null =
-    null;
-
-  function onHeadPointerDown(e: PointerEvent): void {
-    if (e.button !== 0 || !overlayEl || !boardEl) return;
-    if ((e.target as Element | null)?.closest("button")) return;
-    measure();
-    if (!geom) return;
-    const r = overlayEl.getBoundingClientRect();
-    drag = {
-      id: e.pointerId,
-      dx: e.clientX - r.left,
-      dy: e.clientY - r.top,
-      x0: e.clientX,
-      y0: e.clientY,
-      moved: false,
-    };
-    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
-    e.preventDefault();
-  }
-
-  function dropSpot(e: PointerEvent): StackPositionView | null {
-    if (!drag || !boardEl || !geom) return null;
-    const b = boardEl.getBoundingClientRect();
-    return stackFractions(
-      e.clientX - drag.dx - b.left,
-      e.clientY - drag.dy - b.top,
-      geom.board,
-      geom.panel,
-    );
-  }
-
-  function onHeadPointerMove(e: PointerEvent): void {
-    if (!drag || e.pointerId !== drag.id) return;
-    if (!drag.moved && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < DRAG_SLOP) return;
-    drag.moved = true;
-    dragging = dropSpot(e);
-  }
-
-  function onHeadPointerUp(e: PointerEvent): void {
-    if (!drag || e.pointerId !== drag.id) return;
-    const spot = drag.moved ? dropSpot(e) : null;
-    drag = null;
-    dragging = null;
-    if (!spot) return;
-    local = spot;
-    if (onSave) {
-      Promise.resolve(onSave(spot)).catch(() => {
-        local = undefined;
-      });
-    }
-  }
-
-  function onHeadPointerCancel(): void {
-    drag = null;
-    dragging = null;
-  }
-
-  function resetPosition(): void {
-    local = null;
-    if (onReset) {
-      Promise.resolve(onReset()).catch(() => {
-        local = undefined;
-      });
-    }
-  }
-
   // ---- #322 hover preview -------------------------------------
   // The overlay pins top-right and the strip pins top-left, so the
   // big preview lands beside the stack rather than over it.
@@ -306,7 +234,7 @@
   <div
     class="overlay"
     class:placed={placed !== null}
-    class:dragging={dragging !== null}
+    class:dragging={move.dragging}
     data-stack-overlay
     aria-label={L.stackPile(displayItems.length)}
     style={placedStyle}
@@ -321,11 +249,11 @@
       class:movable={boardEl !== null}
       data-stack-handle
       title={boardEl ? "drag to move the stack · double-click to reset" : undefined}
-      onpointerdown={onHeadPointerDown}
-      onpointermove={onHeadPointerMove}
-      onpointerup={onHeadPointerUp}
-      onpointercancel={onHeadPointerCancel}
-      ondblclick={boardEl ? resetPosition : undefined}
+      onpointerdown={move.onPointerDown}
+      onpointermove={move.onPointerMove}
+      onpointerup={move.onPointerUp}
+      onpointercancel={move.onPointerCancel}
+      ondblclick={boardEl ? move.reset : undefined}
     >
       <span class="label">stack <b class="count">{displayItems.length}</b></span>
       {#if splitSecondActive}
@@ -349,7 +277,7 @@
           class="reset-pos"
           title="Reset position"
           aria-label="Reset stack position"
-          onclick={resetPosition}
+          onclick={move.reset}
         >
           <Icon name="undo" size={12} />
         </button>
