@@ -1,4 +1,10 @@
-import { expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import {
+  expect,
+  type Browser,
+  type BrowserContext,
+  type BrowserContextOptions,
+  type Page,
+} from "@playwright/test";
 
 // Shared browser-side player onboarding. full-game, board-layout,
 // mulligan and zone-browser all need "a fresh context that walked the
@@ -35,8 +41,10 @@ export async function joinAsPlayer(
   inviteToken: string,
   name: string,
   settings?: Record<string, unknown>,
+  // A device to play as, e.g. a touch tablet ({ hasTouch: true }, #3338).
+  contextOptions?: BrowserContextOptions,
 ): Promise<JoinedPlayer> {
-  const context = await browser.newContext();
+  const context = await browser.newContext(contextOptions);
   if (settings) {
     await context.addInitScript((seed: string) => {
       try {

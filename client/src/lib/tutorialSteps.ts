@@ -431,7 +431,7 @@ export const READ_HAND: TutorialStep = {
   n: 3,
   kind: "action",
   title: "Read your hand",
-  body: "Your hand shows only the top of each card. Rest the pointer on one and the full card shows in the preview at the top right.",
+  body: "Your hand shows only the top of each card. Rest the pointer on one (on a tablet, press and hold it) and the full card shows in the preview at the top right.",
   hint: "Hold the pointer still over any card in your hand for a moment.",
   anchor: HAND,
   hover: { ms: 600, event: "hand-hovered" },
