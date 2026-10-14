@@ -45,6 +45,10 @@ const (
 	// The emerge cost is equal to its mana cost." (Herigast, Erupting
 	// Nullkite; ADR 0135 PR 6).
 	GrantedAltCostEmerge = "granted-emerge"
+	// GrantedAltCostZeroZombieCreatures is "You may pay {0} rather than
+	// pay the mana cost for Zombie creature spells you cast." (Rooftop
+	// Storm).
+	GrantedAltCostZeroZombieCreatures = "granted-zero-zombie-creatures"
 )
 
 // PaidEmerge reports whether `key` — a StackItem's or a permanent's
@@ -146,6 +150,22 @@ func EmergeForCreatureSpellsYouCast() game.GrantedAlternativeCost {
 		},
 		Spells:           game.PermissionFilter{CreatureOnly: true},
 		PricedAtManaCost: true,
+	}
+}
+
+// PayZeroForZombieCreatureSpellsYouCast is Rooftop Storm's static: "You
+// may pay {0} rather than pay the mana cost for Zombie creature spells
+// you cast." An offer with no mana cost is free, so X is 0 (CR
+// 107.3b); every zone a Zombie creature spell is cast from, wherever its
+// printed mana cost could be paid (CR 118.9a). Additional costs (a
+// kicker, an emerge sacrifice) are still paid on top (CR 118.9d).
+func PayZeroForZombieCreatureSpellsYouCast() game.GrantedAlternativeCost {
+	return game.GrantedAlternativeCost{
+		Offer: game.AlternativeCost{
+			Key:   GrantedAltCostZeroZombieCreatures,
+			Label: "Pay {0} rather than pay this spell's mana cost",
+		},
+		Spells: game.PermissionFilter{CreatureOnly: true, CreatureType: "Zombie"},
 	}
 }
 

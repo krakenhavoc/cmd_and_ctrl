@@ -19,6 +19,7 @@
   import Decks from "./routes/Decks.svelte";
   import Roadmap from "./routes/Roadmap.svelte";
   import Privacy from "./routes/Privacy.svelte";
+  import Terms from "./routes/Terms.svelte";
   import About from "./routes/About.svelte";
   import Guide from "./routes/Guide.svelte";
   import Practice from "./routes/Practice.svelte";
@@ -159,6 +160,8 @@
   <Roadmap />
 {:else if $route.name === "privacy"}
   <Privacy />
+{:else if $route.name === "terms"}
+  <Terms />
 {:else if $route.name === "about"}
   <About />
 {:else if $route.name === "guide"}

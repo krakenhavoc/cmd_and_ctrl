@@ -983,6 +983,22 @@ const (
 	// begins, and a queued turn of a player who leaves never does.
 	EventExtraTurnAdded EventKind = "extra_turn_added"
 
+	// EventPlayerControlScheduled — an effect will give a player control
+	// of another player during that player's next turn (CR 723.1, ADR
+	// 0167 §1: Emrakul, the Promised End). Actor is the controller,
+	// Target the controlled player, Source the card whose effect it is.
+	EventPlayerControlScheduled EventKind = "player_control_scheduled"
+	// EventPlayerControlBegan — that turn began, and the controller
+	// makes the controlled player's decisions for all of it (ADR 0167
+	// §2). Actor, Target and Source as above. Not emitted when the
+	// controller has left the game by then (CR 800.4a).
+	EventPlayerControlBegan EventKind = "player_control_began"
+	// EventPlayerControlEnded — the controlled turn is over and the
+	// control with it, as the next turn begins (CR 723.1). Actor,
+	// Target and Source as above. Not emitted when either player had
+	// already left, which ended the control then (CR 800.4a).
+	EventPlayerControlEnded EventKind = "player_control_ended"
+
 	// EventPhasesAdded — an effect added phases or a step to the
 	// current turn (CR 500.8 / 500.9, ADR 0059 Decision 4). Actor is the
 	// active player (whose turn gets them), Source the card whose effect
@@ -1428,6 +1444,11 @@ type Event struct {
 	// zero value is the ordinary case: an event written before this field
 	// existed (a restore point's queued trigger, this turn's log) reads as
 	// the life loss it was taken for when it was written.
+	//
+	// NEGATIVE when the damage cost MORE life than it dealt (ADR 0169 §4):
+	// a "lose twice that much life" replacement (Bloodletter of Aclazotz)
+	// turns 3 damage into 6 life lost, recorded as -3, so DamageLifeLoss
+	// reads 6 with no new field and no snapshot change.
 	DamageNotLifeLoss int `json:"damage_not_life_loss,omitempty"`
 
 	// DamageInstance is the ADR 0108 damage instance an EventDealDamage
@@ -1810,7 +1831,8 @@ type Event struct {
 // DamageLifeLoss is the life an EventDealDamage cost the player it was
 // dealt to (#2105, CR 119.2, CR 120.3a): its Amount less the part that
 // cost no life (DamageNotLifeLoss: infect, or a life total that can't
-// change). 0 for any other kind of event. Damage to a permanent is the
+// change), or plus the extra a life-loss replacement added (a negative
+// DamageNotLifeLoss, ADR 0169). 0 for any other kind of event. Damage to a permanent is the
 // caller's to rule out by checking that Target is a player, as every
 // life-loss reader already does.
 func (ev Event) DamageLifeLoss() int {

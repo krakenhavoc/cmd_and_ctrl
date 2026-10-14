@@ -32,6 +32,7 @@ import type { Snippet } from "svelte";
 import { guardedWritable } from "./guardedStore";
 
 import type { DockAction, DockRequest } from "./dock";
+import type { RematchPlan } from "./rematch";
 import type { PendingChoiceView, PickOptionView, PlayerView, VoteView } from "./protocol";
 import { colorPromptCopy } from "./manaPick";
 import { mayCastCopy } from "./mayCast";
@@ -895,8 +896,26 @@ export function assistRequest(
 // player off the table. `armed` is false until the grace has passed.
 export const GAME_OVER_GRACE_MS = 1500;
 
-export function gameOverRequest(onBack: () => void, armed = true): DockRequest {
-  return {
+/**
+ * The rematch half of the game-over request (#3285, ADR 0164): what
+ * lib/rematch.ts decided, and what each button does. `busy` is a press in
+ * flight, so a second click does nothing.
+ */
+export interface GameOverRematch {
+  plan: RematchPlan;
+  busy?: boolean;
+  onOffer: () => void;
+  onOpen: (gameID: string) => void;
+  onAccept: () => void;
+  onLeave: () => void;
+}
+
+export function gameOverRequest(
+  onBack: () => void,
+  armed = true,
+  rematch?: GameOverRematch,
+): DockRequest {
+  const req: DockRequest = {
     rank: "gameOver",
     label: "game over",
     // The press is refused too, not only the button disabled: a click
@@ -911,4 +930,61 @@ export function gameOverRequest(onBack: () => void, armed = true): DockRequest {
     },
     secondary: [],
   };
+  if (!rematch) return req;
+  const { plan, busy = false } = rematch;
+  // A rematch press is held by the same grace as Back to lobby: the game
+  // ends under a click meant for `next`.
+  const press = (fn: () => void) => () => {
+    if (armed && !busy) fn();
+  };
+  switch (plan.kind) {
+    case "offer":
+      req.secondary = [
+        {
+          id: "rematch",
+          label: "Rematch",
+          title: "Play again with the same decks and settings",
+          disabled: !armed || busy,
+          onPress: press(rematch.onOffer),
+        },
+      ];
+      break;
+    case "open-table":
+      req.secondary = [
+        {
+          id: "rematch-open",
+          label: "Open rematch table",
+          disabled: !armed || busy,
+          onPress: press(() => rematch.onOpen(plan.gameID)),
+        },
+      ];
+      break;
+    case "ask":
+      req.tag = "rematch";
+      req.tone = "gold";
+      req.question = `${plan.hostName} offered a rematch`;
+      req.detail = "Same decks and settings";
+      req.live = true;
+      req.row = [
+        {
+          id: "rematch-join",
+          label: "Join the rematch",
+          emphasis: true,
+          disabled: !armed || busy,
+          onPress: press(rematch.onAccept),
+        },
+        {
+          id: "rematch-leave",
+          label: "No thanks",
+          disabled: busy,
+          onPress: () => {
+            if (!busy) rematch.onLeave();
+          },
+        },
+      ];
+      break;
+    case "none":
+      break;
+  }
+  return req;
 }

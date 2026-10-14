@@ -37,6 +37,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if m.Kind == ModGrantAbilities {
 				unknown = append(unknown, unknownGrantBundles(m.Grants)...)
 			}
+			// ADR 0155 Decision 9: a lent row is a catalog row, and one
+			// this binary does not have would be an ability that
+			// silently does nothing.
+			unknown = append(unknown, unknownLentRows(m)...)
 			// #1593: a copy mod carries exactly one set of values, and
 			// the ability bundles its except clause granted are keys
 			// like a grant mod's — a bundle this binary does not
@@ -109,6 +113,14 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			// #2562: a name or type line with nothing in it, or
 			// supertypes on another kind, is a newer binary's shape.
 			if problem := becomeNamedModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #2144: a creature-type set naming no creature type.
+			if problem := setCreatureTypesModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #3398: an attack tax with no player or an unreadable cost.
+			if problem := attackTaxModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
 		}

@@ -89,6 +89,11 @@ type PutFromHandOntoBattlefield struct {
 	// the card's sentence rather than a description of the mechanic.
 	Label string
 
+	// Validate is a rule on the picked SET, for a clause no per-card
+	// Match can say: Yuna's Decision's "a creature card and/or a land
+	// card" (at most one of each). Nil accepts any set within Max.
+	Validate func(picked []game.Card) bool
+
 	// Then, when set, runs after the answer. It is the only correct
 	// place for a rider on the result ("if you put a Cave onto the
 	// battlefield this way…"), because everything sequenced after
@@ -167,6 +172,7 @@ func (p PutFromHandOntoBattlefield) Apply(ctx *Context) error {
 		Cards:       candidates,
 		Min:         floor,
 		Max:         max,
+		Validate:    p.Validate,
 		// Re-checked on submit: the pick must still be in that
 		// player's hand when the answer arrives.
 		Zone: game.ZoneHand,

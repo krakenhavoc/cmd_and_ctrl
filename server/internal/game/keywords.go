@@ -288,6 +288,14 @@ var canonicalKeywords = map[string]bool{
 	// catalog entry. Redundant (CR 702.88c): one instance or several
 	// is one exile and one delayed trigger.
 	KeywordRebound: true,
+	// paradigm (CR 702.192) joins with #1866, in the same change that
+	// teaches the engine to honour it. Its consumer is the stack's
+	// graveyard route (routeStackCardToGraveyardLocked, through
+	// spellHasParadigm in paradigm.go), which reads it off the resolving
+	// spell with HasKeyword, so a deck-imported card works with no
+	// catalog entry. One instance or several is one exile and, the first
+	// time a name resolves, one delayed trigger.
+	KeywordParadigm: true,
 	// ascend (CR 702.131) joins with #2696 (ADR 0096's 2026-10-08
 	// amendment), in the same change that teaches the engine to honour
 	// it. Its consumers are citysBlessingSweepLocked (the static on a

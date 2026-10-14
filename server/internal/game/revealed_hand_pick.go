@@ -75,12 +75,16 @@ const (
 	// PickExile exiles it. Not a discard: no madness, no discard
 	// triggers (CR 701.9a).
 	PickExile PickDestination = "exile"
+	// PickKeep leaves it in the hand: the card is chosen for what the
+	// continuation does with it (Word of Command's forced play, ADR
+	// 0164).
+	PickKeep PickDestination = "keep"
 )
 
 // knownPickDestination reports whether this binary can move a card to
 // d. The zero value is a discard.
 func knownPickDestination(d PickDestination) bool {
-	return d == "" || d == PickDiscard || d == PickExile
+	return d == "" || d == PickDiscard || d == PickExile || d == PickKeep
 }
 
 // RevealedPick is what a continuation is handed.
@@ -255,12 +259,23 @@ func (g *Game) RevealedHandPickForEffect(d RevealedHandDiscard) (uuid.UUID, erro
 			reason = card.Name
 		}
 	}
-	g.RevealForEffect(RevealSpec{
-		Player: d.FromPlayer,
-		Source: d.Source,
-		Reason: revealHandReason(reason),
-		Cards:  hand,
-	})
+	if d.Look {
+		// "Look at target opponent's hand" (Word of Command): the
+		// chooser learns the hand and nobody else does (CR 701.20e's
+		// look, not CR 701.20a's reveal).
+		if p.Hand != nil {
+			for i := range p.Hand.Cards {
+				p.Hand.Cards[i].AddKnower(d.Chooser)
+			}
+		}
+	} else {
+		g.RevealForEffect(RevealSpec{
+			Player: d.FromPlayer,
+			Source: d.Source,
+			Reason: revealHandReason(reason),
+			Cards:  hand,
+		})
+	}
 	count := min(d.Count, len(options))
 	if count <= 0 {
 		// CR 609.3: nothing to choose. The rest of the card still runs.
@@ -465,6 +480,8 @@ func (g *Game) moveRevealedPickLocked(s revealedPickSettle, ids []uuid.UUID, aft
 	switch s.destination {
 	case PickExile:
 		return g.ExileCardsThenForEffect(ids, next)
+	case PickKeep:
+		return next(g, nil)
 	default:
 		if g.opponentEffectBlockedByLocked(s.chooser, s.from, true) {
 			return next(g, nil)

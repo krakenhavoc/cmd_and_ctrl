@@ -110,6 +110,15 @@ import (
 // attacked in: its first attack now comes after 399 moves instead of
 // 479.
 //
+// ADR 0168 (#2799, the London mulligan): a mulligan now draws seven
+// and a keep owes cards to the bottom (a two-player game has no free
+// mulligan, CR 103.5c), so the openings of seeds 31 and 1503 play out
+// differently from their mulligans on. Seed 1503
+// now takes 288 moves to the same turn 3 (it was 287) and seed 31 353
+// moves to the same turn 9 (it was 355); the turns and the winner are
+// unchanged. Seed 107's four heuristic seats keep without a counted
+// mulligan, so its opening is unchanged.
+//
 // It is also a function of the policies, so a change to how the
 // heuristic attacks or blocks changes a long game after its opening.
 // The four-heuristic case is therefore pinned only up to its first
@@ -143,7 +152,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				},
 				Games: 1, Seed: 1503, TurnBudget: 2, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 287, turns: 3, winner: -1, digest: "4c86a35a2d738c0353bf1f9fe1a653c3a01110b0bab2b5fcaa80ba12264f0b87",
+			moves: 288, turns: 3, winner: -1, digest: "fd381c18df080df8570d78ebf5c20a976be62c288e033311dc7e3ac6f492ca47",
 		},
 		{
 			name: "two seats, eight rounds",
@@ -151,7 +160,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				Seats: []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}},
 				Games: 1, Seed: 31, TurnBudget: 8, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 355, turns: 9, winner: -1, digest: "c922c8e2af0469f731a784c510f48763039b45556f4385dda6237e5f0beaa1f7",
+			moves: 353, turns: 9, winner: -1, digest: "2a62be6e7cebd25fa72140fe23d762569818b871b4fac9028a3ce03f2b4d2754",
 		},
 		{
 			name: "four heuristic seats to a winner",

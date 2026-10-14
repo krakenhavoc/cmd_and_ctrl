@@ -23,29 +23,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // player to make it, or no creature to copy, and nothing is created.
 // A resolution with BOTH gone never runs at all (CR 608.2b).
 //
-// WHAT IS MISSING. Paradigm. It is a keyword with no shape anywhere
-// in the engine: not an alternative cost, not a cast permission, not
-// a delayed trigger. It is three clauses at once — the spell exiles
-// itself instead of going to the graveyard, a per-name "have you
-// resolved one of these yet" record is kept, and a recurring
-// first-main-phase offer to cast a COPY of the card out of exile is
-// granted for the rest of the game. The copy-from-exile half has no
-// primitive (every free-cast permission in the engine casts the CARD,
-// not a copy of it), and the "first main phases" window is a standing
-// per-turn offer rather than a duration the engine can stamp. It is a
-// new seam and this batch opened its row in docs/engine-seams.md.
-//
-// Shipping without it is strictly weaker: the spell goes to the
-// graveyard and is never seen again, where the printed card would
-// keep offering copies every turn.
+// Paradigm is the printed keyword, and the engine does the rest
+// (game/paradigm.go, #1866): the spell exiles itself as it resolves,
+// and the first time you resolve one, each of your precombat main
+// phases for the rest of the game offers you a free cast of a copy of
+// it. The copy picks its own targets, so each turn's copy can make a
+// token for a different player.
 func init() {
 	Register(Spec{
-		OracleID:     "d88c3554-18db-4e5e-a979-2402990a0311",
-		Name:         "Echocasting Symposium",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Paradigm isn't implemented — the spell goes to your graveyard and never offers you the repeating copies it promises.",
-		},
+		OracleID:        "d88c3554-18db-4e5e-a979-2402990a0311",
+		Name:            "Echocasting Symposium",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{game.KeywordParadigm},
 		// Slot 0 makes the token: a copy of the creature in slot 1.
 		Purpose: ForTargets(game.TargetPurpose{Slot: 0, Tokens: 1}),
 		Targets: Clauses(

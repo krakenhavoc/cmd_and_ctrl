@@ -180,6 +180,16 @@ type PaidCost struct {
 	// a question nobody on this component asks.
 	Exiled []uuid.UUID `json:"exiled,omitempty"`
 
+	// ExiledObjects is WHICH battlefield permanents an ExilePermanents
+	// additional cost took on a cast (#3402), each as the object it was,
+	// instance ID and CR 400.7 epoch, in the order named; their IDs are
+	// also in Exiled. It is the SacrificedObjects of an exile: Soul
+	// Exchange's "if the exiled creature was a Thrull" reads the
+	// creature as it last existed on the battlefield (CR 608.2h), which
+	// is Game.PermanentForEffect on each ref. Read through
+	// Context.ExiledPermanents. A CR 707.10 copy keeps the list.
+	ExiledObjects []ObjectRef `json:"exiledObjects,omitempty"`
+
 	// OptionalCosts is which of the card's optional additional costs
 	// the caster chose to pay (CR 601.2b), as positions in the card's
 	// OptionalCosts slice, ascending. A cost paid N times appears N
@@ -199,6 +209,13 @@ type PaidCost struct {
 	// field differs from Mana above: CopySpellForEffect carries it
 	// and clears the rest. Added in ADR 0073 (#664).
 	OptionalCosts []int `json:"optionalCosts,omitempty"`
+
+	// GrantedOptional is the Key of each optional cost a PERMANENT gave
+	// this spell that was paid (granted_optional_cost.go, #3245) —
+	// Silverquill's casualty. Kept apart from OptionalCosts, whose
+	// indices name the card's own list, and read by key with
+	// GrantedOptionalTimesPaid.
+	GrantedOptional []string `json:"grantedOptional,omitempty"`
 
 	// GiftOpponent is the opponent the caster chose while paying a
 	// gift cost (CR 702.174a) — the player the gift was PROMISED to —
@@ -435,7 +452,7 @@ func (p PaidCost) IsZero() bool {
 		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0 &&
 		p.Sacrificed == 0 && len(p.SacrificedObjects) == 0 && len(p.AltCostObjects) == 0 &&
 		p.ReturnedAttacking == uuid.Nil && len(p.OptionalCosts) == 0 &&
-		len(p.TappedOthers) == 0 && len(p.Exiled) == 0 && len(p.Delved) == 0 &&
+		len(p.TappedOthers) == 0 && len(p.Exiled) == 0 && len(p.ExiledObjects) == 0 && len(p.Delved) == 0 &&
 		p.CostBranch == 0 && len(p.Discarded) == 0 && len(p.Convoked) == 0 &&
 		p.AssistedBy == uuid.Nil && p.AssistPaid == 0
 }
@@ -452,11 +469,17 @@ func clonePaidCost(p PaidCost) PaidCost {
 	if len(p.OptionalCosts) > 0 {
 		out.OptionalCosts = append([]int(nil), p.OptionalCosts...)
 	}
+	if len(p.GrantedOptional) > 0 {
+		out.GrantedOptional = append([]string(nil), p.GrantedOptional...)
+	}
 	if len(p.TappedOthers) > 0 {
 		out.TappedOthers = append([]PaidTap(nil), p.TappedOthers...)
 	}
 	if len(p.Exiled) > 0 {
 		out.Exiled = append([]uuid.UUID(nil), p.Exiled...)
+	}
+	if len(p.ExiledObjects) > 0 {
+		out.ExiledObjects = append([]ObjectRef(nil), p.ExiledObjects...)
 	}
 	if len(p.Delved) > 0 {
 		out.Delved = append([]ObjectRef(nil), p.Delved...)

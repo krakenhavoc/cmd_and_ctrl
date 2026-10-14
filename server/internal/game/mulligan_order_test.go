@@ -112,6 +112,9 @@ func TestMulliganRepeatsInTurnOrderForThoseWhoMulliganed(t *testing.T) {
 		t.Fatalf("seat 2 mulligans taken = %d, want 2", got)
 	}
 	keep(t, g, 2)
+	// ADR 0168: its second mulligan counts (the first was free), so the
+	// window waits for one card on the bottom.
+	bottomCards(t, g, 2, handIDs(g.Seats[2], OpeningHandSize)[:1])
 
 	if g.MulligansOpen {
 		t.Fatal("the window should be closed")

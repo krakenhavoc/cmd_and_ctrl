@@ -99,6 +99,10 @@ var familyLabelSets = map[string]map[string]labelSet{
 	"cmdctrl_bot_model_tokens_total": {
 		"direction": oneOf(directionLabels...),
 	},
+	"cmdctrl_dm_notifications_total": {
+		"kind":   oneOf(dmKindLabels...),
+		"result": oneOf(dmResultLabels...),
+	},
 }
 
 // standardLabelSets is the same table for the upstream Go and process

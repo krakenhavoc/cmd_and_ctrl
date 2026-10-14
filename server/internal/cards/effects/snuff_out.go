@@ -21,11 +21,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the rider rides the destroy route onto the CR 614 event and the
 // regeneration built-in declines. The shield is not spent
 // (CR 701.19c).
+//
+// No simplification: reviewed for the Mass Casualty deck request
+// (#3245).
 func init() {
 	Register(Spec{
-		OracleID: "324824cb-f938-401c-b9b5-d8908b431ef0",
-		Name:     "Snuff Out",
-		Targets:  TargetCreature("target nonblack creature", NonBlack()),
+		OracleID:     "324824cb-f938-401c-b9b5-d8908b431ef0",
+		Name:         "Snuff Out",
+		Completeness: CompletenessFull,
+		Targets:      TargetCreature("target nonblack creature", NonBlack()),
 		AlternativeCosts: []game.AlternativeCost{
 			PayLifeInstead("Pay 4 life (you control a Swamp)", 4, ControlsA("Swamp")),
 		},

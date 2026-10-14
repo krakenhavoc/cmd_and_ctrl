@@ -46,6 +46,12 @@ type ChooseFromRevealedHand struct {
 	Exile bool
 	// Optional is "You may choose".
 	Optional bool
+	// Look is "Look at target opponent's hand": only you learn it
+	// (Word of Command). The default reveals it to everyone.
+	Look bool
+	// Keep leaves the chosen card in the hand, for Then to use (Word of
+	// Command's forced play).
+	Keep bool
 	// FromGraveyard adds "or a card from their graveyard" (Agonizing
 	// Remorse). Filter reads the hand only.
 	FromGraveyard bool
@@ -92,11 +98,15 @@ func (e ChooseFromRevealedHand) Apply(ctx *Context) error {
 	if e.Exile {
 		d.Destination = game.PickExile
 	}
+	if e.Keep {
+		d.Destination = game.PickKeep
+	}
+	d.Look = e.Look
 	if e.Measure != nil {
 		g, measure := ctx.Game, e.Measure
 		d.Measure = func(c game.Card) int { return measure(g, c) }
 	}
-	if e.Exile || e.Optional || e.FromGraveyard || e.Then.Key() != "" || e.Measure != nil {
+	if e.Exile || e.Keep || e.Look || e.Optional || e.FromGraveyard || e.Then.Key() != "" || e.Measure != nil {
 		_, err := ctx.Game.RevealedHandPickForEffect(d)
 		return err
 	}

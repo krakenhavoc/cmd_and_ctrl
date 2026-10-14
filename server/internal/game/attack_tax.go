@@ -60,11 +60,9 @@ import (
 //     ManaCost is an addition to this struct and one more branch in
 //     the payer, the shape AdditionalCost has with its three
 //     components — not a redesign.
-//   - A tax with a DURATION (War Tax's "this turn"). The collection
-//     below reads catalog statics off the battlefield; a
-//     duration-carrying registry is the SECOND source it takes without
-//     changing AttackTaxesForCard's signature, which is the extension
-//     point ADR 0073 §8 reserved for CastRestriction.
+//   - A tax with a DURATION is attack_tax_duration.go (#3398): the
+//     SECOND source the pricer reads, a ModAttackTax ScopedEffect made
+//     by a resolving spell or ability (Summon: Yojimbo).
 
 // AttackTaxQuery is everything an attack tax may look at. Passed by
 // value, for CostQuery's reason: the tax is consulted inside the
@@ -348,10 +346,7 @@ func (g *Game) PriceAttackDeclarationForEffect(decls []AttackDeclaration) Attack
 // Caller must hold g.mu.
 func (g *Game) priceAttackDeclarationLocked(decls []AttackDeclaration) AttackTaxPrice {
 	var out AttackTaxPrice
-	if len(decls) == 0 || CatalogAttackTaxes == nil {
-		// No catalog wired is every hand-built test board, and the
-		// early-out keeps the battlefield walk below off a path that
-		// runs once per (creature, target) pair in the enumerator.
+	if len(decls) == 0 {
 		return out
 	}
 	var b strings.Builder
@@ -365,6 +360,18 @@ func (g *Game) priceAttackDeclarationLocked(decls []AttackDeclaration) AttackTax
 			continue
 		}
 		kind := g.classifyAttackTargetLocked(d.Target)
+		// #3398: the second source, a tax a resolved effect made for a
+		// duration (attack_tax_duration.go).
+		for _, l := range g.durationAttackTaxLines(defender, kind, d.Attacker) {
+			b.WriteString(l.Mana)
+			out.Lines = append(out.Lines, l)
+		}
+		if CatalogAttackTaxes == nil {
+			// No catalog wired is every hand-built test board, and
+			// skipping the battlefield walk keeps it off a path that
+			// runs once per (creature, target) pair in the enumerator.
+			continue
+		}
 		for i := range g.Battlefield.Cards {
 			src := &g.Battlefield.Cards[i]
 			// The "you" is structural: only the defending player's

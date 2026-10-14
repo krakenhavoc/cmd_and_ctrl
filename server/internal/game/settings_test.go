@@ -370,3 +370,29 @@ func TestCloneCopiesSettings(t *testing.T) {
 		t.Error("the clone's settings alias the original's")
 	}
 }
+
+// #3387: the free first mulligan is set in the lobby and fixed from
+// Start, because the mulligan window opens there.
+func TestUpdateSettingsFreeFirstMulliganLocksAtStart(t *testing.T) {
+	on := true
+	g := newLobbyGame(t, 2)
+	if err := g.UpdateSettings(uuid.Nil, SettingsPatch{FreeFirstMulligan: &on}); err != nil {
+		t.Fatalf("FreeFirstMulligan in lobby: %v", err)
+	}
+	if !g.Settings.FreeFirstMulligan {
+		t.Fatal("FreeFirstMulligan not applied in the lobby")
+	}
+	startLobbyGame(t, g)
+	off := false
+	err := g.UpdateSettings(uuid.Nil, SettingsPatch{FreeFirstMulligan: &off, UndoLimit: intPtr(4)})
+	if !errors.Is(err, ErrFreeMulliganLocked) {
+		t.Fatalf("FreeFirstMulligan change after Start = %v, want ErrFreeMulliganLocked", err)
+	}
+	if !g.Settings.FreeFirstMulligan || g.Settings.UndoLimit != DefaultUndoLimit {
+		t.Errorf("a refused patch applied something: %+v", g.Settings)
+	}
+	// The current value is not a change.
+	if err := g.UpdateSettings(uuid.Nil, SettingsPatch{FreeFirstMulligan: &on}); err != nil {
+		t.Errorf("unchanged FreeFirstMulligan after Start = %v, want nil", err)
+	}
+}

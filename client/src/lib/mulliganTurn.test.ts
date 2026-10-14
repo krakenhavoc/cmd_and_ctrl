@@ -1,5 +1,36 @@
 import { describe, expect, it } from "vitest";
-import { mulliganDecider, mulliganWaitingText } from "./mulliganTurn";
+import {
+  keepCostText,
+  mulliganCostText,
+  mulliganDecider,
+  mulliganWaitingText,
+  nextMulliganBottom,
+} from "./mulliganTurn";
+
+describe("the London mulligan's cost (ADR 0168)", () => {
+  it("says what a keep costs, and nothing when it is free", () => {
+    expect(keepCostText(0)).toBeNull();
+    expect(keepCostText(1)).toBe("Keep: put 1 card from this hand on the bottom of your library.");
+    expect(keepCostText(2)).toBe("Keep: put 2 cards from this hand on the bottom of your library.");
+  });
+
+  it("makes only the first mulligan free, and only when the table has one", () => {
+    expect(nextMulliganBottom(0, 0, true)).toBe(0);
+    expect(nextMulliganBottom(0, 0, false)).toBe(1);
+    expect(nextMulliganBottom(1, 0, true)).toBe(1);
+    expect(nextMulliganBottom(2, 1, true)).toBe(2);
+    expect(nextMulliganBottom(1, 1, false)).toBe(2);
+  });
+
+  it("says what one more mulligan costs", () => {
+    expect(mulliganCostText(0, 0, true)).toBe(
+      "Mulligan: your first mulligan is free. Shuffle this hand away and draw 7.",
+    );
+    expect(mulliganCostText(1, 0, true)).toBe(
+      "Mulligan: shuffle this hand away, draw 7, then put 1 card on the bottom when you keep.",
+    );
+  });
+});
 
 const seat = (name: string, extra: object = {}) => ({ name, ...extra });
 

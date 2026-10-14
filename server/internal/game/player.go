@@ -249,10 +249,17 @@ type Player struct {
 	AutoAnswers map[string]AutoAnswer
 
 	// MulligansTaken is the count of Mulligan calls this player has
-	// made in the current opening-hand window. Reset at Start. Used
-	// by the UI to show "mulligans taken: N" and is the seed for a
-	// future London-style bottom-N penalty (S13+ if it lands).
+	// made in the current opening-hand window. Reset at Start. The UI
+	// shows it, and it is what the London mulligan's bottom count is
+	// read from (MulliganBottomCountLocked, ADR 0168).
 	MulligansTaken int
+
+	// mulliganBottoming is true from this player's keep until the cards
+	// the London mulligan owes are on the bottom of its library (ADR
+	// 0168 decision 4): the window does not close while it is set. Not
+	// persisted: it is set only while the bottoming prompts are open,
+	// and a table waiting on them is not a restore point.
+	mulliganBottoming bool
 
 	// DeckImported is true once the player has had a real deck
 	// installed via ReplaceDeck. False after AddPlayer (which only

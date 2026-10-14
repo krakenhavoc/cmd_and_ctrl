@@ -658,6 +658,9 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		v += st.discardPayoff(p.cfg, st.mine[id])
 	}
 	v -= p.sacrificeCost(st, cp.SacrificeIDs)
+	// #3402: and the permanent an exile-a-permanent additional cost
+	// gives up leaves the board as surely.
+	v -= p.sacrificeCost(st, cp.ExilePermanentIDs)
 	v += targetV
 	if cp.FromZone == "command" {
 		// Each cast from the command zone makes the next one cost

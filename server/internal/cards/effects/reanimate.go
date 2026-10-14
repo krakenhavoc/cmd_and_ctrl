@@ -35,16 +35,22 @@ func init() {
 		Name:         "Reanimate",
 		Completeness: CompletenessFull,
 		Targets:      targetCreatureInAnyGraveyard(),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			card, ok := reanimateSingleTarget(ctx, ctx.Controller())
-			if !ok {
-				return nil
-			}
-			mv := card.ManaValue()
-			if mv <= 0 {
-				return nil
-			}
-			return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -mv)
-		},
+		OnResolve:    reanimateLosingItsManaValue,
 	})
+}
+
+// reanimateLosingItsManaValue is Reanimate's whole text: "Put target
+// creature card from a graveyard onto the battlefield under your
+// control. You lose life equal to that card's mana value." Shared with
+// Grave Researcher's prepare spell, which prints the same words.
+func reanimateLosingItsManaValue(_ *game.StackItem, ctx *Context) error {
+	card, ok := reanimateSingleTarget(ctx, ctx.Controller())
+	if !ok {
+		return nil
+	}
+	mv := card.ManaValue()
+	if mv <= 0 {
+		return nil
+	}
+	return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -mv)
 }

@@ -49,6 +49,13 @@ type ExileUntil struct {
 	// cast that card for as long as it remains exiled". Its Zone is
 	// filled in.
 	Grant *game.CastPermission
+
+	// Then, when set, runs once the exile has settled with whether the
+	// card was exiled: "for each permanent exiled this way" (Abdel
+	// Adrian, Gorion's Ward) counts the trues. It runs after the return
+	// is recorded, and not at all when the "until" event had already
+	// happened (nothing was exiled this way).
+	Then func(ctx *Context, exiled bool) error
 }
 
 // Apply is CR 610.3a/b first — an "until" whose event has already
@@ -86,8 +93,12 @@ func (e ExileUntil) Apply(ctx *Context) error {
 		return nil
 	}
 	target := e.Target
+	then := e.Then
 	return ExileTarget{Target: target, Then: func(ctx *Context, exiled bool) error {
 		if !exiled {
+			if then != nil {
+				return then(ctx, false)
+			}
 			return nil
 		}
 		if e.Grant != nil {
@@ -97,6 +108,9 @@ func (e ExileUntil) Apply(ctx *Context) error {
 		}
 		if record {
 			ctx.Game.ScheduleUntilReturnForEffect(target, u)
+		}
+		if then != nil {
+			return then(ctx, true)
 		}
 		return nil
 	}}.Apply(ctx)

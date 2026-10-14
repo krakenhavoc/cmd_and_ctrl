@@ -185,6 +185,30 @@ func ChoosePlayerAsEnters(label string, among PlayerPool) func(*game.Card, *Cont
 	}
 }
 
+// ChoosePlayersAsEnters is "As this enters, choose two players" (CR
+// 614.12), Sower of Discord (#3389): two prompts in a row, the second
+// leaving out the first, stored on game.Card.ChosenPlayer and
+// ChosenSecondPlayer. Read the pair with ChosenPlayersOf. `among` is
+// the pool the clause admits, zero value Players.
+func ChoosePlayersAsEnters(label string, among PlayerPool) func(*game.Card, *Context) error {
+	return func(card *game.Card, ctx *Context) error {
+		ctx.Game.QueueChooseTwoPlayersAsEntersForEffect(
+			card.Controller,
+			card.InstanceID,
+			label+" — choose two players",
+			among.seats(ctx, card.Controller),
+		)
+		return nil
+	}
+}
+
+// ChosenPlayersOf is the pair stored on the permanent `source` by a
+// two-player as-enters choice; either is uuid.Nil while unchosen.
+// Read-only; safe under either lock.
+func ChosenPlayersOf(g *game.Game, source uuid.UUID) (first, second uuid.UUID) {
+	return g.ChosenPlayersOf(source)
+}
+
 // ChosenPlayerOf is the player stored on the permanent `source` by an
 // as-enters choice, or uuid.Nil while none has been made. Read-only;
 // safe under either lock.

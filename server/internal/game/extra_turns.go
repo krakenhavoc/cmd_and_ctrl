@@ -94,6 +94,48 @@ func (g *Game) TakeExtraTurnsForEffect(player, source uuid.UUID, n int) []int {
 	return append([]int(nil), refs...)
 }
 
+// queueAnchoredExtraTurnLocked queues an extra turn anchored to a turn
+// that is not necessarily the current one when the effect was created:
+// Emrakul, the Promised End's "After that turn, that player takes an
+// extra turn" (ADR 0167 §3). ADR 0059 Decision 5 left this anchor for
+// the first card that named another turn.
+//
+// The caller (endTurnControlsLocked) runs while "that turn" is still
+// g.Turn, so the turn goes directly after it (CR 500.7). The extra
+// turns created during that turn are "after this one" too and were
+// created later, so they are taken first: they are the entries whose
+// Ref is above floor (NextExtraRef as that turn began), at the top of
+// the stack. The new entry goes directly below them, and every other
+// entry stays below it.
+//
+// Like TakeExtraTurnsForEffect it builds a fresh slice and never writes
+// into the old one, which an undo snapshot may share. It emits
+// EventExtraTurnAdded, so the extra_turn log line and the view's
+// extra_turns need nothing new. A seat out of range or out of the game
+// gets nothing (CR 800.4k).
+//
+// Caller must hold g.mu.
+func (g *Game) queueAnchoredExtraTurnLocked(seat int, source uuid.UUID, ref, floor int) {
+	if seat < 0 || seat >= len(g.Seats) || g.Seats[seat] == nil || g.Seats[seat].Eliminated {
+		return
+	}
+	at := len(g.ExtraTurns)
+	for at > 0 && g.ExtraTurns[at-1].Ref > floor {
+		at--
+	}
+	queue := make([]ExtraTurn, 0, len(g.ExtraTurns)+1)
+	queue = append(queue, g.ExtraTurns[:at]...)
+	queue = append(queue, ExtraTurn{Ref: ref, Seat: seat, Source: source})
+	queue = append(queue, g.ExtraTurns[at:]...)
+	g.ExtraTurns = queue
+	g.EmitEvent(Event{
+		Kind:   EventExtraTurnAdded,
+		Actor:  g.Seats[seat].ID,
+		Source: source,
+		Amount: ref,
+	})
+}
+
 // ExtraTurnsQueuedForEffect is a copy of the extra-turn queue in the
 // order the turns will be taken, next first. Caller must hold g.mu.
 func (g *Game) ExtraTurnsQueuedForEffect() []ExtraTurn {

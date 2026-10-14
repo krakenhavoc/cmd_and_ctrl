@@ -9,16 +9,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 player's untap step."
 //
 // Prop Room is the untap-step permission Seedborn Muse uses, narrowed to
-// creatures. Dazzling Theater is NOT implemented: convoke is a TapCost
-// on the casting card's own Spec, so a permanent cannot give it to other
-// spells (the "grant-convoke" seam, #2137). The door is empty, which is
-// weaker than printed, so the card says so.
+// creatures. Dazzling Theater is a granted tap cost (convoke_grant.go,
+// the "grant-convoke" seam, #2137), gated on its door like every other
+// Room ability.
+//
+// No simplification.
 func init() {
 	Register(Room(RoomSpec{
 		OracleID:     "c46a02db-13d6-477f-9da0-822599470168",
 		Name:         "Dazzling Theater // Prop Room",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Dazzling Theater doesn't give your creature spells convoke."},
+		Completeness: CompletenessFull,
+		Left: Door{GrantedTapCosts: []game.GrantedTapCost{
+			SpellsYouCastHaveConvoke("Dazzling Theater — creature spells you cast have convoke.", SpellIs(Creature())),
+		}},
 		Right: Door{UntapStep: []game.UntapStepPermission{
 			untapDuringEachOtherPlayersUntapStep("Prop Room — untap each creature you control",
 				func(c game.Card) bool { return c.IsCreature() }),

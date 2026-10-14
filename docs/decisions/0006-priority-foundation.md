@@ -5,7 +5,7 @@
 ## Context
 
 S13 is the kickoff of the **B→C rules graft track** (see
-[PLAN.md §6](../../PLAN.md#6-phased-roadmap) and
+[the original PLAN.md §6](https://github.com/krakenhavoc/cmd_and_ctrl/blob/ddd802370bb42ee5952d0da21d26f8a5e1607308/PLAN.md#6-phased-roadmap) and
 [docs/sprints.md S13](../sprints.md#s13--priority-foundation-rules-graft-kickoff)).
 Up through S12 the engine was an Option-B sandbox: every action — draw a card,
 untap permanents, pass priority — was a manual click. Real Commander games

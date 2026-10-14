@@ -163,6 +163,10 @@ const LOG_TONE: Record<LogKind, string> = {
   // under the table — the cursor jumps to cleanup — so it reads as
   // part of the step spine too.
   turn_ended: "tone-step",
+  // ADR 0167. Who plays a turn is the turn's structure too.
+  player_control_scheduled: "tone-step",
+  player_control_began: "tone-step",
+  player_control_ended: "tone-step",
   // A spawn is not a play. It reads like one on the board, which is
   // exactly why the line has to stand out from the turn around it.
   spawn: "tone-cast",

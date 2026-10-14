@@ -500,12 +500,34 @@ func (r *Runner) step(ctx context.Context) bool {
 		if len(moves) == 0 {
 			return true
 		}
+		// ADR 0167 §7: the moves for a seat whose turn this bot is
+		// playing go to controlledTurnPolicy first. It never declines,
+		// so a decline of the seat's own below cannot leave the
+		// controlled seat's decision waiting.
+		own, controlled := splitControlledTurnMoves(r.room.Game, r.seat, moves)
+		if len(controlled) > 0 {
+			ok, applied := r.playControlledTurn(ctx, controlled, started, minThink)
+			if !ok {
+				return false
+			}
+			if applied {
+				rejects = 0
+				continue
+			}
+			rejects++
+			if rejects >= r.cfg.MaxConsecutiveRejects {
+				return true
+			}
+			continue
+		}
+		moves = own
 		opts, ordering := r.enumerationOrder()
 		if ordering.View.ID != "" {
 			// The policy ordered the expansion, so the list it decides
 			// over is the ordered one — enumerated after the view it
 			// was ordered from, exactly as before.
-			moves = legal.EnumerateForWithOptions(r.room.Game, r.seat, opts)
+			moves, _ = splitControlledTurnMoves(r.room.Game, r.seat,
+				legal.EnumerateForWithOptions(r.room.Game, r.seat, opts))
 			if len(moves) == 0 {
 				return true
 			}

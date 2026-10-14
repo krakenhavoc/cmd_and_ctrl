@@ -1442,6 +1442,11 @@ func (g *Game) ResolvePendingChoice(choiceID, chooserID uuid.UUID, picks []uuid.
 		// routed ahead of the exact-count check below.
 		return g.resolveRevealedHandPickLocked(idx, choice, picks)
 	}
+	if choice.Kind == PendingChoiceControlledPlay {
+		// ADR 0166 §4: the empty answer, "it can't be played". The
+		// play itself is ControlledPlayCast.
+		return g.resolveControlledPlayLocked(idx, choice, picks)
+	}
 	if len(picks) != choice.Count {
 		return ErrInvalidParam
 	}
@@ -2885,6 +2890,10 @@ type RevealedHandDiscard struct {
 	// Optional is "You may choose": the chooser may choose nothing
 	// (Nightsnare, Extract the Truth).
 	Optional bool
+	// Look is "Look at target opponent's hand" rather than "reveals
+	// their hand": only the chooser learns the hand (Word of Command,
+	// ADR 0166).
+	Look bool
 	// FromGraveyard is "or a card from their graveyard" (Agonizing
 	// Remorse): every card in FromPlayer's graveyard is a candidate as
 	// well as the hand's matches. Filter applies to the hand only.
@@ -2909,7 +2918,7 @@ type RevealedHandDiscard struct {
 // plain discard_from_hand.
 func (d RevealedHandDiscard) isVariant() bool {
 	return (d.Destination != "" && d.Destination != PickDiscard) ||
-		d.Optional || d.FromGraveyard || d.Then.key != "" || d.Measure != nil
+		d.Optional || d.FromGraveyard || d.Then.key != "" || d.Measure != nil || d.Look
 }
 
 // QueueDiscardFromRevealedHand is the revealed-hand pick (ADR 0116,

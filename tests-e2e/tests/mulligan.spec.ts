@@ -67,7 +67,11 @@ test.describe("opening hand", () => {
       aliceDialog.getByRole("list", { name: "your opening hand" }),
     ).toBeVisible();
     await expect(aliceDialog.getByRole("listitem")).toHaveCount(7);
-    await expect(aliceDialog).toContainText("Hand size: 7");
+    // ADR 0168: two players, so no free mulligan (CR 103.5c): the first
+    // one already costs a card.
+    await expect(aliceDialog).toContainText(
+      "Mulligan: shuffle this hand away, draw 7, then put 1 card on the bottom when you keep.",
+    );
 
     // The roll call is visible to everyone while the window is open,
     // and starts with both seats undecided.
@@ -103,10 +107,12 @@ test.describe("opening hand", () => {
     await expect(rollCall.getByText("deciding…")).toHaveCount(1);
     await expect(rollCall.getByText("waiting")).toHaveCount(1);
 
-    // ---- The first seat mulligans. Simplified London: redraw to 7, no
-    //      bottom-N penalty yet, and the dialog stays open. ----
+    // ---- The first seat mulligans. The London mulligan (ADR 0168):
+    //      a new 7, and a keep will put one on the bottom. ----
     await firstDialog.getByRole("button", { name: "Mulligan" }).click();
-    await expect(firstDialog).toContainText("Mulligans taken: 1");
+    await expect(firstDialog).toContainText(
+      "Keep: put 1 card from this hand on the bottom of your library.",
+    );
     await expect(firstDialog.getByRole("listitem")).toHaveCount(7);
     // A mulligan is not a keep: the turn passes to the other seat, and
     // the first seat waits for it.
@@ -126,10 +132,21 @@ test.describe("opening hand", () => {
     await expect(firstDialog).toBeVisible();
     await expect(keepOf(firstDialog)).toBeEnabled();
 
-    // ---- The first seat keeps. The window closes for the table and
-    //      the roll call goes away with it. ----
+    // ---- The first seat keeps, and puts one card on the bottom: the
+    //      dock asks which. Until it answers, the window stays open. ----
     await keepOf(firstDialog).click();
     await expect(firstDialog).toHaveCount(0);
+    const firstPage = aliceFirst ? alice.page : bob.page;
+    const bottomSheet = firstPage.locator(".dock-sheet");
+    await expect(bottomSheet).toContainText(
+      "put 1 card from your hand on the bottom of your library",
+    );
+    await expect(rollCall).toBeVisible();
+    await bottomSheet.getByRole("button", { name: /^select / }).first().click();
+    await firstPage.getByRole("button", { name: /^Choose/ }).click();
+
+    // The window closes for the table and the roll call goes away
+    // with it.
     await expect(alice.page.getByLabel("opening hand decisions")).toHaveCount(
       0,
     );

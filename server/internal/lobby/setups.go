@@ -102,6 +102,8 @@ func completeSettingsPatch(ts game.TableSettings) game.SettingsPatch {
 		CommanderDamage: &ts.CommanderDamage,
 		BotPace:         &ts.BotPace,
 		AllowSpawn:      &ts.AllowSpawn,
+
+		FreeFirstMulligan: &ts.FreeFirstMulligan,
 	}
 }
 

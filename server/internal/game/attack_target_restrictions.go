@@ -150,6 +150,14 @@ type AttackTargetRestriction struct {
 	// player", and an earlier attack on one is not an attack on its
 	// controller.
 	NotAlreadyAttackedThisTurn bool `json:",omitempty"`
+	// NotPlayer, when set, forbids attacking that one player and the
+	// planeswalkers they control: "can't attack you or planeswalkers you
+	// control" given by a resolved effect (Promise of Loyalty, #3400,
+	// CR 508.1c). Unlike the owner clauses it names a FIXED player, the
+	// "you" of the resolving spell captured when it resolved (CR 611.2c),
+	// not a relation read live off the attacker. A battle that player
+	// protects is not covered, because the text does not say it.
+	NotPlayer uuid.UUID `json:",omitempty"`
 }
 
 // Equal reports whether r and o are the same restriction. A method rather
@@ -162,7 +170,7 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		r.DefenderMustBeMonarch == o.DefenderMustBeMonarch &&
 		r.DefenderGraveyardAtLeast == o.DefenderGraveyardAtLeast &&
 		samePermanentQueries(r.ControllerMustControlMore, o.ControllerMustControlMore) &&
-		r.NotAlreadyAttackedThisTurn == o.NotAlreadyAttackedThisTurn &&
+		r.NotAlreadyAttackedThisTurn == o.NotAlreadyAttackedThisTurn && r.NotPlayer == o.NotPlayer &&
 		r.ControllerMustHaveCitysBlessing == o.ControllerMustHaveCitysBlessing
 }
 
@@ -217,6 +225,9 @@ type AttackTargetRestrictionError struct {
 	AttackerName string
 	// Restriction is the one that refused it.
 	Restriction AttackTargetRestriction
+	// Protected is the name of the player a NotPlayer restriction
+	// protects, for its sentence.
+	Protected string
 	// For a refusal by a defending-player clause: TargetName is what was
 	// attacked (a player's or a permanent's name), DefenderName the
 	// defending player, and Why the clause they do not meet ("Bob
@@ -244,6 +255,13 @@ func (e *AttackTargetRestrictionError) Sentence() string {
 			why = e.DefenderName + " controls no " + PermanentQueriesNoun(e.Restriction.DefenderMustControl)
 		}
 		s := e.AttackerName + " can't attack " + e.TargetName + ": " + why
+		if e.Restriction.SourceName != "" && e.Restriction.Source != e.Attacker {
+			s += " (" + e.Restriction.SourceName + ")"
+		}
+		return s + "."
+	}
+	if e.Protected != "" {
+		s := e.AttackerName + " can't attack " + e.Protected + " or planeswalkers " + e.Protected + " controls"
 		if e.Restriction.SourceName != "" && e.Restriction.Source != e.Attacker {
 			s += " (" + e.Restriction.SourceName + ")"
 		}
@@ -278,6 +296,9 @@ func (r AttackTargetRestriction) refuses(g *Game, attacker *Card, target uuid.UU
 	if r.NotAlreadyAttackedThisTurn && g.alreadyAttackedPlayerLocked(attacker, target) {
 		return true, uuid.Nil, ""
 	}
+	if r.notPlayerRefuses(g, target) {
+		return true, uuid.Nil, ""
+	}
 	if r.asksOfTheDefender() {
 		// CR 508.5: the player attacked, a planeswalker's controller,
 		// or a battle's protector.
@@ -304,6 +325,24 @@ func (g *Game) alreadyAttackedPlayerLocked(attacker *Card, target uuid.UUID) boo
 		if p == target {
 			return true
 		}
+	}
+	return false
+}
+
+// notPlayerRefuses is the NotPlayer clause: the named player, and a
+// planeswalker they control (CR 508.1c, Promise of Loyalty).
+//
+// Caller must hold g.mu with fresh layers.
+func (r AttackTargetRestriction) notPlayerRefuses(g *Game, target uuid.UUID) bool {
+	if r.NotPlayer == uuid.Nil {
+		return false
+	}
+	switch g.classifyAttackTargetLocked(target) {
+	case AttackTargetPlayer:
+		return target == r.NotPlayer
+	case AttackTargetPlaneswalker:
+		pw := findBattlefieldCard(g, target)
+		return pw != nil && pw.Controller == r.NotPlayer
 	}
 	return false
 }
@@ -348,6 +387,9 @@ func (g *Game) attackTargetRestrictionRefusalLocked(attacker *Card, target uuid.
 			Attacker:     attacker.InstanceID,
 			AttackerName: attacker.Effective().Name,
 			Restriction:  r,
+		}
+		if r.NotPlayer != uuid.Nil && r.notPlayerRefuses(g, target) {
+			err.Protected = g.playerNameLocked(r.NotPlayer)
 		}
 		if defender != uuid.Nil {
 			err.DefenderName = g.playerNameLocked(defender)

@@ -169,6 +169,9 @@
       ) {
         continue;
       }
+      // ADR 0166: Word of Command's forced play has its own sheet
+      // (ControlledPlaySheet.svelte).
+      if (c.kind === "controlled_play") continue;
       if (c.chooser === viewerID) return c;
     }
     return null;
@@ -238,7 +241,7 @@
       // answer a player takes nearly every time — and the player's click
       // is the deviation.
       selected =
-        active?.kind === "proliferate"
+        active?.kind === "proliferate" || active?.kind === "entry_choose_permanents"
           ? new Set(active.choose_suggested ?? [])
           : preselect || searchPreselect
             ? new Set(options.map((c) => c.instance_id))
@@ -349,6 +352,10 @@
   // (floor = ceiling: not a "may").
   const isEntryDiscard = $derived(active?.kind === "entry_discard_from_hand");
   const isEntrySacrifice = $derived(active?.kind === "entry_sacrifice");
+  // ADR 0170 — the same entry pause with permanents that are only NAMED:
+  // Phylactery Lich's artifact, Sin's any number of countered permanents.
+  // The card's suggested pick is pre-selected.
+  const isEntryChoose = $derived(active?.kind === "entry_choose_permanents");
 
   // #1214 — the three resolution-time picks (CR 608.2). Same
   // {choice_id, card_ids} payload and the same choose_min / choose_max
@@ -394,6 +401,9 @@
   // Agonizing Remorse — the revealing player's graveyard after the hand.
   const isRevealedVariant = $derived(active?.kind === "revealed_hand_pick");
   const isExilePick = $derived(isRevealedVariant && active?.pick_destination === "exile");
+  // ADR 0166: Word of Command looks at the hand (only you see it) and
+  // the chosen card stays there, to be played.
+  const isKeepPick = $derived(isRevealedVariant && active?.pick_destination === "keep");
   // Which options are the graveyard's, for their caption.
   const graveyardIDs = $derived.by<Set<string>>(() => {
     if (!isRevealedVariant || !active?.pick_from_graveyard) return new Set();
@@ -407,6 +417,7 @@
       isEntryReveal ||
       isEntryDiscard ||
       isEntrySacrifice ||
+      isEntryChoose ||
       isRevealPick ||
       isPermanentPick ||
       isChooseSource ||
@@ -1768,22 +1779,24 @@
                 ? [c.reason || "Discard a card so it enters?", "discard · CR 614"]
                 : isEntrySacrifice
                   ? [c.reason || "Sacrifice so it enters", "sacrifice · CR 614"]
-                  : isChooseCards
-                    ? [c.reason || "Choose cards", "choose"]
-                    : isRevealPick
-                      ? [c.reason || "Choose from the revealed cards", "reveal · CR 701.20"]
-                      : isPermanentPick
-                        ? [c.reason || "Choose permanents", "choose · CR 608.2"]
-                        : isChooseSource
-                          ? [c.reason || "Choose a source of damage", "source · CR 609.7a"]
-                          : isRingBearer
-                            ? [c.reason || "choose your Ring-bearer", "the Ring · CR 701.54"]
-                            : isProliferate
-                              ? [c.reason || "Proliferate", "proliferate · CR 701.34"]
-                              : [
-                                  `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
-                                  isExilePick ? "exile" : isSelfSource ? "discard" : "reveal",
-                                ];
+                  : isEntryChoose
+                    ? [c.reason || "Choose permanents as it enters", "as it enters · CR 614"]
+                    : isChooseCards
+                      ? [c.reason || "Choose cards", "choose"]
+                      : isRevealPick
+                        ? [c.reason || "Choose from the revealed cards", "reveal · CR 701.20"]
+                        : isPermanentPick
+                          ? [c.reason || "Choose permanents", "choose · CR 608.2"]
+                          : isChooseSource
+                            ? [c.reason || "Choose a source of damage", "source · CR 609.7a"]
+                            : isRingBearer
+                              ? [c.reason || "choose your Ring-bearer", "the Ring · CR 701.54"]
+                              : isProliferate
+                                ? [c.reason || "Proliferate", "proliferate · CR 701.34"]
+                                : [
+                                    `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
+                                    isExilePick ? "exile" : isSelfSource ? "discard" : "reveal",
+                                  ];
     const verb = isSacrifice
       ? L.sacrifice
       : isSearch
@@ -1808,17 +1821,21 @@
                   : "Discard"
                 : isEntrySacrifice
                   ? L.sacrifice
-                  : isChooseSource
-                    ? "Choose this source"
-                    : isProliferate
-                      ? none
-                        ? "Proliferate nothing"
-                        : "Proliferate"
-                      : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
-                        ? "Choose"
-                        : isRevealedVariant && none && pickMin === 0
-                          ? "Choose nothing"
-                          : "Confirm";
+                  : isEntryChoose
+                    ? none
+                      ? "Choose nothing"
+                      : "Choose"
+                    : isChooseSource
+                      ? "Choose this source"
+                      : isProliferate
+                        ? none
+                          ? "Proliferate nothing"
+                          : "Proliferate"
+                        : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
+                          ? "Choose"
+                          : isRevealedVariant && none && pickMin === 0
+                            ? "Choose nothing"
+                            : "Confirm";
     const clearable =
       isSearch || isCopyTarget || ((isCardSetPick || isRevealedVariant) && pickMin === 0);
     return {
@@ -2546,6 +2563,16 @@
           Sacrifice {pickMax === 1 ? "one of these" : `${pickMax} of these`} and {enteringCardName(
             active.source,
           )} enters the battlefield. This isn't optional.
+        {:else if isEntryChoose}
+          {enteringCardName(active.source)} is entering the battlefield, and what it does to
+          {pickMin === pickMax
+            ? pickMax === 1
+              ? "the permanent you pick"
+              : `the ${pickMax} permanents you pick`
+            : pickMin === 0
+              ? "the permanents you pick (any number, or none)"
+              : `the permanents you pick (${pickMin} to ${pickMax})`} happens before it arrives. The card
+          says what that is above.
         {:else if isChooseCards}
           {#if pickMin === pickMax}
             Pick {pickMax} of these.
@@ -2558,6 +2585,11 @@
             The card you pick is cast right now without paying its mana cost, whatever its timing,
             and you choose its targets next. If you don't cast it now you can't later. Pick none to
             cast nothing.
+          {:else if active.choose_destination === "library_bottom"}
+            <!-- ADR 0168: the London mulligan's cost. -->
+            The cards you pick go on the bottom of your library{pickMax > 1
+              ? ", and you choose their order next"
+              : ""}. The rest are your opening hand.
           {:else}
             What happens to them is the card's business, and it will tell you next — choosing them
             costs nothing on its own.
@@ -2602,6 +2634,9 @@
           be chosen — a permanent, a spell on the stack, or a card that something on the stack still
           refers to. If the card names a kind of source, that is checked again when the damage would
           be dealt.
+        {:else if isKeepPick}
+          Pick a card from <strong>{fromName}</strong>'s hand. Only you can see it. They keep the
+          card, and then they play it with you making their choices.
         {:else if isRevealedVariant}
           {#if isSelfSource}
             Pick {pickWhat} from your revealed hand{active.pick_from_graveyard

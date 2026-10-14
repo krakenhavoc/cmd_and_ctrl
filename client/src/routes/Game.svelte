@@ -1,6 +1,6 @@
 <script lang="ts">
   import Wordmark from "../lib/components/Wordmark.svelte";
-  import { onDestroy, onMount } from "svelte";
+  import { onDestroy, onMount, untrack } from "svelte";
   import { GameClient } from "../lib/ws";
   import { endCueFor, gameOverText } from "../lib/gameOutcome";
   import GameEndFanfare from "../lib/components/GameEndFanfare.svelte";
@@ -31,7 +31,11 @@
     reportPlayer,
     fetchSpectators,
     removeSpectator,
+    offerRematch,
+    acceptRematch,
+    leaveRematch,
   } from "../lib/api";
+  import { rematchPlan } from "../lib/rematch";
   import { reportTargets } from "../lib/moderation";
   import { canLinkDiscord, linkDiscordLabel, signedInUserID } from "../lib/myGames";
   import { castPreviewParamsFromPayload } from "../lib/castPreview";
@@ -68,6 +72,7 @@
   } from "../lib/tableSettings";
   import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
   import VoiceRoom from "../lib/components/VoiceRoom.svelte";
+  import NotificationsNudge from "../lib/components/NotificationsNudge.svelte";
   import { refreshVoiceRoom, setVoiceRoom, voiceChip } from "../lib/voiceRoom";
   import { community, loadCommunity } from "../lib/community";
   import CardSpawner from "../lib/components/CardSpawner.svelte";
@@ -79,6 +84,7 @@
   import { actionsDisabled } from "../lib/connectionBanner";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
+  import ControlledPlaySheet from "../lib/components/board/ControlledPlaySheet.svelte";
   import DamageAutoAssign from "../lib/components/board/DamageAutoAssign.svelte";
   import AutoAnswerNotice from "../lib/components/board/AutoAnswerNotice.svelte";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
@@ -105,7 +111,12 @@
   } from "../lib/choiceDock";
   import { insufficientManaRequest, targetingRequest } from "../lib/targetingDock";
   import { showChoiceAsList } from "../lib/boardAnsweredChoice";
-  import { SHEET_HAND_WIDTH, confirmAction, dockRequests } from "../lib/dock";
+  import {
+    SHEET_HAND_WIDTH,
+    confirmAction,
+    dockRequests,
+    type DockRequest as DockRequestModel,
+  } from "../lib/dock";
   import { modalOpen } from "../lib/modalLayers";
   import {
     publishTableMoment,
@@ -164,6 +175,19 @@
     visibleHighlights,
   } from "../lib/legalActions";
   import {
+    NOT_PLAYING_AS,
+    actingSeatID,
+    actsForSeat,
+    controlledByViewer,
+    controllerOfViewer,
+    nextPlayingAs,
+    playingAsBanner,
+    togglePlayingAs,
+    viewForSeat,
+    type PlayingAsState,
+  } from "../lib/playingAs";
+  import PlayingAsBanner from "../lib/components/board/PlayingAsBanner.svelte";
+  import {
     bluffArmed,
     bluffDelayMs,
     initBluffArmed,
@@ -203,11 +227,12 @@
   import { devFeature } from "../lib/env";
   import { gameWSURL } from "../lib/gameURL";
   import { firstTurnHeadline, openingRollText, openingRollWinner } from "../lib/startingPlayer";
-  import { mulliganWaitingText } from "../lib/mulliganTurn";
+  import { keepCostText, mulliganCostText, mulliganWaitingText } from "../lib/mulliganTurn";
   import DevDock from "../lib/components/dev/DevDock.svelte";
   import type { ReplayFrame } from "../lib/replay";
   import { L } from "../lib/labels";
   import { provideDiceQueue } from "../lib/diceQueue.svelte";
+  import { BOARD_ACTION_SELECTOR, sheetCoversBoardAction, type Box } from "../lib/sheetCover";
 
   interface Props {
     gameID: string;
@@ -407,8 +432,9 @@
   // my turn since ADR 0143 §4.2 ("pass for me until my turn"). It
   // stays on until the viewer clicks it again or their own precombat
   // main comes round, whichever is first. When on, it overrides
-  // settings.passMode and the stepStops grid, but still holds where
-  // the viewer can respond (rule 4). It does NOT override a
+  // settings.passMode and the stepStops grid and passes every window,
+  // response or not (#3316); only a choice the viewer owes stops it
+  // (rule 1). It does NOT override a
   // manual one-time pin (#526) — see autopassDecision.ts for the
   // full precedence and why. The effect still requires the viewer to
   // actually hold priority (so we don't spam the server with "you do
@@ -449,7 +475,7 @@
   function holdLeft(now: number): number {
     return stackHoldRemainingMs({
       view,
-      viewerID,
+      viewerID: autopassSeatID,
       firstSeen: stackSeen,
       // ADR 0143 §2.6: the table's pace sets the hold for everyone.
       holdMs: stackHoldMsForPace(tableSettingsOf(view).bot_pace),
@@ -510,7 +536,7 @@
       return;
     }
     lastAutoPassedSeq = seq;
-    client.sendAction("pass_priority");
+    client.sendAction("pass_priority", autopassPlayer);
   }
 
   onMount(() => {
@@ -523,7 +549,17 @@
   // The gates and the verdict are derived, not computed inside the
   // effect below, because ADR 0105 §3 reads the verdict too: a frame
   // smart autopass is about to pass shows no highlights.
+  //
+  // ADR 0167 §9: while the viewer plays another seat's turn, autopass
+  // runs for whichever of their two seats holds priority, as "me", with
+  // the viewer's own stops (`autopassSeatID`, `autopassView`). A
+  // controlled viewer passes nothing: the turn is not theirs to play.
   const autopassGates = $derived.by((): AutopassGates => {
+    const view = autopassView;
+    const viewerID = autopassSeatID;
+    const viewerHasPriority = autopassHasPriority;
+    const viewerIsActive = autopassIsActive;
+    const realViewerID = sessionSeatID;
     const step = view?.turn?.step;
     const gp = $settings.gameplay;
     // #1307: what counts as a response, per the "Stop for" settings.
@@ -537,13 +573,15 @@
     const kw = keyWindow(view, viewerID);
     return {
       viewerHasPriority,
-      tableBusy: mulligansOpen || gameEnded || viewerEliminated,
+      tableBusy: mulligansOpen || gameEnded || viewerEliminated || !!controlledBy,
       // Never auto-pass while the viewer has an open choice to make
       // (e.g. an optional trigger's yes/no prompt). The choice
       // persists server-side regardless, but auto-passing here would
       // race the modal and let priority slip away before the player
-      // answers.
-      hasPendingChoice: !!view?.pending_choices?.some((c) => c.chooser === viewerID),
+      // answers. ADR 0167: for either of their two seats.
+      hasPendingChoice: !!view?.pending_choices?.some(
+        (c) => c.chooser === viewerID || c.chooser === realViewerID,
+      ),
       // #328: never auto-pass a declare-blockers window the viewer
       // can actually block in. Declining to block is legal — an
       // explicit pass is how you decline — but a human has to be the
@@ -627,9 +665,10 @@
       }
       return;
     }
-    if (verdict === "pass" && hold > 0) {
+    if (verdict === "pass" && hold > 0 && !gates.autopassToggle) {
       // ADR 0119 §2: someone else's item has not been up for the hold
-      // yet. Wait out the rest; `next` still passes at once.
+      // yet. Wait out the rest; `next` still passes at once. Skip to
+      // my turn does not wait (#3316): it resolves everything it can.
       armTimedPass("hold", () => hold);
       return;
     }
@@ -655,7 +694,7 @@
     const seq = $lastSeq;
     if (seq === lastAutoPassedSeq) return;
     lastAutoPassedSeq = seq;
-    client.sendAction("pass_priority");
+    client.sendAction("pass_priority", autopassPlayer);
   });
 
   function toggleAutopass(): void {
@@ -695,6 +734,10 @@
   const lastCastByCardID = new Map<string, Record<string, unknown>>();
 
   const sendAction = (type: ActionType, params?: unknown, player?: string): void => {
+    // ADR 0167 §9: while another player plays the viewer's turn, the
+    // board is the viewer's to watch, not to act on (CR 723.5): the
+    // server would refuse everything but a concession.
+    if (controlledBy && type !== "concede") return;
     // Acting ends a bluff or a stack hold: the viewer has taken the
     // window.
     cancelPendingPass();
@@ -717,6 +760,9 @@
     // #672: pulling a creature out of combat must not let smart
     // auto-pass close the window the correction was made in.
     if (type === "remove_from_combat") holdCombatWindow(view);
+    // ADR 0167 §9: a rules action from a board playing as another seat
+    // is that seat's, unless the caller named a player.
+    if (player === undefined && actingPlayer && actsForSeat(type)) player = actingPlayer;
     client.sendAction(type, player, params);
   };
 
@@ -776,7 +822,7 @@
     // if the stash is missing (shouldn't happen — cast_spell
     // always stashes before the error round-trip).
     const prev = lastCastByCardID.get(cardID) ?? { instance_id: cardID };
-    sendAction("cast_spell", { ...prev, strict: true, force_cast: true }, viewerID ?? undefined);
+    sendAction("cast_spell", { ...prev, strict: true, force_cast: true }, actingID ?? undefined);
   }
   function dismissManaOverride(): void {
     manaOverride = null;
@@ -812,7 +858,7 @@
     sendAction(
       "cast_spell",
       { ...prev, strict: true, auto_tap: true, locked_sources: lockedSources },
-      viewerID ?? undefined,
+      actingID ?? undefined,
     );
   }
   function cancelAutoTap(): void {
@@ -881,6 +927,71 @@
   );
   const viewerSeat = $derived(seats.find((s) => s.id === viewerID) ?? null);
   const viewerHasPriority = $derived(viewerID !== null && priorityPlayer?.id === viewerID);
+  // The same id under a name the autopass gates can read while they
+  // shadow `viewerID` with the seat they pass for.
+  const sessionSeatID = $derived(viewerID);
+
+  // ---- Playing as another seat (ADR 0167 §9) ----
+  // `viewerID` is who the viewer IS; `actingID` is whom the board acts
+  // for. They differ only while the viewer plays another seat's whole
+  // turn (Emrakul, the Promised End) and is on that seat's board. Every
+  // new call site chooses one: rules actions, the bottom seat, the dock,
+  // combat and the legal-action lookup read `actingID`; settings, undo,
+  // the menu, concede, fanfare, table management and Discord read
+  // `viewerID`. lib/playingAs.ts decides; this only wires it.
+  let playingAs = $state<PlayingAsState>(NOT_PLAYING_AS);
+  $effect(() => {
+    const next = nextPlayingAs(
+      untrack(() => playingAs),
+      replaying ? null : view,
+      viewerID,
+    );
+    if (next !== untrack(() => playingAs)) playingAs = next;
+  });
+  // The turn the viewer plays for another seat, and the one another
+  // player plays for the viewer (who then decides nothing but to
+  // concede, CR 723.6).
+  const controlledByMe = $derived(controlledByViewer(view, viewerID));
+  const controlledBy = $derived(controllerOfViewer(view, viewerID));
+  const actingID = $derived(actingSeatID(view, viewerID, playingAs.pref));
+  const actingAsOther = $derived(actingID !== null && actingID !== viewerID);
+  // The `player` a rules action from this board carries: the
+  // controlled seat while playing as it, nothing (the session's seat)
+  // otherwise.
+  const actingPlayer = $derived(actingAsOther ? (actingID ?? undefined) : undefined);
+  // The frame as the acting seat sees its own moves (lib/playingAs.ts).
+  const actingView = $derived(view ? viewForSeat(view, actingID, viewerID) : view);
+  const actingHasPriority = $derived(
+    actingID !== null && !controlledBy && priorityPlayer?.id === actingID,
+  );
+  const actingIsActive = $derived(
+    actingID !== null && !controlledBy && activePlayer?.id === actingID,
+  );
+  // Autopass passes for whichever of the viewer's two seats holds
+  // priority, with the viewer's stops (§9 "Auto-pass").
+  const autopassSeatID = $derived(
+    controlledByMe && priorityPlayer?.id === controlledByMe.controlled
+      ? controlledByMe.controlled
+      : viewerID,
+  );
+  const autopassPlayer = $derived(
+    autopassSeatID !== null && autopassSeatID !== viewerID ? autopassSeatID : undefined,
+  );
+  const autopassView = $derived(view ? viewForSeat(view, autopassSeatID, viewerID) : view);
+  const autopassHasPriority = $derived(
+    autopassSeatID !== null && !controlledBy && priorityPlayer?.id === autopassSeatID,
+  );
+  const autopassIsActive = $derived(
+    autopassSeatID !== null && !controlledBy && activePlayer?.id === autopassSeatID,
+  );
+  // ADR 0167 §4: the sandbox is closed to both players of a controlled
+  // turn, so its tools are not offered to either.
+  const sandboxClosed = $derived(!!controlledByMe || !!controlledBy);
+  const actingSeat = $derived(seats.find((s) => s.id === actingID) ?? null);
+  const playingAsLine = $derived(playingAsBanner(view, viewerID, actingID));
+  function togglePlayingAsBoard(): void {
+    playingAs = togglePlayingAs(playingAs);
+  }
 
   // #1530, #1968: keep the server's copy of the trigger-order setting in
   // step with Settings. The effect reads the live snapshot, never a
@@ -889,7 +1000,10 @@
   // next frame tries again. See triggerOrderPref.ts.
   const triggerOrderPrefState = newTriggerOrderPrefState();
   $effect(() => {
-    if (replaying) return;
+    // ADR 0167 §9: a controlled player sends nothing automatically; the
+    // server would refuse it (CR 723.5), and the next frame after the
+    // turn tries again.
+    if (replaying || controlledBy) return;
     const want = triggerOrderPrefToSend(
       triggerOrderPrefState,
       $snapshot,
@@ -914,7 +1028,7 @@
   // second device, a server restored from an older snapshot.
   const autoAnswersPrefState = newAutoAnswersPrefState();
   $effect(() => {
-    if (replaying) return;
+    if (replaying || controlledBy) return;
     const rules = autoAnswersToSend(
       autoAnswersPrefState,
       $snapshot,
@@ -936,7 +1050,9 @@
   // gate (sub-PR 3), gets the full `legalActions` as `legalGate`. So do
   // the combat gates (sub-PR 5): attack-with-all's eligible set and
   // which defenders a selected attacker may be pointed at.
-  const legalActions = $derived(legalActionsOf(view));
+  // ADR 0167 §9: the acting seat's moves (the controlled seat's while
+  // playing as it).
+  const legalActions = $derived(legalActionsOf(view, actingID));
   const legalHighlights = $derived(
     visibleHighlights(
       legalActions,
@@ -1064,7 +1180,7 @@
 
   function passPriority(): void {
     cancelPendingPass();
-    client.sendAction("pass_priority");
+    client.sendAction("pass_priority", actingPlayer);
   }
 
   // #2881, ADR 0143 §4.2: the dock's End turn walks the rest of the turn. The server
@@ -1073,7 +1189,9 @@
   // skips them; it lives in the ⋯ menu as the sandbox fallback
   // (sandboxPassTurn below).
   function passTurn(): void {
-    client.sendAction("end_turn");
+    // ADR 0167 §9: End turn works for the controlled seat as the active
+    // player.
+    client.sendAction("end_turn", actingPlayer);
   }
 
   function draw(): void {
@@ -1144,8 +1262,8 @@
   // below so the canvas doesn't enter block mode when there's nothing
   // to block.
   const incomingAttackers = $derived.by(() => {
-    if (!viewerID || !view) return [];
-    return attackersDefendedBy(view, viewerID);
+    if (!actingID || !view) return [];
+    return attackersDefendedBy(view, actingID);
   });
 
   // Step-based gating mirrors the server's MTG-rules check. Attackers
@@ -1155,7 +1273,7 @@
   // (#2462). Blockers only during declare_blockers and only when the
   // viewer is being attacked.
   const canDeclareAttackers = $derived(
-    !!turn && turn.step === "declare_attackers" && viewerIsActive && viewerHasPriority,
+    !!turn && turn.step === "declare_attackers" && actingIsActive && actingHasPriority,
   );
   const canDeclareBlockers = $derived(
     !!turn && turn.step === "declare_blockers" && incomingAttackers.length > 0,
@@ -1362,9 +1480,54 @@
   function onDockStage(up: boolean): void {
     if (up !== stageUp) stageUp = up;
   }
+
+  // #2959 / #3095: whether the open sheet covers something on the board
+  // the player can act on (a target, a choice's permanent, a damage
+  // stepper). The dock folds such a sheet down once (its
+  // `sheetCoversBoard`); lib/sheetCover.ts says why. Measured at most
+  // once a frame, only while a sheet is open, and never on a phone,
+  // whose sheet is a full-width bar with its own layout (§8).
+  let sectionEl: HTMLElement | null = $state(null);
+  let sheetCovers = $state(false);
+  $effect(() => {
+    const root = sectionEl;
+    if (!root || !dockShown || sheetW <= 0 || stageUp) {
+      sheetCovers = false;
+      return;
+    }
+    const phone = typeof matchMedia === "function" ? matchMedia("(max-width: 599px)") : null;
+    const box = (el: Element): Box => el.getBoundingClientRect();
+    let frame = 0;
+    const check = (): void => {
+      frame = 0;
+      const sheet = root.querySelector(".dock-sheet:not([hidden]):not(.stage)");
+      const board = root.querySelector(".board");
+      sheetCovers =
+        !(phone?.matches ?? false) &&
+        sheetCoversBoardAction(
+          sheet ? box(sheet) : null,
+          board ? [...board.querySelectorAll(BOARD_ACTION_SELECTOR)].map(box) : [],
+        );
+    };
+    const schedule = (): void => {
+      if (!frame) frame = requestAnimationFrame(check);
+    };
+    schedule();
+    const mo = new MutationObserver(schedule);
+    mo.observe(root, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => {
+      mo.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
+  });
   // ADR 0105 §7: how many of the viewer's cards wear a highlight, for
   // the dock header's "N actions available".
-  const readyActions = $derived(viewerID ? actionableCount(legalHighlights, view, viewerID) : 0);
+  const readyActions = $derived(actingID ? actionableCount(legalHighlights, view, actingID) : 0);
   const selectedCombatCardID = $derived(combatSelection?.cardID ?? null);
   function handleSelectCombatCard(cardID: string): void {
     if (combatMode === "attack") selectAttacker(cardID);
@@ -1419,7 +1582,7 @@
         : { kind: "blocker", cardID };
   }
   function declareAttackTarget(targetPlayerID: string): void {
-    if (!viewerID || combatSelection?.kind !== "attacker") return;
+    if (!actingID || combatSelection?.kind !== "attacker") return;
     // #3266: a creature not yet attacking is staged at the clicked
     // player, planeswalker or battle; the primary sends the lot. ADR
     // 0130 §7: nothing is staged while the exert question is open.
@@ -1434,7 +1597,7 @@
     // The params carry auto_tap (ADR 0080) and, when chosen, exert.
     const params = declareAttackerParams(combatSelection, targetPlayerID);
     if (!params) return;
-    client.sendAction("declare_attacker", undefined, params);
+    client.sendAction("declare_attacker", actingPlayer, params);
     combatSelection = null;
     play("attack");
   }
@@ -1450,7 +1613,7 @@
     const params = stagedParams(attackStage);
     if (!params) return;
     combatSelection = null;
-    const frame = client.sendAction("declare_attackers", undefined, params);
+    const frame = client.sendAction("declare_attackers", actingPlayer, params);
     if (frame) attackCommit = { frame, seq: $lastSeq, ids: attackStage.map((s) => s.attacker) };
     play("attack");
   }
@@ -1471,7 +1634,7 @@
     if (seq <= p.seq || !p.ids.some(isAttacking)) return;
     attackCommit = null;
     attackStage = [];
-    if (!viewerHasPriority) return;
+    if (!actingHasPriority) return;
     if (view.pending_choices?.some((c) => c.chooser === viewerID)) return;
     if (seq === lastAutoPassedSeq) return;
     lastAutoPassedSeq = seq;
@@ -1515,7 +1678,7 @@
   // ADR 0105 sub-PR 5: which creatures are eligible is the server's
   // answer (the frame's FULL lookup, which the highlight setting never
   // touches); the row fields only name why the rest are not.
-  const attackPlan = $derived(planAttackAll(view, viewerID, legalActions));
+  const attackPlan = $derived(planAttackAll(view, actingID, legalActions));
   const attackAllReady = $derived(
     canDeclareAttackers && attackPlan.eligible.length > 0 && attackPlan.defenders.length > 0,
   );
@@ -1539,7 +1702,7 @@
     combatSelection = null;
     // #3266: Attack all declares at once and replaces the staged set.
     attackStage = [];
-    const frameID = client.sendAction("declare_attackers", undefined, params);
+    const frameID = client.sendAction("declare_attackers", actingPlayer, params);
     lastAttackAllAttempt = frameID ? { defenderSeatID, frameID } : null;
     play("attack");
   }
@@ -1658,10 +1821,13 @@
   // open. Since #1501 nobody holds priority while a defender declares
   // (CR 509.1), so this is how they say "done". Whatever they have
   // staged is the declaration; nothing staged is "no blocks".
-  const viewerBlocksPending = $derived(blockDeclarationPending(view, viewerID));
+  // ADR 0167 §9: the acting seat's. A controlled seat is the active
+  // player and never blocks, so this is the viewer's own declaration,
+  // offered while they are on their own board.
+  const viewerBlocksPending = $derived(blockDeclarationPending(view, actingID));
   const viewerStagedBlocks = $derived(
-    viewerID && view
-      ? view.battlefield.cards.filter((c) => c.controller === viewerID && !!c.blocking_target)
+    actingID && view
+      ? view.battlefield.cards.filter((c) => c.controller === actingID && !!c.blocking_target)
           .length
       : 0,
   );
@@ -1686,11 +1852,11 @@
   // answering the finish_blocks calls it off.
   let noBlocksPass = $state<{ frame: string; seq: number } | null>(null);
   function finishBlocks(): void {
-    if (!viewerID) return;
+    if (!actingID) return;
     combatSelection = null;
     const declining = viewerStagedBlocks === 0;
-    const holding = viewerHasPriority;
-    const frame = client.sendAction("finish_blocks", viewerID);
+    const holding = actingHasPriority;
+    const frame = client.sendAction("finish_blocks", actingID);
     noBlocksPass = declining && holding && frame ? { frame, seq: $lastSeq } : null;
   }
   $effect(() => {
@@ -1710,7 +1876,7 @@
     // the declaration open (someone else's action landed first).
     if (seq <= p.seq || viewerBlocksPending) return;
     noBlocksPass = null;
-    if (!viewerHasPriority) return;
+    if (!actingHasPriority) return;
     if (view.pending_choices?.some((c) => c.chooser === viewerID)) return;
     if (seq === lastAutoPassedSeq) return;
     lastAutoPassedSeq = seq;
@@ -1718,7 +1884,7 @@
   });
 
   function declareBlockTarget(attackerCardID: string): void {
-    if (!viewerID || combatSelection?.kind !== "blocker") return;
+    if (!actingID || combatSelection?.kind !== "blocker") return;
     client.sendAction("declare_blocker", undefined, {
       blocker: combatSelection.cardID,
       attacker: attackerCardID,
@@ -1757,8 +1923,9 @@
 
   function mulliganDecide(): void {
     if (!viewerID) return;
-    // Simplified London — redraw to OpeningHandSize (7) every time.
-    // No card-to-bottom penalty; that lands with rules enforcement.
+    // The London mulligan (ADR 0168): the server draws seven inside the
+    // window whatever hand_size says, and asks for the cards to bottom
+    // when this seat keeps.
     client.sendAction("mulligan", viewerID, { hand_size: 7 });
     play("shuffle");
   }
@@ -1822,12 +1989,12 @@
       replaying,
       gameOver: gameEnded,
       eliminated: viewerEliminated,
-      activePlayer: viewerIsActive,
+      activePlayer: actingIsActive,
       // The server's own answer (GameView.legal_moves, ADR 0033 §1).
       // undefined on a frame that carried no list, which the
       // availability rule treats as "no information" and stays
-      // permissive about.
-      passLegal: hasPassMove(view),
+      // permissive about. ADR 0167: the acting seat's moves.
+      passLegal: hasPassMove(actingView),
       // Admin undo bypasses the caller / budget gates, as the server
       // does (the dock's Undo reads the same canSpendUndo).
       // null means "no budget gate": an admin bypasses it, and so
@@ -1918,6 +2085,25 @@
         )
       : null,
   );
+
+  // ADR 0167 §9: a controlled player's dock waits with no actions while
+  // another player plays their turn. It takes the action bar, so next
+  // and End turn give way; the ⋯ menu keeps Concede (CR 723.6).
+  const controlledDockRequest = $derived.by((): DockRequestModel | null => {
+    if (!controlledBy || !view || gameEnded) return null;
+    const alice = seats.find((s) => s.id === controlledBy.controller)?.name || "Another player";
+    return {
+      rank: "flow",
+      label: "controlled turn",
+      tag: "controlled",
+      tone: "gold",
+      question: `${alice} controls you this turn`,
+      detail: controlledBy.source_name,
+      hint: playingAsLine?.note ?? "You can still concede from the ⋯ menu.",
+      primary: null,
+      secondary: [],
+    };
+  });
 
   // ---- Targeting and payment in the action dock (ADR 0111 PR 4) ----
   // The targeting walk's prompt (Done / Cancel), and the insufficient-
@@ -2012,7 +2198,41 @@
     const t = setTimeout(() => (gameOverArmed = true), GAME_OVER_GRACE_MS);
     return () => clearTimeout(t);
   });
-  const gameOverDockRequest = $derived(gameEnded ? gameOverRequest(back, gameOverArmed) : null);
+  // #3285, ADR 0164: the host's Rematch, and the others' Join / No thanks.
+  // Offering and accepting swap this tab to a seat at the new table.
+  const rematch = $derived(rematchPlan(view, viewerID, isPracticeGame(gameID)));
+  let rematchBusy = $state(false);
+  async function runRematch(go: () => Promise<{ gameID?: string } | void>): Promise<void> {
+    if (rematchBusy) return;
+    rematchBusy = true;
+    try {
+      const s = await go();
+      if (s && s.gameID) navigate(`#/games/${s.gameID}`);
+    } catch (err) {
+      lastError.set({
+        code: "rematch",
+        message: err instanceof Error ? err.message : "could not set up the rematch",
+        at: new Date(),
+      });
+    } finally {
+      rematchBusy = false;
+    }
+  }
+  const rematchActions = {
+    onOffer: () => void runRematch(() => offerRematch(gameID)),
+    onOpen: (id: string) => navigate(`#/games/${id}`),
+    onAccept: () => void runRematch(() => acceptRematch(gameID)),
+    onLeave: () => void runRematch(() => leaveRematch(gameID)),
+  };
+  const gameOverDockRequest = $derived(
+    gameEnded
+      ? gameOverRequest(back, gameOverArmed, {
+          plan: rematch,
+          busy: rematchBusy,
+          ...rematchActions,
+        })
+      : null,
+  );
 
   // ---- The ⋯ menu (ADR 0111 PR 7, owner decision 3) ----
   // The sandbox tools, life history, the table, spawn, the vote
@@ -2073,9 +2293,11 @@
     onAdminMode: () => void toggleAdminMode(),
     voteOpen: !!view?.vote,
     tableRoll:
-      dockShown && !viewerEliminated && view?.state === "active"
+      dockShown && !viewerEliminated && view?.state === "active" && !controlledBy
         ? { ready: !tableRollCooling }
         : null,
+    // ADR 0167 §4: no sandbox for either player of a controlled turn.
+    sandbox: !sandboxClosed,
     onTableRoll: rollAtTable,
     // #3028: the one-time hand sorts, for a seat holding more than one
     // card. The hand itself has no sort button.
@@ -2089,7 +2311,7 @@
     onShortcuts: openShortcutsHelp,
     onReplayTutorial: () => navigate("#/practice"),
     // ADR 0143 §4.2: the sandbox jump, for the active seat only.
-    sandboxPassTurn: viewerIsActive && view?.state === "active" && !mulligansOpen,
+    sandboxPassTurn: viewerIsActive && view?.state === "active" && !mulligansOpen && !sandboxClosed,
     onSandboxPassTurn: () => client.sendAction("pass_turn"),
     onDraw: draw,
     onUntapAll: untapAll,
@@ -2139,6 +2361,9 @@
   style:--coach-h={coachShown ? `${coachSize.h}px` : undefined}
   class:sheet-open={dockShown && sheetW > 0}
   style:--sheet-w={dockShown && sheetW > 0 ? `${sheetW}px` : undefined}
+  class:playing-as={actingAsOther}
+  style:--playing-as-color={actingAsOther && actingSeat ? seatColor(actingSeat.seat) : undefined}
+  bind:this={sectionEl}
 >
   <header class="bar" class:menu-in-bar={barMenuShown}>
     <button class="ghost bar-nav" onclick={back}><Icon name="chevronLeft" size={14} /> Lobby</button
@@ -2362,8 +2587,8 @@
            fallback's own advice is unreachable. -->
       <svelte:boundary onerror={handleBoardError}>
         <Board
-          {view}
-          {viewerID}
+          view={actingView ?? view}
+          viewerID={actingID}
           {isAdmin}
           {sendAction}
           disabled={actionsDisabled($status)}
@@ -2393,6 +2618,12 @@
                  show; per-move reasoning only with the S11.5 "show bot
                  reasoning" setting on. S31 sub-PR 8 / ADR 0033 §8. -->
             <BotFeed chat={$chat} {seats} />
+
+            <!-- ADR 0167 §9: "Playing as Bob", its toggle, and what the
+                 controlled player and everyone else are told. -->
+            {#if playingAsLine}
+              <PlayingAsBanner line={playingAsLine} {seats} onToggle={togglePlayingAsBoard} />
+            {/if}
 
             <!-- S22 broadcast reveals (CR 701.20). The strip rather than
                  a modal on purpose: a reveal asks nobody a question, and
@@ -2571,6 +2802,11 @@
       <!-- ADR 0111: the action dock, a sibling of the board in the
            play area's bottom-right corner. Outside the boundary on
            purpose: `next` keeps working when the table fails to draw. -->
+      <!-- ADR 0162 §1: the one-time Discord DM suggestion, for a seated
+           player at a real table. It decides the rest itself. -->
+      {#if dockShown && !gameEnded && $practiceTable?.gameID !== gameID && !isPracticeGame(gameID)}
+        <NotificationsNudge />
+      {/if}
       {#if dockShown}
         <!-- The dock's requests (lib/dock.ts). Each is open for as long
              as its block is mounted; the dock draws the strongest. -->
@@ -2623,10 +2859,13 @@
         {#if gameOverDockRequest}
           <DockRequest request={gameOverDockRequest} />
         {/if}
+        {#if controlledDockRequest}
+          <DockRequest request={controlledDockRequest} />
+        {/if}
         <ActionDock
-          {view}
-          {viewerHasPriority}
-          {viewerIsActive}
+          view={actingView ?? view}
+          viewerHasPriority={actingHasPriority}
+          viewerIsActive={actingIsActive}
           {autopassEnabled}
           {loopNotice}
           {readyActions}
@@ -2641,6 +2880,7 @@
           onUndo={undo}
           onSize={onDockSize}
           onSheet={onDockSheet}
+          sheetCoversBoard={sheetCovers}
           onStage={onDockStage}
           menu={menuOptions}
         />
@@ -2716,26 +2956,36 @@
           <!-- What each button does, under the fan, as Arena writes the
                mulligan's cost under its button. -->
           <div class="mulligan-copy mulligan-cost">
-            {#if (viewerSeat?.mulligans_taken ?? 0) > 0}
-              <p class="muted">
-                Mulligans taken: {viewerSeat?.mulligans_taken}. You'll redraw 7 cards (simplified
-                London — no bottom-N penalty yet).
-              </p>
-            {:else}
-              <p class="muted">
-                Hand size: {viewerSeat?.hand.count ?? 0}. A mulligan shuffles this hand away and
-                deals you a new 7.
-              </p>
+            <!-- ADR 0168: the London mulligan. A keep bottoms
+                 mulligan_bottom cards; the dock asks which, and in what
+                 order, once the seat has kept. -->
+            {#if keepCostText(viewerSeat?.mulligan_bottom ?? 0)}
+              <p class="muted">{keepCostText(viewerSeat?.mulligan_bottom ?? 0)}</p>
             {/if}
+            <p class="muted">
+              {mulliganCostText(
+                viewerSeat?.mulligans_taken ?? 0,
+                viewerSeat?.mulligan_bottom ?? 0,
+                // CR 103.5c, or the table's house rule (#3387).
+                seats.length > 2 || tableSettings.free_first_mulligan === true,
+              )}
+            </p>
           </div>
         </DockSheet>
       {/if}
-      <DiscardPromptModal snap={view} {viewerID} {sendAction} />
+      <!-- ADR 0167 §9: a controlled player's cleanup discard is their
+           controller's to make, on the controller's board. -->
+      <DiscardPromptModal
+        snap={actingView ?? view}
+        viewerID={controlledBy ? null : actingID}
+        {sendAction}
+      />
+      <ControlledPlaySheet snap={view} {viewerID} {sendAction} />
       <!-- lastError too: this modal's backdrop covers the board's
            rejection toast, so it shows a refusal of its own answer. -->
       <ChoicePromptModal
-        snap={view}
-        {viewerID}
+        snap={actingView ?? view}
+        viewerID={actingID}
         {sendAction}
         lastError={$lastError}
         docked={dockShown}
@@ -2758,8 +3008,8 @@
         onCancel={cancelAutoTap}
       />
       <AttackDeclarationModal
-        {view}
-        {viewerID}
+        view={actingView ?? view}
+        viewerID={actingID}
         defenderSeatID={attackPickerDefenderID}
         limitReason={attackPickerLimitReason}
         legalGate={legalActions}
@@ -2894,6 +3144,13 @@
     flex-direction: column;
     gap: 0.35rem;
     overflow: hidden;
+  }
+  /* ADR 0167 §9: while the viewer plays as another seat, the bottom
+     seat (that seat's panel) is outlined in its colour, so whose cards
+     are being spent is never in doubt. */
+  section.playing-as :global(.seat-panel.seat-self) {
+    outline: 2px solid var(--playing-as-color, var(--accent-strong));
+    outline-offset: -2px;
   }
   /* Command bar: lobby · wordmark · game · status · icons.
      Sandbox utilities and table actions live behind the ⋯ menu. */

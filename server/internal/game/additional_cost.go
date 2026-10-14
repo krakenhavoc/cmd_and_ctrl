@@ -29,6 +29,12 @@ import (
 // AdditionalCost is what a spell demands on top of its mana cost.
 // The zero value demands nothing.
 type AdditionalCost struct {
+	// Granted marks an optional cost a permanent gave this spell
+	// (granted_optional_cost.go) rather than one the card prints. Set by
+	// OptionalCostsForCastLocked, never by a card file: a paid granted
+	// cost is recorded by Key on PaidCost.GrantedOptional.
+	Granted bool
+
 	// DiscardCards is "discard a card" (Thrill of Possibility) or
 	// "discard two cards". The caster names them in
 	// CastSpellParams.DiscardIDs. The spell being cast is never a
@@ -289,6 +295,17 @@ type AdditionalCost struct {
 	// the table. Only as a branch of an either/or cost, beside a mana
 	// branch — every printed card pairs it with mana.
 	Reveal *RevealCost
+
+	// ExilePermanents is "As an additional cost to cast this spell, exile
+	// a creature you control" (Soul Exchange, #3402): the activated
+	// ability's component (ExilePermanentsCost) on a cast. The caster
+	// names the permanents on CastSpellParams.ExilePermanentIDs, they
+	// are exiled with the spell on the stack, and they are recorded on
+	// PaidCost.Exiled / ExiledObjects as last-known information (CR
+	// 608.2h). Mandatory slot only: effects.Register refuses it on an
+	// optional cost or an either/or branch, and refuses the craft forms
+	// (a graveyard, an open count, a set rule), which no spell prints.
+	ExilePermanents *ExilePermanentsCost
 }
 
 // Branched reports whether this is an either/or cost (ADR 0100 §2).
@@ -366,7 +383,7 @@ func (c *AdditionalCost) MaxPayments() int {
 func (c *AdditionalCost) Empty() bool {
 	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
 		c.Teamwork == 0 && c.Blight == 0 && !c.BlightX && c.PayLife == 0 && c.Energy == 0 && c.TapCreatures == 0 && len(c.Either) == 0 &&
-		c.Reveal == nil)
+		c.Reveal == nil && c.ExilePermanents.Empty())
 }
 
 // CardsDemanded reports whether paying this cost needs the caster to
@@ -378,7 +395,7 @@ func (c *AdditionalCost) Empty() bool {
 // repeated one is refused with the rest. Nil-safe.
 func (c *AdditionalCost) CardsDemanded() bool {
 	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0 || c.BlightX ||
-		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0 || c.Reveal != nil)
+		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0 || c.Reveal != nil || !c.ExilePermanents.Empty())
 }
 
 // CatalogAdditionalCost is the catalog hook the effects package
@@ -623,7 +640,11 @@ func castCostPayments(mandatory *AdditionalCost, optional []AdditionalCost, chos
 // what makes the snapshot round-trip and the undo comparison stable.
 func paidWithOptionalCosts(paid PaidCost, plan []costPayment) PaidCost {
 	for _, pay := range plan {
-		if pay.index >= 0 {
+		switch {
+		case pay.index < 0:
+		case pay.cost.Granted:
+			paid.GrantedOptional = append(paid.GrantedOptional, pay.cost.Key)
+		default:
 			paid.OptionalCosts = append(paid.OptionalCosts, pay.index)
 		}
 	}
@@ -973,6 +994,9 @@ func (g *Game) additionalCostPayableLocked(playerID, castID uuid.UUID, cost *Add
 		return false
 	}
 	if cost.Reveal != nil && len(g.RevealCostOptionsForEffect(playerID, castID, cost.Reveal)) == 0 {
+		return false
+	}
+	if !g.ExilePermanentsPayable(playerID, castID, cost.ExilePermanents) {
 		return false
 	}
 	return true

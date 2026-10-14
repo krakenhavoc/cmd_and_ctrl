@@ -33,6 +33,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/notify"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
@@ -235,6 +236,13 @@ type Config struct {
 	// answer 403 before they reach it.
 	UserSettings usersettings.Store
 
+	// Notifications is a signed-in person's Discord DM notification
+	// switches (ADR 0162 §5, migration 0022), behind GET and PUT
+	// /me/notifications. Nil means the feature is off: both routes
+	// answer 503 with "available": false. main sets it only when the
+	// bot token, the public origin and the database are all there.
+	Notifications notify.Store
+
 	// Playmats is a signed-in person's saved playmats, up to three
 	// (ADR 0128, migrations 0011, 0012 and 0013), behind /me/playmats
 	// and GET /playmats/{id}. Nil, or a service with no data directory
@@ -358,6 +366,7 @@ type GameEvictor interface {
 //	POST /games/{id}/invites/dm — seated / creator / admin: DM a person the game's invite link
 //	PUT  /games/{id}/voice  — host / admin: turn the table's Discord voice room on or off (ADR 0159)
 //	POST /games/{id}/voice/refresh — a seat: check my server membership again, or reopen an idle room
+//	PUT  /games/{id}/lfg    — host / admin: post the table to the Discord #lfg board, or withdraw it (ADR 0161)
 //	POST /games/practice    — authenticated: open the tutorial's practice table, seated
 //	POST /games/{id}/practice/leave — abandon it and restore the caller's session cookie
 //	GET  /decks             — authenticated: pre-built decks + their engine coverage
@@ -369,6 +378,8 @@ type GameEvictor interface {
 //	DELETE /me/account      — signed in: delete the caller's own account (ADR 0149)
 //	GET  /me/settings       — signed in: the caller's account settings
 //	PUT  /me/settings       — signed in: replace them, If-Match: <revision>
+//	GET  /me/notifications  — signed in: the caller's Discord DM notification switches (ADR 0162)
+//	PUT  /me/notifications  — signed in: change them
 //	GET  /me/playmats       — signed in: the caller's saved playmats (ADR 0128 §11), up to three, which is active, and the wash
 //	PUT  /me/playmats/{slot}        — signed in: upload one into a slot (multipart, part "file")
 //	POST /me/playmats/{slot}/link   — signed in: fetch one from an https URL, once, and store it
@@ -565,6 +576,11 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))
 	mux.Handle("GET /games/{id}", auth.Middleware(c.Auth)(handlerFunc(c, getGame)))
 	mux.Handle("POST /games/{id}/start", auth.Middleware(c.Auth)(handlerFunc(c, startGame)))
+	// The rematch (#3285, ADR 0164): the ended table's host offers one, the
+	// other humans accept or leave. The caller is a seat at the old table.
+	mux.Handle("POST /games/{id}/rematch", auth.Middleware(c.Auth)(handlerFunc(c, offerRematch)))
+	mux.Handle("POST /games/{id}/rematch/accept", auth.Middleware(c.Auth)(handlerFunc(c, acceptRematch)))
+	mux.Handle("POST /games/{id}/rematch/leave", auth.Middleware(c.Auth)(handlerFunc(c, leaveRematch)))
 	// ADR 0075 §2.1: hand the table to another seat. Host or admin;
 	// authorised inside the handler with CanManageTable.
 	mux.Handle("POST /games/{id}/host", auth.Middleware(c.Auth)(handlerFunc(c, transferHost)))
@@ -577,6 +593,9 @@ func Handler(c Config) http.Handler {
 	voiceRefreshLimit := newLimiter(1.0/10, 3)
 	mux.Handle("POST /games/{id}/voice/refresh",
 		auth.Middleware(c.Auth)(perCallerLimit(voiceRefreshLimit, handlerFunc(c, refreshVoiceRoom))))
+	// ADR 0161 §1: the table's #lfg post, on or off. Host or admin,
+	// authorised inside the handler with CanManageTable.
+	mux.Handle("PUT /games/{id}/lfg", auth.Middleware(c.Auth)(handlerFunc(c, putLFG)))
 	// ADR 0075 §2.3: change the table's settings. Host or admin,
 	// authorised inside the handler with CanManageTable. PATCH
 	// because the body is a partial — an absent field is "leave it
@@ -740,6 +759,11 @@ func Handler(c Config) http.Handler {
 	accountDeleteLimit := newLimiter(0.1, 3)
 	mux.Handle("DELETE /me/account", auth.Middleware(c.Auth)(perCallerLimit(accountDeleteLimit, handlerFunc(c, deleteMyAccount))))
 	mux.Handle("PUT /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, putMySettings(settingsLimit))))
+	// Discord DM notifications (ADR 0162 §5). Same caller rule and the
+	// same per-person bucket shape as the settings.
+	notificationsLimit := newLimiter(1, 5)
+	mux.Handle("GET /me/notifications", auth.Middleware(c.Auth)(handlerFunc(c, myNotifications)))
+	mux.Handle("PUT /me/notifications", auth.Middleware(c.Auth)(handlerFunc(c, putMyNotifications(notificationsLimit))))
 	// Playmats (ADR 0128, §11: three slots). The writes that decode an
 	// image (upload, link, fit) are rate-limited per person (a burst of
 	// 5, then one per 6 s) inside auth, and per IP outside it, so a
@@ -990,6 +1014,10 @@ type createGameRequest struct {
 	// §1), as PUT /games/{id}/voice would. Ignored when the server
 	// offers none: the client only shows the box when it does.
 	VoiceRoom bool `json:"voice_room,omitempty"`
+	// LFG posts the table to the Discord #lfg board (ADR 0161 §1), as
+	// PUT /games/{id}/lfg would. Ignored when the server has no board:
+	// the client only shows the box when it does.
+	LFG bool `json:"lfg,omitempty"`
 }
 
 // createGameResponse is the new table's meta, flattened, plus what
@@ -1197,6 +1225,16 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 				out.GameMeta = voiced
 			} else if !errors.Is(verr, ErrVoiceRoomsOff) {
 				c.Log.Warn("voice room on create failed", "game_id", meta.ID.String(), "err", verr)
+			}
+		}
+		if body.LFG {
+			// ADR 0161 §1. Asked after the voice room, so the first post
+			// already says whether the table has one. A guest-hosted
+			// table (the admin token naming no host) is not posted.
+			if posted, lerr := c.Lobby.SetLFG(meta.ID, true); lerr == nil {
+				out.LFG, out.LFGStatus = posted.LFG, posted.LFGStatus
+			} else if !errors.Is(lerr, ErrLFGOff) && c.Log != nil {
+				c.Log.Warn("lfg post on create failed", "game_id", meta.ID.String(), "err", lerr)
 			}
 		}
 		if from == setupFromLast {
@@ -2368,6 +2406,10 @@ func castParamsFromPreviewQuery(r *http.Request, xValue int) (game.CastSpellPara
 		return params, err
 	}
 	if params.BlightIDs, err = uuidListParam(q.Get("blight_ids"), "blight_ids"); err != nil {
+		return params, err
+	}
+	// #3402: and the permanents an exile-a-permanent cost takes.
+	if params.ExilePermanentIDs, err = uuidListParam(q.Get("exile_permanent_ids"), "exile_permanent_ids"); err != nil {
 		return params, err
 	}
 	// ADR 0135 §4: the alternative cost's named payment. An emerge
@@ -4188,7 +4230,7 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	// disabling the control.
 	case errors.Is(err, game.ErrInvalidSetting):
 		status = http.StatusBadRequest
-	case errors.Is(err, game.ErrStartingLifeLocked):
+	case errors.Is(err, game.ErrStartingLifeLocked), errors.Is(err, game.ErrFreeMulliganLocked):
 		status = http.StatusUnprocessableEntity
 	case errors.Is(err, ErrGameNotActiveForSpawn):
 		status = http.StatusConflict
@@ -4197,6 +4239,13 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	case errors.Is(err, ErrAgentSignedIn):
 		status = http.StatusBadRequest
 	case errors.Is(err, ErrGameArchived), errors.Is(err, ErrTooManyOpenTables):
+		status = http.StatusConflict
+	case errors.Is(err, ErrRematchNotHost), errors.Is(err, ErrRematchNotAsked):
+		status = http.StatusForbidden
+	case errors.Is(err, ErrNoRematch):
+		status = http.StatusNotFound
+	case errors.Is(err, ErrRematchNotEnded), errors.Is(err, ErrRematchUnavailable), errors.Is(err, ErrRematchOffered),
+		errors.Is(err, ErrRematchClosed), errors.Is(err, ErrRematchAccepted):
 		status = http.StatusConflict
 	case errors.Is(err, ErrCreateRateLimited), errors.Is(err, ErrCreateIPRateLimited):
 		status = http.StatusTooManyRequests

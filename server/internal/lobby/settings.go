@@ -31,8 +31,8 @@ import (
 // engine emits, which is what lets the log name them.
 //
 // Errors are the engine's verbatim — game.ErrInvalidSetting for a
-// value out of range, game.ErrStartingLifeLocked for a starting-life
-// change after Start — so the HTTP layer can map them to 400 and 422
+// value out of range, game.ErrStartingLifeLocked or
+// game.ErrFreeMulliganLocked for a change after Start — so the HTTP layer can map them to 400 and 422
 // without this layer inventing its own vocabulary.
 //
 // Deliberately routed through applyLocked (ApplyExternal) rather than

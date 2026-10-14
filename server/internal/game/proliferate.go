@@ -55,6 +55,12 @@ func harmfulCardCounter(name string) bool {
 	return ok && p+t < 0
 }
 
+// HarmfulCardCounter is harmfulCardCounter for the catalog: the counter
+// kinds a permanent's controller would rather not have. Sin, Unending
+// Cataclysm's suggested answer (ADR 0170) reads it to know which of its
+// controller's own counters are worth stripping.
+func HarmfulCardCounter(name string) bool { return harmfulCardCounter(name) }
+
 // harmfulPlayerCounters are the player-level counters you do not want
 // on yourself and do want on an opponent.
 var harmfulPlayerCounters = map[string]bool{

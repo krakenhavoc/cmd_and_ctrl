@@ -327,3 +327,16 @@ An owner report from live play: "Buster Sword: it gives me the option but does n
 The SANDBOX SIMPLIFICATION of §Decision 4 stands: the cast is an ordinary `cast_spell` taken right after the pick, not a frame inside the resolution. The rest of the resolution has already run when the pick is asked.
 
 **Back-out.** Removing the `Timing`/`LapseOnPass` lines from the grant, the `ChooseCastFree` destination, or the client's `handFreeCastRequest.set` each fails a named test; the pull request lists them.
+
+## Amendment 2026-10-13: a free cast of an exiled card, or into your hand (#3245)
+
+Beseech the Mirror, bargained: "you may cast the exiled card without paying its mana cost if that spell's mana value is 4 or less. Put the exiled card into your hand if it wasn't cast this way." That is discover's pair of branches over a card a search has already exiled, with the card's own cap and no discover event.
+
+**Decision.**
+
+1. **One helper.** `Game.CastExiledFreeOrToHandForEffect(player, source, card, maxMV)` (`game/cast_free_or_hand.go`). A land, or a card over the cap, goes straight to its owner's hand with no question. Otherwise it asks a `may_cast` prompt; accept grants §4's window (`{0}`, `TimingFlash`, `CastOnly`, `MaxSpellManaValue`, `LapseOnPass: LapseToHand`) with no `Discover` record, and decline puts the card into its owner's hand. The existing non-discover `LapseToHand` arm returns it on the holder's next pass.
+2. **Prompt keyword.** `MayCastKeywordFreeOrHand` (`"free_or_hand"`). The client words it like discover and lists it in `mayCastKeywordsThatOpenACast`, so accepting opens the cast chain.
+
+**Back-out.** Dropping `LapseOnPass` from the grant fails `TestBeseechTheMirrorAcceptedGrantLapsesToHand`; dropping the cap test sends a five-mana card to the prompt and fails `TestBeseechTheMirrorBargainedOverFourGoesToHand`.
+
+**Snapshot impact.** None. The grant, the prompt and the keyword string are existing persisted shapes.

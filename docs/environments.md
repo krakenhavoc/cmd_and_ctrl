@@ -452,6 +452,28 @@ the route and its proxy entry belong in the same pull request. That is
 the whole reason it moved — while it lived in cloud-init, nobody
 editing routes ever opened it.
 
+## Client addresses behind the tunnel
+
+A request reaches the server as Cloudflare edge → cloudflared on the VM
+(ingress `http://localhost:80`) → Caddy `:80` → `127.0.0.1:8080`, so its
+socket address is always loopback. With `CMDCTRL_TRUST_FORWARDED=1`,
+which CD sets on both hosts, `server/internal/util/clientip` names the
+client from `CF-Connecting-IP` (Cloudflare overwrites it at the edge),
+then from the rightmost non-loopback `X-Forwarded-For` entry. Every
+per-IP rate limiter keys on that, and the WebSocket logs record it as
+`remote`. `deploy/Caddyfile` trusts loopback (`trusted_proxies`) so Caddy
+appends to Cloudflare's `X-Forwarded-For` instead of replacing it with
+`127.0.0.1` (#3334).
+
+This is only sound while the origin is reachable through the tunnel
+alone: anything that can reach Caddy or `:8080` directly can send those
+headers with any value and pick its own rate-limit bucket.
+
+To check it on a host, two visitors on different networks hitting the
+same limited route must not share a 429, and the `remote` on a
+WebSocket log line (`journalctl -u cmd-and-ctrl | grep remote`) must be
+a public address, not `127.0.0.1`.
+
 ## Discord
 
 Add `https://cmd-dev.labxp.io/auth/discord/callback` to the existing
@@ -861,6 +883,62 @@ nothing points at, and can be deleted. Rolling forward again recreates
 the table and backfills the active mat into slot 1, so a person who had
 three is back to one. `TestMigration0013RollbackByHand` runs exactly
 this sequence and then rolls forward.
+
+Migration 0023 (ADR 0165, game statistics) adds three tables,
+`game_stats`, `seat_stats` and `seat_card_stats`, derived from finished
+games. An older binary refuses the v23 schema. Drop them by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE seat_card_stats; DROP TABLE seat_stats; DROP TABLE game_stats; DELETE FROM schema_migrations WHERE version = 23;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+Nothing is lost that cannot be computed again: every row is derived from
+a game's record and replay. Rolling forward recreates the tables empty,
+and games that end afterwards get a record. Older games need the
+backfill (#3365). `TestMigration0023RollbackByHand` runs exactly this
+sequence and then rolls forward.
+
+Migration 0022 (ADR 0162, Discord DM notifications) adds the
+`notification_prefs` table: each person's three notification switches
+and when Discord last refused a DM to them. An older binary refuses the
+v22 schema. Drop it by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE notification_prefs; DELETE FROM schema_migrations WHERE version = 22;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs every switch: rolling forward again recreates the table empty,
+so everyone is back to off and has to opt in again.
+`TestMigration0022RollbackByHand` runs exactly this sequence and then
+rolls forward.
+
+Migration 0021 (ADR 0161, the #lfg board) adds `games.lfg` (0 or 1,
+default 0) and `games.lfg_message_id` (nullable). An older binary refuses
+the v21 schema. Drop them by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "ALTER TABLE games DROP COLUMN lfg; ALTER TABLE games DROP COLUMN lfg_message_id; DELETE FROM schema_migrations WHERE version = 21;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+An older binary knows nothing of #lfg, so any live posts stay in the
+channel until they are deleted there by hand: before dropping the columns,
+`SELECT lfg_message_id FROM games WHERE lfg_message_id IS NOT NULL` lists
+them. Rolling forward again recreates both columns with every table opted
+out, and the manager never touches a message no row names.
+`TestMigration0021RollbackByHand` runs exactly this sequence and then rolls
+forward.
 
 Migration 0020 (ADR 0159, table voice rooms) adds `games.voice_room`
 (0 or 1, default 0) and `games.voice_channel_id` (nullable). An older

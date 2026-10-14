@@ -70,6 +70,9 @@ const BOARD_PICK_KINDS = new Set<string>([
   "sacrifice_choice",
   // "Sacrifice a Forest so it enters" (Heart of Yavimaya).
   "entry_sacrifice",
+  // "Put a phylactery counter on an artifact you control" as it enters
+  // (Phylactery Lich, ADR 0170).
+  "entry_choose_permanents",
   // "Choose among the permanents somebody else controls" (Tragic Arrogance).
   "their_permanents",
   // "Choose N of your own permanents" (Scapeshift).

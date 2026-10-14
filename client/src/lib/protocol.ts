@@ -7,6 +7,8 @@ export const PROTOCOL_VERSION = 0;
 // ADR 0122 §6: "ack" acknowledges an applied action to the client that
 // sent it; "legal_moves_request" / "legal_moves" fetch a seat's whole
 // move list. The browser handles "ack" and sends no requests.
+// ADR 0162 §2: "visibility" tells the server whether this tab is in
+// front, for Discord DM notifications. Sent, never answered.
 export type Kind =
   | "ping"
   | "pong"
@@ -16,7 +18,8 @@ export type Kind =
   | "chat"
   | "ack"
   | "legal_moves_request"
-  | "legal_moves";
+  | "legal_moves"
+  | "visibility";
 
 export const ErrorCode = {
   BadVersion: "bad_version",
@@ -65,6 +68,11 @@ export interface Frame<P = unknown> {
   kind: Kind;
   id: string;
   payload?: P;
+}
+
+/** The payload of a "visibility" frame (ADR 0162 §2). */
+export interface VisibilityPayload {
+  visible: boolean;
 }
 
 export interface PingPayload {
@@ -409,6 +417,10 @@ export interface GameView {
   // The table's Discord voice room (ADR 0159 §6), reduced by the server
   // to this viewer's own access. Absent when the server offers none.
   voice?: VoiceView;
+  // The host's rematch offer on an ended table (#3285, ADR 0164), reduced
+  // by the server to this viewer's own part. Absent until one is offered,
+  // and for a spectator.
+  rematch?: RematchView;
   // Seat index that took the first turn. Used by the server to enforce
   // the CR 103.8a turn-1 skip-draw rule — in two-player games only,
   // since CR 103.8c has nobody skip at a larger table. Added in S13.
@@ -476,6 +488,16 @@ export interface GameView {
   // discarder. Each entry carries its own options[] already filtered
   // per the viewer's visibility.
   pending_choices?: PendingChoiceView[];
+  // ADR 0166 (CR 723): who is making whose decisions right now. A
+  // prompt the controlled player owes arrives with `chooser` set to the
+  // controller and `on_behalf_of` to the controlled player.
+  // ADR 0167: `until` is "resolution" (Word of Command) or "turn" (the
+  // whole of a turn another player plays, Emrakul, the Promised End).
+  // One entry per controlled player: the effect that applies now.
+  player_controls?: PlayerControlView[];
+  // ADR 0167 §8: turn-long controls still waiting for the controlled
+  // player's next turn. Public; grants no visibility.
+  scheduled_player_controls?: ScheduledPlayerControlView[];
   // S31: the closed list of moves THE VIEWER'S OWN SEAT may make
   // right now, enumerated server-side by `internal/legal`. The server
   // never ships another seat's list — an opponent's moves name the
@@ -499,6 +521,11 @@ export interface GameView {
   // never "nothing is legal". Read through lib/legalActions.ts, never
   // directly, so every highlight comes from one lookup.
   legal_actions?: LegalActionsView;
+  // ADR 0167 §7: while the viewer plays another seat's turn,
+  // legal_moves also holds that seat's moves (each with `player` set to
+  // it) and legal_actions digests only the viewer's own. This maps each
+  // controlled seat's player ID to the digest of its moves.
+  controlled_legal_actions?: Record<string, LegalActionsView>;
   // The public game log (S31 sub-PR 0, ADR 0033 §4): the last ~200
   // table-visible events, oldest first. Every card reference in it has
   // been through the same visibility filter as the zones above, so an
@@ -742,6 +769,11 @@ export interface LegalMoveView {
   // list already promises. Automated seats use it as the way out of a
   // prompt whose other answers keep being rejected.
   always_legal?: boolean;
+  // ADR 0166 §4: the controlled_play prompt this move answers — one way
+  // of making Word of Command's forced play, or "it can't be played".
+  // ControlledPlaySheet lists exactly these, and the server never folds
+  // them into the capped list's one-per-card.
+  controlled_play?: string;
   // #1307: true on a cast or activation whose chosen targets include
   // an object on the stack — a counterspell, a Stifle, a redirect.
   // Smart autopass reads it to tell "can answer the thing on the
@@ -1076,7 +1108,14 @@ export type LogKind =
   // turned face up by an EFFECT (CR 708.8). `card_id` is the permanent, public
   // again by then; `target` is the object that did it. The special action has
   // no line of this kind (its `special_action` line carries it).
-  | "turn_face_up";
+  | "turn_face_up"
+  // ADR 0167 (CR 723.1): a turn-long player control was created, began
+  // with the controlled player's turn, and ended as the next turn
+  // began. `seat` is the controller, `target_seat` the controlled
+  // player, `card_id` the card whose effect it is (Emrakul).
+  | "player_control_scheduled"
+  | "player_control_began"
+  | "player_control_ended";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the
@@ -1203,6 +1242,12 @@ export interface PendingChoiceView {
     // (`pick_from_graveyard`). Answered with {choice_id, card_ids}, an
     // empty list when choosing nothing.
     | "revealed_hand_pick"
+    // ADR 0166 §4: Word of Command's forced play. `from_player` is the
+    // player you control, `options` the one card. Answered by one of
+    // the legal moves naming it (`controlled_play`): a cast_spell sent
+    // as that player, or {choice_id} with no cards, "it can't be
+    // played", which the server takes only when that is true.
+    | "controlled_play"
     | "mana_pick"
     | "replacement_order"
     | "optional_replacement"
@@ -1380,6 +1425,12 @@ export interface PendingChoiceView {
     // candidates are the chooser's own permanents, so every seat sees
     // them.
     | "entry_sacrifice"
+    // ADR 0170: "as this enters, put a phylactery counter on an artifact
+    // you control" (Phylactery Lich), "remove all counters from any
+    // number of artifacts, creatures, and enchantments" (Sin). Public
+    // permanents, answered with card_ids before the permanent is on the
+    // battlefield; choose_suggested is the card's recommended pick.
+    | "entry_choose_permanents"
     // #1214 CR 608.2 / CR 701.20: an opponent picks from a set you
     // revealed — "target opponent chooses two of those cards" (Gifts
     // Ungiven), and the first leg of a Fact or Fiction pile split.
@@ -1458,6 +1509,10 @@ export interface PendingChoiceView {
     | "mode_pick"
     | string;
   chooser: string;
+  // ADR 0166, CR 723.5: the player who owes this prompt when another
+  // player controls them. `chooser` is then the controller, who
+  // answers it.
+  on_behalf_of?: string;
   from_player: string;
   count: number;
   source?: string;
@@ -1478,7 +1533,7 @@ export interface PendingChoiceView {
   eligible_label?: string;
   // #2115: for "revealed_hand_pick", where the chosen card goes —
   // "discard", or "exile", which is not a discard.
-  pick_destination?: "discard" | "exile" | string;
+  pick_destination?: "discard" | "exile" | "keep" | string;
   // #2115: for "revealed_hand_pick", `options` ends with the revealing
   // player's graveyard, every card of which may be chosen.
   pick_from_graveyard?: boolean;
@@ -1738,7 +1793,8 @@ export interface PendingChoiceView {
   // your hand without paying its mana cost" — answering with a card
   // opens its cast at once). Absent on a plain discard or look.
   choose_destination?: string;
-  // #2525: kind "proliferate" only. The seats on offer beside
+  // #2525: kind "proliferate" (and ADR 0170's "entry_choose_permanents",
+  // suggestion only). The seats on offer beside
   // `options` (player IDs), and the engine's suggested answer
   // (instance IDs and player IDs) for the modal to pre-select. A
   // default, not a rule: any subset is a legal answer.
@@ -2097,6 +2153,10 @@ export interface PlayerView {
   // mulligan. Mulligan decisions go in turn order, starting player
   // first. Omitempty: absent on every other seat.
   mulligan_turn?: boolean;
+  // ADR 0168: how many cards this seat puts on the bottom of its library
+  // if it keeps now (the London mulligan, CR 103.5). Omitempty: absent
+  // when zero, outside the window, and once the seat has kept.
+  mulligan_bottom?: number;
   // #1968: this seat's trigger-order mode, "always" or "never"; absent
   // means the default, "when_it_matters". Present only in the seat's OWN
   // view; the server blanks it for everyone else.
@@ -2426,6 +2486,13 @@ export interface AdditionalCostView {
   reveal?: boolean;
   behold?: boolean;
   reveal_options?: LegalTargetsView;
+  // #3402: an "exile a creature you control" additional cost (Soul
+  // Exchange). `exile_permanent_options` lists the permanents that could
+  // pay it, in payment order, min / max the clause's count; the picks ride
+  // cast_spell as `exile_permanent_ids`. Present-and-empty means the cost
+  // cannot be paid right now.
+  exile_permanent_label?: string;
+  exile_permanent_options?: LegalTargetsView;
   payable?: boolean;
 }
 
@@ -4574,6 +4641,20 @@ export type VoiceStatus = "off" | "pending" | "ready" | "idle" | "full" | "unava
 
 export type VoiceAccess = "granted" | "not_in_server" | "no_discord" | "spectator" | "pending";
 
+// RematchView is the host's offer of the same game again (#3285, ADR
+// 0164). `game_id` is the new table, in the lobby until the host starts
+// it. `open` stays true while at least one other human is still on the
+// results screen without having answered. `you` is this viewer's part.
+export interface RematchView {
+  game_id: string;
+  host: string;
+  host_name?: string;
+  open: boolean;
+  you?: RematchPart;
+}
+
+export type RematchPart = "host" | "undecided" | "accepted" | "declined";
+
 export interface TableSettingsView {
   // Per-player per-turn undo budget. -1 is unlimited, 0 is no undos.
   undo_limit: number;
@@ -4589,10 +4670,32 @@ export interface TableSettingsView {
   // Whether the host and admin may spawn cards and tokens on a live
   // table (every spawn is announced in the log).
   allow_spawn: boolean;
+  // A two-player table's free first mulligan, the house rule (#3387).
+  // A multiplayer table has it by the rules either way. Fixed once the
+  // game is active. Absent from an older server.
+  free_first_mulligan?: boolean;
 }
 
 // ADR 0127: why a prompt with a standing answer is asked by hand.
-export type AskedByHand = "no_mana" | "empty_library" | "loop" | "undone";
+// "controlled" (ADR 0167 §4): another player controls the chooser, so
+// their standing answer does not apply.
+export type AskedByHand = "no_mana" | "empty_library" | "loop" | "undone" | "controlled";
+
+/** ADR 0166 / 0167: one player making another's decisions right now. */
+export interface PlayerControlView {
+  controller: string;
+  controlled: string;
+  source?: string;
+  source_name?: string;
+  until: "resolution" | "turn";
+}
+
+/** ADR 0167 §8: a turn-long control waiting for the controlled player's next turn. */
+export interface ScheduledPlayerControlView {
+  controller: string;
+  controlled: string;
+  source_name?: string;
+}
 
 // ADR 0127 §3: one of a seat's standing answers, as the server holds it.
 export interface AutoAnswerRuleView {

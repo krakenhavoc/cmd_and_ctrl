@@ -80,11 +80,6 @@ async function stage(
   const first = await joinAsPlayer(browser, game.id, game.invite_token, "Seat One", seed);
   holder.first = first;
   const second = await joinAsPlayer(browser, game.id, game.invite_token, "Seat Two", seed);
-  // #3092: at the default 1280x720 the damage sheet (anchored right) covers
-  // the defender's creature row since #3032 mirrored the boards, so the
-  // on-board steppers cannot be clicked. A wider window keeps the sheet
-  // clear of the row; the overlap itself is tracked separately.
-  for (const p of [first, second]) await p.page.setViewportSize({ width: 1600, height: 900 });
   holder.second = second;
   for (const p of [first, second]) await watchForSheet(p.page);
   await uploadDeckAs(request, adminToken, game.id, first.playerID, makeDeck());
@@ -253,6 +248,11 @@ test.describe("#2956 combat damage without the typing", () => {
       );
       const page = s.attacker.page;
       const sheet = page.getByRole("dialog", { name: "Assign combat damage" });
+      // #2959 / #3095: at the default 1280x720 a sheet that would sit
+      // over a blocker folds down to its restore line, so the board
+      // steppers stay clickable. Which seat attacks decides whether it
+      // covers one, so either is fine here; the click below is the check.
+      const restoreChip = page.getByRole("button", { name: "restore: Assign combat damage" });
       await expect(sheet).toBeVisible({ timeout: 15_000 });
       await expect.poll(() => sheetNumbers(page)).toEqual([2, 2, 2]);
       await expect(page.locator('[data-testid="damage-stepper"]')).toHaveCount(2);
@@ -262,12 +262,16 @@ test.describe("#2956 combat damage without the typing", () => {
       });
 
       // + on the bear on the board takes a point from the trample.
+      // Playwright refuses a click another element would intercept.
       const onBear = page.locator(`[data-instance-id="${s.bearID}"] [data-testid="damage-stepper"]`);
       await onBear.getByRole("button", { name: `Add 1 damage to ${BEAR}` }).click();
       await expect.poll(() => sheetNumbers(page)).toEqual([3, 2, 1]);
       await expect(onBear).toContainText("3");
-      // And back, in the sheet: the board follows it.
+      // A folded sheet comes back with one click, and stays up.
       const sheetBody = page.locator(".dock-sheet");
+      if (await restoreChip.isVisible()) await restoreChip.click();
+      await expect(sheetBody).toBeVisible();
+      // And back, in the sheet: the board follows it.
       await sheetBody.getByRole("button", { name: `Remove 1 damage from ${BEAR}` }).click();
       await expect(onBear).toContainText("2");
       await sheetBody.getByRole("button", { name: "Add 1 damage to the defending player" }).click();
