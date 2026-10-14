@@ -1435,6 +1435,10 @@ export async function fetchAutoTapPreview(
     if (cast.blightIDs && cast.blightIDs.length > 0) {
       params.set("blight_ids", cast.blightIDs.join(","));
     }
+    // #3402: a creature exiled to pay a spell's cost cannot also tap for mana.
+    if (cast.exilePermanentIDs && cast.exilePermanentIDs.length > 0) {
+      params.set("exile_permanent_ids", cast.exilePermanentIDs.join(","));
+    }
     // ADR 0135 §4: an emerge creature lowers the price by its mana value.
     if (cast.altCostIDs && cast.altCostIDs.length > 0) {
       params.set("alt_cost_ids", cast.altCostIDs.join(","));

@@ -2408,6 +2408,10 @@ func castParamsFromPreviewQuery(r *http.Request, xValue int) (game.CastSpellPara
 	if params.BlightIDs, err = uuidListParam(q.Get("blight_ids"), "blight_ids"); err != nil {
 		return params, err
 	}
+	// #3402: and the permanents an exile-a-permanent cost takes.
+	if params.ExilePermanentIDs, err = uuidListParam(q.Get("exile_permanent_ids"), "exile_permanent_ids"); err != nil {
+		return params, err
+	}
 	// ADR 0135 §4: the alternative cost's named payment. An emerge
 	// creature changes the PRICE (its mana value comes off), and every
 	// payment changes what the auto-tapper may spend: a creature named to

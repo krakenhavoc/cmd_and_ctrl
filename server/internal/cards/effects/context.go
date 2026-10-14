@@ -260,6 +260,25 @@ func (c *Context) Exiled() []uuid.UUID {
 	return append([]uuid.UUID(nil), c.Paid().Exiled...)
 }
 
+// ExiledPermanents is the permanents a spell's exile-a-permanent
+// additional cost took (#3402), each as it last existed on the
+// battlefield (CR 608.2h, PaidCost.ExiledObjects) — Soul Exchange's "the
+// exiled creature". In the order named; nil when the cost exiled none.
+// Must be called under the write lock the resolution holds.
+func (c *Context) ExiledPermanents() []game.PermanentInfo {
+	refs := c.Paid().ExiledObjects
+	if len(refs) == 0 || c.Game == nil {
+		return nil
+	}
+	out := make([]game.PermanentInfo, 0, len(refs))
+	for _, ref := range refs {
+		if info, ok := c.Game.PermanentForEffect(ref); ok {
+			out = append(out, info)
+		}
+	}
+	return out
+}
+
 // ManaSpent is what the payment for THIS stack item can be asked
 // about: Colors(), Count("R"), Total(), FromTreasure(), Snow() and
 // the rest of game.ManaSpent's vocabulary.

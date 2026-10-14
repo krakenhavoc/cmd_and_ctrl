@@ -1588,6 +1588,10 @@ lastKnownStack[].item.paid.delved[].id	custom(uuid.UUID)
 lastKnownStack[].item.paid.discarded	array
 lastKnownStack[].item.paid.discarded[]	custom(uuid.UUID)
 lastKnownStack[].item.paid.exiled	array
+lastKnownStack[].item.paid.exiledObjects	array
+lastKnownStack[].item.paid.exiledObjects[]	object
+lastKnownStack[].item.paid.exiledObjects[].epoch	number:int
+lastKnownStack[].item.paid.exiledObjects[].id	custom(uuid.UUID)
 lastKnownStack[].item.paid.exiled[]	custom(uuid.UUID)
 lastKnownStack[].item.paid.giftOpponent	custom(uuid.UUID)
 lastKnownStack[].item.paid.grantedOptional	array
@@ -1866,6 +1870,10 @@ pausedModeWalk.item.paid.delved[].id	custom(uuid.UUID)
 pausedModeWalk.item.paid.discarded	array
 pausedModeWalk.item.paid.discarded[]	custom(uuid.UUID)
 pausedModeWalk.item.paid.exiled	array
+pausedModeWalk.item.paid.exiledObjects	array
+pausedModeWalk.item.paid.exiledObjects[]	object
+pausedModeWalk.item.paid.exiledObjects[].epoch	number:int
+pausedModeWalk.item.paid.exiledObjects[].id	custom(uuid.UUID)
 pausedModeWalk.item.paid.exiled[]	custom(uuid.UUID)
 pausedModeWalk.item.paid.giftOpponent	custom(uuid.UUID)
 pausedModeWalk.item.paid.grantedOptional	array
@@ -2403,6 +2411,10 @@ pendingTriggers[].paid.delved[].id	custom(uuid.UUID)
 pendingTriggers[].paid.discarded	array
 pendingTriggers[].paid.discarded[]	custom(uuid.UUID)
 pendingTriggers[].paid.exiled	array
+pendingTriggers[].paid.exiledObjects	array
+pendingTriggers[].paid.exiledObjects[]	object
+pendingTriggers[].paid.exiledObjects[].epoch	number:int
+pendingTriggers[].paid.exiledObjects[].id	custom(uuid.UUID)
 pendingTriggers[].paid.exiled[]	custom(uuid.UUID)
 pendingTriggers[].paid.giftOpponent	custom(uuid.UUID)
 pendingTriggers[].paid.grantedOptional	array
@@ -5587,6 +5599,10 @@ stackMeta[].paid.delved[].id	custom(uuid.UUID)
 stackMeta[].paid.discarded	array
 stackMeta[].paid.discarded[]	custom(uuid.UUID)
 stackMeta[].paid.exiled	array
+stackMeta[].paid.exiledObjects	array
+stackMeta[].paid.exiledObjects[]	object
+stackMeta[].paid.exiledObjects[].epoch	number:int
+stackMeta[].paid.exiledObjects[].id	custom(uuid.UUID)
 stackMeta[].paid.exiled[]	custom(uuid.UUID)
 stackMeta[].paid.giftOpponent	custom(uuid.UUID)
 stackMeta[].paid.grantedOptional	array

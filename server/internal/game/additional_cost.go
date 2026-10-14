@@ -295,6 +295,17 @@ type AdditionalCost struct {
 	// the table. Only as a branch of an either/or cost, beside a mana
 	// branch — every printed card pairs it with mana.
 	Reveal *RevealCost
+
+	// ExilePermanents is "As an additional cost to cast this spell, exile
+	// a creature you control" (Soul Exchange, #3402): the activated
+	// ability's component (ExilePermanentsCost) on a cast. The caster
+	// names the permanents on CastSpellParams.ExilePermanentIDs, they
+	// are exiled with the spell on the stack, and they are recorded on
+	// PaidCost.Exiled / ExiledObjects as last-known information (CR
+	// 608.2h). Mandatory slot only: effects.Register refuses it on an
+	// optional cost or an either/or branch, and refuses the craft forms
+	// (a graveyard, an open count, a set rule), which no spell prints.
+	ExilePermanents *ExilePermanentsCost
 }
 
 // Branched reports whether this is an either/or cost (ADR 0100 §2).
@@ -372,7 +383,7 @@ func (c *AdditionalCost) MaxPayments() int {
 func (c *AdditionalCost) Empty() bool {
 	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
 		c.Teamwork == 0 && c.Blight == 0 && !c.BlightX && c.PayLife == 0 && c.Energy == 0 && c.TapCreatures == 0 && len(c.Either) == 0 &&
-		c.Reveal == nil)
+		c.Reveal == nil && c.ExilePermanents.Empty())
 }
 
 // CardsDemanded reports whether paying this cost needs the caster to
@@ -384,7 +395,7 @@ func (c *AdditionalCost) Empty() bool {
 // repeated one is refused with the rest. Nil-safe.
 func (c *AdditionalCost) CardsDemanded() bool {
 	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0 || c.BlightX ||
-		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0 || c.Reveal != nil)
+		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0 || c.Reveal != nil || !c.ExilePermanents.Empty())
 }
 
 // CatalogAdditionalCost is the catalog hook the effects package
@@ -983,6 +994,9 @@ func (g *Game) additionalCostPayableLocked(playerID, castID uuid.UUID, cost *Add
 		return false
 	}
 	if cost.Reveal != nil && len(g.RevealCostOptionsForEffect(playerID, castID, cost.Reveal)) == 0 {
+		return false
+	}
+	if !g.ExilePermanentsPayable(playerID, castID, cost.ExilePermanents) {
 		return false
 	}
 	return true

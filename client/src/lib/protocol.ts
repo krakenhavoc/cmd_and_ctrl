@@ -2476,6 +2476,13 @@ export interface AdditionalCostView {
   reveal?: boolean;
   behold?: boolean;
   reveal_options?: LegalTargetsView;
+  // #3402: an "exile a creature you control" additional cost (Soul
+  // Exchange). `exile_permanent_options` lists the permanents that could
+  // pay it, in payment order, min / max the clause's count; the picks ride
+  // cast_spell as `exile_permanent_ids`. Present-and-empty means the cost
+  // cannot be paid right now.
+  exile_permanent_label?: string;
+  exile_permanent_options?: LegalTargetsView;
   payable?: boolean;
 }
 
