@@ -247,12 +247,15 @@ func (e *enumerator) choiceMoves() bool {
 
 		case game.PendingChoiceTriggerOrder:
 			ids := c.TriggerOrderIDs
-			for _, order := range canonicalOrders(len(ids)) {
+			// Copies of one trigger can still differ in what they read
+			// (#3021's Valkyries), so every ordering stays a move.
+			for _, order := range triggerOrders(len(ids)) {
+				label := triggerOrderLabel(g, reason, ids, order)
 				p := base()
 				for _, i := range order {
 					p.Order = append(p.Order, ids[i].String())
 				}
-				e.addChoice(c, triggerOrderLabel(g, reason, ids, order), p)
+				e.addChoice(c, label, p)
 			}
 
 		case game.PendingChoiceOptionalReplacement, game.PendingChoiceTriggerPrompt,
@@ -1329,15 +1332,28 @@ func (e *enumerator) choiceMoves() bool {
 // label was the bare index permutation "[1 0]". A trigger no longer in
 // the queue keeps its index as its name.
 func triggerOrderLabel(g *game.Game, reason string, ids []uuid.UUID, order []int) string {
-	names := make([]string, len(order))
-	for n, i := range order {
-		names[n] = fmt.Sprintf("trigger %d", i)
+	byIndex := make([]string, len(ids))
+	count := map[string]int{}
+	for i, id := range ids {
+		byIndex[i] = fmt.Sprintf("trigger %d", i+1)
 		for _, t := range g.PendingTriggers {
-			if t != nil && t.ID == ids[i] && t.Label != "" {
-				names[n] = t.Label
+			if t != nil && t.ID == id && t.Label != "" {
+				byIndex[i] = t.Label
 				break
 			}
 		}
+		count[byIndex[i]]++
+	}
+	// Copies of one trigger read alike; their place in the collected
+	// order (the log's order) tells them apart.
+	for i := range byIndex {
+		if count[byIndex[i]] > 1 {
+			byIndex[i] += fmt.Sprintf(" (trigger %d)", i+1)
+		}
+	}
+	names := make([]string, len(order))
+	for n, i := range order {
+		names[n] = byIndex[i]
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s: resolve %s first", reason, names[0])
@@ -1634,6 +1650,67 @@ func canonicalOrders(n int) [][]int {
 		rev[i] = n - 1 - i
 	}
 	return [][]int{id, rev}
+}
+
+// triggerOrders is the CR 603.3b orderings a seat is offered: every
+// permutation of three triggers or fewer, and for a longer batch the
+// collected order, its reverse, and each trigger moved first and moved
+// last (at most 2n+2), which is the choice that usually matters. The
+// collected order stays first, so a bot that takes the first ordering
+// is unchanged. canonicalOrders' two were "enough for a bot", but an
+// agent seat (ADR 0122) plays as a player and has no drag-to-reorder:
+// an arena agent with three landfall triggers could not put the one it
+// wanted first.
+func triggerOrders(n int) [][]int {
+	if n <= 3 {
+		return permutations(n)
+	}
+	out := canonicalOrders(n)
+	for i := 0; i < n; i++ {
+		first := []int{i}
+		var last []int
+		for j := 0; j < n; j++ {
+			if j != i {
+				first = append(first, j)
+				last = append(last, j)
+			}
+		}
+		out = append(out, first, append(last, i))
+	}
+	seen := map[string]bool{}
+	uniq := out[:0]
+	for _, o := range out {
+		k := fmt.Sprint(o)
+		if !seen[k] {
+			seen[k] = true
+			uniq = append(uniq, o)
+		}
+	}
+	return uniq
+}
+
+// permutations lists every ordering of 0..n-1, the identity first.
+func permutations(n int) [][]int {
+	if n == 0 {
+		return [][]int{{}}
+	}
+	var out [][]int
+	var rec func(cur []int, used []bool)
+	rec = func(cur []int, used []bool) {
+		if len(cur) == n {
+			out = append(out, append([]int(nil), cur...))
+			return
+		}
+		for i := 0; i < n; i++ {
+			if !used[i] {
+				used[i] = true
+				rec(append(cur, i), used)
+				used[i] = false
+			}
+		}
+	}
+	rec(nil, make([]bool, n))
+	return out
 }
 
 // protectiveShieldDivision is the division a player protecting
