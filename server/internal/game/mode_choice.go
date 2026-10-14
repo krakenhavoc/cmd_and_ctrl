@@ -68,6 +68,10 @@ func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Character
 	// removed, so a raised minimum asks for no more than the bullets
 	// actually on offer. The printed Min keeps its old meaning, which
 	// EnoughChoosableModes has already enforced above.
+	if ms.AtRandom {
+		g.pickModeAtRandomLocked(tc, source, lki, t, doubledBy, options)
+		return true
+	}
 	modeMin, modeMax := g.modeBoundsLocked(ms, g.modeQueryForSourceLocked(source, source.Controller))
 	if !ms.Repeatable && modeMin > len(options) {
 		modeMin = max(ms.Min, len(options))
@@ -104,6 +108,47 @@ func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Character
 		},
 	})
 	return true
+}
+
+// pickModeAtRandomLocked is CR 700.2's "choose one at random" for a
+// triggered ability: one of the bullets on offer, drawn from the
+// "pick" stream keyed to the controller and the source (so an undo
+// rewinds the counter and replays the same draw), and then straight
+// into the CR 603.3d target walk, as if the controller had answered a
+// mode_pick. Nothing is asked of anyone for the mode itself.
+//
+// `options` is never empty: EnoughChoosableModes has already
+// refused an ability with fewer bullets than Min, and an at-random
+// spec has Min 1.
+//
+// Caller must hold g.mu.
+func (g *Game) pickModeAtRandomLocked(tc TriggerContext, source Card, lki Characteristic, t TriggeredAbility, doubledBy doublerRef, options []int) {
+	ms := t.Modes
+	// The shuffle works on ids; an option's id is its index in the
+	// first bytes of an otherwise empty uuid, which is stable and
+	// distinct per bullet.
+	ids := make([]uuid.UUID, len(options))
+	byID := make(map[uuid.UUID]int, len(options))
+	for k, i := range options {
+		var id uuid.UUID
+		id[0], id[1] = byte(i>>8), byte(i)
+		id[15] = 1
+		ids[k] = id
+		byID[id] = i
+	}
+	picked := g.ChooseAtRandomForEffect(RandomDraw{Player: source.Controller, Source: source.InstanceID}, ids, 1)
+	if len(picked) != 1 {
+		return
+	}
+	mode := byID[picked[0]]
+	g.recordModesChosenLocked(ms, ModeAbilityOf(source, t.Key), []int{mode})
+	g.EmitEvent(Event{
+		Kind:   EventOptionChosen,
+		Actor:  source.Controller,
+		CardID: source.InstanceID,
+		Label:  ms.Options[mode].Label + " (at random)",
+	})
+	g.buildOrPickTriggerLocked(tc, source, lki, t, doubledBy, []int{mode})
 }
 
 // ResolveModePick processes the controller's mode choice for a
