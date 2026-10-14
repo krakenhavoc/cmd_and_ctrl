@@ -388,6 +388,9 @@ func main() {
 	// Lobby HTTP mutations (join/deck/start) broadcast through the
 	// hub so clients already on the game page see them immediately.
 	l.SetStateBroadcaster(hub)
+	// The rematch offer closes when every human it waits on has left the
+	// results screen, which only the hub can see (#3285, ADR 0164).
+	l.SetSeatPresence(hub)
 	// A practice table the lobby reaps on its own (idle, or replaced
 	// by the same person's next one) closes its sockets through the
 	// hub, as an operator delete does (ADR 0076 §2.2).

@@ -409,6 +409,10 @@ export interface GameView {
   // The table's Discord voice room (ADR 0159 §6), reduced by the server
   // to this viewer's own access. Absent when the server offers none.
   voice?: VoiceView;
+  // The host's rematch offer on an ended table (#3285, ADR 0164), reduced
+  // by the server to this viewer's own part. Absent until one is offered,
+  // and for a spectator.
+  rematch?: RematchView;
   // Seat index that took the first turn. Used by the server to enforce
   // the CR 103.8a turn-1 skip-draw rule — in two-player games only,
   // since CR 103.8c has nobody skip at a larger table. Added in S13.
@@ -4570,6 +4574,20 @@ export interface VoiceView {
 export type VoiceStatus = "off" | "pending" | "ready" | "idle" | "full" | "unavailable";
 
 export type VoiceAccess = "granted" | "not_in_server" | "no_discord" | "spectator" | "pending";
+
+// RematchView is the host's offer of the same game again (#3285, ADR
+// 0164). `game_id` is the new table, in the lobby until the host starts
+// it. `open` stays true while at least one other human is still on the
+// results screen without having answered. `you` is this viewer's part.
+export interface RematchView {
+  game_id: string;
+  host: string;
+  host_name?: string;
+  open: boolean;
+  you?: RematchPart;
+}
+
+export type RematchPart = "host" | "undecided" | "accepted" | "declined";
 
 export interface TableSettingsView {
   // Per-player per-turn undo budget. -1 is unlimited, 0 is no undos.

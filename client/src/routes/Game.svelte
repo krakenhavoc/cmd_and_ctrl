@@ -31,7 +31,11 @@
     reportPlayer,
     fetchSpectators,
     removeSpectator,
+    offerRematch,
+    acceptRematch,
+    leaveRematch,
   } from "../lib/api";
+  import { rematchPlan } from "../lib/rematch";
   import { reportTargets } from "../lib/moderation";
   import { canLinkDiscord, linkDiscordLabel, signedInUserID } from "../lib/myGames";
   import { castPreviewParamsFromPayload } from "../lib/castPreview";
@@ -2014,7 +2018,41 @@
     const t = setTimeout(() => (gameOverArmed = true), GAME_OVER_GRACE_MS);
     return () => clearTimeout(t);
   });
-  const gameOverDockRequest = $derived(gameEnded ? gameOverRequest(back, gameOverArmed) : null);
+  // #3285, ADR 0164: the host's Rematch, and the others' Join / No thanks.
+  // Offering and accepting swap this tab to a seat at the new table.
+  const rematch = $derived(rematchPlan(view, viewerID, isPracticeGame(gameID)));
+  let rematchBusy = $state(false);
+  async function runRematch(go: () => Promise<{ gameID?: string } | void>): Promise<void> {
+    if (rematchBusy) return;
+    rematchBusy = true;
+    try {
+      const s = await go();
+      if (s && s.gameID) navigate(`#/games/${s.gameID}`);
+    } catch (err) {
+      lastError.set({
+        code: "rematch",
+        message: err instanceof Error ? err.message : "could not set up the rematch",
+        at: new Date(),
+      });
+    } finally {
+      rematchBusy = false;
+    }
+  }
+  const rematchActions = {
+    onOffer: () => void runRematch(() => offerRematch(gameID)),
+    onOpen: (id: string) => navigate(`#/games/${id}`),
+    onAccept: () => void runRematch(() => acceptRematch(gameID)),
+    onLeave: () => void runRematch(() => leaveRematch(gameID)),
+  };
+  const gameOverDockRequest = $derived(
+    gameEnded
+      ? gameOverRequest(back, gameOverArmed, {
+          plan: rematch,
+          busy: rematchBusy,
+          ...rematchActions,
+        })
+      : null,
+  );
 
   // ---- The ⋯ menu (ADR 0111 PR 7, owner decision 3) ----
   // The sandbox tools, life history, the table, spawn, the vote

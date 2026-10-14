@@ -196,6 +196,7 @@ func (l *Lobby) syncStateLocked(entry *gameEntry) {
 		}
 		entry.outcome = entry.room.Game.OutcomeKind()
 		l.recordEndLocked(entry, metrics.EndOutcome(entry.outcome), now)
+		l.armRematchReleaseLocked(entry)
 	}
 	l.persistGameLocked(entry)
 }
