@@ -356,6 +356,41 @@ type Characteristic struct {
 	// keeps the clamp. Like DamageByToughness it is how damage is
 	// ASSIGNED, not a number a layer computes.
 	DamageAsPositivePower bool `json:",omitempty"`
+
+	// CostPower is how much this creature counts for when it is tapped
+	// to pay a crew or saddle cost (ADR 0186 Decision 4, #2705): "this
+	// creature saddles Mounts and crews Vehicles as though its power
+	// were 2 greater", or "crews Vehicles using its toughness rather
+	// than its power". A fact about how the PAYMENT counts the creature,
+	// not a number a layer computes: the creature's power is not
+	// changed (Dynamite Diver's ruling), so "where X is its power" still
+	// reads the real one. Written only by layer 6 statics, only ever
+	// appended to like DamageByToughness (a creature's own clause is a
+	// selfOnly static on its card or token template, so "loses all
+	// abilities" takes it away), and read in one place, Card.CountedPower.
+	// Not snapshotted: the effective characteristics are recomputed.
+	CostPower []CostPowerRule `json:",omitempty"`
+}
+
+// CostPowerUse names the costs a CostPowerRule changes. A bitmask.
+type CostPowerUse uint8
+
+const (
+	// CostPowerCrew is "crews Vehicles" (CR 702.122a).
+	CostPowerCrew CostPowerUse = 1 << iota
+	// CostPowerSaddle is "saddles Mounts" (CR 702.171a).
+	CostPowerSaddle
+)
+
+// CostPowerRule is "this creature [saddles Mounts and] crews Vehicles
+// as though its power were N greater" (Bonus N) or "... using its
+// toughness rather than its power" (UseToughness). Uses says which
+// costs it applies to: a rule for crew alone does not help a creature
+// saddle a Mount.
+type CostPowerRule struct {
+	Uses         CostPowerUse
+	Bonus        int
+	UseToughness bool
 }
 
 // printedCharacteristic builds a Characteristic from the card's
@@ -439,6 +474,7 @@ func (c Characteristic) clone() Characteristic {
 	out.AttackTargetRestrictions = append([]AttackTargetRestriction(nil), c.AttackTargetRestrictions...)
 	out.BlockRequirements = append([]BlockRequirement(nil), c.BlockRequirements...)
 	out.CantHave = append([]string(nil), c.CantHave...)
+	out.CostPower = append([]CostPowerRule(nil), c.CostPower...)
 	return out
 }
 

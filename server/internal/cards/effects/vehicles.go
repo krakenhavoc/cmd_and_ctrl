@@ -1,6 +1,9 @@
 package effects
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -184,6 +187,60 @@ func CrewersOfThis(ctx *Context) []uuid.UUID {
 		return nil
 	}
 	return ctx.Game.CreaturesThatCrewedForEffect(ref)
+}
+
+// CrewsAsThoughPowerGreater is "This creature [saddles Mounts and] crews
+// Vehicles as though its power were N greater" (the Pilot token, Dynamite
+// Diver and its kin; ADR 0186 Decision 4, #2705). uses names the costs it
+// applies to: game.CostPowerCrew for "crews Vehicles", or both bits for
+// "saddles Mounts and crews Vehicles".
+//
+// A layer 6 static that only ever writes Characteristic.CostPower, on the
+// creature itself. It does NOT change the creature's power (Dynamite
+// Diver's ruling): "where X is its power" still reads the real number, and
+// only the crew and saddle payment counts the bonus (Card.CountedPower).
+// Because it is the creature's own ability, a creature that loses all
+// abilities stops counting extra (CR 613.1f), and a copy of it counts extra.
+//
+// Two of these add up. Declare it on a Spec.Static, or on a token
+// template's Static slot when the printed ability is a token's.
+func CrewsAsThoughPowerGreater(n int, uses game.CostPowerUse) game.StaticAbility {
+	return game.StaticAbility{
+		Layer:     game.Layer6Ability,
+		Label:     costPowerLabel(uses, fmt.Sprintf("as though its power were %d greater", n)),
+		AppliesTo: selfOnly,
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			c.CostPower = append(c.CostPower, game.CostPowerRule{Uses: uses, Bonus: n})
+		},
+	}
+}
+
+// CrewsUsingToughness is "This creature crews Vehicles using its toughness
+// rather than its power" (Interface Ace; ADR 0186 Decision 4): the same
+// layer 6 self-only shape as CrewsAsThoughPowerGreater, with
+// CostPowerRule.UseToughness set.
+func CrewsUsingToughness(uses game.CostPowerUse) game.StaticAbility {
+	return game.StaticAbility{
+		Layer:     game.Layer6Ability,
+		Label:     costPowerLabel(uses, "using its toughness rather than its power"),
+		AppliesTo: selfOnly,
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			c.CostPower = append(c.CostPower, game.CostPowerRule{Uses: uses, UseToughness: true})
+		},
+	}
+}
+
+// costPowerLabel is the printed sentence a CostPowerRule static carries:
+// "This creature saddles Mounts and crews Vehicles <how>".
+func costPowerLabel(uses game.CostPowerUse, how string) string {
+	var verbs []string
+	if uses&game.CostPowerSaddle != 0 {
+		verbs = append(verbs, "saddles Mounts")
+	}
+	if uses&game.CostPowerCrew != 0 {
+		verbs = append(verbs, "crews Vehicles")
+	}
+	return "This creature " + strings.Join(verbs, " and ") + " " + how + "."
 }
 
 // eotHasType reports whether a type / subtype token is already in the

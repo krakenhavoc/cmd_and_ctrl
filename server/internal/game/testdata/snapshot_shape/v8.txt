@@ -986,6 +986,11 @@ lastKnownBattlefield{}.Colors	array
 lastKnownBattlefield{}.Colors[]	string
 lastKnownBattlefield{}.ControlSource	custom(uuid.UUID)
 lastKnownBattlefield{}.Controller	custom(uuid.UUID)
+lastKnownBattlefield{}.CostPower	array
+lastKnownBattlefield{}.CostPower[]	object
+lastKnownBattlefield{}.CostPower[].Bonus	number:int
+lastKnownBattlefield{}.CostPower[].UseToughness	bool
+lastKnownBattlefield{}.CostPower[].Uses	number:uint8
 lastKnownBattlefield{}.DamageAsPositivePower	bool
 lastKnownBattlefield{}.DamageByToughness	bool
 lastKnownBattlefield{}.GrantedAbilities	array
@@ -1107,6 +1112,11 @@ lastKnownPermanents{}[].characteristic.Colors	array
 lastKnownPermanents{}[].characteristic.Colors[]	string
 lastKnownPermanents{}[].characteristic.ControlSource	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.Controller	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.CostPower	array
+lastKnownPermanents{}[].characteristic.CostPower[]	object
+lastKnownPermanents{}[].characteristic.CostPower[].Bonus	number:int
+lastKnownPermanents{}[].characteristic.CostPower[].UseToughness	bool
+lastKnownPermanents{}[].characteristic.CostPower[].Uses	number:uint8
 lastKnownPermanents{}[].characteristic.DamageAsPositivePower	bool
 lastKnownPermanents{}[].characteristic.DamageByToughness	bool
 lastKnownPermanents{}[].characteristic.GrantedAbilities	array
@@ -2228,6 +2238,11 @@ pendingChoices[].damageAssignment.SourceLKI.Colors	array
 pendingChoices[].damageAssignment.SourceLKI.Colors[]	string
 pendingChoices[].damageAssignment.SourceLKI.ControlSource	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.Controller	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.CostPower	array
+pendingChoices[].damageAssignment.SourceLKI.CostPower[]	object
+pendingChoices[].damageAssignment.SourceLKI.CostPower[].Bonus	number:int
+pendingChoices[].damageAssignment.SourceLKI.CostPower[].UseToughness	bool
+pendingChoices[].damageAssignment.SourceLKI.CostPower[].Uses	number:uint8
 pendingChoices[].damageAssignment.SourceLKI.DamageAsPositivePower	bool
 pendingChoices[].damageAssignment.SourceLKI.DamageByToughness	bool
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities	array

@@ -529,6 +529,7 @@ func sameCharacteristic(a, b Characteristic) bool {
 		a.BlocksAnyNumber == b.BlocksAnyNumber &&
 		a.DamageByToughness == b.DamageByToughness &&
 		a.DamageAsPositivePower == b.DamageAsPositivePower &&
+		slices.Equal(a.CostPower, b.CostPower) &&
 		a.CantBeAttacked == b.CantBeAttacked &&
 		sameStringSlice(a.Types, b.Types) &&
 		sameStringSlice(a.Subtypes, b.Subtypes) &&
