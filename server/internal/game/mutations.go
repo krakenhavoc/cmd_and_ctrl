@@ -1005,7 +1005,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		if pc, perr := ParseCost(CastCostFor(card, alt, grant).Paid); perr == nil {
 			paidHasX = pc.XSlots > 0
 		}
-		otherX := !TapPermanentsCostFor(CatalogKey(card)).Empty()
+		otherX := !g.tapCostForCastParamsLocked(playerID, card, params).Empty()
 		if ac, aerr := ChosenAdditionalCost(AdditionalCostFor(CatalogKey(card)), params.CostBranch); aerr == nil && ac != nil {
 			otherX = otherX || ac.PayLifeX || ac.BlightX
 		}
@@ -1352,7 +1352,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// discipline the additional cost uses. The budget is measured
 	// against the cost the cast owes BEFORE any tapping, so a caster
 	// can't tap five creatures at a three-mana spell.
-	tapCost := TapPermanentsCostFor(CatalogKey(card))
+	tapCost := g.tapCostForCastParamsLocked(playerID, card, params)
 	if !tapCost.Empty() || len(params.TapIDs) > 0 {
 		budget := 0
 		if base, _, berr := g.printedCostLocked(p, card, params); berr == nil {
@@ -1856,7 +1856,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	g.payTapPermanentsCostLocked(playerID, params.TapIDs)
 	// #3172: convoke records WHO tapped, for "each creature that
 	// convoked this spell" (Lethal Scheme). Waterbend is not convoke.
-	if len(params.TapIDs) > 0 && TapPermanentsCostFor(CatalogKey(card)).Key == "convoke" {
+	if len(params.TapIDs) > 0 && g.tapCostForCastParamsLocked(playerID, card, params).Key == "convoke" {
 		if item := g.StackMeta[cardID]; item != nil {
 			item.Paid.Convoked = append([]uuid.UUID(nil), params.TapIDs...)
 		}
@@ -3078,7 +3078,7 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 	// all have to have settled before we know what the tapped
 	// permanents are paying for. A card with no such cost, or a cast
 	// that tapped nothing, gets the cost back unchanged.
-	cost = g.costAfterTapsLocked(cost, card, params)
+	cost = g.costAfterTapsLocked(cost, p, card, params)
 	// ADR 0100 §1, CR 702.66b: delve applies "only after the total
 	// cost of the spell with delve is determined", and after the taps,
 	// because convoke may pay a coloured symbol and delve only a
@@ -3094,8 +3094,13 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 // own. Split out of costAfterModifiersLocked so the delve budget can be
 // read off the cost the taps leave, which is what CR 702.66a measures
 // it against. Caller must hold g.mu.
-func (g *Game) costAfterTapsLocked(cost ParsedCost, card Card, params CastSpellParams) ParsedCost {
-	tapCost := TapPermanentsCostFor(CatalogKey(card))
+func (g *Game) costAfterTapsLocked(cost ParsedCost, p *Player, card Card, params CastSpellParams) ParsedCost {
+	var tapCost *TapPermanentsCost
+	if p != nil {
+		tapCost = g.tapCostForCastParamsLocked(p.ID, card, params)
+	} else {
+		tapCost = TapPermanentsCostFor(CatalogKey(card))
+	}
 	if !tapCost.Empty() {
 		cost = tapPermanentsAdjusted(cost, tapCost, g.tapPermanentsPayersLocked(params.TapIDs), params.XValue)
 	}

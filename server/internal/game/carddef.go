@@ -120,7 +120,11 @@ type CardDef struct {
 	// casualty 1; granted_optional_cost.go). Read from the battlefield
 	// through OptionalCostsForCastLocked.
 	GrantedOptionalCosts []GrantedOptionalCost
-	CostModifiers        []CostModifier
+	// GrantedTapCosts are a permanent's "<spells> you cast have convoke"
+	// (Hoarding Broodlord, Dazzling Theater; granted_tap_cost.go). Read
+	// from the battlefield through TapPermanentsCostForCastLocked.
+	GrantedTapCosts []GrantedTapCost
+	CostModifiers   []CostModifier
 	// SelfCostModifiers change what THIS card costs to cast (ADR 0048
 	// addendum §11), read by SelfCostModifiersFor for the spell being
 	// priced and never from the battlefield.
@@ -669,6 +673,12 @@ func init() {
 			return d.Delve
 		}
 		return false
+	}
+	CatalogGrantedTapCosts = func(key string) []GrantedTapCost {
+		if d := catalogDef(key); d != nil {
+			return d.GrantedTapCosts
+		}
+		return nil
 	}
 	CatalogGrantedOptionalCosts = func(key string) []GrantedOptionalCost {
 		if d := catalogDef(key); d != nil {

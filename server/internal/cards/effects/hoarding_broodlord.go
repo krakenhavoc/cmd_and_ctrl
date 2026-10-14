@@ -21,20 +21,22 @@ import (
 // card stays in exile, so it can be played on a later turn at its own
 // timing and cost.
 //
-// Caveat: "spells you cast from exile have convoke" is not given. Convoke
-// is read off the spell's own card, and no permanent can grant it to
-// another spell yet (Dazzling Theater's gap).
+// "Spells you cast from exile have convoke" is a granted tap cost
+// (convoke_grant.go): any spell its controller casts from exile, the
+// card this found or any other, may be convoked.
 //
-// Mass Casualty deck request (#3245).
+// No simplification. Mass Casualty deck request (#3245).
 func init() {
 	Register(Spec{
 		OracleID:        "18e856b5-aab7-4802-8cec-1d44dd95d9f7",
 		Name:            "Hoarding Broodlord",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"Spells you cast from exile don't get convoke."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		TapCost:         Convoke(),
 		Purpose:         game.Purpose{Tutors: 1},
+		GrantedTapCosts: []game.GrantedTapCost{
+			SpellsYouCastHaveConvoke("Spells you cast from exile have convoke.", FromZone(game.ZoneExile)),
+		},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Hoarding Broodlord — search for a card, exile it face down; you may play it", hoardingBroodlordEnters),
 		},

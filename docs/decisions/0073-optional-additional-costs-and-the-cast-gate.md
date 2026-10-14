@@ -1526,3 +1526,25 @@ cast from exile have convoke" (Hoarding Broodlord, Dazzling Theater) stays open.
 fails.
 
 Tests: `cards/effects/silverquill_test.go`.
+
+## Amendment 2026-10-14: convoke a permanent grants (#2137, #3245)
+
+Hoarding Broodlord: "Spells you cast from exile have convoke." Dazzling Theater: "Creature spells you cast have convoke."
+Convoke is not an optional cost but a tap cost (`CardDef.TapCost`, S22), so it gets its own grant beside the one above.
+
+**Decision.**
+
+1. **`CardDef.GrantedTapCosts []GrantedTapCost`** (`Spells(g, caster, card, from ZoneKind)`, `Cost`, `Label`,
+   `ActiveWhen`), built with `effects.SpellsYouCastHaveConvoke(label, filter)` and the `FromZone` / `SpellIs` filters. A
+   Room door takes it as `Door.GrantedTapCosts` and gates it on the door (CR 709.5).
+2. **`Game.TapPermanentsCostForCastLocked(caster, card, from)`** is the card's own tap cost when it has one, otherwise the
+   first grant from a permanent the caster controls whose gate holds and whose filter accepts the card and the zone it is
+   cast from. Two instances of convoke are redundant (CR 702.51b), and a card's own different tap cost (waterbend) wins.
+   Every cast-time reader asks it: the optional-cost X check, the tap budget, `costAfterTapsLocked` (now given the
+   caster), the convoked record and the cast view's `tap_cost`. The zone is `castZoneFromWire(params.FromZone)`.
+
+**Not covered.** The move enumerator still never offers convoke taps (unchanged; it prices the printed cost).
+
+**Snapshot impact.** None: the grant is catalog data and the payment records it already wrote.
+
+Tests: `cards/effects/convoke_grant_test.go`.

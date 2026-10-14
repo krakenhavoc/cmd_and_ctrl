@@ -663,6 +663,11 @@ type Spec struct {
 	//	    "Each instant and sorcery spell you cast has casualty 1.", Or(Instant(), Sorcery()), Casualty(1))},
 	GrantedOptionalCosts []game.GrantedOptionalCost
 
+	// GrantedTapCosts are a permanent's "<spells> you cast have convoke"
+	// (Hoarding Broodlord, Dazzling Theater). Build each with
+	// SpellsYouCastHaveConvoke (convoke_grant.go).
+	GrantedTapCosts []game.GrantedTapCost
+
 	// CostModifiers is the S28 "spells cost {N} more / {N} less to
 	// cast" static (CR 601.2f) the card contributes while it is on
 	// the battlefield — Sphere of Resistance, Thalia, Goblin
