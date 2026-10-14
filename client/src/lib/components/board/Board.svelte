@@ -145,6 +145,7 @@
     castHandExileCost,
     altCostPayDefinesX,
     altCostPayX,
+    castExileCardsCost,
     tapCostOf,
     tapCostLimit,
     alternativeCostsOf,
@@ -765,6 +766,34 @@
     afterSacrificeCost(p.card, { ...p.choices, exileFromHandIDs: ids });
   }
 
+  // #3536: "exile six cards from your graveyard" as a spell's additional
+  // cost (Abhorrent Oculus) — the discard picker with the verb "Exile",
+  // over the server's `exile_cost_options` resolved out of the graveyard,
+  // the answer sent as `exile_ids`. Skipped when the graveyard holds
+  // exactly what the clause demands.
+  let exileCardsPrompt = $state<{
+    card: CardView;
+    cost: AdditionalCostView;
+    label: string;
+    count: number;
+    choices: CastChoices;
+  } | null>(null);
+  const exileCardsOptions = $derived.by(() => {
+    const p = exileCardsPrompt;
+    if (!p || !viewerID) return [];
+    return exileCostOptionCards(
+      view.seats.find((s) => s.id === viewerID),
+      p.cost,
+    );
+  });
+
+  function confirmExileCards(ids: string[]): void {
+    const p = exileCardsPrompt;
+    exileCardsPrompt = null;
+    if (!p) return;
+    afterSacrificeCost(p.card, { ...p.choices, exileIDs: ids });
+  }
+
   function confirmReveal(ids: string[]): void {
     const p = revealPrompt;
     revealPrompt = null;
@@ -817,6 +846,17 @@
       }
       handExilePromptOptionIDs = he.options;
       handExilePrompt = { card, label: he.label, choices };
+      return;
+    }
+    const ec = castExileCardsCost(card, choices);
+    if (ec && choices.exileIDs === undefined) {
+      if (ec.options.length > ec.count) {
+        exileCardsPrompt = { card, cost: ec.cost, label: ec.label, count: ec.count, choices };
+        return;
+      }
+      // Exactly what the clause demands: nothing to ask. Re-enter the chain
+      // with `exileIDs` set, which falls through to afterCastCosts.
+      afterSacrificeCost(card, { ...choices, exileIDs: ec.options });
       return;
     }
     afterCastCosts(card, choices);
@@ -3720,6 +3760,19 @@
     verb="Choose"
     onConfirm={confirmReveal}
     onCancel={() => (revealPrompt = null)}
+  />
+  <!-- #3536: exile six cards from your graveyard, as a spell's additional
+       cost — the discard picker with the verb "Exile", over the graveyard. -->
+  <DiscardCostModal
+    card={exileCardsPrompt?.card ?? null}
+    options={exileCardsOptions}
+    need={exileCardsPrompt?.count}
+    label={exileCardsPrompt?.label}
+    verb="Exile"
+    note={exileCardsPrompt ? exileCostNote(exileCardsPrompt.cost) : undefined}
+    where={exileCardsPrompt ? exileCostWhere(exileCardsPrompt.cost) : undefined}
+    onConfirm={confirmExileCards}
+    onCancel={() => (exileCardsPrompt = null)}
   />
   <!-- #3402: exile a creature you control, as a spell's additional cost. -->
   <SacrificeCostModal

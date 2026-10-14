@@ -135,6 +135,9 @@ export interface CastChoices {
   // your hand" additional cost exiles (March of Swirling Mist). Rides
   // cast_spell as `exile_from_hand_ids`; `[]` is the answer "none".
   exileFromHandIDs?: string[];
+  // #3536: the graveyard cards a mandatory "exile N cards from your
+  // graveyard" additional cost exiles. Rides cast_spell as `exile_ids`.
+  exileIDs?: string[];
   blightIDs?: string[];
   // ADR 0100 amendment 2026-10-07: the one card a chosen reveal / behold
   // branch shows. Set only after the branch is chosen; the server refuses
@@ -254,6 +257,8 @@ export function applyCastChoices(
     params.exile_permanent_ids = choices.exilePermanentIDs;
   if (choices.exileFromHandIDs !== undefined && choices.exileFromHandIDs.length > 0)
     params.exile_from_hand_ids = choices.exileFromHandIDs;
+  if (choices.exileIDs !== undefined && choices.exileIDs.length > 0)
+    params.exile_ids = choices.exileIDs;
   // #916: omitted at 0, which is the server default and what every
   // client that predates the stepper sends.
   if (choices.phyrexianLife !== undefined && choices.phyrexianLife > 0)
@@ -1300,6 +1305,35 @@ export function altCostPayX(
 ): number | undefined {
   if (!altCostPayDefinesX(offer) || picked.length !== 1) return undefined;
   return offer?.pay_options?.mana_values?.[picked[0]];
+}
+
+// ClaimedExileCardsCost is the "exile N cards from your graveyard"
+// additional cost this cast pays (#3536): the clause as printed, how many
+// cards to pick and which could pay it. `cost` is the additional-cost view
+// itself, so the picker resolves the ids through exileCost.ts exactly as an
+// ability's does.
+export interface ClaimedExileCardsCost {
+  label: string;
+  count: number;
+  options: string[];
+  cost: AdditionalCostView;
+}
+
+// castExileCardsCost is the exile-cards cost a cast pays, if any: the
+// card's mandatory additional cost. The prompt after the exile-a-permanent
+// step asks which cards to exile.
+export function castExileCardsCost(
+  card: CardView,
+  choices: CastChoices | undefined,
+): ClaimedExileCardsCost | undefined {
+  const cost = castAdditionalCost(card, choices);
+  if (!cost || !cost.exile_cost_n) return undefined;
+  return {
+    label: cost.exile_cost_label ?? "cards",
+    count: cost.exile_cost_n,
+    options: cost.exile_cost_options ?? [],
+    cost,
+  };
 }
 
 // castIsForbidden reports whether the server's own cast gate has

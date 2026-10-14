@@ -4032,6 +4032,8 @@ announces X and the pitched card must have exactly that mana value; the
 spell reads it with `ctx.X()`. Register allows the bound only on a one-card
 hand pitch of a card that declares `XMatters`.
 
+**Exile cards from your graveyard as an additional cost (#3536):** "As an additional cost to cast this spell, exile six cards from your graveyard" (Abhorrent Oculus) is `AdditionalCost: ExileFromGraveyardCost(6, "six cards", nil)` (pass a predicate for "exile a creature card"): the activated ability's `ExileCost` on a cast, so the walk, the validator and the payer are the ability's. The caster names the cards on `exile_ids`; they are exiled with the spell on the stack, so a graveyard-leaves watcher triggers above it and a countered spell does not give them back. Read them with `ctx.Exiled()`. It is an ADDITIONAL cost, so an alternative cost or a "cast without paying its mana cost" still demands it. Mandatory slot, fixed count, graveyard only: Register refuses the hand form, a non-positive count, an optional cost and an either/or branch.
+
 **Blight X (#2174):** "As an additional cost to cast this spell, blight X.
 X can't be greater than the greatest toughness among creatures you
 control" is `AdditionalCost: BlightXCost()` (Soul Immolation). X rides the
