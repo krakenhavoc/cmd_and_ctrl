@@ -684,7 +684,12 @@
     padding: 7px 7px 0 4px;
     max-height: 100%;
     max-width: 100%;
-    overflow: hidden;
+    /* #3278 (after #3274): clip, not hidden. A hidden box is still a
+       scroll container, so focusing a card here (or a test driver's
+       scroll-into-view) could scroll the row, and the offset would drop
+       the cards out from under the pointer on hover. A clipped box
+       cannot be scrolled at all. */
+    overflow: clip;
     position: relative;
     z-index: 1;
     transition: max-height 220ms var(--ease);
