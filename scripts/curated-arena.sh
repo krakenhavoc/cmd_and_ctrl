@@ -20,6 +20,10 @@ go run ./cmd/boteval arena \
 
 summary=$(find "$out" -name summary.json | head -n 1)
 [ -n "$summary" ] || { echo "no summary.json under $out" >&2; exit 1; }
+# The run dir is named by a timestamp with colons, which upload-artifact
+# refuses; keep the summaries at a fixed, flat path for it.
+cp "$summary" "$out/summary.json"
+cp "$(dirname "$summary")/summary.md" "$out/summary.md"
 stalls=$(jq '[.games[] | select(.stalled)] | length' "$summary")
 played=$(jq '.games | length' "$summary")
 if [ "$played" -ne 16 ]; then

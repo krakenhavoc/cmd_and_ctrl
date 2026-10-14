@@ -429,10 +429,10 @@ jobs:
         with:
           name: curated-arena
           path: |
-            ${{ runner.temp }}/arena-a/**/summary.md
-            ${{ runner.temp }}/arena-a/**/summary.json
-            ${{ runner.temp }}/arena-b/**/summary.md
-            ${{ runner.temp }}/arena-b/**/summary.json
+            ${{ runner.temp }}/arena-a/summary.md
+            ${{ runner.temp }}/arena-a/summary.json
+            ${{ runner.temp }}/arena-b/summary.md
+            ${{ runner.temp }}/arena-b/summary.json
           if-no-files-found: ignore
           retention-days: 14
 
