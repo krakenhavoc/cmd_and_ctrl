@@ -68,6 +68,8 @@
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
   import TablematePicker from "../lib/components/TablematePicker.svelte";
+  import LfgPost from "../lib/components/LfgPost.svelte";
+  import { LFG_GUEST_HINT, lfgHeader, setLFG } from "../lib/lfgPost";
   import Icon from "../lib/components/Icon.svelte";
   import MoreMenu, { type MoreItem } from "../lib/components/MoreMenu.svelte";
   import RemovedNotice from "../lib/components/RemovedNotice.svelte";
@@ -209,6 +211,11 @@
   let useLastSetup = $state(true);
   // ADR 0159 §1: shown only when the server offers voice rooms.
   let wantVoiceRoom = $state(false);
+  // ADR 0161 §1: shown only when the server has an #lfg board, off by
+  // default. The post names its host, so it needs a Discord sign-in: the
+  // shared admin token has none, and gets the box disabled.
+  let wantLFG = $state(false);
+  const lfgCreateBlocked = $derived(signedInUserID($session) === null);
   // The table this page just created: its tablemate picker starts open.
   let justCreated = $state<string | null>(null);
   // What applying the setup did, shown on the new table's card.
@@ -275,6 +282,28 @@
       settingsError = e instanceof Error ? e.message : String(e);
     } finally {
       settingsBusy = false;
+    }
+  }
+
+  // The table's #lfg post (ADR 0161). The answer is the table's meta;
+  // the list's next poll carries the post's status as the server
+  // reports it.
+  let lfgBusy = $state(false);
+  let lfgError = $state<string | null>(null);
+  // The table the last #lfg error belongs to, so the card shows it too.
+  let lfgErrorFor = $state<string | null>(null);
+  async function toggleLFG(gameID: string, enabled: boolean): Promise<void> {
+    lfgBusy = true;
+    lfgError = null;
+    lfgErrorFor = null;
+    try {
+      await setLFG(gameID, enabled);
+      await refresh();
+    } catch (e) {
+      lfgError = lobbyErrorMessage(e, "the #lfg request failed");
+      lfgErrorFor = gameID;
+    } finally {
+      lfgBusy = false;
     }
   }
 
@@ -479,6 +508,7 @@
       const meta = await createGame(newName.trim(), {
         ...(withSetup ? { setup: "last" as const } : {}),
         voiceRoom: $community.voice && wantVoiceRoom,
+        lfg: $community.lfg === true && !lfgCreateBlocked && wantLFG,
       });
       if (meta.invite_token) recentInvites.set(meta.id, meta.invite_token);
       if (meta.spectator_invite) recentSpectatorInvites.set(meta.id, meta.spectator_invite);
@@ -724,6 +754,14 @@
         title: "mint a new spectator link — the current one stops working immediately",
         disabled: rotateBusy !== null,
         onclick: () => (confirmRotate = { gameID: g.id, kind: "spectator" }),
+      });
+    }
+    if ($community.lfg && canManageTableFor(g) && g.lfg && g.state === "lobby") {
+      items.push({
+        label: "Withdraw from #lfg",
+        title: "take this table's post down from the CMD & CTRL Discord's #lfg channel",
+        disabled: lfgBusy,
+        onclick: () => void toggleLFG(g.id, false),
       });
     }
     if (canManageTableFor(g)) {
@@ -980,6 +1018,19 @@
             </span>
           </label>
         {/if}
+        {#if $community.lfg}
+          <label class="use-setup">
+            <input type="checkbox" bind:checked={wantLFG} disabled={lfgCreateBlocked} />
+            <span>
+              Post to the CMD & CTRL Discord (#lfg)
+              <span class="setup-sum"
+                >{lfgCreateBlocked
+                  ? LFG_GUEST_HINT
+                  : "the table's name, you as host and the open seats, so players can join"}</span
+              >
+            </span>
+          </label>
+        {/if}
         {#if createError}
           <p class="error nt-error" role="alert">{createError}</p>
         {/if}
@@ -1047,6 +1098,7 @@
             {@const items = moreFor(g)}
             {@const reason = startReason(g)}
             {@const panel = panelFor(g)}
+            {@const lfg = $community.lfg && canManageTableFor(g) ? lfgHeader(g) : null}
             <li class="tcard" class:mine={myNo !== null}>
               <div class="thead">
                 <div class="tid">
@@ -1074,6 +1126,22 @@
                         <Icon name="link" size={13} /> Copy invite
                       {/if}
                     </button>
+                  {/if}
+                  {#if lfg?.kind === "post"}
+                    <button
+                      type="button"
+                      class="btn ghost sm"
+                      disabled={lfg.disabled || lfgBusy}
+                      title={lfg.title}
+                      onclick={() => toggleLFG(g.id, true)}
+                    >
+                      <Icon name="discord" size={13} /> Post to #lfg
+                    </button>
+                  {:else if lfg?.kind === "posted"}
+                    <span class="lfg-state" title={lfg.title} data-testid="lfg-state">
+                      <Icon name="discord" size={13} />
+                      {lfg.label}
+                    </span>
                   {/if}
                   {#if items.length > 0}
                     <MoreMenu label={`more for ${g.name}`} {items} />
@@ -1230,6 +1298,8 @@
                 </div>
               {:else if botError}
                 <div class="bot-error">{botError}</div>
+              {:else if lfgError && lfgErrorFor === g.id && settingsFor !== g.id}
+                <div class="bot-error" role="alert">{lfgError}</div>
               {/if}
 
               {#if settingsFor === g.id}
@@ -1247,6 +1317,15 @@
                     <p class="muted">loading settings…</p>
                   {:else}
                     <p class="error">{settingsError ?? "couldn't load this table's settings"}</p>
+                  {/if}
+                  {#if $community.lfg}
+                    <LfgPost
+                      game={g}
+                      canManage={canManageTableFor(g)}
+                      ontoggle={(enabled) => toggleLFG(g.id, enabled)}
+                      busy={lfgBusy}
+                      error={lfgError}
+                    />
                   {/if}
                 </div>
               {/if}
@@ -1809,6 +1888,14 @@
     align-items: center;
     gap: 8px;
     margin-left: auto;
+  }
+  .lfg-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--mint);
+    white-space: nowrap;
   }
   .tact .btn.on {
     color: var(--mint);

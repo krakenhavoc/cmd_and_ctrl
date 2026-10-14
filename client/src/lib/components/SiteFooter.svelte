@@ -1,6 +1,6 @@
 <script lang="ts">
   // SiteFooter — one row under every page outside the table (ADR 0156 §3
-  // item 4): Discord, About, Privacy and GitHub, then the Fan Content
+  // item 4): Discord, About, Privacy, Terms (#3358) and GitHub, then the Fan Content
   // line (#2191). Mounted once by App.svelte; the game and the practice
   // table never show it, because it must not take table space. They
   // reach the same words from the ⋯ menu's Help group instead (#2982).
@@ -12,6 +12,7 @@
   import Icon from "./Icon.svelte";
   import { FAN_CONTENT_POLICY_URL } from "../legalNotice";
   import { PRIVACY_HASH } from "../privacy";
+  import { TERMS_HASH } from "../terms";
   import { ABOUT_HASH, GUIDE_HASH, REPO_URL } from "../about";
   import { community } from "../community";
 </script>
@@ -29,6 +30,7 @@
       <!-- #2983: the privacy notice is one click from every page outside
            the table; the table's own copy is in the ⋯ menu's Legal notice. -->
       <a href={PRIVACY_HASH}>Privacy</a>
+      <a href={TERMS_HASH}>Terms</a>
       <a href={REPO_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
     </nav>
     <div class="fine">

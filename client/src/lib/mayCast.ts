@@ -53,6 +53,16 @@ export function mayCastCopy(
         decline: "Put it on the bottom",
       };
       break;
+    case "free_or_hand":
+      copy = {
+        source: "free cast · CR 608.2g",
+        hint:
+          "Cast it for nothing now, or put it into your hand. If you choose to cast it and then pass " +
+          "without casting, it goes into your hand.",
+        accept: "Cast it free",
+        decline: "Put it into your hand",
+      };
+      break;
     case "suspend":
       copy = {
         source: "suspend · CR 702.62",

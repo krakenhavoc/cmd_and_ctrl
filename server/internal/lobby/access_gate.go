@@ -249,6 +249,9 @@ type communityResponse struct {
 	// Voice is whether a host may give a table a voice room in the
 	// community server (ADR 0159 §7).
 	Voice bool `json:"voice"`
+	// LFG is whether a host may post a table to the community server's
+	// #lfg board (ADR 0161 §7).
+	LFG bool `json:"lfg"`
 }
 
 // community is GET /community: public, no session, cacheable for five
@@ -259,5 +262,6 @@ func community(c Config, w http.ResponseWriter, _ *http.Request) error {
 		InviteURL: c.CommunityInviteURL,
 		Gate:      c.Discord.Gate.Enabled(),
 		Voice:     c.DiscordVoice.Enabled(),
+		LFG:       c.Lobby.LFGEnabled(),
 	})
 }

@@ -134,6 +134,21 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 		}
 		out.Voice = &voice
 	}
+	// #3285: the rematch offer names the old table's seats and the new
+	// table, each by id.
+	if v.Rematch != nil {
+		rematch := *v.Rematch
+		rematch.GameID = n.id(v.Rematch.GameID)
+		rematch.Host = n.id(v.Rematch.Host)
+		rematch.Accepted, rematch.Left = nil, nil
+		for _, id := range v.Rematch.Accepted {
+			rematch.Accepted = append(rematch.Accepted, n.id(id))
+		}
+		for _, id := range v.Rematch.Left {
+			rematch.Left = append(rematch.Left, n.id(id))
+		}
+		out.Rematch = &rematch
+	}
 	for i, p := range v.Seats {
 		out.Seats[i] = n.player(p, out.Seats[i].ID)
 	}
@@ -168,6 +183,7 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	out.GraveyardTargetBans = v.GraveyardTargetBans
 	out.DiscardPending = n.idKeyedIntMap(v.DiscardPending)
 	out.LoopNotice = n.loopNotice(v.LoopNotice)
+	out.PlayerControls = n.playerControls(v.PlayerControls)
 	out.Outcome = n.outcome(v.Outcome)
 	// ADR 0122 §6.1: a flag, no IDs.
 	out.LegalMovesTruncated = v.LegalMovesTruncated
@@ -287,6 +303,21 @@ func (n *normalizer) outcome(v *protocol.OutcomeView) *protocol.OutcomeView {
 	out.Winner = n.id(v.Winner)
 	out.Source = n.id(v.Source)
 	return &out
+}
+
+func (n *normalizer) playerControls(v []protocol.PlayerControlView) []protocol.PlayerControlView {
+	if len(v) == 0 {
+		return nil
+	}
+	out := make([]protocol.PlayerControlView, len(v))
+	for i, pc := range v {
+		out[i] = protocol.PlayerControlView{
+			Controller: n.id(pc.Controller),
+			Controlled: n.id(pc.Controlled),
+			Source:     n.id(pc.Source),
+		}
+	}
+	return out
 }
 
 func (n *normalizer) loopNotice(v *protocol.LoopNoticeView) *protocol.LoopNoticeView {
@@ -526,6 +557,8 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 		Settings:  &protocol.TableSettingsView{UndoLimit: 3, UndoScope: "own", StartingLife: 40, BotPace: "normal"},
 		Voice: &protocol.VoiceView{Enabled: true, Status: protocol.VoiceStatusReady, URL: "https://discord.com/channels/1/2",
 			Access: map[string]string{ownerID: protocol.VoiceAccessGranted}},
+		Rematch: &protocol.RematchView{GameID: "55555555-5555-5555-5555-555555555555", Host: ownerID, HostName: "Owner", Open: true,
+			Accepted: []string{oppID}},
 		StartingSeat: 1,
 		OpeningRoll: &protocol.OpeningRollView{Rounds: []protocol.OpeningRollRoundView{
 			{Seats: []int{0, 1}, Rolls: []protocol.OpeningRollDieView{{Seat: 0, Result: 12}}},
@@ -559,8 +592,9 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 			Cards: []protocol.RevealedCardView{{Name: "Island"}}, Count: 1,
 		}},
 
-		LoopNotice: &protocol.LoopNoticeView{Source: ownerID, Label: "loop", Controller: ownerID, Count: 3},
-		Outcome:    &protocol.OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect", Source: cardID},
+		LoopNotice:     &protocol.LoopNoticeView{Source: ownerID, Label: "loop", Controller: ownerID, Count: 3},
+		PlayerControls: []protocol.PlayerControlView{{Controller: ownerID, Controlled: ownerID, Source: ownerID}},
+		Outcome:        &protocol.OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect", Source: cardID},
 	}
 }
 

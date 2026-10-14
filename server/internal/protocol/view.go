@@ -96,6 +96,10 @@ type GameView struct {
 	// the room and reduced per viewer by FilterViewFor. Nil when the
 	// feature is off on this server.
 	Voice *VoiceView `json:"voice,omitempty"`
+	// Rematch is the host's rematch offer on an ended table (#3285, ADR
+	// 0164), stamped by the room and reduced per viewer by FilterViewFor.
+	// Nil until a rematch is offered, and for a spectator.
+	Rematch *RematchView `json:"rematch,omitempty"`
 	// StartingSeat is the seat index that took the first turn. Used
 	// by the server to enforce the CR 103.8a turn-1 skip-draw rule
 	// (two-player games only — CR 103.8c);
@@ -197,6 +201,12 @@ type GameView struct {
 	// every client sees what its viewer is legally allowed to).
 	// Drained by resolve_choice actions. Added in S14 sub-PR 5.
 	PendingChoices []PendingChoiceView `json:"pending_choices,omitempty"`
+	// PlayerControls is who is making whose decisions right now (CR
+	// 723, ADR 0166): Word of Command's controller while its forced play
+	// happens and while the spell it forced resolves. FilterViewFor
+	// shows a controller every card the player they control can see
+	// (CR 723.4).
+	PlayerControls []PlayerControlView `json:"player_controls,omitempty"`
 	// LegalMoves is the closed list of things the VIEWER'S OWN seat
 	// may do right now, straight out of internal/legal. Empty
 	// whenever that seat owes no decision — which is most frames,
@@ -327,9 +337,13 @@ type LegalMoveView = legal.Move
 // discard_from_hand targeting an opponent's hand) or the raw
 // IDs plus redacted characteristics.
 type PendingChoiceView struct {
-	ID         string `json:"id"`
-	Kind       string `json:"kind"`
-	Chooser    string `json:"chooser"`
+	ID      string `json:"id"`
+	Kind    string `json:"kind"`
+	Chooser string `json:"chooser"`
+	// OnBehalfOf is the player who owes the prompt when another player
+	// controls them (CR 723.5, ADR 0166): Chooser is then the
+	// controller, who answers it. Empty otherwise.
+	OnBehalfOf string `json:"on_behalf_of,omitempty"`
 	FromPlayer string `json:"from_player"`
 	Count      int    `json:"count"`
 	Source     string `json:"source,omitempty"`
@@ -4845,6 +4859,7 @@ func ViewOfGame(g *game.Game) GameView {
 			GraveyardTargetBans:   graveyardTargetBanLines(g),
 			DiscardPending:        viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:        viewOfPendingChoices(g),
+			PlayerControls:        viewOfPlayerControls(g),
 			LoopNotice:            viewOfLoopNotice(g.LoopNotice),
 		}
 		// #1279: where each defender's block declaration stands.
@@ -5025,6 +5040,12 @@ func capLegalMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 	seen := make(map[key]bool, len(moves))
 	out := make([]LegalMoveView, 0, legalMovesWireCap)
 	for _, m := range moves {
+		// ADR 0166: a forced play's ways are the whole of the decision
+		// its prompt shows, so none of them is an alternative to fold.
+		if m.ControlledPlay != "" {
+			out = append(out, m)
+			continue
+		}
 		k := key{m.Source, m.Kind, m.TargetsStack, m.HasTargets, m.Interacts, m.CombatInteracts, m.CombatDefenderOnly}
 		if seen[k] {
 			continue
@@ -6019,7 +6040,13 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// ADR 0073: the optional costs this card OFFERS. Stamped next to
 	// the mandatory one and read by the same modal the alternative
 	// costs open, because CR 601.2b announces all of them together.
-	out.OptionalCosts = viewOfOptionalCosts(g, caster, src, key)
+	optional := game.OptionalCostsFor(key)
+	if haveLive {
+		// #3245: a permanent may grant this spell an optional cost
+		// (Silverquill's casualty), appended after the card's own.
+		optional = g.OptionalCostsForCastLocked(caster, live)
+	}
+	out.OptionalCosts = viewOfOptionalCosts(g, caster, src, optional)
 	// ADR 0150 §5: assist's "choose another player", asked in the same
 	// modal as the gift's opponent. The total is the engine's own
 	// (AssistGenericLocked), so "up to {N}" is the cap the park uses.
@@ -6039,7 +6066,13 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// S22: convoke / waterbend. Stamped before the target clause
 	// because the caster pays it first, and the count of a "X target
 	// creatures" clause depends on what they paid.
-	if tc := game.TapPermanentsCostFor(key); !tc.Empty() {
+	tc := game.TapPermanentsCostFor(key)
+	if haveLive {
+		// A permanent may grant this spell convoke (Hoarding Broodlord's
+		// "spells you cast from exile", Dazzling Theater's creature spells).
+		tc = g.TapPermanentsCostForCastLocked(caster, live, kind)
+	}
+	if !tc.Empty() {
 		out.TapCost = viewOfTapCost(g, caster, f.manaCost, tc)
 	}
 	// ADR 0100 §4: delve. The options walk is the engine's own
@@ -6963,8 +6996,7 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 // optional cost that rewrites the target clause carries the rewritten
 // clause's legal set — `src` is the spell as its own source (#662),
 // exactly as the alternative-cost stamp reads it.
-func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, key string) []OptionalCostView {
-	costs := game.OptionalCostsFor(key)
+func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, costs []game.AdditionalCost) []OptionalCostView {
 	if len(costs) == 0 {
 		return nil
 	}
@@ -7973,10 +8005,12 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c == nil {
 			continue
 		}
+		// ADR 0166: the prompt is shown to whoever answers it now.
+		answerer := g.ControllerOfPlayerLocked(c.Chooser)
 		v := PendingChoiceView{
 			ID:            c.ID.String(),
 			Kind:          string(c.Kind),
-			Chooser:       c.Chooser.String(),
+			Chooser:       answerer.String(),
 			FromPlayer:    c.FromPlayer.String(),
 			Count:         c.Count,
 			Source:        uuidStringOrEmpty(c.Source),
@@ -8046,6 +8080,21 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if subject := c.TradeSubject(); subject != uuid.Nil {
 				v.TradeFor = subject.String()
 			}
+		}
+		if answerer != c.Chooser {
+			v.OnBehalfOf = c.Chooser.String()
+		}
+		// ADR 0166 §4: Word of Command's forced play shows the one card,
+		// which its chooser looked at.
+		if c.Kind == game.PendingChoiceControlledPlay && len(c.DiscardOptions) == 1 {
+			if fromP := g.PlayerByIDForEffect(c.FromPlayer); fromP != nil && fromP.Hand != nil {
+				for _, card := range fromP.Hand.Cards {
+					if card.InstanceID == c.DiscardOptions[0] {
+						v.Options = []CardView{viewOfCard(card)}
+					}
+				}
+			}
+			v.Eligible = cardIDStrings(c.DiscardOptions)
 		}
 		// For discard_from_hand, inline the source player's hand
 		// as Options. Per-viewer redaction in FilterViewFor
@@ -9079,6 +9128,14 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 			seatIDs = append(seatIDs, p.ID)
 		}
 	}
+	// ADR 0166, CR 723.4: a controller sees what the player they
+	// control can see.
+	var controlled []string
+	for _, pc := range v.PlayerControls {
+		if pc.Controller == viewerID {
+			controlled = append(controlled, pc.Controlled)
+		}
+	}
 	isKnower := func(c CardView) bool {
 		switch viewerID {
 		case "":
@@ -9086,7 +9143,15 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		case SpectatorViewerID:
 			return knownToEverySeat(c, seatIDs)
 		}
-		return c.knowers[viewerID]
+		if c.knowers[viewerID] {
+			return true
+		}
+		for _, id := range controlled {
+			if c.knowers[id] {
+				return true
+			}
+		}
+		return false
 	}
 
 	seats := make([]PlayerView, len(v.Seats))
@@ -9202,6 +9267,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// ADR 0159 §6: the viewer's own access, and the link only when
 		// they may use it.
 		Voice:        filterVoiceFor(v.Voice, viewerID),
+		Rematch:      filterRematchFor(v.Rematch, viewerID),
 		StartingSeat: v.StartingSeat,
 		// ADR 0121 §3: every die is public the moment it lands.
 		OpeningRoll:           v.OpeningRoll,
@@ -9239,6 +9305,10 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// #628: public, and identical for every seat — see the field
 		// comment. Nothing in it names a card in a hidden zone.
 		LoopNotice: v.LoopNotice,
+		// ADR 0166: public, and identical for every seat: who is making
+		// whose decisions. What it lets the controller see is applied
+		// through isKnower above.
+		PlayerControls: v.PlayerControls,
 		// ADR 0057: public, and identical for every seat. The source
 		// name was resolved from public zones only.
 		Outcome: v.Outcome,

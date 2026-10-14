@@ -883,6 +883,89 @@ Limited per caller: one every ten seconds, burst of three.
 | 429 | too many requests |
 | 503 | voice rooms are off on this server |
 
+### `PUT /games/{id}/lfg`
+
+Post the table to the community server's **#lfg** channel, or withdraw the
+post ([ADR 0161](decisions/0161-an-lfg-board-in-discord.md) §1). **Host or
+admin only** (`CanManageTable`). `POST /games` takes the same choice as
+`"lfg": true`, which a server without the board ignores, and which a table
+with no host to name (the admin token naming nobody) is created without.
+
+Turning it on needs a table in the **lobby** with an **empty seat**, not the
+practice table, whose host is **signed in with Discord**: the post names the
+host. A named host who has not sat down yet (`host_discord_id`, ADR 0075
+§2.1) counts. It also needs the table's invite link in this process's memory,
+since the post is a copy of it; a table restored after a restart has only the
+hash, exactly the gap `POST /games/{id}/invites/dm` has.
+
+**The post.** One message per table, by the bot: the LFG role's mention in
+the content (`CMDCTRL_DISCORD_LFG_ROLE_ID`, `allowed_mentions` naming only
+that role), and an embed with the table's name, the host as a Discord
+mention, the seat count (`2 of 4`, never the seated names), whether the table
+asked for a voice room, the table settings that change how the game plays
+when they are not the default (starting life, commander damage, undos, card
+spawning), and when the table was opened. One link button, **Join table**,
+opens the invite link; the server needs no interactions endpoint.
+
+**The ping.** Only a new post pings, and at most once per host per 30
+minutes; a post inside the cooldown goes up silently. An edit never pings.
+A post that replaces one deleted on Discord does not ping.
+
+**The post follows the table.** An LFG manager (`lfg_manager.go`) with the
+voice manager's shape: lobby hooks mark the table dirty (a seat filled or
+freed, an invite rotated, the host's toggle, the voice choice, the lifecycle),
+one worker reads the table and posts, edits or deletes, and never holds the
+lobby lock across a Discord call. Settings change over the game socket, so
+the worker also reads every opted-in table every 30 seconds; a read that
+finds nothing new makes no call. Edits are coalesced to one per post per 10
+seconds.
+
+| Table event | The post |
+|---|---|
+| a seat filled or freed | edited: the seat count |
+| every seat taken | edited: `· Full`, the button **Table full** and disabled; a freed seat restores it |
+| the invite rotated | edited: the button's new link |
+| settings changed, voice toggled, host passed to another Discord seat | edited |
+| the game starts, the host withdraws it, the table is archived or deleted, the host is now a guest | deleted |
+
+**Failures.** A 429 waits its `retry_after` (capped at 30 s) and retries; a
+5xx or a timeout retries with backoff, three tries in all, then the post is
+`unavailable`. A 403 (the bot cannot post in the channel) logs once per
+table and is `unavailable` at once. The table plays as it would without the
+post, and the host's toggle tries again. A 404 on an edit means the post was
+deleted on Discord: the id is cleared and the table is posted afresh.
+
+**Durability.** `games.lfg` and `games.lfg_message_id` (migration 0021). At
+boot the manager adopts each resident table's message and edits it to the
+table as it is now, or deletes it when the table no longer wants it; a
+`games` row the restore pass did not bring back has its message deleted and
+the column cleared. After a restart the process holds no invite plaintext,
+so an edit leaves the button as it was (its link still works) until the
+invite is rotated. The manager never lists the channel and never touches a
+message no row names: #lfg is shared.
+
+**Request**
+
+```json
+{ "enabled": true }
+```
+
+**Response 200**: the updated `GameMeta`, with `lfg` and `lfg_status`:
+`pending` (not posted yet, or the table cannot be posted right now),
+`posted`, or `unavailable`. Both are omitted when the table is not opted in.
+`lfg_status` is not persisted; the manager reports it.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | `enabled` missing |
+| 401 | unauthenticated |
+| 403 | caller is neither the host of this table nor the admin |
+| 404 | game not found |
+| 409 | turning it on for a table that is not waiting in the lobby, has no empty seat, has a guest host, or whose invite link this server no longer holds (turning it off is always allowed) |
+| 503 | the board is off on this server: `CMDCTRL_DISCORD_LFG_CHANNEL_ID`, `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID` and `CMDCTRL_DISCORD_BOT_TOKEN` must all be set (and `CMDCTRL_PUBLIC_BASE_URL`, which the join link is built on) |
+
 ### `PATCH /games/{id}/settings`
 
 Change the table's settings
@@ -1188,6 +1271,63 @@ and never fails the start. See [`GET /me/setup`](#get-mesetup-adr-0110-5).
 | 403 | not a seat in this game |
 | 404 | game not found |
 | 409 | not enough players (min 2), or one or more seats haven't uploaded a deck |
+
+### Rematch: `POST /games/{id}/rematch`, `/rematch/accept`, `/rematch/leave` (ADR 0164, #3285)
+
+The host of a finished table offers the same game again. Each route is called
+with a **seat session at the finished table** (`Authorization: Bearer`, or the
+cookie); the admin token and a spectator are refused (403).
+
+| Route | Who | Answers |
+|---|---|---|
+| `POST /games/{id}/rematch` | the table's host | 201, a seat session at the **new** table |
+| `POST /games/{id}/rematch/accept` | another human seat, while the offer is open | 200, a seat session at the new table |
+| `POST /games/{id}/rematch/leave` | another human seat | 204 |
+
+"The host" is the table's host. When every human has lost and the bots won, the
+engine has nobody left to host, and the **first human seat** is the host for this
+purpose (the client mirrors the rule, `client/src/lib/rematch.ts`).
+
+**Offering** makes a new game: a new id, the old name with ` (rematch)`, created
+for the host's account, in the `lobby` state, with the old table's settings, the
+host's seat with the deck the host played, and a bot seat for every bot of the
+old table with the same name, tier, curated deck and decklist (a bot that cannot
+be seated again is skipped). The new table is **private**: both of its invites
+are revoked as it is made, so no link to it exists. It is started, given a bot
+or left short with the routes every table has (`POST /games/{id}/start`,
+`POST /games/{id}/seats/bot`); starting opens the opening roll, so the turn order
+is random. The old game stays ended, with its replay, in History.
+
+The response is the `sessionResponse` a join returns (`token`, `expires_at`,
+`principal`, `game`, `player_id`), bound to the **new** game and seat, and the
+session cookie is set to it. A signed-in person's session expires with the one it
+came from.
+
+**Accepting** seats the caller at the new table with their own deck, and answers
+the same way. **Leaving** records a no; the caller may still accept while the
+offer is open, but not after accepting.
+
+The offer is `GameView.rematch` on the old table ([protocol.md](protocol.md)): the
+new table's id, the host, whether the offer is `open`, and the viewer's own part.
+It is **open** while at least one human seat other than the host has neither
+answered nor left the results screen. The server asks the hub which seats still
+have a socket on the old table once a second, and a seat missing for 15 seconds
+has left. When none is left to ask, the offer closes for good: the new table and
+whoever it holds stay, and nobody else is carried over. An MCP agent seat is not
+carried over and does not hold the offer open.
+
+The old decks are kept in memory from `Start` (not persisted): until the offer
+closes, and for four hours after the game ended if nobody offers.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 401 | no session |
+| 403 | not a seat at this table; or not the host (offer); or the host/an agent/a bot (accept, leave) |
+| 404 | game not found; or no offer to answer |
+| 409 | the game is not over; a rematch was already offered; the table cannot be rematched any more (a practice or archived table, a restart, or too long ago); the offer is closed or already answered; the new table is full or has started; leaving after accepting |
+| 503 | the server is at its capacity |
 
 ### `POST /games/{id}/setup` (ADR 0110 §5)
 
@@ -2870,6 +3010,89 @@ always a 412.
 - A failed write never blocks the UI. It is retried with a backoff, and
   again when the browser comes back online.
 
+### `GET /me/notifications` and `PUT /me/notifications` (ADR 0162)
+
+The caller's **Discord DM notification switches**
+([ADR 0162](decisions/0162-discord-dm-notifications.md)). Three, every
+one **off** until the person turns it on:
+
+| Switch | A DM is sent when |
+|---|---|
+| `turn` | the game has waited on you for **2 minutes** while you are away |
+| `table_ready` | a table you sit at has filled (every seat taken) or started while you are away |
+| `table_filled` | a table you host has filled while you are away |
+
+**Away** means no open game socket for your seat, or every one reports
+its tab hidden (the `visibility` frame, [protocol.md](protocol.md)). At
+most **one DM per player per table per 10 minutes**, across all three.
+Never to a bot, an agent seat, a guest or a spectator, and never about a
+practice table. The message is one line naming the table (and the turn,
+for `turn`) and a link to `/#/games/{id}`, which rejoins a signed-in
+player's seat the usual way (`POST /me/games/{id}/session`).
+
+Same caller rule as the rest of `/me/*`: a signed-in person. No
+credential is **401**; a guest's seat, a spectator link and the admin
+token are **403**.
+
+**`GET /me/notifications` → 200**
+
+```json
+{ "available": true, "turn": true, "table_ready": false, "table_filled": false, "dm_failed": false }
+```
+
+- `available` is whether this server sends notifications at all. It
+  needs `CMDCTRL_DISCORD_BOT_TOKEN` (production only),
+  `CMDCTRL_PUBLIC_BASE_URL` and the database. Without them both routes
+  answer **503** with `{"error": "…", "available": false}`, and the
+  client hides the section.
+- `dm_failed` is true when Discord refused the last DM (its code 50007:
+  DMs from server members switched off, the bot blocked, or the person
+  left the server). Nothing is sent while it is set. Turning any switch
+  on that was off clears it.
+
+Responses carry `Cache-Control: no-store`.
+
+**`PUT /me/notifications`**
+
+```json
+{ "turn": true }
+```
+
+Any of the three booleans; a switch left out keeps its value. The body
+must name at least one, and unknown fields are refused.
+
+| Status | When | Body |
+|---|---|---|
+| 200 | Saved | The new switches, as `GET` returns them |
+| 400 | The body is malformed, names no switch, or names an unknown field | `{error}` |
+| 429 | Over the per-person bucket: 1 write a second, a burst of 5 | `{error}` |
+| 503 | Notifications are off on this server | `{error, available: false}` |
+
+The switches live in `notification_prefs` (migration 0022), not in the
+synced settings body, which the server never reads (ADR 0110 §4).
+Account deletion deletes the row. The rate window and the two-minute
+clocks are in memory: a restart forgets them, which at worst sends one
+extra DM. Every attempt is counted in
+`cmdctrl_dm_notifications_total{kind, result}`, `result` being `sent`,
+`refused` (50007) or `error`. A 429 from Discord waits once, up to five
+seconds; anything else is logged and dropped, never retried late.
+
+**How the client uses it** (`client/src/lib/notifications.ts`):
+
+- **Settings → Notifications** asks `GET` each time the panel opens and
+  shows the tab only when `available` is true: three switches, and the
+  "Discord refused the last message" hint while `dm_failed` is set. Each
+  switch is its own `PUT` naming only that switch.
+- **The nudge.** At a real table (not the practice table, not as a
+  spectator), a signed-in player with every switch off sees one line,
+  "Get a Discord DM when it's your turn?", with **Turn on** (`PUT
+  {"turn": true}`) and **Not now**. Either answer is stored as
+  `notify.dm-nudge` in `help.seen`, the synced settings map of things
+  dismissed (ADR 0110 §4, ADR 0125 §4), so it never shows again on any
+  browser the person signs in on.
+- The game socket sends `visibility` once on connect and on every
+  `visibilitychange` ([protocol.md](protocol.md)).
+
 ### Playmats (ADR 0128)
 
 A signed-in person can keep up to **three playmats** and show one of
@@ -3269,7 +3492,8 @@ session's), so only the caller's own can be deleted, and an admin gets
 no extra reach.
 
 It removes the person's decks, deck-request history, playmats (rows and
-image files), synced settings, last table setup, and the Discord
+image files), synced settings, last table setup, notification switches,
+and the Discord
 identity (id, name, avatar hash, encrypted refresh token); turns every
 seat they held into `"Deleted player"` in the lobby, the live room, the
 games' files on disk (crash dump, replay, restore point) and the
@@ -4044,12 +4268,14 @@ The re-check at renewal is under
 Public, no credential. The client's source for every Discord placement:
 
 ```json
-{ "invite_url": "https://discord.gg/…", "gate": true }
+{ "invite_url": "https://discord.gg/…", "gate": true, "voice": true, "lfg": true }
 ```
 
 `invite_url` is `CMDCTRL_DISCORD_INVITE_URL`, `""` when unset (the client
 then hides every Discord link). `gate` is whether sign-up needs the
-admitting role. No guild, role or user id is ever in it. Answered with
+admitting role. `voice` is whether a host may give a table a voice room
+(ADR 0159), and `lfg` whether a host may post a table to #lfg (ADR 0161,
+[`PUT /games/{id}/lfg`](#put-gamesidlfg)). No guild, role or user id is ever in it. Answered with
 `Cache-Control: public, max-age=300`; it changes only on a deploy.
 
 ### `GET /auth/discord/config`

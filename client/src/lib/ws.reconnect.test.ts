@@ -220,6 +220,13 @@ describe("isTerminalClose", () => {
   });
 });
 
+// pings is what the socket sent, less the visibility frames (ADR 0162
+// §2), which a stubbed document makes the client send on open and on
+// every visibilitychange.
+function pings(socket: FakeSocket): string[] {
+  return socket.sent.filter((wire) => JSON.parse(wire).kind !== "visibility");
+}
+
 describe("#3047 — dead server heartbeat", () => {
   it("pings an idle socket and redials when no frame arrives", () => {
     const { client, socket } = connected();
@@ -264,11 +271,11 @@ describe("#3047 — dead server heartbeat", () => {
 
     doc.setHidden(true);
     vi.advanceTimersByTime(30_000);
-    expect(socket.sent).toHaveLength(0);
+    expect(pings(socket)).toHaveLength(0);
     expect(socket.closeCode).toBeNull();
 
     doc.setHidden(false);
-    expect(socket.sent.map((wire) => JSON.parse(wire).kind)).toEqual(["ping"]);
+    expect(pings(socket).map((wire) => JSON.parse(wire).kind)).toEqual(["ping"]);
     expect(socket.closeCode).toBeNull();
 
     const replyToHeartbeat = () => {
@@ -283,10 +290,10 @@ describe("#3047 — dead server heartbeat", () => {
     };
     replyToHeartbeat();
     vi.advanceTimersByTime(5_000);
-    expect(socket.sent).toHaveLength(2);
+    expect(pings(socket)).toHaveLength(2);
     replyToHeartbeat();
     vi.advanceTimersByTime(5_000);
-    expect(socket.sent).toHaveLength(3);
+    expect(pings(socket)).toHaveLength(3);
     replyToHeartbeat();
     vi.advanceTimersByTime(5_000);
     replyToHeartbeat();
@@ -730,5 +737,35 @@ describe("#523 — restore generation", () => {
     // normal.
     lastSocket().emit("message", { data: snapshotFrame(51, 1) });
     expect(get(client.lastSeq)).toBe(51);
+  });
+});
+
+describe("ADR 0162 — the visibility frame", () => {
+  const visibility = (socket: FakeSocket): boolean[] =>
+    socket.sent
+      .map((wire) => JSON.parse(wire))
+      .filter((f) => f.kind === "visibility")
+      .map((f) => f.payload.visible);
+
+  it("says whether the tab is in front once on connect and on every change", () => {
+    const doc = stubDocument();
+    const { socket } = connected();
+    expect(visibility(socket)).toEqual([true]);
+
+    doc.setHidden(true);
+    doc.setHidden(false);
+    expect(visibility(socket)).toEqual([true, false, true]);
+  });
+
+  it("says hidden on connect when the tab opens hidden, and again after a redial", () => {
+    stubDocument(true);
+    const { socket } = connected();
+    expect(visibility(socket)).toEqual([false]);
+
+    closeFrom(socket, CLOSE_ABNORMAL);
+    vi.advanceTimersByTime(LADDER_MS);
+    const next = lastSocket();
+    next.emit("open", {});
+    expect(visibility(next)).toEqual([false]);
   });
 });

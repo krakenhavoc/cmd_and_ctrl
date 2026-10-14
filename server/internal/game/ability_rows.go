@@ -238,6 +238,8 @@ var staticRowSlots = []staticRowSlot{
 	{field: "TriggerDoublers", fallback: "Abilities trigger an additional time", ownLabel: true},
 	{field: "TriggerSuppressors", fallback: "Stops abilities from triggering", ownLabel: true},
 	{field: "SpellsYouCastHaveDelve", label: boolRow("Spells you cast have delve.")},
+	{field: "GrantedOptionalCosts", fallback: "Spells you cast have an additional cost", ownLabel: true},
+	{field: "GrantedTapCosts", fallback: "Spells you cast have convoke", ownLabel: true},
 	{field: "CostModifiers", fallback: "Cost-changing effect", ownLabel: true},
 	{field: "ExhaustPermissions", fallback: "Exhaust abilities can be activated again", ownLabel: true},
 	{field: "BoastLimits", fallback: "Creatures can boast more than once each turn", ownLabel: true},

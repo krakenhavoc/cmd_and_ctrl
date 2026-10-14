@@ -94,6 +94,8 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		Settings:      &TableSettingsView{UndoLimit: 3, UndoScope: "own", StartingLife: 40, BotPace: "normal"},
 		Voice: &VoiceView{Enabled: true, Status: VoiceStatusReady, URL: "https://discord.com/channels/1/2",
 			Access: map[string]string{ownerID: VoiceAccessGranted, oppID: VoiceAccessNotInServer}},
+		Rematch: &RematchView{GameID: uuid.NewString(), Host: ownerID, HostName: "Owner", Open: true,
+			Accepted: []string{oppID}, Left: []string{}},
 		StartingSeat: 1,
 		OpeningRoll: &OpeningRollView{Rounds: []OpeningRollRoundView{
 			{Seats: []int{0, 1}, Rolls: []OpeningRollDieView{{Seat: 1, Result: 17}}},
@@ -119,8 +121,9 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		Log:     []LogEvent{{Seq: 1, Kind: LogCast, Turn: 3}},
 		Reveals: []RevealView{{Seq: 1, Turn: 3, Seat: 0, Source: "Fact or Fiction"}},
 
-		LoopNotice: &LoopNoticeView{Source: ownerID, Label: "loop", Controller: ownerID, Count: 3},
-		Outcome:    &OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect"},
+		LoopNotice:     &LoopNoticeView{Source: ownerID, Label: "loop", Controller: ownerID, Count: 3},
+		PlayerControls: []PlayerControlView{{Controller: ownerID, Controlled: ownerID, Source: ownerID}},
+		Outcome:        &OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect"},
 	}
 	v.legalBySeat = map[string][]LegalMoveView{
 		ownerID: {{Type: "pass_priority", Player: uuid.MustParse(ownerID), Label: "Pass"}},

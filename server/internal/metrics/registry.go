@@ -47,6 +47,8 @@ func eventMetrics() []prometheus.Collector {
 		botModelCalls,
 		botModelCallSeconds,
 		botModelTokens,
+		// notify.go
+		dmNotifications,
 	}
 }
 

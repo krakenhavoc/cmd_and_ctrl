@@ -31,7 +31,11 @@
     reportPlayer,
     fetchSpectators,
     removeSpectator,
+    offerRematch,
+    acceptRematch,
+    leaveRematch,
   } from "../lib/api";
+  import { rematchPlan } from "../lib/rematch";
   import { reportTargets } from "../lib/moderation";
   import { canLinkDiscord, linkDiscordLabel, signedInUserID } from "../lib/myGames";
   import { castPreviewParamsFromPayload } from "../lib/castPreview";
@@ -68,6 +72,7 @@
   } from "../lib/tableSettings";
   import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
   import VoiceRoom from "../lib/components/VoiceRoom.svelte";
+  import NotificationsNudge from "../lib/components/NotificationsNudge.svelte";
   import { refreshVoiceRoom, setVoiceRoom, voiceChip } from "../lib/voiceRoom";
   import { community, loadCommunity } from "../lib/community";
   import CardSpawner from "../lib/components/CardSpawner.svelte";
@@ -79,6 +84,7 @@
   import { actionsDisabled } from "../lib/connectionBanner";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
+  import ControlledPlaySheet from "../lib/components/board/ControlledPlaySheet.svelte";
   import DamageAutoAssign from "../lib/components/board/DamageAutoAssign.svelte";
   import AutoAnswerNotice from "../lib/components/board/AutoAnswerNotice.svelte";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
@@ -208,6 +214,7 @@
   import type { ReplayFrame } from "../lib/replay";
   import { L } from "../lib/labels";
   import { provideDiceQueue } from "../lib/diceQueue.svelte";
+  import { BOARD_ACTION_SELECTOR, sheetCoversBoardAction, type Box } from "../lib/sheetCover";
 
   interface Props {
     gameID: string;
@@ -1364,6 +1371,51 @@
   function onDockStage(up: boolean): void {
     if (up !== stageUp) stageUp = up;
   }
+
+  // #2959 / #3095: whether the open sheet covers something on the board
+  // the player can act on (a target, a choice's permanent, a damage
+  // stepper). The dock folds such a sheet down once (its
+  // `sheetCoversBoard`); lib/sheetCover.ts says why. Measured at most
+  // once a frame, only while a sheet is open, and never on a phone,
+  // whose sheet is a full-width bar with its own layout (§8).
+  let sectionEl: HTMLElement | null = $state(null);
+  let sheetCovers = $state(false);
+  $effect(() => {
+    const root = sectionEl;
+    if (!root || !dockShown || sheetW <= 0 || stageUp) {
+      sheetCovers = false;
+      return;
+    }
+    const phone = typeof matchMedia === "function" ? matchMedia("(max-width: 599px)") : null;
+    const box = (el: Element): Box => el.getBoundingClientRect();
+    let frame = 0;
+    const check = (): void => {
+      frame = 0;
+      const sheet = root.querySelector(".dock-sheet:not([hidden]):not(.stage)");
+      const board = root.querySelector(".board");
+      sheetCovers =
+        !(phone?.matches ?? false) &&
+        sheetCoversBoardAction(
+          sheet ? box(sheet) : null,
+          board ? [...board.querySelectorAll(BOARD_ACTION_SELECTOR)].map(box) : [],
+        );
+    };
+    const schedule = (): void => {
+      if (!frame) frame = requestAnimationFrame(check);
+    };
+    schedule();
+    const mo = new MutationObserver(schedule);
+    mo.observe(root, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => {
+      mo.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
+  });
   // ADR 0105 §7: how many of the viewer's cards wear a highlight, for
   // the dock header's "N actions available".
   const readyActions = $derived(viewerID ? actionableCount(legalHighlights, view, viewerID) : 0);
@@ -2014,7 +2066,41 @@
     const t = setTimeout(() => (gameOverArmed = true), GAME_OVER_GRACE_MS);
     return () => clearTimeout(t);
   });
-  const gameOverDockRequest = $derived(gameEnded ? gameOverRequest(back, gameOverArmed) : null);
+  // #3285, ADR 0164: the host's Rematch, and the others' Join / No thanks.
+  // Offering and accepting swap this tab to a seat at the new table.
+  const rematch = $derived(rematchPlan(view, viewerID, isPracticeGame(gameID)));
+  let rematchBusy = $state(false);
+  async function runRematch(go: () => Promise<{ gameID?: string } | void>): Promise<void> {
+    if (rematchBusy) return;
+    rematchBusy = true;
+    try {
+      const s = await go();
+      if (s && s.gameID) navigate(`#/games/${s.gameID}`);
+    } catch (err) {
+      lastError.set({
+        code: "rematch",
+        message: err instanceof Error ? err.message : "could not set up the rematch",
+        at: new Date(),
+      });
+    } finally {
+      rematchBusy = false;
+    }
+  }
+  const rematchActions = {
+    onOffer: () => void runRematch(() => offerRematch(gameID)),
+    onOpen: (id: string) => navigate(`#/games/${id}`),
+    onAccept: () => void runRematch(() => acceptRematch(gameID)),
+    onLeave: () => void runRematch(() => leaveRematch(gameID)),
+  };
+  const gameOverDockRequest = $derived(
+    gameEnded
+      ? gameOverRequest(back, gameOverArmed, {
+          plan: rematch,
+          busy: rematchBusy,
+          ...rematchActions,
+        })
+      : null,
+  );
 
   // ---- The ⋯ menu (ADR 0111 PR 7, owner decision 3) ----
   // The sandbox tools, life history, the table, spawn, the vote
@@ -2141,6 +2227,7 @@
   style:--coach-h={coachShown ? `${coachSize.h}px` : undefined}
   class:sheet-open={dockShown && sheetW > 0}
   style:--sheet-w={dockShown && sheetW > 0 ? `${sheetW}px` : undefined}
+  bind:this={sectionEl}
 >
   <header class="bar" class:menu-in-bar={barMenuShown}>
     <button class="ghost bar-nav" onclick={back}><Icon name="chevronLeft" size={14} /> Lobby</button
@@ -2573,6 +2660,11 @@
       <!-- ADR 0111: the action dock, a sibling of the board in the
            play area's bottom-right corner. Outside the boundary on
            purpose: `next` keeps working when the table fails to draw. -->
+      <!-- ADR 0162 §1: the one-time Discord DM suggestion, for a seated
+           player at a real table. It decides the rest itself. -->
+      {#if dockShown && !gameEnded && $practiceTable?.gameID !== gameID && !isPracticeGame(gameID)}
+        <NotificationsNudge />
+      {/if}
       {#if dockShown}
         <!-- The dock's requests (lib/dock.ts). Each is open for as long
              as its block is mounted; the dock draws the strongest. -->
@@ -2643,6 +2735,7 @@
           onUndo={undo}
           onSize={onDockSize}
           onSheet={onDockSheet}
+          sheetCoversBoard={sheetCovers}
           onStage={onDockStage}
           menu={menuOptions}
         />
@@ -2733,6 +2826,7 @@
         </DockSheet>
       {/if}
       <DiscardPromptModal snap={view} {viewerID} {sendAction} />
+      <ControlledPlaySheet snap={view} {viewerID} {sendAction} />
       <!-- lastError too: this modal's backdrop covers the board's
            rejection toast, so it shows a refusal of its own answer. -->
       <ChoicePromptModal

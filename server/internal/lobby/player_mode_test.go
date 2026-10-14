@@ -916,6 +916,9 @@ func newProbeFixture(t *testing.T, idx *cards.Index, caller sameAnswerCaller, se
 		// PUT /games/{id}/voice (ADR 0159): voice rooms on, so the
 		// route reaches its host-or-admin decision instead of a 503.
 		c.Lobby.SetVoiceRoomsEnabled(true)
+		// PUT /games/{id}/lfg (ADR 0161): the board on, over a fake
+		// channel, for the same reason.
+		c.Lobby.SetLFGManager(newLFGManager(newFakeLFG(), nil, lfgBase, quietLogger(), time.Now))
 	}, listedDiscordID)
 	fx := &probeFixture{s: s, user: user}
 	var err error
@@ -1100,6 +1103,9 @@ func sameAnswerProbes() []sameAnswerProbe {
 		})},
 		{"PUT /games/{id}/voice", []string{"putVoiceRoom"}, true, httpProbe("PUT", "/games/{id}/voice", func(*probeFixture) any {
 			return map[string]any{"enabled": true}
+		})},
+		{"PUT /games/{id}/lfg", []string{"putLFG"}, true, httpProbe("PUT", "/games/{id}/lfg", func(*probeFixture) any {
+			return map[string]any{"enabled": false}
 		})},
 		{"GET /games", []string{"listGames"}, false, httpProbe("GET", "/games", nil)},
 		{"GET /games?archived=1", []string{"listGames"}, false, httpProbe("GET", "/games?archived=1", nil)},

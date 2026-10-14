@@ -86,6 +86,13 @@ type Room struct {
 	subMu sync.Mutex
 	subs  map[chan struct{}]struct{}
 
+	// lastActed is when each seat last committed something of its own:
+	// an action, a bundle or an undo (ADR 0162 §2, "acting resets the
+	// clock"). The notifier reads it through LastActed. Guarded by
+	// actMu, never by mu, so a read never waits on a commit.
+	actMu     sync.Mutex
+	lastActed map[uuid.UUID]time.Time
+
 	// pendingAnnotation is consumed by the next captureLocked and
 	// written onto the replay line / crash dump it produces. Set
 	// under mu by ApplyBundle and cleared by the capture, so it can
@@ -115,6 +122,13 @@ type Room struct {
 	// voiceMu, never by mu, for the same reason as host. See voice.go.
 	voiceMu sync.Mutex
 	voice   *protocol.VoiceView
+
+	// rematch is the host's rematch offer on an ended table (#3285, ADR
+	// 0164), set by the lobby through SetRematch and stamped on every
+	// capture. Guarded by rematchMu, never by mu, for the same reason as
+	// host. See rematch.go.
+	rematchMu sync.Mutex
+	rematch   *protocol.RematchView
 
 	// lastRestorePoint is the seq and wall time of this room's most
 	// recently WRITTEN restore point (persist.go), so that a shutdown
@@ -305,6 +319,7 @@ func (r *Room) ApplyAction(tag ActionTag, fn func() error) (protocol.GameView, u
 	view, seq, err := r.apply(tag.Actor, fn, &st)
 	st.record()
 	if err == nil {
+		r.noteActed(tag.Actor)
 		r.notify()
 	}
 	return view, seq, err
@@ -449,6 +464,7 @@ func (r *Room) ApplyBundle(b Bundle) (protocol.GameView, uint64, error) {
 	view, seq, err := r.applyBundle(b, &st)
 	st.record()
 	if err == nil {
+		r.noteActed(b.Actor)
 		r.notify()
 	}
 	return view, seq, err
@@ -574,6 +590,28 @@ func (r *Room) Subscribe() (<-chan struct{}, func()) {
 	}
 }
 
+// noteActed stamps seat's latest commit for LastActed. uuid.Nil (the
+// admin, the lobby) is nobody's seat and is not stamped.
+func (r *Room) noteActed(seat uuid.UUID) {
+	if seat == uuid.Nil {
+		return
+	}
+	r.actMu.Lock()
+	defer r.actMu.Unlock()
+	if r.lastActed == nil {
+		r.lastActed = make(map[uuid.UUID]time.Time)
+	}
+	r.lastActed[seat] = time.Now()
+}
+
+// LastActed is when seat last committed an action, a bundle or an undo
+// in this process, and zero if it has not (ADR 0162 §2).
+func (r *Room) LastActed(seat uuid.UUID) time.Time {
+	r.actMu.Lock()
+	defer r.actMu.Unlock()
+	return r.lastActed[seat]
+}
+
 // notify wakes every subscriber. Non-blocking: a full channel means a
 // wake is already pending for that subscriber, which is all an
 // edge-trigger promises. Caller must NOT hold r.mu.
@@ -614,6 +652,7 @@ func (r *Room) notify() {
 func (r *Room) Undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
 	view, seq, err := r.undo(caller)
 	if err == nil {
+		r.noteActed(caller)
 		r.notify()
 	}
 	return view, seq, err
@@ -721,6 +760,7 @@ func (r *Room) ViewFor(viewerID string) protocol.GameView {
 	r.stampUndoBlockedLocked(&view)
 	r.stampPlaymatsLocked(&view)
 	r.stampVoiceLocked(&view)
+	r.stampRematchLocked(&view)
 	r.mu.Unlock()
 	return protocol.FilterViewFor(view, viewerID)
 }
@@ -767,6 +807,7 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 	r.stampUndoBlockedLocked(&view)
 	r.stampPlaymatsLocked(&view)
 	r.stampVoiceLocked(&view)
+	r.stampRematchLocked(&view)
 
 	// Consume any annotation the committing caller left for this
 	// capture. Cleared unconditionally — including on the Snapshot

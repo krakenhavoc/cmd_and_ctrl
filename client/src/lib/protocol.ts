@@ -7,6 +7,8 @@ export const PROTOCOL_VERSION = 0;
 // ADR 0122 §6: "ack" acknowledges an applied action to the client that
 // sent it; "legal_moves_request" / "legal_moves" fetch a seat's whole
 // move list. The browser handles "ack" and sends no requests.
+// ADR 0162 §2: "visibility" tells the server whether this tab is in
+// front, for Discord DM notifications. Sent, never answered.
 export type Kind =
   | "ping"
   | "pong"
@@ -16,7 +18,8 @@ export type Kind =
   | "chat"
   | "ack"
   | "legal_moves_request"
-  | "legal_moves";
+  | "legal_moves"
+  | "visibility";
 
 export const ErrorCode = {
   BadVersion: "bad_version",
@@ -65,6 +68,11 @@ export interface Frame<P = unknown> {
   kind: Kind;
   id: string;
   payload?: P;
+}
+
+/** The payload of a "visibility" frame (ADR 0162 §2). */
+export interface VisibilityPayload {
+  visible: boolean;
 }
 
 export interface PingPayload {
@@ -409,6 +417,10 @@ export interface GameView {
   // The table's Discord voice room (ADR 0159 §6), reduced by the server
   // to this viewer's own access. Absent when the server offers none.
   voice?: VoiceView;
+  // The host's rematch offer on an ended table (#3285, ADR 0164), reduced
+  // by the server to this viewer's own part. Absent until one is offered,
+  // and for a spectator.
+  rematch?: RematchView;
   // Seat index that took the first turn. Used by the server to enforce
   // the CR 103.8a turn-1 skip-draw rule — in two-player games only,
   // since CR 103.8c has nobody skip at a larger table. Added in S13.
@@ -476,6 +488,10 @@ export interface GameView {
   // discarder. Each entry carries its own options[] already filtered
   // per the viewer's visibility.
   pending_choices?: PendingChoiceView[];
+  // ADR 0166 (CR 723): who is making whose decisions right now. A
+  // prompt the controlled player owes arrives with `chooser` set to the
+  // controller and `on_behalf_of` to the controlled player.
+  player_controls?: { controller: string; controlled: string; source?: string }[];
   // S31: the closed list of moves THE VIEWER'S OWN SEAT may make
   // right now, enumerated server-side by `internal/legal`. The server
   // never ships another seat's list — an opponent's moves name the
@@ -742,6 +758,11 @@ export interface LegalMoveView {
   // list already promises. Automated seats use it as the way out of a
   // prompt whose other answers keep being rejected.
   always_legal?: boolean;
+  // ADR 0166 §4: the controlled_play prompt this move answers — one way
+  // of making Word of Command's forced play, or "it can't be played".
+  // ControlledPlaySheet lists exactly these, and the server never folds
+  // them into the capped list's one-per-card.
+  controlled_play?: string;
   // #1307: true on a cast or activation whose chosen targets include
   // an object on the stack — a counterspell, a Stifle, a redirect.
   // Smart autopass reads it to tell "can answer the thing on the
@@ -1203,6 +1224,12 @@ export interface PendingChoiceView {
     // (`pick_from_graveyard`). Answered with {choice_id, card_ids}, an
     // empty list when choosing nothing.
     | "revealed_hand_pick"
+    // ADR 0166 §4: Word of Command's forced play. `from_player` is the
+    // player you control, `options` the one card. Answered by one of
+    // the legal moves naming it (`controlled_play`): a cast_spell sent
+    // as that player, or {choice_id} with no cards, "it can't be
+    // played", which the server takes only when that is true.
+    | "controlled_play"
     | "mana_pick"
     | "replacement_order"
     | "optional_replacement"
@@ -1458,6 +1485,10 @@ export interface PendingChoiceView {
     | "mode_pick"
     | string;
   chooser: string;
+  // ADR 0166, CR 723.5: the player who owes this prompt when another
+  // player controls them. `chooser` is then the controller, who
+  // answers it.
+  on_behalf_of?: string;
   from_player: string;
   count: number;
   source?: string;
@@ -1478,7 +1509,7 @@ export interface PendingChoiceView {
   eligible_label?: string;
   // #2115: for "revealed_hand_pick", where the chosen card goes —
   // "discard", or "exile", which is not a discard.
-  pick_destination?: "discard" | "exile" | string;
+  pick_destination?: "discard" | "exile" | "keep" | string;
   // #2115: for "revealed_hand_pick", `options` ends with the revealing
   // player's graveyard, every card of which may be chosen.
   pick_from_graveyard?: boolean;
@@ -4570,6 +4601,20 @@ export interface VoiceView {
 export type VoiceStatus = "off" | "pending" | "ready" | "idle" | "full" | "unavailable";
 
 export type VoiceAccess = "granted" | "not_in_server" | "no_discord" | "spectator" | "pending";
+
+// RematchView is the host's offer of the same game again (#3285, ADR
+// 0164). `game_id` is the new table, in the lobby until the host starts
+// it. `open` stays true while at least one other human is still on the
+// results screen without having answered. `you` is this viewer's part.
+export interface RematchView {
+  game_id: string;
+  host: string;
+  host_name?: string;
+  open: boolean;
+  you?: RematchPart;
+}
+
+export type RematchPart = "host" | "undecided" | "accepted" | "declined";
 
 export interface TableSettingsView {
   // Per-player per-turn undo budget. -1 is unlimited, 0 is no undos.

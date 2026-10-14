@@ -147,7 +147,10 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	PendingChoiceDiscardFromHand: true,
 	// #2115: the revealed-hand pick's variants block for the reason
 	// the plain pick does: the resolution waits on the answer.
-	PendingChoiceRevealedHandPick:    true,
+	PendingChoiceRevealedHandPick: true,
+	// ADR 0166: Word of Command's forced play is the rest of its
+	// resolution.
+	PendingChoiceControlledPlay:      true,
 	PendingChoiceMana:                true,
 	PendingChoiceReplacementOrder:    true,
 	PendingChoiceOptionalReplacement: true,

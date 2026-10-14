@@ -884,6 +884,62 @@ the table and backfills the active mat into slot 1, so a person who had
 three is back to one. `TestMigration0013RollbackByHand` runs exactly
 this sequence and then rolls forward.
 
+Migration 0023 (ADR 0165, game statistics) adds three tables,
+`game_stats`, `seat_stats` and `seat_card_stats`, derived from finished
+games. An older binary refuses the v23 schema. Drop them by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE seat_card_stats; DROP TABLE seat_stats; DROP TABLE game_stats; DELETE FROM schema_migrations WHERE version = 23;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+Nothing is lost that cannot be computed again: every row is derived from
+a game's record and replay. Rolling forward recreates the tables empty,
+and games that end afterwards get a record. Older games need the
+backfill (#3365). `TestMigration0023RollbackByHand` runs exactly this
+sequence and then rolls forward.
+
+Migration 0022 (ADR 0162, Discord DM notifications) adds the
+`notification_prefs` table: each person's three notification switches
+and when Discord last refused a DM to them. An older binary refuses the
+v22 schema. Drop it by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE notification_prefs; DELETE FROM schema_migrations WHERE version = 22;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs every switch: rolling forward again recreates the table empty,
+so everyone is back to off and has to opt in again.
+`TestMigration0022RollbackByHand` runs exactly this sequence and then
+rolls forward.
+
+Migration 0021 (ADR 0161, the #lfg board) adds `games.lfg` (0 or 1,
+default 0) and `games.lfg_message_id` (nullable). An older binary refuses
+the v21 schema. Drop them by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "ALTER TABLE games DROP COLUMN lfg; ALTER TABLE games DROP COLUMN lfg_message_id; DELETE FROM schema_migrations WHERE version = 21;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+An older binary knows nothing of #lfg, so any live posts stay in the
+channel until they are deleted there by hand: before dropping the columns,
+`SELECT lfg_message_id FROM games WHERE lfg_message_id IS NOT NULL` lists
+them. Rolling forward again recreates both columns with every table opted
+out, and the manager never touches a message no row names.
+`TestMigration0021RollbackByHand` runs exactly this sequence and then rolls
+forward.
+
 Migration 0020 (ADR 0159, table voice rooms) adds `games.voice_room`
 (0 or 1, default 0) and `games.voice_channel_id` (nullable). An older
 binary refuses the v20 schema. Drop them by hand:

@@ -6573,6 +6573,43 @@ shape, so leave the card out and put it on `revealed-hand-pick-variants`:
 one pick of two cards under two different filters (Distended
 Mindbender).
 
+### Controlling another player (ADR 0166, #2164, CR 723)
+
+Word of Command is the one card: a look-only, keep-the-card pick, then
+the forced play.
+
+```go
+OnResolve: func(_ *game.StackItem, ctx *Context) error {
+	return ChooseFromRevealedHand{
+		Player: TargetedPlayer(ctx), Label: "card",
+		Look: true, // only you see the hand (CR 701.20e)
+		Keep: true, // the chosen card stays in the hand
+		Then: wordOfCommandPlay,
+	}.Apply(ctx)
+},
+```
+
+and the continuation calls `ctx.Game.BeginControlledPlayForEffect(
+game.ControlledPlay{Controller, Controlled, Source, SourceName, Card})`.
+What the engine does for you:
+
+- It records the control (`Game.PlayerControls`) and asks the
+  controller a `controlled_play` prompt, mid-resolution, so the
+  resolution waits and nobody gets priority (CR 608.2g). A card that
+  can't be played under the restrictions raises no prompt at all.
+- The play is a `cast_spell` sent as the controlled player that names
+  the prompt: the card's type timing is lifted, a land needs only its
+  owner's turn and a land play (CR 305.3), and mana comes from their
+  lands alone (`Game.LandManaOnlyLocked`, which the auto-tapper and
+  `ActivateManaAbility` read).
+- While the forced spell resolves, the controller answers the
+  controlled player's prompts (CR 723.5). The actions layer re-addresses
+  the answer; no resolver changes. The controlled player can only
+  concede (CR 723.6).
+
+A turn-long control (CR 723.1, Emrakul, the Promised End) is not built:
+leave the card out and keep it on `control-another-player`.
+
 ### Adding a `PendingChoiceKind` (#730, #794)
 
 A new prompt kind owes two answers, and neither has a compiler behind
@@ -9267,7 +9304,7 @@ ctx.SourcePermanent()                                                           
   enumerator offers the cast. "Every card in your hand" (The Great Synthesis) writes the same grant over each card with
   its own `AltCostKey` and no pick (#3270).
 
-### Mobilize, a life-gain drain and "equipped creature phases out" (#3245)
+### Pieces from the Mass Casualty deck (#3245)
 
 - **Mobilize N** is `Triggered: []game.TriggeredAbility{Mobilize("Voice of Victory", 2)}` (`mobilize.go`): N 1/1 red
   Warriors tapped and attacking, placed with `CreateTokensAttackingYourChoice` (the defender offered first), and one
@@ -9278,6 +9315,23 @@ ctx.SourcePermanent()                                                           
   (`aura_helpers.go`, beside `tapAttachedHost`); the Equipment phases out with its host.
 - **"Whenever you attack with this creature and/or your commander"** is `OncePerBatch(On(game.EventAttack,
   thisOrYourCommanderAttacked, …))` (Ainok Strike Leader).
+- **Bargain** is `OptionalCosts: []game.AdditionalCost{g2Bargain()}` (`exile_if_dies_g2.go`); "if this spell was
+  bargained" is `g2WasBargained(ctx)`.
+- **"You may cast the exiled card without paying its mana cost if its mana value is N or less. Put it into your hand
+  if it wasn't cast this way"** is `g.CastExiledFreeOrToHandForEffect(player, source, card, N)` (ADR 0099 amendment
+  2026-10-13). Search face down first with `SearchLibrary{Dest: game.ZoneExile, FaceDown: game.FaceDownPermitted}`.
+- **"For each permanent exiled this way"** with an "until" is `ExileUntil{…, Then: func(ctx, exiled bool) error}`,
+  counting the trues (Abdel Adrian).
+- **A preparation card's prepare spell that prints an existing spell's text** reuses that spell's body: Grave
+  Researcher's Reanimate is `OnResolve: reanimateLosingItsManaValue`.
+- **Casualty N** is `OptionalCosts: []game.AdditionalCost{Casualty(N)}` (`casualty.go`); the copy is the engine's
+  trigger, so declare nothing else. **"<Spells> you cast have <optional cost>"** on a permanent is
+  `GrantedOptionalCosts: []game.GrantedOptionalCost{SpellsYouCastHave(label, Or(Instant(), Sorcery()), Casualty(1))}`
+  (Silverquill, the Disputant; ADR 0073 amendment 2026-10-13). A paid granted cost is on `PaidCost.GrantedOptional`, by
+  key, never among the card's own indices.
+- **"<Spells> you cast have convoke"** is `GrantedTapCosts: []game.GrantedTapCost{SpellsYouCastHaveConvoke(label,
+  FromZone(game.ZoneExile))}` (Hoarding Broodlord) or `SpellIs(Creature())` (Dazzling Theater, in its
+  `Door.GrantedTapCosts`); `convoke_grant.go`, ADR 0073 amendment 2026-10-14.
 
 ### Statics that read block status or this turn's events, "can't be attacked", any-type mana, flash-if-it-targets (#3172, cav-h2)
 

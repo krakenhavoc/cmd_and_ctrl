@@ -6,6 +6,7 @@
   // link; the caller supplies the frame and the type size.
   import { FAN_CONTENT_POLICY_URL } from "../legalNotice";
   import { PRIVACY_HASH } from "../privacy";
+  import { TERMS_HASH } from "../terms";
 
   // newTab: the table's copy opens the privacy notice in a new tab, so
   // reading it never takes a player away from a game in progress.
@@ -28,4 +29,9 @@
     target={newTab ? "_blank" : undefined}
     rel={newTab ? "noopener noreferrer" : undefined}>Privacy and your data</a
   >: what this site stores, for how long, and how to delete your account.
+  <a
+    href={TERMS_HASH}
+    target={newTab ? "_blank" : undefined}
+    rel={newTab ? "noopener noreferrer" : undefined}>Terms of service</a
+  >: who runs the site and the rules for using it.
 </p>

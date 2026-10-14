@@ -2,7 +2,7 @@
 
 Work on `cmd_and_ctrl` is organised into **2-week sprints**, budgeted at ~10
 hours/week (~20 hours/sprint). Sprints map to the phases in
-[PLAN.md](../PLAN.md#6-phased-roadmap) but break them down into concrete,
+[the original plan](https://github.com/krakenhavoc/cmd_and_ctrl/blob/ddd802370bb42ee5952d0da21d26f8a5e1607308/PLAN.md#6-phased-roadmap) but break them down into concrete,
 trackable units of work.
 
 **Every commit and PR must reference its sprint and issue.** See

@@ -41,6 +41,8 @@
   import { openShortcutsHelp } from "../shortcutRuntime";
   import ModalLayer from "./ModalLayer.svelte";
   import PlaymatSettings from "./PlaymatSettings.svelte";
+  import NotificationSettings from "./NotificationSettings.svelte";
+  import { loadNotifications, notificationPrefs } from "../notifications";
   import AutoAnswersSettings from "./AutoAnswersSettings.svelte";
   import HintSlot from "./hints/HintSlot.svelte";
   import { showAllTipsAgain } from "../hints/runtime";
@@ -123,6 +125,7 @@
     | "animations"
     | "display"
     | "playmat"
+    | "notifications"
     | "gameplay"
     | "shortcuts"
     | "accessibility"
@@ -169,6 +172,12 @@
   // the same store without looping.
   $effect(() => {
     if ($settingsOpen) activeTab = get(settingsTab);
+  });
+  // ADR 0162: whether this server sends Discord notifications to this
+  // person is the server's answer, asked each time the panel opens. The
+  // tab is left out until it says yes.
+  $effect(() => {
+    if ($settingsOpen) void loadNotifications();
   });
   // …and forget the deep link on close, so the next plain open is
   // back on the first tab the way it always was.
@@ -454,6 +463,13 @@
             aria-current={activeTab === "playmat" ? "page" : undefined}
             onclick={() => (activeTab = "playmat")}>Playmat</button
           >
+          {#if $notificationPrefs.available}
+            <button
+              class:active={activeTab === "notifications"}
+              aria-current={activeTab === "notifications" ? "page" : undefined}
+              onclick={() => (activeTab = "notifications")}>Notifications</button
+            >
+          {/if}
           <button
             class:active={activeTab === "gameplay"}
             aria-current={activeTab === "gameplay" ? "page" : undefined}
@@ -837,6 +853,8 @@
             </label>
           {:else if activeTab === "playmat"}
             <PlaymatSettings />
+          {:else if activeTab === "notifications" && $notificationPrefs.available}
+            <NotificationSettings />
           {:else if activeTab === "gameplay"}
             <h3>Gameplay</h3>
 

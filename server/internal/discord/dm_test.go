@@ -7,12 +7,14 @@ package discord
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // dmAPIStub records what the bot sent and answers with whatever
@@ -174,6 +176,60 @@ func TestSendDMMapsDiscordStatuses(t *testing.T) {
 				t.Errorf("a 429 should surface retry_after: %v", err)
 			}
 		})
+	}
+}
+
+// ADR 0162 §4: a 403 with code 50007 is ErrDMRefused, and still reads
+// as ErrDMForbidden; any other 403 is not ErrDMRefused.
+func TestSendDMTellsCode50007Apart(t *testing.T) {
+	for _, tc := range []struct {
+		body    string
+		refused bool
+	}{
+		{`{"message":"Cannot send messages to this user","code":50007}`, true},
+		{`{"message":"Missing Access","code":50001}`, false},
+		{`{}`, false},
+	} {
+		stub := newDMAPIStub(t)
+		stub.mu.Lock()
+		stub.openStatus, stub.openBody = http.StatusForbidden, tc.body
+		stub.mu.Unlock()
+		err := Bot{Token: "tok"}.SendDM(context.Background(), nil, "snowflake-7", "hi")
+		if !errors.Is(err, ErrDMForbidden) {
+			t.Errorf("%s: SendDM = %v, want ErrDMForbidden", tc.body, err)
+		}
+		if errors.Is(err, ErrDMRefused) != tc.refused {
+			t.Errorf("%s: errors.Is(ErrDMRefused) = %v, want %v", tc.body, !tc.refused, tc.refused)
+		}
+		if err != nil && err.Error() != ErrDMForbidden.Error() {
+			t.Errorf("%s: the error reads %q, want ErrDMForbidden's text", tc.body, err)
+		}
+	}
+}
+
+func TestRetryAfterIsCappedAndOnlyFor429(t *testing.T) {
+	for _, tc := range []struct {
+		body string
+		want time.Duration
+	}{
+		{`{"retry_after":1.5}`, 1500 * time.Millisecond},
+		{`{"retry_after":120}`, 5 * time.Second},
+		{`{}`, 0},
+	} {
+		stub := newDMAPIStub(t)
+		stub.mu.Lock()
+		stub.openStatus, stub.openBody = http.StatusTooManyRequests, tc.body
+		stub.mu.Unlock()
+		err := Bot{Token: "tok"}.SendDM(context.Background(), nil, "snowflake-7", "hi")
+		if !errors.Is(err, ErrDMRateLimited) {
+			t.Fatalf("%s: SendDM = %v, want ErrDMRateLimited", tc.body, err)
+		}
+		if got := RetryAfter(err); got != tc.want {
+			t.Errorf("%s: RetryAfter = %v, want %v", tc.body, got, tc.want)
+		}
+	}
+	if got := RetryAfter(ErrDMForbidden); got != 0 {
+		t.Errorf("RetryAfter(403) = %v, want 0", got)
 	}
 }
 

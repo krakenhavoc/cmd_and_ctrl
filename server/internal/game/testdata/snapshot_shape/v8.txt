@@ -1587,6 +1587,8 @@ lastKnownStack[].item.paid.discarded[]	custom(uuid.UUID)
 lastKnownStack[].item.paid.exiled	array
 lastKnownStack[].item.paid.exiled[]	custom(uuid.UUID)
 lastKnownStack[].item.paid.giftOpponent	custom(uuid.UUID)
+lastKnownStack[].item.paid.grantedOptional	array
+lastKnownStack[].item.paid.grantedOptional[]	string
 lastKnownStack[].item.paid.optionalCosts	array
 lastKnownStack[].item.paid.optionalCosts[]	number:int
 lastKnownStack[].item.paid.sacrificedObjects	array
@@ -1863,6 +1865,8 @@ pausedModeWalk.item.paid.discarded[]	custom(uuid.UUID)
 pausedModeWalk.item.paid.exiled	array
 pausedModeWalk.item.paid.exiled[]	custom(uuid.UUID)
 pausedModeWalk.item.paid.giftOpponent	custom(uuid.UUID)
+pausedModeWalk.item.paid.grantedOptional	array
+pausedModeWalk.item.paid.grantedOptional[]	string
 pausedModeWalk.item.paid.optionalCosts	array
 pausedModeWalk.item.paid.optionalCosts[]	number:int
 pausedModeWalk.item.paid.sacrificedObjects	array
@@ -2398,6 +2402,8 @@ pendingTriggers[].paid.discarded[]	custom(uuid.UUID)
 pendingTriggers[].paid.exiled	array
 pendingTriggers[].paid.exiled[]	custom(uuid.UUID)
 pendingTriggers[].paid.giftOpponent	custom(uuid.UUID)
+pendingTriggers[].paid.grantedOptional	array
+pendingTriggers[].paid.grantedOptional[]	string
 pendingTriggers[].paid.optionalCosts	array
 pendingTriggers[].paid.optionalCosts[]	number:int
 pendingTriggers[].paid.sacrificedObjects	array
@@ -2877,6 +2883,15 @@ phasedOut.cards[].unlocked	number:uint8
 phasedOut.cards[].variableToughness	bool
 phasedOut.kind	string
 phasedOut.owner	custom(uuid.UUID)
+playerControls	array
+playerControls[]	object
+playerControls[].card	custom(uuid.UUID)
+playerControls[].controlled	custom(uuid.UUID)
+playerControls[].controller	custom(uuid.UUID)
+playerControls[].prompt	custom(uuid.UUID)
+playerControls[].source	custom(uuid.UUID)
+playerControls[].sourceName	string
+playerControls[].stage	string
 preventionFollowUps	array
 preventionFollowUps[]	object
 preventionFollowUps[].batch	number:uint64
@@ -5558,6 +5573,8 @@ stackMeta[].paid.discarded[]	custom(uuid.UUID)
 stackMeta[].paid.exiled	array
 stackMeta[].paid.exiled[]	custom(uuid.UUID)
 stackMeta[].paid.giftOpponent	custom(uuid.UUID)
+stackMeta[].paid.grantedOptional	array
+stackMeta[].paid.grantedOptional[]	string
 stackMeta[].paid.optionalCosts	array
 stackMeta[].paid.optionalCosts[]	number:int
 stackMeta[].paid.sacrificedObjects	array
