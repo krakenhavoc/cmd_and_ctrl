@@ -28,9 +28,9 @@ func lockInAttackDeclaration(t *testing.T, g *Game) {
 }
 
 // lockInAttacksByPriorityWrap reaches the lock-in the way play does:
-// priority passes around the table until it wraps, which is the
-// declaration being complete (CR 508.1). Stops early if the pass
-// moved the cursor out of the step.
+// priority passes until the declaration is locked in (CR 508.1) — on the
+// active seat's own pass, or at the wrap. Stops early if the pass moved
+// the cursor out of the step or left a trigger on the stack.
 func lockInAttacksByPriorityWrap(t *testing.T, g *Game) {
 	t.Helper()
 	step := g.Turn.Step
@@ -39,6 +39,13 @@ func lockInAttacksByPriorityWrap(t *testing.T, g *Game) {
 			t.Fatalf("PassPriority iter %d: %v", i, err)
 		}
 		if g.Turn.Step != step {
+			return
+		}
+		// #3622: the lock-in can now come on the active seat's own
+		// pass. Once it has put something on the stack the declaration
+		// is locked in and the table holds that state; further passes
+		// would only resolve it.
+		if len(g.StackMeta) > 0 {
 			return
 		}
 	}

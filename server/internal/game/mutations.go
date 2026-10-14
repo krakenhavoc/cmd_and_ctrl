@@ -8635,6 +8635,21 @@ func (g *Game) passPriorityLocked() error {
 		if err := g.attackCheckpointLocked(); err != nil {
 			return err
 		}
+		// #3622 / CR 508.1, 508.2: the pass that finishes the
+		// declaration locks it in BEFORE priority moves, so the
+		// "attacks" lines and triggers exist before any other seat can
+		// act on them (a flash creature cast in response was logged
+		// ahead of the attack it answered). If the lock-in put
+		// something on the stack, the active player receives priority
+		// with it (CR 508.2) and this pass is spent, exactly as at the
+		// wrap below.
+		if g.attackDeclarationPendingLocked() {
+			g.runStateChecksLocked()
+			if g.stackHasItemsLocked() || g.blockingChoiceLocked() != nil {
+				g.grantPriorityLocked(g.Turn.ActiveSeat)
+				return nil
+			}
+		}
 	}
 	// #1279 / CR 509.1: a defending player who passes in the
 	// declare-blockers step has finished declaring blockers — the pass
@@ -8865,6 +8880,13 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 	if g.Turn.Step != StepDeclareAttackers {
 		return ErrWrongStep
 	}
+	// #3621 / CR 508.1: the declaration is one action and it is over,
+	// so a creature that has not been declared cannot join it now.
+	// Re-pointing one that already has been announced stays the
+	// sandbox's hand-correction (see TestAttackAnnouncementsRewindWithUndo).
+	if g.attackDeclarationOverLocked() && !g.announcedAttacks[attackerID] {
+		return ErrAttackersAlreadyDeclared
+	}
 	// Layers must be fresh so HasKeyword reads the current effective
 	// characteristic (e.g. a creature granted haste via a Lightning
 	// Greaves equip this turn should be attackable) — and, since S27,
@@ -9077,6 +9099,10 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	}
 	if g.Turn.Step != StepDeclareAttackers {
 		return nil, ErrWrongStep
+	}
+	// #3621 / CR 508.1: the declaration is one action and it is over.
+	if g.attackDeclarationOverLocked() {
+		return nil, ErrAttackersAlreadyDeclared
 	}
 	// Layers must be fresh so HasKeyword reads current effective
 	// characteristics — a creature handed haste or vigilance this turn

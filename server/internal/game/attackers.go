@@ -133,6 +133,15 @@ func (g *Game) commitAttackDeclarationLocked() {
 			Target: d.defender,
 		})
 	}
+	// #3621 / CR 508.1: the declaration is announced, so it is over —
+	// the triggers it produced are on the stack and a creature declared
+	// now would be announced on its own, late. Close it the way the
+	// active player's pass does (attackCheckpointLocked), with the one
+	// exception that the checkpoint keeps: a CR 508.1d requirement a
+	// free addition could still obey leaves it OPEN, because that pass
+	// is refused until the requirement is met and a closed declaration
+	// would refuse the very attack that meets it.
+	_ = g.attackCheckpointLocked()
 }
 
 // noteAttackAnnouncedLocked records that `id` has had its one

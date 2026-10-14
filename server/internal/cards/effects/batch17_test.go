@@ -896,10 +896,15 @@ func TestB17KazuulMakesAnOgreUnlessTheAttackerPays(t *testing.T) {
 	b := b16Creature(g, opp.ID, "Raider B", "Creature — Human", 2, 2, "R")
 	c := b16Creature(g, opp.ID, "Raider C", "Creature — Human", 2, 2, "R")
 	advanceToMainOf(t, g, 1)
-	declareAttack(t, g, me.ID, a, b)
-	if err := g.DeclareAttacker(c, other.ID); err != nil {
-		t.Fatal(err)
+	// One declaration (CR 508.1, #3621): all three attackers are staged
+	// before it locks in.
+	advanceTo(t, g, game.StepDeclareAttackers)
+	for _, d := range []struct{ id, at uuid.UUID }{{a, me.ID}, {b, me.ID}, {c, other.ID}} {
+		if err := g.DeclareAttacker(d.id, d.at); err != nil {
+			t.Fatal(err)
+		}
 	}
+	lockInAttacks(t, g)
 	passPriorityAroundTable(t, g)
 	// Two creatures attacked Kazuul's controller: two prompts for the
 	// attacker. One attacked someone else: no prompt for it.
