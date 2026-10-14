@@ -2904,6 +2904,23 @@ never offered (#544). It pays through the same
 `payAbilityManaCostLocked` an activated ability uses, so `ManaTrigger`
 fires for the taps and nothing about mana is duplicated.
 
+**A tax that LASTS FOR A WHILE** ("Until your next turn, creatures can't
+attack you unless their controller pays {2} for each of those
+creatures", Summon: Yojimbo, #3398) is made by a resolving spell or
+ability, not carried by a permanent, so it is a stored record:
+
+```go
+g.AttackTaxForEffect(item.SourceCardID, item.Controller, "{2}",
+    g.UntilYourNextTurnDuration(item.Controller), label)
+```
+
+It writes a `ModAttackTax` ScopedEffect (`game/attack_tax_duration.go`)
+whose `Player` is the protected seat and `Text` the mana for ONE
+creature, timed by an ADR 0063 Duration. The same pricer reads it beside
+the battlefield statics, so the declaration, the enumerator and the bot
+all see it, and it is plain data, so a table holding one is a restore
+point. It defends the player only, not their planeswalkers.
+
 **A PLAYER who can't attack you** (every creature they control, including
 ones that arrive later) is a grant on that player, not a bit on their
 creatures ([ADR 0063](decisions/0063-durations-and-control.md)'s

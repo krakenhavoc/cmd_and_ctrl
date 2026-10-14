@@ -333,6 +333,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModSetName: true, ModSetTypes: true,
 		// #2144: case above.
 		ModSetCreatureTypes: true,
+		// #3398: the duration attack tax. Its cases are in
+		// attack_tax_duration_test.go.
+		ModAttackTax: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

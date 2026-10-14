@@ -921,6 +921,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSetTypes:     {layer: Layer4Type},
 	// #2144: "becomes a Frog" (set_creature_types.go).
 	ModSetCreatureTypes: {layer: Layer4Type},
+	// #3398: a duration-bound attack tax, read by the attack pricer.
+	ModAttackTax: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1326,6 +1328,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := textBoxModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := attackTaxModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := borrowModProblem(m); problem != "" {
