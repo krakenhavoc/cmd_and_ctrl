@@ -28,6 +28,7 @@ type fakeDiscord struct {
 	rooms     map[string]map[string]bool // channel → granted user ids
 	names     map[string]string
 	connected map[string]string // user → channel
+	muted     map[string]bool
 	next      int
 	// failCreate, when set, is returned by the next CreateRoom calls.
 	failCreate []error
@@ -40,6 +41,7 @@ func newFakeDiscord(members ...string) *fakeDiscord {
 		rooms:     map[string]map[string]bool{},
 		names:     map[string]string{},
 		connected: map[string]string{},
+		muted:     map[string]bool{},
 	}
 	for _, m := range members {
 		f.members[m] = true
@@ -128,6 +130,20 @@ func (f *fakeDiscord) ConnectedChannel(_ context.Context, _ *http.Client, user s
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.connected[user], nil
+}
+
+func (f *fakeDiscord) VoiceStateOf(_ context.Context, _ *http.Client, user string) (discord.VoiceState, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return discord.VoiceState{ChannelID: f.connected[user], Muted: f.muted[user]}, nil
+}
+
+func (f *fakeDiscord) MoveTo(_ context.Context, _ *http.Client, ch, user string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.connected[user] = ch
+	f.log("move %s %s", ch, user)
+	return nil
 }
 
 func (f *fakeDiscord) DisconnectFrom(_ context.Context, _ *http.Client, ch, user string) (bool, error) {
@@ -619,4 +635,61 @@ func contains(xs []string, x string) bool {
 		}
 	}
 	return false
+}
+
+func (h *voiceHarness) poll() { h.vm.pollConnections(context.Background()) }
+
+func TestVoiceRoomShowsWhoIsConnected(t *testing.T) {
+	h := newVoiceHarness(t, "501")
+	meta, alice := h.table()
+	room := h.fake.live()[0]
+
+	if s := h.stamp(meta.ID); s.Granted != 1 || s.InRoom != 0 || len(s.Connected) != 0 {
+		t.Fatalf("before anyone connects: %+v", s)
+	}
+	h.fake.connected["501"] = room
+	h.poll()
+	s := h.stamp(meta.ID)
+	if s.InRoom != 1 || s.Connected[alice.String()] != protocol.VoiceConnLive {
+		t.Fatalf("connected: %+v", s)
+	}
+	h.fake.muted["501"] = true
+	h.poll()
+	if s := h.stamp(meta.ID); s.Connected[alice.String()] != protocol.VoiceConnMuted {
+		t.Fatalf("muted: %+v", s)
+	}
+	// A seated viewer sees it; a spectator does not.
+	if v := h.l.RoomOf(meta.ID).ViewFor(alice.String()).Voice; v.InRoom != 1 || v.Connected[alice.String()] != protocol.VoiceConnMuted {
+		t.Errorf("Alice's view: %+v", v)
+	}
+	if v := h.l.RoomOf(meta.ID).ViewFor(protocol.SpectatorViewerID).Voice; v.InRoom != 0 || v.Connected != nil {
+		t.Errorf("spectator's view: %+v", v)
+	}
+	delete(h.fake.connected, "501")
+	h.poll()
+	if s := h.stamp(meta.ID); s.InRoom != 0 || len(s.Connected) != 0 {
+		t.Fatalf("left: %+v", s)
+	}
+}
+
+func TestVoiceRoomPullsInOnlyWhenOnAndNeverFromTheRoom(t *testing.T) {
+	h := newVoiceHarness(t, "501")
+	_, _ = h.table()
+	room := h.fake.live()[0]
+
+	h.fake.connected["501"] = "lounge"
+	h.poll()
+	if h.fake.connected["501"] != "lounge" {
+		t.Fatal("moved with pull-in off")
+	}
+	h.vm.pullIn = true
+	h.poll()
+	if h.fake.connected["501"] != room {
+		t.Fatalf("not pulled in: %q", h.fake.connected["501"])
+	}
+	n := len(h.fake.calls)
+	h.poll()
+	if len(h.fake.calls) != n {
+		t.Errorf("moved someone already in the room: %v", h.fake.calls[n:])
+	}
 }

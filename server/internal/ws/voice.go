@@ -39,16 +39,4 @@ func (r *Room) stampVoiceLocked(view *protocol.GameView) {
 	view.Voice = copyVoice(r.voice)
 }
 
-func copyVoice(v *protocol.VoiceView) *protocol.VoiceView {
-	if v == nil {
-		return nil
-	}
-	out := *v
-	if v.Access != nil {
-		out.Access = make(map[string]string, len(v.Access))
-		for k, a := range v.Access {
-			out.Access[k] = a
-		}
-	}
-	return &out
-}
+func copyVoice(v *protocol.VoiceView) *protocol.VoiceView { return protocol.CopyVoice(v) }

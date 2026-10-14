@@ -4723,7 +4723,15 @@ export interface VoiceView {
   status: VoiceStatus;
   you?: VoiceAccess;
   url?: string;
+  // #3311: seated viewers only. `connected` maps a seat's player id to
+  // its state in the room; a seat not in it is not connected. `granted`
+  // and `in_room` are the chip's "3 of 4".
+  connected?: Record<string, VoiceConn>;
+  granted?: number;
+  in_room?: number;
 }
+
+export type VoiceConn = "live" | "muted";
 
 export type VoiceStatus = "off" | "pending" | "ready" | "idle" | "full" | "unavailable";
 

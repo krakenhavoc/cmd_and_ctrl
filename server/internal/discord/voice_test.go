@@ -396,3 +396,47 @@ func TestRoomURL(t *testing.T) {
 		t.Errorf("RoomURL = %q", got)
 	}
 }
+
+func TestVoiceStateOfReadsMuteAndDeafen(t *testing.T) {
+	stub, v := newVoiceStub(t)
+	ctx := context.Background()
+	vs := "/guilds/" + testGuild + "/voice-states/"
+	stub.answer("GET", vs+"1", http.StatusOK, `{"channel_id":"444"}`)
+	stub.answer("GET", vs+"2", http.StatusOK, `{"channel_id":"444","self_mute":true}`)
+	stub.answer("GET", vs+"3", http.StatusOK, `{"channel_id":"444","deaf":true}`)
+	stub.answer("GET", vs+"4", http.StatusOK, `{"channel_id":null}`)
+	stub.answer("GET", vs+"5", http.StatusNotFound, `{"code":10065}`)
+	want := map[string]VoiceState{
+		"1": {ChannelID: "444"}, "2": {ChannelID: "444", Muted: true},
+		"3": {ChannelID: "444", Muted: true}, "4": {}, "5": {},
+	}
+	for id, w := range want {
+		got, err := v.VoiceStateOf(ctx, nil, id)
+		if err != nil || got != w {
+			t.Errorf("VoiceStateOf(%s) = %+v, %v; want %+v", id, got, err, w)
+		}
+	}
+}
+
+func TestMoveToNamesTheRoom(t *testing.T) {
+	stub, v := newVoiceStub(t)
+	stub.answer("PATCH", "/guilds/"+testGuild+"/members/501", http.StatusOK, `{}`)
+	if err := v.MoveTo(context.Background(), nil, "444", "501"); err != nil {
+		t.Fatal(err)
+	}
+	calls := stub.seen()
+	if len(calls) != 1 || calls[0].Body["channel_id"] != "444" {
+		t.Fatalf("calls = %+v", calls)
+	}
+}
+
+func TestVoicePullInIsOffUnlessAsked(t *testing.T) {
+	base := map[string]string{VoiceCategoryEnv: testCategory, CommunityGuildEnv: testGuild, BotTokenEnv: testToken}
+	if v, _ := VoiceFromEnv(env(base)); v.PullIn {
+		t.Error("pull-in on by default")
+	}
+	base[VoicePullInEnv] = "true"
+	if v, _ := VoiceFromEnv(env(base)); !v.PullIn {
+		t.Error("pull-in not on when asked")
+	}
+}

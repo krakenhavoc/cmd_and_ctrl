@@ -77,7 +77,13 @@
   import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
   import VoiceRoom from "../lib/components/VoiceRoom.svelte";
   import NotificationsNudge from "../lib/components/NotificationsNudge.svelte";
-  import { refreshVoiceRoom, setVoiceRoom, voiceChip } from "../lib/voiceRoom";
+  import {
+    refreshVoiceRoom,
+    setVoiceRoom,
+    voiceChip,
+    voiceOpen,
+    voiceSeats,
+  } from "../lib/voiceRoom";
   import { community, loadCommunity } from "../lib/community";
   import CardSpawner from "../lib/components/CardSpawner.svelte";
   import { cardImageURL } from "../lib/cardImage";
@@ -1418,6 +1424,10 @@
   void loadCommunity();
   const voice = $derived(view?.voice);
   const voiceBarChip = $derived(voiceChip(voice));
+  $effect(() => {
+    voiceSeats.set(voice?.connected ?? {});
+    return () => voiceSeats.set({});
+  });
   let voiceBusy = $state(false);
   let voiceError = $state<string | null>(null);
   async function voiceCall(fn: () => Promise<void>): Promise<void> {
@@ -2580,7 +2590,12 @@
           href={voiceBarChip.href}
           target="_blank"
           rel="noopener noreferrer"
-          title={voiceBarChip.title}>{voiceBarChip.label}</a
+          title={voiceBarChip.title}
+          onclick={(e) => {
+            // Try the desktop app first; voiceOpen falls back to the link.
+            e.preventDefault();
+            voiceOpen(voiceBarChip.href!);
+          }}>{voiceBarChip.label}</a
         >
       {:else}
         <button

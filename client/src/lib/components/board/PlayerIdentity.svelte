@@ -39,6 +39,7 @@
   import AgentChip from "../AgentChip.svelte";
   import { isAgentSeat } from "../../agentSeat";
   import { presenceChip, standInSinceText } from "../../away";
+  import { voiceSeatBadge, voiceSeats } from "../../voiceRoom";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -251,6 +252,8 @@
     return () => clearInterval(t);
   });
   const presence = $derived(presenceChip(seat, presenceNow));
+  // #3311: in the table's Discord voice room.
+  const voiceBadge = $derived(voiceSeatBadge($voiceSeats[seat.id]));
   // A seat holding priority while offline reads "offline", never
   // "considering…": nobody is considering anything.
   const showConsidering = $derived(considering && presence?.kind !== "offline");
@@ -311,6 +314,9 @@
       title={`A bot has been playing this seat since ${standInSinceText(seat.stand_in?.since)}`}
       >(bot)</span
     >
+  {/if}
+  {#if voiceBadge}
+    <span class="tag voice-seat" data-dice-avoid title={voiceBadge.title}>{voiceBadge.glyph}</span>
   {/if}
   {#if presence}
     <span class="tag presence {presence.kind}" data-dice-avoid title={presence.title}
@@ -1216,6 +1222,12 @@
      about whose seat it is. */
   /* ADR 0177 §1: muted, because being away is a fact about the seat,
      not a call to act. Offline is a shade warmer than a hidden tab. */
+  .tag.voice-seat {
+    margin-top: 0;
+    margin-bottom: 2px;
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(0, 0, 0, 0.28);
+  }
   .tag.presence {
     margin-top: 0;
     margin-bottom: 2px;

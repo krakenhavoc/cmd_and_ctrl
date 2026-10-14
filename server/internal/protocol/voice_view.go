@@ -25,7 +25,22 @@ type VoiceView struct {
 	// Access maps each seat's player id to its access. The full view's
 	// only: FilterViewFor drops it for every viewer but the admin.
 	Access map[string]string `json:"access,omitempty"`
+	// Connected maps a seat's player id to VoiceConnLive or VoiceConnMuted
+	// for each seat connected to the room right now (#3311). A seat not
+	// in the map is not connected. Only a seated viewer receives it.
+	Connected map[string]string `json:"connected,omitempty"`
+	// Granted and InRoom are the chip's "Voice · 3 of 4": how many seats
+	// were let in, and how many of those are connected. Seated viewers
+	// only.
+	Granted int `json:"granted,omitempty"`
+	InRoom  int `json:"in_room,omitempty"`
 }
+
+// A seat's connection to the room (#3311). Absent means not connected.
+const (
+	VoiceConnLive  = "live"
+	VoiceConnMuted = "muted"
+)
 
 // Room states (ADR 0159 §6).
 const (
@@ -62,22 +77,43 @@ func filterVoiceFor(v *VoiceView, viewerID string) *VoiceView {
 		return nil
 	}
 	if viewerID == "" {
-		out := *v
-		if v.Access != nil {
-			out.Access = make(map[string]string, len(v.Access))
-			for k, a := range v.Access {
-				out.Access[k] = a
-			}
-		}
-		return &out
+		return CopyVoice(v)
 	}
 	you, seated := v.Access[viewerID]
 	if !seated || viewerID == SpectatorViewerID {
 		you = VoiceAccessSpectator
 	}
 	out := &VoiceView{Enabled: v.Enabled, Status: v.Status, You: you}
+	if seated && viewerID != SpectatorViewerID {
+		// Voice connection state is shown to the table, not to people
+		// watching it (ADR 0149).
+		out.Connected = copyStrings(v.Connected)
+		out.Granted, out.InRoom = v.Granted, v.InRoom
+	}
 	if you == VoiceAccessGranted && v.Status == VoiceStatusReady {
 		out.URL = v.URL
+	}
+	return out
+}
+
+// CopyVoice deep-copies a voice view.
+func CopyVoice(v *VoiceView) *VoiceView {
+	if v == nil {
+		return nil
+	}
+	out := *v
+	out.Access = copyStrings(v.Access)
+	out.Connected = copyStrings(v.Connected)
+	return &out
+}
+
+func copyStrings(m map[string]string) map[string]string {
+	if m == nil {
+		return nil
+	}
+	out := make(map[string]string, len(m))
+	for k, a := range m {
+		out[k] = a
 	}
 	return out
 }
