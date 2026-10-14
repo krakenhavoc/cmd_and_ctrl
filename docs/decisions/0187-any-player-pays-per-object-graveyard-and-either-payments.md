@@ -1,10 +1,12 @@
 # ADR 0187 — Unless any player pays: one offer per land, graveyard exile, and an either payment
 
-**Status:** Proposed · 2026-10-14 · Sprint: none (Backlog, parked on a dependency or a single card)
+**Status:** Accepted (owner decisions 2026-10-14) · 2026-10-14 · Sprint: none (Backlog, parked on a dependency or a single card)
 **Issues:** [#3205](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3205) (Cleansing: destroy each land unless any player pays 1 life) and [#3206](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3206) (any-player offers paid by graveyard exile or an either payment: Carrion Rats, Carrion Wurm, Worms of the Earth). Registry row `unless-any-player-pays` (Partial; tracked under #1903, S50 tracker #1784, found landing #1860, S53 tracker #1910).
 **Builds on:** [ADR 0150](0150-other-players-pay-any-player-offers-and-assist.md) (the any-player offer, owner decisions 1–9, and its follow-ups for Cleansing and the two payments), [ADR 0108](0108-turn-scoped-effects-object-history-and-damage-shields.md) §2 and §5 (rules-gate scoped effects; non-mana pay-unless payments), [ADR 0175](0175-players-choose-before-simultaneous-sacrifices.md) (public choices one seat at a time, `EarlierChoices`), [ADR 0127](0127-answering-repeated-prompts-for-you.md) (standing answers), [ADR 0054](0054-dice-rolls-and-coin-flips.md) decision 4 (undo never lets a seat see the future twice).
 **Depends on (not this ADR):** [#1985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1985), "Lands can't enter the battlefield", for Worms of the Earth only.
 **Numbering:** 0187 was reserved for this seam. After `git fetch --all --prune`, `git ls-tree --name-only <ref> docs/decisions/` on every remote branch (`develop`, `main`, `cost-ledger`, `docs/issue-audit`, `feat/2417-incubate`, `feat/3343-autopass-reason-undo`, `feat/750-conditional-block-restrictions`, `feat/playmats`, `fix/2950-darkness-replacement-continuation`, `fix/3159-3160-attachments`, `fix/caddy-reload-admin-off`, `wip/836-one-click-default`, and, at the re-check before pushing, `docs/0189-face-down-remainder`, `docs/2704-crew-and-saddle-adr`, `feat/rf-f-cast-during-resolution`, `feat/sideboard-outside-the-game`) showed 0185, 0186, 0189 and 0191 in use and 0187 free.
+
+**Owner decisions:** the owner answered all six questions on 2026-10-14. Question 1 went against the recommendation: Cleansing follows CR 101.4 literally. The answers are under [Owner decisions](#owner-decisions-answered-2026-10-14) and are binding.
 
 This ADR is plan-first: no code changes with it. Every claim about the code was checked on `origin/develop` at `8dd2c2e2c`. Every rule was checked against the Comprehensive Rules effective 2026-09-25 (`MagicCompRules 20260925.txt`).
 
@@ -48,17 +50,17 @@ Scryfall has no rulings for Cleansing, Carrion Rats or Carrion Wurm. Worms of th
 - **Simultaneous destruction.** `DestroyPermanentsThenForEffect(ids, then)` (`game/simultaneous.go`).
 - **Triggers.** "Whenever this creature attacks or blocks" is `OnAny([]game.EventKind{game.EventAttack, game.EventBlock}, … attackDeclared(ev, source) || selfBlocksOnce(ev, source) …)` (Goblin Psychopath).
 
-## Decisions (proposed)
+## Decisions
 
 ### 1. Who is asked, and in what order: unchanged from ADR 0150
 
-Every new shape below goes through the same chain: the players still in the game, in APNAP order from the **active** player (`votersFromLocked(activePlayerIDLocked())`), the controller included, with `Opponents` narrowing it. A player who has left is skipped, and one who leaves while asked declines (CR 800.4f). Owner decisions 1, 2 and 7 of ADR 0150 bind here too: it is APNAP, each link blocks its step, no standing answer applies, and a bot doesn't free-ride.
+Every new shape below goes through the same chain: the players still in the game, in APNAP order from the **active** player (`votersFromLocked(activePlayerIDLocked())`), the controller included, with `Opponents` narrowing it. A player who has left is skipped, and one who leaves while asked declines (CR 800.4f). ADR 0150 owner decisions 2 and 7 bind here too: each link blocks its step, no standing answer applies, and a bot doesn't free-ride. Decision 1's order (APNAP) holds everywhere. Its "the first payer ends the offer" holds for Carrion and Worms, but not for Cleansing, where every player chooses and every choice is paid (§2, owner decision 1).
 
 **When nobody pays, or nobody can be asked:** Cleansing destroys every land it could not save, Carrion Rats and Carrion Wurm deal their combat damage as usual, and Worms of the Earth stays. `OnNobody` runs once, at once if there is nobody to ask.
 
 ### 2. One offer per object: Cleansing (#3205)
 
-"For each land" is one offer per land. ADR 0150 owner decision 4 rejected the literal shape (up to 160 prompts at a four-seat table) and kept the batched one on file. This ADR adopts it.
+"For each land" is one offer per land. ADR 0150 owner decision 4 rejected asking it one land at a time (up to 160 prompts at a four-seat table). Under [owner decision 1](#owner-decisions-answered-2026-10-14), Cleansing follows **CR 101.4 literally**: every player, in APNAP order, chooses which lands they will pay for, knowing what the earlier players chose (CR 101.4b). Then all the payments happen. Two players may pay for the same land, and each of those payments is still made. A land is saved if anyone paid for it. Unlike ADR 0150 decision 1, this shape does **not** stop at the first payer, and it doesn't hide lands someone has already chosen.
 
 **A new door, `Game.QueueAnyPlayerPaysForEachForEffect(AnyPlayerPaysForEach)`**, in a new file `game/any_player_pays_each.go`:
 
@@ -66,27 +68,40 @@ Every new shape below goes through the same chain: the players still in the game
 type AnyPlayerPaysForEach struct {
     Source, Controller uuid.UUID
     Objects  []uuid.UUID // the battlefield objects, frozen as the effect is applied (CR 608.2h)
-    EachLife int         // life per object saved; the only payment this door takes (1 for Cleansing)
+    EachLife int         // life per object paid for; the only payment this door takes (1 for Cleansing)
     Noun     string      // "land" / "lands", for the words
     Question string
     // OnUnsaved gets the objects nobody paid for, still the same objects
-    // (epoch-checked), and runs exactly once after the last player.
+    // (epoch-checked), and runs exactly once, after every payment.
     OnUnsaved func(g *Game, unsaved []uuid.UUID) error
 }
 ```
 
-- **One prompt per player, one at a time, in APNAP order.** Each player's link is a `PendingChoiceChooseCards` (the existing kind, so the gate, the enumerator, the dock, the departure table and the restore census all treat it as they already do), with:
-  - `Cards`: the objects not yet saved, still on the battlefield as the same object (the epoch check `collectPermanentChoicesLocked` uses, `ObjectEpoch`).
-  - `Min: 0`, `Max: min(len(Cards), affordable)`, where `affordable` is how many `EachLife` payments the player can make one after another: `life / EachLife` when `CanPayLifeLocked(p, EachLife)`, else 0 (CR 119.4 is per payment, CR 119.8). A player who can afford none is not asked. Their turn in the order is logged as a decline (`EventAnyPlayerDeclined`) and the offer moves on, because a prompt with only "none" to answer is a wasted click.
-  - `Zone: ZoneBattlefield`, `FromPlayer: Chooser`. Setting `FromPlayer` to the chooser stops the departure table from reassigning the link to another seat (`departedChoiceObjectLocked` needs `FromPlayer != Chooser`). A link whose chooser leaves is dropped with `dropDefault`: its continuation runs with nothing picked, and the next player is asked (CR 800.4f).
-  - `earlierPermanentChoices`: the saves so far, one `SeatCards` per earlier player, set the way the ADR 0175 collector sets it. The view's `EarlierChoices` and the existing client rendering show "Alice saved Forest, Island" with no new wire field.
-  - `ChooseSuggested`: the chooser's own unsaved objects, in engine order, cut to `Max`. That is the answer most players want, and `withSuggestedFirst` puts it first in the move list (§7).
-  - `AnyPlayerOffer`: the same plain data ADR 0150 put on a pay-unless link (`Controller`, `Order`, `Declined`), plus one additive field, **`EachLife int`** (`json:"eachLife,omitempty"`). Here `Declined` lists the players who saved nothing.
-- **Paying.** The answer's `Then` pays `EachLife` life once per object named, as **separate payments** (one `payLifeAsCostLocked` per object), because the card prints a 1-life payment for each land and a "whenever you lose life" trigger should see each one ([question 2](#open-owner-questions)). If a payment fails (the life total changed under the prompt, which nothing in a resolution can do today), it stops and only the objects already paid for are saved. It logs one `EventAnyPlayerPaid` per payer with the label "N life (N lands)", then asks the next player.
-- **Lands saved by an earlier player are not offered again.** That is ADR 0150 decision 1's recorded simplification, applied per object: CR 101.4 lets two players pay for the same land, and the second payment buys nothing.
-- **After the last player**, `OnUnsaved` gets every object in `Objects` that nobody saved and that is still the same object. Cleansing destroys them in one `DestroyPermanentsThenForEffect` (CR 701.8a, simultaneous per CR 608.2e), so regeneration, indestructible and "dies" triggers apply as for Armageddon.
-- **Lands that change during the offer.** Nothing resolves while the offer is open, so the set can only shrink through a departure (CR 800.4a takes that player's lands). The epoch check drops those objects from later links and from `OnUnsaved`.
-- **Door scope.** `EachLife` is the only payment. A mana or card payment per object has no card, so the door refuses a zero `EachLife` with an `EventEffectError`, and `OnUnsaved` runs on every object (the card still does something, as `QueueAnyPlayerPaysForEffect` does with an unparseable cost).
+**Phase 1: choosing, one player at a time, in APNAP order.** The door builds one leg per player still in the game, in `votersFromLocked(activePlayerIDLocked())` order, and runs them through the ADR 0175 collector, `ChoosePermanentsInOrderThenForEffect` (`game/ordered_permanent_choices.go`). That collector already does four things this needs. It asks one seat at a time. It skips a player who has left. It binds each pick to the object by `ObjectEpoch`. It carries the earlier players' picks on each later prompt (`earlierPermanentChoices`), which the view already sends as `EarlierChoices`. **Nothing is paid during this phase.** Each leg is a `PendingChoiceChooseCards` (the existing kind, so the gate, the enumerator, the dock, the departure table and the restore census all treat it as they already do), with:
+
+- `Cards`: **every** object in `Objects` still on the battlefield as the same object, including ones an earlier player has chosen.
+- `Min: 0`, `Max: min(len(Cards), affordable)`. Here `affordable` is how many `EachLife` payments the player can make one after another: `life / EachLife` when `CanPayLifeLocked(p, EachLife)`, else 0 (CR 119.4 applies to each payment, and CR 119.8). It's worked out when the door builds the legs. No life changes before the payment phase, so it still holds when each player answers. A player who can afford none gets no leg. They are logged as declining (`EventAnyPlayerDeclined`) when the door is called, because a prompt whose only answer is "none" is a wasted click.
+- `Zone: ZoneBattlefield`, `FromPlayer: Chooser`. Setting `FromPlayer` to the chooser stops the departure table from reassigning the leg to another seat, because `departedChoiceObjectLocked` needs `FromPlayer != Chooser`. A leg whose chooser leaves is dropped with `dropDefault`: its continuation runs with nothing picked, so that player pays for nothing (CR 800.4f), and the next player is asked.
+- `AnyPlayerOffer`: the same plain data ADR 0150 put on a pay-unless link (`Controller`, `Order`, `Declined`), plus one additive field, **`EachLife int`** (`json:"eachLife,omitempty"`). On this shape, `Declined` lists the earlier players who chose nothing.
+- `ChooseSuggested`: the chooser's own objects that **no earlier player has chosen**, in engine order, cut to `Max`. It's worked out when this leg is queued, from the earlier picks. A player's own lands that someone already pays for are left out, so the suggestion never pays twice for nothing ([owner decision 6](#owner-decisions-answered-2026-10-14)).
+
+The collector's `ChooseCardsPrompt` legs gain three unexported fields to carry this: `anyPlayerOffer *AnyPlayerOffer`, `suggestUnchosenOwn bool`, and the `Declined` update. `collectPermanentChoicesLocked` copies them onto each queued `PendingChoice` and fills `ChooseSuggested` and `Declined` from the receipts so far. Leg-level `Then` stays refused, as the collector requires.
+
+**What the earlier choices look like.** Every leg's `EarlierChoices` is one entry per earlier player, `{player_id, card_ids}`, in APNAP order. It holds the lands that player has chosen to pay for, filtered to the ones still on the battlefield as the same object. An earlier player who chose nothing appears with an empty `card_ids` (they're also in `AnyPlayerOffer.Declined`). The client (§8) draws this three ways:
+
+- a badge on each land with the names of everyone already paying for it ("Alice pays");
+- a summary line ("So far: Alice pays for 3 lands, Carol for none");
+- a warning on a land the viewer selects that someone already pays for ("Alice already pays for this: you'd both pay").
+
+Every seat sees the same entries. The battlefield and these choices are public (CR 101.4b).
+
+**Phase 2: paying, after the last player has chosen.** The collector's final `then` gets `PromptedPicks`, one `SeatCards` per player in APNAP order, already filtered to the objects still there. For each player in that order, it pays `EachLife` life **once per object they chose**, as separate payments: one `payLifeAsCostLocked` per object ([owner decision 2](#owner-decisions-answered-2026-10-14)), so a "whenever you lose life" trigger sees each one. Two players who chose the same land both pay for it. `CanPayLifeLocked` is checked before each payment. A payment that fails is a land that player didn't pay for. Nothing inside the resolution can make it fail today, but the check keeps CR 118.3 true. Each payer gets one `EventAnyPlayerPaid` with the label "N life (N lands)". The payments of different players happen inside one locked step, with no priority between them, so they are simultaneous in effect (CR 101.4 "Then the actions happen simultaneously"), and any life-loss triggers wait for the next time a player would get priority.
+
+**Then the outcome.** A land is saved if at least one player paid for it. `OnUnsaved` gets every object in `Objects` that nobody paid for and that is still the same object. Cleansing destroys them in one `DestroyPermanentsThenForEffect` (CR 701.8a), so regeneration, indestructible and "dies" triggers apply as they do for Armageddon. With nobody to ask, or nobody able to pay, `OnUnsaved` runs at once on every object.
+
+**Lands that change during the offer.** Nothing resolves while the offer is open, so the set can only shrink, and only through a departure (CR 800.4a takes that player's lands). The epoch check drops those lands from later legs, from the picks and from `OnUnsaved`.
+
+**Door scope.** `EachLife` is the only payment. A mana or card payment per object has no card. A zero `EachLife` is a programming error: the door reports it with an `EventEffectError` and runs `OnUnsaved` on every object, so the card still does something, as `QueueAnyPlayerPaysForEffect` does with an unparseable cost.
 
 Card side: `effects.AnyPlayerPaysForEach{Objects func(ctx) []uuid.UUID, EachLife, Noun, Question, OnUnsaved func(ctx, []uuid.UUID) error}`, bound to the resolving item as `AnyPlayerPays` is.
 
@@ -108,7 +123,7 @@ Carrion Rats and Carrion Wurm need it, and nothing in the engine says it. It's a
 - View: `CardView.AssignsNoCombatDamage bool` (`json:"assigns_no_combat_damage,omitempty"`), stamped like `CantBeRegenerated`. The client shows a status chip ("Assigns no combat damage this turn").
 - Bot: a `combatPower(c *protocol.CardView) int` helper in `aiseat/heuristic` answers 0 for such a creature. Where the attack and block scorers (`combat.go`, `blockset.go`, `race.go`) read a combatant's power as the damage it deals, they read it through this helper instead.
 
-The other 24 cards that print "assigns no combat damage" are not in scope. The primitive is general, and [question 4](#open-owner-questions) asks whether they get their own registry row.
+The other 24 cards that print "assigns no combat damage" are not in scope. Under owner decision 4, slice 1 adds the registry row `assigns-no-combat-damage` with them on its Waiting list, tracked by the follow-up seam issue [#3531](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3531).
 
 ### 5. An either payment: Worms of the Earth (#3206)
 
@@ -123,19 +138,24 @@ The other 24 cards that print "assigns no combat damage" are not in scope. The p
 
 ### 6. How it pauses and resumes
 
-Nothing new. Every link is a prompt with a closure frame the restore census already counts: `payUnlessResume` ("payUnlessResume") for §3 and §5, and `chooseCardsResume` for §2. A table with an offer open is not a restore point until it is answered, as for every ADR 0150 link. The rest of the resolution lives in the frame's continuation (`decline` → next link → `OnNobody`/`OnUnsaved`, or `pay` → `OnPaid`), so the chain resumes on each answer and on each departure. No new field holds a func, so `closure_fields.txt` gains no route and the `census:` and `transient` counts don't move. The slice that adds `AnyPlayerPaysForEach` checks this with `TestClosureFieldsReachableFromGame`: its closures are captured by `chooseCardsFrame.then`, which is already classified.
+Nothing new. Every link is a prompt with a closure frame the restore census already counts: `payUnlessResume` ("payUnlessResume") for §3 and §5, and `chooseCardsResume` for §2. A table with an offer open is not a restore point until it is answered, as for every ADR 0150 link. The rest of the resolution lives in the frame's continuation (`decline` → next link → `OnNobody`, or `pay` → `OnPaid`, and for §2 each leg's `then` → the next leg → the payment phase → `OnUnsaved`), so the chain resumes on each answer and on each departure. No new field holds a func, so `closure_fields.txt` gains no route and the `census:` and `transient` counts don't move. The slice that adds `AnyPlayerPaysForEach` checks this with `TestClosureFieldsReachableFromGame`: its closures are captured by `chooseCardsFrame.then`, which is already classified.
 
 ### 7. Legal moves, the heuristic bot and the MCP seat
 
 **Enumerator (`legal/choices.go`).**
 - Graveyard exile is a `PayAction` card pick, so the existing `e.combos(pool, Count, Count, …)` branch offers it. The pool is ordered `cheapestFuelFirst` (the seat's `CostFuelPricer`, as delve and escape use), so the payments that survive `MaxExpansionPerSource` are the cheapest ones. The label is "pay: exile — Card A, Card B" through `anyPlayerVerbs`.
 - Either: one move per payable branch, plus the decline. A card branch adds combos as above (the sacrifice pool in `SacrificePaymentOrderForEffect` order) with `pay_option`. A names-nothing branch adds one move with `pay_option` and the branch's `MoveCost` (life, or the damage as a life price, as PR 2's `pay_damage` move does). Labels name the branch: "Worms of the Earth: take 5 damage", "Worms of the Earth: sacrifice two lands — Forest Island".
-- Cleansing's `choose_cards` (carrying `AnyPlayerOffer`): `cardSetPickPool` puts the chooser's own objects first, most valuable first, then everyone else's. The moves are "save nothing" (`AlwaysLegal`), then the suggested set (the chooser's own, cut to `Max`) through `withSuggestedFirst`, then the existing `filteredCombos` within budget. Labels read "Cleansing: pay 3 life to save Forest, Island, Plains".
+- Cleansing's `choose_cards` (carrying `AnyPlayerOffer`): `cardSetPickPool` orders the pool in three groups:
+  1. the chooser's own lands that no earlier player chose, most valuable first;
+  2. their own lands someone already chose;
+  3. everyone else's.
+
+  The moves are "pay for none" (`AlwaysLegal`), then the suggested set (group 1, cut to `Max`) through `withSuggestedFirst`, then the existing `filteredCombos` within budget (owner decision 6). Labels read "Cleansing: pay 3 life for Forest, Island, Plains". When a land in the set is already chosen by an earlier player, the label adds "(Alice also pays for Forest)".
 
 **Heuristic (`aiseat/heuristic`).** ADR 0150 §6's rules hold: never pay against your own effect, pay an opponent's when it's worth it, and no free-riding. The new parts:
-- **Graveyard exile** (Carrion): the bot pays only if the creature is in combat with it, meaning it attacks the bot or the bot's planeswalker or battle (`AttackingTarget`), or it blocks or is blocked by a creature the bot controls ([question 3](#open-owner-questions)). It scores the exiled cards with `fuelValue`, as dredge and devour do.
+- **Graveyard exile** (Carrion): the bot pays only if the creature is in combat with it, meaning it attacks the bot or the bot's planeswalker or battle (`AttackingTarget`), or it blocks or is blocked by a creature the bot controls (owner decision 3). It scores the exiled cards with `fuelValue`, as dredge and devour do.
 - **Either** (Worms): pay. Take the damage when it leaves the bot at or above `phyrexianLifeFloor`. Otherwise sacrifice the two least valuable lands (the existing sacrifice score). With neither acceptable, decline.
-- **Cleansing:** the `choose_cards` branch reads `AnyPlayerOffer.EachLife` and saves only the bot's own lands, most valuable first, as many as keep it at or above `phyrexianLifeFloor` with `EachLife` per land. It never pays for an opponent's land, whoever controls Cleansing.
+- **Cleansing:** the `choose_cards` branch reads `AnyPlayerOffer.EachLife` and `EarlierChoices`. It pays only for the bot's own lands that **no earlier player has chosen** (owner decision 6), most valuable first, as many as keep it at or above `phyrexianLifeFloor` with `EachLife` per land. It never pays for a land an earlier player already pays for, so it doesn't pay twice for nothing. It never pays for an opponent's land, whoever controls Cleansing. A later player may still choose the bot's land too. The bot can't see that coming, and paying twice is then that player's choice.
 - **Combat:** `combatPower` (§4).
 
 **MCP seat (`internal/mcpseat`).** The MCP seat answers from the numbered legal-move list and reads the board with `get_state`, so it gets every new shape through the enumerator's moves and labels, and nothing in `mcpseat` changes. Its tests gain one render case per shape (`energy_render_test.go` is the pattern). One limit is recorded: on Cleansing an agent can choose only among the enumerated sets (nothing, its own lands, and the budgeted combinations), not every subset of 40 lands.
@@ -146,7 +166,16 @@ Nothing new. Every link is a prompt with a closure frame the restore census alre
 - **Client (`client/src`).**
   - The `pay_unless` picker (`ChoicePromptModal.svelte`, `payCardsOptions`) resolves `exile_graveyard` options from the chooser's graveyard as well as from the battlefield and hand.
   - An either payment draws one button per branch ("Sacrifice two lands" opens the existing card picker, "Take 5 damage" answers at once) plus "Don't". The offeree header (`anyPlayerOfferLine`, `payPhrase`) reads "sacrifice two lands or take 5 damage".
-  - Cleansing: the `choose_cards` modal, when `any_player_offer` is set, shows the same whose-effect and who-is-next lines as a pay-unless link ("Bob's Cleansing. Any player may pay 1 life for each land: Alice saved 2; then Carol."), preselects `choose_suggested`, and shows the running price ("Save 3 lands for 3 life"). `anyPlayerOfferRequest` (`choiceDock.ts`) and `dockHint.ts` give every other seat the read-only line for a `choose_cards` link too: "Carol is choosing lands to save for 1 life each (Bob's Cleansing)".
+  - Cleansing: the `choose_cards` modal, when `any_player_offer` is set, shows:
+    - The same whose-effect and who-is-next lines as a pay-unless link: "Bob's Cleansing. Each player in turn chooses lands to pay 1 life for; a land anyone pays for is saved. Then Carol."
+    - **The earlier choices** from `earlier_choices`:
+      - a badge on each land with every earlier payer's name ("Alice pays");
+      - a summary line ("So far: Alice pays for 3 lands, Dan for none");
+      - on a selected land that already has a payer, a warning ("Alice already pays for this: you'd both pay 1 life").
+    - `choose_suggested` preselected.
+    - The running price ("Pay 3 life for 3 lands").
+
+    `anyPlayerOfferRequest` (`choiceDock.ts`) and `dockHint.ts` give every other seat the read-only line for a `choose_cards` leg too, with the same summary: "Carol is choosing lands to pay 1 life for (Bob's Cleansing). So far: Alice 3, Dan none." Nothing is paid until the last player has chosen, and the hint says so.
   - The status chip for `assigns_no_combat_damage`.
   - New player-facing names go through `L.<key>` in `client/src/lib/labels.ts` (AGENTS.md §5).
 
@@ -159,14 +188,14 @@ Nothing new. Every link is a prompt with a closure frame the restore census alre
 
 ### 10. Roadmap registry
 
-Each card slice removes its card from the `unless-any-player-pays` row's `Waiting` list and rewrites its `Missing` and `EngineNotes` to match what shipped. After slice 6 the row's `Missing` names only Worms of the Earth (blocked on #1985), and the row turns Implemented with Worms' slice (8). Rhystic Cave and Leonin Arbiter stay recorded as out of scope, as ADR 0150 left them.
+Each card slice removes its card from the `unless-any-player-pays` row's `Waiting` list and rewrites its `Missing` and `EngineNotes` to match what shipped. Slice 1 adds the `assigns-no-combat-damage` row (owner decision 4, #3531). After slice 6 the row's `Missing` names only Worms of the Earth (blocked on #1985), and the row turns Implemented with Worms' slice (8). Rhystic Cave and Leonin Arbiter stay recorded as out of scope, as ADR 0150 left them.
 
 ## Alternatives considered
 
 1. **Cleansing as one pay-unless per land around the table** (ADR 0150 Q4 option c). It's faithful to the words, but it's up to 160 prompts at a four-seat table with 40 lands. Rejected, as ADR 0150 did.
-2. **Cleansing as a literal CR 101.4 batch:** every player picks in APNAP order, then all pay at once, so two players may pay for the same land. It's closer to the letter, but the second payment buys nothing and costs the payer life. Rejected for the reason ADR 0150 decision 1 gives ([question 1](#open-owner-questions) keeps it on file).
+2. **Cleansing batched with ADR 0150 decision 1's shortcut:** each player picks only among lands not yet saved and pays as they answer, so nobody pays twice for one land. It saves a little life. The owner chose the literal CR 101.4 reading instead (owner decision 1), so a second payment is made when two players choose the same land. Rejected.
 3. **Cleansing with a `pay_amount` stepper per player.** A number can't say which lands are saved. Rejected.
-4. **A new prompt kind for Cleansing.** `choose_cards` already blocks the table, is answered by every client, has a departure decision and shows earlier public choices (ADR 0175). A new kind would need all of that again. Rejected.
+4. **A new prompt kind for Cleansing.** `choose_cards`, through the ADR 0175 collector, already blocks the table, is answered by every client, has a departure decision and shows earlier public choices. A new kind would need all of that again. Rejected.
 5. **The either payment as two chained prompts:** a `confirm` "which payment?", then a pay-unless. That's two prompts per player, and the chain's decline would have to cross both. Rejected for one prompt with `pay_option`.
 6. **The either payment inferred from the answer's shape** (`card_ids` present means sacrifice, absent means damage). It's ambiguous once a branch is a names-nothing payment beside another names-nothing payment, and a malformed answer would silently pick a branch. Rejected for an explicit index.
 7. **"Assigns no combat damage" as a prevention shield** (Gossamer Chains' `preventFromSource`). It's wrong under "damage can't be prevented" and visible to prevention triggers (CR 615). Rejected.
@@ -175,9 +204,10 @@ Each card slice removes its card from the `unless-any-player-pays` row's `Waitin
 ## Consequences
 
 - Four cards become expressible. Cleansing, Carrion Rats and Carrion Wurm ship in this ADR's slices, and Worms of the Earth ships once #1985 does.
-- `ModAssignsNoCombatDamage` is a general primitive that 24 more cards could use.
-- **The thing most likely to be got wrong later:** a per-object offer built from bare `choose_cards` prompts outside the door would lose the departure rule (`FromPlayer == Chooser`, so no reassignment), the epoch check, and the offer data the bot and view read. Cleansing-like cards go through `QueueAnyPlayerPaysForEachForEffect`.
-- The MCP seat can't name an arbitrary subset of lands on Cleansing (§7).
+- `ModAssignsNoCombatDamage` is a general primitive. 24 more cards wait on it under the new `assigns-no-combat-damage` registry row and [#3531](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3531).
+- On Cleansing, two players can both pay for one land. That's what owner decision 1 asked for. The client warns before it happens, and the bot avoids it.
+- **The thing most likely to be got wrong later:** a per-object offer built from bare `choose_cards` prompts, outside the door and the ADR 0175 collector. It would lose the departure rule (`FromPlayer == Chooser`, so no reassignment), the epoch check, the earlier choices, and the offer data the bot and view read. Cleansing-like cards go through `QueueAnyPlayerPaysForEachForEffect`.
+- The MCP seat can't name an arbitrary subset of lands on Cleansing (§7, owner decision 6).
 
 ## Delivery plan
 
@@ -185,7 +215,16 @@ Each slice is one PR into `develop`, independently shippable, in this order unle
 
 ### Slice 1 — `feat(server): assigns no combat damage this turn` (tier:2-standard)
 
-**Scope:** `game/scoped_effects.go` (the `ModAssignsNoCombatDamage` constant, its `readerRule` row, and its doc comment), a new `game/assigns_no_combat_damage.go` (`AssignsNoCombatDamageThisTurnForEffect`, `permanentAssignsNoCombatDamageLocked`, `PermanentAssignsNoCombatDamageForEffect`), the reader in `assignAndDealCombatDamageLocked` (`game/mutations.go`), `protocol/view.go` (`CardView.AssignsNoCombatDamage`), `aiseat/heuristic` (`combatPower` and its use in `combat.go`, `blockset.go`, `race.go`), the client chip and its label. No card.
+**Scope:**
+- `game/scoped_effects.go`: the `ModAssignsNoCombatDamage` constant, its `readerRule` row and its doc comment.
+- A new `game/assigns_no_combat_damage.go`: `AssignsNoCombatDamageThisTurnForEffect`, `permanentAssignsNoCombatDamageLocked` and `PermanentAssignsNoCombatDamageForEffect`.
+- The reader in `assignAndDealCombatDamageLocked` (`game/mutations.go`).
+- `protocol/view.go`: `CardView.AssignsNoCombatDamage`.
+- `aiseat/heuristic`: `combatPower`, and its use in `combat.go`, `blockset.go` and `race.go`.
+- The client chip and its label.
+- A new registry row `assigns-no-combat-damage` in `roadmap/registry.go` (owner decision 4): `KindSeam`, `StatusPartial`, `Issue: 3531`, `Rules: 510.1, 510.1a`, `ADR` this file, and `Waiting` the 24 cards listed on #3531.
+
+No card.
 **Acceptance (tests):**
 - An attacker with the mod, unblocked, deals no damage to the defending player, while one without it does (back-out: removing the reader fails it).
 - Blocked by one creature, it marks no damage. Multi-blocked, no `damage_assignment` prompt is queued for it.
@@ -195,11 +234,20 @@ Each slice is one PR into `develop`, independently shippable, in this order unle
 - The mod ends at cleanup. A flickered creature returns without it (pinned, CR 400.7).
 - `CardView.AssignsNoCombatDamage` round-trips. A heuristic test shows the bot blocks a creature with the mod as a 0-power attacker.
 - A snapshot written with the mod restores, and the shape drift test passes.
+- The roadmap tests accept the new row, and `docs/engine-seams.md` is regenerated the way the registry's other rows are.
 **Depends on:** nothing.
 
 ### Slice 2 — `feat(server): any-player offers paid by exiling from your graveyard` (tier:2-standard)
 
-**Scope:** `game/pay_unless_action.go` (`PayActionExileFromGraveyard`: options, payable count, the pausable exile batch in `payActionLocked`), `protocol/view.go` (`PayCards.Action` value, public options), `legal/choices.go` (the `cheapestFuelFirst` pool for this kind), `cards/effects/any_player_pays.go` (`ExileFromGraveyardPayment`), the client `payCardsOptions` graveyard lookup, and `docs/protocol.md`. No card.
+**Scope:**
+- `game/pay_unless_action.go`: `PayActionExileFromGraveyard`, with its options, the payable count, and the pausable exile batch in `payActionLocked`.
+- `protocol/view.go`: the new `PayCards.Action` value, with the options public.
+- `legal/choices.go`: the `cheapestFuelFirst` pool for this kind.
+- `cards/effects/any_player_pays.go`: `ExileFromGraveyardPayment`.
+- The client's `payCardsOptions` graveyard lookup.
+- `docs/protocol.md`.
+
+No card.
 **Acceptance (tests):**
 - `QueueAnyPlayerPaysForEffect` with the payment: a player with fewer than `Count` cards in their graveyard gets no "pay" move, and a "yes" without picks is a decline that moves the offer on.
 - Exactly `Count` distinct cards from the payer's own graveyard are accepted. Another player's card, a duplicate, or a wrong count is refused with the prompt kept.
@@ -211,7 +259,12 @@ Each slice is one PR into `develop`, independently shippable, in this order unle
 
 ### Slice 3 — `feat(server): carrion rats and carrion wurm` (tier:2-standard)
 
-**Scope:** `cards/effects/carrion_rats.go`, `cards/effects/carrion_wurm.go` (an attacks-or-blocks trigger whose `AnyPlayerPays{Pay: ExileFromGraveyardPayment(n), OnPaid: …}` applies `AssignsNoCombatDamageThisTurnForEffect` to the source if `sourceIsStillThisPermanent`), the heuristic's combat-involvement rule for a graveyard-exile offer (§7), card tests, oracle fixtures for the two oracle IDs, and the registry row update (`Waiting`, `Missing`, `EngineNotes`).
+**Scope:**
+- `cards/effects/carrion_rats.go` and `cards/effects/carrion_wurm.go`: an attacks-or-blocks trigger whose `AnyPlayerPays{Pay: ExileFromGraveyardPayment(n), OnPaid: …}` applies `AssignsNoCombatDamageThisTurnForEffect` to the source if `sourceIsStillThisPermanent`.
+- The heuristic's combat rule for a graveyard-exile offer (§7, owner decision 3).
+- Card tests, and oracle fixtures for the two oracle IDs.
+- The `unless-any-player-pays` row update (`Waiting`, `Missing`, `EngineNotes`), and the two cards named as the first users in the `assigns-no-combat-damage` row's notes.
+
 **Acceptance (tests):**
 - Rats attack, an opponent exiles a card, and the Rats deal no combat damage this turn. With nobody paying, they deal 2.
 - The trigger fires on blocking too.
@@ -223,41 +276,92 @@ Each slice is one PR into `develop`, independently shippable, in this order unle
 
 ### Slice 4 — `feat(server): one any-player offer for each object, paid in life` (tier:2-standard)
 
-**Scope:** new `game/any_player_pays_each.go` (`AnyPlayerPaysForEach`, `QueueAnyPlayerPaysForEachForEffect`, the per-player link builder, the payment, `OnUnsaved`), `AnyPlayerOffer.EachLife` (`any_player_pays.go`, `cloneAnyPlayerOffer`), `testdata/snapshot_shape/v8.txt`, `protocol/view.go` (`AnyPlayerOfferView.EachLife`, populated on a `choose_cards` too; `ChooseSuggested` populated for a `choose_cards` that carries `AnyPlayerOffer`, which today the view does only for proliferate and `entry_choose_permanents`), `legal/choices.go` (`cardSetPickPool` for an offer link, `withSuggestedFirst` for it as for proliferate, labels), `cards/effects` (`AnyPlayerPaysForEach`), `docs/protocol.md`. No card, client or heuristic change beyond what keeps the build green.
+**Scope:**
+- New `game/any_player_pays_each.go`: `AnyPlayerPaysForEach`, `QueueAnyPlayerPaysForEachForEffect`, the legs, the payment phase and `OnUnsaved`.
+- `game/ordered_permanent_choices.go` and `chained_choice.go`: the three unexported leg fields of §2 (the offer, the suggested-unchosen-own flag, and the `Declined` update) copied onto each queued prompt.
+- `AnyPlayerOffer.EachLife` (`any_player_pays.go`, `cloneAnyPlayerOffer`), and `testdata/snapshot_shape/v8.txt`.
+- `protocol/view.go`:
+  - `AnyPlayerOfferView.EachLife`, and `AnyPlayerOffer` populated on a `choose_cards` too.
+  - `ChooseSuggested` populated for a `choose_cards` that carries `AnyPlayerOffer`. Today the view does this only for proliferate and `entry_choose_permanents`.
+  - `EarlierChoices`, which is already populated from the frame.
+- `legal/choices.go`: `cardSetPickPool` for an offer leg (§7), `withSuggestedFirst` for it as for proliferate, and the labels.
+- `cards/effects`: `AnyPlayerPaysForEach`.
+- `docs/protocol.md`.
+
+No card, client or heuristic change beyond what keeps the build green.
 **Acceptance (tests):**
-- With four players, the order is APNAP from the active player.
-- Each link's `Cards` excludes objects saved earlier, and `Max` is `min(unsaved, life/EachLife)`. A player at 0 life, or one who can't lose life (CR 119.8), is not asked and is logged as declining.
-- Saving k objects makes k separate 1-life payments (k life-loss events).
-- `EarlierChoices` on a later link lists the earlier saves.
-- `OnUnsaved` gets exactly the unsaved objects that are still the same objects, and runs once.
-- A chooser who leaves mid-prompt is not replaced (no reassignment, `FromPlayer == Chooser`): the next player is asked.
-- The link blocks the table, and a standing answer never answers it.
-- The game is not restorable while a link is open.
+- With four players, the legs run in APNAP order from the active player.
+- Each leg offers every land still there, **including** ones earlier players chose. `Max` is `min(lands, life/EachLife)`.
+- A player at 0 life, or one who can't lose life (CR 119.8), gets no leg and is logged as declining.
+- No life is paid until the last leg is answered.
+- Then each player pays once per land they chose, as separate 1-life payments: k payments make k life-loss events.
+- Two players who choose the same land both pay, and the land is saved once.
+- `EarlierChoices` on a later leg lists each earlier player's choices in APNAP order, an empty list included. `AnyPlayerOffer.Declined` lists those who chose nothing.
+- `ChooseSuggested` is the chooser's own lands that no earlier player chose, capped at `Max`.
+- `OnUnsaved` gets exactly the lands nobody paid for that are still the same objects, and runs once.
+- A chooser who leaves mid-prompt is not replaced (no reassignment, since `FromPlayer == Chooser`): they pay nothing, and the next player is asked.
+- A land whose controller leaves during the picks is gone from later legs and from the payments.
+- The leg blocks the table, and a standing answer never answers it. The game is not restorable while a leg is open.
 - `TestClosureFieldsReachableFromGame` is unchanged. The snapshot drift test includes `eachLife`.
 **Depends on:** nothing.
 
 ### Slice 5 — `feat(client): show and answer a per-land any-player offer` (tier:2-standard)
 
-**Scope:** `client/src/lib/components/board/ChoicePromptModal.svelte` (the `choose_cards` modal with `any_player_offer`: header lines, preselected `choose_suggested`, running life price), `client/src/lib/choiceDock.ts` (`anyPlayerOfferRequest` and `anyPlayerWaiting` for a `choose_cards` link), `dockHint.ts`, `protocol.ts` types, `labels.ts`, and `aiseat/heuristic` (the `choose_cards` branch that saves the bot's own lands down to `phyrexianLifeFloor`).
+**Scope:**
+- `client/src/lib/components/board/ChoicePromptModal.svelte`, the `choose_cards` modal when `any_player_offer` is set:
+  - the whose-effect and who-is-next header;
+  - per-land badges from `earlier_choices` naming every earlier player paying for that land;
+  - the summary line of earlier choices;
+  - the "you'd both pay" warning on a badged land the viewer selects;
+  - `choose_suggested` preselected;
+  - the running price ("Pay 3 life for 3 lands").
+- `client/src/lib/choiceDock.ts`: `anyPlayerOfferRequest` and `anyPlayerWaiting` for a `choose_cards` leg, so the other seats' read-only line includes the choices so far.
+- `dockHint.ts`, the `protocol.ts` types and `labels.ts`.
+- `aiseat/heuristic`: the `choose_cards` branch (§7) that pays for the bot's own lands no earlier player chose, down to `phyrexianLifeFloor`.
+
 **Acceptance (tests):**
-- `choiceDock.test.ts` / `dockHint.test.ts`: the chooser's header and every other seat's read-only line.
-- A render test: the suggested lands are preselected, and the price updates as lands are toggled.
-- The heuristic saves its own most valuable lands, never an opponent's land, and stops at the life floor.
+- `choiceDock.test.ts` / `dockHint.test.ts`: the chooser's header, and every other seat's read-only line with the choices so far.
+- A render test (the pattern is `lilianaEarlierChoices.render.test.ts`):
+  - a land chosen by Alice shows "Alice pays";
+  - selecting it shows the double-payment warning;
+  - the suggested lands are preselected;
+  - the price updates as lands are toggled.
+- The heuristic:
+  - pays for its own most valuable lands that no earlier player chose;
+  - never pays for a land an earlier player already pays for;
+  - never pays for an opponent's land;
+  - stops at the life floor.
 **Depends on:** slice 4.
 
 ### Slice 6 — `feat(server): cleansing` (tier:1-mechanical)
 
-**Scope:** `cards/effects/cleansing.go` (an `AnyPlayerPaysForEach` over every land on the battlefield, `EachLife: 1`, `OnUnsaved` destroying them with `DestroyPermanentsThenForEffect`), card tests, the oracle fixture, and the registry row update.
+**Scope:**
+- `cards/effects/cleansing.go`: an `AnyPlayerPaysForEach` over every land on the battlefield, with `EachLife: 1`, and `OnUnsaved` destroying the unsaved lands with `DestroyPermanentsThenForEffect`.
+- Card tests and the oracle fixture.
+- The `unless-any-player-pays` registry row update.
+
 **Acceptance (tests):**
 - With no one paying, every land is destroyed at once (one dies batch).
-- A land saved by any player survives, and the payer loses 1 life per land.
+- A land any player paid for survives. Each payer loses 1 life per land they chose.
+- When two players chose the same land, both lose the life and the land survives.
 - An indestructible land survives anyway.
 - The card is `CompletenessFull`.
 **Depends on:** slices 4 and 5.
 
 ### Slice 7 — `feat(server): either payment for any-player offers` (tier:2-standard)
 
-**Scope:** `game/pay_unless_action.go` (`PayActionEither`, `PayAction.Either`, payability and validation per branch), `game/pending_choice.go` (`resolvePayUnless` with an option, `ResolvePayUnlessWithOption`, `answerPayUnlessLocked` paying the chosen branch), `actions/actions.go` (`pay_option` routing), `protocol` (`PendingChoiceView.PayEither`), `legal/choices.go` (one move per branch), `aiseat/heuristic` (damage above the floor, else the cheapest two lands, else decline), the client either buttons, `cards/effects` (`EitherPayment`), and `docs/protocol.md`. Engine tests use a test-only offer, since no catalog card uses it yet.
+**Scope:**
+- `game/pay_unless_action.go`: `PayActionEither`, `PayAction.Either`, and payability and validation per branch.
+- `game/pending_choice.go`: `resolvePayUnless` with an option, `ResolvePayUnlessWithOption`, and `answerPayUnlessLocked` paying the chosen branch.
+- `actions/actions.go`: `pay_option` routing.
+- `protocol`: `PendingChoiceView.PayEither`.
+- `legal/choices.go`: one move per branch.
+- `aiseat/heuristic`: take the damage above the floor, else sacrifice the cheapest two lands, else decline.
+- The client's either buttons.
+- `cards/effects`: `EitherPayment`.
+- `docs/protocol.md`.
+
+Engine tests use a test-only offer, since no catalog card uses it until slice 8.
 **Acceptance (tests):**
 - A `pay_option` out of range, a `pay_option` on a non-either prompt, and `apply: true` without `pay_option` are each refused with the prompt kept.
 - The sacrifice branch with fewer than two lands is not offered, and the damage branch always is.
@@ -268,7 +372,14 @@ Each slice is one PR into `develop`, independently shippable, in this order unle
 
 ### Slice 8 — `feat(server): worms of the earth` (tier:1-mechanical)
 
-**Scope:** `cards/effects/worms_of_the_earth.go`: the land-play prohibition (`land_play_restriction.go`'s existing static), the #1985 "lands can't enter" static, and the upkeep trigger `AnyPlayerPays{Pay: EitherPayment(SacrificePayment(2, "land", "lands", QueryType("land")), DamagePayment(5)), OnPaid: destroy this enchantment}`. Card tests, the oracle fixture, and the registry row's final update (the row turns Implemented apart from the recorded out-of-scope cards).
+**Scope:**
+- `cards/effects/worms_of_the_earth.go`:
+  - the land-play prohibition (the existing static in `land_play_restriction.go`);
+  - the #1985 "lands can't enter" static;
+  - the upkeep trigger `AnyPlayerPays{Pay: EitherPayment(SacrificePayment(2, "land", "lands", QueryType("land")), DamagePayment(5)), OnPaid: destroy this enchantment}`.
+- Card tests and the oracle fixture.
+- The registry row's final update: the row turns Implemented, apart from the recorded out-of-scope cards.
+
 **Acceptance (tests):**
 - At each player's upkeep the offer goes round in APNAP order.
 - Either payment destroys Worms, and with no payer Worms stays.
@@ -276,25 +387,17 @@ Each slice is one PR into `develop`, independently shippable, in this order unle
 - The card is `CompletenessFull`.
 **Depends on:** slice 7 and #1985.
 
-## Open owner questions
+## Owner decisions (answered 2026-10-14)
 
-1. **Cleansing's shape (§2).**
-   - (a) **Recommended:** one `choose_cards` per player in APNAP order. Each player picks any of the lands not yet saved and pays 1 life each as they answer. Unsaved lands are destroyed together at the end. This is ADR 0150 Q4 option (b), and it keeps ADR 0150 decision 1's "no second payment" simplification.
-   - (b) Literal CR 101.4: every player picks first, then everyone pays at once, so two players may pay for the same land.
-   - (c) One pay-unless per land around the table (rejected by ADR 0150 owner decision 4 as unplayable).
-2. **Saving k lands: k payments of 1 life, or one payment of k life (§2)?**
-   - (a) **Recommended:** k separate payments. The card prints a 1-life payment per land, and "whenever you lose life" triggers see each one.
-   - (b) One payment of k life. That's one event, which is simpler to log, but it under-triggers life-loss watchers.
-3. **When does a bot pay against Carrion Rats or Carrion Wurm (§7)?**
-   - (a) **Recommended:** only when the creature is in combat with it (attacking it, its planeswalker or battle, or blocking or blocked by its creature). Otherwise its graveyard buys it nothing.
-   - (b) Like any tax (ADR 0150's default): any opponent asked first pays, even one the creature isn't fighting. It spends that bot's graveyard for another player's benefit.
-4. **"Assigns no combat damage this turn" beyond the Carrion cards (§4)?**
-   - (a) **Recommended:** ship it as the general `ModAssignsNoCombatDamage` with slice 1, and file a follow-up seam issue plus a registry row (`assigns-no-combat-damage`) listing the 24 other Commander-legal cards that print it (Ophidian, Laccolith Rig, Goblin Vandal …) for card work.
-   - (b) Ship it, but add no row. The other cards are found when someone asks for them.
-   - (c) Add the other cards to this ADR's delivery now. That's more scope for one seam.
-5. **Build the either payment before Worms of the Earth can ship (§5)?**
-   - (a) **Recommended:** yes, as slice 7, so that once #1985 lands Worms is a one-file card (slice 8). The slice is small and is tested against a test-only offer.
-   - (b) No. Defer slice 7 until #1985 ships, so no code lands without a catalog consumer.
-6. **Cleansing's move list for bots and the MCP seat (§7)?**
-   - (a) **Recommended:** "save nothing", the suggested set (your own lands, best first, capped by life), then budgeted combinations. That keeps the list short. An MCP agent can't pick an arbitrary subset.
-   - (b) Add every prefix of your own lands (k = 1…cap) as separate moves, so a seat can save "my best k" for any k. This adds up to 40 moves per prompt.
+The owner answered all six questions on 2026-10-14. The answers are binding and are written into the decisions above. The options not chosen are kept here.
+
+1. **How Cleansing asks (§2).** **Decision: (b), literal CR 101.4.** Every player, in APNAP order, picks which lands they'll pay for, knowing the earlier picks. Then all the payments happen. Two players may pay for the same land, and each such payment is still made. A land is saved if anyone paid for it. Not chosen:
+   - (a) The batched pick, where lands already saved aren't offered again and each player pays as they answer. This was the recommendation.
+   - (c) One pay-unless per land around the table.
+2. **Saving k lands (§2).** **Decision: (a), k separate 1-life payments**, as recommended. Not chosen: (b) one payment of k life.
+3. **When a bot pays against Carrion Rats or Carrion Wurm (§7).** **Decision: (a)**, as recommended. It pays only when the creature is fighting it: attacking it, its planeswalker or battle, or blocking or blocked by its creature. Not chosen: (b) paying like any tax.
+4. **"Assigns no combat damage" beyond the Carrion cards (§4).** **Decision: (a)**, as recommended. The general `ModAssignsNoCombatDamage` ships in slice 1, together with a registry row (`assigns-no-combat-damage`). The follow-up seam issue [#3531](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3531) lists the 24 cards. Not chosen:
+   - (b) no row;
+   - (c) adding those cards to this ADR now.
+5. **Building the either payment before Worms can ship (§5).** **Decision: (a)**, as recommended. It's built now as slice 7, and Worms (slice 8) waits on #1985. Not chosen: (b) waiting for #1985.
+6. **Cleansing's move list for bots and the MCP seat (§7).** **Decision: (a)**, as recommended: "pay for none", then the suggested set, then a capped set of other combinations. Under decision 1, the suggested set and the bot's pick leave out lands an earlier player already chose to pay for, so a bot doesn't pay twice for nothing. Not chosen: (b) every prefix of the seat's own lands as extra moves.
