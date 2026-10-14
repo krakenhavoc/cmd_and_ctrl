@@ -224,7 +224,7 @@ func TestMulliganWindow(t *testing.T) {
 		if countKind(moves, legal.KindMulligan) != 2 {
 			t.Fatalf("%s: want keep + mulligan, got %v", p.Name, labels(moves))
 		}
-		// ADR 0166: a two-player game has no free mulligan (CR 103.5c),
+		// ADR 0168: a two-player game has no free mulligan (CR 103.5c),
 		// so the first already costs a card at keep.
 		if !hasLabel(moves, "Mulligan (draw 7, then put 1 on the bottom)") {
 			t.Errorf("%s: first mulligan should cost one card: %v", p.Name, labels(moves))

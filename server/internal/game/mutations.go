@@ -9954,7 +9954,7 @@ func (g *Game) PassTurn() error {
 // and draws a new hand.
 //
 // Inside the opening-hand window it is the London mulligan (CR 103.5,
-// ADR 0166): the new hand is always OpeningHandSize, newHandSize is
+// ADR 0168): the new hand is always OpeningHandSize, newHandSize is
 // ignored, and the cost is paid at KeepHand, which puts the counted
 // mulligans' worth of cards on the bottom. Once the counted mulligans
 // reach the starting hand size it is refused with ErrNoMoreMulligans.
@@ -9986,7 +9986,7 @@ func (g *Game) Mulligan(playerID uuid.UUID, newHandSize int) error {
 		return ErrNotYourMulligan
 	}
 	if g.MulligansOpen {
-		// ADR 0166 decision 1: the window's mulligan draws seven, and
+		// ADR 0168 decision 1: the window's mulligan draws seven, and
 		// stops where the opening hand would be zero cards.
 		if !g.MulliganAllowedLocked(p) {
 			return ErrNoMoreMulligans
@@ -10060,7 +10060,7 @@ func (g *Game) KeepHand(playerID uuid.UUID) error {
 	p.HandKept = true
 	p.MulliganDecided = true
 	if g.MulligansOpen {
-		// ADR 0166 decision 2: the London mulligan's cost, paid now.
+		// ADR 0168 decision 2: the London mulligan's cost, paid now.
 		g.queueMulliganBottomLocked(p, g.MulliganBottomCountLocked(p))
 	}
 	// Close the window once every live seat has kept (and bottomed);

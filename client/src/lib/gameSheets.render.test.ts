@@ -267,7 +267,7 @@ describe("the opening hand, as a dock sheet (decision 2)", () => {
     const list = dlg.querySelector('[role="list"][aria-label="your opening hand"]')!;
     expect(list).not.toBeNull();
     expect(list.querySelectorAll('[role="listitem"]')).toHaveLength(7);
-    // ADR 0166: the London mulligan says what the next mulligan costs.
+    // ADR 0168: the London mulligan says what the next mulligan costs.
     expect(dlg.textContent).toContain("Mulligan: shuffle this hand away, draw 7");
     expect(dlg.querySelector(".sheet-title")?.textContent?.trim()).toBe("Your opening hand");
     // The old centred dialog and its scrim are gone.

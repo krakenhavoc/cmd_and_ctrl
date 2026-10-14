@@ -8,7 +8,7 @@ import (
 )
 
 // mulligan_london_test.go — the London mulligan (CR 103.5, CR 103.5c,
-// ADR 0166): a mulligan draws seven, a keep puts the counted mulligans'
+// ADR 0168): a mulligan draws seven, a keep puts the counted mulligans'
 // worth of cards on the bottom in the order the seat chooses, and the
 // first mulligan of a multiplayer game is free.
 

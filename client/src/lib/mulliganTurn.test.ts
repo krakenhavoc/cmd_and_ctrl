@@ -7,7 +7,7 @@ import {
   nextMulliganBottom,
 } from "./mulliganTurn";
 
-describe("the London mulligan's cost (ADR 0166)", () => {
+describe("the London mulligan's cost (ADR 0168)", () => {
   it("says what a keep costs, and nothing when it is free", () => {
     expect(keepCostText(0)).toBeNull();
     expect(keepCostText(1)).toBe("Keep: put 1 card from this hand on the bottom of your library.");

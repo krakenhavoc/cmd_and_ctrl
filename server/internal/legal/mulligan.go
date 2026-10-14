@@ -13,7 +13,7 @@ type mulliganParams struct {
 }
 
 // mulliganMoves enumerates the opening-hand window: keep, or
-// mulligan. The London mulligan (CR 103.5, ADR 0166): a mulligan
+// mulligan. The London mulligan (CR 103.5, ADR 0168): a mulligan
 // draws seven, and a keep puts the counted mulligans' worth of cards
 // on the bottom, the first mulligan of a multiplayer game free
 // (CR 103.5c). The labels say what each costs. The mulligan's

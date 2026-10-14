@@ -2125,7 +2125,7 @@ export interface PlayerView {
   // mulligan. Mulligan decisions go in turn order, starting player
   // first. Omitempty: absent on every other seat.
   mulligan_turn?: boolean;
-  // ADR 0166: how many cards this seat puts on the bottom of its library
+  // ADR 0168: how many cards this seat puts on the bottom of its library
   // if it keeps now (the London mulligan, CR 103.5). Omitempty: absent
   // when zero, outside the window, and once the seat has kept.
   mulligan_bottom?: number;

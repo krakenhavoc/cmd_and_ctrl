@@ -1811,7 +1811,7 @@
 
   function mulliganDecide(): void {
     if (!viewerID) return;
-    // The London mulligan (ADR 0166): the server draws seven inside the
+    // The London mulligan (ADR 0168): the server draws seven inside the
     // window whatever hand_size says, and asks for the cards to bottom
     // when this seat keeps.
     client.sendAction("mulligan", viewerID, { hand_size: 7 });
@@ -2812,7 +2812,7 @@
           <!-- What each button does, under the fan, as Arena writes the
                mulligan's cost under its button. -->
           <div class="mulligan-copy mulligan-cost">
-            <!-- ADR 0166: the London mulligan. A keep bottoms
+            <!-- ADR 0168: the London mulligan. A keep bottoms
                  mulligan_bottom cards; the dock asks which, and in what
                  order, once the seat has kept. -->
             {#if keepCostText(viewerSeat?.mulligan_bottom ?? 0)}

@@ -21,7 +21,7 @@ export function mulliganWaitingText(
   return who ? `Waiting for ${who.name} to decide` : null;
 }
 
-// The London mulligan (CR 103.5, ADR 0166): a mulligan draws seven, and
+// The London mulligan (CR 103.5, ADR 0168): a mulligan draws seven, and
 // a keep puts `mulligan_bottom` cards on the bottom of the library. The
 // first mulligan of a game that began with more than two players is free
 // (CR 103.5c), so it adds nothing to the count.

@@ -67,7 +67,7 @@ test.describe("opening hand", () => {
       aliceDialog.getByRole("list", { name: "your opening hand" }),
     ).toBeVisible();
     await expect(aliceDialog.getByRole("listitem")).toHaveCount(7);
-    // ADR 0166: two players, so no free mulligan (CR 103.5c): the first
+    // ADR 0168: two players, so no free mulligan (CR 103.5c): the first
     // one already costs a card.
     await expect(aliceDialog).toContainText(
       "Mulligan: shuffle this hand away, draw 7, then put 1 card on the bottom when you keep.",
@@ -107,7 +107,7 @@ test.describe("opening hand", () => {
     await expect(rollCall.getByText("deciding…")).toHaveCount(1);
     await expect(rollCall.getByText("waiting")).toHaveCount(1);
 
-    // ---- The first seat mulligans. The London mulligan (ADR 0166):
+    // ---- The first seat mulligans. The London mulligan (ADR 0168):
     //      a new 7, and a keep will put one on the bottom. ----
     await firstDialog.getByRole("button", { name: "Mulligan" }).click();
     await expect(firstDialog).toContainText(
