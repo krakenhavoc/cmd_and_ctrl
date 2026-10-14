@@ -771,6 +771,19 @@ type tapSource struct {
 	// the CR 601.2f pass (#2455): a Signet's {1}. Zero on every source
 	// the ordinary solver sees; only gatherCostedSources sets it.
 	Cost ParsedCost
+
+	// HandDemand is how many DISTINCT colours this candidate can make
+	// that a spell still in the controller's hand (or the command zone)
+	// prints in its cost (#3604, ADR 0136 amendment 2026-10-14). A
+	// Forest is 1 while a green spell waits in hand and 0 otherwise;
+	// Birds of Paradise is 2 when the hand wants green and red.
+	//
+	// An ORDERING key of the generic recruit and nothing else: it sorts a
+	// source of a wanted colour behind one of an unwanted colour, so a
+	// generic {1} is paid by the Island and not by the Forest the next
+	// green spell needs. It never drops a candidate, so what is payable
+	// is exactly what was payable before it existed.
+	HandDemand int
 }
 
 // lastResort is the tier #1215 opened for the sources a plan should
@@ -798,6 +811,14 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 // the hand: a Spirit Guide owes no mana. Each costed candidate carries
 // its priced cost (tapSource.Cost).
 func gatherSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool, prefer ManaSourceKinds, costed bool) []tapSource {
+	out := gatherSourcesRaw(g, controller, excluded, prefer, costed)
+	stampHandDemand(g, controller, out)
+	return out
+}
+
+// gatherSourcesRaw is gatherSources before #3604 stamps each candidate
+// with the colours the rest of the hand needs.
+func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool, prefer ManaSourceKinds, costed bool) []tapSource {
 	if g.Battlefield == nil {
 		return nil
 	}
@@ -2026,32 +2047,142 @@ func recruitGeneric(
 	deficit := need - spare
 	// Recruit additional sources, preferring colorless producers.
 	candidateOrder := orderUnusedByGenericPreference(sources, used)
-	for _, i := range candidateOrder {
-		if used[i] {
-			continue
-		}
+	eligible := func(i int) bool {
 		// #779: same exclusion the coloured pass makes — a colour
 		// candidate whose permanent is already tapped by this plan is
-		// not a second source.
-		if plan.hasCard(sources[i].CardID) {
-			continue
-		}
-		// #2392: the plan's pain budget, as in the coloured pass.
-		if !pain.covers(sources[i]) {
-			continue
-		}
-		pain.spend(sources[i])
-		used[i] = true
-		*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor, DifferentColors: sources[i].DifferentColors, Ref: sources[i].Ref})
-		deficit -= len(sources[i].Slots)
-		if deficit <= 0 {
-			return true
-		}
+		// not a second source. #2392: and the plan's pain budget.
+		return !used[i] && !plan.hasCard(sources[i].CardID) && pain.covers(sources[i])
 	}
-	if deficit > 0 {
-		return false
+	for deficit > 0 {
+		pick := -1
+		for _, i := range candidateOrder {
+			if eligible(i) {
+				pick = i
+				break
+			}
+		}
+		if pick < 0 {
+			return false
+		}
+		// #3604: a source whose output the cost uses in full beats one
+		// that would overshoot, among sources the order cannot tell
+		// apart except by size and colour count (sameGenericGroup). Sol
+		// Ring for a lone {1} floats a {C} nobody asked for; the Island
+		// beside it pays exactly. The first candidate that fits replaces
+		// the first candidate overall, so with no overshoot the pick is
+		// the one the order already named.
+		if len(sources[pick].Slots) > deficit {
+			for _, i := range candidateOrder {
+				if i == pick || !eligible(i) || len(sources[i].Slots) > deficit {
+					continue
+				}
+				if sameGenericGroup(sources[pick], sources[i]) {
+					pick = i
+					break
+				}
+			}
+		}
+		pain.spend(sources[pick])
+		used[pick] = true
+		*plan = append(*plan, plannedTap{CardID: sources[pick].CardID, OneColor: sources[pick].OneColor, DifferentColors: sources[pick].DifferentColors, Ref: sources[pick].Ref})
+		deficit -= len(sources[pick].Slots)
 	}
 	return true
+}
+
+// sameGenericGroup reports whether two candidates differ in nothing the
+// generic recruit ranks above the colour-count tier and the slot count:
+// the wish, the last-resort tiers, the cost tiers, frozen, and the
+// colours the hand still wants (#3604). Inside one group the recruit may
+// swap a source for a better-fitting one; across groups the order stands,
+// so no fit preference can reach for a Treasure to save a Sol Ring's
+// spare mana.
+func sameGenericGroup(a, b tapSource) bool {
+	return a.Wanted == b.Wanted &&
+		a.FreeOncePerTurn == b.FreeOncePerTurn &&
+		a.LeavesHand == b.LeavesHand &&
+		a.lastResort() == b.lastResort() &&
+		a.SacrificesCreature == b.SacrificesCreature &&
+		a.costTier() == b.costTier() &&
+		a.Energy == b.Energy &&
+		a.Pain == b.Pain &&
+		a.Frozen == b.Frozen &&
+		a.HandDemand == b.HandDemand
+}
+
+// handColorDemand counts, per colour, the coloured symbols printed in
+// the costs of the cards in the controller's hand and command zone
+// (#3604). A hybrid symbol counts for each colour it prints. Printed
+// cost only: it is a hint for tie-breaking, not a price. Nil when the
+// hand wants no colour.
+//
+// The spell being cast is still in the hand when the planner runs, so
+// its own colours count too. That is harmless: the coloured pass has
+// already reserved its coloured sources, and a spare source of the same
+// colour is one the next copy of the colour would want anyway.
+func handColorDemand(g *Game, controller uuid.UUID) map[string]int {
+	p := g.playerByIDLocked(controller)
+	if p == nil {
+		return nil
+	}
+	var demand map[string]int
+	count := func(z *Zone) {
+		if z == nil {
+			return
+		}
+		for _, c := range z.Cards {
+			if c.ManaCost == "" {
+				continue
+			}
+			parsed, err := ParseCost(c.ManaCost)
+			if err != nil {
+				continue
+			}
+			for _, r := range parsed.Required {
+				for _, opt := range r.Options {
+					if len(opt) == 1 && strings.Contains("WUBRG", opt) {
+						if demand == nil {
+							demand = map[string]int{}
+						}
+						demand[opt]++
+					}
+				}
+			}
+		}
+	}
+	count(p.Hand)
+	count(p.Command)
+	return demand
+}
+
+// stampHandDemand sets each candidate's HandDemand from the controller's
+// hand (#3604). Cheap: the hand is a handful of cards and the parse is
+// a string scan.
+func stampHandDemand(g *Game, controller uuid.UUID, sources []tapSource) {
+	if len(sources) == 0 {
+		return
+	}
+	demand := handColorDemand(g, controller)
+	if demand == nil {
+		return
+	}
+	for i := range sources {
+		var seen [5]bool
+		n := 0
+		for _, slot := range sources[i].Slots {
+			for _, opt := range slot.Options {
+				if demand[opt] == 0 {
+					continue
+				}
+				k := strings.Index("WUBRG", opt)
+				if k >= 0 && !seen[k] {
+					seen[k] = true
+					n++
+				}
+			}
+		}
+		sources[i].HandDemand = n
+	}
 }
 
 // orderUnusedByGenericPreference returns indices into `sources`
@@ -2095,6 +2226,7 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 		pain       int
 		energy     int
 		costTier   int
+		demand     int // #3604: distinct colours the hand still wants
 		tier       int // 0 = colorless-only, else how many colours (#2278)
 		slotCnt    int
 	}
@@ -2115,6 +2247,7 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 			pain:       s.Pain,
 			energy:     s.Energy,
 			costTier:   s.costTier(),
+			demand:     s.HandDemand,
 			tier:       t,
 			slotCnt:    len(s.Slots),
 		})
@@ -2188,6 +2321,13 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 		}
 		if out[a].frozen != out[b].frozen {
 			return !out[a].frozen
+		}
+		// #3604: a source of a colour the rest of the hand still needs
+		// comes after one of a colour it does not, above the colour-count
+		// tier. Omnath paying Skullclamp's {1} with a Forest while a
+		// second green spell waits is the case; a Mountain pays instead.
+		if out[a].demand != out[b].demand {
+			return out[a].demand < out[b].demand
 		}
 		if out[a].tier != out[b].tier {
 			return out[a].tier < out[b].tier
