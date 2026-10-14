@@ -3065,6 +3065,16 @@ var items = []Item{
 		EngineNotes: "**Shipped** (ADR 0166): `Game.PlayerControls` records who controls whom (`game/player_control.go`), and `ControllerOfPlayerLocked` is the one question (CR 723.5). Prompts keep their real chooser; `actions.routeControlledPlayer` re-addresses a controller's action or `resolve_choice` to the controlled seat (refusing the controlled player everything but `concede`, CR 723.6), the view shows the prompt to the controller (`on_behalf_of`) and `FilterViewFor` shows a controller what the controlled player can see (CR 723.4), and `legal` offers the controlled seat's prompts to the controller and nothing to the controlled seat. Word of Command's forced play is CR 723.2's limited form: a look-only, keep-the-card revealed-hand pick, then a mid-resolution `controlled_play` prompt answered by a `cast_spell` naming it (CR 608.2g: the type's timing is lifted, nobody gets priority) with mana from the controlled player's lands only (`Game.LandManaOnlyLocked`, read by the auto-tapper and `ActivateManaAbility`), or by \"it can't be played\", which a probe `legal` registers accepts only when true. Control applies again while the forced spell resolves. Still missing: CR 723.1's turn-long control (Emrakul's \"you gain control of target opponent during that player's next turn\"), which needs the client to drive a second seat's whole turn. The rest of Emrakul (its discount, flying, trample, protection from instants) exists.",
 	},
 	{
+		Slug: "damage-life-loss-replacement", Name: "Changing the life that damage costs", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Effects that change how much life a player loses, including the loss that damage causes, such as Bloodletter of Aclazotz's \"if an opponent would lose life during your turn, they lose twice that much life instead\".",
+		Missing:     "Life lost to damage can't be doubled yet, so these cards can't be added.",
+		Rules:       []string{"120.3a", "119.4", "614.1"},
+		Issue:       3388,
+		Tracked:     "#3388 (deck request #3248)",
+		Waiting:     []string{"Bloodletter of Aclazotz"},
+		EngineNotes: "damage to a player reduces life directly in `applyResolvedDamageToPlayerLocked` (`game/damage_tail.go`) once the damage replacements have settled (CR 120.3a), and only fixed rules read the life a damage event costs (infect, a locked life total, the Angel's Grace floor). Non-damage loss and life payments already run the CR 614 `RepEventLife` window, so that half is one replacement; the damage half needs a decision on where the doubling lives, its CR 616 ordering against the floor and the lock, and a persisted way to record a loss larger than the damage for `DamageLifeLoss()` readers.",
+	},
+	{
 		Slug: "end-the-turn", Name: "Ending the turn", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Effects that end the turn at once, exiling everything on the stack and skipping to the cleanup step, such as Sundial of the Infinite's.",
 		Rules:       []string{"724.1", "724.1a", "724.1b", "724.1d", "724.1f"},
