@@ -58,6 +58,7 @@
   import StackLaneHost from "./StackLaneHost.svelte";
   import StackLinger from "./StackLinger.svelte";
   import FieldMotion from "./FieldMotion.svelte";
+  import { provideLifeCauses } from "../../lifeCause";
   import {
     DEFAULT_STACK_STYLE,
     isStackStyle,
@@ -330,6 +331,10 @@
   // that change together prime that same frame.
   const combatCues = provideCombatCues();
   onDestroy(() => combatCues.dispose());
+
+  // #3379: each avatar's life popup names what moved the total, from
+  // this frame's log and the cards this viewer can see.
+  provideLifeCauses(() => view);
   $effect(() => {
     void beatsPrimeKey;
     untrack(() => combatCues.requestReprime());
