@@ -272,6 +272,17 @@ jobs:
         # and lint, vet, test and build all use one toolchain.
         run: make lint
 
+      # Known vulnerabilities the server can reach (#3335), in this
+      # job's Go standard library and in go.mod's modules. setup-go's
+      # "1.27" is the newest patch release, so a standard-library
+      # finding usually means a patch release came out after the
+      # runner's cached toolchain did, and a re-run fixes it. A module
+      # finding needs a `go get` of the fixed version.
+      # server/Makefile pins the version.
+      - name: Server — govulncheck
+        working-directory: server
+        run: make vulncheck
+
   # Sharded (#2766). One `go test ./...` lasted as long as its slowest
   # package (internal/game, ~8.5 min under -race on a 4-core runner),
   # ~14 min in all. Each shard is now its own job on its own runner,
