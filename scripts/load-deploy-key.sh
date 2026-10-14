@@ -17,14 +17,13 @@
 # last step), and only a run on `develop` or `main` can read it, because
 # of each environment's deployment branch policy.
 #
-# DEPLOY_SSH_KEY unset: nothing changes. ssh keeps using the runner's
-# own key, with a ::warning:: naming the secret. That is what lets this
-# merge before the owner has created the secrets. Runbook:
+# DEPLOY_SSH_KEY unset, or not a usable private key: the job fails
+# before any ssh (ADR 0181). It used to fall back to the runner's own
+# key with a ::warning::, which let #3335 merge before the secrets
+# existed. They exist now, so a fallback could only ever mean a job that
+# lost its environment, or a runner that still holds a key it should
+# not, and both are worth a red run. Runbook:
 # docs/environments.md#runners-and-credentials.
-#
-# Set but not a usable private key: the job fails before any ssh,
-# rather than falling back to the runner's key, which would hide the
-# mistake.
 #
 # With the key loaded, ssh offers ONLY this key (IdentitiesOnly=yes,
 # IdentityAgent=none): a stale key left in the runner's ~/.ssh or agent
@@ -38,8 +37,8 @@ set -euo pipefail
 key="${DEPLOY_SSH_KEY:-}"
 
 if [ -z "${key}" ]; then
-  echo "::warning::Environment secret CMDCTRL_DEPLOY_SSH_KEY is not set, so this job logs in with the self-hosted runner's own SSH key, which every job on that runner can read. Set it in this job's environment (dev or prod); see docs/environments.md#runners-and-credentials."
-  exit 0
+  echo "::error::Environment secret CMDCTRL_DEPLOY_SSH_KEY is empty. A deploy logs in only with its environment's key, never the runner's own. Check that the job names its environment (dev or prod), that the run is on that environment's branch, and that the secret is set there; see docs/environments.md#runners-and-credentials."
+  exit 1
 fi
 
 key_file="${RUNNER_TEMP}/deploy_ssh_key"

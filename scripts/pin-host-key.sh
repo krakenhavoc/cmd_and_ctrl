@@ -17,8 +17,10 @@
 # set after checking the fingerprint on the VM's console. Runbook:
 # docs/environments.md#ssh-host-keys.
 #
-# HOST_KEY unset: falls back to the runner's own known_hosts with
-# accept-new, and says so with a ::warning::.
+# HOST_KEY unset: the job fails (ADR 0181). It used to fall back to the
+# runner's own known_hosts with accept-new and a ::warning::, which
+# trusts whatever answers first; both hosts are pinned now, so the
+# fallback could only hide a deleted variable.
 #
 # Writes SSH_OPTS to $GITHUB_ENV, so every later step reads it. A job
 # must NOT also declare SSH_OPTS in its `env:` — a job-level value wins
@@ -34,9 +36,8 @@ host_key="${HOST_KEY:-}"
 base="-o ConnectTimeout=10"
 
 if [ -z "${host_key}" ]; then
-  echo "::warning::Repo variable ${key_var} is not set, so ${host}'s SSH host key is trusted from this runner's own ~/.ssh/known_hosts (accept-new). After a VM rebuild that fails with 'REMOTE HOST IDENTIFICATION HAS CHANGED' on every runner. Set ${key_var} to the host's public key; see docs/environments.md#ssh-host-keys."
-  echo "SSH_OPTS=${base} -o StrictHostKeyChecking=accept-new" >> "${GITHUB_ENV}"
-  exit 0
+  echo "::error::Repo variable ${key_var} is not set, so there is no pinned SSH host key for ${host}, and this job will not trust one it has not seen. Set ${key_var} to the host's public key after checking its fingerprint on the VM's console; see docs/environments.md#ssh-host-keys."
+  exit 1
 fi
 
 kh="${RUNNER_TEMP}/known_hosts.${host}"
