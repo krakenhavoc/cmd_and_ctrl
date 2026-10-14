@@ -2077,7 +2077,10 @@ func planDamage(g *game.Game, c *game.PendingChoice) (splitPlan, bool) {
 		pl.cost[i] = 1
 		if b := findBattlefield(g, id); b != nil {
 			if !f.HasDeathtouch {
-				pl.cost[i] = max(b.CurrentToughness()-b.DamageMarked, 1)
+				// #3665, CR 702.19b: lethal counts the damage other
+				// creatures have been assigned to it in this step,
+				// which is held, not marked, until the step is dealt.
+				pl.cost[i] = max(b.CurrentToughness()-b.DamageMarked-g.HeldCombatDamageToForEffect(id), 1)
 			}
 			pl.value[i] = killValue(b, attacker)
 		}

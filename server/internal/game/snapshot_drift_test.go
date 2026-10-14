@@ -248,6 +248,7 @@ var gameFields = plan(
 	// record would let every first-striker deal its damage again in
 	// the regular step.
 	"firstStrikeStepParticipants", carried, "",
+	"heldCombatDamage", dropped, "#3665: a combat damage step's damage held behind its damage_assignment prompts; counted in ContinuationCensus.ChoiceResumeFrames, so a table holding it is not a restore point; Clone shares it (copy on write) for undo",
 	"lastKnownBattlefield", carried, "",
 	"lastKnownTriggerIdentity", carried, "",
 	"lastKnownCounters", carried, "",

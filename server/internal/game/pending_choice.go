@@ -3165,7 +3165,9 @@ func (g *Game) ResolveDamageAssignment(
 			case blk == nil:
 				lethal = 0
 			case !frame.HasDeathtouch:
-				lethal = max(blk.CurrentToughness()-blk.DamageMarked, 0)
+				// #3665: and the damage other creatures have been
+				// assigned to it in this step, held until it is dealt.
+				lethal = max(blk.CurrentToughness()-blk.DamageMarked-g.heldCombatDamageToLocked(blk.InstanceID), 0)
 				if lethal == 0 {
 					break
 				}
@@ -3178,12 +3180,20 @@ func (g *Game) ResolveDamageAssignment(
 	}
 	g.dequeueChoiceLocked(idx)
 
-	// Apply damage using the frame-cached source keywords: the
-	// attacker may have been destroyed by blocker damage (which
-	// resolved in the same substep before this prompt fires), so
-	// looking up HasKeyword on the attacker at resume time would
-	// miss deathtouch / lifelink. The frame captured those at
-	// queue time.
+	// #3665, CR 510.2: the step this prompt belongs to is holding its
+	// damage. The answer joins it, and the last answer deals the whole
+	// step at once; the state-based actions see all of it together.
+	if g.heldCombatDamage != nil {
+		g.holdDamageAssignmentAnswerLocked(frame, ordered, trampleToPlayer)
+		if g.settleHeldCombatDamageLocked() {
+			g.runStateChecksLocked()
+		}
+		return nil
+	}
+
+	// A prompt with no hold behind it was restored from a snapshot
+	// written before #3665, whose step dealt the rest of its damage
+	// when the prompt was queued: the answer is dealt now, as it was.
 	//
 	// ADR 0108 §7: the assigned damage is one group of the step's
 	// instance, collected while a charged shield is live so the shield
@@ -3193,58 +3203,69 @@ func (g *Game) ResolveDamageAssignment(
 	if g.anyChargedShieldLocked() {
 		prevStage, staged = g.openDamageStageLocked(g.combatDamageInstanceLocked(), true, false)
 	}
+	g.applyDamageAssignmentLocked(frame, ordered, trampleToPlayer)
+	if staged {
+		g.closeDamageStageLocked(prevStage)
+	}
+	g.runStateChecksLocked()
+	return nil
+}
+
+// applyDamageAssignmentLocked deals one answered damage-assignment
+// prompt's division: each share to its blocker (or, for a blocker
+// dividing, to its attacker), and a trampler's excess to what it is
+// attacking.
+//
+// The source keywords come from the frame, which snapshotted them as
+// the prompt was queued: the source may have left the battlefield
+// since (a player leaving the game, or a pre-#3665 step that dealt the
+// blockers' damage first), so looking up HasKeyword on it now would
+// miss deathtouch / lifelink.
+//
+// The caller opens any damage stage and runs the state-based actions.
+//
+// Caller must hold g.mu.
+func (g *Game) applyDamageAssignmentLocked(frame *DamageAssignmentFrame, ordered []DamageAssignmentEntry, trampleToPlayer int) {
 	for _, e := range ordered {
 		if e.Amount <= 0 {
 			continue
 		}
 		g.markCombatDamageFromFrameLocked(e.BlockerID, e.Amount, frame)
 	}
-	if trampleToPlayer > 0 {
-		// Determine the defending player: find the attacker if
-		// still on battlefield; otherwise look at the prompt's
-		// original intent — trample-to-player was only allowed
-		// for a live attacker that had declared a target. Fall
-		// back to any seat that isn't the controller (best-effort).
-		//
-		// S27: the attacker may have been attacking a planeswalker or
-		// a battle, in which case trample overflow goes to THAT, not
-		// to its defending player (CR 702.19b — excess damage is
-		// assigned to the player or permanent the creature is
-		// attacking). So the target id is used as-is and the routing
-		// happens in dealCombatDamageToAttackTargetLocked.
-		var defenderID uuid.UUID
-		if atkCard := findBattlefieldCard(g, frame.AttackerID); atkCard != nil {
-			defenderID = atkCard.AttackingTarget
-		}
-		if defenderID != uuid.Nil && g.classifyAttackTargetLocked(defenderID) != AttackTargetPlayer {
-			g.markCombatDamageFromFrameLocked(defenderID, trampleToPlayer, frame)
-			defenderID = uuid.Nil
-			trampleToPlayer = 0
-		}
-		if trampleToPlayer > 0 && defenderID == uuid.Nil {
-			for _, s := range g.Seats {
-				if s.ID != frame.SourceController {
-					defenderID = s.ID
-					break
-				}
+	if trampleToPlayer <= 0 {
+		return
+	}
+	// Determine the defending player: find the attacker if still on
+	// battlefield; otherwise look at the prompt's original intent —
+	// trample-to-player was only allowed for a live attacker that had
+	// declared a target. Fall back to any seat that isn't the
+	// controller (best-effort).
+	//
+	// S27: the attacker may have been attacking a planeswalker or a
+	// battle, in which case trample overflow goes to THAT, not to its
+	// defending player (CR 702.19b — excess damage is assigned to the
+	// player or permanent the creature is attacking). So the target id
+	// is used as-is and the routing happens in
+	// dealCombatDamageToAttackTargetLocked.
+	var defenderID uuid.UUID
+	if atkCard := findBattlefieldCard(g, frame.AttackerID); atkCard != nil {
+		defenderID = atkCard.AttackingTarget
+	}
+	if defenderID != uuid.Nil && g.classifyAttackTargetLocked(defenderID) != AttackTargetPlayer {
+		g.markCombatDamageFromFrameLocked(defenderID, trampleToPlayer, frame)
+		return
+	}
+	if defenderID == uuid.Nil {
+		for _, s := range g.Seats {
+			if s.ID != frame.SourceController {
+				defenderID = s.ID
+				break
 			}
 		}
-		if defenderID != uuid.Nil {
-			g.markCombatDamageToPlayerFromFrameLocked(defenderID, trampleToPlayer, frame)
-		}
 	}
-	if staged {
-		g.closeDamageStageLocked(prevStage)
+	if defenderID != uuid.Nil {
+		g.markCombatDamageToPlayerFromFrameLocked(defenderID, trampleToPlayer, frame)
 	}
-	// Blockers also deal their power back (simultaneous damage —
-	// CR 510.1d). The attacker loop in assignAndDealCombatDamageLocked
-	// already marked blocker→attacker damage before queuing the
-	// prompt, so we don't re-fire it here.
-	//
-	// Run SBAs so deaths from this assignment land before the next
-	// substep / step advance.
-	g.runStateChecksLocked()
-	return nil
 }
 
 // queueTriggerPromptLocked queues a CR 603.5 yes/no prompt for an

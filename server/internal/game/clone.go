@@ -412,6 +412,9 @@ func (g *Game) cloneLocked() *Game {
 	// window between the two steps that dropped it would let every
 	// first-striker deal its damage a second time in the regular step.
 	out.firstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
+	// #3665: the step's damage held behind its prompts rewinds with
+	// them. Copy on write, so it is shared.
+	out.heldCombatDamage = g.heldCombatDamage
 	if len(g.Listeners) > 0 {
 		out.Listeners = make([]Listener, len(g.Listeners))
 		copy(out.Listeners, g.Listeners)
@@ -1208,6 +1211,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.attacksDeclared = src.attacksDeclared
 	g.combatHadAttackers = src.combatHadAttackers
 	g.firstStrikeStepParticipants = src.firstStrikeStepParticipants
+	g.heldCombatDamage = src.heldCombatDamage
 	g.Listeners = src.Listeners
 	g.PendingChoices = src.PendingChoices
 	g.BuiltinReplacements = src.BuiltinReplacements

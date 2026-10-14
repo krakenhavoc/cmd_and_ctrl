@@ -248,8 +248,10 @@ func TestMultiBlockDividesItsDamageAndTakesBoth(t *testing.T) {
 	}
 	advanceIntoStep(t, g, StepCombatDamage)
 
-	if got := damageOn(g, giant); got != 4 {
-		t.Errorf("blocker has %d damage, want 4 — both attackers' 2", got)
+	// #3665, CR 510.2: the attackers' damage is assigned, and held
+	// with the rest of the step's until the division is answered.
+	if got := damageOn(g, giant); got != 0 {
+		t.Errorf("blocker has %d damage before its division is answered, want 0", got)
 	}
 	var choice *PendingChoice
 	for _, c := range g.PendingChoices {
@@ -283,8 +285,8 @@ func TestMultiBlockDividesItsDamageAndTakesBoth(t *testing.T) {
 	if findBattlefieldCard(g, b) != nil {
 		t.Error("B took lethal 2 and is still on the battlefield")
 	}
-	if findBattlefieldCard(g, giant) == nil {
-		t.Error("the blocker died to 4 damage on 6 toughness")
+	if got := damageOn(g, giant); got != 4 {
+		t.Errorf("blocker has %d damage, want 4 — both attackers' 2", got)
 	}
 }
 
