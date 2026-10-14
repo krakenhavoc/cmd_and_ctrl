@@ -180,7 +180,7 @@ func TestCardsSectionNeverAndCanaries(t *testing.T) {
 		"| A2 | Sol Ring | mana rock or dork | heuristic · esper-control | 2 | 1 | 50% | 1 | 1 | 100% | 80% | no | yes |",
 		"| A3 | Sol Ring | mana rock | heuristic · esper-control | 2 | 1 | 50% | — | — | — | 50% | yes | — |",
 		"| A3 | Viscera Seer | sacrifice outlet | — | 0 | 0 | — | — | — | — | 50% | not offered | — |",
-		"| A3 | Mary Read and Anne Bonny (activate) |",
+		"| A3 | Faithless Looting |",
 		"<details><summary>heuristic · esper-control: 2 cards offered, 1 never</summary>",
 		"| Rhystic Study | cast |  | 5 | 0 | 2 | 0 | **never** |",
 	} {

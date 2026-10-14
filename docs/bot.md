@@ -2381,7 +2381,7 @@ game.
   contestant's `never` cards. Below it, ADR 0126's acceptance-bar cards:
   every mana rock and dork (A2: a repeatable tap mana ability, so not
   Lotus Petal or an Altar), and the six A3 canaries (Sol Ring, Rhystic
-  Study, Mary Read and Anne Bonny's loot, Entomb, Harrow, Viscera Seer),
+  Study, Faithless Looting, Entomb, Harrow, Viscera Seer),
   each with the share of games it was used in and the bar it is held
   to. A canary nobody was dealt says `not offered`. Each A2 row also
   counts the owner's way (#2435), in the `deficit open` columns. These
