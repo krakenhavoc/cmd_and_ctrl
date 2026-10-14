@@ -2822,7 +2822,8 @@
               {mulliganCostText(
                 viewerSeat?.mulligans_taken ?? 0,
                 viewerSeat?.mulligan_bottom ?? 0,
-                seats.length,
+                // CR 103.5c, or the table's house rule (#3387).
+                seats.length > 2 || tableSettings.free_first_mulligan === true,
               )}
             </p>
           </div>

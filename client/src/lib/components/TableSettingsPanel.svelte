@@ -48,7 +48,8 @@
     // is the host or the server admin.
     canManage: boolean;
     // The game's lifecycle state: "lobby" | "active" | "ended". Only
-    // starting life reads it, and only to lock itself. Named
+    // starting life and the free first mulligan read it, and only to
+    // lock themselves. Named
     // `gameState` rather than `state` because a local binding called
     // `state` turns every `$state(...)` rune in this file into a
     // store subscription.
@@ -268,6 +269,29 @@
       Lets the host put cards and tokens straight onto the table — for the cards the engine can't
       make yet, and for fixing a misplay. While it is on, everyone at the table sees a badge saying
       so, and every spawn is named in the game log.
+    </p>
+  </section>
+
+  <section class="tsp-field" data-field="free_first_mulligan" class:locked={lifeLocked}>
+    <div class="tsp-row">
+      <label class="tsp-label" for="tsp-free-mull">Free first mulligan</label>
+      <span class="tsp-control">
+        <input
+          id="tsp-free-mull"
+          type="checkbox"
+          disabled={disabled || lifeLocked}
+          checked={settings.free_first_mulligan ?? false}
+          onchange={(e) => apply({ free_first_mulligan: e.currentTarget.checked })}
+        />
+      </span>
+    </div>
+    <p class="tsp-hint">
+      {#if lifeLocked}
+        Fixed — the opening hands have already been dealt.
+      {:else}
+        Gives a two-player table the free first mulligan that games of three or more get by the
+        rules. Off follows the rules: in a two-player game, every mulligan costs a card.
+      {/if}
     </p>
   </section>
 

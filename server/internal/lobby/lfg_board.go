@@ -196,6 +196,9 @@ func lfgSettings(s game.TableSettings) []discord.LFGField {
 	if s.AllowSpawn != def.AllowSpawn {
 		out = append(out, discord.LFGField{Name: "Card spawning", Value: "On"})
 	}
+	if s.FreeFirstMulligan != def.FreeFirstMulligan {
+		out = append(out, discord.LFGField{Name: "Free first mulligan", Value: "On"})
+	}
 	return out
 }
 

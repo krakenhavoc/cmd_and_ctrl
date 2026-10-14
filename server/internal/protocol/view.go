@@ -11556,6 +11556,10 @@ type TableSettingsView struct {
 	BotPace string `json:"bot_pace"`
 	// AllowSpawn is the production spawn switch.
 	AllowSpawn bool `json:"allow_spawn"`
+	// FreeFirstMulligan gives a two-player table the free first
+	// mulligan (#3387). Fixed once the game is active. Omitted when
+	// off, which is the rules.
+	FreeFirstMulligan bool `json:"free_first_mulligan,omitempty"`
 }
 
 // ViewOfTableSettings projects one table's settings for a caller
@@ -11576,6 +11580,8 @@ func viewOfTableSettings(s game.TableSettings) *TableSettingsView {
 		CommanderDamage: s.CommanderDamage,
 		BotPace:         string(s.BotPace),
 		AllowSpawn:      s.AllowSpawn,
+
+		FreeFirstMulligan: s.FreeFirstMulligan,
 	}
 }
 

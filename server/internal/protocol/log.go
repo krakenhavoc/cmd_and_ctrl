@@ -2612,6 +2612,11 @@ func renderSettingsText(e LogEvent) string {
 			return fmt.Sprintf("%s allowed spawning", who)
 		}
 		return fmt.Sprintf("%s disallowed spawning", who)
+	case game.SettingFreeMulligan:
+		if e.Choice == "true" {
+			return fmt.Sprintf("%s made the first mulligan free", who)
+		}
+		return fmt.Sprintf("%s made the first mulligan cost a card", who)
 	}
 	if e.Label == "" {
 		return fmt.Sprintf("%s changed a table setting", who)

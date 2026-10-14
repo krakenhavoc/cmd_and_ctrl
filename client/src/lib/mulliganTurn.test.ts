@@ -14,19 +14,19 @@ describe("the London mulligan's cost (ADR 0166)", () => {
     expect(keepCostText(2)).toBe("Keep: put 2 cards from this hand on the bottom of your library.");
   });
 
-  it("makes the first mulligan free only with more than two players (CR 103.5c)", () => {
-    expect(nextMulliganBottom(0, 0, 4)).toBe(0);
-    expect(nextMulliganBottom(0, 0, 3)).toBe(0);
-    expect(nextMulliganBottom(0, 0, 2)).toBe(1);
-    expect(nextMulliganBottom(1, 0, 4)).toBe(1);
-    expect(nextMulliganBottom(2, 1, 4)).toBe(2);
+  it("makes only the first mulligan free, and only when the table has one", () => {
+    expect(nextMulliganBottom(0, 0, true)).toBe(0);
+    expect(nextMulliganBottom(0, 0, false)).toBe(1);
+    expect(nextMulliganBottom(1, 0, true)).toBe(1);
+    expect(nextMulliganBottom(2, 1, true)).toBe(2);
+    expect(nextMulliganBottom(1, 1, false)).toBe(2);
   });
 
   it("says what one more mulligan costs", () => {
-    expect(mulliganCostText(0, 0, 4)).toBe(
+    expect(mulliganCostText(0, 0, true)).toBe(
       "Mulligan: your first mulligan is free. Shuffle this hand away and draw 7.",
     );
-    expect(mulliganCostText(1, 0, 4)).toBe(
+    expect(mulliganCostText(1, 0, true)).toBe(
       "Mulligan: shuffle this hand away, draw 7, then put 1 card on the bottom when you keep.",
     );
   });

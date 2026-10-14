@@ -54,10 +54,11 @@ var ErrNoMoreMulligans = errors.New("game: no further mulligans: your opening ha
 // deciding meanwhile: a seat that kept is not the decider any more.
 
 // freeMulligansLocked is how many of a seat's mulligans cost nothing:
-// one in a multiplayer game (CR 103.5c), none in a two-player game.
-// Caller must hold g.mu.
+// one in a multiplayer game (CR 103.5c), none in a two-player game
+// unless the table's FreeFirstMulligan house rule gives it one too
+// (#3387). Caller must hold g.mu.
 func (g *Game) freeMulligansLocked() int {
-	if g.startingPlayerCountLocked() > 2 {
+	if g.Settings.FreeFirstMulligan || g.startingPlayerCountLocked() > 2 {
 		return 1
 	}
 	return 0
