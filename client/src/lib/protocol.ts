@@ -59,6 +59,10 @@ export const ErrorCode = {
   // four requests a second. Listed so this table stays the server's.
   NoDecision: "no_decision",
   RateLimited: "rate_limited",
+  // ADR 0177 §6: an action from a seat a bot is playing while its
+  // player was away. Nothing was applied; the player takes the seat
+  // back first (the Take it back banner).
+  StandIn: "stand_in",
 } as const;
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -1045,6 +1049,11 @@ export type LogKind =
   // the server admin made the change. The only kind that is about the
   // rules rather than about the game.
   | "settings"
+  // ADR 0177: the table moved on without a player who was gone.
+  // `label` is "stand_in", "concede" or "take_back"; `target_seat` the
+  // seat; `seat` who decided (NoSeat for the admin); `amount` the
+  // minutes the seat had been offline.
+  | "away_seat"
   // ADR 0075 §2.4: the host or the admin put cards or tokens on the
   // table from nowhere. `label` is the card or token name, `amount`
   // the count, `new_zone` where they went and `target_seat` whose
@@ -2268,6 +2277,13 @@ export interface PlayerView {
   // Table host (ADR 0075 §2.1), visible to every viewer. The host may
   // change table settings alongside the server admin.
   is_host?: boolean;
+  // ADR 0177 §1: the seat's player is not at the table. Absent while
+  // present, and always on a bot seat or one that has left the game.
+  // Stamped by the hub on every frame; public.
+  presence?: PresenceView;
+  // ADR 0177 §4: a bot is playing this person's seat while they were
+  // away. is_bot stays false: the seat is still theirs. Public.
+  stand_in?: StandInView;
   // Per-commander cast count for the Commander tax (S13.1, CR
   // 903.8). Keyed by commander instance UUID. Drives the "+N tax"
   // indicator next to the commander tile.
@@ -4710,6 +4726,26 @@ export interface StackPositionView {
 
 export type RematchPart = "host" | "undecided" | "accepted" | "declined";
 
+// ADR 0177 §1: PlayerView.presence.
+export interface PresenceView {
+  // "offline": no connection is bound to the seat. "hidden": every one
+  // that is says its tab is hidden.
+  state: "offline" | "hidden";
+  // RFC 3339: when the seat stopped being present.
+  since: string;
+  // The table may move on without the seat (§2): offline for the away
+  // time while the table waits on it, and nobody chose to keep waiting.
+  movable?: boolean;
+}
+
+// ADR 0177 §4: PlayerView.stand_in.
+export interface StandInView {
+  // The bot tier playing the seat: "heuristic".
+  tier: string;
+  // RFC 3339: when the bot took the seat.
+  since: string;
+}
+
 export interface TableSettingsView {
   // Per-player per-turn undo budget. -1 is unlimited, 0 is no undos.
   undo_limit: number;
@@ -4730,6 +4766,10 @@ export interface TableSettingsView {
   // free at any table, -1 makes every mulligan free. Fixed once the
   // game is active.
   free_mulligans?: number;
+  // ADR 0177 §7: minutes a seat the table waits on must be offline
+  // before the table is offered a way on without it, 0 for never.
+  // Absent from an older server, which reads as the default, 3.
+  away_after?: number;
 }
 
 // ADR 0127: why a prompt with a standing answer is asked by hand.
