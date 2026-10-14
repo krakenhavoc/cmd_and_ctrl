@@ -197,3 +197,35 @@ func TestLondonMulliganConcedeWhileBottoming(t *testing.T) {
 		t.Fatal("the window is still open after the bottoming seat conceded")
 	}
 }
+
+// #3387: the house rule. A two-player table with FreeFirstMulligan on
+// gets the free first mulligan a multiplayer game has by the rules: the
+// first mulligan owes nothing, the second owes one card.
+func TestLondonMulliganTwoPlayersFreeFirstMulliganSetting(t *testing.T) {
+	g := startMulliganTable(t, 2, 0)
+	// Set directly, as a lobby patch would have before Start.
+	g.Settings.FreeFirstMulligan = true
+	if got := g.MulliganNextBottomLocked(g.Seats[0]); got != 0 {
+		t.Fatalf("cost of a first mulligan with the setting on = %d, want 0", got)
+	}
+	mulligan(t, g, 0)
+	if got := g.MulliganBottomCountLocked(g.Seats[0]); got != 0 {
+		t.Fatalf("bottom count after a free mulligan = %d, want 0", got)
+	}
+	if got := g.MulliganNextBottomLocked(g.Seats[0]); got != 1 {
+		t.Fatalf("cost of a second mulligan = %d, want 1", got)
+	}
+	keep(t, g, 1)
+	// Round 2: seat 0 keeps after its free mulligan and owes nothing,
+	// so no prompt holds the window.
+	keep(t, g, 0)
+	if openChoiceFor(g, 0, PendingChoiceChooseCards) != nil {
+		t.Fatal("a bottoming prompt after a free mulligan")
+	}
+	if g.MulligansOpen {
+		t.Fatal("the window is still open after both seats kept")
+	}
+	if got := len(g.Seats[0].Hand.Cards); got != OpeningHandSize {
+		t.Fatalf("opening hand = %d cards, want %d", got, OpeningHandSize)
+	}
+}

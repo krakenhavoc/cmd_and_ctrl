@@ -24,7 +24,8 @@ export function mulliganWaitingText(
 // The London mulligan (CR 103.5, ADR 0168): a mulligan draws seven, and
 // a keep puts `mulligan_bottom` cards on the bottom of the library. The
 // first mulligan of a game that began with more than two players is free
-// (CR 103.5c), so it adds nothing to the count.
+// (CR 103.5c), and so is a two-player table's when the host has turned on
+// the free first mulligan (#3387), so it adds nothing to the count.
 
 function cards(n: number): string {
   return n === 1 ? "1 card" : `${n} cards`;
@@ -38,14 +39,14 @@ export function keepCostText(bottom: number): string | null {
 }
 
 /** How many cards one more mulligan would have the seat bottom at keep. */
-export function nextMulliganBottom(taken: number, bottomNow: number, seatCount: number): number {
-  const free = taken === 0 && seatCount > 2;
+export function nextMulliganBottom(taken: number, bottomNow: number, freeFirst: boolean): number {
+  const free = taken === 0 && freeFirst;
   return free ? 0 : bottomNow + 1;
 }
 
 /** What one more mulligan costs, said under its button. */
-export function mulliganCostText(taken: number, bottomNow: number, seatCount: number): string {
-  const next = nextMulliganBottom(taken, bottomNow, seatCount);
+export function mulliganCostText(taken: number, bottomNow: number, freeFirst: boolean): string {
+  const next = nextMulliganBottom(taken, bottomNow, freeFirst);
   if (next === 0) {
     return "Mulligan: your first mulligan is free. Shuffle this hand away and draw 7.";
   }

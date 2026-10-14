@@ -4226,7 +4226,7 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	// disabling the control.
 	case errors.Is(err, game.ErrInvalidSetting):
 		status = http.StatusBadRequest
-	case errors.Is(err, game.ErrStartingLifeLocked):
+	case errors.Is(err, game.ErrStartingLifeLocked), errors.Is(err, game.ErrFreeMulliganLocked):
 		status = http.StatusUnprocessableEntity
 	case errors.Is(err, ErrGameNotActiveForSpawn):
 		status = http.StatusConflict

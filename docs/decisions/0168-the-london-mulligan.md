@@ -61,8 +61,17 @@ A seat that leaves mid-prompt drops its prompts and no longer gates the window, 
 
 ## Calls made here (for owner review)
 
-- **A two-player Commander table gets no free mulligan.** CR 103.5c gives it to multiplayer games only, and a two-player game is not one (CR 100.1). Many playgroups grant it in every Commander game. If the owner wants that house rule, it is a one-line change to the count, and it should be a table setting rather than the default.
+- **A two-player Commander table gets no free mulligan by default.** CR 103.5c gives it to multiplayer games only, and a two-player game is not one (CR 100.1). Many playgroups grant it in every Commander game, so it is a host table setting (see the amendment below).
 - **Bottoming at keep** rather than after each mulligan (decision 2).
+
+## Amendment, 2026-10-13: the free first mulligan as a table setting (#3387)
+
+The owner's call: the default follows the CR, and the host can turn on a free first mulligan for a two-player table.
+
+- **The setting.** `TableSettings.FreeFirstMulligan` (wire `free_first_mulligan`, ADR 0075 §2.2), off by default. When it is on, `freeMulligansLocked` is 1 whatever the seat count, so everything that reads the count follows it: the keep's bottom count, the mulligan limit, the view's `mulligan_bottom`, the legal-move labels and `hand_size`, and the bots' keep rules. A multiplayer table has the free mulligan by the rules either way, so the setting changes nothing there.
+- **Fixed at Start.** The mulligan window opens at Start, and a cost that changed while a seat was deciding would be unfair. A change after Start is refused with `ErrFreeMulliganLocked` (HTTP 422), the same rule and status as starting life, and the panel disables the control with the same "already been dealt" hint.
+- **Where it shows.** The table settings panel has a checkbox for it. The log says "made the first mulligan free" or "made the first mulligan cost a card". A saved setup carries it, and an LFG post lists it when it is on. The client's mulligan cost line treats the first mulligan as free when the table has more than two seats or the setting is on.
+- **Snapshot.** An additive field, `settings.freeFirstMulligan`, omitted when false. An older snapshot reads as off, which is the rules. No schema bump (the `snapshot_shape` rule for additive fields).
 
 ## Out of scope
 
