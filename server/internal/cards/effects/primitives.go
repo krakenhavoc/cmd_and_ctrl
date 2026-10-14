@@ -1283,15 +1283,29 @@ type CounterUnlessPaid struct {
 	// the warded permanent, and the trigger captured that player when
 	// the targeting event fired.
 	Chooser uuid.UUID
+
+	// OnPaid is the clause printed after "If they do" — Assimilate
+	// Essence's "you incubate 2" (#3591). It runs only after the cost
+	// was actually paid, against a context bound to the resolving
+	// spell, so Controller() is the caster and not the payer. A payer
+	// who says "Pay" and cannot fund it has declined: the object is
+	// countered and this does not run. Nil for every card whose payment
+	// simply lets the object resolve.
+	OnPaid func(ctx *Context) error
 }
 
 func (c CounterUnlessPaid) Apply(ctx *Context) error {
+	var onPaid func(*game.Game) error
+	if c.OnPaid != nil {
+		onPaid = declineAgainstTheSameItem(ctx.Item, c.OnPaid)
+	}
 	return ctx.Game.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{
 		StackItem: c.StackID,
 		Chooser:   c.Chooser,
 		Source:    ctx.Source(),
 		Cost:      c.Cost,
 		Question:  c.Question,
+		OnPaid:    onPaid,
 	})
 }
 

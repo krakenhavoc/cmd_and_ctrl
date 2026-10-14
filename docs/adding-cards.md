@@ -8575,6 +8575,20 @@ FaceVillainousChoice{Players: ctx.Opponents(), Choice: damoclesBaseChoice}.Apply
   `Game.DiedPowerWithSubtypeThisTurn("Dalek")`, a per-turn tally of each
   dying creature's last-known power by creature type, so a token that
   has already ceased to exist still counts.
+- **"If a Phyrexian died under your control this turn"** is
+  `Game.DiedWithSubtypeThisTurn(player, "Phyrexian")` (#3592, Brimaz,
+  Blight of Oreskos): the same last-known creature types, counted per
+  controller it died under (CR 603.10a). Check it on the trigger and
+  again on resolution.
+- **"If they do, you incubate 2"** after a counter-unless-pays is
+  `CounterUnlessPaid{OnPaid: …}` (#3591, Assimilate Essence): it runs only
+  after the payment was made, with the caster as the controller, and is
+  dropped with the decline when the spell has left the stack.
+- **"A permanent you control enters transformed"** has no event of its
+  own: read the entering card's face as the ETB is harvested with
+  `enteredTransformedUnderYourControl` (#3593, Corruption of Towashi).
+  A converted entry and a modal double-faced card cast back face up are
+  not transformed.
 
 ### Day and night, daybound and nightbound (ADR 0132, #2561, CR 731 / 702.145)
 
