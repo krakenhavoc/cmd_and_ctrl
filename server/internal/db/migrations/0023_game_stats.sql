@@ -1,4 +1,4 @@
--- Migration 0022: game statistics (ADR 0164 §3, #3364).
+-- Migration 0023: game statistics (ADR 0165 §3, #3364).
 --
 --   game_stats       one row per ended game: the definitions' version,
 --                    where the record came from (live | replay), whether

@@ -10,7 +10,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
-// A four-seat game, built by hand so every definition in ADR 0164 §3 has
+// A four-seat game, built by hand so every definition in ADR 0165 §3 has
 // a line that tests it. Seat 0 (Ana) wins; seat 3 (Dee) concedes on
 // turn 4; seat 1 (Bo) dies on turn 6; seat 2 (Cy) is still standing.
 

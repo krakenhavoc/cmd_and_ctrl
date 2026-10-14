@@ -1,8 +1,8 @@
-# ADR 0164 — Game statistics: a record derived from every finished game
+# ADR 0165 — Game statistics: a record derived from every finished game
 
 **Status:** Accepted · 2026-10-13 · outside a numbered sprint (owner request, 2026-10-13; see "Sprint" below)
 **Issues:** [#3363](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3363) (tracker), [#3364](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3364) (this PR: the record at game end), [#3365](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3365) (backfill from replays), [#3366](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3366) (a free stats page)
-**Numbering:** I listed `docs/decisions/` and `server/internal/db/migrations/` across every remote head's history on 2026-10-13. The highest ADR anywhere is **0163** (PR #3331) and the highest migration is **0021** (`0021_lfg_board.sql` on `feat/lfg-server`, PR #3361). This ADR takes **0164** and its migration **0022**. **This PR must merge after #3361**: `db.migrate` skips every version at or below the current one, so a database that ran 0022 first would never run 0021.
+**Numbering:** I listed `docs/decisions/` and `server/internal/db/migrations/` across every remote head's history, first on 2026-10-13 and again at merge time. This was first written as ADR 0164 with migration 0022. Before it merged, `feat/3285-rematch` committed its own ADR 0164 earlier, and `develop` took migration 0022 for notification preferences (ADR 0162, #3320). Following AGENTS.md §4, this ADR renumbered itself to **0165** and its migration to **0023**, the first numbers free on every head. Migrations 0021 (#3361) and 0022 are on `develop` before 0023, so `db.migrate`, which skips every version at or below the current one, applies all three in order.
 **Builds on:** [ADR 0041](0041-game-persistence.md) (restore points and the replay log), [ADR 0033](0033-ai-bot-seat.md) §4 (the public game log, `protocol.LogEvent`), [ADR 0051](0051-user-database.md) (games and seats rows), [ADR 0149](0149-privacy-notice-and-account-deletion.md) (the deletion inventory and the privacy notice), [ADR 0158](0158-signed-in-pages-tables-with-history-decks-and-the-catalog.md) (Tables with History, where stats will show).
 
 ---
@@ -29,7 +29,7 @@ Stats are **computed** from a finished game, never entered or edited. Each recor
 
 A server with no database, or a game with no stored row, writes nothing (`gamestats.NoStore`).
 
-### 3. What is stored (migration 0022)
+### 3. What is stored (migration 0023)
 
 Three tables, all keyed by the game and deleted with it (`ON DELETE CASCADE` on `games.id`). **No names and no user ids:** a seat's person is `seats.user_id` through the join on `(game_id, seat)`, so deletion and display follow `seats` (§5).
 
@@ -52,7 +52,7 @@ Every ended, non-practice game with a `games` row, including bot and guest seats
 ### 5. Privacy and deletion (ADR 0149)
 
 - The tables hold numbers and card names about games, keyed by game and seat. **They are part of the game record the other players keep**, so `accountdelete.Inventory` lists every column as **Kept**, with that note. A deleted person's seats already point at the tombstone ("Deleted player"), and so do these rows through the join.
-- The privacy notice gains a "Game statistics" row. `PRIVACY_SCHEMA_VERSION` moves to 22.
+- The privacy notice gains a "Game statistics" row. `PRIVACY_SCHEMA_VERSION` moves to 23.
 - Nothing here is shown to anyone yet. Showing stats (#3366) must show a person their own seats, and other players only in aggregate or by consent. Rankings or leaderboards will be **opt-in**, in their own ADR.
 
 ### 6. Backfill (#3365, next PR)

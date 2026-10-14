@@ -53,12 +53,17 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * the community server (the host's Discord account among it) and when
  * it is deleted (ADR 0161 §8).
  *
- * 22 (#3364, ADR 0164) adds game_stats, seat_stats and seat_card_stats:
+ * 22 (#3320, ADR 0162 §5) adds notification_prefs: a person's three
+ * Discord DM notification switches and when Discord last refused one.
+ * The notice's "Your Discord notifications" row names it, and the
+ * Discord paragraph says what the messages carry (§6).
+ *
+ * 23 (#3364, ADR 0165) adds game_stats, seat_stats and seat_card_stats:
  * numbers and card names derived from a finished game, keyed by game
  * and seat, with no names or user ids. The notice's "Game statistics"
  * row covers them.
  */
-export const PRIVACY_SCHEMA_VERSION = 22;
+export const PRIVACY_SCHEMA_VERSION = 23;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

@@ -8,7 +8,7 @@ import (
 )
 
 // TestFullLogOfHasEveryEntry: the game statistics read the whole log
-// (ADR 0164 §2), so FullLogOf keeps what the public ring drops, in the
+// (ADR 0165 §2), so FullLogOf keeps what the public ring drops, in the
 // same shape and order.
 func TestFullLogOfHasEveryEntry(t *testing.T) {
 	g := buildActiveGame(t)

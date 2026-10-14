@@ -1,6 +1,6 @@
 package lobby
 
-// Game statistics (ADR 0164 §2): when a stored game ends, derive its
+// Game statistics (ADR 0165 §2): when a stored game ends, derive its
 // record from the engine's whole log and write it, off l.mu.
 
 import (

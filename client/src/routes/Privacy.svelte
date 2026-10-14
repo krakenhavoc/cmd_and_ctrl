@@ -63,6 +63,15 @@
       source: "migration 0008 user_settings, table_setups, users.last_deck",
     },
     {
+      what: "Your Discord notifications",
+      details:
+        "Whether each of the three Discord direct-message notifications is on (your turn, table ready, table filled), all off until you turn one on, and the time Discord last refused a message to you, if it has. While you play, the server also keeps in memory whether your table’s browser tab is in front, when you last acted, and when it last sent you a message; none of that is written down.",
+      why: "So the server only messages you when you asked it to, stops when Discord says it cannot reach you, and sends at most one message per table every ten minutes.",
+      howLong:
+        "Until you delete your account. What is kept in memory is gone when the server restarts.",
+      source: "migration 0022 notification_prefs; notify/notifier.go; ws/presence.go",
+    },
+    {
       what: "Your playmats",
       details: `Up to ${F.playmatSlots} images you upload (or fetch once from a link you give), stored as picture files, and which one is active.`,
       why: "So the table can show your playmat to the other players.",
@@ -86,7 +95,7 @@
       howLong:
         "As long as the game’s record is kept. Deleting the table deletes them. Deleting your account turns your seat into “Deleted player”, and these numbers then belong to that seat, as the rest of the game does.",
       source:
-        "migration 0022 game_stats, seat_stats, seat_card_stats; gamestats/gamestats.go Compute",
+        "migration 0023 game_stats, seat_stats, seat_card_stats; gamestats/gamestats.go Compute",
     },
     {
       what: "Chat",
@@ -157,7 +166,7 @@
     },
     {
       who: "Discord",
-      what: "Sign-in goes through Discord, which learns that you signed in to this site. After that the server, not your browser, fetches your avatar picture from Discord’s image servers and keeps a copy. When sign-up needs that role, the server also asks Discord whether you hold it, at sign-in and each time your sign-in is renewed. When a table’s host turns on a voice room, the server asks Discord to make a private voice channel in the C2 Discord server, named after the table, and lets in the seated players who are members of that server, by the Discord ids it already holds. To do that it asks Discord whether each of them is a member, and whether they are connected to that channel. The channel and its text chat are deleted after the game. The server’s owner and administrators can see every channel there, private ones included. When a table’s host posts it to #lfg, the bot posts the table’s name, the host’s Discord account and the seat count in that channel, where every member of the CMD & CTRL Discord server can see it; the post is deleted when the game starts or the host withdraws it.",
+      what: "Sign-in goes through Discord, which learns that you signed in to this site. After that the server, not your browser, fetches your avatar picture from Discord’s image servers and keeps a copy. When sign-up needs that role, the server also asks Discord whether you hold it, at sign-in and each time your sign-in is renewed. When a table’s host turns on a voice room, the server asks Discord to make a private voice channel in the C2 Discord server, named after the table, and lets in the seated players who are members of that server, by the Discord ids it already holds. To do that it asks Discord whether each of them is a member, and whether they are connected to that channel. The channel and its text chat are deleted after the game. The server’s owner and administrators can see every channel there, private ones included. When a table’s host posts it to #lfg, the bot posts the table’s name, the host’s Discord account and the seat count in that channel, where every member of the CMD & CTRL Discord server can see it; the post is deleted when the game starts or the host withdraws it. If you turn on notifications, the server asks Discord’s bot to send you direct messages naming the table and its turn number, with a link back to it; Discord holds those messages under its own policy.",
     },
     {
       who: "GitHub",
@@ -236,10 +245,10 @@
       <h2 id="delete-info-title">Deleting your account</h2>
       <p class="help">
         A signed-in Discord account can be deleted from the account menu, or here. It removes your
-        decks, deck-request history, playmats, settings, last table setup and Discord sign-in, signs
-        you out everywhere, and turns your seat in every table that has ended into “Deleted player”,
-        so the other players keep their games. It is refused while you hold a seat at a table that
-        has not ended.
+        decks, deck-request history, playmats, settings, last table setup, notification settings and
+        Discord sign-in, signs you out everywhere, and turns your seat in every table that has ended
+        into “Deleted player”, so the other players keep their games. It is refused while you hold a
+        seat at a table that has not ended.
       </p>
       <p class="help">
         Some things are not ours to delete. Issues already filed on GitHub are public; ask through

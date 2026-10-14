@@ -10,7 +10,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 )
 
-// TestAFinishedGameGetsAStatsRecord (ADR 0164 §2): a stored game that
+// TestAFinishedGameGetsAStatsRecord (ADR 0165 §2): a stored game that
 // ends over the room, with nobody calling the lobby, gets a record whose
 // results follow the engine's outcome, one line per seat.
 func TestAFinishedGameGetsAStatsRecord(t *testing.T) {

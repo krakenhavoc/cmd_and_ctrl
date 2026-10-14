@@ -8,9 +8,10 @@ vision and phased roadmap; this file is about *how* to work, not *what* to build
 
 ## 1. What this project is
 
-A private, personal 4-player Magic: The Gathering Commander sandbox
-with a Go game server and a TypeScript client. Personal-use only — not
-a product. See [PLAN.md](PLAN.md) for scope, stack, and the Option B
+A free, non-commercial 4-player Magic: The Gathering Commander table
+with a Go game server and a TypeScript client. Built for friends first,
+and in an open beta through the C2 Discord since S70; still not a
+product. See [PLAN.md](PLAN.md) for scope, stack, and the Option B
 ("sandbox first, rules grafted in incrementally from S13+") decision.
 
 Three hard problems, ranked: **game state and multiplayer sync** (Go
@@ -37,8 +38,10 @@ service names); don't rename those to match.
 2. **This is a hobby project at ~10 hours/week.** Optimise for momentum and
    clarity, not enterprise rigour. No microservices, no k8s, no premature
    abstractions. One VPS. One database. One deployable per service.
-3. **Personal use only changes the calculus.** Legal risk is low (Cockatrice and
-   XMage exist). Scale is ≤8 users. Don't build for hypothetical public launch.
+3. **Free and non-commercial changes the calculus.** This is fan content: never
+   charge for anything, keep guest play, and keep card data out from behind any
+   sign-in or Discord gate (PLAN.md §1). Scale is one small VM under the ADR 0148
+   caps; grow it on measured load, not on a hypothetical.
 4. **UX polish is the entire point.** "Make it feel good" is core product
    work and deserves real care. Sandbox features (manual resolution,
    manual priority) are a deliberate design choice, not a shortcut.
@@ -85,7 +88,7 @@ cmd_and_ctrl/
 │   │   ├── deck/        # decklist parsers (Moxfield, plain text) + Commander validation
 │   │   ├── deckcoverage/ # a decklist's coverage report: every card bucketed manual / unreviewed / caveats / automated / no_effect (ADR 0095)
 │   │   ├── deckrequests/ # which GitHub issue tracks each requested deck, and who asked when (ADR 0095, migration 0006)
-│   │   ├── gamestats/   # a finished game's statistics record (ADR 0164): Compute from the final view + the whole log (protocol.FullLogOf), and the store behind migration 0022's three tables
+│   │   ├── gamestats/   # a finished game's statistics record (ADR 0165): Compute from the final view + the whole log (protocol.FullLogOf), and the store behind migration 0023's three tables
 │   │   ├── usersettings/ # a signed-in person's synced settings: one JSON object, 32 KiB cap, If-Match revision (ADR 0110 §4, migration 0008)
 │   │   ├── tablesetups/  # the last setup each person started a table with: settings, bots, tablemates (ADR 0110 §5, migration 0008)
 │   │   ├── moderation/  # the name and chat filter: a hand-kept denylist (denylist.txt) with normalisation, masking for chat, refusal for names, and the folded key a guest block uses; a test holds it clear of every card name (#2984, ADR 0075 §2.6)
@@ -340,7 +343,7 @@ The workstation has no local Go. `scripts/go-docker.sh` is THE way to run it: `s
   - `CMDCTRL_IDENTITY_TTL` — lifetime of every session that carries a user, as a Go duration (default `720h`, 30 days; S34 sub-PR 7, [ADR 0051](docs/decisions/0051-user-database.md) decision 3, widened by [ADR 0110](docs/decisions/0110-remember-me.md) §1 in S55). A Discord sign-in (the login page, the invite link's callback, linking Discord to a seat) gets the full lifetime. A session minted **from** a signed-in session (joining by link or code, spectating, `POST /me/games/{id}/session`, the practice table, a reclaim redeemed by the seat's own user) inherits that session's expiry to the millisecond, so joining a table never extends a sign-in (`issueFor`, `server/internal/lobby/session_ttl.go`). It is long because it is the credential a browser keeps across games. That is safe because every such session carries a `UserID` and can be revoked (`POST /logout/everywhere`, `POST /admin/users/{id}/revoke-sessions`, decision 6). **Renewal on use** (`POST /me/session`, ADR 0110 §1 item 5, owner answer 1): a signed-in session more than half spent (from its `issued_at` to its `expires_at`) is re-issued for a fresh `CMDCTRL_IDENTITY_TTL` with the same principal. The client calls it at page load and at each session's half-life, so someone who plays at least once per half-lifetime is never asked to sign in again. Revocation is how a renewed session ends. The same route reinstalls the signed-in session the client keeps aside in `localStorage["cmdctrl.identity"]` while it holds an admin-token or ticket session (§1 item 6). See [docs/lobby.md](docs/lobby.md#post-mesession-adr-0110-1-items-5-and-6-s55). Invalid or `<= 0`: the boot fails. Not provisioned by CD. The client's expiry timer re-arms past `setTimeout`'s ~24.8-day ceiling, so a 30-day session is not dropped early.
   - `CMDCTRL_SESSION_KEY` — HMAC-SHA256 key that signs session tokens (`auth.HMACAuthenticator`, #517, [ADR 0044](docs/decisions/0044-surviving-a-deploy.md) decision 3). Set: a token minted before a restart validates after it. **Unset: sessions fall back to the in-memory store, with a warning naming the variable on every boot, and every deploy logs everyone out.** Set but under 32 bytes, or equal to `CMDCTRL_ADMIN_TOKEN`: the boot fails. There is no default key. `Revoke` is advisory under HMAC, so `POST /logout` clears the cookie but does not kill a copied token before its expiry. A session with a `UserID` (a Discord sign-in, or a seat claimed from one) can be killed: `POST /logout/everywhere` or the admin's `POST /admin/users/{id}/revoke-sessions` moves `users.sessions_invalid_before`, and `auth.WithRevocation` refuses older tokens from an in-memory cache (ADR 0051 decision 6). Admin, guest and spectator sessions keep the advisory revoke. **Provisioned by CI/CD**: generated on each host the first time it is missing and never rewritten, since a new key logs every player out. See [docs/environments.md](docs/environments.md#secrets).
   - `CMDCTRL_IDENTITY_KEY` — AES-256-GCM key that encrypts Discord OAuth refresh tokens on the `identities` rows (`users.Sealer`, S34 sub-PR 2, [ADR 0051](docs/decisions/0051-user-database.md) decision 5). Same format as `CMDCTRL_SESSION_KEY`: a random string of at least 32 bytes, which the server hashes to the AES key. **Unset: Discord sign-in still works and still records the user, but the refresh token is discarded and `refresh_token` is NULL, with a warning naming the variable on every boot. It is never stored in the clear.** Set but under 32 bytes, or equal to `CMDCTRL_ADMIN_TOKEN` or `CMDCTRL_SESSION_KEY`: the boot fails. Rotating it makes stored refresh tokens unreadable (nothing reads them yet) and logs nobody out. **Provisioned by CI/CD** exactly like the session key: generated on each host the first time it is missing, never rewritten.
-  - `CMDCTRL_DISCORD_BOT_TOKEN` — the Discord **bot** token, read by the SERVER for ADR 0051 decision 5's direct-message invites (`POST /games/{id}/invites/dm`, S34 sub-PR 6). Same secret the gateway bot holds; two units, two env files, one Actions secret. **Unset: the DM route answers 503 naming this variable and every other route is unchanged — it never fails open — and the boot log says which state it is in, once.** The route also needs an origin for the link it sends (`CMDCTRL_PUBLIC_BASE_URL`, falling back to `CMDCTRL_CLIENT_BASE_URL`); missing that is the same 503. **Provisioned by CI/CD on production only** ("Sync server env (Discord DM invites)"): one Discord application, and a preview box DMing real people from the same identity is the double-send the bot's prod-only rule exists to prevent.
+  - `CMDCTRL_DISCORD_BOT_TOKEN` — the Discord **bot** token, read by the SERVER for ADR 0051 decision 5's direct-message invites (`POST /games/{id}/invites/dm`, S34 sub-PR 6). Same secret the gateway bot holds; two units, two env files, one Actions secret. **Unset: the DM route answers 503 naming this variable and every other route is unchanged — it never fails open — and the boot log says which state it is in, once.** The route also needs an origin for the link it sends (`CMDCTRL_PUBLIC_BASE_URL`, falling back to `CMDCTRL_CLIENT_BASE_URL`); missing that is the same 503. **Provisioned by CI/CD on production only** ("Sync server env (Discord DM invites)"): one Discord application, and a preview box DMing real people from the same identity is the double-send the bot's prod-only rule exists to prevent. The same token, origin and the database turn on ADR 0162's DM notifications (`GET`/`PUT /me/notifications`, the notifier goroutine in `internal/notify`); missing any of them, those routes answer 503 with `"available": false` and the server boots as before.
   - `CMDCTRL_ALLOWED_ORIGINS` — comma-separated hostnames (or full URLs) permitted as cross-origin WebSocket callers. Same-origin is always allowed; unset = same-origin only.
   - `CMDCTRL_SEED_DEMO=1` — seed the S03 4-player demo game at startup for the gamecli dev loop
   - `CMDCTRL_DISCORD_CLIENT_ID` / `CMDCTRL_DISCORD_CLIENT_SECRET` / `CMDCTRL_DISCORD_REDIRECT_URI` — S12.5 OAuth credentials. Unset disables the Discord sign-in button (manual name entry still works).
@@ -600,13 +603,13 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
 ## 8. Things to explicitly *not* do
 
 - Do not add CI/CD beyond basic lint + test until there's code to protect.
-- Do not introduce a database, auth provider, or payment anything without
-  discussion. Shared password is fine for now (see [PLAN.md §4](PLAN.md#4-tech-stack)).
+- Do not add payment of any kind: no paid tier, paid feature or paywall
+  (PLAN.md §1). Discuss a new datastore or sign-in provider before adding one.
 - Do not attempt a "full rules engine" sprint. Rules enforcement grows
   incrementally in the S13+ B→C track, one mechanic at a time, driven by
   real games. See [PLAN.md §2.3](PLAN.md#23-why-not-option-c-straight-custom-rules-engine).
 - Do not reintroduce a dependency on XMage or any JVM tooling. That was
   evaluated and rejected in S01.
 - Do not generate card art, card text, or anything else that would pull this
-  project out of "private, personal use" territory.
+  project out of fan-content territory.
 - Do not create commits or PRs that do not reference a sprint (see section 4).

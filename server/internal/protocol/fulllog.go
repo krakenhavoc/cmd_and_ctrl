@@ -5,7 +5,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // FullLogOf returns the omniscient view of g and its whole game log: the
 // same fold publicLogOf runs (the same kinds, collapses and seat
 // indexing), over every event the game has emitted, with no PublicLogMax
-// cap. Game statistics read it once, when a game ends (ADR 0164 §2).
+// cap. Game statistics read it once, when a game ends (ADR 0165 §2).
 //
 // It is not cached and costs one pass over g.Events, so it is not for a
 // per-frame path. Safe to call from any goroutine: ViewOfGame and the

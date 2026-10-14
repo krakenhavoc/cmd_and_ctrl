@@ -33,6 +33,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/notify"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
@@ -235,6 +236,13 @@ type Config struct {
 	// answer 403 before they reach it.
 	UserSettings usersettings.Store
 
+	// Notifications is a signed-in person's Discord DM notification
+	// switches (ADR 0162 §5, migration 0022), behind GET and PUT
+	// /me/notifications. Nil means the feature is off: both routes
+	// answer 503 with "available": false. main sets it only when the
+	// bot token, the public origin and the database are all there.
+	Notifications notify.Store
+
 	// Playmats is a signed-in person's saved playmats, up to three
 	// (ADR 0128, migrations 0011, 0012 and 0013), behind /me/playmats
 	// and GET /playmats/{id}. Nil, or a service with no data directory
@@ -370,6 +378,8 @@ type GameEvictor interface {
 //	DELETE /me/account      — signed in: delete the caller's own account (ADR 0149)
 //	GET  /me/settings       — signed in: the caller's account settings
 //	PUT  /me/settings       — signed in: replace them, If-Match: <revision>
+//	GET  /me/notifications  — signed in: the caller's Discord DM notification switches (ADR 0162)
+//	PUT  /me/notifications  — signed in: change them
 //	GET  /me/playmats       — signed in: the caller's saved playmats (ADR 0128 §11), up to three, which is active, and the wash
 //	PUT  /me/playmats/{slot}        — signed in: upload one into a slot (multipart, part "file")
 //	POST /me/playmats/{slot}/link   — signed in: fetch one from an https URL, once, and store it
@@ -744,6 +754,11 @@ func Handler(c Config) http.Handler {
 	accountDeleteLimit := newLimiter(0.1, 3)
 	mux.Handle("DELETE /me/account", auth.Middleware(c.Auth)(perCallerLimit(accountDeleteLimit, handlerFunc(c, deleteMyAccount))))
 	mux.Handle("PUT /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, putMySettings(settingsLimit))))
+	// Discord DM notifications (ADR 0162 §5). Same caller rule and the
+	// same per-person bucket shape as the settings.
+	notificationsLimit := newLimiter(1, 5)
+	mux.Handle("GET /me/notifications", auth.Middleware(c.Auth)(handlerFunc(c, myNotifications)))
+	mux.Handle("PUT /me/notifications", auth.Middleware(c.Auth)(handlerFunc(c, putMyNotifications(notificationsLimit))))
 	// Playmats (ADR 0128, §11: three slots). The writes that decode an
 	// image (upload, link, fit) are rate-limited per person (a burst of
 	// 5, then one per 6 s) inside auth, and per IP outside it, so a

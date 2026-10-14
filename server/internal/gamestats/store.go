@@ -38,7 +38,7 @@ func (NoStore) Get(context.Context, uuid.UUID) (Game, error) { return Game{}, Er
 
 var _ Store = NoStore{}
 
-// SQLStore is migration 0022's game_stats, seat_stats and
+// SQLStore is migration 0023's game_stats, seat_stats and
 // seat_card_stats. computed_at is Unix milliseconds.
 type SQLStore struct {
 	db *sql.DB

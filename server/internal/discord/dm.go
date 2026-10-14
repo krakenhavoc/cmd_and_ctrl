@@ -61,7 +61,21 @@ var (
 	// ErrUnknownRecipient is Discord's 404 on the DM open: no such
 	// user id.
 	ErrUnknownRecipient = errors.New("discord: no Discord user with that id")
+	// ErrDMRefused is the 403 whose JSON code is 50007, "Cannot send
+	// messages to this user": DMs from server members switched off,
+	// the bot blocked, or the person no longer shares a server with it
+	// (ADR 0162 §4). An error that is ErrDMRefused is also
+	// ErrDMForbidden, and reads as it, so the invite route's answer is
+	// unchanged; the notifier asks for this one to stop sending.
+	ErrDMRefused = errors.New("discord: code 50007, cannot send messages to this user")
 )
+
+// codeCannotMessageUser is Discord's JSON error code 50007.
+const codeCannotMessageUser = 50007
+
+// maxDMRetryAfter caps the retry_after RetryAfter reports, so a caller
+// that waits on it once never waits long.
+const maxDMRetryAfter = 5 * time.Second
 
 // Bot is the server's bot-token credential. The zero value is
 // "unconfigured", and every method on it refuses rather than trying.
@@ -92,6 +106,41 @@ type dmChannel struct {
 // see statusError.
 type apiError struct {
 	RetryAfter float64 `json:"retry_after"`
+	// Code is Discord's JSON error code, read only to tell 50007 apart
+	// from any other 403 (ErrDMRefused). Never forwarded.
+	Code int `json:"code"`
+}
+
+// refusedError is a 403 with code 50007: ErrDMForbidden's text, and
+// errors.Is answers true for both sentinels.
+type refusedError struct{}
+
+func (refusedError) Error() string { return ErrDMForbidden.Error() }
+
+func (refusedError) Is(target error) bool { return target == ErrDMForbidden || target == ErrDMRefused }
+
+// rateLimitError is a 429: ErrDMRateLimited, plus the retry_after
+// Discord sent, for RetryAfter.
+type rateLimitError struct{ after time.Duration }
+
+func (e rateLimitError) Error() string {
+	if e.after > 0 {
+		return fmt.Sprintf("%s (retry after %.0fs)", ErrDMRateLimited, e.after.Seconds())
+	}
+	return ErrDMRateLimited.Error()
+}
+
+func (rateLimitError) Is(target error) bool { return target == ErrDMRateLimited }
+
+// RetryAfter is how long a 429 from SendDM asked the caller to wait,
+// capped at five seconds, and zero for any other error or a 429 that
+// named no wait.
+func RetryAfter(err error) time.Duration {
+	var rl rateLimitError
+	if !errors.As(err, &rl) {
+		return 0
+	}
+	return min(rl.after, maxDMRetryAfter)
 }
 
 // SendDM opens a DM channel with recipientID and posts content into
@@ -181,14 +230,14 @@ func statusError(status int, body []byte) error {
 	case http.StatusUnauthorized:
 		return ErrBotUnauthorized
 	case http.StatusForbidden:
+		if ae.Code == codeCannotMessageUser {
+			return refusedError{}
+		}
 		return ErrDMForbidden
 	case http.StatusNotFound:
 		return ErrUnknownRecipient
 	case http.StatusTooManyRequests:
-		if ae.RetryAfter > 0 {
-			return fmt.Errorf("%w (retry after %.0fs)", ErrDMRateLimited, ae.RetryAfter)
-		}
-		return ErrDMRateLimited
+		return rateLimitError{after: time.Duration(ae.RetryAfter * float64(time.Second))}
 	default:
 		return fmt.Errorf("discord: DM failed: status %d", status)
 	}

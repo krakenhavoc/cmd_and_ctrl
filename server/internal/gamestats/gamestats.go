@@ -1,5 +1,5 @@
 // Package gamestats derives a statistics record from a finished game
-// (ADR 0164): per game, the turn and round counts; per seat, the result,
+// (ADR 0165): per game, the turn and round counts; per seat, the result,
 // place, elimination, life and damage totals, spells, draws, attacks,
 // tokens, mulligans and commanders; per seat and card, how often it was
 // cast.
@@ -22,7 +22,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
-// Version is the version of the definitions below (ADR 0164 §1). Bump it
+// Version is the version of the definitions below (ADR 0165 §1). Bump it
 // when any of them changes, so the backfill computes older records again.
 const Version = 1
 
@@ -280,7 +280,7 @@ func Compute(in Input) Game {
 	return out
 }
 
-// placeAndResult fills Result and Place (ADR 0164 §3).
+// placeAndResult fills Result and Place (ADR 0165 §3).
 func placeAndResult(seats []Seat, at map[int]*Seat, eliminated []int, outcome string, winner *int) {
 	n := len(seats)
 	out := make(map[int]bool, len(eliminated))
