@@ -879,6 +879,17 @@ var mechanics = []Mechanic{
 		Confidence: Exact,
 		Adopt:      `PrintedKeywords: []string{game.KeywordRebound} — the engine does the rest`,
 	},
+	{
+		// #1866: paradigm is a canonicalKeywords token read off the
+		// resolving spell by the stack's graveyard route
+		// (game/paradigm.go). Same probe as rebound.
+		Name:       "paradigm",
+		Phrases:    []string{"paradigm"},
+		Implements: printedKeywordProbe(game.KeywordParadigm),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "paradigm"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{game.KeywordParadigm} — the engine does the rest`,
+	},
 }
 
 // printedKeywordProbe is the exact probe for a canonical keyword token

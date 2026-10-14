@@ -81,26 +81,18 @@ import (
 // instead; this card prints the permission itself, so a grant IS the
 // printed effect.
 //
-// # What is missing
+// # Paradigm
 //
-// Paradigm, for the reasons written out on Echocasting Symposium: no
-// self-exile-instead-of-graveyard, no per-name resolved-one-yet
-// record, and — the part with no primitive at all — a recurring offer
-// to cast a COPY of the card out of exile at each of your first main
-// phases. Every cast permission in the engine opens the CARD, never a
-// copy of it. New seam row, opened by this batch in
-// docs/engine-seams.md.
-//
-// Shipping without it is strictly weaker: one exile-and-cast and the
-// card is done.
+// The printed keyword, and the engine does the rest (game/paradigm.go,
+// #1866): the spell exiles itself as it resolves, and the first time
+// you resolve one, each of your precombat main phases for the rest of
+// the game offers you a free cast of a copy of it.
 func init() {
 	Register(Spec{
-		OracleID:     "fd4f0315-567a-4cc5-bc7e-88a9d2cee910",
-		Name:         "Improvisation Capstone",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Paradigm isn't implemented — the spell goes to your graveyard and never offers you the repeating copies it promises.",
-		},
+		OracleID:        "fd4f0315-567a-4cc5-bc7e-88a9d2cee910",
+		Name:            "Improvisation Capstone",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{game.KeywordParadigm},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller, source := item.Controller, item.SourceCardID
 			return MillToZone{
