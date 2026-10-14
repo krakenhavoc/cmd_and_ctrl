@@ -291,12 +291,23 @@ func (l *List) ToGameCards() []game.Card {
 		companion.IsCompanion = true
 		out = append(out, companion)
 	}
-	for _, c := range l.Sideboard {
+	for _, c := range l.SeatedSideboard() {
 		card := toGameCard(c, false)
 		card.IsSideboard = true
 		out = append(out, card)
 	}
 	return out
+}
+
+// SeatedSideboard is the sideboard that reaches the game: the whole of
+// it when it holds at most MaxSideboard cards, and nothing when it holds
+// more (ADR 0191 §5). Validate says so with a warning. The server never
+// chooses which cards of an oversized one to keep.
+func (l *List) SeatedSideboard() []cards.Card {
+	if len(l.Sideboard) > MaxSideboard {
+		return nil
+	}
+	return l.Sideboard
 }
 
 // ToGameCard converts one indexed Scryfall card into the game.Card

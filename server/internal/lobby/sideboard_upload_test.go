@@ -1,7 +1,6 @@
 package lobby
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
@@ -49,20 +48,42 @@ func TestUploadDeckSeatsTheSideboardOutsideTheGame(t *testing.T) {
 	}
 }
 
-func TestUploadDeckWithAnOversizedSideboardIsRefused(t *testing.T) {
-	code, _, raw, _, _, _ := uploadAs(t,
+// Over the cap is a warning: the deck is accepted and seats with an empty
+// sideboard, the server picks no cards, and the answer says how many were
+// ignored by omitting `sideboard`.
+func TestUploadDeckWithAnOversizedSideboardWarnsAndSeatsNone(t *testing.T) {
+	code, out, raw, l, gameID, playerID := uploadAs(t,
 		"Commander:\n1 Five Colour Commander\nMainboard:\n99 Plains\nSideboard:\n16 Doubled Spell\n")
-	if code != http.StatusUnprocessableEntity {
-		t.Fatalf("upload: %d %s, want 422", code, raw)
+	if code != http.StatusOK {
+		t.Fatalf("upload: %d %s, want the deck accepted", code, raw)
 	}
-	var body struct {
-		Violations []deck.Violation `json:"violations"`
-	}
-	_ = json.Unmarshal([]byte(raw), &body)
-	for _, v := range body.Violations {
-		if v.Code == deck.CodeSideboardTooLarge {
-			return
+	var note *deck.Violation
+	for i := range out.Warnings {
+		if out.Warnings[i].Code == deck.CodeSideboardTooLarge {
+			note = &out.Warnings[i]
 		}
 	}
-	t.Errorf("no %s violation: %s", deck.CodeSideboardTooLarge, raw)
+	if note == nil || !strings.Contains(note.Message, "16 sideboard cards") || !strings.Contains(note.Message, "limit of 15") ||
+		!strings.Contains(note.Message, "ignored") {
+		t.Errorf("warnings %+v: want %s naming the count, the cap and that the sideboard is ignored", out.Warnings, deck.CodeSideboardTooLarge)
+	}
+	if out.Sideboard != 0 || out.CardCount != 100 {
+		t.Errorf("sideboard %d, card_count %d; want none seated and the 100", out.Sideboard, out.CardCount)
+	}
+	g, err := l.LookupGame(gameID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var seated, library int
+	g.ReadSnapshot(func() {
+		for _, p := range g.Seats {
+			if p.ID == playerID {
+				seated = len(p.SideboardCards())
+				library = p.Library.Size()
+			}
+		}
+	})
+	if seated != 0 || library != 99 {
+		t.Errorf("seated %d sideboard cards with a library of %d; want 0 and 99", seated, library)
+	}
 }

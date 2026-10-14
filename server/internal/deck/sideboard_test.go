@@ -265,24 +265,54 @@ func TestASideboardWarnsWithWhatItIsFor(t *testing.T) {
 	}
 }
 
-func TestASideboardOverTheCapIsFatal(t *testing.T) {
+// An oversized sideboard is a warning and is not carried into the game:
+// the deck still validates and seats, so a saved deck with a large
+// sideboard or maybeboard section is never refused, and the server never
+// picks which cards to keep.
+func TestASideboardOverTheCapWarnsAndIsNotSeated(t *testing.T) {
 	list := legalDeck()
 	list.Sideboard = sideCards(MaxSideboard)
 	if _, ok := violationFor(Validate(list), CodeSideboardTooLarge); ok {
 		t.Errorf("a sideboard of exactly %d is too large", MaxSideboard)
 	}
+	if got := len(list.SeatedSideboard()); got != MaxSideboard {
+		t.Errorf("a full sideboard seats %d cards, want %d", got, MaxSideboard)
+	}
+
 	list.Sideboard = sideCards(MaxSideboard + 1)
-	v, ok := violationFor(Validate(list), CodeSideboardTooLarge)
+	err := Validate(list)
+	v, ok := violationFor(err, CodeSideboardTooLarge)
 	if !ok {
-		t.Fatalf("a sideboard of %d is accepted", MaxSideboard+1)
+		t.Fatalf("a sideboard of %d is not flagged", MaxSideboard+1)
 	}
-	if !strings.Contains(v.Message, fmt.Sprint(MaxSideboard+1)) || !strings.Contains(v.Message, "remove 1") {
-		t.Errorf("message %q", v.Message)
+	if !strings.Contains(v.Message, fmt.Sprint(MaxSideboard+1)) || !strings.Contains(v.Message, fmt.Sprintf("limit of %d", MaxSideboard)) ||
+		!strings.Contains(v.Message, "ignored") {
+		t.Errorf("message %q: want the count, the limit and that the sideboard is ignored", v.Message)
 	}
-	if _, also := violationFor(Validate(list), CodeSideboardUnsupported); also {
+	if _, also := violationFor(err, CodeSideboardUnsupported); also {
 		t.Error("an oversized sideboard also got the soft note")
 	}
-	// The cap is the engine's.
+	// Nothing about the sideboard may be fatal: the lobby treats this
+	// code as a warning, and no other violation is raised.
+	ve, _ := err.(*ValidationError)
+	if ve == nil || len(ve.Violations) != 1 {
+		t.Errorf("violations %+v, want only the warning", err)
+	}
+
+	// Nothing is carried into the game: the deck seats with an empty
+	// sideboard rather than a server-chosen 15.
+	if n := len(list.SeatedSideboard()); n != 0 {
+		t.Errorf("an oversized sideboard seats %d cards", n)
+	}
+	cardsOut := list.ToGameCards()
+	if len(cardsOut) != 100 {
+		t.Errorf("%d game cards, want the deck's 100", len(cardsOut))
+	}
+	p := seatAndCount(t, list)
+	if len(p.SideboardCards()) != 0 || p.Library.Size()+p.Command.Size() != 100 {
+		t.Errorf("seated %d sideboard cards, library+command %d", len(p.SideboardCards()), p.Library.Size()+p.Command.Size())
+	}
+	// The cap is the engine's, and the engine still guards it.
 	if MaxSideboard != game.MaxSideboardSize {
 		t.Errorf("deck cap %d, engine cap %d", MaxSideboard, game.MaxSideboardSize)
 	}

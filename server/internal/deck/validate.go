@@ -33,8 +33,11 @@ const (
 	CodeNotLegalInFormat     = "not_legal_in_format"
 	CodeSideboardUnsupported = "sideboard_not_supported_in_commander"
 	// CodeSideboardTooLarge flags a sideboard of more than
-	// MaxSideboard cards (ADR 0191 §5). Fatal, and names the count: a
-	// silent trim would choose which cards to lose for the player.
+	// MaxSideboard cards (ADR 0191 §5). NON-fatal: the deck imports and
+	// seats, and the sideboard is not carried into the game at all
+	// (List.SeatedSideboard), so the server never picks which cards to
+	// lose for the player and a saved deck with a large sideboard or
+	// maybeboard section still seats.
 	CodeSideboardTooLarge = "sideboard_too_large"
 	// CodeUnsupportedLayout names cards whose printing carries more
 	// faces than the engine can play (ADR 0034). Non-fatal: the card
@@ -274,11 +277,11 @@ func Validate(list *List) error {
 	// Extrapolate the Impossible) can reach them. The note is
 	// non-fatal, and says so, so the player is told what the section
 	// does rather than that it does nothing. A sideboard over the cap is
-	// fatal.
+	// a warning too, and is not seated (List.SeatedSideboard).
 	if n := len(list.Sideboard); n > MaxSideboard {
 		vs = append(vs, Violation{
 			Code:    CodeSideboardTooLarge,
-			Message: fmt.Sprintf("deck has %d sideboard cards; a sideboard holds at most %d, so remove %d", n, MaxSideboard, n-MaxSideboard),
+			Message: fmt.Sprintf("deck has %d sideboard cards, over the limit of %d; the sideboard is ignored until it has %d or fewer", n, MaxSideboard, MaxSideboard),
 		})
 	} else if n > 0 {
 		vs = append(vs, Violation{

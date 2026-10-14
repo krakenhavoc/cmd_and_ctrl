@@ -981,6 +981,7 @@ var items = []Item{
 		Slug: "reality-fracture", Name: "Reality Fracture cards that wait on a mechanic", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Reality Fracture cards that wait on a mechanic the engine doesn't have yet.",
 		Issue:       2795,
+		Examples:    []string{"Extrapolate the Impossible", "Dack Fayden, Helping Hand", "Hall of Echoes"},
 		EngineNotes: "**Shipped** (#2795). Every Reality Fracture card that waited on a mechanic has it now. The last one, Extrapolate the Impossible, reads the sideboard as its outside-the-game pool (#3506, ADR 0191).",
 	},
 	{

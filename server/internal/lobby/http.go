@@ -3210,7 +3210,11 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 				//
 				// ADR 0172 adds the third: a lone sideboard card read
 				// as the companion is said, not refused.
+				//
+				// ADR 0191 adds the fourth: a sideboard over the cap is
+				// said and not seated, never a reason to refuse a deck.
 				if v.Code == deck.CodeSideboardUnsupported ||
+					v.Code == deck.CodeSideboardTooLarge ||
 					v.Code == deck.CodeUnsupportedLayout ||
 					v.Code == deck.CodeCompanionFromSideboard {
 					warnings = append(warnings, v)
@@ -3352,7 +3356,7 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		DeckID:        deckID,
 		Commanders:    commanders,
 		Companion:     companionName(list),
-		Sideboard:     len(list.Sideboard),
+		Sideboard:     len(list.SeatedSideboard()),
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
 		LibraryNote:   libraryNote,
@@ -3551,7 +3555,7 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		DeckID:        saved.ID.String(),
 		Commanders:    commanders,
 		Companion:     companionName(list),
-		Sideboard:     len(list.Sideboard),
+		Sideboard:     len(list.SeatedSideboard()),
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
 	})

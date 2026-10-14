@@ -103,9 +103,12 @@ The old text ("they will be ignored") was false the moment this shipped.
 
 ### 5. The size cap: 15
 
-A deck's sideboard holds **at most 15 cards**, `game.MaxSideboardSize` = `deck.MaxSideboard`, enforced twice: `deck.Validate` reports `sideboard_too_large` (**fatal**, naming the count and how many to remove), and `AddPlayer` / `ReplaceDeck` refuse a deck over it with `ErrSideboardTooLarge`, so a caller that never ran the checker still cannot seat an unbounded pool.
+A deck's sideboard holds **at most 15 cards**, `game.MaxSideboardSize` = `deck.MaxSideboard`. Over the cap is **not an error**:
 
-15 is the number #2352 plans for Standard (the constructed sideboard), and a cap is cheap to raise and expensive to lower once decks are saved against it, so this is the conservative default. It also bounds what rides the wire and the snapshot for a player who pastes a whole collection into the section. Fatal rather than truncating, because a silent trim would choose which cards to lose on the player's behalf. This **is a behaviour change** for a pasted Commander list that carried a larger "sideboard" (often a maybeboard exported under that name): it used to import with a warning and the cards dropped, and it is now refused with a message saying how many to remove. That is called out for the owner below, because it is the one place this change can refuse a deck that imported yesterday.
+- `deck.Validate` reports `sideboard_too_large` as a **non-fatal warning** ("deck has N sideboard cards, over the limit of 15; the sideboard is ignored until it has 15 or fewer"), and `List.SeatedSideboard()` hands the game **no sideboard at all** for such a list. The deck imports, validates and seats exactly as it did before this ADR, with an empty sideboard. The server never picks which cards of an oversized sideboard to keep.
+- `AddPlayer` / `ReplaceDeck` keep a guard and refuse a deck that still carries more than the cap with `ErrSideboardTooLarge`, so a caller that bypasses `ToGameCards()` cannot seat an unbounded pool.
+
+Why not fatal (the coordinator's decision, 2026-10-14): saved decks are source text re-validated at seating (ADR 0172 notes this), so a fatal cap would stop an existing Commander deck with a large sideboard or maybeboard section from importing or seating, which is a regression. Why 15: it is the number #2352 plans for Standard, a cap is cheap to raise and expensive to lower once decks are saved against it, and it bounds what rides the wire and the snapshot for a player who pastes a whole collection into the section. The cost is that such a deck silently has no sideboard unless the warning is read; the warning says so.
 
 ### 6. The prompt, and the cards that use it
 
@@ -158,12 +161,12 @@ A minimal, read-only affordance, reusing the zone browser: a **sideboard pile** 
 
 - **Snapshots:** additive within v8 (§4). One new key, one new omitempty card key, new shape lines, no edited fixture, no bump.
 - **Wire:** additive. Two optional `PlayerView` fields, one new `choose_destination` value, one new `from` value on a reveal frame, one upload-response field, one new violation code. Older clients ignore all of it, and the server sends no sideboard to a seat that may not see it.
-- **Saved decks:** none need rewriting; the section was already in their source text. A saved deck with a sideboard over 15 cards now needs trimming (see §5).
-- **Behaviour changes:** a Commander list's sideboard now reaches the game (it was dropped). The warning's text changed and its code did not. A sideboard over 15 is refused. A lone companion card in the sideboard is read as the companion exactly as before.
+- **Saved decks:** none need rewriting; the section was already in their source text. A saved deck with a sideboard over 15 cards still seats, with an empty sideboard and a warning (§5).
+- **Behaviour changes:** a Commander list's sideboard now reaches the game (it was dropped). The warning's text changed and its code did not. A sideboard over 15 is a warning and is not carried into the game. A lone companion card in the sideboard is read as the companion exactly as before.
 
 ## Validation
 
-- **`internal/deck`:** the sideboard is kept into the game by each importer (text with each header form and the `SB:` prefix, Moxfield JSON, the real Moxfield text export, Archidekt), `ToGameCards()` stamps and seats it, a `Text()` save-and-reload round trip keeps it, the warning text, the cap at 15 and 16, and the companion-from-sideboard rule against a shared sideboard.
+- **`internal/deck`:** the sideboard is kept into the game by each importer (text with each header form and the `SB:` prefix, Moxfield JSON, the real Moxfield text export, Archidekt), `ToGameCards()` stamps and seats it, a `Text()` save-and-reload round trip keeps it, the warning text, the cap at 15 and 16 (a warning, and an empty sideboard in the game), and the companion-from-sideboard rule against a shared sideboard.
 - **`internal/game`:** seating, order and knowers; the container is unreachable by `findCardZoneLocked`, `LookupCardForEffect`, `zoneFromRefLocked`, the admin move verb and the bounce, exile and graveyard effects; the cap through `AddPlayer` and `ReplaceDeck`; `ReplaceDeck` and departure; clone, undo and the snapshot round trip, and a file without the key; candidates for the owner only and closed to a controlled player; the bring-in event; the reveal marks knowers and emits one run; the pick's validation, prune and empty answer.
 - **`internal/protocol`:** the view for the owner, an opponent, a spectator and the admin with a JSON search for leaks, the controller of a controlled turn, the owner-only prompt options, and the public reveal.
 - **`internal/legal`, `aiseat`:** every move the enumerator offers is accepted by the dispatcher; a mandatory pick has an answer; pairs with the same name are not offered; the opponent's pick is enumerated; no other seat's list names a sideboard card; the heuristic takes the best card and the best pair and leaves a non-sideboard pick on its old price; the board text.
@@ -188,9 +191,9 @@ The cards below also read "outside the game" and are not shipped here. Each need
 - **Boomerang Basics and other Lessons** already ship as plain sorceries.
 - **Deck coverage** does not list the sideboard's cards, so the deck checker cannot yet say a sideboard card is unsupported.
 
-## Judgement calls to confirm
+## Decisions on the judgement calls (2026-10-14)
 
-1. **The cap is fatal.** A Commander list pasted with more than 15 sideboard cards used to import with a warning and now fails with a message. Truncating was rejected because it would choose the player's cards for them; a warning and a trim to 15 is the alternative if refusing is too strict.
-2. **A controlled player's pool is closed** (§8), so a wish cast during another player's control of the turn finds nothing. The alternative, letting the controlled player still choose, answers the prompt for the owner while another player is making their decisions, which the engine's routing does not support without a per-kind exception.
-3. **The sideboard is not checked against the commander's colour identity or the banlist.** Commander's checks cover the 100 and the companion; a card outside the game is neither. Say so if a wish should only fetch a legal card.
+1. **The cap is not fatal** (§5). An over-cap sideboard warns and is not carried into the game, so no existing deck stops importing or seating.
+2. **A controlled player's pool is closed** (§8), and the cards stay **Full**. This is an engine-wide policy for "outside the game" under another player's control (ADR 0167 §5), not a per-card caveat: every card that reads the container behaves the same way, so none declares it.
+3. **The sideboard is not checked against the commander's colour identity or the banlist.** That is fine for the casual Commander pool, and the check is deferred to #2352's format validation, which will know which format a deck is for.
 4. **The owner may see the sideboard at any time**, including in the zone browser during an opponent's turn, which is what the Scryfall ruling says and not a leak.

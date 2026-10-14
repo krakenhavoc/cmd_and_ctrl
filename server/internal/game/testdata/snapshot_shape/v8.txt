@@ -5529,6 +5529,7 @@ seats[].sideboard.cards[].goads	array
 seats[].sideboard.cards[].goads[]	object
 seats[].sideboard.cards[].goads[].by	custom(uuid.UUID)
 seats[].sideboard.cards[].goads[].expiresAtTurnsBegun	number:int
+seats[].sideboard.cards[].goads[].forRestOfGame	bool
 seats[].sideboard.cards[].grantedAbilities	array
 seats[].sideboard.cards[].grantedAbilities[]	string
 seats[].sideboard.cards[].harnessed	bool

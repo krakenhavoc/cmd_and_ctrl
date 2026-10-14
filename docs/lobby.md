@@ -1651,9 +1651,10 @@ Violation codes (stable strings, keyable by the client):
   Extrapolate the Impossible) can reach them
   ([ADR 0191](decisions/0191-a-sideboard-is-the-outside-the-game-pool.md)).
   The message says so; the code is unchanged.
-- `sideboard_too_large` — **fatal**: more than 15 sideboard cards. The
-  message names the count and how many to remove; the server never trims
-  a sideboard for the player.
+- `sideboard_too_large` — **warning only**: more than 15 sideboard cards.
+  The deck imports and seats, the sideboard is **not** carried into the
+  game (`sideboard` in the upload answer is omitted), and the message names
+  the count and the limit. The server never picks which cards to keep.
 
 ### The deck library (ADR 0051 decision 7, S34 sub-PR 5)
 
