@@ -44,6 +44,13 @@ type ChooseFromRevealedHand struct {
 	// choose a … card from it and exile that card" (Appetite for
 	// Brains). Not a discard, so no madness and no discard triggers.
 	Exile bool
+	// Linked, with Exile, records CR 607.2a's "exiled with this" link on
+	// the card as it lands in exile (Card.ExiledWith, #3516): the
+	// resolving item's source OBJECT, the way ExileTarget.Linked does. For
+	// a card that later lets you cast "the exiled card" (Null Summoner).
+	// A source with no object to name exiles with no link. Ignored
+	// without Exile: only an exile is "exiled with" anything.
+	Linked bool
 	// Optional is "You may choose".
 	Optional bool
 	// Look is "Look at target opponent's hand": only you learn it
@@ -100,6 +107,9 @@ func (e ChooseFromRevealedHand) Apply(ctx *Context) error {
 	}
 	if e.Keep {
 		d.Destination = game.PickKeep
+	}
+	if e.Linked && d.Destination == game.PickExile {
+		d.ExiledWith, _ = ctx.SourceRef()
 	}
 	d.Look = e.Look
 	if e.Measure != nil {

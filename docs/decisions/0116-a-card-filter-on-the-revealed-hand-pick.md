@@ -259,3 +259,33 @@ Still waiting, on the same registry row, now `partial`:
 - **Traumatic Revelation:** the pick is this shape, but its "if you don't" branch is incubate (CR 701.53), which the engine lacks.
 
 So #2115 stays open for the two-filter pick.
+
+
+## Amendment 2026-10-14 — the exile can be linked to its source (#3516)
+
+"You choose a nonland card from it. Exile that card." followed by "you may cast the exiled card" (Null
+Summoner) needs the exile to be CR 607.2a's "exiled with this". ADR 0155 §8 gave a resolving ability's
+exile that link (`Game.ExileLinkedForEffect` / `ExileLinkedThenForEffect`, `Card.ExiledWith`), and the
+revealed-hand exile did not use it, so no standing permission could name the card it took.
+
+`RevealedHandDiscard.ExiledWith` (an `ObjectRef`) and `ChooseFromRevealedHand.Linked` close that. `Linked`
+reads the resolving item's source OBJECT, id and epoch, when the pick goes up, and the answer routes the
+chosen cards through `ExileLinkedThenForEffect`, so the stamp lands in the same finishers and only when a
+card really reaches exile. It is captured when the pick is raised, not when it is answered: the ability
+has resolved by then and its source may have left or come back (CR 400.7), and a new object has no claim on
+the card. It is refused with any Destination but `PickExile` (a discard, or a card left in the hand, is
+exiled with nothing). The zero value links nothing, so every existing pick behaves as before
+(`TestAnUnlinkedRevealedHandExileStaysUnlinked`).
+
+**Snapshot impact.** One additive field on `pendingChoices[]`, `pickExiledWith` ({id, epoch}), written only
+when the pick links something (the shape file records it with `-update-shape`; the prompt stays plain data
+and a restore point). A binary from before it drops the key and would exile the card unlinked, which is
+weaker than printed and never stronger. One corpus board, `v8/revealed_hand_pick_exile_linked.json`
+(`TestNullSummonerLinkSurvivesARestoreWhileThePickIsOpen` restores a game with the pick open and answers it).
+
+**The permission side needed nothing new.** `PermissionFilter.ExiledWithSource` is the standing permission's
+filter on the link (ADR 0066, Valgavoth), `CastPermission.AnyType` is "mana of any type can be spent", and
+the threshold clause is a `CastPermissionGate` (`GraveyardAtLeast(7)`), derived on every query so the cast
+opens the moment the count reaches seven and closes if it falls back.
+
+**Cards.** Null Summoner (Full).

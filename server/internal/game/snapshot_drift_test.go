@@ -976,6 +976,10 @@ var pendingChoiceFields = plan(
 	// Talara's Bane's toughness, read as the pick was raised: without
 	// it a restored pick would gain nothing.
 	"PickMeasures", carried, "",
+	// #3516: the source object a PickExile pick links its exiled card to
+	// (Null Summoner): a restored pick that forgot it would exile the
+	// card unlinked, and no standing permission could ever name it.
+	"PickExiledWith", carried, "",
 	"CopyOptions", carried, "",
 	// ADR 0160: a copy_target prompt that exchanges text boxes. Carried
 	// with CopyOptions; only the wording reads it.
