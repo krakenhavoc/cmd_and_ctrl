@@ -679,9 +679,12 @@ func main() {
 	avatarCache := discord.NewAvatarCache(avatarDir, nil)
 
 	// Bug reporting (in-app "report a bug" button → GitHub issue).
-	// Token unset = feature off; the client hides the button via
-	// GET /bugreport/config. The token should be a fine-grained PAT
-	// with Issues:write on the one repo — see ADR 0017.
+	// No credential = feature off; the client hides the button via
+	// GET /bugreport/config. The credential is a GitHub App installed
+	// on the one repo with Issues: read and write (#3493), so issues
+	// are authored by its bot; or, the older way, a fine-grained PAT
+	// with Issues:write (ADR 0017), which files them as its owner. The
+	// app wins when both are set.
 	//
 	// The same client files ADR 0095's deck requests (POST
 	// /deck-requests), which also need the database for their rate
@@ -694,13 +697,26 @@ func main() {
 	if ghRepo == "" {
 		ghRepo = "krakenhavoc/cmd_and_ctrl"
 	}
-	if ghToken := os.Getenv("CMDCTRL_GITHUB_TOKEN"); ghToken != "" {
+	ghApp, err := githubAppFromEnv(os.Getenv)
+	if err != nil {
+		// A half-set or broken app config is a mistake to fix, not a
+		// reason to quietly file as the PAT's owner instead.
+		log.Error("github app config", "err", err)
+		os.Exit(1)
+	}
+	switch ghToken := os.Getenv("CMDCTRL_GITHUB_TOKEN"); {
+	case ghApp != nil:
+		gh := github.NewAppClient(ghApp, ghRepo)
+		bugReporter = gh
+		deckRequestFiler = gh
+		log.Info("bug reporting and deck requests enabled, as the GitHub App", "repo", ghRepo)
+	case ghToken != "":
 		gh := github.NewClient(ghToken, ghRepo)
 		bugReporter = gh
 		deckRequestFiler = gh
-		log.Info("bug reporting and deck requests enabled", "repo", ghRepo)
-	} else {
-		log.Info("bug reporting and deck requests disabled — set CMDCTRL_GITHUB_TOKEN to enable")
+		log.Info("bug reporting and deck requests enabled, as the PAT's owner", "repo", ghRepo)
+	default:
+		log.Info("bug reporting and deck requests disabled — set CMDCTRL_GITHUB_APP_* (or CMDCTRL_GITHUB_TOKEN) to enable")
 	}
 
 	// Bug-report artifacts: screenshots and pinned replays, under the

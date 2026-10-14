@@ -507,7 +507,7 @@ func (d *deckCheck) request(c Config, w http.ResponseWriter, r *http.Request) er
 	}
 	if c.DeckRequestFiler == nil {
 		return httpError(http.StatusServiceUnavailable,
-			"deck requests are not configured on this server (CMDCTRL_GITHUB_TOKEN is not set)")
+			"deck requests are not configured on this server (set the CMDCTRL_GITHUB_APP_* settings or CMDCTRL_GITHUB_TOKEN)")
 	}
 	if c.DeckRequests == nil {
 		return httpError(http.StatusServiceUnavailable,
