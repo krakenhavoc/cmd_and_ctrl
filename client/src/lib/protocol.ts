@@ -1773,7 +1773,10 @@ export interface PendingChoiceView {
   // charges (Sylvan Library's 4). Absent when the branch costs no
   // life. The label already says it; this is the number, for anything
   // that needs to reason about the price rather than print it.
+  // For pay_unless, mandatory life paid alongside pay_cost.
   life_cost?: number;
+  // Computed affordability of the mandatory life, including life locks.
+  life_cost_unpayable?: boolean;
   // #74: populated for kinds "choose_cards", "untap_choice",
   // "entry_reveal_from_hand", #1214's three resolution-time picks
   // ("reveal_pick", "their_permanents", "own_permanents") and ADR 0107's

@@ -647,13 +647,16 @@ type PendingChoiceView struct {
 	DevourDraw int `json:"devour_draw,omitempty"`
 	DevourLife int `json:"devour_life,omitempty"`
 
-	// LifeCost is the life a "confirm" prompt's ACCEPT branch charges
+	// LifeCost is mandatory life paid by "pay_unless", or a "confirm" ACCEPT branch
 	// (Sylvan Library's 4). Zero for a branch that costs no life.
 	// Carried for the same reason legal.MoveCost.Life is (#547): a
 	// client — human or bot — holding only this payload would
 	// otherwise price "pay 4 life to keep it" like "shuffle your
 	// library".
 	LifeCost int `json:"life_cost,omitempty"`
+	// LifeCostUnpayable marks a mandatory pay-unless life component
+	// that the chooser cannot pay, including a life-total lock.
+	LifeCostUnpayable bool `json:"life_cost_unpayable,omitempty"`
 
 	// Coin-call answers and the public progress of a flip chain.
 	AllowStop     bool `json:"allow_stop,omitempty"`
@@ -8344,8 +8347,10 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.MaxUsefulWins = c.CoinMaxUsefulWins
 			v.Wins = c.CoinWins
 		}
-		// ADR 0150 §5: an any-player link may name its answers ("Take 5
-		// damage").
+		if c.Kind == game.PendingChoicePayUnless {
+			v.LifeCostUnpayable = !g.CanPayLifeLocked(g.PlayerByIDForEffect(c.Chooser), c.LifeCost)
+		}
+		// ADR 0150 §5: an any-player link may name its answers.
 		if c.Kind == game.PendingChoiceConfirm || c.Kind == game.PendingChoicePayUnless {
 			v.AcceptLabel = c.AcceptLabel
 			v.DeclineLabel = c.DeclineLabel

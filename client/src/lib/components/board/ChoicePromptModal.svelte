@@ -812,9 +812,12 @@
   // ADR 0129 §3: the viewer's energy, for an energy payment's Pay (and
   // the pay_amount stepper's ceiling, which the server sends as max).
   const viewerEnergy = $derived(snap.seats?.find((s) => s.id === viewerID)?.energy ?? 0);
+  const viewerLife = $derived(snap.seats?.find((s) => s.id === viewerID)?.life ?? 0);
   const payBlocked = $derived(
     (payCards !== null && !payCardsReady(payCards, payCardPicks)) ||
-      (isPayUnless && energyShortBy(active, viewerEnergy) > 0),
+      (isPayUnless && energyShortBy(active, viewerEnergy) > 0) ||
+      (isPayUnless &&
+        ((active?.life_cost ?? 0) > viewerLife || active?.life_cost_unpayable === true)),
   );
   const payTapCost = $derived(isPayUnless ? (active?.tap_cost ?? null) : null);
   const payTapLimit = $derived(payTapCost ? waterbendLimit(payTapCost, undefined) : 0);
@@ -1693,7 +1696,8 @@
         width: 560,
         primary: {
           id: "yes",
-          label: `Pay ${c.pay_cost ?? ""}`.trim(),
+          label:
+            `Pay ${c.pay_cost ?? ""}${(c.life_cost ?? 0) > 0 ? ` and ${c.life_cost} life` : ""}`.trim(),
           disabled: payBlocked,
           keyShortcuts: "Y",
           cap: "Y",
@@ -2304,8 +2308,10 @@
       {:else}
         <!-- A waterbend tap list without card picks (#1311). -->
         <p class="prompt-hint">
-          Pay {active.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short),
-          or don't and let {triggerSourceName(active.source)} do its thing.
+          Pay {active.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short)
+          {#if (active.life_cost ?? 0) > 0}
+            and {active.life_cost} life
+          {/if}, or don't and let {triggerSourceName(active.source)} do its thing.
         </p>
       {/if}
       {#if payTapCost}

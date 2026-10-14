@@ -850,7 +850,8 @@ type PendingChoice struct {
 	// LifeCost is the life a PendingChoiceConfirm's ACCEPT branch
 	// charges — Sylvan Library's 4. Zero means the accept branch
 	// costs no life, which is most of them. A PendingChoiceEntryPayLife
-	// carries its payment here too (a shockland's 2, #2390), beside the
+	// carries its payment here too (a shockland's 2, #2390). PayUnless
+	// uses it for mandatory life paid alongside mana (#2945), beside the
 	// PayCost text the client shows.
 	//
 	// It is on the choice, and on the wire, for the reason #547 put
@@ -858,8 +859,8 @@ type PendingChoice struct {
 	// payload otherwise prices "pay 4 life to keep this card" exactly
 	// like "shuffle your library", and a bot at 4 life answers yes and
 	// dies. The engine does NOT deduct it — the frame's accept branch
-	// does, and re-checks affordability when it runs, because life can
-	// move between the question and the answer.
+	// does (or the shared pay-unless payment does), and re-checks
+	// affordability when it runs, because life can move between the question and the answer.
 	LifeCost int
 
 	// confirmResume is the server-only continuation pair for a
@@ -3675,8 +3676,9 @@ func (g *Game) QueuePayUnlessForEffect(
 // payUnlessExtras are the parts of a pay-unless only some callers have:
 // a branch for the "yes" (echo's EventEchoPaid) and a non-mana payment.
 type payUnlessExtras struct {
-	onPay  func(g *Game) error
-	action *PayAction
+	onPay    func(g *Game) error
+	action   *PayAction
+	lifeCost int
 	// offer makes the prompt one link of an any-player offer (ADR
 	// 0150, any_player_pays.go): PendingChoice.AnyPlayerOffer.
 	offer *AnyPlayerOffer
@@ -3740,6 +3742,7 @@ func (g *Game) queuePayUnlessLocked(
 		Source:          source,
 		Reason:          question,
 		PayCost:         cost,
+		LifeCost:        extra.lifeCost,
 		OwedInStep:      owed,
 		GuardsStackItem: guards,
 		AnyPlayerOffer:  extra.offer,
@@ -4111,8 +4114,12 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 		}
 		if p := g.playerByIDLocked(chooserID); p != nil {
 			cost := g.costAsPaidByLocked(chooserID, ManaSpendContext{}, WaterbendReduced(frame.cost, 0, len(tapIDs)), 0)
-			if _, _, err := g.strikePhyrexianLifeLocked(p, g.cardNameLocked(choice.Source), cost, ManaSpendContext{}, phyrexianLife, nil); err != nil {
+			_, life, err := g.strikePhyrexianLifeLocked(p, g.cardNameLocked(choice.Source), cost, ManaSpendContext{}, phyrexianLife, nil)
+			if err != nil {
 				return err
+			}
+			if !g.CanPayLifeLocked(p, choice.LifeCost+life) {
+				return ErrInvalidParam
 			}
 		}
 	}
@@ -4152,6 +4159,10 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 	if frame == nil {
 		return
 	}
+	if choice.GuardsStackItem != uuid.Nil && g.StackItemForEffect(choice.GuardsStackItem) == nil {
+		g.runStateChecksLocked()
+		return
+	}
 	branch := func(fn func(g *Game) error) {
 		g.runPromptBranchLocked(choice.AutoAnswerKey, func() {
 			g.runPayUnlessBranchLocked(choice, chooserID, fn)
@@ -4179,7 +4190,7 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 	if apply {
 		if p := g.playerByIDLocked(chooserID); p != nil {
 			cost := WaterbendReduced(frame.cost, 0, len(tapIDs))
-			paid = g.payCostWithLifeLocked(p, cost, choice.Source, unionIDs(tapIDs), phyrexianLife)
+			paid = g.payCostWithLifeLocked(p, cost, choice.Source, unionIDs(tapIDs), phyrexianLife, choice.LifeCost)
 			if paid {
 				g.payTapPermanentsCostLocked(chooserID, tapIDs)
 			}
@@ -4270,11 +4281,11 @@ func (g *Game) declineDepartedChoiceLocked(c *PendingChoice) {
 //
 // Caller must hold g.mu.
 func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID, excluded map[uuid.UUID]bool) bool {
-	return g.payCostWithLifeLocked(p, cost, source, excluded, 0)
+	return g.payCostWithLifeLocked(p, cost, source, excluded, 0, 0)
 }
 
 // payCostWithLifeLocked is payCostLocked for a payment that also
-// announces `phyrexianLife` symbols paid with 2 life each (CR 107.4f,
+// owes fixedLife and announces `phyrexianLife` symbols paid with 2 life each (CR 107.4f,
 // ADR 0131 §2). The strike and the life payment are the helper pair a
 // cast and an activation run (strikePhyrexianLifeLocked,
 // payPhyrexianLifeLocked), so a ward {B} under K'rrik and a spell's {B}
@@ -4283,7 +4294,7 @@ func (g *Game) payCostLocked(p *Player, cost ParsedCost, source uuid.UUID, exclu
 // half: false leaves the life total, the pool and every land alone. The
 // claim was validated when the answer arrived; one that no longer holds
 // here is a decline.
-func (g *Game) payCostWithLifeLocked(p *Player, cost ParsedCost, source uuid.UUID, excluded map[uuid.UUID]bool, phyrexianLife int) bool {
+func (g *Game) payCostWithLifeLocked(p *Player, cost ParsedCost, source uuid.UUID, excluded map[uuid.UUID]bool, phyrexianLife, fixedLife int) bool {
 	// #1600, CR 609.4b: Chromatic Orrery's "you may spend mana as
 	// though it were mana of any color" reaches a ward or a Rhystic
 	// Study tax too — every cost the player pays. A narrowed grant
@@ -4294,6 +4305,10 @@ func (g *Game) payCostWithLifeLocked(p *Player, cost ParsedCost, source uuid.UUI
 	if err != nil {
 		return false
 	}
+	if fixedLife < 0 || !g.CanPayLifeLocked(p, lifeOwed+fixedLife) {
+		return false
+	}
+	lifeOwed += fixedLife
 	var (
 		plan  tapPlan
 		short ParsedCost
