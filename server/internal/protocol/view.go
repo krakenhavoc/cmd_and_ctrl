@@ -2135,6 +2135,21 @@ type PlayerView struct {
 	// each capture from the host the lobby designated (ws/host.go).
 	IsHost bool `json:"is_host,omitempty"`
 
+	// Presence says the seat's player is not at the table (ADR 0177
+	// §1): no connection is bound to the seat, or every one is hidden.
+	// Omitted while the seat is present, and always on a bot seat or
+	// one that has left the game. Not read from the engine: the hub
+	// stamps it on every frame it sends, from its own connections
+	// (ws/presence.go), so it is in no snapshot and no undo entry.
+	// Public to every viewer.
+	Presence *PresenceView `json:"presence,omitempty"`
+
+	// StandIn says a bot is playing this person's seat because they
+	// were away (ADR 0177 §4). The seat is still theirs: IsBot stays
+	// false. Not read from the engine: the room stamps it from what
+	// the lobby recorded. Public to every viewer.
+	StandIn *StandInView `json:"stand_in,omitempty"`
+
 	// UndoAutoAnswer is the seq of this seat's automatic answer (its
 	// LogAutoAnswer entry) while that answer is the TOP undo entry, so
 	// an `undo` from this seat takes it back (ADR 0127 §6, the owner's
@@ -11877,6 +11892,39 @@ func zoneOf(p *game.Player, kind game.ZoneKind) *game.Zone {
 	return nil
 }
 
+// Presence states (ADR 0177 §1).
+const (
+	// PresenceOffline: no connection is bound to the seat.
+	PresenceOffline = "offline"
+	// PresenceHidden: every connection bound to the seat says its tab
+	// is hidden (ADR 0162 §2).
+	PresenceHidden = "hidden"
+)
+
+// PresenceView is PlayerView.Presence.
+type PresenceView struct {
+	// State is PresenceOffline or PresenceHidden.
+	State string `json:"state"`
+	// Since is when the seat last stopped being present, RFC 3339. For
+	// a seat the server has not seen leave since it started, it is
+	// when the server first saw the seat away.
+	Since string `json:"since"`
+	// Movable is set while the table may move on without the seat
+	// (ADR 0177 §2): it has been offline for the table's away time,
+	// the table is waiting on it, and nobody has chosen to keep
+	// waiting. Who may answer is decided by the server (§3); the
+	// client offers the choice to the seats the same rule names.
+	Movable bool `json:"movable,omitempty"`
+}
+
+// StandInView is PlayerView.StandIn.
+type StandInView struct {
+	// Tier is the bot tier playing the seat: "heuristic".
+	Tier string `json:"tier"`
+	// Since is when the bot took the seat, RFC 3339.
+	Since string `json:"since"`
+}
+
 // TableSettingsView is game.TableSettings on the wire (ADR 0075). The
 // keys match game.SettingsPatch's, so a client can send back exactly
 // the fields it read.
@@ -11898,6 +11946,10 @@ type TableSettingsView struct {
 	// 0 (omitted) is the rules, N gives N free mulligans at any table,
 	// -1 makes every mulligan free. Fixed once the game is active.
 	FreeMulligans int `json:"free_mulligans,omitempty"`
+	// AwayAfter is the away time in minutes (ADR 0177 §7): how long a
+	// seat the table waits on must be offline before the table is
+	// offered a way on. 0 is never. Changeable at any time.
+	AwayAfter int `json:"away_after"`
 }
 
 // ViewOfTableSettings projects one table's settings for a caller
@@ -11920,6 +11972,7 @@ func viewOfTableSettings(s game.TableSettings) *TableSettingsView {
 		AllowSpawn:      s.AllowSpawn,
 
 		FreeMulligans: s.EffectiveFreeMulligans(),
+		AwayAfter:     s.EffectiveAwayAfter(),
 	}
 }
 

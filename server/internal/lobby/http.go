@@ -374,6 +374,8 @@ type GameEvictor interface {
 //	GET  /games/{id}/spectators — a seat / host / creator / admin: who is watching
 //	DELETE /games/{id}/spectators/{spectator} — host / creator / admin: remove one (?block=true)
 //	POST /games/{id}/seats/{player}/reclaim — admin: mint a seat-reclaim link
+//	POST /games/{id}/seats/{player}/away — answer the away offer: stand_in, concede or wait (ADR 0177)
+//	POST /games/{id}/seats/me/take-back — take your seat back from the bot playing it (ADR 0177)
 //	POST /games/{id}/reclaim — redeem one: a session for that seat
 //	POST /games/{id}/invites/rotate — admin: revoke + re-mint one invite kind
 //	POST /games/{id}/invites/dm — seated / creator / admin: DM a person the game's invite link
@@ -673,6 +675,10 @@ func Handler(c Config) http.Handler {
 	// seat from an unstarted table; an admin alone from a started game, by
 	// conceding it out (#3093, seat_remove.go).
 	mux.Handle("DELETE /games/{id}/seats/{player}", auth.Middleware(c.Auth)(handlerFunc(c, removeSeat)))
+	// ADR 0177: the table moves on without a player who is gone, and
+	// the player takes their seat back from the bot (away.go).
+	mux.Handle("POST /games/{id}/seats/{player}/away", auth.Middleware(c.Auth)(handlerFunc(c, answerAwaySeat)))
+	mux.Handle("POST /games/{id}/seats/me/take-back", auth.Middleware(c.Auth)(handlerFunc(c, takeBackSeat)))
 	// #3113: the block list and the unblock (blocks_http.go), and
 	// spectators: who is watching, and removing one (spectators.go).
 	mux.Handle("GET /games/{id}/blocks", auth.Middleware(c.Auth)(handlerFunc(c, listBlocks)))

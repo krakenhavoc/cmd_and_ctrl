@@ -3694,7 +3694,9 @@ Objects are cards and permanents by instance ID; "you" is the item's controller.
 | Step | Reads | Writes | Events |
 | --- | --- | --- | --- |
 | `GainLife` | | your life, up | life change |
-| `DamageEachOpponent` | the source (on the battlefield, with no lifelink, infect, wither or toxic) | each opponent's life, down | damage, life change |
+| `DamageEachOpponent` | the source (whatever the damage tail reads of it: the permanent, its last-known record once it has left, nothing once it has moved on; with no lifelink, infect, wither or toxic) | each opponent's life, down | damage, life change |
+| `DamageController` | the source, as for `DamageEachOpponent` | your life, down | damage, life change |
+| `TargetPlayerLosesLife` | the targeted player | that player's life, down | life change |
 | `CounterOnThis` | the source | the source, if on the battlefield | counter placed |
 | `ExileChosenTarget` | the targets | each card target | zone move, leaves the battlefield, unattach |
 | `DrawCards` | | your library and hand (and a loss on an empty library) | draw |
@@ -4556,3 +4558,42 @@ This adds no event or persisted state and introduces no second batching
 system. Tests distinguish sequential instructions inside one resolution from
 an actual simultaneous wipe/sacrifice, and retain the existing recursion
 regressions. Clear Nether Traitor's ordering caveat only with those tests.
+
+## Amendment 2026-10-14 — a source that died, damage to you, and the targeted drain · Accepted
+
+Found by replaying eight four-seat `boteval arena` games (esper-control, mono-black-aristocrats, simic-ramp,
+wubrg-dragons): 81 ordering prompts in 32 seat-games, nearly all "X's trigger is handled by the players". Three
+gaps in the footprint vocabulary covered most of them.
+
+1. **A damage step reads what the damage tail will read.** `DamageEachOpponent` refused whenever its source had
+   left the battlefield, which is the aristocrats case: Syr Konrad dies in the wipe whose deaths he triggers on, and
+   as the deck's commander goes on to the command zone. `footprintDamageSourceLocked` now builds the tail the step
+   will build (`effectDamageTailLocked`) and refuses only lifelink, infect, wither or toxic on it, so the two
+   cannot disagree: the permanent while it is on the battlefield, its last-known record once it has left (CR
+   608.2h), no traits once the card has moved on and no record matches. The source stays a read, because an item
+   that moves the card back changes which object deals the damage.
+2. **`DamageController{N}`** is "~ deals N damage to you" (City of Brass, Midnight Reaper): the same source
+   questions, and the controller's life, down.
+3. **`TargetPlayerLosesLife{N}`** is "target player loses N life", the first half of Blood Artist's and Falkenrath
+   Noble's drain (`Do(TargetPlayerLosesLife{N: 1}, GainLife{Amount: 1})`). It reads and lowers the targeted
+   player's life. A target who could reach 0 in the batch keeps the prompt through the existing elimination rule,
+   since a later drain then has no legal target.
+4. **Two draws commute.** A library touched by two items asked whatever they did to it, so Midnight Reaper's three
+   "draw a card" for one wipe asked among themselves. Two items that only draw from the top of one library put the
+   same cards in the same hand in either order. The library tie (reason `library`) now asks only when one side
+   mills, scries or surveils that library. A draw that could empty it is still the elimination rule's (the draws are
+   counted), and a "whenever you draw" watcher still the reactor rule's.
+
+Tatyova, Vindictive Vampire and the Pest token move onto `Do` with steps that already existed. Moving the Vampire
+showed it saw its own death, against its oracle's "another creature you control"; its condition now excludes
+itself (`TestVindictiveVampireDoesNotSeeItsOwnDeath`). No wire or snapshot
+change. Each new step has a case in `footprint_conformance_test.go` (`DamageEachOpponent:departed` and
+`DamageController:departed` resolve with the source in the graveyard, `DamageEachOpponent:moved-on` with it exiled
+from there).
+
+**Back-outs.** `TestSyrKonradDyingInTheWipeHeTriggersOnDoesNotAsk` and
+`TestSyrKonradMovedOnFromTheGraveyardDoesNotAsk` fail without item 1,
+`TestADepartedLifelinkSourceStillAsks` without its lifelink refusal, `TestTwoTargetedDrainsDoNotAsk` without item 3,
+`TestTwoTargetedDrainsAskWhenTheTargetCanDie` if the drain stopped being a player read, and the Syr Konrad test
+again without item 4 (Reaper's three draws). The draw-beside-scry case in `trigger_independence_draws_test.go`
+keeps item 4 from going further.
