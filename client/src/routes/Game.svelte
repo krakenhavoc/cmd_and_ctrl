@@ -91,6 +91,7 @@
   import AttackDeclarationModal from "../lib/components/board/AttackDeclarationModal.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
   import ActionDock from "../lib/components/board/ActionDock.svelte";
+  import PhaseDisplay from "../lib/components/board/PhaseDisplay.svelte";
   import TutorialCoach from "../lib/components/tutorial/TutorialCoach.svelte";
   import DockRequest from "../lib/components/board/DockRequest.svelte";
   import GameMenu from "../lib/components/board/GameMenu.svelte";
@@ -2371,6 +2372,26 @@
     <span class="bar-sep" aria-hidden="true"></span>
     <span class="wordmark" aria-hidden="true"><Wordmark size="bar" /></span>
     <h1 class="crumb"><b>/</b><span class="mono">{gameID.slice(0, 8)}</span></h1>
+    <!-- #3378: a spectator has no action dock, so nothing else says
+         whose turn it is or which step. The dock's own header, read
+         only, laid out on one line. -->
+    {#if isSpectator && view && !dockShown}
+      <div class="bar-phase">
+        <PhaseDisplay
+          readOnly
+          inline
+          turn={view.turn}
+          seats={view.seats}
+          mulligansOpen={view.mulligans_open === true}
+          damageCantBePrevented={view.damage_cant_be_prevented ?? []}
+          exileIfCreaturesDie={view.exile_if_creatures_die ?? []}
+          damageShields={view.damage_shields ?? []}
+          damageMultipliers={view.damage_multipliers ?? []}
+          damageRedirections={view.damage_redirections ?? []}
+          dayNight={view.day_night}
+        />
+      </div>
+    {/if}
     <span class="bar-spacer"></span>
     {#if isSpectator}
       <span
@@ -3198,6 +3219,13 @@
   }
   .bar-spacer {
     flex: 1;
+  }
+  .bar-phase {
+    min-width: 0;
+    margin-left: 18px;
+    padding-left: 18px;
+    border-left: 1px solid var(--border);
+    font-size: 13px;
   }
   .status {
     display: inline-flex;
