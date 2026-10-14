@@ -147,3 +147,59 @@ func TestForUserExcludesAgentAndBotSeats(t *testing.T) {
 		t.Errorf("got %+v, want only the caller's own game", got)
 	}
 }
+
+// TopCards sums the caller's own human seats' casts, counted games only,
+// most first, capped, and never another seat's, a bot's or an agent's.
+func TestForUserTopCards(t *testing.T) {
+	s, d := openStore(t)
+	for _, u := range []string{"u-me", "u-other"} {
+		if _, err := d.Exec(`INSERT INTO users (id, display_name, created_at, last_seen_at) VALUES (?, ?, 1, 1)`, u, u); err != nil {
+			t.Fatal(err)
+		}
+	}
+	seedSeat(t, d, 1000, "A", "u-me", "", "", "win", 1, 5, `["X"]`)
+	seedSeat(t, d, 2000, "B", "u-me", "", "", "loss", 2, 5, `["X"]`)
+	seedSeat(t, d, 3000, "Closed", "u-me", "", "", "none", nil, 0, `[]`)
+	seedSeat(t, d, 4000, "Agent", "u-me", "", "", "win", 1, 5, `["X"]`)
+	seedSeat(t, d, 5000, "Theirs", "u-other", "", "", "win", 1, 5, `["X"]`)
+	if _, err := d.Exec(`UPDATE seats SET agent_client = 'claude-code' WHERE seat = 0 AND game_id = (SELECT id FROM games WHERE name = 'Agent')`); err != nil {
+		t.Fatal(err)
+	}
+	cast := func(game string, seat int, name string, n int) {
+		t.Helper()
+		if _, err := d.Exec(`INSERT INTO seat_card_stats VALUES ((SELECT id FROM games WHERE name = ?), ?, ?, NULL, ?, 1)`, game, seat, name, n); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cast("A", 0, "Sol Ring", 2)
+	cast("B", 0, "Sol Ring", 3)
+	cast("A", 0, "Arcane Signet", 1)
+	cast("A", 1, "Opponent Card", 9) // seat 1 is nobody's
+	cast("Closed", 0, "Unfinished Card", 9)
+	cast("Agent", 0, "Agent Card", 9)
+	cast("Theirs", 0, "Other Card", 9)
+	for i := 0; i < 12; i++ {
+		cast("B", 0, "Filler "+string(rune('A'+i)), 1)
+	}
+
+	got, err := s.ForUser(context.Background(), "u-me")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.TopCards) != TopCardsMax {
+		t.Fatalf("top cards = %d, want the cap %d: %+v", len(got.TopCards), TopCardsMax, got.TopCards)
+	}
+	if got.TopCards[0] != (TopCard{Name: "Sol Ring", Casts: 5}) {
+		t.Errorf("first = %+v, want Sol Ring x5", got.TopCards[0])
+	}
+	for _, c := range got.TopCards {
+		switch c.Name {
+		case "Opponent Card", "Unfinished Card", "Agent Card", "Other Card":
+			t.Errorf("top cards hold %q, which is not the caller's own counted human seat", c.Name)
+		}
+	}
+	none, err := s.ForUser(context.Background(), "nobody")
+	if err != nil || none.TopCards == nil || len(none.TopCards) != 0 {
+		t.Errorf("empty = %+v, %v; want a non-nil empty list", none.TopCards, err)
+	}
+}

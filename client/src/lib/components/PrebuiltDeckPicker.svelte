@@ -8,6 +8,7 @@
   import { prebuiltRow } from "../deckPicker";
   import DeckRadioList from "./DeckRadioList.svelte";
   import Icon from "./Icon.svelte";
+  import ShopLinks from "./ShopLinks.svelte";
 
   // PrebuiltDeckPicker is the "I just want to play" path: decks whose
   // cards this engine actually implements, installed with one press. It sits above the paste-a-decklist box in
@@ -34,9 +35,22 @@
      * own). null holds the section back until the caller knows.
      */
     collapsed?: boolean | null;
+    /**
+     * Offer "Play this deck in paper" (ADR 0179 §7). Off by default: the
+     * in-game deck modal sits on the table route, where no shop link
+     * belongs. The lobby turns it on.
+     */
+    shopLinks?: boolean;
   }
 
-  const { gameID, playerID, lastDeck = null, onSuccess, collapsed = false }: Props = $props();
+  const {
+    gameID,
+    playerID,
+    lastDeck = null,
+    onSuccess,
+    collapsed = false,
+    shopLinks = false,
+  }: Props = $props();
 
   let expanded = $state(false);
   const open = $derived(collapsed === false || expanded);
@@ -179,6 +193,12 @@
             {/each}
           </ul>
         </details>
+      {/if}
+
+      {#if shopLinks && current?.cards && current.cards.length > 0}
+        <div class="paper">
+          <ShopLinks list={current.cards} label="Play this deck in paper" />
+        </div>
       {/if}
 
       <div class="row-actions">

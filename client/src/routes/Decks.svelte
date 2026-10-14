@@ -916,6 +916,9 @@
                     {#if cov.detail}
                       <div class="cov-detail">{cov.detail}</div>
                     {/if}
+                    {#if p.cards && p.cards.length > 0}
+                      <ShopLinks list={p.cards} label="Play this deck in paper" />
+                    {/if}
                   </li>
                 {/each}
               </ul>

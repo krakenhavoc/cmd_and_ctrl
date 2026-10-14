@@ -72,6 +72,16 @@ type RecentGame struct {
 	Commanders []string `json:"commanders"`
 }
 
+// TopCardsMax caps UserStats.TopCards.
+const TopCardsMax = 10
+
+// TopCard is a card the caller cast, and how often over their counted
+// games (ADR 0179: the stats page's Buy links).
+type TopCard struct {
+	Name  string `json:"name"`
+	Casts int    `json:"casts"`
+}
+
 // UserStats is the body of GET /me/stats.
 //
 // Definitions: a game counts when the caller's seat has a result of
@@ -87,11 +97,14 @@ type UserStats struct {
 	ByDeck      []Group      `json:"by_deck"`
 	ByCommander []Group      `json:"by_commander"`
 	Recent      []RecentGame `json:"recent"`
+	// TopCards is the caller's most-cast cards over the same counted
+	// seats (at most TopCardsMax, most casts first, then by name).
+	TopCards []TopCard `json:"top_cards"`
 }
 
 // ForUser implements Store.
 func (s *SQLStore) ForUser(ctx context.Context, userID string) (UserStats, error) {
-	out := UserStats{ByDeck: []Group{}, ByCommander: []Group{}, Recent: []RecentGame{}}
+	out := UserStats{ByDeck: []Group{}, ByCommander: []Group{}, Recent: []RecentGame{}, TopCards: []TopCard{}}
 	if userID == "" {
 		return out, nil
 	}
@@ -170,6 +183,40 @@ func (s *SQLStore) ForUser(ctx context.Context, userID string) (UserStats, error
 	out.Tally.finish()
 	out.ByDeck = finishGroups(decks, deckOrder)
 	out.ByCommander = finishGroups(cmdrs, cmdrOrder)
+	if out.TopCards, err = s.topCards(ctx, userID); err != nil {
+		return UserStats{}, err
+	}
+	return out, nil
+}
+
+// topCards sums the casts of the caller's own human seats that have a
+// result, the seats the record counts (ADR 0165 §7, §9).
+func (s *SQLStore) topCards(ctx context.Context, userID string) ([]TopCard, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT c.name, SUM(c.casts) AS n
+		 FROM seat_card_stats c
+		 JOIN seats s ON s.game_id = c.game_id AND s.seat = c.seat
+		 JOIN seat_stats ss ON ss.game_id = c.game_id AND ss.seat = c.seat
+		 WHERE s.user_id = ? AND s.bot_tier IS NULL AND s.agent_client IS NULL
+		   AND ss.result <> 'none'
+		 GROUP BY c.name
+		 ORDER BY n DESC, c.name
+		 LIMIT ?`, userID, TopCardsMax)
+	if err != nil {
+		return nil, fmt.Errorf("gamestats: top cards: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	out := []TopCard{}
+	for rows.Next() {
+		var c TopCard
+		if err := rows.Scan(&c.Name, &c.Casts); err != nil {
+			return nil, fmt.Errorf("gamestats: scan top card: %w", err)
+		}
+		out = append(out, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("gamestats: top cards: %w", err)
+	}
 	return out, nil
 }
 

@@ -5,7 +5,9 @@ package lobby
 
 import (
 	"context"
+	"errors"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -99,4 +101,82 @@ func (l *Lobby) StatsOverview() (gamestats.Overview, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), statsTimeout)
 	defer cancel()
 	return store.Overview(ctx)
+}
+
+// GameCardsSeat is one opponent's line of GameCards: the commanders and
+// the cards that seat cast. It names no one (ADR 0165 §9, ADR 0179).
+type GameCardsSeat struct {
+	Commanders []string   `json:"commanders"`
+	Cards      []GameCard `json:"cards"`
+}
+
+// GameCard is a card name and how often it was cast.
+type GameCard struct {
+	Name  string `json:"name"`
+	Casts int    `json:"casts"`
+}
+
+// GameCards is the body of GET /me/games/{id}/cards.
+type GameCards struct {
+	// Ready is false while the game's record is not written yet (it is
+	// derived a moment after the game ends), or a server keeps none.
+	Ready     bool            `json:"ready"`
+	Opponents []GameCardsSeat `json:"opponents"`
+}
+
+// GameCards lists the commanders and the cards the caller's opponents
+// cast in a game that has ended (ADR 0179 §7: the shop links after a
+// game). The caller must hold a seat at the game (ErrPlayerNotInGame
+// otherwise) and the game must have ended (409 otherwise): the answer
+// is never given while a game runs. Their own seat is left out, and no
+// seat is named.
+func (l *Lobby) GameCards(userID, gameID uuid.UUID) (GameCards, error) {
+	games, err := l.MyGames(userID)
+	if err != nil {
+		return GameCards{}, err
+	}
+	var mine *MyGame
+	for i := range games {
+		if games[i].ID == gameID {
+			mine = &games[i]
+			break
+		}
+	}
+	if mine == nil {
+		return GameCards{}, ErrPlayerNotInGame
+	}
+	if mine.State != "ended" {
+		return GameCards{}, httpError(http.StatusConflict, "this game has not ended yet")
+	}
+	out := GameCards{Opponents: []GameCardsSeat{}}
+	l.mu.Lock()
+	store := l.gameStats
+	l.mu.Unlock()
+	if store == nil {
+		return out, nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), statsTimeout)
+	defer cancel()
+	rec, err := store.Get(ctx, gameID)
+	if errors.Is(err, gamestats.ErrNotFound) {
+		return out, nil
+	}
+	if err != nil {
+		return GameCards{}, err
+	}
+	out.Ready = true
+	for _, st := range rec.Seats {
+		if st.Seat == mine.Seat {
+			continue
+		}
+		o := GameCardsSeat{Commanders: st.Commanders, Cards: make([]GameCard, 0, len(st.Cards))}
+		if o.Commanders == nil {
+			o.Commanders = []string{}
+		}
+		for _, c := range st.Cards {
+			o.Cards = append(o.Cards, GameCard{Name: c.Name, Casts: c.Casts})
+		}
+		out.Opponents = append(out.Opponents, o)
+	}
+	return out, nil
 }

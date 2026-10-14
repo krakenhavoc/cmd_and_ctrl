@@ -5,8 +5,9 @@
   // the viewer has not hidden them.
   //
   // NEVER place this on the game table while a game is running (ADR
-  // 0179 §3). The placements are the Decks page and the Catalog; #3445
-  // adds an ended table, which must check the game has ended first.
+  // 0179 §3). The placements are the Decks page, the Catalog, History's
+  // ended games (GameCardsPanel; the server refuses the read until the
+  // game has ended), the pre-built decks and the stats page (§7).
   //
   // `note` (default on) shows the disclosure under the links. A surface
   // with many small groups (a card per row) shows one ShopNote above

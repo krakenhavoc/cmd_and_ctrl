@@ -43,7 +43,7 @@ func (NoStore) Get(context.Context, uuid.UUID) (Game, error) { return Game{}, Er
 
 // ForUser implements Store; there is nothing to summarise.
 func (NoStore) ForUser(context.Context, string) (UserStats, error) {
-	return UserStats{ByDeck: []Group{}, ByCommander: []Group{}, Recent: []RecentGame{}}, nil
+	return UserStats{ByDeck: []Group{}, ByCommander: []Group{}, Recent: []RecentGame{}, TopCards: []TopCard{}}, nil
 }
 
 var _ Store = NoStore{}

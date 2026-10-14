@@ -767,3 +767,97 @@ func TestMyStatsShowsOnlyTheCallersSeats(t *testing.T) {
 		t.Errorf("GET /me/stats leaked another person's game: %s", raw)
 	}
 }
+
+// GET /me/games/{id}/cards (ADR 0179 §7): the opponents' commanders and
+// casts of an ended game, to a person who sat there, and nothing else.
+func TestMyGameCardsOnlyAfterTheGameEndedAndOnlyForASeatedPerson(t *testing.T) {
+	s := newMyGamesStack(t)
+	s.lobby.SetGameStats(gamestats.NewSQLStore(s.db))
+	idTok := identityTokenFromCallback(t, s.srv, s.state)
+
+	g, _ := s.lobby.Create("Cards")
+	sess := decodeSession(t, postJSON(t, s.srv, "/join", idTok, map[string]string{"invite_token": g.InviteToken}), http.StatusOK)
+	other := decodeSession(t, postJSON(t, s.srv, "/join", "", map[string]string{"invite_token": g.InviteToken, "name": "Bob"}), http.StatusOK)
+	var mySeat, bobSeat int
+	for _, q := range []struct {
+		p   uuid.UUID
+		dst *int
+	}{{sess.PlayerID, &mySeat}, {other.PlayerID, &bobSeat}} {
+		if err := s.db.QueryRow(`SELECT seat FROM seats WHERE game_id = ? AND player_id = ?`, g.ID.String(), q.p.String()).Scan(q.dst); err != nil {
+			t.Fatal(err)
+		}
+	}
+	path := "/me/games/" + g.ID.String() + "/cards"
+
+	// Not ended: refused, whatever the stats say.
+	resp := doGet(t, s.srv, path, idTok)
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusConflict {
+		t.Errorf("GET cards of a running game = %d, want 409", resp.StatusCode)
+	}
+
+	// End it: out of the live table, ended in the row, with a record.
+	s.lobby.mu.Lock()
+	delete(s.lobby.games, g.ID)
+	s.lobby.mu.Unlock()
+	if _, err := s.db.Exec(`UPDATE games SET state = 'ended', ended_at = 5 WHERE id = ?`, g.ID.String()); err != nil {
+		t.Fatal(err)
+	}
+	id := g.ID.String()
+	for _, q := range []struct {
+		sql  string
+		args []any
+	}{
+		{`INSERT INTO game_stats VALUES (?, 1, 'live', 1, 8, 2, 0, 5)`, []any{id}},
+		{`INSERT INTO seat_stats VALUES (?, ?, 'win', 1, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '["Bobs Commander"]')`, []any{id, bobSeat}},
+		{`INSERT INTO seat_stats VALUES (?, ?, 'loss', 2, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '["My Commander"]')`, []any{id, mySeat}},
+		{`INSERT INTO seat_card_stats VALUES (?, ?, 'Sol Ring', NULL, 2, 1)`, []any{id, bobSeat}},
+		{`INSERT INTO seat_card_stats VALUES (?, ?, 'My Own Card', NULL, 1, 1)`, []any{id, mySeat}},
+	} {
+		if _, err := s.db.Exec(q.sql, q.args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	resp = doGet(t, s.srv, path, idTok)
+	raw, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET cards = %d: %s", resp.StatusCode, raw)
+	}
+	var body GameCards
+	if err := json.Unmarshal(raw, &body); err != nil {
+		t.Fatal(err)
+	}
+	if !body.Ready || len(body.Opponents) != 1 || body.Opponents[0].Commanders[0] != "Bobs Commander" ||
+		len(body.Opponents[0].Cards) != 1 || body.Opponents[0].Cards[0] != (GameCard{Name: "Sol Ring", Casts: 2}) {
+		t.Errorf("cards = %s, want Bob's commander and Sol Ring only", raw)
+	}
+	for _, leak := range []string{"Bob", "My Own Card", "My Commander"} {
+		if strings.Contains(strings.ReplaceAll(string(raw), "Bobs Commander", ""), leak) {
+			t.Errorf("cards leaked %q: %s", leak, raw)
+		}
+	}
+
+	// A guest seat, an admin and no credential are not a person.
+	for name, tc := range map[string]struct {
+		tok  string
+		want int
+	}{
+		"no session": {"", http.StatusUnauthorized},
+		"admin":      {adminSession(t, s.auth), http.StatusForbidden},
+		"guest":      {other.Token, http.StatusForbidden},
+	} {
+		resp := doGet(t, s.srv, path, tc.tok)
+		_ = resp.Body.Close()
+		if resp.StatusCode != tc.want {
+			t.Errorf("%s: GET cards = %d, want %d", name, resp.StatusCode, tc.want)
+		}
+	}
+	// A person who held no seat there.
+	resp = doGet(t, s.srv, "/me/games/"+uuid.NewString()+"/cards", idTok)
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("GET cards of a game the caller never sat at = %d, want 403", resp.StatusCode)
+	}
+}

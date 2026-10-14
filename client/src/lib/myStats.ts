@@ -32,6 +32,12 @@ export interface RecentStatsGame {
   commanders: string[];
 }
 
+/** A card the caller cast, and how often over their counted games. */
+export interface TopCard {
+  name: string;
+  casts: number;
+}
+
 /** The body of GET /me/stats. */
 export interface MyStats extends StatsTally {
   /** Tables that ended with no outcome; they are left out of every count. */
@@ -39,6 +45,8 @@ export interface MyStats extends StatsTally {
   by_deck: StatsGroup[];
   by_commander: StatsGroup[];
   recent: RecentStatsGame[];
+  /** The caller's most-cast cards, at most ten (ADR 0179 §7). */
+  top_cards?: TopCard[];
 }
 
 /** "4-7-1", or "4-7" when nothing was drawn. */

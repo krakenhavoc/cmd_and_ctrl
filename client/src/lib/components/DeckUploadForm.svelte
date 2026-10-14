@@ -42,9 +42,13 @@
     // is forwarded so the caller can surface a richer toast if it
     // wants to (default rendering inside the component is fine).
     onSuccess?: (res: UploadDeckResponse) => void;
+    // shopLinks offers "Play this deck in paper" on the pre-built decks
+    // (ADR 0179 §7). Only the lobby sets it; the deck modal on the
+    // table route leaves it off.
+    shopLinks?: boolean;
   }
 
-  const { gameID, playerID, onSuccess }: Props = $props();
+  const { gameID, playerID, onSuccess, shopLinks = false }: Props = $props();
 
   // The deck this player last seated (ADR 0110 §5 item 5): the
   // account's for a signed-in person, the browser's pre-built pick for
@@ -145,7 +149,14 @@
     {onSuccess}
     onLibrary={(n) => (libraryCount = n)}
   />
-  <PrebuiltDeckPicker {gameID} {playerID} {lastDeck} {onSuccess} collapsed={prebuiltCollapsed} />
+  <PrebuiltDeckPicker
+    {gameID}
+    {playerID}
+    {lastDeck}
+    {onSuccess}
+    {shopLinks}
+    collapsed={prebuiltCollapsed}
+  />
   <p class="own-list">
     Or bring your own list — a Moxfield or Archidekt deck URL, a Moxfield JSON export, or a
     plain-text decklist.
