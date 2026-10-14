@@ -294,6 +294,7 @@ func enumerateReportLocked(g *game.Game, seat uuid.UUID, opts Options) Report {
 	}
 	e.report = true
 	e.run()
+	e.controlledTurnMoves()
 	return Report{Moves: e.out, Cuts: e.cuts}
 }
 

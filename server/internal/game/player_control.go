@@ -10,11 +10,13 @@ import (
 // player_control.go — one player controlling another (CR 723, ADR 0166,
 // #2164).
 //
-// Word of Command is the one card that uses it today (CR 723.2's
-// limited form): "You control that player until Word of Command
-// finishes resolving. The player plays that card if able. … If the
-// chosen card is cast as a spell, you control the player while that
-// spell is resolving."
+// Word of Command uses it for CR 723.2's limited form: "You control
+// that player until Word of Command finishes resolving. The player
+// plays that card if able. … If the chosen card is cast as a spell, you
+// control the player while that spell is resolving." Emrakul, the
+// Promised End uses it for CR 723.1's whole turn (ADR 0167,
+// turn_control.go): a record with Until "turn" waits for the player's
+// next turn, applies for all of it, and ends at the rotation seam.
 //
 // # The record
 //
@@ -52,7 +54,37 @@ const (
 	// ControlSpellResolving is the forced spell cast and on the stack.
 	// Control applies only while that spell resolves.
 	ControlSpellResolving ControlStage = "spell_resolving"
+	// ControlAwaitingTurn is a turn-long record (ADR 0167 §1) waiting
+	// for the controlled player's next turn. It never applies.
+	ControlAwaitingTurn ControlStage = "awaiting_turn"
+	// ControlTurn is the controlled turn itself: live while both
+	// players are in the game and that turn is the current one.
+	ControlTurn ControlStage = "turn"
 )
+
+// ControlUntil is how long a record's control lasts (ADR 0167 §1).
+type ControlUntil string
+
+const (
+	// ControlUntilResolution is Word of Command's: control over a
+	// resolution (ADR 0166). A record that names no Until (one written
+	// before ADR 0167) reads as this.
+	ControlUntilResolution ControlUntil = "resolution"
+	// ControlUntilTurn is Emrakul's: the whole of the controlled
+	// player's next turn (CR 723.1).
+	ControlUntilTurn ControlUntil = "turn"
+)
+
+// AnchoredExtraTurn is the extra turn a turn-long record owes after the
+// controlled turn (ADR 0167 §3): "After that turn, that player takes an
+// extra turn." Ref is minted from NextExtraRef when the record is
+// created; Floor is NextExtraRef as the controlled turn begins, so the
+// extra turns created during it (Ref > Floor) stay ahead of this one
+// (CR 500.7).
+type AnchoredExtraTurn struct {
+	Ref   int `json:"ref"`
+	Floor int `json:"floor"`
+}
 
 // PlayerControl is one live player-controlling effect (CR 723.2). Plain
 // data, so a table under one is still a restore point.
@@ -71,6 +103,25 @@ type PlayerControl struct {
 	// Prompt is the controlled_play prompt while ControlPlaying.
 	// uuid.Nil while the play is being probed, before it is queued.
 	Prompt uuid.UUID `json:"prompt,omitempty"`
+	// Until is how long the control lasts (ADR 0167 §1). Empty reads
+	// as ControlUntilResolution, so a record written before it existed
+	// is a Word of Command record.
+	Until ControlUntil `json:"until,omitempty"`
+	// TurnSeq is the Turn.Seq of the controlled turn, set as it begins
+	// (ControlTurn). Zero while the record waits.
+	TurnSeq int `json:"turnSeq,omitempty"`
+	// ExtraTurn is the extra turn owed after the controlled turn, nil
+	// when the effect gives none.
+	ExtraTurn *AnchoredExtraTurn `json:"extraTurn,omitempty"`
+}
+
+// UntilKind is r.Until with the empty value read as
+// ControlUntilResolution.
+func (r PlayerControl) UntilKind() ControlUntil {
+	if r.Until == "" {
+		return ControlUntilResolution
+	}
+	return r.Until
 }
 
 // PendingChoiceControlledPlay is Word of Command's forced play (ADR
@@ -117,6 +168,8 @@ func (g *Game) controlLiveLocked(r PlayerControl) bool {
 	case ControlSpellResolving:
 		return g.resolutionOpen && g.resolving != nil && g.resolving.hasCard &&
 			g.resolving.card.InstanceID == r.Card
+	case ControlTurn:
+		return r.UntilKind() == ControlUntilTurn && g.Turn.Seq == r.TurnSeq
 	}
 	return false
 }
@@ -255,18 +308,27 @@ func (g *Game) BeginControlledPlayForEffect(cp ControlledPlay) uuid.UUID {
 		return uuid.Nil
 	}
 	// CR 723.1a: the newest effect is the one that works. Only one
-	// card makes these, so an older record over the same player can
-	// only be a stale one; it goes.
-	g.PlayerControls = slices.DeleteFunc(g.PlayerControls, func(r PlayerControl) bool {
-		return r.Controlled == cp.Controlled
-	})
-	g.PlayerControls = append(g.PlayerControls, PlayerControl{
+	// card makes these, so an older Word record over the same player
+	// can only be a stale one; it goes. A turn-long record (ADR 0167)
+	// stays: Word of Command cast during an Emrakul turn controls the
+	// player while it resolves, and the turn's record applies again
+	// afterwards. A fresh slice, never a write into the old one, which
+	// an undo entry may share (RestoreFrom).
+	kept := make([]PlayerControl, 0, len(g.PlayerControls)+1)
+	for _, r := range g.PlayerControls {
+		if r.Controlled == cp.Controlled && r.UntilKind() == ControlUntilResolution {
+			continue
+		}
+		kept = append(kept, r)
+	}
+	g.PlayerControls = append(kept, PlayerControl{
 		Controller: cp.Controller,
 		Controlled: cp.Controlled,
 		Source:     cp.Source,
 		SourceName: cp.SourceName,
 		Card:       cp.Card,
 		Stage:      ControlPlaying,
+		Until:      ControlUntilResolution,
 	})
 	if controlledPlayProbe != nil && !controlledPlayProbe(g, cp.Controlled, cp.Card) {
 		g.removeControlRecordLocked(len(g.PlayerControls) - 1)
@@ -407,7 +469,13 @@ func (g *Game) resolveControlledPlayLocked(idx int, c *PendingChoice, picks []uu
 // play whose prompt is gone, or a forced spell that has left the stack
 // and is not the resolution still open. A forced play whose controlled
 // player left has its prompt withdrawn too. runStateChecksLocked calls
-// it once a resolution has closed. Caller must hold g.mu.
+// it once a resolution has closed.
+//
+// A turn-long record (ADR 0167 §6) goes here only while it waits and
+// its controlled player has left: that turn never begins, so there is
+// neither control nor an extra turn. Every other turn-long record ends
+// at the rotation seam (endTurnControlsLocked), which still owes the
+// extra turn when only the controller has left. Caller must hold g.mu.
 func (g *Game) prunePlayerControlsLocked() {
 	if len(g.PlayerControls) == 0 {
 		return
@@ -416,6 +484,10 @@ func (g *Game) prunePlayerControlsLocked() {
 		r := g.PlayerControls[i]
 		gone := !g.playerInGameLocked(r.Controller) || !g.playerInGameLocked(r.Controlled)
 		switch {
+		case r.UntilKind() == ControlUntilTurn:
+			if r.Stage != ControlAwaitingTurn || g.playerInGameLocked(r.Controlled) {
+				continue
+			}
 		case gone:
 			if r.Stage == ControlPlaying && r.Prompt != uuid.Nil {
 				if idx := g.choiceIndexLocked(r.Prompt); idx >= 0 {
@@ -438,10 +510,18 @@ func (g *Game) prunePlayerControlsLocked() {
 	}
 }
 
-// clonePlayerControls copies the record list.
+// clonePlayerControls copies the record list, ExtraTurn included, so a
+// clone never shares a pointer with the game it came from.
 func clonePlayerControls(in []PlayerControl) []PlayerControl {
 	if len(in) == 0 {
 		return nil
 	}
-	return slices.Clone(in)
+	out := slices.Clone(in)
+	for i := range out {
+		if out[i].ExtraTurn != nil {
+			et := *out[i].ExtraTurn
+			out[i].ExtraTurn = &et
+		}
+	}
+	return out
 }

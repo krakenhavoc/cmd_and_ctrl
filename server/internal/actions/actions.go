@@ -732,9 +732,11 @@ func dispatch(g *game.Game, a Action) error {
 			return err
 		}
 		if p.ControlledPlay == "" {
-			if a.Actor != a.Caller {
-				// A controller casts as the player they control only to
-				// make the play the effect demands.
+			// A controller casts as the player they control only to
+			// make the play the effect demands (ADR 0166), or while
+			// they play that player's whole turn (ADR 0167 §4), when
+			// the cast is gated exactly as it would be for that player.
+			if a.Actor != a.Caller && g.ControlUntilOfPlayer(a.Caller) != game.ControlUntilTurn {
 				return game.ErrPlayerControlled
 			}
 			if err := requirePriorityHolder(g, a.Caller); err != nil {

@@ -491,7 +491,13 @@ export interface GameView {
   // ADR 0166 (CR 723): who is making whose decisions right now. A
   // prompt the controlled player owes arrives with `chooser` set to the
   // controller and `on_behalf_of` to the controlled player.
-  player_controls?: { controller: string; controlled: string; source?: string }[];
+  // ADR 0167: `until` is "resolution" (Word of Command) or "turn" (the
+  // whole of a turn another player plays, Emrakul, the Promised End).
+  // One entry per controlled player: the effect that applies now.
+  player_controls?: PlayerControlView[];
+  // ADR 0167 §8: turn-long controls still waiting for the controlled
+  // player's next turn. Public; grants no visibility.
+  scheduled_player_controls?: ScheduledPlayerControlView[];
   // S31: the closed list of moves THE VIEWER'S OWN SEAT may make
   // right now, enumerated server-side by `internal/legal`. The server
   // never ships another seat's list — an opponent's moves name the
@@ -515,6 +521,11 @@ export interface GameView {
   // never "nothing is legal". Read through lib/legalActions.ts, never
   // directly, so every highlight comes from one lookup.
   legal_actions?: LegalActionsView;
+  // ADR 0167 §7: while the viewer plays another seat's turn,
+  // legal_moves also holds that seat's moves (each with `player` set to
+  // it) and legal_actions digests only the viewer's own. This maps each
+  // controlled seat's player ID to the digest of its moves.
+  controlled_legal_actions?: Record<string, LegalActionsView>;
   // The public game log (S31 sub-PR 0, ADR 0033 §4): the last ~200
   // table-visible events, oldest first. Every card reference in it has
   // been through the same visibility filter as the zones above, so an
@@ -1097,7 +1108,14 @@ export type LogKind =
   // turned face up by an EFFECT (CR 708.8). `card_id` is the permanent, public
   // again by then; `target` is the object that did it. The special action has
   // no line of this kind (its `special_action` line carries it).
-  | "turn_face_up";
+  | "turn_face_up"
+  // ADR 0167 (CR 723.1): a turn-long player control was created, began
+  // with the controlled player's turn, and ended as the next turn
+  // began. `seat` is the controller, `target_seat` the controlled
+  // player, `card_id` the card whose effect it is (Emrakul).
+  | "player_control_scheduled"
+  | "player_control_began"
+  | "player_control_ended";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the
@@ -4634,7 +4652,25 @@ export interface TableSettingsView {
 }
 
 // ADR 0127: why a prompt with a standing answer is asked by hand.
-export type AskedByHand = "no_mana" | "empty_library" | "loop" | "undone";
+// "controlled" (ADR 0167 §4): another player controls the chooser, so
+// their standing answer does not apply.
+export type AskedByHand = "no_mana" | "empty_library" | "loop" | "undone" | "controlled";
+
+/** ADR 0166 / 0167: one player making another's decisions right now. */
+export interface PlayerControlView {
+  controller: string;
+  controlled: string;
+  source?: string;
+  source_name?: string;
+  until: "resolution" | "turn";
+}
+
+/** ADR 0167 §8: a turn-long control waiting for the controlled player's next turn. */
+export interface ScheduledPlayerControlView {
+  controller: string;
+  controlled: string;
+  source_name?: string;
+}
 
 // ADR 0127 §3: one of a seat's standing answers, as the server holds it.
 export interface AutoAnswerRuleView {

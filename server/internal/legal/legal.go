@@ -705,6 +705,7 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 		return nil
 	}
 	e.run()
+	e.controlledTurnMoves()
 	return e.out
 }
 

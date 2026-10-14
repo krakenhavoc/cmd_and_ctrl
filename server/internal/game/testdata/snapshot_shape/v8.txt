@@ -2888,10 +2888,15 @@ playerControls[]	object
 playerControls[].card	custom(uuid.UUID)
 playerControls[].controlled	custom(uuid.UUID)
 playerControls[].controller	custom(uuid.UUID)
+playerControls[].extraTurn	object
+playerControls[].extraTurn.floor	number:int
+playerControls[].extraTurn.ref	number:int
 playerControls[].prompt	custom(uuid.UUID)
 playerControls[].source	custom(uuid.UUID)
 playerControls[].sourceName	string
 playerControls[].stage	string
+playerControls[].turnSeq	number:int
+playerControls[].until	string
 preventionFollowUps	array
 preventionFollowUps[]	object
 preventionFollowUps[].batch	number:uint64
