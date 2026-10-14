@@ -13,18 +13,22 @@ and maybeboard cards are excluded. The report has no unresolved names.
 
 | Coverage bucket | Distinct cards | Copies in the 100-card deck |
 | --- | ---: | ---: |
-| Automated, complete | 66 | 66 |
-| Automated with caveats | 2 | 2 |
+| Automated, complete | 67 | 67 |
+| Automated with caveats | 1 | 1 |
 | No effect to implement (Swamp) | 1 | 27 |
 | Manual only | 5 | 5 |
 | Unreviewed | 0 | 0 |
 
-**93 of 100 copies are complete on this branch.** The previously merged
-19-card batches and two review stamps are present. This change adds
-Forsaken Miner through the corrected crime-announcement event (#2944).
-Copies and retargeting still cause ordinary target events, but do not commit
-new crimes. One qualifying announcement commits one crime, even if it has
-several qualifying targets, including opponents' stack abilities.
+**94 of 100 copies are complete on this branch.** The previously merged
+19-card batches, review stamps and Forsaken Miner fix are present. This change
+completes Nether Traitor (#3417): a separate later death instruction in one
+resolution wakes a Traitor already in the graveyard, while an actual shared
+wipe or sacrifice does not. It uses existing simultaneous-exit data and
+retains the graveyard object and payment guards.
+
+Gisa's implementation is separately tracked in PR #3329. It is not yet on
+this branch's audited base; with both changes merged the deck gains one
+further complete card. Only the measured branch result is counted here.
 
 ## Remaining work
 
@@ -36,7 +40,6 @@ several qualifying targets, including opponents' stack abilities.
 | Liliana, Dreadhorde General | Gather every affected player's choices before simultaneous sacrifices (#2948). |
 | The Darkness Crystal | A move replacement with resumable additional life gain and linked reanimation (#2950). |
 | Library of Leng | Choose the relative order of several cards discarded to the library (#2949). |
-| Nether Traitor | Distinguish separate death instructions in one resolution from simultaneous deaths. |
 
 The deck request remains open. No remaining caveat or manual card has been
 relabeled complete to increase the reported percentage.
