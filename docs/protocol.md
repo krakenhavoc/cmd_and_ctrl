@@ -649,6 +649,26 @@ empty list is a legal answer ("choose none"). Each pick gets one more
 counter of every kind it already has. Counters are on the table, so the
 options, the seats and the suggestion reach every seat unredacted.
 
+### `entry_choose_permanents` — other permanents chosen as a permanent enters ([ADR 0170](decisions/0170-choosing-other-permanents-as-a-permanent-enters.md), #1893, CR 614.1c / 614.12)
+
+`pending_choices` may carry `kind: "entry_choose_permanents"`. It is asked
+while a permanent is entering and before it is on the battlefield:
+"As this creature enters, put a phylactery counter on an artifact you
+control" (Phylactery Lich), "As Sin enters, remove all counters from any
+number of artifacts, creatures, and enchantments" (Sin, Unending
+Cataclysm). The entry waits on it, so it blocks the table. `source` is
+the entering card and `reason` is the card's sentence.
+
+It carries and is answered like `choose_cards`: `options[]` are the
+battlefield permanents the clause admits (the chooser's own, or anyone's
+for "any number of …"), with `choose_min` / `choose_max`. A
+"put a counter on an artifact you control" is not a "may", so its floor
+is 1; an "any number of" has a floor of 0, and an empty `card_ids` is a
+legal answer. `choose_suggested[]` is the card's recommended pick
+(proliferate's field): a default for the client to pre-select, not a
+rule. The candidates are public permanents, so the options, bounds and
+suggestion reach every seat unredacted.
+
 ### `divide_shield` — which damage a charged shield prevents (ADR 0108 §7, #1904, CR 615.7)
 
 `pending_choices` may carry `kind: "divide_shield"`. It is asked when a

@@ -5138,6 +5138,37 @@ moves a redirected entry wherever the window sent it
 (`moveRedirectedEntryLocked`), from any entry site; a card that
 rewrites an entry's `NewZone` needs nothing else.
 
+**"As this enters, <do something to> <other permanents you choose>"**
+(Phylactery Lich's "put a phylactery counter on an artifact you control",
+Sin, Unending Cataclysm's "remove all counters from any number of
+artifacts, creatures, and enchantments" — [ADR 0170](decisions/0170-choosing-other-permanents-as-a-permanent-enters.md))
+is the same clause with `Action: game.EntryCardChoose`: the engine does
+nothing to what is named, and the declaration's `Then` does the rest,
+while the entry is paused. Build it with `AsEntersChoosePermanents` in
+[as_enters_choose_permanents.go](../server/internal/cards/effects/as_enters_choose_permanents.go):
+
+```go
+AsEntersChoosePermanents(name, "Sin — as it enters, remove all counters …", &game.EntryCardChoice{
+    Action:        game.EntryCardChoose,
+    AnyController: true,  // anyone's permanents; the default is the chooser's own
+    AnyNumber:     true,  // "any number of": floor Min (0), ceiling every candidate
+    Matches:       sinCandidate,
+    Then:          sinRemoveAllCounters, // func(g, ev, picked) error
+    SuggestKey:    name,                 // game.RegisterEntryChoiceSuggestion(name, sinSuggest) at init
+})
+```
+
+`Then` is handed the paused entry: `ev.AddCounterAtETB` is "it enters
+with X counters", so Doubling Season and Hardened Scales see them. What
+`Then` does to OTHER permanents must settle inline — use
+`AddCounterByMustSettleNowForEffect`, never a form that can pause. A "put a
+counter on a permanent you control" with no "may" is `Min: 1, Max: 1`:
+with no candidate nothing is asked and the permanent just enters. Give the
+row a `SuggestKey` (a function filed with `game.RegisterEntryChoiceSuggestion`
+at init, never a closure on the row) so a bot and the client's
+pre-selection know which answer helps the seat; it rides the prompt as
+`choose_suggested`.
+
 **An alternative cast cost (S22):** "you may cast this spell for its
 <keyword> cost **rather than** its mana cost" (CR 118.9) goes in
 `Spec.AlternativeCosts`, built from the constructors in

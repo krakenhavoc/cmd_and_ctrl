@@ -56,6 +56,7 @@ describe("which choices the board answers", () => {
     for (const k of [
       "sacrifice_choice",
       "entry_sacrifice",
+      "entry_choose_permanents",
       "their_permanents",
       "own_permanents",
       "ring_bearer",

@@ -8429,8 +8429,10 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// PendingChoiceProliferate — #2525. The permanents ride Options
 		// above (battlefield cards, public); the seats on offer and the
 		// engine's suggested answer ride beside them. All of it is
-		// public information: counters are on the table.
-		if c.Kind == game.PendingChoiceProliferate {
+		// public information: counters are on the table. ADR 0170's
+		// entry_choose_permanents carries a suggestion the same way
+		// (public permanents, no seats).
+		if c.Kind == game.PendingChoiceProliferate || c.Kind == game.PendingChoiceEntryChoosePermanents {
 			for _, id := range c.ChoosePlayers {
 				v.ChoosePlayers = append(v.ChoosePlayers, id.String())
 			}

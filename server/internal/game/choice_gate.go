@@ -286,6 +286,9 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// entry is suspended on the answer.
 	PendingChoiceEntryDiscardFromHand: true,
 	PendingChoiceEntrySacrifice:       true,
+	// ADR 0170: "as this enters, put a counter on an artifact you
+	// control" (Phylactery Lich). The entry is suspended on the answer.
+	PendingChoiceEntryChoosePermanents: true,
 	// ADR 0115 decision 3, CR 704.3. The CR 903.9a question is a
 	// state-based action, and CR 704.3 performs every state-based
 	// action before any player gets priority, so the table waits.
