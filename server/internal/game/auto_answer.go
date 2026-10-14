@@ -76,6 +76,10 @@ const (
 	AskedByHandLoop AskedByHand = "loop"
 	// AskedByHandUndone: the chooser undid the automatic answer (§6).
 	AskedByHandUndone AskedByHand = "undone"
+	// AskedByHandControlled: another player controls the chooser (CR
+	// 723.5, ADR 0167 §4). The rule is the chooser's, and the decision
+	// is not theirs to make.
+	AskedByHandControlled AskedByHand = "controlled"
 )
 
 // SetAutoAnswers replaces playerID's standing answers with rules (ADR
@@ -361,6 +365,11 @@ func (g *Game) autoAnswerRuleLocked(c *PendingChoice) (AutoAnswer, bool) {
 // autoAnswerHandReasonLocked is why c must be asked by hand despite its
 // rule, or "" when the rule may answer it. Caller must hold g.mu.
 func (g *Game) autoAnswerHandReasonLocked(c *PendingChoice, answer AutoAnswer) AskedByHand {
+	// ADR 0167 §4: a controlled chooser's prompt is the controller's to
+	// answer, so the chooser's standing answer never answers it.
+	if g.ControllerOfPlayerLocked(c.Chooser) != c.Chooser {
+		return AskedByHandControlled
+	}
 	if g.LoopNotice != nil {
 		return AskedByHandLoop
 	}

@@ -207,6 +207,12 @@ type GameView struct {
 	// shows a controller every card the player they control can see
 	// (CR 723.4).
 	PlayerControls []PlayerControlView `json:"player_controls,omitempty"`
+	// ScheduledPlayerControls is every turn-long control still waiting
+	// for the controlled player's next turn (ADR 0167 §8): Emrakul, the
+	// Promised End's "during that player's next turn". Public, and it
+	// grants no visibility; the turn strip and the controlled player's
+	// warning read it.
+	ScheduledPlayerControls []ScheduledPlayerControlView `json:"scheduled_player_controls,omitempty"`
 	// LegalMoves is the closed list of things the VIEWER'S OWN seat
 	// may do right now, straight out of internal/legal. Empty
 	// whenever that seat owes no decision — which is most frames,
@@ -247,6 +253,13 @@ type GameView struct {
 	// not already hand the same viewer. Absent whenever the seat owes
 	// no decision, so a quiet frame costs 0 bytes.
 	LegalActions *LegalActionsView `json:"legal_actions,omitempty"`
+	// ControlledLegalActions is the same digest for each seat whose
+	// turn the viewer is playing (ADR 0167 §7, §9), keyed by that seat's
+	// player ID: the moves in LegalMoves whose `player` is that seat.
+	// LegalActions keeps the viewer's own moves only. Projected out of
+	// controlledLegalActionsBySeat exactly as LegalActions is, so only
+	// the controller ever carries it.
+	ControlledLegalActions map[string]*LegalActionsView `json:"controlled_legal_actions,omitempty"`
 	// legalBySeat is the per-seat enumeration, keyed by player UUID
 	// string. Unexported, so encoding/json never writes it: the only
 	// way a move list reaches a client is through FilterViewFor
@@ -260,6 +273,9 @@ type GameView struct {
 	// legalTruncatedBySeat names the seats whose wire list
 	// capLegalMoves degraded, keyed and projected as legalBySeat is.
 	legalTruncatedBySeat map[string]bool
+	// controlledLegalActionsBySeat is ControlledLegalActions per
+	// viewer seat, keyed and projected as legalBySeat is.
+	controlledLegalActionsBySeat map[string]map[string]*LegalActionsView
 	// Log is the public game log: the last PublicLogMax table-visible
 	// events, oldest first. A projection of game.Game.Events, not a
 	// stored buffer — see log.go. Every card reference in it goes
@@ -512,7 +528,7 @@ type PendingChoiceView struct {
 	// AutoAnswerCard and AutoAnswerPrompt are its display copies: the
 	// card's name and the question, which the client keeps beside the
 	// rule in Settings. AskedByHand says why a prompt that has a rule
-	// is asked anyway ("no_mana", "empty_library", "loop", "undone").
+	// is asked anyway ("no_mana", "empty_library", "loop", "undone", "controlled").
 	// All four are the chooser's alone: FilterViewFor clears them for
 	// every other viewer.
 	AutoAnswerKey    string `json:"auto_answer_key,omitempty"`
@@ -4905,7 +4921,9 @@ func ViewOfGame(g *game.Game) GameView {
 		stampDeathMarks(g, &view.Battlefield)
 		stampLandTypeEffects(g, &view.Battlefield)
 		stampDefenderRefusals(g, &view.Battlefield)
-		view.legalBySeat, view.legalActionsBySeat, view.legalTruncatedBySeat = enumerateLegalMoves(g)
+		view.legalBySeat, view.legalActionsBySeat, view.legalTruncatedBySeat, view.controlledLegalActionsBySeat = enumerateLegalMoves(g)
+		// ADR 0167 §8: public, the turn-long controls still waiting.
+		view.ScheduledPlayerControls = viewOfScheduledPlayerControls(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
 		// sets out of the view that was just assembled, so it must run
 		// last — and inside the same read lock, so the log and the
@@ -4948,10 +4966,17 @@ func ViewOfGame(g *game.Game) GameView {
 // ADR 0122 §6: the enumeration carries its cut report, which the digest
 // files under each card (legal_actions.sources[id].truncated), and the
 // third map says which seats' wire lists the cap degraded.
-func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*LegalActionsView, map[string]bool) {
+//
+// ADR 0167 §7: a seat playing another seat's turn is also offered that
+// seat's moves, each with `player` set to it. The digest is split the
+// same way: the seat's own moves make its legal_actions, and each
+// controlled seat's make an entry of the fourth map,
+// controlled_legal_actions.
+func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*LegalActionsView, map[string]bool, map[string]map[string]*LegalActionsView) {
 	var out map[string][]LegalMoveView
 	var digests map[string]*LegalActionsView
 	var truncated map[string]bool
+	var controlled map[string]map[string]*LegalActionsView
 	for _, p := range g.Seats {
 		if p == nil {
 			continue
@@ -4961,12 +4986,27 @@ func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*
 		if len(all) == 0 {
 			continue
 		}
-		if d := digestLegalMoves(all); d != nil {
+		own, others := splitMovesByPlayer(all, p.ID)
+		if d := digestLegalMoves(own); d != nil {
 			fileDigestCuts(d, rep.Cuts)
 			if digests == nil {
 				digests = make(map[string]*LegalActionsView, len(g.Seats))
 			}
 			digests[p.ID.String()] = d
+		}
+		for _, grp := range others {
+			d := digestLegalMoves(grp)
+			if d == nil {
+				continue
+			}
+			fileDigestCuts(d, rep.Cuts)
+			if controlled == nil {
+				controlled = make(map[string]map[string]*LegalActionsView)
+			}
+			if controlled[p.ID.String()] == nil {
+				controlled[p.ID.String()] = make(map[string]*LegalActionsView)
+			}
+			controlled[p.ID.String()][grp[0].Player.String()] = d
 		}
 		if out == nil {
 			out = make(map[string][]LegalMoveView, len(g.Seats))
@@ -4980,7 +5020,31 @@ func enumerateLegalMoves(g *game.Game) (map[string][]LegalMoveView, map[string]*
 			truncated[p.ID.String()] = true
 		}
 	}
-	return out, digests, truncated
+	return out, digests, truncated, controlled
+}
+
+// splitMovesByPlayer separates seat's own moves from the moves it makes
+// for the players it controls (ADR 0166, ADR 0167 §7), grouped by
+// player in first-seen order.
+func splitMovesByPlayer(moves []LegalMoveView, seat uuid.UUID) (own []LegalMoveView, others [][]LegalMoveView) {
+	var at map[uuid.UUID]int
+	for _, m := range moves {
+		if m.Player == seat || m.Player == uuid.Nil {
+			own = append(own, m)
+			continue
+		}
+		if at == nil {
+			at = make(map[uuid.UUID]int)
+		}
+		i, ok := at[m.Player]
+		if !ok {
+			i = len(others)
+			at[m.Player] = i
+			others = append(others, nil)
+		}
+		others[i] = append(others[i], m)
+	}
+	return own, others
 }
 
 // legalMovesWireCap bounds how many moves one seat's list may put on
@@ -5029,7 +5093,39 @@ const legalMovesWireCap = 48
 // The second result says whether anything was dropped, which the view
 // carries as legal_moves_truncated (ADR 0122 §6.1): a list over the cap
 // whose every move has its own key keeps them all and is not truncated.
+//
+// ADR 0167 §7: the cap is per player. A seat playing another seat's
+// turn carries both seats' moves, and each list is capped on its own,
+// so the controller's own moves can never fold the controlled seat's
+// away, or the other way round.
 func capLegalMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
+	if len(moves) <= legalMovesWireCap {
+		return moves, false
+	}
+	first := moves[0].Player
+	mixed := false
+	for _, m := range moves {
+		if m.Player != first {
+			mixed = true
+			break
+		}
+	}
+	if !mixed {
+		return capOnePlayersMoves(moves)
+	}
+	lead, others := splitMovesByPlayer(moves, first)
+	out := make([]LegalMoveView, 0, len(moves))
+	cut := false
+	for _, grp := range append([][]LegalMoveView{lead}, others...) {
+		capped, c := capOnePlayersMoves(grp)
+		out = append(out, capped...)
+		cut = cut || c
+	}
+	return out, cut
+}
+
+// capOnePlayersMoves is capLegalMoves over one player's moves.
+func capOnePlayersMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 	if len(moves) <= legalMovesWireCap {
 		return moves, false
 	}
@@ -9294,6 +9390,9 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		LegalMovesTruncated: legalTruncatedFor(v.legalTruncatedBySeat, viewerID),
 		// ADR 0105: the digest of the same list, under the same rule.
 		LegalActions: legalActionsFor(v.legalActionsBySeat, viewerID),
+		// ADR 0167 §7: the digests of the turns the viewer plays, under
+		// the same rule.
+		ControlledLegalActions: controlledLegalActionsFor(v.controlledLegalActionsBySeat, viewerID),
 		// S31 sub-PR 0: the public log rides the same isKnower closure
 		// as every zone above it. Not a parallel visibility model —
 		// literally the same predicate, applied to the card each entry
@@ -9315,6 +9414,9 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// whose decisions. What it lets the controller see is applied
 		// through isKnower above.
 		PlayerControls: v.PlayerControls,
+		// ADR 0167 §8: public, and identical for every seat. It grants
+		// no visibility.
+		ScheduledPlayerControls: v.ScheduledPlayerControls,
 		// ADR 0057: public, and identical for every seat. The source
 		// name was resolved from public zones only.
 		Outcome: v.Outcome,

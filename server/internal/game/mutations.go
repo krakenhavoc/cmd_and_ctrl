@@ -5977,7 +5977,16 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	held := false
 	for seat, items := range bySeat {
 		p := g.Seats[seat]
-		ask, why := g.triggerOrderAskWhyLocked(items, p.TriggerOrder)
+		// ADR 0167 §4: the preference read is the answerer's. While
+		// another player controls p, the ordering is theirs to make
+		// (CR 723.5), so their "always" or "never" applies.
+		pref := p.TriggerOrder
+		if ans := g.ControllerOfPlayerLocked(p.ID); ans != p.ID {
+			if c := g.playerByIDLocked(ans); c != nil {
+				pref = c.TriggerOrder
+			}
+		}
+		ask, why := g.triggerOrderAskWhyLocked(items, pref)
 		if !ask {
 			continue
 		}

@@ -983,6 +983,22 @@ const (
 	// begins, and a queued turn of a player who leaves never does.
 	EventExtraTurnAdded EventKind = "extra_turn_added"
 
+	// EventPlayerControlScheduled — an effect will give a player control
+	// of another player during that player's next turn (CR 723.1, ADR
+	// 0167 §1: Emrakul, the Promised End). Actor is the controller,
+	// Target the controlled player, Source the card whose effect it is.
+	EventPlayerControlScheduled EventKind = "player_control_scheduled"
+	// EventPlayerControlBegan — that turn began, and the controller
+	// makes the controlled player's decisions for all of it (ADR 0167
+	// §2). Actor, Target and Source as above. Not emitted when the
+	// controller has left the game by then (CR 800.4a).
+	EventPlayerControlBegan EventKind = "player_control_began"
+	// EventPlayerControlEnded — the controlled turn is over and the
+	// control with it, as the next turn begins (CR 723.1). Actor,
+	// Target and Source as above. Not emitted when either player had
+	// already left, which ended the control then (CR 800.4a).
+	EventPlayerControlEnded EventKind = "player_control_ended"
+
 	// EventPhasesAdded — an effect added phases or a step to the
 	// current turn (CR 500.8 / 500.9, ADR 0059 Decision 4). Actor is the
 	// active player (whose turn gets them), Source the card whose effect

@@ -557,6 +557,10 @@ func cardRef(v *protocol.GameView, id string) string {
 // does not say (an extra cost, an idle hint, an open value, always-legal).
 func moveLine(i int, m legal.Move, v *protocol.GameView, me string, nw nameWrapper) string {
 	var notes []string
+	// ADR 0167 §7: a move for a seat this one controls says whose.
+	if a := boardtext.ActingAsNote(v, m, me); a != "" {
+		notes = append(notes, a)
+	}
 	if t := targetNote(v, me, m); t != "" {
 		notes = append(notes, t)
 	}

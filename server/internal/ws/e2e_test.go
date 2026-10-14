@@ -184,6 +184,7 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	out.DiscardPending = n.idKeyedIntMap(v.DiscardPending)
 	out.LoopNotice = n.loopNotice(v.LoopNotice)
 	out.PlayerControls = n.playerControls(v.PlayerControls)
+	out.ScheduledPlayerControls = n.scheduledPlayerControls(v.ScheduledPlayerControls)
 	out.Outcome = n.outcome(v.Outcome)
 	// ADR 0122 §6.1: a flag, no IDs.
 	out.LegalMovesTruncated = v.LegalMovesTruncated
@@ -201,6 +202,13 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	// naming attack targets and attackers by ID, every one of them a
 	// card or player a zone or seat above has already numbered.
 	out.LegalActions = n.legalActions(v.LegalActions)
+	// ADR 0167: the same digest per controlled seat, keyed by its ID.
+	if len(v.ControlledLegalActions) > 0 {
+		out.ControlledLegalActions = make(map[string]*protocol.LegalActionsView, len(v.ControlledLegalActions))
+		for k, d := range v.ControlledLegalActions {
+			out.ControlledLegalActions[n.id(k)] = n.legalActions(d)
+		}
+	}
 	// Reveals: RevealView carries no instance IDs at all by design
 	// (reveal_frame.go) — Source is a card NAME, Cards are printed
 	// identity with a scryfall_id (a printing, not this instance).
@@ -315,6 +323,23 @@ func (n *normalizer) playerControls(v []protocol.PlayerControlView) []protocol.P
 			Controller: n.id(pc.Controller),
 			Controlled: n.id(pc.Controlled),
 			Source:     n.id(pc.Source),
+			SourceName: pc.SourceName,
+			Until:      pc.Until,
+		}
+	}
+	return out
+}
+
+func (n *normalizer) scheduledPlayerControls(v []protocol.ScheduledPlayerControlView) []protocol.ScheduledPlayerControlView {
+	if len(v) == 0 {
+		return nil
+	}
+	out := make([]protocol.ScheduledPlayerControlView, len(v))
+	for i, pc := range v {
+		out[i] = protocol.ScheduledPlayerControlView{
+			Controller: n.id(pc.Controller),
+			Controlled: n.id(pc.Controlled),
+			SourceName: pc.SourceName,
 		}
 	}
 	return out
@@ -592,9 +617,11 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 			Cards: []protocol.RevealedCardView{{Name: "Island"}}, Count: 1,
 		}},
 
-		LoopNotice:     &protocol.LoopNoticeView{Source: ownerID, Label: "loop", Controller: ownerID, Count: 3},
-		PlayerControls: []protocol.PlayerControlView{{Controller: ownerID, Controlled: ownerID, Source: ownerID}},
-		Outcome:        &protocol.OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect", Source: cardID},
+		LoopNotice:              &protocol.LoopNoticeView{Source: ownerID, Label: "loop", Controller: ownerID, Count: 3},
+		PlayerControls:          []protocol.PlayerControlView{{Controller: ownerID, Controlled: ownerID, Source: ownerID, Until: "turn"}},
+		ScheduledPlayerControls: []protocol.ScheduledPlayerControlView{{Controller: ownerID, Controlled: oppID, SourceName: "Emrakul, the Promised End"}},
+		ControlledLegalActions:  map[string]*protocol.LegalActionsView{oppID: {Pass: true}},
+		Outcome:                 &protocol.OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect", Source: cardID},
 	}
 }
 

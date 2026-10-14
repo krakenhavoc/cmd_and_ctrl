@@ -498,7 +498,7 @@ func BenchmarkViewOfGame(b *testing.B) {
 	})
 	b.Run("enumeration_only", func(b *testing.B) {
 		for range b.N {
-			g.ReadSnapshot(func() { _, _, _ = enumerateLegalMoves(g) })
+			g.ReadSnapshot(func() { _, _, _, _ = enumerateLegalMoves(g) })
 		}
 	})
 	// ADR 0105 §5: the legal_actions digest alone, folded from the
