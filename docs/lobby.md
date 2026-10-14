@@ -4466,6 +4466,8 @@ a 400, never a silent off. The setting survives a restart.
   "daily_limit": 1000000,
   "monthly_tokens": 3120440,
   "monthly_limit": 10000000,
+  "table_limit": 1250000,
+  "tables_at_share": 1,
   "day_resets_at": "2026-10-13T00:00:00Z",
   "month_resets_at": "2026-11-01T00:00:00Z"
 }
@@ -4473,6 +4475,11 @@ a 400, never a silent off. The setting survives a restart.
 
 `state` is `ok`, `disabled` (the switch), `monthly_cap` or `daily_cap`;
 `note` is empty when it is `ok`. A limit of `0` means that cap is off.
+The counts are weighted tokens (micro-dollars at list price,
+[ADR 0184](decisions/0184-weighted-model-budget-and-a-share-per-table.md)).
+`table_limit` is what one table may use in a UTC day (`0`: no
+per-table limit) and `tables_at_share` how many tables have reached it;
+those tables' model seats play the heuristic, and `state` stays `ok`.
 
 | Status | Reason |
 |---|---|

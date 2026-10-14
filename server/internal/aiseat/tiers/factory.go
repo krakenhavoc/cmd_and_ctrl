@@ -81,6 +81,10 @@ type FactoryOptions struct {
 	// name for as long as the cap holds. What it changes is the PICKER,
 	// which stops offering the tier (TierStatus) and says why.
 	Gate ModelGate
+	// Tables, when set, binds the shared client to the seat's table so
+	// the spend guard can give each table a share of the pool (#3476).
+	// *budget.Budget implements it. An own-key seat never reaches it.
+	Tables TableScoper
 	// Meter is the shared Layer A absorption meter. Nil allocates
 	// one, so Factory.Meter is always readable.
 	Meter *rules.Meter
@@ -95,6 +99,11 @@ type FactoryOptions struct {
 // *budget.Budget implements it.
 type ModelGate interface {
 	Blocked() string
+}
+
+// TableScoper binds a model client to one table (a game id string).
+type TableScoper interface {
+	ForTable(c model.Client, table string) model.Client
 }
 
 // NewFactory builds the factory. The zero FactoryOptions is valid and
@@ -200,9 +209,13 @@ func (f *Factory) NewPolicy(seat aiseat.SeatSpec) (aiseat.Policy, error) {
 	if st := f.buildable(aiseat.Tier(tier)); !st.Available {
 		return nil, fmt.Errorf("%w: %q: %s", aiseat.ErrTierUnavailable, tier, st.Reason)
 	}
+	client := f.opt.Client
+	if tier.NeedsModel() && f.opt.Tables != nil && seat.GameID != uuid.Nil {
+		client = f.opt.Tables.ForTable(client, seat.GameID.String())
+	}
 	opt := Options{
 		Meter:       f.opt.Meter,
-		Client:      f.opt.Client,
+		Client:      client,
 		Models:      f.opt.Models,
 		MaxThink:    f.opt.MaxThink,
 		NoImprovise: f.opt.NoImprovise,
