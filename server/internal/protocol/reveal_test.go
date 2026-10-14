@@ -72,8 +72,10 @@ func TestThoughtseizeRevealStickyAfterResolveChoice(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("CastSpell: %v", err)
 	}
-	// Pass priority until stack empty (Thoughtseize resolves).
-	for i := 0; i < 16 && g.Stack.Size() > 0; i++ {
+	// Pass priority until Thoughtseize resolves into its discard prompt.
+	// It waits on the stack for the answer (#3613, CR 608.2n), so the
+	// stack is not empty yet.
+	for i := 0; i < 16 && g.Stack.Size() > 0 && len(g.PendingChoices) == 0; i++ {
 		if err := g.PassPriority(); err != nil {
 			t.Fatalf("PassPriority: %v", err)
 		}

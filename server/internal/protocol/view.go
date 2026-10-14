@@ -8903,7 +8903,11 @@ func viewOfDiscardPending(in map[uuid.UUID]int) map[string]int {
 // items — the pre-Seq behaviour. Returns nil for an empty stack so
 // json omitempty drops the field.
 func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
-	if len(g.StackMeta) == 0 {
+	// #3613: an item whose resolution is waiting on one of its own
+	// prompts has left StackMeta but has not finished resolving, so the
+	// table still sees it on the stack, in its place.
+	held := g.HeldResolutionItemForView()
+	if len(g.StackMeta) == 0 && held == nil {
 		return nil
 	}
 	type entry struct {
@@ -8936,6 +8940,9 @@ func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
 	sort.SliceStable(abilities, func(i, j int) bool { return abilities[i].Seq < abilities[j].Seq })
 	for _, item := range abilities {
 		entries = append(entries, entry{item.Seq, viewOfStackItem(item)})
+	}
+	if held != nil && !seen[held.ID] && g.StackMeta[held.ID] == nil {
+		entries = append(entries, entry{held.Seq, viewOfStackItem(held)})
 	}
 	sort.SliceStable(entries, func(i, j int) bool { return entries[i].seq < entries[j].seq })
 	if len(entries) == 0 {

@@ -65,6 +65,12 @@ func TestFaithlessLootingFlashback(t *testing.T) {
 	if got := active.Hand.Size(); got != handBefore+2 {
 		t.Errorf("hand size after the draw: got %d, want %d", got, handBefore+2)
 	}
+	// #3613, CR 608.2n: the discard is part of the resolution, so the
+	// spell leaves the stack, to exile, once it is answered.
+	if !g.Stack.Contains(id) {
+		t.Errorf("the flashed-back sorcery left the stack before its discard was answered")
+	}
+	discardFromHand(t, g, active.ID)
 	if !g.Exile.Contains(id) {
 		t.Errorf("the flashed-back sorcery is not in exile")
 	}
@@ -247,6 +253,14 @@ func TestOtherworldlyGazeFlashbackSurveilsAgain(t *testing.T) {
 	}
 	if len(c.ScryCards) != 3 {
 		t.Errorf("looked at %d cards, want 3", len(c.ScryCards))
+	}
+	// #3613, CR 608.2n: the surveil is part of the resolution, so the
+	// spell leaves the stack, to exile, once it is answered.
+	if !g.Stack.Contains(id) {
+		t.Errorf("the flashed-back instant left the stack before its surveil was answered")
+	}
+	if err := g.ResolveSurveil(c.ID, active.ID, nil, c.ScryCards); err != nil {
+		t.Fatalf("ResolveSurveil: %v", err)
 	}
 	if !g.Exile.Contains(id) {
 		t.Errorf("the flashed-back instant is not in exile")

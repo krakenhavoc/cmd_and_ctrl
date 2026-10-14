@@ -610,3 +610,72 @@ mana ability, since split second shuts every other response.
 **Wire.** None added. `stack_items[].split_second` is true for a spell
 that has it from either source (`Game.SpellHasSplitSecondForEffect`), and
 `split_second_active` is the cache.
+
+## Amendment 2026-10-14 — a resolution that asks something finishes after the answer (#3613)
+
+**Context.** A spell or ability that asks a question as it resolves
+(fabricate's counters-or-Servos, Council's Judgment's vote, a library
+search, a discard) only queues the prompt, and the resolution function
+carried on. #1289 held the CR 704.3 boundary behind such a prompt and
+#2789 (ADR 0065's 2026-10-09 amendment) held a modal item's later
+bullets, but the end of the resolution still ran at once: the spell went
+to its owner's graveyard while its vote was open, and the log read
+"Council's Judgment resolved" above the ballot, because `EventResolve`
+fires as an item begins to resolve. CR 608.2c follows the instructions
+in order, and CR 608.2n puts an instant or sorcery into the graveyard
+as the final step of its resolution, so both belong after the answer.
+
+**Decision 17. One parked tail per resolution, resumed by the same hold
+check.** When `resolveTopOfStackLocked` or `resolveTopAbilityLocked`
+has run the item's effect and bullets and the resolution is paused on
+one of its own prompts (or a bullet walk is parked behind one),
+`holdResolutionTailLocked` parks the rest in `Game.pausedResolutionTail`
+(`game/resolution_tail.go`):
+
+- for a spell, everything the frame does after the effect, factored out
+  as `finishSpellResolutionLocked`: a permanent spell's battlefield
+  entry, a copy ceasing to exist, the graveyard exit with its flashback,
+  buyback, rebound and Adventure replacements. The card stays in the
+  Stack zone; its `StackMeta` entry is gone as before, so nothing can
+  target it or respond to it;
+- for both, the log line. The item's `EventResolve` stays where it is,
+  because card code and the turn tally read it as "this item began
+  resolving", and is marked `LogDeferred`; `EventResolutionFinished`
+  carries the "… resolved" line when the tail runs.
+
+`holdForOpenResolutionLocked` runs the tail once the last stamped
+prompt is answered and any parked bullets have run, inside a resolution
+function, so a prompt the tail itself asks (CR 616.1's exit choice, a
+Clone's copy pick) holds the boundary in turn. A resolution that asks
+nothing takes the old path unchanged, log order included.
+
+**Marking an emitted event.** `LogDeferred` is the one in-place write to
+`Game.Events` outside a restore. It happens under the write lock the
+resolution still holds, before any view can fold the event, and it
+bumps `eventLogGen` anyway so the public log's projection cache refolds
+rather than relying on that (`projection_cache.go`,
+`TestEventLogIsReplacedOnlyWhereTheGenerationMoves`).
+
+**Wire.** `stack_items` lists the held item in its place while its
+prompt is open (`Game.HeldResolutionItemForView`), so the stack lane
+shows what is asking. The log kind is unchanged (`resolve`); only its
+position moves. `docs/protocol.md` says both.
+
+**Restore points.** The tail is the stack item, carried by Clone and
+by the snapshot (`GameSnapshot.PausedResolutionTail`, additive in
+schema v8), like the parked bullet walk. A file written before it has
+no tail, and its spell has already left the stack, so it restores to
+the old behaviour. Four v8 corpus boards answer a resolution's prompt
+on their way to the state they freeze and now carry one more event;
+ADR 0044's 2026-10-14 amendment records their regeneration.
+
+**What this does not change.** A prompt that does not block the table
+(a `pay_unless` asked after its ability has left the stack) does not
+hold, so it does not park a tail either. The CR 732 loop shortcut and
+the prompts that put a triggered ability on the stack are not part of
+the resolution (`choiceBelongsToResolution`) and do not hold it.
+
+Tests: `TestCouncilsJudgmentResolvesAfterTheVote` and
+`TestFabricateResolvesAfterItsChoice` (log order, stack zone, stack
+lane), and the nine existing tests that had pinned the spell in the
+graveyard while its own prompt was open, now pinning the reverse.

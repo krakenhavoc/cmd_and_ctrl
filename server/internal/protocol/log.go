@@ -1232,7 +1232,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Unpaid = ev.Unpaid
 		return base, true
 
-	case game.EventResolve:
+	case game.EventResolve, game.EventResolutionFinished:
+		// #3613: a resolution that paused on its own prompt writes its
+		// "resolved" line when it finishes, after the answer, not when
+		// it began (game/resolution_tail.go).
+		if ev.LogDeferred {
+			return base, false
+		}
 		base.Kind = LogResolve
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		base.StackItemID = stackItemOf(ev)

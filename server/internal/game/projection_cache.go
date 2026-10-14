@@ -16,7 +16,10 @@ import "sync"
 // Two facts make that safe, and both are owned HERE, by the package
 // that writes Events:
 //
-//  1. EmitEvent only ever appends. Nothing writes Events[i] in place.
+//  1. EmitEvent only ever appends. Nothing writes Events[i] in place,
+//     except deferResolveLogLineLocked (#3613, resolution_tail.go),
+//     which marks a paused resolution's own EventResolve and bumps
+//     eventLogGen like the replacement below.
 //  2. The one path that replaces the log with a different history —
 //     RestoreFrom, the undo path, which truncates to a snapshot's
 //     length and lets the next emit regrow it with the SAME Seq values

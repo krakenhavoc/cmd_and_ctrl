@@ -42,6 +42,8 @@ func TestRestoreFromMovesTheEventLogGeneration(t *testing.T) {
 //
 //   - EmitEvent's append (the log grows);
 //   - RestoreFrom's replacement, which bumps eventLogGen;
+//   - deferResolveLogLineLocked's in-place mark on a paused
+//     resolution's own EventResolve (#3613), which bumps it too;
 //   - a function that fills a Game it has just built (cloneLocked,
 //     restoreGame) or a snapshot struct (captureSnapshotLocked) — a
 //     new object whose cache is empty.
@@ -51,11 +53,14 @@ func TestRestoreFromMovesTheEventLogGeneration(t *testing.T) {
 // to show the Game being written is fresh.
 func TestEventLogIsReplacedOnlyWhereTheGenerationMoves(t *testing.T) {
 	allowed := map[string]string{
-		"EmitEvent":             "appends",
-		"RestoreFrom":           "bumps eventLogGen",
-		"cloneLocked":           "fills a new *Game",
-		"restoreGame":           "fills a new *Game",
-		"captureSnapshotLocked": "fills a GameSnapshot",
+		"EmitEvent":   "appends",
+		"RestoreFrom": "bumps eventLogGen",
+		// #3613: a resolution that paused moves its "resolved" line
+		// by marking its own EventResolve, emitted under the same lock.
+		"deferResolveLogLineLocked": "bumps eventLogGen",
+		"cloneLocked":               "fills a new *Game",
+		"restoreGame":               "fills a new *Game",
+		"captureSnapshotLocked":     "fills a GameSnapshot",
 	}
 	files, err := filepath.Glob("*.go")
 	if err != nil {

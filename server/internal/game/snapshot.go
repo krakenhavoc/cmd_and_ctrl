@@ -447,6 +447,13 @@ type GameSnapshot struct {
 	// behaviour (the later bullets had already run). No schema bump.
 	PausedModeWalk *modeWalkSnapshot `json:"pausedModeWalk,omitempty"`
 
+	// PausedResolutionTail is Game.pausedResolutionTail (#3613,
+	// resolution_tail.go): the end of a resolution parked behind one of
+	// its own prompts. A file written before it restores nil, which is
+	// the old behaviour (the resolution had already finished). No
+	// schema bump.
+	PausedResolutionTail *resolutionTailSnapshot `json:"pausedResolutionTail,omitempty"`
+
 	// AnnouncedBlocks / BlockedAttackers are what the block
 	// declaration's lock-in produced (#830, #715, blockers.go): which
 	// blocker has had its EventBlock announced against which
@@ -2021,6 +2028,8 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	// #2789: a modal item's later bullets parked behind one of those
 	// prompts (mode_walk.go).
 	s.PausedModeWalk = snapshotModeWalk(g, g.pausedModeWalk, cen)
+	// #3613: the end of the resolution parked behind those prompts.
+	s.PausedResolutionTail = snapshotResolutionTail(g, g.pausedResolutionTail, cen)
 
 	if len(g.Events) > 0 {
 		s.Events = make([]Event, len(g.Events))
@@ -2847,6 +2856,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.eventBatch = s.EventBatch
 	g.resolutionOpen = s.ResolutionOpen
 	g.pausedModeWalk = restoreModeWalk(s.PausedModeWalk)
+	g.pausedResolutionTail = restoreResolutionTail(s.PausedResolutionTail)
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 	g.preventionFollowUps = clonePreventionFollowUps(s.PreventionFollowUps)
 	g.announcedBlocks = joinAnnouncedBlocks(s.AnnouncedBlocks, s.AnnouncedAlsoBlocks)

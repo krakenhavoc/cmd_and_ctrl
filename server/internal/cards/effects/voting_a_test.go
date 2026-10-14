@@ -441,7 +441,9 @@ func TestFatefulTempestAllPresentDealsNoDamage(t *testing.T) {
 			t.Errorf("%s took damage with no past vote", p.Name)
 		}
 	}
-	if me.Graveyard.Size() != graveBefore {
+	// The spell itself is the one new card: it waits on the stack for
+	// the vote and goes to the graveyard after it (#3613, CR 608.2n).
+	if me.Graveyard.Size() != graveBefore+1 {
 		t.Error("a card was milled with no past vote")
 	}
 	if g.Exile.Size() != 4 {
