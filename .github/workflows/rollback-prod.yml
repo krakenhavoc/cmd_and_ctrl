@@ -50,7 +50,7 @@ jobs:
       # $GITHUB_ENV, which a job-level value would override (#1739).
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Verify CMDCTRL_HOST is set
         run: |
