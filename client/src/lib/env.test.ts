@@ -31,6 +31,20 @@ describe("parseConfig", () => {
   it("survives a dev response with no features object", () => {
     expect(parseConfig({ env: "dev" }).features.card_spawn).toBe(false);
   });
+
+  // ADR 0179: shop links are not a dev surface.
+  it("reads shops on production and dev alike, and drops bad ones", () => {
+    const shops = [
+      { id: "tcgplayer", name: "ignored", template: "{url}&partner=c2" },
+      { id: "cardkingdom", name: "Card Kingdom", template: "http://not-https.example/?u={url}" },
+      { id: "nowhere", name: "Nowhere", template: "{url}" },
+    ];
+    const want = [{ id: "tcgplayer", name: "TCGplayer", template: "{url}&partner=c2" }];
+    expect(parseConfig({ env: "prod", shops }).shops).toEqual(want);
+    expect(parseConfig({ env: "prod", shops }).env).toBe("prod");
+    expect(parseConfig({ env: "dev", shops }).shops).toEqual(want);
+    expect(parseConfig({ env: "prod", shops: "nope" })).toEqual(PROD_CONFIG);
+  });
 });
 
 describe("loadAppConfig", () => {

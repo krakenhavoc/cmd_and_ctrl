@@ -1638,6 +1638,63 @@ jobs:
           if [ -n "${results_channel}" ]; then feed=set; else feed=unset; fi
           echo "set the community variables (sign-up gate ${gate}, invite ${shown}, voice category ${rooms}, lfg channel ${board}, lfg role ${ping}, results channel ${feed}, ${#exempt_ids[@]} exempt id(s))"
 
+      # ADR 0179: optional shop links. One URL template per retailer,
+      # holding {url} exactly once: an https wrapper with {url} after the
+      # host (https://partner.example/c/123?u={url}), or {url} first plus
+      # &name=value pairs ({url}&partner=cmdctrl). Served by GET /config;
+      # empty (the default) shows no shop link anywhere.
+      #
+      # BOTH hosts, ALWAYS written, empty included, like the community
+      # variables: clearing one must turn that shop off on the next deploy.
+      # A GitHub environment's value overrides the repo's, so the preview
+      # and production can differ. Checked here with the server's own rules
+      # (shoplinks.ValidateTemplate) before anything is written; the server
+      # refuses to boot on a malformed one.
+      - name: Sync server env (shop links)
+        env:
+          CMDCTRL_SHOP_TCGPLAYER: ${{ vars.CMDCTRL_SHOP_TCGPLAYER }}
+          CMDCTRL_SHOP_CARDKINGDOM: ${{ vars.CMDCTRL_SHOP_CARDKINGDOM }}
+        run: |
+          export LC_ALL=C
+          trim() { local v="${1#"${1%%[![:space:]]*}"}"; printf '%s' "${v%"${v##*[![:space:]]}"}"; }
+          bad() {
+            echo "::error::$1 is not a valid shop link template ($2): use an https URL holding {url} once after the host, such as https://partner.example/c/123?u={url}, or {url} followed by &name=value pairs. The server would refuse to boot. Fix the variable in the '${APP_ENV}' environment (or the repo) and rerun."
+            exit 1
+          }
+          check() {
+            local name="$1" v="$2" rest tail
+            [ -z "${v}" ] && return 0
+            [ "${#v}" -le 1024 ] || bad "${name}" "longer than 1024 bytes"
+            [[ "${v}" == *"{url}"* ]] || bad "${name}" "no {url}"
+            rest="${v/\{url\}/}"
+            [[ "${rest}" == *"{url}"* ]] && bad "${name}" "{url} more than once"
+            [[ "${rest}" =~ ^[!-~]*$ ]] || bad "${name}" "spaces or non-ASCII characters"
+            case "${rest}" in
+              *[\"\'\`\\\<\>\{\}\|^]*) bad "${name}" "a quote, backslash, brace, bar, caret or angle bracket" ;;
+            esac
+            if [[ "${v}" == "{url}"* ]]; then
+              tail="${v#\{url\}}"
+              [ -z "${tail}" ] && return 0
+              [[ "${tail}" =~ ^(\&[^\&=\;]+(=[^\&\;]*)?)+$ ]] || bad "${name}" "after a leading {url}, only &name=value pairs"
+              [[ "${tail}" =~ %([^0-9A-Fa-f]|[0-9A-Fa-f][^0-9A-Fa-f]|[0-9A-Fa-f]?$) ]] && bad "${name}" "a broken %-escape"
+              return 0
+            fi
+            [[ "${v}" =~ ^https://[^/?#@{}]+[/?#] ]] || bad "${name}" "not an https URL with {url} after the host"
+            return 0
+          }
+          tcg="$(trim "${CMDCTRL_SHOP_TCGPLAYER}")"
+          ck="$(trim "${CMDCTRL_SHOP_CARDKINGDOM}")"
+          check CMDCTRL_SHOP_TCGPLAYER "${tcg}"
+          check CMDCTRL_SHOP_CARDKINGDOM "${ck}"
+          for pair in "CMDCTRL_SHOP_TCGPLAYER=${tcg}" "CMDCTRL_SHOP_CARDKINGDOM=${ck}"; do
+            name="${pair%%=*}"; value="${pair#*=}"
+            printf '%s' "${value}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+              "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${name} ${ENV_FILE}"
+          done
+          if [ -n "${tcg}" ]; then t=set; else t=unset; fi
+          if [ -n "${ck}" ]; then c=set; else c=unset; fi
+          echo "set the shop link variables (TCGplayer ${t}, Card Kingdom ${c})"
+
       # ADR 0123 §2 and §10: the server's /metrics listener, which the
       # monitoring agent (Grafana Alloy) scrapes. Loopback only: the server
       # refuses to boot on any other address, so a typo here fails the

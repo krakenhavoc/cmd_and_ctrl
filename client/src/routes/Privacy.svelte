@@ -18,6 +18,7 @@
   import { CONTACT_TEXT, CONTACT_URL, PRIVACY_FACTS as F } from "../lib/privacy";
   import { OPERATOR_NAME, OPERATOR_STATE } from "../lib/legalNotice";
   import { TERMS_HASH } from "../lib/terms";
+  import { SHOP_DISCLOSURE } from "../lib/shopLinks";
 
   interface Row {
     what: string;
@@ -196,6 +197,14 @@
     {
       who: "Scryfall, Moxfield and Archidekt",
       what: "Card data and pictures come from Scryfall through this server’s cache, and a deck imported by link is fetched by the server. They see the server, not you.",
+    },
+    {
+      // ADR 0179: lib/shopLinks.ts (the link is built in the browser from
+      // card names), components/ShopLinks.svelte (rel="noopener
+      // noreferrer"), settings.ts display.shopLinks. No server route
+      // sees the click.
+      who: "Card shops, if you follow a shop link",
+      what: `Where the site is set up for them, the Decks and Catalog pages show links to buy the cards at a shop such as TCGplayer or Card Kingdom. ${SHOP_DISCLOSURE} Following one takes you to the shop’s own site, sometimes through the shop’s partner network on the way, and from there the shop’s own privacy terms and cookies apply. The link holds card names and nothing about you, and it opens without telling the shop which page you came from. CMD & CTRL does not track the click: following a link sends nothing to this server and nothing is recorded. You can hide the links in Settings, under Display. That choice is kept with your settings: with your account if you are signed in, otherwise only in this browser.`,
     },
   ];
 </script>

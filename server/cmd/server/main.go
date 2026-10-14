@@ -68,6 +68,11 @@
 //	                        in. Needs the community guild (boot fails
 //	                        without it, or on a malformed id) and the bot
 //	                        token (off without it).
+//	CMDCTRL_SHOP_TCGPLAYER / CMDCTRL_SHOP_CARDKINGDOM — shop link
+//	                        templates (ADR 0179), served by GET /config:
+//	                        an https URL holding {url} once after the
+//	                        host, or {url} first plus &name=value pairs.
+//	                        Unset: no shop links. Malformed: boot fails.
 //	CMDCTRL_SEED_DEMO   — if "1", seed a 4-player demo game at startup.
 //	                        Useful for the gamecli dev loop when you want a
 //	                        ready-to-go room without going through the lobby.
@@ -205,6 +210,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/notify"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/usersettings"
@@ -594,6 +600,16 @@ func main() {
 	default:
 		log.Info("results feed off; set "+discord.ResultsChannelEnv+" to enable", "var", discord.ResultsChannelEnv)
 	}
+	// ADR 0179: said once, either way.
+	if len(cfg.Shops) == 0 {
+		log.Info("shop links off: no CMDCTRL_SHOP_* template is set, so the client renders none")
+	} else {
+		ids := make([]string, 0, len(cfg.Shops))
+		for _, s := range cfg.Shops {
+			ids = append(ids, s.ID)
+		}
+		log.Info("shop links on outside games", "shops", strings.Join(ids, ","))
+	}
 	// ADR 0161 §7: said once, either way.
 	switch {
 	case cfg.LFG.Enabled() && publicBaseURL() == "":
@@ -719,6 +735,8 @@ func main() {
 		DiscordBot:  discordBot,
 		// GET /community (ADR 0156 §6).
 		CommunityInviteURL: cfg.CommunityInviteURL,
+		// GET /config's shop link templates (ADR 0179).
+		Shops: cfg.Shops,
 		// Table voice rooms (ADR 0159).
 		DiscordVoice: cfg.Voice,
 		// The DM invite's link is built against the same public origin
@@ -943,6 +961,10 @@ type config struct {
 	// bot token. A malformed id, or the channel without the guild, fails
 	// the boot; no bot token leaves it off.
 	Results discord.Results
+	// Shops is ADR 0179's shop link templates, one CMDCTRL_SHOP_*
+	// variable per retailer. Unset: no shop links. A malformed template
+	// fails the boot, naming the variable.
+	Shops []shoplinks.Shop
 	// SessionTTL is the lifetime of a session with no user: guest
 	// seats and spectators, admin-token and reclaim-ticket sessions
 	// (CMDCTRL_SESSION_TTL). Default 12h.
@@ -1217,6 +1239,14 @@ func loadConfig(log *slog.Logger) config {
 		os.Exit(1)
 	}
 	c.Results = resultsFeed
+	// ADR 0179: a typo in a shop template stops the boot rather than
+	// serving links that go somewhere unexpected.
+	shops, serr := shoplinks.FromEnv(os.Getenv)
+	if serr != nil {
+		log.Error("shop link config invalid", "err", serr)
+		os.Exit(1)
+	}
+	c.Shops = shops
 
 	if c.AdminToken == "" {
 		log.Error("CMDCTRL_ADMIN_TOKEN is required — set it to a long random string before starting the server")

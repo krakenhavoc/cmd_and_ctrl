@@ -36,6 +36,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/notify"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/usersettings"
@@ -164,6 +165,10 @@ type Config struct {
 	// /community. "" hides every Discord placement in the client. The
 	// sign-up gate itself is Discord.Gate.
 	CommunityInviteURL string
+	// Shops is the operator's shop link templates (CMDCTRL_SHOP_*, ADR
+	// 0179), checked at boot and served by GET /config. Nil or empty:
+	// the client renders no shop link.
+	Shops []shoplinks.Shop
 	// DiscordVoice is ADR 0159's table voice rooms. The zero value is
 	// off: GET /community says so and the client offers no room.
 	DiscordVoice discord.Voice
