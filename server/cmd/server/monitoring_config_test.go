@@ -14,6 +14,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/budget"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
@@ -82,6 +84,8 @@ func serverMetricNames(t *testing.T) map[string]bool {
 	// With a database, so the users and database collectors register too.
 	registerGameMetrics(rec, log, mgr, lobby.NewLobbyWithStore(mgr, lobby.NewSQLStore(database)), ws.NewHub(log),
 		database, users.NewSQLStore(database, nil))
+	// With a spend guard, so the budget gauges register too.
+	registerBotMetrics(rec, aiseat.NewManager(ws.NewHub(log), log), budget.New(budget.DefaultLimits(), nil))
 	if len(rec.collectors) == 0 {
 		t.Fatal("registerGameMetrics registered nothing")
 	}

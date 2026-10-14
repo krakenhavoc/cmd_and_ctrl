@@ -23,6 +23,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 )
 
@@ -107,6 +108,7 @@ func signInGate(c Config, w http.ResponseWriter, r *http.Request, entry discord.
 	access, cerr := c.checkMember(r.Context(), accessToken)
 	if cerr != nil {
 		// Fails closed: the person is here to try again (item 4).
+		metrics.AuthFailed(metrics.AuthGateCheck)
 		c.logger().Warn("Discord did not answer the sign-up gate's role check; sign-in refused, the person is offered a retry",
 			"err", cerr)
 		http.Redirect(w, r, requestAccessRetryPath, http.StatusFound)
