@@ -415,6 +415,28 @@ func TestARefusedKeyStopsTheSeatTellsTheOwnerAndLeaksNothing(t *testing.T) {
 	}
 }
 
+// A custom endpoint can answer with anything, the key included, and the
+// policy logs a malformed reply and traces every one: the reply comes
+// back with the key scrubbed.
+func TestAReplyThatQuotesTheKeyIsScrubbed(t *testing.T) {
+	p := newProvider(t)
+	p.set(func(w http.ResponseWriter) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprintf(w, `{"model":"m","choices":[{"index":0,"message":{"role":"assistant","content":"your key is %s","reasoning":"%s"},"finish_reason":"stop"}]}`, fakeKey, fakeKey)
+	})
+	h := newHarness(t, guardFor(p))
+	saveCustom(t, h, fakeKey, 5, 50)
+	resp, err := call(seat(h, uuid.New(), ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertNoLeak(t, "the reply", resp.Text)
+	assertNoLeak(t, "the reasoning", resp.Reasoning)
+	if !strings.Contains(resp.Text, "[key]") {
+		t.Errorf("reply = %q, want the key replaced", resp.Text)
+	}
+}
+
 // A passing failure (rate limit, a 500, a timeout) costs one window and
 // the next call tries again.
 func TestATransientFailureDoesNotStopTheSeat(t *testing.T) {

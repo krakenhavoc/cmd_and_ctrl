@@ -3,6 +3,7 @@ package modelkeys
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -40,8 +41,13 @@ type seatClient struct {
 	game  uuid.UUID
 	model string
 
-	mu        sync.Mutex
-	inner     model.Client
+	mu    sync.Mutex
+	inner model.Client
+	// secret is the opened key, kept beside the client that already
+	// holds it for one reason: to scrub it out of a reply. A custom
+	// endpoint can put anything in its answer, and the policy logs a
+	// malformed answer and traces every one.
+	secret    string
 	modelID   string
 	gen       uint64
 	loaded    bool
@@ -74,7 +80,7 @@ func (c *seatClient) stopLocked(reason string, record bool) {
 		return
 	}
 	c.dead = reason
-	c.inner = nil
+	c.inner, c.secret = nil, ""
 	c.notice = "I can't use my owner's model key any more, so I'm playing on CMD & CTRL's built-in heuristic for the rest of this game. " + reason
 	c.svc.log.Info("own-key bot seat stopped using its model key; playing the heuristic",
 		"game", c.game.String(), "reason", reason)
@@ -118,7 +124,7 @@ func (c *seatClient) prepareLocked(ctx context.Context) error {
 		c.stopLocked(ReasonUnreadable, true)
 		return model.ErrBudgetExceeded
 	}
-	c.inner, c.gen, c.loaded, c.limit = inner, gen, true, r.CallsPerGame
+	c.inner, c.secret, c.gen, c.loaded, c.limit = inner, key, gen, true, r.CallsPerGame
 	c.modelID = c.model
 	if c.modelID == "" {
 		c.modelID = r.Model
@@ -156,7 +162,7 @@ func (c *seatClient) Complete(ctx context.Context, req model.Request) (model.Res
 		return model.Response{}, model.ErrBudgetExceeded
 	}
 	c.calls++
-	inner, gen := c.inner, c.gen
+	inner, gen, secret := c.inner, c.gen, c.secret
 	// The seat's model, whatever the tier's profiles name, and no
 	// effort or thinking field: those are tuned for the server's own
 	// models, and a model the person chose may refuse either.
@@ -166,6 +172,10 @@ func (c *seatClient) Complete(ctx context.Context, req model.Request) (model.Res
 	resp, err := inner.Complete(ctx, req)
 	if err == nil {
 		c.touch()
+		if secret != "" {
+			resp.Text = strings.ReplaceAll(resp.Text, secret, "[key]")
+			resp.Reasoning = strings.ReplaceAll(resp.Reasoning, secret, "[key]")
+		}
 		return resp, nil
 	}
 	fatal, reason := classify(err)
