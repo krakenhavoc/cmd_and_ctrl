@@ -98,6 +98,9 @@ func TestBotDeckCatalogDecklistParses(t *testing.T) {
 		}
 		total, commanders := 0, 0
 		for _, e := range entries {
+			if e.IsCompanion {
+				continue // outside the game, not one of the 100 (ADR 0172)
+			}
 			total += e.Count
 			if e.IsCommander {
 				commanders += e.Count

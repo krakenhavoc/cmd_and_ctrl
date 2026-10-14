@@ -1711,6 +1711,7 @@ time a spec was refactored.
 | `mono-green-stompy` | Stampede | Goreclaw, Terror of Qal Sisma | Stompy (G) — ramp into oversized creatures a turn early; Goreclaw makes every big spell cheaper and every big attacker hit harder |
 | `mono-white-weenie` | Strength in Numbers | Adeline, Resplendent Cathar | Weenie (W) — cheap white creatures and tokens; Adeline makes a Human every time you attack, and anthems turn the swarm lethal |
 | `boros-voltron` | Armed and Dangerous | Aurelia, the Law Above | Voltron (RW) — twenty-one Equipment and four Auras on one big flier, protected by instant-speed answers |
+| `wubrg-dragons` | Dragon Hoard | The Ur-Dragon | Tribal (WUBRG) — nineteen Dragons that The Ur-Dragon makes cheaper and turns into cards and free permanents. The one built-in deck with a companion: Jegantha, the Wellspring waits outside the game ([ADR 0172](decisions/0172-companion-a-card-outside-the-game.md) decision 8) |
 
 The decks are "upgraded precons" ([#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436)):
 fetchlands and dual lands, but few tutors and little fast mana (Sol
@@ -1727,6 +1728,18 @@ The three added by [#554](https://github.com/krakenhavoc/cmd_and_ctrl/issues/554
 (Stampede, Strength in Numbers, Armed and Dangerous) are held to a
 stricter bar than the four above: every non-basic card in them is graded
 `full`, with no entry on the minor-caveats list.
+
+Dragon Hoard (`wubrg-dragons`, added for ADR 0172 decision 8) is held to
+the same bar: all ninety non-basic cards, and Jegantha, are graded
+`full`. It is the only deck whose commander is five-colour, which is
+what lets it carry Jegantha as its companion: the companion must fit
+the commander's colour identity. Jegantha's condition (no card in the
+starting deck has more than one of the same mana symbol in its mana
+cost) shaped the list, so there is no Wrath of God or Sun Titan in it.
+`Deck.Companion` is written as a `Companion:` section by
+`Deck.Decklist`, so the bot seat and a human picking the deck both seat
+it through the same pipeline a pasted list runs, and the heuristic is
+offered the `companion` special action like any seat with one.
 
 Each is exactly 100 cards: one commander and ninety-nine mainboard.
 Deck IDs are wire values and will not be renamed.

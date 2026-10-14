@@ -41,14 +41,16 @@
 //
 // # What the catalog can and cannot support
 //
-// Seven decks in seven archetypes:
+// Eight decks in eight archetypes:
 //
 //   - aggro, ramp-stompy (Simic), control (Esper) — the three the
 //     sprint planned for. The aggro deck was Izzet (izzet-aggro) until
 //     #3071 rebuilt it as mono-red under Purphoros (mono-red-aggro).
+//
 //   - aristocrats (mono-black) — added because S21's sacrifice outlets
 //     and death payoffs and S23's board wipes both landed. The sprint
 //     doc deferred this on the grounds that they had not.
+//
 //   - stompy (mono-green), weenie (mono-white) and voltron (Boros) —
 //     added by #554 when the picker opened to human players and four
 //     decks stopped being enough of a shop window. Two are mono-coloured
@@ -58,6 +60,11 @@
 //     full_test.go's minor-caveats list. Per distinct non-basic card
 //     they measure 65 of 65 (Stampede), 68 of 68 (Strength in Numbers)
 //     and 72 of 72 (Armed and Dangerous).
+//
+//   - tribal (five-colour Dragons) — added by #3401 for ADR 0172
+//     decision 8: the one built-in deck with a five-colour commander,
+//     so the one that can carry Jegantha, the Wellspring as its
+//     companion. Every card in it also fits Jegantha's condition.
 //
 // Voltron was held back for a count problem rather than a missing
 // mechanic: the attachment relation shipped (#374, game/attach.go), and
@@ -194,7 +201,7 @@ type Deck struct {
 	Name string
 
 	// Archetype is the one-word shape of the deck: aggro, ramp-stompy,
-	// control, aristocrats. Shown in the deck picker and used by the
+	// control, aristocrats, tribal. Shown in the deck picker and used by the
 	// heuristic policy in a later sub-PR to pick a weight set.
 	Archetype string
 
@@ -213,6 +220,13 @@ type Deck struct {
 
 	// Mainboard is the other 99 cards.
 	Mainboard []Card
+
+	// Companion is the card waiting outside the game (CR 702.139,
+	// ADR 0172), or nil. It is not one of the 100: Size, Cards and the
+	// singleton and identity checks leave it out, and Decklist writes it
+	// as a Companion section. Its condition is checked by deck.Validate
+	// against the commander plus mainboard, like a player's upload.
+	Companion *Card
 }
 
 // all is the registry, in picker order. Adding a deck means adding it
@@ -225,6 +239,7 @@ var all = []Deck{
 	monoGreenStompy,
 	monoWhiteWeenie,
 	borosVoltron,
+	dragonHoard,
 }
 
 // All returns every curated deck, in a stable picker order. The
@@ -284,6 +299,17 @@ func (d Deck) Cards() []Card {
 	return out
 }
 
+// WithCompanion is Cards plus the companion, if the deck has one: every
+// card the deck can put in front of a player, for the checks that ask
+// whether the engine plays it.
+func (d Deck) WithCompanion() []Card {
+	out := d.Cards()
+	if d.Companion != nil {
+		out = append(out, *d.Companion)
+	}
+	return out
+}
+
 // Size is the total card count including the commander and every copy
 // of a basic land. A legal Commander deck has Size 100.
 func (d Deck) Size() int {
@@ -307,6 +333,10 @@ func (d Deck) Decklist() string {
 	b.WriteString("\nDeck:\n")
 	for _, c := range d.Mainboard {
 		fmt.Fprintf(&b, "%d %s\n", c.Copies(), c.Name)
+	}
+	if d.Companion != nil {
+		b.WriteString("\nCompanion:\n")
+		fmt.Fprintf(&b, "1 %s\n", d.Companion.Name)
 	}
 	return b.String()
 }
@@ -371,15 +401,18 @@ func frontFace(name string) string {
 // rely on that.
 func (d Deck) checkOracleIDs(list *deck.List) error {
 	want := make(map[string]string, len(d.Mainboard)+1)
-	for _, c := range d.Cards() {
+	for _, c := range d.WithCompanion() {
 		if c.Basic {
 			continue
 		}
 		want[c.Name] = c.OracleID
 	}
-	resolved := make([]cards.Card, 0, len(list.Commanders)+len(list.Mainboard))
+	resolved := make([]cards.Card, 0, len(list.Commanders)+len(list.Mainboard)+1)
 	resolved = append(resolved, list.Commanders...)
 	resolved = append(resolved, list.Mainboard...)
+	if list.Companion != nil {
+		resolved = append(resolved, *list.Companion)
+	}
 
 	var mismatches []string
 	for _, c := range resolved {

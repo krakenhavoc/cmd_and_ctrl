@@ -37,7 +37,7 @@ func TestEveryCardResolvesToARegisteredSpec(t *testing.T) {
 	for _, d := range everyDeck() {
 		t.Run(d.ID, func(t *testing.T) {
 			var missing []string
-			for _, c := range d.Cards() {
+			for _, c := range d.WithCompanion() {
 				if c.Basic {
 					continue
 				}
@@ -65,7 +65,7 @@ func TestEveryCardResolvesToARegisteredSpec(t *testing.T) {
 func TestDeclaredNamesMatchTheCatalog(t *testing.T) {
 	for _, d := range everyDeck() {
 		t.Run(d.ID, func(t *testing.T) {
-			for _, c := range d.Cards() {
+			for _, c := range d.WithCompanion() {
 				if c.Basic {
 					continue
 				}
@@ -95,7 +95,7 @@ func TestDeclaredNamesMatchTheCatalog(t *testing.T) {
 // engine reaches by casting or transforming.
 func TestNoBackFaceOracleKeys(t *testing.T) {
 	for _, d := range everyDeck() {
-		for _, c := range d.Cards() {
+		for _, c := range d.WithCompanion() {
 			if strings.Contains(c.OracleID, "#") {
 				t.Errorf("%s: %s uses a back-face key %q; the front face is what gets cast",
 					d.ID, c.Name, c.OracleID)
@@ -173,7 +173,7 @@ func TestColourIdentity(t *testing.T) {
 				}
 				allowed[r] = true
 			}
-			for _, c := range d.Mainboard {
+			for _, c := range append(d.Mainboard[:len(d.Mainboard):len(d.Mainboard)], companionRow(d)...) {
 				for _, r := range c.Identity {
 					if !allowed[r] {
 						t.Errorf("%s has identity %q, outside the deck's %q", c.Name, c.Identity, d.Identity)
@@ -191,7 +191,7 @@ func TestColourIdentity(t *testing.T) {
 func TestRegistryIsWellFormed(t *testing.T) {
 	knownArchetypes := map[string]bool{
 		"aggro": true, "ramp-stompy": true, "control": true, "aristocrats": true,
-		"stompy": true, "weenie": true, "voltron": true,
+		"stompy": true, "weenie": true, "voltron": true, "tribal": true,
 	}
 	seen := map[string]bool{}
 	for _, d := range All() {
@@ -238,11 +238,13 @@ func TestDecklistParsesAsPlayersUploadsDo(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ParseText: %v", err)
 			}
-			var commanders, mainboard int
+			var commanders, mainboard, companions int
 			for _, e := range entries {
 				switch {
 				case e.IsSideboard:
 					t.Errorf("%s landed in the sideboard; Commander has none", e.Name)
+				case e.IsCompanion:
+					companions += e.Count
 				case e.IsCommander:
 					commanders += e.Count
 				default:
@@ -254,6 +256,13 @@ func TestDecklistParsesAsPlayersUploadsDo(t *testing.T) {
 			}
 			if mainboard != 99 {
 				t.Errorf("parsed %d mainboard cards, want 99", mainboard)
+			}
+			wantCompanions := 0
+			if d.Companion != nil {
+				wantCompanions = 1
+			}
+			if companions != wantCompanions {
+				t.Errorf("parsed %d companions, want %d", companions, wantCompanions)
 			}
 		})
 	}
@@ -292,4 +301,13 @@ func TestLegacyIDsResolveToTheirReplacement(t *testing.T) {
 	if d, ok := Lookup("izzet-aggro"); !ok || d.ID != "mono-red-aggro" {
 		t.Errorf("Lookup(izzet-aggro) = %q, %v; want mono-red-aggro", d.ID, ok)
 	}
+}
+
+// companionRow is the deck's companion as a slice, empty when it has
+// none, for the checks that treat it like a mainboard row.
+func companionRow(d Deck) []Card {
+	if d.Companion == nil {
+		return nil
+	}
+	return []Card{*d.Companion}
 }

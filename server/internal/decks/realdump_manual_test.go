@@ -64,8 +64,14 @@ func TestRealDumpDecksAreLegalCommanderDecks(t *testing.T) {
 			for _, c := range list.Mainboard {
 				byName[frontFace(c.Name)] = c.ColorIdentity
 			}
+			if d.Companion != nil {
+				if list.Companion == nil || frontFace(list.Companion.Name) != d.Companion.Name {
+					t.Fatalf("declared companion %s did not reach the list", d.Companion.Name)
+				}
+				byName[frontFace(list.Companion.Name)] = list.Companion.ColorIdentity
+			}
 			var drift []string
-			for _, c := range d.Cards() {
+			for _, c := range d.WithCompanion() {
 				if c.Basic {
 					continue
 				}
