@@ -1668,7 +1668,7 @@ func init() {
 | Counter placement (+1/+1, loyalty, …) | `RepEventCounter` | `CounterTarget`, `CounterName`, `CounterDelta` |
 | Zone motion (ETB, LTB, draw-as-move) | `RepEventMove` | `CardID`, `OldZone`, `NewZone`, `NewZoneOwner`, `EntersTapped`, `EntersWithCounters` |
 | Card draw | `RepEventDraw` | `DrawPlayer`, `DrawCount` |
-| Life total change | `RepEventLife` | `LifePlayer`, `LifeDelta` |
+| Life total change, including the life that damage costs (ADR 0169: a loss is a negative `LifeDelta`; Bloodletter of Aclazotz is `OpponentsLoseTwiceThatMuchLifeDuringYourTurn`) | `RepEventLife` | `LifePlayer`, `LifeDelta` |
 | Damage (combat and direct) | `RepEventDamage` | `DamageSource`, `DamageTarget`, `DamageAmount`, `IsCombatDamage` |
 | Token creation (CR 701.7b) | `RepEventCreateTokens` | `TokenController`, `TokenGroups`, `TokenAttacking` |
 | Discard (CR 701.8) | `RepEventDiscard` | `DiscardPlayer`, `DiscardCause`, `CardID`, `NewZone`, `NewZoneOwner` |
