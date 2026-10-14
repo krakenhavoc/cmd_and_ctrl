@@ -73,7 +73,7 @@ func call(t *testing.T, c model.Client) error {
 }
 
 func TestTokensCountsEveryBilledField(t *testing.T) {
-	got := Tokens(model.Usage{InputTokens: 1, OutputTokens: 2, CacheReadTokens: 4, CacheWriteTokens: 8, CachedPromptTokens: 1000})
+	got := New(Limits{}, nil, WithWeights(FlatWeights())).Tokens("m", model.Usage{InputTokens: 1, OutputTokens: 2, CacheReadTokens: 4, CacheWriteTokens: 8, CachedPromptTokens: 1000})
 	if got != 15 {
 		t.Fatalf("Tokens = %d, want 15 (CachedPromptTokens is a local server's free optimisation and does not count)", got)
 	}
@@ -81,7 +81,7 @@ func TestTokensCountsEveryBilledField(t *testing.T) {
 
 func TestDailyCapTripsAndLaterCallsNeverReachTheInnerClient(t *testing.T) {
 	inner := usageClient(60, 40) // 100 tokens a call
-	b := New(Limits{DailyTokens: 250}, nil, WithLogger(quiet()))
+	b := New(Limits{DailyTokens: 250}, nil, WithLogger(quiet()), WithWeights(FlatWeights()), WithWeights(FlatWeights()))
 	c := b.Wrap(inner)
 
 	for i := 0; i < 3; i++ { // 100, 200, 300: the third call crosses the line
@@ -106,7 +106,7 @@ func TestDailyCapTripsAndLaterCallsNeverReachTheInnerClient(t *testing.T) {
 
 func TestMonthlyCapTripsAcrossDays(t *testing.T) {
 	clk := newClock("2026-10-10T12:00:00Z")
-	b := New(Limits{DailyTokens: 1000, MonthlyTokens: 250}, nil, WithClock(clk.now), WithLogger(quiet()))
+	b := New(Limits{DailyTokens: 1000, MonthlyTokens: 250}, nil, WithClock(clk.now), WithLogger(quiet()), WithWeights(FlatWeights()), WithWeights(FlatWeights()))
 	c := b.Wrap(usageClient(100, 0))
 	for i := 0; i < 2; i++ {
 		_ = call(t, c)
@@ -129,7 +129,7 @@ func TestMonthlyCapTripsAcrossDays(t *testing.T) {
 
 func TestDayAndMonthRollOver(t *testing.T) {
 	clk := newClock("2026-10-31T23:59:00Z")
-	b := New(Limits{DailyTokens: 100, MonthlyTokens: 100}, nil, WithClock(clk.now), WithLogger(quiet()))
+	b := New(Limits{DailyTokens: 100, MonthlyTokens: 100}, nil, WithClock(clk.now), WithLogger(quiet()), WithWeights(FlatWeights()), WithWeights(FlatWeights()))
 	c := b.Wrap(usageClient(100, 0))
 	_ = call(t, c)
 	if err := call(t, c); !errors.Is(err, model.ErrBudgetExceeded) {
@@ -146,7 +146,7 @@ func TestDayAndMonthRollOver(t *testing.T) {
 }
 
 func TestZeroMeansNoCap(t *testing.T) {
-	b := New(Limits{}, nil, WithLogger(quiet()))
+	b := New(Limits{}, nil, WithLogger(quiet()), WithWeights(FlatWeights()), WithWeights(FlatWeights()))
 	c := b.Wrap(usageClient(1_000_000, 1_000_000))
 	for i := 0; i < 5; i++ {
 		if err := call(t, c); err != nil {
@@ -160,7 +160,7 @@ func TestZeroMeansNoCap(t *testing.T) {
 
 func TestKillSwitchStopsCallsAndSurvivesTurningBackOn(t *testing.T) {
 	inner := usageClient(1, 1)
-	b := New(DefaultLimits(), nil, WithLogger(quiet()))
+	b := New(DefaultLimits(), nil, WithLogger(quiet()), WithWeights(FlatWeights()), WithWeights(FlatWeights()))
 	c := b.Wrap(inner)
 	if err := call(t, c); err != nil {
 		t.Fatal(err)
@@ -228,7 +228,7 @@ func (m *memStore) SaveDisabled(_ context.Context, d bool) error {
 func TestCountersAndSwitchSurviveARestart(t *testing.T) {
 	clk := newClock("2026-10-12T09:00:00Z")
 	store := &memStore{}
-	b1 := New(Limits{DailyTokens: 150}, store, WithClock(clk.now), WithLogger(quiet()))
+	b1 := New(Limits{DailyTokens: 150}, store, WithClock(clk.now), WithLogger(quiet()), WithWeights(FlatWeights()), WithWeights(FlatWeights()))
 	c1 := b1.Wrap(usageClient(100, 0))
 	_ = call(t, c1)
 	_ = call(t, c1) // 200: capped
@@ -237,7 +237,7 @@ func TestCountersAndSwitchSurviveARestart(t *testing.T) {
 	}
 
 	// "Restart": a new Budget over the same store, same day.
-	b2 := New(Limits{DailyTokens: 150}, store, WithClock(clk.now), WithLogger(quiet()))
+	b2 := New(Limits{DailyTokens: 150}, store, WithClock(clk.now), WithLogger(quiet()), WithWeights(FlatWeights()), WithWeights(FlatWeights()))
 	if st := b2.Status(); st.DailyTokens != 200 || st.Enabled {
 		t.Fatalf("after restart: %+v, want 200 tokens and the switch still off", st)
 	}
@@ -248,7 +248,7 @@ func TestCountersAndSwitchSurviveARestart(t *testing.T) {
 
 	// Restart the next day: the stored day belongs to yesterday.
 	clk.set("2026-10-13T00:00:05Z")
-	b3 := New(Limits{DailyTokens: 150}, store, WithClock(clk.now), WithLogger(quiet()))
+	b3 := New(Limits{DailyTokens: 150}, store, WithClock(clk.now), WithLogger(quiet()), WithWeights(FlatWeights()), WithWeights(FlatWeights()))
 	if st := b3.Status(); st.DailyTokens != 0 || st.MonthlyTokens != 200 {
 		t.Fatalf("restart on the next day: %+v, want day 0 and month 200", st)
 	}
@@ -256,7 +256,7 @@ func TestCountersAndSwitchSurviveARestart(t *testing.T) {
 
 func TestAStoreThatFailsToSaveDoesNotStopTheGame(t *testing.T) {
 	store := &memStore{failSave: true}
-	b := New(Limits{DailyTokens: 100}, store, WithLogger(quiet()))
+	b := New(Limits{DailyTokens: 100}, store, WithLogger(quiet()), WithWeights(FlatWeights()), WithWeights(FlatWeights()))
 	c := b.Wrap(usageClient(60, 0))
 	if err := call(t, c); err != nil {
 		t.Fatal(err)
@@ -268,7 +268,7 @@ func TestAStoreThatFailsToSaveDoesNotStopTheGame(t *testing.T) {
 }
 
 func TestSetEnabledReportsAStoreFailure(t *testing.T) {
-	b := New(DefaultLimits(), failingSwitch{}, WithLogger(quiet()))
+	b := New(DefaultLimits(), failingSwitch{}, WithLogger(quiet()), WithWeights(FlatWeights()), WithWeights(FlatWeights()))
 	if err := b.SetEnabled(false); err == nil {
 		t.Fatal("want an error, so the admin is not told the switch is off when it is not")
 	}
@@ -372,7 +372,7 @@ func TestCappedModelSeatPlaysTheHeuristicWithNoCallAndNoError(t *testing.T) {
 	inner.Reply = func(int, model.Request) (model.Response, error) {
 		return model.Response{Text: `{"index": 1, "why": "fake"}`, Usage: model.Usage{InputTokens: 80, OutputTokens: 20}}, nil
 	}
-	b := New(Limits{DailyTokens: 150}, nil, WithLogger(quiet()))
+	b := New(Limits{DailyTokens: 150}, nil, WithLogger(quiet()), WithWeights(FlatWeights()), WithWeights(FlatWeights()))
 	h := &pinnedB{}
 	cfg := model.DefaultConfig()
 	cfg.Fallback = h
@@ -408,7 +408,7 @@ func TestCappedModelSeatPlaysTheHeuristicWithNoCallAndNoError(t *testing.T) {
 }
 
 func TestKillSwitchStopsARunningModelSeat(t *testing.T) {
-	b := New(DefaultLimits(), nil, WithLogger(quiet()))
+	b := New(DefaultLimits(), nil, WithLogger(quiet()), WithWeights(FlatWeights()), WithWeights(FlatWeights()))
 	cfg := model.DefaultConfig()
 	cfg.Fallback = &pinnedB{}
 	cfg.Client = b.Wrap(model.AlwaysIndex(1))

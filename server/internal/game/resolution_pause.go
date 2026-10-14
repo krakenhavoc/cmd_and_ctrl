@@ -121,6 +121,13 @@ func (g *Game) holdForOpenResolutionLocked() bool {
 	if g.resumeModeWalkLocked() && g.pausedResolutionChoiceLocked() != nil {
 		return true
 	}
+	// #3613, CR 608.2n: the resolution's own end — a spell's exit and
+	// the log's "resolved" line — waited for that answer too
+	// (resolution_tail.go). The exit may ask again (CR 616.1's exit
+	// choice, a Clone's copy pick).
+	if g.finishResolutionTailLocked() && g.pausedResolutionChoiceLocked() != nil {
+		return true
+	}
 	g.resolutionOpen = false
 	return false
 }

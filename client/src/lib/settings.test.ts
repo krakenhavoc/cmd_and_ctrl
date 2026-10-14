@@ -146,6 +146,36 @@ describe("settings", () => {
     expect(SYNCED_FIELDS.animations.combat).toBe("synced");
   });
 
+  // #3586: v27 → v28 adds gameplay.attackDefault. Existing players stay
+  // on today's behaviour ("ask"); a chosen mode survives; junk is "ask".
+  it("migrates v27 to v28 with attackDefault on Choose each time", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 27, gameplay: { strictMana: false } }),
+    );
+    const { settings, defaultSettings, SYNCED_FIELDS, SETTINGS_VERSION } = await freshModule();
+    expect(SETTINGS_VERSION).toBe(28);
+    expect(defaultSettings().gameplay.attackDefault).toBe("ask");
+    const s = get(settings);
+    expect(s.__version).toBe(28);
+    expect(s.gameplay.attackDefault).toBe("ask");
+    expect(s.gameplay.strictMana).toBe(false);
+    expect(SYNCED_FIELDS.gameplay.attackDefault).toBe("synced");
+  });
+
+  it("keeps a chosen attackDefault and resets an unknown one", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 28, gameplay: { attackDefault: "all" } }),
+    );
+    expect(get((await freshModule()).settings).gameplay.attackDefault).toBe("all");
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 28, gameplay: { attackDefault: "everyone" } }),
+    );
+    expect(get((await freshModule()).settings).gameplay.attackDefault).toBe("ask");
+  });
+
   it("absorbs the legacy cmdctrl.muted=1 key on first load", async () => {
     localStorage.setItem("cmdctrl.muted", "1");
     const { settings } = await freshModule();
@@ -534,25 +564,31 @@ describe("settings", () => {
     expect(get(settings).gameplay.strictMana).toBe(true);
   });
 
-  it("v18 → v19 writes strictMana true whatever was stored", async () => {
-    for (const version of [4, 15, 18]) {
-      for (const stored of [false, true, "no", undefined]) {
-        localStorage.setItem(
-          "cmdctrl.settings.v1",
-          JSON.stringify({
-            __version: version,
-            gameplay: { strictMana: stored, smartAutoPass: false },
-          }),
-        );
-        const { settings, SETTINGS_VERSION } = await freshModule();
-        const s = get(settings);
-        expect(SETTINGS_VERSION).toBeGreaterThanOrEqual(21);
-        expect(s.__version).toBe(SETTINGS_VERSION);
-        expect(s.gameplay.strictMana, `v${version} stored ${String(stored)}`).toBe(true);
-        expect(s.gameplay.passMode).toBe("careful");
-      }
-    }
-  });
+  // One case per test, not a loop of twelve in one: each case is a full
+  // vi.resetModules() + re-import of settings.ts and its graph, and the
+  // whole loop shared a single 5s budget. Under a loaded full run (#3272)
+  // that budget, not the migration, was what ran out.
+  const strictManaCases = [4, 15, 18].flatMap((version) =>
+    [false, true, "no", undefined].map((stored) => [version, stored] as const),
+  );
+  it.each(strictManaCases)(
+    "v%i → v19 writes strictMana true whatever was stored (%s)",
+    async (version, stored) => {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({
+          __version: version,
+          gameplay: { strictMana: stored, smartAutoPass: false },
+        }),
+      );
+      const { settings, SETTINGS_VERSION } = await freshModule();
+      const s = get(settings);
+      expect(SETTINGS_VERSION).toBeGreaterThanOrEqual(21);
+      expect(s.__version).toBe(SETTINGS_VERSION);
+      expect(s.gameplay.strictMana).toBe(true);
+      expect(s.gameplay.passMode).toBe("careful");
+    },
+  );
 
   it("v19 keeps a player's choice to turn strict payment off", async () => {
     localStorage.setItem(

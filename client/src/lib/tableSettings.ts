@@ -142,7 +142,12 @@ export const DEFAULT_TABLE_SETTINGS: TableSettingsView = {
   bot_pace: "normal",
   allow_spawn: false,
   free_mulligans: 0,
+  away_after: 3,
 };
+
+// ADR 0177 §7: the away time, in minutes, 0 for never; the engine's
+// game.MaxAwayAfter.
+export const MAX_AWAY_AFTER_MINUTES = 30;
 
 // Free mulligans (#3387): -1 is unlimited, otherwise 0..7, the
 // engine's game.MaxFreeMulligans.
@@ -168,6 +173,32 @@ export const currentTablePace: Readable<TableSettingsView["bot_pace"] | null> = 
 };
 export function setCurrentTablePace(p: TableSettingsView["bot_pace"] | null): void {
   tablePace.set(p);
+}
+
+/**
+ * The table card's one-line summary of its rules (#3499): only what
+ * differs from the defaults, in the order a player cares about, or
+ * "Standard rules" when nothing does.
+ */
+export function settingsSummary(s: TableSettingsView): string {
+  const d = DEFAULT_TABLE_SETTINGS;
+  const parts: string[] = [];
+  if (s.starting_life !== d.starting_life) parts.push(`${s.starting_life} life`);
+  if (s.commander_damage !== d.commander_damage) {
+    parts.push(`${s.commander_damage} commander damage`);
+  }
+  if (s.undo_limit !== d.undo_limit) {
+    if (isUnlimitedUndo(s.undo_limit)) parts.push("unlimited undos");
+    else if (s.undo_limit === 0) parts.push("no undos");
+    else parts.push(`${s.undo_limit} undos a turn`);
+  }
+  if (s.undo_scope === "host_any") parts.push("host can undo anyone");
+  const free = s.free_mulligans ?? 0;
+  if (free === FREE_MULLIGANS_UNLIMITED) parts.push("every mulligan free");
+  else if (free > 0) parts.push(`${free} free mulligan${free === 1 ? "" : "s"}`);
+  if (s.bot_pace !== d.bot_pace) parts.push(`${s.bot_pace} pace`);
+  if (s.allow_spawn) parts.push("spawning on");
+  return parts.length > 0 ? parts.join(" · ") : "Standard rules";
 }
 
 /** The table's settings, or the defaults when the frame has none. */
@@ -280,6 +311,12 @@ export function settingsPatchError(
     }
     if (startingLifeLocked(state)) {
       return "The game has already started, so free mulligans are fixed.";
+    }
+  }
+  if (patch.away_after !== undefined) {
+    const n = patch.away_after;
+    if (!Number.isInteger(n) || n < 0 || n > MAX_AWAY_AFTER_MINUTES) {
+      return `The away time is 0 for never, or 1–${MAX_AWAY_AFTER_MINUTES} minutes.`;
     }
   }
   if (patch.commander_damage !== undefined) {

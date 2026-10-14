@@ -14,7 +14,7 @@
  */
 
 import type { CardView } from "./protocol";
-import { LAYOUT_FLIP } from "./faces";
+import { LAYOUT_FLIP, LAYOUT_SPLIT } from "./faces";
 
 /** Scryfall image sizes the server's `?size=` accepts. */
 export type CardImageSize = "small" | "normal" | "large" | "png" | "art_crop" | "border_crop";
@@ -39,6 +39,12 @@ export type CardImageSize = "small" | "normal" | "large" | "png" | "art_crop" | 
  * image turned upside down (Card.svelte and the hover panel turn it).
  * One URL per printing keeps the browser and service-worker caches to
  * one copy of it.
+ *
+ * A SPLIT card (Fire // Ice, aftermath, every Room) is the same: Scryfall
+ * prints ONE image of the whole card, at the top level, and its
+ * card_faces carry none, so `?face=1` is a 404 (#3518). Every half
+ * therefore asks for face 0, the whole card; the picker turns it
+ * (see isSidewaysArt).
  */
 export function cardImageURL(
   card:
@@ -49,7 +55,9 @@ export function cardImageURL(
   face?: number,
 ): string | null {
   if (!card?.scryfall_id) return null;
-  if (card.layout === LAYOUT_FLIP) return scryfallImageURL(card.scryfall_id, size, 0);
+  if (card.layout === LAYOUT_FLIP || card.layout === LAYOUT_SPLIT) {
+    return scryfallImageURL(card.scryfall_id, size, 0);
+  }
   return scryfallImageURL(card.scryfall_id, size, face ?? card.active_face ?? 0);
 }
 

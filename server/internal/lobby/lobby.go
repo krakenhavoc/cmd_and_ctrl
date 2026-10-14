@@ -180,6 +180,12 @@ type SeatInfo struct {
 	// when the seat is still using the placeholder deck handed out
 	// at join time.
 	DeckName string `json:"deck_name,omitempty"`
+	// DeckPower is the seated library deck's estimated power level on
+	// the Commander Bracket scale, 1 to 5 in half steps, or 0 (omitted)
+	// when the deck is unrated or did not come from a library (#3671,
+	// decks.power_level). Public: the table sees how strong the decks
+	// are before it starts.
+	DeckPower float64 `json:"deck_power,omitempty"`
 	// DeckUploaded reports whether the seat has uploaded a real deck
 	// (vs. the placeholder). Start refuses to transition the game
 	// until every seat has DeckUploaded == true.
@@ -225,6 +231,15 @@ type SeatInfo struct {
 	// engine stays the authority. Never cleared once set.
 	IsAgent     bool   `json:"is_agent,omitempty"`
 	AgentClient string `json:"agent_client,omitempty"`
+
+	// StandIn is the bot tier playing this person's seat while they
+	// are away (ADR 0177 §4), "" while they play it. The seat stays
+	// theirs: IsBot stays false, so the reclaim, the statistics and the
+	// DMs keep treating it as the person's. StandInSince is when the
+	// bot took it. Both ride seats.stand_in / stand_in_since (migration
+	// 0026). Public: the table sees the seat is played by a bot.
+	StandIn      string     `json:"stand_in,omitempty"`
+	StandInSince *time.Time `json:"stand_in_since,omitempty"`
 
 	// IsHost marks the table host (ADR 0075 §2.1). Never true on a bot
 	// or agent seat. Mirrors GameMeta.HostPlayerID.
@@ -313,6 +328,13 @@ type Lobby struct {
 	// at boot via SetPlaymats, before RestoreFromDisk; nil means no seat
 	// carries one.
 	playmats PlaymatSource
+	// awayPresence, when non-nil, is the hub's answer to "is this seat at
+	// the table" for the away clock (away.go, ADR 0177). Set once at
+	// boot via SetAwayPresence; nil offers nothing.
+	awayPresence AwayPresence
+	// away is the away clock's own state: who chose to keep waiting
+	// (away.go). Guarded by its own mutex.
+	away awayState
 	// gameStats, when non-nil, keeps each stored game's statistics
 	// record (ADR 0165); recordStatsLocked writes it when the game ends.
 	// statsWG counts the writes still running (WaitGameStats).
@@ -1208,8 +1230,9 @@ func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []gam
 }
 
 // SetSeatDeckID records which library deck (ADR 0051 decision 7, S34
-// sub-PR 5) a seat's cards came from, alongside the deck contents
-// SetDeck installs. Callers pass "" to clear it — an ad-hoc paste, a
+// sub-PR 5) a seat's cards came from, and that deck's power level
+// (#3671, 0 when unrated), alongside the deck contents SetDeck
+// installs. Callers pass "" and 0 to clear them — an ad-hoc paste, a
 // guest's upload, or a switch to a pre-built catalog deck has no
 // library row behind it, and a stale id left over from a seat's
 // previous deck would be worse than none.
@@ -1218,7 +1241,7 @@ func (l *Lobby) SetDeck(gameID, playerID uuid.UUID, deckName string, cards []gam
 // SetDeck mutates the engine (ReplaceDeck) and is shared with every
 // deck-install caller; a library id is purely lobby bookkeeping that
 // only the HTTP layer's two deck-library routes know about.
-func (l *Lobby) SetSeatDeckID(gameID, playerID uuid.UUID, deckID string) error {
+func (l *Lobby) SetSeatDeckID(gameID, playerID uuid.UUID, deckID string, power float64) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -1229,6 +1252,7 @@ func (l *Lobby) SetSeatDeckID(gameID, playerID uuid.UUID, deckID string) error {
 	for i := range entry.meta.Players {
 		if entry.meta.Players[i].PlayerID == playerID {
 			entry.meta.Players[i].DeckID = deckID
+			entry.meta.Players[i].DeckPower = power
 			l.persistSeatsLocked(entry)
 			return nil
 		}
@@ -1247,6 +1271,22 @@ func (l *Lobby) ForgetLibraryDeck(deckID string) {
 		for i := range entry.meta.Players {
 			if entry.meta.Players[i].DeckID == deckID {
 				entry.meta.Players[i].DeckID = ""
+				entry.meta.Players[i].DeckPower = 0
+			}
+		}
+	}
+}
+
+// SetLibraryDeckPower updates the power level shown on every seat
+// holding deckID after an admin rates it (#3671), so a table already
+// seated with the deck shows the new rating on its next listing.
+func (l *Lobby) SetLibraryDeckPower(deckID string, power float64) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for _, entry := range l.games {
+		for i := range entry.meta.Players {
+			if entry.meta.Players[i].DeckID == deckID {
+				entry.meta.Players[i].DeckPower = power
 			}
 		}
 	}
@@ -1464,6 +1504,9 @@ func (l *Lobby) addBot(id uuid.UUID, name, tier, deckID, deckName string, cards 
 	})
 	l.persistSeatsLocked(entry)
 	l.noteFilledLocked(entry, uuid.Nil)
+	if keyOwner != uuid.Nil {
+		metrics.OwnKeySeatAdded()
+	}
 	return copyMeta(entry.meta), p.ID, nil
 }
 
@@ -1667,7 +1710,15 @@ func (l *Lobby) SetArchived(id uuid.UUID, archived bool) (GameMeta, error) {
 	case !archived && entry.meta.Archived():
 		entry.meta.ArchivedAt = nil
 		if entry.room.Game.CurrentState() == game.StateActive {
-			after = l.botStartLocked(entry)
+			bots, standIns := l.botStartLocked(entry), l.standInStartLocked(entry)
+			after = func() {
+				if bots != nil {
+					bots()
+				}
+				if standIns != nil {
+					standIns()
+				}
+			}
 		}
 	}
 	l.syncStateLocked(entry)

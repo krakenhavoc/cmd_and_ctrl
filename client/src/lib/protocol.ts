@@ -59,6 +59,10 @@ export const ErrorCode = {
   // four requests a second. Listed so this table stays the server's.
   NoDecision: "no_decision",
   RateLimited: "rate_limited",
+  // ADR 0177 §6: an action from a seat a bot is playing while its
+  // player was away. Nothing was applied; the player takes the seat
+  // back first (the Take it back banner).
+  StandIn: "stand_in",
 } as const;
 
 export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -1045,6 +1049,11 @@ export type LogKind =
   // the server admin made the change. The only kind that is about the
   // rules rather than about the game.
   | "settings"
+  // ADR 0177: the table moved on without a player who was gone.
+  // `label` is "stand_in", "concede" or "take_back"; `target_seat` the
+  // seat; `seat` who decided (NoSeat for the admin); `amount` the
+  // minutes the seat had been offline.
+  | "away_seat"
   // ADR 0075 §2.4: the host or the admin put cards or tokens on the
   // table from nowhere. `label` is the card or token name, `amount`
   // the count, `new_zone` where they went and `target_seat` whose
@@ -1104,6 +1113,16 @@ export type LogKind =
   // beginning (Trouble in Pairs). `seat` is who would have taken it,
   // `card_id` the card whose effect created it.
   | "extra_turn_skipped"
+  // ADR 0188 Decision 1 (#3559, CR 614.10): an effect made a player
+  // skip their next turns (Magosi, the Waterveil; Lethal Vapors). `seat`
+  // is who will skip, `card_id` the card whose effect wrote the debt and
+  // `amount` how many turns it adds.
+  | "turn_skip"
+  // ADR 0188 Decision 1 (CR 614.10a): a turn was skipped because its
+  // player owed a skip. `seat` is who would have taken it, `card_id` the
+  // card whose effect wrote the debt, and `label` is "extra" when the
+  // turn skipped was an extra turn.
+  | "turn_skipped"
   // ADR 0059 Decision 11 (#753): an effect added phases or a step to
   // the current turn (CR 500.8 / 500.9). `seat` is the active player,
   // `card_id` the card whose effect added them, and `label` what was
@@ -1592,6 +1611,10 @@ export interface PendingChoiceView {
   // entering permanent away does to the seat that receives it. The
   // picker reads it only for its wording.
   control_purpose?: "harm" | "benefit" | string;
+  // #3309: populated for kind "aura_host" — what the entering Aura does
+  // to the permanent it enchants. Absent when the card declares none.
+  // The bot reads it; the client ignores it.
+  aura_purpose?: "harm" | "benefit" | string;
   // ADR 0109 §10: on an "entry_riot" or "optional_replacement" prompt,
   // the entry keyword it asks about — "riot" or "unleash" — and on an
   // "entry_read_ahead" prompt "read ahead" (#2123). Absent on every
@@ -1816,7 +1839,9 @@ export interface PendingChoiceView {
   // Where the named card goes when the card says so: "battlefield",
   // "battlefield_tapped", or "cast_free" ("you may cast a spell from
   // your hand without paying its mana cost" — answering with a card
-  // opens its cast at once). Absent on a plain discard or look.
+  // opens its cast at once), or "manifest" (ADR 0189: the named hand
+  // cards are put onto the battlefield face down as 2/2 creatures).
+  // Absent on a plain discard or look.
   choose_destination?: string;
   // #2525: kind "proliferate" (and ADR 0170's "entry_choose_permanents",
   // suggestion only). The seats on offer beside
@@ -2255,6 +2280,10 @@ export interface PlayerView {
   // ascend gives and nothing takes away. Public, identical for every
   // viewer; absent until the seat has it.
   citys_blessing?: boolean;
+  // ADR 0188 Decision 9 (#3559, CR 614.10): how many of this player's
+  // next turns they will skip. Public, identical for every viewer; absent
+  // at zero.
+  turn_skips?: number;
   // The playmat the seat's signed-in owner chose (ADR 0128): a
   // same-origin path, /playmats/<uuid>, drawn behind that seat's
   // battlefield. Public and identical for every viewer. Absent for a
@@ -2268,6 +2297,13 @@ export interface PlayerView {
   // Table host (ADR 0075 §2.1), visible to every viewer. The host may
   // change table settings alongside the server admin.
   is_host?: boolean;
+  // ADR 0177 §1: the seat's player is not at the table. Absent while
+  // present, and always on a bot seat or one that has left the game.
+  // Stamped by the hub on every frame; public.
+  presence?: PresenceView;
+  // ADR 0177 §4: a bot is playing this person's seat while they were
+  // away. is_bot stays false: the seat is still theirs. Public.
+  stand_in?: StandInView;
   // Per-commander cast count for the Commander tax (S13.1, CR
   // 903.8). Keyed by commander instance UUID. Drives the "+N tax"
   // indicator next to the commander tile.
@@ -2315,6 +2351,16 @@ export interface PlayerView {
   // (companion)", kind "companion") for the owner only, and the row
   // sends `special_action { card_id, kind: "companion" }`.
   companion?: CardView;
+  // ADR 0191 §7: the cards this seat owns outside the game, its deck's
+  // sideboard. OWNER ONLY: present on your own seat and absent on every
+  // other, for a spectator and for the controller of your turn. Only an
+  // effect that brings a card in from outside the game (a wish,
+  // Extrapolate the Impossible) can reach them; the zone browser shows
+  // them read-only.
+  sideboard?: CardView[];
+  // How many cards this seat owns outside the game. Public, like a
+  // hand's size. Absent for a seat with none.
+  sideboard_count?: number;
   // #1197/#1201 (CR 702.11d, CR 702.16i): the abilities this SEAT has
   // right now — bare engine tokens, "hexproof" or a general
   // "protection from <quality>" ("protection from everything" is the
@@ -2895,6 +2941,11 @@ export interface ExilePlayView {
   // unconditional grant.
   condition?: string;
   condition_unmet?: boolean;
+  // #3490: the holder's next pass of priority ends this grant (rebound,
+  // suspend, discover and cascade's free casts; ADR 0099 section 4).
+  // Passing is the decline, so autopass holds while the viewer may cast
+  // a card that carries it (priority.ts owesFreeCast). Absent otherwise.
+  closes_on_pass?: boolean;
 }
 
 // #2559: the windows `exile_play.until` names.
@@ -3162,6 +3213,12 @@ export interface ActivatedAbilityView {
   // The picks ride activate_ability as `crew_ids`.
   crew_cost?: number;
   crew_options?: LegalTargetsView;
+  // ADR 0186 Decision 6 (#3549): what each creature in crew_options counts
+  // for on THIS cost, keyed by card ID. Differs from `power` when a rule
+  // says so ("crews Vehicles as though its power were 2 greater"). Absent
+  // on a teamwork prompt, which counts plain power; when absent a client
+  // sums `power`.
+  crew_power?: Record<string, number>;
   // #2695: a Mount's saddle ability (CR 702.171a) rides the two crew
   // fields above — the same many-pick, floor-on-total-power prompt and
   // the same `crew_ids` payload — and sets this flag so the prompt says
@@ -3294,6 +3351,8 @@ export interface ActivatedAbilityView {
 // docs/protocol.md "Declared purpose"). Bot data; the client does not
 // read it. Every field is absent when zero.
 export interface PurposeView {
+  // #3309: on an Aura card, what it does to the permanent it enchants.
+  aura?: "benefit" | "harm" | string;
   draws?: number;
   controller_loses_life?: number;
   discards?: number;
@@ -3304,6 +3363,10 @@ export interface PurposeView {
   tutors?: number;
   self_mill_tutor?: number;
   tokens?: number;
+  // #3165: how many of `tokens` are creature tokens, and the lowercase
+  // creature subtype whose controlled count is how many it makes.
+  creature_tokens?: number;
+  tokens_per_controlled?: string;
   // ADR 0129 §7: energy counters it gives its controller.
   energy?: number;
   sweep?: SweepView;
@@ -3322,6 +3385,9 @@ export interface PurposeView {
   // #3072: on a landfall row, what it pays for each land that enters
   // under its controller's control.
   landfall_payoff?: LandfallPayoffView;
+  // #3165: on a row that pays for each creature that enters under its
+  // controller's control.
+  creature_enter_payoff?: LandfallPayoffView;
   // ADR 0126 (amendment of 2026-10-08): what happens to each target,
   // one entry per target clause of the statement this purpose rides
   // on, keyed by the slot a move's `targets[].slot` names.
@@ -3703,6 +3769,11 @@ export interface CastSurfaceView {
   // `target_cost_notes`, `phyrexian_symbols` and `cant_cast`, because
   // a card in a graveyard is a card every player may read.
   castable_here?: boolean;
+  // #3625: a HAND card the viewer holds a pass-closed free cast over
+  // (Buster Sword, Rishkar's Expertise; #3270): their next pass ends the
+  // window and the card stays in hand. The hand twin of
+  // `exile_play.closes_on_pass`; per viewer, absent otherwise.
+  closes_on_pass?: boolean;
   // #1389: what THIS viewer would be charged to cast the card out of
   // EXILE right now — one entry per price the cast may claim, cheapest
   // first, each the total AFTER every CR 601.2f cost modifier (the
@@ -3860,6 +3931,9 @@ export interface CardView extends CastSurfaceView {
   // ADR 0108 §2 (CR 701.19c): this permanent can't be regenerated this
   // turn (Incinerate, Whippoorwill). Public; battlefield only.
   cant_be_regenerated?: boolean;
+  // ADR 0187 §4 (CR 510.1a): this creature assigns no combat damage this
+  // turn (Carrion Rats, Carrion Wurm). Public; battlefield only.
+  assigns_no_combat_damage?: boolean;
   // ADR 0109 §10 (CR 702.136a): this permanent's haste came from its
   // own riot, so its haste chip is labelled "Riot". Public;
   // battlefield only.
@@ -4683,7 +4757,15 @@ export interface VoiceView {
   status: VoiceStatus;
   you?: VoiceAccess;
   url?: string;
+  // #3311: seated viewers only. `connected` maps a seat's player id to
+  // its state in the room; a seat not in it is not connected. `granted`
+  // and `in_room` are the chip's "3 of 4".
+  connected?: Record<string, VoiceConn>;
+  granted?: number;
+  in_room?: number;
 }
+
+export type VoiceConn = "live" | "muted";
 
 export type VoiceStatus = "off" | "pending" | "ready" | "idle" | "full" | "unavailable";
 
@@ -4710,6 +4792,26 @@ export interface StackPositionView {
 
 export type RematchPart = "host" | "undecided" | "accepted" | "declined";
 
+// ADR 0177 §1: PlayerView.presence.
+export interface PresenceView {
+  // "offline": no connection is bound to the seat. "hidden": every one
+  // that is says its tab is hidden.
+  state: "offline" | "hidden";
+  // RFC 3339: when the seat stopped being present.
+  since: string;
+  // The table may move on without the seat (§2): offline for the away
+  // time while the table waits on it, and nobody chose to keep waiting.
+  movable?: boolean;
+}
+
+// ADR 0177 §4: PlayerView.stand_in.
+export interface StandInView {
+  // The bot tier playing the seat: "heuristic".
+  tier: string;
+  // RFC 3339: when the bot took the seat.
+  since: string;
+}
+
 export interface TableSettingsView {
   // Per-player per-turn undo budget. -1 is unlimited, 0 is no undos.
   undo_limit: number;
@@ -4730,6 +4832,10 @@ export interface TableSettingsView {
   // free at any table, -1 makes every mulligan free. Fixed once the
   // game is active.
   free_mulligans?: number;
+  // ADR 0177 §7: minutes a seat the table waits on must be offline
+  // before the table is offered a way on without it, 0 for never.
+  // Absent from an older server, which reads as the default, 3.
+  away_after?: number;
 }
 
 // ADR 0127: why a prompt with a standing answer is asked by hand.

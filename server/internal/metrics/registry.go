@@ -50,6 +50,12 @@ func eventMetrics() []prometheus.Collector {
 		botModelCalls,
 		botModelCallSeconds,
 		botModelTokens,
+		// features.go
+		tablesStarted,
+		ownKeySeatsAdded,
+		ownKeyFallbacks,
+		statsPageLoads,
+		rematchesOffered,
 		// notify.go
 		dmNotifications,
 	}

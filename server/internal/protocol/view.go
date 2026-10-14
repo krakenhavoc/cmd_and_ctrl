@@ -441,6 +441,11 @@ type PendingChoiceView struct {
 	// Absent on every other kind.
 	ControlPurpose string `json:"control_purpose,omitempty"`
 
+	// AuraPurpose populates the "aura_host" kind (#3309): what the
+	// entering Aura does to its host, "benefit" or "harm", from the
+	// card's declared Purpose.Aura. Absent when it declares none.
+	AuraPurpose string `json:"aura_purpose,omitempty"`
+
 	// EntryKeyword names the entry keyword an "entry_riot",
 	// "entry_read_ahead" or "optional_replacement" prompt is asking
 	// about — "riot", "unleash" (ADR 0109 §10) or "read ahead" (#2123)
@@ -2110,6 +2115,11 @@ type PlayerView struct {
 	// seat. Never cleared once set, and never true on a bot seat.
 	IsAgent     bool   `json:"is_agent,omitempty"`
 	AgentClient string `json:"agent_client,omitempty"`
+	// TurnSkips is how many of this player's next turns they will skip
+	// (CR 614.10, ADR 0188 Decision 9, #3559): Magosi, the Waterveil's
+	// and Lethal Vapors' "skip your next turn". Omitted at zero. Public
+	// and identical for every viewer: the effect that wrote it was.
+	TurnSkips int `json:"turn_skips,omitempty"`
 	// CitysBlessing is the city's blessing (CR 702.131c): a player
 	// designation ascend gives, kept for the rest of the game. Public
 	// and identical for every viewer, like the monarch. #2696.
@@ -2134,6 +2144,21 @@ type PlayerView struct {
 	// every viewer. Not read from the engine: the room stamps it on
 	// each capture from the host the lobby designated (ws/host.go).
 	IsHost bool `json:"is_host,omitempty"`
+
+	// Presence says the seat's player is not at the table (ADR 0177
+	// §1): no connection is bound to the seat, or every one is hidden.
+	// Omitted while the seat is present, and always on a bot seat or
+	// one that has left the game. Not read from the engine: the hub
+	// stamps it on every frame it sends, from its own connections
+	// (ws/presence.go), so it is in no snapshot and no undo entry.
+	// Public to every viewer.
+	Presence *PresenceView `json:"presence,omitempty"`
+
+	// StandIn says a bot is playing this person's seat because they
+	// were away (ADR 0177 §4). The seat is still theirs: IsBot stays
+	// false. Not read from the engine: the room stamps it from what
+	// the lobby recorded. Public to every viewer.
+	StandIn *StandInView `json:"stand_in,omitempty"`
 
 	// UndoAutoAnswer is the seq of this seat's automatic answer (its
 	// LogAutoAnswer entry) while that answer is the TOP undo entry, so
@@ -2240,6 +2265,19 @@ type PlayerView struct {
 	// hand card someone else can see. Its `card_id` is what the
 	// owner's `special_action {kind: "companion"}` names.
 	Companion *CardView `json:"companion,omitempty"`
+
+	// Sideboard is the cards this seat owns outside the game (ADR 0191
+	// §7): the deck's sideboard, which only an effect that brings a card
+	// in from outside the game can reach. OWNER-ONLY: FilterViewFor
+	// keeps it for the seat's own viewer and drops it for every other
+	// seat, every spectator and the admin view, the way a library is
+	// hidden. A controller of the seat's turn (ADR 0167) does not see it
+	// either (CR 723.4). Absent for a seat with none.
+	Sideboard []CardView `json:"sideboard,omitempty"`
+
+	// SideboardCount is how many cards this seat owns outside the game.
+	// PUBLIC, the way a hand's size is; absent for a seat with none.
+	SideboardCount int `json:"sideboard_count,omitempty"`
 
 	// Keywords are the abilities this PLAYER has right now
 	// (CR 702.11d, CR 702.16i) — engine tokens, "hexproof" or
@@ -2544,6 +2582,10 @@ type CardView struct {
 	// regenerated this turn (ADR 0108 §2 decision 5, CR 701.19c):
 	// Incinerate's or Whippoorwill's mark. Public; battlefield only.
 	CantBeRegenerated bool `json:"cant_be_regenerated,omitempty"`
+	// AssignsNoCombatDamage is true for a creature that assigns no combat
+	// damage this turn (ADR 0187 §4, CR 510.1a): Carrion Rats' or Carrion
+	// Wurm's mark. Public; battlefield only.
+	AssignsNoCombatDamage bool `json:"assigns_no_combat_damage,omitempty"`
 	// RiotHaste is true for a permanent whose haste came from its own
 	// riot (CR 702.136a, ADR 0109 §10 decision 7): the client labels
 	// its haste chip "Riot". Public; battlefield only.
@@ -3057,6 +3099,16 @@ type CardView struct {
 	// card like Monstrous: the table can see the Mount is saddled, which
 	// is what the attack triggers read.
 	Saddled bool `json:"saddled,omitempty"`
+	// CrewedBy and SaddledBy are, on a Vehicle or a Mount on the
+	// battlefield, the card IDs of the creatures that crewed or saddled
+	// it this turn and are still on the battlefield as the same objects
+	// (ADR 0186 §6, owner decision 3; CR 702.122c, CR 702.171c), in the
+	// order they were tapped. Derived from the turn tally's crew records,
+	// not read off the card, and not on disk. Tapping to pay is public,
+	// so every viewer and spectator gets them; cleared with Saddled on a
+	// face-down permanent. Absent the next turn, because the tally resets.
+	CrewedBy  []string `json:"crewed_by,omitempty"`
+	SaddledBy []string `json:"saddled_by,omitempty"`
 	// Suspected is a permanent's CR 701.60 suspected designation
 	// (ADR 0071 amendment 2026-10-08, #2698): it has menace and can't
 	// block for as long as it is set. Public, and set straight off the
@@ -3603,6 +3655,15 @@ type CastSurfaceView struct {
 	// `modes[i].legal_targets`, `modes[i].clauses` and
 	// `alternative_costs[i].legal_targets` / `.pay_options`.
 	CastableHere bool `json:"castable_here,omitempty"`
+	// ClosesOnPass is true on a HAND card the viewer holds a free-cast
+	// grant over that their next pass of priority ends
+	// (CastPermission.LapseOnPass == LapseStaysInHand, #3270: Buster
+	// Sword, Rishkar's Expertise). The hand-zone twin of
+	// `exile_play.closes_on_pass`: a hand grant is not an `exile_play`
+	// block, so the client could not see it, and auto-pass could pass the
+	// window closed (#3625). PER VIEWER, like `castable_here`: it names
+	// a window only the holder has, so it is never public.
+	ClosesOnPass bool `json:"closes_on_pass,omitempty"`
 	// OptionalCosts are the "you may pay an additional cost" offers
 	// this card makes (CR 601.2b, ADR 0073) — kicker, multikicker,
 	// buyback. Absent for nearly every card. Stamped alongside
@@ -3894,6 +3955,15 @@ type ExilePlayView struct {
 	// for an unconditional grant. Public, like the rest of the grant.
 	Condition      string `json:"condition,omitempty"`
 	ConditionUnmet bool   `json:"condition_unmet,omitempty"`
+
+	// ClosesOnPass is true on a grant its holder's next pass of priority
+	// ends (CastPermission.LapseOnPass): the free casts of rebound,
+	// suspend, discover and cascade (ADR 0099 section 4). Passing is the
+	// decline there, so a client that passes on the holder's behalf
+	// (auto-pass) would throw the cast away before the holder has chosen
+	// targets (#3490). The client holds auto-pass while a card the viewer
+	// may cast now carries it. Absent on every grant that outlasts a pass.
+	ClosesOnPass bool `json:"closes_on_pass,omitempty"`
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a
@@ -4090,7 +4160,19 @@ type ActivatedAbilityView struct {
 	// creatures).
 	CrewCost    int               `json:"crew_cost,omitempty"`
 	CrewOptions *LegalTargetsView `json:"crew_options,omitempty"`
-	Saddle      bool              `json:"saddle,omitempty"`
+	// CrewPower is what each creature in CrewOptions counts for when it
+	// pays this cost (ADR 0186 Decision 6, #2705), keyed by card ID.
+	// It differs from the creature's `power` when a rule makes it count
+	// differently: "crews Vehicles as though its power were 2 greater"
+	// (a Pilot token) or "using its toughness rather than its power".
+	// Sent on every crew and saddle ability, for the cost the ability
+	// pays: a creature that crews for 3 but saddles for 1 shows 3 on a
+	// Vehicle and 1 on a Mount. Absent on every other ability and on a
+	// teamwork prompt, which counts plain power. A client that ignores
+	// it sums `power` and under-counts such a creature, never
+	// over-counts.
+	CrewPower map[string]int `json:"crew_power,omitempty"`
+	Saddle    bool           `json:"saddle,omitempty"`
 	// CounterCostView is the counter half of the cost — embedded, so
 	// its fields sit at the top level of the JSON exactly as they did
 	// before #789 split them out, and so a mana ability can carry the
@@ -4994,6 +5076,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampDeathMarks(g, &view.Battlefield)
 		stampLandTypeEffects(g, &view.Battlefield)
 		stampDefenderRefusals(g, &view.Battlefield)
+		stampCrewedAndSaddledBy(g, &view.Battlefield)
 		view.legalBySeat, view.legalActionsBySeat, view.legalTruncatedBySeat, view.controlledLegalActionsBySeat = enumerateLegalMoves(g)
 		// ADR 0167 §8: public, the turn-long controls still waiting.
 		view.ScheduledPlayerControls = viewOfScheduledPlayerControls(g)
@@ -5665,6 +5748,8 @@ func (s castStamps) applyPublicToFace(f *CardFaceView, kind game.ZoneKind) {
 // player".
 func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	s.CastableHere = false
+	// #3625: a pass-closed hand grant is the holder's window alone.
+	s.ClosesOnPass = false
 	// #2167: which types a per-type permission leaves is the holder's
 	// answer about their own budget.
 	s.PermissionTypes = nil
@@ -6161,6 +6246,8 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// card, so every zone builds it the same way; a card cast off
 	// somebody else's grant is still its own source.
 	var out castStamps
+	// #3625: a hand card under a pass-closed grant (LapseStaysInHand).
+	out.ClosesOnPass = kind == game.ZoneHand && grant != nil && grant.LapseOnPass != ""
 	src := castSourceOf(g, caster, c.InstanceID)
 	// The engine's own card, faced the way the cast path would face
 	// it (ADR 0034): a permission that names a face opens that face
@@ -8068,6 +8155,7 @@ func stampDeathMarks(g *game.Game, view *ZoneView) {
 		id := g.Battlefield.Cards[i].InstanceID
 		view.Cards[i].ExiledIfItDies = g.ExileIfItWouldDieLabels(id)
 		view.Cards[i].CantBeRegenerated = g.PermanentCantBeRegeneratedForEffect(id)
+		view.Cards[i].AssignsNoCombatDamage = g.PermanentAssignsNoCombatDamageForEffect(id)
 		view.Cards[i].RiotHaste = g.RiotHasteForEffect(id)
 	}
 }
@@ -8096,6 +8184,40 @@ func stampLandTypeEffects(g *game.Game, view *ZoneView) {
 			})
 		}
 	}
+}
+
+// stampCrewedAndSaddledBy sets CardView.CrewedBy / SaddledBy on each
+// battlefield permanent from the turn tally's crew records (ADR 0186 §6).
+// Asked of the permanent's current object, so a Vehicle that left and came
+// back shows nobody. The tally is empty on most frames, which is the
+// early return.
+func stampCrewedAndSaddledBy(g *game.Game, view *ZoneView) {
+	if g == nil || g.Battlefield == nil || view == nil || len(g.TurnTally.Crews) == 0 {
+		return
+	}
+	for i := range view.Cards {
+		if i >= len(g.Battlefield.Cards) {
+			break
+		}
+		card := &g.Battlefield.Cards[i]
+		if card.FaceDown {
+			continue
+		}
+		ref := game.ObjectRef{ID: card.InstanceID, Epoch: card.ObjectEpoch}
+		view.Cards[i].CrewedBy = crewIDStrings(g.CreaturesThatCrewedForEffect(ref))
+		view.Cards[i].SaddledBy = crewIDStrings(g.CreaturesThatSaddledForEffect(ref))
+	}
+}
+
+func crewIDStrings(ids []uuid.UUID) []string {
+	if len(ids) == 0 {
+		return nil
+	}
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = id.String()
+	}
+	return out
 }
 
 func stampNoUntap(g *game.Game, view *ZoneView) {
@@ -8517,7 +8639,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.ChooseDestination = string(c.ChooseDestination)
 			v.Options = make([]CardView, 0, len(c.ChooseCards))
 			for _, id := range c.ChooseCards {
-				if card, ok := g.LookupCardForEffect(id); ok {
+				card, ok := g.LookupCardForEffect(id)
+				if !ok {
+					// ADR 0191: a pick over cards outside the game. They
+					// are in no zone, and are shown only through the
+					// same knower filter every Options list passes.
+					card, ok = g.LookupOutsideCardForEffect(id)
+				}
+				if ok {
 					v.Options = append(v.Options, viewOfCard(card))
 				}
 			}
@@ -8589,6 +8718,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		}
 		if c.Kind == game.PendingChoiceEntryController {
 			v.ControlPurpose = string(c.ControlPurpose)
+		}
+		if c.Kind == game.PendingChoiceAuraHost {
+			v.AuraPurpose = string(g.AuraHostPurpose(c))
 		}
 		// ADR 0109 §10: riot's two answers, and which keyword a riot or
 		// unleash question is about.
@@ -8801,7 +8933,11 @@ func viewOfDiscardPending(in map[uuid.UUID]int) map[string]int {
 // items — the pre-Seq behaviour. Returns nil for an empty stack so
 // json omitempty drops the field.
 func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
-	if len(g.StackMeta) == 0 {
+	// #3613: an item whose resolution is waiting on one of its own
+	// prompts has left StackMeta but has not finished resolving, so the
+	// table still sees it on the stack, in its place.
+	held := g.HeldResolutionItemForView()
+	if len(g.StackMeta) == 0 && held == nil {
 		return nil
 	}
 	type entry struct {
@@ -8815,6 +8951,7 @@ func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
 			if item, ok := g.StackMeta[c.InstanceID]; ok && item != nil {
 				v := viewOfStackItem(item)
 				v.CantBeCountered = g.SpellCantBeCounteredForEffect(item.ID)
+				v.SplitSecond = g.SpellHasSplitSecondForEffect(item.ID)
 				v.DamageCantBePrevented = g.SpellDamageCantBePreventedForEffect(item.ID)
 				entries = append(entries, entry{item.Seq, v})
 				seen[item.ID] = true
@@ -8833,6 +8970,9 @@ func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
 	sort.SliceStable(abilities, func(i, j int) bool { return abilities[i].Seq < abilities[j].Seq })
 	for _, item := range abilities {
 		entries = append(entries, entry{item.Seq, viewOfStackItem(item)})
+	}
+	if held != nil && !seen[held.ID] && g.StackMeta[held.ID] == nil {
+		entries = append(entries, entry{held.Seq, viewOfStackItem(held)})
 	}
 	sort.SliceStable(entries, func(i, j int) bool { return entries[i].seq < entries[j].seq })
 	if len(entries) == 0 {
@@ -9011,6 +9151,12 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		cv := viewOfCard(c)
 		companion = &cv
 	}
+	// ADR 0191 §7: the sideboard. FilterViewFor keeps the cards for the
+	// owner alone; the count is public.
+	var sideboard []CardView
+	for _, c := range p.SideboardCards() {
+		sideboard = append(sideboard, viewOfCard(c))
+	}
 	return PlayerView{
 		ID:                    p.ID.String(),
 		Name:                  p.Name,
@@ -9044,6 +9190,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		IsAgent:               p.Agent,
 		AgentClient:           p.AgentClient,
 		CitysBlessing:         p.CitysBlessing,
+		TurnSkips:             g.TurnSkipsForLocked(p.ID),
 		CommanderCasts:        cmdrCasts,
 		Counters:              cloneStringIntMap(p.Counters),
 		MaxHandSize:           g.EffectiveMaxHandSizeLocked(p),
@@ -9055,6 +9202,8 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		ManaPool:            manaPool,
 		Emblems:             emblems,
 		Companion:           companion,
+		Sideboard:           sideboard,
+		SideboardCount:      len(sideboard),
 		Keywords:            g.PlayerAbilitiesForEffect(p),
 		LifeTotalLocked:     g.PlayerLifeTotalCantChangeLocked(p),
 		CantGainLife:        g.PlayerCantGainLifeLocked(p),
@@ -9478,6 +9627,16 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 			}
 			c.knowers = nil
 			out.Companion = &c
+		}
+		// ADR 0191 §7: the sideboard is its owner's to read and nobody
+		// else's: not an opponent, not a spectator, not the admin view,
+		// and not the controller of the owner's turn (CR 723.4).
+		out.Sideboard = nil
+		if p.ID == viewerID && len(p.Sideboard) > 0 {
+			out.Sideboard = make([]CardView, len(p.Sideboard))
+			for i, c := range p.Sideboard {
+				out.Sideboard[i] = redactCardForViewer(c, isKnower(c))
+			}
 		}
 		// Opponent hand: strip only UNREVEALED cards (seated-viewer
 		// path — Thoughtseize-style reveals survive via KnownBy);
@@ -10164,6 +10323,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// card the same weak way `unimplemented` does. Cleared with the
 	// rest of the cost surface.
 	out.CastableHere = false
+	out.ClosesOnPass = false
 	// #1389: a foretold card's price is its foretell cost, which names
 	// the card as loudly as its mana cost does.
 	out.CastPrices = nil
@@ -10289,6 +10449,8 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// #2695: cleared with the other designations rather than trusted to
 	// be false — a face-down permanent is not a Mount (CR 708.2).
 	out.Saddled = false
+	out.CrewedBy = nil
+	out.SaddledBy = nil
 	// ADR 0090: a face-down permanent has no prepare spell (CR 708.2)
 	// and cannot be prepared, but the field is cleared with the other
 	// designations rather than trusted to be false.
@@ -10801,6 +10963,7 @@ func exilePlayViewOf(g *game.Game, card game.Card, perm *game.CastPermission) *E
 		// will read (ADR 0034).
 		XLockedAtZero: game.CastCostFor(grantedFace(card, perm), perm.AlternativeCostFor(card), perm).LocksXAtZero(),
 		Until:         until,
+		ClosesOnPass:  perm.LapseOnPass != "",
 	}
 	if untilPlayer != uuid.Nil {
 		view.UntilPlayer = untilPlayer.String()
@@ -11197,12 +11360,12 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		}
 		if a.Cost.Crew > 0 {
 			v.CrewCost = a.Cost.Crew
-			v.CrewOptions = crewOptions(g, caster, uuid.Nil)
+			v.CrewOptions, v.CrewPower = crewOptions(g, caster, uuid.Nil, game.CostPowerCrew)
 		}
 		if a.Cost.Saddle > 0 {
 			v.CrewCost = a.Cost.Saddle
 			v.Saddle = true
-			v.CrewOptions = crewOptions(g, caster, c.InstanceID)
+			v.CrewOptions, v.CrewPower = crewOptions(g, caster, c.InstanceID, game.CostPowerSaddle)
 		}
 		v.CounterCostView = counterCostView(g, caster, c.InstanceID, a.Cost.RemoveCounters, a.Cost.AddCounter)
 		if a.Cost.DemandsX() {
@@ -11333,15 +11496,27 @@ func cardIDStrings(ids []uuid.UUID) []string {
 //
 // Summoning-sick creatures are included deliberately — tapping to
 // crew is not paying a {T} cost (CR 702.122b). Caller must hold g.mu.
-func crewOptions(g *game.Game, caster, except uuid.UUID) *LegalTargetsView {
+//
+// The second result is what each offered creature counts for when it
+// pays this cost, keyed by card ID (ADR 0186 Decision 6): the same
+// Card.CountedPower the engine's validateCrewCostLocked sums, so the
+// client's running total and the server's agree. use is
+// game.CostPowerCrew or game.CostPowerSaddle. Nil when nobody is offered.
+func crewOptions(g *game.Game, caster, except uuid.UUID, use game.CostPowerUse) (*LegalTargetsView, map[string]int) {
 	out := &LegalTargetsView{Min: 1, Max: 0}
+	var counted map[string]int
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != caster || !c.IsCreature() || c.Tapped || c.InstanceID == except {
 			continue
 		}
-		out.Cards = append(out.Cards, c.InstanceID.String())
+		id := c.InstanceID.String()
+		out.Cards = append(out.Cards, id)
+		if counted == nil {
+			counted = make(map[string]int)
+		}
+		counted[id] = c.CountedPower(use)
 	}
-	return out
+	return out, counted
 }
 
 // counterCostOptions projects game.CounterCostOptionsForEffect — the
@@ -11876,6 +12051,39 @@ func zoneOf(p *game.Player, kind game.ZoneKind) *game.Zone {
 	return nil
 }
 
+// Presence states (ADR 0177 §1).
+const (
+	// PresenceOffline: no connection is bound to the seat.
+	PresenceOffline = "offline"
+	// PresenceHidden: every connection bound to the seat says its tab
+	// is hidden (ADR 0162 §2).
+	PresenceHidden = "hidden"
+)
+
+// PresenceView is PlayerView.Presence.
+type PresenceView struct {
+	// State is PresenceOffline or PresenceHidden.
+	State string `json:"state"`
+	// Since is when the seat last stopped being present, RFC 3339. For
+	// a seat the server has not seen leave since it started, it is
+	// when the server first saw the seat away.
+	Since string `json:"since"`
+	// Movable is set while the table may move on without the seat
+	// (ADR 0177 §2): it has been offline for the table's away time,
+	// the table is waiting on it, and nobody has chosen to keep
+	// waiting. Who may answer is decided by the server (§3); the
+	// client offers the choice to the seats the same rule names.
+	Movable bool `json:"movable,omitempty"`
+}
+
+// StandInView is PlayerView.StandIn.
+type StandInView struct {
+	// Tier is the bot tier playing the seat: "heuristic".
+	Tier string `json:"tier"`
+	// Since is when the bot took the seat, RFC 3339.
+	Since string `json:"since"`
+}
+
 // TableSettingsView is game.TableSettings on the wire (ADR 0075). The
 // keys match game.SettingsPatch's, so a client can send back exactly
 // the fields it read.
@@ -11897,6 +12105,10 @@ type TableSettingsView struct {
 	// 0 (omitted) is the rules, N gives N free mulligans at any table,
 	// -1 makes every mulligan free. Fixed once the game is active.
 	FreeMulligans int `json:"free_mulligans,omitempty"`
+	// AwayAfter is the away time in minutes (ADR 0177 §7): how long a
+	// seat the table waits on must be offline before the table is
+	// offered a way on. 0 is never. Changeable at any time.
+	AwayAfter int `json:"away_after"`
 }
 
 // ViewOfTableSettings projects one table's settings for a caller
@@ -11919,6 +12131,7 @@ func viewOfTableSettings(s game.TableSettings) *TableSettingsView {
 		AllowSpawn:      s.AllowSpawn,
 
 		FreeMulligans: s.EffectiveFreeMulligans(),
+		AwayAfter:     s.EffectiveAwayAfter(),
 	}
 }
 

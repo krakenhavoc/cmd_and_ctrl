@@ -125,6 +125,9 @@ type SeatRecord struct {
 	// guest's upload, an ad-hoc paste, or a pre-built catalog deck.
 	DeckID   string
 	DeckName string
+	// DeckPower is decks.power_level of DeckID (#3671), read through a
+	// join on load and never written: the rating lives on the deck.
+	DeckPower float64
 	// PendingDiscordID is the snowflake of a seat claimed through
 	// Discord, waiting for a users row to link to (ADR 0051,
 	// "Migration"). Never set alongside UserID: the next sign-in with
@@ -142,6 +145,12 @@ type SeatRecord struct {
 	// seat.
 	BotKeyUserID string
 	BotKeyModel  string
+	// StandIn is the bot tier playing a person's seat while they are
+	// away (seats.stand_in, migration 0026, ADR 0177 §4), and
+	// StandInSince when it took the seat. "" and nil for every other
+	// seat.
+	StandIn      string
+	StandInSince *time.Time
 }
 
 // InviteRecord is one invites row.

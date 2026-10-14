@@ -406,7 +406,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// information to make.
 		var crewIDs []uuid.UUID
 		if ab.Cost.Crew > 0 {
-			crewIDs = e.crewPayment(ab.Cost.Crew, uuid.Nil)
+			crewIDs = e.crewPayment(ab.Cost.Crew, uuid.Nil, game.CostPowerCrew)
 			if crewIDs == nil {
 				continue
 			}
@@ -415,7 +415,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// creatures: the same cheapest-set answer with the Mount left
 		// out, which the engine would refuse (ErrInvalidParam).
 		if ab.Cost.Saddle > 0 {
-			crewIDs = e.crewPayment(ab.Cost.Saddle, source.InstanceID)
+			crewIDs = e.crewPayment(ab.Cost.Saddle, source.InstanceID, game.CostPowerSaddle)
 			if crewIDs == nil {
 				continue
 			}
@@ -1549,6 +1549,19 @@ func sacrificeLabel(g *game.Game, ids []uuid.UUID) string {
 	return " (sacrificing " + strings.Join(names, ", ") + ")"
 }
 
+// discardLabel is sacrificeLabel one verb over: the cards a cast's
+// additional cost discards.
+func discardLabel(g *game.Game, ids []uuid.UUID) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	names := make([]string, len(ids))
+	for i, id := range ids {
+		names[i] = cardName(g, id)
+	}
+	return " (discarding " + strings.Join(names, ", ") + ")"
+}
+
 // exileLabel is sacrificeLabel one verb over (#1600): the permanents
 // an "Exile a creature you control" cost names.
 func exileLabel(g *game.Game, ids []uuid.UUID) string {
@@ -1986,10 +1999,19 @@ func (e *enumerator) sacrificePayments(pool []uuid.UUID, spec *game.TargetSpec, 
 // five-power creature crews a Vehicle that says 3 and so does a pair
 // of two-power ones. Enumerating the subsets would be an exponential
 // expansion for a choice the policy has nothing to decide it with.
-func (e *enumerator) crewPayment(crew int, except uuid.UUID) []uuid.UUID {
+//
+// Each creature is counted for what the engine counts it for: use names
+// the cost (game.CostPowerCrew or game.CostPowerSaddle), and Card.
+// CountedPower applies the creature's "as though its power were N
+// greater" and "using its toughness" rules (ADR 0186 Decision 4). Zero
+// means plain power, which is what teamwork pays with. Among creatures
+// that count the same, the one with the lower REAL power is taken first,
+// so a Pilot token is tapped before a 3/3 that would otherwise attack.
+func (e *enumerator) crewPayment(crew int, except uuid.UUID, use game.CostPowerUse) []uuid.UUID {
 	type candidate struct {
 		id    uuid.UUID
 		power int
+		real  int
 	}
 	var pool []candidate
 	for i := range e.g.Battlefield.Cards {
@@ -1997,9 +2019,14 @@ func (e *enumerator) crewPayment(crew int, except uuid.UUID) []uuid.UUID {
 		if c.Controller != e.seat || !c.IsCreature() || c.Tapped || c.InstanceID == except {
 			continue
 		}
-		pool = append(pool, candidate{id: c.InstanceID, power: c.CurrentPower()})
+		pool = append(pool, candidate{id: c.InstanceID, power: c.CountedPower(use), real: c.CurrentPower()})
 	}
-	sort.SliceStable(pool, func(i, j int) bool { return pool[i].power > pool[j].power })
+	sort.SliceStable(pool, func(i, j int) bool {
+		if pool[i].power != pool[j].power {
+			return pool[i].power > pool[j].power
+		}
+		return pool[i].real < pool[j].real
+	})
 	total := 0
 	var out []uuid.UUID
 	for _, c := range pool {

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/model"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/netguard"
 )
 
@@ -93,4 +94,36 @@ func sanitize(err error, reason string) error {
 		return fmt.Errorf("%w: own key: %s", model.ErrOutage, reason)
 	}
 	return errors.New("own key: " + reason)
+}
+
+// reasonCode is the short metrics code (metrics.OwnKey*) for one of the
+// fixed sentences above; anything else is "other".
+func reasonCode(reason string) string {
+	switch reason {
+	case ReasonRefused:
+		return metrics.OwnKeyRefused
+	case ReasonQuota:
+		return metrics.OwnKeyQuota
+	case ReasonModel:
+		return metrics.OwnKeyModel
+	case ReasonUnreadable:
+		return metrics.OwnKeyUnreadable
+	case ReasonPrivate:
+		return metrics.OwnKeyPrivate
+	case ReasonUnreachable:
+		return metrics.OwnKeyUnreachable
+	case ReasonTimeout:
+		return metrics.OwnKeyTimeout
+	case ReasonRateLimited:
+		return metrics.OwnKeyRateLimited
+	case ReasonBadReply:
+		return metrics.OwnKeyBadReply
+	case ReasonRemoved:
+		return metrics.OwnKeyRemoved
+	case ReasonDailyLimit:
+		return metrics.OwnKeyDailyLimit
+	case ReasonCallLimit:
+		return metrics.OwnKeyCallLimit
+	}
+	return metrics.OwnKeyOther
 }

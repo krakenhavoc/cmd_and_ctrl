@@ -163,9 +163,10 @@ func parseSectionHeader(line string) (section, bool) {
 //	SB: 1 Sol Ring
 //	1 Sol Ring (C21) 243
 //
-// Set and collector-number suffixes are discarded — resolution by
-// name is enough at S05, and set-specific variants don't matter for
-// a sandbox.
+// A trailing "(SET) number" names the printing (ADR 0192 §2): Resolve
+// shows that printing's art when the index has it and it is the same
+// card. The name alone still identifies the card, and a suffix that
+// names nothing the index holds changes nothing.
 func parseLine(line string, sec section) (Entry, bool, error) {
 	// Sideboard prefix overrides section for this one row.
 	isSideboard := sec == sectionSideboard
@@ -202,8 +203,11 @@ func parseLine(line string, sec section) (Entry, bool, error) {
 		isCommander = true
 	}
 
-	// Strip set / collector suffix: "Sol Ring (C21) 243" → "Sol Ring".
+	// Split off the set / collector suffix: "Sol Ring (C21) 243" →
+	// "Sol Ring" plus set "C21" and number "243".
+	var setCode, collectorNo string
 	if idx := strings.Index(name, " ("); idx >= 0 {
+		setCode, collectorNo = parsePrintingSuffix(name[idx+1:])
 		name = strings.TrimSpace(name[:idx])
 	}
 
@@ -216,7 +220,31 @@ func parseLine(line string, sec section) (Entry, bool, error) {
 		IsCommander: isCommander,
 		IsSideboard: isSideboard && !isCommander,
 		IsCompanion: sec == sectionCompanion && !isCommander && !isSideboard,
+		SetCode:     setCode,
+		CollectorNo: collectorNo,
 	}, true, nil
+}
+
+// parsePrintingSuffix reads "(SNC) 213" or "(SNC) 213 *F*" off the end
+// of a row, the way Moxfield, Archidekt and MTGO write a printing. It
+// returns empty strings for anything else, and an empty number when
+// the row names a set only (or carries a foil marker where the number
+// would be).
+func parsePrintingSuffix(s string) (set, number string) {
+	rest, ok := strings.CutPrefix(strings.TrimSpace(s), "(")
+	if !ok {
+		return "", ""
+	}
+	set, rest, ok = strings.Cut(rest, ")")
+	set = strings.TrimSpace(set)
+	if !ok || set == "" || strings.ContainsAny(set, " \t") {
+		return "", ""
+	}
+	fields := strings.Fields(rest)
+	if len(fields) > 0 && !strings.HasPrefix(fields[0], "*") && !strings.HasPrefix(fields[0], "[") {
+		number = fields[0]
+	}
+	return set, number
 }
 
 // cutFirstSpace splits at the first ASCII space or tab run and
@@ -255,17 +283,32 @@ func (l *List) Text() string {
 		if len(cs) == 0 {
 			return
 		}
+		// Copies group by printing, not by name, so a list that holds
+		// two printings of one card (basic lands, mostly) keeps both.
+		// ADR 0192 §2: a printing with a set and number is written
+		// "(SET) number", which ParseText reads back.
+		type row struct {
+			c cards.Card
+			n int
+		}
 		var order []string
-		n := map[string]int{}
+		rows := map[string]*row{}
 		for _, c := range cs {
-			if n[c.Name] == 0 {
-				order = append(order, c.Name)
+			k := c.Name + "\x00" + c.SetCode + "\x00" + c.CollectorNo
+			if rows[k] == nil {
+				rows[k] = &row{c: c}
+				order = append(order, k)
 			}
-			n[c.Name]++
+			rows[k].n++
 		}
 		b.WriteString(header + "\n")
-		for _, name := range order {
-			fmt.Fprintf(&b, "%d %s\n", n[name], name)
+		for _, k := range order {
+			r := rows[k]
+			if r.c.SetCode != "" && r.c.CollectorNo != "" {
+				fmt.Fprintf(&b, "%d %s (%s) %s\n", r.n, r.c.Name, strings.ToUpper(r.c.SetCode), r.c.CollectorNo)
+				continue
+			}
+			fmt.Fprintf(&b, "%d %s\n", r.n, r.c.Name)
 		}
 	}
 	section("Commander:", l.Commanders)

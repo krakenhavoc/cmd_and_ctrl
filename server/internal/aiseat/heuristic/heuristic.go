@@ -234,6 +234,12 @@ type Config struct {
 	// below nothing. Zero (the baseline) prices the bestowed target as
 	// any other pick, an opponent's creature as removal.
 	BestowShare float64
+	// PriceAuraPurpose prices an Aura's host by what the Aura does to it
+	// (#3309, aura_host.go): a card that declares itself a buff goes on
+	// the bot's own permanent and never an opponent's, and one that
+	// declares itself a curse is never put on the bot's own. Off (the
+	// baseline) prices every Aura's host as a target to hit.
+	PriceAuraPurpose bool
 	// PriceSweeps turns on ADR 0126 §4: a declared sweep is priced as
 	// the change in ScoreEval with the permanents it removes taken off
 	// the board (sweepValue), so the bot stops casting a wipe onto its
@@ -347,6 +353,14 @@ type Config struct {
 	// Hart, Harrow), an extra land drop's lands this turn, and a land put
 	// from hand. Off (the zero value) prices those lands as mana alone.
 	PriceLandfallPayoffs bool
+	// PriceTokenPayoffs adds, to every creature token a declared purpose
+	// makes, what the bot's own creature-enter payoffs pay for it
+	// (#3165, token_payoff.go): Purphoros's 2 damage, Impact Tremors's 1.
+	// It also prices a token maker whose count is read from the board
+	// (Krenko, Mob Boss: X Goblins) at TokenWeight per token. Off (the
+	// zero value) prices a token by TokenWeight alone, and Krenko's
+	// activation at the flat ActivateBase.
+	PriceTokenPayoffs bool
 	// PlanTurnMana turns on ADR 0136's turn plan: in its own main phase
 	// with an empty stack, the bot picks the set of casts this turn's
 	// mana buys the most with, and makes that set's first move. Off (the
@@ -673,6 +687,7 @@ func DefaultConfig() Config {
 		PricePurposes:       true,
 		NetLandSwaps:        true,
 		PriceTargetPurposes: true,
+		PriceAuraPurpose:    true,
 		DamageByLethality:   true,
 		DamageChip:          0.00,
 		NetRemoval:          true,
@@ -718,6 +733,7 @@ func DefaultConfig() Config {
 		PriceExtraLandDrops:    true,
 		ExtraLandDropRecurring: 0.50,
 		PriceLandfallPayoffs:   true,
+		PriceTokenPayoffs:      true,
 
 		FuelFloor:  0.05,
 		FuelIdle:   0.30,
@@ -824,6 +840,8 @@ func BaselineConfig() Config {
 	// ADR 0126's amendment of 2026-10-08: a target priced by what the
 	// purpose does to it.
 	c.PriceTargetPurposes = false
+	// #3309: an Aura's host priced by what the Aura does to it.
+	c.PriceAuraPurpose = false
 	c.DamageByLethality = false
 	c.DamageChip = 0
 	// #2679: removal net of what its target's controller gets back.
@@ -896,6 +914,8 @@ func BaselineConfig() Config {
 	c.ExtraLandDropRecurring = 0
 	// #3072: landfall payoffs.
 	c.PriceLandfallPayoffs = false
+	// #3165: creature-enter payoffs on tokens.
+	c.PriceTokenPayoffs = false
 	// #2693: the mulligan counted lands only.
 	c.KeepNeedsCast = false
 	c.KeepCastReach = 0

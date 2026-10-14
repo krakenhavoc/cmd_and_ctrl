@@ -21,10 +21,11 @@ const (
 	// ZoneOutside is NOT a zone (CR 400.11: "Outside the game is not
 	// a zone"). It is the kind of Player.Companion, the container a
 	// revealed companion waits in until the companion special action
-	// puts it into its owner's hand (ADR 0172 §4). zoneFromRefLocked
-	// has no case for it and the card index does not cover it, so
-	// nothing that moves or finds a card by reference can reach a card
-	// there (CR 400.11c).
+	// puts it into its owner's hand (ADR 0172 §4), and of
+	// Player.Sideboard, the cards a deck owns outside the game (ADR
+	// 0191). zoneFromRefLocked has no case for it and the card index
+	// does not cover it, so nothing that moves or finds a card by
+	// reference can reach a card there (CR 400.11c).
 	ZoneOutside ZoneKind = "outside"
 )
 
@@ -272,6 +273,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		c.AttachedTo = TargetRef{}
 		c.AttachedAt = 0
 		c.AttachedEpoch = 0
+		c.AttachedPinned = false
 		// The layer-2 control baseline is battlefield-only, and
 		// clearing it here is what makes the lazy capture correct:
 		// the next entry re-captures whoever the card enters under.

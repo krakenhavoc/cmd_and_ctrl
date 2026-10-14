@@ -340,6 +340,15 @@ var carriedFixture = map[string]any{
 			rest: []int{1, 0},
 		}
 	},
+	// #3613: the same, for the end of a paused resolution.
+	"Game.pausedResolutionTail": func(g *Game) any {
+		id := uuid.NewSHA1(uuid.Nil, []byte("Game.pausedResolutionTail"))
+		me := g.Seats[0].ID
+		return &resolutionTail{
+			item: &StackItem{ID: id, Kind: StackItemSpell, Controller: me, Owner: me,
+				SourceCardID: id, Label: "drift-Game.pausedResolutionTail", XValue: 2, Seq: 5353},
+		}
+	},
 	// The zone a spell was cast from (CR 400.7g / ADR 0066).
 	"StackItem.CastFromZone": ZoneGraveyard,
 	// ADR 0069's face-down rule. An invented kind has no viewers row.

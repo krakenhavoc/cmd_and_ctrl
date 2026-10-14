@@ -137,9 +137,9 @@ func TestAllReturnsSnapshot(t *testing.T) {
 }
 
 // TestRegisterExileSelfOffTheGraveyardPanics pins #1221's boot check,
-// as #1404 widened it: the exile-this component is paid from the
-// graveyard or the battlefield, so an ability that functions from the
-// HAND could never be activated — and would look complete on the
+// as #1404 and #3520 widened it: the exile-this component is paid from
+// the graveyard, the battlefield or the hand, so an ability that
+// functions from EXILE could never be activated — and would look complete on the
 // catalog page while refusing every activation. The symmetric check
 // DiscardSelf has had since #660.
 func TestRegisterExileSelfOffTheGraveyardPanics(t *testing.T) {
@@ -154,7 +154,7 @@ func TestRegisterExileSelfOffTheGraveyardPanics(t *testing.T) {
 		Activated: []ActivatedAbility{{
 			Label: "{1}, Exile this card: do nothing",
 			Cost:  Plus(ManaCost("{1}"), ExileThis()),
-			Zones: []game.ZoneKind{game.ZoneHand},
+			Zones: []game.ZoneKind{game.ZoneExile},
 		}},
 	})
 }

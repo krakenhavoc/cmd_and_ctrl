@@ -1,5 +1,7 @@
 package game
 
+import "log/slog"
+
 // rotation.go is the single turn-rotation seam (ADR 0059 Decision 6,
 // #766). Every way a turn can end goes through it:
 //
@@ -203,13 +205,35 @@ func (g *Game) beginNextTurnLocked() {
 		from.ActiveSeat = from.OrderSeat
 	}
 	next := from.advance(n, g.StartingSeat)
-	for i := 0; i < n && next.ActiveSeat >= 0 && next.ActiveSeat < n && g.Seats[next.ActiveSeat].Eliminated; i++ {
-		// CR 800.4m: an effect that lasts "until that player's next
-		// turn" lasts until the turn that WOULD have begun. Counting
-		// the skipped seat's never-taken turn here is what ends such
-		// an effect at the right moment instead of leaving it live
-		// for the rest of the game (ADR 0063 Decision 3).
-		g.noteTurnBegunLocked(next.ActiveSeat)
+	// ADR 0188 Decision 1: the walk passes a seat that has left, and a
+	// seat that owes a skip (CR 614.10), the same way. Every pass spends
+	// a charge or drops a departed seat, so the walk is finite; the
+	// guard turns a bug into a logged fault instead of a hang.
+	guard := n + g.totalTurnSkipsLocked() + len(g.ExtraTurns) + 1
+	for i := 0; next.ActiveSeat >= 0 && next.ActiveSeat < n; i++ {
+		seat := next.ActiveSeat
+		if g.Seats[seat].Eliminated {
+			// CR 800.4m: an effect that lasts "until that player's next
+			// turn" lasts until the turn that WOULD have begun. Counting
+			// the skipped seat's never-taken turn here is what ends such
+			// an effect at the right moment instead of leaving it live
+			// for the rest of the game (ADR 0063 Decision 3).
+			g.noteTurnBegunLocked(seat)
+			// CR 800.4k: their turn doesn't begin, so a debt they owe
+			// can never be spent.
+			g.dropTurnSkipsOfSeatLocked(seat)
+		} else if source, ok := g.consumeTurnSkipLocked(seat); ok {
+			// CR 614.10a: a skipped turn is not taken. It does not
+			// count toward TurnsBegun (nothing began), so "until your
+			// next turn" waits for the first turn that is not skipped.
+			g.emitTurnSkippedLocked(seat, source, 0)
+		} else {
+			break
+		}
+		if i+1 >= guard {
+			slog.Error("turn rotation did not settle", "seat", seat, "guard", guard)
+			break
+		}
 		// Wrap again from this seat's (never-taken) cleanup.
 		skipped := next
 		skipped.Step = StepCleanup

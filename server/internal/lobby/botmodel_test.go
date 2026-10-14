@@ -108,7 +108,7 @@ func TestBotModelStatusReports503WithNoGuard(t *testing.T) {
 }
 
 func TestBotModelStatusReadsTheCounters(t *testing.T) {
-	b := budget.New(budget.Limits{DailyTokens: 1000, MonthlyTokens: 5000}, nil)
+	b := budget.New(budget.Limits{DailyTokens: 1000, MonthlyTokens: 5000}, nil, budget.WithWeights(budget.FlatWeights()))
 	b.Record(model.Usage{InputTokens: 300, OutputTokens: 100})
 	srv, admin, _ := newBotModelServer(t, b)
 	resp := doGet(t, srv, "/admin/bot/model", admin)
@@ -137,7 +137,7 @@ func botOptionsBody(t *testing.T, srv *httptest.Server, token string) botOptions
 }
 
 func TestBotOptionsCarriesTheNoteWhileTheModelTiersAreOff(t *testing.T) {
-	b := budget.New(budget.Limits{DailyTokens: 100}, nil)
+	b := budget.New(budget.Limits{DailyTokens: 100}, nil, budget.WithWeights(budget.FlatWeights()))
 	srv, _, player := newBotModelServer(t, b)
 
 	if got := botOptionsBody(t, srv, player); got.ModelNote != "" {

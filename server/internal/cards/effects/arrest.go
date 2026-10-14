@@ -33,6 +33,7 @@ func init() {
 		Name:         "Arrest",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
+		Purpose:      game.Purpose{Aura: game.AuraHarm},
 		Static: []game.StaticAbility{
 			RestrictAttached(
 				game.CantAttackOrBlock | game.CantActivate | game.CantActivateMana,

@@ -32,6 +32,13 @@ type Goad struct {
 	// both end as the goader's next turn begins, and a goader who has
 	// left ends it when that turn would have begun (CR 800.4m).
 	ExpiresAtTurnsBegun int
+	// ForRestOfGame is "goaded for the rest of the game" (Dack Fayden,
+	// Helping Hand): the goad has no end of its own, so ExpiresAtTurnsBegun
+	// is ignored. It still ends with the permanent: a card leaving the
+	// battlefield drops every goad on it (CR 400.7), and a control change
+	// leaves it standing, because the goad names the goading player and not
+	// the creature's controller. #3522.
+	ForRestOfGame bool
 }
 
 // IsGoaded reports whether any player's goad is on the creature.
@@ -164,14 +171,27 @@ func cloneGoads(in []Goad) []Goad {
 // — rather than adding a second entry: two goads by one player are
 // still one set of CR 701.15b requirements. Caller must hold g.mu.
 func (g *Game) goadLocked(c *Card, by uuid.UUID) {
+	g.goadWithLocked(c, by, false)
+}
+
+// goadWithLocked is goadLocked with the duration chosen. A goad that
+// lasts the rest of the game is never shortened by a later "until your
+// next turn" goad from the same player: both effects apply (CR 701.15a),
+// so the longer one is the one that stands, and the new entry is still
+// the latest. Caller must hold g.mu.
+func (g *Game) goadWithLocked(c *Card, by uuid.UUID, forRestOfGame bool) {
 	if c == nil || by == uuid.Nil {
 		return
 	}
-	entry := Goad{By: by, ExpiresAtTurnsBegun: g.turnsBegunForLocked(by) + 1}
+	entry := Goad{By: by, ExpiresAtTurnsBegun: g.turnsBegunForLocked(by) + 1, ForRestOfGame: forRestOfGame}
 	kept := c.Goads[:0:0]
 	for _, gd := range c.Goads {
 		if gd.By != by {
 			kept = append(kept, gd)
+			continue
+		}
+		if gd.ForRestOfGame {
+			entry.ForRestOfGame = true
 		}
 	}
 	c.Goads = append(kept, entry)
@@ -192,9 +212,26 @@ func (g *Game) GoadForEffect(cardID, by uuid.UUID) bool {
 	return true
 }
 
-// goadExpiredLocked reports whether one goad has ended. Caller must hold
-// g.mu.
+// GoadForRestOfGameForEffect goads the battlefield creature `cardID` on
+// behalf of `by` for the rest of the game ("they're goaded for the rest of
+// the game", Dack Fayden, Helping Hand). Same contract as GoadForEffect;
+// the goad never expires on a turn, and ends only when the permanent
+// leaves the battlefield. Caller must hold g.mu.
+func (g *Game) GoadForRestOfGameForEffect(cardID, by uuid.UUID) bool {
+	c, ok := g.battlefieldCardLocked(cardID)
+	if !ok || by == uuid.Nil {
+		return false
+	}
+	g.goadWithLocked(c, by, true)
+	return true
+}
+
+// goadExpiredLocked reports whether one goad has ended. A goad for the
+// rest of the game never has. Caller must hold g.mu.
 func (g *Game) goadExpiredLocked(gd Goad) bool {
+	if gd.ForRestOfGame {
+		return false
+	}
 	return g.turnsBegunForLocked(gd.By) >= gd.ExpiresAtTurnsBegun
 }
 
@@ -260,7 +297,7 @@ func (g *Game) backfillLegacyGoadsLocked() {
 		for i := range z.Cards {
 			for j := range z.Cards[i].Goads {
 				gd := &z.Cards[i].Goads[j]
-				if gd.ExpiresAtTurnsBegun == 0 {
+				if gd.ExpiresAtTurnsBegun == 0 && !gd.ForRestOfGame {
 					gd.ExpiresAtTurnsBegun = g.turnsBegunForLocked(gd.By) + 1
 				}
 			}
@@ -276,6 +313,7 @@ func (g *Game) backfillLegacyGoadsLocked() {
 type goadSnapshot struct {
 	By                  uuid.UUID `json:"by"`
 	ExpiresAtTurnsBegun int       `json:"expiresAtTurnsBegun"`
+	ForRestOfGame       bool      `json:"forRestOfGame,omitempty"`
 }
 
 func snapshotGoads(in []Goad) []goadSnapshot {

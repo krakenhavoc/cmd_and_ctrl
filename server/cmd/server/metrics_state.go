@@ -37,6 +37,7 @@ func registerGameMetrics(reg prometheus.Registerer, log *slog.Logger, mgr *ws.Ro
 	reg.MustRegister(metrics.NewDBCollector(database, log))
 	if sqlUsers, ok := userStore.(*users.SQLStore); ok {
 		reg.MustRegister(metrics.NewUsersCollector(sqlUsers, l, log))
+		reg.MustRegister(metrics.NewGrowthCollector(sqlUsers, log))
 	}
 }
 

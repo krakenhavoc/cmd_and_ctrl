@@ -447,6 +447,13 @@ type GameSnapshot struct {
 	// behaviour (the later bullets had already run). No schema bump.
 	PausedModeWalk *modeWalkSnapshot `json:"pausedModeWalk,omitempty"`
 
+	// PausedResolutionTail is Game.pausedResolutionTail (#3613,
+	// resolution_tail.go): the end of a resolution parked behind one of
+	// its own prompts. A file written before it restores nil, which is
+	// the old behaviour (the resolution had already finished). No
+	// schema bump.
+	PausedResolutionTail *resolutionTailSnapshot `json:"pausedResolutionTail,omitempty"`
+
 	// AnnouncedBlocks / BlockedAttackers are what the block
 	// declaration's lock-in produced (#830, #715, blockers.go): which
 	// blocker has had its EventBlock announced against which
@@ -638,6 +645,13 @@ type playerSnapshot struct {
 	// seated, and an older binary that drops it loses only the option
 	// to take the companion (weaker than printed, owner decision 6).
 	Companion *zoneSnapshot `json:"companion,omitempty"`
+	// Sideboard is Player.Sideboard (ADR 0191 §4): the cards the deck
+	// owns outside the game. Written only while it holds a card.
+	// Additive within v8: absent means no sideboard, which is right for
+	// every file written before a sideboard could be seated. An older
+	// binary drops it, and the player loses the cards an effect could
+	// have brought in: weaker than printed, never stronger.
+	Sideboard *zoneSnapshot `json:"sideboard,omitempty"`
 	// CommanderDamage is keyed by commander card instance ID since
 	// S25 (#77). A snapshot written before that rekey restores with
 	// player-ID keys, which read as damage from commanders that do
@@ -823,6 +837,10 @@ type cardSnapshot struct {
 	// file written before companions could be seated. An older binary
 	// drops it and loses only the badge.
 	IsCompanion bool `json:"isCompanion,omitempty"`
+	// IsSideboard is Card.IsSideboard (ADR 0191 §3). Additive within
+	// v8; absent means not a sideboard card. An older binary drops it
+	// and loses nothing it read.
+	IsSideboard bool `json:"isSideboard,omitempty"`
 	// CommanderReturnDue is Card.CommanderReturnDue (ADR 0115 §8): the
 	// CR 903.9a check is owed to this commander. Additive within v7;
 	// an older file has none, which is what every game before it was.
@@ -872,11 +890,15 @@ type cardSnapshot struct {
 	AttachedTo               TargetRef `json:"attachedTo,omitempty"`
 	AttachedAt               int64     `json:"attachedAt,omitempty"`
 	// AttachedEpoch is Card.AttachedEpoch (ADR 0154 decision 3): the
-	// CR 400.7 epoch of an off-battlefield host (Animate Dead's graveyard
-	// card) at the attach. Additive within v8 and absent at zero, which is
-	// every battlefield host and every file written before it: no
-	// catalogued Aura could be attached off the battlefield then.
-	AttachedEpoch  int              `json:"attachedEpoch,omitempty"`
+	// CR 400.7 epoch of the host at the attach. Additive within v8 and
+	// absent at zero. A file written before #3159 has it only for an
+	// off-battlefield host (Animate Dead's graveyard card).
+	AttachedEpoch int `json:"attachedEpoch,omitempty"`
+	// AttachedPinned is Card.AttachedPinned (#3159): a battlefield host
+	// is judged by AttachedEpoch. Additive within v8 and absent when
+	// false, which is every link in a file written before it, so those
+	// links restore unpinned and keep their old behaviour.
+	AttachedPinned bool             `json:"attachedPinned,omitempty"`
 	BaseController uuid.UUID        `json:"baseController,omitempty"`
 	FaceDownListed *FaceDownListing `json:"faceDownListed,omitempty"`
 	FaceTurnedAt   int64            `json:"faceTurnedAt,omitempty"`
@@ -1290,6 +1312,7 @@ func (s *GameSnapshot) AbilityShortfalls() []AbilityShortfall {
 		walk(p.Command)
 		walk(p.Emblems)
 		walk(p.Companion)
+		walk(p.Sideboard)
 	}
 	return out
 }
@@ -1462,6 +1485,12 @@ type delayedTriggerSnapshot struct {
 	OncePerBatch   bool   `json:"oncePerBatch,omitempty"`
 	ManaTapSubtype string `json:"manaTapSubtype,omitempty"`
 	ManaAdds       string `json:"manaAdds,omitempty"`
+
+	// #3504: the triggered-mana record fires for its controller's taps
+	// only. Additive: an older binary drops the key and fires for every
+	// player's tap (stronger than printed for the caster's opponents, so
+	// a stale snapshot is the only way to see it).
+	ManaTapControllerOnly bool `json:"manaTapControllerOnly,omitempty"`
 }
 
 // pendingChoiceSnapshot mirrors PendingChoice's DATA. Its seven
@@ -1539,9 +1568,13 @@ type pendingChoiceSnapshot struct {
 	PickFromGraveyard bool            `json:"pickFromGraveyard,omitempty"`
 	PickThen          string          `json:"pickThen,omitempty"`
 	PickMeasures      []int           `json:"pickMeasures,omitempty"`
-	CopyOptions       []uuid.UUID     `json:"copyOptions,omitempty"`
-	ExchangesText     bool            `json:"exchangesText,omitempty"`
-	ScryCards         []uuid.UUID     `json:"scryCards,omitempty"`
+	// #3516: the source object a PickExile pick links its exiled card to
+	// (CR 607.2a). A pointer so a prompt that links nothing writes
+	// nothing; additive within the version.
+	PickExiledWith *PermissionCardRef `json:"pickExiledWith,omitempty"`
+	CopyOptions    []uuid.UUID        `json:"copyOptions,omitempty"`
+	ExchangesText  bool               `json:"exchangesText,omitempty"`
+	ScryCards      []uuid.UUID        `json:"scryCards,omitempty"`
 	// ADR 0088: which lanes a put_in_library answer may use.
 	LibraryPlacement LibraryPlacement `json:"libraryPlacement,omitempty"`
 	// #1298: the put_in_library top lane's exact count and depth.
@@ -1995,6 +2028,8 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	// #2789: a modal item's later bullets parked behind one of those
 	// prompts (mode_walk.go).
 	s.PausedModeWalk = snapshotModeWalk(g, g.pausedModeWalk, cen)
+	// #3613: the end of the resolution parked behind those prompts.
+	s.PausedResolutionTail = snapshotResolutionTail(g, g.pausedResolutionTail, cen)
 
 	if len(g.Events) > 0 {
 		s.Events = make([]Event, len(g.Events))
@@ -2064,6 +2099,7 @@ func snapshotRNGCounters(m map[string]uint64) map[string]uint64 {
 // snapshotCompanionZone is snapshotZone for Player.Companion, which is
 // written only while it holds a card (ADR 0172 §4), so a file with no
 // companion waiting is byte-for-byte the shape it was before.
+// Player.Sideboard rides the same pair (ADR 0191 §4).
 func snapshotCompanionZone(z *Zone, cen *ContinuationCensus) *zoneSnapshot {
 	if z == nil || len(z.Cards) == 0 {
 		return nil
@@ -2201,6 +2237,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
 		IsCompanion:              c.IsCompanion,
+		IsSideboard:              c.IsSideboard,
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		ExertOnAttack:            c.ExertOnAttack,
@@ -2227,6 +2264,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
 		AttachedEpoch:            c.AttachedEpoch,
+		AttachedPinned:           c.AttachedPinned,
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
@@ -2307,6 +2345,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Command:               snapshotZone(p.Command, cen),
 		Emblems:               snapshotZone(p.Emblems, cen),
 		Companion:             snapshotCompanionZone(p.Companion, cen),
+		Sideboard:             snapshotCompanionZone(p.Sideboard, cen),
 		CommanderDamage:       copyIntMap(p.CommanderDamage),
 		TurnsBegun:            p.TurnsBegun,
 		UpkeepsBegun:          p.UpkeepsBegun,
@@ -2524,6 +2563,8 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		OncePerBatch:       d.OncePerBatch,
 		ManaTapSubtype:     d.ManaTapSubtype,
 		ManaAdds:           d.ManaAdds,
+
+		ManaTapControllerOnly: d.ManaTapControllerOnly,
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
@@ -2600,6 +2641,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PickFromGraveyard:    c.PickFromGraveyard,
 		PickThen:             c.PickThen,
 		PickMeasures:         copyInts(c.PickMeasures),
+		PickExiledWith:       pickExiledWithSnapshot(c.PickExiledWith),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ExchangesText:        c.ExchangesText,
 		ScryCards:            copyUUIDs(c.ScryCards),
@@ -2814,6 +2856,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.eventBatch = s.EventBatch
 	g.resolutionOpen = s.ResolutionOpen
 	g.pausedModeWalk = restoreModeWalk(s.PausedModeWalk)
+	g.pausedResolutionTail = restoreResolutionTail(s.PausedResolutionTail)
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 	g.preventionFollowUps = clonePreventionFollowUps(s.PreventionFollowUps)
 	g.announcedBlocks = joinAnnouncedBlocks(s.AnnouncedBlocks, s.AnnouncedAlsoBlocks)
@@ -3096,6 +3139,7 @@ func restoreCard(c *cardSnapshot) Card {
 		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
 		IsCompanion:              c.IsCompanion,
+		IsSideboard:              c.IsSideboard,
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		ExertOnAttack:            c.ExertOnAttack,
@@ -3121,6 +3165,7 @@ func restoreCard(c *cardSnapshot) Card {
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
 		AttachedEpoch:            c.AttachedEpoch,
+		AttachedPinned:           c.AttachedPinned,
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
@@ -3234,6 +3279,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Command:            restoreZone(p.Command, ZoneCommand),
 		Emblems:            restoreZone(p.Emblems, ZoneCommand),
 		Companion:          restoreCompanionZone(p.Companion),
+		Sideboard:          restoreCompanionZone(p.Sideboard),
 		TurnsBegun:         p.TurnsBegun,
 		UpkeepsBegun:       p.UpkeepsBegun,
 		EndStepTurn:        p.EndStepTurn,
@@ -3410,6 +3456,8 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		OncePerBatch:     d.OncePerBatch,
 		ManaTapSubtype:   d.ManaTapSubtype,
 		ManaAdds:         d.ManaAdds,
+
+		ManaTapControllerOnly: d.ManaTapControllerOnly,
 	}
 	if d.Duration != nil {
 		dur := *d.Duration
@@ -3477,6 +3525,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickFromGraveyard:    c.PickFromGraveyard,
 		PickThen:             c.PickThen,
 		PickMeasures:         copyInts(c.PickMeasures),
+		PickExiledWith:       pickExiledWithRestored(c.PickExiledWith),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
 		ExchangesText:        c.ExchangesText,
 		ScryCards:            copyUUIDs(c.ScryCards),

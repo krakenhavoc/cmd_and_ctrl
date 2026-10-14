@@ -41,6 +41,12 @@ type Config struct {
 	// AckTimeout bounds act's wait for the server's ack or error (§6.4).
 	// Past it, act answers `unknown` and the model reads the state.
 	AckTimeout time.Duration
+	// Build names this binary ("v0.1.0, commit abc"), for the out-of-date
+	// note on join. Empty means "this seat".
+	Build string
+	// Revision is the seat revision this binary was built at; 0 means
+	// protocol.SeatRevision. A test sets it lower to be an old seat.
+	Revision int
 	// Now is the clock; nil means time.Now.
 	Now func() time.Time
 }
@@ -142,7 +148,7 @@ type Seat struct {
 
 	win          *window
 	lastCounted  windowKey
-	passUntil    bool
+	passMode     passMode
 	lastActive   int
 	reportedOver bool
 	noMoveReq    bool // the server answered legal_moves_request as unknown
@@ -434,9 +440,11 @@ func (s *Seat) onSnapshot(raw json.RawMessage) {
 	s.truncated = view.LegalMovesTruncated
 	if self := s.selfLocked(); self != nil {
 		// The start of the seat's own turn clears pass_until (§4), as
-		// the browser's safety belt does.
-		if view.Turn.ActiveSeat == self.Seat && s.lastActive != self.Seat {
-			s.passUntil = false
+		// the browser's safety belt does. "smart" (#3603) is not cleared:
+		// it stops at the windows that matter on the seat's own turn
+		// itself.
+		if view.Turn.ActiveSeat == self.Seat && s.lastActive != self.Seat && s.passMode == passOthers {
+			s.passMode = passNone
 		}
 	}
 	s.lastActive = view.Turn.ActiveSeat
@@ -585,7 +593,7 @@ func (s *Seat) step(ctx context.Context) {
 		return
 	}
 	view, me := s.view, s.sess.PlayerID
-	ans, auto := decideAutomatically(view, me, w.moves, s.cfg.Absorb, s.passUntil)
+	ans, auto := decideAutomatically(view, me, w.moves, s.cfg.Absorb, s.passMode)
 	if !auto {
 		s.openDecisionLocked(w)
 		s.mu.Unlock()

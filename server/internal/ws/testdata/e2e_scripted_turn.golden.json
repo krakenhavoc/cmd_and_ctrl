@@ -303,7 +303,8 @@
       "starting_life": 40,
       "commander_damage": 21,
       "bot_pace": "normal",
-      "allow_spawn": false
+      "allow_spawn": false,
+      "away_after": 3
     },
     "starting_seat": 0,
     "log": [

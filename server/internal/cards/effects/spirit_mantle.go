@@ -20,6 +20,7 @@ func init() {
 		Name:         "Spirit Mantle",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
+		Purpose:      game.Purpose{Aura: game.AuraBenefit},
 		Static: []game.StaticAbility{
 			PumpAttached(1, 1),
 			GrantToAttached("protection from creatures"),

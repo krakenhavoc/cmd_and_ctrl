@@ -69,6 +69,18 @@ type Purpose struct {
 	// Gift's Elephant) are not counted here; a removal's gift to its
 	// target's controller is that entry's TargetPurpose.Returns.
 	Tokens int
+	// CreatureTokens is how many of Tokens are creature tokens: Dragon
+	// Fodder's 2 Goblins, not Big Score's 2 Treasures. A creature
+	// entering is what a CreatureEnterPayoff pays on, so the heuristic
+	// prices only these by it (#3165). Never more than Tokens.
+	CreatureTokens int
+	// TokensPerControlled makes the creature tokens an amount counted at
+	// resolution: the lowercase creature subtype whose count under its
+	// controller's control is how many it creates ("goblin" on Krenko,
+	// Mob Boss: X Goblins, X the Goblins you control). Tokens stays 0,
+	// since no printed number would be true; the reader counts from the
+	// view (#3165). Refused off a triggered or activated row.
+	TokensPerControlled string
 	// Energy is how many energy counters it gives its controller ("you
 	// get {E}{E}" is 2; ADR 0129 §7). An amount counted at resolution
 	// ("you get {E} for each creature you control") is not declared.
@@ -106,6 +118,13 @@ type Purpose struct {
 	// Clue (#3072). Nil is "not a landfall payoff". Refused on every
 	// other slot. A pointer so Purpose stays comparable.
 	LandfallPayoff *LandfallPayoff
+	// CreatureEnterPayoff is set on a TRIGGERED row that pays out
+	// whenever a creature enters under its controller's control
+	// (Purphoros, God of the Forge's 2 damage; Impact Tremors' 1), and
+	// says what it pays for EACH creature (#3165). Nil is "not a
+	// creature-enter payoff". Refused on every other slot. A pointer so
+	// Purpose stays comparable.
+	CreatureEnterPayoff *CreatureEnterPayoff
 
 	// The fields below were added for exert (ADR 0130 §9 and its
 	// amendment of 2026-10-07). The heuristic reads them on a row the
@@ -183,7 +202,27 @@ type Purpose struct {
 	// refuses it on a spell, a mode, an alternative cost and a
 	// triggered row, which nothing reads it on yet (ADR 0142 §2).
 	Answers Answers
+
+	// Aura says which way an Aura cuts for the permanent it enchants
+	// (#3309): a buff helps its host (Rancor), a curse hurts it
+	// (Pacifism). Nothing on the wire tells the two apart, so the bot
+	// priced every Aura's host as a target to hit. Declared on the card
+	// of an Aura only; the zero value is "not declared" and keeps that
+	// price. effects.Register refuses it off the card.
+	Aura AuraPurpose
 }
+
+// AuraPurpose is Purpose.Aura: what an Aura does to what it enchants.
+type AuraPurpose string
+
+const (
+	// AuraBenefit helps its host: a pump, a keyword, protection. A bot
+	// enchants its own permanent with it.
+	AuraBenefit AuraPurpose = "benefit"
+	// AuraHarm hurts its host: Pacifism, Arrest. A bot enchants an
+	// opponent's permanent with it.
+	AuraHarm AuraPurpose = "harm"
+)
 
 // TargetPurposes is a statement's target entries (Purpose.Targets), at
 // most one per clause.
@@ -351,6 +390,12 @@ type LandfallPayoff struct {
 	DamageEachOpponent int
 }
 
+// CreatureEnterPayoff is what a row pays its controller for each
+// creature that enters under their control, in LandfallPayoff's units
+// and with the same rules (#3165): printed amounts only, none counted at
+// resolution.
+type CreatureEnterPayoff LandfallPayoff
+
 // IsZero reports whether nothing is declared.
 func (p Purpose) IsZero() bool {
 	return p == Purpose{}
@@ -476,12 +521,15 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 		Tutors:                    p.Tutors + o.Tutors,
 		SelfMillTutor:             p.SelfMillTutor + o.SelfMillTutor,
 		Tokens:                    p.Tokens + o.Tokens,
+		CreatureTokens:            p.CreatureTokens + o.CreatureTokens,
+		TokensPerControlled:       p.TokensPerControlled,
 		Energy:                    p.Energy + o.Energy,
 		Sweep:                     p.Sweep,
 		DeathPayoff:               p.DeathPayoff || o.DeathPayoff,
 		DiscardPayoff:             p.DiscardPayoff,
 		OnOpponentDiscard:         p.OnOpponentDiscard,
 		LandfallPayoff:            p.LandfallPayoff,
+		CreatureEnterPayoff:       p.CreatureEnterPayoff,
 		Pump:                      p.Pump,
 		ExtraCombat:               p.ExtraCombat + o.ExtraCombat,
 		PreventCombatDamageToSelf: p.PreventCombatDamageToSelf || o.PreventCombatDamageToSelf,
@@ -507,6 +555,12 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 	}
 	if out.LandfallPayoff == nil {
 		out.LandfallPayoff = o.LandfallPayoff
+	}
+	if out.TokensPerControlled == "" {
+		out.TokensPerControlled = o.TokensPerControlled
+	}
+	if out.CreatureEnterPayoff == nil {
+		out.CreatureEnterPayoff = o.CreatureEnterPayoff
 	}
 	targets := append([]TargetPurpose(nil), p.Targets.List()...)
 	for _, t := range o.Targets.List() {

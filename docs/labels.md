@@ -59,6 +59,7 @@ registered, or when this file is stale.
 | `keepHand` | `Keep hand` | button | text | `routes/Game.svelte` | the opening hand sheet's primary |
 | `openingHandDecisions` | `opening hand decisions` | generic | aria | `routes/Game.svelte` | the strip's roll call while hands are kept or mulliganed |
 | `discard` | `Discard <N> card(s)` (starts with `Discard `) | dialog | aria | `lib/components/board/DiscardPromptModal.svelte` | the discard request (cleanup or an effect) |
+| `crewCountsAs` | `counts as <N>` (starts with `counts as `) | generic | text | `lib/components/board/CrewCostModal.svelte` | ADR 0186 Decision 6 (#3550): the crew or saddle picker's note on a creature that counts for something other than its power on this cost |
 | `selectTarget` | `Select target for <card>` (starts with `Select target for `) | dialog | aria | `lib/targetingDock.ts` | the targeting request |
 | `chooseOnBoard` | `Choose on the board for <card>` (starts with `Choose on the board for `) | dialog | aria | `lib/targetingDock.ts` | a card-set pick answered by clicking permanents on the board (#2394) |
 | `showAsList` | `Show as list` | button | text | `lib/targetingDock.ts` | a board-answered card-set pick's fallback: open the same choice as the list |
@@ -109,6 +110,13 @@ registered, or when this file is stale.
 | `searchCatalogue` | `search the catalogue` | textbox | aria | `routes/Catalog.svelte` | the Catalogue's search field; the catalog.search hint points at it |
 | `searchRoadmap` | `search the roadmap` | textbox | aria | `routes/Roadmap.svelte` | the Roadmap's search field; the roadmap.search hint points at it |
 | `lobbyTitle` | `cmd_and_ctrl · lobby` | heading | aria | `routes/Lobby.svelte` | the Lobby's title (its visible text is Tables); the lobby.practice hint anchors here |
+| `copyInvite` | `Copy invite` | button | text | `routes/Lobby.svelte` | the wide part of a lobby table's invite split button: copies the player invite link; the lobby.create hint names it |
+| `newInviteLink` | `new invite link` | button | aria | `routes/Lobby.svelte` | the ↻ part of the invite split button: mints a new player invite after a confirm, then copies it |
+| `copySpectatorLink` | `Copy spectator link` | button | text | `routes/Lobby.svelte` | the wide part of a table's spectator split button: copies the read-only link |
+| `newSpectatorLink` | `new spectator link` | button | aria | `routes/Lobby.svelte` | the ↻ part of the spectator split button: mints a new spectator link after a confirm, then copies it |
+| `tableSettingsLine` | `table settings: <summary>` (starts with `table settings: `) | button | aria | `routes/Lobby.svelte` | a table card's rules line, e.g. 30 life · no undos: opens the table settings panel (read-only for a non-host) |
+| `tableMenu` | `actions for <table name>` (starts with `actions for `) | menu | aria | `routes/Lobby.svelte` | a table card's right-click menu (also the Menu key, Shift+F10 or a long press) |
+| `reportABug` | `Report a bug or idea` | button | aria | `routes/Game.svelte`<br>`lib/components/SiteHeader.svelte` | the bug button: the table's command bar, and the site header on every other page for someone signed in with Discord (#3492); the Guide and About name it |
 | `navTables` | `Tables` | link | text | `lib/components/SiteHeader.svelte` | the site header's link to #/lobby, first in the signed-in nav (it read Lobby before ADR 0156) |
 | `signInWithDiscord` | `Sign in with Discord` | link | text | `routes/FrontPage.svelte` | the front page's Discord sign-in, shown when the server has Discord sign-in configured |
 | `joinDiscordServer` | `Join our Discord server` | link | text | `routes/FrontPage.svelte` | the front page's link to the C2 Discord invite; hidden when GET /community names none |
@@ -130,6 +138,8 @@ registered, or when this file is stale.
 | `rememberThisAnswer` | `Remember this answer` | button | text | `lib/choiceDock.ts` | the toggle under a prompt that can take a standing answer; on, the next button pressed also sets the rule (Yes or Pay: Always; No or Don't pay: Never) |
 | `automaticAnswer` | `automatic answer` | dialog | aria | `lib/autoAnswerPref.ts` | the dock's notice after the server answered a prompt for you ("Rhystic Study: paid {1} for you"), for about six seconds |
 | `undoAutomaticAnswer` | `Undo` | button | text | `lib/autoAnswerPref.ts` | the automatic-answer notice's undo; greyed once anything else is the top undo entry |
+| `autoPassNotice` | `auto-pass notice` | dialog | aria | `lib/passReason.ts` | the dock's chip after the client passed priority for you ("Passed for you: nothing to respond with", #3343), for about six seconds |
+| `undoAutoPass` | `Take back the pass` | button | aria | `lib/passReason.ts` | the auto-pass chip's Undo (visible text "Undo"); sends the ordinary undo and is shown only while that undo would take the pass back. Named apart from the dock's "Undo (N left)" so a /^Undo/ locator still finds one button |
 | `askMeNextTime` | `Ask me next time` | button | text | `lib/autoAnswerPref.ts` | the automatic-answer notice's button that removes the rule (sets Ask); the answer just given stands |
 | `automaticAnswers` | `automatic answers` | region | aria | `lib/components/AutoAnswersSettings.svelte` | Settings → Gameplay's list of standing answers; the settings.auto-answers hint points at it |
 | `forgetAutoAnswer` | `Forget` | button | text | `lib/components/AutoAnswersSettings.svelte` | removes one standing answer in Settings → Gameplay, so its prompt is asked again |
@@ -137,3 +147,8 @@ registered, or when this file is stale.
 | `alwaysAskCombatDamage` | `Always ask` | button | text | `lib/damageAssignment.ts` | the combat-damage notice's button that turns Auto-assign combat damage off; the assignment just made stands |
 | `addDamage` | `Add 1 damage to <name>` (starts with `Add 1 damage to `) | button | aria | `lib/components/board/DamageStepper.svelte`<br>`lib/components/board/ChoicePromptModal.svelte` | the + on a blocker (on the board and in the damage sheet) while you assign combat damage; the defending player's trample line uses it too |
 | `removeDamage` | `Remove 1 damage from <name>` (starts with `Remove 1 damage from `) | button | aria | `lib/components/board/DamageStepper.svelte`<br>`lib/components/board/ChoicePromptModal.svelte` | the − beside addDamage |
+| `awayOffer` | `move on without an away player` | dialog | aria | `lib/away.ts` | the dock sheet a decider sees when a seat the table waits on has been offline for the away time (ADR 0177 §2) |
+| `awayStandIn` | `Hand <name>'s seat to a bot` (ends with `'s seat to a bot`) | button | text | `lib/away.ts` | the away offer's hand-over: a heuristic bot plays the seat until its player takes it back |
+| `awayConcede` | `Concede for <name>` (starts with `Concede for `) | button | text | `lib/away.ts` | the away offer's concession, made for the away player |
+| `awayWait` | `Keep waiting` | button | text | `lib/away.ts` | the away offer's third answer: hide the offer for another away time |
+| `takeBackSeat` | `Take it back` | button | text | `lib/components/board/StandInBanner.svelte` | the banner a player sees on their own seat while a bot plays it: they play it again (ADR 0177 §6) |

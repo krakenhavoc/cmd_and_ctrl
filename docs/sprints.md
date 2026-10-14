@@ -117,6 +117,10 @@ planned just-in-time from the S12 pain-point triage.
 | S71     | A front door: site shell, front page and a Discord gate              | 7     | [#3177](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3177) | —          | in progress |
 | S72     | Smoother table play: fewer clicks, the London mulligan, rematch      | 7     | [#3294](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3294) | —          | planned     |
 | S73     | Big boards: layout and per-action cost                               | 7     | [#3295](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3295) | —          | planned     |
+| S74     | Table truth: the log, the board and the art say what happened        | 7     | [#3614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3614) | —          | planned     |
+| S75     | Agents at the table: a current seat, quieter turns, sharper bots     | 7     | [#3615](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3615) | —          | planned     |
+| S76     | Cards: incubate, face-down and outside the game                      | 7     | [#3616](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3616) | —          | planned     |
+| S77     | Discord and social: voice, friends, mod tools and events             | 7     | [#3617](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3617) | —          | planned     |
 
 On 2026-10-11 the milestones for S37, S41, S47–S49, S51, S52, S54–S57, S60–S64, S68 and S69 were
 closed. Their open stragglers (18 issues) moved to the **Backlog** milestone, to be picked up at the
@@ -3691,6 +3695,8 @@ From the tracker, [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/298
 
 **In progress** (2026-10-13 triage). All eight members are closed: #3101, #2988, #3094, #3099, #3120, #3106, #3108 and #3110. Exit criteria 2 to 4 still need their evidence posted on #2985, and criteria 5 and 6 are the owner's calls.
 
+The 2026-10-14 triage filed seven more issues here: #3431, which holds criteria 5 and 6, and #3492, #3493, #3494, #3499, #3557 and #3558, which are merged into `develop` and close on promotion.
+
 ---
 
 ## S71 — A front door: site shell, front page and a Discord gate
@@ -3733,6 +3739,13 @@ Opened at the 2026-10-13 triage of every open issue.
 - [ ] [#3285](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3285): rematch with the same table after game over
 - [ ] [#3262](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3262): several badges on a player hide their life total
 - [ ] [#3095](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3095): the damage-assignment sheet covers the defender's creature row at 1280x720
+
+Added at the 2026-10-14 triage:
+
+- [x] [#3387](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3387): a table setting for a free first mulligan at two-player tables (PRs #3396, #3423)
+- [ ] [#3555](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3555): smart auto-pass stops on every opponent spell while a free sacrifice outlet is out
+- [ ] [#3556](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3556): trigger-order footprints for Uro's sacrifice, and no choice between inert tokens
+- [ ] [#3604](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3604): auto-pay spends a coloured or multi-mana source on a generic cost the hand needs elsewhere
 
 ### Exit criteria
 
@@ -3777,6 +3790,121 @@ From the tracker, [#3295](https://github.com/krakenhavoc/cmd_and_ctrl/issues/329
 
 ---
 
+## S74 — Table truth: the log, the board and the art say what happened
+
+**Phase:** 7 · **Goal:** the log, the board text and the card art say what actually happened in the game. Tracking issue [#3614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3614).
+
+Opened at the 2026-10-14 triage, mostly from player reports and an agent's game on cmd-dev.
+
+- [ ] [#3613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3613): a resolving choice is asked after the log says resolved
+- [ ] [#3610](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3610): the win line says every opponent left when they lost
+- [ ] [#3609](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3609): log lines name a token "a card" once the token is gone
+- [ ] [#3490](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3490): rebound (Quantum Misalignment) prompts but never casts
+- [ ] [#3601](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3601): the arrival ring is measured mid-ETB-pop and drawn shrunk
+- [x] [#3605](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3605): imported decks lose their printing and default to gimmick reprint art ([ADR 0192](decisions/0192-a-deck-names-its-printing.md))
+- [ ] [#3518](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3518): double-faced cards show each face as a whole card
+- [ ] [#3449](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3449): after a tied opening roll, show the tie and the first-round dice
+- [ ] [#3380](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3380): tie each stack item to its caster's seat, and stop the panel covering a board (needs a design call)
+
+### Exit criteria
+
+1. A spell or ability that asks for a choice as it resolves logs "resolved" only after the choice is made, and a spell stays on the stack until then.
+2. The game-over line names the real cause, and a token that is gone is still named in every log line about it.
+3. Rebound casts the card on its owner's next upkeep.
+4. With no printing named, Raffine, Scheming Seer renders a normal printing. A deck that names a printing renders that printing.
+5. Arrival rings frame the whole card, double-faced cards read as whole cards, and a tied opening roll shows the tie.
+
+### Status
+
+**Planned** (2026-10-14).
+
+---
+
+## S75 — Agents at the table: a current seat, quieter turns, sharper bots
+
+**Phase:** 7 · **Goal:** an agent at the table runs a current seat binary, isn't asked about idle steps of its own turn, and can read what is attached to what. The heuristic bot stops wasting its windows. Tracking issue [#3615](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3615).
+
+Opened at the 2026-10-14 triage, from four-agent MCP-seat games on cmd-dev and a local server.
+
+- [ ] [#3611](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3611): publish an mcpseat release, since rc.1 lacks two weeks of seat fixes
+- [ ] [#3608](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3608): warn on join when the seat binary is older than the server expects
+- [ ] [#3606](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3606): wait_for_decision serves a window that act can't answer while reconnecting
+- [ ] [#3607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3607): full state's log heading, and a log on game_over
+- [x] [#3603](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3603): a pass_until that also skips idle steps of the seat's own turn
+- [ ] [#3612](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3612): board text names what an aura, equipment or O-Ring is on
+- [x] [#3489](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3489): send max_completion_tokens to models that refuse max_tokens (PR #3507)
+- [ ] [#3521](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3521): the heuristic takes a pass-closed cast before spending the mana elsewhere
+- [ ] [#3309](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3309): the heuristic tells a buff Aura from a curse
+
+### Exit criteria
+
+1. A published `mcpseat-v*` release carries develop's seat fixes, and an older binary warns on join.
+2. A four-agent game on cmd-dev shows no unanswerable window, and with the new pass_until, no pass-only window on an idle step of the seat's own turn.
+3. Board text names every attachment and what every exile-until card holds.
+4. The arena eval shows the bot casting with a pass-closed permission before other spells, and never putting a curse on its own creature.
+
+### Status
+
+**Planned** (2026-10-14).
+
+---
+
+## S76 — Cards: incubate, face-down and outside the game
+
+**Phase:** 7 · **Goal:** finish the card runs whose seams landed this week: the incubate cards, ADR 0189's face-down slices, the outside-the-game pool (ADR 0191) and copies of double-faced permanents. Tracking issue [#3616](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3616).
+
+Opened at the 2026-10-14 triage. Several members already have PRs open: #3584, #3596, #3526 and #3542.
+
+- [ ] [#3568](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3568): the remaining incubate cards
+- [ ] [#3591](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3591), [#3592](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3592), [#3593](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3593): the incubate caveats of Assimilate Essence, Brimaz and Corruption of Towashi
+- [ ] [#3511](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3511): Incubator token art from double_faced_token printings
+- [ ] [#3512](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3512): copies of double-faced permanents (CR 707.8, 707.8a)
+- [ ] [#3535](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3535), [#3538](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3538), [#3539](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3539): ADR 0189 slices 1, 4 and 5 (parent #3523)
+- [ ] [#3506](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3506): a deck sideboard as the outside-the-game pool
+- [ ] [#3525](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3525): the rest of the cards that read "outside the game"
+- [ ] [#3520](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3520): Emrakul, the Exigent Doom's exile-from-hand ability
+- [ ] [#3541](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3541): Library of Leng top placements across a simultaneous discard shuffle
+
+### Exit criteria
+
+1. Every listed card ships without its caveat, with a rules test for each card.
+2. A token copy of a double-faced permanent is double-faced, and the Incubator renders with art.
+3. The catalog census shows the seams closed.
+
+### Status
+
+**Planned** (2026-10-14).
+
+---
+
+## S77 — Discord and social: voice, friends, mod tools and events
+
+**Phase:** 7 · **Goal:** the owner's 2026-10-13 Discord and social requests. Voice stays in Discord; the app shows who is in a voice room and makes joining easier. Tracking issue [#3617](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3617).
+
+Opened at the 2026-10-14 triage.
+
+- [ ] [#3311](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3311): show who is in a table voice room and pull seated players in
+- [ ] [#3313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3313): friends and recently played with, with live presence
+- [ ] [#3325](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3325): mod tools with approve buttons, ban sync and a mod log
+- [ ] [#3327](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3327): mirror in-app bug reports to a Discord forum thread
+- [ ] [#3326](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3326): post release notes and ops alerts to Discord webhooks
+- [ ] [#3324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3324): card lookup in Discord chat and a c2-card command
+- [ ] [#3321](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3321): scheduled games as Discord Scheduled Events with RSVP seats
+- [ ] [#3323](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3323): Linked Roles with CMD & CTRL stats on Discord profiles
+- [ ] [#3312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3312): an ADR on CMD & CTRL as a Discord Activity in the voice channel
+
+### Exit criteria
+
+1. Each feature is off when its Discord settings are unset, as the voice rooms are.
+2. A mod can approve an access request from Discord, and a report's Discord thread hears when its issue closes.
+3. The owner accepts or rejects the Activity ADR.
+
+### Status
+
+**Planned** (2026-10-14).
+
+---
+
 ## Backlog — parked on a dependency or a single card
 
-Not a sprint and has no tracker. The GitHub milestone *Backlog — parked on a dependency or a single card* holds issues that wait on something outside the engine (a keyed or local model endpoint, an owner decision) or that are one card each: [#612](https://github.com/krakenhavoc/cmd_and_ctrl/issues/612), [#735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/735), [#837](https://github.com/krakenhavoc/cmd_and_ctrl/issues/837), [#1735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1735), [#1815](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1815), [#1824](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1824), [#1841](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1841), [#1852](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1852), [#1859](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1859), [#1863](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1863), [#1864](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1864), [#1865](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1865), [#1866](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1866), [#1893](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1893) (Phylactery Lich: as this enters, put a counter on another permanent you choose). #837 and #735 came from S47 on 2026-10-01. Pull one into a sprint when its dependency clears.
+Not a sprint and has no tracker. The GitHub milestone *Backlog — parked on a dependency or a single card* holds issues that wait on something outside the engine (a keyed or local model endpoint, an owner decision) or that are one card each: [#612](https://github.com/krakenhavoc/cmd_and_ctrl/issues/612), [#735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/735), [#837](https://github.com/krakenhavoc/cmd_and_ctrl/issues/837), [#1735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1735), [#1815](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1815), [#1824](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1824), [#1841](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1841), [#1852](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1852), [#1859](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1859), [#1863](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1863), [#1864](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1864), [#1865](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1865), [#1866](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1866), [#1893](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1893) (Phylactery Lich: as this enters, put a counter on another permanent you choose). #837 and #735 came from S47 on 2026-10-01. [#3382](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3382) (demonstrate an infinite: record a loop once, replay it N times) joined at the 2026-10-14 triage; it waits on an ADR. Pull one into a sprint when its dependency clears.

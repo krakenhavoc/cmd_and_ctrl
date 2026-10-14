@@ -715,6 +715,18 @@ describe("the layout around the dock", () => {
     expect(log).not.toContain("bottom:");
   });
 
+  // #2409: the open drawer covered the right end of the stage's fan, so
+  // the stage's right padding grows by the drawer's width.
+  it("narrows the stage's fan to the room the open log drawer leaves", () => {
+    const stage = rule(src("src/lib/components/board/ActionDock.svelte"), "  .dock-sheet.stage");
+    expect(stage).toContain("calc(24px + var(--stage-log-w, 0px))");
+    const log = rule(src("src/lib/components/board/GameLogPanel.svelte"), "  .log-panel");
+    expect(log).toContain("width: min(380px, 92vw)");
+    expect(src("src/routes/Game.svelte")).toContain(
+      'style:--stage-log-w={showGameLog ? "min(380px, 92vw)" : undefined}',
+    );
+  });
+
   it("sits in the corner at z 55, and becomes a full-width bar on a phone", () => {
     const css = src("src/lib/components/board/ActionDock.svelte");
     const dock = rule(css, "  .action-dock");

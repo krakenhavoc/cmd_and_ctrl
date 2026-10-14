@@ -330,12 +330,29 @@ func corpusBoards() []corpusBoard {
 		// Carthalion's cantBecomeMonarch record naming his controller,
 		// beside the opponent he crowned.
 		{"cant_become_monarch", corpusCantBecomeMonarch},
+		// v8, added by #3515 (ADR 0032 amendment 2026-10-14) as a new
+		// file: a resolved Hall of Echoes — the legendRuleDoesntApply
+		// record naming the activator (a game-scope rule kind), beside
+		// the land that is a copy of the legend until end of turn and
+		// the legend itself, which is the pair the record keeps.
+		{"legend_rule_doesnt_apply", corpusLegendRuleDoesntApply},
+		// v8, added by #3516 (ADR 0116 amendment 2026-10-14) as a new
+		// file: a Null Summoner's revealed-hand pick waiting on the
+		// controller, whose exile is linked to the Summoner object
+		// (pickExiledWith).
+		{"revealed_hand_pick_exile_linked", corpusRevealedHandPickExileLinked},
 		// v8, added by #2928 (ADR 0146 amendment 2026-10-13) as a new
 		// file: a vote over cards in a graveyard (Custodi Squire's
 		// councilVote.zone) waiting on a ballot that Illusion of Choice
 		// puts to its caster (a voteChooser record, and a prompt owed by
 		// the chooser for another voter).
 		{"vote_zone_chooser", corpusVoteZoneChooser},
+		// v8, added by #3569 (ADR 0187 §4) as a new file: a creature
+		// marked "assigns no combat damage this turn" — the
+		// assignsNoCombatDamage rule kind, pinned to the creature (a
+		// new vocabulary value an older binary must refuse rather than
+		// read as nothing).
+		{"assigns_no_combat_damage", corpusAssignsNoCombatDamage},
 		// v7, added by #2559 (ADR 0066 amendment 2026-10-10) as a new
 		// file: a resolved Memory Vessel — the cantPlayFromHand record
 		// (a game-scope rule kind naming every player) and each player's
@@ -487,7 +504,65 @@ func corpusBoards() []corpusBoard {
 		// (cards[].isCompanion). Additive within v8: an older binary
 		// drops both keys.
 		{"companion_waiting", corpusCompanionWaiting},
+		// v8, added by ADR 0191 (#3506) as a new file: seat 0's
+		// sideboard outside the game (seats[].sideboard, three cards, one
+		// of them revealed to the table) and seat 1 with a sideboard card
+		// already brought into its hand (cards[].isSideboard). Additive
+		// within v8: an older binary drops both keys.
+		{"sideboard_outside_the_game", corpusSideboardOutsideTheGame},
 	}
+}
+
+// corpusSideboardOutsideTheGame is newCorpusGame's table with a
+// sideboard on each seat (ADR 0191): seat 0 keeps three cards outside
+// the game and has revealed one of them, seat 1 has already brought one
+// into its hand.
+func corpusSideboardOutsideTheGame(t *testing.T) *game.Game {
+	t.Helper()
+	g := game.NewGame()
+	for i, name := range []string{"P1", "P2"} {
+		deck := []game.Card{{
+			InstanceID:  uuid.New(),
+			Name:        fmt.Sprintf("Test Commander %d", i+1),
+			TypeLine:    "Legendary Creature — Test",
+			Power:       3,
+			Toughness:   3,
+			IsCommander: true,
+		}}
+		for range 11 {
+			deck = append(deck, game.Card{InstanceID: uuid.New(), Name: "Forest", TypeLine: "Basic Land — Forest"})
+		}
+		for _, side := range []struct{ name, typeLine string }{
+			{"Burning Wish", "Sorcery"}, {"Lightning Bolt", "Instant"}, {"Grizzly Bears", "Creature — Bear"},
+		} {
+			deck = append(deck, game.Card{
+				InstanceID: uuid.New(), Name: side.name, TypeLine: side.typeLine, IsSideboard: true,
+			})
+		}
+		if _, err := g.AddPlayer(name, deck); err != nil {
+			t.Fatalf("AddPlayer: %v", err)
+		}
+	}
+	if err := g.StartWithSource(rand.NewPCG(522, 7)); err != nil {
+		t.Fatalf("StartWithSource: %v", err)
+	}
+	for _, p := range g.Seats {
+		if err := g.KeepHand(p.ID); err != nil {
+			t.Fatalf("KeepHand: %v", err)
+		}
+	}
+	g.WithWriteLock(func() {
+		// Seat 0 revealed its Burning Wish.
+		g.RevealOutsideForEffect(game.RevealSpec{
+			Player: g.Seats[0].ID, Reason: "corpus — reveal a card from outside the game",
+			Cards: []uuid.UUID{g.Seats[0].SideboardCards()[0].InstanceID},
+		})
+		// Seat 1 brought its Grizzly Bears into its hand.
+		if err := g.BringFromOutsideForEffect(g.Seats[1].ID, g.Seats[1].SideboardCards()[2].InstanceID); err != nil {
+			t.Fatalf("bring in seat 1's card: %v", err)
+		}
+	})
+	return g
 }
 
 // corpusCompanionWaiting is newCorpusGame with a Jegantha, the
@@ -1444,6 +1519,62 @@ func corpusCantBecomeMonarch(t *testing.T) *game.Game {
 			t.Fatal(err)
 		}
 	})
+	return g
+}
+
+// corpusLegendRuleDoesntApply is a resolved Hall of Echoes (#3515): the
+// land is a copy of the legend until end of turn, and the activator's
+// legend rule is suspended for the turn by a stored record.
+func corpusLegendRuleDoesntApply(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	hall := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Hall of Echoes", TypeLine: "Land",
+		OracleID: oracleHallOfEchoes, Owner: me.ID, Controller: me.ID,
+	})
+	legend := b12Creature(g, me.ID, legendName, legendTypeLine, 2, 2)
+	g.WithWriteLock(func() {
+		if err := g.AddManaForEffect(me.ID, uuid.Nil, "{C}{C}{C}{C}{C}"); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if err := g.ActivateCatalogAbility(me.ID, hall, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: legend}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	return g
+}
+
+// corpusAssignsNoCombatDamage is #3569's one stored shape: a pinned
+// assignsNoCombatDamage record on a creature (Carrion Rats' mark).
+func corpusAssignsNoCombatDamage(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	rats := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Carrion Rats", 2, 1))
+	g.WithWriteLock(func() {
+		if !g.AssignsNoCombatDamageThisTurnForEffect(uuid.Nil, rats, "Carrion Rats — assigns no combat damage this turn") {
+			t.Fatal("setup: no record written")
+		}
+	})
+	return g
+}
+
+// corpusRevealedHandPickExileLinked is #3516's prompt: Null Summoner's
+// enters trigger has resolved and the controller has yet to choose, so
+// the pick carries the Summoner object it will link the exiled card to.
+func corpusRevealedHandPickExileLinked(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	revealHand(opp, rhForest(), rhBolt(),
+		game.Card{Name: "Big Bear", TypeLine: "Creature — Bear", ManaCost: "{3}{R}{R}", Colors: []string{"R"}, Power: 3, Toughness: 3})
+	castCatalogSpell(t, g, "Null Summoner", "Creature — Human Warlock", nullSummonerOracle, nil)
+	passPriorityAroundTable(t, g)
+	pickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	openVariant(t, g)
 	return g
 }
 

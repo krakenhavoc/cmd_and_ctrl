@@ -15,6 +15,7 @@
   import { GUEST_RETURN_ADVICE, SIGNED_IN_RETURN_LINK } from "../lib/joinRecovery";
   import { loadGuestName, rememberGuestName } from "../lib/guestName";
   import { seatColor } from "../lib/colors";
+  import { deckWithPower } from "../lib/tablesPage";
   import Icon from "../lib/components/Icon.svelte";
   import AgentChip from "../lib/components/AgentChip.svelte";
   import Page from "../lib/components/Page.svelte";
@@ -203,7 +204,7 @@
               <div class="sname">{seatName(p)}</div>
               {#if p.is_agent}<div class="sagent"><AgentChip seat={p} /></div>{/if}
               <div class="sstat">
-                {#if p.deck_uploaded}{p.deck_name || "deck ready"}{:else}deck pending{/if}
+                {#if p.deck_uploaded}{deckWithPower(p)}{:else}deck pending{/if}
               </div>
             </div>
           </li>

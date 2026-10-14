@@ -26,7 +26,8 @@
   // dock's action bar (Enter / Escape through its one key handler).
 
   import type { ActivatedAbilityView, CardView } from "../../protocol";
-  import { crewAvailablePower, crewPower, crewSatisfied } from "../../crew";
+  import { L } from "../../labels";
+  import { countedPower, crewAvailablePower, crewPower, crewSatisfied } from "../../crew";
   import { cancelAction, confirmAction } from "../../dock";
   import DockSheet from "./DockSheet.svelte";
 
@@ -92,13 +93,16 @@
   // the running total shown here and the total the server computes
   // agree without a second round trip. A card with no power (it
   // should not appear here) contributes nothing rather than NaN.
-  const total = $derived(crewPower(options, chosen));
-  const enough = $derived(crewSatisfied(options, chosen, need));
+  // ADR 0186 Decision 6: the ability's crew_power says what each creature
+  // counts for on this cost; a teamwork prompt has none and counts power.
+  const counted = $derived(ability?.crew_power);
+  const total = $derived(crewPower(options, chosen, counted));
+  const enough = $derived(crewSatisfied(options, chosen, need, counted));
 
   // The best the whole board could do. When it falls short the modal
   // says so plainly instead of letting a player click around looking
   // for the creature that would finish the total.
-  const available = $derived(crewAvailablePower(options));
+  const available = $derived(crewAvailablePower(options, counted));
 
   function toggle(id: string): void {
     chosen = chosen.includes(id) ? chosen.filter((c) => c !== id) : [...chosen, id];
@@ -148,6 +152,9 @@
               <span class="name">{c.name}</span>
               {#if c.power !== undefined && c.toughness !== undefined}
                 <span class="note pt">{c.power}/{c.toughness}</span>
+              {/if}
+              {#if countedPower(c, counted) !== c.power}
+                <span class="note pt">{L.crewCountsAs(countedPower(c, counted))}</span>
               {/if}
             </button>
           </li>

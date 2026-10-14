@@ -586,6 +586,31 @@ type CastPermission struct {
 	// casts.
 	MaxSpellManaValue *int `json:"maxSpellManaValue,omitempty"`
 
+	// ManaValueBudget is the total mana value this permission may still
+	// open across ALL the spells cast through it (#2017, ADR 0066's
+	// 2026-10-14 amendment): "you may cast any number of spells with
+	// total mana value 6 or less from among the copies without paying
+	// their mana costs" (Uldaros Theorix, CR 608.2g). MaxSpellManaValue
+	// is a ceiling on ONE spell and never changes; this is a running
+	// total that each cast spends, so it rides ONE permission naming
+	// every card of the set (an offer per card would give each its own
+	// total, which is the stronger-than-printed reading).
+	//
+	// It is the REMAINING budget, not the printed one: the cast that
+	// spends it replaces the stored permission with one holding a fresh
+	// pointer and the cast spell's card removed from Cards
+	// (spendManaValueBudgetLocked), because the backing array is shared
+	// with the undo snapshots. A spell is judged against the face being
+	// cast with X at zero, by the same gate as MaxSpellManaValue
+	// (spellManaValueWithinCap), so the cast path, the view's offers and
+	// the bot enumerator refuse the same casts.
+	//
+	// A pointer because 0 is a real remaining budget (only mana value 0
+	// spells fit). Nil means no budget, which is every permission written
+	// before the field existed. Meaningful on a ScopeCards permission
+	// with LapseOnPass, the only shape that spends it.
+	ManaValueBudget *int `json:"manaValueBudget,omitempty"`
+
 	// LapseOnPass closes the permission the next time its holder
 	// passes priority, and says where the card goes then (ADR 0099
 	// §4). It is the grant model's stand-in for CR 608.2g's "cast it
@@ -687,6 +712,20 @@ type CastPermission struct {
 	// the key, and the closure ratchet does not move. Empty is "nothing
 	// follows", which is every permission written before #2173.
 	FollowUp CastFollowUpKey `json:"followUp,omitempty"`
+
+	// IfNotCast names a registered body (RegisterCastFollowUp) that runs
+	// when a PASS-CLOSED permission (LapseOnPass) ends without the cast
+	// having been made: its holder passed, or the backstop sweep lapsed
+	// it. It is FollowUp's other branch, "you may cast that card. If you
+	// don't, ..." (Chandra, Torch of Defiance, #3510, CR 608.2g). The
+	// body is told the holder, the permission's Source and, as Spell,
+	// the card that was not cast. A permission without LapseOnPass never
+	// runs it: only a pass-closed window has a moment at which "you
+	// didn't" becomes true.
+	//
+	// A key for FollowUp's reason. Empty is "nothing happens", which is
+	// every permission written before #3510.
+	IfNotCast CastFollowUpKey `json:"ifNotCast,omitempty"`
 
 	// RequiresNoSpellsCast ends the permission the moment its holder
 	// has cast any spell this turn. It is the "if you haven't cast a

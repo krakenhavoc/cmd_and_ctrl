@@ -332,6 +332,16 @@ const (
 	// playerCantBecomeMonarchLocked, which becomeMonarchLocked and the
 	// CR 725.4 hand-on ask. Reads Player.
 	ModCantBecomeMonarch ModKind = "cantBecomeMonarch"
+	// ModLegendRuleDoesntApply is "the legend rule doesn't apply to
+	// permanents you control this turn" (CR 704.5j; #3515, ADR 0032's
+	// amendment of 2026-10-14): Hall of Echoes. Scope ScopeGame with
+	// Player set to the player whose permanents it covers (zero covers
+	// every player's). Read by legendRuleExemptControllersLocked beside
+	// the printed Spec.LegendRuleExemptions, so the two compose. A stored
+	// record because the printed form has no duration and the ability's
+	// source is a land that is not the one granting it; swept at cleanup
+	// (CR 514.2). Reads Player.
+	ModLegendRuleDoesntApply ModKind = "legendRuleDoesntApply"
 	// ModVoteChooser is "you choose how each player votes this turn"
 	// (ADR 0146 amendment 2026-10-13, #2928; CR 701.38): Illusion of
 	// Choice. Scope ScopeGame with Player set to the player who chooses.
@@ -346,6 +356,27 @@ const (
 	// PinnedTo the duration (CR 400.7, 514.2). Read at one gate,
 	// permanentCantBeRegeneratedLocked (regeneration.go). Reads nothing.
 	ModCantBeRegenerated ModKind = "cantBeRegenerated"
+	// ModAssignsNoCombatDamage is "<that creature> assigns no combat
+	// damage this turn" (ADR 0187 §4, #3569; CR 510.1a): Carrion Rats,
+	// Carrion Wurm. It is a rule about how damage is ASSIGNED, not a
+	// prevention (CR 615), so "damage can't be prevented" does not undo
+	// it and nothing that watches for prevented damage sees it. Pinned to
+	// the creature, with PinnedTo the duration (CR 400.7, 514.2). Read at
+	// one gate, permanentAssignsNoCombatDamageLocked
+	// (assigns_no_combat_damage.go), where the combat damage pass builds
+	// its per-combatant amount. Reads nothing.
+	ModAssignsNoCombatDamage ModKind = "assignsNoCombatDamage"
+	// ModSkipTurns is "<player> skips their next <Amount> turns" (ADR
+	// 0188 Decision 1, #3559; CR 614.10, 614.10a): Magosi, the
+	// Waterveil's and Lethal Vapors' "skip your next turn". Scope
+	// ScopeGame with Player set to the player who skips and Amount the
+	// turns still owed; each turn skipped spends one charge, the oldest
+	// record first, and a record at zero is removed. Read only by the
+	// rotation seam (consumeTurnSkipLocked). A ScopedEffect and not a
+	// counter on the player, so an older binary refuses the file
+	// instead of handing the player a turn their card took. Reads
+	// Player and Amount.
+	ModSkipTurns ModKind = "skipTurns"
 )
 
 // The block-rule kinds (ADR 0041 P8, tier 3b, #1497). These are not
@@ -927,10 +958,14 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantPlayFromHand: {reader: readerRule},
 	// ADR 0096 amendment (#2039): the monarch gate.
 	ModCantBecomeMonarch: {reader: readerRule},
+	// ADR 0032 amendment (#3515): the turn-limited legend-rule exemption.
+	ModLegendRuleDoesntApply: {reader: readerRule},
 	// ADR 0146 amendment (#2928): who casts each player's ballot.
 	ModVoteChooser: {reader: readerRule},
 	// ADR 0108 §2 (#1887): the regeneration gate.
 	ModCantBeRegenerated: {reader: readerRule},
+	// ADR 0187 §4 (#3569): the combat-damage assignment gate.
+	ModAssignsNoCombatDamage: {reader: readerRule},
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
 	ModCantBeBlockedExceptBy:    {reader: readerBlockRule},
 	ModLimitBlockersPerDefender: {reader: readerBlockRule},
@@ -953,6 +988,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSetCreatureTypes: {layer: Layer4Type},
 	// #3398: a duration-bound attack tax, read by the attack pricer.
 	ModAttackTax: {reader: readerRule},
+	// ADR 0188 Decision 1 (#3559): the skip-your-next-turn debt.
+	ModSkipTurns: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1380,6 +1417,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := borrowModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := skipTurnsModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy && r != readerText {

@@ -802,3 +802,28 @@ Additive: `seats[].statics[].cantAttack.scope.{playerOnly,playerExempt,planeswal
 ### Out of scope
 
 - "Can't attack you this combat" (Champions of Minas Tirith): the window is the combat, not the turn, and an extra combat phase would see it end. A third writer when a card in a deck needs it.
+
+## Amendment — 2026-10-14 (#3520): `UntilCardCast`, "until this card is cast from exile"
+
+Emrakul, the Exigent Doom: "{3}, Exile this card from your hand: Target land gains '{T}: Add {C}{C}' until this card is cast from
+exile." The grant half is ADR 0093's `GrantAbilitiesFor`; the duration had no kind.
+
+`DurationKind` gains a ninth value, `UntilCardCast`, appended before `durationKindEnd` so every persisted int keeps its meaning (a
+binary from before it refuses a file carrying it through `Known`). It names the exile OBJECT, `Duration.Source` plus
+`Duration.SourceEpoch` (the shape `UntilSourceExilesAnother` uses), and ends on an EVENT (CR 611.2b): `CastSpell`, as a card in
+exile goes to the stack, calls `endCardCastDurationsLocked`, which sets `Ended` on every scoped effect whose duration names that
+object and sweeps them, so the layer pass drops the grant now. `durationExpiredLocked` reads only the flag. It is after the mana the
+grant produced has paid for the cast (ruling 2026-08-21), and nothing else ends it: the card leaving exile uncast leaves the effect
+running (the other 2026-08-21 ruling), and a new object of the same card never matches (CR 400.7). `Duration.Problem` requires the
+source and the epoch and refuses `Ended` on a kind that does not read it. `Game.UntilCardCastDuration(card)` builds it, answering
+false when the card is not in exile; a caller whose card has already left exile has nothing to wait for and grants for
+`IndefiniteDuration`.
+
+The cost half is not new: `ExileSelfZoneSupported` now lists the hand, so an activated ability that functions from the hand may have
+"Exile this card from your hand" as a cost (CR 602.2b), paid on activation before anyone can respond. `effects.Register` and the
+runtime validator read the same predicate.
+
+Snapshot: no new key; `scopedEffects[].duration.Kind` takes the new value, with `SourceEpoch` and `Ended`, both already carried.
+
+Back-out: remove the `endCardCastDurationsLocked` call in `CastSpell` and `TestEmrakulCastFromExileUsesTheGrantedManaThenTheGrantEnds`
+fails; match on the card without its epoch and `TestEmrakulGrantSurvivesAnotherCardBeingCastFromExile` fails.

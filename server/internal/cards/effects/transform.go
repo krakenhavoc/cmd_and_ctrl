@@ -115,3 +115,17 @@ func (e ExileAndReturnTransformed) Apply(ctx *Context) error {
 func TransformedPermanent(c game.Card) bool {
 	return c.ActiveFace != 0 && len(c.Faces) > 1 && c.Layout != game.LayoutFlip
 }
+
+// TransformPicked turns over every permanent a resolution-time pick
+// chose ("transform an Incubator token you control", Sunder the
+// Gateway). The choice is a chosen object, not a target, so the #1432
+// new-object guard stays on, and a permanent that cannot transform
+// (CR 701.27c) is skipped without error like any other Transform.
+func TransformPicked(ctx *Context, picked game.PromptedPicks) error {
+	for _, id := range picked.Cards() {
+		if err := (Transform{Target: id}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}

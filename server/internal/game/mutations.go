@@ -1932,6 +1932,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	g.payRevealLocked(playerID, cardID, costPlan, params.RevealIDs)
 	if splitSecond {
 		g.SplitSecondActive = true
+	} else {
+		// A grant from the battlefield (Samut) is live, so it is read
+		// here as the spell lands rather than stamped on the item.
+		g.refreshSplitSecondForBoardChangeLocked()
 	}
 	// Commander tax bookkeeping (CR 903.8). Increment AFTER the
 	// card has reached the stack so a failed cast doesn't bump the
@@ -2039,6 +2043,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// grant named: the copy was taken before the move bumped its epoch.
 	if grant != nil && grant.LapseOnPass != "" {
 		g.consumePassClosedGrantLocked(playerID, card)
+	}
+	// #3520: "until this card is cast from exile" ends with this cast,
+	// after the mana it granted has paid for it.
+	if src.Kind == ZoneExile {
+		g.endCardCastDurationsLocked(card)
 	}
 	if spendsGrant {
 		g.consumeLimitedGrantLocked(playerID, grantCard, grant)
@@ -3597,6 +3606,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 		Source: top.InstanceID,
 		CardID: top.InstanceID,
 	})
+	resolveSeq := g.eventSeq
 	// S14: run the catalog's OnResolve hook between target re-check
 	// and zone routing. Non-catalog cards return nil (no-op); catalog
 	// spells fire their effect here. Errors emit EventEffectError
@@ -3611,6 +3621,25 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// its OnResolve on ctx.HasMode declares no ModeOption.Effect and
 	// this is a no-op for it (#764).
 	g.runChosenModeEffectsLocked(item, ModeSpecFor(CatalogKey(top)), CatalogKey(top))
+	// #3613, CR 608.2c / 608.2n: an effect that asked something is not
+	// finished until the answer is in, so neither is the spell. The
+	// rest of this resolution — the exit below and the log's
+	// "resolved" line — waits on the stack for it (resolution_tail.go).
+	if g.holdResolutionTailLocked(item, resolveSeq) {
+		return nil
+	}
+	return g.finishSpellResolutionLocked(top, item)
+}
+
+// finishSpellResolutionLocked is the end of a spell's resolution, after
+// its effect and its bullets: the battlefield entry of a permanent
+// spell, a copy ceasing to exist, or the graveyard exit (CR 608.2n,
+// 608.3). resolveTopOfStackLocked runs it inline, and the resolution
+// tail runs it after the answer when the effect asked something
+// (#3613, resolution_tail.go). `top` is the spell as the stack holds it.
+//
+// Caller must hold g.mu, inside a resolution function.
+func (g *Game) finishSpellResolutionLocked(top Card, item *StackItem) error {
 	// #489, CR 608.2n: the spell may have MOVED ITSELF. Everything
 	// below this line routes the object that is still on the stack —
 	// to the battlefield, out of existence, or to a graveyard — and a
@@ -3952,6 +3981,7 @@ func (g *Game) resolveTopAbilityLocked() {
 		Label:               top.Label,
 		ResolvedStackItemID: top.ID,
 	})
+	resolveSeq := g.eventSeq
 	if top.Effect != nil {
 		if err := top.Effect(g, top); err != nil {
 			g.EmitEvent(Event{
@@ -3966,6 +3996,9 @@ func (g *Game) resolveTopAbilityLocked() {
 	// chosen bullets in printed order, after whatever body the item
 	// itself carries (#764).
 	g.runChosenModeEffectsLocked(top, top.modeSpec, "")
+	// #3613: an ability that asked something has not resolved until the
+	// answer is in; its log line waits for it (resolution_tail.go).
+	g.holdResolutionTailLocked(top, resolveSeq)
 }
 
 // routeStackCardToGraveyardLocked moves a card off Game.Stack and
@@ -6436,7 +6469,9 @@ func (g *Game) CounterAbility(abilityID uuid.UUID) error {
 // stack mutation. Caller must hold g.mu.
 func (g *Game) recomputeSplitSecondLocked() {
 	for _, item := range g.StackMeta {
-		if item != nil && item.SplitSecond {
+		// The spell's own split second, or one a battlefield static
+		// grants it right now (Samut; split_second.go).
+		if item != nil && (item.SplitSecond || g.spellGrantedSplitSecondLocked(item)) {
 			g.SplitSecondActive = true
 			return
 		}
@@ -8624,6 +8659,21 @@ func (g *Game) passPriorityLocked() error {
 		if err := g.attackCheckpointLocked(); err != nil {
 			return err
 		}
+		// #3622 / CR 508.1, 508.2: the pass that finishes the
+		// declaration locks it in BEFORE priority moves, so the
+		// "attacks" lines and triggers exist before any other seat can
+		// act on them (a flash creature cast in response was logged
+		// ahead of the attack it answered). If the lock-in put
+		// something on the stack, the active player receives priority
+		// with it (CR 508.2) and this pass is spent, exactly as at the
+		// wrap below.
+		if g.attackDeclarationPendingLocked() {
+			g.runStateChecksLocked()
+			if g.stackHasItemsLocked() || g.blockingChoiceLocked() != nil {
+				g.grantPriorityLocked(g.Turn.ActiveSeat)
+				return nil
+			}
+		}
 	}
 	// #1279 / CR 509.1: a defending player who passes in the
 	// declare-blockers step has finished declaring blockers — the pass
@@ -8854,6 +8904,13 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 	if g.Turn.Step != StepDeclareAttackers {
 		return ErrWrongStep
 	}
+	// #3621 / CR 508.1: the declaration is one action and it is over,
+	// so a creature that has not been declared cannot join it now.
+	// Re-pointing one that already has been announced stays the
+	// sandbox's hand-correction (see TestAttackAnnouncementsRewindWithUndo).
+	if g.attackDeclarationOverLocked() && !g.announcedAttacks[attackerID] {
+		return ErrAttackersAlreadyDeclared
+	}
 	// Layers must be fresh so HasKeyword reads the current effective
 	// characteristic (e.g. a creature granted haste via a Lightning
 	// Greaves equip this turn should be attackable) — and, since S27,
@@ -9066,6 +9123,10 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	}
 	if g.Turn.Step != StepDeclareAttackers {
 		return nil, ErrWrongStep
+	}
+	// #3621 / CR 508.1: the declaration is one action and it is over.
+	if g.attackDeclarationOverLocked() {
+		return nil, ErrAttackersAlreadyDeclared
 	}
 	// Layers must be fresh so HasKeyword reads current effective
 	// characteristics — a creature handed haste or vigilance this turn
@@ -9420,8 +9481,19 @@ func (g *Game) participatesInStepLocked(c *Card, firstStrike bool) bool {
 // is the greater (CR 510.1c, Ghalta the Immovable). Everything the damage
 // pass does with "the attacker's power" - trample, deathtouch, lethal
 // damage assignment, lifelink, commander damage - reads this number.
+//
+// A negative power assigns no damage (CR 510.1a, the clamp in
+// CurrentPower) unless the creature says it assigns damage as though its
+// power were positive (Characteristic.DamageAsPositivePower, Loot, the
+// Anomaly), in which case the amount is the absolute value of the
+// unclamped power. That is the one creature the clamp is lifted for.
 func (c *Card) combatDamagePower() int {
 	p := c.CurrentPower()
+	if c.effective != nil && c.effective.DamageAsPositivePower {
+		if raw := c.PowerForComparison(); raw < 0 {
+			p = -raw
+		}
+	}
 	if c.effective != nil && c.effective.DamageByToughness {
 		if t := c.CurrentToughness(); t > p {
 			return t
@@ -9507,6 +9579,15 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.AttackingTarget != uuid.Nil || c.BlockingTarget != uuid.Nil {
+			// ADR 0187 §4, CR 510.1a: a combatant told it assigns no
+			// combat damage this turn assigns 0, whatever its power or
+			// DamageByToughness say. Everything below reads this map, so
+			// trample, lifelink, deathtouch, commander damage and the
+			// assignment prompt all see a combatant with nothing to assign.
+			if g.permanentAssignsNoCombatDamageLocked(c) {
+				power[c.InstanceID] = 0
+				continue
+			}
 			power[c.InstanceID] = c.combatDamagePower()
 		}
 	}
@@ -9589,7 +9670,9 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 						g.dealCombatDamageToAttackTargetLocked(atk.AttackingTarget, atkID, toPlayer, step)
 					}
 				}
-			} else {
+			} else if atkPower > 0 {
+				// A multi-blocked attacker that assigns 0 has nothing to
+				// divide (CR 510.1a), so it queues no prompt.
 				// Multi-blocker → queue damage-assignment prompt.
 				// Server pauses here; the resume path fires the actual
 				// marks. The prompt blocks the table
@@ -10577,7 +10660,7 @@ func (g *Game) RemovePlayer(playerID uuid.UUID) error {
 		p.Seat = i
 		// Lobby seats compact after a departure. Keep deck source ordinals
 		// aligned so a later join cannot reuse a surviving card's ordinal.
-		for _, zone := range []*Zone{p.Library, p.Command, p.Companion} {
+		for _, zone := range []*Zone{p.Library, p.Command, p.Companion, p.Sideboard} {
 			if zone == nil {
 				continue
 			}

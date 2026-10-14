@@ -25,8 +25,8 @@ func init() {
 		OptionalCosts: []game.AdditionalCost{Offspring("{1}{R}")},
 		Triggered: []game.TriggeredAbility{
 			OffspringToken("Agate Instigator"),
-			WheneverAnotherCreatureEntersUnderYourControl("Agate Instigator — 1 damage to each opponent",
-				Do(DamageEachOpponent{N: 1})),
+			CreatureEnterPaying(WheneverAnotherCreatureEntersUnderYourControl("Agate Instigator — 1 damage to each opponent",
+				Do(DamageEachOpponent{N: 1})), game.CreatureEnterPayoff{DamageEachOpponent: 1}),
 		},
 	})
 }

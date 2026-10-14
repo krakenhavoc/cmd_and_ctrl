@@ -8,6 +8,7 @@ import {
   holdCombatWindow,
   loopNoticeText,
   owesAttackRequirement,
+  owesFreeCast,
   owesBlockDecision,
   _resetCacheForTests,
 } from "./priority";
@@ -456,6 +457,68 @@ describe("owesAttackRequirement", () => {
       ),
     ).toBe(false);
     expect(owesAttackRequirement(null, "p0")).toBe(false);
+  });
+});
+
+// #3490: a rebound card in exile the viewer may cast now holds autopass,
+// because passing is the decline and auto-pass passed 80 ms after
+// "Cast it free", before the target picker was answered.
+describe("owesFreeCast", () => {
+  const withExile = (cards: CardView[]): GameView => ({
+    ...snap({ step: "upkeep" }),
+    exile: { kind: "exile", owner: "", count: cards.length, cards },
+  });
+  const rebound = (extras: Partial<CardView> = {}, closes = true): CardView =>
+    card("Quantum Misalignment", "Sorcery", {
+      castable_here: true,
+      exile_play: { player: "p0", cast_only: true, closes_on_pass: closes || undefined },
+      ...extras,
+    });
+
+  it("is true for a castable exile card whose grant a pass would end", () => {
+    expect(owesFreeCast(withExile([rebound()]), "p0")).toBe(true);
+  });
+
+  it("is false when the grant outlasts a pass (impulse exile)", () => {
+    expect(owesFreeCast(withExile([rebound({}, false)]), "p0")).toBe(false);
+  });
+
+  // #3625: Buster Sword / Rishkar's Expertise leave the card in hand.
+  describe("a free cast from hand", () => {
+    const granted = (extras: Partial<CardView> = {}): CardView =>
+      card("Lightning Bolt", "Instant", {
+        closes_on_pass: true,
+        alternative_costs: [{ key: "granted-cost", label: "Free" } as never],
+        ...extras,
+      });
+    const withHand = (cards: CardView[]): GameView => snap({ step: "upkeep", hand: cards });
+
+    it("is true for a hand card with a pass-closed free offer", () => {
+      expect(owesFreeCast(withHand([granted()]), "p0")).toBe(true);
+    });
+
+    it("is false without the flag, without the offer, or once timing closes the offer", () => {
+      expect(owesFreeCast(withHand([granted({ closes_on_pass: undefined })]), "p0")).toBe(false);
+      expect(owesFreeCast(withHand([granted({ alternative_costs: [] })]), "p0")).toBe(false);
+      expect(
+        owesFreeCast(
+          withHand([
+            granted({
+              alternative_costs: [{ key: "granted-cost", timing_closed: true } as never],
+            }),
+          ]),
+          "p0",
+        ),
+      ).toBe(false);
+      expect(owesFreeCast(withHand([granted()]), "p1")).toBe(false);
+    });
+  });
+
+  it("is false when nothing can be cast now (no legal target), or it is another seat's grant", () => {
+    expect(owesFreeCast(withExile([rebound({ castable_here: false })]), "p0")).toBe(false);
+    expect(owesFreeCast(withExile([rebound()]), "p1")).toBe(false);
+    expect(owesFreeCast(withExile([]), "p0")).toBe(false);
+    expect(owesFreeCast(null, "p0")).toBe(false);
   });
 });
 

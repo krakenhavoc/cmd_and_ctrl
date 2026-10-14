@@ -79,6 +79,8 @@ var Inventory = join(
 		"bot_key_user_id"),
 	cols("seats", Kept, "the model id an own-key bot seat asked for names no one",
 		"bot_key_model"),
+	cols("seats", NotPersonal, "the bot tier standing in for an away player and when it took the seat (ADR 0177); neither names a person",
+		"stand_in", "stand_in_since"),
 
 	cols("invites", NotPersonal, "an invite token hash and its clock",
 		"token_hash", "game_id", "kind", "created_at", "expires_at", "revoked_at"),
@@ -97,7 +99,7 @@ var Inventory = join(
 		"provider", "subject", "user_id", "display_name", "avatar_hash", "refresh_token", "scopes", "linked_at", "refreshed_at"),
 
 	cols("decks", Deleted, "every deck the person saved",
-		"id", "owner_id", "name", "source_format", "source_text", "commanders", "card_count", "created_at", "updated_at", "source_url"),
+		"id", "owner_id", "name", "source_format", "source_text", "commanders", "card_count", "created_at", "updated_at", "source_url", "power_level"),
 
 	cols("deck_requests", NotPersonal, "which GitHub issue tracks a deck; no requester",
 		"deck_key", "issue_number", "issue_url", "created_at"),

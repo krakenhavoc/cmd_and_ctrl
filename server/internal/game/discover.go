@@ -404,6 +404,17 @@ func (g *Game) lapseCastPermissionLocked(holder uuid.UUID, perm CastPermission) 
 			}
 		}
 	}
+	// #3510: "if you don't [cast it]" is now true. Run once per
+	// permission, after the card has gone where its lapse sends it,
+	// whether or not the card was still there to cast: a card that left
+	// the zone was not cast either.
+	if perm.IfNotCast != "" {
+		var card uuid.UUID
+		if len(perm.Cards) > 0 {
+			card = perm.Cards[0].ID
+		}
+		_ = g.runCastFollowUpLocked(perm.IfNotCast, CastFollowUp{Player: holder, Source: perm.Source, Spell: card})
+	}
 }
 
 // consumePassClosedGrantLocked removes the pass-closed permission a
@@ -423,15 +434,24 @@ func (g *Game) consumePassClosedGrantLocked(holder uuid.UUID, card Card) {
 		return
 	}
 	var used []CastPermission
+	spent := false
 	kept := p.CastPermissions[:0:0]
 	for _, perm := range p.CastPermissions {
 		if perm.LapseOnPass != "" && perm.NamesCard(card) {
+			// #2017: a permission with a running budget over several
+			// cards stays for the cards not yet cast, spending this
+			// one's mana value.
+			if left, ok := perm.spendManaValueBudget(card); ok {
+				kept = append(kept, left)
+				spent = true
+				continue
+			}
 			used = append(used, perm)
 			continue
 		}
 		kept = append(kept, perm)
 	}
-	if len(used) == 0 {
+	if len(used) == 0 && !spent {
 		return
 	}
 	if len(kept) == 0 {
@@ -449,9 +469,48 @@ func (g *Game) consumePassClosedGrantLocked(holder uuid.UUID, card Card) {
 // card as it will be cast: the face already materialised, X locked at
 // zero (a free cast, CR 107.3b). An unreadable cost fails it.
 func spellManaValueWithinCap(card Card, grant *CastPermission) bool {
-	if grant == nil || grant.MaxSpellManaValue == nil {
+	if grant == nil || (grant.MaxSpellManaValue == nil && grant.ManaValueBudget == nil) {
 		return true
 	}
 	mv, ok := card.ParsedManaValue()
-	return ok && mv <= *grant.MaxSpellManaValue
+	if !ok {
+		return false
+	}
+	// #2017: the permission's running total is a cap on this spell too —
+	// what is left of "total mana value 6 or less" after the casts
+	// already made through it.
+	if grant.ManaValueBudget != nil && mv > *grant.ManaValueBudget {
+		return false
+	}
+	return grant.MaxSpellManaValue == nil || mv <= *grant.MaxSpellManaValue
+}
+
+// spendManaValueBudget is the budget half of consuming a pass-closed
+// permission a cast just used (#2017): for one that carries a running
+// ManaValueBudget over more cards than the one cast, it answers a copy
+// of the permission with `card` struck from its named cards and the
+// card's mana value taken off the budget (never below zero), and true.
+// For every other permission — no budget, or the cast card was the last
+// it named — false: the caller removes it whole, as it always has.
+//
+// A fresh Cards slice and a fresh budget pointer, because the originals
+// are shared with the undo snapshots (sweepCastPermissionsLocked says
+// why). `card` is the card as the permission names it, face materialised
+// as the cast gate judged it.
+func (p CastPermission) spendManaValueBudget(card Card) (CastPermission, bool) {
+	if p.ManaValueBudget == nil || len(p.Cards) < 2 {
+		return p, false
+	}
+	mv, _ := card.ParsedManaValue()
+	left := max(*p.ManaValueBudget-mv, 0)
+	p.ManaValueBudget = &left
+	cards := make([]PermissionCardRef, 0, len(p.Cards)-1)
+	for _, ref := range p.Cards {
+		if ref.ID == card.InstanceID && ref.Epoch == card.ObjectEpoch {
+			continue
+		}
+		cards = append(cards, ref)
+	}
+	p.Cards = cards
+	return p, true
 }

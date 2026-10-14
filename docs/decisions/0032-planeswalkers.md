@@ -754,3 +754,35 @@ Compliance gains her −X and is Full; Ugin, the Spirit Dragon gains his −X an
 **Not done.** The other −X planeswalkers in the dump wait on seams of their own (a spellbook, a static that
 shares loyalty abilities, "mana value X" from a graveyard, a chosen planeswalker name), or are simply not
 yet catalogued.
+
+
+## Amendment (2026-10-14, #3515): a legend-rule exemption that lasts one turn (Hall of Echoes)
+
+"{5}: This land becomes a copy of target creature you control until end of turn. The "legend rule" doesn't
+apply to permanents you control this turn." The #2177 exemption (`Spec.LegendRuleExemptions`, read live off
+the battlefield by catalog key) is a static ability with no duration, so a land declaring it would have
+switched the rule off for its controller for the whole game. The card was skipped for that reason.
+
+The turn-limited form is a stored record, because a resolving ability creates it and it outlives its source
+(CR 611.2): `ModLegendRuleDoesntApply`, a `ScopedEffect` rules gate (reader `rule`, scope game, reads
+`Player`, swept at cleanup under CR 514.2), the `ModCantBecomeMonarch` pattern. `Game.LegendRuleDoesntApplyThisTurnForEffect`
+registers it and `effects.LegendRuleDoesntApplyThisTurn{}` is the primitive (Player defaults to the ability's
+controller). `legendRuleExemptControllersLocked` now reads both sources into one set, so the printed static
+and the stored record compose: the rule is off for a player while either covers them, and the first state-based
+action check after cleanup applies CR 704.5j again, the controller choosing which to keep. A player-scoped
+record covers only that player's permanents; an opponent's duplicate legends still go
+(`TestHallOfEchoesBecomesACopyAndSuspendsTheLegendRuleForYouOnly`).
+
+The two sentences of Hall's ability are separate instructions. The copy lands on the land (`BecomeCopy`),
+and the exemption is registered whenever the ability resolves with its target legal. An illegal target
+counters the whole ability (CR 608.2b), so neither half happens
+(`TestHallOfEchoesFizzlesWithNoLegalTarget`). The land stops being a copy at the same cleanup that ends the
+exemption, so Hall never leaves a legend pair behind
+(`TestHallOfEchoesExemptionEndsAtCleanup`).
+
+**Snapshot impact.** One new `ScopedEffect` mod kind, an additive on-disk identity under schema v8
+(ADR 0041's amendment note below). A binary from before it refuses a restore point naming it
+(`ErrUnknownEffectKey`) rather than restoring the exemption as nothing. One fixture,
+`v8/legend_rule_doesnt_apply.json`.
+
+**Cards.** Hall of Echoes (Full).

@@ -36,7 +36,7 @@ type SetDeckInput struct {
 // WaitInput is `wait_for_decision`'s input.
 type WaitInput struct {
 	TimeoutS  int    `json:"timeout_s,omitempty" jsonschema:"seconds to wait, 1 to 50 (default 25)"`
-	PassUntil string `json:"pass_until,omitempty" jsonschema:"none (default) or my_turn_or_stack: also pass priority on other players' turns while the stack is empty"`
+	PassUntil string `json:"pass_until,omitempty" jsonschema:"none (default), my_turn_or_stack (also pass priority on other players' turns while the stack is empty) or smart (also pass the idle steps of your own turn and stack items you hold no response to; stops at your main phases, attacks, blocks and choices)"`
 }
 
 // GetStateInput is `get_state`'s input.
@@ -151,7 +151,28 @@ func (s *Seat) Join(ctx context.Context, in JoinInput) (Result, error) {
 		r := s.installDeck(ctx, *in.Deck)
 		deckNote = append(deckNote, r.Text)
 	}
-	return s.joinedText(resumed, append(s.deckCatalogLines(ctx), deckNote...)), nil
+	extra := append(s.outdatedLines(), s.deckCatalogLines(ctx)...)
+	return s.joinedText(resumed, append(extra, deckNote...)), nil
+}
+
+// outdatedLines is the one-line warning for a seat older than its server
+// (#3608): the server advertised a newer seat revision than this binary
+// was built at. It warns and logs, and never refuses the join.
+func (s *Seat) outdatedLines() []string {
+	have := s.cfg.Revision
+	if have <= 0 {
+		have = protocol.SeatRevision
+	}
+	want := int(s.api.serverRev.Load())
+	if want <= have {
+		return nil
+	}
+	name := "this seat"
+	if s.cfg.Build != "" {
+		name = "this seat is mcpseat " + s.cfg.Build
+	}
+	s.log.Warn("the seat is older than the server expects", "seat_revision", have, "server_revision", want, "build", s.cfg.Build)
+	return []string{fmt.Sprintf("note: %s, seat revision %d; the server expects revision %d or later, so fixes since then are missing here. Update from the Releases page (docs/mcp-seat.md#download).", name, have, want)}
 }
 
 // deckCatalogLines names the pre-built decks set_deck's {id} takes, while
@@ -398,18 +419,16 @@ func (s *Seat) WaitForDecision(ctx context.Context, in WaitInput) (Result, error
 	if timeout > maxWait {
 		timeout = maxWait
 	}
-	switch in.PassUntil {
-	case "", "none":
-	case "my_turn_or_stack":
-	default:
-		return errorResult("pass_until is none or my_turn_or_stack"), nil
+	mode, valid := parsePassUntil(in.PassUntil)
+	if !valid {
+		return errorResult("pass_until is none, my_turn_or_stack or smart"), nil
 	}
 	s.mu.Lock()
 	if s.sess == nil {
 		s.mu.Unlock()
 		return errorResult("not seated: call join first"), nil
 	}
-	s.passUntil = in.PassUntil == "my_turn_or_stack"
+	s.passMode = mode
 	s.mu.Unlock()
 	s.pokeAutopilot()
 
@@ -455,7 +474,10 @@ func (s *Seat) statusLocked() (Result, bool) {
 		return textResult("status: eliminated",
 			"Your seat is out of the game; the others play on. Call leave to disconnect, or keep calling wait_for_decision to watch for game_over."), true
 	}
-	if w := s.win; w != nil && w.key == s.key && w.state == winDecision {
+	// A held decision is not offered while the socket is down: act would
+	// refuse it as not_sent, so the seat waits (notReadyLocked says
+	// reconnecting) until the redial's snapshot wakes it.
+	if w := s.win; s.isConnected && w != nil && w.key == s.key && w.state == winDecision {
 		return s.decisionTextLocked(w), true
 	}
 	return Result{}, false
@@ -495,6 +517,10 @@ func (s *Seat) gameOverLocked() Result {
 		}
 	} else {
 		lines = append(lines, "outcome: the table ended with no result")
+	}
+	since := unshownLog(v, s.logSeqShown, newViewerNameWrapper(v, s.sess.PlayerID.String()))
+	if block := compactLogBlock(since); block != "" {
+		lines = append(lines, "", untrustedNote, strings.TrimSuffix(block, "\n"))
 	}
 	lines = append(lines, "", s.stats.report(), "Call leave to disconnect.")
 	return textResult(lines...)
@@ -557,7 +583,7 @@ func (s *Seat) GetState(_ context.Context, in GetStateInput) (Result, error) {
 	}
 	me := s.sess.PlayerID.String()
 	header := fmt.Sprintf("table state: %s", s.view.State)
-	if w := s.win; w != nil && w.key == s.key && w.state == winDecision {
+	if w := s.win; s.isConnected && w != nil && w.key == s.key && w.state == winDecision {
 		header += fmt.Sprintf("; open decision: window %s (%s)", w.token, w.kind)
 	}
 	switch in.Detail {
@@ -1094,7 +1120,7 @@ func (s *Seat) Leave(_ context.Context, _ LeaveInput) (Result, error) {
 	s.mu.Lock()
 	s.sess, s.view, s.haveView, s.win, s.moves = nil, nil, false, nil, nil
 	s.key, s.lastCounted = windowKey{}, windowKey{}
-	s.endReason, s.reportedOver, s.passUntil = "", false, false
+	s.endReason, s.reportedOver, s.passMode = "", false, passNone
 	s.noMoveReq, s.probed = false, false
 	s.autoSince, s.chatSince, s.logSeqShown = map[string]int{}, nil, 0
 	s.broadcastLocked()

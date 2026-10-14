@@ -54,6 +54,17 @@ const (
 	// names the ability off those two (#1257).
 	EventResolve EventKind = "resolve"
 
+	// EventResolutionFinished — a resolution that waited on one of its
+	// own prompts has finished (#3613, CR 608.2c, 608.2n). Same fields
+	// as the item's EventResolve. EventResolve still fires as the item
+	// begins to resolve, because card code finds "the item resolving
+	// now" by scanning back to it; when the resolution then pauses, that
+	// event is marked LogDeferred and the public log writes its
+	// "… resolved" line here instead, after the answer. A resolution
+	// that never pauses emits no EventResolutionFinished. See
+	// resolution_tail.go.
+	EventResolutionFinished EventKind = "resolution_finished"
+
 	// EventFizzle — a spell or ability resolved but did nothing
 	// (all targets illegal, or the effect short-circuited). CR
 	// 608.2b's "countered by game rules."
@@ -990,6 +1001,23 @@ const (
 	// begins, and a queued turn of a player who leaves never does.
 	EventExtraTurnAdded EventKind = "extra_turn_added"
 
+	// EventTurnSkipAdded — an effect made a player skip their next
+	// turns (CR 614.10, ADR 0188 Decision 1, #3559: Magosi, the
+	// Waterveil, Lethal Vapors). Actor is the player who will skip,
+	// Source the card whose effect wrote the debt, Amount how many
+	// turns it adds. Emitted as the debt is RECORDED; EventTurnSkipped
+	// follows once per turn actually skipped.
+	EventTurnSkipAdded EventKind = "turn_skip_added"
+
+	// EventTurnSkipped — a player's turn was skipped because they owed
+	// a skip (CR 614.10a, ADR 0188 Decision 1). Actor is the player who
+	// would have taken the turn, Source the card whose effect wrote the
+	// debt that was spent. Label is "extra" and Amount the turn's
+	// ExtraTurn.Ref when the turn skipped was an extra turn, and both
+	// are empty for a normal one. Emitted by the rotation seam; no
+	// EventTurnBegan follows, because the turn never began.
+	EventTurnSkipped EventKind = "turn_skipped"
+
 	// EventPlayerControlScheduled — an effect will give a player control
 	// of another player during that player's next turn (CR 723.1, ADR
 	// 0167 §1: Emrakul, the Promised End). Actor is the controller,
@@ -1340,6 +1368,17 @@ const (
 	// actually changed. Public. Added in S35 (#1032).
 	EventSettingsChanged EventKind = "settings_changed"
 
+	// EventAwaySeat — the table moved on without a player who was
+	// gone (ADR 0177). Label is AwayStandIn (a bot took the seat),
+	// AwayConcede (the seat was conceded for them) or AwayTakeBack
+	// (the player came back and took their seat from the bot). Target
+	// is the seat; Actor is who decided (uuid.Nil for the server
+	// admin; the seat itself for a take-back); Amount is how many
+	// whole minutes the seat had been offline. Public. Nothing in the
+	// rules reads it: the concession that follows AwayConcede is an
+	// ordinary EventConcede.
+	EventAwaySeat EventKind = "away_seat"
+
 	// EventSpawned — somebody put cards or tokens onto the table from
 	// nowhere (ADR 0075 §2.4). Actor is who asked (uuid.Nil for the
 	// server admin), Target the seat the cards belong to, NewZone
@@ -1434,6 +1473,13 @@ type Event struct {
 	// snapshot fixtures. A spell's resolve and fizzle leave it unset:
 	// CardID is its item ID.
 	ResolvedStackItemID uuid.UUID `json:"resolved_stack_item_id,omitempty"`
+
+	// LogDeferred marks an EventResolve whose resolution paused on one
+	// of its own prompts (#3613). The public log writes no line for it;
+	// the item's EventResolutionFinished, after the answer, carries the
+	// "… resolved" line instead. Set under the lock that emitted the
+	// event, before anything reads it (resolution_tail.go).
+	LogDeferred bool `json:"log_deferred,omitempty"`
 
 	// Amount is the signed / count payload: damage dealt, life
 	// delta, number of cards, counter count after the change.
@@ -1635,6 +1681,12 @@ type Event struct {
 	Cause           MoveCauseKind `json:"cause,omitempty"`
 	CauseController uuid.UUID     `json:"cause_controller,omitempty"`
 	CauseItem       uuid.UUID     `json:"cause_item,omitempty"`
+
+	// PublicNames maps a referenced token's ID to its name, captured
+	// when the event was emitted so the log can still name a token that
+	// has since ceased to exist (#3609, public_names.go). Only tokens
+	// every seat could see; never a hidden or face-down card.
+	PublicNames map[uuid.UUID]string `json:"public_names,omitempty"`
 
 	// ErrorMsg carries the failure reason on EventEffectError.
 	ErrorMsg string `json:"error_msg,omitempty"`
@@ -1956,6 +2008,7 @@ func (g *Game) EmitEvent(ev Event) {
 	// undo and every consumer see the same grouping the trigger
 	// harvester saw.
 	ev.Batch = g.currentEventBatchLocked()
+	g.stampPublicNamesLocked(&ev)
 	g.Events = append(g.Events, ev)
 	// S17 sub-PR 6 diagnostic: effect-error events are otherwise
 	// silent (no client toast yet). Surfacing them in the server log

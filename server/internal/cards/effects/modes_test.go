@@ -247,7 +247,9 @@ func TestIzzetCharmDrawTwoDiscardTwo(t *testing.T) {
 
 	// Both cards drawn; nothing discarded yet — the controller owes
 	// the choice. castModal seeds the Charm then casts it (net 0 on
-	// hand), so hand is +2 and the graveyard holds only the Charm.
+	// hand), so hand is +2. The graveyard is unchanged: the discard is
+	// part of the Charm's resolution, so the Charm waits on the stack
+	// for it (#3613, CR 608.2n).
 	if me.Hand.Size() != handBefore+2 {
 		t.Errorf("hand %d -> %d, want +2 (drawn, not yet discarded)",
 			handBefore, me.Hand.Size())
@@ -255,8 +257,8 @@ func TestIzzetCharmDrawTwoDiscardTwo(t *testing.T) {
 	if me.Library.Size() != libBefore-2 {
 		t.Errorf("library %d -> %d, want -2", libBefore, me.Library.Size())
 	}
-	if me.Graveyard.Size() != gyBefore+1 {
-		t.Errorf("graveyard %d -> %d, want +1 (the Charm only)",
+	if me.Graveyard.Size() != gyBefore {
+		t.Errorf("graveyard %d -> %d, want +0 (the Charm is still resolving)",
 			gyBefore, me.Graveyard.Size())
 	}
 	if discardOwed(g, me.ID) != 2 {

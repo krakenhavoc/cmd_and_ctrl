@@ -20,11 +20,24 @@ import type { ActivatedAbilityView, CardView } from "./protocol";
 // that is not in `options` contributes nothing rather than NaN: the
 // snapshot can change under an open prompt, and a creature that has
 // left the board should shrink the total, not poison it.
-export function crewPower(options: CardView[], chosen: readonly string[]): number {
+//
+// `counted` is the ability's crew_power (ADR 0186 Decision 6): what each
+// creature counts for on this cost, which the server sums. A creature it
+// does not name counts its plain power, so a teamwork prompt (no map) and
+// an older server behave as before.
+export function countedPower(c: CardView, counted?: Readonly<Record<string, number>>): number {
+  return counted?.[c.instance_id] ?? c.power ?? 0;
+}
+
+export function crewPower(
+  options: CardView[],
+  chosen: readonly string[],
+  counted?: Readonly<Record<string, number>>,
+): number {
   let total = 0;
   for (const id of chosen) {
     const c = options.find((o) => o.instance_id === id);
-    total += c?.power ?? 0;
+    if (c) total += countedPower(c, counted);
   }
   return total;
 }
@@ -38,17 +51,21 @@ export function crewSatisfied(
   options: CardView[],
   chosen: readonly string[],
   need: number,
+  counted?: Readonly<Record<string, number>>,
 ): boolean {
   if (chosen.length === 0) return false;
-  return crewPower(options, chosen) >= need;
+  return crewPower(options, chosen, counted) >= need;
 }
 
 // crewAvailablePower is the best the whole offered roster could do.
 // Below the crew number, no selection can ever pay the cost, and the
 // UI should say so rather than let a player hunt for the creature
 // that would finish the total.
-export function crewAvailablePower(options: CardView[]): number {
-  return options.reduce((sum, c) => sum + (c.power ?? 0), 0);
+export function crewAvailablePower(
+  options: CardView[],
+  counted?: Readonly<Record<string, number>>,
+): number {
+  return options.reduce((sum, c) => sum + countedPower(c, counted), 0);
 }
 
 // crewOptionsFor narrows a battlefield roster to the creatures the

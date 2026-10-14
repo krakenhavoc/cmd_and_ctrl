@@ -45,6 +45,10 @@ var (
 	// ADR 0172 §3).
 	ErrTooManyCompanions = errors.New("game: a deck can have only one companion")
 
+	// ErrSideboardTooLarge is returned when a deck seats more than
+	// MaxSideboardSize cards outside the game (ADR 0191 §5).
+	ErrSideboardTooLarge = errors.New("game: a sideboard can hold at most 15 cards")
+
 	// ErrCardNotFound is returned when a zone operation references a
 	// card instance that does not exist in the zone.
 	ErrCardNotFound = errors.New("game: card instance not found in zone")
@@ -462,6 +466,15 @@ var (
 	// leaves the undo stack and the snapshot sequence untouched for
 	// what is, in the end, a no-op. Added in S31 for #318.
 	ErrNoLegalAttackers = errors.New("game: no creature in the declaration is able to attack")
+
+	// ErrAttackersAlreadyDeclared is returned by the declaration verbs
+	// once this combat's attack declaration is over (CR 508.1, #3621):
+	// the active player passed to finish it, or it was locked in with no
+	// requirement left owed, so its "attacks" triggers are on the stack
+	// or already resolved. A creature declared now would be tapped and
+	// announced on its own, with its triggers firing late. clear_combat
+	// is the sandbox's way back.
+	ErrAttackersAlreadyDeclared = errors.New("game: attackers have already been declared this combat")
 
 	// ErrAttackTaxUnpaid is returned by the declaration verbs when the
 	// attacking player cannot pay the CR 508.1a cost of the

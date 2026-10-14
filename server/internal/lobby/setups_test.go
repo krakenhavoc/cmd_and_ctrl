@@ -54,7 +54,7 @@ func TestSetupIsCapturedWhenTheTableStarts(t *testing.T) {
 	}
 
 	table := s.mustCreate(t, alice, "Friday")
-	aliceSeat := s.join(t, alice, table.GameMeta, "")
+	aliceSeat := *table.Seat // seated at create (#3494)
 	bobSeat := s.join(t, bob, table.GameMeta, "")
 	guestSeat := s.join(t, "", table.GameMeta, "Guest")
 	resp := postJSON(t, s.srv, "/games/"+table.ID.String()+"/seats/bot", aliceSeat.Token,
@@ -199,7 +199,10 @@ func TestCreateWithTheLastSetup(t *testing.T) {
 			t.Errorf("%s was not named as skipped: %+v", name, out.Setup.Skipped)
 		}
 	}
-	if out.InviteToken == "" || len(out.Players) != 1 || !out.Players[0].IsBot || out.Players[0].Name != "Robo" {
+	// The creator in seat 1 (#3494), then the setup's bot.
+	if out.InviteToken == "" || len(out.Players) != 2 ||
+		out.Players[0].IsBot || !out.Players[0].IsHost || out.Players[0].DiscordID != "discord-99" ||
+		!out.Players[1].IsBot || out.Players[1].Name != "Robo" {
 		t.Errorf("the new table: %+v", out.GameMeta)
 	}
 	g, _ := s.lobby.LookupGame(out.ID)
@@ -235,7 +238,7 @@ func TestApplySetupToATable(t *testing.T) {
 	})
 
 	table := s.mustCreate(t, alice, "apply here")
-	aliceSeat := s.join(t, alice, table.GameMeta, "")
+	aliceSeat := *table.Seat // seated at create (#3494)
 	bobSeat := s.join(t, bob, table.GameMeta, "")
 	path := "/games/" + table.ID.String() + "/setup"
 	body := applySetupRequest{From: "last"}

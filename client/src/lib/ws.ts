@@ -247,6 +247,14 @@ export class GameClient {
   // consumers that care about ordering don't have to derive it.
   readonly snapshot: Writable<GameView | null> = guardedWritable(null, "snapshot");
   readonly lastSeq: Writable<number> = guardedWritable(0, "lastSeq");
+  // lastAck is the newest `ack` the server sent (ADR 0122 §6.4): the id
+  // of an action frame this client sent and the seq of the state it
+  // produced. The ack follows that state's snapshot, so a reader that
+  // sees an ack for its frame knows the snapshot at `seq` or later is
+  // on screen. #3343 reads it to tell when an automatic pass has
+  // actually landed (the chip's Undo must not point at an earlier
+  // action).
+  readonly lastAck: Writable<{ id: string; seq: number } | null> = guardedWritable(null, "lastAck");
   // frames is the dev frame inspector's ring buffer. Empty and never
   // written unless setFrameRecording(true) has been called, which
   // only happens on a dev deployment with the frame_inspector feature
@@ -357,6 +365,10 @@ export class GameClient {
   // bluff (#1307) reads it to tell whether the viewer did anything
   // while it was waiting, whichever of the many send paths they used.
   private sentActions = 0;
+  // actionCount is actionsSent as a store, for a reader that must re-run
+  // when the viewer acts (#3343: the auto-pass chip drops its Undo the
+  // moment anything else is sent).
+  readonly actionCount: Writable<number> = guardedWritable(0, "actionCount");
   get actionsSent(): number {
     return this.sentActions;
   }
@@ -785,6 +797,7 @@ export class GameClient {
     this.generation = null;
     this.snapshot.set(null);
     this.lastSeq.set(0);
+    this.lastAck.set(null);
   }
 
   disconnect(): void {
@@ -925,7 +938,11 @@ export class GameClient {
   // against the docs/protocol.md action catalog; this method does not
   // validate params. The `type` union (protocol.ts ActionType) keeps
   // action names typo-proof against the server registry.
-  sendAction(type: ActionType, player?: string, params?: unknown): string | null {
+  //
+  // `reason` is for a send the client made on the player's behalf
+  // (#3343: an automatic pass). It never goes on the wire; it is written
+  // into the log line a bug report attaches, so the report says why.
+  sendAction(type: ActionType, player?: string, params?: unknown, reason?: string): string | null {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       // Every card click, every priority pass, every mana tap funnels
       // through here. This branch is the one a player meets during a
@@ -943,8 +960,12 @@ export class GameClient {
     const wire = JSON.stringify(frame);
     this.socket.send(wire);
     this.sentActions++;
+    this.actionCount.set(this.sentActions);
     this.recordFrame("out", frame, wire);
-    this.append("sent", `action ${type} id=${id.slice(0, 8)}`);
+    this.append(
+      "sent",
+      `action ${type} id=${id.slice(0, 8)}${reason ? ` reason=${JSON.stringify(reason)}` : ""}`,
+    );
     return id;
   }
 
@@ -1063,7 +1084,9 @@ export class GameClient {
           break;
         }
         const msg: ChatMessage = {
-          id: frame.id,
+          // A server that sends no id (#3619) must not give every line the
+          // same key: the chat feed is a keyed each.
+          id: frame.id || uuid(),
           authorID: p.author_id ?? "",
           authorName: p.author_name,
           text: p.text,
@@ -1084,6 +1107,9 @@ export class GameClient {
         // snapshot, so there is nothing to apply; the browser only
         // records it, so it is not an unknown kind.
         const p = frame.payload as AckPayload | undefined;
+        if (p && typeof p.seq === "number" && frame.id) {
+          this.lastAck.set({ id: frame.id, seq: p.seq });
+        }
         this.append(
           "info",
           `ack id=${frame.id.slice(0, 8)} seq=${p?.seq ?? "?"} generation=${p?.generation ?? "?"}`,

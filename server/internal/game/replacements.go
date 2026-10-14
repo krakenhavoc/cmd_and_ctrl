@@ -1505,8 +1505,12 @@ type ReplacementEffect struct {
 	// object enters the battlefield and has nothing to say afterwards
 	// ("This land enters tapped", CR 614.12). The art tile's ◆ chip
 	// drops it once the object is in play (#2410,
-	// game.AbilityRowsOnBattlefield). Display only: the replacement
-	// pipeline never reads it.
+	// game.AbilityRowsOnBattlefield). The replacement pipeline never
+	// reads it. The trigger-order check does (reactorLocked): on a
+	// permanent in play it sets the replacement aside, so a declaration
+	// must apply only to its own object entering, which
+	// TestEntryOnlyReplacementsApplyOnlyToTheirOwnEntry (cards/effects)
+	// holds every catalog row to.
 	EntryOnly bool
 
 	// RowLabel is the replacement's wording on the art tile's ◆ chip

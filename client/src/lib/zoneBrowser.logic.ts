@@ -23,6 +23,9 @@ export function cardsForZone(view: GameView, zoneKind: BrowsableZone, ownerID: s
   if (!seat) return [];
   if (zoneKind === "graveyard") return seat.graveyard.cards;
   if (zoneKind === "command") return seat.command.cards;
+  // ADR 0191: only the owner's own view carries the cards; everyone
+  // else's seat has none, so a stale open browser shows nothing.
+  if (zoneKind === "sideboard") return seat.sideboard ?? [];
   return [];
 }
 
@@ -41,12 +44,15 @@ export function zoneTargetBans(view: GameView, zoneKind: BrowsableZone): string[
 // stack have their own counter/resolve flow via StackOverlay).
 // Graveyard / exile / command are manage-able only by their owner,
 // who is also the controller of any card in those zones server-side.
+// The sideboard is view-only for everyone, its owner included: a card
+// outside the game is not a zone, and no move verb reaches it (CR
+// 400.11c, ADR 0191).
 export function canManageZone(
   zoneKind: BrowsableZone,
   viewerID: string | null,
   ownerID: string,
 ): boolean {
-  if (zoneKind === "stack") return false;
+  if (zoneKind === "stack" || zoneKind === "sideboard") return false;
   if (!viewerID) return false;
   return viewerID === ownerID;
 }

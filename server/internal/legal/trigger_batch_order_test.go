@@ -2,6 +2,7 @@ package legal_test
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -146,6 +147,12 @@ func TestBotOrdersATargetedTriggerWithItsBatch(t *testing.T) {
 		}
 		if top.ID.String() != p.Order[0] {
 			t.Errorf("order %q: %s is on top, want %s (first to resolve)", m.Label, top.ID, p.Order[0])
+		}
+		// The label names the triggers in resolution order, so a
+		// seat reading text knows which is which: "resolve <top>
+		// first, then <other>".
+		if want := ": resolve " + top.Label + " first, then "; !strings.Contains(m.Label, want) {
+			t.Errorf("order label %q does not name %q first", m.Label, top.Label)
 		}
 	}
 }

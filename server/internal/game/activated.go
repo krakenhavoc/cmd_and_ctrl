@@ -1894,6 +1894,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		if c := findBattlefieldCard(g, id); c != nil {
 			c.Tapped = true
 			g.EmitEvent(Event{Kind: EventTapCard, Actor: playerID, CardID: id})
+			// ADR 0186 §1: the creature crewed or saddled the source as
+			// it was tapped to pay (CR 702.122b-c, CR 702.171c), so the
+			// record is written here and not when the ability resolves:
+			// a crew ability that is countered still had its creatures
+			// crew the Vehicle.
+			g.recordCrewLocked(ab.Cost.Saddle > 0,
+				sourceObject,
+				ObjectRef{ID: id, Epoch: c.ObjectEpoch})
 			if ab.Cost.Saddle > 0 {
 				// #2695: who saddled it, as the objects they were, for
 				// CR 702.171c.
@@ -2270,6 +2278,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 //   - Total EFFECTIVE power must reach the crew number. Effective,
 //     so an anthem and +1/+1 counters both count (CurrentPower), and
 //     read at payment time (CR 702.122a) rather than at declaration.
+//     Each creature counts for CountedPower, which is its power unless a
+//     CostPowerRule says it counts for more (Pilot tokens, ADR 0186).
 //   - Summoning sickness is NOT checked. Tapping a creature to crew
 //     is not paying a {T} cost, so a creature that arrived this turn
 //     may crew (CR 702.122b). This is the rule most implementations
@@ -2291,8 +2301,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 // (ErrInvalidParam) wherever it is named.
 func (g *Game) validateCrewCostLocked(playerID, sourceID uuid.UUID, cost AbilityCost, chosen []uuid.UUID) ([]uuid.UUID, error) {
 	need, saddle := cost.Crew, false
+	use := CostPowerCrew
 	if cost.Saddle > 0 {
 		need, saddle = cost.Saddle, true
+		use = CostPowerSaddle
 	}
 	if need <= 0 {
 		if len(chosen) > 0 {
@@ -2331,7 +2343,10 @@ func (g *Game) validateCrewCostLocked(playerID, sourceID uuid.UUID, cost Ability
 		if c.Tapped {
 			return nil, ErrAlreadyTapped
 		}
-		total += c.CurrentPower()
+		// CountedPower, not CurrentPower: "crews Vehicles as though its
+		// power were 2 greater" changes what the creature counts for
+		// here and nothing else (ADR 0186 Decision 4).
+		total += c.CountedPower(use)
 		out = append(out, id)
 	}
 	if total < need {

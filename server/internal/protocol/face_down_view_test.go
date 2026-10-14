@@ -51,6 +51,9 @@ var redactedCardKeys = map[string]bool{
 	// shield, and neither says which card it is.
 	"exiled_if_it_dies":   true,
 	"cant_be_regenerated": true,
+	// ADR 0187 §4: "assigns no combat damage this turn", a bit like the
+	// regeneration mark above.
+	"assigns_no_combat_damage": true,
 	// ADR 0109 §1: a resolved effect's land-type change names the
 	// effect's source and its duration, facts about the object and not
 	// about which card it is (and a face-down permanent is no land).
@@ -233,30 +236,31 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 	lt := &LegalTargetsView{Cards: []string{"target"}, Min: 1, Max: 1}
 	x, y := 0.25, 0.75
 	return CardView{
-		InstanceID:          uuid.NewString(),
-		Name:                "Hidden Name",
-		Owner:               owner,
-		Controller:          owner,
-		ScryfallID:          "scryfall",
-		IsToken:             true,
-		TokenCopy:           true,
-		TypeLine:            "Legendary Creature — Test",
-		Colors:              []string{"B", "R"},
-		Protection:          []ProtectionView{{Printed: "red", Kind: "color", Value: "R"}},
-		NegativePower:       -2,
-		Power:               3,
-		Toughness:           3,
-		Tapped:              true,
-		Counters:            map[string]int{"+1/+1": 1},
-		IsCommander:         true,
-		IsCompanion:         true,
-		DamageMarked:        1,
-		RegenerationShields: 2,
-		ExiledIfItDies:      []string{"Lava Coil"},
-		CantBeRegenerated:   true,
-		RiotHaste:           true,
-		LandTypeEffects:     []LandTypeEffectView{{Types: []string{"Island"}, Until: "until end of turn", Source: "Tidal Warrior"}},
-		FaceDown:            true,
+		InstanceID:            uuid.NewString(),
+		Name:                  "Hidden Name",
+		Owner:                 owner,
+		Controller:            owner,
+		ScryfallID:            "scryfall",
+		IsToken:               true,
+		TokenCopy:             true,
+		TypeLine:              "Legendary Creature — Test",
+		Colors:                []string{"B", "R"},
+		Protection:            []ProtectionView{{Printed: "red", Kind: "color", Value: "R"}},
+		NegativePower:         -2,
+		Power:                 3,
+		Toughness:             3,
+		Tapped:                true,
+		Counters:              map[string]int{"+1/+1": 1},
+		IsCommander:           true,
+		IsCompanion:           true,
+		DamageMarked:          1,
+		RegenerationShields:   2,
+		ExiledIfItDies:        []string{"Lava Coil"},
+		CantBeRegenerated:     true,
+		AssignsNoCombatDamage: true,
+		RiotHaste:             true,
+		LandTypeEffects:       []LandTypeEffectView{{Types: []string{"Island"}, Until: "until end of turn", Source: "Tidal Warrior"}},
+		FaceDown:              true,
 		// An EXILE kind on purpose: a CR 708.2 permanent kind would
 		// put the public 2/2 body back after the redaction (decision
 		// 6), and this table is the guard for every card that is NOT
@@ -312,6 +316,8 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Monstrous:         true,
 		Renowned:          true,
 		Saddled:           true,
+		CrewedBy:          []string{"crewer"},
+		SaddledBy:         []string{"saddler"},
 		RingBearer:        true,
 		Suspected:         true,
 		Prepared:          true,
@@ -424,6 +430,7 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		PhyrexianSymbols:        1,
 		PhyrexianGranted:        1,
 		CastableHere:            true,
+		ClosesOnPass:            true,
 		OptionalCosts:           []OptionalCostView{{Index: 0, Key: "kicker", Label: "Kicker {4}", ManaCost: "{4}", MaxTimes: 1}},
 		// ADR 0073 §7: the cast gate's stamp. Redacted like the rest
 		// of the cost surface — a legendary-sorcery clause says more
@@ -833,6 +840,7 @@ const (
 var castSurfaceScopes = map[string]castSurfaceScope{
 	// #1055: the three that answer "what may YOU announce".
 	"CastableHere": surfacePrivate,
+	"ClosesOnPass": surfacePrivate,
 	"LegalTargets": surfacePrivate,
 	"Clauses":      surfacePrivate,
 	// #1389: what the asking seat would be charged. A cost modifier

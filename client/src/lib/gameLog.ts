@@ -156,11 +156,15 @@ const LOG_TONE: Record<LogKind, string> = {
   // it is being played under, which is why it is toned like a step —
   // the spine of the log, not a whisper in it.
   settings: "tone-step",
+  away_seat: "tone-step",
   // ADR 0059 (#753). An extra turn changes who plays next, which is
   // the turn structure the step spine narrates — toned like it.
   extra_turn: "tone-step",
   // #2529. A skipped extra turn is the same structure changing back.
   extra_turn_skipped: "tone-step",
+  // ADR 0188 (#3559). A skipped turn is the turn structure changing too.
+  turn_skip: "tone-step",
+  turn_skipped: "tone-step",
   // Added phases change the turn's structure too — another combat is
   // coming — so they are toned like the step spine as well.
   extra_phase: "tone-step",

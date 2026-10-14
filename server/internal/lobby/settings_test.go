@@ -123,6 +123,106 @@ func TestPatchSettingsHostCanChangeTheTable(t *testing.T) {
 	}
 }
 
+func getAuthed(t *testing.T, srv *httptest.Server, path, token string) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, srv.URL+path, nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatalf("do: %v", err)
+	}
+	return resp
+}
+
+// TestGetSettingsEveryoneAtTheTable — #3499: the read is open to every
+// seat (not only the host), a spectator and the admin, and changes
+// nothing.
+func TestGetSettingsEveryoneAtTheTable(t *testing.T) {
+	srv, l, a := newTestHTTPStack(t)
+	meta, _, aliceTok, bobTok := settingsTable(t, l, a)
+	if resp := patchJSON(t, srv, "/games/"+meta.ID.String()+"/settings", aliceTok,
+		map[string]any{"undo_limit": 0}); resp.StatusCode != http.StatusOK {
+		t.Fatalf("host patch: got %d", resp.StatusCode)
+	} else {
+		resp.Body.Close()
+	}
+	before := settingsOf(t, l, meta.ID)
+
+	spectator, _, err := a.Issue(context.Background(), auth.Principal{
+		Role: auth.RoleSpectator, GameID: meta.ID, Name: "Watcher",
+	}, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, tok := range map[string]string{
+		"host":      aliceTok,
+		"seat":      bobTok,
+		"spectator": spectator,
+		"admin":     adminSession(t, a),
+	} {
+		resp := getAuthed(t, srv, "/games/"+meta.ID.String()+"/settings", tok)
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("%s: got %d, want 200", name, resp.StatusCode)
+			resp.Body.Close()
+			continue
+		}
+		if body := decodeSettings(t, resp); body["undo_limit"] != float64(0) {
+			t.Errorf("%s: settings = %v, want undo_limit 0", name, body)
+		}
+	}
+	if after := settingsOf(t, l, meta.ID); after != before {
+		t.Errorf("a read changed the table: %+v -> %+v", before, after)
+	}
+}
+
+func TestGetSettingsRefusesStrangers(t *testing.T) {
+	srv, l, a := newTestHTTPStack(t)
+	meta, alice, _, _ := settingsTable(t, l, a)
+
+	identified, _, err := a.Issue(context.Background(), auth.Principal{
+		Role: auth.RoleIdentified, DiscordID: "1111", UserID: uuid.New(), Name: "Luke",
+	}, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, tok := range map[string]string{
+		"identified":        identified,
+		"seat at elsewhere": seatSession(t, a, uuid.New(), alice, "Alice"),
+	} {
+		resp := getAuthed(t, srv, "/games/"+meta.ID.String()+"/settings", tok)
+		if resp.StatusCode != http.StatusForbidden {
+			t.Errorf("%s: got %d, want 403", name, resp.StatusCode)
+		}
+		resp.Body.Close()
+	}
+	resp := getAuthed(t, srv, "/games/"+uuid.New().String()+"/settings", adminSession(t, a))
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("unknown game: got %d, want 404", resp.StatusCode)
+	}
+}
+
+// TestCanReadTableSettingsCreator — the table's creator reads it from
+// any session that carries their user, seated or not.
+func TestCanReadTableSettingsCreator(t *testing.T) {
+	creator := uuid.New()
+	meta := GameMeta{ID: uuid.New(), CreatedBy: creator}
+	if !canReadTableSettings(auth.Principal{Role: auth.RoleIdentified, UserID: creator}, meta, false) {
+		t.Error("the creator was refused")
+	}
+	if canReadTableSettings(auth.Principal{Role: auth.RoleIdentified, UserID: uuid.New()}, meta, false) {
+		t.Error("another signed-in person was allowed")
+	}
+	if canReadTableSettings(auth.Principal{Role: auth.RoleIdentified}, GameMeta{ID: meta.ID}, false) {
+		t.Error("no user and no creator matched as equal")
+	}
+}
+
 func TestPatchSettingsRefusesANonHostSeat(t *testing.T) {
 	srv, l, a := newTestHTTPStack(t)
 	meta, _, _, bobTok := settingsTable(t, l, a)

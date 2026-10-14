@@ -535,3 +535,27 @@ plain JSON an operator can `curl`.
   without it simply never dedupes.
 - The daily cap and the dedupe index are per server process tree: two
   servers sharing a data dir would each count their own. There is one.
+
+## 11. Filed as a GitHub App's bot, not the maintainer (added 2026-10-14)
+
+[#3493](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3493). Filed with a
+personal access token, every in-app report and deck request showed the
+maintainer as its author, so a player's report looked like one the maintainer
+wrote, and the integration hung on one person's account.
+
+- **The credential is a GitHub App** installed on this repository only, with
+  **Issues: read and write** and nothing else. Its issues are authored by
+  `<app>[bot]`. The server signs a short-lived RS256 JWT with the app's
+  private key and trades it for an installation token, cached until five
+  minutes before its hour is up (`server/internal/github/app.go`, standard
+  library only, like the rest of the package).
+- **Configuration:** `CMDCTRL_GITHUB_APP_ID`, `CMDCTRL_GITHUB_APP_INSTALLATION_ID`
+  and `CMDCTRL_GITHUB_APP_PRIVATE_KEY`, all three or none. A partial or
+  unparseable set fails the boot rather than falling back to the PAT. With
+  all three the PAT is ignored; it stays supported until the app is in
+  place, and is then retired (secret deleted, token revoked).
+- **Who reported it** stays in the body's "Reported from the app" footer
+  (the reporter's display name and role), as before: the author was never
+  the reporter, and now it no longer pretends to be.
+- §9's redaction applies to the new credentials too: the key, the JWT and
+  the installation token never reach a log, an error or a response.

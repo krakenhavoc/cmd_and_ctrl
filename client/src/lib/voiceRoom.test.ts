@@ -8,6 +8,8 @@ import {
   refreshVoiceRoom,
   setVoiceRoom,
   voiceChip,
+  discordAppURL,
+  voiceSeatBadge,
   voiceStatusLine,
   voiceYouLine,
 } from "./voiceRoom";
@@ -91,5 +93,25 @@ describe("the voice calls", () => {
       ),
     );
     await expect(setVoiceRoom("g-1", true)).rejects.toThrow(/voice rooms are off/);
+  });
+});
+
+describe("voice connection state (#3311)", () => {
+  it("counts who is in the room on the chip", () => {
+    const chip = voiceChip(v({ url: URL, granted: 4, in_room: 3 }));
+    expect(chip?.label).toBe("Voice · 3 of 4");
+    expect(voiceChip(v({ url: URL, granted: 4 }))?.label).toBe("Join voice · 0 of 4");
+  });
+
+  it("badges a seat that is connected, and one that is muted", () => {
+    expect(voiceSeatBadge("live")?.glyph).toBe("🎧");
+    expect(voiceSeatBadge("muted")?.glyph).toBe("🔇");
+    expect(voiceSeatBadge(undefined)).toBeNull();
+  });
+
+  it("builds the desktop app link from the room link only", () => {
+    expect(discordAppURL("https://discord.com/channels/1/2")).toBe("discord://-/channels/1/2");
+    expect(discordAppURL("https://evil.example/channels/1/2")).toBeNull();
+    expect(discordAppURL("https://discord.com/channels/1/2?x=y")).toBeNull();
   });
 });

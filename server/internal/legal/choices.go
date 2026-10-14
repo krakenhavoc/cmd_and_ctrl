@@ -98,9 +98,10 @@ type assignParam struct {
 // permutation-shaped; they are offered as a small canonical set
 // rather than every permutation: the declared order, its reverse,
 // and for scry each "bottom exactly this card" plus keep-all and
-// bottom-all. Damage assignment is offered as the single canonical
-// lethal-in-order split (plus trample overflow), which is what a
-// player does almost every time.
+// bottom-all. Damage assignment is offered as the canonical
+// most-kills split (plus trample overflow) first, which is what a
+// player does almost every time, then one split per maximal set of
+// blockers that can all take lethal damage (#3620, DamageSplits).
 func (e *enumerator) choiceMoves() bool {
 	g := e.g
 	owed := false
@@ -247,12 +248,15 @@ func (e *enumerator) choiceMoves() bool {
 
 		case game.PendingChoiceTriggerOrder:
 			ids := c.TriggerOrderIDs
-			for _, order := range canonicalOrders(len(ids)) {
+			// Copies of one trigger can still differ in what they read
+			// (#3021's Valkyries), so every ordering stays a move.
+			for _, order := range triggerOrders(len(ids)) {
+				label := triggerOrderLabel(g, reason, ids, order)
 				p := base()
 				for _, i := range order {
 					p.Order = append(p.Order, ids[i].String())
 				}
-				e.addChoice(c, fmt.Sprintf("%s: resolve triggers in order %v", reason, order), p)
+				e.addChoice(c, label, p)
 			}
 
 		case game.PendingChoiceOptionalReplacement, game.PendingChoiceTriggerPrompt,
@@ -441,8 +445,18 @@ func (e *enumerator) choiceMoves() bool {
 			}
 
 		case game.PendingChoiceDamageAssignment:
-			if m, ok := e.canonicalDamageAssignment(c, base()); ok {
-				e.addChoice(c, reason+": assign combat damage", m)
+			// #3620: the canonical split first (the bots' answer and the
+			// engine's own suggestion), then the other meaningful
+			// divisions, so a text seat can pick which blockers die.
+			for _, ds := range DamageSplits(e.g, c) {
+				m := base()
+				m.TrampleTo = ds.Split.TrampleTo
+				assigns := make([]assignParam, 0, len(ds.Split.Assignments))
+				for _, a := range ds.Split.Assignments {
+					assigns = append(assigns, assignParam{BlockerID: a.BlockerID.String(), Amount: a.Amount})
+				}
+				m.Assignments = assigns
+				e.addChoice(c, reason+": assign combat damage — "+ds.Label, m)
 			}
 
 		// ADR 0108 §7 decision 6, CR 615.7: divide a charged shield
@@ -623,9 +637,16 @@ func (e *enumerator) choiceMoves() bool {
 			// type" — and enumerating a pick the resolver will reject
 			// breaks this package's one promise (#544). The rule is
 			// not re-derived here; the engine is asked.
-			picks := e.filteredCombos(c.SearchCards, max(floor, 1), c.SearchMax, e.opts.MaxExpansionPerSource,
+			pool, keyOf := interchangeableSearchPool(g, c.SearchCards, max(c.SearchMax, 1))
+			picks := e.filteredCombos(pool, max(floor, 1), c.SearchMax, e.opts.MaxExpansionPerSource,
 				func(set []uuid.UUID) bool { return g.SearchPickLegalLocked(c, set) })
+			seenPick := map[string]bool{}
 			for _, set := range picks {
+				if k := pickKey(set, keyOf); seenPick[k] {
+					continue
+				} else {
+					seenPick[k] = true
+				}
 				p := base()
 				p.CardIDs = idStrings(set)
 				label := reason + ": take"
@@ -1061,7 +1082,10 @@ func (e *enumerator) choiceMoves() bool {
 			cards := c.ScryCards
 			p := base()
 			p.TopOrder = idStrings(cards)
-			e.addChoice(c, reason+": leave the order alone", p)
+			// Each label names the whole pile, top first: until
+			// 2026-10-14 "leave the order alone" never named the card
+			// already on top, so a seat reading text could not see it.
+			e.addChoice(c, reason+": leave the order alone (top to bottom: "+pileOrder(g, cards, -1)+")", p)
 			for i, id := range cards {
 				if i == 0 {
 					continue
@@ -1073,7 +1097,7 @@ func (e *enumerator) choiceMoves() bool {
 						p.TopOrder = append(p.TopOrder, other.String())
 					}
 				}
-				e.addChoice(c, reason+": put "+cardName(g, id)+" on top", p)
+				e.addChoice(c, reason+": put "+cardName(g, id)+" on top (top to bottom: "+pileOrder(g, cards, i)+")", p)
 			}
 
 		case game.PendingChoicePutInLibrary:
@@ -1122,7 +1146,7 @@ func (e *enumerator) choiceMoves() bool {
 			}
 			p := base()
 			lane(&p, all)
-			e.addChoice(c, reason+": leave the order alone", p)
+			e.addChoice(c, reason+": leave the order alone (in this order: "+pileOrder(g, cards, -1)+")", p)
 			for i, id := range cards {
 				if i == 0 {
 					continue
@@ -1321,6 +1345,104 @@ func (e *enumerator) choiceMoves() bool {
 // modeLabel renders a mode selection for the move list: the chosen
 // bullets in order, so a bot's log says what it picked rather than
 // which indexes it picked.
+// interchangeableSearchPool trims a search's matches to at most `keep`
+// copies of each interchangeable card (the same name and oracle, read
+// off the card and not the seat's view of it, so hidden cards are never
+// merged) and returns, for every card kept, its interchangeability key.
+// A Commander library repeats only its basics, so an Evolving Wilds
+// search was twelve "take Swamp" moves, and Cultivate's pairs spent
+// the expansion budget on interchangeable Forest pairs. Any copy of a
+// card answers the search the same way.
+func interchangeableSearchPool(g *game.Game, cards []uuid.UUID, keep int) ([]uuid.UUID, map[uuid.UUID]string) {
+	keyOf := make(map[uuid.UUID]string, len(cards))
+	kept := map[string]int{}
+	pool := make([]uuid.UUID, 0, len(cards))
+	for _, id := range cards {
+		key := id.String()
+		if card, ok := g.LookupCardForEffect(id); ok && card.Name != "" && !card.FaceDown {
+			// The zone too: a search of the library and the graveyard
+			// offers the same card from each.
+			zone := ""
+			if z := g.FindCardZoneForEffect(id); z != nil {
+				zone = string(z.Kind)
+			}
+			key = zone + "|" + card.OracleID + "|" + card.Name
+		}
+		if kept[key] >= keep {
+			continue
+		}
+		kept[key]++
+		keyOf[id] = key
+		pool = append(pool, id)
+	}
+	return pool, keyOf
+}
+
+// pickKey is a search pick as a multiset of interchangeability keys, so
+// two picks of the same kinds of card are one move.
+func pickKey(set []uuid.UUID, keyOf map[uuid.UUID]string) string {
+	keys := make([]string, len(set))
+	for i, id := range set {
+		keys[i] = keyOf[id]
+	}
+	sort.Strings(keys)
+	return strings.Join(keys, "\x00")
+}
+
+// pileOrder names a pile in the order an answer leaves it, with the card
+// at index first pulled to the front (-1 leaves it as it is): "A, B, C".
+func pileOrder(g *game.Game, cards []uuid.UUID, first int) string {
+	names := make([]string, 0, len(cards))
+	if first >= 0 {
+		names = append(names, cardName(g, cards[first]))
+	}
+	for i, id := range cards {
+		if i != first {
+			names = append(names, cardName(g, id))
+		}
+	}
+	return strings.Join(names, ", ")
+}
+
+// triggerOrderLabel names one ordering of a CR 603.3b prompt by its
+// triggers, in resolution order (the answer's order: first resolves
+// first, Game.ResolveTriggerOrder): "Order your triggers: resolve A
+// first, then B". A move list read as text (the MCP seat, a model bot)
+// has no other way to tell which trigger is which; until 2026-10-14 the
+// label was the bare index permutation "[1 0]". A trigger no longer in
+// the queue keeps its index as its name.
+func triggerOrderLabel(g *game.Game, reason string, ids []uuid.UUID, order []int) string {
+	byIndex := make([]string, len(ids))
+	count := map[string]int{}
+	for i, id := range ids {
+		byIndex[i] = fmt.Sprintf("trigger %d", i+1)
+		for _, t := range g.PendingTriggers {
+			if t != nil && t.ID == id && t.Label != "" {
+				byIndex[i] = t.Label
+				break
+			}
+		}
+		count[byIndex[i]]++
+	}
+	// Copies of one trigger read alike; their place in the collected
+	// order (the log's order) tells them apart.
+	for i := range byIndex {
+		if count[byIndex[i]] > 1 {
+			byIndex[i] += fmt.Sprintf(" (trigger %d)", i+1)
+		}
+	}
+	names := make([]string, len(order))
+	for n, i := range order {
+		names[n] = byIndex[i]
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s: resolve %s first", reason, names[0])
+	for _, n := range names[1:] {
+		b.WriteString(", then " + n)
+	}
+	return b.String()
+}
+
 func modeLabel(c *game.PendingChoice, sel []int) string {
 	if len(sel) == 0 {
 		return ": none"
@@ -1610,6 +1732,67 @@ func canonicalOrders(n int) [][]int {
 	return [][]int{id, rev}
 }
 
+// triggerOrders is the CR 603.3b orderings a seat is offered: every
+// permutation of three triggers or fewer, and for a longer batch the
+// collected order, its reverse, and each trigger moved first and moved
+// last (at most 2n+2), which is the choice that usually matters. The
+// collected order stays first, so a bot that takes the first ordering
+// is unchanged. canonicalOrders' two were "enough for a bot", but an
+// agent seat (ADR 0122) plays as a player and has no drag-to-reorder:
+// an arena agent with three landfall triggers could not put the one it
+// wanted first.
+func triggerOrders(n int) [][]int {
+	if n <= 3 {
+		return permutations(n)
+	}
+	out := canonicalOrders(n)
+	for i := 0; i < n; i++ {
+		first := []int{i}
+		var last []int
+		for j := 0; j < n; j++ {
+			if j != i {
+				first = append(first, j)
+				last = append(last, j)
+			}
+		}
+		out = append(out, first, append(last, i))
+	}
+	seen := map[string]bool{}
+	uniq := out[:0]
+	for _, o := range out {
+		k := fmt.Sprint(o)
+		if !seen[k] {
+			seen[k] = true
+			uniq = append(uniq, o)
+		}
+	}
+	return uniq
+}
+
+// permutations lists every ordering of 0..n-1, the identity first.
+func permutations(n int) [][]int {
+	if n == 0 {
+		return [][]int{{}}
+	}
+	var out [][]int
+	var rec func(cur []int, used []bool)
+	rec = func(cur []int, used []bool) {
+		if len(cur) == n {
+			out = append(out, append([]int(nil), cur...))
+			return
+		}
+		for i := 0; i < n; i++ {
+			if !used[i] {
+				used[i] = true
+				rec(append(cur, i), used)
+				used[i] = false
+			}
+		}
+	}
+	rec(nil, make([]bool, n))
+	return out
+}
+
 // protectiveShieldDivision is the division a player protecting
 // themselves makes (ADR 0108 §7 decision 6): the damage to the player
 // first, then to each creature that would die of its event, the one that
@@ -1692,23 +1875,6 @@ func shieldDivisionLabel(p *game.DivideShieldPrompt, dist map[uuid.UUID]int) str
 	return "prevent " + strings.Join(parts, ", ")
 }
 
-// canonicalDamageAssignment builds the one split the enumerator offers
-// for a damage-assignment prompt: CanonicalDamageSplit, as the
-// resolve_choice params.
-func (e *enumerator) canonicalDamageAssignment(c *game.PendingChoice, p choiceParams) (choiceParams, bool) {
-	split, ok := CanonicalDamageSplit(e.g, c)
-	if !ok {
-		return p, false
-	}
-	p.TrampleTo = split.TrampleTo
-	assigns := make([]assignParam, 0, len(split.Assignments))
-	for _, a := range split.Assignments {
-		assigns = append(assigns, assignParam{BlockerID: a.BlockerID.String(), Amount: a.Amount})
-	}
-	p.Assignments = assigns
-	return p, true
-}
-
 // DamageShare is one blocker's share of a DamageSplit.
 type DamageShare struct {
 	BlockerID uuid.UUID
@@ -1736,12 +1902,13 @@ type DamageSplit struct {
 	CoversLethal bool
 }
 
-// CanonicalDamageSplit is the one split the enumerator offers for a
+// CanonicalDamageSplit is the first split the enumerator offers for a
 // damage-assignment prompt: the one that kills the most the attacker's
 // power can buy (#2692). The bots answer with it, and the view ships it
 // to the chooser as the prompt's pre-filled answer and, when it covers
 // lethal for every blocker, as the answer the client may send for them
-// (#2956, ADR 0147).
+// (#2956, ADR 0147). DamageSplits adds the other meaningful divisions
+// after it (#3620).
 //
 // CR 510.1c divides a blocked creature's damage among its blockers "as
 // its controller chooses among them", and CR 510.1d does the same for
@@ -1760,56 +1927,208 @@ type DamageSplit struct {
 //
 // Caller must hold g's lock (read or write).
 func CanonicalDamageSplit(g *game.Game, c *game.PendingChoice) (DamageSplit, bool) {
-	if c == nil || c.DamageAssignment == nil {
+	pl, ok := planDamage(g, c)
+	if !ok {
 		return DamageSplit{}, false
+	}
+	return pl.canonical()
+}
+
+// maxDamageSplitBlockers is the most blockers whose kill sets
+// DamageSplits enumerates (2^n masks); a bigger block keeps the
+// canonical split alone, as KillingSet falls back to the declared order
+// past killingSetExact.
+const maxDamageSplitBlockers = 8
+
+// maxDamageSplits bounds the moves one damage-assignment prompt offers.
+const maxDamageSplits = 12
+
+// OfferedDamageSplit is one answer to a damage-assignment prompt with
+// a label that says who takes what.
+type OfferedDamageSplit struct {
+	Split DamageSplit
+	Label string
+}
+
+// DamageSplits is every split the enumerator offers for a
+// damage-assignment prompt (#3620), the canonical one first. CR
+// 510.1c-d let the chooser divide the damage however they like, so
+// which blockers die is a real choice, but the space is a partition of
+// the power, not a list, so the offer is the meaningful divisions: each
+// MAXIMAL set of blockers that can all be assigned lethal damage at
+// once (no further blocker fits in what is left), with the remainder on
+// one survivor. Survivors that are the same creature to the attacker
+// (equal lethal damage and equal kill value) count once.
+//
+// Power enough to assign lethal to every blocker has nothing left to
+// choose (#2956): there is one split, and a trampler's remainder goes
+// over. Past maxDamageSplitBlockers blockers, or maxDamageSplits
+// answers, the rest are dropped.
+//
+// Caller must hold g's lock (read or write).
+func DamageSplits(g *game.Game, c *game.PendingChoice) []OfferedDamageSplit {
+	pl, ok := planDamage(g, c)
+	if !ok {
+		return nil
+	}
+	canon, ok := pl.canonical()
+	if !ok {
+		return nil
+	}
+	out := []OfferedDamageSplit{{Split: canon, Label: pl.label(canon)}}
+	n := len(pl.f.BlockerIDs)
+	if pl.covers || n < 2 || n > maxDamageSplitBlockers {
+		return out
+	}
+	seen := map[string]bool{splitKey(canon): true}
+	type cand struct {
+		split DamageSplit
+		value int
+	}
+	type sig struct{ cost, value int }
+	var cands []cand
+	for mask := 0; mask < 1<<n; mask++ {
+		sum, val := 0, 0
+		okMask := true
+		for i := 0; i < n && okMask; i++ {
+			if mask&(1<<i) != 0 {
+				if pl.value[i] == 0 {
+					okMask = false
+				}
+				sum += pl.cost[i]
+				val += pl.value[i]
+			}
+		}
+		if !okMask || sum > pl.f.AttackerPower {
+			continue
+		}
+		maximal := true
+		for i := 0; i < n; i++ {
+			if mask&(1<<i) == 0 && pl.value[i] > 0 && sum+pl.cost[i] <= pl.f.AttackerPower {
+				maximal = false
+				break
+			}
+		}
+		if !maximal {
+			continue
+		}
+		kill := make([]bool, n)
+		for i := range kill {
+			kill[i] = mask&(1<<i) != 0
+		}
+		sinks := map[sig]bool{}
+		for i := 0; i < n; i++ {
+			if kill[i] || sinks[sig{pl.cost[i], pl.value[i]}] {
+				continue
+			}
+			sinks[sig{pl.cost[i], pl.value[i]}] = true
+			if sp, ok := pl.build(kill, i); ok {
+				cands = append(cands, cand{sp, val})
+			}
+		}
+	}
+	sort.SliceStable(cands, func(i, j int) bool { return cands[i].value > cands[j].value })
+	for _, cd := range cands {
+		if len(out) >= maxDamageSplits {
+			break
+		}
+		k := splitKey(cd.split)
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, OfferedDamageSplit{Split: cd.split, Label: pl.label(cd.split)})
+	}
+	return out
+}
+
+// splitKey identifies a split by what each blocker takes, ignoring the
+// order the shares are listed in.
+func splitKey(s DamageSplit) string {
+	parts := make([]string, 0, len(s.Assignments))
+	for _, a := range s.Assignments {
+		parts = append(parts, fmt.Sprintf("%s=%d", a.BlockerID, a.Amount))
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ",") + fmt.Sprintf("|%d", s.TrampleTo)
+}
+
+// splitPlan is what a damage-assignment prompt costs: each blocker's
+// lethal damage and what killing it is worth.
+type splitPlan struct {
+	g       *game.Game
+	f       *game.DamageAssignmentFrame
+	cost    []int
+	value   []int
+	covers  bool
+	trample bool
+}
+
+func planDamage(g *game.Game, c *game.PendingChoice) (splitPlan, bool) {
+	if c == nil || c.DamageAssignment == nil {
+		return splitPlan{}, false
 	}
 	f := c.DamageAssignment
 	n := len(f.BlockerIDs)
 	attacker := findBattlefield(g, f.AttackerID)
-	cost := make([]int, n)
-	value := make([]int, n)
+	pl := splitPlan{g: g, f: f, cost: make([]int, n), value: make([]int, n)}
 	need := 0
 	for i, id := range f.BlockerIDs {
-		cost[i] = 1
+		pl.cost[i] = 1
 		if b := findBattlefield(g, id); b != nil {
 			if !f.HasDeathtouch {
-				cost[i] = max(b.CurrentToughness()-b.DamageMarked, 1)
+				pl.cost[i] = max(b.CurrentToughness()-b.DamageMarked, 1)
 			}
-			value[i] = killValue(b, attacker)
+			pl.value[i] = killValue(b, attacker)
 		}
-		need += cost[i]
+		need += pl.cost[i]
 	}
-	kill := KillingSet(cost, value, f.AttackerPower)
-	covers := n > 0 && need <= f.AttackerPower
-	if covers {
+	pl.covers = n > 0 && need <= f.AttackerPower
+	pl.trample = f.AllowTrample && !f.BlockerDivides
+	return pl, true
+}
+
+// canonical is the split that kills the most the power can buy.
+func (pl splitPlan) canonical() (DamageSplit, bool) {
+	n := len(pl.f.BlockerIDs)
+	kill := KillingSet(pl.cost, pl.value, pl.f.AttackerPower)
+	if pl.covers {
 		for i := range kill {
 			kill[i] = true
-		}
-	}
-	trample := f.AllowTrample && !f.BlockerDivides
-	remaining := f.AttackerPower
-	amount := make([]int, n)
-	for i := range f.BlockerIDs {
-		if kill[i] {
-			amount[i] = cost[i]
-			remaining -= cost[i]
 		}
 	}
 	// sink takes whatever is left: the survivor worth most, else the
 	// last blocker killed.
 	sink := -1
-	for i := range f.BlockerIDs {
-		if !kill[i] && (sink < 0 || value[i] > value[sink]) {
+	for i := 0; i < n; i++ {
+		if !kill[i] && (sink < 0 || pl.value[i] > pl.value[sink]) {
 			sink = i
 		}
 	}
 	if sink < 0 {
 		sink = n - 1
 	}
-	out := DamageSplit{Lethal: cost, CoversLethal: covers}
+	return pl.build(kill, sink)
+}
+
+// build is the split that assigns lethal damage to each blocker in
+// kill and the rest to sink (or, for a trampler that covers every
+// blocker, to the player or permanent it is attacking).
+func (pl splitPlan) build(kill []bool, sink int) (DamageSplit, bool) {
+	f := pl.f
+	n := len(f.BlockerIDs)
+	remaining := f.AttackerPower
+	amount := make([]int, n)
+	for i := range f.BlockerIDs {
+		if kill[i] {
+			amount[i] = pl.cost[i]
+			remaining -= pl.cost[i]
+		}
+	}
+	out := DamageSplit{Lethal: pl.cost, CoversLethal: pl.covers}
 	if remaining > 0 {
 		switch {
-		case trample && covers:
+		case pl.trample && pl.covers:
 			out.TrampleTo = remaining
 		case n > 0:
 			amount[sink] += remaining
@@ -1838,6 +2157,37 @@ func CanonicalDamageSplit(g *game.Game, c *game.PendingChoice) (DamageSplit, boo
 		return DamageSplit{}, false
 	}
 	return out, true
+}
+
+// label says who takes what, so a seat choosing between splits sees
+// the difference: "3 to Tidus (lethal), 3 to Gatta".
+func (pl splitPlan) label(s DamageSplit) string {
+	idx := make(map[uuid.UUID]int, len(pl.f.BlockerIDs))
+	for i, id := range pl.f.BlockerIDs {
+		idx[id] = i
+	}
+	var parts []string
+	for _, a := range s.Assignments {
+		if a.Amount == 0 {
+			continue
+		}
+		name := "a blocker"
+		if b := findBattlefield(pl.g, a.BlockerID); b != nil {
+			name = b.Name
+		}
+		part := fmt.Sprintf("%d to %s", a.Amount, name)
+		if i, ok := idx[a.BlockerID]; ok && a.Amount >= pl.cost[i] && pl.value[i] > 0 {
+			part += " (lethal)"
+		}
+		parts = append(parts, part)
+	}
+	if s.TrampleTo > 0 {
+		parts = append(parts, fmt.Sprintf("%d trample over", s.TrampleTo))
+	}
+	if len(parts) == 0 {
+		return "no damage"
+	}
+	return strings.Join(parts, ", ")
 }
 
 // killValue is what destroying blocker b is worth to the attacker's

@@ -1065,6 +1065,10 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"DELETE /admin/users/{id}/playmats/{slot}", []string{"route:DELETE /admin/users/{id}/playmats/{slot}"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "DELETE", "/admin/users/"+uuid.New().String()+"/playmats/2", nil)
 		}},
+		// A saved deck's power level (#3671).
+		{"PUT /admin/decks/{id}/power", []string{"route:PUT /admin/decks/{id}/power"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "PUT", "/admin/decks/"+uuid.New().String()+"/power", map[string]any{"power_level": 3})
+		}},
 		// The hosted-model spend guard (#2980).
 		{"GET /admin/bot/model", []string{"route:GET /admin/bot/model"}, true, httpProbe("GET", "/admin/bot/model", nil)},
 		{"PUT /admin/bot/model", []string{"route:PUT /admin/bot/model"}, true, httpProbe("PUT", "/admin/bot/model", func(*probeFixture) any {
@@ -1105,6 +1109,7 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"PATCH /games/{id}/settings", []string{"updateTableSettings"}, true, httpProbe("PATCH", "/games/{id}/settings", func(*probeFixture) any {
 			return map[string]any{"undo_limit": 3}
 		})},
+		{"GET /games/{id}/settings", []string{"getTableSettings"}, true, httpProbe("GET", "/games/{id}/settings", nil)},
 		{"PUT /games/{id}/voice", []string{"putVoiceRoom"}, true, httpProbe("PUT", "/games/{id}/voice", func(*probeFixture) any {
 			return map[string]any{"enabled": true}
 		})},
@@ -1146,6 +1151,15 @@ func sameAnswerProbes() []sameAnswerProbe {
 		})},
 		{"DELETE /games/{id}/seats/bot/{player}", []string{"botSeatAuthorised"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "DELETE", fx.tablePath("/seats/bot/"+fx.bob.String()), nil)
+		}},
+		// ADR 0177: the admin may always answer the away offer, but the
+		// table here has not started, so nobody is away and every caller
+		// is told so. The take-back reads the admin only to redact.
+		{"POST /games/{id}/seats/{player}/away", []string{"answerAwaySeat"}, false, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "POST", fx.tablePath("/seats/"+fx.bob.String()+"/away"), map[string]string{"action": "wait"})
+		}},
+		{"POST /games/{id}/seats/me/take-back", []string{"takeBackSeat"}, false, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "POST", fx.tablePath("/seats/me/take-back"), nil)
 		}},
 		// /me: admin reads false in player mode. admin_allowed stays
 		// true for the allowlisted person, on purpose (§2 item 9), so

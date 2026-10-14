@@ -17,6 +17,7 @@ import { type Readable } from "svelte/store";
 
 import { guardedDerived, guardedWritable } from "./guardedStore";
 import { parseShops, type Shop } from "./shopLinks";
+import { NO_SUPPORT, parseSupport, type Support } from "./supportLinks";
 
 export type EnvName = "prod" | "dev";
 
@@ -35,6 +36,9 @@ export interface AppConfig {
   // ADR 0179: the operator's shop link templates, on any deployment.
   // Empty (the default, and every failure path) renders no shop link.
   shops: Shop[];
+  // #3558: the optional Ko-fi and Patreon links. Empty (the default, and
+  // every failure path) shows none.
+  support: Support;
 }
 
 export const NO_FEATURES: DevFeatures = {
@@ -46,7 +50,12 @@ export const NO_FEATURES: DevFeatures = {
 
 // PROD_CONFIG is both the initial value and the value every failure
 // path resolves to.
-export const PROD_CONFIG: AppConfig = { env: "prod", features: NO_FEATURES, shops: [] };
+export const PROD_CONFIG: AppConfig = {
+  env: "prod",
+  features: NO_FEATURES,
+  shops: [],
+  support: NO_SUPPORT,
+};
 
 const store = guardedWritable<AppConfig>(PROD_CONFIG, "appConfig");
 
@@ -81,11 +90,15 @@ export function devFeature(name: keyof DevFeatures): Readable<boolean> {
 // feature this client knows about) never breaks the boot path.
 export function parseConfig(body: unknown): AppConfig {
   if (typeof body !== "object" || body === null) return PROD_CONFIG;
-  const b = body as { env?: unknown; features?: unknown; shops?: unknown };
+  const b = body as { env?: unknown; features?: unknown; shops?: unknown; support?: unknown };
   // Shop links are not a dev surface: production serves them too.
   const shops = parseShops(b.shops);
+  const support = parseSupport(b.support);
+  const hasSupport = Object.keys(support).length > 0;
   // Only the exact string "dev" opts in. Unknown env names are prod.
-  if (b.env !== "dev") return shops.length > 0 ? { ...PROD_CONFIG, shops } : PROD_CONFIG;
+  if (b.env !== "dev") {
+    return shops.length > 0 || hasSupport ? { ...PROD_CONFIG, shops, support } : PROD_CONFIG;
+  }
   const raw = (typeof b.features === "object" && b.features !== null ? b.features : {}) as Record<
     string,
     unknown
@@ -99,6 +112,7 @@ export function parseConfig(body: unknown): AppConfig {
       replay_scrubber: raw.replay_scrubber === true,
     },
     shops,
+    support,
   };
 }
 

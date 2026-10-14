@@ -38,6 +38,7 @@ func init() {
 		Name:         "Canopy Cover",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
+		Purpose:      game.Purpose{Aura: game.AuraBenefit},
 		Static: []game.StaticAbility{
 			GrantToAttached("hexproof"),
 		},

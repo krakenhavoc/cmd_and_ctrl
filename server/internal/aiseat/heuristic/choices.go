@@ -157,8 +157,9 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 	case choiceEntryRiot:
 		return st.riotValue(ch, cp.Apply)
 	case choiceDamageAssignment:
-		// The enumerator offers exactly one canonical split: the
-		// prefix-lethal one a player makes almost every time.
+		// The enumerator offers the canonical most-kills split first and
+		// the other divisions after it (#3620). Equal values go to the
+		// lowest index, so the bot keeps answering with the canonical one.
 		return 1, "canonical damage assignment"
 
 	case choiceMana:
@@ -226,7 +227,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		if t == nil && len(cp.Targets) == 1 {
 			t = &cp.Targets[0]
 		}
-		return st.auraHostValue(p.cfg, t)
+		purpose := ""
+		if ch != nil {
+			purpose = ch.AuraPurpose
+		}
+		return st.auraHostValue(p.cfg, purpose, t)
 
 	case choicePickTarget:
 		targets := cp.Targets
@@ -375,6 +380,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// battlefield is not a discard (puts.go).
 		if v, ok := p.valuePutOntoBattlefield(st, ch, cp.CardIDs); ok {
 			return v, "put it onto the battlefield"
+		}
+		// ADR 0191: a pick over the bot's own sideboard brings the
+		// named cards in from outside the game.
+		if v, ok := st.valueTakenFromOutside(p.cfg, ch, cp.CardIDs); ok {
+			return v, "take the best from outside the game"
 		}
 		if v, ok := st.valueKeptInHand(p.cfg, ch, cp.CardIDs); ok {
 			return v, "name the worst, keep the rest"
@@ -667,7 +677,10 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// or cascade grant closes on the seat's next pass and the card
 		// goes where declining would have sent it, and a rebound grant
 		// (#1854) does the same and leaves the card in exile, so
-		// accepting is never worse than declining — say yes.
+		// accepting is never worse than declining — say yes. A paid
+		// "you may cast that card. If you don't, ..." (paid_or_else,
+		// Chandra, Torch of Defiance, #3510) is the same: a pass without
+		// the cast runs the "if you don't", exactly as declining does.
 		if cp.Apply != nil && *cp.Apply {
 			return 1, "may cast: take the free cast"
 		}
@@ -739,7 +752,12 @@ func (st *state) valueKeptInHand(cfg Config, ch *protocol.PendingChoiceView, nam
 	if ch == nil || len(ch.Options) == 0 || ch.FromPlayer != st.me || st.seat == nil {
 		return 0, false
 	}
-	forced := st.opponentForcedDiscard(ch)
+	// A manifest (game.ChooseManifest, ADR 0189) gives the card up the
+	// way a discard does, which is why this rule prices it: the named
+	// cards leave the hand, and a face-down 2/2 is not the card. But
+	// nothing is discarded, so no discard payoff is owed for them.
+	manifest := ch.ChooseDestination == chooseManifest
+	forced := !manifest && st.opponentForcedDiscard(ch)
 	hand := st.seatHand()
 	held := make(map[string]*protocol.CardView, len(hand))
 	for i := range hand {
@@ -755,6 +773,9 @@ func (st *state) valueKeptInHand(cfg Config, ch *protocol.PendingChoiceView, nam
 			return 0, false
 		}
 		if slices.Contains(named, id) {
+			if manifest {
+				continue
+			}
 			// Named is discarded: what the bot's own discard payoffs
 			// pay for it (discard_payoff.go) is kept too.
 			kept += st.discardPayoff(cfg, c) + st.forcedDiscardCredit(cfg, c, forced)
@@ -909,6 +930,49 @@ func (st *state) valueTakenFromGraveyard(cfg Config, ch *protocol.PendingChoiceV
 	}
 	return v, true
 }
+
+// valueTakenFromOutside scores one choose_cards answer over the bot's own
+// sideboard by the total cardValue of the candidates it NAMES (ADR 0191):
+// a card named out of the cards the bot owns outside the game is a card
+// it brings in, so the sign is the library's, not the hand's. The
+// second return is false for any prompt that does not declare the
+// "outside" destination, or whose candidates are not all in the bot's
+// own sideboard.
+//
+// Min, Max and the set rule (Extrapolate the Impossible's exactly two
+// with different names) are the enumerator's: every answer reaching
+// here is one the engine accepts, so this is a preference over legal
+// sets. "You may reveal" takes the best card rather than none, because
+// a taken card is never worth less than nothing.
+func (st *state) valueTakenFromOutside(cfg Config, ch *protocol.PendingChoiceView, named []string) (float64, bool) {
+	if ch == nil || ch.ChooseDestination != chooseFromOutside || len(ch.Options) == 0 || st.seat == nil {
+		return 0, false
+	}
+	side := make(map[string]bool, len(st.seat.Sideboard))
+	for i := range st.seat.Sideboard {
+		side[st.seat.Sideboard[i].InstanceID] = true
+	}
+	opts := make(map[string]*protocol.CardView, len(ch.Options))
+	for i := range ch.Options {
+		id := ch.Options[i].InstanceID
+		if !side[id] {
+			return 0, false
+		}
+		opts[id] = &ch.Options[i]
+	}
+	var v float64
+	for _, id := range named {
+		v += libraryTakeFloor + st.cardValue(cfg, opts[id])
+	}
+	return v, true
+}
+
+// chooseFromOutside is game.ChooseFromOutside on the wire.
+const chooseFromOutside = "outside"
+
+// chooseManifest is game.ChooseManifest on the wire: the named cards
+// from the bot's own hand are manifested (Kozilek, the Broken Reality).
+const chooseManifest = "manifest"
 
 // --- "choose a color" (#780) -----------------------------------------
 

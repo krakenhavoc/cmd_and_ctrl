@@ -50,10 +50,10 @@
     {
       what: "Your decks",
       details:
-        "Each saved deck’s name, the list you pasted or the link you imported it from, and its commanders.",
+        "Each saved deck’s name, the list you pasted or the link you imported it from, its commanders, and its estimated power level once an admin rates it (shown to the table you seat it at).",
       why: "So you can seat a deck without pasting it again.",
       howLong: "Until you delete the deck or your account.",
-      source: "migrations 0005, 0008",
+      source: "migrations 0005, 0008, 0027",
     },
     {
       what: "Your settings and last table",
@@ -185,7 +185,7 @@
     },
     {
       who: "Discord",
-      what: "Sign-in goes through Discord, which learns that you signed in to this site. After that the server, not your browser, fetches your avatar picture from Discord’s image servers and keeps a copy. When sign-up needs that role, the server also asks Discord whether you hold it, at sign-in and each time your sign-in is renewed. When a table’s host turns on a voice room, the server asks Discord to make a private voice channel in the C2 Discord server, named after the table, and lets in the seated players who are members of that server, by the Discord ids it already holds. To do that it asks Discord whether each of them is a member, and whether they are connected to that channel. The channel and its text chat are deleted after the game. The server’s owner and administrators can see every channel there, private ones included. When a table’s host posts it to #lfg, the bot posts the table’s name, the host’s Discord account and the seat count in that channel, where every member of the CMD & CTRL Discord server can see it; the post is deleted when the game starts or the host withdraws it. If you turn on notifications, the server asks Discord’s bot to send you direct messages naming the table and its turn number, with a link back to it; Discord holds those messages under its own policy.",
+      what: "Sign-in goes through Discord, which learns that you signed in to this site. After that the server, not your browser, fetches your avatar picture from Discord’s image servers and keeps a copy. When sign-up needs that role, the server also asks Discord whether you hold it, at sign-in and each time your sign-in is renewed. When a table’s host turns on a voice room, the server asks Discord to make a private voice channel in the C2 Discord server, named after the table, and lets in the seated players who are members of that server, by the Discord ids it already holds. To do that it asks Discord whether each of them is a member, and whether they are connected to that channel and muted, about every twenty seconds while the room is open; the seated players of that table see who is connected and who is muted, and nobody else does. The channel and its text chat are deleted after the game. The server’s owner and administrators can see every channel there, private ones included. When a table’s host posts it to #lfg, the bot posts the table’s name, the host’s Discord account and the seat count in that channel, where every member of the CMD & CTRL Discord server can see it; the post is deleted when the game starts or the host withdraws it. If you turn on notifications, the server asks Discord’s bot to send you direct messages naming the table and its turn number, with a link back to it; Discord holds those messages under its own policy.",
     },
     {
       who: "GitHub",
@@ -214,6 +214,12 @@
       // sees the click.
       who: "Card shops, if you follow a shop link",
       what: `Where the site is set up for them, the Decks and Catalog pages show links to buy the cards at a shop such as TCGplayer or Card Kingdom. ${SHOP_DISCLOSURE} Following one takes you to the shop’s own site, sometimes through the shop’s partner network on the way, and from there the shop’s own privacy terms and cookies apply. The link holds card names and nothing about you, and it opens without telling the shop which page you came from. CMD & CTRL does not track the click: following a link sends nothing to this server and nothing is recorded. You can hide the links in Settings, under Display. That choice is kept with your settings: with your account if you are signed in, otherwise only in this browser.`,
+    },
+    {
+      // #3558: routes/Funding.svelte. Plain links with rel="noopener
+      // noreferrer"; no server route sees the click.
+      who: "GitHub Sponsors, Ko-fi or Patreon, if you follow a support link",
+      what: "The funding page may link to a place where you can choose to support CMD & CTRL. Following a link takes you to that site, under its own terms, privacy policy and cookies. The link holds nothing about you and opens without telling that site which page you came from. CMD & CTRL does not track the click: following a link sends nothing to this server and nothing is recorded.",
     },
   ];
 </script>

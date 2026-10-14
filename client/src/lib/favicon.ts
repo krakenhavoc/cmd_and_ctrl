@@ -22,7 +22,10 @@ export function usableColour(v: string): boolean {
   return s !== "" && !/color-mix|var\(|["'<>&]/.test(s);
 }
 
-export function faviconSvg({ bg, accent, mark }: FaviconColours): string {
+/** The "waiting on you" dot (#3342): a red disc with a tile-coloured ring, top right. */
+export const ATTENTION_DOT_COLOUR = "#e5484d";
+
+export function faviconSvg({ bg, accent, mark }: FaviconColours, dot = false): string {
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="64" viewBox="0 0 64 64">` +
     `<defs><path id="c" d="${C_PATH}"/></defs>` +
@@ -33,17 +36,34 @@ export function faviconSvg({ bg, accent, mark }: FaviconColours): string {
     `<use href="#c" xlink:href="#c" transform="scale(1 -1)"/>` +
     `<use href="#c" xlink:href="#c" transform="scale(-1 -1)"/>` +
     `<path d="${DIAMOND_PATH}" fill="${mark}"/>` +
-    `</g></svg>`
+    `</g>` +
+    (dot
+      ? `<circle cx="49" cy="15" r="12" fill="${ATTENTION_DOT_COLOUR}" stroke="${bg}" stroke-width="4"/>`
+      : "") +
+    `</svg>`
   );
 }
 
-export function faviconDataUrl(c: FaviconColours): string {
-  return "data:image/svg+xml," + encodeURIComponent(faviconSvg(c));
+export function faviconDataUrl(c: FaviconColours, dot = false): string {
+  return "data:image/svg+xml," + encodeURIComponent(faviconSvg(c, dot));
 }
 
 /** Point link[rel=icon] at the skin's icon; leaves the static one if any colour is unusable. */
-export function applyFavicon(doc: Document, c: FaviconColours): void {
+export function applyFavicon(doc: Document, c: FaviconColours, dot = false): void {
   if (![c.bg, c.accent, c.mark].every(usableColour)) return;
-  const href = faviconDataUrl({ bg: c.bg.trim(), accent: c.accent.trim(), mark: c.mark.trim() });
+  const href = faviconDataUrl(
+    { bg: c.bg.trim(), accent: c.accent.trim(), mark: c.mark.trim() },
+    dot,
+  );
   doc.querySelector('link[rel="icon"]')?.setAttribute("href", href);
+}
+
+/** The skin's favicon colours as the root element currently resolves them. */
+export function rootFaviconColours(doc: Document): FaviconColours {
+  const cs = getComputedStyle(doc.documentElement);
+  return {
+    bg: cs.getPropertyValue("--bg"),
+    accent: cs.getPropertyValue("--accent"),
+    mark: cs.getPropertyValue("--fg"),
+  };
 }

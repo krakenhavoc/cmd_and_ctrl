@@ -30,6 +30,11 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
+// MaxSideboard is the most sideboard cards a deck may carry (ADR 0191
+// §5): the engine's cap (game.MaxSideboardSize), so the deck checker and
+// the seat agree.
+const MaxSideboard = game.MaxSideboardSize
+
 // List is a parsed, resolved decklist. Cards are by reference to the
 // Scryfall index; the UI and the game package dereference them via
 // cards.Card.ID. Instance IDs are allocated on game-start, not here.
@@ -92,6 +97,15 @@ type Entry struct {
 	// `Companion` text section, Moxfield's `companions` board or an
 	// Archidekt `Companion` category.
 	IsCompanion bool
+	// PrintingID, SetCode and CollectorNo name the printing the deck's
+	// source chose, when it said: an Archidekt `uid`, a Moxfield
+	// `scryfall_id`, a text line's "(SNC) 213". All zero when the
+	// source names none, and Resolve then takes the index's default
+	// printing for the name. They pick a picture and nothing else
+	// (ADR 0192 §2).
+	PrintingID  uuid.UUID
+	SetCode     string
+	CollectorNo string
 }
 
 // UnknownCardError is returned when a decklist references a card the
@@ -149,6 +163,11 @@ func Resolve(idx *cards.Index, name string, entries []Entry) (*List, error) {
 		if !ok {
 			unknown = append(unknown, e.Name)
 			continue
+		}
+		// ADR 0192 §2: the printing the deck named, when the index
+		// has it and it is the same card. Otherwise the default.
+		if p, found := idx.FindPrintingOf(c, e.PrintingID, e.SetCode, e.CollectorNo); found {
+			c = p
 		}
 		switch {
 		case e.IsCommander:
@@ -269,10 +288,12 @@ func hasCompanionLine(text string) bool {
 // client-side image lookup, and IsCommander is set on each
 // commander card. The companion, when there is one, comes last with
 // IsCompanion set, which seats it outside the game rather than in the
-// library (ADR 0172 §3). Owner / Controller are left as uuid.Nil — the
-// game package re-stamps them at seat time.
+// library (ADR 0172 §3). The sideboard comes after it, each card with
+// IsSideboard set, which seats it outside the game as well (ADR 0191
+// §3). Owner / Controller are left as uuid.Nil — the game package
+// re-stamps them at seat time.
 func (l *List) ToGameCards() []game.Card {
-	out := make([]game.Card, 0, len(l.Commanders)+len(l.Mainboard)+1)
+	out := make([]game.Card, 0, len(l.Commanders)+len(l.Mainboard)+len(l.Sideboard)+1)
 	for _, c := range l.Commanders {
 		out = append(out, toGameCard(c, true))
 	}
@@ -284,7 +305,23 @@ func (l *List) ToGameCards() []game.Card {
 		companion.IsCompanion = true
 		out = append(out, companion)
 	}
+	for _, c := range l.SeatedSideboard() {
+		card := toGameCard(c, false)
+		card.IsSideboard = true
+		out = append(out, card)
+	}
 	return out
+}
+
+// SeatedSideboard is the sideboard that reaches the game: the whole of
+// it when it holds at most MaxSideboard cards, and nothing when it holds
+// more (ADR 0191 §5). Validate says so with a warning. The server never
+// chooses which cards of an oversized one to keep.
+func (l *List) SeatedSideboard() []cards.Card {
+	if len(l.Sideboard) > MaxSideboard {
+		return nil
+	}
+	return l.Sideboard
 }
 
 // ToGameCard converts one indexed Scryfall card into the game.Card
@@ -975,4 +1012,15 @@ func faceColors(f cards.CardFace) []string {
 		return nil
 	}
 	return game.ColorsInManaCost(f.ManaCost)
+}
+
+// parsePrintingID reads a Scryfall printing id off an importer's JSON.
+// An empty or malformed value is uuid.Nil: a deck whose source sends
+// junk loses its picture choice, never the import (ADR 0192 §2).
+func parsePrintingID(s string) uuid.UUID {
+	id, err := uuid.Parse(strings.TrimSpace(s))
+	if err != nil {
+		return uuid.Nil
+	}
+	return id
 }

@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/lobby"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
@@ -239,5 +241,19 @@ func TestMetricsAddrConfig(t *testing.T) {
 		if !strings.Contains(string(out), metrics.AddrEnv) {
 			t.Errorf("%s=%s: the refusal does not name the variable:\n%s", metrics.AddrEnv, bad, out)
 		}
+	}
+}
+
+// The public handler tells every client the newest MCP seat revision, so an
+// old seat can warn its agent on join (#3608).
+func TestPublicHandlerAdvertisesTheSeatRevision(t *testing.T) {
+	srv, _ := publicStack(t)
+	resp, err := http.Get(srv.URL + "/healthz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+	if got, want := resp.Header.Get(protocol.SeatRevisionHeader), strconv.Itoa(protocol.SeatRevision); got != want {
+		t.Errorf("%s = %q, want %q", protocol.SeatRevisionHeader, got, want)
 	}
 }

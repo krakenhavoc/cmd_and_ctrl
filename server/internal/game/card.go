@@ -596,15 +596,22 @@ type Card struct {
 	AttachedAt int64
 
 	// AttachedEpoch is the host's Card.ObjectEpoch at the moment of the
-	// attach, for a host that is NOT on the battlefield: the creature card
-	// in a graveyard an Animate Dead enchants (ADR 0154 decision 3,
-	// CR 400.7). attachmentLegalLocked reads it only for an off-battlefield
-	// host, where a card that left the graveyard and came back with the
-	// same instance ID is a new object the Aura never enchanted
-	// (CR 303.4c). Zero for every battlefield host: the epoch pin on
-	// battlefield attachments is #3159, not this field.
+	// attach (ADR 0154 decision 3, CR 400.7): which OBJECT of the host the
+	// link was made to, since an instance ID survives a zone change.
+	// attachmentLegalLocked reads it for an off-battlefield host always
+	// (the creature card in a graveyard an Animate Dead enchants), and for
+	// a battlefield host when AttachedPinned is set (#3159, the 2026-10-14
+	// amendment): a host that left and came back with the same instance ID
+	// inside one resolution is a new object the attachment was never
+	// attached to (CR 303.4c, CR 301.5c).
 	//
 	// Set by AttachForEffect and cleared wherever AttachedTo is.
+	//
+	// AttachedPinned (in the bool block at the end of Card) says the
+	// epoch was recorded. It is a separate flag because epoch 0 is a real
+	// epoch (a card that has never moved), so a zero AttachedEpoch cannot
+	// mean "not recorded": a link set by hand (a fixture) or restored from
+	// a file written before #3159 is unpinned and keeps the old behaviour.
 	AttachedEpoch int
 
 	// EnchantReturned is the creature the resolution of Animate Dead's
@@ -1253,6 +1260,13 @@ type Card struct {
 	// statistics and the client's badge read it. It grants nothing.
 	IsCompanion bool
 
+	// IsSideboard marks a card a deck owns outside the game (ADR 0191
+	// §3). It routes the card into Player.Sideboard when the deck is
+	// seated, the way IsCompanion routes the companion, and stays on
+	// the card after an effect brings it into a hand. It grants
+	// nothing.
+	IsSideboard bool
+
 	// CommanderReturnDue is CR 903.9a's "put into that zone since the
 	// last time state-based actions were checked" for a commander in a
 	// graveyard or in exile (ADR 0115 decision 1). MoveCard sets it as a
@@ -1641,6 +1655,12 @@ type Card struct {
 	// EnchantReturned (the creature it names) sits beside AttachedEpoch,
 	// for alignment.
 	EnchantSwapped bool
+
+	// AttachedPinned says AttachedEpoch was recorded for this link, so a
+	// battlefield host is judged by it (#3159; documented beside
+	// AttachedEpoch, kept here for alignment). AttachForEffect sets it
+	// for every card host. Cleared wherever AttachedTo is.
+	AttachedPinned bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for
@@ -1718,6 +1738,43 @@ func clampPower(p int) int {
 func (c Card) PowerForComparison() int {
 	p, _ := ptWithCounters(effectiveOf(&c), c.Counters)
 	return p
+}
+
+// CountedPower is what this creature counts for when it is tapped to
+// pay a crew or saddle cost (ADR 0186 Decision 4): the number the
+// payment sums, which is NOT always its power. use names the cost
+// (CostPowerCrew or CostPowerSaddle); zero means "plain power", which is
+// what teamwork and every other total-power cost count.
+//
+//  1. Start from PowerForComparison (layers and P/T counters, not
+//     clamped). If a rule for this use says UseToughness, start from the
+//     toughness instead.
+//  2. Add the Bonus of every rule for this use. Two rules add up.
+//  3. Clamp at zero, as CurrentPower does: a creature never takes power
+//     away from a total, but the bonus is added BEFORE the clamp, so a
+//     -1/1 with "+2" counts 1, not 2 (owner decision 2, 2026-10-14).
+//
+// The order of 1 and 2 is the ADR's reading; no ruling says how the two
+// combine and no Commander-legal card gives a creature both. Same caller
+// responsibility as CurrentPower: layers must be fresh.
+func (c Card) CountedPower(use CostPowerUse) int {
+	eff := effectiveOf(&c)
+	p, t := ptWithCounters(eff, c.Counters)
+	if use == 0 {
+		return clampPower(p)
+	}
+	for _, r := range eff.CostPower {
+		if r.Uses&use != 0 && r.UseToughness {
+			p = t
+			break
+		}
+	}
+	for _, r := range eff.CostPower {
+		if r.Uses&use != 0 {
+			p = SaturatingAdd(p, r.Bonus)
+		}
+	}
+	return clampPower(ClampCount(p))
 }
 
 // ptWithCounters adds every P/T counter on the object to its

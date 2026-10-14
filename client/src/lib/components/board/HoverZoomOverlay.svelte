@@ -19,7 +19,7 @@
 
   import { hoveredCard } from "../../cardTypes";
   import { cardImageURL } from "../../cardImage";
-  import { isFlippedFlipCard, LAYOUT_FLIP } from "../../faces";
+  import { isFlippedFlipCard, isSidewaysArt, LAYOUT_FLIP } from "../../faces";
   import { cardArt } from "../../cardArt";
   import { isToken } from "../../tokenGroups";
   import { metaFor, type CardMeta } from "../../cardMetaCache";
@@ -41,6 +41,9 @@
   // shown turned 180 degrees, as on the board, so the half that is up
   // reads the right way up.
   const flippedArt = $derived(isFlippedFlipCard(card));
+  // #3518: a split card's one image has its text sideways; the scan is
+  // landscape and the image turned a quarter-turn so it reads.
+  const sideways = $derived(isSidewaysArt(card));
   // The OTHER face of a multi-face card, if there is one — the back
   // of a modal DFC being previewed from hand, or the front of one
   // already flipped onto the battlefield. Null for the ~33,000
@@ -48,6 +51,8 @@
   const otherFace = $derived.by(() => {
     const faces = card?.faces;
     if (!faces || faces.length < 2) return null;
+    // A split card's halves share one image: nothing to inset (#3518).
+    if (sideways) return null;
     const active = card?.active_face ?? 0;
     const idx = active === 0 ? 1 : 0;
     // A flip card's other half is the same image turned the other way
@@ -182,7 +187,7 @@
 
 {#if card}
   <div class="overlay" aria-hidden="true">
-    <div class="scan">
+    <div class="scan" class:sideways>
       {#if imgSrc}
         <!-- keyed so a new card never shows the previous card's scan
              while its own image is still loading. The failure pip
@@ -196,6 +201,7 @@
             src={imgSrc}
             alt=""
             class:flipped={flippedArt}
+            class:sideways
             fetchpriority="high"
             use:cardArt={{ url: imgSrc, interactive: false }}
           />
@@ -436,6 +442,20 @@
      (#1965): the bottom of a card is its rules-text box, which is the
      thing the panel is opened to read, whereas the top corner only
      covers a title bar and mana cost the info panel repeats below. */
+  .scan.sideways {
+    width: 100%;
+    aspect-ratio: 88 / 63;
+    container-type: size;
+  }
+  .scan img.sideways {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100cqh;
+    height: 100cqw;
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+
   .other-face {
     position: absolute;
     right: 6px;

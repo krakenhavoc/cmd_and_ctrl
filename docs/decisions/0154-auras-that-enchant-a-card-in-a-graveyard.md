@@ -1,6 +1,6 @@
 # ADR 0154 — Auras that enchant a card in a graveyard (Animate Dead)
 
-**Status:** Accepted (owner decisions 2026-10-13); amended 2026-10-13 for #3158 (see the end) · 2026-10-13 · S53 — Faces, zones, and shared payment (ADR first), tracker [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910)
+**Status:** Accepted (owner decisions 2026-10-13); amended 2026-10-13 for #3158 and 2026-10-14 for #3159 (see the end) · 2026-10-13 · S53 — Faces, zones, and shared payment (ADR first), tracker [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910)
 **Issues:** [#1780](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1780) (seam: an Aura that enchants a card in a graveyard). Registry row: `aura-on-a-graveyard-card` (status `missing`; it changes with the implementation, not with this ADR).
 **Owner decisions:** 2026-10-13. The owner accepted the ADR and chose the recommended option, (a), on all six questions. The answers are recorded under [Questions for the owner](#questions-for-the-owner-answered-2026-10-13), and no section above them changed.
 **Follow-ups:** [#3156](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3156) (Necromancy), [#3157](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3157) (Spellweaver Volute), [#3158](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3158) (the CR 303.4f prompt for every Aura), [#3159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3159) (a flickered host keeps its attachments: bug, starts with a failing test), [#3160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3160) (CR 701.3b for every Aura), [#3161](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3161) (reanimation-family bot pricing).
@@ -158,7 +158,7 @@ What is missing is a way to **see** what an Animate Dead on the battlefield is a
 
 ### 10. What this does not change
 
-- An Aura attached to a battlefield host is judged exactly as before. The epoch pin is read only for an off-battlefield host (Question 2).
+- An Aura attached to a battlefield host is judged exactly as before. The epoch pin is read only for an off-battlefield host (Question 2). (Amended 2026-10-14 for #3159, see the end: a pinned battlefield host is judged by its epoch too.)
 - No catalog card listens for `EventAttach` (only the layer listener, which bumps its version). An attach to a graveyard card bumps the layer version for nothing, which is harmless.
 - `AttachedHostOf`, `AttachmentsOf` and "enchanted creature" statics read the battlefield only, so a graveyard host is never "enchanted creature".
 
@@ -272,3 +272,23 @@ It applies to an entry that is a move onto the battlefield (or a created token),
 **What it does not do.** The sandbox `move_card` verb cannot pause and keeps its old behaviour. An Aura entering as a copy (Copy Enchantment's shape) is not asked; no catalogued card has it. Spellweaver Volute's "attach it to another instant card" moves an Aura already on the battlefield, which is not CR 303.4f, and stays with #3157.
 
 **Cards.** Animate Dead is Full. So are Light-Paws, Emperor's Voice, Brilliant Restoration, Ondu Spiritdancer, Zur the Enchanter, Carmen, Cruel Skymarcher, Open the Vaults, Guardian Sunmare, Armored Skyhunter, It That Betrays and Replenish. Nazgûl Battle-Mace drops its Aura caveat and keeps its Rest in Peace one. The registry row `aura-chooses-its-host-as-it-enters` is implemented.
+
+## Amendment 2026-10-14 ([#3159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3159)): the epoch pin for a battlefield host
+
+Question 2 kept decision 3's epoch check to off-battlefield hosts and filed the battlefield case as a bug that starts with a failing test. This amendment is that bug's fix. It changes decision 3 and the first bullet of decision 10; everything else stands.
+
+**The failing case.** Chaos Warp on a creature with Pacifism and Bonesplitter attached, its owner's library empty. The creature is tucked, the shuffle leaves it as the only card, the reveal finds it and puts it onto the battlefield, all in one resolution and with the same instance ID (the library-to-battlefield put keeps it). No state-based check ran while the creature was gone, and `attachmentLegalLocked` found "the host" by ID, so Pacifism stayed and the Equipment stayed attached. CR 400.7 makes the returned creature a new object: the Aura goes to the graveyard (CR 303.4c, CR 704.5m) and the Equipment becomes unattached (CR 301.5c, CR 704.5n). Cloudshift and Ephemerate, the cards the issue names, were never affected: the exile return mints a new instance ID (`resetAsNewObjectLocked`), so the old link names nothing and the state-based action always swept it. They keep regression tests.
+
+**Decision 3, amended.** `AttachForEffect` records the host's `ObjectEpoch` in `Card.AttachedEpoch` for every card host, on or off the battlefield, and sets a new `Card.AttachedPinned`. `attachmentLegalLocked` judges a battlefield host by the epoch when the link is pinned; an off-battlefield host is judged by it always, as before. A pinned link whose host's epoch has moved on is illegal, and `attachmentSBALocked` handles it through its existing branches: an Aura to the graveyard, an Equipment or Fortification unattached, a bestowed Aura unbestowed (CR 702.103f).
+
+**Why a flag and not the zero value.** Epoch 0 is a real epoch, a card that has never changed zones, so a zero `AttachedEpoch` cannot also mean "not recorded". Two kinds of link were never recorded: one set by hand (test fixtures set `AttachedTo` directly, hundreds of them), and one restored from a file written before this amendment. Both restore unpinned and keep the old behaviour, rather than falling off on their first state-based check. `AttachedPinned` is carried in the snapshot (additive within v8, absent when false) and cleared wherever `AttachedTo` is.
+
+**The move test.** `AttachForEffect`'s "did it move?" compares the epoch when the existing link is pinned or the new host is off the battlefield. Re-equipping a creature that left and came back with its ID is a move (CR 701.3c: a new timestamp, and the "As this becomes attached" clause runs). Re-equipping the same object is not. The CR 701.3b probe (`attachmentLegalOnLocked`) is unpinned, because it asks about the host as it is now.
+
+**Decision 10, amended.** An Aura or Equipment attached to a battlefield host is judged as before, plus one question: is the host still the object it was attached to.
+
+**What it does not do.** Between the host's return and the next state-based check, the rest of the same resolution still sees the old link: a static such as "enchanted creature can't attack" or "equipped creature gets +2/+0" applies to the returned creature through `IsAttachedTo`, which compares the instance ID only. Nothing in the catalog reads the returned creature's characteristics inside that window that we know of, and the state-based check runs before any player gets priority.
+
+**Tests.** `TestChaosWarpedHostReturningAsTheSameIDLosesItsAura` and `TestChaosWarpedHostReturningAsTheSameIDLosesItsEquipment` (cards/effects), `TestHostReturningAsANewObjectKeepsNoAura` and `TestHostReturningAsANewObjectKeepsNoEquipment` (game, raw `MoveCard` out and back), `TestHandSetAttachmentIsNotPinned` (the compatibility half) and `TestReequipOntoTheSameObjectIsNotAMove`. Cloudshift keeps `TestCloudshiftedHostLosesItsAura` and `TestCloudshiftedHostLosesItsEquipment`.
+
+**Back-out.** Delete the `else if c.AttachedPinned && …` branch in `attachmentLegalLocked`: the two Chaos Warp tests and the two game tests fail. Stop setting `AttachedPinned` in `AttachForEffect`: the same four fail, and `TestReequipOntoTheSameObjectIsNotAMove` too.

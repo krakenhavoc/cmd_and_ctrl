@@ -38,6 +38,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/supportlinks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/usersettings"
@@ -170,6 +171,10 @@ type Config struct {
 	// 0179), checked at boot and served by GET /config. Nil or empty:
 	// the client renders no shop link.
 	Shops []shoplinks.Shop
+	// Support is the optional Ko-fi and Patreon links
+	// (CMDCTRL_SUPPORT_*, #3558), checked at boot and served by GET
+	// /config. The zero value shows none.
+	Support supportlinks.Links
 	// DiscordVoice is ADR 0159's table voice rooms. The zero value is
 	// off: GET /community says so and the client offers no room.
 	DiscordVoice discord.Voice
@@ -374,6 +379,8 @@ type GameEvictor interface {
 //	GET  /games/{id}/spectators — a seat / host / creator / admin: who is watching
 //	DELETE /games/{id}/spectators/{spectator} — host / creator / admin: remove one (?block=true)
 //	POST /games/{id}/seats/{player}/reclaim — admin: mint a seat-reclaim link
+//	POST /games/{id}/seats/{player}/away — answer the away offer: stand_in, concede or wait (ADR 0177)
+//	POST /games/{id}/seats/me/take-back — take your seat back from the bot playing it (ADR 0177)
 //	POST /games/{id}/reclaim — redeem one: a session for that seat
 //	POST /games/{id}/invites/rotate — admin: revoke + re-mint one invite kind
 //	POST /games/{id}/invites/dm — seated / creator / admin: DM a person the game's invite link
@@ -632,6 +639,12 @@ func Handler(c Config) http.Handler {
 	// (starting life is fixed once the game is active) are the
 	// engine's, not the route's.
 	mux.Handle("PATCH /games/{id}/settings", auth.Middleware(c.Auth)(handlerFunc(c, updateTableSettings)))
+	// #3499: read the table's settings without changing them, so the
+	// lobby card can show everyone at the table the rules it will be
+	// played under. Anyone at the table (a seat or a spectator), its
+	// creator, or an admin: the people the game view already shows
+	// them to once the board is open.
+	mux.Handle("GET /games/{id}/settings", auth.Middleware(c.Auth)(handlerFunc(c, getTableSettings)))
 	// ADR 0075 §2.4: spawning on a LIVE table. Deliberately NOT
 	// behind requireDevFeature — this is the production spawner, and
 	// its two gates are its own: CanManageTable, and the table's
@@ -667,6 +680,10 @@ func Handler(c Config) http.Handler {
 	// seat from an unstarted table; an admin alone from a started game, by
 	// conceding it out (#3093, seat_remove.go).
 	mux.Handle("DELETE /games/{id}/seats/{player}", auth.Middleware(c.Auth)(handlerFunc(c, removeSeat)))
+	// ADR 0177: the table moves on without a player who is gone, and
+	// the player takes their seat back from the bot (away.go).
+	mux.Handle("POST /games/{id}/seats/{player}/away", auth.Middleware(c.Auth)(handlerFunc(c, answerAwaySeat)))
+	mux.Handle("POST /games/{id}/seats/me/take-back", auth.Middleware(c.Auth)(handlerFunc(c, takeBackSeat)))
 	// #3113: the block list and the unblock (blocks_http.go), and
 	// spectators: who is watching, and removing one (spectators.go).
 	mux.Handle("GET /games/{id}/blocks", auth.Middleware(c.Auth)(handlerFunc(c, listBlocks)))
@@ -928,6 +945,8 @@ func Handler(c Config) http.Handler {
 	// Moderation for a playmat on a shared table (ADR 0128 section 9).
 	mux.Handle("DELETE /admin/users/{id}/playmat", requireAdmin(c, handlerFunc(c, adminRemovePlaymat)))
 	mux.Handle("DELETE /admin/users/{id}/playmats/{slot}", requireAdmin(c, handlerFunc(c, adminRemovePlaymatSlot)))
+	// A saved deck's estimated power level (#3671, deck_power.go).
+	mux.Handle("PUT /admin/decks/{id}/power", requireAdmin(c, handlerFunc(c, adminSetDeckPower)))
 	// The admin views (ADR 0124 §2, admin_views.go): read-only, behind
 	// requireAdmin like every admin route, so the same-answer census
 	// finds each pattern. No rate limit of their own: only admins reach
@@ -1072,6 +1091,11 @@ type createGameResponse struct {
 	GameMeta
 	// Setup is present only when the request asked for one.
 	Setup *setupResult `json:"setup,omitempty"`
+	// Seat is the creator's own seat at the new table (#3494): the
+	// session for it, as POST /games/{id}/join would answer. Absent for
+	// the admin token, which is not a person, and when seating failed
+	// (the table is created anyway; Take a seat is still offered).
+	Seat *sessionResponse `json:"seat,omitempty"`
 }
 
 // transferHostRequest is the body of POST /games/{id}/host.
@@ -1263,6 +1287,12 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 		}
 
 		out := createGameResponse{GameMeta: meta}
+		if !server {
+			// #3494: almost every host plays, so the creator sits down
+			// in seat 1 at once, as themselves, before the last setup's
+			// bots and before an #lfg post counts the seats.
+			out.Seat = seatCreator(c, w, r, p, meta)
+		}
 		if body.VoiceRoom {
 			// ADR 0159 §1. The creator is the table's manager until a
 			// host sits down; a server with voice off ignores the ask.
@@ -1299,9 +1329,59 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 			if fresh, gerr := c.Lobby.Get(meta.ID); gerr == nil {
 				out.GameMeta = fresh
 			}
+		} else if out.Seat != nil {
+			// The seat is on the table now; Get still carries both invites.
+			if fresh, gerr := c.Lobby.Get(meta.ID); gerr == nil {
+				out.GameMeta.Players = fresh.Players
+				out.GameMeta.HostPlayerID = fresh.HostPlayerID
+			}
 		}
 		out.GameMeta = redactMetaFor(p, c.isAdmin(p), meta.ID, out.GameMeta)
 		return writeJSON(w, http.StatusCreated, out)
+	}
+}
+
+// seatCreator sits the creator down at the table they just made
+// (#3494), exactly as their own invite click would: the seat takes the
+// Discord identity and the user from the session, and the seat session
+// is minted from it. A failure leaves the table unseated and is only
+// logged: the create itself succeeded, and the card still offers Take
+// a seat.
+func seatCreator(c Config, w http.ResponseWriter, r *http.Request, p auth.Principal, meta GameMeta) *sessionResponse {
+	if c.Lobby.ConnectionsFull() {
+		return nil
+	}
+	identity := principalIdentity(p)
+	name := ""
+	if !identity.Populated() {
+		name = p.Name
+	}
+	seated, playerID, err := c.Lobby.JoinAs(meta.ID, meta.InviteToken, name, identity, p.UserID)
+	if err != nil {
+		c.logger().Warn("seating the creator failed", "game_id", meta.ID.String(), "err", err)
+		return nil
+	}
+	sp := withIdentity(auth.Principal{
+		Role:     auth.RolePlayer,
+		UserID:   p.UserID,
+		GameID:   seated.ID,
+		PlayerID: playerID,
+		Name:     name,
+	}, identity)
+	tok, issued, err := issueFor(r.Context(), c, sp, &p)
+	if err != nil {
+		c.logger().Warn("a session for the creator's seat failed", "game_id", meta.ID.String(), "err", err)
+		return nil
+	}
+	setSessionCookie(c, w, tok, issued.ExpiresAt)
+	seated.InviteToken = ""
+	seated.SpectatorInvite = ""
+	return &sessionResponse{
+		Token:     tok,
+		ExpiresAt: issued.ExpiresAt,
+		Principal: issued,
+		Game:      &seated,
+		PlayerID:  playerID,
 	}
 }
 
@@ -1411,6 +1491,48 @@ func updateTableSettings(c Config, w http.ResponseWriter, r *http.Request) error
 	return writeJSON(w, http.StatusOK, tableSettingsResponse{
 		Settings: protocol.ViewOfTableSettings(settings),
 	})
+}
+
+// getTableSettings handles GET /games/{id}/settings (#3499): the
+// table's rules, read-only. Before it, the lobby's only read was an
+// empty PATCH, which inherited the write's host-or-admin gate and left
+// everyone else at the table unable to see the rules until the board
+// opened.
+func getTableSettings(c Config, w http.ResponseWriter, r *http.Request) error {
+	id, err := gameIDFromPath(r)
+	if err != nil {
+		return err
+	}
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
+	meta, err := c.Lobby.Get(id)
+	if err != nil {
+		return err
+	}
+	if !canReadTableSettings(p, meta, c.isAdmin(p)) {
+		return httpError(http.StatusForbidden, "only someone at this table can read its settings")
+	}
+	settings, err := c.Lobby.Settings(id)
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, tableSettingsResponse{
+		Settings: protocol.ViewOfTableSettings(settings),
+	})
+}
+
+// canReadTableSettings: an admin, a session bound to this table (a
+// seat or a spectator), or the signed-in person who created it.
+func canReadTableSettings(p auth.Principal, meta GameMeta, admin bool) bool {
+	if admin {
+		return true
+	}
+	if p.GameID == meta.ID && (p.Role == auth.RolePlayer || p.Role == auth.RoleSpectator) {
+		return true
+	}
+	return p.UserID != uuid.Nil && meta.CreatedBy != uuid.Nil && p.UserID == meta.CreatedBy
 }
 
 // joinGame is the primary onboarding path: a player clicks an invite
@@ -2934,6 +3056,10 @@ type uploadDeckResponse struct {
 	// Companion names the deck's companion (ADR 0172 §3), which seats
 	// outside the game rather than in the library. Empty for none.
 	Companion string `json:"companion,omitempty"`
+	// Sideboard is how many sideboard cards the deck seats outside the
+	// game (ADR 0191 §3): not part of CardCount, read only by effects
+	// that bring a card in from outside the game. Zero for none.
+	Sideboard int `json:"sideboard,omitempty"`
 	// Warnings is a non-fatal violation list (e.g. sideboard ignored).
 	// The accepted deck is already installed when warnings is
 	// non-empty; treat it as advisory.
@@ -3086,7 +3212,11 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 				//
 				// ADR 0172 adds the third: a lone sideboard card read
 				// as the companion is said, not refused.
+				//
+				// ADR 0191 adds the fourth: a sideboard over the cap is
+				// said and not seated, never a reason to refuse a deck.
 				if v.Code == deck.CodeSideboardUnsupported ||
+					v.Code == deck.CodeSideboardTooLarge ||
 					v.Code == deck.CodeUnsupportedLayout ||
 					v.Code == deck.CodeCompanionFromSideboard {
 					warnings = append(warnings, v)
@@ -3211,7 +3341,7 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	if errors.Is(libraryErr, decklibrary.ErrLibraryFull) {
 		libraryNote = fmt.Sprintf("Your deck library is full (%d decks), so this deck was seated but not saved. Delete one on the Decks page to make room.", decklibrary.MaxDecks)
 	}
-	if serr := c.Lobby.SetSeatDeckID(id, body.PlayerID, libraryDeckID); serr != nil {
+	if serr := c.Lobby.SetSeatDeckID(id, body.PlayerID, libraryDeckID, libraryDeckPower(r.Context(), c, libraryDeckID)); serr != nil {
 		logDeckLibraryWarning(c, "set seat deck_id failed", serr, "game_id", id, "player_id", body.PlayerID)
 	}
 	switch {
@@ -3228,6 +3358,7 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		DeckID:        deckID,
 		Commanders:    commanders,
 		Companion:     companionName(list),
+		Sideboard:     len(list.SeatedSideboard()),
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
 		LibraryNote:   libraryNote,
@@ -3306,6 +3437,21 @@ func saveToLibrary(ctx context.Context, c Config, p auth.Principal, gameID, play
 		return "", err
 	}
 	return saved.ID.String(), nil
+}
+
+// libraryDeckPower is the power level of the library deck an upload
+// just saved (#3671), or 0 when there is none or it is unrated. A save
+// that changed the list has already cleared it.
+func libraryDeckPower(ctx context.Context, c Config, deckID string) float64 {
+	id, err := uuid.Parse(deckID)
+	if err != nil || c.DeckLibrary == nil {
+		return 0
+	}
+	d, err := c.DeckLibrary.Get(ctx, id)
+	if err != nil {
+		return 0
+	}
+	return d.PowerLevel
 }
 
 // libraryFallbackName names a deck being saved to the library when
@@ -3410,7 +3556,7 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if serr := c.Lobby.SetSeatDeckID(id, p.PlayerID, saved.ID.String()); serr != nil {
+	if serr := c.Lobby.SetSeatDeckID(id, p.PlayerID, saved.ID.String(), saved.PowerLevel); serr != nil {
 		logDeckLibraryWarning(c, "set seat deck_id failed", serr, "game_id", id, "player_id", p.PlayerID)
 	}
 	recordLastDeck(r.Context(), c, p, id, p.PlayerID, users.LastDeck{Kind: users.LastDeckLibrary, ID: saved.ID.String()})
@@ -3426,6 +3572,7 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		DeckID:        saved.ID.String(),
 		Commanders:    commanders,
 		Companion:     companionName(list),
+		Sideboard:     len(list.SeatedSideboard()),
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
 	})
@@ -3588,7 +3735,7 @@ func libraryDeckInfo(c Config, d decklibrary.Deck, verdicts map[string]catalog.E
 		UpdatedAt:  d.UpdatedAt,
 		SourceURL:  d.SourceURL,
 	}
-	info.CommanderCards, info.ColorIdentity = libraryCommanders(c.Cards, d.Commanders)
+	info.CommanderCards, info.ColorIdentity = libraryCommanders(c.Cards, d.Commanders, libraryCommanderPrintings(c.Cards, d))
 	if verdicts != nil {
 		if rep, rerr := libraryDeckReport(c, d, verdicts); rerr == nil {
 			n, m := rep.AsPrinted()
@@ -3691,14 +3838,43 @@ func renameMyDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 	})
 }
 
+// libraryCommanderPrintings reads the printing a saved deck's source
+// names for each commander (ADR 0192 §3), keyed by lower-cased name.
+// The library row stores commander names only, so the printing is read
+// back off the stored list; one that no longer parses names no
+// printing and the Decks page falls back to the default art.
+func libraryCommanderPrintings(idx *cards.Index, d decklibrary.Deck) map[string]deck.Entry {
+	entries, err := libraryDeckEntries(d)
+	if err != nil {
+		return nil
+	}
+	out := map[string]deck.Entry{}
+	for _, e := range entries {
+		if !e.IsCommander {
+			continue
+		}
+		out[strings.ToLower(strings.TrimSpace(e.Name))] = e
+		// The row stores the card's printed name, which can differ from
+		// the name a list used (a double-faced commander's front face).
+		if idx != nil {
+			if card, ok := idx.FindByName(e.Name); ok {
+				out[strings.ToLower(strings.TrimSpace(card.Name))] = e
+			}
+		}
+	}
+	return out
+}
+
 // libraryCommanders resolves a saved deck's commander names against
 // idx for the Decks page's art and aura (ADR 0158 §2). The index's
 // name lookup already prefers a playable printing; when that printing
 // carries no image, the oracle's representative printing is tried
 // before giving up, so the client gets an id it can always draw or no
 // id at all, never one that 404s. A name that does not resolve keeps
-// its row, with no id and no colours.
-func libraryCommanders(idx *cards.Index, names []string) ([]myDeckCommander, []string) {
+// its row, with no id and no colours. printings, when it holds an
+// entry for a commander, names the printing the deck chose (ADR 0192
+// §3) and wins over the default whenever the index has it.
+func libraryCommanders(idx *cards.Index, names []string, printings map[string]deck.Entry) ([]myDeckCommander, []string) {
 	if idx == nil || len(names) == 0 {
 		return nil, nil
 	}
@@ -3710,6 +3886,11 @@ func libraryCommanders(idx *cards.Index, names []string) ([]myDeckCommander, []s
 		}
 		cmd := myDeckCommander{Name: name}
 		if card, ok := idx.FindByName(name); ok {
+			if hint, has := printings[strings.ToLower(strings.TrimSpace(name))]; has {
+				if p, found := idx.FindPrintingOf(card, hint.PrintingID, hint.SetCode, hint.CollectorNo); found {
+					card = p
+				}
+			}
 			cmd.ColorIdentity = nonNil(card.ColorIdentity)
 			for _, l := range card.ColorIdentity {
 				seen[l] = true

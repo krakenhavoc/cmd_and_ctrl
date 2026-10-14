@@ -152,8 +152,10 @@ func TestExileSelfCostExilesTheSourceAtAnnounce(t *testing.T) {
 	}
 }
 
-// An ExileSelf ability whose source is NOT in a graveyard is refused
-// before anything is paid — the sibling of DiscardSelf's hand check.
+// An ExileSelf ability whose source is somewhere the cost cannot be paid
+// from (the graveyard, the battlefield and, since #3520, the hand are the
+// supported ones; exile is not) is refused before anything is paid — the
+// sibling of DiscardSelf's hand check.
 func TestExileSelfCostIsRefusedOutsideAGraveyard(t *testing.T) {
 	g := newActiveGame(t)
 	advanceTo(t, g, StepPrecombatMain)
@@ -161,19 +163,42 @@ func TestExileSelfCostIsRefusedOutsideAGraveyard(t *testing.T) {
 	// Declared for BOTH zones so the CR 113.6 gate lets the
 	// activation through and the cost's own check is what refuses it.
 	ab := exileSelfAbility("{1}")
-	ab.Zones = []ZoneKind{ZoneGraveyard, ZoneHand}
-	card := pushHandCard(g, me, "Scavenge Test", ab)
+	ab.Zones = []ZoneKind{ZoneGraveyard, ZoneExile}
+	c := NewCard("Scavenge Test", me.ID)
+	c.TypeLine = "Instant"
+	c.ActivatedAbilities = []ActivatedAbilityShape{ab}
+	g.Exile.PushTop(c)
+	card := c.InstanceID
 	me.ManaPool.AddMana(ManaToken{Color: "C"})
 
 	err := g.ActivateCatalogAbility(me.ID, card, 0, ActivateAbilityParams{})
 	if !errors.Is(err, ErrActivationZoneNotAllowed) {
 		t.Fatalf("err = %v, want ErrActivationZoneNotAllowed", err)
 	}
-	if !me.Hand.Contains(card) {
+	if !g.Exile.Contains(card) {
 		t.Error("the source moved on a refused activation")
 	}
 	if len(me.ManaPool) != 1 {
 		t.Errorf("pool = %v, want the mana untouched", me.ManaPool)
+	}
+}
+
+// The hand is a supported zone for the exile-this cost (#3520): the card
+// leaves the hand for exile as the cost is paid.
+func TestExileSelfCostIsPaidFromTheHand(t *testing.T) {
+	g := newActiveGame(t)
+	advanceTo(t, g, StepPrecombatMain)
+	me := g.Seats[0]
+	ab := exileSelfAbility("{1}")
+	ab.Zones = []ZoneKind{ZoneHand}
+	card := pushHandCard(g, me, "Hand Exile Test", ab)
+	me.ManaPool.AddMana(ManaToken{Color: "C"})
+
+	if err := g.ActivateCatalogAbility(me.ID, card, 0, ActivateAbilityParams{}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	if me.Hand.Contains(card) || !g.Exile.Contains(card) {
+		t.Error("the source is not in exile after the cost was paid")
 	}
 }
 

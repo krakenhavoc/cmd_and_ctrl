@@ -13,6 +13,7 @@
   import Page from "../lib/components/Page.svelte";
   import Icon from "../lib/components/Icon.svelte";
   import { ABOUT_HASH } from "../lib/about";
+  import { L } from "../lib/labels";
   import { community } from "../lib/community";
 
   const invite = $derived($community.invite_url);
@@ -169,9 +170,9 @@
           <dd>Ask for the Elder Dragon Highlander role.</dd>
           <dt>#bugs-and-ideas</dt>
           <dd>
-            Report a bug or suggest something. In a game, the toolbar's <strong
-              >Report a bug or idea</strong
-            > files it on GitHub, where what you write is public.
+            Report a bug or suggest something. The bug button (<strong>{L.reportABug}</strong>), in
+            a game's toolbar or, signed in, at the top of every other page, files it on GitHub,
+            where what you write is public.
           </dd>
         </dl>
         <p class="para">The C2 bot's slash commands:</p>

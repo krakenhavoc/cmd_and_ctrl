@@ -306,6 +306,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0108 §1 and §2: a replacement and a rules gate. Their
 		// cases are in exile_if_dies_test.go.
 		ModExileIfWouldDie: true, ModCantBeRegenerated: true,
+		// ADR 0187 §4: a rules gate read in the combat damage pass. Its
+		// cases are in assigns_no_combat_damage_test.go.
+		ModAssignsNoCombatDamage: true,
 		// ADR 0108 §4: Yawgmoth's Will's replacement. Its cases are in
 		// scoped_exile_your_graveyard_test.go.
 		ModExileInsteadOfYourGraveyard: true,
@@ -327,6 +330,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0096 amendment (#2039): the monarch gate. Its cases are in
 		// monarch_test.go and jared_carthalion_test.go.
 		ModCantBecomeMonarch: true,
+		// ADR 0032 amendment (#3515): the turn-limited legend-rule
+		// exemption. Its cases are in legend_rule_this_turn_test.go.
+		ModLegendRuleDoesntApply: true,
 		// ADR 0146 amendment (#2928): who casts each player's ballot.
 		// Its cases are in council_vote_zone_chooser_test.go and
 		// illusion_of_choice_test.go.
@@ -338,6 +344,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// #3398: the duration attack tax. Its cases are in
 		// attack_tax_duration_test.go.
 		ModAttackTax: true,
+		// ADR 0188 Decision 1 (#3559): the skip-your-next-turn debt. Its
+		// cases are in turn_skip_test.go.
+		ModSkipTurns: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

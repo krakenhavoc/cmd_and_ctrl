@@ -27,7 +27,7 @@ import (
 //	Whenever this becomes saddled, …            WhenBecomesSaddled(label, effect)
 //	As long as this is saddled, it has …        SaddledKeywords(kws...)
 //	[target Mount] becomes saddled              SaddleTarget(g, id) / Saddled{...}.Apply
-//	a creature that saddled it this turn        SaddlersOf(ctx, mount)
+//	a creature that saddled it this turn        SaddlersOfThis(ctx)  (SaddlersOf(ctx, mount) for a live Mount)
 //
 // The designation itself is game.Card.Saddled: until end of turn, gone
 // when the Mount leaves. See game.SaddleForEffect.
@@ -152,8 +152,24 @@ func (b BecomeSaddled) Apply(ctx *Context) error {
 }
 
 // SaddlersOf is "the creatures that saddled [this Mount] this turn"
-// (CR 702.171c): those tapped to pay for the saddle abilities that made
-// it saddled, still on the battlefield as the same objects.
+// (CR 702.171c): those tapped to pay for the saddle abilities, still on
+// the battlefield as the same objects. It asks about the Mount ON the
+// battlefield now; a trigger or delayed trigger that may resolve after
+// the Mount has left reads SaddlersOfThis instead.
 func SaddlersOf(ctx *Context, mount uuid.UUID) []uuid.UUID {
 	return ctx.Game.SaddlersOf(mount)
+}
+
+// SaddlersOfThis is "the creatures that saddled it this turn" for the
+// object this ability came from (CR 702.171c, ADR 0186 §1), read by the
+// source's ObjectRef and not by a battlefield lookup: the Mount may have
+// left, or been bounced in response, and its saddlers are still the ones
+// that saddled THAT object (Fortune, Loyal Steed's ruling). A source that
+// has come back as a new object answers nothing (CR 400.7).
+func SaddlersOfThis(ctx *Context) []uuid.UUID {
+	ref, ok := ctx.SourceRef()
+	if !ok {
+		return nil
+	}
+	return ctx.Game.CreaturesThatSaddledForEffect(ref)
 }

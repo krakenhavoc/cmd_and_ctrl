@@ -8,9 +8,12 @@
 // (same outbound-HTTP posture as the S06.5 deck importers: stdlib
 // only, explicit timeout, descriptive User-Agent).
 //
-// The token is a fine-grained PAT with Issues:write on the one repo
-// (see ADR 0017). It is held in memory only; it never appears in
-// logs, error strings, or responses.
+// The credential is a GitHub App installed on the one repo with
+// Issues: read and write (app.go, #3493), so issues are authored by
+// the app's bot; or, as before, a fine-grained PAT with Issues:write
+// (see ADR 0017), which files them as the token's owner. Either is
+// held in memory only; it never appears in logs, error strings, or
+// responses.
 package github
 
 import (
@@ -74,31 +77,40 @@ func (e *APIError) StatusCode() int { return e.Status }
 type Client struct {
 	baseURL string
 	repo    string // "owner/name"
-	token   string
+	tokens  TokenSource
 	http    *http.Client
 }
 
 // NewClient returns a Client for the given fine-grained token and
-// "owner/name" repo slug.
+// "owner/name" repo slug. Issues it files are authored by the token's
+// owner; NewAppClient files them as a GitHub App's bot (#3493).
 func NewClient(token, repo string) *Client {
 	return &Client{
 		baseURL: defaultBaseURL,
 		repo:    strings.Trim(repo, "/"),
-		token:   token,
+		tokens:  staticToken(token),
 		http:    &http.Client{Timeout: defaultTimeout},
 	}
 }
 
 // WithHTTPClient injects a custom http.Client. Intended for tests
-// that drive against an httptest.Server.
+// that drive against an httptest.Server. An app token source is
+// pointed at it too.
 func (c *Client) WithHTTPClient(h *http.Client) *Client {
 	c.http = h
+	if app, ok := c.tokens.(*AppTokenSource); ok {
+		app.http = h
+	}
 	return c
 }
 
-// WithBaseURL overrides the API base URL. Intended for tests.
+// WithBaseURL overrides the API base URL. Intended for tests. An app
+// token source is pointed at it too.
 func (c *Client) WithBaseURL(u string) *Client {
 	c.baseURL = strings.TrimRight(u, "/")
+	if app, ok := c.tokens.(*AppTokenSource); ok {
+		app.baseURL = c.baseURL
+	}
 	return c
 }
 
@@ -184,11 +196,15 @@ func (c *Client) do(ctx context.Context, op, method, path string, payload any, w
 		}
 		body = bytes.NewReader(buf)
 	}
+	token, err := c.tokens.Token(ctx)
+	if err != nil {
+		return fmt.Errorf("github: %s: credentials: %w", op, err)
+	}
 	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, body)
 	if err != nil {
 		return fmt.Errorf("github: build request: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 	if payload != nil {

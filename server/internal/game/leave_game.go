@@ -189,6 +189,8 @@ func (g *Game) removeObjectsOwnedByLocked(playerID uuid.UUID) int {
 		// ADR 0172: a companion still outside the game goes with its
 		// owner too.
 		sweep(p.Companion)
+		// ADR 0191: and so does its sideboard.
+		sweep(p.Sideboard)
 	}
 	if removed > 0 {
 		g.recomputeSplitSecondLocked()

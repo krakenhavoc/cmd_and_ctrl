@@ -61,7 +61,7 @@ const (
 	OutcomeWin  = "win"
 	OutcomeDraw = "draw"
 
-	// OutcomeCauseLastStanding — every opponent has left (CR 104.2a).
+	// OutcomeCauseLastStanding — every opponent has left, so the last player standing wins (CR 104.2a).
 	OutcomeCauseLastStanding = "last_standing"
 	// OutcomeCauseEffect — an effect said this player wins (CR 104.2b).
 	OutcomeCauseEffect = "effect"

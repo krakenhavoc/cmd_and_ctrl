@@ -193,7 +193,7 @@ func evasiveFirst(st *state, def *SeatEval, joinable []*protocol.CardView) {
 		if ai != aj {
 			return ai < aj
 		}
-		return joinable[i].Power > joinable[j].Power
+		return combatPower(joinable[i]) > combatPower(joinable[j])
 	})
 }
 
@@ -542,7 +542,7 @@ func (st *state) freeAnswer(defender string, swing, blockers []*protocol.CardVie
 	through, stoppedBy := matchBlocks(swing, blockers, free)
 	if rules.trample {
 		for _, a := range swing {
-			if hasKeyword(a, "trample") && a.Power > 0 {
+			if hasKeyword(a, "trample") && combatPower(a) > 0 {
 				through = max(through, trampleBoundBy(swing, blockers, free))
 				break
 			}
@@ -648,19 +648,19 @@ func blockerDies(a, b *protocol.CardView) bool {
 // firstStrikeKills reports whether b's damage in the first combat
 // damage step alone kills a: one power, not a double striker's two.
 func firstStrikeKills(b, a *protocol.CardView) bool {
-	if hasKeyword(a, "indestructible") || b.Power <= 0 || protectedFrom(a, b) {
+	if hasKeyword(a, "indestructible") || combatPower(b) <= 0 || protectedFrom(a, b) {
 		return false
 	}
-	return hasKeyword(b, "deathtouch") || b.Power >= effectiveToughness(a)
+	return hasKeyword(b, "deathtouch") || combatPower(b) >= effectiveToughness(a)
 }
 
 // combatDamage is all the damage creature c deals in one combat: its
 // power, twice over with double strike.
 func combatDamage(c *protocol.CardView) int {
 	if hasKeyword(c, "double strike") {
-		return 2 * c.Power
+		return 2 * combatPower(c)
 	}
-	return c.Power
+	return combatPower(c)
 }
 
 // blockToSurvive is the defender's answer to a swing: first every
@@ -716,7 +716,7 @@ func (p *Policy) blockToSurvive(st *state, def *SeatEval, swing, blockers []*pro
 	// and the rest goes over.
 	left := make([]int, len(swing))
 	for ai, a := range swing {
-		left[ai] = a.Power
+		left[ai] = combatPower(a)
 		if bi := blockerOf[ai]; bi >= 0 {
 			block(a, bi)
 			left[ai] = overflowPast(a, blockers[bi], left[ai])
@@ -863,7 +863,7 @@ func crackBackPower(st *state, attackers, blockers []*protocol.CardView) int {
 			return false
 		}
 		if hasKeyword(a, "trample") {
-			return !hasKeyword(a, "deathtouch") && effectiveToughness(b) >= a.Power
+			return !hasKeyword(a, "deathtouch") && effectiveToughness(b) >= combatPower(a)
 		}
 		return true
 	})

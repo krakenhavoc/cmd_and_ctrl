@@ -52,9 +52,9 @@ import (
 //     no text at all (CR 708.2a), so nothing it prints could have
 //     asked.
 //   - Only a permanent represented by a double-faced token or a
-//     double-faced card can (CR 712.9), and this engine has no
-//     double-faced tokens (ADR 0079, out of scope 1). Two printed
-//     faces is the shape.
+//     double-faced card can (CR 712.9). Two printed faces on a
+//     transform layout is the shape, and a token has them since ADR
+//     0185 (the Incubator).
 //   - The LAYOUT allowlist is the load-bearing line. An `adventure`
 //     card has two Faces and a `split` card has two Faces, and neither
 //     is a double-faced card — turning Foulmire Knight into Profane

@@ -58,8 +58,9 @@ func blockedCombat(t *testing.T, power, tough int, kw []string, blockers [][2]in
 	return g, me.ID, ids
 }
 
-// assignmentMove is the one damage-assignment move offered to seat.
-func assignmentMove(t *testing.T, g *game.Game, seat uuid.UUID) (legal.Move, map[uuid.UUID]int, int) {
+// assignmentMoves is every damage-assignment move offered to seat, the
+// canonical split first (#3620).
+func assignmentMoves(t *testing.T, g *game.Game, seat uuid.UUID) []legal.Move {
 	t.Helper()
 	var found []legal.Move
 	for _, m := range legal.EnumerateFor(g, seat) {
@@ -67,18 +68,33 @@ func assignmentMove(t *testing.T, g *game.Game, seat uuid.UUID) (legal.Move, map
 			found = append(found, m)
 		}
 	}
-	if len(found) != 1 {
-		t.Fatalf("%d damage-assignment moves offered, want 1", len(found))
+	if len(found) == 0 {
+		t.Fatal("no damage-assignment move offered")
 	}
+	return found
+}
+
+// splitOf decodes a move's per-blocker amounts and trample overflow.
+func splitOf(t *testing.T, m legal.Move) (map[uuid.UUID]int, int) {
+	t.Helper()
 	var a assignmentAnswer
-	if err := json.Unmarshal(found[0].Params, &a); err != nil {
+	if err := json.Unmarshal(m.Params, &a); err != nil {
 		t.Fatal(err)
 	}
 	got := map[uuid.UUID]int{}
 	for _, e := range a.Assignments {
 		got[uuid.MustParse(e.BlockerID)] = e.Amount
 	}
-	return found[0], got, a.TrampleTo
+	return got, a.TrampleTo
+}
+
+// assignmentMove is the canonical damage-assignment move offered to
+// seat: the first one.
+func assignmentMove(t *testing.T, g *game.Game, seat uuid.UUID) (legal.Move, map[uuid.UUID]int, int) {
+	t.Helper()
+	m := assignmentMoves(t, g, seat)[0]
+	got, trample := splitOf(t, m)
+	return m, got, trample
 }
 
 func onBattlefield(g *game.Game, id uuid.UUID) *game.Card {

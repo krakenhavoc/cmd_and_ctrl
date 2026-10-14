@@ -72,6 +72,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Partner with (CR 702.124j, #2142)](#partner-with-cr-702124j-2142)
   - [Choose a Background, partner and Doctor's companion (ADR 0144, #2874)](#choose-a-background-partner-and-doctors-companion-adr-0144-2874)
   - [Companion (CR 702.139, ADR 0172, #3401)](#companion-cr-702139-adr-0172-3401)
+  - [Cards from outside the game: wishes and the sideboard (ADR 0191, #3506)](#cards-from-outside-the-game-wishes-and-the-sideboard-adr-0191-3506)
   - [Renown (CR 702.112, #2049)](#renown-cr-702112-2049)
   - [Adding a Room or a split card (ADR 0103, #1756)](#adding-a-room-or-a-split-card-adr-0103-1756)
   - [Abilities from the hand (#660)](#abilities-from-the-hand-660)
@@ -1073,6 +1074,14 @@ naming an unregistered bundle is refused with `ErrUnknownEffectKey`. A
 "return it to the battlefield tapped [with a counter]" dies trigger is
 `returnThisCreatureFromGraveyard`. See `feign_death.go`,
 `fake_your_own_death.go`, `retraction_helix.go` and `urzas_saga.go`.
+
+"…until this card is cast from exile" (Emrakul, the Exigent Doom) is a
+`GrantAbilitiesFor` whose `Duration` comes from `g.UntilCardCastDuration(card)`
+(#3520, ADR 0063's 2026-10-14 amendment). It names the exile OBJECT, ends when
+`CastSpell` casts exactly that object from exile, and does not end if the card
+leaves exile uncast. The ability that exiles the card from the hand is
+`Plus(ManaCost("{3}"), ExileThis())` with `Zones: {ZoneHand}`; the hand is a
+supported zone for `ExileThis` since that card.
 "For as long as it has a <kind> counter on it" is a counter-held
 `Duration` (`GrantWhileItHasCounter`, ADR 0109 §2).
 
@@ -1349,8 +1358,10 @@ stops its controller on every opponent's spell. Every catalog row in
 scope must declare.
 
 **Which rows.** Every activated row (a card's own, a granted bundle's, a
-token template's) that is not sorcery speed or a loyalty ability, and
-that can be announced with no target: it has no `Targets`, or its target
+token template's) that is not sorcery speed or a loyalty ability (a
+loyalty row counts when its card opens its own loyalty abilities at
+instant speed: `ThisSourcesLoyaltyAbilitiesAtInstantSpeed`, Teferi,
+Master of Time), and that can be announced with no target: it has no `Targets`, or its target
 clause allows zero ("up to one", "any number of": `Min` 0), or it is
 modal with at least one such mode. Also every mana ability whose
 cost sacrifices another permanent, which declares `ManaAbility.Answers`.
@@ -3581,8 +3592,11 @@ footprint, and the registry derives one only from an `effects.Do` of
 primitives that declare a step (`cards/effects/footprint.go`):
 `CounterOnThis`, `GainLife`, `DrawCards`, `MillCards`, `Scry`,
 `Surveil`, `GetEnergy`, `CreateToken`, `BecomeTheMonarch`,
-`DamageEachOpponent`, `EachOpponentLosesLife` (a drain is
+`DamageEachOpponent`, `DamageController` ("~ deals N damage to
+you"), `EachOpponentLosesLife` (a drain is
 `Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})`),
+`TargetPlayerLosesLife` (the targeted drain is
+`Do(TargetPlayerLosesLife{N: 1}, GainLife{Amount: 1})`),
 `ExileChosenTarget` and `GainLifeEqualToSubject`
 ("you gain life equal to its toughness", read off the trigger's
 subject as it resolves). A hand-written closure
@@ -7307,6 +7321,23 @@ exist, and a cast one ceases on resolution (a permanent becomes a token). It
 is an exact copy, so the catalog resolves it as the original. See ADR 0066's
 2026-10-13 amendment.
 
+"Any number of spells with total mana value N or less from among the copies"
+(Uldaros Theorix) adds `TotalManaValueAtMost`:
+
+```go
+budget := 6
+CopyAndCast{Cards: exiled, Free: true, TotalManaValueAtMost: &budget}.Apply(ctx)
+```
+
+The copies then share ONE permission (`CastPermission.ManaValueBudget`) rather
+than one each, so every cast spends its spell's mana value (X at 0) and the
+gate refuses a copy over what is left. That is the cast path, the client's
+offers and the bot enumerator at once: nothing else asks a budget question.
+"One target card of each card type" is not a new target shape: it is one
+`Distinct(...)` clause per type under `Clauses(...)`, each `WithCount(0, 1)`
+(see `uldaros_theorix.go`), so a card with two types fills the one slot the
+player picks it for. See ADR 0066's 2026-10-14 amendment.
+
 ### Adding a hideaway card (S43+, ADR 0091)
 
 Hideaway is two linked abilities (CR 607.2a), and a card file writes
@@ -7364,6 +7395,27 @@ colorless creature it will be (Curator Beastie).
 
 Not here: turning a permanent face up as an EFFECT (no cost) has no
 door yet, so cards that say "you may turn it face up" wait on it.
+
+### Manifesting cards from a hand (ADR 0189 decision 3, #3538)
+
+"Manifest N cards from your hand" (Kozilek, the Broken Reality; Scroll of
+Fate) is `EachManifestsFromHand` in
+[manifest_from_hand.go](../server/internal/cards/effects/manifest_from_hand.go):
+
+```go
+Do(EachManifestsFromHand{Players: kozilekTargetPlayers, N: 2, Then: kozilekDrawPerManifest}) // "up to two target players each manifest two cards from their hands. For each card manifested this way, you draw a card."
+Do(EachManifestsFromHand{N: 1})                                                               // "Manifest a card from your hand."
+```
+
+`Players` nil is the controller. Each player is asked for exactly `N` cards
+(a `choose_cards` tagged `game.ChooseManifest`), all at once and in
+secret, as one run; a hand of `N` cards or fewer is not asked and
+manifests everything; an empty hand is skipped. The picks then enter in
+ONE batch (`Game.ManifestFromHandsThenForEffect`), each under its owner,
+so a CR 614 window sees the board as it was before any of them arrived.
+`Then` is told the permanents that actually entered, so "for each card
+manifested this way" counts what arrived and not what was picked. Do
+not loop `ManifestForEffect` for a hand: it takes a library's top card.
 
 ### Craft (ADR 0137, #2124, CR 702.167)
 
@@ -7807,9 +7859,28 @@ Skipping an EXTRA turn is `SkipOpponentsExtraTurns()` in `Spec.Replacements`
 the window the rotation seam opens when a queued extra turn would begin.
 A cancel is the skip, and a delayed trigger bound to that turn goes with
 it (CR 614.10a). The window cannot pause (ADR 0059 amendment 2026-10-07),
-so write the replacement as a pure cancel. Skipping a NORMAL turn ("skip
-your next turn": Magosi, Lethal Vapors) and a step of a named turn (Savor
-the Moment) have no shape yet. Declare those as a caveat.
+so write the replacement as a pure cancel.
+
+"Skip your next turn" (CR 614.10: Magosi, the Waterveil; Lethal Vapors) is
+a different shape, a debt rather than a replacement, and it is two
+primitives in [skip_turns.go](../server/internal/cards/effects/skip_turns.go)
+(ADR 0188 Decision 1, #3559):
+
+```go
+return SkipYourNextTurns{}.Apply(ctx)                 // "You skip your next turn." N: 2 for "next two turns"
+return TargetPlayerSkipsNextTurns{N: x}.Apply(ctx)    // "Target player skips their next X turns."
+```
+
+"You" is the resolving item's controller, which on an `AnyPlayer` row
+(Lethal Vapors) is whoever activated it. Neither primitive moves the turn
+cursor: each writes a `skipTurns` ScopedEffect record that the rotation
+seam spends when that player's next turn, extra or normal, would begin. So
+the turn in progress is never cut short, two skips skip two turns (CR
+614.10a), and a skip plus a queued extra turn of the same player skips the
+extra turn (the Magosi ruling). A card that says "skip" in its own
+sentence ("Put a counter. Skip your next turn.") writes the skip whether or
+not the rest of the effect happened. A skipped step of a named turn (Savor
+the Moment) has no shape yet (ADR 0188 slice 5). Declare that as a caveat.
 
 ### Extra combats, phases and steps (#753, ADR 0059 sub-PR 2b)
 
@@ -8570,6 +8641,20 @@ FaceVillainousChoice{Players: ctx.Opponents(), Choice: damoclesBaseChoice}.Apply
   `Game.DiedPowerWithSubtypeThisTurn("Dalek")`, a per-turn tally of each
   dying creature's last-known power by creature type, so a token that
   has already ceased to exist still counts.
+- **"If a Phyrexian died under your control this turn"** is
+  `Game.DiedWithSubtypeThisTurn(player, "Phyrexian")` (#3592, Brimaz,
+  Blight of Oreskos): the same last-known creature types, counted per
+  controller it died under (CR 603.10a). Check it on the trigger and
+  again on resolution.
+- **"If they do, you incubate 2"** after a counter-unless-pays is
+  `CounterUnlessPaid{OnPaid: …}` (#3591, Assimilate Essence): it runs only
+  after the payment was made, with the caster as the controller, and is
+  dropped with the decline when the spell has left the stack.
+- **"A permanent you control enters transformed"** has no event of its
+  own: read the entering card's face as the ETB is harvested with
+  `enteredTransformedUnderYourControl` (#3593, Corruption of Towashi).
+  A converted entry and a modal double-faced card cast back face up are
+  not transformed.
 
 ### Day and night, daybound and nightbound (ADR 0132, #2561, CR 731 / 702.145)
 
@@ -8859,12 +8944,40 @@ is the gate `Saddled()` (`SaddledKeywords(kw…)` is the keyword shape).
 saddle of a turn, so "for the first time each turn" needs no counting. A
 card that says "[target Mount] becomes saddled" uses `BecomeSaddled{}`,
 which does nothing to a permanent that is not a Mount. "Creatures that
-saddled it this turn" is `SaddlersOf(ctx, mount)` (survivors only; a
-creature that left is a new object): a card-set prompt at resolution can
-offer it (`rambling_possum.go`); a TARGET that must be one of them cannot
-be written yet (#2704). Read the state a trigger needs when it is BUILT,
-not when it resolves, if the Mount might leave in response
-(`caustic_bronco.go` carries it on `item.Params`).
+saddled it this turn" is `SaddlersOfThis(ctx)` (ADR 0186): the creatures
+tapped to pay for this Mount's saddle ability, read from the turn tally
+(`TurnTally.Crews`) by the source's `ObjectRef`, so it still answers when
+the Mount left or was bounced in response, and answers nothing for the
+same card back as a new object. Only the creatures still on the
+battlefield as the same objects come back (a creature that left is a new
+object). `CrewersOfThis(ctx)` is the same for a Vehicle. The records are
+written when the creatures are TAPPED, not when the ability resolves, so
+a countered saddle or crew ability still left them. A card-set prompt at
+resolution can offer them (`rambling_possum.go`); a TARGET that must be
+one of them cannot be written yet (ADR 0186 slice 4). `SaddlersOf(ctx,
+mount)` asks the same about a Mount on the battlefield now. Read the
+state a trigger needs when it is BUILT, not when it resolves, if the
+Mount might leave in response (`caustic_bronco.go` carries it on
+`item.Params`); the saddlers need no such care.
+
+**A creature that counts for more when it crews or saddles (ADR 0186
+Decision 4, #3549).** "This creature crews Vehicles as though its power
+were 2 greater" and "… using its toughness rather than its power" are
+statics on the creature itself, built with
+`CrewsAsThoughPowerGreater(n, uses)` and `CrewsUsingToughness(uses)` in
+[vehicles.go](../server/internal/cards/effects/vehicles.go); `uses` is
+`game.CostPowerCrew`, or `game.CostPowerCrew|game.CostPowerSaddle` for
+"saddles Mounts and crews Vehicles". Each writes a
+`Characteristic.CostPower` rule at layer 6 and changes nothing else: the
+creature's power is not changed (Dynamite Diver's ruling), so "where X is
+its power" reads the real number. Only the crew and saddle payment reads
+the rule, through `Card.CountedPower(use)`, which adds the bonus before it
+clamps at zero. Two rules add up, a creature that loses all abilities loses
+its rule (the static is the creature's own), and the enumerator, the
+view's `crew_power` and the engine's validator all count the same
+number. Until the client sums `crew_power` too (#3550), its crew picker
+under-counts such a creature and never over-counts it.
+
 ### Explore (CR 701.44, #2720)
 
 "<Permanent> explores" is `Game.ExploreForEffect(source, explorer
@@ -9255,6 +9368,39 @@ adventurer's main face). ADR 0172 §9 lists the other nine companions
 and how each condition would be written. Test the condition in
 `deck/companion_test.go` against the edge cases it names.
 
+### Cards from outside the game: wishes and the sideboard (ADR 0191, #3506)
+
+"A card you own from outside the game" reads the deck's sideboard, which
+seats in `Player.Sideboard`: a container no `ZoneRef`, card lookup or move
+verb reaches (CR 400.11c), so an effect never moves a card out of it
+itself. Use the three calls in `game/sideboard.go`, in this order, and
+nothing else:
+
+```go
+// "You may reveal a sorcery card you own from outside the game and put it
+// into your hand. Exile ~."  (Burning Wish)
+TakeFromOutside{Match: func(c game.Card) bool { return c.IsSorcery() }, Question: "…", Reveal: true}.Apply(ctx)
+exileThisSpell(item, ctx)
+```
+
+`TakeFromOutside` (`effects/outside_game.go`) is the whole of the common
+shape: it asks the owner (a `choose_cards` over their sideboard, `Required`
+for "put a card" with no "may"), reveals the choice when `Reveal` is set,
+and brings it into the hand. With nothing to choose from it asks nothing. A
+card that needs more composes the game-level calls itself:
+`QueueOutsidePickForEffect` (with a set-level `Validate`),
+`RevealOutsideForEffect` and `BringFromOutsideForEffect`, as Extrapolate
+the Impossible does (a pair with different names, then an opponent's
+`RevealPick`). Read a candidate with `LookupOutsideCardForEffect`, never
+`LookupCardForEffect`, which cannot see these cards on purpose.
+
+What is still missing: Karn, the Great Creator's "or choose a face-up
+artifact card you own in exile", Spawnsire of Ulamog's {20} (casting from
+outside the game), Research // Development (shuffling cards in from outside
+the game), learn, and the wishes that put a cost or a type clause beside
+the same shape (Cunning, Glittering, Golden and Death Wish, Fae of Wishes,
+Coax from the Blind Eternities, Wish).
+
 ### Renown (CR 702.112, #2049)
 
 Renown is a keyword the engine runs (`"renown N"` in `PrintedKeywords`), and
@@ -9566,8 +9712,7 @@ g.CommanderIdentityColorsForEffect(controller)                                  
   Never write the pick and a keyless `CastPermission` by hand: the pick would open nothing and the card would stay
   castable all turn.
 - **Cards that stay caveated**, with the gap named: Damping Sphere (mana production windows open per slot, not per activation),
-  Emrakul, the Exigent Doom (a hand ability whose granted mana ability lasts "until this card is cast from exile"; durations
-  have no such kind), Cloudsteel Kirin (the quoted "can't lose" is a granted game-end gate and grants carry none) and Ajani's
+  Cloudsteel Kirin (the quoted "can't lose" is a granted game-end gate and grants carry none) and Ajani's
   Aid (no combined library-and-graveyard search).
 
 ### Any amount of {R}, a return with a tail, a copy that isn't a creature, a token that sizes itself and a Siege's window (#3172, cav-g2)
@@ -9652,7 +9797,14 @@ ctx.SourcePermanent()                                                           
   `offerFreeHandCast` in `free_hand_cast.go`: a `choose_cards` pick tagged `ChooseCastFree`, whose answer grants it.
   The client opens the cast chain the moment the pick is answered, the bot prices the pick as a cast and the
   enumerator offers the cast. "Every card in your hand" (The Great Synthesis) writes the same grant over each card with
-  its own `AltCostKey` and no pick (#3270).
+  its own `AltCostKey` and no pick (#3270). A pick behind a draw (Cecily, Haunted Mage) runs from a
+  `game.DrawThen` body through `offerFreeHandCastFrom(g, controller, source, ...)`, the Context-free form (#2110).
+- **"Exile the top card of your library. You may cast that card. If you don't, X"** (Chandra, Torch of Defiance) is
+  `g.ExileTopThenPaidCastOrElseForEffect(game.PaidCastOrElse{Player, Source, SourceName, IfNotCast, DeclineLabel})`
+  (`game/cast_paid_or_else.go`, #3510). The cast is PAID at the card's own cost and ignores timing (CR 608.2g); X is a
+  body registered with `game.RegisterCastFollowUp` and named in `IfNotCast`. It runs on the "don't" answer, with no
+  question for a land or an empty library, and when an accepted cast's pass-closed window lapses without the cast
+  (`CastPermission.IfNotCast`). Over a card already in exile, use `OfferPaidCastFromExileForEffect`.
 
 ### Pieces from the Mass Casualty deck (#3245)
 

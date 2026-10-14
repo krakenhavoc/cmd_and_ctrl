@@ -18,9 +18,9 @@ func init() {
 		Name:         "Witty Roastmaster",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WheneverAnotherCreatureEntersUnderYourControl("Witty Roastmaster — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
+			CreatureEnterPaying(WheneverAnotherCreatureEntersUnderYourControl("Witty Roastmaster — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
 				return damageToEachOpponent(g, item, 1)
-			}),
+			}), game.CreatureEnterPayoff{DamageEachOpponent: 1}),
 		},
 	})
 }

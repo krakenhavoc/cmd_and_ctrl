@@ -26,6 +26,7 @@
     TERMS_UPDATED,
   } from "../lib/terms";
   import { PRIVACY_HASH } from "../lib/privacy";
+  import { FUNDING_HASH } from "../lib/funding";
   import { REPO_URL } from "../lib/about";
   import { SHOP_DISCLOSURE } from "../lib/shopLinks";
 
@@ -193,6 +194,12 @@
         shop’s own site: anything you buy there is between you and the shop, under its own terms and privacy
         policy. We don’t sell cards, set or show prices, or choose what a shop has in stock. The links
         never appear on the game table during a game, and you can hide them in Settings.
+      </p>
+      <p>
+        The <a href={FUNDING_HASH}>funding page</a> may also link to a third party where you can choose
+        to support CMD & CTRL, such as GitHub Sponsors, Ko-fi or Patreon. Those links open that site,
+        under its own terms and privacy policy. Support is a voluntary thank-you and unlocks nothing in
+        the game.
       </p>
     </section>
 

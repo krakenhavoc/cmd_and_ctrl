@@ -53,6 +53,7 @@ func (g *Game) tokenCeaseToExistSBALocked() bool {
 		id    uuid.UUID
 		from  ZoneKind
 		actor uuid.UUID
+		name  string
 	}
 	var doomed []departure
 	collect := func(z *Zone, actor uuid.UUID) {
@@ -86,6 +87,12 @@ func (g *Game) tokenCeaseToExistSBALocked() bool {
 		if z == nil || z.Kind == ZoneBattlefield {
 			continue
 		}
+		// The name is read before the token leaves its zone: after
+		// Remove the event's own capture can no longer find it, and
+		// this is the line that says the token is gone (#3609).
+		if _, pos := g.locateCardLocked(d.id); pos >= 0 && pos < len(z.Cards) {
+			d.name = g.publicNameOfLocked(&z.Cards[pos])
+		}
 		if _, err := z.Remove(d.id); err != nil {
 			continue
 		}
@@ -104,12 +111,16 @@ func (g *Game) tokenCeaseToExistSBALocked() bool {
 		// emits for a spell copy. The client's zone views drop the
 		// object; nothing in the engine watches for a move to
 		// nowhere, which is the point.
-		g.EmitEvent(Event{
+		ev := Event{
 			Kind:    EventZoneMove,
 			Actor:   d.actor,
 			CardID:  d.id,
 			OldZone: d.from,
-		})
+		}
+		if d.name != "" {
+			ev.PublicNames = map[uuid.UUID]string{d.id: d.name}
+		}
+		g.EmitEvent(ev)
 	}
 	return true
 }

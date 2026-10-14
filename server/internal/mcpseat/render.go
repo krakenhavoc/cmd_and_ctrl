@@ -265,20 +265,20 @@ func (l *sinceLog) dropOldest() {
 func compactBoard(v *protocol.GameView, me string, log sinceLog, chatLines []string) string {
 	sv := safeView(v)
 	board := boardtext.Render(sv, me, boardOptions(compactZoneCards))
-	text := joinBoard(board, log, chatLines)
+	text := joinBoard(board, compactLogBlock(log), chatLines)
 	if len(text) <= budgetCompact {
 		return text
 	}
 	graveyardsToCounts(sv)
 	board = boardtext.Render(sv, me, boardOptions(compactZoneCards))
-	if text = joinBoard(board, log, chatLines); len(text) <= budgetCompact {
+	if text = joinBoard(board, compactLogBlock(log), chatLines); len(text) <= budgetCompact {
 		return text
 	}
 	opts := boardOptions(compactZoneCards)
 	opts.OpponentMaxZoneCards = trimmedBattlefield
 	board = boardtext.Render(sv, me, opts)
 	for len(log.lines)+len(chatLines) > 0 {
-		if text = joinBoard(board, log, chatLines); len(text) <= budgetCompact {
+		if text = joinBoard(board, compactLogBlock(log), chatLines); len(text) <= budgetCompact {
 			return text
 		}
 		// Drop the older of the two oldest lines; with no timestamps to
@@ -290,23 +290,67 @@ func compactBoard(v *protocol.GameView, me string, log sinceLog, chatLines []str
 			chatLines = chatLines[1:]
 		}
 	}
-	return hardCut(joinBoard(board, sinceLog{dropped: log.dropped}, nil), budgetCompact)
+	return hardCut(joinBoard(board, compactLogBlock(sinceLog{dropped: log.dropped}), nil), budgetCompact)
 }
 
-func joinBoard(board string, log sinceLog, chatLines []string) string {
+// compactLogBlock is the SINCE YOUR LAST DECISION section of the compact
+// view and of game over, with any cut said up front. Empty when there is
+// nothing to show.
+func compactLogBlock(log sinceLog) string {
+	if len(log.lines) == 0 && log.dropped == 0 {
+		return ""
+	}
 	var b strings.Builder
-	if len(log.lines) > 0 || len(chatLines) > 0 {
+	b.WriteString("SINCE YOUR LAST DECISION (public log, oldest first)\n")
+	if log.dropped > 0 {
+		fmt.Fprintf(&b, "  … %d earlier log entries not shown (get_state(detail: \"full\") has the last %d)\n", log.dropped, fullLogLines)
+	}
+	for _, l := range log.lines {
+		b.WriteString("  " + l + "\n")
+	}
+	return b.String()
+}
+
+// fullLogBlock is get_state(full)'s LOG section: the lines it carries, and
+// how many entries before them it does not (cut). Empty when there is
+// nothing to show.
+func fullLogBlock(lines []string, cut int) string {
+	if len(lines) == 0 && cut == 0 {
+		return ""
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "LOG (last %d entries, oldest first)\n", len(lines))
+	if cut > 0 {
+		fmt.Fprintf(&b, "  … %d earlier entries not shown\n", cut)
+	}
+	for _, l := range lines {
+		b.WriteString("  " + l + "\n")
+	}
+	return b.String()
+}
+
+// unshownLog is the public log entries newer than seq after, collapsed and
+// cut to the window's size the way a decision answer shows them.
+func unshownLog(v *protocol.GameView, after uint64, nw nameWrapper) sinceLog {
+	var lines []string
+	for _, e := range v.Log {
+		if e.Seq > after {
+			lines = append(lines, logLine(e, nw))
+		}
+	}
+	since := collapseLog(lines)
+	since.keepLast(sinceLogLines)
+	return since
+}
+
+// joinBoard puts the untrusted-text note, the log block (compactLogBlock
+// or fullLogBlock) and the chat lines above the board.
+func joinBoard(board, logBlock string, chatLines []string) string {
+	var b strings.Builder
+	if logBlock != "" || len(chatLines) > 0 {
 		b.WriteString(untrustedNote + "\n")
 	}
-	if len(log.lines) > 0 || log.dropped > 0 {
-		b.WriteString("SINCE YOUR LAST DECISION (public log, oldest first)\n")
-		if log.dropped > 0 {
-			fmt.Fprintf(&b, "  … %d earlier log entries not shown (get_state(detail: \"full\") has the last %d)\n", log.dropped, fullLogLines)
-		}
-		for _, l := range log.lines {
-			b.WriteString("  " + l + "\n")
-		}
-	}
+	b.WriteString(logBlock)
 	if len(chatLines) > 0 {
 		b.WriteString("CHAT\n")
 		for _, l := range chatLines {
@@ -358,7 +402,7 @@ func fullBoard(v *protocol.GameView, me string) string {
 		logLines = append(logLines, logLine(e, nw))
 	}
 	var b strings.Builder
-	b.WriteString(joinBoard(board, sinceLog{lines: logLines}, nil))
+	b.WriteString(joinBoard(board, fullLogBlock(logLines, start), nil))
 	if len(v.Reveals) > 0 {
 		b.WriteString("\nREVEALED THIS TURN\n")
 		for _, r := range v.Reveals {

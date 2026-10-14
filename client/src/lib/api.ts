@@ -106,6 +106,10 @@ export interface SeatInfo {
   name: string;
   seat: number;
   deck_name?: string;
+  // The seated saved deck's estimated power level (#3671): the Commander
+  // Bracket scale, 1 to 5 in half steps (3.5 is a strong 3). Absent when
+  // unrated or not a saved deck.
+  deck_power?: number;
   deck_uploaded: boolean;
   // Discord OAuth seats (S12.5): the client builds the cached avatar
   // URL from discord_id + discord_avatar_hash; display_name carries
@@ -207,6 +211,9 @@ export interface UploadDeckResponse {
   // ADR 0172 §3: the deck's companion, which seats outside the game
   // rather than in the library. Absent for none.
   companion?: string;
+  // ADR 0191 §3: how many sideboard cards the deck seats outside the
+  // game (not part of card_count). Absent for none.
+  sideboard?: number;
   warnings?: ApiViolation[];
   // Distinct names of the accepted deck's cards that print rules the
   // engine will not carry out. Not an error and not a warning — the
@@ -300,6 +307,9 @@ export async function getGame(id: string): Promise<GameMeta> {
 // asked for (ADR 0110 §5 item 2).
 export interface CreateGameResponse extends GameMeta {
   setup?: SetupResult;
+  // The creator's own seat (#3494): the server sits a signed-in creator
+  // down at once, and this is that seat's session. createGame installs it.
+  seat?: SessionResponse;
 }
 
 // createGame creates a table (POST /games). Any signed-in person may
@@ -328,7 +338,9 @@ export async function createGame(
     method: "POST",
     body: JSON.stringify(body),
   });
-  return (await res.json()) as CreateGameResponse;
+  const out = (await res.json()) as CreateGameResponse;
+  if (out.seat) setSession(sessionFrom(out.seat));
+  return out;
 }
 
 // fetchNameSuggestion asks for a generated table name (GET
@@ -378,16 +390,20 @@ export async function joinGame(
     method: "POST",
     body: JSON.stringify({ invite_token: inviteToken, name }),
   });
-  const body = (await res.json()) as SessionResponse;
-  const s: Session = {
+  const s = sessionFrom((await res.json()) as SessionResponse);
+  setSession(s);
+  return s;
+}
+
+// sessionFrom is the Session a SessionResponse describes.
+function sessionFrom(body: SessionResponse): Session {
+  return {
     token: body.token,
     expiresAt: body.expires_at,
     principal: body.principal,
     playerID: body.player_id,
     gameID: body.game?.id,
   };
-  setSession(s);
-  return s;
 }
 
 // createPracticeTable opens the tutorial's practice table (POST
@@ -645,9 +661,11 @@ export async function removeBotSeat(gameID: string, playerID: string): Promise<G
 // On an unstarted table the server lets the table host, the game's
 // creator or an admin do it. On a started game only an admin may, and
 // it concedes the seat out of the game (CR 800.4a); the host and the
-// creator are answered 409. An ended game (409), the host's own seat
-// and a bot (422) are refused. The seat's session stops working and its
-// sockets close; the invite is untouched.
+// creator are answered 409. An ended game (409), a bot (422), and the
+// host's seat when someone else asks (422) are refused. The seat's
+// session stops working and its sockets close; the invite is untouched.
+// A seat may remove itself on an unstarted table, the host's included
+// (#3494); the answer then carries a signed-in person's next session.
 //
 // With `block: true` (#2984) the same call also blocks the removed seat
 // from taking a seat at THIS table again: the account, for a signed-in
@@ -660,6 +678,37 @@ export async function removeSeat(
 ): Promise<GameMeta> {
   const q = opts.block ? "?block=true" : "";
   const res = await authFetch(`/games/${gameID}/seats/${playerID}${q}`, { method: "DELETE" });
+  const out = (await res.json()) as GameMeta & { session?: SessionResponse };
+  // Leaving your own seat (#3494): its session ends with it, and a
+  // signed-in person gets their sign-in back to carry on with.
+  if (out.session) setSession(sessionFrom(out.session));
+  return out;
+}
+
+// ADR 0177: the table moves on without a player who has been offline
+// for its away time. The host (or, while the host is gone too, any
+// present player; the admin always) answers for the seat: a bot plays
+// it, it is conceded for them, or the table keeps waiting. A seat that
+// is no longer movable (it came back, or someone answered first) is a
+// 409. Returns the table as it now stands.
+export async function answerAwaySeat(
+  gameID: string,
+  playerID: string,
+  action: "stand_in" | "concede" | "wait",
+): Promise<GameMeta> {
+  const res = await authFetch(
+    `/games/${encodeURIComponent(gameID)}/seats/${encodeURIComponent(playerID)}/away`,
+    { method: "POST", body: JSON.stringify({ action }) },
+  );
+  return (await res.json()) as GameMeta;
+}
+
+// takeBackSeat gives the caller's own seat back from the bot that has
+// been playing it while they were away (ADR 0177 §6).
+export async function takeBackSeat(gameID: string): Promise<GameMeta> {
+  const res = await authFetch(`/games/${encodeURIComponent(gameID)}/seats/me/take-back`, {
+    method: "POST",
+  });
   return (await res.json()) as GameMeta;
 }
 
@@ -1772,19 +1821,14 @@ export async function patchTableSettings(
 // fetchTableSettings reads a table's settings from the LOBBY page,
 // where there is no socket to carry them.
 //
-// It is an empty patch, because the lobby has no GET: the settings
-// are public over the game view (protocol.GameView.settings), and the
-// HTTP surface only ever needed a write. An empty patch changes
-// nothing and logs nothing — the engine emits one event per field
-// that ACTUALLY changed — but it is still a commit, so this is called
-// when the panel opens and not on every lobby refresh.
-//
-// It inherits the write's gate, so a non-manager gets a 403 rather
-// than a read. That is the one place the lobby panel falls short of
-// "everyone sees it read-only": at the table, where GameView carries
-// the settings to every viewer, it does not.
+// GET /games/{id}/settings (#3499) answers anyone at the table (a seat
+// or a spectator), its creator and the admin, so the table card shows
+// every one of them the rules summary. It used to be an empty PATCH,
+// which inherited the write's host-only gate and was a commit, so it
+// could not run on every refresh.
 export async function fetchTableSettings(gameID: string): Promise<TableSettingsView> {
-  return await patchTableSettings(gameID, {});
+  const res = await authFetch(`/games/${encodeURIComponent(gameID)}/settings`);
+  return ((await res.json()) as TableSettingsResponse).settings;
 }
 
 export interface SpawnRequest {

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -175,6 +176,16 @@ type OpenAIClient struct {
 	schemaRefused atomic.Bool
 }
 
+// maxCompletionModels remembers, for the life of the process, which
+// endpoint and model refused max_tokens and took max_completion_tokens
+// instead. It is package-level, not a field of OpenAIClient, because the
+// own-key path builds a fresh client for every Test press and every time
+// a seat re-reads its key (modelkeys.Service.clientFor), and the answer
+// belongs to the provider and model, not to one client. See Complete.
+var maxCompletionModels sync.Map // maxCompletionKey -> struct{}
+
+type maxCompletionKey struct{ endpoint, model string }
+
 // SchemaRefused reports whether this server refused the json_schema
 // response_format, so the client has stopped sending it.
 func (c *OpenAIClient) SchemaRefused() bool { return c != nil && c.schemaRefused.Load() }
@@ -287,9 +298,13 @@ type openAIMessage struct {
 }
 
 type openAIRequest struct {
-	Model     string          `json:"model"`
-	Messages  []openAIMessage `json:"messages"`
-	MaxTokens int             `json:"max_tokens"`
+	Model    string          `json:"model"`
+	Messages []openAIMessage `json:"messages"`
+	// Exactly one of MaxTokens and MaxCompletionTokens is sent. Newer
+	// OpenAI models refuse max_tokens and want the other; the client
+	// switches once a server says so (see Complete).
+	MaxTokens           int `json:"max_tokens,omitempty"`
+	MaxCompletionTokens int `json:"max_completion_tokens,omitempty"`
 	// Think is Ollama's hybrid-thinking switch. A POINTER because
 	// the difference between "false" and "absent" is the whole
 	// point: false turns a thinking model off, absent leaves it on.
@@ -423,12 +438,15 @@ func (c *OpenAIClient) Complete(ctx context.Context, req Request) (Response, err
 	if c == nil || strings.TrimSpace(c.Endpoint) == "" {
 		return Response{}, ErrNoClient
 	}
-	body := openAIRequest{
-		Model:     req.Model,
-		MaxTokens: req.MaxTokens,
+	body := openAIRequest{Model: req.Model}
+	maxTokens := req.MaxTokens
+	if maxTokens <= 0 {
+		maxTokens = 256
 	}
-	if body.MaxTokens <= 0 {
-		body.MaxTokens = 256
+	if _, ok := maxCompletionModels.Load(maxCompletionKey{c.URL(), req.Model}); ok {
+		body.MaxCompletionTokens = maxTokens
+	} else {
+		body.MaxTokens = maxTokens
 	}
 	if !c.OmitThink {
 		// "" and "disabled" both mean off, which is the default for
@@ -461,6 +479,19 @@ func (c *OpenAIClient) Complete(ctx context.Context, req Request) (Response, err
 
 	resp, err := c.post(ctx, body)
 	var apiErr *APIError
+	if errors.As(err, &apiErr) && body.MaxTokens > 0 && refusesMaxTokens(apiErr) {
+		// The newer OpenAI models refuse max_tokens and want
+		// max_completion_tokens. Ask once more with that instead; only
+		// a success proves it, so only a success is remembered for this
+		// model. The retry replaces body either way, so a schema retry
+		// below carries the same field.
+		retry := body
+		retry.MaxTokens, retry.MaxCompletionTokens = 0, body.MaxTokens
+		body = retry
+		if resp, err = c.post(ctx, body); err == nil {
+			maxCompletionModels.Store(maxCompletionKey{c.URL(), req.Model}, struct{}{})
+		}
+	}
 	if body.ResponseFormat != nil && errors.As(err, &apiErr) && apiErr.Status == http.StatusBadRequest {
 		// The schema may be what the server refused. Ask once more
 		// without it; only a success proves that, so only a success
@@ -471,6 +502,17 @@ func (c *OpenAIClient) Complete(ctx context.Context, req Request) (Response, err
 		}
 	}
 	return resp, err
+}
+
+// refusesMaxTokens reports whether a 400 says the server does not take
+// max_tokens, as opposed to any other 400.
+func refusesMaxTokens(e *APIError) bool {
+	if e == nil || e.Status != http.StatusBadRequest {
+		return false
+	}
+	msg := strings.ToLower(e.Kind + " " + e.Message)
+	return strings.Contains(msg, "max_tokens") &&
+		(strings.Contains(msg, "max_completion_tokens") || strings.Contains(msg, "unsupported"))
 }
 
 // post makes one HTTP round trip and decodes it.

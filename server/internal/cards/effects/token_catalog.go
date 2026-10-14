@@ -136,6 +136,27 @@ type tokenTemplate struct {
 	// the keys are catalog-wide: namespace them with the token's slug.
 	Grants []AbilityGrant
 
+	// Back is the token's OTHER FACE, which makes the token a
+	// double-faced token (CR 111.10i: the Incubator, whose back face is
+	// the 0/0 Phyrexian artifact creature it transforms into; ADR 0185).
+	// Nil for every single-faced token, which is every other one.
+	//
+	// The back is a template of its own so that a face can carry the
+	// abilities the printed face does: its Mana, Activated, Triggered
+	// and Static slots are filed under the back face's catalog key,
+	// game.TokenKey(Slug) + "#1" — the same suffix a double-faced
+	// CARD's back face files under, and the one game.CatalogKey asks for
+	// once the token is turned over. Its Slug is not read (the front's
+	// names the pair), and a back that prints nothing registers nothing:
+	// a vanilla face needs no entry, exactly as a vanilla token does not.
+	//
+	// What this does NOT hold: the card-level fields. tokenFromCatalog
+	// builds Layout, Faces and ActiveFace on the front's Card from the
+	// two templates, so a template never spells them by hand and the
+	// "flat printed fields equal Faces[ActiveFace]" invariant cannot be
+	// written wrong.
+	Back *tokenTemplate
+
 	// Text is the token's printed ability text, verbatim, as it
 	// appears on the printed token card ("When this token dies,
 	// create a 2/2 red Dragon creature token with flying.").
@@ -232,6 +253,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Hallowed Haunting's Spirit Cleric: a */* token that sizes itself.
 	printedSpiritClericToken,
+
+	// ADR 0185 (#2417): the Incubator, the first double-faced token.
+	printedIncubatorToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
@@ -257,6 +281,9 @@ func buildTokenDef(t tokenTemplate) *game.CardDef {
 // registrable, as one function so a test can state the rules rather
 // than provoke them at boot. Returns the reason it is not, or "".
 func checkTokenTemplate(t tokenTemplate) string {
+	if why := checkTokenBack(t); why != "" {
+		return why
+	}
 	switch {
 	case t.Slug == "":
 		return "declares no slug — the slug is its catalog identity"
@@ -291,6 +318,66 @@ func checkTokenTemplate(t tokenTemplate) string {
 	return ""
 }
 
+// checkTokenBack is the rules a double-faced token's second face must
+// satisfy, "" when the template has none or the face is sound. It is
+// checkTokenTemplate's first question because a malformed back would
+// otherwise surface as a token that cannot transform.
+func checkTokenBack(t tokenTemplate) string {
+	b := t.Back
+	if b == nil {
+		return ""
+	}
+	switch {
+	case b.Back != nil:
+		// A third face is not a thing CR 712 describes: a transforming
+		// permanent has exactly two.
+		return "has a back face that has a back face of its own"
+	case t.Card.TypeLine == "" || b.Card.TypeLine == "":
+		// Both faces read their type line into the flat card on
+		// SetFace; an empty one would turn the token into a blank.
+		return "has a face with no type line"
+	case b.Card.OracleID != "" || b.Card.TokenKey != "":
+		return "has a back face that carries a catalog identity — the key is the front's, with a face suffix"
+	case len(b.Card.ManaAbilities) > 0 || len(b.Card.ActivatedAbilities) > 0:
+		return "has a back face that carries abilities on the instance — declare them in the slots"
+	case b.hasAbilities() && b.Text == "":
+		return "has a back face with abilities but no printed text"
+	case t.Card.Layout != "" || len(t.Card.Faces) > 0 || t.Card.ActiveFace != 0:
+		// tokenFromCatalog builds these from the two templates.
+		return "spells its own Layout/Faces — tokenFromCatalog builds them from Back"
+	}
+	return ""
+}
+
+// hasAbilities reports whether the template declares any ability slot.
+func (t tokenTemplate) hasAbilities() bool {
+	return len(t.Mana) > 0 || len(t.Activated) > 0 || len(t.Triggered) > 0 ||
+		len(t.Static) > 0 || len(t.BlockRules) > 0
+}
+
+// tokenBackKey is the catalog key of a double-faced token's back face:
+// the token key with the "#<face>" suffix game.CatalogKey appends for a
+// turned-over token (ADR 0185).
+func tokenBackKey(slug string) string { return game.TokenKey(slug) + "#1" }
+
+// tokenFace is one face of a double-faced token as game.Face data: the
+// printed characteristics SetFace materialises when that face is up,
+// and the printed text the hover overlay shows for a face with no
+// printing behind it.
+func tokenFace(t tokenTemplate) game.Face {
+	return game.Face{
+		Name:              t.Card.Name,
+		TypeLine:          t.Card.TypeLine,
+		ManaCost:          t.Card.ManaCost,
+		Colors:            append([]string(nil), t.Card.Colors...),
+		Power:             t.Card.Power,
+		Toughness:         t.Card.Toughness,
+		VariableToughness: t.Card.VariableToughness,
+		OracleText:        t.Text,
+		Keywords:          append([]string(nil), t.Card.Keywords...),
+	}
+}
+
 func init() {
 	for _, build := range tokenTemplates {
 		t := build()
@@ -302,12 +389,25 @@ func init() {
 			panic(fmt.Sprintf("effects: two token templates claim %q", key))
 		}
 		for i, ab := range t.Activated {
-			checkActivatedAnswers(t.Slug+" token", fmt.Sprintf("activated ability %d", i), ab)
+			checkActivatedAnswers(t.Slug+" token", fmt.Sprintf("activated ability %d", i), ab, false)
 		}
 		for i, m := range t.Mana {
 			checkManaAnswers(t.Slug+" token", fmt.Sprintf("mana ability %d", i), m)
 		}
 		fileDef(key, buildTokenDef(t))
+		if b := t.Back; b != nil && b.hasAbilities() {
+			for i, ab := range b.Activated {
+				checkActivatedAnswers(t.Slug+" token back face", fmt.Sprintf("activated ability %d", i), ab, false)
+			}
+			for i, m := range b.Mana {
+				checkManaAnswers(t.Slug+" token back face", fmt.Sprintf("mana ability %d", i), m)
+			}
+			backKey := tokenBackKey(t.Slug)
+			if _, taken := defs[backKey]; taken {
+				panic(fmt.Sprintf("effects: two token templates claim %q", backKey))
+			}
+			fileDef(backKey, buildTokenDef(*b))
+		}
 		checkGrants(t.Slug, t.Grants)
 		for _, gr := range t.Grants {
 			fileDef(game.GrantKey(gr.Key), buildGrantDef(gr))
@@ -329,5 +429,14 @@ func tokenFromCatalog(build tokenTemplateBuilder) game.Card {
 	t := build()
 	c := t.Card
 	c.TokenKey = game.TokenKey(t.Slug)
+	if t.Back != nil {
+		// CR 111.10i, CR 712: a double-faced token has a front and a
+		// back face and enters with the front up (ADR 0185). The flat
+		// fields above ARE the front, so Faces[0] and the card agree
+		// by construction.
+		c.Layout = game.LayoutTransform
+		c.Faces = []game.Face{tokenFace(t), tokenFace(*t.Back)}
+		c.ActiveFace = 0
+	}
 	return c
 }

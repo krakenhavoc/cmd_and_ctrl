@@ -140,6 +140,27 @@ that predates the badge answers 400 to the `agent` field (see
 [Tools](#tools)). When unsure, use cmd-dev. The release notes name the
 commit, and so does `gh attestation verify`.
 
+### Out-of-date seats
+
+A binary can fall behind the server it joins: a seat downloaded once keeps
+its old text and stops while `develop` moves on. So the server stamps every
+response with `X-Cmdctrl-Seat-Revision`, the newest seat revision it
+expects, and `join` compares it with the revision the binary was built at.
+When the server's is higher, `join` adds one line and the seat log gets a
+warning with both numbers and the build:
+
+```
+note: this seat is mcpseat v0.1.0-rc.1, commit 84d51ef, seat revision 1; the server expects revision 2 or later, so fixes since then are missing here. Update from the Releases page (docs/mcp-seat.md#download).
+```
+
+It only warns; `join` never refuses. The revision is the integer
+`protocol.SeatRevision`: a seat and a server built from the same source
+agree, so the line appears only when the binary is older than the server.
+Bump it in the PR of any seat change an agent would notice (wrong or
+missing text, extra stops), not for a refactor. A seat from before this
+check (up to `v0.1.0-rc.1`) sends no revision and cannot warn; its
+`--version` line is the way to tell.
+
 ## Build
 
 It is a local tool, not deployed. Build it yourself when there is no
@@ -187,7 +208,7 @@ good in the window it was shown in.
 |---|---|---|
 | `join` | `invite_url` (required: the invite link, or an admin's seat-reclaim link), `display_name` (default: the MCP client's name, see below), `deck` (optional `{id}` for a pre-built deck or `{list}` for a decklist) | Takes a guest seat, or reattaches to the seat this binary already holds (`resumed`). One binary holds one seat: a second table needs `leave` first. Refused for an origin not on `--allow-origin`. A 429 is retried after 1, 2, 4 s. Before the game starts, the answer lists the server's pre-built decks (id, name, commander, colours, archetype) from `GET /decks`, the catalog `set_deck` validates against. |
 | `set_deck` | `deck`, as above | Installs a deck before the game starts. `{id}` takes one of the ids `join` lists. An unknown id answers with the ids the server has. |
-| `wait_for_decision` | `timeout_s` (1 to 50, default 25), `pass_until` (`none`, or `my_turn_or_stack`) | Waits for a real choice. Statuses: `decision` (with `window`, `kind`, the compact board, the numbered moves, and the log and chat since last time plus a count of what was answered automatically; a run of identical log lines shows once as `(xN)`, and a log cut to its 30 lines or to the board's budget says how many earlier entries it left out), `waiting` (call again), `not_started`, `eliminated`, `game_over` (with the outcome and the report below), `disconnected` (an error). |
+| `wait_for_decision` | `timeout_s` (1 to 50, default 25), `pass_until` (`none`, `my_turn_or_stack` or `smart`) | Waits for a real choice. Statuses: `decision` (with `window`, `kind`, the compact board, the numbered moves, and the log and chat since last time plus a count of what was answered automatically; a run of identical log lines shows once as `(xN)`, and a log cut to its 30 lines or to the board's budget says how many earlier entries it left out), `waiting` (call again), `not_started`, `eliminated`, `game_over` (with the outcome and the report below), `disconnected` (an error). |
 | `get_state` | `detail`: `compact` (default) or `full` | The board as the seat sees it. |
 | `legal_moves` | `card` (an instance id, as each group header prints it) or `choice` (a pending choice id, which `YOU OWE A CHOICE: <kind> [id <id>]` prints; the kind itself when the seat owes one choice of that kind; or `cleanup_discard`), `match` (text), `targets_for` (a move number), all optional | The open window's full numbered list, grouped by card. With `card` or `choice`, that card's or prompt's moves with the enumerator's caps lifted (up to 512). Two owed choices of one kind make the kind ambiguous; the answer lists their ids. A one-card request with no moves answers an empty list. `match` keeps only the moves whose label contains the text (case-insensitive), numbered as in the full list: `legal_moves(choice: "<id>", match: "Black Lotus")` finds one card in a search. `targets_for: N` lists move N's target clauses, see [Targets](#targets). |
 | `card` | `ref`: an instance id or a card name on the table | Name, type, cost, power/toughness and oracle text, with a note when the engine does not run the card's text. Cached per id. |
@@ -252,6 +273,22 @@ What to know about how they behave:
   for anything on the stack, a choice, a combat declaration, the loop
   notice (CR 732) or the start of the seat's own turn. Leave it off to
   hold an instant for an opponent's end step.
+- **`pass_until: smart`** (#3603) is the browser's smart auto-pass at its
+  default settings, and it also covers the seat's own turn. It stops at
+  your main phases, any attack or block you are asked to declare, any
+  choice, a mulligan, the loop notice, and a stack item you hold a response
+  to. It passes the rest, even with an instant in hand: upkeep, draw,
+  beginning of combat, combat damage, end of combat and end step of your
+  own turn, and every step of an opponent's turn that is not their end
+  step or combat. A response is what the browser counts: a counterspell,
+  an instant, an ability that targets or protects (a sacrifice outlet,
+  regeneration, a pump), a special action; in combat, crew or a manland
+  too. A land, a mana ability and a pure value ability (a fetch, Mind
+  Stone, cycling) are not. In a declared attack, and at an opponent's end
+  step, it stops only when you hold a response. Unlike `my_turn_or_stack`
+  it is not cleared by the start of your turn, and it asks for every call,
+  like the other mode. It is a shorter route to the same answers: if you
+  hold something to cast in a step it passes, use `none`.
 - **Nothing is played on the model's behalf.** No deadline, no
   heuristic fallback. The table waits for the agent as it waits for a
   person.
@@ -267,6 +304,12 @@ What to know about how they behave:
   `companion`. In your main phase with an empty stack and {3} to spend,
   the list offers `Pay {3}: put <name> into your hand (companion)`, once
   per game. No new tool.
+- **A sideboard is on the board and answerable.** The cards your deck owns
+  outside the game ([ADR 0191](decisions/0191-a-sideboard-is-the-outside-the-game-pool.md))
+  show as `your sideboard (outside the game): <names>`, an opponent's as a
+  count, and `get_state` carries your own `sideboard` and everyone's
+  `sideboard_count`. A wish or Extrapolate the Impossible puts a card choice
+  in the move list. No new tool.
 - **A server that predates the badge (#2249) refuses the join** with a
   400 about an unknown `agent` field. The binary says so and does not
   retry without the field.
@@ -479,7 +522,7 @@ five-turn game, and at most $15.94 for a sixteen-turn one. Cost grows
 much faster than the game's length, because every call resends the
 context and the context grows with every decision. To keep it down,
 use a fresh session per game, keep the compact view, and turn
-`pass_until` on when holding nothing at instant speed.
+`pass_until: smart` on when holding nothing at instant speed.
 
 **The game-end report.** At `game_over` the binary logs one line and
 returns the same in the tool result: windows seen, how many each rule

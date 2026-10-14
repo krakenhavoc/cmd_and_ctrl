@@ -3,6 +3,7 @@ package mcpseat
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -332,7 +333,7 @@ func TestPassUntilPassesOthersTurnsAndClearsAtOwnTurn(t *testing.T) {
 	v := activeView(f) // Bob's turn
 	f.setState(v, twoChoices(f), false)
 	s.mu.Lock()
-	s.passUntil = true
+	s.passMode = passOthers
 	s.win = nil
 	s.mu.Unlock()
 	s.pokeAutopilot()
@@ -351,14 +352,14 @@ func TestPassUntilPassesOthersTurnsAndClearsAtOwnTurn(t *testing.T) {
 		return s.view != nil && s.view.Turn.ActiveSeat == 0
 	})
 	s.mu.Lock()
-	pu := s.passUntil
+	pu := s.passMode == passOthers
 	s.mu.Unlock()
 	if pu {
 		t.Error("pass_until survived the start of the seat's own turn")
 	}
 	sent := f.actionCount()
 	s.mu.Lock()
-	s.passUntil = true // the model asks again on its own turn: still no pass
+	s.passMode = passOthers // the model asks again on its own turn: still no pass
 	s.win = nil
 	s.mu.Unlock()
 	s.pokeAutopilot()
@@ -646,6 +647,50 @@ func TestTheReconnectLadder(t *testing.T) {
 	noSentinel(t, "the log", s.logBuf.String())
 }
 
+// TestAHeldDecisionIsNotOfferedWhileDisconnected: a window held across a
+// dropped socket is not offered as a decision (act would refuse it as
+// not_sent), get_state does not claim it is open, and it comes back once
+// the redial succeeds.
+func TestAHeldDecisionIsNotOfferedWhileDisconnected(t *testing.T) {
+	f := newFakeServer(t)
+	s := newTestSeat(t, nil)
+	joinFake(t, f, s)
+	v := activeView(f)
+	f.setState(v, twoChoices(f), false)
+	_, _ = decisionWindow(t, s)
+
+	f.mu.Lock()
+	f.wsDown = true
+	f.mu.Unlock()
+	f.closeConn(1001)
+	waitFor(t, "the socket to drop", func() bool {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		return !s.isConnected
+	})
+
+	r, _ := s.WaitForDecision(context.Background(), WaitInput{TimeoutS: 1})
+	if strings.Contains(r.Text, "status: decision") || !strings.Contains(r.Text, "status: waiting (reconnecting to the table)") {
+		t.Fatalf("a held decision was offered while disconnected:\n%s", r.Text)
+	}
+	r, _ = s.GetState(context.Background(), GetStateInput{})
+	if strings.Contains(r.Text, "open decision") {
+		t.Fatalf("get_state claims an open decision while disconnected:\n%s", r.Text)
+	}
+
+	f.mu.Lock()
+	f.wsDown = false
+	f.mu.Unlock()
+	r, _ = s.WaitForDecision(context.Background(), WaitInput{TimeoutS: 10})
+	if !strings.Contains(r.Text, "status: decision") {
+		t.Fatalf("the decision did not come back after the redial:\n%s", r.Text)
+	}
+	noSentinel(t, "the log", s.logBuf.String())
+	if !strings.Contains(s.logBuf.String(), "reconnected to the table") {
+		t.Errorf("no INFO line on the successful redial:\n%s", s.logBuf.String())
+	}
+}
+
 // TestTheSignedInRefusalIsNamed: the server's 400 for an agent join with a
 // signed-in session is reported as what it is.
 func TestTheSignedInRefusalIsNamed(t *testing.T) {
@@ -655,5 +700,58 @@ func TestTheSignedInRefusalIsNamed(t *testing.T) {
 	r, _ := s.Join(context.Background(), JoinInput{InviteURL: f.inviteURL()})
 	if !r.IsError || !strings.Contains(r.Text, "joins as a guest") {
 		t.Fatalf("join: %s", r.Text)
+	}
+}
+
+// #3607: the game-over answer carries the log since the seat's last
+// decision, with the same cut marker the decision window uses.
+func TestGameOverCarriesTheLogAndSaysWhenItWasCut(t *testing.T) {
+	f := newFakeServer(t)
+	s := newTestSeat(t, nil)
+	joinFake(t, f, s)
+	v := f.baseView("ended")
+	v.Outcome = &protocol.OutcomeView{Kind: "win", Winner: f.oppID.String(), Cause: "last_standing"}
+	for i := 0; i < 40; i++ {
+		v.Log = append(v.Log, protocol.LogEvent{Seq: uint64(i + 1), Text: fmt.Sprintf("final entry %d", i)})
+	}
+	f.setState(v, nil, false)
+	r, _ := s.WaitForDecision(context.Background(), WaitInput{TimeoutS: 5})
+	if !strings.Contains(r.Text, "SINCE YOUR LAST DECISION (public log, oldest first)\n  … 10 earlier log entries not shown") {
+		t.Fatalf("game over does not show the cut log:\n%s", r.Text)
+	}
+	if !strings.Contains(r.Text, "final entry 39") || !strings.Contains(r.Text, "SEAT REPORT") {
+		t.Errorf("game over lost the newest entry or the report:\n%s", r.Text)
+	}
+}
+
+// A seat older than the revision its server advertises says so in join's
+// answer and in its log, and still joins (#3608).
+func TestJoinWarnsWhenTheSeatIsOlderThanTheServerExpects(t *testing.T) {
+	f := newFakeServer(t)
+	f.seatRev = "5"
+	s := newTestSeat(t, func(c *Config) { c.Revision = 2; c.Build = "v0.1.0-rc.1, commit 84d51ef" })
+	text := joinFake(t, f, s)[0]
+	for _, want := range []string{
+		"joined: true",
+		"note: this seat is mcpseat v0.1.0-rc.1, commit 84d51ef, seat revision 2; the server expects revision 5 or later",
+		"docs/mcp-seat.md#download",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("join does not say %q:\n%s", want, text)
+		}
+	}
+	if !strings.Contains(s.logBuf.String(), "older than the server expects") {
+		t.Errorf("the seat log does not record it:\n%s", s.logBuf.String())
+	}
+}
+
+func TestJoinStaysQuietWhenTheSeatIsCurrentOrTheServerSaysNothing(t *testing.T) {
+	for name, rev := range map[string]string{"silent server": "", "same revision": "1", "older server": "0"} {
+		f := newFakeServer(t)
+		f.seatRev = rev
+		s := newTestSeat(t, func(c *Config) { c.Revision = 1 })
+		if text := joinFake(t, f, s)[0]; strings.Contains(text, "note:") {
+			t.Errorf("%s: join warns:\n%s", name, text)
+		}
 	}
 }

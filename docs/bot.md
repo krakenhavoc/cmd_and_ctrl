@@ -459,8 +459,13 @@ every Aura with a graveyard clause returns that card under the bot's
 control: Animate Dead takes the best creature in any graveyard. A
 permanent or a player is read the way an Aura spell's target is: an
 opponent's creature as answered, the bot's own at `OwnPermanentTarget`
-with its best creature first. Like the cast, it cannot tell a buff Aura
-from a curse, because nothing on the wire says which.
+with its best creature first. An Aura that declares `purpose.aura`
+(`"benefit"` or `"harm"`, #3309; the prompt carries it as `aura_purpose`)
+is priced by it on a battlefield permanent, in the cast and here: a buff
+(Rancor) is worth the creature's value on the bot's own and costs it on
+an opponent's, a curse (Pacifism) costs the value of the bot's own
+creature and keeps the removal price on an opponent's. `PriceAuraPurpose`
+turns it off. An Aura that declares nothing keeps the old reading.
 
 **Whether to reveal (`entry_reveal_from_hand`, #1198, CR 614.1c).** The
 one card-set pick whose answer is FREE, and the reason it is a branch
@@ -531,11 +536,31 @@ A hosted model costs the operator money, so the server bounds it
   `GET /bot/options` and a request to seat one is a 422. Both unset is a
   supported server, not a broken one. The code cannot see production's
   environment: whoever runs the server confirms which of these it is.
-- **Daily and monthly caps**, counted in tokens from the API's `usage`
-  fields (input, output, cache reads and cache writes), per UTC day and
-  UTC month. **On by default** at 1,000,000 a day and 10,000,000 a month;
+- **Daily and monthly caps**, counted in *weighted* tokens from the API's
+  `usage` fields (input, output, cache reads and cache writes), per UTC
+  day and UTC month. Each class is multiplied by the answering model's
+  list price per million tokens, so a weighted token is a micro-dollar
+  and the caps read as dollars: **on by default** at 5,000,000 a day
+  (about $5) and 50,000,000 a month (about $50);
   `CMDCTRL_BOT_MODEL_DAILY_TOKENS` and `CMDCTRL_BOT_MODEL_MONTHLY_TOKENS`
-  change them, and `0` turns a cap off. They do not apply to a
+  change them, and `0` turns a cap off. The default prices are Haiku
+  1 / 5 / 0.10 / 1.25, Sonnet 3 / 15 / 0.30 / 3.75 and Opus
+  5 / 25 / 0.50 / 6.25 dollars per million (input / output / cache read /
+  cache write), matched by the model id; a model the table does not know
+  is priced as Opus, so an unlisted model stops the cap early rather than
+  late. `CMDCTRL_BOT_MODEL_PRICES` overrides or extends the table. It is
+  a weight, not an invoice: list prices move, so refresh the table. The
+  metric and endpoint names still say "tokens"
+  ([ADR 0184](decisions/0184-weighted-model-budget-and-a-share-per-table.md)).
+- **A share for each table.** One table may use `25`% of the daily cap
+  (`CMDCTRL_BOT_MODEL_TABLE_SHARE_PERCENT`; `0` or `100` is off). Past
+  it, that table's model seats play the heuristic until 00:00 UTC, as
+  over a cap, and every other table still seats and runs model bots; the
+  picker stays open and `GET /admin/bot/model` shows `tables_at_share`.
+  The per-table counts are in memory, so a restart gives a table a fresh
+  share; the persisted pool still bounds the sum. **Own-key seats**
+  ([ADR 0182](decisions/0182-your-own-model-key-for-ai-seats.md)) spend
+  their owner's key, so they are in neither the pool nor a table's share. They do not apply to a
   self-hosted `CMDCTRL_OPENAI_ENDPOINT` model, which has no bill. The
   counters live in the database and survive a restart.
 - **Over a cap**, the model tiers behave as they do with no key: a seat
@@ -1289,6 +1314,28 @@ the bot has a land in hand for and could not otherwise play (its turn,
 lands in hand beyond the drops left), at `ManaSource` plus the ramp
 premium, and, for a permanent, `ExtraLandDropRecurring` (0.50) per drop
 while the bot has fewer than `RampWantCap` sources.
+
+### Token payoffs (#3165)
+
+A row that pays for each creature entering under its controller's
+control declares a `creature_enter_payoff` (landfall's fields, per
+creature): Purphoros's 2 damage, Impact Tremors', Warleader's Call's,
+Witty Roastmaster's, Molten Gatekeeper's and Agate Instigator's 1, and
+the lifegain creatures'. A token maker declares `creature_tokens` (how
+many of its `tokens` are creatures, so a Treasure does not count), or
+`tokens_per_controlled`, a creature subtype whose count the bot controls
+is how many it makes (Krenko, Mob Boss: X Goblins, counted from the view
+at decision time). With `PriceTokenPayoffs` on (`token_payoff.go`):
+
+```
+creature tokens × (what the bot's own creature-enter payoffs pay per creature)
++ TokenWeight × the Goblins counted, for a tokens_per_controlled row
+```
+
+is added to a declared purpose's value, so Hordeling Outburst with
+Purphoros out is worth three Goblins × 2 damage × three opponents more,
+and Krenko's activation is priced by its Goblins instead of the flat
+`ActivateBase`. A creature spell's own entering is not repriced.
 
 ### Landfall payoffs (#3072)
 
@@ -2955,6 +3002,22 @@ the seat takes it with mana it would otherwise not use, and below a real
 spell of the same size, so it does not skip a cast for it. The model
 tiers see every seat's companion in the board text, one
 `companion (outside the game): <name>` line per seat that has one.
+
+## Taking a card from the sideboard (ADR 0191)
+
+A deck's sideboard is the cards the seat owns outside the game
+([ADR 0191](decisions/0191-a-sideboard-is-the-outside-the-game-pool.md)).
+A wish or Extrapolate the Impossible asks the seat for them with a
+`choose_cards` prompt that declares `choose_destination: "outside"`; the
+enumerator offers `choose nothing` (when the card says "may") and every set
+the engine accepts, so a pair with the same name is never offered. The
+heuristic prices an answer as the cards it takes
+(`valueTakenFromOutside`): each named card is worth its `cardValue` plus the
+library-take floor, so the seat takes the best card rather than none. The
+built-in bot decks have no sideboard, so the prompt only reaches a bot with
+a deck someone built for it. The model tiers see their own sideboard in the
+board text (`your sideboard (outside the game): …`) and an opponent's as a
+count.
 
 ## Never offered a banned cast (#760)
 

@@ -314,6 +314,13 @@ export interface Settings {
     // blocker, the rest to the player with trample or to the last
     // blocker without. Short of that, the prompt still asks, pre-filled.
     autoAssignCombatDamage: boolean;
+    // #3586: what the declare-attackers step starts with. "ask" is
+    // today's behaviour (nothing staged, the primary reads No
+    // attacks); "all" pre-stages every eligible creature when exactly
+    // one opponent is attackable; "none" declares no attackers by
+    // itself unless a stop, a hold or a combat prompt applies. See
+    // attackDefault.ts. Client-only: no wire is involved.
+    attackDefault: AttackDefaultMode;
   };
 
   shortcuts: {
@@ -365,7 +372,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 27;
+export const SETTINGS_VERSION = 28;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -563,6 +570,7 @@ export function defaultSettings(): Settings {
       // #2956 default: ON. When the damage kills every blocker, the
       // split has nothing left to choose.
       autoAssignCombatDamage: true,
+      attackDefault: DEFAULT_ATTACK_DEFAULT,
     },
     shortcuts: {
       // v10 default: ON. The defaults are chosen not to collide with
@@ -686,6 +694,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     showBotReasoning: "synced",
     highlightLegalActions: "synced",
     autoAssignCombatDamage: "synced",
+    attackDefault: "synced",
   },
   shortcuts: {
     enabled: "synced",
@@ -1215,6 +1224,13 @@ function migrate(raw: unknown): Settings {
   if (typeof merged.gameplay.autoAssignCombatDamage !== "boolean") {
     merged.gameplay.autoAssignCombatDamage = true;
   }
+  // v27 → v28 (#3586): gameplay.attackDefault. The shallow merge fills
+  // the default ("ask", today's behaviour) for every stored blob, so an
+  // existing player is unchanged. Anything but a known mode is the
+  // default, which also cleans an account copy from a newer client.
+  if (!isAttackDefaultMode(merged.gameplay.attackDefault)) {
+    merged.gameplay.attackDefault = DEFAULT_ATTACK_DEFAULT;
+  }
   // ADR 0179: display.shopLinks fills from the default (shown) through
   // the shallow merge, so SETTINGS_VERSION stands. Anything but a
   // boolean is the default.
@@ -1235,6 +1251,19 @@ export const DEFAULT_PASS_MODE: PassMode = "smart";
 
 export function isPassMode(v: unknown): v is PassMode {
   return typeof v === "string" && (PASS_MODES as readonly string[]).includes(v);
+}
+
+// ---- #3586: what declare attackers starts with --------------------------
+
+/** What the declare-attackers step starts with (#3586). */
+export type AttackDefaultMode = "ask" | "all" | "none";
+
+export const ATTACK_DEFAULT_MODES: readonly AttackDefaultMode[] = ["ask", "all", "none"];
+
+export const DEFAULT_ATTACK_DEFAULT: AttackDefaultMode = "ask";
+
+export function isAttackDefaultMode(v: unknown): v is AttackDefaultMode {
+  return typeof v === "string" && (ATTACK_DEFAULT_MODES as readonly string[]).includes(v);
 }
 
 // ---- #1968: when to ask for a trigger order ------------------------------

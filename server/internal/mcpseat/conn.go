@@ -132,6 +132,7 @@ func (c *wsConn) loop(ctx context.Context) {
 	failures := 0
 	checked := false
 	attempt := 0
+	connectedBefore := false
 	for {
 		if ctx.Err() != nil {
 			return
@@ -165,6 +166,10 @@ func (c *wsConn) loop(ctx context.Context) {
 			attempt++
 			continue
 		}
+		if connectedBefore {
+			c.log.Info("reconnected to the table", "failed_dials", failures)
+		}
+		connectedBefore = true
 		failures, checked, attempt = 0, false, 0
 		conn.SetReadLimit(maxInboundFrame)
 		c.wmu.Lock()

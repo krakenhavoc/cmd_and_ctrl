@@ -56,8 +56,10 @@ func TestTibaltsTrickeryCountersThenWalksTheVictimsLibrary(t *testing.T) {
 	if milled < 1 || milled > 3 {
 		t.Fatalf("milled %d cards, want 1 to 3", milled)
 	}
-	if len(me.Graveyard.Cards) != 1 {
-		t.Errorf("the caster's graveyard has %d cards, want only Tibalt's Trickery", len(me.Graveyard.Cards))
+	// #3613, CR 608.2n: the free-cast offer is part of Tibalt's
+	// Trickery's resolution, so the spell waits on the stack for it.
+	if len(me.Graveyard.Cards) != 0 || !g.Stack.Contains(id) {
+		t.Errorf("Tibalt's Trickery should still be on the stack while its offer is open (graveyard %d)", len(me.Graveyard.Cards))
 	}
 	var prompt *game.PendingChoice
 	for _, c := range g.PendingChoices {
@@ -74,6 +76,9 @@ func TestTibaltsTrickeryCountersThenWalksTheVictimsLibrary(t *testing.T) {
 
 	if err := g.ResolveMayCast(prompt.ID, opp.ID, true); err != nil {
 		t.Fatalf("ResolveMayCast: %v", err)
+	}
+	if len(me.Graveyard.Cards) != 1 || !me.Graveyard.Contains(id) {
+		t.Errorf("the caster's graveyard has %d cards, want only Tibalt's Trickery", len(me.Graveyard.Cards))
 	}
 	if !g.Exile.Contains(hit.InstanceID) {
 		t.Error("the accepted hit should wait in exile under its free cast")

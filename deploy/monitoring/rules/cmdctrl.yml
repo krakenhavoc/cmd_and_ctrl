@@ -238,7 +238,8 @@ groups:
 
   - name: cmdctrl-bots
     rules:
-      # The spend guard counts tokens, not money (ADR 0033 section 5). The
+      # The spend guard counts WEIGHTED tokens (micro-dollars at list price, so
+      # a cap of 5,000,000 is about five dollars; ADR 0184), not invoiced money. The
       # caps are CMDCTRL_BOT_MODEL_DAILY_TOKENS and _MONTHLY_TOKENS; a cap
       # that is off reports a limit of 0 and is ignored.
       - alert: BotModelSpendHigh
@@ -251,7 +252,7 @@ groups:
           severity: warning
         annotations:
           summary: "{{ $labels.env }}: hosted-model spend is at {{ $value | humanizePercentage }} of the {{ $labels.period }} cap"
-          description: "The {{ $labels.env }} bots have used {{ $value | humanizePercentage }} of this {{ $labels.period }}'s token cap. At 100% the model tiers stop and the bots play the heuristic. The 80% is a first guess."
+          description: "The {{ $labels.env }} bots have used {{ $value | humanizePercentage }} of this {{ $labels.period }}'s weighted-token cap (micro-dollars at list price). At 100% the model tiers stop and the bots play the heuristic. The 80% is a first guess."
 
       # Model calls refused: a cap was reached, or the admin kill switch is
       # off (PUT /admin/bot/model). The switch is deliberate, but left off
@@ -263,7 +264,7 @@ groups:
           severity: warning
         annotations:
           summary: "{{ $labels.env }}: hosted-model calls have been refused for 15 minutes"
-          description: "The {{ $labels.env }} spend guard is refusing model calls: a daily or monthly token cap is reached, or the kill switch is off. Model-backed bots play the heuristic meanwhile. GET /admin/bot/model says which."
+          description: "The {{ $labels.env }} spend guard is refusing model calls: a daily or monthly weighted-token cap is reached, or the kill switch is off. (One table reaching its own share does not set this.) Model-backed bots play the heuristic meanwhile. GET /admin/bot/model says which."
 
       # A bot seat that has a legal move and has played none. The table
       # waits on it (#544). 2 minutes is past the slowest think deadline

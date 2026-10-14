@@ -7,7 +7,7 @@
   // lib/signedInHome.ts: most unauthenticated routes redirect to
   // /login (the front page), and a session on it goes to the Lobby.
 
-  import { applyFavicon } from "./lib/favicon";
+  import { applyFavicon, rootFaviconColours } from "./lib/favicon";
   import RouteLoading from "./lib/components/RouteLoading.svelte";
   import FrontPage from "./routes/FrontPage.svelte";
   import RequestAccess from "./routes/RequestAccess.svelte";
@@ -18,6 +18,7 @@
   import Stats from "./routes/Stats.svelte";
   import Privacy from "./routes/Privacy.svelte";
   import Terms from "./routes/Terms.svelte";
+  import Funding from "./routes/Funding.svelte";
   import About from "./routes/About.svelte";
   import Guide from "./routes/Guide.svelte";
   import Practice from "./routes/Practice.svelte";
@@ -145,12 +146,7 @@
     const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
     if (bg) document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bg);
     // The tab icon is the mark redrawn in the skin's --bg, --accent and --fg.
-    const cs = getComputedStyle(document.documentElement);
-    applyFavicon(document, {
-      bg,
-      accent: cs.getPropertyValue("--accent"),
-      mark: cs.getPropertyValue("--fg"),
-    });
+    applyFavicon(document, rootFaviconColours(document));
   });
 </script>
 
@@ -184,6 +180,8 @@
   <Privacy />
 {:else if $route.name === "terms"}
   <Terms />
+{:else if $route.name === "funding"}
+  <Funding />
 {:else if $route.name === "about"}
   <About />
 {:else if $route.name === "guide"}

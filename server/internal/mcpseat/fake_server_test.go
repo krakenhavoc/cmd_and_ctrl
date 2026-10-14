@@ -64,6 +64,11 @@ type fakeServer struct {
 	meStatus    int
 	joinCode    int
 	joinMsg     string
+	// wsDown refuses every WebSocket dial with 503, as a restarting server
+	// does, so the seat stays disconnected until the test clears it.
+	wsDown bool
+	// seatRev is what the server advertises as the newest seat revision.
+	seatRev string
 }
 
 func newFakeServer(t *testing.T) *fakeServer {
@@ -84,7 +89,15 @@ func newFakeServer(t *testing.T) *fakeServer {
 	mux.HandleFunc("GET /me", f.handleMe)
 	mux.HandleFunc("GET /cards/{id}", f.handleCard)
 	mux.HandleFunc("GET /ws", f.handleWS)
-	f.srv = httptest.NewServer(mux)
+	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		f.mu.Lock()
+		rev := f.seatRev
+		f.mu.Unlock()
+		if rev != "" {
+			w.Header().Set(protocol.SeatRevisionHeader, rev)
+		}
+		mux.ServeHTTP(w, r)
+	}))
 	t.Cleanup(f.srv.Close)
 	return f
 }
@@ -190,7 +203,12 @@ func (f *fakeServer) handleWS(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	f.wsHeaders = append(f.wsHeaders, r.Header.Clone())
 	f.wsQueries = append(f.wsQueries, r.URL.RawQuery)
+	down := f.wsDown
 	f.mu.Unlock()
+	if down {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
 	if !f.authed(r) || r.URL.Query().Get("token") != "" {
 		w.WriteHeader(http.StatusUnauthorized)
 		return

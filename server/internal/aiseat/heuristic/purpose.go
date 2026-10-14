@@ -63,7 +63,13 @@ type purposeSet struct {
 	// (#2480, impulse.go). Not one of hasAmounts' amounts either: it is
 	// priced under Config.PriceImpulse.
 	impulse int
-	sweeps  []protocol.SweepView
+	// creatureTokens is how many of tokens are creatures, and tokensPer
+	// the subtype a count-at-resolution row makes one token per
+	// controlled creature of (#3165, token_payoff.go). Priced under
+	// Config.PriceTokenPayoffs.
+	creatureTokens int
+	tokensPer      string
+	sweeps         []protocol.SweepView
 	// targetsPriced is set by a cast or an activation whose targets a
 	// declared entry prices (PriceTargetPurposes, target_purpose.go):
 	// what it does is then declared, so the proxy goes. Never set on a
@@ -83,6 +89,10 @@ func (ps *purposeSet) add(p *protocol.PurposeView) {
 	ps.tutors += p.Tutors
 	ps.selfMill += p.SelfMillTutor
 	ps.tokens += p.Tokens
+	ps.creatureTokens += p.CreatureTokens
+	if p.TokensPerControlled != "" {
+		ps.tokensPer = p.TokensPerControlled
+	}
 	ps.energy += p.Energy
 	ps.awaken += p.AwakenLand
 	ps.extraLands += p.ExtraLandDrops
@@ -174,7 +184,8 @@ func rowAt(src *protocol.CardView, index int) *protocol.ActivatedAbilityView {
 // does not, the caller keeps the price it had before ADR 0126.
 func (p *Policy) purposePriced(ps purposeSet) bool {
 	return (p.cfg.PricePurposes && ps.hasAmounts()) || (p.cfg.PriceSweeps && len(ps.sweeps) > 0) ||
-		(p.cfg.PriceTargetPurposes && ps.targetsPriced) || (p.cfg.PriceImpulse && ps.impulse > 0)
+		(p.cfg.PriceTargetPurposes && ps.targetsPriced) || (p.cfg.PriceImpulse && ps.impulse > 0) ||
+		(p.cfg.PriceTokenPayoffs && ps.tokensPer != "")
 }
 
 // purposeValue prices a declared purpose for the bot: the §6 amounts
@@ -205,6 +216,9 @@ func (p *Policy) purposeValue(st *state, ps purposeSet, x int, self *protocol.Ca
 		}
 		v += p.awakenValue(st, ps.awaken)
 	}
+	// #3165: the creature tokens it makes pay the bot's creature-enter
+	// payoffs (token_payoff.go).
+	v += p.tokenPayoffValue(st, ps)
 	if p.cfg.PriceImpulse && ps.impulse > 0 {
 		v += st.impulseValue(ps.impulse)
 	}

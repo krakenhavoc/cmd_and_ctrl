@@ -149,13 +149,14 @@ type RematchResult struct {
 
 // rematchSeatSpec is one human seat to put at the new table.
 type rematchSeatSpec struct {
-	name     string
-	identity DiscordIdentity
-	userID   uuid.UUID
-	deckName string
-	deckID   string
-	cards    []game.Card
-	host     bool
+	name      string
+	identity  DiscordIdentity
+	userID    uuid.UUID
+	deckName  string
+	deckID    string
+	deckPower float64
+	cards     []game.Card
+	host      bool
 }
 
 // humanAsked reports whether the offer asks seat s: a human other than
@@ -468,12 +469,13 @@ func (l *Lobby) makePrivate(id uuid.UUID, meta GameMeta) error {
 // seatSpecOf is the seat s at the old table as a spec for the new one.
 func seatSpecOf(s SeatInfo, cards []game.Card, host bool) rematchSeatSpec {
 	spec := rematchSeatSpec{
-		name:     s.Name,
-		userID:   parseUUIDOrNil(s.UserID),
-		deckName: s.DeckName,
-		deckID:   s.DeckID,
-		cards:    cards,
-		host:     host,
+		name:      s.Name,
+		userID:    parseUUIDOrNil(s.UserID),
+		deckName:  s.DeckName,
+		deckID:    s.DeckID,
+		deckPower: s.DeckPower,
+		cards:     cards,
+		host:      host,
 	}
 	if s.DiscordID != "" {
 		spec.identity = DiscordIdentity{ID: s.DiscordID, GlobalName: s.DisplayName, AvatarHash: s.DiscordAvatarHash}
@@ -545,6 +547,7 @@ func (l *Lobby) seatRematch(id uuid.UUID, spec rematchSeatSpec) (uuid.UUID, erro
 		DeckName:     spec.deckName,
 		DeckUploaded: true,
 		DeckID:       spec.deckID,
+		DeckPower:    spec.deckPower,
 	}
 	if spec.identity.Populated() {
 		seat.DiscordID = spec.identity.ID

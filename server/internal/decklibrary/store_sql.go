@@ -116,8 +116,11 @@ func (s *SQLStore) upsert(ctx context.Context, owner uuid.UUID, name, sourceForm
 	default:
 		replaced = true
 		if _, err := tx.ExecContext(ctx,
-			`UPDATE decks SET source_format = ?, source_text = ?, source_url = ?, commanders = ?, card_count = ?, updated_at = ? WHERE id = ?`,
-			sourceFormat, sourceText, nullString(sourceURL), string(commandersJSON), cardCount, nowMs, id); err != nil {
+			// A changed list drops its rating (#3671): the rating described
+			// the old one. Re-saving the same list keeps it.
+			`UPDATE decks SET power_level = CASE WHEN source_text = ? THEN power_level END,
+			        source_format = ?, source_text = ?, source_url = ?, commanders = ?, card_count = ?, updated_at = ? WHERE id = ?`,
+			sourceText, sourceFormat, sourceText, nullString(sourceURL), string(commandersJSON), cardCount, nowMs, id); err != nil {
 			return Deck{}, false, fmt.Errorf("decklibrary: update: %w", err)
 		}
 	}
@@ -132,6 +135,27 @@ func (s *SQLStore) upsert(ctx context.Context, owner uuid.UUID, name, sourceForm
 	return deck, replaced, nil
 }
 
+// SetPowerLevel implements Store.
+func (s *SQLStore) SetPowerLevel(ctx context.Context, id uuid.UUID, level float64) (Deck, error) {
+	if !ValidPowerLevel(level) {
+		return Deck{}, ErrInvalidPowerLevel
+	}
+	var stored any
+	if level != 0 {
+		stored = level
+	}
+	res, err := s.db.ExecContext(ctx, `UPDATE decks SET power_level = ? WHERE id = ?`, stored, id.String())
+	if err != nil {
+		return Deck{}, fmt.Errorf("decklibrary: set power level: %w", err)
+	}
+	if n, err := res.RowsAffected(); err != nil {
+		return Deck{}, err
+	} else if n == 0 {
+		return Deck{}, ErrNotFound
+	}
+	return getDeck(ctx, s.db, id.String())
+}
+
 // Get implements Store.
 func (s *SQLStore) Get(ctx context.Context, id uuid.UUID) (Deck, error) {
 	return getDeck(ctx, s.db, id.String())
@@ -140,7 +164,7 @@ func (s *SQLStore) Get(ctx context.Context, id uuid.UUID) (Deck, error) {
 // List implements Store.
 func (s *SQLStore) List(ctx context.Context, owner uuid.UUID) ([]Deck, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, owner_id, name, source_format, source_text, source_url, commanders, card_count, created_at, updated_at
+		`SELECT id, owner_id, name, source_format, source_text, source_url, commanders, card_count, power_level, created_at, updated_at
 		 FROM decks WHERE owner_id = ? ORDER BY updated_at DESC, rowid DESC`, owner.String())
 	if err != nil {
 		return nil, fmt.Errorf("decklibrary: list: %w", err)
@@ -256,7 +280,7 @@ type queryRower interface {
 
 func getDeck(ctx context.Context, q queryRower, id string) (Deck, error) {
 	row := q.QueryRowContext(ctx,
-		`SELECT id, owner_id, name, source_format, source_text, source_url, commanders, card_count, created_at, updated_at
+		`SELECT id, owner_id, name, source_format, source_text, source_url, commanders, card_count, power_level, created_at, updated_at
 		 FROM decks WHERE id = ?`, id)
 	d, err := scanDeck(row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -279,12 +303,14 @@ func scanDeck(row rowScanner) (Deck, error) {
 		idStr, ownerStr  string
 		commandersJSON   string
 		sourceURL        sql.NullString
+		powerLevel       sql.NullFloat64
 		created, updated int64
 	)
-	if err := row.Scan(&idStr, &ownerStr, &d.Name, &d.SourceFormat, &d.SourceText, &sourceURL, &commandersJSON, &d.CardCount, &created, &updated); err != nil {
+	if err := row.Scan(&idStr, &ownerStr, &d.Name, &d.SourceFormat, &d.SourceText, &sourceURL, &commandersJSON, &d.CardCount, &powerLevel, &created, &updated); err != nil {
 		return Deck{}, err
 	}
 	d.SourceURL = sourceURL.String
+	d.PowerLevel = powerLevel.Float64
 	id, err := uuid.Parse(idStr)
 	if err != nil {
 		return Deck{}, fmt.Errorf("decklibrary: stored id %q: %w", idStr, err)

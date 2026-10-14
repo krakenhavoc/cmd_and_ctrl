@@ -183,6 +183,20 @@ func (g *Game) popExtraTurnLocked() (ExtraTurn, bool) {
 		}
 		if g.Seats[et.Seat].Eliminated {
 			g.noteTurnBegunLocked(et.Seat)
+			// CR 800.4k: a departed player's skip debt can never be spent.
+			g.dropTurnSkipsOfSeatLocked(et.Seat)
+			continue
+		}
+		// ADR 0188 Decision 1: a player who owes a skip skips the next
+		// turn they would begin, and this is that turn (the Magosi
+		// ruling). The debt is spent BEFORE the replacement window opens,
+		// so a turn skipped this way is never also offered to a skip
+		// replacement (Trouble in Pairs): the charge is spent and no
+		// EventExtraTurnSkipped is emitted. That is the interim default
+		// for the CR 616.1 choice between the two skips, which a later
+		// slice of ADR 0188 (Decision 12) turns into a question.
+		if source, ok := g.consumeTurnSkipLocked(et.Seat); ok {
+			g.emitTurnSkippedLocked(et.Seat, source, et.Ref)
 			continue
 		}
 		if g.extraTurnSkippedLocked(et) {

@@ -32,6 +32,16 @@ export const LAYOUT_SPLIT = "split";
 export const LAYOUT_FLIP = "flip";
 
 /**
+ * isSidewaysArt reports whether a card's printed image has its text
+ * turned a quarter-turn: a split card is printed with both halves
+ * sideways in one portrait image (#3518). The face picker shows that
+ * whole image rotated clockwise so it reads correctly.
+ */
+export function isSidewaysArt(card: Pick<CardView, "layout"> | null | undefined): boolean {
+  return card?.layout === LAYOUT_SPLIT;
+}
+
+/**
  * isFlippedFlipCard reports whether `card` is a flip card showing its
  * flipped half. The wire needs no field for it: a flip card's face
  * follows its flipped status, so `active_face === 1` IS "flipped"
@@ -209,6 +219,7 @@ export function castSurfaceOf(s: CastSurfaceView) {
     phyrexian_symbols: s.phyrexian_symbols,
     phyrexian_granted: s.phyrexian_granted,
     castable_here: s.castable_here,
+    closes_on_pass: s.closes_on_pass,
     cast_prices: s.cast_prices,
     x_max: s.x_max,
   } satisfies Record<keyof CastSurfaceView, unknown>;

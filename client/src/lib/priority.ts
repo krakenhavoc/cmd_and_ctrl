@@ -11,6 +11,7 @@
 // exists purely to decide whether the client should auto-pass
 // priority on the viewer's behalf.
 
+import { freeCastOffer } from "./freeCastRequest";
 import type { GameView } from "./protocol";
 
 // owesBlockDecision reports whether the viewer is facing a
@@ -164,6 +165,36 @@ export function owesAttackRequirement(
   const active = snap.turn?.active_seat ?? -1;
   if (active < 0 || snap.seats?.[active]?.id !== viewerID) return false;
   return (snap.battlefield?.cards ?? []).some((c) => c.controller === viewerID && !!c.must_attack);
+}
+
+// owesFreeCast reports whether the viewer holds a pass-closed free cast
+// they can make right now (#3490): a rebound, suspend, discover or
+// cascade card in exile whose grant the holder's next pass ends
+// (`exile_play.closes_on_pass`). Passing IS the decline there, so an
+// automatic pass 80 ms after "Cast it free" threw the cast away before
+// the target picker had been answered, and the card stayed in exile.
+// Holds autopass until the viewer casts or passes by hand ("next").
+// A hand card under a LapseStaysInHand grant holds it the same way.
+//
+// `castable_here` is the server's per-viewer answer for timing, targets
+// and cost, so a grant nothing can be cast under (no legal target) does
+// not hold the pass: the window is dead and passing is harmless. A
+// frame built for another seat carries the other seat's `player`.
+export function owesFreeCast(snap: GameView | null | undefined, viewerID: string | null): boolean {
+  if (!snap || !viewerID) return false;
+  const exileCast = (snap.exile?.cards ?? []).some(
+    (c) =>
+      !!c.castable_here &&
+      !!c.exile_play?.closes_on_pass &&
+      (!c.exile_play.player || c.exile_play.player === viewerID),
+  );
+  if (exileCast) return true;
+  // #3625: the hand twin (#3270, Buster Sword, Rishkar's Expertise). The
+  // grant is not an `exile_play` block; the hand card carries
+  // `closes_on_pass` and the granted free offer, which the server leaves
+  // off once the engine would refuse the cast.
+  const mine = snap.seats?.find((s) => s.id === viewerID);
+  return (mine?.hand?.cards ?? []).some((c) => !!c.closes_on_pass && !!freeCastOffer(c));
 }
 
 // autopassSuspended reports whether the server has told this table to

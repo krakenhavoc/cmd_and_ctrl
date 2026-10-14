@@ -46,6 +46,12 @@ type PurposeView struct {
 	SelfMillTutor int `json:"self_mill_tutor,omitempty"`
 	// Tokens is the tokens it creates for its controller.
 	Tokens int `json:"tokens,omitempty"`
+	// CreatureTokens is how many of Tokens are creature tokens (#3165).
+	CreatureTokens int `json:"creature_tokens,omitempty"`
+	// TokensPerControlled is the lowercase creature subtype whose count
+	// under its controller's control is the number of creature tokens it
+	// creates, counted at resolution (#3165).
+	TokensPerControlled string `json:"tokens_per_controlled,omitempty"`
 	// Energy is the energy counters it gives its controller (ADR 0129
 	// §7).
 	Energy int `json:"energy,omitempty"`
@@ -66,6 +72,10 @@ type PurposeView struct {
 	// whenever a land enters under its controller's control, and says
 	// what it pays for each land (#3072).
 	LandfallPayoff *LandfallPayoffView `json:"landfall_payoff,omitempty"`
+	// CreatureEnterPayoff is present on a triggered row that pays out
+	// whenever a creature enters under its controller's control, and
+	// says what it pays for each creature (#3165).
+	CreatureEnterPayoff *CreatureEnterPayoffView `json:"creature_enter_payoff,omitempty"`
 	// Pump is what the row gives its own source until end of turn
 	// (ADR 0130's amendment of 2026-10-07).
 	Pump *PumpView `json:"pump,omitempty"`
@@ -107,6 +117,10 @@ type PurposeView struct {
 	// declares only answers is not Priced. A pointer so PurposeView
 	// stays comparable.
 	Answers *[]string `json:"answers,omitempty"`
+	// Aura is "benefit" or "harm" on an Aura card (#3309): what it does
+	// to the permanent it enchants. Absent when the card declares none.
+	// Not an amount, like Answers.
+	Aura string `json:"aura,omitempty"`
 }
 
 // Priced reports whether the purpose declares anything the bot prices:
@@ -120,6 +134,7 @@ func (p *PurposeView) Priced() bool {
 	}
 	q := *p
 	q.Answers = nil
+	q.Aura = ""
 	return q != PurposeView{}
 }
 
@@ -220,6 +235,11 @@ type LandfallPayoffView struct {
 	DamageEachOpponent int `json:"damage_each_opponent,omitempty"`
 }
 
+// CreatureEnterPayoffView is game.CreatureEnterPayoff on the wire: what a
+// row pays its controller for each creature that enters under their
+// control (#3165), in LandfallPayoffView's fields.
+type CreatureEnterPayoffView LandfallPayoffView
+
 // ActivationPurposeView is ADR 0106's name for PurposeView, from when a
 // purpose was declared on any-player rows alone. Kept so a reader of
 // that ADR finds the type.
@@ -258,6 +278,8 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		Tutors:                    p.Tutors,
 		SelfMillTutor:             p.SelfMillTutor,
 		Tokens:                    p.Tokens,
+		CreatureTokens:            p.CreatureTokens,
+		TokensPerControlled:       p.TokensPerControlled,
 		Energy:                    p.Energy,
 		DeathPayoff:               p.DeathPayoff,
 		ExtraCombat:               p.ExtraCombat,
@@ -268,6 +290,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		AwakenLand:                p.AwakenLand,
 		ExtraLandDrops:            p.ExtraLandDrops,
 		Impulse:                   p.Impulse,
+		Aura:                      string(p.Aura),
 	}
 	if pm := p.Pump; pm != nil {
 		v.Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...)}
@@ -295,6 +318,10 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 			Draws: l.Draws, LifeGain: l.LifeGain, Tokens: l.Tokens, Mana: l.Mana,
 			Counters: l.Counters, Energy: l.Energy, DamageEachOpponent: l.DamageEachOpponent,
 		}
+	}
+	if c := p.CreatureEnterPayoff; c != nil {
+		pay := CreatureEnterPayoffView(*c)
+		v.CreatureEnterPayoff = &pay
 	}
 	if ts := p.Targets.List(); len(ts) > 0 {
 		out := make([]TargetPurposeView, len(ts))

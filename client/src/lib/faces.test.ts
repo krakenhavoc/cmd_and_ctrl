@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 
-import { cardAsFace, castableFaceIndex, castableFaces, needsFacePicker } from "./faces";
+import {
+  cardAsFace,
+  castableFaceIndex,
+  castableFaces,
+  isSidewaysArt,
+  needsFacePicker,
+} from "./faces";
 import { cardImageURL, scryfallImageURL } from "./cardImage";
 import { applyCastChoices } from "./targeting";
 import type { CardView } from "./protocol";
@@ -288,6 +294,17 @@ describe("cardImageURL", () => {
   it("takes an explicit face for showing a side that is not up", () => {
     expect(cardImageURL(seaGate(0), "normal", 1)).toBe("/cards/sg/image?size=normal&face=1");
     expect(cardImageURL(seaGate(1), "normal", 0)).toBe("/cards/sg/image?size=normal");
+  });
+
+  it("serves a split card's one whole image for every half, and marks it sideways (#3518)", () => {
+    const room = { ...seaGate(0), scryfall_id: "room", layout: "split" };
+    expect(cardImageURL(room, "normal", 1)).toBe("/cards/room/image?size=normal");
+    expect(cardImageURL({ ...room, active_face: 1 }, "normal")).toBe(
+      "/cards/room/image?size=normal",
+    );
+    expect(isSidewaysArt(room)).toBe(true);
+    expect(isSidewaysArt(seaGate(0))).toBe(false);
+    expect(isSidewaysArt(null)).toBe(false);
   });
 
   it("is null without a Scryfall ID — the redacted-card case", () => {

@@ -40,6 +40,7 @@ func init() {
 		Name:         "Pacifism",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
+		Purpose:      game.Purpose{Aura: game.AuraHarm},
 		Static: []game.StaticAbility{
 			RestrictAttached(game.CantAttackOrBlock),
 		},

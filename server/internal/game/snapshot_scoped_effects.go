@@ -123,6 +123,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := attackTaxModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// ADR 0188: a skip debt owed by no one, or owing nothing.
+			if problem := skipTurnsModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 		}
 		// ADR 0107 §3: a stack pin may carry only what this binary's
 		// stack step applies (layer 2 control, layer-6 keywords). A

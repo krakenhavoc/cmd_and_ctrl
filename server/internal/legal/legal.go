@@ -985,7 +985,7 @@ func cardName(g *game.Game, id uuid.UUID) string {
 		if p == nil {
 			continue
 		}
-		for _, z := range []*game.Zone{p.Hand, p.Graveyard, p.Command, p.Library} {
+		for _, z := range []*game.Zone{p.Hand, p.Graveyard, p.Command, p.Library, p.Sideboard} {
 			if z == nil {
 				continue
 			}
@@ -1051,7 +1051,7 @@ func findCardAnywhere(g *game.Game, id uuid.UUID) *game.Card {
 		if p == nil {
 			continue
 		}
-		for _, z := range []*game.Zone{p.Hand, p.Graveyard, p.Command, p.Library} {
+		for _, z := range []*game.Zone{p.Hand, p.Graveyard, p.Command, p.Library, p.Sideboard} {
 			if z == nil {
 				continue
 			}

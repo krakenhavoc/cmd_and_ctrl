@@ -3694,7 +3694,9 @@ Objects are cards and permanents by instance ID; "you" is the item's controller.
 | Step | Reads | Writes | Events |
 | --- | --- | --- | --- |
 | `GainLife` | | your life, up | life change |
-| `DamageEachOpponent` | the source (on the battlefield, with no lifelink, infect, wither or toxic) | each opponent's life, down | damage, life change |
+| `DamageEachOpponent` | the source (whatever the damage tail reads of it: the permanent, its last-known record once it has left, nothing once it has moved on; with no lifelink, infect, wither or toxic) | each opponent's life, down | damage, life change |
+| `DamageController` | the source, as for `DamageEachOpponent` | your life, down | damage, life change |
+| `TargetPlayerLosesLife` | the targeted player | that player's life, down | life change |
 | `CounterOnThis` | the source | the source, if on the battlefield | counter placed |
 | `ExileChosenTarget` | the targets | each card target | zone move, leaves the battlefield, unattach |
 | `DrawCards` | | your library and hand (and a loss on an empty library) | draw |
@@ -4556,3 +4558,75 @@ This adds no event or persisted state and introduces no second batching
 system. Tests distinguish sequential instructions inside one resolution from
 an actual simultaneous wipe/sacrifice, and retain the existing recursion
 regressions. Clear Nether Traitor's ordering caveat only with those tests.
+
+## Amendment 2026-10-14 — a source that died, damage to you, and the targeted drain · Accepted
+
+Found by replaying eight four-seat `boteval arena` games (esper-control, mono-black-aristocrats, simic-ramp,
+wubrg-dragons): 81 ordering prompts in 32 seat-games, nearly all "X's trigger is handled by the players". Three
+gaps in the footprint vocabulary covered most of them.
+
+1. **A damage step reads what the damage tail will read.** `DamageEachOpponent` refused whenever its source had
+   left the battlefield, which is the aristocrats case: Syr Konrad dies in the wipe whose deaths he triggers on, and
+   as the deck's commander goes on to the command zone. `footprintDamageSourceLocked` now builds the tail the step
+   will build (`effectDamageTailLocked`) and refuses only lifelink, infect, wither or toxic on it, so the two
+   cannot disagree: the permanent while it is on the battlefield, its last-known record once it has left (CR
+   608.2h), no traits once the card has moved on and no record matches. The source stays a read, because an item
+   that moves the card back changes which object deals the damage.
+2. **`DamageController{N}`** is "~ deals N damage to you" (City of Brass, Midnight Reaper): the same source
+   questions, and the controller's life, down.
+3. **`TargetPlayerLosesLife{N}`** is "target player loses N life", the first half of Blood Artist's and Falkenrath
+   Noble's drain (`Do(TargetPlayerLosesLife{N: 1}, GainLife{Amount: 1})`). It reads and lowers the targeted
+   player's life. A target who could reach 0 in the batch keeps the prompt through the existing elimination rule,
+   since a later drain then has no legal target.
+4. **Two draws commute.** A library touched by two items asked whatever they did to it, so Midnight Reaper's three
+   "draw a card" for one wipe asked among themselves. Two items that only draw from the top of one library put the
+   same cards in the same hand in either order. The library tie (reason `library`) now asks only when one side
+   mills, scries or surveils that library. A draw that could empty it is still the elimination rule's (the draws are
+   counted), and a "whenever you draw" watcher still the reactor rule's.
+
+Tatyova, Vindictive Vampire and the Pest token move onto `Do` with steps that already existed. Moving the Vampire
+showed it saw its own death, against its oracle's "another creature you control"; its condition now excludes
+itself (`TestVindictiveVampireDoesNotSeeItsOwnDeath`). No wire or snapshot
+change. Each new step has a case in `footprint_conformance_test.go` (`DamageEachOpponent:departed` and
+`DamageController:departed` resolve with the source in the graveyard, `DamageEachOpponent:moved-on` with it exiled
+from there).
+
+**Back-outs.** `TestSyrKonradDyingInTheWipeHeTriggersOnDoesNotAsk` and
+`TestSyrKonradMovedOnFromTheGraveyardDoesNotAsk` fail without item 1,
+`TestADepartedLifelinkSourceStillAsks` without its lifelink refusal, `TestTwoTargetedDrainsDoNotAsk` without item 3,
+`TestTwoTargetedDrainsAskWhenTheTargetCanDie` if the drain stopped being a player read, and the Syr Konrad test
+again without item 4 (Reaper's three draws). The draw-beside-scry case in `trigger_independence_draws_test.go`
+keeps item 4 from going further.
+
+## Amendment 2026-10-14 (second) — a tapland in play is not a reactor · Accepted
+
+A second arena replay (mono-green-stompy, mono-red-aggro, mono-white-weenie, boros-voltron; seeds 101–108) and the
+first round's games both had prompts whose reason was a land "watching cards changing zones": Myriad Landscape,
+Shipwreck Marsh. Their only replacement is "This land enters tapped" (`SelfEntersTapped` and its conditional
+siblings). It watches zone moves, so the reactor rule counted it for every batch that made a token or moved a
+card, as long as the land was on the battlefield.
+
+1. **`EntryOnly` replacements on a permanent in play are set aside** (`reactorLocked`). Such a replacement changes
+   only its own object's entry, which a permanent in play has already made, and no described footprint step puts
+   that object onto the battlefield again. `ReplacementEffect.EntryOnly` was display-only. It is now a promise the
+   check relies on, so `TestEntryOnlyReplacementsApplyOnlyToTheirOwnEntry` probes every catalog row that declares
+   it with another card entering, and fails if one applies.
+2. **Aurelia, the Law Above's** five-attacker drain moves onto `Do(DamageEachOpponent{N: 3}, GainLife{Amount: 3})`.
+   Beside her three-attacker draw it no longer asks (`TestB16AureliaFiresOncePerDeclarationAtThreeAndFive` now pins
+   that). Wearing Batterskull, her damage has lifelink and the batch still asks, as it should.
+
+Second round, same seeds: 16 → 13 prompts. In the first round's games, the Shipwreck Marsh batches now stop on the
+real reactor beside it (Smothering Tithe watches draws) instead.
+
+**Back-outs.** `TestATaplandInPlayIsNotAReactor` fails without item 1; `TestAureliasTriggersDeclareFootprints`
+without item 2.
+
+
+## Amendment 2026-10-14 (third) — a paid branch for counter-unless-pays, and a per-controller tally of what died (#3591, #3592) · Accepted
+
+Two small gaps found clearing the caveats of the incubate cards (Assimilate Essence, Brimaz, Blight of Oreskos).
+
+1. **`CounterUnlessPaidPrompt.OnPaid` (#3591).** "Counter target spell unless its controller pays {4}. If they do, you incubate 2." The prompt underneath (`queuePayUnlessLocked`) already carried a paid branch (`payUnlessExtras.onPay`, echo and may-pay use it); `QueueCounterUnlessPaidForEffect` never passed one. It now passes `OnPaid`, so exactly one of the two branches runs for an answer: a payment that was made runs `OnPaid`, a decline or a "pay" the chooser cannot fund runs the decline. The stack guard is the one that was already there: `answerPayUnlessLocked` drops both branches when the guarded object has left the stack, which is right for the paid half too, since the payment then bought off nothing. On the card side `effects.CounterUnlessPaid.OnPaid` is a `*Context` branch bound to the resolving spell, so `Controller()` is the caster ("you"), not the payer. Nil changes nothing for the other counter-unless-pays cards.
+2. **`TurnTally.DiedSubtypes` (#3592).** "If a Phyrexian died under your control this turn." The tally had a per-controller count of creatures that died and a table-wide power by type; this is the per-controller count by creature type, with the same last-known types (CR 603.10a), the same "under the controller it left from" (`LeftUnderControlOf`), the same changeling bucket (`enteredAllCreatureTypes`) and the same keys as `EnteredSubtypes`. Read through `Game.DiedWithSubtypeThisTurn(player, subtype)`. It shares `diedSubtypesLocked` with `recordDiedPowerLocked`, so the two tallies cannot read different types for one death. Additive in snapshot schema v8 (`turnTally.diedSubtypes`, omitted when empty, carried by `cloneTurnTally`, reset by `resetTurnTallyLocked`).
+
+**Back-outs.** `TestACounterUnlessPaidRunsOnPaidOnlyForAPaymentThatWasMade` and `TestAssimilateEssenceIncubatesTwoForTheCasterWhenTheTaxIsPaid` fail without the `onPay` pass-through; `TestDiedSubtypesCountsPerControllerAndPerType` (and Brimaz's `TestBrimazBlightProliferatesAtTheEndStepAfterAPhyrexianDiedUnderYou`) fail without the record call; `TestDiedSubtypesSurvivesCloneTurnTally` without the clone line.

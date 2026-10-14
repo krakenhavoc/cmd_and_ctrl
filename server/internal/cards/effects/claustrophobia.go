@@ -18,6 +18,7 @@ func init() {
 		Name:                  "Claustrophobia",
 		Completeness:          CompletenessFull,
 		Targets:               EnchantCreature(),
+		Purpose:               game.Purpose{Aura: game.AuraHarm},
 		UntapStepRestrictions: []game.UntapStepRestriction{enchantedDoesntUntap()},
 		Triggered:             []game.TriggeredAbility{WhenThisEnters("Claustrophobia — tap enchanted creature", tapEnchantedCreatureOnEntry)},
 	})

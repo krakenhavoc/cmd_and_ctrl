@@ -297,7 +297,7 @@ func checkGrantAbilities(name string, gr AbilityGrant) {
 			panic(where("activated ability", i) + " functions outside the battlefield — a granted ability is a permanent's")
 		}
 		checkAnyPlayerAbility(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a)
-		checkActivatedPurpose(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a)
+		checkActivatedPurpose(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a, false)
 	}
 	for i, m := range gr.Mana {
 		if offBattlefield(m.Zones) {
@@ -337,7 +337,7 @@ func checkZoneGrantBundle(name string, gr AbilityGrant, where func(kind string, 
 			panic(where("activated ability", i) + " functions from " + string(gr.Zone) + " but declares " + why + " — that component needs a permanent on the battlefield")
 		}
 		checkAnyPlayerAbility(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a)
-		checkActivatedPurpose(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a)
+		checkActivatedPurpose(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a, false)
 	}
 }
 

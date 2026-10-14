@@ -33,6 +33,7 @@ func init() {
 		Name:         "Ancestral Mask",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
+		Purpose:      game.Purpose{Aura: game.AuraBenefit},
 		Static: []game.StaticAbility{
 			PumpAttachedPer(2, 2, otherEnchantmentsOnTheBattlefield),
 		},

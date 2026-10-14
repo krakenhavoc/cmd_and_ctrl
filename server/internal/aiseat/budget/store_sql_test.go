@@ -34,7 +34,7 @@ func TestSQLStorePersistsAcrossReopeningTheDatabase(t *testing.T) {
 	clk := newClock("2026-10-12T09:00:00Z")
 
 	s1, d1 := openSQL(t, dir)
-	b1 := New(Limits{DailyTokens: 150, MonthlyTokens: 1000}, s1, WithClock(clk.now), WithLogger(quiet()))
+	b1 := New(Limits{DailyTokens: 150, MonthlyTokens: 1000}, s1, WithClock(clk.now), WithLogger(quiet()), WithWeights(FlatWeights()), WithWeights(FlatWeights()))
 	c1 := b1.Wrap(usageClient(100, 0))
 	_ = call(t, c1)
 	_ = call(t, c1)
@@ -46,7 +46,7 @@ func TestSQLStorePersistsAcrossReopeningTheDatabase(t *testing.T) {
 	}
 
 	s2, _ := openSQL(t, dir)
-	b2 := New(Limits{DailyTokens: 150, MonthlyTokens: 1000}, s2, WithClock(clk.now), WithLogger(quiet()))
+	b2 := New(Limits{DailyTokens: 150, MonthlyTokens: 1000}, s2, WithClock(clk.now), WithLogger(quiet()), WithWeights(FlatWeights()), WithWeights(FlatWeights()))
 	st := b2.Status()
 	if st.DailyTokens != 200 || st.MonthlyTokens != 200 || st.Enabled {
 		t.Fatalf("after reopening: %+v, want 200/200 and the switch off", st)
@@ -62,7 +62,7 @@ func TestSQLStorePersistsAcrossReopeningTheDatabase(t *testing.T) {
 func TestSQLStoreRollsOverAndPrunesOldPeriods(t *testing.T) {
 	s, d := openSQL(t, t.TempDir())
 	clk := newClock("2026-10-31T23:00:00Z")
-	b := New(Limits{DailyTokens: 1000, MonthlyTokens: 1000}, s, WithClock(clk.now), WithLogger(quiet()))
+	b := New(Limits{DailyTokens: 1000, MonthlyTokens: 1000}, s, WithClock(clk.now), WithLogger(quiet()), WithWeights(FlatWeights()), WithWeights(FlatWeights()))
 	c := b.Wrap(usageClient(10, 0))
 	_ = call(t, c)
 	_ = b.SetEnabled(true)

@@ -34,13 +34,10 @@ func init() {
 		Name:         "Vindictive Vampire",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			TriggerWithPurpose(WheneverACreatureYouControlDies("Vindictive Vampire — 1 damage to each opponent, gain 1 life",
-				func(g *game.Game, item *game.StackItem) error {
-					if err := damageToEachOpponent(g, item, 1); err != nil {
-						return err
-					}
-					return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
-				}), game.Purpose{DeathPayoff: true}),
+			TriggerWithPurpose(On(game.EventLTB, func(ev game.Event, source *game.Card, c game.Characteristic, g *game.Game) bool {
+				return AnotherCreatureDied(ev, source, c, g) && ACreatureYouControlDied(ev, source, c, g)
+			}, "Vindictive Vampire — 1 damage to each opponent, gain 1 life",
+				Do(DamageEachOpponent{N: 1}, GainLife{Amount: 1})), game.Purpose{DeathPayoff: true}),
 		},
 	})
 }

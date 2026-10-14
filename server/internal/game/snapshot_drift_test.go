@@ -197,6 +197,8 @@ var gameFields = plan(
 	// CR 704.3 boundary. Carried with each choice's midResolution.
 	"resolutionOpen", carried, "",
 	"pausedModeWalk", carried, "",
+	// #3613: the end of that resolution, parked behind the same prompt.
+	"pausedResolutionTail", carried, "",
 	"resolutionDepth", dropped, "not game state: it counts resolution functions on the Go stack, so it is zero between actions (#1289)",
 	// ADR 0127 §2: the ordinals behind the keys of the prompts one
 	// resolution or one answered prompt's branch queues.
@@ -355,6 +357,8 @@ var cardFields = plan(
 	"IsCommander", carried, "",
 	// ADR 0172 §4: the companion stamp; the badge reads it.
 	"IsCompanion", carried, "",
+	// ADR 0191 §3: the sideboard stamp; it routes seating only.
+	"IsSideboard", carried, "",
 	// ADR 0115 §8: CR 903.9a's "put into that zone since the last
 	// check" mark. Carried: a restore that dropped it would skip the
 	// owner's question.
@@ -439,6 +443,11 @@ var cardFields = plan(
 	// ADR 0154 decision 3: the epoch of an off-battlefield host (Animate
 	// Dead's graveyard card), carried for AttachedTo's reason.
 	"AttachedEpoch", carried, "",
+	// #3159: whether a battlefield host is judged by AttachedEpoch.
+	// Carried: a restore that dropped it would let a host that came back
+	// as a new object keep its Auras. Absent means unpinned, so a file
+	// written before it restores to the old behaviour.
+	"AttachedPinned", carried, "",
 	// The layer-2 control baseline. Carried rather than rebuilt: a
 	// restore that dropped it would re-capture the CURRENT (stolen)
 	// controller as the base, and the creature would never go home.
@@ -628,6 +637,10 @@ var playerFields = plan(
 	// whether a player still has the option is not derivable from the
 	// board. Written only while it holds a card.
 	"Companion", carried, "",
+	// ADR 0191 §4: the cards the deck owns outside the game. Carried,
+	// for Companion's reason: nothing else on the board says what an
+	// effect could still bring in. Written only while it holds a card.
+	"Sideboard", carried, "",
 	"CommanderDamage", carried, "",
 	"LifeHistory", carried, "",
 	// The seat-turn counter "until your next turn" durations end on
@@ -880,6 +893,7 @@ var delayedTriggerFields = plan(
 	"OncePerBatch", carried, "", // #3172, CR 603.2c
 	"ManaTapSubtype", carried, "", // #2169, CR 605.1b
 	"ManaAdds", carried, "",
+	"ManaTapControllerOnly", carried, "", // #3504, CR 605.1b
 )
 
 var pendingChoiceFields = plan(
@@ -975,6 +989,10 @@ var pendingChoiceFields = plan(
 	// Talara's Bane's toughness, read as the pick was raised: without
 	// it a restored pick would gain nothing.
 	"PickMeasures", carried, "",
+	// #3516: the source object a PickExile pick links its exiled card to
+	// (Null Summoner): a restored pick that forgot it would exile the
+	// card unlinked, and no standing permission could ever name it.
+	"PickExiledWith", carried, "",
 	"CopyOptions", carried, "",
 	// ADR 0160: a copy_target prompt that exchanges text boxes. Carried
 	// with CopyOptions; only the wording reads it.

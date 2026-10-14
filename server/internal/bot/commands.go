@@ -28,6 +28,7 @@ const (
 	CmdEnd       = "c2-end"
 	CmdDeckCheck = "c2-deck-check"
 	CmdDeckReq   = "c2-deck-req"
+	CmdCard      = "c2-card"
 )
 
 // commandDefinitions returns the ApplicationCommand payload
@@ -121,6 +122,19 @@ func commandDefinitions() []*discordgo.ApplicationCommand {
 				},
 			},
 		},
+		{
+			Name:        CmdCard,
+			Description: "Show a card and whether CMD & CTRL supports it.",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Name:        "name",
+					Description: "Card name (a close match is fine).",
+					Type:        discordgo.ApplicationCommandOptionString,
+					Required:    true,
+					MaxLength:   maxQueryLen,
+				},
+			},
+		},
 	}
 }
 
@@ -179,16 +193,23 @@ type Handler struct {
 	// its 2026-09-25 amendment). Same in-memory, no-SIGHUP-reload
 	// trade-off as confirmations above.
 	deckSources *deckSourceStore
+	// cards backs /c2-card and the [[Card Name]] chat watcher (#3324);
+	// cardLimiter rate-limits the watcher's replies per channel.
+	cards       *cardLookup
+	cardLimiter *channelLimiter
 }
 
 // NewHandler wires the bot's configuration and HTTP client into
 // a dispatcher suitable for session.AddHandler.
 func NewHandler(cfg Config, client *ServerClient, log *slog.Logger) *Handler {
-	return &Handler{
+	h := &Handler{
 		cfg: cfg, client: client, log: log, now: time.Now,
 		confirmations: newEndConfirmations(),
 		deckSources:   newDeckSourceStore(),
+		cardLimiter:   &channelLimiter{},
 	}
+	h.cards = newCardLookup(client.Catalog, func() time.Time { return h.now() })
+	return h
 }
 
 // defaultInteractionTimeout caps the HTTP round-trip for every
@@ -293,6 +314,8 @@ func (h *Handler) Dispatch(s *discordgo.Session, i *discordgo.InteractionCreate)
 		h.handleDeckCheck(ctx, s, i, data)
 	case CmdDeckReq:
 		h.handleDeckReq(ctx, s, i, data)
+	case CmdCard:
+		h.handleCard(ctx, s, i, data)
 	default:
 		h.log.Warn("unknown command", "name", data.Name)
 		_ = s.InteractionRespond(i.Interaction, ephemeralResponse("Unknown command."))

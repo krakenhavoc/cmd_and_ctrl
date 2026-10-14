@@ -5,8 +5,52 @@
 // state arrives on the game view (`view.voice`), already reduced to this
 // viewer's own access, with the link only when they were let in.
 
+import type { Writable } from "svelte/store";
+import { guardedWritable } from "./guardedStore";
 import { authFetch } from "./session";
-import type { VoiceView } from "./protocol";
+import type { VoiceConn, VoiceView } from "./protocol";
+
+// voiceSeats is who is connected to the table's voice room, by player
+// id (#3311). Game.svelte keeps it current from the game view; a seat's
+// badge reads it, so the board does not thread a prop through every
+// panel.
+export const voiceSeats: Writable<Record<string, VoiceConn>> = guardedWritable({}, "voiceSeats");
+
+/** A seat's badge for the voice room, or null when it is not connected. */
+export function voiceSeatBadge(
+  conn: VoiceConn | undefined,
+): { glyph: string; title: string } | null {
+  if (conn === "live") return { glyph: "🎧", title: "in the table's voice room" };
+  if (conn === "muted") return { glyph: "🔇", title: "in the table's voice room, muted" };
+  return null;
+}
+
+// discordAppURL turns a room's https link into the one that opens the
+// desktop app. Discord ignores it when it isn't installed, so callers
+// fall back to the https link (voiceOpen).
+export function discordAppURL(httpsURL: string): string | null {
+  const m = /^https:\/\/discord\.com\/channels\/(\d+)\/(\d+)$/.exec(httpsURL);
+  return m ? `discord://-/channels/${m[1]}/${m[2]}` : null;
+}
+
+// voiceOpen opens the room in the desktop app, and in the browser if the
+// app doesn't take the link. The browser blurs the page when a protocol
+// handler launches, which is the only signal of success we get.
+export function voiceOpen(httpsURL: string): void {
+  const app = discordAppURL(httpsURL);
+  if (!app || typeof window === "undefined") {
+    window.open(httpsURL, "_blank", "noopener,noreferrer");
+    return;
+  }
+  let launched = false;
+  const onBlur = () => (launched = true);
+  window.addEventListener("blur", onBlur, { once: true });
+  window.location.href = app;
+  setTimeout(() => {
+    window.removeEventListener("blur", onBlur);
+    if (!launched) window.open(httpsURL, "_blank", "noopener,noreferrer");
+  }, 1500);
+}
 
 // setVoiceRoom turns the table's voice room on or off (PUT
 // /games/{id}/voice). Host or admin; the server refuses anyone else.
@@ -43,7 +87,13 @@ export function voiceChip(v: VoiceView | undefined): VoiceChip | null {
   const you = v.you ?? "spectator";
   if (you === "spectator") return null;
   if (v.status === "ready" && you === "granted" && v.url) {
-    return { label: "Join voice", title: "open this table's voice room in Discord", href: v.url };
+    const count =
+      v.granted !== undefined && v.granted > 0 ? ` · ${v.in_room ?? 0} of ${v.granted}` : "";
+    return {
+      label: `${v.in_room ? "Voice" : "Join voice"}${count}`,
+      title: "open this table's voice room in Discord",
+      href: v.url,
+    };
   }
   if (you === "not_in_server") {
     return {

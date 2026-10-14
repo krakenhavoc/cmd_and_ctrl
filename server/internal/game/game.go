@@ -425,7 +425,9 @@ type Game struct {
 
 	// eventLogGen names the history Events holds (#1401): bumped by
 	// RestoreFrom, which replaces the log with a shorter one that the
-	// next emit regrows under the same Seq values. Never copied — it
+	// next emit regrows under the same Seq values, and by
+	// deferResolveLogLineLocked, which edits one event in place
+	// (#3613). Never copied — it
 	// belongs to this *Game, not to the history — so it only moves
 	// forward. See projection_cache.go.
 	eventLogGen uint64
@@ -842,6 +844,13 @@ type Game struct {
 	// Clone and the persisted snapshot carry it. See mode_walk.go.
 	pausedModeWalk *modeWalk
 
+	// pausedResolutionTail is the end of a resolution parked behind one
+	// of its own prompts (#3613, CR 608.2n): a spell's exit from the
+	// stack and the log's "resolved" line. Non-nil only while a
+	// resolution is open and paused. Clone and the persisted snapshot
+	// carry it. See resolution_tail.go.
+	pausedResolutionTail *resolutionTail
+
 	// promptKeys is the transient bookkeeping behind the keys of the
 	// prompts a resolution or an answered prompt's branch queues (ADR
 	// 0127 §2, auto_answer.go). Reset where each begins, so neither
@@ -1127,8 +1136,11 @@ func NewGame() *Game {
 // starting decklist. The deck is placed into the player's library in
 // the order supplied; commanders (Card.IsCommander == true) are routed
 // to the command zone instead, and a companion (Card.IsCompanion) to
-// Player.Companion, outside the game (ADR 0172 §3). A deck with more
-// than one companion is ErrTooManyCompanions.
+// Player.Companion, outside the game (ADR 0172 §3), and a sideboard
+// card (Card.IsSideboard) to Player.Sideboard, also outside the game
+// (ADR 0191 §3). A deck with more than one companion is
+// ErrTooManyCompanions, and one with more than MaxSideboardSize
+// sideboard cards is ErrSideboardTooLarge.
 //
 // Returns the newly-seated player. AddPlayer is only valid in the
 // lobby state; calling it after Start returns ErrGameNotInLobby.
@@ -1156,6 +1168,9 @@ func (g *Game) AddPlayer(name string, deck []Card) (*Player, error) {
 
 	if countCompanions(deck) > 1 {
 		return nil, ErrTooManyCompanions
+	}
+	if countSideboard(deck) > MaxSideboardSize {
+		return nil, ErrSideboardTooLarge
 	}
 
 	// Stamp every card with its owner (overwriting whatever the caller
@@ -1201,6 +1216,9 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 	if countCompanions(deck) > 1 {
 		return ErrTooManyCompanions
 	}
+	if countSideboard(deck) > MaxSideboardSize {
+		return ErrSideboardTooLarge
+	}
 
 	// Reset the zones in-place. Reusing the existing *Zone pointers
 	// keeps any external references (logs, snapshots mid-serialise)
@@ -1209,6 +1227,7 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 	p.Library.Cards = p.Library.Cards[:0]
 	p.Command.Cards = p.Command.Cards[:0]
 	p.Companion = nil
+	p.Sideboard = nil
 
 	for i, c := range deck {
 		c.Owner = p.ID

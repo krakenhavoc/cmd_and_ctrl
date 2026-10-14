@@ -110,11 +110,11 @@ func TestResolvingSlotSurvivesAPauseAndIsClearedByTheNextOccurrence(t *testing.T
 			t.Fatalf("resolveTopOfStackLocked: %v", err)
 		}
 	})
-	// The spell itself has already been routed to the graveyard while
-	// the question is still open — which is exactly why the card has
-	// to be held by value.
-	if !me.Graveyard.Contains(id) {
-		t.Fatalf("the spell should already be in the graveyard: %+v", me.Graveyard.Cards)
+	// #3613, CR 608.2n: the spell waits on the stack for the answer,
+	// but its StackMeta entry is gone, so it is the resolving slot that
+	// still finds its item.
+	if !g.Stack.Contains(id) || g.StackMeta[id] != nil {
+		t.Fatalf("the spell should be on the stack with no meta while the question is open: stack %+v", g.Stack.Cards)
 	}
 	c := latestChoiceOfKindForTest(g, PendingChoiceConfirm)
 	if c == nil {
@@ -122,6 +122,9 @@ func TestResolvingSlotSurvivesAPauseAndIsClearedByTheNextOccurrence(t *testing.T
 	}
 	if err := g.ResolveConfirm(c.ID, me.ID, true); err != nil {
 		t.Fatalf("ResolveConfirm: %v", err)
+	}
+	if !me.Graveyard.Contains(id) {
+		t.Fatalf("the answer finishes the resolution and the spell goes to the graveyard: %+v", me.Graveyard.Cards)
 	}
 
 	// The next occurrence is the terminal boundary.

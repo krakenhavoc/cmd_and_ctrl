@@ -390,6 +390,13 @@ const (
 	// has to be written down. A budget that quietly halved mid-game is
 	// the argument this line exists to prevent.
 	LogSettings LogKind = "settings"
+	// LogAwaySeat — the table moved on without a player who was gone
+	// (ADR 0177). `Label` is "stand_in" (a bot took the seat),
+	// "concede" (the seat was conceded for them) or "take_back" (the
+	// player took their seat back from the bot); `TargetSeat` is the
+	// seat, the actor who decided (no seat for the server admin), and
+	// `Amount` the whole minutes the seat had been offline.
+	LogAwaySeat LogKind = "away_seat"
 	// LogSpawn — the host or the admin put cards or tokens onto the
 	// table from nowhere (ADR 0075 §2.4). `Label` is the card or
 	// token name, `Amount` the count, `NewZone` where they went and
@@ -524,6 +531,21 @@ const (
 	// and the turn bar will not move to it; without this line the
 	// promise just vanishes.
 	LogExtraTurnSkipped LogKind = "extra_turn_skipped"
+	// LogTurnSkip — an effect made a player skip their next turns (CR
+	// 614.10, ADR 0188 Decision 1, #3559: Magosi, the Waterveil, Lethal
+	// Vapors). `seat` is the player who will skip, `card_id` the card whose
+	// effect wrote the debt and `amount` how many turns it adds.
+	// Narrated because it changes the turn's structure: the next seat
+	// clockwise will not be the next to play, and the table needs to know
+	// why before the turn bar moves.
+	LogTurnSkip LogKind = "turn_skip"
+	// LogTurnSkipped — a player's turn was skipped because they owed a
+	// skip (CR 614.10a, ADR 0188 Decision 1). `seat` is the player who
+	// would have taken it and `card_id` the card whose effect wrote the
+	// debt. `label` is "extra" when the turn skipped was an extra turn.
+	// Narrated because the LogTurnSkip line promised it and the turn bar
+	// moves on without a turn beginning.
+	LogTurnSkipped LogKind = "turn_skipped"
 	// LogExtraPhase — an effect added phases or a step to the current
 	// turn (CR 500.8 / 500.9, ADR 0059 Decision 11). `seat` is the
 	// active player, whose turn gets them, and `card_id` the card whose
@@ -781,6 +803,12 @@ type LogEvent struct {
 	// may not identify the source. Unexported because the wire already
 	// says it: only the ability path puts a label on these kinds.
 	ability bool
+	// cardHint / targetHint are the public names the engine captured on
+	// the event (game.Event.PublicNames, #3609): tokens every seat could
+	// see. resolveLogNames falls back to them only when the view has no
+	// such card, which is exactly a token that has ceased to exist.
+	cardHint   string
+	targetHint string
 	// cardFound says resolveLogNames found CardID in the view, which is
 	// what separates "the viewer may not identify this card" from "the
 	// card has ceased to exist" when cardKnowers is empty. Read only
@@ -826,7 +854,7 @@ func stackItemOf(ev game.Event) string {
 // table at large. Mirrors the wholesale-hide rule FilterViewFor
 // applies to opponents' hands and libraries.
 func hiddenZone(z game.ZoneKind) bool {
-	return z == game.ZoneHand || z == game.ZoneLibrary
+	return z == game.ZoneHand || z == game.ZoneLibrary || z == game.ZoneOutside
 }
 
 // publicLogOf projects g.Events into the bounded public log, using v
@@ -993,6 +1021,12 @@ func (f *logFold) feed(events []game.Event) int {
 		if !ok {
 			continue
 		}
+		if names := events[i].PublicNames; len(names) > 0 {
+			// #3609: the names the engine captured while the objects
+			// could still be found, keyed by the IDs the entry carries.
+			e.cardHint = publicNameFor(names, e.CardID)
+			e.targetHint = publicNameFor(names, e.Target)
+		}
 		e.Turn = f.turn
 		if e.Kind == LogStep {
 			e.Step = f.step
@@ -1121,6 +1155,18 @@ func (f *logFold) entries() []LogEvent {
 // draw / step runs in projectEvents). A second grouping key on the
 // wire would be a second thing to keep consistent for no rendering
 // gain. RevealSeq stays the one grouping the client reads.
+// publicNameFor reads an event's captured public name for a log ID.
+func publicNameFor(names map[uuid.UUID]string, id string) string {
+	if id == "" {
+		return ""
+	}
+	u, err := uuid.Parse(id)
+	if err != nil {
+		return ""
+	}
+	return names[u]
+}
+
 func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *string, sacrificed *uuid.UUID) (LogEvent, bool) {
 	base := LogEvent{Seq: ev.Seq, Seat: seatOf(ev.Actor)}
 	// Anything but the zone move that follows a sacrifice clears the
@@ -1201,7 +1247,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Unpaid = ev.Unpaid
 		return base, true
 
-	case game.EventResolve:
+	case game.EventResolve, game.EventResolutionFinished:
+		// #3613: a resolution that paused on its own prompt writes its
+		// "resolved" line when it finishes, after the answer, not when
+		// it began (game/resolution_tail.go).
+		if ev.LogDeferred {
+			return base, false
+		}
 		base.Kind = LogResolve
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		base.StackItemID = stackItemOf(ev)
@@ -1219,6 +1271,15 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Kind = LogCounter
 		// Source is the counter; Target the countered item.
 		base.CardID = uuidStringOrEmpty(ev.Source)
+		if ev.Source == uuid.Nil && ev.Label == "" && ev.Cause == game.MoveCauseEffect {
+			// #3609: the spell path never stamps Source, so every
+			// counterspell line read "a card countered X". It does stamp
+			// the cause, and for a resolving SPELL the cause item is the
+			// spell's own card ID (a spell's item ID is its card's), which
+			// is the counter. An ability's item ID names no card, so the
+			// view misses it and that line stays "a card", as before.
+			base.CardID = uuidStringOrEmpty(ev.CauseItem)
+		}
 		base.Target = uuidStringOrEmpty(ev.Target)
 		// Target is the countered item's ID for a spell and an ability
 		// both, before the ability case below clears it from Target.
@@ -1550,6 +1611,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventAwaySeat:
+		base.Kind = LogAwaySeat
+		base.Label = ev.Label
+		base.Amount = ev.Amount
+		base.setTarget(ev.Target, seatOf)
+		return base, true
+
 	case game.EventSpawned:
 		// ADR 0075 §2.4. The whole justification for allowing a
 		// production spawn is that the table can see it happen: a
@@ -1864,6 +1932,22 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		return base, true
 
+	case game.EventTurnSkipAdded:
+		// ADR 0188 Decision 1. Amount is how many turns the debt adds.
+		base.Kind = LogTurnSkip
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.Amount = ev.Amount
+		return base, true
+
+	case game.EventTurnSkipped:
+		// Label "extra" marks a skipped extra turn; Amount is then its
+		// ExtraTurn.Ref, which a reader has no use for, so it is not
+		// carried onto the line.
+		base.Kind = LogTurnSkipped
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.Label = ev.Label
+		return base, true
+
 	case game.EventPlayerControlScheduled, game.EventPlayerControlBegan, game.EventPlayerControlEnded:
 		// ADR 0167. Actor controls Target. Not setTarget, for
 		// EventPlayerChosen's reason: the controlled player is a seat.
@@ -2045,10 +2129,14 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 			e.cardName = logNameOf(*c)
 			e.cardKnowers = c.knowers
 			e.cardFound = true
+		} else if e.cardHint != "" {
+			e.cardName, e.cardKnowers = e.cardHint, allSeatKnowers(v)
 		}
 		if c, ok := cards[e.Target]; ok {
 			e.targetName = logNameOf(*c)
 			e.targetKnowers = c.knowers
+		} else if e.targetHint != "" {
+			e.targetName, e.targetKnowers = e.targetHint, allSeatKnowers(v)
 		}
 		// Revealed cards are looked up in every zone, hands and
 		// libraries included, without a knower check: see
@@ -2069,6 +2157,18 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 			e.revealIDs = nil
 		}
 	}
+}
+
+// allSeatKnowers is the knower set of a captured public name: every
+// seat. The capture only ever names an object all seats knew, so
+// redactLogForViewer keeps the name for every seated viewer, exactly as
+// it would have for the token while it was on the board.
+func allSeatKnowers(v *GameView) map[string]bool {
+	k := make(map[string]bool, len(v.Seats))
+	for _, s := range v.Seats {
+		k[s.ID] = true
+	}
+	return k
 }
 
 // seatIndexer returns a player-UUID → seat-index lookup over the
@@ -2433,7 +2533,7 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 			}
 			return fmt.Sprintf("%s won the game", actor)
 		}
-		return fmt.Sprintf("%s won the game: every opponent has left", actor)
+		return fmt.Sprintf("%s won the game: last player standing", actor)
 	case LogWinPrevented:
 		return fmt.Sprintf("%s would have won the game (%s), but can't (%s)",
 			actor, nameOr(cardName, "an effect"), nameOr(targetName, "an effect"))
@@ -2584,6 +2684,8 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s is fully unlocked", card)
 	case LogSettings:
 		return renderSettingsText(*e)
+	case LogAwaySeat:
+		return renderAwaySeatText(*e, actor, target)
 	case LogSpawn:
 		return renderSpawnText(*e, target)
 	case LogStorm:
@@ -2620,6 +2722,24 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s skips their extra turn", actor)
 		}
 		return fmt.Sprintf("%s skips their extra turn (%s)", actor, card)
+	case LogTurnSkip:
+		turns := "turn"
+		if e.Amount > 1 {
+			turns = fmt.Sprintf("%d turns", e.Amount)
+		}
+		if e.CardID == "" {
+			return fmt.Sprintf("%s will skip their next %s", actor, turns)
+		}
+		return fmt.Sprintf("%s will skip their next %s (%s)", actor, turns, card)
+	case LogTurnSkipped:
+		turn := "turn"
+		if e.Label == "extra" {
+			turn = "extra turn"
+		}
+		if e.CardID == "" {
+			return fmt.Sprintf("%s skips their %s", actor, turn)
+		}
+		return fmt.Sprintf("%s skips their %s (%s)", actor, turn, card)
 	case LogTurnEnded:
 		if e.CardID == "" {
 			return fmt.Sprintf("%s's turn ends", actor)
@@ -2752,11 +2872,42 @@ func renderSettingsText(e LogEvent) string {
 			return fmt.Sprintf("%s made the first mulligan free", who)
 		}
 		return fmt.Sprintf("%s made the first %s mulligans free", who, e.Choice)
+	case game.SettingAwayAfter:
+		// ADR 0177 §7.
+		switch e.Choice {
+		case "0":
+			return fmt.Sprintf("%s turned off moving on without an away player", who)
+		case "1":
+			return fmt.Sprintf("%s set the away time to 1 minute", who)
+		}
+		return fmt.Sprintf("%s set the away time to %s minutes", who, e.Choice)
 	}
 	if e.Label == "" {
 		return fmt.Sprintf("%s changed a table setting", who)
 	}
 	return fmt.Sprintf("%s set %s to %s", who, e.Label, nameOr(e.Choice, "its default"))
+}
+
+// renderAwaySeatText words ADR 0177's three lines: "Ana handed Bo's
+// seat to a bot (offline 3m)", "Ana conceded for Bo (offline 3m)" and
+// "Bo took their seat back". An actor with no seat is the server admin.
+func renderAwaySeatText(e LogEvent, actor, target string) string {
+	if e.Seat == NoSeat {
+		actor = "The admin"
+	}
+	away := ""
+	if e.Amount > 0 {
+		away = fmt.Sprintf(" (offline %dm)", e.Amount)
+	}
+	switch e.Label {
+	case game.AwayStandIn:
+		return fmt.Sprintf("%s handed %s's seat to a bot%s", actor, target, away)
+	case game.AwayConcede:
+		return fmt.Sprintf("%s conceded for %s%s", actor, target, away)
+	case game.AwayTakeBack:
+		return fmt.Sprintf("%s took their seat back", target)
+	}
+	return fmt.Sprintf("%s moved %s's seat on", actor, target)
 }
 
 // renderSpawnText words a spawn (ADR 0075 §2.4): who did it, under
@@ -2946,6 +3097,12 @@ func renderZoneText(e LogEvent, card string) string {
 		return fmt.Sprintf("%s was put into a library from %s", card, prettyZone(e.OldZone))
 	case game.ZoneCommand:
 		return fmt.Sprintf("%s was put into the command zone", card)
+	case "":
+		// An EventZoneMove with no destination is an object ceasing to
+		// exist (CR 111.7 / CR 704.5d): a token that left the
+		// battlefield, or a spell copy. "Moved to elsewhere" read as if
+		// it had gone somewhere.
+		return fmt.Sprintf("%s ceased to exist", card)
 	default:
 		return fmt.Sprintf("%s moved from %s to %s", card, prettyZone(e.OldZone), prettyZone(e.NewZone))
 	}

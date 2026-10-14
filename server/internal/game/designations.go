@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // designations.go is the engine's ONE gate on a printed ability —
 // ADR 0071. A DESIGNATION is a marker a permanent has on the
@@ -759,26 +763,114 @@ func (g *Game) IsSaddled(cardID uuid.UUID) bool {
 	return c != nil && c.Saddled
 }
 
+// CrewRecord is one creature tapped to pay one crew or saddle cost
+// (CR 702.122b-c, CR 702.171c; ADR 0186 §1). Both sides are OBJECTS, as
+// they were when the cost was paid, so the record outlives the Vehicle or
+// Mount and the creature alike.
+type CrewRecord struct {
+	// Saddle is false for a crew cost, true for a saddle cost.
+	Saddle bool `json:"saddle,omitempty"`
+	// Permanent is the Vehicle or Mount whose ability was activated.
+	Permanent ObjectRef `json:"permanent"`
+	// Creature is the creature that was tapped to pay.
+	Creature ObjectRef `json:"creature"`
+}
+
+// recordCrewLocked appends one CrewRecord to the turn's tally. A fresh
+// slice every time, never an append into shared capacity: the undo clone
+// holds this backing array too (#1238's reason, as exertLocked).
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) recordCrewLocked(saddle bool, permanent, creature ObjectRef) {
+	crews := make([]CrewRecord, len(g.TurnTally.Crews), len(g.TurnTally.Crews)+1)
+	copy(crews, g.TurnTally.Crews)
+	g.TurnTally.Crews = append(crews, CrewRecord{Saddle: saddle, Permanent: permanent, Creature: creature})
+}
+
+// CrewRecordsForEffect is every creature tapped this turn to pay a crew
+// cost (saddle false) or a saddle cost (saddle true) of the object
+// `permanent` names, in payment order, departed creatures included. The
+// permanent is named by ObjectRef and never looked up, so the answer
+// survives the Vehicle or Mount leaving the battlefield; a permanent that
+// left and came back is a new object with a different epoch and has no
+// records (CR 400.7). The result is the caller's own slice.
+//
+// Caller must hold g.mu.
+func (g *Game) CrewRecordsForEffect(permanent ObjectRef, saddle bool) []CrewRecord {
+	var out []CrewRecord
+	for _, r := range g.TurnTally.Crews {
+		if r.Saddle == saddle && r.Permanent == permanent {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// CreaturesThatCrewedForEffect is "creatures that crewed it this turn"
+// (CR 702.122c) for the Vehicle object `permanent` names: the distinct
+// creatures from its crew records that are still on the battlefield as
+// the same objects, in first-payment order. A creature that left, or left
+// and came back, is a new object that crewed nothing (CR 400.7).
+//
+// Caller must hold g.mu.
+func (g *Game) CreaturesThatCrewedForEffect(permanent ObjectRef) []uuid.UUID {
+	return g.creaturesStillHereLocked(g.CrewRecordsForEffect(permanent, false))
+}
+
+// CreaturesThatSaddledForEffect is "creatures that saddled it this turn"
+// (CR 702.171c) for the Mount object `permanent` names, read the same
+// way. One fallback: with no saddle record at all for that object, and
+// the Mount still on the battlefield as that object, Card.SaddledBy
+// answers instead — a game restored mid-turn from a file written before
+// the records existed (ADR 0186 §1).
+//
+// Caller must hold g.mu.
+func (g *Game) CreaturesThatSaddledForEffect(permanent ObjectRef) []uuid.UUID {
+	recs := g.CrewRecordsForEffect(permanent, true)
+	if len(recs) == 0 {
+		m := findBattlefieldCard(g, permanent.ID)
+		if m == nil || m.ObjectEpoch != permanent.Epoch {
+			return nil
+		}
+		for _, r := range m.SaddledBy {
+			recs = append(recs, CrewRecord{Saddle: true, Permanent: permanent, Creature: r})
+		}
+	}
+	return g.creaturesStillHereLocked(recs)
+}
+
+// creaturesStillHereLocked reduces records to the distinct creatures that
+// are on the battlefield as the same object, in first-payment order.
+//
+// Caller must hold g.mu.
+func (g *Game) creaturesStillHereLocked(recs []CrewRecord) []uuid.UUID {
+	var out []uuid.UUID
+	for _, r := range recs {
+		c := findBattlefieldCard(g, r.Creature.ID)
+		if c == nil || c.ObjectEpoch != r.Creature.Epoch || slices.Contains(out, r.Creature.ID) {
+			continue
+		}
+		out = append(out, r.Creature.ID)
+	}
+	return out
+}
+
 // SaddlersOf is "the creatures that saddled it this turn" (CR
-// 702.171c): the creatures tapped to pay for the saddle abilities that
-// made this Mount saddled, still on the battlefield as the same
-// objects. A creature that left, or left and came back, is a new
-// object and is dropped. Empty when the Mount is not saddled, or was
-// saddled by a spell or ability. Order is the order they tapped in.
+// 702.171c) for the Mount on the battlefield under `mountID`: those
+// tapped to pay for its saddle abilities, still on the battlefield as the
+// same objects. A creature that left, or left and came back, is a new
+// object and is dropped. Empty when the Mount is not on the battlefield.
+// Order is the order they tapped in. It is CreaturesThatSaddledForEffect
+// asked of the Mount's current object; a reader that must survive the
+// Mount leaving asks that with the Mount's ObjectRef instead (ADR 0186).
 //
 // Caller must hold g.mu.
 func (g *Game) SaddlersOf(mountID uuid.UUID) []uuid.UUID {
 	m := findBattlefieldCard(g, mountID)
-	if m == nil || !m.Saddled {
+	if m == nil {
 		return nil
 	}
-	var out []uuid.UUID
-	for _, r := range m.SaddledBy {
-		if c := findBattlefieldCard(g, r.ID); c != nil && c.ObjectEpoch == r.Epoch {
-			out = append(out, r.ID)
-		}
-	}
-	return out
+	return g.CreaturesThatSaddledForEffect(ObjectRef{ID: mountID, Epoch: m.ObjectEpoch})
 }
 
 // clearSaddledLocked ends every saddled designation (CR 514.2: "until
