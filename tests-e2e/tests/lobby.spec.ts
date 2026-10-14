@@ -3,8 +3,10 @@ import { ADMIN_TOKEN } from "./env";
 import { adminLogin, createGame, joinViaAPI } from "./lobby-api";
 
 // Tables (ADR 0158 §1): + New table in the page head opens the create
-// form; each table in Now is a card with one primary button, Copy invite
-// and a ⋯ menu ("more for <name>") holding the rest.
+// form; each table in Now is a card with one primary button and a
+// toolbar (#3499): the invite and spectator links as copy / ↻ split
+// buttons, and the rest. A right-click on the card opens the same
+// actions, and the admin's, as a menu ("actions for <name>").
 
 async function openNewTable(page: Page): Promise<void> {
   await page.getByRole("button", { name: "new table" }).click();
@@ -115,7 +117,7 @@ test.describe("lobby — admin flow", () => {
   test("a fresh table offers both invite links", async ({ page }) => {
     // The player invite and the spectator invite are different tokens —
     // handing a spectator the player link would let them claim a seat —
-    // so the card offers Copy invite, and its ⋯ menu the spectator link.
+    // so the card's toolbar has a split button for each (#3499).
     const name = `Two Invites ${Date.now()}`;
     await openNewTable(page);
     await page.getByPlaceholder("game name").fill(name);
@@ -125,18 +127,29 @@ test.describe("lobby — admin flow", () => {
     await expect(
       card.getByRole("button", { name: "Copy invite" }),
     ).toBeVisible();
-    await card.getByRole("button", { name: `more for ${name}` }).click();
-    const menu = card.getByRole("menu");
+    await expect(
+      card.getByRole("button", { name: "Copy spectator link" }),
+    ).toBeVisible();
+    await expect(
+      card.getByRole("button", { name: "new invite link", exact: true }),
+    ).toBeVisible();
+    await expect(
+      card.getByRole("button", { name: "new spectator link", exact: true }),
+    ).toBeVisible();
+    await expect(card.getByRole("button", { name: `more for ${name}` })).toHaveCount(0);
+
+    // The right-click menu carries the same, and the admin's Archive.
+    await card.locator(".seats").click({ button: "right" });
+    const menu = page.getByRole("menu", { name: `actions for ${name}` });
     await expect(
       menu.getByRole("menuitem", { name: "Copy spectator link" }),
     ).toBeVisible();
     await expect(
-      menu.getByRole("menuitem", { name: "New invite link" }),
+      menu.getByRole("menuitem", { name: "New invite link…" }),
     ).toBeVisible();
-    await expect(
-      menu.getByRole("menuitem", { name: "New spectator link" }),
-    ).toBeVisible();
-    await expect(menu.getByRole("menuitem", { name: "Archive" })).toBeVisible();
+    await expect(menu.getByRole("menuitem", { name: "Archive…" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
   });
 
   test("the table card renders four seats and fills them as players join", async ({

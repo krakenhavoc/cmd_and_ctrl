@@ -108,3 +108,16 @@ Owner, 2026-10-13: in admin mode, **Admin** shows in the header nav as an accent
 | 4 | **Catalog sidebar** (§3): the sidebar, the sheet at tablet width, chips, a denser grid of real art | Sonnet |
 
 Each client slice attaches before and after screenshots at 1440 and 820 px, and runs the nightly e2e on its branch.
+
+## Amendment, 2026-10-14: a host toolbar and a right-click menu replace the card's ⋯ ([#3499](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3499))
+
+Decided in a design workshop with the owner. Too much a host uses every game sat behind the ⋯ and the collapsed footer. This replaces §1 item 2's **actions** and **card footer**; the head and the seats are unchanged. No new ADR: it rearranges one card.
+
+- **The head keeps one button**, the primary (**Open**, **Resume** or **Start**). Copy invite, #lfg and the ⋯ leave it.
+- **A toolbar under the seats**, wrapping on a narrow screen:
+  - **Copy invite** and **Copy spectator link** are split buttons. The wide part copies the link; it still makes one when none is held, and says so in its title. The narrow ↻ part makes a new link: it keeps the "the old one stops working" confirm, then copies the new link. Only when the browser refuses the clipboard does the card show the link to copy by hand. ↻ is for the creator and the admin, who may rotate; others who may copy get the wide part alone.
+  - **Choose your deck** (or **Change deck · <name>**) and **Invite by DM** are buttons that open today's inline panels, one at a time, with the same auto-open rules. **Take a seat** and **Post to #lfg** sit here too when they apply.
+- **A rules line** under the toolbar: the table settings that differ from the defaults ("30 life · no undos", or "Standard rules"). It opens the settings panel, editable by the host and the admin and read-only for everyone else. The "Waiting on …" note sits at its right, where no menu covers it. Everyone at the table can read the settings now: `GET /games/{id}/settings` answers a seat, a spectator, the creator and the admin (the old read was an empty `PATCH`, host-only and a commit).
+- **A right-click menu** on the card (`ContextMenu.svelte`, `menuTrigger.ts`, built to be reused by other surfaces). It lists the card's actions as shortcuts, then the admin's (**Download replay**, **Archive…**), which live only there. It also opens on the Menu key or Shift+F10 and on a long press, moves with the arrow keys, and gives focus back on Escape. Text fields and links keep the browser's own menu. **Every action a non-admin can take is also on the visible card**: the menu is never the only way to it.
+- **A seat who does not host** sees the same layout with less in it: the spectator link to copy, their deck, Invite by DM, and the rules line read-only.
+- History rows keep their ⋯ (§1 item 3); this changes the Now card only.

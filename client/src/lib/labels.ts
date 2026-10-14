@@ -804,6 +804,58 @@ export const LABEL_SPECS = {
     doc: "the Lobby's title (its visible text is Tables); the lobby.practice hint anchors here",
   }),
 
+  // -- A table card's toolbar and menu (#3499) --
+  copyInvite: label({
+    name: "Copy invite",
+    kind: "text",
+    role: "button",
+    owners: ["routes/Lobby.svelte"],
+    doc: "the wide part of a lobby table's invite split button: copies the player invite link; the lobby.create hint names it",
+  }),
+  newInviteLink: label({
+    name: "new invite link",
+    kind: "aria",
+    role: "button",
+    owners: ["routes/Lobby.svelte"],
+    doc: "the ↻ part of the invite split button: mints a new player invite after a confirm, then copies it",
+  }),
+  copySpectatorLink: label({
+    name: "Copy spectator link",
+    kind: "text",
+    role: "button",
+    owners: ["routes/Lobby.svelte"],
+    doc: "the wide part of a table's spectator split button: copies the read-only link",
+  }),
+  newSpectatorLink: label({
+    name: "new spectator link",
+    kind: "aria",
+    role: "button",
+    owners: ["routes/Lobby.svelte"],
+    doc: "the ↻ part of the spectator split button: mints a new spectator link after a confirm, then copies it",
+  }),
+  tableSettingsLine: dynamicLabel({
+    stem: "table settings: ",
+    match: "prefix",
+    shape: "table settings: <summary>",
+    make: (summary: string) => `table settings: ${summary}`,
+    example: ["Standard rules"],
+    kind: "aria",
+    role: "button",
+    owners: ["routes/Lobby.svelte"],
+    doc: "a table card's rules line, e.g. 30 life · no undos: opens the table settings panel (read-only for a non-host)",
+  }),
+  tableMenu: dynamicLabel({
+    stem: "actions for ",
+    match: "prefix",
+    shape: "actions for <table name>",
+    make: (table: string) => `actions for ${table}`,
+    example: ["Friday Pod"],
+    kind: "aria",
+    role: "menu",
+    owners: ["routes/Lobby.svelte"],
+    doc: "a table card's right-click menu (also the Menu key, Shift+F10 or a long press)",
+  }),
+
   // -- The site header (ADR 0156 §3) --
   navTables: label({
     name: "Tables",

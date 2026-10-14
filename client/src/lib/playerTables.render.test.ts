@@ -165,9 +165,10 @@ describe("the lobby's create flow for a signed-in player", () => {
     expect(container.textContent).toMatch(/Copy invite/);
     // The form closed on success.
     expect(container.querySelector("form.new-table")).toBeNull();
-    click(container.querySelector<HTMLButtonElement>('button[aria-label="more for Friday"]')!);
-    flushSync();
-    expect(container.querySelector('[role="menu"]')?.textContent).toMatch(/Take a seat/);
+    // #3499: the card's toolbar, no ⋯ menu.
+    expect(container.querySelector('[aria-label="tools for Friday"]')?.textContent).toMatch(
+      /Take a seat/,
+    );
     expect(container.querySelector(".invite-picker")).not.toBeNull();
     const mates = [...container.querySelectorAll(".mates li")].map((li) => li.textContent ?? "");
     expect(mates).toHaveLength(2);
@@ -200,9 +201,7 @@ describe("the lobby's create flow for a signed-in player", () => {
     expect(container.querySelector("form.new-table")).not.toBeNull();
     expect(container.querySelector(".use-setup")).toBeNull();
 
-    // Take a seat is in the card's ⋯ menu.
-    click(container.querySelector<HTMLButtonElement>('button[aria-label="more for Friday"]')!);
-    flushSync();
+    // Take a seat is on the card's toolbar (#3499).
     const seat = [...container.querySelectorAll("button")].find((b) =>
       /Take a seat/.test(b.textContent ?? ""),
     );
