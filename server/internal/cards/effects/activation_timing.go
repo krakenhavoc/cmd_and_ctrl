@@ -58,8 +58,9 @@ import (
 // grant side at all.
 func ThisSourcesLoyaltyAbilitiesAtInstantSpeed(label string, when func(g *game.Game, source game.Card) bool) game.ActivationTiming {
 	return game.ActivationTiming{
-		Label:  label,
-		Timing: game.TimingFlash,
+		Label:      label,
+		Timing:     game.TimingFlash,
+		OwnLoyalty: true,
 		Covers: func(q game.ActivationQuery) bool {
 			if !q.Ability.Loyalty {
 				return false

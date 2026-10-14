@@ -96,9 +96,10 @@ func answersRows(t *testing.T) []answersRow {
 		if !ok {
 			o = answersKeyOwner{oracle: key, name: key, prefix: "own"}
 		}
+		instantLoyalty := o.prefix == "own" && ownLoyaltyAtInstant(d.ActivationTimings)
 		for i := range d.Activated {
 			ab := d.Activated[i]
-			if !answersInScope(ab) {
+			if !answersInScope(ab, instantLoyalty) {
 				continue
 			}
 			rows = append(rows, answersRow{
