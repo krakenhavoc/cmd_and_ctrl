@@ -36,7 +36,7 @@ type SetDeckInput struct {
 // WaitInput is `wait_for_decision`'s input.
 type WaitInput struct {
 	TimeoutS  int    `json:"timeout_s,omitempty" jsonschema:"seconds to wait, 1 to 50 (default 25)"`
-	PassUntil string `json:"pass_until,omitempty" jsonschema:"none (default) or my_turn_or_stack: also pass priority on other players' turns while the stack is empty"`
+	PassUntil string `json:"pass_until,omitempty" jsonschema:"none (default), my_turn_or_stack (also pass priority on other players' turns while the stack is empty) or smart (also pass the idle steps of your own turn and stack items you hold no response to; stops at your main phases, attacks, blocks and choices)"`
 }
 
 // GetStateInput is `get_state`'s input.
@@ -398,18 +398,16 @@ func (s *Seat) WaitForDecision(ctx context.Context, in WaitInput) (Result, error
 	if timeout > maxWait {
 		timeout = maxWait
 	}
-	switch in.PassUntil {
-	case "", "none":
-	case "my_turn_or_stack":
-	default:
-		return errorResult("pass_until is none or my_turn_or_stack"), nil
+	mode, valid := parsePassUntil(in.PassUntil)
+	if !valid {
+		return errorResult("pass_until is none, my_turn_or_stack or smart"), nil
 	}
 	s.mu.Lock()
 	if s.sess == nil {
 		s.mu.Unlock()
 		return errorResult("not seated: call join first"), nil
 	}
-	s.passUntil = in.PassUntil == "my_turn_or_stack"
+	s.passMode = mode
 	s.mu.Unlock()
 	s.pokeAutopilot()
 
@@ -1094,7 +1092,7 @@ func (s *Seat) Leave(_ context.Context, _ LeaveInput) (Result, error) {
 	s.mu.Lock()
 	s.sess, s.view, s.haveView, s.win, s.moves = nil, nil, false, nil, nil
 	s.key, s.lastCounted = windowKey{}, windowKey{}
-	s.endReason, s.reportedOver, s.passUntil = "", false, false
+	s.endReason, s.reportedOver, s.passMode = "", false, passNone
 	s.noMoveReq, s.probed = false, false
 	s.autoSince, s.chatSince, s.logSeqShown = map[string]int{}, nil, 0
 	s.broadcastLocked()

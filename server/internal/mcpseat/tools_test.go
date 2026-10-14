@@ -332,7 +332,7 @@ func TestPassUntilPassesOthersTurnsAndClearsAtOwnTurn(t *testing.T) {
 	v := activeView(f) // Bob's turn
 	f.setState(v, twoChoices(f), false)
 	s.mu.Lock()
-	s.passUntil = true
+	s.passMode = passOthers
 	s.win = nil
 	s.mu.Unlock()
 	s.pokeAutopilot()
@@ -351,14 +351,14 @@ func TestPassUntilPassesOthersTurnsAndClearsAtOwnTurn(t *testing.T) {
 		return s.view != nil && s.view.Turn.ActiveSeat == 0
 	})
 	s.mu.Lock()
-	pu := s.passUntil
+	pu := s.passMode == passOthers
 	s.mu.Unlock()
 	if pu {
 		t.Error("pass_until survived the start of the seat's own turn")
 	}
 	sent := f.actionCount()
 	s.mu.Lock()
-	s.passUntil = true // the model asks again on its own turn: still no pass
+	s.passMode = passOthers // the model asks again on its own turn: still no pass
 	s.win = nil
 	s.mu.Unlock()
 	s.pokeAutopilot()
