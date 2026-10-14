@@ -83,6 +83,27 @@ func TestResolveCommonTokens(t *testing.T) {
 	}
 }
 
+// TestResolveDoubleFacedTokenMatchesFrontFace pins #3511: the Incubator's
+// printings are layout double_faced_token, with no top-level image or
+// name, so the pool must admit them and key them on the front face.
+func TestResolveDoubleFacedTokenMatchesFrontFace(t *testing.T) {
+	const incubatorID = "00000000-0000-0000-0000-000000000042"
+	idx := buildIndex(t, `[
+{"id":"`+incubatorID+`","name":"Incubator // Phyrexian Token","lang":"en","layout":"double_faced_token","border_color":"black","set_type":"expansion","type_line":"Token Artifact — Incubator // Token Artifact Creature — Phyrexian","card_faces":[
+{"name":"Incubator","type_line":"Token Artifact — Incubator","image_uris":{"normal":"https://example.test/incubator.jpg"}},
+{"name":"Phyrexian Token","type_line":"Token Artifact Creature — Phyrexian","power":"0","toughness":"0","colors":["C"],"image_uris":{"normal":"https://example.test/phyrexian.jpg"}}
+]}]`)
+	r := New(idx, nil)
+
+	got := r.Resolve(game.TokenArtRequest{Template: game.Card{Name: "Incubator", TypeLine: "Token Artifact — Incubator"}})
+	if got != incubatorID {
+		t.Errorf("Resolve(Incubator) = %q, want %q (the double-faced printing)", got, incubatorID)
+	}
+	if r.MissCount() != 0 {
+		t.Errorf("MissCount = %d, want 0", r.MissCount())
+	}
+}
+
 func TestResolveNoMatchFallsBackToText(t *testing.T) {
 	idx := buildIndex(t, commonTokensDump)
 	r := New(idx, nil)
