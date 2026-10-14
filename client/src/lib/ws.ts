@@ -16,6 +16,7 @@ import {
   type ActionType,
   type Frame,
   type PingPayload,
+  type VisibilityPayload,
   type PongPayload,
   type ErrorPayload,
   type SnapshotPayload,
@@ -468,6 +469,9 @@ export class GameClient {
       this.status.set("connected");
       this.resetReconnectAttempts();
       this.startHeartbeat(socket);
+      // ADR 0162 §2: once on connect, so the server knows from the
+      // start whether this tab is in front.
+      this.sendVisibility(socket);
       // #523: this used to unconditionally zero highestSeq here, on
       // every open including automatic reconnects to the same URL —
       // because a server restart restarts seq from an earlier value,
@@ -543,6 +547,7 @@ export class GameClient {
     if (typeof document !== "undefined") {
       this.visibilityChangeHandler = () => {
         if (this.socket !== socket) return;
+        this.sendVisibility(socket);
         if (document.hidden) {
           this.clearHeartbeatTimer();
           return;
@@ -848,6 +853,24 @@ export class GameClient {
       this.rewindNotice.set(null);
       this.rewindNoticeClearTimer = null;
     }, ERROR_TOAST_TTL_MS);
+  }
+
+  // sendVisibility tells the server whether this tab is in front (ADR
+  // 0162 §2): a seat whose every tab is hidden counts as away for
+  // Discord DM notifications. Quiet: it is not logged, and a closed
+  // socket simply skips it, since the next open sends it again.
+  private sendVisibility(socket: WebSocket): void {
+    if (this.socket !== socket || socket.readyState !== WebSocket.OPEN) return;
+    if (typeof document === "undefined") return;
+    const frame: Frame<VisibilityPayload> = {
+      v: PROTOCOL_VERSION,
+      kind: "visibility",
+      id: uuid(),
+      payload: { visible: !document.hidden },
+    };
+    const wire = JSON.stringify(frame);
+    socket.send(wire);
+    this.recordFrame("out", frame, wire);
   }
 
   sendPing(msg: string): void {

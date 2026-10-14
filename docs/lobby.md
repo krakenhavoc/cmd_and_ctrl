@@ -3077,6 +3077,22 @@ extra DM. Every attempt is counted in
 `refused` (50007) or `error`. A 429 from Discord waits once, up to five
 seconds; anything else is logged and dropped, never retried late.
 
+**How the client uses it** (`client/src/lib/notifications.ts`):
+
+- **Settings → Notifications** asks `GET` each time the panel opens and
+  shows the tab only when `available` is true: three switches, and the
+  "Discord refused the last message" hint while `dm_failed` is set. Each
+  switch is its own `PUT` naming only that switch.
+- **The nudge.** At a real table (not the practice table, not as a
+  spectator), a signed-in player with every switch off sees one line,
+  "Get a Discord DM when it's your turn?", with **Turn on** (`PUT
+  {"turn": true}`) and **Not now**. Either answer is stored as
+  `notify.dm-nudge` in `help.seen`, the synced settings map of things
+  dismissed (ADR 0110 §4, ADR 0125 §4), so it never shows again on any
+  browser the person signs in on.
+- The game socket sends `visibility` once on connect and on every
+  `visibilitychange` ([protocol.md](protocol.md)).
+
 ### Playmats (ADR 0128)
 
 A signed-in person can keep up to **three playmats** and show one of

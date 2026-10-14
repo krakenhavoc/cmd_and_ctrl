@@ -7,6 +7,8 @@ export const PROTOCOL_VERSION = 0;
 // ADR 0122 §6: "ack" acknowledges an applied action to the client that
 // sent it; "legal_moves_request" / "legal_moves" fetch a seat's whole
 // move list. The browser handles "ack" and sends no requests.
+// ADR 0162 §2: "visibility" tells the server whether this tab is in
+// front, for Discord DM notifications. Sent, never answered.
 export type Kind =
   | "ping"
   | "pong"
@@ -16,7 +18,8 @@ export type Kind =
   | "chat"
   | "ack"
   | "legal_moves_request"
-  | "legal_moves";
+  | "legal_moves"
+  | "visibility";
 
 export const ErrorCode = {
   BadVersion: "bad_version",
@@ -65,6 +68,11 @@ export interface Frame<P = unknown> {
   kind: Kind;
   id: string;
   payload?: P;
+}
+
+/** The payload of a "visibility" frame (ADR 0162 §2). */
+export interface VisibilityPayload {
+  visible: boolean;
 }
 
 export interface PingPayload {
