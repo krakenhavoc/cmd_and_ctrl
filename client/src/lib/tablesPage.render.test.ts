@@ -66,6 +66,7 @@ const LIVE = {
       seat: 0,
       deck_uploaded: true,
       deck_name: "Atraxa",
+      deck_power: 3.5,
       is_host: true,
       life: 31,
     },
@@ -153,8 +154,13 @@ describe("Now (§1 item 2)", () => {
     const card = container.querySelector("li.tcard")!;
     expect(card.querySelector(".chip")?.textContent?.trim()).toBe("In play · turn 7");
     expect(card.querySelector(".ctx")?.textContent).toBe("Slysloth hosts · your seat 2");
-    const lines = [...card.querySelectorAll(".sstat")].map((s) => s.textContent?.trim());
+    const lines = [...card.querySelectorAll(".sstat .stext")].map((s) => s.textContent?.trim());
     expect(lines).toEqual(["Atraxa · 31 life", "Vivi · 28 life"]);
+    // The power badge sits outside the text that ellipsizes (#3671), and
+    // only on the rated seat.
+    const badges = [...card.querySelectorAll(".sstat .pwr")].map((b) => b.textContent?.trim());
+    expect(badges).toEqual(["PWR 3.5"]);
+    expect(card.querySelector(".sstat .stext .pwr")).toBeNull();
     // No open seats on a game in play.
     expect(card.textContent).not.toMatch(/Open seat/);
 

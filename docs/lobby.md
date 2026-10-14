@@ -3211,7 +3211,8 @@ The rating lives in `decks.power_level` (migration 0027). Saving the
 deck again with a changed list clears it, since it described the old
 list; saving the same list keeps it. A seat holding a rated library
 deck carries it as `SeatInfo.deck_power`, and the table's seat line
-shows it after the deck name (`Atraxa · power 3.5`).
+shows it as a `PWR 3.5` badge ahead of the deck name, which never
+shrinks: on a narrow seat the deck name is what gets cut off.
 
 ### `GET /me/decks/{id}/coverage` (ADR 0110 section 6)
 
