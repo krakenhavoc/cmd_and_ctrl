@@ -198,6 +198,21 @@ func TestPurposeIsRedactedForANonKnower(t *testing.T) {
 	}
 }
 
+// #3165: creature tokens and a creature-enter payoff ride the wire.
+func TestTokenPayoffsOnTheWire(t *testing.T) {
+	v := viewOfPurpose(game.Purpose{
+		Tokens: 3, CreatureTokens: 3, TokensPerControlled: "goblin",
+		CreatureEnterPayoff: &game.CreatureEnterPayoff{DamageEachOpponent: 2},
+	})
+	if v == nil || v.CreatureTokens != 3 || v.TokensPerControlled != "goblin" ||
+		v.CreatureEnterPayoff == nil || *v.CreatureEnterPayoff != (CreatureEnterPayoffView{DamageEachOpponent: 2}) {
+		t.Fatalf("projected %+v, want 3 creature tokens, goblins, and 2 damage per creature", v)
+	}
+	if !(&PurposeView{TokensPerControlled: "goblin"}).Priced() {
+		t.Error("a count-at-resolution token maker is not Priced")
+	}
+}
+
 // #3072: a landfall row's payoff rides the wire under landfall_payoff.
 func TestLandfallPayoffOnTheWire(t *testing.T) {
 	v := viewOfPurpose(game.Purpose{LandfallPayoff: &game.LandfallPayoff{Draws: 1, LifeGain: 1}})

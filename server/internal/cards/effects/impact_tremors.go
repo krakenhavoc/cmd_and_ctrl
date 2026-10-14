@@ -24,7 +24,8 @@ func init() {
 		Name:         "Impact Tremors",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, CreatureEnteredUnderYourControl, "Impact Tremors — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})),
+			CreatureEnterPaying(On(game.EventETB, CreatureEnteredUnderYourControl, "Impact Tremors — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})),
+				game.CreatureEnterPayoff{DamageEachOpponent: 1}),
 		},
 	})
 }

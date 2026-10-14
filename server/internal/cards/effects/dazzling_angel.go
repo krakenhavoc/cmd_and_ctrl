@@ -21,7 +21,8 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			WheneverAnotherCreatureEntersUnderYourControl("Dazzling Angel — you gain 1 life", Do(GainLife{Amount: 1})),
+			CreatureEnterPaying(WheneverAnotherCreatureEntersUnderYourControl("Dazzling Angel — you gain 1 life", Do(GainLife{Amount: 1})),
+				game.CreatureEnterPayoff{LifeGain: 1}),
 		},
 	})
 }

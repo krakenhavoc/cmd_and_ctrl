@@ -26,9 +26,9 @@ func init() {
 		PrintedKeywords: []string{"indestructible"},
 		Static:          []game.StaticAbility{godUnlessDevotion("R")},
 		Triggered: []game.TriggeredAbility{
-			WheneverAnotherCreatureEntersUnderYourControl(
+			CreatureEnterPaying(WheneverAnotherCreatureEntersUnderYourControl(
 				"Purphoros, God of the Forge — 2 damage to each opponent",
-				Do(DamageEachOpponent{N: 2})),
+				Do(DamageEachOpponent{N: 2})), game.CreatureEnterPayoff{DamageEachOpponent: 2}),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{R}: Creatures you control get +1/+0 until end of turn.",

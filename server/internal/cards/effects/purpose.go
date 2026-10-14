@@ -77,7 +77,7 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.Draws < 0 || p.ControllerLosesLife < 0 || p.Discards < 0 || p.Lands < 0 ||
 		p.Tutors < 0 || p.SelfMillTutor < 0 || p.Tokens < 0 || p.Energy < 0 || p.Sweep.Amount < 0 ||
 		p.ExtraCombat < 0 || p.DamageToCreature < 0 || p.DamageEachOpponent < 0 || p.LifeGain < 0 ||
-		p.AwakenLand < 0 || p.ExtraLandDrops < 0 || p.LandsUntapped < 0 || p.Impulse < 0 {
+		p.AwakenLand < 0 || p.ExtraLandDrops < 0 || p.LandsUntapped < 0 || p.Impulse < 0 || p.CreatureTokens < 0 {
 		fail("has a negative amount")
 	}
 	if p.LandsUntapped > p.Lands {
@@ -107,6 +107,18 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.LandfallPayoff != nil && slot != purposeOnTriggered {
 		fail("sets LandfallPayoff off a triggered row — a landfall payoff is a \"whenever a land you control enters\" trigger (#3072)")
 	}
+	if p.CreatureEnterPayoff != nil && slot != purposeOnTriggered {
+		fail("sets CreatureEnterPayoff off a triggered row — it is a \"whenever a creature you control enters\" trigger (#3165)")
+	}
+	if p.CreatureTokens > p.Tokens {
+		fail("declares more CreatureTokens than Tokens (#3165)")
+	}
+	if p.TokensPerControlled != "" && !onActivated(slot) && slot != purposeOnTriggered {
+		fail("sets TokensPerControlled off a triggered or activated row — it counts at resolution (#3165)")
+	}
+	if t := p.TokensPerControlled; t != strings.ToLower(t) || strings.ContainsAny(t, " \t—") {
+		fail("names a TokensPerControlled subtype that is not one lowercase word (#3165)")
+	}
 	onSource := slot == purposeOnTriggered || slot == purposeOnActivated || slot == purposeOnAnyPlayerActivated
 	if p.Pump != nil && !onSource {
 		fail("sets Pump off a triggered or activated row — a pump is what an ability gives its own source")
@@ -125,6 +137,10 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	checkDiscardPayoff(p.DiscardPayoff, fail)
 	checkDiscardPayoff(p.OnOpponentDiscard, fail)
 	checkLandfallPayoff(p.LandfallPayoff, fail)
+	if c := p.CreatureEnterPayoff; c != nil {
+		l := game.LandfallPayoff(*c)
+		checkLandfallPayoff(&l, fail)
+	}
 	checkSweep(p.Sweep, fail)
 }
 
@@ -448,4 +464,15 @@ func TriggerWithPurpose(t game.TriggeredAbility, p game.Purpose) game.TriggeredA
 // plain Landfall: no printed amount would be true.
 func LandfallPaying(label string, pays game.LandfallPayoff, effect Effect) game.TriggeredAbility {
 	return TriggerWithPurpose(Landfall(label, effect), game.Purpose{LandfallPayoff: &pays})
+}
+
+// CreatureEnterPaying is a triggered row with what it pays for each
+// creature that enters under its controller's control declared (#3165):
+// the purpose the heuristic reads when it prices a token maker.
+// Purphoros is
+//
+//	CreatureEnterPaying(WheneverAnotherCreatureEntersUnderYourControl(...),
+//		game.CreatureEnterPayoff{DamageEachOpponent: 2})
+func CreatureEnterPaying(t game.TriggeredAbility, pays game.CreatureEnterPayoff) game.TriggeredAbility {
+	return TriggerWithPurpose(t, game.Purpose{CreatureEnterPayoff: &pays})
 }

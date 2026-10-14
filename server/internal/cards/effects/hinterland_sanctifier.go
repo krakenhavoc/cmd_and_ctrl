@@ -19,7 +19,8 @@ func init() {
 		Name:         "Hinterland Sanctifier",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WheneverAnotherCreatureEntersUnderYourControl("Hinterland Sanctifier — you gain 1 life", Do(GainLife{Amount: 1})),
+			CreatureEnterPaying(WheneverAnotherCreatureEntersUnderYourControl("Hinterland Sanctifier — you gain 1 life", Do(GainLife{Amount: 1})),
+				game.CreatureEnterPayoff{LifeGain: 1}),
 		},
 	})
 }

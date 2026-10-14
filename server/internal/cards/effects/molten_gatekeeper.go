@@ -24,8 +24,9 @@ func init() {
 		Name:         "Molten Gatekeeper",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, AnotherCreatureEnteredUnderYourControl,
+			CreatureEnterPaying(On(game.EventETB, AnotherCreatureEnteredUnderYourControl,
 				"Molten Gatekeeper — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})),
+				game.CreatureEnterPayoff{DamageEachOpponent: 1}),
 		},
 		Activated: []ActivatedAbility{Unearth("{R}")},
 	})
