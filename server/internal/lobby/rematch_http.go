@@ -50,6 +50,7 @@ func offerRematch(c Config, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	metrics.GameCreated()
+	metrics.RematchOffered()
 	c.logger().Info("rematch offered", "game_id", id.String(), "rematch_id", res.Game.ID.String())
 	return writeRematchSession(c, w, r, p, res, http.StatusCreated)
 }

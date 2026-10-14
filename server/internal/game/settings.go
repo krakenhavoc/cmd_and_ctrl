@@ -63,6 +63,21 @@ const (
 // mulligan is free (#3387's follow-up).
 const FreeMulligansUnlimited = -1
 
+// The away time (ADR 0177 §7): how many minutes a seat the table is
+// waiting on must be offline before the table is offered a way on
+// without it. The wire and the patch speak minutes, 0 for never.
+const (
+	// DefaultAwayAfter is the owner's 3 minutes (ADR 0177 decision 3).
+	DefaultAwayAfter = 3
+	// MaxAwayAfter is the longest away time a table may set.
+	MaxAwayAfter = 30
+	// awayAfterNever is how TableSettings.AwayAfter stores "never
+	// offer". The stored zero is "not set", which reads as the
+	// default, so a snapshot written before the setting existed keeps
+	// the default rather than turning the offer off.
+	awayAfterNever = -1
+)
+
 // The settings keys. They are the snake_case wire names, and they are
 // what EventSettingsChanged carries in Label so the log can say which
 // knob moved.
@@ -74,6 +89,7 @@ const (
 	SettingBotPace         = "bot_pace"
 	SettingAllowSpawn      = "allow_spawn"
 	SettingFreeMulligans   = "free_mulligans"
+	SettingAwayAfter       = "away_after"
 )
 
 // TableSettings is one table's configuration (ADR 0075 §2.2). The JSON
@@ -112,6 +128,22 @@ type TableSettings struct {
 	// FreeMulligans patch clears it. Read the setting only through
 	// EffectiveFreeMulligans.
 	LegacyFreeFirstMulligan bool `json:"freeFirstMulligan,omitempty"`
+	// AwayAfter is the away time (ADR 0177 §7). Read it only through
+	// EffectiveAwayAfter: the stored 0 is "not set" (the default, 3
+	// minutes), awayAfterNever is "never offer", and 1..MaxAwayAfter
+	// is that many minutes. Changeable at any time.
+	AwayAfter int `json:"awayAfter,omitempty"`
+}
+
+// EffectiveAwayAfter is the away time in minutes, 0 for never.
+func (s TableSettings) EffectiveAwayAfter() int {
+	switch {
+	case s.AwayAfter == 0:
+		return DefaultAwayAfter
+	case s.AwayAfter < 0:
+		return 0
+	}
+	return s.AwayAfter
 }
 
 // EffectiveFreeMulligans is the FreeMulligans setting, with a legacy
@@ -145,6 +177,9 @@ type SettingsPatch struct {
 	AllowSpawn      *bool      `json:"allow_spawn,omitempty"`
 	// FreeMulligans is refused after Start (ErrFreeMulliganLocked).
 	FreeMulligans *int `json:"free_mulligans,omitempty"`
+	// AwayAfter is the away time in minutes, 0 for never (ADR 0177
+	// §7).
+	AwayAfter *int `json:"away_after,omitempty"`
 }
 
 // Validate range-checks every present field. It does not know the
@@ -179,6 +214,10 @@ func (p SettingsPatch) Validate() error {
 	if p.FreeMulligans != nil && (*p.FreeMulligans < FreeMulligansUnlimited || *p.FreeMulligans > MaxFreeMulligans) {
 		return fmt.Errorf("%w: %s %d (want %d for unlimited, or 0..%d)",
 			ErrInvalidSetting, SettingFreeMulligans, *p.FreeMulligans, FreeMulligansUnlimited, MaxFreeMulligans)
+	}
+	if p.AwayAfter != nil && (*p.AwayAfter < 0 || *p.AwayAfter > MaxAwayAfter) {
+		return fmt.Errorf("%w: %s %d (want 0 for never, or 1..%d minutes)",
+			ErrInvalidSetting, SettingAwayAfter, *p.AwayAfter, MaxAwayAfter)
 	}
 	return nil
 }
@@ -246,6 +285,12 @@ func (g *Game) updateSettingsLocked(actor uuid.UUID, patch SettingsPatch) error 
 		next.FreeMulligans = *patch.FreeMulligans
 		next.LegacyFreeFirstMulligan = false
 	}
+	if patch.AwayAfter != nil {
+		next.AwayAfter = *patch.AwayAfter
+		if next.AwayAfter == 0 {
+			next.AwayAfter = awayAfterNever
+		}
+	}
 	g.Settings = next
 
 	// The undo refresh runs whenever the patch names UndoLimit, even
@@ -282,6 +327,7 @@ func (g *Game) updateSettingsLocked(actor uuid.UUID, patch SettingsPatch) error 
 	emit(SettingBotPace, string(old.BotPace), string(next.BotPace))
 	emit(SettingAllowSpawn, strconv.FormatBool(old.AllowSpawn), strconv.FormatBool(next.AllowSpawn))
 	emit(SettingFreeMulligans, strconv.Itoa(old.EffectiveFreeMulligans()), strconv.Itoa(next.EffectiveFreeMulligans()))
+	emit(SettingAwayAfter, strconv.Itoa(old.EffectiveAwayAfter()), strconv.Itoa(next.EffectiveAwayAfter()))
 	return nil
 }
 

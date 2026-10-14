@@ -1227,6 +1227,16 @@ func (g *Game) reactorLocked(emits map[EventKind]bool) (card string, kind EventK
 				continue
 			}
 			for _, r := range CatalogReplacements(catalogAbilityKeyOf(c)) {
+				// An entry-only replacement ("This land enters tapped")
+				// changes only its own object's entry, which a permanent
+				// already in play has made. No described step puts that
+				// object onto the battlefield again, so it reacts to
+				// nothing the batch does. Every tapland on the board
+				// made each token or zone-moving batch ask until
+				// 2026-10-14.
+				if r.EntryOnly && z == g.Battlefield {
+					continue
+				}
 				k, ok := watches(r.Watches)
 				if len(r.Watches) == 0 || ok {
 					return whyCardName(*c), k, true

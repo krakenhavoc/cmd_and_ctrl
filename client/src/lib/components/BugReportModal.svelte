@@ -65,10 +65,13 @@
     // nowhere to store files; the picker hides rather than offering an
     // upload that would 503.
     attachments: boolean;
+    // page names where a report filed outside a game came from (#3492,
+    // the site header's button): a route name, with gameID "".
+    page?: string;
     onclose: () => void;
   }
 
-  const { gameID, view, seq, connection, wsLog, attachments, onclose }: Props = $props();
+  const { gameID, view, seq, connection, wsLog, attachments, page = "", onclose }: Props = $props();
 
   let kind = $state<BugReportKind>(DEFAULT_BUG_KIND);
   let title = $state("");
@@ -101,8 +104,9 @@
   // Context is snapshotted at submit time, but summarised live so the
   // reporter can see what the checkbox will attach.
   const contextSummary = $derived.by(() => {
-    const ctx = buildBugContext(gameID, view, seq, connection);
-    const bits = [`game ${gameID.slice(0, 8)}`];
+    const ctx = buildBugContext(gameID, view, seq, connection, page);
+    const bits = gameID ? [`game ${gameID.slice(0, 8)}`] : [];
+    if (ctx.page) bits.push(`page ${ctx.page}`);
     if (ctx.turn) bits.push(`turn ${ctx.turn}, ${ctx.phase}/${ctx.step}`);
     if (ctx.seq) bits.push(`seq ${ctx.seq}`);
     if (ctx.connection) bits.push(`ws ${ctx.connection}`);
@@ -192,7 +196,7 @@
         title: title.trim(),
         kind,
         description,
-        context: includeContext ? buildBugContext(gameID, view, seq, connection) : undefined,
+        context: includeContext ? buildBugContext(gameID, view, seq, connection, page) : undefined,
         // The server drops a log the kind doesn't take; not sending
         // one in the first place keeps "what the form showed" and
         // "what left the browser" the same thing.
@@ -359,7 +363,10 @@
 
       <label class="context">
         <input type="checkbox" bind:checked={includeContext} disabled={submitting} />
-        <span>attach game context <span class="muted">({contextSummary})</span></span>
+        <span
+          >attach {gameID ? "game" : "page"} context
+          <span class="muted">({contextSummary})</span></span
+        >
       </label>
 
       {#if spec.log && capturedLog.length > 0}

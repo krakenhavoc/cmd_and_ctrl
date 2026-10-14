@@ -35,6 +35,12 @@ function viewWithTurn(turn: Partial<GameView["turn"]>): GameView {
 }
 
 describe("buildBugContext", () => {
+  // #3492: the site header's report, outside any game.
+  it("names the page and no game outside a table", () => {
+    expect(buildBugContext("", null, 0, "", "decks")).toEqual({ page: "decks" });
+    expect(redactBugContext({ page: "lobby token=abc123def456" })?.page).not.toMatch(/abc123/);
+  });
+
   it("degrades to id + connection when the view is null", () => {
     const ctx = buildBugContext("g-123", null, 0, "reconnecting");
     expect(ctx).toEqual({ game_id: "g-123", connection: "reconnecting" });

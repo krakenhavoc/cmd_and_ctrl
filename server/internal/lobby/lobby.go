@@ -226,6 +226,15 @@ type SeatInfo struct {
 	IsAgent     bool   `json:"is_agent,omitempty"`
 	AgentClient string `json:"agent_client,omitempty"`
 
+	// StandIn is the bot tier playing this person's seat while they
+	// are away (ADR 0177 §4), "" while they play it. The seat stays
+	// theirs: IsBot stays false, so the reclaim, the statistics and the
+	// DMs keep treating it as the person's. StandInSince is when the
+	// bot took it. Both ride seats.stand_in / stand_in_since (migration
+	// 0026). Public: the table sees the seat is played by a bot.
+	StandIn      string     `json:"stand_in,omitempty"`
+	StandInSince *time.Time `json:"stand_in_since,omitempty"`
+
 	// IsHost marks the table host (ADR 0075 §2.1). Never true on a bot
 	// or agent seat. Mirrors GameMeta.HostPlayerID.
 	IsHost bool `json:"is_host,omitempty"`
@@ -313,6 +322,13 @@ type Lobby struct {
 	// at boot via SetPlaymats, before RestoreFromDisk; nil means no seat
 	// carries one.
 	playmats PlaymatSource
+	// awayPresence, when non-nil, is the hub's answer to "is this seat at
+	// the table" for the away clock (away.go, ADR 0177). Set once at
+	// boot via SetAwayPresence; nil offers nothing.
+	awayPresence AwayPresence
+	// away is the away clock's own state: who chose to keep waiting
+	// (away.go). Guarded by its own mutex.
+	away awayState
 	// gameStats, when non-nil, keeps each stored game's statistics
 	// record (ADR 0165); recordStatsLocked writes it when the game ends.
 	// statsWG counts the writes still running (WaitGameStats).
@@ -1464,6 +1480,9 @@ func (l *Lobby) addBot(id uuid.UUID, name, tier, deckID, deckName string, cards 
 	})
 	l.persistSeatsLocked(entry)
 	l.noteFilledLocked(entry, uuid.Nil)
+	if keyOwner != uuid.Nil {
+		metrics.OwnKeySeatAdded()
+	}
 	return copyMeta(entry.meta), p.ID, nil
 }
 
@@ -1667,7 +1686,15 @@ func (l *Lobby) SetArchived(id uuid.UUID, archived bool) (GameMeta, error) {
 	case !archived && entry.meta.Archived():
 		entry.meta.ArchivedAt = nil
 		if entry.room.Game.CurrentState() == game.StateActive {
-			after = l.botStartLocked(entry)
+			bots, standIns := l.botStartLocked(entry), l.standInStartLocked(entry)
+			after = func() {
+				if bots != nil {
+					bots()
+				}
+				if standIns != nil {
+					standIns()
+				}
+			}
 		}
 	}
 	l.syncStateLocked(entry)

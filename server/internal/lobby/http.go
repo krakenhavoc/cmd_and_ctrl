@@ -38,6 +38,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/supportlinks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/usersettings"
@@ -170,6 +171,10 @@ type Config struct {
 	// 0179), checked at boot and served by GET /config. Nil or empty:
 	// the client renders no shop link.
 	Shops []shoplinks.Shop
+	// Support is the optional Ko-fi and Patreon links
+	// (CMDCTRL_SUPPORT_*, #3558), checked at boot and served by GET
+	// /config. The zero value shows none.
+	Support supportlinks.Links
 	// DiscordVoice is ADR 0159's table voice rooms. The zero value is
 	// off: GET /community says so and the client offers no room.
 	DiscordVoice discord.Voice
@@ -374,6 +379,8 @@ type GameEvictor interface {
 //	GET  /games/{id}/spectators — a seat / host / creator / admin: who is watching
 //	DELETE /games/{id}/spectators/{spectator} — host / creator / admin: remove one (?block=true)
 //	POST /games/{id}/seats/{player}/reclaim — admin: mint a seat-reclaim link
+//	POST /games/{id}/seats/{player}/away — answer the away offer: stand_in, concede or wait (ADR 0177)
+//	POST /games/{id}/seats/me/take-back — take your seat back from the bot playing it (ADR 0177)
 //	POST /games/{id}/reclaim — redeem one: a session for that seat
 //	POST /games/{id}/invites/rotate — admin: revoke + re-mint one invite kind
 //	POST /games/{id}/invites/dm — seated / creator / admin: DM a person the game's invite link
@@ -673,6 +680,10 @@ func Handler(c Config) http.Handler {
 	// seat from an unstarted table; an admin alone from a started game, by
 	// conceding it out (#3093, seat_remove.go).
 	mux.Handle("DELETE /games/{id}/seats/{player}", auth.Middleware(c.Auth)(handlerFunc(c, removeSeat)))
+	// ADR 0177: the table moves on without a player who is gone, and
+	// the player takes their seat back from the bot (away.go).
+	mux.Handle("POST /games/{id}/seats/{player}/away", auth.Middleware(c.Auth)(handlerFunc(c, answerAwaySeat)))
+	mux.Handle("POST /games/{id}/seats/me/take-back", auth.Middleware(c.Auth)(handlerFunc(c, takeBackSeat)))
 	// #3113: the block list and the unblock (blocks_http.go), and
 	// spectators: who is watching, and removing one (spectators.go).
 	mux.Handle("GET /games/{id}/blocks", auth.Middleware(c.Auth)(handlerFunc(c, listBlocks)))
@@ -1078,6 +1089,11 @@ type createGameResponse struct {
 	GameMeta
 	// Setup is present only when the request asked for one.
 	Setup *setupResult `json:"setup,omitempty"`
+	// Seat is the creator's own seat at the new table (#3494): the
+	// session for it, as POST /games/{id}/join would answer. Absent for
+	// the admin token, which is not a person, and when seating failed
+	// (the table is created anyway; Take a seat is still offered).
+	Seat *sessionResponse `json:"seat,omitempty"`
 }
 
 // transferHostRequest is the body of POST /games/{id}/host.
@@ -1269,6 +1285,12 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 		}
 
 		out := createGameResponse{GameMeta: meta}
+		if !server {
+			// #3494: almost every host plays, so the creator sits down
+			// in seat 1 at once, as themselves, before the last setup's
+			// bots and before an #lfg post counts the seats.
+			out.Seat = seatCreator(c, w, r, p, meta)
+		}
 		if body.VoiceRoom {
 			// ADR 0159 §1. The creator is the table's manager until a
 			// host sits down; a server with voice off ignores the ask.
@@ -1305,9 +1327,59 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 			if fresh, gerr := c.Lobby.Get(meta.ID); gerr == nil {
 				out.GameMeta = fresh
 			}
+		} else if out.Seat != nil {
+			// The seat is on the table now; Get still carries both invites.
+			if fresh, gerr := c.Lobby.Get(meta.ID); gerr == nil {
+				out.GameMeta.Players = fresh.Players
+				out.GameMeta.HostPlayerID = fresh.HostPlayerID
+			}
 		}
 		out.GameMeta = redactMetaFor(p, c.isAdmin(p), meta.ID, out.GameMeta)
 		return writeJSON(w, http.StatusCreated, out)
+	}
+}
+
+// seatCreator sits the creator down at the table they just made
+// (#3494), exactly as their own invite click would: the seat takes the
+// Discord identity and the user from the session, and the seat session
+// is minted from it. A failure leaves the table unseated and is only
+// logged: the create itself succeeded, and the card still offers Take
+// a seat.
+func seatCreator(c Config, w http.ResponseWriter, r *http.Request, p auth.Principal, meta GameMeta) *sessionResponse {
+	if c.Lobby.ConnectionsFull() {
+		return nil
+	}
+	identity := principalIdentity(p)
+	name := ""
+	if !identity.Populated() {
+		name = p.Name
+	}
+	seated, playerID, err := c.Lobby.JoinAs(meta.ID, meta.InviteToken, name, identity, p.UserID)
+	if err != nil {
+		c.logger().Warn("seating the creator failed", "game_id", meta.ID.String(), "err", err)
+		return nil
+	}
+	sp := withIdentity(auth.Principal{
+		Role:     auth.RolePlayer,
+		UserID:   p.UserID,
+		GameID:   seated.ID,
+		PlayerID: playerID,
+		Name:     name,
+	}, identity)
+	tok, issued, err := issueFor(r.Context(), c, sp, &p)
+	if err != nil {
+		c.logger().Warn("a session for the creator's seat failed", "game_id", meta.ID.String(), "err", err)
+		return nil
+	}
+	setSessionCookie(c, w, tok, issued.ExpiresAt)
+	seated.InviteToken = ""
+	seated.SpectatorInvite = ""
+	return &sessionResponse{
+		Token:     tok,
+		ExpiresAt: issued.ExpiresAt,
+		Principal: issued,
+		Game:      &seated,
+		PlayerID:  playerID,
 	}
 }
 

@@ -10,6 +10,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { PROTOCOL_VERSION, type GameView } from "./protocol";
 import { session, type Session } from "./session";
 import { resetBoardStub } from "./test/boardStub";
+import { resetBugReportConfig } from "./bugReportConfig";
 import { render, click, cleanup, flushSync } from "./test/render.svelte";
 
 vi.mock("./components/board/Board.svelte", async () => ({
@@ -84,6 +85,8 @@ beforeEach(() => {
   g.WebSocket = FakeSocket;
   FakeSocket.last = null;
   resetBoardStub();
+  // The config is asked once per tab (#3492); each test is a new tab.
+  resetBugReportConfig();
   session.set(playerSession());
 });
 

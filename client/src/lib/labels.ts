@@ -856,6 +856,14 @@ export const LABEL_SPECS = {
     doc: "a table card's right-click menu (also the Menu key, Shift+F10 or a long press)",
   }),
 
+  reportABug: label({
+    name: "Report a bug or idea",
+    kind: "aria",
+    role: "button",
+    owners: ["routes/Game.svelte", "lib/components/SiteHeader.svelte"],
+    doc: "the bug button: the table's command bar, and the site header on every other page for someone signed in with Discord (#3492); the Guide and About name it",
+  }),
+
   // -- The site header (ADR 0156 §3) --
   navTables: label({
     name: "Tables",
@@ -1012,6 +1020,20 @@ export const LABEL_SPECS = {
     owners: ["lib/autoAnswerPref.ts"],
     doc: "the automatic-answer notice's undo; greyed once anything else is the top undo entry",
   }),
+  autoPassNotice: label({
+    name: "auto-pass notice",
+    kind: "aria",
+    role: "dialog",
+    owners: ["lib/passReason.ts"],
+    doc: 'the dock\'s chip after the client passed priority for you ("Passed for you: nothing to respond with", #3343), for about six seconds',
+  }),
+  undoAutoPass: label({
+    name: "Take back the pass",
+    kind: "aria",
+    role: "button",
+    owners: ["lib/passReason.ts"],
+    doc: 'the auto-pass chip\'s Undo (visible text "Undo"); sends the ordinary undo and is shown only while that undo would take the pass back. Named apart from the dock\'s "Undo (N left)" so a /^Undo/ locator still finds one button',
+  }),
   askMeNextTime: label({
     name: "Ask me next time",
     kind: "text",
@@ -1070,6 +1092,49 @@ export const LABEL_SPECS = {
     role: "button",
     owners: [`${BOARD}DamageStepper.svelte`, `${BOARD}ChoicePromptModal.svelte`],
     doc: "the − beside addDamage",
+  }),
+  awayOffer: label({
+    name: "move on without an away player",
+    kind: "aria",
+    role: "dialog",
+    owners: ["lib/away.ts"],
+    doc: "the dock sheet a decider sees when a seat the table waits on has been offline for the away time (ADR 0177 §2)",
+  }),
+  awayStandIn: dynamicLabel({
+    stem: "'s seat to a bot",
+    match: "suffix",
+    shape: "Hand <name>'s seat to a bot",
+    make: (name: string) => `Hand ${name}'s seat to a bot`,
+    example: ["Bo"],
+    kind: "text",
+    role: "button",
+    owners: ["lib/away.ts"],
+    doc: "the away offer's hand-over: a heuristic bot plays the seat until its player takes it back",
+  }),
+  awayConcede: dynamicLabel({
+    stem: "Concede for ",
+    match: "prefix",
+    shape: "Concede for <name>",
+    make: (name: string) => `Concede for ${name}`,
+    example: ["Bo"],
+    kind: "text",
+    role: "button",
+    owners: ["lib/away.ts"],
+    doc: "the away offer's concession, made for the away player",
+  }),
+  awayWait: label({
+    name: "Keep waiting",
+    kind: "text",
+    role: "button",
+    owners: ["lib/away.ts"],
+    doc: "the away offer's third answer: hide the offer for another away time",
+  }),
+  takeBackSeat: label({
+    name: "Take it back",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}StandInBanner.svelte`],
+    doc: "the banner a player sees on their own seat while a bot plays it: they play it again (ADR 0177 §6)",
   }),
 } satisfies Record<string, LabelSpec>;
 

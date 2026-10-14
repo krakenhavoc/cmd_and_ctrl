@@ -111,6 +111,11 @@ type Hub struct {
 	// connection closed, or reported its tab hidden (ADR 0162 §2,
 	// presence.go). Guarded by mu.
 	seatLeft map[seatKey]time.Time
+	// seatOffline is when each seat's last bound connection closed,
+	// and seatSeen when the hub first saw a seat away that it has no
+	// departure for (ADR 0177 §1, presence.go). Guarded by mu.
+	seatOffline map[seatKey]time.Time
+	seatSeen    map[seatKey]time.Time
 }
 
 // Binding is what the upgrade authorizer hands to the hub: the
@@ -309,14 +314,15 @@ func (h *Hub) admit(c *Client) bool {
 
 func (h *Hub) unregister(c *Client) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
 	if _, ok := h.clients[c]; ok {
 		delete(h.clients, c)
 		close(c.send)
 		if !c.hidden {
 			h.markLeftLocked(c)
 		}
+		h.markOfflineLocked(c)
 	}
+	h.mu.Unlock()
 }
 
 // MetricsSockets lists every live connection for the metrics tables
@@ -599,6 +605,9 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 			client.log.Error("build "+label+" snapshot failed", "err", err)
 			return 0, false
 		}
+		// The connection is not admitted yet, so its own seat would
+		// read as offline in the very frame that says it is back.
+		view = h.stampPresenceExcept(room, view, playerID, binding.ReadOnly)
 		raw, marshalErr := marshalSnapshotFrame(seq, room.Generation(), protocol.FilterViewFor(view, viewerIDForFilter(playerID, binding.Admin)))
 		if marshalErr != nil {
 			client.log.Error("marshal "+label+" snapshot failed", "err", marshalErr)
@@ -842,6 +851,9 @@ func (h *Hub) BroadcastChat(gameID uuid.UUID, msg protocol.ChatPayload) {
 func (h *Hub) broadcastToRoom(gameID uuid.UUID, seq uint64, generation uint64, view protocol.GameView) {
 	start := time.Now()
 	defer func() { metrics.WSBroadcast(time.Since(start)) }()
+	if m := h.loadManager(); m != nil {
+		view = h.stampPresence(m.Get(gameID), view)
+	}
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	for c := range h.clients {
@@ -1153,6 +1165,17 @@ func (c *Client) handleAction(frame protocol.Frame) {
 		// been evicted since upgrade. Either way is a server-state
 		// problem, not a client mistake.
 		c.sendError(frame.ID, protocol.CodeInternal, "game is no longer available")
+		return
+	}
+
+	// ADR 0177 §6: while a bot stands in for this seat, the bot plays
+	// it. A player who has come back only takes over by pressing Take
+	// it back, so opening the table to look never plays a move by
+	// accident, and the seat is never driven twice. The admin is not
+	// held to it.
+	if !c.admin && c.playerID != uuid.Nil && room.StandIn(c.playerID) {
+		c.sendError(frame.ID, protocol.CodeStandIn,
+			"a bot is playing your seat while you were away; take it back to play again")
 		return
 	}
 

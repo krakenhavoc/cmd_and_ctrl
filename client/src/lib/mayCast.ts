@@ -63,6 +63,19 @@ export function mayCastCopy(
         decline: "Put it into your hand",
       };
       break;
+    case "paid_or_else":
+      // #3510: "you may cast that card. If you don't, ..." (Chandra,
+      // Torch of Defiance). The cast is paid; the server's decline label
+      // names what not casting does.
+      copy = {
+        source: "cast · CR 608.2g",
+        hint:
+          "Cast it now, paying its mana cost; timing doesn't matter. If you choose to cast it and then pass " +
+          "without casting, that counts as not casting it. Either way an uncast card stays in exile.",
+        accept: "Cast it",
+        decline: "Don't cast it",
+      };
+      break;
     case "suspend":
       copy = {
         source: "suspend · CR 702.62",

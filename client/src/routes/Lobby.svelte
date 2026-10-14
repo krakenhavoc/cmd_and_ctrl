@@ -83,7 +83,15 @@
   import SplitButton from "../lib/components/SplitButton.svelte";
   import { contextMenuTrigger, type MenuPoint } from "../lib/menuTrigger";
   import RemovedNotice from "../lib/components/RemovedNotice.svelte";
-  import { canRemoveSeat, removeSeatConsequence, removeSeatQuestion } from "../lib/seatRemoval";
+  import {
+    LEAVE_SEAT_QUESTION,
+    REMOVE_BOT_CONSEQUENCE,
+    canRemoveSeat,
+    isOwnSeat,
+    leaveSeatConsequence,
+    removeSeatConsequence,
+    removeSeatQuestion,
+  } from "../lib/seatRemoval";
   import { BLOCK_HINT, BLOCK_LABEL, canManageBlocks } from "../lib/moderation";
   import BlockList from "../lib/components/BlockList.svelte";
   import AgentChip from "../lib/components/AgentChip.svelte";
@@ -443,21 +451,13 @@
     }
   }
 
-  async function onRemoveBot(gameID: string, playerID: string): Promise<void> {
-    botBusy = true;
-    botError = "";
-    try {
-      await removeBotSeat(gameID, playerID);
-      await refresh();
-    } catch (err) {
-      botError = err instanceof LobbyApiError ? err.message : "could not remove the bot";
-    } finally {
-      botBusy = false;
-    }
-  }
-
-  // --- removing someone's seat (#2785) -----------------------------
-  let confirmRemove = $state<{ gameID: string; seat: SeatInfo } | null>(null);
+  // --- removing a seat (#2785, #3494) -----------------------------
+  //
+  // Every seat's × asks first: a person's, a bot's, and your own.
+  // `kind` picks the route and the words: a bot goes through the bot
+  // route; "self" is leaving your own seat, the host's included.
+  type RemoveKind = "person" | "bot" | "self";
+  let confirmRemove = $state<{ gameID: string; seat: SeatInfo; kind: RemoveKind } | null>(null);
   let removeBusy = $state(false);
   // The confirm's "also block them" box (#2984), off each time it opens.
   let removeBlock = $state(false);
@@ -469,11 +469,22 @@
     return canRemoveSeat(g, p, { isAdmin, mySeat: mySeat(g) });
   }
 
-  async function onRemoveSeat(gameID: string, playerID: string): Promise<void> {
+  function askRemove(g: GameMeta, p: SeatInfo): void {
+    removeBlock = false;
+    const kind: RemoveKind = p.is_bot
+      ? "bot"
+      : isOwnSeat(p, { isAdmin, mySeat: mySeat(g) })
+        ? "self"
+        : "person";
+    confirmRemove = { gameID: g.id, seat: p, kind };
+  }
+
+  async function onRemoveSeat(gameID: string, playerID: string, kind: RemoveKind): Promise<void> {
     removeBusy = true;
     removeError = null;
     try {
-      await removeSeat(gameID, playerID, { block: removeBlock });
+      if (kind === "bot") await removeBotSeat(gameID, playerID);
+      else await removeSeat(gameID, playerID, { block: kind === "person" && removeBlock });
       confirmRemove = null;
       blockRefresh += 1;
       await refresh();
@@ -1419,27 +1430,16 @@
                           {reclaimBusy === p.player_id ? "…" : "seat link"}
                         </button>
                       {/if}
-                      {#if !p.is_bot && canRemove(g, p)}
-                        <button
-                          class="seat-link seat-remove"
-                          title={`remove ${seatName(p)} from this table`}
-                          aria-label={`remove ${seatName(p)}`}
-                          disabled={removeBusy}
-                          onclick={() => {
-                            removeBlock = false;
-                            confirmRemove = { gameID: g.id, seat: p };
-                          }}
-                        >
-                          remove
-                        </button>
-                      {/if}
-                      {#if p.is_bot && canManageBots(g)}
+                      {#if p.is_bot ? canManageBots(g) : canRemove(g, p)}
+                        {@const own = !p.is_bot && isOwnSeat(p, { isAdmin, mySeat: seat })}
                         <button
                           class="seat-x"
-                          title="remove this bot"
-                          aria-label={`remove ${seatName(p)}`}
-                          disabled={botBusy}
-                          onclick={() => onRemoveBot(g.id, p.player_id)}
+                          title={own
+                            ? "leave your seat at this table"
+                            : `remove ${seatName(p)} from this table`}
+                          aria-label={own ? "leave your seat" : `remove ${seatName(p)}`}
+                          disabled={removeBusy || botBusy}
+                          onclick={() => askRemove(g, p)}
                         >
                           <Icon name="x" size={12} />
                         </button>
@@ -1855,23 +1855,38 @@
               {/if}
 
               {#if confirmRemove?.gameID === g.id}
+                {@const rk = confirmRemove.kind}
                 <div class="confirm danger" role="alert">
                   <p>
-                    <strong>{removeSeatQuestion(seatName(confirmRemove.seat))}</strong>
-                    {removeSeatConsequence(g)}
+                    <strong
+                      >{rk === "self"
+                        ? LEAVE_SEAT_QUESTION
+                        : removeSeatQuestion(seatName(confirmRemove.seat))}</strong
+                    >
+                    {rk === "self"
+                      ? leaveSeatConsequence(g, confirmRemove.seat.is_host === true)
+                      : rk === "bot"
+                        ? REMOVE_BOT_CONSEQUENCE
+                        : removeSeatConsequence(g)}
                   </p>
-                  <label class="block-opt">
-                    <input type="checkbox" bind:checked={removeBlock} disabled={removeBusy} />
-                    <span>{BLOCK_LABEL}</span>
-                  </label>
-                  <p class="hint">{BLOCK_HINT}</p>
+                  {#if rk === "person"}
+                    <label class="block-opt">
+                      <input type="checkbox" bind:checked={removeBlock} disabled={removeBusy} />
+                      <span>{BLOCK_LABEL}</span>
+                    </label>
+                    <p class="hint">{BLOCK_HINT}</p>
+                  {/if}
                   <div class="confirm-actions">
                     <button
                       class="primary"
                       disabled={removeBusy}
-                      onclick={() => onRemoveSeat(g.id, confirmRemove!.seat.player_id)}
+                      onclick={() => onRemoveSeat(g.id, confirmRemove!.seat.player_id, rk)}
                     >
-                      {removeBusy ? "removing…" : "remove from table"}
+                      {removeBusy
+                        ? "removing…"
+                        : rk === "self"
+                          ? "leave my seat"
+                          : "remove from table"}
                     </button>
                     <button
                       class="ghost"

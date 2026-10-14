@@ -128,6 +128,15 @@ type ActivationTiming struct {
 	// the engine, the enumerator and the view cannot disagree about
 	// whether it exists (ADR 0071).
 	ActiveWhen Designation
+
+	// OwnLoyalty says the statement opens its own source's loyalty
+	// abilities at instant speed (effects.
+	// ThisSourcesLoyaltyAbilitiesAtInstantSpeed: Teferi, Master of
+	// Time; The Wandering Emperor). Covers is still what the engine
+	// reads. This is for the catalog's answers guard (ADR 0142), which
+	// must know, without running Covers, that the card's loyalty rows
+	// are offered while an item waits on the stack.
+	OwnLoyalty bool
 }
 
 // Grants reports whether this statement OPENS the instant-speed

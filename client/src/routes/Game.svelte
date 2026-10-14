@@ -24,17 +24,21 @@
   import { seatColor } from "../lib/colors";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
+  import { bugReportConfig } from "../lib/bugReportConfig";
   import {
     discordAuthEnabled,
     discordLinkHref,
-    fetchBugReportConfig,
     reportPlayer,
     fetchSpectators,
     removeSpectator,
     offerRematch,
     acceptRematch,
     leaveRematch,
+    answerAwaySeat,
+    takeBackSeat,
   } from "../lib/api";
+  import { awayOfferFor, awayOfferRequest, standInSelf, type AwayAction } from "../lib/away";
+  import StandInBanner from "../lib/components/board/StandInBanner.svelte";
   import { rematchPlan } from "../lib/rematch";
   import { reportTargets } from "../lib/moderation";
   import { canLinkDiscord, linkDiscordLabel, signedInUserID } from "../lib/myGames";
@@ -87,6 +91,16 @@
   import ControlledPlaySheet from "../lib/components/board/ControlledPlaySheet.svelte";
   import DamageAutoAssign from "../lib/components/board/DamageAutoAssign.svelte";
   import AutoAnswerNotice from "../lib/components/board/AutoAnswerNotice.svelte";
+  import AutoPassNotice from "../lib/components/board/AutoPassNotice.svelte";
+  import {
+    ATTACK_PASS_REASON,
+    NO_ATTACKS_PASS_REASON,
+    MANUAL_PASS_REASON,
+    NO_BLOCKS_PASS_REASON,
+    autopassReason,
+    timedPassReason,
+    type PassNotice,
+  } from "../lib/passReason";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
   import AttackDeclarationModal from "../lib/components/board/AttackDeclarationModal.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
@@ -163,6 +177,7 @@
   } from "../lib/attackAll";
   import { hasPassMove, stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
+  import { attackDefaultStep, attackStepKey } from "../lib/attackDefault";
   import { shouldSignal, showTurnSignal } from "../lib/turnSignal";
   import {
     autopassDecision,
@@ -287,8 +302,18 @@
   // their improvisations over it, and an announcement nobody can see
   // is not an announcement. BotFeed renders those lines and nothing
   // else. A full chat panel, when it returns, subsumes it.
-  const { status, snapshot, lastSeq, lastError, log, chat, reconnectAttempt, rewindNotice } =
-    client;
+  const {
+    status,
+    snapshot,
+    lastSeq,
+    lastError,
+    lastAck,
+    actionCount,
+    log,
+    chat,
+    reconnectAttempt,
+    rewindNotice,
+  } = client;
 
   $effect(() => {
     client.disconnect();
@@ -385,7 +410,7 @@
     reset();
   }
   onMount(() => {
-    void fetchBugReportConfig().then((cfg) => {
+    void bugReportConfig().then((cfg) => {
       bugReportAvailable = cfg.enabled;
       bugReportAttachments = cfg.attachments;
     });
@@ -503,6 +528,21 @@
     setPassStatus(null);
   }
 
+  // #3343: the ONE place the client sends pass_priority. Every pass goes
+  // through here with a reason, which lands in the client log line a bug
+  // report attaches. `notice` is true for a pass the client decided on
+  // its own (autopass, a timed bluff, a stack hold): it also raises the
+  // dock chip "Passed for you: <reason>" with its Undo. A pass that is
+  // the second half of the player's own click (Attack with N, No blocks)
+  // or a click on Next logs its reason and raises no chip.
+  let passNotice = $state<PassNotice | null>(null);
+  function sendPass(player: string | undefined, reason: string, notice: boolean): void {
+    const frame = client.sendAction("pass_priority", player, undefined, reason);
+    if (notice && frame) {
+      passNotice = { frame, reason, actionsSent: client.actionsSent };
+    }
+  }
+
   // armTimedPass starts the countdown for this frame, once per kind.
   function armTimedPass(kind: PassWait, delayFor: () => number): void {
     const seq = $lastSeq;
@@ -543,7 +583,7 @@
       return;
     }
     lastAutoPassedSeq = seq;
-    client.sendAction("pass_priority", autopassPlayer);
+    sendPass(autopassPlayer, timedPassReason(p.kind, v, latestGates), true);
   }
 
   onMount(() => {
@@ -701,7 +741,7 @@
     const seq = $lastSeq;
     if (seq === lastAutoPassedSeq) return;
     lastAutoPassedSeq = seq;
-    client.sendAction("pass_priority", autopassPlayer);
+    sendPass(autopassPlayer, autopassReason(gates), true);
   });
 
   function toggleAutopass(): void {
@@ -1202,9 +1242,11 @@
     muted = isMuted();
   }
 
-  function passPriority(): void {
+  // A pass the viewer asked for. `reason` is only for the client log; the
+  // two declaration follow-ups below name theirs, a click names none.
+  function passPriority(reason: string = MANUAL_PASS_REASON): void {
     cancelPendingPass();
-    client.sendAction("pass_priority", actingPlayer);
+    sendPass(actingPlayer, reason, false);
   }
 
   // #2881, ADR 0143 §4.2: the dock's End turn walks the rest of the turn. The server
@@ -1662,7 +1704,7 @@
     if (view.pending_choices?.some((c) => c.chooser === viewerID)) return;
     if (seq === lastAutoPassedSeq) return;
     lastAutoPassedSeq = seq;
-    passPriority();
+    passPriority(ATTACK_PASS_REASON);
   });
   // The stage lives for one declaration: it empties when the step ends,
   // and a creature that can no longer attack drops out of it.
@@ -1756,6 +1798,47 @@
   // everything shouldn't have to click the full button and wait for
   // the rejection first.
   let attackPickerDefenderID = $state<string | null>(null);
+
+  // #3586: what the declare-attackers step starts with, once per step.
+  // `attackDefaultKey` latches the first frame of this step on which the
+  // viewer could declare (turn sequence and number, see attackStepKey),
+  // whatever was done then, so a player who un-stages is not re-staged
+  // and an empty declaration the server refuses is not sent again. It
+  // resets when the step ends, so an extra combat gets its own.
+  let attackDefaultKey: string | null = null;
+  $effect(() => {
+    const key = attackStepKey(view?.turn);
+    if (key !== null && (attackDefaultKey === key || attackCommit)) return;
+    const step = attackDefaultStep(attackDefaultKey, key, {
+      mode: $settings.gameplay.attackDefault,
+      canDeclare: canDeclareAttackers,
+      plan: attackPlan,
+      // The stops grid's declare attackers box (our own turn's column)
+      // or a manual pin; the same two the autopass decision reads.
+      stopped:
+        stepStopFor($settings.gameplay, "declare_attackers", true) === true ||
+        $manualStops.has("declare_attackers"),
+      holding: $holdPriority,
+      promptOpen:
+        !!view?.pending_choices?.some((c) => c.chooser === viewerID) ||
+        owesAttackRequirement(view, viewerID) ||
+        combatSelection !== null ||
+        attackPickerDefenderID !== null,
+    });
+    attackDefaultKey = step.latch;
+    const act = step.action;
+    if (!act) return;
+    if (act.kind === "stage") {
+      attackStage = act.stage;
+    } else {
+      // The "No attacks" primary: a plain pass, which the server takes
+      // as declaring no attackers.
+      const seq = $lastSeq;
+      if (seq === lastAutoPassedSeq) return;
+      lastAutoPassedSeq = seq;
+      passPriority(NO_ATTACKS_PASS_REASON);
+    }
+  });
 
   // #1533: the server's sentence for the limit refusal the picker was
   // opened from, shown at its top. Null for any other opening.
@@ -1904,7 +1987,7 @@
     if (view.pending_choices?.some((c) => c.chooser === viewerID)) return;
     if (seq === lastAutoPassedSeq) return;
     lastAutoPassedSeq = seq;
-    passPriority();
+    passPriority(NO_BLOCKS_PASS_REASON);
   });
 
   function declareBlockTarget(attackerCardID: string): void {
@@ -2202,6 +2285,62 @@
     const name = findCardView(view, link.source)?.name || "a card";
     return anyPlayerOfferRequest(link, viewerID, view.seats, name);
   });
+  // ADR 0177 §2: the table may move on without a player who is gone.
+  // Offered only to the seats that decide (§3); the server checks again.
+  // A minute clock keeps the sheet's "offline for N minutes" current.
+  let awayNow = $state(Date.now());
+  let awayBusy = $state(false);
+  let awayError = $state<string | null>(null);
+  const awaySeat = $derived(awayOfferFor(view, viewerID, isAdmin));
+  $effect(() => {
+    if (!awaySeat) return;
+    awayNow = Date.now();
+    const t = setInterval(() => (awayNow = Date.now()), 15000);
+    return () => clearInterval(t);
+  });
+  // A new seat, or the same seat gone again, starts with no error.
+  $effect(() => {
+    void awaySeat?.id;
+    awayError = null;
+  });
+  async function answerAway(seatID: string, action: AwayAction): Promise<void> {
+    awayBusy = true;
+    awayError = null;
+    try {
+      await answerAwaySeat(gameID, seatID, action);
+    } catch (e) {
+      awayError = e instanceof Error ? e.message : String(e);
+    } finally {
+      awayBusy = false;
+    }
+  }
+  const awayDockRequest = $derived.by(() => {
+    const s = awaySeat;
+    if (!s || gameEnded) return null;
+    return awayOfferRequest({
+      seat: s,
+      now: awayNow,
+      busy: awayBusy,
+      error: awayError,
+      onAnswer: (action) => void answerAway(s.id, action),
+    });
+  });
+  // ADR 0177 §6: the viewer's own seat, while a bot plays it.
+  const standInSeat = $derived(gameEnded ? null : standInSelf(view, viewerID));
+  let takeBackBusy = $state(false);
+  let takeBackError = $state<string | null>(null);
+  async function takeBack(): Promise<void> {
+    takeBackBusy = true;
+    takeBackError = null;
+    try {
+      await takeBackSeat(gameID);
+    } catch (e) {
+      takeBackError = e instanceof Error ? e.message : String(e);
+    } finally {
+      takeBackBusy = false;
+    }
+  }
+
   // ADR 0150 §5: a cast parked on an assist helper. The caster's line
   // carries Cancel request (owner decision 5); every other seat but the
   // helper, whose own prompt is the pay_amount, reads it.
@@ -2495,8 +2634,8 @@
       {#if bugReportAvailable}
         <button
           class="ibtn"
-          title="Report a bug or idea"
-          aria-label="Report a bug or idea"
+          title={L.reportABug}
+          aria-label={L.reportABug}
           onclick={() => (bugReportOpen = true)}><Icon name="bug" size={17} /></button
         >
       {/if}
@@ -2614,6 +2753,14 @@
       onRetry={() => client.retryNow()}
       signedIn={lastKnownSignedIn}
       full={$serverFull}
+    />
+  {/if}
+  {#if standInSeat}
+    <StandInBanner
+      since={standInSeat.stand_in?.since}
+      busy={takeBackBusy}
+      error={takeBackError}
+      onTakeBack={() => void takeBack()}
     />
   {/if}
 
@@ -2888,6 +3035,9 @@
         {#if anyPlayerOfferDockRequest}
           <DockRequest request={anyPlayerOfferDockRequest} />
         {/if}
+        {#if awayDockRequest}
+          <DockRequest request={awayDockRequest} />
+        {/if}
         {#if assistDockRequest}
           <DockRequest request={assistDockRequest} />
         {/if}
@@ -2933,7 +3083,7 @@
           <TutorialCoach {view} {viewerID} onSize={onCoachSize} autopass={autopassEnabled} />
         {/if}
       {/if}
-      {#if viewerNeedsToDecide && dockShown}
+      {#if viewerNeedsToDecide && dockShown && !standInSeat}
         <!-- ADR 0111 PR 6 (decision 2): the opening hand is a sheet of the
              dock, with Keep hand (Enter) and Mulligan in its action bar.
              The dialog keeps its name, "keep or mulligan your hand", and
@@ -3036,6 +3186,19 @@
         docked={dockShown}
       />
       <AutoAnswerNotice view={$snapshot} {viewerID} live={!replaying} onUndo={undo} />
+      <AutoPassNotice
+        notice={passNotice}
+        facts={{
+          ack: $lastAck,
+          lastSeq: $lastSeq,
+          actionsSent: $actionCount,
+          seat: viewerSeat,
+          undoBlocked,
+        }}
+        refusedFrame={$lastError?.replyTo ?? null}
+        live={!replaying}
+        onUndo={undo}
+      />
       <DamageAutoAssign
         view={$snapshot}
         {viewerID}

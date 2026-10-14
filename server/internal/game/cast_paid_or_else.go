@@ -1,0 +1,147 @@
+package game
+
+import "github.com/google/uuid"
+
+// cast_paid_or_else.go — #3510: "exile the top card of your library.
+// You may cast that card. If you don't, <something happens>" (Chandra,
+// Torch of Defiance's first +1).
+//
+// CR 608.2g puts the cast inside the resolution: its timing permissions
+// are ignored, but unlike cascade's or discover's cast it is PAID, at
+// the card's own mana cost (and mana abilities may be activated during
+// it, CR 601.2g). "If you don't" is judged by whether that cast was
+// made, so the consequence has two ways in:
+//
+//   - the controller answers the may_cast prompt "don't": it runs at
+//     once, inside the resolution;
+//   - the controller answers "cast", which opens ADR 0099 §4's window (a
+//     printed-cost, TimingFlash, cast-only grant with LapseOnPass), and
+//     then passes priority without casting, or cannot pay: the lapse
+//     runs it (CastPermission.IfNotCast).
+//
+// The card stays in exile either way (LapseStaysInExile): nothing in the
+// text moves it. A land can never be cast, so it gets no question and
+// the consequence runs at once; so does an empty library, and a
+// commander its owner sent to the command zone instead of exile. In each
+// of those "you" did not cast "that card".
+//
+// SANDBOX SIMPLIFICATION, ADR 0099 §4's: the cast is an ordinary
+// cast_spell taken right after the resolution rather than a frame inside
+// it. Its controller is the active player (a loyalty ability is
+// activated at sorcery speed), so CR 117.3b gives them priority first
+// and no one else can act in between.
+
+// MayCastKeywordPaidOrElse is the PendingChoice.MayCastKeyword the offer
+// asks under. The client words it as a paid cast and opens the cast
+// chain on accept.
+const MayCastKeywordPaidOrElse = "paid_or_else"
+
+// PaidCastOrElse is the offer: who casts, from which source, and what
+// happens if they don't.
+type PaidCastOrElse struct {
+	// Player is "you": who may cast the card, and whose library it is
+	// exiled from.
+	Player uuid.UUID
+	// Source is the object whose ability this is; the grant names it
+	// and IfNotCast's body is told it.
+	Source uuid.UUID
+	// SourceName labels the grant and heads the question.
+	SourceName string
+	// IfNotCast is the registered "if you don't" body. Required.
+	IfNotCast CastFollowUpKey
+	// DeclineLabel names the "don't" button, so the player sees what it
+	// costs them ("Don't cast it (2 damage to each opponent)").
+	DeclineLabel string
+}
+
+// ExileTopThenPaidCastOrElseForEffect exiles the top card of o.Player's
+// library and offers its paid cast, running o.IfNotCast whenever the
+// card is not cast. A commander's CR 903.9 question pauses the exile;
+// the offer is made from its continuation.
+//
+// Caller must hold g.mu (write).
+func (g *Game) ExileTopThenPaidCastOrElseForEffect(o PaidCastOrElse) error {
+	plan, err := g.impulseExilePlanLocked(o.Player, o.Player, 1)
+	if err != nil {
+		return err
+	}
+	if len(plan) == 0 {
+		return g.paidCastNotMadeLocked(o, uuid.Nil)
+	}
+	return g.routeAllThenLocked(zoneRoute{Dst: ZoneExile, Actor: o.Player, Source: o.Source}, plan,
+		func(g *Game, landed []uuid.UUID) error {
+			if len(landed) == 0 {
+				return g.paidCastNotMadeLocked(o, uuid.Nil)
+			}
+			return g.OfferPaidCastFromExileForEffect(o, landed[0])
+		})
+}
+
+// OfferPaidCastFromExileForEffect is the offer over a card already in
+// exile. A card no longer there, or a land, is not cast, so the
+// consequence runs with no question (CR 608.2c).
+//
+// Caller must hold g.mu (write).
+func (g *Game) OfferPaidCastFromExileForEffect(o PaidCastOrElse, cardID uuid.UUID) error {
+	c, ok := g.cardInZoneLocked(g.Exile, cardID)
+	if !ok || c.IsLand() {
+		return g.paidCastNotMadeLocked(o, cardID)
+	}
+	return g.QueueMayCastPromptForEffect(MayCastPrompt{
+		Chooser:      o.Player,
+		Source:       o.Source,
+		Card:         cardID,
+		Question:     o.SourceName + " — cast " + c.Name + "?",
+		Keyword:      MayCastKeywordPaidOrElse,
+		AcceptLabel:  "Cast it",
+		DeclineLabel: o.DeclineLabel,
+		OnAccept: func(g *Game) error {
+			if !g.grantPaidCastOrElseLocked(o, cardID) {
+				return g.paidCastNotMadeLocked(o, cardID)
+			}
+			return nil
+		},
+		OnDecline: func(g *Game) error {
+			return g.paidCastNotMadeLocked(o, cardID)
+		},
+	})
+}
+
+// PaidCastOrElsePermission is the grant an accepted offer stamps: the
+// card's printed cost, any timing (CR 608.2g), cast-only, closing on
+// the holder's next pass with the card left in exile and the "if you
+// don't" body run.
+func (g *Game) PaidCastOrElsePermission(o PaidCastOrElse) CastPermission {
+	return CastPermission{
+		Player:      o.Player,
+		Zone:        ZoneExile,
+		Duration:    g.UntilEndOfTurnDuration(),
+		Timing:      TimingFlash,
+		CastOnly:    true,
+		LapseOnPass: LapseStaysInExile,
+		IfNotCast:   o.IfNotCast,
+		Source:      o.Source,
+		SourceName:  o.SourceName,
+		Label:       o.SourceName + " — cast it now",
+	}
+}
+
+// grantPaidCastOrElseLocked stamps the grant over the exiled card.
+// Reports false when the card has left exile since the question.
+//
+// Caller must hold g.mu (write).
+func (g *Game) grantPaidCastOrElseLocked(o PaidCastOrElse, cardID uuid.UUID) bool {
+	c, ok := g.cardInZoneLocked(g.Exile, cardID)
+	if !ok {
+		return false
+	}
+	g.GrantCastPermissionToCardsForEffect(g.PaidCastOrElsePermission(o), []Card{c})
+	return true
+}
+
+// paidCastNotMadeLocked runs the "if you don't" body now.
+//
+// Caller must hold g.mu (write).
+func (g *Game) paidCastNotMadeLocked(o PaidCastOrElse, cardID uuid.UUID) error {
+	return g.runCastFollowUpLocked(o.IfNotCast, CastFollowUp{Player: o.Player, Source: o.Source, Spell: cardID})
+}

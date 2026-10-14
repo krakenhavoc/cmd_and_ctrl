@@ -208,6 +208,7 @@ There is no `accept-new` fallback any more.
 | this repo | `CMDCTRL_DISCORD_REDIRECT_URI`, `CMDCTRL_DEV_DISCORD_REDIRECT_URI` | variables; no default — unset means sign-in stays off on that host |
 | **environments `prod` and `dev`** | `CMDCTRL_DEPLOY_SSH_KEY` | environment secret, one per environment; the private key the deploy jobs (and, from `prod`, the Scryfall refresh) log in to the host as `krkn` with. Unset fails the job ([ADR 0181](decisions/0181-deploy-credentials-fail-closed.md)). See [Runners and credentials](#runners-and-credentials) |
 | **environments `prod` and `dev`** | `CMDCTRL_DISCORD_CLIENT_ID`, `CMDCTRL_DISCORD_CLIENT_SECRET`, `CMDCTRL_GITHUB_TOKEN` | secrets; the same values in both environments, never at repository level, where any branch's workflow run could read them (#3335) |
+| **environments `prod` and `dev`** | `CMDCTRL_GITHUB_APP_PRIVATE_KEY` (secret, the app's `.pem` pasted as is), `CMDCTRL_GITHUB_APP_ID` and `CMDCTRL_GITHUB_APP_INSTALLATION_ID` (variables) | the GitHub App that files in-app reports and deck requests as its bot (#3493). All three or none; with all three the server uses the app and ignores `CMDCTRL_GITHUB_TOKEN`. "Sync server env (GitHub App)" writes them, the key base64-encoded onto one line |
 | **environment `prod`** | `CMDCTRL_DISCORD_BOT_TOKEN` | secret; **production only**, written to **both** `bot.env` (the gateway bot) and `/etc/cmd_and_ctrl/env` (the server's DM-invite route — see below). Unset skips the bot env sync with a notice; set turns a host that cannot run the bot into a CD warning (never a failure) |
 | this repo | `CMDCTRL_DISCORD_APP_ID`, `CMDCTRL_DISCORD_GUILD_IDS` | variables; **production only**, written to `bot.env`. The app ID equals the sign-in client ID; guild IDs are comma-separated |
 | this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_ADMIN_USER_IDS` | variable; comma-separated Discord user snowflakes. The **server's admin allowlist** on **both** hosts ([ADR 0110](decisions/0110-remember-me.md) §3; a listed person is an admin only while they have admin mode on, [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §2), written to `/etc/cmd_and_ctrl/env` on every deploy, **empty included**, by "Sync server env (admin allowlist)", which refuses a malformed value before writing it. On production it is also written to `bot.env`: who may run `/c2-end` (#614). An environment-level value overrides the repo-level one, so the two hosts can differ. Unset is supported: only the shared token is admin, and `/c2-end` refuses every caller rather than failing open |
@@ -216,6 +217,7 @@ There is no `accept-new` fallback any more.
 | this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_LFG_CHANNEL_ID`, `CMDCTRL_DISCORD_LFG_ROLE_ID` | variables; Discord snowflakes. The community server's #lfg channel and the role a new post pings ([ADR 0161](decisions/0161-an-lfg-board-in-discord.md) §7). Written by "Sync server env (community)", empty included; the channel needs the guild, the role needs the channel. Unset is supported: the board is off |
 | this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_RESULTS_CHANNEL_ID` | variable; a Discord snowflake. The community server's #game-results channel, where the bot posts a finished game's results for a table whose host opted in ([ADR 0174](decisions/0174-a-game-results-feed-in-discord.md) §6). Written by the same step, empty included; refused without the guild or unless it is a snowflake. The server also needs `CMDCTRL_DISCORD_BOT_TOKEN` (production only). Unset is supported: the feed is off and `GET /community` says `"results": false` |
 | this repo, or **environments `prod` and `dev`** | `CMDCTRL_SHOP_TCGPLAYER`, `CMDCTRL_SHOP_CARDKINGDOM` | variables; optional shop links ([ADR 0179](decisions/0179-shop-links-for-real-cards.md)), one URL template per retailer holding `{url}` exactly once: an `https` wrapper with `{url}` after the host (`https://partner.example/c/123?u={url}`), or `{url}` first plus `&name=value` pairs (`{url}&partner=cmdctrl`). Served by `GET /config` as `"shops"`. Written to `/etc/cmd_and_ctrl/env` on every deploy, **empty included**, by "Sync server env (shop links)", which refuses a malformed template before writing (the server would refuse to boot on it). Set each per environment: a dev value only shows links on the preview. **Unset is the default: no shop links anywhere** |
+| this repo, or **environments `prod` and `dev`** | `CMDCTRL_SUPPORT_KOFI`, `CMDCTRL_SUPPORT_PATREON` | variables; optional supporter links for the funding page ([ADR 0179](decisions/0179-shop-links-for-real-cards.md) "Supporter links"), each an `https` URL on that service's own domain (`https://ko-fi.com/yourname`, `https://www.patreon.com/yourname`). Served by `GET /config` as `"support"`. Written to `/etc/cmd_and_ctrl/env` on every deploy, **empty included**, by "Sync server env (support links)", which refuses a malformed value before writing (the server would refuse to boot on it). Set each per environment. **Unset is the default: the link is not shown** |
 | this repo | `CMDCTRL_DISCORD_ADMIN_ROLE_IDS` | variable; **production only**, bot-only, written to `bot.env` on every deploy, empty included. Comma-separated role snowflakes — who may run `/c2-end` (#614) |
 | this repo, **environments `prod` and `dev`** | `CMDCTRL_R2_REPOSITORY` | environment variable, set in each; the restic repository URL for that host's bucket, `s3:https://<account_id>.r2.cloudflarestorage.com/<bucket>`. See [Backups](#backups) |
 | this repo, **environments `prod` and `dev`** | `CMDCTRL_R2_ACCESS_KEY_ID`, `CMDCTRL_R2_SECRET_ACCESS_KEY` | environment secrets, set in each; an R2 API token scoped to that host's bucket. Written to `backup.env` |
@@ -425,9 +427,15 @@ up a new one. None needs a code change.
   reset it in the Developer Portal, update the secret (in both
   environments), re-run a deploy of each branch. Sign-in fails on a
   host until its deploy has run.
-- **GitHub PAT** (`CMDCTRL_GITHUB_TOKEN`): create a new fine-grained
-  token (Issues: write, this repository only), update the secret,
-  re-run a deploy of each branch, then revoke the old token.
+- **GitHub App key** (`CMDCTRL_GITHUB_APP_PRIVATE_KEY`): generate a new
+  private key on the app's settings page, update the secret (in both
+  environments), re-run a deploy of each branch, then delete the old key
+  on GitHub. Installation tokens are minted per hour, so nothing else
+  needs rotating.
+- **GitHub PAT** (`CMDCTRL_GITHUB_TOKEN`, the fallback before the app):
+  create a new fine-grained token (Issues: write, this repository only),
+  update the secret, re-run a deploy of each branch, then revoke the old
+  token. Once the app is set up, delete the secret and revoke the token.
 - **Session and identity keys** (`CMDCTRL_SESSION_KEY`,
   `CMDCTRL_IDENTITY_KEY`): live only on the host. Delete the line from
   `/etc/cmd_and_ctrl/env` and redeploy; CD generates a new one. A new
@@ -497,14 +505,18 @@ turned **on** in production.
 
 ```console
 $ curl -s https://cmd-dev.labxp.io/config
-{"env":"dev","features":{"card_spawn":true,"seat_swap":true,"frame_inspector":true,"replay_scrubber":true},"shops":[]}
+{"env":"dev","features":{"card_spawn":true,"seat_swap":true,"frame_inspector":true,"replay_scrubber":true},"shops":[],"support":{}}
 $ curl -s https://cmd.labxp.io/config
-{"env":"prod","features":{"card_spawn":false,"seat_swap":false,"frame_inspector":false,"replay_scrubber":false},"shops":[]}
+{"env":"prod","features":{"card_spawn":false,"seat_swap":false,"frame_inspector":false,"replay_scrubber":false},"shops":[],"support":{}}
 ```
 
 `shops` is not a dev feature: it lists the shop link templates set by
 `CMDCTRL_SHOP_*` ([ADR 0179](decisions/0179-shop-links-for-real-cards.md)),
-`[]` when none is set, on either host.
+`[]` when none is set, on either host. `support` lists the optional
+Ko-fi and Patreon links set by `CMDCTRL_SUPPORT_KOFI` and
+`CMDCTRL_SUPPORT_PATREON` (#3558): `{}` when neither is set, otherwise
+`{"kofi":"https://ko-fi.com/…","patreon":"https://www.patreon.com/…"}`
+with an unset link left out.
 
 ### Card spawner
 
@@ -1141,6 +1153,22 @@ It costs every saved key: rolling forward again recreates the table empty,
 so everyone who had added one adds it again in Settings › AI opponents.
 `TestMigration0025RollbackByHand` runs exactly this sequence and then rolls
 forward.
+
+Migration 0026 (ADR 0177, a bot standing in for an away player) adds two
+nullable columns, `seats.stand_in` and `seats.stand_in_since`. An older
+binary refuses the v26 schema. Drop them by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "ALTER TABLE seats DROP COLUMN stand_in; ALTER TABLE seats DROP COLUMN stand_in_since; DELETE FROM schema_migrations WHERE version = 26;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+A seat a bot was playing comes back with nobody playing it, and its
+player plays it again when they rejoin. `TestMigration0026RollbackByHand`
+runs exactly this sequence and then rolls forward.
 
 Migration 0021 (ADR 0161, the #lfg board) adds `games.lfg` (0 or 1,
 default 0) and `games.lfg_message_id` (nullable). An older binary refuses

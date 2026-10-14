@@ -235,6 +235,9 @@ type bugReportContext struct {
 	Step       string `json:"step,omitempty"`
 	Seq        uint64 `json:"seq,omitempty"`
 	Connection string `json:"connection,omitempty"`
+	// Page is where a report filed outside a game came from (#3492): the
+	// client's route name ("lobby", "decks"), never a URL.
+	Page string `json:"page,omitempty"`
 }
 
 // bugLogEntry is one line of the reporter's client-side log.
@@ -898,6 +901,9 @@ func renderBugIssueBody(in bugIssue) string {
 			fmt.Fprintf(&b, "- Connection: %s\n", clip(in.Ctx.Connection, bugFieldMax))
 		}
 	}
+	if in.Ctx != nil && in.Ctx.Page != "" {
+		fmt.Fprintf(&b, "- Page: `%s`\n", clip(in.Ctx.Page, bugFieldMax))
+	}
 	if in.ReportID != "" {
 		fmt.Fprintf(&b, "- Report ID: `%s`\n", in.ReportID)
 	}
@@ -964,6 +970,7 @@ func redactBugIssue(in bugIssue) bugIssue {
 		ctx.Phase = redact.Secrets(ctx.Phase)
 		ctx.Step = redact.Secrets(ctx.Step)
 		ctx.Connection = redact.Secrets(ctx.Connection)
+		ctx.Page = redact.Secrets(ctx.Page)
 		in.Ctx = &ctx
 	}
 	if len(in.Log) > 0 {

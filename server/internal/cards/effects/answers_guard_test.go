@@ -71,7 +71,7 @@ func TestAnswersGuardOnActivatedRows(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			c.ab.Purpose.Answers = game.AnswerProtect
-			msg := refusal(func() { checkActivatedAnswers("Test Card", "ability 0", c.ab) })
+			msg := refusal(func() { checkActivatedAnswers("Test Card", "ability 0", c.ab, false) })
 			if c.want == "" && msg != "" {
 				t.Fatalf("refused: %s", msg)
 			}
@@ -103,7 +103,7 @@ func TestAnswersGuardKeepsTheCostRule(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			ab := game.ActivatedAbilityShape{Cost: c.cost, Purpose: game.Purpose{Answers: c.answers}}
-			msg := refusal(func() { checkActivatedAnswers("Test Card", "ability 0", ab) })
+			msg := refusal(func() { checkActivatedAnswers("Test Card", "ability 0", ab, false) })
 			if c.want == "" && msg != "" {
 				t.Fatalf("refused: %s", msg)
 			}

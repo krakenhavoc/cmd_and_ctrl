@@ -38,6 +38,7 @@
   import Icon from "../Icon.svelte";
   import AgentChip from "../AgentChip.svelte";
   import { isAgentSeat } from "../../agentSeat";
+  import { presenceChip, standInSinceText } from "../../away";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -238,6 +239,23 @@
   });
 
   const interactive = $derived(attackTargetable || targetableByCast);
+
+  // ADR 0177 §1: who is gone, and for how long. The minutes count up
+  // on a local clock between frames; the clock runs only while the seat
+  // has a presence to show.
+  let presenceNow = $state(Date.now());
+  $effect(() => {
+    if (!seat.presence) return;
+    presenceNow = Date.now();
+    const t = setInterval(() => (presenceNow = Date.now()), 15000);
+    return () => clearInterval(t);
+  });
+  const presence = $derived(presenceChip(seat, presenceNow));
+  // A seat holding priority while offline reads "offline", never
+  // "considering…": nobody is considering anything.
+  const showConsidering = $derived(considering && presence?.kind !== "offline");
+  // ADR 0177 §4: a bot plays this person's seat while they are away.
+  const standIn = $derived(!isBot && Boolean(seat.stand_in));
 </script>
 
 <div
@@ -278,13 +296,26 @@
          the bot chip, so a seat is a bot, an agent or neither, never
          two; its own look, so it never reads as the server's bot. -->
     <AgentChip {seat} thinking={agentThinking} />
-  {:else if considering}
+  {:else if showConsidering}
     <!-- #1307: same slot the bot chip sits in, on a human seat that
          has been holding priority in a public response window longer
          than an automatic pass would take. Derived from public timing
          alone, so a real hold, a bluff and someone away from the
          keyboard all show exactly this. -->
     <span class="tag considering" title="holding priority">considering…</span>
+  {/if}
+  {#if standIn}
+    <span
+      class="tag bot stand-in"
+      data-dice-avoid
+      title={`A bot has been playing this seat since ${standInSinceText(seat.stand_in?.since)}`}
+      >(bot)</span
+    >
+  {/if}
+  {#if presence}
+    <span class="tag presence {presence.kind}" data-dice-avoid title={presence.title}
+      >{presence.text}</span
+    >
   {/if}
 
   <div class="core-row">
@@ -1183,6 +1214,19 @@
   /* #1307: same shell as .tag.bot, gold like the priority ring rather
      than seat-tinted — this chip is about the response window, not
      about whose seat it is. */
+  /* ADR 0177 §1: muted, because being away is a fact about the seat,
+     not a call to act. Offline is a shade warmer than a hidden tab. */
+  .tag.presence {
+    margin-top: 0;
+    margin-bottom: 2px;
+    color: var(--fg-muted, #aaa);
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(0, 0, 0, 0.28);
+  }
+  .tag.presence.offline {
+    color: color-mix(in srgb, var(--danger, #e66) 70%, var(--fg));
+    border-color: color-mix(in srgb, var(--danger, #e66) 40%, transparent);
+  }
   .tag.considering {
     margin-top: 0;
     margin-bottom: 2px;

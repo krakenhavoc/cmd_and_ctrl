@@ -12,6 +12,7 @@
     importSettings,
     fingerprintSettings,
     type PassMode,
+    type AttackDefaultMode,
     type TriggerOrderMode,
   } from "../settings";
   import { STEP_IDS, STEP_LABELS, hasOwnStop, type StepID } from "../turn";
@@ -979,6 +980,29 @@
 
             <section class="gp-section" aria-labelledby="gp-prompts">
               <h4 id="gp-prompts" class="gp-heading">Prompts</h4>
+              <label class="slider-row">
+                <span>When you declare attackers</span>
+                <select
+                  value={$settings.gameplay.attackDefault}
+                  onchange={(e) =>
+                    change("gameplay", "attackDefault", e.currentTarget.value as AttackDefaultMode)}
+                >
+                  <option value="ask">Choose each time (default)</option>
+                  <option value="all">Attack with everything</option>
+                  <option value="none">No attacks</option>
+                </select>
+                {#if isFresh("gameplay.attackDefault")}<span class="saved">✓</span>{/if}
+              </label>
+              <p class="help">
+                What the declare attackers step starts with. Attack with everything stages every
+                creature that can attack, only when exactly one opponent can be attacked; with two
+                or more the step starts empty, because the game never guesses who you attack.
+                Nothing is sent until you press &lsquo;Attack with N&rsquo;, and you can click
+                creatures to take them out. No attacks declares no attackers for you when the step
+                starts, unless you have a stop on declare attackers, are holding priority, or have a
+                combat question open (exert, an attack tax or a creature that must attack).
+              </p>
+
               <label class="slider-row">
                 <span>Order my triggers</span>
                 <select

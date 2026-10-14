@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/supportlinks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/appenv"
 )
 
@@ -24,6 +25,9 @@ type clientConfigResponse struct {
 	Env      string           `json:"env"`
 	Features appenv.Features  `json:"features"`
 	Shops    []shoplinks.Shop `json:"shops"`
+	// Support is the optional supporter links (#3558): {} when none is
+	// set, and a link left out of it is not shown.
+	Support supportlinks.Links `json:"support"`
 }
 
 // clientConfig serves GET /config. Unauthenticated, mirroring
@@ -36,6 +40,7 @@ func clientConfig(c Config, w http.ResponseWriter, _ *http.Request) error {
 		Env:      c.Env.String(),
 		Features: c.Features,
 		Shops:    shopsOrEmpty(c.Shops),
+		Support:  c.Support,
 	})
 }
 
