@@ -1,10 +1,38 @@
+/* Self-hosted fonts (SIL OFL 1.1; licences beside the files in public/fonts).
+   Variable woff2, Latin subset only: text outside it falls back to the
+   system stack below. Served by the app itself, so no third-party font
+   origin is needed and the service worker precaches them (#3345). */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 500 800;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("/fonts/bricolage-grotesque-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Instrument Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("/fonts/instrument-sans-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono-latin.woff2") format("woff2");
+}
+
 :root {
   /* Three type voices (docs/design foundations sheet):
        display — Bricolage Grotesque: life totals, step label, dialog titles, wordmark
        ui      — Instrument Sans: names, buttons, copy
        mono    — JetBrains Mono: counts, zone labels, P/T, seq, keyboard hints
-     Loaded from Google Fonts in index.html; every stack has a metric-
-     close fallback so a blocked font host degrades, not breaks. */
+     Self-hosted (@font-face above); every stack has a metric-
+     close fallback so a failed font load degrades, not breaks. */
   --font-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
   --font-ui: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;

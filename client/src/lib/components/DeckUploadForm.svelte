@@ -158,12 +158,12 @@
     collapsed={prebuiltCollapsed}
   />
   <p class="own-list">
-    Or bring your own list — a Moxfield or Archidekt deck URL, a Moxfield JSON export, or a
-    plain-text decklist.
+    Or bring your own list — an Archidekt deck URL, or paste a plain-text decklist. On Moxfield,
+    open the deck, then Export and Copy plain text, and paste it here.
   </p>
   <textarea
     rows="7"
-    placeholder={"https://moxfield.com/decks/abc123\n\n— or —\n\nCommander:\n1 Atraxa, Praetors' Voice\n\nMainboard:\n1 Sol Ring\n..."}
+    placeholder={"https://archidekt.com/decks/123456\n\n— or paste the list —\n\nCommander:\n1 Atraxa, Praetors' Voice\n\nMainboard:\n1 Sol Ring\n..."}
     bind:value={source}
     aria-label="decklist source"
   ></textarea>

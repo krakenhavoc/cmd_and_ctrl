@@ -488,6 +488,8 @@ func main() {
 	}
 	botPolicies, botBudget := botFactory(log, cfg, cardIdx, database, ownKeys)
 	bots.SetPolicyFactory(botPolicies)
+	// The bot watch gauges: a wedged bot seat and the model spend caps.
+	registerBotMetrics(metrics.Registry, bots, botBudget)
 	// The decision log, when an operator asked for one. Off by
 	// default; a failure to open the directory is logged and the
 	// server boots without it, because a diagnostic is never worth a

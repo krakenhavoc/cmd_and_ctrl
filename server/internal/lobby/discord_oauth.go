@@ -12,6 +12,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 )
 
@@ -131,10 +132,12 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 	client := c.discordClient()
 	token, err := c.Discord.ExchangeCode(r.Context(), client, code, entry.CodeVerifier)
 	if err != nil {
+		metrics.AuthFailed(metrics.AuthExchange)
 		return httpError(http.StatusFailedDependency, err.Error())
 	}
 	user, err := c.Discord.FetchUser(r.Context(), client, token.AccessToken)
 	if err != nil {
+		metrics.AuthFailed(metrics.AuthProfile)
 		return httpError(http.StatusFailedDependency, err.Error())
 	}
 
@@ -170,6 +173,7 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 		// The store's error can name tables and columns; the browser
 		// gets a plain sentence and the log gets the detail.
 		c.logger().Error("record Discord sign-in failed", "discord_id", user.ID, "err", err)
+		metrics.AuthFailed(metrics.AuthRecord)
 		return httpError(http.StatusInternalServerError, "could not record your sign-in; try again")
 	}
 

@@ -36,13 +36,18 @@ import (
 // continuation is a registered key (RegisterVoteThen), so a table
 // waiting on a ballot is a restore point.
 //
-// # Public as it is cast
+// # Public as it is cast, unless it is secret
 //
 // Every ballot emits EventVoteCast, which is the public log's "Alice
 // voted for dominion", and the open prompt carries the ballots so far
 // on the wire for every seat (protocol.CouncilVoteView), so the table
-// sees the tally move as each player votes. CR 701.38 has no secret
-// vote; secret council is a different ability word and is not this.
+// sees the tally move as each player votes.
+//
+// Secret council (ADR 0180) is the same vote with CouncilVote.Secret
+// set: a ballot emits EventSecretVoteCast, which names the voter and
+// not the option, the wire carries a seat's own ballots only (the
+// protocol filter puts them back per viewer), and when the last ballot
+// is in EventVotesRevealed shows them all at once.
 
 // EventVoteCast records one ballot: Actor voted for the option whose
 // printed label is Label, in the vote Source called. Amount is the
@@ -66,10 +71,30 @@ const EventVoteCast EventKind = "vote_cast"
 // still waiting on the stack reads the right ballots after a restore.
 const EventVotesFinished EventKind = "votes_finished"
 
+// EventSecretVoteCast records that Actor cast a ballot in the secret
+// vote Source called (ADR 0180), and nothing about what they voted
+// for: no option, no subject, no index. The ballot itself stays on the
+// vote until EventVotesRevealed.
+const EventSecretVoteCast EventKind = "secret_vote_cast"
+
+// EventVotesRevealed is a secret vote's reveal (ADR 0180): "then those
+// votes are revealed". Actor is the vote's controller, Source the card,
+// Ballots every vote in the order cast, plus one ballot with Option -1
+// for each vote a voter cast for nothing (Label is that option's
+// words), and VoteOptions the options' labels, so the log can name each
+// vote without the vote. Emitted once, after the last ballot and before
+// EventVotesFinished.
+const EventVotesRevealed EventKind = "votes_revealed"
+
 // VoteDeclineLabel is the extra option on the prompt for a vote a
 // player MAY cast ("While voting, you may vote an additional time",
 // Ballot Broker): choosing it casts nothing.
 const VoteDeclineLabel = "Don't vote again"
+
+// VoteAbstainIndex is what OptionIndex returns, and the wire's
+// `offered` carries, for a vote's Abstain option ("votes for up to one
+// creature": a vote for nothing). -1 stays the decline option.
+const VoteAbstainIndex = -2
 
 // ExtraVote is a permanent's printed static about voting (CR 701.38d).
 type ExtraVote int
@@ -128,8 +153,26 @@ type CouncilVote struct {
 	// every earlier object vote means. An option whose card has left
 	// that zone is not offered (CR 400.7: it is a new object).
 	Zone ZoneKind `json:"zone,omitempty"`
+	// Secret is secret council (ADR 0180): every player votes secretly,
+	// then the votes are revealed. Nothing outside the game shows a
+	// ballot before the last one is in (see the file comment).
+	Secret bool `json:"secret,omitempty"`
+	// OthersOnly is "votes for another player" (Mob Verdict): a ballot
+	// does not offer the option naming its voter.
+	OthersOnly bool `json:"othersOnly,omitempty"`
+	// Abstain, when set, is the label of a "vote for nothing" option on
+	// every ballot: "votes for up to one creature" (Vault 11). Choosing
+	// it casts that vote as no ballot.
+	Abstain string `json:"abstain,omitempty"`
+	// SelfBest is a bot hint beside ForController and ForOpponents: the
+	// option naming the voter is the one the voter wants (Círdan: the
+	// votes you receive draw you cards). Nothing else reads it.
+	SelfBest bool `json:"selfBest,omitempty"`
 	// Ballots are the votes cast so far, in the order they were cast.
 	Ballots []VoteBallot `json:"ballots,omitempty"`
+	// Abstained lists, in order, each voter who cast a vote for nothing
+	// (Abstain), once per such vote. Only the reveal reads it.
+	Abstained []uuid.UUID `json:"abstained,omitempty"`
 	// Voters are the players still to vote after the current one, in
 	// turn order.
 	Voters []uuid.UUID `json:"voters,omitempty"`
@@ -155,6 +198,7 @@ func cloneCouncilVote(v *CouncilVote) *CouncilVote {
 	out.ForController = append([]int(nil), v.ForController...)
 	out.ForOpponents = append([]int(nil), v.ForOpponents...)
 	out.Ballots = append([]VoteBallot(nil), v.Ballots...)
+	out.Abstained = copyUUIDs(v.Abstained)
 	out.Voters = copyUUIDs(v.Voters)
 	out.Carry = copyUUIDs(v.Carry)
 	return &out
@@ -304,6 +348,13 @@ type VotePrompt struct {
 	// the battlefield (permanents voted for); set it to ZoneGraveyard
 	// for "votes for a creature card in your graveyard".
 	OptionZone ZoneKind
+	// Secret, OthersOnly, Abstain and SelfBest are CouncilVote's (ADR
+	// 0180): a secret vote, "another player", "up to one", and the bot
+	// hint that a voter wants the option naming them.
+	Secret     bool
+	OthersOnly bool
+	Abstain    string
+	SelfBest   bool
 	// Then runs with the result once everyone has voted. Required.
 	Then VoteThen
 	// Carry is plain data handed to Then.
@@ -334,6 +385,10 @@ func (g *Game) StartVoteForEffect(p VotePrompt) error {
 		ForOpponents:  append([]int(nil), p.ForOpponents...),
 		Voters:        g.votersFromLocked(p.Starting),
 		Zone:          p.OptionZone,
+		Secret:        p.Secret,
+		OthersOnly:    p.OthersOnly,
+		Abstain:       p.Abstain,
+		SelfBest:      p.SelfBest,
 		Then:          p.Then.key,
 		Carry:         copyUUIDs(p.Carry),
 	}
@@ -417,6 +472,9 @@ func (g *Game) askNextBallotLocked(v *CouncilVote) error {
 			continue
 		}
 		question := v.Question
+		if v.Abstain != "" {
+			options = append(options, ChoiceOption{Label: v.Abstain})
+		}
 		if v.Optional() {
 			options = append(options, ChoiceOption{Label: VoteDeclineLabel})
 			question += " (you may vote an additional time)"
@@ -493,13 +551,17 @@ func (g *Game) ChooseHowEachPlayerVotesThisTurnForEffect(sourceID, player uuid.U
 
 // openVoteOptionsLocked is the vote's option list as the next ballot
 // offers it: every option, less a card that has left the zone the vote
-// is over (the battlefield unless CouncilVote.Zone says otherwise) or a
-// player who has left the game. The labels and subjects are the vote's
-// own, so an answer maps back by subject. Caller must hold g.mu.
+// is over (the battlefield unless CouncilVote.Zone says otherwise), a
+// player who has left the game, and, for "another player"
+// (OthersOnly), the voter. The labels and subjects are the vote's own,
+// so an answer maps back by subject. Caller must hold g.mu.
 func (g *Game) openVoteOptionsLocked(v *CouncilVote) []ChoiceOption {
 	out := make([]ChoiceOption, 0, len(v.Options))
 	for _, o := range v.Options {
 		if o.Player != uuid.Nil && !g.playerInGameLocked(o.Player) {
+			continue
+		}
+		if v.OthersOnly && o.Player != uuid.Nil && o.Player == v.Voter {
 			continue
 		}
 		if len(o.Cards) > 0 && !g.voteOptionCardPresentLocked(v, o.Cards[0]) {
@@ -526,8 +588,11 @@ func (g *Game) voteOptionCardPresentLocked(v *CouncilVote, id uuid.UUID) bool {
 // OptionIndex maps an answered option back to its index in the
 // vote's own list, by subject and label: the offered list may have
 // been shorter (a permanent gone) or pruned while open (a seat gone).
-// -1 for the decline option.
+// -1 for the decline option, VoteAbstainIndex for the Abstain option.
 func (v *CouncilVote) OptionIndex(o ChoiceOption) int {
+	if v.Abstain != "" && o.Label == v.Abstain && o.subject() == uuid.Nil {
+		return VoteAbstainIndex
+	}
 	for i, opt := range v.Options {
 		if opt.Label == o.Label && opt.subject() == o.subject() {
 			return i
@@ -556,20 +621,24 @@ func (g *Game) castBallotLocked(v *CouncilVote, voter uuid.UUID, chosen *ChoiceO
 		v.VotesLeft, v.MayLeft = 0, 0
 	default:
 		i := v.OptionIndex(*chosen)
+		if i == VoteAbstainIndex {
+			// "Up to one": a vote for nothing. It is that vote, cast.
+			v.Abstained = append(v.Abstained, voter)
+			g.emitBallotCastLocked(v, voter, i)
+			if required {
+				v.VotesLeft--
+			} else {
+				v.MayLeft--
+			}
+			break
+		}
 		if i < 0 {
 			// The decline option: no more optional votes.
 			v.MayLeft = 0
 			break
 		}
 		v.Ballots = append(v.Ballots, VoteBallot{Voter: voter, Option: i})
-		g.EmitEvent(Event{
-			Kind:   EventVoteCast,
-			Actor:  voter,
-			Source: v.Source,
-			Target: v.Options[i].subject(),
-			Amount: i,
-			Label:  v.Options[i].Label,
-		})
+		g.emitBallotCastLocked(v, voter, i)
 		if required {
 			v.VotesLeft--
 		} else {
@@ -577,6 +646,22 @@ func (g *Game) castBallotLocked(v *CouncilVote, voter uuid.UUID, chosen *ChoiceO
 		}
 	}
 	return g.askNextBallotLocked(v)
+}
+
+// emitBallotCastLocked announces one ballot: in an open vote the
+// option, as it is cast (ADR 0146 decision 5), and in a secret vote only
+// that the voter has voted (ADR 0180). i is the option's index, or
+// VoteAbstainIndex for a vote for nothing. Caller must hold g.mu.
+func (g *Game) emitBallotCastLocked(v *CouncilVote, voter uuid.UUID, i int) {
+	if v.Secret {
+		g.EmitEvent(Event{Kind: EventSecretVoteCast, Actor: voter, Source: v.Source})
+		return
+	}
+	ev := Event{Kind: EventVoteCast, Actor: voter, Source: v.Source, Amount: i, Label: v.Abstain}
+	if i >= 0 {
+		ev.Target, ev.Label = v.Options[i].subject(), v.Options[i].Label
+	}
+	g.EmitEvent(ev)
 }
 
 // RunVoteThenForEffect runs a vote's continuation directly, for a card
@@ -602,6 +687,9 @@ func (g *Game) RunVoteThenForEffect(then VoteThen, r VoteResult) error {
 // ability that called the vote has finished resolving either way.
 // Caller must hold g.mu.
 func (g *Game) finishVoteLocked(v *CouncilVote) error {
+	if v.Secret {
+		g.EmitEvent(revealEventOf(v))
+	}
 	g.EmitEvent(Event{
 		Kind:    EventVotesFinished,
 		Actor:   v.Controller,
@@ -610,6 +698,60 @@ func (g *Game) finishVoteLocked(v *CouncilVote) error {
 		Ballots: append([]VoteBallot(nil), v.Ballots...),
 	})
 	return g.runVoteThenLocked(v)
+}
+
+// revealEventOf is a secret vote's EventVotesRevealed (ADR 0180): every
+// ballot in the order cast, then one Option -1 ballot per vote for
+// nothing, with the options' labels beside them.
+func revealEventOf(v *CouncilVote) Event {
+	ballots := append([]VoteBallot(nil), v.Ballots...)
+	for _, voter := range v.Abstained {
+		ballots = append(ballots, VoteBallot{Voter: voter, Option: -1})
+	}
+	labels := make([]string, len(v.Options))
+	for i, o := range v.Options {
+		labels[i] = o.Label
+	}
+	return Event{
+		Kind:        EventVotesRevealed,
+		Actor:       v.Controller,
+		Source:      v.Source,
+		Amount:      len(v.Ballots),
+		Ballots:     ballots,
+		VoteOptions: labels,
+		Label:       v.Abstain,
+	}
+}
+
+// RevealedSecretVoteAfter reports whether a secret vote was revealed
+// by an event later than seq (ADR 0180 decision 4): the room refuses a
+// seat's undo of the commit that revealed one, which would let the last
+// voter vote again knowing every ballot. Takes g.mu (read): the caller
+// must not hold it.
+func (g *Game) RevealedSecretVoteAfter(seq uint64) bool {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	for i := len(g.Events) - 1; i >= 0; i-- {
+		ev := &g.Events[i]
+		if ev.Seq <= seq {
+			return false
+		}
+		if ev.Kind == EventVotesRevealed {
+			return true
+		}
+	}
+	return false
+}
+
+// LastEventSeq is the Seq of the newest event in the log, or 0 for an
+// empty log. Takes g.mu (read): the caller must not hold it.
+func (g *Game) LastEventSeq() uint64 {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	if n := len(g.Events); n > 0 {
+		return g.Events[n-1].Seq
+	}
+	return 0
 }
 
 // VotedFor lists the distinct options voter voted for in ballots, in

@@ -36,17 +36,30 @@ function hasWindow(): boolean {
   return typeof window !== "undefined";
 }
 
-function applyVolume(): void {
-  if (!audio) return;
-  // Pause when muted so we're not decoding a silent stream in the
-  // background tab. Unpause picks back up at the last position,
-  // which is the right UX for an ambient bed.
-  audio.volume = musicMultiplier;
-  if (muted || musicMultiplier === 0) {
-    if (!audio.paused) audio.pause();
-  } else if (armed && audio.paused) {
-    void audio.play().catch(() => {});
+// The Audio element (and so the 6 MB download) is created lazily, the
+// first time music is armed and actually wanted: never while muted or
+// at volume 0.
+function ensureAudio(): HTMLAudioElement {
+  if (!audio) {
+    audio = new Audio(AMBIENT_TRACK_URL);
+    audio.loop = true;
+    audio.preload = "auto";
   }
+  return audio;
+}
+
+function applyVolume(): void {
+  if (!armed) return;
+  if (muted || musicMultiplier === 0) {
+    // Pause when muted so we're not decoding a silent stream in the
+    // background tab. Unpause picks back up at the last position,
+    // which is the right UX for an ambient bed.
+    if (audio && !audio.paused) audio.pause();
+    return;
+  }
+  const a = ensureAudio();
+  a.volume = musicMultiplier;
+  if (a.paused) void a.play().catch(() => {});
 }
 
 export function setMusicVolumeMultiplier(v: number): void {
@@ -60,24 +73,17 @@ export function setMusicMuted(m: boolean): void {
 }
 
 // armMusicOnFirstGesture attaches a one-shot pointerdown + keydown
-// listener to window. On first of either, it creates the Audio
-// element and starts playback. Subsequent calls no-op so the App
+// listener to window. On first of either, it starts playback if music
+// is wanted (not muted, volume above 0); otherwise the Audio element
+// is not created until it is. Subsequent calls no-op so the App
 // shell can re-run it from a reactive effect without side effects.
 export function armMusicOnFirstGesture(): void {
   if (armed || !hasWindow()) return;
   armed = true;
   const start = () => {
-    if (!audio) {
-      audio = new Audio(AMBIENT_TRACK_URL);
-      audio.loop = true;
-      audio.preload = "auto";
-    }
-    applyVolume();
-    if (!muted && musicMultiplier > 0) {
-      void audio.play().catch(() => {});
-    }
     window.removeEventListener("pointerdown", start);
     window.removeEventListener("keydown", start);
+    applyVolume();
   };
   window.addEventListener("pointerdown", start, { once: true });
   window.addEventListener("keydown", start, { once: true });

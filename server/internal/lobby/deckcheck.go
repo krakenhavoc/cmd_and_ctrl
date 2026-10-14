@@ -407,7 +407,7 @@ func newDeckFetchError(rawURL string, err error) error {
 	switch v.Code {
 	case deck.CodeUnknownSource:
 		e.status = http.StatusBadRequest
-		e.msg = "That link is not a Moxfield or Archidekt deck. Use a link like https://moxfield.com/decks/… or https://archidekt.com/decks/…, or paste the list as text."
+		e.msg = "That link is not a Moxfield or Archidekt deck. Use a link like https://archidekt.com/decks/…, or paste the list as text."
 	case deck.CodeDeckNotFound:
 		e.status = http.StatusNotFound
 		e.msg = "That deck was not found. It may have been deleted, or the link has a typo."

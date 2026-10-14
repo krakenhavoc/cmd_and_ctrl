@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -374,6 +375,26 @@ func (m *Manager) Runners(gameID uuid.UUID) []*Runner {
 		return append([]*Runner(nil), bg.runners...)
 	}
 	return nil
+}
+
+// MaxOwed is the longest any live bot seat has had a legal move to make
+// and made none (Runner.OwedFor), zero when none is waiting. It backs
+// the cmdctrl_bot_seat_owed_seconds_max gauge: a seat that stays above
+// a couple of minutes is wedged. Runners are read under the manager's
+// lock and asked outside it.
+func (m *Manager) MaxOwed() time.Duration {
+	m.mu.Lock()
+	var runners []*Runner
+	for _, bg := range m.games {
+		runners = append(runners, bg.runners...)
+	}
+	m.mu.Unlock()
+	now := time.Now()
+	var longest time.Duration
+	for _, r := range runners {
+		longest = max(longest, r.OwedFor(now))
+	}
+	return longest
 }
 
 // Shutdown stops every game's runners.

@@ -33,6 +33,14 @@ var (
 		// says so rather than piling it into +Inf.
 		Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 30},
 	}, []string{"route"})
+
+	// httpRateLimited counts the 429s any handler or limiter wrote. The
+	// code label of cmdctrl_http_requests_total is a class (4xx), which
+	// hides a limiter turning people away from every other 4xx.
+	httpRateLimited = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "cmdctrl_http_rate_limited_total",
+		Help: "HTTP requests answered 429 Too Many Requests, by matched route pattern.",
+	}, []string{"route"})
 )
 
 // methodLabels is the closed set of the method label. Anything else a
@@ -98,6 +106,9 @@ func InstrumentHTTP(next http.Handler, untimed ...string) http.Handler {
 			}
 			route := holder.route()
 			httpRequests.WithLabelValues(route, methodLabel(r.Method), code).Inc()
+			if sw.status == http.StatusTooManyRequests {
+				httpRateLimited.WithLabelValues(route).Inc()
+			}
 			if !skip[route] {
 				httpSeconds.WithLabelValues(route).Observe(time.Since(start).Seconds())
 			}

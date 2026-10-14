@@ -116,28 +116,30 @@ jobs:
       client: ${{ steps.paths.outputs.client }}
       monitoring: ${{ steps.paths.outputs.monitoring }}
       tokens: ${{ steps.paths.outputs.tokens }}
+      cards: ${{ steps.paths.outputs.cards }}
     steps:
       - name: Classify changed paths
         id: paths
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const pr = context.payload.pull_request;
-            const set = (server, client, monitoring, tokens) => {
-              core.info(`server: ${server}, client: ${client}, monitoring: ${monitoring}, tokens: ${tokens}`);
+            const set = (server, client, monitoring, tokens, cards) => {
+              core.info(`server: ${server}, client: ${client}, monitoring: ${monitoring}, tokens: ${tokens}, cards: ${cards}`);
               core.setOutput('server', String(server));
               core.setOutput('client', String(client));
               core.setOutput('monitoring', String(monitoring));
               core.setOutput('tokens', String(tokens));
+              core.setOutput('cards', String(cards));
             };
             // `tokens` gates token-dump-check, a PR-only job: a push has
             // the nightly (e2e-nightly.yml) and no PR to fail early.
-            if (!pr) return set(true, true, true, false);
+            if (!pr) return set(true, true, true, false, false);
             const files = await github.paginate(github.rest.pulls.listFiles, {
               ...context.repo, pull_number: pr.number, per_page: 100,
             });
             // The API stops listing at 3000 files; build everything past that.
-            if (files.length < pr.changed_files) return set(true, true, true, true);
+            if (files.length < pr.changed_files) return set(true, true, true, true, true);
             const names = files.flatMap((f) => [f.filename, f.previous_filename]).filter(Boolean);
             const frontend = (n) => n.startsWith('client/') || n.startsWith('tests-e2e/');
             const shared = (n) => n.startsWith('.github/') || !n.includes('/');
@@ -148,8 +150,12 @@ jobs:
             // (#2158), plus the dump refresh script and this workflow.
             const tokens = (n) => /^server\/internal\/cards\/effects\/token[^/]*\.go$/.test(n) ||
               n === 'scripts/scryfall-refresh.sh' || n === '.github/workflows/ci-cd.yml';
+            // The catalog and the curated decks (#3348): `cards` gates
+            // purpose-audit, a PR-only job like token-dump-check.
+            const cards = (n) => /^server\/internal\/(cards|decks)\//.test(n) ||
+              n === 'scripts/scryfall-refresh.sh' || n === '.github/workflows/ci-cd.yml';
             set(names.some((n) => !frontend(n)), names.some((n) => frontend(n) || shared(n)),
-              names.some(monitoring), names.some(tokens));
+              names.some(monitoring), names.some(tokens), names.some(cards));
 
   server-check:
     needs: changes
@@ -157,7 +163,7 @@ jobs:
     runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # The cache is on for a GitHub-hosted runner only (#1433). A
       # hosted runner starts cold, so restoring the module and build
@@ -174,7 +180,7 @@ jobs:
       # path is inside the workspace, not $HOME.
       - &setup-go
         name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.27"
           cache: ${{ runner.environment == 'github-hosted' }}
@@ -266,6 +272,17 @@ jobs:
         # and lint, vet, test and build all use one toolchain.
         run: make lint
 
+      # Known vulnerabilities the server can reach (#3335), in this
+      # job's Go standard library and in go.mod's modules. setup-go's
+      # "1.27" is the newest patch release, so a standard-library
+      # finding usually means a patch release came out after the
+      # runner's cached toolchain did, and a re-run fixes it. A module
+      # finding needs a `go get` of the fixed version.
+      # server/Makefile pins the version.
+      - name: Server — govulncheck
+        working-directory: server
+        run: make vulncheck
+
   # Sharded (#2766). One `go test ./...` lasted as long as its slowest
   # package (internal/game, ~8.5 min under -race on a 4-core runner),
   # ~14 min in all. Each shard is now its own job on its own runner,
@@ -306,7 +323,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - *setup-go
       - *free-disk
@@ -451,7 +468,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - *setup-go
 
@@ -460,7 +477,7 @@ jobs:
         run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Scryfall bulk data
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: data/scryfall
           key: scryfall-default-cards-${{ steps.scryfall-stamp.outputs.date }}
@@ -476,13 +493,60 @@ jobs:
           CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
         run: go test ./internal/cards/effects/ -run RealDumpEveryTokenTemplate -v -count=1
 
+  # The realdump purpose audit on the PR that touches a card (#3348).
+  # TestRealDumpPurposeAudit (with its two siblings in
+  # realdump_purpose_manual_test.go) skips without CMDCTRL_SCRYFALL_DUMP,
+  # so PR CI never ran it: card PRs merged green and then failed the
+  # nightly's realdump job (#2747, #2771, #2822, #2855, #2866, #3007,
+  # #3138, #3191). Same cost policy and dump cache as token-dump-check
+  # above; it runs only when `changes` says server/internal/cards/ or
+  # server/internal/decks/ (or the refresh script or this workflow)
+  # changed.
+  #
+  # NOT in cmdctrl-ci's `needs`, for the same reason as token-dump-check:
+  # a red run shows on the PR but does not block it, and a Scryfall
+  # outage cannot hold up merges. Promote it by adding it to that
+  # job's list. Holds no deploy secrets: a read-only checkout and the
+  # public Scryfall dump.
+  purpose-audit:
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.cards == 'true'
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - *setup-go
+
+      - name: Compute Scryfall cache key
+        id: scryfall-stamp
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Scryfall bulk data
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: data/scryfall
+          key: scryfall-default-cards-${{ steps.scryfall-stamp.outputs.date }}
+          restore-keys: |
+            scryfall-default-cards-
+
+      - name: Refresh Scryfall bulk data
+        run: scripts/scryfall-refresh.sh
+
+      - name: Purpose audit — match the catalog against the real Scryfall dump
+        working-directory: server
+        env:
+          CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
+        run: go test ./internal/decks/ -run RealDumpPurpose -v -count=1
+
   client:
     needs: changes
     if: needs.changes.outputs.client == 'true'
     runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # npm cache on a hosted runner only, for the same reason as "Set
       # up Go" -- ~/.npm persists on a self-hosted runner and restoring
@@ -492,7 +556,7 @@ jobs:
       # the input is how you turn it off.
       - &setup-node
         name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
           # 'npm' on a hosted runner, and the empty string -- which
@@ -535,7 +599,7 @@ jobs:
     runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - *setup-go
       - *free-disk
@@ -568,30 +632,34 @@ jobs:
 
       # Only the CD jobs in this same run download these. develop sees
       # hundreds of pushes a week, so anything longer than a day piles
-      # up gigabytes of dead artifacts against the storage quota.
+      # up gigabytes of dead artifacts against the storage quota. main
+      # moves only on a promotion, so its builds are kept for a week
+      # (#3339): the exact binaries of recent releases stay downloadable
+      # from the run page if a rollback needs more than the one release
+      # kept on the host (docs/environments.md#rolling-back-production).
       - name: Upload server binary
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cmdctrl-server-bin
           path: server/bin/cmd_and_ctrl-server
-          retention-days: 1
+          retention-days: ${{ github.ref == 'refs/heads/main' && 7 || 1 }}
 
       - name: Upload bot binary
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cmdctrl-bot-bin
           path: server/bin/cmd_and_ctrl-bot
-          retention-days: 1
+          retention-days: ${{ github.ref == 'refs/heads/main' && 7 || 1 }}
 
       - name: Upload client dist
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cmdctrl-client-dist
           path: client/dist/
-          retention-days: 1
+          retention-days: ${{ github.ref == 'refs/heads/main' && 7 || 1 }}
 
   # The monitoring config (ADR 0123 §11): the alert rules and dashboards
   # the monitoring VM syncs from main (deploy/monitoring/), and the Alloy
@@ -617,7 +685,7 @@ jobs:
       ALLOY_IMAGE: grafana/alloy:v1.20.1
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Rules — promtool check rules
         run: |
@@ -746,7 +814,7 @@ jobs:
       cancel-in-progress: false
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Full history: the non-fast-forward retry path below needs
           # to `git reset --hard` onto whatever origin/<branch> becomes
@@ -759,7 +827,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.27"
           cache: ${{ runner.environment == 'github-hosted' }}
@@ -956,17 +1024,15 @@ jobs:
   # develop red with the broken build on the preview until the fix
   # lands, which is what the preview is for.
   cmdctrl-cd-dev:
-    # Which self-hosted runners may take a deploy (#3335). Until the
-    # repository variable CMDCTRL_DEPLOY_RUNNER_LABEL is set this is any
-    # self-hosted runner, exactly as before. Once the owner has given the
-    # chosen runners that label (Settings -> Actions -> Runners) and set
-    # the variable to it, a deploy runs only there. Label first, variable
-    # second: the other order queues every deploy with no runner to take
-    # it. No test job uses a self-hosted runner any more (the nightly's
-    # moved to hosted in the same change), so the deploy runners run
-    # only this, cmdctrl-cd-prod and scryfall-refresh.yml.
+    # Only the self-hosted runners labelled `deploy` take a deploy
+    # (#3335, ADR 0181). The label is written here, not read from a
+    # variable: an unset variable used to mean "any self-hosted runner",
+    # so deleting it quietly reopened the hole. No test job uses a
+    # self-hosted runner, so the deploy runners run only this,
+    # cmdctrl-cd-prod and scryfall-refresh.yml. Never put the `deploy`
+    # label on a runner that runs anything else.
     # docs/environments.md#runners-and-credentials.
-    runs-on: ${{ vars.CMDCTRL_DEPLOY_RUNNER_LABEL && fromJSON(format('["self-hosted","{0}"]', vars.CMDCTRL_DEPLOY_RUNNER_LABEL)) || 'self-hosted' }}
+    runs-on: [self-hosted, deploy]
     needs: build
     # actions: write is only for deleting this run's artifacts at the end.
     permissions:
@@ -1031,7 +1097,7 @@ jobs:
       # $GITHUB_ENV, so declaring either here would pin it.)
     steps: &cd-steps
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # The deploy target is resolved in shell rather than with a
       # `${{ cond && vars.A || vars.B }}` ternary, on purpose. That
@@ -1098,35 +1164,51 @@ jobs:
           echo "Env file:      ${ENV_FILE}"
 
       # The key krkn logs in with, from this job's environment (`dev` or
-      # `prod`), not from the runner's ~/.ssh (#3335). Each environment
-      # admits only its own branch, so a topic branch, a pull request or
-      # a nightly test job never sees it. Unset falls back to the
-      # runner's own key with a ::warning::; the script says why.
+      # `prod`), not from the runner's ~/.ssh (#3335, ADR 0181). Each
+      # environment admits only its own branch, so a topic branch, a
+      # pull request or a nightly test job never sees it. Unset fails
+      # the deploy; the script says why.
       - name: Load the deploy SSH key
         env:
           DEPLOY_SSH_KEY: ${{ secrets.CMDCTRL_DEPLOY_SSH_KEY }}
         run: scripts/load-deploy-key.sh
 
       - name: Download server binary
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: cmdctrl-server-bin
           path: server/bin
 
       - name: Download bot binary
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: cmdctrl-bot-bin
           path: server/bin
 
       - name: Download client dist
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: cmdctrl-client-dist
           path: client/dist
 
       - name: Restore server binary exec bit
         run: chmod +x server/bin/cmd_and_ctrl-server server/bin/cmd_and_ctrl-bot
+
+      # Set the live release aside before replacing it (#3339), so the
+      # rollback-prod workflow can put it back in minutes. One release
+      # back, on the host, under ${DEPLOY_ROOT}; the script says what and
+      # why it skips a re-run of the same release.
+      - name: Keep the previous release
+        run: |
+          server_sha=$(sha256sum server/bin/cmd_and_ctrl-server | cut -d' ' -f1)
+          bot_sha=-
+          if [ "${IS_DEV}" != "true" ]; then
+            bot_sha=$(sha256sum server/bin/cmd_and_ctrl-bot | cut -d' ' -f1)
+          fi
+          client_sha=$(cd client/dist && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "DEPLOY_ROOT=${DEPLOY_ROOT} WEB_ROOT=${WEB_ROOT} bash -s -- ${server_sha} ${bot_sha} ${client_sha}" \
+            < scripts/keep-previous-release.sh
 
       - name: Deploy server binary
         run: |
@@ -1982,6 +2064,15 @@ jobs:
           esac
           echo "Confirmed: ${CMDCTRL_HOST} is running ${SERVICE} as ${APP_ENV}."
 
+      # One authenticated request after the restart (#3339): GET /config
+      # above proves the process is listening, this proves it can open its
+      # database and issue a session. Same script as the rollback workflow.
+      - name: Authenticated smoke request
+        run: |
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "ENV_FILE=${ENV_FILE} LOCAL_PORT=${LOCAL_PORT} APP_ENV=${APP_ENV} bash -s" \
+            < scripts/smoke-release.sh
+
       # Nightly off-node backup of the data dir to Cloudflare R2 with
       # restic (#1031, ADR 0051 decision 1). Runs on BOTH hosts, each into
       # its own bucket. Runbook: docs/environments.md#backups.
@@ -2229,8 +2320,12 @@ jobs:
       # ~30 times a day, so even 1-day retention overflows it. Drop the
       # build artifacts once deployed. Skipped on failure so a re-run of
       # this job can still download them.
+      #
+      # Not on main (#3339): production builds keep their 7 days, a few a
+      # week at most, so they stay downloadable for a rollback.
       - name: Delete this run's artifacts
-        uses: actions/github-script@v9
+        if: github.ref != 'refs/heads/main'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const { data } = await github.rest.actions.listWorkflowRunArtifacts({
@@ -2252,7 +2347,7 @@ jobs:
   # promotion, so it can afford to wait.
   cmdctrl-cd-prod:
     # Same runners as cmdctrl-cd-dev; see there.
-    runs-on: ${{ vars.CMDCTRL_DEPLOY_RUNNER_LABEL && fromJSON(format('["self-hosted","{0}"]', vars.CMDCTRL_DEPLOY_RUNNER_LABEL)) || 'self-hosted' }}
+    runs-on: [self-hosted, deploy]
     needs: [build, cmdctrl-ci]
     permissions:
       contents: read

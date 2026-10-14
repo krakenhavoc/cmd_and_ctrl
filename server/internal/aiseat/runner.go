@@ -248,6 +248,10 @@ type Runner struct {
 	idle   bool
 	wake   <-chan struct{}
 
+	// owedSince is when this seat started owing an action it has not
+	// taken: unix nanoseconds, 0 when it owes nothing. See OwedFor.
+	owedSince atomic.Int64
+
 	// stepped is set by NewStepped and never changes: the runner has
 	// no goroutine and acts only when Step is called (#1503).
 	stepped bool
@@ -361,6 +365,34 @@ func (r *Runner) setIdle(v bool) {
 
 // Seat is the seat this runner plays.
 func (r *Runner) Seat() uuid.UUID { return r.seat }
+
+// OwedFor is how long this seat has had a legal move to make and made
+// none, as of now: zero while it owes nothing (no legal move, a
+// decline, or a move just applied) and for a runner that has exited.
+// A seat stuck mid-decision (a hung model call), one that ran out of
+// answers (#544) and one holding for the loop breaker all keep owing,
+// so the figure growing is the sign of a wedged bot (the monitoring
+// gauge cmdctrl_bot_seat_owed_seconds_max reads it).
+func (r *Runner) OwedFor(now time.Time) time.Duration {
+	select {
+	case <-r.done:
+		return 0
+	default:
+	}
+	since := r.owedSince.Load()
+	if since == 0 {
+		return 0
+	}
+	return max(0, now.Sub(time.Unix(0, since)))
+}
+
+// markOwed notes that the seat has a legal move to make, keeping the
+// earlier time if it already owed.
+func (r *Runner) markOwed() { r.owedSince.CompareAndSwap(0, time.Now().UnixNano()) }
+
+// clearOwed notes that nothing is owed: progress was made, or nothing
+// is waiting on this seat.
+func (r *Runner) clearOwed() { r.owedSince.Store(0) }
 
 // PolicyName is the name of the policy actually driving this seat —
 // "random", "heuristic", "assisted", "strong".
@@ -498,8 +530,10 @@ func (r *Runner) step(ctx context.Context) bool {
 		// list and pays for no second enumeration.
 		moves := legal.EnumerateFor(r.room.Game, r.seat)
 		if len(moves) == 0 {
+			r.clearOwed()
 			return true
 		}
+		r.markOwed()
 		// ADR 0167 §7: the moves for a seat whose turn this bot is
 		// playing go to controlledTurnPolicy first. It never declines,
 		// so a decline of the seat's own below cannot leave the
@@ -512,6 +546,7 @@ func (r *Runner) step(ctx context.Context) bool {
 			}
 			if applied {
 				rejects = 0
+				r.clearOwed()
 				continue
 			}
 			rejects++
@@ -529,6 +564,7 @@ func (r *Runner) step(ctx context.Context) bool {
 			moves, _ = splitControlledTurnMoves(r.room.Game, r.seat,
 				legal.EnumerateForWithOptions(r.room.Game, r.seat, opts))
 			if len(moves) == 0 {
+				r.clearOwed()
 				return true
 			}
 		}
@@ -552,6 +588,7 @@ func (r *Runner) step(ctx context.Context) bool {
 		// against a stale move list. Bounded by MaxActionsPerWake like
 		// everything else in this loop.
 		if r.improvise(ctx, in, started, minThink, maxThink) {
+			r.clearOwed()
 			continue
 		}
 		out := r.decide(ctx, in, maxThink)
@@ -561,6 +598,7 @@ func (r *Runner) step(ctx context.Context) bool {
 			// hold priority (decide turns a decline into a pass when
 			// one is on offer), so nothing is waiting on us. Sleep
 			// until the next commit.
+			r.clearOwed()
 			r.log.Debug("bot declines", "reason", reason)
 			r.observe(in, out, nil, 0, false, nil)
 			return true
@@ -692,6 +730,7 @@ func (r *Runner) step(ctx context.Context) bool {
 			continue
 		}
 		rejects = 0
+		r.clearOwed()
 		r.applied.Add(1)
 		r.observe(in, out, &mv, seq, true, nil)
 		if mv.Kind == legal.KindPass {

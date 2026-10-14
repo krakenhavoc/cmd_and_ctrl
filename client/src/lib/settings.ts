@@ -455,7 +455,10 @@ export function defaultSettings(): Settings {
       muted: false,
       masterVolume: 80,
       effectsVolume: 100,
-      musicVolume: 60,
+      // Music is off for a new visitor (#3344). Sound effects stay on:
+      // they follow `muted`, which is left alone. A returning visitor's
+      // stored musicVolume is merged over this default, so it stays.
+      musicVolume: 0,
     },
     animations: {
       // If the OS asks for reduced motion, we start with animations

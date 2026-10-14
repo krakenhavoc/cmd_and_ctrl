@@ -164,9 +164,9 @@ refresh) checks the host's key against a repo variable (#1739):
 `scripts/pin-host-key.sh` writes the variable into a `known_hosts`
 file private to the job and connects with `StrictHostKeyChecking=yes`
 against that file only. Nothing reads a runner's own
-`~/.ssh/known_hosts`. That matters because these jobs run on any of the
-self-hosted runners, and before this each runner held its own copy of
-the old key.
+`~/.ssh/known_hosts`. That matters because these jobs can run on any
+runner labelled `deploy`, and before this each runner held its own copy
+of the old key.
 
 **A rebuild changes the host key.** Every deploy then fails at its
 first ssh with `REMOTE HOST IDENTIFICATION HAS CHANGED`. That is the
@@ -190,10 +190,9 @@ check working: nothing trusts a new key until you do. After a
    ```
 4. Re-run the failed deploy (`gh run rerun <id> --failed`).
 
-A variable that is unset falls back to the old behaviour: the runner's
-own `known_hosts` with `accept-new`, plus a `::warning::` naming the
-variable. A value that is not a parseable public key fails the job
-before any ssh.
+A variable that is unset, or not a parseable public key, fails the job
+before any ssh ([ADR 0181](decisions/0181-deploy-credentials-fail-closed.md)).
+There is no `accept-new` fallback any more.
 
 ### Secrets
 
@@ -207,9 +206,9 @@ before any ssh.
 | this repo | `CMDCTRL_HOST`, `CMDCTRL_DEV_HOST` | Actions **variables**, not secrets; CD fails the run if the one for the branch is unset, or if the two are equal |
 | this repo | `CMDCTRL_PUBLIC_BASE_URL`, `CMDCTRL_DEV_PUBLIC_BASE_URL` | variables; default to the two fqdns |
 | this repo | `CMDCTRL_DISCORD_REDIRECT_URI`, `CMDCTRL_DEV_DISCORD_REDIRECT_URI` | variables; no default — unset means sign-in stays off on that host |
-| **environments `prod` and `dev`** | `CMDCTRL_DEPLOY_SSH_KEY` | environment secret, one per environment; the private key the deploy jobs (and, from `prod`, the Scryfall refresh) log in to the host as `krkn` with. Unset falls back to the runner's own `~/.ssh` key with a `::warning::`. See [Runners and credentials](#runners-and-credentials) |
-| this repo, or (preferred, #3335) **environments `prod` and `dev`** | `CMDCTRL_DISCORD_CLIENT_ID`, `CMDCTRL_DISCORD_CLIENT_SECRET`, `CMDCTRL_GITHUB_TOKEN` | secrets; shared by both hosts. Only the deploy jobs read them, so they can live in both environments instead of at repository level, where any branch's workflow run can read them |
-| this repo, or (preferred, #3335) **environment `prod`** | `CMDCTRL_DISCORD_BOT_TOKEN` | secret; **production only**, written to **both** `bot.env` (the gateway bot) and `/etc/cmd_and_ctrl/env` (the server's DM-invite route — see below). Unset skips the bot env sync with a notice; set turns a host that cannot run the bot into a CD warning (never a failure) |
+| **environments `prod` and `dev`** | `CMDCTRL_DEPLOY_SSH_KEY` | environment secret, one per environment; the private key the deploy jobs (and, from `prod`, the Scryfall refresh) log in to the host as `krkn` with. Unset fails the job ([ADR 0181](decisions/0181-deploy-credentials-fail-closed.md)). See [Runners and credentials](#runners-and-credentials) |
+| **environments `prod` and `dev`** | `CMDCTRL_DISCORD_CLIENT_ID`, `CMDCTRL_DISCORD_CLIENT_SECRET`, `CMDCTRL_GITHUB_TOKEN` | secrets; the same values in both environments, never at repository level, where any branch's workflow run could read them (#3335) |
+| **environment `prod`** | `CMDCTRL_DISCORD_BOT_TOKEN` | secret; **production only**, written to **both** `bot.env` (the gateway bot) and `/etc/cmd_and_ctrl/env` (the server's DM-invite route — see below). Unset skips the bot env sync with a notice; set turns a host that cannot run the bot into a CD warning (never a failure) |
 | this repo | `CMDCTRL_DISCORD_APP_ID`, `CMDCTRL_DISCORD_GUILD_IDS` | variables; **production only**, written to `bot.env`. The app ID equals the sign-in client ID; guild IDs are comma-separated |
 | this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_ADMIN_USER_IDS` | variable; comma-separated Discord user snowflakes. The **server's admin allowlist** on **both** hosts ([ADR 0110](decisions/0110-remember-me.md) §3; a listed person is an admin only while they have admin mode on, [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §2), written to `/etc/cmd_and_ctrl/env` on every deploy, **empty included**, by "Sync server env (admin allowlist)", which refuses a malformed value before writing it. On production it is also written to `bot.env`: who may run `/c2-end` (#614). An environment-level value overrides the repo-level one, so the two hosts can differ. Unset is supported: only the shared token is admin, and `/c2-end` refuses every caller rather than failing open |
 | this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID`, `CMDCTRL_DISCORD_PLAYER_ROLE_ID` | variables; Discord snowflakes. The **sign-up gate** on **both** hosts ([ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md) §1): with both set, an account needs that role (Elder Dragon Highlander on the C2 server) in that server. Written to `/etc/cmd_and_ctrl/env` on every deploy, **empty included**, by "Sync server env (community)", which refuses one without the other or a malformed id before writing. Both unset is supported: the gate is off |
@@ -354,12 +353,22 @@ binary runs where a deploy credential is. Keep it that way: a new job
 that wants a self-hosted runner and is not a deploy is a design
 question, not a `runs-on` line.
 
-The deploy jobs run on the runners that carry the label named by the
-repository variable `CMDCTRL_DEPLOY_RUNNER_LABEL` (`deploy`). Unset,
-they run on any self-hosted runner, as before #3335. To set it, label
-the runners first (Settings → Actions → Runners → the runner → Labels),
-then set the variable. The other order queues every deploy with no
-runner to take it. Unsetting the variable is the undo.
+The deploy jobs run only on the runners labelled `deploy`
+(`runs-on: [self-hosted, deploy]`, written into each job). Today that
+is `gunner-0` and `gunner-1`. To add or swap a deploy runner, give it
+the label (Settings → Actions → Runners → the runner → Labels) before
+taking the label off the old one; with no runner labelled `deploy`,
+every deploy queues. The label used to come from the repository
+variable `CMDCTRL_DEPLOY_RUNNER_LABEL`, and unset meant any self-hosted
+runner. That fallback is gone
+([ADR 0181](decisions/0181-deploy-credentials-fail-closed.md)) and the
+variable is unused.
+
+Any new job that must reach the hosts (a rollback, a backup check) is
+a deploy job and follows the same three rules: `runs-on:
+[self-hosted, deploy]`, `environment: dev` or `prod`, and
+`scripts/pin-host-key.sh` then `scripts/load-deploy-key.sh` before its
+first ssh, with the key removed in an `if: always()` last step.
 
 Two settings still send test jobs to self-hosted runners: making the
 repository private (the `github.event.repository.private` fallback)
@@ -369,13 +378,22 @@ included if the runners share a host or a user. Do neither without
 first giving test jobs runners of their own, on a machine or user that
 holds no deploy key.
 
+**Actions.** Every workflow uses only GitHub's own `actions/*`, and
+the repository allows no others (Settings → Actions → General). Each
+`uses:` is pinned to a full commit SHA, with its release tag in a
+trailing comment (`actions/checkout@<sha> # v7.0.1`), so a moved tag
+cannot change what runs in a job that holds a deploy key. Dependabot
+(`.github/dependabot.yml`) opens one grouped PR into `develop` a week
+that bumps the SHAs and their comments. Pin a new `uses:` line the
+same way, with the SHA from `gh api repos/<owner>/<repo>/commits/<tag> -q .sha`.
+
 **Credentials.**
 
 | Credential | Where it lives | Who can read it |
 |---|---|---|
-| SSH key for `krkn` on each host | environment secret `CMDCTRL_DEPLOY_SSH_KEY` in `dev` and `prod` (until set: the runner user's `~/.ssh`) | a job that names the environment, on that environment's branch: `develop` for `dev`, `main` for `prod` |
+| SSH key for `krkn` on each host | environment secret `CMDCTRL_DEPLOY_SSH_KEY` in `dev` and `prod`; each host's `authorized_keys` holds only its own environment's key and the owner's | a job that names the environment, on that environment's branch: `develop` for `dev`, `main` for `prod` |
 | Host public keys | variables `CMDCTRL_HOST_KEY`, `CMDCTRL_DEV_HOST_KEY` | public; see [SSH host keys](#ssh-host-keys) |
-| Server and bot secrets | `prod` and `dev` environment secrets (repository secrets until moved) | as above. A repository secret is readable by any same-repository run, on any branch |
+| Server and bot secrets | `prod` and `dev` environment secrets only; the repository-level copies were deleted on 2026-10-14 | as above. Never add one back at repository level: a repository secret is readable by any same-repository run, on any branch |
 | Census deploy key | environment secret `CENSUS_DEPLOY_KEY` in `census` | `census-publish`, on `develop` |
 | Alert webhook | repository secret `CMDCTRL_ALERT_DISCORD_WEBHOOK` | any same-repository run. `uptime.yml` runs every 10 minutes and on pull requests, so it has no environment and the secret stays here; it can only post to the one Discord channel |
 
@@ -821,6 +839,43 @@ sudo systemctl start cmd-and-ctrl
 
 Check `hostname` first. The command is identical on both boxes, which
 is convenient right up until it isn't.
+
+### Rolling back production
+
+(#3339.) Every deploy sets the release it replaces aside on the host, under
+`/opt/cmd_and_ctrl` (owned by `krkn`): `server/bin/cmd_and_ctrl-server.prev`,
+`bot/bin/cmd_and_ctrl-bot.prev` (production) and `prev/client/` (a copy of
+the web root). One release back, no more. A re-run of the same release
+(a failed job, a retry) leaves them alone, so they always hold the last
+*different* release. `scripts/keep-previous-release.sh` does it.
+
+To undo a bad production deploy: Actions, "cmd_and_ctrl rollback prod",
+Run workflow on branch `main`, type `rollback`. It uses the `prod`
+environment, so it has the same deploy key, branch policy and reviewers
+as `cmdctrl-cd-prod`. It swaps server, client and bot back
+(`scripts/rollback-release.sh`), restarts, and runs the authenticated
+smoke request (`scripts/smoke-release.sh`: `GET /config` reports the
+right env, then an admin login and `GET /games`). That is the same
+request every deploy now makes after its restart. No build, no CI.
+
+- **It is a swap.** The release you rolled back from becomes the new
+  `.prev`, so running it again rolls forward.
+- **Revert main next.** The rollback moves the host, not the branch; the
+  next promotion would redeploy the bad release. Open a `hotfix/*` PR
+  reverting it first.
+- **The database is not rolled back.** If the bad release ran a migration
+  the older binary may refuse to start, and the smoke request then fails.
+  Follow "Rolling back past ..." below for that migration (stop the
+  service, run its steps, start it), then re-run the smoke by hand.
+- **Nothing kept yet?** On a host that has not deployed since #3339 landed
+  there is no `.prev` and the job fails saying so. The first deploy
+  after it writes one.
+- **Further back than one release.** `main` builds are kept 7 days as
+  workflow artifacts (develop's are still deleted after the deploy): download
+  `cmdctrl-server-bin` from the run page, or revert and promote.
+- **A hand rollback** is the same swap: `mv` each `.prev` over its file,
+  `rsync -a --delete /opt/cmd_and_ctrl/prev/client/ /var/www/cmdctrl-client/`,
+  `sudo systemctl restart cmd-and-ctrl`.
 
 **Rolling back past the lobby database.** Since S34 sub-PR 3
 ([ADR 0051](decisions/0051-user-database.md) decision 4) the lobby's

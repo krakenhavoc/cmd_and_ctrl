@@ -112,6 +112,10 @@ const LOG_TONE: Record<LogKind, string> = {
   ring_tempted: "tone-cast",
   // ADR 0146: a vote is a play the table watches as it is cast.
   vote: "tone-cast",
+  // ADR 0180: a secret ballot says only that someone voted, so it is
+  // quiet; the reveal is the play the table watches.
+  vote_secret: "tone-quiet",
+  votes_revealed: "tone-cast",
   // ADR 0150 §5: who stopped an "unless any player pays" effect is a
   // play the table watches; each decline is quieter.
   any_player_paid: "tone-cast",

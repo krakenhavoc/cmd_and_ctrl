@@ -404,6 +404,47 @@ describe("voteRequest and gameOverRequest", () => {
     expect(ballotNote(choice({ kind: "option_pick" }), 0)).toBeUndefined();
   });
 
+  it("a secret vote (ADR 0180) shows who has voted, the viewer's own vote, and no counts", () => {
+    const seats = [
+      { id: "a", name: "Ann" },
+      { id: "b", name: "Bob" },
+      { id: "c", name: "Cy" },
+    ];
+    const secretBallot = (ballots: { voter: string; option: number }[]) =>
+      choice({
+        kind: "option_pick",
+        chooser: "b",
+        reason: "Truth or Consequences — secretly vote for truth or consequences",
+        pick_options: [{ label: "truth" }, { label: "consequences" }],
+        council_vote: {
+          controller: "a",
+          voter: "b",
+          options: ["truth", "consequences"],
+          tally: [0, 0],
+          ballots,
+          offered: [0, 1],
+          secret: true,
+          voted: ["a"],
+        },
+      });
+    // Ann has voted; her wire carries her own ballot only.
+    const ann = councilVoteRequest(secretBallot([{ voter: "a", option: 1 }]), "a", seats);
+    expect(ann?.label).toBe("secret vote");
+    expect(ann?.detail).toBe(
+      "Bob is voting in secret · 1 voted so far · you voted for consequences, waiting for the others",
+    );
+    expect(ann?.row?.map((r) => [r.label, r.note])).toEqual([
+      ["truth", undefined],
+      ["consequences", "your vote"],
+    ]);
+    // Cy's wire carries no ballot: no counts, no marks.
+    const cy = councilVoteRequest(secretBallot([]), "c", seats);
+    expect(cy?.detail).toBe("Bob is voting in secret · 1 voted so far");
+    expect(cy?.row?.map((r) => r.note)).toEqual([undefined, undefined]);
+    // Bob's own ballot shows no tally either.
+    expect([0, 1].map((i) => ballotNote(secretBallot([]), i))).toEqual([undefined, undefined]);
+  });
+
   it("names who is choosing for whom when someone else casts the ballot (Illusion of Choice)", () => {
     const ballot = choice({
       kind: "option_pick",

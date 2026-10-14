@@ -1,0 +1,96 @@
+name: cmd_and_ctrl rollback prod
+
+permissions:
+  contents: read
+
+# One-click production rollback (#3339). Puts back the release CD set
+# aside as `.prev` on the host before the last deploy (server, client and
+# bot together), restarts, and runs the same authenticated smoke request
+# CD does. No build, no artifact, no CI: it is a few seconds of swapping
+# files on the host. Runbook: docs/environments.md#rolling-back-production.
+#
+# Run it from main: Actions -> "cmd_and_ctrl rollback prod" -> Run
+# workflow, branch main, type `rollback`. The job names the `prod`
+# environment, so it gets production's deploy key from the same place,
+# under the same branch policy (main only) and the same required
+# reviewers, if any, as cmdctrl-cd-prod (#3335).
+#
+# It is a swap: run it again to roll forward. Afterwards main still holds
+# the bad release, so the next promotion would redeploy it. Revert it on
+# main (a hotfix/* PR) before anything else promotes.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type 'rollback' to swap production back to the previous release"
+        required: true
+        type: string
+
+concurrency:
+  # The deploy's own group (ci-cd.yml, cmdctrl-cd-<ref>) so a rollback
+  # and a deploy never touch the host at once. Never cancelled mid-swap.
+  group: cmdctrl-cd-refs/heads/main
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    # The deploy runners only, like cmdctrl-cd-prod (#3335, ADR 0181);
+    # see cmdctrl-cd-dev in ci-cd.yml.
+    runs-on: [self-hosted, deploy]
+    if: github.ref == 'refs/heads/main' && inputs.confirm == 'rollback'
+    environment: prod
+    env:
+      CMDCTRL_HOST: ${{ vars.CMDCTRL_HOST }}
+      DEPLOY_ROOT: /opt/cmd_and_ctrl
+      WEB_ROOT: /var/www/cmdctrl-client
+      ENV_FILE: /etc/cmd_and_ctrl/env
+      SERVICE: cmd-and-ctrl
+      LOCAL_PORT: "8080"
+      # SSH_OPTS is NOT declared here: the pin step exports it through
+      # $GITHUB_ENV, which a job-level value would override (#1739).
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify CMDCTRL_HOST is set
+        run: |
+          if [ -z "${CMDCTRL_HOST}" ]; then
+            echo "::error::Repo variable CMDCTRL_HOST is not set."
+            exit 1
+          fi
+          echo "Rolling back production on krkn@${CMDCTRL_HOST}"
+
+      - name: Pin the host key
+        env:
+          HOST_KEY: ${{ vars.CMDCTRL_HOST_KEY }}
+        run: scripts/pin-host-key.sh "${CMDCTRL_HOST}" CMDCTRL_HOST_KEY
+
+      - name: Load the deploy SSH key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.CMDCTRL_DEPLOY_SSH_KEY }}
+        run: scripts/load-deploy-key.sh
+
+      - name: Swap in the previous release
+        run: |
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "DEPLOY_ROOT=${DEPLOY_ROOT} WEB_ROOT=${WEB_ROOT} SERVICE=${SERVICE} bash -s" \
+            < scripts/rollback-release.sh
+
+      - name: Verify service is active
+        run: |
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "systemctl is-active ${SERVICE} && systemctl status ${SERVICE} --no-pager --lines=10"
+
+      - name: Authenticated smoke request
+        run: |
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "ENV_FILE=${ENV_FILE} LOCAL_PORT=${LOCAL_PORT} APP_ENV=prod bash -s" \
+            < scripts/smoke-release.sh
+
+      - name: Next steps
+        run: |
+          echo "::warning title=main still has the bad release::Production is rolled back, but main is not. Revert the bad change on main before the next promotion, or it deploys again. Running this workflow again swaps forward."
+
+      - name: Remove the deploy SSH key
+        if: always()
+        run: rm -f "${RUNNER_TEMP}/deploy_ssh_key"

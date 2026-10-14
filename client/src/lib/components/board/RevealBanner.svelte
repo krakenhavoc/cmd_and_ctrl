@@ -190,7 +190,11 @@
   >
     <span class="label gold">
       <Icon name="spark" size={12} />
-      {cue.log.kind === "roll" ? "rolled" : "flipped"}
+      {cue.log.kind === "roll"
+        ? "rolled"
+        : cue.log.kind === "votes_revealed"
+          ? "votes revealed"
+          : "flipped"}
     </span>
     <span class="text"><strong>{cue.log.text}</strong></span>
     <button
