@@ -654,6 +654,16 @@ type Spec struct {
 	//	SpellsYouCastHaveDelve: true, // Teval, Arbiter of Virtue
 	SpellsYouCastHaveDelve bool
 
+	// SplitSecondGrants declares a permanent's "<spells> you control have
+	// split second" (CR 702.61; Samut, Tyrant of Naktamun; #3502). A
+	// static ability of the permanent (CR 604.1), read LIVE off the
+	// battlefield (CR 611.3a): a spell its controller controls has split
+	// second for as long as the permanent is there with its abilities,
+	// so it stops when the source leaves and starts when one arrives
+	// under a spell already on the stack. Not stamped at cast. Build one
+	// with InstantAndSorcerySpellsYouControlHaveSplitSecond.
+	SplitSecondGrants []game.SplitSecondGrant
+
 	// GrantedOptionalCosts are a permanent's "<spells> you cast have
 	// <optional cost>" (#3245): Silverquill, the Disputant's casualty 1.
 	// Build each with SpellsYouCastHave (casualty.go). Read from the

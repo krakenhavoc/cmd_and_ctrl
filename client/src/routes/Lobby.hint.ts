@@ -2,8 +2,9 @@
 // lobby.practice, the tutorial offer, is its own file (ADR 0125 PR 5).
 //
 // Version 2 (ADR 0158 §1): the create form sits behind + New table in
-// the page head, and a table's card holds Copy invite, its seats and a
-// ⋯ menu, so the tip points at the button and says so.
+// the page head, so the tip points at the button and says so. A table's
+// card holds its seats and, since #3499, a toolbar with Copy invite and
+// your deck; the body still reads true, so the version stands.
 
 import { L } from "../lib/labels";
 import type { Hint } from "../lib/hints/hint";

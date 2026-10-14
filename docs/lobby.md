@@ -1019,6 +1019,15 @@ it. The game and its statistics are unaffected.
 | 409 | turning it on for a practice table, an ended game or an archived table |
 | 503 | the feed is off on this server: `CMDCTRL_DISCORD_RESULTS_CHANNEL_ID`, `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID` and `CMDCTRL_DISCORD_BOT_TOKEN` must all be set |
 
+### `GET /games/{id}/settings`
+
+The table's settings, read-only (#3499), in the same `{"settings": {...}}`
+shape as the `PATCH` below answers with. For the lobby's table card, which
+shows everyone at the table a one-line summary of the rules before the board
+opens. Allowed for an admin, a session bound to this table (a seat or a
+spectator), and the signed-in person who created it; anyone else is `403`.
+An unknown game is `404`.
+
 ### `PATCH /games/{id}/settings`
 
 Change the table's settings
@@ -4466,6 +4475,8 @@ a 400, never a silent off. The setting survives a restart.
   "daily_limit": 1000000,
   "monthly_tokens": 3120440,
   "monthly_limit": 10000000,
+  "table_limit": 1250000,
+  "tables_at_share": 1,
   "day_resets_at": "2026-10-13T00:00:00Z",
   "month_resets_at": "2026-11-01T00:00:00Z"
 }
@@ -4473,6 +4484,11 @@ a 400, never a silent off. The setting survives a restart.
 
 `state` is `ok`, `disabled` (the switch), `monthly_cap` or `daily_cap`;
 `note` is empty when it is `ok`. A limit of `0` means that cap is off.
+The counts are weighted tokens (micro-dollars at list price,
+[ADR 0184](decisions/0184-weighted-model-budget-and-a-share-per-table.md)).
+`table_limit` is what one table may use in a UTC day (`0`: no
+per-table limit) and `tables_at_share` how many tables have reached it;
+those tables' model seats play the heuristic, and `state` stays `ok`.
 
 | Status | Reason |
 |---|---|

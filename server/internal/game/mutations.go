@@ -1932,6 +1932,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	g.payRevealLocked(playerID, cardID, costPlan, params.RevealIDs)
 	if splitSecond {
 		g.SplitSecondActive = true
+	} else {
+		// A grant from the battlefield (Samut) is live, so it is read
+		// here as the spell lands rather than stamped on the item.
+		g.refreshSplitSecondForBoardChangeLocked()
 	}
 	// Commander tax bookkeeping (CR 903.8). Increment AFTER the
 	// card has reached the stack so a failed cast doesn't bump the
@@ -6436,7 +6440,9 @@ func (g *Game) CounterAbility(abilityID uuid.UUID) error {
 // stack mutation. Caller must hold g.mu.
 func (g *Game) recomputeSplitSecondLocked() {
 	for _, item := range g.StackMeta {
-		if item != nil && item.SplitSecond {
+		// The spell's own split second, or one a battlefield static
+		// grants it right now (Samut; split_second.go).
+		if item != nil && (item.SplitSecond || g.spellGrantedSplitSecondLocked(item)) {
 			g.SplitSecondActive = true
 			return
 		}
@@ -9420,8 +9426,19 @@ func (g *Game) participatesInStepLocked(c *Card, firstStrike bool) bool {
 // is the greater (CR 510.1c, Ghalta the Immovable). Everything the damage
 // pass does with "the attacker's power" - trample, deathtouch, lethal
 // damage assignment, lifelink, commander damage - reads this number.
+//
+// A negative power assigns no damage (CR 510.1a, the clamp in
+// CurrentPower) unless the creature says it assigns damage as though its
+// power were positive (Characteristic.DamageAsPositivePower, Loot, the
+// Anomaly), in which case the amount is the absolute value of the
+// unclamped power. That is the one creature the clamp is lifted for.
 func (c *Card) combatDamagePower() int {
 	p := c.CurrentPower()
+	if c.effective != nil && c.effective.DamageAsPositivePower {
+		if raw := c.PowerForComparison(); raw < 0 {
+			p = -raw
+		}
+	}
 	if c.effective != nil && c.effective.DamageByToughness {
 		if t := c.CurrentToughness(); t > p {
 			return t

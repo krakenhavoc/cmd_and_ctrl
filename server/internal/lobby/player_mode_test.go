@@ -1105,6 +1105,7 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"PATCH /games/{id}/settings", []string{"updateTableSettings"}, true, httpProbe("PATCH", "/games/{id}/settings", func(*probeFixture) any {
 			return map[string]any{"undo_limit": 3}
 		})},
+		{"GET /games/{id}/settings", []string{"getTableSettings"}, true, httpProbe("GET", "/games/{id}/settings", nil)},
 		{"PUT /games/{id}/voice", []string{"putVoiceRoom"}, true, httpProbe("PUT", "/games/{id}/voice", func(*probeFixture) any {
 			return map[string]any{"enabled": true}
 		})},

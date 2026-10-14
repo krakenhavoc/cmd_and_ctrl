@@ -346,6 +346,16 @@ type Characteristic struct {
 	// The combat damage pass reads it through combatDamagePower, once,
 	// when it snapshots every combatant's amount.
 	DamageByToughness bool `json:",omitempty"`
+
+	// DamageAsPositivePower is "if this creature's power is negative, it
+	// assigns combat damage as though its power were positive" (Loot,
+	// the Anomaly, #3505): combatDamagePower answers with the absolute
+	// value of the creature's unclamped power instead of CR 510.1a's
+	// zero. It only matters while the power is negative, and it is a
+	// per-creature fact a static sets on itself, so every other creature
+	// keeps the clamp. Like DamageByToughness it is how damage is
+	// ASSIGNED, not a number a layer computes.
+	DamageAsPositivePower bool `json:",omitempty"`
 }
 
 // printedCharacteristic builds a Characteristic from the card's

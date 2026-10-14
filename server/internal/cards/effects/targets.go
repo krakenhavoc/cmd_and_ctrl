@@ -145,6 +145,12 @@ func Planeswalker() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsPlaneswalker() }
 }
 
+// Battle is "battle" (CR 310): Traumatic Revelation's "a creature or
+// battle card". Reads the post-layer type like the rest.
+func Battle() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsBattle() }
+}
+
 // Permanent passes for any permanent-type card (on the battlefield
 // every card is one; on the stack it distinguishes permanent spells
 // from instants / sorceries).

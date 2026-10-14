@@ -1,13 +1,47 @@
 import { describe, expect, it } from "vitest";
 import type { PlayerView } from "./protocol";
 import {
+  DEFAULT_TABLE_SETTINGS,
   UNDO_UNLIMITED,
   canManageTable,
   formatUndoCount,
   hasUndoBudget,
   isUnlimitedUndo,
+  settingsSummary,
   undoBlockedReason,
 } from "./tableSettings";
+
+// #3499: the table card's rules line names only what differs.
+describe("settingsSummary", () => {
+  it("says Standard rules for the defaults", () => {
+    expect(settingsSummary(DEFAULT_TABLE_SETTINGS)).toBe("Standard rules");
+    expect(settingsSummary({ ...DEFAULT_TABLE_SETTINGS, free_mulligans: undefined })).toBe(
+      "Standard rules",
+    );
+  });
+
+  it("lists each change in a fixed order", () => {
+    expect(
+      settingsSummary({
+        ...DEFAULT_TABLE_SETTINGS,
+        allow_spawn: true,
+        undo_limit: 0,
+        starting_life: 30,
+        bot_pace: "slow",
+      }),
+    ).toBe("30 life · no undos · slow pace · spawning on");
+  });
+
+  it("words the undo budget and mulligans", () => {
+    const s = DEFAULT_TABLE_SETTINGS;
+    expect(settingsSummary({ ...s, undo_limit: UNDO_UNLIMITED })).toBe("unlimited undos");
+    expect(settingsSummary({ ...s, undo_limit: 3 })).toBe("3 undos a turn");
+    expect(settingsSummary({ ...s, undo_scope: "host_any" })).toBe("host can undo anyone");
+    expect(settingsSummary({ ...s, free_mulligans: 1 })).toBe("1 free mulligan");
+    expect(settingsSummary({ ...s, free_mulligans: -1 })).toBe("every mulligan free");
+    expect(settingsSummary({ ...s, commander_damage: 15 })).toBe("15 commander damage");
+  });
+});
 
 // ADR 0075 §2.2/§2.3. Two properties, and the first one is the bug
 // this module exists to prevent: under an unlimited budget the server

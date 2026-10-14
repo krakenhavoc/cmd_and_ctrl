@@ -531,11 +531,31 @@ A hosted model costs the operator money, so the server bounds it
   `GET /bot/options` and a request to seat one is a 422. Both unset is a
   supported server, not a broken one. The code cannot see production's
   environment: whoever runs the server confirms which of these it is.
-- **Daily and monthly caps**, counted in tokens from the API's `usage`
-  fields (input, output, cache reads and cache writes), per UTC day and
-  UTC month. **On by default** at 1,000,000 a day and 10,000,000 a month;
+- **Daily and monthly caps**, counted in *weighted* tokens from the API's
+  `usage` fields (input, output, cache reads and cache writes), per UTC
+  day and UTC month. Each class is multiplied by the answering model's
+  list price per million tokens, so a weighted token is a micro-dollar
+  and the caps read as dollars: **on by default** at 5,000,000 a day
+  (about $5) and 50,000,000 a month (about $50);
   `CMDCTRL_BOT_MODEL_DAILY_TOKENS` and `CMDCTRL_BOT_MODEL_MONTHLY_TOKENS`
-  change them, and `0` turns a cap off. They do not apply to a
+  change them, and `0` turns a cap off. The default prices are Haiku
+  1 / 5 / 0.10 / 1.25, Sonnet 3 / 15 / 0.30 / 3.75 and Opus
+  5 / 25 / 0.50 / 6.25 dollars per million (input / output / cache read /
+  cache write), matched by the model id; a model the table does not know
+  is priced as Opus, so an unlisted model stops the cap early rather than
+  late. `CMDCTRL_BOT_MODEL_PRICES` overrides or extends the table. It is
+  a weight, not an invoice: list prices move, so refresh the table. The
+  metric and endpoint names still say "tokens"
+  ([ADR 0184](decisions/0184-weighted-model-budget-and-a-share-per-table.md)).
+- **A share for each table.** One table may use `25`% of the daily cap
+  (`CMDCTRL_BOT_MODEL_TABLE_SHARE_PERCENT`; `0` or `100` is off). Past
+  it, that table's model seats play the heuristic until 00:00 UTC, as
+  over a cap, and every other table still seats and runs model bots; the
+  picker stays open and `GET /admin/bot/model` shows `tables_at_share`.
+  The per-table counts are in memory, so a restart gives a table a fresh
+  share; the persisted pool still bounds the sum. **Own-key seats**
+  ([ADR 0182](decisions/0182-your-own-model-key-for-ai-seats.md)) spend
+  their owner's key, so they are in neither the pool nor a table's share. They do not apply to a
   self-hosted `CMDCTRL_OPENAI_ENDPOINT` model, which has no bill. The
   counters live in the database and survive a restart.
 - **Over a cap**, the model tiers behave as they do with no key: a seat

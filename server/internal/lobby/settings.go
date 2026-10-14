@@ -68,3 +68,17 @@ func (l *Lobby) UpdateSettings(id, actor uuid.UUID, patch game.SettingsPatch) (g
 	// through.
 	return entry.room.Game.TableSettingsSnapshot(), nil
 }
+
+// Settings reads the game's table settings without changing them, for
+// GET /games/{id}/settings (#3499). Who may ask is the HTTP edge's
+// question (canReadTableSettings), as it is for UpdateSettings.
+func (l *Lobby) Settings(id uuid.UUID) (game.TableSettings, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	entry, ok := l.games[id]
+	if !ok {
+		return game.TableSettings{}, ErrGameNotFound
+	}
+	return entry.room.Game.TableSettingsSnapshot(), nil
+}

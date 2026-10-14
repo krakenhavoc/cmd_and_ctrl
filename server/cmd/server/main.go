@@ -1615,7 +1615,12 @@ func botFactory(log *slog.Logger, cfg config, idx *cards.Index, database *db.DB,
 		if database != nil {
 			store = budget.NewSQLStore(database)
 		}
-		guard = budget.New(lim, store, budget.WithLogger(log))
+		weights, werr := budget.WeightsFromEnv()
+		if werr != nil {
+			log.Error("bot model prices invalid", "err", werr)
+			os.Exit(1)
+		}
+		guard = budget.New(lim, store, budget.WithLogger(log), budget.WithWeights(weights))
 		client = guard.Wrap(client)
 		st := guard.Status()
 		switch {
@@ -1623,10 +1628,10 @@ func botFactory(log *slog.Logger, cfg config, idx *cards.Index, database *db.DB,
 			log.Info("bot model spend caps: none (self-hosted model); the admin kill switch is available", "state", string(st.State))
 		case store == nil:
 			log.Warn("bot model spend caps are on but not persisted (no CMDCTRL_DATA_DIR): a restart resets today's count",
-				"daily_limit", lim.DailyTokens, "monthly_limit", lim.MonthlyTokens)
+				"daily_limit", lim.DailyTokens, "monthly_limit", lim.MonthlyTokens, "table_limit", lim.TableLimit())
 		default:
 			log.Info("bot model spend caps on",
-				"daily_limit", lim.DailyTokens, "monthly_limit", lim.MonthlyTokens,
+				"daily_limit", lim.DailyTokens, "monthly_limit", lim.MonthlyTokens, "table_limit", lim.TableLimit(),
 				"day_tokens", st.DailyTokens, "month_tokens", st.MonthlyTokens, "state", string(st.State))
 		}
 	}
@@ -1654,13 +1659,15 @@ func botFactory(log *slog.Logger, cfg config, idx *cards.Index, database *db.DB,
 	}
 
 	var gate tiers.ModelGate
+	var scoper tiers.TableScoper
 	if guard != nil {
-		gate = guard
+		gate, scoper = guard, guard
 	}
 	f := tiers.NewFactory(tiers.FactoryOptions{
 		OwnKeys:     ownKeys,
 		Client:      client,
 		Gate:        gate,
+		Tables:      scoper,
 		Models:      models,
 		MaxThink:    maxThink,
 		NoImprovise: cfg.BotNoImprovise,

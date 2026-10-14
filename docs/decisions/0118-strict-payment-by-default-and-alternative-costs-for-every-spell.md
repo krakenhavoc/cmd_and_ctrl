@@ -262,3 +262,34 @@ These are this ADR's calls. Each is decided above, and the owner can still overt
 4. **The server's default stays permissive** (§1). The setting is the client's, and bare payloads from tools and tests keep working.
 5. **The Settings label stays "Strict mana enforcement".** Only its help text changes.
 6. **Granted offers are their own declaration,** not a `CastPermission` (§3). A permission is the reason a cast is legal from a zone and may carry one price, while these statics add a price wherever the printed cost may already be paid. Folding them into permissions would have put two prices on one permission and needed a standing hand permission that `storedHandPermissionLocked` deliberately does not have.
+
+## Amendment 2026-10-14 — a computed mana value cap (#3503)
+
+**Context.** `GrantedAlternativeCost.MaxManaValue` is a fixed `*int`
+read by `covers(card)` with no game in hand. Omnipresence prints "You
+may cast spells with mana value less than or equal to the number of
+creatures you control from your hand without paying their mana costs",
+a cap that follows the board.
+
+**Decision.** `GrantedAlternativeCost.MaxManaValueFunc func(g *Game,
+caster uuid.UUID) int` is a second cap beside the fixed one (both apply
+when both are set), with `MaxManaValueText` wording it for the ability
+row (`Register` panics on a func with no text). `covers` takes the game
+and the caster and is the one reader of both. It is called from
+`grantedAlternativeCostsLocked` and nowhere else, and that function is
+what the cast gate (`grantedAlternativeCostByKeyLocked` through the
+announce path), the enumerator and the view's picker
+(`CastOffersForLocked`) all derive their offers from, so the cap is
+re-read on every query and nothing stores a count. The client reads the
+offers off the view, so it needs no field of its own. The caster passed
+is the player the offer is derived for, which is the controller of the
+spell (CR 601.2), so "the creatures you control" is the caster's.
+
+`effects.CastFromHandWithoutPayingManaCostUpToCreatureCount` is the
+Omnipresence constructor: the free offer from hand, key
+`granted-free-up-to-creature-count` (its own on-disk identity, not
+Omniscience's `granted-free`, so a table with both keeps two offers
+whose reach differs), capped at the creatures the caster controls off
+effective types. A spell whose printed cost is {0} is covered but its
+free offer is dropped as a repeat of the printed price (decision 3),
+which changes nothing.

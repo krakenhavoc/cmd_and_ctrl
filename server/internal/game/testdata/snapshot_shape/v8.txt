@@ -432,6 +432,7 @@ delayedTriggers[].hasEffect	bool
 delayedTriggers[].id	custom(uuid.UUID)
 delayedTriggers[].label	string
 delayedTriggers[].manaAdds	string
+delayedTriggers[].manaTapControllerOnly	bool
 delayedTriggers[].manaTapSubtype	string
 delayedTriggers[].on	array
 delayedTriggers[].onExtraTurn	number:int
@@ -977,6 +978,7 @@ lastKnownBattlefield{}.Colors	array
 lastKnownBattlefield{}.Colors[]	string
 lastKnownBattlefield{}.ControlSource	custom(uuid.UUID)
 lastKnownBattlefield{}.Controller	custom(uuid.UUID)
+lastKnownBattlefield{}.DamageAsPositivePower	bool
 lastKnownBattlefield{}.DamageByToughness	bool
 lastKnownBattlefield{}.GrantedAbilities	array
 lastKnownBattlefield{}.GrantedAbilities[]	object
@@ -1097,6 +1099,7 @@ lastKnownPermanents{}[].characteristic.Colors	array
 lastKnownPermanents{}[].characteristic.Colors[]	string
 lastKnownPermanents{}[].characteristic.ControlSource	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.Controller	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.DamageAsPositivePower	bool
 lastKnownPermanents{}[].characteristic.DamageByToughness	bool
 lastKnownPermanents{}[].characteristic.GrantedAbilities	array
 lastKnownPermanents{}[].characteristic.GrantedAbilities[]	object
@@ -2210,6 +2213,7 @@ pendingChoices[].damageAssignment.SourceLKI.Colors	array
 pendingChoices[].damageAssignment.SourceLKI.Colors[]	string
 pendingChoices[].damageAssignment.SourceLKI.ControlSource	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.Controller	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.DamageAsPositivePower	bool
 pendingChoices[].damageAssignment.SourceLKI.DamageByToughness	bool
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities	array
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[]	object
@@ -2300,6 +2304,9 @@ pendingChoices[].owedInStep.Step	string
 pendingChoices[].owedInStep.Turn	number:int
 pendingChoices[].payCost	string
 pendingChoices[].pickDestination	string
+pendingChoices[].pickExiledWith	object
+pendingChoices[].pickExiledWith.epoch	number:int
+pendingChoices[].pickExiledWith.id	custom(uuid.UUID)
 pendingChoices[].pickFromGraveyard	bool
 pendingChoices[].pickMeasures	array
 pendingChoices[].pickMeasures[]	number:int

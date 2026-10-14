@@ -33,8 +33,9 @@ test.describe("admin login", () => {
     // Admin-only UI surfaces — + New table should be present.
     await expect(page.getByRole("button", { name: "new table" })).toBeVisible();
     // The token is not a person, so the Lobby offers it no join box.
-    await expect(page.getByLabel("invite code or link")).toHaveCount(0);
-    await expect(page.getByLabel("invite link")).toHaveCount(0);
+    await expect(page.getByLabel("invite code or link", { exact: true })).toHaveCount(0);
+    // Exact: a table card's ↻ is "new invite link" (#3499), not a join box.
+    await expect(page.getByLabel("invite link", { exact: true })).toHaveCount(0);
   });
 
   test("session persists across reload", async ({ page }) => {

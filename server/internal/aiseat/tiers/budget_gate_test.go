@@ -3,6 +3,8 @@ package tiers
 import (
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/model"
 )
@@ -54,5 +56,32 @@ func TestNoClientStillOutranksTheGate(t *testing.T) {
 	st := f.TierStatus(aiseat.TierAssisted)
 	if st.Available || st.Reason == "x" {
 		t.Fatalf("%+v: with no transport the reason is the missing-model one", st)
+	}
+}
+
+// #3476: a server-model seat's client is bound to its table; an
+// own-key seat's is not (its calls are on the owner's account).
+type recordingScoper struct{ tables []string }
+
+func (r *recordingScoper) ForTable(c model.Client, table string) model.Client {
+	r.tables = append(r.tables, table)
+	return c
+}
+
+func TestServerSeatsAreBoundToTheirTableAndOwnKeySeatsAreNot(t *testing.T) {
+	sc := &recordingScoper{}
+	f := NewFactory(FactoryOptions{Client: model.AlwaysIndex(0), Tables: sc})
+	game := uuid.New()
+	if _, err := f.NewPolicy(aiseat.SeatSpec{Tier: string(aiseat.TierAssisted), GameID: game}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.NewPolicy(aiseat.SeatSpec{Tier: string(aiseat.TierHeuristic), GameID: game}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.NewPolicy(aiseat.SeatSpec{Tier: string(aiseat.TierStrong), GameID: game, KeyOwner: uuid.New()}); err != nil {
+		t.Fatal(err)
+	}
+	if len(sc.tables) != 1 || sc.tables[0] != game.String() {
+		t.Fatalf("ForTable calls = %v, want exactly the one server-model seat's table", sc.tables)
 	}
 }

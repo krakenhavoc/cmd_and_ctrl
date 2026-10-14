@@ -469,3 +469,86 @@ func TestOpenAIUsageReportsThePrefixCacheHits(t *testing.T) {
 		t.Errorf("CachedPromptTokens = %d with no details block", resp2.Usage.CachedPromptTokens)
 	}
 }
+
+// #3489: a newer OpenAI model refuses max_tokens and wants
+// max_completion_tokens. The client retries the same request once with
+// the other field, and once that works it sends the field first.
+func TestOpenAIFallsBackToMaxCompletionTokens(t *testing.T) {
+	var calls []map[string]any
+	c := serveOpenAI(t, func(w http.ResponseWriter, r *http.Request) {
+		var got map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		calls = append(calls, got)
+		if _, ok := got["max_tokens"]; ok {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":{"type":"invalid_request_error","message":"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead."}}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"0"},"finish_reason":"stop"}]}`))
+	})
+	if _, err := c.Complete(context.Background(), Request{Model: "gpt-x", User: "u", MaxTokens: 64}); err != nil {
+		t.Fatalf("first Complete: %v", err)
+	}
+	if len(calls) != 2 {
+		t.Fatalf("first call made %d requests, want 2 (refused, then retried)", len(calls))
+	}
+	if _, ok := calls[1]["max_tokens"]; ok || calls[1]["max_completion_tokens"] != float64(64) {
+		t.Errorf("retry body = %v, want max_completion_tokens=64 and no max_tokens", calls[1])
+	}
+	calls = nil
+	if _, err := c.Complete(context.Background(), Request{Model: "gpt-x", User: "u", MaxTokens: 64}); err != nil {
+		t.Fatalf("second Complete: %v", err)
+	}
+	if len(calls) != 1 {
+		t.Fatalf("second call made %d requests, want 1", len(calls))
+	}
+	if _, ok := calls[0]["max_tokens"]; ok || calls[0]["max_completion_tokens"] != float64(64) {
+		t.Errorf("second body = %v, want max_completion_tokens only", calls[0])
+	}
+}
+
+// A server that takes max_tokens gets it, and is never retried.
+func TestOpenAIKeepsMaxTokensForAnOrdinaryServer(t *testing.T) {
+	var calls []map[string]any
+	c := serveOpenAI(t, func(w http.ResponseWriter, r *http.Request) {
+		var got map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		calls = append(calls, got)
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"0"},"finish_reason":"stop"}]}`))
+	})
+	for i := 0; i < 2; i++ {
+		if _, err := c.Complete(context.Background(), Request{Model: "m", User: "u", MaxTokens: 64}); err != nil {
+			t.Fatalf("Complete %d: %v", i, err)
+		}
+	}
+	if len(calls) != 2 {
+		t.Fatalf("made %d requests for 2 calls, want 2", len(calls))
+	}
+	for i, got := range calls {
+		if got["max_tokens"] != float64(64) {
+			t.Errorf("call %d: max_tokens = %v, want 64", i, got["max_tokens"])
+		}
+		if _, ok := got["max_completion_tokens"]; ok {
+			t.Errorf("call %d: sent max_completion_tokens to a server that takes max_tokens: %v", i, got)
+		}
+	}
+}
+
+// A 400 that is not about max_tokens is not retried, and the error
+// comes back as it did before.
+func TestOpenAIDoesNotRetryAnUnrelated400(t *testing.T) {
+	var calls int
+	c := serveOpenAI(t, func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":{"type":"invalid_request_error","message":"messages must not be empty"}}`))
+	})
+	_, err := c.Complete(context.Background(), Request{Model: "m", User: "u", MaxTokens: 64})
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusBadRequest {
+		t.Fatalf("err = %v, want a 400 *APIError", err)
+	}
+	if calls != 1 {
+		t.Errorf("made %d requests, want 1: an unrelated 400 must not be retried", calls)
+	}
+}

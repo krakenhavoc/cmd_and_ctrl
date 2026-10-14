@@ -230,6 +230,11 @@ func (g *Game) fireManaTriggersLocked(prod ManaProduced, pending *[]ColorRequire
 		if dt == nil || !dt.isManaTrigger() || !prod.Source.HasSubtype(dt.ManaTapSubtype) {
 			continue
 		}
+		// "Whenever YOU tap" (Pyre Rhymer // Molten Tide): an opponent's
+		// land does not trigger it, and it does not hand them the mana.
+		if dt.ManaTapControllerOnly && dt.Controller != prod.Controller {
+			continue
+		}
 		fired = append(fired, firing{source: dt.SourceCardID, label: dt.Label, produced: dt.ManaAdds})
 	}
 	for i := 0; g.Battlefield != nil && CatalogManaTriggers != nil && i < len(g.Battlefield.Cards); i++ {

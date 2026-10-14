@@ -1453,6 +1453,10 @@ estimate.
 > **Amended by [ADR 0146](0146-voting.md)** (2026-10-13): `voteChooser`, a rules gate
 > read at every ballot of a vote (#2928), is one more additive kind under schema v8.
 
+> **Amended by [ADR 0032](0032-planeswalkers.md)** (2026-10-14): `legendRuleDoesntApply`, a rules gate
+> read by the legend-rule state-based action (#3515, Hall of Echoes), is one more additive kind under
+> schema v8, with one fixture (`v8/legend_rule_doesnt_apply.json`).
+
 > **Amended by [ADR 0066](0066-granted-cast-and-play-permissions.md)** (2026-10-10): `cantPlayFromHand`,
 > a rules gate read by both the cast gate and the land-play gate (#2559, Memory Vessel), is one more
 > additive kind under schema v7, with one fixture (`v7/memory_vessel.json`).
