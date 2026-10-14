@@ -3228,11 +3228,14 @@ Every field is omitted when zero.
 | `tutors` | cards it searches out to hand or to the top of the library | Demonic Tutor 1 |
 | `self_mill_tutor` | cards it searches out into the graveyard | Entomb 1 |
 | `tokens` | tokens it creates for its controller | Big Score 2 |
+| `creature_tokens` | how many of `tokens` are creature tokens, which trigger "whenever a creature enters" rows ([#3165](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3165)) | Dragon Fodder 2 |
+| `tokens_per_controlled` | on a triggered or activated row: a lowercase creature subtype whose count under its controller's control is the number of creature tokens it creates, counted at resolution, so `tokens` stays absent (#3165) | Krenko, Mob Boss `goblin` |
 | `energy` | energy counters it gives its controller ([ADR 0129](decisions/0129-energy-getting-and-paying-it.md) §7) | Glimmer of Genius 2 |
 | `sweep` | present on a board wipe; see below | Wrath of God |
 | `death_payoff` | on a triggered row: it pays out whenever a creature its controller controls dies | Blood Artist |
 | `discard_payoff` | on a triggered row: it pays out whenever its controller discards a card it matches; see below | Mary Read and Anne Bonny |
 | `landfall_payoff` | on a triggered row: it pays out whenever a land enters under its controller's control; see below ([#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072)) | Tatyova, Benthic Druid |
+| `creature_enter_payoff` | on a triggered row: it pays out whenever a creature enters under its controller's control; the same fields as `landfall_payoff`, per creature (#3165) | Purphoros, God of the Forge |
 | `pump` | on a triggered or activated row: `{power, toughness, keywords}` it gives its own source until end of turn ([ADR 0130](decisions/0130-exert.md), amendment of 2026-10-07) | an exert self-pump |
 | `extra_combat` | additional combat phases it adds | Combat Celebrant 1 |
 | `prevent_combat_damage_to_self` | on a triggered or activated row: it prevents all combat damage that would be dealt to its source this turn | Oketra's Avenger |

@@ -1268,6 +1268,63 @@ The owner accepted the amendment on 2026-10-13. They took the recommendation on 
 4. **The A3 loot canary becomes Faithless Looting (cast):** [#3164](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3164), in Backlog.
 5. **The token makers are one Backlog issue:** [#3165](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3165), pricing token-making spells and activations by what the tokens trigger.
 
+## Amendment 2026-10-14: token makers priced by what the tokens trigger
+
+**Status:** Proposed. The code is in the PR that adds this section, behind one switch, `PriceTokenPayoffs`, on in `DefaultConfig()` and off in `BaselineConfig()`.
+**Issue:** [#3165](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3165), filed from #3071's [owner decision 5](#owner-decisions-3071-2026-10-13). Sprint S75.
+**Amends:** §6 (three new purpose fields) and what §6's `tokens` are worth. No other price and no deck changes.
+
+### The problem
+
+On the rebuilt `mono-red-aggro` deck, run 1 at seeds 1, 1001, 2001 and 3001 found two token makers used much less than the deck's others. Hordeling Outburst (three Goblins) was cast in 9 of the 37 games it was offered in; Krenko's Command and Dragon Fodder, the same effect for two tokens, in 24 of 45 and 33 of 51. Krenko, Mob Boss's activation was taken in 8 of 30. A declared `tokens` is priced at `TokenWeight` (0.50) each, so Outburst was worth 1.5 before its card and its mana, and Krenko's row declares no count (X is counted at resolution), so it was priced at the flat `ActivateBase`. In this deck every creature that enters is also 2 damage to each opponent from Purphoros, and 1 from Impact Tremors and the other pingers, which nothing priced.
+
+### Decision
+
+**1. A creature-enter row declares what it pays** (`game.CreatureEnterPayoff`, `purpose.creature_enter_payoff`): landfall's fields, per creature that enters under its controller's control. Only on a triggered row (`effects.Register` refuses it elsewhere, and one that pays nothing). A card file wraps its trigger in `effects.CreatureEnterPaying`. Declared on Purphoros (2 damage), Impact Tremors, Warleader's Call, Witty Roastmaster, Molten Gatekeeper and Agate Instigator (1 damage each), and Hinterland Sanctifier, Lifecreed Duo and Dazzling Angel (1 life).
+
+**2. A token maker says how many of its tokens are creatures** (`purpose.creature_tokens`, at most `tokens`), because a Treasure does not trigger Purphoros. Declared on Hordeling Outburst, Krenko's Command and Dragon Fodder. A count made at resolution declares `purpose.tokens_per_controlled`, a lowercase creature subtype: Krenko, Mob Boss is `goblin`, and the reader counts the Goblins the bot controls from the view when it prices the activation.
+
+**3. A creature token is worth what the bot's own payoffs pay** (`PriceTokenPayoffs`, `aiseat/heuristic/token_payoff.go`), added to a declared purpose's value:
+
+```
+creature tokens x (sum over the bot's own creature-enter rows, in landfall's units)
++ TokenWeight x the Goblins counted, for a tokens_per_controlled row
+```
+
+An opponent's payoff pays the opponent, so it adds nothing. A row with `tokens_per_controlled` is now a priced purpose, so Krenko's activation is priced by its Goblins in place of `ActivateBase`; the tap is charged as before. A creature spell's own entry is not repriced. No weight is new.
+
+With Purphoros out, Hordeling Outburst's cast price is 5.70 against 0.30 without (three Goblins, 2 damage, three opponents), and the bot casts it (`TestHordelingOutburstIsWorthMoreWithPurphorosOut`). Krenko's activation is priced by the Goblins it counts and by what they trigger (`TestKrenkoActivationIsPricedByItsGoblins`).
+
+### Measured
+
+The tables are under [Measurements, #3165](#3165-token-makers-priced-by-what-the-tokens-trigger-2026-10-14). The comparison is the same binary with the switch off (`develop`'s behaviour) against on, `--rotate --lockstep`, run 1 at seeds 1, 1001, 2001 and 3001 (256 games per deck) and run 2 at seeds 1 and 1001 in both halves:
+
+| | `develop` | `PriceTokenPayoffs` |
+|---|---|---|
+| Hordeling Outburst cast, games used of offered | 10 of 38 | **33 of 35** |
+| Krenko's Command cast | 20 of 42 | 37 of 43 |
+| Dragon Fodder cast | 29 of 50 | 47 of 51 |
+| Krenko, Mob Boss activated | 4 of 30 | **32 of 36** |
+| mono-red-aggro, run 1 | 73 / 256, 28.5% (23.3%-34.3%) | **87 / 256, 34.0% (28.5%-40.0%)** |
+| run 2 `heuristic`, all decks | 137 / 384, 35.7% (31.0%-40.6%) | 140 / 384, 36.5% (31.8%-41.4%) |
+
+- **The token makers are used.** Every one is cast or used in about nine games in ten it is offered in.
+- **The deck wins a little more, within noise.** The intervals overlap. The other decks' run-1 shares move by less than the interval (black 24.6% to 20.7%, esper 27.7% to 26.2%, simic unchanged), in games the change re-dealt.
+- **Run 2 is not detectably worse**, and `heuristic` on mono-red-aggro is 31 / 96 to 36 / 96.
+- **Health:** 0 stalls in all 16 runs, turns p50 11 to 12 on both, the suite 42 of 42 with every tag at 100%.
+
+### Options considered and rejected
+
+- **Pricing `tokens` higher.** It would raise Treasures and Clues too, which trigger nothing, and it does not see Purphoros.
+- **Deriving the count from the effect.** Krenko's is a closure. `tokens_per_controlled` is declared by hand, as every purpose is.
+- **Repricing a creature spell's own entry.** A creature cast is already priced by its body; the payoffs it triggers are a different change.
+
+### Open (#3165)
+
+- **A creature spell triggers the same payoffs** (Purphoros with a creature in hand) and nothing prices that.
+- **Creature-token makers with fixed counts elsewhere in the catalog** (Siege-Gang Commander, Beetleback Chief and the other enters-effects) declare no `creature_tokens`; they keep their body price.
+- **Pashalik Mons's sacrifice and Fearless Liberator's boast**, the deck's other `never` rows, are related and untouched.
+
 ## Consequences
 
 - About a third of each curated deck stops being dead. The decks can then be judged on their lists, which is what #2436 needs.
@@ -2616,3 +2673,41 @@ Pooled over the four seed blocks, `heuristic` is 274 / 768, 35.7% (32.4%–39.1%
 - With the dump, `go test ./internal/decks/ ./internal/botarena/ ./internal/lobby/ ./internal/tablesetups/ ./cmd/boteval/`: green for izzet-aggro, including `TestLockstepRotatedSeedsReplay` (seeds 13 and 52 replay move for move), `TestRealDumpPurposeCuratedSpellList` and `TestRealDumpPurposeAudit`. `TestRealDumpDecksAreLegalCommanderDecks` and `TestTriageDecks` fail for mono-green-stompy, mono-white-weenie and boros-voltron, which this PR does not touch: the local dump (2026-09-24) calls a card in each not legal in Commander.
 - **The rename does not change a game.** Run 1 at seed 1, built once with the deck's ID put back to `izzet-aggro` and once with `mono-red-aggro`, plays all 64 games the same (turns, every seat's life and decision count), and both give esper 18, the aggro deck 19, mono-black 13 and Simic 14 wins, as in the table above. The ID is not part of the deal; the card order is.
 - **Migration 0018:** `TestMigration0018RenamesTheDeckInLastDeckRecords` and `TestMigration0018RenamesTheDeckInTableSetups` (a bot named after the old ID keeps its name; other bots, the setup's settings, tablemates, `game_id` and `updated_at` are unchanged). `TestLegacyIDsResolveToTheirReplacement` holds the alias, and the client's `lastDeck.test.ts` a guest's stored old ID.
+
+### #3165: token makers priced by what the tokens trigger (2026-10-14)
+
+The [amendment of 2026-10-14](#amendment-2026-10-14-token-makers-priced-by-what-the-tokens-trigger). The base is `develop` at `08d675cc1`. The branch is that tree with `PriceTokenPayoffs` true in `DefaultConfig()`, and the declarations; the comparison is one tree built twice, with the switch off and on, so the declarations alone change nothing. Every run is `--rotate --lockstep` with the real dump. Run 1 is §8's (four `heuristic` seats, 64 games) at seeds 1, 1001, 2001 and 3001; run 2 is §8's, `--games 48` with the decks split one way (half A: `heuristic` on esper-control and mono-red-aggro) and the other (half B), at seeds 1 and 1001. **0 stalls in every run.** The raw decision logs were deleted once the tables were extracted; the switch-off runs wrote none.
+
+**Run 1** (wins of 64 per seed block):
+
+| Deck | Seed 1, off | Seed 1, on | Seed 1001, off | Seed 1001, on | Seed 2001, off | Seed 2001, on | Seed 3001, off | Seed 3001, on | Pooled, off | Pooled, on |
+|---|---|---|---|---|---|---|---|---|---|---|
+| esper-control | 19 | 21 | 22 | 19 | 16 | 13 | 14 | 14 | 71 / 256, 27.7% (22.6%-33.5%) | 67 / 256, 26.2% (21.2%-31.9%) |
+| mono-black-aristocrats | 13 | 10 | 17 | 15 | 12 | 9 | 21 | 19 | 63 / 256, 24.6% (19.7%-30.2%) | 53 / 256, 20.7% (16.2%-26.1%) |
+| mono-red-aggro | 16 | 18 | 15 | 20 | 22 | 26 | 20 | 23 | 73 / 256, 28.5% (23.3%-34.3%) | **87 / 256, 34.0% (28.5%-40.0%)** |
+| simic-ramp | 16 | 15 | 10 | 10 | 14 | 16 | 9 | 8 | 49 / 256, 19.1% (14.8%-24.4%) | 49 / 256, 19.1% (14.8%-24.4%) |
+| turns p50 | 12 | 12 | 12 | 12 | 11 | 11 | 12 | 11 | | |
+
+**Run 2** (`heuristic` wins, of 48 games per half):
+
+| | Seed 1 half A | Seed 1 half B | Seed 1001 half A | Seed 1001 half B | Pooled `heuristic` | Pooled `heuristic-baseline` |
+|---|---|---|---|---|---|---|
+| off | 35 | 35 | 39 | 28 | 137 / 384, 35.7% (31.0%-40.6%) | 55 / 384, 14.3% (11.2%-18.2%) |
+| on | 36 | 35 | 41 | 28 | 140 / 384, 36.5% (31.8%-41.4%) | 52 / 384, 13.5% (10.5%-17.3%) |
+
+`heuristic` on mono-red-aggro in run 2: 31 / 96, 32.3% (23.8%-42.2%) off; 36 / 96, 37.5% (28.5%-47.5%) on.
+
+**mono-red-aggro's cards, run 1** (games used of games offered, and windows taken of windows offered, pooled over the four seeds):
+
+| Card | off | on |
+|---|---|---|
+| Hordeling Outburst, cast | 10 of 38 games (10 of 372 windows) | **33 of 35 (33 of 102)** |
+| Krenko's Command, cast | 20 of 42 (20 of 341) | 37 of 43 (37 of 187) |
+| Dragon Fodder, cast | 29 of 50 (29 of 512) | 47 of 51 (47 of 216) |
+| Krenko, Mob Boss, activation | 4 of 30 (4 of 734) | **32 of 36 (61 of 242)** |
+| Pashalik Mons, activation | 2 of 32 (2 of 338) | 2 of 35 (2 of 407) |
+
+**Other gates on the branch:**
+
+- `boteval suite run --policy heuristic`: 42 of 42, every tag at 100%.
+- `go test -race ./...` and `golangci-lint`: green, including `TestHordelingOutburstIsWorthMoreWithPurphorosOut`, `TestTokenPayoffNeedsMineAndCreaturesAndTheSwitch`, `TestKrenkoActivationIsPricedByItsGoblins`, `TestCreatureEnterPayoffDeclarations`, `TestCreatureTokenDeclarations`, `TestCreatureEnterPayoffGuard` and `TestTokenPayoffsOnTheWire`.

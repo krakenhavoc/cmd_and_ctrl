@@ -3341,6 +3341,10 @@ export interface PurposeView {
   tutors?: number;
   self_mill_tutor?: number;
   tokens?: number;
+  // #3165: how many of `tokens` are creature tokens, and the lowercase
+  // creature subtype whose controlled count is how many it makes.
+  creature_tokens?: number;
+  tokens_per_controlled?: string;
   // ADR 0129 §7: energy counters it gives its controller.
   energy?: number;
   sweep?: SweepView;
@@ -3359,6 +3363,9 @@ export interface PurposeView {
   // #3072: on a landfall row, what it pays for each land that enters
   // under its controller's control.
   landfall_payoff?: LandfallPayoffView;
+  // #3165: on a row that pays for each creature that enters under its
+  // controller's control.
+  creature_enter_payoff?: LandfallPayoffView;
   // ADR 0126 (amendment of 2026-10-08): what happens to each target,
   // one entry per target clause of the statement this purpose rides
   // on, keyed by the slot a move's `targets[].slot` names.

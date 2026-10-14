@@ -1315,6 +1315,28 @@ lands in hand beyond the drops left), at `ManaSource` plus the ramp
 premium, and, for a permanent, `ExtraLandDropRecurring` (0.50) per drop
 while the bot has fewer than `RampWantCap` sources.
 
+### Token payoffs (#3165)
+
+A row that pays for each creature entering under its controller's
+control declares a `creature_enter_payoff` (landfall's fields, per
+creature): Purphoros's 2 damage, Impact Tremors', Warleader's Call's,
+Witty Roastmaster's, Molten Gatekeeper's and Agate Instigator's 1, and
+the lifegain creatures'. A token maker declares `creature_tokens` (how
+many of its `tokens` are creatures, so a Treasure does not count), or
+`tokens_per_controlled`, a creature subtype whose count the bot controls
+is how many it makes (Krenko, Mob Boss: X Goblins, counted from the view
+at decision time). With `PriceTokenPayoffs` on (`token_payoff.go`):
+
+```
+creature tokens × (what the bot's own creature-enter payoffs pay per creature)
++ TokenWeight × the Goblins counted, for a tokens_per_controlled row
+```
+
+is added to a declared purpose's value, so Hordeling Outburst with
+Purphoros out is worth three Goblins × 2 damage × three opponents more,
+and Krenko's activation is priced by its Goblins instead of the flat
+`ActivateBase`. A creature spell's own entering is not repriced.
+
 ### Landfall payoffs (#3072)
 
 A landfall row declares a `landfall_payoff`: what it pays for each land

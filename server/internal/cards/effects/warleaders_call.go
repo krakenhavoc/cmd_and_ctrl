@@ -32,7 +32,8 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, CreatureEnteredUnderYourControl, "Warleader's Call — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})),
+			CreatureEnterPaying(On(game.EventETB, CreatureEnteredUnderYourControl, "Warleader's Call — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})),
+				game.CreatureEnterPayoff{DamageEachOpponent: 1}),
 		},
 	})
 }

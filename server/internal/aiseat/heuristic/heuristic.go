@@ -353,6 +353,14 @@ type Config struct {
 	// Hart, Harrow), an extra land drop's lands this turn, and a land put
 	// from hand. Off (the zero value) prices those lands as mana alone.
 	PriceLandfallPayoffs bool
+	// PriceTokenPayoffs adds, to every creature token a declared purpose
+	// makes, what the bot's own creature-enter payoffs pay for it
+	// (#3165, token_payoff.go): Purphoros's 2 damage, Impact Tremors's 1.
+	// It also prices a token maker whose count is read from the board
+	// (Krenko, Mob Boss: X Goblins) at TokenWeight per token. Off (the
+	// zero value) prices a token by TokenWeight alone, and Krenko's
+	// activation at the flat ActivateBase.
+	PriceTokenPayoffs bool
 	// PlanTurnMana turns on ADR 0136's turn plan: in its own main phase
 	// with an empty stack, the bot picks the set of casts this turn's
 	// mana buys the most with, and makes that set's first move. Off (the
@@ -725,6 +733,7 @@ func DefaultConfig() Config {
 		PriceExtraLandDrops:    true,
 		ExtraLandDropRecurring: 0.50,
 		PriceLandfallPayoffs:   true,
+		PriceTokenPayoffs:      true,
 
 		FuelFloor:  0.05,
 		FuelIdle:   0.30,
@@ -905,6 +914,8 @@ func BaselineConfig() Config {
 	c.ExtraLandDropRecurring = 0
 	// #3072: landfall payoffs.
 	c.PriceLandfallPayoffs = false
+	// #3165: creature-enter payoffs on tokens.
+	c.PriceTokenPayoffs = false
 	// #2693: the mulligan counted lands only.
 	c.KeepNeedsCast = false
 	c.KeepCastReach = 0
