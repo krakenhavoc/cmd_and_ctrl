@@ -4842,3 +4842,26 @@ snapshot key inside `Characteristic` (shape v8 recorded).
 
 Back-out: drop the `DamageAsPositivePower` branch in `combatDamagePower` and `TestLootAssignsCombatDamageAsThoughPowerWerePositive`
 fails; the plain negative creature in the same test never changes.
+
+## Amendment (2026-10-14, [#3522](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3522)): goad for the rest of the game
+
+Decision 53's goad ends as the goader's next turn begins (CR 701.15a). Dack Fayden, Helping Hand says "they're goaded for
+the rest of the game", so `Goad.ForRestOfGame` is a goad with no end of its own. `goadExpiredLocked` answers false for it
+and the backfill for a restore point with no stamp skips it. The marker still leaves with the permanent (every battlefield
+exit clears `Card.Goads`, CR 400.7), and a control change does not touch it: the goad names the goader, so a creature that
+changes hands is still required to attack and still may not attack the player who goaded it. A later ordinary goad by the
+same player refreshes the entry but keeps the flag, since the two effects overlap and the longer stands. The door is
+`Game.GoadForRestOfGameForEffect`; the flag is an additive snapshot key (`forRestOfGame`, omitted when false). The wire is
+unchanged: `goaders` lists the goader as before.
+
+**Handing N permanents to N different opponents** has no prompt of its own. Dack asks one single-pick option pick per
+permanent (the same player-choice shape as Gluntch), each leaving out the opponents already chosen, through a registered
+continuation so the table stays a restore point while it waits. When only one opponent is left for the last permanent the
+card gives it without asking, since there is nothing to choose; at two seats that is the whole ability. Control is given as
+each answer arrives, which is the printed result: nothing can happen between the picks.
+
+Back-out: drop the `ForRestOfGame` early return in `goadExpiredLocked` and `TestGoadForRestOfGameSurvivesTurnChanges`
+fails; drop the `used` exclusion in `dackFaydenAsk` and `TestDackFaydenGoadsAndHandsEachCreatureToADifferentOpponent`
+fails.
+
+Tests: `game/goad_rest_of_game_test.go`, `cards/effects/dack_fayden_helping_hand_test.go`.
