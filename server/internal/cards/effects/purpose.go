@@ -244,8 +244,9 @@ func checkSpecPurposes(spec Spec) {
 		}
 		checkTargetPurposes(name, where, a.Purpose, stmt, true)
 	}
+	instantLoyalty := ownLoyaltyAtInstant(spec.ActivationTimings)
 	for i, a := range spec.Activated {
-		checkActivatedPurpose(name, fmt.Sprintf("ability %d", i), a)
+		checkActivatedPurpose(name, fmt.Sprintf("ability %d", i), a, instantLoyalty)
 	}
 	for i, t := range spec.Triggered {
 		checkTriggeredPurpose(name, fmt.Sprintf("triggered ability %d", i), t)
@@ -255,14 +256,15 @@ func checkSpecPurposes(spec Spec) {
 
 // checkActivatedPurpose checks one activated row's purpose and its
 // modes'. Shared with the ability-grant guard, because a granted row
-// is declared exactly as a card's own is.
-func checkActivatedPurpose(name, where string, a ActivatedAbility) {
+// is declared exactly as a card's own is. instantLoyalty is
+// checkActivatedAnswers'.
+func checkActivatedPurpose(name, where string, a ActivatedAbility, instantLoyalty bool) {
 	slot := purposeOnActivated
 	if a.AnyPlayer {
 		slot = purposeOnAnyPlayerActivated
 	}
 	checkPurpose(name, where, slot, a.Purpose)
-	checkActivatedAnswers(name, where, activatedShapeOf(a))
+	checkActivatedAnswers(name, where, activatedShapeOf(a), instantLoyalty)
 	checkTargetPurposes(name, where, a.Purpose, a.Targets, true)
 	checkModePurposes(name, where, a.Modes)
 }

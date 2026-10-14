@@ -24,7 +24,9 @@ import (
 //     clause with Min 0, "up to one", still has the empty announcement):
 //     its move carries has_targets, which already stops smart autopass;
 //   - Answers on a sorcery-speed row, which is never offered while an
-//     item waits on the stack;
+//     item waits on the stack. A loyalty row is one, unless its card
+//     opens its own loyalty abilities at instant speed (Teferi, Master
+//     of Time; game.ActivationTiming.OwnLoyalty);
 //   - a crew row (AbilityCost.Crew) that does not declare AnswerAnimate;
 //   - a row whose cost sacrifices, exiles or returns a creature
 //     (legal.CostAnswers says sac_outlet) that declares neither
@@ -49,8 +51,9 @@ func checkAnswerBits(a game.Answers, fail func(string)) {
 
 // checkActivatedAnswers is the guard for one activated row's declared
 // answers. Shared by a card's own rows, a granted bundle's and a token
-// template's.
-func checkActivatedAnswers(name, where string, ab game.ActivatedAbilityShape) {
+// template's. instantLoyalty is true for a card's own rows when the card
+// opens its own loyalty abilities at instant speed (ownLoyaltyAtInstant).
+func checkActivatedAnswers(name, where string, ab game.ActivatedAbilityShape, instantLoyalty bool) {
 	a := ab.Purpose.Answers
 	if a == 0 {
 		return
@@ -59,7 +62,7 @@ func checkActivatedAnswers(name, where string, ab game.ActivatedAbilityShape) {
 		panic(fmt.Sprintf("effects.Register: %q %s declares Answers that %s (ADR 0142; docs/adding-cards.md, \"Declaring what an ability answers\")", name, where, why))
 	}
 	checkAnswerBits(a, fail)
-	if sorcerySpeedRow(ab) {
+	if sorcerySpeedRow(ab, instantLoyalty) {
 		fail("are on a sorcery-speed or loyalty row, which is never offered while an item waits on the stack")
 	}
 	if !hasUntargetedAnnouncement(ab) {
@@ -75,17 +78,33 @@ func checkActivatedAnswers(name, where string, ab game.ActivatedAbilityShape) {
 
 // sorcerySpeedRow reports whether the row is only ever activated as a
 // sorcery: "activate only as a sorcery" (CR 602.5d), or a loyalty
-// ability (CR 606.3).
-func sorcerySpeedRow(ab game.ActivatedAbilityShape) bool {
-	return ab.SorcerySpeed || ab.Cost.Loyalty != nil
+// ability (CR 606.3) on a card that does not open its own loyalty
+// abilities at instant speed (instantLoyalty).
+func sorcerySpeedRow(ab game.ActivatedAbilityShape, instantLoyalty bool) bool {
+	return ab.SorcerySpeed || (ab.Cost.Loyalty != nil && !instantLoyalty)
+}
+
+// ownLoyaltyAtInstant reports whether a card's activation-timing
+// statements open its own loyalty abilities at instant speed, so its
+// loyalty rows can be offered while an opponent's item waits on the
+// stack and smart autopass reads what they answer. A statement that
+// opens every planeswalker's (Teferi, Temporal Archmage's emblem) is
+// not one: it is about other cards' rows.
+func ownLoyaltyAtInstant(timings []game.ActivationTiming) bool {
+	for _, t := range timings {
+		if t.OwnLoyalty && t.Grants() {
+			return true
+		}
+	}
+	return false
 }
 
 // answersInScope reports whether smart autopass reads the row's answers:
 // it may be activated at instant speed with no target (ADR 0142 §4).
 // TestEveryAnswersRowDeclares fails on such a catalog row that declares
 // nothing.
-func answersInScope(ab game.ActivatedAbilityShape) bool {
-	return !sorcerySpeedRow(ab) && hasUntargetedAnnouncement(ab)
+func answersInScope(ab game.ActivatedAbilityShape, instantLoyalty bool) bool {
+	return !sorcerySpeedRow(ab, instantLoyalty) && hasUntargetedAnnouncement(ab)
 }
 
 // hasUntargetedAnnouncement reports whether the row can be announced
