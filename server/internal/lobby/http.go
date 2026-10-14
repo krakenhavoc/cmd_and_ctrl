@@ -576,6 +576,11 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /games", auth.Middleware(c.Auth)(handlerFunc(c, listGames)))
 	mux.Handle("GET /games/{id}", auth.Middleware(c.Auth)(handlerFunc(c, getGame)))
 	mux.Handle("POST /games/{id}/start", auth.Middleware(c.Auth)(handlerFunc(c, startGame)))
+	// The rematch (#3285, ADR 0164): the ended table's host offers one, the
+	// other humans accept or leave. The caller is a seat at the old table.
+	mux.Handle("POST /games/{id}/rematch", auth.Middleware(c.Auth)(handlerFunc(c, offerRematch)))
+	mux.Handle("POST /games/{id}/rematch/accept", auth.Middleware(c.Auth)(handlerFunc(c, acceptRematch)))
+	mux.Handle("POST /games/{id}/rematch/leave", auth.Middleware(c.Auth)(handlerFunc(c, leaveRematch)))
 	// ADR 0075 §2.1: hand the table to another seat. Host or admin;
 	// authorised inside the handler with CanManageTable.
 	mux.Handle("POST /games/{id}/host", auth.Middleware(c.Auth)(handlerFunc(c, transferHost)))
@@ -4230,6 +4235,13 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	case errors.Is(err, ErrAgentSignedIn):
 		status = http.StatusBadRequest
 	case errors.Is(err, ErrGameArchived), errors.Is(err, ErrTooManyOpenTables):
+		status = http.StatusConflict
+	case errors.Is(err, ErrRematchNotHost), errors.Is(err, ErrRematchNotAsked):
+		status = http.StatusForbidden
+	case errors.Is(err, ErrNoRematch):
+		status = http.StatusNotFound
+	case errors.Is(err, ErrRematchNotEnded), errors.Is(err, ErrRematchUnavailable), errors.Is(err, ErrRematchOffered),
+		errors.Is(err, ErrRematchClosed), errors.Is(err, ErrRematchAccepted):
 		status = http.StatusConflict
 	case errors.Is(err, ErrCreateRateLimited), errors.Is(err, ErrCreateIPRateLimited):
 		status = http.StatusTooManyRequests
