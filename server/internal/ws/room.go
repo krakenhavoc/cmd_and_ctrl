@@ -129,6 +129,12 @@ type Room struct {
 	// host. See rematch.go.
 	rematchMu sync.Mutex
 	rematch   *protocol.RematchView
+	// stackPos is where each seat dragged the stack panel (#3429, ADR
+	// 0176), set by the lobby through SetStackPosition and stamped on
+	// every capture. Guarded by stackPosMu, never by mu, for the same
+	// reason as host. See stack_position.go.
+	stackPosMu sync.Mutex
+	stackPos   map[uuid.UUID]protocol.StackPositionView
 
 	// lastRestorePoint is the seq and wall time of this room's most
 	// recently WRITTEN restore point (persist.go), so that a shutdown
@@ -761,6 +767,7 @@ func (r *Room) ViewFor(viewerID string) protocol.GameView {
 	r.stampPlaymatsLocked(&view)
 	r.stampVoiceLocked(&view)
 	r.stampRematchLocked(&view)
+	r.stampStackPositionsLocked(&view)
 	r.mu.Unlock()
 	return protocol.FilterViewFor(view, viewerID)
 }
@@ -808,6 +815,7 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 	r.stampPlaymatsLocked(&view)
 	r.stampVoiceLocked(&view)
 	r.stampRematchLocked(&view)
+	r.stampStackPositionsLocked(&view)
 
 	// Consume any annotation the committing caller left for this
 	// capture. Cleared unconditionally — including on the Snapshot

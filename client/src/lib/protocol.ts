@@ -421,6 +421,10 @@ export interface GameView {
   // by the server to this viewer's own part. Absent until one is offered,
   // and for a spectator.
   rematch?: RematchView;
+  // Where this viewer dragged the stack panel to (#3429, ADR 0176), keyed
+  // by seat id. The server keeps only the viewer's own entry; absent when
+  // the panel is at its default and for a spectator.
+  stack_positions?: Record<string, StackPositionView>;
   // Seat index that took the first turn. Used by the server to enforce
   // the CR 103.8a turn-1 skip-draw rule — in two-player games only,
   // since CR 103.8c has nobody skip at a larger table. Added in S13.
@@ -4651,6 +4655,13 @@ export interface RematchView {
   host_name?: string;
   open: boolean;
   you?: RematchPart;
+}
+
+// StackPositionView is the stack panel's top-left corner as a fraction of
+// the board's width and height, each 0..1 (#3429, ADR 0176).
+export interface StackPositionView {
+  x: number;
+  y: number;
 }
 
 export type RematchPart = "host" | "undecided" | "accepted" | "declined";
