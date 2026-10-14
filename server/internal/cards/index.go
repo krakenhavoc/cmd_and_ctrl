@@ -406,13 +406,44 @@ var tokenPoolExcludedSetTypes = map[string]bool{
 }
 
 // isTokenArtPoolCandidate reports whether c belongs in the ADR 0078
-// decision 3a eligible pool.
+// decision 3a eligible pool. A printed double-faced token (the
+// Incubator, #2417) is eligible too, #3511: its art lives on
+// card_faces, not on the top level.
 func isTokenArtPoolCandidate(c Card) bool {
-	return c.Layout == "token" &&
+	return (c.Layout == "token" || c.Layout == "double_faced_token") &&
 		c.Lang == "en" &&
-		len(c.ImageURIs) > 0 &&
+		tokenPoolHasArt(c) &&
 		c.BorderColor == "black" &&
 		!tokenPoolExcludedSetTypes[c.SetType]
+}
+
+// tokenPoolHasArt reports whether c carries an image the pool can show:
+// its top-level image for a token, or its front face's image for a
+// double_faced_token.
+func tokenPoolHasArt(c Card) bool {
+	if len(c.ImageURIs) > 0 {
+		return true
+	}
+	return c.Layout == "double_faced_token" && len(c.CardFaces) > 0 && len(c.CardFaces[0].ImageURIs) > 0
+}
+
+// tokenPoolPrinting returns the pool record for c, with its identity
+// taken from the front face (ADR 0078 decision 10, #3511). A
+// double_faced_token has no top-level name, type line or colours; the
+// token a player mints is the front face (the Incubator), so that face's
+// fields are the ones the resolver must match. The image route still
+// reads the original record by ID, where face 0 is the front.
+func tokenPoolPrinting(c Card) Card {
+	if c.Layout != "double_faced_token" || len(c.CardFaces) == 0 {
+		return c
+	}
+	front := c.CardFaces[0]
+	c.Name = front.Name
+	c.TypeLine = front.TypeLine
+	c.Power = front.Power
+	c.Toughness = front.Toughness
+	c.Colors = front.Colors
+	return c
 }
 
 // NewIndex returns an empty Index. Call Load to populate it from a
@@ -469,7 +500,7 @@ func (i *Index) Load(path string) (int, error) {
 		loaded[c.ID] = c
 		indexSetNo(bySetNo, loaded, c)
 		if isTokenArtPoolCandidate(c) {
-			tokenPool = append(tokenPool, c)
+			tokenPool = append(tokenPool, tokenPoolPrinting(c))
 		}
 		// Build the name index. Index both the full printed name and
 		// the front-face name for split / double-faced cards, since
