@@ -42,6 +42,9 @@ export type Route =
   // the rules for using it. Public, like the privacy notice: a stranger
   // reads them before signing in.
   | { name: "terms" }
+  // The funding page (#3558): how CMD & CTRL is funded. Public, like the
+  // terms and the privacy notice.
+  | { name: "funding" }
   // The About page (#2981): what this project is, what the engine does and
   // does not do for you, where to send feedback, and the credits. Public:
   // it is what a stranger reads before deciding to sign in.
@@ -154,6 +157,8 @@ export function parseHash(hash: string): Route {
       return { name: "privacy" };
     case "terms":
       return { name: "terms" };
+    case "funding":
+      return { name: "funding" };
     case "about":
       return { name: "about" };
     case "guide":
