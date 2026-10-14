@@ -289,8 +289,8 @@ function escapeAttr(s: string): string {
   return s.replace(/["\\]/g, "\\$&");
 }
 
-/** The selector for one seat's pile button. */
-export function pileSelector(zone: LingerZone, seat: string): string {
+/** The selector for one seat's pile button (PileBar: library, graveyard, exile). */
+export function pileSelector(zone: LingerZone | "library", seat: string): string {
   return `[${PILE_ATTR}="${zone}"][${PILE_OWNER_ATTR}="${escapeAttr(seat)}"]`;
 }
 
