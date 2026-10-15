@@ -731,6 +731,14 @@ export const LABEL_SPECS = {
     doc: "a table roll (ADR 0121 §5)",
   }),
 
+  rulings: label({
+    name: "Rulings",
+    kind: "text",
+    role: "menuitem",
+    owners: [`${BOARD}CardContextMenu.svelte`, `${BOARD}ManaAbilityMenu.svelte`],
+    doc: "a card menu's link to the card's official rulings in a new tab (#3831); not offered for a hidden or face-down card or a token",
+  }),
+
   // -- The admin views (ADR 0124 §7, §8) --
   adminViews: label({
     name: "admin views",

@@ -29,6 +29,12 @@ export interface CardMeta {
   /** Illustrator, from Scryfall. Credited wherever an art crop is the
    * main view of a card (#2982); the crop itself drops the line. */
   artist?: string;
+  /** The printing's set code and collector number, and its Gatherer ids
+   * (one per printed face, omitted when Gatherer lists none); they build
+   * the card menu's "Rulings" link (#3831). */
+  set?: string;
+  collector_number?: string;
+  multiverse_ids?: number[];
   card_faces?: Array<{
     artist?: string;
     name: string;

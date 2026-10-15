@@ -96,6 +96,7 @@ registered, or when this file is stale.
 | `rollD6` | `Roll a d6` | menuitem | text | `lib/gameMenu.ts` | a table roll (ADR 0121 §5); disabled for 2 s after the viewer's own roll |
 | `rollD20` | `Roll a d20` | menuitem | text | `lib/gameMenu.ts` | a table roll (ADR 0121 §5) |
 | `flipCoin` | `Flip a coin` | menuitem | text | `lib/gameMenu.ts` | a table roll (ADR 0121 §5) |
+| `rulings` | `Rulings` | menuitem | text | `lib/components/board/CardContextMenu.svelte`<br>`lib/components/board/ManaAbilityMenu.svelte` | a card menu's link to the card's official rulings in a new tab (#3831); not offered for a hidden or face-down card or a token |
 | `adminViews` | `admin views` | navigation | aria | `routes/Admin.svelte` | the admin views' tabs: Live now, Games, Accounts |
 | `adminLiveNowTab` | `Live now` | link | text | `routes/Admin.svelte` | the admin views' first tab |
 | `adminGamesTab` | `Games` | link | text | `routes/Admin.svelte` | the admin views' tab for every table |

@@ -174,6 +174,13 @@ type Card struct {
 	// deliberately NOT the per-frame CardView. Empty for the few
 	// records that print none; omitted on the wire then.
 	Artist string `json:"artist,omitempty"`
+	// MultiverseIDs are Gatherer's ids for this printing, one per
+	// printed face of a double-faced card (front first). The client
+	// builds the "Rulings" link from them (#3831): Wizards' Gatherer is
+	// the official source of a card's rulings. Many printings have none
+	// (Universes Beyond, newer sets, tokens), and the client then links
+	// the Scryfall card page instead. Omitted on the wire when empty.
+	MultiverseIDs []int `json:"multiverse_ids,omitempty"`
 	// The next six fields describe HOW a printing looks, not what the
 	// card is. They exist for one reader, printingRank, which decides
 	// which printing stands for a card name when a deck names none

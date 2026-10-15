@@ -31,6 +31,8 @@
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
   import { PAY_LIFE_LABEL, PAY_LIFE_TITLE } from "../../payLifeForMana";
   import { maxPhyrexianLife, phyrexianLifeCost } from "../../phyrexianLife";
+  import { L } from "../../labels";
+  import { useRulings } from "../../rulings.svelte";
   import ModalLayer from "../ModalLayer.svelte";
 
   interface Props {
@@ -240,6 +242,21 @@
     ownMana.length > 0 || ownActivated.length > 0 || manualLoyalty.length > 0,
   );
   const notAutomated = $derived(card ? unautomatedLines(card) : []);
+
+  // #3831: the last row, a link to the card's official rulings. Null for
+  // a card the viewer cannot see, a face-down card and a token.
+  const rulings = useRulings(() => card);
+  const rowsAbove = $derived(
+    special.length > 0 ||
+      abilities.length > 0 ||
+      activated.length > 0 ||
+      manualLoyalty.length > 0 ||
+      lenderGroups.length > 0 ||
+      notAutomated.length > 0 ||
+      !!payLife ||
+      !!onRawTap ||
+      !!castAnyway,
+  );
 
   function fireLoyalty(item: MenuItem): void {
     if (item.disabled || !item.action) return;
@@ -571,6 +588,30 @@
       {/if}
     </div>
   {/if}
+  {#if rulings.url}
+    {#if rowsAbove}
+      <div class="divider" role="separator"></div>
+    {/if}
+    <!-- #3831: a real link, so a middle-click or Ctrl-click works too.
+         The menu closes a tick after the click, not during it, so the
+         anchor is still in the page when the browser follows it. -->
+    <a
+      class="menu-item"
+      role="menuitem"
+      href={rulings.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Open this card's official rulings in a new tab"
+      data-rulings
+      onclick={(ev) => {
+        ev.stopPropagation();
+        setTimeout(() => onClose?.(), 0);
+      }}
+    >
+      <span class="label">{L.rulings}</span>
+      <span class="cost" aria-hidden="true">↗</span>
+    </a>
+  {/if}
 </div>
 
 <style>
@@ -622,6 +663,9 @@
     cursor: pointer;
     font-size: 11px;
     line-height: 1.2;
+  }
+  a.menu-item {
+    text-decoration: none;
   }
   .menu-item:hover:not(:disabled),
   .menu-item:focus-visible:not(:disabled) {
