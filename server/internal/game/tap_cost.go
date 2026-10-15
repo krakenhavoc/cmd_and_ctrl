@@ -157,6 +157,10 @@ func tapPermanentsBudget(c *TapPermanentsCost, cost ParsedCost, xValue int) int 
 		// Only the generic half is payable by tapping.
 		return extra.Generic + extra.XSlots*xValue
 	}
+	if !c.ColorClause {
+		// Improvise: a tapped artifact pays generic mana only (CR 702.126a).
+		return cost.GenericWithX(xValue)
+	}
 	return cost.GenericWithX(xValue) + len(cost.Required)
 }
 

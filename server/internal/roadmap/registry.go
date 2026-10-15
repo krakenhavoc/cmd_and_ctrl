@@ -626,6 +626,13 @@ var items = []Item{
 		Printed: printedKeyword("convoke"),
 	},
 	{
+		Slug: "improvise", Name: "Improvise", Kind: KindMechanic, Status: StatusImplemented,
+		Summary: "Tap your artifacts to help pay for a spell with improvise; each one pays for one generic mana.",
+		Rules:   []string{"702.126"},
+		Probe:   tapCost("improvise"),
+		Printed: printedKeyword("improvise"),
+	},
+	{
 		Slug: "waterbend", Name: "Waterbend", Kind: KindMechanic, Status: StatusImplemented,
 		Summary: "Tap your artifacts and creatures to help pay a waterbend cost, each one paying for one generic mana.",
 		Rules:   []string{"701.67"},
@@ -1712,6 +1719,15 @@ var items = []Item{
 		Issue:       2137,
 		Tracked:     "#2137 (found landing the undying and persist pool, #2075)",
 		EngineNotes: "**Shipped** (ADR 0073 amendment 2026-10-14, #3245): `CardDef.GrantedTapCosts` / `effects.SpellsYouCastHaveConvoke(label, filter)` with `FromZone` and `SpellIs` filters, and `Door.GrantedTapCosts` for a Room. `Game.TapPermanentsCostForCastLocked(caster, card, from)` returns the card's own tap cost or the first grant from a permanent the caster controls whose gate holds; every cast-time reader (validation, the tap budget, pricing, the convoked record, the cast view) asks it. Eirdu, Carrier of Dawn is unblocked: its other text was already expressible.",
+	},
+	{
+		Slug: "grant-improvise", Name: "Giving spells improvise", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Effects that give the next spell you cast improvise, such as Archway of Innovation's.",
+		Examples:    []string{"Archway of Innovation"},
+		Rules:       []string{"702.126a"},
+		Issue:       3654,
+		Tracked:     "#3654 (missing top-1,000 cards)",
+		EngineNotes: "**Shipped** (#3654): `effects.Improvise()` is convoke's twin over artifacts with no colour clause (a tapped artifact pays generic only, and the tap budget is the generic alone). `game.NextSpellPromise.Improvise` is a one-use promise: `TapPermanentsCostForCastLocked` offers `game.ImproviseTapCost` to the caster's next matching spell, so validation, pricing and the cast view agree, and the next spell cast spends it. The bot enumerator enumerates no tap payments, as for convoke.",
 	},
 	{
 		Slug: "stickers", Name: "Stickers and ticket counters", Kind: KindSeam, Status: StatusMissing,

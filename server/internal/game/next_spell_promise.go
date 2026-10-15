@@ -112,9 +112,38 @@ type NextSpellPromise struct {
 	// that spell IS the next one.
 	WithoutPayingManaCost bool `json:"withoutPayingManaCost,omitempty"`
 
+	// Improvise is "has improvise" (CR 702.126): the matching spell may be
+	// paid for by tapping artifacts, each paying {1} of generic mana
+	// (Archway of Innovation). Read while the cast is announced and priced,
+	// through TapPermanentsCostForCastLocked, so the view, the enumerator and
+	// CastSpell agree; spent with the spell like every other rider.
+	Improvise bool `json:"improvise,omitempty"`
+
 	// Text is the clause as printed, for the log and the panel. Not a
 	// rules input.
 	Text string `json:"text,omitempty"`
+}
+
+// ImproviseTapCost is the tap cost an improvise grant offers. The effects
+// package sets it at init (effects.Improvise()); game cannot build a
+// TargetSpec itself.
+var ImproviseTapCost *TapPermanentsCost
+
+// improvisePromiseCostLocked is ImproviseTapCost when one of `player`'s
+// live promises gives `card` improvise, else nil.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) improvisePromiseCostLocked(player uuid.UUID, card Card) *TapPermanentsCost {
+	p := g.playerByIDLocked(player)
+	if p == nil || ImproviseTapCost == nil {
+		return nil
+	}
+	for _, s := range p.Statics {
+		if s.NextSpell.Improvise && g.livePromise(s) && !s.NextSpell.EveryMatchingSpell && s.NextSpell.Filter.Matches(card) {
+			return ImproviseTapCost
+		}
+	}
+	return nil
 }
 
 // PromisedCounter is one "enters with an additional counter" mark on a
