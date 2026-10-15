@@ -148,6 +148,21 @@ describe("trackLinger", () => {
     ]);
   });
 
+  it("reads a condition fizzle as no effect, not as no legal targets (#3907)", () => {
+    const trig = item("trig-1", { kind: "triggered" });
+    const t = seen([trig], 10);
+    const r = trackLinger(
+      t,
+      [{ seq: 11, kind: "fizzle", seat: 1, stack_item_id: "trig-1", call: "condition", text: "" }],
+      [],
+    );
+    expect(r.lingers.map((d) => [d.item.id, d.outcome])).toEqual([["trig-1", "lapsed"]]);
+    expect(
+      lingerAnnouncement({ item: item("x", { name: "Land Tax" }), outcome: "lapsed", by: null }),
+    ).toBe("Land Tax did nothing: its condition no longer held");
+    expect(OUTCOME_BADGE.lapsed.title).toContain("CR 603.4");
+  });
+
   it("matches an ability by stack_item_id, never by its source's card_id", () => {
     const trig = item("trig-1", { kind: "triggered" });
     const t = seen([trig], 10);

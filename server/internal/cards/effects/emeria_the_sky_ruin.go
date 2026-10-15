@@ -22,7 +22,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // "If you control seven or more Plains" is an intervening "if"
 // (CR 603.4): checked when the trigger would go on the stack and again
-// as it resolves, so losing a Plains in response stops the return.
+// as it resolves, so losing a Plains in response stops the return. The
+// second check is declared (InterveningIf), so it comes before the "you
+// may" and a failed one asks nothing (#3907).
 func init() {
 	Register(Spec{
 		OracleID:     "cc999cf2-c99b-4911-8c52-6cc4a99fcc7b",
@@ -34,7 +36,12 @@ func init() {
 			Produced: "{W}",
 			Label:    "Add {W}",
 		}},
-		Triggered: []game.TriggeredAbility{{
+		Triggered: []game.TriggeredAbility{InterveningIf(CondBoard{
+			Name: "you control seven or more Plains",
+			Test: func(ctx *Context) bool {
+				return b08LandsWithSubtypeControlled(ctx.Game, ctx.Controller(), "Plains") >= 7
+			},
+		}, game.TriggeredAbility{
 			Watches: []game.EventKind{game.EventBeginUpkeep},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && b08LandsWithSubtypeControlled(g, source.Controller, "Plains") >= 7
@@ -46,11 +53,8 @@ func init() {
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 					return nil
 				}
-				if b08LandsWithSubtypeControlled(g, item.Controller, "Plains") < 7 {
-					return nil
-				}
 				return ReturnFromGraveyard{Target: item.Targets[0].ID, Dest: game.ZoneBattlefield}.Apply(NewContext(g, item))
 			},
-		}},
+		})},
 	})
 }

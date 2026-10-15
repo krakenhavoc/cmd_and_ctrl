@@ -463,10 +463,13 @@ func TestB12ValakutRechecksTheFiveMountainsOnResolution(t *testing.T) {
 	b12PlayFromHand(t, g, "Mountain", "Basic Land — Mountain", "", game.CastSpellParams{})
 	b04WaitForPick(t, g, me.ID)
 	pickPlayer(t, g, me.ID, opp.ID)
-	// In response, one of the other Mountains leaves.
+	// In response, one of the other Mountains leaves. CR 603.4 is
+	// checked before the "you may" (#3907): nothing is asked.
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(mountains[0]) })
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
+	if latestTriggerPrompt(g, me.ID) != nil {
+		t.Error("a trigger whose condition failed asked its \"you may\"")
+	}
 	if opp.Life != before {
 		t.Errorf("with only four other Mountains at resolution nothing happens; opponent %d → %d", before, opp.Life)
 	}

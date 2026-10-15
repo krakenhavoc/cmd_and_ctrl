@@ -23,8 +23,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // intervening-if (CR 603.4) is checked BOTH when the trigger is put
 // on the stack and again on resolution: an opponent who Wastelands a
 // Mountain in response to the trigger leaves you at four others and
-// the damage does not happen. The "you may" is the trigger prompt;
-// the target is picked after it.
+// the damage does not happen. The target is picked as the trigger goes
+// on the stack; the second check is declared (InterveningIf), so it
+// comes before the "you may" and a failed one asks nothing (#3907).
 //
 // No simplification.
 func init() {
@@ -38,7 +39,12 @@ func init() {
 			Produced: "{R}",
 			Label:    "Add {R}",
 		}},
-		Triggered: []game.TriggeredAbility{{
+		Triggered: []game.TriggeredAbility{InterveningIf(CondBoard{
+			Name: "you control at least five other Mountains",
+			Test: func(ctx *Context) bool {
+				return b12OtherMountainsControlled(ctx.Game, ctx.Controller(), ctx.Item.Trigger.Event.CardID) >= 5
+			},
+		}, game.TriggeredAbility{
 			Watches: []game.EventKind{game.EventETB},
 			Key:     "Valakut, the Molten Pinnacle — 3 damage to any target",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
@@ -47,17 +53,7 @@ func init() {
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Valakut, the Molten Pinnacle — deal 3 damage to any target?"},
 			Targets:        TargetAny(),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if len(item.Targets) == 0 {
-					return nil
-				}
-				// CR 603.4 — the intervening-if is re-checked on
-				// resolution.
-				if b12OtherMountainsControlled(g, item.Controller, item.Trigger.Event.CardID) < 5 {
-					return nil
-				}
-				return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: 3}.Apply(NewContext(g, item))
-			},
-		}},
+			Effect:         DamageToFirstTarget(3),
+		})},
 	})
 }

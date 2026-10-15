@@ -272,6 +272,28 @@ func TestAnAbilityThatFizzlesIsNamed(t *testing.T) {
 	}
 }
 
+// #3907: an optional trigger removed because its intervening "if" no
+// longer held (CR 603.4) says so, rather than blaming its targets.
+func TestAConditionFizzleSaysWhy(t *testing.T) {
+	g := buildMainPhaseGame(t)
+	me := g.Seats[0]
+	tax := battlefieldCard(t, g, "Land Tax", "Enchantment", me.ID)
+	const label = "Land Tax — search for up to three basic lands"
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{
+			Kind: game.EventFizzle, Actor: me.ID, Source: tax, Label: label,
+			ResolvedStackItemID: uuid.New(), Call: game.FizzleCallCondition,
+		})
+	})
+	entry := findLog(t, ViewOfGame(g).Log, LogFizzle)
+	if want := label + " did nothing: its condition no longer held (CR 603.4)"; entry.Text != want {
+		t.Errorf("text = %q, want %q", entry.Text, want)
+	}
+	if entry.Call != game.FizzleCallCondition {
+		t.Errorf("call = %q, want %q", entry.Call, game.FizzleCallCondition)
+	}
+}
+
 // A spell's resolve line is unchanged: it carries its own card and no
 // label, and renders as it always has.
 func TestASpellsResolveLineIsUnchanged(t *testing.T) {

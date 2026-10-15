@@ -1378,6 +1378,9 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 
 	case game.EventFizzle:
 		base.Kind = LogFizzle
+		// #3907: "condition" marks a CR 603.4 removal, not a CR
+		// 608.2b one, for the line's reason.
+		base.Call = ev.Call
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		base.StackItemID = stackItemOf(ev)
 		projectAbilityItem(&base, ev)
@@ -2712,6 +2715,13 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		}
 		return fmt.Sprintf("%s resolved", card)
 	case LogFizzle:
+		if e.Call == game.FizzleCallCondition {
+			name := card
+			if e.ability {
+				name = abilityName(e.Label, cardName)
+			}
+			return fmt.Sprintf("%s did nothing: its condition no longer held (CR 603.4)", name)
+		}
 		if e.ability {
 			return fmt.Sprintf("%s was countered by game rules (no legal targets)", abilityName(e.Label, cardName))
 		}

@@ -193,3 +193,87 @@ func TestStandingNoOptionalTriggerIsNotOrdered(t *testing.T) {
 		t.Errorf("hand moved by %d, want 0: declined, nothing drawn", got)
 	}
 }
+
+// landTaxTable seats Land Tax for seat 1 with an opponent ahead on
+// lands, at seat 1's upkeep with the trigger on the stack, and a
+// standing "Always" for it (ADR 0127).
+func landTaxTable(t *testing.T) (*game.Game, *game.Player) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me, opp := g.Seats[1], g.Seats[0]
+	pushCatalogPermanent(g, me.ID, "Land Tax", "Enchantment", b03LandTaxOracle, false)
+	seedLandOnBattlefield(g, opp.ID, "Forest", "Basic Land — Forest")
+	for i := 0; i < 3; i++ {
+		stapleLibraryCard(me, "Plains", "Basic Land — Plains")
+	}
+	advanceToUpkeepOf(t, g, 1)
+	g.RunStateChecksForTest()
+	var item *game.StackItem
+	for _, it := range g.StackMeta {
+		if it != nil && it.Optional != nil {
+			item = it
+		}
+	}
+	if item == nil {
+		t.Fatal("setup: Land Tax's trigger is not on the stack")
+	}
+	if err := g.SetAutoAnswers(me.ID, map[string]game.AutoAnswer{item.Optional.AnswerKey: game.AutoAnswerAlways}); err != nil {
+		t.Fatal(err)
+	}
+	return g, me
+}
+
+// #3907, CR 603.4 before CR 603.5: the condition fails in response, so
+// the trigger is removed as it resolves with no question — nothing for
+// the standing answer to answer — and the log says why.
+func TestOptionalTriggerWhoseConditionFailsAsksNothing(t *testing.T) {
+	g, me := landTaxTable(t)
+	seedLandOnBattlefield(g, me.ID, "Plains", "Basic Land — Plains") // evens the count
+	hand := me.Hand.Size()
+	passPriorityAroundTable(t, g)
+	if latestTriggerPrompt(g, me.ID) != nil {
+		t.Fatal("a trigger whose condition failed asked its \"you may\"")
+	}
+	if n := autoAnswerAll(t, g); n != 0 {
+		t.Errorf("answered %d automatically, want 0: nothing was asked", n)
+	}
+	if searchChoiceFor(g, me.ID) != nil || me.Hand.Size() != hand {
+		t.Error("the trigger did something")
+	}
+	var why *game.Event
+	for i := range g.Events {
+		switch g.Events[i].Kind {
+		case game.EventFizzle:
+			why = &g.Events[i]
+		case game.EventAutoAnswer:
+			t.Error("an automatic answer was recorded for a question never asked")
+		}
+	}
+	if why == nil || why.Call != game.FizzleCallCondition {
+		t.Fatalf("no fizzle marked as a failed condition: %+v", why)
+	}
+	if !stackFullyEmpty(g) || len(g.PendingChoices) != 0 {
+		t.Error("the trigger did not leave the stack")
+	}
+}
+
+// The condition still holds: the question is asked as before, and the
+// standing answer answers it.
+func TestOptionalTriggerWhoseConditionHoldsStillAsks(t *testing.T) {
+	g, me := landTaxTable(t)
+	ask := awaitTriggerPrompt(t, g, me.ID)
+	if ask.AutoAnswerKey == "" {
+		t.Fatal("the prompt carries no standing-answer key")
+	}
+	if n := autoAnswerAll(t, g); n != 1 {
+		t.Fatalf("answered %d automatically, want 1", n)
+	}
+	if searchChoiceFor(g, me.ID) == nil {
+		t.Error("Always did not run the search")
+	}
+	for i := range g.Events {
+		if g.Events[i].Kind == game.EventFizzle {
+			t.Error("a trigger whose condition held was removed")
+		}
+	}
+}

@@ -345,6 +345,7 @@
     resolved: "check",
     countered: "x",
     fizzled: "exile",
+    lapsed: "exile",
   };
 </script>
 
@@ -392,6 +393,8 @@
             <span class="badge-sub">by {g.by}</span>
           {:else if g.outcome === "fizzled"}
             <span class="badge-sub">no legal targets</span>
+          {:else if g.outcome === "lapsed"}
+            <span class="badge-sub">condition no longer true</span>
           {/if}
         </span>
       {/if}
@@ -566,13 +569,15 @@
   .badge[data-outcome="countered"] {
     --badge-bg: color-mix(in srgb, var(--danger) 88%, #3a0606);
   }
-  .badge[data-outcome="fizzled"] {
+  .badge[data-outcome="fizzled"],
+  .badge[data-outcome="lapsed"] {
     --badge-bg: #6b6760;
   }
   /* The copy dims a little under its badge, so the badge reads as the
      news and the card as what it happened to. */
   .as-card[data-linger-outcome="countered"]::after,
-  .as-card[data-linger-outcome="fizzled"]::after {
+  .as-card[data-linger-outcome="fizzled"]::after,
+  .as-card[data-linger-outcome="lapsed"]::after {
     content: "";
     position: absolute;
     inset: 0;

@@ -17,9 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // many — "up to three" is the chooser's zero minimum.
 //
 // The intervening-if is checked twice (CR 603.4): when the trigger
-// would go on the stack, in AppliesTo, and again when it resolves, at
-// the top of the Effect. So a land played in response to even out the
-// counts makes the trigger do nothing, as printed. (Until #3138 this
+// would go on the stack, in AppliesTo, and again when it resolves,
+// declared with InterveningIf so it comes before the "you may" (#3907).
+// So a land played in response to even out the counts makes the
+// trigger do nothing, as printed, and asks nothing. (Until #3138 this
 // file declared that second check as missing; it never needed engine
 // support, because the Effect already runs at resolution and reads the
 // live board.)
@@ -31,12 +32,14 @@ func init() {
 		Name:         "Land Tax",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			// CR 603.4, declared so it is checked before the "you may"
+			// (#3907): a failed condition asks nothing.
+			InterveningIf(CondBoard{
+				Name: "an opponent controls more lands than you",
+				Test: func(ctx *Context) bool { return b03OpponentControlsMoreLands(ctx.Game, ctx.Controller()) },
+			}, Optional(On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && b03OpponentControlsMoreLands(g, source.Controller)
 			}, "Land Tax — search for up to three basic lands", func(g *game.Game, item *game.StackItem) error {
-				if !b03OpponentControlsMoreLands(g, item.Controller) {
-					return nil // CR 603.4: the condition no longer holds on resolution
-				}
 				return SearchLibrary{
 					Player:    item.Controller,
 					Predicate: IsBasicLand,
@@ -46,7 +49,7 @@ func init() {
 					Shuffle:   true,
 					Reason:    "Land Tax — up to three basic land cards, to your hand",
 				}.Apply(NewContext(g, item))
-			}), "Land Tax — search your library for up to three basic land cards?"),
+			}), "Land Tax — search your library for up to three basic land cards?")),
 		},
 	})
 }

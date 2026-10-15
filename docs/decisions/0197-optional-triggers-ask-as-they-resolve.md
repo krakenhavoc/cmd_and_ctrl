@@ -39,7 +39,11 @@ CR 603.3c and 603.3d are unchanged, and the engine already applied them in that 
 
 ### 4. Intervening "if" (CR 603.4)
 
-The engine has no declared intervening-if: each card checks its condition in `AppliesTo` (as it triggers) and again in its effect (as it resolves). Both checks still run. The second now runs after a "yes", so a player can be asked "you may" about an ability whose condition has since failed and then see nothing happen. The game state is the same either way; the question is a click the rules would not ask. Declaring the condition so the engine can check it before asking is left for a card that needs it.
+Each card checks its condition in `AppliesTo` (as it triggers) and again as it resolves. Both checks still run.
+
+**Amendment (2026-10-15, [#3907](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3907)): the check comes before the question.** A row can now declare its resolution-time check: its Effect is a `Do` whose first step is an `If{Cond}` (the #3033 shape), or a hand-written Effect wrapped by `effects.InterveningIf(cond, row)`. The engine reads the declaration through `game.CatalogTriggerInterveningIf`. That is a package hook, not a field, so nothing reachable from `Game` holds a closure. When an optional item resolves, the declared condition is checked after the CR 608.2b target check and before the "you may". If it no longer holds, CR 603.4 removes the ability. It does nothing and asks nothing, so a standing answer has nothing to answer. The engine emits an `EventFizzle` with `Call: "condition"`. The log reads "X did nothing: its condition no longer held (CR 603.4)". The client's stack linger badges it "No effect", not "no legal targets". If the condition still holds, the question is asked as before. Valakut, the Molten Pinnacle, Emeria, the Sky Ruin and Land Tax declare their conditions this way.
+
+An optional row whose condition is written only inside a hand-written Effect still checks it after the "yes". Each such card can be moved to `InterveningIf` when it is next touched. The game state is the same either way; only the needless question remains.
 
 ### 5. "Do this only once each turn"
 
@@ -79,5 +83,5 @@ The question is plain data: `PendingChoice.OptionalItem` (the resolving item's I
 
 ## Out of scope
 
-- A declared intervening-if, so the condition is checked before the question (§4).
+- Moving every hand-written optional intervening-if to `InterveningIf` (§4's amendment covers the mechanism and three cards).
 - Standing answers for targeted and modal optional triggers (§6).
