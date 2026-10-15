@@ -32,6 +32,7 @@
   import { playerKeywordBadges } from "../../playerKeywordBadges";
   import { isLevelledEmblem } from "../../ringEmblem";
   import { speedTitle } from "../../speed";
+  import { turnSkipChip } from "../../turn";
   import { avatarExpand } from "../../boardExpand";
   import EmblemLevelChip from "./EmblemLevelChip.svelte";
   import ManaPoolPips from "./ManaPoolPips.svelte";
@@ -259,6 +260,8 @@
   const showConsidering = $derived(considering && presence?.kind !== "offline");
   // ADR 0177 §4: a bot plays this person's seat while they are away.
   const standIn = $derived(!isBot && Boolean(seat.stand_in));
+  // ADR 0188 Decision 9 (#3559): the "Skips next turn" chip.
+  const skipChip = $derived(turnSkipChip(seat.turn_skips));
 </script>
 
 <div
@@ -469,6 +472,11 @@
       <!-- The city's blessing (CR 702.131c, #2696): a designation ascend
            gives and nothing takes away, so there is no toggle. Shown on
            every seat, self and opponent alike. -->
+      {#if skipChip}
+        <span class="marker turn-skips" title="This player skips their next turn(s)"
+          >{skipChip}</span
+        >
+      {/if}
       {#if seat.citys_blessing}
         <span
           class="marker citys-blessing active"
@@ -1084,6 +1092,10 @@
     border-color: color-mix(in srgb, var(--magenta) 70%, transparent);
     background: color-mix(in srgb, var(--magenta) 18%, transparent);
     box-shadow: 0 0 10px color-mix(in srgb, var(--magenta) 35%, transparent);
+  }
+  .marker.turn-skips {
+    color: var(--accent);
+    white-space: nowrap;
   }
   .marker.active.citys-blessing {
     color: var(--accent);

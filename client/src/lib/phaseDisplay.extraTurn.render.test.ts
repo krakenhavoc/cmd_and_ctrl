@@ -59,3 +59,35 @@ describe("PhaseDisplay extra turns", () => {
     expect(c.querySelector(".next-extra")?.textContent?.trim()).toBe("Next: Bob (extra)");
   });
 });
+
+describe("PhaseDisplay repeated phases and skips (ADR 0188)", () => {
+  const combat: TurnView = {
+    ...base,
+    phase: "combat",
+    step: "declare_attackers",
+    phase_id: 6,
+    phase_ordinal: 2,
+    upcoming: [{ step: "postcombat_main", phase_id: 7 }],
+  };
+  it("captions the second combat and marks the added main", () => {
+    const c = mount(combat);
+    expect(c.querySelector('[data-phase="combat"] .phase-caption')?.textContent?.trim()).toBe(
+      "Combat 2",
+    );
+    expect(c.querySelector("[data-added-phase]")?.textContent).toBe("+ Main");
+  });
+  it("shows the seat after a skip", () => {
+    const c = render(
+      PhaseDisplay as never,
+      {
+        turn: { ...base, next_seat: 0, active_seat: 0 },
+        seats: [
+          { id: "a", name: "Alice", seat: 0 },
+          { id: "b", name: "Bob", seat: 1, turn_skips: 1 },
+        ],
+        mulligansOpen: false,
+      } as never,
+    ).container;
+    expect(c.querySelector(".next-extra")?.textContent?.trim()).toBe("Next: Alice (skips Bob)");
+  });
+});
