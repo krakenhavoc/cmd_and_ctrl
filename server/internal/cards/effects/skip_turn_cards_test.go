@@ -239,29 +239,3 @@ func TestMagosiBothAbilitiesInOneTurnCancelOut(t *testing.T) {
 		})
 	}
 }
-
-// --- The interim Trouble in Pairs default ---------------------------
-
-// A player who owes a skip and whose extra turn an opponent's Trouble in
-// Pairs would also skip: both are replacements on one event (CR 616.1).
-// Until ADR 0188 slice 3 asks the player, the debt is spent first, so the
-// charge is spent and EventExtraTurnSkipped is not emitted. That slice
-// replaces this with the question and changes this test.
-func TestASkipDebtIsSpentBeforeTroubleInPairsSeesTheExtraTurn(t *testing.T) {
-	g := newCatalogGame(t)
-	caster := g.Turn.ActiveSeat
-	other := (caster + 1) % len(g.Seats)
-	seedEnchantment(g, troubleInPairsOracle, "Trouble in Pairs", "Enchantment", g.Seats[other].ID)
-	g.WithWriteLock(func() { g.SkipNextTurnsForEffect(g.Seats[caster].ID, uuid.Nil, 1, "probe") })
-
-	castCatalogSpell(t, g, "Temporal Manipulation", "Sorcery", temporalManipulationOracle, nil)
-	passPriorityAroundTable(t, g)
-	endTurn(t, g)
-	assertTurnOf(t, g, other, false, "after the extra turn is skipped")
-	if got := g.TurnSkipsFor(g.Seats[caster].ID); got != 0 {
-		t.Errorf("the charge was not spent: %d owed", got)
-	}
-	if got := skippedExtraTurnEvents(g); got != 0 {
-		t.Errorf("EventExtraTurnSkipped emitted %d times, want 0: the debt took the turn", got)
-	}
-}

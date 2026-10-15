@@ -156,6 +156,8 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		}
 	case choiceEntryRiot:
 		return st.riotValue(ch, cp.Apply)
+	case choiceTurnSkipOrder:
+		return turnSkipOrderValue(ch, cp.Apply)
 	case choiceDamageAssignment:
 		// The enumerator offers the canonical most-kills split first and
 		// the other divisions after it (#3620). Equal values go to the

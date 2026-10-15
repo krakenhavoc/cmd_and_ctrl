@@ -1013,6 +1013,12 @@ type PendingChoice struct {
 	// frame, as every pay_amount does.
 	Assist *AssistPrompt
 
+	// TurnSkipOrder makes a prompt the which-skip question of a paused
+	// turn change (ADR 0188 Decision 12, turn_skip_order.go). Plain
+	// data, written to a restore point and shown to every seat; nil on
+	// every other prompt.
+	TurnSkipOrder *TurnSkipOrder
+
 	// chooseValueResume is the continuation for a resolution-time
 	// PendingChoiceColor (Wash Out's "return all permanents of the
 	// color of your choice"). nil for the stored form, whose answer is

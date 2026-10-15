@@ -342,6 +342,11 @@ type GameSnapshot struct {
 	// departure of an active player who lost by an effect
 	// mid-resolution, consumed by the next SBA loss pass.
 	ActiveSeatLeftPending bool `json:"activeSeatLeftPending,omitempty"`
+	// TurnChangePending is ADR 0188 Decision 12's turn change waiting on
+	// its turn_skip_order question. Additive in v8: an older binary
+	// refuses the file anyway, because the open prompt's kind is unknown
+	// to it.
+	TurnChangePending bool `json:"turnChangePending,omitempty"`
 	// TurnEndPending is CR 724.1's deferred half (#2165): an effect
 	// ended the turn, the stack is exiled, and the skip to the cleanup
 	// step has not happened yet. omitempty, so no schema bump; an older
@@ -1638,6 +1643,9 @@ type pendingChoiceSnapshot struct {
 	// ADR 0146: a ballot's vote so far (CR 701.38). Its continuation
 	// key is checked like pickThen's.
 	CouncilVote *CouncilVote `json:"councilVote,omitempty"`
+	// ADR 0188 Decision 12: the which-skip question of a paused turn
+	// change. Plain data, so a table waiting on it is a restore point.
+	TurnSkipOrder *TurnSkipOrder `json:"turnSkipOrder,omitempty"`
 	// ADR 0150: a pay_unless link of an any-player offer. Its branches
 	// are closures, so a table waiting on one is not a restore point;
 	// the data rides the undo clone like every other field.
@@ -1933,6 +1941,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		EventBatch:            g.eventBatch,
 		ResolutionOpen:        g.resolutionOpen,
 		ActiveSeatLeftPending: g.ActiveSeatLeftPending,
+		TurnChangePending:     g.TurnChangePending,
 		TurnEndPending:        g.TurnEndPending,
 		turnSeqPresent:        true,
 	}
@@ -2692,6 +2701,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
 		OptionCarry:          copyUUIDs(c.OptionCarry),
 		CouncilVote:          cloneCouncilVote(c.CouncilVote),
+		TurnSkipOrder:        cloneTurnSkipOrder(c.TurnSkipOrder),
 		AnyPlayerOffer:       cloneAnyPlayerOffer(c.AnyPlayerOffer),
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
@@ -2872,6 +2882,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.SplitSecondActive = s.SplitSecondActive
 	g.Outcome = cloneGameOutcome(s.Outcome)
 	g.ActiveSeatLeftPending = s.ActiveSeatLeftPending
+	g.TurnChangePending = s.TurnChangePending
 	g.TurnEndPending = s.TurnEndPending
 	g.eventSeq = s.EventSeq
 	g.eventBatch = s.EventBatch
@@ -3577,6 +3588,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
 		OptionCarry:          copyUUIDs(c.OptionCarry),
 		CouncilVote:          cloneCouncilVote(c.CouncilVote),
+		TurnSkipOrder:        cloneTurnSkipOrder(c.TurnSkipOrder),
 		AnyPlayerOffer:       cloneAnyPlayerOffer(c.AnyPlayerOffer),
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,

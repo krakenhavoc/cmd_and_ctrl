@@ -175,8 +175,13 @@ func (g *Game) extraTurnsInOrderLocked() []ExtraTurn {
 // (CR 800.4k) and counted toward their TurnsBegun (CR 800.4m). ok is
 // false when the queue held no playable turn.
 //
+// paused is true when the candidate turn's player owes a skip AND an
+// extra-turn skip applies to it too (ADR 0188 Decision 12, case 3): the
+// entry is back on top of the queue, Game.TurnChangePending is set, and
+// a turn_skip_order prompt asks the player which skip takes it.
+//
 // Caller must hold g.mu.
-func (g *Game) popExtraTurnLocked() (ExtraTurn, bool) {
+func (g *Game) popExtraTurnLocked() (et ExtraTurn, ok, paused bool) {
 	for len(g.ExtraTurns) > 0 {
 		last := len(g.ExtraTurns) - 1
 		et := g.ExtraTurns[last]
@@ -198,22 +203,29 @@ func (g *Game) popExtraTurnLocked() (ExtraTurn, bool) {
 		}
 		// ADR 0188 Decision 1: a player who owes a skip skips the next
 		// turn they would begin, and this is that turn (the Magosi
-		// ruling). The debt is spent BEFORE the replacement window opens,
-		// so a turn skipped this way is never also offered to a skip
-		// replacement (Trouble in Pairs): the charge is spent and no
-		// EventExtraTurnSkipped is emitted. That is the interim default
-		// for the CR 616.1 choice between the two skips, which a later
-		// slice of ADR 0188 (Decision 12) turns into a question.
-		if source, ok := g.consumeTurnSkipLocked(et.Seat); ok {
+		// ruling). Decision 12's three cases:
+		//
+		//  1. no skip owed: the RepEventExtraTurn window runs, below;
+		//  2. a skip owed and no extra-turn skip applies: the charge is
+		//     spent, with no question;
+		//  3. a skip owed and an extra-turn skip (Trouble in Pairs,
+		//     Ugin's Nexus) applies too: both are replacements on one
+		//     event and CR 616.1 lets the player choose which takes the
+		//     turn. The turn change pauses to ask.
+		if _, _, owes := g.oldestTurnSkipLocked(et.Seat); owes {
+			if others := g.extraTurnSkipAppliesLocked(et); len(others) > 0 && g.pauseForTurnSkipOrderLocked(et, others) {
+				return ExtraTurn{}, false, true
+			}
+			source, _ := g.consumeTurnSkipLocked(et.Seat)
 			g.emitTurnSkippedLocked(et.Seat, source, et.Ref)
 			continue
 		}
 		if g.extraTurnSkippedLocked(et) {
 			continue
 		}
-		return et, true
+		return et, true, false
 	}
-	return ExtraTurn{}, false
+	return ExtraTurn{}, false, false
 }
 
 // extraTurnSkippedLocked opens the CR 614 window over a queued extra
@@ -231,8 +243,10 @@ func (g *Game) popExtraTurnLocked() (ExtraTurn, bool) {
 // BEGAN. A seat that has left the game is dropped before this runs
 // (CR 800.4k), and the window never sees it.
 //
-// The window cannot pause (mustSettleNow): the rotation seam is where
-// the next turn is chosen and has no resume. See RepEventExtraTurn.
+// The window cannot pause (mustSettleNow): the rotation seam's one
+// resume point is ADR 0188 Decision 12's which-skip question
+// (turn_skip_order.go), asked before this window opens, and a CR 616
+// ordering inside the window has no resume. See RepEventExtraTurn.
 //
 // Caller must hold g.mu.
 func (g *Game) extraTurnSkippedLocked(et ExtraTurn) bool {

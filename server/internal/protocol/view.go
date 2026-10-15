@@ -356,6 +356,23 @@ type LegalMoveView = legal.Move
 // revealed cards in full; others see either backs (for
 // discard_from_hand targeting an opponent's hand) or the raw
 // IDs plus redacted characteristics.
+// TurnSkipOrderView is PendingChoiceView.TurnSkipOrder (ADR 0188
+// Decision 12).
+type TurnSkipOrderView struct {
+	// ExtraTurnRef is the extra turn the question is about (an entry of
+	// TurnView.ExtraTurns until it is settled).
+	ExtraTurnRef int `json:"extra_turn_ref"`
+	// SkipSource is the card whose "skip your next turn" answer 0 spends,
+	// and SkipSourceName its name as the question was asked.
+	SkipSource     string `json:"skip_source,omitempty"`
+	SkipSourceName string `json:"skip_source_name,omitempty"`
+	// Others names the extra-turn skips that apply, answer 1's effect.
+	Others []string `json:"others,omitempty"`
+	// Recommended is the recommended answer's index: always 0, "use my
+	// skip". Not omitempty: 0 is the value.
+	Recommended int `json:"recommended"`
+}
+
 type PendingChoiceView struct {
 	ID      string `json:"id"`
 	Kind    string `json:"kind"`
@@ -445,6 +462,15 @@ type PendingChoiceView struct {
 	// entering Aura does to its host, "benefit" or "harm", from the
 	// card's declared Purpose.Aura. Absent when it declares none.
 	AuraPurpose string `json:"aura_purpose,omitempty"`
+
+	// TurnSkipOrder populates the "turn_skip_order" kind (ADR 0188
+	// Decision 12, CR 616.1): the player who owes "skip your next turn"
+	// chooses which skip takes an extra turn another effect would skip
+	// too. Answered with `apply`: true uses their own skip (answer 0),
+	// false lets the other effect take it (answer 1). Public: the cards
+	// are on the battlefield and the debt is on the player's panel.
+	// Absent on every other prompt.
+	TurnSkipOrder *TurnSkipOrderView `json:"turn_skip_order,omitempty"`
 
 	// EntryKeyword names the entry keyword an "entry_riot",
 	// "entry_read_ahead" or "optional_replacement" prompt is asking
@@ -4890,6 +4916,11 @@ type TurnView struct {
 	// cannot see a replacement skip (Trouble in Pairs, Ugin's Nexus),
 	// which is decided as the turn would begin. Public.
 	NextSeat *int `json:"next_seat,omitempty"`
+	// BetweenTurns is set while the turn change waits on a
+	// "turn_skip_order" question (ADR 0188 Decision 12): the old turn
+	// is over, the next has not begun, and the cursor still shows the
+	// old turn's step with nobody holding priority. Public.
+	BetweenTurns bool `json:"between_turns,omitempty"`
 	// PhaseID identifies the phase in progress within this turn (ADR
 	// 0059 Decision 11): the template's phases are 1..5, and a phase an
 	// effect added (Relentless Assault's combat) gets the next id. Two
@@ -5055,6 +5086,7 @@ func ViewOfGame(g *game.Game) GameView {
 				Extra:          g.Turn.Extra,
 				ExtraTurns:     viewOfExtraTurns(g),
 				NextSeat:       viewOfNextSeat(g),
+				BetweenTurns:   g.TurnChangePending,
 				PhaseID:        g.Turn.PhaseID,
 				PhaseOrdinal:   g.Turn.PhaseOrdinal,
 				Upcoming:       viewOfUpcoming(g),
@@ -8823,6 +8855,18 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c.Kind == game.PendingChoiceEntryRiot {
 			v.AcceptLabel = c.AcceptLabel
 			v.DeclineLabel = c.DeclineLabel
+		}
+		// ADR 0188 Decision 12: the which-skip question's two answers.
+		if o := c.TurnSkipOrder; c.Kind == game.PendingChoiceTurnSkipOrder && o != nil {
+			v.AcceptLabel = c.AcceptLabel
+			v.DeclineLabel = c.DeclineLabel
+			v.TurnSkipOrder = &TurnSkipOrderView{
+				ExtraTurnRef:   o.ExtraTurnRef,
+				SkipSource:     uuidStringOrEmpty(o.SkipSource),
+				SkipSourceName: o.SkipName,
+				Others:         append([]string(nil), o.Others...),
+				Recommended:    0,
+			}
 		}
 		if (c.Kind == game.PendingChoiceEntryRiot || c.Kind == game.PendingChoiceOptionalReplacement ||
 			c.Kind == game.PendingChoiceEntryReadAhead) && len(c.ReplacementEffectIDs) == 1 {

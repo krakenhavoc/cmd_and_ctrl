@@ -1029,6 +1029,20 @@ func (e *enumerator) choiceMoves() bool {
 				e.addChoice(c, reason+": "+label, p)
 			}
 
+		case game.PendingChoiceTurnSkipOrder:
+			// ADR 0188 Decision 12, CR 616.1: which skip takes the
+			// extra turn. Both answers are always accepted; "use my
+			// skip" is the recommended one, and the one a seat that
+			// cannot be asked gets, so it is the always-legal answer and
+			// comes first.
+			useSkip, letOther := true, false
+			p := base()
+			p.Apply = &useSkip
+			e.addAlwaysLegalChoice(c, "which skip takes your extra turn: "+c.AcceptLabel, p)
+			p = base()
+			p.Apply = &letOther
+			e.addChoice(c, "which skip takes your extra turn: "+c.DeclineLabel, p)
+
 		case game.PendingChoiceEntryRiot:
 			// Riot (CR 702.136a, ADR 0109 §10): a +1/+1 counter or
 			// haste. Mandatory and both always accepted, so the

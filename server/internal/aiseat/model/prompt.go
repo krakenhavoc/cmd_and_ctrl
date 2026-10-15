@@ -169,6 +169,10 @@ func (p *Policy) buildDelta(in aiseat.Input, cands []heuristic.Candidate, fallba
 		if note := boardtext.AnswersNote(&in.View, in.Moves[m.index]); note != "" {
 			b.WriteString(" (" + note + ")")
 		}
+		// ADR 0188 Decision 12: the answer the engine recommends.
+		if note := boardtext.RecommendedNote(&in.View, in.Moves[m.index]); note != "" {
+			b.WriteString(" (" + note + ")")
+		}
 		if m.index == fallback {
 			b.WriteString("   " + fallbackMarker)
 		}

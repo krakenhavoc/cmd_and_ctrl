@@ -2256,6 +2256,12 @@ func dispatch(g *game.Game, a Action) error {
 				// CR 903.9a (ADR 0115): apply puts the commander into
 				// its owner's command zone.
 				return g.ResolveCommanderReturn(choiceID, a.Player, *p.OptionalApply)
+			case game.PendingChoiceTurnSkipOrder:
+				// ADR 0188 Decision 12, CR 616.1: apply uses the
+				// player's own "skip your next turn" on the extra turn
+				// (answer 0, recommended); not applying lets the
+				// extra-turn skip take it (answer 1).
+				return g.ResolveTurnSkipOrder(choiceID, a.Player, *p.OptionalApply)
 			default:
 				return g.ResolveOptionalReplacement(choiceID, a.Player, *p.OptionalApply)
 			}

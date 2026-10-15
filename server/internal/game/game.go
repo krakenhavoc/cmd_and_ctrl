@@ -65,6 +65,14 @@ type Game struct {
 	// Clone and the snapshot.
 	ActiveSeatLeftPending bool
 
+	// TurnChangePending is set while the turn change waits on one
+	// question: which skip takes an extra turn (ADR 0188 Decision 12,
+	// CR 616.1, turn_skip_order.go). The old turn has closed, the next
+	// has not begun, and the cursor stays where the old turn left it
+	// with nobody holding priority. Cleared by the answer's resume.
+	// Plain data, carried by Clone and the snapshot.
+	TurnChangePending bool
+
 	// TurnEndPending is set when an effect ended the turn (CR 724.1,
 	// #2165, end_turn.go). The effect has done the parts of the process
 	// that may run inside a resolution — the waiting triggers are gone,
@@ -1447,6 +1455,11 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	if g.State != StateActive {
 		return Turn{}, ErrGameNotActive
 	}
+	// ADR 0188 Decision 12: between turns there is no step to advance
+	// from; the which-skip question is answered first.
+	if g.TurnChangePending {
+		return g.Turn, ErrTurnChangePending
+	}
 	// #1686: the sandbox's own doc for this function calls it "pass
 	// priority until this step ends" — which is exactly what a live
 	// miracle grant treats as the decline (CR 702.94a, miracle.go).
@@ -1927,6 +1940,14 @@ func (g *Game) combatHasAttackersLocked() bool {
 //
 // Caller must hold g.mu.
 func (g *Game) runStepEntryHooksLocked() {
+	// ADR 0188 Decision 12: a turn change waiting on the which-skip
+	// question has begun no turn, so there is no step to enter. Every
+	// caller of beginNextTurnLocked checks its paused result; this is
+	// the backstop for the ones that reach here through
+	// advanceCursorLocked.
+	if g.TurnChangePending {
+		return
+	}
 	// The step entry reads the layered board before anything else:
 	// the skip-step replacement window below, the untap step's set
 	// (CatalogAbilityKey on an UntapStepPermission source, the

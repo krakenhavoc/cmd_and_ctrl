@@ -8730,6 +8730,9 @@ func (g *Game) passPriorityLocked() error {
 	// a pass that resolves the top of the stack moves the game on
 	// just as surely, and the enumerator has always modelled the rule
 	// this way. See choice_gate.go.
+	if g.TurnChangePending {
+		return ErrTurnChangePending
+	}
 	if c := g.blockingChoiceLocked(); c != nil {
 		return choicePendingErrorLocked(c)
 	}
@@ -10219,6 +10222,9 @@ func (g *Game) PassTurn() error {
 	// this verb walks the cursor through every remaining step of the
 	// turn. A prompt left open behind it is unanswerable in practice.
 	// See choice_gate.go.
+	if g.TurnChangePending {
+		return ErrTurnChangePending
+	}
 	if c := g.blockingChoiceLocked(); c != nil {
 		return choicePendingErrorLocked(c)
 	}
@@ -10226,7 +10232,12 @@ func (g *Game) PassTurn() error {
 	// skipped, the cleanup sweep runs and per-turn caches clear.
 	g.clearCombatLocked()
 	g.sweepTurnEndLocked()
-	g.beginNextTurnLocked()
+	if g.beginNextTurnLocked() {
+		// ADR 0188 Decision 12: the turn change waits on the which-skip
+		// question. Nothing has begun, so there are no step hooks to
+		// run; the answer's resume runs them.
+		return nil
+	}
 	// Refresh per-turn budgets (undo, future per-turn counters) on
 	// the new active seat — same hook AdvanceStep / PassPriority's
 	// wrap branch run when stepping into untap. The hook also auto-

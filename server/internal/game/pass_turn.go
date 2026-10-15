@@ -85,6 +85,9 @@ func (g *Game) EndTurnByPassing() error {
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	if g.TurnChangePending {
+		return ErrTurnChangePending
+	}
 	if c := g.blockingChoiceLocked(); c != nil {
 		return choicePendingErrorLocked(c)
 	}
