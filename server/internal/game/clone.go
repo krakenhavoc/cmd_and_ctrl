@@ -63,6 +63,9 @@ func (g *Game) cloneLocked() *Game {
 		// pointer rather than sharing the live one.
 		LoopThreshold: g.LoopThreshold,
 		LoopNotice:    cloneLoopNotice(g.LoopNotice),
+		// ADR 0193: the demonstrated loop is plain data and rewinds
+		// with an undo (which then discards it, ws.Room.undo).
+		LoopRecording: cloneLoopRecording(g.LoopRecording),
 		// The randomness is copied, not shared: the key by value
 		// (an array) and the counters deeply, because randForLocked
 		// increments the live map in place. The clone therefore
@@ -1200,6 +1203,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	// the notice it is asking about is a question about nothing.
 	g.LoopNotice = src.LoopNotice
 	g.LoopThreshold = src.LoopThreshold
+	g.LoopRecording = cloneLoopRecording(src.LoopRecording)
 	g.DiscardPending = src.DiscardPending
 	g.Promises = src.Promises
 	g.Vote = src.Vote

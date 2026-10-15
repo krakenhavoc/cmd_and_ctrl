@@ -554,6 +554,7 @@ func (s *Seat) decisionTextLocked(w *window) Result {
 		head = append(head, fmt.Sprintf("LOOP NOTICE (CR 732): %s has resolved %d times this turn. Nothing passes automatically until a player decides.",
 			nw.apply(v.LoopNotice.Label), v.LoopNotice.Count))
 	}
+	head = append(head, loopHeadLines(v, me, nw)...)
 	if sum := absorbedSummary(s.autoSince); sum != "" {
 		head = append(head, sum)
 	}

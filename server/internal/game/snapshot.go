@@ -413,6 +413,10 @@ type GameSnapshot struct {
 	LoopNotice    *LoopNotice `json:"loopNotice,omitempty"`
 	LoopThreshold int         `json:"loopThreshold,omitempty"`
 
+	// LoopRecording is ADR 0193's demonstrated loop: plain data,
+	// embedded by value. Additive within this schema version (#522).
+	LoopRecording *LoopRecording `json:"loopRecording,omitempty"`
+
 	DiscardPending map[uuid.UUID]int `json:"discardPending,omitempty"`
 
 	// Promises is a slice because its live form is keyed by a
@@ -2038,6 +2042,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.Activations = cloneActivationTally(g.Activations)
 	s.LoopNotice = cloneLoopNotice(g.LoopNotice)
 	s.LoopThreshold = g.LoopThreshold
+	s.LoopRecording = cloneLoopRecording(g.LoopRecording)
 	s.DiscardPending = copyIntMap(g.DiscardPending)
 
 	if len(g.Promises) > 0 {
@@ -3046,6 +3051,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.Activations = cloneActivationTally(s.Activations)
 	g.LoopNotice = cloneLoopNotice(s.LoopNotice)
 	g.LoopThreshold = s.LoopThreshold
+	g.LoopRecording = cloneLoopRecording(s.LoopRecording)
 	g.LandsPlayedThisTurn = copyIntMap(s.LandsPlayedThisTurn)
 	g.ExtraLandDropsThisTurn = copyIntMap(s.ExtraLandDropsThisTurn)
 	g.DrawnThisTurn = copyUUIDListMap(s.DrawnThisTurn)

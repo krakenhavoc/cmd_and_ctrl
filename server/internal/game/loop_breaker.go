@@ -121,6 +121,11 @@ func (g *Game) loopThresholdLocked() int {
 //
 // Caller must hold g.mu.
 func (g *Game) loopSuspectedLocked(key string) bool {
+	// ADR 0193 §5: a replayed loop is a shortcut the whole table
+	// agreed to, so the breaker sits out until it ends.
+	if g.loopReplaying {
+		return false
+	}
 	return g.TurnTally.LoopRun[key] >= g.loopThresholdLocked()
 }
 

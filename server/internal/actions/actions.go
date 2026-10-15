@@ -244,6 +244,11 @@ func MintsNoUndo(g *game.Game, t Type) bool {
 		TypeSetTriggerOrderPreference, TypeSetAutoAnswers:
 		return true
 	}
+	// ADR 0193: the loop conversation is not a play. The replay it
+	// leads to is one undo entry of its own (ws.Room's replay).
+	if isLoopVerb(t) {
+		return true
+	}
 	return g.OpeningRollOpen()
 }
 
@@ -544,6 +549,12 @@ var playerScopedActions = map[Type]struct{}{
 	TypeCastVote: {},
 	// ADR 0150 §4: a caster withdraws only their own request for help.
 	TypeCancelAssist: {},
+	// ADR 0193: a seat records, proposes and answers loops only as itself.
+	TypeLoopRecordStart:     {},
+	TypeLoopRecordStop:      {},
+	TypeLoopRecordCancel:    {},
+	TypeLoopPropose:         {},
+	TypeResolveLoopProposal: {},
 	// #1279: a seat finishes its OWN block declaration, never
 	// another seat's — finishing a defender early would decide their
 	// blocks for them.
@@ -567,11 +578,20 @@ var playerScopedActions = map[Type]struct{}{
 // #2881: SettlePassTurn last, so an active player who passed the turn
 // passes again whenever this action handed them priority — an
 // opponent's pass, an answered prompt, a resolution.
+//
+// ADR 0193: while a loop is being recorded, an action that succeeds is
+// also recorded as a step (loop.go), and TendLoopRecording ends a
+// recording the action moved the game past.
 func Dispatch(g *game.Game, a Action) error {
+	draft := beginLoopStep(g, a)
 	err := dispatch(g, a)
 	g.SettleResolution()
 	g.SettleBlockDeclaration()
 	g.SettlePassTurn()
+	if err == nil {
+		commitLoopStep(g, draft, a)
+	}
+	g.TendLoopRecording()
 	return err
 }
 
@@ -1109,6 +1129,9 @@ func dispatch(g *game.Game, a Action) error {
 			return g.SetTriggerOrderPreference(a.Player, mode)
 		}
 		return fmt.Errorf("%w: %s trigger_order", ErrMissingParams, a.Type)
+
+	case TypeLoopRecordStart, TypeLoopRecordStop, TypeLoopRecordCancel, TypeLoopPropose, TypeResolveLoopProposal:
+		return dispatchLoopVerb(g, a)
 
 	case TypeCancelAssist:
 		if a.Player == uuid.Nil {

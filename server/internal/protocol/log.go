@@ -328,6 +328,13 @@ const (
 	// the LogZone line for the discard that paid the cost, which is
 	// the same motion in words that do not say "cycled".
 	LogCycle LogKind = "cycle"
+	// LogLoop — a step of ADR 0193's demonstrated-loop conversation (a
+	// recording started, closed, was discarded, proposed, accepted or
+	// shortened), or a replay, which is ONE line however many
+	// iterations it ran: "Luke repeats Basalt Monolith ×500: Luke:
+	// library -500". `Label` is the line after the actor's name; it
+	// names only public cards (CR 732.1a).
+	LogLoop LogKind = "loop"
 	// LogAutoAnswer — the server answered a prompt with its chooser's
 	// standing answer (ADR 0127 §6): "Bob paid {1} for Rhystic Study
 	// (automatic)". `Call` is the answer ("pay", "dont_pay", "yes",
@@ -994,6 +1001,10 @@ type logFold struct {
 	// the searcher, so a search by someone else is still its own line.
 	revealedSearch     bool
 	revealedSearchSeat int
+	// replaying is set from a loop replay's EventLoopReplayBegin to its
+	// EventLoopReplayed: every event between is folded out, and the
+	// replay is the one line EventLoopReplayed writes (ADR 0193 §7).
+	replaying bool
 }
 
 func newLogFold(seatIDs []uuid.UUID, gen uint64) *logFold {
@@ -1041,6 +1052,20 @@ func (f *logFold) feed(events []game.Event) int {
 	ring := f.ring
 	start := f.cursor
 	for i := start; i < len(events); i++ {
+		// ADR 0193 §7: a loop replay's own events still fire (triggers
+		// and tallies see every iteration), but the log tells the replay
+		// as one line.
+		switch events[i].Kind {
+		case game.EventLoopReplayBegin:
+			f.replaying = true
+			continue
+		case game.EventLoopReplayed:
+			f.replaying = false
+		default:
+			if f.replaying {
+				continue
+			}
+		}
 		e, ok := projectEvent(events[i], f.seatOf, &f.turn, &f.step, &f.sacrificed)
 		if !ok {
 			continue
@@ -1766,6 +1791,14 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.ability = true
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		base.Label = ev.Label
+		return base, true
+
+	case game.EventLoopRecording, game.EventLoopReplayed:
+		// ADR 0193 §7: the loop conversation, and a replay's one line.
+		// The engine writes the whole line after the actor's name.
+		base.Kind = LogLoop
+		base.Label = ev.Label
+		base.Amount = ev.Amount
 		return base, true
 
 	case game.EventAutoAnswer:
@@ -2716,6 +2749,8 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s activated %s's %s", actor, target, card)
 	case LogCycle:
 		return fmt.Sprintf("%s cycled %s", actor, card)
+	case LogLoop:
+		return actor + " " + e.Label
 	case LogAutoAnswer:
 		return renderAutoAnswerText(*e, actor, cardName)
 	case LogTrigger:

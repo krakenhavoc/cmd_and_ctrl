@@ -248,6 +248,12 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// doing. The prompt is never queued to a seat that has left, so
 	// blocking cannot wedge a table (queueLoopShortcutLocked).
 	PendingChoiceLoopShortcut: true,
+	// ADR 0193 §4, CR 732.2b. Each other player's accept-or-shorten
+	// answer to a demonstrated loop blocks for loop_shortcut's reason:
+	// it decides what the next N iterations are, and a table that could
+	// act through the question would be answering it by doing. It is
+	// only ever queued to a seat still in the game.
+	PendingChoiceLoopProposal: true,
 	// #826, CR 502.3. The untap step's own determination. It blocks
 	// for the reason the step it pauses grants nobody priority: CR
 	// 502.3 happens before anything else in the turn, and a table that
