@@ -345,6 +345,16 @@ type AlternativeCost struct {
 	// discounted creature that keeps its haste and never goes home.
 	Dash bool
 
+	// Blitz is blitz's "it gains haste and 'When this creature dies,
+	// draw a card.' Sacrifice it at the beginning of the next end step"
+	// (CR 702.152a, #3772). Dash's sibling with the same shape: the
+	// clause attaches to the permanent's ENTRY — one layer-6 scoped
+	// effect granting haste and the BlitzDrawGrant bundle, and a CR 603.7
+	// delayed sacrifice (blitz.go). Set it with effects.Blitz, never by
+	// hand: a hand-rolled offer would be a discounted creature that keeps
+	// its haste and never dies.
+	Blitz bool
+
 	// EntersWithCounterName / EntersWithCounterCount is "this
 	// creature escapes with a +1/+1 counter on it" (CR 702.138c) —
 	// the clause most escape creatures print directly under the
@@ -1253,6 +1263,9 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 	}
 	if alt.Dash {
 		g.applyDashLocked(card, item, alt)
+	}
+	if alt.Blitz {
+		g.applyBlitzLocked(card, item, alt)
 	}
 	if !alt.SacrificeOnEntry {
 		return

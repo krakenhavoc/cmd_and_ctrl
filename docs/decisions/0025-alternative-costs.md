@@ -362,3 +362,59 @@ reader fails); drop the field and `FlashIfXAtMost`, and Silver Scrutiny returns 
 Tests: `cards/effects/flash_if_x_at_most_test.go` (gate, `Register` checks, the card), `legal/offer_x_ceiling_test.go`,
 `protocol/offer_x_ceiling_view_test.go`, `lobby/auto_tap_preview_offer_x_ceiling_test.go`,
 `client/src/lib/xCeilingForOffer.test.ts`.
+
+
+## Amendment (2026-10-15, [#3772](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3772)): blitz, and casting from a graveyard using it
+
+Blitz (CR 702.152a) is "you may cast this spell by paying [cost] rather than its mana cost. If you do, it gains haste
+and 'When this permanent is put into a graveyard from the battlefield, draw a card.' Sacrifice it at the beginning of the
+next end step." It is dash with a different ending, and it uses dash's shape.
+
+**`AlternativeCost.Blitz`**, built only by `effects.Blitz(cost)` and its two variants, is a clause attached to the
+permanent's entry, applied in `queueAltCostEntryTriggerLocked` (`game/blitz.go`):
+
+- One layer-6 scoped effect for as long as the creature remains on the battlefield, pinned to the object, carries both
+  `AddKeywordsMod("haste")` and `GrantAbilitiesMod(game.BlitzDrawGrant)`. The draw is a granted triggered ability
+  (ADR 0093), so it is the creature's own: its controller draws, a later "loses all abilities" takes it, and it fires
+  from last-known information as the creature dies. A creature that left and came back has neither (CR 400.7).
+- A CR 603.7 delayed trigger at the next end step (`blitz/sacrifice`, a registered body) sacrifices it. It records the
+  creature's `ObjectEpoch` when it is scheduled and acts only on that object. It also acts only while the trigger's
+  controller still controls the creature (CR 701.17a: a player can sacrifice only a permanent they control), so a
+  blitzed creature an opponent has stolen stays, with its haste and its draw.
+
+**The draw is one shared bundle.** Every blitz creature gains the same ability, so `effects/blitz.go` files the bundle
+once under `game.BlitzDrawGrant` ("blitz/draw") through `registerSharedGrant`, with the same checks and the same map a
+`Spec.Grants` bundle gets. A per-card key would be the same ability under sixteen names, and the engine would have to
+look up which one to name.
+
+**The riders are exported.** Jaxis, the Troublemaker prints the same three clauses on an activated ability's token copy.
+`Game.ApplyBlitzRidersForEffect(cardID, controller, label)` is the entry clause's body, and Jaxis calls it on the token.
+
+**Price components.** `effects.BlitzDiscard(cost)` adds the existing `DiscardFromHand` component (Sabin, Master Monk's
+"Discard a card"), and `effects.BlitzPayLife(cost, n)` adds `Life` (Tenacious Underdog). Both are the components Snag
+and Timeline Culler already use, so the validator, the payability check, the view's `pay_options` with `discards` and
+the client's picker needed nothing new.
+
+**From the graveyard.** "You may cast this card from your graveyard using its blitz ability" is
+`effects.BlitzFromHandOrGraveyard(offer)` plus `Spec.CastableZones: [graveyard]`, the shape Timeline Culler's warp
+already uses: a `blitz` offer bound to the hand and a `blitz-graveyard` offer bound to the graveyard, at the same price
+and label. Both bindings matter. The graveyard opens only through its own offer (rule 3 of `validateCastPathLocked`), so
+the card cannot be cast from there for its mana cost. The hand offer is bound explicitly, because an unbound offer may be
+claimed from any zone the card can be cast from, and that includes the graveyard this card opens. A plain `Blitz(cost)`
+stays unbound, so a blitz creature cast from another zone by a permission (Muldrotha, an impulse exile) can still claim
+it, as CR 118.9a allows.
+
+A granted offer may not carry `Blitz` (`checkGrantedAlternativeCosts`), and `onlyMana` treats a blitz offer as more than
+a price, as it does dash.
+
+Not done: the bot prices a blitz offer as an ordinary price, as it already does dash, evoke and warp. It does not yet
+weigh the creature it gives up at the end step.
+
+Back-out: drop the `alt.Blitz` branch in `queueAltCostEntryTriggerLocked` and a blitzed creature is a discounted
+creature that keeps no haste and never dies (`TestSabinBlitzHasteThenSacrificedAndDraws` fails). Drop the grant mod and
+nothing draws. Drop the epoch check and a creature that died and came back under the same ID is sacrificed
+(`TestBlitzedCreatureThatDiedAndCameBackIsNotSacrificed`). Drop the control check and a stolen one is sacrificed by its old
+controller (`TestBlitzedCreatureStolenIsNotSacrificed`). Drop the hand binding and Sabin claims the hand offer from the
+graveyard (`TestSabinCastsFromGraveyardOnlyUsingBlitz`).
+
+Tests: `cards/effects/blitz_test.go` (the clause, the zones, the wire), `cards/effects/blitz_cards_test.go` (every card).

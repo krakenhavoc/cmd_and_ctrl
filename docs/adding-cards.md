@@ -79,6 +79,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Abilities from the hand (#660)](#abilities-from-the-hand-660)
   - [Special actions from the hand (#658, #659)](#special-actions-from-the-hand-658-659)
   - [Dash, freerunning, a flash surcharge, training, expend, encore and connive (#3172)](#dash-freerunning-a-flash-surcharge-training-expend-encore-and-connive-3172)
+  - [Blitz (CR 702.152, #3772)](#blitz-cr-702152-3772)
   - [Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)](#attacking-statics-tokens-that-enter-attacking-or-blocking-magecraft-copies-and-damage-by-toughness-3172)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
   - [When in doubt](#when-in-doubt)
@@ -9893,6 +9894,25 @@ that keeps its haste and never goes home. `FlashForMore` takes the TOTAL (the pr
 the offer replaces the mana cost; casting for the printed cost stays sorcery-speed. Convoke now records who tapped
 (`ctx.Paid().Convoked`), and expend reads a per-turn mana tally (`CastTally.ManaSpent`), so a free or waived cast
 counts as no mana. Encore binds each token to its opponent with `game.AttackPlayerIfAbleMod`.
+
+### Blitz (CR 702.152, #3772)
+
+Blitz is dash's sibling: an alternative cost whose entry clause (`AlternativeCost.Blitz`, `game/blitz.go`) gives the
+creature haste and "When this creature dies, draw a card." for as long as it is on the battlefield, and schedules its
+sacrifice at the beginning of the next end step. Engine notes are in the 2026-10-15 amendment of
+[ADR 0025](decisions/0025-alternative-costs.md).
+
+```go
+AlternativeCosts: []game.AlternativeCost{Blitz("{2}{R}")},                                // Riveteers Requisitioner
+AlternativeCosts: BlitzFromHandOrGraveyard(BlitzDiscard("{2}{R}{R}")),                    // Sabin: "Discard a card", and from the graveyard
+AlternativeCosts: BlitzFromHandOrGraveyard(BlitzPayLife("{2}{B}{B}", 2)),                 // Tenacious Underdog: "Pay 2 life"
+g.ApplyBlitzRidersForEffect(tokenID, item.Controller, "Jaxis — sacrifice the token")    // the same riders off an ability
+```
+
+"You may cast this card from your graveyard using its blitz ability" is `BlitzFromHandOrGraveyard` plus
+`CastableZones: []game.ZoneKind{game.ZoneGraveyard}`. It binds the hand offer to the hand and the graveyard offer
+(`blitz-graveyard`) to the graveyard, so the card cannot be cast from its graveyard for its mana cost. The draw is one
+shared grant bundle, `game.BlitzDrawGrant`, that `effects/blitz.go` registers once. Don't declare a per-card copy of it.
 
 ### Flash if X is N or less (#3225)
 

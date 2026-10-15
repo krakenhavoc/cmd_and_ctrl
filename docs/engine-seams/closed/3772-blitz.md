@@ -1,0 +1,6 @@
+---
+title: "Blitz, and casting from a graveyard using it"
+date: 2026-10-15
+issues: [3772]
+---
+**Blitz, and casting from a graveyard using it** (#3772, [ADR 0025 amendment 2026-10-15](decisions/0025-alternative-costs.md), CR 702.152a) — `AlternativeCost.Blitz`, built by `effects.Blitz` / `BlitzDiscard` / `BlitzPayLife`, is dash's sibling: on entry (`queueAltCostEntryTriggerLocked` → `game/blitz.go`) one layer-6 scoped effect for as long as the creature is on the battlefield gives it haste and the shared granted bundle `game.BlitzDrawGrant` ("When this creature dies, draw a card.", registered once by `effects/blitz.go`), and a CR 603.7 delayed trigger sacrifices it at the next end step if it is still that object and still the trigger controller's. `game.ApplyBlitzRidersForEffect` gives the same riders to a token (Jaxis, the Troublemaker). `effects.BlitzFromHandOrGraveyard` is "You may cast this card from your graveyard using its blitz ability": a hand-bound `blitz` offer and a graveyard-bound `blitz-graveyard` offer. Cards (all Full): Sabin, Master Monk, Tenacious Underdog, Riveteers Requisitioner, Girder Goons, Workshop Warchief, Caldaia Strongarm, Mayhem Patrol, Plasma Jockey, Night Clubber, Riveteers Decoy, Mezzio Mugger, Pugnacious Pugilist, Caldaia Guardian, Wave of Rats, Star Athlete, Jaxis, the Troublemaker.

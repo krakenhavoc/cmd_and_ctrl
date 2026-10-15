@@ -253,3 +253,4 @@ condition good-king-mog/you-cast-a-noncreature-spell
 body espers-to-magicite/copy
 body extra-combat/untap-all-you-control
 body extra-combat/untap-attackers-at-that-combat
+body blitz/sacrifice
