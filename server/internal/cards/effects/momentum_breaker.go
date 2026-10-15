@@ -28,7 +28,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{StartYourEngines},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Momentum Breaker — each opponent sacrifices a creature or Vehicle; each who can't discards a card",
+			TriggerEdict(WhenThisEnters("Momentum Breaker — each opponent sacrifices a creature or Vehicle; each who can't discards a card",
 				func(g *game.Game, item *game.StackItem) error {
 					return EachPlayerSacrifices{
 						ExceptController: true,
@@ -51,7 +51,7 @@ func init() {
 							}, nil)
 						},
 					}.Apply(NewContext(g, item))
-				}),
+				})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, Sacrifice this enchantment: You gain life equal to your speed.",

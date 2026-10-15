@@ -37,7 +37,7 @@ func init() {
 		Name:         "Portal to Phyrexia",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Portal to Phyrexia — each opponent sacrifices three creatures", portalToPhyrexiaEdict),
+			TriggerEdict(WhenThisEnters("Portal to Phyrexia — each opponent sacrifices three creatures", portalToPhyrexiaEdict)),
 			Targeting(
 				AtYourUpkeep("Portal to Phyrexia — put target creature card from a graveyard onto the battlefield under your control",
 					portalToPhyrexiaReanimate),

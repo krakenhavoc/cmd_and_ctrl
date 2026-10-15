@@ -58,7 +58,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace", "trample", "lifelink", "hexproof"},
 		Triggered: []game.TriggeredAbility{
-			WheneverThisAttacks("The Grim Captain — each opponent sacrifices a nonland permanent", grimCaptainAttacks),
+			TriggerEdict(WheneverThisAttacks("The Grim Captain — each opponent sacrifices a nonland permanent", grimCaptainAttacks)),
 		},
 	})
 }

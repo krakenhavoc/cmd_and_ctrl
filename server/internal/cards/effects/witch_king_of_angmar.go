@@ -41,9 +41,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(On(game.EventDealDamage, creatureDealtCombatDamageToYou,
+			TriggerEdict(OncePerBatch(On(game.EventDealDamage, creatureDealtCombatDamageToYou,
 				"Witch-king of Angmar — each opponent sacrifices a creature that dealt combat damage to you this turn; the Ring tempts you",
-				witchKingEdict)),
+				witchKingEdict))),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Discard a card: Witch-king of Angmar gains indestructible until end of turn. Tap him",
