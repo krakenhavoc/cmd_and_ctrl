@@ -30,8 +30,8 @@ import (
 //   - a crew row (AbilityCost.Crew) that does not declare AnswerAnimate;
 //   - a row whose cost sacrifices, exiles or returns a creature
 //     (legal.CostAnswers says sac_outlet) that declares neither
-//     AnswerSacOutlet nor AnswerProtect, so the #2853 cost rule stays true
-//     for every declared row (ADR 0142 §3);
+//     AnswerSacOutlet, AnswerProtect nor AnswerSurvive, so the #2853
+//     cost rule stays true for every declared row (ADR 0142 §3);
 //   - on a mana ability, anything but AnswerSacOutlet or AnswerValue, or
 //     a creature-sacrifice cost declared without AnswerSacOutlet.
 
@@ -71,8 +71,8 @@ func checkActivatedAnswers(name, where string, ab game.ActivatedAbilityShape, in
 	if ab.Cost.Crew > 0 && !a.Has(game.AnswerAnimate) {
 		fail("leave out AnswerAnimate on a crew row — crewing makes the Vehicle a creature")
 	}
-	if legal.CostAnswers(ab.Cost).Has(game.AnswerSacOutlet) && !a.HasAny(game.AnswerSacOutlet|game.AnswerProtect) {
-		fail(fmt.Sprintf("(%s) leave out AnswerSacOutlet and AnswerProtect on a row whose cost sacrifices, exiles or returns a creature", a))
+	if legal.CostAnswers(ab.Cost).Has(game.AnswerSacOutlet) && !a.HasAny(game.AnswerSacOutlet|game.AnswerProtect|game.AnswerSurvive) {
+		fail(fmt.Sprintf("(%s) leave out AnswerSacOutlet, AnswerProtect and AnswerSurvive on a row whose cost sacrifices, exiles or returns a creature", a))
 	}
 }
 

@@ -35,7 +35,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{W/P}{W/P}, Sacrifice two other artifacts and/or creatures: Put an indestructible counter on Mondrak.",
-			Purpose: game.Purpose{Answers: game.AnswerProtect | game.AnswerSacOutlet},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive | game.AnswerSacOutlet},
 			Cost:    Plus(ManaCost("{1}{W/P}{W/P}"), SacrificeAnotherN(2, "two other artifacts and/or creatures", Or(Artifact(), Creature()))),
 			Effect:  putIndestructibleCounterOnSource(),
 		}},

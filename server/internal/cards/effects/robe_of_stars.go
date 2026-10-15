@@ -23,7 +23,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "Astral Projection — {1}{W}: Equipped creature phases out.",
-				Purpose: game.Purpose{Answers: game.AnswerProtect},
+				Purpose: game.Purpose{Answers: game.AnswerSurvive},
 				Cost:    ManaCost("{1}{W}"),
 				Effect:  phaseOutAttachedHost,
 			},

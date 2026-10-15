@@ -32,7 +32,7 @@ func init() {
 			},
 			{
 				Label:   "{2}, Remove a +1/+1 counter from this creature: Return this creature to its owner's hand.",
-				Purpose: game.Purpose{Answers: game.AnswerProtect},
+				Purpose: game.Purpose{Answers: game.AnswerSurvive},
 				Cost:    Plus(ManaCost("{2}"), RemoveCountersFromThis(game.CounterPlusOne, 1)),
 				Effect:  returnThisPermanentToOwnersHand,
 			},

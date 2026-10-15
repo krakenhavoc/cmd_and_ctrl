@@ -18,7 +18,10 @@ import (
 //     declared sweep that takes it), an untargeted row on that creature
 //     is priced by what it saves: the creature's value times the chance
 //     the bot loses it (dyingAnyway: RemovalConfidence for a target, the
-//     sweep's share for a sweep). `protect` saves it from anything.
+//     sweep's share for a sweep). `survive` (regenerate, indestructible,
+//     a blink) saves it from anything; `protect` (hexproof, shroud,
+//     protection) only from what targets it, so it is no answer to a
+//     declared sweep (ADR 0142, amendment 2026-10-15).
 //     `prevent` saves it only when every threat is declared damage that
 //     can be prevented. `pump` saves it only when the row's declared
 //     Pump keeps it alive against the declared damage and −N/−N. A row
@@ -80,6 +83,9 @@ type threats struct {
 	// top is the highest stack index of any threat (StackItems runs
 	// bottom to top).
 	top int
+	// sweep is set when any threat is a declared sweep, which names no
+	// target: hexproof, shroud and protection do nothing against it.
+	sweep bool
 }
 
 // threatsTo reads the stack for what would remove creature c, with conf
@@ -144,6 +150,7 @@ func (st *state) threatsTo(c *protocol.CardView, conf float64) (threats, bool) {
 			if share <= 0 {
 				continue
 			}
+			t.sweep = true
 			n := s.Amount
 			if s.AmountIsX {
 				n = it.XValue
@@ -211,7 +218,7 @@ func (p *Policy) answerSave(st *state, src *protocol.CardView, row *protocol.Act
 		return 0, "", false
 	}
 	pv := row.Purpose
-	if !pv.Declares("protect") && !pv.Declares("prevent") && !pv.Declares("pump") {
+	if !pv.Declares("survive") && !pv.Declares("protect") && !pv.Declares("prevent") && !pv.Declares("pump") {
 		return 0, "", false
 	}
 	t, ok := st.threatsTo(src, p.cfg.RemovalConfidence)
@@ -220,8 +227,10 @@ func (p *Policy) answerSave(st *state, src *protocol.CardView, row *protocol.Act
 	}
 	saved := t.chance * st.permanentValue(src)
 	switch {
-	case pv.Declares("protect"):
-		return saved, "answer: protect it from the stack", true
+	case pv.Declares("survive"):
+		return saved, "answer: survive it", true
+	case pv.Declares("protect") && !t.sweep:
+		return saved, "answer: protect it from the targeted item", true
 	case t.removal:
 		return 0, "", false
 	case pv.Declares("prevent") && t.minus == 0 && !t.unpreventable:

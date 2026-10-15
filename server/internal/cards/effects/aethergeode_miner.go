@@ -25,7 +25,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Pay {E}{E}: Exile this creature, then return it to the battlefield under its owner's control.",
-			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    PayEnergy(2),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if !sourceIsStillThisPermanent(g, item) {

@@ -40,7 +40,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{R/P}{R/P}, Discard two cards: Put an indestructible counter on Solphim, Mayhem Dominus.",
-			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    Plus(ManaCost("{1}{R/P}{R/P}"), DiscardN(2, "two cards")),
 			Effect:  putIndestructibleCounterOnSource(),
 		}},

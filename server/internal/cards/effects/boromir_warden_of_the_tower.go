@@ -39,7 +39,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Sacrifice Boromir: Creatures you control gain indestructible until end of turn. The Ring tempts you",
-			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    SacrificeThis(),
 			Effect:  boromirLastStand,
 		}},

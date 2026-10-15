@@ -59,7 +59,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{U/P}{U/P}, Remove three counters from among other artifacts, creatures, and planeswalkers you control: Put an indestructible counter on Tekuthal, Inquiry Dominus.",
-			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost: Plus(
 				ManaCost("{1}{U/P}{U/P}"),
 				RemoveCountersAmongOthers("", 3, "other artifacts, creatures, and planeswalkers you control",

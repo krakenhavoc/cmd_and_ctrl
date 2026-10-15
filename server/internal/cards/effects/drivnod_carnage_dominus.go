@@ -34,7 +34,7 @@ func init() {
 		TriggerDoublers: []game.TriggerDoubler{doubler},
 		Activated: []ActivatedAbility{{
 			Label:   "{B/P}{B/P}, Exile three creature cards from your graveyard: Put an indestructible counter on Drivnod, Carnage Dominus.",
-			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    Plus(ManaCost("{B/P}{B/P}"), ExileFromGraveyard(3, "three creature cards", func(c game.Card) bool { return c.IsCreature() })),
 			Effect:  putIndestructibleCounterOnSource(),
 		}},

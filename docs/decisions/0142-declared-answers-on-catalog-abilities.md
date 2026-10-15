@@ -61,7 +61,7 @@ Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1},              // Mind
 Purpose: game.Purpose{Answers: game.AnswerSacOutlet | game.AnswerValue}, // refused: value is alone
 ```
 
-**The vocabulary.** Ten values in two tiers. The tier is fixed in code, per value. It is not declared.
+**The vocabulary.** Ten values in two tiers (eleven since the [2026-10-15 amendment](#amendment-2026-10-15--survive-splits-from-protect--accepted), which splits `protect`). The tier is fixed in code, per value. It is not declared.
 
 | Value | Wire | Tier | Means | Examples |
 |---|---|---|---|---|
@@ -374,3 +374,29 @@ time.
 **Back-outs.** `TestTeferiMasterOfTimesLootDoesNotInteract` (internal/legal) fails without the declaration, and
 `TestEveryAnswersRowDeclares` fails on the four rows without item 2's scope.
 
+
+## Amendment 2026-10-15 — `survive` splits from `protect` · Accepted
+
+Gap 1 of [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939). `protect` put two different things under one name: regenerate and indestructible, which survive a Wrath of God, and hexproof, shroud and protection, which do not (a sweep names no target). The bot priced all of them as "saves it from anything" (decision 6), so it would hold up a hexproof activation against a sweep and lose the creature anyway. The owner answered the question on 2026-10-15: yes, split them.
+
+**The choice: a finer kind, not a `Purpose` field.** Both shapes were on the table (a finer `Answers` kind, or a separate `Purpose` field such as `Purpose.Survives`).
+
+- A kind fits the vocabulary. `Answers` is already "what kind of answer", a bit set whose tier is fixed per value, with a wire name, a registration guard and a boardtext label. A new bit gets all of that for free. A `Purpose` field would be a second place that says what an ability answers, with its own wire field, its own guard, and a "may both be set" rule between the two.
+- The split is one of kind, not of amount. ADR 0142 §1 already keeps kind (`Answers`) apart from amount (`Pump`, `Draws`) and refuses to derive one from the other. "Survives a sweep" is kind.
+- A row that does both (Bulwark Ox: hexproof and indestructible) declares both bits, which a bit set already allows. A field would have needed its own combination rule.
+- Q1 (c) rejected a finer list "one value per mechanic" for the cost of sweeping 245 rows. This is one extra value, and only the 48 card files that declared `protect` are revisited. The other mechanic-level distinctions stay folded together.
+
+**The vocabulary** is now eleven values. `survive` follows `protect` in the table's order and on the wire, and is stack tier.
+
+| Value | Wire | Means |
+|---|---|---|
+| `AnswerProtect` | `protect` | out of reach of what *targets* it: hexproof, shroud, protection, "can't be countered". Nothing against a sweep |
+| `AnswerSurvive` | `survive` | stays on the battlefield or comes back, whatever removes it: regenerate, indestructible (a grant or a counter), persist, undying, phasing out, a blink, returning itself to hand |
+
+**The retag.** 42 of the 48 card files that declared `protect` now declare `survive` (the regeneration, indestructible, persist and undying, phase-out and self-bounce rows, the ninjutsu helper included). Bulwark Ox declares both. Six keep `protect` alone: Bristling Hydra, Hungering Puppetbeast, Glaring Spotlight and Hell-Bent Raider (hexproof or protection from a colour), and Mistrise Village and Theorist's Proxy ("can't be countered", which the vocabulary has always filed under `protect`). The registration guard's cost coupling accepts `survive` beside `sac_outlet` and `protect` for a row whose cost returns or exiles a creature.
+
+**The bot** (decision 6, `answerSave`). Against a declared sweep on the stack, only `survive` is priced as an answer. Against anything that targets the creature, `survive` and `protect` both are. A sweep in the mix with a targeted item counts as a sweep, since one `protect` row cannot cover the sweep. `prevent` and `pump` are unchanged. A row declaring `pump | protect` (Bristling Hydra) still falls through to its pump price against a sweep.
+
+**Known approximations**, kept from decision 6: `survive` is read as saving the creature from every kind of sweep, though an indestructible creature is still exiled, sacrificed or shrunk by one, and "can't be regenerated" (Wrath of God itself) beats a regeneration shield. The sweep's `How` is on the wire, so a later PR can narrow it; nothing here prevents that.
+
+**Wire.** Additive. `purpose.answers` may now contain `"survive"`, listed after `"protect"`. A client that ignores `answers` sees no change. A reader that treated `protect` as "regenerate and indestructible" (the bot, `boardtext`'s "(answers: …)" label, the MCP seat's move list, which print the names as they come) is updated here or passes the name through. `interacts` is unchanged: `survive` is stack tier like `protect`. `SnapshotSchemaVersion` stays 7.

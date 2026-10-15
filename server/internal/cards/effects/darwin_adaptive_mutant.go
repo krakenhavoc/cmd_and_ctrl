@@ -26,7 +26,7 @@ func init() {
 		PrintedKeywords: []string{game.KeywordEvolve},
 		Activated: []ActivatedAbility{{
 			Label:   "Remove two +1/+1 counters from Darwin: He gains indestructible until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    RemoveCountersFromThis(game.CounterPlusOne, 2),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantKeywordUntilEOT{
