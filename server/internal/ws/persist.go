@@ -160,6 +160,13 @@ type RestoreOutcome struct {
 	// is set.
 	Reason string
 
+	// RestoredSeq and RestorePointAt are the seq and capture time of
+	// the restore point a Restored game came back from: what the
+	// previous process's shutdown record is compared against to say how
+	// far the table rewound (deploy_cost.go).
+	RestoredSeq    uint64
+	RestorePointAt time.Time
+
 	// AbilityShortfalls are the cards this game came back with fewer
 	// catalog abilities than its restore point recorded (#522). The
 	// game is restored anyway and each card is flagged as not
@@ -245,6 +252,15 @@ type RestoreAdmission func(cands []RestoreCandidate) (deferred map[uuid.UUID]boo
 // alternative (ending the table) throws away a game the server simply
 // had no room for yet.
 func (m *RoomManager) RestoreRoomsAdmitting(admit RestoreAdmission) []RestoreOutcome {
+	bm := m.takeBootMeasurement()
+	out := m.restoreRoomsAdmitting(admit)
+	if bm != nil {
+		m.observeBoot(bm, out)
+	}
+	return out
+}
+
+func (m *RoomManager) restoreRoomsAdmitting(admit RestoreAdmission) []RestoreOutcome {
 	if m.dumpDir == "" {
 		return nil
 	}
@@ -458,6 +474,8 @@ func (m *RoomManager) restoreFile(path string, file *restorePointFile) RestoreOu
 	room.lastRestorePoint = restorePointRecord{Seq: file.Seq, At: file.Snapshot.TakenAt}
 	m.Register(room)
 	res.Room = room
+	res.RestoredSeq = file.Seq
+	res.RestorePointAt = file.Snapshot.TakenAt
 	restorePointAge := time.Since(file.Snapshot.TakenAt)
 	m.log.Info("game restored",
 		"game_id", g.ID,

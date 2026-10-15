@@ -614,6 +614,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 			return 0, false
 		}
 		client.sendRaw(protocol.KindSnapshot, raw)
+		room.noteFirstFrame()
 		client.log.Debug("staged "+label+" snapshot", "seq", seq)
 		return seq, true
 	}

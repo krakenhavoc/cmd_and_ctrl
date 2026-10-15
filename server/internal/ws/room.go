@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -182,6 +183,11 @@ type Room struct {
 	restoreWrites    int
 	restoreGate      restoreGate
 	eventLog         game.EncodedEventLog
+
+	// bootFirstFrame is set on a room the boot's restore pass brought
+	// back and cleared when its first snapshot frame goes to a client,
+	// which is what cmdctrl_boot_first_frame_seconds times (#3037).
+	bootFirstFrame atomic.Bool
 
 	// tableRolls is the hub's rate limit on roll_table_die (ADR 0121
 	// §5, table_roll.go): when each seat last rolled at the table.

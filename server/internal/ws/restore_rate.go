@@ -44,7 +44,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 )
 
 // DefaultRestorePointInterval is the server's restore-point interval
@@ -135,27 +138,51 @@ func (r *Room) noteRestorePointLocked(seq uint64) {
 
 // FlushRestorePoint writes this room's pending restore point now, if
 // it has one. Shutdown calls it for every room (RoomManager.FlushRestorePoints),
-// so a graceful restart loses nothing to the rate limit.
-func (r *Room) FlushRestorePoint() {
+// so a graceful restart loses nothing to the rate limit. It reports
+// what it did, for the shutdown record (#3037).
+func (r *Room) FlushRestorePoint() FlushOutcome {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.flushRestorePointLocked()
+	return r.flushRestorePointLocked()
 }
+
+// FlushOutcome is what one FlushRestorePoint did, spelled as the flush
+// label of cmdctrl_boot_previous_shutdown_games.
+type FlushOutcome string
+
+const (
+	// FlushWritten: a pending restore point was written.
+	FlushWritten FlushOutcome = metrics.FlushWritten
+	// FlushNothingPending: there was nothing to write.
+	FlushNothingPending FlushOutcome = metrics.FlushNothingPending
+	// FlushFailed: the write was attempted and failed.
+	FlushFailed FlushOutcome = metrics.FlushFailed
+)
 
 // flushRestorePointLocked writes the pending restore point, if any.
 // Failure is warn-only, as it always was: losing a restore point costs
 // a rewind on the next deploy; refusing the player's action would cost
 // them the move they just made. Caller MUST hold r.mu.
-func (r *Room) flushRestorePointLocked() {
+func (r *Room) flushRestorePointLocked() FlushOutcome {
 	r.stopRestoreTimerLocked()
 	p := r.restorePending
 	if p == nil {
-		return
+		return FlushNothingPending
 	}
 	r.restorePending = nil
+	writes := r.restoreWrites
 	err := r.publishRestorePointLocked(*p)
 	if err != nil {
 		r.log.Warn("restore point write failed", "err", err, "seq", p.seq)
+	}
+	outcome := FlushWritten
+	switch {
+	case err != nil:
+		outcome = FlushFailed
+	case r.restoreWrites == writes:
+		// The room was deleted under us: the gate was closed and
+		// nothing was published.
+		outcome = FlushNothingPending
 	}
 	if p.snap.State == game.StateEnded {
 		// The ended table's final state could not be written: the
@@ -168,6 +195,7 @@ func (r *Room) flushRestorePointLocked() {
 		// a rewind rebuilds it.
 		r.eventLog = game.EncodedEventLog{}
 	}
+	return outcome
 }
 
 // armRestoreTimerLocked makes sure a write is due when the interval
@@ -219,10 +247,33 @@ func (r *Room) closeRestorePoints() {
 // reads what is really on disk, and again once no commit can land),
 // which is what keeps a deploy's restart from rewinding any table
 // further than its last clean state (#3823).
-func (m *RoomManager) FlushRestorePoints() {
+func (m *RoomManager) FlushRestorePoints() FlushOutcomes {
+	out := FlushOutcomes{}
 	for _, r := range m.List() {
-		r.FlushRestorePoint()
+		out[r.Game.ID] = r.FlushRestorePoint()
 	}
+	return out
+}
+
+// FlushOutcomes is what a FlushRestorePoints did, by table.
+type FlushOutcomes map[uuid.UUID]FlushOutcome
+
+// Then folds a later flush into o: a table the later flush wrote (or
+// failed to write) takes its result, because that is the newest word
+// on its restore point; one it found nothing pending for keeps the
+// earlier. The shutdown flushes twice, before the census and after the
+// last commit can land, and the record wants both.
+func (o FlushOutcomes) Then(later FlushOutcomes) FlushOutcomes {
+	merged := make(FlushOutcomes, len(o)+len(later))
+	for id, v := range o {
+		merged[id] = v
+	}
+	for id, v := range later {
+		if _, seen := merged[id]; !seen || v != FlushNothingPending {
+			merged[id] = v
+		}
+	}
+	return merged
 }
 
 // writeRestorePointLocked captures the game and publishes it as this

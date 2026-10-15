@@ -43,6 +43,15 @@ func eventMetrics() []prometheus.Collector {
 		// capacity.go
 		capacityRefusals,
 		bootRestoreDeferred,
+		// deploy.go
+		bootReadySeconds,
+		bootPhaseSeconds,
+		bootDowntimeSeconds,
+		bootFirstFrameSeconds,
+		bootRewindActions,
+		bootRewindSeconds,
+		bootRewoundGames,
+		bootPreviousShutdownGames,
 		// bots.go
 		botDecisions,
 		botDecisionSeconds,

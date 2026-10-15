@@ -174,6 +174,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -301,7 +302,9 @@ func main() {
 	var database *db.DB
 	if cfg.DataDir != "" {
 		var err error
+		dbStart := time.Now()
 		database, err = db.Open(ctx, cfg.DataDir)
+		metrics.BootPhase(metrics.BootPhaseDatabase, time.Since(dbStart))
 		if err != nil {
 			log.Error("database open/migrate failed", "err", err)
 			os.Exit(1)
@@ -328,6 +331,10 @@ func main() {
 	mgr := ws.NewRoomManager(log, cfg.DataDir)
 	// Before the restore pass, so restored rooms get it too (#3823).
 	mgr.SetRestorePointInterval(cfg.RestorePointInterval)
+	// The restore pass below is the boot's: it compares the tables it
+	// brings back with the previous process's shutdown record, and
+	// times each one's first frame (ADR 0195 phase 0, #3037).
+	mgr.ArmBootMeasurement()
 	// With a database, games / seats / invites are rows (ADR 0051
 	// decision 4, S34 sub-PR 3) and RestoreFromDisk imports any
 	// lobby/*.json the previous binary left. Without one, the lobby
@@ -489,7 +496,9 @@ func main() {
 	// routes serve 404 / 503 until the next scryfall-refresh run.
 	// This keeps the server bootable on a fresh deployment before
 	// the cron has landed its first dump.
+	cardStart := time.Now()
 	cardIdx, imgCache := loadCardAssets(log, cfg.DataDir)
+	metrics.BootPhase(metrics.BootPhaseCardIndex, time.Since(cardStart))
 	// #3830: the stack shows an ability's printed text, read from the
 	// same index.
 	if cardIdx != nil {
@@ -573,6 +582,7 @@ func main() {
 	// census logged below, at SIGTERM, is the other half.
 	restoreStart := time.Now()
 	n := l.RestoreFromDisk(log)
+	metrics.BootPhase(metrics.BootPhaseRestore, time.Since(restoreStart))
 	log.Info("restore from disk complete", "duration", time.Since(restoreStart).Round(time.Millisecond).String(), "resumed", n)
 	if voiceRooms != nil {
 		voiceRooms.Start(ctx)
@@ -869,8 +879,22 @@ func main() {
 	metricsSrv := startMetrics(log, cfg.MetricsAddr)
 
 	go func() {
-		log.Info("server listening", "addr", cfg.Addr, "data_dir", cfg.DataDir)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		// Bind first, so "ready" is the instant a connection can be
+		// accepted, and say how long the boot took (#3037).
+		addr := srv.Addr
+		if addr == "" {
+			addr = ":http"
+		}
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			log.Error("server failed", "err", err)
+			stop()
+			return
+		}
+		ready := metrics.BootReady()
+		log.Info("server listening", "addr", cfg.Addr, "data_dir", cfg.DataDir,
+			"ready_after", ready.Round(time.Millisecond).String())
+		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("server failed", "err", err)
 			stop()
 		}
@@ -908,17 +932,28 @@ func main() {
 	// rate limit holds the newest clean state back for up to the
 	// interval, and a restart must not rewind a table past it. Then the
 	// census reads what is really on disk.
-	mgr.FlushRestorePoints()
-	ws.LogShutdownCensus(log, mgr.List(), func(id uuid.UUID) bool {
+	archived := func(id uuid.UUID) bool {
 		meta, err := l.Get(id)
 		return err == nil && meta.Archived()
-	})
+	}
+	flushes := mgr.FlushRestorePoints()
+	ws.LogShutdownCensus(log, mgr.List(), archived)
 
 	hub.Shutdown(shutdownCtx)
 	bots.Shutdown()
 	// Again, now that no socket or bot can commit: a move that landed
 	// between the first flush and the hub closing is written too.
-	mgr.FlushRestorePoints()
+	flushes = flushes.Then(mgr.FlushRestorePoints())
+	// What this process leaves for the next boot to compare (#3037): per
+	// table, its last commit and whether its restore point was flushed.
+	// A process cannot be scraped once it has stopped, so the boot that
+	// follows turns this into the cmdctrl_boot_* rewind metrics.
+	rec := mgr.NewShutdownRecord(time.Now(), flushes, archived)
+	if err := mgr.WriteShutdownRecord(rec); err != nil {
+		log.Warn("shutdown record not written; the next boot cannot say how far tables rewound", "err", err)
+	} else {
+		ws.LogShutdownRecord(log, rec)
+	}
 	if database != nil {
 		if err := database.Close(); err != nil {
 			log.Error("database close", "err", err)

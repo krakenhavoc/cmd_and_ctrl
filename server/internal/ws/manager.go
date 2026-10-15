@@ -33,6 +33,9 @@ type RoomManager struct {
 	// restore_rate.go). Zero, the default, writes on every restorable
 	// commit; the server sets CMDCTRL_RESTORE_POINT_INTERVAL's value.
 	restoreEvery time.Duration
+	// boot is the armed boot measurement the next restore pass takes
+	// (deploy_cost.go, #3037); nil when none is armed.
+	boot *bootMeasurement
 }
 
 // SetRestorePointInterval sets the restore-point interval for rooms
