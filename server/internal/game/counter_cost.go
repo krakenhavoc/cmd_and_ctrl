@@ -98,9 +98,14 @@ type CounterRemovalCost struct {
 	// Stark Upgrade's "Remove two +1/+1 counters from among
 	// artifacts you control" is the shape; so is Hopeful Initiate's.
 	//
-	// Meaningless without From (there is only one source), and
-	// meaningless with Variable (no printed card splits a variable
-	// count); Register refuses both.
+	// Meaningless without From (there is only one source); Register
+	// refuses that. With Variable the activator announces BOTH the
+	// total and the split (#3276, Jetfire, Ingenious Scientist's "one
+	// or more +1/+1 counters from among artifacts you control"):
+	// the parts may total anything from N up to what the matched
+	// permanents hold, and the total is the paid-cost record.
+	// Register accepts that shape for a printed kind and a floor of at
+	// least one only.
 	//
 	// The payment is validated as a SET, the way a crew payment is:
 	// every named (permanent, kind) must be distinct, the permanent

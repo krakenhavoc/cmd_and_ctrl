@@ -166,6 +166,45 @@ func TestAmongCounterCostEnumeratesOnePaymentTotallingN(t *testing.T) {
 	_ = a
 }
 
+// A variable AMONG cost (#3276, Jetfire) is offered as ONE payment: every
+// counter on every matched permanent, so the announced total is their
+// sum. Nothing is offered below the floor.
+func TestVariableAmongCounterCostEnumeratesEveryCounter(t *testing.T) {
+	g := newTable(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	clearHand(active)
+	cost := game.AbilityCost{RemoveCounters: &game.CounterRemovalCost{
+		Counter: "+1/+1", N: 1, Among: true, Variable: true,
+		From: costSpec("artifacts you control", func(c game.Card) bool { return c.IsArtifact() }),
+	}}
+	jet := battlefieldCard(g, active, counterCostCard("Test Jetfire", cost))
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	if acts := activationsOf(legal.EnumerateFor(g, active.ID), jet); len(acts) != 0 {
+		t.Fatalf("no counters anywhere: want no activation, got %v", labels(acts))
+	}
+
+	a := battlefieldCard(g, active, game.Card{
+		Name: "Artifact A", TypeLine: "Artifact", Counters: map[string]int{"+1/+1": 1},
+	})
+	b := battlefieldCard(g, active, game.Card{
+		Name: "Artifact B", TypeLine: "Artifact", Counters: map[string]int{"+1/+1": 4},
+	})
+	moves := activationsOf(legal.EnumerateFor(g, active.ID), jet)
+	if len(moves) != 1 {
+		t.Fatalf("want one payment, got %v", labels(moves))
+	}
+	p := counterRestParamsOf(t, moves[0])
+	got := map[string]int{}
+	for i, id := range p.CounterSourceIDs {
+		got[id] += p.CounterCounts[i]
+	}
+	if len(got) != 2 || got[a.String()] != 1 || got[b.String()] != 4 {
+		t.Errorf("payment %v, want 1 from A and 4 from B", got)
+	}
+	dispatchAll(t, g, active.ID, moves)
+}
+
 // A cost that ADDS a counter is enumerated while CR 118.3 lets it be
 // paid, and priced as free — nothing is spent that a policy could
 // weigh, which is exactly what the printed card means.
