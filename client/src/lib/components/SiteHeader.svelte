@@ -21,8 +21,14 @@
   // the account controls are one menu, opened from the button that
   // shows the person's name.
   //
-  // Below the 820px design target the row wraps; there is no separate
-  // phone layout (the tablet-minimum rule).
+  // Below 600px (a public page's phone layout, #3877) the header is one
+  // row: the wordmark, Help, Sign in or the account button, and a menu
+  // button. The nav links, the C2 Discord and the bug report move into
+  // a panel the menu button opens (a disclosure: aria-expanded, focus
+  // goes into it, Escape closes it and hands focus back). From 600px up
+  // the links sit in the row as before and the button is hidden. The
+  // table and the app screens stay tablet-minimum; only the site frame
+  // has a phone layout.
   import { onMount, tick } from "svelte";
   import Wordmark from "./Wordmark.svelte";
   import { route, navigate } from "../router";
@@ -53,6 +59,10 @@
   // "Delete my account" (#2983, ADR 0149) opens a confirmation dialog.
   let deleteOpen = $state(false);
   let accountEl = $state<HTMLElement | null>(null);
+  // The phone layout's nav panel and the button that opens it.
+  let menuOpen = $state(false);
+  let navEl = $state<HTMLElement | null>(null);
+  let menuBtnEl = $state<HTMLButtonElement | null>(null);
 
   const isSignedIn = $derived($session !== null);
   const hasLinkedUser = $derived(signedInUserID($session) !== null);
@@ -125,10 +135,39 @@
   // on the button with the items a Tab away behind other controls.
   async function toggleAccount(): Promise<void> {
     accountError = "";
+    menuOpen = false;
     accountOpen = !accountOpen;
     if (!accountOpen) return;
     await tick();
     accountEl?.querySelector<HTMLElement>(".acct-menu .acct-item")?.focus();
+  }
+
+  // The phone layout's nav panel: opening it moves focus to its first
+  // link, for the same reason as the account menu.
+  async function toggleMenu(): Promise<void> {
+    menuOpen = !menuOpen;
+    if (!menuOpen) return;
+    accountOpen = false;
+    await tick();
+    navEl?.querySelector<HTMLElement>("a, button")?.focus();
+  }
+
+  // A page change closes the panel, so it does not hang over the next page.
+  $effect(() => {
+    void $route;
+    menuOpen = false;
+  });
+
+  // Focus leaving the panel for anywhere but its own button closes it.
+  function onNavFocusOut(e: FocusEvent): void {
+    const to = e.relatedTarget as Node | null;
+    if (!menuOpen || !to || !navEl || navEl.contains(to) || to === menuBtnEl) return;
+    menuOpen = false;
+  }
+
+  function openBugReport(): void {
+    menuOpen = false;
+    bugOpen = true;
   }
 
   // The skip link (first focusable thing in the shell). A plain
@@ -146,14 +185,28 @@
   // Escape closes the account menu and hands focus back to its button;
   // a click anywhere outside it closes it too.
   function onWindowKey(e: KeyboardEvent): void {
-    if (e.key !== "Escape" || !accountOpen) return;
+    if (e.key !== "Escape") return;
+    if (menuOpen) {
+      menuOpen = false;
+      menuBtnEl?.focus();
+      return;
+    }
+    if (!accountOpen) return;
     closeAccount();
     accountEl?.querySelector<HTMLButtonElement>(".acct-btn")?.focus();
   }
 
   function onWindowClick(e: MouseEvent): void {
+    const target = e.target instanceof Node ? e.target : null;
+    // The panel closes on a click outside it and its button, and on a
+    // click on one of its links (a link to the page already open changes
+    // no route, so the route effect would not close it).
+    if (menuOpen && target && !menuBtnEl?.contains(target)) {
+      const inLink = target instanceof Element && target.closest("a") !== null;
+      if (!navEl?.contains(target) || inLink) menuOpen = false;
+    }
     if (!accountOpen || !accountEl) return;
-    if (e.target instanceof Node && accountEl.contains(e.target)) return;
+    if (target && accountEl.contains(target)) return;
     closeAccount();
   }
 
@@ -214,7 +267,14 @@
       <Wordmark size="header" />
     </a>
 
-    <nav class="site-nav" aria-label="Site">
+    <nav
+      class="site-nav"
+      class:open={menuOpen}
+      id="site-nav"
+      aria-label="Site"
+      bind:this={navEl}
+      onfocusout={onNavFocusOut}
+    >
       {#if isSignedIn}
         <!-- Play: your tables now, and the games you have played (ADR
              0158 §1: My games is Tables' History). -->
@@ -249,6 +309,24 @@
           {@render navLink("#/roadmap", "roadmap", "Roadmap")}
           {@render navLink(GUIDE_HASH, "guide", "Guide")}
           {@render navLink(ABOUT_HASH, "about", "About")}
+        </div>
+      {/if}
+      <!-- Phone layout only (#3877): the C2 Discord and the bug report as
+           labelled rows, since their icon buttons leave the row below
+           600px. Hidden from 600px up, where the icons show. -->
+      {#if invite || (hasLinkedUser && bugReportOn)}
+        <div class="panel-util">
+          {#if invite}
+            <a href={invite} target="_blank" rel="noopener noreferrer">
+              <Icon name="discord" size={18} /> C2 Discord
+            </a>
+          {/if}
+          {#if hasLinkedUser && bugReportOn}
+            <button type="button" onclick={openBugReport}>
+              <Icon name="bug" size={17} />
+              {L.reportABug}
+            </button>
+          {/if}
         </div>
       {/if}
     </nav>
@@ -361,6 +439,19 @@
         {/if}
       </div>
     </div>
+
+    <button
+      type="button"
+      class="menu-btn"
+      class:on={menuOpen}
+      bind:this={menuBtnEl}
+      aria-label={L.siteMenu}
+      aria-expanded={menuOpen}
+      aria-controls="site-nav"
+      onclick={() => void toggleMenu()}
+    >
+      <Icon name={menuOpen ? "x" : "menu"} size={20} />
+    </button>
   </div>
 </header>
 
@@ -656,5 +747,165 @@
     margin: 4px 10px 6px;
     font-size: 12px;
     color: var(--danger);
+  }
+
+  /* The phone layout's controls, hidden from 600px up. */
+  .menu-btn,
+  .panel-util {
+    display: none;
+  }
+
+  /* Public pages at phone width (#3877): one row, the wordmark and the
+     controls, about 60px with the colour strip. The nav links, the C2
+     Discord and the bug report move into a panel under the row, opened
+     by the menu button. Tap targets are 44px. The one phone breakpoint
+     the table's own rules also use (599px); DESIGN.md §5. */
+  @media (max-width: 599px) {
+    .row {
+      flex-wrap: nowrap;
+      min-height: 44px;
+      padding-top: 6px;
+      padding-bottom: 6px;
+      gap: 4px;
+    }
+    .wordmark {
+      flex: none;
+      min-height: 44px;
+      margin-right: auto;
+    }
+    .account {
+      flex: 0 1 auto;
+      min-width: 0;
+      margin-left: 0;
+      gap: 4px;
+    }
+    /* Their rows in the panel stand in for these icons. */
+    .account .discord-link,
+    .account .bug-btn {
+      display: none;
+    }
+    .account .sign-in {
+      height: 44px;
+      padding: 0 14px;
+      font-size: 14px;
+    }
+    /* The account menu and Help's menu hang from the header's right edge,
+       not from their buttons, which sit too far left to hold them. */
+    .acct {
+      position: static;
+      min-width: 0;
+    }
+    .acct-btn {
+      height: 44px;
+      min-width: 0;
+      max-width: 100%;
+    }
+    .who {
+      min-width: 0;
+      max-width: 16ch;
+    }
+    .acct-menu {
+      top: calc(100% + 4px);
+      right: var(--page-gutter);
+      max-width: calc(100vw - 2 * var(--page-gutter));
+    }
+    .acct-item {
+      min-height: 44px;
+    }
+    .menu-btn {
+      display: inline-grid;
+      place-items: center;
+      flex: none;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--fg);
+      cursor: pointer;
+    }
+    .menu-btn:hover,
+    .menu-btn.on {
+      background: var(--surface-hover);
+      border-color: var(--border);
+    }
+    .menu-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    /* Under the sticky header, edge to edge. */
+    .site-nav {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      margin: 0;
+      padding: 6px var(--page-gutter) 10px;
+      max-height: calc(100dvh - 64px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      background: var(--surface-raised);
+      border-bottom: 1px solid var(--border-strong);
+      box-shadow: var(--shadow);
+    }
+    .site-nav.open {
+      display: flex;
+    }
+    .grp {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+    }
+    .grp + .grp,
+    .panel-util {
+      margin: 6px 0 0;
+      padding: 6px 0 0;
+      border-left: 0;
+      border-top: 1px solid var(--border);
+    }
+    .panel-util {
+      display: flex;
+      flex-direction: column;
+    }
+    .site-nav a,
+    .panel-util button {
+      height: 48px;
+      padding: 0 12px;
+      font-size: 16px;
+    }
+    .panel-util button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 0;
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--fg-muted);
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+    }
+    .panel-util a {
+      gap: 8px;
+    }
+    .panel-util button:hover {
+      background: var(--surface-hover);
+      color: var(--fg);
+    }
+  }
+  /* At 359px and under the wordmark drops its keys for the mark alone
+     (its name stays for a screen reader), to keep the row to one line. */
+  @media (max-width: 359px) {
+    .wordmark {
+      min-width: 44px;
+    }
+    .wordmark :global(.keys) {
+      display: none;
+    }
   }
 </style>
