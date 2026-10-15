@@ -440,6 +440,8 @@ delayedTriggers[].manaTapControllerOnly	bool
 delayedTriggers[].manaTapSubtype	string
 delayedTriggers[].on	array
 delayedTriggers[].onExtraTurn	number:int
+delayedTriggers[].onPhaseId	number:int
+delayedTriggers[].onSeq	number:int
 delayedTriggers[].on[]	string
 delayedTriggers[].oncePerBatch	bool
 delayedTriggers[].optionalQuestion	string

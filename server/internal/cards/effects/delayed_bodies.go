@@ -70,6 +70,18 @@ var (
 	// at every beginning of combat until cleanup.
 	untapCreaturesThatAttackedBody = game.SimpleDelayedBody("extra-combat/untap-creatures-that-attacked", untapCreaturesThatAttackedThisTurn)
 
+	// World at War: "at the beginning of that combat, untap all
+	// creatures that attacked this turn". The same function as Full
+	// Throttle's, under its own key: it is scheduled bound to the added
+	// combat (DelayedTrigger.OnPhaseID, ADR 0188 Decision 5), and a new
+	// key makes an older binary refuse a file that holds the binding
+	// rather than fire it at the turn's regular combat.
+	untapAttackersAtThatCombatBody = game.SimpleDelayedBody("extra-combat/untap-attackers-at-that-combat", untapCreaturesThatAttackedThisTurn)
+
+	// Moraug, Fury of Akoum: "at the beginning of that combat, untap all
+	// creatures you control" (ADR 0188 Decision 5).
+	untapAllYouControlAtThatCombatBody = game.SimpleDelayedBody("extra-combat/untap-all-you-control", untapAllCreaturesYouControlAtThatCombat)
+
 	// Draw a card (Urza's Bauble, Portent).
 	drawOneBody     = game.SimpleDelayedBody("draw/one-card", b27DrawOne)
 	portentDrawBody = game.SimpleDelayedBody("portent/draw", portentDraw)

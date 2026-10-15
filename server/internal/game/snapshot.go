@@ -1460,7 +1460,12 @@ type delayedTriggerSnapshot struct {
 	// Additive: an older binary drops it, but every card that binds a
 	// trigger also names a body that binary lacks, so it refuses the
 	// file (ErrUnknownEffectKey) rather than firing the trigger early.
-	OnExtraTurn int         `json:"onExtraTurn,omitempty"`
+	OnExtraTurn int `json:"onExtraTurn,omitempty"`
+	// OnPhaseID / OnSeq are ADR 0188 Decision 5's binding to one phase
+	// of one turn. Additive, and an older binary refuses the file the
+	// same way: both cards that bind a trigger name a body it lacks.
+	OnPhaseID   int         `json:"onPhaseId,omitempty"`
+	OnSeq       int         `json:"onSeq,omitempty"`
 	CreatedSeq  int         `json:"createdSeq,omitempty"`
 	CreatedTurn int         `json:"createdTurn,omitempty"`
 	Cards       []uuid.UUID `json:"cards,omitempty"`
@@ -2578,6 +2583,8 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
 		OnExtraTurn:        d.OnExtraTurn,
+		OnPhaseID:          d.OnPhaseID,
+		OnSeq:              d.OnSeq,
 		TurnOf:             uuidPtrOrNil(d.TurnOf),
 		CreatedSeq:         d.CreatedSeq,
 		HasEffect:          d.Body.key != "",
@@ -3473,6 +3480,8 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
 		OnExtraTurn:        d.OnExtraTurn,
+		OnPhaseID:          d.OnPhaseID,
+		OnSeq:              d.OnSeq,
 		TurnOf:             uuidOrNil(d.TurnOf),
 		CreatedSeq:         d.CreatedSeq,
 		// checkEffectKeys has already refused a key this binary has

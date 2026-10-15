@@ -8048,10 +8048,33 @@ until cleanup (CR 603.7b). A "you may pay. If you do, … after this
 phase" (Hellkite Charger) sets `MayPay.InThisStep`, so the table cannot
 leave the combat before the answer.
 
-Not built yet: "after the second main phase this turn" (World at War)
-and a trigger bound to one added combat, "at the beginning of that
-combat" (Moraug). Both ship with the first card that uses them (ADR 0059
-Decisions 4 and 8).
+**"After the second main phase this turn" (World at War, ADR 0188
+Decision 4):** `ExtraCombatAndMainAfterNthMain(2)` is the same pair of
+phases anchored by `game.AnchorNthMainPhase`, which counts every main
+phase of the turn (CR 505.1b), added ones included, by walking the plan.
+Cast earlier (in the upkeep, as a rebound cast, or in the precombat main
+phase) it goes after the phase that will be the second; cast after the
+second has ended (in a third main phase) it adds nothing.
+
+**"At the beginning of that combat" (Moraug, World at War, ADR 0188
+Decision 5):** set `AddPhases.AtThatCombat` to a `ScheduleDelayedTrigger`
+(only `Label` and `Body` are read):
+
+```go
+a := ExtraCombatAfterThisPhase()
+a.AtThatCombat = &ScheduleDelayedTrigger{
+    Label: "Moraug, Fury of Akoum — untap all creatures you control",
+    Body:  untapAllYouControlAtThatCombatBody,
+}
+```
+
+It binds the trigger to the combat that phase became (`ScheduleDelayedTrigger.OnPhase`,
+`game.DelayedTrigger.OnPhaseID`), so it fires at that combat's beginning and
+at no other: not the turn's regular combat, and not a second added combat.
+Two landfalls give two combats and two triggers, each at its own. A
+trigger whose combat never begins is dropped when the turn changes. Give
+each bound card its own `Body` key, as a new key makes an older binary
+refuse a file that holds the binding.
 
 ### Ending the turn (#2165, CR 724.1, ADR 0059 amendment 2026-10-05)
 
