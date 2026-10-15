@@ -2228,14 +2228,16 @@ type PlayerView struct {
 	LandDropsPerTurn    int `json:"land_drops_per_turn"`
 	LandsPlayedThisTurn int `json:"lands_played_this_turn"`
 
-	// ManaPool is the player's current mana pool projection — one
-	// entry per floating mana token, in insertion order. Entries
-	// are uppercase single-character mana letters ("W", "U", "B",
-	// "R", "G", "C"). Empty / nil when the pool is empty (CR 106.4
-	// empties at every step boundary, so this is the common case
-	// outside a cast). Drives the S15 ManaPoolPips UI. Added in
-	// S15 sub-PR 2.
-	ManaPool []string `json:"mana_pool,omitempty"`
+	// ManaPool is the player's current mana pool projection, in
+	// insertion order, as runs of one colour (#3041): `{color,
+	// count}`, with `color` an uppercase single-character mana letter
+	// ("W", "U", "B", "R", "G", "C") and adjacent mana of the same
+	// colour folded into one run. Before #3041 it was one letter per
+	// mana, so a million floating {G} was a four-megabyte frame.
+	// Empty / nil when the pool is empty (CR 106.4 empties at every
+	// step boundary, so this is the common case outside a cast).
+	// Drives the S15 ManaPoolPips UI. Added in S15 sub-PR 2.
+	ManaPool []ManaPoolRun `json:"mana_pool,omitempty"`
 
 	// Emblems are the emblems this player has (CR 114), in creation
 	// order. Absent for every seat that has none, which is nearly
@@ -9122,13 +9124,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 			Seq:      c.Seq,
 		}
 	}
-	var manaPool []string
-	if len(p.ManaPool) > 0 {
-		manaPool = make([]string, len(p.ManaPool))
-		for i, t := range p.ManaPool {
-			manaPool[i] = t.Color
-		}
-	}
+	manaPool := manaPoolRunsOf(p.ManaPool)
 	// #623 / CR 114. The label and text come from the catalog, so a
 	// game restored on a binary whose card file reworded the emblem
 	// shows the new wording.

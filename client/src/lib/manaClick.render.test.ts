@@ -15,6 +15,7 @@ import PlayerPanel from "./components/board/PlayerPanel.svelte";
 import ManaSourcePicker from "./components/board/ManaSourcePicker.svelte";
 import ManaSymbolPicker from "./components/board/ManaSymbolPicker.svelte";
 import ManaPoolPips from "./components/board/ManaPoolPips.svelte";
+import { manaPoolOf } from "./manaPool";
 // ADR 0111 PR 5: mana_pick is answered inline in the action dock, so
 // the prompt is mounted beside a real dock.
 import ChoiceDockHarness from "./test/ChoiceDockHarness.svelte";
@@ -481,7 +482,10 @@ describe("the mana_pick prompt uses the same picker", () => {
 
 describe("ManaPoolPips", () => {
   it("draws the pool with the same symbols", () => {
-    const { container } = render(ManaPoolPips as never, { pool: ["G", "G", "C"] } as never);
+    const { container } = render(
+      ManaPoolPips as never,
+      { pool: manaPoolOf("G", "G", "C") } as never,
+    );
     const pips = container.querySelectorAll(".pip");
     expect(pips.length).toBe(2);
     expect(pips[0].getAttribute("aria-label")).toBe("2 green mana");

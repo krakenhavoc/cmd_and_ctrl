@@ -43,7 +43,7 @@ func TestCabbageMerchantTapsTwoUntappedFoodsForOneManaOfAnyColor(t *testing.T) {
 	if got := b10ResolveAllManaPicks(t, g, me.ID, "R"); got != 1 {
 		t.Fatalf("mana picks answered = %d, want 1 (one mana of any colour)", got)
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "R" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "R" {
 		t.Fatalf("mana pool = %v, want one red mana", me.ManaPool)
 	}
 	if err := g.ActivateManaAbility(me.ID, merchant, 0, game.ManaAbilityParams{TapIDs: []uuid.UUID{f2, f3}}); err == nil {

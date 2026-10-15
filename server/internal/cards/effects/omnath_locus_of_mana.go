@@ -34,12 +34,7 @@ func init() {
 				if p == nil {
 					return
 				}
-				n := 0
-				for _, tok := range p.ManaPool {
-					if tok.Color == "G" {
-						n++
-					}
-				}
+				n := p.ManaPool.CountColor("G")
 				c.Power += n
 				c.Toughness += n
 			},

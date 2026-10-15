@@ -138,7 +138,7 @@ func TestGoldSaucerCoinAndSacrificeAbilities(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, id, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatal(err)
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "C" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "C" {
 		t.Fatal("missing colorless mana")
 	}
 	g.WithWriteLock(func() { _ = g.UntapTargetForEffect(id) })
@@ -213,7 +213,7 @@ func TestPuzzleboxDistinctBatchesManaAndTutor(t *testing.T) {
 	}
 	passPriorityAroundTable(t, g)
 	rolls := randomEvents(g, game.EventRollDie)
-	if len(rolls) != 4 || rolls[3].Sides != 20 || len(me.ManaPool) != 1 {
+	if len(rolls) != 4 || rolls[3].Sides != 20 || me.ManaPool.Total() != 1 {
 		t.Fatal("mana rider failed")
 	}
 	if counterCount(g, id, "charge") != total+rolls[3].Amount {

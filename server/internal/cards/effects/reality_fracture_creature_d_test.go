@@ -758,19 +758,19 @@ func TestRFDOmnathGrowsWithUnspentManaKeepsItColorlessAndLandfallAddsTwo(t *test
 
 	// Mana that would empty becomes colorless instead.
 	advanceTo(t, g, game.StepBeginCombat)
-	if len(me.ManaPool) != 3 {
-		t.Fatalf("pool = %d mana after a step ended, want 3 kept", len(me.ManaPool))
+	if me.ManaPool.Total() != 3 {
+		t.Fatalf("pool = %d mana after a step ended, want 3 kept", me.ManaPool.Total())
 	}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Color != "C" {
 			t.Errorf("kept mana colour = %q, want colorless", tok.Color)
 		}
 	}
 
-	before := len(me.ManaPool)
+	before := me.ManaPool.Total()
 	b31PlayLand(t, g, "Plains", "Basic Land — Plains", "")
 	passPriorityAroundTable(t, g)
-	if got := len(me.ManaPool); got != before+2 {
+	if got := me.ManaPool.Total(); got != before+2 {
 		t.Errorf("pool after landfall = %d, want %d", got, before+2)
 	}
 }

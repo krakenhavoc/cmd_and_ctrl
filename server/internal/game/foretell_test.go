@@ -56,8 +56,8 @@ func TestForetellPaysTwoAndExilesFaceDown(t *testing.T) {
 
 	id := foretellIt(t, g, me)
 
-	if len(me.ManaPool) != 0 {
-		t.Errorf("mana pool: got %d tokens left, want 0 — the {2} was not paid", len(me.ManaPool))
+	if me.ManaPool.Total() != 0 {
+		t.Errorf("mana pool: got %d tokens left, want 0 — the {2} was not paid", me.ManaPool.Total())
 	}
 	if handCard(me, id) != nil {
 		t.Error("the foretold card is still in hand")
@@ -278,8 +278,8 @@ func TestForetellSurvivesAnUndo(t *testing.T) {
 	if exiledCardByIDLocked(g, card.InstanceID) != nil {
 		t.Error("undo left the card in exile")
 	}
-	if len(me.ManaPool) != 2 {
-		t.Errorf("mana pool after undo: got %d tokens, want 2", len(me.ManaPool))
+	if me.ManaPool.Total() != 2 {
+		t.Errorf("mana pool after undo: got %d tokens, want 2", me.ManaPool.Total())
 	}
 	if len(me.CastPermissions) != 0 {
 		t.Errorf("undo left %d cast permissions behind", len(me.CastPermissions))

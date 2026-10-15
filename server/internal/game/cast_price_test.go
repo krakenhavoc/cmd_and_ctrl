@@ -352,7 +352,7 @@ func TestOneCastPricerAgreesAcrossItsConsumers(t *testing.T) {
 			if err := g.CastSpell(me.ID, id, strict); err != nil {
 				t.Fatalf("cast funded to exactly the previewed price: %v", err)
 			}
-			if len(me.ManaPool) != 0 {
+			if me.ManaPool.Total() != 0 {
 				t.Errorf("pool after the cast = %+v, want empty — the payment charged less than the preview", me.ManaPool)
 			}
 		})
@@ -376,10 +376,10 @@ func TestACastOneManaShortOfThePreviewIsRefused(t *testing.T) {
 				t.Fatalf("PriceCast: %v", err)
 			}
 			fundExactly(me, price.Total, params.XValue)
-			if len(me.ManaPool) == 0 {
+			if me.ManaPool.Total() == 0 {
 				t.Skip("a free cast has nothing to be short of")
 			}
-			me.ManaPool = me.ManaPool[:len(me.ManaPool)-1]
+			me.ManaPool = me.ManaPool.Units()[:me.ManaPool.Total()-1]
 
 			strict := params
 			strict.Strict = true

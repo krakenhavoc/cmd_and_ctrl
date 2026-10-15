@@ -5,6 +5,7 @@
 
 import type { StepContext } from "../tutorial";
 import type { CardView, GameView } from "../protocol";
+import { manaPoolOf } from "../manaPool";
 
 export const ME = "me";
 export const BOT = "bot";
@@ -84,7 +85,7 @@ export function board(b: Board = {}): GameView {
     graveyard: zone("graveyard"),
     command: zone("command", command),
     hand_kept: id === ME && b.mulligan ? b.mulligan.kept : undefined,
-    mana_pool: id === ME ? (b.pool ?? []) : [],
+    mana_pool: id === ME ? manaPoolOf(...(b.pool ?? [])) : [],
     lands_played_this_turn: id === ME ? (b.landsPlayed ?? 0) : 0,
   });
   return {

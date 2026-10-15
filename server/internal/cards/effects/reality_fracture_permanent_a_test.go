@@ -296,7 +296,7 @@ func TestGardenizeCountsDeathsAndAddsManaAtMain(t *testing.T) {
 	}
 	advanceToPrecombatMainOf(t, g, 0)
 	passPriorityAroundTable(t, g)
-	if n := len(me.ManaPool); n != 2 {
+	if n := me.ManaPool.Total(); n != 2 {
 		t.Errorf("mana = %d, want 2", n)
 	}
 }

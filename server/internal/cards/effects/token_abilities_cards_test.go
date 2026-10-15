@@ -253,7 +253,7 @@ func TestAvatarRokuDragonTokenHasItsOwnFirebending(t *testing.T) {
 	passPriorityAroundTable(t, g)
 
 	red := 0
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Color == "R" {
 			red++
 		}

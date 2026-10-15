@@ -210,7 +210,15 @@ import (
 // silently restoring different targets. It also carries the completed-draw
 // step tally and copiable permanent LKI; older draw tallies are reconstructed
 // from the recorded step boundary. A v7 reader cannot interpret these rules.
-const SnapshotSchemaVersion = 8
+//
+// v9 is #3041, and it is the emblem shape of the argument again. A
+// mana token (in a pool, a payment record or a permanent's provenance)
+// is now a RUN, with a `count` key for how many identical mana it
+// stands for. A v8 file has no key, reads as one mana per token, and
+// restores exactly as it did, so no migration is needed. What forces
+// the bump is the other direction: a v8 binary handed a v9 file would
+// drop the key and restore a pool of a million {G} as one {G}.
+const SnapshotSchemaVersion = 9
 
 // settingsSchemaVersion is the first schema that carries
 // GameSnapshot.Settings. Older files are migrated from UndoLimit.

@@ -101,11 +101,11 @@ func TestViviAddsOneManaPerPointOfPowerOncePerTurn(t *testing.T) {
 		t.Errorf("answered %d further colour picks, want 2 — power 3 is three slots", n)
 	}
 
-	if len(me.ManaPool) != 3 {
-		t.Fatalf("pool has %d tokens, want 3 — one per point of power", len(me.ManaPool))
+	if me.ManaPool.Total() != 3 {
+		t.Fatalf("pool has %d tokens, want 3 — one per point of power", me.ManaPool.Total())
 	}
 	colors := map[string]int{}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		colors[tok.Color]++
 	}
 	if colors["U"] != 2 || colors["R"] != 1 {
@@ -116,8 +116,8 @@ func TestViviAddsOneManaPerPointOfPowerOncePerTurn(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, vivi, 0, game.ManaAbilityParams{}); err == nil {
 		t.Error("the second activation this turn was allowed")
 	}
-	if len(me.ManaPool) != 3 {
-		t.Errorf("the refused activation still minted mana: pool has %d tokens", len(me.ManaPool))
+	if me.ManaPool.Total() != 3 {
+		t.Errorf("the refused activation still minted mana: pool has %d tokens", me.ManaPool.Total())
 	}
 }
 
@@ -133,8 +133,8 @@ func TestViviManaAbilityIsRefusedOnAnotherPlayersTurn(t *testing.T) {
 	if err := g.ActivateManaAbility(them.ID, vivi, 0, game.ManaAbilityParams{}); err == nil {
 		t.Error("Vivi produced mana on someone else's turn")
 	}
-	if len(them.ManaPool) != 0 {
-		t.Errorf("pool has %d tokens after a refused activation, want 0", len(them.ManaPool))
+	if them.ManaPool.Total() != 0 {
+		t.Errorf("pool has %d tokens after a refused activation, want 0", them.ManaPool.Total())
 	}
 }
 
@@ -147,8 +147,8 @@ func TestViviAtPowerZeroAddsNoMana(t *testing.T) {
 	advanceToMain(t, g)
 
 	activateManaFor(t, g, me.ID, vivi, 0, game.ManaAbilityParams{})
-	if len(me.ManaPool) != 0 {
-		t.Errorf("pool has %d tokens, want 0 — X is Vivi's power and that is 0", len(me.ManaPool))
+	if me.ManaPool.Total() != 0 {
+		t.Errorf("pool has %d tokens, want 0 — X is Vivi's power and that is 0", me.ManaPool.Total())
 	}
 }
 

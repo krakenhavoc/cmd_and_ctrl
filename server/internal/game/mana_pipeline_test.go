@@ -37,10 +37,10 @@ func TestManaAbilityManaCostIsPaidFromThePool(t *testing.T) {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
 	// {G} in, {W}{U} out — net +1 and a colour fix.
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Fatalf("pool = %v, want two tokens", me.ManaPool)
 	}
-	if me.ManaPool[0].Color != "W" || me.ManaPool[1].Color != "U" {
+	if me.ManaPool.Units()[0].Color != "W" || me.ManaPool.Units()[1].Color != "U" {
 		t.Errorf("pool = %v, want {W}{U}", me.ManaPool)
 	}
 	if !g.Battlefield.Cards[cardIndex(t, g, signet)].Tapped {
@@ -66,7 +66,7 @@ func TestManaAbilityManaCostRejectsAnEmptyPoolWithoutTapping(t *testing.T) {
 	if g.Battlefield.Cards[cardIndex(t, g, signet)].Tapped {
 		t.Error("a rejected activation tapped the source anyway")
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool = %v, want empty", me.ManaPool)
 	}
 }
@@ -85,7 +85,7 @@ func TestManaAbilityManaCostHonoursSpendRestrictions(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, signet, 0, ManaAbilityParams{}); err == nil {
 		t.Fatal("Eldrazi-only mana funded a Signet activation")
 	}
-	if len(me.ManaPool) != 1 {
+	if me.ManaPool.Total() != 1 {
 		t.Errorf("pool = %v, want the restricted token still there", me.ManaPool)
 	}
 }
@@ -121,7 +121,7 @@ func TestGatedManaAbilityRefusesBelowThresholdAndPaysNothing(t *testing.T) {
 	if g.Battlefield.Cards[cardIndex(t, g, temple)].Tapped {
 		t.Error("a gated ability that failed its gate still tapped the source")
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool = %v, want empty", me.ManaPool)
 	}
 }
@@ -138,7 +138,7 @@ func TestGatedManaAbilityFiresAtThreshold(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, temple, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Errorf("pool = %v, want {C}{C}", me.ManaPool)
 	}
 }
@@ -188,10 +188,10 @@ func TestScaledManaAbilityCountsTheBoard(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, cradle, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 3 {
+	if me.ManaPool.Total() != 3 {
 		t.Fatalf("pool = %v, want three {G}", me.ManaPool)
 	}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Color != "G" {
 			t.Errorf("token %v, want {G}", tok)
 		}
@@ -208,7 +208,7 @@ func TestScaledManaAbilityWithNothingToCountStillTaps(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, cradle, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool = %v, want empty", me.ManaPool)
 	}
 	if !g.Battlefield.Cards[cardIndex(t, g, cradle)].Tapped {
@@ -236,19 +236,23 @@ func TestRestrictionsAreStampedOntoProducedTokens(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, temple, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Fatalf("pool = %v, want two tokens", me.ManaPool)
 	}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if len(tok.Restrictions) != 2 {
 			t.Fatalf("token %v carries %d restrictions, want 2", tok, len(tok.Restrictions))
 		}
 	}
+	// The two are one run (#3041): the same mana in every respect.
+	if len(me.ManaPool) != 1 {
+		t.Errorf("pool = %v, want one run of two", me.ManaPool)
+	}
 	// And the backing array is not shared with the catalog shape —
-	// mutating one token must not reach the other.
+	// mutating the run must not reach the ability it came from.
 	me.ManaPool[0].Restrictions[0] = "mutated"
-	if me.ManaPool[1].Restrictions[0] == "mutated" {
-		t.Error("two tokens share one restriction backing array")
+	if tags[0] == "mutated" {
+		t.Error("the run shares its restriction backing array with the ability shape")
 	}
 }
 
@@ -280,12 +284,12 @@ func TestRestrictionsSurviveAPendingManaChoice(t *testing.T) {
 	if err := g.ResolveManaChoice(choice.ID, me.ID, "G"); err != nil {
 		t.Fatalf("ResolveManaChoice: %v", err)
 	}
-	if len(me.ManaPool) != 1 {
+	if me.ManaPool.Total() != 1 {
 		t.Fatalf("pool = %v, want one token", me.ManaPool)
 	}
-	if len(me.ManaPool[0].Restrictions) != 2 {
+	if len(me.ManaPool.Units()[0].Restrictions) != 2 {
 		t.Errorf("the minted token carries %v — a pipe slot leaked unrestricted mana",
-			me.ManaPool[0].Restrictions)
+			me.ManaPool.Units()[0].Restrictions)
 	}
 }
 

@@ -65,8 +65,8 @@ func TestGixDiscardsXAndExilesTheTopX(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("activate at X=2: %v", err)
 	}
-	if len(me.ManaPool) != 0 {
-		t.Errorf("mana pool = %d, want all seven spent — X buys cards, not mana", len(me.ManaPool))
+	if me.ManaPool.Total() != 0 {
+		t.Errorf("mana pool = %d, want all seven spent — X buys cards, not mana", me.ManaPool.Total())
 	}
 	for _, id := range hand[:2] {
 		if me.Hand.Contains(id) || !me.Graveyard.Contains(id) {
@@ -111,8 +111,8 @@ func TestGixDiscardCountMustEqualX(t *testing.T) {
 			t.Errorf("%s: activation accepted", tc.why)
 			continue
 		}
-		if len(me.ManaPool) != 7 || me.Hand.Size() != handBefore {
-			t.Fatalf("%s: a refused activation spent something (pool %d, hand %d)", tc.why, len(me.ManaPool), me.Hand.Size())
+		if me.ManaPool.Total() != 7 || me.Hand.Size() != handBefore {
+			t.Fatalf("%s: a refused activation spent something (pool %d, hand %d)", tc.why, me.ManaPool.Total(), me.Hand.Size())
 		}
 	}
 	if err := g.ActivateCatalogAbility(me.ID, gix, 0, game.ActivateAbilityParams{

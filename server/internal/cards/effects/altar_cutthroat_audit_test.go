@@ -39,7 +39,7 @@ func TestPhyrexianAltarProducesEachOfTheFiveColours(t *testing.T) {
 			if err := g.ResolveManaChoice(pick.ID, me.ID, color); err != nil {
 				t.Fatalf("ResolveManaChoice: %v", err)
 			}
-			if len(me.ManaPool) != 1 || me.ManaPool[0].Color != color {
+			if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != color {
 				t.Fatalf("pool = %+v, want one %s", me.ManaPool, color)
 			}
 		})
@@ -68,8 +68,8 @@ func TestPhyrexianAltarSacrificesRepeatedlyAndTappedCreaturesToo(t *testing.T) {
 			t.Fatalf("activation %d queued %d picks, want 1", i+1, got)
 		}
 	}
-	if len(me.ManaPool) != 3 {
-		t.Errorf("pool = %d tokens, want 3", len(me.ManaPool))
+	if me.ManaPool.Total() != 3 {
+		t.Errorf("pool = %d tokens, want 3", me.ManaPool.Total())
 	}
 	for _, v := range victims {
 		if g.Battlefield.Contains(v) {
@@ -101,7 +101,7 @@ func TestPhyrexianAltarRefusesWhatIsNotYourCreature(t *testing.T) {
 			t.Errorf("%s: activation accepted", name)
 		}
 	}
-	if len(me.ManaPool) != 0 || riderLatestManaPick(g, me.ID) != nil {
+	if me.ManaPool.Total() != 0 || riderLatestManaPick(g, me.ID) != nil {
 		t.Error("a refused activation produced mana")
 	}
 	for _, id := range []uuid.UUID{rock, theirs, mine, altar} {
@@ -123,7 +123,7 @@ func TestPhyrexianAltarMaySacrificeItselfWhileACreature(t *testing.T) {
 	if g.Battlefield.Contains(altar) {
 		t.Error("the Altar is still on the battlefield after paying itself")
 	}
-	if riderAnswerManaPicks(t, g, me.ID, "R") != 1 || len(me.ManaPool) != 1 {
+	if riderAnswerManaPicks(t, g, me.ID, "R") != 1 || me.ManaPool.Total() != 1 {
 		t.Errorf("pool = %+v, want the one red mana the ability still makes", me.ManaPool)
 	}
 }

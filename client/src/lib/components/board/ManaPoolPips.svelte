@@ -15,10 +15,12 @@
   // picker does, so the {G} a player just picked is the {G} that
   // lands here.
   import { manaSymbolMeta } from "../../manaSymbol";
+  import type { ManaPoolRun } from "../../protocol";
+  import { manaPoolRuns } from "../../manaPool";
   import ManaSymbol from "./ManaSymbol.svelte";
 
   interface Props {
-    pool: string[] | undefined;
+    pool: ManaPoolRun[] | undefined;
   }
 
   const { pool }: Props = $props();
@@ -29,9 +31,9 @@
   const counts = $derived.by(() => {
     const out: Record<string, number> = {};
     if (!pool || pool.length === 0) return out;
-    for (const token of pool) {
-      const normalized = token.toUpperCase();
-      out[normalized] = (out[normalized] ?? 0) + 1;
+    for (const run of manaPoolRuns(pool)) {
+      const normalized = run.color.toUpperCase();
+      out[normalized] = (out[normalized] ?? 0) + run.count;
     }
     return out;
   });

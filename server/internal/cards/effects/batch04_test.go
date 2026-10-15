@@ -726,7 +726,7 @@ func TestB04GravenCairnsFiltersOneHybridIntoTwo(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, cairns, 1, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("the {R} should have been spent on the cost, pool = %v", batch01PoolColors(me))
 	}
 	picks := 0

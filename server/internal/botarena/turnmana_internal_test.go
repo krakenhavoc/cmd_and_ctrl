@@ -23,7 +23,7 @@ func forest(id string, me string, tapped bool) protocol.CardView {
 func TestManaLeftCountsWhatTheSeatCanStillMake(t *testing.T) {
 	me, them := uuid.NewString(), uuid.NewString()
 	v := protocol.GameView{
-		Seats: []protocol.PlayerView{{ID: me, ManaPool: []string{"G"}}, {ID: them, ManaPool: []string{"R", "R"}}},
+		Seats: []protocol.PlayerView{{ID: me, ManaPool: protocol.ManaPoolOf("G")}, {ID: them, ManaPool: protocol.ManaPoolOf("R", "R")}},
 		Battlefield: protocol.ZoneView{Cards: []protocol.CardView{
 			forest("a", me, false),
 			forest("b", me, true), // tapped

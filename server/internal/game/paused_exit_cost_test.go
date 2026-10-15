@@ -112,7 +112,7 @@ func TestSacrificeSelfCommanderPaysOnceHoweverOftenItIsActivated(t *testing.T) {
 		if len(g.StackMeta) != 1 {
 			t.Errorf("%d stack items, want the ONE ability the one card paid for", len(g.StackMeta))
 		}
-		if len(me.ManaPool) != 1 {
+		if me.ManaPool.Total() != 1 {
 			t.Errorf("pool = %v, want one {1} spent", me.ManaPool)
 		}
 		if takeCommandZone {
@@ -191,7 +191,7 @@ func TestABouncedCommanderCannotPayABattlefieldCostWhileAsked(t *testing.T) {
 			t.Fatalf("%s disturbed the bounce's prompt (%d pending)", tc.name, len(g.PendingChoices))
 		}
 	}
-	if len(g.StackMeta) != 0 || len(me.ManaPool) != 1 {
+	if len(g.StackMeta) != 0 || me.ManaPool.Total() != 1 {
 		t.Fatalf("stack %d, pool %v — a refused payment paid something", len(g.StackMeta), me.ManaPool)
 	}
 
@@ -210,8 +210,8 @@ func TestABouncedCommanderCannotPayABattlefieldCostWhileAsked(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, altar, 0, ManaAbilityParams{SacrificeIDs: []uuid.UUID{wolf}}); err != nil {
 		t.Fatalf("the Altar after the answer: %v", err)
 	}
-	if len(me.ManaPool) != 3 {
-		t.Errorf("pool = %d mana, want the {C} plus the Wolf's {C}{C}", len(me.ManaPool))
+	if me.ManaPool.Total() != 3 {
+		t.Errorf("pool = %d mana, want the {C} plus the Wolf's {C}{C}", me.ManaPool.Total())
 	}
 }
 
@@ -263,7 +263,7 @@ func TestAutoTapSkipsABouncedCommandersSacrificeAbility(t *testing.T) {
 	// A plan made before the bounce arrives stale; the executor must
 	// drop the source rather than sacrifice it.
 	g.WithWriteLock(func() { g.materializePlanLocked(me, tapPlan{{CardID: cmdr}}, costFor(t, "{1}")) })
-	if len(me.ManaPool) != 0 || hasEvent(g, EventSacrifice, cmdr) {
+	if me.ManaPool.Total() != 0 || hasEvent(g, EventSacrifice, cmdr) {
 		t.Fatalf("a stale plan spent the bounced commander (pool %v)", me.ManaPool)
 	}
 

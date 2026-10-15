@@ -304,7 +304,7 @@ func peeperMana(t *testing.T, g *game.Game) {
 	if err := g.ActivateManaAbility(me.ID, peeper, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("mana ability: %v", err)
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "U" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "U" {
 		t.Fatalf("pool = %+v, want one {U}", me.ManaPool)
 	}
 }

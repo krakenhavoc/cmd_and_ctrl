@@ -66,7 +66,7 @@ func TestKaervekCastsACopyAtItsCostAndLosesTwoLife(t *testing.T) {
 		t.Errorf("life %d -> %d, want -2 for casting the copy", life, me.Life)
 	}
 	passPriorityAroundTable(t, g)
-	if got := len(me.ManaPool); got != 3 {
+	if got := me.ManaPool.Total(); got != 3 {
 		t.Errorf("mana pool holds %d, want {B}{B}{B} from the copied Dark Ritual", got)
 	}
 	if !inExile(g, ritual) {

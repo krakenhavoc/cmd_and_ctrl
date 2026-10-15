@@ -368,7 +368,7 @@ func TestAvatarKyoshiManaAbilityAddsGreatestPowerInOneColor(t *testing.T) {
 	color := resolveManaPickAnyColor(t, g, me.ID)
 
 	got := 0
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Color == color {
 			got++
 		}

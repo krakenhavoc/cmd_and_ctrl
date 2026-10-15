@@ -50,7 +50,7 @@ func TestAutoTapTopsUpAFloatingGreen(t *testing.T) {
 	if !cardTappedForTest(g, forest) {
 		t.Error("the Forest was not tapped for the {1} the pool was missing")
 	}
-	if len(p.ManaPool) != 0 {
+	if p.ManaPool.Total() != 0 {
 		t.Errorf("pool after the cast: %+v, want empty — the floating {G} is spent first", p.ManaPool)
 	}
 }
@@ -71,7 +71,7 @@ func TestAutoTapFundedPoolTapsNothing(t *testing.T) {
 	if cardTappedForTest(g, forest) {
 		t.Error("the Forest was tapped for a cost the pool already covered")
 	}
-	if len(p.ManaPool) != 0 {
+	if p.ManaPool.Total() != 0 {
 		t.Errorf("pool after the cast: %+v, want empty", p.ManaPool)
 	}
 }
@@ -93,7 +93,7 @@ func TestAutoTapTopUpLeavesUnusableFloatingMana(t *testing.T) {
 	if n := countTappedForTest(g, p); n != 2 {
 		t.Errorf("tapped %d Forests, want 2", n)
 	}
-	if len(p.ManaPool) != 1 || p.ManaPool[0].Color != "U" {
+	if p.ManaPool.Total() != 1 || p.ManaPool.Units()[0].Color != "U" {
 		t.Errorf("pool after the cast: %+v, want the floating {U} left alone", p.ManaPool)
 	}
 }
@@ -115,7 +115,7 @@ func TestAutoTapTopUpSpendsFloatingManaOnGeneric(t *testing.T) {
 	if n := countTappedForTest(g, p); n != 1 {
 		t.Errorf("tapped %d Forests, want 1 — the {U} pays the {1}", n)
 	}
-	if len(p.ManaPool) != 0 {
+	if p.ManaPool.Total() != 0 {
 		t.Errorf("pool after the cast: %+v, want empty", p.ManaPool)
 	}
 }
@@ -137,7 +137,7 @@ func TestAutoTapTopUpCreditsRestrictedManaWhereItMayPay(t *testing.T) {
 	if !cardTappedForTest(g, forest) {
 		t.Error("the Forest was not tapped")
 	}
-	if len(p.ManaPool) != 0 {
+	if p.ManaPool.Total() != 0 {
 		t.Errorf("pool after the cast: %+v, want the Ziggurat {G} spent", p.ManaPool)
 	}
 }
@@ -162,7 +162,7 @@ func TestAutoTapTopUpDoesNotCreditRestrictedManaElsewhere(t *testing.T) {
 	if cardTappedForTest(g, forest) {
 		t.Error("a refused cast tapped the Forest")
 	}
-	if len(p.ManaPool) != 1 {
+	if p.ManaPool.Total() != 1 {
 		t.Errorf("pool after the refusal: %+v, want the Ziggurat {G} untouched", p.ManaPool)
 	}
 
@@ -173,7 +173,7 @@ func TestAutoTapTopUpDoesNotCreditRestrictedManaElsewhere(t *testing.T) {
 	if n := countTappedForTest(g, p); n != 2 {
 		t.Errorf("tapped %d Forests, want 2", n)
 	}
-	if len(p.ManaPool) != 1 || len(p.ManaPool[0].Restrictions) == 0 {
+	if p.ManaPool.Total() != 1 || len(p.ManaPool.Units()[0].Restrictions) == 0 {
 		t.Errorf("pool after the cast: %+v, want the Ziggurat {G} still floating", p.ManaPool)
 	}
 }
@@ -196,7 +196,7 @@ func TestAutoTapTopUpGivesTheFloatingManaToTheSymbolOnlyItCanPay(t *testing.T) {
 	if !cardTappedForTest(g, plains) {
 		t.Error("the Plains was not tapped for the {G/W}")
 	}
-	if len(p.ManaPool) != 0 {
+	if p.ManaPool.Total() != 0 {
 		t.Errorf("pool after the cast: %+v, want empty", p.ManaPool)
 	}
 }
@@ -220,7 +220,7 @@ func TestAutoTapTopUpChoosesTheHybridTheBoardCannotPay(t *testing.T) {
 			if !cardTappedForTest(g, src) {
 				t.Errorf("the %s was not tapped", land.name)
 			}
-			if len(p.ManaPool) != 0 {
+			if p.ManaPool.Total() != 0 {
 				t.Errorf("pool after the cast: %+v, want empty", p.ManaPool)
 			}
 		})
@@ -245,7 +245,7 @@ func TestAutoTapTopUpRefusalTapsNothing(t *testing.T) {
 	if cardTappedForTest(g, mountain) {
 		t.Error("a refused cast tapped the Mountain")
 	}
-	if len(p.ManaPool) != 1 || p.ManaPool[0].Color != "G" {
+	if p.ManaPool.Total() != 1 || p.ManaPool.Units()[0].Color != "G" {
 		t.Errorf("pool after the refusal: %+v, want the floating {G}", p.ManaPool)
 	}
 }
@@ -266,7 +266,7 @@ func TestAutoTapTopUpForAnActivation(t *testing.T) {
 	if !cardTappedForTest(g, forest) {
 		t.Error("the Forest was not tapped")
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool after the activation: %+v, want empty", me.ManaPool)
 	}
 }
@@ -288,7 +288,7 @@ func TestAutoTapTopUpForASpecialAction(t *testing.T) {
 	if !cardTappedForTest(g, forest) {
 		t.Error("the Forest was not tapped")
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool after the special action: %+v, want empty", me.ManaPool)
 	}
 }
@@ -312,7 +312,7 @@ func TestAutoTapTopUpForPayUnlessAndAttackTax(t *testing.T) {
 	if n := countTappedForTest(g, me); n != 1 {
 		t.Errorf("tapped %d Forests, want 1", n)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool after the payment: %+v, want empty", me.ManaPool)
 	}
 }

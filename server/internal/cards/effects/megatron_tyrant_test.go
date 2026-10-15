@@ -65,7 +65,7 @@ func TestMegatronConvertsPostcombatForManaPerLifeLost(t *testing.T) {
 	answerMayChoice(t, g, me.ID, true)
 	tfSettle(t, g)
 	wantFace(t, g, id, 1, "Megatron, Destructive Force")
-	if n := len(me.ManaPool); n != 5 {
+	if n := me.ManaPool.Total(); n != 5 {
 		t.Errorf("%d mana floating, want {C} x5 for 3 + 2 life lost", n)
 	}
 }
@@ -83,8 +83,8 @@ func TestMegatronPostcombatDeclined(t *testing.T) {
 	answerMayChoice(t, g, me.ID, false)
 	tfSettle(t, g)
 	wantFace(t, g, id, 0, "Megatron, Tyrant")
-	if len(me.ManaPool) != 0 {
-		t.Errorf("%d mana floating after declining", len(me.ManaPool))
+	if me.ManaPool.Total() != 0 {
+		t.Errorf("%d mana floating after declining", me.ManaPool.Total())
 	}
 }
 

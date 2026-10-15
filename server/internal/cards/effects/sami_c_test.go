@@ -601,10 +601,10 @@ func TestBoommobileMakesFourActivateOnlyMana(t *testing.T) {
 	if err := g.ResolveColorChoice(pick.ID, me.ID, "R"); err != nil {
 		t.Fatalf("ResolveColorChoice: %v", err)
 	}
-	if len(me.ManaPool) != 4 {
-		t.Fatalf("pool = %d mana, want 4", len(me.ManaPool))
+	if me.ManaPool.Total() != 4 {
+		t.Fatalf("pool = %d mana, want 4", me.ManaPool.Total())
 	}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Color != "R" {
 			t.Errorf("mana colour %q, want R (one colour for all four)", tok.Color)
 		}

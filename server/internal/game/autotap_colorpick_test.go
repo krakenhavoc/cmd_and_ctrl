@@ -167,7 +167,7 @@ func TestAutoTapCommandTowerPaysTheColorTheFixedSourceCannot(t *testing.T) {
 	// Sol Ring always makes two {C} and the cost wanted one generic,
 	// so exactly one colourless floats. Anything else — a stray {W},
 	// or a second {C} — means a slot paid the wrong requirement.
-	if len(p.ManaPool) != 1 || p.ManaPool[0].Color != "C" {
+	if p.ManaPool.Total() != 1 || p.ManaPool.Units()[0].Color != "C" {
 		t.Errorf("post-spend pool: got %+v, want one floating {C} from Sol Ring", p.ManaPool)
 	}
 }
@@ -188,7 +188,7 @@ func TestAutoTapFlexibleSourceCoversTheUnpaidRequirement(t *testing.T) {
 	if err := g.CastSpell(p.ID, id, CastSpellParams{Strict: true, AutoTap: true}); err != nil {
 		t.Fatalf("auto-tap cast of {R}{G} off Mountain + Birds: %v (pool %+v)", err, p.ManaPool)
 	}
-	if len(p.ManaPool) != 0 {
+	if p.ManaPool.Total() != 0 {
 		t.Errorf("post-spend pool: got %+v, want empty", p.ManaPool)
 	}
 }

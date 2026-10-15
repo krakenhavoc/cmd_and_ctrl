@@ -114,7 +114,7 @@ func (st *state) untappedManaBuysSomething() bool {
 	if st.seat == nil {
 		return false
 	}
-	budget := st.myMana + len(st.seat.ManaPool)
+	budget := st.myMana + protocol.ManaPoolTotal(st.seat.ManaPool)
 	ownMain := st.myTurn && st.step != "end" && st.step != "cleanup"
 	var spend int
 	consider := func(c *protocol.CardView, tax int) {

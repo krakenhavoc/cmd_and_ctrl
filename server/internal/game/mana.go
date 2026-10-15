@@ -3,14 +3,24 @@ package game
 import "github.com/google/uuid"
 
 // mana.go is the per-player mana economy: a `ManaPool` slice of
-// individual `ManaToken` entries (one per produced unit), with the
-// helpers the cost validator + auto-tapper consume. The pool is a
-// SLICE, not a multiset, so:
+// `ManaToken` RUNS (#3041), each standing for Count identical mana,
+// with the helpers the cost validator + auto-tapper consume. The pool
+// is a SLICE, not a multiset, so:
 //   - Insertion order is observable (S15+ pain-source preview, S17+
 //     filter-land sub-payment routing).
-//   - Each token can carry its own restrictions independently of
-//     other same-color tokens (Cavern of Souls' tribe restriction
+//   - Each run can carry its own restrictions independently of
+//     other same-color runs (Cavern of Souls' tribe restriction
 //     when it lands, snow-source tagging if S17 enforces it).
+//
+// Runs, not one token per mana (#3041): a Marwyn at a million power
+// taps for a million {G}, and a pool of a million 90-byte tokens made
+// every undo entry, restore point and view of the table cost hundreds
+// of megabytes. AddMana merges a token into the LAST run when the two
+// are the same mana in every respect but the count (sameRun), so
+// insertion order is kept and nothing that tells mana apart is lost.
+// The rule every helper here keeps is EXPANSION EQUIVALENCE: expand
+// each run into Count copies and the result is exactly what the
+// one-token-per-mana pool would have done.
 //
 // The pool is per-player. Pool-wide invariants (CR 106.4 "empty at
 // end of step") are enforced from the step-advance path, not on the
@@ -51,6 +61,70 @@ type ManaToken struct {
 	// for a spell or ability its filter admits, and stamped Applied on
 	// the copy in StackItem.Paid.Mana. Nil for ordinary mana.
 	Riders []ManaSpendRider `json:"riders,omitempty"`
+
+	// Count is how many identical mana this entry stands for (#3041).
+	// 0 and 1 both mean one, and a run of one is always written as 0,
+	// so a single token, its JSON and every older restore point read
+	// exactly as they did before runs existed. Read it through N, never
+	// directly. A token with Riders is never merged, so its Count is
+	// always one: a rider fires per production and is stamped Applied
+	// on the copy that paid (mana_spend_rider.go).
+	Count int `json:"count,omitempty"`
+}
+
+// N is how many mana this run stands for: Count, or one when Count is
+// zero.
+func (t ManaToken) N() int {
+	if t.Count <= 1 {
+		return 1
+	}
+	return t.Count
+}
+
+// withN returns the run resized to n mana, written as Count 0 when n
+// is one (see Count).
+func (t ManaToken) withN(n int) ManaToken {
+	if n <= 1 {
+		t.Count = 0
+	} else {
+		t.Count = n
+	}
+	return t
+}
+
+// sameRun reports whether u can join t's run: the same mana in every
+// respect a reader can tell apart. A token with spend riders never
+// joins a run (see Count).
+func (t ManaToken) sameRun(u ManaToken) bool {
+	if t.Color != u.Color || t.Source != u.Source || t.SourceKinds != u.SourceKinds ||
+		len(t.Riders) > 0 || len(u.Riders) > 0 || len(t.Restrictions) != len(u.Restrictions) {
+		return false
+	}
+	for i := range t.Restrictions {
+		if t.Restrictions[i] != u.Restrictions[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// appendRun appends t to runs, merging it into the last run when
+// sameRun allows.
+func appendRun(runs []ManaToken, t ManaToken) []ManaToken {
+	if n := len(runs); n > 0 && runs[n-1].sameRun(t) {
+		runs[n-1] = runs[n-1].withN(runs[n-1].N() + t.N())
+		return runs
+	}
+	return append(runs, t)
+}
+
+// TotalMana is how many mana a run slice stands for: the sum of N.
+func TotalMana(runs []ManaToken) int {
+	n := 0
+	for _, t := range runs {
+		n += t.N()
+	}
+	return n
 }
 
 // ManaPool is a player's current mana pool. Order matters — see the
@@ -58,24 +132,60 @@ type ManaToken struct {
 // nil-when-empty so JSON encoding stays sparse.
 type ManaPool []ManaToken
 
-// AddMana appends one or more tokens to the pool. Empty tokens
-// (zero Color) are dropped on the floor — defensive.
+// AddMana appends one or more tokens to the pool, each merged into the
+// last run when it is the same mana (#3041). Empty tokens (zero Color)
+// are dropped on the floor — defensive.
 func (p *ManaPool) AddMana(tokens ...ManaToken) {
 	for _, t := range tokens {
 		if t.Color == "" {
 			continue
 		}
-		*p = append(*p, t)
+		*p = appendRun(*p, t)
 	}
 }
 
+// Total is how many mana the pool holds. len(pool) is how many RUNS
+// it holds (#3041), which is not the same thing.
+func (p ManaPool) Total() int { return TotalMana(p) }
+
+// Units is the pool one token per mana, in order: each run expanded
+// into N copies of itself with Count cleared. It costs O(mana), so it
+// is for tests and for readers that know the pool is small; the
+// engine's own readers walk the runs.
+func (p ManaPool) Units() []ManaToken {
+	return unitsOf(p)
+}
+
+// unitsOf expands runs one token per mana (see Units).
+func unitsOf(runs []ManaToken) []ManaToken {
+	var out []ManaToken
+	for _, t := range runs {
+		one := t.withN(1)
+		for range t.N() {
+			out = append(out, one)
+		}
+	}
+	return out
+}
+
+// CountColor is how many mana of one symbol the pool holds.
+func (p ManaPool) CountColor(symbol string) int {
+	n := 0
+	for _, t := range p {
+		if t.Color == symbol {
+			n += t.N()
+		}
+	}
+	return n
+}
+
 // EmptyPool drops every token. Used by the step-advance hook
-// (CR 106.4: pools empty at end of step / phase). Returns the count
-// of tokens cleared so callers can emit one event per drop if they
+// (CR 106.4: pools empty at end of step / phase). Returns how many
+// mana were cleared so callers can emit one event per drop if they
 // want (the engine emits a single EventManaPoolEmptied per affected
 // player today).
 func (p *ManaPool) EmptyPool() int {
-	n := len(*p)
+	n := p.Total()
 	*p = nil
 	return n
 }
@@ -189,67 +299,35 @@ func (p *ManaPool) SpendManaFor(cost ParsedCost, xValue int, ctx ManaSpendContex
 }
 
 // attemptSpend is the shared core of CanPayFor + SpendManaFor.
-// Returns (remaining-pool, spent-tokens, true) on success, (nil, nil,
-// false) on failure. Operates on a copy so the caller's slice is
-// never aliased.
+// Returns (remaining-pool, spent-runs, true) on success, (nil, nil,
+// false) on failure. Never mutates or aliases the caller's slice.
 //
 // #761: the SPENT half is the point of the second return value. The
 // pool is the only place the fact exists — a moment later the tokens
 // are gone — and converge, sunburst, adamant and "if no mana was
 // spent" all read it off the announcement's PaidCost.
+//
+// #3041: it works on RUNS, booking a count per run in `used`, so it
+// costs O(runs × requirements) and not O(mana). What it spends is
+// exactly what the one-token-per-mana solver spent, expanded.
 func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext, strategy ManaSpendStrategy) (ManaPool, []ManaToken, bool) {
-	// Copy so we can mark spends without disturbing the caller.
-	work := make(ManaPool, len(p))
-	copy(work, p)
-	used := make([]bool, len(work))
-	// One pass decides which tokens are legal here and in what
-	// order the solver should prefer them. Both loops below walk
-	// `order` rather than `work`, so the restriction-first
-	// preference applies to colored requirements and to generic
-	// alike, and pool insertion order still breaks ties — the
-	// auto-tapper preview rendered alongside stays stable.
-	order := spendOrder(work, ctx)
+	used := make([]int, len(p))
+	// One pass decides which runs are legal here and in what order
+	// the solver should prefer them. Every pass below walks `order`
+	// rather than the pool, so the restriction-first preference
+	// applies to colored requirements and to generic alike, and pool
+	// insertion order still breaks ties — the auto-tapper preview
+	// rendered alongside stays stable.
+	order := spendOrder(p, ctx)
 
-	// Step 1 — colored requirements first. Each requirement names
-	// a set of allowed colors (monocolored = one entry, hybrid =
-	// two). Pick the first available token whose color matches.
-	// Phyrexian / numeric-alt requirements pay the color half in
-	// S15 (life self-pay is S17).
-	//
-	// UNTOUCHED by the spend strategy (#761), deliberately: this is
-	// the pass that decides whether a cost can be paid at all, and a
-	// colour preference that could steer it into a dead end would
-	// make payability depend on what the spell happens to read.
-	//
-	// A WIDENED slot (AnyMana — a spend grant's, #1589 / #1600) takes
-	// a token of a colour it PRINTS here, like any other slot, and
-	// otherwise joins the generic demand below, which any token pays.
-	// That is the same answer to "payable?" as admitting any token
-	// here, and a better answer to "with what?": the colour the card
-	// asked for is spent when the pool has it, so a grant the player
-	// "may" use never costs a Firespout its red mode.
-	//
-	// ADR 0118 §1: a requirement the first-match walk leaves unpaid is
-	// given one more chance by reassignColored before the cost is
-	// called unpayable. A payment the walk already makes is made with
-	// exactly the same tokens as before.
-	deferred := 0
-	reqs := widenedLast(cost.Required)
-	owner := newTokenOwners(len(work))
-	for ri, req := range reqs {
-		idx := firstPrintedMatch(work, used, order, req)
-		if idx < 0 && !req.AnyMana {
-			idx = reassignColored(work, used, order, owner, reqs, ri)
-		}
-		if idx < 0 {
-			if req.AnyMana {
-				deferred++
-				continue
-			}
-			return nil, nil, false
-		}
-		used[idx] = true
-		owner[idx] = ri
+	// Step 1 — colored requirements first (colouredPass). UNTOUCHED
+	// by the spend strategy (#761), deliberately: this is the pass
+	// that decides whether a cost can be paid at all, and a colour
+	// preference that could steer it into a dead end would make
+	// payability depend on what the spell happens to read.
+	deferred, unpaid := colouredPass(p, used, order, widenedLast(cost.Required))
+	if len(unpaid) > 0 {
+		return nil, nil, false
 	}
 
 	// Step 2 — generic requirement. Total = explicit Generic +
@@ -260,76 +338,170 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 	// not spent yet, because those cards count colours rather than
 	// mana. Every bucket is walked either way, so the answer to
 	// "payable?" is the same under both.
-	need := cost.GenericWithX(xValue) + deferred
+	need := cost.GenericWithX(xValue) + len(deferred)
 	// #2170: mana that can't pay generic costs may still pay the
 	// slots that only LOOK generic here — a widened coloured symbol
 	// and a coloured symbol a cast permission folded into Generic. It
 	// is spent on those first, because it can pay nothing else, and
 	// never reaches the generic loops below.
-	need -= spendNoGenericSlots(work, used, order, noGenericSlots(cost, deferred))
+	need -= spendNoGenericSlots(p, used, order, noGenericSlots(cost, len(deferred)))
 	if need > 0 && strategy == SpendDistinctColors {
-		// One token at a time, because the question is about the SET
+		// One colour at a time, because the question is about the SET
 		// of colours: a bucket loop that emptied {W} before touching
 		// {U} would pay a two-generic cost out of two Plains and
 		// converge for one.
 		spentColors := make(map[string]bool, 5)
-		for i, tok := range work {
-			if used[i] && isColorSymbol(tok.Color) {
+		for i, tok := range p {
+			if used[i] > 0 && isColorSymbol(tok.Color) {
 				spentColors[tok.Color] = true
 			}
 		}
 		for need > 0 {
-			idx := pickDistinctColor(work, used, order, spentColors)
+			idx, fresh := pickDistinctColor(p, used, order, spentColors)
 			if idx < 0 {
 				return nil, nil, false
 			}
-			used[idx] = true
-			if isColorSymbol(work[idx].Color) {
-				spentColors[work[idx].Color] = true
+			// A fresh colour is taken one mana at a time, since the
+			// next pick wants a different one. Any other pick is the
+			// one the one-token solver would have made again and
+			// again until the run ran out or the need did: no colour
+			// becomes fresh by spending, and the run stays first in
+			// its tier while it has mana.
+			take := 1
+			if !fresh {
+				take = min(need, p[idx].N()-used[idx])
 			}
-			need--
+			used[idx] += take
+			if isColorSymbol(p[idx].Color) {
+				spentColors[p[idx].Color] = true
+			}
+			need -= take
 		}
 	} else if need > 0 {
-		for _, color := range []string{"C", "W", "U", "B", "R", "G"} {
-			if need == 0 {
-				break
-			}
-			for _, i := range order {
-				if need == 0 {
-					break
-				}
-				if used[i] {
-					continue
-				}
-				if work[i].Color != color || work[i].noGeneric() {
-					continue
-				}
-				used[i] = true
-				need--
-			}
-		}
-		if need > 0 {
+		if spendGeneric(p, used, order, need) > 0 {
 			return nil, nil, false
 		}
 	}
 
-	// Build remaining slice from un-used tokens, preserving order.
-	// Tokens `order` excluded as unspendable were never marked used
-	// and survive here, which is what has to happen: refusing to
-	// spend restricted mana on this cast must not delete it.
-	out := make(ManaPool, 0, len(work))
+	// Split each run into what was spent and what is left, preserving
+	// order. Runs `order` excluded as unspendable were never booked and
+	// survive here, which is what has to happen: refusing to spend
+	// restricted mana on this cast must not delete it.
+	out := make(ManaPool, 0, len(p))
 	var spent []ManaToken
-	for i, tok := range work {
-		if used[i] {
-			spent = append(spent, tok)
-			continue
+	for i, tok := range p {
+		n, u := tok.N(), used[i]
+		if u > 0 {
+			spent = append(spent, tok.withN(u))
 		}
-		out = append(out, tok)
+		if n > u {
+			out = append(out, tok.withN(n-u))
+		}
 	}
 	if len(out) == 0 {
 		return nil, spent, true
 	}
 	return out, spent, true
+}
+
+// colouredPass pays each requirement in `reqs` with one mana, booking
+// it in `used`, and returns the widened slots it left to the generic
+// pass and the requirements it could not pay, both in `reqs` order.
+//
+// Each requirement names a set of allowed colors (monocolored = one
+// entry, hybrid = two). It takes the first available mana whose color
+// matches. Phyrexian / numeric-alt requirements pay the color half
+// here (the life half is strikePhyrexianLifeLocked's).
+//
+// A WIDENED slot (AnyMana — a spend grant's, #1589 / #1600) takes a
+// mana of a colour it PRINTS here, like any other slot, and otherwise
+// joins the generic demand, which any mana pays. That is the same
+// answer to "payable?" as admitting any mana here, and a better answer
+// to "with what?": the colour the card asked for is spent when the
+// pool has it, so a grant the player "may" use never costs a Firespout
+// its red mode.
+//
+// ADR 0118 §1: a requirement the first-match walk leaves unpaid is
+// given one more chance by reassignColored before it is called unpaid.
+// A payment the walk already makes is made with exactly the same mana
+// as before.
+//
+// The walk and the augmenting path work on single mana, so each run in
+// `order` is expanded into UNITS for them, but at most len(reqs) units
+// a run (#3041). That is exact, not an approximation: every booking is
+// one requirement, the booked units of a run are always its first ones
+// (both searches take the first unbooked unit in order, and a booking
+// is moved but never dropped), and a search only looks past booked
+// units to the first unbooked one. So no search reaches a run's
+// (len(reqs)+1)-th unit, and the pass costs O(runs × reqs) however
+// much mana the pool holds.
+func colouredPass(pool ManaPool, used []int, order []int, reqs []ColorRequirement) (deferred, unpaid []ColorRequirement) {
+	if len(reqs) == 0 {
+		return nil, nil
+	}
+	var units ManaPool
+	var unitRun []int
+	for _, i := range order {
+		for range min(pool[i].N()-used[i], len(reqs)) {
+			units = append(units, pool[i])
+			unitRun = append(unitRun, i)
+		}
+	}
+	unitOrder := make([]int, len(units))
+	for u := range unitOrder {
+		unitOrder[u] = u
+	}
+	booked := make([]bool, len(units))
+	owner := newTokenOwners(len(units))
+	for ri, req := range reqs {
+		idx := firstPrintedMatch(units, booked, unitOrder, req)
+		if idx < 0 && !req.AnyMana {
+			idx = reassignColored(units, booked, unitOrder, owner, reqs, ri)
+		}
+		if idx < 0 {
+			if req.AnyMana {
+				deferred = append(deferred, req)
+			} else {
+				unpaid = append(unpaid, req)
+			}
+			continue
+		}
+		booked[idx] = true
+		owner[idx] = ri
+	}
+	for u, b := range booked {
+		if b {
+			used[unitRun[u]]++
+		}
+	}
+	return deferred, unpaid
+}
+
+// genericColorOrder is the default strategy's generic pass:
+// colourless first, then W U B R G, so the coloured mana survives for
+// the next spell.
+var genericColorOrder = [...]string{"C", "W", "U", "B", "R", "G"}
+
+// spendGeneric pays up to `need` generic mana from the runs in `order`,
+// colour bucket by colour bucket (genericColorOrder), booking it in
+// `used`, and returns how much is still owed. Mana that can't pay
+// generic costs (#2170) is skipped. Shared by the pool solver and
+// MissingFor so the two cannot disagree.
+func spendGeneric(pool ManaPool, used []int, order []int, need int) int {
+	for _, color := range genericColorOrder {
+		for _, i := range order {
+			if need == 0 {
+				return 0
+			}
+			if pool[i].Color != color || pool[i].noGeneric() {
+				continue
+			}
+			take := min(need, pool[i].N()-used[i])
+			used[i] += take
+			need -= take
+		}
+	}
+	return need
 }
 
 // noGenericSlots is how many of a cost's "generic" demand a mana that
@@ -342,27 +514,29 @@ func noGenericSlots(_ ParsedCost, deferred int) int {
 	return deferred
 }
 
-// spendNoGenericSlots marks up to n unused no-generic tokens (in
+// spendNoGenericSlots books up to n unbooked no-generic mana (in
 // `order`) as spent and returns how many it took. Shared by the pool
 // solver and MissingFor so the two cannot disagree.
-func spendNoGenericSlots(work ManaPool, used []bool, order []int, n int) int {
+func spendNoGenericSlots(pool ManaPool, used []int, order []int, n int) int {
 	taken := 0
 	for _, i := range order {
 		if taken == n {
 			break
 		}
-		if used[i] || !work[i].noGeneric() {
+		if !pool[i].noGeneric() {
 			continue
 		}
-		used[i] = true
-		taken++
+		take := min(n-taken, pool[i].N()-used[i])
+		used[i] += take
+		taken += take
 	}
 	return taken
 }
 
-// pickDistinctColor chooses the next token to pay one generic mana
+// pickDistinctColor chooses the run to pay the next generic mana from
 // under SpendDistinctColors (#761), or -1 when nothing spendable is
-// left. Three tiers, in order:
+// left, and reports whether it is a fresh colour (tier 1). Three
+// tiers, in order:
 //
 //  1. a COLOUR this payment has not spent yet — the whole point;
 //  2. colourless, which never widens the count and is the cheapest
@@ -372,27 +546,24 @@ func spendNoGenericSlots(work ManaPool, used []bool, order []int, n int) int {
 //
 // Within a tier it walks `order`, the restriction-first sequence
 // every other pass uses, so the pick is deterministic and a
-// restricted token is still burned before an unrestricted one.
+// restricted run is still burned before an unrestricted one.
 //
-// It always returns a token when one is available, in every tier, so
+// It always returns a run when one has mana left, in every tier, so
 // this strategy can never fail a payment the default would have made:
 // generic mana accepts any colour, so payability is a question of
 // COUNT and nothing else.
-func pickDistinctColor(work ManaPool, used []bool, order []int, spentColors map[string]bool) int {
+func pickDistinctColor(pool ManaPool, used []int, order []int, spentColors map[string]bool) (int, bool) {
 	fresh, colorless, repeat := -1, -1, -1
 	for _, i := range order {
-		if used[i] {
-			continue
-		}
-		if work[i].noGeneric() {
+		if used[i] >= pool[i].N() || pool[i].noGeneric() {
 			continue
 		}
 		switch {
-		case isColorSymbol(work[i].Color) && !spentColors[work[i].Color]:
+		case isColorSymbol(pool[i].Color) && !spentColors[pool[i].Color]:
 			if fresh < 0 {
 				fresh = i
 			}
-		case work[i].Color == "C":
+		case pool[i].Color == "C":
 			if colorless < 0 {
 				colorless = i
 			}
@@ -402,18 +573,21 @@ func pickDistinctColor(work ManaPool, used []bool, order []int, spentColors map[
 			}
 		}
 	}
-	for _, idx := range []int{fresh, colorless, repeat} {
-		if idx >= 0 {
-			return idx
-		}
+	if fresh >= 0 {
+		return fresh, true
 	}
-	return -1
+	if colorless >= 0 {
+		return colorless, false
+	}
+	return repeat, false
 }
 
-// spendOrder returns the indices of the tokens in `pool` that `ctx`
+// spendOrder returns the indices of the runs in `pool` that `ctx`
 // permits, most-restricted first and pool order within a tier.
-// Tokens the context does not permit are omitted entirely — the
+// Runs the context does not permit are omitted entirely — the
 // solver never sees them, so they can neither pay nor be consumed.
+// The mana of one run are identical, so ordering runs orders their
+// mana exactly as the one-token-per-mana pool did (#3041).
 func spendOrder(pool ManaPool, ctx ManaSpendContext) []int {
 	order := make([]int, 0, len(pool))
 	for i, tok := range pool {
@@ -504,52 +678,21 @@ func (p ManaPool) MissingFor(cost ParsedCost, xValue int, ctx ManaSpendContext) 
 	if p.CanPayFor(cost, xValue, ctx) {
 		return nil
 	}
-	work := make(ManaPool, len(p))
-	copy(work, p)
-	used := make([]bool, len(work))
-	order := spendOrder(work, ctx)
+	used := make([]int, len(p))
+	order := spendOrder(p, ctx)
 	var missing []string
 
 	// attemptSpend's two passes, mirrored: a widened slot no printed
 	// colour paid waits for the generic pass (#1600).
-	var deferred []ColorRequirement
-	reqs := widenedLast(cost.Required)
-	owner := newTokenOwners(len(work))
-	for ri, req := range reqs {
-		idx := firstPrintedMatch(work, used, order, req)
-		if idx < 0 && !req.AnyMana {
-			idx = reassignColored(work, used, order, owner, reqs, ri)
-		}
-		if idx < 0 {
-			if req.AnyMana {
-				deferred = append(deferred, req)
-				continue
-			}
-			missing = append(missing, "{"+formatRequirement(req)+"}")
-			continue
-		}
-		used[idx] = true
-		owner[idx] = ri
+	deferred, unpaid := colouredPass(p, used, order, widenedLast(cost.Required))
+	for _, req := range unpaid {
+		missing = append(missing, "{"+formatRequirement(req)+"}")
 	}
 
 	generic := cost.GenericWithX(xValue)
 	need := len(deferred) + generic
-	need -= spendNoGenericSlots(work, used, order, noGenericSlots(cost, len(deferred)))
-	for _, color := range []string{"C", "W", "U", "B", "R", "G"} {
-		if need == 0 {
-			break
-		}
-		for _, i := range order {
-			if need == 0 {
-				break
-			}
-			if used[i] || work[i].Color != color || work[i].noGeneric() {
-				continue
-			}
-			used[i] = true
-			need--
-		}
-	}
+	need -= spendNoGenericSlots(p, used, order, noGenericSlots(cost, len(deferred)))
+	need = spendGeneric(p, used, order, need)
 	// The widened slots are paid before the generic, so what is still
 	// owed is the generic and then, past it, the widened slots from the
 	// back — named by their printed symbol, as they were before #1600.
@@ -662,7 +805,7 @@ func manaSpentEvent(actor, source uuid.UUID, spent []ManaToken) Event {
 		Kind:   EventManaSpent,
 		Actor:  actor,
 		Source: source,
-		Amount: len(spent),
+		Amount: TotalMana(spent),
 		Colors: rec.ColorsSpent(),
 	}
 }

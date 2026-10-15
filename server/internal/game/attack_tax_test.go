@@ -103,7 +103,7 @@ func TestAttackUnderATaxIsAcceptedWhenItIsPaid(t *testing.T) {
 	if c := findCard(g, bear); c == nil || c.AttackingTarget != g.Seats[1].ID {
 		t.Fatal("the paid declaration did not stage the attacker")
 	}
-	if n := len(g.Seats[0].ManaPool); n != 0 {
+	if n := g.Seats[0].ManaPool.Total(); n != 0 {
 		t.Errorf("mana left in the pool: %d, want 0 — the tax was charged", n)
 	}
 }
@@ -131,7 +131,7 @@ func TestABulkDeclarationRefusesTheWholeSwingWhenTheTaxIsOnlyPartlyAffordable(t 
 	}
 	// And nothing was spent, so the player can still submit the
 	// smaller declaration that is the real answer.
-	if n := len(g.Seats[0].ManaPool); n != 2 {
+	if n := g.Seats[0].ManaPool.Total(); n != 2 {
 		t.Errorf("mana pool = %d, want 2 — a refused declaration charges nothing", n)
 	}
 	if _, err := g.DeclareAttackers([]AttackDeclaration{{Attacker: first, Target: g.Seats[1].ID}}); err != nil {
@@ -167,7 +167,7 @@ func TestAMixedSeatBatchChargesEachControllerAndRefusesWhole(t *testing.T) {
 	if _, err := g.DeclareAttackers(batch); !errors.Is(err, ErrAttackTaxUnpaid) {
 		t.Fatalf("a mixed batch whose second seat is short: %v, want ErrAttackTaxUnpaid", err)
 	}
-	if n := len(g.Seats[0].ManaPool); n != 2 {
+	if n := g.Seats[0].ManaPool.Total(); n != 2 {
 		t.Errorf("seat 0's pool = %d, want 2 — nothing is charged when the declaration is refused", n)
 	}
 
@@ -177,10 +177,10 @@ func TestAMixedSeatBatchChargesEachControllerAndRefusesWhole(t *testing.T) {
 	if _, err := g.DeclareAttackers(batch); err != nil {
 		t.Fatalf("a mixed batch both seats can pay: %v", err)
 	}
-	if n := len(g.Seats[0].ManaPool); n != 0 {
+	if n := g.Seats[0].ManaPool.Total(); n != 0 {
 		t.Errorf("seat 0's pool = %d, want 0", n)
 	}
-	if n := len(g.Seats[1].ManaPool); n != 0 {
+	if n := g.Seats[1].ManaPool.Total(); n != 0 {
 		t.Errorf("seat 1's pool = %d, want 0 — each controller pays for its own creature", n)
 	}
 }
@@ -341,7 +341,7 @@ func TestManaTriggersFireForTheTapsThatPayAnAttackTax(t *testing.T) {
 	if c := findCard(g, forest); c == nil || !c.Tapped {
 		t.Error("the enchanted Forest was not tapped")
 	}
-	if n := len(g.Seats[0].ManaPool); n != 1 {
+	if n := g.Seats[0].ManaPool.Total(); n != 1 {
 		t.Errorf("pool after the tax = %d, want 1 — Wild Growth's trigger did not fire for the taps", n)
 	}
 }

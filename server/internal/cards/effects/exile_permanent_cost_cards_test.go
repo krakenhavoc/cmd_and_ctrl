@@ -81,7 +81,7 @@ func TestTheSoulStoneHarnessExilesACreatureYouControl(t *testing.T) {
 	if c, ok := battlefieldCard(g, stone); !ok || !c.Tapped {
 		t.Error("the {T} half of the cost did not tap the Stone")
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool = %v, want the {6}{B} spent", me.ManaPool)
 	}
 	ltb := triggerOnStack(g, mender)
@@ -134,7 +134,7 @@ func TestTheSoulStoneHarnessNeedsACreature(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, stone, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
 		t.Fatal("the harness activated with no creature exiled")
 	}
-	if len(me.ManaPool) != 7 || !g.Battlefield.Contains(theirs) {
+	if me.ManaPool.Total() != 7 || !g.Battlefield.Contains(theirs) {
 		t.Error("a refused harness spent mana or moved a creature")
 	}
 	if c, _ := battlefieldCard(g, stone); c.Tapped {
@@ -316,7 +316,7 @@ func TestCityOfShadowsBanksACreatureAndTapsForItsCounters(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, city, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("tap with no counters: %v", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool = %v with no storage counters, want nothing", me.ManaPool)
 	}
 	untap(g, city)

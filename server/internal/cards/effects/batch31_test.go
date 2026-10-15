@@ -787,8 +787,8 @@ func TestB31BlossomingTortoiseDiscountsLandActivations(t *testing.T) {
 		if withTortoise {
 			want = 1
 		}
-		if len(me.ManaPool) != want {
-			t.Errorf("Tortoise %v: %d mana left, want %d", withTortoise, len(me.ManaPool), want)
+		if me.ManaPool.Total() != want {
+			t.Errorf("Tortoise %v: %d mana left, want %d", withTortoise, me.ManaPool.Total(), want)
 		}
 		passPriorityAroundTable(t, g)
 		if opp.Life != lifeBefore-1 {

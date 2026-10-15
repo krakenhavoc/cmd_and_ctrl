@@ -56,7 +56,7 @@ func TestXantchaAnyPlayerMayActivate(t *testing.T) {
 	if err := g.ActivateCatalogAbility(other.ID, xantcha, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
 		t.Fatalf("a third player activates Xantcha: %v", err)
 	}
-	if n := len(other.ManaPool); n != 0 {
+	if n := other.ManaPool.Total(); n != 0 {
 		t.Errorf("activator's pool holds %d after paying {3}, want 0", n)
 	}
 	if it := xantchaItem(t, g, xantcha); it.Controller != other.ID {
@@ -110,7 +110,7 @@ func TestXantchaUnpaidCostIsTheActivatorsToPay(t *testing.T) {
 	if !errors.As(err, &short) {
 		t.Fatalf("activator with an empty pool: err = %v, want InsufficientManaError", err)
 	}
-	if len(controller.ManaPool) != 3 {
+	if controller.ManaPool.Total() != 3 {
 		t.Errorf("the controller's pool paid for somebody else's activation")
 	}
 }

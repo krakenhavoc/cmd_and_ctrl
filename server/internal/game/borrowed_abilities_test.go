@@ -352,7 +352,7 @@ func TestIntrinsicLandRowIsLentFromAGraveyard(t *testing.T) {
 	if err := g.ActivateManaAbility(me, safe, idx, ManaAbilityParams{Ref: rows[0].Ref}); err != nil {
 		t.Fatalf("activate the lent land row: %v", err)
 	}
-	if n := len(g.Seats[0].ManaPool); n != 1 || g.Seats[0].ManaPool[0].Color != "G" {
+	if n := g.Seats[0].ManaPool.Total(); n != 1 || g.Seats[0].ManaPool.Units()[0].Color != "G" {
 		t.Errorf("pool = %+v, want one {G}", g.Seats[0].ManaPool)
 	}
 }
@@ -433,7 +433,7 @@ func TestLentManaRowProducesMana(t *testing.T) {
 	if err := g.ActivateManaAbility(me, ooze, 0, ManaAbilityParams{Ref: mo.Ref(0)}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if n := len(g.Seats[0].ManaPool); n != 1 || g.Seats[0].ManaPool[0].Color != "G" {
+	if n := g.Seats[0].ManaPool.Total(); n != 1 || g.Seats[0].ManaPool.Units()[0].Color != "G" {
 		t.Errorf("pool = %+v, want one {G}", g.Seats[0].ManaPool)
 	}
 	if !layeredBattlefieldCard(t, g, ooze).Tapped {
@@ -462,7 +462,7 @@ func TestLenderLeavingStalesTheRef(t *testing.T) {
 		t.Fatalf("second instance gone: err = %v, want ErrStaleAbilityRef", err)
 	}
 	c := layeredBattlefieldCard(t, g, ooze)
-	if c.Tapped || len(g.Seats[0].ManaPool) != 0 {
+	if c.Tapped || g.Seats[0].ManaPool.Total() != 0 {
 		t.Fatal("a refused stale activation paid something")
 	}
 	if err := g.ActivateManaAbility(me, ooze, 0, ManaAbilityParams{Ref: first}); err != nil {

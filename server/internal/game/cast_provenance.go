@@ -152,7 +152,8 @@ type CastProvenance struct {
 	// The same tokens, not a summary: a summary would be a second
 	// shape of the one record, and the questions a card asks about a
 	// payment are already written down once, on ManaSpent. Read it
-	// through Spent() and never by ranging this slice.
+	// through Spent() and never by ranging this slice: each entry is
+	// a run of identical mana (#3041).
 	Mana []ManaToken `json:"mana,omitempty"`
 
 	// Delved is PaidCost.Delved carried across the entry (CR 400.7d,

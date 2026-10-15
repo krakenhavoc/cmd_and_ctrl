@@ -120,7 +120,7 @@ func TestAnExhaustManaAbilityTapsOnceByHand(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, src, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("first activation: %v", err)
 	}
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Fatalf("pool = %v, want {G}{G}", me.ManaPool)
 	}
 	if got := exhaustedThisGame(g, src, exhaustManaLabel); got != 1 {
@@ -138,7 +138,7 @@ func TestAnExhaustManaAbilityTapsOnceByHand(t *testing.T) {
 	if tappedForTest(g, src) {
 		t.Errorf("a refused activation tapped the source — the gate runs before any cost is paid")
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("a refused activation added %v to the pool", me.ManaPool)
 	}
 	if got := exhaustedThisGame(g, src, exhaustManaLabel); got != 1 {
@@ -207,7 +207,7 @@ func TestTheAutoTapperSpendsAnExhaustManaAbilityExactlyOnce(t *testing.T) {
 		}
 		g.materializePlanLocked(me, plan, cost)
 	})
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Fatalf("pool = %v, want the planned {G}{G}", me.ManaPool)
 	}
 	if got := exhaustedThisGame(g, src, exhaustManaLabel); got != 1 {
@@ -267,7 +267,7 @@ func TestAStalePlanDoesNotTapASpentExhaustManaAbility(t *testing.T) {
 	if tappedForTest(g, src) {
 		t.Errorf("the stale plan tapped a spent exhaust ability")
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("the stale plan minted %v off a spent exhaust ability", me.ManaPool)
 	}
 	if got := exhaustedThisGame(g, src, exhaustManaLabel); got != 1 {
@@ -367,7 +367,7 @@ func TestAPlainManaAbilityIsNeverExhausted(t *testing.T) {
 		}
 		untapForTest(g, src)
 	}
-	if len(me.ManaPool) != 3 {
+	if me.ManaPool.Total() != 3 {
 		t.Errorf("pool = %v, want three {C}", me.ManaPool)
 	}
 	if got := exhaustedThisGame(g, src, plainManaLabel); got != 3 {

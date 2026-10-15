@@ -302,7 +302,7 @@ func TestOathswornVampireGraveyardCastNeedsLifeGainedThisTurn(t *testing.T) {
 	if !card.Tapped {
 		t.Error("the Vampire enters tapped")
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("the printed {1}{B} was not charged: pool %v", me.ManaPool)
 	}
 }
@@ -569,7 +569,7 @@ func TestTimelineCullerWarpFromHandOrGraveyardPaysManaAndLife(t *testing.T) {
 			if me.Life != life-2 {
 				t.Errorf("life %d, want %d: warp costs 2 life", me.Life, life-2)
 			}
-			if len(me.ManaPool) != 0 {
+			if me.ManaPool.Total() != 0 {
 				t.Errorf("pool %v, want {B} spent", me.ManaPool)
 			}
 			passPriorityAroundTable(t, g)

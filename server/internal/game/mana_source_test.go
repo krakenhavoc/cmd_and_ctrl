@@ -55,7 +55,7 @@ func answerManaPick(t *testing.T, g *Game, p *Player, color string) {
 
 // tokenFrom finds the pool token a given source minted.
 func tokenFrom(p *Player, source uuid.UUID) (ManaToken, bool) {
-	for _, tok := range p.ManaPool {
+	for _, tok := range p.ManaPool.Units() {
 		if tok.Source == source {
 			return tok, true
 		}

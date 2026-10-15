@@ -307,10 +307,10 @@ func TestOneColorAmountIsOnePickMintingN(t *testing.T) {
 	if err := g.ResolveManaChoice(c.ID, me.ID, "U"); err != nil {
 		t.Fatalf("ResolveManaChoice: %v", err)
 	}
-	if len(me.ManaPool) != 3 {
+	if me.ManaPool.Total() != 3 {
 		t.Fatalf("pool = %v, want three tokens", me.ManaPool)
 	}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Color != "U" {
 			t.Errorf("token %v, want {U}: every token is the one picked colour", tok)
 		}
@@ -348,7 +348,7 @@ func TestAddManaForEffectOneColorAmount(t *testing.T) {
 	if err := g.ResolveManaChoice(c.ID, me.ID, "G"); err != nil {
 		t.Fatalf("ResolveManaChoice: %v", err)
 	}
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Errorf("pool = %v, want two {G}", me.ManaPool)
 	}
 }

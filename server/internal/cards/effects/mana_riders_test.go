@@ -106,7 +106,7 @@ func TestPainlandColorlessHalfCostsNothing(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, land, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "C" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "C" {
 		t.Errorf("pool = %v, want one {C}", me.ManaPool)
 	}
 	if me.Life != before {
@@ -255,7 +255,7 @@ func TestAncientTombAddsTwoAndDealsTwo(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, land, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Errorf("pool = %v, want two colorless", me.ManaPool)
 	}
 	if me.Life != before-2 {
@@ -306,7 +306,7 @@ func TestManaConfluenceRefusesAtZeroLifeWithoutTapping(t *testing.T) {
 	if card.Tapped {
 		t.Error("the rejected activation tapped the land anyway — costs must be validated before any are paid")
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool = %v after a rejected activation, want empty", me.ManaPool)
 	}
 }

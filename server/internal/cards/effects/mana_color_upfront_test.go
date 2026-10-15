@@ -55,8 +55,8 @@ func upfrontTapped(g *game.Game, id uuid.UUID) bool {
 }
 
 func upfrontPool(p *game.Player) []string {
-	out := make([]string, 0, len(p.ManaPool))
-	for _, tok := range p.ManaPool {
+	out := make([]string, 0, p.ManaPool.Total())
+	for _, tok := range p.ManaPool.Units() {
 		out = append(out, tok.Color)
 	}
 	return out
@@ -154,7 +154,7 @@ func TestUpfrontIllegalColorIsRefusedWithNothingTapped(t *testing.T) {
 			if tc.name == "Mystic Gate" {
 				me.ManaPool = append(me.ManaPool, game.ManaToken{Color: "W", Source: uuid.New()})
 			}
-			life, pool := me.Life, len(me.ManaPool)
+			life, pool := me.Life, me.ManaPool.Total()
 			err := g.ActivateManaAbility(me.ID, src, tc.idx, game.ManaAbilityParams{Colors: tc.colors})
 			if !errors.Is(err, game.ErrIllegalManaColor) {
 				t.Fatalf("colours %v: err = %v, want ErrIllegalManaColor", tc.colors, err)
@@ -162,9 +162,9 @@ func TestUpfrontIllegalColorIsRefusedWithNothingTapped(t *testing.T) {
 			if upfrontTapped(g, src) {
 				t.Error("the refused activation tapped the source")
 			}
-			if me.Life != life || len(me.ManaPool) != pool {
+			if me.Life != life || me.ManaPool.Total() != pool {
 				t.Errorf("the refused activation paid or produced: life %d → %d, pool %d → %d",
-					life, me.Life, pool, len(me.ManaPool))
+					life, me.Life, pool, me.ManaPool.Total())
 			}
 			if pick := riderLatestManaPick(g, me.ID); pick != nil {
 				t.Errorf("the refused activation queued a mana_pick: %+v", pick)
@@ -187,7 +187,7 @@ func TestUpfrontAbsentColorKeepsTheTwoStepActivation(t *testing.T) {
 	if !upfrontTapped(g, land) || me.Life != before-1 {
 		t.Errorf("tapped=%v life %d → %d: the cost and the rider still happen first", upfrontTapped(g, land), before, me.Life)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool = %v before the pick is answered, want empty", upfrontPool(me))
 	}
 	pick := riderLatestManaPick(g, me.ID)

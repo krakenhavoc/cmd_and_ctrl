@@ -52,7 +52,7 @@ func TestAnyColorManaOffersAllFiveIdentityFirst(t *testing.T) {
 			if err := g.ResolveManaChoice(pick.ID, me.ID, "R"); err != nil {
 				t.Fatalf("ResolveManaChoice R: %v", err)
 			}
-			if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "R" {
+			if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "R" {
 				t.Errorf("pool = %+v, want one {R}", me.ManaPool)
 			}
 		})
@@ -174,7 +174,7 @@ func TestCommanderIdentityTextAddsNothingWithNoIdentity(t *testing.T) {
 					if pick := riderLatestManaPick(g, me.ID); pick != nil {
 						t.Errorf("queued a pick of %v; the ability adds no mana", pick.ColorOptions)
 					}
-					if len(me.ManaPool) != 0 {
+					if me.ManaPool.Total() != 0 {
 						t.Errorf("pool = %+v, want empty", me.ManaPool)
 					}
 				})

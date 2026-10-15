@@ -132,7 +132,7 @@ func TestSacrificeCostManaAbilityCracksThePermanent(t *testing.T) {
 	if !hasEvent(g, EventLTB, id) {
 		t.Errorf("the cracked Treasure's dies event went missing — a token still dies before it ceases to exist")
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "B" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "B" {
 		t.Errorf("mana pool = %+v, want one {B}", me.ManaPool)
 	}
 }
@@ -154,7 +154,7 @@ func TestSacrificeCostNotPaidWhenTapCostFails(t *testing.T) {
 	if !g.Battlefield.Contains(id) {
 		t.Errorf("failed activation must not sacrifice the permanent")
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("failed activation must not add mana")
 	}
 }
@@ -177,7 +177,7 @@ func TestSacrificeOnlyCostIgnoresTapState(t *testing.T) {
 	if g.Battlefield.Contains(id) {
 		t.Errorf("Spawn should be sacrificed")
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "C" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "C" {
 		t.Errorf("mana pool = %+v, want one {C}", me.ManaPool)
 	}
 }

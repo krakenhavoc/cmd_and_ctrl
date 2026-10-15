@@ -93,7 +93,7 @@ func TestAnyColorSpendPaysAColoredSpellWithAnyMana(t *testing.T) {
 	if err := g.CastSpell(me.ID, spell, CastSpellParams{Strict: true}); err != nil {
 		t.Fatalf("{U}{U} off one colorless and one red: %v", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool = %v, want empty", me.ManaPool)
 	}
 }
@@ -125,7 +125,7 @@ func TestAnyColorSpendPaysThePrintedColorFirst(t *testing.T) {
 	if err := g.CastSpell(me.ID, spell, CastSpellParams{Strict: true}); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "C" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "C" {
 		t.Errorf("pool = %v, want the colorless left", me.ManaPool)
 	}
 }
@@ -282,7 +282,7 @@ func TestAnyColorSpendPaysAManaAbilitysManaCost(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, rock, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("red for the filter's {U}: %v", err)
 	}
-	if len(me.ManaPool) != 2 || me.ManaPool[0].Color != "G" {
+	if me.ManaPool.Total() != 2 || me.ManaPool.Units()[0].Color != "G" {
 		t.Errorf("pool = %v, want {G}{G}", me.ManaPool)
 	}
 }
@@ -301,7 +301,7 @@ func TestAnyColorSpendPaysAPayUnless(t *testing.T) {
 	if declined != 0 {
 		t.Error("red did not pay {U} under the grant — the decline consequence ran")
 	}
-	if len(opp.ManaPool) != 0 {
+	if opp.ManaPool.Total() != 0 {
 		t.Errorf("pool = %v, want empty", opp.ManaPool)
 	}
 }

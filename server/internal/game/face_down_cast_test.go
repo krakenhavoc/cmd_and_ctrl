@@ -144,12 +144,12 @@ func TestCastFaceDownPutsANamelessTwoTwoOnTheStack(t *testing.T) {
 func TestCastFaceDownPaysTheKeywordsThreeAndNotThePrintedCost(t *testing.T) {
 	g, me, id := morphGame(t, morphOffer(FaceDownMorphed, morphCost, false))
 	var before int
-	g.ReadSnapshot(func() { before = len(me.ManaPool) })
+	g.ReadSnapshot(func() { before = me.ManaPool.Total() })
 	if err := castFaceDown(t, g, me, id, "morph"); err != nil {
 		t.Fatalf("cast face down: %v", err)
 	}
 	var after int
-	g.ReadSnapshot(func() { after = len(me.ManaPool) })
+	g.ReadSnapshot(func() { after = me.ManaPool.Total() })
 	if spent := before - after; spent != 3 {
 		t.Errorf("mana spent = %d, want 3 (CR 702.37b)", spent)
 	}
@@ -295,13 +295,13 @@ func TestTurnFaceUpIsNotOfferedOnAFaceUpPermanent(t *testing.T) {
 		g.Battlefield.PushTop(c)
 	})
 	var before int
-	g.ReadSnapshot(func() { before = len(me.ManaPool) })
+	g.ReadSnapshot(func() { before = me.ManaPool.Total() })
 	err := g.PerformSpecialAction(me.ID, id, SpecialActionTurnFaceUp, SpecialActionParams{Strict: true})
 	if !errors.Is(err, ErrSpecialActionNotOffered) {
 		t.Fatalf("turn a face-up permanent face up: got %v, want ErrSpecialActionNotOffered", err)
 	}
 	var after int
-	g.ReadSnapshot(func() { after = len(me.ManaPool) })
+	g.ReadSnapshot(func() { after = me.ManaPool.Total() })
 	if before != after {
 		t.Error("a refused turn-face-up charged for itself")
 	}

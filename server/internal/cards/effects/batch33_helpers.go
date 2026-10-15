@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -394,14 +396,14 @@ func b33DoubleUnspentMana(g *game.Game, controller, _ uuid.UUID) string {
 	if p == nil {
 		return ""
 	}
-	out := ""
+	var out strings.Builder
 	for _, tok := range p.ManaPool {
 		if tok.Color == "" {
 			continue
 		}
-		out += "{" + tok.Color + "}"
+		out.WriteString(strings.Repeat("{"+tok.Color+"}", tok.N()))
 	}
-	return out
+	return out.String()
 }
 
 // b33CoalitionRelicLabel is the stack label of Coalition Relic's

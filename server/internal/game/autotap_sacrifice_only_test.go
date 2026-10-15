@@ -192,7 +192,7 @@ func TestMaterializePlanCracksASpawnWithoutTappingIt(t *testing.T) {
 	if hasEvent(g, EventTapCard, spawn) {
 		t.Error("the executor TAPPED a source whose cost prints no {T}")
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "C" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "C" {
 		t.Fatalf("pool = %+v, want one {C}", me.ManaPool)
 	}
 }
@@ -212,7 +212,7 @@ func TestMaterializePlanCracksATappedGold(t *testing.T) {
 	if g.Battlefield.Contains(gold) {
 		t.Fatal("the executor skipped a tapped Gold the planner may plan")
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "U" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "U" {
 		t.Fatalf("pool = %+v, want one {U}", me.ManaPool)
 	}
 }

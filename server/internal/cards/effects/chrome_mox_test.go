@@ -64,7 +64,7 @@ func TestChromeMoxImprintsAndTapsForThatColor(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, mox, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("tap Chrome Mox: %v", err)
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "R" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "R" {
 		t.Errorf("pool = %+v, want one {R} — the imprinted card's colour", me.ManaPool)
 	}
 }
@@ -88,7 +88,7 @@ func TestChromeMoxWithNoImprintTapsForNothing(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, mox, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("tap Chrome Mox: %v", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool = %+v, want empty — nothing was imprinted", me.ManaPool)
 	}
 }

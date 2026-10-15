@@ -87,8 +87,8 @@ func TestFblthpPlotsTheTopCardForItsManaCostAndItCastsFreeLater(t *testing.T) {
 	if err := g.PerformSpecialAction(p.ID, bears, game.SpecialActionPlot, game.SpecialActionParams{Strict: true}); err != nil {
 		t.Fatalf("plot the top card: %v", err)
 	}
-	if len(p.ManaPool) != 0 {
-		t.Errorf("mana pool: %d tokens left, want 0 — the plot cost was not the Bears' {1}{G}", len(p.ManaPool))
+	if p.ManaPool.Total() != 0 {
+		t.Errorf("mana pool: %d tokens left, want 0 — the plot cost was not the Bears' {1}{G}", p.ManaPool.Total())
 	}
 	if libraryContains(p, bears) {
 		t.Fatal("the plotted card is still in the library")
@@ -167,8 +167,8 @@ func TestFblthpPlotIsRefusedWithoutTheGrantOrOutsideItsWindow(t *testing.T) {
 			if !errors.Is(err, tc.want) {
 				t.Fatalf("plot: got %v, want %v", err, tc.want)
 			}
-			if len(p.ManaPool) != 3 {
-				t.Errorf("a refused plot spent mana: %d tokens left, want 3", len(p.ManaPool))
+			if p.ManaPool.Total() != 3 {
+				t.Errorf("a refused plot spent mana: %d tokens left, want 3", p.ManaPool.Total())
 			}
 			if p.Library.Size() != libBefore || !libraryContains(p, id) {
 				t.Error("a refused plot moved the card")
@@ -209,8 +209,8 @@ func TestFblthpOffersAPlotCardBothItsPlotCostAndItsManaCost(t *testing.T) {
 	if err := g.PerformSpecialAction(p.ID, djinn, game.SpecialActionPlot, game.SpecialActionParams{Strict: true, Cost: "{4}{U}"}); err != nil {
 		t.Fatalf("plot for {4}{U}: %v", err)
 	}
-	if len(p.ManaPool) != 0 {
-		t.Errorf("mana pool: %d tokens left, want 0 — the {4}{U} offer was not the one paid", len(p.ManaPool))
+	if p.ManaPool.Total() != 0 {
+		t.Errorf("mana pool: %d tokens left, want 0 — the {4}{U} offer was not the one paid", p.ManaPool.Total())
 	}
 	if !g.Exile.Contains(djinn) {
 		t.Fatal("the Djinn is not in exile")
@@ -376,8 +376,8 @@ func TestFblthpBotMovesNameTheirPrice(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("dispatch the {4}{U} move: %v", err)
 	}
-	if len(p.ManaPool) != 0 {
-		t.Errorf("mana pool: %d tokens left, want 0 — the {4}{U} move paid another price", len(p.ManaPool))
+	if p.ManaPool.Total() != 0 {
+		t.Errorf("mana pool: %d tokens left, want 0 — the {4}{U} move paid another price", p.ManaPool.Total())
 	}
 }
 

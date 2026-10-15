@@ -48,7 +48,7 @@ func TestPayUnlessPayFromPool(t *testing.T) {
 	if declined != 0 {
 		t.Errorf("decline consequence ran after a successful payment")
 	}
-	if got := len(payer.ManaPool); got != 1 {
+	if got := payer.ManaPool.Total(); got != 1 {
 		t.Errorf("pool after paying {2} from 3: %d tokens, want 1", got)
 	}
 	if len(g.PendingChoices) != 0 {
@@ -88,8 +88,8 @@ func TestPayUnlessPayViaAutoTap(t *testing.T) {
 	if tapped != 2 {
 		t.Errorf("auto-tap tapped %d Mountains, want 2", tapped)
 	}
-	if len(payer.ManaPool) != 0 {
-		t.Errorf("pool should be empty after auto-tap + spend, has %d", len(payer.ManaPool))
+	if payer.ManaPool.Total() != 0 {
+		t.Errorf("pool should be empty after auto-tap + spend, has %d", payer.ManaPool.Total())
 	}
 }
 
@@ -106,8 +106,8 @@ func TestPayUnlessDeclineRunsConsequence(t *testing.T) {
 	if declined != 1 {
 		t.Errorf("decline consequence ran %d times, want 1", declined)
 	}
-	if len(payer.ManaPool) != 2 {
-		t.Errorf("declining must not touch the pool: %d tokens, want 2", len(payer.ManaPool))
+	if payer.ManaPool.Total() != 2 {
+		t.Errorf("declining must not touch the pool: %d tokens, want 2", payer.ManaPool.Total())
 	}
 }
 
@@ -124,8 +124,8 @@ func TestPayUnlessYesButCannotPayDegradesToDecline(t *testing.T) {
 	if declined != 1 {
 		t.Errorf("consequence ran %d times, want 1 (yes with an empty wallet is a decline)", declined)
 	}
-	if len(payer.ManaPool) != 1 {
-		t.Errorf("failed payment must leave the pool intact: %d tokens, want 1", len(payer.ManaPool))
+	if payer.ManaPool.Total() != 1 {
+		t.Errorf("failed payment must leave the pool intact: %d tokens, want 1", payer.ManaPool.Total())
 	}
 }
 

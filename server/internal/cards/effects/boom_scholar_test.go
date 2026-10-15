@@ -61,13 +61,13 @@ func TestBoomScholarDiscountsAnotherPermanentsExhaustManaAbility(t *testing.T) {
 	probe := pushCatalogPermanent(g, me.ID, "Boom Scholar Mana Probe",
 		"Artifact", boomScholarManaProbeOracle, false)
 
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Fatalf("pool = %+v, want empty before activating", me.ManaPool)
 	}
 	if err := g.ActivateManaAbility(me.ID, probe, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("discounted mana ability with an empty pool: %v", err)
 	}
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Errorf("pool = %+v, want {C}{C} — the {1} generic component is fully discounted", me.ManaPool)
 	}
 }

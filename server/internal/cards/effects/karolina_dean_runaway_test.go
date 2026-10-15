@@ -15,10 +15,10 @@ func TestKarolinaDeanAddsFiveRestrictedMana(t *testing.T) {
 	b12Push(g, me.ID, "Karolina Dean, Runaway", "Legendary Creature — Alien Hero", "50b5faff-acaa-426b-9f3e-1005c0392e6c", 3, 3)
 	advanceTo(t, g, game.StepPrecombatMain)
 	passPriorityAroundTable(t, g)
-	if got := len(me.ManaPool); got != 5 {
+	if got := me.ManaPool.Total(); got != 5 {
 		t.Fatalf("pool has %d mana, want five", got)
 	}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if len(tok.Restrictions) != 1 || tok.Restrictions[0] != game.ManaRestrictNotFromHand {
 			t.Errorf("token %+v, want only the not-from-hand restriction", tok)
 		}

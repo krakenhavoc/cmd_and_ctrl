@@ -170,7 +170,7 @@ func TestMuragandaRacewayTwoColorlessAtMaxSpeed(t *testing.T) {
 	}
 	g.SetSpeedForTest(me.ID, game.MaxSpeed)
 	activateManaFor(t, g, me.ID, land, 1, game.ManaAbilityParams{})
-	if got := len(me.ManaPool); got != 2 {
+	if got := me.ManaPool.Total(); got != 2 {
 		t.Errorf("pool holds %d mana, want 2", got)
 	}
 }

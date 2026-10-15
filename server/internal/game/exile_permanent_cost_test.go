@@ -264,8 +264,8 @@ func TestExilePermanentCostOnAManaAbility(t *testing.T) {
 	if !g.Exile.Contains(bear) {
 		t.Error("the creature was not exiled")
 	}
-	if len(me.ManaPool) != 2 {
-		t.Errorf("pool = %d, want 2", len(me.ManaPool))
+	if me.ManaPool.Total() != 2 {
+		t.Errorf("pool = %d, want 2", me.ManaPool.Total())
 	}
 	if hasEvent(g, EventSacrifice, bear) {
 		t.Error("EventSacrifice for an exiled creature")
@@ -293,8 +293,8 @@ func TestExilePermanentCostOnAManaAbilityRefusesWithNothingPaid(t *testing.T) {
 			t.Errorf("ids %v: accepted, want refused", ids)
 		}
 	}
-	if len(me.ManaPool) != 0 {
-		t.Errorf("pool = %d after refusals, want 0", len(me.ManaPool))
+	if me.ManaPool.Total() != 0 {
+		t.Errorf("pool = %d after refusals, want 0", me.ManaPool.Total())
 	}
 	if !g.Battlefield.Contains(theirs) {
 		t.Error("a refused activation exiled the opponent's creature")

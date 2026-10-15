@@ -125,7 +125,7 @@ func TestChandraTorchAcceptPaysTheCostAndDealsNoDamage(t *testing.T) {
 	if err := g.CastSpell(me.ID, spell, game.CastSpellParams{FromZone: string(game.ZoneExile), Strict: true}); err != nil {
 		t.Fatalf("cast from exile: %v", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("the cost was not paid: pool %+v", me.ManaPool)
 	}
 	if chandraTorchGrant(me, spell) != nil {
@@ -187,7 +187,7 @@ func TestChandraTorchSecondPlusOneAddsTwoRed(t *testing.T) {
 	g, me, chandra := chandraTorchTable(t, 4, nil)
 	b16Activate(t, g, me.ID, chandra, 1, game.ActivateAbilityParams{})
 	var toks []game.ManaToken
-	g.ReadSnapshot(func() { toks = append(toks, me.ManaPool...) })
+	g.ReadSnapshot(func() { toks = append(toks, me.ManaPool.Units()...) })
 	if len(toks) != 2 || toks[0].Color != "R" || toks[1].Color != "R" {
 		t.Fatalf("{R}{R}: %+v", toks)
 	}

@@ -206,7 +206,7 @@ func TestSimianSpiritGuideAddsRedFromHand(t *testing.T) {
 	if len(g.Stack.Cards) != 0 {
 		t.Error("a mana ability used the stack (CR 605.3b)")
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "R" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "R" {
 		t.Errorf("mana pool = %v, want one {R}", me.ManaPool)
 	}
 }
@@ -221,7 +221,7 @@ func TestElvishSpiritGuideAddsGreenFromHand(t *testing.T) {
 	if !g.Exile.Contains(id) {
 		t.Error("the Spirit Guide did not reach exile")
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "G" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "G" {
 		t.Errorf("mana pool = %v, want one {G}", me.ManaPool)
 	}
 }

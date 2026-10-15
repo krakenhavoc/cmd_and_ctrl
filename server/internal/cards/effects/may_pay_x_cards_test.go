@@ -98,7 +98,7 @@ func TestTilonallisSummonerPaysXAndSplitsTheAttackers(t *testing.T) {
 		t.Errorf("payment owed in %+v, want the declare attackers step", pay.OwedInStep)
 	}
 	answerPayUnless(t, g, me.ID, true)
-	if n := len(me.ManaPool); n != 0 {
+	if n := me.ManaPool.Total(); n != 0 {
 		t.Errorf("%d mana left in the pool, want 0", n)
 	}
 	// Three opponents: asked about the attacked one first, then the next.
@@ -175,7 +175,7 @@ func TestTilonallisSummonerDeclinedOrUnpayable(t *testing.T) {
 		if n := len(elementals(g, me.ID)); n != 0 {
 			t.Errorf("%d Elementals after declining", n)
 		}
-		if n := len(me.ManaPool); n != 3 {
+		if n := me.ManaPool.Total(); n != 3 {
 			t.Errorf("pool %d after declining, want 3", n)
 		}
 	})
@@ -216,7 +216,7 @@ func TestFlameblastDragonDealsXDamage(t *testing.T) {
 	if _, ok := battlefieldCard(g, victim); ok {
 		t.Error("the 3/3 survived 3 damage")
 	}
-	if n := len(me.ManaPool); n != 2 {
+	if n := me.ManaPool.Total(); n != 2 {
 		t.Errorf("pool %d, want 2 left", n)
 	}
 }
