@@ -4762,7 +4762,7 @@ item is still there.
    and omitted when empty. A binary that drops the key reads the old events as having no kind, which only means an
    older Hojo trigger does not fire for them.
 
-## Amendment 2026-10-14 (fifth) — "use this order again" for a repeated batch (#3016) · Accepted (2026-10-15)
+## Amendment 2026-10-14 (eighth) — "use this order again" for a repeated batch (#3016) · Accepted (2026-10-15)
 
 Issue [#3016](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3016), c2 of the #3013 amendment. The owner chose
 the feature on 2026-10-11 (decision 4 there) and asked for this amendment **for review before anything is built**.
