@@ -114,6 +114,7 @@ var reviewedNotAWipe = map[string]string{
 	"Council's Judgment":                       "exiles the permanents with the most votes, one per voter: removal, not a wipe",
 	"Crypt Incursion":                          "exiles a graveyard",
 	"Eliminate the Impossible":                 "-2/-0 kills nothing",
+	"Espers to Magicite":                       "exiles the opponents' graveyards, no permanents",
 	"Eye of Singularity":                       "destroys only permanents sharing a name, which no class says",
 	"Glorious End":                             "ends the turn",
 	"Golden Argosy":                            "exiles only the creatures that crewed it and returns them tapped at the next end step: a flicker of its own crewers, not a wipe",
