@@ -255,13 +255,16 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
 
    **A later target tied to an earlier target (#1943).** Wrap the later
    clause in `InGraveyardOfTargetsController(spec, earlierSlot)` for
-   Goblin Welder's graveyard relationship, or `AttachedToTarget(spec,
-   earlierSlot)` for Fiery Annihilation's Equipment. The anchor must be
-   a required single pick, and the dependent clause may pick at most
-   one object. Announcement, resolution and all pickers share the gate;
-   no custom resolution-only target check is needed. Other relationships,
-   including last-known controller information for an illegal anchor,
-   still belong on the seam's waiting list.
+   Goblin Welder's graveyard relationship, `AttachedToTarget(spec,
+   earlierSlot)` for Fiery Annihilation's Equipment, or
+   `ControlledByTargetsController(spec, earlierSlot)` for "another target
+   creature that player controls" (Breaking of the Fellowship; add
+   `Distinct` for "another"). The anchor must be a required single pick,
+   and the dependent clause may pick at most one object. Announcement,
+   resolution and all pickers share the gate; no custom resolution-only
+   target check is needed. The same-controller relation reads an anchor
+   that has left the battlefield by its last-known controller (CR 608.2h).
+   A relationship none of the three covers is a new `TargetRelationKind`.
 
    **Modal cards ("Choose one —", S20 sub-PR 4)** declare
    `Spec.Modes` instead of `Spec.Targets`, with the target clause on

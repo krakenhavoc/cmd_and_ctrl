@@ -1649,15 +1649,13 @@ var items = []Item{
 		EngineNotes: "**Shipped** (ADR 0108 §2, PR 1): a `ScopedEffect` rules-gate kind, `cantBeRegenerated` (`game.ModCantBeRegenerated`, reader `rule`), pinned to the permanent until cleanup by `Game.CantBeRegeneratedThisTurnForEffect`. One gate, `regenerationRefusedLocked` (`game/regeneration.go`), reads it beside the destroy instruction's own rider (`DestroyOptions.CantBeRegenerated`); the shield built-in asks it in its AppliesTo, so a refused shield is not spent (CR 701.19c), and a catalog static regeneration (CR 701.19b, `effects.RegenerateIfThisWouldBeDestroyed`) asks it through `Game.RegenerationAllowedForEffect`. `TestEveryRegenerationAsksTheGate` reads every replacement in the catalog and the engine and fails one that regenerates without asking. Card side: `CantBeRegeneratedThisTurn` and the dealt-damage continuation `CantBeRegeneratedIfDealtDamage`. Whippoorwill's \"When the creature dies this turn, exile the creature\" is an event-delayed trigger pinned to the object (`ExileWhenItDiesThisTurn`). The table sees a NO REGEN chip. See Closed seams.",
 	},
 	{
-		Slug: "target-depends-on-another-target", Name: "A target that depends on another target", Kind: KindSeam, Status: StatusPartial,
+		Slug: "target-depends-on-another-target", Name: "A target that depends on another target", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Spells whose later target has to be related to an earlier target.",
-		Missing:     "Relationships other than attachment and the earlier target's controller's graveyard, including a controller read from an illegal earlier target's last-known information, are not supported yet.",
-		Rules:       []string{"601.2c", "608.2b", "115.7"},
+		Rules:       []string{"601.2c", "608.2b", "608.2h", "115.7"},
 		Issue:       1943,
 		Tracked:     "#1943; S58 deck requests #2077, Mishra #2033",
-		Waiting:     []string{"Breaking of the Fellowship"},
-		Examples:    []string{"Goblin Welder", "Fiery Annihilation"},
-		EngineNotes: "TargetSpec.Relation binds a single later pick to a required single earlier pick in the same mode occurrence. InGraveyardOfTargetsController and AttachedToTarget are the card-facing constructors. Announcement, resolution, trigger prompts, copy and retarget prompts, bot enumeration and the client picker share the relationship; retargeting commits the completed set together. Fiery Annihilation and Goblin Welder are Full. Welder's sacrifice and return share a settled entry and exit route, so observers see the finished board and either replacement window can pause and undo. Breaking of the Fellowship still needs the same-controller relationship with last-known information when its first target is illegal (ADR 0065 amendment).",
+		Examples:    []string{"Goblin Welder", "Fiery Annihilation", "Breaking of the Fellowship"},
+		EngineNotes: "TargetSpec.Relation binds a single later pick to a required single earlier pick in the same mode occurrence. **Shipped** (ADR 0065 amendments of 2026-10-11 and 2026-10-15). InGraveyardOfTargetsController, AttachedToTarget and ControlledByTargetsController are the card-facing constructors. Announcement, resolution, trigger prompts, copy and retarget prompts, bot enumeration and the client picker share the relationship; retargeting commits the completed set together. Fiery Annihilation, Goblin Welder and Breaking of the Fellowship are Full. Welder's sacrifice and return share a settled entry and exit route, so observers see the finished board and either replacement window can pause and undo. The same-controller relationship reads an anchor that has left the battlefield by its last-known controller (CR 608.2h, `Game.LastKnownPermanentForEffect`), so Breaking of the Fellowship still resolves, and the Ring still tempts, when its first creature dies in response.",
 	},
 	{
 		// #1989 (found landing ADR 0108 PR 2, #1890).
