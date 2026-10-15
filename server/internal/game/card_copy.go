@@ -85,6 +85,22 @@ type CardCopyOffer struct {
 	// lose 2 life".
 	FollowUp CastFollowUpKey
 
+	// FollowUpObject lands on each permission and is handed to FollowUp
+	// as CastFollowUp.Object: Spellweaver Volute's "if you do, exile the
+	// enchanted card" names the original, which the copy spell does not
+	// (#3157). Zero names nothing.
+	FollowUpObject ObjectRef
+
+	// LastKnown copies a card the effect identified in a graveyard even
+	// when it has left since (CR 608.2h): Spellweaver Volute that has
+	// left the battlefield still copies the card it last enchanted after
+	// that card is exiled in response (its 2007-05-01 ruling). The copy
+	// is made in Player's graveyard, wherever the card is now, from the
+	// card's copiable values, which a zone change does not alter. False
+	// skips a card that is not in exile or a graveyard, as CR 608.2b
+	// does for a target. Meant for graveyard cards only.
+	LastKnown bool
+
 	// ManaValueBudget is "total mana value N or less" over the copies
 	// (Uldaros Theorix, #2017): one permission names every copy and the
 	// casts made through it spend a shared running total
@@ -98,7 +114,8 @@ type CardCopyOffer struct {
 // graveyard — and offers `offer.Player` a cast of each. It answers the IDs
 // of the copies, in the order the cards were named. A card that is not in
 // exile or a graveyard any more is skipped: there is nothing to copy
-// (CR 608.2b). A copy is offered even when its original has since left,
+// (CR 608.2b), unless offer.LastKnown says the effect copies it by
+// last-known information. A copy is offered even when its original has since left,
 // because a copy is a new object with the original's copiable values.
 //
 // Caller must hold g.mu in write mode.
@@ -114,7 +131,15 @@ func (g *Game) CopyCardsAndOfferCastsForEffect(offer CardCopyOffer, cards []uuid
 	var made []Card
 	for _, id := range cards {
 		src := g.findCardZoneLocked(id)
-		if src == nil || (src.Kind != ZoneExile && src.Kind != ZoneGraveyard) {
+		if src == nil {
+			continue
+		}
+		inPlace := src.Kind == ZoneExile || src.Kind == ZoneGraveyard
+		if !inPlace && (!offer.LastKnown || src.Kind == ZoneBattlefield || src.Kind == ZoneStack) {
+			// A permanent or a spell has characteristics the graveyard
+			// card did not (layers, a chosen face), so LastKnown reads
+			// only a card that is a card again: in a hand, a library,
+			// the command zone.
 			continue
 		}
 		orig, ok := g.cardInZoneLocked(src, id)
@@ -122,7 +147,10 @@ func (g *Game) CopyCardsAndOfferCastsForEffect(offer CardCopyOffer, cards []uuid
 			continue
 		}
 		dst := g.Exile
-		if src.Kind == ZoneGraveyard {
+		if src.Kind != ZoneExile || offer.LastKnown {
+			// A graveyard card, or (LastKnown) one the effect saw in a
+			// graveyard wherever it has gone since: the copy exists in
+			// the graveyard.
 			dst = p.Graveyard
 		}
 		if dst == nil {
@@ -153,6 +181,10 @@ func (g *Game) CopyCardsAndOfferCastsForEffect(offer CardCopyOffer, cards []uuid
 		if offer.ManaValueBudget != nil {
 			left := *offer.ManaValueBudget
 			perm.ManaValueBudget = &left
+		}
+		if offer.FollowUpObject.ID != uuid.Nil {
+			ref := offer.FollowUpObject
+			perm.FollowUpObject = &ref
 		}
 		g.GrantCastPermissionToCardsForEffect(perm, cards)
 	}

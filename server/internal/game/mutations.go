@@ -829,8 +829,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #2173: the follow-up the permission carries runs when the cast is
 	// made through it, decided on the same question as the spend above.
 	followUp := CastFollowUpKey("")
+	followUpObject := ObjectRef{}
 	if grant != nil && grant.FollowUp != "" && g.castUsesGrantLocked(card, src.Kind, alt) {
 		followUp = grant.FollowUp
+		if grant.FollowUpObject != nil {
+			followUpObject = *grant.FollowUpObject
+		}
 	}
 	grantSource := uuid.Nil
 	if grant != nil {
@@ -2104,7 +2108,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		}
 	}
 	if followUp != "" {
-		f := CastFollowUp{Player: playerID, Source: grantSource, Spell: cardID}
+		f := CastFollowUp{Player: playerID, Source: grantSource, Spell: cardID, Object: followUpObject}
 		if err := g.runCastFollowUpLocked(followUp, f); err != nil {
 			return err
 		}

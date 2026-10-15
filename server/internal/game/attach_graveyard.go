@@ -139,3 +139,89 @@ func (g *Game) SetEnchantReturnedForEffect(auraID uuid.UUID, ref ObjectRef) bool
 	aura.EnchantReturned = ref
 	return true
 }
+
+// attachedObjectLocked is the card `c` is attached to as the OBJECT the
+// link was made to (CR 400.7), or nil when the link no longer names that
+// object, names a player, or is an unpinned battlefield link (set by
+// hand or restored from an older file, which recorded no epoch). An
+// off-battlefield host is judged by Card.AttachedEpoch always, as
+// attachmentLegalLocked judges it. PermanentInfo.AttachedObject.
+//
+// Caller must hold g.mu.
+func (g *Game) attachedObjectLocked(c *Card) *ObjectRef {
+	if c == nil || c.AttachedTo.Kind != TargetCard || c.AttachedTo.ID == uuid.Nil {
+		return nil
+	}
+	id := c.AttachedTo.ID
+	z := g.findCardZoneLocked(id)
+	if z == nil || (z.Kind == ZoneBattlefield && !c.AttachedPinned) {
+		return nil
+	}
+	if g.cardObjectEpochLocked(id) != c.AttachedEpoch {
+		return nil
+	}
+	return &ObjectRef{ID: id, Epoch: c.AttachedEpoch}
+}
+
+// EnchantedCardObjectForEffect is "the enchanted card" as an Aura's
+// ability reads it when it resolves (CR 608.2h): the card the Aura
+// OBJECT `aura` names is attached to while it is on the battlefield,
+// and the card it was attached to as it last existed there once it has
+// left. False when that Aura enchanted no card at that moment, which is
+// "nothing": an Aura whose host was exiled before the Aura itself left
+// enchanted nothing as it left (Spellweaver Volute's 2007-05-01 rulings,
+// #3157). The answer names the host as the object it was; whether that
+// object still exists is the caller's question.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) EnchantedCardObjectForEffect(aura ObjectRef) (ObjectRef, bool) {
+	info, ok := g.PermanentForEffect(aura)
+	if !ok || info.AttachedObject == nil {
+		return ObjectRef{}, false
+	}
+	return *info.AttachedObject, true
+}
+
+// CardInGraveyardForEffect reports whether `ref` is still that object
+// (CR 400.7) and in a graveyard.
+//
+// Caller must hold g.mu.
+func (g *Game) CardInGraveyardForEffect(ref ObjectRef) bool {
+	z := g.findCardZoneLocked(ref.ID)
+	return z != nil && z.Kind == ZoneGraveyard && g.cardObjectEpochLocked(ref.ID) == ref.Epoch
+}
+
+// GraveyardCardsAuraCanEnchantForEffect is every card in every graveyard,
+// in seat order, that the Aura `auraID` on the battlefield could be moved
+// onto now (CR 701.3b): its enchant clause lists the graveyard and admits
+// the card (offBattlefieldHostLocked, without the targeting gate, since
+// attaching targets nothing), and the finished attachment would be legal
+// (attachmentLegalOnLocked, protection included). `except` is left out:
+// Spellweaver Volute's "another instant card" (#3157). A copy of a card
+// is not a card and is never offered.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) GraveyardCardsAuraCanEnchantForEffect(auraID, except uuid.UUID) []uuid.UUID {
+	if findBattlefieldCard(g, auraID) == nil {
+		return nil
+	}
+	g.RecomputeLayersIfStaleLocked()
+	var out []uuid.UUID
+	for _, p := range g.Seats {
+		if p == nil || p.Graveyard == nil {
+			continue
+		}
+		for _, card := range p.Graveyard.Cards {
+			if card.InstanceID == except || card.CardCopy {
+				continue
+			}
+			host := TargetRef{Kind: TargetCard, ID: card.InstanceID}
+			epoch, ok := g.offBattlefieldHostLocked(auraID, host)
+			if !ok || !g.attachmentLegalOnLocked(findBattlefieldCard(g, auraID), host, epoch) {
+				continue
+			}
+			out = append(out, card.InstanceID)
+		}
+	}
+	return out
+}

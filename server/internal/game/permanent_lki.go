@@ -128,6 +128,16 @@ type PermanentInfo struct {
 	// Aura's "enchanted creature" reads it after the Aura has gone.
 	AttachedTo TargetRef `json:"attachedTo,omitempty"`
 
+	// AttachedObject is the card it was attached to as the OBJECT that
+	// link was made to (CR 400.7), set only while the link still named
+	// that object: a pinned link (Card.AttachedPinned) whose host has
+	// the epoch it was attached at. An Aura whose card host was exiled
+	// a moment before the Aura itself left enchanted nothing by then,
+	// though AttachedTo still holds the ID (Spellweaver Volute's
+	// 2007-05-01 rulings, #3157). Nil for a player host, an unpinned
+	// link, or none.
+	AttachedObject *ObjectRef `json:"attachedObject,omitempty"`
+
 	// Tapped is its tapped status (CR 110.5). Not a characteristic,
 	// but last-known information all the same: Mana Vault's "if this
 	// artifact is tapped" is re-checked when its draw-step trigger
@@ -284,6 +294,7 @@ func (g *Game) rememberDepartingPermanentLocked(cardID uuid.UUID) {
 	info := permanentInfoOf(c)
 	info.Left = true
 	info.Enchanted = g.isEnchantedLocked(cardID)
+	info.AttachedObject = g.attachedObjectLocked(c)
 	if g.lastKnownPermanents == nil {
 		g.lastKnownPermanents = make(map[uuid.UUID][]PermanentInfo)
 	}
@@ -375,6 +386,7 @@ func (g *Game) PermanentForEffect(ref ObjectRef) (PermanentInfo, bool) {
 	if c := findBattlefieldCard(g, ref.ID); c != nil && c.ObjectEpoch == ref.Epoch {
 		info := permanentInfoOf(c)
 		info.Enchanted = g.isEnchantedLocked(c.InstanceID)
+		info.AttachedObject = g.attachedObjectLocked(c)
 		return info, true
 	}
 	return g.lastKnownPermanentLocked(ref)
@@ -417,6 +429,10 @@ func cloneLastKnownPermanents(src map[uuid.UUID][]PermanentInfo) map[uuid.UUID][
 			if v[i].Copiable != nil {
 				values := v[i].Copiable.Clone()
 				out[k][i].Copiable = &values
+			}
+			if v[i].AttachedObject != nil {
+				ref := *v[i].AttachedObject
+				out[k][i].AttachedObject = &ref
 			}
 		}
 	}

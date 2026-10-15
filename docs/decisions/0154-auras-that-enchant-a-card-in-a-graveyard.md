@@ -308,3 +308,41 @@ The same rider is printed on Lightning Reflexes, Ward of Lights, Mystic Veil, Sp
 **Cards.** Necromancy is Full. The registry row `becomes-an-aura-as-it-enters` is implemented.
 
 **Tests.** `cards/effects/necromancy_test.go`: the sorcery-speed cast (an enchantment that becomes an Aura on the returned creature, no cleanup sacrifice), the end-step cast sacrificed at cleanup with its creature, a cast another flash permission allowed and that is kept, a sorcery-only restriction closing the window, the target exiled before the trigger resolves, the Aura losing its creature, the Aura destroyed, and a restore point. `game/attach_graveyard_test.go`: `TestSwappedAuraWithNoPrintedClauseAttachedToNothingIsIllegal`.
+
+## Amendment 2026-10-14 ([#3157](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3157)): Spellweaver Volute
+
+Question 1 left Spellweaver Volute for a follow-up. #3258 (ADR 0066's 2026-10-13 card-copy amendment) then shipped the copy and its free cast as `effects.CopyAndCast`. This amendment adds the rest. Nothing above changes.
+
+The card: "Whenever you cast a sorcery spell, copy the enchanted instant card. You may cast the copy without paying its mana cost. If you do, exile the enchanted card and attach this Aura to another instant card in a graveyard." Its 2007-05-01 rulings settle three cases. The copy exists in the graveyard and is cast from there. Uncast, it ceases to exist at the next state-based check. After the cast, the enchanted card is exiled and the Volute must move to a new instant card in a graveyard; with none, it is attached to nothing and the state-based action takes it. If the enchanted card is exiled in response, the Volute falls off and the trigger copies nothing. If the Volute leaves first and then its card leaves, the trigger still copies that card.
+
+**Decision 18. "The enchanted card" is read as the trigger resolves (CR 608.2h).** `Game.EnchantedCardObjectForEffect(aura ObjectRef)` answers the card the Aura object is attached to while it is on the battlefield, and the one it was attached to as it last existed there once it has left. The last-known record gets `PermanentInfo.AttachedObject`: the host as the object the link was made to, written only while the link still names that object (a pinned link whose host has the epoch it was attached at, decision 3 and the #3159 amendment). That one field tells the two response rulings apart. A card exiled before the Volute left had already ended the link, so the record says nothing. A card exiled after the Volute left was still its host when the record was written. `AttachedTo` keeps the plain ID for its existing readers.
+
+**Decision 19. The copy and the "if you do".** The trigger calls `CopyAndCast{Free, FollowUp, FollowUpObject, LastKnown}`. Two additive fields on `game.CardCopyOffer` support it:
+- `LastKnown` copies a card the effect saw in a graveyard after it has left. The copy is made from the card's copiable values, wherever the card now is (not the battlefield or the stack), in the holder's graveyard.
+- `FollowUpObject` names the original. It lands on `CastPermission.FollowUpObject`, and the cast passes it to the follow-up as `CastFollowUp.Object`, because the copy spell does not name the card it was made from.
+
+The follow-up runs once the copy is cast through the offer, like Kaervek's. It does two things:
+- It exiles the original if that object is still in a graveyard (`Game.CardInGraveyardForEffect`).
+- It moves the Volute, but only while the Volute is on the battlefield still attached to that card. A Volute that has left moves nothing.
+
+**Decision 20. The new host is a choice, asked before the exile.** "Attach this Aura to another instant card in a graveyard" is not CR 303.4f (the Aura is already on the battlefield) and it targets nothing. The candidates are `Game.GraveyardCardsAuraCanEnchantForEffect(aura, except)`: every card in every graveyard that the Aura's own clause admits (`offBattlefieldHostLocked`) and that would be a legal finished attachment (`attachmentLegalOnLocked`, the CR 701.3b test, so protection counts and hexproof does not). The card the copy was made from is excluded ("another"), and so is any card copy.
+- **None:** the original is exiled, and CR 704.5m bins the Volute.
+- **One:** a forced choice, so nothing is asked.
+- **More:** a `choose_cards` prompt with min and max 1, over cards from any graveyard (Extract from Darkness's shape).
+
+The Aura is attached to the answer first and the original exiled after. Within one resolution the order cannot be observed. Exiling first would leave the Volute attached to a card that has left while the question is open, and the state-based action would bin it before its controller answered.
+
+**Simplification, inherited.** The cast is a grant taken after the trigger resolves (ADR 0066), so the exile and the move happen as the copy is cast rather than inside the trigger's resolution. The copy is made in the caster's graveyard even when the card was in another player's, as every `CopyAndCast` copy is.
+
+**Snapshot.** `castPermissions[].followUpObject` and `lastKnownPermanents{}[].attachedObject` are additive in v9. No new effect keys and no closure fields. The follow-up is a registered key (`spellweaver-volute-exile-and-reattach`), and the choice's continuation is an ordinary paused prompt.
+
+**Cards.** Spellweaver Volute is Full. The registry row `cast-a-copy-of-the-enchanted-card` is implemented.
+
+**Tests.** `cards/effects/spellweaver_volute_test.go` covers:
+- the cast onto an instant card in a graveyard;
+- a sorcery triggering, the free copy cast from the graveyard, the exile, and the forced move to the only other instant;
+- the choice among several, with the original, a creature card and the copy not offered, and the Volute staying attached while the question is open;
+- no other instant (the Volute falls off) and a declined copy (nothing moves);
+- an instant not triggering;
+- the card exiled in response (nothing copied), the Volute removed and then its card exiled (still copied, nothing moved), and the Volute removed alone (its card still exiled);
+- a restore with the offer open.
