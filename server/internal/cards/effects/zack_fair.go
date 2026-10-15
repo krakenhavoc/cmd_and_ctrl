@@ -3,6 +3,8 @@ package effects
 import (
 	"sort"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -20,18 +22,22 @@ import (
 // the counters he had when he was sacrificed move over, and a target
 // that left in response gets nothing (CR 608.2b).
 //
-// Simplification, declared: the engine keeps no record of which
-// Equipment was attached to a permanent when it was sacrificed (state
-// based actions unattach it before the ability resolves), so the
-// Equipment is not moved to the target.
+// "Attach an Equipment that was attached to Zack Fair" reads the
+// sacrificed permanent's last-known attachments
+// (PermanentInfo.Attachments, #3780): the state-based action that
+// unattaches an Equipment from a host that left (CR 704.5n) has run
+// before this resolves, so the Equipment's own link is gone. Of those
+// objects, only an Equipment still on the battlefield as the same object
+// (CR 400.7) that could legally be attached to the target counts (CR
+// 701.3b). One candidate is attached; several make the controller pick
+// one (the printed text says "an Equipment"). A target that left in
+// response gets nothing, indestructible included (CR 608.2b), so the
+// Equipment stays where it is.
 func init() {
 	Register(Spec{
 		OracleID:     "e84d146a-1c67-49df-b062-622794e45c42",
 		Name:         "Zack Fair",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The Equipment that was attached to Zack Fair isn't moved to the target; attach it yourself.",
-		},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			b10EntersWithCounters("+1/+1", 1, "Zack Fair enters with a +1/+1 counter on it."),
 		},
@@ -64,8 +70,47 @@ func init() {
 						return err
 					}
 				}
-				return nil
+				return zackFairMoveEquipment(ctx, zack, target)
 			},
 		}},
 	})
+}
+
+// zackFairMoveEquipment attaches one Equipment that was attached to
+// Zack Fair as he left to `target`.
+func zackFairMoveEquipment(ctx *Context, zack game.PermanentInfo, target uuid.UUID) error {
+	g := ctx.Game
+	var candidates []uuid.UUID
+	for _, id := range g.LiveAttachmentsForEffect(zack.Attachments) {
+		card, ok := g.LookupCardForEffect(id)
+		if !ok || !card.HasSubtype("Equipment") || !g.AttachLegalForEffect(id, target) {
+			continue
+		}
+		candidates = append(candidates, id)
+	}
+	attach := func(g *game.Game, id uuid.UUID) error {
+		return g.AttachForEffect(id, game.TargetRef{Kind: game.TargetCard, ID: target})
+	}
+	switch len(candidates) {
+	case 0:
+		return nil
+	case 1:
+		return attach(g, candidates[0])
+	}
+	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:  ctx.Controller(),
+		Source:   ctx.Item.SourceCardID,
+		Question: "Zack Fair — choose an Equipment that was attached to him to attach to the target",
+		Cards:    candidates,
+		Min:      1,
+		Max:      1,
+		Zone:     game.ZoneBattlefield,
+		Then: func(g *game.Game, picked []uuid.UUID) error {
+			if len(picked) != 1 {
+				return nil
+			}
+			return attach(g, picked[0])
+		},
+	})
+	return nil
 }
