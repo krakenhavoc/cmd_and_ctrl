@@ -45,6 +45,9 @@ amendment is narrowed: an untargeted sacrifice outlet, protection, pump or
 prevention effect stops you on an opponent's stack item only when that item
 threatens you, and never at an empty-stack end step. Combat is unchanged. See
 "Amendment: a free answer stops you only for a threat (#3555)" below.
+**Amended again by:** S72 (#3825), 2026-10-15 — an opponent's activated
+ability that wipes or edicts without a target (a planeswalker's minus,
+Nevinyrral's Disk, Pestilence) is a threat too, read from its catalog row.
 **Input changed by:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md),
 2026-10-09 — `interacts` reads what the ability row declares it answers
 (`Purpose.Answers`) before the printed-text read, and `combat_interacts`
@@ -682,13 +685,57 @@ and after). Combat stops were unchanged (244, 128 acted on).
 
 **Costs.**
 
-- A wipe or an edict that arrives as a triggered or activated ability with no
-  target (a Massacre Wurm's enters trigger, an opponent's Pestilence) does not
-  stop you for a free outlet, a shield or a pump. Tick the step, pin it, arm
-  the hold, or turn on "Value abilities" in "Stop for" to see it.
+- A wipe or an edict that arrives as a triggered ability with no target (a
+  Massacre Wurm's enters trigger) does not stop you for a free outlet, a
+  shield or a pump. Tick the step, pin it, arm the hold, or turn on "Value
+  abilities" in "Stop for" to see it. An activated ability is read since
+  #3825, below.
 - An opponent's untargeted instant or sorcery still stops you, a Divination
   included: without reading the spell's effect, the gate cannot tell it from a
   Wrath.
+
+### Amendment: an untargeted wipe from an activated ability is a threat (#3825)
+
+**Status:** Accepted · 2026-10-15 · Sprint S72
+
+The first cut above missed the wipes that arrive as an activated ability: a
+planeswalker's minus, Nevinyrral's Disk, Pestilence, Pernicious Deed, Ratchet
+Bomb, Oblivion Stone. They have no target and are no instant or sorcery, and
+a free sacrifice outlet, a regeneration shield or a protect effect matters
+most against exactly these.
+
+An activated ability of an item the seat does not control now also threatens
+the seat when it **affects permanents the seat controls without targeting
+them**. A stack item has no card type to read, so the server reads what the
+catalog row it came from declares (`StackItem.AbilityPurpose`, through the
+`Params.Ability` ref every catalog activation carries):
+
+- a declared sweep (`Purpose.Sweep`: destroy, exile, bounce, damage, -N/-N or
+  sacrifice) threatens when the seat controls a permanent of the class it
+  matches (`sweepReaches`). `Matches` is an upper bound (`Partial`), so a
+  miss is certain and a hit is a possibility. A sweep that names only the
+  opponents' permanents (`OpponentsOnly`) is read the same way: the opponent
+  is the ability's controller, so the seat is who it reaches. A creature
+  sweep against a board with no creature does not stop you;
+- else a row that declares `remove` (an edict, a sweep with no class named)
+  threatens, since its candidates cannot be narrowed.
+
+Everything else about an opponent's activated ability is as before: it
+threatens by its targets, and an ability that pumps, shields or draws on its
+own board does not. An activation with no catalog row (a sandbox activation,
+a card carrying its own ability list) is not read, and a triggered ability is
+still not read: its row carries a `Footprint` for trigger ordering, not a
+sweep, so a Massacre Wurm's enters trigger stays the cost above. A later PR
+can declare it the way activated rows do.
+
+Pernicious Deed is not in the catalog yet. When it lands, its `{X}, Sacrifice
+this: Destroy each artifact, creature and enchantment with mana value X or
+less` row declares the sweep and gets this with no further change.
+`ability_threat_test.go` and `TestSweepReaches` (internal/legal) pin it:
+Nevinyrral's Disk, Pestilence, The Eternal Wanderer's -4 and Liliana of the
+Veil's -6 stop Viscera Seer, Undercity Troll, Evernight Shade, Spore Frog,
+Selfless Spirit and Ashnod's Altar; an opponent's Evernight Shade pump, an
+ability with no row and the seat's own Pestilence do not.
 
 ## Context
 

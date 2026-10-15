@@ -34,6 +34,50 @@ func TestSacrificeInteracts(t *testing.T) {
 	}
 }
 
+// #3825: a sweep reaches the seat only when the seat controls something of
+// the class it matches. Matches is an upper bound (Sweep.Partial), so a
+// miss is certain and a hit is a possibility.
+func TestSweepReaches(t *testing.T) {
+	g := game.NewGame()
+	seat, opp := uuid.New(), uuid.New()
+	put := func(owner uuid.UUID, typeLine, cost string) {
+		g.Battlefield.PushTop(game.Card{InstanceID: uuid.New(), Controller: owner, Owner: owner, TypeLine: typeLine, ManaCost: cost})
+	}
+	put(seat, "Basic Land — Swamp", "")
+	put(seat, "Artifact", "{3}")
+	put(opp, "Creature — Bear", "{1}{G}")
+
+	cases := []struct {
+		m    game.SweepMatch
+		want bool
+	}{
+		{game.SweepCreatures, false},
+		{game.SweepCreaturesManaValue3OrLess, false},
+		{game.SweepCreaturesManaValue4OrMore, false},
+		{game.SweepEnchantments, false},
+		{game.SweepArtifacts, true},
+		{game.SweepArtifactsAndEnchantments, true},
+		{game.SweepNonlandPermanents, true},
+		{game.SweepAllPermanents, true},
+		{"", true}, // an unnamed class is a stop over a miss
+	}
+	for _, tc := range cases {
+		if got := sweepReaches(g, seat, tc.m); got != tc.want {
+			t.Errorf("sweepReaches(%q) = %v, want %v", tc.m, got, tc.want)
+		}
+	}
+
+	put(seat, "Creature — Bear", "{1}{G}")
+	for _, m := range []game.SweepMatch{game.SweepCreatures, game.SweepCreaturesManaValue3OrLess} {
+		if !sweepReaches(g, seat, m) {
+			t.Errorf("sweepReaches(%q) = false with a 2-mana creature of the seat's", m)
+		}
+	}
+	if sweepReaches(g, seat, game.SweepCreaturesManaValue4OrMore) {
+		t.Error("a 2-mana creature is not in the 4-or-more class")
+	}
+}
+
 // ADR 0142 owner answer 3: with the text read gone, a row that declares
 // nothing (an ability carried on a card instance) interacts, and a
 // declared row is read from its declaration alone, whatever its label

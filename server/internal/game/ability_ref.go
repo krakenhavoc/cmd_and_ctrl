@@ -623,6 +623,23 @@ func (g *Game) flagAbilitiesLostLocked(cardID uuid.UUID) {
 	}
 }
 
+// AbilityPurpose is the Purpose declared on the catalog activated row
+// this stack item came from, for #3825's threat gate: a sweep or an
+// edict that arrives as an ability has no card type to read, so the
+// row's declared Answers and Sweep are the only description of it.
+// False for a spell, a triggered ability, and an item with no catalog
+// row (a sandbox activation, an item restored without its row).
+func (s *StackItem) AbilityPurpose() (Purpose, bool) {
+	if s == nil || s.Kind != StackItemActivated || s.Params.Ability == nil {
+		return Purpose{}, false
+	}
+	row, _, outcome := resolveActivatedAbilityRef(*s.Params.Ability)
+	if outcome == abilityRefLost {
+		return Purpose{}, false
+	}
+	return row.Purpose, true
+}
+
 // builds reports whether the declaration can put an item on the stack
 // at all: a Build, or a declared Effect the engine builds from.
 func (t TriggeredAbility) builds() bool { return t.Build != nil || t.Effect != nil }

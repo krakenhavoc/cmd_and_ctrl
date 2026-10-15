@@ -126,7 +126,9 @@ const threatGated = game.AnswerProtect | game.AnswerSurvive | game.AnswerPump | 
 // not control threatens it (ADR 0009 amendment #3555): the item targets
 // `seat`, a permanent `seat` controls or an item on the stack `seat`
 // controls, or it is an instant or sorcery spell with no target, which
-// could be a wipe, an edict or a steal. A permanent spell does nothing
+// could be a wipe, an edict or a steal, or it is an activated ability
+// whose catalog row declares a sweep or an edict that reaches something
+// the seat controls (abilityReaches, #3825). A permanent spell does nothing
 // to the board while it is on the stack; its enters trigger is an item
 // of its own, judged when it is put there. With no game to read it says
 // yes: a stop over a missed window (ADR 0009 §3).
@@ -161,6 +163,78 @@ func stackThreatens(g *game.Game, seat uuid.UUID) bool {
 			}
 		}
 		if !targeted && item.Kind == game.StackItemSpell && (card.IsInstant() || card.IsSorcery()) {
+			return true
+		}
+		if abilityReaches(g, seat, item) {
+			return true
+		}
+	}
+	return false
+}
+
+// abilityReaches reports whether an opponent's activated ability affects
+// permanents `seat` controls without targeting them (#3825): a wipe, an
+// edict, damage or -N/-N to each creature, which arrives as a planeswalker's
+// minus, Nevinyrral's Disk, Pestilence or Pernicious Deed. A permanent
+// spell tells nothing about this, and an ability has no card type, so it
+// reads what the catalog row declares: Purpose.Sweep, else
+// AnswerRemove (an edict or a sweep with no class named). A sweep whose
+// class holds nothing the seat controls does not reach it. An ability
+// with no declared row (a sandbox activation) and a triggered ability are
+// not read: the cost ADR 0009's #3555 amendment records for triggers.
+func abilityReaches(g *game.Game, seat uuid.UUID, item *game.StackItem) bool {
+	p, ok := item.AbilityPurpose()
+	if !ok {
+		return false
+	}
+	if p.Sweep.IsZero() {
+		return p.Answers.Has(game.AnswerRemove)
+	}
+	return sweepReaches(g, seat, p.Sweep.Matches)
+}
+
+// sweepReaches reports whether `seat` controls a permanent of the class a
+// sweep matches. Matches is an upper bound (Sweep.Partial), so a miss is
+// certain and a hit is a possible. An unnamed or unknown class says yes.
+func sweepReaches(g *game.Game, seat uuid.UUID, m game.SweepMatch) bool {
+	if g.Battlefield == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller != seat {
+			continue
+		}
+		switch m {
+		case game.SweepCreatures:
+			if c.IsCreature() {
+				return true
+			}
+		case game.SweepCreaturesManaValue3OrLess:
+			if c.IsCreature() && c.ManaValue() <= 3 {
+				return true
+			}
+		case game.SweepCreaturesManaValue4OrMore:
+			if c.IsCreature() && c.ManaValue() >= 4 {
+				return true
+			}
+		case game.SweepNonlandPermanents:
+			if !c.IsLand() {
+				return true
+			}
+		case game.SweepArtifacts:
+			if c.IsArtifact() {
+				return true
+			}
+		case game.SweepEnchantments:
+			if c.IsEnchantment() {
+				return true
+			}
+		case game.SweepArtifactsAndEnchantments:
+			if c.IsArtifact() || c.IsEnchantment() {
+				return true
+			}
+		default:
 			return true
 		}
 	}
