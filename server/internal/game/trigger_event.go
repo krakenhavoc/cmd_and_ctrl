@@ -118,6 +118,8 @@ type ObjectSnapshot struct {
 	Colors []string
 
 	// ManaValue is CR 202.3's mana value of the card the object was.
+	// For a spell on the stack it counts the X chosen for it (CR 202.3e,
+	// #3782), which is what "that spell's mana value" means.
 	// Scrap Trawler's "with lesser mana value" is one comparison
 	// against this, and it is the number that is unrecoverable a
 	// moment later: the card is in a graveyard, where a face-down or
@@ -354,12 +356,20 @@ func (g *Game) objectSnapshotLocked(cardID uuid.UUID) *ObjectSnapshot {
 	if card == nil {
 		return nil
 	}
+	// CR 202.3e: a spell on the stack counts {X} as the value chosen for
+	// it. The snapshot is taken as the event fires, while the spell is
+	// still there, and is carried verbatim from then on, so this is the
+	// one moment the X can be written down (Krile Baldesion, #3782).
+	mv := card.ManaValue()
+	if x := g.announcedXOnStackLocked(cardID); x > 0 {
+		mv = card.ManaValueWithX(x)
+	}
 	out := &ObjectSnapshot{
 		ID:         cardID,
 		Epoch:      card.ObjectEpoch,
 		OracleID:   card.OracleID,
 		Name:       card.Name,
-		ManaValue:  card.ManaValue(),
+		ManaValue:  mv,
 		Owner:      card.Owner,
 		Controller: card.Controller,
 		Token:      card.IsToken(),
