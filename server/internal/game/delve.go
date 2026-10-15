@@ -196,8 +196,10 @@ func delveAdjusted(cost ParsedCost, n, xValue int) ParsedCost {
 	if cost.SpendOnly != nil && cost.SpendOnly.XOnly {
 		// #2556: settle the restricted X into coloured requirements
 		// before the generic subtraction, or folding it into Generic
-		// below would hand the restriction away.
-		cost = cost.foldSpendOnly(xValue)
+		// below would hand the restriction away. Written out one
+		// requirement at a time (#3909): a delved cost is read by every
+		// reader of a priced cast cost, not only by the payment.
+		cost = cost.foldSpendOnly(xValue).unfolded()
 	}
 	out := cost
 	out.Required = append([]ColorRequirement(nil), cost.Required...)

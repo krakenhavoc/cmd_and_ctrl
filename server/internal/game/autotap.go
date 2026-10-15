@@ -491,6 +491,14 @@ func (g *Game) autoTapWishedLocked(
 	excluded map[uuid.UUID]bool,
 	wish *autoTapWish,
 ) (tapPlan, bool) {
+	// solveColored books one requirement per step of AutoTapBudget, so
+	// a cost with that many requirements has no plan. Said before a
+	// folded run is written out for it, one requirement at a time
+	// (#3909), so an X-sized run costs nothing to refuse.
+	if cost.requiredCount() >= AutoTapBudget {
+		return nil, false
+	}
+	cost = cost.unfolded()
 	sources := gatherWishedSources(g, controller, excluded, wish)
 	if len(sources) == 0 && (len(cost.Required) > 0 || cost.GenericWithX(xValue) > 0) {
 		return nil, false

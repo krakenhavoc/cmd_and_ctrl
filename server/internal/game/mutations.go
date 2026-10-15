@@ -2507,7 +2507,9 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 // is "no further player decisions required". Caller must hold
 // g.mu and have validated the plan via autoTapLocked.
 func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
-	pending := append([]ColorRequirement(nil), cost.Required...)
+	// Colour-picked one requirement at a time, a folded run written out
+	// (#3909).
+	pending := append([]ColorRequirement(nil), cost.unfolded().Required...)
 	identity := commanderIdentityFor(g, p)
 	for _, planned := range plan {
 		cardID := planned.CardID

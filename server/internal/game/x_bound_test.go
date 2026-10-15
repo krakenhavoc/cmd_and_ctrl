@@ -377,7 +377,8 @@ func TestXManaSaturatesPastTheBound(t *testing.T) {
 
 // The spend-only fold never sizes an allocation by X: past what any
 // announcement can reach it writes one requirement no mana can pay,
-// and below it the requirements share one clipped options slice.
+// and below it the restricted mana is one counted run (#3909), whose
+// options are a clipped copy of the restriction's.
 func TestFoldSpendOnlyIsBoundedByTheAnnouncement(t *testing.T) {
 	cost, err := ParseCost("{X}{1}{B}")
 	if err != nil {
@@ -392,12 +393,18 @@ func TestFoldSpendOnlyIsBoundedByTheAnnouncement(t *testing.T) {
 	}
 
 	out = cost.foldSpendOnly(3)
-	if len(out.Required) != 5 || out.Generic != 0 || out.XSlots != 0 {
-		t.Fatalf("fold at X=3 = %+v, want {B} plus four black requirements", out)
+	if len(out.Required) != 1 || out.folded.n != 4 || out.Generic != 0 || out.XSlots != 0 {
+		t.Fatalf("fold at X=3 = %+v, want {B} and a run of four black requirements", out)
 	}
-	grown := append(out.Required[1].Options, "W")
-	if len(grown) != 2 || len(out.Required[2].Options) != 1 || out.Required[2].Options[0] != "B" {
-		t.Fatalf("appending to one folded requirement's options changed another: %v", out.Required[2].Options)
+	grown := append(out.folded.req.Options, "W")
+	if len(grown) != 2 || !slices.Equal(cost.SpendOnly.Colors, []string{"B"}) {
+		t.Fatalf("appending to the folded run's options changed the restriction: %v", cost.SpendOnly.Colors)
+	}
+
+	// At the bound the fold is the same handful of allocations.
+	requireCheapRefusal(t, func() { out = cost.foldSpendOnly(MaxAnnouncedX) })
+	if len(out.Required) != 1 || out.requiredCount() != MaxAnnouncedX+2 {
+		t.Fatalf("fold at the bound: %d listed, %d in all; want 1, %d", len(out.Required), out.requiredCount(), MaxAnnouncedX+2)
 	}
 }
 

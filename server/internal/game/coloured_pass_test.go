@@ -127,23 +127,35 @@ func sameRequirements(a, b []ColorRequirement) bool {
 	return slices.EqualFunc(a, b, sameRequirement)
 }
 
+// passColors and passShapes are the mana and the requirement shapes the
+// randomized comparisons draw from.
+var (
+	passColors = []string{"W", "U", "B", "R", "G", "C"}
+	passShapes = [][]string{{"W"}, {"U"}, {"B"}, {"R"}, {"G"}, {"C"}, {"W", "U"}, {"B", "R"}, {"G", "W"}, {"U", "B"}, {"R", "G"}, {"B", "G", "U"}}
+)
+
+// randomPassPool is a random pool of up to six runs, mostly short and
+// now and then long.
+func randomPassPool(r *rand.Rand) ManaPool {
+	var pool ManaPool
+	for range r.IntN(7) {
+		n := 1 + r.IntN(4)
+		if r.IntN(8) == 0 {
+			n = 1 + r.IntN(40)
+		}
+		pool = append(pool, ManaToken{Color: passColors[r.IntN(len(passColors))]}.withN(n))
+	}
+	return pool
+}
+
 // The run pass and the unit pass book the same mana and leave the same
 // requirements unpaid and deferred, over random pools and costs built
 // to exercise the walk, the augmenting path (hybrids that have to give
 // a colour back), widened slots, used mana and long runs.
 func TestColouredPassMatchesTheUnitPass(t *testing.T) {
 	r := rand.New(rand.NewPCG(3904, 1))
-	colors := []string{"W", "U", "B", "R", "G", "C"}
-	shapes := [][]string{{"W"}, {"U"}, {"B"}, {"R"}, {"G"}, {"C"}, {"W", "U"}, {"B", "R"}, {"G", "W"}, {"U", "B"}, {"R", "G"}, {"B", "G", "U"}}
 	for c := range 4000 {
-		var pool ManaPool
-		for range r.IntN(7) {
-			n := 1 + r.IntN(4)
-			if r.IntN(8) == 0 {
-				n = 1 + r.IntN(40)
-			}
-			pool = append(pool, ManaToken{Color: colors[r.IntN(len(colors))]}.withN(n))
-		}
+		pool := randomPassPool(r)
 		used := make([]int, len(pool))
 		for i := range pool {
 			if r.IntN(4) == 0 {
@@ -154,7 +166,7 @@ func TestColouredPassMatchesTheUnitPass(t *testing.T) {
 		order = order[:len(order)-r.IntN(min(2, len(order))+1)/2]
 		var reqs []ColorRequirement
 		for range r.IntN(8) {
-			req := ColorRequirement{Options: shapes[r.IntN(len(shapes))]}
+			req := ColorRequirement{Options: passShapes[r.IntN(len(passShapes))]}
 			req.Phyrexian = r.IntN(6) == 0
 			req.AnyMana = r.IntN(7) == 0
 			n := 1
@@ -169,7 +181,7 @@ func TestColouredPassMatchesTheUnitPass(t *testing.T) {
 		wantUsed := slices.Clone(used)
 		wantDeferred, wantUnpaid := unitColouredPass(pool, wantUsed, order, widenedLast(reqs))
 		gotUsed := slices.Clone(used)
-		deferred, unpaid := colouredPass(pool, gotUsed, order, requirementRuns(reqs))
+		deferred, unpaid := colouredPass(pool, gotUsed, order, requirementRuns(reqs, reqRun{}))
 		if !slices.Equal(gotUsed, wantUsed) ||
 			!sameRequirements(expandReqRuns(deferred), wantDeferred) ||
 			!sameRequirements(expandReqRuns(unpaid), wantUnpaid) {
@@ -305,6 +317,31 @@ func BenchmarkSpendOnlyXPaymentAtTheBound(b *testing.B) {
 					p.SpendManaFor(folded, MaxAnnouncedX, ManaSpendContext{})
 				} else {
 					pool.MissingFor(folded, MaxAnnouncedX, ManaSpendContext{})
+				}
+			}
+		})
+	}
+}
+
+// The same payment at an ordinary X, paid and one short.
+func BenchmarkSpendOnlyXPayment(b *testing.B) {
+	cost, err := ParseCost("{X}{B}")
+	if err != nil {
+		b.Fatal(err)
+	}
+	cost.SpendOnly = &ManaSpendOnly{Colors: []string{"B"}, XOnly: true}
+	const x = 5
+	for _, black := range []int{x + 1, x} {
+		b.Run(fmt.Sprintf("x=%d/black=%d", x, black), func(b *testing.B) {
+			pool := ManaPool{ManaToken{Color: "B"}.withN(black), {Color: "G"}}
+			b.ReportAllocs()
+			for range b.N {
+				folded := cost.foldSpendOnly(x)
+				if pool.CanPayFor(folded, x, ManaSpendContext{}) {
+					p := slices.Clone(pool)
+					p.SpendManaFor(folded, x, ManaSpendContext{})
+				} else {
+					pool.MissingFor(folded, x, ManaSpendContext{})
 				}
 			}
 		})

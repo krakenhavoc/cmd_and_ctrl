@@ -215,9 +215,10 @@ func (g *Game) SpendsManaAsAnyColorForEffect(payer uuid.UUID, ctx ManaSpendConte
 // nothing to widen.
 func widenForAnyColorSpend(cost ParsedCost, anyType bool) ParsedCost {
 	colourless := func(r ColorRequirement) bool { return !anyType && requiresColorless(r) }
-	need := false
+	widens := func(r ColorRequirement) bool { return !colourless(r) && !unpayableByAnyMana(r) }
+	need := cost.folded.n > 0 && !cost.folded.req.AnyMana && widens(cost.folded.req)
 	for _, r := range cost.Required {
-		if !r.AnyMana && !colourless(r) && !unpayableByAnyMana(r) {
+		if !r.AnyMana && widens(r) {
 			need = true
 			break
 		}
@@ -228,10 +229,15 @@ func widenForAnyColorSpend(cost ParsedCost, anyType bool) ParsedCost {
 	out := cost
 	out.Required = make([]ColorRequirement, len(cost.Required))
 	for i, r := range cost.Required {
-		if !colourless(r) && !unpayableByAnyMana(r) {
+		if widens(r) {
 			r.AnyMana = true
 		}
 		out.Required[i] = r
+	}
+	// The folded run is identical requirements, so it is widened
+	// whole, as each of them was (#3909).
+	if out.folded.n > 0 && widens(out.folded.req) {
+		out.folded.req.AnyMana = true
 	}
 	return out
 }
@@ -264,7 +270,7 @@ func (g *Game) costAsPaidByLocked(payer uuid.UUID, ctx ManaSpendContext, cost Pa
 	// marked: life never pays generic mana (the 2019-08-23 ruling).
 	cost = g.grantLifeForManaLocked(payer, cost)
 	cost = cost.foldSpendOnly(x)
-	if len(cost.Required) == 0 {
+	if cost.requiredCount() == 0 {
 		return cost
 	}
 	grant := g.spendGrantLocked(payer, ctx)
@@ -285,10 +291,10 @@ func (g *Game) costAsPaidByLocked(payer uuid.UUID, ctx ManaSpendContext, cost Pa
 // colourless), and so is a symbol already widened to any mana. Returns
 // `cost` itself when nothing changes.
 func widenFromColors(cost ParsedCost, from []string) ParsedCost {
-	var out []ColorRequirement
-	for i, r := range cost.Required {
+	// widen is r admitting `from` too, and whether that changed it.
+	widen := func(r ColorRequirement) (ColorRequirement, bool) {
 		if r.AnyMana || len(r.Options) == 0 || requiresColorless(r) || unpayableByAnyMana(r) {
-			continue
+			return r, false
 		}
 		var add []string
 		for _, f := range from {
@@ -297,19 +303,39 @@ func widenFromColors(cost ParsedCost, from []string) ParsedCost {
 			}
 		}
 		if len(add) == 0 {
+			return r, false
+		}
+		r.Options = append(append([]string(nil), r.Options...), add...)
+		return r, true
+	}
+	var out []ColorRequirement
+	for i, r := range cost.Required {
+		r, changed := widen(r)
+		if !changed {
 			continue
 		}
 		if out == nil {
 			out = append([]ColorRequirement(nil), cost.Required...)
 		}
-		r.Options = append(append([]string(nil), r.Options...), add...)
 		out[i] = r
 	}
-	if out == nil {
+	// The folded run is widened whole, as each of its identical
+	// requirements was (#3909).
+	var tail ColorRequirement
+	tailChanged := false
+	if cost.folded.n > 0 {
+		tail, tailChanged = widen(cost.folded.req)
+	}
+	if out == nil && !tailChanged {
 		return cost
 	}
 	widened := cost
-	widened.Required = out
+	if out != nil {
+		widened.Required = out
+	}
+	if tailChanged {
+		widened.folded.req = tail
+	}
 	return widened
 }
 
