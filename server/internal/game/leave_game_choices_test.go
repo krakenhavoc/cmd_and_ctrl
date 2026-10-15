@@ -89,7 +89,7 @@ func TestTriggerPromptOnAnotherPlayersPermanentIsReassigned(t *testing.T) {
 	controller, leaver, next := g.Seats[0], g.Seats[1], g.Seats[2]
 	sourceID := departureTestSource(g, controller.ID, "Edric, Spymaster of Trest")
 
-	built := 0
+	ran := 0
 	g.WithWriteLock(func() {
 		source := Card{InstanceID: sourceID, Name: "Edric, Spymaster of Trest",
 			Controller: controller.ID, Owner: controller.ID}
@@ -101,12 +101,13 @@ func TestTriggerPromptOnAnotherPlayersPermanentIsReassigned(t *testing.T) {
 						return leaver.ID
 					},
 				},
-				Build: func(Event, *Card, Characteristic, *Game) *StackItem {
-					built++
-					return nil
+				Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+					return newTriggeredItemForTest(source, "Edric — draw", func(*Game, *StackItem) error { ran++; return nil })
 				},
 			})
 	})
+	// CR 603.5 (#2494): the "you may" is asked as the trigger resolves.
+	passUntilTriggerPrompt(t, g)
 	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Chooser != leaver.ID {
 		t.Fatalf("setup: want one prompt owed by the leaver, got %+v", g.PendingChoices)
 	}
@@ -149,8 +150,8 @@ func TestTriggerPromptOnAnotherPlayersPermanentIsReassigned(t *testing.T) {
 	if err := g.ResolveTriggerPrompt(choiceID, next.ID, true); err != nil {
 		t.Fatalf("the inheritor could not answer the prompt: %v", err)
 	}
-	if built != 1 {
-		t.Errorf("the trigger's Build ran %d times, want 1", built)
+	if ran != 1 {
+		t.Errorf("the trigger's effect ran %d times, want 1", ran)
 	}
 	if len(g.PendingChoices) != 0 {
 		t.Errorf("the prompt is still open after the inheritor answered: %+v", g.PendingChoices)
@@ -176,9 +177,12 @@ func TestOnlyTheInheritorMayAnswerAReassignedPrompt(t *testing.T) {
 					Question: "Draw a card?",
 					Chooser:  func(Event, *Card, *Game) uuid.UUID { return leaver.ID },
 				},
-				Build: func(Event, *Card, Characteristic, *Game) *StackItem { return nil },
+				Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+					return newTriggeredItemForTest(source, "Edric — draw", func(*Game, *StackItem) error { return nil })
+				},
 			})
 	})
+	passUntilTriggerPrompt(t, g)
 	choiceID := g.PendingChoices[0].ID
 	if err := g.Concede(leaver.ID); err != nil {
 		t.Fatalf("Concede: %v", err)
@@ -422,9 +426,12 @@ func TestChoiceIsDroppedWhenItsObjectLeftFirst(t *testing.T) {
 					Question: "Draw a card?",
 					Chooser:  func(Event, *Card, *Game) uuid.UUID { return leaver.ID },
 				},
-				Build: func(Event, *Card, Characteristic, *Game) *StackItem { return nil },
+				Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+					return newTriggeredItemForTest(source, "Edric — draw", func(*Game, *StackItem) error { return nil })
+				},
 			})
 	})
+	passUntilTriggerPrompt(t, g)
 	choiceID := g.PendingChoices[0].ID
 
 	// The object's controller leaves first: CR 800.4a takes the
@@ -595,9 +602,12 @@ func TestUndoAcrossAReassignmentReplaysIt(t *testing.T) {
 					Question: "Draw a card?",
 					Chooser:  func(Event, *Card, *Game) uuid.UUID { return leaver.ID },
 				},
-				Build: func(Event, *Card, Characteristic, *Game) *StackItem { return nil },
+				Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
+					return newTriggeredItemForTest(source, "Edric — draw", func(*Game, *StackItem) error { return nil })
+				},
 			})
 	})
+	passUntilTriggerPrompt(t, g)
 	choiceID := g.PendingChoices[0].ID
 	before := g.Clone()
 

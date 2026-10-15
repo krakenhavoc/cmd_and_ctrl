@@ -31,8 +31,9 @@ func TestSpellweaverDuoReturnsATappedCreatureWhenItsMayIsYes(t *testing.T) {
 	}
 }
 
-// TestSpellweaverDuoDoesNothingWhenItsMayIsNo: answered no, the trigger
-// makes no pick and the tapped creature stays put.
+// TestSpellweaverDuoDoesNothingWhenItsMayIsNo: its target is chosen as
+// it goes on the stack; answered no as it resolves, the tapped creature
+// stays put.
 func TestSpellweaverDuoDoesNothingWhenItsMayIsNo(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -41,7 +42,8 @@ func TestSpellweaverDuoDoesNothingWhenItsMayIsNo(t *testing.T) {
 	assistCardTapped(t, g, tapped)
 
 	castCatalogSpell(t, g, "Spellweaver Duo", "Creature — Human Wizard", spellweaverDuoOracle, nil)
-	assistCardSettle(t, g, me.ID, nil, false)
+	pick := game.TargetRef{Kind: game.TargetCard, ID: tapped}
+	assistCardSettle(t, g, me.ID, &pick, false)
 
 	if !assistCardOnBattlefield(g, tapped) {
 		t.Error("the tapped creature left the battlefield after the may was declined")

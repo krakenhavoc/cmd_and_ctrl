@@ -233,11 +233,11 @@ func TestTidusBTidusMovesACounterAndCheersOnceATurn(t *testing.T) {
 	tdAddCounter(g, me.ID, from, game.CounterPlusOne, 1)
 
 	advanceTo(t, g, game.StepBeginCombat)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	pickCard(t, g, me.ID, from)
 	b04WaitForPick(t, g, me.ID)
 	pickCard(t, g, me.ID, to)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if countersOn(g, from, game.CounterPlusOne) != 0 || countersOn(g, to, game.CounterPlusOne) != 1 {
 		t.Fatalf("after the move: from %d, to %d; want 0 and 1",

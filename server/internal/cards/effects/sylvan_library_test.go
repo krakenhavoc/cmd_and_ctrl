@@ -53,8 +53,8 @@ func sylvanOpening(t *testing.T, g *game.Game) (*game.Player, *game.PendingChoic
 
 	advanceToDrawStepOf(t, g, 1)
 	// Link 1: "you may draw two additional cards" — the trigger's own
-	// CR 603.5 prompt, offered before the trigger is even built.
-	offer := latestTriggerPromptFor(g, owner.ID)
+	// CR 603.5 prompt, asked as the trigger resolves.
+	offer := awaitTriggerPrompt(t, g, owner.ID)
 	if offer == nil {
 		t.Fatal("Sylvan Library offered no draw-step prompt")
 	}
@@ -156,7 +156,7 @@ func TestSylvanLibraryDecliningTheDrawEndsTheChain(t *testing.T) {
 	pushPermanentForTest(g, owner.ID, "Sylvan Library", sylvanLibraryOracle, "Enchantment")
 
 	advanceToDrawStepOf(t, g, 1)
-	offer := latestTriggerPromptFor(g, owner.ID)
+	offer := awaitTriggerPrompt(t, g, owner.ID)
 	if offer == nil {
 		t.Fatal("Sylvan Library offered no draw-step prompt")
 	}

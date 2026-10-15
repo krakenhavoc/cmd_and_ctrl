@@ -62,19 +62,22 @@ func printedB28EldraziScionToken() tokenTemplate {
 
 // --- trigger conditions ------------------------------------------
 
-// b28TriggerPromptPendingFrom reports whether a yes/no trigger prompt
-// sourced from `source` is already waiting on an answer — the
-// optional-trigger twin of OncePerBatch. A "whenever you
-// gain life … do this only once each turn" ability asked twice in
-// one mutation (two lifelinkers connecting at once) would otherwise
-// open two prompts and, answered yes twice, run twice.
-func b28TriggerPromptPendingFrom(g *game.Game, source *game.Card) bool {
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceTriggerPrompt && c.Source == source.InstanceID {
-			return true
-		}
-	}
-	return false
+// b28DoneThisTurn reports whether `source` has already carried out the
+// instruction its "Do this only once each turn" limits, as recorded
+// under doneLabel by b28NoteDoneThisTurn. The limit is on the DOING,
+// not the trigger: an optional trigger still goes on the stack and asks
+// its "you may" as it resolves (CR 603.5, #2494), and declining does
+// not use up the turn. A label of its own, never the stack label: every
+// resolution is tallied under that, declined or not. Per object, like
+// the tally.
+func b28DoneThisTurn(g *game.Game, source uuid.UUID, doneLabel string) bool {
+	return g.ResolvedThisTurn(source, doneLabel) > 0
+}
+
+// b28NoteDoneThisTurn records that `source` has carried out its
+// once-each-turn instruction (b28DoneThisTurn).
+func b28NoteDoneThisTurn(g *game.Game, source uuid.UUID, doneLabel string) {
+	g.NoteDoneThisTurn(source, doneLabel)
 }
 
 // b28CreatureWasDealtDamage is Repercussion's condition: a creature

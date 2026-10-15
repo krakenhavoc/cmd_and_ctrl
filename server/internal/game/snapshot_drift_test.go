@@ -858,6 +858,10 @@ var stackItemFields = plan(
 	// #1539: a held trigger's owed "becomes the target" event.
 	// Carried for Ordered's reason — the restored drain emits it.
 	"TargetsAnnouncePending", carried, "",
+	// #2494: an optional trigger's CR 603.5 "you may", asked as the
+	// item resolves. Carried: a restore that lost it would resolve the
+	// trigger without asking.
+	"Optional", carried, "",
 	// #789 / #761: what the announcement paid — the counters
 	// removed, the life, and the mana tokens that left the pool.
 	// Carried, and it has to be: the counters are off the board and
@@ -966,6 +970,11 @@ var pendingChoiceFields = plan(
 	"DivideShield", dropped, "ADR 0108 §7: a divide_shield prompt always carries a confirmResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
 	"PayAmount", dropped, "ADR 0129 §3: a pay_amount prompt always carries a chooseValueResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
 	"NoLegalTarget", carried, "",
+	// #2494: the resolving item a resolution-time "you may" asks about,
+	// and what a "yes" trades for. Carried: the item rides the parked
+	// tail, so the open question is a restore point.
+	"OptionalItem", carried, "",
+	"OptionalTradeFor", carried, "",
 	"PickTargetPlayers", carried, "",
 	"PickTargetCards", carried, "",
 	"PickTargetMin", carried, "",

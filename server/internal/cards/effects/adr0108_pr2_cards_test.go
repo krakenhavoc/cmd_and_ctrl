@@ -352,7 +352,7 @@ func TestP2QuestForPureFlame(t *testing.T) {
 	theirs := p2Tough(g, opp.ID, "Theirs")
 	p2Ping(t, g, mine, theirs, 1)
 	p2Ping(t, g, mine, me.ID, 1)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Fatal("damage to a creature or to you asked for a quest counter")
 	}
 	for i := 0; i < 4; i++ {

@@ -119,12 +119,13 @@ func TestHerosBladeDoesNotAttachAsANewObject(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.EmitEvent(game.Event{Kind: game.EventETB, Actor: me.ID, CardID: legend})
 	})
-	answerLatestTriggerPrompt(t, g, me.ID, true)
+	g.RunStateChecksForTest()
 	if triggerOnStack(g, blade) == nil {
 		t.Fatal("Hero's Blade's trigger is not on the stack")
 	}
 
 	flickerInResponse(t, g, blade)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if host := attachmentHostOf(t, g, blade); host.ID != uuid.Nil {

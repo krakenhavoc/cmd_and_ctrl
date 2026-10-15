@@ -290,13 +290,12 @@ func TestTriggerHarvesterLKIPopulatedOnLTB(t *testing.T) {
 	}
 }
 
-// TestTriggerHarvesterOptionalPromptQueuesChoice exercises the S19
-// sub-PR 2 OptionalPrompt branch: a TriggeredAbility with a non-nil
-// OptionalPrompt queues a PendingChoiceTriggerPrompt instead of
-// firing Build immediately. PendingTriggers stays empty until the
-// chooser answers; on `apply: true` the deferred Build runs and the
-// StackItem appears on the queue.
-func TestTriggerHarvesterOptionalPromptQueuesChoice(t *testing.T) {
+// TestTriggerHarvesterOptionalTriggerAsksAsItResolves exercises the
+// OptionalPrompt branch since #2494 (CR 603.5): an optional trigger is
+// built and queued as it triggers, like a mandatory one, carrying its
+// question on the item; the PendingChoiceTriggerPrompt is asked when
+// the item resolves.
+func TestTriggerHarvesterOptionalTriggerAsksAsItResolves(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
 	const oracle = "test-optional-oracle"
@@ -334,25 +333,28 @@ func TestTriggerHarvesterOptionalPromptQueuesChoice(t *testing.T) {
 		}}
 	})
 
-	pendingBefore := len(g.PendingTriggers)
 	choicesBefore := len(g.PendingChoices)
 	g.WithWriteLock(func() {
 		g.EmitEvent(Event{Kind: EventETB, CardID: cardID, Actor: owner.ID})
 	})
 
-	if buildCalls != 0 {
-		t.Errorf("Build calls before resolve: got %d, want 0 (deferred until apply=true)", buildCalls)
+	if buildCalls != 1 {
+		t.Errorf("Build calls as it triggered: got %d, want 1", buildCalls)
 	}
-	if got := len(g.PendingTriggers) - pendingBefore; got != 0 {
-		t.Errorf("PendingTriggers delta before resolve: got %d, want 0", got)
+	if got := len(g.PendingChoices) - choicesBefore; got != 0 {
+		t.Fatalf("PendingChoices delta as it triggered: got %d, want 0 (asked at resolution)", got)
 	}
-	if got := len(g.PendingChoices) - choicesBefore; got != 1 {
-		t.Fatalf("PendingChoices delta: got %d, want 1", got)
+	var queued *StackItem
+	for _, it := range g.PendingTriggers {
+		if it != nil && it.SourceCardID == cardID {
+			queued = it
+		}
 	}
-	choice := g.PendingChoices[len(g.PendingChoices)-1]
-	if choice.Kind != PendingChoiceTriggerPrompt {
-		t.Errorf("queued choice kind: got %q, want %q", choice.Kind, PendingChoiceTriggerPrompt)
+	if queued == nil || queued.Optional == nil || queued.Optional.Question != "Fire Optional Pal trigger?" {
+		t.Fatalf("queued item = %+v, want the trigger carrying its question", queued)
 	}
+
+	choice := passUntilTriggerPrompt(t, g)
 	if choice.Chooser != owner.ID {
 		t.Errorf("queued choice chooser: got %s, want %s (source.Controller default)", choice.Chooser, owner.ID)
 	}
@@ -362,40 +364,26 @@ func TestTriggerHarvesterOptionalPromptQueuesChoice(t *testing.T) {
 	if choice.Source != cardID {
 		t.Errorf("queued choice source: got %s, want %s", choice.Source, cardID)
 	}
+	if choice.OptionalItem != queued.ID {
+		t.Errorf("queued choice item: got %s, want %s", choice.OptionalItem, queued.ID)
+	}
 
 	if err := g.ResolveTriggerPrompt(choice.ID, owner.ID, true); err != nil {
 		t.Fatalf("ResolveTriggerPrompt(apply=true): %v", err)
 	}
 	if buildCalls != 1 {
-		t.Errorf("Build calls after apply=true: got %d, want 1", buildCalls)
-	}
-	// Answering "yes" is the moment the ability goes on the stack:
-	// the resolver drains PendingTriggers straight into StackMeta
-	// rather than leaving the item stranded until the next
-	// priority wrap.
-	if got := len(g.PendingTriggers) - pendingBefore; got != 0 {
-		t.Errorf("PendingTriggers delta after apply=true: got %d, want 0 (drained onto the stack)", got)
-	}
-	var onStack *StackItem
-	for _, item := range g.StackMeta {
-		if item != nil && item.SourceCardID == cardID {
-			onStack = item
-		}
-	}
-	if onStack == nil {
-		t.Fatalf("accepted trigger not found in StackMeta")
-	}
-	if onStack.Kind != StackItemTriggered || onStack.Label != "Optional Pal trigger" {
-		t.Errorf("stack item: kind %q label %q", onStack.Kind, onStack.Label)
+		t.Errorf("Build calls after apply=true: got %d, want still 1", buildCalls)
 	}
 	if got := len(g.PendingChoices) - choicesBefore; got != 0 {
 		t.Errorf("PendingChoices delta after resolve: got %d, want 0 (entry should be dequeued)", got)
 	}
+	if len(g.StackMeta) != 0 || g.pausedResolutionTail != nil {
+		t.Errorf("the trigger did not finish resolving: stack %d, tail %v", len(g.StackMeta), g.pausedResolutionTail)
+	}
 }
 
 // TestTriggerHarvesterOptionalPromptDeclineDrops confirms that
-// `apply: false` discards the trigger without invoking Build —
-// PendingTriggers stays empty even though the prompt fired.
+// `apply: false` at resolution lets the item finish doing nothing.
 func TestTriggerHarvesterOptionalPromptDeclineDrops(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
@@ -409,7 +397,7 @@ func TestTriggerHarvesterOptionalPromptDeclineDrops(t *testing.T) {
 		Controller: owner.ID,
 	})
 
-	var buildCalls int
+	var ran int
 	withCatalogTriggers(t, func(id string) []TriggeredAbility {
 		if id != oracle {
 			return nil
@@ -417,8 +405,7 @@ func TestTriggerHarvesterOptionalPromptDeclineDrops(t *testing.T) {
 		return []TriggeredAbility{{
 			Watches: []EventKind{EventETB},
 			Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-				buildCalls++
-				return &StackItem{SourceCardID: source.InstanceID}
+				return newTriggeredItemForTest(source, "Decline me", func(*Game, *StackItem) error { ran++; return nil })
 			},
 			OptionalPrompt: &TriggerOptionalPrompt{Question: "Decline me?"},
 		}}
@@ -427,20 +414,15 @@ func TestTriggerHarvesterOptionalPromptDeclineDrops(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.EmitEvent(Event{Kind: EventETB, CardID: cardID, Actor: owner.ID})
 	})
-	if len(g.PendingChoices) == 0 {
-		t.Fatalf("expected a queued PendingChoice")
-	}
-	choice := g.PendingChoices[len(g.PendingChoices)-1]
-
-	pendingBefore := len(g.PendingTriggers)
+	choice := passUntilTriggerPrompt(t, g)
 	if err := g.ResolveTriggerPrompt(choice.ID, owner.ID, false); err != nil {
 		t.Fatalf("ResolveTriggerPrompt(apply=false): %v", err)
 	}
-	if buildCalls != 0 {
-		t.Errorf("Build calls after apply=false: got %d, want 0", buildCalls)
+	if ran != 0 {
+		t.Errorf("effect ran %d times after apply=false, want 0", ran)
 	}
-	if got := len(g.PendingTriggers) - pendingBefore; got != 0 {
-		t.Errorf("PendingTriggers delta after decline: got %d, want 0", got)
+	if len(g.PendingTriggers)+len(g.StackMeta) != 0 {
+		t.Errorf("the declined trigger is still queued or on the stack")
 	}
 	if len(g.PendingChoices) != 0 {
 		t.Errorf("PendingChoices after decline: got %d, want 0", len(g.PendingChoices))
@@ -472,7 +454,7 @@ func TestTriggerHarvesterOptionalPromptChooserOverride(t *testing.T) {
 		return []TriggeredAbility{{
 			Watches: []EventKind{EventETB},
 			Build: func(_ Event, src *Card, _ Characteristic, _ *Game) *StackItem {
-				return &StackItem{SourceCardID: src.InstanceID}
+				return NewTriggeredItem(src, "Opponent decides")
 			},
 			OptionalPrompt: &TriggerOptionalPrompt{
 				Question: "Opponent decides",
@@ -489,6 +471,7 @@ func TestTriggerHarvesterOptionalPromptChooserOverride(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.EmitEvent(Event{Kind: EventETB, CardID: cardID, Actor: source.ID})
 	})
+	passUntilTriggerPrompt(t, g)
 	if len(g.PendingChoices) != 1 {
 		t.Fatalf("PendingChoices: got %d, want 1", len(g.PendingChoices))
 	}
@@ -522,7 +505,7 @@ func TestPendingChoiceKindForTriggerPrompt(t *testing.T) {
 		return []TriggeredAbility{{
 			Watches: []EventKind{EventETB},
 			Build: func(_ Event, src *Card, _ Characteristic, _ *Game) *StackItem {
-				return &StackItem{SourceCardID: src.InstanceID}
+				return NewTriggeredItem(src, "Pick me")
 			},
 			OptionalPrompt: &TriggerOptionalPrompt{Question: "Pick me"},
 		}}
@@ -531,6 +514,7 @@ func TestPendingChoiceKindForTriggerPrompt(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.EmitEvent(Event{Kind: EventETB, CardID: cardID, Actor: owner.ID})
 	})
+	passUntilTriggerPrompt(t, g)
 	if len(g.PendingChoices) != 1 {
 		t.Fatalf("PendingChoices: got %d, want 1", len(g.PendingChoices))
 	}

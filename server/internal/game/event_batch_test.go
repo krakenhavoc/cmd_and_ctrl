@@ -153,29 +153,28 @@ func TestOncePerBatchIgnoresAnItemAlreadyOnTheStack(t *testing.T) {
 	}
 }
 
-// TestOncePerBatchIgnoresAnUnansweredPrompt is the same, one step
-// earlier: the first batch's trigger has not even been built yet
-// because its "you may" prompt is unanswered.
-//
-// A trigger prompt blocks the table (choice_gate.go), so no real
-// action can reach a second batch while one is open — this drives the
-// boundary directly, which is what makes the assertion about the
-// GUARD rather than about who may act.
-func TestOncePerBatchIgnoresAnUnansweredPrompt(t *testing.T) {
+// TestOncePerBatchCountsAnOptionalTriggerLikeAnyOther: an optional
+// trigger is built and queued as it triggers, its "you may" waiting
+// for resolution (CR 603.5, #2494), so the once-per-batch guard counts
+// it exactly as it counts a mandatory one, and asks nothing yet.
+func TestOncePerBatchCountsAnOptionalTriggerLikeAnyOther(t *testing.T) {
 	g := newActiveGame(t)
 	probe := seedBatchProbe(t, g, true)
 
 	g.WithWriteLock(func() { g.beginEventBatchLocked() })
 	emitProbeEvent(g)
 	emitProbeEvent(g)
-	if n := probePrompts(g, probe); n != 1 {
-		t.Fatalf("%d prompts for two events of one batch, want 1 (#594)", n)
+	if n := probeItems(g, probe); n != 1 {
+		t.Fatalf("%d triggers for two events of one batch, want 1 (#594)", n)
+	}
+	if n := probePrompts(g, probe); n != 0 {
+		t.Fatalf("%d prompts before the trigger resolved, want 0 (CR 603.5)", n)
 	}
 
 	g.WithWriteLock(func() { g.beginEventBatchLocked() })
 	emitProbeEvent(g)
-	if n := probePrompts(g, probe); n != 2 {
-		t.Errorf("%d prompts, want 2 — an unanswered prompt must not swallow a second batch", n)
+	if n := probeItems(g, probe); n != 2 {
+		t.Errorf("%d triggers, want 2 — a queued trigger must not swallow a second batch", n)
 	}
 }
 

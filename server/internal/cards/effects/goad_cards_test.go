@@ -40,8 +40,8 @@ func TestJeeringHomunculusMayGoadTargetCreature(t *testing.T) {
 	})
 
 	castAndResolveCreature(t, g, "Jeering Homunculus", "Creature — Homunculus", jeeringHomunculusOracle)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, bear)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if c, ok := g.LookupCardForEffect(bear); !ok || c.LatestGoader() != me.ID {
@@ -178,8 +178,8 @@ func racketeerShapeTest(t *testing.T, name, typeLine, oracleID string) {
 		t.Fatalf("DeclareAttacker: %v", err)
 	}
 	lockInAttacks(t, g)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, victim)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if c, ok := g.LookupCardForEffect(victim); !ok || c.LatestGoader() != me.ID {

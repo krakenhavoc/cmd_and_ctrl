@@ -156,7 +156,13 @@ func corpusBoards() []corpusBoard {
 		// reflexive trigger on the stack, its target already chosen —
 		// a keyed stack item whose clause is re-derived from its Body
 		// rather than carried as a captured closure.
-		{"reflexive_trigger", corpusReflexiveTrigger},
+		// #2494: the board that wrote reflexive_trigger.json asked the
+		// parent's "you may" before the stack, a history this engine no
+		// longer makes (the question now pauses the parent's
+		// resolution, one more event). The file stays and is still
+		// restored; the same board, built the CR 603.5 way, is a new
+		// file.
+		{"reflexive_trigger_asked_at_resolution", corpusReflexiveTrigger},
 		// v7, added by tier 4's first slice (#1497, ADR 0041 P9) as new
 		// files: a stamped activated ability waiting on the stack (an
 		// own row and a granted row), and a countered spell's last-known
@@ -2543,7 +2549,8 @@ func corpusDurationGrants(t *testing.T) *game.Game {
 // do" — the reflexive half — has picked the creature card to return
 // and is waiting to resolve. The file holds a keyed stack item whose
 // clause is re-derived from its Body ("undead-butler/return-to-hand")
-// rather than carried as a captured *TargetSpec.
+// rather than carried as a captured *TargetSpec. Since #2494 the
+// Butler's "you may exile it" is asked as its dies trigger resolves.
 func corpusReflexiveTrigger(t *testing.T) *game.Game {
 	g := newCorpusGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -2554,9 +2561,10 @@ func corpusReflexiveTrigger(t *testing.T) *game.Game {
 		Owner: me.ID, Controller: me.ID,
 	})
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(butler) })
-	passPriorityAroundTable(t, g)
-	// "You may exile it" is the parent's optional prompt; the
+	// The dies trigger goes on the stack at the boundary, and "you may
+	// exile it" is asked as it resolves (CR 603.5, #2494); the
 	// reflexive "when you do" that follows is mandatory.
+	g.RunStateChecksForTest()
 	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	b04WaitForPick(t, g, me.ID)

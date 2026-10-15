@@ -147,22 +147,6 @@ func b39NextTurnOf(t *testing.T, g *game.Game, seat int) {
 	advanceToMainOf(t, g, seat)
 }
 
-// b39WaitForTriggerPrompt passes priority until `chooser` has a "you
-// may" trigger prompt waiting. The entry trigger of a creature spell
-// is harvested only after the spell resolves, so the answer cannot be
-// given before the priority passes.
-func b39WaitForTriggerPrompt(t *testing.T, g *game.Game, chooser uuid.UUID) {
-	t.Helper()
-	for i := 0; i < 8 && b06TriggerPromptsFor(g, chooser) == 0; i++ {
-		if err := g.PassPriority(); err != nil {
-			t.Fatalf("PassPriority: %v", err)
-		}
-	}
-	if b06TriggerPromptsFor(g, chooser) == 0 {
-		t.Fatalf("no trigger prompt for %s", chooser)
-	}
-}
-
 // b39IsCreature reports whether the post-layer view of a permanent is
 // a creature — Erebos's devotion clause is a layer 4 type change.
 func b39IsCreature(t *testing.T, g *game.Game, id uuid.UUID) bool {
@@ -428,11 +412,9 @@ func TestB39BloodlineNecromancerReanimatesOnlyAVampireOrWizard(t *testing.T) {
 	bear := pushGraveyardPermanent(me, "Bear", "Creature — Bear", "{1}{G}")
 
 	castCatalogSpell(t, g, "Bloodline Necromancer", "Creature — Vampire Wizard", b39BloodlineNecroOracle, nil)
-	// The "you may" is asked as the trigger is harvested, which is
-	// after the creature spell has resolved — so the priority passes
-	// come first and the answer second.
-	b39WaitForTriggerPrompt(t, g, me.ID)
-	b06AnswerAllTriggerPrompts(t, g, me.ID, true)
+	// The target is chosen as the trigger goes on the stack, after the
+	// creature spell has resolved; the "you may" waits for the
+	// trigger's own resolution (CR 603.5).
 	b04WaitForPick(t, g, me.ID)
 	p := latestPickTarget(g, me.ID)
 	if hasID(p.PickTargetCards, bear) {
@@ -442,6 +424,7 @@ func TestB39BloodlineNecromancerReanimatesOnlyAVampireOrWizard(t *testing.T) {
 		t.Error("either subtype on its own qualifies")
 	}
 	pickCard(t, g, me.ID, vampire)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(vampire) {
 		t.Error("it comes back to the battlefield, not to hand")

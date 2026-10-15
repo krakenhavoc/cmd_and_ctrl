@@ -463,6 +463,10 @@ func (g *Game) AutoAnswer(choiceID uuid.UUID) (uint64, error) {
 		if c.triggerResume != nil {
 			ev.Label = c.triggerResume.ability.Key
 		}
+		// #2494: a "you may" asked at resolution names its item.
+		if item := g.optionalResolvingItemLocked(c.OptionalItem); item != nil {
+			ev.Label = item.Label
+		}
 	case PendingChoiceConfirm:
 		ev.Call = AutoAnswerCallNo
 		if yes {

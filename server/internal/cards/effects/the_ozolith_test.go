@@ -124,9 +124,9 @@ func TestOzolithMovesAllCountersOntoTargetCreatureAtCombat(t *testing.T) {
 	target := seedPermanentFor(g, me.ID, "Target Bear", "Creature — Bear")
 
 	advanceTo(t, g, game.StepBeginCombat)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	pickCard(t, g, me.ID, target)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if got := allCountersOn(t, g, target); got["+1/+1"] != 2 || got["stun"] != 1 {

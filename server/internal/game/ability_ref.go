@@ -687,6 +687,16 @@ func (t TriggeredAbility) builds() bool { return t.Build != nil || t.Effect != n
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) buildTriggerItemLocked(t TriggeredAbility, ev Event, source Card, lki Characteristic) *StackItem {
+	item := g.buildTriggerItemBodyLocked(t, ev, source, lki)
+	// CR 603.5 (#2494): an optional trigger carries its "you may" onto
+	// the stack and asks it as it resolves (optional_trigger.go).
+	g.stampOptionalTriggerLocked(item, t, ev, source)
+	return item
+}
+
+// buildTriggerItemBodyLocked is buildTriggerItemLocked before the
+// optional stamp. Caller must hold g.mu in write mode.
+func (g *Game) buildTriggerItemBodyLocked(t TriggeredAbility, ev Event, source Card, lki Characteristic) *StackItem {
 	var item *StackItem
 	switch {
 	case t.Build != nil:

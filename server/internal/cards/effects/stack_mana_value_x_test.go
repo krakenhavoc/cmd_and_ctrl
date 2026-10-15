@@ -164,11 +164,11 @@ func TestB27SanctumOfUginCountsXOnTheStack(t *testing.T) {
 	)
 	castXSpell(t, g, "Walking Ballista", "Artifact Creature — Construct", "", "{X}{X}", 3, nil)
 	passPriorityAroundTable(t, g)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Fatal("X=3 is mana value 6: the Sanctum does not trigger")
 	}
 	castXSpell(t, g, "Walking Ballista", "Artifact Creature — Construct", "", "{X}{X}", 4, nil)
-	if latestTriggerPrompt(g, me.ID) == nil {
+	if owedMays(g, me.ID) == 0 {
 		t.Fatal("X=4 is mana value 8: the Sanctum triggers")
 	}
 }

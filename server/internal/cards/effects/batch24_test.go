@@ -1207,7 +1207,7 @@ func TestB24MariExilesWithHitCountersAndBountiesThem(t *testing.T) {
 	advanceToPrecombatMainOf(t, g, 0)
 	hand = me.Hand.Size()
 	attackWith(t, g, opp.ID, rogue)
-	prompt := latestTriggerPromptFor(g, me.ID)
+	prompt := awaitTriggerPrompt(t, g, me.ID)
 	if prompt == nil || !prompt.NoLegalTarget {
 		t.Fatal("the prompt warns there is nothing to remove")
 	}

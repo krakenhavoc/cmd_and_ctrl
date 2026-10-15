@@ -16,8 +16,8 @@ func TestOctopusUmbraSetsBase88AndTapsOnAttack(t *testing.T) {
 
 	victim := seedBear(g, opp.ID)
 	declareAttack(t, g, opp.ID, octopus)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickIfAsked(t, g, me.ID, victim)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if !tappedNow(g, victim) {
 		t.Error("the attack trigger did not tap the chosen creature")

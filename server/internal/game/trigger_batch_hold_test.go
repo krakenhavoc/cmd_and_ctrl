@@ -144,15 +144,6 @@ func TestAnnouncingTriggerHoldsItsBatch(t *testing.T) {
 				t.Fatalf("ResolvePickTarget: %v", err)
 			}
 		}},
-		{batchOptionalOracle, func(t *testing.T, g *Game, me, _ *Player) {
-			c := openTriggerPrompt(g, me.ID)
-			if c == nil {
-				t.Fatal("no optional-trigger prompt")
-			}
-			if err := g.ResolveTriggerPrompt(c.ID, me.ID, true); err != nil {
-				t.Fatalf("ResolveTriggerPrompt: %v", err)
-			}
-		}},
 		{batchModalOracle, func(t *testing.T, g *Game, me, _ *Player) {
 			c := openModePick(t, g, me.ID)
 			if c == nil {
@@ -209,28 +200,27 @@ func TestAnnouncingTriggerHoldsItsBatch(t *testing.T) {
 	}
 }
 
-// TestDecliningAnOptionalTriggerReleasesItsBatch — "no" still ends the
-// announcement, and the held batch goes on the stack there and then.
-func TestDecliningAnOptionalTriggerReleasesItsBatch(t *testing.T) {
+// TestAnOptionalTriggerDoesNotHoldItsBatch — an optional trigger has
+// nothing to announce: its "you may" is asked as it resolves (CR 603.5,
+// #2494), so it joins its batch at once and the batch is ordered with
+// no yes/no in front of it.
+func TestAnOptionalTriggerDoesNotHoldItsBatch(t *testing.T) {
 	withBatchCatalog(t)
 	g := newActiveGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	plain := pushBatchSource(g, me, batchPlainOracle)
-	pushBatchSource(g, me, batchOptionalOracle)
+	optional := pushBatchSource(g, me, batchOptionalOracle)
 
 	fireBatch(g, me)
-	c := openTriggerPrompt(g, me.ID)
-	if c == nil || stackItemFrom(g, plain) != nil {
-		t.Fatal("the plain trigger was not held behind the optional prompt")
+	if c := openTriggerPrompt(g, me.ID); c != nil {
+		t.Fatal("the optional trigger asked before it went on the stack")
 	}
-	if err := g.ResolveTriggerPrompt(c.ID, me.ID, false); err != nil {
-		t.Fatalf("ResolveTriggerPrompt: %v", err)
+	ch := findTriggerOrderPrompt(g, me.ID)
+	if ch == nil {
+		t.Fatal("no CR 603.3b ordering prompt for the two triggers")
 	}
-	if stackItemFrom(g, plain) == nil || len(g.PendingTriggers) != 0 {
-		t.Fatalf("after declining: plain on the stack %v, %d still queued", stackItemFrom(g, plain) != nil, len(g.PendingTriggers))
-	}
-	if findTriggerOrderPrompt(g, me.ID) != nil {
-		t.Error("a one-item batch asked to be ordered")
+	if pendingFrom(g, plain) == nil || pendingFrom(g, optional) == nil || len(ch.TriggerOrderIDs) != 2 {
+		t.Fatalf("the prompt orders %d items, want both triggers", len(ch.TriggerOrderIDs))
 	}
 }
 

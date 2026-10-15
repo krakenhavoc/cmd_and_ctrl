@@ -285,24 +285,25 @@ func emergeResolve(t *testing.T, g *game.Game, me *game.Player, card uuid.UUID, 
 	if err := castEmerge(g, me, card, fodder, false, targets...); err != nil {
 		t.Fatalf("emerge: %v", err)
 	}
-	for i := 0; i < 4; i++ {
-		answered := false
-		for _, c := range g.PendingChoices {
-			if c != nil && c.Kind == game.PendingChoiceTriggerPrompt && c.Chooser == me.ID {
-				answerLatestTriggerPrompt(t, g, me.ID, true)
-				answered = true
-				break
-			}
-		}
+	// A trigger's targets are picked as it goes on the stack; its "you
+	// may" is asked as it resolves (CR 603.5).
+	for i := 0; i < 16; i++ {
 		if p := latestPickTarget(g, me.ID); p != nil && len(pick) > 0 {
 			if err := g.ResolvePickTargets(p.ID, me.ID, pick); err != nil {
 				t.Fatalf("pick targets: %v", err)
 			}
-			answered = true
+			continue
 		}
-		if !answered {
+		if c := latestTriggerPrompt(g, me.ID); c != nil {
+			if err := g.ResolveTriggerPrompt(c.ID, me.ID, true); err != nil {
+				t.Fatalf("ResolveTriggerPrompt: %v", err)
+			}
+			continue
+		}
+		if stackFullyEmpty(g) {
 			break
 		}
+		passPriorityAroundTable(t, g)
 	}
 	passPriorityAroundTable(t, g)
 }

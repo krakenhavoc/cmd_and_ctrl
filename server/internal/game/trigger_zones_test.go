@@ -271,23 +271,23 @@ func TestTriggerZoneUnsupportedNamesTheAlternative(t *testing.T) {
 
 // TestGraveyardTriggerPromptSurvivesUndo: a graveyard trigger takes
 // the ordinary dispatch, so its CR 603.5 "you may" is an ordinary
-// PendingChoice — and a game cloned while that prompt is open rewinds
-// to the prompt and replays it, exactly as a battlefield trigger's
-// does. This is the undo property the whole harvest reuse buys.
+// PendingChoice asked as it resolves (#2494) — and a game cloned while
+// that prompt is open rewinds to the prompt and replays it, exactly as
+// a battlefield trigger's does. This is the undo property the whole
+// harvest reuse buys.
 func TestGraveyardTriggerPromptSurvivesUndo(t *testing.T) {
 	g := newActiveGame(t)
 	owner := g.Seats[0]
 	const oracle = "test-graveyard-prompt-oracle"
 	cardID := uuid.New()
 
-	var built int
+	var ran int
 	withZoneTriggerCard(t, oracle, []TriggeredAbility{{
 		Zones:          []ZoneKind{ZoneGraveyard},
 		Watches:        []EventKind{EventDrawCard},
 		OptionalPrompt: &TriggerOptionalPrompt{Question: "Return it?"},
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
-			built++
-			return newTriggeredItemForTest(source, "Graveyard prompt", func(*Game, *StackItem) error { return nil })
+			return newTriggeredItemForTest(source, "Graveyard prompt", func(*Game, *StackItem) error { ran++; return nil })
 		},
 	}})
 	owner.Graveyard.PushTop(Card{
@@ -300,10 +300,7 @@ func TestGraveyardTriggerPromptSurvivesUndo(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.EmitEvent(Event{Kind: EventDrawCard, Actor: owner.ID})
 	})
-	choice := pendingChoiceOfKind(g, PendingChoiceTriggerPrompt)
-	if choice == nil {
-		t.Fatal("a graveyard trigger with an OptionalPrompt queued no prompt")
-	}
+	choice := passUntilTriggerPrompt(t, g)
 	if choice.Chooser != owner.ID {
 		t.Errorf("prompt chooser = %s, want the card's owner %s", choice.Chooser, owner.ID)
 	}
@@ -312,11 +309,11 @@ func TestGraveyardTriggerPromptSurvivesUndo(t *testing.T) {
 	if err := g.ResolveTriggerPrompt(choice.ID, owner.ID, true); err != nil {
 		t.Fatalf("ResolveTriggerPrompt: %v", err)
 	}
-	if built != 1 {
-		t.Fatalf("Build ran %d times on the first answer, want 1", built)
+	if ran != 1 {
+		t.Fatalf("the effect ran %d times on the first answer, want 1", ran)
 	}
 
-	built = 0
+	ran = 0
 	g.WithWriteLock(func() { g.RestoreFrom(promptOpen) })
 	replay := pendingChoiceOfKind(g, PendingChoiceTriggerPrompt)
 	if replay == nil {
@@ -325,7 +322,10 @@ func TestGraveyardTriggerPromptSurvivesUndo(t *testing.T) {
 	if err := g.ResolveTriggerPrompt(replay.ID, owner.ID, false); err != nil {
 		t.Fatalf("ResolveTriggerPrompt (replay, declined): %v", err)
 	}
-	if built != 0 {
-		t.Errorf("Build ran %d times on a declined replay, want 0", built)
+	if ran != 0 {
+		t.Errorf("the effect ran %d times on a declined replay, want 0", ran)
+	}
+	if g.pausedResolutionTail != nil {
+		t.Error("the replayed resolution did not finish")
 	}
 }

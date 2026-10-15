@@ -215,9 +215,9 @@ func TestAuraShardsTriggersOnCreatureETB(t *testing.T) {
 	castCatalogSpell(t, g, "Grizzly Bears", "Creature — Bear", "", nil)
 	passPriorityAroundTable(t, g)
 
-	answerLatestTriggerPrompt(t, g, caster.ID, true)
 	passPriorityAroundTable(t, g)
 	pickCard(t, g, caster.ID, rock)
+	answerLatestTriggerPrompt(t, g, caster.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if g.Battlefield.Contains(rock) {
@@ -265,12 +265,11 @@ func TestAuraShardsTriggersOnYourToken(t *testing.T) {
 	}
 	passPriorityAroundTable(t, g)
 
-	if latestTriggerPrompt(g, caster.ID) == nil {
+	if latestPickTarget(g, caster.ID) == nil {
 		t.Fatal("a token entering under your control must trigger Aura Shards")
 	}
-	answerLatestTriggerPrompt(t, g, caster.ID, true)
-	passPriorityAroundTable(t, g)
 	pickCard(t, g, caster.ID, rock)
+	answerLatestTriggerPrompt(t, g, caster.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if g.Battlefield.Contains(rock) {

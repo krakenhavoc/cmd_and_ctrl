@@ -100,24 +100,30 @@ func TestQueueChoiceForEffectRefusesUnseatedChooser(t *testing.T) {
 // TestDispatchTriggerDropsTriggerPromptForEliminatedController drives
 // the REAL CR 603.5 dispatch path (dispatchTriggerLocked) for a
 // Solemn-Simulacrum-shaped optional trigger whose controller has
-// already left — the exact shape of the original report.
+// already left — the exact shape of the original report. The question
+// is asked as the trigger resolves (#2494), and nobody is left to
+// answer it, so nothing is asked and the effect never runs.
 func TestDispatchTriggerDropsTriggerPromptForEliminatedController(t *testing.T) {
 	g := newActiveGame(t)
 	gone := g.Seats[1]
 	source := Card{InstanceID: uuid.New(), Name: "Solemn Simulacrum", Controller: gone.ID, Owner: gone.ID}
+	ran := false
 	ability := TriggeredAbility{
 		OptionalPrompt: &TriggerOptionalPrompt{Question: "Draw a card?"},
 		Build: func(ev Event, source *Card, lki Characteristic, g *Game) *StackItem {
-			t.Fatalf("Build ran for an eliminated controller's optional trigger")
-			return nil
+			return newTriggeredItemForTest(source, "Solemn — draw", func(*Game, *StackItem) error { ran = true; return nil })
 		},
 	}
 	g.WithWriteLock(func() {
 		gone.Eliminated = true
 		g.dispatchTriggerLocked(Event{Kind: EventLTB, CardID: source.InstanceID}, source, source.Effective(), ability)
 	})
+	settleStack(t, g)
 	if len(g.PendingChoices) != 0 {
 		t.Fatalf("PendingChoices = %d, want 0: %+v", len(g.PendingChoices), g.PendingChoices)
+	}
+	if ran {
+		t.Error("an eliminated controller's optional trigger ran its effect with nobody to say yes")
 	}
 }
 

@@ -15,42 +15,42 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // every creature the controller controls as the ability resolves
 // (b28PutCountersOnEachCreatureYouControl — the Paragon included).
 //
-// "Do this only once each turn" is two checks in AppliesTo: an
-// ability with this label already put on the stack this turn
-// (b11TriggeredThisTurn — the harvester logs EventTrigger only when
-// the item is queued, so a declined prompt does not use up the turn,
-// exactly as declining the printed "you may" does not) and a prompt
-// from the Paragon still open (b28TriggerPromptPendingFrom — two
-// lifelinkers connecting in one combat are two gain events in one
-// mutation, and without the dedup both would ask and both could be
-// accepted).
+// "Do this only once each turn" limits the counters, not the trigger
+// (b28DoneThisTurn): every gain triggers it and asks its "you may" as
+// it resolves (CR 603.5), the first "yes" puts the counters and uses up
+// the turn, and declining does not. Two gains at once are two triggers,
+// so the controller chooses which one to accept. The gate is also read
+// as the ability triggers, so no trigger is made once the turn's
+// counters are down.
 //
-// Sandbox simplification, declared: with several gains in one
-// mutation only the first is offered, where the printed card lets
-// the controller choose which gain's trigger to accept. Weaker
-// (never two placements), never stronger.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "367ac7e2-5056-48f3-a296-87d6cb1f7b54",
 		Name:         "Nykthos Paragon",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When you gain life several times at once, only the first gain offers the counters."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventChangeLife},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b10YouGainedLife(ev, source) &&
-					!b11TriggeredThisTurn(g, source.InstanceID, b28NykthosParagonLabel) &&
-					!b28TriggerPromptPendingFrom(g, source)
+					!b28DoneThisTurn(g, source.InstanceID, b28NykthosParagonDone)
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Nykthos Paragon — put that many +1/+1 counters on each creature you control?"},
 			Key:            b28NykthosParagonLabel,
 			Effect: func(g *game.Game, item *game.StackItem) error {
+				if b28DoneThisTurn(g, item.SourceCardID, b28NykthosParagonDone) {
+					return nil
+				}
+				b28NoteDoneThisTurn(g, item.SourceCardID, b28NykthosParagonDone)
 				return b28PutCountersOnEachCreatureYouControl(g, item, item.Trigger.Event.Amount)
 			},
 		}},
 	})
 }
 
-// b28NykthosParagonLabel is the trigger's stack label — named because
-// the once-per-turn tally matches on it.
+// b28NykthosParagonLabel is the trigger's stack label.
 const b28NykthosParagonLabel = "Nykthos Paragon — that many +1/+1 counters on each creature you control"
+
+// b28NykthosParagonDone is the once-each-turn tally's label: the
+// counters were put this turn (b28DoneThisTurn).
+const b28NykthosParagonDone = "Nykthos Paragon — counters put this turn"

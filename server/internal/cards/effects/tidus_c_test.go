@@ -422,9 +422,9 @@ func TestTidusCYunaGrandSummonerBoostsTheNextCreatureAndRecyclesCounters(t *test
 	}
 
 	killCreature(t, g, me.ID, beast)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	pickCard(t, g, me.ID, second)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if got := countersOn(g, second, game.CounterPlusOne); got != 2 {
 		t.Errorf("the target got %d counters from a two-counter death, want 2", got)

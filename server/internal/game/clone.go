@@ -883,6 +883,8 @@ func cloneStackItem(s *StackItem) *StackItem {
 	out.PromisedCounters = copyPromisedCounters(s.PromisedCounters) // #1852
 	// #1539: a held item's owed "becomes the target" event.
 	out.TargetsAnnouncePending = s.TargetsAnnouncePending
+	// #2494: the CR 603.5 "you may", plain values.
+	out.Optional = cloneOptionalTrigger(s.Optional)
 	// #1223: the triggering event, deep-copied for the same reason
 	// the payload is — an undo that shared the slices inside it
 	// would let the restored game mutate the live one.

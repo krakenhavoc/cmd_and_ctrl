@@ -115,23 +115,26 @@ func TestDoubledOptionalTriggerTargetPromptProjection(t *testing.T) {
 			}
 		}
 	}
+	// CR 603.3d / 603.5 (#2494): an optional targeted trigger picks its
+	// target as it goes on the stack; its "you may" waits for
+	// resolution. So the doubled instance's first prompt is the pick.
 	if doubled == nil {
 		t.Fatal("engine did not produce a doubled optional trigger prompt")
 	}
-	if err := g.ResolveTriggerPrompt(doubled.ID, owner.ID, true); err != nil {
-		t.Fatalf("resolve doubled optional prompt: %v", err)
+	if doubled.Kind != game.PendingChoicePickTarget {
+		t.Fatalf("doubled optional trigger asked %q first, want its pick_target", doubled.Kind)
 	}
 
 	view := ViewOfGameFor(g, owner.ID.String())
 	var target *PendingChoiceView
 	for i := range view.PendingChoices {
-		if view.PendingChoices[i].Kind == string(game.PendingChoicePickTarget) {
+		if view.PendingChoices[i].ID == doubled.ID.String() {
 			target = &view.PendingChoices[i]
 			break
 		}
 	}
 	if target == nil {
-		t.Fatalf("doubled optional trigger did not become a pick_target prompt: %+v", view.PendingChoices)
+		t.Fatalf("doubled optional trigger's pick_target is not projected: %+v", view.PendingChoices)
 	}
 	if target.DoubledBy != doublerID.String() || target.DoubledByName != "Panharmonicon" {
 		t.Fatalf("pick_target attribution = %q / %q", target.DoubledBy, target.DoubledByName)

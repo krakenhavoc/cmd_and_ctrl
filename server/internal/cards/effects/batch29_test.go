@@ -413,7 +413,7 @@ func TestB29ChitterspitterWithNoTokenIsSilent(t *testing.T) {
 	pushTribalCreature(g, me.ID, "Drey Keeper", "Creature — Squirrel", 1, 1)
 	b12ToMyNextUpkeep(t, g)
 	passPriorityAroundTable(t, g)
-	if latestTriggerPrompt(g, me.ID) != nil || latestPickTarget(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 || latestPickTarget(g, me.ID) != nil {
 		t.Error("no token: no prompt at all (CR 603.3d)")
 	}
 }
@@ -654,7 +654,7 @@ func TestB29LightPawsFetchesASmallerAuraOntoItself(t *testing.T) {
 		t.Errorf("Light-Paws wearing Rancor: power %d, want 4", got)
 	}
 	// The fetched Aura was not cast, so it does not chain.
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Error("a fetched Aura is not \"if you cast it\"")
 	}
 }
@@ -725,7 +725,7 @@ func TestB29ZiatoraDeclinedOrAloneDoesNothing(t *testing.T) {
 	b29Push(g, me.ID, "Ziatora, the Incinerator", "Legendary Creature — Demon Dragon", b29ZiatoraOracle, "{3}{B}{R}{G}", 6, 6, "B", "R", "G")
 	advanceToEndStepOf(t, g, 0)
 	passPriorityAroundTable(t, g)
-	if latestTriggerPrompt(g, me.ID) != nil || latestPickTarget(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 || latestPickTarget(g, me.ID) != nil {
 		t.Error("no other creature: no prompt at all (CR 603.3d)")
 	}
 	if got := b29CountNamed(g, me.ID, "Treasure"); got != 0 {

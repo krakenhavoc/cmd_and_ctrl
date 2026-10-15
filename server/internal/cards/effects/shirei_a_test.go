@@ -260,7 +260,6 @@ func TestExtractorDemonMillsWhenAnotherCreatureLeaves(t *testing.T) {
 	castCatalogSpell(t, g, "Unsummon", "Instant", "837182db-1bf3-4a2c-bd01-1af9d9873561",
 		[]game.TargetRef{{Kind: game.TargetCard, ID: bear}})
 	passPriorityAroundTable(t, g)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pick := latestPickTarget(g, me.ID)
 	if pick == nil {
 		t.Fatal("no target prompt")
@@ -268,6 +267,7 @@ func TestExtractorDemonMillsWhenAnotherCreatureLeaves(t *testing.T) {
 	if err := g.ResolvePickTarget(pick.ID, me.ID, game.TargetRef{Kind: game.TargetPlayer, ID: opp.ID}); err != nil {
 		t.Fatalf("pick: %v", err)
 	}
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if got := lib - opp.Library.Size(); got != 2 {
 		t.Errorf("milled %d, want 2", got)

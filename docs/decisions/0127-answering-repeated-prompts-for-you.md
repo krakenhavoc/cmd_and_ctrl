@@ -251,7 +251,7 @@ After PR 3: run the nightly E2E on `develop`, then close #1961 with evidence (th
 
 ## Out of scope
 
-- **Asking CR 603.5's question at resolution.** The engine asks an optional trigger's question before the trigger goes on the stack. That is a separate engine change, filed as [#2494](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2494) (owner decision 10). The keys here name the ability row, not the moment of asking, so a rule set now still works after that change.
+- **Asking CR 603.5's question at resolution.** The engine asks an optional trigger's question before the trigger goes on the stack. That is a separate engine change, filed as [#2494](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2494) (owner decision 10). The keys here name the ability row, not the moment of asking, so a rule set now still works after that change. Done in [ADR 0197](0197-optional-triggers-ask-as-they-resolve.md) (2026-10-15): the question is asked as the trigger resolves, under the same keys.
 - **Bots.** They keep deciding for themselves.
 - **A rule per table** (owner decision 7).
 - **Choosing which sources pay.** "Always pay" uses the auto-tapper's choice.

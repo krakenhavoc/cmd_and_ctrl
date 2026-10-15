@@ -129,7 +129,6 @@ func TestCloudDeckArmoryAutomatonAttachesAnyNumberOfEquipmentWithoutChangingCont
 	theirs := seedEquipment(g, opp.ID, "Their Blade", "")
 
 	auto := castAndResolveCreature(t, g, "Armory Automaton", "Artifact Creature — Construct", armoryAutomatonOracle)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pick := latestPickTarget(g, me.ID)
 	if pick == nil {
 		t.Fatal("no pick_target prompt")
@@ -139,6 +138,7 @@ func TestCloudDeckArmoryAutomatonAttachesAnyNumberOfEquipmentWithoutChangingCont
 	}); err != nil {
 		t.Fatalf("ResolvePickTargets: %v", err)
 	}
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	for _, e := range []uuid.UUID{mine, theirs} {

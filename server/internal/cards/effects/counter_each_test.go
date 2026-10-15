@@ -62,15 +62,9 @@ func putCounters(t *testing.T, g *game.Game, id uuid.UUID, kind string, n int) {
 	}
 }
 
-// triggerPrompts is how many "you may" prompts are waiting for `who`.
+// triggerPrompts is how many "you may"s `who` owes (owedMays).
 func triggerPrompts(g *game.Game, who uuid.UUID) int {
-	n := 0
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceTriggerPrompt && c.Chooser == who {
-			n++
-		}
-	}
-	return n
+	return owedMays(g, who)
 }
 
 // answerAllPrompts says yes to every waiting prompt, and returns how
@@ -134,7 +128,6 @@ func TestFathomMageTriggersStackAsSeparateObjects(t *testing.T) {
 	ceSeedLibrary(g, me, 10)
 	mage := pushFathomMage(g, me)
 	putCounters(t, g, mage, game.CounterPlusOne, 2)
-	answerAllPrompts(t, g, me)
 	items := len(g.PendingTriggers)
 	for _, it := range g.StackMeta {
 		if it != nil && it.Kind == game.StackItemTriggered && it.SourceCardID == mage {

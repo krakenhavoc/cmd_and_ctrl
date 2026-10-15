@@ -41,7 +41,7 @@ func TestDeathbringerThoctarGrowsOnAnotherCreatureDyingIfYouSayYes(t *testing.T)
 
 		killCreature(t, g, opp.ID, bear)
 		passPriorityAroundTable(t, g)
-		if latestTriggerPrompt(g, me.ID) == nil {
+		if owedMays(g, me.ID) == 0 {
 			t.Fatal("another creature dying must offer Thoctar's counter")
 		}
 		answerLatestTriggerPrompt(t, g, me.ID, yes)
@@ -65,7 +65,7 @@ func TestDeathbringerThoctarDoesNotTriggerOnItself(t *testing.T) {
 
 	killCreature(t, g, me.ID, thoctar)
 	passPriorityAroundTable(t, g)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Error("Thoctar's own death offered a counter; the trigger says another creature")
 	}
 }

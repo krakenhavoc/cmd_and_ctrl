@@ -102,8 +102,8 @@ func TestGoblinGrapplerProvokes(t *testing.T) {
 	g.WithWriteLock(func() { _ = g.TapTargetForEffect(victim) })
 
 	attackAndTrigger(t, g, grappler, other)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, victim)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if c, _ := battlefieldCard(g, victim); c.Tapped {
 		t.Fatal("Provoke did not untap the target")
@@ -138,8 +138,8 @@ func TestProvokeAgainstACreatureThatCantBlockItAsksNothing(t *testing.T) {
 	victim := reqCreature(g, opp.ID, "Their Bear", "", 2, 2)
 
 	attackAndTrigger(t, g, grappler, other)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, victim)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	onToBlockers(t, g)
 	if owed := mustBlockNow(g); owed != nil {
@@ -181,8 +181,8 @@ func TestGrapplingHookMakesTargetBlockTheEquippedCreature(t *testing.T) {
 	}
 
 	attackAndTrigger(t, g, bear, other)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, victim)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	recs := blocksAttackerRecords(g)
 	if len(recs) != 1 || recs[0].Objects[0].ID != bear {
@@ -222,8 +222,8 @@ func TestTurntimberBasiliskLandfallMakesTargetBlockIt(t *testing.T) {
 	other := reqCreature(g, me.ID, "Other Bear", "", 2, 2, "haste")
 	victim := reqCreature(g, opp.ID, "Their Bear", "", 2, 2)
 	playLandFromHand(t, g, "Forest", "")
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, victim)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	recs := blocksAttackerRecords(g)
 	if len(recs) != 1 || recs[0].Objects[0].ID != basilisk {

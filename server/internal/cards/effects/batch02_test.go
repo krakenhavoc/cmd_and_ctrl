@@ -537,8 +537,8 @@ func TestLoranDestroysAnArtifactOnEntry(t *testing.T) {
 
 	castCatalogSpell(t, g, "Loran of the Third Path", "Legendary Creature — Human Artificer", b02LoranOfTheThirdPathOracle, nil)
 	passPriorityAroundTable(t, g)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, rock)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if g.Battlefield.Contains(rock) {

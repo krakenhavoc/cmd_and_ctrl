@@ -495,7 +495,6 @@ func TestB32TrygonPredatorOffersOnlyTheHitPlayersArtifactsAndEnchantments(t *tes
 	if victim.Life != 40-2 {
 		t.Fatalf("the Predator connected for 2: life %d", victim.Life)
 	}
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	p := latestPickTarget(g, me.ID)
 	if !hasID(p.PickTargetCards, rock) || !hasID(p.PickTargetCards, shrine) {
@@ -505,6 +504,7 @@ func TestB32TrygonPredatorOffersOnlyTheHitPlayersArtifactsAndEnchantments(t *tes
 		t.Error("a creature, another player's artifact and your own are not offered")
 	}
 	pickCard(t, g, me.ID, shrine)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(shrine) {
 		t.Error("the chosen enchantment is destroyed")
@@ -585,7 +585,7 @@ func TestB32QuestForRenewalCountsTapsAndUntapsDuringOtherPlayersUntapSteps(t *te
 	if err := g.TapCard(theirs, true); err != nil {
 		t.Fatalf("TapCard: %v", err)
 	}
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Fatal("an opponent's creature tapping is not \"a creature you control\"")
 	}
 	if got := counterCount(g, quest, "quest"); got != 1 {
@@ -605,7 +605,7 @@ func TestB32QuestForRenewalCountsTapsAndUntapsDuringOtherPlayersUntapSteps(t *te
 	// exist only after this.
 	lockInAttacks(t, g)
 	prompts := 0
-	for latestTriggerPrompt(g, me.ID) != nil {
+	for owedMays(g, me.ID) > 0 {
 		prompts++
 		answerLatestTriggerPrompt(t, g, me.ID, true)
 		passPriorityAroundTable(t, g)

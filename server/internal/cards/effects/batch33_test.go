@@ -393,7 +393,7 @@ func TestB33BlastingStationPingsForASacrificeAndMayUntapWhenACreatureEnters(t *t
 	}
 	castCatalogSpell(t, g, "Rock", "Artifact", "", nil)
 	passPriorityAroundTable(t, g)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Error("an artifact entering is not a creature")
 	}
 	_ = theirs
@@ -779,9 +779,9 @@ func TestB33OverseerOfTheDamnedMayDestroyOnEntryAndZombifiesOpposingDeaths(t *te
 	theirs := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
 	overseer := castCatalogSpell(t, g, "Overseer of the Damned", "Creature — Demon", b33OverseerOfTheDamnedOracle, nil)
 	passPriorityAroundTable(t, g)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	pickCard(t, g, me.ID, theirs)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(theirs) {
 		t.Fatal("the chosen creature is destroyed")

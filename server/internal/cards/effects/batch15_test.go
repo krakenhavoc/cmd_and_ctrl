@@ -431,7 +431,7 @@ func TestB15SoulOfTheHarvestOffersADrawPerNontokenCreature(t *testing.T) {
 	hand := me.Hand.Size()
 	castCatalogSpell(t, g, "Bear", "Creature — Bear", "", nil)
 	passPriorityAroundTable(t, g)
-	if latestTriggerPrompt(g, me.ID) == nil {
+	if owedMays(g, me.ID) == 0 {
 		t.Fatal("a nontoken creature entering should ask about the draw")
 	}
 	answerLatestTriggerPrompt(t, g, me.ID, true)
@@ -441,7 +441,7 @@ func TestB15SoulOfTheHarvestOffersADrawPerNontokenCreature(t *testing.T) {
 	}
 	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, RedGoblinToken(), 1) })
 	passPriorityAroundTable(t, g)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Error("a token must not trigger it")
 	}
 }
@@ -787,12 +787,12 @@ func TestB15OversoldCemeteryReturnsACreatureCardWithFourInTheYard(t *testing.T) 
 	pushGraveyardCardForTest(owner, "Dead Four")
 	advanceToUpkeepOf(t, g, 2)
 	advanceToUpkeepOf(t, g, 1)
-	answerLatestTriggerPrompt(t, g, owner.ID, true)
 	b04WaitForPick(t, g, owner.ID)
 	if hasID(latestPickTarget(g, owner.ID).PickTargetCards, relic) {
 		t.Error("an artifact card was offered for 'target creature card'")
 	}
 	pickCard(t, g, owner.ID, dead)
+	answerLatestTriggerPrompt(t, g, owner.ID, true)
 	passPriorityAroundTable(t, g)
 	if !owner.Hand.Contains(dead) {
 		t.Error("the creature card did not return to hand")
@@ -808,11 +808,11 @@ func TestB15OversoldCemeteryChecksTheCountAgainOnResolution(t *testing.T) {
 	pushGraveyardCardForTest(owner, "Dead Three")
 	pushGraveyardCardForTest(owner, "Dead Four")
 	advanceToUpkeepOf(t, g, 1)
-	answerLatestTriggerPrompt(t, g, owner.ID, true)
 	b04WaitForPick(t, g, owner.ID)
 	pickCard(t, g, owner.ID, dead)
 	// In response, one of the other creature cards leaves the yard.
 	g.WithWriteLock(func() { _ = g.ExileCardForEffect(extra) })
+	answerLatestTriggerPrompt(t, g, owner.ID, true)
 	passPriorityAroundTable(t, g)
 	if owner.Hand.Contains(dead) || !owner.Graveyard.Contains(dead) {
 		t.Error("with three creature cards left the intervening-if fails and nothing returns")

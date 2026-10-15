@@ -61,6 +61,11 @@ func settleProwess(t *testing.T, g *game.Game) {
 				if triggerOrderPrompt(g) != nil {
 					continue
 				}
+				// An optional trigger asking its "you may" as it
+				// resolves (CR 603.5) is the caller's to answer.
+				if latestChoiceOfKind(g, game.PendingChoiceTriggerPrompt) != nil {
+					return
+				}
 				t.Fatalf("a prompt other than trigger ordering is open: %+v", g.PendingChoices)
 			}
 			t.Fatalf("PassPriority: %v", err)

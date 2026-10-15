@@ -11,9 +11,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // "Do this only once each turn" limits the DISCOVER, not the trigger:
 // declining the first Dinosaur's offer leaves the turn's discover for
-// the next one. So the gate counts this ability's resolutions this turn
-// per object (#936) — an accepted "you may" is the only way it
-// resolves — and is asked both before the prompt and as it resolves.
+// the next one. The "you may" is asked as the trigger resolves (CR
+// 603.5), so the gate is a done tally of its own (b28DoneThisTurn), per
+// object (#936), noted on a "yes" and read both as the ability triggers
+// and as it resolves.
 //
 // X is the entering creature's toughness as the trigger resolves, from
 // last-known information if it has already left (CR 608.2h,
@@ -26,11 +27,12 @@ func init() {
 		Completeness: CompletenessFull,
 		Discovers:    true,
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventETB, AllOf(pantlazaDinosaurEntered, pantlazaNotYetThisTurn(label)), label,
+			Optional(On(game.EventETB, AllOf(pantlazaDinosaurEntered, pantlazaNotYetThisTurn), label,
 				func(g *game.Game, item *game.StackItem) error {
-					if g.ResolvedThisTurn(item.SourceCardID, label) > 1 {
+					if b28DoneThisTurn(g, item.SourceCardID, pantlazaDone) {
 						return nil
 					}
+					b28NoteDoneThisTurn(g, item.SourceCardID, pantlazaDone)
 					ctx := NewContext(g, item)
 					info, ok := ctx.TriggeringPermanent()
 					if !ok {
@@ -55,10 +57,12 @@ func pantlazaDinosaurEntered(ev game.Event, source *game.Card, _ game.Characteri
 	return c.InstanceID == source.InstanceID || c.HasSubtype("Dinosaur")
 }
 
-// pantlazaNotYetThisTurn keeps the prompt from being asked once the
+// pantlazaDone is the once-each-turn tally's label: the turn's
+// discover has happened.
+const pantlazaDone = "Pantlaza, Sun-Favored — discovered this turn"
+
+// pantlazaNotYetThisTurn keeps the trigger from being made once the
 // turn's discover has happened.
-func pantlazaNotYetThisTurn(label string) When {
-	return func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-		return source != nil && g.ResolvedThisTurn(source.InstanceID, label) == 0
-	}
+func pantlazaNotYetThisTurn(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return source != nil && !b28DoneThisTurn(g, source.InstanceID, pantlazaDone)
 }

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { CARDS } from "./s19-deck-fixture";
 import {
   adminMoveByName,
@@ -20,9 +20,6 @@ import {
 // The overlay's name, "Opponent's board, expanded", is a label contract
 // (ADR 0120 §3): it must not contain "Opponent board", which other specs
 // match as a substring to find the table's panel.
-
-const dockOf = (page: Page) =>
-  page.getByRole("region", { name: "actions", exact: true });
 
 test.describe("expanded board (#2208)", () => {
   test.describe.configure({ mode: "serial" });
@@ -105,8 +102,10 @@ test.describe("expanded board (#2208)", () => {
     await page.waitForTimeout(800);
     await expect(expanded).toBeVisible();
 
-    // A target picked in the overlay. Reclamation Sage enters, the caster
-    // says Yes, and the board enters targeting mode.
+    // A target picked in the overlay. Reclamation Sage enters and the
+    // board enters targeting mode: the trigger's target is chosen as it
+    // goes on the stack, and its "you may" waits for it to resolve
+    // (CR 603.5, ADR 0197).
     await adminMoveByName(
       admin,
       caster.playerID,
@@ -114,11 +113,6 @@ test.describe("expanded board (#2208)", () => {
       "library",
       "battlefield",
     );
-    const sage = dockOf(page).getByRole("dialog", {
-      name: /Reclamation Sage —/i,
-    });
-    await expect(sage).toBeVisible({ timeout: 20_000 });
-    await sage.getByRole("button", { name: /^Yes$/ }).click();
     await admin.waitFor(
       (v) =>
         (v.pending_choices ?? []).some(

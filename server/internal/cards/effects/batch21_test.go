@@ -664,13 +664,13 @@ func TestB21ManglehornMayDestroyAnArtifactAndTapsTheirs(t *testing.T) {
 	theirRock := b12Permanent(g, opp.ID, "Their Rock", "Artifact")
 	bear := b16Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2, "G")
 	castAndResolveCreature(t, g, "Manglehorn", "Creature — Beast", b21ManglehornOracle)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	p := latestPickTarget(g, me.ID)
 	if !hasID(p.PickTargetCards, myRock) || !hasID(p.PickTargetCards, theirRock) || hasID(p.PickTargetCards, bear) {
 		t.Error("target ARTIFACT — anyone's, and not a creature")
 	}
 	pickCard(t, g, me.ID, theirRock)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(theirRock) || !g.Battlefield.Contains(myRock) {
 		t.Error("the chosen artifact is destroyed")
@@ -722,19 +722,19 @@ func TestB21EnchantressesDrawOnEnchantmentSpells(t *testing.T) {
 	b21Push(g, me.ID, "Verduran Enchantress", "Creature — Human Druid", b21VerduranEnchantressOracle, 0, 2, "G")
 	hand := me.Hand.Size()
 	castCatalogSpell(t, g, "Shrine", "Enchantment", "", nil)
-	// The Satyr's draw is mandatory; the Enchantress asks.
-	answerLatestTriggerPrompt(t, g, me.ID, true)
-	// #1529: accepted, the Enchantress's draw joins the Satyr's in one
-	// CR 603.3b batch.
+	// The Satyr's draw is mandatory; the Enchantress asks as it
+	// resolves (CR 603.5). Both go on the stack in one CR 603.3b batch.
 	if !answerTriggerOrderLastQueuedFirst(t, g) {
 		t.Error("the Satyr's and the Enchantress's draws were not offered for ordering")
 	}
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != hand+2 {
 		t.Errorf("the seeded card was cast and two were drawn: hand %d, want %d", me.Hand.Size(), hand+2)
 	}
 	hand = me.Hand.Size()
 	castCatalogSpell(t, g, "Kami", "Enchantment Creature — Spirit", "", nil)
+	answerTriggerOrderLastQueuedFirst(t, g)
 	answerLatestTriggerPrompt(t, g, me.ID, false)
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != hand+1 {

@@ -1481,11 +1481,11 @@ func TestMysticSanctuaryEntersUntappedAndRebuysAnInstant(t *testing.T) {
 	if !ok || card.Tapped {
 		t.Fatal("Mystic Sanctuary must enter untapped with three other Islands")
 	}
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	if prompt := latestPickTarget(g, me.ID); prompt == nil {
 		t.Fatal("no pick_target prompt after the \"you may\"")
 	}
 	pickCard(t, g, me.ID, bolt)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if me.Graveyard.Contains(bolt) {
 		t.Error("the instant is still in the graveyard")

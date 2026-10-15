@@ -1222,14 +1222,19 @@ func TestSolemnSimulacrumETBFetchesBasic(t *testing.T) {
 		"00c0543c-2a1f-4425-8283-4062d74a1637",
 		nil,
 	)
-	passPriorityAroundTable(t, g)
-	answerLatestTriggerPrompt(t, g, caster.ID, true)
+	for i := 0; i < 8 && g.Stack.Size() > 0; i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	g.RunStateChecksForTest()
 	if triggerOnStack(g, solemnID) == nil {
-		t.Fatalf("Solemn ETB trigger not on the stack after accepting the prompt")
+		t.Fatalf("Solemn ETB trigger not on the stack after the creature resolved")
 	}
 	if g.Battlefield.Contains(forestID) {
 		t.Fatalf("Forest fetched before the trigger resolved")
 	}
+	answerLatestTriggerPrompt(t, g, caster.ID, true)
 	passPriorityAroundTable(t, g)
 	takeSearchPrompts(t, g)
 
@@ -1238,28 +1243,98 @@ func TestSolemnSimulacrumETBFetchesBasic(t *testing.T) {
 	}
 }
 
-// answerLatestTriggerPrompt finds the most-recently-queued
-// PendingChoiceTriggerPrompt addressed to chooserID and submits the
-// given apply answer. Fails the test loudly when no such prompt is
-// pending — a missing prompt usually means the harvester didn't
-// fire (oracle ID typo, AppliesTo predicate wrong, or the trigger
-// declared without an OptionalPrompt). Added in S19 sub-PR 3.
+// answerLatestTriggerPrompt answers the most-recently-queued
+// PendingChoiceTriggerPrompt addressed to chooserID with `apply`. An
+// optional trigger asks its "you may" as it resolves (CR 603.5, #2494),
+// so when no such prompt is open yet this passes priority until the
+// trigger that asks it resolves (awaitTriggerPrompt). Fails the test
+// loudly when none comes — a missing prompt usually means the harvester
+// didn't fire (oracle ID typo, AppliesTo predicate wrong, or the
+// trigger declared without an OptionalPrompt). Added in S19 sub-PR 3.
+//
+// A targeted or modal optional trigger chooses its targets and modes as
+// it goes on the stack (CR 603.3c/d), before the question. A test that
+// says "yes" picks them first; one that says "no" may leave them to
+// this helper, which answers them with the first legal choice, since a
+// declined trigger does nothing whatever it pointed at.
 func answerLatestTriggerPrompt(t *testing.T, g *game.Game, chooserID uuid.UUID, apply bool) {
 	t.Helper()
-	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
-		c := g.PendingChoices[i]
-		if c == nil || c.Kind != game.PendingChoiceTriggerPrompt {
+	c := awaitTriggerPromptAnswering(t, g, chooserID, !apply)
+	if err := g.ResolveTriggerPrompt(c.ID, chooserID, apply); err != nil {
+		t.Fatalf("ResolveTriggerPrompt: %v", err)
+	}
+}
+
+// awaitTriggerPrompt returns the latest trigger_prompt addressed to
+// chooserID, passing priority until the optional trigger that asks it
+// resolves when none is open yet (CR 603.5, #2494). Another open
+// prompt stops the walk: the test has to answer it first.
+func awaitTriggerPrompt(t *testing.T, g *game.Game, chooserID uuid.UUID) *game.PendingChoice {
+	t.Helper()
+	return awaitTriggerPromptAnswering(t, g, chooserID, false)
+}
+
+// awaitTriggerPromptAnswering is awaitTriggerPrompt that, with
+// pickAny, answers the chooser's open target or mode pick with the
+// first legal choice on the way.
+func awaitTriggerPromptAnswering(t *testing.T, g *game.Game, chooserID uuid.UUID, pickAny bool) *game.PendingChoice {
+	t.Helper()
+	for i := 0; i < 32; i++ {
+		if c := latestTriggerPrompt(g, chooserID); c != nil {
+			return c
+		}
+		if p := latestPickTarget(g, chooserID); p != nil {
+			if !pickAny {
+				t.Fatalf("a target pick is open for %s: a trigger's targets are chosen as it goes on the stack (CR 603.3d), so pick them before answering its \"you may\" (CR 603.5)", chooserID)
+			}
+			var refs []game.TargetRef
+			for _, id := range p.PickTargetCards {
+				if len(refs) < p.PickTargetMin {
+					refs = append(refs, game.TargetRef{Kind: game.TargetCard, ID: id})
+				}
+			}
+			for _, id := range p.PickTargetPlayers {
+				if len(refs) < p.PickTargetMin {
+					refs = append(refs, game.TargetRef{Kind: game.TargetPlayer, ID: id})
+				}
+			}
+			if err := g.ResolvePickTargets(p.ID, chooserID, refs); err != nil {
+				t.Fatalf("ResolvePickTargets (any, to decline): %v", err)
+			}
 			continue
 		}
-		if c.Chooser != chooserID {
+		if m := latestChoiceOfKind(g, game.PendingChoiceModePick); m != nil && m.Chooser == chooserID && pickAny {
+			n := m.ModeMin
+			if n < 1 {
+				n = 1
+			}
+			if err := g.ResolveModePick(m.ID, chooserID, append([]int(nil), m.ModeOptionIndex[:n]...)); err != nil {
+				t.Fatalf("ResolveModePick (any, to decline): %v", err)
+			}
 			continue
 		}
-		if err := g.ResolveTriggerPrompt(c.ID, chooserID, apply); err != nil {
-			t.Fatalf("ResolveTriggerPrompt: %v", err)
+		if stackFullyEmpty(g) {
+			break
 		}
-		return
+		finishBlockDeclarations(t, g)
+		if len(g.PendingTriggers) > 0 {
+			// A trigger harvested under the test's own write lock waits
+			// for the boundary a table action would have run; run it, so
+			// the trigger goes on the stack in this step (CR 603.3).
+			g.RunStateChecksForTest()
+		}
+		if c := latestTriggerPrompt(g, chooserID); c != nil {
+			return c
+		}
+		if err := g.PassPriority(); err != nil {
+			if errors.Is(err, game.ErrChoicePending) {
+				break
+			}
+			t.Fatalf("PassPriority iter %d: %v", i, err)
+		}
 	}
 	t.Fatalf("no PendingChoiceTriggerPrompt addressed to %s", chooserID)
+	return nil
 }
 
 // --- S19 sub-PR 3: ETB-trigger cards ---------------------------
@@ -1311,10 +1386,40 @@ func TestMulldrifterETBDrawsTwo(t *testing.T) {
 	}
 }
 
+// owedMays counts the CR 603.5 "you may"s owed by chooser: open
+// trigger_prompts, plus optional triggers queued or on the stack that
+// will ask chooser as they resolve (#2494). A test that counted
+// prompts right after the event counts the same thing through this.
+func owedMays(g *game.Game, chooser uuid.UUID) int {
+	n := 0
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceTriggerPrompt && c.Chooser == chooser {
+			n++
+		}
+	}
+	items := append([]*game.StackItem(nil), g.PendingTriggers...)
+	for _, it := range g.StackMeta {
+		items = append(items, it)
+	}
+	for _, it := range items {
+		if it == nil || it.Optional == nil {
+			continue
+		}
+		who := it.Optional.Chooser
+		if who == uuid.Nil {
+			who = it.Controller
+		}
+		if who == chooser {
+			n++
+		}
+	}
+	return n
+}
+
 // latestTriggerPrompt returns the most-recently-queued
-// PendingChoiceTriggerPrompt addressed to chooserID, or nil. Used by
-// the no-legal-target regression tests below to inspect the
-// NoLegalTarget flag the harvester stamps at queue time.
+// PendingChoiceTriggerPrompt addressed to chooserID, or nil. It does not
+// pass priority: an optional trigger's prompt is open only while the
+// trigger resolves (awaitTriggerPrompt walks there).
 func latestTriggerPrompt(g *game.Game, chooserID uuid.UUID) *game.PendingChoice {
 	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
 		c := g.PendingChoices[i]
@@ -1726,10 +1831,10 @@ func TestSolemnSimulacrumDiesOptionalDraw(t *testing.T) {
 		"d57a8f0b-7989-4db5-8756-6f2690097252", nil)
 	passPriorityAroundTable(t, g)
 
-	answerLatestTriggerPrompt(t, g, caster.ID, true)
 	if got := caster.Hand.Size() - handBefore; got != 0 {
 		t.Fatalf("Solemn dies-draw fired before the trigger resolved: hand delta %d", got)
 	}
+	answerLatestTriggerPrompt(t, g, caster.ID, true)
 	passPriorityAroundTable(t, g)
 	if got := caster.Hand.Size() - handBefore; got != 1 {
 		t.Errorf("Solemn dies-draw on Yes: hand delta %d, want 1", got)
