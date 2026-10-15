@@ -803,7 +803,10 @@ export interface LegalMoveView {
   // mana ability, that can still answer something on the stack: a
   // sacrifice outlet, regeneration, protection or indestructible,
   // phasing, a blink, damage prevention, a pump. Smart autopass stops
-  // for it as for a targeted ability. Absent on older servers.
+  // for it as for a targeted ability. Absent on older servers. #3555:
+  // protect, survive, pump, prevent and sac_outlet set it only while an
+  // opponent's stack item threatens the viewer; otherwise they set
+  // combat_interacts (the server applies the gate).
   interacts?: boolean;
   // #2871: true on an activation with no target that changes a fight
   // without answering a spell: crew, a manland, a granted flying or

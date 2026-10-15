@@ -81,7 +81,9 @@ func TestHasTargetsIsSetOnlyOnMovesThatChooseATarget(t *testing.T) {
 // #2853, owner answer 2: an untargeted ability that can answer
 // something on the stack sets interacts. A sacrifice outlet (Viscera
 // Seer), a regeneration shield (Undercity Troll) and a pump (Evernight
-// Shade) do; Mind Stone's draw and Evolving Wilds' search do not.
+// Shade) do, against removal aimed at the seat's creature (#3555); Mind
+// Stone's draw and Evolving Wilds' search do not. dispatchAll runs before
+// the removal, which is a bare stack item with no effect to resolve.
 const (
 	oracleViscerSeerHT     = "f82a4e85-526d-4456-b700-7760043a31be"
 	oracleUndercityTrollHT = "b7851b17-faa2-4767-9716-86997b882690"
@@ -116,9 +118,14 @@ func TestInteractsIsSetOnUntargetedAnswersOnly(t *testing.T) {
 	wilds := battlefieldCard(g, seat, game.Card{
 		Name: "Evolving Wilds", TypeLine: "Land", OracleID: oracleEvolvingWildsHT,
 	})
+	// #3555: a survive, pump or sac_outlet answer interacts only while an
+	// opponent's item threatens the seat, so removal aims at a creature
+	// of theirs (threat_gate_test.go covers the gate itself).
+	bears := battlefieldCard(g, seat, creature("Grizzly Bears", "{1}{G}", 2, 2))
+	dispatchAll(t, g, seat.ID, legal.EnumerateFor(g, seat.ID))
+	targetedBy(g, opponentOf(g, seat), bears)
 
 	moves := legal.EnumerateFor(g, seat.ID)
-	dispatchAll(t, g, seat.ID, moves)
 
 	check := func(name string, source uuid.UUID, want bool) {
 		t.Helper()

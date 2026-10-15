@@ -959,7 +959,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								}
 								// ADR 0142: the row's declared answers, by tier
 								// (an undeclared row interacts).
-								interacts, combat := untargetedFlags(g, source, zone, ab, targets)
+								interacts, combat := untargetedFlags(g, e.seat, source, zone, ab, targets)
 								e.add(Move{
 									Type:   TypeActivateAbility,
 									Player: e.seat,
@@ -2456,7 +2456,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 							// #2853: a sacrifice outlet that makes mana
 							// still answers removal (ADR 0142: declared,
 							// or read from the cost).
-							Interacts: manaMoveInteracts(g, source, zone, ab),
+							Interacts: manaMoveInteracts(g, e.seat, source, zone, ab),
 							Params: mustJSON(manaParams{
 								CardID:            source.InstanceID.String(),
 								AbilityIndex:      idx,
