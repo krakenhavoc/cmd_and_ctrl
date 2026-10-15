@@ -23,6 +23,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		OptionalCosts:   []game.AdditionalCost{Kicker("{U}")},
+		// Kicked, it bounces every other creature: a Partial sweep (it spares
+		// itself, and only when kicked), the smallest honest declaration the
+		// Purpose model has for an optional-cost wipe (ADR 0126 §4).
+		Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepBounce, Partial: true}},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, AllOf(Self, func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return game.CardKickedTimes(*source) > 0
