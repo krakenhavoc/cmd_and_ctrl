@@ -698,7 +698,7 @@ func TestB31FlagstonesOfTrokairBouncedOrDeclinedSearchesNothing(t *testing.T) {
 	pushLibraryCardForTest(me, game.Card{Name: "Plains", TypeLine: "Basic Land — Plains"})
 	g.WithWriteLock(func() { _ = g.BounceToHandForEffect(flag) })
 	passPriorityAroundTable(t, g)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Fatal("a bounce is not \"put into a graveyard from the battlefield\"")
 	}
 	flag2 := b31Push(g, me.ID, "Flagstones of Trokair", "Legendary Land", b31FlagstonesOfTrokairOracle, "", 0, 0)

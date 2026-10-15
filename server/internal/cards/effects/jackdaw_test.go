@@ -70,16 +70,17 @@ func TestJackdawIfYouDoIsSameResolutionNotAReflexiveTrigger(t *testing.T) {
 	fillHandTo(t, g, me, 4)
 
 	dealCombatDamageToPlayer(g, jackdaw, opp.ID, 3)
-	passPriorityAroundTable(t, g)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
+	g.RunStateChecksForTest()
 
 	var parentID uuid.UUID
 	for id := range g.StackMeta {
 		parentID = id
 	}
 	if parentID == uuid.Nil {
-		t.Fatal("no stack item after answering yes")
+		t.Fatal("no stack item for the trigger")
 	}
+	// Its "you may" is asked as it resolves (CR 603.5).
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 
 	for i := 0; i < 32 && !stackFullyEmpty(g); i++ {
 		if n := len(g.StackMeta); n > 1 {

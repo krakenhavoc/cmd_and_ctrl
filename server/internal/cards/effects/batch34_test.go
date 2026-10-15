@@ -779,7 +779,7 @@ func TestB34KioraLootsOnEntryAndMakesTheScionAtThreshold(t *testing.T) {
 	advanceToMainOf(t, g, 1)
 	advanceToMainOf(t, g, 0)
 	declareAttack(t, g, opp.ID, kiora)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Fatal("six cards is not threshold")
 	}
 	passPriorityAroundTable(t, g)
@@ -830,7 +830,7 @@ func TestB34CrosswayTroublemakersAttackingVampiresAndTheLifeDraw(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	// #796: the question is asked as the ability RESOLVES, not as the
 	// trigger goes on the stack, so there is no CR 603.5 prompt.
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Error("the pay-2-life decision is made at resolution, not on announce")
 	}
 	answerMayChoice(t, g, me.ID, true)
@@ -917,7 +917,7 @@ func TestB34ElanorMakesAFoodAndRampsAfterEatingOne(t *testing.T) {
 	}
 	// No Food eaten: the end step asks nothing.
 	advanceToEndStepOf(t, g, 0)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Fatal("no Food sacrificed this turn, no prompt")
 	}
 	passPriorityAroundTable(t, g)

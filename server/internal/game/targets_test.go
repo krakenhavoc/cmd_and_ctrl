@@ -378,7 +378,10 @@ func TestTargetedTriggerWithNoLegalTargetIsRemoved(t *testing.T) {
 	}
 }
 
-func TestOptionalTargetedTriggerYesThenPick(t *testing.T) {
+// TestOptionalTargetedTriggerPicksThenAsksAtResolution: CR 603.3d
+// picks the target as the ability goes on the stack; the CR 603.5 "you
+// may" waits for it to resolve (#2494).
+func TestOptionalTargetedTriggerPicksThenAsksAtResolution(t *testing.T) {
 	g := newActiveGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	const oracle = "test-targeted-etb-optional"
@@ -389,28 +392,57 @@ func TestOptionalTargetedTriggerYesThenPick(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.EmitEvent(Event{Kind: EventETB, CardID: srcID, Actor: me.ID})
 	})
-	// Yes/no first.
-	var yn *PendingChoice
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == PendingChoiceTriggerPrompt {
-			yn = c
-		}
-	}
-	if yn == nil || findPickTarget(g, me.ID) != nil {
-		t.Fatalf("optional targeted trigger must ask yes/no before the pick")
-	}
-	if err := g.ResolveTriggerPrompt(yn.ID, me.ID, true); err != nil {
-		t.Fatal(err)
-	}
 	prompt := findPickTarget(g, me.ID)
-	if prompt == nil {
-		t.Fatalf("no pick_target prompt after yes")
+	if prompt == nil || pendingChoiceOfKind(g, PendingChoiceTriggerPrompt) != nil {
+		t.Fatalf("an optional targeted trigger picks its target first and asks nothing yet")
 	}
 	if err := g.ResolvePickTarget(prompt.ID, me.ID, TargetRef{Kind: TargetCard, ID: rock}); err != nil {
 		t.Fatal(err)
 	}
-	if findAbilityOnStack(g, srcID) == nil {
-		t.Errorf("trigger not on the stack after yes + pick")
+	yn := passUntilTriggerPrompt(t, g)
+	if findAbilityOnStack(g, srcID) != nil {
+		t.Error("the trigger is still waiting on the stack while it asks")
+	}
+	if err := g.ResolveTriggerPrompt(yn.ID, me.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if len(destroyed) != 1 || destroyed[0] != rock {
+		t.Errorf("destroyed %v, want the picked rock", destroyed)
+	}
+}
+
+// TestOptionalTargetedTriggerFizzlesWithoutAsking: a response that makes
+// the only target illegal counters the ability on resolution (CR
+// 608.2b) before its "you may" is reached, so nothing is asked.
+func TestOptionalTargetedTriggerFizzlesWithoutAsking(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	const oracle = "test-targeted-etb-optional-fizzle"
+	var destroyed []uuid.UUID
+	targetedETB(t, oracle, true, &destroyed)
+	rock := pushArtifact(g, opp, "Rock")
+	srcID := seedTriggerSource(g, me, oracle)
+	g.WithWriteLock(func() {
+		g.EmitEvent(Event{Kind: EventETB, CardID: srcID, Actor: me.ID})
+	})
+	prompt := findPickTarget(g, me.ID)
+	if err := g.ResolvePickTarget(prompt.ID, me.ID, TargetRef{Kind: TargetCard, ID: rock}); err != nil {
+		t.Fatal(err)
+	}
+	// In response: the rock stops being an artifact.
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			if g.Battlefield.Cards[i].InstanceID == rock {
+				g.Battlefield.Cards[i].TypeLine = "Enchantment"
+			}
+		}
+		g.resolveTopAbilityLocked()
+	})
+	if c := pendingChoiceOfKind(g, PendingChoiceTriggerPrompt); c != nil {
+		t.Error("a trigger countered on resolution still asked its \"you may\"")
+	}
+	if len(destroyed) != 0 {
+		t.Errorf("destroyed %v, want nothing", destroyed)
 	}
 }
 

@@ -133,10 +133,10 @@ func TestLandTaxRechecksTheLandCountOnResolution(t *testing.T) {
 	}
 
 	advanceToUpkeepOf(t, g, 1)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	// In response, I even the count: the trigger now has nothing to do.
 	seedLandOnBattlefield(g, me.ID, "Plains", "Basic Land — Plains")
 	handBefore := me.Hand.Size()
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if searchChoiceFor(g, me.ID) != nil {
 		t.Error("Land Tax searched although no opponent controlled more lands on resolution")

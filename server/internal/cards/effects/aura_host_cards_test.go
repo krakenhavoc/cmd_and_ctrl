@@ -61,8 +61,8 @@ func sunTitanReturns(t *testing.T, g *game.Game, card uuid.UUID) uuid.UUID {
 	t.Helper()
 	me := g.Seats[g.Turn.ActiveSeat]
 	titan := castAndResolveCreature(t, g, "Sun Titan", "Creature — Giant", sunTitanOracle)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, card)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	return titan
 }

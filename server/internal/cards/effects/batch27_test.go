@@ -318,12 +318,12 @@ func TestB27DuplicantWearsTheExiledCreature(t *testing.T) {
 	token := pushToken(g, opp.ID, BlackZombieToken())
 	dup := b20CastCreature(t, g, me, "Duplicant", "Artifact Creature — Shapeshifter", b27DuplicantOracle, 2, 4)
 	passPriorityAroundTable(t, g)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	if p := latestPickTarget(g, me.ID); hasID(p.PickTargetCards, token) {
 		t.Error("a token is not a legal imprint target")
 	}
 	pickCard(t, g, me.ID, wizard)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if !exileHas(g, wizard) {
 		t.Fatal("the chosen creature is exiled")
@@ -386,9 +386,9 @@ func TestB27DuplicantReturningHasNoMemoryOfItsPreviousExile(t *testing.T) {
 	archmage := b27Push(g, opp.ID, "Archmage", "Legendary Creature — Human Wizard", "", "{3}{U}{U}", 5, 6, "U")
 	dup := b20CastCreature(t, g, me, "Duplicant", "Artifact Creature — Shapeshifter", b27DuplicantOracle, 2, 4)
 	passPriorityAroundTable(t, g)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	pickCard(t, g, me.ID, archmage)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if !exileHas(g, archmage) {
 		t.Fatal("the first incarnation exiles the Archmage")
@@ -502,7 +502,7 @@ func TestB27SanctumOfUginSacrificesToTutorAColorlessCreature(t *testing.T) {
 	// A six-drop artifact creature is colorless but too small.
 	castWithCost(t, g, "Steel Hellkite", "Artifact Creature — Dragon", "{6}", "")
 	passPriorityAroundTable(t, g)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Fatal("mana value 6 does not trigger the Sanctum")
 	}
 	castWithCost(t, g, "Kozilek", "Legendary Creature — Eldrazi", "{10}", "")
@@ -1037,12 +1037,12 @@ func TestB27FoundationBreakerDestroysOnEntryAndEvokes(t *testing.T) {
 	rock := b21Push(g, opp.ID, "Mana Rock", "Artifact", "", 0, 0)
 	bear := pushTribalCreature(g, opp.ID, "Bear", "Creature — Bear", 2, 2)
 	breaker := castAndResolveCreature(t, g, "Foundation Breaker", "Creature — Elemental", b27FoundationBreakerOracle)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	if p := latestPickTarget(g, me.ID); hasID(p.PickTargetCards, bear) {
 		t.Error("a creature is not an artifact or enchantment")
 	}
 	pickCard(t, g, me.ID, rock)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(rock) || !opp.Graveyard.Contains(rock) {
 		t.Error("the chosen artifact is destroyed")
@@ -1106,7 +1106,7 @@ func TestB27TheGooseMotherWithNoFoodIsSilent(t *testing.T) {
 	goose := b21Push(g, me.ID, "The Goose Mother", "Legendary Creature — Bird Hydra", b27TheGooseMotherOracle, 2, 2)
 	declareAttack(t, g, opp.ID, goose)
 	passPriorityAroundTable(t, g)
-	if latestTriggerPrompt(g, me.ID) != nil || latestPickTarget(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 || latestPickTarget(g, me.ID) != nil {
 		t.Error("no Food: no prompt at all (CR 603.3d)")
 	}
 }
@@ -1161,7 +1161,7 @@ func TestB27LegionLoyaltyIsSilentInADuel(t *testing.T) {
 	b21Push(g, me.ID, "Legion Loyalty", "Enchantment", b27LegionLoyaltyOracle, 0, 0)
 	knight := pushTribalCreature(g, me.ID, "Knight", "Creature — Human Knight", 3, 3)
 	declareAttack(t, g, opp.ID, knight)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Error("no other opponent: myriad has nothing to ask")
 	}
 	passPriorityAroundTable(t, g)

@@ -26,7 +26,6 @@ func TestDeputyOfAcquittalsOffersAnotherCreatureButNeverItself(t *testing.T) {
 	theirs := pushCatalogPermanent(g, p1.ID, "Their Bear", "Creature — Bear", "", false)
 
 	deputy := castAndResolveCreature(t, g, "Deputy of Acquittals", "Creature — Human Wizard", deputyOfAcquittalsOracle)
-	answerLatestTriggerPrompt(t, g, p0.ID, true)
 
 	pick := latestPickTarget(g, p0.ID)
 	if pick == nil {
@@ -46,6 +45,7 @@ func TestDeputyOfAcquittalsOffersAnotherCreatureButNeverItself(t *testing.T) {
 	}
 
 	pickCard(t, g, p0.ID, otherDeputy)
+	answerLatestTriggerPrompt(t, g, p0.ID, true)
 	passPriorityAroundTable(t, g)
 	if !p0.Hand.Contains(otherDeputy) {
 		t.Error("the picked Deputy did not return to its owner's hand")

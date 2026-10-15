@@ -34,20 +34,6 @@ func TestDoubledAngelOfSerenityReturnsEveryLinkedCard(t *testing.T) {
 	b := b12Creature(g, opp.ID, "second exile", "Creature — Bear", 3, 3)
 	angel := castCatalogSpell(t, g, "Angel of Serenity", "Creature — Angel", b36AngelOfSerenityOracle, nil)
 	passPriorityAroundTable(t, g)
-	var prompts []uuid.UUID
-	for _, ch := range g.PendingChoices {
-		if ch.Kind == game.PendingChoiceTriggerPrompt && ch.Source == angel {
-			prompts = append(prompts, ch.ID)
-		}
-	}
-	if len(prompts) != 2 {
-		t.Fatalf("optional prompts = %d, want 2", len(prompts))
-	}
-	for _, id := range prompts {
-		if err := g.ResolveTriggerPrompt(id, me.ID, true); err != nil {
-			t.Fatal(err)
-		}
-	}
 	var picks []uuid.UUID
 	for _, ch := range g.PendingChoices {
 		if ch.Kind == game.PendingChoicePickTarget && ch.Source == angel {
@@ -62,6 +48,9 @@ func TestDoubledAngelOfSerenityReturnsEveryLinkedCard(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// Each instance asks its own "you may" as it resolves (CR 603.5).
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if !exileHas(g, a) || !exileHas(g, b) {
 		t.Fatal("each trigger must exile its own target")

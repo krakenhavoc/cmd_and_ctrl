@@ -128,8 +128,9 @@ func OnAny(kinds []game.EventKind, when When, label string, effect Effect) game.
 	return t
 }
 
-// Optional makes a trigger a CR 603.5 "you may": the harvester asks
-// `question` before Build runs, and a "No" drops the trigger.
+// Optional makes a trigger a CR 603.5 "you may": the ability goes on
+// the stack like any other and `question` is asked as it resolves; a
+// "No" resolves it doing nothing (#2494).
 func Optional(t game.TriggeredAbility, question string) game.TriggeredAbility {
 	t.OptionalPrompt = &game.TriggerOptionalPrompt{Question: question}
 	return t

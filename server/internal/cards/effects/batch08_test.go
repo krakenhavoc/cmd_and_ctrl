@@ -479,13 +479,13 @@ func TestB08NoxiousGearhulkDestroysAnotherCreatureAndGainsItsToughness(t *testin
 
 	hulk := castCatalogSpell(t, g, "Noxious Gearhulk", "Artifact Creature — Construct", b08NoxiousGearhulkOracle, nil)
 	passPriorityAroundTable(t, g)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	pick := latestPickTarget(g, me.ID)
 	if hasID(pick.PickTargetCards, hulk) {
 		t.Error("the Gearhulk offered itself for 'another target creature'")
 	}
 	pickCard(t, g, me.ID, big)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(big) {
 		t.Fatal("the targeted creature should be destroyed")
@@ -508,9 +508,9 @@ func TestB08NoxiousGearhulkGainsNothingForAnIndestructibleCreature(t *testing.T)
 	before := me.Life
 	castCatalogSpell(t, g, "Noxious Gearhulk", "Artifact Creature — Construct", b08NoxiousGearhulkOracle, nil)
 	passPriorityAroundTable(t, g)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	pickCard(t, g, me.ID, tough)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(tough) {
 		t.Fatal("an indestructible creature survives")
@@ -844,13 +844,13 @@ func TestB08EmeriaReturnsACreatureCardWithSevenPlains(t *testing.T) {
 	seedLandOnBattlefield(g, owner.ID, "Savannah", "Land — Forest Plains")
 	advanceToUpkeepOf(t, g, 2)
 	advanceToUpkeepOf(t, g, 1)
-	answerLatestTriggerPrompt(t, g, owner.ID, true)
 	b04WaitForPick(t, g, owner.ID)
 	pick := latestPickTarget(g, owner.ID)
 	if hasID(pick.PickTargetCards, relic) {
 		t.Error("an artifact card was offered for 'target creature card'")
 	}
 	pickCard(t, g, owner.ID, dead)
+	answerLatestTriggerPrompt(t, g, owner.ID, true)
 	passPriorityAroundTable(t, g)
 	card, ok := battlefieldCard(g, dead)
 	if !ok {

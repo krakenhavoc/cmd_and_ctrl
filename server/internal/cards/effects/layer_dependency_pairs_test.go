@@ -379,9 +379,9 @@ func TestMaskwoodNexusThenDuplicantSetsOnlyTheExiledTypes(t *testing.T) {
 	wizard := b27Push(g, opp.ID, "Archmage", "Legendary Creature — Human Wizard", "", "{3}{U}{U}", 5, 6, "U")
 	dup := b20CastCreature(t, g, me, "Duplicant", "Artifact Creature — Shapeshifter", b27DuplicantOracle, 2, 4)
 	passPriorityAroundTable(t, g)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	pickCard(t, g, me.ID, wizard)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	c := layeredCard(t, g, dup)

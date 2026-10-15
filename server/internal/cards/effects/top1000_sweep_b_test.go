@@ -49,11 +49,13 @@ func TestSweepBAesiGrantsAnExtraLandDropAndDrawsOnLandfall(t *testing.T) {
 	if err := b02cPlayLandRaw(t, g, "Forest"); err != nil {
 		t.Fatalf("the turn's ordinary land drop: %v", err)
 	}
-	// The land left the hand (net -1); the landfall "you may" is asked.
-	answerLatestTriggerPrompt(t, g, me.ID, true)
+	// The land left the hand (net -1); the landfall trigger waits on the
+	// stack and asks its "you may" as it resolves.
+	g.RunStateChecksForTest()
 	if triggerOnStack(g, aesi) == nil {
-		t.Fatal("accepted landfall trigger is not on the stack")
+		t.Fatal("the landfall trigger is not on the stack")
 	}
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if got := me.Hand.Size(); got != handBefore+1 {
 		t.Errorf("hand %d, want %d (the land is pushed and played, one card drawn)", got, handBefore+1)
@@ -120,11 +122,12 @@ func TestSweepBReconnaissanceMissionDrawsPerCreatureThatConnects(t *testing.T) {
 	handBefore := me.Hand.Size()
 
 	attackWith(t, g, opp.ID, a, b)
+	g.RunStateChecksForTest()
+	if triggerOnStack(g, rm) == nil {
+		t.Fatal("the triggers are not on the stack")
+	}
 	answerLatestTriggerPrompt(t, g, me.ID, true)
 	answerLatestTriggerPrompt(t, g, me.ID, false)
-	if triggerOnStack(g, rm) == nil {
-		t.Fatal("accepted trigger is not on the stack")
-	}
 	passPriorityAroundTable(t, g)
 	if got := me.Hand.Size() - handBefore; got != 1 {
 		t.Errorf("hand delta %d, want 1 (one yes, one no)", got)

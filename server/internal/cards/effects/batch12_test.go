@@ -429,15 +429,15 @@ func TestB12ValakutBoltsOnTheSixthMountain(t *testing.T) {
 	// Four others: no trigger at all.
 	b12PlayFromHand(t, g, "Mountain", "Basic Land — Mountain", "", game.CastSpellParams{})
 	passPriorityAroundTable(t, g)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Fatal("four other Mountains must not trigger Valakut")
 	}
 
 	// Five others: the prompt, the target, the damage.
 	b12PlayFromHand(t, g, "Mountain", "Basic Land — Mountain", "", game.CastSpellParams{})
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	pickPlayer(t, g, me.ID, opp.ID)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if opp.Life != before-3 {
 		t.Errorf("opponent %d → %d, want -3", before, opp.Life)
@@ -461,11 +461,11 @@ func TestB12ValakutRechecksTheFiveMountainsOnResolution(t *testing.T) {
 	}
 	before := opp.Life
 	b12PlayFromHand(t, g, "Mountain", "Basic Land — Mountain", "", game.CastSpellParams{})
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	pickPlayer(t, g, me.ID, opp.ID)
 	// In response, one of the other Mountains leaves.
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(mountains[0]) })
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if opp.Life != before {
 		t.Errorf("with only four other Mountains at resolution nothing happens; opponent %d → %d", before, opp.Life)

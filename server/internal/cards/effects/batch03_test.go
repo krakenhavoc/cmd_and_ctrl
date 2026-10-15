@@ -717,7 +717,7 @@ func TestLandTaxIsSilentWhenNobodyHasMoreLands(t *testing.T) {
 	pushCatalogPermanent(g, me.ID, "Land Tax", "Enchantment", b03LandTaxOracle, false)
 	seedLandOnBattlefield(g, me.ID, "Plains", "Basic Land — Plains")
 	advanceToUpkeepOf(t, g, 1)
-	if latestTriggerPrompt(g, me.ID) != nil || triggerOnStack(g, findBattlefieldByName(g, "Land Tax")) != nil {
+	if owedMays(g, me.ID) > 0 || triggerOnStack(g, findBattlefieldByName(g, "Land Tax")) != nil {
 		t.Error("Land Tax prompted with no opponent ahead on lands")
 	}
 }

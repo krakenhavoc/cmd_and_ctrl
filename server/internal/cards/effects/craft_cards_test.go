@@ -52,8 +52,8 @@ func TestVisageOfDreadCraftsWithTwoCreaturesFromBothZones(t *testing.T) {
 		t.Fatalf("craft with two creatures: %v", err)
 	}
 	passPriorityAroundTable(t, g)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	libBefore := me.Library.Size()
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	osseosaur := craftedPermanent(t, g, "Dread Osseosaur")

@@ -229,8 +229,8 @@ func TestGhostlyCastigatorShufflesChosenGraveyardCardsAway(t *testing.T) {
 
 	disturb(t, g, me, id)
 	passPriorityAroundTable(t, g)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickIfAsked(t, g, me.ID, a, b)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if zone, c := cardWhere(g, me, id); zone != "battlefield" || c.Name != "Ghostly Castigator" {

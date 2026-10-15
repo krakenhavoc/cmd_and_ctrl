@@ -47,8 +47,8 @@ func TestCrestedCraghornHasHasteAndProvokes(t *testing.T) {
 	g.WithWriteLock(func() { _ = g.TapTargetForEffect(victim) })
 
 	attackAndTrigger(t, g, craghorn, other)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, victim)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if c, _ := battlefieldCard(g, victim); c.Tapped {
 		t.Fatal("Provoke did not untap the target")
@@ -80,8 +80,8 @@ func TestLowlandTrackerHasFirstStrikeAndProvokes(t *testing.T) {
 	victim := reqCreature(g, opp.ID, "Their Bear", "", 2, 2)
 
 	attackAndTrigger(t, g, tracker, other)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, victim)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	onToBlockers(t, g)
 	reqRefusal(t, reqBlock(t, g, other, victim))
@@ -109,8 +109,8 @@ func TestBrontotheriumHasTrampleAndProvokes(t *testing.T) {
 	victim := reqCreature(g, opp.ID, "Their Bear", "", 2, 2)
 
 	attackAndTrigger(t, g, bronto, other)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, victim)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	onToBlockers(t, g)
 	reqRefusal(t, reqBlock(t, g, other, victim))

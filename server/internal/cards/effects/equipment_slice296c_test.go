@@ -189,8 +189,8 @@ func TestHammerOfNazahnAttachesItselfOnEntryAndGrantsIndestructible(t *testing.T
 	bear := seedBear(g, me.ID)
 
 	hammer := castAndResolveCreature(t, g, "Hammer of Nazahn", "Legendary Artifact — Equipment", hammerOfNazahnOracle)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, bear)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if host := attachmentHostOf(t, g, hammer); host.ID != bear {

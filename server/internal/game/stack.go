@@ -628,6 +628,12 @@ type StackItem struct {
 	// once the item is on the stack.
 	TargetsAnnouncePending bool
 
+	// Optional is the CR 603.5 "you may" of an optional triggered
+	// ability: who is asked and how, asked as the item resolves
+	// (#2494, optional_trigger.go). Nil for every mandatory item.
+	// Plain data, carried by Clone and the snapshot.
+	Optional *OptionalTrigger
+
 	// modeSpec is the ModeSpec an ability item was announced under,
 	// so the CR 608.2b re-check can find the clause list of the mode
 	// OCCURRENCE a TargetRef names. Nil for a spell (looked up by

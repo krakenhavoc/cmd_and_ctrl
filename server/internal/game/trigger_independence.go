@@ -847,6 +847,13 @@ func (g *Game) triggerAccessLocked(t *StackItem) (triggerAccess, bool) {
 	if t == nil || t.Kind != StackItemTriggered {
 		return triggerAccess{}, false
 	}
+	// #2494: an optional trigger its chooser has a standing "No" for
+	// resolves doing nothing (CR 603.5), so it touches nothing whatever
+	// its place in the batch. Every other optional item is undescribed
+	// below: its "you may" is decided on the board it resolves on.
+	if g.optionalStandingDeclineLocked(t) {
+		return newTriggerAccess(t.Controller), true
+	}
 	if steps, ok := keyedBodyFootprints[t.Body]; ok && t.Body != CatalogTriggeredBodyKey {
 		return g.keyedTriggerAccessLocked(t, steps)
 	}

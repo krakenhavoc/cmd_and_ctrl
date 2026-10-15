@@ -84,8 +84,8 @@ func TestAxisOfMortalitySwapsTwoOpponents(t *testing.T) {
 	pushPermanentForTest(g, me.ID, "Axis of Mortality", axisOfMortalityOracle, "Enchantment")
 	advanceToUpkeepOf(t, g, 0)
 
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	lxPickPlayers(t, g, me.ID, a.ID, b.ID)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if a.Life != 12 || b.Life != 31 {
@@ -192,8 +192,8 @@ func TestMisterNegativeExchangesAndDraws(t *testing.T) {
 	if !g.Battlefield.Contains(negative) {
 		t.Fatalf("Mister Negative did not resolve to the battlefield")
 	}
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	lxPickPlayers(t, g, me.ID, opp.ID)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if me.Life != 25 || opp.Life != 30 {
@@ -225,8 +225,8 @@ func TestMisterNegativeGainingLifeDrawsNothing(t *testing.T) {
 			t.Fatalf("PassPriority: %v", err)
 		}
 	}
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	lxPickPlayers(t, g, me.ID, opp.ID)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if me.Life != 33 || opp.Life != 11 {

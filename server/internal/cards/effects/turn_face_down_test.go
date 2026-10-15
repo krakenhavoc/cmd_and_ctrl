@@ -233,7 +233,6 @@ func TestMasterOfTheVeilTurnsAMorphFaceDownWhenItIsTurnedFaceUp(t *testing.T) {
 
 	// "You MAY turn" is the CR 603.3c optional-trigger prompt; the
 	// target is picked only after it is accepted (CR 603.3d).
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	b04WaitForPick(t, g, me.ID)
 	pick := latestPickTarget(g, me.ID)
@@ -246,6 +245,7 @@ func TestMasterOfTheVeilTurnsAMorphFaceDownWhenItIsTurnedFaceUp(t *testing.T) {
 		t.Error("the Master is not offered itself; CR 702.37e keys on the card, not on the state")
 	}
 	pickCard(t, g, me.ID, victim)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if faceDownCardForTest(t, g, master).FaceDown {

@@ -219,36 +219,33 @@ func TestStateEachTriggerLatchIsPerSource(t *testing.T) {
 	}
 }
 
-// An instance whose "you may" is still open latches the ability for its
-// own creature only: the open prompt carries the creature too.
+// An optional instance waits on the stack like any other (its "you
+// may" is asked as it resolves, CR 603.5, #2494), and latches the
+// ability for its own creature only.
 func TestStateEachTriggerOpenPromptLatchesItsObjectOnly(t *testing.T) {
 	row := stEachRow()
 	row.OptionalPrompt = &TriggerOptionalPrompt{Question: "Remove the counters?"}
 	withStateCatalog(t, row)
 	g := newActiveGame(t)
 	me, bob := g.Seats[0], g.Seats[1]
-	pushStateProbe(t, g, "Creature — Dwarf")
+	probe := pushStateProbe(t, g, "Creature — Dwarf")
 	a := pushEachCreature(t, g, me)
 	b := pushEachCreature(t, g, bob)
-	prompts := func(about uuid.UUID) (n int) {
-		g.ReadSnapshot(func() {
-			for _, c := range g.PendingChoices {
-				if c != nil && c.triggerResume != nil && c.triggerResume.ability.Key == stEachKey &&
-					c.triggerResume.tc.Object != nil && c.triggerResume.tc.Object.ID == about {
-					n++
-				}
-			}
-		})
-		return n
+	items := func(about uuid.UUID) int {
+		q, s := stEachItems(g, probe, about, stEachKey)
+		return q + s
 	}
 	addCharge(t, g, a, 2)
 	addCharge(t, g, a, 1)
-	if n := prompts(a); n != 1 {
-		t.Fatalf("%d prompts about A, want 1: the open prompt latches the ability for A", n)
+	if n := items(a); n != 1 {
+		t.Fatalf("%d items about A, want 1: the waiting item latches the ability for A", n)
 	}
 	addCharge(t, g, b, 2)
-	if n := prompts(b); n != 1 {
-		t.Fatalf("%d prompts about B, want 1: A's open prompt does not latch B", n)
+	if n := items(b); n != 1 {
+		t.Fatalf("%d items about B, want 1: A's waiting item does not latch B", n)
+	}
+	if pendingChoiceOfKind(g, PendingChoiceTriggerPrompt) != nil {
+		t.Error("an optional state trigger asked before it resolved")
 	}
 }
 

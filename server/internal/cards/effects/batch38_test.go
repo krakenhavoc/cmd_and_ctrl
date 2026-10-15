@@ -874,9 +874,9 @@ func TestB38MerrowReejereyPumpsOtherMerfolkAndTapsOrUntaps(t *testing.T) {
 	// Casting a Merfolk spell offers the tap-or-untap.
 	victim := b12Permanent(g, opp.ID, "Their Island", "Basic Land — Island")
 	b38CastCreature(t, g, "Merfolk Looter", "Creature — Merfolk Rogue", "", 1, 1)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	pickCard(t, g, me.ID, victim)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	answerOptionPick(t, g, me.ID, 0)
 	if !b16Tapped(t, g, victim) {

@@ -96,13 +96,7 @@ func b18CastFromHand(t *testing.T, g *game.Game, p *game.Player, name, typeLine,
 // b18TriggerPromptCount counts the open yes/no trigger prompts
 // addressed to a player.
 func b18TriggerPromptCount(g *game.Game, chooser uuid.UUID) int {
-	n := 0
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceTriggerPrompt && c.Chooser == chooser {
-			n++
-		}
-	}
-	return n
+	return owedMays(g, chooser)
 }
 
 // --- registration --------------------------------------------------
@@ -897,9 +891,9 @@ func TestB18ObNixilisTheFallenDrainsATargetAndGrowsOnLandfall(t *testing.T) {
 	ob := b12Push(g, me.ID, "Ob Nixilis, the Fallen", "Legendary Creature — Demon", b18ObNixilisTheFallenOracle, 3, 3)
 	life := opp.Life
 	playLandFromHand(t, g, "Swamp", "")
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	pickPlayer(t, g, me.ID, opp.ID)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if opp.Life != life-3 {
 		t.Errorf("opp %d → %d, want -3", life, opp.Life)
@@ -948,8 +942,8 @@ func TestB18KederektParasitePingsADrawingOpponentWhileYouControlRed(t *testing.T
 	}
 	// The intervening if is checked again on resolution.
 	g.WithWriteLock(func() { _ = g.DrawNForEffect(opp.ID, 1) })
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(red) })
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if opp.Life != life-2 {
 		t.Errorf("red permanent gone in response: opp %d, want %d", opp.Life, life-2)

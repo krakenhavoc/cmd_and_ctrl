@@ -64,20 +64,14 @@ func b06AddMana(p *game.Player, colors ...string) {
 // chooser — the "exactly one trigger per card" canary Bloodchief
 // Ascension needs.
 func b06TriggerPromptsFor(g *game.Game, chooser uuid.UUID) int {
-	n := 0
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceTriggerPrompt && c.Chooser == chooser {
-			n++
-		}
-	}
-	return n
+	return owedMays(g, chooser)
 }
 
 // b06AnswerAllTriggerPrompts answers every trigger prompt addressed
 // to chooser the same way, then settles the stack.
 func b06AnswerAllTriggerPrompts(t *testing.T, g *game.Game, chooser uuid.UUID, apply bool) {
 	t.Helper()
-	for i := 0; i < 16 && latestTriggerPrompt(g, chooser) != nil; i++ {
+	for i := 0; i < 16 && owedMays(g, chooser) > 0; i++ {
 		answerLatestTriggerPrompt(t, g, chooser, apply)
 	}
 	passPriorityAroundTable(t, g)
@@ -1138,11 +1132,10 @@ func TestB06SpringbloomDruidSacrificesALandPlayedInResponse(t *testing.T) {
 		searchTestLand("Swamp", "Basic Land — Swamp"),
 		searchTestLand("Wastes", "Basic Land — Wastes"))
 	castAndResolveCreature(t, g, "Springbloom Druid", "Creature — Elf Druid", b06SpringbloomDruidOracle)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
-
 	// In response: a second land arrives. The old shape had already
 	// locked its target in.
 	late := seedLandOnBattlefield(g, me.ID, "Mountain", "Basic Land — Mountain")
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	sac := sacrificeChoiceFor(g, me.ID)
@@ -1173,7 +1166,7 @@ func TestB06BloodchiefAscensionQuestsWhenAnOpponentLostTwo(t *testing.T) {
 		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
 	passPriorityAroundTable(t, g)
 	advanceToEndStepOf(t, g, g.Turn.ActiveSeat)
-	if latestTriggerPrompt(g, me.ID) == nil {
+	if owedMays(g, me.ID) == 0 {
 		t.Fatal("an opponent lost 3 this turn: the end step should ask about the counter")
 	}
 	answerLatestTriggerPrompt(t, g, me.ID, true)
@@ -1187,7 +1180,7 @@ func TestB06BloodchiefAscensionQuestsWhenAnOpponentLostTwo(t *testing.T) {
 	advanceToUpkeepOf(t, g, g.Turn.ActiveSeat)
 	g.WithWriteLock(func() { _ = g.ChangePlayerLifeForEffect(uuid.Nil, opp.ID, -1) })
 	advanceToEndStepOf(t, g, g.Turn.ActiveSeat)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Error("one life is not 'two or more'")
 	}
 	passPriorityAroundTable(t, g)
@@ -1201,7 +1194,7 @@ func TestB06BloodchiefAscensionQuestsWhenAnOpponentLostTwo(t *testing.T) {
 		_ = g.DealDamageToPlayerForEffect(uuid.Nil, opp.ID, 1)
 	})
 	advanceToEndStepOf(t, g, g.Turn.ActiveSeat)
-	if latestTriggerPrompt(g, me.ID) == nil {
+	if owedMays(g, me.ID) == 0 {
 		t.Fatal("1 + 1 on one opponent is two")
 	}
 	answerLatestTriggerPrompt(t, g, me.ID, true)
@@ -1217,7 +1210,7 @@ func TestB06BloodchiefAscensionMyOwnLossDoesNotCount(t *testing.T) {
 	pushCatalogPermanent(g, me.ID, "Bloodchief Ascension", "Enchantment", b06BloodchiefAscensionOracle, false)
 	g.WithWriteLock(func() { _ = g.ChangePlayerLifeForEffect(uuid.Nil, me.ID, -5) })
 	advanceToEndStepOf(t, g, g.Turn.ActiveSeat)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Error("my own life loss is not an opponent's")
 	}
 }

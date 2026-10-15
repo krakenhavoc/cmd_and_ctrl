@@ -14,6 +14,7 @@ import {
   triggerOnStack,
   type JoinedPlayer,
   type S19Setup,
+  type SnapshotView,
 } from "./s19-helpers";
 
 // S19 trigger e2e suite. Each test spins up a fresh 2-player game
@@ -29,11 +30,13 @@ import {
 // failure here. The browser-side dialog assertions cover the UI
 // rendering layer that the Go integration tests can't reach.
 //
-// Triggers use the stack: a harvested trigger (or an optional one
-// answered "Yes") sits in stack_items until both players pass
-// priority. Each test asserts the trigger is waiting there, then
-// resolves it through the players' own "next" buttons via
-// resolveStack before asserting on the effect.
+// Triggers use the stack: a harvested trigger sits in stack_items until
+// both players pass priority. Each test asserts the trigger is waiting
+// there, then resolves it through the players' own "next" buttons via
+// resolveStack before asserting on the effect. An optional trigger goes
+// on the stack the same way, its target picked as it goes there, and
+// asks its "you may" as it resolves (CR 603.5, ADR 0197):
+// resolveUntilTriggerPrompt passes until that question is open.
 //
 // ADR 0111 Delivery PR 5: a trigger's yes/no and a pay-unless are not a
 // centred modal any more. They are answered inline in the action dock
@@ -82,6 +85,21 @@ async function waitForPickTarget(setup: S19Setup, chooser: JoinedPlayer, sourceN
     chooser.page.getByRole("dialog", { name: new RegExp(`Select target for ${sourceName}`, "i") }),
   ).toBeVisible({ timeout: 20_000 });
   return view;
+}
+
+// resolveUntilTriggerPrompt passes priority over an optional trigger
+// that is on the stack until it resolves and asks `chooser` its "you
+// may" (CR 603.5, ADR 0197), and returns that snapshot.
+async function resolveUntilTriggerPrompt(setup: S19Setup, chooser: JoinedPlayer, sourceName: string) {
+  await setup.admin.waitFor(
+    (v) => triggerOnStack(v, sourceName) !== null,
+    `${sourceName} trigger on the stack`,
+    20_000,
+  );
+  const asks = (v: SnapshotView) =>
+    (v.pending_choices ?? []).some((c) => c.kind === "trigger_prompt" && c.chooser === chooser.playerID);
+  await resolveStack(setup, 20, asks);
+  return setup.admin.waitFor(asks, `${sourceName} asks its "you may" as it resolves`, 20_000);
 }
 
 test.describe("S19 ETB triggers", () => {
@@ -176,7 +194,7 @@ test.describe("S19 ETB triggers", () => {
     );
   });
 
-  test("Reclamation Sage optional ETB → Yes destroys opponent's artifact", async ({
+  test("Reclamation Sage optional ETB → target, then Yes as it resolves destroys opponent's artifact", async ({
     browser,
     request,
   }) => {
@@ -196,8 +214,9 @@ test.describe("S19 ETB triggers", () => {
       "Sol Ring and Glorious Anthem on battlefield",
     );
 
-    // Caster's Reclamation Sage hits the battlefield → optional
-    // prompt queues for the caster.
+    // Caster's Reclamation Sage hits the battlefield. CR 603.3d: the
+    // target is chosen as the trigger goes on the stack, before any
+    // "you may" — no yes/no is open while the caster picks.
     await adminMoveByName(
       admin,
       caster.playerID,
@@ -205,39 +224,8 @@ test.describe("S19 ETB triggers", () => {
       "library",
       "battlefield",
     );
-
-    const promptVisible = await admin.waitFor(
-      (v) =>
-        (v.pending_choices ?? []).some(
-          (c) => c.kind === "trigger_prompt" && c.chooser === caster.playerID,
-        ),
-      "trigger prompt queued for caster",
-    );
-    const prompt = (promptVisible.pending_choices ?? []).find(
-      (c) => c.kind === "trigger_prompt",
-    );
-    expect(prompt?.reason).toMatch(/Reclamation Sage/i);
-
-    // Caster's browser shows the dialog; opponent's does not.
-    // Anchor on the modal's accessible name (its <h2> is the
-    // server's Question copy) rather than a bare page-wide text
-    // scan: that also matched the stack overlay and the targeting
-    // banner, and it raced the WS delta on a 5s budget.
-    await expect(dockOf(caster.page).getByRole("dialog", { name: /Reclamation Sage —/i })).toBeVisible({ timeout: 20_000 });
-    await expect(opponent.page.getByRole("dialog", { name: /Reclamation Sage —/i })).toHaveCount(
-      0,
-    );
-
-    // Click "Yes" in the caster's dialog.
-    await dockOf(caster.page)
-      .getByRole("dialog", { name: /Reclamation Sage —/i })
-      .getByRole("button", { name: /^Yes$/ })
-      .click();
-
-    // S20: "Yes" asks WHICH artifact or enchantment. The caster's
-    // board enters targeting mode; the Sol Ring is a legal target
-    // and gets clicked.
-    await waitForPickTarget(setup, caster, CARDS.ReclamationSage);
+    const picking = await waitForPickTarget(setup, caster, CARDS.ReclamationSage);
+    expect((picking.pending_choices ?? []).some((c) => c.kind === "trigger_prompt")).toBe(false);
     await caster.page
       .getByRole("region", { name: "Opponent board" })
       .getByRole("button", { name: "Sol Ring", exact: true })
@@ -249,11 +237,32 @@ test.describe("S19 ETB triggers", () => {
       (v) =>
         (v.pending_choices ?? []).length === 0 &&
         triggerOnStack(v, CARDS.ReclamationSage) !== null,
-      "Reclamation Sage trigger on the stack after Yes",
+      "Reclamation Sage trigger on the stack after the pick",
     );
     expect(findCardOnBattlefield(staged, CARDS.SolRing)).not.toBeNull();
 
-    await resolveStack(setup);
+    // CR 603.5: the "you may" is asked as the trigger resolves.
+    const promptVisible = await resolveUntilTriggerPrompt(setup, caster, CARDS.ReclamationSage);
+    const prompt = (promptVisible.pending_choices ?? []).find(
+      (c) => c.kind === "trigger_prompt",
+    );
+    expect(prompt?.reason).toMatch(/Reclamation Sage/i);
+    expect(findCardOnBattlefield(promptVisible, CARDS.SolRing)).not.toBeNull();
+
+    // Caster's browser shows the dialog; opponent's does not.
+    // Anchor on the modal's accessible name (its <h2> is the
+    // server's Question copy) rather than a bare page-wide text
+    // scan: that also matched the stack overlay and the targeting
+    // banner, and it raced the WS delta on a 5s budget.
+    await expect(dockOf(caster.page).getByRole("dialog", { name: /Reclamation Sage —/i })).toBeVisible({ timeout: 20_000 });
+    await expect(opponent.page.getByRole("dialog", { name: /Reclamation Sage —/i })).toHaveCount(
+      0,
+    );
+
+    await dockOf(caster.page)
+      .getByRole("dialog", { name: /Reclamation Sage —/i })
+      .getByRole("button", { name: /^Yes$/ })
+      .click();
 
     // The Sol Ring should be in the opponent's graveyard, off the
     // battlefield, and the prompt should clear.
@@ -266,7 +275,7 @@ test.describe("S19 ETB triggers", () => {
     expect(after.pending_choices ?? []).toHaveLength(0);
   });
 
-  test("Reclamation Sage → Yes with one legal target picks it for the caster (#3264)", async ({
+  test("Reclamation Sage with one legal target picks it for the caster (#3264), then asks as it resolves", async ({
     browser,
     request,
   }) => {
@@ -286,10 +295,6 @@ test.describe("S19 ETB triggers", () => {
       "library",
       "battlefield",
     );
-    await dockOf(caster.page)
-      .getByRole("dialog", { name: /Reclamation Sage —/i })
-      .getByRole("button", { name: /^Yes$/ })
-      .click({ timeout: 20_000 });
 
     // No click on the Sol Ring: it was the only artifact or enchantment,
     // so the caster's client answered the pick_target with it, and the
@@ -302,8 +307,12 @@ test.describe("S19 ETB triggers", () => {
       20_000,
     );
 
-    // It was aimed at the Sol Ring: resolving it destroys the ring.
-    await resolveStack(setup);
+    // It was aimed at the Sol Ring: saying yes as it resolves destroys it.
+    await resolveUntilTriggerPrompt(setup, caster, CARDS.ReclamationSage);
+    await dockOf(caster.page)
+      .getByRole("dialog", { name: /Reclamation Sage —/i })
+      .getByRole("button", { name: /^Yes$/ })
+      .click({ timeout: 20_000 });
     await admin.waitFor(
       (v) =>
         findCardOnBattlefield(v, CARDS.SolRing) === null &&
@@ -312,7 +321,7 @@ test.describe("S19 ETB triggers", () => {
     );
   });
 
-  test("Reclamation Sage optional ETB → No leaves artifact untouched", async ({
+  test("Reclamation Sage optional ETB → No as it resolves leaves artifact untouched", async ({
     browser,
     request,
   }) => {
@@ -328,24 +337,18 @@ test.describe("S19 ETB triggers", () => {
       "library",
       "battlefield",
     );
-    await admin.waitFor(
-      (v) =>
-        (v.pending_choices ?? []).some(
-          (c) => c.kind === "trigger_prompt" && c.chooser === caster.playerID,
-        ),
-      "trigger prompt queued",
-    );
+    await resolveUntilTriggerPrompt(setup, caster, CARDS.ReclamationSage);
 
-    await dockOf(caster.page).getByRole("button", { name: /^No$/ }).click();
+    await dockOf(caster.page).getByRole("button", { name: /^No$/ }).click({ timeout: 20_000 });
 
     const after = await admin.waitFor(
-      (v) => (v.pending_choices ?? []).length === 0,
-      "prompt drained after No",
+      (v) =>
+        (v.pending_choices ?? []).length === 0 &&
+        triggerOnStack(v, CARDS.ReclamationSage) === null,
+      "prompt drained and the trigger finished after No",
     );
-    // Declined: no target prompt, nothing reaches the stack, Sol
-    // Ring still on battlefield, not in graveyard.
-    expect((after.pending_choices ?? []).some((c) => c.kind === "pick_target")).toBe(false);
-    expect(triggerOnStack(after, CARDS.ReclamationSage)).toBeNull();
+    // Declined: the trigger resolved doing nothing. Sol Ring still on
+    // the battlefield, not in the graveyard.
     expect(findCardOnBattlefield(after, CARDS.SolRing)).not.toBeNull();
     expect(findCardInPlayerGraveyard(after, opponent.playerID, CARDS.SolRing)).toBeNull();
   });
@@ -398,7 +401,7 @@ test.describe("S19 ETB triggers", () => {
     expect(after.pending_choices ?? []).toHaveLength(0);
   });
 
-  test("Eternal Witness optional ETB → Yes returns top of graveyard to hand", async ({
+  test("Eternal Witness optional ETB → pick, then Yes as it resolves returns the card to hand", async ({
     browser,
     request,
   }) => {
@@ -427,23 +430,8 @@ test.describe("S19 ETB triggers", () => {
       "battlefield",
     );
 
-    await admin.waitFor(
-      (v) =>
-        (v.pending_choices ?? []).some(
-          (c) => c.kind === "trigger_prompt" && c.chooser === caster.playerID,
-        ),
-      "Eternal Witness prompt queued",
-    );
-
-    await expect(dockOf(caster.page).getByRole("dialog", { name: /Eternal Witness —/i })).toBeVisible({ timeout: 20_000 });
-
-    await dockOf(caster.page)
-      .getByRole("dialog", { name: /Eternal Witness —/i })
-      .getByRole("button", { name: /^Yes$/ })
-      .click();
-
-    // S20: pick the card — open the caster's own graveyard browser
-    // and click the Bolt.
+    // CR 603.3d: pick the card as the trigger goes on the stack — open
+    // the caster's own graveyard browser and click the Bolt.
     //
     // Two selectors here need care; both used to fail:
     //   * the targeting banner is ALSO role="dialog", so the zone
@@ -464,11 +452,16 @@ test.describe("S19 ETB triggers", () => {
       (v) =>
         (v.pending_choices ?? []).length === 0 &&
         triggerOnStack(v, CARDS.EternalWitness) !== null,
-      "Eternal Witness trigger on the stack after Yes + pick",
+      "Eternal Witness trigger on the stack after the pick",
     );
     expect(findCardInPlayerHand(staged, caster.playerID, CARDS.LightningBolt)).toBeNull();
 
-    await resolveStack(setup);
+    await resolveUntilTriggerPrompt(setup, caster, CARDS.EternalWitness);
+    await expect(dockOf(caster.page).getByRole("dialog", { name: /Eternal Witness —/i })).toBeVisible({ timeout: 20_000 });
+    await dockOf(caster.page)
+      .getByRole("dialog", { name: /Eternal Witness —/i })
+      .getByRole("button", { name: /^Yes$/ })
+      .click();
 
     const after = await admin.waitFor(
       (v) => findCardInPlayerHand(v, caster.playerID, CARDS.LightningBolt) !== null,
@@ -478,7 +471,7 @@ test.describe("S19 ETB triggers", () => {
     expect(after.pending_choices ?? []).toHaveLength(0);
   });
 
-  test("Eternal Witness optional ETB → No leaves graveyard untouched", async ({
+  test("Eternal Witness optional ETB → No as it resolves leaves graveyard untouched", async ({
     browser,
     request,
   }) => {
@@ -486,6 +479,7 @@ test.describe("S19 ETB triggers", () => {
     setup = await setupS19Game(browser, request);
     const { admin, caster } = setup;
 
+    // One card: the caster's client picks it (#3264).
     await adminMoveByName(admin, caster.playerID, CARDS.LightningBolt, "library", "graveyard");
     await adminMoveByName(
       admin,
@@ -494,18 +488,14 @@ test.describe("S19 ETB triggers", () => {
       "library",
       "battlefield",
     );
-    await admin.waitFor(
-      (v) =>
-        (v.pending_choices ?? []).some(
-          (c) => c.kind === "trigger_prompt" && c.chooser === caster.playerID,
-        ),
-      "prompt queued",
-    );
+    await resolveUntilTriggerPrompt(setup, caster, CARDS.EternalWitness);
 
-    await dockOf(caster.page).getByRole("button", { name: /^No$/ }).click();
+    await dockOf(caster.page).getByRole("button", { name: /^No$/ }).click({ timeout: 20_000 });
 
     const after = await admin.waitFor(
-      (v) => (v.pending_choices ?? []).length === 0,
+      (v) =>
+        (v.pending_choices ?? []).length === 0 &&
+        triggerOnStack(v, CARDS.EternalWitness) === null,
       "prompt drained after No",
     );
     // Lightning Bolt still in graveyard; nothing returned to hand.
@@ -513,7 +503,7 @@ test.describe("S19 ETB triggers", () => {
     expect(findCardInPlayerHand(after, caster.playerID, CARDS.LightningBolt)).toBeNull();
   });
 
-  test("Solemn Simulacrum optional ETB → Yes, the caster picks the Island, it enters tapped", async ({
+  test("Solemn Simulacrum optional ETB → Yes as it resolves, the caster picks the Island, it enters tapped", async ({
     browser,
     request,
   }) => {
@@ -540,13 +530,18 @@ test.describe("S19 ETB triggers", () => {
       instance_id: solemn.instance_id,
     });
 
-    await admin.waitFor(
+    // CR 603.5: the trigger goes on the stack without asking anything;
+    // nothing is fetched while it waits there.
+    const staged = await admin.waitFor(
       (v) =>
-        (v.pending_choices ?? []).some(
-          (c) => c.kind === "trigger_prompt" && c.chooser === caster.playerID,
-        ),
-      "Solemn prompt queued",
+        (v.pending_choices ?? []).length === 0 &&
+        triggerOnStack(v, CARDS.SolemnSimulacrum) !== null,
+      "Solemn trigger on the stack, nothing asked yet",
     );
+    expect(findCardOnBattlefield(staged, CARDS.Forest)).toBeNull();
+    expect(findCardOnBattlefield(staged, CARDS.Island)).toBeNull();
+
+    await resolveUntilTriggerPrompt(setup, caster, CARDS.SolemnSimulacrum);
     // Name the "you may" dialog exactly. Once the search opens there
     // are TWO dialogs whose accessible name starts "Solemn
     // Simulacrum —", and getByRole's name match is a substring by
@@ -555,32 +550,11 @@ test.describe("S19 ETB triggers", () => {
       name: "Solemn Simulacrum — search for a basic land?",
     });
     await expect(solemnPrompt).toBeVisible({ timeout: 20_000 });
-
     await solemnPrompt.getByRole("button", { name: /^Yes$/ }).click();
 
-    const staged = await admin.waitFor(
-      (v) =>
-        (v.pending_choices ?? []).length === 0 &&
-        triggerOnStack(v, CARDS.SolemnSimulacrum) !== null,
-      "Solemn trigger on the stack after Yes",
-    );
-    expect(findCardOnBattlefield(staged, CARDS.Forest)).toBeNull();
-    expect(findCardOnBattlefield(staged, CARDS.Island)).toBeNull();
-
-    // The trigger stays on the stack while its search prompt is open
-    // (#3644), so stop passing once the prompt is queued.
-    await resolveStack(setup, 20, (v) =>
-      (v.pending_choices ?? []).some(
-        (c) => c.kind === "search_library" && c.chooser === caster.playerID,
-      ),
-    );
-
-    // S22 (#272): answering "Yes" no longer finishes the job. The
-    // trigger resolves into a SECOND prompt — the search chooser —
-    // because the searcher, not the engine, decides which basic the
-    // library gives up. Before #272 the engine took the first match
-    // in library order; the test that predated it answered only the
-    // "you may" half and then waited out the clock here.
+    // S22 (#272): the "yes" runs the rest of the resolution, which is
+    // the search chooser — the searcher, not the engine, decides which
+    // basic the library gives up.
     await admin.waitFor(
       (v) =>
         (v.pending_choices ?? []).some(
@@ -625,7 +599,7 @@ test.describe("S19 ETB triggers", () => {
     expect(after.pending_choices ?? []).toHaveLength(0);
   });
 
-  test("Solemn Simulacrum optional ETB → No leaves library untouched", async ({
+  test("Solemn Simulacrum optional ETB → No as it resolves leaves library untouched", async ({
     browser,
     request,
   }) => {
@@ -640,19 +614,13 @@ test.describe("S19 ETB triggers", () => {
       "library",
       "battlefield",
     );
-    // Capture library count AFTER the move settles, BEFORE we
-    // resolve the prompt: the decline path must not fetch anything
-    // from the library.
-    const promptView = await admin.waitFor(
-      (v) =>
-        (v.pending_choices ?? []).some(
-          (c) => c.kind === "trigger_prompt" && c.chooser === caster.playerID,
-        ),
-      "prompt queued",
-    );
+    // Capture library count when the question is asked, BEFORE the
+    // answer: the decline path must not fetch anything from the
+    // library.
+    const promptView = await resolveUntilTriggerPrompt(setup, caster, CARDS.SolemnSimulacrum);
     const libraryAtPrompt = playerByID(promptView, caster.playerID).library.count;
 
-    await dockOf(caster.page).getByRole("button", { name: /^No$/ }).click();
+    await dockOf(caster.page).getByRole("button", { name: /^No$/ }).click({ timeout: 20_000 });
 
     const after = await admin.waitFor(
       (v) => (v.pending_choices ?? []).length === 0,
@@ -687,14 +655,9 @@ test.describe("S19 ETB triggers", () => {
       "battlefield",
     );
 
-    // Wait for the prompt to register on the wire.
-    await admin.waitFor(
-      (v) =>
-        (v.pending_choices ?? []).some(
-          (c) => c.kind === "trigger_prompt" && c.chooser === caster.playerID,
-        ),
-      "prompt queued",
-    );
+    // Wait for the prompt to register on the wire, as the trigger
+    // resolves.
+    await resolveUntilTriggerPrompt(setup, caster, CARDS.ReclamationSage);
 
     // Caster sees the dialog with Yes/No buttons; opponent has no
     // trigger dialog at all (the only legitimate dialog they could
@@ -723,13 +686,7 @@ test.describe("S19 ETB triggers", () => {
       "battlefield",
     );
 
-    const v = await admin.waitFor(
-      (s) =>
-        (s.pending_choices ?? []).some(
-          (c) => c.kind === "trigger_prompt" && c.chooser === caster.playerID,
-        ),
-      "Solemn prompt queued",
-    );
+    const v = await resolveUntilTriggerPrompt(setup, caster, CARDS.SolemnSimulacrum);
     const prompt = (v.pending_choices ?? []).find((c) => c.kind === "trigger_prompt");
     // Server-side Question text from the Spec.
     expect(prompt?.reason).toMatch(/Solemn Simulacrum.*basic land/i);

@@ -491,7 +491,7 @@ func TestB28NykthosParagonOffersCountersOncePerTurn(t *testing.T) {
 	theirs := pushVanillaCreature(g, g.Seats[1].ID, "Their Bear", 2, 2)
 	advanceToMain(t, g)
 	b14Gain(t, g, me.ID, 3)
-	if latestTriggerPrompt(g, me.ID) == nil {
+	if owedMays(g, me.ID) == 0 {
 		t.Fatal("a life gain asks the question")
 	}
 	answerLatestTriggerPrompt(t, g, me.ID, true)
@@ -506,7 +506,7 @@ func TestB28NykthosParagonOffersCountersOncePerTurn(t *testing.T) {
 		t.Errorf("not on an opponent's: %d", got)
 	}
 	b14Gain(t, g, me.ID, 2)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Fatal("only once each turn")
 	}
 	if got := counterCount(g, bear, "+1/+1"); got != 3 {
@@ -518,7 +518,7 @@ func TestB28NykthosParagonOffersCountersOncePerTurn(t *testing.T) {
 	answerLatestTriggerPrompt(t, g, me.ID, false)
 	passPriorityAroundTable(t, g)
 	b14Gain(t, g, me.ID, 4)
-	if latestTriggerPrompt(g, me.ID) == nil {
+	if owedMays(g, me.ID) == 0 {
 		t.Fatal("a declined offer does not use up the turn")
 	}
 	answerLatestTriggerPrompt(t, g, me.ID, true)

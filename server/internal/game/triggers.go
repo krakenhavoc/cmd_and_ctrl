@@ -248,17 +248,16 @@ type TriggeredAbility struct {
 	// stamped. See ability_ref.go.
 	row catalogRowID
 
-	// OptionalPrompt is the declarative "you may" gate for CR 603.5
-	// optional triggers. When non-nil, the harvester does NOT call
-	// Build immediately on a matching event — it queues a
-	// PendingChoiceTriggerPrompt to the source's controller (or the
-	// override-chooser specified in OptionalPrompt). On
-	// resolve_choice with `apply: true`, Build runs against the
-	// captured event + LKI and queues the StackItem. On `apply:
-	// false`, the trigger drops without effect.
+	// OptionalPrompt is the CR 603.5 "you may" of an optional
+	// trigger. The ability goes on the stack like any other (its modes
+	// and targets chosen then, CR 603.3c/d) and the item carries the
+	// question (StackItem.Optional); as it resolves, a
+	// PendingChoiceTriggerPrompt asks the source's controller (or the
+	// override chooser). "Yes" runs the effect; "No" resolves the item
+	// doing nothing (#2494, optional_trigger.go). BeforeStack keeps
+	// the one exception, miracle's reveal, asked as the card is drawn.
 	//
-	// Nil means mandatory — Build runs unconditionally. Added in S19
-	// sub-PR 2.
+	// Nil means mandatory. Added in S19 sub-PR 2.
 	OptionalPrompt *TriggerOptionalPrompt
 
 	// Modes is the CR 700.2 mode clause of a modal triggered ability
@@ -268,8 +267,7 @@ type TriggeredAbility struct {
 	// three owners (#764, ADR 0065 §3).
 	//
 	// The choice is made as the ability is put on the stack (CR
-	// 603.3c): after the OptionalPrompt's "yes", before the CR
-	// 603.3d target pick, through a mode_pick prompt to the source's
+	// 603.3c): before the CR 603.3d target pick, through a mode_pick prompt to the source's
 	// controller. An option whose target clause has no legal target
 	// is not offered, and if that leaves fewer than Min the trigger
 	// is removed without any prompt at all.
@@ -287,7 +285,8 @@ type TriggeredAbility struct {
 	// 603.3d — targets are chosen as the ability is put on the
 	// stack): an empty set drops the trigger without any prompt; a
 	// non-empty one queues a pick_target prompt for the controller
-	// (after the OptionalPrompt's "yes", if there is one). The chosen
+	// (an optional trigger's too: its "you may" waits for resolution,
+	// CR 603.5). The chosen
 	// TargetRef is stamped onto the built item's Targets, the item
 	// remembers the spec, and resolution re-checks it (CR 608.2b).
 	// Build / Effect read item.Targets[0]. Added in S20 sub-PR 2.
@@ -325,9 +324,9 @@ type TriggeredAbility struct {
 	// HasLegalTarget reports whether the trigger has a legal
 	// target / will actually do something at fire time. Optional —
 	// nil means "assume the effect always has an effect" (e.g.
-	// Mulldrifter's unconditional draw). When set, the harvester
-	// evaluates it at OptionalPrompt-queue time and stamps the
-	// result onto the PendingChoice (NoLegalTarget). The client uses
+	// Mulldrifter's unconditional draw). When set, it is evaluated as
+	// the optional trigger's "you may" is asked at resolution (#2494)
+	// and the result stamped onto the PendingChoice (NoLegalTarget). The client uses
 	// this to warn the chooser that answering "Yes" will pass without
 	// effect — the S19 sandbox auto-targeter (pickFirstOpponent*)
 	// only ever picks opponent-controlled permanents and there is no
@@ -591,6 +590,15 @@ type TriggerOptionalPrompt struct {
 	// a bot can weigh the trade instead of saying yes to every trigger
 	// it controls, which is the heuristic's default for a "you may".
 	Trade bool
+
+	// BeforeStack marks a "may" that is not CR 603.5's: a choice the
+	// rules make as the event happens, before the ability goes on the
+	// stack. Miracle's "you may reveal this card as you draw it" (CR
+	// 702.94a) is the one: the reveal is what makes the trigger. Such
+	// a prompt is asked as the ability triggers and a "No" drops it
+	// (queueTriggerPromptLocked). Every other "you may" is asked as the
+	// ability resolves (#2494).
+	BeforeStack bool
 }
 
 // triggerHarvester is the process-lifetime listener that
@@ -815,8 +823,10 @@ func (g *Game) harvestCastFromStack(pass *harvestPass) {
 //
 //  1. Targeted (Targets != nil) with no legal target right now →
 //     the trigger is removed without any prompt (CR 603.3d).
-//  2. OptionalPrompt → the yes/no prompt; on "yes" the flow re-enters
-//     here at step 3 via ResolveTriggerPrompt.
+//  2. OptionalPrompt with BeforeStack (miracle's reveal) → the yes/no
+//     prompt; on "yes" the flow re-enters here at step 3 via
+//     ResolveTriggerPrompt. Every other optional trigger goes on through
+//     3–5 and asks its CR 603.5 "you may" as it resolves (#2494).
 //  3. Modal (Modes != nil) → mode_pick prompt (CR 603.3c); on the
 //     answer the flow re-enters at step 4 via ResolveModePick.
 //  4. Targeted → the pick_target walk, one prompt per clause of the
@@ -910,16 +920,19 @@ func (g *Game) dispatchTriggerInstanceLocked(ev Event, source Card, lki Characte
 		!EnoughChoosableModes(len(g.choosableModeOptionsLocked(src, t.Modes, ModeAbilityOf(source, t.Key))), t.Modes) {
 		return
 	}
-	if t.OptionalPrompt != nil {
+	// CR 603.5: an optional trigger goes on the stack like any other
+	// and asks its "you may" as it resolves (optional_trigger.go). Only
+	// a choice made before the ability triggers is asked here.
+	if t.OptionalPrompt != nil && t.OptionalPrompt.BeforeStack {
 		g.queueTriggerPromptLocked(tc, source, lki, t, doubledBy)
 		return
 	}
 	g.buildOrPickTriggerLocked(tc, source, lki, t, doubledBy, nil)
 }
 
-// buildOrPickTriggerLocked is the post-"yes" half of the dispatch:
-// the mode prompt for a modal trigger, then the target walk for a
-// targeted one, then Build.
+// buildOrPickTriggerLocked is the announcing half of the dispatch: the
+// mode prompt for a modal trigger, then the target walk for a targeted
+// one, then Build.
 //
 // `modes` is nil on the way in and carries the CR 603.3c answer on
 // the way back through ResolveModePick — which is what makes the

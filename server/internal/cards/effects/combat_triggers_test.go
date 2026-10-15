@@ -73,24 +73,20 @@ func TestBidentDrawsPerCreatureThatConnects(t *testing.T) {
 	if opp.Life != 40-4 {
 		t.Fatalf("opponent life %d, want 36 (both bears connected)", opp.Life)
 	}
-	// Two "you may" prompts — one per creature that connected.
-	prompts := 0
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceTriggerPrompt && c.Chooser == me.ID && c.Source == bidentID {
-			prompts++
-		}
-	}
-	if prompts != 2 {
+	// Two "you may"s — one per creature that connected, each its own
+	// trigger on the stack, asked as it resolves (CR 603.5).
+	if prompts := owedMays(g, me.ID); prompts != 2 {
 		t.Fatalf("Bident prompts: %d, want 2", prompts)
 	}
-	answerLatestTriggerPrompt(t, g, me.ID, true)
-	answerLatestTriggerPrompt(t, g, me.ID, false)
+	g.RunStateChecksForTest()
 	if triggerOnStack(g, bidentID) == nil {
-		t.Fatalf("accepted Bident trigger not on the stack")
+		t.Fatalf("Bident triggers not on the stack")
 	}
 	if me.Hand.Size() != handBefore {
 		t.Fatalf("draw happened before the trigger resolved")
 	}
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	answerLatestTriggerPrompt(t, g, me.ID, false)
 	passPriorityAroundTable(t, g)
 	if got := me.Hand.Size() - handBefore; got != 1 {
 		t.Errorf("Bident: hand delta %d, want 1 (one yes, one no)", got)
@@ -158,10 +154,11 @@ func TestCoastalPiracyDrawsOnConnect(t *testing.T) {
 	handBefore := me.Hand.Size()
 
 	attackWith(t, g, opp.ID, a)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
+	g.RunStateChecksForTest()
 	if triggerOnStack(g, piracyID) == nil {
-		t.Fatalf("Coastal Piracy trigger not on the stack after Yes")
+		t.Fatalf("Coastal Piracy trigger not on the stack")
 	}
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if got := me.Hand.Size() - handBefore; got != 1 {
 		t.Errorf("Coastal Piracy: hand delta %d, want 1", got)
@@ -225,28 +222,21 @@ func TestEdricLetsAttackingCreaturesControllerDraw(t *testing.T) {
 	// Seat 0's bear hits seat 1 — one of seat 2's opponents.
 	attackWith(t, g, victim.ID, bear)
 
-	// The prompt goes to the BEAR's controller, not Edric's.
-	var prompt *game.PendingChoice
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceTriggerPrompt && c.Source == edricID {
-			prompt = c
-		}
-	}
-	if prompt == nil {
-		t.Fatalf("no Edric prompt queued")
-	}
-	if prompt.Chooser != attacker.ID {
-		t.Fatalf("Edric prompt chooser = %s, want the attacking creature's controller %s", prompt.Chooser, attacker.ID)
-	}
-	answerLatestTriggerPrompt(t, g, attacker.ID, true)
+	g.RunStateChecksForTest()
 	trig := triggerOnStack(g, edricID)
 	if trig == nil {
-		t.Fatalf("Edric trigger not on the stack after Yes")
+		t.Fatalf("Edric trigger not on the stack")
 	}
 	// The ability is Edric's controller's (it's their permanent) …
 	if trig.Controller != edricOwner.ID {
 		t.Errorf("trigger controller %s, want Edric's controller %s", trig.Controller, edricOwner.ID)
 	}
+	// … and its "you may" goes to the BEAR's controller, as it resolves.
+	prompt := awaitTriggerPrompt(t, g, attacker.ID)
+	if prompt.Source != edricID {
+		t.Fatalf("the attacker's prompt is from %s, want Edric %s", prompt.Source, edricID)
+	}
+	answerLatestTriggerPrompt(t, g, attacker.ID, true)
 	passPriorityAroundTable(t, g)
 	// … but the card goes to the attacker.
 	if got := attacker.Hand.Size() - attackerHand; got != 1 {

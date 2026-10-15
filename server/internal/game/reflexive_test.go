@@ -248,8 +248,9 @@ func TestReflexiveTriggerWithNoLegalTargetIsDropped(t *testing.T) {
 }
 
 // TestReflexiveTriggerOptionalAsksFirst: a reflexive trigger whose
-// own text says "you may" queues the CR 603.5 prompt; "no" drops it,
-// "yes" puts it on the stack.
+// own text says "you may" goes on the stack and asks the CR 603.5
+// question as it resolves (#2494); "no" resolves it doing nothing,
+// "yes" runs it.
 func TestReflexiveTriggerOptionalAsksFirst(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -279,10 +280,10 @@ func TestReflexiveTriggerOptionalAsksFirst(t *testing.T) {
 					t.Fatalf("PassPriority: %v", err)
 				}
 			}
-			prompt := triggerPrompt(g)
-			if prompt == nil {
-				t.Fatal("no trigger prompt for an optional reflexive trigger")
+			if triggerPrompt(g) != nil {
+				t.Fatal("the reflexive trigger asked before it went on the stack (CR 603.5)")
 			}
+			prompt := passUntilTriggerPrompt(t, g)
 			if prompt.Chooser != me || prompt.Reason != "do the thing?" {
 				t.Errorf("prompt chooser/question = %v/%q, want %v/%q", prompt.Chooser, prompt.Reason, me, "do the thing?")
 			}

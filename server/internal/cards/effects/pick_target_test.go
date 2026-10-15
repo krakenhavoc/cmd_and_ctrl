@@ -78,14 +78,13 @@ func TestReclamationSageYesThenPickDestroysChosen(t *testing.T) {
 	bear := pushTypedCard(g, opp.ID, "Bear", "Creature — Bear", "{1}{G}")
 
 	sageID := castAndResolveCreature(t, g, "Reclamation Sage", "Creature — Elf Shaman", reclamationSageOracle)
-	// "You may" first; nothing picked yet.
-	if latestPickTarget(g, caster.ID) != nil {
-		t.Fatalf("pick prompt must wait for the yes/no")
+	// The target first (CR 603.3d); the "you may" waits for resolution.
+	if owedMays(g, caster.ID) != 0 {
+		t.Fatalf("the yes/no was asked before the target pick")
 	}
-	answerLatestTriggerPrompt(t, g, caster.ID, true)
 	prompt := latestPickTarget(g, caster.ID)
 	if prompt == nil {
-		t.Fatalf("no pick_target prompt after Yes")
+		t.Fatalf("no pick_target prompt as the trigger went on the stack")
 	}
 	// Legal set: every artifact / enchantment, own included; not the bear.
 	for _, want := range []uuid.UUID{sword, anthem, myRock} {
@@ -105,6 +104,7 @@ func TestReclamationSageYesThenPickDestroysChosen(t *testing.T) {
 	if item == nil || len(item.Targets) != 1 || item.Targets[0].ID != anthem {
 		t.Fatalf("trigger not on the stack with the chosen target: %+v", item)
 	}
+	answerLatestTriggerPrompt(t, g, caster.ID, true)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(anthem) || !opp.Graveyard.Contains(anthem) {
 		t.Errorf("chosen enchantment not destroyed")
@@ -134,7 +134,7 @@ func TestReclamationSageNoLegalTargetSkipsBothPrompts(t *testing.T) {
 	caster, opp := g.Seats[0], g.Seats[1]
 	pushTypedCard(g, opp.ID, "Bear", "Creature — Bear", "{1}{G}") // no artifact / enchantment anywhere
 	castAndResolveCreature(t, g, "Reclamation Sage", "Creature — Elf Shaman", reclamationSageOracle)
-	if latestTriggerPrompt(g, caster.ID) != nil || latestPickTarget(g, caster.ID) != nil {
+	if owedMays(g, caster.ID) > 0 || latestPickTarget(g, caster.ID) != nil {
 		t.Errorf("trigger with no legal target must be removed without asking (CR 603.3d)")
 	}
 }
@@ -145,7 +145,6 @@ func TestReclamationSageFizzlesWhenChosenTargetLeaves(t *testing.T) {
 	sword := pushTypedCard(g, opp.ID, "Sword", "Artifact", "{1}")
 	other := pushTypedCard(g, opp.ID, "Other", "Artifact", "{1}")
 	sageID := castAndResolveCreature(t, g, "Reclamation Sage", "Creature — Elf Shaman", reclamationSageOracle)
-	answerLatestTriggerPrompt(t, g, caster.ID, true)
 	pickCard(t, g, caster.ID, sword)
 	if triggerOnStack(g, sageID) == nil {
 		t.Fatalf("trigger not on the stack")
@@ -180,7 +179,7 @@ func TestAcidicSlimeMandatoryPickIncludesLands(t *testing.T) {
 	bear := pushTypedCard(g, opp.ID, "Bear", "Creature — Bear", "{1}{G}")
 	slimeID := castAndResolveCreature(t, g, "Acidic Slime", "Creature — Ooze", acidicSlimeOracle)
 	// Mandatory: straight to the pick, no yes/no.
-	if latestTriggerPrompt(g, caster.ID) != nil {
+	if owedMays(g, caster.ID) > 0 {
 		t.Errorf("Acidic Slime is mandatory — no yes/no prompt")
 	}
 	prompt := latestPickTarget(g, caster.ID)
@@ -210,7 +209,6 @@ func TestEternalWitnessPicksFromOwnGraveyardOnly(t *testing.T) {
 	theirs := pushGraveyardCardForTest(opp, "Their Body")
 
 	witnessID := castAndResolveCreature(t, g, "Eternal Witness", "Creature — Human Shaman", eternalWitnessOracle)
-	answerLatestTriggerPrompt(t, g, caster.ID, true)
 	prompt := latestPickTarget(g, caster.ID)
 	if prompt == nil {
 		t.Fatalf("no pick_target prompt")
@@ -223,6 +221,7 @@ func TestEternalWitnessPicksFromOwnGraveyardOnly(t *testing.T) {
 	if triggerOnStack(g, witnessID) == nil {
 		t.Fatalf("trigger not on the stack")
 	}
+	answerLatestTriggerPrompt(t, g, caster.ID, true)
 	passPriorityAroundTable(t, g)
 	if !caster.Hand.Contains(older) {
 		t.Errorf("chosen graveyard card not returned to hand")
@@ -236,7 +235,7 @@ func TestEternalWitnessEmptyGraveyardNoPrompt(t *testing.T) {
 	g := newCatalogGame(t)
 	caster := g.Seats[0]
 	castAndResolveCreature(t, g, "Eternal Witness", "Creature — Human Shaman", eternalWitnessOracle)
-	if latestTriggerPrompt(g, caster.ID) != nil || latestPickTarget(g, caster.ID) != nil {
+	if owedMays(g, caster.ID) > 0 || latestPickTarget(g, caster.ID) != nil {
 		t.Errorf("empty graveyard: trigger must be removed without any prompt")
 	}
 }

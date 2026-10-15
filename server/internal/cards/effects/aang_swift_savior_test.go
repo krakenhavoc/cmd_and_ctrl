@@ -113,8 +113,8 @@ func TestAangSwiftSaviorAirbendsOnEntry(t *testing.T) {
 		t.Fatal("Aang did not resolve onto the battlefield")
 	}
 
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, victim)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	assertAirbent(t, g, victim, opp.ID)

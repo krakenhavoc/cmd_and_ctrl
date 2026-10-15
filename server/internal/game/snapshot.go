@@ -1429,6 +1429,13 @@ type stackItemSnapshot struct {
 	// refuses the file (an unknown stack-item key), the rollback case.
 	TargetsAnnouncePending bool `json:"targetsAnnouncePending,omitempty"`
 
+	// Optional is StackItem.Optional (#2494): the CR 603.5 "you may" an
+	// optional trigger asks as it resolves. Carried, since a restore
+	// that lost it would resolve the trigger without asking. A binary
+	// from before the field refuses the file (an unknown stack-item
+	// key), the rollback case.
+	Optional *OptionalTrigger `json:"optional,omitempty"`
+
 	// CantBeCountered is StackItem.CantBeCountered (ADR 0106 §4,
 	// #1806): the marks that say this spell can't be countered.
 	// Carried, because a restore that lost one would let through a
@@ -1649,9 +1656,15 @@ type pendingChoiceSnapshot struct {
 	// OwedInStep's reason — a restored game gates the same way —
 	// and because the ID is the only route back to what the
 	// question was about.
-	GuardsStackItem uuid.UUID   `json:"guardsStackItem,omitempty"`
-	ChooseCards     []uuid.UUID `json:"chooseCards,omitempty"`
-	ChooseMin       int         `json:"chooseMin,omitempty"`
+	GuardsStackItem uuid.UUID `json:"guardsStackItem,omitempty"`
+	// OptionalItem / OptionalTradeFor are PendingChoice's (#2494): the
+	// resolving item whose CR 603.5 "you may" a trigger_prompt asks, and
+	// what a "yes" trades for. Plain data: the item rides the parked
+	// resolution tail, so the prompt is a restore point.
+	OptionalItem     uuid.UUID   `json:"optionalItem,omitempty"`
+	OptionalTradeFor uuid.UUID   `json:"optionalTradeFor,omitempty"`
+	ChooseCards      []uuid.UUID `json:"chooseCards,omitempty"`
+	ChooseMin        int         `json:"chooseMin,omitempty"`
 	// #2525: a proliferate's seats on offer and the engine's suggested
 	// answer. Carried for ChooseCards' reason — the prompt is its
 	// options — even though the prompt's continuation frame keeps a
@@ -2547,6 +2560,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
 	out.PromisedCounters = copyPromisedCounters(s.PromisedCounters) // #1852
 	out.TargetsAnnouncePending = s.TargetsAnnouncePending           // #1539
+	out.Optional = cloneOptionalTrigger(s.Optional)                 // #2494
 	// ADR 0041 P9 (#1497, tier 4): the census fold. An item is counted
 	// ONCE, whatever it holds, because the question is one question —
 	// can restore rebuild this item — and it has one of two answers:
@@ -2763,6 +2777,8 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		LifeCost:             c.LifeCost,
 		OwedInStep:           c.OwedInStep,
 		GuardsStackItem:      c.GuardsStackItem,
+		OptionalItem:         c.OptionalItem,
+		OptionalTradeFor:     c.OptionalTradeFor,
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChoosePlayers:        copyUUIDs(c.ChoosePlayers),
 		ChooseSuggested:      copyUUIDs(c.ChooseSuggested),
@@ -3510,6 +3526,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
 	out.PromisedCounters = copyPromisedCounters(s.PromisedCounters) // #1852
 	out.TargetsAnnouncePending = s.TargetsAnnouncePending           // #1539
+	out.Optional = cloneOptionalTrigger(s.Optional)                 // #2494
 	if _, ok := catalogBodySlot(s.Body); ok {
 		// A stamped activated or triggered ability (P9): the row gives
 		// back the Effect, the target clause and the mode clause
@@ -3660,6 +3677,8 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		LifeCost:             c.LifeCost,
 		OwedInStep:           c.OwedInStep,
 		GuardsStackItem:      c.GuardsStackItem,
+		OptionalItem:         c.OptionalItem,
+		OptionalTradeFor:     c.OptionalTradeFor,
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChoosePlayers:        copyUUIDs(c.ChoosePlayers),
 		ChooseSuggested:      copyUUIDs(c.ChooseSuggested),

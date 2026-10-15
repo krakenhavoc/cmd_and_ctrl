@@ -4147,6 +4147,14 @@ func (g *Game) resolveTopAbilityLocked() {
 		ResolvedStackItemID: top.ID,
 	})
 	resolveSeq := g.eventSeq
+	// CR 603.5 (#2494): an optional trigger's "you may" is chosen now,
+	// as it resolves, and the rest of the resolution waits for the
+	// answer (answerOptionalTriggerLocked runs it on a "yes").
+	if top.Optional != nil {
+		g.askOptionalTriggerLocked(top)
+		g.holdResolutionTailLocked(top, resolveSeq)
+		return
+	}
 	if top.Effect != nil {
 		if err := top.Effect(g, top); err != nil {
 			g.EmitEvent(Event{

@@ -134,10 +134,6 @@ func TestModularMovesItsCountersWhenItDies(t *testing.T) {
 	bear := pushDiesKeywordCreature(g, me.ID, "Bear", 2, 2)
 
 	b25Destroy(g, worker)
-	if latestTriggerPrompt(g, me.ID) == nil {
-		t.Fatal("no \"you may\" for the modular trigger")
-	}
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pick := latestPickTarget(g, me.ID)
 	if pick == nil {
 		t.Fatal("no target prompt for the modular trigger")
@@ -146,6 +142,10 @@ func TestModularMovesItsCountersWhenItDies(t *testing.T) {
 		t.Error("a non-artifact creature was accepted as the target")
 	}
 	answerPickTarget(t, g, artifact)
+	if owedMays(g, me.ID) == 0 {
+		t.Fatal("no \"you may\" for the modular trigger")
+	}
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if got := countersOn(g, artifact, game.CounterPlusOne); got != 3 {
 		t.Errorf("the artifact creature got %d counters, want 3", got)
@@ -188,8 +188,8 @@ func TestArcboundRavagerEatsItselfAndPassesItsCounters(t *testing.T) {
 		t.Fatalf("after eating an artifact the Ravager has %d counters, want 2", got)
 	}
 	sac(ravager.InstanceID)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	answerPickTarget(t, g, thopter)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if got := countersOn(g, thopter, game.CounterPlusOne); got != 2 {
 		t.Errorf("the Thopter got %d counters from the Ravager's modular, want 2", got)

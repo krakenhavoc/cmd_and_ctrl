@@ -7,12 +7,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	"Whenever an enchantment you control enters, you may create a
 //	 token that's a copy of it. Do this only once each turn."
 //
-// The "you may" is the CR 603.5 prompt asked as the enchantment
-// enters. "Only once each turn" limits the DOING, not the asking: a
-// trigger you declined does not use it up, and when two enchantments
-// enter together, both triggers are offered but only the first to
-// resolve makes a copy — the resolution tally decides, per object, so
-// an Ondu that left and came back has a fresh allowance.
+// The "you may" is the CR 603.5 prompt asked as the trigger resolves.
+// "Only once each turn" limits the DOING, not the asking: a trigger you
+// declined does not use it up, and when two enchantments enter
+// together, both triggers are offered but only the first "yes" makes a
+// copy — the done tally decides (b28DoneThisTurn), per object, so an
+// Ondu that left and came back has a fresh allowance.
 //
 // The token is a real copy with the enchantment's oracle ID, so it
 // brings every ability the catalog has for it, and its own entry does
@@ -37,22 +37,26 @@ func init() {
 
 const onduSpiritdancerLabel = "Ondu Spiritdancer — create a token that's a copy of that enchantment"
 
+// onduSpiritdancerDone is the once-each-turn tally's label: the copy
+// was made this turn.
+const onduSpiritdancerDone = "Ondu Spiritdancer — copied an enchantment this turn"
+
 // anEnchantmentEnteredUnderYourControl is "whenever an enchantment you
 // control enters" — any enchantment, the source included if it is one —
 // and this Ondu has not made its copy yet this turn, so a player is not
 // asked about one they could not make (the token's own entry, say).
 func anEnchantmentEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	c, ok := enteredUnderYourControl(ev, source, g, false)
-	return ok && c.IsEnchantment() && g.ResolvedThisTurn(source.InstanceID, onduSpiritdancerLabel) == 0
+	return ok && c.IsEnchantment() && !b28DoneThisTurn(g, source.InstanceID, onduSpiritdancerDone)
 }
 
 // ondusCopyTheEnchantment makes the copy, unless this Ondu has already
-// made one this turn. The tally counts the resolution in progress, so
-// the first one sees 1.
+// made one this turn.
 func ondusCopyTheEnchantment(g *game.Game, item *game.StackItem) error {
-	if g.ResolvedThisTurn(item.SourceCardID, onduSpiritdancerLabel) > 1 {
+	if b28DoneThisTurn(g, item.SourceCardID, onduSpiritdancerDone) {
 		return nil
 	}
+	b28NoteDoneThisTurn(g, item.SourceCardID, onduSpiritdancerDone)
 	return CreateTokenCopy{
 		Controller: item.Controller,
 		Copy:       item.Trigger.Event.CardID,

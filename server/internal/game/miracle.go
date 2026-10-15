@@ -129,6 +129,10 @@ func MiracleTrigger(name, cost string) TriggeredAbility {
 		Keyword: AltCostKeyMiracle,
 		OptionalPrompt: &TriggerOptionalPrompt{
 			Question: "Reveal " + name + " for its miracle cost " + cost + "?",
+			// CR 702.94a: the reveal is made as the card is drawn, and
+			// it is what makes the trigger, so it is asked before the
+			// stack rather than at resolution (CR 603.5, #2494).
+			BeforeStack: true,
 		},
 		AppliesTo: func(ev Event, source *Card, _ Characteristic, g *Game) bool {
 			return source != nil && ev.CardID == source.InstanceID &&

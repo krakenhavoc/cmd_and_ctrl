@@ -181,10 +181,11 @@ func TestStepDelayedTriggerIsNotSweptAtEndOfTurn(t *testing.T) {
 }
 
 // TestEventDelayedTriggerGoesThroughTheHarvesterDispatch: an Optional
-// one asks its controller, exactly as a harvested trigger does, and
-// "no" drops it without effect. That the prompt exists at all is the
-// proof that the fired trigger takes dispatchTriggerLocked rather
-// than a second path.
+// one goes on the stack and asks its controller as it resolves,
+// exactly as a harvested trigger does (CR 603.5, #2494), and "no"
+// resolves it without effect. That the item carries the question at
+// all is the proof that the fired trigger takes dispatchTriggerLocked
+// rather than a second path.
 func TestEventDelayedTriggerGoesThroughTheHarvesterDispatch(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
@@ -203,9 +204,12 @@ func TestEventDelayedTriggerGoesThroughTheHarvesterDispatch(t *testing.T) {
 	})
 
 	emitCast(g, me.ID, uuid.New())
-	choice := pendingChoiceOfKind(g, PendingChoiceTriggerPrompt)
+	if pendingChoiceOfKind(g, PendingChoiceTriggerPrompt) != nil {
+		t.Fatal("the \"you may\" was asked before the trigger went on the stack (CR 603.5)")
+	}
+	choice := passUntilTriggerPrompt(t, g)
 	if choice == nil {
-		t.Fatal("an Optional event-conditioned delayed trigger queued no prompt")
+		t.Fatal("an Optional event-conditioned delayed trigger asked nothing as it resolved")
 	}
 	if choice.Chooser != me.ID {
 		t.Errorf("prompt chooser = %s, want the trigger's controller %s", choice.Chooser, me.ID)

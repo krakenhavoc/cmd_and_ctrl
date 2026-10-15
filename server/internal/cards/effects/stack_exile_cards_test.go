@@ -73,8 +73,8 @@ func TestAangSwiftSaviorAirbendsASpell(t *testing.T) {
 		t.Fatal("the spell under Aang resolved before the airbend")
 	}
 
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, spell)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	assertAirbent(t, g, spell, me.ID)
@@ -215,8 +215,8 @@ func TestRanarCountsMyAbilityExilingTheirCreature(t *testing.T) {
 		t.Fatalf("CastSpell: %v", err)
 	}
 	passUntilOnBattlefield(t, g, aang.InstanceID)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, victim)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if !g.Exile.Contains(victim) {

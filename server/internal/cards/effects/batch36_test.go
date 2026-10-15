@@ -666,12 +666,7 @@ func TestB36ShardingSphinxMayMakeAThopterPerArtifactCreatureThatConnects(t *test
 		t.Error("printed flying did not reach the effective abilities")
 	}
 	attackWith(t, g, opp.ID, sphinx, myr, bear)
-	prompts := 0
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceTriggerPrompt && c.Chooser == me.ID && c.Source == sphinx {
-			prompts++
-		}
-	}
+	prompts := owedMays(g, me.ID)
 	if prompts != 2 {
 		t.Fatalf("two artifact creatures connected, the Bear is not one: %d prompts", prompts)
 	}
@@ -725,7 +720,7 @@ func TestB36SyggDrawsAtAnyEndStepAfterAnOpponentLostThree(t *testing.T) {
 		_ = g.ChangePlayerLifeForEffect(uuid.Nil, other.ID, -2)
 	})
 	advanceToEndStepOf(t, g, 0)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Fatal("no single opponent lost three")
 	}
 	passPriorityAroundTable(t, g)
@@ -735,7 +730,7 @@ func TestB36SyggDrawsAtAnyEndStepAfterAnOpponentLostThree(t *testing.T) {
 	advanceToUpkeepOf(t, g, 1)
 	g.WithWriteLock(func() { _ = g.ChangePlayerLifeForEffect(uuid.Nil, opp.ID, -2) })
 	advanceToEndStepOf(t, g, 1)
-	if latestTriggerPrompt(g, me.ID) != nil {
+	if owedMays(g, me.ID) > 0 {
 		t.Fatal("\"this turn\" does not carry over")
 	}
 	passPriorityAroundTable(t, g)
@@ -748,7 +743,7 @@ func TestB36SyggDrawsAtAnyEndStepAfterAnOpponentLostThree(t *testing.T) {
 		_ = g.ChangePlayerLifeForEffect(uuid.Nil, opp.ID, -1)
 	})
 	advanceToEndStepOf(t, g, 2)
-	if latestTriggerPrompt(g, me.ID) == nil {
+	if owedMays(g, me.ID) == 0 {
 		t.Fatal("an opponent lost 3 this turn: the end step asks")
 	}
 	answerLatestTriggerPrompt(t, g, me.ID, true)
@@ -774,7 +769,6 @@ func TestB36AngelOfSerenityExilesUpToThreeCreaturesAndHandsThemBackWhenSheLeaves
 	if !hasEffectiveKeyword(t, g, angel, "flying") {
 		t.Error("printed flying did not reach the effective abilities")
 	}
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	p := latestPickTarget(g, me.ID)
 	if !hasID(p.PickTargetCards, a) || !hasID(p.PickTargetCards, c) || !hasID(p.PickTargetCards, mine) {
@@ -790,6 +784,7 @@ func TestB36AngelOfSerenityExilesUpToThreeCreaturesAndHandsThemBackWhenSheLeaves
 		t.Errorf("\"up to three\": min %d max %d", p.PickTargetMin, p.PickTargetMax)
 	}
 	b17PickCards(t, g, me.ID, a, dead, c)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	for _, id := range []uuid.UUID{a, dead, c} {
 		if !inExile(g, id) {
