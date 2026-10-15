@@ -76,18 +76,7 @@ func init() {
 				Label:   "−3: Exile target permanent.",
 				Cost:    LoyaltyCost(-3),
 				Targets: TargetPermanent("target permanent"),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind != game.TargetCard {
-							continue
-						}
-						if err := (ExileTarget{Target: t.ID}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
-				},
+				Effect:  exileEveryLegalCardTarget,
 			},
 		},
 	})

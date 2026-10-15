@@ -244,3 +244,4 @@ pick revealed-pick/traumatic-revelation-incubate
 option option-pick/dack-fayden-helping-hand-opponent
 body flash/cleanup-sacrifice
 body fortune-loyal-steed/end-of-combat
+body terra-herald-of-hope/return

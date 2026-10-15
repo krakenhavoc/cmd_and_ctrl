@@ -167,6 +167,15 @@ var (
 	blasterHulkDamageBody = game.ReflexiveBody("blaster-hulk/divided-damage", simpleBody(blasterHulkDamage),
 		constTargets(func() *game.TargetSpec { return TargetAny().WithCount(0, 8).Dividing(Divide(8)) }))
 
+	// Terra, Herald of Hope (#3655): "when you do, return target creature
+	// card with power 3 or less from your graveyard to the battlefield
+	// tapped".
+	terraReturnBody = game.ReflexiveBody("terra-herald-of-hope/return", simpleBody(returnFirstLegalGraveyardTargetToBattlefieldTapped),
+		constTargets(func() *game.TargetSpec {
+			return TargetCardInGraveyard("target creature card with power 3 or less in your graveyard",
+				YouOwn(), Creature(), PowerLE(3))
+		}))
+
 	// Agatha's Soul Cauldron (#3201): "When a creature card is exiled this
 	// way, put a +1/+1 counter on target creature you control."
 	agathasSoulCauldronCounterBody = game.ReflexiveBody("agathas-soul-cauldron/counter", simpleBody(PlusOneCounterOnChosenTarget),
