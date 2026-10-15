@@ -54,7 +54,7 @@ func mkAdd(t *testing.T, g *game.Game, p *game.Player, produced string, opts gam
 
 func mkColors(p *game.Player) map[string]int {
 	out := map[string]int{}
-	for _, tok := range p.ManaPool {
+	for _, tok := range p.ManaPool.Units() {
 		out[tok.Color]++
 	}
 	return out
@@ -130,7 +130,7 @@ func TestKruphixConvertsLostManaToColorlessAndKeepsRestrictions(t *testing.T) {
 	mkAdvance(t, g)
 	mkWantPool(t, me, map[string]int{"C": 3})
 	restricted := 0
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if len(tok.Restrictions) == 1 && tok.Restrictions[0] == game.ManaRestrictNotNonartifactSpell {
 			restricted++
 		}
@@ -176,7 +176,7 @@ func TestMarkedManaIsConvertedByKruphixWhenTheMarkExpires(t *testing.T) {
 	mkWantPool(t, me, map[string]int{"R": 1})
 	mkAdvance(t, g)
 	mkWantPool(t, me, map[string]int{"C": 1})
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Riders != nil {
 			t.Errorf("expired mark still on the token: %+v", tok.Riders)
 		}
@@ -233,7 +233,7 @@ func TestKarnSizeAndRestrictedKeptUpkeepMana(t *testing.T) {
 		}
 	})
 	mkWantPool(t, me, map[string]int{"C": 2})
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if len(tok.Restrictions) != 1 || tok.Restrictions[0] != game.ManaRestrictNotNonartifactSpell {
 			t.Errorf("Karn mana restrictions = %v", tok.Restrictions)
 		}
@@ -287,7 +287,7 @@ func TestKeptManaRoundTripsThroughASnapshot(t *testing.T) {
 	rme := restored.Seats[g.Turn.ActiveSeat]
 	mkWantPool(t, rme, map[string]int{"G": 2, "R": 1})
 	marked := 0
-	for _, tok := range rme.ManaPool {
+	for _, tok := range rme.ManaPool.Units() {
 		if tok.Color == "G" && len(tok.Riders) == 1 && tok.Riders[0].Kind == game.ManaRiderKeepUntilEndOfTurn {
 			marked++
 		}
@@ -334,7 +334,7 @@ func TestEnumeratorOffersACastPaidWithKeptMana(t *testing.T) {
 	}
 	mkAdvanceTo(t, g, game.StepEnd)
 	mkAdvance(t, g)
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Fatalf("pool = %v after cleanup", me.ManaPool)
 	}
 }

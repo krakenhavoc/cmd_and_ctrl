@@ -97,7 +97,7 @@ func TestMarwynIsDrivenByPowerAsACount(t *testing.T) {
 		t.Errorf("Marwyn = %+v, want five {G}", a)
 	}
 	tapForMana(t, g, me.ID, marwyn)
-	if got := len(me.ManaPool); got != 5 {
+	if got := me.ManaPool.Total(); got != 5 {
 		t.Errorf("pool holds %d, want 5", got)
 	}
 }
@@ -112,7 +112,7 @@ func TestManaReflectionStillDoublesACountDrivenAbility(t *testing.T) {
 	marwyn := pushCatalogPermanent(g, me.ID, "Marwyn, the Nurturer", "Legendary Creature — Elf Druid", b10MarwynOracle, false)
 	ouroboroidSetCounters(g, marwyn, 2) // power 3
 	tapForMana(t, g, me.ID, marwyn)
-	if got := len(me.ManaPool); got != 6 {
+	if got := me.ManaPool.Total(); got != 6 {
 		t.Errorf("Mana-Reflected Marwyn made %d mana, want 6", got)
 	}
 }
@@ -131,7 +131,7 @@ func TestCountDrivenCeilingAnnouncesAndStaysSmall(t *testing.T) {
 	tapForMana(t, g, me.ID, marwyn)
 	runtime.ReadMemStats(&after)
 
-	if got := len(me.ManaPool); got != game.MaxProducedMana {
+	if got := me.ManaPool.Total(); got != game.MaxProducedMana {
 		t.Errorf("pool holds %d, want %d", got, game.MaxProducedMana)
 	}
 	if n := countCappedEvents(g, "mana"); n != 1 {

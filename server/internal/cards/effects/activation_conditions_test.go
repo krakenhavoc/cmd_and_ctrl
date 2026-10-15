@@ -222,7 +222,7 @@ func TestSanctumOfEternityActivatesAnyTimeDuringYourTurn(t *testing.T) {
 	untap()
 	b06AddMana(me, "C", "C")
 	acRefused(t, g, me.ID, sanctum, 0, game.ActivateAbilityParams{Targets: cardRefs(fourth)})
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Errorf("pool = %v, want the {C}{C} still floating", me.ManaPool)
 	}
 }
@@ -247,7 +247,7 @@ func TestTectonicEdgeNeedsOneOpponentWithFourLands(t *testing.T) {
 	b06AddMana(me, "C")
 
 	acRefused(t, g, me.ID, edge, 0, game.ActivateAbilityParams{Targets: cardRefs(coffers)})
-	if !onBattlefield(g, edge) || len(me.ManaPool) != 1 {
+	if !onBattlefield(g, edge) || me.ManaPool.Total() != 1 {
 		t.Fatal("a refused Tectonic Edge was sacrificed or spent mana")
 	}
 

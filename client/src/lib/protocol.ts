@@ -2187,6 +2187,12 @@ export interface VoteView {
   ballots: Record<string, number>;
 }
 
+// ManaPoolRun is one run of PlayerView.mana_pool (#3041).
+export interface ManaPoolRun {
+  color: string;
+  count: number;
+}
+
 export interface PlayerView {
   id: string;
   name: string;
@@ -2337,12 +2343,14 @@ export interface PlayerView {
   // grant is already summed in. Normally 1 / 0.
   land_drops_per_turn?: number;
   lands_played_this_turn?: number;
-  // S15: per-player mana pool. Each entry is an uppercase mana
-  // letter ("W", "U", "B", "R", "G", "C") — order reflects
-  // insertion order so the UI can highlight the most recent add.
-  // Empties at every step boundary (CR 106.4), so this is absent
-  // / empty in the common case outside an active cast sequence.
-  mana_pool?: string[];
+  // S15: per-player mana pool, in insertion order, as runs of one
+  // colour (#3041): `color` is an uppercase mana letter ("W", "U",
+  // "B", "R", "G", "C") and `count` how many of it sit together.
+  // Read the amount with manaPoolTotal (lib/manaPool.ts), never
+  // `.length`, which counts runs. Empties at every step boundary
+  // (CR 106.4), so this is absent / empty in the common case
+  // outside an active cast sequence.
+  mana_pool?: ManaPoolRun[];
   // #623 (CR 114): the emblems this seat has, in creation order.
   // Absent for a seat with none, which is nearly every seat.
   //

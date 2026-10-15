@@ -34,6 +34,7 @@
     ZoneView,
   } from "../../protocol";
   import { answeredOnBoard, listFallback } from "../../boardAnsweredChoice";
+  import { manaPoolTotal } from "../../manaPool";
   import { boardChoicePick, isBoardPickable, pickOnBoard } from "../../boardChoicePick";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
   import { consideringDelayMs, isResponseWindowFor, responseWindowKey } from "../../considering";
@@ -398,7 +399,7 @@
   const suggestedX = $derived.by(() => {
     if (!viewerID) return 0;
     const me = view.seats.find((s) => s.id === viewerID);
-    const floating = me?.mana_pool?.length ?? 0;
+    const floating = manaPoolTotal(me?.mana_pool);
     let sources = 0;
     for (const c of view.battlefield.cards) {
       if (c.controller !== viewerID || c.tapped) continue;

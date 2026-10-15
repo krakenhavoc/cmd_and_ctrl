@@ -66,7 +66,7 @@ func TestThroneOfEldraineChoosesAColorAndAddsFourOfIt(t *testing.T) {
 	if got := poolColors(me); !slices.Equal(got, []string{"G", "G", "G", "G"}) {
 		t.Fatalf("pool = %v, want four green", got)
 	}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if !slices.Contains(tok.Restrictions, game.ManaRestrictMonocolored) || !slices.Contains(tok.Restrictions, game.ManaRestrictColor("G")) {
 			t.Errorf("token %+v is not restricted to monocolored green spells", tok)
 		}
@@ -227,7 +227,7 @@ func TestThroneOfEldraineSurvivesASnapshotRoundTrip(t *testing.T) {
 		t.Fatalf("restored: unrestricted mana for a hybrid spell: %v", err)
 	}
 	restricted := 0
-	for _, tok := range rme.ManaPool {
+	for _, tok := range rme.ManaPool.Units() {
 		if len(tok.Restrictions) > 0 {
 			restricted++
 		}
@@ -361,7 +361,7 @@ func TestObsidianObeliskEntersTappedAndRestrictsOnlyItsColoredMana(t *testing.T)
 	if err := g.ActivateManaAbility(me.ID, obelisk, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("tap the Obelisk for {C}: %v", err)
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "C" || len(me.ManaPool[0].Restrictions) != 0 {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "C" || len(me.ManaPool.Units()[0].Restrictions) != 0 {
 		t.Fatalf("pool %+v, want one unrestricted colorless", me.ManaPool)
 	}
 	me.ManaPool = nil
@@ -370,7 +370,7 @@ func TestObsidianObeliskEntersTappedAndRestrictsOnlyItsColoredMana(t *testing.T)
 		t.Fatalf("tap the Obelisk for a colour: %v", err)
 	}
 	resolveManaPickAnyColor(t, g, me.ID)
-	if len(me.ManaPool) != 1 || !slices.Equal(me.ManaPool[0].Restrictions, []string{game.ManaRestrictCast, game.ManaRestrictMulticolored}) {
+	if me.ManaPool.Total() != 1 || !slices.Equal(me.ManaPool.Units()[0].Restrictions, []string{game.ManaRestrictCast, game.ManaRestrictMulticolored}) {
 		t.Errorf("pool %+v, want one token restricted to multicolored spells", me.ManaPool)
 	}
 }

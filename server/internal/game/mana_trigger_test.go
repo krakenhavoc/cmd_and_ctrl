@@ -115,7 +115,7 @@ func TestManaTriggerMintsFromItsOwnSource(t *testing.T) {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
 	fromAura := 0
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Source == aura {
 			fromAura++
 		}
@@ -146,7 +146,7 @@ func TestManaTriggerDoesNotFireOnAnEmptyProduction(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, empty, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool = %v, want nothing: the land added no mana, so it was not tapped for mana", me.ManaPool)
 	}
 }
@@ -266,7 +266,7 @@ func TestManaTriggerWithAColourChoicePromptsByHand(t *testing.T) {
 		t.Errorf("pool = %v, want the Forest's {G} and the chosen {R}", got)
 	}
 	// Answering the trigger's own pick must not fire it again.
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Errorf("pool = %v, want exactly two mana — the trigger must not re-trigger", me.ManaPool)
 	}
 }
@@ -299,7 +299,7 @@ func TestManaTriggerWithAColourChoicePicksGreedilyUnderAutoTap(t *testing.T) {
 	if len(g.PendingChoices) != 0 {
 		t.Fatalf("PendingChoices = %d, want none: the auto-tapper asks no questions", len(g.PendingChoices))
 	}
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Errorf("pool = %v, want the Forest's {G} and the trigger's extra", me.ManaPool)
 	}
 }
@@ -353,7 +353,7 @@ func TestManaTriggerDoesNotFireWithoutATap(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, petal, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 1 {
+	if me.ManaPool.Total() != 1 {
 		t.Errorf("pool = %v, want only the Petal's own {G}", me.ManaPool)
 	}
 }

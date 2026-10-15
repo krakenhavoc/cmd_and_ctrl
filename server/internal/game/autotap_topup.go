@@ -86,12 +86,13 @@ func poolShortfalls(pool ManaPool, cost ParsedCost, xValue int, ctx ManaSpendCon
 	total, ngTotal := 0, 0
 	for _, tok := range pool {
 		if ctx.allowsToken(tok) {
-			counts[tok.Color]++
+			n := tok.N()
+			counts[tok.Color] += n
 			if tok.noGeneric() {
-				ngCounts[tok.Color]++
-				ngTotal++
+				ngCounts[tok.Color] += n
+				ngTotal += n
 			} else {
-				total++
+				total += n
 			}
 		}
 	}

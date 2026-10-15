@@ -121,7 +121,7 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		fmt.Fprintf(&b, "%s — %d life, %d cards in hand, %d in library",
 			SeatLabel(s, me), s.Life, s.Hand.Count, s.Library.Count)
 		if len(s.ManaPool) > 0 {
-			fmt.Fprintf(&b, ", mana pool %s", strings.Join(s.ManaPool, ""))
+			fmt.Fprintf(&b, ", mana pool %s", manaPoolText(s.ManaPool))
 		}
 		// ADR 0129 §7: the seat's player counters ("4 energy, 2
 		// poison"), so a model seat and the MCP seat see the energy they

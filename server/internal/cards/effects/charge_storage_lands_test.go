@@ -21,7 +21,7 @@ const (
 
 func poolColours(p *game.Player) map[string]int {
 	out := map[string]int{}
-	for _, tok := range p.ManaPool {
+	for _, tok := range p.ManaPool.Units() {
 		out[tok.Color]++
 	}
 	return out
@@ -43,7 +43,7 @@ func TestBlackManaBatteryBanksAChargeCounterForTwoAndTap(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, bat, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
 		t.Fatalf("bank: %v", err)
 	}
-	if got := len(me.ManaPool); got != 0 {
+	if got := me.ManaPool.Total(); got != 0 {
 		t.Errorf("pool after {2}: %d, want 0", got)
 	}
 	if got := counterCount(g, bat, game.CounterCharge); got != 0 {
@@ -79,7 +79,7 @@ func TestBlackManaBatteryPaysOneBlackPlusOnePerCounterRemoved(t *testing.T) {
 				addCountersForTest(g, bat, game.CounterCharge, tc.held)
 			}
 			activateManaFor(t, g, me.ID, bat, 0, game.ManaAbilityParams{CounterCounts: []int{tc.remove}})
-			if got := poolColours(me); got["B"] != tc.wantBlack || len(me.ManaPool) != tc.wantBlack {
+			if got := poolColours(me); got["B"] != tc.wantBlack || me.ManaPool.Total() != tc.wantBlack {
 				t.Errorf("pool %v, want %d {B} and nothing else", got, tc.wantBlack)
 			}
 			if got := counterCount(g, bat, game.CounterCharge); got != tc.wantLeft {
@@ -101,7 +101,7 @@ func TestBlackManaBatteryRefusesToRemoveMoreThanItHolds(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, bat, 0, game.ManaAbilityParams{CounterCounts: []int{3}}); err == nil {
 		t.Fatal("removing three of two counters was allowed")
 	}
-	if len(me.ManaPool) != 0 || counterCount(g, bat, game.CounterCharge) != 2 || tappedForTest(t, g, bat) {
+	if me.ManaPool.Total() != 0 || counterCount(g, bat, game.CounterCharge) != 2 || tappedForTest(t, g, bat) {
 		t.Error("a refused payout changed the board")
 	}
 }
@@ -128,7 +128,7 @@ func TestBottomlessVaultPaysOneBlackPerCounterActuallyRemoved(t *testing.T) {
 
 	// Zero: "any number" includes none. The land taps for nothing.
 	activateManaFor(t, g, me.ID, land, 0, game.ManaAbilityParams{CounterCounts: []int{0}})
-	if len(me.ManaPool) != 0 || counterCount(g, land, game.CounterStorage) != 4 || !tappedForTest(t, g, land) {
+	if me.ManaPool.Total() != 0 || counterCount(g, land, game.CounterStorage) != 4 || !tappedForTest(t, g, land) {
 		t.Fatalf("zero removed: pool %v, counters %d, tapped %v",
 			poolColours(me), counterCount(g, land, game.CounterStorage), tappedForTest(t, g, land))
 	}
@@ -136,7 +136,7 @@ func TestBottomlessVaultPaysOneBlackPerCounterActuallyRemoved(t *testing.T) {
 	// Partial.
 	untapForTest(g, land)
 	activateManaFor(t, g, me.ID, land, 0, game.ManaAbilityParams{CounterCounts: []int{3}})
-	if got := poolColours(me); got["B"] != 3 || len(me.ManaPool) != 3 {
+	if got := poolColours(me); got["B"] != 3 || me.ManaPool.Total() != 3 {
 		t.Fatalf("three removed: pool %v, want {B}x3", got)
 	}
 	if got := counterCount(g, land, game.CounterStorage); got != 1 {
@@ -146,7 +146,7 @@ func TestBottomlessVaultPaysOneBlackPerCounterActuallyRemoved(t *testing.T) {
 	// All of what is left.
 	untapForTest(g, land)
 	activateManaFor(t, g, me.ID, land, 0, game.ManaAbilityParams{CounterCounts: []int{1}})
-	if got := poolColours(me); got["B"] != 4 || len(me.ManaPool) != 4 {
+	if got := poolColours(me); got["B"] != 4 || me.ManaPool.Total() != 4 {
 		t.Errorf("all removed: pool %v, want {B}x4 in all", got)
 	}
 	if got := counterCount(g, land, game.CounterStorage); got != 0 {
@@ -257,7 +257,7 @@ func TestBlastZoneEntersWithOneChargeCounterAndTapsForColourless(t *testing.T) {
 		t.Fatalf("charge counters %d, want 1", got)
 	}
 	activateManaFor(t, g, me.ID, land, 0, game.ManaAbilityParams{})
-	if got := poolColours(me); got["C"] != 1 || len(me.ManaPool) != 1 {
+	if got := poolColours(me); got["C"] != 1 || me.ManaPool.Total() != 1 {
 		t.Errorf("pool %v, want one {C}", got)
 	}
 }
@@ -271,7 +271,7 @@ func TestBlastZoneChargesBothXSlotsAndBanksXCounters(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, zone, 0, game.ActivateAbilityParams{XValue: 3, Strict: true}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if got := len(me.ManaPool); got != 1 {
+	if got := me.ManaPool.Total(); got != 1 {
 		t.Errorf("pool after {X}{X} at X=3: %d, want 1", got)
 	}
 	passPriorityAroundTable(t, g)
@@ -288,7 +288,7 @@ func TestBlastZoneRefusesAnXItCannotPayAndAllowsXZero(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, zone, 0, game.ActivateAbilityParams{XValue: 3, Strict: true}); err == nil {
 		t.Fatal("X=3 on five mana was allowed")
 	}
-	if tappedForTest(t, g, zone) || len(me.ManaPool) != 5 {
+	if tappedForTest(t, g, zone) || me.ManaPool.Total() != 5 {
 		t.Error("a refused activation changed the board")
 	}
 	if err := g.ActivateCatalogAbility(me.ID, zone, 0, game.ActivateAbilityParams{XValue: 0, Strict: true}); err != nil {

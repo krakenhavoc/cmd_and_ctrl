@@ -411,7 +411,7 @@ func TestLysAlanaDignitaryMakesManaOnlyWithAnElfInTheGraveyard(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, dignitary, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("activate with an Elf in the graveyard: %v", err)
 	}
-	if n := len(me.ManaPool); n != 2 {
+	if n := me.ManaPool.Total(); n != 2 {
 		t.Fatalf("%d mana in the pool, want {G}{G}", n)
 	}
 }
@@ -455,7 +455,7 @@ func TestSoulbrightSeekerAddsManaOnTheThirdResolution(t *testing.T) {
 			t.Fatalf("activation %d: %v", i, err)
 		}
 		passPriorityAroundTable(t, g)
-		got := len(me.ManaPool)
+		got := me.ManaPool.Total()
 		if i < 3 && got != 0 {
 			t.Fatalf("activation %d added mana", i)
 		}

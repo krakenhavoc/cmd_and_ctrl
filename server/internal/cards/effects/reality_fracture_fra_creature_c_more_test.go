@@ -351,7 +351,7 @@ func TestKothTheGeomancerLandfallPingsAndMountainAddsRed(t *testing.T) {
 	if got := before - opps[0].Life; got != 1 {
 		t.Errorf("opponent lost %d, want 1", got)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("a Forest adds no mana, pool = %v", poolColors(me))
 	}
 	rfcPlayLand(t, g, "Mountain", "Basic Land — Mountain")

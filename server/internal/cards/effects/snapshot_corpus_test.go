@@ -510,7 +510,52 @@ func corpusBoards() []corpusBoard {
 		// already brought into its hand (cards[].isSideboard). Additive
 		// within v8: an older binary drops both keys.
 		{"sideboard_outside_the_game", corpusSideboardOutsideTheGame},
+		// v9, added by #3041: mana as runs. A floating pool of runs
+		// (seats[].manaPool[].count): a long run from one source and a
+		// restricted run of {C}. And a spell on the stack paid partly
+		// out of the long run (stackMeta[].paid.Mana[]).
+		{"mana_pool_runs", corpusManaPoolRuns},
 	}
+}
+
+// corpusManaPoolRuns is #3041's stored shape: a pool of runs, and a
+// payment record that took part of one.
+func corpusManaPoolRuns(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	active := g.Seats[g.Turn.ActiveSeat]
+	for g.Turn.Step != game.StepPrecombatMain {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	marwyn, temple := uuid.New(), uuid.New()
+	g.WithWriteLock(func() {
+		for range 7 {
+			active.ManaPool.AddMana(game.ManaToken{Color: "G", Source: marwyn, SourceKinds: game.ManaSourceCreature})
+		}
+		active.ManaPool.AddMana(game.ManaToken{Color: "R"})
+		for range 2 {
+			active.ManaPool.AddMana(game.ManaToken{
+				Color: "C", Source: temple, SourceKinds: game.ManaSourceLand,
+				Restrictions: []string{game.ManaRestrictSubtype("Eldrazi")},
+			})
+		}
+	})
+	id := uuid.New()
+	active.Hand.PushTop(game.Card{
+		InstanceID: id, Name: "Grizzly Bears", TypeLine: "Creature — Bear",
+		ManaCost: "{1}{G}", Power: 2, Toughness: 2,
+		Owner: active.ID, Controller: active.ID,
+	})
+	if err := g.CastSpell(active.ID, id, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("cast Grizzly Bears: %v", err)
+	}
+	// The {G} pays {G} out of the long run and the {R} pays the {1}
+	// (colourless first, then W U B R G), so the record holds two runs.
+	if len(active.ManaPool) != 2 || active.ManaPool.Total() != 8 {
+		t.Fatalf("setup: pool is %v, want two runs holding 6 {G} and 2 restricted {C}", active.ManaPool)
+	}
+	return g
 }
 
 // corpusSideboardOutsideTheGame is newCorpusGame's table with a

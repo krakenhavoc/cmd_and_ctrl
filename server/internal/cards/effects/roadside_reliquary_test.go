@@ -103,7 +103,7 @@ func TestRoadsideReliquaryTapsForColorless(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, land, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("tap for {C}: %v", err)
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "C" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "C" {
 		t.Errorf("pool = %+v, want one {C}", me.ManaPool)
 	}
 }

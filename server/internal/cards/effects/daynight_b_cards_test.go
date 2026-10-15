@@ -349,7 +349,7 @@ func TestWeaverOfBlossomsMana(t *testing.T) {
 	if b10ResolveAllManaPicks(t, g, me.ID, "G") != 1 {
 		t.Fatal("Weaver raised no colour pick")
 	}
-	if got := len(me.ManaPool); got != 1 {
+	if got := me.ManaPool.Total(); got != 1 {
 		t.Fatalf("pool after Weaver = %d, want 1", got)
 	}
 	if err := g.ActivateManaAbility(me.ID, clad, 0, game.ManaAbilityParams{}); err != nil {
@@ -358,11 +358,11 @@ func TestWeaverOfBlossomsMana(t *testing.T) {
 	if b10ResolveAllManaPicks(t, g, me.ID, "R") != 1 {
 		t.Fatal("Blossom-Clad Werewolf raised no colour pick")
 	}
-	if got := len(me.ManaPool); got != 3 {
+	if got := me.ManaPool.Total(); got != 3 {
 		t.Errorf("pool after both = %d, want 3", got)
 	}
 	reds := 0
-	for _, m := range me.ManaPool {
+	for _, m := range me.ManaPool.Units() {
 		if m.Color == "R" {
 			reds++
 		}

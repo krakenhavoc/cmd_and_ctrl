@@ -175,14 +175,14 @@ func TestUginEyeOfTheStormsZeroAddsThreeColorless(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, ugin, 1, game.ActivateAbilityParams{Strict: true}); err != nil {
 		t.Fatalf("0: %v", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool = %+v, want empty until the ability resolves", me.ManaPool)
 	}
 	passPriorityAroundTable(t, g)
-	if len(me.ManaPool) != 3 {
+	if me.ManaPool.Total() != 3 {
 		t.Fatalf("pool = %+v, want {C}{C}{C}", me.ManaPool)
 	}
-	for _, m := range me.ManaPool {
+	for _, m := range me.ManaPool.Units() {
 		if m.Color != "C" {
 			t.Errorf("pool = %+v, want colorless", me.ManaPool)
 		}

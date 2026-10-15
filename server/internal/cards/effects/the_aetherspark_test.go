@@ -159,7 +159,7 @@ func TestAethersparkMinusTenAddsTenOfOneColor(t *testing.T) {
 	if err := g.ResolveManaChoice(pick.ID, me.ID, "R"); err != nil {
 		t.Fatalf("ResolveManaChoice: %v", err)
 	}
-	if got := len(me.ManaPool); got != 10 {
+	if got := me.ManaPool.Total(); got != 10 {
 		t.Errorf("pool holds %d mana, want 10", got)
 	}
 }

@@ -54,8 +54,8 @@ func manaProducedCancelReplacement(label string) ReplacementEffect {
 // the sibling of autotap_one_color_test.go's poolColors tally, which
 // answers "how many of each" rather than "in what order".
 func poolList(p *Player) []string {
-	out := make([]string, 0, len(p.ManaPool))
-	for _, t := range p.ManaPool {
+	out := make([]string, 0, p.ManaPool.Total())
+	for _, t := range p.ManaPool.Units() {
 		out = append(out, t.Color)
 	}
 	return out
@@ -134,7 +134,7 @@ func TestManaProductionDoubledAtThePick(t *testing.T) {
 	if err := g.ActivateManaAbility(p.ID, birds, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(p.ManaPool) != 0 {
+	if p.ManaPool.Total() != 0 {
 		t.Fatalf("the pick is unanswered, so nothing should be in the pool yet: %v", poolList(p))
 	}
 	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Kind != PendingChoiceMana {
@@ -181,7 +181,7 @@ func TestTwoManaDoublersCompose(t *testing.T) {
 	if err := g.ActivateManaAbility(p.ID, forest, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(p.ManaPool) != 6 {
+	if p.ManaPool.Total() != 6 {
 		t.Fatalf("x2 then x3 on one {G}: got %v, want six", poolList(p))
 	}
 	for _, c := range g.PendingChoices {
@@ -206,7 +206,7 @@ func TestManaProductionCanBeReplacedAway(t *testing.T) {
 	if err := g.ActivateManaAbility(p.ID, forest, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(p.ManaPool) != 0 {
+	if p.ManaPool.Total() != 0 {
 		t.Errorf("cancelled production: pool %v, want empty", poolList(p))
 	}
 	if !cardTappedForTest(g, forest) {
@@ -240,10 +240,10 @@ func TestManaProductionDoublesTheProducedRestrictions(t *testing.T) {
 	if err := g.ActivateManaAbility(p.ID, zig, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(p.ManaPool) != 2 {
+	if p.ManaPool.Total() != 2 {
 		t.Fatalf("doubled Ziggurat: got %v, want two", poolList(p))
 	}
-	for i, tok := range p.ManaPool {
+	for i, tok := range p.ManaPool.Units() {
 		if len(tok.Restrictions) != 1 {
 			t.Errorf("token %d: restrictions %v, want the ability's", i, tok.Restrictions)
 		}
@@ -276,10 +276,10 @@ func TestManaProductionKeepsTheSourceKindsSnapshot(t *testing.T) {
 	if err := g.ActivateManaAbility(p.ID, treasure, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(p.ManaPool) != 2 {
+	if p.ManaPool.Total() != 2 {
 		t.Fatalf("a doubled Treasure: got %v, want two", poolList(p))
 	}
-	for i, tok := range p.ManaPool {
+	for i, tok := range p.ManaPool.Units() {
 		if !tok.SourceKinds.Has(ManaSourceTreasure) {
 			t.Errorf("token %d: SourceKinds %b, want the Treasure bit", i, tok.SourceKinds)
 		}
@@ -330,7 +330,7 @@ func TestManaProductionExecutorPaysWithTheReplacedAmount(t *testing.T) {
 	if err := g.CastSpell(p.ID, id, CastSpellParams{Strict: true, AutoTap: true}); err != nil {
 		t.Fatalf("auto-tap cast of {G}{G} off one doubled Forest: %v (pool %v)", err, poolList(p))
 	}
-	if len(p.ManaPool) != 0 {
+	if p.ManaPool.Total() != 0 {
 		t.Errorf("post-spend pool: got %v, want empty", poolList(p))
 	}
 }
@@ -367,7 +367,7 @@ func TestManaProductionDoubledPickIsStillOnePick(t *testing.T) {
 	if err := g.CastSpell(p.ID, id, CastSpellParams{Strict: true, AutoTap: true}); err != nil {
 		t.Fatalf("auto-tap cast of {U}{U} off one doubled Birds: %v (pool %v)", err, poolList(p))
 	}
-	if len(p.ManaPool) != 0 {
+	if p.ManaPool.Total() != 0 {
 		t.Errorf("post-spend pool: got %v, want empty", poolList(p))
 	}
 }

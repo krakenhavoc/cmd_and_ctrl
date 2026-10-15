@@ -80,7 +80,7 @@ func drcBear(g *game.Game, owner uuid.UUID) uuid.UUID {
 
 func drcManaOfColor(p *game.Player, color string) int {
 	n := 0
-	for _, tok := range p.ManaPool {
+	for _, tok := range p.ManaPool.Units() {
 		if tok.Color == color {
 			n++
 		}

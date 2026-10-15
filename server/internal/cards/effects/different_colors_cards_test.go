@@ -27,8 +27,8 @@ const (
 )
 
 func dcSortedPool(p *game.Player) []string {
-	out := make([]string, 0, len(p.ManaPool))
-	for _, tok := range p.ManaPool {
+	out := make([]string, 0, p.ManaPool.Total())
+	for _, tok := range p.ManaPool.Units() {
 		out = append(out, tok.Color)
 	}
 	sort.Strings(out)
@@ -212,7 +212,7 @@ func TestInterplanarBeaconFiltersIntoTwoRestrictedColors(t *testing.T) {
 		t.Fatalf("pool = %v, want [U W]", got)
 	}
 	want := []string{ManaRestrictCast, ManaRestrictType("Planeswalker")}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if !reflect.DeepEqual(tok.Restrictions, want) {
 			t.Errorf("token %s restrictions = %v, want %v", tok.Color, tok.Restrictions, want)
 		}
@@ -238,7 +238,7 @@ func TestInterplanarBeaconPromptCarriesTheRestriction(t *testing.T) {
 	if got := dcSortedPool(me); !reflect.DeepEqual(got, []string{"B", "G"}) {
 		t.Fatalf("pool = %v, want [B G]", got)
 	}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if len(tok.Restrictions) == 0 {
 			t.Errorf("token %s lost the planeswalker-only restriction", tok.Color)
 		}

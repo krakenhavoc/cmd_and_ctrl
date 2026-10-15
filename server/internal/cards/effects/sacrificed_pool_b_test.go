@@ -29,7 +29,7 @@ const (
 )
 
 func pbPool(p *game.Player, color string) (n int, restricted int) {
-	for _, tok := range p.ManaPool {
+	for _, tok := range p.ManaPool.Units() {
 		if tok.Color == color {
 			n++
 			if len(tok.Restrictions) > 0 {

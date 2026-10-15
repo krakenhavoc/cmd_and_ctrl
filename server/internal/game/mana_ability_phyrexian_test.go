@@ -38,7 +38,7 @@ func filterTable(t *testing.T, shape ManaAbilityShape, withGrant bool) (*Game, *
 
 func poolCount(p *Player, color string) int {
 	n := 0
-	for _, tok := range p.ManaPool {
+	for _, tok := range p.ManaPool.Units() {
 		if tok.Color == color {
 			n++
 		}
@@ -71,7 +71,7 @@ func TestKrrikManaAbilityWithoutAClaimStillNeedsTheMana(t *testing.T) {
 	life := me.Life
 	err := g.ActivateManaAbility(me.ID, src, 0, ManaAbilityParams{})
 	wantInsufficient(t, err, "{B} with an empty pool and no claim")
-	if me.Life != life || tappedForTest(g, src) || len(me.ManaPool) != 0 {
+	if me.Life != life || tappedForTest(g, src) || me.ManaPool.Total() != 0 {
 		t.Errorf("a refused activation moved something: life %d, tapped %v, pool %v",
 			me.Life, tappedForTest(g, src), me.ManaPool)
 	}

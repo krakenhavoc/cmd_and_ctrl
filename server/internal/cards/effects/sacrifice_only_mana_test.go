@@ -184,12 +184,12 @@ func TestCadaverousBloomExilesTheNamedCardForTwoMana(t *testing.T) {
 		t.Fatalf("ResolveManaChoice: %v", err)
 	}
 	greens := 0
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Color == "G" {
 			greens++
 		}
 	}
-	if greens != 2 || len(me.ManaPool) != 2 {
+	if greens != 2 || me.ManaPool.Total() != 2 {
 		t.Errorf("pool = %+v, want {G}{G}", me.ManaPool)
 	}
 }
@@ -212,7 +212,7 @@ func TestCadaverousBloomRefusesAnUnpaidOrMisfiledCost(t *testing.T) {
 	if !me.Hand.Contains(hand[0]) {
 		t.Error("a refused activation spent the card anyway")
 	}
-	if len(me.ManaPool) != 0 || len(g.PendingChoices) != 0 {
+	if me.ManaPool.Total() != 0 || len(g.PendingChoices) != 0 {
 		t.Errorf("a refused activation produced mana: pool %+v, choices %d", me.ManaPool, len(g.PendingChoices))
 	}
 }

@@ -435,7 +435,7 @@ func TestBaradDurAmassesXOnlyIfACreatureDiedThisTurn(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, land, 0, game.ActivateAbilityParams{XValue: 2}); err != nil {
 		t.Fatalf("activate after a creature died: %v", err)
 	}
-	if got := len(me.ManaPool); got != 8-5 {
+	if got := me.ManaPool.Total(); got != 8-5 {
 		t.Errorf("pool = %d after paying {X}{X}{B} at X=2, want 3", got)
 	}
 	passPriorityAroundTable(t, g)

@@ -154,7 +154,7 @@ func TestSlice294bNightOfTheSweetsRevengeCreatesFoodAndPumps(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, foodID, idx, game.ManaAbilityParams{Ref: ref}); err != nil {
 		t.Fatalf("activate granted ability: %v", err)
 	}
-	if n := len(me.ManaPool); n != 1 || me.ManaPool[0].Color != "G" {
+	if n := me.ManaPool.Total(); n != 1 || me.ManaPool.Units()[0].Color != "G" {
 		t.Errorf("pool = %+v, want one {G} token", me.ManaPool)
 	}
 
@@ -207,7 +207,7 @@ func TestSlice294bAlchemistsTalentLevelTwoGrantsTreasureMana(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, treasureID, idx, game.ManaAbilityParams{Ref: ref, Colors: []string{"R"}}); err != nil {
 		t.Fatalf("activate granted ability: %v", err)
 	}
-	if n := len(me.ManaPool); n != 2 {
+	if n := me.ManaPool.Total(); n != 2 {
 		t.Errorf("pool has %d tokens, want two (from the sacrificed Treasure)", n)
 	}
 }
@@ -247,7 +247,7 @@ func TestSlice294bMachineGodsEffigyTapsForBlue(t *testing.T) {
 	if err := g.ActivateManaAbility(me, id, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if n := len(g.Seats[0].ManaPool); n != 1 || g.Seats[0].ManaPool[0].Color != "U" {
+	if n := g.Seats[0].ManaPool.Total(); n != 1 || g.Seats[0].ManaPool.Units()[0].Color != "U" {
 		t.Errorf("pool = %+v, want one {U} token", g.Seats[0].ManaPool)
 	}
 }

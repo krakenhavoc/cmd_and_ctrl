@@ -50,8 +50,8 @@ func TestManaAbilitySacrificesAnotherCreatureForMana(t *testing.T) {
 	if !g.Battlefield.Contains(altar) {
 		t.Error("the Altar sacrificed itself")
 	}
-	if len(me.ManaPool) != 2 {
-		t.Errorf("mana pool = %d, want 2", len(me.ManaPool))
+	if me.ManaPool.Total() != 2 {
+		t.Errorf("mana pool = %d, want 2", me.ManaPool.Total())
 	}
 	if !hasEvent(g, EventSacrifice, food) {
 		t.Error("no EventSacrifice for the eaten creature")
@@ -73,8 +73,8 @@ func TestManaAbilitySacrificeDrainsTriggersAfterManaLands(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 2 {
-		t.Fatalf("mana pool = %d, want 2 — mana must land even with triggers queued", len(me.ManaPool))
+	if me.ManaPool.Total() != 2 {
+		t.Fatalf("mana pool = %d, want 2 — mana must land even with triggers queued", me.ManaPool.Total())
 	}
 }
 
@@ -115,8 +115,8 @@ func TestManaAbilitySacrificeRejectsIllegalChoices(t *testing.T) {
 			if err == nil {
 				t.Fatal("illegal sacrifice choice was accepted")
 			}
-			if len(me.ManaPool) != 0 {
-				t.Errorf("mana was produced for an illegal cost: pool %d", len(me.ManaPool))
+			if me.ManaPool.Total() != 0 {
+				t.Errorf("mana was produced for an illegal cost: pool %d", me.ManaPool.Total())
 			}
 			if chosen != uuid.Nil && g.Battlefield.Contains(chosen) == false {
 				// Only meaningful for the two cases where the card exists.
@@ -191,7 +191,7 @@ func TestManaAbilityRespectsSummoningSickness(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, id, 0, ManaAbilityParams{}); err != ErrSummoningSick {
 		t.Errorf("err = %v, want ErrSummoningSick", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Error("a summoning-sick creature produced mana")
 	}
 	if cardTapped(g, id) {
@@ -211,8 +211,8 @@ func TestManaAbilityHasteBeatsSummoningSickness(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, id, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("haste should allow it: %v", err)
 	}
-	if len(me.ManaPool) != 1 {
-		t.Errorf("mana pool = %d, want 1", len(me.ManaPool))
+	if me.ManaPool.Total() != 1 {
+		t.Errorf("mana pool = %d, want 1", me.ManaPool.Total())
 	}
 }
 
@@ -228,8 +228,8 @@ func TestManaAbilityNoncreatureIgnoresSummoningSickness(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, id, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("an artifact is never summoning-sick: %v", err)
 	}
-	if len(me.ManaPool) != 2 {
-		t.Errorf("mana pool = %d, want 2", len(me.ManaPool))
+	if me.ManaPool.Total() != 2 {
+		t.Errorf("mana pool = %d, want 2", me.ManaPool.Total())
 	}
 }
 

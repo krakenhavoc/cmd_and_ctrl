@@ -365,7 +365,7 @@ func TestCreepingPeeperManaTurnsAPermanentFaceUp(t *testing.T) {
 	if err := g.ActivateManaAbility(active.ID, peeper, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("tap the Peeper: %v", err)
 	}
-	if len(active.ManaPool) != 1 || len(active.ManaPool[0].Restrictions) == 0 {
+	if active.ManaPool.Total() != 1 || len(active.ManaPool.Units()[0].Restrictions) == 0 {
 		t.Fatalf("the Peeper's mana is not restricted: %+v", active.ManaPool)
 	}
 

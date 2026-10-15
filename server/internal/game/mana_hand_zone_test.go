@@ -56,10 +56,10 @@ func TestManaAbilityFromHandExilesTheCardAndProducesMana(t *testing.T) {
 		t.Error("the Spirit Guide is still in hand — its own cost exiles it")
 	}
 	exiledCard(t, g, guide) // fails the test if it is not there
-	if got := len(me.ManaPool); got != 1 {
+	if got := me.ManaPool.Total(); got != 1 {
 		t.Fatalf("mana pool has %d, want 1", got)
 	}
-	if c := me.ManaPool[0].Color; c != "R" {
+	if c := me.ManaPool.Units()[0].Color; c != "R" {
 		t.Errorf("produced %q, want R", c)
 	}
 }
@@ -77,7 +77,7 @@ func TestManaAbilityFromHandIsRefusedFromTheBattlefield(t *testing.T) {
 	if !errors.Is(err, ErrActivationZoneNotAllowed) {
 		t.Fatalf("activate from the battlefield: %v, want ErrActivationZoneNotAllowed", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Error("the refused activation still minted mana")
 	}
 }
@@ -95,7 +95,7 @@ func TestBattlefieldManaAbilityIsRefusedFromTheHand(t *testing.T) {
 	if !errors.Is(err, ErrActivationZoneNotAllowed) && !errors.Is(err, ErrInvalidParam) {
 		t.Fatalf("activate a Forest out of hand: %v, want a zone refusal", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Error("a Forest in hand produced mana")
 	}
 	if !me.Hand.Contains(forest) {
@@ -118,7 +118,7 @@ func TestManaAbilityFromHandIsOnlyItsOwners(t *testing.T) {
 	if !me.Hand.Contains(guide) {
 		t.Error("the refused activation exiled the card anyway")
 	}
-	if len(them.ManaPool) != 0 {
+	if them.ManaPool.Total() != 0 {
 		t.Error("the opponent got mana out of my hand")
 	}
 }
@@ -135,17 +135,17 @@ func TestManaAbilityFromHandStampsTheSourceKinds(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, guide, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if len(me.ManaPool) != 1 {
-		t.Fatalf("mana pool has %d, want 1", len(me.ManaPool))
+	if me.ManaPool.Total() != 1 {
+		t.Fatalf("mana pool has %d, want 1", me.ManaPool.Total())
 	}
-	kinds := me.ManaPool[0].SourceKinds
+	kinds := me.ManaPool.Units()[0].SourceKinds
 	if !kinds.Has(ManaSourceCreature) {
 		t.Errorf("SourceKinds = %b, want the creature bit — a Spirit Guide is a creature card", kinds)
 	}
 	if kinds.Has(ManaSourceLand) {
 		t.Errorf("SourceKinds = %b claims a land source", kinds)
 	}
-	if me.ManaPool[0].Source != guide {
+	if me.ManaPool.Units()[0].Source != guide {
 		t.Error("the token does not name the card that made it")
 	}
 }
@@ -174,7 +174,7 @@ func TestManaAbilityFromHandExilesACommanderThenAsks(t *testing.T) {
 			t.Fatal("the mana ability asked CR 903.9b before it began")
 		}
 	}
-	if len(me.ManaPool) != 1 {
+	if me.ManaPool.Total() != 1 {
 		t.Error("the mana did not arrive")
 	}
 	// Fails the test if the commander is anywhere else.

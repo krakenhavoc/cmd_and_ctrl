@@ -138,10 +138,10 @@ func TestEndriderCatalyzerAddsRedRedOnlyAtMaxSpeed(t *testing.T) {
 	}
 	g.SetSpeedForTest(me.ID, game.MaxSpeed)
 	activateManaFor(t, g, me.ID, id, 0, game.ManaAbilityParams{})
-	if got := len(me.ManaPool); got != 2 {
+	if got := me.ManaPool.Total(); got != 2 {
 		t.Errorf("pool holds %d mana, want 2", got)
 	}
-	for _, m := range me.ManaPool {
+	for _, m := range me.ManaPool.Units() {
 		if m.Color != "R" {
 			t.Errorf("mana colour %q, want R", m.Color)
 		}
@@ -502,7 +502,7 @@ func TestHowlsquadHeavyManaAtMaxSpeedCountsGoblins(t *testing.T) {
 	}
 	g.SetSpeedForTest(me.ID, game.MaxSpeed)
 	activateManaFor(t, g, me.ID, heavy, 0, game.ManaAbilityParams{})
-	if got := len(me.ManaPool); got != 3 {
+	if got := me.ManaPool.Total(); got != 3 {
 		t.Errorf("pool holds %d mana, want 3 (three Goblins)", got)
 	}
 }

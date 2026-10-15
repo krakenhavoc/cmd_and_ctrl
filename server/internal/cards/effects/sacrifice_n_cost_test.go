@@ -261,8 +261,8 @@ func TestSacrificeNRefusalLeavesTapAndPoolAlone(t *testing.T) {
 	}); err != game.ErrInvalidParam {
 		t.Fatalf("one artifact for two: got %v, want ErrInvalidParam", err)
 	}
-	if len(me.ManaPool) != 2 {
-		t.Errorf("pool = %d after a refused payment, want the 2 floating mana untouched", len(me.ManaPool))
+	if me.ManaPool.Total() != 2 {
+		t.Errorf("pool = %d after a refused payment, want the 2 floating mana untouched", me.ManaPool.Total())
 	}
 	for _, id := range arts {
 		if !g.Battlefield.Contains(id) {
@@ -291,14 +291,14 @@ func TestSacrificeNManaAbilityPaysExactlyN(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, altar, 0, game.ManaAbilityParams{SacrificeIDs: []uuid.UUID{b, b}}); err != game.ErrInvalidParam {
 		t.Fatalf("the same creature twice: got %v, want ErrInvalidParam", err)
 	}
-	if len(me.ManaPool) != 0 || !g.Battlefield.Contains(a) || !g.Battlefield.Contains(b) {
+	if me.ManaPool.Total() != 0 || !g.Battlefield.Contains(a) || !g.Battlefield.Contains(b) {
 		t.Fatal("a refused mana payment produced mana or ate a creature")
 	}
 	if err := g.ActivateManaAbility(me.ID, altar, 0, game.ManaAbilityParams{SacrificeIDs: []uuid.UUID{a, b}}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if len(me.ManaPool) != 3 {
-		t.Errorf("pool = %d, want 3", len(me.ManaPool))
+	if me.ManaPool.Total() != 3 {
+		t.Errorf("pool = %d, want 3", me.ManaPool.Total())
 	}
 	if g.Battlefield.Contains(a) || g.Battlefield.Contains(b) {
 		t.Error("both creatures are sacrificed")

@@ -79,7 +79,7 @@ func apaActivate(t *testing.T, g *game.Game, p *game.Player, source uuid.UUID, i
 	if err := g.ActivateCatalogAbility(p.ID, source, index, params); err != nil {
 		t.Fatalf("%s activates row %d: %v", p.Name, index, err)
 	}
-	if n := len(p.ManaPool); n != 0 {
+	if n := p.ManaPool.Total(); n != 0 {
 		t.Errorf("%s's pool holds %d after paying, want 0", p.Name, n)
 	}
 	passPriorityAroundTable(t, g)
@@ -220,8 +220,8 @@ func TestFanFavoriteAssistLetsAnotherPlayerPayTheGeneric(t *testing.T) {
 	if item == nil || item.Paid.AssistedBy != bob.ID || item.Paid.AssistPaid != 3 {
 		t.Fatalf("stack item = %+v", item)
 	}
-	if len(me.ManaPool) != 0 || len(bob.ManaPool) != 0 {
-		t.Errorf("pools left %d and %d, want both spent", len(me.ManaPool), len(bob.ManaPool))
+	if me.ManaPool.Total() != 0 || bob.ManaPool.Total() != 0 {
+		t.Errorf("pools left %d and %d, want both spent", me.ManaPool.Total(), bob.ManaPool.Total())
 	}
 }
 
@@ -571,7 +571,7 @@ func TestAnyPlayerBatchCostIsTheActivators(t *testing.T) {
 	if !errors.As(err, &short) {
 		t.Fatalf("Bob with {2} for a {3} cost: err = %v, want InsufficientManaError", err)
 	}
-	if len(me.ManaPool) != 3 {
+	if me.ManaPool.Total() != 3 {
 		t.Errorf("the controller's pool paid for Bob's activation")
 	}
 }

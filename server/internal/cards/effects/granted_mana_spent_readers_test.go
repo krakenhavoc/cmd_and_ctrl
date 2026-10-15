@@ -559,7 +559,7 @@ func TestTyvarKellGrantAndEmblem(t *testing.T) {
 // gmrPoolCount is how many mana of `color` is floating in p's pool.
 func gmrPoolCount(p *game.Player, color string) int {
 	n := 0
-	for _, t := range p.ManaPool {
+	for _, t := range p.ManaPool.Units() {
 		if t.Color == color {
 			n++
 		}

@@ -3772,7 +3772,7 @@ Opened at the 2026-10-13 triage, from the owner's 2026-10-11 review of a 39-crea
 - [ ] [#3044](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3044): use vertical room, and stack lands legibly, on a crowded board
 - [ ] [#3045](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3045): close the empty band between the creature row and the back row
 - [ ] [#3046](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3046): stack identical nontoken permanents into one pile with a count
-- [ ] [#3041](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3041): store the mana pool as runs, not one token per mana
+- [x] [#3041](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3041): store the mana pool as runs, not one token per mana
 - [ ] [#3136](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3136): the per-action `Game.Clone` and the restore-point write: sparse snapshots or copy-on-write
 
 ### Exit criteria

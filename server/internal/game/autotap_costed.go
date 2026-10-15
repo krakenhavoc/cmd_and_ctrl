@@ -304,7 +304,8 @@ func netPositiveCosted(in []tapSource) []tapSource {
 }
 
 // floatingSources is the floating pool as costed-solver sources: one
-// single-slot source per unrestricted, rider-free token. Restricted
+// single-slot source per unrestricted, rider-free mana (N per run,
+// #3041). Restricted
 // mana is left out of the plan's arithmetic entirely; it stays in the
 // pool for the payment that may spend it.
 func floatingSources(pool ManaPool) []tapSource {
@@ -313,10 +314,12 @@ func floatingSources(pool ManaPool) []tapSource {
 		if len(tok.Restrictions) > 0 || len(tok.Riders) > 0 || tok.Color == "" {
 			continue
 		}
-		out = append(out, tapSource{
-			CardID: tok.Source,
-			Slots:  []ProducedManaEntry{{Options: []string{tok.Color}}},
-		})
+		for range tok.N() {
+			out = append(out, tapSource{
+				CardID: tok.Source,
+				Slots:  []ProducedManaEntry{{Options: []string{tok.Color}}},
+			})
+		}
 	}
 	return out
 }
@@ -708,8 +711,14 @@ func (g *Game) payPlannedManaCostLocked(p *Player, source Card, ab *ManaAbilityS
 			if tok.Source != f.Source || tok.Color != f.Color || len(tok.Restrictions) > 0 || len(tok.Riders) > 0 {
 				continue
 			}
-			named = append(named, tok)
-			rest = append(rest[:i], rest[i+1:]...)
+			// One mana off the run (#3041): the run shrinks, and only
+			// a run of one leaves the pool.
+			named = append(named, tok.withN(1))
+			if n := tok.N(); n > 1 {
+				rest[i] = tok.withN(n - 1)
+			} else {
+				rest = append(rest[:i], rest[i+1:]...)
+			}
 			break
 		}
 	}

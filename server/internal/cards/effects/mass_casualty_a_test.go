@@ -54,7 +54,7 @@ func TestMassCasualtySliceAIsRegisteredAndWhole(t *testing.T) {
 
 func mcPoolCount(p *game.Player, color string) int {
 	n := 0
-	for _, tok := range p.ManaPool {
+	for _, tok := range p.ManaPool.Units() {
 		if tok.Color == color {
 			n++
 		}

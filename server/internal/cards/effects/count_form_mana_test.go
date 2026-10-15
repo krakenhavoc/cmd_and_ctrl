@@ -42,7 +42,7 @@ func TestMageRingNetworkAtTheCeilingIsBoundedAndAnnounced(t *testing.T) {
 	g.WithWriteLock(func() { _ = g.AddCounterForEffect(land, game.CounterStorage, game.MaxCount) })
 
 	activateManaFor(t, g, me.ID, land, 1, game.ManaAbilityParams{CounterCounts: []int{game.MaxCount}})
-	if got := len(me.ManaPool); got != game.MaxProducedMana {
+	if got := me.ManaPool.Total(); got != game.MaxProducedMana {
 		t.Errorf("pool holds %d mana, want the ceiling %d", got, game.MaxProducedMana)
 	}
 	if n := countCappedEvents(g, "mana"); n != 1 {
@@ -69,7 +69,7 @@ func TestMageRingNetworkCountIsStillReplacedByManaReflectionAndNyxbloom(t *testi
 			g.WithWriteLock(func() { _ = g.AddCounterForEffect(land, game.CounterStorage, 4) })
 
 			activateManaFor(t, g, me.ID, land, 1, game.ManaAbilityParams{CounterCounts: []int{3}})
-			if got := len(me.ManaPool); got != tc.want {
+			if got := me.ManaPool.Total(); got != tc.want {
 				t.Errorf("pool holds %d mana, want %d", got, tc.want)
 			}
 			if len(g.PendingChoices) != 0 {
@@ -98,8 +98,8 @@ func TestAddManaCountFormAddsExactlyN(t *testing.T) {
 	// Zero and negative counts add nothing and do not error.
 	addManaAmount(t, g, AddMana{Amount: ManaN(0, "R")})
 	addManaAmount(t, g, AddMana{Amount: ManaN(-4, "R")})
-	if len(me.ManaPool) != 3 {
-		t.Errorf("pool grew to %d on a non-positive count", len(me.ManaPool))
+	if me.ManaPool.Total() != 3 {
+		t.Errorf("pool grew to %d on a non-positive count", me.ManaPool.Total())
 	}
 }
 
@@ -108,7 +108,7 @@ func TestAddManaCountFormIsCappedAndAnnounced(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	addManaAmount(t, g, AddMana{Amount: ManaN(1<<40, "R")})
-	if got := len(me.ManaPool); got != game.MaxProducedMana {
+	if got := me.ManaPool.Total(); got != game.MaxProducedMana {
 		t.Errorf("pool holds %d, want the ceiling %d", got, game.MaxProducedMana)
 	}
 	if n := countCappedEvents(g, "mana"); n != 1 {
@@ -127,10 +127,10 @@ func TestAddManaCountFormCarriesRestrictions(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	addManaAmount(t, g, AddMana{Amount: ManaN(2, "G"), Restrictions: []string{ManaRestrictCast, ManaRestrictType("Creature")}})
-	if len(me.ManaPool) != 2 {
-		t.Fatalf("pool = %d, want 2", len(me.ManaPool))
+	if me.ManaPool.Total() != 2 {
+		t.Fatalf("pool = %d, want 2", me.ManaPool.Total())
 	}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if len(tok.Restrictions) != 2 {
 			t.Errorf("token restrictions = %v, want the two declared", tok.Restrictions)
 		}
@@ -166,7 +166,7 @@ func TestAddManaCountFormIsNotDoubledByManaReflection(t *testing.T) {
 	me := g.Seats[0]
 	pushCatalogPermanent(g, me.ID, "Mana Reflection", "Enchantment", manaReflectionOracle, false)
 	addManaAmount(t, g, AddMana{Amount: ManaN(3, "B")})
-	if got := len(me.ManaPool); got != 3 {
+	if got := me.ManaPool.Total(); got != 3 {
 		t.Errorf("a spell's counted mana made %d, want 3 (nothing was tapped)", got)
 	}
 }

@@ -242,7 +242,7 @@ func TestLlanowarElvesTapsForGreen(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, elf, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "G" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "G" {
 		t.Errorf("mana pool %+v, want 1xG", me.ManaPool)
 	}
 	// A fixed colour needs no picker — only pipes queue a choice.
@@ -271,7 +271,7 @@ func TestLlanowarElvesCannotTapWhileSummoningSick(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, elf, 0, game.ManaAbilityParams{}); err != game.ErrSummoningSick {
 		t.Fatalf("summoning-sick Elf: got %v, want ErrSummoningSick", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("mana pool %+v, want empty — a sick creature produced mana", me.ManaPool)
 	}
 	if got, ok := aangCardOnBF(g, elf); !ok || got.Tapped {
@@ -321,7 +321,7 @@ func TestLotusPetalCracksForAnyColor(t *testing.T) {
 	if err := g.ResolveManaChoice(choice.ID, me.ID, "R"); err != nil {
 		t.Fatalf("ResolveManaChoice: %v", err)
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "R" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "R" {
 		t.Errorf("mana pool %+v, want 1xR", me.ManaPool)
 	}
 }

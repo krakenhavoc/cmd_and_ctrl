@@ -3193,7 +3193,7 @@ func TestS15CastSpellPermissiveWarnsAndProceeds(t *testing.T) {
 		t.Errorf("permissive cast did not reach the stack")
 	}
 	// Pool unchanged.
-	if len(p.ManaPool) != 0 {
+	if p.ManaPool.Total() != 0 {
 		t.Errorf("permissive cast touched the pool: %+v", p.ManaPool)
 	}
 	// One EventCostWarning recorded for the cast.
@@ -3294,7 +3294,7 @@ func TestUnparseableCostRejectsCast(t *testing.T) {
 			if g.Stack != nil && g.Stack.Contains(id) {
 				t.Errorf("rejected cast reached the stack")
 			}
-			if len(p.ManaPool) != 0 {
+			if p.ManaPool.Total() != 0 {
 				t.Errorf("rejected cast touched the pool: %+v", p.ManaPool)
 			}
 		})
@@ -3357,7 +3357,7 @@ func TestS15CastSpellStrictDeductsWhenPayable(t *testing.T) {
 		t.Errorf("strict cast did not reach the stack")
 	}
 	// Red was spent; colorless survives.
-	if len(p.ManaPool) != 1 || p.ManaPool[0].Color != "C" {
+	if p.ManaPool.Total() != 1 || p.ManaPool.Units()[0].Color != "C" {
 		t.Errorf("post-spend pool: got %+v, want 1×C", p.ManaPool)
 	}
 }
@@ -3378,7 +3378,7 @@ func TestS15CastSpellForceCastBypassesGate(t *testing.T) {
 		t.Errorf("force-cast did not reach the stack")
 	}
 	// Pool unchanged — override doesn't deduct.
-	if len(p.ManaPool) != 0 {
+	if p.ManaPool.Total() != 0 {
 		t.Errorf("force-cast touched empty pool: %+v", p.ManaPool)
 	}
 }
@@ -3471,7 +3471,7 @@ func TestS15CastSpellAutoTapBasicLandsHappyPath(t *testing.T) {
 		t.Errorf("Mountain should be tapped after auto-tap cast")
 	}
 	// Pool should be empty — produced {R} got spent.
-	if len(p.ManaPool) != 0 {
+	if p.ManaPool.Total() != 0 {
 		t.Errorf("post-spend pool: got %+v, want empty", p.ManaPool)
 	}
 }
@@ -3580,7 +3580,7 @@ func TestS15CastSpellAutoTapBirdsPicksRequiredColor(t *testing.T) {
 	}
 	// Pool should be empty — Birds produced {R} (greedy color-pick),
 	// strict gate spent it.
-	if len(p.ManaPool) != 0 {
+	if p.ManaPool.Total() != 0 {
 		t.Errorf("post-spend pool: %+v (Birds should have produced {R}, not a default)", p.ManaPool)
 	}
 }

@@ -35,7 +35,7 @@ func pushIslandFor(g *Game, owner *Player) uuid.UUID {
 // poolColors tallies the controller's pool by colour.
 func poolColors(p *Player) map[string]int {
 	out := map[string]int{}
-	for _, tok := range p.ManaPool {
+	for _, tok := range p.ManaPool.Units() {
 		out[tok.Color]++
 	}
 	return out
@@ -81,11 +81,11 @@ func TestAutoTapGildedLotusFundsAColouredCostWithTwoIslands(t *testing.T) {
 		}
 		g.materializePlanLocked(me, full, cost)
 	})
-	if got := len(me.ManaPool); got != 5 {
+	if got := me.ManaPool.Total(); got != 5 {
 		t.Fatalf("pool = %v, want five mana", me.ManaPool)
 	}
 	fromLotus := map[string]int{}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Source == lotus {
 			fromLotus[tok.Color]++
 		}
@@ -147,7 +147,7 @@ func TestAutoTapGildedLotusPairsWithAnotherSourceForTheSecondColour(t *testing.T
 	if got["U"] < 2 || got["W"] < 1 {
 		t.Fatalf("pool = %v, want at least {W} and two {U}", got)
 	}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Source == lotus && tok.Color != "U" {
 			t.Errorf("the Lotus minted %q as well as blue — one pick, one colour", tok.Color)
 		}
@@ -234,7 +234,7 @@ func TestMaterializeDropsAStaleOneColourPickWithoutTapping(t *testing.T) {
 		// devotion moved.
 		g.materializePlanLocked(me, tapPlan{{CardID: lotus, OneColor: "R"}}, cost)
 	})
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool = %v, want nothing minted", me.ManaPool)
 	}
 	g.ReadSnapshot(func() {

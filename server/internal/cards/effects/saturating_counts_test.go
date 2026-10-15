@@ -103,10 +103,10 @@ func TestMarwynAtTheCeilingTapsForABoundedPool(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, marwyn, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if got := len(me.ManaPool); got != game.MaxProducedMana {
+	if got := me.ManaPool.Total(); got != game.MaxProducedMana {
 		t.Errorf("pool holds %d mana, want exactly the production ceiling %d", got, game.MaxProducedMana)
 	}
-	for i, tok := range me.ManaPool {
+	for i, tok := range me.ManaPool.Units() {
 		if tok.Color != "G" {
 			t.Fatalf("pool[%d] is %q, want G", i, tok.Color)
 		}

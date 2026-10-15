@@ -91,7 +91,7 @@ func TestAutoTapUsesAGrantedAbilityTheOwnOneCannotPay(t *testing.T) {
 			t.Fatal("no plan under the lock")
 		}
 		g.materializePlanLocked(p, booked, cost)
-		if len(p.ManaPool) != 1 || p.ManaPool[0].Color != "U" {
+		if p.ManaPool.Total() != 1 || p.ManaPool.Units()[0].Color != "U" {
 			t.Errorf("pool = %v, want one {U}", p.ManaPool)
 		}
 	})

@@ -1433,10 +1433,10 @@ func TestSolRingTapAddsTwoColorless(t *testing.T) {
 	if err := g.ActivateManaAbility(caster.ID, solID, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(caster.ManaPool) != 2 {
-		t.Fatalf("mana pool: got %d tokens, want 2", len(caster.ManaPool))
+	if caster.ManaPool.Total() != 2 {
+		t.Fatalf("mana pool: got %d tokens, want 2", caster.ManaPool.Total())
 	}
-	for i, tok := range caster.ManaPool {
+	for i, tok := range caster.ManaPool.Units() {
 		if tok.Color != "C" {
 			t.Errorf("token[%d]: got color %q, want C", i, tok.Color)
 		}
@@ -1471,7 +1471,7 @@ func TestBirdsOfParadiseTapQueuesMagicChoice(t *testing.T) {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
 	// No mana lands in the pool yet — deferred to resolve_choice.
-	if len(caster.ManaPool) != 0 {
+	if caster.ManaPool.Total() != 0 {
 		t.Errorf("mana pool should be empty pre-choice: got %+v", caster.ManaPool)
 	}
 	// One PendingChoice addressed to the controller with all five
@@ -1495,7 +1495,7 @@ func TestBirdsOfParadiseTapQueuesMagicChoice(t *testing.T) {
 	if err := g.ResolveManaChoice(choice.ID, caster.ID, "U"); err != nil {
 		t.Fatalf("ResolveManaChoice: %v", err)
 	}
-	if len(caster.ManaPool) != 1 || caster.ManaPool[0].Color != "U" {
+	if caster.ManaPool.Total() != 1 || caster.ManaPool.Units()[0].Color != "U" {
 		t.Errorf("post-resolve mana pool: got %+v, want 1×U", caster.ManaPool)
 	}
 	if len(g.PendingChoices) != 0 {
@@ -1565,7 +1565,7 @@ func TestBasicLandSyntheticAbilityAddsOneMana(t *testing.T) {
 	if err := g.ActivateManaAbility(caster.ID, forestID, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility on Forest: %v", err)
 	}
-	if len(caster.ManaPool) != 1 || caster.ManaPool[0].Color != "G" {
+	if caster.ManaPool.Total() != 1 || caster.ManaPool.Units()[0].Color != "G" {
 		t.Errorf("Forest tap: got %+v, want 1×G", caster.ManaPool)
 	}
 }
@@ -1582,7 +1582,7 @@ func TestStepAdvanceEmptiesAllManaPools(t *testing.T) {
 		t.Fatalf("AdvanceStep: %v", err)
 	}
 	for _, p := range g.Seats {
-		if len(p.ManaPool) != 0 {
+		if p.ManaPool.Total() != 0 {
 			t.Errorf("seat %s pool not emptied after step advance: %+v", p.Name, p.ManaPool)
 		}
 	}
@@ -2445,7 +2445,7 @@ func TestKaldheimPathwayFrontFacesManaAbilities(t *testing.T) {
 			if err := g.ActivateManaAbility(caster.ID, pathwayID, 0, game.ManaAbilityParams{}); err != nil {
 				t.Fatalf("ActivateManaAbility on %s: %v", tt.cardName, err)
 			}
-			if len(caster.ManaPool) != 1 || caster.ManaPool[0].Color != tt.color {
+			if caster.ManaPool.Total() != 1 || caster.ManaPool.Units()[0].Color != tt.color {
 				t.Errorf("%s tap: got %+v, want 1×%s", tt.cardName, caster.ManaPool, tt.color)
 			}
 		})

@@ -58,7 +58,7 @@ func TestRenderMarksASuspectedCreature(t *testing.T) {
 // name order, so a model seat sees the energy it can pay.
 func TestRenderPrintsPlayerCounters(t *testing.T) {
 	v := view()
-	v.Seats[0].ManaPool = []string{"{G}"}
+	v.Seats[0].ManaPool = protocol.ManaPoolOf("{G}")
 	v.Seats[0].Counters = map[string]int{"poison": 2, "energy": 4, "rad": 0}
 	got := boardtext.Render(v, "a", boardtext.Options{})
 	if want := "Ann (YOU) — 40 life, 1 cards in hand, 0 in library, mana pool {G}, 4 energy, 2 poison\n"; !strings.Contains(got, want) {

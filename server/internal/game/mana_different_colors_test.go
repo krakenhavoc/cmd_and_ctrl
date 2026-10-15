@@ -39,8 +39,8 @@ func openManaPicks(g *Game) []*PendingChoice {
 }
 
 func sortedPool(p *Player) []string {
-	out := make([]string, 0, len(p.ManaPool))
-	for _, tok := range p.ManaPool {
+	out := make([]string, 0, p.ManaPool.Total())
+	for _, tok := range p.ManaPool.Units() {
 		out = append(out, tok.Color)
 	}
 	sort.Strings(out)
@@ -102,7 +102,7 @@ func TestDifferentColorsPromptAsksForTwoDifferentColors(t *testing.T) {
 	if err := g.ResolveManaChoice(firstID, me.ID, "U"); err != nil {
 		t.Fatalf("answer U: %v", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Fatalf("pool = %v after the first colour; the mana arrives together", me.ManaPool)
 	}
 	picks = openManaPicks(g)
@@ -149,7 +149,7 @@ func TestDifferentColorsPromptRefusesARepeatedColor(t *testing.T) {
 	if err := g.ResolveManaChoice(second.ID, me.ID, "R"); !errors.Is(err, ErrInvalidParam) {
 		t.Fatalf("a second R = %v, want ErrInvalidParam", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("a refused answer added mana: %v", me.ManaPool)
 	}
 	if again := openManaPicks(g); len(again) != 1 || again[0].ID != second.ID {

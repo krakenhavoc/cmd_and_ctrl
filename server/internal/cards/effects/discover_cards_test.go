@@ -618,7 +618,7 @@ func TestQuintoriusKand(t *testing.T) {
 			t.Fatalf("the cards were not exiled")
 		}
 		red := 0
-		for _, tok := range me.ManaPool {
+		for _, tok := range me.ManaPool.Units() {
 			if tok.Color == "R" {
 				red++
 			}

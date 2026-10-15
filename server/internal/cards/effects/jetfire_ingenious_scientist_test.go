@@ -20,7 +20,7 @@ func jetfireRow() cards.Card {
 
 func jetfirePoolC(p *game.Player) int {
 	n := 0
-	for _, tok := range p.ManaPool {
+	for _, tok := range p.ManaPool.Units() {
 		if tok.Color == "C" {
 			n++
 		}
@@ -53,7 +53,7 @@ func TestJetfireRemovesACountedSplitAndAddsThatMuchRestrictedMana(t *testing.T) 
 	if n := jetfirePoolC(me); n != 3 {
 		t.Fatalf("%d {C} floating, want 3", n)
 	}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if len(tok.Restrictions) != 1 || tok.Restrictions[0] != game.ManaRestrictNotNonartifactSpell {
 			t.Errorf("mana restrictions = %v, want only nonartifact-spell", tok.Restrictions)
 		}

@@ -74,7 +74,7 @@ func TestCycleFromHandPaysDiscardsAndDraws(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, card, 0, ActivateAbilityParams{}); err != nil {
 		t.Fatalf("cycle: %v", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool = %v, want the {2} spent", me.ManaPool)
 	}
 	if me.Hand.Contains(card) {
@@ -128,7 +128,7 @@ func TestAbilityZoneDimensionRefusesTheWrongZone(t *testing.T) {
 		if !errors.Is(err, ErrActivationZoneNotAllowed) {
 			t.Fatalf("err = %v, want ErrActivationZoneNotAllowed", err)
 		}
-		if len(me.ManaPool) != 2 {
+		if me.ManaPool.Total() != 2 {
 			t.Errorf("pool = %v, want the {2} unspent", me.ManaPool)
 		}
 		if len(g.StackMeta) != 0 {
@@ -377,7 +377,7 @@ func TestUndoAcrossACyclingCost(t *testing.T) {
 	if undone.Graveyard.Contains(card) {
 		t.Error("undo kept the card in the graveyard")
 	}
-	if len(undone.ManaPool) != 2 {
+	if undone.ManaPool.Total() != 2 {
 		t.Errorf("undone pool = %v, want the {2} back", undone.ManaPool)
 	}
 	if len(before.StackMeta) != 0 {

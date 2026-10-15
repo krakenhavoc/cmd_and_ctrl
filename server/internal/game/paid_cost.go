@@ -42,7 +42,8 @@ type PaidCost struct {
 	// Mana is the tokens that actually left the payer's pool, in the
 	// order the solver spent them, each still carrying the Source
 	// that produced it and the Restrictions it was minted with
-	// (#761). Nil when no mana component was paid.
+	// (#761). Nil when no mana component was paid. Each entry is a
+	// RUN (#3041): read amounts through Spent(), never len(Mana).
 	//
 	// Readers: converge (CR 702.86) counts distinct colours,
 	// sunburst (CR 702.44) counts them at entry, adamant counts one

@@ -33,8 +33,8 @@ func TestChivalricAlliancePaysDiscardAndMakesAKnight(t *testing.T) {
 	if !me.Graveyard.Contains(discarded) {
 		t.Error("the discarded card should be in the graveyard")
 	}
-	if len(me.ManaPool) != 0 {
-		t.Errorf("mana pool = %d, want the {2} spent", len(me.ManaPool))
+	if me.ManaPool.Total() != 0 {
+		t.Errorf("mana pool = %d, want the {2} spent", me.ManaPool.Total())
 	}
 	if findBattlefieldByName(g, "Knight") != uuid.Nil {
 		t.Error("the Knight token should wait for resolution")
@@ -77,7 +77,7 @@ func TestChivalricAllianceCannotActivateWithNoCardToDiscard(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, alliance, 0, game.ActivateAbilityParams{}); err != game.ErrInvalidParam {
 		t.Errorf("no card to discard: got %v, want ErrInvalidParam", err)
 	}
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Error("a refused activation must not spend its mana")
 	}
 }

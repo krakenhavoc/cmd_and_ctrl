@@ -56,10 +56,10 @@ func TestHeritageDruidTapsThreeElvesIncludingItselfForThreeGreen(t *testing.T) {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
 	assertTapped(t, g, true, druid, one, two)
-	if len(me.ManaPool) != 3 {
+	if me.ManaPool.Total() != 3 {
 		t.Fatalf("mana pool = %v, want three green mana", me.ManaPool)
 	}
-	for _, mana := range me.ManaPool {
+	for _, mana := range me.ManaPool.Units() {
 		if mana.Color != "G" {
 			t.Errorf("mana pool = %v, want only green mana", me.ManaPool)
 			break

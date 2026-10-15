@@ -65,7 +65,7 @@ func upfrontRead(g *game.Game, seat, land uuid.UUID) upfrontState {
 		}
 		p := g.PlayerByIDForEffect(seat)
 		s.life = p.Life
-		for _, tok := range p.ManaPool {
+		for _, tok := range p.ManaPool.Units() {
 			s.pool = append(s.pool, tok.Color)
 		}
 		s.pending = len(g.PendingChoices)

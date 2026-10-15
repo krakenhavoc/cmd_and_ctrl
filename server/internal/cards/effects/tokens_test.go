@@ -79,7 +79,7 @@ func TestCrackingATreasureProducesManaAndSacrifices(t *testing.T) {
 	if err := g.ResolveManaChoice(pending.ID, me.ID, "R"); err != nil {
 		t.Fatalf("ResolveManaChoice: %v", err)
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "R" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "R" {
 		t.Errorf("mana pool = %+v, want one {R}", me.ManaPool)
 	}
 }

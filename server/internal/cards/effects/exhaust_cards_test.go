@@ -78,8 +78,8 @@ func TestProwcatcherSpecialistExhaustsAfterOneActivation(t *testing.T) {
 	if !errors.Is(err, game.ErrAbilityExhausted) {
 		t.Fatalf("second activation: %v, want ErrAbilityExhausted", err)
 	}
-	if len(me.ManaPool) != 4 {
-		t.Errorf("pool holds %d mana, want 4 — a refused activation pays nothing", len(me.ManaPool))
+	if me.ManaPool.Total() != 4 {
+		t.Errorf("pool holds %d mana, want 4 — a refused activation pays nothing", me.ManaPool.Total())
 	}
 	passPriorityAroundTable(t, g)
 	if got := countersOn(g, goblin, game.CounterPlusOne); got != 2 {

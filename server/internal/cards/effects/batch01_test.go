@@ -84,8 +84,8 @@ func batch01OpponentCasts(t *testing.T, g *game.Game, opp *game.Player, name, or
 }
 
 func batch01PoolColors(p *game.Player) []string {
-	out := make([]string, 0, len(p.ManaPool))
-	for _, tok := range p.ManaPool {
+	out := make([]string, 0, p.ManaPool.Total())
+	for _, tok := range p.ManaPool.Units() {
 		out = append(out, tok.Color)
 	}
 	return out
@@ -1443,7 +1443,7 @@ func TestJeskasWillRitualCountsTheOpponentsHand(t *testing.T) {
 	passPriorityAroundTable(t, g)
 
 	red := 0
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Color == "R" {
 			red++
 		}
@@ -1728,8 +1728,8 @@ func TestTheGreatHengeRiderAndEntryTrigger(t *testing.T) {
 	if got := me.Life; got != life+2 {
 		t.Errorf("life %d → %d, want %d — the rider gains two", life, got, life+2)
 	}
-	if len(me.ManaPool) != 2 {
-		t.Errorf("mana pool holds %d tokens, want 2", len(me.ManaPool))
+	if me.ManaPool.Total() != 2 {
+		t.Errorf("mana pool holds %d tokens, want 2", me.ManaPool.Total())
 	}
 
 	bear := pushCatalogHandCard(me, "Bear", "Creature — Bear", "")

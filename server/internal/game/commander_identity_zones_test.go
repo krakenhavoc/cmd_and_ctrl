@@ -107,7 +107,7 @@ func TestCommanderIdentityHoldsOnTheBattlefield(t *testing.T) {
 		g.WithWriteLock(func() {
 			g.materializePlanLocked(p, tapPlan{{CardID: birds}}, costFor(t, "{1}"))
 		})
-		if len(p.ManaPool) != 1 || p.ManaPool[0].Color != "G" {
+		if p.ManaPool.Total() != 1 || p.ManaPool.Units()[0].Color != "G" {
 			t.Errorf("pool = %+v, want one {G}", p.ManaPool)
 		}
 	})
@@ -211,7 +211,7 @@ func TestAutoTapBirdsPaysOffIdentityPipBesideABasic(t *testing.T) {
 			if err := g.CastSpell(p.ID, id, CastSpellParams{Strict: true, AutoTap: true}); err != nil {
 				t.Fatalf("auto-tap %s from Birds + Plains under a mono-W commander: %v", cost, err)
 			}
-			if len(p.ManaPool) != 0 {
+			if p.ManaPool.Total() != 0 {
 				t.Errorf("post-spend pool = %+v, want empty", p.ManaPool)
 			}
 		})

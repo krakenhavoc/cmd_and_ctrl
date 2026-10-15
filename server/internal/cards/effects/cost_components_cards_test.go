@@ -69,8 +69,8 @@ func TestMelokuPaysAManaAndALand(t *testing.T) {
 	if !me.Hand.Contains(land) {
 		t.Error("the land did not go back to its owner's hand")
 	}
-	if len(me.ManaPool) != 0 {
-		t.Errorf("mana pool = %d, want the {1} spent", len(me.ManaPool))
+	if me.ManaPool.Total() != 0 {
+		t.Errorf("mana pool = %d, want the {1} spent", me.ManaPool.Total())
 	}
 	passPriorityAroundTable(t, g)
 	if got := len(g.Battlefield.Cards); got != before {
@@ -109,7 +109,7 @@ func TestMelokuCannotActivateWithNoLand(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, meloku, 0, game.ActivateAbilityParams{}); !errors.Is(err, game.ErrInvalidParam) {
 		t.Errorf("err = %v, want ErrInvalidParam", err)
 	}
-	if len(me.ManaPool) != 1 {
+	if me.ManaPool.Total() != 1 {
 		t.Error("a refused activation spent the mana")
 	}
 }
@@ -231,7 +231,7 @@ func TestRadiantLotusAddsThreeManaPerArtifactSacrificed(t *testing.T) {
 	}
 	passPriorityAroundTable(t, g)
 	answerColor(t, g, me.ID, "B")
-	if got := len(me.ManaPool); got != 6 {
+	if got := me.ManaPool.Total(); got != 6 {
 		t.Errorf("mana pool = %d, want 6 — three per artifact sacrificed this way", got)
 	}
 }
@@ -284,8 +284,8 @@ func TestGrimHirelingSacrificesXTreasuresForMinusXMinusX(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("activate at X=2: %v", err)
 	}
-	if len(me.ManaPool) != 0 {
-		t.Errorf("mana pool = %d, want the one {B} spent — X buys permanents, not mana", len(me.ManaPool))
+	if me.ManaPool.Total() != 0 {
+		t.Errorf("mana pool = %d, want the one {B} spent — X buys permanents, not mana", me.ManaPool.Total())
 	}
 	passPriorityAroundTable(t, g)
 	// A 1/1 with -2/-2 is dead, which is the printed outcome.
@@ -317,7 +317,7 @@ func TestSkirgeFamiliarPitchesACardForBlack(t *testing.T) {
 	if !me.Graveyard.Contains(pitch) {
 		t.Error("the discarded card did not reach the graveyard")
 	}
-	if got := len(me.ManaPool); got != 1 || me.ManaPool[0].Color != "B" {
+	if got := me.ManaPool.Total(); got != 1 || me.ManaPool.Units()[0].Color != "B" {
 		t.Errorf("mana pool = %+v, want one {B}", me.ManaPool)
 	}
 	n := 0
@@ -343,7 +343,7 @@ func TestSkirgeFamiliarCannotPayFromAnEmptyHand(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, imp, 0, game.ManaAbilityParams{}); !errors.Is(err, game.ErrInvalidParam) {
 		t.Errorf("err = %v, want ErrInvalidParam", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Error("a refused activation minted mana")
 	}
 }

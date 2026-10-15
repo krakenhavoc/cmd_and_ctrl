@@ -46,10 +46,10 @@ func TestCompoundWardCardsHaveOneManaAndLifeOffer(t *testing.T) {
 				b06AddMana(payer, "C", "C")
 				answerPayUnless(t, g, payer.ID, pay)
 				if pay {
-					if payer.Life != before-2 || len(payer.ManaPool) != 0 || counteredInLog(g, bolt) {
+					if payer.Life != before-2 || payer.ManaPool.Total() != 0 || counteredInLog(g, bolt) {
 						t.Fatal("ward did not pay both parts")
 					}
-				} else if payer.Life != before || len(payer.ManaPool) != 2 || !counteredInLog(g, bolt) {
+				} else if payer.Life != before || payer.ManaPool.Total() != 2 || !counteredInLog(g, bolt) {
 					t.Fatal("declining ward charged part of its cost")
 				}
 			}

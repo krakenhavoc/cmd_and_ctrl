@@ -38,7 +38,7 @@ func jeskasWillBoth(opp uuid.UUID) []game.TargetRef {
 
 func redIn(p *game.Player) int {
 	n := 0
-	for _, tok := range p.ManaPool {
+	for _, tok := range p.ManaPool.Units() {
 		if tok.Color == "R" {
 			n++
 		}

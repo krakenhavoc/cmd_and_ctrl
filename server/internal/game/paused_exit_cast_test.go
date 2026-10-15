@@ -84,7 +84,7 @@ func (tb *pausedCastTable) assertNothingSpent(t *testing.T, z *Zone, pool int) {
 	if g.Battlefield.Contains(tb.cmdr) || g.LandsPlayedThisTurn[me.ID] != 0 {
 		t.Errorf("the refused land play reached the battlefield or spent the land drop")
 	}
-	if len(me.ManaPool) != pool {
+	if me.ManaPool.Total() != pool {
 		t.Errorf("pool %v, want %d mana — the refused cast paid", me.ManaPool, pool)
 	}
 	if len(g.PendingChoices) != 1 || g.PendingChoices[0].ID != tb.prompt.ID {
@@ -247,7 +247,7 @@ func TestABouncedCommanderCannotPayOrActivateWithCounters(t *testing.T) {
 			if c.Counters["+1/+1"] != 2 || c.Counters["-1/-1"] != 0 || c.Counters[CounterLoyalty] != 3 || g.LoyaltyActivatedThisTurn[cmdr] {
 				t.Errorf("the refused payment changed the commander's counters: %v", c.Counters)
 			}
-			if len(g.StackMeta) != 0 || len(me.ManaPool) != 0 {
+			if len(g.StackMeta) != 0 || me.ManaPool.Total() != 0 {
 				t.Errorf("stack %d, pool %v — the refused payment paid something", len(g.StackMeta), me.ManaPool)
 			}
 			if len(g.PendingChoices) != 1 || g.PendingChoices[0].ID != prompt.ID {
