@@ -36,3 +36,10 @@ func SpellIs(pred CardPredicate) ConvokeGrantFilter {
 		return pred(g, caster, spell)
 	}
 }
+
+// SpellsYouCastHaveImprovise is the grant for "<spells> you cast have
+// improvise" (Ironheart, Clever Champion; CR 702.126): convoke's twin
+// over artifacts. A nil filter is every spell.
+func SpellsYouCastHaveImprovise(label string, spells ConvokeGrantFilter) game.GrantedTapCost {
+	return game.GrantedTapCost{Spells: spells, Cost: Improvise(), Label: label}
+}

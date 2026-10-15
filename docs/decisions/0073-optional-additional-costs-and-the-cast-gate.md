@@ -1565,3 +1565,7 @@ pricing and the cast view agree. The next spell cast spends the promise whether 
 **Snapshot impact.** One new omitempty field on the promise payload (`improvise`); older snapshots read as false.
 
 Tests: `cards/effects/improvise_test.go`.
+
+**Native improvise cards (#3654).** The twenty-odd cards that print improvise declare `TapCost: Improvise()` and share the payment
+code above; `effects.SpellsYouCastHaveImprovise` (beside the convoke grant) is the permanent's "noncreature spells you cast have
+improvise" (Ironheart, Clever Champion). Tests: `cards/effects/improvise_cards_test.go`.
