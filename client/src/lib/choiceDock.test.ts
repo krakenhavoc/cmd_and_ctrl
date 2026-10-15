@@ -6,6 +6,12 @@
 import { describe, it, expect, vi } from "vitest";
 
 import {
+  anyPlayerEachBadge,
+  anyPlayerEachHeader,
+  anyPlayerEachPayers,
+  anyPlayerEachPrice,
+  anyPlayerEachSummary,
+  anyPlayerEachWarning,
   anyPlayerOfferLine,
   anyPlayerOfferRequest,
   anyPlayerWaiting,
@@ -17,6 +23,7 @@ import {
   gameOverRequest,
   INLINE_LABEL_MAX,
   INLINE_OPTION_MAX,
+  isAnyPlayerEachLeg,
   isInlineChoice,
   voteRequest,
 } from "./choiceDock";
@@ -662,6 +669,151 @@ describe("assist (ADR 0150 §5)", () => {
     expect(assistRequest(choice({ kind: "pay_amount" }), "a", seats, vi.fn())).toBeNull();
     expect(assistWaiting(ask(), null, seats)).toBe(
       "Bob is deciding how much to help pay for Alice's Fan Favorite",
+    );
+  });
+});
+
+describe("a per-land any-player offer (ADR 0187 §8)", () => {
+  const seats = [
+    { id: "a", name: "Alice" },
+    { id: "b", name: "Bob" },
+    { id: "c", name: "Carol" },
+    { id: "d", name: "Dan" },
+  ];
+  const land = (id: string) => ({ instance_id: id, type_line: "Basic Land — Forest" });
+  // Bob's Cleansing; Alice chose two lands and Bob none, Carol chooses now,
+  // Dan is after her.
+  const leg = (over: Partial<PendingChoiceView> = {}) =>
+    choice({
+      kind: "choose_cards",
+      chooser: "c",
+      reason: "Cleansing — choose lands to pay 1 life for",
+      choose_min: 0,
+      choose_max: 3,
+      options: [land("l1"), land("l2"), land("l3")] as never,
+      any_player_offer: {
+        controller: "b",
+        order: ["a", "b", "c", "d"],
+        declined: ["b"],
+        each_life: 1,
+      },
+      earlier_choices: [
+        { player_id: "a", card_ids: ["l1", "l2"] },
+        { player_id: "b", card_ids: [] },
+      ],
+      ...over,
+    });
+
+  it("recognises only a choose_cards leg with each_life", () => {
+    expect(isAnyPlayerEachLeg(leg())).toBe(true);
+    expect(
+      isAnyPlayerEachLeg(choice({ kind: "pay_unless", any_player_offer: leg().any_player_offer })),
+    ).toBe(false);
+    expect(
+      isAnyPlayerEachLeg(leg({ any_player_offer: { controller: "b", order: ["a", "b", "c"] } })),
+    ).toBe(false);
+    expect(isAnyPlayerEachLeg(null)).toBe(false);
+  });
+
+  it("gives the chooser the rule, who is next, the choices so far and when it is paid", () => {
+    expect(anyPlayerEachHeader(leg(), seats, "Cleansing")).toBe(
+      "Bob's Cleansing. Each player in turn chooses lands to pay 1 life for; a land anyone pays for is saved. Then Dan. So far: Alice pays for 2 lands, Bob for none. Nothing is paid until the last player has chosen.",
+    );
+  });
+
+  it("says the chooser is last, and leaves out a summary before anyone chose", () => {
+    const last = leg({
+      chooser: "d",
+      any_player_offer: { controller: "b", order: ["a", "b", "c", "d"], each_life: 1 },
+      earlier_choices: [],
+    });
+    expect(anyPlayerEachHeader(last, seats, "Cleansing")).toBe(
+      "Bob's Cleansing. Each player in turn chooses lands to pay 1 life for; a land anyone pays for is saved. You are the last to choose. Nothing is paid until the last player has chosen.",
+    );
+  });
+
+  it("counts a player given no leg (they could not pay) as none", () => {
+    const c = leg({
+      earlier_choices: [{ player_id: "a", card_ids: ["l1"] }],
+      any_player_offer: {
+        controller: "b",
+        order: ["a", "b", "c", "d"],
+        declined: ["b"],
+        each_life: 1,
+      },
+    });
+    expect(anyPlayerEachSummary(c, seats)).toBe("So far: Alice pays for 1 land, Bob for none.");
+  });
+
+  it("badges a land with every earlier payer and warns when it is selected", () => {
+    const c = leg({
+      earlier_choices: [
+        { player_id: "a", card_ids: ["l1", "l2"] },
+        { player_id: "b", card_ids: ["l2"] },
+      ],
+    });
+    expect(anyPlayerEachPayers(c, "l1")).toEqual(["a"]);
+    expect(anyPlayerEachPayers(c, "l2")).toEqual(["a", "b"]);
+    expect(anyPlayerEachPayers(c, "l3")).toEqual([]);
+    expect(anyPlayerEachBadge(["a"], seats)).toBe("Alice pays");
+    expect(anyPlayerEachBadge(["a", "b"], seats)).toBe("Alice and Bob pay");
+    expect(anyPlayerEachBadge([], seats)).toBe("");
+    expect(anyPlayerEachWarning(c, ["a"], seats)).toBe(
+      "Alice already pays for this: you'd both pay 1 life",
+    );
+    expect(anyPlayerEachWarning(c, ["a", "b"], seats)).toBe(
+      "Alice and Bob already pay for this: you'd all pay 1 life",
+    );
+  });
+
+  it("prices the pick as it is toggled", () => {
+    const c = leg();
+    expect(anyPlayerEachPrice(c, 0, 0)).toBe("Pay nothing");
+    expect(anyPlayerEachPrice(c, 1, 0)).toBe("Pay 1 life for 1 land");
+    expect(anyPlayerEachPrice(c, 3, 0)).toBe("Pay 3 life for 3 lands");
+    expect(anyPlayerEachPrice(c, 3, 2)).toBe(
+      "Pay 3 life for 3 lands (2 already paid for by others)",
+    );
+    const two = leg({ any_player_offer: { controller: "b", order: ["a", "c"], each_life: 2 } });
+    expect(anyPlayerEachPrice(two, 2, 0)).toBe("Pay 4 life for 2 lands");
+  });
+
+  it("gives every other seat a read-only line with the choices so far", () => {
+    const r = anyPlayerOfferRequest(leg(), "a", seats, "Cleansing");
+    expect(r).not.toBeNull();
+    expect(r?.tag).toBe("any player pays");
+    expect(r?.question).toBe("Cleansing — choose lands to pay 1 life for");
+    expect(r?.detail).toBe(
+      "Carol is choosing lands to pay 1 life for (Bob's Cleansing). So far: Alice 2, Bob none.",
+    );
+    expect(r?.hint).toBe(
+      "Each player in turn chooses lands to pay 1 life for; a land anyone pays for is saved. Then Dan. Nothing is paid until the last player has chosen.",
+    );
+    expect(r?.primary).toBeUndefined();
+    // The chooser answers it in the sheet, not here.
+    expect(anyPlayerOfferRequest(leg(), "c", seats, "Cleansing")).toBeNull();
+  });
+
+  it("names the noun from the board when the watcher has no options", () => {
+    const watching = leg({ options: undefined });
+    expect(anyPlayerWaiting(watching, seats, "Cleansing")).toContain("choosing permanents to pay");
+    expect(anyPlayerWaiting(watching, seats, "Cleansing", [land("l1"), land("l2")])).toContain(
+      "choosing lands to pay",
+    );
+  });
+
+  it("leaves a pay_unless offer's lines alone", () => {
+    const pu = choice({
+      kind: "pay_unless",
+      chooser: "c",
+      pay_cost: "{2}",
+      any_player_offer: { controller: "b", order: ["a", "b", "c", "d"], declined: ["a", "b"] },
+    });
+    expect(anyPlayerOfferLine(pu, seats)).toBe(
+      "Any player may pay {2}: Alice and Bob declined; then Dan.",
+    );
+    expect(anyPlayerWaiting(pu, seats, "Rhystic Tutor")).toBe(
+      "Carol is deciding whether to pay {2} (Bob's Rhystic Tutor)",
     );
   });
 });

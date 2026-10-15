@@ -2176,6 +2176,11 @@ export interface AnyPlayerOfferView {
   // Paying is what the controller wants (Icy Prison: it keeps the
   // permanent), so the words say "keep", not "stop".
   helps_controller?: boolean;
+  // ADR 0187 §2: the life one object costs on a per-object offer. Set,
+  // the prompt is a choose_cards whose answer is the objects the chooser
+  // will pay that much for; earlier_choices carries each earlier player's
+  // picks. Absent on every other any-player offer.
+  each_life?: number;
 }
 
 export interface VoteView {

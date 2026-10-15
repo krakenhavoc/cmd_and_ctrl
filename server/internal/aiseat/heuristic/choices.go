@@ -376,6 +376,12 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// answer is always chosen: a seat owing a choice is offered
 		// nothing else, and a policy with no opinion must still pick
 		// (#544).
+		// ADR 0187 §7: one player's leg of a per-object any-player offer
+		// (Cleansing) is a choose_cards that names the lands it pays
+		// for, not ones it gives up (any_player_each.go).
+		if v, why, ok := st.anyPlayerEachValue(ch, cp.CardIDs, lookup); ok {
+			return v, why
+		}
 		// #3664: an edict's pick ("each player sacrifices a creature")
 		// is a sacrifice, priced as the sacrifice_choice kind above
 		// prices one: give up the least.

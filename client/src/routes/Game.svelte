@@ -2290,13 +2290,14 @@
       : null,
   );
   // ADR 0150 §5: an "unless any player pays" offer, read-only for every
-  // seat but the one asked now, whose own prompt is a pay_unless.
+  // seat but the one asked now, whose own prompt is a pay_unless (or, for
+  // a per-land offer, ADR 0187, a choose_cards).
   const anyPlayerOfferDockRequest = $derived.by(() => {
     if (!view || !viewerID) return null;
     const link = view.pending_choices?.find((c) => c.any_player_offer) ?? null;
     if (!link) return null;
     const name = findCardView(view, link.source)?.name || "a card";
-    return anyPlayerOfferRequest(link, viewerID, view.seats, name);
+    return anyPlayerOfferRequest(link, viewerID, view.seats, name, view.battlefield?.cards);
   });
   // ADR 0177 §2: the table may move on without a player who is gone.
   // Offered only to the seats that decide (§3); the server checks again.

@@ -139,7 +139,7 @@ function anyPlayerOfferWaiting(view: GameView): string {
   const c = view.pending_choices?.find((p) => p.any_player_offer);
   if (!c) return "";
   const name = findCardView(view, c.source)?.name || "a card";
-  return anyPlayerWaiting(c, view.seats ?? [], name);
+  return anyPlayerWaiting(c, view.seats ?? [], name, view.battlefield?.cards);
 }
 
 // blockWaitHint names the defenders still declaring blockers while

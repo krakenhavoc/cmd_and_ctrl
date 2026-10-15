@@ -74,8 +74,14 @@
     selectionLegal,
   } from "../../boardChoicePick";
   import {
+    anyPlayerEachBadge,
+    anyPlayerEachHeader,
+    anyPlayerEachPayers,
+    anyPlayerEachPrice,
+    anyPlayerEachWarning,
     anyPlayerOfferLine,
     anyPlayerWhose,
+    isAnyPlayerEachLeg,
     ballotNote,
     choiceRequest,
     inlineRefusal,
@@ -240,9 +246,13 @@
       // #2525: a proliferate opens on the engine's suggested pick — the
       // answer a player takes nearly every time — and the player's click
       // is the deviation.
+      // ADR 0187 §8: a per-land any-player offer opens the same way, on
+      // the chooser's own lands no earlier player chose.
       selected =
-        active?.kind === "proliferate" || active?.kind === "entry_choose_permanents"
-          ? new Set(active.choose_suggested ?? [])
+        active?.kind === "proliferate" ||
+        active?.kind === "entry_choose_permanents" ||
+        isAnyPlayerEachLeg(active)
+          ? new Set(active?.choose_suggested ?? [])
           : preselect || searchPreselect
             ? new Set(options.map((c) => c.instance_id))
             : new Set();
@@ -334,8 +344,20 @@
   // earlier seats chose. This is viewer-filtered protocol data; only
   // resolve IDs against the current public battlefield snapshot, and
   // let Card render any face-down permanent as its redacted back.
+  // ADR 0187 §8: one player's leg of a per-land any-player offer. The
+  // earlier players' picks ride as badges on the lands, so the faces
+  // section below is for the other choose_cards shapes.
+  const isEachLeg = $derived(isAnyPlayerEachLeg(active));
+  // The viewer's pick, priced: how many are chosen, and how many of those
+  // an earlier player already pays for.
+  const eachAlreadyPaid = $derived.by(() => {
+    if (!isEachLeg || !active) return 0;
+    let n = 0;
+    for (const id of selected) if (anyPlayerEachPayers(active, id).length > 0) n++;
+    return n;
+  });
   const earlierChoices = $derived.by(() => {
-    if (!isChooseCards || !active) return [];
+    if (!isChooseCards || !active || isEachLeg) return [];
     const choices = active.earlier_choices ?? [];
     return choices.map((choice, index) => ({
       key: `${choice.player_id}-${index}`,
@@ -1823,45 +1845,49 @@
     const verb =
       isSacrifice || (isChooseCards && c.choose_destination === "sacrifice")
         ? L.sacrifice
-        : isSearch
-          ? "Take"
-          : isCopyTarget
-            ? none
-              ? c.exchanges_text
-                ? "Keep its own text"
-                : "Enter as itself"
-              : c.exchanges_text
-                ? "Exchange text boxes"
-                : "Enter as a copy"
-            : isUntapChoice
-              ? "Untap"
-              : isEntryReveal
-                ? none
-                  ? "Reveal nothing"
-                  : "Reveal"
-                : isEntryDiscard
+        : isEachLeg
+          ? none
+            ? "Pay for none"
+            : `Pay ${(c.any_player_offer?.each_life ?? 0) * selected.size} life`
+          : isSearch
+            ? "Take"
+            : isCopyTarget
+              ? none
+                ? c.exchanges_text
+                  ? "Keep its own text"
+                  : "Enter as itself"
+                : c.exchanges_text
+                  ? "Exchange text boxes"
+                  : "Enter as a copy"
+              : isUntapChoice
+                ? "Untap"
+                : isEntryReveal
                   ? none
-                    ? `Don't discard — put ${enteringCardName(c.source)} into its owner's graveyard`
-                    : "Discard"
-                  : isEntrySacrifice
-                    ? L.sacrifice
-                    : isEntryChoose
-                      ? none
-                        ? "Choose nothing"
-                        : "Choose"
-                      : isChooseSource
-                        ? "Choose this source"
-                        : isProliferate
-                          ? none
-                            ? "Proliferate nothing"
-                            : "Proliferate"
-                          : isManifestPick
-                            ? "Manifest"
-                            : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
-                              ? "Choose"
-                              : isRevealedVariant && none && pickMin === 0
-                                ? "Choose nothing"
-                                : "Confirm";
+                    ? "Reveal nothing"
+                    : "Reveal"
+                  : isEntryDiscard
+                    ? none
+                      ? `Don't discard — put ${enteringCardName(c.source)} into its owner's graveyard`
+                      : "Discard"
+                    : isEntrySacrifice
+                      ? L.sacrifice
+                      : isEntryChoose
+                        ? none
+                          ? "Choose nothing"
+                          : "Choose"
+                        : isChooseSource
+                          ? "Choose this source"
+                          : isProliferate
+                            ? none
+                              ? "Proliferate nothing"
+                              : "Proliferate"
+                            : isManifestPick
+                              ? "Manifest"
+                              : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
+                                ? "Choose"
+                                : isRevealedVariant && none && pickMin === 0
+                                  ? "Choose nothing"
+                                  : "Confirm";
     const clearable =
       isSearch || isCopyTarget || ((isCardSetPick || isRevealedVariant) && pickMin === 0);
     return {
@@ -2627,6 +2653,10 @@
             <!-- ADR 0191: a pick over the cards your deck owns outside the game. -->
             These are the cards you own outside the game: your sideboard. Only you can see them, and the
             card says what the table is shown. Choosing costs nothing on its own.
+          {:else if isEachLeg}
+            <!-- ADR 0187 §8: a per-land any-player offer. -->
+            You pay {active.any_player_offer?.each_life} life for each one you pick, once everyone has
+            chosen.
           {:else}
             What happens to them is the card's business, and it will tell you next — choosing them
             costs nothing on its own.
@@ -2714,6 +2744,21 @@
           them all.
         {/if}
       </p>
+      {#if isEachLeg}
+        <!-- ADR 0187 §8: whose effect, the rule, who is next, what the
+             earlier players chose (CR 101.4b), and the running price. -->
+        <p class="prompt-hint">
+          {anyPlayerEachHeader(
+            active,
+            snap.seats ?? [],
+            triggerSourceName(active.source),
+            snap.battlefield?.cards,
+          )}
+        </p>
+        <p class="each-price" aria-live="polite">
+          {anyPlayerEachPrice(active, selected.size, eachAlreadyPaid, snap.battlefield?.cards)}
+        </p>
+      {/if}
       {#if isChooseCards && earlierChoices.length > 0}
         <section class="earlier-choices" aria-label="Earlier choices">
           <h3>Earlier choices</h3>
@@ -2785,6 +2830,17 @@
                 <span class="source-caption">{damageSourceCaption(snap, c, viewerID)}</span>
               {:else if isChooseCards || isUntapChoice || isProliferate}
                 <span class="source-caption">{permanentWhoseCaption(snap, c, viewerID)}</span>
+                {#if isEachLeg}
+                  {@const payers = anyPlayerEachPayers(active, c.instance_id)}
+                  {#if payers.length > 0}
+                    <span class="pay-badge">{anyPlayerEachBadge(payers, snap.seats ?? [])}</span>
+                    {#if selected.has(c.instance_id)}
+                      <span class="pay-warn">
+                        {anyPlayerEachWarning(active, payers, snap.seats ?? [])}
+                      </span>
+                    {/if}
+                  {/if}
+                {/if}
               {:else if graveyardIDs.has(c.instance_id)}
                 <span class="source-caption">in graveyard</span>
               {/if}
@@ -2979,6 +3035,28 @@
     line-height: 1.3;
     color: var(--fg-muted);
     text-align: center;
+  }
+  /* ADR 0187 §8: a per-land any-player offer. The badge names who already
+     pays for a land; the warning replaces it in colour once the viewer
+     selects that land, since paying twice saves nothing extra. */
+  .each-price {
+    margin: 0 0 12px;
+    font-weight: 600;
+  }
+  .pay-badge,
+  .pay-warn {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    line-height: 1.3;
+    text-align: center;
+  }
+  .pay-badge {
+    color: var(--accent);
+  }
+  .pay-warn {
+    color: var(--danger);
+    font-weight: 600;
   }
   /* S26 creature-type picker. The list is the whole CR 205.3m
      vocabulary, so it scrolls inside a fixed box rather than growing
