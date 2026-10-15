@@ -52,3 +52,25 @@ func youCastAHistoricSpell(ev game.Event, source *game.Card, _ game.Characterist
 	spell, ok := g.LookupCardForEffect(ev.CardID)
 	return ok && b09IsHistoric(spell)
 }
+
+// PowerEqualToArtifactsYouControl is "this creature's power is equal to
+// the number of artifacts you control": a layer 7a characteristic-
+// defining ability over the controller's artifacts, itself included
+// (Mendicant Core, Guidelight; Bronze Guardian).
+func PowerEqualToArtifactsYouControl() game.StaticAbility {
+	return game.StaticAbility{
+		Label:     "Power is equal to the number of artifacts you control.",
+		Layer:     game.Layer7PT,
+		SubLayer:  game.SubLayer7A_CDA,
+		AppliesTo: selfOnly,
+		Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
+			n := 0
+			for _, p := range g.Battlefield.Cards {
+				if p.Controller == source.Controller && p.IsArtifact() {
+					n++
+				}
+			}
+			c.Power = n
+		},
+	}
+}

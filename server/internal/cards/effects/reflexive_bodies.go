@@ -61,6 +61,17 @@ var (
 	// Samurai you control" — untargeted, the Equipment ride the payload.
 	gilgameshAttachBody = game.SimpleDelayedBody("gilgamesh/attach-equipment", gilgameshAttach)
 
+	// Summon: Kujata, chapter III: "when you discard a card this way,
+	// this creature deals damage equal to that card's mana value to
+	// each opponent" — untargeted, the amount rides Params.Amount.
+	summonKujataFireBody = game.DelayedBody("summon-kujata/fire-damage", summonKujataFireEffect)
+
+	// Cait Sith, Fortune Teller: "when you exile a card this way, target
+	// creature you control gets +X/+0 until end of turn", X the exiled
+	// card's mana value, carried as Params.Amount.
+	caitSithBoostBody = game.ReflexiveBody("cait-sith/boost", caitSithBoost,
+		constTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
+
 	// Breeches, the Blastmaker: "when you lose the flip, deal damage
 	// equal to that spell's mana value to any target" — the amount is
 	// fixed when the flip was lost, so it rides Params.Amount rather

@@ -246,3 +246,5 @@ body flash/cleanup-sacrifice
 body fortune-loyal-steed/end-of-combat
 body terra-herald-of-hope/return
 body the-falcon-airship-restored/return
+body cait-sith/boost
+body summon-kujata/fire-damage
