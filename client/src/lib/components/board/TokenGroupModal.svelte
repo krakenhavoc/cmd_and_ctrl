@@ -36,6 +36,7 @@
   import { attackersDefendedBy } from "../../attackTargets";
   import {
     bulkCandidates,
+    isToken,
     liveSelection,
     rowBadges,
     selectFirstN,
@@ -244,13 +245,15 @@
   onDestroy(() => document.removeEventListener("keydown", handleKey));
 
   const title = $derived(members[0]?.name ?? "");
+  // #3046: a pile of printed cards is "copies", not "tokens".
+  const allTokens = $derived(members.every((c) => isToken(c)));
   const hint = $derived(
     mode === "target"
       ? $boardChoicePick !== null
         ? "Pick which of these to choose."
         : "Pick which of these to target."
       : mode === "attack"
-        ? "Pick which of these attack. Select N takes untapped, non-summoning-sick tokens first."
+        ? "Pick which of these attack. Select N takes untapped, non-summoning-sick ones first."
         : mode === "block"
           ? "Pick which of these block."
           : "Pick one, a number, or all of them.",
@@ -269,7 +272,7 @@
     <div class="prompt-modal tg-modal">
       <h2 id="tg-title">
         {title}
-        <span class="prompt-src">{members.length} tokens</span>
+        <span class="prompt-src">{members.length} {allTokens ? "tokens" : "copies"}</span>
       </h2>
       <p class="prompt-hint">{hint}</p>
       <div class="tg-bulk" role="group" aria-label="select several">
@@ -383,7 +386,7 @@
             type="button"
             class="ghost"
             disabled={picked.length !== 1}
-            title="Does what clicking this token on the board does"
+            title="Does what clicking this card on the board does"
             onclick={useOne}>Use this one</button
           >
         {/if}
