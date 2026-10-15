@@ -21,18 +21,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Discover is ADR 0099's (game/discover.go).
 //
-// One declared simplification, weaker than printed and shared with
-// every spend rider: with an unrecorded payment the pool is never spent
-// (ADR 0068 §3), so the trigger never fires.
+// No simplification is left (#3844, ADR 0068 amendment 2026-10-15). A
+// waived payment (strict mana off with too little in the pool, or Cast
+// anyway) still spends the share of the cost the pool can pay, so this
+// mana pays whenever it can and its rider fires. Mana that never
+// entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
 		OracleID:     brassTunnelGrinderOracleID + "#1",
 		Name:         "Tecutlan, the Searing Rift",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so casting a permanent spell with Tecutlan's mana does nothing extra.",
-		},
-		Discovers: true,
+		Completeness: CompletenessFull,
+		Discovers:    true,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{R}",

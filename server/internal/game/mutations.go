@@ -2120,9 +2120,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		OldZone: src.Kind,
 		NewZone: ZoneStack,
 		// ADR 0118 §2: a forced cast is announced as unpaid, so the
-		// log tells the table. ForceCast waives the whole mana gate
-		// (applyCastCostLocked), so the flag alone decides it.
-		Unpaid: params.ForceCast,
+		// log tells the table. Since #3844 a forced cast spends what
+		// the pool can pay, so one the pool paid in full is an
+		// ordinary paid cast and the line would be false.
+		Unpaid: params.ForceCast && paid.OnPaper,
 	})
 	// CR 115.3: the objects named at 601.2c have now become targets.
 	// Emitted after EventCast so a "becomes the target" trigger and
@@ -2177,11 +2178,13 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 //  2. **Strict, not payable, not ForceCast** — return an
 //     *InsufficientManaError carrying the missing-symbols slice.
 //     Pool is unchanged; the cast is rejected.
-//  3. **Permissive, not payable OR ForceCast** — emit EventCostWarning and
-//     leave the pool alone. Lets the player track mana on paper
-//     and lets the strict-mode override toast bypass the gate
-//     for one cast without consuming mana the caller may not
-//     have actually paid.
+//  3. **Permissive, not payable OR ForceCast** — spend the share of
+//     the cost the pool can legally pay, record those tokens, and
+//     waive only the shortfall (#3844), with an EventCostWarning.
+//     Lets the player track the rest on paper and lets the
+//     strict-mode override bypass the gate for one cast, while the
+//     mana that really was in the pool really pays, so its spend
+//     riders fire (Path of Ancestry, Cavern of Souls).
 //
 // The "effective cost" parses the printed ManaCost and adds
 // {2}-per-prior-cast for casts from the command zone (CR 903.8).
@@ -2230,32 +2233,50 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 		return paid, err
 	}
 	// Match activated abilities: a permissive cast spends a pool that
-	// can cover its whole cost. Only an unfunded cast is paid on paper;
-	// ForceCast always bypasses payment, even when the pool could pay.
-	// The same spend context gates both modes, so restricted mana never
-	// pays for an object outside its restriction.
+	// can cover its whole cost. An unfunded permissive cast, and every
+	// ForceCast, is a WAIVED charge. The same spend context gates every
+	// mode, so restricted mana never pays for an object outside its
+	// restriction.
 	spendCtx := ManaSpendForCastParams(card, params)
 	canPay := p.ManaPool.CanPayFor(cost, params.XValue, spendCtx)
 	if params.ForceCast || (!params.Strict && !canPay) {
-		// Waived charge. Don't touch the pool, including a partial
-		// payment; emit a warning for the event log instead.
-		//
-		// The LIFE half is still paid: a life total is engine state
-		// in every mode, and permissive mode's bargain is only about
-		// the mana the player tracks on paper.
-		g.EmitEvent(Event{
-			Kind:   EventCostWarning,
-			Actor:  p.ID,
-			Source: cardID,
-		})
-		// #761: the engine did not charge, so it has no record of
-		// WHAT was paid — and says so, rather than leaving an empty
-		// record that reads as "nothing was spent". Every reader
-		// treats OnPaper as the weaker-than-printed answer: a Vexing
-		// Bauble does not counter this spell, and a converge spell
-		// counts no colours.
-		paid.OnPaper = true
-		return paid, g.payPhyrexianLifeLocked(cardID, p.ID, phyrexianLife)
+		// The LIFE half is paid first and in full: a life total is
+		// engine state in every mode, and permissive mode's bargain is
+		// only about the mana the player tracks on paper. First,
+		// because it is the fallible half (see the funded path below),
+		// and a refusal must not have spent the pool.
+		if err := g.payPhyrexianLifeLocked(cardID, p.ID, phyrexianLife); err != nil {
+			return paid, err
+		}
+		// #3844 (ADR 0068 amendment 2026-10-15): the pool pays what
+		// it CAN, with the allocation a funded payment uses, and only
+		// the shortfall is waived. The tokens that paid are recorded,
+		// so their spend riders fire and every reader counts them: a
+		// Path of Ancestry {G} floating in the pool really pays for
+		// the Elf, and Path really scries. Mana the cost cannot use
+		// stays in the pool. A ForceCast whose pool covers the whole
+		// cost is simply paid.
+		spent, full := p.ManaPool.SpendWhatPaysForWith(cost, params.XValue, spendCtx, spendStrategyForCast(card))
+		paid.Mana = spent
+		if len(spent) > 0 || full {
+			g.EmitEvent(manaSpentEvent(p.ID, cardID, spent))
+		}
+		if !full {
+			g.EmitEvent(Event{
+				Kind:   EventCostWarning,
+				Actor:  p.ID,
+				Source: cardID,
+			})
+			// #761: the engine did not charge the rest, so its record
+			// is incomplete — and says so, rather than reading as
+			// "this is all that was spent". Every reader takes the
+			// recorded tokens as a lower bound and OnPaper as the
+			// weaker-than-printed answer: a Vexing Bauble does not
+			// counter this spell, and a converge spell counts only
+			// the colours that left the pool.
+			paid.OnPaper = true
+		}
+		return paid, nil
 	}
 	// S32 (#352): the spend context is what lets restricted mana pay
 	// — and what stops it paying for the wrong thing. Ancient

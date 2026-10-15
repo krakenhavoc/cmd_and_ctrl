@@ -16,15 +16,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The enters-tapped clause is a CR 614 self-replacement; the life is a
 // cost, so the auto-tapper never plans it (ADR 0040 §7).
 //
-// One declared simplification, weaker than printed: with an unrecorded
-// payment the pool is never spent (ADR 0068 §3), so the spell can still be
-// countered.
+// No simplification is left (#3844, ADR 0068 amendment 2026-10-15). A
+// waived payment (strict mana off with too little in the pool, or Cast
+// anyway) still spends the share of the cost the pool can pay, so this
+// mana pays whenever it can and its rider fires. Mana that never
+// entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
 		OracleID:     "36937483-30cb-449a-8028-75017a124922",
 		Name:         "Boseiju, Who Shelters All",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so an instant or sorcery cast with Boseiju's mana can still be countered."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true, Life: 2},

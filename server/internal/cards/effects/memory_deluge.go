@@ -24,7 +24,7 @@ func init() {
 		Name:         "Memory Deluge",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track the mana you spent, so it looks at no cards.",
+			"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so it can look at fewer cards than the mana you paid.",
 		},
 		Purpose:          game.Purpose{Tutors: 2},
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},

@@ -24,10 +24,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (CR 702.44d).
 //
 // One declared simplification is left, and it is the paid-cost
-// record's rather than the entry's: with an unrecorded payment the engine
-// never saw what paid, so the record claims no colours (ADR 0068 §3,
-// unknown answers weaker than printed) and the Oracle enters as a 0/0
-// that dies at once.
+// record's rather than the entry's: when a payment is waived, only the
+// colours that left the pool count (ADR 0068 §3 and its 2026-10-15
+// amendment, a lower bound), and with nothing in the pool the Oracle
+// enters as a 0/0 that dies at once.
 //
 // Spec.WantsDistinctColors makes the cast gate spread the payment
 // across colours, so an Oracle cast off four different lands really
@@ -41,7 +41,7 @@ func init() {
 		OracleID:            "7ecfa47e-1165-46a6-884c-290b1c14d020",
 		Name:                "Etched Oracle",
 		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so it enters with no counters at all."},
+		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so it can enter with fewer counters than the colors you paid."},
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Activated: []ActivatedAbility{{

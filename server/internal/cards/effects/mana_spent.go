@@ -26,9 +26,10 @@ import (
 // The one rule they all inherit, from ADR 0068 §3: a payment the
 // engine WAIVED (an insufficient permissive pool or Cast anyway) answers
 // "unknown", and every reader here takes unknown as the weaker
-// answer. Converge counts no colours, adamant does not turn on, and
-// "if no mana was spent" is false. None of these helpers has to say
-// so; PaidCost already does.
+// answer. Since #3844 the pool still pays its share, so converge
+// counts the colours that left the pool, adamant turns on only when
+// the pool alone paid enough, and "if no mana was spent" is false.
+// None of these helpers has to say so; PaidCost already does.
 
 // AdamantSpent is adamant's condition (CR 207.2c): "if at least three
 // <colour> mana was spent to cast this spell". An ability word, so the

@@ -15,16 +15,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // known nothing, so both get the counters. Plot is the ordinary special
 // action (CR 702.170).
 //
-// One declared simplification, the paid-cost record's: with strict
-// mana off the engine never saw what paid, so a Commando cast for
-// mana that way is not known to have spent nothing, and gets no
-// counters even when it was cast for free (ADR 0068 §3).
+// One declared simplification, the paid-cost record's: when a payment
+// is waived the engine sees only the share its pool paid, so a
+// Commando cast that way is not known to have spent nothing, and gets
+// no counters even when it was cast for free (ADR 0068 §3).
 func init() {
 	Register(Spec{
 		OracleID:       "09117016-5fd1-4590-9867-aad65d3097e3",
 		Name:           "Freestrider Commando",
 		Completeness:   CompletenessCaveats,
-		Caveats:        []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so a Commando you cast never gets the two counters — one put onto the battlefield still does."},
+		Caveats:        []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game can't tell a Commando paid outside the mana pool from one cast for no mana, so it doesn't get the two counters — one put onto the battlefield still does."},
 		SpecialActions: []game.SpecialAction{Plot("{3}{G}")},
 		Replacements: []game.ReplacementEffect{
 			SelfEntersWithCountersIfNoManaSpent(game.CounterPlusOne, 2),

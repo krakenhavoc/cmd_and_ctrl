@@ -23,7 +23,7 @@ func init() {
 		OracleID:     "20eff2ce-f26d-48a2-8a1f-435a7e2968c8",
 		Name:         "Boros Fury-Shield",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so Boros Fury-Shield never deals the damage."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so Boros Fury-Shield deals the damage only when the {R} came from your mana pool."},
 		Targets:      TargetCreature("target attacking or blocking creature", AttackingOrBlocking()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return shieldAgainstTheTargetThen(ctx, true, func(ctx *Context, target uuid.UUID) error {

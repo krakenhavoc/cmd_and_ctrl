@@ -31,14 +31,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The grant arrives AFTER the spell's costs are paid, so the payment is
 // not spread across colours for it — correct, because the colours are
 // already spent by then. The one declared simplification is the
-// paid-cost record's: with an unrecorded payment the engine never saw what
-// paid, so the spell counts no colours (ADR 0068 §3).
+// paid-cost record's: when a payment is waived, the spell
+// counts only the colours that left the pool (ADR 0068 §3 and its
+// 2026-10-15 amendment): a lower bound.
 func init() {
 	Register(Spec{
 		OracleID:     "cbd76b22-d04e-48e7-bcab-c7f5466d67d8",
 		Name:         "Lux Artillery",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so the artifact creatures you cast get no counters from it."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so the artifact creatures you cast can get fewer counters from it than the colors you paid."},
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(And(Artifact(), Creature()), "Lux Artillery — it gains sunburst",
 				Do(ThatSpellGains{Keywords: []string{game.KeywordSunburst}})),

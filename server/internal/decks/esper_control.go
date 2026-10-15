@@ -15,7 +15,7 @@ package decks
 // but one, Ancient Tomb and the cheap cantrips are gone.
 //
 // Every non-basic card below is in the effect catalog and graded full,
-// apart from the minor caveats full_test.go names; decks_test.go and
+// apart from any minor caveats full_test.go names; decks_test.go and
 // full_test.go fail the build if that stops being true.
 
 var esperControl = Deck{

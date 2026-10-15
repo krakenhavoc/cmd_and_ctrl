@@ -62,3 +62,9 @@ This caveat is retained under the payment contract in
 [ADR 0068](../decisions/0068-the-mana-spent-on-a-spell.md). It describes a
 manual payment override, not an unimplemented card ability. The catalog
 has not been relabeled to conceal that distinction.
+
+**Update 2026-10-15 ([#3844](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3844)):**
+a waived payment now spends the share of the cost the pool can pay, so
+Path of Ancestry's {G} pays and its scry fires in every payment mode.
+Path is graded full, and the deck has no caveat cards left
+([ADR 0068 amendment 2026-10-15](../decisions/0068-the-mana-spent-on-a-spell.md)).

@@ -2501,8 +2501,9 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 
 // payAbilityManaCostLocked charges an activated ability's mana
 // component through the same pool / auto-tap machinery a cast uses.
-// Permissive mode (the default) leaves the pool alone and emits a
-// cost warning, matching how S15 treats an unaffordable cast.
+// Permissive mode spends a pool that covers the cost; one that does
+// not pays the share it can, and the rest is waived with a cost
+// warning (#3844), matching how a cast treats an unaffordable cost.
 // Caller must hold g.mu.
 // `spendCtx` describes the ability's SOURCE permanent, which is what
 // a restricted token is matched against when the restriction says
@@ -2560,18 +2561,30 @@ func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, sourceNam
 	x := params.XValue
 	if !params.Strict && !params.AutoTap {
 		if !p.ManaPool.CanPayFor(cost, x, spendCtx) {
+			// The LIFE half is still paid, and first — a life total
+			// is engine state in every mode, and permissive mode's
+			// bargain is only about the mana the player tracks on
+			// paper; a refusal must not have spent the pool.
+			if err := g.payPhyrexianLifeLocked(sourceID, p.ID, phyrexianLife); err != nil {
+				return paid, err
+			}
+			// #3844: the pool pays the share it can, as the cast path's
+			// waived charge does, and only the shortfall is waived.
+			spent, _ := p.ManaPool.SpendWhatPaysForWith(cost, x, spendCtx, SpendPreserveColors)
+			paid.Mana = spent
+			if len(spent) > 0 {
+				g.EmitEvent(manaSpentEvent(p.ID, sourceID, spent))
+			}
 			g.EmitEvent(Event{
 				Kind:   EventCostWarning,
 				Actor:  p.ID,
 				Source: sourceID,
 			})
-			// #761: the charge was waived, and the record says so
-			// rather than reading as "nothing was spent". The LIFE
-			// half is still paid — a life total is engine state in
-			// every mode, and permissive mode's bargain is only about
-			// the mana the player tracks on paper.
+			// #761: the rest of the charge was waived, and the record
+			// says so rather than reading as "this is all that was
+			// spent".
 			paid.OnPaper = true
-			return paid, g.payPhyrexianLifeLocked(sourceID, p.ID, phyrexianLife)
+			return paid, nil
 		}
 		if err := g.payPhyrexianLifeLocked(sourceID, p.ID, phyrexianLife); err != nil {
 			return paid, err

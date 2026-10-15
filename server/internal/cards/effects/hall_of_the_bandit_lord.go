@@ -22,15 +22,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Hall — paying life is a decision, the painlands' posture (ADR 0040
 // §7).
 //
-// One declared simplification, weaker than printed: with an unrecorded
-// payment the pool is never spent (ADR 0068 §3), so no token pays and the
-// creature never gains haste.
+// No simplification is left (#3844, ADR 0068 amendment 2026-10-15). A
+// waived payment (strict mana off with too little in the pool, or Cast
+// anyway) still spends the share of the cost the pool can pay, so this
+// mana pays whenever it can and its rider fires. Mana that never
+// entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
 		OracleID:     "32fe7ac4-86f5-44af-9f73-ee8f6a9ce2ba",
 		Name:         "Hall of the Bandit Lord",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so the creature never gains haste."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:        ManaAbilityCost{Tap: true, Life: 3},

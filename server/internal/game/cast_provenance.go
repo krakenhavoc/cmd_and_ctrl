@@ -215,7 +215,8 @@ type CastProvenance struct {
 
 	// ManaOnPaper is PaidCost.OnPaper carried across the entry: the
 	// engine WAIVED the charge (an insufficient permissive pool or
-	// ForceCast) and has no record of what was paid.
+	// ForceCast) beyond the share the pool paid (#3844), and has no
+	// record of what paid the rest.
 	//
 	// It has to come too, or the entry-side readers lose the one
 	// distinction ADR 0068 §3 was written to preserve. Without it a

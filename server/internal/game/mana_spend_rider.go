@@ -70,10 +70,11 @@ import (
 //
 // # What does NOT fire a rider, deliberately
 //
-//   - An OnPaper payment (an insufficient permissive pool, ForceCast).
-//     The engine spent nothing, so no token left the pool and there is nothing to ride.
-//     Weaker than printed — ADR 0068 §3's posture for every reader of the
-//     spend record — and the cards say so in their caveats.
+//   - Mana that never entered the pool. A waived payment (an
+//     insufficient permissive pool, ForceCast) still spends the share
+//     of the cost the pool can pay (#3844), and those tokens' riders
+//     fire like any other's; the share paid on paper carried no
+//     token, so it has nothing to ride.
 //   - A mana ability's own mana cost (a Signet's {1}). There is no stack
 //     object to carry an uncounterable flag or to be copied, and no
 //     printed rider asks about one.
@@ -411,8 +412,9 @@ func cloneManaTokens(ts []ManaToken) []ManaToken {
 // ability's source).
 //
 // Stamps Applied on each admitted rider's copy in item.Paid.Mana and
-// queues one trigger per admitted trigger rider per production. Does
-// nothing for an OnPaper payment, which spent no tokens.
+// queues one trigger per admitted trigger rider per production. An
+// OnPaper payment fires the riders of the tokens its pool did pay
+// (#3844), and nothing when it paid none.
 //
 // Caller must hold g.mu in write mode, with `item` already registered
 // in StackMeta.

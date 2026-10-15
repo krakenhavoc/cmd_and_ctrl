@@ -13,14 +13,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (CR 400.7a) and ends in the cleanup step. A changeling creature spell
 // is a Dragon (CR 702.73a), as the filter vocabulary already reads it.
 //
-// One declared simplification, the rider's: with an unrecorded payment the
-// engine never spends the pool, so no rider fires (ADR 0068 §3).
+// No simplification is left (#3844, ADR 0068 amendment 2026-10-15). A
+// waived payment (strict mana off with too little in the pool, or Cast
+// anyway) still spends the share of the cost the pool can pay, so this
+// mana pays whenever it can and its rider fires. Mana that never
+// entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
 		OracleID:     "651c967c-8f71-4eb5-b22f-545e55ea050e",
 		Name:         "Carnelian Orb of Dragonkind",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so the Dragon never gains haste."},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{R}",

@@ -29,7 +29,7 @@ import type { CastAnywayZone } from "./timing";
 export const CAST_ANYWAY_LABEL = L.castAnyway;
 // The row's title on a live row.
 export const CAST_ANYWAY_TITLE =
-  "Cast it without paying its mana cost. The game log shows the table.";
+  "Cast it, paying only with mana already in your pool. The game log shows the table.";
 
 export interface CastAnywayPending {
   card: CardView;

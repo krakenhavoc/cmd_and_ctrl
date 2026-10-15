@@ -42,7 +42,7 @@ func init() {
 		OracleID:     "4514777d-0589-4631-978b-ff244167c176",
 		Name:         "Vexing Bauble",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track what you spent, so the Bauble never counters a spell — turn on “Charge mana costs” for it to work."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game can't tell a spell paid outside the mana pool from one cast for no mana, so the Bauble doesn't counter it — turn on “Charge mana costs” for it to work."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},
 			Key:     "Vexing Bauble — counter a spell cast for no mana",

@@ -274,6 +274,48 @@ func TestPainfulTruthsDrawsNothingWhenTheEngineDidNotCharge(t *testing.T) {
 	}
 }
 
+// #3844: a waived payment spends what the pool can pay, and converge
+// counts the colours of THAT mana — a lower bound. Here {U}{G} floats
+// for a {2}{B} Painful Truths: both pay the generic half, the {B} is
+// paid on paper, and the spell draws two. The {B} could have been the
+// third colour, which the caveat declares; it never counts more than
+// the pool spent.
+func TestPainfulTruthsConvergesForThePoolShareOfAWaivedPayment(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		params game.CastSpellParams
+	}{
+		{"insufficient permissive pool", game.CastSpellParams{}},
+		{"cast anyway", game.CastSpellParams{Strict: true, ForceCast: true}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+			advanceToMain(t, g)
+			floatForTest(g, me, "UG")
+			hand := me.Hand.Size()
+
+			id := uuid.New()
+			g.WithWriteLock(func() {
+				me.Hand.PushTop(game.Card{
+					InstanceID: id, Name: "Painful Truths", TypeLine: "Sorcery", ManaCost: "{2}{B}",
+					OracleID: painfulTruthsOracle, Owner: me.ID, Controller: me.ID,
+				})
+			})
+			if err := g.CastSpell(me.ID, id, tc.params); err != nil {
+				t.Fatalf("cast: %v", err)
+			}
+			if paid := g.StackMeta[id].Paid; !paid.OnPaper || paid.Spent().Total() != 2 {
+				t.Fatalf("want {U}{G} spent and {B} waived, got %+v", paid)
+			}
+			passPriorityAroundTable(t, g)
+			if got := me.Hand.Size() - hand; got != 2 {
+				t.Errorf("drew %d cards, want 2 — one per colour that left the pool", got)
+			}
+		})
+	}
+}
+
 // Etched Oracle enters with a +1/+1 counter per colour of mana spent,
 // and cashes four of them for three cards.
 func TestEtchedOracleEntersWithSunburstCountersAndDrawsThree(t *testing.T) {

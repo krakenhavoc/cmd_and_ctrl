@@ -411,8 +411,8 @@ func TestB35ScaledNurturerTapsForGreen(t *testing.T) {
 	if got := poolColors(me); len(got) != 1 || got[0] != "G" {
 		t.Errorf("pool %v, want [G]", got)
 	}
-	if spec, _ := Lookup(b35ScaledNurturerOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the missing life-gain rider is a declared gap")
+	if spec, _ := Lookup(b35ScaledNurturerOracle); spec.Completeness != CompletenessFull {
+		t.Error("Scaled Nurturer is not full: its life-gain rider fires whenever its mana pays (#3844)")
 	}
 }
 
