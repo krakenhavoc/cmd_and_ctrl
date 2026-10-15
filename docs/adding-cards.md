@@ -2075,10 +2075,10 @@ damage is dealt to *this* creature instead", "put the counter on
 interchangeable and collapsing them would be wrong. A redirection that
 declares `RedirectsDamage` is handled for you (ADR 0108 §9): the gather
 gives it no shared identity (`catalogReplacementIdentity`), so two
-Pariahs are ordered. Any other `Replace` that writes its own source into
-the event ("put the counter on *this* creature instead") is not; if yours
-is the first, say so on the PR rather than shipping it quietly — the fix
-is a declared flag in the `PureCancel` mould. See
+Pariahs are ordered. A `Replace` that acts on its own source ("destroy *this* Aura", umbra
+armor) declares `ActsOnItsSource`, which does the same. Any other
+`Replace` that writes its own source into the event ("put the counter on
+*this* creature instead") should declare it too. See
 [ADR 0013 §5a](decisions/0013-replacement-effects.md).
 
 **A `may` is always offered, however many effects share the window.**

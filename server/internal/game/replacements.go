@@ -1473,6 +1473,16 @@ type ReplacementEffect struct {
 	// different objects into the event, so they are ordered, not merged.
 	RedirectsDamage bool
 
+	// ActsOnItsSource declares a replacement whose Replace does
+	// something to its own SOURCE object, so two copies of one printed
+	// effect are not interchangeable: umbra armor (CR 702.89a, "destroy
+	// this Aura") destroys a different Aura depending on which copy is
+	// applied. Like RedirectsDamage it takes the effect out of the
+	// shared identity (catalogReplacementIdentity), so two Bear Umbras on
+	// one creature are ordered by its controller (CR 616.1) rather than
+	// collapsed by #792's sameModification.
+	ActsOnItsSource bool
+
 	// Then is a prevention static's CR 615.5 additional effect (ADR 0108
 	// §8, #1906): a registered body, run after the prevention with what
 	// it prevented — Nine Lives's incarnation counter, Immortal Coil's
@@ -1650,9 +1660,10 @@ func (r replacementIdentity) known() bool { return r.card != "" }
 // object's creature into the event, so two Pariahs on two creatures are
 // two different modifications, and the affected player orders them
 // (CR 616.1). The zero identity never matches, so sameModification never
-// collapses them.
+// collapses them. ActsOnItsSource (umbra armor) is the same shape: each
+// copy destroys its own Aura.
 func catalogReplacementIdentity(eff ReplacementEffect, key string, slot int, controller uuid.UUID) replacementIdentity {
-	if eff.RedirectsDamage {
+	if eff.RedirectsDamage || eff.ActsOnItsSource {
 		return replacementIdentity{}
 	}
 	return replacementIdentity{card: key, slot: slot, controller: controller}

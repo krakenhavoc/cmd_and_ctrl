@@ -168,7 +168,8 @@ func MatchingBattlefield(ctx *Context, match CardPredicate) []game.Card {
 // to ignore — the note Wrath of God carried from S14 to S40 — which
 // is why every wipe in the catalog that prints the clause had to be
 // revisited when the shield landed rather than only the new ones.
-// Totem armor (CR 702.111) is still unmodelled.
+// Umbra armor (CR 702.89, effects.UmbraArmor) replaces a wipe's
+// destruction of an enchanted creature like any other destruction.
 //
 // INDESTRUCTIBLE IS HONOURED, as of S30 (#470 / #446), and this
 // comment has twice been the place the truth went stale — first

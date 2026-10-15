@@ -45,8 +45,15 @@ import "github.com/google/uuid"
 // observation becomes simultaneous, which is the half that has
 // rules consequences.
 //
+// Umbra armor (CR 702.89) is the one thing the sequential moves had to
+// learn: a wipe that destroys a creature AND its umbra destroys them at
+// once, so the umbra still replaces the creature's destruction. The
+// destroy entry points move hosts before the Auras attached to them
+// (hostsBeforeAttachmentsLocked, umbra_armor.go), so the Aura is still
+// there when its host's leg asks.
+//
 // Deliberately NOT addressed here:
-//   - Totem armor is absent.
+//   - Nothing about the moves themselves beyond that ordering.
 //
 // Regeneration USED to be on that list too, with the same shape of
 // note indestructible below carried: "not modelled anywhere in the
@@ -237,7 +244,7 @@ func (g *Game) harvestSimultaneousExitLocked(pass *harvestPass) {
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) DestroyPermanentsForEffect(ids []uuid.UUID, opts ...DestroyOptions) int {
-	return g.destroyPermanentsLocked(g.DestructibleForEffect(ids), firstDestroyOptions(opts))
+	return g.destroyPermanentsLocked(g.hostsBeforeAttachmentsLocked(g.DestructibleForEffect(ids)), firstDestroyOptions(opts))
 }
 
 // DestroyPermanentsThenForEffect destroys every permanent in `ids` as
@@ -268,7 +275,7 @@ func (g *Game) DestroyPermanentsForEffect(ids []uuid.UUID, opts ...DestroyOption
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) DestroyPermanentsThenForEffect(ids []uuid.UUID, then func(g *Game, destroyed []uuid.UUID) error, opts ...DestroyOptions) error {
-	return g.routeAllThenLocked(destroyRouteWith(firstDestroyOptions(opts)), g.DestructibleForEffect(ids), then)
+	return g.routeAllThenLocked(destroyRouteWith(firstDestroyOptions(opts)), g.hostsBeforeAttachmentsLocked(g.DestructibleForEffect(ids)), then)
 }
 
 // destroyedThisWayLocked reports whether a settled destruction of

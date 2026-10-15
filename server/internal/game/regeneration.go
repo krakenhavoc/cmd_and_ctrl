@@ -91,9 +91,10 @@ import "github.com/google/uuid"
 //
 // A struct rather than a bare bool because the destroy entry points
 // are the catalog's most-used verbs and a second positional boolean
-// at every call site would be unreadable; and because totem armor
-// (CR 702.111) and "if it would die, exile it instead" are the same
-// shape of rider when they land.
+// at every call site would be unreadable; and because "if it would
+// die, exile it instead" is the same shape of rider if it lands. (Umbra
+// armor, CR 702.89, turned out to need no rider: "can't be regenerated"
+// does not stop it, so it reads only ev.Destruction — umbra_armor.go.)
 type DestroyOptions struct {
 	// CantBeRegenerated makes this destruction ignore regeneration
 	// shields (CR 701.19c). The shields are not spent — CR 701.19c
