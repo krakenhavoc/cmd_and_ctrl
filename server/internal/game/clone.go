@@ -786,6 +786,13 @@ func cloneCastPermissions(in []CastPermission) []CastPermission {
 			ref := *in[i].FollowUpObject
 			out[i].FollowUpObject = &ref
 		}
+		// #3768: what the permanent the cast produces gains.
+		if len(in[i].GainsKeywords) > 0 {
+			out[i].GainsKeywords = append([]string(nil), in[i].GainsKeywords...)
+		}
+		if len(in[i].GainsAbilities) > 0 {
+			out[i].GainsAbilities = append([]string(nil), in[i].GainsAbilities...)
+		}
 	}
 	return out
 }
@@ -818,6 +825,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		Foretold:         s.Foretold,
 		OwnFlashCast:     s.OwnFlashCast,
 		CastValues:       copyStringIntMap(s.CastValues),
+		EntersTapped:     s.EntersTapped,
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		CastFromZone:     s.CastFromZone,

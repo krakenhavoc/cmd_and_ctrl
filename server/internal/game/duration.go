@@ -292,6 +292,18 @@ const (
 	// creature again later: that attach makes its own.
 	WhileSourceAttachedToPinned
 
+	// WhileSourceOnceItLands — an effect with NO stated duration
+	// (CR 611.2a) about the permanent a spell on the stack will become:
+	// "If you cast a creature spell this way, it gains haste and …"
+	// (Strago and Relm, #3768, CastPermission.GainsKeywords). It is
+	// WhileYouControlSourceOnceItLands without the control test: the
+	// same grace period while the source is a spell on the stack, then
+	// for as long as it is on the battlefield, whoever controls it, and
+	// over for good once it is anywhere else (CR 400.7) — a countered
+	// spell or a permanent that left. Appended, never inserted: the
+	// enum's integer values are written into snapshot files.
+	WhileSourceOnceItLands
+
 	// durationConditionEnd is a sentinel, not a condition. Keep it
 	// LAST, for the reason durationKindEnd gives: an unknown condition
 	// would otherwise fall through to a bare "source on battlefield".
@@ -857,6 +869,20 @@ func UntilYouLoseControlOfDuration(source, player uuid.UUID) Duration {
 	}
 }
 
+// ForThePermanentThisSpellBecomesDuration is an effect with no stated
+// duration (CR 611.2a) about the permanent `spell`, still on the stack,
+// will become (#3768): it holds while the spell is on the stack and then
+// for as long as that permanent is on the battlefield as the same
+// object, whoever controls it. See WhileSourceOnceItLands. A plain
+// function for UntilYouLoseControlOfDuration's reason.
+func ForThePermanentThisSpellBecomesDuration(spell uuid.UUID) Duration {
+	return Duration{
+		Kind:      ForAsLongAs,
+		Condition: WhileSourceOnceItLands,
+		Source:    spell,
+	}
+}
+
 // IndefiniteDuration is "no stated duration" — CR 611.2a, the effect
 // lasts until the game ends. Needs no game state, so it is a plain
 // function.
@@ -1077,7 +1103,7 @@ func (g *Game) conditionHoldsLocked(d Duration, cond DurationCondition) bool {
 			return false
 		}
 		return src.IsAttachedTo(c.InstanceID)
-	case WhileSourceOnBattlefield, WhileYouControlSource, WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped:
+	case WhileSourceOnBattlefield, WhileYouControlSource, WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped, WhileSourceOnceItLands:
 		return g.sourceConditionHoldsLocked(d, cond)
 	}
 	return false
@@ -1138,7 +1164,7 @@ func (g *Game) DurationHoldsForEffect(d Duration) bool {
 // sourceConditionHoldsLocked is the four conditions about the source.
 // Caller must hold g.mu.
 func (g *Game) sourceConditionHoldsLocked(d Duration, cond DurationCondition) bool {
-	if cond == WhileYouControlSourceOnceItLands {
+	if cond == WhileYouControlSourceOnceItLands || cond == WhileSourceOnceItLands {
 		// #990: the object may not be a permanent yet. On the stack
 		// the condition holds (the effect has not started applying to
 		// anything), on the battlefield it is the ordinary control
@@ -1146,8 +1172,10 @@ func (g *Game) sourceConditionHoldsLocked(d Duration, cond DurationCondition) bo
 		// comparison, because the grant was made before there was one
 		// — see the condition's own comment for why that is the
 		// STRICTER reading of CR 400.7 rather than the looser one.
+		// #3768: WhileSourceOnceItLands is the same with no control
+		// test — an effect with no duration outlives a control change.
 		if c, ok := g.battlefieldCardLocked(d.Source); ok {
-			return c.Controller == d.Player
+			return cond == WhileSourceOnceItLands || c.Controller == d.Player
 		}
 		return g.Stack != nil && g.Stack.Contains(d.Source)
 	}
