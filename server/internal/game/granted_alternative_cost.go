@@ -134,11 +134,10 @@ type GrantedAlternativeCost struct {
 	// mana value rather than paying its mana cost" (#3174), Bolas's
 	// Citadel's price on a granted offer: the derived offer charges
 	// AlternativeCost.Life equal to the mana value of the face being
-	// cast, and no mana. A spell with {X} in its mana cost gets no
-	// offer, since its mana value would include the X announced (CR
-	// 202.3e), and neither does one with no mana cost (CR 118.6):
-	// weaker than printed, never stronger. Offer.ManaCost, Life and
-	// Energy must be empty.
+	// cast, and no mana. {X} counts as 0 (CR 107.3b: the spell is cast
+	// without paying its mana cost), and a spell with no mana cost (CR
+	// 118.6) has mana value 0, so it costs no life. Offer.ManaCost, Life
+	// and Energy must be empty.
 	LifeEqualToManaValue bool
 }
 
@@ -175,15 +174,25 @@ func (g *Game) noteGrantedOfferClaimedLocked(alt *AlternativeCost) {
 	g.TurnTally.GrantedAltCostsClaimed[alt.onceEachTurnKey]++
 }
 
-// lifeEqualToManaValueOK reports whether `card` has a mana value a
-// LifeEqualToManaValue offer can charge: a printed, parseable mana cost
-// with no {X}.
-func lifeEqualToManaValueOK(card Card) bool {
-	if !pricedAtManaCostOK(card) {
-		return false
+// lifeEqualToManaValue is the life a LifeEqualToManaValue offer charges
+// for `card`, and whether it can be priced at all. A spell with {X} in
+// its cost is cast for this offer without paying its mana cost, so X is
+// 0 (CR 107.3b) and the mana value is the rest of the cost. A spell with
+// no mana cost (CR 118.6, Ancestral Vision) may be cast through an
+// alternative cost, and its mana value is 0 (CR 202.3), so it costs no
+// life. A cost the engine cannot read gets no offer.
+func lifeEqualToManaValue(card Card) (int, bool) {
+	if HasNoManaCost(card) {
+		return 0, true
 	}
-	pc, _ := ParseCost(card.ManaCost)
-	return pc.XSlots == 0
+	if card.ManaCost == "" {
+		return 0, false
+	}
+	pc, err := ParseCost(card.ManaCost)
+	if err != nil {
+		return 0, false
+	}
+	return pc.ManaValueWithX(0), true
 }
 
 // covers reports whether this static's offer reaches a cast of `card`
@@ -272,7 +281,11 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 			if gr.PricedAtManaCost && !pricedAtManaCostOK(card) {
 				continue
 			}
-			if gr.LifeEqualToManaValue && !lifeEqualToManaValueOK(card) {
+			life, lifeOK := 0, true
+			if gr.LifeEqualToManaValue {
+				life, lifeOK = lifeEqualToManaValue(card)
+			}
+			if !lifeOK {
 				continue
 			}
 			if seen == nil {
@@ -294,7 +307,7 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 				// #3174: Bolas's Citadel's price (CastPermission.
 				// AlternativeCostFor), read off the face being cast.
 				offer.ManaCost = ""
-				offer.Life = card.ManaValue()
+				offer.Life = life
 				offer.Label += fmt.Sprintf(" (%d life)", offer.Life)
 			}
 			if gr.OnceEachTurn {

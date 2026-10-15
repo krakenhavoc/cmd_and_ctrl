@@ -16,7 +16,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // and prevention is already accounted for. Access Maze is a granted
 // alternative cost behind its door (#3174, ADR 0118 §3): life equal to
 // the spell's mana value, from hand, once during each of your turns per
-// Access Maze. A spell with {X} in its cost is not offered it.
+// Access Maze. A spell with {X} is cast with X = 0 (CR 107.3b), and a
+// spell with no mana cost costs 0 life (CR 118.6).
 func init() {
 	Register(Room(RoomSpec{
 		OracleID:     "1e847d69-e527-4bb9-a624-17c25ac4fed4",
