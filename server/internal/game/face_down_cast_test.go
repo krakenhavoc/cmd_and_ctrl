@@ -440,6 +440,11 @@ func TestTurnFaceUpOfferPerKind(t *testing.T) {
 	creature := func(kind FaceDownKind) Card {
 		c := NewCard("Willbender", uuid.New())
 		c.OracleID = morphOracle
+		if kind == FaceDownManifested || kind == FaceDownCloaked {
+			// A manifested card that also prints morph has TWO ways up
+			// (ADR 0189 decision 4); this table is the one-way rows.
+			c.OracleID = "oracle-plain-creature"
+		}
 		c.TypeLine = "Creature — Human Wizard"
 		c.ManaCost = "{1}{U}"
 		c.SetFaceDown(kind)

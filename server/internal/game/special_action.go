@@ -153,6 +153,12 @@ type SpecialAction struct {
 	// for every other kind.
 	Door DoorSide
 
+	// Route is which rule a turn_face_up offer is taken under (ADR 0189
+	// decision 4). Empty for every other kind. A manifested or cloaked
+	// card whose card also prints morph or disguise offers two, and
+	// they can cost the same.
+	Route TurnFaceUpRoute
+
 	// Label is the menu row and the log line: "Foretell {2}",
 	// "Suspend 1—{R}", "Turn face up {1}{U}".
 	Label string
@@ -196,9 +202,7 @@ func SpecialActionsFor(oracleID string) []SpecialAction {
 // face-down permanent's catalog entry is empty.
 func SpecialActionsOfferedByCard(c Card) []SpecialAction {
 	var out []SpecialAction
-	if up := TurnFaceUpOffer(c); up != nil {
-		out = append(out, *up)
-	}
+	out = append(out, TurnFaceUpOffers(c)...)
 	// ADR 0172: a revealed companion's {3} is derived from the card
 	// being one. Asked only outside the game (specialActionZone).
 	if co := CompanionOffer(c); co != nil {
@@ -300,6 +304,11 @@ type SpecialActionParams struct {
 	// for that kind — two doors can print the same cost, so the cost
 	// cannot pick one — and refused on every other kind.
 	Door DoorSide
+
+	// Route picks between two turn_face_up offers on one permanent
+	// (ADR 0189 decision 4). Empty takes the first. Refused on every
+	// other kind.
+	Route TurnFaceUpRoute
 }
 
 // SpecialActionTimingOKLocked is the per-kind timing table, and the
@@ -417,6 +426,11 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	if p == nil {
 		return ErrPlayerNotFound
 	}
+	// ADR 0189: a route only means something to turn_face_up, so it is
+	// refused on any other kind before the card is even looked for.
+	if params.Route != "" && kind != SpecialActionTurnFaceUp {
+		return ErrInvalidParam
+	}
 	// WHERE the card is, is the kind's business (specialActionZone).
 	// Foretell and suspend act on a card in its owner's HAND
 	// (CR 702.143a, CR 702.62a), and a hand in this engine holds only
@@ -440,7 +454,7 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	if (kind == SpecialActionUnlock) != (params.Door != DoorNone) {
 		return ErrInvalidParam
 	}
-	sa := g.specialActionOfferLocked(playerID, card, zone, kind, params.Cost, params.Door)
+	sa := g.specialActionOfferLocked(playerID, card, zone, kind, params.Cost, params.Door, params.Route)
 	if sa == nil {
 		return ErrSpecialActionNotOffered
 	}

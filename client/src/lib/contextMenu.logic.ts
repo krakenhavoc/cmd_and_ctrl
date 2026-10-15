@@ -2020,7 +2020,13 @@ export function specialActionItems(
     return {
       // ADR 0103: a Room offers one unlock per door, so the door is
       // part of the id and of the payload.
-      id: sa.door ? `special-${sa.kind}-${sa.door}` : `special-${sa.kind}`,
+      // ADR 0189: a permanent with two ways face up lists one row per
+      // route, so the route is part of the id and of the payload too.
+      id: sa.door
+        ? `special-${sa.kind}-${sa.door}`
+        : sa.route
+          ? `special-${sa.kind}-${sa.route}`
+          : `special-${sa.kind}`,
       label: sa.label || sa.kind,
       hint: !sa.available
         ? "not right now"
@@ -2039,7 +2045,15 @@ export function specialActionItems(
               strict: true,
               auto_tap: true,
             }
-          : { card_id: card.instance_id, kind: sa.kind, strict: true, auto_tap: true },
+          : sa.route
+            ? {
+                card_id: card.instance_id,
+                kind: sa.kind,
+                route: sa.route,
+                strict: true,
+                auto_tap: true,
+              }
+            : { card_id: card.instance_id, kind: sa.kind, strict: true, auto_tap: true },
         player: actor,
       },
     };

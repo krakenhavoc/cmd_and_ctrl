@@ -516,6 +516,8 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			return p.valueOfUnlock(st, sp)
 		case "companion":
 			return p.valueOfCompanion(st, sp)
+		case "turn_face_up":
+			return p.valueOfTurnFaceUp(m, sp)
 		}
 		return p.cfg.SpecialActionValue, "special action: " + sp.Kind
 
@@ -1114,4 +1116,24 @@ func (p *Policy) valueOfUnlock(st *state, sp specialActionParams) (float64, stri
 		return p.cfg.SpecialActionValue, "unlock door"
 	}
 	return p.cfg.SpellPerMana * float64(manaValue(c.Faces[face].ManaCost, 0)), "unlock " + c.Faces[face].Name
+}
+
+// valueOfTurnFaceUp prices the CR 708.6 turn-face-up special action
+// (ADR 0189 decision 4). It keeps the flat special-action value and
+// adds a small bonus for the megamorph route (CR 702.37b), the one
+// offer that turns the permanent up AND adds a +1/+1 counter. A
+// manifested Den Protector offers its mana cost and its megamorph cost
+// for the same {1}{G}, so the bonus is what makes the bot take the
+// counter; when the two cost differently the flat values tie and the
+// enumerator's order, cheaper first, decides.
+//
+// The megamorph route is read off the move label, which names the
+// route and its counter whenever a permanent has two offers (a lone
+// offer has nothing to choose between, so it needs no bonus).
+func (p *Policy) valueOfTurnFaceUp(m legal.Move, sp specialActionParams) (float64, string) {
+	v := p.cfg.SpecialActionValue
+	if sp.Route == "morph" && strings.Contains(m.Label, "megamorph") {
+		return v * 1.1, "turn face up (megamorph, +1/+1 counter)"
+	}
+	return v, "special action: turn_face_up"
 }

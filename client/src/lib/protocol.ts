@@ -2888,6 +2888,13 @@ export interface SpecialActionView {
   // and what the special_action payload names back. Absent on every
   // other kind.
   door?: "left" | "right";
+  // ADR 0189: which rule a "turn_face_up" row is taken under —
+  // "mana_cost", "morph" or "disguise" — and what the special_action
+  // payload names back. A manifested or cloaked card whose card also
+  // prints morph or disguise lists two rows, possibly at the same
+  // cost, and this is what tells them apart. Absent on every other
+  // kind.
+  route?: "mana_cost" | "morph" | "disguise";
 }
 
 // RoomDoorsView is a Room's two CR 709.5c designations (ADR 0103):

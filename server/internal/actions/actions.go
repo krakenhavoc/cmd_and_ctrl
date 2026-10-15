@@ -2576,6 +2576,9 @@ func dispatch(g *game.Game, a Action) error {
 			// ADR 0103: which door an unlock unlocks — "left" or
 			// "right". Required for kind "unlock", refused otherwise.
 			Door string `json:"door,omitempty"`
+			// ADR 0189: which turn_face_up offer — "mana_cost",
+			// "morph" or "disguise". Empty takes the first.
+			Route string `json:"route,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -2583,6 +2586,10 @@ func dispatch(g *game.Game, a Action) error {
 		cardID, err := uuid.Parse(p.CardID)
 		if err != nil {
 			return fmt.Errorf("special_action card_id: %w", err)
+		}
+		route, routeOK := game.ParseTurnFaceUpRoute(p.Route)
+		if !routeOK {
+			return fmt.Errorf("special_action route: %q is not mana_cost, morph or disguise", p.Route)
 		}
 		door := game.ParseDoorName(p.Door)
 		if p.Door != "" && door == game.DoorNone {
@@ -2593,6 +2600,7 @@ func dispatch(g *game.Game, a Action) error {
 			AutoTap: p.AutoTap,
 			Cost:    p.Cost,
 			Door:    door,
+			Route:   route,
 		})
 
 	case TypeSacrificePermanent:

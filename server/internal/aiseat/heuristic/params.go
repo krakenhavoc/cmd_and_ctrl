@@ -92,6 +92,9 @@ type specialActionParams struct {
 	Kind   string `json:"kind"`
 	// Door is the door an "unlock" opens — "left" or "right" (ADR 0103).
 	Door string `json:"door"`
+	// Route is which of a permanent's two turn-face-up offers this is
+	// — "mana_cost", "morph" or "disguise" (ADR 0189 decision 4).
+	Route string `json:"route"`
 }
 
 type attackParams struct {

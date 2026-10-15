@@ -324,7 +324,7 @@ func FaceDownCastFor(catalogKey string) *AlternativeCost {
 // So it is unexported and it has exactly TWO callers, both named
 // here and both asking about a price the CARD prints:
 //
-//  1. TurnFaceUpOffer — CR 708.6's morph cost, above.
+//  1. TurnFaceUpOffers — CR 708.6's morph cost, above.
 //  2. castOfferKey — the CR 601.2b re-derivation of the
 //     alternative cost a face-down cast is ALREADY paying, below.
 //
@@ -365,23 +365,85 @@ func castOfferKey(c Card) string {
 	return CatalogKey(c)
 }
 
-// TurnFaceUpOffer is CR 708.6's answer for ONE face-down permanent:
+// TurnFaceUpRoute is WHICH rule a turn-face-up offer is taken under
+// (ADR 0189 decision 4). One permanent can have two, and they can cost
+// the same: a manifested Den Protector turns up for its mana cost
+// ({1}{G}, CR 701.40b) or for its megamorph cost ({1}{G}, CR 701.40c /
+// CR 702.37e), and only the second adds a counter. The cost cannot tell
+// the offers apart, so the route does.
+type TurnFaceUpRoute string
+
+const (
+	// TurnFaceUpByManaCost is CR 701.40b / CR 701.58b: a manifested or
+	// cloaked creature card, for its mana cost.
+	TurnFaceUpByManaCost TurnFaceUpRoute = "mana_cost"
+
+	// TurnFaceUpByMorph is the morph cost (CR 702.37b, megamorph
+	// included), under CR 708.6 or, for a manifested card, CR 701.40c.
+	TurnFaceUpByMorph TurnFaceUpRoute = "morph"
+
+	// TurnFaceUpByDisguise is the disguise cost (CR 702.168b), under
+	// CR 708.6 or, for a cloaked card, CR 701.58c.
+	TurnFaceUpByDisguise TurnFaceUpRoute = "disguise"
+)
+
+// ParseTurnFaceUpRoute reads a wire value. The empty string is the
+// valid "take the first offer", and ok is false for anything that is
+// neither empty nor a route.
+func ParseTurnFaceUpRoute(s string) (TurnFaceUpRoute, bool) {
+	switch r := TurnFaceUpRoute(s); r {
+	case "", TurnFaceUpByManaCost, TurnFaceUpByMorph, TurnFaceUpByDisguise:
+		return r, true
+	}
+	return "", false
+}
+
+// keywordRoute is the route a declared face-down cast turns up under.
+func keywordRoute(kind FaceDownKind) TurnFaceUpRoute {
+	if kind == FaceDownDisguised {
+		return TurnFaceUpByDisguise
+	}
+	return TurnFaceUpByMorph
+}
+
+// keywordOffer is the offer the card's own morph or disguise cost
+// makes, stamped with its route.
+func keywordOffer(alt *AlternativeCost) SpecialAction {
+	return SpecialAction{
+		Kind:          SpecialActionTurnFaceUp,
+		Cost:          alt.FaceDown.FaceUpCost,
+		FaceUpCounter: alt.FaceDown.FaceUpCounter,
+		Route:         keywordRoute(alt.FaceDown.Kind),
+		Label:         turnFaceUpLabel(alt.FaceDown.FaceUpCost),
+	}
+}
+
+// TurnFaceUpOffers is CR 708.6's answer for ONE face-down permanent:
 // may this be turned face up, and at what price. It is the whole of
-// ADR 0082 decision 5, and the ONE place the per-kind rule is written
-// down — the engine, the legal-move enumerator and the wire
-// projection all reach it through SpecialActionOffered.
+// ADR 0082 decision 5 as ADR 0189 decision 4 amended it, and the ONE
+// place the per-kind rule is written down — the engine, the
+// legal-move enumerator and the wire projection all reach it through
+// SpecialActionsOfferedByCard.
 //
 //	morphed      the card declares a morph cast    its morph cost    CR 702.37b
 //	disguised    the card declares a disguise cast its disguise cost CR 702.168b
-//	manifested   the card is a CREATURE CARD       its mana cost     CR 701.40b
-//	cloaked      the card is a CREATURE CARD       its mana cost     CR 701.58b
+//	manifested   a CREATURE CARD: its mana cost                      CR 701.40b
+//	             and/or the card's own morph or disguise cost        CR 701.40c
+//	cloaked      a CREATURE CARD: its mana cost                      CR 701.58b
+//	             and/or the card's own morph or disguise cost        CR 701.58c
 //	turned       the card declares EITHER cast     that cast's cost  CR 702.37e / CR 702.168d
 //
-// nil means "no", and the three ways to get one all matter: a
-// manifested Mountain (CR 701.40b — it stays face down forever), an
-// Ixidron'd Sheoldred (CR 708.7 — a permanent turned face down by an
-// effect that did not give it a way back up, and whose own card
-// prints no way either, can never be turned face up), and every
+// Every offer carries the Route it is taken under. A manifested or
+// cloaked card whose card ALSO prints morph or disguise gets both
+// offers, cheaper mana value first and the keyword route first on a
+// tie, and their labels name their routes; with one offer the label is
+// unchanged.
+//
+// An empty result means "no", and the three ways to get one all
+// matter: a manifested Mountain (CR 701.40b — it stays face down
+// forever), an Ixidron'd Sheoldred (CR 708.7 — a permanent turned face
+// down by an effect that did not give it a way back up, and whose own
+// card prints no way either, can never be turned face up), and every
 // face-up permanent in the game.
 //
 // "Creature card" is PrintedIsCreature deliberately: that accessor is
@@ -389,11 +451,7 @@ func castOfferKey(c Card) string {
 // CARD say", which is exactly what CR 701.40b asks. The face-down
 // projection would answer "yes, a 2/2 creature" for a manifested
 // Island.
-//
-// CR 701.40c — a manifested card that ALSO has morph may be turned up
-// for either cost — is out of scope (ADR 0082 decision 5): this is one
-// offer per permanent, and no card in the catalog reaches the case.
-func TurnFaceUpOffer(c Card) *SpecialAction {
+func TurnFaceUpOffers(c Card) []SpecialAction {
 	if !c.FaceDownIsPermanent() {
 		return nil
 	}
@@ -414,12 +472,7 @@ func TurnFaceUpOffer(c Card) *SpecialAction {
 			// deliberately does not ask (#1209).
 			return nil
 		}
-		return &SpecialAction{
-			Kind:          SpecialActionTurnFaceUp,
-			Cost:          alt.FaceDown.FaceUpCost,
-			FaceUpCounter: alt.FaceDown.FaceUpCounter,
-			Label:         turnFaceUpLabel(alt.FaceDown.FaceUpCost),
-		}
+		return []SpecialAction{keywordOffer(alt)}
 	case FaceDownTurned:
 		// CR 708.2a put it here, and CR 708.7 says the rules that did
 		// so "may also allow the permanent's controller to turn it
@@ -443,26 +496,84 @@ func TurnFaceUpOffer(c Card) *SpecialAction {
 		if alt == nil || alt.FaceDown == nil {
 			return nil
 		}
-		return &SpecialAction{
-			Kind:          SpecialActionTurnFaceUp,
-			Cost:          alt.FaceDown.FaceUpCost,
-			FaceUpCounter: alt.FaceDown.FaceUpCounter,
-			Label:         turnFaceUpLabel(alt.FaceDown.FaceUpCost),
-		}
+		return []SpecialAction{keywordOffer(alt)}
 	case FaceDownManifested, FaceDownCloaked:
+		var offers []SpecialAction
 		// CR 701.40b / CR 701.58b: a manifested or cloaked CREATURE
 		// CARD may be turned face up for its mana cost. Anything else
-		// stays face down for as long as it is on the battlefield.
-		if !c.PrintedIsCreature() {
-			return nil
+		// stays face down for as long as it is on the battlefield
+		// (unless the card also prints a way up, below).
+		if c.PrintedIsCreature() {
+			offers = append(offers, SpecialAction{
+				Kind:  SpecialActionTurnFaceUp,
+				Cost:  c.ManaCost,
+				Route: TurnFaceUpByManaCost,
+				Label: turnFaceUpLabel(c.ManaCost),
+			})
 		}
-		return &SpecialAction{
-			Kind:  SpecialActionTurnFaceUp,
-			Cost:  c.ManaCost,
-			Label: turnFaceUpLabel(c.ManaCost),
+		// CR 701.40c / CR 701.58c, with CR 702.37e / CR 702.168d: a
+		// manifested or cloaked card that is a card with morph or
+		// disguise may ALSO be turned up for that cost, whatever its
+		// card type. The lookup is the turned arm's, for its reason:
+		// the rules key on the card having the ability, not on how it
+		// came to be face down.
+		if alt := FaceDownCastFor(faceUpCatalogKey(c)); alt != nil && alt.FaceDown != nil {
+			offers = append(offers, keywordOffer(alt))
 		}
+		if len(offers) < 2 {
+			return offers
+		}
+		// Cheaper mana value first; the keyword route first on a tie.
+		// The keyword offer was appended second, so swapping it ahead
+		// when it is no dearer does both.
+		if turnFaceUpMV(offers[1].Cost) <= turnFaceUpMV(offers[0].Cost) {
+			offers[0], offers[1] = offers[1], offers[0]
+		}
+		for i := range offers {
+			offers[i].Label = turnFaceUpRouteLabel(offers[i])
+		}
+		return offers
 	}
 	return nil
+}
+
+// TurnFaceUpOffer is the FIRST of TurnFaceUpOffers, or nil. It is
+// what every single-offer reader (SpecialActionOffered) asks, so a
+// permanent with two routes answers its first one there and an empty
+// route parameter takes it.
+func TurnFaceUpOffer(c Card) *SpecialAction {
+	offers := TurnFaceUpOffers(c)
+	if len(offers) == 0 {
+		return nil
+	}
+	return &offers[0]
+}
+
+// turnFaceUpMV is the mana value of a turn-face-up cost, for ordering
+// two routes only. An unreadable cost sorts as 0.
+func turnFaceUpMV(cost string) int {
+	parsed, err := ParseCost(cost)
+	if err != nil {
+		return 0
+	}
+	return parsed.ManaValue()
+}
+
+// turnFaceUpRouteLabel is the label when a permanent has two routes up
+// and the player has to tell them apart: "Turn face up {1}{G}
+// (megamorph, +1/+1 counter)", "(morph)", "(disguise)", "(mana cost)".
+func turnFaceUpRouteLabel(sa SpecialAction) string {
+	base := turnFaceUpLabel(sa.Cost)
+	switch sa.Route {
+	case TurnFaceUpByManaCost:
+		return base + " (mana cost)"
+	case TurnFaceUpByDisguise:
+		return base + " (disguise)"
+	}
+	if sa.FaceUpCounter {
+		return base + " (megamorph, +1/+1 counter)"
+	}
+	return base + " (morph)"
 }
 
 // turnFaceUpLabel is the menu row and the log line. The COST is in it
