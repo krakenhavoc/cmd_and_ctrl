@@ -61,7 +61,13 @@ test.describe("#2880 choose permanents on the board", () => {
       (v) => triggerOnStack(v, MARAUDER) !== null,
       "Fleshbag Marauder's trigger on the stack",
     );
-    await resolveStack(setup);
+    // The trigger stays on the stack while its prompts are open
+    // (#3644), so stop passing once the caster's prompt is queued.
+    await resolveStack(setup, 20, (v) =>
+      (v.pending_choices ?? []).some(
+        (c) => c.kind === "sacrifice_choice" && c.chooser === caster.playerID,
+      ),
+    );
 
     const queued = await admin.waitFor(
       (v) =>

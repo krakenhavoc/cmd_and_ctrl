@@ -567,7 +567,13 @@ test.describe("S19 ETB triggers", () => {
     expect(findCardOnBattlefield(staged, CARDS.Forest)).toBeNull();
     expect(findCardOnBattlefield(staged, CARDS.Island)).toBeNull();
 
-    await resolveStack(setup);
+    // The trigger stays on the stack while its search prompt is open
+    // (#3644), so stop passing once the prompt is queued.
+    await resolveStack(setup, 20, (v) =>
+      (v.pending_choices ?? []).some(
+        (c) => c.kind === "search_library" && c.chooser === caster.playerID,
+      ),
+    );
 
     // S22 (#272): answering "Yes" no longer finishes the job. The
     // trigger resolves into a SECOND prompt — the search chooser —
