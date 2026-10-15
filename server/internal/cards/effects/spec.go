@@ -422,6 +422,15 @@ type Spec struct {
 	// needed this permission; see game/flash_cleanup_sacrifice.go.
 	FlashWithCleanupSacrifice bool
 
+	// CastTimeValues are the numbers this spell fixes AS IT IS CAST
+	// (CR 601.2i, #3781): Lifestream's Blessing's "X is the greatest
+	// power among creatures you controlled as you cast this spell". The
+	// engine stamps them on the stack item after every cost is paid and
+	// before anyone can respond; OnResolve reads one back with
+	// ctx.CastValue(key), unchanged by whatever happened in response.
+	// A card that reads the board at RESOLUTION does not belong here.
+	CastTimeValues []game.CastTimeValue
+
 	// CantBeCounteredIf is the CONDITIONAL "this spell can't be
 	// countered": "If X is 5 or more, this spell can't be countered"
 	// (Banefire), "Hellbent — If you have no cards in hand, this spell

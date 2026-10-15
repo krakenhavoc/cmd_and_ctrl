@@ -133,6 +133,7 @@ func Register(spec Spec) {
 			}
 		}
 	}
+	checkCastTimeValues(spec)
 	// S22: an alternative cost is claimed by name on the wire, so a
 	// blank or duplicated key is unaddressable — the cast either
 	// can't name it or names two of them. Both are copy-paste

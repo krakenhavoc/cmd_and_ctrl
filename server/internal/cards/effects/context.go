@@ -484,6 +484,18 @@ func (c *Context) PaidAltCost(key string) bool {
 	return c.Item != nil && c.Item.AltCost == key && key != ""
 }
 
+// CastValue is the number the spell recorded under `key` as it was
+// cast (Spec.CastTimeValues, CR 601.2i), and whether it recorded one.
+// A spell copy reports its original's (CR 707.10). Resolution falls
+// back to a resolution-time reading only when ok is false, which means
+// a game restored from before the value existed.
+func (c *Context) CastValue(key string) (int, bool) {
+	if c.Item == nil {
+		return 0, false
+	}
+	return c.Item.CastValue(key)
+}
+
 // OptionalCostTimes is how many times the optional additional cost
 // keyed `key` was paid when this spell was announced (CR 601.2b,
 // ADR 0073). Zero when it was declined, when the card offers no such

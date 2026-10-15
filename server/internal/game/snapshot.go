@@ -1379,6 +1379,9 @@ type stackItemSnapshot struct {
 	// permission when a sorcery couldn't have been. Carried: the timing
 	// of the cast cannot be recomputed after a restore.
 	OwnFlashCast bool `json:"ownFlashCast,omitempty"`
+	// CastValues (#3781): the numbers the spell fixed as it was cast.
+	// Carried: the board at cast time cannot be recomputed after a restore.
+	CastValues map[string]int `json:"castValues,omitempty"`
 	// FaceDown is CR 708.4 (#1194): the state the permanent this
 	// spell becomes enters in. Carried, and it has to be — a restore
 	// that lost it would resolve a morph on the stack into a face-UP
@@ -2464,6 +2467,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		AltCost:          s.AltCost,
 		Foretold:         s.Foretold,
 		OwnFlashCast:     s.OwnFlashCast,
+		CastValues:       copyStringIntMap(s.CastValues),
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		SplitSecond:      s.SplitSecond,
@@ -3418,6 +3422,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		AltCost:          s.AltCost,
 		Foretold:         s.Foretold,
 		OwnFlashCast:     s.OwnFlashCast,
+		CastValues:       copyStringIntMap(s.CastValues),
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		SplitSecond:      s.SplitSecond,

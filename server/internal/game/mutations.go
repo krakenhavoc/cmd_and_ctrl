@@ -2100,6 +2100,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// half, and it reuses the ZoneMove-shaped fields rather than
 	// growing a new one, because a cast IS a zone move — hand (or
 	// exile, or the command zone) to the stack.
+	// #3781, CR 601.2i: "as you cast this spell" values are fixed here,
+	// with every cost paid and nobody yet holding priority.
+	g.stampCastTimeValuesLocked(card, g.StackMeta[cardID])
 	g.EmitEvent(Event{
 		Kind:    EventCast,
 		Actor:   playerID,

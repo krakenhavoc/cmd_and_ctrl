@@ -269,6 +269,10 @@ type CardDef struct {
 	// it at the beginning of the next cleanup step" (#3156). See
 	// flash_cleanup_sacrifice.go.
 	FlashWithCleanupSacrifice bool
+	// CastTimeValues are the numbers the spell fixes as it is cast
+	// (#3781): "where X is the greatest power among creatures you
+	// controlled as you cast this spell". See cast_time_values.go.
+	CastTimeValues []CastTimeValue
 	// CantBeCounteredIf is the CONDITIONAL "this spell can't be
 	// countered" (Banefire's X of 5 or more, Demonfire's hellbent),
 	// judged when something tries to counter the spell. Nil is never.
@@ -866,6 +870,12 @@ func init() {
 	CatalogCantBeCounteredIf = func(key string) SpellCondition {
 		if d := catalogDef(key); d != nil {
 			return d.CantBeCounteredIf
+		}
+		return nil
+	}
+	CatalogCastTimeValues = func(key string) []CastTimeValue {
+		if d := catalogDef(key); d != nil {
+			return d.CastTimeValues
 		}
 		return nil
 	}

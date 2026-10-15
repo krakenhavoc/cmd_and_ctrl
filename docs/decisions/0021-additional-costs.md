@@ -306,3 +306,41 @@ mandatory additional cost print two variable counts, with no new component:
   variable clause and, with one, no other sacrifice (`checkVariableSacrificePlan`).
   The count lands in `PaidCost.Sacrificed`, and a per-sacrifice discount reads
   it at CR 601.2f through `CostQuery.Sacrificing` (`effects.CostsLessPerSacrificed`).
+
+## Amendment (2026-10-15): a value fixed as the spell is cast (#3781)
+
+"Draw X cards, where X is the greatest power among creatures you controlled as
+you cast this spell" (Lifestream's Blessing, #3656) reads the board at a moment
+no hook could reach: the cast path built the stack item and kept the costs it
+paid (the `Paid` record, ADR 0100) but nothing that was merely *true* of the
+game as the cast finished. The spell fell back to the board at resolution, so
+a creature that died or grew in response changed the answer (CR 601.2i fixes it
+at the cast).
+
+- **Declaration.** `Spec.CastTimeValues` / `CardDef.CastTimeValues` is a keyed
+  list of `game.CastTimeValue{Key, Value func(*Game, *StackItem) int}`. Keyed
+  so one card can record two facts; `Register` refuses a blank key, a nil
+  `Value` or a duplicate (`checkCastTimeValues`).
+- **The stamp.** `CastSpell` calls `stampCastTimeValuesLocked` as the last act
+  before `EventCast`: every cost is paid (so a creature sacrificed to pay is
+  not counted, which is what "as you cast" says), the spell is on the stack,
+  nobody has had priority. `Value` runs under the game lock and reads through
+  the same accessors any catalog hook does.
+- **The memory.** `StackItem.CastValues map[string]int`, nil for every spell
+  that declares nothing. Carried by `Clone` (deep copy), by the snapshot
+  (`castValues`, additive within v9: absent reads as nil, and a binary that
+  drops the key falls back as below), and by a spell copy: CR 707.10 copies the
+  values the original fixed, and a copy is never cast, so there is no second
+  moment to recompute at.
+- **The reader.** `effects.Context.CastValue(key) (int, bool)`. `ok` is false
+  only for a game restored from before the value existed; the card then falls
+  back to the board at resolution, the pre-amendment behaviour.
+- **Not the same as `AdditionalCost` or X.** X is announced and paid for
+  (CR 107.3); a cast-time value is *computed by the engine* from the game, not
+  chosen by the caster. A card whose text reads the board at resolution
+  ("greatest power among creatures you control", Traverse the Outlands) does
+  not belong here.
+
+Card: Lifestream's Blessing is Full. Other "as you cast this spell" statements
+(a count of lands you controlled as you cast it, and so on) now declare one
+`CastTimeValue` and read it back; none was found carrying a caveat for the gap.
