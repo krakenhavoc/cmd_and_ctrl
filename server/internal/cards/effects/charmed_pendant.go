@@ -28,8 +28,9 @@ import (
 // adds that colour. A hybrid symbol of two colours ({W/U}) is a coloured
 // symbol of both, and the mana it adds is a pick between them, asked in
 // the ordinary mana-colour prompt. A card whose mana cost is empty (a
-// land) adds nothing, and so does a mill that did not put a card in the
-// graveyard (Rest in Peace exiled it: nothing was milled, CR 701.17a).
+// land) adds nothing. A card Rest in Peace exiled instead of milling still
+// counts: the ability refers to the milled card, and CR 701.17c finds it
+// in whatever public zone it went to, so the mana is added.
 //
 // The auto-tapper never plans the ability (a payment-driven output is
 // opaque to it, and milling to pay a spell is the player's call).

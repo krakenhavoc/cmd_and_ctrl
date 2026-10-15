@@ -310,9 +310,9 @@ func TestCharmedPendantAddsNothingForAColourlessOrCostlessCard(t *testing.T) {
 	}
 }
 
-// Rest in Peace exiles the card, so nothing was milled and the mana the
-// card would have read is not added: weaker than printed, never stronger.
-func TestCharmedPendantAddsNothingWhenRestInPeaceExilesTheMilledCard(t *testing.T) {
+// CR 701.17c: Rest in Peace exiles the milled card, and the ability that
+// refers to it still finds it there, so the mana is added.
+func TestCharmedPendantCountsACardRestInPeaceExiled(t *testing.T) {
 	g, me, src, milled := pendantTable(t, "{1}{G}{G}")
 	castRestInPeace(t, g)
 	if err := g.ActivateManaAbility(me.ID, src, 0, game.ManaAbilityParams{}); err != nil {
@@ -321,8 +321,9 @@ func TestCharmedPendantAddsNothingWhenRestInPeaceExilesTheMilledCard(t *testing.
 	if !g.Exile.Contains(milled) {
 		t.Fatal("setup: the milled card should be in exile")
 	}
-	if n := me.ManaPool.Total(); n != 0 {
-		t.Errorf("pool holds %d, want none", n)
+	got := batch01PoolColors(me)
+	if len(got) != 2 || got[0] != "G" || got[1] != "G" {
+		t.Errorf("pool %v, want {G}{G}", got)
 	}
 }
 

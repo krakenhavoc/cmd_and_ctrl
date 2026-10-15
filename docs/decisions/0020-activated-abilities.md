@@ -3430,9 +3430,10 @@ catalog cards that use the component are mana, which the heuristic does not weig
 
 `PaidCost.Milled` (`[]uuid.UUID`, `json:"milled,omitempty"`) records the cards a `Mill` component put into the payer's
 graveyard, in the order they came off the top. Both payers fill it: `ActivateCatalogAbility` and `ActivateManaAbility`
-take the cards `payMillCostLocked` now returns (the landed cards `MillToZoneForEffect` reports, CR 400.7 reading). A card
-a replacement sent elsewhere (Rest in Peace) is not in it, because it was not milled (CR 701.17a), and neither is a leg
-parked on a CR 616 ordering prompt; both read as "nothing milled", the weaker-than-printed direction. It is cloned with the
+take the cards `payMillCostLocked` now returns (the moved cards, wherever they ended up). Every
+card the mill took from the library is in it, through `MillToZoneThenMovedForEffect` (#3847): a card Rest in Peace
+exiled is still one (CR 701.17c finds the milled card in whatever public zone it went to). A leg parked on a CR 616
+ordering prompt is not, and reads as "nothing milled", the weaker-than-printed direction. It is cloned with the
 record and counts toward `IsZero`.
 
 The first reader is Charmed Pendant's `ProducedForPaid`: one mana per coloured symbol of the milled card's mana cost. A

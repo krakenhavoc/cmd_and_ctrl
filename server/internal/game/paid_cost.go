@@ -192,10 +192,10 @@ type PaidCost struct {
 	// payer's graveyard, in the order they came off the top (#3849;
 	// ADR 0020's 2026-10-15 amendment). Charmed Pendant's "for each
 	// colored mana symbol in the milled card's mana cost" reads it. A
-	// card a replacement sent elsewhere (Rest in Peace) is not in it,
-	// because it was not milled (CR 701.17a), and neither is a card
-	// whose mill is still parked on a CR 616 ordering prompt; both read
-	// as "nothing milled", the weaker-than-printed direction.
+	// card a replacement sent elsewhere (Rest in Peace) is still in it
+	// (CR 701.17c: an effect that refers to the milled card finds it in
+	// whatever public zone it went to; #3847). A leg parked on a CR 616
+	// ordering prompt is not, and reads as "nothing milled".
 	Milled []uuid.UUID `json:"milled,omitempty"`
 
 	// ExiledObjects is WHICH battlefield permanents an ExilePermanents
