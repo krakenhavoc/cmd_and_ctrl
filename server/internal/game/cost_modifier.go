@@ -219,6 +219,17 @@ type CostQuery struct {
 	// payment, by the enumerator, so the two agree (#544).
 	AltSacrificeManaValue int
 
+	// GrantReduction is the generic mana a cast permission takes off the
+	// spell cast through it (CastPermission.CostLess, #3787): Urianger
+	// Augurelt's "spells you cast this way cost {2} less to cast". Read
+	// from the permission the cast claims, so it is zero for a hand cast
+	// and for any permission that prints no reduction. Taken off with the
+	// board's reductions (CR 601.2f), after every increase and before a
+	// CostFloor, clamped at {0}. Filled by the one pricer
+	// (costAfterModifiersLocked) and by the enumerator from the
+	// permission it is announcing under, so the two agree (#544).
+	GrantReduction int
+
 	// Cost is the cost as it stands at the moment this modifier is
 	// consulted: after the alternative-cost swap and the commander
 	// tax, after every increase for a reduction, after everything
@@ -765,7 +776,7 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 	if len(mods) == 0 {
 		// ADR 0135 §4: emerge's reduction is the one reduction that
 		// needs no modifier on the board.
-		return reduceGeneric(base, q.AltSacrificeManaValue), nil
+		return reduceGeneric(reduceGeneric(base, q.AltSacrificeManaValue), q.GrantReduction), nil
 	}
 	cost := base
 	// CR 601.2f step 3: every increase, in any order. Additive, so
@@ -802,6 +813,9 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 	// permanent's mana value, with the other reductions (CR 601.2f) and
 	// clamped the same way, so it is taken after every increase.
 	cost = reduceGeneric(cost, q.AltSacrificeManaValue)
+	// #3787: and the cast permission's own "cost {N} less", the same
+	// kind of reduction.
+	cost = reduceGeneric(cost, q.GrantReduction)
 	// Trinisphere last. A second floor on top of the first is a
 	// no-op by construction — the cost already clears the higher
 	// minimum — so two Trinispheres behave like one, as printed.

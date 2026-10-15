@@ -206,3 +206,36 @@ by every card, so none of the four carries a per-card caveat.
   the holder, and the offered play dispatches.
 - `protocol/hideaway_view_test.go` — the controller reads the card, the opponent reads a back labelled
   `hideaway`.
+
+## Amendment — 2026-10-15 (#3787): the same exile, linked as "exiled with" — Urianger Augurelt, Kayla's Music Box
+
+Draw Arcanum: "{T}: Look at the top card of your library. You may exile it face down." Play Arcanum then plays "cards
+exiled with Urianger Augurelt" (the grant is ADR 0066's 2026-10-15 amendment). The exile is hideaway's, minus the "N
+cards, one of them" and the bottom-of-library rest, and the later ability reads the CR 607.2a link `Card.ExiledWith`
+rather than `Card.HiddenBy`.
+
+`Game.ExileHiddenLinkedForEffect(source, actor, card)` is `ExileHiddenForEffect` with `ExiledWith: source` on the route
+as well. The card still lands `FaceDownHidden` with `HiddenBy` set, so its viewer is the controller of the permanent that
+exiled it and CR 406.3 keeps anyone who has looked, and it ALSO carries the link `PermissionFilter.ExiledWithSource` and
+`ExiledWithForEffect` read. Hideaway's own exile deliberately does not stamp `ExiledWith` (its payoff reads the card back
+through `HiddenBy`, "the exiled card"), so a standing "cards exiled with" permission never reaches a hideaway land's
+card (`TestHideawayExileCarriesNoExiledWithLink`).
+
+Whose card may be looked at: neither card prints a look clause the way hideaway's reminder text does (the Box's reminder
+says "you may look at it any time"; Urianger's text says nothing), so the viewer is the one the face-down kind already
+answers, the controller of the exiling permanent, which is also the only player who can play the card. An Urianger
+that changes hands hands the look over with it, as a Windbrisk Heights does, and the old controller keeps what they saw.
+
+`effects.ExileTopFaceDownLinked{Source, Name, Required}` is the card-facing verb: CR 701.20's look (only the player becomes a
+knower), then a `choose_cards` prompt with a floor of zero over the one card ("you may"), or no prompt when `Required`
+(the Box: "then exile it face down"). A library with no card does nothing. No new prompt kind, and the bot answers it
+through the existing `choose_cards` handling.
+
+The trigger half ("whenever you play a land from exile or cast a spell from exile") needed nothing: `Event.Played`
+(CR 305.4) and `EventCast`'s `OldZone` already carry the origin, and Prosper, Tome-Bound and Rocco read them.
+
+**Cards:** Urianger Augurelt and Kayla's Music Box (Full).
+
+Back-out: drop `ExiledWith` from `ExileHiddenLinkedForEffect` and
+`TestUriangerDrawArcanumExilesTheTopCardFaceDownLinked` fails; drop its `FaceDown`/`HiddenBy` and
+`TestUriangerFaceDownCardIsHiddenFromOpponents` fails.

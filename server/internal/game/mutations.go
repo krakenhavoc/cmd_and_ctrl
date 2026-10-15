@@ -3210,6 +3210,8 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		// permanent the claimed offer names while it is still on the
 		// battlefield.
 		AltSacrificeManaValue: g.altSacrificeManaValueLocked(p.ID, card, params),
+		// #3787: the cast permission's "cost {N} less" (Urianger Augurelt).
+		GrantReduction: g.grantReductionLocked(p.ID, card, fromZone, params),
 	})
 	if err != nil {
 		return ParsedCost{}, err
