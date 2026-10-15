@@ -116,6 +116,7 @@ var reviewedNotAWipe = map[string]string{
 	"Eliminate the Impossible":                 "-2/-0 kills nothing",
 	"Eye of Singularity":                       "destroys only permanents sharing a name, which no class says",
 	"Glorious End":                             "ends the turn",
+	"Golden Argosy":                            "exiles only the creatures that crewed it and returns them tapped at the next end step: a flicker of its own crewers, not a wipe",
 	"Jace, Reality Sculptor":                   "its 0 exiles all but the bottom card of each opponent's library, no permanents",
 	"Jace, the Mind Sculptor":                  "exiles a library",
 	"Karn Liberated":                           "restarts the game",
