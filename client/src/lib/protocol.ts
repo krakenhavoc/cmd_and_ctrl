@@ -265,6 +265,17 @@ export type ActionType =
   // ADR 0150 §4 (owner decision 5): `{choice_id?}` — the caster
   // withdraws the request for help an assisted cast is parked on.
   | "cancel_assist"
+  // ADR 0193 (CR 732.2): demonstrate a loop. `loop_record_start`,
+  // `loop_record_stop` and `loop_record_cancel` take no params;
+  // `loop_propose` takes `{count}` (1–1000); `resolve_loop_proposal`
+  // answers a loop_proposal prompt with `{choice_id, accept: true}` or
+  // `{choice_id, shorten: {iteration, step}}`. None is undoable; the
+  // replay they lead to is one undo entry.
+  | "loop_record_start"
+  | "loop_record_stop"
+  | "loop_record_cancel"
+  | "loop_propose"
+  | "resolve_loop_proposal"
   | "sacrifice_permanent"
   | "set_goaded"
   | "set_initiative"
@@ -585,6 +596,9 @@ export interface GameView {
   // person has to ask for the next iteration, with the loop's trigger
   // still on the stack. Table-wide and identical for every seat.
   loop_notice?: LoopNoticeView;
+  // ADR 0193 (CR 732.2): the loop a player is recording, has recorded or
+  // has proposed. Table-wide and identical for every seat.
+  loop_recording?: LoopRecordingView;
   // ADR 0057 (#749): the result of an ended game — who won, or a draw,
   // and why. Absent while the game is active and for a table an admin
   // closed with no result. An effect win ends the game with the other
@@ -639,6 +653,46 @@ export interface LoopNoticeView {
   label: string;
   controller?: string;
   count: number;
+}
+
+// ADR 0193: GameView.loop_recording. `status` is "recording" (steps
+// counts the actions so far), "ready" (it closed: net and iteration are
+// set) or "proposed" (count more iterations, ending at end).
+export interface LoopRecordingView {
+  recorder: string;
+  status: string;
+  steps: number;
+  name?: string;
+  net?: string;
+  iteration?: LoopStepView[];
+  max_iterations: number;
+  count?: number;
+  end?: LoopPointView;
+  shortened_by?: string;
+}
+
+// Before step `step` (0-based) of iteration `iteration` (1-based).
+export interface LoopPointView {
+  iteration: number;
+  step: number;
+}
+
+export interface LoopStepView {
+  actor?: string;
+  label: string;
+}
+
+// ADR 0193: PendingChoiceView.loop_proposal, on a loop_proposal prompt.
+// choice_points are the indices of steps that are the chooser's own:
+// where CR 732.2b lets them shorten the proposal.
+export interface LoopProposalView {
+  proposer: string;
+  name?: string;
+  count: number;
+  end: LoopPointView;
+  net?: string;
+  steps: LoopStepView[];
+  choice_points?: number[];
 }
 
 // RevealView is one reveal: the cards a player showed the whole table
@@ -932,6 +986,10 @@ export type LogKind =
   // standing answer ("Bob paid {1} for Rhystic Study (automatic)").
   // Server-rendered `text`.
   | "auto_answer"
+  // ADR 0193: the demonstrated-loop conversation, and a replay's one
+  // line ("P1 repeats Basalt Monolith ×500: P1: library -500").
+  // Server-rendered `text`.
+  | "loop"
   // A player left the game. `cause` says why ("life", "empty_draw",
   // "poison", "commander_damage", "effect", "concede"); `card_id` is
   // the source of an effect loss. One line per departure (ADR 0057).
@@ -1604,6 +1662,10 @@ export interface PendingChoiceView {
     // resolved this turn; loop_max_iterations is the ceiling the
     // engine will accept.
     | "loop_shortcut"
+    // ADR 0193, CR 732.2b: another player proposes repeating a loop
+    // they recorded. Accept, or shorten it to one of your own steps;
+    // answered with resolve_loop_proposal, not resolve_choice.
+    | "loop_proposal"
     // #764, CR 603.3c: a modal triggered ability's mode, chosen as
     // the ability is put on the stack. mode_options / mode_indexes /
     // mode_min / mode_max / mode_repeatable describe the offer.
@@ -1942,6 +2004,8 @@ export interface PendingChoiceView {
   // answer the engine accepts. `reason` carries "<card> — <ability>".
   loop_count?: number;
   loop_max_iterations?: number;
+  // ADR 0193: populated for kind "loop_proposal".
+  loop_proposal?: LoopProposalView;
   // #764, CR 603.3c: populated for kind "mode_pick" — the bullets a
   // modal TRIGGER offers its controller as the ability is put on the
   // stack. Only the choosable ones are listed (a bullet whose clause

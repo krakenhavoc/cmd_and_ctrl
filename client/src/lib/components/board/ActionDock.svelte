@@ -78,6 +78,8 @@
   import { ariaKeyshortcuts, effectiveBindings, formatChord, isMacLike } from "../../shortcuts";
   import { passHint, primaryKind, primaryTitles, type PrimaryKind } from "../../dockHint";
   import { L } from "../../labels";
+  import LoopControl from "./LoopControl.svelte";
+  import type { LoopDockProps } from "../../loopShortcut";
 
   interface Props {
     view: GameView;
@@ -122,6 +124,9 @@
     // PR 7 (owner decision 3): the ⋯ menu, last on the toggles row.
     // Game.svelte builds it; omitted, the row has no ⋯.
     menu?: GameMenuOptions;
+    // ADR 0193 §9 (CR 732.2): the loop control. Game.svelte builds it;
+    // omitted, the dock has none.
+    loop?: LoopDockProps;
   }
 
   const {
@@ -145,6 +150,7 @@
     onStage,
     sheetCoversBoard = false,
     menu,
+    loop,
   }: Props = $props();
 
   // ADR 0121 §6: while the opening roll is open there is no turn yet.
@@ -512,6 +518,9 @@
         <span class="loop-label">loop detected</span>
         <span class="loop-text">{loopNotice} Autopass paused.</span>
       </div>
+    {:else if loop && loop.state.mode !== "none" && loop.state.mode !== "record"}
+      <!-- ADR 0193 §9: a loop being recorded or proposed, for every seat. -->
+      <LoopControl part="status" {...loop} />
     {:else if bluffLine}
       <!-- Only the viewer sees this line. -->
       <span class="bluff-status" role="status">{bluffLine}</span>
@@ -594,6 +603,10 @@
       keyShortcuts={ariaKeys(keys.toggleBluff)}
       locked={preGame}
     />
+    <!-- ADR 0193 §9: "loop", only while the viewer may start one. -->
+    {#if loop}
+      <LoopControl part="toggle" {...loop} />
+    {/if}
     <!-- ADR 0111 PR 3: the one Undo, out of the ⋯ menu and the attack
          row. Disabled, not hidden, when the budget is spent; the server
          keeps the rules, this only reads them. -->

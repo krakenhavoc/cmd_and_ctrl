@@ -141,6 +141,8 @@ const LOG_TONE: Record<LogKind, string> = {
   // ADR 0127 §6: a prompt the server answered with its chooser's
   // standing answer. A decision, so toned like a cast.
   auto_answer: "tone-cast",
+  // ADR 0193: the loop conversation and a replay's one line.
+  loop: "tone-cast",
   counters: "tone-quiet",
   // #3040. A ceiling biting is a rule of the table speaking up, not a
   // whisper, so it reads like the step spine rather than a counter line.
