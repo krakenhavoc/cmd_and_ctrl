@@ -7696,9 +7696,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// graveyard-arrival triggers it queues wait for the state-check
 	// pass on the way out, with the mana already in the pool.
 	if ab.MillCost > 0 {
-		if err := g.payMillCostLocked(playerID, ab.MillCost); err != nil {
+		milled, err := g.payMillCostLocked(playerID, ab.MillCost)
+		if err != nil {
 			return err
 		}
+		paid.Milled = append(paid.Milled, milled...)
 		needStateChecks = true
 	}
 	defer func() {

@@ -1865,6 +1865,8 @@ lastKnownStack[].item.paid.exiled[]	custom(uuid.UUID)
 lastKnownStack[].item.paid.giftOpponent	custom(uuid.UUID)
 lastKnownStack[].item.paid.grantedOptional	array
 lastKnownStack[].item.paid.grantedOptional[]	string
+lastKnownStack[].item.paid.milled	array
+lastKnownStack[].item.paid.milled[]	custom(uuid.UUID)
 lastKnownStack[].item.paid.optionalCosts	array
 lastKnownStack[].item.paid.optionalCosts[]	number:int
 lastKnownStack[].item.paid.sacrificedObjects	array
@@ -2159,6 +2161,8 @@ pausedModeWalk.item.paid.exiled[]	custom(uuid.UUID)
 pausedModeWalk.item.paid.giftOpponent	custom(uuid.UUID)
 pausedModeWalk.item.paid.grantedOptional	array
 pausedModeWalk.item.paid.grantedOptional[]	string
+pausedModeWalk.item.paid.milled	array
+pausedModeWalk.item.paid.milled[]	custom(uuid.UUID)
 pausedModeWalk.item.paid.optionalCosts	array
 pausedModeWalk.item.paid.optionalCosts[]	number:int
 pausedModeWalk.item.paid.sacrificedObjects	array
@@ -2407,6 +2411,8 @@ pausedResolutionTail.item.paid.exiled[]	custom(uuid.UUID)
 pausedResolutionTail.item.paid.giftOpponent	custom(uuid.UUID)
 pausedResolutionTail.item.paid.grantedOptional	array
 pausedResolutionTail.item.paid.grantedOptional[]	string
+pausedResolutionTail.item.paid.milled	array
+pausedResolutionTail.item.paid.milled[]	custom(uuid.UUID)
 pausedResolutionTail.item.paid.optionalCosts	array
 pausedResolutionTail.item.paid.optionalCosts[]	number:int
 pausedResolutionTail.item.paid.sacrificedObjects	array
@@ -2982,6 +2988,8 @@ pendingTriggers[].paid.exiled[]	custom(uuid.UUID)
 pendingTriggers[].paid.giftOpponent	custom(uuid.UUID)
 pendingTriggers[].paid.grantedOptional	array
 pendingTriggers[].paid.grantedOptional[]	string
+pendingTriggers[].paid.milled	array
+pendingTriggers[].paid.milled[]	custom(uuid.UUID)
 pendingTriggers[].paid.optionalCosts	array
 pendingTriggers[].paid.optionalCosts[]	number:int
 pendingTriggers[].paid.sacrificedObjects	array
@@ -6950,6 +6958,8 @@ stackMeta[].paid.exiled[]	custom(uuid.UUID)
 stackMeta[].paid.giftOpponent	custom(uuid.UUID)
 stackMeta[].paid.grantedOptional	array
 stackMeta[].paid.grantedOptional[]	string
+stackMeta[].paid.milled	array
+stackMeta[].paid.milled[]	custom(uuid.UUID)
 stackMeta[].paid.optionalCosts	array
 stackMeta[].paid.optionalCosts[]	number:int
 stackMeta[].paid.sacrificedObjects	array

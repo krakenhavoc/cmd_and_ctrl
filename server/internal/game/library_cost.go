@@ -344,9 +344,19 @@ func (e millShortfallError) Is(target error) bool { return target == ErrCantPayL
 // replacements meeting a mill inside an effect.
 //
 // Caller must hold g.mu for writing.
-func (g *Game) payMillCostLocked(playerID uuid.UUID, n int) error {
+//
+// Returns every card the mill took from the library, for PaidCost.Milled
+// (#3849).
+func (g *Game) payMillCostLocked(playerID uuid.UUID, n int) ([]uuid.UUID, error) {
 	if n <= 0 {
-		return nil
+		return nil, nil
 	}
-	return g.MillNForEffect(playerID, n)
+	// CR 701.17c: "the milled card" is found wherever it went, so a card
+	// Rest in Peace exiled is still recorded (#3847's allMoved form).
+	var moved []uuid.UUID
+	err := g.MillToZoneThenMovedForEffect(playerID, n, ZoneGraveyard, func(_ *Game, ids []uuid.UUID) error {
+		moved = append(moved, ids...)
+		return nil
+	})
+	return moved, err
 }

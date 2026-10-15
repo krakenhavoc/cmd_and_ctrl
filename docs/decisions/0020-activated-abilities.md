@@ -3425,3 +3425,24 @@ Deranged Assistant, Manakin and Millikin, Charmed Pendant, Sinister Concoction a
 and are not in the catalog; each is a card on this component (Charmed Pendant additionally needs the milled card
 recorded on `PaidCost`). The bot's `MoveCost` carries no mill price, so a policy sees a mill-paid move as free; the only
 catalog cards that use the component are mana, which the heuristic does not weigh by cost.
+
+## Amendment 2026-10-15 (#3849): the milled card on `PaidCost`, and the five cards
+
+`PaidCost.Milled` (`[]uuid.UUID`, `json:"milled,omitempty"`) records the cards a `Mill` component put into the payer's
+graveyard, in the order they came off the top. Both payers fill it: `ActivateCatalogAbility` and `ActivateManaAbility`
+take the cards `payMillCostLocked` now returns (the moved cards, wherever they ended up). Every
+card the mill took from the library is in it, through `MillToZoneThenMovedForEffect` (#3847): a card Rest in Peace
+exiled is still one (CR 701.17c finds the milled card in whatever public zone it went to). A leg parked on a CR 616
+ordering prompt is not, and reads as "nothing milled", the weaker-than-printed direction. It is cloned with the
+record and counts toward `IsZero`.
+
+The first reader is Charmed Pendant's `ProducedForPaid`: one mana per coloured symbol of the milled card's mana cost. A
+hybrid symbol of two colours is a pipe pick, a Phyrexian or two-brid symbol is its one colour, generic, `{C}` and `{X}`
+add nothing.
+
+Cards: Deranged Assistant, Manakin and Millikin, Sinister Concoction, Rot Farm Skeleton (a graveyard-zone sorcery-speed
+return beside a `can't block` self-restriction) and Charmed Pendant, all Full.
+
+Still out of scope, unchanged: the bot's `MoveCost` carries no mill price, so a policy sees a mill-paid move as free.
+Sinister Concoction and Rot Farm Skeleton are the first non-mana users, so the bot may pay a library for them without
+weighing it.

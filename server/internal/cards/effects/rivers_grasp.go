@@ -20,14 +20,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // A copy has no mana spent on it (the rulings), and neither has a cast
 // the engine did not charge, so neither half happens: weaker than
-// printed, never stronger.
-//
-// No simplification.
+// printed, never stronger. With "Charge mana costs" off, or after a
+// Cast anyway, only mana spent from the pool counts (ADR 0068 §3 and its
+// 2026-10-15 amendment), the same caveat Ribbons of Night carries (#3850).
 func init() {
 	Register(Spec{
 		OracleID:     "f671583f-bd22-4d3e-bf19-fb740c607f8f",
 		Name:         "River's Grasp",
-		Completeness: CompletenessFull,
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so River's Grasp may skip its bounce or its discard."},
 		Targets: TargetCreature("up to one target creature").WithCount(0, 1).
 			Then(TargetPlayer("target player")),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

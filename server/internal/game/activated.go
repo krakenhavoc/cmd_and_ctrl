@@ -2139,9 +2139,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// #3845, CR 601.2h: "Mill N cards" moves cards from the library to
 	// a public zone, so it is paid after everything else, through the
 	// mill door so replacements and "whenever you mill" see it.
-	if err := g.payMillCostLocked(playerID, ab.Cost.Mill); err != nil {
+	milled, err := g.payMillCostLocked(playerID, ab.Cost.Mill)
+	if err != nil {
 		return err
 	}
+	paid.Milled = append(paid.Milled, milled...)
 
 	// --- announce -----------------------------------------------
 	itemID := uuid.New()
