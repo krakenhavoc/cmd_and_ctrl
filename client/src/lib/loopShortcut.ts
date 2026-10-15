@@ -60,7 +60,8 @@ export function loopControl(
 }
 
 // LoopDockProps is what the action dock's loop control takes
-// (LoopControl.svelte); Game.svelte builds it.
+// (LoopControl.svelte, the status line); Game.svelte builds it. onRecord
+// is not the dock's: "Record loop" is a ⋯ menu entry (GameMenu.svelte).
 export interface LoopDockProps {
   state: LoopControlState;
   onRecord: () => void;

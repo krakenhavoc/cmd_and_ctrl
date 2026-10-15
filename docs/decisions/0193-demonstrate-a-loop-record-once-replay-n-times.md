@@ -203,3 +203,12 @@ Delivery steps 1 and 2 shipped together (#3382). Where the code settles somethin
 - **A player leaving** during a recording or a proposal ends it, as a step change does.
 - **The loop verbs mint no undo entry.** Only the replay does.
 - **§8's "rank the record moves last".** The recording verbs are enumerated only for an agent seat (`Player.Agent`), so a bot is never offered them, and a browser's move list does not carry them: an unknown move kind would stop the client's smart autopass on every window. The client follow-up drives its dock control from `GameView.loop_recording`.
+
+## Amendment (#3894, owner report, 2026-10-15): "Record loop" is in the dock's ⋯ menu
+
+Owner decision 11 put "Record loop" in the action dock. Shipped as a chip on the toggles row, it made that row too wide: hold, Skip to my turn, bluff, loop, Undo and ⋯ do not fit in the dock's width at a desktop viewport, and "Skip to my turn" was cut off mid-word. Recording a loop is rare, and a player starts one before they press anything else, so a standing chip pays for itself in space nobody has.
+
+- **Where it is.** "Record loop" is an entry in the dock's ⋯ menu (the Table group), offered under the same condition as before: the viewer holds priority, nothing is recording, no prompt is open (`loopControl`'s `record` mode). It stays in the action dock, as decision 11 says, one click further in. Its name is still `L.recordLoop`, now a `text` menu item, not an `aria` button.
+- **While a loop stands** the dock shows it on the status row, for every seat, exactly as §9 says: the recorder's step count with Stop and Cancel, "propose…" once the loop closed, "waiting for answers" once proposed, and the strip other seats read. Those controls are not in the menu, because the player needs them in one click while they are playing the iteration.
+- **Unchanged.** The state machine, the five loop actions, the sheets and the labels for Stop, Cancel and the sheets. No keyboard shortcut.
+- **The row itself.** Moving the chip alone was not enough at a tablet-width dock, so the toggles row also lets Undo (now an icon with its count, named by its `aria-label`) and ⋯ wrap together onto a second row, instead of every label shrinking until it clips. The dock keeps one row at 1920×1080 and 2344×1377 and wraps at 1024×768 or when bluff and Skip to my turn are both at their widest.
