@@ -51,9 +51,7 @@ import (
 // uses. The only observable difference is an instant or sorcery that
 // would be put somewhere that is not a graveyard (shuffled into a
 // library, returned to a hand): here it is exiled, a hair weaker than
-// printed and never stronger.
-//
-// No simplification.
+// printed and never stronger. That is the card's one declared caveat.
 const (
 	emetSelchOracleID = "634475d9-a1d7-4146-9a37-645d3d162af1"
 	emetSelchLabel    = "Emet-Selch of the Third Seat — you may cast target instant or sorcery card from your graveyard"
@@ -73,7 +71,10 @@ func init() {
 	Register(Spec{
 		OracleID:     emetSelchOracleID,
 		Name:         "Emet-Selch of the Third Seat",
-		Completeness: CompletenessFull,
+		Completeness: CompletenessCaveats,
+		Caveats: []string{
+			"A spell cast this way is exiled whenever it would leave the stack, not only when it would go to your graveyard.",
+		},
 		CostModifiers: []game.CostModifier{
 			CostsLess(2, "Spells you cast from your graveyard cost {2} less to cast.",
 				YourSpell(), CastFromGraveyard()),
