@@ -25,7 +25,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, {T}, Sacrifice this artifact: Draw two cards.",
-			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 2},
 			Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
