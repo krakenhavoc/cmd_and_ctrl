@@ -520,7 +520,7 @@
       </div>
     {:else if loop && loop.state.mode !== "none" && loop.state.mode !== "record"}
       <!-- ADR 0193 §9: a loop being recorded or proposed, for every seat. -->
-      <LoopControl part="status" {...loop} />
+      <LoopControl {...loop} />
     {:else if bluffLine}
       <!-- Only the viewer sees this line. -->
       <span class="bluff-status" role="status">{bluffLine}</span>
@@ -603,35 +603,35 @@
       keyShortcuts={ariaKeys(keys.toggleBluff)}
       locked={preGame}
     />
-    <!-- ADR 0193 §9: "loop", only while the viewer may start one. -->
-    {#if loop}
-      <LoopControl part="toggle" {...loop} />
-    {/if}
-    <!-- ADR 0111 PR 3: the one Undo, out of the ⋯ menu and the attack
+    <!-- Undo and ⋯ travel together: when the row has to wrap they drop
+         to the second row side by side, not one chip alone (#3894). -->
+    <div class="dock-tail">
+      <!-- ADR 0111 PR 3: the one Undo, out of the ⋯ menu and the attack
          row. Disabled, not hidden, when the budget is spent; the server
          keeps the rules, this only reads them. -->
-    <button
-      type="button"
-      class="action undo"
-      disabled={!canUndo || preGame}
-      aria-label={undoBlockedReason
-        ? `Undo (unavailable: ${undoBlockedReason})`
-        : undoUnlimited
-          ? "Undo (no limit)"
-          : `Undo (${undoCount} left)`}
-      aria-keyshortcuts={ariaKeys(keys.undo)}
-      onclick={onUndo}
-      title={undoTitle}
-    >
-      <Icon name="undo" size={13} /><span class="undo-word">Undo</span>{#if !undoBlockedReason}<span
-          class="undo-count">{undoCount}</span
-        >{/if}
-    </button>
-    <!-- ADR 0111 PR 7 (owner decision 3): the ⋯ menu, out of the command
+      <button
+        type="button"
+        class="action undo"
+        disabled={!canUndo || preGame}
+        aria-label={undoBlockedReason
+          ? `Undo (unavailable: ${undoBlockedReason})`
+          : undoUnlimited
+            ? "Undo (no limit)"
+            : `Undo (${undoCount} left)`}
+        aria-keyshortcuts={ariaKeys(keys.undo)}
+        onclick={onUndo}
+        title={undoTitle}
+      >
+        <Icon name="undo" size={13} />{#if !undoBlockedReason}<span class="undo-count"
+            >{undoCount}</span
+          >{/if}
+      </button>
+      <!-- ADR 0111 PR 7 (owner decision 3): the ⋯ menu, out of the command
          bar. Last on the row, opening upward. -->
-    {#if menu}
-      <GameMenu {...menu} placement="up" />
-    {/if}
+      {#if menu}
+        <GameMenu {...menu} placement="up" />
+      {/if}
+    </div>
   </div>
 
   {#snippet actionButton(a: DockAction, cls: string)}
@@ -977,13 +977,25 @@
     opacity: 0.9;
   }
 
-  /* Toggles: small and quiet, always in the same order. One row that
-     never wraps, so the dock keeps its height; a label shrinks before
-     the row grows. */
+  /* Toggles: small and quiet, always in the same order. One row while
+     they fit: Undo is an icon chip with its count (its name is its
+     aria-label) and "Record loop" lives in the ⋯ menu, so hold, Skip to
+     my turn ✓, bluff ✓, Undo and ⋯ share a desktop dock's row. When the
+     dock is narrower, or a state widens a label (bluff ✓ counter, Skip to
+     my turn ⏸), the last toggles wrap to a second row: a label is never
+     cut off mid-word, because a flex line breaks before any item shrinks
+     (#3894). */
   .dock-toggles {
     display: flex;
-    gap: 6px;
+    flex-wrap: wrap;
+    gap: 5px 6px;
     min-width: 0;
+  }
+  .dock-tail {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 6px;
+    margin-left: auto;
   }
   .action {
     flex: 1 1 auto;
@@ -1596,12 +1608,6 @@
     }
     .dock-btn.row-btn {
       min-height: 36px;
-    }
-    /* Five toggles share 358px: Undo becomes an icon chip with its
-       count, and ⋯ is one already; their names are their aria-labels
-       either way. */
-    .undo-word {
-      display: none;
     }
     /* A phone has no Space bar to advertise. */
     .cap {

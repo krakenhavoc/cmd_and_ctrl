@@ -686,8 +686,6 @@ describe("the ⋯ menu at the table", () => {
       "hold",
       "Skip to my turn",
       "bluff",
-      // ADR 0193: the loop control, while the seat holds priority.
-      "Record loop",
       "Undo (1 left)",
       "more actions",
     ]);
@@ -797,7 +795,12 @@ describe("demonstrating a loop", () => {
 
   it("records, stops and cancels from the dock", async () => {
     const c = await mountGame("player");
-    click(buttonNamed(c, L.recordLoop)!);
+    // ADR 0193 first amendment: not a chip on the toggles row, an entry in
+    // the ⋯ menu.
+    const toggles = dockOf(c)!.querySelector('[role="group"][aria-label="priority controls"]')!;
+    expect(buttonNamed(toggles, L.recordLoop)).toBeUndefined();
+    await open(moreButtons(c)[0]!);
+    click(item(c, L.recordLoop)!);
     expect(FakeSocket.last!.last("loop_record_start")).toBeTruthy();
     cleanup();
 

@@ -385,6 +385,21 @@
           <Icon name="drop" size={15} /> Life history
         </button>
       {/if}
+      {#if props.seated && props.recordLoop && props.onRecordLoop}
+        <!-- ADR 0193 §9, first amendment: starting a loop recording lives
+             here, off the dock's crowded toggles row. Offered only while
+             the seat holds priority with nothing recording; once one
+             stands, its Stop and Cancel are the dock's status line. -->
+        <button
+          class="mi"
+          role="menuitem"
+          onclick={via(props.onRecordLoop)}
+          title="Record a loop (CR 732.2a): play one iteration by hand, then propose repeating it"
+        >
+          <Icon name="undo" size={15} />
+          {L.recordLoop}
+        </button>
+      {/if}
       {#if props.seated && (props.forgetTriggerOrders ?? 0) > 0 && props.onForgetTriggerOrders}
         <!-- #3016: the trigger orders this seat asked to reuse, all at
              once. Each one can also be forgotten from its own notice. -->

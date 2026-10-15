@@ -310,10 +310,10 @@ export const LABEL_SPECS = {
   }),
   recordLoop: label({
     name: "Record loop",
-    kind: "aria",
-    role: "button",
-    owners: [`${BOARD}LoopControl.svelte`],
-    doc: "the dock's loop control while you hold priority (ADR 0193, CR 732.2a): every action from now on, any seat's, is one iteration of a loop",
+    kind: "text",
+    role: "menuitem",
+    owners: [`${BOARD}GameMenu.svelte`],
+    doc: "the dock's ⋯ menu entry while you hold priority (ADR 0193 first amendment, CR 732.2a): every action from now on, any seat's, is one iteration of a loop; once recording, Stop and Cancel are the dock's status line",
   }),
   stopLoop: label({
     name: "Stop recording the loop",

@@ -74,6 +74,18 @@ test.describe("the action dock's ⋯ menu", () => {
     const more = toggles.getByRole("button", { name: "more actions" });
     await expect(more).toBeVisible();
     await expect(more).toHaveAttribute("aria-expanded", "false");
+    // ADR 0193's first amendment (#3894): "Record loop" is a ⋯ menu entry,
+    // never a chip on this crowded row.
+    await expect(
+      toggles.getByRole("button", { name: "Record loop" }),
+    ).toHaveCount(0);
+    // And no control in the dock clips its label (#3894).
+    const clipped = await dock.evaluate((el) =>
+      [...el.querySelectorAll<HTMLElement>("button")]
+        .filter((b) => b.scrollWidth > b.clientWidth)
+        .map((b) => b.getAttribute("aria-label") ?? b.textContent),
+    );
+    expect(clipped).toEqual([]);
 
     // It opens upward, out of the dock, with the entries a seat has.
     await more.click();
