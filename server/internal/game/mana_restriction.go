@@ -317,6 +317,17 @@ type ManaSpendContext struct {
 	// (AnyColorSpendStatic.OwnAbilities) compares it with the rider's
 	// source.
 	Object uuid.UUID
+
+	// wish is what the spell being cast reads back from its payment
+	// (#3853, ADR 0068 amendment 2026-10-15), snapshotted when the
+	// context is built. Nil for every payment that is not a cast.
+	//
+	// It is an ORDERING input and nothing else: the auto-tapper reads it
+	// to pick between sources, and the pool solver to pick between
+	// tokens it was already free to take. No payability test reads it
+	// (see spendWish). Plain data, so it can sit in a stored context
+	// (AssistPrompt.spend) without carrying a Game or a closure with it.
+	wish *spendWish
 }
 
 // ManaSpendForAbilityRow is ManaSpendForAbility for one row of the
@@ -356,6 +367,7 @@ func ManaSpendForCast(c Card) ManaSpendContext {
 		Colors:           c.EffectiveColors(),
 		AllCreatureTypes: HasAllCreatureTypes(&c),
 		SourceOnly:       SpendOnlySourcesFor(CatalogKey(c)),
+		wish:             newSpendWish(c),
 	}
 }
 

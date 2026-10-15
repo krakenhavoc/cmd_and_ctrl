@@ -728,3 +728,117 @@ track what was spent".
 The Cast anyway tooltips and the dock confirmation's hint said no mana
 is spent. They now say the pool's mana pays. The label contract (ADR
 0118 §2: the row, the dialog name, Cast and Cancel) is unchanged.
+
+## Amendment (2026-10-15, [#3853](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3853)): auto-pay picks the mana that does something
+
+A5 gave the auto-tapper one wish: the spell being cast names the *kinds* of
+source it reads back (Hired Hexblade → a Treasure). Two more choices of mana
+mattered and were left to chance. This amendment widens the same wish to cover
+them. Its bound is A5's, restated because every decision below leans on it.
+
+### B1. The bound: an ordering, and nothing else
+
+The wish reaches the candidate sort (`sortTapSources`), the generic recruit
+(`orderUnusedByGenericPreference`, `recruitGeneric`) and the order the pool
+solver walks its runs (`spendOrder`, `spendGenericWished`). It adds no candidate
+and drops none, and no payability test reads it. So the legal-move enumerator
+(which asks the same planner for its bool) and the cast gate keep agreeing: a
+cast is offered exactly when it can be paid. `TestTheWishNeverChangesWhetherACostIsPayable`
+runs five spells' worth of wishes over three boards and eleven costs and compares
+the planner's answer with and without the whole wish.
+
+Every new key is a tiebreak **below** the planner's own thrift tiers (sacrifice,
+card out of hand, energy, pain, frozen) and above restrictiveness / the colour-count
+tier. A rider or a colour reading is a bonus, and a bonus does not cost a Treasure,
+a card or a life point; #1212's source wish is the one exception, because there the
+card's text *is* the instruction. Consequently Boseiju (pay 2 life), Hall of the
+Bandit Lord (pay 3) and Generator Servant (sacrifice itself) stay behind a painless
+land even when their rider would fire. `TestARiderDoesNotOutrankTheThriftTiers`
+and `TestAutoPayDoesNotSacrificeGeneratorServantJustForTheHaste` pin it.
+
+### B2. Source-side riders: a rank, from the check the rider fires by
+
+`tapSource.RiderRank` is -1 when one of the ability's `SpendRiders` would fire on
+this spell, +1 when it carries riders the planner can judge and none would (the
+source is **held back** behind ordinary ones), and 0 for a source with no rider.
+It is a tier, never an exclusion: a board whose only source is a held-back rider
+land still pays (`TestAHeldBackSourceStillPaysWhenItIsTheOnlyOne`).
+
+"Would fire" is `ManaSpendContext.riderFires`, which is the test
+`applyManaSpendRidersLocked` makes at the spend: the rider's `When` filter against
+the spend context, then the registered `Condition` of a trigger rider
+(`ManaSpendTrigger.Condition`, Path of Ancestry's "shares a creature type with your
+commander") or a counted one (`ManaRiderCount.Condition`, Opal Palace's "your
+commander"). A rider the planner cannot judge — a keep-until-end-of-turn mark, an
+unregistered key, a Condition nobody could answer — ranks neutral, the weaker claim.
+The Condition is asked of the spell found by ID in whatever zone holds it, once per
+planning call.
+
+What this does not reach, by the same bound: the auto-tapper refuses a mana ability
+with a spend restriction (autotap.go, `autoTapAbilityAccepts`: restricted output is
+"a decision, not a resource"). Cavern of Souls' coloured half and Delighted
+Halfling's legendary-only half are therefore not planned however well their rider
+would suit the spell; planning them would add a candidate. Floating mana they made
+is ranked like any other token (B4). Cavern's `{C}` and Halfling's `{C}` carry no rider.
+
+### B3. Colour readers: a new declaration, a static key and a bounded greedy
+
+Existing declarations expose the *kinds* of source (`WantsManaFrom`) and the
+converge / sunburst spread (`WantsDistinctColors`). "If {R} was spent", adamant
+and the hybrid readers (Moonhold, River's Grasp) read one named colour, which
+neither covers, so `Spec.WantsColors []string` (WUBRG) is added, read through
+`CatalogWantsColors`. Declared on Gruul Scrapper, Boros Fury-Shield, Ribbons of
+Night, Slaying Fire, Moonhold and River's Grasp. Painful Truths and Etched Oracle
+already set `WantsDistinctColors`. Memory Deluge and its kin read the *total* spent,
+which the cost fixes, so there is nothing to plan.
+
+`tapSource.ReadsColor` marks a candidate that makes a colour the spell names (any
+colour, for a converge spell). The generic recruit ranks it above the colour-count
+tier, so a `{2}{G}` Gruul Scrapper pays its generic half with the Mountain rather
+than the Sol Ring. The coloured pass is untouched: a pip is paid in its own colour
+whatever the planner prefers.
+
+For a spell that counts *how many* of its colours were spent (converge, or a card
+naming two colours), `colorSpread` re-ranks inside the group the order already
+declared equal (`sameGenericGroup`) toward a source that adds a colour the plan does
+not make yet. It is greedy and consults no node budget, so it cannot change which plan
+`solveColored` finds. When it recruits a dual land for a colour it records it as
+`plannedTap.Prefer`, and the executor makes that colour on the slot's fall-through
+only (`pickColorForPlanned`): a still-unpaid pip is paid first, exactly as before,
+so the hint can steer a land's mana and cannot leave a pip unpaid.
+
+The "bounded search over the plans the solver already finds" the issue allows was
+not needed: the greedy re-rank gets the converge case (three Plains and an Island
+beside a Sol Ring spend a Plains and the Island) without it.
+
+### B4. The floating pool: same order, same rule
+
+`ManaSpendContext` of a cast carries a data-only `spendWish` (the spell's ID, its
+three declarations, and the answers to its tokens' conditioned riders), stamped when
+the context is built; an ability's payment carries none. Plain data on purpose, so a
+context stored in `AssistPrompt.spend` carries no closure or `*Game` into the ADR 0041
+closure ratchet. `spendOrder` ranks runs by `tokenRank` inside a restriction tier
+(restricted-first stays dominant), and the generic half is spent firing-rider mana
+first, then mana of a colour the spell reads, then the usual colourless-first order,
+and mana whose rider would be wasted last (`spendGenericWished`). A token made by a
+source of a kind the spell wants (#1212) ranks with the firing riders, so Hired
+Hexblade spends a floating Treasure mana before a plain one. The conditioned riders on
+the payer's tokens are answered against the game at the spend
+(`stampRiderVerdictsLocked`, called where `applyCastCostLocked` builds its context).
+
+### B5. Out of scope, and why
+
+- **Riders on an activation's payment.** A Path of Ancestry mana spent on an equip
+  cost is "wasted" in the same sense, but an activation's context carries no wish and
+  `granted_mana_spent_readers` pins the pool order of one. Separable.
+- **Raising a rider above the thrift tiers.** Whether a firing Boseiju is worth two
+  life is a player's call; the planner does not make it.
+- **Restricted mana abilities** (B2).
+- **Adamant "at least three" as a hard target.** The ordering concentrates red mana
+  when the board has it; a card is not made castable or uncastable by it.
+
+### Tests
+
+`game/autotap_wish_test.go` (every shape, in both battlefield orders, and the
+payability bound), `cards/effects/autotap_rider_wish_test.go` (the printed cards) and
+`aiseat/autopay_rider_bot_test.go` (a bot's enumerated cast pays the same way).

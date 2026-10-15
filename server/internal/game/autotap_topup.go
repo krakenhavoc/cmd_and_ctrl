@@ -292,16 +292,21 @@ func (g *Game) autoTapTopUpLocked(
 	// spell" — the sources that could not pay are out of every plan
 	// below, the pool top-up and the costed pass alike.
 	excluded = g.excludeNonQualifyingSourcesLocked(controller, excluded, ctx.SourceOnly)
+	// #3853: the whole wish — #1212's source kinds plus what the spell's
+	// riders and colour readings prefer. Ordering only, read by the
+	// planner's comparators and the pool's spend order; see
+	// autotap_wish.go for the bound.
+	wish := g.autoTapWishFor(controller, ctx, prefer)
 	p := g.playerByIDLocked(controller)
 	if p == nil {
-		plan, ok := g.autoTapPreferringLocked(controller, cost, xValue, excluded, prefer)
+		plan, ok := g.autoTapWishedLocked(controller, cost, xValue, excluded, wish)
 		return plan, cost, ok
 	}
 	if p.ManaPool.CanPayFor(cost, xValue, ctx) {
 		return nil, ParsedCost{}, true
 	}
 	for _, short := range poolShortfalls(p.ManaPool, cost, xValue, ctx) {
-		if plan, ok := g.autoTapPreferringLocked(controller, short, 0, excluded, prefer); ok {
+		if plan, ok := g.autoTapWishedLocked(controller, short, 0, excluded, wish); ok {
 			return plan, short, true
 		}
 	}
@@ -309,7 +314,7 @@ func (g *Game) autoTapTopUpLocked(
 	// Signet's {1} (or a filter land's {W/U}) from the plan's other
 	// sources and the floating pool pays the WHOLE cost, so the cost
 	// itself is what the executor colour-picks against.
-	if plan, ok := g.autoTapCostedLocked(p, cost, xValue, excluded, prefer); ok {
+	if plan, ok := g.autoTapCostedLocked(p, cost, xValue, excluded, wish); ok {
 		return plan, cost, true
 	}
 	return nil, ParsedCost{}, false

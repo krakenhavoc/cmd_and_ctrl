@@ -2237,7 +2237,9 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	// ForceCast, is a WAIVED charge. The same spend context gates every
 	// mode, so restricted mana never pays for an object outside its
 	// restriction.
-	spendCtx := ManaSpendForCastParams(card, params)
+	// #3853: stamped so the pool spend can tell mana whose rider fires on
+	// this spell from mana it would be wasted on (an ORDER, never a test).
+	spendCtx := g.stampRiderVerdictsLocked(ManaSpendForCastParams(card, params), p.ID)
 	canPay := p.ManaPool.CanPayFor(cost, params.XValue, spendCtx)
 	if params.ForceCast || (!params.Strict && !canPay) {
 		// The LIFE half is paid first and in full: a life total is
@@ -2782,7 +2784,7 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 					bookColorRequirement(color, &pending)
 				}
 			} else {
-				color = pickColorForSlot(slot.Options, &pending)
+				color = pickColorForPlanned(planned, slot.Options, &pending)
 			}
 			if color == "" {
 				continue

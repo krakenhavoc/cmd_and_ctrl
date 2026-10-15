@@ -56,6 +56,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"XCeiling":                   "a bound on a spell's announced X, read at cast",
 	"WantsDistinctColors":        "an auto-tapper hint",
 	"WantsManaFrom":              "an auto-tapper hint",
+	"WantsColors":                "an auto-tapper hint",
 }
 
 func TestEveryCardDefSlotIsClassifiedForAbilityRows(t *testing.T) {

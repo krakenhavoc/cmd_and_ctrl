@@ -344,6 +344,15 @@ type plannedTap struct {
 	// every plan's meaning before ADR 0093 and a hand source's now.
 	Ref string
 
+	// Prefer is the colour the planner recruited this source FOR when the
+	// spell being cast reads colours (#3853): the colour a "{R} was
+	// spent" card asked for, or a colour a converge spell had not spent
+	// yet. The executor makes it when the source offers it and no still
+	// unpaid coloured requirement would take the mana instead
+	// (pickColorForPlanned), so it can steer a dual land's mana and
+	// cannot leave a pip unpaid. Empty for every other entry.
+	Prefer string
+
 	// Costed marks an entry whose mana ability owes MANA (#2455): a
 	// Signet's "{1}, {T}", a filter land's "{W/U}, {T}". The executor
 	// pays that cost out of the pool, from the tokens FundedBy names,
@@ -466,7 +475,23 @@ func (g *Game) autoTapPreferringLocked(
 	excluded map[uuid.UUID]bool,
 	prefer ManaSourceKinds,
 ) (tapPlan, bool) {
-	sources := gatherTapSources(g, controller, excluded, prefer)
+	return g.autoTapWishedLocked(controller, cost, xValue, excluded, &autoTapWish{kinds: prefer})
+}
+
+// autoTapWishedLocked is autoTapPreferringLocked with the whole wish
+// (#3853): the source kinds #1212 added, plus what the spell being cast
+// reads back from its payment and what its spend riders would do — see
+// autotap_wish.go. The bound is the same one, and it is the reason the
+// wish is a parameter of the gather and of the two comparators and
+// of nothing else: no candidate is added or dropped on its account.
+func (g *Game) autoTapWishedLocked(
+	controller uuid.UUID,
+	cost ParsedCost,
+	xValue int,
+	excluded map[uuid.UUID]bool,
+	wish *autoTapWish,
+) (tapPlan, bool) {
+	sources := gatherWishedSources(g, controller, excluded, wish)
 	if len(sources) == 0 && (len(cost.Required) > 0 || cost.GenericWithX(xValue) > 0) {
 		return nil, false
 	}
@@ -508,7 +533,7 @@ func (g *Game) autoTapPreferringLocked(
 	if budget <= 0 {
 		return nil, false
 	}
-	if !recruitGeneric(sources, used, consumed, &plan, need+deferred, &pain) {
+	if !recruitGeneric(sources, used, consumed, &plan, need+deferred, &pain, newColorSpread(wish, cost, sources, used)) {
 		return nil, false
 	}
 	return plan, true
@@ -587,6 +612,14 @@ func sortTapSources(sources []tapSource) {
 		}
 		if sources[i].Frozen != sources[j].Frozen {
 			return !sources[i].Frozen
+		}
+		// #3853: what the source's spend rider would do for THIS spell.
+		// Below every tier above, for the reason the colour wish is: a
+		// rider is a bonus, and a bonus does not pay for a Treasure or a
+		// point of life. Above restrictiveness, because the point is to
+		// get the source into the plan at all.
+		if sources[i].RiderRank != sources[j].RiderRank {
+			return sources[i].RiderRank < sources[j].RiderRank
 		}
 		return restrictivenessScore(sources[i]) < restrictivenessScore(sources[j])
 	})
@@ -691,6 +724,21 @@ type tapSource struct {
 	// not be planned at all — a Treasure was not a candidate — so the
 	// hint's headline card was the one card it never reached.
 	Wanted bool
+
+	// RiderRank is what this ability's spend riders would do for the
+	// spell being cast (#3853): -1 when one would fire, +1 when it has
+	// riders and none would (the source is HELD BACK behind ordinary
+	// ones), 0 for a source with no rider or one the planner cannot
+	// judge. A TIER and not an exclusion: it reorders the two
+	// comparators and is consulted nowhere a source could be dropped.
+	// Zero on every source of every cast that names no object.
+	RiderRank int8
+
+	// ReadsColor marks a source whose colours the spell being cast reads
+	// back (#3853): it can make a colour a Spec.WantsColors card names,
+	// or any colour at all for a converge / sunburst card. Read by the
+	// generic recruit only. Same bound as Wanted.
+	ReadsColor bool
 
 	// LeavesHand marks a source that is NOT A PERMANENT: a card in
 	// the controller's hand whose mana ability functions from there
@@ -801,7 +849,12 @@ func (s tapSource) lastResort() bool { return s.Sacrifices || s.GrantedCreature 
 // alternatives — a Forest under Chromatic Lantern is both a {G} source
 // and an any-colour one, and the solver books whichever the cost needs.
 func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool, prefer ManaSourceKinds) []tapSource {
-	return gatherSources(g, controller, excluded, prefer, false)
+	return gatherSources(g, controller, excluded, &autoTapWish{kinds: prefer}, false)
+}
+
+// gatherWishedSources is gatherTapSources with the whole wish (#3853).
+func gatherWishedSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool, wish *autoTapWish) []tapSource {
+	return gatherSources(g, controller, excluded, wish, false)
 }
 
 // gatherSources is gatherTapSources with the one switch #2455 added:
@@ -810,15 +863,16 @@ func gatherTapSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 // ones that owe none, through every other gate unchanged, and skips
 // the hand: a Spirit Guide owes no mana. Each costed candidate carries
 // its priced cost (tapSource.Cost).
-func gatherSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool, prefer ManaSourceKinds, costed bool) []tapSource {
-	out := gatherSourcesRaw(g, controller, excluded, prefer, costed)
+func gatherSources(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool, wish *autoTapWish, costed bool) []tapSource {
+	out := gatherSourcesRaw(g, controller, excluded, wish, costed)
 	stampHandDemand(g, controller, out)
+	wish.stampReads(out)
 	return out
 }
 
 // gatherSourcesRaw is gatherSources before #3604 stamps each candidate
 // with the colours the rest of the hand needs.
-func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool, prefer ManaSourceKinds, costed bool) []tapSource {
+func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool, wish *autoTapWish, costed bool) []tapSource {
 	if g.Battlefield == nil {
 		return nil
 	}
@@ -956,9 +1010,12 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 			// this source is. The AMOUNT it produces is priced above and
 			// the KINDS it produces are unaffected by that — CR 106.12b
 			// replaces how much mana is produced, not what produced it.
-			wanted := prefer != 0 && manaSourceKindsOf(c).HasAny(prefer)
+			wanted := wish.kindSet() != 0 && manaSourceKindsOf(c).HasAny(wish.kindSet())
 			out = appendTapSource(out, tapSource{
 				CardID: c.InstanceID,
+				// #3853: what this ability's spend riders would do for
+				// the spell being cast.
+				RiderRank: wish.riderRank(picked.SpendRiders),
 				// #1242: Frozen is a claim about an UNTAP the source would
 				// miss, so it is asked only of a source this plan taps. A
 				// sacrifice-only source is gone, not tapped.
@@ -986,7 +1043,7 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 	if costed || landsOnly {
 		return out
 	}
-	return gatherManaZoneSources(g, controller, excluded, prefer, identity, priceProduction, out)
+	return gatherManaZoneSources(g, controller, excluded, wish.kindSet(), identity, priceProduction, out)
 }
 
 // gatherManaZoneSources is gatherTapSources' NON-BATTLEFIELD half
@@ -2041,6 +2098,7 @@ func recruitGeneric(
 	plan *tapPlan,
 	need int,
 	pain *spendBudget,
+	spread *colorSpread,
 ) bool {
 	if need <= 0 {
 		return true
@@ -2095,9 +2153,20 @@ func recruitGeneric(
 				}
 			}
 		}
+		// #3853: a converge / sunburst spell would rather the next source
+		// added a colour the plan does not make yet. Only among sources
+		// the order cannot tell apart (sameGenericGroup), so it can never
+		// reach for a tier the order kept back; and the overshoot fit
+		// above has already had its say, so this only swaps a pick for
+		// one that fits as well.
+		pick = spread.refine(sources, candidateOrder, eligible, pick, deficit)
 		pain.spend(sources[pick])
 		used[pick] = true
-		*plan = append(*plan, plannedTap{CardID: sources[pick].CardID, OneColor: sources[pick].OneColor, DifferentColors: sources[pick].DifferentColors, Ref: sources[pick].Ref})
+		*plan = append(*plan, plannedTap{
+			CardID: sources[pick].CardID, OneColor: sources[pick].OneColor,
+			DifferentColors: sources[pick].DifferentColors, Ref: sources[pick].Ref,
+			Prefer: spread.colorFor(sources[pick]),
+		})
 		deficit -= len(sources[pick].Slots)
 	}
 	return true
@@ -2120,6 +2189,8 @@ func sameGenericGroup(a, b tapSource) bool {
 		a.Energy == b.Energy &&
 		a.Pain == b.Pain &&
 		a.Frozen == b.Frozen &&
+		a.RiderRank == b.RiderRank &&
+		a.ReadsColor == b.ReadsColor &&
 		a.HandDemand == b.HandDemand
 }
 
@@ -2239,8 +2310,10 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 		pain       int
 		energy     int
 		costTier   int
-		demand     int // #3604: distinct colours the hand still wants
-		tier       int // 0 = colorless-only, else how many colours (#2278)
+		rider      int8 // #3853: -1 fires, +1 held back
+		reads      bool // #3853: makes a colour the spell reads
+		demand     int  // #3604: distinct colours the hand still wants
+		tier       int  // 0 = colorless-only, else how many colours (#2278)
 		slotCnt    int
 	}
 	out := make([]rank, 0, len(sources))
@@ -2260,6 +2333,8 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 			pain:       s.Pain,
 			energy:     s.Energy,
 			costTier:   s.costTier(),
+			rider:      s.RiderRank,
+			reads:      s.ReadsColor,
 			demand:     s.HandDemand,
 			tier:       t,
 			slotCnt:    len(s.Slots),
@@ -2334,6 +2409,19 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 		}
 		if out[a].frozen != out[b].frozen {
 			return !out[a].frozen
+		}
+		// #3853: the spell's own riders and readings, above the hand's
+		// demand because they are about THIS cast and the demand is about
+		// a guess at the next one. A source whose rider fires comes first,
+		// one that holds a rider this spell would waste comes last; and a
+		// source that makes a colour the spell reads comes before one that
+		// does not, ahead of the colour-count tier it is overriding (a
+		// converge spell's generic pip wants the Island, not the Sol Ring).
+		if out[a].rider != out[b].rider {
+			return out[a].rider < out[b].rider
+		}
+		if out[a].reads != out[b].reads {
+			return out[a].reads
 		}
 		// #3604: a source of a colour the rest of the hand still needs
 		// comes after one of a colour it does not, above the colour-count

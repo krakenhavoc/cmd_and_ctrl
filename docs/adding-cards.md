@@ -717,6 +717,16 @@ it has not spent yet. Without it the payment is colourless-first and the
 card converges for less than the board allowed. Adamant deliberately
 does not set it.
 
+A card that reads one NAMED colour of its payment ("if {R} was spent to
+cast it", adamant, Moonhold's {R} and {W}) sets `Spec.WantsColors` — the
+colours, as `[]string{"R"}`. Auto-pay then pays the generic half with a
+source (or a floating mana) of that colour when it has a free choice
+(#3853, ADR 0068 amendment 2026-10-15). It is an ordering hint like
+`WantsManaFrom`: the card is never made uncastable by it, and a payment
+made by hand reads as it was made. Do not set it for a colour the cost
+already prints as a pip, which is paid in that colour whatever the
+planner prefers.
+
 A fully funded floating pool is spent and recorded in either payment
 mode. Permissive mode waives only a pool that cannot cover the whole
 cost; Cast anyway always waives it, even when funded.

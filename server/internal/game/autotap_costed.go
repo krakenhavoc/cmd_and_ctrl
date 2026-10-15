@@ -225,18 +225,18 @@ func (g *Game) autoTapCostedLocked(
 	cost ParsedCost,
 	xValue int,
 	excluded map[uuid.UUID]bool,
-	prefer ManaSourceKinds,
+	wish *autoTapWish,
 ) (tapPlan, bool) {
 	if p == nil || g.producesManaReplacementsExistLocked() {
 		return nil, false
 	}
-	costed := gatherSources(g, p.ID, excluded, prefer, true)
+	costed := gatherSources(g, p.ID, excluded, wish, true)
 	costed = netPositiveCosted(costed)
 	if len(costed) == 0 {
 		return nil, false
 	}
 	sortTapSources(costed)
-	ordinary := gatherTapSources(g, p.ID, excluded, prefer)
+	ordinary := gatherWishedSources(g, p.ID, excluded, wish)
 	sortTapSources(ordinary)
 	floating := floatingSources(p.ManaPool)
 
