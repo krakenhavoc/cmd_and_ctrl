@@ -603,6 +603,13 @@ type ScheduleDelayedTrigger struct {
 	// (Final Fortune). Zero is unbound.
 	OnExtraTurn int
 
+	// OnPhase binds the trigger to one phase of THIS turn: the id
+	// game.AddPhasesForEffect returned for an added combat, "at the
+	// beginning of THAT combat" (ADR 0188 Decision 5; use
+	// AddPhases.AtThatCombat). Zero is unbound. The engine stamps the
+	// turn and refuses an id that cannot still begin.
+	OnPhase int
+
 	// EachThisTurn is "at the beginning of EACH <step> this turn"
 	// (Full Throttle's "each combat this turn"): the trigger fires at
 	// every matching step for the rest of the turn instead of once, and
@@ -631,6 +638,7 @@ func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
 		Body:               s.Body,
 		Params:             s.Params,
 		OnExtraTurn:        s.OnExtraTurn,
+		OnPhaseID:          s.OnPhase,
 	}
 	if s.EachThisTurn {
 		d := ctx.Game.UntilEndOfTurnDuration()

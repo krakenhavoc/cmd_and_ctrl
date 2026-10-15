@@ -125,6 +125,19 @@ type DelayedTrigger struct {
 	// skipping the extra turn that is gained, you do not lose the game."
 	OnExtraTurn int
 
+	// OnPhaseID binds the trigger to ONE phase instance of the turn it
+	// was scheduled in (ADR 0188 Decision 5): the id AddPhasesForEffect
+	// returned for an added combat, "at the beginning of THAT combat"
+	// (Moraug, Fury of Akoum; World at War). Zero is unbound. Phase ids
+	// restart every turn, so OnSeq names the turn the id belongs to and
+	// the trigger fires only while both match. ScheduleDelayedTriggerForEffect
+	// stamps OnSeq itself (a phase can only be in the current turn's plan)
+	// and refuses an id that is neither the phase in progress nor in the
+	// plan. A bound trigger whose phase never begins (the turn was ended,
+	// CR 724.1, or an effect removed it) is swept as the next turn begins.
+	OnPhaseID int
+	OnSeq     int
+
 	// TurnOf restricts the trigger to a step of ONE NAMED PLAYER's
 	// turn: "at the beginning of THAT PLAYER's next end step" (The
 	// Eternal Wanderer's +1 returns an opponent's card on the
@@ -338,6 +351,13 @@ func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
 		// can never fire, so it is never queued.
 		return uuid.Nil
 	}
+	if dt.OnPhaseID != 0 {
+		if !g.phaseReachableLocked(dt.OnPhaseID) {
+			// The phase is not this turn's to come: it can never begin.
+			return uuid.Nil
+		}
+		dt.OnSeq = g.Turn.Seq
+	}
 	if dt.ID == uuid.Nil {
 		dt.ID = uuid.New()
 	}
@@ -440,7 +460,8 @@ func (g *Game) fireDelayedTriggersLocked(step Step) {
 		}
 		if dt.At == step && (!dt.ControllerTurnOnly || g.activePlayerIDLocked() == dt.Controller) &&
 			(dt.TurnOf == uuid.Nil || g.activePlayerIDLocked() == dt.TurnOf) &&
-			(dt.OnExtraTurn == 0 || dt.OnExtraTurn == g.Turn.ExtraRef) {
+			(dt.OnExtraTurn == 0 || dt.OnExtraTurn == g.Turn.ExtraRef) &&
+			(dt.OnPhaseID == 0 || (dt.OnSeq == g.Turn.Seq && dt.OnPhaseID == g.Turn.PhaseID)) {
 			fire = append(fire, dt)
 			if dt.repeatsAtStep() {
 				// CR 603.7b: a delayed trigger with a stated duration
@@ -515,6 +536,8 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		At:                 dt.At,
 		ControllerTurnOnly: dt.ControllerTurnOnly,
 		OnExtraTurn:        dt.OnExtraTurn,
+		OnPhaseID:          dt.OnPhaseID,
+		OnSeq:              dt.OnSeq,
 		TurnOf:             dt.TurnOf,
 		CreatedSeq:         dt.CreatedSeq,
 		Body:               dt.Body,
@@ -770,7 +793,11 @@ func (g *Game) clearExpiredDelayedTriggersLocked(endOfTurn bool) {
 // to an extra turn (OnExtraTurn) that is neither the turn now beginning
 // nor still queued. Such a trigger's turn has ended without reaching its
 // step, or was dropped because its player left (CR 800.4k), and it can
-// never fire. Called by the rotation seam once the new turn is stamped.
+// never fire. It also drops one bound to a phase (OnPhaseID) of an
+// earlier turn: phase ids restart every turn, so a combat that never
+// began (the turn was ended, CR 724.1) can never be reached and its
+// id must not be mistaken for the new turn's. Called by the rotation
+// seam once the new turn is stamped.
 //
 // A fresh slice, for the reason clearExpiredDelayedTriggersLocked gives.
 //
@@ -785,6 +812,9 @@ func (g *Game) sweepUnreachableBoundTriggersLocked() {
 	kept := make([]*DelayedTrigger, 0, len(g.DelayedTriggers))
 	for _, dt := range g.DelayedTriggers {
 		if dt != nil && dt.OnExtraTurn != 0 && !g.extraTurnPendingLocked(dt.OnExtraTurn) {
+			continue
+		}
+		if dt != nil && dt.OnPhaseID != 0 && dt.OnSeq != g.Turn.Seq {
 			continue
 		}
 		kept = append(kept, dt)

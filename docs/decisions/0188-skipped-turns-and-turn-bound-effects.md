@@ -243,6 +243,11 @@ type DelayedTrigger struct {
 - Effects side: `ScheduleDelayedTrigger.OnPhase int` (the id `AddPhasesForEffect` returned); the effects layer stamps `OnSeq` from `g.Turn.Seq`.
 - **Body keys.** World at War gets its own key, `extra-combat/untap-attackers-at-that-combat` (the same function as Full Throttle's `untapCreaturesThatAttackedThisTurn`), and Moraug gets `extra-combat/untap-all-you-control`. A new key makes an older binary refuse the file (ADR 0041 phase 3). An unbound World at War untap would otherwise fire at the regular combat, where nothing has attacked yet, and miss the added one.
 
+**As built (slice 6, #3564, 2026-10-15).** Two details differ from the text above, neither in what a player sees:
+
+- **`OnSeq` is stamped by the engine, not the effects layer.** `ScheduleDelayedTriggerForEffect` sets `OnSeq` to the current turn whenever `OnPhaseID` is set, because the reachability check it has just made is against this turn's plan, so no other turn is possible. The effects layer sets only `ScheduleDelayedTrigger.OnPhase`. The fire test and the sweep read both fields as written.
+- **The binding is `AddPhases.AtThatCombat`, not a separate call.** The phase ids exist only once `AddPhasesForEffect` has returned them, so the helper schedules the trigger against the first combat id in the order the kinds were given, and schedules nothing when no combat was added (World at War in the third main phase has no "that combat").
+
 ### 6. Timing across extra phases and turns: what holds today, pinned by tests
 
 No code changes. These follow from the shipped design, and the slices below pin each one with a test:

@@ -25,10 +25,31 @@ import (
 type AddPhases struct {
 	Anchor game.PhaseAnchor
 	Kinds  []game.PhaseKind
+
+	// AtThatCombat is "at the beginning of THAT combat, <body>" (Moraug,
+	// Fury of Akoum; World at War): a delayed trigger bound to the first
+	// combat phase this added (ADR 0188 Decision 5), so it fires at that
+	// combat's beginning and at no other. Only Body, Label and Params are
+	// read; At and the binding are set here. When no combat was added
+	// (an anchor that did not hold) nothing is scheduled, which is the
+	// card's text: there is no "that combat".
+	AtThatCombat *ScheduleDelayedTrigger
 }
 
 func (a AddPhases) Apply(ctx *Context) error {
-	ctx.Game.AddPhasesForEffect(ctx.Source(), a.Anchor, a.Kinds...)
+	ids := ctx.Game.AddPhasesForEffect(ctx.Source(), a.Anchor, a.Kinds...)
+	if a.AtThatCombat == nil {
+		return nil
+	}
+	for i, k := range a.Kinds {
+		if k != game.PhaseKindCombat || i >= len(ids) {
+			continue
+		}
+		dt := *a.AtThatCombat
+		dt.At = game.StepBeginCombat
+		dt.OnPhase = ids[i]
+		return dt.Apply(ctx)
+	}
 	return nil
 }
 
@@ -49,6 +70,18 @@ func ExtraCombatAfterThisPhase() AddPhases {
 func ExtraCombatAndMainAfterThisMain() AddPhases {
 	return AddPhases{
 		Anchor: game.PhaseAnchor{Kind: game.AnchorThisMainPhase},
+		Kinds:  []game.PhaseKind{game.PhaseKindCombat, game.PhaseKindMain},
+	}
+}
+
+// ExtraCombatAndMainAfterNthMain is "after the Nth main phase this turn,
+// there is an additional combat phase followed by an additional main
+// phase" (World at War). CR 505.1b counts every main phase of the turn,
+// added ones included; a copy that resolves after the Nth has ended adds
+// nothing (the 2010-06-15 ruling).
+func ExtraCombatAndMainAfterNthMain(n int) AddPhases {
+	return AddPhases{
+		Anchor: game.PhaseAnchor{Kind: game.AnchorNthMainPhase, N: n},
 		Kinds:  []game.PhaseKind{game.PhaseKindCombat, game.PhaseKindMain},
 	}
 }
@@ -136,6 +169,15 @@ func (UntapAllCreaturesYouControl) Apply(ctx *Context) error {
 // of UntapCreaturesThatAttackedThisTurn (Full Throttle).
 func untapCreaturesThatAttackedThisTurn(g *game.Game, item *game.StackItem) error {
 	return UntapCreaturesThatAttackedThisTurn{}.Apply(NewContext(g, item))
+}
+
+// untapAllCreaturesYouControlAtThatCombat is the delayed-trigger body
+// form of UntapAllCreaturesYouControl (Moraug, Fury of Akoum: "at the
+// beginning of that combat, untap all creatures you control"). The
+// controller is the trigger's, i.e. the player whose landfall added the
+// combat.
+func untapAllCreaturesYouControlAtThatCombat(g *game.Game, item *game.StackItem) error {
+	return UntapAllCreaturesYouControl{}.Apply(NewContext(g, item))
 }
 
 // untapAllYouControlThenExtraCombat is "untap all creatures you
