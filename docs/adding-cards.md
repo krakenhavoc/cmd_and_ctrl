@@ -728,15 +728,32 @@ already prints as a pip, which is paid in that colour whatever the
 planner prefers.
 
 A fully funded floating pool is spent and recorded in either payment
-mode. Permissive mode waives only a pool that cannot cover the whole
-cost; Cast anyway always waives it, even when funded.
+mode. A waived payment (an insufficient pool in permissive mode, or a
+Cast anyway the pool cannot cover) spends what the pool can and waives
+only the shortfall (#3844).
 
-One rule covers every reader, and no card has to restate it: a payment
-the engine WAIVED — an insufficient pool in permissive mode or a
-Cast anyway override — answers "unknown", and unknown is always the
-weaker-than-printed answer. Converge counts no colours, adamant does not
-turn on, and "if no mana was spent" is false. Say so in a caveat, as
-Painful Truths and Vexing Bauble do.
+**Every card that reads the mana spent declares
+`Spec.ReadsManaSpent`** (#3855, [ADR 0068 amendment
+2026-10-15](decisions/0068-the-mana-spent-on-a-spell.md)). It is what makes
+a waived payment ASK: when something reads a payment the engine waived,
+the caster is asked what they paid outside the pool (a legal payment of
+exactly the shortfall), or whether they cast it without paying its mana
+cost, and the record becomes exact. So a mana-spent reader needs no
+strict-mana caveat. Pick the declaration by who reads what:
+
+| The card reads | Declare |
+|---|---|
+| its own payment: converge, sunburst, adamant, "the amount spent to cast it", "if no mana was spent to cast it" | `game.ReadsOwnPayment` |
+| the payment of spells its controller casts (Coin of Mastery, Lux Artillery, Satoru, expend) | `game.ReadsYourCasts` |
+| the payment of spells its opponents cast (Boromir) | `game.ReadsOpponentsCasts` |
+| every cast (Vexing Bauble, Roiling Vortex) | `game.ReadsEveryCast` |
+| the mana spent on its own activation (Protective Sphere) | `game.ReadsOwnActivations` |
+| plus: "mana from an artifact source", which a paper source can be | `\| game.ReadsSourceKinds` |
+| only Treasure mana or a spend rider's token, which paper mana never is | `game.ReadsPoolManaOnly` (never asks) |
+| the amount spent on a spell it did not watch being cast (Mana Sculpt) | `game.ReadsAnotherSpellsAmount` (never asks; the amount is always recorded) |
+
+`TestManaSpentReadersDeclareIt` scans the card files and fails one that
+reads the vocabulary without declaring, or declares without reading.
 
 **Mana that does something when it's spent (#1547)** — "and that
 spell can't be countered", "if that mana is spent on a creature
@@ -2498,9 +2515,8 @@ EntersAsCopyOfFromCast("Mockingbird",
 
 The counts come from `game.EntryCastCountsForEffect(ev)`, and they are the
 zero value when the permanent was not cast (reanimated, flickered, put onto
-the battlefield) or when the engine did not charge the cast (strict mana
-off). Both read as "nothing was spent", the weaker answer. So a card like this
-carries the strict-mana caveat every mana-spent reader carries.
+the battlefield). A card like this declares `Spec.ReadsManaSpent`, so a cast
+the engine did not charge asks what was paid (#3855) and the count is exact.
 
 **Granting an ability (CR 707.9a, #665).** A granted ability is part
 of the COPIABLE VALUES — a Clone copying a Phantasmal Image gets the

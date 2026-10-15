@@ -28,9 +28,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // exactly whether (and how much) Treasure mana paid.
 func init() {
 	Register(Spec{
-		OracleID:     "ef1e2d3d-e977-4729-9430-eba6242e5dfe",
-		Name:         "Rain of Riches",
-		Completeness: CompletenessFull,
+		OracleID:       "ef1e2d3d-e977-4729-9430-eba6242e5dfe",
+		Name:           "Rain of Riches",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Rain of Riches — create two Treasure tokens",
 				Do(CreateToken{Template: TreasureToken(), N: 2})),

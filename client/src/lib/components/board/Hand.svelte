@@ -139,7 +139,7 @@
   }: Props = $props();
 
   // ADR 0118 §2: with strict payment on, every card in the viewer's own
-  // hand with a castable face offers "Cast anyway (don't pay)" in its
+  // hand with a castable face offers "Cast anyway (pay on paper)" in its
   // popover, payable or not; a card that can only be played as a land
   // does not. The row opens the dock's confirmation (castAnyway.ts).
   function castAnywayHere(c: CardView): boolean {

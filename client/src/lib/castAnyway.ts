@@ -1,14 +1,16 @@
-// castAnyway.ts — the "Cast anyway (don't pay)" row (ADR 0118 §2,
-// #2188).
+// castAnyway.ts — the "Cast anyway (pay on paper)" row (ADR 0118 §2,
+// #2188; renamed by #3855).
 //
 // Whenever strict payment is on, every card the viewer could cast — a
 // hand card with a castable face, an exile entry in the castable-from-
 // other-zones strip whose verb is "cast", a commander in that strip or in
 // the command-zone panel — offers this row in its right-click popover's
 // Sandbox section, and in the admin override menu. Choosing it casts
-// nothing yet: it asks, in the action dock, "Cast <card> without paying
-// its mana cost?" (owner decision 6), and only Cast starts the ordinary
-// cast chain with `forceCast` (targeting.ts CastChoices).
+// nothing yet: it asks, in the action dock, "Cast <card> and pay
+// the rest on paper?" (owner decision 6), and only Cast starts the
+// ordinary cast chain with `forceCast` (targeting.ts CastChoices). If
+// something on the table reads the mana spent, the server then asks what
+// was paid on paper (paperPayment.ts, #3855).
 //
 // The row lives on four surfaces three components deep under the Board,
 // and the confirmation needs the Board's cast chain, so the request goes
@@ -29,7 +31,7 @@ import type { CastAnywayZone } from "./timing";
 export const CAST_ANYWAY_LABEL = L.castAnyway;
 // The row's title on a live row.
 export const CAST_ANYWAY_TITLE =
-  "Cast it, paying only with mana already in your pool. The game log shows the table.";
+  "Cast it: the mana in your pool pays what it can and you pay the rest on paper. The game log shows the table.";
 
 export interface CastAnywayPending {
   card: CardView;

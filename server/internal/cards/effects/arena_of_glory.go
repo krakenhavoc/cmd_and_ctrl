@@ -24,10 +24,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
-		OracleID:     "63dfe794-5f56-41ec-9883-5523b41cc3e0",
-		Name:         "Arena of Glory",
-		Completeness: CompletenessFull,
-		Replacements: []game.ReplacementEffect{b06EntersTappedUnlessLandType("mountain")},
+		OracleID:       "63dfe794-5f56-41ec-9883-5523b41cc3e0",
+		Name:           "Arena of Glory",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
+		Replacements:   []game.ReplacementEffect{b06EntersTappedUnlessLandType("mountain")},
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},

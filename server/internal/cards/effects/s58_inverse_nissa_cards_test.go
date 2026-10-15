@@ -47,12 +47,9 @@ func TestS58InverseNissaRegistered(t *testing.T) {
 			t.Errorf("%s: registered=%v name=%q", name, ok, spec.Name)
 			continue
 		}
-		wantStamp := CompletenessFull
-		if oracle == s58nMemoryDeluge {
-			wantStamp = CompletenessCaveats
-		}
-		if spec.Completeness != wantStamp {
-			t.Errorf("%s: completeness %v, want %v", name, spec.Completeness, wantStamp)
+		// Memory Deluge too since #3855: a waived payment asks.
+		if spec.Completeness != CompletenessFull {
+			t.Errorf("%s: completeness %v, want %v", name, spec.Completeness, CompletenessFull)
 		}
 	}
 }

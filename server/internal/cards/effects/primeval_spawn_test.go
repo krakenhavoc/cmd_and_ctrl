@@ -328,7 +328,7 @@ func TestPrimevalSpawnKeywordsAndCompleteness(t *testing.T) {
 	if len(want) != 0 {
 		t.Errorf("missing keywords %v", want)
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Errorf("Primeval Spawn declares the waived-payment caveat only: %+v", spec.Caveats)
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Errorf("Primeval Spawn is complete since a waived payment asks (#3855): %+v", spec.Caveats)
 	}
 }

@@ -19,19 +19,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // half when the board has them: the {R}{W} "do both" case is what auto-pay
 // reaches for, not a thing the player taps by hand.
 //
-// A payment the engine did not record (a free cast, a waived charge)
-// spends no mana it knows of, so neither half applies: weaker than
-// printed, never stronger. With "Charge mana costs" off, or after a
-// Cast anyway, only mana spent from the pool counts (ADR 0068 §3 and its
-// 2026-10-15 amendment), the same caveat Ribbons of Night carries (#3850).
+// A cast for no mana (a free cast) spends nothing, so neither half
+// applies.
+// A waived payment (strict mana off with too little in the pool, or Cast
+// anyway) asks the caster what they paid outside the pool, because the
+// card declares ReadsManaSpent, so the colours are exact (#3855, ADR 0068
+// amendment 2026-10-15).
 func init() {
 	Register(Spec{
-		OracleID:     "9b515bb8-6e37-4b2d-8d56-bb517c3b267c",
-		Name:         "Moonhold",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so Moonhold may not stop lands or creature spells as printed."},
-		WantsColors:  []string{"R", "W"},
-		Targets:      TargetPlayer("target player"),
+		OracleID:       "9b515bb8-6e37-4b2d-8d56-bb517c3b267c",
+		Name:           "Moonhold",
+		ReadsManaSpent: game.ReadsOwnPayment,
+		Completeness:   CompletenessFull,
+		WantsColors:    []string{"R", "W"},
+		Targets:        TargetPlayer("target player"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if ctx.ManaSpentOfColor("R") > 0 {
 				if err := (CantPlayLandsThisTurn{}).Apply(ctx); err != nil {

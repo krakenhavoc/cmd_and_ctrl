@@ -641,6 +641,10 @@ func dispatch(g *game.Game, a Action) error {
 			// follows an insufficient_mana error frame.
 			Strict    bool `json:"strict,omitempty"`
 			ForceCast bool `json:"force_cast,omitempty"`
+			// #3855: the answer to a paper_payment_required frame —
+			// what was paid outside the pool, or that the spell was
+			// cast without paying its mana cost.
+			PaperPayment *game.PaperPayment `json:"paper_payment,omitempty"`
 			// S15 sub-PR 5 — auto-tap-and-cast. AutoTap asks the
 			// server to plan + execute a tap pass against the
 			// caller's untapped permanents before the strict gate
@@ -767,6 +771,7 @@ func dispatch(g *game.Game, a Action) error {
 			SplitSecond:     p.SplitSecond,
 			Strict:          p.Strict,
 			ForceCast:       p.ForceCast,
+			PaperPayment:    p.PaperPayment,
 			AutoTap:         p.AutoTap,
 			AlternativeCost: p.AlternativeCost,
 			Face:            p.Face,
@@ -1643,6 +1648,9 @@ func dispatch(g *game.Game, a Action) error {
 			PhyrexianLife int  `json:"phyrexian_life,omitempty"`
 			Strict        bool `json:"strict,omitempty"`
 			AutoTap       bool `json:"auto_tap,omitempty"`
+			// #3855: as cast_spell's — the answer to a
+			// paper_payment_required frame.
+			PaperPayment *game.PaperPayment `json:"paper_payment,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -1792,6 +1800,7 @@ func dispatch(g *game.Game, a Action) error {
 				PhyrexianLife: p.PhyrexianLife,
 				Strict:        p.Strict,
 				AutoTap:       p.AutoTap,
+				PaperPayment:  p.PaperPayment,
 			})
 		}
 		params, err := buildAbilityParams(p.Label, p.Targets, p.Modes, p.XValue, p.Distribution)

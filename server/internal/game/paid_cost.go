@@ -70,6 +70,15 @@ type PaidCost struct {
 	// weaker-than-printed answer — see NoManaSpent and ColorsSpent.
 	OnPaper bool
 
+	// PaperMana is how much mana an UNDECLARED waived payment paid
+	// outside the pool (#3855): the shortfall's amount, colours
+	// unknown. The one-click waived path asserts the rest was paid on
+	// paper, so the AMOUNT is a fact even when the colours are not, and
+	// Spent().Total() counts it. Always beside OnPaper; zero on a
+	// declared payment, whose paper mana is in Mana as tokens with no
+	// source (paper_payment.go).
+	PaperMana int `json:"paperMana,omitempty"`
+
 	// CountersRemoved is how many counters a RemoveCounters
 	// component actually took off, across every permanent it took
 	// them from (#789). The number the ACTIVATOR announced for a
@@ -469,7 +478,7 @@ func (p PaidCost) Known() bool { return !p.OnPaper }
 // was made and none was waived. Used by the clone and snapshot
 // paths to keep the common case sparse.
 func (p PaidCost) IsZero() bool {
-	return len(p.Mana) == 0 && !p.OnPaper &&
+	return len(p.Mana) == 0 && !p.OnPaper && p.PaperMana == 0 &&
 		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0 &&
 		p.Sacrificed == 0 && len(p.SacrificedObjects) == 0 && len(p.AltCostObjects) == 0 &&
 		p.ReturnedAttacking == uuid.Nil && len(p.OptionalCosts) == 0 &&

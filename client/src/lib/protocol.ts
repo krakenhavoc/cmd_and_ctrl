@@ -32,6 +32,13 @@ export const ErrorCode = {
   // the client can render an "Override strict mode for this cast"
   // toast that re-fires the action with `force_cast: true`.
   InsufficientMana: "insufficient_mana",
+  // #3855 (ADR 0068 amendment 2026-10-15): a waived payment (strict mana
+  // off with a short pool, or Cast anyway) that something on the table
+  // READS. Nothing was paid. `paper_payment` carries the shortfall slot
+  // by slot and `card_id` the card cast (or the ability's source); the
+  // client asks what was paid outside the pool and re-sends the action
+  // with `paper_payment` (paperPayment.ts).
+  PaperPaymentRequired: "paper_payment_required",
   // #705 (ADR 0045 addendum Decision 8): a declare_blocker was refused
   // by the server's block-legality check. `message` is a server-built
   // sentence to show verbatim, `reason` the stable token and `card_id`
@@ -106,6 +113,18 @@ export interface ErrorPayload {
   // ErrorPayload.Reason is a bare string on the wire either way.
   // #1507: and one of AttackRefusalReason when code === "illegal_attack".
   reason?: BlockRefusalReason | AttackRefusalReason | string;
+  // #3855: the shortfall, when code === "paper_payment_required".
+  paper_payment?: PaperPaymentPrompt;
+}
+
+// PaperPaymentPrompt is a paper_payment_required frame's detail (#3855):
+// what the pool left unpaid, one slot per mana, coloured requirements
+// first. `options` are the symbols that may pay the slot (W U B R G C
+// for a generic one). `artifact_sources` asks, per mana, whether an
+// artifact made it (Coin of Mastery reads that).
+export interface PaperPaymentPrompt {
+  slots: { symbol: string; options: string[] }[];
+  artifact_sources?: boolean;
 }
 
 // BLOCK_REFUSAL_REASONS mirrors game.BlockReason (server/internal/game/
@@ -1229,6 +1248,13 @@ export interface LogEvent {
   // " without paying its mana cost"; this is for a client that wants
   // the bit. Public: never redacted with the card's name.
   unpaid?: boolean;
+  // #3855: the mana paid outside the pool on a `cast` (or `activate`)
+  // entry, as a cost string: declared at the "What did you pay?" picker
+  // when `paper_declared`, or the shortfall a one-click Cast anyway
+  // asserts. `unpaid` is now the picker's "cast without paying its mana
+  // cost" answer. The `text` already says all of it.
+  paper_paid?: string;
+  paper_declared?: boolean;
   // #984: the value named at a "choose a ..." prompt — the colour
   // LETTER on a `choose_color` entry ("G"), the creature type on a
   // `choose_type` one ("Elf"). Absent on a `choose_player` entry,

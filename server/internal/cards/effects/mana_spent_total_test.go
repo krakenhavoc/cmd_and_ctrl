@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -44,12 +45,18 @@ func mockingbirdCard(owner uuid.UUID) game.Card {
 // and the prompt (nil if it never opened and the stack settled).
 func castMockingbird(t *testing.T, g *game.Game, x int, pool string, strict bool) (uuid.UUID, *game.PendingChoice) {
 	t.Helper()
+	return castMockingbirdWith(t, g, pool, game.CastSpellParams{Strict: strict, XValue: x})
+}
+
+// castMockingbirdWith is castMockingbird with the whole cast announcement.
+func castMockingbirdWith(t *testing.T, g *game.Game, pool string, params game.CastSpellParams) (uuid.UUID, *game.PendingChoice) {
+	t.Helper()
 	me := g.Seats[g.Turn.ActiveSeat]
 	advanceToMain(t, g)
 	floatForTest(g, me, pool)
 	bird := mockingbirdCard(me.ID)
 	g.WithWriteLock(func() { me.Hand.PushTop(bird) })
-	if err := g.CastSpell(me.ID, bird.InstanceID, game.CastSpellParams{Strict: strict, XValue: x}); err != nil {
+	if err := g.CastSpell(me.ID, bird.InstanceID, params); err != nil {
 		t.Fatalf("cast Mockingbird: %v", err)
 	}
 	return bird.InstanceID, passUntilCopyPrompt(t, g)
@@ -316,24 +323,51 @@ func TestMockingbirdFlickeredWithNothingAtZeroReturnsAsItself(t *testing.T) {
 	}
 }
 
-// Declared caveat: a cast the engine did not charge (strict mana off)
-// spent an unknown amount, which reads as zero — only a mana-value-0
-// creature is offered, never "enough".
-func TestMockingbirdCastWithStrictManaOffOffersOnlyManaValueZero(t *testing.T) {
+// #3855: a cast the engine did not charge (strict mana off) asks what
+// was paid outside the pool, because Mockingbird reads the amount. A
+// cast declared paid offers what that amount reaches; one declared free
+// spent nothing and offers only a mana-value-0 creature.
+func TestMockingbirdCastWithStrictManaOffAsksWhatWasPaid(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
-	mvCreature(g, me.ID, "Two Drop", "Creature — Bear", "{1}{G}", 2, 2)
-	token := pushBattlefieldCardWithTimestamp(g, game.Card{
-		InstanceID: uuid.New(), Name: "Goblin", TypeLine: "Token Creature — Goblin",
-		Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID,
-	})
-
-	_, pc := castMockingbird(t, g, 5, "", false)
-	if pc == nil {
-		t.Fatal("no copy prompt")
+	advanceToMain(t, g)
+	bird := mockingbirdCard(me.ID)
+	g.WithWriteLock(func() { me.Hand.PushTop(bird) })
+	var ask *game.PaperPaymentRequiredError
+	if err := g.CastSpell(me.ID, bird.InstanceID, game.CastSpellParams{XValue: 2}); !errors.As(err, &ask) || len(ask.Slots) != 3 {
+		t.Fatalf("cast = %v (%+v), want a prompt for {U} and two generic", err, ask)
 	}
-	if !sameIDSet(pc.CopyOptions, token) {
-		t.Errorf("CopyOptions = %v, want only the token %s — an unrecorded payment is not \"enough\"", pc.CopyOptions, token)
+	g.WithWriteLock(func() { me.Hand.Remove(bird.InstanceID) })
+
+	for _, tc := range []struct {
+		name string
+		decl game.PaperPayment
+		mv2  bool
+	}{
+		{"declared paid", game.PaperPayment{Mana: []game.PaperMana{{Color: "U"}, {Color: "C"}, {Color: "C"}}}, true},
+		{"declared free", game.PaperPayment{Free: true}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+			two := mvCreature(g, me.ID, "Two Drop", "Creature — Bear", "{1}{G}", 2, 2)
+			token := pushBattlefieldCardWithTimestamp(g, game.Card{
+				InstanceID: uuid.New(), Name: "Goblin", TypeLine: "Token Creature — Goblin",
+				Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID,
+			})
+			decl := tc.decl
+			_, pc := castMockingbirdWith(t, g, "", game.CastSpellParams{XValue: 2, PaperPayment: &decl})
+			if pc == nil {
+				t.Fatal("no copy prompt")
+			}
+			want := []uuid.UUID{token}
+			if tc.mv2 {
+				want = append(want, two)
+			}
+			if !sameIDSet(pc.CopyOptions, want...) {
+				t.Errorf("CopyOptions = %v, want %v", pc.CopyOptions, want)
+			}
+		})
 	}
 }
 
@@ -411,9 +445,12 @@ func TestManaSculptRefundsNothingWithoutAWizard(t *testing.T) {
 	}
 }
 
-// Declared caveat: a countered spell whose caster had strict mana off
-// spent an unknown amount, and Mana Sculpt adds nothing for it.
-func TestManaSculptRefundsNothingForAWaivedPayment(t *testing.T) {
+// #3855: a countered spell whose caster had strict mana off and was
+// asked nothing (the opponent's Big Bolt reads nothing) asserted its
+// shortfall was paid on paper, so the amount spent is its whole cost and
+// Mana Sculpt refunds it — exact without asking, which is why Mana
+// Sculpt need not (and cannot) ask at the cast.
+func TestManaSculptRefundsTheAmountAWaivedPaymentAsserts(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	pushBattlefieldCardWithTimestamp(g, game.Card{
@@ -428,7 +465,12 @@ func TestManaSculptRefundsNothingForAWaivedPayment(t *testing.T) {
 	if !opp.Graveyard.Contains(victim) {
 		t.Fatal("the spell was not countered")
 	}
-	if n := len(g.DelayedTriggers); n != 0 {
-		t.Errorf("a waived payment scheduled %d refund(s)", n)
+	if n := len(g.DelayedTriggers); n != 1 {
+		t.Fatalf("a waived payment scheduled %d refund(s), want 1", n)
+	}
+	batch01AdvanceToStepOf(t, g, 0, game.StepPostcombatMain)
+	passPriorityAroundTable(t, g)
+	if got := batch01PoolColors(me); len(got) != 3 {
+		t.Errorf("pool %v, want three {C} — the whole {2}{R}", got)
 	}
 }

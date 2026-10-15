@@ -45,17 +45,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // after the ability resolves, and the window closes when the caster next
 // passes priority; the cards not cast stay in exile.
 //
-// One declared simplification, the paid-cost record's: with strict mana
-// off the engine never saw what paid, so a Spawn cast while it is off is
-// not known to have spent nothing, and is not exiled even when it was
-// cast for free (ADR 0068 §3). A Spawn that was not cast at all is
-// exiled either way.
+// A waived payment (strict mana off with too little in the pool, or Cast
+// anyway) no longer leaves this card guessing: it declares ReadsManaSpent,
+// so the caster is asked what they paid outside the pool, or whether they
+// cast it without paying its mana cost, and the record it reads is exact
+// (#3855, ADR 0068 amendment 2026-10-15).
+// A Spawn that was not cast at all is exiled either way.
 func init() {
 	Register(Spec{
 		OracleID:        "a11c6601-7e91-4def-bfea-bb34023ef3c6",
 		Name:            "Primeval Spawn",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so a Primeval Spawn you cast that way is never exiled for being free — one put onto the battlefield still is."},
+		ReadsManaSpent:  game.ReadsOwnPayment,
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance", "trample", "lifelink"},
 		Replacements: []game.ReplacementEffect{
 			SelfExiledInsteadIfNoManaSpent("Primeval Spawn"),

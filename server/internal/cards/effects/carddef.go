@@ -229,6 +229,7 @@ func buildDef(spec Spec) *game.CardDef {
 		OpponentEffectProtections:           spec.OpponentEffectProtections,
 		GameEndGates:                        spec.GameEndGates,
 		WantsDistinctColors:                 spec.WantsDistinctColors,
+		ReadsManaSpent:                      spec.ReadsManaSpent,
 		WantsManaFrom:                       spec.WantsManaFrom,
 		WantsColors:                         spec.WantsColors,
 		AdditionalLandPlays:                 spec.AdditionalLandPlays,

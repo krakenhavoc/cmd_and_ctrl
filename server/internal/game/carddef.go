@@ -431,6 +431,10 @@ type CardDef struct {
 	// 702.44), and nothing else today. It picks the colour-maximising
 	// payment strategy at the cast gate (#761).
 	WantsDistinctColors bool
+	// ReadsManaSpent is what the card reads of the mana spent to cast a
+	// spell or activate an ability (#3855, paper_payment.go): the
+	// switch that asks a waived payment what was paid on paper.
+	ReadsManaSpent ManaSpentReads
 
 	// WantsManaFrom is the kinds of mana SOURCE this card's text reads
 	// back — Treasure, creature, artifact (#1212). Read through
@@ -1000,6 +1004,12 @@ func init() {
 			return d.WantsColors
 		}
 		return nil
+	}
+	CatalogReadsManaSpent = func(key string) ManaSpentReads {
+		if d := catalogDef(key); d != nil {
+			return d.ReadsManaSpent
+		}
+		return 0
 	}
 	CatalogWantsManaFrom = func(key string) ManaSourceKinds {
 		if d := catalogDef(key); d != nil {

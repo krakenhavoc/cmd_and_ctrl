@@ -23,10 +23,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
-		OracleID:     "36937483-30cb-449a-8028-75017a124922",
-		Name:         "Boseiju, Who Shelters All",
-		Completeness: CompletenessFull,
-		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
+		OracleID:       "36937483-30cb-449a-8028-75017a124922",
+		Name:           "Boseiju, Who Shelters All",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
+		Replacements:   []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true, Life: 2},
 			Produced: "{C}",

@@ -28,9 +28,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
-		OracleID:     "7c06a368-3306-48e0-825e-a8fdc81fa343",
-		Name:         "Biophagus",
-		Completeness: CompletenessFull,
+		OracleID:       "7c06a368-3306-48e0-825e-a8fdc81fa343",
+		Name:           "Biophagus",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",

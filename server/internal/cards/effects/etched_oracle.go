@@ -23,11 +23,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Lux Artillery's "it gains sunburst" — counts the colours again
 // (CR 702.44d).
 //
-// One declared simplification is left, and it is the paid-cost
-// record's rather than the entry's: when a payment is waived, only the
-// colours that left the pool count (ADR 0068 §3 and its 2026-10-15
-// amendment, a lower bound), and with nothing in the pool the Oracle
-// enters as a 0/0 that dies at once.
+// A waived payment (strict mana off with too little in the pool, or Cast
+// anyway) no longer leaves this card guessing: it declares ReadsManaSpent,
+// so the caster is asked what they paid outside the pool, or whether they
+// cast it without paying its mana cost, and the record it reads is exact
+// (#3855, ADR 0068 amendment 2026-10-15).
 //
 // Spec.WantsDistinctColors makes the cast gate spread the payment
 // across colours, so an Oracle cast off four different lands really
@@ -40,8 +40,8 @@ func init() {
 	Register(Spec{
 		OracleID:            "7ecfa47e-1165-46a6-884c-290b1c14d020",
 		Name:                "Etched Oracle",
-		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so it can enter with fewer counters than the colors you paid."},
+		ReadsManaSpent:      game.ReadsOwnPayment,
+		Completeness:        CompletenessFull,
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Activated: []ActivatedAbility{{

@@ -28,10 +28,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
-		OracleID:     brassTunnelGrinderOracleID + "#1",
-		Name:         "Tecutlan, the Searing Rift",
-		Completeness: CompletenessFull,
-		Discovers:    true,
+		OracleID:       brassTunnelGrinderOracleID + "#1",
+		Name:           "Tecutlan, the Searing Rift",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
+		Discovers:      true,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{R}",

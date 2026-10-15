@@ -62,6 +62,14 @@ const (
 	// for this cast" toast re-fires the action with `force_cast:
 	// true` to bypass the gate. Added in S15 sub-PR 3.
 	CodeInsufficientMana = "insufficient_mana"
+	// CodePaperPaymentRequired — a waived payment (strict off with a
+	// short pool, or Cast anyway) that the spell, its watchers, or the
+	// activated ability READS the mana of (#3855). Nothing was paid.
+	// ErrorPayload.PaperPayment carries the shortfall and CardID the
+	// card cast or activated; the client asks the player what they
+	// paid outside the pool, or whether they cast it without paying
+	// its mana cost, and re-sends the action with `paper_payment`.
+	CodePaperPaymentRequired = "paper_payment_required"
 	// CodeIllegalBlock — a declare_blocker named a pair the engine's
 	// block-legality check refuses (CR 509.1b): a "can't block" or
 	// "can't be blocked" restriction, flying, or landwalk. The message
@@ -201,6 +209,29 @@ type ErrorPayload struct {
 	// ("attack_requirement") for a declaration or pass that leaves a
 	// CR 508.1d requirement unobeyed (#1571).
 	Reason string `json:"reason,omitempty"`
+	// PaperPayment populates `code: "paper_payment_required"` (#3855):
+	// what the pool left unpaid on a waived payment that something
+	// reads, one slot per mana. The client opens the paper payment
+	// picker, prefilled with each slot's first option, and re-sends
+	// the refused cast_spell / activate_ability with `paper_payment`.
+	PaperPayment *PaperPaymentPrompt `json:"paper_payment,omitempty"`
+}
+
+// PaperPaymentPrompt is the paper_payment_required frame's detail
+// (#3855, ADR 0068 amendment 2026-10-15).
+type PaperPaymentPrompt struct {
+	// Slots is the shortfall, coloured requirements first and then
+	// the generic, each with the symbols that may pay it.
+	Slots []PaperPaymentSlot `json:"slots"`
+	// ArtifactSources asks, per mana, whether an artifact made it
+	// (Coin of Mastery reads "mana from an artifact source").
+	ArtifactSources bool `json:"artifact_sources,omitempty"`
+}
+
+// PaperPaymentSlot is one mana of a shortfall.
+type PaperPaymentSlot struct {
+	Symbol  string   `json:"symbol"`
+	Options []string `json:"options"`
 }
 
 // ActionPayload is the payload body for a Kind == KindAction frame

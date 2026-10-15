@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/google/uuid"
@@ -249,10 +251,12 @@ func TestPainfulTruthsConvergesForTheColoursSpent(t *testing.T) {
 	}
 }
 
-// And a permissive cast — the human default — converges for nothing,
-// because the engine never saw the payment. Weaker than printed, and
-// declared on the card.
-func TestPainfulTruthsDrawsNothingWhenTheEngineDidNotCharge(t *testing.T) {
+// #3855: a permissive cast — the human default — with nothing in the
+// pool asks what was paid outside it, because Painful Truths reads the
+// colours. The prompt names the shortfall slot by slot, coloured first;
+// a declaration that is not a legal payment of exactly that is refused
+// with nothing paid; a legal one converges for every colour declared.
+func TestPainfulTruthsAsksWhatAWaivedPaymentPaid(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	advanceToMain(t, g)
@@ -265,22 +269,53 @@ func TestPainfulTruthsDrawsNothingWhenTheEngineDidNotCharge(t *testing.T) {
 			OracleID: painfulTruthsOracle, Owner: me.ID, Controller: me.ID,
 		})
 	})
-	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
+	var ask *game.PaperPaymentRequiredError
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); !errors.As(err, &ask) {
+		t.Fatalf("cast = %v, want a paper payment prompt", err)
+	}
+	var symbols []string
+	for _, s := range ask.Slots {
+		symbols = append(symbols, s.Symbol)
+	}
+	if !reflect.DeepEqual(symbols, []string{"{B}", "{1}", "{1}"}) || !reflect.DeepEqual(ask.Slots[0].Options, []string{"B"}) ||
+		len(ask.Slots[1].Options) != 6 || ask.ArtifactSources {
+		t.Fatalf("prompt = %+v, want {B} {1} {1}", ask)
+	}
+	if !me.Hand.Contains(id) {
+		t.Fatal("the refused cast moved the card")
+	}
+	for name, bad := range map[string][]game.PaperMana{
+		"no black":     {{Color: "R"}, {Color: "W"}, {Color: "U"}},
+		"too few":      {{Color: "B"}, {Color: "W"}},
+		"too many":     {{Color: "B"}, {Color: "W"}, {Color: "U"}, {Color: "G"}},
+		"not a symbol": {{Color: "B"}, {Color: "W"}, {Color: "X"}},
+	} {
+		err := g.CastSpell(me.ID, id, game.CastSpellParams{PaperPayment: &game.PaperPayment{Mana: bad}})
+		if !errors.Is(err, game.ErrInvalidPaperPayment) {
+			t.Errorf("%s: cast = %v, want ErrInvalidPaperPayment", name, err)
+		}
+	}
+	if !me.Hand.Contains(id) {
+		t.Fatal("a refused declaration moved the card")
+	}
+	decl := &game.PaperPayment{Mana: []game.PaperMana{{Color: "W"}, {Color: "B"}, {Color: "U"}}}
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{PaperPayment: decl}); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
+	if paid := g.StackMeta[id].Paid; paid.OnPaper || !paid.Spent().Known() || paid.Spent().Total() != 3 {
+		t.Fatalf("a declared payment is exact: %+v", paid)
+	}
 	passPriorityAroundTable(t, g)
-	if got := me.Hand.Size() - hand; got != 0 {
-		t.Errorf("drew %d cards, want 0 on an unrecorded payment", got)
+	if got := me.Hand.Size() - hand; got != 3 {
+		t.Errorf("drew %d cards, want 3 — one per colour declared", got)
 	}
 }
 
-// #3844: a waived payment spends what the pool can pay, and converge
-// counts the colours of THAT mana — a lower bound. Here {U}{G} floats
-// for a {2}{B} Painful Truths: both pay the generic half, the {B} is
-// paid on paper, and the spell draws two. The {B} could have been the
-// third colour, which the caveat declares; it never counts more than
-// the pool spent.
-func TestPainfulTruthsConvergesForThePoolShareOfAWaivedPayment(t *testing.T) {
+// #3844 + #3855: a waived payment spends what the pool can pay, and the
+// caster declares only the rest. Here {U}{G} floats for a {2}{B}
+// Painful Truths: both pay the generic half, the {B} is the one slot
+// asked about, and the spell converges for three.
+func TestPainfulTruthsConvergesForThePoolShareAndTheDeclaredRest(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		params game.CastSpellParams
@@ -302,15 +337,24 @@ func TestPainfulTruthsConvergesForThePoolShareOfAWaivedPayment(t *testing.T) {
 					OracleID: painfulTruthsOracle, Owner: me.ID, Controller: me.ID,
 				})
 			})
-			if err := g.CastSpell(me.ID, id, tc.params); err != nil {
+			var ask *game.PaperPaymentRequiredError
+			if err := g.CastSpell(me.ID, id, tc.params); !errors.As(err, &ask) || len(ask.Slots) != 1 || ask.Slots[0].Symbol != "{B}" {
+				t.Fatalf("cast = %v (%+v), want a prompt for the {B} alone", err, ask)
+			}
+			if me.ManaPool.Total() != 2 {
+				t.Fatal("the refused cast spent the pool")
+			}
+			params := tc.params
+			params.PaperPayment = &game.PaperPayment{Mana: []game.PaperMana{{Color: "B"}}}
+			if err := g.CastSpell(me.ID, id, params); err != nil {
 				t.Fatalf("cast: %v", err)
 			}
-			if paid := g.StackMeta[id].Paid; !paid.OnPaper || paid.Spent().Total() != 2 {
-				t.Fatalf("want {U}{G} spent and {B} waived, got %+v", paid)
+			if paid := g.StackMeta[id].Paid; paid.OnPaper || paid.Spent().Total() != 3 {
+				t.Fatalf("want {U}{G} spent and {B} declared, got %+v", paid)
 			}
 			passPriorityAroundTable(t, g)
-			if got := me.Hand.Size() - hand; got != 2 {
-				t.Errorf("drew %d cards, want 2 — one per colour that left the pool", got)
+			if got := me.Hand.Size() - hand; got != 3 {
+				t.Errorf("drew %d cards, want 3", got)
 			}
 		})
 	}

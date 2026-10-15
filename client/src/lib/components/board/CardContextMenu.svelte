@@ -84,7 +84,7 @@
   const where = $derived(locateCard(view, open.card.instance_id));
   const zoneLabel = $derived(where ? ZONE_LABELS[where.zone] : "gone");
   // ADR 0118 §2: with strict payment on, a card the viewer could cast
-  // carries "Cast anyway (don't pay)" in a "cast" section.
+  // carries "Cast anyway (pay on paper)" in a "cast" section.
   const sections = $derived(
     buildMenuSections(
       view,

@@ -36,11 +36,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // handles.
 func init() {
 	Register(Spec{
-		OracleID:     "878e8980-a2cc-4335-aafe-f5166ef48f79",
-		Name:         "Gruul Scrapper",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so Gruul Scrapper gains haste only when the {R} came from your mana pool."},
-		WantsColors:  []string{"R"},
+		OracleID:       "878e8980-a2cc-4335-aafe-f5166ef48f79",
+		Name:           "Gruul Scrapper",
+		ReadsManaSpent: game.ReadsOwnPayment,
+		Completeness:   CompletenessFull,
+		WantsColors:    []string{"R"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, AllOf(Self, func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return source.ManaSpentToCast().Count("R") > 0

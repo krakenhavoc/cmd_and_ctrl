@@ -37,9 +37,10 @@ import (
 // entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
-		OracleID:     "aa6723a2-75da-49f5-a1ba-cbfa82c55301",
-		Name:         "Opal Palace",
-		Completeness: CompletenessFull,
+		OracleID:       "aa6723a2-75da-49f5-a1ba-cbfa82c55301",
+		Name:           "Opal Palace",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},

@@ -8,7 +8,7 @@
 // step. That is right when the engine sees every mana source the
 // player has. It is wrong when the player controls a permanent whose
 // mana the engine does not make: the card IS payable, the engine just
-// cannot see how, and "Cast anyway (don't pay)" exists for exactly that
+// cannot see how, and "Cast anyway (pay on paper)" exists for exactly that
 // case. A passed main phase would hide it.
 //
 // So smart autopass holds the viewer's own main phase when BOTH:

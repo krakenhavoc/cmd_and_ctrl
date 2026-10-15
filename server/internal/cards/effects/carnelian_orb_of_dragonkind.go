@@ -20,9 +20,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
-		OracleID:     "651c967c-8f71-4eb5-b22f-545e55ea050e",
-		Name:         "Carnelian Orb of Dragonkind",
-		Completeness: CompletenessFull,
+		OracleID:       "651c967c-8f71-4eb5-b22f-545e55ea050e",
+		Name:           "Carnelian Orb of Dragonkind",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{R}",

@@ -14,8 +14,8 @@ func init() {
 	Register(Spec{
 		OracleID:            "58eab745-9afa-4db7-9d8a-f5eb0b9dca6c",
 		Name:                "Skyreach Manta",
-		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so it can enter with fewer counters than the colors you paid."},
+		ReadsManaSpent:      game.ReadsOwnPayment,
+		Completeness:        CompletenessFull,
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst, "flying"},
 	})

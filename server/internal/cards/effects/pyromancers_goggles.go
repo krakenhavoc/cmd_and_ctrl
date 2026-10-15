@@ -33,9 +33,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
-		OracleID:     "f76bcbfe-483f-4e63-8425-76feca1abf3e",
-		Name:         "Pyromancer's Goggles",
-		Completeness: CompletenessFull,
+		OracleID:       "f76bcbfe-483f-4e63-8425-76feca1abf3e",
+		Name:           "Pyromancer's Goggles",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{R}",

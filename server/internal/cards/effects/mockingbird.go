@@ -46,20 +46,18 @@ import (
 //     a Clone that later copies this Mockingbird is a flying Bird too.
 //   - Declining leaves the printed 1/1 Bird Bard flier.
 //
-// Declared caveat, the one every mana-spent reader in the catalog
-// carries: with an unrecorded payment the engine does not charge the cast
-// (PaidCost.OnPaper), so it does not know what was spent and answers
-// zero — the weaker-than-printed direction ADR 0068 §3 requires. The
-// copy is then limited to mana value 0.
+// A waived payment (strict mana off with too little in the pool, or Cast
+// anyway) no longer leaves this card guessing: it declares ReadsManaSpent,
+// so the caster is asked what they paid outside the pool, or whether they
+// cast it without paying its mana cost, and the record it reads is exact
+// (#3855, ADR 0068 amendment 2026-10-15).
 func init() {
 	Register(Spec{
 		OracleID:        "b9df2cdf-397c-458d-89cf-911568737ffa",
 		Name:            "Mockingbird",
-		Completeness:    CompletenessCaveats,
+		ReadsManaSpent:  game.ReadsOwnPayment,
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
-		Caveats: []string{
-			"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so Mockingbird can copy only a creature whose mana value is at most that amount.",
-		},
 		Replacements: []game.ReplacementEffect{
 			EntersAsCopyOfFromCast(
 				"Mockingbird",

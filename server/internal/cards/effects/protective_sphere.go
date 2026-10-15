@@ -14,14 +14,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // colourless mana there is no colour to share, so no source can be chosen
 // and nothing is prevented, as the reminder text says.
 //
-// With an unrecorded payment the engine has no record of the mana spent, so
-// the ability prevents nothing — the weaker direction.
+// A waived activation (strict mana off with too little in the pool) asks
+// what was paid outside the pool, because the Sphere declares
+// ReadsOwnActivations (#3855), so the colours are exact.
 func init() {
 	Register(Spec{
-		OracleID:     "2037c4bf-bf0d-46ab-8b4b-61d9a50c431e",
-		Name:         "Protective Sphere",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, only mana spent from your mana pool counts, so Protective Sphere prevents damage only from a source that shares a color with that mana."},
+		OracleID:       "2037c4bf-bf0d-46ab-8b4b-61d9a50c431e",
+		Name:           "Protective Sphere",
+		ReadsManaSpent: game.ReadsOwnActivations,
+		Completeness:   CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, Pay 1 life: Prevent all damage that would be dealt to you this turn by a source of your choice that shares a color with the mana spent on this activation cost.",
 			Purpose: game.Purpose{Answers: game.AnswerPrevent},

@@ -516,6 +516,13 @@ type CastSpellParams struct {
 	// server-side preference. Default false (permissive).
 	Strict bool
 
+	// PaperPayment is the caster's answer to a
+	// *PaperPaymentRequiredError (#3855): what they paid outside the
+	// pool, or that they cast it without paying its mana cost. Read
+	// only when the payment is waived with a shortfall; checked to pay
+	// exactly that shortfall. Nil asks nothing.
+	PaperPayment *PaperPayment
+
 	// ForceCast overrides the Strict gate for this one cast. Fired
 	// by the client's "Cast anyway" toast after an insufficient-mana
 	// error. Implies Strict (the user is explicitly overriding a
@@ -1702,7 +1709,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// spends the pool; an insufficient permissive pool or a forced cast
 	// warns and keeps paper tracking without touching the pool. A cost the
 	// parser can't read rejects in every mode (#289).
-	paid, err := g.applyCastCostLocked(p, card, params, cardID)
+	paid, paper, err := g.applyCastCostLocked(p, card, params, cardID)
 	if err != nil {
 		return err
 	}
@@ -2119,11 +2126,17 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		CardID:  cardID,
 		OldZone: src.Kind,
 		NewZone: ZoneStack,
-		// ADR 0118 §2: a forced cast is announced as unpaid, so the
-		// log tells the table. Since #3844 a forced cast spends what
-		// the pool can pay, so one the pool paid in full is an
-		// ordinary paid cast and the line would be false.
-		Unpaid: params.ForceCast && paid.OnPaper,
+		// ADR 0118 §2, amended by #3855: what the caster said about a
+		// waived payment is public, so the log tells the table. A
+		// cast declared free is "without paying its mana cost"; a
+		// declared payment names the mana; a one-click Cast anyway
+		// names the shortfall it asserts was paid on paper. A
+		// permissive cast nobody asked about stays silent (ADR 0118
+		// owner decision 2), and a forced cast the pool covered is an
+		// ordinary paid cast.
+		Unpaid:        paper.Free,
+		PaperPaid:     paperLogSymbols(params, paper),
+		PaperDeclared: paper.Declared && !paper.Free,
 	})
 	// CR 115.3: the objects named at 601.2c have now become targets.
 	// Emitted after EventCast so a "becomes the target" trigger and
@@ -2193,8 +2206,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 // paying: CastSpell refuses that earlier with ErrNoManaCost (CR
 // 118.6). An UNPARSEABLE cost rejects the cast outright, before any
 // of the three outcomes above. Caller must hold g.mu.
-func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams, cardID uuid.UUID) (PaidCost, error) {
+func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams, cardID uuid.UUID) (PaidCost, paperNote, error) {
 	var paid PaidCost
+	var note paperNote
 	cost, err := g.effectiveCostLocked(p, card, params)
 	if err != nil {
 		// #289: this used to return nil, silently making the card
@@ -2215,7 +2229,7 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 			Source:   cardID,
 			ErrorMsg: err.Error(),
 		})
-		return paid, fmt.Errorf("%w for %s: %w", ErrUnparseableCost, card.Name, err)
+		return paid, note, fmt.Errorf("%w for %s: %w", ErrUnparseableCost, card.Name, err)
 	}
 	// #1600, CR 609.4b: "you may spend mana as though it were mana of
 	// any color" (Chromatic Orrery) widens what may pay the cost — read
@@ -2230,7 +2244,7 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	// mana-gate failure.
 	cost, phyrexianLife, err := g.strikePhyrexianLifeLocked(p, card.Name, cost, ManaSpendForCastParams(card, params), params.PhyrexianLife, &paid)
 	if err != nil {
-		return paid, err
+		return paid, note, err
 	}
 	// Match activated abilities: a permissive cast spends a pool that
 	// can cover its whole cost. An unfunded permissive cast, and every
@@ -2242,13 +2256,27 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	spendCtx := g.stampRiderVerdictsLocked(ManaSpendForCastParams(card, params), p.ID)
 	canPay := p.ManaPool.CanPayFor(cost, params.XValue, spendCtx)
 	if params.ForceCast || (!params.Strict && !canPay) {
+		strategy := spendStrategyForCast(card)
+		// #3855 (ADR 0068 amendment 2026-10-15, "What was paid on
+		// paper"): what the pool will leave unpaid, read before
+		// anything is paid. When something reads this payment and the
+		// caster has not said what paid the rest, the cast is refused
+		// here, with the shortfall, so the re-send starts from the same
+		// board; a declaration is checked against it.
+		short := p.ManaPool.shortfallFor(cost, params.XValue, spendCtx, strategy)
+		read, kinds := g.castPaymentReadLocked(p.ID, card)
+		declared, n, err := settlePaperPayment(short, params.PaperPayment, read, kinds)
+		if err != nil {
+			return paid, note, err
+		}
+		note = n
 		// The LIFE half is paid first and in full: a life total is
 		// engine state in every mode, and permissive mode's bargain is
 		// only about the mana the player tracks on paper. First,
 		// because it is the fallible half (see the funded path below),
 		// and a refusal must not have spent the pool.
 		if err := g.payPhyrexianLifeLocked(cardID, p.ID, phyrexianLife); err != nil {
-			return paid, err
+			return paid, note, err
 		}
 		// #3844 (ADR 0068 amendment 2026-10-15): the pool pays what
 		// it CAN, with the allocation a funded payment uses, and only
@@ -2258,7 +2286,7 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 		// the Elf, and Path really scries. Mana the cost cannot use
 		// stays in the pool. A ForceCast whose pool covers the whole
 		// cost is simply paid.
-		spent, full := p.ManaPool.SpendWhatPaysForWith(cost, params.XValue, spendCtx, spendStrategyForCast(card))
+		spent, full := p.ManaPool.SpendWhatPaysForWith(cost, params.XValue, spendCtx, strategy)
 		paid.Mana = spent
 		if len(spent) > 0 || full {
 			g.EmitEvent(manaSpentEvent(p.ID, cardID, spent))
@@ -2269,23 +2297,22 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 				Actor:  p.ID,
 				Source: cardID,
 			})
-			// #761: the engine did not charge the rest, so its record
-			// is incomplete — and says so, rather than reading as
-			// "this is all that was spent". Every reader takes the
-			// recorded tokens as a lower bound and OnPaper as the
-			// weaker-than-printed answer: a Vexing Bauble does not
-			// counter this spell, and a converge spell counts only
-			// the colours that left the pool.
-			paid.OnPaper = true
+			// #761 / #3855: the engine did not charge the rest. A
+			// declared payment completes the record, which is then
+			// exact: the paper mana joins the tokens, or, for a cast
+			// declared free, the pool's tokens are the whole payment.
+			// An undeclared one (nothing reads it) keeps OnPaper and
+			// records the shortfall's amount as paid on paper.
+			recordPaperPayment(&paid, short, declared, note)
 		}
-		return paid, nil
+		return paid, note, nil
 	}
 	// S32 (#352): the spend context is what lets restricted mana pay
 	// — and what stops it paying for the wrong thing. Ancient
 	// Ziggurat's {G} funds a creature spell here and is invisible to
 	// a Lightning Bolt.
 	if !canPay {
-		return paid, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spendCtx)}
+		return paid, note, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spendCtx)}
 	}
 	// CR 601.2h pays every component together, so the order here is
 	// an engine-safety choice, not a rules one: the FALLIBLE half
@@ -2297,7 +2324,7 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	// under mustSettleNow reaches a mana pool, so the CanPayFor above
 	// still holds when SpendManaFor runs.
 	if err := g.payPhyrexianLifeLocked(cardID, p.ID, phyrexianLife); err != nil {
-		return paid, err
+		return paid, note, err
 	}
 	// Payable in either mode — commit the spend.
 	//
@@ -2311,7 +2338,7 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	spent, _ := p.ManaPool.SpendManaForWith(cost, params.XValue, spendCtx, spendStrategyForCast(card))
 	paid.Mana = spent
 	g.EmitEvent(manaSpentEvent(p.ID, cardID, spent))
-	return paid, nil
+	return paid, note, nil
 }
 
 // spendStrategyForCast asks the catalog whether this spell reads the

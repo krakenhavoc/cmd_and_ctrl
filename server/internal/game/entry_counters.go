@@ -91,11 +91,9 @@ type CastCounts struct {
 	KickersPaid []string
 
 	// ColorsSpent is CR 702.44a's sunburst count: the number of
-	// DISTINCT colours of mana spent to cast the spell. Zero for a
-	// payment the engine did not take (PaidCost.OnPaper) — an
-	// unrecorded payment claims no colours, which is the
-	// weaker-than-printed answer ADR 0068 §3 requires of every reader
-	// of that record.
+	// DISTINCT colours of mana spent to cast the spell. A waived
+	// payment counts the colours the caster declared paying on paper
+	// (#3855); one nothing asked about counts only the pool's colours.
 	ColorsSpent int
 
 	// ManaSpent is "the amount of mana spent to cast" the spell
@@ -117,10 +115,9 @@ type CastCounts struct {
 	// disagree with them. So it inherits the record's two absences.
 	// A cast for no mana — "without paying its mana cost", a {0}
 	// alternative cost, a CR 707.10 copy — is a KNOWN zero. A payment
-	// the engine waived (permissive mode, a strict-mode ForceCast,
-	// PaidCost.OnPaper) is also zero, the weaker-than-printed answer
-	// ADR 0068 §3 requires: "spent nothing we can see" must never
-	// read as "spent enough".
+	// the engine waived counts what the pool paid plus what the caster
+	// paid on paper (#3855): declared, when a reader asked, or the
+	// shortfall the one-click path asserted (PaidCost.PaperMana).
 	ManaSpent int
 
 	// Delved is CR 607.2q's "cards exiled with it" for a spell with
