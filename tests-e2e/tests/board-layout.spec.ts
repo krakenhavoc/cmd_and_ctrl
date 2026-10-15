@@ -78,8 +78,7 @@ test.describe("board layout", () => {
     await expect(page.getByLabel("Alice piles")).toBeVisible();
 
     // #3893: no creatures yet, on either side. The creature row still
-    // holds one card's line (a card's height plus the label's band,
-    // shrunk on a short panel like a row with a creature), so
+    // holds one card's line (a card's height plus the label's band), so
     // the back row sits where it does beside a creature instead of
     // moving up into the creatures' place: under the row on your panel,
     // over it on Bob's, across the table.
@@ -110,9 +109,9 @@ test.describe("board layout", () => {
         .poll(
           async () => {
             const r = await rows();
-            // A short panel shrinks the row below a card, as it does a
-            // row with a creature in it; one label high, it was 24px.
-            return r.creatures >= Math.min(r.card, 40) && r.gap < 24;
+            // One label high, it was 24px. On your panel the rail's
+            // identity also took that height for the back row's track.
+            return r.creatures >= r.card && r.gap < 24;
           },
           { message: "an empty creature row keeps one card's height" },
         )

@@ -1097,8 +1097,14 @@
        used to leave that spare as a band at the table's centre line.
        #3044: a creature row wrapped into its budget reports its lines'
        height as --creature-min, since an auto track beside a 1fr one is
-       not promised its content and the row would scroll instead. */
-    grid-template-rows: minmax(var(--creature-min, 0px), auto) minmax(min-content, 1fr) auto;
+       not promised its content and the row would scroll instead.
+       #3893: the back row's track is a plain 1fr, kept at least its
+       content's height by .grid-middle's min-height. A min-content
+       minimum also took the height of every item spanning the track:
+       the rail's identity, as tall as both rows, so on a short panel the
+       creature row gave its height to empty space under the back row,
+       and an empty creature row (one label high) gave it all. */
+    grid-template-rows: minmax(var(--creature-min, 0px), auto) 1fr auto;
     grid-template-areas:
       "creatures rail"
       "middle    rail"
@@ -1266,7 +1272,7 @@
     --thumb-w: calc(var(--thumb-h) * 5 / 7);
     --avatar-size-base: 84px;
     --rail-w: 112px;
-    grid-template-rows: auto minmax(min-content, 1fr) minmax(var(--creature-min, 0px), auto);
+    grid-template-rows: auto 1fr minmax(var(--creature-min, 0px), auto);
     grid-template-areas:
       "bottom    rail"
       "middle    rail"
@@ -1320,7 +1326,9 @@
   }
   .grid-middle {
     grid-area: middle;
-    min-height: 0;
+    /* #3893: the back row's track never takes less than the back row
+       (the track is a plain 1fr; see .panel). */
+    min-height: min-content;
     min-width: 0;
     display: flex;
     /* safe: a back row wider than its area starts at its left edge
@@ -1513,7 +1521,7 @@
   @media (min-width: 600px) {
     .panel.opponent.flipped {
       grid-template-columns: var(--rail-w) minmax(0, 1fr) auto;
-      grid-template-rows: auto minmax(min-content, 1fr) minmax(var(--creature-min, 0px), auto);
+      grid-template-rows: auto 1fr minmax(var(--creature-min, 0px), auto);
       /* #2491: the piles sit in the hand's row, against the top edge
          like the hand, not in the back row under it. */
       grid-template-areas:
