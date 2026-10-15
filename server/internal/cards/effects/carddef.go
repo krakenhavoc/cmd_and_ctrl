@@ -230,6 +230,7 @@ func buildDef(spec Spec) *game.CardDef {
 		GameEndGates:                        spec.GameEndGates,
 		WantsDistinctColors:                 spec.WantsDistinctColors,
 		WantsManaFrom:                       spec.WantsManaFrom,
+		WantsColors:                         spec.WantsColors,
 		AdditionalLandPlays:                 spec.AdditionalLandPlays,
 		XMatters:                            spec.XMatters,
 		MadnessLife:                         spec.MadnessLife,

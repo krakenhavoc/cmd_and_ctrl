@@ -14,12 +14,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // It deliberately does NOT set Spec.WantsDistinctColors. That switch
 // spreads a payment across COLOURS, which is the exact opposite of
-// what adamant wants, and concentrating a payment into one colour is
-// a different strategy the solver does not have. So adamant reads
-// what the player actually spent: three Mountains make it four
-// damage, two Mountains and a Sol Ring make it three. That is the
-// printed behaviour, and the reason the ADR left the concentrating
-// strategy out rather than inventing one nobody asked for.
+// what adamant wants. What adamant wants is the other declaration,
+// WantsColors (#3853): concentrate the payment in one colour. An
+// auto-paid cast then taps Mountains for the generic half before a
+// Sol Ring, so three Mountains make it four damage. The card still
+// reads what was actually spent, so two Mountains and a Sol Ring paid
+// by hand make it three: that is the printed behaviour.
 //
 // A payment the engine waived (an insufficient permissive pool or
 // Cast anyway) counts zero red mana, so the spell deals its printed 3 —
@@ -30,6 +30,7 @@ func init() {
 		Name:         "Slaying Fire",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so Slaying Fire deals 4 only when all three red mana came from your mana pool."},
+		WantsColors:  []string{"R"},
 		Targets:      TargetAny(),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			damage := 3

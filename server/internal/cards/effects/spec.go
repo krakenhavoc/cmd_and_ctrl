@@ -1312,6 +1312,30 @@ type Spec struct {
 	// which is all but about twenty of them.
 	WantsManaFrom game.ManaSourceKinds
 
+	// WantsColors declares the colours this card's own text reads back
+	// from the mana that paid for it — "if {R} was spent to cast it"
+	// (Gruul Scrapper, Boros Fury-Shield, Moonhold, River's Grasp,
+	// Ribbons of Night) and adamant's "at least three {R}" (Slaying
+	// Fire). Uppercase WUBRG letters (#3853).
+	//
+	// WantsDistinctColors' sibling for the readers that count one
+	// colour and not the spread: the auto-tapper recruits a source of a
+	// named colour for a generic pip it has a free choice of, and the
+	// floating pool spends a named-colour mana on the generic half
+	// before one of another colour.
+	//
+	// Like WantsManaFrom it changes the PAYMENT and not the effect, and
+	// as softly: an ORDERING that never adds or drops a source, so the
+	// cast is payable exactly when it was (game.autotap_wish.go). The
+	// card still reads ctx.ManaSpentOfColor and gets the truth — a Gruul
+	// Scrapper paid by hand with two Forests and a Sol Ring has no haste,
+	// wish or no wish.
+	//
+	// Not set for a card whose cost already NAMES the colour (the pip
+	// pays it whatever the planner does), and not for converge or
+	// sunburst, which count the spread and set WantsDistinctColors.
+	WantsColors []string
+
 	// AdditionalLandPlays declares the printed static "you may play
 	// an additional land on each of your turns" — 1 for Exploration,
 	// 2 for Azusa, Lost but Seeking. Counted while the permanent is

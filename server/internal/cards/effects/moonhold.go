@@ -14,6 +14,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a granted creature-spell cast ban for the turn (#1316's
 // CastBanOutright with a creature filter), and {R}{W} spent does both.
 //
+// WantsColors names both halves' colours (#3853), so an auto-paid cast
+// spends a red and a white source on the hybrid symbol and the generic
+// half when the board has them: the {R}{W} "do both" case is what auto-pay
+// reaches for, not a thing the player taps by hand.
+//
 // A payment the engine did not record (a free cast, a waived charge)
 // spends no mana it knows of, so neither half applies: weaker than
 // printed, never stronger. With "Charge mana costs" off, or after a
@@ -25,6 +30,7 @@ func init() {
 		Name:         "Moonhold",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so Moonhold may not stop lands or creature spells as printed."},
+		WantsColors:  []string{"R", "W"},
 		Targets:      TargetPlayer("target player"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if ctx.ManaSpentOfColor("R") > 0 {

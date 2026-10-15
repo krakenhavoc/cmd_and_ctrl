@@ -438,6 +438,12 @@ type CardDef struct {
 	// and never a filter (mana_source.go, autotap.go).
 	WantsManaFrom ManaSourceKinds
 
+	// WantsColors is the colours this card's text reads back from its
+	// payment — "if {R} was spent to cast it" (#3853). Read through
+	// CatalogWantsColors; an ORDERING HINT for the auto-tapper and the
+	// pool's spend order, never a filter (autotap_wish.go).
+	WantsColors []string
+
 	// AdditionalLandPlays is how many EXTRA lands per turn this
 	// permanent lets its controller play while it is on the
 	// battlefield — 1 for Exploration, 2 for Azusa (#500). Read
@@ -988,6 +994,12 @@ func init() {
 	CatalogWantsDistinctColors = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.WantsDistinctColors
+	}
+	CatalogWantsColors = func(key string) []string {
+		if d := catalogDef(key); d != nil {
+			return d.WantsColors
+		}
+		return nil
 	}
 	CatalogWantsManaFrom = func(key string) ManaSourceKinds {
 		if d := catalogDef(key); d != nil {

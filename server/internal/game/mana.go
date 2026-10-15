@@ -398,7 +398,10 @@ func (p ManaPool) allocate(cost ParsedCost, xValue int, ctx ManaSpendContext, st
 			need -= take
 		}
 	} else if need > 0 {
-		need = spendGeneric(p, used, order, need)
+		// #3853: mana that does something for THIS spell first, mana
+		// whose rider would be wasted on it last. The same runs, only
+		// walked in another order, so payability is untouched.
+		need = spendGenericWished(p, used, order, need, ctx)
 	}
 	return used, short || need > 0
 }
@@ -651,6 +654,10 @@ func spendOrder(pool ManaPool, ctx ManaSpendContext) []int {
 			order[j], order[j-1] = order[j-1], order[j]
 		}
 	}
+	// #3853: inside a restriction tier, mana that does something for the
+	// object being paid for first and mana whose rider it would waste
+	// last. A no-op for every context that names no object.
+	rankPoolOrder(pool, order, ctx)
 	return order
 }
 

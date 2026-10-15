@@ -18,6 +18,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // still legal (CR 608.2b). The black half is the revealed-hand pick
 // (ADR 0116) with Thoughtseize's nonland filter.
 //
+// WantsColors names both halves' colours (#3853): an auto-paid cast pays
+// the generic half with a blue and a black source when the board has
+// them, so "do both" is what auto-pay reaches for.
+//
 // A copy has no mana spent on it (the rulings), and neither has a cast
 // the engine did not charge, so neither half happens: weaker than
 // printed, never stronger. With "Charge mana costs" off, or after a
@@ -29,6 +33,7 @@ func init() {
 		Name:         "River's Grasp",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so River's Grasp may skip its bounce or its discard."},
+		WantsColors:  []string{"U", "B"},
 		Targets: TargetCreature("up to one target creature").WithCount(0, 1).
 			Then(TargetPlayer("target player")),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

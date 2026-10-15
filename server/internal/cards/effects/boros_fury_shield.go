@@ -16,6 +16,11 @@ import (
 // read), and the damage is dealt by the spell, not the creature (its
 // ruling), equal to the creature's power as the spell resolves.
 //
+// WantsColors names the {R} (#3853): auto-pay spends a red source on the
+// generic half when it has a free choice, so the rider is the default
+// for a player who has red mana, not a thing they must tap by hand to
+// get. An ordering only; a board with no red source casts it as printed.
+//
 // Caveat: with an unrecorded payment the engine does not see the mana paid, so
 // the rider never happens. That is the weaker direction.
 func init() {
@@ -24,6 +29,7 @@ func init() {
 		Name:         "Boros Fury-Shield",
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so Boros Fury-Shield deals the damage only when the {R} came from your mana pool."},
+		WantsColors:  []string{"R"},
 		Targets:      TargetCreature("target attacking or blocking creature", AttackingOrBlocking()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return shieldAgainstTheTargetThen(ctx, true, func(ctx *Context, target uuid.UUID) error {
