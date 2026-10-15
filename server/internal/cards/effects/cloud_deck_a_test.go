@@ -375,9 +375,7 @@ func TestCloudDeckZackFairSacrificeMovesCountersAndGrantsIndestructible(t *testi
 	if !cloudDeckHasKeyword(t, g, bear, "indestructible") {
 		t.Error("Bear is not indestructible")
 	}
-	if spec, _ := Lookup(zackFairOracle); spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Errorf("Zack is %v with %d caveats, want caveats", spec.Completeness, len(spec.Caveats))
-	}
+	cloudDeckWantFull(t, zackFairOracle)
 }
 
 func TestCloudDeckConformerShurikenTapsADefenderAndGrowsToMatch(t *testing.T) {

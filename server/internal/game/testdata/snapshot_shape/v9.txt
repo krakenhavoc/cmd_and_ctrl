@@ -1241,6 +1241,10 @@ lastKnownPermanents{}[].attachedTo.ID	custom(uuid.UUID)
 lastKnownPermanents{}[].attachedTo.Kind	string
 lastKnownPermanents{}[].attachedTo.Mode	number:int
 lastKnownPermanents{}[].attachedTo.Slot	number:int
+lastKnownPermanents{}[].attachments	array
+lastKnownPermanents{}[].attachments[]	object
+lastKnownPermanents{}[].attachments[].epoch	number:int
+lastKnownPermanents{}[].attachments[].id	custom(uuid.UUID)
 lastKnownPermanents{}[].attacking	bool
 lastKnownPermanents{}[].blocking	array
 lastKnownPermanents{}[].blocking[]	custom(uuid.UUID)

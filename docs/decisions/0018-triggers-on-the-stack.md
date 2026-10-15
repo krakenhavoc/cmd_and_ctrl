@@ -4709,3 +4709,14 @@ The #3013 closing note left 24 cards on the ratchet. 21 of them re-check an inte
   queued item's `Params.Amount` is the fallback.
 - **The ratchet file is empty.** `unfootprinted_trigger_lines.txt` keeps only its header, and the audit still fails
   on any new one-sentence trigger written as a closure.
+
+## Amendment 2026-10-15 (fifth) — the attachments of a permanent that left (#3780) · Accepted
+
+Decision 12's `PermanentInfo` records what a departed permanent was attached TO (`AttachedTo`, `AttachedObject`) but not what was attached to IT. By the time a sacrifice-cost ability resolves, the state-based action has already unattached an Equipment from the departed host (CR 704.5n) or put an Aura into a graveyard (CR 704.5m), so the attachment's own link is gone. Zack Fair's "attach an Equipment that was attached to Zack Fair to that creature" (the Cloud, Ex-SOLDIER deck, #3656) had nothing to read and shipped with a caveat.
+
+- **`PermanentInfo.Attachments []ObjectRef`.** Every Aura, Equipment and Fortification attached to the permanent as it last existed, each as the object (CR 400.7), in battlefield order. It is written at the same moment and from the same live card as the rest of the record (`rememberDepartingPermanentLocked`), and filled on a live read too, so a reader sees one shape either way. A pinned link whose host has the same ID but a newer epoch (#3159) names an earlier object and is not counted (`attachmentObjectsLocked`).
+- **`Game.LiveAttachmentsForEffect(refs)`.** The refs that are still the same object on the battlefield, in order. An Aura the state-based action binned is gone; an Equipment that was blinked is a new object and is skipped.
+- **Zack Fair.** Of those, only an Equipment that could legally be attached to the target (`AttachLegalForEffect`, CR 701.3b) counts. One is attached; with several the controller picks one (`choose_cards`, min and max 1, "an Equipment"); none does nothing. A target that left in response ends the ability before this runs (CR 608.2b). Zack Fair is Full.
+- **Snapshot.** `lastKnownPermanents{}[].attachments` is additive in v9 and recorded in the shape file. A file from before this carries no attachments, so the Equipment is simply not moved; a binary from before this that drops the key restores the game, with the same result. No bump.
+
+**Back-outs.** Without the write in `rememberDepartingPermanentLocked`, `TestPermanentLKIRecordsWhatWasAttachedToIt`, `TestZackFairMovesTheEquipmentThatWasAttachedToHim` and `TestZackFairWithTwoEquipmentAsksWhichMoves` fail. Without the epoch comparison in `LiveAttachmentsForEffect` the same game test fails; without the pinned-epoch skip `TestPermanentLKIIgnoresALinkToAnEarlierObject` fails; without the copy in `cloneLastKnownPermanents` `TestPermanentLKIAttachmentsRideCloneAndSnapshot` fails.
