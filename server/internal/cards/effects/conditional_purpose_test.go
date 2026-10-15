@@ -52,6 +52,11 @@ func TestUnstableHulkDeclaresItsSkipUnderFaceUp(t *testing.T) {
 	if p.DeclaresSweep() {
 		t.Error("Unstable Hulk reads as a wipe")
 	}
+	// #3776: the +6/+6 and trample the trigger gives ride the same slot.
+	pump := p.FaceUp.Pump
+	if pump == nil || pump.Power != 6 || pump.Toughness != 6 || len(pump.Keywords) != 1 || pump.Keywords[0] != "trample" {
+		t.Errorf("Purpose.FaceUp.Pump = %+v, want +6/+6 and trample", pump)
+	}
 }
 
 // The wire: the hand card carries `kicked` and nothing the unkicked cast
@@ -108,6 +113,9 @@ func TestUnstableHulkFaceDownPurposeReachesOnlyItsController(t *testing.T) {
 	if mine == nil || mine.TurnedFaceUp == nil || mine.TurnedFaceUp.SkipsTurns != 1 {
 		t.Fatalf("the controller's purpose = %+v, want turned_face_up with a skip", mine)
 	}
+	if pm := mine.TurnedFaceUp.Pump; pm == nil || pm.Power != 6 || pm.Toughness != 6 || len(pm.Keywords) != 1 || pm.Keywords[0] != "trample" {
+		t.Errorf("turned_face_up.pump = %+v, want +6/+6 and trample (#3776)", pm)
+	}
 	stripped := *mine
 	stripped.TurnedFaceUp = nil
 	if stripped != (protocol.PurposeView{}) {
@@ -138,6 +146,9 @@ func TestConditionalPurposeGuard(t *testing.T) {
 		{"kicked with no optional cost", Spec{Purpose: game.Purpose{Kicked: sweep}}, "exactly one kicker"},
 		{"kicked with two kickers", Spec{Purpose: game.Purpose{Kicked: sweep}, OptionalCosts: twoKickers}, "exactly one kicker"},
 		{"kicked on a buyback", Spec{Purpose: game.Purpose{Kicked: sweep}, OptionalCosts: []game.AdditionalCost{{Optional: true, Key: "buyback"}}}, "exactly one kicker"},
+		{"face up with a pump", Spec{Purpose: game.Purpose{FaceUp: &game.Purpose{Pump: &game.Pump{Power: 6, Toughness: 6, Keywords: []string{"trample"}}}}, AlternativeCosts: morph}, ""},
+		{"face up with a pump that gives nothing", Spec{Purpose: game.Purpose{FaceUp: &game.Purpose{Pump: &game.Pump{}}}, AlternativeCosts: morph}, "gives nothing"},
+		{"kicked with a pump", Spec{Purpose: game.Purpose{Kicked: &game.Purpose{Pump: &game.Pump{Power: 1}}}, OptionalCosts: kicker}, "Pump off a triggered"},
 		{"face up with no face-down cast", Spec{Purpose: game.Purpose{FaceUp: &game.Purpose{SkipsTurns: 1}}}, "no face-down cast"},
 		{"kicked that says nothing", Spec{Purpose: game.Purpose{Kicked: &game.Purpose{}}, OptionalCosts: kicker}, "says nothing"},
 		{"kicked that nests", Spec{Purpose: game.Purpose{Kicked: &game.Purpose{Kicked: sweep}}, OptionalCosts: kicker}, "nests"},

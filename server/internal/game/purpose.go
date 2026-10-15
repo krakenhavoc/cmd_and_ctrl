@@ -133,8 +133,9 @@ type Purpose struct {
 
 	// Pump is what the row gives its own source until end of turn:
 	// "this creature gets +2/+0 and gains trample until end of turn".
-	// Nil is "no pump". Refused off a triggered or activated row. A
-	// pointer so Purpose stays comparable.
+	// Nil is "no pump". Refused off a triggered or activated row, except
+	// as the inner purpose of FaceUp (a turn-face-up trigger's pump:
+	// Unstable Hulk, #3776). A pointer so Purpose stays comparable.
 	Pump *Pump
 	// ExtraCombat is the additional combat phases it adds ("after this
 	// phase, there is an additional combat phase"): Combat Celebrant 1.

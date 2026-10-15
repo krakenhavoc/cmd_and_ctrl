@@ -459,6 +459,13 @@ func defenderBlockers(st *state, seat string) []*protocol.CardView {
 // overflow is what kills; that is a property of the whole attack, not
 // of any one creature in it.
 func (p *Policy) lethalPush(st *state, def *SeatEval) bool {
+	return p.lethalPushAs(st, def, nil)
+}
+
+// lethalPushAs is lethalPush with `as` standing in for the bot's creature
+// of the same instance ID (a flip that pumps it, face_up_pump.go). A nil
+// `as` is the board as it is.
+func (p *Policy) lethalPushAs(st *state, def *SeatEval, as *protocol.CardView) bool {
 	if def.Life <= 0 {
 		return false
 	}
@@ -479,6 +486,9 @@ func (p *Policy) lethalPush(st *state, def *SeatEval) bool {
 		committed := c.AttackingTarget == def.ID
 		joinable := c.AttackingTarget == "" && !c.Tapped && !c.SummoningSick && !hasKeyword(c, "defender")
 		if committed || joinable {
+			if as != nil && as.InstanceID == c.InstanceID {
+				c = as
+			}
 			attackers = append(attackers, c)
 		}
 	}

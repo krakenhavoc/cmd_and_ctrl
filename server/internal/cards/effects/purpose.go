@@ -69,6 +69,10 @@ const (
 	purposeOnActivated
 	purposeOnAnyPlayerActivated
 	purposeOnTriggered
+	// purposeOnFaceUp is the inner purpose of Purpose.FaceUp (#3776): the
+	// card's own slot, plus the one-turn pump a turn-face-up trigger gives
+	// its source ("it gets +6/+6 and gains trample until end of turn").
+	purposeOnFaceUp
 )
 
 // checkPurpose panics when p is not a legal declaration for its slot.
@@ -131,7 +135,7 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if t := p.TokensPerControlled; t != strings.ToLower(t) || strings.ContainsAny(t, " \t—") {
 		fail("names a TokensPerControlled subtype that is not one lowercase word (#3165)")
 	}
-	onSource := slot == purposeOnTriggered || slot == purposeOnActivated || slot == purposeOnAnyPlayerActivated
+	onSource := slot == purposeOnTriggered || slot == purposeOnFaceUp || slot == purposeOnActivated || slot == purposeOnAnyPlayerActivated
 	if p.Pump != nil && !onSource {
 		fail("sets Pump off a triggered or activated row — a pump is what an ability gives its own source")
 	}
@@ -334,7 +338,11 @@ func checkConditionalPurposes(spec Spec) {
 		case p.Aura != "" || p.ExtraLandDrops != 0 || p.LandfallExtraTriggers != 0 || p.FlashCleanupSacrifice:
 			fail("declares Aura, ExtraLandDrops, LandfallExtraTriggers or FlashCleanupSacrifice, which are the card's own")
 		}
-		checkPurpose(name, where, purposeOnCard, *p)
+		slot := purposeOnCard
+		if which == "face up" {
+			slot = purposeOnFaceUp
+		}
+		checkPurpose(name, where, slot, *p)
 	}
 	if spec.Purpose.Kicked != nil {
 		if len(spec.OptionalCosts) != 1 || spec.OptionalCosts[0].Key != game.KickerKey {
