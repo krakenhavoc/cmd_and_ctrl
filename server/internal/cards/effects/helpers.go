@@ -1576,3 +1576,21 @@ func PlusOneCounterOnChosenTarget(g *game.Game, item *game.StackItem) error {
 	}
 	return nil
 }
+
+// bounceEachLegalTarget is "return [up to N] target <things> to their
+// owners' hands" as a trigger or ability body: every target still legal at
+// resolution goes to its owner's hand (CR 608.2b), a target that has gone
+// is skipped, and none chosen is not an error. Nightscape Battlemage's
+// kicker and Getaway Car share it.
+func bounceEachLegalTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		if err := (BounceToHand{Target: t.ID}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}

@@ -27,18 +27,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(On(game.EventETB, AllOf(Self, ThisKickedWith("{2}{U}")),
 				"Nightscape Battlemage — kicked with {2}{U}, return up to two target nonblack creatures to their owners' hands",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind != game.TargetCard {
-							continue
-						}
-						if err := (BounceToHand{Target: t.ID}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
-				}), TargetCreature("up to two target nonblack creatures", NonBlack()).WithCount(0, 2)),
+				bounceEachLegalTarget), TargetCreature("up to two target nonblack creatures", NonBlack()).WithCount(0, 2)),
 			Targeting(On(game.EventETB, AllOf(Self, ThisKickedWith("{2}{R}")),
 				"Nightscape Battlemage — kicked with {2}{R}, destroy target land",
 				destroyChosenPermanent), TargetPermanent("target land", Land())),
