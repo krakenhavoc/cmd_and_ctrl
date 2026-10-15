@@ -116,6 +116,14 @@ func TestRandomBotSoak(t *testing.T) {
 		t.Run(fmt.Sprintf("seed=%d", seed), func(t *testing.T) {
 			room := newRoom(t, seats, seed)
 			g := room.Game
+			// Every seat is a bot's, as the lobby marks one (SetBot), so
+			// the room treats each commit as a bot table's would: a
+			// barrier on the undo ring, not a clone (ADR 0194).
+			g.WithWriteLock(func() {
+				for _, p := range g.Seats {
+					p.IsBot = true
+				}
+			})
 			// The parameter is the whole of #1096, so assert it rather
 			// than trusting the log line: a soak that quietly dealt
 			// four seats while the nightly step said two would be the

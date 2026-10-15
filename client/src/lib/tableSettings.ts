@@ -56,11 +56,18 @@ export function hasUndoBudget(seat: PlayerView | null, isAdmin: boolean): boolea
  * Why the dock's Undo is unavailable to this viewer, as a short phrase,
  * or null when an undo is allowed (#2963). Mirrors the server's undo
  * gates: the stack reason the room stamps on the seat
- * (`undo_blocked`), then the per-turn budget. An unseated admin
- * bypasses both. A frame with no `undo_blocked` (older server, replay)
- * is read as "the stack allows it".
+ * (`undo_blocked`), then the per-turn budget. An admin bypasses both,
+ * except a barrier (ADR 0194): a bot's move, or one past the last
+ * eight, which nobody can take back. A frame with no `undo_blocked`
+ * (older server, replay) is read as "the stack allows it".
  */
 export function undoBlockedReason(seat: PlayerView | null, isAdmin: boolean): string | null {
+  switch (seat?.undo_blocked) {
+    case "past_bot":
+      return "a bot has acted since — a bot's move can't be taken back";
+    case "too_deep":
+      return "undo only goes back 8 actions";
+  }
   if (isAdmin) return null;
   switch (seat?.undo_blocked) {
     case "nothing":

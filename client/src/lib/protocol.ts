@@ -2329,10 +2329,12 @@ export interface PlayerView {
   // Why an `undo` from this seat would be refused by the undo stack
   // right now (#2963): "nothing" (nothing on the stack), "not_yours"
   // (the most recent action is another seat's), "game_over" or
-  // "secret_vote" (it revealed a secret vote, ADR 0180). Absent
-  // means the stack allows it; the per-turn budget is separate
-  // (undos_remaining). Own view only.
-  undo_blocked?: "nothing" | "not_yours" | "game_over" | "secret_vote";
+  // "secret_vote" (it revealed a secret vote, ADR 0180), "past_bot"
+  // (a bot has acted since) or "too_deep" (past the last eight
+  // actions), the last two refused for everyone, admin included
+  // (ADR 0194). Absent means the stack allows it; the per-turn budget
+  // is separate (undos_remaining). Own view only.
+  undo_blocked?: "nothing" | "not_yours" | "game_over" | "secret_vote" | "past_bot" | "too_deep";
   // Number of mulligans this player has taken in the current
   // opening-hand window. Omitempty on the wire — absent means 0.
   // Added in S08.

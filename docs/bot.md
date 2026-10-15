@@ -3,8 +3,11 @@
 A bot is a seat at the table with no browser attached. A goroutine on
 the server watches the room, asks a policy which of its legal moves to
 make, and dispatches it down exactly the path a WebSocket client's
-action takes — so a bot's move is one `seq`, one snapshot, one replay
-line and one undo entry, the same as yours.
+action takes — so a bot's move is one `seq`, one snapshot and one replay
+line, the same as yours. Its undo entry is a barrier: nobody, the admin
+included, can take a bot's move back or undo past it
+([ADR 0194](decisions/0194-snapshot-only-what-someone-can-undo.md)). An
+improvisation (below) is the exception, and anyone can undo it.
 
 This page is the player-facing guide: how to add one, what the tiers
 and decks are, and what a bot will and will not do. The architecture,
