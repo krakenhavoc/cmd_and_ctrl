@@ -715,6 +715,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// grantHasteForCastLocked for the layer-6 grant and its declared
 	// duration simplification.
 	grantsHaste := grant != nil && grant.GrantsHaste
+	// #3768: the permission's other riders on the permanent this cast
+	// produces, copied out for the same reason.
+	castGains := permissionCastGainsOf(grant)
 	face, ok := faceForCastLocked(card, params.Face, grant, playerID, params.AlternativeCost)
 	if !ok {
 		slog.Warn("cast_spell rejected: face not offered by this card",
@@ -1796,6 +1799,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// #3156: cast with its own flash when a sorcery couldn't have
 		// been (flash_cleanup_sacrifice.go).
 		OwnFlashCast: ownFlashCast,
+		// #3768: "if you cast a spell this way, that artifact enters
+		// tapped" — the permission's, read where it was consumed.
+		EntersTapped: castGains.entersTapped,
 		// CR 708.4, ADR 0082 decision 3: the permanent this spell
 		// becomes enters FACE DOWN. Carried on the item because the
 		// permanent is a new object and MoveCard clears the state on
@@ -1879,6 +1885,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if grantsHaste {
 		g.grantHasteForCastLocked(playerID, cardID)
 	}
+	// #3768: "it gains haste and '<ability>'", registered here for the
+	// same reason and against the same object.
+	g.grantGainsForCastLocked(cardID, castGains)
 	// CR 601.2h: pay the costs. The mana component was charged
 	// above (pre-move, as S15 wrote it); the additional cost is
 	// paid HERE, with the spell already on the stack, because a
@@ -3814,6 +3823,11 @@ func (g *Game) finishSpellResolutionLocked(top Card, item *StackItem) error {
 			// the counters below so the pause-and-resume path
 			// carries it.
 			EntersUnlocked: castDoors,
+			// #3768: "if you cast a spell this way, that artifact
+			// enters tapped" (CastPermission.EntersTapped), seeded
+			// before the pipeline like FaceDown, so the permanent
+			// ENTERS tapped and every other replacement sees it.
+			EntersTapped: item.EntersTapped,
 		}
 		// S29: "this creature escapes with a +1/+1 counter on it"
 		// (CR 702.138c). Seeded onto the event BEFORE the pipeline

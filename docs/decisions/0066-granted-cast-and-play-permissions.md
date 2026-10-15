@@ -3779,3 +3779,43 @@ pair's parts and `TestMeldedPairStampsBothCards` fails; drop the clear in `onTur
 and `TestBanonForgetsLastTurnsArrivals` fail; drop the filter clause in `Matches` and `TestPermissionFilterReadsTheArrivalRecord` fails
 with Banon opening a creature that died; drop the battlefield exclusion and the same filter test and
 `TestBanonOpensDiscardedAndMilledCreaturesButNotOnesThatDied` fail.
+
+## Amendment — 2026-10-15 (#3768): what a permission puts on the permanent its cast produces
+
+`GrantsHaste` (suspend, CR 702.62a) was the only rider a permission could hang on the permanent its cast becomes. Two printed
+sentences in deck request #3655 needed more, and both say "this way", which makes them the permission's and not the card's: the
+same artifact hard-cast from hand enters untapped, and the same creature hard-cast has no haste.
+
+- Edgar, Master Machinist: "Once during each of your turns, you may cast an artifact spell from your graveyard. If you cast a
+  spell this way, that artifact enters tapped."
+- Strago and Relm: "You may cast that card without paying its mana cost. If you cast a creature spell this way, it gains haste
+  and 'At the beginning of the end step, sacrifice this creature.'"
+
+### Decision 1 — `CastPermission.EntersTapped`, carried by the spell to its entry
+
+Read once in `CastSpell`, where the permission is consumed, and copied onto the spell as `StackItem.EntersTapped`, because the
+permission may be spent, swept or gone before the spell resolves. Resolution seeds it onto the entry event with `FaceDown`, before
+the CR 614 pipeline runs (CR 614.1c), so the permanent ENTERS tapped: no `EventTapCard`, and every other entry replacement sees it.
+A copy of the spell does not carry it (CR 707.10: a copy was not cast this way); `createSpellCopyLocked` lists its fields and leaves it
+out. Snapshot: additive `stackMeta[].entersTapped` and `castPermissions[].entersTapped`.
+
+### Decision 2 — `GainsKeywords` / `GainsAbilities`, one scoped effect with no duration
+
+Keywords and ADR 0093 grant keys the permanent gains. Registered at cast, like suspend's haste and for the same reason, as one
+layer-6 record (`AddKeywordsMod`, `GrantAbilitiesMod`) pinned to the spell's instance with no controller. The printed text states
+no duration (CR 611.2a), so the record lasts for the new condition `WhileSourceOnceItLands`
+(`ForThePermanentThisSpellBecomesDuration`): suspend's `WhileYouControlSourceOnceItLands` without the control test. It holds while
+the spell is on the stack, then while the permanent is on the battlefield whoever controls it, and is over for good once the object
+is anywhere else (a countered spell, or a permanent that left; CR 400.7). An instant or sorcery cast this way registers nothing:
+it never becomes an object that could gain anything, which is the printed "if you cast a creature spell" for a permission that
+opens only instants, sorceries and creatures. The granted "At the beginning of the end step, sacrifice this creature" is an ability
+of the creature, so it fires at every end step it sees, starting with this one, and not once like a delayed trigger. Snapshot:
+additive `castPermissions[].gainsKeywords` / `gainsAbilities`; the condition is appended to the enum.
+
+Not covered: a rider with a duration of its own ("it gains haste until end of turn", Thundermane Dragon, which also needs a
+power filter on a top-of-library permission).
+
+Back-out: drop `EntersTapped: item.EntersTapped` from the resolving entry event and
+`TestEdgarCastsOneArtifactFromTheGraveyardThatEntersTapped` fails; drop the `grantGainsForCastLocked` call and
+`TestStragoAndRelmCastCreatureGainsHasteAndIsSacrificedAtEndStep` fails; give `WhileSourceOnceItLands` the control test and the
+same test fails, as does `TestPermanentThisSpellBecomesDurationFollowsTheObject`.

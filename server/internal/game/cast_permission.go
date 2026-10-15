@@ -583,6 +583,37 @@ type CastPermission struct {
 	// and for the declared duration simplification.
 	GrantsHaste bool `json:"grantsHaste,omitempty"`
 
+	// EntersTapped is "If you cast a spell this way, that <permanent>
+	// enters tapped" (Edgar, Master Machinist; #3768, ADR 0066's
+	// 2026-10-15 amendment). Like GrantsHaste it belongs to the
+	// PERMISSION: the same artifact hard-cast from hand enters untapped.
+	//
+	// Read once, in CastSpell, where the permission is consumed, and
+	// carried on the spell as StackItem.EntersTapped, because by the time
+	// the spell resolves the permission may be spent or gone. The
+	// resolution seeds it onto the entry event before the CR 614
+	// pipeline runs (CR 614.1c), so the permanent ENTERS tapped: no
+	// EventTapCard, and nothing that watches an untapped permanent
+	// entering sees one. A spell that does not become a permanent
+	// ignores it.
+	EntersTapped bool `json:"entersTapped,omitempty"`
+
+	// GainsKeywords and GainsAbilities are "If you cast a creature spell
+	// this way, it gains haste and 'At the beginning of the end step,
+	// sacrifice this creature.'" (Strago and Relm; #3768): keywords, and
+	// ADR 0093 ability bundles by grant key, that the permanent this cast
+	// produces gains. The printed text states no duration, so neither
+	// has one (CR 611.2a): they last for as long as that permanent is on
+	// the battlefield as the same object, whoever controls it, and end
+	// for good when it leaves (CR 400.7). See
+	// Game.grantGainsForCastLocked.
+	//
+	// Read once, in CastSpell, like GrantsHaste. Only a permanent spell
+	// becomes something that can gain anything; an instant or sorcery
+	// cast this way gains nothing. Empty gains nothing.
+	GainsKeywords  []string `json:"gainsKeywords,omitempty"`
+	GainsAbilities []string `json:"gainsAbilities,omitempty"`
+
 	// MaxSpellManaValue caps the mana value of the SPELL this
 	// permission lets a player cast (ADR 0099 §3). Discover's "if the
 	// resulting spell's mana value is less than or equal to N"

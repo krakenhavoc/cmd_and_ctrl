@@ -406,6 +406,15 @@ type StackItem struct {
 	// that records nothing. A copy keeps its original's (CR 707.10).
 	CastValues map[string]int
 
+	// EntersTapped marks a spell cast through a permission that says
+	// "if you cast a spell this way, that <permanent> enters tapped"
+	// (CastPermission.EntersTapped; Edgar, Master Machinist, #3768).
+	// Stamped at announce, where the permission is consumed, and seeded
+	// onto the entry event as the spell resolves into a permanent, so it
+	// enters tapped through the CR 614 pipeline. Never set on a copy: a
+	// copy was not cast this way (CR 707.10).
+	EntersTapped bool
+
 	// FaceDown is the CR 708.2 state a spell CAST FACE DOWN
 	// (CR 708.4) resolves into — FaceDownMorphed for a morph or a
 	// megamorph, FaceDownDisguised for a disguise, and the zero value

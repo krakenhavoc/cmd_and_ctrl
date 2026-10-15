@@ -811,6 +811,9 @@ var stackItemFields = plan(
 	// time a sorcery couldn't have been is known only at announce.
 	"OwnFlashCast", carried, "",
 	"CastValues", carried, "",
+	// #3768. Carried: the permission that said "that artifact enters
+	// tapped" may be spent or gone by the time the spell resolves.
+	"EntersTapped", carried, "",
 	// CR 708.4 (#1194, ADR 0082). Carried: a restore that lost it
 	// would resolve a morph on the stack into a face-UP creature,
 	// revealing the card to the table and handing it back every
