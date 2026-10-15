@@ -2,6 +2,7 @@
 // game view (ADR 0125 §3.7). Pure, so each is unit-tested on its own.
 // A hint reads the HintContext and nothing else (§3.1): these take it.
 
+import { isCreature } from "../cardTypes";
 import type { CardView, PlayerView } from "../protocol";
 import type { HintContext } from "./hint";
 
@@ -63,6 +64,12 @@ export function controlsExertCreature(c: HintContext): boolean {
       card.controller === c.viewerID &&
       (card.ability_rows ?? []).some((r) => r.kind === "static" && r.label === EXERT_ROW),
   );
+}
+
+/** controlsCreature reports whether the viewer controls a creature on the battlefield (#3898). */
+export function controlsCreature(c: HintContext): boolean {
+  const cards: CardView[] = c.view?.battlefield.cards ?? [];
+  return cards.some((card) => card.controller === c.viewerID && isCreature(card));
 }
 
 /** hasHoverPointer reports a fine pointer that can rest on things (a mouse, a trackpad). */

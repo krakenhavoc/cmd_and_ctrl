@@ -1,6 +1,7 @@
 <script lang="ts">
   import Wordmark from "../lib/components/Wordmark.svelte";
   import { onDestroy, onMount, untrack } from "svelte";
+  import { get } from "svelte/store";
   import { GameClient } from "../lib/ws";
   import { endCueFor, gameOverText } from "../lib/gameOutcome";
   import GameEndFanfare from "../lib/components/GameEndFanfare.svelte";
@@ -131,7 +132,26 @@
   import { requestHandSort, requestNextHandSort } from "../lib/handOrder";
   import DockSheet from "../lib/components/board/DockSheet.svelte";
   import { combatMotion, stepChangePlaysCombatSound } from "../lib/combatStrikes";
-  import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
+  import {
+    attackRowRequest,
+    blockGroupRequest,
+    blockRequest,
+    blockSelectionRequest,
+    combatSelectionRequest,
+  } from "../lib/combatDock";
+  import {
+    NO_BLOCK_PICK,
+    blockBoard,
+    blockTargets,
+    fannedPiles,
+    groupTargets,
+    liveBlockPick,
+    reduceBlockPick,
+    type BlockContext,
+    type BlockEvent,
+    type BlockPickState,
+  } from "../lib/blockPick";
+  import BlockListSheet from "../lib/components/board/BlockListSheet.svelte";
   import { findCardView } from "../lib/commanderReturn";
   import {
     GAME_OVER_GRACE_MS,
@@ -1423,6 +1443,15 @@
     | { kind: "blocker"; cardID: string }
     | null;
   let combatSelection = $state<CombatSelection>(null);
+  // #3898: the blocker selected on the board, or the group being
+  // collected for a menace attacker (lib/blockPick.ts). See
+  // "Blocking on the board" below.
+  // Raw: it is replaced, never mutated, and compared by identity.
+  let blockPick = $state.raw<BlockPickState>(NO_BLOCK_PICK);
+  // "Show as list" in the block request: the same declaration as a list.
+  let blockListOpen = $state(false);
+  // The last refused attacker click's reason, shown in the dock.
+  let blockNote = $state("");
 
   // Creatures on the battlefield the viewer is defending against —
   // attacking them, a planeswalker they control or a battle they
@@ -1616,7 +1645,8 @@
               !!$cardMenu ||
               !!$abilityPopover ||
               !!$manaSourcePicker ||
-              combatSelection !== null,
+              combatSelection !== null ||
+              blockPick !== NO_BLOCK_PICK,
             viewerHasPriority,
             stackTopController: stackTopController(view),
             viewerID,
@@ -1700,7 +1730,7 @@
   // ADR 0105 §7: how many of the viewer's cards wear a highlight, for
   // the dock header's "N actions available".
   const readyActions = $derived(actingID ? actionableCount(legalHighlights, view, actingID) : 0);
-  const selectedCombatCardID = $derived(combatSelection?.cardID ?? null);
+  const selectedCombatCardID = $derived(combatSelection?.cardID ?? blockPick.selected ?? null);
   function handleSelectCombatCard(cardID: string): void {
     if (combatMode === "attack") selectAttacker(cardID);
     else if (combatMode === "block") selectBlocker(cardID);
@@ -1747,11 +1777,12 @@
     combatSelection = { ...combatSelection, exert };
     stageAtSoleTarget(combatSelection);
   }
+  // #3898: blockers are declared on the board (lib/blockPick.ts): click
+  // your creature, then the attacker. The state machine is pure; this
+  // holds its state, sends what it says to send, and publishes what the
+  // board draws (blockBoard).
   function selectBlocker(cardID: string): void {
-    combatSelection =
-      combatSelection?.kind === "blocker" && combatSelection.cardID === cardID
-        ? null
-        : { kind: "blocker", cardID };
+    dispatchBlock({ kind: "own", id: cardID });
   }
   function declareAttackTarget(targetPlayerID: string): void {
     if (!actingID || combatSelection?.kind !== "attacker") return;
@@ -2067,6 +2098,8 @@
   function finishBlocks(): void {
     if (!actingID) return;
     combatSelection = null;
+    blockPick = NO_BLOCK_PICK;
+    blockListOpen = false;
     const declining = viewerStagedBlocks === 0;
     const holding = actingHasPriority;
     const frame = client.sendAction("finish_blocks", actingID);
@@ -2097,14 +2130,78 @@
   });
 
   function declareBlockTarget(attackerCardID: string): void {
-    if (!actingID || combatSelection?.kind !== "blocker") return;
-    client.sendAction("declare_blocker", undefined, {
-      blocker: combatSelection.cardID,
-      attacker: attackerCardID,
-    });
-    combatSelection = null;
-    play("block");
+    dispatchBlock({ kind: "attacker", id: attackerCardID });
   }
+
+  // ---- Blocking on the board (#3898) ----
+  // Live while the acting seat is a defender still declaring.
+  const blockCtx = $derived<BlockContext | null>(
+    actingID && view && combatMode === "block" && viewerBlocksPending && !gameEnded
+      ? { view: actingView ?? view, viewerID: actingID, legal: legalActions }
+      : null,
+  );
+  function dispatchBlock(ev: BlockEvent): void {
+    if (!blockCtx) return;
+    const r = reduceBlockPick(blockPick, ev, blockCtx);
+    blockPick = r.state;
+    // A click on an attacker the creature can't block: the dock says
+    // why, for a touch screen with no tooltip to read.
+    blockNote = r.refused ?? "";
+    for (const s of r.send) client.sendAction(s.type, actingPlayer, s.params);
+    if (r.send.some((s) => s.type !== "remove_from_combat")) play("block");
+  }
+  // The list's button for one creature on one attacker: the board's two
+  // clicks, or the click that joins a group being collected.
+  function pairFromList(blocker: string, attacker: string): void {
+    if (blockPick.group?.attacker === attacker) {
+      dispatchBlock({ kind: "own", id: blocker });
+      return;
+    }
+    blockPick = { selected: blocker, group: null };
+    dispatchBlock({ kind: "attacker", id: attacker });
+  }
+  function clearFromList(blocker: string): void {
+    blockPick = { selected: blocker, group: null };
+    dispatchBlock({ kind: "remove" });
+  }
+  // A new frame drops what it made stale; the end of the declaration
+  // drops everything.
+  $effect(() => {
+    const ctx = blockCtx;
+    if (!ctx) {
+      if (untrack(() => blockPick) !== NO_BLOCK_PICK) blockPick = NO_BLOCK_PICK;
+      blockListOpen = false;
+      return;
+    }
+    const cur = untrack(() => blockPick);
+    const live = liveBlockPick(cur, ctx);
+    if (live !== cur) blockPick = live;
+  });
+  // What the board draws: rings, greyed attackers with their reasons,
+  // the group's dashed lines, and the piles fanned out.
+  $effect(() => {
+    const ctx = blockCtx;
+    if (!ctx) {
+      if (get(blockBoard) !== null) blockBoard.set(null);
+      if (get(fannedPiles).size > 0) fannedPiles.set(new Set());
+      return;
+    }
+    const { selected, group } = blockPick;
+    blockBoard.set({
+      viewerID: ctx.viewerID,
+      selected,
+      group,
+      targets: group
+        ? groupTargets(ctx, group)
+        : selected
+          ? blockTargets(ctx, selected)
+          : new Map(),
+    });
+  });
+  onDestroy(() => {
+    blockBoard.set(null);
+    fannedPiles.set(new Set());
+  });
   // Look up a card's name + controller-name by instance ID. Used to
   // label the combat-hint banner during selection.
   function cardLabel(cardID: string): { name: string; controller: string } {
@@ -2279,10 +2376,37 @@
   // #1279: a defender still declaring blockers finishes from the dock's
   // primary, for the whole of their open declaration.
   const blockDockRequest = $derived(
-    viewerBlocksPending && !mulligansOpen && !gameEnded
-      ? blockRequest(viewerStagedBlocks, finishBlocks)
+    viewerBlocksPending && !mulligansOpen && !gameEnded && !blockListOpen
+      ? blockRequest(
+          viewerStagedBlocks,
+          finishBlocks,
+          blockCtx ? () => (blockListOpen = true) : undefined,
+        )
       : null,
   );
+  // #3898: the selected blocker, or the group being collected for a
+  // menace attacker. Not while the list is open: the list says it.
+  const blockPickDockRequest = $derived.by(() => {
+    if (!blockCtx || mulligansOpen || blockListOpen) return null;
+    const { selected, group } = blockPick;
+    if (group) {
+      return blockGroupRequest(
+        cardLabel(group.attacker).name,
+        group.blockers.length,
+        group.need,
+        () => dispatchBlock({ kind: "cancel" }),
+      );
+    }
+    if (!selected) return null;
+    const card = blockCtx.view.battlefield.cards.find((c) => c.instance_id === selected);
+    return blockSelectionRequest(
+      cardLabel(selected).name,
+      !!card?.blocking_target,
+      () => dispatchBlock({ kind: "cancel" }),
+      () => dispatchBlock({ kind: "remove" }),
+      blockNote,
+    );
+  });
   // The two-click combat flow's hint, with Cancel (and Escape).
   const selectionDockRequest = $derived(
     combatSelection && !mulligansOpen
@@ -3138,6 +3262,20 @@
         {/if}
         {#if blockDockRequest}
           <DockRequest request={blockDockRequest} />
+        {/if}
+        {#if blockPickDockRequest}
+          <DockRequest request={blockPickDockRequest} />
+        {/if}
+        {#if blockListOpen && blockCtx}
+          <BlockListSheet
+            ctx={blockCtx}
+            pick={blockPick}
+            staged={viewerStagedBlocks}
+            onPair={pairFromList}
+            onClear={clearFromList}
+            onFinish={finishBlocks}
+            onClose={() => (blockListOpen = false)}
+          />
         {/if}
         {#if selectionDockRequest}
           <DockRequest request={selectionDockRequest} />

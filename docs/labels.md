@@ -64,6 +64,8 @@ registered, or when this file is stale.
 | `declareAttackerAndExert` | `Declare attacker and exert` | menuitem | text | `lib/contextMenu.logic.ts` | ADR 0130 §7: the card menu's row beside Declare attacker, for a creature that may be exerted |
 | `exertAttacker` | `Exert <name>` (starts with `Exert `) | switch | aria | `lib/components/board/AttackDeclarationModal.svelte` | ADR 0130 §7: the Choose attackers picker's per-row Exert toggle |
 | `declareBlockers` | `declare blockers` | dialog, group | aria | `lib/combatDock.ts` | the block request's dialog and its row group |
+| `removeBlock` | `Remove block` | button | text | `lib/combatDock.ts` | #3898: the dock's button that takes the selected blocker's block back while blockers are declared on the board |
+| `chooseBlockers` | `choose blockers` | dialog | aria | `lib/components/board/BlockListSheet.svelte` | #3898: the block declaration as a list, opened from the block request's Show as list; the keyboard path |
 | `mulligan` | `keep or mulligan your hand` | dialog | aria | `routes/Game.svelte` | the opening hand sheet; the tutorial's play-land and cast-creature steps detour here while it waits |
 | `keepHand` | `Keep hand` | button | text | `routes/Game.svelte` | the opening hand sheet's primary |
 | `openingHandDecisions` | `opening hand decisions` | generic | aria | `routes/Game.svelte` | the strip's roll call while hands are kept or mulliganed |
@@ -71,7 +73,7 @@ registered, or when this file is stale.
 | `crewCountsAs` | `counts as <N>` (starts with `counts as `) | generic | text | `lib/components/board/CrewCostModal.svelte` | ADR 0186 Decision 6 (#3550): the crew or saddle picker's note on a creature that counts for something other than its power on this cost |
 | `selectTarget` | `Select target for <card>` (starts with `Select target for `) | dialog | aria | `lib/targetingDock.ts` | the targeting request |
 | `chooseOnBoard` | `Choose on the board for <card>` (starts with `Choose on the board for `) | dialog | aria | `lib/targetingDock.ts` | a card-set pick answered by clicking permanents on the board (#2394) |
-| `showAsList` | `Show as list` | button | text | `lib/targetingDock.ts` | a board-answered card-set pick's fallback: open the same choice as the list |
+| `showAsList` | `Show as list` | button | text | `lib/targetingDock.ts`<br>`lib/combatDock.ts` | a board-answered card-set pick's fallback: open the same choice as the list; #3898: the block request's way to the blockers list |
 | `castPayingOnPaper` | `Cast <card> and pay the rest on paper?` (ends with ` and pay the rest on paper?`) | dialog | aria | `lib/targetingDock.ts` | Cast anyway's confirm (ADR 0118 §2, renamed by #3855), with its Cast and Cancel |
 | `paperPayment` | `What did you pay for <card>?` (starts with `What did you pay for `) | dialog | aria | `lib/components/board/PaperPaymentModal.svelte` | the paper payment picker (#3855): what a waived payment something reads paid outside the pool |
 | `castFree` | `Cast without paying its mana cost` | button | text | `lib/components/board/PaperPaymentModal.svelte` | the paper payment picker's other answer: an effect on paper let you cast it free (#3855) |

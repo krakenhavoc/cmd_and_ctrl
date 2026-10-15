@@ -42,6 +42,7 @@
   import { settings } from "../../settings";
   import { targeting, isLegalCardTarget, isPicked } from "../../targeting";
   import { boardChoicePick, isBoardPickable, isBoardPicked } from "../../boardChoicePick";
+  import { blockBoard, blockTargetFor, inBlockGroup } from "../../blockPick";
   import { autoTapHighlight } from "../../dragCast";
   import { noUntapAppliesToController } from "../../noUntap";
   import { deathMarkBadge } from "../../deathMarks";
@@ -306,6 +307,25 @@
   // Every other permanent is dimmed and not clickable while it is open.
   const choiceDimmed = $derived(inChoicePick && !choicePickable);
 
+  // #3898: declaring blockers on the board (lib/blockPick.ts). While a
+  // creature is selected, each attacker coming at the viewer says what a
+  // click would do: the ones it can block wear the target ring, the ones
+  // it can't are dimmed, unclickable and carry the server's reason.
+  const blockTarget = $derived.by(() =>
+    onClick && readyZone === "battlefield"
+      ? blockTargetFor($blockBoard, memberIDs ?? [card.instance_id])
+      : undefined,
+  );
+  const blockRefused = $derived(blockTarget?.kind === "refused" ? blockTarget.reason : "");
+  const blockOpen = $derived(!!blockTarget && blockTarget.kind !== "refused");
+  // In the group being collected for a menace attacker.
+  const blockGrouped = $derived.by(
+    () =>
+      !!onClick &&
+      readyZone === "battlefield" &&
+      inBlockGroup($blockBoard, memberIDs ?? [card.instance_id]),
+  );
+
   // S20: while a cast-targeting prompt is live, cards in the legal
   // set get a ring so the player can see what they may click. #2880:
   // so do the permanents a pending choice offers.
@@ -556,7 +576,9 @@
   const damage = $derived(damageBadge(card));
   const interactive = $derived(!!onClick && !phasedOut);
   // ADR 0117 §1: the pointer affordance follows what a click would do.
-  const clickable = $derived(interactive && !choiceDimmed && (!inert || targetable));
+  const clickable = $derived(
+    interactive && !choiceDimmed && !blockRefused && (!inert || targetable),
+  );
 
   // ADR 0069 — a face-down object the viewer IS allowed to look at:
   // the controller of their own morph or manifest (CR 708.5), the
@@ -783,6 +805,9 @@
     // CR 702.26b: a phased-out permanent "can't affect or be affected
     // by anything else in the game", so there is nothing to click.
     if (phasedOut) return;
+    // #3898: a click on an attacker the selected creature can't block
+    // still reaches the board, which declares nothing and has the dock
+    // say why (on a touch screen there is no tooltip to read).
     onClick?.(card, ev);
   }
 
@@ -929,14 +954,15 @@
   class:tapped={card.tapped}
   class:selected
   class:targetable
-  class:picked
+  class:picked={picked || blockGrouped}
   class:choice-dimmed={choiceDimmed}
+  class:block-refused={!!blockRefused}
   class:autotap-planned={$autoTapHighlight.has(card.instance_id)}
   class:attacking
   class:blocking
   class:ready
   class:ready-idle={ready && !!idleHint}
-  class:combat-target={combatTarget}
+  class:combat-target={(combatTarget || blockOpen) && !blockRefused}
   class:clickable
   class:phased-out={phasedOut}
   class:ring-bearer={!!card.ring_bearer}
@@ -947,7 +973,14 @@
   role={interactive ? "button" : "img"}
   tabindex={interactive ? 0 : undefined}
   aria-label={accessibleName}
-  title={showBack ? "" : ready && idleHint ? `${displayName(card)} — ${idleHint}` : tipName}
+  title={showBack
+    ? ""
+    : blockRefused
+      ? `${displayName(card)} — can't block: ${blockRefused}`
+      : ready && idleHint
+        ? `${displayName(card)} — ${idleHint}`
+        : tipName}
+  aria-disabled={blockRefused ? "true" : undefined}
   onpointerenter={handleEnter}
   onpointerleave={handleLeave}
   onpointerdown={handlePointerDown}
@@ -2359,6 +2392,11 @@
   .card.choice-dimmed {
     filter: brightness(0.62) saturate(0.6);
     cursor: default;
+  }
+  /* #3898: an attacker the selected creature can't block. */
+  .card.block-refused {
+    filter: brightness(0.55) saturate(0.4);
+    cursor: not-allowed;
   }
   .card.picked {
     box-shadow:
