@@ -1006,6 +1006,14 @@ export const LABEL_SPECS = {
     doc: "the site header's link to #/lobby, first in the signed-in nav (it read Lobby before ADR 0156)",
   }),
 
+  siteMenu: label({
+    name: "Site menu",
+    kind: "aria",
+    role: "button",
+    owners: ["lib/components/SiteHeader.svelte"],
+    doc: "the site header's menu button below 600px, which opens the nav links (a disclosure: aria-expanded, Escape closes it); hidden at tablet width and up (#3877)",
+  }),
+
   // -- The front door (ADR 0156 §4–6) --
   signInWithDiscord: label({
     name: "Sign in with Discord",

@@ -262,7 +262,8 @@ describe("every Discord placement hides with no invite (§6)", () => {
     let h = render(SiteHeader as never, {} as never);
     let f = render(SiteFooter as never, {} as never);
     await settle();
-    expect(discordLinks(h.container)).toHaveLength(1);
+    // The header's icon, and its row in the phone layout's menu panel (#3877).
+    expect(discordLinks(h.container)).toHaveLength(2);
     expect(discordLinks(f.container)).toHaveLength(1);
     h.destroy();
     f.destroy();

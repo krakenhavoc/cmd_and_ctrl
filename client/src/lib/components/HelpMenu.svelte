@@ -251,4 +251,24 @@
     color: var(--fg-dim);
     cursor: default;
   }
+
+  /* Phone layout (#3877): a 44px target, and the menu hangs from the
+     site header's right edge (the header is the nearest positioned
+     ancestor), because the button sits too far left to hold a 220px menu. */
+  @media (max-width: 599px) {
+    .help {
+      position: static;
+    }
+    .help-btn {
+      width: 44px;
+      height: 44px;
+    }
+    .help-menu {
+      top: calc(100% + 4px);
+      right: var(--page-gutter);
+    }
+    .mi {
+      min-height: 44px;
+    }
+  }
 </style>
