@@ -406,6 +406,16 @@ func CastFromGraveyardOrExile() CostPredicate {
 	}
 }
 
+// CastFromGraveyard passes on a spell being cast from a graveyard —
+// "spells you cast from your graveyard cost {2} less to cast"
+// (Emet-Selch of the Third Seat). Reads the zone the cast is coming
+// FROM, so a flashed-back, escaped, Snapcaster'd or Emet-granted cast is
+// matched and a hand or exile cast is not. Pair it with YourSpell() for
+// "you cast".
+func CastFromGraveyard() CostPredicate {
+	return func(q game.CostQuery) bool { return q.FromZone == game.ZoneGraveyard }
+}
+
 // --- what kind of spell ------------------------------------------
 
 // CreatureSpell passes on a creature spell.

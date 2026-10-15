@@ -3819,3 +3819,50 @@ Back-out: drop `EntersTapped: item.EntersTapped` from the resolving entry event 
 `TestEdgarCastsOneArtifactFromTheGraveyardThatEntersTapped` fails; drop the `grantGainsForCastLocked` call and
 `TestStragoAndRelmCastCreatureGainsHasteAndIsSacrificedAtEndStep` fails; give `WhileSourceOnceItLands` the control test and the
 same test fails, as does `TestPermanentThisSpellBecomesDurationFollowsTheObject`.
+
+## Amendment — 2026-10-15 (#3785): a graveyard cast at its mana cost that counts toward a once-each-turn limit only when made
+
+Emet-Selch of the Third Seat: "Whenever one or more opponents lose life, you may cast target instant or sorcery card from
+your graveyard. If that spell would be put into your graveyard, exile it instead. Do this only once each turn." Three of its
+pieces already existed: the batch trigger (`OncePerBatch` over the two life-loss events, read through `b04OpponentLostLife`,
+CR 603.2c), the exile replacement (`ExileOnResolution`, Torrential Gearhulk's) and the cast follow-up of #2173
+(`CastPermission.FollowUp`, Conduit of Worlds). What was missing is small and is the whole of this amendment.
+
+### Decision 1 — the offer is claimed under `AltCostKeyGrantedCost` with the price left empty
+
+Snapcaster's grant is keyed `"flashback"`, which is wrong here for two reasons. A card that prints flashback offers its own
+`"flashback"` at its own price, so the claim resolves to the card's offer and Emet's "cast" would be charged the flashback
+cost. And a cast made under the card's own text is, by `castUsesGrantLocked`, not the permission's, so the follow-up would
+not run. `effects.OfferGraveyardCast` (`granted_permissions.go`) keys the permission `AltCostKeyGrantedCost` with an empty
+`Cost`, which `AlternativeCostFor` reads as "the card's mana cost", flash-timed and pass-closed like the free-cast grants
+(CR 608.2g), with `ExileOnResolution` and a `FollowUp` key.
+
+### Decision 2 — a claim of the permission's own synthesised offer is the permission's cast
+
+`AlternativeCost.FromPermission` is set only on the offer `CastPermission.AlternativeCostFor` builds, and
+`castUsesGrantLocked` answers true for it before asking whether the card opens its own zone. A card the graveyard already
+lets you cast (Lingering Souls, Faithless Looting) cast through the permission therefore runs the follow-up and spends
+`CastsLeft` and `PerType` budgets, as a Gravecrawler-style card under Underworld Breach's escape does. A claim of the card's
+own key stays the card's own cast. The field is never serialised.
+
+### Decision 3 — "do this only once each turn" is written by the follow-up, not by the grant
+
+The limit counts a cast, so it is `Game.NoteDoneThisTurn` (per object, #3247's shape) called from the registered follow-up,
+which runs only once the spell is on the stack through the permission. It is read when the ability triggers (no trigger once
+spent) and again as it resolves. A declined or lapsed offer writes nothing and leaves the turn's use for a later batch.
+
+### Decision 4 — the discount is a constructor, not machinery
+
+`CostQuery.FromZone` was already on the modifier input; `effects.CastFromGraveyard()` is the predicate, so "spells you cast
+from your graveyard cost {2} less" is `CostsLess(2, label, YourSpell(), CastFromGraveyard())`.
+
+### Declared
+
+"If that spell would be put into your graveyard, exile it instead" is implemented with flashback's wider replacement
+(CR 702.34a: instead of anywhere else it would go when it leaves the stack). The only difference is an instant or sorcery
+that would be shuffled into a library or returned to a hand; it is exiled here, never stronger than printed.
+
+No wire or snapshot change: the follow-up key already rode `castPermissions[].followUp`.
+
+Back-out: drop `FromPermission` from `castUsesGrantLocked` and `TestEmetSelchCastOfAFlashbackCardCountsAndPaysManaCost`
+fails (the second loss offers again); drop the `FollowUp` key and `TestEmetSelchOffersOnlyOnceEachTurn` fails.
