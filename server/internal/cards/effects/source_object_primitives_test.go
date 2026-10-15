@@ -639,7 +639,9 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		// "Shuffle Beacon of Immortality into its owner's library." (#3245)
 		"beacon_of_immortality.go": true,
 		"temporal_mastery.go":      true, "temporal_trespass.go": true,
-		"bound_determined.go": true, // Bound's "Exile this card." (ADR 0106 PR 3)
+		// "Exile Draconic Intervention." (#3537)
+		"draconic_intervention.go": true,
+		"bound_determined.go":      true, // Bound's "Exile this card." (ADR 0106 PR 3)
 		// Restorative Burst, the sorcery back face: "Exile Restorative Burst."
 		"pestilent_cauldron.go": true,
 		// "Exile Morningtide's Light." (ADR 0108 PR 7, #1904)
