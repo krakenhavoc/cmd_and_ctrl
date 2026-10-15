@@ -282,11 +282,12 @@ func specialActionVerb(kind SpecialActionKind) string {
 
 // specialActionOfferLocked is the offer of `kind` on `card` in `zone`
 // that `actor` means, or nil when there is none. `cost` picks between
-// two offers of the same kind (SpecialActionParams.Cost). Empty takes
-// the first.
+// two offers of the same kind (SpecialActionParams.Cost), and `door`
+// and `route` pick a door or a turn-face-up route. Empty takes the
+// first.
 //
 // Caller must hold g.mu (read or write).
-func (g *Game) specialActionOfferLocked(actor uuid.UUID, card Card, zone ZoneKind, kind SpecialActionKind, cost string, door DoorSide) *SpecialAction {
+func (g *Game) specialActionOfferLocked(actor uuid.UUID, card Card, zone ZoneKind, kind SpecialActionKind, cost string, door DoorSide, route TurnFaceUpRoute) *SpecialAction {
 	for _, sa := range g.SpecialActionsOfferedLocked(actor, card, zone) {
 		if sa.Kind != kind {
 			continue
@@ -297,6 +298,11 @@ func (g *Game) specialActionOfferLocked(actor uuid.UUID, card Card, zone ZoneKin
 		// ADR 0103: an unlock names its door; two doors can print the
 		// same cost.
 		if door != DoorNone && sa.Door != door {
+			continue
+		}
+		// ADR 0189: a turn_face_up names its route; two routes can
+		// print the same cost.
+		if route != "" && sa.Route != route {
 			continue
 		}
 		out := sa

@@ -3870,6 +3870,12 @@ type SpecialActionView struct {
 	// (ADR 0103) — and what the action payload names back. Empty for
 	// every other kind.
 	Door string `json:"door,omitempty"`
+	// Route is which rule a "turn_face_up" row is taken under —
+	// "mana_cost", "morph" or "disguise" (ADR 0189 decision 4) — and
+	// what the action payload names back. A manifested or cloaked card
+	// whose card also prints morph or disguise lists two rows, which
+	// can cost the same. Empty for every other kind.
+	Route string `json:"route,omitempty"`
 }
 
 // RoomDoorsView is a Room's unlocked designations (CR 709.5c, ADR
@@ -7836,6 +7842,7 @@ func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID, zone ga
 			Cost:      sa.Cost,
 			Available: g.SpecialActionTimingOKLocked(owner, card, sa.Kind),
 			Door:      game.DoorName(sa.Door),
+			Route:     string(sa.Route),
 		}
 		// #1319: the charged price, after every CR 601.2f cost
 		// modifier on the battlefield — Ranar the Ever-Watchful's

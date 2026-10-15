@@ -1,0 +1,6 @@
+---
+title: "A manifested or cloaked card turns face up by its morph or disguise cost too"
+date: 2026-10-14
+issues: [3539]
+---
+**A manifested or cloaked card turns face up by its morph or disguise cost too** (#3539, [ADR 0189](decisions/0189-the-rest-of-face-down-and-manifest-dread.md) decision 4) — CR 701.40c and 701.58c: a manifested or cloaked card that also prints morph, megamorph or disguise may be turned face up for either cost. `game.TurnFaceUpOffers` returns every route, each stamped with a `TurnFaceUpRoute` (`mana_cost`, `morph`, `disguise`), cheaper mana value first and the keyword route first on a tie; with two offers the labels name their routes, and with one they are unchanged. `SpecialActionParams.Route` and `special_action.route` pick between them (an empty route takes the first, an unknown one is refused by the parser, and a route on any other kind is refused), and `SpecialActionView.route` carries it to the client, which lists one menu row per route. The enumerator emits one move per offer with its `route`, and the heuristic bot adds a small bonus for the megamorph route so it takes the counter when the costs tie. No card changed: every manifest, manifest dread and cloak card is now correct for a card with morph or disguise.
