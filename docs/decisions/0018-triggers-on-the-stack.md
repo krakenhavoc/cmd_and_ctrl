@@ -4761,7 +4761,8 @@ item is still there.
 4. **Snapshot.** `events[].targeter_kind` and the same field inside every embedded trigger event are additive under v9
    and omitted when empty. A binary that drops the key reads the old events as having no kind, which only means an
    older Hojo trigger does not fire for them.
-## Amendment 2026-10-14 (fifth) — "use this order again" for a repeated batch (#3016) · Proposed
+
+## Amendment 2026-10-14 (fifth) — "use this order again" for a repeated batch (#3016) · Accepted (2026-10-15)
 
 Issue [#3016](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3016), c2 of the #3013 amendment. The owner chose
 the feature on 2026-10-11 (decision 4 there) and asked for this amendment **for review before anything is built**.
@@ -4947,15 +4948,15 @@ answer. They share no state. A remembered order that fires during a recording is
 1. Server: keys, memory, `AutoAnswer`'s new case, `forget_trigger_order`, snapshot, view, log, `legal`, docs.
 2. Client: the toggle, the notice reuse, the menu entry, labels and tests.
 
-### Questions for the owner
+### Owner decisions (2026-10-15)
 
-1. **The same batch.** (A1) the set of distinct rows, counts ignored, or (A2) the multiset? *Recommended: A1.*
-2. **Rankings only.** Remember only an order that keeps each row's copies together (B)? *Recommended: yes.*
-3. **Opt-in.** (D1) a toggle on the prompt, off by default, or (D2) a "Same as last time" button with nothing
-   standing? *Recommended: D1.*
-4. **Always ask.** (E1) a remembered order still answers, or (E2) always ask wins and hides the toggle?
-   *Recommended: E1.*
+The owner approved the recommendations on 2026-10-15. Each one is accepted as written:
+
+1. **The same batch.** (A1) the set of distinct rows, counts ignored. **Accepted.**
+2. **Rankings only.** Only an order that keeps each row's copies together is remembered (B). **Accepted.**
+3. **Opt-in.** (D1) a toggle on the prompt, off by default. **Accepted.**
+4. **Always ask.** (E1) a remembered order still answers. **Accepted.**
 5. **Undo.** The memory is game state, undone with the answer that taught it and not carried across `RestoreFrom`
-   (H)? *Recommended: yes.*
-6. **Agent seats.** (I1) offer the remember move to MCP seats, or (I2) not? *Recommended: I1.*
-7. **The cap.** 32 remembered orders per seat per game, the least recently applied replaced? *Recommended: yes.*
+   (H). **Accepted.**
+6. **Agent seats.** (I1) MCP seats get the remember move. **Accepted.**
+7. **The cap.** 32 remembered orders per seat per game, the least recently applied replaced. **Accepted.**
