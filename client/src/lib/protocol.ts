@@ -3385,6 +3385,9 @@ export interface ActivatedAbilityView {
 export interface PurposeView {
   // #3309: on an Aura card, what it does to the permanent it enchants.
   aura?: "benefit" | "harm" | string;
+  // #3712: the card may be cast as though it had flash and is sacrificed
+  // at the next cleanup step when it was. Absent otherwise.
+  flash_cleanup_sacrifice?: boolean;
   draws?: number;
   controller_loses_life?: number;
   discards?: number;

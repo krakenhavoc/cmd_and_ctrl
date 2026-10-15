@@ -210,6 +210,15 @@ type Purpose struct {
 	// of an Aura only; the zero value is "not declared" and keeps that
 	// price. effects.Register refuses it off the card.
 	Aura AuraPurpose
+
+	// FlashCleanupSacrifice is set on the wire for a card that prints
+	// the Visions-era "you may cast this as though it had flash; cast at
+	// a time a sorcery couldn't be, it is sacrificed at the next cleanup
+	// step" rider (#3712). It is read off Spec.FlashWithCleanupSacrifice
+	// by CardPurposeOfPtr, never declared on a Purpose by hand: the bot
+	// holds an instant-speed cast of such a card unless it matters before
+	// cleanup.
+	FlashCleanupSacrifice bool
 }
 
 // AuraPurpose is Purpose.Aura: what an Aura does to what it enchants.
@@ -508,7 +517,9 @@ func CardPurposeOfPtr(c *Card) Purpose {
 	if d == nil {
 		return Purpose{}
 	}
-	return d.Purpose
+	p := d.Purpose
+	p.FlashCleanupSacrifice = d.FlashWithCleanupSacrifice
+	return p
 }
 
 // plus is what two effects declare together: a fused split spell

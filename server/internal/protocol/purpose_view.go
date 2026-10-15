@@ -121,6 +121,10 @@ type PurposeView struct {
 	// to the permanent it enchants. Absent when the card declares none.
 	// Not an amount, like Answers.
 	Aura string `json:"aura,omitempty"`
+	// FlashCleanupSacrifice is true on a card that may be cast as though
+	// it had flash and is sacrificed at the next cleanup step when it was
+	// (Necromancy, Lightning Reflexes, #3712). Not an amount, like Aura.
+	FlashCleanupSacrifice bool `json:"flash_cleanup_sacrifice,omitempty"`
 }
 
 // Priced reports whether the purpose declares anything the bot prices:
@@ -135,6 +139,7 @@ func (p *PurposeView) Priced() bool {
 	q := *p
 	q.Answers = nil
 	q.Aura = ""
+	q.FlashCleanupSacrifice = false
 	return q != PurposeView{}
 }
 
@@ -294,6 +299,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		ExtraLandDrops:            p.ExtraLandDrops,
 		Impulse:                   p.Impulse,
 		Aura:                      string(p.Aura),
+		FlashCleanupSacrifice:     p.FlashCleanupSacrifice,
 	}
 	if pm := p.Pump; pm != nil {
 		v.Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...)}

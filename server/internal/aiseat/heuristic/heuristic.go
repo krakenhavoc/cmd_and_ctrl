@@ -240,6 +240,12 @@ type Config struct {
 	// declares itself a curse is never put on the bot's own. Off (the
 	// baseline) prices every Aura's host as a target to hit.
 	PriceAuraPurpose bool
+	// HoldFlashSacrifice holds an instant-speed cast of a card that
+	// prints the "flash, but sacrificed at cleanup" rider (Necromancy,
+	// Lightning Reflexes; #3712, flash_sacrifice.go) for the bot's own
+	// main phase unless it earns its keep before cleanup. Off (the
+	// baseline) prices it like any other cast.
+	HoldFlashSacrifice bool
 	// PriceReanimation prices a graveyard target a spell declares it
 	// reanimates (TargetPurpose.Reanimates, #3161) as the permanent it
 	// becomes, whoever owns the graveyard: the creature's value, with no
@@ -696,6 +702,7 @@ func DefaultConfig() Config {
 		NetLandSwaps:        true,
 		PriceTargetPurposes: true,
 		PriceAuraPurpose:    true,
+		HoldFlashSacrifice:  true,
 		PriceReanimation:    true,
 		DamageByLethality:   true,
 		DamageChip:          0.00,
@@ -851,6 +858,8 @@ func BaselineConfig() Config {
 	c.PriceTargetPurposes = false
 	// #3309: an Aura's host priced by what the Aura does to it.
 	c.PriceAuraPurpose = false
+	// #3712: a flash-with-cleanup-sacrifice card held for the main phase.
+	c.HoldFlashSacrifice = false
 	// #3161: a reanimation target priced as the permanent it becomes.
 	c.PriceReanimation = false
 	c.DamageByLethality = false
