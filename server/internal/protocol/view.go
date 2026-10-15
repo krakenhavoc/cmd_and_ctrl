@@ -10043,6 +10043,13 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 		if c.PrivateText && c.Chooser != viewerID {
 			out[i].Source = ""
 			out[i].Reason = "Deciding on an opening-hand action"
+			// #3801: a may_cast over a card only the chooser has looked
+			// at (the top of a library). The card's id is a handle on a
+			// hidden-zone card, so it goes too.
+			if c.Kind == string(game.PendingChoiceMayCast) {
+				out[i].Reason = "Deciding whether to play the card they looked at"
+				out[i].MayCastCard = ""
+			}
 			out[i].AcceptLabel = ""
 			out[i].DeclineLabel = ""
 			continue

@@ -78,7 +78,7 @@
   import { zoneBrowser, closeZoneBrowser } from "../../zoneBrowser";
   import {
     freeCastRequest,
-    freeCastTarget,
+    freeCastLocation,
     handFreeCastRequest,
     handFreeCastTarget,
     isFreeCastPick,
@@ -1447,10 +1447,11 @@
   $effect(() => {
     const id = $freeCastRequest;
     if (!id) return;
-    const target = freeCastTarget(view.exile?.cards, id);
+    const me = view.seats.find((s) => s.id === viewerID);
+    const target = freeCastLocation(view.exile?.cards, me?.library.cards, id);
     if (target === undefined) return;
     freeCastRequest.set(null);
-    if (target) handlePlayCard(target, "exile");
+    if (target) handlePlayCard(target.card, target.zone);
   });
 
   // #3270 (CR 608.2g): "you may cast a spell from your hand without paying

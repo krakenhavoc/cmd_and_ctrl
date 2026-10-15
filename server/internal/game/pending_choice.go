@@ -3946,6 +3946,11 @@ type MayCastPrompt struct {
 	// the client's defaults.
 	AcceptLabel, DeclineLabel string
 	OnAccept, OnDecline       func(g *Game) error
+	// Private marks a prompt whose words name a card only the chooser
+	// has looked at (a "look at the top card" offer, #3801): the wire
+	// strips the question, the labels and the card from every other
+	// viewer (PendingChoice.PrivateText).
+	Private bool
 }
 
 // QueueMayCastPromptForEffect is QueueMayCastForEffect with the
@@ -3975,6 +3980,7 @@ func (g *Game) QueueMayCastPromptForEffect(p MayCastPrompt) error {
 			onAccept:  p.OnAccept,
 			onDecline: p.OnDecline,
 		},
+		private: p.Private,
 	})
 	return nil
 }
