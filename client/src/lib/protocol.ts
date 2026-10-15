@@ -4273,6 +4273,14 @@ export interface CardView extends CastSurfaceView {
   // while saddled" triggers read. Public, read straight off the card.
   // Absent — not `false` — for everything else.
   saddled?: boolean;
+  // ADR 0186 §6 (#3543, CR 702.122c / 702.171c): the card IDs of the
+  // creatures tapped this turn to pay for this Vehicle's crew ability
+  // (`crewed_by`) or this Mount's saddle ability (`saddled_by`), in the
+  // order they were tapped, that are still on the battlefield as the same
+  // objects. Public. Absent — not `[]` — when nobody paid, and absent from
+  // the next turn on.
+  crewed_by?: string[];
+  saddled_by?: string[];
   // ADR 0071 amendment, #2698 (CR 701.60): this permanent is
   // suspected — it has menace and can't block for as long as it is.
   // Public, and kept on a face-down permanent: the designation was

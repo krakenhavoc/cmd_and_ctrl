@@ -209,3 +209,75 @@ describe("the designation badge", () => {
     expect(container.querySelector(".badge.designation")).toBeNull();
   });
 });
+
+// ADR 0186 §6 (#3544): which creatures crewed a Vehicle or saddled a Mount.
+describe("the crewed and saddled badges name who paid", () => {
+  const board = (...names: string[]) =>
+    ({
+      battlefield: {
+        cards: names.map((name, i) => ({ instance_id: `c${i + 1}`, name })),
+      },
+    }) as never;
+  const mountWith = (card: CardView, names: string[]) =>
+    render(Card as never, { card, view: board(...names) } as Record<string, unknown>);
+  const title = (container: HTMLElement) =>
+    container.querySelector(".badge.designation")?.getAttribute("title") ?? "";
+
+  it("names both saddlers in a Mount's tooltip", () => {
+    const { container } = mountWith(
+      permanent({
+        name: "Gilded Ghoda",
+        type_line: "Creature — Horse Mount",
+        saddled: true,
+        saddled_by: ["c1", "c2"],
+      }),
+      ["Llanowar Elves", "Birds of Paradise"],
+    );
+    expect(badgeText(container)).toBe("SADDLED");
+    expect(title(container)).toContain("saddled by Llanowar Elves and Birds of Paradise");
+  });
+
+  it("shows a crewed Vehicle and its crew", () => {
+    const { container } = mountWith(
+      permanent({ name: "Smuggler's Copter", type_line: "Artifact — Vehicle", crewed_by: ["c1"] }),
+      ["Llanowar Elves"],
+    );
+    expect(badgeText(container)).toBe("CREWED");
+    expect(title(container)).toContain("crewed by Llanowar Elves");
+  });
+
+  it("shows no crewed badge on a Vehicle nobody crewed", () => {
+    const { container } = mountWith(
+      permanent({ name: "Smuggler's Copter", type_line: "Artifact — Vehicle" }),
+      [],
+    );
+    expect(container.querySelector(".badge.designation")).toBeNull();
+  });
+
+  it("leaves out an ID with no card on the board", () => {
+    const { container } = mountWith(
+      permanent({
+        name: "Smuggler's Copter",
+        type_line: "Artifact — Vehicle",
+        crewed_by: ["gone", "c1"],
+      }),
+      ["Llanowar Elves"],
+    );
+    expect(title(container)).toContain("crewed by Llanowar Elves");
+    expect(title(container)).not.toContain("gone");
+  });
+
+  it("shows neither badge on a face-down permanent", () => {
+    const { container } = mountWith(
+      permanent({
+        face_down: true,
+        saddled: true,
+        saddled_by: ["c1"],
+        crewed_by: ["c1"],
+        known_by_you: true,
+      }),
+      ["Llanowar Elves"],
+    );
+    expect(container.querySelector(".badge.designation")).toBeNull();
+  });
+});

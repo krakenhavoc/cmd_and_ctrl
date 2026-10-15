@@ -112,6 +112,12 @@ function dynamicLabel<K extends LabelKind, A extends unknown[]>(
   return { type: "dynamic", ...spec };
 }
 
+// "A", "A and B", "A, B and C".
+const andList = (names: readonly string[]): string =>
+  names.length <= 1
+    ? (names[0] ?? "")
+    : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // ---- The registry ----
@@ -244,6 +250,33 @@ export const LABEL_SPECS = {
     role: "button",
     owners: [`${BOARD}AbilityKindChips.svelte`],
     doc: "an art tile's ability chip (#2219): one per kind the card has, its hover or focus lists the server's labels; the e2e suite reads Mulldrifter's",
+  }),
+
+  crewedBadge: dynamicLabel({
+    stem: "crewed ",
+    match: "prefix",
+    shape: "crewed by <names>, or crewed this turn",
+    make: (names: readonly string[]) =>
+      names.length > 0 ? `crewed by ${andList(names)}` : "crewed this turn",
+    example: [["Llanowar Elves", "Birds of Paradise"]],
+    kind: "aria",
+    role: "generic",
+    owners: [`${BOARD}Card.svelte`],
+    doc: "a Vehicle's crewed badge (ADR 0186 §6): the creatures tapped this turn to crew it; the names come from the board, and an ID with no card there is left out",
+  }),
+  saddledBadge: dynamicLabel({
+    stem: "saddled ",
+    match: "prefix",
+    shape: "saddled by <names> until end of turn, or saddled until end of turn",
+    make: (names: readonly string[]) =>
+      names.length > 0
+        ? `saddled by ${andList(names)} until end of turn`
+        : "saddled until end of turn",
+    example: [["Llanowar Elves", "Birds of Paradise"]],
+    kind: "aria",
+    role: "generic",
+    owners: [`${BOARD}Card.svelte`],
+    doc: "a Mount's saddled badge (ADR 0186 §6): the creatures tapped this turn to saddle it; the names come from the board, and an ID with no card there is left out",
   }),
 
   // -- The action dock (ADR 0111) --

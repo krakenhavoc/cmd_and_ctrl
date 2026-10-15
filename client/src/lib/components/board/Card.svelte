@@ -81,6 +81,8 @@
   import { boardDamageAssign } from "../../damageAssignment";
   import { displayName, isFlippedFlipCard } from "../../faces";
   import { ICONS } from "../../icons";
+  import { L } from "../../labels";
+  import { crewNames } from "../../crewedBy";
   import { ringBearerTitle } from "../../ringEmblem";
   import {
     DROP_PIP_LABEL,
@@ -617,6 +619,15 @@
   // (a harnessed monstrous creature). No printed card does today, and
   // this slot still shows at most one badge; if that combination ever
   // ships, this priority chain is where to widen it.
+  //
+  // ADR 0186 §6 adds CREWED (CR 702.122c) after SADDLED: a Vehicle that
+  // paid its crew cost this turn. A Vehicle is never also a Mount, and
+  // the server clears both lists on a face-down permanent, so the
+  // face-down gate here only covers a locally built view.
+  const crewers = $derived(card.face_down ? [] : crewNames(view, card.crewed_by));
+  const saddlers = $derived(card.face_down ? [] : crewNames(view, card.saddled_by));
+  const isCrewed = $derived(!card.face_down && (card.crewed_by?.length ?? 0) > 0);
+  const isSaddled = $derived(!card.face_down && !!card.saddled);
   const designationBadge = $derived(
     card.suspected
       ? "SUSPECTED"
@@ -632,9 +643,11 @@
                 ? "MONSTROUS"
                 : card.renowned
                   ? "RENOWNED"
-                  : card.saddled
+                  : isSaddled
                     ? "SADDLED"
-                    : "",
+                    : isCrewed
+                      ? "CREWED"
+                      : "",
   );
   const designationTitle = $derived(
     card.suspected
@@ -649,9 +662,11 @@
               ? 'monstrous — its "as long as this creature is monstrous" lines are on (CR 701.37b)'
               : card.renowned
                 ? 'renowned — its "as long as this creature is renowned" lines are on (CR 702.112b)'
-                : card.saddled
-                  ? "saddled until end of turn — its “attacks while saddled” abilities are on (CR 702.171)"
-                  : `Class level ${card.class_level ?? 1}`,
+                : isSaddled
+                  ? `${L.saddledBadge(saddlers)} — its “attacks while saddled” abilities are on (CR 702.171)`
+                  : isCrewed
+                    ? `${L.crewedBadge(crewers)} (CR 702.122)`
+                    : `Class level ${card.class_level ?? 1}`,
   );
 
   // Hover delay (settings.display.hoverDelayMs) defers the write to
