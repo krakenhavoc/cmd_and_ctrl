@@ -235,6 +235,13 @@ describe("colorPickOptions (the mana_pick prompt)", () => {
     expect(o.title).toBe("Add 3 Red mana");
   });
 
+  it("draws a big pick as one symbol and the count, not a row of pips (#3864)", () => {
+    const [o] = colorPickOptions(colorButtons(["U"], { U: 10 }), "add");
+    expect(o.symbols).toEqual(["U"]);
+    expect(o.caption).toBe("10 Blue");
+    expect(o.title).toBe("Add 10 Blue mana");
+  });
+
   it("words a choose_color option as a choice, not mana", () => {
     const [o] = colorPickOptions(colorButtons(["U"]), "choose");
     expect(o.title).toBe("Choose Blue");
