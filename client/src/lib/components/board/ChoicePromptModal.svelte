@@ -1818,47 +1818,50 @@
                                       `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
                                       isExilePick ? "exile" : isSelfSource ? "discard" : "reveal",
                                     ];
-    const verb = isSacrifice
-      ? L.sacrifice
-      : isSearch
-        ? "Take"
-        : isCopyTarget
-          ? none
-            ? c.exchanges_text
-              ? "Keep its own text"
-              : "Enter as itself"
-            : c.exchanges_text
-              ? "Exchange text boxes"
-              : "Enter as a copy"
-          : isUntapChoice
-            ? "Untap"
-            : isEntryReveal
-              ? none
-                ? "Reveal nothing"
-                : "Reveal"
-              : isEntryDiscard
+    // #3664: an "each player sacrifices" edict is a choose_cards tagged
+    // "sacrifice"; its confirm keeps the verb the old sacrifice_choice had.
+    const verb =
+      isSacrifice || (isChooseCards && c.choose_destination === "sacrifice")
+        ? L.sacrifice
+        : isSearch
+          ? "Take"
+          : isCopyTarget
+            ? none
+              ? c.exchanges_text
+                ? "Keep its own text"
+                : "Enter as itself"
+              : c.exchanges_text
+                ? "Exchange text boxes"
+                : "Enter as a copy"
+            : isUntapChoice
+              ? "Untap"
+              : isEntryReveal
                 ? none
-                  ? `Don't discard — put ${enteringCardName(c.source)} into its owner's graveyard`
-                  : "Discard"
-                : isEntrySacrifice
-                  ? L.sacrifice
-                  : isEntryChoose
-                    ? none
-                      ? "Choose nothing"
-                      : "Choose"
-                    : isChooseSource
-                      ? "Choose this source"
-                      : isProliferate
-                        ? none
-                          ? "Proliferate nothing"
-                          : "Proliferate"
-                        : isManifestPick
-                          ? "Manifest"
-                          : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
-                            ? "Choose"
-                            : isRevealedVariant && none && pickMin === 0
-                              ? "Choose nothing"
-                              : "Confirm";
+                  ? "Reveal nothing"
+                  : "Reveal"
+                : isEntryDiscard
+                  ? none
+                    ? `Don't discard — put ${enteringCardName(c.source)} into its owner's graveyard`
+                    : "Discard"
+                  : isEntrySacrifice
+                    ? L.sacrifice
+                    : isEntryChoose
+                      ? none
+                        ? "Choose nothing"
+                        : "Choose"
+                      : isChooseSource
+                        ? "Choose this source"
+                        : isProliferate
+                          ? none
+                            ? "Proliferate nothing"
+                            : "Proliferate"
+                          : isManifestPick
+                            ? "Manifest"
+                            : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
+                              ? "Choose"
+                              : isRevealedVariant && none && pickMin === 0
+                                ? "Choose nothing"
+                                : "Confirm";
     const clearable =
       isSearch || isCopyTarget || ((isCardSetPick || isRevealedVariant) && pickMin === 0);
     return {

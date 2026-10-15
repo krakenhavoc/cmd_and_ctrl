@@ -821,7 +821,11 @@ test.describe("S19 ETB triggers", () => {
       (v) => triggerOnStack(v, CARDS.TempleOfMystery) !== null,
       "Temple of Mystery's scry trigger on the stack",
     );
-    await resolveStack(setup);
+    // The trigger stays on the stack while its scry prompt is open
+    // (#3644), so stop passing once the prompt is queued.
+    await resolveStack(setup, 20, (v) =>
+      (v.pending_choices ?? []).some((c) => c.kind === "scry" && c.chooser === caster.playerID),
+    );
     await admin.waitFor(
       (v) =>
         (v.pending_choices ?? []).some((c) => c.kind === "scry" && c.chooser === caster.playerID),

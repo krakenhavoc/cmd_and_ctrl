@@ -73,6 +73,7 @@ export interface PendingChoice {
   source?: string;
   reason?: string;
   pay_cost?: string;
+  choose_destination?: string;
 }
 
 export interface SnapshotStackItem {
