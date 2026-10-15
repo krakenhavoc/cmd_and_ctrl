@@ -148,7 +148,9 @@ func anyPurpose(s effects.Spec) (declared, sweep bool) {
 			sweep = true
 		}
 	}
-	note(s.Purpose.IsZero(), !s.Purpose.Sweep.IsZero())
+	// A wipe declared under Kicked or FaceUp is a declared wipe (ADR
+	// 0126's amendment of 2026-10-15, #3762): DeclaresSweep reads them.
+	note(s.Purpose.IsZero(), s.Purpose.DeclaresSweep())
 	if s.Modes != nil {
 		for _, o := range s.Modes.Options {
 			note(o.Purpose.IsZero(), !o.Purpose.Sweep.IsZero())

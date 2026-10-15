@@ -133,6 +133,21 @@ func cardPurpose(c *protocol.CardView) purposeSet {
 // declares nothing it prices (nil, or only what it answers: ADR 0142
 // §7, PurposeView.Priced) falls back to the card's own purpose.
 func castPurpose(c *protocol.CardView, cp castParams) purposeSet {
+	ps := castSlotPurpose(c, cp)
+	// #3762: what the card does only when its kicker is paid. Added on a
+	// cast that names the optional cost and on no other, so an unkicked
+	// Waterspout Elemental is a body, and a kicked one a mass bounce that
+	// skips a turn. The card declares Kicked only with a single kicker
+	// (effects.Register), so any announced optional cost is it.
+	if c != nil && c.Purpose != nil && c.Purpose.Kicked != nil && len(cp.OptionalCosts) > 0 {
+		ps.add(c.Purpose.Kicked)
+	}
+	return ps
+}
+
+// castSlotPurpose is castPurpose before the kicker: the purpose of the
+// alternative cost, the modes or the card the move names.
+func castSlotPurpose(c *protocol.CardView, cp castParams) purposeSet {
 	if c == nil {
 		return purposeSet{}
 	}

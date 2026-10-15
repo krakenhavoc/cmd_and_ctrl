@@ -990,6 +990,15 @@ exempt from `SpellFloor`: the floor is a card that replaces itself, and
 the turn is a price. `BaselineConfig` sets the weight to zero, which
 prices turns at nothing and keeps the mana-value proxy.
 
+A turn skipped only when an optional cost is paid, or only when the
+permanent is turned face up, is declared under `kicked` or
+`turned_face_up` (#3762). The bot adds `kicked` to a cast that pays the
+kicker (Waterspout Elemental: the creature bounce and the lost turn) and
+prices the unkicked cast as the body it is. It charges `turned_face_up` to
+the `turn_face_up` special action (Unstable Hulk), so at `Weights.Turn`
+6.00 it will not flip a Hulk for the flat special-action value; the
++6/+6 is not priced.
+
 Final Fortune, Last Chance and Warrior's Oath take an extra turn and lose
 the game at its end step, so they declare no `extra_turns`: a bot that
 priced the turn as a gain would cast them. Lethal Vapors' "you skip your

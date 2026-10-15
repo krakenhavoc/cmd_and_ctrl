@@ -42,6 +42,12 @@ type castParams struct {
 	// flashed-back Faithless Looting from a hard-cast one, which are
 	// the same card at two prices with two different consequences.
 	AlternativeCost string `json:"alternative_cost"`
+	// OptionalCosts are the optional additional costs this cast pays
+	// (CR 601.2b), as positions in the card's OptionalCosts, repeated
+	// once per payment for a multikicker. Non-empty on a card with one
+	// kicker means the kicker is paid: what the card's `purpose.kicked`
+	// declares then happens too (castPurpose, #3762).
+	OptionalCosts []int `json:"optional_costs"`
 	// AltCostIDs are the cards paid to the NON-MANA half of that
 	// price: escape's exiled graveyard, Force of Will's pitched blue
 	// card, Daze's returned Island. Real resources, priced below.

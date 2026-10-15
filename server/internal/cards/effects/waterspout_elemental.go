@@ -23,10 +23,17 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		OptionalCosts:   []game.AdditionalCost{Kicker("{U}")},
-		// Kicked, it bounces every other creature: a Partial sweep (it spares
-		// itself, and only when kicked), the smallest honest declaration the
-		// Purpose model has for an optional-cost wipe (ADR 0126 §4).
-		Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepBounce, Partial: true}},
+		// Only a KICKED Elemental bounces every other creature and skips
+		// the turn, so both ride Purpose.Kicked (ADR 0126's amendment of
+		// 2026-10-15, #3762): the heuristic adds them to a cast that pays
+		// the kicker and prices the unkicked cast as the 3/4 flyer it is.
+		// The sweep is Partial because it spares the Elemental itself; the
+		// audit reads it through DeclaresSweep. The skip is a turn lost
+		// (ADR 0188 Decision 10).
+		Purpose: game.Purpose{Kicked: &game.Purpose{
+			Sweep:      game.Sweep{Matches: game.SweepCreatures, How: game.SweepBounce, Partial: true},
+			SkipsTurns: 1,
+		}},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, AllOf(Self, func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return game.CardKickedTimes(*source) > 0

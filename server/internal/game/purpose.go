@@ -248,6 +248,43 @@ type Purpose struct {
 	// holds an instant-speed cast of such a card unless it matters before
 	// cleanup.
 	FlashCleanupSacrifice bool
+
+	// Kicked is what the card does ONLY when its kicker is paid (ADR
+	// 0126's amendment of 2026-10-15, #3762): Waterspout Elemental's
+	// "if it was kicked, return all other creatures to their owners'
+	// hands and you skip your next turn". The fields above are what the
+	// card does however it is cast; these are added to them on a cast
+	// that pays the kicker, and only then, so an unkicked Elemental is
+	// priced as a Merfolk body and not as a mass bounce. Declared on the
+	// card slot only, of a card with exactly one optional cost, which is
+	// a kicker; effects.Register refuses it elsewhere. The inner purpose
+	// may not itself declare Kicked or FaceUp, nor Targets (its clauses
+	// would index a statement the cast announces without them). A
+	// pointer so Purpose stays comparable.
+	Kicked *Purpose
+	// FaceUp is what turning the permanent face up does (CR 708.8): the
+	// triggered ability of a morph, megamorph or disguise creature
+	// ("When this creature is turned face up, ... You skip your next
+	// turn" is Unstable Hulk). A face-down permanent has no text (CR
+	// 708.2a), so nothing else on the wire says what is under it; the
+	// view projects this, and only this, for its controller (see
+	// CardPurposeOfPtr), and the heuristic prices the turn-face-up
+	// special action by it. Declared on the card slot only, of a card
+	// with a face-down cast offer. Same restrictions as Kicked. A pointer
+	// so Purpose stays comparable.
+	FaceUp *Purpose
+}
+
+// DeclaresSweep reports whether the purpose declares a board wipe in
+// any condition it is read under: its own, or the one it adds when
+// kicked or turned face up. The registry audit asks this, because a
+// card that wipes the board only when kicked still wipes it (ADR 0126's
+// amendment of 2026-10-15).
+func (p Purpose) DeclaresSweep() bool {
+	if !p.Sweep.IsZero() {
+		return true
+	}
+	return (p.Kicked != nil && p.Kicked.DeclaresSweep()) || (p.FaceUp != nil && p.FaceUp.DeclaresSweep())
 }
 
 // AuraPurpose is Purpose.Aura: what an Aura does to what it enchants.
@@ -549,6 +586,16 @@ func CardPurposeOf(c Card) Purpose { return CardPurposeOfPtr(&c) }
 func CardPurposeOfPtr(c *Card) Purpose {
 	d := catalogDef(catalogKeyOf(c))
 	if d == nil {
+		// CR 708.2a: a face-down permanent has no text, so no purpose
+		// of its own. What turning it face up does is not text it has;
+		// it is the card underneath's, which only the viewer allowed to
+		// look at it is sent (redactCardForViewer clears Purpose
+		// otherwise). Nothing else of the card's purpose crosses.
+		if c.faceDownPermanent() {
+			if fd := catalogDef(underlyingTextKeyOf(c)); fd != nil && fd.Purpose.FaceUp != nil {
+				return Purpose{FaceUp: fd.Purpose.FaceUp}
+			}
+		}
 		return Purpose{}
 	}
 	p := d.Purpose
@@ -599,6 +646,13 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 	}
 	if out.Sweep.IsZero() {
 		out.Sweep = o.Sweep
+	}
+	out.Kicked, out.FaceUp = p.Kicked, p.FaceUp
+	if out.Kicked == nil {
+		out.Kicked = o.Kicked
+	}
+	if out.FaceUp == nil {
+		out.FaceUp = o.FaceUp
 	}
 	if out.DiscardPayoff == nil {
 		out.DiscardPayoff = o.DiscardPayoff

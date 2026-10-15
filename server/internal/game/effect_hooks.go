@@ -84,6 +84,15 @@ func printedTextKeyOf(c *Card) string {
 	if c.faceDownPermanent() {
 		return ""
 	}
+	return underlyingTextKeyOf(c)
+}
+
+// underlyingTextKeyOf is printedTextKeyOf's key with CR 708.2a's silence
+// not applied: the key of the card a face-down permanent is. Only the
+// purpose view asks it, to tell its controller what turning the
+// permanent face up does (CardPurposeOfPtr, #3762); every reader of what
+// a permanent DOES goes through printedTextKeyOf.
+func underlyingTextKeyOf(c *Card) string {
 	base := c.OracleID
 	// #521: a TOKEN has no printing and therefore no oracle ID, so
 	// its printed abilities are registered under a synthetic token

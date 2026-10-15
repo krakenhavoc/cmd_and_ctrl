@@ -3353,7 +3353,8 @@ type CardView struct {
 	// On the hand, the battlefield and the stack. Public on a card the
 	// viewer can see, and cleared with `ability_rows` for a viewer who
 	// cannot, so an opponent's hand card and a face-down object never
-	// carry one.
+	// carry one. The one thing a face-down permanent's controller is
+	// sent is `turned_face_up`, what turning it up does (#3762).
 	Purpose *PurposeView `json:"purpose,omitempty"`
 
 	// Abilities is the card's effective keyword list — strings like

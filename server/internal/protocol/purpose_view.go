@@ -135,6 +135,19 @@ type PurposeView struct {
 	// it had flash and is sacrificed at the next cleanup step when it was
 	// (Necromancy, Lightning Reflexes, #3712). Not an amount, like Aura.
 	FlashCleanupSacrifice bool `json:"flash_cleanup_sacrifice,omitempty"`
+	// Kicked is what the card does only when its kicker is paid, on top
+	// of the fields above (ADR 0126's amendment of 2026-10-15, #3762).
+	// A reader prices it on a cast that pays the kicker (the move's
+	// optional_costs is non-empty), and on no other. Not an amount of
+	// this purpose, so Priced does not count it.
+	Kicked *PurposeView `json:"kicked,omitempty"`
+	// TurnedFaceUp is what turning the permanent face up does (CR
+	// 708.8): the morph trigger's effect. On a face-down permanent its
+	// controller may look at, it is the only field sent (a face-down
+	// object has no text of its own, CR 708.2a). Read by the price of
+	// the turn_face_up special action. Not an amount of this purpose, so
+	// Priced does not count it.
+	TurnedFaceUp *PurposeView `json:"turned_face_up,omitempty"`
 }
 
 // Priced reports whether the purpose declares anything the bot prices:
@@ -150,6 +163,10 @@ func (p *PurposeView) Priced() bool {
 	q.Answers = nil
 	q.Aura = ""
 	q.FlashCleanupSacrifice = false
+	// What it does only when kicked or turned face up is read by the
+	// cast that pays the kicker and the special action that turns it up
+	// (#3762). On the unkicked cast it is nothing it does.
+	q.Kicked, q.TurnedFaceUp = nil, nil
 	return q != PurposeView{}
 }
 
@@ -291,6 +308,8 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		return nil
 	}
 	v := &PurposeView{
+		Kicked:                    viewOfPurpose(derefPurpose(p.Kicked)),
+		TurnedFaceUp:              viewOfPurpose(derefPurpose(p.FaceUp)),
 		Draws:                     p.Draws,
 		ControllerLosesLife:       p.ControllerLosesLife,
 		Discards:                  p.Discards,
@@ -378,4 +397,12 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		}
 	}
 	return v
+}
+
+// derefPurpose is *p, the zero Purpose for nil.
+func derefPurpose(p *game.Purpose) game.Purpose {
+	if p == nil {
+		return game.Purpose{}
+	}
+	return *p
 }
