@@ -17,7 +17,15 @@
   import { settings } from "../../settings";
   import { etbPulse } from "../../animations";
   import { emit as tutorialEmit } from "../../tutorialBus";
-  import { rowEntries } from "../../tokenGroups";
+  import { rowEntries, type RowEntry } from "../../tokenGroups";
+  import {
+    blockBoard,
+    blockHighlight,
+    fannedPiles,
+    fanPile,
+    fansOnClick,
+    type BlockBoard,
+  } from "../../blockPick";
   import { targeting, isLegalCardTarget, isPicked, type TargetingState } from "../../targeting";
   import {
     boardChoicePick,
@@ -250,6 +258,7 @@
     c: CardView,
     t: TargetingState | null,
     pick: BoardChoicePick | null,
+    blocks: BlockBoard | null,
   ): string {
     const id = c.instance_id;
     const p = readyPips(legal, c, "battlefield");
@@ -266,19 +275,39 @@
       isBoardPicked(pick, id) ? "B" : "",
       selectedCombatCardID === id ? "s" : "",
       stagedAttackers?.has(id) ? "a" : "",
+      blockHighlight(blocks, id),
     ].join("|");
   }
-  const entries = $derived.by(() => {
+  const entries = $derived.by((): RowEntry[] => {
     if (!onGroupClick) {
       return sorted.map((c) => ({ kind: "card" as const, key: c.instance_id, card: c }));
     }
     const t = $targeting;
     const pick = $boardChoicePick;
-    return rowEntries(sorted, attachmentsByHost, {
+    const blocks = $blockBoard;
+    const out = rowEntries(sorted, attachmentsByHost, {
       nontoken: !strip,
-      highlight: (c) => highlightOf(c, t, pick),
+      highlight: (c) => highlightOf(c, t, pick, blocks),
     });
+    // #3898: while blockers are declared, a pile the player clicked is
+    // drawn as its cards, so the copy itself is what they click next.
+    const fanned = $fannedPiles;
+    if (!blocks || fanned.size === 0) return out;
+    return out.flatMap((e): RowEntry[] =>
+      e.kind === "group" && fanned.has(e.groupKey)
+        ? e.members.map((m) => ({ kind: "card", key: m.instance_id, card: m }))
+        : [e],
+    );
   });
+  // A pile's click: fanned out while blockers are declared (#3898), its
+  // member list otherwise.
+  function groupClick(groupKey: string, members: readonly CardView[]): void {
+    if (fansOnClick($blockBoard, members)) {
+      fannedPiles.update((s) => fanPile(s, groupKey));
+      return;
+    }
+    onGroupClick?.(groupKey);
+  }
   const piles = $derived.by((): Pile[] => {
     const out: Pile[] = [];
     const byName = new Map<string, Pile>();
@@ -443,7 +472,7 @@
                   blocking={!!c.blocking_target}
                   {memberIDs}
                   onClick={p.group && onGroupClick
-                    ? () => onGroupClick(p.group!.groupKey)
+                    ? () => groupClick(p.group!.groupKey, p.group!.members)
                     : onCardClick}
                   onActivateManaAbility={onActivateManaAbility
                     ? (idx, life) => onActivateManaAbility(c, idx, undefined, life)

@@ -4317,6 +4317,19 @@ export interface CardView extends CastSurfaceView {
   // blocked if able"). Server-computed; the client renders it and never
   // derives a requirement. Omitted otherwise.
   must_block?: boolean;
+  // #3898: on a creature a defending player who is still declaring
+  // could put into the declaration, each attacker it could not be
+  // declared blocking on its own right now, with the server's reason
+  // token and sentence (addressed to its controller). A lone block on a
+  // menace attacker reads too_few_blockers; the attacker's
+  // `min_blockers` says how many it takes. Pairs already declared and
+  // anything face down are left out. Only during declare_blockers. The
+  // board greys those attackers while this creature is selected.
+  block_refusals?: BlockRefusalView[];
+  // #3898: the fewest creatures that may block this attacker (CR
+  // 509.1b: 2 for menace), while its defending player is declaring.
+  // Omitted when it is less than 2.
+  min_blockers?: number;
   // S24 (ADR 0036): the attachment relation for an Equipment or an
   // Aura — the permanent (`kind: "card"`) or player
   // (`kind: "player"`) this card is attached to. Omitted for every
@@ -4677,6 +4690,16 @@ export interface AbilityRowView {
   // ADR 0130 (amendment of 2026-10-07): "linked" on exert's "when you
   // do" trigger, "payoff" on "Whenever you exert a creature". Bot data.
   exert?: "linked" | "payoff";
+}
+
+// #3898: one entry of CardView.block_refusals, an attacker this creature
+// could not block on its own right now. Mirrors protocol.BlockRefusalView.
+export interface BlockRefusalView {
+  attacker: string;
+  // One of BlockRefusalReason (the illegal_block reasons).
+  reason: BlockRefusalReason | string;
+  // The server's sentence, for the hover.
+  message: string;
 }
 
 // ADR 0106 §2 (#1794): one CR 508.1c restriction on whom a creature may

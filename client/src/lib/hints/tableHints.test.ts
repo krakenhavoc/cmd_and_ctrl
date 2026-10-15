@@ -86,10 +86,11 @@ const withStack = (controller: string): GameView => {
 };
 
 describe("the table's hints", () => {
-  it("are the nine the ADR names and ADR 0130's exert, at their versions, under the ids the tutorial will teach", () => {
+  it("are the nine the ADR names, ADR 0130's exert and #3898's blocking, at their versions, under the ids the tutorial will teach", () => {
     expect(TABLE.map((h) => h.id).sort()).toEqual(
       [
         "table.attention",
+        "table.block",
         "table.commander",
         "table.dock",
         "table.exert",
@@ -199,6 +200,13 @@ describe("each hint's own condition", () => {
     expect(when("table.exert", board({ mine: [exerter(ME)] }))).toBe(true);
     expect(when("table.exert", board({ theirs: [exerter(BOT)] }))).toBe(false);
     expect(anchorOf(byID("table.exert"), ctxFor(fullView()))).toEqual({ label: L.actions });
+  });
+
+  it("table.block needs a creature of the viewer's", () => {
+    expect(when("table.block", board({ mine: [elves()] }))).toBe(true);
+    expect(when("table.block", board({ mine: [forest()] }))).toBe(false);
+    expect(when("table.block", board({ theirs: [elves({ controller: BOT })] }))).toBe(false);
+    expect(anchorOf(byID("table.block"), ctxFor(fullView()))).toEqual({ label: L.actions });
   });
 
   it("table.commander needs a commander in the zone", () => {
