@@ -261,6 +261,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// they crew or saddle.
 	printedPilotToken,
 	printedCrewPilotToken,
+
+	// #3767: the first Vehicle tokens, with crew.
+	printedBlackjackToken,
+	printedVehicleCrew1Token,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
