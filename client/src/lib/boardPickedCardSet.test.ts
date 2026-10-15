@@ -88,6 +88,18 @@ describe("answeredOnBoard", () => {
     );
   });
 
+  it("keeps a per-land any-player offer's leg in the sheet (ADR 0187 §8)", () => {
+    const leg = untapLands({
+      kind: "choose_cards",
+      any_player_offer: { controller: "b", order: ["a", "b"], each_life: 1 },
+    });
+    expect(answeredOnBoard(leg, board(["f1", "f2", "f3"]))).toBe(false);
+    // Without each_life it is an ordinary board pick.
+    expect(
+      answeredOnBoard({ ...leg, any_player_offer: undefined }, board(["f1", "f2", "f3"])),
+    ).toBe(true);
+  });
+
   it("hands the choice back to the grid once the player asks for the list", () => {
     showChoiceAsList("untap-1");
     expect(get(listFallback).has("untap-1")).toBe(true);

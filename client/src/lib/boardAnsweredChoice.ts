@@ -71,6 +71,13 @@ export function answeredOnBoard(
   if (isBoardAnsweredChoice(choice.kind)) return true;
   if (!isBoardPickedCardSetKind(choice.kind)) return false;
   if (fallback.has(choice.id)) return false;
+  // ADR 0187 §8: a leg of a per-land any-player offer is answered in the
+  // sheet. Its lands carry who already pays for them, what the pick costs
+  // and the warning on a land someone else pays for; the board has no
+  // room for any of that.
+  if (choice.kind === "choose_cards" && (choice.any_player_offer?.each_life ?? 0) > 0) {
+    return false;
+  }
   const options = choice.options ?? [];
   if (options.length === 0) return false;
   const onBattlefield = new Set(view.battlefield.cards.map((c) => c.instance_id));

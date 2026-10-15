@@ -187,6 +187,14 @@ Nothing new. Every link is a prompt with a closure frame the restore census alre
   - The status chip for `assigns_no_combat_damage`.
   - New player-facing names go through `L.<key>` in `client/src/lib/labels.ts` (AGENTS.md §5).
 
+**As built (slice 5, #3573, 2026-10-15).**
+
+- **The leg is answered in the sheet, not on the board.** A `choose_cards` over battlefield permanents is board-answered by default (`answeredOnBoard`, #2394). A per-land leg opts out: the badge, the warning and the running price have nowhere to sit on the board. "Show as list" is not needed for it.
+- **Where the words live.** `choiceDock.ts` holds `isAnyPlayerEachLeg`, `anyPlayerEachHeader`, `anyPlayerEachSummary`, `anyPlayerEachPrice`, `anyPlayerEachBadge` and `anyPlayerEachWarning`. `anyPlayerOfferLine`, `anyPlayerWaiting` and `anyPlayerOfferRequest` switch to the per-land wording when the leg carries `each_life`, so the other seats' read-only line and `passHint` both include "So far: Alice 3, Dan none."
+- **The noun.** The wire carries no noun, so the copy says "lands" when every option is a land, and otherwise "permanents". A seat watching has no options (they are the chooser's), so it reads the earlier picks off the board; before anyone has chosen it says "permanents".
+- **No new contract labels.** The new elements are not tutorial anchors or e2e selectors, so `labels.ts` is unchanged.
+- **The bot.** `aiseat/heuristic/any_player_each.go` scores each enumerated answer. An answer naming an opponent's land or a land an earlier player chose scores 0.25, below "pay for none" (0.5). One that would take the bot below `phyrexianLifeFloor` scores `phyrexianLifeDeclined`. Any other answer scores above 0.5, rising with the number and value of lands, so the bot pays for as many of its own unchosen lands as the floor allows, most valuable first.
+
 ### 9. Snapshot, restore and undo
 
 - **Additive v8 only.** No `SnapshotSchemaVersion` bump. New persisted shape: `pendingChoices[].anyPlayerOffer.eachLife` (int), and the new mod kind `assignsNoCombatDamage` in `ScopedEffects` (a new vocabulary value: an older binary refuses a restore point naming it with `ErrUnknownEffectKey` and keeps the file, docs/snapshots.md). `PayAction.Either` and `PayActionExileFromGraveyard` live on the `payUnlessResume` frame, which is never serialised. `testdata/snapshot_shape/v8.txt` gains the one line, and no frozen fixture changes.

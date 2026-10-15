@@ -33,7 +33,7 @@ import { guardedWritable } from "./guardedStore";
 
 import type { DockAction, DockRequest } from "./dock";
 import type { RematchPlan } from "./rematch";
-import type { PendingChoiceView, PickOptionView, PlayerView, VoteView } from "./protocol";
+import type { CardView, PendingChoiceView, PickOptionView, PlayerView, VoteView } from "./protocol";
 import { colorPromptCopy } from "./manaPick";
 import { mayCastCopy } from "./mayCast";
 import { PhyrexianLifePerSymbol, maxPhyrexianLife, phyrexianLifeCost } from "./phyrexianLife";
@@ -773,9 +773,10 @@ export function anyPlayerWhose(c: PendingChoiceView, seats: Seats, sourceName: s
 // anyPlayerOfferLine is "Any player may pay {2}: Alice declined; then
 // Carol." — the offer, who has said no so far, and who is still to be
 // asked after the player asked now.
-export function anyPlayerOfferLine(c: PendingChoiceView, seats: Seats): string {
+export function anyPlayerOfferLine(c: PendingChoiceView, seats: Seats, cards?: EachCards): string {
   const o = c.any_player_offer;
   if (!o) return "";
+  if (isAnyPlayerEachLeg(c)) return anyPlayerEachOfferLine(c, seats, cards);
   const who = o.opponents ? "Any opponent" : "Any player";
   const parts: string[] = [];
   const declined = (o.declined ?? []).map((id) => anyPlayerSeatName(seats, id));
@@ -846,8 +847,20 @@ export function anyPlayerOfferRequest(
   viewerID: string | null,
   seats: Seats,
   sourceName: string,
+  cards?: EachCards,
 ): DockRequest | null {
   if (!c || !c.any_player_offer || c.chooser === viewerID) return null;
+  if (isAnyPlayerEachLeg(c)) {
+    return {
+      rank: "step",
+      label: "any player pays",
+      tag: "any player pays",
+      tone: "plain",
+      question: c.reason || `${sourceName} — each player chooses what to pay for`,
+      detail: anyPlayerWaiting(c, seats, sourceName, cards),
+      hint: `${anyPlayerEachOfferLine(c, seats, cards)} ${AnyPlayerEachNothingPaid}`,
+    };
+  }
   // The detail is who is deciding; the hint is the offer with the
   // declines so far and who is still to be asked.
   return {
@@ -864,8 +877,164 @@ export function anyPlayerOfferRequest(
 // anyPlayerWaiting is "Carol is deciding whether to pay {2} (Bob's Rhystic
 // Tutor)", the line a seat with nothing to answer reads while a link is
 // open.
-export function anyPlayerWaiting(c: PendingChoiceView, seats: Seats, sourceName: string): string {
+export function anyPlayerWaiting(
+  c: PendingChoiceView,
+  seats: Seats,
+  sourceName: string,
+  cards?: EachCards,
+): string {
+  if (isAnyPlayerEachLeg(c)) {
+    const noun = eachNounPlural(c, cards);
+    const so = anyPlayerEachSummary(c, seats, cards, true);
+    return `${anyPlayerSeatName(seats, c.chooser)} is choosing ${noun} to pay ${c.any_player_offer?.each_life} life for (${anyPlayerWhose(c, seats, sourceName)}).${so ? ` ${so}` : ""}`;
+  }
   return `${anyPlayerSeatName(seats, c.chooser)} is deciding whether to ${payPhrase(c)} (${anyPlayerWhose(c, seats, sourceName)})`;
+}
+
+// ---- "unless any player pays" for each object (ADR 0187 §2, §8) -------------
+//
+// Cleansing-shaped cards: every player in APNAP order chooses which of the
+// objects they will pay life for, knowing what the earlier players chose
+// (CR 101.4b), and only then do the payments happen. The prompt is a
+// choose_cards whose any_player_offer carries each_life; earlier_choices
+// holds each earlier player's picks. Two players may pay for the same
+// object and both payments are made; an object anyone paid for is saved.
+
+/** Cards the copy can read type lines from; only the noun depends on them. */
+export type EachCards = readonly Pick<CardView, "instance_id" | "type_line">[];
+
+export const AnyPlayerEachNothingPaid = "Nothing is paid until the last player has chosen.";
+
+/** Is `c` one player's leg of a per-object any-player offer? */
+export function isAnyPlayerEachLeg(c: PendingChoiceView | null | undefined): boolean {
+  return c?.kind === "choose_cards" && (c.any_player_offer?.each_life ?? 0) > 0;
+}
+
+// eachNounSingular is "land" when everything the leg names is a land, else
+// "permanent". The chooser reads it off the options; a seat watching has no
+// options, so it falls back to the earlier picks it can find on the board.
+function eachNounSingular(c: PendingChoiceView, cards?: EachCards): string {
+  let pool: EachCards = c.options ?? [];
+  if (pool.length === 0 && cards) {
+    const ids = new Set((c.earlier_choices ?? []).flatMap((e) => e.card_ids));
+    pool = cards.filter((x) => ids.has(x.instance_id));
+  }
+  if (pool.length > 0 && pool.every((x) => /\bLand\b/.test(x.type_line ?? ""))) return "land";
+  return "permanent";
+}
+
+function eachNounPlural(c: PendingChoiceView, cards?: EachCards): string {
+  return `${eachNounSingular(c, cards)}s`;
+}
+
+function countNoun(n: number, noun: string): string {
+  return `${n} ${noun}${n === 1 ? "" : "s"}`;
+}
+
+/** The earlier players paying for `cardID`, in the order they chose. */
+export function anyPlayerEachPayers(c: PendingChoiceView, cardID: string): string[] {
+  return (c.earlier_choices ?? [])
+    .filter((e) => e.card_ids.includes(cardID))
+    .map((e) => e.player_id);
+}
+
+/** "Alice pays" / "Alice and Dan pay": the badge on an already-chosen object. */
+export function anyPlayerEachBadge(payers: readonly string[], seats: Seats): string {
+  if (payers.length === 0) return "";
+  const names = nameList(payers.map((id) => anyPlayerSeatName(seats, id)));
+  return `${names} ${payers.length === 1 ? "pays" : "pay"}`;
+}
+
+/** The warning on a selected object an earlier player already pays for. */
+export function anyPlayerEachWarning(
+  c: PendingChoiceView,
+  payers: readonly string[],
+  seats: Seats,
+): string {
+  if (payers.length === 0) return "";
+  const life = c.any_player_offer?.each_life ?? 0;
+  const names = nameList(payers.map((id) => anyPlayerSeatName(seats, id)));
+  return payers.length === 1
+    ? `${names} already pays for this: you'd both pay ${life} life`
+    : `${names} already pay for this: you'd all pay ${life} life`;
+}
+
+/**
+ * The running price: "Pay 3 life for 3 lands", "Pay 2 life for 2 lands (1
+ * already paid for by others)", or "Pay nothing" for an empty pick.
+ */
+export function anyPlayerEachPrice(
+  c: PendingChoiceView,
+  picked: number,
+  alreadyPaid: number,
+  cards?: EachCards,
+): string {
+  if (picked <= 0) return "Pay nothing";
+  const life = (c.any_player_offer?.each_life ?? 0) * picked;
+  const noun = eachNounSingular(c, cards);
+  const base = `Pay ${life} life for ${countNoun(picked, noun)}`;
+  return alreadyPaid > 0 ? `${base} (${alreadyPaid} already paid for by others)` : base;
+}
+
+/**
+ * "So far: Alice pays for 3 lands, Dan for none." — every player asked
+ * before the chooser, in the order asked, with an empty pick included. A
+ * player given no leg because they couldn't pay appears as "none" (the
+ * offer lists them as having declined). `short` is the read-only form,
+ * "So far: Alice 3, Dan none." Empty before anyone has chosen.
+ */
+export function anyPlayerEachSummary(
+  c: PendingChoiceView,
+  seats: Seats,
+  cards?: EachCards,
+  short = false,
+): string {
+  const o = c.any_player_offer;
+  if (!o) return "";
+  const noun = eachNounSingular(c, cards);
+  const at = o.order.indexOf(c.chooser);
+  const before = at < 0 ? [] : o.order.slice(0, at);
+  const parts: string[] = [];
+  for (const id of before) {
+    const entry = (c.earlier_choices ?? []).find((e) => e.player_id === id);
+    const n = entry?.card_ids.length ?? 0;
+    if (!entry && !(o.declined ?? []).includes(id)) continue;
+    const name = anyPlayerSeatName(seats, id);
+    if (short) parts.push(`${name} ${n > 0 ? n : "none"}`);
+    else parts.push(n > 0 ? `${name} pays for ${countNoun(n, noun)}` : `${name} for none`);
+  }
+  return parts.length > 0 ? `So far: ${parts.join(", ")}.` : "";
+}
+
+// anyPlayerEachOfferLine is the rule and who is next: "Each player in turn
+// chooses lands to pay 1 life for; a land anyone pays for is saved. Then
+// Carol."
+function anyPlayerEachOfferLine(
+  c: PendingChoiceView,
+  seats: Seats,
+  cards?: EachCards,
+  self = false,
+): string {
+  const o = c.any_player_offer;
+  if (!o) return "";
+  const noun = eachNounSingular(c, cards);
+  const at = o.order.indexOf(c.chooser);
+  const later = at < 0 ? [] : o.order.slice(at + 1).map((id) => anyPlayerSeatName(seats, id));
+  return `Each player in turn chooses ${noun}s to pay ${o.each_life} life for; a ${noun} anyone pays for is saved. ${later.length > 0 ? `Then ${nameList(later)}.` : self ? "You are the last to choose." : "Nobody chooses after them."}`;
+}
+
+/**
+ * The chooser's header on the leg: whose effect, the rule, who is next, what
+ * the earlier players chose, and that nothing is paid yet.
+ */
+export function anyPlayerEachHeader(
+  c: PendingChoiceView,
+  seats: Seats,
+  sourceName: string,
+  cards?: EachCards,
+): string {
+  const so = anyPlayerEachSummary(c, seats, cards);
+  return `${anyPlayerWhose(c, seats, sourceName)}. ${anyPlayerEachOfferLine(c, seats, cards, true)}${so ? ` ${so}` : ""} ${AnyPlayerEachNothingPaid}`;
 }
 
 // ---- assist (ADR 0150 §5) --------------------------------------------------
