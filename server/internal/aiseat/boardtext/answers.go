@@ -103,3 +103,30 @@ func RecommendedNote(v *protocol.GameView, m legal.Move) string {
 	}
 	return ""
 }
+
+// AnswersCouncilVote reports whether a move casts a ballot in a vote
+// (CR 701.38, ADR 0146): a choice answering an option_pick that carries
+// `council_vote`. Read from the view alone.
+//
+// The enumerator marks the first option of every option_pick
+// AlwaysLegal, because a mandatory vote needs one answer the bot and the
+// MCP seat can fall back on (#3669). On a vote that flag means "the
+// escape hatch", not "this is the safe default": every ballot is equally
+// legal, so a text seat must not be told that one of them is special.
+func AnswersCouncilVote(v *protocol.GameView, m legal.Move) bool {
+	if m.Kind != legal.KindChoice || v == nil {
+		return false
+	}
+	var p struct {
+		ChoiceID string `json:"choice_id"`
+	}
+	if json.Unmarshal(m.Params, &p) != nil || p.ChoiceID == "" {
+		return false
+	}
+	for i := range v.PendingChoices {
+		if ch := &v.PendingChoices[i]; ch.ID == p.ChoiceID {
+			return ch.CouncilVote != nil
+		}
+	}
+	return false
+}
