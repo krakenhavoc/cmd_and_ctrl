@@ -556,7 +556,9 @@ func scanPrimitives(t *testing.T) primitiveScan {
 	}
 	// untilEndOfTurn (until_end_of_turn.go) is ScopedEffectFor with an
 	// until-end-of-turn duration, and so eotSnapshot underneath (#1497).
-	markers := map[string]bool{"isNewSourceObject": true, "isNewSourceObjectAsThis": true, "withoutNewSourceObject": true, "eotSnapshot": true, "applyFor": true, "untilEndOfTurn": true}
+	// ApplyReports is BecomeCopy's Apply with the "if you do" report
+	// (#3774): Apply delegates to it, and the guard lives there.
+	markers := map[string]bool{"isNewSourceObject": true, "isNewSourceObjectAsThis": true, "withoutNewSourceObject": true, "eotSnapshot": true, "applyFor": true, "untilEndOfTurn": true, "ApplyReports": true}
 	guarded := map[string]bool{}
 	for changed := true; changed; {
 		changed = false

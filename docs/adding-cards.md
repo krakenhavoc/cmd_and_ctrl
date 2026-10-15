@@ -2532,7 +2532,11 @@ permanent back to its entry copy or to itself (#1593, ADR 0043's
 2026-09-28 amendment). The except clause takes the same
 `PrintedValues` edits, plus `AddKeyword` for "except it has haste".
 "As this enters … until end of turn" (Cursed Mirror) is
-`EntersAsCopyOfUntilEndOfTurn`. Never write a copy by setting a card's
+`EntersAsCopyOfUntilEndOfTurn`. An "If you do, …" rider that hangs off
+the copy (Gogo, Mysterious Mime, #3774) reads `BecomeCopy.ApplyReports`,
+which says whether a copy effect really began — false when the target
+left, came back as a new object, or there was nothing to copy — where
+`Apply` just returns nil. Never write a copy by setting a card's
 printed fields from a card file: the record is what lets it end, undo
 and survive a restart.
 
