@@ -637,6 +637,19 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// S20 sub-PR 3 / #3895: X is a non-negative announce-time choice
+	// (CR 601.2b), and the engine takes one no larger than
+	// MaxAnnouncedX (x_bound.go). Checked first, before anything reads
+	// it: the cost gate multiplies it into the generic demand (a
+	// negative would refund mana), and every X-sized cost below is
+	// sized by it.
+	if !announcedXInRange(params.XValue) {
+		slog.Warn("cast_spell rejected: X out of range",
+			"x_value", params.XValue,
+			"x_max", MaxAnnouncedX,
+		)
+		return ErrInvalidParam
+	}
 	// CR 601.2c's announce-time target check runs against the
 	// battlefield through predicates that read effective types, so
 	// the engine has to be caught up before a Doom Blade is told
@@ -949,12 +962,6 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			"required_mode", mode,
 			"targets_received", len(params.Targets),
 		)
-		return ErrInvalidParam
-	}
-	// S20 sub-PR 3: X is a non-negative announce-time choice (CR
-	// 601.2b). The cost gate multiplies it into the generic demand;
-	// a negative would let a caster be refunded mana.
-	if params.XValue < 0 {
 		return ErrInvalidParam
 	}
 	// CR 107.3b: a spell with {X} in its mana cost, cast while paying
@@ -4320,6 +4327,11 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 	if g.findCardZoneLocked(sourceCardID) == nil {
 		return ErrCardNotFound
 	}
+	// #3895: the X this records is bounded like every other
+	// announced X (x_bound.go).
+	if !announcedXInRange(params.XValue) {
+		return ErrInvalidParam
+	}
 	id := uuid.New()
 	if g.StackMeta == nil {
 		g.StackMeta = make(map[uuid.UUID]*StackItem)
@@ -4549,6 +4561,11 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 	}
 	if g.findCardZoneLocked(sourceCardID) == nil {
 		return ErrCardNotFound
+	}
+	// #3895: the X this records is bounded like every other
+	// announced X (x_bound.go).
+	if !announcedXInRange(params.XValue) {
+		return ErrInvalidParam
 	}
 	id := uuid.New()
 	g.PendingTriggers = append(g.PendingTriggers, &StackItem{

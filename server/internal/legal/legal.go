@@ -253,11 +253,19 @@ type MoveValue struct {
 	Max *int `json:"max,omitempty"`
 }
 
+// MaxAnnouncedX is the largest X the engine accepts at any
+// announcement (game.MaxAnnouncedX, #3895), for a client of this
+// package that may not import internal/game.
+const MaxAnnouncedX = game.MaxAnnouncedX
+
 // openX is the MoveValue for an X announced anywhere from lo to hi.
+// hi stops at MaxAnnouncedX, so the range never offers an X the
+// engine refuses.
 func openX(lo, hi int) *MoveValue {
 	if lo < 0 {
 		lo = 0
 	}
+	hi = min(hi, MaxAnnouncedX)
 	if hi < lo {
 		return nil
 	}
@@ -511,7 +519,9 @@ type Options struct {
 	MaxExpansionPerSource int
 
 	// MaxX caps the X the enumerator will try for an {X} spell when
-	// searching for the largest affordable value. Default 20.
+	// searching for the largest affordable value. Default 20. A search
+	// bound on the bot, not a rule; a larger value is read as
+	// MaxAnnouncedX, the most the engine accepts.
 	MaxX int
 
 	// OrderTargets ranks a clause's candidate targets before
@@ -659,6 +669,7 @@ func (o Options) withDefaults() Options {
 	if o.MaxX <= 0 {
 		o.MaxX = defaultMaxX
 	}
+	o.MaxX = min(o.MaxX, MaxAnnouncedX)
 	return o
 }
 

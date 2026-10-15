@@ -371,7 +371,10 @@ describe("the dock's one Undo", () => {
     const d = mountDock({ undosLeft: 1, canUndo: true, onUndo: () => undone++ });
     const toggles = d.q('[role="group"][aria-label="priority controls"]')!;
     const undo = toggles.querySelector<HTMLButtonElement>("button.action.undo")!;
-    expect(toggles.lastElementChild).toBe(undo);
+    // Undo and ⋯ share the row's tail, so a wrapped row keeps them together.
+    expect(toggles.lastElementChild).toBe(undo.parentElement);
+    expect(toggles.lastElementChild?.classList.contains("dock-tail")).toBe(true);
+    expect(toggles.lastElementChild?.firstElementChild).toBe(undo);
     expect(undo.getAttribute("aria-label")).toBe("Undo (1 left)");
     expect(undo.querySelector(".undo-count")?.textContent).toBe("1");
     expect(undo.disabled).toBe(false);

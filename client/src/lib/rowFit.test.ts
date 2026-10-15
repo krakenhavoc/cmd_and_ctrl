@@ -10,6 +10,7 @@ import {
   fitScale,
   fitWrap,
   lineCount,
+  lineHeight,
   overrideStale,
   rowDemand,
   scaleForLines,
@@ -282,5 +283,34 @@ describe("allocateRowHeights", () => {
     ]);
     expect(a).toBeCloseTo(350, 9);
     expect(b).toBeCloseTo(150, 9);
+  });
+});
+
+// #3893: a board with no creatures keeps the creature row's line, so
+// the back row sits where it does beside a creature.
+describe("lineHeight", () => {
+  it("is the tallest pile at full size", () => {
+    expect(lineHeight([110, 121, 99], 0.5, 220)).toBe(242);
+  });
+
+  it("is 0 for an empty row that does not hold its line", () => {
+    expect(lineHeight([], 1, 220)).toBe(0);
+  });
+
+  it("is one card for an empty row that holds its line", () => {
+    expect(lineHeight([], 1, 220, true)).toBe(220);
+  });
+
+  it("leaves the back row the budget it has beside one creature", () => {
+    const back = { base: 142, want: 400 };
+    const empty = rowDemand({ ...crowd(0), lineH: lineHeight([], 1, 220, true) });
+    const one = rowDemand({ ...crowd(1), lineH: lineHeight([220], 1, 220, true) });
+    expect(empty).toEqual(one);
+    expect(allocateRowHeights(500, [empty, back])).toEqual(allocateRowHeights(500, [one, back]));
+    // One label high, it handed the back row the creatures' height.
+    const label = rowDemand({ ...crowd(0), lineH: lineHeight([], 1, 220) });
+    expect(allocateRowHeights(500, [label, back])[1]).toBeGreaterThan(
+      allocateRowHeights(500, [one, back])[1],
+    );
   });
 });

@@ -37,9 +37,10 @@
 
   let discordEnabled = $state(false);
 
-  // The table in the hero. One seat takes 3 from a bot's attacker and the
-  // turn passes once, so the picture reads as a game in progress. Played
-  // once, never on a loop, and not at all under reduced motion.
+  // The table in the hero. The bot's attacker hits you for 3, then the
+  // turn goes round to you, so the picture plays a moment of a real game
+  // and lands on your turn. Under four seconds, played once, never on a
+  // loop, and not at all under reduced motion (it starts on your turn).
   const seats = [
     { name: "You", life: 40, bot: false },
     { name: "Mara", life: 33, bot: false },
@@ -47,7 +48,8 @@
     { name: "Dev", life: 40, bot: false },
   ];
   let lives = $state(seats.map((s) => s.life));
-  let turn = $state(2);
+  let turn = $state(0);
+  let step = $state("Main phase");
   let hit = $state(-1);
 
   onMount(() => {
@@ -56,16 +58,34 @@
     });
     const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? true;
     if (still) return;
-    const timers = [
-      setTimeout(() => {
-        hit = 0;
-        lives[0] = 37;
-      }, 1400),
-      setTimeout(() => {
-        hit = -1;
-        turn = 3;
-      }, 2600),
+    turn = 2;
+    step = "Combat";
+    const beats: [number, () => void][] = [
+      [
+        1300,
+        () => {
+          hit = 0;
+          lives[0] = 37;
+        },
+      ],
+      [
+        2300,
+        () => {
+          hit = -1;
+          turn = 3;
+          step = "Main phase";
+        },
+      ],
+      [
+        3500,
+        () => {
+          turn = 0;
+          step = "Untap, upkeep, draw";
+        },
+      ],
+      [4300, () => (step = "Main phase")],
     ];
+    const timers = beats.map(([ms, fn]) => setTimeout(fn, ms));
     return () => timers.forEach(clearTimeout);
   });
 
@@ -124,36 +144,40 @@
       </p>
     </div>
 
-    <div
-      class="table rise"
-      style="--d: 120ms"
-      data-ui
-      role="img"
-      aria-label="A four-seat table in progress: you, two friends and a bot in the empty chair"
-    >
-      {#each seats as seat, i (seat.name)}
-        <div
-          class="seat"
-          class:you={i === 0}
-          class:turn={turn === i}
-          class:hit={hit === i}
-          style="--seat: {seatColor(i)}"
-        >
-          <span class="who">
-            {seat.name}{#if seat.bot}<span class="chip">bot</span>{/if}
-          </span>
-          <span class="life">{lives[i]}</span>
-          <span class="row">
-            <span class="zone">Hand {7 - i}</span>
-            <span class="zone">Library {88 - 3 * i}</span>
-          </span>
+    <div class="table rise" style="--d: 120ms" data-ui>
+      <div class="table-bar">
+        <span class="table-name">Table 1</span>
+        <span class="table-meta">Commander · 4 seats · 40 life</span>
+      </div>
+      <div
+        class="board"
+        role="img"
+        aria-label="A four-seat table in progress: you, two friends and a bot in the empty chair"
+      >
+        {#each seats as seat, i (seat.name)}
+          <div
+            class="seat"
+            class:you={i === 0}
+            class:turn={turn === i}
+            class:hit={hit === i}
+            style="--seat: {seatColor(i)}"
+          >
+            <span class="who">
+              {seat.name}{#if seat.bot}<span class="chip">bot</span>{/if}
+            </span>
+            <span class="life">{lives[i]}</span>
+            <span class="row">
+              <span class="zone">Hand {7 - i}</span>
+              <span class="zone">Library {88 - 3 * i}</span>
+            </span>
+          </div>
+        {/each}
+        <div class="centre">
+          <span class="step">{step}</span>
+          <span class="whose"
+            >{seats[turn].name === "You" ? "Your" : `${seats[turn].name}’s`} turn</span
+          >
         </div>
-      {/each}
-      <div class="centre">
-        <span class="step">Combat</span>
-        <span class="whose"
-          >{seats[turn].name === "You" ? "Your" : `${seats[turn].name}’s`} turn</span
-        >
       </div>
     </div>
   </section>
@@ -252,6 +276,9 @@
 
   /* The hero: the pitch on the left, the table as its picture. */
   .hero {
+    /* Its own stacking context, so the lamp behind the table stays above
+       the page's background. */
+    isolation: isolate;
     display: grid;
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
     gap: 48px 72px;
@@ -322,13 +349,49 @@
      surface with a visible edge holds all four, so it reads as one table
      rather than four tiles (Ian's review on #3839). */
   .table {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
+    position: relative;
     padding: 14px;
     border-radius: var(--radius-xl);
     background: var(--surface-raised);
-    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--fg) 16%, transparent);
+    box-shadow:
+      inset 0 0 0 2px color-mix(in srgb, var(--fg) 16%, transparent),
+      0 30px 80px -30px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  /* A lamp over the table: one warm pool of light behind it, so the
+     picture sits in a room at night rather than on a page. */
+  .table::before {
+    content: "";
+    position: absolute;
+    inset: -18% -14% -10%;
+    z-index: -1;
+    background: radial-gradient(
+      closest-side,
+      color-mix(in srgb, var(--accent) 16%, transparent),
+      transparent
+    );
+    pointer-events: none;
+  }
+  .table-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 2px 4px 12px;
+    font-size: 14px;
+  }
+  .table-name {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--fg);
+  }
+  .table-meta {
+    color: var(--fg-muted);
+  }
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
   }
   .seat {
     order: 1;
@@ -583,8 +646,10 @@
       width: 100%;
     }
     .table {
-      gap: 8px;
       padding: 10px;
+    }
+    .board {
+      gap: 8px;
     }
     .seat {
       padding: 10px 12px;

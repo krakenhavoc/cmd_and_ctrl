@@ -1,39 +1,25 @@
 <script lang="ts">
   // LoopControl — ADR 0193 §9 (CR 732.2): the action dock's loop control.
-  // Two parts, so the dock keeps its height:
-  //   toggle  "record loop" on the toggles row, while the viewer holds
-  //           priority with no recording standing;
-  //   status  the status row's line once a recording stands: the
-  //           recorder's step count with Stop and Cancel, "propose…"
-  //           once the loop closed, and for every other seat what is
-  //           being built (CR 732.1a).
+  // It is the status row's line once a recording stands: the recorder's
+  // step count with Stop and Cancel, "propose…" once the loop closed, and
+  // for every other seat what is being built (CR 732.1a). Starting a
+  // recording is "Record loop" in the ⋯ menu (ADR 0193's first
+  // amendment), not a chip on the toggles row, which has no room for it.
   // The state is lib/loopShortcut.ts's loopControl; this only draws it.
   import type { LoopControlState } from "../../loopShortcut";
   import { L } from "../../labels";
 
   interface Props {
-    part: "toggle" | "status";
     state: LoopControlState;
-    onRecord: () => void;
     onStop: () => void;
     onCancel: () => void;
     onPropose: () => void;
   }
 
-  const { part, state, onRecord, onStop, onCancel, onPropose }: Props = $props();
+  const { state, onStop, onCancel, onPropose }: Props = $props();
 </script>
 
-{#if part === "toggle"}
-  {#if state.mode === "record"}
-    <button
-      type="button"
-      class="loop-btn"
-      aria-label={L.recordLoop}
-      title="Record a loop (CR 732.2a): play one iteration by hand, then propose repeating it"
-      onclick={onRecord}>loop</button
-    >
-  {/if}
-{:else if state.mode === "recording"}
+{#if state.mode === "recording"}
   <span class="loop-line" role="status">
     <span class="loop-text"
       >Recording a loop · {state.steps} {state.steps === 1 ? "step" : "steps"}</span

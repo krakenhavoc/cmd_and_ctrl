@@ -76,6 +76,49 @@ test.describe("board layout", () => {
     ).toBeAttached();
     await expect(page.getByLabel("your hand")).toBeVisible();
     await expect(page.getByLabel("Alice piles")).toBeVisible();
+
+    // #3893: no creatures yet, on either side. The creature row still
+    // holds one card's line (a card's height plus the label's band), so
+    // the back row sits where it does beside a creature instead of
+    // moving up into the creatures' place: under the row on your panel,
+    // over it on Bob's, across the table.
+    for (const [board, flipped] of [
+      [selfBoard, false],
+      [page.getByRole("region", { name: "Bob board" }), true],
+    ] as const) {
+      const rows = () =>
+        board.evaluate((panel) => {
+          const box = (sel: string) =>
+            panel.querySelector<HTMLElement>(sel)!.getBoundingClientRect();
+          const card = panel.querySelector<HTMLElement>(
+            '.row[data-zone="creatures"] .fit-probe-card',
+          )!;
+          const creatures = box('.row[data-zone="creatures"]');
+          const lands = box('.row[data-zone="lands"]');
+          return {
+            card: card.offsetHeight,
+            creatures: creatures.height,
+            gap: Math.min(
+              Math.abs(lands.top - creatures.bottom),
+              Math.abs(creatures.top - lands.bottom),
+            ),
+            order: lands.top >= creatures.bottom ? "under" : "over",
+          };
+        });
+      await expect
+        .poll(
+          async () => {
+            const r = await rows();
+            // One label high, it was 24px. On your panel the rail's
+            // identity also took that height for the back row's track.
+            return r.creatures >= r.card && r.gap < 24;
+          },
+          { message: "an empty creature row keeps one card's height" },
+        )
+        .toBe(true);
+      expect((await rows()).order).toBe(flipped ? "over" : "under");
+    }
+
     // #2395: the fan fits its row, between the piles' corner and the
     // commander strip, so the pointer reaches every card of the hand
     // at rest. Parked off the board, the pointer leaves it at rest.

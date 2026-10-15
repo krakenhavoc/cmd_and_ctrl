@@ -266,6 +266,24 @@ export function allocateRowHeights(
 }
 
 /**
+ * lineHeight is the full-size height of a row's one line: its tallest
+ * pile, measured at `scale`. #3893: an empty row that holds its line
+ * (the creature row, BattlefieldRow `hold`) asks for one card of its
+ * own height, `cardH`, which is what its CSS keeps open; one label high
+ * instead, it left that height to the back row's budget, and the back
+ * row moved up into the creatures' place.
+ */
+export function lineHeight(
+  pileHeights: readonly number[],
+  scale: number,
+  cardH: number,
+  hold = false,
+): number {
+  if (pileHeights.length === 0) return hold ? Math.max(0, cardH) : 0;
+  return Math.max(0, ...pileHeights) / (scale || 1);
+}
+
+/**
  * roomOf is the width a row's card list has with its cards at full
  * size and no overlap. A back-row zone is as wide as its cards (up to
  * its share, #3028), so once shrunk and overlapped it measured only the
@@ -296,6 +314,8 @@ export interface FitRowOptions {
   strip?: boolean;
   /** #3044: the height the panel gives this row, 0 when unknown. */
   budget?: number;
+  /** #3893: an empty row keeps one card's line (lineHeight). */
+  hold?: boolean;
   /** #3044: called with the row's demand whenever it moves. */
   onDemand?: (d: RowReport) => void;
 }
@@ -387,7 +407,12 @@ export function fitRow(
     }
     // What the row's cards measure now, at `scale`, and at full size.
     const widths = piles.map((p) => p.offsetWidth);
-    const lineH = Math.max(0, ...piles.map((p) => p.offsetHeight)) / scale;
+    const lineH = lineHeight(
+      piles.map((p) => p.offsetHeight),
+      scale,
+      baseH,
+      !!opts.hold,
+    );
     const rowStyle = node.parentElement ? getComputedStyle(node.parentElement) : null;
     const pad = rowStyle
       ? (parseFloat(rowStyle.paddingTop) || 0) + (parseFloat(rowStyle.paddingBottom) || 0)
@@ -480,9 +505,11 @@ export function fitRow(
   return {
     update(o: FitRowOptions) {
       // A new options object comes with every render of the row; only a
-      // new strip flag or budget needs the row measured again.
+      // new strip or hold flag or budget needs the row measured again.
       const moved =
-        !!o.strip !== !!opts.strip || Math.abs((o.budget ?? 0) - (opts.budget ?? 0)) > 0.5;
+        !!o.strip !== !!opts.strip ||
+        !!o.hold !== !!opts.hold ||
+        Math.abs((o.budget ?? 0) - (opts.budget ?? 0)) > 0.5;
       opts = o;
       if (moved) schedule();
     },

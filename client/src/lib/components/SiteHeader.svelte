@@ -37,6 +37,7 @@
   import { openSettings } from "../settings";
   import Icon from "./Icon.svelte";
   import AdminChip from "./AdminChip.svelte";
+  import ServerPing from "./ServerPing.svelte";
   import HelpMenu from "./HelpMenu.svelte";
   import BugReportModal from "./BugReportModal.svelte";
   import { bugReportConfig } from "../bugReportConfig";
@@ -253,6 +254,7 @@
     </nav>
 
     <div class="account">
+      <span class="ping-slot"><ServerPing /></span>
       {#if invite}
         <!-- ADR 0156 §6: the C2 Discord on every page outside the table.
              Hidden when the server names no invite. -->
@@ -389,6 +391,32 @@
     background: color-mix(in srgb, var(--bg) 86%, transparent);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border);
+  }
+  /* Magic's five colours, W U B R G, along the top edge (the colour-
+     identity tokens). Hard stops, so it is five flat bands, not a
+     gradient. */
+  .site-header::before {
+    content: "";
+    display: block;
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      var(--identity-w) 0 20%,
+      var(--identity-u) 20% 40%,
+      var(--identity-b) 40% 60%,
+      var(--identity-r) 60% 80%,
+      var(--identity-g) 80% 100%
+    );
+  }
+  .ping-slot {
+    display: inline-flex;
+    margin-right: 4px;
+  }
+  /* At phone width the header needs the room more than the ping. */
+  @media (max-width: 599px) {
+    .ping-slot {
+      display: none;
+    }
   }
   .row {
     max-width: 1200px;

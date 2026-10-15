@@ -239,6 +239,11 @@ func (g *Game) priceCastLocked(playerID uuid.UUID, card Card, params CastSpellPa
 	if p == nil {
 		return CastPrice{}, ErrPlayerNotFound
 	}
+	// #3895: no price for an X the cast itself would refuse
+	// (x_bound.go).
+	if !announcedXInRange(params.XValue) {
+		return CastPrice{}, ErrInvalidParam
+	}
 	// ADR 0034, and the same order CastSpell settles it in: the
 	// permission is read off the UNFACED card (a grant belongs to the
 	// instance, not to a face), and the face it names — or the one

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -558,6 +559,18 @@ func TestApplyValueFillsOnlyAStatedOpenSet(t *testing.T) {
 	}
 	if _, err := applyValue(x, 2.5); err == nil {
 		t.Error("a fractional X was accepted")
+	}
+	// #3895: a value past the engine's bound is refused before it is
+	// converted, whatever range a move states.
+	huge := math.MaxInt
+	wide := legal.Move{Params: json.RawMessage(`{"instance_id":"a"}`), Value: &legal.MoveValue{Kind: legal.ValueX, Min: &min, Max: &huge}}
+	for _, v := range []float64{legal.MaxAnnouncedX + 1, 1e300, -1e300} {
+		if _, err := applyValue(wide, v); err == nil {
+			t.Errorf("X=%g past the engine's bound was accepted", v)
+		}
+	}
+	if raw, err := applyValue(wide, float64(legal.MaxAnnouncedX)); err != nil || !strings.Contains(string(raw), `"x_value":1000000`) {
+		t.Errorf("X at the bound: %s %v", raw, err)
 	}
 	name := legal.Move{Params: json.RawMessage(`{"choice_id":"c"}`), Value: &legal.MoveValue{Kind: legal.ValueCardName}}
 	raw, err = applyValue(name, "Sol Ring")

@@ -1,6 +1,8 @@
 package game
 
 import (
+	"log/slog"
+
 	"github.com/google/uuid"
 )
 
@@ -331,7 +333,9 @@ type AbilityCost struct {
 	// ceiling on X; what the activator can actually pay is the
 	// ceiling, and that is the mana check's job, not the card's.
 	// The legal-move enumerator's Options.MaxX is a search bound on
-	// the BOT, not a rule, and lives there for that reason.
+	// the BOT, not a rule, and lives there for that reason. The one
+	// bound every announcement meets is the engine's MaxAnnouncedX
+	// (x_bound.go, #3895), which is not a rule either.
 	//
 	// MinX is meaningless without an {X} in Mana, and Register
 	// panics at boot on a spec that sets one without the other: a
@@ -1274,6 +1278,17 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// #3895: the announced X is bounded first, before anything reads
+	// it (x_bound.go) — the mana half, and every cost sized by X: pay X
+	// life, loyalty −X, energy, remove X counters, blight, discard and
+	// tap X. A negative X is refused here too (CR 107.1b).
+	if !announcedXInRange(params.XValue) {
+		slog.Warn("activate_ability rejected: X out of range",
+			"x_value", params.XValue,
+			"x_max", MaxAnnouncedX,
+		)
+		return ErrInvalidParam
+	}
 	if g.SplitSecondActive {
 		return ErrSplitSecondActive
 	}
@@ -1449,17 +1464,15 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 
 	// --- validate every cost before paying any ------------------
 	// CR 602.2b: X is announced as part of activating, with the
-	// targets and before anything is paid. Same three checks the
-	// cast path makes at CR 601.2b, in the same order.
+	// targets and before anything is paid. The range (0 through
+	// MaxAnnouncedX) was checked on entry; the two checks the cast
+	// path also makes at CR 601.2b follow.
 	//
 	// The "no {X}, so X must be zero" branch is rejected rather than
 	// ignored on purpose, exactly as an unexpected sacrifice_ids is:
 	// a client that sends an X for Krenko is confused about which
 	// ability it is firing, and silently dropping the field would
 	// hide that from whoever has to debug it.
-	if params.XValue < 0 {
-		return ErrInvalidParam
-	}
 	if !ab.Cost.DemandsX() {
 		if params.XValue != 0 {
 			return ErrInvalidParam

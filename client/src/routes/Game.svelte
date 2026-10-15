@@ -2571,6 +2571,9 @@
     // ADR 0167 §4: no sandbox for either player of a controlled turn.
     sandbox: !sandboxClosed,
     onTableRoll: rollAtTable,
+    // ADR 0193 §9: start a loop recording, from the menu.
+    recordLoop: dockShown && loopDock?.state.mode === "record",
+    onRecordLoop: () => loopDock?.onRecord(),
     // #3016: forget every trigger order this seat asked to reuse.
     forgetTriggerOrders:
       dockShown && view?.state === "active" ? (viewerSeat?.trigger_order_memory_count ?? 0) : 0,
