@@ -195,8 +195,6 @@ root: `scripts/go-docker.sh test ./...`, `lint`, `vet`, `go <args>`. Redirect it
 output to a file and read that. Never pipe it through `tail` or `head`, which hides
 the exit status. Never hand-write a `docker run` for Go, and never create a cache
 volume beyond `cmdctrl-gomod`, `cmdctrl-gobuild` and `cmdctrl-golangci` (#2035).
-The container runs as root; on exit the script chowns back to you any root-owned
-files it left in the repo (#3701).
 Usage and env pass-through: [docs/commands.md](docs/commands.md#commands).
 
 ### Rules the code depends on
