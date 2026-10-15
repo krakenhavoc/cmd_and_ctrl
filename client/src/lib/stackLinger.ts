@@ -35,7 +35,10 @@ import { cardImageURL } from "./cardImage";
 import { cardSelector } from "./boardAnchor";
 import { emptyBeatTracker, track, type BeatTracker } from "./combatBeats";
 
-export type LingerOutcome = "resolved" | "countered" | "fizzled";
+// "lapsed" is a `fizzle` entry with call "condition": an optional
+// trigger whose intervening "if" no longer held as it resolved (CR
+// 603.4, #3907) — removed with no question asked, not for its targets.
+export type LingerOutcome = "resolved" | "countered" | "fizzled" | "lapsed";
 
 /** How long a lone departed card lingers. Reading time, so never speed-scaled. */
 export const LINGER_MS = 1500;
@@ -110,6 +113,12 @@ const OUTCOME_OF: Partial<Record<LogEvent["kind"], LingerOutcome>> = {
   fizzle: "fizzled",
 };
 
+/** What a resolve, fizzle or counter entry says happened, or null. */
+export function outcomeOf(e: LogEvent): LingerOutcome | null {
+  if (e.kind === "fizzle" && e.call === "condition") return "lapsed";
+  return OUTCOME_OF[e.kind] ?? null;
+}
+
 /**
  * The stack item a resolve, fizzle or counter entry is about, or null
  * for any other entry. `stack_item_id` when the server sends it; else a
@@ -164,7 +173,7 @@ export function trackLinger(
     if (now.has(id)) continue;
     const rect = opts.rects?.get(id) ?? null;
     const e = named.get(id);
-    const outcome = e ? (OUTCOME_OF[e.kind] ?? null) : null;
+    const outcome = e ? outcomeOf(e) : null;
     if (e && outcome) {
       lingers.push({ item, outcome, by: counteredBy(e), seq: e.seq, rect });
     } else {
@@ -226,6 +235,10 @@ export const OUTCOME_BADGE: Record<LingerOutcome, { label: string; title: string
     label: "Fizzled",
     title: "countered on resolution: no legal targets (CR 608.2b)",
   },
+  lapsed: {
+    label: "No effect",
+    title: "did nothing: its condition no longer held as it resolved (CR 603.4)",
+  },
 };
 
 /** The announcer's line for a lingering item. */
@@ -237,6 +250,8 @@ export function lingerAnnouncement(d: Pick<Departure, "item" | "outcome" | "by">
       return d.by ? `${d.item.name} was countered by ${d.by}` : `${d.item.name} was countered`;
     case "fizzled":
       return `${d.item.name} fizzled: no legal targets`;
+    case "lapsed":
+      return `${d.item.name} did nothing: its condition no longer held`;
     default:
       return "";
   }

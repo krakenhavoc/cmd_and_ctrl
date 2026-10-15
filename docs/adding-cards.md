@@ -6558,7 +6558,11 @@ resolves (CR 603.5, [ADR 0197](decisions/0197-optional-triggers-ask-as-they-reso
 once each turn" limits the doing, not the trigger: note it with
 `b28NoteDoneThisTurn` on a "yes" and read `b28DoneThisTurn`, never the
 stack label's trigger or resolution tally, which a declined trigger
-also counts.
+also counts. An intervening "if" (CR 603.4) on a "you may" trigger is
+declared, not written inside the Effect: `Do(If{Cond: …, Then: …})`,
+or `InterveningIf(cond, row)` around a hand-written Effect (Valakut,
+Land Tax). Then a condition that fails in response removes the trigger
+before its question is asked (#3907).
 
 **"Unless that player pays {N}"** (Rhystic Study, Smothering Tithe,
 Esper Sentinel) is a `PayUnless` primitive the trigger's `Effect`

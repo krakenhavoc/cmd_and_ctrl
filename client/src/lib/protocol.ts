@@ -1353,7 +1353,9 @@ export interface LogEvent {
   faces?: string[];
   // A coin call on a `flip`; on an `auto_answer` (ADR 0127), the answer,
   // "order" for a remembered trigger order (#3016, `label` the rows).
-  call?: "heads" | "tails" | "pay" | "dont_pay" | "yes" | "no" | "order";
+  // On a `fizzle`, "condition": an optional trigger's intervening "if"
+  // no longer held as it resolved (CR 603.4, #3907).
+  call?: "heads" | "tails" | "pay" | "dont_pay" | "yes" | "no" | "order" | "condition";
   wins?: number;
   // ADR 0121 §3: the seats an `opening_roll` entry names — the seats
   // that tied, or the seats the host rolled for. On `votes_revealed`

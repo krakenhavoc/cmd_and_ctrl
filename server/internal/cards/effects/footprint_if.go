@@ -76,6 +76,49 @@ func (s If) footprints() ([]game.FootprintStep, bool) {
 	return out, true
 }
 
+// InterveningIf declares a triggered row's CR 603.4 intervening "if"
+// for an Effect written by hand: the row's Effect becomes
+// Do(If{Cond: cond, Then: [the old Effect]}), so the condition is
+// checked as the item resolves, as If always checks it. The row's
+// AppliesTo still checks it as the ability triggers.
+//
+// Declared this way, an optional trigger checks the condition BEFORE
+// it asks its CR 603.5 "you may" (#3907, ADR 0197): a condition that
+// no longer holds removes the ability with no question
+// (game.CatalogTriggerInterveningIf, read by rowInterveningIf). The
+// old Effect's own re-check, if it kept one, is then redundant but
+// harmless.
+func InterveningIf(cond Condition, t game.TriggeredAbility) game.TriggeredAbility {
+	if cond == nil || t.Effect == nil {
+		panic("effects.InterveningIf: needs a condition and a declared Effect")
+	}
+	t.Effect = Do(If{Cond: cond, Then: []Applier{runEffect{fn: t.Effect}}})
+	return t
+}
+
+// runEffect applies a hand-written Effect as one step of a Do.
+type runEffect struct{ fn Effect }
+
+func (r runEffect) Apply(ctx *Context) error { return r.fn(ctx.Game, ctx.Item) }
+
+// rowInterveningIf is game.CatalogTriggerInterveningIf: a row whose
+// Effect is a Do that opens with an If declares that If's condition.
+func rowInterveningIf(t game.TriggeredAbility) func(*game.Game, *game.StackItem) bool {
+	steps, ok := doStepsOf(t.Effect)
+	if !ok || len(steps) == 0 {
+		return nil
+	}
+	first, ok := steps[0].(If)
+	if !ok || first.Cond == nil {
+		return nil
+	}
+	return func(g *game.Game, item *game.StackItem) bool {
+		return first.Cond.Holds(NewContext(g, item))
+	}
+}
+
+func init() { game.CatalogTriggerInterveningIf = rowInterveningIf }
+
 func condStep(c game.FootprintCond, n int) game.FootprintStep {
 	return game.FootprintStep{Kind: game.FootprintCondition, Cond: c, N: n}
 }

@@ -127,6 +127,28 @@ func (g *Game) askOptionalTriggerLocked(item *StackItem) {
 	})
 }
 
+// FizzleCallCondition is Event.Call on the EventFizzle of an optional
+// trigger whose intervening "if" no longer held as it resolved (CR
+// 603.4, #3907): it did nothing and asked nothing.
+const FizzleCallCondition = "condition"
+
+// optionalTriggerConditionFailsLocked reports whether an optional item's
+// row declares an intervening "if" (CatalogTriggerInterveningIf) that
+// no longer holds. CR 603.4 removes such an ability as it resolves, so
+// its "you may" is never asked (#3907). An item with no catalog row (a
+// delayed or reflexive trigger) declares none. Caller must hold g.mu.
+func (g *Game) optionalTriggerConditionFailsLocked(item *StackItem) bool {
+	if CatalogTriggerInterveningIf == nil || item.Params.Ability == nil {
+		return false
+	}
+	row, _, outcome := resolveTriggeredAbilityRef(*item.Params.Ability)
+	if outcome == abilityRefLost {
+		return false
+	}
+	cond := CatalogTriggerInterveningIf(row)
+	return cond != nil && !cond(g, item)
+}
+
 // optionalTriggerHasNoTargetLocked is the warning a resolution-time
 // prompt carries when its row's HasLegalTarget says "Yes" would do
 // nothing. Rows that declare no predicate, and items whose row or

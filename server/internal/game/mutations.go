@@ -4139,6 +4139,20 @@ func (g *Game) resolveTopAbilityLocked() {
 		})
 		return
 	}
+	// CR 603.4 before CR 603.5 (#3907): an optional trigger whose
+	// intervening "if" no longer holds is removed and does nothing, so
+	// its "you may" is never asked.
+	if top.Optional != nil && g.optionalTriggerConditionFailsLocked(top) {
+		g.EmitEvent(Event{
+			Kind:                EventFizzle,
+			Actor:               top.Controller,
+			Source:              top.SourceCardID,
+			Label:               top.Label,
+			ResolvedStackItemID: top.ID,
+			Call:                FizzleCallCondition,
+		})
+		return
+	}
 	g.EmitEvent(Event{
 		Kind:                EventResolve,
 		Actor:               top.Controller,
