@@ -248,3 +248,5 @@ body terra-herald-of-hope/return
 body the-falcon-airship-restored/return
 body cait-sith/boost
 body summon-kujata/fire-damage
+body good-king-mog/copy-a-non-saga-token
+condition good-king-mog/you-cast-a-noncreature-spell
