@@ -2588,6 +2588,11 @@ func castParamsFromPreviewQuery(r *http.Request, xValue int) (game.CastSpellPara
 	if params.ExilePermanentIDs, err = uuidListParam(q.Get("exile_permanent_ids"), "exile_permanent_ids"); err != nil {
 		return params, err
 	}
+	// #3175: and the hand cards a hand-exile cost takes. Their count
+	// changes the PRICE (March of Swirling Mist's "{2} less for each").
+	if params.ExileFromHandIDs, err = uuidListParam(q.Get("exile_from_hand_ids"), "exile_from_hand_ids"); err != nil {
+		return params, err
+	}
 	// ADR 0135 §4: the alternative cost's named payment. An emerge
 	// creature changes the PRICE (its mana value comes off), and every
 	// payment changes what the auto-tapper may spend: a creature named to

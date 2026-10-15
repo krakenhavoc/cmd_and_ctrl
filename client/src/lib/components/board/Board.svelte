@@ -142,6 +142,9 @@
     castBlightOffer,
     castRevealCost,
     castExilePermanentCost,
+    castHandExileCost,
+    altCostPayDefinesX,
+    altCostPayX,
     tapCostOf,
     tapCostLimit,
     alternativeCostsOf,
@@ -739,6 +742,29 @@
     afterSacrificeCost(p.card, { ...p.choices, exilePermanentIDs: ids });
   }
 
+  // #3175: "you may exile any number of blue cards from your hand" (March
+  // of Swirling Mist) — the same picker with the verb "Exile", over the
+  // server's `exile_from_hand_options`, any number including none. The
+  // answer rides as `exile_from_hand_ids`; it comes before the X prompt, so
+  // the X picker's price preview already carries the discount.
+  let handExilePrompt = $state<{
+    card: CardView;
+    label: string;
+    choices: CastChoices;
+  } | null>(null);
+  let handExilePromptOptionIDs = $state<string[]>([]);
+  const handExilePromptOptions = $derived.by(() => {
+    const me = view.seats.find((s) => s.id === viewerID);
+    return orderSacrificeOptions(me?.hand.cards ?? [], handExilePromptOptionIDs);
+  });
+
+  function confirmHandExile(ids: string[]): void {
+    const p = handExilePrompt;
+    handExilePrompt = null;
+    if (!p) return;
+    afterSacrificeCost(p.card, { ...p.choices, exileFromHandIDs: ids });
+  }
+
   function confirmReveal(ids: string[]): void {
     const p = revealPrompt;
     revealPrompt = null;
@@ -780,6 +806,17 @@
     if (ex && choices.exilePermanentIDs === undefined) {
       exilePromptOptionIDs = ex.options;
       exilePrompt = { card, label: ex.label, count: ex.count, choices };
+      return;
+    }
+    const he = castHandExileCost(card, choices);
+    if (he && choices.exileFromHandIDs === undefined) {
+      // None is the only answer when the hand holds nothing that pays.
+      if (he.options.length === 0) {
+        afterSacrificeCost(card, { ...choices, exileFromHandIDs: [] });
+        return;
+      }
+      handExilePromptOptionIDs = he.options;
+      handExilePrompt = { card, label: he.label, choices };
       return;
     }
     afterCastCosts(card, choices);
@@ -902,10 +939,18 @@
   function confirmAltPay(instanceIDs: string[]): void {
     const card = altPayPromptCard;
     const choices = altPayPromptChoices;
+    // #3175: a pitch bound to X (Shining Shoal's "a white card with mana
+    // value X") announces the picked card's mana value as X, read before
+    // the prompt state is cleared.
+    const x = altCostPayX(altPayOffer, instanceIDs);
     altPayPromptCard = null;
     altPayPromptChoices = {};
     if (!card) return;
-    afterAltCostPayment(card, { ...choices, altCostIDs: instanceIDs });
+    afterAltCostPayment(card, {
+      ...choices,
+      altCostIDs: instanceIDs,
+      ...(x !== undefined ? { xValue: x } : {}),
+    });
   }
 
   // #1727: an offer whose card half is a SACRIFICE (Dread Return's
@@ -1044,7 +1089,13 @@
     // and it is 0, so the picker is skipped and nothing is sent. The
     // server refuses a non-zero X on such a cast, which is what makes
     // this a prompt decision rather than a rule the client enforces.
+    // #3175: a pitch bound to X has already announced it — the pitched
+    // card's mana value — so the X picker would only offer a wrong answer.
+    const xFromPitch =
+      choices.xValue !== undefined &&
+      altCostPayDefinesX(alternativeCostByKey(card, choices.altCost));
     if (
+      !xFromPitch &&
       hasXCost(card, choices.altCost, choices.optionalCosts) &&
       !castLocksXAtZero(card, choices.altCost)
     ) {
@@ -3679,6 +3730,18 @@
     verb="Exile"
     onConfirm={confirmExilePermanent}
     onCancel={() => (exilePrompt = null)}
+  />
+  <!-- #3175: exile any number of blue cards from your hand (a March). -->
+  <SacrificeCostModal
+    source={handExilePrompt?.card ?? null}
+    label={handExilePrompt?.label ?? "any number of cards from your hand"}
+    options={handExilePromptOptions}
+    count={handExilePromptOptions.length}
+    min={0}
+    verb="Exile"
+    castName={handExilePrompt?.card.name}
+    onConfirm={confirmHandExile}
+    onCancel={() => (handExilePrompt = null)}
   />
   <CounterCostModal
     card={counterPrompt?.card ?? manaCounterPrompt?.card ?? null}

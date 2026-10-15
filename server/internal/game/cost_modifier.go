@@ -194,6 +194,15 @@ type CostQuery struct {
 	// clause's payment. Zero for an activation or special action.
 	Sacrificing int
 
+	// ExilingFromHand is how many hand cards the announcement's
+	// additional cost names to exile (#3175) — March of Swirling Mist's
+	// "This spell costs {2} less to cast for each card exiled this way".
+	// Announced at CR 601.2b, read at 601.2f, filled from
+	// len(CastSpellParams.ExileFromHandIDs) by the one pricer and per
+	// payment by the enumerator, as Sacrificing is. Zero for an
+	// activation or special action.
+	ExilingFromHand int
+
 	// AltSacrificeManaValue is emerge's reduction (CR 702.119a, ADR 0135
 	// §4): the mana value of the permanent the claimed alternative cost
 	// sacrifices, when that offer is ReducedBySacrificedManaValue, read

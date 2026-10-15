@@ -669,6 +669,15 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	// #3402: and the permanent an exile-a-permanent additional cost
 	// gives up leaves the board as surely.
 	v -= p.sacrificeCost(st, cp.ExilePermanentIDs)
+	// #3175: a hand card exiled to a March is a card lost from hand, as a
+	// discarded one is, without a discard's payoffs (it is not a discard).
+	if p.cfg.DiscardCostByCard {
+		for _, id := range cp.ExileFromHandIDs {
+			v -= p.discardCost(st, id, cp.InstanceID, cp.ExileFromHandIDs)
+		}
+	} else {
+		v -= st.w.Hand * float64(len(cp.ExileFromHandIDs))
+	}
 	v += targetV
 	if cp.FromZone == "command" {
 		// Each cast from the command zone makes the next one cost

@@ -376,6 +376,14 @@ type CastSpellParams struct {
 	// `exile_permanent_ids`, the name an activation already uses.
 	ExilePermanentIDs []uuid.UUID
 
+	// ExileFromHandIDs names the hand cards paid to a mandatory
+	// ExileFromHand additional cost (#3175) — March of Swirling Mist's
+	// "you may exile any number of blue cards from your hand". Any number,
+	// none included; their count is CostQuery.ExilingFromHand, which the
+	// card's per-card discount reads. Validated at announce, exiled with
+	// the spell on the stack. On the wire as `exile_from_hand_ids`.
+	ExileFromHandIDs []uuid.UUID
+
 	// RevealIDs names the ONE card an announced reveal / behold cost
 	// shows (CR 701.20, ADR 0100 amendment 2026-10-07): a matching card
 	// in the caster's hand, or — to behold — a matching permanent they
@@ -893,7 +901,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// pitched or bounced to pay it. Validated here, next to the claim
 	// it belongs to; paid further down with the spell already on the
 	// stack, so a Blood Artist watching the pitch triggers above it.
-	if err := g.validateAlternativeCostPaymentLocked(playerID, cardID, alt, params.AltCostIDs); err != nil {
+	if err := g.validateAlternativeCostPaymentLocked(playerID, cardID, alt, params.AltCostIDs, params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad alternative cost payment",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -1356,6 +1364,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #3175: and the hand-exile cost (March of Swirling Mist), with every
+	// hand card another component of this cast already pays with (CR 118.3).
+	if err := g.validateCastHandExileLocked(playerID, cardID, costPlan, params.ExileFromHandIDs,
+		append(append([]uuid.UUID(nil), params.DiscardIDs...), params.AltCostIDs...)); err != nil {
+		slog.Warn("cast_spell rejected: bad exile-from-hand payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"exile_from_hand_received", len(params.ExileFromHandIDs),
+			"err", err,
+		)
+		return err
+	}
 	if err := g.validateRevealLocked(playerID, cardID, costPlan, params.RevealIDs); err != nil {
 		slog.Warn("cast_spell rejected: bad reveal payment",
 			"card_name", card.Name,
@@ -1583,6 +1603,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	moving = append(moving, params.DelveIDs...)
 	// #3402: and the permanents an exile-a-permanent cost takes.
 	moving = append(moving, params.ExilePermanentIDs...)
+	// #3175: and the hand cards a hand-exile cost takes.
+	moving = append(moving, params.ExileFromHandIDs...)
 	// #1445 / #1427: a card an EFFECT has already paused on its way
 	// out cannot pay — moved, or tapped to convoke / waterbend
 	// (TapIDs), tapped to teamwork or blighted (#1703). See
@@ -1858,6 +1880,19 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if len(params.ExilePermanentIDs) > 0 {
 		if _, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers); err != nil {
 			slog.Error("cast_spell: exile-a-permanent cost failed after validation",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"err", err,
+			)
+			return err
+		}
+	}
+	// #3175: the hand-exile cost (March of Swirling Mist), with the spell
+	// on the stack, through the exile-a-card cost's payer: a plain move to
+	// exile, not a discard, so a countered March keeps nothing back.
+	if len(params.ExileFromHandIDs) > 0 {
+		if err := g.payExileCardsCostLocked(playerID, cardID, params.ExileFromHandIDs, params.commanderAnswers); err != nil {
+			slog.Error("cast_spell: exile-from-hand cost failed after validation",
 				"card_name", card.Name,
 				"oracle_id", card.OracleID,
 				"err", err,
@@ -3114,6 +3149,10 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		// settles before 601.2f totals the cost (Torgaar's "{2} less
 		// for each creature sacrificed this way").
 		Sacrificing: len(params.SacrificeIDs),
+		// #3175: the announced hand-exile count, settled at CR 601.2b
+		// for the same reason (March of Swirling Mist's "{2} less for
+		// each card exiled this way").
+		ExilingFromHand: len(params.ExileFromHandIDs),
 		// ADR 0135 §4, CR 702.119a: emerge's reduction, read off the
 		// permanent the claimed offer names while it is still on the
 		// battlefield.

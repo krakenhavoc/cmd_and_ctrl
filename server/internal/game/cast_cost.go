@@ -29,6 +29,14 @@ type CastCost struct {
 	// alternative cost, the exile grant's override, or Printed when
 	// neither applies.
 	Paid string
+
+	// AltIncludesX is true when Paid is a claimed alternative cost whose
+	// NON-MANA half includes X — Shining Shoal's "exile a white card with
+	// mana value X from your hand" (#3175, AlternativeCost.PaymentDefinesX).
+	// CR 107.3b locks X at 0 only for a cast paying "neither its mana cost
+	// nor an alternative cost that includes X", and this is the second
+	// kind, though its mana string is empty.
+	AltIncludesX bool
 }
 
 // CastCostFor picks the cost this cast pays, in the same order
@@ -48,13 +56,15 @@ type CastCost struct {
 // "{2}", cascade's "{0}") is read here.
 func CastCostFor(card Card, alt *AlternativeCost, grant *CastPermission) CastCost {
 	paid := card.ManaCost
+	altX := false
 	if alt != nil {
 		paid = alt.ManaCost
+		altX = alt.PaymentDefinesX()
 	}
 	if grant != nil && grant.Cost != "" {
-		paid = grant.Cost
+		paid, altX = grant.Cost, false
 	}
-	return CastCost{Printed: card.ManaCost, Paid: paid}
+	return CastCost{Printed: card.ManaCost, Paid: paid, AltIncludesX: altX}
 }
 
 // LocksXAtZero reports whether CR 107.3b fixes X at 0 for this cast:
@@ -101,7 +111,15 @@ func CastCostFor(card Card, alt *AlternativeCost, grant *CastPermission) CastCos
 // import a joined "{1}{R} // {1}{U}") locks nothing. The engine
 // refuses such a cast outright when it pays the printed cost, and
 // when a grant prices it there is no {X} the parser can see to fix.
+//
+// #3175: an alternative cost whose card half includes X (Shining Shoal's
+// "a white card with mana value X", AltIncludesX) is an alternative cost
+// that includes X, so it locks nothing even though its mana string is
+// empty: the caster announces X and the pitched card must match it.
 func (c CastCost) LocksXAtZero() bool {
+	if c.AltIncludesX {
+		return false
+	}
 	printed, err := ParseCost(c.Printed)
 	if err != nil || printed.XSlots == 0 {
 		return false

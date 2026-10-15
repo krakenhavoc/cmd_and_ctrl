@@ -687,6 +687,10 @@ func dispatch(g *game.Game, a Action) error {
 			// additional cost exiles ("exile a creature you control").
 			// The name an activate_ability already uses.
 			ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
+			// #3175 — the hand cards a mandatory hand-exile additional
+			// cost exiles ("you may exile any number of blue cards from
+			// your hand"). Any number, none included.
+			ExileFromHandIDs []string `json:"exile_from_hand_ids,omitempty"`
 			// S22 — the untapped permanents tapped to help pay
 			// (convoke, waterbend). Optional even on a card that
 			// offers the cost: tapping nothing and paying the whole
@@ -840,6 +844,7 @@ func dispatch(g *game.Game, a Action) error {
 			{"blight_ids", p.BlightIDs, &params.BlightIDs},
 			{"reveal_ids", p.RevealIDs, &params.RevealIDs},
 			{"exile_permanent_ids", p.ExilePermanentIDs, &params.ExilePermanentIDs},
+			{"exile_from_hand_ids", p.ExileFromHandIDs, &params.ExileFromHandIDs},
 			{"delve_ids", p.DelveIDs, &params.DelveIDs},
 		} {
 			for i, raw := range l.raw {

@@ -54,6 +54,10 @@ type castParams struct {
 	// ExilePermanentIDs is the permanent a mandatory exile-a-permanent
 	// additional cost exiles (#3402) — CastSpellParams.ExilePermanentIDs.
 	ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
+	// ExileFromHandIDs are the hand cards a mandatory hand-exile
+	// additional cost exiles (#3175, the Marches) —
+	// CastSpellParams.ExileFromHandIDs.
+	ExileFromHandIDs []string `json:"exile_from_hand_ids,omitempty"`
 	// DelveIDs are the graveyard cards exiled to delve (CR 702.66a,
 	// ADR 0100 §6) — CastSpellParams.DelveIDs.
 	DelveIDs []string `json:"delve_ids,omitempty"`
@@ -463,7 +467,11 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 				// mode COUNT, because each extra mode owes the escalate
 				// cost again (#2126). [-1] for every other card.
 				for _, extra := range escalateCounts(card) {
-					e.castMovesPayingOptional(card, from, perm, offer, chosen, to, branch, extra)
+					// #3175: a hand-exile cost (the Marches) is one announcement
+					// per count offered, each priced with its own discount.
+					for _, handExile := range e.handExilePayments(card) {
+						e.castMovesPayingOptional(card, from, perm, offer, chosen, to, branch, extra, handExile)
+					}
 				}
 			}
 		}
@@ -680,7 +688,7 @@ func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.Addition
 // selections of exactly extra+1 modes are built, and the escalate
 // cost's discards and taps are demanded that many times — so a mode
 // count the seat cannot pay is not offered (#2126).
-func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int, giftTo uuid.UUID, branch *int, extra int) {
+func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int, giftTo uuid.UUID, branch *int, extra int, handExile []uuid.UUID) {
 	g, p := e.g, e.p
 	// #662: the spell IS its own source (CR 702.16b), so every legal
 	// set below is computed against the card's colour and type. An
@@ -768,6 +776,8 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		Face: card.ActiveFace,
 		// ADR 0103: and a fused copy announces the fused cast.
 		Fuse: card.Fused,
+		// #3175: the hand cards this expansion exiles to a March.
+		ExileFromHandIDs: handExile,
 	}
 	price, err := e.g.PriceCastForEffect(e.seat, card, announce)
 	if err != nil {
@@ -948,6 +958,9 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// search collapses to ONE payment by policy — see
 	// maxEnumeratedCostPayments.
 	altCostSets := [][]uuid.UUID{nil}
+	// #3175: the X each payment in altCostSets announces, for an offer
+	// whose card is bound to X (Shining Shoal); nil for every other offer.
+	var altXs []int
 	if want := offer.CardPaymentCount(); want > 0 {
 		// #1013: the candidates come back in ZONE order, which is an
 		// arbitrary answer to "which three cards does this Uro eat".
@@ -963,6 +976,10 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			// permanent's mana value — and offered best first, up to the
 			// cap, among the payments the seat can afford.
 			altCostSets = e.emergePayments(card, offer, pool, cost, fromZone, spend, xFloor)
+		} else if offer.PaymentDefinesX() {
+			// #3175: "a white card with mana value X" — the card is the X
+			// announcement, so each payment carries its own X.
+			altCostSets, altXs = e.manaValueXPitchPayments(e.cheapestFuelFirst(pool), xFloor)
 		} else {
 			if offer.TapOthers != nil {
 				// ADR 0135 §1: a tap price spends no card, so the policy
@@ -1088,7 +1105,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 
 	total := e.opts.MaxExpansionPerSource
-	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, revealIDs, exileIDs, branch, addCost)
+	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, revealIDs, exileIDs, handExile, branch, addCost)
 	// #1013: the first announcement the expansion makes, kept so the
 	// ALTERNATIVE cost payments can be offered against it below.
 	var first *announcedCast
@@ -1144,6 +1161,7 @@ modeLoop:
 				Controller:            e.seat,
 				FromZone:              fromZone,
 				AltSacrificeManaValue: altMV,
+				ExilingFromHand:       len(handExile),
 			})
 			if err != nil {
 				continue
@@ -1241,6 +1259,7 @@ modeLoop:
 					FromZone:              fromZone,
 					Targets:               targets,
 					AltSacrificeManaValue: altMV,
+					ExilingFromHand:       len(handExile),
 				})
 				if err != nil {
 					continue
@@ -1317,6 +1336,7 @@ modeLoop:
 							Targets:               tgts,
 							Sacrificing:           len(sacs),
 							AltSacrificeManaValue: altMV,
+							ExilingFromHand:       len(handExile),
 						})
 						if err != nil {
 							continue
@@ -1334,6 +1354,12 @@ modeLoop:
 						}
 						payLife, payCost, payPrinted = pay.phyrexianLife, pay.cost, priced
 						payDelve, payDelveFull = pay.delve, pay.delveFull
+					}
+					if altXs != nil {
+						// #3175: the pitched card's mana value IS the X this
+						// cast announces. The offer's price has no {X} slot,
+						// so the mana the move charges does not move with it.
+						payX = altXs[0]
 					}
 					// #1242: CastSpell's auto-tap will not spend a card
 					// or permanent this cast names to its additional cost
@@ -1457,10 +1483,15 @@ modeLoop:
 			emit(altCostSets[0], first.modes, first.targets, first.delveFull.x, first.life, first.delveFull.cost, first.dist, first.discards, first.sacs, first.delveFull.ids, nil)
 		}
 	}
-	for _, altPaid := range altCostSets[1:] {
+	for i, altPaid := range altCostSets[1:] {
 		if budget <= 0 {
 			e.budgetSpent()
 			return
+		}
+		// #3175: a pitch bound to X announces its own card's mana value.
+		payX := first.x
+		if altXs != nil {
+			payX = altXs[i+1]
 		}
 		// #1727: the same affordability, with THIS payment's cards
 		// kept away from the auto-tapper (game.CastAutoTapExclusions) —
@@ -1470,11 +1501,11 @@ modeLoop:
 		// ADR 0135 §4: and an emerge payment at ITS price, which is the
 		// first announcement's less this permanent's mana value.
 		payCost, ok := e.altPaymentCost(card, fromZone, first, altPaid, perTarget, varSac)
-		if !ok || !e.canPayExcluding(payCost, first.x, spend, first.autoTapExclusions(altPaid)) {
+		if !ok || !e.canPayExcluding(payCost, payX, spend, first.autoTapExclusions(altPaid)) {
 			continue
 		}
 		budget--
-		emit(altPaid, first.modes, first.targets, first.x, first.life, payCost, first.dist, first.discards, first.sacs, first.delve, first.xv)
+		emit(altPaid, first.modes, first.targets, payX, first.life, payCost, first.dist, first.discards, first.sacs, first.delve, first.xv)
 	}
 }
 
@@ -1542,7 +1573,7 @@ func (e *enumerator) castMoveEmitter(
 	optional []game.AdditionalCost,
 	chosen []int,
 	giftTo uuid.UUID,
-	teamIDs, blightIDs, revealIDs, exileIDs []uuid.UUID,
+	teamIDs, blightIDs, revealIDs, exileIDs, handExile []uuid.UUID,
 	branch *int,
 	paying *game.AdditionalCost,
 ) castEmitter {
@@ -1589,6 +1620,8 @@ func (e *enumerator) castMoveEmitter(
 		// #3402: the creature an exile-a-permanent cost gives up, named in
 		// the move so a bot trace, a model seat and an MCP client read it.
 		label += exileLabel(g, exileIDs)
+		// #3175: and the hand cards a March exiles for its discount.
+		label += exileLabel(g, handExile)
 		// ADR 0100: the delved and the undelved casts are otherwise the
 		// same line in the move log.
 		if len(delve) > 0 {
@@ -1659,6 +1692,7 @@ func (e *enumerator) castMoveEmitter(
 				BlightIDs:         idStrings(blightIDs),
 				RevealIDs:         idStrings(revealIDs),
 				ExilePermanentIDs: idStrings(exileIDs),
+				ExileFromHandIDs:  idStrings(handExile),
 				DelveIDs:          idStrings(delve),
 				Distribution:      distributionWire(dist),
 				GiftOpponent:      giftWire(giftTo),

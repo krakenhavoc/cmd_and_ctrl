@@ -132,6 +132,14 @@ type AlternativeCost struct {
 	// ExileFromGraveyard's N has. Commandeer's "exile two blue cards
 	// from your hand" is a spec of Min 2 (#1745); every other pitch
 	// names one card.
+	//
+	// #3175: the spec may carry ManaValueEqualsX — Shining Shoal's "exile
+	// a white card with mana value X from your hand rather than pay this
+	// spell's mana cost". That makes the price an alternative cost that
+	// INCLUDES X (CR 107.3a), so CR 107.3b does not lock X at 0: the
+	// caster announces X (CR 601.2b) and the named card's mana value must
+	// equal it. The offer is shown whenever a matching card of any mana
+	// value is in hand, since X is the caster's to choose (PaymentDefinesX).
 	ExileFromHand *TargetSpec
 
 	// ReturnToHand is "return an Island you control to its owner's
@@ -556,6 +564,17 @@ func (a *AlternativeCost) cardComponent() (*TargetSpec, ZoneKind, int) {
 	return nil, "", 0
 }
 
+// PaymentDefinesX reports whether this offer's card component is bound
+// to the announced X — Shining Shoal's "a white card with mana value X"
+// (#3175, CR 107.3a). Such an offer is an alternative cost that includes
+// X, so CR 107.3b leaves the X announcement open (CastCost.AltIncludesX),
+// and the payment validator holds the named card's mana value to it.
+// Nil-safe.
+func (a *AlternativeCost) PaymentDefinesX() bool {
+	spec, _, _ := a.cardComponent()
+	return spec != nil && spec.ManaValueEqualsX
+}
+
 // Clears reports whether paying this cost deletes the spell's target
 // clause. Nil-safe, so the cast path can ask without a guard.
 func (a *AlternativeCost) Clears() bool {
@@ -855,8 +874,13 @@ func (g *Game) altCostCardOKLocked(p *Player, alt *AlternativeCost, spec *Target
 // price for a cast the player thought was free is the worst available
 // failure.
 //
+// `x` is the X the cast announces. It is read only by an offer whose
+// card component is bound to it (#3175, PaymentDefinesX): Shining
+// Shoal's pitched card must have mana value exactly X, read as the card
+// is in hand (CR 202.3e: an {X} in its own cost counts as 0 there).
+//
 // Caller must hold g.mu.
-func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID) error {
+func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID, x int) error {
 	if alt == nil {
 		if len(ids) > 0 {
 			return ErrInvalidParam
@@ -933,6 +957,13 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 		// counts candidates with, so "the client was offered this"
 		// and "the engine accepts this" are one rule (#695).
 		if !g.altCostCardOKLocked(p, alt, spec, zone, c) {
+			return ErrInvalidParam
+		}
+		// #3175, CR 107.3a / 601.2b: "a white card with mana value X" —
+		// the card and the announced X must agree. The offer is judged
+		// without X (any white card makes it available), so this is the
+		// line that ties the two together.
+		if spec.ManaValueEqualsX && !boundAdmitsAt(g, spec, c, x) {
 			return ErrInvalidParam
 		}
 	}

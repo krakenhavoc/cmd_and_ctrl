@@ -47,6 +47,9 @@ export interface AutoTapCastParams {
   teamworkIDs?: string[];
   blightIDs?: string[];
   exilePermanentIDs?: string[];
+  // #3175: the hand cards a March exiles. Their count changes the PRICE —
+  // "{2} less for each card exiled this way".
+  exileFromHandIDs?: string[];
   // ADR 0100: the graveyard cards named to delve. They DO change the
   // price — each pays {1} of the generic.
   delveIDs?: string[];
@@ -84,6 +87,9 @@ export function castPreviewParams(choices: CastChoices | null | undefined): Auto
   if (choices.blightIDs && choices.blightIDs.length > 0) out.blightIDs = [...choices.blightIDs];
   if (choices.exilePermanentIDs && choices.exilePermanentIDs.length > 0) {
     out.exilePermanentIDs = [...choices.exilePermanentIDs];
+  }
+  if (choices.exileFromHandIDs && choices.exileFromHandIDs.length > 0) {
+    out.exileFromHandIDs = [...choices.exileFromHandIDs];
   }
   if (choices.delveIDs && choices.delveIDs.length > 0) out.delveIDs = [...choices.delveIDs];
   if (choices.costBranch !== undefined) out.costBranch = choices.costBranch;
@@ -139,6 +145,8 @@ export function castPreviewParamsFromPayload(
   if (blight.length > 0) out.blightIDs = blight;
   const exiled = stringIDs(payload.exile_permanent_ids);
   if (exiled.length > 0) out.exilePermanentIDs = exiled;
+  const fromHand = stringIDs(payload.exile_from_hand_ids);
+  if (fromHand.length > 0) out.exileFromHandIDs = fromHand;
   const delve = stringIDs(payload.delve_ids);
   if (delve.length > 0) out.delveIDs = delve;
   const alt = stringIDs(payload.alt_cost_ids);

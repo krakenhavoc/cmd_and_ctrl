@@ -118,7 +118,7 @@ func couldAttack(c *protocol.CardView) bool {
 // keeps the normal threshold in a leftover window.
 var nonManaCastKeys = []string{
 	"alt_cost_ids", "discard_ids", "sacrifice_ids", "delve_ids",
-	"teamwork_ids", "blight_ids", "reveal_ids", "exile_permanent_ids", "optional_costs", "cost_branch",
+	"teamwork_ids", "blight_ids", "reveal_ids", "exile_permanent_ids", "exile_from_hand_ids", "optional_costs", "cost_branch",
 	"phyrexian_life",
 }
 

@@ -187,6 +187,7 @@ func Register(spec Spec) {
 		// enumerator all read off it.
 		checkSacrificeClause(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice, false, false, false)
 		checkAltCostSetRule(spec.Name, ac)
+		checkAltCostXBound(spec, ac)
 		checkAltCostTapOthers(spec.Name, ac)
 		checkEmerge(spec.Name, ac)
 		checkAwaken(spec, ac)
@@ -1190,6 +1191,37 @@ func checkAltCostSetRule(card string, ac game.AlternativeCost) {
 			card, where, len(spec.EachOf), spec.Min, spec.Max))
 	}
 	checkSetRuleEntries(card, where, spec)
+}
+
+// checkAltCostXBound is #3175's guard for an alternative cost whose card
+// component is bound to the announced X (Shining Shoal's "exile a white
+// card with mana value X from your hand"). Only the hand pitch reads the
+// bound (validateAlternativeCostPaymentLocked), only "mana value X" is a
+// printed form, the pitch names one card, and the card must read its X
+// (XMatters) — a bound on an X the spell never uses binds nothing.
+func checkAltCostXBound(spec Spec, ac game.AlternativeCost) {
+	where := fmt.Sprintf("alternative cost %q", ac.Key)
+	for _, s := range []*game.TargetSpec{ac.ReturnToHand, ac.ExileFromGraveyard, ac.Sacrifice, ac.DiscardFromHand} {
+		if s != nil && (s.ManaValueAtMostX || s.ManaValueEqualsX || s.PowerAtMostX || s.ToughnessAtMostX) {
+			panic(fmt.Sprintf("effects.Register: %q %s bounds a component by X that does not read the bound — only a hand pitch (ExileFromHand) does", spec.Name, where))
+		}
+	}
+	s := ac.ExileFromHand
+	if s == nil {
+		return
+	}
+	if s.ManaValueAtMostX || s.PowerAtMostX || s.ToughnessAtMostX || s.BoundByCountersRemoved {
+		panic(fmt.Sprintf("effects.Register: %q %s bounds its pitch by a statistic other than \"mana value X\" — no printed pitch does", spec.Name, where))
+	}
+	if !s.ManaValueEqualsX {
+		return
+	}
+	if s.Min > 1 || s.Max > 1 || s.CountFromX {
+		panic(fmt.Sprintf("effects.Register: %q %s binds X to a pitch of more than one card — the card's mana value is the X", spec.Name, where))
+	}
+	if !spec.XMatters {
+		panic(fmt.Sprintf("effects.Register: %q %s binds its pitch to X but the card does not read X (XMatters) — the bound would bind nothing the spell uses", spec.Name, where))
+	}
 }
 
 // checkReturnClause is #1213's registration guard for the

@@ -306,6 +306,16 @@ type AdditionalCost struct {
 	// optional cost or an either/or branch, and refuses the craft forms
 	// (a graveyard, an open count, a set rule), which no spell prints.
 	ExilePermanents *ExilePermanentsCost
+
+	// ExileFromHand is "As an additional cost to cast this spell, you may
+	// exile any number of blue cards from your hand" (March of Swirling
+	// Mist, #3175): any number of matching hand cards, zero included, named
+	// on CastSpellParams.ExileFromHandIDs and exiled with the spell on the
+	// stack. Their number is CostQuery.ExilingFromHand, which the card's
+	// per-card discount reads at CR 601.2f. Mandatory slot only:
+	// effects.Register refuses it on an optional cost or an either/or
+	// branch. See hand_exile_additional_cost.go.
+	ExileFromHand *HandExileCost
 }
 
 // Branched reports whether this is an either/or cost (ADR 0100 §2).
@@ -383,7 +393,7 @@ func (c *AdditionalCost) MaxPayments() int {
 func (c *AdditionalCost) Empty() bool {
 	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
 		c.Teamwork == 0 && c.Blight == 0 && !c.BlightX && c.PayLife == 0 && c.Energy == 0 && c.TapCreatures == 0 && len(c.Either) == 0 &&
-		c.Reveal == nil && c.ExilePermanents.Empty())
+		c.Reveal == nil && c.ExilePermanents.Empty() && c.ExileFromHand == nil)
 }
 
 // CardsDemanded reports whether paying this cost needs the caster to
@@ -395,7 +405,7 @@ func (c *AdditionalCost) Empty() bool {
 // repeated one is refused with the rest. Nil-safe.
 func (c *AdditionalCost) CardsDemanded() bool {
 	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0 || c.BlightX ||
-		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0 || c.Reveal != nil || !c.ExilePermanents.Empty())
+		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0 || c.Reveal != nil || !c.ExilePermanents.Empty() || c.ExileFromHand != nil)
 }
 
 // CatalogAdditionalCost is the catalog hook the effects package
