@@ -309,6 +309,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0187 §4: a rules gate read in the combat damage pass. Its
 		// cases are in assigns_no_combat_damage_test.go.
 		ModAssignsNoCombatDamage: true,
+		// #3275: a rules gate read by every sacrifice route. Its cases
+		// are in cant_be_sacrificed_test.go.
+		ModCantBeSacrificed: true,
 		// ADR 0108 §4: Yawgmoth's Will's replacement. Its cases are in
 		// scoped_exile_your_graveyard_test.go.
 		ModExileInsteadOfYourGraveyard: true,

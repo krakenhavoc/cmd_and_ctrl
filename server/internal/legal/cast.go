@@ -1025,14 +1025,9 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		}
 	}
 	if sacrifice != nil {
-		// Cost, not target — see SpecCandidatesForEffect.
-		lt := g.SpecCandidatesForEffect(e.seat, sacrifice)
-		var pool []uuid.UUID
-		for _, id := range lt.Cards {
-			if c := findBattlefield(g, id); c != nil && c.Controller == e.seat {
-				pool = append(pool, id)
-			}
-		}
+		// Cost, not target — see SacrificeCostCandidatesForEffect,
+		// which also leaves out what can't be sacrificed (#3275).
+		pool := g.SacrificeCostCandidatesForEffect(e.seat, sacrifice)
 		if addCost != nil && addCost.SacrificeAll && addCost.Sacrifice == sacrifice {
 			// #2097: "sacrifice all" has one payment, the engine's own
 			// set (empty included). It is named on the move so a policy

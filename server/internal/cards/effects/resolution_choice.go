@@ -434,6 +434,15 @@ type SacrificeChoice struct {
 
 func (s SacrificeChoice) Apply(ctx *Context) error {
 	then := s.Then
+	// #3275, CR 101.2: a permanent that can't be sacrificed is not a
+	// legal choice.
+	var candidates []uuid.UUID
+	for _, id := range s.Candidates {
+		if !ctx.Game.CantBeSacrificedForEffect(id) {
+			candidates = append(candidates, id)
+		}
+	}
+	s.Candidates = candidates
 	if len(s.Candidates) == 0 {
 		if then == nil {
 			return nil

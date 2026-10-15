@@ -728,6 +728,11 @@ func (g *Game) routeLegLocked(r zoneRoute, id uuid.UUID, batch []Card, then func
 // Caller must hold g.mu.
 func (g *Game) routeLegNothingToDoLocked(r zoneRoute, id uuid.UUID) bool {
 	if r.ViaBattlefieldLeave {
+		// #3275: a sacrifice leg whose permanent can't be sacrificed has
+		// nothing to do either (CR 101.2).
+		if r.Sacrifice && g.cantBeSacrificedLocked(id) {
+			return true
+		}
 		return findCardOnBattlefield(g, id) < 0
 	}
 	src := g.findCardZoneLocked(id)
@@ -972,7 +977,7 @@ func (g *Game) PutIntoGraveyardThenForEffect(cardID uuid.UUID, then func(g *Game
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) SacrificeAllThenForEffect(source uuid.UUID, ids []uuid.UUID, then func(g *Game, sacrificed []uuid.UUID) error) error {
-	return g.routeAllThenLocked(sacrificeRoute(source), g.unprotectedFromSacrificeLocked(ids), then)
+	return g.routeAllThenLocked(sacrificeRoute(source), g.sacrificeableLocked(g.unprotectedFromSacrificeLocked(ids)), then)
 }
 
 // SacrificeThenForEffect is the SINGLE-CARD form: sacrifice one
@@ -1011,7 +1016,7 @@ func (g *Game) SacrificeThenForEffect(source, cardID uuid.UUID, then func(g *Gam
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) SacrificeAllForEffect(source uuid.UUID, ids []uuid.UUID) int {
-	return g.routeAllLocked(sacrificeRoute(source), g.unprotectedFromSacrificeLocked(ids))
+	return g.routeAllLocked(sacrificeRoute(source), g.sacrificeableLocked(g.unprotectedFromSacrificeLocked(ids)))
 }
 
 // BounceCardsToHandForEffect returns every card in `ids` to its

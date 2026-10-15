@@ -1367,6 +1367,11 @@ func (g *Game) SacrificePermanentForEffect(cardID uuid.UUID) error {
 	if g.effectSacrificeBlockedLocked(g.controllerOfBattlefieldCardLocked(cardID)) {
 		return nil
 	}
+	// #3275: nor can it sacrifice a permanent that can't be sacrificed
+	// (CR 101.2); the instruction does nothing.
+	if g.cantBeSacrificedLocked(cardID) {
+		return nil
+	}
 	return g.sacrificePermanentLocked(cardID)
 }
 

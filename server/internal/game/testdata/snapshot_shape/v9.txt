@@ -983,6 +983,7 @@ lastKnownBattlefield{}.BorrowedAbilities[].Slot	string
 lastKnownBattlefield{}.BorrowedAbilities[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.BorrowedAbilities[].SpendFrom	string
 lastKnownBattlefield{}.CantBeAttacked	bool
+lastKnownBattlefield{}.CantBeSacrificed	bool
 lastKnownBattlefield{}.CantHave	array
 lastKnownBattlefield{}.CantHave[]	string
 lastKnownBattlefield{}.Colors	array
@@ -1109,6 +1110,7 @@ lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Slot	string
 lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.BorrowedAbilities[].SpendFrom	string
 lastKnownPermanents{}[].characteristic.CantBeAttacked	bool
+lastKnownPermanents{}[].characteristic.CantBeSacrificed	bool
 lastKnownPermanents{}[].characteristic.CantHave	array
 lastKnownPermanents{}[].characteristic.CantHave[]	string
 lastKnownPermanents{}[].characteristic.Colors	array
@@ -2480,6 +2482,7 @@ pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Slot	string
 pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].SpendFrom	string
 pendingChoices[].damageAssignment.SourceLKI.CantBeAttacked	bool
+pendingChoices[].damageAssignment.SourceLKI.CantBeSacrificed	bool
 pendingChoices[].damageAssignment.SourceLKI.CantHave	array
 pendingChoices[].damageAssignment.SourceLKI.CantHave[]	string
 pendingChoices[].damageAssignment.SourceLKI.Colors	array

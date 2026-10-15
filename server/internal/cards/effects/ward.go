@@ -557,11 +557,12 @@ func wardDiscardOrCounter(g *game.Game, source, payer uuid.UUID, n int, targetin
 }
 
 // wardSacrificeCandidates lists the permanents payer controls that the
-// sacrifice cost accepts, in battlefield order.
+// sacrifice cost accepts, in battlefield order. A permanent that can't
+// be sacrificed can't pay it (#3275, CR 118.3).
 func wardSacrificeCandidates(g *game.Game, payer uuid.UUID, sac WardSacrificeCost) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == payer && sac.OK(g, payer, c) {
+		if c.Controller == payer && sac.OK(g, payer, c) && !g.CantBeSacrificedForEffect(c.InstanceID) {
 			out = append(out, c.InstanceID)
 		}
 	}
@@ -572,7 +573,7 @@ func wardSacrificeCandidates(g *game.Game, payer uuid.UUID, sac WardSacrificeCos
 func wardSacrificeLegal(g *game.Game, payer uuid.UUID, sac WardSacrificeCost, id uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.InstanceID == id {
-			return c.Controller == payer && sac.OK(g, payer, c)
+			return c.Controller == payer && sac.OK(g, payer, c) && !g.CantBeSacrificedForEffect(id)
 		}
 	}
 	return false

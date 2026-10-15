@@ -980,12 +980,9 @@ func (g *Game) additionalCostPayableLocked(playerID, castID uuid.UUID, cost *Add
 		}
 	}
 	if cost.Sacrifice != nil {
-		have := 0
-		for _, id := range g.SpecCandidatesForEffect(playerID, cost.Sacrifice).Cards {
-			if c := findBattlefieldCard(g, id); c != nil && c.Controller == playerID {
-				have++
-			}
-		}
+		// #3275: the permanents that can pay it, so one that can't be
+		// sacrificed doesn't count.
+		have := len(g.SacrificeCostCandidatesForEffect(playerID, cost.Sacrifice))
 		if have < SacrificeCostCount(cost.Sacrifice) {
 			return false
 		}

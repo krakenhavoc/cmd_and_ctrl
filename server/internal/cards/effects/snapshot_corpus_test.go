@@ -515,6 +515,11 @@ func corpusBoards() []corpusBoard {
 		// restricted run of {C}. And a spell on the stack paid partly
 		// out of the long run (stackMeta[].paid.Mana[]).
 		{"mana_pool_runs", corpusManaPoolRuns},
+		// v9, added by #3275 as a new file: a creature that "can't be
+		// sacrificed this turn" — the cantBeSacrificed rule kind,
+		// pinned to the creature (a new vocabulary value an older
+		// binary must refuse rather than read as nothing).
+		{"cant_be_sacrificed", corpusCantBeSacrificed},
 	}
 }
 
@@ -1589,6 +1594,20 @@ func corpusLegendRuleDoesntApply(t *testing.T) *game.Game {
 		t.Fatal(err)
 	}
 	passPriorityAroundTable(t, g)
+	return g
+}
+
+// corpusCantBeSacrificed is #3275's one stored shape: a pinned
+// cantBeSacrificed record on a creature (Slicer's "this turn").
+func corpusCantBeSacrificed(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	slicer := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Slicer, Hired Muscle", 3, 4))
+	g.WithWriteLock(func() {
+		if !g.CantBeSacrificedThisTurnForEffect(uuid.Nil, slicer, "Slicer, Hired Muscle — can't be sacrificed this turn") {
+			t.Fatal("setup: no record written")
+		}
+	})
 	return g
 }
 

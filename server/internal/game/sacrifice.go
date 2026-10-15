@@ -67,6 +67,13 @@ func (g *Game) sacrificeWithAnswerLocked(cardID uuid.UUID, answer commanderZoneA
 	if g.controllerOfBattlefieldCardLocked(cardID) == uuid.Nil {
 		return ErrCardNotFound
 	}
+	// #3275, CR 101.2: a permanent that can't be sacrificed stays, and
+	// nothing is announced. An error, not nil, so a caller that reads
+	// "nil means it went" (the Saga rule's "something happened") does
+	// not loop on it.
+	if g.cantBeSacrificedLocked(cardID) {
+		return ErrCantBeSacrificed
+	}
 	r := sacrificeRoute(uuid.Nil)
 	r.commanderAnswer = answer
 	r.MustSettleNow = mustSettleNow
@@ -218,7 +225,8 @@ func (g *Game) PlayerSacrificesForEffect(source, playerID uuid.UUID, spec *Targe
 //
 // Note this is NOT LegalTargetsForEffect: the effect doesn't target,
 // so a hexproof or protected creature is still a legal choice. Only
-// the spec's own card predicate and control matter.
+// the spec's own card predicate and control matter, and whether the
+// permanent can be sacrificed at all (#3275).
 func (g *Game) sacrificeCandidatesLocked(playerID uuid.UUID, spec *TargetSpec) []uuid.UUID {
 	var out []uuid.UUID
 	for i := range g.Battlefield.Cards {
@@ -227,6 +235,11 @@ func (g *Game) sacrificeCandidatesLocked(playerID uuid.UUID, spec *TargetSpec) [
 			continue
 		}
 		if spec != nil && spec.CardOK != nil && !spec.CardOK(g, playerID, c, ZoneBattlefield) {
+			continue
+		}
+		// #3275, CR 101.2: a permanent that can't be sacrificed is not a
+		// legal choice, so an edict passes over it.
+		if g.permanentCantBeSacrificedLocked(&c) {
 			continue
 		}
 		out = append(out, c.InstanceID)

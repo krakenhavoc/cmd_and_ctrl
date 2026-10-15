@@ -289,6 +289,16 @@ type Characteristic struct {
 	// ever a target, so it is never read for anything else.
 	CantBeAttacked bool `json:",omitempty"`
 
+	// CantBeSacrificed is "this permanent can't be sacrificed" as a
+	// static ability (#3275): Alexios, Deimos of Kosmos's own, or one
+	// granted to it (Hithlain Rope, Assault Suit). Written by an ordinary
+	// layer-6 static, so it goes with the permanent's abilities
+	// (CR 613.1f). permanentCantBeSacrificedLocked reads it beside the
+	// duration form (ModCantBeSacrificed), so a cost can't be paid with
+	// the permanent, an effect can't choose it and the sacrifice route
+	// leaves it where it is (CR 101.2).
+	CantBeSacrificed bool `json:",omitempty"`
+
 	// BlockRequirements are the CR 509.1c requirements this object
 	// carries — "blocks each combat if able" on a would-be blocker
 	// (Watchdog, Grand Melee's second line), and on an attacker "all
