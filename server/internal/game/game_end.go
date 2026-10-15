@@ -68,6 +68,12 @@ const (
 	// OutcomeCauseAllLost — every remaining player lost at once
 	// (CR 104.4a).
 	OutcomeCauseAllLost = "all_lost"
+	// OutcomeCauseMandatoryLoop — the game entered a loop of only
+	// mandatory actions, repeating with no way to stop, and nobody
+	// broke it (CR 732.4, CR 104.4b). A draw for every player still in
+	// the game; Source names the loop's repeating ability's source
+	// (loop_breaker.go, #2506).
+	OutcomeCauseMandatoryLoop = "mandatory_loop"
 )
 
 // GameOutcome is the result of an ended game (ADR 0057 Decision 5).
@@ -77,11 +83,12 @@ type GameOutcome struct {
 	Kind string `json:"kind"`
 	// Winner is the winning player when Kind is OutcomeWin.
 	Winner uuid.UUID `json:"winner,omitempty"`
-	// Cause is OutcomeCauseLastStanding, OutcomeCauseEffect or
-	// OutcomeCauseAllLost.
+	// Cause is OutcomeCauseLastStanding, OutcomeCauseEffect,
+	// OutcomeCauseAllLost or OutcomeCauseMandatoryLoop.
 	Cause string `json:"cause"`
 	// Source is the object whose effect won the game, when Cause is
-	// OutcomeCauseEffect.
+	// OutcomeCauseEffect, and the source of the loop's repeating
+	// ability when Cause is OutcomeCauseMandatoryLoop.
 	Source uuid.UUID `json:"source,omitempty"`
 }
 

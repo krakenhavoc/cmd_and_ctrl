@@ -648,7 +648,13 @@ func (r *Runner) step(ctx context.Context) bool {
 		// played — and playing one clears the notice like any other
 		// decision, which is how a bot-only table gets moving again
 		// when it has something else to do.
-		if mv.Kind == legal.KindPass && r.room.Game.AutoPassSuspended() {
+		//
+		// #2506, CR 732.4: a notice the engine marked mandatory is the
+		// exception. That loop repeats unchanged and nothing anybody
+		// passes can make it worse; nobody has to break it (CR 732.5),
+		// and if every seat passes it round once more the game is a
+		// draw. Holding would leave a bot-only table at rest instead.
+		if mv.Kind == legal.KindPass && r.room.Game.AutoPassSuspended() && !r.room.Game.MandatoryLoopStanding() {
 			r.log.Warn("bot holding: automatic passing is suspended by the loop breaker (CR 732)")
 			r.observe(in, out, &mv, 0, false, nil)
 			return true

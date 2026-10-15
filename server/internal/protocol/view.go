@@ -333,6 +333,11 @@ type LoopNoticeView struct {
 	Label      string `json:"label"`
 	Controller string `json:"controller,omitempty"`
 	Count      int    `json:"count"`
+	// Mandatory marks CR 732.4's loop: only mandatory actions, and it
+	// repeats unchanged. Nobody can be made to break it (CR 732.5), and
+	// if every seat passes it round once more the game is a draw
+	// (#2506).
+	Mandatory bool `json:"mandatory,omitempty"`
 }
 
 // viewOfLoopNotice projects the engine's loop notice, or nil.
@@ -345,6 +350,7 @@ func viewOfLoopNotice(n *game.LoopNotice) *LoopNoticeView {
 		Label:      n.Label,
 		Controller: uuidStringOrEmpty(n.Controller),
 		Count:      n.Count,
+		Mandatory:  n.Mandatory,
 	}
 }
 
@@ -2561,8 +2567,10 @@ type GameEndGateView struct {
 
 // OutcomeView is the result of an ended game (ADR 0057 Decisions 5
 // and 7). Kind is "win" or "draw"; Winner and WinnerSeat are set for a
-// win; Cause is "last_standing", "effect" or "all_lost"; Source and
-// SourceName name the object whose effect won, for an effect win.
+// win; Cause is "last_standing", "effect", "all_lost" or
+// "mandatory_loop"; Source and SourceName name the object whose effect
+// won, for an effect win, and the loop's repeating source for a
+// mandatory loop's draw (CR 732.4, #2506).
 //
 // A winning source is public: every card that wins by effect does so
 // from the battlefield, the stack or a public trigger, so no knower

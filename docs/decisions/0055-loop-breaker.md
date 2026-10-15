@@ -141,7 +141,8 @@ break it or concede. The prompt is a follow-up.
 **Amendment (2026-09-18, #804): the shortcut prompt is built; §6 is
 closed.** CR 732.4's draw is still not, and stays out of scope — a
 mandatory loop nobody can stop is a different question from "how many more
-times", and nothing in the catalog makes one.
+times", and nothing in the catalog makes one. (Built on 2026-10-15, #2506:
+see the last amendment.)
 
 *The kind.* `PendingChoiceLoopShortcut` (`"loop_shortcut"`), declared in
 `loop_breaker.go` beside the notice that raises it and queued from
@@ -581,3 +582,149 @@ Every question was answered with the recommendation.
 9. **#2450 is retitled to the observed cause**, and docs/bot.md's
    paragraph naming Sanguine Bond and Exquisite Blood is corrected, in
    A's PR.
+
+## Amendment (2026-10-15, #2506): a mandatory loop that repeats unchanged is a draw
+
+Owner decision 8 of the 2026-10-07 amendment parked CR 732.4's draw
+until A and B were in. Both are, and #2506 builds it.
+
+### The rules
+
+From the Comprehensive Rules effective September 25, 2026:
+
+- **CR 732.4:** "If a loop contains only mandatory actions, the game is
+  a draw. (See rules 104.4b and 104.4f.)"
+- **CR 104.4b:** a game "not using the limited range of influence
+  option" that "somehow enters a 'loop' of mandatory actions, repeating
+  a sequence of events with no way to stop" is a draw. "Loops that
+  contain an optional action don't result in a draw."
+- **CR 104.4f** is the limited range of influence version. This table
+  never uses that option, so the draw is the whole game's.
+- **CR 732.5:** "No player can be forced to perform an action that
+  would end a loop other than actions called for by objects involved
+  in the loop."
+- **CR 732.6:** "[A] unless [B]": if nobody chooses to perform [B], the
+  loop continues as though [A] were mandatory.
+
+### Detection: the breaker's loop, plus one iteration that changed nothing
+
+With A and B in, a run reaches the threshold only when one triggered
+ability has resolved 25 times with no decision, no draining stack and
+no life, poison or departure progress. That is close to CR 104.4b's
+loop, but not exactly: B measures three kinds of progress, and a loop
+can be going somewhere it does not measure (cards leaving a library,
+counters coming off a permanent, damage piling up, tokens climbing
+toward a threshold an intervening "if" reads). A false draw ends a
+game nobody can get back, so the draw asks the strictest question
+there is: **did a whole iteration give the game back exactly as it
+found it?**
+
+- **The position.** As the loop's triggered ability begins to resolve,
+  the engine fingerprints the game: [ADR 0193](0193-demonstrate-a-loop-record-once-replay-n-times.md)
+  §3's loop signature (turn, step, active player, priority, players
+  in the game, open prompts, the stack item by item, every permanent
+  with its controller and tapped, face, phased and attached state),
+  plus every number that signature lets a demonstrated loop change
+  (each player's life, poison, energy, player counters, hand, library,
+  graveyard and exile sizes, tokens, mana, counters on their
+  permanents), the triggers waiting for the stack, and each permanent's
+  counters and damage. The fingerprint is stored per loop key on
+  `TurnTally.LoopRepeat`, and only once the key's run is one short of
+  the threshold, so an ordinary turn never computes one.
+- **A repeat** is the same fingerprint at two resolutions of the same
+  key in a row. ADR 0193's closure check is reused, made stricter:
+  where a demonstrated loop may change the totals (that is what it is
+  for), a mandatory loop that changed any of them has not shown it can
+  never stop.
+- **Only mandatory actions.** The run already restarts at every
+  decision. Three gaps are closed: an activated ability is never a
+  repeat (#810's shape is a choice every iteration), an optional
+  trigger ("you may", `StackItem.Optional`) is never a repeat
+  (CR 104.4b), and a prompt the server answers from a standing answer
+  (ADR 0127 §7, not a decision for the run) clears the fingerprints,
+  because somebody's choice stands in that loop.
+
+### What the table sees
+
+1. **The notice says the loop is mandatory.** When the breaker fires
+   on a repeat, `LoopNotice.Mandatory` is set and **no shortcut prompt
+   is queued**: the controller cannot stop the loop, so "stop here" is
+   no choice of theirs, and K more iterations of a loop that changes
+   nothing are the board everybody is already looking at. A notice
+   raised before the loop settled (the first ask of a shortcut, then
+   the table stepping on by hand) is marked mandatory the first time
+   the loop comes round unchanged, and unmarked by any iteration that
+   changes something.
+2. **Every seat is still asked**, which is CR 732.5: nobody has to
+   break the loop, anybody may. Automatic passing stays suspended for
+   people (§4), so each human passes by hand, and the banner says what
+   passing now means. A cast, an activation or any other decision
+   clears the notice and every run as before.
+3. **Bots pass.** The runner's hold on a pass (§4, §5) does not apply
+   to a mandatory notice (`Game.MandatoryLoopStanding`). A bot looks
+   for no way to break a loop, and holding would leave a bot-only
+   table at rest for ever, which is §5's stop and exactly what
+   CR 732.4 replaces.
+4. **The draw.** If the loop's ability resolves again under a mandatory
+   notice (every seat passed with it on the stack) and the position is
+   still the same, the game ends: `GameOutcome{Kind: "draw", Cause:
+   "mandatory_loop", Source: <the loop's source>}`, one `game_over`
+   event, and the ability does nothing more. Every player still in
+   the game draws; a player who left earlier keeps their loss.
+
+So the earliest a loop can draw is threshold + 1 resolutions of its key
+(25 to raise the notice, having repeated at least once already, and one
+more after the table was told), and only when every iteration in
+between was identical.
+
+### The wire, the log and the result
+
+- `GameView.loop_notice.mandatory` (omitempty). The client banner adds
+  "Nothing can stop it: if everyone passes again, the game is a draw."
+  An MCP seat's decision header says the same.
+- `outcome.cause: "mandatory_loop"`, with `source` / `source_name`
+  naming the loop's card. The game-over banner reads "The game is a
+  draw — Flow Engine's loop can't be stopped."
+- One `game_over` log line: "The game is a draw: Flow Engine's loop
+  repeats with no way to stop (CR 732.4)".
+- **Stats needed nothing new.** `games.outcome` already stores
+  `"draw"` (ADR 0057 Decision 7) and `gamestats` already gives every
+  seat still standing in a draw the draw result and first place, and
+  every seat that left a loss. No new data about a person is stored,
+  so ADR 0149's inventory is unchanged.
+- **Snapshot:** `loopNotice.mandatory` and `turnTally.loopRepeat` are
+  additive within schema v9, recorded with `-update-shape`. A file
+  from before reads as "not mandatory, no positions", which costs at
+  most one extra iteration before the repeat is seen again.
+
+### ADR 0193 is untouched
+
+A replay is a shortcut the whole table agreed to (ADR 0193 §5). While
+`loopReplaying` is set the breaker raises nothing, and no position is
+taken, so a replay can never draw the game.
+
+### What is still not a draw
+
+Each of these keeps §5's stop and the shortcut prompt, which is the
+conservative side of a rule that ends games:
+
+- **A loop that grows without end**: two token makers feeding each
+  other, a life gain loop, counters stacking up. CR 104.4b would call
+  most of them a draw, but the engine cannot tell an unbounded count
+  from one an intervening "if" or a state trigger is waiting on. If the
+  owner wants these drawn, the follow-up is to allow growth in tokens,
+  life and counters in the repeat test.
+- **A loop with a prompt in it**: a target chosen each iteration, an
+  "unless" payment declined each time (CR 732.6 would make it
+  mandatory), a trigger order asked by hand. Each answer is a decision
+  and restarts the run, as ADR 0055 §3 and the Sanguine Bond finding
+  above already say.
+- **A loop that needs a different step or turn to repeat.** The
+  position includes the step, so a loop that crosses one is never
+  seen repeating.
+
+Pinned by `loop_draw_test.go` (the repeating loop draws, a draining one
+wins, a changing one is offered the shortcut and never draws, an
+optional one is never called, a decision under the notice prevents the
+draw, a replay never draws) and `protocol/loop_draw_view_test.go` (the
+wire and the log line).

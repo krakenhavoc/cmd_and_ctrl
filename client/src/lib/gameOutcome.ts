@@ -33,6 +33,8 @@ export function winnerOf(view: GameView | null | undefined): PlayerView | null {
  *   "Alice wins the game — Felidar Sovereign"   an effect win
  *   "Alice wins the game."                       the last player standing
  *   "The game is a draw."                        everyone left lost at once
+ *   "The game is a draw — Flow Engine's loop
+ *    can't be stopped."                           a mandatory loop (CR 732.4)
  *   "Game ended — no survivors."                 an ended view with nobody to name
  *
  * The winner's name is left to the caller, which renders it in bold
@@ -50,6 +52,10 @@ export function gameOverText(view: GameView | null | undefined): {
       return { winner, text: `wins the game — ${outcome.source_name}` };
     }
     return { winner, text: "wins the game." };
+  }
+  if (outcome?.kind === "draw" && outcome.cause === "mandatory_loop") {
+    const loop = outcome.source_name ? `${outcome.source_name}'s loop` : "a loop";
+    return { winner: null, text: `The game is a draw — ${loop} can't be stopped.` };
   }
   if (outcome?.kind === "draw") return { winner: null, text: "The game is a draw." };
   return { winner: null, text: "Game ended — no survivors." };

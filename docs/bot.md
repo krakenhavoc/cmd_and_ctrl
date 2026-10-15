@@ -3958,6 +3958,18 @@ policy that can rank "100 more" top can rank it top every time, and a
 random one eventually will. A human at the same prompt types any
 number up to 1000 into the client's field.
 
+**A bot passes through a mandatory loop's notice, and the game is a
+draw.** When the loop that tripped the breaker has only mandatory
+actions and its last iteration gave the game back exactly as it found
+it (CR 732.4, [#2506](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2506),
+ADR 0055's amendment of 2026-10-15), the notice is marked `mandatory`
+and no shortcut is asked. The runner does not hold its pass on that
+notice (`Game.MandatoryLoopStanding`): nobody has to break a loop
+(CR 732.5), and a bot looks for no way to. If every seat passes the
+loop round once more and it comes back unchanged, the game ends in a
+draw. A loop that changes anything on the way round — a counter, a
+token, a card moved — keeps the stop above.
+
 **A bot accepts every demonstrated loop and never records one.** When a
 player records a loop and proposes repeating it
 ([ADR 0193](decisions/0193-demonstrate-a-loop-record-once-replay-n-times.md),
