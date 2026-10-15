@@ -102,48 +102,8 @@ func grimCaptainMayPut(ctx *Context) error {
 			if len(picked) == 0 {
 				return nil
 			}
-			return putAttackingYourChoice(NewContext(g, item), picked[0], "The Grim Captain")
+			return putAttackingYourChoice(NewContext(g, item), picked[0], game.ZoneExile, "The Grim Captain")
 		},
 	})
 	return nil
-}
-
-// putAttackingYourChoice asks what `card` (in exile) attacks — any
-// player, planeswalker or battle the controller could attack — and puts
-// it onto the battlefield under the controller's control tapped and
-// attacking that (CR 506.3c). With one choice there is no question.
-func putAttackingYourChoice(ctx *Context, card uuid.UUID, name string) error {
-	me := ctx.Controller()
-	refs := ctx.Game.AttackTargetsForEffect(me)
-	if len(refs) == 0 {
-		return nil
-	}
-	put := func(g *game.Game, target uuid.UUID) error {
-		if z := g.FindCardZoneForEffect(card); z == nil || z.Kind != game.ZoneExile {
-			return nil
-		}
-		return g.PutOntoBattlefieldTogetherThenForEffect(
-			[]game.BatchEntry{{CardID: card, From: game.ZoneExile}},
-			game.ZoneEntryOptions{Controller: me, Tapped: true, Attacking: target}, nil)
-	}
-	if len(refs) == 1 {
-		return put(ctx.Game, refs[0].ID)
-	}
-	options := make([]game.ChoiceOption, len(refs))
-	for i, r := range refs {
-		options[i] = game.ChoiceOption{Label: "Attack " + attackTargetName(ctx.Game, r.ID)}
-		if r.Kind != game.AttackTargetPlayer {
-			options[i].Cards = []uuid.UUID{r.ID}
-		}
-	}
-	return PickOption{
-		Question: name + " — what does it attack?",
-		Options:  options,
-		Then: func(ctx *Context, index int) error {
-			if index < 0 || index >= len(refs) {
-				index = 0
-			}
-			return put(ctx.Game, refs[index].ID)
-		},
-	}.Apply(ctx)
 }
