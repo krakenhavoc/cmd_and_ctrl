@@ -201,22 +201,25 @@ func IsSynthetic(id string) bool {
 	return id == "" || id == ExertDeckID || id == MonolithDeckID || id == AnswersDeckID
 }
 
-// AnswersBattleDeck is BattleDeck with ten Basalt Gargoyles in it, for
-// #2939's arena checks of ADR 0142's answer pricing: a 3/2 flier whose
-// "{R}: +0/+1" needs two activations to live through the deck's Lightning
-// Bolts. No curated deck holds a pump creature of the kind. Dealt by
-// oracle ID so the catalog gives the Gargoyle its abilities; the printed
-// cost and stats are the card's own.
+// AnswersBattleDeck is BattleDeck with ten Basalt Gargoyles and eight
+// Selfless Spirits in it, for #2939's arena checks of ADR 0142's answer
+// pricing: a 3/2 flier whose "{R}: +0/+1" needs two activations to live
+// through the deck's Lightning Bolts, and a 2/1 flier whose sacrifice
+// gives the rest of the team indestructible. No curated deck holds a
+// pump creature of the kind. Dealt by oracle ID so the catalog gives each
+// its abilities; the printed costs and stats are the cards' own.
 func AnswersBattleDeck(owner uuid.UUID) []game.Card {
 	deck := BattleDeck(owner)
 	out := make([]game.Card, 0, len(deck))
-	dropBears, dropOgres := 6, 4
+	dropBears, dropOgres, dropMountains := 12, 6, 8
 	for _, c := range deck {
 		switch {
 		case c.Name == "Bear" && dropBears > 0:
 			dropBears--
 		case c.Name == "Ogre" && dropOgres > 0:
 			dropOgres--
+		case c.Name == "Mountain" && dropMountains > 0:
+			dropMountains--
 		default:
 			out = append(out, c)
 		}
@@ -229,11 +232,27 @@ func AnswersBattleDeck(owner uuid.UUID) []game.Card {
 		c.Keywords = []string{"flying"}
 		out = append(out, c)
 	}
+	// Selfless Spirit (#2939 gap 3): eight of them, with the Plains that
+	// cast them.
+	for i := 0; i < 8; i++ {
+		c := game.NewCard("Selfless Spirit", owner)
+		c.OracleID = oracleSelflessSpirit
+		c.TypeLine, c.ManaCost = "Creature — Spirit Cleric", "{1}{W}"
+		c.Power, c.Toughness = 2, 1
+		c.Keywords = []string{"flying"}
+		out = append(out, c)
+		p := game.NewCard("Plains", owner)
+		p.TypeLine = "Basic Land — Plains"
+		out = append(out, p)
+	}
 	return out
 }
 
-// Basalt Gargoyle's catalog key.
-const oracleBasaltGargoyle = "83a38c8d-e2f6-404b-83be-9cfce037d6e2"
+// The answers deck's catalog keys.
+const (
+	oracleBasaltGargoyle = "83a38c8d-e2f6-404b-83be-9cfce037d6e2"
+	oracleSelflessSpirit = "71d785a9-ddc8-472e-a778-a551b444a4bd"
+)
 
 // MonolithBattleDeck is BattleDeck with ten of the two Monoliths in it,
 // for #2500's arena measurement: Basalt Monolith ("{T}: Add {C}{C}{C}",

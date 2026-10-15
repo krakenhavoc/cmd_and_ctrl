@@ -23,7 +23,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "Sacrifice this creature: Creatures you control gain indestructible until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerSurvive},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive, Saves: &game.Saves{Matches: game.SweepCreatures}},
 			Cost:    game.AbilityCost{SacrificeSelf: true},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantKeywordUntilEOT{

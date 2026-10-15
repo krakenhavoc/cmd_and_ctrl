@@ -1615,9 +1615,25 @@ rule off when its Config has `PriceAnswers` off, so
 The model tiers' prompt and the MCP seat's move list show a row's
 answers after its label, "(answers: protect)".
 
-Not covered: a combat grant (the combat planner's business), a row on
-another permanent that saves this one (Selfless Spirit), and spells,
-which declare no answers yet.
+With `PriceSaveOthers` on (#2939 gap 3), a `survive` or `protect` row
+that declares `saves` (Selfless Spirit, Dauntless Escort, Boromir; Ainok
+Strike Leader, Bulwark Ox and Dusk Legion Sergeant for part of the
+class) is priced by the permanents of the bot's in that class that the
+stack would remove: each at the creature's value times the chance it is
+lost, halved for a partial class, less the dying-anyway price of the row's
+own source when it is sacrificed. Only a spell counts as removal here
+(declared damage, a declared sweep, or a spell that targets the
+permanent): a targeted ability is not taken for one, since a row that
+costs a card should not be spent on a planeswalker's "can't be blocked".
+A sacrificed source's ability already above the threats on the stack
+counts as having answered them, so a second Spirit is not sacrificed for
+the same Wrath. `survive` is still read as saving from every kind of
+removal (an exile spell is a false positive), as it is for a single
+creature.
+
+Not covered: a combat grant (the combat planner's business), a `sac_outlet`
+whose sacrifice is chosen at resolution (no catalog row has one), and
+spells, which declare no answers yet.
 
 ### The old prices, kept runnable
 
@@ -2350,7 +2366,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 | Flag | What it does |
 |---|---|
 | `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert` or `heuristic-noplan`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. Arena names only; the lobby and `GET /bot/options` never offer them. |
-| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, and `answers-battle` is that deck with ten Basalt Gargoyles, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks. |
+| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, and `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
 | `--lockstep` | plays each game on one goroutine, seat by seat, so the same `--seed` replays the same games move for move (#1503). Off by default — see "Lockstep runs" below for what it changes. |
