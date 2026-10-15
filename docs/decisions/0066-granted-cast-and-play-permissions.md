@@ -3734,3 +3734,48 @@ and the original stays exiled (CR 707.12, CR 704.5e). No wire or snapshot change
 
 Back-out: pass `Cost` through to the offer no longer and `TestBlueMagesCaneExilesTheDefendersSpellAndOffersACopyForThree` fails
 on the permission's cost and on the cast for `{3}`.
+
+## Amendment — 2026-10-15 (#3769): a card remembers how and when it reached a graveyard
+
+Banon, the Returners' Leader: "Once during each of your turns, you may cast a creature spell from among cards in your graveyard that
+were put there from anywhere other than the battlefield this turn." The once-per-turn budget is Gisa and Geralf's shape
+(`PerType` holding `creature`, `TimingYourTurnOnly`). What was missing is a fact about the card: nothing recorded **where a card was
+put into a graveyard from, or when**, so no permission filter could ask.
+
+### Decision 1: the arrival record is Card data, stamped by `MoveCard`
+
+`Card.PutInGraveyardFrom` (the zone the card came from) and `Card.PutInGraveyardThisTurn` (that arrival happened during the current
+turn). `MoveCard` is the one zone move, so a mill, a discard, a counter, a destroy, a spell resolving and a sandbox drag are all
+recorded without a caller having to remember. It rewrites the record on every move: a card that lands in a graveyard names its
+source, and a card that goes anywhere else names nothing. That is CR 400.7 for free: a card that left the graveyard and came back is
+a new object judged by its latest arrival only. A melded pair leaving to a graveyard stamps both cards.
+
+A flag rather than a turn number, because `MoveCard` is a zone function and does not hold the game's clock. `onTurnBeganLocked`
+clears `PutInGraveyardThisTurn` in every seat's graveyard as each turn begins, the per-turn-flag shape `SummonedThisTurn` already
+has. `PutInGraveyardFrom` is a fact that does not expire and stays.
+
+### Decision 2: the permission clause rides the filter
+
+`PermissionFilter.PutInGraveyardThisTurn` is true for a card that arrived this turn from a zone that is not the battlefield
+(`Card.PutInGraveyardNotFromBattlefieldThisTurn`). It is a property of the card being cast, not a game-state condition, so it is a
+filter flag and not a registered `PermissionCondition` (see the 2026-10-13 second amendment, which draws the same line for a
+spell-type gate). The cast path, the enumerator and the view all reach it through `CoversCard`, so they agree by construction.
+
+### Snapshot
+
+Additive within v9: `…cards[].putInGraveyardFrom`, `…cards[].putInGraveyardThisTurn` and
+`seats[].castPermissions[].filter.putInGraveyardThisTurn`, all omitted at their zero values. A binary from before it drops the keys
+on restore, which reads every card as having arrived nowhere and so shuts a permission that reads the record for the rest of the turn
+the game was saved in. `-update-shape` recorded the paths; no version bump.
+
+### What it does not do
+
+Cards that count arrivals ("if three or more cards were put into your graveyard from anywhere other than the battlefield this turn",
+Dimir Strandcatcher) cannot read this record: a card that has since left the graveyard no longer carries it. That wants a per-turn
+tally, not a per-card fact.
+
+Back-out: stop stamping in `MoveCard` and `TestMoveCardStampsGraveyardArrival` and six of Banon's tests fail; drop the stamp on a melded
+pair's parts and `TestMeldedPairStampsBothCards` fails; drop the clear in `onTurnBeganLocked` and `TestGraveyardArrivalEndsWithTheTurn`
+and `TestBanonForgetsLastTurnsArrivals` fail; drop the filter clause in `Matches` and `TestPermissionFilterReadsTheArrivalRecord` fails
+with Banon opening a creature that died; drop the battlefield exclusion and the same filter test and
+`TestBanonOpensDiscardedAndMilledCreaturesButNotOnesThatDied` fail.

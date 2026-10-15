@@ -338,6 +338,8 @@ battlefield.cards[].provenance.optionalCosts	array
 battlefield.cards[].provenance.optionalCosts[]	number:int
 battlefield.cards[].provenance.phyrexianLife	number:int
 battlefield.cards[].provenance.x	number:int
+battlefield.cards[].putInGraveyardFrom	string
+battlefield.cards[].putInGraveyardThisTurn	bool
 battlefield.cards[].regenerationShields	number:int
 battlefield.cards[].renowned	bool
 battlefield.cards[].ringBearer	bool
@@ -869,6 +871,8 @@ exile.cards[].provenance.optionalCosts	array
 exile.cards[].provenance.optionalCosts[]	number:int
 exile.cards[].provenance.phyrexianLife	number:int
 exile.cards[].provenance.x	number:int
+exile.cards[].putInGraveyardFrom	string
+exile.cards[].putInGraveyardThisTurn	bool
 exile.cards[].regenerationShields	number:int
 exile.cards[].renowned	bool
 exile.cards[].ringBearer	bool
@@ -1742,6 +1746,8 @@ lastKnownStack[].card.provenance.optionalCosts	array
 lastKnownStack[].card.provenance.optionalCosts[]	number:int
 lastKnownStack[].card.provenance.phyrexianLife	number:int
 lastKnownStack[].card.provenance.x	number:int
+lastKnownStack[].card.putInGraveyardFrom	string
+lastKnownStack[].card.putInGraveyardThisTurn	bool
 lastKnownStack[].card.regenerationShields	number:int
 lastKnownStack[].card.renowned	bool
 lastKnownStack[].card.ringBearer	bool
@@ -3437,6 +3443,8 @@ phasedOut.cards[].provenance.optionalCosts	array
 phasedOut.cards[].provenance.optionalCosts[]	number:int
 phasedOut.cards[].provenance.phyrexianLife	number:int
 phasedOut.cards[].provenance.x	number:int
+phasedOut.cards[].putInGraveyardFrom	string
+phasedOut.cards[].putInGraveyardThisTurn	bool
 phasedOut.cards[].regenerationShields	number:int
 phasedOut.cards[].renowned	bool
 phasedOut.cards[].ringBearer	bool
@@ -3797,6 +3805,7 @@ seats[].castPermissions[].filter.nonLandOnly	bool
 seats[].castPermissions[].filter.nonLandPermanentOnly	bool
 seats[].castPermissions[].filter.noncreatureOnly	bool
 seats[].castPermissions[].filter.notOwnedByHolder	bool
+seats[].castPermissions[].filter.putInGraveyardThisTurn	bool
 seats[].castPermissions[].filter.sorceryOnly	bool
 seats[].castPermissions[].filter.withCounter	string
 seats[].castPermissions[].followUp	string
@@ -4140,6 +4149,8 @@ seats[].command.cards[].provenance.optionalCosts	array
 seats[].command.cards[].provenance.optionalCosts[]	number:int
 seats[].command.cards[].provenance.phyrexianLife	number:int
 seats[].command.cards[].provenance.x	number:int
+seats[].command.cards[].putInGraveyardFrom	string
+seats[].command.cards[].putInGraveyardThisTurn	bool
 seats[].command.cards[].regenerationShields	number:int
 seats[].command.cards[].renowned	bool
 seats[].command.cards[].ringBearer	bool
@@ -4484,6 +4495,8 @@ seats[].companion.cards[].provenance.optionalCosts	array
 seats[].companion.cards[].provenance.optionalCosts[]	number:int
 seats[].companion.cards[].provenance.phyrexianLife	number:int
 seats[].companion.cards[].provenance.x	number:int
+seats[].companion.cards[].putInGraveyardFrom	string
+seats[].companion.cards[].putInGraveyardThisTurn	bool
 seats[].companion.cards[].regenerationShields	number:int
 seats[].companion.cards[].renowned	bool
 seats[].companion.cards[].ringBearer	bool
@@ -4831,6 +4844,8 @@ seats[].emblems.cards[].provenance.optionalCosts	array
 seats[].emblems.cards[].provenance.optionalCosts[]	number:int
 seats[].emblems.cards[].provenance.phyrexianLife	number:int
 seats[].emblems.cards[].provenance.x	number:int
+seats[].emblems.cards[].putInGraveyardFrom	string
+seats[].emblems.cards[].putInGraveyardThisTurn	bool
 seats[].emblems.cards[].regenerationShields	number:int
 seats[].emblems.cards[].renowned	bool
 seats[].emblems.cards[].ringBearer	bool
@@ -5173,6 +5188,8 @@ seats[].graveyard.cards[].provenance.optionalCosts	array
 seats[].graveyard.cards[].provenance.optionalCosts[]	number:int
 seats[].graveyard.cards[].provenance.phyrexianLife	number:int
 seats[].graveyard.cards[].provenance.x	number:int
+seats[].graveyard.cards[].putInGraveyardFrom	string
+seats[].graveyard.cards[].putInGraveyardThisTurn	bool
 seats[].graveyard.cards[].regenerationShields	number:int
 seats[].graveyard.cards[].renowned	bool
 seats[].graveyard.cards[].ringBearer	bool
@@ -5513,6 +5530,8 @@ seats[].hand.cards[].provenance.optionalCosts	array
 seats[].hand.cards[].provenance.optionalCosts[]	number:int
 seats[].hand.cards[].provenance.phyrexianLife	number:int
 seats[].hand.cards[].provenance.x	number:int
+seats[].hand.cards[].putInGraveyardFrom	string
+seats[].hand.cards[].putInGraveyardThisTurn	bool
 seats[].hand.cards[].regenerationShields	number:int
 seats[].hand.cards[].renowned	bool
 seats[].hand.cards[].ringBearer	bool
@@ -5865,6 +5884,8 @@ seats[].library.cards[].provenance.optionalCosts	array
 seats[].library.cards[].provenance.optionalCosts[]	number:int
 seats[].library.cards[].provenance.phyrexianLife	number:int
 seats[].library.cards[].provenance.x	number:int
+seats[].library.cards[].putInGraveyardFrom	string
+seats[].library.cards[].putInGraveyardThisTurn	bool
 seats[].library.cards[].regenerationShields	number:int
 seats[].library.cards[].renowned	bool
 seats[].library.cards[].ringBearer	bool
@@ -6243,6 +6264,8 @@ seats[].sideboard.cards[].provenance.optionalCosts	array
 seats[].sideboard.cards[].provenance.optionalCosts[]	number:int
 seats[].sideboard.cards[].provenance.phyrexianLife	number:int
 seats[].sideboard.cards[].provenance.x	number:int
+seats[].sideboard.cards[].putInGraveyardFrom	string
+seats[].sideboard.cards[].putInGraveyardThisTurn	bool
 seats[].sideboard.cards[].regenerationShields	number:int
 seats[].sideboard.cards[].renowned	bool
 seats[].sideboard.cards[].ringBearer	bool
@@ -6309,6 +6332,7 @@ seats[].statics[].cantBeCountered.filter.nonLandOnly	bool
 seats[].statics[].cantBeCountered.filter.nonLandPermanentOnly	bool
 seats[].statics[].cantBeCountered.filter.noncreatureOnly	bool
 seats[].statics[].cantBeCountered.filter.notOwnedByHolder	bool
+seats[].statics[].cantBeCountered.filter.putInGraveyardThisTurn	bool
 seats[].statics[].cantBeCountered.filter.sorceryOnly	bool
 seats[].statics[].cantBeCountered.filter.withCounter	string
 seats[].statics[].cantBeCountered.nextOnly	bool
@@ -6336,6 +6360,7 @@ seats[].statics[].castBan.filter.nonLandOnly	bool
 seats[].statics[].castBan.filter.nonLandPermanentOnly	bool
 seats[].statics[].castBan.filter.noncreatureOnly	bool
 seats[].statics[].castBan.filter.notOwnedByHolder	bool
+seats[].statics[].castBan.filter.putInGraveyardThisTurn	bool
 seats[].statics[].castBan.filter.sorceryOnly	bool
 seats[].statics[].castBan.filter.withCounter	string
 seats[].statics[].castBan.kind	string
@@ -6407,6 +6432,7 @@ seats[].statics[].nextSpell.filter.nonLandOnly	bool
 seats[].statics[].nextSpell.filter.nonLandPermanentOnly	bool
 seats[].statics[].nextSpell.filter.noncreatureOnly	bool
 seats[].statics[].nextSpell.filter.notOwnedByHolder	bool
+seats[].statics[].nextSpell.filter.putInGraveyardThisTurn	bool
 seats[].statics[].nextSpell.filter.sorceryOnly	bool
 seats[].statics[].nextSpell.filter.withCounter	string
 seats[].statics[].nextSpell.flash	bool
@@ -6438,6 +6464,7 @@ seats[].statics[].timing.filter.nonLandOnly	bool
 seats[].statics[].timing.filter.nonLandPermanentOnly	bool
 seats[].statics[].timing.filter.noncreatureOnly	bool
 seats[].statics[].timing.filter.notOwnedByHolder	bool
+seats[].statics[].timing.filter.putInGraveyardThisTurn	bool
 seats[].statics[].timing.filter.sorceryOnly	bool
 seats[].statics[].timing.filter.withCounter	string
 seats[].statics[].timing.fromZone	string
@@ -6785,6 +6812,8 @@ stack.cards[].provenance.optionalCosts	array
 stack.cards[].provenance.optionalCosts[]	number:int
 stack.cards[].provenance.phyrexianLife	number:int
 stack.cards[].provenance.x	number:int
+stack.cards[].putInGraveyardFrom	string
+stack.cards[].putInGraveyardThisTurn	bool
 stack.cards[].regenerationShields	number:int
 stack.cards[].renowned	bool
 stack.cards[].ringBearer	bool

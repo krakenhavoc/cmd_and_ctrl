@@ -425,6 +425,10 @@ var cardFields = plan(
 	// charge every echo permanent again, or never.
 	"ControlledSinceUpkeep", carried, "",
 	"SummonedThisTurn", carried, "",
+	// #3769: the graveyard arrival record. Carried: a restore that
+	// dropped it would close Banon's permission on the cards it opens.
+	"PutInGraveyardFrom", carried, "",
+	"PutInGraveyardThisTurn", carried, "",
 	"MarkedLethalByDeathtouch", carried, "",
 	// #683: carried — a restore that dropped it would let a 0/0 that
 	// lost its last counter survive the next state-based check.
