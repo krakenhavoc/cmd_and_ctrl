@@ -190,6 +190,8 @@
       stack: view.stack,
       stackItems: view.stack_items,
       pendingTriggers: view.pending_triggers,
+      // #3817: the triggers still asking for a target count as waiting.
+      pendingChoices: view.pending_choices,
       seats: view.seats,
       battlefield: view.battlefield,
       exile: view.exile,
@@ -452,6 +454,13 @@
         {#if model.summary}
           <p class="summary">{model.summary}</p>
         {/if}
+        <!-- #3817: a batch of the same trigger waiting to go on the stack,
+             counted, so a player answering the third of forty target
+             prompts can see that there are forty. With nothing on the
+             stack it is the summary itself. -->
+        {#if model.top && model.waitingLine}
+          <p class="waiting" data-stack-waiting>{model.waitingLine}</p>
+        {/if}
         <Body {model} {controls} styleName={style} pile={pileSizing} />
       </section>
     {/if}
@@ -521,6 +530,7 @@
     gap: 6px;
   }
   .lane-host[data-stack-style="pile"] .summary,
+  .lane-host[data-stack-style="pile"] .waiting,
   .lane-host[data-stack-style="pile"] .head {
     /* As wide as the card under them, never wider. */
     width: 0;
@@ -652,6 +662,12 @@
     font-size: 13.5px;
     line-height: 1.35;
     color: var(--fg);
+  }
+  .waiting {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--accent);
   }
   .sr-only {
     position: absolute;
