@@ -43,6 +43,19 @@ describe("payCards", () => {
     expect(payCardsOptions(surger, bf, me).map((c) => c.name)).toEqual(["Island A", "Island B"]);
   });
 
+  it("reads an exile's options from the chooser's own graveyard", () => {
+    const card = (id: string, name: string) => ({ instance_id: id, name }) as CardView;
+    const me = {
+      id: "p1",
+      hand: { cards: [card("h1", "In hand")] },
+      graveyard: { cards: [card("g2", "Two"), card("g1", "One")] },
+    } as PlayerView;
+    const exile: PayCardsView = { action: "exile_graveyard", count: 1, options: ["g1", "g2"] };
+    const bf = [card("g1", "On the battlefield")];
+    expect(payCardsOptions(exile, bf, me).map((c) => c.name)).toEqual(["One", "Two"]);
+    expect(payCardsVerb(exile)).toBe("Choose one card from your graveyard to exile.");
+  });
+
   it("says what to do", () => {
     expect(payCardsVerb(imp)).toBe("Choose one card to discard.");
     expect(payCardsVerb(surger)).toBe("Choose 2 cards to sacrifice.");

@@ -75,6 +75,19 @@ func NoPayment() UpkeepPayment {
 	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionNothing}}
 }
 
+// ExileFromGraveyardPayment is "exile N cards from your graveyard" as a
+// payment (ADR 0187 §3): Carrion Rats' "any player may exile a card
+// from their graveyard", Carrion Wurm's three. Each payer exiles from
+// their OWN graveyard, and a payer with fewer than n cards can't pay
+// (CR 118.3).
+func ExileFromGraveyardPayment(n int) UpkeepPayment {
+	words := "Exile a card from your graveyard"
+	if n != 1 {
+		words = "Exile " + numberWord(n) + " cards from your graveyard"
+	}
+	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionExileFromGraveyard, Count: n}, Words: words}
+}
+
 // HalfTheirLifeRoundedUp is a PerPayer for "pay half their life,
 // rounded up" (Temporal Extortion): each player's own half, read as
 // they are asked.
