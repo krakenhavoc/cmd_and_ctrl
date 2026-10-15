@@ -1902,6 +1902,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 			g.recordCrewLocked(ab.Cost.Saddle > 0,
 				sourceObject,
 				ObjectRef{ID: id, Epoch: c.ObjectEpoch})
+			// ADR 0186 §2: the same moment, said as an event, so a
+			// "whenever this creature crews a Vehicle" trigger is put
+			// on the stack above this ability (CR 603.3b).
+			kind := EventCrewedVehicle
+			if ab.Cost.Saddle > 0 {
+				kind = EventSaddledMount
+			}
+			g.EmitEvent(Event{Kind: kind, Actor: playerID, CardID: id, Target: cardID, Source: cardID})
 			if ab.Cost.Saddle > 0 {
 				// #2695: who saddled it, as the objects they were, for
 				// CR 702.171c.

@@ -143,7 +143,12 @@ func corpusBoards() []corpusBoard {
 		// v7, added by tier 3a (#1497) as new files: until-end-of-turn
 		// effects, which only became restore points with it.
 		{"until_eot_pump", corpusUntilEOTPump},
-		{"crewed_vehicle", corpusCrewedVehicle},
+		{"crewed_vehicle", corpusCrewedVehicleAsFrozen},
+		// Added by #3545 (ADR 0186 §2) as a new file: the same crew
+		// activation, now that the payment loop also emits
+		// EventCrewedVehicle after each creature's tap, so the event log
+		// carries one more entry than crewed_vehicle's frozen one.
+		{"crewed_vehicle_event", corpusCrewedVehicle},
 		// v7, added by ADR 0093 PR 4 (#1584) as a new file: duration
 		// grants — the grantAbilities mod on disk.
 		{"duration_grants", corpusDurationGrants},
@@ -2585,6 +2590,28 @@ func corpusUntilEOTPump(t *testing.T) *game.Game {
 	passPriorityAroundTable(t, g)
 	if len(g.ScopedEffects) != 2 {
 		t.Fatalf("setup: Giant Growth on a prowess creature registered %d scoped effects, want 2", len(g.ScopedEffects))
+	}
+	return g
+}
+
+// corpusCrewedVehicleAsFrozen is the crewed_vehicle board as its fixture
+// holds it: the game that file restores to. A crew activation now writes
+// one more event than it did when the file was frozen (EventCrewedVehicle,
+// #3545), so the scripted activation builds a different game on purpose;
+// that game is the crewed_vehicle_event board, and this one keeps building
+// what the frozen fixture holds (corpusDriftAdvice's rule) by restoring it.
+func corpusCrewedVehicleAsFrozen(t *testing.T) *game.Game {
+	raw, err := os.ReadFile(filepath.Join(corpusRoot, fmt.Sprintf("v%d", game.SnapshotSchemaVersion), "crewed_vehicle.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var file corpusFile
+	if err := json.Unmarshal(raw, &file); err != nil {
+		t.Fatalf("decode as a restore point: %v", err)
+	}
+	g, err := file.Snapshot.RestoreStrict()
+	if err != nil {
+		t.Fatalf("RestoreStrict: %v", err)
 	}
 	return g
 }
