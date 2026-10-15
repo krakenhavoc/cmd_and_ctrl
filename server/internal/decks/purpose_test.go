@@ -40,7 +40,7 @@ var curatedInstantsAndSorceries = []string{
 	"Chaos Warp", "Vandalblast", "Hordeling Outburst", "Krenko's Command", "Dragon Fodder",
 	"Strike It Rich", "Faithless Looting", "Big Score", "Unexpected Windfall", "Seize the Spoils",
 	// mono-black-aristocrats
-	"Stitch Together", "Living Death",
+	"Reanimate", "Zombify", "Dread Return", "Stitch Together", "Living Death",
 	"Rise of the Dark Realms", "Dread Summons", "Entomb", "Altar's Reap", "Deadly Dispute",
 	"Night's Whisper", "Sign in Blood", "Exsanguinate", "Doom Blade", "Ashes to Ashes",
 	"Demonic Tutor",
