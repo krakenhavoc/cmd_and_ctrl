@@ -1,9 +1,8 @@
 # AGENTS.md — working on cmd_and_ctrl
 
 This file is for AI coding agents (Claude Code, Codex, Cursor, etc.) operating in
-this repository. Humans should read [PLAN.md](PLAN.md) first for the project
-vision and phased roadmap. This file holds the rules and the links; the reference
-(commands, environment variables, endpoints, test knobs) is in `docs/`, indexed in §3.
+this repository. Humans should read [PLAN.md](PLAN.md), the charter, first. This
+file holds the rules and the links; the reference is in `docs/`, indexed in §3.
 
 ---
 
@@ -64,6 +63,7 @@ service names); don't rename those to match.
 cmd_and_ctrl/
 ├── PLAN.md        # the charter: what C2 is, who the beta is for, scope, goals
 ├── AGENTS.md      # this file
+├── DESIGN.md      # the UI design brief
 ├── Makefile       # top-level dev/test/lint targets
 ├── server/        # Go game server (authoritative state, WebSocket + HTTP API)
 ├── client/        # TypeScript + Svelte 5 + Vite
@@ -221,6 +221,7 @@ Usage and env pass-through: [docs/commands.md](docs/commands.md#commands).
   `client/src/lib/labels.ts`, never as a literal, and rename it in the registry.
   A rename updates the e2e specs and any `*.hint.ts` in the same PR. The list is
   [docs/labels.md](docs/labels.md).
+- **UI work starts from [DESIGN.md](DESIGN.md).**
 
 ---
 
