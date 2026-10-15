@@ -876,6 +876,9 @@ var delayedTriggerFields = plan(
 	"ControllerTurnOnly", carried, "",
 	// ADR 0059 Decision 8: the binding to one extra turn.
 	"OnExtraTurn", carried, "",
+	// ADR 0188 Decision 5: the binding to one phase of one turn.
+	"OnPhaseID", carried, "",
+	"OnSeq", carried, "",
 	"TurnOf", carried, "",
 	"CreatedSeq", carried, "",
 	"Cards", carried, "",

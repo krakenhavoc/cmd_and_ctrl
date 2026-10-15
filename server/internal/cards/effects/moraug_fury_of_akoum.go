@@ -14,20 +14,25 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The pump is a layer 7c static reading the per-object attack tally
 // (Aurelia's "first time each turn" memory), so a creature that attacks
 // in the extra combat reads +2/+0 and one that has not attacked reads
-// nothing. The landfall half is the extra-combat machinery Aurelia and
+// nothing; a creature put onto the battlefield attacking was never
+// declared as an attacker, so it has not attacked (the 2020-09-25
+// ruling). The landfall half is the extra-combat machinery Aurelia and
 // Combat Celebrant already use, gated on a main phase of its
 // controller's turn (the intervening-if of CR 603.4).
 //
-// DECLARED SIMPLIFICATION (untap timing): the creatures untap as the
-// trigger resolves, as Aurelia's do, rather than at the beginning of
-// the additional combat. The two differ only if you tap a creature
-// between the land and that combat.
+// The untap is a delayed trigger bound to the combat this landfall added
+// (ADR 0188 Decision 5, DelayedTrigger.OnPhaseID), not to every combat:
+// resolved in the precombat main phase, the added combat comes before the
+// turn's regular one and only it untaps (the ruling), and two landfalls
+// in the postcombat main phase make two consecutive combats that each
+// untap at their own beginning, with no main phase between them.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "6288c0cb-cf32-4ae9-abf0-104ec71654fa",
 		Name:         "Moraug, Fury of Akoum",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Your creatures untap as the extra combat is set up, not at the beginning of that combat."},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
 			Label: "Each creature you control gets +1/+0 for each time it has attacked this turn.",
 			// The count changes at each declaration, which is the event
@@ -47,7 +52,19 @@ func init() {
 				return source != nil && b14InYourMainPhase(g, source.Controller)
 			}),
 				"Moraug, Fury of Akoum — additional combat phase, untap all creatures you control",
-				untapAllYouControlThenExtraCombat),
+				moraugExtraCombat),
 		},
 	})
 }
+
+// moraugExtraCombat is "there's an additional combat phase after this
+// phase. At the beginning of that combat, untap all creatures you
+// control."
+var moraugExtraCombat = func() Effect {
+	a := ExtraCombatAfterThisPhase()
+	a.AtThatCombat = &ScheduleDelayedTrigger{
+		Label: "Moraug, Fury of Akoum — untap all creatures you control",
+		Body:  untapAllYouControlAtThatCombatBody,
+	}
+	return Do(a)
+}()

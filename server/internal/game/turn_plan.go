@@ -304,13 +304,21 @@ const (
 	// main phase is in progress: the rulings are explicit that a copy
 	// resolving in combat or an opponent's upkeep creates no phases.
 	AnchorThisMainPhase
+	// AnchorNthMainPhase is "after the second main phase this turn"
+	// (World at War, ADR 0188 Decision 4): PhaseAnchor.N names which
+	// main phase of the turn, counting every main phase that occurs,
+	// added ones included (CR 505.1b). It is the phase in progress when
+	// that is the Nth, a phase still to come when the Nth has not begun,
+	// and nothing when the Nth has already begun and ended: the World at
+	// War ruling, "no additional phases are created".
+	AnchorNthMainPhase
 )
 
-// PhaseAnchor says where AddPhasesForEffect splices. Decision 4's
-// AnchorNthMainPhase ("after the second main phase this turn", World
-// at War) is not built: it ships with the first card that uses it.
+// PhaseAnchor says where AddPhasesForEffect splices.
 type PhaseAnchor struct {
 	Kind AnchorKind
+	// N is AnchorNthMainPhase's ordinal, 1-based. Ignored by the others.
+	N int
 }
 
 // AddPhasesForEffect adds phases, in the printed order, directly after
@@ -334,7 +342,7 @@ func (g *Game) AddPhasesForEffect(source uuid.UUID, anchor PhaseAnchor, kinds ..
 		return nil
 	}
 	switch anchor.Kind {
-	case AnchorThisPhase:
+	case AnchorThisPhase, AnchorNthMainPhase:
 	case AnchorThisMainPhase:
 		if PhaseKindOf(g.Turn.Phase) != PhaseKindMain {
 			return nil
@@ -349,7 +357,21 @@ func (g *Game) AddPhasesForEffect(source uuid.UUID, anchor PhaseAnchor, kinds ..
 	}
 	g.ensureTurnPlanLocked()
 	anchorID := g.Turn.PhaseID
+	if anchor.Kind == AnchorNthMainPhase {
+		id, ok := g.nthMainPhaseIDLocked(anchor.N)
+		if !ok {
+			return nil
+		}
+		anchorID = id
+	}
+	// The splice point is one past the anchor's last entry, which for a
+	// phase still to come means walking past everything before it too.
 	at := 0
+	if anchorID != g.Turn.PhaseID {
+		for at < len(g.TurnPlan) && g.TurnPlan[at].PhaseID != anchorID {
+			at++
+		}
+	}
 	for at < len(g.TurnPlan) && g.TurnPlan[at].PhaseID == anchorID {
 		at++
 	}
@@ -374,6 +396,66 @@ func (g *Game) AddPhasesForEffect(source uuid.UUID, anchor PhaseAnchor, kinds ..
 		Label:  strings.Join(names, ","),
 	})
 	return ids
+}
+
+// nthMainPhaseIDLocked is the phase id of the turn's nth main phase
+// (CR 505.1b: "first main phase", "second main phase" count the main
+// phases that occur in the current turn, added ones included), and
+// false when there is none to add after: n < 1, the nth already began
+// and ended, or the plan has fewer than n.
+//
+// It walks the PLAN rather than the template, which is why a main
+// phase another effect added counts (ADR 0188 alternative E).
+//
+// Caller must hold g.mu in write mode (the plan is rebuilt if stale).
+func (g *Game) nthMainPhaseIDLocked(n int) (int, bool) {
+	if n < 1 {
+		return 0, false
+	}
+	g.ensureTurnPlanLocked()
+	t := &g.TurnTally
+	begun := t.PhasesBegun[PhaseKindMain]
+	started := g.Turn.PhaseID != 0 && t.PhaseStarted == g.Turn.PhaseID
+	if started && PhaseKindOf(g.Turn.Phase) == PhaseKindMain && begun == n {
+		return g.Turn.PhaseID, true
+	}
+	count := begun
+	seen := map[int]bool{}
+	for _, ps := range g.TurnPlan {
+		if PhaseKindOf(PhaseOf(ps.Step)) != PhaseKindMain || seen[ps.PhaseID] {
+			continue
+		}
+		seen[ps.PhaseID] = true
+		if started && ps.PhaseID == g.Turn.PhaseID {
+			continue // already counted in begun
+		}
+		count++
+		if count == n {
+			return ps.PhaseID, true
+		}
+	}
+	return 0, false
+}
+
+// phaseReachableLocked reports whether phase id is one that has yet to
+// finish in this turn: the phase in progress, or one in the plan. A
+// delayed trigger bound to any other id can never fire.
+//
+// Caller must hold g.mu in write mode (the plan is rebuilt if stale).
+func (g *Game) phaseReachableLocked(id int) bool {
+	if id == 0 {
+		return false
+	}
+	g.ensureTurnPlanLocked()
+	if id == g.Turn.PhaseID {
+		return true
+	}
+	for _, ps := range g.TurnPlan {
+		if ps.PhaseID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // AddStepAfterCurrentForEffect adds one step directly after the step
