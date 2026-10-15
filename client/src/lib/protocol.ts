@@ -4453,6 +4453,11 @@ export interface CardView extends CastSurfaceView {
   // printed oracle text the inspector fetches is not. Absent when the
   // permanent has its own text.
   text_box_from?: string;
+  // ADR 0160's 2026-10-15 amendment (CR 612.2) — the words of this
+  // object's text a text-changing effect replaced, one line each:
+  // "black → blue", "Swamp → Island" (Sleight of Mind, Magical Hack).
+  // The printed oracle text uses the old words. Absent when none.
+  text_changes?: string[];
   // #2219 — the card's non-keyword triggered, static and activated
   // abilities right now, triggered first, each with a short label the
   // SERVER wrote (the stack's label for a triggered or activated row).

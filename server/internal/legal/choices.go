@@ -1329,7 +1329,7 @@ func (e *enumerator) choiceMoves() bool {
 			// as "nowhere to land", not an error. A board with no
 			// creatures still gets one answer, so the seat is never
 			// handed an empty list — the wedge this case exists to end.
-			for _, t := range e.creatureTypeAnswers() {
+			for _, t := range e.creatureTypeAnswersFor(c) {
 				p := base()
 				p.CreatureType = t
 				e.addAlwaysLegalChoice(c, reason+": "+t, p)
@@ -2483,6 +2483,33 @@ func (e *enumerator) creatureTypeAnswers() []string {
 		e.noteCut(CapCreatureTypes, left, false)
 	}
 	return types
+}
+
+// creatureTypeAnswersFor is creatureTypeAnswers less the types the
+// prompt refuses (ADR 0160's 2026-10-15 amendment: Artificial
+// Evolution's "can't be Wall", and the word being replaced). Never
+// empty: with every board answer refused it offers the first canonical
+// type the prompt allows, so the seat always has a move.
+func (e *enumerator) creatureTypeAnswersFor(c *game.PendingChoice) []string {
+	types := e.creatureTypeAnswers()
+	if len(c.ExcludedTypes) == 0 {
+		return types
+	}
+	out := types[:0:0]
+	for _, t := range types {
+		if !slices.Contains(c.ExcludedTypes, t) {
+			out = append(out, t)
+		}
+	}
+	if len(out) == 0 {
+		for _, t := range game.AllCreatureTypes {
+			if !slices.Contains(c.ExcludedTypes, t) {
+				out = append(out, t)
+				break
+			}
+		}
+	}
+	return out
 }
 
 // creatureTypesOffered counts the canonical types among the answers.

@@ -3231,6 +3231,26 @@ Trading Card's entry choice, swap the rules text of two creatures.
   empty list still declines (he keeps his own text). Absent on every
   other prompt.
 
+## Changed words (ADR 0160 amendment, #2779, 2026-10-15)
+
+Additive, `v` unmoved. CR 612.2: Glamerdye, Sleight of Mind, Magical
+Hack and the rest replace every instance of one colour word, basic land
+type or creature type in one object's text.
+
+- **`text_changes: string[]` on the CardView.** One line per word the
+  object's text now reads differently, `"<printed> → <now>"`, colours
+  as English words and first, then basic land types, then creature
+  types: `["black → blue", "Swamp → Island"]`. The type line and
+  `abilities` already read the new words (a Forest changed to an Island
+  shows `Island` and taps for blue; swampwalk shows as islandwalk); the
+  printed oracle text a client fetches by `scryfall_id` still prints
+  the old ones, and the inspector says so. Set on a permanent and on a
+  spell on the stack. Absent when nothing changed. Public, and cleared
+  with the ability rows for a viewer who cannot see the card.
+- The choice of words rides two ordinary `option_pick` prompts (the
+  word to replace, then the new word; a creature type uses the
+  `choose_creature_type` prompt twice). No new prompt kind.
+
 ## Abilities any player may activate (ADR 0106 §1, #1793, 2026-10-01)
 
 Additive, `v` unmoved. CR 602.2 lets an ability say who may activate

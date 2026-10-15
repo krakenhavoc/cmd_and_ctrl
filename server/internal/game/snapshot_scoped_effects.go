@@ -61,6 +61,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := textBoxModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// ADR 0160's amendment: a text-word mod carries one sound
+			// change.
+			if problem := textWordsModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			for _, v := range m.Copy {
 				for _, k := range v.GrantedAbilities {
 					if k == "" || catalogDef(GrantKey(k)) == nil {

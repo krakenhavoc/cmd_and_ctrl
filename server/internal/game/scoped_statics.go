@@ -85,6 +85,7 @@ func (g *Game) sweepScopedStaticsLocked(endOfTurn bool) {
 		// ADR 0160: and an exchange that just ended gives the text back
 		// now, for the same reason.
 		g.materialiseTextBoxesLocked()
+		g.materialiseTextWordsLocked()
 	}
 }
 

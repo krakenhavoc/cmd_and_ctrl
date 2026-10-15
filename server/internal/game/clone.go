@@ -265,6 +265,9 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.CopyOptions) > 0 {
 				cloned.CopyOptions = append([]uuid.UUID(nil), c.CopyOptions...)
 			}
+			if len(c.ExcludedTypes) > 0 {
+				cloned.ExcludedTypes = append([]string(nil), c.ExcludedTypes...)
+			}
 			// The chained-choice candidate list, for the same reason
 			// as every slice above it.
 			if len(c.ChooseCards) > 0 {

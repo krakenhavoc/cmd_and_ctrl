@@ -121,6 +121,18 @@ func (s TargetSource) ObjectRef() (PermissionCardRef, bool) {
 	return PermissionCardRef{}, false
 }
 
+// lend gives the candidate `c` the source's text as its word lens, so a
+// clause that names a colour or subtype word reads it as the source's
+// text now says it (CR 612.2, ADR 0160's 2026-10-15 amendment): Doom
+// Blade's "nonblack" under a Sleight of Mind is "nonblue". A walk with
+// no live source object lends nothing, and the printed words stand.
+func (s TargetSource) lend(c Card) Card {
+	if s.Object == nil {
+		return c
+	}
+	return ThroughTextOf(s.Object, c)
+}
+
 // SourceObject is the ordinary case: a live spell or ability source.
 func SourceObject(controller uuid.UUID, obj *Card) TargetSource {
 	return TargetSource{Controller: controller, Object: obj}
@@ -979,7 +991,7 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 				if spec.excludesSource(src, c.InstanceID) {
 					continue
 				}
-				if spec.CardOK != nil && !spec.CardOK(g, src.Controller, c, zk) {
+				if spec.CardOK != nil && !spec.CardOK(g, src.Controller, src.lend(c), zk) {
 					continue
 				}
 				if !spec.sourceAdmits(g, src, c) {
@@ -1260,7 +1272,7 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 			if spec.excludesSource(src, c.InstanceID) {
 				return false
 			}
-			return (spec.CardOK == nil || spec.CardOK(g, src.Controller, c, z.Kind)) &&
+			return (spec.CardOK == nil || spec.CardOK(g, src.Controller, src.lend(c), z.Kind)) &&
 				spec.sourceAdmits(g, src, c)
 		}
 	}

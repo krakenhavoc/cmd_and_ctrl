@@ -701,6 +701,14 @@ type PendingChoice struct {
 	// is the same; only the wording differs. Wire `exchanges_text`.
 	ExchangesText bool
 
+	// ExcludedTypes are creature types a PendingChoiceCreatureType may
+	// NOT be answered with (ADR 0160's 2026-10-15 amendment): Artificial
+	// Evolution's "The new creature type can't be Wall", and the word
+	// being replaced, since a word can't be changed to itself. Canonical
+	// spelling. The resolver refuses them, the enumerator and the wire's
+	// type_options leave them out. Empty on every other prompt.
+	ExcludedTypes []string
+
 	// ScryCards is the set of cards a PendingChoiceScry's chooser is
 	// looking at, in top-to-bottom library order (so the first entry
 	// is the card that would be drawn next if nothing moves).

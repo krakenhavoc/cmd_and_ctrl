@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // creature_type_choice.go — "as this permanent enters, choose a
 // creature type" (CR 614.12): Cavern of Souls, Door of Destinies,
@@ -86,6 +90,22 @@ type CreatureTypePrompt struct {
 	// asks several seats finishes (#1006's rule); an answer is never
 	// empty.
 	Then func(g *Game, creatureType string) error
+	// Except names types the answer may not be (ADR 0160's 2026-10-15
+	// amendment): Artificial Evolution's "can't be Wall". Any spelling;
+	// stored canonical on PendingChoice.ExcludedTypes.
+	Except []string
+}
+
+// canonicalCreatureTypes is `in` in canonical spelling, unknown words
+// dropped.
+func canonicalCreatureTypes(in []string) []string {
+	var out []string
+	for _, t := range in {
+		if c, ok := CanonicalCreatureType(t); ok && !slices.Contains(out, c) {
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 // QueueCreatureTypeChoiceThenForEffect queues the AT-RESOLUTION form:
@@ -100,6 +120,7 @@ func (g *Game) QueueCreatureTypeChoiceThenForEffect(p CreatureTypePrompt) uuid.U
 		Count:             1,
 		Source:            p.Source,
 		Reason:            p.Question,
+		ExcludedTypes:     canonicalCreatureTypes(p.Except),
 		chooseValueResume: &chooseValueFrame{then: p.Then},
 	})
 }
@@ -145,7 +166,7 @@ func (g *Game) ResolveCreatureTypeChoice(choiceID, chooserID uuid.UUID, creature
 		return ErrNotTheChooser
 	}
 	canonical, ok := CanonicalCreatureType(creatureType)
-	if !ok {
+	if !ok || slices.Contains(choice.ExcludedTypes, canonical) {
 		return ErrInvalidParam
 	}
 	frame := choice.chooseValueResume

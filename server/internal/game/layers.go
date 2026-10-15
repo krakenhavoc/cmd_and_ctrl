@@ -998,6 +998,9 @@ func (g *Game) recomputeLayersLocked() {
 	// ADR 0160: layer 3's exchanged text boxes, after layer 1 and
 	// before the pass, whose static gather reads the key they decide.
 	g.materialiseTextBoxesLocked()
+	// ADR 0160's 2026-10-15 amendment: and the changed words, which the
+	// pass's baseline translates.
+	g.materialiseTextWordsLocked()
 	g.layerPassLocked()
 	changed := g.materialiseControlLocked()
 	// ADR 0104: layer 2 for the SPELLS on the stack — the same
@@ -1092,6 +1095,13 @@ func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 			// Fresh, not the printed cache: the pass below writes this
 			// baseline in place (printed_cache.go).
 			printed := printedFresh(c)
+			// Layer 3 (CR 612.2): the type line's and the printed
+			// keywords' changed words, on the baseline, before any
+			// layer-4 or layer-6 effect can add a word that is not text
+			// (CR 612.3). A face-down permanent has no text to change.
+			if !c.faceDownPermanent() {
+				c.TextWords.applyToBaseline(&printed)
+			}
 			c.effective = &printed
 		}
 	}

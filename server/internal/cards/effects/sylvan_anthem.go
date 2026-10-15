@@ -22,7 +22,7 @@ func init() {
 		Name:         "Sylvan Anthem",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{b16Anthem(func(target *game.Card, _ *game.Game, source *game.Card) bool {
-			return target.IsCreature() && target.Controller == source.Controller && target.HasColor("G")
+			return target.IsCreature() && target.Controller == source.Controller && target.HasColor(source.TextColor("G"))
 		}, 1, 1)},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

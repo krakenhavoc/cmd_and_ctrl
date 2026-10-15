@@ -874,9 +874,10 @@ func (c CounterAllMatching) Apply(ctx *Context) error {
 		return nil
 	}
 	caster := ctx.Controller()
+	reader := ctx.textReader()
 	var ids []uuid.UUID
 	for _, card := range ctx.Game.Stack.Cards {
-		if c.Match(ctx.Game, caster, card) {
+		if c.Match(ctx.Game, caster, game.ThroughTextOf(reader, card)) {
 			ids = append(ids, card.InstanceID)
 		}
 	}
