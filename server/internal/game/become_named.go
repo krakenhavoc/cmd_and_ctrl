@@ -143,10 +143,10 @@ func (c *Characteristic) setTypes(types, subtypes, supertypes []string) {
 type subtypeSet uint8
 
 const (
-	// subtypeSetOther is a subtype on none of the lists below: in
-	// practice a planeswalker type, whose list the engine does not
-	// carry. It is never dropped with a card type, which is the
-	// conservative reading for a list this file cannot check.
+	// subtypeSetOther is a subtype on none of the lists below (a
+	// planar type, or a word newer than the engine's lists). It is never
+	// dropped with a card type, which is the conservative reading for a
+	// list this file cannot check.
 	subtypeSetOther subtypeSet = iota
 	subtypeSetCreature
 	subtypeSetLand
@@ -154,6 +154,7 @@ const (
 	subtypeSetEnchantment
 	subtypeSetSpell
 	subtypeSetBattle
+	subtypeSetPlaneswalker
 )
 
 // artifactTypes is CR 205.3g's list.
@@ -167,6 +168,19 @@ var artifactTypes = []string{
 var enchantmentTypes = []string{
 	"Aura", "Background", "Cartouche", "Case", "Class", "Curse", "Plan", "Role", "Room", "Rune",
 	"Saga", "Shard", "Shrine",
+}
+
+// planeswalkerTypes is CR 205.3j's list.
+var planeswalkerTypes = []string{
+	"Ajani", "Aminatou", "Angrath", "Arlinn", "Ashiok", "Bahamut", "Basri", "Bolas", "Calix",
+	"Chandra", "Comet", "Dack", "Dakkon", "Daretti", "Davriel", "Dellian", "Dihada", "Domri",
+	"Dovin", "Ellywick", "Elminster", "Elspeth", "Estrid", "Freyalise", "Garruk", "Gideon",
+	"Grist", "Guff", "Huatli", "Jace", "Jared", "Jaya", "Jeska", "Kaito", "Karn", "Kasmina",
+	"Kaya", "Kiora", "Koth", "Liliana", "Lolth", "Lukka", "Minsc", "Mordenkainen", "Nahiri",
+	"Narset", "Niko", "Nissa", "Nixilis", "Oko", "Quintorius", "Ral", "Rowan", "Saheeli", "Samut",
+	"Sarkhan", "Serra", "Sivitri", "Sorin", "Szat", "Tamiyo", "Tasha", "Teferi", "Teyo",
+	"Tezzeret", "Tibalt", "Tyvar", "Ugin", "Urza", "Venser", "Vivien", "Vraska", "Vronos", "Will",
+	"Windgrace", "Wrenn", "Xenagos", "Yanggu", "Yanling", "Zariel",
 }
 
 // spellTypes is CR 205.3k's list.
@@ -186,6 +200,8 @@ func subtypeSetOf(s string) subtypeSet {
 		return subtypeSetSpell
 	case equalFoldASCII(s, "Siege"):
 		return subtypeSetBattle
+	case typeIn(s, planeswalkerTypes):
+		return subtypeSetPlaneswalker
 	}
 	return subtypeSetOther
 }
@@ -216,6 +232,8 @@ func typeSetCorrelatesWith(set subtypeSet, types []string) bool {
 		return has("Instant", "Sorcery")
 	case subtypeSetBattle:
 		return has("Battle")
+	case subtypeSetPlaneswalker:
+		return has("Planeswalker")
 	}
 	return true
 }

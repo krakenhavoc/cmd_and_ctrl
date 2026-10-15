@@ -1055,7 +1055,9 @@ func SetControllerMod(player uuid.UUID) Mod { return Mod{Kind: ModSetController,
 func AddTypesMod(types ...string) Mod { return Mod{Kind: ModAddTypes, Types: copyStrings(types)} }
 
 // RemoveTypesMod removes card types (layer 4) — Enduring Curiosity's
-// "it's not a creature". Reads Types.
+// "it's not a creature". Reads Types. The subtypes of a removed type go
+// too, unless a remaining type also allows them: the layer pass applies
+// CR 205.1a to every layer-4 effect (card_type_loss.go, #2041).
 func RemoveTypesMod(types ...string) Mod {
 	return Mod{Kind: ModRemoveTypes, Types: copyStrings(types)}
 }

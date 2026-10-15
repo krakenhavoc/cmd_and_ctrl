@@ -2746,14 +2746,12 @@ var items = []Item{
 		EngineNotes: "pause: a follow-up runs as its damage instance ends (`game/prevention_then.go`) and can only queue a prompt, which is answered after the resolution goes on. It needs to pause the damage instruction until answered, as a CR 616 ordering prompt already pauses a damage event. Immortal Coil shipped with Caveats for the same reason (which graveyard cards to exile, asked only when the count is less than the graveyard). Channel Harm waits here (#2026): its shield (\"you and permanents you control … by sources you don't control\") is #2026's `game.SourceControllerNotYou`, but \"you may have Channel Harm deal that much damage to target creature\" is a choice made as the damage is prevented (CR 615.5).",
 	},
 	{
-		Slug: "card-type-loss-drops-subtypes", Name: "Losing a card type loses its subtypes", Kind: KindSeam, Status: StatusMissing,
+		Slug: "card-type-loss-drops-subtypes", Name: "Losing a card type loses its subtypes", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "A permanent that stops being a creature also stops having creature types, such as Weeping Angel, which stops being an Alien Angel while it isn't a creature.",
-		Missing:     "A permanent that stops being a creature keeps its creature types.",
-		Rules:       []string{"205.3d", "613.1d"},
+		Rules:       []string{"205.1a", "205.3d", "613.1d"},
 		Issue:       2041,
-		Tracked:     "#2041 (found landing ADR 0108 PR 8, #1906)",
-		Waiting:     []string{"Weeping Angel"},
-		EngineNotes: "layer 4: `RemoveTypesMod(\"Creature\")` removes the card type and keeps the subtypes, so an \"isn't a creature\" permanent still counts for every Angel or Alien query. Needs the layer-4 pass to drop subtypes no remaining card type allows, and give them back when the type returns. Weeping Angel's prevention static is writable with ADR 0108 §8 (#1906).",
+		Examples:    []string{"Weeping Angel", "The Warring Triad", "Erebos, Bleak-Hearted"},
+		EngineNotes: "**Shipped** (#2041): the layer pass applies CR 205.1a to every layer-4 effect (`game/card_type_loss.go`): `applyTypeChange` notes which subtype lists the object's card types allow before the effect and after it, and drops the subtypes of every list the effect closed, so `RemoveTypesMod`, a Theros God's devotion clause, impending, reconfigure and a catalog closure writing the type list all lose the subtypes their removal took. A subtype stays while any remaining type allows its list: creature types with Creature or Kindred (Tribal), land types with Land, artifact, enchantment, planeswalker (CR 205.3j, newly listed), spell and battle types likewise; \"is every creature type\" goes with the creature list. The drop is in the removing effect's own timestamp slot (CR 613.7), so a later \"becomes an artifact creature\" makes it a creature again without the lost types, and the next pass after the removal ends rebuilds them. The CR 613.8 dependency probe applies it too. The gaining half of CR 205.3d (an object can't gain a subtype no type allows) is not enforced by the pass. Cards: Weeping Angel (Full). `notACreature` (the Theros Gods, The Warring Triad, impending) now removes only the type and leaves the subtypes to the pass, and Erebos, Bleak-Hearted, which kept God while it wasn't a creature, now loses it.",
 	},
 	{
 		Slug: "rad-counters", Name: "Rad counters", Kind: KindSeam, Status: StatusPartial,

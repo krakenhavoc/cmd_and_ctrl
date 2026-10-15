@@ -10,7 +10,7 @@ import (
 
 // theros_gods.go — the Theros God clause, "As long as your devotion to
 // <colour> is less than five, <this> isn't a creature." (CR 700.5,
-// CR 205.1b), as one shared static.
+// CR 205.1a), as one shared static.
 //
 // A layer-4 type-changing static on the God itself, re-read on every
 // layer recompute, so the God turns on and off with the board and no

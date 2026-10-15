@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // THE GOD CLAUSE is Erebos's shape: a layer 4 self-static, re-read on
 // every recompute, that removes the Creature type (and with it the
-// creature subtypes — the shared notACreature helper, #670) while devotionTo
+// creature subtypes, CR 205.1a — the shared notACreature helper, #670) while devotionTo
 // blue (CR 700.5) is under five. Thassa's own {U} counts.
 //
 // THE END-STEP BLINK is an immediate flicker (Flicker) — exile and

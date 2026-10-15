@@ -29,7 +29,7 @@ import (
 //  2. A SELF-ONLY LAYER 4 TYPE REWRITE gated on the counters —
 //     Arixmethes' slumber shape and The Warring Triad's graveyard
 //     shape, with a different gate. "Isn't a creature" is the type
-//     and the creature subtypes together (notACreature, CR 205.1b).
+//     and the creature subtypes together (notACreature, CR 205.1a).
 //  3. A TRIGGERED ABILITY at the controller's end step that takes one
 //     counter off, which is an ordinary AddCounter with a negative
 //     delta.
