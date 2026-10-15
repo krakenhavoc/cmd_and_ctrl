@@ -3163,6 +3163,41 @@ LandPlayRestrictions: []game.LandPlayRestriction{
 - "A land with a name originally printed in Arabian Nights" is
   `game.IsArabianNightsName` (CR 206.3a's list).
 
+### "… can't enter the battlefield" (#1985, ADR 0109 amendment of 2026-10-15)
+
+"Lands can't enter the battlefield" (Worms of the Earth) is not a land
+play (CR 305.4) and not a replacement effect. It is a prohibition on the
+zone change, asked at the top of every pass of the CR 614 entry window,
+so it reaches every way onto the battlefield: a land play, a resolving
+permanent spell, a search, a reanimation, a flicker's return, a hand
+put, a created token.
+
+```go
+EntryRestrictions: []game.EntryRestriction{
+    LandsCantEnter("Lands can't enter the battlefield."),                      // Worms of the Earth (#3576)
+    CardsInZonesCantEnter("Creature cards in graveyards and libraries can't enter the battlefield.",
+        game.Card.IsCreature, game.ZoneGraveyard, game.ZoneLibrary),           // Grafdigger's Cage
+},
+```
+
+- The constructors are in
+  [entry_restriction.go](../server/internal/cards/effects/entry_restriction.go).
+  `LandsCantEnter` judges the permanent the object WOULD be
+  (`EntryQuery.WouldBe()`, CR 614.12): a creature entering as a copy of a
+  land is refused, a land manifested face down is not, a land token is.
+  `CardsInZonesCantEnter` judges the CARD in the zone it is leaving
+  (`EntryQuery.Card`, "creature cards in graveyards") and never a token.
+- A refused card stays where it was; a refused token is never created;
+  a refused permanent spell goes to its owner's graveyard (CR 608.3e).
+  You write none of that.
+- A land that can't enter can't be played: the land-play gate asks the
+  same restrictions, so there is no need to add a `LandPlayRestrictions`
+  entry for it. Worms still declares `PlayersCantPlayLands`, because it
+  prints that line too.
+- Never write "can't enter" as a cancelling `ReplacementEffect`. It
+  would take part in CR 616 ordering beside the entering card's own
+  replacements, and a shockland would ask for its life first.
+
 ### "Each player may play the cards they exiled" and "can't play cards from your hand" (ADR 0066, #2559)
 
 - **Every player over their own exiled cards** (Memory Vessel, Rocco,
@@ -9890,7 +9925,7 @@ ctx.Game.ReturnFromGraveyardToBattlefieldThenForEffect(id, ctx.Controller(), fal
 v.SetCardTypes("Artifact")                                                     // "except it's an artifact" (no "in addition")
 {Mana: []ManaAbility{…}}                                                       // an AbilityGrant a COPY can take: v.GrantAbility(key)
 tokenTemplate{Slug: "spirit-cleric", Static: []game.StaticAbility{cda}}        // a token that sizes itself
-Replacements: []game.ReplacementEffect{{ … ev.Cancel() … }}                    // Grafdigger's Cage: an entry that is refused
+EntryRestrictions: []game.EntryRestriction{CardsInZonesCantEnter(…)}          // Grafdigger's Cage: an entry that is refused (#1985)
 ```
 
 - **"Any amount of {R}" is `MayPayX{Symbol}`**, not a fixed `MayPay`: X is chosen as the ability resolves, from 0 to the red

@@ -214,6 +214,19 @@ const (
 	// #812.
 	EventAttachSkipped EventKind = "attach_skipped"
 
+	// EventEntryRefused — an object was about to enter the battlefield
+	// and an entry restriction forbade it (#1985, entry_gate.go: "Lands
+	// can't enter the battlefield", "creature cards in graveyards can't
+	// enter the battlefield"), so the move did not happen (CR 101.2).
+	// CardID is the object (a created token's staged ID), OldZone where
+	// it stays (empty for a token, which is never created), Source the
+	// permanent whose static refused it, and Label that static's clause
+	// and name.
+	//
+	// A quiet breadcrumb, not EventEffectError, for the reason
+	// EventAttachSkipped is not one: nothing failed.
+	EventEntryRefused EventKind = "entry_refused"
+
 	// EventControlChanged — CardID changed controller (CR 613.1b).
 	// Actor is the player who GAINED control, Target the player who
 	// LOST it; Source is the card whose effect took it, and is

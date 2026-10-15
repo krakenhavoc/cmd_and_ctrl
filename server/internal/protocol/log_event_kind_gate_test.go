@@ -111,6 +111,7 @@ var silentEventKinds = map[string]string{
 	// catalog soak, which is exactly the posture the two rows above
 	// take.
 	"EventAttachSkipped": "CR 701.3b's attach that doesn't happen changes nothing a player could observe; the event is a breadcrumb for a stall dump, not a table fact (#812, #1017)",
+	"EventEntryRefused":  "a refused entry (#1985) changes nothing: the card stays where it was, and naming it would leak a card from a hidden zone (a fetched land still in the library); a refused land play is already told to its player by the refusal's toast",
 	// #1382. A card becomes plotted two ways and the table is told
 	// both: the plot special action's LogSpecialAction line names the
 	// card and the price ("Plot {3}{R}"), and an "it becomes plotted"

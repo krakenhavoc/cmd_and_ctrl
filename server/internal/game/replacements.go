@@ -538,6 +538,13 @@ type ReplacementEvent struct {
 	// keyed on what can change the answer mid-window.
 	lookAhead *entryLookAheadCache
 
+	// entryRefused marks an entry an entry restriction cancelled
+	// (#1985, entry_gate.go) rather than a replacement, so the finisher
+	// can tell CR 608.3e's refused permanent spell (owner's graveyard)
+	// from a cancelled one. Set and read within one call chain: a
+	// refusal never pauses.
+	entryRefused bool
+
 	// EntersUnlocked is CR 709.5d's designation for a Room spell that
 	// resolves (ADR 0103): the door of the half that was cast, seeded
 	// from the resolving stack item before the CR 614 pipeline and
@@ -1796,6 +1803,14 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		}
 		g.splitExpandedDrawLocked(ev)
 		if ev.Canceled {
+			return nil, nil
+		}
+		// #1985: "can't enter the battlefield" (CR 101.2) is asked
+		// before anything is gathered, on every pass — so nothing asks
+		// a question about an entry that cannot happen, and an entry a
+		// copy replacement turned into a land is caught on the next
+		// pass. Not a replacement: see entry_gate.go.
+		if g.refuseForbiddenEntryLocked(ev) {
 			return nil, nil
 		}
 		applicable := g.gatherActiveReplacementsLocked(ev)

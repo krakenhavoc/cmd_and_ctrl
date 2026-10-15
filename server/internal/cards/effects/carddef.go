@@ -244,6 +244,7 @@ func buildDef(spec Spec) *game.CardDef {
 		CastConditionLabel:                  spec.CastConditionLabel,
 		CastRestrictions:                    spec.CastRestrictions,
 		LandPlayRestrictions:                spec.LandPlayRestrictions,
+		EntryRestrictions:                   spec.EntryRestrictions,
 		TargetingRestrictions:               spec.TargetingRestrictions,
 		ActivationRestrictions:              spec.ActivationRestrictions,
 		ActivationTimings:                   spec.ActivationTimings,

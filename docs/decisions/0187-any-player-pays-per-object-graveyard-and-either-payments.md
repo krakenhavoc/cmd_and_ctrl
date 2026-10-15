@@ -400,7 +400,7 @@ Engine tests use a test-only offer, since no catalog card uses it until slice 8.
 **Scope:**
 - `cards/effects/worms_of_the_earth.go`:
   - the land-play prohibition (the existing static in `land_play_restriction.go`);
-  - the #1985 "lands can't enter" static;
+  - the #1985 "lands can't enter" static: `EntryRestrictions: []game.EntryRestriction{LandsCantEnter("Lands can't enter the battlefield.")}` (shipped 2026-10-15, ADR 0109 amendment of that date);
   - the upkeep trigger `AnyPlayerPays{Pay: EitherPayment(SacrificePayment(2, "land", "lands", QueryType("land")), DamagePayment(5)), OnPaid: destroy this enchantment}`.
 - Card tests and the oracle fixture.
 - The registry row's final update: the row turns Implemented, apart from the recorded out-of-scope cards.
