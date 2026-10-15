@@ -29,7 +29,7 @@ func init() {
 		Name:         "Boromir, Warden of the Tower",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track what was spent, so Boromir never counters a spell — turn on “Charge mana costs” for it to work.",
+			"When “Charge mana costs” is off, or you choose Cast anyway, the game can't tell a spell paid outside the mana pool from one cast for no mana, so Boromir doesn't counter it — turn on “Charge mana costs” for it to work.",
 		},
 		PrintedKeywords: []string{"vigilance"},
 		Triggered: []game.TriggeredAbility{

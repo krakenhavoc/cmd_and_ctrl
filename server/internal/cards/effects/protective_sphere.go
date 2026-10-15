@@ -21,7 +21,7 @@ func init() {
 		OracleID:     "2037c4bf-bf0d-46ab-8b4b-61d9a50c431e",
 		Name:         "Protective Sphere",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so Protective Sphere prevents nothing."},
+		Caveats:      []string{"When “Charge mana costs” is off, only mana spent from your mana pool counts, so Protective Sphere prevents damage only from a source that shares a color with that mana."},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, Pay 1 life: Prevent all damage that would be dealt to you this turn by a source of your choice that shares a color with the mana spent on this activation cost.",
 			Purpose: game.Purpose{Answers: game.AnswerPrevent},

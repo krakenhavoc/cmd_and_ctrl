@@ -41,17 +41,17 @@ import (
 // exactly that record; #1735 found the stale caveat.
 //
 // Declared caveat, the one every mana-spent reader in the catalog
-// carries: a spell its caster cast with an unrecorded payment was not
-// charged by the engine (PaidCost.OnPaper), so the amount is unknown
-// and reads as zero — no refund, the weaker-than-printed answer
-// ADR 0068 §3 requires.
+// carries: a spell its caster cast with a waived payment was charged
+// only the share its pool could pay (PaidCost.OnPaper, #3844), so the
+// amount reads as that share — a smaller refund, the
+// weaker-than-printed answer ADR 0068 §3 requires.
 func init() {
 	Register(Spec{
 		OracleID:     "35e2f82e-7ca3-4a92-9134-b7999eef5337",
 		Name:         "Mana Sculpt",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"If the countered spell was cast with an unrecorded payment, the game doesn't know how much mana was spent on it, so Mana Sculpt adds no mana for it.",
+			"If the countered spell's caster had “Charge mana costs” off or chose Cast anyway, only mana spent from their mana pool counts, so Mana Sculpt can add less mana than they paid.",
 		},
 		Targets: TargetSpell("target spell"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

@@ -58,7 +58,7 @@ func init() {
 		Completeness:    CompletenessCaveats,
 		PrintedKeywords: []string{"flying"},
 		Caveats: []string{
-			"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track how much mana you spent, so Mockingbird can only copy a creature with mana value 0 — turn on “Charge mana costs” for it to count.",
+			"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so Mockingbird can copy only a creature whose mana value is at most that amount.",
 		},
 		Replacements: []game.ReplacementEffect{
 			EntersAsCopyOfFromCast(

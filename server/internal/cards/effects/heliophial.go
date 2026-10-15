@@ -18,7 +18,7 @@ func init() {
 		OracleID:            "6c3be36d-2461-4e38-9ab4-4394cd4996e7",
 		Name:                "Heliophial",
 		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so it enters with no counters at all."},
+		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so it can enter with fewer counters than the colors you paid."},
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Activated: []ActivatedAbility{{

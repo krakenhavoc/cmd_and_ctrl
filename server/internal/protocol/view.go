@@ -2051,10 +2051,12 @@ type StackItemView struct {
 	// deciding whether to answer it.
 	//
 	// ManaSpentUnknown is PaidCost.OnPaper: the cast went through
-	// permissive mode or a strict-mode override, so the engine did
-	// not take the mana and has no record of what it was. The client
-	// greys the pill rather than rendering "0 mana", which would be
-	// a claim nobody made. Absent on an ability item and on a copy
+	// permissive mode or a strict-mode override with a pool that did
+	// not cover the cost, so the engine took only the share the pool
+	// could pay (#3844) and has no record of the rest. ManaSpent and
+	// ColorsSpent are then that share, a lower bound. The client
+	// greys the pill rather than rendering it as the whole payment,
+	// which would be a claim nobody made. Absent on an ability item and on a copy
 	// (CR 707.10 — nothing was spent to cast a copy, and that zero
 	// is real).
 	ManaSpent        int      `json:"mana_spent,omitempty"`

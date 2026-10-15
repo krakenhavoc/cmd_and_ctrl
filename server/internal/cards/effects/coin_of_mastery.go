@@ -19,16 +19,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The Treasure ability is an ordinary CR 602 activation, and its
 // Treasure is the artifact source the first half wants.
 //
-// One declared simplification, the paid-cost record's: with strict
-// mana off the engine never saw what paid, so no counters (ADR 0068
-// §3).
+// One declared simplification, the paid-cost record's: when a payment
+// is waived only the mana that left the pool counts (ADR 0068 §3 and
+// its 2026-10-15 amendment). Unlike Treasure mana, an artifact
+// source's mana can be paid on paper — an artifact the engine does
+// not run is exactly what Cast anyway is for — so the count is a
+// lower bound.
 func init() {
 	Register(Spec{
 		OracleID:     "d78518ee-df79-48d1-b9d5-4f968b441899",
 		Name:         "Coin of Mastery",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so your creatures get no extra +1/+1 counters.",
+			"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so a creature you cast can get fewer extra +1/+1 counters than the artifact mana you paid.",
 		},
 		Replacements: []game.ReplacementEffect{
 			CreaturesYouControlEnterWithCountersPerManaFrom(

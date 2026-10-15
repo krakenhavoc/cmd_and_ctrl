@@ -343,7 +343,7 @@ export function insufficientManaRequest(
   const castAnyway: DockAction = {
     id: "cast-anyway",
     label: "Cast anyway",
-    title: "cast it without paying its mana cost; the game log says so",
+    title: "cast it, paying only with mana already in your pool; the game log says so",
     onPress: h.onCastAnyway,
   };
   const base = {
@@ -407,12 +407,12 @@ export function castAnywayConfirmRequest(
     tag: "unpaid",
     tone: "gold",
     question,
-    hint: "No mana is spent. Life and any other costs are still paid, and the game log shows the table.",
+    hint: "Only mana already in your pool is spent. Life and any other costs are still paid, and the game log shows the table.",
     focus: "dialog",
     primary: {
       id: "cast",
       label: L.cast,
-      title: "cast it without paying its mana cost; the game log says so",
+      title: "cast it, paying only with mana already in your pool; the game log says so",
       onPress: h.onCast,
     },
     secondary: [

@@ -130,21 +130,33 @@ func TestCavernOfSoulsOtherwisePaidSpellsCanBeCountered(t *testing.T) {
 	}
 }
 
-// An insufficient permissive pool is paid on paper; the floating Cavern
-// token alone cannot make the spell uncounterable.
-func TestCavernOfSoulsWithUnrecordedPaymentIsCounterable(t *testing.T) {
-	g := newCatalogGame(t)
-	me := g.Seats[g.Turn.ActiveSeat]
-	advanceToMain(t, g)
-	cavern := pushNamedTribePermanent(t, g, me.ID, "Cavern of Souls", "Land", cavernOfSoulsOracle, "Elf")
-	tapCavernFor(t, g, me.ID, cavern, "G")
+// #3844: an insufficient permissive pool still spends what it can, so
+// the floating Cavern token pays for the Elf and the rest is paid on
+// paper. The token really was spent, so the Elf can't be countered, in
+// permissive mode and under Cast anyway alike.
+func TestCavernOfSoulsWaivedPaymentStillSpendsTheCavernToken(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		params game.CastSpellParams
+	}{
+		{"insufficient permissive pool", game.CastSpellParams{}},
+		{"cast anyway", game.CastSpellParams{Strict: true, ForceCast: true}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+			advanceToMain(t, g)
+			cavern := pushNamedTribePermanent(t, g, me.ID, "Cavern of Souls", "Land", cavernOfSoulsOracle, "Elf")
+			tapCavernFor(t, g, me.ID, cavern, "G")
 
-	elf := castFromHandForTest(t, g, me, "Test Elf", "Creature — Elf Druid", "{1}{G}", "", game.CastSpellParams{})
-	if !g.StackMeta[elf].Paid.OnPaper {
-		t.Fatal("setup: a permissive cast recorded a payment")
-	}
-	if counterByEffect(t, g, elf) {
-		t.Error("a permissive-mode Cavern cast was uncounterable, which the caveat says it is not")
+			elf := castFromHandForTest(t, g, me, "Test Elf", "Creature — Elf Druid", "{1}{G}", "", tc.params)
+			if paid := g.StackMeta[elf].Paid; !paid.OnPaper || len(paid.Mana) != 1 {
+				t.Fatalf("setup: want the Cavern token spent and the rest waived, got %+v", paid)
+			}
+			if !counterByEffect(t, g, elf) {
+				t.Error("an Elf the Cavern's mana paid for was countered")
+			}
+		})
 	}
 }
 
@@ -588,9 +600,10 @@ func settleKeepingCopyTargets(t *testing.T, g *game.Game, caster, victim uuid.UU
 	}
 }
 
-// #2876: an insufficient permissive pool records OnPaper (ADR 0068 §3).
-// Merely floating Halfling mana cannot protect an unpaid spell.
-func TestDelightedHalflingWithUnrecordedPaymentIsCounterable(t *testing.T) {
+// #2876 / #3844: an insufficient permissive pool records OnPaper (ADR
+// 0068 §3) but still spends what it can, so the Halfling's {G} pays for
+// Yeva and protects her.
+func TestDelightedHalflingWaivedPaymentStillSpendsTheHalflingToken(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	advanceToMain(t, g)
@@ -598,10 +611,10 @@ func TestDelightedHalflingWithUnrecordedPaymentIsCounterable(t *testing.T) {
 	activateManaFor(t, g, me.ID, halfling, 1, game.ManaAbilityParams{Colors: []string{"G"}})
 
 	id := castFromHandForTest(t, g, me, "Yeva, Nature's Herald", "Legendary Creature — Elf Shaman", "{1}{G}", "", game.CastSpellParams{})
-	if !g.StackMeta[id].Paid.OnPaper {
-		t.Fatal("setup: a permissive cast recorded a payment")
+	if paid := g.StackMeta[id].Paid; !paid.OnPaper || len(paid.Mana) != 1 {
+		t.Fatalf("setup: want the Halfling token spent and the rest waived, got %+v", paid)
 	}
-	if counterByEffect(t, g, id) {
-		t.Error("a permissive-mode Halfling cast was uncounterable, which the caveat says it is not")
+	if !counterByEffect(t, g, id) {
+		t.Error("a legendary spell the Halfling's mana paid for was countered")
 	}
 }

@@ -18,7 +18,7 @@ func init() {
 		OracleID:            "72e8d67a-41e6-4074-bcbd-b54ead995237",
 		Name:                "Pentad Prism",
 		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so it enters with no counters at all."},
+		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so it can enter with fewer counters than the colors you paid."},
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		ManaAbilities: []ManaAbility{{

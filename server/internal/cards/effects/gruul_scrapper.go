@@ -38,7 +38,7 @@ func init() {
 		OracleID:     "878e8980-a2cc-4335-aafe-f5166ef48f79",
 		Name:         "Gruul Scrapper",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so Gruul Scrapper never gains haste."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so Gruul Scrapper gains haste only when the {R} came from your mana pool."},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, AllOf(Self, func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return source.ManaSpentToCast().Count("R") > 0

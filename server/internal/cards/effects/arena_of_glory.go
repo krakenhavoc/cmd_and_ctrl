@@ -17,14 +17,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The haste is Generator Servant's spend rider: a grant to the SPELL at
 // the spend, which the permanent keeps until end of turn (CR 400.7a).
 //
-// One declared simplification, the rider's (ADR 0068 §3): with strict
-// mana off the engine never spends the pool, so the haste never applies.
+// No simplification is left (#3844, ADR 0068 amendment 2026-10-15). A
+// waived payment (strict mana off with too little in the pool, or Cast
+// anyway) still spends the share of the cost the pool can pay, so this
+// mana pays whenever it can and its rider fires. Mana that never
+// entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
 		OracleID:     "63dfe794-5f56-41ec-9883-5523b41cc3e0",
 		Name:         "Arena of Glory",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so the creature never gains haste."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{b06EntersTappedUnlessLandType("mountain")},
 		ManaAbilities: []ManaAbility{
 			{

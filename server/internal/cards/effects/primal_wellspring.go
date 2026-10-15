@@ -19,17 +19,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // does not trigger the Wellspring again. The filter is a cast of an
 // instant OR a sorcery, in any colour.
 //
-// One declared simplification, weaker than printed and shared with every
-// spend rider: with an unrecorded payment the pool is never spent (ADR
-// 0068 §3), so no token pays and the spell is never copied.
+// No simplification is left (#3844, ADR 0068 amendment 2026-10-15). A
+// waived payment (strict mana off with too little in the pool, or Cast
+// anyway) still spends the share of the cost the pool can pay, so this
+// mana pays whenever it can and its rider fires. Mana that never
+// entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
 		OracleID:     primalAmuletOracleID + "#1",
 		Name:         "Primal Wellspring",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so the spell is never copied.",
-		},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",

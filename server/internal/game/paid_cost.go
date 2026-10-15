@@ -52,11 +52,14 @@ type PaidCost struct {
 	// between "nothing" and "we did not charge you".
 	Mana []ManaToken
 
-	// OnPaper marks a payment the engine did NOT take: permissive
-	// mode (the human default, client/src/lib/settings.ts) and the
-	// strict-mode ForceCast override both let the cast through with
-	// the pool untouched and an EventCostWarning in the log. The
-	// player paid on paper; the engine has no record of WHAT.
+	// OnPaper marks a payment the engine did NOT take in full: an
+	// insufficient pool in permissive mode, and the strict-mode
+	// ForceCast override, let the cast through with an
+	// EventCostWarning in the log. Since #3844 the pool still pays
+	// the share it can, and those tokens are in Mana; the rest was
+	// paid on paper, and the engine has no record of WHAT. So Mana
+	// is a lower bound on an OnPaper record, and empty when the pool
+	// paid nothing.
 	//
 	// It exists so "no mana was spent to cast it" is never ambiguous.
 	// Without it an unrecorded payment and a genuinely free cast look

@@ -23,14 +23,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // question (ADR 0109 §10, CR 702.136a). Both mana of a doubled +1 are
 // one production, so one riot.
 //
+// No simplification is left (#3844, ADR 0068 amendment 2026-10-15). A
+// waived payment (strict mana off with too little in the pool, or Cast
+// anyway) still spends the share of the cost the pool can pay, so this
+// mana pays whenever it can and its rider fires. Mana that never
+// entered the pool was not this card's mana.
+//
 // The −3 is the ordinary look-and-take dig with a ceiling of two, and
 // the emblem's trigger fires at every end step, anyone's.
 func init() {
 	Register(Spec{
 		OracleID:        "2a5408ed-8b47-4896-97e4-aa102a4b85c9",
 		Name:            "Domri, Chaos Bringer",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so the creature spell its +1 mana pays for never gets its choice of a +1/+1 counter or haste."},
+		Completeness:    CompletenessFull,
 		StartingLoyalty: 5,
 		Emblem: &EmblemSpec{
 			Label: "Domri, Chaos Bringer emblem",

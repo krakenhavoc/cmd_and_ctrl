@@ -19,10 +19,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     the usual colourless-first order. Cast off a Swamp, an Island
 //     and a Forest, this draws three; cast off a Swamp and two Sol
 //     Ring mana, it draws one, which is also correct.
-//   - ctx.ColorsSpentCount() answers 0 for a payment the engine
-//     waived (an unfunded permissive cast or Cast anyway). That is the
-//     weaker-than-printed direction: the spell resolves and does
-//     nothing rather than guessing five.
+//   - For a payment the engine waived (an unfunded permissive cast or
+//     Cast anyway), ctx.ColorsSpentCount() counts only the colours
+//     that left the pool (#3844). That is the weaker-than-printed
+//     direction: the spell draws for what it saw rather than
+//     guessing five.
 //
 // CR 702.86 makes converge an ability word, so the counting lives on
 // the card; the drawing and the life loss are one instruction, so a
@@ -37,7 +38,7 @@ func init() {
 		OracleID:            "58a2d15f-1b4b-4303-b524-8cc0d1b3e7d2",
 		Name:                "Painful Truths",
 		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so Painful Truths draws nothing — turn on “Charge mana costs” for it to count colours."},
+		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so Painful Truths can draw fewer cards than the colors you paid."},
 		WantsDistinctColors: true,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			x := ctx.ColorsSpentCount()

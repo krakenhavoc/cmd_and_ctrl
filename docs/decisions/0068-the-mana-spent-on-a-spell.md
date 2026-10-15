@@ -629,3 +629,102 @@ Path of Ancestry now scries when its token actually pays for a matching
 creature in either mode. Its remaining caveat describes an unrecorded
 payment, and the other mana-spent readers use that same narrower wording.
 None is marked complete merely because default strict payment works.
+
+
+## Amendment — a waived payment spends what the pool can pay (2026-10-15, [#3844](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3844))
+
+This supersedes the 2026-10-12 amendment's "no partial payment is
+invented" and its rule that `ForceCast` always leaves the pool intact.
+
+### The decision
+
+When the engine waives a charge (a permissive cast or activation whose
+pool cannot cover the cost, or a strict-mode Cast anyway), the pool
+pays the share of the cost it can legally pay, and only the shortfall
+is waived. The share is chosen by the same solver a funded payment
+uses (`ManaPool.allocate`, behind both `attemptSpend` and the new
+`SpendWhatPaysForWith`): the spend context's restrictions, the
+restriction-first order, the colour-requirement matching and the
+spell's colour strategy. Mana the cost cannot use (a {U} beside a
+{R}{R} cost, Cavern mana named Elf beside a Goblin) stays in the pool.
+Nothing is auto-tapped. The life half (Phyrexian symbols) is still paid
+in full, and now before the pool is touched, so a refused life payment
+spends nothing.
+
+The record is `PaidCost{Mana: <the tokens the pool paid>, OnPaper:
+true}`. A Cast anyway whose pool covers the whole cost is an ordinary
+paid cast: `OnPaper` is false, no `EventCostWarning` is emitted, and
+`EventCast.Unpaid` is false, because "cast without paying its mana
+cost" would be untrue (ADR 0118 §2's log line now reads
+`ForceCast && OnPaper`).
+
+### What the record means now
+
+`OnPaper` still means "the engine does not know the whole payment".
+The tokens beside it are a fact: they left the pool. So §3's table
+becomes:
+
+| Reader | Known | Unknown (`OnPaper`) |
+|---|---|---|
+| `None()` | true when empty | **false**, whatever the record holds |
+| `Total()`, `Count()`, `Colors()` | exact | **the tokens' figure, a lower bound** (0 when the pool paid nothing) |
+| `CountFrom()`, `From()` | exact | **the tokens' figure** |
+| spend riders | fire on the tokens | **fire on the tokens** |
+
+The rule is unchanged: unknown is never the stronger answer. Every
+counting reader grows with the mana spent, so a lower bound is never
+stronger than printed. `None` is the one reader that shrinks as the
+mana grows, so it ignores the tokens and keeps answering false.
+Readers that mix the figures non-monotonically opt out through
+`Known()`, as Soul Burn already does.
+
+### Why this removes Path of Ancestry's caveat honestly
+
+A spend rider keys on one token: "when THAT mana is spent". A source the
+engine runs makes its mana only as a token in the pool, so under a
+waived payment there are two cases. The token was in the pool and the
+cost could use it: it pays, exactly as a funded payment would have
+spent it, and the rider fires. Or the token was never made, or the cost
+cannot use it, or the solver paid that part with other mana first: then
+that mana genuinely was not spent, and a token still in the pool is
+still the player's to spend. Neither case is the engine failing to do
+what the card prints. The last case is §5's solver choice, which a
+funded strict payment has always had.
+
+Source-kind readers of a source the engine always runs read the same
+way: Treasure mana exists only as a pool token, so "if mana from a
+Treasure was spent" and "for each mana from a Treasure" are exact.
+
+So these cards are `CompletenessFull` (18): Path of Ancestry, Cavern of
+Souls, Boseiju, Who Shelters All, Delighted Halfling, Hall of the
+Bandit Lord, Arena of Glory, Generator Servant, Carnelian Orb of
+Dragonkind, Domri, Chaos Bringer, Biophagus, Opal Palace, Scaled
+Nurturer, Pyromancer's Goggles, Primal Wellspring, Tecutlan, the
+Searing Rift (token riders); Hired Hexblade, Rain of Riches and Kalain,
+Reclusive Painter (Treasure mana).
+
+### What stays caveated, reworded
+
+Readers of colour or amount (sunburst, converge, adamant, "if {U} was
+spent", "the amount of mana spent") still cannot see the share paid on
+paper, which was real mana of an unknown colour. Their figure is now a
+lower bound rather than zero, and their caveats say so: "only mana
+spent from your mana pool counts, so ...". That is the 16 printed
+sunburst cards, Lux Artillery, Solar Array, Painful Truths, Kurbis,
+Mockingbird, Memory Deluge, Abby, Deceit, Gruul Scrapper, Boros
+Fury-Shield, Ribbons of Night, Slaying Fire, Protective Sphere and Mana
+Sculpt. Coin of Mastery stays too: "mana from an artifact source"
+includes artifacts the engine does not run, whose mana is exactly what
+Cast anyway exists to pay on paper.
+
+The "if no mana was spent" readers (Vexing Bauble, Boromir, Roiling
+Vortex, Satoru, Freestrider Commando) keep their caveat: a spell whose
+whole payment was waived may or may not have cost mana, and the engine
+still cannot tell. Their wording now says that rather than "doesn't
+track what was spent".
+
+### Client
+
+The Cast anyway tooltips and the dock confirmation's hint said no mana
+is spent. They now say the pool's mana pays. The label contract (ADR
+0118 §2: the row, the dialog name, Cast and Cancel) is unchanged.

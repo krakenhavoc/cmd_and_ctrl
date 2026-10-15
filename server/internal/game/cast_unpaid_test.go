@@ -5,7 +5,9 @@ import "testing"
 // ADR 0118 §2 (#2188): a cast made with ForceCast — the client's "Cast
 // anyway (don't pay)" row and the dock's Cast anyway after a refused
 // cast — is announced as Unpaid on its EventCast, so the log can tell
-// the table. A permissive cast and a paid strict cast are not.
+// the table. A permissive cast and a paid strict cast are not. Since
+// #3844 a forced cast spends what the pool can pay, so one the pool
+// covered in full was paid and is not announced as unpaid.
 func TestForcedCastIsAnnouncedUnpaid(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -14,7 +16,8 @@ func TestForcedCastIsAnnouncedUnpaid(t *testing.T) {
 		want   bool
 	}{
 		{"forced, strict", CastSpellParams{Strict: true, ForceCast: true}, nil, true},
-		{"forced, pool could pay", CastSpellParams{Strict: true, ForceCast: true}, []ManaToken{{Color: "U"}, {Color: "U"}}, true},
+		{"forced, pool pays part", CastSpellParams{Strict: true, ForceCast: true}, []ManaToken{{Color: "U"}}, true},
+		{"forced, pool pays all", CastSpellParams{Strict: true, ForceCast: true}, []ManaToken{{Color: "U"}, {Color: "U"}}, false},
 		{"permissive", CastSpellParams{}, nil, false},
 		{"strict, paid", CastSpellParams{Strict: true}, []ManaToken{{Color: "U"}, {Color: "U"}}, false},
 	}

@@ -47,12 +47,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // could pay — so "auto-tap & cast" on this card reaches for the
 // Treasure on purpose, and the Hexblade draws. Cracking it by hand
 // still works and always did.
+//
+// No simplification is left (#3844, ADR 0068 amendment 2026-10-15). A
+// waived payment (strict mana off with too little in the pool, or Cast
+// anyway) still spends the share of the cost the pool can pay, and
+// Treasure mana exists only as mana in the pool, so the record says
+// exactly whether (and how much) Treasure mana paid.
 func init() {
 	Register(Spec{
 		OracleID:      "f3a0f155-05d8-465c-b0ef-35aa12e93013",
 		Name:          "Hired Hexblade",
-		Completeness:  CompletenessCaveats,
-		Caveats:       []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so Hired Hexblade never draws the card."},
+		Completeness:  CompletenessFull,
 		WantsManaFrom: game.ManaSourceTreasure,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, AllOf(Self, func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

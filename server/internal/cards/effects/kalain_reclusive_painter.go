@@ -17,15 +17,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // sacrificed to pay still counts. Kalain itself is not "other", and a
 // creature that was not cast spent nothing and gets nothing.
 //
-// One declared simplification, the paid-cost record's: with strict
-// mana off the engine never saw what paid, so no counters (ADR 0068
-// §3).
+// No simplification is left (#3844, ADR 0068 amendment 2026-10-15). A
+// waived payment (strict mana off with too little in the pool, or Cast
+// anyway) still spends the share of the cost the pool can pay, and
+// Treasure mana exists only as mana in the pool, so the record says
+// exactly whether (and how much) Treasure mana paid.
 func init() {
 	Register(Spec{
 		OracleID:     "4fca09ac-8134-43d9-a84b-686db5e2bf69",
 		Name:         "Kalain, Reclusive Painter",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so your other creatures get no extra +1/+1 counters."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Kalain, Reclusive Painter — create a Treasure token",
 				Do(CreateToken{Template: TreasureToken(), N: 1})),

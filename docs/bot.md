@@ -1916,10 +1916,10 @@ The decks are "upgraded precons" ([#2436](https://github.com/krakenhavoc/cmd_and
 fetchlands and dual lands, but few tutors and little fast mana (Sol
 Ring everywhere, Ancient Tomb only in mono-black), and each one
 teaches the single mechanic in its row above.
-Every non-basic card is graded `full` in the catalog, apart from a
-short list of minor caveats named in `internal/decks/full_test.go`
-(Path of Ancestry, Delighted Halfling, Cultivate, Tireless Provisioner,
-the two partner Pirates, Ragavan and the two Artillerists), and that
+Every non-basic card is graded `full` in the catalog, apart from any
+minor caveats named in `internal/decks/full_test.go` (none since
+[#3844](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3844) made
+Path of Ancestry and Delighted Halfling, the last two, full), and that
 test fails the build when a card falls below it. A saved table setup
 names a deck by ID, so it seats the current list.
 

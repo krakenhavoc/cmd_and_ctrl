@@ -279,7 +279,9 @@ describe("castAnywayItem — the row's builder", () => {
     expect(item.label).toBe(CAST_ANYWAY_LABEL);
     expect(item.disabled).toBeFalsy();
     expect(item.hint).toBe(CAST_ANYWAY_TITLE);
-    expect(item.hint).toBe("Cast it without paying its mana cost. The game log shows the table.");
+    expect(item.hint).toBe(
+      "Cast it, paying only with mana already in your pool. The game log shows the table.",
+    );
     expect(item.castAnyway).toBe("hand");
     // It sends nothing itself: no action rides it.
     expect(item.action).toBeUndefined();

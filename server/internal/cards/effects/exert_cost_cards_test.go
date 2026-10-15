@@ -64,8 +64,9 @@ func battlefieldNamed(g *game.Game, controller uuid.UUID, name string) int {
 	return n
 }
 
-// Every card is registered, Full except Arena of Glory's declared
-// strict-mana caveat, and the exert sits on the right row.
+// Every card is registered and Full (Arena of Glory since #3844, when
+// its rider stopped depending on the payment mode), and the exert sits
+// on the right row.
 func TestExertCostCardsDeclareTheirCosts(t *testing.T) {
 	activated := map[string]int{
 		stewardOfSolidarityOracle: 0, prideSovereignOracle: 0, basriTomorrowsOracle: 0,
@@ -85,7 +86,7 @@ func TestExertCostCardsDeclareTheirCosts(t *testing.T) {
 			}
 		}
 	}
-	for oracle, full := range map[string]bool{oasisRitualistOracle: true, arenaOfGloryOracle: false} {
+	for oracle, full := range map[string]bool{oasisRitualistOracle: true, arenaOfGloryOracle: true} {
 		spec, ok := Lookup(oracle)
 		if !ok {
 			t.Fatalf("%s is not registered", oracle)
