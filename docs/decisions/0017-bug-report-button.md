@@ -11,6 +11,8 @@ report is published, #721; blocks #517) · Branch
 **Revised:** 2026-10-12 · §10 added (throttling, +1 duplicates, the
 `player-report` label, an admin kill switch, #2979) · Branch
 `feat/2979-bugreport-throttle`
+**Revised:** 2026-10-15 · §12 added (mirrored to a Discord forum thread,
+#3327; ADR 0196) · Branch `feat/3327-bugreport-discord-thread`
 
 ## Context
 
@@ -559,3 +561,25 @@ wrote, and the integration hung on one person's account.
   the reporter, and now it no longer pretends to be.
 - §9's redaction applies to the new credentials too: the key, the JWT and
   the installation token never reach a log, an error or a response.
+
+## 12. Mirrored to a Discord forum thread (added 2026-10-15)
+
+[#3327](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3327), decided in
+[ADR 0196](0196-bug-reports-mirrored-to-a-discord-forum.md). A report that was
+filed as an issue also opens a thread in a Discord forum channel when
+`CMDCTRL_DISCORD_BUG_FORUM_ID` is set, so a player with no GitHub account can
+follow it and answer a question.
+
+- **The server posts,** with the bot token, in the background, after the issue
+  exists: a Discord failure never changes the reporter's answer, and a +1 or a
+  queued report opens no thread.
+- **Private tables are never mirrored.** A report from a table is mirrored only
+  if its host put the table on the #lfg board; one from outside a table is.
+- **What is sent is what the issue carries,** the title and description
+  through §9's redaction, the screenshot links, the issue link, and a mention of
+  the reporter if they signed in with Discord. `allowed_mentions` names that
+  one user and nothing else, and the description is escaped, so a report cannot
+  ping anyone.
+- **A sweep closes the thread** when the issue closes, by reading the bot's own
+  open posts and their issues every five minutes; no webhook, no stored state.
+

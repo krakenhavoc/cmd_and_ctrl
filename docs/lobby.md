@@ -5001,6 +5001,14 @@ A rejected attachment fails the whole report — no issue is filed — and
 a report whose GitHub call fails has its stored artifacts deleted, so
 an outage never leaves orphaned images at live URLs.
 
+**Discord mirror** ([ADR 0196](decisions/0196-bug-reports-mirrored-to-a-discord-forum.md)).
+With `CMDCTRL_DISCORD_BUG_FORUM_ID` set, a `201 filed` report also opens a
+thread in that forum, in the background, after the response is decided:
+nothing about the response changes, and a Discord failure is only logged.
+A `200 commented` and a `202 queued` report open no thread. A report whose
+context or session names a table is mirrored only if the host posted that
+table to #lfg. The thread is archived, with a note, when the issue closes.
+
 ### `GET /admin/bugreport`
 
 **Admin only.** The state of the throttle (ADR 0017 §10) and the

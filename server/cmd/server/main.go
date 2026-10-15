@@ -68,6 +68,12 @@
 //	                        in. Needs the community guild (boot fails
 //	                        without it, or on a malformed id) and the bot
 //	                        token (off without it).
+//	CMDCTRL_DISCORD_BUG_FORUM_ID — the bug report mirror (ADR 0196): the
+//	                        forum channel each in-app report filed as an
+//	                        issue also opens a thread in, closed when
+//	                        the issue closes. Unset: nothing is posted.
+//	                        A malformed id fails the boot; off without
+//	                        the bot token or an issue-tracker credential.
 //	CMDCTRL_SHOP_TCGPLAYER / CMDCTRL_SHOP_CARDKINGDOM — shop link
 //	                        templates (ADR 0179), served by GET /config:
 //	                        an https URL holding {url} once after the
@@ -761,6 +767,28 @@ func main() {
 		log.Info("bug report attachments disabled — needs CMDCTRL_DATA_DIR and CMDCTRL_PUBLIC_BASE_URL; text reports still work")
 	}
 
+	// The bug report mirror (ADR 0196): a Discord forum post for each
+	// report filed as an issue, closed when the issue closes. It reads
+	// issue state through the same client that files them, so it needs
+	// one; without it, or without the forum, nothing is posted.
+	var bugForum *lobby.BugForum
+	switch {
+	case cfg.BugForum.Enabled():
+		if issues, ok := bugReporter.(lobby.BugIssueReader); ok {
+			bugForum = lobby.NewBugForum(cfg.BugForum, issues, log)
+			bugForum.Start(ctx)
+			log.Info("bug report mirror on: filed reports also open a Discord forum thread", "var", discord.BugForumEnv)
+		} else {
+			log.Warn("bug report mirror off: "+discord.BugForumEnv+" is set but bug reporting is disabled (no issue-tracker credential)",
+				"var", discord.BugForumEnv)
+		}
+	case cfg.BugForum.MissingToken():
+		log.Info("bug report mirror off: "+discord.BugForumEnv+" is set but "+discord.BotTokenEnv+
+			" is not (it is provisioned on production only)", "var", discord.BotTokenEnv)
+	default:
+		log.Info("bug report mirror off; set "+discord.BugForumEnv+" to enable", "var", discord.BugForumEnv)
+	}
+
 	lobbyCfg := lobby.Config{
 		Lobby:       l,
 		Auth:        authenticator,
@@ -806,6 +834,7 @@ func main() {
 		Accounts:          newAccountDeleter(database, cfg.DataDir),
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
+		BugForum:          bugForum,
 		DeckRequestFiler:  deckRequestFiler,
 		DeckRequests:      newDeckRequestStore(database),
 		AdminViews:        newAdminViewStore(database),
@@ -1019,6 +1048,10 @@ type config struct {
 	// bot token. A malformed id, or the channel without the guild, fails
 	// the boot; no bot token leaves it off.
 	Results discord.Results
+	// BugForum is ADR 0196's bug report mirror:
+	// CMDCTRL_DISCORD_BUG_FORUM_ID, a forum channel, with the bot token.
+	// A malformed id fails the boot; no bot token leaves it off.
+	BugForum discord.BugForum
 	// Shops is ADR 0179's shop link templates, one CMDCTRL_SHOP_*
 	// variable per retailer. Unset: no shop links. A malformed template
 	// fails the boot, naming the variable.
@@ -1300,6 +1333,12 @@ func loadConfig(log *slog.Logger) config {
 		os.Exit(1)
 	}
 	c.Results = resultsFeed
+	bugForum, bferr := discord.BugForumFromEnv(os.Getenv)
+	if bferr != nil {
+		log.Error("bug report mirror config invalid", "err", bferr)
+		os.Exit(1)
+	}
+	c.BugForum = bugForum
 	// ADR 0179: a typo in a shop template stops the boot rather than
 	// serving links that go somewhere unexpected.
 	shops, serr := shoplinks.FromEnv(os.Getenv)

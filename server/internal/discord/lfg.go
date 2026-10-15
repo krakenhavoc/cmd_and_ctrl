@@ -166,6 +166,8 @@ func (p LFGPost) Full() bool { return p.Seats > 0 && p.Seated >= p.Seats }
 // post uses.
 type lfgEmbed struct {
 	Title string `json:"title"`
+	// URL makes the title a link. Only the bug forum's post uses it.
+	URL string `json:"url,omitempty"`
 	// Description is the text under the title. Only the results post
 	// (results.go) uses it.
 	Description string          `json:"description,omitempty"`
@@ -173,6 +175,13 @@ type lfgEmbed struct {
 	Fields      []lfgEmbedField `json:"fields"`
 	Footer      lfgEmbedFooter  `json:"footer"`
 	Timestamp   string          `json:"timestamp,omitempty"`
+	// Image is a picture under the fields. Only the bug forum's post
+	// uses it.
+	Image *lfgEmbedImage `json:"image,omitempty"`
+}
+
+type lfgEmbedImage struct {
+	URL string `json:"url"`
 }
 
 type lfgEmbedField struct {
@@ -199,6 +208,9 @@ type allowedMentions struct {
 	// parsed for a mention except what Roles names.
 	Parse []string `json:"parse"`
 	Roles []string `json:"roles,omitempty"`
+	// Users names the individual people a message may notify. Only the
+	// bug forum's post uses it, for the reporter.
+	Users []string `json:"users,omitempty"`
 }
 
 // lfgMessage is a create or edit body. Content and Components are

@@ -232,7 +232,11 @@ func formatDuration(d time.Duration) string {
 // plainText makes a name safe to show as text: surrounding space is
 // trimmed and every character Discord reads as markup or a mention is
 // escaped, so a seat called "<@123>" or "**x**" shows as typed.
-func plainText(s string) string {
+func plainText(s string) string { return escapeText(s, false) }
+
+// escapeText is plainText, optionally keeping line breaks: a report's
+// description (bugforum.go) is several lines, a seat name is one.
+func escapeText(s string, keepNewlines bool) string {
 	s = strings.TrimSpace(s)
 	var b strings.Builder
 	for _, r := range s {
@@ -240,7 +244,9 @@ func plainText(s string) string {
 		case '\\', '*', '_', '~', '`', '|', '>', '<', '@', '#', '[', ']', ':':
 			b.WriteByte('\\')
 		case '\n', '\r':
-			r = ' '
+			if !keepNewlines {
+				r = ' '
+			}
 		}
 		b.WriteRune(r)
 	}
