@@ -1581,6 +1581,7 @@ lastKnownStack[].item.modes	array
 lastKnownStack[].item.modes[]	number:int
 lastKnownStack[].item.oracleId	string
 lastKnownStack[].item.ordered	bool
+lastKnownStack[].item.ownFlashCast	bool
 lastKnownStack[].item.owner	custom(uuid.UUID)
 lastKnownStack[].item.paid	object
 lastKnownStack[].item.paid.CountersAdded	number:int
@@ -1870,6 +1871,7 @@ pausedModeWalk.item.modes	array
 pausedModeWalk.item.modes[]	number:int
 pausedModeWalk.item.oracleId	string
 pausedModeWalk.item.ordered	bool
+pausedModeWalk.item.ownFlashCast	bool
 pausedModeWalk.item.owner	custom(uuid.UUID)
 pausedModeWalk.item.paid	object
 pausedModeWalk.item.paid.CountersAdded	number:int
@@ -2113,6 +2115,7 @@ pausedResolutionTail.item.modes	array
 pausedResolutionTail.item.modes[]	number:int
 pausedResolutionTail.item.oracleId	string
 pausedResolutionTail.item.ordered	bool
+pausedResolutionTail.item.ownFlashCast	bool
 pausedResolutionTail.item.owner	custom(uuid.UUID)
 pausedResolutionTail.item.paid	object
 pausedResolutionTail.item.paid.CountersAdded	number:int
@@ -2674,6 +2677,7 @@ pendingTriggers[].modes	array
 pendingTriggers[].modes[]	number:int
 pendingTriggers[].oracleId	string
 pendingTriggers[].ordered	bool
+pendingTriggers[].ownFlashCast	bool
 pendingTriggers[].owner	custom(uuid.UUID)
 pendingTriggers[].paid	object
 pendingTriggers[].paid.CountersAdded	number:int
@@ -6596,6 +6600,7 @@ stackMeta[].modes	array
 stackMeta[].modes[]	number:int
 stackMeta[].oracleId	string
 stackMeta[].ordered	bool
+stackMeta[].ownFlashCast	bool
 stackMeta[].owner	custom(uuid.UUID)
 stackMeta[].paid	object
 stackMeta[].paid.CountersAdded	number:int

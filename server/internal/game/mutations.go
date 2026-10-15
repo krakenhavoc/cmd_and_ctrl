@@ -1432,6 +1432,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	} else if !g.CastTimingForOfferOpenLocked(playerID, card, src.Kind, grant, alt) {
 		return ErrSorcerySpeedRequired
 	}
+	// #3156: whether the cast needed the card's own "as though it had
+	// flash" at a time a sorcery couldn't have been cast. Read now,
+	// before the card moves to the stack and the window changes.
+	ownFlashCast := !card.IsLand() && g.castUsesOwnFlashLocked(playerID, card, src.Kind, grant, alt)
 	// Lands skip the stack entirely (CR 305). Move the card to the
 	// battlefield and stamp the controller — same shape as PlayCard.
 	if card.IsLand() {
@@ -1743,6 +1747,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// CR 406.3a turns the card face up as it is cast, and
 		// MoveCard has already done so by here.
 		Foretold: foretold,
+		// #3156: cast with its own flash when a sorcery couldn't have
+		// been (flash_cleanup_sacrifice.go).
+		OwnFlashCast: ownFlashCast,
 		// CR 708.4, ADR 0082 decision 3: the permanent this spell
 		// becomes enters FACE DOWN. Carried on the item because the
 		// permanent is a new object and MoveCard clears the state on

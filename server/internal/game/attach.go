@@ -456,6 +456,14 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		if c.Bestowed {
 			return false
 		}
+		// #3156: an Aura with the swapped clause has an enchant ability
+		// the catalog's Targets don't carry. Necromancy becomes an Aura
+		// through its own trigger and prints no enchant clause, so one
+		// whose creature never came back is attached to nothing and is
+		// as illegal as any other.
+		if c.EnchantSwapped && c.IsAura() {
+			return false
+		}
 		return !c.IsAura() || (TargetSpecFor(catalogKeyOf(c)) == nil && !c.IsRole())
 	}
 	// CR 702.16c-d: a permanent with protection from a quality can't

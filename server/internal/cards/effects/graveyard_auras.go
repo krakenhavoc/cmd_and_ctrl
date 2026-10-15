@@ -206,3 +206,65 @@ func mayPayToUntapEnchantedCreature(name, cost string) Effect {
 		}.Apply(ctx)
 	}
 }
+
+// BecomeAnAuraAndReanimateTarget is Necromancy's enters trigger (#3156):
+//
+//	"When this enchantment enters, if it's on the battlefield, it becomes
+//	 an Aura with 'enchant creature put onto the battlefield with
+//	 Necromancy.' Put target creature card from a graveyard onto the
+//	 battlefield under your control and attach this enchantment to it.
+//	 When this enchantment leaves the battlefield, that creature's
+//	 controller sacrifices it."
+//
+// The enchantment enters as a plain enchantment and "then becomes an
+// Enchant Creature Aura as a triggered ability upon entering" (the
+// 2005-08-01 ruling). Unlike Animate Dead's, the trigger targets the
+// card, so it is chosen as the trigger goes on the stack, and a target
+// gone by resolution leaves the trigger to do nothing at all (CR
+// 608.2b): the enchantment stays on the battlefield and is not an Aura.
+//
+// In printed order:
+//
+//  1. CR 603.4: the intervening "if it's on the battlefield".
+//  2. It becomes an Aura: the subtype is a layer-4 effect from a
+//     resolved ability (CR 611.2c, CR 613.1d), pinned to this object for
+//     as long as it is on the battlefield. The enchant clause is ADR
+//     0154's swapped clause (Card.EnchantSwapped), which an Aura that
+//     never becomes attached fails (CR 704.5m).
+//  3. The target returns under the trigger's controller's control, and
+//     steps 5 and 6 of AnimateEnchantedCard follow: the clause names the
+//     new permanent, the enchantment is attached to it, and the delayed
+//     "that creature's controller sacrifices it" is scheduled.
+type BecomeAnAuraAndReanimateTarget struct{}
+
+func (BecomeAnAuraAndReanimateTarget) Apply(ctx *Context) error {
+	g, item := ctx.Game, ctx.Item
+	if item == nil || g.AbilitySourceGoneForEffect(item) {
+		return nil
+	}
+	auraID := item.SourceCardID
+	aura, ok := g.LookupCardForEffect(auraID)
+	if !ok {
+		return nil
+	}
+	targets := ctx.Targets()
+	if len(targets) == 0 || targets[0].Kind != game.TargetCard {
+		return nil
+	}
+	auraRef := game.ObjectRef{ID: auraID, Epoch: aura.ObjectEpoch}
+	name := aura.Name
+	controller := item.Controller
+	if err := (ScopedEffectFor{
+		Target:   auraID,
+		Mods:     []game.Mod{game.AddSubtypesMod("Aura")},
+		Duration: g.PinnedTo(game.IndefiniteDuration(), auraID),
+		Label:    name + " — it becomes an Aura",
+	}).Apply(ctx); err != nil {
+		return err
+	}
+	g.SwapEnchantClauseForEffect(auraID)
+	return g.ReturnFromGraveyardToBattlefieldThenForEffect(targets[0].ID, controller, false,
+		func(g *game.Game, entered uuid.UUID) error {
+			return animateAttachAndSchedule(g, auraRef, name, controller, entered)
+		})
+}

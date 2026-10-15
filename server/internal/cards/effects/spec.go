@@ -413,6 +413,15 @@ type Spec struct {
 	// server/internal/game/cant_be_countered.go.
 	CantBeCountered bool
 
+	// FlashWithCleanupSacrifice is the Visions-era rider "You may cast
+	// this spell as though it had flash. If you cast it any time a
+	// sorcery couldn't have been cast, the controller of the permanent
+	// it becomes sacrifices it at the beginning of the next cleanup
+	// step" (Necromancy, #3156). The engine opens the instant-speed
+	// window for the card and remembers on the spell whether the cast
+	// needed this permission; see game/flash_cleanup_sacrifice.go.
+	FlashWithCleanupSacrifice bool
+
 	// CantBeCounteredIf is the CONDITIONAL "this spell can't be
 	// countered": "If X is 5 or more, this spell can't be countered"
 	// (Banefire), "Hellbent — If you have no cards in hand, this spell
