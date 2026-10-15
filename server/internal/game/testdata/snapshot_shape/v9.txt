@@ -1775,6 +1775,8 @@ lastKnownStack[].item.cantBeCountered[].label	string
 lastKnownStack[].item.cantBeCountered[].source	custom(uuid.UUID)
 lastKnownStack[].item.cantBeCountered[].sourceName	string
 lastKnownStack[].item.castFromZone	string
+lastKnownStack[].item.castValues	map:string
+lastKnownStack[].item.castValues{}	number:int
 lastKnownStack[].item.commutes	bool
 lastKnownStack[].item.controller	custom(uuid.UUID)
 lastKnownStack[].item.distribution	map:array
@@ -2065,6 +2067,8 @@ pausedModeWalk.item.cantBeCountered[].label	string
 pausedModeWalk.item.cantBeCountered[].source	custom(uuid.UUID)
 pausedModeWalk.item.cantBeCountered[].sourceName	string
 pausedModeWalk.item.castFromZone	string
+pausedModeWalk.item.castValues	map:string
+pausedModeWalk.item.castValues{}	number:int
 pausedModeWalk.item.commutes	bool
 pausedModeWalk.item.controller	custom(uuid.UUID)
 pausedModeWalk.item.distribution	map:array
@@ -2309,6 +2313,8 @@ pausedResolutionTail.item.cantBeCountered[].label	string
 pausedResolutionTail.item.cantBeCountered[].source	custom(uuid.UUID)
 pausedResolutionTail.item.cantBeCountered[].sourceName	string
 pausedResolutionTail.item.castFromZone	string
+pausedResolutionTail.item.castValues	map:string
+pausedResolutionTail.item.castValues{}	number:int
 pausedResolutionTail.item.commutes	bool
 pausedResolutionTail.item.controller	custom(uuid.UUID)
 pausedResolutionTail.item.distribution	map:array
@@ -2880,6 +2886,8 @@ pendingTriggers[].cantBeCountered[].label	string
 pendingTriggers[].cantBeCountered[].source	custom(uuid.UUID)
 pendingTriggers[].cantBeCountered[].sourceName	string
 pendingTriggers[].castFromZone	string
+pendingTriggers[].castValues	map:string
+pendingTriggers[].castValues{}	number:int
 pendingTriggers[].commutes	bool
 pendingTriggers[].controller	custom(uuid.UUID)
 pendingTriggers[].distribution	map:array
@@ -6809,6 +6817,8 @@ stackMeta[].cantBeCountered[].label	string
 stackMeta[].cantBeCountered[].source	custom(uuid.UUID)
 stackMeta[].cantBeCountered[].sourceName	string
 stackMeta[].castFromZone	string
+stackMeta[].castValues	map:string
+stackMeta[].castValues{}	number:int
 stackMeta[].commutes	bool
 stackMeta[].controller	custom(uuid.UUID)
 stackMeta[].distribution	map:array

@@ -398,6 +398,14 @@ type StackItem struct {
 	// step. Never set on a copy: a copy is not cast.
 	OwnFlashCast bool
 
+	// CastValues are the numbers the spell fixed AS IT WAS CAST, keyed by
+	// the name its catalog entry gave them (CR 601.2i; #3781,
+	// cast_time_values.go): Lifestream's Blessing's "X is the greatest
+	// power among creatures you controlled as you cast this spell". Read
+	// at resolution through effects.Context.CastValue. Nil for a spell
+	// that records nothing. A copy keeps its original's (CR 707.10).
+	CastValues map[string]int
+
 	// FaceDown is the CR 708.2 state a spell CAST FACE DOWN
 	// (CR 708.4) resolves into — FaceDownMorphed for a morph or a
 	// megamorph, FaceDownDisguised for a disguise, and the zero value

@@ -196,8 +196,9 @@ func TestCloudDeckMeteorFromHandOnlyDamagesCreatures(t *testing.T) {
 
 func TestCloudDeckLifestreamsBlessingDrawsGreatestPowerAndGainsDoubleFromExile(t *testing.T) {
 	spec, ok := Lookup(lifestreamsBlessingOrcl)
-	if !ok || spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Fatalf("Lifestream's Blessing registered %v, %s, %d caveats; want one caveat", ok, spec.Completeness, len(spec.Caveats))
+	if !ok || spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 || len(spec.CastTimeValues) != 1 {
+		t.Fatalf("Lifestream's Blessing registered %v, %s, %d caveats, %d cast-time values; want Full with one cast-time value",
+			ok, spec.Completeness, len(spec.Caveats), len(spec.CastTimeValues))
 	}
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -214,6 +215,76 @@ func TestCloudDeckLifestreamsBlessingDrawsGreatestPowerAndGainsDoubleFromExile(t
 	}
 	if got := me.Life - life; got != 8 {
 		t.Errorf("gained %d, want 8 (twice 4, cast from exile)", got)
+	}
+}
+
+// #3781, CR 601.2i: X is fixed as the spell is cast. What happens to the
+// board while the spell sits on the stack does not change it.
+func TestCloudDeckLifestreamsBlessingXIsFixedAsYouCast(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		respond  func(t *testing.T, g *game.Game, me *game.Player, big uuid.UUID)
+		wantDraw int
+	}{
+		{"the biggest creature dies in response", func(t *testing.T, g *game.Game, _ *game.Player, big uuid.UUID) {
+			g.WithWriteLock(func() {
+				if err := g.DestroyPermanentForEffect(big); err != nil {
+					t.Fatalf("destroy: %v", err)
+				}
+			})
+		}, 4},
+		{"a bigger creature arrives in response", func(t *testing.T, g *game.Game, me *game.Player, _ uuid.UUID) {
+			b12Creature(g, me.ID, "Late", "Creature — Test", 7, 7)
+		}, 4},
+		{"the biggest creature grows in response", func(t *testing.T, g *game.Game, _ *game.Player, big uuid.UUID) {
+			if err := g.AddCounter(big, "+1/+1", 3); err != nil {
+				t.Fatalf("counter: %v", err)
+			}
+		}, 4},
+		{"nothing happens", func(*testing.T, *game.Game, *game.Player, uuid.UUID) {}, 4},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newCatalogGame(t)
+			me := g.Seats[g.Turn.ActiveSeat]
+			big := b12Creature(g, me.ID, "Big", "Creature — Test", 4, 4)
+			b12Creature(g, me.ID, "Small", "Creature — Test", 1, 1)
+			advanceTo(t, g, game.StepPrecombatMain)
+			card := handCardForTest(me, "Lifestream's Blessing", "Instant", lifestreamsBlessingOrcl)
+			hand := me.Hand.Size() - 1 // the cast card leaves the hand
+			me.ManaPool.AddMana(append(cloudDeckMana("C", 4), cloudDeckMana("G", 2)...)...)
+			if err := g.CastSpell(me.ID, card, game.CastSpellParams{Strict: true}); err != nil {
+				t.Fatalf("cast: %v", err)
+			}
+			var recorded int
+			var ok bool
+			g.ReadSnapshot(func() { recorded, ok = g.StackItemForEffect(card).CastValue(lifestreamsBlessingX) })
+			if !ok || recorded != 4 {
+				t.Fatalf("cast-time value = %d, %v; want 4 recorded as the spell was cast", recorded, ok)
+			}
+			tc.respond(t, g, me, big)
+			passPriorityAroundTable(t, g)
+			if got := me.Hand.Size() - hand; got != tc.wantDraw {
+				t.Errorf("drew %d, want %d (the greatest power as it was cast)", got, tc.wantDraw)
+			}
+		})
+	}
+}
+
+// No creature at cast time: X is zero even if one arrives in response.
+func TestCloudDeckLifestreamsBlessingWithNoCreatureDrawsNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceTo(t, g, game.StepPrecombatMain)
+	card := handCardForTest(me, "Lifestream's Blessing", "Instant", lifestreamsBlessingOrcl)
+	hand := me.Hand.Size() - 1
+	me.ManaPool.AddMana(append(cloudDeckMana("C", 4), cloudDeckMana("G", 2)...)...)
+	if err := g.CastSpell(me.ID, card, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	b12Creature(g, me.ID, "Late", "Creature — Test", 5, 5)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size() - hand; got != 0 {
+		t.Errorf("drew %d, want 0 (no creature as it was cast)", got)
 	}
 }
 

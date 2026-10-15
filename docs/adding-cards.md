@@ -21,6 +21,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Random effects (#744)](#random-effects-744)
   - [Adding a mana ability (S15+)](#adding-a-mana-ability-s15)
   - [Adding a static ability (S16+)](#adding-a-static-ability-s16)
+  - ["As you cast this spell" values (ADR 0021 amendment 2026-10-15, #3781)](#as-you-cast-this-spell-values-adr-0021-amendment-2026-10-15-3781)
   - [Granting an ability to another permanent (ADR 0093, #754)](#granting-an-ability-to-another-permanent-adr-0093-754)
   - [Alternative costs for every spell you cast (ADR 0118, #2163)](#alternative-costs-for-every-spell-you-cast-adr-0118-2163)
   - [Abilities any player may activate (ADR 0106, #1793)](#abilities-any-player-may-activate-adr-0106-1793)
@@ -978,6 +979,23 @@ A Room door's grant goes in `Door.GrantedAlternativeCosts`, and `Room` gates it 
 ```go
 Right: Door{GrantedAlternativeCosts: []game.GrantedAlternativeCost{PayLifeForASpellFromHandOnceEachOfYourTurns()}},
 ```
+
+### "As you cast this spell" values (ADR 0021 amendment 2026-10-15, #3781)
+
+"Draw X cards, where X is the greatest power among creatures you controlled as you cast this spell" (Lifestream's Blessing) fixes a number when the spell is cast (CR 601.2i); a creature that dies or grows in response does not change it. Declare it with `Spec.CastTimeValues` and read it back at resolution:
+
+```go
+CastTimeValues: []game.CastTimeValue{{
+    Key:   "greatest_power",
+    Value: func(g *game.Game, item *game.StackItem) int { return b42GreatestPowerControlledBy(g, item.Controller) },
+}},
+OnResolve: func(item *game.StackItem, ctx *Context) error {
+    x, _ := ctx.CastValue("greatest_power")
+    ...
+}
+```
+
+The engine stamps it on `StackItem.CastValues` after every cost is paid and before anyone can respond; it survives undo and snapshots, and a spell copy keeps its original's (CR 707.10). Use it only for text that says "as you cast"; a count the text reads as the spell resolves (Traverse the Outlands) stays in `OnResolve`. `ok` from `ctx.CastValue` is false only for a game restored from before the value existed; fall back to the resolution-time reading there.
 
 ### Granting an ability to another permanent (ADR 0093, #754)
 

@@ -1607,7 +1607,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"EntryRestrictions":      defFieldInert,
 	"ActivationRestrictions": defFieldInert, "ActivationTimings": defFieldInert,
 	"CantBeCountered": defFieldInert, "CantBeCounteredIf": defFieldInert,
-	"FlashWithCleanupSacrifice":  defFieldInert,
+	"FlashWithCleanupSacrifice": defFieldInert, "CastTimeValues": defFieldInert,
 	"SpellDamageCantBePrevented": defFieldInert, "SpellsCantBeCountered": defFieldInert,
 	"HandSize": defFieldInert, "ManaPool": defFieldInert,
 	"DamageStaysThroughCleanup": defFieldInert, "AnyColorSpend": defFieldInert, "LoyaltyTwiceEachTurn": defFieldInert,

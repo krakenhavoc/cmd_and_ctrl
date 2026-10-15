@@ -206,6 +206,7 @@ func buildDef(spec Spec) *game.CardDef {
 		DrawStep:                            spec.DrawStep,
 		CantBeCountered:                     spec.CantBeCountered,
 		FlashWithCleanupSacrifice:           spec.FlashWithCleanupSacrifice,
+		CastTimeValues:                      spec.CastTimeValues,
 		CantBeCounteredIf:                   spec.CantBeCounteredIf,
 		SpellDamageCantBePrevented:          spec.SpellDamageCantBePrevented,
 		SpellsCantBeCountered:               spec.SpellsCantBeCountered,

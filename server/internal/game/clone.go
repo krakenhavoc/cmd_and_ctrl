@@ -817,6 +817,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		AltCost:          s.AltCost,
 		Foretold:         s.Foretold,
 		OwnFlashCast:     s.OwnFlashCast,
+		CastValues:       copyStringIntMap(s.CastValues),
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		CastFromZone:     s.CastFromZone,
