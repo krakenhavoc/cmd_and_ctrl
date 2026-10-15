@@ -776,6 +776,9 @@ func (g *Game) clearExpiredDelayedTriggersLocked(endOfTurn bool) {
 //
 // Caller must hold g.mu.
 func (g *Game) sweepUnreachableBoundTriggersLocked() {
+	// ADR 0188 Decision 3a: a skipped step bound to a turn that can no
+	// longer happen goes with it (CR 614.10a).
+	g.sweepSkippedStepsLocked()
 	if len(g.DelayedTriggers) == 0 {
 		return
 	}

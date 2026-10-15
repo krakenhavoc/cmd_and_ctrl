@@ -7969,8 +7969,35 @@ the turn in progress is never cut short, two skips skip two turns (CR
 614.10a), and a skip plus a queued extra turn of the same player skips the
 extra turn (the Magosi ruling). A card that says "skip" in its own
 sentence ("Put a counter. Skip your next turn.") writes the skip whether or
-not the rest of the effect happened. A skipped step of a named turn (Savor
-the Moment) has no shape yet (ADR 0188 slice 5). Declare that as a caveat.
+not the rest of the effect happened.
+
+Two things can be tied to ONE extra turn, both as fields on `TakeExtraTurn`
+(ADR 0188 Decision 3, #3563):
+
+```go
+TakeExtraTurn{SkipSteps: []game.Step{game.StepUntap}}.Apply(ctx)   // Savor the Moment: "Skip the untap step of that turn."
+TakeExtraTurn{DuringThatTurn: []game.Mod{{Kind: game.ModDamageCantBePrevented}}}.Apply(ctx)
+                                                                    // Alchemist's Gambit: "During that turn, damage can't be prevented."
+```
+
+`SkipSteps` writes a `skipExtraTurnStep` record bound to the queued turn's
+`Ref`. It is spent by the first matching step entry of that turn, before
+the CR 614 window opens, so nothing in the step happens (no phasing, no
+day/night check, no untap) and Stasis is never asked. A beginning phase
+added to that turn later (Sphinx of the Second Sun) has an untap step
+that does happen, and a record whose turn is skipped goes with it
+(CR 614.10a). Summoning sickness is not part of the untap step, so it
+still clears.
+
+`DuringThatTurn` is for rules effects (a `ScopeGame` mod; one that
+modifies objects would fix its set when it begins, CR 611.2c). The
+effect is queued on the `ExtraTurn` itself (`ExtraTurn.Effects`) and
+registered as that turn begins, lasting until its cleanup step, so it
+covers none of the turn that cast the spell, and a turn that is skipped
+takes it along. For a bracketed clause that cleave removes, branch on
+`ctx.PaidAltCost("cleave")` and leave the loss out: `TakeExtraTurnThenLose`
+takes the turn to give (`Turn: TakeExtraTurn{DuringThatTurn: …}`) for the
+uncleaved cast.
 
 ### Extra combats, phases and steps (#753, ADR 0059 sub-PR 2b)
 

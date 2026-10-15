@@ -314,6 +314,24 @@ var carriedFixture = map[string]any{
 			Label:      "drift-Game.ScopedEffects",
 		}}
 	},
+	// ADR 0188 Decision 3b: a queued extra turn carries the rules effects
+	// that start with it. A generated scope and mod kind would be refused
+	// at restore (ErrUnknownEffectKey), so the queue is built with real
+	// ones; the plain fields (ref, seat, source) keep distinctive values.
+	"Game.ExtraTurns": func(g *Game) any {
+		return []ExtraTurn{{
+			Ref: 4141, Seat: 1, Source: uuid.NewSHA1(uuid.Nil, []byte("Game.ExtraTurns")),
+			Effects: []ScopedEffect{{
+				Scope:      ScopeGame,
+				Mods:       []Mod{{Kind: ModDamageCantBePrevented}},
+				Source:     ObjectRef{ID: uuid.NewSHA1(uuid.Nil, []byte("Game.ExtraTurns/effect")), Epoch: 3},
+				SourceName: "drift-Game.ExtraTurns",
+				Timestamp:  4242,
+				Duration:   Duration{Kind: Indefinite},
+				Label:      "drift-Game.ExtraTurns",
+			}},
+		}}
+	},
 	// ADR 0041 P9 (#1497): the record is keyed by its card's instance
 	// ID and restore re-keys it by the restored card, so a generated map
 	// (key and card ID independent) could never come back under its key;

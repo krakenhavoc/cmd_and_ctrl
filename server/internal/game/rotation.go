@@ -193,7 +193,7 @@ func (g *Game) beginNextTurnLocked() {
 			ExtraRef:       et.Ref,
 			OrderSeat:      g.Turn.OrderSeat,
 		}
-		g.startTurnLocked()
+		g.startTurnLocked(et.Effects)
 		return
 	}
 	from := g.Turn
@@ -246,7 +246,7 @@ func (g *Game) beginNextTurnLocked() {
 	// begun for duration purposes.
 	next.Seq = g.Turn.Seq + 1
 	g.Turn = next
-	g.startTurnLocked()
+	g.startTurnLocked(nil)
 }
 
 // startTurnLocked is the tail both kinds of turn share once the cursor
@@ -254,10 +254,13 @@ func (g *Game) beginNextTurnLocked() {
 // cleanup-discard pause is dropped, the turn plan is refilled from the
 // template, the seat's turn is counted, delayed
 // triggers bound to an extra turn that can no longer happen are swept,
-// and the per-turn resets run.
+// and the per-turn resets run. `extraEffects` are the rules effects
+// queued with an extra turn (ExtraTurn.Effects, ADR 0188 Decision 3b):
+// they start with the turn, last until its end, and are registered after
+// the per-turn resets so no turn-began sweep can remove them.
 //
 // Caller must hold g.mu.
-func (g *Game) startTurnLocked() {
+func (g *Game) startTurnLocked(extraEffects []ScopedEffect) {
 	g.DiscardPending = nil
 	// ADR 0059 Decision 3: a new turn plans the template again, which
 	// also drops any added phase the old turn never reached.
@@ -269,6 +272,7 @@ func (g *Game) startTurnLocked() {
 	// anything. Only a turn that really begins gets here (CR 723.1b).
 	g.beginTurnControlsLocked()
 	g.onTurnBeganLocked()
+	g.registerExtraTurnEffectsLocked(extraEffects)
 }
 
 // noteTurnBegunLocked bumps `Player.TurnsBegun` for the seat whose
