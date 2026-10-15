@@ -7,6 +7,7 @@ import {
   PILE_CARD_MAX_W,
   PILE_CARD_MIN_W,
   PILE_CHROME_H,
+  PILE_INSET,
   PILE_MARGIN,
   PILE_PEEK_OFFSET,
   PILE_SHRUNK_W,
@@ -17,7 +18,10 @@ import {
   pileCardWidth,
   pileDepth,
   pileFallsBack,
+  pileLeft,
   pileTop,
+  tableSeams,
+  type SeatSlot,
 } from "./stackPile";
 
 describe("the pile's depth", () => {
@@ -153,10 +157,120 @@ describe("geometry from rects", () => {
     expect(fixtureTopFrom(board, [{ left: 115, top: 600, width: 0, height: 0 }], 300)).toBe(null);
   });
 
+  it("ignores a fixture left of a pile docked in the middle (#3380)", () => {
+    const coach = { left: 115, top: 600, width: 300, height: 200 };
+    // The coach card ends 315px into the board; a pile from 810 to 1110 clears it.
+    expect(fixtureTopFrom(board, [coach], 1110, 810)).toBe(null);
+    expect(fixtureTopFrom(board, [coach], 1110, 315)).toBe(null);
+    expect(fixtureTopFrom(board, [coach], 1110, 300)).toBe(550);
+  });
+
   it("sums the strip's blocks rather than reading its last bottom", () => {
     expect(columnBottom(10, [], 6)).toBeNull();
     expect(columnBottom(10, [0, 0], 6)).toBeNull();
     expect(columnBottom(10, [40], 6)).toBe(50);
     expect(columnBottom(10, [40, 0, 30], 6)).toBe(86);
+  });
+});
+
+// #3380, the ADR 0176 amendment (option a): with nothing saved, the pile
+// docks on the seam between the top row's seats instead of over a corner
+// seat. The slots below are Board.svelte's grids at a 1920×1000 board:
+// 6px padding, 8px gaps, the quadrant's 0.7fr / 1.3fr rows.
+describe("the pile's default spot", () => {
+  const W = 1920;
+  const H = 1000;
+  const PAD = 6;
+  const GAP = 8;
+  const innerW = W - 2 * PAD;
+  const innerH = H - 2 * PAD - GAP;
+
+  type Row = { cols: number; spans?: number[]; self?: number };
+  /** The slots of a grid whose rows are `rows`, `shares` of the height each. */
+  function grid(rows: Row[], shares: number[]): SeatSlot[] {
+    const out: SeatSlot[] = [];
+    let top = PAD;
+    const total = shares.reduce((a, b) => a + b, 0);
+    rows.forEach((row, ri) => {
+      const h = (innerH * shares[ri]) / total;
+      const colW = (innerW - GAP * (row.cols - 1)) / row.cols;
+      let col = 0;
+      (row.spans ?? Array<number>(row.cols).fill(1)).forEach((span, i) => {
+        out.push({
+          left: PAD + col * (colW + GAP),
+          top,
+          width: colW * span + GAP * (span - 1),
+          height: h,
+          self: row.self === i,
+        });
+        col += span;
+      });
+      top += h + GAP;
+    });
+    return out;
+  }
+  const QUADRANT = [0.7, 1.3];
+  const EVEN = [1, 1];
+  const PILE_W = 300;
+
+  const spot = (slots: SeatSlot[]) => {
+    const seams = tableSeams(W, slots);
+    return { ...seams, left: pileLeft({ boardW: W, pileW: PILE_W, seamX: seams.seamX }) };
+  };
+
+  it("keeps the left edge on a two-seat table, centred on the row seam", () => {
+    // "across" over "self", one column: no seam between seats in a row.
+    const s = spot(grid([{ cols: 1 }, { cols: 1, self: 0 }], EVEN));
+    expect(s.seamX).toBeNull();
+    expect(s.left).toBeNull();
+    expect(s.seamY).toBeCloseTo(PAD + innerH / 2 + GAP / 2);
+  });
+
+  it("docks in the middle on a three-seat table", () => {
+    // "next across" over "self self".
+    const s = spot(grid([{ cols: 2 }, { cols: 2, spans: [2], self: 0 }], QUADRANT));
+    expect(s.seamX).toBe(W / 2);
+    expect(s.left).toBe(W / 2 - PILE_W / 2);
+    expect(s.seamY).toBeCloseTo(PAD + innerH * 0.35 + GAP / 2);
+  });
+
+  it("docks where the four seats meet on a four-seat quadrant table", () => {
+    // "across across_next" over "next self".
+    const s = spot(grid([{ cols: 2 }, { cols: 2, self: 1 }], QUADRANT));
+    expect(s.seamX).toBe(W / 2);
+    expect(s.left).toBe(810);
+    expect(s.seamY).toBeCloseTo(PAD + innerH * 0.35 + GAP / 2);
+  });
+
+  it("takes the left of the two seams on a four-seat row table", () => {
+    // "next across across_next" over the full-width self.
+    const s = spot(grid([{ cols: 3 }, { cols: 3, spans: [3], self: 0 }], QUADRANT));
+    const colW = (innerW - 2 * GAP) / 3;
+    expect(s.seamX).toBeCloseTo(PAD + colW + GAP / 2);
+    expect(s.left).toBe(Math.round(PAD + colW + GAP / 2 - PILE_W / 2));
+  });
+
+  it("docks in the middle of a spectator's 2×2 grid, which has no row seam", () => {
+    const slots = grid([{ cols: 2 }, { cols: 2 }], EVEN);
+    const s = spot(slots);
+    expect(s.seamY).toBeNull();
+    expect(s.seamX).toBe(W / 2);
+    // Three seats leave the fourth cell empty; the top row still has two.
+    expect(spot(slots.slice(0, 3)).seamX).toBe(W / 2);
+  });
+
+  it("stays 12px inside a board too narrow to centre it", () => {
+    expect(pileLeft({ boardW: 400, pileW: 300, seamX: 200 })).toBe(50);
+    expect(pileLeft({ boardW: 400, pileW: 300, seamX: 60 })).toBe(PILE_INSET);
+    expect(pileLeft({ boardW: 400, pileW: 300, seamX: 380 })).toBe(400 - 300 - PILE_INSET);
+    expect(pileLeft({ boardW: 300, pileW: 400, seamX: 150 })).toBe(PILE_INSET);
+  });
+
+  it("is the CSS fallback until the board and the pile are measured", () => {
+    expect(pileLeft({ boardW: 0, pileW: 300, seamX: 960 })).toBeNull();
+    expect(pileLeft({ boardW: W, pileW: 0, seamX: 960 })).toBeNull();
+    // jsdom's unlaid-out slots have no size and no seam.
+    const flat = [0, 1, 2].map(() => ({ left: 0, top: 0, width: 0, height: 0, self: false }));
+    expect(tableSeams(W, flat).seamX).toBeNull();
   });
 });

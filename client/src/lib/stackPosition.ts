@@ -63,6 +63,32 @@ export function stackFractions(
   return { x: px.left / board.width, y: px.top / board.height };
 }
 
+/** Where a stack panel is drawn, in board pixels; a null side is the CSS fallback. */
+export interface LaneSpot {
+  left: number | null;
+  top: number | null;
+  /** True when the spot is the seat's saved one. */
+  placed: boolean;
+}
+
+/**
+ * The saved spot wins over the style's own anchor (#3380 changes only
+ * the anchor): with a spot saved and the board and panel measured, the
+ * panel is at that spot, clamped on the board; otherwise it is at
+ * `anchor`, the default placement for its style.
+ */
+export function laneSpot(
+  saved: StackPositionView | null,
+  board: Size,
+  panel: Size,
+  anchor: { left: number | null; top: number | null },
+): LaneSpot {
+  if (saved && board.width > 0 && board.height > 0 && panel.width > 0) {
+    return { ...stackPixels(saved, board, panel), placed: true };
+  }
+  return { left: anchor.left, top: anchor.top, placed: false };
+}
+
 /** Whether two spots are the same to the pixel on a board this size. */
 export function sameStackPosition(
   a: StackPositionView | null,

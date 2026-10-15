@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { GameView } from "./protocol";
 import {
+  laneSpot,
   sameStackPosition,
   savedStackPosition,
   stackFractions,
@@ -74,6 +75,40 @@ describe("stackFractions", () => {
 
   it("is the origin on a board with no size", () => {
     expect(stackFractions(10, 10, { width: 0, height: 0 }, panel)).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe("laneSpot", () => {
+  // #3380: the pile's default on a four-seat table, docked on the seam.
+  const anchor = { left: 350, top: 180 };
+
+  it("a saved spot wins over the default", () => {
+    expect(laneSpot({ x: 0.1, y: 0.1 }, board, panel, anchor)).toEqual({
+      left: 100,
+      top: 60,
+      placed: true,
+    });
+    // Clamped on the board like any saved spot.
+    expect(laneSpot({ x: 0.9, y: 0.9 }, board, panel, anchor)).toEqual({
+      left: 700,
+      top: 400,
+      placed: true,
+    });
+  });
+
+  it("is the default with nothing saved", () => {
+    expect(laneSpot(null, board, panel, anchor)).toEqual({ ...anchor, placed: false });
+    expect(laneSpot(null, board, panel, { left: null, top: null })).toEqual({
+      left: null,
+      top: null,
+      placed: false,
+    });
+  });
+
+  it("waits for a measured board and panel before drawing a saved spot", () => {
+    const saved = { x: 0.1, y: 0.1 };
+    expect(laneSpot(saved, { width: 0, height: 0 }, panel, anchor).placed).toBe(false);
+    expect(laneSpot(saved, board, { width: 0, height: 0 }, anchor).placed).toBe(false);
   });
 });
 

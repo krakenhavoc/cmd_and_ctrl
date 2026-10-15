@@ -1,8 +1,10 @@
 // stackPile — where the pile sits and how big it is (ADR 0119 §1).
 //
 // The pile is the default stack style: the stack as a pile of large,
-// readable cards on the LEFT of the table, so the hover zoom (pinned
-// top-right) is never covered by it. StackLaneHost measures the board
+// readable cards. On a two-seat table it sits on the LEFT, so the hover
+// zoom (pinned top-right) is never covered by it; with two or more seats
+// in the top row it docks in the middle of the table, on the seam
+// between them (#3380, the ADR 0176 amendment). StackLaneHost measures the board
 // and hands the numbers here; everything that is a decision — the
 // card's width, how many lower items peek out, where the pile's top
 // edge goes, and when the board is too small for it and the compact
@@ -140,6 +142,81 @@ export function pileTop(i: PileTopInput): number {
   return Math.max(minTop, Math.min(centred, maxBottom - i.pileH));
 }
 
+export interface PileLeftInput {
+  boardW: number;
+  /** The pile's measured width. */
+  pileW: number;
+  /** tableSeams().seamX: the seam between two top-row seats, or null. */
+  seamX: number | null;
+}
+
+/**
+ * #3380, ADR 0176 amendment (option a, the fixed gutter): the pile's left
+ * edge, centred on the seam between the top row's seats so it docks in
+ * the middle of the table instead of over a corner seat, and kept 12px
+ * inside the board. Null when the top row has one seat (a two-seat
+ * table): the pile keeps ADR 0119's spot, 12px from the left edge.
+ */
+export function pileLeft({ boardW, pileW, seamX }: PileLeftInput): number | null {
+  if (seamX === null || boardW <= 0 || pileW <= 0) return null;
+  const max = Math.max(PILE_INSET, boardW - pileW - PILE_INSET);
+  return Math.round(Math.min(Math.max(seamX - pileW / 2, PILE_INSET), max));
+}
+
+/** The grid's gap between seats (Board.svelte's `.board { gap }`). */
+export const SEAT_GAP = 8;
+
+/** One seat's slot on the board, in board pixels. */
+export interface SeatSlot {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  /** The viewer's own slot (`data-pos="self"`). */
+  self: boolean;
+}
+
+export interface TableSeams {
+  /** The seam between the opponents' row and the viewer's, or null. */
+  seamY: number | null;
+  /**
+   * The seam between two seats side by side in the top row, the one
+   * nearest the board's centre (the left one on a tie), or null when the
+   * top row has a single seat.
+   */
+  seamX: number | null;
+}
+
+/**
+ * Where the table's seams are, from its seat slots. Every seated layout
+ * puts the viewer in the bottom row and every opponent above, so the row
+ * seam is half a gap above the viewer's slot; a spectator's uniform grid
+ * has no viewer and no row seam. The column seam is read off the top row
+ * (the seats whose top is the highest), which is the opponents' row when
+ * seated and the first row of a spectator's grid.
+ */
+export function tableSeams(boardW: number, slots: readonly SeatSlot[]): TableSeams {
+  const self = slots.find((s) => s.self);
+  const others = slots.filter((s) => !s.self);
+  const seamY = self && others.length > 0 ? self.top - SEAT_GAP / 2 : null;
+
+  // An unlaid-out slot (no width) has no seam beside it.
+  const drawn = others.filter((s) => s.width > 0 && s.height > 0);
+  let seamX: number | null = null;
+  if (drawn.length > 1) {
+    const rowTop = Math.min(...drawn.map((s) => s.top));
+    const row = drawn.filter((s) => Math.abs(s.top - rowTop) < 1).sort((a, b) => a.left - b.left);
+    const centre = boardW / 2;
+    for (let i = 1; i < row.length; i++) {
+      const x = (row[i - 1].left + row[i - 1].width + row[i].left) / 2;
+      // Half a pixel of slack, so a symmetric row's rounding cannot pick
+      // the right-hand seam over the left.
+      if (seamX === null || Math.abs(x - centre) < Math.abs(seamX - centre) - 0.5) seamX = x;
+    }
+  }
+  return { seamY, seamX };
+}
+
 export interface PileFallbackInput {
   /** The viewport is at ADR 0111 §8's phone break (max-width: 599px). */
   phone: boolean;
@@ -173,17 +250,19 @@ interface Rect {
 /**
  * The top of the highest fixture that covers the pile's column, in
  * board pixels, or null. A fixture counts when it overlaps the board
- * vertically and starts left of the pile's right edge.
+ * vertically and overlaps the pile's column, from `pileLeft` (the
+ * board's left edge unless given) to `pileRight`.
  */
 export function fixtureTopFrom(
   board: Rect,
   fixtures: readonly Rect[],
   pileRight: number,
+  pileLeft = 0,
 ): number | null {
   let top: number | null = null;
   for (const r of fixtures) {
     if (r.width <= 0 || r.height <= 0) continue;
-    if (r.left - board.left > pileRight || r.left + r.width <= board.left) continue;
+    if (r.left - board.left > pileRight || r.left + r.width - board.left <= pileLeft) continue;
     if (r.top >= board.top + board.height || r.top + r.height <= board.top) continue;
     const t = r.top - board.top;
     top = top === null ? t : Math.min(top, t);
@@ -233,9 +312,28 @@ export function stripContentBottom(board: HTMLElement): number | null {
 }
 
 /** fixtureTopFrom over every marked fixture in the document. */
-export function bottomLeftFixtureTop(board: HTMLElement, pileRight: number): number | null {
+export function bottomLeftFixtureTop(
+  board: HTMLElement,
+  pileRight: number,
+  pileLeft = 0,
+): number | null {
   const rects = Array.from(
     board.ownerDocument.querySelectorAll<HTMLElement>(`[${BOTTOM_LEFT_FIXTURE_ATTR}]`),
   ).map((el) => el.getBoundingClientRect());
-  return fixtureTopFrom(board.getBoundingClientRect(), rects, pileRight);
+  return fixtureTopFrom(board.getBoundingClientRect(), rects, pileRight, pileLeft);
+}
+
+/** The seat slots directly under the board, in board pixels. */
+export function seatSlots(board: HTMLElement): SeatSlot[] {
+  const b = board.getBoundingClientRect();
+  return Array.from(board.querySelectorAll<HTMLElement>(":scope > .slot")).map((el) => {
+    const r = el.getBoundingClientRect();
+    return {
+      left: r.left - b.left,
+      top: r.top - b.top,
+      width: r.width,
+      height: r.height,
+      self: el.dataset.pos === "self",
+    };
+  });
 }
