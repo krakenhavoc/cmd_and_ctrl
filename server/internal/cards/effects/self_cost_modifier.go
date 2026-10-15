@@ -472,6 +472,28 @@ func CostsLessPerSacrificed(per string, label string) game.CostModifier {
 	}, label)
 }
 
+// CostsLessPerExiledFromHand is "This spell costs {per} less to cast for
+// each card exiled this way" — the Marches' "{2} less" (#3175). It reads
+// game.CostQuery.ExilingFromHand, the count the announcement names to the
+// card's ExileAnyNumberFromHandCost: CR 601.2b announces it before 601.2f
+// totals the cost, so the discount is part of the price CastSpell
+// charges, the auto-tap preview shows and the enumerator offers. A
+// reduction spends generic mana only, the {X} announced included
+// (#2701), and stops at zero, so March of Swirling Mist always costs at
+// least its {U}. `per` must be generic mana; anything else panics at init.
+func CostsLessPerExiledFromHand(per string, label string) game.CostModifier {
+	unit, err := game.ParseCost(per)
+	if err != nil || unit.XSlots > 0 || len(unit.Required) > 0 || unit.Generic < 1 {
+		panic(fmt.Sprintf("effects.CostsLessPerExiledFromHand: %q is not a fixed generic amount (%v)", per, err))
+	}
+	return CostsLessEach(func(q game.CostQuery) int {
+		if q.ExilingFromHand < 1 {
+			return 0
+		}
+		return unit.Generic * q.ExilingFromHand
+	}, label)
+}
+
 // CardTypesAmongCardsInYourGraveyard counts the distinct card types
 // among the cards in the caster's graveyard, never counting the card
 // being cast — Emrakul, the Promised End's "{1} less to cast for each

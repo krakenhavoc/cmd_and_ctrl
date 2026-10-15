@@ -1275,6 +1275,16 @@ type AdditionalCostView struct {
 	// a hexproof creature you control is on it (CR 601.2h).
 	ExilePermanentLabel   string            `json:"exile_permanent_label,omitempty"`
 	ExilePermanentOptions *LegalTargetsView `json:"exile_permanent_options,omitempty"`
+	// ExileFromHandLabel / ExileFromHandOptions describe a "you may exile
+	// any number of blue cards from your hand" additional cost (#3175,
+	// March of Swirling Mist): the clause as printed and the caster's hand
+	// cards that could pay it (game.HandExileOptionsForEffect), min 0 and
+	// max every option — none is always a legal payment, so the cost never
+	// makes the spell uncastable. The picks ride back on cast_spell as
+	// `exile_from_hand_ids`, and their number is what the card's per-card
+	// discount reads.
+	ExileFromHandLabel   string            `json:"exile_from_hand_label,omitempty"`
+	ExileFromHandOptions *LegalTargetsView `json:"exile_from_hand_options,omitempty"`
 	// DemandsX marks a "pay X life" clause (Toxic Deluge). The
 	// client must open its X prompt for this card even though the
 	// printed mana cost has no {X} in it, and the announced X is
@@ -5902,10 +5912,24 @@ func publicAlternativeCosts(offers []AlternativeCostView) []AlternativeCostView 
 func handPublicCastSurface(s CastSurfaceView) CastSurfaceView {
 	return CastSurfaceView{
 		TargetMode:     s.TargetMode,
-		AdditionalCost: s.AdditionalCost,
+		AdditionalCost: handPublicAdditionalCost(s.AdditionalCost),
 		OptionalCosts:  s.OptionalCosts,
 		CantCast:       s.CantCast,
 	}
+}
+
+// handPublicAdditionalCost is the additional cost a viewer shown the card
+// may read: the printed clause, without the one picker that reads the
+// owner's HAND rather than the battlefield — a hand-exile cost's options
+// (#3175) would tell the viewer which of the owner's hidden cards are
+// blue. A copy, so the owner's own stamp keeps its list.
+func handPublicAdditionalCost(ac *AdditionalCostView) *AdditionalCostView {
+	if ac == nil || ac.ExileFromHandOptions == nil {
+		return ac
+	}
+	out := *ac
+	out.ExileFromHandOptions = nil
+	return &out
 }
 
 // stampsFor files one seat's answer on the card for FilterViewFor to
@@ -7115,7 +7139,9 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			// cascade's {0}, airbend's {2} — never reaches this
 			// function; `exile_play.x_locked_at_zero` is where the
 			// same predicate answers for those.
-			XLockedAtZero: game.CastCost{Printed: offerPrinted, Paid: ac.ManaCost}.LocksXAtZero(),
+			// #3175: an offer whose card half includes X (Shining
+			// Shoal's "a white card with mana value X") leaves X open.
+			XLockedAtZero: game.CastCost{Printed: offerPrinted, Paid: ac.ManaCost, AltIncludesX: ac.PaymentDefinesX()}.LocksXAtZero(),
 			// #916: the offer replaces the mana cost, so it replaces
 			// the "or 2 life" count the client's stepper is bounded
 			// by.
@@ -7138,8 +7164,17 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 		// the hexproof / shroud gate must not narrow what the client
 		// offers.
 		if paySpec := ac.ExileFromHand; paySpec != nil {
-			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
+			cands := g.SpecCandidatesForEffect(caster, paySpec)
+			opts := viewOfLegalTargets(cands, paySpec)
 			opts.Players = nil
+			// CR 601.2a: the spell is on the stack before the cost is
+			// paid, so it never pitches itself (a white Shining Shoal is
+			// a white card in hand until then).
+			opts.Cards = withoutID(opts.Cards, self)
+			// #3175: "a white card with mana value X" (Shining Shoal)
+			// ships mana_value_equals_x and each card's mana value, so
+			// the picked card's value is the X the client announces.
+			stampTargetSetRule(g, opts, cands.Cards, paySpec)
 			v.PayOptions = opts
 		} else if paySpec := ac.DiscardFromHand; paySpec != nil {
 			// Retrace's discard (#2528): the caster's own hand, so the
@@ -7242,6 +7277,13 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		if out.ExilePermanentOptions == nil {
 			out.ExilePermanentOptions = &LegalTargetsView{Min: ec.Count, Max: ec.Count}
 		}
+	}
+	if he := ac.ExileFromHand; he != nil {
+		// #3175: the engine's own walk, so the picker offers exactly the
+		// cards the validator accepts (#544). Any number, none included.
+		opts := g.HandExileOptionsForEffect(caster, castID, he)
+		out.ExileFromHandLabel = he.Label
+		out.ExileFromHandOptions = &LegalTargetsView{Min: 0, Max: len(opts), Cards: cardIDStrings(opts)}
 	}
 	if ac.BlightX {
 		// #2174: the same creature walk, and the ceiling the validator

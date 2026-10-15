@@ -330,6 +330,7 @@ func TestCastCostLocksXAtZero(t *testing.T) {
 		{"printed cost with X, alternative cost without X", CastCost{Printed: "{X}{G}", Paid: "{R}"}, true},
 		{"printed cost with X, alternative cost with X", CastCost{Printed: "{X}{G}", Paid: "{X}{R}"}, false},
 		{"printed cost with X, alternative cost of nothing", CastCost{Printed: "{X}{G}", Paid: ""}, true},
+		{"printed cost with X, free alternative cost whose card half includes X (#3175)", CastCost{Printed: "{X}{W}{W}", Paid: "", AltIncludesX: true}, false},
 		{"{X}{X}, free cast", CastCost{Printed: "{X}{X}", Paid: "{0}"}, true},
 		{"no X in the printed cost, free cast", CastCost{Printed: "{2}{B}", Paid: "{0}"}, false},
 		{"no mana cost at all, free cast", CastCost{Printed: "", Paid: "{0}"}, false},

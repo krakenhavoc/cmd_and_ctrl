@@ -277,6 +277,27 @@ func ExileCreatureYouControlCost() *game.AdditionalCost {
 	return ExilePermanentCost("a creature you control", "creature")
 }
 
+// ExileAnyNumberFromHandCost is "As an additional cost to cast this
+// spell, you may exile any number of <colour> cards from your hand" — the
+// Marches (March of Swirling Mist's blue cards, #3175). `label` is the
+// cards as printed ("blue cards") and `color` the one-letter colour they
+// must have, read off the card in hand. Any number may be named on
+// cast_spell's exile_from_hand_ids, none included; they are exiled with
+// the spell on the stack. Pair it with CostsLessPerExiledFromHand for the
+// clause's "costs {2} less for each card exiled this way".
+func ExileAnyNumberFromHandCost(label, color string) *game.AdditionalCost {
+	if color == "" {
+		panic(fmt.Sprintf("effects.ExileAnyNumberFromHandCost: %q names no colour", label))
+	}
+	return &game.AdditionalCost{
+		ExileFromHand: &game.HandExileCost{
+			Label: "any number of " + label + " from your hand",
+			Match: func(c game.Card) bool { return c.HasColor(color) },
+		},
+		Label: "Exile any number of " + label + " from your hand",
+	}
+}
+
 // checkEitherCost is Register's guard for an either/or cost (ADR 0100
 // §2). Each refused shape compiles and then pays something the card
 // does not print:
@@ -295,6 +316,9 @@ func ExileCreatureYouControlCost() *game.AdditionalCost {
 // a fixed PayLife in an optional cost and a mandatory mana cost.
 func checkEitherCost(spec Spec) {
 	for _, oc := range spec.OptionalCosts {
+		if oc.ExileFromHand != nil {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q exiles cards from hand — only the mandatory slot may (#3175); the count is the caster's choice, zero included", spec.Name, oc.Key))
+		}
 		if !oc.ExilePermanents.Empty() {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q exiles a permanent — only the mandatory slot may (#3402)", spec.Name, oc.Key))
 		}
@@ -348,6 +372,8 @@ func checkEitherCost(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares two either/or branches keyed %q", spec.Name, b.Key))
 		case !b.ExilePermanents.Empty():
 			panic(fmt.Sprintf("effects.Register: %q %s exiles a permanent — only the mandatory slot may, not a branch (#3402)", spec.Name, where))
+		case b.ExileFromHand != nil:
+			panic(fmt.Sprintf("effects.Register: %q %s exiles cards from hand — only the mandatory slot may, not a branch (#3175)", spec.Name, where))
 		case b.Teamwork != 0 || b.ChoosesOpponent || b.PayLifeX || b.BlightX || b.Targets != nil:
 			panic(fmt.Sprintf("effects.Register: %q %s carries a component a branch has no shape for (teamwork, gift, pay X life, a target rewrite)", spec.Name, where))
 		case b.Reveal != nil && (b.Reveal.Subtype == "" || b.Reveal.Color != ""):

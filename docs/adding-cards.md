@@ -3987,6 +3987,40 @@ on the battlefield (Soul Exchange's "if the exiled creature was a Thrull"),
 or `ctx.Exiled()` for the bare IDs. Mandatory slot only; Register refuses
 it in an optional cost, an either/or branch and the craft forms.
 
+**Exile any number of cards from your hand for a discount (#3175):** the
+Marches' "As an additional cost to cast this spell, you may exile any
+number of blue cards from your hand. This spell costs {2} less to cast for
+each card exiled this way" is
+
+```go
+AdditionalCost: ExileAnyNumberFromHandCost("blue cards", "U"),
+SelfCostModifiers: []game.CostModifier{
+    CostsLessPerExiledFromHand("{2}", "This spell costs {2} less to cast for each card exiled this way"),
+},                                                             // March of Swirling Mist
+```
+
+None is a legal payment, so "you may" needs no optional cost. The caster
+names the cards on `exile_from_hand_ids`; they are exiled with the spell on
+the stack, and their count is `CostQuery.ExilingFromHand`, which the
+discount reads (the announced {X} is generic a reduction may eat).
+Mandatory slot only; Register refuses it in an optional cost or an
+either/or branch.
+
+**A pitch whose card is X (#3175):** Shining Shoal's "You may exile a
+white card with mana value X from your hand rather than pay this spell's
+mana cost" is the Force of Will `Pitch` with the spec bound to X:
+
+```go
+Pitch("Exile a white card with mana value X from your hand", 0,
+    CardInYourHand("a white card with mana value X from your hand", OfColor("W")).WithManaValueEqualsX(),
+    "a white card with mana value X"),
+```
+
+The offer then leaves X open (CR 107.3b does not lock it), the caster
+announces X and the pitched card must have exactly that mana value; the
+spell reads it with `ctx.X()`. Register allows the bound only on a one-card
+hand pitch of a card that declares `XMatters`.
+
 **Blight X (#2174):** "As an additional cost to cast this spell, blight X.
 X can't be greater than the greatest toughness among creatures you
 control" is `AdditionalCost: BlightXCost()` (Soul Immolation). X rides the

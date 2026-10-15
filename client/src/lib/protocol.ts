@@ -2599,6 +2599,14 @@ export interface AdditionalCostView {
   // cannot be paid right now.
   exile_permanent_label?: string;
   exile_permanent_options?: LegalTargetsView;
+  // #3175: a "you may exile any number of blue cards from your hand"
+  // additional cost (March of Swirling Mist). `exile_from_hand_options`
+  // lists the caster's hand cards that could pay it, min 0: none is always
+  // legal. The picks ride cast_spell as `exile_from_hand_ids`, and their
+  // number is the card's per-card discount. The options reach the card's
+  // owner alone.
+  exile_from_hand_label?: string;
+  exile_from_hand_options?: LegalTargetsView;
   payable?: boolean;
 }
 
