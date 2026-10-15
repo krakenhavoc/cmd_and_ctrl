@@ -84,6 +84,7 @@
   import TokenGroupModal from "./TokenGroupModal.svelte";
   import { groupMembersOf } from "../../tokenGroups";
   import { L } from "../../labels";
+  import { allocateRowHeights, type RowReport } from "../../rowFit";
   import { canOverride, type MenuAction } from "../../contextMenu.logic";
   import {
     NO_COMBAT_RINGS,
@@ -454,6 +455,67 @@
     landPiles > 0 && otherPiles > 0 ? otherPiles / (otherPiles + landPiles) : 1,
   );
 
+  // #3044: the height the creature row and the back row share, and
+  // what each asks of it (rowFit.ts rowDemand). A crowded row may wrap
+  // into its budget instead of shrinking its cards toward the floor;
+  // the budgets never add up to more than the panel holds, so a wrapped
+  // row takes no height from the hand or the other row. The back row's
+  // two zones sit side by side and share one budget.
+  type Demand = RowReport | null;
+  let creatureDemand = $state<Demand>(null);
+  let landDemand = $state<Demand>(null);
+  let otherDemand = $state<Demand>(null);
+  let fieldH = $state(0);
+  const budgets = $derived.by(() => {
+    if (fieldH <= 0 || !creatureDemand) return [0, 0];
+    const back = [landDemand, otherDemand].filter((d): d is NonNullable<Demand> => !!d);
+    const backDemand = {
+      base: Math.max(0, ...back.map((d) => d.base)),
+      want: Math.max(0, ...back.map((d) => d.want)),
+    };
+    return allocateRowHeights(fieldH, [creatureDemand, backDemand]);
+  });
+
+  // fieldHeight measures the panel's height less its hand row (the
+  // first grid track on an across-table panel, the last otherwise), its
+  // padding and its row gaps: what the creature and back rows share. It
+  // reads the panel and the hand row, never the battlefield rows, so a
+  // row wrapping does not move it.
+  function fieldHeight(node: HTMLElement, isFlipped: boolean) {
+    if (typeof ResizeObserver === "undefined") return {};
+    let flip = isFlipped;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const cs = getComputedStyle(node);
+      const tracks = cs.gridTemplateRows.split(/\s+/).map((t) => parseFloat(t) || 0);
+      if (tracks.length < 3) return;
+      const hand = flip ? tracks[0] : tracks[tracks.length - 1];
+      const gap = parseFloat(cs.rowGap) || 0;
+      const pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+      const h = node.clientHeight - pad - hand - gap * (tracks.length - 1);
+      if (Math.abs(h - fieldH) > 0.5) fieldH = Math.max(0, h);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    const ro = new ResizeObserver(schedule);
+    ro.observe(node);
+    const bottom = node.querySelector(":scope > .grid-bottom");
+    if (bottom) ro.observe(bottom);
+    schedule();
+    return {
+      update(f: boolean) {
+        flip = f;
+        schedule();
+      },
+      destroy() {
+        if (frame) cancelAnimationFrame(frame);
+        ro.disconnect();
+      },
+    };
+  }
+
   // #1724: the token group whose member list is open, by group key.
   // The members are re-derived from every snapshot, so the list
   // follows the board while it is open; a group that has broken up
@@ -748,8 +810,10 @@
   class:expanded
   class:seat-turn={isActive}
   style:--seat-color={seatColor(seat.seat)}
+  style:--creature-min={creatureDemand?.used ? `${creatureDemand.used}px` : undefined}
   role={expanded ? "group" : "region"}
   aria-label={expanded ? undefined : isSelf ? L.yourBoard : L.seatBoard(seat.name)}
+  use:fieldHeight={flipped}
 >
   {#if playmat}
     <!-- ADR 0128: the owner's playmat, under everything. An <img> and
@@ -778,6 +842,8 @@
       {ringBearers}
       {cantAttack}
       cards={buckets.creature}
+      budget={budgets[0]}
+      bind:demand={creatureDemand}
       {viewerID}
       {selectedCombatCardID}
       {stagedAttackers}
@@ -809,6 +875,8 @@
       {ringBearers}
       {cantAttack}
       cards={buckets.land}
+      budget={budgets[1]}
+      bind:demand={landDemand}
       compact
       strip
       {viewerID}
@@ -837,6 +905,8 @@
       {ringBearers}
       {cantAttack}
       cards={buckets.right}
+      budget={budgets[1]}
+      bind:demand={otherDemand}
       compact
       {viewerID}
       {selectedCombatCardID}
@@ -1023,8 +1093,11 @@
        panel, where it scrolls), the back row sits right under it, and the
        panel's spare height opens between the back row and the hand,
        at the panel's outer edge. A row shrunk to fit its width (rowFit)
-       used to leave that spare as a band at the table's centre line. */
-    grid-template-rows: minmax(0, auto) minmax(min-content, 1fr) auto;
+       used to leave that spare as a band at the table's centre line.
+       #3044: a creature row wrapped into its budget reports its lines'
+       height as --creature-min, since an auto track beside a 1fr one is
+       not promised its content and the row would scroll instead. */
+    grid-template-rows: minmax(var(--creature-min, 0px), auto) minmax(min-content, 1fr) auto;
     grid-template-areas:
       "creatures rail"
       "middle    rail"
@@ -1192,7 +1265,7 @@
     --thumb-w: calc(var(--thumb-h) * 5 / 7);
     --avatar-size-base: 84px;
     --rail-w: 112px;
-    grid-template-rows: auto minmax(min-content, 1fr) minmax(0, auto);
+    grid-template-rows: auto minmax(min-content, 1fr) minmax(var(--creature-min, 0px), auto);
     grid-template-areas:
       "bottom    rail"
       "middle    rail"
@@ -1439,7 +1512,7 @@
   @media (min-width: 600px) {
     .panel.opponent.flipped {
       grid-template-columns: var(--rail-w) minmax(0, 1fr) auto;
-      grid-template-rows: auto minmax(min-content, 1fr) minmax(0, auto);
+      grid-template-rows: auto minmax(min-content, 1fr) minmax(var(--creature-min, 0px), auto);
       /* #2491: the piles sit in the hand's row, against the top edge
          like the hand, not in the back row under it. */
       grid-template-areas:
