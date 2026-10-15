@@ -895,8 +895,16 @@ type cardSnapshot struct {
 	// ControlledSinceUpkeep is Card.ControlledSinceUpkeep (ADR 0108
 	// §5): echo's "came under your control since your last upkeep".
 	// Absent from every earlier file, which restores as 0.
-	ControlledSinceUpkeep    int       `json:"controlledSinceUpkeep,omitempty"`
-	SummonedThisTurn         bool      `json:"summonedThisTurn"`
+	ControlledSinceUpkeep int  `json:"controlledSinceUpkeep,omitempty"`
+	SummonedThisTurn      bool `json:"summonedThisTurn"`
+	// PutInGraveyardFrom / PutInGraveyardThisTurn are Card's graveyard
+	// arrival record (#3769, Banon): carried, because a restore that
+	// dropped them would shut a graveyard permission that reads "put
+	// there this turn" for the rest of the turn the game was saved in.
+	// Absent from every earlier file, which restores as "arrived
+	// nowhere", the state before the record existed.
+	PutInGraveyardFrom       ZoneKind  `json:"putInGraveyardFrom,omitempty"`
+	PutInGraveyardThisTurn   bool      `json:"putInGraveyardThisTurn,omitempty"`
 	MarkedLethalByDeathtouch bool      `json:"markedLethalByDeathtouch"`
 	LostLastCounter          bool      `json:"lostLastCounter,omitempty"`
 	PrintedPTKnown           bool      `json:"printedPTKnown,omitempty"`
@@ -2295,6 +2303,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		TurnOvers:                c.TurnOvers,
 		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
 		SummonedThisTurn:         c.SummonedThisTurn,
+		PutInGraveyardFrom:       c.PutInGraveyardFrom,
+		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
 		PrintedPTKnown:           c.PrintedPTKnown,
@@ -3202,6 +3212,8 @@ func restoreCard(c *cardSnapshot) Card {
 		TurnOvers:                c.TurnOvers,
 		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
 		SummonedThisTurn:         c.SummonedThisTurn,
+		PutInGraveyardFrom:       c.PutInGraveyardFrom,
+		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
 		PrintedPTKnown:           c.PrintedPTKnown,

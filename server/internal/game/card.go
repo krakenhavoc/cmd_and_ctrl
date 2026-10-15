@@ -1119,6 +1119,23 @@ type Card struct {
 	// effects package's event-log record (b27ExiledWith).
 	ExiledWith PermissionCardRef
 
+	// PutInGraveyardFrom is the zone the card was put into THIS
+	// graveyard from — the arrival record "put into your graveyard from
+	// anywhere other than the battlefield this turn" reads (Banon, the
+	// Returners' Leader; ADR 0066's 2026-10-15 amendment, #3769).
+	// Empty when the card is not in a graveyard.
+	//
+	// Stamped by MoveCard, the one zone move, so a mill, a discard, a
+	// counter, a destroy and a sandbox drag are all recorded without a
+	// caller having to remember. Cleared by MoveCard on every move that
+	// does not end in a graveyard, so a card that leaves and comes back
+	// is a new object (CR 400.7) judged by its latest arrival only.
+	// Carried by the snapshot.
+	PutInGraveyardFrom ZoneKind
+
+	// PutInGraveyardThisTurn (in the bool block at the end of Card)
+	// says that arrival happened during the current turn.
+
 	// Solved, Prepared and PrepareCopy live in the bool block at the
 	// end of Card, for alignment.
 
@@ -1500,6 +1517,14 @@ type Card struct {
 	// card's copiable values, so its oracle ID — and with it every catalog
 	// hook — is the original's. Carried by the snapshot.
 	CardCopy bool
+
+	// PutInGraveyardThisTurn says the arrival PutInGraveyardFrom records
+	// happened during the current turn. MoveCard sets it with
+	// PutInGraveyardFrom and onTurnBeganLocked clears it for every
+	// graveyard, the same per-turn-flag shape SummonedThisTurn has; a flag
+	// rather than a turn number because MoveCard is a zone function and
+	// does not hold the game's clock. Carried by the snapshot.
+	PutInGraveyardThisTurn bool
 
 	// PhasedOutIndirect records that this permanent phased out WITH
 	// the permanent it is attached to rather than on its own

@@ -269,6 +269,17 @@ type PermissionFilter struct {
 	// nothing at all.
 	ExiledWithSource bool `json:"exiledWithSource,omitempty"`
 
+	// PutInGraveyardThisTurn is Banon, the Returners' Leader's "cards in
+	// your graveyard that were put there from anywhere other than the
+	// battlefield this turn" (#3769): the card must have ARRIVED in the
+	// graveyard during the current turn, from a zone that is not the
+	// battlefield. A discarded, milled or countered card qualifies; a
+	// creature that died does not; a card that left the graveyard and
+	// came back is a new object (CR 400.7) judged by its latest arrival
+	// only. Read off Card.PutInGraveyardFrom / PutInGraveyardThisTurn,
+	// which MoveCard stamps, so the clause is pure card data.
+	PutInGraveyardThisTurn bool `json:"putInGraveyardThisTurn,omitempty"`
+
 	// ExiledWith is ExiledWithSource's derived payload: the source
 	// object the card must be linked to. Zero on every catalog entry.
 	ExiledWith PermissionCardRef `json:"exiledWith"`
@@ -317,6 +328,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.WithCounter != "" && c.Counters[f.WithCounter] <= 0 {
+		return false
+	}
+	if f.PutInGraveyardThisTurn && !c.PutInGraveyardNotFromBattlefieldThisTurn() {
 		return false
 	}
 	if f.ExiledWithSource && (f.ExiledWith.ID == uuid.Nil || c.ExiledWith != f.ExiledWith) {

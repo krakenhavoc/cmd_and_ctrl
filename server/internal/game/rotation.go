@@ -367,6 +367,11 @@ func (g *Game) onTurnBeganLocked() {
 	// Cost is one recompute per turn, against a cache that is already
 	// invalidated by every zone move and every counter placed.
 	g.layerVersion.Add(1)
+	// ADR 0066 amendment 2026-10-15 (#3769): "put into a graveyard this
+	// turn" ends as the turn does. Every seat's graveyard, not the
+	// active player's alone — Banon reads a card an opponent's effect
+	// put into YOUR graveyard just as well.
+	g.clearGraveyardArrivalsLocked()
 	// S38 (ADR 0063 Decision 2): "until your next turn" ends as that
 	// player's turn BEGINS. This hook runs from beginNextTurnLocked
 	// after the cursor is stamped on the new seat's untap step and
@@ -534,4 +539,19 @@ func (g *Game) advancePastEliminatedLocked() {
 		return
 	}
 	g.runStepEntryHooksLocked()
+}
+
+// clearGraveyardArrivalsLocked forgets Card.PutInGraveyardThisTurn in
+// every graveyard as a turn begins. PutInGraveyardFrom stays: it is where
+// the card came from, a fact that does not expire, and only the "this
+// turn" half is time-bound. Caller must hold g.mu.
+func (g *Game) clearGraveyardArrivalsLocked() {
+	for _, p := range g.Seats {
+		if p == nil || p.Graveyard == nil {
+			continue
+		}
+		for i := range p.Graveyard.Cards {
+			p.Graveyard.Cards[i].PutInGraveyardThisTurn = false
+		}
+	}
 }
