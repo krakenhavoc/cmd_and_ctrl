@@ -1502,6 +1502,16 @@ type Event struct {
 	// Source alone, and ward is the first effect that has to.
 	StackItemID uuid.UUID `json:"stack_item_id,omitempty"`
 
+	// TargeterKind is what KIND of object did the targeting, on an
+	// EventBecomesTarget: spell, activated or triggered (#3779). It is
+	// read off the stack item at the moment the event is emitted, so a
+	// trigger that must tell "an activated ability" from "a spell or a
+	// triggered ability" (Professor Hojo) does not have to look the item
+	// up on the stack itself, where it may already be gone by the time a
+	// later reader asks. Empty on every other event, and on a
+	// became-target event whose item was not on the stack (none today).
+	TargeterKind StackItemKind `json:"targeter_kind,omitempty"`
+
 	// ResolvedStackItemID names the item that left the stack, on an
 	// ABILITY's EventResolve / EventFizzle (ADR 0119 §3), so the public
 	// log can say which item it was. A separate field from StackItemID
@@ -1992,6 +2002,13 @@ func (g *Game) emitBecameTargetLocked(actor, source, itemID uuid.UUID, targets [
 	if len(announcedCrimeSlot) > 0 {
 		crimeSlot = announcedCrimeSlot[0]
 	}
+	// #3779: what kind of object is doing the targeting, taken once for
+	// the whole fan-out. Every caller creates its item before it emits
+	// (the doc above), so the stack answers; a missing item reads empty.
+	var kind StackItemKind
+	if item := g.StackMeta[itemID]; item != nil {
+		kind = item.Kind
+	}
 	for i, t := range targets {
 		switch t.Kind {
 		case TargetCard:
@@ -2000,6 +2017,7 @@ func (g *Game) emitBecameTargetLocked(actor, source, itemID uuid.UUID, targets [
 				Actor:          actor,
 				Source:         source,
 				StackItemID:    itemID,
+				TargeterKind:   kind,
 				Target:         t.ID,
 				CardID:         t.ID,
 				CrimeCommitted: i == crimeSlot,
@@ -2010,6 +2028,7 @@ func (g *Game) emitBecameTargetLocked(actor, source, itemID uuid.UUID, targets [
 				Actor:          actor,
 				Source:         source,
 				StackItemID:    itemID,
+				TargeterKind:   kind,
 				Target:         t.ID,
 				CrimeCommitted: i == crimeSlot,
 			})

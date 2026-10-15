@@ -114,6 +114,56 @@ type ActivationTally struct {
 	// the half the CR 602 once-each-turn cards (Quirion Ranger,
 	// Wirewood Symbiote) and boast (CR 702.142a) want.
 	Turn map[string]int `json:"turn,omitempty"`
+
+	// OwnCreatureTargeted counts, per ACTIVATOR (player ID), the
+	// activations this turn whose announced targets included a creature
+	// that player controlled (#3779). Professor Hojo's "The first
+	// activated ability you activate during your turn that targets a
+	// creature you control costs {2} less" is the reader: the first is
+	// the one that finds this at zero, and the write happens only when an
+	// activation is actually made, so a refused one does not use the
+	// discount up.
+	//
+	// A separate map from Turn rather than another kind of key in it,
+	// because Turn is keyed by OBJECT and ability label and summed by
+	// prefix (sumTally) — a player-keyed entry in that map would be
+	// swept into every prefix sum. Emptied with Turn on the turn advance.
+	OwnCreatureTargeted map[string]int `json:"own_creature_targeted,omitempty"`
+}
+
+// noteOwnCreatureTargetedLocked records that `activator` just made an
+// activation whose `targets` include a creature they control. At most
+// one entry per activation, however many of their creatures it names.
+//
+// Evaluated against the battlefield as the activation is announced, with
+// the controller read through the layers (a creature whose control has
+// changed counts for its current controller). Caller must hold g.mu.
+func (g *Game) noteOwnCreatureTargetedLocked(activator uuid.UUID, targets []TargetRef) {
+	if activator == uuid.Nil {
+		return
+	}
+	for _, t := range targets {
+		if t.Kind != TargetCard {
+			continue
+		}
+		c, ok := g.battlefieldCardLocked(t.ID)
+		if !ok || !c.IsCreature() || c.Controller != activator {
+			continue
+		}
+		if g.Activations.OwnCreatureTargeted == nil {
+			g.Activations.OwnCreatureTargeted = map[string]int{}
+		}
+		g.Activations.OwnCreatureTargeted[activator.String()]++
+		return
+	}
+}
+
+// OwnCreatureTargetedActivationsThisTurn is how many activations
+// `player` has made this turn that targeted a creature they controlled
+// (#3779). Zero means the next such activation is the turn's first.
+// Caller must hold g.mu (read or write).
+func (g *Game) OwnCreatureTargetedActivationsThisTurn(player uuid.UUID) int {
+	return g.Activations.OwnCreatureTargeted[player.String()]
 }
 
 // noteAbilityActivationLocked records one activation of `key` in both
@@ -251,6 +301,7 @@ func (g *Game) exhaustedLocked(asker, source uuid.UUID, exhaust bool, label stri
 // resetTurnTallyLocked. Caller must hold g.mu.
 func (g *Game) resetActivationTurnTallyLocked() {
 	g.Activations.Turn = nil
+	g.Activations.OwnCreatureTargeted = nil
 }
 
 // cloneActivationTally deep-copies both maps, so an undo snapshot and
@@ -259,5 +310,7 @@ func cloneActivationTally(t ActivationTally) ActivationTally {
 	return ActivationTally{
 		Ever: copyStringIntMap(t.Ever),
 		Turn: copyStringIntMap(t.Turn),
+
+		OwnCreatureTargeted: copyStringIntMap(t.OwnCreatureTargeted),
 	}
 }

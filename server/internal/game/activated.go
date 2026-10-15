@@ -2180,6 +2180,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// not moved the object out from under it.
 	g.noteAbilityActivationLocked(activationKey)
 	g.noteBorrowedActivationLocked(borrowedKey)
+	// #3779: and whether it targeted a creature of the activator's own
+	// — the record "the first activated ability you activate … that
+	// targets a creature you control" (Professor Hojo) reads. Written
+	// here for the reason the two above are: a countered activation was
+	// still made, and a refused one never reaches this line.
+	g.noteOwnCreatureTargetedLocked(playerID, item.Targets)
 	// ADR 0097 Decision 4: the modes are used as the activation puts
 	// the ability on the stack — here, after every refusal is behind
 	// us, so a failed activation records nothing.
