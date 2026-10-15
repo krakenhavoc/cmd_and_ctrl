@@ -63,8 +63,8 @@ func EachPlayerMaxNoncreatureSpellsPerTurn(n int, label string) game.CastRestric
 //
 // A zone predicate and nothing else — it does not care who is casting
 // or what. The first sentence ("creature cards in graveyards and
-// libraries can't enter the battlefield") is a different seam and a
-// card declaring this must say so in its caveats.
+// libraries can't enter the battlefield") is a different slot,
+// Spec.EntryRestrictions (CardsInZonesCantEnter, entry_restriction.go).
 func PlayersCantCastFrom(label string, zones ...game.ZoneKind) game.CastRestriction {
 	banned := make(map[game.ZoneKind]bool, len(zones))
 	for _, z := range zones {

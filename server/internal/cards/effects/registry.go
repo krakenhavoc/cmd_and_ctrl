@@ -383,6 +383,8 @@ func Register(spec Spec) {
 	checkCastRestrictions(spec.Name, spec.CastRestrictions)
 	// ADR 0109 §4: the same two checks for the land-play twin.
 	checkLandPlayRestrictions(spec.Name, spec.LandPlayRestrictions)
+	// #1985: and for the entry twin.
+	checkEntryRestrictions(spec.Name, spec.EntryRestrictions)
 	// ADR 0109 §6: and for a targeting restriction, which must also say
 	// which zone it is about.
 	checkTargetingRestrictions(spec.Name, spec.TargetingRestrictions)
@@ -970,6 +972,12 @@ func checkCastRestrictions(card string, rs []game.CastRestriction) {
 func checkLandPlayRestrictions(card string, rs []game.LandPlayRestriction) {
 	for _, r := range rs {
 		checkRestriction(card, "land-play", r.Label, r.Forbids == nil)
+	}
+}
+
+func checkEntryRestrictions(card string, rs []game.EntryRestriction) {
+	for _, r := range rs {
+		checkRestriction(card, "entry", r.Label, r.Forbids == nil)
 	}
 }
 

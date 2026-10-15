@@ -528,6 +528,25 @@ type Spec struct {
 	// land_play_restriction.go.
 	LandPlayRestrictions []game.LandPlayRestriction
 
+	// EntryRestrictions are the "can't enter the battlefield" statics
+	// this PERMANENT imposes (#1985; CR 101.2, 305.4) — Worms of the
+	// Earth's "Lands can't enter the battlefield", Grafdigger's Cage's
+	// "Creature cards in graveyards and libraries can't enter the
+	// battlefield". A prohibition on the zone change itself, however
+	// the object gets there: a land play, a resolving permanent spell, a
+	// search, a reanimation, a flicker's return, a hand put, a created
+	// token. Not a replacement effect, and not a LandPlayRestriction
+	// (putting a land onto the battlefield is not playing it), though a
+	// land that can't enter can't be played either and the land-play
+	// gate says so.
+	//
+	// Read from the BATTLEFIELD through CatalogAbilityKey: a permanent
+	// that has lost its abilities stops restricting. A refused object
+	// stays where it was; a refused permanent spell goes to its owner's
+	// graveyard (CR 608.3e); a refused token is never created. Build
+	// with the constructors in entry_restriction.go.
+	EntryRestrictions []game.EntryRestriction
+
 	// TargetingRestrictions are the "<these> can't be the targets of
 	// spells or abilities" statics this PERMANENT imposes on a whole
 	// ZONE (ADR 0109 §6, #1885; CR 601.2c, 608.2b, 101.2) — Ground

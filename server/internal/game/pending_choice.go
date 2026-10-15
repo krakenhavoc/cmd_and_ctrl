@@ -2834,6 +2834,12 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// through the entry tail.
 		g.restoreEntryControllerLocked(ev)
 		g.dropEnteringTokenLocked(ev.CardID)
+		// #1985, CR 608.3e: a resumed permanent spell's entry refused
+		// (a Clone told to copy a land under Worms of the Earth) goes to
+		// its owner's graveyard rather than staying on the stack.
+		if err := g.settleRefusedStackEntryLocked(ev); err != nil {
+			return err
+		}
 		// ADR 0178: a life change a replacement declared before the
 		// cancel still happens, and the route waits for it.
 		if err := g.runMoveTailLocked(ev); err != nil {

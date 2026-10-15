@@ -3835,7 +3835,9 @@ func (g *Game) finishSpellResolutionLocked(top Card, item *StackItem) error {
 		defer g.clearReplacementEventLocked(ev.ID)
 		if out == nil || out.Canceled {
 			g.restoreEntryControllerLocked(ev)
-			return nil
+			// #1985, CR 608.3e: a permanent spell that can't enter goes
+			// to its owner's graveyard.
+			return g.settleRefusedStackEntryLocked(ev)
 		}
 		// #653: THE push, rather than a second copy of it. This branch
 		// used to reproduce executeEntryToBattlefieldLocked inline —

@@ -236,6 +236,12 @@ type CardDef struct {
 	// PERMANENT imposes (ADR 0109 §4, #1895). Read from the battlefield
 	// through CatalogAbilityKey, like CastRestrictions.
 	LandPlayRestrictions []LandPlayRestriction
+	// EntryRestrictions are the "can't enter the battlefield" statics
+	// this PERMANENT imposes (#1985, entry_gate.go): Worms of the
+	// Earth's lands, Grafdigger's Cage's creature cards in graveyards
+	// and libraries. Read from the battlefield through
+	// CatalogAbilityKey, like LandPlayRestrictions.
+	EntryRestrictions []EntryRestriction
 	// ActivationRestrictions are the "can't be activated" statics
 	// this PERMANENT imposes on other objects' activated abilities
 	// (Cursed Totem, Linvala, Collector Ouphe, Pithing Needle). Read
@@ -802,6 +808,12 @@ func init() {
 	CatalogLandPlayRestrictions = func(key string) []LandPlayRestriction {
 		if d := catalogDef(key); d != nil {
 			return d.LandPlayRestrictions
+		}
+		return nil
+	}
+	CatalogEntryRestrictions = func(key string) []EntryRestriction {
+		if d := catalogDef(key); d != nil {
+			return d.EntryRestrictions
 		}
 		return nil
 	}

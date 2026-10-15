@@ -37,6 +37,12 @@ import (
 //     EmblemSpec.LandPlayRestrictions is read with the emblem as the
 //     source. It leaves only with its owner (CR 800.4a).
 //
+// Beside them, #1985: a land that can't ENTER the battlefield (Worms of
+// the Earth, Soulless Jailer from a graveyard) can't be played either,
+// since playing it puts it there (CR 305.1). The gate asks the entry
+// restrictions (entry_gate.go) about the land as it is and returns their
+// clause as a "can't play".
+//
 // A fourth record reaches this gate from beside it: Memory Vessel's
 // "can't play cards from their hand" (#2559, hand_play_ban.go), which
 // the cast gate reads too, refuses a land played out of the hand.
@@ -187,6 +193,12 @@ func (g *Game) LandPlayGateLocked(player uuid.UUID, card Card, fromZone ZoneKind
 		if refused != nil {
 			return refused
 		}
+	}
+	// #1985: a land that can't ENTER can't be played either (CR 305.1
+	// puts it onto the battlefield), so the same refusal is given here,
+	// before the drop count, as a "can't play".
+	if cant := g.entryGateForLandPlayLocked(player, card, fromZone); cant != nil {
+		return cant
 	}
 	// The stored "this turn" records (Turf Wound and its kin).
 	for i := range g.ScopedEffects {

@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -24,13 +22,16 @@ import (
 // refused, and the enumerator and the view agree because all three read
 // the same gate.
 //
-// Sentence one is a CR 614 replacement that cancels the entry: a
+// Sentence one is an entry restriction (#1985, entry_restriction.go): a
 // creature card moving from a graveyard or a library onto the
 // battlefield (reanimation, a library search, a put from the top of the
-// library) is refused and the card stays where it was, which is what
-// "can't enter" means (CR 614.17). A creature that comes from anywhere
-// else (hand, exile, the stack) is not touched, and neither is a
-// noncreature card, nor a token (it has no zone to come from).
+// library, a creature land played from a graveyard) is refused and the
+// card stays where it was, which is what "can't enter" means (CR 101.2).
+// A creature that comes from anywhere else (hand, exile, the stack) is
+// not touched, and neither is a noncreature card, nor a token (it has no
+// zone to come from). It was a cancelling replacement effect until
+// #1985; a prohibition is not a replacement, so it no longer takes part
+// in CR 616 ordering beside the entering card's own replacements.
 func init() {
 	Register(Spec{
 		OracleID:     "753cb2b2-24ce-484f-a2d0-be6fd2c67ebd",
@@ -41,26 +42,9 @@ func init() {
 				"Grafdigger's Cage — players can't cast spells from graveyards or libraries.",
 				game.ZoneGraveyard, game.ZoneLibrary),
 		},
-		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventZoneMove},
-			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, _ *game.Card) bool {
-				if ev.Kind != game.RepEventMove || ev.NewZone != game.ZoneBattlefield {
-					return false
-				}
-				if ev.OldZone != game.ZoneGraveyard && ev.OldZone != game.ZoneLibrary {
-					return false
-				}
-				entering, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && entering.IsCreature()
-			},
-			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-				ev.Cancel()
-				return nil
-			},
-			Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
-				return src.Controller
-			},
-			Label: "Grafdigger's Cage: creature cards in graveyards and libraries can't enter the battlefield",
-		}},
+		EntryRestrictions: []game.EntryRestriction{
+			CardsInZonesCantEnter("Creature cards in graveyards and libraries can't enter the battlefield.",
+				game.Card.IsCreature, game.ZoneGraveyard, game.ZoneLibrary),
+		},
 	})
 }
