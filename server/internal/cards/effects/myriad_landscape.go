@@ -44,7 +44,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, {T}, Sacrifice this land: Search your library for up to two basic land cards that share a land type, put them onto the battlefield tapped, then shuffle.",
-			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Lands: 2},
 			Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
 			Effect:  myriadLandscapeFetch,
 		}},

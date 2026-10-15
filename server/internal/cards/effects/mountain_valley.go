@@ -23,7 +23,7 @@ func init() {
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}, Sacrifice this land: Search your library for a Mountain or Forest card, put it onto the battlefield, then shuffle.",
-			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Lands: 1, LandsUntapped: 1},
 			Cost:    Plus(TapCost(), SacrificeThis()),
 			Effect:  fetchDual("mountain", "forest"),
 		}},

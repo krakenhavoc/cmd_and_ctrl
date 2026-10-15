@@ -1377,6 +1377,26 @@ activation on turn 8 with seven lands is +1.44 rather than −1.20, and
 the bot cracks it; with only Courser of Kruphix's life, or with an
 opponent's Tatyova, it keeps the Hart.
 
+#3146 closed three gaps, each behind its own switch:
+
+- **Doublers** (`PriceLandfallDoublers`). A card that makes landfall
+  triggers fire again declares `landfall_extra_triggers` (Ancient
+  Greenwarden 1, Elesh Norn, Mother of Machines 1). Each land then pays
+  the bot's payoffs once, plus once more for each such doubler it
+  controls.
+- **A payoff's own cast** (`PriceLandfallCasts`). A permanent with a
+  landfall row or a doubler adds what it adds per land, times the lands
+  the bot expects to put down this turn and over its next two turns. Those
+  are its land drops, filled from the lands in hand plus 0.4 of a land
+  per draw. Tireless Tracker with two lands in hand is worth two Clues
+  more. The commander is not repriced, because a command-zone card
+  carries no ability rows on the wire.
+- **Fetch lands** (`PriceFetchLandfall`). A fetch's activation declares
+  `lands` (1, or Myriad Landscape's 2). It keeps the flat `ActivateBase`,
+  and each land it puts down adds what the payoffs pay. A land beyond
+  the one it sacrifices is ramp. So a fetch with no payoff out is
+  cracked as before.
+
 ### An opponent's tax against the turn plan (ADR 0136, 2026-10-09)
 
 An opponent's Rhystic Study asks "pay {1}?" when the bot casts a spell,
