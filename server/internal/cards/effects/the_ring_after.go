@@ -41,11 +41,18 @@ func legalTargetIDs(ctx *Context) []uuid.UUID {
 // (CR 603.4): checked as the step begins, and again as the ability
 // resolves, against the turn's tally (tokens count, CR 700.4). It
 // triggers once however many died.
+//
+// An effect that is a Do is wrapped as Do(If{…, Then: its steps}), so
+// the row declares a footprint when its steps do (#3033).
 func AtYourEndStepIfACreatureDied(label string, effect Effect) game.TriggeredAbility {
-	return On(game.EventBeginEndStep,
-		AllOf(ByYou, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-			return aCreatureDiedUnderYourControlThisTurn(g, source.Controller)
-		}),
+	when := AllOf(ByYou, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		return aCreatureDiedUnderYourControlThisTurn(g, source.Controller)
+	})
+	if steps, ok := doStepsOf(effect); ok {
+		return On(game.EventBeginEndStep, when, label,
+			Do(If{Cond: CondCreatureDied{}, Then: steps}))
+	}
+	return On(game.EventBeginEndStep, when,
 		label, func(g *game.Game, item *game.StackItem) error {
 			if !aCreatureDiedUnderYourControlThisTurn(g, item.Controller) {
 				return nil

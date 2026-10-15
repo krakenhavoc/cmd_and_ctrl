@@ -40,21 +40,13 @@ func init() {
 				return isActivePlayer(g, source.Controller) &&
 					b32EndStepAndYouGainedLifeThisTurnAtLeast(ev, source, g, 3)
 			}, "Indulging Patrician — each opponent loses 3 life",
-				func(g *game.Game, item *game.StackItem) error {
-					// CR 603.4: the intervening-if is re-checked on
-					// resolution, and the trigger does nothing if the
-					// condition has gone away.
-					if b15LifeGainedThisTurn(g, item.Controller) < 3 {
-						return nil
-					}
-					ctx := NewContext(g, item)
-					for _, opp := range ctx.Opponents() {
-						if err := g.ChangePlayerLifeForEffect(item.SourceCardID, opp, -3); err != nil {
-							return err
-						}
-					}
-					return nil
-				}),
+				// CR 603.4: the intervening-if is re-checked on
+				// resolution, and the trigger does nothing if the
+				// condition has gone away.
+				Do(If{
+					Cond: CondLifeGained{AtLeast: 3},
+					Then: []Applier{EachOpponentLosesLife{N: 3}},
+				})),
 		},
 	})
 }

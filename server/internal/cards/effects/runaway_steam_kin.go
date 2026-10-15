@@ -54,13 +54,10 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b15RedSpellCastByYou(ev, source, g) && source.Counters["+1/+1"] < 3
-			}, "Runaway Steam-Kin — +1/+1 counter", func(g *game.Game, item *game.StackItem) error {
-				c, ok := g.LookupCardForEffect(item.SourceCardID)
-				if !ok || !b15OnBattlefield(g, item.SourceCardID) || c.Counters["+1/+1"] >= 3 {
-					return nil
-				}
-				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
-			}),
+			}, "Runaway Steam-Kin — +1/+1 counter", Do(If{
+				Cond: CondFewerCountersOnThis{Kind: game.CounterPlusOne, N: 3},
+				Then: []Applier{CounterOnThis{Kind: game.CounterPlusOne, N: 1}},
+			})),
 		},
 	})
 }

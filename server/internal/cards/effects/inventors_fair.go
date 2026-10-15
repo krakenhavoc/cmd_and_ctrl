@@ -29,12 +29,12 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginUpkeep, AllOf(ByYou, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return threeArtifacts(g, source.Controller, source.InstanceID)
-			}), "Inventors' Fair — gain 1 life", func(g *game.Game, item *game.StackItem) error {
-				if !threeArtifacts(g, item.Controller, item.SourceCardID) {
-					return nil
-				}
-				return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
-			}),
+			}), "Inventors' Fair — gain 1 life", Do(If{
+				Cond: CondBoard{Name: "three or more artifacts", Test: func(ctx *Context) bool {
+					return threeArtifacts(ctx.Game, ctx.Controller(), ctx.Source())
+				}},
+				Then: []Applier{GainLife{Amount: 1}},
+			})),
 		},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

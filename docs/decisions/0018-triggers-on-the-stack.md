@@ -4630,3 +4630,62 @@ Two small gaps found clearing the caveats of the incubate cards (Assimilate Esse
 2. **`TurnTally.DiedSubtypes` (#3592).** "If a Phyrexian died under your control this turn." The tally had a per-controller count of creatures that died and a table-wide power by type; this is the per-controller count by creature type, with the same last-known types (CR 603.10a), the same "under the controller it left from" (`LeftUnderControlOf`), the same changeling bucket (`enteredAllCreatureTypes`) and the same keys as `EnteredSubtypes`. Read through `Game.DiedWithSubtypeThisTurn(player, subtype)`. It shares `diedSubtypesLocked` with `recordDiedPowerLocked`, so the two tallies cannot read different types for one death. Additive in snapshot schema v8 (`turnTally.diedSubtypes`, omitted when empty, carried by `cloneTurnTally`, reset by `resetTurnTallyLocked`).
 
 **Back-outs.** `TestACounterUnlessPaidRunsOnPaidOnlyForAPaymentThatWasMade` and `TestAssimilateEssenceIncubatesTwoForTheCasterWhenTheTaxIsPaid` fail without the `onPay` pass-through; `TestDiedSubtypesCountsPerControllerAndPerType` (and Brimaz's `TestBrimazBlightProliferatesAtTheEndStepAfterAPhyrexianDiedUnderYou`) fail without the record call; `TestDiedSubtypesSurvivesCloneTurnTally` without the clone line.
+
+## Amendment 2026-10-14 (fourth) — an intervening "if" as a footprint step (#3033) · Accepted
+
+The #3013 closing note left 24 cards on the ratchet. 21 of them re-check an intervening "if" as the ability resolves
+(CR 603.4), and a bare `Do` can't say that. This amendment adds the step that closing note sketched and moves the
+21 onto it. Arboreal Alliance, Cadira and Ikra Shidiqi are left for the next slice.
+
+### Decision
+
+1. **The step.** `effects.If{Cond, Then}` runs its `Then` steps only when `Cond` holds as the item resolves. Its
+   footprint is one `FootprintCondition` step that names the state the condition reads (`FootprintStep.Cond`),
+   followed by the footprint of every `Then` step, declared as if it runs. If a `Then` step can't declare a
+   footprint, the row gets none, as with a plain `Do`. An `If` can sit inside another `If` (Lunar Convocation's
+   "gained and lost life").
+2. **The conditions.** Each `effects.Condition` is a named value whose `condition()` names one
+   `game.FootprintCond`, and `addConditionReadLocked` reads each one:
+
+   | Condition | Cards | What the check reads |
+   | --- | --- | --- |
+   | `CondLifeGained{N}`, `CondLifeLost{N}`, `CondCreatureDied` | The Gaffer, Crested Sunmare, Indulging Patrician, Lunar Convocation, Faramir | Nothing, once the tally already holds. The tally only rises during a turn, and a turn can't end with the batch on the stack. A tally that doesn't hold yet is refused, since another item could make it true. |
+   | `CondCitysBlessing` | Deadeye Brawler, Mausoleum Harpy, Resplendent Griffin | Nothing, once held: the blessing is never lost (CR 702.131c). Refused before then. |
+   | `CondNoSpellsCast` | Edgar, Moonlit Sovereign | Nothing while it holds, since no step casts a spell. Refused once a spell was cast. |
+   | `CondMonarch` | Ginger, Queen of Sweets | `monarchRead`. It conflicts with an item that makes a player the monarch. |
+   | `CondFewerCountersOnThis{Kind, N}` | Runaway Steam-Kin | A read of the item's source, like a counter on it. |
+   | `CondPowerAtLeast{N}`, `CondBoard{Test}` | Agent of Treachery, Beastbond Outcaster, Colossal Majesty, Garruk's Uprising, Bugenhagen, Field of the Dead, Keeper of the Accord, Inventors' Fair, Lux Artillery, Padeem, Satoru | `boardReads`: the whole battlefield, read through the layers. `CondBoard`'s test may read only the battlefield, the item's controller, source and triggering event, and this turn's event log. |
+
+3. **What a board read conflicts with** (`boardConditionSees`). Another item conflicts if it changes or pumps a
+   permanent, creates a token, moves a card, puts a counter on a permanent, makes someone the monarch, or gives a
+   player counters. Since a static may read the monarch or a player's counters without declaring it, those two
+   conflict too. An item that only moves life totals conflicts only when some static on the board declares
+   `DependsOnLifeTotal`. One that only touches a hand or library conflicts only when a static declares
+   `DependsOnHandSize` or `DependsOnLibraryTop`. A pump on an object that bears rules (`pumpRules`) conflicts, as it
+   does with a characteristic read. So does an item that can take a player out of the game, since that player's
+   permanents leave with them (CR 800.4a).
+4. **A new reason, `condition`.** A conflict found by rule 3, or by the monarch read, is counted under
+   `cmdctrl_trigger_order_prompts_total{reason="condition"}`. The prompt then says: "<Card>'s trigger checks its
+   "if" again as it resolves, and another of these triggers can change the answer."
+
+### What changes for players
+
+- **Lunar Convocation.** With life both gained and lost, the drain and the Bat no longer ask for an order.
+  `TestB30LunarConvocationDrainsOnGainAndMakesABatOnGainAndLoss` now pins that.
+- **Edgar, Runaway Steam-Kin and the blessed counters.** These move onto `CounterOnThis`, which already puts
+  nothing on a source that has left (CR 400.7). Edgar's old body had no such check.
+- **Keeper of the Accord.** Its Soldier row no longer reads a missing trigger context.
+- **Unchanged.** Every row keeps its label and its trigger-time condition, so a queued item restores onto the same
+  row, and there's no snapshot, wire or closure-field change.
+
+### Tests
+
+- `game/trigger_condition_test.go` covers each condition kind. It checks the refusal before a tally holds and the
+  empty read after, the monarch and source reads, a board read against every step kind, the static-driven life
+  and hand cases, and elimination.
+- `footprint_conformance_test.go` resolves an `If` case for every `Condition` type
+  (`TestEveryConditionHasAConformanceCase`), and a nested one.
+- `trigger_independence_if_test.go` checks that each of the 21 rows declares its condition. On real boards, two
+  board-condition draws skip the prompt, a board condition beside a token maker asks under `condition`, and The
+  Gaffer beside Indulging Patrician skips it.
+- The ratchet file goes from 24 lines to 3.

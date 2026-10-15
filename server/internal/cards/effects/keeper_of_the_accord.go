@@ -41,13 +41,14 @@ func init() {
 						b11OpponentControlsMoreThanYou(g, source.Controller, ev.Actor, game.Card.IsCreature)
 				},
 				Key: "Keeper of the Accord — create a Soldier",
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					opp := item.Trigger.Event.Actor
-					if !b11OpponentControlsMoreThanYou(g, item.Controller, opp, game.Card.IsCreature) {
-						return nil
-					}
-					return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 white Soldier"), N: 1}.Apply(NewContext(g, item))
-				},
+				Effect: Do(If{
+					Cond: CondBoard{Name: "that player controls more creatures than you", Test: func(ctx *Context) bool {
+						item := ctx.Item
+						return item.Trigger != nil &&
+							b11OpponentControlsMoreThanYou(ctx.Game, item.Controller, item.Trigger.Event.Actor, game.Card.IsCreature)
+					}},
+					Then: []Applier{CreateToken{Template: TokenCard("1/1 white Soldier"), N: 1}},
+				}),
 			},
 			{
 				Watches: []game.EventKind{game.EventBeginEndStep},

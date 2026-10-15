@@ -95,6 +95,12 @@ func TestEveryTriggerOrderReasonHasASentence(t *testing.T) {
 			{"no card", triggerOrderWhy{reason: TriggerOrderReasonCharacteristic},
 				"What one of these triggers does can change a bonus that another trigger counts."},
 		},
+		TriggerOrderReasonCondition: {
+			{"card", triggerOrderWhy{reason: TriggerOrderReasonCondition, card: "Field of the Dead"},
+				"Field of the Dead's trigger checks its \"if\" again as it resolves, and another of these triggers can change the answer."},
+			{"no card", triggerOrderWhy{reason: TriggerOrderReasonCondition},
+				"One of these triggers checks its \"if\" again as it resolves, and another can change the answer."},
+		},
 	}
 
 	// Nothing the engine can say is left without a sentence here.
