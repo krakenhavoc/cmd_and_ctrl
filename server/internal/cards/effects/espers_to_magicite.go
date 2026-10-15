@@ -19,16 +19,17 @@ import (
 // the chosen card's copiable values (CR 707.2), then is only an
 // artifact: no creature type, no power and toughness.
 //
-// DECLARED SIMPLIFICATION (choice): the card is picked as the reflexive
-// trigger resolves, from the creature cards still exiled by this spell,
-// rather than being targeted as it goes on the stack. The difference is
-// only that the table cannot respond between the choice and the copy.
+// The card is a TARGET of the reflexive trigger (CR 603.12, CR 115.1):
+// chosen as the trigger goes on the stack, from the creature cards the
+// spell exiled (the trigger's payload, TargetSpec.AmongPayload), and
+// re-checked as it resolves (CR 608.2b), so the table can respond between
+// the choice and the copy. Up to one: a trigger with nothing chosen does
+// nothing.
 func init() {
 	Register(Spec{
 		OracleID:     "06f7ec6d-d70e-44d8-bf43-ae667d244ab4",
 		Name:         "Espers to Magicite",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The creature card is chosen as the reflexive trigger resolves, not targeted as it goes on the stack."},
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			var ids []uuid.UUID
 			creature := map[uuid.UUID]bool{}
@@ -67,42 +68,23 @@ func init() {
 	})
 }
 
-// espersCopy picks up to one of the payload's creature cards still in
-// exile and makes the artifact-only token copy of it.
+// espersCopy makes the artifact-only token copy of the card the
+// reflexive trigger targeted, if it is still a legal target (CR 608.2b).
 func espersCopy(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	var candidates []uuid.UUID
-	for _, id := range ctx.PayloadCards() {
-		if z := g.FindCardZoneForEffect(id); z != nil && z.Kind == game.ZoneExile {
-			candidates = append(candidates, id)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
 		}
+		return CreateTokenCopy{
+			Controller: item.Controller,
+			Copy:       t.ID,
+			N:          1,
+			Except: func(t *game.Card) {
+				t.TypeLine = "Token Artifact"
+				t.Power, t.Toughness = 0, 0
+			},
+		}.Apply(ctx)
 	}
-	if len(candidates) == 0 {
-		return nil
-	}
-	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:    item.Controller,
-		FromPlayer: item.Controller,
-		Source:     item.SourceCardID,
-		Question:   "Espers to Magicite — choose up to one creature card exiled this way to copy",
-		Cards:      candidates,
-		Min:        0,
-		Max:        1,
-		Zone:       game.ZoneExile,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return CreateTokenCopy{
-				Controller: item.Controller,
-				Copy:       picked[0],
-				N:          1,
-				Except: func(t *game.Card) {
-					t.TypeLine = "Token Artifact"
-					t.Power, t.Toughness = 0, 0
-				},
-			}.Apply(NewContext(g, item))
-		},
-	})
 	return nil
 }

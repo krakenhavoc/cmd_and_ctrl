@@ -1057,3 +1057,25 @@ suite pins the mode vocabulary.
 - A pile-level hint on the table ("2 legal targets in this exile pile").
   The dock's "N legal" count and the sentence "a card in exile (open a
   player's exile pile)" say it; a per-pile ring would be client polish.
+
+## Amendment (2026-10-15, #3846): "target ... exiled this way" -- a reflexive trigger's target is limited to its payload (CR 603.12)
+
+Espers to Magicite: "Exile each opponent's graveyard. When you do, choose up to one target creature card exiled this
+way." The reflexive trigger's own target clause had no way to say "exiled this way": the set is built by the parent
+while it resolves, so no property of a candidate card names it, and the card shipped choosing at resolution (so the
+table could not respond to the choice). `ExiledWithSource` is no help because the parent is a SPELL, and a spell is
+not a permanent: `SourceObjectForEffect` refuses it, so there is no CR 607.2a object to stamp an exile onto.
+
+`TargetSpec.AmongPayload` (bool) is the clause, built with `effects.AmongTheCardsNamed(spec)` and declared on the
+reflexive body's `ReflexiveBody` registration like any reflexive clause. The set is `TargetSpec.AmongCards`, derived
+data that a card never sets: `QueueReflexiveTriggerForEffect` fills it from the trigger's payload (`ReflexiveTrigger.Cards`)
+when the trigger is created, and restore fills it again from the item's payload when it re-derives the clause
+(`stampReflexivePayload`), so a table holding the trigger on the stack is still a restore point. It is judged in
+`sourceAdmits` beside `ExiledWithSource` and `PaidForSource`, so the legal set, the pick (CR 603.3d), the resolution
+re-check (CR 608.2b), the picker and the bot's moves are one answer. A clause with the flag and an empty payload
+admits nothing. No wire change: the picker sees the ordinary legal set. Espers pairs it with
+`TargetCardInExile(..., Creature()).WithCount(0, 1)` ("up to one").
+
+Back-out: drop the flag in `AmongTheCardsNamed` and `TestEspersTargetIsLimitedToTheCardsExiledThisWay` fails (a
+creature card exiled before the spell is offered); stop stamping the payload on restore and
+`TestEspersTargetedTriggerSurvivesASnapshotRestore` fails.

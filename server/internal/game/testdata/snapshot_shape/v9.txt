@@ -3746,6 +3746,7 @@ seats[].castPermissions[]	object
 seats[].castPermissions[].altCostKey	string
 seats[].castPermissions[].anyColor	bool
 seats[].castPermissions[].anyType	bool
+seats[].castPermissions[].budgetGroup	custom(uuid.UUID)
 seats[].castPermissions[].cards	array
 seats[].castPermissions[].cards[]	object
 seats[].castPermissions[].cards[].epoch	number:int

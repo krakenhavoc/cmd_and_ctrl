@@ -410,6 +410,28 @@ type TargetSpec struct {
 	// / SaddledThis.
 	PaidForSource PaidForSourceKind
 
+	// AmongPayload is "among the cards the parent ability named": the
+	// candidate must be one of the cards the reflexive trigger's parent
+	// resolution handed it as payload -- Espers to Magicite's "choose up
+	// to one target creature card exiled this way" (CR 603.12, CR 115.1;
+	// #3846). "Exiled this way" is a set the parent built while it
+	// resolved, so no property of the candidate card can name it, and a
+	// spell has no CR 607.2a object to link an exile to (a spell is not
+	// a permanent, SourceObjectForEffect refuses it).
+	//
+	// DATA, not a closure, for the reason ExiledWithSource is: a spec
+	// rides a paused prompt and a stack item. The flag is declared on
+	// the body's registration (effects.AmongTheCardsNamed); the set is
+	// AmongCards, which the engine stamps from the trigger's payload when
+	// the reflexive trigger is created and again when a restored item
+	// re-derives its clause (stampReflexivePayload). Judged in the one
+	// shared walk, so the legal set, announce (CR 601.2c), the resolution
+	// re-check (CR 608.2b), the client's picker and the bot's moves are
+	// one answer. Set with no payload, the clause admits NOTHING.
+	AmongPayload bool
+	// AmongCards is AmongPayload's derived set; never set by a card.
+	AmongCards []uuid.UUID
+
 	// PlayerOK is the candidate predicate for player targets. Nil
 	// means every seated, non-eliminated player qualifies. Same
 	// locking rule as CardOK.
@@ -1397,6 +1419,33 @@ func (s *TargetSpec) combatAdmits(g *Game, src TargetSource, c Card) bool {
 	return false
 }
 
+// amongPayloadAdmits is AmongPayload's gate: true without the flag, and
+// with it only a card the parent resolution named (AmongCards). An empty
+// set admits nothing.
+func (s *TargetSpec) amongPayloadAdmits(c Card) bool {
+	if !s.AmongPayload {
+		return true
+	}
+	return slices.Contains(s.AmongCards, c.InstanceID)
+}
+
+// stampReflexivePayload fills a reflexive trigger's AmongCards from its
+// payload when the clause asks for it (AmongPayload). The spec comes
+// fresh from reflexiveTargetSpecFor on every call, so stamping mutates
+// nothing shared.
+func stampReflexivePayload(spec *TargetSpec, payload []TargetRef) *TargetSpec {
+	if spec == nil || !spec.AmongPayload {
+		return spec
+	}
+	spec.AmongCards = nil
+	for _, t := range payload {
+		if t.Kind == TargetCard && t.ID != uuid.Nil {
+			spec.AmongCards = append(spec.AmongCards, t.ID)
+		}
+	}
+	return spec
+}
+
 // exiledWithAdmits is ExiledWithSource's gate: true without the flag,
 // and with it only a card whose Card.ExiledWith names the source object
 // (CR 607.2a). A walk with no source object admits nothing, and so does
@@ -1454,7 +1503,7 @@ func (s *TargetSpec) paidForAdmits(g *Game, src TargetSource, c Card) bool {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) {
+	if !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {
