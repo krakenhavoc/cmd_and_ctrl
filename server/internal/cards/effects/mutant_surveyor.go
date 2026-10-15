@@ -22,7 +22,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{2}: This creature gets +1/+1 until end of turn.",
-				Purpose: game.Purpose{Answers: game.AnswerPump},
+				Purpose: game.Purpose{Answers: game.AnswerPump, Pump: &game.Pump{Power: 1, Toughness: 1}},
 				Cost:    ManaCost("{2}"),
 				Effect:  thisCreatureUntilEOT("Mutant Surveyor — +1/+1 until end of turn", 1, 1),
 			},

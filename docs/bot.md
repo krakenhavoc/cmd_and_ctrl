@@ -1573,13 +1573,23 @@ is on the stack:
     bot passes. A row that declares both is a `survive` row.
   - `prevent` saves it only when every threat is declared damage that
     can be prevented: a target entry's `damage`, or a damage sweep.
-  - `pump` saves it only when one activation's declared `pump` keeps it
-    alive against the declared damage and −N/−N.
+  - `pump` saves it only when its declared `pump` keeps it alive against
+    the declared damage and −N/−N. With `PriceRepeatedPumps` on (#2939),
+    that may take several activations: the bot finds the fewest that
+    cover the damage, counts the pumps it already has on the stack above
+    the threat and the ones its mana can still pay for (a row that costs
+    anything but mana counts once), and activates when they add up. Each
+    activation is priced by what the creature is worth, less a flat
+    `ActivateBase` for every activation still to come after it, so a
+    pump that takes four is cheaper to start than one that takes two.
+    With the switch off, only a pump that one activation completes is
+    priced. A plain self pump that adds toughness (Evernight Shade,
+    Basalt Gargoyle, Restless Apparition) declares its amounts in the
+    catalog; `TestSelfPumpRowsDeclareTheirPump` holds the rest to it.
 
-  A row already activated from that creature, above the threats on the
-  stack, has answered them, so the bot does not stack a second shield.
-  A pump that needs several activations to cover the damage is not
-  priced.
+  Any other row already activated from that creature, above the threats
+  on the stack, has answered them, so the bot does not stack a second
+  shield.
 - **A `value` row waits.** A row declared `value` is priced below a pass
   while anything is on the stack: what it buys is the same once the
   stack resolves. The exception is a row whose cost spends a permanent
@@ -2340,7 +2350,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 | Flag | What it does |
 |---|---|
 | `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert` or `heuristic-noplan`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. Arena names only; the lobby and `GET /bot/options` never offer them. |
-| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, and `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's. |
+| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, and `answers-battle` is that deck with ten Basalt Gargoyles, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
 | `--lockstep` | plays each game on one goroutine, seat by seat, so the same `--seed` replays the same games move for move (#1503). Off by default — see "Lockstep runs" below for what it changes. |

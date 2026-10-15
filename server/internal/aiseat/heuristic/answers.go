@@ -1,6 +1,8 @@
 package heuristic
 
 import (
+	"strconv"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
@@ -26,7 +28,8 @@ import (
 //     can be prevented. `pump` saves it only when the row's declared
 //     Pump keeps it alive against the declared damage and −N/−N. A row
 //     already activated from that creature above the threats has done
-//     its job, so the bot does not stack a second shield.
+//     its job, so the bot does not stack a second shield (a pump is the
+//     exception: see repeatedPumpSave).
 //   - A `value` ROW WAITS. A row declared `value` answers nothing, so
 //     it is priced below passing while anything is on the stack: what
 //     it buys is the same once the stack resolves. The exception is a
@@ -42,8 +45,9 @@ import (
 //
 // What it does not price: a combat grant (the combat planner's
 // business, ADR 0142 decision 6 "Not covered"), a row on another
-// permanent that saves this one (Selfless Spirit), and a pump that needs
-// more than one activation to cover the damage.
+// permanent that saves this one (Selfless Spirit). A pump that needs
+// several activations is priced under Config.PriceRepeatedPumps
+// (#2939 gap 2): see repeatedPumpSave.
 
 // valueInResponse is what a declared-value activation is worth while
 // the stack is not empty: below passing, so the bot waits for the stack.
@@ -222,7 +226,13 @@ func (p *Policy) answerSave(st *state, src *protocol.CardView, row *protocol.Act
 		return 0, "", false
 	}
 	t, ok := st.threatsTo(src, p.cfg.RemovalConfidence)
-	if !ok || st.answeredFrom(src.InstanceID, t.top) {
+	if !ok {
+		return 0, "", false
+	}
+	// #2939 gap 2: a plain pump row is answered by its own earlier
+	// activations only in part, so it is counted rather than refused.
+	repeats := p.cfg.PriceRepeatedPumps && repeatablePump(pv)
+	if !repeats && st.answeredFrom(src.InstanceID, t.top) {
 		return 0, "", false
 	}
 	saved := t.chance * st.permanentValue(src)
@@ -235,10 +245,93 @@ func (p *Policy) answerSave(st *state, src *protocol.CardView, row *protocol.Act
 		return 0, "", false
 	case pv.Declares("prevent") && t.minus == 0 && !t.unpreventable:
 		return saved, "answer: prevent the damage", true
+	case repeats:
+		return p.repeatedPumpSave(st, src, row, t, saved)
 	case pv.Declares("pump") && pv.Pump != nil && pv.Pump.Toughness > 0 && !dies(src, t, pv.Pump):
 		return saved, "answer: pump it out of range", true
 	}
 	return 0, "", false
+}
+
+// maxPumpSteps caps how many activations of one pump row the bot
+// plans for, so a free or very cheap row cannot be read as unlimited.
+const maxPumpSteps = 8
+
+// repeatablePump reports whether a row's declared purpose is a plain
+// self pump that adds toughness: the only kind a second activation
+// stacks on (#2939 gap 2). A row that also shields or prevents is
+// priced as it was.
+func repeatablePump(pv *protocol.PurposeView) bool {
+	return pv.Declares("pump") && pv.Pump != nil && pv.Pump.Toughness > 0 &&
+		!pv.Declares("survive") && !pv.Declares("protect") && !pv.Declares("prevent")
+}
+
+// repeatedPumpSave prices one more activation of a pump row on creature
+// src whose first activation may not be enough (#2939 gap 2). The
+// activations it takes are the fewest whose summed pump keeps src alive
+// through the declared damage and −N/−N; those already on the stack from
+// src count toward them, and so do the ones its mana can still pay.
+// When all of that adds up, this activation is priced by what saving the
+// creature is worth, less a flat ActivateBase for every activation still
+// to come after it. ok is false when the creature is out of reach, or
+// the pumps on the stack already cover it.
+func (p *Policy) repeatedPumpSave(st *state, src *protocol.CardView, row *protocol.ActivatedAbilityView, t threats, saved float64) (float64, string, bool) {
+	pump := row.Purpose.Pump
+	need := 0
+	for k := 1; k <= maxPumpSteps; k++ {
+		if !dies(src, t, &protocol.PumpView{Power: pump.Power * k, Toughness: pump.Toughness * k, Keywords: pump.Keywords}) {
+			need = k
+			break
+		}
+	}
+	pending := st.activationsFrom(src.InstanceID, t.top)
+	if need == 0 || need <= pending || need > pending+p.pumpActivations(st, row) {
+		return 0, "", false
+	}
+	if need == 1 {
+		return saved, "answer: pump it out of range", true
+	}
+	steps := need - pending
+	return saved - float64(steps-1)*p.cfg.ActivateBase, "answer: pump it out of range (" + strconv.Itoa(need) + " activations)", true
+}
+
+// activationsFrom counts the bot's own stack items from source id above
+// index top: the activations it has already made in answer. Every item
+// counts, whichever row made it, so the bot errs toward stopping.
+func (st *state) activationsFrom(id string, top int) int {
+	n := 0
+	for i := top + 1; i < len(st.view.StackItems); i++ {
+		it := &st.view.StackItems[i]
+		if it.Controller == st.me && it.SourceCardID == id {
+			n++
+		}
+	}
+	return n
+}
+
+// pumpActivations is how many times the bot's mana can pay for row now:
+// at least the one on offer. A row that costs anything but mana (a tap,
+// energy, a sacrifice, a discard) is counted once.
+func (p *Policy) pumpActivations(st *state, row *protocol.ActivatedAbilityView) int {
+	if !rowCostsOnlyManaAndTaps(row) || row.TapCost || row.EnergyCost > 0 || row.MillCost > 0 || row.Exert ||
+		row.CrewCost > 0 || row.RevealCostN > 0 || row.RevealHandCost {
+		return 1
+	}
+	cost := row.ManaCost
+	if row.ChargedManaCost != nil {
+		cost = *row.ChargedManaCost
+	}
+	c := parseManaCost(cost, 0)
+	units := st.manaAvailable(p.cfg.PlanFilterLands)
+	n := 0
+	for n < maxPumpSteps {
+		var ok bool
+		if units, ok = payMana(units, c, nil); !ok {
+			break
+		}
+		n++
+	}
+	return max(n, 1)
 }
 
 // valueWaits reports whether a row declared `value` should wait for the
