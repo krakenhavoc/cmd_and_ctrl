@@ -532,7 +532,7 @@ export const LABEL_SPECS = {
     kind: "text",
     role: "button",
     owners: [`${BOARD}ChoicePromptModal.svelte`],
-    doc: "a sacrifice choice's confirm in the dock (sacrifice_choice, entry_sacrifice): enabled once the permanents are picked, in the sheet or on the board (#2880)",
+    doc: "a sacrifice choice's confirm in the dock (sacrifice_choice, entry_sacrifice, an edict's choose_cards): enabled once the permanents are picked, in the sheet or on the board (#2880)",
   }),
   numberToChoose: label({
     name: "number to choose",

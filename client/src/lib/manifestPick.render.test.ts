@@ -100,4 +100,20 @@ describe("ChoicePromptModal — the manifest pick (ADR 0189)", () => {
     expect(barPrimary(container)!.textContent).not.toContain("Manifest");
     expect(container.textContent).not.toContain("face down as 2/2 creatures");
   });
+
+  it("confirms an edict's pick with the verb Sacrifice (#3664)", () => {
+    const { container, sent } = mount({
+      choose_destination: "sacrifice",
+      reason: "Choose a creature to sacrifice",
+      choose_min: 1,
+      choose_max: 1,
+    });
+    const primary = barPrimary(container)!;
+    expect(primary.textContent).toContain("Sacrifice");
+    expect(container.textContent).toContain("sacrificed once every player has chosen");
+
+    click(cardButtons(container)[1]);
+    click(primary);
+    expect(sent[0].params).toMatchObject({ choice_id: "choice-1", card_ids: ["c2"] });
+  });
 });
