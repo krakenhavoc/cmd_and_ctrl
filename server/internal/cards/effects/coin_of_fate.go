@@ -15,19 +15,16 @@ import (
 //	 battlefield tapped. You become the monarch."
 //
 // The two creature cards are an exile cost picked at announce, read back
-// through ctx.Exiled(). The next opponent in turn order chooses; the
-// chosen card goes to the bottom of its owner's library, the other
-// returns tapped, and the crown is taken whatever happens to the cards.
-//
-// DECLARED SIMPLIFICATION (which opponent): "an opponent chooses" lets
-// the controller name the opponent. The next opponent in turn order is
-// always the one asked.
+// through ctx.Exiled(). "An opponent chooses": the controller names the
+// opponent (a choose-a-player prompt, skipped with a single opponent),
+// and that opponent chooses; the chosen card goes to the bottom of its
+// owner's library, the other returns tapped, and the crown is taken
+// whatever happens to the cards.
 func init() {
 	Register(Spec{
 		OracleID:     "e43b478b-4cb8-42b1-a5b0-0b1421b84852",
 		Name:         "Coin of Fate",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The next opponent in turn order chooses the exiled card, rather than you picking which opponent does."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Coin of Fate — surveil 1", Do(Surveil{N: 1})),
 		},
@@ -43,15 +40,41 @@ func init() {
 
 func coinOfFateResolve(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
+	if len(ctx.Exiled()) == 0 {
+		return coinOfFateMonarch(g, item)
+	}
+	// "An opponent chooses": the controller names which opponent. With
+	// only one opponent left there is nothing to name, so no prompt.
+	if opps := ctx.Opponents(); len(opps) == 1 {
+		return coinOfFateAsk(g, item, opps[0])
+	}
+	return ChoosePlayer{
+		Among:    Opponents,
+		Question: "Coin of Fate — choose an opponent to choose one of the exiled cards",
+		Then:     coinOfFateOpponentChosen,
+	}.Apply(ctx)
+}
+
+// coinOfFateOpponentChosen runs once the controller has named the
+// opponent. Nobody to name (no opponent could be asked about) leaves the
+// controller to choose, the only seat left to ask.
+func coinOfFateOpponentChosen(ctx *Context) error {
+	chooser := ctx.ChosenPlayer()
+	if chooser == uuid.Nil {
+		chooser = ctx.Controller()
+	}
+	return coinOfFateAsk(ctx.Game, ctx.Item, chooser)
+}
+
+func coinOfFateMonarch(g *game.Game, item *game.StackItem) error {
+	return BecomeTheMonarch{}.Apply(NewContext(g, item))
+}
+
+// coinOfFateAsk puts the "choose one of the exiled cards" prompt to
+// `chooser`.
+func coinOfFateAsk(g *game.Game, item *game.StackItem, chooser uuid.UUID) error {
+	ctx := NewContext(g, item)
 	exiled := ctx.Exiled()
-	monarch := func(g *game.Game) error { return BecomeTheMonarch{}.Apply(NewContext(g, item)) }
-	if len(exiled) == 0 {
-		return monarch(g)
-	}
-	chooser := ctx.Controller()
-	if opps := opponentsInTurnOrder(g, ctx.Controller()); len(opps) > 0 {
-		chooser = opps[0]
-	}
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:    chooser,
 		FromPlayer: ctx.Controller(),
@@ -64,7 +87,7 @@ func coinOfFateResolve(g *game.Game, item *game.StackItem) error {
 		Then: func(g *game.Game, picked []uuid.UUID) error {
 			ctx := NewContext(g, item)
 			if len(picked) == 0 {
-				return monarch(g)
+				return coinOfFateMonarch(g, item)
 			}
 			return PutIntoLibrary{Card: picked[0], ToBottom: true, Then: func(g *game.Game, _ bool) error {
 				ctx := NewContext(g, item)
@@ -76,7 +99,7 @@ func coinOfFateResolve(g *game.Game, item *game.StackItem) error {
 						return err
 					}
 				}
-				return monarch(g)
+				return coinOfFateMonarch(g, item)
 			}}.Apply(ctx)
 		},
 	})

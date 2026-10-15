@@ -3908,3 +3908,31 @@ Back-out: pass `GrantReduction: 0` in `costAfterModifiersLocked` and `TestUriang
 fails; read `0` for it in the enumerator and `TestUriangerEnumerationPricesTheDiscount` fails; take it off before the
 increases are added (drop it from the full-modifier path) and `TestUriangerReductionComesOffAfterTheIncreases` fails; drop
 the `OwnedByHolder` test and `TestKaylasMusicBoxPlaysOnlyCardsTheHolderOwns` fails.
+
+## Amendment -- 2026-10-15 (#3846): one budget across permissions in different zones (CR 701.17c)
+
+Locke, Treasure Hunter's Mug: "Until end of turn, you may cast a spell from among those cards", where "those cards" are
+the cards each player milled. CR 701.17c: a milled card a replacement sent elsewhere (Rest in Peace, Leyline of the
+Void: exile) is still one of them. A permission opens a cast out of ONE zone, so a set that spans a graveyard and
+exile is two permissions, and a limited count (`CastsLeft`, #1729) on each would be one spell per zone.
+
+**`CastPermission.BudgetGroup`** ties permissions into one budget: a cast that spends any member
+(`consumeLimitedGrantLocked`) spends one use of every member (`consumeBudgetGroupLocked`), and a member that reaches zero
+is dropped. `uuid.Nil` -- every permission written before the field -- is a budget of its own and takes the old path.
+**`Game.GrantCastPermissionAcrossZonesForEffect`** groups a set of cards by where each is now (graveyard or exile, the
+only zones a stored permission opens; any other zone is skipped), stores one `ScopeCards` permission per zone, and, when
+there is more than one and the count is limited, gives them one `BudgetGroup`.
+
+**The mill that reports where the cards went.** `Game.MillToZoneThenMovedForEffect` is `MillToZoneThenForEffect` with a
+different continuation argument: every card the mill took out of the library, wherever it ended up, rather than only
+those that landed in the destination. It is a separate entry point (`millTail.allMoved`, plain data), so no existing
+caller's semantics change; a card a CR 614 window left in the library, and a cancelled mill, report nothing.
+
+### Snapshot
+
+Additive within v9, omitted when zero: `seats[].castPermissions[].budgetGroup`. A file written before it restores with
+every permission a budget of its own. A binary from before it drops the key and reads a split Mug grant as one spell per
+zone (stronger than printed, only for a table restored mid-turn across the upgrade). No wire change.
+
+Back-out: stop assigning the group and `TestLockeMugSpansTwoZonesWithOneSpell` fails; mill with
+`MillToZoneThenForEffect` in Locke and `TestLockeMugCoversCardsRestInPeaceExiled` fails.

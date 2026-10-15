@@ -165,7 +165,7 @@ func (g *Game) QueueReflexiveTriggerForEffect(parent *StackItem, rt ReflexiveTri
 	// ADR 0041 P9 (#1497): the target clause, when this body has one,
 	// is re-derived from the registration rather than carried as a
 	// captured *TargetSpec — the same reason the item itself is data.
-	targets := reflexiveTargetSpecFor(body, source.InstanceID, params)
+	targets := stampReflexivePayload(reflexiveTargetSpecFor(body, source.InstanceID, params), payload)
 	ability := TriggeredAbility{
 		// Watches / AppliesTo stay empty: this ability is never
 		// harvested off an event, so nothing ever looks at them. The

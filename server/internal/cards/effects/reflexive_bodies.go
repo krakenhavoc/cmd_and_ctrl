@@ -187,10 +187,16 @@ var (
 				YouOwn(), Creature(), PowerLE(3))
 		}))
 
-	// Espers to Magicite (#3655): "when you do, choose up to one creature
-	// card exiled this way ... create a token that's a copy of it" —
-	// untargeted, the exiled creature cards ride the payload.
-	espersCopyBody = game.SimpleDelayedBody("espers-to-magicite/copy", espersCopy)
+	// Espers to Magicite (#3655, #3846): "when you do, choose up to one
+	// target creature card exiled this way ... create a token that's a
+	// copy of it". The target is chosen as the trigger goes on the stack
+	// (CR 603.12, CR 115.1) from the exiled creature cards the spell
+	// handed over as the payload.
+	espersCopyBody = game.ReflexiveBody("espers-to-magicite/copy", simpleBody(espersCopy),
+		constTargets(func() *game.TargetSpec {
+			return AmongTheCardsNamed(TargetCardInExile("up to one target creature card exiled this way",
+				Creature()).WithCount(0, 1))
+		}))
 
 	// The Falcon, Airship Restored (#3655): "when you do, return target
 	// creature card from your graveyard to the battlefield".

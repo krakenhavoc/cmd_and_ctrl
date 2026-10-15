@@ -558,6 +558,20 @@ func TargetCardInExile(label string, preds ...CardPredicate) *game.TargetSpec {
 	}
 }
 
+// AmongTheCardsNamed narrows a reflexive trigger's clause to the cards
+// its parent resolution named (CR 603.12): "choose up to one target
+// creature card exiled this way" (Espers to Magicite, #3846). The set is
+// the ReflexiveTrigger's Cards payload, stamped onto the clause by the
+// engine when the trigger is created and again when a restored item
+// re-derives it, so declare it on the body's ReflexiveBody registration
+// like any reflexive clause. Pair it with the zone the cards are in:
+//
+//	AmongTheCardsNamed(TargetCardInExile("up to one target creature card exiled this way", Creature()).WithCount(0, 1))
+func AmongTheCardsNamed(spec *game.TargetSpec) *game.TargetSpec {
+	spec.AmongPayload = true
+	return spec
+}
+
 // ExiledWithThis narrows a clause to the cards exiled with its own
 // source (CR 607.2a): "target creature card exiled with The Darkness
 // Crystal". It is data on the clause (game.TargetSpec.ExiledWithSource),

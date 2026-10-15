@@ -740,6 +740,17 @@ type CastPermission struct {
 	// permission that prints a count is CastOnly.
 	CastsLeft int `json:"castsLeft,omitempty"`
 
+	// BudgetGroup ties several permissions into ONE budget: a cast that
+	// spends any member spends the use of every member (#3846).
+	// Locke, Treasure Hunter's "you may cast a spell from among those
+	// cards" names cards in two zones when Rest in Peace exiled one of
+	// them, and a permission has one Zone, so the grant is one
+	// permission per zone. Without the tie each zone's permission would
+	// carry its own CastsLeft and the player would cast one spell from
+	// each. uuid.Nil -- every permission written before the field -- is
+	// a budget of its own. Set by GrantCastPermissionAcrossZonesForEffect.
+	BudgetGroup uuid.UUID `json:"budgetGroup,omitempty"`
+
 	// PerType is a budget of ONE use per card type (#2167, ADR 0066's
 	// 2026-10-09 amendment): the card types, in CR 205.2a's lowercase
 	// spelling, this permission opens one cast or play of each.
@@ -1205,6 +1216,41 @@ func (g *Game) GrantCastPermissionToCardsForEffect(perm CastPermission, cards []
 	g.GrantCastPermissionForEffect(perm)
 }
 
+// GrantCastPermissionAcrossZonesForEffect is GrantCastPermissionToCardsForEffect
+// for a set of cards that are not all in one zone: "you may cast a spell
+// from among those cards" over a mill Rest in Peace partly exiled
+// (CR 701.17c, #3846). A permission opens a cast out of ONE zone, so the
+// cards are grouped by where each is now -- a graveyard or exile, the
+// only zones a stored permission can open -- and one permission is
+// stored per zone. They share one BudgetGroup, so the limited count in
+// `perm` (CastsLeft) is spent once across all of them, not once per zone.
+// A card in any other zone (the command zone, say) is not granted.
+//
+// `perm.Zone` is ignored; every other field is copied to each permission.
+//
+// Caller must hold g.mu (write).
+func (g *Game) GrantCastPermissionAcrossZonesForEffect(perm CastPermission, cards []Card) {
+	byZone := map[ZoneKind][]Card{}
+	var order []ZoneKind
+	for _, c := range cards {
+		z := g.findCardZoneLocked(c.InstanceID)
+		if z == nil || (z.Kind != ZoneGraveyard && z.Kind != ZoneExile) {
+			continue
+		}
+		if _, ok := byZone[z.Kind]; !ok {
+			order = append(order, z.Kind)
+		}
+		byZone[z.Kind] = append(byZone[z.Kind], c)
+	}
+	if len(order) > 1 && perm.CastsLeft > 0 {
+		perm.BudgetGroup = uuid.New()
+	}
+	for _, kind := range order {
+		perm.Zone = kind
+		g.GrantCastPermissionToCardsForEffect(perm, byZone[kind])
+	}
+}
+
 // CastPermissionForLocked is THE query: does an effect let playerID
 // cast or play this card out of this zone right now?
 //
@@ -1329,6 +1375,10 @@ func (g *Game) consumeLimitedGrantLocked(holder uuid.UUID, card Card, grant *Cas
 	if p == nil || len(p.CastPermissions) == 0 {
 		return
 	}
+	if grant.BudgetGroup != uuid.Nil {
+		g.consumeBudgetGroupLocked(p, grant.BudgetGroup)
+		return
+	}
 	kept := make([]CastPermission, 0, len(p.CastPermissions))
 	spent := false
 	for _, perm := range p.CastPermissions {
@@ -1344,6 +1394,29 @@ func (g *Game) consumeLimitedGrantLocked(holder uuid.UUID, card Card, grant *Cas
 	}
 	if !spent {
 		return
+	}
+	if len(kept) == 0 {
+		kept = nil
+	}
+	p.CastPermissions = kept
+}
+
+// consumeBudgetGroupLocked spends one use of every permission in the
+// group -- they are one budget (CastPermission.BudgetGroup) -- and drops
+// the ones that reach zero. A fresh slice, for consumeLimitedGrantLocked's
+// reason.
+//
+// Caller must hold g.mu (write).
+func (g *Game) consumeBudgetGroupLocked(p *Player, group uuid.UUID) {
+	kept := make([]CastPermission, 0, len(p.CastPermissions))
+	for _, perm := range p.CastPermissions {
+		if perm.BudgetGroup == group && perm.CastsLeft > 0 {
+			perm.CastsLeft--
+			if perm.CastsLeft == 0 {
+				continue
+			}
+		}
+		kept = append(kept, perm)
 	}
 	if len(kept) == 0 {
 		kept = nil
