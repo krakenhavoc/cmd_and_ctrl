@@ -131,6 +131,10 @@
     // keeps it on one line. `demand` reads back what the row asks for.
     budget?: number;
     demand?: RowReport | null;
+    // #3893: an empty row keeps one card's line, so the rows after it
+    // sit where they would beside a card (the creature row). Without
+    // it an empty row is one label high.
+    hold?: boolean;
     // ADR 0105 (#1789): the frame's legal-action lookups. `legal` is
     // what may be highlighted ("nothing" while highlights are off or
     // autopass is passing; on an opponent's panel only that panel's
@@ -185,7 +189,10 @@
     pileCount = $bindable(0),
     budget = 0,
     demand = $bindable(null),
+    hold = false,
   }: Props = $props();
+
+  const held = $derived(hold && cards.length === 0);
 
   // ADR 0120 §3: the surface this row is drawn on, table or expanded.
   const surface = popoverSurface();
@@ -332,7 +339,7 @@
   }
 </script>
 
-<div class="row" class:compact class:strip data-zone={label}>
+<div class="row" class:compact class:strip class:held data-zone={label}>
   <!-- #2995: the dice stay off the label (DiceLayer, data-dice-avoid). -->
   <span class="row-label" aria-hidden="true" data-dice-avoid>
     <span class="row-name">{label}</span>
@@ -348,7 +355,7 @@
     class="row-cards"
     role="list"
     aria-label={label}
-    use:fitRow={{ strip, budget, onDemand: (d) => (demand = d) }}
+    use:fitRow={{ strip, budget, hold: held, onDemand: (d) => (demand = d) }}
   >
     {#each piles as p (p.key)}
       {@const depths = pileDepths(p.cards.length)}
@@ -484,6 +491,13 @@
     min-height: 0;
     min-width: 0;
     overflow: auto;
+  }
+  /* #3893: an empty creature row is as tall as a row of one card (the
+     padding adds the label's band), so the back row behind it does not
+     move up into its place. It still shrinks on a short panel, as a
+     row with a card does; fitRow asks the panel for the same height. */
+  .row.held {
+    height: var(--card-h, 168px);
   }
   .row.compact {
     --card-w: var(--card-w-sm, 88px);

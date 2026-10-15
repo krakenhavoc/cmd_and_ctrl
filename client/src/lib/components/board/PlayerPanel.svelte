@@ -844,6 +844,7 @@
       cards={buckets.creature}
       budget={budgets[0]}
       bind:demand={creatureDemand}
+      hold
       {viewerID}
       {selectedCombatCardID}
       {stagedAttackers}
