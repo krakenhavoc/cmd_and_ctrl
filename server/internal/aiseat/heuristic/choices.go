@@ -606,6 +606,16 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 				return 1, "any player: let an opponent's permanent go"
 			}
 		}
+		// ADR 0187 §7 (owner decision 3): a card exiled from the bot's
+		// own graveyard is paid only against a creature that is fighting
+		// the bot. Its price is then the cards it exiles (fuelValue,
+		// below); out of that combat it is not worth a card.
+		if kind == choicePayUnless && exilesFromMyGraveyard(ch) && !st.inCombatWithMe(ch.Source) {
+			if cp.Apply != nil && *cp.Apply {
+				return 0.25, "any player: that creature is not fighting me, keep the graveyard"
+			}
+			return 1, "any player: not my combat"
+		}
 		if kind == choicePayUnless {
 			if decline, why, ok := p.taxAgainstPlan(st, ch); ok {
 				yes := cp.Apply != nil && *cp.Apply
