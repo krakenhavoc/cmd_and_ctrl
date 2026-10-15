@@ -92,6 +92,20 @@ describe("gameOverText", () => {
     expect(gameOverText(v)).toEqual({ winner: null, text: "The game is a draw." });
   });
 
+  it("names the loop in a mandatory loop's draw (CR 732.4)", () => {
+    const v = view("ended", [alice, bob], {
+      kind: "draw",
+      cause: "mandatory_loop",
+      source_name: "Flow Engine",
+    });
+    expect(gameOverText(v)).toEqual({
+      winner: null,
+      text: "The game is a draw — Flow Engine's loop can't be stopped.",
+    });
+    const unnamed = view("ended", [alice, bob], { kind: "draw", cause: "mandatory_loop" });
+    expect(gameOverText(unnamed).text).toBe("The game is a draw — a loop can't be stopped.");
+  });
+
   it("keeps the old sentence for an ended view with nobody to name", () => {
     const v = view("ended", [alice, bob]);
     expect(gameOverText(v)).toEqual({ winner: null, text: "Game ended — no survivors." });

@@ -171,8 +171,10 @@ const (
 	LogEliminated LogKind = "eliminated"
 	// LogGameOver — the game ended with a result: a winner, or a draw
 	// (ADR 0057 Decision 7). Seat is the winner, NoSeat for a draw;
-	// Cause is "last_standing", "effect" or "all_lost"; CardID names
-	// the winning source for an effect win.
+	// Cause is "last_standing", "effect", "all_lost" or
+	// "mandatory_loop"; CardID names the winning source for an effect
+	// win, and the loop's repeating source for a mandatory loop's draw
+	// (CR 732.4, #2506).
 	LogGameOver LogKind = "game_over"
 	// LogWinPrevented — an effect would have made Seat win the game
 	// and a "can't win the game" gate stopped it. CardID is the
@@ -2773,6 +2775,11 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		switch e.Cause {
 		case game.OutcomeCauseAllLost:
 			return "The game is a draw"
+		case game.OutcomeCauseMandatoryLoop:
+			if cardName != "" {
+				return fmt.Sprintf("The game is a draw: %s's loop repeats with no way to stop (CR 732.4)", cardName)
+			}
+			return "The game is a draw: a loop repeats with no way to stop (CR 732.4)"
 		case game.OutcomeCauseEffect:
 			if cardName != "" {
 				return fmt.Sprintf("%s won the game (%s)", actor, cardName)

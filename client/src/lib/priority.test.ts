@@ -562,4 +562,12 @@ describe("loopNoticeText", () => {
     s.loop_notice = { label: "", count: 40 };
     expect(loopNoticeText(s)).toBe("An ability has resolved 40 times this turn.");
   });
+
+  it("says what passing means for a mandatory loop (CR 732.4)", () => {
+    const s = snap();
+    s.loop_notice = { label: "Flow Engine — gain 1 life", count: 25, mandatory: true };
+    expect(loopNoticeText(s)).toBe(
+      "Flow Engine — gain 1 life has resolved 25 times this turn. Nothing can stop it: if everyone passes again, the game is a draw.",
+    );
+  });
 });

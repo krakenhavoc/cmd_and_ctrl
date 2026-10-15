@@ -622,9 +622,12 @@ export interface OutcomeView {
   winner_seat?: number;
   // "last_standing" (every opponent left, CR 104.2a), "effect" (an
   // effect said this player wins, CR 104.2b) or "all_lost" (everyone
-  // left lost at once, CR 104.4a — a draw).
-  cause: "last_standing" | "effect" | "all_lost";
-  // The object whose effect won, for an effect win.
+  // left lost at once, CR 104.4a — a draw) or "mandatory_loop" (a loop
+  // of only mandatory actions repeated with no way to stop, CR 732.4 —
+  // a draw).
+  cause: "last_standing" | "effect" | "all_lost" | "mandatory_loop";
+  // The object whose effect won, for an effect win; the loop's card,
+  // for a mandatory loop's draw.
   source?: string;
   source_name?: string;
 }
@@ -659,6 +662,10 @@ export interface LoopNoticeView {
   label: string;
   controller?: string;
   count: number;
+  // #2506, CR 732.4: the loop has only mandatory actions and repeats
+  // unchanged. If every seat passes it round once more, the game is a
+  // draw.
+  mandatory?: boolean;
 }
 
 // ADR 0193: GameView.loop_recording. `status` is "recording" (steps

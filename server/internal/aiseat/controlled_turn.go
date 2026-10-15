@@ -69,7 +69,8 @@ func (p controlledTurnPolicy) Decide(_ context.Context, in Input) (Decision, err
 //
 // Paced like the seat's own decisions, except that a lone pass is not
 // held for (#2898). A pass is held, not sent, while the CR 732 loop
-// breaker suspends automatic passing, as the bot's own pass is.
+// breaker suspends automatic passing, as the bot's own pass is — and,
+// like it, sent through a mandatory loop's notice (#2506, CR 732.4).
 func (r *Runner) playControlledTurn(ctx context.Context, moves []legal.Move, started time.Time, minThink time.Duration) (ok, applied bool) {
 	pol := controlledTurnPolicy{inner: r.policy}
 	d, err := pol.Decide(ctx, Input{Seat: r.seat, Moves: moves})
@@ -77,7 +78,7 @@ func (r *Runner) playControlledTurn(ctx context.Context, moves []legal.Move, sta
 		return true, false
 	}
 	mv := moves[d.Index]
-	if mv.Kind == legal.KindPass && r.room.Game.AutoPassSuspended() {
+	if mv.Kind == legal.KindPass && r.room.Game.AutoPassSuspended() && !r.room.Game.MandatoryLoopStanding() {
 		r.log.Warn("bot holding the controlled turn: automatic passing is suspended by the loop breaker (CR 732)")
 		return true, false
 	}

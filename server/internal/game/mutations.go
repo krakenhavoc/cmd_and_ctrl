@@ -4162,6 +4162,12 @@ func (g *Game) resolveTopAbilityLocked() {
 		Label:               top.Label,
 		ResolvedStackItemID: top.ID,
 	})
+	if g.State != StateActive {
+		// #2506: the resolution was the loop coming round once more,
+		// and CR 732.4 made the game a draw (loop_breaker.go). Nothing
+		// is left for the ability to do.
+		return
+	}
 	resolveSeq := g.eventSeq
 	// CR 603.5 (#2494): an optional trigger's "you may" is chosen now,
 	// as it resolves, and the rest of the resolution waits for the

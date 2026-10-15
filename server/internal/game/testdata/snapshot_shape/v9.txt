@@ -2060,6 +2060,7 @@ loopNotice	object
 loopNotice.controller	custom(uuid.UUID)
 loopNotice.count	number:int
 loopNotice.label	string
+loopNotice.mandatory	bool
 loopNotice.source	custom(uuid.UUID)
 loopRecording	object
 loopRecording.births	array
@@ -7348,6 +7349,8 @@ turnTally.loopAllowance{}	number:int
 turnTally.loopLow	number:int
 turnTally.loopLowSet	bool
 turnTally.loopProgressed	bool
+turnTally.loopRepeat	map:string
+turnTally.loopRepeat{}	string
 turnTally.loopRun	map:string
 turnTally.loopRun{}	number:int
 turnTally.loreCounterPut	array

@@ -221,11 +221,17 @@ export function autopassSuspended(snap: GameView | null | undefined): boolean {
 // Spark has resolved 25 times this turn." The label already reads
 // "<card> — <ability>" by catalog convention, so there is nothing to
 // look up on the board. Empty string when nothing is suspected.
+//
+// A mandatory loop (#2506, CR 732.4) says what passing now means: it
+// repeats unchanged, nobody has to break it, and one more time round
+// is a draw.
 export function loopNoticeText(snap: GameView | null | undefined): string {
   const n = snap?.loop_notice;
   if (!n) return "";
   const label = n.label || "An ability";
-  return `${label} has resolved ${n.count} times this turn.`;
+  const line = `${label} has resolved ${n.count} times this turn.`;
+  if (!n.mandatory) return line;
+  return `${line} Nothing can stop it: if everyone passes again, the game is a draw.`;
 }
 
 // Testing hook: retained as a no-op. The memo cache it used to clear

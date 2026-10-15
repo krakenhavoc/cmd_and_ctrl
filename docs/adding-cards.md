@@ -7345,7 +7345,10 @@ touch it: answering is a player decision, so the run is cleared and
 found it — without that re-arm, "3 more" would mean 3 + the threshold;
 and this prompt **blocks the table**, which the notice deliberately does
 not, so `notePlayerDecisionLocked` withdraws a stale one rather than
-leaving a wedge. CR 732.4's draw is still not built.
+leaving a wedge. CR 732.4's draw sits on top (#2506): a loop of only
+mandatory actions that comes round unchanged gets no prompt, its notice
+is marked `mandatory`, and one more unchanged time round is a draw (ADR
+0055's amendment of 2026-10-15).
 
 ### Untapping in another player's untap step (#74)
 

@@ -553,6 +553,9 @@ func (s *Seat) decisionTextLocked(w *window) Result {
 	if v.LoopNotice != nil {
 		head = append(head, fmt.Sprintf("LOOP NOTICE (CR 732): %s has resolved %d times this turn. Nothing passes automatically until a player decides.",
 			nw.apply(v.LoopNotice.Label), v.LoopNotice.Count))
+		if v.LoopNotice.Mandatory {
+			head = append(head, "This loop has only mandatory actions and repeats unchanged: if every player passes it round once more, the game is a draw (CR 732.4).")
+		}
 	}
 	head = append(head, loopHeadLines(v, me, nw)...)
 	if sum := absorbedSummary(s.autoSince); sum != "" {

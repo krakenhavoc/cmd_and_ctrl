@@ -613,6 +613,10 @@ func TestLoopReplayDoesNotTripTheLoopBreaker(t *testing.T) {
 	if lt.g.CurrentLoopNotice() != nil {
 		t.Error("the breaker raised its notice during the replay")
 	}
+	// #2506: nor does CR 732.4's draw, which is the breaker's to call.
+	if o := lt.g.Result(); o != nil {
+		t.Errorf("the replay ended the game: outcome %+v", o)
+	}
 	lt.state(func() {
 		for _, c := range lt.g.PendingChoices {
 			if c.Kind == game.PendingChoiceLoopShortcut {

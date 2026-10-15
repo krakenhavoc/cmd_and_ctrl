@@ -1,6 +1,13 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"sort"
+
+	"github.com/google/uuid"
+)
 
 // loop_breaker.go — the CR 732 shortcut, engine side (#628).
 //
@@ -100,6 +107,14 @@ type LoopNotice struct {
 	// EventLoopSuspected breadcrumb is emitted once, when the notice
 	// is first raised.
 	Count int `json:"count"`
+	// Mandatory says the loop is CR 732.4's: its last iteration was
+	// all mandatory actions and gave the game back exactly as it found
+	// it (noteLoopRepeatLocked). There is no shortcut to offer — no
+	// number of iterations changes anything, and "stop here" is not a
+	// choice anybody has — so no prompt is queued. Every seat still
+	// gets priority; if the loop comes round once more, unchanged and
+	// with nobody having broken it, the game is a draw (#2506).
+	Mandatory bool `json:"mandatory,omitempty"`
 }
 
 // loopThresholdLocked is the count this game trips at: the per-game
@@ -144,6 +159,9 @@ func (g *Game) noteResolutionForLoopLocked(ev Event, key string) {
 		g.TurnTally.LoopRun = map[string]int{}
 	}
 	g.TurnTally.LoopRun[key]++
+	// #2506, CR 732.4: did the iteration that just came round change
+	// anything at all?
+	repeated := g.noteLoopRepeatLocked(ev, key)
 	if !g.loopSuspectedLocked(key) {
 		return
 	}
@@ -172,6 +190,7 @@ func (g *Game) noteResolutionForLoopLocked(ev Event, key string) {
 		// (and a fresh breadcrumb) on every single resolution.
 		if g.LoopNotice.Source == ev.Source && g.LoopNotice.Label == ev.Label {
 			g.LoopNotice.Count = g.TurnTally.LoopRun[key]
+			g.noteMandatoryLoopLocked(ev, repeated)
 		}
 		return
 	}
@@ -180,6 +199,7 @@ func (g *Game) noteResolutionForLoopLocked(ev Event, key string) {
 		Label:      ev.Label,
 		Controller: ev.Actor,
 		Count:      g.TurnTally.LoopRun[key],
+		Mandatory:  repeated,
 	}
 	g.EmitEvent(Event{
 		Kind:   EventLoopSuspected,
@@ -192,6 +212,13 @@ func (g *Game) noteResolutionForLoopLocked(ev Event, key string) {
 	// controller asked for, so the prompt they answered is the one
 	// being offered again. The flag rides the prompt so the bot
 	// policy can tell a first ask from a second (docs/bot.md).
+	//
+	// #2506: a mandatory loop gets no question. Its controller cannot
+	// stop it, and K more iterations of a loop that changes nothing
+	// are the board it is already looking at.
+	if repeated {
+		return
+	}
 	g.queueLoopShortcutLocked(key, exhausted)
 }
 
@@ -289,6 +316,7 @@ func (g *Game) notePlayerDecisionLocked() {
 	g.TurnTally.LoopLow, g.TurnTally.LoopLowSet = 0, false
 	g.TurnTally.LoopActivated = ""
 	g.TurnTally.LoopProgressed = false
+	g.TurnTally.LoopRepeat = nil
 	// #804: a real decision ends any CR 732 shortcut too. The
 	// controller agreed to K more iterations of a loop that nobody was
 	// doing anything about; somebody has now done something, so the
@@ -507,7 +535,7 @@ func (g *Game) noteLoopProgressLocked() {
 	keep := t.LoopActivated
 	run := t.LoopRun[keep]
 	allowance, granted := t.LoopAllowance[keep]
-	t.LoopRun, t.LoopAllowance = nil, nil
+	t.LoopRun, t.LoopAllowance, t.LoopRepeat = nil, nil, nil
 	if keep != "" && run > 0 {
 		t.LoopRun = map[string]int{keep: run}
 	}
@@ -542,6 +570,192 @@ func (g *Game) dropLoopShortcutPromptsLocked() {
 			g.dropChoiceLocked(i)
 		}
 	}
+}
+
+// ---------------------------------------------------------------
+// CR 732.4: a loop of only mandatory actions is a draw (#2506)
+// ---------------------------------------------------------------
+//
+// CR 732.4: "If a loop contains only mandatory actions, the game is a
+// draw." CR 104.4b says which loop that is: one "repeating a sequence
+// of events with no way to stop", and "Loops that contain an optional
+// action don't result in a draw." CR 732.5: "No player can be forced
+// to perform an action that would end a loop other than actions
+// called for by objects involved in the loop."
+//
+// The breaker already finds the candidates. A run reaches the
+// threshold only when one triggered ability has resolved that many
+// times with no player decision in between (a cast, an activation, a
+// declaration, an answered prompt), with the stack not draining
+// (option A) and no life total, poison count or departure moving the
+// game toward its end (option B). What the breaker cannot tell is a
+// loop still going somewhere it does not measure: cards leaving a
+// library, counters coming off a permanent, damage piling up, tokens
+// climbing toward some threshold. So the draw asks one more question,
+// the strictest there is: did a whole iteration give the game back
+// EXACTLY as it found it?
+//
+//   - The position (loopPositionLocked) is ADR 0193 §3's loop
+//     signature — turn, step, priority, the stack item by item, every
+//     permanent and its state — plus every number the signature lets a
+//     demonstrated loop change (life, poison, counters, zone sizes,
+//     tokens, mana), the triggers waiting for the stack, and each
+//     permanent's counters and damage. Taken as the loop's ability
+//     begins to resolve, the same point in every iteration.
+//   - Two positions in a row equal means the loop repeats with no way
+//     to stop: everything in it is mandatory, so the next iteration is
+//     this one again.
+//   - "Only mandatory actions" is what the run already guarantees, with
+//     two gaps closed here: an optional trigger ("you may") is never a
+//     repeat, and a prompt the server answered from a standing answer
+//     (ADR 0127 §7, not a decision for the run) starts the chain of
+//     positions again, because somebody chose that answer.
+//
+// The table is still asked, as CR 732.5 wants: nobody has to break the
+// loop, but anybody may. A repeating loop raises its notice with
+// Mandatory set and no shortcut prompt; automatic passing stays
+// suspended for people, so each of them passes by hand with the banner
+// saying what passing means. Bots pass (internal/aiseat): a bot looks
+// for no way to break a loop, and holding would leave a bot-only table
+// at rest for ever, the ADR 0055 §5 stop this replaces. If the loop's
+// ability then resolves again — every seat passed with it on the
+// stack — and the position is still the same, the game is a draw for
+// every player still in it. CR 104.4f's limited range of influence is
+// not an option this table has, so the draw is never partial.
+
+// noteLoopRepeatLocked takes the game's position as the loop's
+// triggered ability `key` begins to resolve, and reports whether it is
+// the position it was in the last time that ability began to resolve.
+// Only measured once the key's run is one short of the threshold, so
+// an ordinary turn never pays for it. Caller must hold g.mu.
+func (g *Game) noteLoopRepeatLocked(ev Event, key string) bool {
+	t := &g.TurnTally
+	// ADR 0193 §5: a replay is a shortcut the table agreed to.
+	if g.loopReplaying || t.LoopRun[key] < g.loopThresholdLocked()-1 {
+		return false
+	}
+	var item *StackItem
+	if g.resolving != nil {
+		item = g.resolving.item
+	}
+	if item == nil || item.ID != ev.ResolvedStackItemID ||
+		item.Kind != StackItemTriggered || item.Optional != nil {
+		// An activated ability is a choice every time (#810), and a
+		// "you may" is an optional action (CR 104.4b).
+		delete(t.LoopRepeat, key)
+		return false
+	}
+	pos := g.loopPositionLocked()
+	prev, seen := t.LoopRepeat[key]
+	if t.LoopRepeat == nil {
+		t.LoopRepeat = map[string]string{}
+	}
+	t.LoopRepeat[key] = pos
+	return seen && prev == pos
+}
+
+// noteMandatoryLoopLocked is a further resolution of the ability the
+// standing notice names. A repeat under a notice that already said the
+// loop is mandatory is the draw: the table was told, every seat passed,
+// and the loop came round unchanged. A first repeat (a notice raised
+// before the loop settled, then stepped on by hand) marks the notice
+// mandatory; anything else unmarks it. Caller must hold g.mu.
+func (g *Game) noteMandatoryLoopLocked(ev Event, repeated bool) {
+	n := g.LoopNotice
+	switch {
+	case !repeated:
+		n.Mandatory = false
+	case !n.Mandatory:
+		n.Mandatory = true
+	default:
+		g.declareLoopDrawLocked(ev)
+	}
+}
+
+// declareLoopDrawLocked ends the game in CR 732.4's draw. `ev` is the
+// loop's EventResolve; its source is the outcome's, so the log and the
+// game-over banner can name the card. The resolving ability does
+// nothing more (resolveTopAbilityLocked stops on an ended game).
+// Caller must hold g.mu.
+func (g *Game) declareLoopDrawLocked(ev Event) {
+	g.LoopNotice = nil
+	g.TurnTally.LoopAllowance = nil
+	g.endGameLocked(GameOutcome{Kind: OutcomeDraw, Cause: OutcomeCauseMandatoryLoop, Source: ev.Source})
+}
+
+// noteLoopAutoAnswerLocked is a prompt the server answered from a
+// standing answer (ADR 0127). It is not a decision for the run, but it
+// is somebody's choice standing in the loop, so the chain of repeated
+// positions starts again. Caller must hold g.mu.
+func (g *Game) noteLoopAutoAnswerLocked() {
+	g.TurnTally.LoopRepeat = nil
+}
+
+// loopPosition is what loopPositionLocked fingerprints.
+type loopPosition struct {
+	Signature LoopSignature        `json:"s"`
+	Totals    LoopTotals           `json:"t"`
+	Waiting   []LoopStackEntry     `json:"w,omitempty"`
+	Marks     map[string]loopMarks `json:"m,omitempty"`
+}
+
+// loopMarks is one permanent's numbers that the signature leaves out.
+type loopMarks struct {
+	Counters map[string]int `json:"c,omitempty"`
+	Damage   int            `json:"d,omitempty"`
+}
+
+// loopPositionLocked fingerprints the game's position for the CR 732.4
+// repeat test: ADR 0193's loop signature with the permanents in a
+// fixed order, the totals a demonstrated loop may change, the triggers
+// waiting for the stack, and each permanent's counters and damage.
+// Equal fingerprints are equal positions. Caller must hold g.mu.
+func (g *Game) loopPositionLocked() string {
+	pos := loopPosition{Signature: g.loopSignatureLocked(), Totals: g.loopTotalsLocked()}
+	sort.Slice(pos.Signature.Board, func(i, j int) bool {
+		return pos.Signature.Board[i].ID.String() < pos.Signature.Board[j].ID.String()
+	})
+	for _, it := range g.PendingTriggers {
+		if it != nil {
+			pos.Waiting = append(pos.Waiting, LoopStackEntry{
+				Kind: it.Kind, Source: it.SourceCardID, Label: it.Label, Controller: it.Controller,
+			})
+		}
+	}
+	for _, z := range []*Zone{g.Battlefield, g.PhasedOut} {
+		if z == nil {
+			continue
+		}
+		for i := range z.Cards {
+			c := &z.Cards[i]
+			if len(c.Counters) == 0 && c.DamageMarked == 0 {
+				continue
+			}
+			if pos.Marks == nil {
+				pos.Marks = map[string]loopMarks{}
+			}
+			pos.Marks[c.InstanceID.String()] = loopMarks{Counters: c.Counters, Damage: c.DamageMarked}
+		}
+	}
+	raw, err := json.Marshal(pos)
+	if err != nil {
+		// Nothing in it can fail to marshal; a position that could not
+		// be taken is never a repeat.
+		return uuid.NewString()
+	}
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:16])
+}
+
+// MandatoryLoopStanding reports whether the standing loop notice is
+// CR 732.4's: a loop of only mandatory actions that repeats unchanged.
+// A bot seat passes through it rather than holding (CR 732.5: nobody
+// has to break a loop), which is what lets a bot-only table reach the
+// draw instead of resting on the notice for ever.
+func (g *Game) MandatoryLoopStanding() bool {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.LoopNotice != nil && g.LoopNotice.Mandatory
 }
 
 // AutoPassSuspended reports whether the CR 732 breaker has paused
