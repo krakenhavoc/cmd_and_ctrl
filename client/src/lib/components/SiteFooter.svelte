@@ -16,9 +16,14 @@
   import { FUNDING_HASH } from "../funding";
   import { ABOUT_HASH, GUIDE_HASH, REPO_URL } from "../about";
   import { community } from "../community";
+  import Wordmark from "./Wordmark.svelte";
 </script>
 
 <footer class="site-footer">
+  <div class="close">
+    <a class="close-mark" href="#/" aria-label="CMD & CTRL home"><Wordmark size="bar" /></a>
+    <p class="close-line" aria-hidden="true">Commander, over the wire.</p>
+  </div>
   <div class="row">
     <nav class="links" aria-label="Site footer">
       {#if $community.invite_url}
@@ -54,10 +59,53 @@
 <style>
   .site-footer {
     margin-top: auto;
-    border-top: 1px solid var(--border);
     color: var(--fg-dim);
     font-size: 12.5px;
     line-height: 1.6;
+    background: var(--bg-1);
+  }
+  /* W U B R G again, quieter than the header's: the page closes where it
+     opened. */
+  .site-footer::before {
+    content: "";
+    display: block;
+    height: 2px;
+    opacity: 0.7;
+    background: linear-gradient(
+      90deg,
+      var(--identity-w) 0 20%,
+      var(--identity-u) 20% 40%,
+      var(--identity-b) 40% 60%,
+      var(--identity-r) 60% 80%,
+      var(--identity-g) 80% 100%
+    );
+  }
+  /* The close: the mark, then the name's promise set large and quiet. */
+  .close {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 36px var(--page-gutter) 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 32px;
+    box-sizing: content-box;
+  }
+  .close-mark {
+    display: inline-flex;
+    font-size: 20px;
+    text-decoration: none;
+    border-radius: var(--radius);
+  }
+  .close-line {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(26px, 3.4vw, 44px);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.035em;
+    color: color-mix(in srgb, var(--fg) 22%, transparent);
   }
   .row {
     max-width: 1200px;
