@@ -950,10 +950,11 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 		return nil
 	}
 	out := AlternativeCost{
-		Key:      p.AltCostKey,
-		Label:    p.Label,
-		ManaCost: card.ManaCost,
-		FromZone: p.Zone,
+		Key:            p.AltCostKey,
+		Label:          p.Label,
+		ManaCost:       card.ManaCost,
+		FromZone:       p.Zone,
+		FromPermission: true,
 	}
 	if p.Cost != "" {
 		out.ManaCost = p.Cost

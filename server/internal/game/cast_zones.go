@@ -399,10 +399,20 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 // #1729) is spent on. It is validateCastPathLocked's "the permission is
 // the REASON this cast is legal": exile is opened by nothing else, and
 // a graveyard or a library card that opens the zone itself (a printed
-// flashback, Gravecrawler, an aftermath half) does not need one.
+// flashback, Gravecrawler, an aftermath half) does not need one — unless
+// the cast claims the permission's own priced offer (alt.FromPermission).
 //
 // Caller must hold g.mu.
 func (g *Game) castUsesGrantLocked(card Card, srcKind ZoneKind, alt *AlternativeCost) bool {
+	// #3785: a claim of the price the permission itself synthesised is
+	// the permission's cast, whether or not the card also opens its own
+	// zone. Emet-Selch's grant over a flashback card is claimed under
+	// "granted-cost", a key the card never offers, so its once-each-turn
+	// follow-up has to run; the card's own flashback claim is another key
+	// and stays the card's own cast.
+	if alt != nil && alt.FromPermission {
+		return true
+	}
 	switch srcKind {
 	case ZoneHand, ZoneCommand:
 		return false

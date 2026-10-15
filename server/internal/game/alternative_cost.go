@@ -447,6 +447,14 @@ type AlternativeCost struct {
 	// query, and a claim reaches the stack as its key alone.
 	Granted bool
 
+	// FromPermission marks the offer CastPermission.AlternativeCostFor
+	// synthesised: the price a cast permission charges under its own
+	// key (#3785). A claim of it is made BY the permission, which is
+	// what castUsesGrantLocked answers even when the card also opens
+	// its own zone (a flashback card cast through Emet-Selch's grant).
+	// Never serialised: built per query.
+	FromPermission bool
+
 	// onceEachTurnKey is the TurnTally.GrantedAltCostsClaimed key a
 	// claim of this granted offer spends (#3174, GrantedAlternativeCost.
 	// OnceEachTurn): set only on a derived copy, naming the source
