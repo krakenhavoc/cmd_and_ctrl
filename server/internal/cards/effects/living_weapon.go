@@ -64,11 +64,19 @@ func LivingWeapon(cardName string) game.TriggeredAbility {
 // everything off the item it is handed, and is therefore safe across
 // the Clone an undo restores.
 func livingWeaponCreateGermAndAttach(g *game.Game, item *game.StackItem) error {
+	return createTokenAndAttachSource(g, item, livingWeaponGermToken)
+}
+
+// createTokenAndAttachSource is "create <this token>, then attach this
+// Equipment to it" for the keywords that print it: living weapon and
+// job select. The attach rides the creation's continuation for the
+// reason the file comment gives.
+func createTokenAndAttachSource(g *game.Game, item *game.StackItem, template string) error {
 	return g.CreateTokensThenForEffect(game.TokenCreation{
 		Controller: item.Controller,
 		Source:     item.SourceCardID,
 		Groups: []game.TokenGroup{{
-			Template: TokenCard(livingWeaponGermToken),
+			Template: TokenCard(template),
 			Count:    1,
 		}},
 	}, func(g *game.Game, created []uuid.UUID) error {
