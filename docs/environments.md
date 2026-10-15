@@ -804,8 +804,14 @@ deploy costs each live table on the way down and the way back up, so
 "did that restart rewind anybody" is a `journalctl` search rather than
 a question for the players.
 
-At SIGTERM, after the HTTP listener closes and before the hub drops any
-connection, one line per live game:
+At SIGTERM, after the HTTP listener closes, the server first writes every
+table's held restore point (restore points are written at most once per
+`CMDCTRL_RESTORE_POINT_INTERVAL`, default 5 s, #3823), and writes them
+again once the hub and the bots have stopped, so nothing that landed in
+between is lost. A graceful restart therefore rewinds a table no
+further than its last clean state, as before the rate limit; only a
+crash or `SIGKILL` can cost up to one interval more. Then, before the
+hub drops any connection, one line per live game:
 
 ```
 level=INFO msg="shutdown census: game" game_id=d3b53ef1-… archived=false clean=true seq=1 has_restore_point=true restore_seq=1 seq_behind=0 restore_age=0s
