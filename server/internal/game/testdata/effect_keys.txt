@@ -254,3 +254,4 @@ body espers-to-magicite/copy
 body extra-combat/untap-all-you-control
 body extra-combat/untap-attackers-at-that-combat
 body blitz/sacrifice
+body weeping-angel/owner-shuffles-it-in

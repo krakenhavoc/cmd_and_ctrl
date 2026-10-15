@@ -89,7 +89,7 @@ func b31LandCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Ca
 // b31NotACreatureWhileGraveyardBelow is The Warring Triad's "As long
 // as there are fewer than N cards in your graveyard, this isn't a
 // creature": a layer 4 static on itself that drops the Creature type
-// — and with it the creature subtypes, CR 205.1b — while the
+// — and with it the creature subtypes, CR 205.1a — while the
 // controller's graveyard is short. Every other type the card prints
 // (Artifact) stays. Read on every recompute, so the god wakes the
 // moment the layer cache next rebuilds.
@@ -101,10 +101,10 @@ func b31NotACreatureWhileGraveyardBelow(n int) game.StaticAbility {
 			return target.InstanceID == source.InstanceID && b31GraveyardSize(g, source.Controller) < n
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			// notACreature (helpers.go), shared with impending: it
-			// drops the creature subtypes along with the type, so a
-			// Maskwood Nexus does not leave the god a Goblin while it
-			// is not a creature (CR 205.1b, #670).
+			// notACreature (helpers.go), shared with impending. The
+			// layer pass drops the creature subtypes along with the
+			// type, so a Maskwood Nexus does not leave the god a Goblin
+			// while it is not a creature (CR 205.1a, #670, #2041).
 			notACreature(c)
 		},
 	}

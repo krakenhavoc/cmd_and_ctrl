@@ -160,10 +160,13 @@ func (e reconfiguredEffect) Apply(c *Characteristic, _ *Card, _ *Game) {
 func (e reconfiguredEffect) RemovesAbilities() bool      { return false }
 func (e reconfiguredEffect) ContinuesAfterRemoval() bool { return false }
 
-// loseCreatureType removes the creature card type and every creature
-// subtype (CR 205.3d), and with them "is every creature type". Other
-// types and subtypes are kept.
+// loseCreatureType removes the creature card type and, with it, the
+// creature subtypes and "is every creature type" unless a Kindred type
+// still allows them (CR 205.1a). Other types and subtypes are kept.
+// Self-contained rather than left to the layer pass, because the bestow
+// cold path (bestowBaseline) runs it where no pass does.
 func (c *Characteristic) loseCreatureType() {
+	before := correlatedSubtypeSets(c.Types)
 	types := c.Types[:0:0]
 	for _, t := range c.Types {
 		if !equalFoldASCII(t, "Creature") {
@@ -171,14 +174,10 @@ func (c *Characteristic) loseCreatureType() {
 		}
 	}
 	c.Types = types
-	subtypes := c.Subtypes[:0:0]
-	for _, s := range c.Subtypes {
-		if !IsCreatureType(s) {
-			subtypes = append(subtypes, s)
-		}
-	}
-	c.Subtypes = subtypes
-	c.AllCreatureTypes = false
+	c.dropSubtypesOfLostTypes(before)
+	// Clipped, so a caller's append (becomeBestowedAura's Aura) never
+	// writes through a cached baseline.
+	c.Subtypes = c.Subtypes[:len(c.Subtypes):len(c.Subtypes)]
 }
 
 // reconfigureContinuousEffectsLocked is the layer pass's source list for

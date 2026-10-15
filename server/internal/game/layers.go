@@ -771,6 +771,11 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 	// static is recorded with this effect's timestamp, which the
 	// granted static's CR 613.7a timestamp reads (granted_statics.go).
 	grants, grantor := grantKeysOf(eff)
+	// #2041: a layer-4 effect loses the subtypes of any card type it
+	// removes (CR 205.1a, card_type_loss.go). One interface call per
+	// effect, not per object.
+	effLayer, _ := eff.Layer()
+	typeChange := effLayer == Layer4Type
 	// The fast path, and it is the board almost every recompute runs
 	// on: nothing in play can remove an ability, so CR 613.6 has
 	// nothing to say, no source can be silenced, and the whole of the
@@ -784,7 +789,11 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 			if !eff.AppliesTo(target, g) {
 				continue
 			}
-			eff.Apply(target.effective, target, g)
+			if typeChange {
+				applyTypeChange(eff, target.effective, target, g)
+			} else {
+				eff.Apply(target.effective, target, g)
+			}
 			if definesPT {
 				target.effective.PTDefined = true
 			}
@@ -833,7 +842,11 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 				st.recordRemovalTimestamp(target, eff.Timestamp())
 			}
 		}
-		eff.Apply(target.effective, target, g)
+		if typeChange {
+			applyTypeChange(eff, target.effective, target, g)
+		} else {
+			eff.Apply(target.effective, target, g)
+		}
 		if definesPT {
 			target.effective.PTDefined = true
 		}

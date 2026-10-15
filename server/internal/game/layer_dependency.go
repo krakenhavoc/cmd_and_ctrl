@@ -489,6 +489,12 @@ func applyRaw(eff ContinuousEffect, c *Characteristic, target *Card, g *Game) {
 		c.BorrowedAbilities = nil
 		c.AbilitiesRemoved = true
 	}
+	if l, _ := eff.Layer(); l == Layer4Type {
+		// #2041: the CR 205.1a subtype loss is part of the
+		// instruction, so a probe sees it (card_type_loss.go).
+		applyTypeChange(eff, c, target, g)
+		return
+	}
 	eff.Apply(c, target, g)
 }
 

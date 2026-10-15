@@ -1088,19 +1088,16 @@ func firstLegalPlayerTarget(ctx *Context) (uuid.UUID, bool) {
 	return uuid.Nil, false
 }
 
-// notACreature strips the Creature card type, and the creature
-// subtypes that rode on it, from a characteristic being built in
-// layer 4. Not a CR citation — the Comprehensive Rules don't mandate
-// erasing a permanent's printed creature subtypes when it stops being
-// a creature; this engine does it anyway, for the reason below.
+// notACreature strips the Creature card type from a characteristic
+// being built in layer 4: every "as long as <condition>, this isn't a
+// creature" clause (a Theros God's devotion, The Warring Triad's
+// graveyard gate, impending's time counters).
 //
-// Shared by every "as long as <condition>, this isn't a creature"
-// clause — The Warring Triad's graveyard gate, impending's time
-// counters — because the second half is the half that gets forgotten.
-// Dropping Creature and leaving the subtypes behind leaves a God or an
-// Avatar Horror that is not a creature, which reads as a bug on the
-// card and, under a Maskwood Nexus, is one: the permanent would still
-// be every creature type while not being a creature at all (#670).
+// The creature subtypes go with it, and so does "is every creature
+// type", but not here: the layer pass applies CR 205.1a to every
+// layer-4 effect (game/card_type_loss.go, #2041), so a God that isn't a
+// creature is a "Legendary Enchantment" and an artifact creature keeps
+// its artifact types.
 //
 // It does NOT touch power and toughness. A characteristic with no
 // Creature type has no P/T that anything reads, and layer 7 runs
@@ -1113,7 +1110,6 @@ func notACreature(c *game.Characteristic) {
 		}
 	}
 	c.Types = kept
-	c.SetSubtypes(nil)
 }
 
 // EnteringPermanentChooser is the `Controller` hook every entry

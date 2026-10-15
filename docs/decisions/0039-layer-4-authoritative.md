@@ -240,3 +240,41 @@ its types is a fixture that will pass while the card is dead.
   new replacement capability plus an as-enters choice prompt plus
   client UI — a feature, not a follow-on, and deliberately left to
   #335.
+
+## Amendment (2026-10-15, #2041): losing a card type loses its subtypes (CR 205.1a)
+
+CR 205.1a: "If an object's card type is removed, the subtypes correlated
+with that card type will remain if they are also the subtypes of a card
+type the object currently has; otherwise, they are also removed for the
+entire time the object's card type is removed." Until now each effect
+that removed a type had to remember the second half, and
+`RemoveTypesMod("Creature")` did not: an "isn't a creature" Weeping Angel
+was still an Alien Angel to every Angel count and tribal lord.
+
+**The pass applies it, not the effects.** Every layer-4 application
+(`applyOneEffectLocked`, and the CR 613.8 probe's `applyRaw`) runs through
+`applyTypeChange` (`game/card_type_loss.go`): it notes which subtype lists
+the object's card types allow before the effect and after it, and drops
+the subtypes of every list the effect closed. Creature types are allowed
+by Creature or Kindred (Tribal), land types by Land, artifact types by
+Artifact, enchantment types by Enchantment, planeswalker types by
+Planeswalker (CR 205.3j's list, newly carried), spell types by Instant or
+Sorcery, battle types by Battle. "Is every creature type" goes with the
+creature list. A subtype on none of the lists is kept.
+
+**In the removing effect's slot.** The drop is part of the effect that
+removed the type, so CR 613.7 order decides: a later "becomes an artifact
+creature" makes the object a creature again without the creature types the
+earlier removal took (it is still removing the type, and CR 205.1b's
+"retains its prior subtypes" retains none), and a removal after an
+animation takes the animation's creature type too. When the removal ends,
+the next pass rebuilds from printed values and the subtypes are back. A
+filter at the end of layer 4 would have given the first case's subtypes
+back, which is why it is per application.
+
+**Not here.** The gaining half, CR 205.3d's "an object can't gain a
+subtype that doesn't correspond to one of that object's types", is not
+enforced by the pass: a scoped record is one continuous effect per mod,
+and a record listing its subtype before its card type would lose its own
+subtype. `SetTypesMod`'s registration check refuses the mismatch it can
+see.
