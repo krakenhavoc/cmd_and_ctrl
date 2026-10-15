@@ -1194,7 +1194,7 @@ func dispatch(g *game.Game, a Action) error {
 		if err := requireCardController(g, a.Caller, attackerID); err != nil {
 			return err
 		}
-		declParams, err := p.attackTaxParams.decode("declare_attacker")
+		declParams, err := p.decode("declare_attacker")
 		if err != nil {
 			return err
 		}
@@ -1239,7 +1239,7 @@ func dispatch(g *game.Game, a Action) error {
 			}
 			decls = append(decls, game.AttackDeclaration{Attacker: attackerID, Target: targetID, Exert: e.Exert})
 		}
-		declParams, err := p.attackTaxParams.decode("declare_attackers")
+		declParams, err := p.decode("declare_attackers")
 		if err != nil {
 			return err
 		}

@@ -34,7 +34,7 @@ func TestNormalizeAgentClient(t *testing.T) {
 		"MixedCase/With/Slashes":                "mixedcase-with-slashes",
 		strings.Repeat("x", 1000):               strings.Repeat("x", 32),
 		"<script>alert(1)</script>":             "script-alert-1---script",
-		"claude-code‮noitcejni":                 "claude-code-noitcejni",
+		"claude-code\u202enoitcejni":            "claude-code-noitcejni",
 		"ok.name_with-every.allowed_char-01234": "ok.name_with-every.allowed_char", // cut at 32, then the trailing "-" trimmed
 	}
 	for in, want := range cases {

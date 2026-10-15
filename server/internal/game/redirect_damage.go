@@ -633,7 +633,7 @@ func (g *Game) damageRedirectionLineLocked(e *ScopedEffect, m Mod) string {
 	case m.Next:
 		b.WriteString(", the next time")
 	case m.Amount > 0:
-		b.WriteString(fmt.Sprintf(", the next %d", m.Amount))
+		fmt.Fprintf(&b, ", the next %d", m.Amount)
 	}
 	if n := scopedEffectDisplayName(e); n != "" {
 		b.WriteString(" — " + n)

@@ -1338,8 +1338,8 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 		} else if out.Seat != nil {
 			// The seat is on the table now; Get still carries both invites.
 			if fresh, gerr := c.Lobby.Get(meta.ID); gerr == nil {
-				out.GameMeta.Players = fresh.Players
-				out.GameMeta.HostPlayerID = fresh.HostPlayerID
+				out.Players = fresh.Players
+				out.HostPlayerID = fresh.HostPlayerID
 			}
 		}
 		out.GameMeta = redactMetaFor(p, c.isAdmin(p), meta.ID, out.GameMeta)

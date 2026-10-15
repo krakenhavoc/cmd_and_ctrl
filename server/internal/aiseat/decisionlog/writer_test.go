@@ -3,7 +3,6 @@ package decisionlog_test
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -410,8 +409,8 @@ func TestParseMode(t *testing.T) {
 func TestRecordSizeIsReported(t *testing.T) {
 	full, _ := json.Marshal(decisionlog.FromEvent(event(1, "C"), decisionlog.ModeAll))
 	compact, _ := json.Marshal(decisionlog.FromEvent(event(1, "A"), decisionlog.ModeEscalated))
-	t.Log(fmt.Sprintf("record bytes: full=%d compact=%d (a real board view is much larger than this fixture's)",
-		len(full), len(compact)))
+	t.Logf("record bytes: full=%d compact=%d (a real board view is much larger than this fixture's)",
+		len(full), len(compact))
 	if len(full) == 0 || len(compact) == 0 {
 		t.Fatal("a record marshalled to nothing")
 	}

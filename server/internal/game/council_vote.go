@@ -615,8 +615,8 @@ func (g *Game) castBallotLocked(v *CouncilVote, voter uuid.UUID, chosen *ChoiceO
 		// (Illusion of Choice): CR 800.4a, they cast nothing.
 		chosen = nil
 	}
-	switch {
-	case chosen == nil:
+	switch chosen {
+	case nil:
 		// CR 800.4a: a player who has left casts nothing more.
 		v.VotesLeft, v.MayLeft = 0, 0
 	default:

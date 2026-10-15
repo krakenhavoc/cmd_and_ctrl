@@ -424,7 +424,7 @@ func TestACancelledAmassStillRunsTheRestOfTheSentence(t *testing.T) {
 	})
 
 	ran := 0
-	var chosen uuid.UUID = uuid.New()
+	chosen := uuid.New()
 	g.WithWriteLock(func() {
 		if err := g.AmassForEffect(me.ID, uuid.Nil, amassTestToken("Zombie"), "Zombie", 2,
 			func(_ *Game, army uuid.UUID) error {

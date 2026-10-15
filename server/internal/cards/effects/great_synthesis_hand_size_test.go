@@ -183,8 +183,7 @@ func TestGreatSynthesisEffectSurvivesCloneAndIsIndependent(t *testing.T) {
 	saga := greatSynthesisToChapterOne(t, g, me)
 	passPriorityAroundTable(t, g)
 
-	var clone *game.Game
-	clone = g.Clone()
+	clone := g.Clone()
 	cloneMe := clone.PlayerByIDForEffect(me.ID)
 	if got := mhMax(clone, cloneMe); got != game.NoMaxHandSize {
 		t.Fatalf("clone max = %d, want no maximum", got)

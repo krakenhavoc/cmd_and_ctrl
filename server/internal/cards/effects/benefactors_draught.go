@@ -22,8 +22,7 @@ func init() {
 		Name:         "Benefactor's Draught",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			var all []game.Card
-			all = ctx.Game.BattlefieldCardsForEffect()
+			all := ctx.Game.BattlefieldCardsForEffect()
 			for _, c := range all {
 				if !c.IsCreature() {
 					continue

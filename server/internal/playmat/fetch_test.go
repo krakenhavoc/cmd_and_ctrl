@@ -245,8 +245,7 @@ func TestFetchRefusesARedirectToPlainHTTP(t *testing.T) {
 func TestFetchFollowsAtMostThreeRedirects(t *testing.T) {
 	good := goodImage(t)
 	for hops, wantOK := range map[int]bool{0: true, 1: true, 3: true, 4: false, 10: false} {
-		var srv *httptest.Server
-		srv = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var n int
 			_, _ = fmt.Sscanf(r.URL.Path, "/hop/%d", &n)
 			if n < hops {

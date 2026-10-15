@@ -1435,7 +1435,7 @@ func (s *TargetSpec) paidForAdmits(g *Game, src TargetSource, c Card) bool {
 	if !ok || ref.ID == uuid.Nil {
 		return false
 	}
-	obj := ObjectRef{ID: ref.ID, Epoch: ref.Epoch}
+	obj := ObjectRef(ref)
 	var paid []uuid.UUID
 	switch s.PaidForSource {
 	case PaidCrewed:

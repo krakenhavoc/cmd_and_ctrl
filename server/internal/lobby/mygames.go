@@ -157,7 +157,7 @@ func (l *Lobby) MyGames(userID uuid.UUID) ([]MyGame, error) {
 			Others:     make([]MySeat, 0, len(r.Others)),
 		}
 		for _, o := range r.Others {
-			mg.Others = append(mg.Others, MySeat{Seat: o.Seat, Name: o.Name, Bot: o.Bot})
+			mg.Others = append(mg.Others, MySeat(o))
 		}
 		if entry, ok := l.games[g.ID]; ok {
 			l.syncStateLocked(entry)
