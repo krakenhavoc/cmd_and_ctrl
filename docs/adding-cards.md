@@ -1025,15 +1025,24 @@ on the recipient takes an earlier grant and not a later one (CR
 (CR 613.8a). A layer-6 grant is not copied (CR 707.2). `Register`
 refuses a bundle ability with `ActiveWhen` (gate the grantor's static
 instead) or a non-battlefield zone, and `TestEveryGrantKeyResolves`
-refuses a grant naming an unregistered bundle or a bundle whose static
-is anything but a layer-7c "+N/+N".
+refuses a grant naming an unregistered bundle or a bundle with a static
+`game.GrantedStaticProblem` refuses.
 
-A bundle's `Static` may be a layer-7c power/toughness modify (#2562,
-ADR 0093 amendment 2026-10-10): "Equipped creature gets +3/+3" is
-`PumpAttached(3, 3)` in the bundle, gathered after layer 6 with the
+A bundle's `Static` may be a layer-7b, 7c or 7e power/toughness effect
+(#2562, ADR 0093 amendment 2026-10-10): "Equipped creature gets +3/+3"
+is `PumpAttached(3, 3)` in the bundle, gathered after layer 6 with the
 recipient as its source, so it follows whatever the recipient is
-attached to. Any other granted static is refused
-(`game.GrantedStaticProblem`). A granted equip is `EquipAbility(cost)`
+attached to. It may also be a layer-6 static (#3784, amendment
+2026-10-15): "Equipped creature has 'Other commanders you control get
++2/+2 and have lifelink'" (Dancer's Chakrams) is a bundle with a 7c
+pump and a layer-6 keyword grant, both read with the recipient as
+their source, so "other" and "you" are the recipient's. A layer-6 one
+joins the layer-6 bucket the moment its grant applies, at the later of
+the recipient's and the grant's timestamps (CR 613.7a), and it ends
+when the recipient loses the grant. A keyword in a bundle is an `Apply`
+that appends the token (`GrantToAttached`, `AppendKeywordAbility`).
+Layers 1-5, 7a, and a granted static that removes, grants or borrows
+abilities are refused (`game.GrantedStaticProblem`). A granted equip is `EquipAbility(cost)`
 in a bundle's `Activated`: it is the recipient's own row and attaches
 the recipient. "<Permanents> are Equipment in addition to their other
 types" is `AreAlsoEquipment(label, applies)` (Gemcutter Buccaneer). A

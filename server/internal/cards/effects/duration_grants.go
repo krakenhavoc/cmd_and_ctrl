@@ -107,9 +107,10 @@ func (s GrantAbilitiesFor) Apply(ctx *Context) error {
 
 // checkGrantMods refuses a grantAbilities mod naming a bundle the
 // catalog does not register, or one with a static the layer pass cannot
-// apply — ADR 0093 Decision 10, amended 2026-10-10 (#2562): the pass
-// gathers a granted static after layer 6, so only a layer-7c one
-// (game.GrantedStaticProblem). The same refusal
+// apply — ADR 0093 Decision 10, amended 2026-10-10 (#2562) and
+// 2026-10-15 (#3784): a granted static in layer 6, 7b, 7c or 7e, with no
+// removal, grant or borrow of its own (game.GrantedStaticProblem). The
+// same refusal
 // TestEveryGrantKeyResolves makes of a granting static.
 func checkGrantMods(mods []game.Mod) error {
 	for _, m := range mods {
@@ -145,7 +146,8 @@ func durationGrantKeyProblem(key string) string {
 
 // layerGrantStaticProblem is the first static in a bundle that a
 // layer-6 grant cannot give (game.GrantedStaticProblem), or "" when
-// there is none. ADR 0093 Decision 10 as amended 2026-10-10 (#2562).
+// there is none. ADR 0093 Decision 10 as amended 2026-10-10 (#2562) and
+// 2026-10-15 (#3784).
 func layerGrantStaticProblem(def *game.CardDef) string {
 	for _, s := range def.Static {
 		if problem := game.GrantedStaticProblem(s); problem != "" {

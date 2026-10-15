@@ -767,6 +767,10 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 	// effect, read per object it applies to; see
 	// Characteristic.PTDefined and Card.ToughnessIsKnown.
 	definesPT := definesPowerAndToughness(eff)
+	// ADR 0093 amendment 2026-10-15: a grant of a bundle that carries a
+	// static is recorded with this effect's timestamp, which the
+	// granted static's CR 613.7a timestamp reads (granted_statics.go).
+	grants, grantor := grantKeysOf(eff)
 	// The fast path, and it is the board almost every recompute runs
 	// on: nothing in play can remove an ability, so CR 613.6 has
 	// nothing to say, no source can be silenced, and the whole of the
@@ -783,6 +787,9 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 			eff.Apply(target.effective, target, g)
 			if definesPT {
 				target.effective.PTDefined = true
+			}
+			if grants != nil {
+				st.noteGrants(target, grants, grantor, eff.Timestamp())
 			}
 		}
 		return
@@ -829,6 +836,9 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 		eff.Apply(target.effective, target, g)
 		if definesPT {
 			target.effective.PTDefined = true
+		}
+		if grants != nil {
+			st.noteGrants(target, grants, grantor, eff.Timestamp())
 		}
 		st.recordApplied(src, target)
 	}
@@ -1096,10 +1106,11 @@ func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 			// #1651: "can't have" beats every grant in the bucket,
 			// whatever its timestamp (CR 101.2). See cant_have.go.
 			g.enforceCantHaveLocked()
-			// #2562 (ADR 0093 Decision 10, amended): the layer-7c
+			// #2562, #3784 (ADR 0093 Decision 10, amended): the layer-7
 			// statics layer 6 just granted, which the gather above could
-			// not see. See granted_statics.go.
-			if granted := g.grantedStaticEffectsLocked(); len(granted) > 0 {
+			// not see. The layer-6 ones joined the bucket itself. See
+			// granted_statics.go.
+			if granted := g.grantedStaticEffectsLocked(st); len(granted) > 0 {
 				effects = append(effects[:len(effects):len(effects)], granted...)
 			}
 		}

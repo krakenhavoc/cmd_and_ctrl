@@ -86,6 +86,12 @@ type layerPassState struct {
 	// started records that a live source's continuous effect has
 	// already applied to an object — CR 613.6's "starts to apply".
 	started map[sourceTarget]bool
+	// granted records each grant of a bundle that carries a static,
+	// with the timestamp of the effect that wrote it (ADR 0093
+	// amendment 2026-10-15, granted_statics.go). Unlike the fields
+	// above it is kept on every board, since a grant needs no removal
+	// to be in play; it stays nil on a board with no such bundle.
+	granted []grantStamp
 }
 
 // newLayerPassState decides up front whether this pass has to track
@@ -221,8 +227,14 @@ func (g *Game) applyBucketLocked(bucket []ContinuousEffect, l Layer, bucketIndex
 		}
 		bucket = remaining
 	}
-	for _, eff := range bucket {
-		g.applyOneEffectLocked(eff, bucketIndex, st)
+	if l == Layer6Ability {
+		// ADR 0093 amendment 2026-10-15: a static a grant brings in
+		// joins the rest of this bucket (granted_statics.go).
+		g.applyGrantingBucketLocked(bucket, bucketIndex, st)
+	} else {
+		for _, eff := range bucket {
+			g.applyOneEffectLocked(eff, bucketIndex, st)
+		}
 	}
 	if len(borrows) > 0 && g.Battlefield != nil {
 		g.applyBorrowsLocked(borrows, st)
