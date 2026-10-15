@@ -1050,6 +1050,19 @@ type Game struct {
 	// sub-PR 2.
 	nextReplacementEventID atomic.Uint64
 
+	// replacementObjectSerials is the serial each object that has
+	// contributed a catalog or graveyard replacement is named by in a
+	// ReplacementEffectID, keyed by instance and CR 400.7 epoch (#3482,
+	// replacement_serials.go). An ID outlives a pause, so it may not
+	// name a position in a zone that shifts while the prompt is open.
+	// nextReplacementObjectSerial is the next one handed out; serials
+	// are never reused. replacementSerialsCompactAt is the size at
+	// which the next mint first drops the objects that have gone.
+	// Clone and RestoreFrom copy all three with the marks above.
+	replacementObjectSerials    map[ObjectRef]int
+	nextReplacementObjectSerial int
+	replacementSerialsCompactAt int
+
 	// promptRuns holds the prompted runs in flight — sacrifices
 	// (#1019) and discards (#1027) alike — keyed by the id each of a
 	// run's prompts carries on PendingChoice.promptRun

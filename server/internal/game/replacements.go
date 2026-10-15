@@ -213,8 +213,9 @@ type ReplacementEventID uint64
 // ReplacementEffectID is the per-instance ID for one active
 // replacement effect. Stable across the apply-loop for a single
 // event. For built-ins it's minted once at NewGame; for catalog
-// replacements it's minted on gather keyed by (source card
-// InstanceID, index into the card's Replacements slice).
+// replacements it's minted on gather keyed by (source object's serial,
+// index into the card's Replacements slice) — see
+// replacement_serials.go (#3482).
 type ReplacementEffectID uint64
 
 // The ReplacementEffectID space, low to high. Each registry the
@@ -223,7 +224,7 @@ type ReplacementEffectID uint64
 // is the bottom one and is the only one with two coordinates packed
 // into it — see encodeCatalogReplacementID.
 //
-//	1                     .. selfReplacementIDBase  catalog (battlefield card × slot)
+//	1                     .. selfReplacementIDBase  catalog (battlefield object serial × slot)
 //	selfReplacementIDBase   .. scopedReplacementIDBase  a card replacing its own entry, by slot,
 //	                                                    then riot and unleash by instance
 //	                                                    (entryKeywordReplacementID, riot.go)
@@ -1600,7 +1601,13 @@ type ReplacementEffect struct {
 type activeReplacement struct {
 	effect ReplacementEffect
 	source *Card // nil for built-ins
-	id     ReplacementEffectID
+	// sourceRef is the object a catalog effect was gathered from
+	// (CR 400.7). `source` points into Battlefield.Cards, which shifts
+	// when an earlier permanent leaves, so a resume after a pause finds
+	// the source again by this (liveReplacementSourceLocked, #3482).
+	// Zero for every other kind of effect.
+	sourceRef ObjectRef
+	id        ReplacementEffectID
 	// identity names WHICH DECLARED EFFECT this is an instance of,
 	// as opposed to `id`, which names this instance of it. Zero for
 	// an effect that has no stable identity — see
@@ -1614,9 +1621,9 @@ type activeReplacement struct {
 // contributing it.
 //
 // It is the engine's existing key for a catalog replacement with the
-// object dropped. `ReplacementEffectID` packs the battlefield index
-// and the slot (encodeCatalogReplacementID), so it says "the Doubling
-// Season in slot 3 of the battlefield"; this says "Doubling Season's
+// object dropped. `ReplacementEffectID` packs the object's serial and
+// the slot (encodeCatalogReplacementID), so it says "this Doubling
+// Season object's effect"; this says "Doubling Season's
 // counter-doubling replacement, controlled by Ian" — the same for
 // every copy on the board. That is the whole point: two Rhox
 // Faithmenders are two objects contributing ONE effect, and #792 is
@@ -1677,29 +1684,30 @@ func catalogReplacementIdentity(eff ReplacementEffect, key string, slot int, con
 }
 
 // encodeCatalogReplacementID mints the per-instance ID for slot
-// `slot` of the catalog card at battlefield index `cardIdx`: the two
-// coordinates packed into one ReplacementEffectID with
-// MaxCatalogReplacementSlots as the stride, offset by one so no live
-// ID is zero (the zero value means "no ID").
+// `slot` of the battlefield object with serial `serial`
+// (replacement_serials.go — once the object's battlefield index, which
+// shifted under a paused event, #3482): the two coordinates packed into
+// one ReplacementEffectID with MaxCatalogReplacementSlots as the stride,
+// offset by one so no live ID is zero (the zero value means "no ID").
 //
 // ok is false for anything the scheme cannot represent — a negative
-// index, a slot past the budget, or a card index far enough along the
-// battlefield to run into the self-replacement range above. A Spec
+// serial, a slot past the budget, or a serial large enough to run into
+// the self-replacement range above (2^37 of them). A Spec
 // over the budget is refused by effects.Register at boot, so a false
 // here means a test stub or a battlefield nobody could reach; the
 // gather pass skips the entry rather than mint an ID that names a
-// different card's effect.
+// different object's effect.
 //
 // decodeCatalogReplacementID is the exact inverse. The pair is the
 // only place the packing is written (#801) — it used to be a literal
 // in the gather pass and a second, hand-rolled literal in
 // ReplacementOptionMetaForEffect, two sites that had to change
 // together and no check that they did.
-func encodeCatalogReplacementID(cardIdx, slot int) (ReplacementEffectID, bool) {
-	if cardIdx < 0 || slot < 0 || slot >= MaxCatalogReplacementSlots {
+func encodeCatalogReplacementID(serial, slot int) (ReplacementEffectID, bool) {
+	if serial < 0 || slot < 0 || slot >= MaxCatalogReplacementSlots {
 		return 0, false
 	}
-	id := ReplacementEffectID(cardIdx)*MaxCatalogReplacementSlots + ReplacementEffectID(slot) + 1
+	id := ReplacementEffectID(serial)*MaxCatalogReplacementSlots + ReplacementEffectID(slot) + 1
 	if id >= selfReplacementIDBase || id < 1 {
 		return 0, false
 	}
@@ -1707,19 +1715,18 @@ func encodeCatalogReplacementID(cardIdx, slot int) (ReplacementEffectID, bool) {
 }
 
 // decodeCatalogReplacementID unpacks a catalog ReplacementEffectID
-// back into the battlefield index and slot it was minted from.
+// back into the object serial and slot it was minted from.
 //
 // ok is false for an ID outside the catalog range — zero, or one
 // belonging to a self-replacement, a scoped effect, a test
 // injection or a built-in. Callers that handle those ranges check
 // them first; this is the defensive floor for a stale or malformed ID
 // off the wire, which decodes to nothing rather than to whatever card
-// happens to sit at that battlefield index.
+// happens to hold that serial.
 //
-// The returned cardIdx is NOT bounds-checked against the battlefield:
-// the ID space is far larger than any battlefield, so only the caller
-// holding the slice can say whether the index is live.
-func decodeCatalogReplacementID(id ReplacementEffectID) (cardIdx, slot int, ok bool) {
+// The returned serial is NOT checked against the battlefield: only the
+// caller can say whether an object with that serial is still there.
+func decodeCatalogReplacementID(id ReplacementEffectID) (serial, slot int, ok bool) {
 	if id < 1 || id >= selfReplacementIDBase {
 		return 0, 0, false
 	}
@@ -2282,10 +2289,10 @@ func (g *Game) optionalReplacementResumableLocked(ev *ReplacementEvent) bool {
 // the gather the prompt was built from (#808).
 //
 // It tests the entry the frame is holding rather than re-gathering and
-// looking the ID up, because a catalog effect's ID is its battlefield
-// index: a permanent leaving between the prompt and the answer shifts
-// every ID after it, and a lookup would then answer for a different
-// effect.
+// looking the ID up. The caller has re-read a catalog entry's source
+// first (liveReplacementSourceLocked): the gathered pointer is into the
+// battlefield slice, which shifts when an earlier permanent leaves
+// between the prompt and the answer (#3482).
 //
 // Caller must hold g.mu.
 func (g *Game) stillAppliesLocked(ev *ReplacementEvent, a activeReplacement) bool {
@@ -2323,6 +2330,20 @@ func (g *Game) clearReplacementEventLocked(id ReplacementEventID) {
 //
 // Caller must hold g.mu.
 func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeReplacement {
+	return g.gatherReplacementsLocked(ev, &replacementSerialMinter{g: g})
+}
+
+// gatherActiveReplacementsReadOnlyLocked is the same gather for a caller
+// holding only a read lock (the mana preview): an object new to the
+// serial registry gets a provisional ID rather than a stored one (see
+// replacementSerialMinter).
+//
+// Caller must hold g.mu (a read lock is enough).
+func (g *Game) gatherActiveReplacementsReadOnlyLocked(ev *ReplacementEvent) []activeReplacement {
+	return g.gatherReplacementsLocked(ev, &replacementSerialMinter{g: g, readOnly: true})
+}
+
+func (g *Game) gatherReplacementsLocked(ev *ReplacementEvent, serials *replacementSerialMinter) []activeReplacement {
 	if ev == nil {
 		return nil
 	}
@@ -2362,7 +2383,10 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 	// Catalog — walk battlefield cards, look up each card's
 	// replacements via CatalogReplacements, gather applicable ones.
 	// IDs are minted by encodeCatalogReplacementID, which packs the
-	// battlefield index and the slot into the bottom of the ID space.
+	// source object's serial and the slot into the bottom of the ID
+	// space. The serial, not the battlefield index: an ID outlives a
+	// pause, and an index shifts when an earlier permanent leaves
+	// (#3482, replacement_serials.go).
 	if CatalogReplacements != nil {
 		for cardIdx := range g.Battlefield.Cards {
 			card := &g.Battlefield.Cards[cardIdx]
@@ -2374,11 +2398,12 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 			if len(reps) == 0 {
 				continue
 			}
+			serial := serials.serial(card)
 			for repIdx := range reps {
 				if !reps[repIdx].ActiveWhen.Active(*card) {
 					continue
 				}
-				id, ok := encodeCatalogReplacementID(cardIdx, repIdx)
+				id, ok := encodeCatalogReplacementID(serial, repIdx)
 				if !ok {
 					// Unrepresentable — a slot past the budget, which
 					// effects.Register refuses at boot. Skipping is
@@ -2402,17 +2427,18 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 					continue
 				}
 				out = append(out, activeReplacement{
-					effect:   eff,
-					source:   card,
-					id:       id,
-					identity: catalogReplacementIdentity(eff, key, repIdx, card.Controller),
+					effect:    eff,
+					source:    card,
+					sourceRef: ObjectRef{ID: card.InstanceID, Epoch: card.ObjectEpoch},
+					id:        id,
+					identity:  catalogReplacementIdentity(eff, key, repIdx, card.Controller),
 				})
 			}
 		}
 	}
 
 	// Graveyard replacements: dredge (draw_instead.go).
-	out = g.gatherGraveyardReplacementsLocked(ev, applied, out)
+	out = g.gatherGraveyardReplacementsLocked(ev, applied, serials, out)
 
 	// Self-replacements — a card replacing its OWN entry ("This land
 	// enters tapped": every Temple, Guildgate and tri-land).
@@ -2595,12 +2621,12 @@ func (g *Game) ReplacementOptionMetaForEffect(id ReplacementEffectID) (string, u
 	if label, card, ok := g.graveyardReplacementMetaLocked(id); ok {
 		return label, card
 	}
-	// Catalog — the packed (battlefield index, slot) range, unpacked
-	// by the same pair the gather pass mints with.
+	// Catalog — the packed (object serial, slot) range, unpacked by the
+	// same pair the gather pass mints with.
 	if CatalogReplacements == nil {
 		return "", uuid.UUID{}
 	}
-	cardIdx, repIdx, ok := decodeCatalogReplacementID(id)
+	serial, repIdx, ok := decodeCatalogReplacementID(id)
 	if !ok {
 		// Below the catalog range (zero) or in the self-replacement
 		// range, which names a card that is not on the battlefield
@@ -2611,10 +2637,19 @@ func (g *Game) ReplacementOptionMetaForEffect(id ReplacementEffectID) (string, u
 		}
 		return "", uuid.UUID{}
 	}
-	if cardIdx >= len(g.Battlefield.Cards) {
+	// The object with that serial, if it is still on the battlefield.
+	// One that has left names nothing: never the permanent that took
+	// its place (#3482).
+	var card *Card
+	for i := range g.Battlefield.Cards {
+		if s, ok := g.replacementObjectSerialOfLocked(&g.Battlefield.Cards[i]); ok && s == serial {
+			card = &g.Battlefield.Cards[i]
+			break
+		}
+	}
+	if card == nil {
 		return "", uuid.UUID{}
 	}
-	card := &g.Battlefield.Cards[cardIdx]
 	reps := CatalogReplacements(catalogAbilityKeyOf(card))
 	if repIdx >= len(reps) {
 		return "", card.InstanceID

@@ -2096,8 +2096,11 @@ func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply b
 	// re-evaluate this effect again for this event (CR 614.5: the
 	// decision is once per event).
 	g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-	if apply {
-		g.runReplaceLocked(ev, chosen)
+	// #3482: a "yes" fires the effect of the object that offered it,
+	// found again by that object rather than by its battlefield slot;
+	// if it has left, its effect has gone with it.
+	if live, present := g.liveReplacementSourceLocked(chosen); apply && present {
+		g.runReplaceLocked(ev, live)
 	}
 
 	// Re-enter the apply-loop for any newly-applicable effects.
@@ -2426,6 +2429,15 @@ func (g *Game) resolveReplacementOrderLocked(choiceID, chooserID uuid.UUID, orde
 		if ev.Canceled {
 			// A prior Cancel short-circuits the remaining chain.
 			break
+		}
+		// #3482: the source as it is now, found by the object it was
+		// gathered from, not by the battlefield slot the gather read it
+		// at. One that has left takes its effect with it; a
+		// card that came back is a new object (CR 400.7), gathered
+		// afresh by the apply-loop re-entry below if it applies.
+		chosen, ok = g.liveReplacementSourceLocked(chosen)
+		if !ok {
+			continue
 		}
 		if !g.stillAppliesLocked(ev, chosen) {
 			// CR 616.1f: after each applied effect the process repeats
