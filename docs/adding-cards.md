@@ -5468,7 +5468,10 @@ modal spell whose bullets each carry an additional cost (CR 702.172a),
 declared as `Modes: Spree(SpreeMode(label, cost, targets...), ...)` (or
 `SpreeModeDoing` for a bullet with its own closure) in
 [modes.go](../server/internal/cards/effects/modes.go) — see Caught in the
-Crossfire and Great Train Heist. Preparation cards are a layout, not a cost —
+Crossfire and Great Train Heist. Tiered (CR 702.183a, "Choose one
+additional cost") is the same bullets with exactly one chosen:
+`Modes: Tiered(SpreeModeDoing(label, "{0}", ...), ...)` — see Cloud's Limit
+Break and Thunder Magic. Write a free tier as `"{0}"`. Preparation cards are a layout, not a cost —
 see "Adding a preparation card" below. Foretell,
 suspend and plot are not alternative costs at all: they are CR 116.2
 special actions, declared in `Spec.SpecialActions` with

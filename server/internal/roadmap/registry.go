@@ -619,6 +619,16 @@ var items = []Item{
 		Printed: printedLine("spree"),
 	},
 	{
+		Slug: "tiered", Name: "Tiered", Kind: KindMechanic, Status: StatusImplemented,
+		Summary: "Choose exactly one of a tiered spell's modes, paying that mode's extra cost.",
+		Rules:   []string{"702.183"},
+		ADR:     "0065-modal-and-multi-target-clauses.md",
+		Probe: func(s effects.Spec) bool {
+			return s.Modes != nil && s.Modes.Prompt == effects.TieredPrompt
+		},
+		Printed: printedLine("tiered"),
+	},
+	{
 		Slug: "convoke", Name: "Convoke", Kind: KindMechanic, Status: StatusImplemented,
 		Summary: "Tap your creatures to help pay for a spell with convoke; each one pays for one mana of its color or one generic mana.",
 		Rules:   []string{"702.51"},
