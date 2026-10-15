@@ -1899,6 +1899,11 @@ export interface PendingChoiceView {
   // server omits both fields for ordinary choices.
   doubled_by?: string;
   doubled_by_name?: string;
+  // #3817: on a trigger's pick_target, the trigger as card and ability.
+  // Every copy of one card shares it, two abilities do not, so it groups
+  // "same target for all of this card's triggers". Opaque, the
+  // chooser's alone, and absent for a trigger with no catalog identity.
+  shared_target_key?: string;
   // S30 coin call prompt metadata. `coins` is the number of coins
   // covered by one call; wins tracks an ongoing chain.
   allow_stop?: boolean;

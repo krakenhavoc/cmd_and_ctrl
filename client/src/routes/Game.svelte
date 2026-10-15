@@ -152,8 +152,9 @@
   import {
     cancel as cancelTargeting,
     confirm as confirmTargeting,
+    cardRepeats,
     repeatsOf,
-    shareTargetOn,
+    shareTargetScope,
     targeting,
   } from "../lib/targeting";
   import type { ActionType, PlayerView } from "../lib/protocol";
@@ -2238,11 +2239,13 @@
           // targeting flow once the choice is no longer board-answered,
           // and ChoicePromptModal opens it.
           onShowList: showChoiceAsList,
-          // #3265: one target for every instance of a repeated trigger.
+          // #3265: one target for every instance of a repeated trigger;
+          // #3817: or for every copy of the card's, a second choice.
           share: {
+            scope: $shareTargetScope,
             count: repeatsOf($targeting, view),
-            on: $shareTargetOn,
-            onToggle: () => shareTargetOn.update((on) => !on),
+            card: cardRepeats($targeting, view),
+            onScope: (s) => shareTargetScope.set(s),
           },
         })
       : null,
