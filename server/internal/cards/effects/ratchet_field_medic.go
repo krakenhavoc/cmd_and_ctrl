@@ -38,7 +38,7 @@ const ratchetOracleID = "4f95664f-6113-41e6-a99e-12bfc9d1710a"
 
 const ratchetBackLabel = "Ratchet, Rescue Racer — convert Ratchet"
 
-var ratchetReturnBody = game.ReflexiveBody("ratchet-field-medic/return", simpleBody(ratchetReturn),
+var ratchetReturnBody = game.ReflexiveBody("ratchet-field-medic/return", simpleBody(returnFirstLegalGraveyardTargetToBattlefieldTapped),
 	constTargets(func() *game.TargetSpec {
 		return TargetCardInGraveyard(
 			"target artifact card in your graveyard with mana value at most the life you gained this turn",
@@ -88,14 +88,4 @@ func ratchetMayConvert(g *game.Game, item *game.StackItem) error {
 				ratchetReturnBody).Apply(ctx)
 		},
 	}.Apply(NewContext(g, item))
-}
-
-func ratchetReturn(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind == game.TargetCard {
-			return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield, Tapped: true}.Apply(ctx)
-		}
-	}
-	return nil
 }

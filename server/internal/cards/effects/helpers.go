@@ -756,6 +756,35 @@ func returnFirstLegalGraveyardTargetToBattlefield(g *game.Game, item *game.Stack
 	return returnFirstLegalGraveyardTarget(g, item, game.ZoneBattlefield)
 }
 
+// returnFirstLegalGraveyardTargetToBattlefieldTapped is "return target …
+// card from your graveyard to the battlefield tapped" — Ratchet, Field
+// Medic's and Terra, Herald of Hope's reflexive bodies.
+func returnFirstLegalGraveyardTargetToBattlefieldTapped(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetCard {
+			return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield, Tapped: true}.Apply(ctx)
+		}
+	}
+	return nil
+}
+
+// exileEveryLegalCardTarget is "exile up to N target permanents": each
+// card target still legal as the ability resolves is exiled (CR 608.2b)
+// — Karn Liberated's −3 and Angel of the Ruins.
+func exileEveryLegalCardTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		if err := (ExileTarget{Target: t.ID}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // counterTheTargetSpell is the whole OnResolve of "Counter target
 // spell." — Cancel's body, named so a new card calls it rather than
 // adding another copy to that clone family.
