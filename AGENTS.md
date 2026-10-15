@@ -152,13 +152,14 @@ A PR description has `## Summary` (1–3 bullets), `## Sprint` (S<NN> — name),
 `## Issues` and `## Test plan` (a checklist), in that order. In `## Issues`, put
 each closing directive on its own line (`Closes #<n>`, `Fixes`, `Resolves`).
 Feature PRs target `develop`, so GitHub ignores closing keywords there;
-`main-promotion-issue-close.yml` reads those lines after promotion.
+`main-promotion-issue-close.yml` reads those lines after promotion. Prose such as
+"does not close" is ignored on purpose.
 
 ### Storing anything about a person (ADR 0149)
 
 A change that stores something new about a person, or changes how long it is kept,
 updates in the same PR: `accountdelete.Inventory` and `Delete`, the privacy page
-(`client/src/routes/Privacy.svelte`) and `client/src/lib/privacy.ts`. Tests in
+(`client/src/routes/Privacy.svelte`) and the numbers in `client/src/lib/privacy.ts`. Tests in
 `accountdelete` and `lobby` enforce it; every migration newer than
 `PRIVACY_SCHEMA_VERSION` needs that one-line bump.
 
@@ -218,7 +219,7 @@ Usage and env pass-through: [docs/commands.md](docs/commands.md#commands).
   `client/src/lib/labels.ts`, never as a literal, and rename it in the registry.
   A rename updates the e2e specs and any `*.hint.ts` in the same PR.
   List: [docs/labels.md](docs/labels.md).
-- **Design skills** (`.claude/skills/`): `web-design-guidelines` reviews client UI; `design-taste-frontend` is for signed-out public pages only. Read each `C2.md`.
+- **Design skills** (`.claude/skills/`): `web-design-guidelines` for UI review; `design-taste-frontend` for signed-out pages only. See each `C2.md`.
 
 ---
 
