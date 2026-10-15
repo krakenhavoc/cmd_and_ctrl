@@ -825,6 +825,10 @@ type AnyPlayerOfferView struct {
 	// HelpsController is true when paying is what the controller wants
 	// (Icy Prison: paying keeps it), so "pay to stop it" reads wrong.
 	HelpsController bool `json:"helps_controller,omitempty"`
+	// EachLife is the life one object costs on a per-object offer
+	// (ADR 0187 §2): the prompt is a choose_cards whose answer is the
+	// objects the chooser will pay that much for. Absent otherwise.
+	EachLife int `json:"each_life,omitempty"`
 }
 
 // CouncilVoteView is a vote in progress (game.CouncilVote), as the open
@@ -8734,7 +8738,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// public information: counters are on the table. ADR 0170's
 		// entry_choose_permanents carries a suggestion the same way
 		// (public permanents, no seats).
-		if c.Kind == game.PendingChoiceProliferate || c.Kind == game.PendingChoiceEntryChoosePermanents {
+		// ADR 0187 §2: a per-object any-player offer's choose_cards leg
+		// carries the chooser's suggested set the same way (public
+		// permanents, no seats).
+		if c.Kind == game.PendingChoiceProliferate || c.Kind == game.PendingChoiceEntryChoosePermanents ||
+			(c.Kind == game.PendingChoiceChooseCards && c.AnyPlayerOffer != nil) {
 			for _, id := range c.ChoosePlayers {
 				v.ChoosePlayers = append(v.ChoosePlayers, id.String())
 			}
@@ -8782,6 +8790,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				Opponents:  o.Opponents,
 
 				HelpsController: o.HelpsController,
+				EachLife:        o.EachLife,
 			}
 		}
 		if a := c.Assist; a != nil {
@@ -9957,6 +9966,11 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].ChooseMin = 0
 			out[i].ChooseMax = 0
 			out[i].ChooseDestination = ""
+			// ADR 0187 §2: a per-object offer leg's suggested set is
+			// the chooser's own answer to make, so it goes with the
+			// rest of the pick. The offer and the earlier choices
+			// stay: they are the table's public record (CR 101.4b).
+			out[i].ChooseSuggested = nil
 			continue
 		}
 		// ADR 0108 §5: a pay-unless discard's options are the chooser's

@@ -105,6 +105,14 @@ Every seat sees the same entries. The battlefield and these choices are public (
 
 Card side: `effects.AnyPlayerPaysForEach{Objects func(ctx) []uuid.UUID, EachLife, Noun, Question, OnUnsaved func(ctx, []uuid.UUID) error}`, bound to the resolving item as `AnyPlayerPays` is.
 
+**As built (slice 4, #3572, 2026-10-15).** Three details the text above left open:
+
+- `AnyPlayerOffer.Declined` on a leg lists, in `Order`, the earlier players who chose nothing **and** the players who were given no leg because they can't pay. Both said no. `EarlierChoices` lists only players who were asked, so a player with no leg has no entry there.
+- A leg's `EarlierChoices` and `ChooseSuggested` are fixed when the leg is queued, like every ADR 0175 prompt. A player who leaves afterwards takes their lands off the table, so the candidate list and the payments shrink at once, but a leg already open keeps the earlier entry it was built with.
+- `ChooseSuggested` is cleared on every seat's view but the chooser's, with `Options` and the bounds that `choose_cards` already withholds from them. The offer, `Declined` and `EarlierChoices` stay public (CR 101.4b).
+
+- `SnapshotSchemaVersion` is 9 now, not 8 (§9 was written against 8). The additive `anyPlayerOffer.eachLife` line went into `testdata/snapshot_shape/v9.txt`, and `v8.txt` stays frozen. The rest of §9 holds without a bump.
+
 ### 3. Exiling cards from your own graveyard as the payment (#3206)
 
 A new `PayActionKind`, **`PayActionExileFromGraveyard`** (`"exile_graveyard"`), in `pay_unless_action.go`: exile `Count` cards from the payer's own graveyard.

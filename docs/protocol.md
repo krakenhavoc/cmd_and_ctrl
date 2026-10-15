@@ -547,6 +547,31 @@ clients resolve their IDs against the viewer's filtered battlefield. A
 face-down card's public selection never reveals its hidden name. The field is
 computed from the transient continuation and adds no saved snapshot field.
 
+### One any-player offer for each object (ADR 0187 §2, #3572)
+
+"For each land, destroy that land unless any player pays 1 life"
+(Cleansing) is asked as one ordered `choose_cards` leg per player, in
+APNAP order from the active player, and nothing is paid until the last
+player has answered. A leg is an ordinary `choose_cards` (floor zero; the
+answer is the lands the chooser will pay for) that also carries:
+
+- `any_player_offer` with `controller`, `order`, `declined` (the earlier
+  players who chose nothing, including a player who was given no leg
+  because they can't pay) and `each_life` (the life one land costs).
+  `each_life` is absent on every other offer. It is sent to every seat.
+- `earlier_choices`, as above: one entry per earlier player who was asked,
+  an empty `card_ids` for one who chose nothing.
+- `choose_suggested[]` in the chooser's own copy: their lands that no
+  earlier player chose, cut to `choose_max`. A default, never a rule. A
+  seat that is not the chooser gets neither this nor the options, which
+  `choose_cards` withholds from them already.
+
+Every land still there is offered, including ones an earlier player chose:
+two players may pay for the same land and each pays. `choose_max` is the
+fewest of the lands and `life / each_life`. The leg blocks the table, is
+never answered by a standing answer, and a table with one open is not a
+restore point. `any_player_offer.each_life` is additive within snapshot v9.
+
 ### Where a `choose_cards` pick goes: `choose_destination` (#2680, #3270)
 
 A `choose_cards` prompt may say what happens to the cards it names, in
