@@ -1285,6 +1285,20 @@ type AdditionalCostView struct {
 	// discount reads.
 	ExileFromHandLabel   string            `json:"exile_from_hand_label,omitempty"`
 	ExileFromHandOptions *LegalTargetsView `json:"exile_from_hand_options,omitempty"`
+	// ExileCostN / Label / Options / Zone describe an "exile six cards
+	// from your graveyard" additional cost (#3536, Abhorrent Oculus): the
+	// activated ability's four fields of the same names, off the same
+	// engine walk (game.ExileCostOptionsForEffect). Options is every card
+	// in the caster's graveyard that could pay, in pile order, the spell
+	// itself excluded; the picks ride back on cast_spell as `exile_ids`,
+	// exactly ExileCostN of them. Absent when the cost has no such
+	// component; N present with fewer than N options means it cannot be
+	// paid right now, which makes the spell uncastable (CR 118.3). The
+	// graveyard is public, so the list is not a private one.
+	ExileCostN       int      `json:"exile_cost_n,omitempty"`
+	ExileCostLabel   string   `json:"exile_cost_label,omitempty"`
+	ExileCostOptions []string `json:"exile_cost_options,omitempty"`
+	ExileCostZone    string   `json:"exile_cost_zone,omitempty"`
 	// DemandsX marks a "pay X life" clause (Toxic Deluge). The
 	// client must open its X prompt for this card even though the
 	// printed mana cost has no {X} in it, and the announced X is
@@ -7290,6 +7304,14 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		opts := g.HandExileOptionsForEffect(caster, castID, he)
 		out.ExileFromHandLabel = he.Label
 		out.ExileFromHandOptions = &LegalTargetsView{Min: 0, Max: len(opts), Cards: cardIDStrings(opts)}
+	}
+	if ec := ac.ExileCards; ec != nil && ec.N > 0 {
+		// #3536: the activation's own walk, so the picker offers exactly
+		// the cards the validator accepts (#544).
+		out.ExileCostN = ec.N
+		out.ExileCostLabel = ec.Label
+		out.ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(caster, castID, ec))
+		out.ExileCostZone = string(ec.Zone())
 	}
 	if ac.BlightX {
 		// #2174: the same creature walk, and the ceiling the validator

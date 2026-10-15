@@ -424,6 +424,18 @@ function castClauseDenial(
   if (!faces.some(exileOK)) {
     return named(faces.find((f) => !exileOK(f)) ?? card, "Nothing to exile");
   }
+  // #3536: an "exile N cards from your graveyard" cost the graveyard cannot
+  // cover (CR 118.3). The server ships the count and the cards that could
+  // pay; five options for a count of six is the verdict.
+  const exileCardsOK = (face: CardView): boolean => {
+    const ac = face.additional_cost;
+    return !ac?.exile_cost_n || (ac.exile_cost_options?.length ?? 0) >= ac.exile_cost_n;
+  };
+  if (!faces.some(exileCardsOK)) {
+    const blocked = faces.find((f) => !exileCardsOK(f)) ?? card;
+    const need = blocked.additional_cost?.exile_cost_n ?? 1;
+    return named(blocked, need > 1 ? `Needs ${need} cards in your graveyard` : "Nothing to exile");
+  }
   // ADR 0100: an either/or additional cost none of whose branches the
   // viewer can pay — the server's own `payable` per branch.
   const branchOK = (face: CardView): boolean => {

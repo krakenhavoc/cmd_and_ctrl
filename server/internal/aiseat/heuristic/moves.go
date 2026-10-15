@@ -664,6 +664,12 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	for _, id := range cp.DelveIDs {
 		v -= p.fuelValue(st, id)
 	}
+	// #3536: and the graveyard cards an exile-N-cards additional cost
+	// spends, priced as delve's and the ability form's are, so the
+	// payment the enumerator ordered cheapest is the one it prices so.
+	for _, id := range cp.ExileIDs {
+		v -= p.fuelValue(st, id)
+	}
 	// Additional costs are paid out of the same pool of resources.
 	// ADR 0126 §7: a discarded card costs what IT is worth to the bot,
 	// so the enumerator's one payment per discard combination lets the

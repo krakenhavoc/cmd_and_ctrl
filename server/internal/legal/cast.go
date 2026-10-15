@@ -58,6 +58,9 @@ type castParams struct {
 	// additional cost exiles (#3175, the Marches) —
 	// CastSpellParams.ExileFromHandIDs.
 	ExileFromHandIDs []string `json:"exile_from_hand_ids,omitempty"`
+	// ExileIDs is the graveyard cards a mandatory exile-cards additional
+	// cost exiles (#3536) — CastSpellParams.ExileIDs.
+	ExileIDs []string `json:"exile_ids,omitempty"`
 	// DelveIDs are the graveyard cards exiled to delve (CR 702.66a,
 	// ADR 0100 §6) — CastSpellParams.DelveIDs.
 	DelveIDs []string `json:"delve_ids,omitempty"`
@@ -1086,6 +1089,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	if !ok {
 		return
 	}
+	// #3536: and an exile-N-cards-from-your-graveyard cost names its cards
+	// the same way. A graveyard too small to pay it drops the cast.
+	exileCardIDs, ok := e.exileCardsCastPayment(card.InstanceID, addCost)
+	if !ok {
+		return
+	}
 	// CR 702.120a: Collective Effort's taps, one creature per extra mode,
 	// on the same list teamwork's ride.
 	if escalate != nil && escalate.TapCreatures > 0 {
@@ -1101,11 +1110,11 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// least. An empty graveyard is no delve at all.
 	var delvePool []uuid.UUID
 	if g.DelveForLocked(e.seat, card) {
-		delvePool = e.cheapestFuelFirst(g.DelveOptionsForEffect(e.seat, card.InstanceID))
+		delvePool = withoutIDs(e.cheapestFuelFirst(g.DelveOptionsForEffect(e.seat, card.InstanceID)), exileCardIDs)
 	}
 
 	total := e.opts.MaxExpansionPerSource
-	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, revealIDs, exileIDs, handExile, branch, addCost)
+	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, revealIDs, exileIDs, handExile, exileCardIDs, branch, addCost)
 	// #1013: the first announcement the expansion makes, kept so the
 	// ALTERNATIVE cost payments can be offered against it below.
 	var first *announcedCast
@@ -1573,7 +1582,7 @@ func (e *enumerator) castMoveEmitter(
 	optional []game.AdditionalCost,
 	chosen []int,
 	giftTo uuid.UUID,
-	teamIDs, blightIDs, revealIDs, exileIDs, handExile []uuid.UUID,
+	teamIDs, blightIDs, revealIDs, exileIDs, handExile, exileCardIDs []uuid.UUID,
 	branch *int,
 	paying *game.AdditionalCost,
 ) castEmitter {
@@ -1622,6 +1631,8 @@ func (e *enumerator) castMoveEmitter(
 		label += exileLabel(g, exileIDs)
 		// #3175: and the hand cards a March exiles for its discount.
 		label += exileLabel(g, handExile)
+		// #3536: and the graveyard cards an exile-cards cost gives up.
+		label += exileLabel(g, exileCardIDs)
 		// ADR 0100: the delved and the undelved casts are otherwise the
 		// same line in the move log.
 		if len(delve) > 0 {
@@ -1693,6 +1704,7 @@ func (e *enumerator) castMoveEmitter(
 				RevealIDs:         idStrings(revealIDs),
 				ExilePermanentIDs: idStrings(exileIDs),
 				ExileFromHandIDs:  idStrings(handExile),
+				ExileIDs:          idStrings(exileCardIDs),
 				DelveIDs:          idStrings(delve),
 				Distribution:      distributionWire(dist),
 				GiftOpponent:      giftWire(giftTo),

@@ -383,6 +383,12 @@ type CastSpellParams struct {
 	// card's per-card discount reads. Validated at announce, exiled with
 	// the spell on the stack. On the wire as `exile_from_hand_ids`.
 	ExileFromHandIDs []uuid.UUID
+	// ExileIDs names the cards paid to a mandatory ExileCards additional
+	// cost (#3536) — Abhorrent Oculus's "exile six cards from your
+	// graveyard". Validated at announce by the activation's own validator
+	// and exiled with the spell on the stack. On the wire as `exile_ids`,
+	// the name an activation already uses.
+	ExileIDs []uuid.UUID
 
 	// RevealIDs names the ONE card an announced reveal / behold cost
 	// shows (CR 701.20, ADR 0100 amendment 2026-10-07): a matching card
@@ -1380,6 +1386,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #3536: and the exile-cards-from-your-graveyard cost, with every card
+	// another component of this cast already spends (CR 118.3).
+	if err := g.validateCastExileCardsLocked(playerID, cardID, costPlan, params.ExileIDs,
+		castExileAlsoSpent(params)); err != nil {
+		slog.Warn("cast_spell rejected: bad exile-cards payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"exile_cards_received", len(params.ExileIDs),
+			"err", err,
+		)
+		return err
+	}
 	if err := g.validateRevealLocked(playerID, cardID, costPlan, params.RevealIDs); err != nil {
 		slog.Warn("cast_spell rejected: bad reveal payment",
 			"card_name", card.Name,
@@ -1609,6 +1627,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	moving = append(moving, params.ExilePermanentIDs...)
 	// #3175: and the hand cards a hand-exile cost takes.
 	moving = append(moving, params.ExileFromHandIDs...)
+	// #3536: and the graveyard cards an exile-cards cost takes.
+	moving = append(moving, params.ExileIDs...)
 	// #1445 / #1427: a card an EFFECT has already paused on its way
 	// out cannot pay — moved, or tapped to convoke / waterbend
 	// (TapIDs), tapped to teamwork or blighted (#1703). See
@@ -1831,7 +1851,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// component pays with, named while they are still where they were
 		// — Adipose Offspring's "the sacrificed creature's toughness".
 		Paid: paidWithAltCostObjects(paidWithBranchAndDiscards(
-			paidWithGift(paidWithExiledPermanents(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), g.sacrificeRefsLocked(params.SacrificeIDs)), params.ExilePermanentIDs, g.exiledRefsLocked(params.ExilePermanentIDs)), params.GiftOpponent),
+			paidWithGift(paidWithExiledCards(paidWithExiledPermanents(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), g.sacrificeRefsLocked(params.SacrificeIDs)), params.ExilePermanentIDs, g.exiledRefsLocked(params.ExilePermanentIDs)), params.ExileIDs), params.GiftOpponent),
 			params.CostBranch, params.DiscardIDs), g.sacrificeRefsLocked(params.AltCostIDs)),
 		Seq: g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
@@ -1897,6 +1917,20 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if len(params.ExileFromHandIDs) > 0 {
 		if err := g.payExileCardsCostLocked(playerID, cardID, params.ExileFromHandIDs, params.commanderAnswers); err != nil {
 			slog.Error("cast_spell: exile-from-hand cost failed after validation",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"err", err,
+			)
+			return err
+		}
+	}
+	// #3536: the exile-cards-from-your-graveyard cost, beside the
+	// sacrifices and for the same reason — with the spell on the stack, so a
+	// graveyard-leaves watcher lands above it and a countered spell does not
+	// give the cards back (CR 601.2h).
+	if len(params.ExileIDs) > 0 {
+		if err := g.payExileCardsCostLocked(playerID, cardID, params.ExileIDs, params.commanderAnswers); err != nil {
+			slog.Error("cast_spell: exile-cards cost failed after validation",
 				"card_name", card.Name,
 				"oracle_id", card.OracleID,
 				"err", err,

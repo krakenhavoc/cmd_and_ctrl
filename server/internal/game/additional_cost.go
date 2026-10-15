@@ -316,6 +316,15 @@ type AdditionalCost struct {
 	// effects.Register refuses it on an optional cost or an either/or
 	// branch. See hand_exile_additional_cost.go.
 	ExileFromHand *HandExileCost
+	// ExileCards is "As an additional cost to cast this spell, exile six
+	// cards from your graveyard" (Abhorrent Oculus, #3536): the activated
+	// ability's component (ExileCost) on a cast. The caster names the
+	// cards on CastSpellParams.ExileIDs, they are exiled with the spell on
+	// the stack, and they are recorded on PaidCost.Exiled so the spell
+	// reads them at resolution (CR 608.2h). Graveyard only, a fixed count,
+	// on the mandatory slot only: effects.Register refuses the hand form,
+	// a non-positive N, an optional cost and an either/or branch.
+	ExileCards *ExileCost
 }
 
 // Branched reports whether this is an either/or cost (ADR 0100 §2).
@@ -393,7 +402,7 @@ func (c *AdditionalCost) MaxPayments() int {
 func (c *AdditionalCost) Empty() bool {
 	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
 		c.Teamwork == 0 && c.Blight == 0 && !c.BlightX && c.PayLife == 0 && c.Energy == 0 && c.TapCreatures == 0 && len(c.Either) == 0 &&
-		c.Reveal == nil && c.ExilePermanents.Empty() && c.ExileFromHand == nil)
+		c.Reveal == nil && c.ExilePermanents.Empty() && c.ExileFromHand == nil && c.ExileCards == nil)
 }
 
 // CardsDemanded reports whether paying this cost needs the caster to
@@ -405,7 +414,7 @@ func (c *AdditionalCost) Empty() bool {
 // repeated one is refused with the rest. Nil-safe.
 func (c *AdditionalCost) CardsDemanded() bool {
 	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0 || c.BlightX ||
-		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0 || c.Reveal != nil || !c.ExilePermanents.Empty() || c.ExileFromHand != nil)
+		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0 || c.Reveal != nil || !c.ExilePermanents.Empty() || c.ExileFromHand != nil || c.ExileCards != nil)
 }
 
 // CatalogAdditionalCost is the catalog hook the effects package

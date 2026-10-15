@@ -62,6 +62,10 @@ type castParams struct {
 	// ExileFromHandIDs are the hand cards a March's additional cost exiles
 	// for its discount (#3175) — lost from hand as a discarded card is.
 	ExileFromHandIDs []string `json:"exile_from_hand_ids"`
+	// ExileIDs are the graveyard cards a mandatory exile-N-cards
+	// additional cost spends (#3536) — the same resource escape's exiled
+	// graveyard and delve are, priced the same way.
+	ExileIDs []string `json:"exile_ids"`
 }
 
 type activateParams struct {

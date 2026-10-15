@@ -2607,6 +2607,16 @@ export interface AdditionalCostView {
   // owner alone.
   exile_from_hand_label?: string;
   exile_from_hand_options?: LegalTargetsView;
+  // #3536: an "exile N cards from your graveyard" additional cost
+  // (Abhorrent Oculus), the activated ability's four fields of the same
+  // names. `exile_cost_options` lists the cards that could pay it, in pile
+  // order; the picks ride cast_spell as `exile_ids`, exactly
+  // `exile_cost_n` of them. Fewer options than `exile_cost_n` means the
+  // cost cannot be paid right now (CR 118.3).
+  exile_cost_n?: number;
+  exile_cost_label?: string;
+  exile_cost_options?: string[];
+  exile_cost_zone?: ExileCostZone;
   payable?: boolean;
 }
 
