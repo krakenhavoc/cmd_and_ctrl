@@ -29,13 +29,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // applied to a spell with one target.
 func init() {
 	Register(Spec{
-		OracleID:     "f074c0d0-8455-484d-ae75-820fdfbc4740",
-		Name:         "Ribbons of Night",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so Ribbons of Night draws the card only when the {U} came from your mana pool."},
-		WantsColors:  []string{"U"},
-		Targets:      TargetCreature("target creature"),
-		Purpose:      ForTargets(DamageToTarget(0, 4)),
+		OracleID:       "f074c0d0-8455-484d-ae75-820fdfbc4740",
+		Name:           "Ribbons of Night",
+		ReadsManaSpent: game.ReadsOwnPayment,
+		Completeness:   CompletenessFull,
+		WantsColors:    []string{"U"},
+		Targets:        TargetCreature("target creature"),
+		Purpose:        ForTargets(DamageToTarget(0, 4)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := ctx.Game.DamageInstanceForEffect(func() error {
 				for _, ref := range ctx.LegalTargets() {

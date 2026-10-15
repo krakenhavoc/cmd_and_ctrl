@@ -449,9 +449,9 @@ function castClauseDenial(
   return "";
 }
 
-// --- Cast anyway (don't pay), ADR 0118 §2 ----------------------------
+// --- Cast anyway (pay on paper), ADR 0118 §2 ----------------------------
 
-// CastAnywayZone is where a "Cast anyway (don't pay)" row may stand: the
+// CastAnywayZone is where a "Cast anyway (pay on paper)" row may stand: the
 // hand, the castable-from-other-zones strip's exile entries, and the
 // commanders (the strip and the command-zone panel).
 export type CastAnywayZone = "hand" | "exile" | "command";

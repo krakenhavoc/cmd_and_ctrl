@@ -191,7 +191,7 @@
     // controls the card, so an opponent's Aura drawn on the viewer's
     // creature never offers it.
     onRawTap?: () => void;
-    // ADR 0118 §2: the popover's "Cast anyway (don't pay)" row, on a card
+    // ADR 0118 §2: the popover's "Cast anyway (pay on paper)" row, on a card
     // the viewer could cast (a hand card, a strip card, the command-zone
     // panel's commander) while strict payment is on. It opens the dock's
     // confirmation; the parent closes over the card and its zone. It

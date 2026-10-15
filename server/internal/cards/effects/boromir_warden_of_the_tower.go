@@ -19,18 +19,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // countered (2023-06-16 rulings). The creatures that gain
 // indestructible are fixed as the ability resolves (CR 611.2c).
 //
-// Caveat: an unrecorded payment makes NoManaWasSpentToCast answer
-// "unknown", and Boromir
-// never counters anything — the weaker direction, as Vexing Bauble
-// declares.
+// A waived payment (strict mana off with too little in the pool, or Cast
+// anyway) no longer leaves Boromir guessing: it declares ReadsManaSpent,
+// so the caster is asked what they paid outside the pool, or whether they
+// cast it without paying its mana cost, and the record Boromir reads is exact
+// (#3855, ADR 0068 amendment 2026-10-15).
+// A spell its caster declares cast without paying its mana cost, with
+// nothing from the pool, is countered as printed.
 func init() {
 	Register(Spec{
-		OracleID:     "d72b57e5-1c6e-4f02-968f-7e2dd24f0d3c",
-		Name:         "Boromir, Warden of the Tower",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"When “Charge mana costs” is off, or you choose Cast anyway, the game can't tell a spell paid outside the mana pool from one cast for no mana, so Boromir doesn't counter it — turn on “Charge mana costs” for it to work.",
-		},
+		OracleID:        "d72b57e5-1c6e-4f02-968f-7e2dd24f0d3c",
+		Name:            "Boromir, Warden of the Tower",
+		ReadsManaSpent:  game.ReadsOpponentsCasts,
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, AllOf(AnOpponentCast(nil), func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {

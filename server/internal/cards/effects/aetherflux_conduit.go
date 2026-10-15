@@ -39,13 +39,13 @@ func init() {
 		return item
 	}
 	Register(Spec{
-		OracleID:     "775617cd-7264-4365-94c4-ffae4eb9ec8b",
-		Name:         "Aetherflux Conduit",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track what you spent, so casting a spell gives you no energy — turn on “Charge mana costs” for it to count.",
-		},
-		Triggered: []game.TriggeredAbility{t},
+		OracleID: "775617cd-7264-4365-94c4-ffae4eb9ec8b",
+		Name:     "Aetherflux Conduit",
+		// #3855: a waived cast under the Conduit asks what was paid
+		// outside the pool, so the energy is exact.
+		ReadsManaSpent: game.ReadsYourCasts,
+		Completeness:   CompletenessFull,
+		Triggered:      []game.TriggeredAbility{t},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}, Pay fifty {E}: Draw seven cards. You may cast any number of spells from your hand without paying their mana costs.",
 			Cost:    Plus(TapCost(), PayEnergy(50)),

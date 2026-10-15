@@ -1399,10 +1399,10 @@
     guardedSendAction("special_action", unlockParams(req.cardID, req.door), viewerID ?? undefined);
   });
 
-  // ADR 0118 §2 (owner decision 6): "Cast anyway (don't pay)" asks
+  // ADR 0118 §2 (owner decision 6): "Cast anyway (pay on paper)" asks
   // first. The row (Hand, the strip, the command zone panel, the admin
   // menu) only sets castAnywayPending; while it is set the dock asks
-  // "Cast <card> without paying its mana cost?". Cast starts the ordinary
+  // "Cast <card> and pay the rest on paper?". Cast starts the ordinary
   // cast chain with `forceCast`; Cancel and Escape send nothing. The
   // question goes away, also sending nothing, once the card has left the
   // zone it was asked about.

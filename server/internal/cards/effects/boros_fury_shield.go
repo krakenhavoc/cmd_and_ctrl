@@ -21,16 +21,19 @@ import (
 // for a player who has red mana, not a thing they must tap by hand to
 // get. An ordering only; a board with no red source casts it as printed.
 //
-// Caveat: with an unrecorded payment the engine does not see the mana paid, so
-// the rider never happens. That is the weaker direction.
+// A waived payment (strict mana off with too little in the pool, or Cast
+// anyway) no longer leaves this card guessing: it declares ReadsManaSpent,
+// so the caster is asked what they paid outside the pool, or whether they
+// cast it without paying its mana cost, and the record it reads is exact
+// (#3855, ADR 0068 amendment 2026-10-15).
 func init() {
 	Register(Spec{
-		OracleID:     "20eff2ce-f26d-48a2-8a1f-435a7e2968c8",
-		Name:         "Boros Fury-Shield",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so Boros Fury-Shield deals the damage only when the {R} came from your mana pool."},
-		WantsColors:  []string{"R"},
-		Targets:      TargetCreature("target attacking or blocking creature", AttackingOrBlocking()),
+		OracleID:       "20eff2ce-f26d-48a2-8a1f-435a7e2968c8",
+		Name:           "Boros Fury-Shield",
+		ReadsManaSpent: game.ReadsOwnPayment,
+		Completeness:   CompletenessFull,
+		WantsColors:    []string{"R"},
+		Targets:        TargetCreature("target attacking or blocking creature", AttackingOrBlocking()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return shieldAgainstTheTargetThen(ctx, true, func(ctx *Context, target uuid.UUID) error {
 				if ctx.ManaSpent().Count("R") == 0 {

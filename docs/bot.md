@@ -1662,6 +1662,13 @@ is not offered in the next window, the bot plans again, and the worst
 case is a one-spell turn. The arena counts these windows as plan
 misses ([Reading the report](#reading-the-report)).
 
+The bot never pays on paper. Every cast and activation it is offered
+is strict and auto-tapped, so it never uses Cast anyway, never has a
+payment waived, and never meets the "what did you pay?" question a
+human player is asked when a waived payment is read by something on
+the table ([#3855](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3855),
+pinned by `legal`'s `TestBotMovesNeverWaiveAPaymentSomethingReads`).
+
 ### Which sets it compares
 
 A plan holds only casts whose sole costs are mana and the card itself

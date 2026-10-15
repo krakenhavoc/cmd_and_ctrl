@@ -35,6 +35,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "2a5408ed-8b47-4896-97e4-aa102a4b85c9",
 		Name:            "Domri, Chaos Bringer",
+		ReadsManaSpent:  game.ReadsPoolManaOnly,
 		Completeness:    CompletenessFull,
 		StartingLoyalty: 5,
 		Emblem: &EmblemSpec{

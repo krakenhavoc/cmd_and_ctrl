@@ -26,9 +26,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
-		OracleID:     primalAmuletOracleID + "#1",
-		Name:         "Primal Wellspring",
-		Completeness: CompletenessFull,
+		OracleID:       primalAmuletOracleID + "#1",
+		Name:           "Primal Wellspring",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",

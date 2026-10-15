@@ -67,10 +67,12 @@ registered, or when this file is stale.
 | `selectTarget` | `Select target for <card>` (starts with `Select target for `) | dialog | aria | `lib/targetingDock.ts` | the targeting request |
 | `chooseOnBoard` | `Choose on the board for <card>` (starts with `Choose on the board for `) | dialog | aria | `lib/targetingDock.ts` | a card-set pick answered by clicking permanents on the board (#2394) |
 | `showAsList` | `Show as list` | button | text | `lib/targetingDock.ts` | a board-answered card-set pick's fallback: open the same choice as the list |
-| `castWithoutPaying` | `Cast <card> without paying its mana cost?` (ends with ` without paying its mana cost?`) | dialog | aria | `lib/targetingDock.ts` | Cast anyway's confirm (ADR 0118 §2), with its Cast and Cancel |
-| `cast` | `Cast` | button | text | `lib/targetingDock.ts` | Cast anyway's confirm: cast it unpaid |
+| `castPayingOnPaper` | `Cast <card> and pay the rest on paper?` (ends with ` and pay the rest on paper?`) | dialog | aria | `lib/targetingDock.ts` | Cast anyway's confirm (ADR 0118 §2, renamed by #3855), with its Cast and Cancel |
+| `paperPayment` | `What did you pay for <card>?` (starts with `What did you pay for `) | dialog | aria | `lib/components/board/PaperPaymentModal.svelte` | the paper payment picker (#3855): what a waived payment something reads paid outside the pool |
+| `castFree` | `Cast without paying its mana cost` | button | text | `lib/components/board/PaperPaymentModal.svelte` | the paper payment picker's other answer: an effect on paper let you cast it free (#3855) |
+| `cast` | `Cast` | button | text | `lib/targetingDock.ts` | Cast anyway's confirm: cast it, the pool paying what it can and the rest paid on paper |
 | `cancel` | `Cancel` | button | text | `lib/targetingDock.ts`<br>`lib/dock.ts` | Cast anyway's confirm, and every flow's Cancel (the dock's cancelAction), the first-turn confirm's included |
-| `castAnyway` | `Cast anyway (don't pay)` | menuitem | text | `lib/castAnyway.ts` | the card menu's row that casts without paying (ADR 0118 §2) |
+| `castAnyway` | `Cast anyway (pay on paper)` | menuitem | text | `lib/castAnyway.ts` | the card menu's row that casts what the pool can't pay, the rest paid on paper (ADR 0118 §2, renamed by #3855) |
 | `energyToPay` | `energy to pay` | group | aria | `lib/components/board/ChoicePromptModal.svelte` | the pay_amount prompt's stepper (ADR 0129 §3): how much energy to pay, from its floor to the seat's energy |
 | `payEnergy` | `Pay <N> {E}` (ends with ` {E}`) | button | text | `lib/choiceDock.ts` | the pay_amount prompt's primary: pays the stepper's amount |
 | `payNothing` | `Pay nothing` | button | text | `lib/choiceDock.ts` | the pay_amount prompt's decline when the card says any amount; it reads Don't pay when the card says one or more |

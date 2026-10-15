@@ -234,7 +234,7 @@ describe("the insufficient-mana request (S15, ADR 0111 PR 4)", () => {
     // Cast anyway is a click only: no key reaches the override.
     expect(h.onCastAnyway).not.toHaveBeenCalled();
     expect(r.secondary?.find((a) => a.label === "Cast anyway")?.title).toBe(
-      "cast it, paying only with mana already in your pool; the game log says so",
+      "cast it: the mana in your pool pays what it can and you pay the rest on paper; the game log says so",
     );
   });
 
@@ -259,7 +259,7 @@ describe("the insufficient-mana request (S15, ADR 0111 PR 4)", () => {
     expect(h.onCancel).toHaveBeenCalledTimes(1);
     expect(r.secondary?.[0].keyShortcuts).toBeUndefined();
     expect(r.secondary?.[0].title).toBe(
-      "cast it, paying only with mana already in your pool; the game log says so",
+      "cast it: the mana in your pool pays what it can and you pay the rest on paper; the game log says so",
     );
     r.secondary![0].onPress();
     expect(h.onCastAnyway).toHaveBeenCalledTimes(1);

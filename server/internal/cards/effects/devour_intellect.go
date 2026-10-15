@@ -24,10 +24,11 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "abf8264e-d020-4939-8092-83469b1a2244",
-		Name:         "Devour Intellect",
-		Completeness: CompletenessFull,
-		Targets:      TargetPlayer("target opponent", Opponent()),
+		OracleID:       "abf8264e-d020-4939-8092-83469b1a2244",
+		Name:           "Devour Intellect",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
+		Targets:        TargetPlayer("target opponent", Opponent()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			player := TargetedPlayer(ctx)
 			if player == uuid.Nil {

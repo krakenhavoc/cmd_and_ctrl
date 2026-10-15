@@ -24,9 +24,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // exactly whether (and how much) Treasure mana paid.
 func init() {
 	Register(Spec{
-		OracleID:     "4fca09ac-8134-43d9-a84b-686db5e2bf69",
-		Name:         "Kalain, Reclusive Painter",
-		Completeness: CompletenessFull,
+		OracleID:       "4fca09ac-8134-43d9-a84b-686db5e2bf69",
+		Name:           "Kalain, Reclusive Painter",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Kalain, Reclusive Painter — create a Treasure token",
 				Do(CreateToken{Template: TreasureToken(), N: 1})),

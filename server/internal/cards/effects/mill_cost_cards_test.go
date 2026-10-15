@@ -32,8 +32,8 @@ func TestMillCostCardsAreGradedHonestly(t *testing.T) {
 		{"Sinister Concoction", sinisterConcoctionOracle, false},
 		{"Rot Farm Skeleton", rotFarmSkeletonOracle, false},
 		{"Charmed Pendant", charmedPendantOracle, false},
-		{"Moonhold", moonholdOracle, true},
-		{"River's Grasp", riversGraspOracle, true},
+		{"Moonhold", moonholdOracle, false}, // complete since a waived payment asks (#3855)
+		{"River's Grasp", riversGraspOracle, false},
 	} {
 		spec, ok := Lookup(tc.oracle)
 		if !ok || spec.Name != tc.name {

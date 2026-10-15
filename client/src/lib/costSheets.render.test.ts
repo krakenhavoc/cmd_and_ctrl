@@ -33,6 +33,7 @@ import DivideDamageModal from "./components/board/DivideDamageModal.svelte";
 import TapCostModal from "./components/board/TapCostModal.svelte";
 import DelveCostModal from "./components/board/DelveCostModal.svelte";
 import ModePickerModal from "./components/board/ModePickerModal.svelte";
+import PaperPaymentModal from "./components/board/PaperPaymentModal.svelte";
 import DockHarness from "./test/DockHarness.svelte";
 import { _resetForTests as resetDock } from "./dock";
 import { _resetForTests as resetModals } from "./modalLayers";
@@ -81,6 +82,14 @@ interface Case {
 
 const ox = card("ox", "Ox", { power: 3, toughness: 3 });
 const elk = card("elk", "Elk", { power: 2, toughness: 2 });
+const TRUTHS_PROMPT = {
+  slots: [
+    { symbol: "{B}", options: ["B"] },
+    { symbol: "{1}", options: ["W", "U", "B", "R", "G", "C"] },
+    { symbol: "{1}", options: ["W", "U", "B", "R", "G", "C"] },
+  ],
+};
+
 const firstOption = (sheet: HTMLElement): void =>
   click(sheet.querySelector<HTMLElement>(".prompt-options .prompt-opt")!);
 
@@ -341,7 +350,62 @@ const CASES: Case[] = [
     },
     confirms: [[0, 1]],
   },
+  {
+    // #3855: "What did you pay?" — a waived payment something reads.
+    title: "the paper payment picker",
+    component: PaperPaymentModal as never,
+    props: (c) => ({
+      cardName: "Painful Truths",
+      prompt: TRUTHS_PROMPT,
+      onConfirm: (p: unknown) => c.confirmed.push([p]),
+      onCancel: () => c.cancelled++,
+    }),
+    dialog: "What did you pay for Painful Truths?",
+    primary: "Cast, {B}{W}{C} paid on paper",
+    pick: (sheet) => click(sheet.querySelectorAll<HTMLElement>(".slot")[1]!.querySelector(".opt")!),
+    confirms: [{ mana: [{ color: "B" }, { color: "W" }, { color: "C" }] }],
+  },
 ];
+
+describe("the paper payment picker (#3855)", () => {
+  it("prefills the shortfall, and Cast without paying its mana cost answers free", () => {
+    const calls = mount(CASES.find((k) => k.title === "the paper payment picker")!);
+    expect(nameOf(barPrimary()!)).toBe("Cast, {B}{C}{C} paid on paper");
+    const free = barSecondaries().find((b) => nameOf(b) === "Cast without paying its mana cost")!;
+    expect(free).toBeDefined();
+    click(free);
+    expect(calls.confirmed).toEqual([[{ free: true }]]);
+  });
+
+  it("offers a coloured slot only its colour", () => {
+    mount(CASES.find((k) => k.title === "the paper payment picker")!);
+    const first = sheetPanel()!.querySelectorAll<HTMLElement>(".slot")[0]!;
+    expect([...first.querySelectorAll(".opt")].map((b) => b.textContent?.trim())).toEqual(["{B}"]);
+  });
+
+  it("asks per mana whether an artifact made it when a reader counts artifact mana", () => {
+    const calls: Calls = { confirmed: [], cancelled: 0 };
+    render(
+      DockHarness as never,
+      {
+        component: PaperPaymentModal,
+        props: {
+          cardName: "Grizzly Bears",
+          prompt: {
+            slots: [{ symbol: "{1}", options: ["W", "U", "B", "R", "G", "C"] }],
+            artifact_sources: true,
+          },
+          onConfirm: (p: unknown) => calls.confirmed.push([p]),
+          onCancel: () => calls.cancelled++,
+        },
+      } as never,
+    );
+    flushSync();
+    click(sheetPanel()!.querySelector<HTMLElement>(".artifact input")!);
+    click(barPrimary()!);
+    expect(calls.confirmed).toEqual([[{ mana: [{ color: "C", artifact: true }] }]]);
+  });
+});
 
 function mount(k: Case) {
   const calls: Calls = { confirmed: [], cancelled: 0 };

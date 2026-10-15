@@ -20,10 +20,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // when the {2}{B} was paid with other mana; the caveat says so.
 func init() {
 	Register(Spec{
-		OracleID:     "063b0f5d-af27-4681-87b9-b553f6887061",
-		Name:         "Soul Burn",
-		XMatters:     true,
-		Completeness: CompletenessCaveats,
+		OracleID:       "063b0f5d-af27-4681-87b9-b553f6887061",
+		Name:           "Soul Burn",
+		ReadsManaSpent: game.ReadsOwnPayment,
+		XMatters:       true,
+		Completeness:   CompletenessCaveats,
 		Caveats: []string{
 			"The life you gain counts black mana spent on X as the least it could have been, because the game can't tell which black mana paid for X rather than for the rest of the cost, so you may gain less life than printed.",
 		},

@@ -327,6 +327,16 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 // payment uses (#3844); when it can, they are exactly the funded
 // payment.
 func (p ManaPool) allocate(cost ParsedCost, xValue int, ctx ManaSpendContext, strategy ManaSpendStrategy) (used []int, short bool) {
+	used, unpaid, need := p.allocateRest(cost, xValue, ctx, strategy)
+	return used, len(unpaid) > 0 || need > 0
+}
+
+// allocateRest is allocate, also reporting WHAT it left unpaid: the
+// coloured requirements no mana could take, and how much of the
+// any-mana demand (generic, X, and widened slots) is still owed. That
+// remainder is the shortfall a waived payment declares on paper
+// (#3855, paper_payment.go).
+func (p ManaPool) allocateRest(cost ParsedCost, xValue int, ctx ManaSpendContext, strategy ManaSpendStrategy) (used []int, unpaid []ColorRequirement, need int) {
 	used = make([]int, len(p))
 	// One pass decides which runs are legal here and in what order
 	// the solver should prefer them. Every pass below walks `order`
@@ -348,7 +358,6 @@ func (p ManaPool) allocate(cost ParsedCost, xValue int, ctx ManaSpendContext, st
 	// bookings of a short allocation, so a funded payment's answer is
 	// what it always was.
 	deferred, unpaid := colouredPass(p, used, order, widenedLast(cost.Required))
-	short = len(unpaid) > 0
 
 	// Step 2 — generic requirement. Total = explicit Generic +
 	// XSlots * xValue, plus the widened slots no printed colour paid
@@ -358,7 +367,7 @@ func (p ManaPool) allocate(cost ParsedCost, xValue int, ctx ManaSpendContext, st
 	// not spent yet, because those cards count colours rather than
 	// mana. Every bucket is walked either way, so the answer to
 	// "payable?" is the same under both.
-	need := cost.GenericWithX(xValue) + len(deferred)
+	need = cost.GenericWithX(xValue) + len(deferred)
 	// #2170: mana that can't pay generic costs may still pay the
 	// slots that only LOOK generic here — a widened coloured symbol
 	// and a coloured symbol a cast permission folded into Generic. It
@@ -403,7 +412,7 @@ func (p ManaPool) allocate(cost ParsedCost, xValue int, ctx ManaSpendContext, st
 		// walked in another order, so payability is untouched.
 		need = spendGenericWished(p, used, order, need, ctx)
 	}
-	return used, short || need > 0
+	return used, unpaid, need
 }
 
 // split divides each run into what `used` booked as spent and what is

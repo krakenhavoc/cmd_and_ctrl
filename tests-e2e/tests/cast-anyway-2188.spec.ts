@@ -12,20 +12,21 @@ import {
   type SnapshotView, keepAllHands } from "./s19-helpers";
 
 // #2188 / ADR 0118 §§1–2: strict payment by default, and "Cast anyway
-// (don't pay)", end to end.
+// (pay on paper)" (renamed by #3855), end to end.
 //
 // Neither seat seeds a setting: since ADR 0118 PR 4 a fresh browser
 // starts with strict payment on, and this spec is the proof. First,
 // with two untapped Forests, a click on Grizzly Bears taps both and
 // casts it (§1: a clicked cast is stamped `auto_tap`). Then a card the
-// seat cannot pay for still offers "Cast anyway (don't pay)" in its
+// seat cannot pay for still offers "Cast anyway (pay on paper)" in its
 // right-click popover. Choosing it casts nothing yet: the action dock
-// asks "Cast Craw Wurm without paying its mana cost?" with Cast and
+// asks "Cast Craw Wurm and pay the rest on paper?" with Cast and
 // Cancel (owner decision 6).
 // Cancel closes it and the Wurm stays in hand. Choosing the row again,
-// then Cast, puts the Wurm on the stack without paying, and the game
-// log tells BOTH players: "<player> cast Craw Wurm without paying its
-// mana cost" (owner decision 4).
+// then Cast, puts the Wurm on the stack with the whole cost paid on
+// paper (nothing on this board reads what was paid, so nothing asks;
+// #3855), and the game log tells BOTH players: "<player> cast Craw Wurm,
+// paying {4}{G}{G} on paper" (owner decision 4, as amended by #3855).
 //
 // This spec selects the menu item, the dialog and the Cast and Cancel
 // buttons by those exact names, which is what makes them a label
@@ -37,8 +38,8 @@ import {
 const BEARS = "Grizzly Bears"; // {1}{G}: exactly the two Forests
 const WURM = "Craw Wurm"; // {4}{G}{G}: nothing on this board can pay it
 const LAND = "Forest";
-const ROW = "Cast anyway (don't pay)";
-const DIALOG = `Cast ${WURM} without paying its mana cost?`;
+const ROW = "Cast anyway (pay on paper)";
+const DIALOG = `Cast ${WURM} and pay the rest on paper?`;
 
 // The ready ring is the `ready` class on the card element (Card.svelte).
 const READY = /(^|\s)ready(\s|$)/;
@@ -97,8 +98,8 @@ async function openLog(page: Page): Promise<Locator> {
   return log;
 }
 
-test.describe("#2188 Cast anyway (don't pay)", () => {
-  test("a click taps the lands and casts; the row asks first; Cast casts unpaid and the log says so", async ({
+test.describe("#2188 Cast anyway (pay on paper)", () => {
+  test("a click taps the lands and casts; the row asks first; Cast casts it paid on paper and the log says so", async ({
     browser,
     request,
   }) => {
@@ -256,7 +257,7 @@ test.describe("#2188 Cast anyway (don't pay)", () => {
         ),
       ).toBe(true);
 
-      // --- again, and Cast: the Wurm is cast without paying ------------
+      // --- again, and Cast: the Wurm is cast, paid on paper -----------
       await rightClick(wurmInHand);
       await page.getByRole("menuitem", { name: ROW }).click();
       await expect(dialog).toBeVisible();
@@ -276,7 +277,7 @@ test.describe("#2188 Cast anyway (don't pay)", () => {
       );
 
       // --- both players' logs say so -----------------------------------
-      const line = `${me.name} cast ${WURM} without paying its mana cost`;
+      const line = `${me.name} cast ${WURM}, paying {4}{G}{G} on paper`;
       for (const p of [me, them]) {
         const log = await openLog(p!.page);
         await expect(log.getByText(line, { exact: true })).toBeVisible({

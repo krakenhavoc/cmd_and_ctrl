@@ -16,8 +16,8 @@ func init() {
 	Register(Spec{
 		OracleID:            "3a8f382e-0bc6-4e79-87e2-9f99d907d234",
 		Name:                "Sawtooth Thresher",
-		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so it can enter with fewer counters than the colors you paid."},
+		ReadsManaSpent:      game.ReadsOwnPayment,
+		Completeness:        CompletenessFull,
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Activated: []ActivatedAbility{{

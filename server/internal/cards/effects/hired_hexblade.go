@@ -55,10 +55,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // exactly whether (and how much) Treasure mana paid.
 func init() {
 	Register(Spec{
-		OracleID:      "f3a0f155-05d8-465c-b0ef-35aa12e93013",
-		Name:          "Hired Hexblade",
-		Completeness:  CompletenessFull,
-		WantsManaFrom: game.ManaSourceTreasure,
+		OracleID:       "f3a0f155-05d8-465c-b0ef-35aa12e93013",
+		Name:           "Hired Hexblade",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
+		WantsManaFrom:  game.ManaSourceTreasure,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, AllOf(Self, func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return source.ManaSpentToCast().FromTreasure()

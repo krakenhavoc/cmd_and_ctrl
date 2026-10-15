@@ -42,10 +42,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
-		OracleID:     "89ca686a-7c72-4d8f-9290-e89635624a83",
-		Name:         "Cavern of Souls",
-		Completeness: CompletenessFull,
-		AsEnters:     ChooseCreatureTypeAsEnters("Cavern of Souls"),
+		OracleID:       "89ca686a-7c72-4d8f-9290-e89635624a83",
+		Name:           "Cavern of Souls",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
+		AsEnters:       ChooseCreatureTypeAsEnters("Cavern of Souls"),
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},

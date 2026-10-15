@@ -1348,6 +1348,13 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			c.sendErrorPayload(frame.ID, body)
 			return
 		}
+		// #3855: a waived payment something reads asks what was paid
+		// on paper, with the shortfall, before anything was paid.
+		var pp *game.PaperPaymentRequiredError
+		if errors.As(err, &pp) {
+			c.sendErrorPayload(frame.ID, paperPaymentPayload(pp, payload))
+			return
+		}
 		var im *game.InsufficientManaError
 		if errors.As(err, &im) {
 			cardID := ""
@@ -1651,6 +1658,31 @@ func attackRequirementPayload(err error, viewer uuid.UUID) (protocol.ErrorPayloa
 // creature, and a bulk swing has no single card to point at. Nothing
 // was staged, so there is nothing for the client to correlate with
 // either.
+// paperPaymentPayload is the paper_payment_required frame (#3855): the
+// shortfall slot by slot, and the card the refused action was about —
+// the spell for a cast_spell, the ability's source for an
+// activate_ability — so the client can find the payload to re-send.
+func paperPaymentPayload(pp *game.PaperPaymentRequiredError, payload protocol.ActionPayload) protocol.ErrorPayload {
+	var cp struct {
+		InstanceID   string `json:"instance_id"`
+		SourceCardID string `json:"source_card_id"`
+	}
+	_ = json.Unmarshal(payload.Params, &cp)
+	if cp.InstanceID == "" {
+		cp.InstanceID = cp.SourceCardID
+	}
+	prompt := &protocol.PaperPaymentPrompt{ArtifactSources: pp.ArtifactSources}
+	for _, s := range pp.Slots {
+		prompt.Slots = append(prompt.Slots, protocol.PaperPaymentSlot{Symbol: s.Symbol, Options: s.Options})
+	}
+	return protocol.ErrorPayload{
+		Code:         protocol.CodePaperPaymentRequired,
+		Message:      "say what you paid outside your mana pool",
+		CardID:       cp.InstanceID,
+		PaperPayment: prompt,
+	}
+}
+
 func attackTaxPayload(err error) (protocol.ErrorPayload, bool) {
 	if !errors.Is(err, game.ErrAttackTaxUnpaid) {
 		return protocol.ErrorPayload{}, false

@@ -31,9 +31,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 func init() {
 	const grant = "alchemists-talent/treasure-mana"
 	Register(Spec{
-		OracleID:     "5a2dfff5-9dba-42f5-bcca-918c16f23807",
-		Name:         "Alchemist's Talent",
-		Completeness: CompletenessFull,
+		OracleID:       "5a2dfff5-9dba-42f5-bcca-918c16f23807",
+		Name:           "Alchemist's Talent",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
 		Grants: []AbilityGrant{{
 			Key:  grant,
 			Text: "{T}, Sacrifice this artifact: Add two mana of any one color.",

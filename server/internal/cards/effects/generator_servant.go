@@ -24,9 +24,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
-		OracleID:     "68ac061a-e4a3-46df-9169-62f6a8481584",
-		Name:         "Generator Servant",
-		Completeness: CompletenessFull,
+		OracleID:       "68ac061a-e4a3-46df-9169-62f6a8481584",
+		Name:           "Generator Servant",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true, Sacrifice: true},
 			Produced: "{C}{C}",

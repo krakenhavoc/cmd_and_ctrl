@@ -1288,6 +1288,31 @@ type Spec struct {
 	// player happened to spend.
 	WantsDistinctColors bool
 
+	// ReadsManaSpent declares what this card reads of the mana spent to
+	// cast a spell or activate an ability (#3855, ADR 0068 amendment
+	// 2026-10-15): its own payment (game.ReadsOwnPayment — sunburst,
+	// converge, adamant, Memory Deluge, "if no mana was spent to cast
+	// it"), the payments of spells it watches being cast
+	// (game.ReadsYourCasts / ReadsOpponentsCasts / ReadsEveryCast —
+	// Vexing Bauble, Coin of Mastery, Lux Artillery), its own
+	// activations' (game.ReadsOwnActivations — Protective Sphere).
+	//
+	// It is what makes a WAIVED payment ask: when a cast or activation
+	// is let through short (strict off, or Cast anyway) and something
+	// reads its payment, the caster is asked what they paid outside the
+	// pool, or whether they cast it without paying its mana cost, and
+	// the record becomes exact. A cast nothing reads stays one click.
+	//
+	// Every card file that reads the mana spent must say something
+	// here, including the two declarations that never ask:
+	// game.ReadsPoolManaOnly for a reader of Treasure mana or of a spend
+	// rider's token, which a paper payment can never be, and
+	// game.ReadsAnotherSpellsAmount for a card that reads the amount
+	// spent on a spell it did not watch being cast (Mana Sculpt).
+	// TestManaSpentReadersDeclareIt enforces it by scanning the source,
+	// so a new reader cannot forget.
+	ReadsManaSpent game.ManaSpentReads
+
 	// WantsManaFrom declares the kinds of mana SOURCE this card's own
 	// text reads back — game.ManaSourceTreasure for "if mana from a
 	// Treasure was spent to cast it" (Hired Hexblade, Jaded

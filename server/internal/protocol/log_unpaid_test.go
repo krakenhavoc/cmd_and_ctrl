@@ -57,6 +57,58 @@ func TestUnpaidCastLogLine(t *testing.T) {
 	}
 }
 
+// #3855: what a caster said about a waived payment is public. A
+// declared payment names the mana; a one-click Cast anyway names the
+// shortfall it asserts was paid on paper; an activation's declaration
+// rides its own line.
+func TestPaperPaidLogLines(t *testing.T) {
+	cases := []struct {
+		name     string
+		kind     game.EventKind
+		paper    string
+		declared bool
+		unpaid   bool
+		want     string
+	}{
+		{"declared paid", game.EventCast, "{C}{G}", true, false, "P1 cast Craw Wurm, declaring {C}{G} paid on paper"},
+		{"cast anyway", game.EventCast, "{4}{G}{G}", false, false, "P1 cast Craw Wurm, paying {4}{G}{G} on paper"},
+		{"declared free", game.EventCast, "", false, true, "P1 cast Craw Wurm without paying its mana cost"},
+		{"activation declared", game.EventActivateAbility, "{R}", true, false, "P1 activated Craw Wurm's ability, declaring {R} paid on paper"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			g := buildActiveGame(t)
+			caster := g.Seats[0]
+			wurm := uuid.New()
+			g.WithWriteLock(func() {
+				g.Stack.PushTop(game.Card{
+					InstanceID: wurm, Name: "Craw Wurm", TypeLine: "Creature — Wurm",
+					Owner: caster.ID, Controller: caster.ID,
+					KnownBy: map[uuid.UUID]bool{g.Seats[0].ID: true, g.Seats[1].ID: true},
+				})
+				g.EmitEvent(game.Event{
+					Kind: tc.kind, Actor: caster.ID, Source: wurm, CardID: wurm,
+					OldZone: game.ZoneHand, NewZone: game.ZoneStack,
+					Unpaid: tc.unpaid, PaperPaid: tc.paper, PaperDeclared: tc.declared,
+				})
+			})
+			want := LogCast
+			if tc.kind == game.EventActivateAbility {
+				want = LogActivate
+			}
+			for _, viewer := range []string{caster.ID.String(), g.Seats[1].ID.String()} {
+				entry := findLog(t, ViewOfGameFor(g, viewer).Log, want)
+				if entry.Text != tc.want {
+					t.Errorf("viewer %s: text %q, want %q", viewer, entry.Text, tc.want)
+				}
+				if entry.PaperPaid != tc.paper || entry.PaperDeclared != tc.declared {
+					t.Errorf("viewer %s: paper %q/%v, want %q/%v", viewer, entry.PaperPaid, entry.PaperDeclared, tc.paper, tc.declared)
+				}
+			}
+		})
+	}
+}
+
 // The flag is public (the pool and the cost are), but the card's name
 // is redacted per viewer as for any cast: a face-down spell cast
 // without paying stays "a card" for an opponent and keeps the suffix.

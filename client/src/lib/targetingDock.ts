@@ -343,7 +343,8 @@ export function insufficientManaRequest(
   const castAnyway: DockAction = {
     id: "cast-anyway",
     label: "Cast anyway",
-    title: "cast it, paying only with mana already in your pool; the game log says so",
+    title:
+      "cast it: the mana in your pool pays what it can and you pay the rest on paper; the game log says so",
     onPress: h.onCastAnyway,
   };
   const base = {
@@ -377,14 +378,15 @@ export interface CastAnywayConfirmHandlers {
 }
 
 // castAnywayConfirmLabel is the confirmation's dialog name (ADR 0118 §2,
-// owner decision 6), e.g. "Cast Craw Wurm without paying its mana cost?".
+// owner decision 6; renamed by #3855), e.g. "Cast Craw Wurm and pay the
+// rest on paper?".
 // A label contract (AGENTS.md §5, ADR 0111 §10): cast-anyway-2188.spec.ts
 // selects the dialog by it.
 export function castAnywayConfirmLabel(cardName: string): string {
-  return L.castWithoutPaying(cardName);
+  return L.castPayingOnPaper(cardName);
 }
 
-// castAnywayConfirmRequest: the "Cast anyway (don't pay)" row was chosen
+// castAnywayConfirmRequest: the "Cast anyway (pay on paper)" row was chosen
 // from a card's menu, and nothing has been sent yet (ADR 0118 §2, owner
 // decision 6). The question is the dialog's name; Cast and Cancel are
 // its two buttons, and both names are a label contract. Cancel answers
@@ -407,12 +409,13 @@ export function castAnywayConfirmRequest(
     tag: "unpaid",
     tone: "gold",
     question,
-    hint: "Only mana already in your pool is spent. Life and any other costs are still paid, and the game log shows the table.",
+    hint: "The mana in your pool pays what it can and you pay the rest on paper. If something on the table reads what was paid, you'll be asked what you paid. Life and any other costs are still paid, and the game log shows the table.",
     focus: "dialog",
     primary: {
       id: "cast",
       label: L.cast,
-      title: "cast it, paying only with mana already in your pool; the game log says so",
+      title:
+        "cast it: the mana in your pool pays what it can and you pay the rest on paper; the game log says so",
       onPress: h.onCast,
     },
     secondary: [

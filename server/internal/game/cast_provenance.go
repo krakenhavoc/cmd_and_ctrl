@@ -225,6 +225,11 @@ type CastProvenance struct {
 	// same to both — which is fine here (both answer no, the weaker
 	// direction) and wrong the moment an entry clause reads "if NO
 	// mana was spent to cast it".
+	// PaperMana is PaidCost.PaperMana carried across the entry (#3855):
+	// the amount an undeclared waived payment paid outside the pool.
+	// Before ManaOnPaper so the bool closes the struct (Card layout).
+	PaperMana int `json:"paperMana,omitempty"`
+
 	ManaOnPaper bool `json:"manaOnPaper,omitempty"`
 }
 
@@ -236,13 +241,13 @@ type CastProvenance struct {
 // that asks it from an enters trigger are asking the same thing and
 // get the same answer shape.
 func (p CastProvenance) Spent() ManaSpent {
-	return ManaSpent{tokens: p.Mana, unknown: p.ManaOnPaper}
+	return ManaSpent{tokens: p.Mana, paper: p.PaperMana, unknown: p.ManaOnPaper}
 }
 
 // Any reports whether this record says anything at all.
 func (p CastProvenance) Any() bool {
 	return p.AltCost != "" || p.FromZone != "" || len(p.OptionalCosts) > 0 ||
-		len(p.Mana) > 0 || p.ManaOnPaper || p.GiftOpponent != uuid.Nil || p.X != 0 || p.PhyrexianLife != 0 ||
+		len(p.Mana) > 0 || p.ManaOnPaper || p.PaperMana != 0 || p.GiftOpponent != uuid.Nil || p.X != 0 || p.PhyrexianLife != 0 ||
 		p.Caster != uuid.Nil || len(p.Delved) > 0 || len(p.AltCostObjects) > 0
 }
 
@@ -398,6 +403,7 @@ func (g *Game) stampCastProvenanceLocked(cardID uuid.UUID, item *StackItem) {
 		// because this is the last moment it exists — the item is
 		// discarded the instant resolution finishes.
 		ManaOnPaper: item.Paid.OnPaper,
+		PaperMana:   item.Paid.PaperMana,
 		// #1312 (CR 107.3m): X, for the same reason and at the same
 		// last moment.
 		X: item.XValue,

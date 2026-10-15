@@ -336,6 +336,7 @@ battlefield.cards[].provenance.mana[].riders[].when	array
 battlefield.cards[].provenance.mana[].riders[].when[]	string
 battlefield.cards[].provenance.optionalCosts	array
 battlefield.cards[].provenance.optionalCosts[]	number:int
+battlefield.cards[].provenance.paperMana	number:int
 battlefield.cards[].provenance.phyrexianLife	number:int
 battlefield.cards[].provenance.x	number:int
 battlefield.cards[].putInGraveyardFrom	string
@@ -535,6 +536,8 @@ events[].looked_at	number:int
 events[].loyalty	bool
 events[].new_zone	string
 events[].old_zone	string
+events[].paperDeclared	bool
+events[].paperPaid	string
 events[].played	bool
 events[].public_names	map:array
 events[].public_names{}	string
@@ -869,6 +872,7 @@ exile.cards[].provenance.mana[].riders[].when	array
 exile.cards[].provenance.mana[].riders[].when[]	string
 exile.cards[].provenance.optionalCosts	array
 exile.cards[].provenance.optionalCosts[]	number:int
+exile.cards[].provenance.paperMana	number:int
 exile.cards[].provenance.phyrexianLife	number:int
 exile.cards[].provenance.x	number:int
 exile.cards[].putInGraveyardFrom	string
@@ -1749,6 +1753,7 @@ lastKnownStack[].card.provenance.mana[].riders[].when	array
 lastKnownStack[].card.provenance.mana[].riders[].when[]	string
 lastKnownStack[].card.provenance.optionalCosts	array
 lastKnownStack[].card.provenance.optionalCosts[]	number:int
+lastKnownStack[].card.provenance.paperMana	number:int
 lastKnownStack[].card.provenance.phyrexianLife	number:int
 lastKnownStack[].card.provenance.x	number:int
 lastKnownStack[].card.putInGraveyardFrom	string
@@ -1874,6 +1879,7 @@ lastKnownStack[].item.paid.milled	array
 lastKnownStack[].item.paid.milled[]	custom(uuid.UUID)
 lastKnownStack[].item.paid.optionalCosts	array
 lastKnownStack[].item.paid.optionalCosts[]	number:int
+lastKnownStack[].item.paid.paperMana	number:int
 lastKnownStack[].item.paid.sacrificedObjects	array
 lastKnownStack[].item.paid.sacrificedObjects[]	object
 lastKnownStack[].item.paid.sacrificedObjects[].epoch	number:int
@@ -1977,6 +1983,8 @@ lastKnownStack[].item.trigger.Event.looked_at	number:int
 lastKnownStack[].item.trigger.Event.loyalty	bool
 lastKnownStack[].item.trigger.Event.new_zone	string
 lastKnownStack[].item.trigger.Event.old_zone	string
+lastKnownStack[].item.trigger.Event.paperDeclared	bool
+lastKnownStack[].item.trigger.Event.paperPaid	string
 lastKnownStack[].item.trigger.Event.played	bool
 lastKnownStack[].item.trigger.Event.public_names	map:array
 lastKnownStack[].item.trigger.Event.public_names{}	string
@@ -2170,6 +2178,7 @@ pausedModeWalk.item.paid.milled	array
 pausedModeWalk.item.paid.milled[]	custom(uuid.UUID)
 pausedModeWalk.item.paid.optionalCosts	array
 pausedModeWalk.item.paid.optionalCosts[]	number:int
+pausedModeWalk.item.paid.paperMana	number:int
 pausedModeWalk.item.paid.sacrificedObjects	array
 pausedModeWalk.item.paid.sacrificedObjects[]	object
 pausedModeWalk.item.paid.sacrificedObjects[].epoch	number:int
@@ -2273,6 +2282,8 @@ pausedModeWalk.item.trigger.Event.looked_at	number:int
 pausedModeWalk.item.trigger.Event.loyalty	bool
 pausedModeWalk.item.trigger.Event.new_zone	string
 pausedModeWalk.item.trigger.Event.old_zone	string
+pausedModeWalk.item.trigger.Event.paperDeclared	bool
+pausedModeWalk.item.trigger.Event.paperPaid	string
 pausedModeWalk.item.trigger.Event.played	bool
 pausedModeWalk.item.trigger.Event.public_names	map:array
 pausedModeWalk.item.trigger.Event.public_names{}	string
@@ -2420,6 +2431,7 @@ pausedResolutionTail.item.paid.milled	array
 pausedResolutionTail.item.paid.milled[]	custom(uuid.UUID)
 pausedResolutionTail.item.paid.optionalCosts	array
 pausedResolutionTail.item.paid.optionalCosts[]	number:int
+pausedResolutionTail.item.paid.paperMana	number:int
 pausedResolutionTail.item.paid.sacrificedObjects	array
 pausedResolutionTail.item.paid.sacrificedObjects[]	object
 pausedResolutionTail.item.paid.sacrificedObjects[].epoch	number:int
@@ -2523,6 +2535,8 @@ pausedResolutionTail.item.trigger.Event.looked_at	number:int
 pausedResolutionTail.item.trigger.Event.loyalty	bool
 pausedResolutionTail.item.trigger.Event.new_zone	string
 pausedResolutionTail.item.trigger.Event.old_zone	string
+pausedResolutionTail.item.trigger.Event.paperDeclared	bool
+pausedResolutionTail.item.trigger.Event.paperPaid	string
 pausedResolutionTail.item.trigger.Event.played	bool
 pausedResolutionTail.item.trigger.Event.public_names	map:array
 pausedResolutionTail.item.trigger.Event.public_names{}	string
@@ -2999,6 +3013,7 @@ pendingTriggers[].paid.milled	array
 pendingTriggers[].paid.milled[]	custom(uuid.UUID)
 pendingTriggers[].paid.optionalCosts	array
 pendingTriggers[].paid.optionalCosts[]	number:int
+pendingTriggers[].paid.paperMana	number:int
 pendingTriggers[].paid.sacrificedObjects	array
 pendingTriggers[].paid.sacrificedObjects[]	object
 pendingTriggers[].paid.sacrificedObjects[].epoch	number:int
@@ -3102,6 +3117,8 @@ pendingTriggers[].trigger.Event.looked_at	number:int
 pendingTriggers[].trigger.Event.loyalty	bool
 pendingTriggers[].trigger.Event.new_zone	string
 pendingTriggers[].trigger.Event.old_zone	string
+pendingTriggers[].trigger.Event.paperDeclared	bool
+pendingTriggers[].trigger.Event.paperPaid	string
 pendingTriggers[].trigger.Event.played	bool
 pendingTriggers[].trigger.Event.public_names	map:array
 pendingTriggers[].trigger.Event.public_names{}	string
@@ -3460,6 +3477,7 @@ phasedOut.cards[].provenance.mana[].riders[].when	array
 phasedOut.cards[].provenance.mana[].riders[].when[]	string
 phasedOut.cards[].provenance.optionalCosts	array
 phasedOut.cards[].provenance.optionalCosts[]	number:int
+phasedOut.cards[].provenance.paperMana	number:int
 phasedOut.cards[].provenance.phyrexianLife	number:int
 phasedOut.cards[].provenance.x	number:int
 phasedOut.cards[].putInGraveyardFrom	string
@@ -4179,6 +4197,7 @@ seats[].command.cards[].provenance.mana[].riders[].when	array
 seats[].command.cards[].provenance.mana[].riders[].when[]	string
 seats[].command.cards[].provenance.optionalCosts	array
 seats[].command.cards[].provenance.optionalCosts[]	number:int
+seats[].command.cards[].provenance.paperMana	number:int
 seats[].command.cards[].provenance.phyrexianLife	number:int
 seats[].command.cards[].provenance.x	number:int
 seats[].command.cards[].putInGraveyardFrom	string
@@ -4525,6 +4544,7 @@ seats[].companion.cards[].provenance.mana[].riders[].when	array
 seats[].companion.cards[].provenance.mana[].riders[].when[]	string
 seats[].companion.cards[].provenance.optionalCosts	array
 seats[].companion.cards[].provenance.optionalCosts[]	number:int
+seats[].companion.cards[].provenance.paperMana	number:int
 seats[].companion.cards[].provenance.phyrexianLife	number:int
 seats[].companion.cards[].provenance.x	number:int
 seats[].companion.cards[].putInGraveyardFrom	string
@@ -4874,6 +4894,7 @@ seats[].emblems.cards[].provenance.mana[].riders[].when	array
 seats[].emblems.cards[].provenance.mana[].riders[].when[]	string
 seats[].emblems.cards[].provenance.optionalCosts	array
 seats[].emblems.cards[].provenance.optionalCosts[]	number:int
+seats[].emblems.cards[].provenance.paperMana	number:int
 seats[].emblems.cards[].provenance.phyrexianLife	number:int
 seats[].emblems.cards[].provenance.x	number:int
 seats[].emblems.cards[].putInGraveyardFrom	string
@@ -5218,6 +5239,7 @@ seats[].graveyard.cards[].provenance.mana[].riders[].when	array
 seats[].graveyard.cards[].provenance.mana[].riders[].when[]	string
 seats[].graveyard.cards[].provenance.optionalCosts	array
 seats[].graveyard.cards[].provenance.optionalCosts[]	number:int
+seats[].graveyard.cards[].provenance.paperMana	number:int
 seats[].graveyard.cards[].provenance.phyrexianLife	number:int
 seats[].graveyard.cards[].provenance.x	number:int
 seats[].graveyard.cards[].putInGraveyardFrom	string
@@ -5560,6 +5582,7 @@ seats[].hand.cards[].provenance.mana[].riders[].when	array
 seats[].hand.cards[].provenance.mana[].riders[].when[]	string
 seats[].hand.cards[].provenance.optionalCosts	array
 seats[].hand.cards[].provenance.optionalCosts[]	number:int
+seats[].hand.cards[].provenance.paperMana	number:int
 seats[].hand.cards[].provenance.phyrexianLife	number:int
 seats[].hand.cards[].provenance.x	number:int
 seats[].hand.cards[].putInGraveyardFrom	string
@@ -5914,6 +5937,7 @@ seats[].library.cards[].provenance.mana[].riders[].when	array
 seats[].library.cards[].provenance.mana[].riders[].when[]	string
 seats[].library.cards[].provenance.optionalCosts	array
 seats[].library.cards[].provenance.optionalCosts[]	number:int
+seats[].library.cards[].provenance.paperMana	number:int
 seats[].library.cards[].provenance.phyrexianLife	number:int
 seats[].library.cards[].provenance.x	number:int
 seats[].library.cards[].putInGraveyardFrom	string
@@ -6294,6 +6318,7 @@ seats[].sideboard.cards[].provenance.mana[].riders[].when	array
 seats[].sideboard.cards[].provenance.mana[].riders[].when[]	string
 seats[].sideboard.cards[].provenance.optionalCosts	array
 seats[].sideboard.cards[].provenance.optionalCosts[]	number:int
+seats[].sideboard.cards[].provenance.paperMana	number:int
 seats[].sideboard.cards[].provenance.phyrexianLife	number:int
 seats[].sideboard.cards[].provenance.x	number:int
 seats[].sideboard.cards[].putInGraveyardFrom	string
@@ -6846,6 +6871,7 @@ stack.cards[].provenance.mana[].riders[].when	array
 stack.cards[].provenance.mana[].riders[].when[]	string
 stack.cards[].provenance.optionalCosts	array
 stack.cards[].provenance.optionalCosts[]	number:int
+stack.cards[].provenance.paperMana	number:int
 stack.cards[].provenance.phyrexianLife	number:int
 stack.cards[].provenance.x	number:int
 stack.cards[].putInGraveyardFrom	string
@@ -6974,6 +7000,7 @@ stackMeta[].paid.milled	array
 stackMeta[].paid.milled[]	custom(uuid.UUID)
 stackMeta[].paid.optionalCosts	array
 stackMeta[].paid.optionalCosts[]	number:int
+stackMeta[].paid.paperMana	number:int
 stackMeta[].paid.sacrificedObjects	array
 stackMeta[].paid.sacrificedObjects[]	object
 stackMeta[].paid.sacrificedObjects[].epoch	number:int
@@ -7077,6 +7104,8 @@ stackMeta[].trigger.Event.looked_at	number:int
 stackMeta[].trigger.Event.loyalty	bool
 stackMeta[].trigger.Event.new_zone	string
 stackMeta[].trigger.Event.old_zone	string
+stackMeta[].trigger.Event.paperDeclared	bool
+stackMeta[].trigger.Event.paperPaid	string
 stackMeta[].trigger.Event.played	bool
 stackMeta[].trigger.Event.public_names	map:array
 stackMeta[].trigger.Event.public_names{}	string

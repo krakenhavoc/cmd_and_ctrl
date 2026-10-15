@@ -188,7 +188,7 @@ export interface CastChoices {
   // sets it, so a clicked cast is byte-identical to before.
   viaDrag?: boolean;
   // ADR 0118 §2 (#2188): the cast was started from the "Cast anyway
-  // (don't pay)" row and confirmed. It rides CastChoices for the reason
+  // (pay on paper)" row and confirmed. It rides CastChoices for the reason
   // viaDrag does: the face, the costs, X, the modes and the targets are
   // asked exactly as for a click, and the flag must survive every hop.
   // applyCastChoices turns it into `strict: true, force_cast: true`:

@@ -984,7 +984,7 @@ func TestB35LuxArtilleryFiresAtThirtyCountersOnYourEndStep(t *testing.T) {
 			t.Errorf("opponent %d at 30 counters: %d → %d, want -10", i+1, b, got)
 		}
 	}
-	if spec, _ := Lookup(b35LuxArtilleryOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the missing sunburst grant is a declared gap")
+	if spec, _ := Lookup(b35LuxArtilleryOracle); spec.Completeness != CompletenessFull {
+		t.Error("Lux Artillery is complete since a waived payment asks (#3855)")
 	}
 }

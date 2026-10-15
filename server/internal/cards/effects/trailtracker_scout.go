@@ -25,9 +25,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "d38646dc-d1ea-473c-aaf1-df8ba327459f",
-		Name:         "Trailtracker Scout",
-		Completeness: CompletenessFull,
+		OracleID:       "d38646dc-d1ea-473c-aaf1-df8ba327459f",
+		Name:           "Trailtracker Scout",
+		ReadsManaSpent: game.ReadsYourCasts,
+		Completeness:   CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",

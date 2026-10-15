@@ -212,7 +212,7 @@ export interface Settings {
     // commander tax for casts from the command zone). Default true
     // since ADR 0118 (settings v19); false is the sandbox / paper
     // tracking posture. A card the board can't pay for still offers
-    // "Cast anyway (don't pay)", which casts with `force_cast: true`.
+    // "Cast anyway (pay on paper)", which casts with `force_cast: true`.
     strictMana: boolean;
     // #1968 (replacing #1530's alwaysAskTriggerOrder): when to raise
     // the CR 603.3b "order your triggers" prompt. "when_it_matters"

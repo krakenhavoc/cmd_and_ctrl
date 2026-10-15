@@ -88,7 +88,7 @@
     // it on every permanent the viewer controls. On a mana source the
     // Tap row keeps #1438's label, "Tap (no mana)". Undefined hides it.
     onRawTap?: () => void;
-    // ADR 0118 §2: the Sandbox section's "Cast anyway (don't pay)" row,
+    // ADR 0118 §2: the Sandbox section's "Cast anyway (pay on paper)" row,
     // built by contextMenu.logic.ts castAnywayItem (greyed with its
     // reason when something other than mana would refuse the cast).
     // Choosing it fires `onCastAnyway`, which opens the dock's
@@ -544,7 +544,7 @@
     <!-- ADR 0117 §3: the Sandbox section. Never a pip, never counted by
          the click rule: it is on every permanent the viewer controls.
          ADR 0118 §2: and on every card the viewer could cast, with
-         "Cast anyway (don't pay)". -->
+         "Cast anyway (pay on paper)". -->
     {#if sandboxDivider}
       <div class="divider" role="separator"></div>
     {/if}

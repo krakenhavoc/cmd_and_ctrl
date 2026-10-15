@@ -45,9 +45,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
-		OracleID:     "f9d3b046-0b95-4103-a630-4b3fb88bb60b",
-		Name:         "Delighted Halfling",
-		Completeness: CompletenessFull,
+		OracleID:       "f9d3b046-0b95-4103-a630-4b3fb88bb60b",
+		Name:           "Delighted Halfling",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},

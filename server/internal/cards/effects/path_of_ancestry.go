@@ -30,10 +30,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // does. Mana that never entered the pool was not Path's mana.
 func init() {
 	Register(Spec{
-		OracleID:     "b473e293-59e3-4e04-acf2-622604aeb25f",
-		Name:         "Path of Ancestry",
-		Completeness: CompletenessFull,
-		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
+		OracleID:       "b473e293-59e3-4e04-acf2-622604aeb25f",
+		Name:           "Path of Ancestry",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
+		Replacements:   []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",

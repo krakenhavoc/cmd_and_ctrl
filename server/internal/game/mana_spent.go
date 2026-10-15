@@ -36,14 +36,21 @@ package game
 // which is never stronger than printed for a reader that grows with
 // the mana spent. None is the one reader that shrinks with it, and it
 // answers false for an unknown record whatever it holds.
+//
+// Since #3855 an undeclared waived payment also carries the AMOUNT it
+// paid outside the pool (`paper`), so Total is exact on every record;
+// only the colours and sources of that share stay unknown. A payment a
+// reader cares about is never undeclared: the caster is asked, and the
+// answer is in the tokens.
 type ManaSpent struct {
 	tokens  []ManaToken
+	paper   int
 	unknown bool
 }
 
 // Spent is the readable view of the mana half of this record.
 func (p PaidCost) Spent() ManaSpent {
-	return ManaSpent{tokens: p.Mana, unknown: p.OnPaper}
+	return ManaSpent{tokens: p.Mana, paper: p.PaperMana, unknown: p.OnPaper}
 }
 
 // Known reports whether this is a fact rather than a waived charge.
@@ -67,8 +74,11 @@ func (m ManaSpent) Tokens() []ManaToken {
 // (Raggadragga), and the amount Memory Deluge draws off. For an
 // unknown payment, the mana that left the pool: a lower bound, and
 // zero when the pool paid nothing.
+//
+// Since #3855 that bound is the whole amount: an undeclared waived
+// payment carries the shortfall it asserted paid on paper.
 func (m ManaSpent) Total() int {
-	return TotalMana(m.tokens)
+	return TotalMana(m.tokens) + m.paper
 }
 
 // Count is how many mana of one SYMBOL paid: `{W}` through `{G}` and
@@ -127,7 +137,7 @@ func (m ManaSpent) ColorCount() int { return len(m.Colors()) }
 // spells cast at a permissive table. The one reader that does not take
 // an unknown record's tokens as a lower bound, because it is the one
 // that shrinks as the mana spent grows.
-func (m ManaSpent) None() bool { return !m.unknown && len(m.tokens) == 0 }
+func (m ManaSpent) None() bool { return !m.unknown && m.paper == 0 && len(m.tokens) == 0 }
 
 // CountFrom is how many of the mana came from a source matching ANY
 // of `kinds` — Marut's "create a Treasure token for each mana from a

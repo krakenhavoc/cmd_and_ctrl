@@ -29,10 +29,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
-		OracleID:     "32fe7ac4-86f5-44af-9f73-ee8f6a9ce2ba",
-		Name:         "Hall of the Bandit Lord",
-		Completeness: CompletenessFull,
-		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
+		OracleID:       "32fe7ac4-86f5-44af-9f73-ee8f6a9ce2ba",
+		Name:           "Hall of the Bandit Lord",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
+		Replacements:   []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:        ManaAbilityCost{Tap: true, Life: 3},
 			Produced:    "{C}",

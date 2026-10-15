@@ -27,9 +27,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
-		OracleID:     "13b96709-0e88-476b-9485-956e682bb818",
-		Name:         "Scaled Nurturer",
-		Completeness: CompletenessFull,
+		OracleID:       "13b96709-0e88-476b-9485-956e682bb818",
+		Name:           "Scaled Nurturer",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{G}",

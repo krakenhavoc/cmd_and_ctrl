@@ -24,15 +24,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // cast-with-mana creature entering alongside one that was not stops the
 // draw.
 //
-// One declared simplification, weaker than printed: with an unrecorded
-// payment the engine never saw the payment, so a creature cast that way
-// counts as one cast with mana spent (ADR 0068 §3).
+// A waived payment (strict mana off with too little in the pool, or Cast
+// anyway) no longer leaves Satoru guessing: it declares ReadsManaSpent,
+// so the caster is asked what they paid outside the pool, or whether they
+// cast it without paying its mana cost, and the record it reads is exact
+// (#3855, ADR 0068 amendment 2026-10-15).
 func init() {
 	Register(Spec{
 		OracleID:        "7555c429-5f2d-4171-b6b0-8e3c8da7f314",
 		Name:            "Satoru, the Infiltrator",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game can't tell a creature paid outside the mana pool from one cast for no mana, so it doesn't draw the card for it."},
+		ReadsManaSpent:  game.ReadsYourCasts,
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(On(game.EventETB, satoruEntered, "Satoru, the Infiltrator — draw a card", satoruDraw)),
