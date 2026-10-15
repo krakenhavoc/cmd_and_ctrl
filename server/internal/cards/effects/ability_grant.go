@@ -63,12 +63,15 @@ type AbilityGrant struct {
 	// its own.
 	//
 	// Static is any static for a COPY grant. A layer-6 grant may name a
-	// bundle with a Static slot only when every static in it is a
-	// layer-7c power/toughness modify — "Equipped creature gets +3/+3"
-	// (ADR 0093 Decision 10, amended 2026-10-10, #2562): the layer pass
-	// gathers those after layer 6 (game/granted_statics.go), and nothing
-	// earlier. TestEveryGrantKeyResolves and GrantAbilitiesFor refuse
-	// any other (game.GrantedStaticProblem).
+	// bundle with a Static slot when every static in it is in layer 6 or
+	// in layer 7b, 7c or 7e, and none removes, grants or borrows
+	// abilities: "Equipped creature gets +3/+3" (ADR 0093 Decision 10,
+	// amended 2026-10-10, #2562), "Other commanders you control get
+	// +2/+2 and have lifelink" (amended 2026-10-15, #3784). A layer-6
+	// static joins the layer-6 bucket the moment its grant applies, at
+	// CR 613.7a's timestamp; a layer-7 one is gathered after layer 6
+	// (game/granted_statics.go). TestEveryGrantKeyResolves and
+	// GrantAbilitiesFor refuse any other (game.GrantedStaticProblem).
 	//
 	// Mana is for a LAYER-6 grant (ADR 0093) — no printed copy effect
 	// grants one.

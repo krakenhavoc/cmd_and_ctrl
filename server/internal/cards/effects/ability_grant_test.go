@@ -17,7 +17,7 @@ import (
 // grantKeyProblems walks an engine-facing def map and reports every
 // layer-6 grant that names a bundle nobody registered, or a bundle
 // with a static the layer pass cannot apply (ADR 0093 Decision 10, as
-// amended 2026-10-10: only a layer-7c static, gathered after layer 6).
+// amended 2026-10-10 and 2026-10-15: game.GrantedStaticProblem).
 // Separate from the test so the test can prove it reports both on a
 // fixture.
 func grantKeyProblems(all map[string]*game.CardDef) (problems []string, grants int) {
@@ -58,8 +58,8 @@ func grantKeyProblems(all map[string]*game.CardDef) (problems []string, grants i
 
 // TestEveryGrantKeyResolves is the TestEveryTokenKeyResolves twin
 // (ADR 0093 Decision 9): every key a layer-6 grant names resolves to a
-// registered bundle, and every static in those bundles is a layer-7c
-// one the second gather applies (#2562).
+// registered bundle, and every static in those bundles is one the layer
+// pass can apply once granted (#2562, #3784).
 // Walked over `defs`, so an emblem's statics are covered too.
 func TestEveryGrantKeyResolves(t *testing.T) {
 	problems, _ := grantKeyProblems(defs)
