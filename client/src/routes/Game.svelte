@@ -94,6 +94,15 @@
   import { actionsDisabled } from "../lib/connectionBanner";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
+  import LoopProposeSheet from "../lib/components/board/LoopProposeSheet.svelte";
+  import LoopProposalSheet from "../lib/components/board/LoopProposalSheet.svelte";
+  import {
+    acceptParams,
+    loopControl,
+    loopProposalFor,
+    shortenParams,
+    type LoopDockProps,
+  } from "../lib/loopShortcut";
   import ControlledPlaySheet from "../lib/components/board/ControlledPlaySheet.svelte";
   import DamageAutoAssign from "../lib/components/board/DamageAutoAssign.svelte";
   import AutoAnswerNotice from "../lib/components/board/AutoAnswerNotice.svelte";
@@ -1194,6 +1203,36 @@
   // toggle.
   const loopSuspended = $derived(autopassSuspended(view));
   const loopNotice = $derived(loopNoticeText(view));
+  // ADR 0193 (CR 732.2): demonstrate a loop. The dock's control, the
+  // recorder's propose sheet (opened once when the loop closes), and the
+  // answer to another player's proposal. Only for the viewer's own seat,
+  // never while playing another seat's turn.
+  const loopState = $derived(
+    view ? loopControl(view, viewerID, actingHasPriority && actingID === viewerID) : null,
+  );
+  let loopProposeOpen = $state(false);
+  let loopWasReady = false;
+  $effect(() => {
+    const ready = loopState?.mode === "ready";
+    if (ready && !loopWasReady) loopProposeOpen = true;
+    if (!ready) loopProposeOpen = false;
+    loopWasReady = ready;
+  });
+  const loopDock = $derived<LoopDockProps | undefined>(
+    loopState && viewerID
+      ? {
+          state: loopState,
+          onRecord: () => sendAction("loop_record_start", undefined, viewerID ?? undefined),
+          onStop: () => sendAction("loop_record_stop", undefined, viewerID ?? undefined),
+          onCancel: () => sendAction("loop_record_cancel", undefined, viewerID ?? undefined),
+          onPropose: () => (loopProposeOpen = true),
+        }
+      : undefined,
+  );
+  const loopProposal = $derived(view ? loopProposalFor(view, viewerID) : null);
+  const loopProposer = $derived(
+    seats.find((s) => s.id === loopProposal?.loop_proposal.proposer)?.name ?? "A player",
+  );
   const gameOver = $derived(gameOverText(view));
   const winner = $derived(gameOver.winner);
   // #2920: the game-end overlay, until the viewer keeps looking at the board.
@@ -3148,6 +3187,7 @@
           sheetCoversBoard={sheetCovers}
           onStage={onDockStage}
           menu={menuOptions}
+          loop={loopDock}
         />
         {#if coachMounted}
           <TutorialCoach {view} {viewerID} onSize={onCoachSize} autopass={autopassEnabled} />
@@ -3248,6 +3288,27 @@
       <ControlledPlaySheet snap={view} {viewerID} {sendAction} />
       <!-- lastError too: this modal's backdrop covers the board's
            rejection toast, so it shows a refusal of its own answer. -->
+      <!-- ADR 0193 §9: the recorder's propose sheet and the other seats'
+           answer to a proposal. -->
+      <LoopProposeSheet
+        recording={loopProposeOpen && loopState?.mode === "ready"
+          ? (view.loop_recording ?? null)
+          : null}
+        onPropose={(count) => {
+          loopProposeOpen = false;
+          sendAction("loop_propose", { count }, viewerID ?? undefined);
+        }}
+        onDiscard={() => sendAction("loop_record_cancel", undefined, viewerID ?? undefined)}
+        onClose={() => (loopProposeOpen = false)}
+      />
+      <LoopProposalSheet
+        choice={loopProposal}
+        proposerName={loopProposer}
+        onAccept={(id) =>
+          sendAction("resolve_loop_proposal", acceptParams(id), viewerID ?? undefined)}
+        onShorten={(id, at) =>
+          sendAction("resolve_loop_proposal", shortenParams(id, at), viewerID ?? undefined)}
+      />
       <ChoicePromptModal
         snap={actingView ?? view}
         viewerID={actingID}

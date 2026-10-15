@@ -169,6 +169,9 @@
       // #2394: so is a card-set pick over permanents on the battlefield
       // ("untap up to five lands"), unless the player asked for the list.
       if (answeredOnBoard(c, snap, $listFallback)) continue;
+      // ADR 0193: a loop proposal is answered in its own dock sheet
+      // (LoopProposalSheet), with resolve_loop_proposal.
+      if (c.kind === "loop_proposal") continue;
       // #844, CR 903.4f: a colour prompt with no colours on offer is
       // not a choice anybody can answer, and an empty picker modal
       // would block the board. The server stopped queueing one when a
