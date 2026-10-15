@@ -22,6 +22,7 @@ import {
   type PendingChoiceView,
   type PlayerView,
 } from "./protocol";
+import { get } from "svelte/store";
 import { session, type Session } from "./session";
 import { _resetForTests as resetDock } from "./dock";
 import { _resetForTests as resetModals } from "./modalLayers";
@@ -528,6 +529,66 @@ describe("keys for the yes/no family (ADR 0111 §1)", () => {
     expect(FakeSocket.last!.actionFrames().map((f) => f.payload?.type)).not.toContain(
       "pass_priority",
     );
+  });
+});
+
+// ADR 0188 Decision 12 (#3562): the which-skip question through the
+// real route. Its recommended first button takes focus, so Enter takes
+// it; Remember this answer sets Always for answer 0.
+describe("turn_skip_order, inline in the dock", () => {
+  const REASON = 'Your extra turn is skipped either way. Use it to pay off your own "skip"?';
+  // The tag is a muted span after the label, part of the name.
+  const USE = /^Use my skip \(Magosi, the Waterveil\)\s*Recommended$/;
+  const skipChoice = (): Partial<PendingChoiceView> => ({
+    kind: "turn_skip_order",
+    reason: REASON,
+    accept_label: "Use my skip (Magosi, the Waterveil)",
+    decline_label: "Let Trouble in Pairs skip it",
+    auto_answer_key: "engine|turn_skip_order",
+    auto_answer_card: "Magosi, the Waterveil",
+    auto_answer_prompt: "Use your own skip on an extra turn another effect would skip?",
+  });
+
+  it("focuses Use my skip, and Enter on it answers apply true", async () => {
+    const c = await mountGame(table());
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    snapshot(withChoice(skipChoice()));
+    const dlg = expectInDock(c, REASON);
+    const use = buttons(dlg, USE);
+    expect(use).toHaveLength(1);
+    expect(use[0].classList.contains("primary")).toBe(true);
+    expect(document.activeElement).toBe(use[0]);
+    // Enter elsewhere answers nothing.
+    keydown("Enter", dlg);
+    expect(answers()).toEqual([]);
+    keydown("Enter", use[0]);
+    expect(answers()).toEqual([{ choice_id: "choice-1", apply: true }]);
+  });
+
+  it("Let X skip it answers apply false, by click and by L", async () => {
+    const c = await mountGame(withChoice(skipChoice()));
+    const dlg = expectInDock(c, REASON);
+    const other = buttons(dlg, "Let Trouble in Pairs skip it");
+    expect(other).toHaveLength(1);
+    expect(other[0].getAttribute("aria-keyshortcuts")).toBe("L");
+    click(other[0]);
+    keydown("l");
+    keydown("u");
+    expect(answers()).toEqual([
+      { choice_id: "choice-1", apply: false },
+      { choice_id: "choice-1", apply: false },
+      { choice_id: "choice-1", apply: true },
+    ]);
+  });
+
+  it("Remember this answer then Use my skip stores Always for the fixed key", async () => {
+    const c = await mountGame(withChoice(skipChoice()));
+    const dlg = expectInDock(c, REASON);
+    click(buttons(dlg, "Remember this answer")[0]);
+    click(buttons(dlg, USE)[0]);
+    expect(answers()).toEqual([{ choice_id: "choice-1", apply: true }]);
+    const rules = get(settings).gameplay.autoAnswers;
+    expect(rules.map((r) => [r.key, r.answer])).toEqual([["engine|turn_skip_order", "always"]]);
   });
 });
 

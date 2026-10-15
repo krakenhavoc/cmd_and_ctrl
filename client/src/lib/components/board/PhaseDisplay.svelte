@@ -111,7 +111,15 @@
   const activeSeat = $derived(turn.active_seat ?? 0);
   const priorityHeld = $derived((turn.priority_holder ?? -1) >= 0);
   const activePlayer = $derived(seats[activeSeat]);
-  const stepLabel = $derived(STEP_LABELS[turn.step as keyof typeof STEP_LABELS] ?? turn.step);
+  // ADR 0188 Decision 12: while the turn change waits on the which-skip
+  // question the old turn is over and the next has not begun, so the
+  // cleanup step's name would be wrong.
+  const betweenTurns = $derived(turn.between_turns === true);
+  const stepLabel = $derived(
+    betweenTurns
+      ? L.choosingNextTurn
+      : (STEP_LABELS[turn.step as keyof typeof STEP_LABELS] ?? turn.step),
+  );
   // ADR 0059 Decision 11 (#753): the next queued extra turn, if any.
   // "R{n}" is the round (owner decision 1, ADR 0059); an extra turn is marked
   // instead, and the queue shows who takes the next one.
@@ -236,7 +244,7 @@
          row shorter (and the self panel's rows one row taller). -->
     <span class="step-label">
       {stepLabel}
-      {#if !priorityHeld && !mulligansOpen}
+      {#if !priorityHeld && !mulligansOpen && !betweenTurns}
         <span
           class="no-priority"
           title={`no player holds priority during ${stepLabel} (turn-based actions auto-fire)`}

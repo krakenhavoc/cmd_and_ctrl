@@ -62,6 +62,7 @@ const YES_NO_KINDS = new Set([
   "may_cast",
   "entry_pay_life",
   "entry_riot",
+  "turn_skip_order",
 ]);
 
 // shortOptions reports whether an option_pick / entry_controller fits
@@ -221,6 +222,15 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
         title: reason || "Riot — a +1/+1 counter or haste?",
         tag: "riot",
         hint: "It hasn't entered yet: it enters with a +1/+1 counter, or with haste so it can attack this turn.",
+      };
+    case "turn_skip_order":
+      // ADR 0188 Decision 12 (CR 616.1): both answers skip the extra
+      // turn; the question is which effect pays for it. The server's
+      // reason is the one-line explanation.
+      return {
+        title: reason || "Your extra turn is skipped either way. Which skip takes it?",
+        tag: "skip order",
+        hint: "Using your own skip clears it now. Letting the other effect skip the turn keeps your skip owed for a later turn.",
       };
     case "trigger_prompt":
       return {
@@ -399,6 +409,19 @@ function answersFor(
         primary: keyed("yes", c.accept_label || "+1/+1 counter", "C", () => h.onAnswer(true)),
         secondary: [keyed("no", c.decline_label || "Haste", "H", () => h.onAnswer(false))],
       };
+    case "turn_skip_order": {
+      // Answer 0, "use my skip", is recommended and is the primary: it
+      // takes focus when the prompt opens (choiceRequest sets
+      // focus: "primary"), so Enter takes it. Answer 1 is the other
+      // button. The keys are the answers' initials, U and L: neither
+      // is a "no".
+      const use = keyed("yes", c.accept_label || "Use my skip", "U", () => h.onAnswer(true));
+      const other = keyed("no", c.decline_label || "Let the other effect skip it", "L", () =>
+        h.onAnswer(false),
+      );
+      if ((c.turn_skip_order?.recommended ?? 0) === 0) use.note = L.recommendedAnswer;
+      return { primary: use, secondary: [other] };
+    }
     case "confirm":
       return {
         primary: yes(c.accept_label || "Yes"),
@@ -604,7 +627,10 @@ export function choiceRequest(
     refusal: ctx.rejection
       ? { tag: "Not accepted", text: ctx.rejection, actions: [], tone: "danger" }
       : null,
-    focus: "dialog",
+    // The which-skip question's recommended answer takes focus, so Enter
+    // takes it (ADR 0188 Decision 12); every other yes/no keeps focus on
+    // the dialog so a stray Enter cannot answer (ADR 0111 PR 5).
+    focus: c.kind === "turn_skip_order" ? "primary" : "dialog",
     ...rememberRow(c, ctx),
     ...answersFor(c, ctx, handlers),
   };
