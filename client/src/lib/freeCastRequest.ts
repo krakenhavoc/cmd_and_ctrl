@@ -82,6 +82,19 @@ export const CHOOSE_CAST_FREE = "cast_free";
 // price is claimed under (game.AltCostKeyGrantedCost).
 export const GRANTED_COST_KEY = "granted-cost";
 
+// CHOOSE_CAST_FREE_LIBRARY is the same pick over cards the viewer looked at
+// on top of their own library ("look at the top six cards of your library.
+// You may cast a spell from among them without paying its mana cost",
+// Aetherworks Marvel, #2110). The picked card stays in the library, so the
+// request goes to freeCastRequest (which Board resolves against the exile
+// and the viewer's library), not to the hand request.
+export const CHOOSE_CAST_FREE_LIBRARY = "cast_free_library";
+
+// isLibraryFreeCastPick is the library-looking free-cast pick.
+export function isLibraryFreeCastPick(choice: PendingChoiceView | null | undefined): boolean {
+  return choice?.kind === "choose_cards" && choice.choose_destination === CHOOSE_CAST_FREE_LIBRARY;
+}
+
 // isFreeCastPick is the prompt whose answer opens a cast.
 export function isFreeCastPick(choice: PendingChoiceView | null | undefined): boolean {
   return choice?.kind === "choose_cards" && choice.choose_destination === CHOOSE_CAST_FREE;

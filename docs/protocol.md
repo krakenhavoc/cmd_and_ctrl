@@ -590,6 +590,19 @@ with that offer chosen. The holder's next `pass_priority` ends the
 permission and the card stays in the hand. An empty `card_ids` answer
 casts nothing.
 
+`"cast_free_library"` is the same pick over cards the chooser only
+*looked at* on top of their own library ("look at the top six cards of
+your library. You may cast a spell from among them without paying its
+mana cost", Aetherworks Marvel, #2110). The unpicked cards go to the
+bottom of the library in a random order as the answer arrives, and the
+picked one stays where it is, now the top card, known to its owner
+alone, with a pass-closed `{0}` permission over it: the snapshot after
+the answer shows it in the owner's `library.cards` with `castable_here`
+set. The client starts its cast chain from the library pile. The
+holder's next `pass_priority` ends the permission and sends the card to
+the bottom with the rest. No other seat sees the prompt, the cards or
+the permission.
+
 A pick over the cards the chooser owns outside the game (a wish, Extrapolate
 the Impossible; [ADR 0191](decisions/0191-a-sideboard-is-the-outside-the-game-pool.md))
 declares `choose_destination: "outside"`: the named cards come in from the

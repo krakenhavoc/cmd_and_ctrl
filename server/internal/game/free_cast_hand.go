@@ -63,3 +63,37 @@ func (g *Game) FreeCastFromHandForEffect(player, source, cardID uuid.UUID, sourc
 	return g.GrantCastPermissionOverCardForEffect(cardID,
 		g.FreeCastFromHandPermission(player, source, sourceName))
 }
+
+// FreeCastFromLibraryPermission is the same window for a card still in
+// its owner's library: "look at the top six cards ... you may cast a
+// spell from among them without paying its mana cost" (Aetherworks
+// Marvel, #2110). Free, any timing (CR 608.2g), cast-only and
+// pass-closed like FreeCastFromHandPermission, with one difference the
+// printed text makes: "put the rest on the bottom of your library", so
+// a card that is not cast goes to the bottom in a random order
+// (LapseToLibraryBottom), where a hand card simply stays in hand.
+//
+// Caller must hold g.mu.
+func (g *Game) FreeCastFromLibraryPermission(player, source uuid.UUID, sourceName string) CastPermission {
+	return CastPermission{
+		Player:      player,
+		Zone:        ZoneLibrary,
+		Duration:    g.UntilEndOfTurnDuration(),
+		Cost:        "{0}",
+		Timing:      TimingFlash,
+		CastOnly:    true,
+		LapseOnPass: LapseToLibraryBottom,
+		Source:      source,
+		SourceName:  sourceName,
+		Label:       sourceName + " — cast it without paying its mana cost",
+	}
+}
+
+// FreeCastFromLibraryForEffect opens the free cast over one card where
+// it sits in a library. Reports whether the card was still there.
+//
+// Caller must hold g.mu (write).
+func (g *Game) FreeCastFromLibraryForEffect(player, source, cardID uuid.UUID, sourceName string) bool {
+	return g.GrantCastPermissionOverCardForEffect(cardID,
+		g.FreeCastFromLibraryPermission(player, source, sourceName))
+}

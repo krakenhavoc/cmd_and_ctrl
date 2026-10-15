@@ -104,6 +104,29 @@ func TestTheFreeCastPickCastsTheBestSpell(t *testing.T) {
 	}
 }
 
+// #2110: Aetherworks Marvel's pick is over cards the bot looked at on top
+// of its own library, not over its hand. The hand rule has no opinion about
+// a candidate it is not holding, so the pick falls to the library take: the
+// bot casts the best spell of the six rather than declining.
+func TestTheLibraryFreeCastPickCastsTheBestLookedAtSpell(t *testing.T) {
+	const choiceID = "choice-free-cast-library"
+	small := creature(cardID(1), 0, "Bear", 2, 2)
+	big := creature(cardID(2), 0, "Giant", 5, 5)
+	big.ManaCost = "{4}{R}"
+	pick := handChoice(choiceID, "Aetherworks Marvel — cast a spell from among the top 6 cards of your library without paying its mana cost?", 0, 1, small, big)
+	pick.ChooseDestination = "cast_free_library"
+	v := newView([]protocol.PlayerView{newSeat(0, withLibrary(small, big)), newSeat(1)},
+		withBattlefield(land(cardID(30), 0)), withChoice(pick))
+	in := input(0, v,
+		choiceMove(t, 0, choiceID, "choose nothing", ids()),
+		choiceMove(t, 0, choiceID, "cast the Bear", ids(cardID(1))),
+		choiceMove(t, 0, choiceID, "cast the Giant", ids(cardID(2))),
+	)
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got != "cast the Giant" {
+		t.Fatalf("chose %q, want the Giant cast for free", got)
+	}
+}
+
 // A choose_cards over the bot's own hand with no destination is still
 // a discard: the loot's half keeps the old price (#798).
 func TestAHandPickWithNoDestinationIsStillADiscard(t *testing.T) {

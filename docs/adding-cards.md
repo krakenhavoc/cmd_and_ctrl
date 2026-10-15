@@ -10100,6 +10100,13 @@ ctx.SourcePermanent()                                                           
   enumerator offers the cast. "Every card in your hand" (The Great Synthesis) writes the same grant over each card with
   its own `AltCostKey` and no pick (#3270). A pick behind a draw (Cecily, Haunted Mage) runs from a
   `game.DrawThen` body through `offerFreeHandCastFrom(g, controller, source, ...)`, the Context-free form (#2110).
+  "Any number of spells from your hand" (Aetherflux Conduit) is `grantFreeHandCastsFrom`: the same grant, one per
+  nonland card in hand and no pick, because a grant naming several cards is spent by the first cast. "Look at the top
+  N cards of your library. You may cast a spell from among them without paying its mana cost. Put the rest on the
+  bottom in a random order" (Aetherworks Marvel) is `lookAtTopAndOfferFreeCast` in `free_library_cast.go`: a private
+  look, a `ChooseCastFreeFromLibrary` pick over the nonland cards, the rest bottomed, and
+  `Game.FreeCastFromLibraryPermission` over the pick (an uncast pick goes to the bottom too). ADR 0099 amendment
+  2026-10-15 (#2110).
 - **"Exile the top card of your library. You may cast that card. If you don't, X"** (Chandra, Torch of Defiance) is
   `g.ExileTopThenPaidCastOrElseForEffect(game.PaidCastOrElse{Player, Source, SourceName, IfNotCast, DeclineLabel})`
   (`game/cast_paid_or_else.go`, #3510). The cast is PAID at the card's own cost and ignores timing (CR 608.2g); X is a

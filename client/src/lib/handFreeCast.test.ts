@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  freeCastLocation,
   freeCastOffer,
   handFreeCastTarget,
   isFreeCastPick,
+  isLibraryFreeCastPick,
   GRANTED_COST_KEY,
 } from "./freeCastRequest";
 import type { AlternativeCostView, CardView, PendingChoiceView } from "./protocol";
@@ -79,5 +81,39 @@ describe("handFreeCastTarget", () => {
 
   it("has nothing to do without a request", () => {
     expect(handFreeCastTarget([card("a", [offer()])], null, false)).toBeNull();
+  });
+});
+
+// #2110: Aetherworks Marvel's pick is over cards looked at on top of the
+// library. It opens a cast from the library pile, so it is its own
+// destination and is not the hand pick.
+describe("isLibraryFreeCastPick", () => {
+  it("is a choose_cards prompt that declares cast_free_library, and not the hand pick", () => {
+    const pick = {
+      kind: "choose_cards",
+      choose_destination: "cast_free_library",
+    } as PendingChoiceView;
+    expect(isLibraryFreeCastPick(pick)).toBe(true);
+    expect(isFreeCastPick(pick)).toBe(false);
+  });
+
+  it("is not the hand pick or another kind", () => {
+    const hand = { kind: "choose_cards", choose_destination: "cast_free" } as PendingChoiceView;
+    expect(isLibraryFreeCastPick(hand)).toBe(false);
+    expect(
+      isLibraryFreeCastPick({
+        kind: "may_cast",
+        choose_destination: "cast_free_library",
+      } as PendingChoiceView),
+    ).toBe(false);
+    expect(isLibraryFreeCastPick(undefined)).toBe(false);
+  });
+
+  it("finds the picked card in the viewer's library once it is castable", () => {
+    const lib = (castable: boolean) =>
+      [{ instance_id: "a", castable_here: castable }] as unknown as CardView[];
+    expect(freeCastLocation(undefined, lib(true), "a")?.zone).toBe("library");
+    expect(freeCastLocation(undefined, lib(false), "a")).toBeNull();
+    expect(freeCastLocation(undefined, [], "a")).toBeUndefined();
   });
 });
