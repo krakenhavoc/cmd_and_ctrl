@@ -655,8 +655,10 @@ type BorrowInfo struct {
 
 // BorrowsOf lists each borrowing static that lends `c` at least one row
 // right now, once, in layer order.
-func BorrowsOf(c Card) []BorrowInfo {
-	list := layeredBorrows(&c)
+func BorrowsOf(c Card) []BorrowInfo { return borrowsOf(&c) }
+
+func borrowsOf(c *Card) []BorrowInfo {
+	list := layeredBorrows(c)
 	if len(list) == 0 {
 		return nil
 	}
