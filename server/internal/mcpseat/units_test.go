@@ -366,3 +366,39 @@ func TestFullBoardTitlesItsLogAndSaysWhenEntriesWereCut(t *testing.T) {
 		t.Errorf("a short log is mislabelled:\n%s", got)
 	}
 }
+
+// #2939: a window whose only alternatives to passing are rows declared
+// `value` (a Clue with a spell on the stack) is absorbed by default, and
+// reaches the model once the owner drops value-only from --absorb.
+func TestValueOnlyIsAbsorbedByDefault(t *testing.T) {
+	me := uuid.New()
+	other := uuid.NewString()
+	answers := []string{"value"}
+	clue := protocol.CardView{
+		InstanceID: "clue-1", Name: "Clue", Controller: me.String(), Owner: me.String(), TypeLine: "Token Artifact \u2014 Clue",
+		ActivatedAbilities: []protocol.ActivatedAbilityView{{Index: 0, Label: "{2}, Sacrifice this artifact: Draw a card.",
+			ManaCost: "{2}", SacrificeSelf: true, Purpose: &protocol.PurposeView{Draws: 1, Answers: &answers}}},
+	}
+	v := &protocol.GameView{
+		State:       "active",
+		Seats:       []protocol.PlayerView{{ID: me.String(), Seat: 0}, {ID: other, Seat: 1}},
+		Battlefield: protocol.ZoneView{Kind: "battlefield", Cards: []protocol.CardView{clue}},
+		Stack: protocol.ZoneView{Kind: "stack", Cards: []protocol.CardView{
+			{InstanceID: "div-1", Name: "Divination", Controller: other, Owner: other, TypeLine: "Sorcery"}}},
+		StackItems: []protocol.StackItemView{{ID: "i", Kind: "spell", Controller: other, SourceCardID: "div-1"}},
+	}
+	pass := legal.Move{Type: legal.TypePassPriority, Kind: legal.KindPass, Label: "Pass"}
+	crack := legal.Move{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Player: me, Label: "Crack the Clue",
+		Params: json.RawMessage(`{"source_card_id":"clue-1","ability_index":0}`)}
+	def, err := ParseAbsorb(strings.Join(DefaultAbsorb, ","))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ans, ok := decideAutomatically(v, me, []legal.Move{pass, crack}, def, passNone); !ok || ans.rule != rules.RuleValueOnly || ans.index != 0 {
+		t.Errorf("default absorb: %+v %v, want a value-only pass", ans, ok)
+	}
+	without := map[string]bool{rules.RuleForced: true, rules.RuleManaOnly: true}
+	if ans, ok := decideAutomatically(v, me, []legal.Move{pass, crack}, without, passNone); ok {
+		t.Errorf("value-only removed from --absorb still answered it (%q)", ans.rule)
+	}
+}
