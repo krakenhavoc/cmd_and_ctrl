@@ -42,6 +42,20 @@ function soldier(id: string, extra: Partial<CardView> = {}): CardView {
   };
 }
 
+function bear(id: string, extra: Partial<CardView> = {}): CardView {
+  return {
+    instance_id: id,
+    name: "Grizzly Bears",
+    owner: "me",
+    controller: "me",
+    type_line: "Creature — Bear",
+    power: 2,
+    toughness: 2,
+    battle_x: 100 + (Number(id.replace(/\D/g, "")) || 0),
+    ...extra,
+  };
+}
+
 function zone(kind: string, owner: string | undefined, cards: CardView[]): ZoneView {
   return { kind, owner, count: cards.length, cards };
 }
@@ -124,18 +138,69 @@ describe("a token group on the board (#1724)", () => {
     expect(badges(container)).toEqual(["×3"]);
   });
 
-  it("does not group a single token or printed cards", () => {
-    const bear = (id: string): CardView => ({
-      instance_id: id,
-      name: "Grizzly Bears",
-      owner: "me",
-      controller: "me",
-      type_line: "Creature — Bear",
-      battle_x: Number(id.slice(1)),
-    });
-    const { container } = mountRow([soldier("s1"), bear("b2"), bear("b3")]);
+  it("does not group a single token, or printed cards that differ", () => {
+    const { container } = mountRow([
+      soldier("s1"),
+      bear("b2"),
+      bear("b3", { summoning_sick: true }),
+    ]);
     expect(drawnCards(container)).toEqual(["s1", "b2", "b3"]);
     expect(badges(container)).toEqual([]);
+  });
+
+  // #3046: identical printed cards pile like tokens do.
+  it("draws five identical creatures as one pile with ×5; tapping one splits it", () => {
+    const five = ["b1", "b2", "b3", "b4", "b5"].map((id) => bear(id));
+    const { container } = mountRow(five);
+    expect(drawnCards(container)).toEqual(["b1"]);
+    expect(badges(container)).toEqual(["×5"]);
+    for (const id of ["b1", "b2", "b3", "b4", "b5"]) {
+      expect(container.querySelector(`[data-instance-id="${id}"]`)).not.toBeNull();
+    }
+    cleanup();
+    const split = mountRow([...five.slice(0, 4), { ...five[4], tapped: true }]);
+    expect(drawnCards(split.container)).toEqual(["b1", "b5"]);
+    expect(badges(split.container)).toEqual(["×4"]);
+  });
+
+  it("draws a legal target among identical creatures on a card of its own", () => {
+    targeting.set({
+      card: soldier("bolt", { name: "Lightning Bolt", type_line: "Instant" }),
+      mode: "any",
+      legal: { players: new Set(), cards: new Set(["b2"]) },
+      min: 1,
+      max: 1,
+      picked: [],
+      steps: [],
+      step: 0,
+      done: [],
+    });
+    const { container } = mountRow(["b1", "b2", "b3"].map((id) => bear(id)));
+    expect(drawnCards(container)).toEqual(["b1", "b2"]);
+    expect(badges(container)).toEqual(["×2"]);
+  });
+
+  it("the land strip keeps its name piles: printed lands never become a group", () => {
+    const forest = (id: string): CardView => ({
+      instance_id: id,
+      name: "Forest",
+      owner: "me",
+      controller: "me",
+      type_line: "Basic Land — Forest",
+      battle_x: Number(id.slice(1)),
+    });
+    const r = render(
+      BattlefieldRow as never,
+      {
+        label: "lands",
+        cards: [forest("f1"), forest("f2"), { ...forest("f3"), tapped: true }],
+        viewerID: "me",
+        strip: true,
+        onGroupClick: () => {},
+      } as never,
+    );
+    expect(r.container.querySelectorAll(".pile.group")).toHaveLength(0);
+    expect(badges(r.container)).toEqual([]);
   });
 
   it("keeps an anchor for every hidden member on the group's card", () => {
@@ -377,6 +442,17 @@ describe("a token group in the player's panel (#1724)", () => {
     expect(p.declared).toEqual([{ ids: ["s2", "s3"], seat: "bob" }]);
     // The list closes once the declaration is sent.
     expect(rowButtons()).toHaveLength(0);
+  });
+
+  it("#3046: a pile of printed creatures lists its copies and attacks with the one picked", () => {
+    const cards = [bear("b1"), bear("b2"), bear("b3")];
+    const p = mountPanel(cards, "attack");
+    click(p.groupCard());
+    expect(rowButtons()).toHaveLength(3);
+    expect(text(document.querySelector("#tg-title"))).toBe("Grizzly Bears 3 copies");
+    click(rowButtons()[1]);
+    click(button(/^Attack Bob with 1$/));
+    expect(p.declared).toEqual([{ ids: ["b2"], seat: "bob" }]);
   });
 
   it("blocks with the selected tokens: one declare_blocker each", () => {

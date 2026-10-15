@@ -18,6 +18,13 @@
   import { etbPulse } from "../../animations";
   import { emit as tutorialEmit } from "../../tutorialBus";
   import { rowEntries } from "../../tokenGroups";
+  import { targeting, isLegalCardTarget, isPicked, type TargetingState } from "../../targeting";
+  import {
+    boardChoicePick,
+    isBoardPickable,
+    isBoardPicked,
+    type BoardChoicePick,
+  } from "../../boardChoicePick";
   import { fitRow } from "../../rowFit";
   import {
     NO_COMBAT_RINGS,
@@ -207,7 +214,8 @@
   // has a single shape.
   //
   // #1724: before any of that, identical tokens fold into groups
-  // (lib/tokenGroups.ts). A group half is always a pile of its own —
+  // (lib/tokenGroups.ts), and so do identical nontoken permanents
+  // outside the strip (#3046). A group half is always a pile of its own —
   // one card, with the group's count — and its members never reach
   // the name piles.
   interface Pile {
@@ -218,11 +226,44 @@
     // drawn one first.
     group?: { groupKey: string; members: CardView[] };
   }
-  const entries = $derived(
-    onGroupClick
-      ? rowEntries(sorted, attachmentsByHost)
-      : sorted.map((c) => ({ kind: "card" as const, key: c.instance_id, card: c })),
-  );
+  // #3046: what the board lights on one card, so a pile of printed
+  // cards draws one card per distinct highlight (tokenGroups.ts
+  // GroupOptions). Every ring and pip a card can wear on its own is in
+  // it: the ready pips, the combat rings and pip, a targeting or
+  // choice ring, and a combat selection.
+  function highlightOf(
+    c: CardView,
+    t: TargetingState | null,
+    pick: BoardChoicePick | null,
+  ): string {
+    const id = c.instance_id;
+    const p = readyPips(legal, c, "battlefield");
+    return [
+      p.abilities,
+      p.mana ? 1 : 0,
+      p.special,
+      combat.candidates.has(id) ? "c" : "",
+      combat.targets.has(id) ? "t" : "",
+      JSON.stringify(combatPipFor(legal, combat, [id]) ?? null),
+      t && isLegalCardTarget(t, id) ? "L" : "",
+      t && isPicked(t, id) ? "P" : "",
+      isBoardPickable(pick, id) ? "b" : "",
+      isBoardPicked(pick, id) ? "B" : "",
+      selectedCombatCardID === id ? "s" : "",
+      stagedAttackers?.has(id) ? "a" : "",
+    ].join("|");
+  }
+  const entries = $derived.by(() => {
+    if (!onGroupClick) {
+      return sorted.map((c) => ({ kind: "card" as const, key: c.instance_id, card: c }));
+    }
+    const t = $targeting;
+    const pick = $boardChoicePick;
+    return rowEntries(sorted, attachmentsByHost, {
+      nontoken: !strip,
+      highlight: (c) => highlightOf(c, t, pick),
+    });
+  });
   const piles = $derived.by((): Pile[] => {
     const out: Pile[] = [];
     const byName = new Map<string, Pile>();
