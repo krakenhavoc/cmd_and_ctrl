@@ -16,7 +16,7 @@
   import type { Snippet } from "svelte";
   import SiteHeader from "./SiteHeader.svelte";
   import PageTipSlot from "./hints/PageTipSlot.svelte";
-  import SeatPips from "./SeatPips.svelte";
+  import ManaPips from "./ManaPips.svelte";
 
   interface Props {
     /** The small line above the title. */
@@ -52,7 +52,7 @@
 <main id="main" class="site-page {width}">
   <header class="page-head">
     <div class="page-head-main">
-      {#if eyebrow}<p class="page-eyebrow"><SeatPips />{eyebrow}</p>{/if}
+      {#if eyebrow}<p class="page-eyebrow"><ManaPips />{eyebrow}</p>{/if}
       <!-- prettier-ignore -->
       <h1 class="page-title" aria-label={titleLabel}>{#if typeof title === "string"}{title}{:else}{@render title()}{/if}</h1>
       {#if lede}

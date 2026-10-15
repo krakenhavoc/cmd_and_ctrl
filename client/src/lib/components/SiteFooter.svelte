@@ -17,12 +17,9 @@
   import { ABOUT_HASH, GUIDE_HASH, REPO_URL } from "../about";
   import { community } from "../community";
   import Wordmark from "./Wordmark.svelte";
-  import { seatBandStyle } from "../colors";
-
-  const SEAT_BAND = seatBandStyle();
 </script>
 
-<footer class="site-footer" style={SEAT_BAND}>
+<footer class="site-footer">
   <div class="close">
     <a class="close-mark" href="#/" aria-label="CMD & CTRL home"><Wordmark size="bar" /></a>
     <p class="close-line" aria-hidden="true">Commander, over the wire.</p>
@@ -67,8 +64,8 @@
     line-height: 1.6;
     background: var(--bg-1);
   }
-  /* The four seats again, quieter than the header's: the page closes
-     where it opened. */
+  /* W U B R G again, quieter than the header's: the page closes where it
+     opened. */
   .site-footer::before {
     content: "";
     display: block;
@@ -76,10 +73,11 @@
     opacity: 0.7;
     background: linear-gradient(
       90deg,
-      var(--s0) 0 25%,
-      var(--s1) 25% 50%,
-      var(--s2) 50% 75%,
-      var(--s3) 75% 100%
+      var(--identity-w) 0 20%,
+      var(--identity-u) 20% 40%,
+      var(--identity-b) 40% 60%,
+      var(--identity-r) 60% 80%,
+      var(--identity-g) 80% 100%
     );
   }
   /* The close: the mark, then the name's promise set large and quiet. */
