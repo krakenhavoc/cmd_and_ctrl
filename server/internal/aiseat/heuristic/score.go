@@ -165,6 +165,16 @@ type Weights struct {
 	// hand, to be tuned under ADR 0126 §8. Zero prices energy at
 	// nothing, which is the heuristic before ADR 0129.
 	Energy float64
+
+	// Turn is what one whole turn is worth to its player (ADR 0188
+	// Decision 10, #3566): a draw, a land drop, a full untap and the
+	// mana to spend it on. A declared purpose's extra turn (CR 500.7)
+	// is credited that much and a skipped turn (CR 614.10) charged it,
+	// in the same Strength units as Hand and Permanent, so Time Warp
+	// competes with a card in hand and Meditate's four cards are
+	// weighed against the turn they cost. Zero prices turns at nothing,
+	// which is the heuristic before the ADR.
+	Turn float64
 }
 
 // StartingLife is the Commander starting total the threat ranking
@@ -223,6 +233,8 @@ func DefaultWeights() Weights {
 		ThreatHand:    0.80,
 
 		Energy: 0.30,
+
+		Turn: 6.00,
 	}
 }
 

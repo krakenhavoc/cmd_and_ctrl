@@ -63,6 +63,11 @@ type purposeSet struct {
 	// (#2480, impulse.go). Not one of hasAmounts' amounts either: it is
 	// priced under Config.PriceImpulse.
 	impulse int
+	// turns is the net whole turns it gives its controller: ExtraTurns
+	// less SkipsTurns (ADR 0188 Decision 10, #3566). Priced at
+	// Weights.Turn, outside hasAmounts' PricePurposes block, because the
+	// weight itself is the switch (zero in BaselineConfig).
+	turns int
 	// creatureTokens is how many of tokens are creatures, and tokensPer
 	// the subtype a count-at-resolution row makes one token per
 	// controlled creature of (#3165, token_payoff.go). Priced under
@@ -97,6 +102,7 @@ func (ps *purposeSet) add(p *protocol.PurposeView) {
 	ps.awaken += p.AwakenLand
 	ps.extraLands += p.ExtraLandDrops
 	ps.impulse += p.Impulse
+	ps.turns += p.ExtraTurns - p.SkipsTurns
 	if p.Sweep != nil {
 		ps.sweeps = append(ps.sweeps, *p.Sweep)
 	}
@@ -185,7 +191,8 @@ func rowAt(src *protocol.CardView, index int) *protocol.ActivatedAbilityView {
 func (p *Policy) purposePriced(ps purposeSet) bool {
 	return (p.cfg.PricePurposes && ps.hasAmounts()) || (p.cfg.PriceSweeps && len(ps.sweeps) > 0) ||
 		(p.cfg.PriceTargetPurposes && ps.targetsPriced) || (p.cfg.PriceImpulse && ps.impulse > 0) ||
-		(p.cfg.PriceTokenPayoffs && ps.tokensPer != "")
+		(p.cfg.PriceTokenPayoffs && ps.tokensPer != "") ||
+		(p.cfg.Weights.Turn != 0 && ps.turns != 0)
 }
 
 // purposeValue prices a declared purpose for the bot: the §6 amounts
@@ -216,6 +223,9 @@ func (p *Policy) purposeValue(st *state, ps purposeSet, x int, self *protocol.Ca
 		}
 		v += p.awakenValue(st, ps.awaken)
 	}
+	// ADR 0188 Decision 10: an extra turn is a whole turn gained, a
+	// skipped one a whole turn lost.
+	v += st.w.Turn * float64(ps.turns)
 	// #3165: the creature tokens it makes pay the bot's creature-enter
 	// payoffs (token_payoff.go).
 	v += p.tokenPayoffValue(st, ps)

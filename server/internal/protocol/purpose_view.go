@@ -81,6 +81,11 @@ type PurposeView struct {
 	Pump *PumpView `json:"pump,omitempty"`
 	// ExtraCombat is the additional combat phases it adds.
 	ExtraCombat int `json:"extra_combat,omitempty"`
+	// ExtraTurns is the extra turns its controller takes after this one
+	// (CR 500.7, ADR 0188 Decision 10).
+	ExtraTurns int `json:"extra_turns,omitempty"`
+	// SkipsTurns is the next turns its controller skips (CR 614.10).
+	SkipsTurns int `json:"skips_turns,omitempty"`
 	// PreventCombatDamageToSelf: it prevents all combat damage that
 	// would be dealt to its source this turn.
 	PreventCombatDamageToSelf bool `json:"prevent_combat_damage_to_self,omitempty"`
@@ -176,10 +181,13 @@ type TargetPurposeView struct {
 	Slot     int `json:"slot"`
 	Draws    int `json:"draws,omitempty"`
 	Discards int `json:"discards,omitempty"`
-	Tokens   int `json:"tokens,omitempty"`
-	LifeGain int `json:"life_gain,omitempty"`
-	LifeLoss int `json:"life_loss,omitempty"`
-	Damage   int `json:"damage,omitempty"`
+	// ExtraTurns: the target player takes this many extra turns (Time
+	// Warp 1, Time Stretch 2; ADR 0188 Decision 10).
+	ExtraTurns int `json:"extra_turns,omitempty"`
+	Tokens     int `json:"tokens,omitempty"`
+	LifeGain   int `json:"life_gain,omitempty"`
+	LifeLoss   int `json:"life_loss,omitempty"`
+	Damage     int `json:"damage,omitempty"`
 	// DamageIsX: the damage is the spell's or ability's X (#1944);
 	// Damage is then absent.
 	DamageIsX bool `json:"damage_is_x,omitempty"`
@@ -296,6 +304,8 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		Energy:                    p.Energy,
 		DeathPayoff:               p.DeathPayoff,
 		ExtraCombat:               p.ExtraCombat,
+		ExtraTurns:                p.ExtraTurns,
+		SkipsTurns:                p.SkipsTurns,
 		PreventCombatDamageToSelf: p.PreventCombatDamageToSelf,
 		DamageToCreature:          p.DamageToCreature,
 		DamageEachOpponent:        p.DamageEachOpponent,
@@ -342,7 +352,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		out := make([]TargetPurposeView, len(ts))
 		for i, t := range ts {
 			out[i] = TargetPurposeView{
-				Slot: t.Slot, Draws: t.Draws, Discards: t.Discards, Tokens: t.Tokens,
+				Slot: t.Slot, Draws: t.Draws, Discards: t.Discards, ExtraTurns: t.ExtraTurns, Tokens: t.Tokens,
 				LifeGain: t.LifeGain, LifeLoss: t.LifeLoss, Damage: t.Damage, DamageIsX: t.DamageIsX, Reanimates: t.Reanimates,
 			}
 			if r := t.Returns; !r.IsZero() {

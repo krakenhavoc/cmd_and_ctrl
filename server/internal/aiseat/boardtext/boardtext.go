@@ -86,6 +86,12 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 	} else {
 		fmt.Fprintf(&b, "ROUND %d — %s", v.Turn.Number, StepName(v.Turn.Step))
 	}
+	// ADR 0188 Decision 10: an added phase (Relentless Assault's combat,
+	// a second postcombat main) repeats its step names, so say which
+	// one this is: "declare attackers (combat 2)".
+	if ph := phaseOrdinalNote(v.Turn); ph != "" {
+		fmt.Fprintf(&b, " (%s)", ph)
+	}
 	// ADR 0059 Decision 13: the round number repeats on an extra turn
 	// (CR 500.7), so say so, or a model reads "TURN 3" twice as a
 	// replay of the same turn.
@@ -97,6 +103,14 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 	}
 	if ph := seatAt(v, v.Turn.PriorityHolder); ph != nil {
 		fmt.Fprintf(&b, " — priority: %s", SeatLabel(ph, me))
+	}
+	// ADR 0188 Decision 10, #3566: whose turn is next, as the engine
+	// decides it (an extra turn, a skip charge, a departed seat), so a
+	// model never reads the answer off the seat order.
+	if v.Turn.NextSeat != nil {
+		if ns := seatAt(v, *v.Turn.NextSeat); ns != nil {
+			fmt.Fprintf(&b, " — next turn: %s", SeatLabel(ns, me))
+		}
 	}
 	b.WriteByte('\n')
 
@@ -139,6 +153,13 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		// told so on the seat line, with the sources.
 		if gates := endGateNote(s); gates != "" {
 			fmt.Fprintf(&b, ", %s", gates)
+		}
+		// ADR 0188 Decision 10: a turn this seat owes (Magosi, Eater of
+		// Days) changes whose turn comes next and what a spell is worth.
+		if s.TurnSkips == 1 {
+			b.WriteString(", skips their next turn")
+		} else if s.TurnSkips > 1 {
+			fmt.Fprintf(&b, ", skips their next %d turns", s.TurnSkips)
 		}
 		// #2559: Memory Vessel's hand ban changes what this seat can do
 		// next, so a model seat is told on the seat line.
@@ -603,6 +624,43 @@ func CardName(c *protocol.CardView) string {
 func isCreatureLine(t string) bool { return strings.Contains(strings.ToLower(t), "creature") }
 
 func StepName(step string) string { return strings.ReplaceAll(step, "_", " ") }
+
+// phaseOrdinalNote names the phase in progress when it is not the first
+// of its family this turn: "combat 2", "main 3" (CR 505.1b counts the
+// precombat and postcombat main phases as one family). Empty for the
+// first of each, which is every ordinary turn. The family comes from
+// Phase, and from Step for a view that does not carry it.
+func phaseOrdinalNote(t protocol.TurnView) string {
+	if t.PhaseOrdinal <= 1 {
+		return ""
+	}
+	family := ""
+	switch t.Phase {
+	case "combat":
+		family = "combat"
+	case "precombat_main", "postcombat_main":
+		family = "main"
+	case "beginning":
+		family = "beginning"
+	case "ending":
+		family = "ending"
+	default:
+		switch t.Step {
+		case "begin_combat", "declare_attackers", "declare_blockers", "first_strike_damage", "combat_damage", "end_combat":
+			family = "combat"
+		case "precombat_main", "postcombat_main":
+			family = "main"
+		case "untap", "upkeep", "draw":
+			family = "beginning"
+		case "end", "cleanup":
+			family = "ending"
+		}
+	}
+	if family == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s %d", family, t.PhaseOrdinal)
+}
 
 func seatAt(v *protocol.GameView, i int) *protocol.PlayerView {
 	if i < 0 || i >= len(v.Seats) {

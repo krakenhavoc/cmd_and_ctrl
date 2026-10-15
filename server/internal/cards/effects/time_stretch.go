@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Time Stretch — Sorcery {8}{U}{U}:
 //
 //	"Target player takes two extra turns after this one."
@@ -16,6 +18,10 @@ func init() {
 		Name:         "Time Stretch",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
-		OnResolve:    targetPlayerTakesExtraTurns(2),
+		// ADR 0188 Decision 10: the target takes the turns, so a bot aims
+		// it at itself (a TargetPurpose entry, not a Purpose amount).
+		Purpose: game.Purpose{Targets: game.ForTargets(
+			game.TargetPurpose{Slot: 0, ExtraTurns: 2})},
+		OnResolve: targetPlayerTakesExtraTurns(2),
 	})
 }

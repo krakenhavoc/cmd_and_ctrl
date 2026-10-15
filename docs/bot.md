@@ -966,7 +966,40 @@ otherwise keep, and it needs to clear only `LeftoverThreshold`
   no creature. An instant, a flash spell or an instant-speed ability
   waits for the next window instead, keeping the mana up meanwhile.
 - **The end step of the seat whose turn comes just before the bot's.**
-  This is the end-of-turn Entomb, Vampiric Tutor or loot.
+  This is the end-of-turn Entomb, Vampiric Tutor or loot. "Whose turn
+  comes next" is the engine's answer, `turn.next_seat`
+  ([ADR 0188](decisions/0188-skipped-turns-and-turn-bound-effects.md)
+  Decision 9, #3566): a queued extra turn, a skip charge and a departed
+  seat are all in it. Until #3566 the heuristic rotated from the
+  ACTIVE seat, so in seat 2's extra turn after seat 0's it named seat 3
+  where seat 1's turn begins, and it opened this window for the wrong
+  bot. A view without the field (an older server) falls back to that walk.
+
+### Extra and skipped turns (#3566)
+
+A whole turn is priced by one weight, `Weights.Turn` (6.00: a draw, a land
+drop, a full untap and the mana to spend it, in the units of a 1.20 card
+in hand). A declared purpose's `extra_turns` (Capture of Jingzhou, the
+extra-turn rows of Magosi, Magistrate's Scepter, Avatar Kuruk and
+Timestream Navigator) is credited that much, and `skips_turns` (Magosi's
+third ability, Meditate's clause) is charged it. "Target player takes an
+extra turn" (Time Warp 1, Time Stretch 2) is a target entry, priced like
+a draw: a turn gained at the bot, a turn gained at an opponent counted
+against it, so the bot aims it at itself. A spell that skips a turn is
+exempt from `SpellFloor`: the floor is a card that replaces itself, and
+the turn is a price. `BaselineConfig` sets the weight to zero, which
+prices turns at nothing and keeps the mana-value proxy.
+
+Final Fortune, Last Chance and Warrior's Oath take an extra turn and lose
+the game at its end step, so they declare no `extra_turns`: a bot that
+priced the turn as a gain would cast them. Lethal Vapors' "you skip your
+next turn" is on an any-player row, which `Register` refuses a turn
+amount on, so a bot never activates another player's copy.
+
+The model prompt and the MCP seat read the same facts from
+`aiseat/boardtext`: the turn line says "(combat 2)" or "(main 3)" in an
+added phase and ends "next turn: <seat>", and a seat line says "skips
+their next turn" or "skips their next 2 turns".
 
 A land sacrifice counts as mana here when the same cast's declared
 `purpose.lands` more than replaces it

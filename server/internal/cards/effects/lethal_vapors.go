@@ -39,7 +39,10 @@ func init() {
 			}, "Lethal Vapors — destroy it", lethalVaporsDestroyEntered),
 		},
 		Activated: []ActivatedAbility{{
-			Label:     "{0}: Destroy this enchantment. You skip your next turn. Any player may activate this ability.",
+			Label: "{0}: Destroy this enchantment. You skip your next turn. Any player may activate this ability.",
+			// No SkipsTurns here on purpose: this is an any-player row, the
+			// skip falls on the activator, and Register refuses the field
+			// there (ADR 0188 Decision 10, ADR 0106 decision 2).
 			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      ManaCost("{0}"),
 			AnyPlayer: true,

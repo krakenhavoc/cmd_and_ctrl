@@ -909,6 +909,8 @@ func BaselineConfig() Config {
 	c.BestowShare = 0
 	// ADR 0129 §7: energy, priced at nothing before it.
 	c.Weights.Energy = 0
+	// ADR 0188 Decision 10: extra and skipped turns, priced at nothing.
+	c.Weights.Turn = 0
 	c.PriceSweeps = false
 	c.DiscardCostByCard = false
 	c.LastLandDiscard = 0
@@ -1186,10 +1188,22 @@ func (p *Policy) newState(in aiseat.Input) *state {
 }
 
 // nextTurnSeat is the index into v.Seats of the player whose turn comes
-// after this one: the first queued extra turn (CR 500.7), or else the
-// next seat in turn order that is still in the game. -1 when the view
-// cannot say.
+// after this one. It reads TurnView.NextSeat, the engine's own answer
+// (ADR 0188 Decision 9, #3566): the queued extra turns, a skip charge,
+// a departed seat, and rotation from the seat whose normal turn this
+// follows. Only a view that does not carry it (an older server, a
+// hand-built test view) falls back to walking the view: the first
+// queued extra turn, else the next live seat after the ACTIVE one. That
+// walk is wrong during an extra turn (seat 2's extra turn after seat
+// 0's names seat 3, not seat 1), which is why it is the fallback.
+// -1 when the view cannot say.
 func nextTurnSeat(v *protocol.GameView) int {
+	if ns := v.Turn.NextSeat; ns != nil {
+		if *ns >= 0 && *ns < len(v.Seats) {
+			return *ns
+		}
+		return -1
+	}
 	if len(v.Turn.ExtraTurns) > 0 {
 		if i := v.Turn.ExtraTurns[0]; i >= 0 && i < len(v.Seats) {
 			return i

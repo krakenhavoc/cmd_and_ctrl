@@ -41,14 +41,16 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{
 			{
-				Label:   "{U}, {T}: Put an eon counter on this land. Skip your next turn.",
-				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Label: "{U}, {T}: Put an eon counter on this land. Skip your next turn.",
+				// ADR 0188 Decision 10: the skip is a turn lost, which the bot
+				// prices (negative) against the eon counter.
+				Purpose: game.Purpose{Answers: game.AnswerValue, SkipsTurns: 1},
 				Cost:    Plus(ManaCost("{U}"), TapCost()),
 				Effect:  magosiPutEonCounterAndSkip,
 			},
 			{
 				Label:   "{T}, Remove an eon counter from this land and return it to its owner's hand: Take an extra turn after this one.",
-				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Purpose: game.Purpose{Answers: game.AnswerValue, ExtraTurns: 1},
 				Cost:    Plus(TapCost(), RemoveCountersFromThis("eon", 1), ReturnThis()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return TakeExtraTurn{}.Apply(NewContext(g, item))

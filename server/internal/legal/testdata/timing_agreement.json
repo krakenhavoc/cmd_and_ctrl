@@ -303,6 +303,7 @@
         "priority_holder": 0,
         "phase": "precombat_main",
         "step": "precombat_main",
+        "next_seat": 1,
         "phase_id": 2,
         "phase_ordinal": 1,
         "upcoming": [
@@ -886,6 +887,7 @@
         "priority_holder": 0,
         "phase": "precombat_main",
         "step": "precombat_main",
+        "next_seat": 1,
         "phase_id": 2,
         "phase_ordinal": 1,
         "upcoming": [
@@ -1466,6 +1468,7 @@
         "priority_holder": 0,
         "phase": "combat",
         "step": "declare_attackers",
+        "next_seat": 1,
         "phase_id": 3,
         "phase_ordinal": 1,
         "upcoming": [
@@ -2049,6 +2052,7 @@
         "priority_holder": 0,
         "phase": "precombat_main",
         "step": "precombat_main",
+        "next_seat": 1,
         "phase_id": 2,
         "phase_ordinal": 1,
         "upcoming": [
@@ -2597,6 +2601,7 @@
         "priority_holder": 0,
         "phase": "precombat_main",
         "step": "precombat_main",
+        "next_seat": 1,
         "phase_id": 2,
         "phase_ordinal": 1,
         "upcoming": [
@@ -2914,6 +2919,7 @@
         "priority_holder": 0,
         "phase": "precombat_main",
         "step": "precombat_main",
+        "next_seat": 1,
         "phase_id": 2,
         "phase_ordinal": 1,
         "upcoming": [
@@ -3316,6 +3322,7 @@
         "priority_holder": 0,
         "phase": "precombat_main",
         "step": "precombat_main",
+        "next_seat": 1,
         "phase_id": 2,
         "phase_ordinal": 1,
         "upcoming": [
@@ -3737,6 +3744,7 @@
         "priority_holder": 0,
         "phase": "precombat_main",
         "step": "precombat_main",
+        "next_seat": 1,
         "phase_id": 2,
         "phase_ordinal": 1,
         "upcoming": [
