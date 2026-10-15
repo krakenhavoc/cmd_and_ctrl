@@ -361,6 +361,26 @@ type Config struct {
 	// Hart, Harrow), an extra land drop's lands this turn, and a land put
 	// from hand. Off (the zero value) prices those lands as mana alone.
 	PriceLandfallPayoffs bool
+	// PriceLandfallDoublers multiplies the bot's landfall payoffs by the
+	// doublers it controls (#3146, landfall.go): Ancient Greenwarden's
+	// `landfall_extra_triggers` 1 makes each land pay twice. Off (the
+	// zero value) prices each payoff once.
+	PriceLandfallDoublers bool
+	// PriceLandfallCasts adds, to the cast price of a permanent with a
+	// landfall payoff or a landfall doubler, what it adds to the bot's
+	// landfall over the lands it expects to put down in its next turns
+	// (#3146, landfall.go): Tireless Tracker's Clues, Greenwarden's
+	// doubling of a Tatyova already out. Off (the zero value) prices
+	// the cast by its body alone.
+	PriceLandfallCasts bool
+	// PriceFetchLandfall adds, to a fetch land's activation (a land
+	// that sacrifices itself to put `lands` onto the battlefield), what
+	// the bot's landfall payoffs pay for each land it puts down, and
+	// prices lands beyond the one it replaces as ramp (#3146,
+	// landfall.go). The flat ActivateBase stays under it, so a fetch is
+	// cracked as before when no payoff is out. Off (the zero value)
+	// prices the activation at the flat ActivateBase.
+	PriceFetchLandfall bool
 	// PriceTokenPayoffs adds, to every creature token a declared purpose
 	// makes, what the bot's own creature-enter payoffs pay for it
 	// (#3165, token_payoff.go): Purphoros's 2 damage, Impact Tremors's 1.
@@ -742,6 +762,9 @@ func DefaultConfig() Config {
 		PriceExtraLandDrops:    true,
 		ExtraLandDropRecurring: 0.50,
 		PriceLandfallPayoffs:   true,
+		PriceLandfallDoublers:  true,
+		PriceLandfallCasts:     true,
+		PriceFetchLandfall:     true,
 		PriceTokenPayoffs:      true,
 
 		FuelFloor:  0.05,
@@ -925,6 +948,10 @@ func BaselineConfig() Config {
 	c.ExtraLandDropRecurring = 0
 	// #3072: landfall payoffs.
 	c.PriceLandfallPayoffs = false
+	// #3146: landfall doublers, payoff casts and fetch lands.
+	c.PriceLandfallDoublers = false
+	c.PriceLandfallCasts = false
+	c.PriceFetchLandfall = false
 	// #3165: creature-enter payoffs on tokens.
 	c.PriceTokenPayoffs = false
 	// #2693: the mulligan counted lands only.

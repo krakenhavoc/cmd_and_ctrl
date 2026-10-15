@@ -16,7 +16,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // control fires twice, and the Greenwarden's own triggers qualify as
 // "a permanent you control".
 //
-// No simplification.
+// No simplification. The card declares LandfallExtraTriggers 1, the
+// doubler as the heuristic reads it beside the landfall payoffs
+// (#3146).
 func init() {
 	doubler := DoublesEntering(Land())
 	doubler.Label = "Ancient Greenwarden"
@@ -25,6 +27,7 @@ func init() {
 		Name:            "Ancient Greenwarden",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"reach"},
+		Purpose:         game.Purpose{LandfallExtraTriggers: 1},
 		CastPermissions: []game.CastPermission{{
 			Zone:   game.ZoneGraveyard,
 			Filter: game.PermissionFilter{LandsOnly: true},

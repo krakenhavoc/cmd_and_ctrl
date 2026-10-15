@@ -172,10 +172,20 @@ func targetEntriesIn(s effects.Spec, slot string) int {
 // onto the battlefield tapped, and declares none.
 // realdump_purpose_manual_test.go checks the list against the oracle
 // text.
+//
+// The fetch lands' activations declare their land since #3146.
 var curatedLandsUntapped = map[string]int{
 	"Harrow":        2,
 	"Nature's Lore": 1,
 	"Three Visits":  1,
+
+	"Bloodstained Mire": 1,
+	"Flooded Strand":    1,
+	"Marsh Flats":       1,
+	"Misty Rainforest":  1,
+	"Polluted Delta":    1,
+	"Prismatic Vista":   1,
+	"Verdant Catacombs": 1,
 }
 
 // specPurposes is every purpose a spec declares: on the card, on its

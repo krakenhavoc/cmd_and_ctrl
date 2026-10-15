@@ -335,6 +335,16 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			ps.add(rowPurpose(src, cp.AbilityIndex))
 			ps.targetsPriced = targetsPriced
 			row := rowAt(src, cp.AbilityIndex)
+			// #3146: a fetch land keeps the flat ActivateBase, and the
+			// lands it puts down add what the bot's landfall payoffs pay
+			// (landfall.go). Its declared lands are read nowhere else.
+			if len(cp.Targets) == 0 && st.fetchRow(src, row, ps) {
+				if p.cfg.PriceFetchLandfall {
+					v += p.fetchLandfallValue(st, ps)
+					reason = "activate fetch"
+				}
+				ps = purposeSet{}
+			}
 			if p.purposePriced(ps) {
 				v, reason, purposed = p.purposeValue(st, ps, cp.XValue, nil, false), "activate (declared purpose)", true
 				// A row that taps a creature pays for it below, by when the
@@ -580,6 +590,9 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 			v += st.w.ManaSource * float64(n)
 		}
 		v += p.resolvedValueFor(st, card, cp.XValue, ps, false, len(targets) > 0)
+		// #3146: a landfall payoff or doubler is also worth what it will
+		// pay for the lands the bot puts down next (landfall.go).
+		v += p.landfallCastValue(st, card)
 		// ADR 0126 §2: the ramp premium is a CAST price only. It is
 		// what one more source is worth to a seat that is short of
 		// mana now, which a card being pitched to a cost is not.

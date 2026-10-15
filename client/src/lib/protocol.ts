@@ -3417,6 +3417,9 @@ export interface PurposeView {
   // #3072: on a landfall row, what it pays for each land that enters
   // under its controller's control.
   landfall_payoff?: LandfallPayoffView;
+  // #3146: on the card of a landfall doubler (Ancient Greenwarden), how
+  // many additional times each landfall trigger of its controller's fires.
+  landfall_extra_triggers?: number;
   // #3165: on a row that pays for each creature that enters under its
   // controller's control.
   creature_enter_payoff?: LandfallPayoffView;

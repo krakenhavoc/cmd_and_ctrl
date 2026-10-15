@@ -4,7 +4,7 @@
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
-**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12). 2026-10-12, [the attrition horizon trades commanders](#amendment-2026-10-12-the-attrition-horizon-trades-commanders) ([#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474)): accepted (owner decisions 2026-10-12). 2026-10-12, [Izzet and Simic after the rebalance](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance) ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)): accepted (owner decisions 2026-10-12). 2026-10-12, [blocks that survive as a set](#amendment-2026-10-12-blocks-that-survive-as-a-set) ([#3066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3066)): accepted (owner decisions 2026-10-12). 2026-10-12, [landfall payoffs](#amendment-2026-10-12-landfall-payoffs) ([#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072)): accepted (owner decisions 2026-10-13). 2026-10-13, [izzet-aggro rebuilt around Purphoros](#amendment-2026-10-13-izzet-aggro-rebuilt-around-purphoros) ([#3071](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3071)): accepted (owner decisions 2026-10-13).
+**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12). 2026-10-12, [the attrition horizon trades commanders](#amendment-2026-10-12-the-attrition-horizon-trades-commanders) ([#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474)): accepted (owner decisions 2026-10-12). 2026-10-12, [Izzet and Simic after the rebalance](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance) ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)): accepted (owner decisions 2026-10-12). 2026-10-12, [blocks that survive as a set](#amendment-2026-10-12-blocks-that-survive-as-a-set) ([#3066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3066)): accepted (owner decisions 2026-10-12). 2026-10-12, [landfall payoffs](#amendment-2026-10-12-landfall-payoffs) ([#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072)): accepted (owner decisions 2026-10-13). 2026-10-13, [izzet-aggro rebuilt around Purphoros](#amendment-2026-10-13-izzet-aggro-rebuilt-around-purphoros) ([#3071](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3071)): accepted (owner decisions 2026-10-13). 2026-10-14, [landfall doublers, payoff casts and fetch lands](#amendment-2026-10-14-landfall-doublers-payoff-casts-and-fetch-lands) ([#3146](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3146)): proposed.
 **Purpose gains a field:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md), 2026-10-09 — `Purpose.Answers`, what an activated row can do in response, on the wire as `purpose.answers`. It is not an amount, so a purpose that declares only answers is not priced (`PurposeView.Priced`).
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) (the seat, §3's type gate, §5's funnel), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena, the position suite, the report block every bot PR carries), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §1 decision 8 (catalog-declared `purpose` on an activated row, read by the bot), [ADR 0037](0037-unimplemented-card-signal.md) (the `unimplemented` mark).
 
@@ -1326,6 +1326,70 @@ The tables are under [Measurements, #3165](#3165-token-makers-priced-by-what-the
 - **A creature spell triggers the same payoffs** (Purphoros with a creature in hand) and nothing prices that.
 - **Creature-token makers with fixed counts elsewhere in the catalog** (Siege-Gang Commander, Beetleback Chief and the other enters-effects) declare no `creature_tokens`; they keep their body price.
 - **Pashalik Mons's sacrifice and Fearless Liberator's boast**, the deck's other `never` rows, are related and untouched.
+
+## Amendment 2026-10-14: landfall doublers, payoff casts and fetch lands
+
+**Status:** Proposed. The code is in the PR that adds this section, behind three switches, each on in `DefaultConfig()` and off in `BaselineConfig()`.
+**Issue:** [#3146](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3146), the open items of [#3072](#open-3072). Sprint S75.
+**Amends:** the [landfall payoffs](#amendment-2026-10-12-landfall-payoffs) amendment (one new purpose field, `landfall_extra_triggers`, and `lands` declared on the fetch lands' activations). No weight is new and no deck changes.
+
+### The problem
+
+#3072 priced a land the bot puts down by what its landfall payoffs pay, and left three gaps, all in simic-ramp:
+
+1. **Ancient Greenwarden** makes each landfall trigger fire twice, and the price counted each payoff once.
+2. **A payoff's own cast** (Tireless Tracker, Lotus Cobra, Sporemound) was priced by its body alone, not by what it pays for the lands the bot puts down in the next turns.
+3. **Fetch lands** (Simic has seven) were cracked at the flat `ActivateBase`, so a payoff on the board did not make them more likely to be cracked.
+
+### Decision
+
+**1. Doublers** (`PriceLandfallDoublers`). A card whose `TriggerDoubler` covers lands declares `landfall_extra_triggers` on the card: Ancient Greenwarden 1, and Elesh Norn, Mother of Machines 1, because her doubler covers every permanent. `effects.Register` refuses it off the card, and on a card with no `TriggerDoubler`. Each land pays the bot's payoffs (1 + the declared extras on its own permanents) times. An opponent's doubler doubles only the opponent's triggers, so it adds nothing.
+
+**2. A payoff's cast** (`PriceLandfallCasts`). A permanent with a landfall row or a doubler adds the per-land gain it brings, `(board + own) × (k + extra) − board × k`, where `k` is the triggers per land already counted. That gain is multiplied by the lands the bot expects to put down:
+
+```
+expected = min(lands in hand, land drops left this turn)
+         + min(lands left in hand + 0.4 × 2, land drops per turn × 2)
+```
+
+The second term covers the bot's next two turns, and 0.4 is `millLandShare`, a land in 0.4 of its draws. Tireless Tracker with two lands in hand and the drop used is 2.85 off and 3.85 on: two Clues more (`TestALandfallPayoffIsWorthTheLandsAhead`). Greenwarden with Tatyova out is worth her card and life again for each of those lands (`TestGreenwardenCastIsWorthTheDoubling`). The commander is not repriced: a command-zone card carries no ability rows on the wire, and Tatyova is cast in nearly every game anyway.
+
+**3. Fetch lands** (`PriceFetchLandfall`). The fetch activations declare `lands` (1, or Myriad Landscape's 2) and `lands_untapped` where the land enters untapped. A fetch is a self-sacrificing land row that declares lands and nothing else. It is not priced as a purpose, because that would charge the sacrificed land and drop a fetch under `PassThreshold` with no payoff out. It keeps the flat `ActivateBase`, and:
+
+- each land it puts down adds what the bot's payoffs pay (`landfallValue`);
+- a land beyond the one it sacrifices is ramp (`ManaSource` and the ramp premium).
+
+Misty Rainforest is +0.50 with no payoff out, as before, and +1.82 with Tatyova (`TestAFetchPaysTheLandfallPayoffs`). With the switch off, a fetch's declared `lands` is read nowhere.
+
+### Measured
+
+The tables are under [Measurements, #3146](#3146-landfall-doublers-payoff-casts-and-fetch-lands-2026-10-14). One tree was built twice, with the three switches off (`develop`'s behaviour) and on. Run 1 was at seeds 1, 1001, 2001 and 3001, with the rebuilt `mono-red-aggro` in the rotation, as #3071's owner decision 3 asked. Run 2's half B (`heuristic` on mono-black and Simic) was at seeds 1 and 1001, and half A at seed 1. Half A was kept small because the host is shared.
+
+| | Switches off | Switches on |
+|---|---|---|
+| simic-ramp, run 1 (four seed blocks) | 43 / 256, 16.8% (12.7%–21.9%) | **49 / 256, 19.1% (14.8%–24.4%)** |
+| Simic, every `heuristic` seat-game (run 1 and run 2 half B) | 77 / 448, 17.2% (14.0%–21.0%) | 76 / 448, 17.0% (13.8%–20.7%) |
+| run 2 `heuristic`, the three runs | 97 / 288, 33.7% (28.5%–39.3%) | 93 / 288, 32.3% (27.2%–37.9%) |
+| Tireless Tracker cast, run 1, games used of offered | 73 of 81 | **87 of 91** |
+| Sporemound cast | 62 of 97 | 74 of 92 |
+| a fetch cracked while a payoff is out (seed 1, decision logs), windows | 77 of 1,020 (7.5%) | **90 of 534 (16.9%)** |
+
+- **The cards are used.** Tracker, Sporemound, Avenger of Zendikar (66 of 74 to 76 of 82) and Courser (64 of 71 to 72 of 76) are cast in more of the games they are offered in. With a payoff out, a fetch is cracked in more than twice the share of windows, and it sits uncracked for half as many windows.
+- **Simic's win rate does not move beyond noise.** Run 1 rises from 16.8% to 19.1%, against the 17.2% (13.1%–22.3%) the owner accepted for #3071. Run 2's half B falls from 34 / 96 to 27 / 96. Over every `heuristic` seat-game it is flat. Every interval overlaps the one before it.
+- **Run 2 is not detectably worse.** `heuristic`'s upper bound stays at 37.9%, above 25%. Half A changes 5 of 48 games, through mono-red-aggro's Myriad Landscape, whose second land is now ramp.
+- **Health:** 0 stalls and 0 rejected moves in every run. Turns p50 is unchanged (11 to 12). The suite is 42 of 42.
+
+### Options considered and rejected
+
+- **Declaring `lands: 1` on a fetch and pricing it as a purpose.** It would charge the sacrificed land, and with no payoff out it would drop the fetch under `PassThreshold`, so the bot would stop cracking fetches.
+- **Reading the doubler off the engine's `TriggerDoubler`.** A doubler is a closure, so the bot cannot read which events it covers. Every other purpose is also declared, never derived.
+- **A longer horizon for the payoff's cast.** Two turns prices a Tracker at about two Clues. A longer horizon would put the payoffs above the ramp that finds the lands.
+
+### Open (#3146)
+
+- **The commander's cast.** A command-zone card has no ability rows on the wire, so Tatyova's cast is not repriced. Projecting the rows there is a protocol change, and it has not been measured.
+- **Simic's balance** stays about where #3071 left it. Moving it needs more than landfall pricing.
+- **Virtue of Knowledge** also doubles landfall, but it is an Adventure card whose card-slot purpose the bot reads for the spell, so it declares no `landfall_extra_triggers`.
 
 ## Consequences
 
@@ -2713,3 +2777,47 @@ The [amendment of 2026-10-14](#amendment-2026-10-14-token-makers-priced-by-what-
 
 - `boteval suite run --policy heuristic`: 42 of 42, every tag at 100%.
 - `go test -race ./...` and `golangci-lint`: green, including `TestHordelingOutburstIsWorthMoreWithPurphorosOut`, `TestTokenPayoffNeedsMineAndCreaturesAndTheSwitch`, `TestKrenkoActivationIsPricedByItsGoblins`, `TestCreatureEnterPayoffDeclarations`, `TestCreatureTokenDeclarations`, `TestCreatureEnterPayoffGuard` and `TestTokenPayoffsOnTheWire`.
+
+### #3146: landfall doublers, payoff casts and fetch lands (2026-10-14)
+
+The [amendment of 2026-10-14](#amendment-2026-10-14-landfall-doublers-payoff-casts-and-fetch-lands). The base is `develop` at `1687b44ee`. The branch is that tree with the three switches and the declarations. The comparison is one tree built twice, with `PriceLandfallDoublers`, `PriceLandfallCasts` and `PriceFetchLandfall` off and then on, so the declarations alone change nothing. Every run is `--rotate --lockstep` with the real dump. Run 1 is §8's at seeds 1, 1001, 2001 and 3001. Run 2 is §8's `--games 48`, with half B (`heuristic` on mono-black-aristocrats and simic-ramp) at seeds 1 and 1001 and half A at seed 1. **0 stalls and 0 rejected moves in every run.** A logged copy of run 1 at seed 1 replayed the unlogged games exactly, and was deleted once the tables were extracted.
+
+**Run 1** (wins of 64 per seed block):
+
+| Deck | Seed 1, off | Seed 1, on | Seed 1001, off | Seed 1001, on | Seed 2001, off | Seed 2001, on | Seed 3001, off | Seed 3001, on | Pooled, off | Pooled, on |
+|---|---|---|---|---|---|---|---|---|---|---|
+| esper-control | 20 | 18 | 20 | 16 | 12 | 16 | 15 | 12 | 67 / 256, 26.2% (21.2%–31.9%) | 62 / 256, 24.2% (19.4%–29.8%) |
+| mono-red-aggro | 24 | 23 | 18 | 23 | 29 | 23 | 23 | 26 | 94 / 256, 36.7% (31.1%–42.8%) | 95 / 256, 37.1% (31.4%–43.2%) |
+| mono-black-aristocrats | 10 | 11 | 14 | 11 | 11 | 13 | 17 | 15 | 52 / 256, 20.3% (15.8%–25.7%) | 50 / 256, 19.5% (15.1%–24.8%) |
+| simic-ramp | 10 | 12 | 12 | 14 | 12 | 12 | 9 | 11 | 43 / 256, 16.8% (12.7%–21.9%) | **49 / 256, 19.1% (14.8%–24.4%)** |
+| games that differ | — | 31 | — | 23 | — | 27 | — | 22 | | |
+| turns p50 | 12 | 12 | 12 | 11 | 11 | 11 | 11 | 11 | | |
+
+**Run 2** (`heuristic` wins, of 48 games per half):
+
+| | Seed 1 half A | Seed 1 half B | Seed 1001 half B | `heuristic` | `heuristic` on Simic, half B |
+|---|---|---|---|---|---|
+| off | 38 (esper 17, red 21) | 31 (black 12, Simic 19) | 28 (black 13, Simic 15) | 97 / 288, 33.7% (28.5%–39.3%) | 34 / 96, 35.4% (26.6%–45.4%) |
+| on | 38 (esper 17, red 21) | 28 (black 15, Simic 13) | 27 (black 13, Simic 14) | 93 / 288, 32.3% (27.2%–37.9%) | 27 / 96, 28.1% (20.1%–37.8%) |
+| games that differ | 5 | 20 | 26 | | |
+
+**Simic's landfall cards, run 1** (games used of games offered, four seed blocks):
+
+| Card | off | on |
+|---|---|---|
+| Tireless Tracker, cast | 73 of 81 | **87 of 91** |
+| Sporemound, cast | 62 of 97 | 74 of 92 |
+| Avenger of Zendikar, cast | 66 of 74 | 76 of 82 |
+| Courser of Kruphix, cast | 64 of 71 | 72 of 76 |
+| Tireless Provisioner, cast | 64 of 71 | 65 of 68 |
+| Lotus Cobra, cast | 63 of 72 | 64 of 70 |
+| Rampaging Baloths, cast | 69 of 69 | 69 of 71 |
+| Ancient Greenwarden, cast | 81 of 81 (85 of 186 windows) | 77 of 79 (78 of 150 windows) |
+| Burnished Hart, activation | 21 of 35 | 16 of 28 |
+
+The arena's Cards table leaves lands out, so the fetches are read from the decision logs of run 1 at seed 1, for the Simic seat. With a landfall payoff of its own out, a fetch was cracked in 77 of 1,020 windows it was offered in (30 of 36 games) with the switches off, and in 90 of 534 (35 of 36 games) with them on. With no payoff out, it was cracked in 170 of 1,315 and 154 of 882 (61 of 63 games on both). Payoff casts in those logs moved by about a turn at most: Greenwarden's median turn went from 8 to 7, and Courser's from 6 to 5.
+
+**Other gates on the branch:**
+
+- `boteval suite run --policy heuristic`: 42 of 42.
+- `go test -race ./...` and `golangci-lint`: green, including `TestGreenwardenDoublesTheLandfallPrice`, `TestALandfallPayoffIsWorthTheLandsAhead`, `TestGreenwardenCastIsWorthTheDoubling`, `TestAFetchPaysTheLandfallPayoffs`, `TestLandfallDoublerDeclarations`, `TestLandfallDoublerGuard` and `TestFetchLandDeclarations`. With the dump, `TestCuratedDeckPurposes` and `TestRealDumpPurposeLandsUntapped` pass with the seven untapped fetches on `curatedLandsUntapped`.

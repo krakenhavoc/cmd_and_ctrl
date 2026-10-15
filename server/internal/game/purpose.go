@@ -171,6 +171,16 @@ type Purpose struct {
 	// one that does not.
 	ExtraLandDrops int
 
+	// LandfallExtraTriggers is how many additional times a triggered
+	// ability of a permanent its controller controls triggers when a
+	// land entering causes it to trigger (#3146): Ancient Greenwarden
+	// 1, Elesh Norn, Mother of Machines 1 (its doubler covers every
+	// permanent, lands among them). Declared on the card slot only, of
+	// a card whose Spec has a TriggerDoubler, which is the engine's own
+	// field for the static; the heuristic multiplies the bot's landfall
+	// payoffs by it.
+	LandfallExtraTriggers int
+
 	// Impulse is how many cards it exiles from the top of its
 	// controller's library that its controller may play this turn
 	// (#2480): Professional Face-Breaker's "Exile the top card of your
@@ -543,6 +553,7 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 		LifeGain:                  p.LifeGain + o.LifeGain,
 		AwakenLand:                p.AwakenLand + o.AwakenLand,
 		ExtraLandDrops:            p.ExtraLandDrops + o.ExtraLandDrops,
+		LandfallExtraTriggers:     p.LandfallExtraTriggers + o.LandfallExtraTriggers,
 		Impulse:                   p.Impulse + o.Impulse,
 		Answers:                   p.Answers | o.Answers,
 	}

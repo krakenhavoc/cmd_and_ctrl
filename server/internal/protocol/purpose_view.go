@@ -98,6 +98,11 @@ type PurposeView struct {
 	// each turn on a permanent ("you may play an additional land on
 	// each of your turns"), this turn on an instant or sorcery (#2678).
 	ExtraLandDrops int `json:"extra_land_drops,omitempty"`
+	// LandfallExtraTriggers is how many additional times a landfall
+	// trigger of a permanent its controller controls triggers, on the
+	// card of a permanent that doubles them (#3146): Ancient
+	// Greenwarden 1.
+	LandfallExtraTriggers int `json:"landfall_extra_triggers,omitempty"`
 	// Impulse is the cards it exiles from the top of its controller's
 	// library that its controller may play this turn (#2480).
 	Impulse int `json:"impulse,omitempty"`
@@ -292,6 +297,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		LifeGain:                  p.LifeGain,
 		AwakenLand:                p.AwakenLand,
 		ExtraLandDrops:            p.ExtraLandDrops,
+		LandfallExtraTriggers:     p.LandfallExtraTriggers,
 		Impulse:                   p.Impulse,
 		Aura:                      string(p.Aura),
 	}
