@@ -204,6 +204,7 @@ var tokenTable = map[string]game.Card{
 	"3/2 colorless Shapeshifter with changeling":    {Name: "Shapeshifter", TypeLine: "Token Creature — Shapeshifter", Power: 3, Toughness: 2, Keywords: []string{"changeling"}},
 	"3/2 colorless Eldrazi Horror":                  {Name: "Eldrazi Horror", TypeLine: "Token Creature — Eldrazi Horror", Power: 3, Toughness: 2},
 	"3/2 red and white Spirit":                      {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 3, Toughness: 2, Colors: []string{"R", "W"}},
+	"2/2 red Rebel":                                 {Name: "Rebel", TypeLine: "Token Creature — Rebel", Power: 2, Toughness: 2, Colors: []string{"R"}},
 	"2/2 red and white Spirit":                      {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 2, Toughness: 2, Colors: []string{"R", "W"}},
 	"1/1 colorless Shapeshifter with changeling":    {Name: "Shapeshifter", TypeLine: "Token Creature — Shapeshifter", Power: 1, Toughness: 1, Keywords: []string{"changeling"}},
 	"3/3 green Centaur":                             {Name: "Centaur", TypeLine: "Token Creature — Centaur", Power: 3, Toughness: 3, Colors: []string{"G"}},
