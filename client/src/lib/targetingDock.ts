@@ -35,6 +35,7 @@ import {
 } from "./targeting";
 import { doubledTriggerLabel } from "./triggerDoubling";
 import { targetPriceSummary } from "./targetPrices";
+import { batchPosition, type BatchPosition } from "./triggerBatch";
 
 function modeHint(mode: TargetingMode | string | undefined): string {
   switch (mode) {
@@ -74,7 +75,7 @@ function cardSetCount(state: TargetingState): string {
 }
 
 // targetingQuestion is the question line's sentence.
-function targetingQuestion(state: TargetingState): string {
+function targetingQuestion(state: TargetingState, batch: BatchPosition | null = null): string {
   const name = state.card.name;
   if (isCardSetPick(state)) {
     // #2394: a choice made as the card resolves, not a target. The
@@ -88,7 +89,12 @@ function targetingQuestion(state: TargetingState): string {
     // "Deflecting Swat triggered" would be the wrong sentence.
     return `${name} — click ${state.label || "a new target"}`;
   }
-  if (state.choiceID) return `${name} triggered — click ${state.label || "a target"}`;
+  if (state.choiceID) {
+    // #3817: one of many — twenty Blood Artists and two deaths are forty
+    // prompts, each looking like the last. Say how many.
+    const times = batch && batch.total > 1 ? ` ${batch.total} times` : "";
+    return `${name} triggered${times} — click ${state.label || "a target"}`;
+  }
   // #764: a multi-clause or per-mode announcement is a WALK, so the
   // line names the clause it is asking about right now (and the detail
   // says where in the walk the player is). Without this a two-slot card
@@ -132,6 +138,9 @@ function priceLine(state: TargetingState, view: GameView | null | undefined): st
 // doubler, the division, the pick tally and the price.
 export function targetingDetail(state: TargetingState, view?: GameView | null): string {
   const parts: string[] = [];
+  // #3817: which of a batch of the same trigger this prompt answers.
+  const batch = view ? batchPosition(view, state.choiceID) : null;
+  if (batch) parts.push(`trigger ${batch.index} of ${batch.total}`);
   if (!state.choiceID && state.steps.length > 1) {
     parts.push(`step ${state.step + 1} of ${state.steps.length}`);
   }
@@ -231,7 +240,7 @@ export function targetingRequest(
     tag: cardSet ? "choose" : "target",
     tone: "gold",
     live: true,
-    question: targetingQuestion(state),
+    question: targetingQuestion(state, view ? batchPosition(view, state.choiceID) : null),
     detail: targetingDetail(state, view) || undefined,
     primary,
     secondary,
