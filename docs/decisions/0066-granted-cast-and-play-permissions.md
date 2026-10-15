@@ -3936,3 +3936,42 @@ zone (stronger than printed, only for a table restored mid-turn across the upgra
 
 Back-out: stop assigning the group and `TestLockeMugSpansTwoZonesWithOneSpell` fails; mill with
 `MillToZoneThenForEffect` in Locke and `TestLockeMugCoversCardsRestInPeaceExiled` fails.
+
+## Amendment — 2026-10-15 (#2017): the total mana value budget over cards an impulse exile landed
+
+Primeval Spawn: "When this creature leaves the battlefield, exile the top ten cards of your library. You may cast any number of
+spells with total mana value 10 or less from among them without paying their mana costs." The 2026-10-14 amendment built the
+running total (`CastPermission.ManaValueBudget`) for the copies of a card and said Spawn's cards, exiled by
+`ExileTopWithPermissionForEffect`, would need "a helper that grants one budgeted permission". The helper turned out to be one
+field, because the premise was off by a step: the impulse exile already stamps ONE `ScopeCards` permission over every card that
+landed (`grantImpulseExilePermissionLocked`, CR 611.2c), not one per card. Nothing in the engine had to change.
+
+### Decision 1: `effects.ExileTopWithPermission.TotalManaValueAtMost`
+
+Setting it exiles the top `N` cards and grants the holder a free (`Cost: "{0}"`, so X is locked at 0), flash-speed
+(`TimingFlash`, the cast being the resolving ability's, CR 608.2g), cast-only permission whose `ManaValueBudget` is the printed
+total and whose `LapseOnPass` is `LapseStaysInExile`. It is the same shape the copy offer builds, so the cast gate, the view's
+`castable_here` and the bot enumerator all read it through `spellManaValueWithinCap`, and a cast spends it through
+`consumePassClosedGrantLocked`. Only the cards that really reached exile are named: a commander the owner sent to the command zone
+(CR 903.9) and a library shorter than `N` are both handled by the exile path, not here.
+
+### Decision 2: it is its own window, so it refuses the options that name another
+
+`Free`, `CastOnly`, `WhileExiled`, `Window`, `FaceDown`, `Condition` and `Filter` mean a different grant (a turn-long impulse
+window, a hidden pile, a conditional play), and a budgeted free cast with one of them set would be a different, unreviewed card. The
+form returns an error rather than silently overriding any of them. `AnyColor` / `AnyType` stay legal (they are about mana
+spent on additional costs, which a free cast can still owe).
+
+### Decision 3: what it leaves alone
+
+A land among the cards is exiled and stranded: the grant is cast-only (CR 305.1), so no land play is offered. An uncast card stays
+in exile (`LapseStaysInExile`): the printed text says nothing happens to it. A permanent spell cast this way is an ordinary spell
+cast from exile, not a copy, so it is not a token, and the original is the card cast.
+
+No wire or snapshot change: `manaValueBudget` was added by the 2026-10-14 amendment and nothing else is new on a permission.
+
+Back-out: drop the `ManaValueBudget` line in `applyBudgeted` and `TestPrimevalSpawnExilesTenAndSharesOneBudgetOfTen` fails (every
+card is castable); drop `LapseOnPass` and the permission outlives the pass, so
+`TestPrimevalSpawnWindowClosesOnPassAndLeavesTheRestInExile` fails; drop `CastOnly` and
+`TestPrimevalSpawnLandIsExiledAndNotCastable` fails on the land play; take the self-replacement off the card and
+`TestPrimevalSpawnEntry` fails on the free cast and the reanimation.
