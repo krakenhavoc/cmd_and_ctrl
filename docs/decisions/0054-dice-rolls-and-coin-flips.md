@@ -1005,3 +1005,38 @@ temporary free-cast permission; Clown Car needs its cast X retained for
 its ETB trigger; Ancient Silver Dragon needs a lasting hand-size grant.
 Wyll's Reversal also needs spell retargeting. None is declared fully
 automated by this change.
+
+## Amendment (2026-10-15): "whenever you win a coin flip" and the bare called flip (#3767)
+
+Decision 6 said a "whenever you win a coin flip" ability matches
+`EventFlipCoin` with `Won` and fires once per won flip. No card read it
+until Setzer, Wandering Gambler (deck request #3655), so the reader is
+now written down as code and this amendment records the two readings it
+needed.
+
+1. **The matcher.** `effects.YouWonACoinFlip` is `ev.Won` and
+   `ev.Actor == source.Controller`. `Actor` is the flipper, and CR 705.2
+   says only the player who flips a coin wins or loses it, so an
+   opponent's won flip is never yours. One event per coin, so a flip of
+   two coins that wins both triggers twice. A face-only flip
+   (`FlipCoinsForEffect`) has `Won` false and never matches; a table
+   flip is `EventTableRoll` and never this kind. `WheneverYouWinACoinFlip`
+   is the constructor.
+2. **A bare "flip a coin" is a called flip.** Tavern Scoundrel's
+   activated ability and Setzer's Vehicle trigger print "flip a coin"
+   and nothing for winning or losing. CR 705.2 has the flipper call the
+   coin when something cares whether they win, and on both cards their
+   own "whenever you win a coin flip" does. So `effects.FlipACoin` is
+   `FlipCoinForEffect` with no `Then`: it asks for the call, emits the
+   won or lost `EventFlipCoin`, and leaves what winning does to the
+   triggers that watch it. With no continuation it adds nothing to the
+   closure census beyond the coin-call prompt the seam already has.
+
+Cards: Setzer, Wandering Gambler, Chance Encounter, Tavern Scoundrel
+(Full). The same PR adds the first Vehicle tokens (The Blackjack and Mu
+Yanling, Wind Rider's 3/2 Vehicle), token templates whose crew ability
+is the printed Vehicle's `CrewCost` / `CrewEffect` registered under the
+token's key; Mu Yanling is Full too. Still open from Decision 6's list:
+"whenever a player wins a coin flip" and "flip a coin until you lose a
+flip" (Okaun, Eye of Chaos; Zndrsplt, Eye of Wisdom), and "whenever you
+lose a coin flip" (Karplusan Minotaur).
