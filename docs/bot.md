@@ -247,6 +247,14 @@ checks that a seat is human before it answers anything for it. A
 person's automatic answer reaches a bot as an ordinary state change and
 an `auto_answer` log line.
 
+The same holds for a remembered trigger order ("use this order again",
+#3016, ADR 0018's eighth amendment). A bot orders its triggers from the
+heuristic at no cost, so it is never offered the `remember: true` answer
+and never sends `forget_trigger_order`; the server ignores `remember`
+from a bot seat, which therefore never has a memory. An agent seat (MCP)
+is offered one extra move on a keyed trigger-order prompt, "…, and use
+this order again", since it pays for every prompt in tokens.
+
 ### What a bot answers when somebody else's card asks (#796 / #568 / #929)
 
 Three prompt shapes reach a bot seat from a spell or ability it does

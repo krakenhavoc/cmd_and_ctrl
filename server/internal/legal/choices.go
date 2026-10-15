@@ -23,6 +23,9 @@ type choiceParams struct {
 	Call     string   `json:"call,omitempty"`
 	Order    []string `json:"order,omitempty"`
 	Apply    *bool    `json:"apply,omitempty"`
+	// Remember rides an agent seat's trigger_order answer that keeps
+	// the order for the batch (ADR 0018's eighth amendment, #3016).
+	Remember *bool `json:"remember,omitempty"`
 	// TapIDs rides a pay_unless "pay" whose cost is a waterbend cost
 	// (#1311): the permanents tapped for part of the generic.
 	TapIDs []string `json:"tap_ids,omitempty"`
@@ -261,6 +264,20 @@ func (e *enumerator) choiceMoves() bool {
 					p.Order = append(p.Order, ids[i].String())
 				}
 				e.addChoice(c, label, p)
+			}
+			// ADR 0018's eighth amendment (I1): an agent seat pays for
+			// every prompt in tokens, so a keyed batch also offers the
+			// order shown, each card's triggers kept together, with
+			// "use it again". A bot answers from its heuristic for
+			// free and is never offered it.
+			if order := rememberableTriggerOrder(g, c); order != nil && e.p != nil && e.p.Agent && !e.p.IsBot {
+				remember := true
+				p := base()
+				p.Remember = &remember
+				for _, i := range order {
+					p.Order = append(p.Order, ids[i].String())
+				}
+				e.addChoice(c, triggerOrderLabel(g, reason, ids, order)+", and use this order again", p)
 			}
 
 		case game.PendingChoiceOptionalReplacement, game.PendingChoiceTriggerPrompt,
@@ -1528,6 +1545,32 @@ func pileOrder(g *game.Game, cards []uuid.UUID, first int) string {
 // has no other way to tell which trigger is which; until 2026-10-14 the
 // label was the bare index permutation "[1 0]". A trigger no longer in
 // the queue keeps its index as its name.
+// rememberableTriggerOrder is the order an agent seat's "use this order
+// again" move resolves a keyed trigger-order prompt in (ADR 0018's
+// eighth amendment, I1): the order shown, with each row's copies moved
+// up beside its first, so it is a ranking the engine can remember. Nil
+// for an unkeyed prompt.
+func rememberableTriggerOrder(g *game.Game, c *game.PendingChoice) []int {
+	rows := g.TriggerOrderRowsLocked(c)
+	if len(rows) == 0 || len(rows) != len(c.TriggerOrderIDs) {
+		return nil
+	}
+	order := make([]int, 0, len(rows))
+	for row := 1; len(order) < len(rows); row++ {
+		found := false
+		for i, r := range rows {
+			if r == row {
+				order = append(order, i)
+				found = true
+			}
+		}
+		if !found {
+			return nil
+		}
+	}
+	return order
+}
+
 func triggerOrderLabel(g *game.Game, reason string, ids []uuid.UUID, order []int) string {
 	byIndex := make([]string, len(ids))
 	count := map[string]int{}

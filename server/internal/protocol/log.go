@@ -3620,6 +3620,7 @@ func logNameOf(c *CardView) string {
 //	Bob paid {1} for Rhystic Study (automatic)
 //	Bob didn't pay for Rhystic Study (automatic)
 //	Alice answered Yes to Consecrated Sphinx — draw two cards (automatic)
+//	Luke ordered Pitiless Plunderer — create a Treasure, then Falkenrath Noble — drain 1 (automatic)
 //
 // A redacted entry has lost the card's name and the label with it, and
 // says only that a standing answer was given.
@@ -3633,6 +3634,11 @@ func renderAutoAnswerText(e LogEvent, actor, cardName string) string {
 		return fmt.Sprintf("%s paid %s for %s (automatic)", actor, e.Label, card)
 	case game.AutoAnswerCallDontPay:
 		return fmt.Sprintf("%s didn't pay for %s (automatic)", actor, card)
+	case game.AutoAnswerCallOrder:
+		// ADR 0018's eighth amendment: a remembered trigger order. Label
+		// is the rows' stack labels in resolution order, which the stack
+		// shows the table anyway.
+		return fmt.Sprintf("%s ordered %s (automatic)", actor, nameOr(e.Label, "their triggers"))
 	}
 	// ADR 0188 Decision 12: the which-skip question. Yes spent the
 	// player's own skip; No let the other effect (Label) take the turn.

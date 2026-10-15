@@ -713,6 +713,8 @@ func clonePlayer(p *Player) *Player {
 	out.Emblems = cloneZone(p.Emblems)
 	out.Companion = cloneZone(p.Companion)
 	out.Sideboard = cloneZone(p.Sideboard)
+	// ADR 0018's eighth amendment: game state, cloned with the seat.
+	out.TriggerOrderMemory = copyTriggerOrderMemory(p.TriggerOrderMemory)
 	if len(p.CommanderDamage) > 0 {
 		out.CommanderDamage = make(map[uuid.UUID]int, len(p.CommanderDamage))
 		for k, v := range p.CommanderDamage {

@@ -23,6 +23,7 @@
     newAutoAnswerEntries,
     withoutRule,
   } from "../../autoAnswerPref";
+  import { isTriggerOrderKey } from "../../triggerOrderMemory";
 
   interface Props {
     view: GameView | null;
@@ -30,8 +31,12 @@
     // False while a replay frame is on screen: a replay never notifies.
     live: boolean;
     onUndo: () => void;
+    // #3016: "Ask me next time" on a remembered trigger order forgets it
+    // on the server (forget_trigger_order), since the memory is game
+    // state rather than a synced setting.
+    onForgetTriggerOrder: (key: string) => void;
   }
-  let { view, viewerID, live, onUndo }: Props = $props();
+  let { view, viewerID, live, onUndo, onForgetTriggerOrder }: Props = $props();
 
   // The highest auto_answer seq already accounted for. Null until the
   // first live frame, which sets it without a notice: lines already in
@@ -82,7 +87,15 @@
         onUndo();
       },
       () => {
-        updateSettings("gameplay", "autoAnswers", withoutRule($settings.gameplay.autoAnswers, key));
+        if (isTriggerOrderKey(key)) {
+          onForgetTriggerOrder(key);
+        } else {
+          updateSettings(
+            "gameplay",
+            "autoAnswers",
+            withoutRule($settings.gameplay.autoAnswers, key),
+          );
+        }
         current = null;
         clearTimer();
       },

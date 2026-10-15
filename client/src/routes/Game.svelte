@@ -1380,6 +1380,12 @@
   // when the frame with its result arrives (DiceLayer).
   let tableRollCooling = $state(false);
   let tableRollTimer: ReturnType<typeof setTimeout> | null = null;
+  // #3016: forget a remembered trigger order (key) or all of them ("").
+  function forgetTriggerOrder(key: string): void {
+    if (!viewerID) return;
+    client.sendAction("forget_trigger_order", viewerID, key ? { key } : {});
+  }
+
   function rollAtTable(die: TableDie): void {
     if (!viewerID || tableRollCooling) return;
     client.sendAction("roll_table_die", viewerID, { die });
@@ -2565,6 +2571,10 @@
     // ADR 0167 §4: no sandbox for either player of a controlled turn.
     sandbox: !sandboxClosed,
     onTableRoll: rollAtTable,
+    // #3016: forget every trigger order this seat asked to reuse.
+    forgetTriggerOrders:
+      dockShown && view?.state === "active" ? (viewerSeat?.trigger_order_memory_count ?? 0) : 0,
+    onForgetTriggerOrders: () => forgetTriggerOrder(""),
     // #3028: the one-time hand sorts, for a seat holding more than one
     // card. The hand itself has no sort button.
     sortHand: dockShown && (viewerSeat?.hand.cards.length ?? 0) > 1,
@@ -3316,7 +3326,13 @@
         lastError={$lastError}
         docked={dockShown}
       />
-      <AutoAnswerNotice view={$snapshot} {viewerID} live={!replaying} onUndo={undo} />
+      <AutoAnswerNotice
+        view={$snapshot}
+        {viewerID}
+        live={!replaying}
+        onUndo={undo}
+        onForgetTriggerOrder={forgetTriggerOrder}
+      />
       <AutoPassNotice
         notice={passNotice}
         facts={{
