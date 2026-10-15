@@ -8981,8 +8981,17 @@ the rule, through `Card.CountedPower(use)`, which adds the bonus before it
 clamps at zero. Two rules add up, a creature that loses all abilities loses
 its rule (the static is the creature's own), and the enumerator, the
 view's `crew_power` and the engine's validator all count the same
-number. Until the client sums `crew_power` too (#3550), its crew picker
-under-counts such a creature and never over-counts it.
+number. The client sums `crew_power` too since #3550.
+
+A card that makes a Pilot token passes `PilotToken()` ("This token saddles
+Mounts and crews Vehicles as though its power were 2 greater") or, for the
+crew-only wording, `CrewPilotToken()` to `CreateToken`
+([tokens.go](../server/internal/cards/effects/tokens.go), #3551). Both
+are 1/1 colorless Pilots whose ability rides on the token key, so a
+snapshot restore keeps it; never hand-write a Pilot template. The
+crew-only Pilot counts 3 for a crew cost and 1 for a saddle cost.
+Cloudspire Captain, Dynamite Diver, Deathless Pilot and Interface Ace are
+the four printed examples.
 
 ### Explore (CR 701.44, #2720)
 

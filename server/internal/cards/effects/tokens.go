@@ -484,3 +484,57 @@ func printedMunitionsToken() tokenTemplate {
 		Text: "When this token leaves the battlefield, it deals 2 damage to any target.",
 	}
 }
+
+// PilotToken is the 1/1 colorless Pilot creature token with "This token
+// saddles Mounts and crews Vehicles as though its power were 2 greater."
+// that Cloudspire Coordinator, Defend the Rider, Valor's Flagship, Back
+// on Track, Roadside Assistance and the Roads make (ADR 0186 §5, #2705).
+// Its power stays 1: only the crew and saddle payment counts it as 3.
+func PilotToken() game.Card { return tokenFromCatalog(printedPilotToken) }
+
+// printedPilotToken is that Pilot as PRINTED. The ability is a layer 6
+// self-only static registered under the token key, so it survives a
+// snapshot round trip as the key alone and a Pilot that loses all
+// abilities counts its plain power again (CR 613.1f).
+//
+// The slug is an on-disk identity (a snapshot carries the token key) and
+// is never renamed.
+func printedPilotToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "pilot-saddles-and-crews",
+		Card: game.Card{
+			Name:      "Pilot",
+			TypeLine:  "Token Creature — Pilot",
+			Power:     1,
+			Toughness: 1,
+		},
+		Static: []game.StaticAbility{
+			CrewsAsThoughPowerGreater(2, game.CostPowerCrew|game.CostPowerSaddle),
+		},
+		Text: "This token saddles Mounts and crews Vehicles as though its power were 2 greater.",
+	}
+}
+
+// CrewPilotToken is the crew-only Pilot: Shorikai, Genesis Engine,
+// Prodigy's Prototype and Born to Drive make a 1/1 colorless Pilot with
+// "This token crews Vehicles as though its power were 2 greater." It
+// does not count extra for a Mount, so a saddle cost counts it as 1.
+func CrewPilotToken() game.Card { return tokenFromCatalog(printedCrewPilotToken) }
+
+// printedCrewPilotToken is that Pilot as PRINTED. Its slug is an on-disk
+// identity and is never renamed.
+func printedCrewPilotToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "pilot-crews",
+		Card: game.Card{
+			Name:      "Pilot",
+			TypeLine:  "Token Creature — Pilot",
+			Power:     1,
+			Toughness: 1,
+		},
+		Static: []game.StaticAbility{
+			CrewsAsThoughPowerGreater(2, game.CostPowerCrew),
+		},
+		Text: "This token crews Vehicles as though its power were 2 greater.",
+	}
+}
