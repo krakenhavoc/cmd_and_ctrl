@@ -4720,3 +4720,20 @@ Decision 12's `PermanentInfo` records what a departed permanent was attached TO 
 - **Snapshot.** `lastKnownPermanents{}[].attachments` is additive in v9 and recorded in the shape file. A file from before this carries no attachments, so the Equipment is simply not moved; a binary from before this that drops the key restores the game, with the same result. No bump.
 
 **Back-outs.** Without the write in `rememberDepartingPermanentLocked`, `TestPermanentLKIRecordsWhatWasAttachedToIt`, `TestZackFairMovesTheEquipmentThatWasAttachedToHim` and `TestZackFairWithTwoEquipmentAsksWhichMoves` fail. Without the epoch comparison in `LiveAttachmentsForEffect` the same game test fails; without the pinned-epoch skip `TestPermanentLKIIgnoresALinkToAnEarlierObject` fails; without the copy in `cloneLastKnownPermanents` `TestPermanentLKIAttachmentsRideCloneAndSnapshot` fails.
+
+## Amendment 2026-10-15 (sixth) — "that spell's mana value" counts X in the trigger snapshot (#3782) · Accepted
+
+Krile Baldesion returns "target creature card with mana value equal to that spell's mana value". The clause is built as
+the trigger goes on the stack (CR 603.3d) by a `TargetsFrom` that reads only its trigger context, so restore can
+re-derive it and the row needs no `TargetsFromReadsBoard`. The context's `Object.ManaValue` was `Card.ManaValue()`,
+which reads `{X}` as zero, so a Fireball cast for X=3 would have offered the one-drops.
+
+`objectSnapshotLocked` now takes the value the spell has on the stack (CR 202.3e): when the object is a spell on the
+stack with an announced X, the snapshot's `ManaValue` is the cost's mana value with that X. The snapshot is taken as
+the event fires, while the spell is still on the stack, and is carried verbatim on the item and across a clone or
+restore, so the value cannot drift once the spell resolves. Every other object (a permanent, a card in a graveyard)
+still reads `{X}` as zero, which is what Scrap Trawler's "lesser mana value" wants. No wire, snapshot-schema or
+closure-field change.
+
+**Back-outs.** `TestACastTriggersSnapshotCountsTheXTheSpellWasCastWith` and `TestKrileCountsTheXAnXSpellWasCastWith`
+fail without the X read; `TestKrileUsesTheTurnOnlyWhenACardIsReturned` fails without the `NoteDoneThisTurn` call.
