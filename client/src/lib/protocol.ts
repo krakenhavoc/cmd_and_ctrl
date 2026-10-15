@@ -4823,6 +4823,13 @@ export interface TurnView {
   // charges. Seat 0 is a real answer. Absent when the game is not in
   // play. It cannot see a replacement skip (Trouble in Pairs).
   next_seat?: number;
+  // #3826: what the viewer's own next pass hands over. "ends_turn": it is
+  // the viewer's turn, they hold priority on an empty stack and no later
+  // step of the turn grants priority. "your_turn_next": the same in
+  // another player's turn, with the viewer's turn next (next_seat counts
+  // extra turns and skips). Absent for a routine pass. Per viewer; it
+  // ignores the viewer's own auto-pass and stops.
+  pass_hint?: "ends_turn" | "your_turn_next";
   // ADR 0188 Decision 12: set while the turn change waits on a
   // "turn_skip_order" question. The old turn is over and the next has
   // not begun; step still names the old turn's step, and nobody holds

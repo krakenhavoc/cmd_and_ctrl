@@ -322,6 +322,20 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}ActionDock.svelte`],
     doc: "the dock's primary on an empty stack (#3267): pass priority so the game moves to the next step (its visible text and its aria-label); the tutorial's stack step anchors here too, within actions",
   }),
+  nextEndsTurn: label({
+    name: "Pass · turn ends",
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}ActionDock.svelte`],
+    doc: "the dock's primary at your last priority of your own turn (#3826, turn.pass_hint ends_turn): a pass hands the turn over; ringed, and named so End turn stays the one button of that name (its visible text and its aria-label)",
+  }),
+  nextYourTurn: label({
+    name: "Pass · your turn next",
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}ActionDock.svelte`],
+    doc: "the dock's primary at your last priority before your turn begins (#3826, turn.pass_hint your_turn_next): your next decision is in your own turn; ringed (its visible text and its aria-label)",
+  }),
   attackWith: dynamicLabel({
     stem: "Attack with ",
     match: "prefix",

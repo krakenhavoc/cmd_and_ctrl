@@ -81,7 +81,11 @@ export function passHint(view: GameView | null | undefined, viewerHasPriority: b
   if (!step) return "";
   const next = step === "declare_attackers" ? afterDeclareAttackers(view) : NEXT_STEP[step];
   if (!next) return "";
-  if (next === "next_turn") return "passing ends the turn";
+  if (next === "next_turn") {
+    return view.turn?.pass_hint === "your_turn_next"
+      ? "passing starts your turn"
+      : "passing ends the turn";
+  }
   return `passing moves to ${STEP_LABELS[next]}`;
 }
 
@@ -93,6 +97,9 @@ export function passHint(view: GameView | null | undefined, viewerHasPriority: b
  *     has, so a pass declares no attackers and skips the rest of combat
  *     (CR 508.8);
  *   - "next": the stack is empty and an all-pass moves the game on;
+ *   - "endsTurn" / "yourTurnNext" (#3826): a "next" the server marks as
+ *     the last pass of the viewer's own turn, or the last one before it
+ *     begins (`turn.pass_hint`), so the button says so.
  *   - "attack": declare attackers with creatures staged (#3266), so the
  *     primary sends them as one declaration and then passes.
  *
@@ -100,7 +107,7 @@ export function passHint(view: GameView | null | undefined, viewerHasPriority: b
  * right now, and `attackersStaged` how many they have staged: both 0
  * unless the viewer is the one declaring.
  */
-export type PrimaryKind = "pass" | "next" | "noAttacks" | "attack";
+export type PrimaryKind = "pass" | "next" | "endsTurn" | "yourTurnNext" | "noAttacks" | "attack";
 
 export function primaryKind(
   view: GameView | null | undefined,
@@ -117,6 +124,11 @@ export function primaryKind(
   ) {
     return "noAttacks";
   }
+  // #3826: the engine says this pass ends your turn, or is the last one
+  // before it begins. It already counts a stack, a skipped turn and an
+  // extra turn, and is absent otherwise.
+  if (view.turn?.pass_hint === "ends_turn") return "endsTurn";
+  if (view.turn?.pass_hint === "your_turn_next") return "yourTurnNext";
   return "next";
 }
 
@@ -124,6 +136,10 @@ export function primaryKind(
 export const primaryTitles: Record<PrimaryKind, string> = {
   pass: "pass priority — once everyone passes, the top of the stack resolves",
   next: "pass priority — once everyone passes, the game moves to the next step",
+  endsTurn:
+    "pass priority — this is your last chance this turn; once everyone passes, your turn ends",
+  yourTurnNext:
+    "pass priority — this is your last pass before your turn; once everyone passes, your turn begins",
   noAttacks: "attack with nothing and skip the rest of combat",
   attack: "declare the creatures you picked as attackers, then pass priority",
 };
