@@ -190,3 +190,16 @@ The owner accepted every recommendation on 2026-10-15. Each is binding.
 9. **Bots and agent seats.** Bot opponents always accept; bots never record or propose a loop; MCP seats may do both. A bot that finds and records combos is ADR 0126 strategy work and a separate issue.
 10. **The log line.** One public line per replay, with the per-iteration net change times the iterations completed; the per-step entries are folded away.
 11. **The control's place.** "Record loop" is in the action dock, shown only while the player holds priority, with no keyboard shortcut at first.
+
+## Implementation notes (engine PR, 2026-10-15)
+
+Delivery steps 1 and 2 shipped together (#3382). Where the code settles something this ADR left open:
+
+- **Where steps are recorded.** In `actions.Dispatch`, the one function every seat's action passes through, so a browser's, an MCP seat's and a bot's moves are all recorded the same way. The loop verbs, the settings verbs, the table roll and a concession are not steps.
+- **References.** An ID in a step's params is rewritten to `@loop:<kind>:<k>` when it names the k-th object (a stack item, a permanent, a waiting trigger or a pending prompt) that a scan before each step found to be new in the iteration. Everything else, a player or an object that existed at the start, is kept as written.
+- **The prompts check.** Each step records the prompts open just before it (`kind@seat`), and a replayed step must find the same ones.
+- **A failed closure.** `loop_record_stop` on a recording that does not close succeeds and discards it; the reason is the `loop` log line, since a refused action could not also discard.
+- **Proposing.** `loop_propose` is refused unless the board still matches the recording's start signature, so play between the stop and the proposal cannot make the first replayed iteration start somewhere else.
+- **A player leaving** during a recording or a proposal ends it, as a step change does.
+- **The loop verbs mint no undo entry.** Only the replay does.
+- **§8's "rank the record moves last".** The recording verbs are enumerated only for an agent seat (`Player.Agent`), so a bot is never offered them, and a browser's move list does not carry them: an unknown move kind would stop the client's smart autopass on every window. The client follow-up drives its dock control from `GameView.loop_recording`.

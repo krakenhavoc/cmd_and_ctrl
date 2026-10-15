@@ -525,10 +525,12 @@ func TestPublicLogViewRefoldsAfterAnUndo(t *testing.T) {
 }
 
 // TestPublicLogViewsShareNoGrowableSlices: the fold keeps growing a roll
-// batch's Results in place after a view has been handed out, so each
-// view must get its own copy. Otherwise two views — possibly on two
-// goroutines, the room's and a bot seat's — share a backing array the
-// fold is still appending into.
+// batch's Results in place after a view has been handed out, so no view
+// may share a backing array with the fold. Otherwise two views —
+// possibly on two goroutines, the room's and a bot seat's — read an
+// array the fold is still appending into. Two views of an UNCHANGED
+// ring may share one finished log (#3823): it is a copy, read-only, and
+// the fold never writes it.
 func TestPublicLogViewsShareNoGrowableSlices(t *testing.T) {
 	g := buildActiveGame(t)
 	a := g.Seats[0].ID
@@ -551,8 +553,20 @@ func TestPublicLogViewsShareNoGrowableSlices(t *testing.T) {
 	roll(3)
 	first := lastRoll(ViewOfGame(g))
 	second := lastRoll(ViewOfGame(g))
-	if &first.Results[0] == &second.Results[0] {
-		t.Fatal("two views share one Results backing array")
+	var fold *int
+	g.LogProjectionCache().Do(func(slot *any) {
+		ring := (*slot).(*logCache).fold.ring
+		for i := 0; i < ring.n; i++ {
+			if e := ring.at(i); e.Kind == LogRoll {
+				fold = &e.Results[0]
+			}
+		}
+	})
+	if fold == nil {
+		t.Fatal("no roll entry in the fold")
+	}
+	if &first.Results[0] == fold || &second.Results[0] == fold {
+		t.Fatal("a view shares the fold's Results backing array")
 	}
 	roll(4)
 	third := lastRoll(ViewOfGame(g))

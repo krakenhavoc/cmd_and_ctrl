@@ -190,6 +190,7 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	out.GraveyardTargetBans = v.GraveyardTargetBans
 	out.DiscardPending = n.idKeyedIntMap(v.DiscardPending)
 	out.LoopNotice = n.loopNotice(v.LoopNotice)
+	out.LoopRecording = n.loopRecording(v.LoopRecording)
 	out.PlayerControls = n.playerControls(v.PlayerControls)
 	out.ScheduledPlayerControls = n.scheduledPlayerControls(v.ScheduledPlayerControls)
 	out.Outcome = n.outcome(v.Outcome)
@@ -350,6 +351,24 @@ func (n *normalizer) scheduledPlayerControls(v []protocol.ScheduledPlayerControl
 		}
 	}
 	return out
+}
+
+// loopRecording normalises ADR 0193's view: the recorder and the seat that
+// shortened are seat IDs.
+func (n *normalizer) loopRecording(v *protocol.LoopRecordingView) *protocol.LoopRecordingView {
+	if v == nil {
+		return nil
+	}
+	out := *v
+	out.Recorder = n.id(v.Recorder)
+	out.ShortenedBy = n.id(v.ShortenedBy)
+	if v.Iteration != nil {
+		out.Iteration = make([]protocol.LoopStepView, len(v.Iteration))
+		for i, s := range v.Iteration {
+			out.Iteration[i] = protocol.LoopStepView{Actor: n.id(s.Actor), Label: s.Label}
+		}
+	}
+	return &out
 }
 
 func (n *normalizer) loopNotice(v *protocol.LoopNoticeView) *protocol.LoopNoticeView {
@@ -626,6 +645,7 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 		}},
 
 		LoopNotice:              &protocol.LoopNoticeView{Source: ownerID, Label: "loop", Controller: ownerID, Count: 3},
+		LoopRecording:           &protocol.LoopRecordingView{Recorder: ownerID, Status: "ready", Steps: 4, MaxIterations: 1000},
 		PlayerControls:          []protocol.PlayerControlView{{Controller: ownerID, Controlled: ownerID, Source: ownerID, Until: "turn"}},
 		ScheduledPlayerControls: []protocol.ScheduledPlayerControlView{{Controller: ownerID, Controlled: oppID, SourceName: "Emrakul, the Promised End"}},
 		ControlledLegalActions:  map[string]*protocol.LegalActionsView{oppID: {Pass: true}},

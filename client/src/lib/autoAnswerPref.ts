@@ -15,6 +15,7 @@
 
 import type { DockRequest } from "./dock";
 import { L } from "./labels";
+import { isTriggerOrderKey, triggerOrderNoticeText } from "./triggerOrderMemory";
 import type { GameView, LogEvent, PendingChoiceView, PlayerView } from "./protocol";
 import {
   MAX_AUTO_ANSWERS,
@@ -180,6 +181,10 @@ export function askedByHandText(c: PendingChoiceView | null | undefined): string
       return "A loop was spotted, so automatic answers are paused. You're asked.";
     case "undone":
       return "You undid the automatic answer, so you're asked this time.";
+    case "changed":
+      return "These triggers changed since you chose their order, so you're asked.";
+    case "hidden":
+      return "One of these triggers comes from a hidden card, so you're asked.";
     default:
       return null;
   }
@@ -238,6 +243,8 @@ export function newAutoAnswerEntries(
  * entry's label take the turn.
  */
 function noticeText(e: LogEvent, cardName: string): string {
+  // #3016: a remembered trigger order names the rows it put in order.
+  if (e.call === "order") return triggerOrderNoticeText(e);
   if (e.auto_answer_key === TURN_SKIP_ORDER_KEY) {
     return e.call === "yes"
       ? `${cardName || "Your skip"}: used your own skip on your extra turn`
@@ -303,7 +310,9 @@ export function autoAnswerNoticeRequest(
       {
         id: "auto-answer-ask",
         label: L.askMeNextTime,
-        title: "Remove this rule; the answer just given stands",
+        title: isTriggerOrderKey(notice.key)
+          ? "Stop reusing this order; the order just used stands"
+          : "Remove this rule; the answer just given stands",
         onPress: onAskNextTime,
       },
     ],

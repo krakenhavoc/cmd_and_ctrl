@@ -272,6 +272,15 @@ type Player struct {
 	// browser is closed.
 	AutoAnswers map[string]AutoAnswer
 
+	// TriggerOrderMemory is this seat's remembered trigger orders (ADR
+	// 0018's eighth amendment, #3016): a ranking of rows per batch,
+	// filed under the trigger-order prompt's AutoAnswerKey, at most
+	// MaxTriggerOrderMemory of them. Unlike AutoAnswers it is game
+	// state, not a setting: it is written by the commit that answered
+	// the prompt, so undoing that commit takes it back, and RestoreFrom
+	// does not carry it. Always empty for a bot seat.
+	TriggerOrderMemory map[string]RememberedTriggerOrder
+
 	// MulligansTaken is the count of Mulligan calls this player has
 	// made in the current opening-hand window. Reset at Start. The UI
 	// shows it, and it is what the London mulligan's bottom count is

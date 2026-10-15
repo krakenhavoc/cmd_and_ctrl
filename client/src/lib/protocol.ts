@@ -262,9 +262,24 @@ export type ActionType =
   // answers to repeated prompts, replacing the list ("always" or
   // "never"; Ask is no rule). A setting, not a play: never undoable.
   | "set_auto_answers"
+  // ADR 0018's eighth amendment (#3016): `{key?: string}` — forget the
+  // trigger order remembered under `key` (a trigger_order prompt's
+  // auto_answer_key), or every one with no key. Never undoable.
+  | "forget_trigger_order"
   // ADR 0150 §4 (owner decision 5): `{choice_id?}` — the caster
   // withdraws the request for help an assisted cast is parked on.
   | "cancel_assist"
+  // ADR 0193 (CR 732.2): demonstrate a loop. `loop_record_start`,
+  // `loop_record_stop` and `loop_record_cancel` take no params;
+  // `loop_propose` takes `{count}` (1–1000); `resolve_loop_proposal`
+  // answers a loop_proposal prompt with `{choice_id, accept: true}` or
+  // `{choice_id, shorten: {iteration, step}}`. None is undoable; the
+  // replay they lead to is one undo entry.
+  | "loop_record_start"
+  | "loop_record_stop"
+  | "loop_record_cancel"
+  | "loop_propose"
+  | "resolve_loop_proposal"
   | "sacrifice_permanent"
   | "set_goaded"
   | "set_initiative"
@@ -585,6 +600,9 @@ export interface GameView {
   // person has to ask for the next iteration, with the loop's trigger
   // still on the stack. Table-wide and identical for every seat.
   loop_notice?: LoopNoticeView;
+  // ADR 0193 (CR 732.2): the loop a player is recording, has recorded or
+  // has proposed. Table-wide and identical for every seat.
+  loop_recording?: LoopRecordingView;
   // ADR 0057 (#749): the result of an ended game — who won, or a draw,
   // and why. Absent while the game is active and for a table an admin
   // closed with no result. An effect win ends the game with the other
@@ -639,6 +657,46 @@ export interface LoopNoticeView {
   label: string;
   controller?: string;
   count: number;
+}
+
+// ADR 0193: GameView.loop_recording. `status` is "recording" (steps
+// counts the actions so far), "ready" (it closed: net and iteration are
+// set) or "proposed" (count more iterations, ending at end).
+export interface LoopRecordingView {
+  recorder: string;
+  status: string;
+  steps: number;
+  name?: string;
+  net?: string;
+  iteration?: LoopStepView[];
+  max_iterations: number;
+  count?: number;
+  end?: LoopPointView;
+  shortened_by?: string;
+}
+
+// Before step `step` (0-based) of iteration `iteration` (1-based).
+export interface LoopPointView {
+  iteration: number;
+  step: number;
+}
+
+export interface LoopStepView {
+  actor?: string;
+  label: string;
+}
+
+// ADR 0193: PendingChoiceView.loop_proposal, on a loop_proposal prompt.
+// choice_points are the indices of steps that are the chooser's own:
+// where CR 732.2b lets them shorten the proposal.
+export interface LoopProposalView {
+  proposer: string;
+  name?: string;
+  count: number;
+  end: LoopPointView;
+  net?: string;
+  steps: LoopStepView[];
+  choice_points?: number[];
 }
 
 // RevealView is one reveal: the cards a player showed the whole table
@@ -932,6 +990,10 @@ export type LogKind =
   // standing answer ("Bob paid {1} for Rhystic Study (automatic)").
   // Server-rendered `text`.
   | "auto_answer"
+  // ADR 0193: the demonstrated-loop conversation, and a replay's one
+  // line ("P1 repeats Basalt Monolith ×500: P1: library -500").
+  // Server-rendered `text`.
+  | "loop"
   // A player left the game. `cause` says why ("life", "empty_draw",
   // "poison", "commander_damage", "effect", "concede"); `card_id` is
   // the source of an effect loss. One line per departure (ADR 0057).
@@ -1289,8 +1351,9 @@ export interface LogEvent {
   sides?: number;
   results?: number[];
   faces?: string[];
-  // A coin call on a `flip`; on an `auto_answer` (ADR 0127), the answer.
-  call?: "heads" | "tails" | "pay" | "dont_pay" | "yes" | "no";
+  // A coin call on a `flip`; on an `auto_answer` (ADR 0127), the answer,
+  // "order" for a remembered trigger order (#3016, `label` the rows).
+  call?: "heads" | "tails" | "pay" | "dont_pay" | "yes" | "no" | "order";
   wins?: number;
   // ADR 0121 §3: the seats an `opening_roll` entry names — the seats
   // that tied, or the seats the host rolled for. On `votes_revealed`
@@ -1604,6 +1667,10 @@ export interface PendingChoiceView {
     // resolved this turn; loop_max_iterations is the ceiling the
     // engine will accept.
     | "loop_shortcut"
+    // ADR 0193, CR 732.2b: another player proposes repeating a loop
+    // they recorded. Accept, or shorten it to one of your own steps;
+    // answered with resolve_loop_proposal, not resolve_choice.
+    | "loop_proposal"
     // #764, CR 603.3c: a modal triggered ability's mode, chosen as
     // the ability is put on the stack. mode_options / mode_indexes /
     // mode_min / mode_max / mode_repeatable describe the offer.
@@ -1715,6 +1782,11 @@ export interface PendingChoiceView {
   // itself ("Ajani's Pridemate watches life totals."). Display text,
   // shown under the heading; absent when there is no reason.
   trigger_order_why?: string;
+  // #3016 (ADR 0018's eighth amendment): on a keyed trigger_order
+  // prompt, true when the chooser has an order remembered for this
+  // batch — the "Use this order again" toggle's starting state. The
+  // chooser's alone.
+  trigger_order_remembered?: boolean;
   // S20 sub-PR 2: populated for kind "pick_target" — a targeted
   // trigger's controller chooses its target. The client enters the
   // board-click targeting flow with this legal set (no modal) and
@@ -1942,6 +2014,8 @@ export interface PendingChoiceView {
   // answer the engine accepts. `reason` carries "<card> — <ability>".
   loop_count?: number;
   loop_max_iterations?: number;
+  // ADR 0193: populated for kind "loop_proposal".
+  loop_proposal?: LoopProposalView;
   // #764, CR 603.3c: populated for kind "mode_pick" — the bullets a
   // modal TRIGGER offers its controller as the ability is put on the
   // stack. Only the choosable ones are listed (a bullet whose clause
@@ -2015,6 +2089,11 @@ export interface ReplacementOptionView {
   id: string;
   label?: string;
   source_card_id?: string;
+  // #3016: on a keyed trigger_order prompt, which of the batch's rows
+  // this trigger is (1, 2, …; copies of one ability share it). Only an
+  // order that keeps each row together can be remembered. The
+  // chooser's alone.
+  row?: number;
 }
 
 // DamageAssignmentView mirrors protocol.DamageAssignmentView — the
@@ -2326,13 +2405,19 @@ export interface PlayerView {
   // automatic answer while it is the top undo entry, so `undo` takes it
   // back. Own view only; absent once anything else sits on top.
   undo_auto_answer?: number;
+  // #3016: how many trigger orders this seat has remembered this game,
+  // for the game menu's "Forget remembered trigger orders (N)". Own
+  // view only.
+  trigger_order_memory_count?: number;
   // Why an `undo` from this seat would be refused by the undo stack
   // right now (#2963): "nothing" (nothing on the stack), "not_yours"
   // (the most recent action is another seat's), "game_over" or
-  // "secret_vote" (it revealed a secret vote, ADR 0180). Absent
-  // means the stack allows it; the per-turn budget is separate
-  // (undos_remaining). Own view only.
-  undo_blocked?: "nothing" | "not_yours" | "game_over" | "secret_vote";
+  // "secret_vote" (it revealed a secret vote, ADR 0180), "past_bot"
+  // (a bot has acted since) or "too_deep" (past the last eight
+  // actions), the last two refused for everyone, admin included
+  // (ADR 0194). Absent means the stack allows it; the per-turn budget
+  // is separate (undos_remaining). Own view only.
+  undo_blocked?: "nothing" | "not_yours" | "game_over" | "secret_vote" | "past_bot" | "too_deep";
   // Number of mulligans this player has taken in the current
   // opening-hand window. Omitempty on the wire — absent means 0.
   // Added in S08.
@@ -5039,7 +5124,16 @@ export interface TableSettingsView {
 // ADR 0127: why a prompt with a standing answer is asked by hand.
 // "controlled" (ADR 0167 §4): another player controls the chooser, so
 // their standing answer does not apply.
-export type AskedByHand = "no_mana" | "empty_library" | "loop" | "undone" | "controlled";
+export type AskedByHand =
+  | "no_mana"
+  | "empty_library"
+  | "loop"
+  | "undone"
+  | "controlled"
+  // #3016: a remembered trigger order whose batch changed, or whose
+  // source is now hidden.
+  | "changed"
+  | "hidden";
 
 /** ADR 0166 / 0167: one player making another's decisions right now. */
 export interface PlayerControlView {

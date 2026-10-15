@@ -614,6 +614,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 			return 0, false
 		}
 		client.sendRaw(protocol.KindSnapshot, raw)
+		room.noteFirstFrame()
 		client.log.Debug("staged "+label+" snapshot", "seq", seq)
 		return seq, true
 	}
@@ -843,11 +844,15 @@ func (h *Hub) BroadcastChat(gameID uuid.UUID, msg protocol.ChatPayload) {
 // full send buffer disconnects the slow client rather than dropping
 // the frame silently — see sendRaw for the same policy.
 //
-// The filter + marshal happens per client because each viewer sees a
-// tailored view. At ≤4 clients per room this is microseconds and
-// keeps the filter logic strictly server-side. If we ever scale past
-// that, lift the marshalling outside this method and cache the bytes
-// by player ID.
+// The filter + marshal happens once per VIEWER, not once per client
+// (#3823): a frame is a function of the view and the viewer ID
+// FilterViewFor is given, so every client with the same viewer ID —
+// every spectator, the admin's tabs, one player's two tabs — is sent
+// the same bytes, built once. The bytes are read-only from here on
+// (sendRaw queues them; the write pump only reads them), so sharing
+// them is sharing a string. A client with a different viewer ID never
+// sees another's frame: the memo is keyed by exactly the value the
+// filter is.
 func (h *Hub) broadcastToRoom(gameID uuid.UUID, seq uint64, generation uint64, view protocol.GameView) {
 	start := time.Now()
 	defer func() { metrics.WSBroadcast(time.Since(start)) }()
@@ -856,16 +861,26 @@ func (h *Hub) broadcastToRoom(gameID uuid.UUID, seq uint64, generation uint64, v
 	}
 	h.mu.RLock()
 	defer h.mu.RUnlock()
+	type built struct {
+		raw []byte
+		err error
+	}
+	frames := make(map[string]built, 4)
 	for c := range h.clients {
 		if c.gameID != gameID {
 			continue
 		}
-		raw, err := marshalSnapshotFrame(seq, generation, protocol.FilterViewFor(view, viewerIDForFilter(c.playerID, c.admin)))
-		if err != nil {
-			c.log.Error("marshal broadcast snapshot failed", "err", err)
+		viewer := viewerIDForFilter(c.playerID, c.admin)
+		f, ok := frames[viewer]
+		if !ok {
+			f.raw, f.err = marshalSnapshotFrame(seq, generation, protocol.FilterViewFor(view, viewer))
+			frames[viewer] = f
+		}
+		if f.err != nil {
+			c.log.Error("marshal broadcast snapshot failed", "err", f.err)
 			continue
 		}
-		c.sendRaw(protocol.KindSnapshot, raw)
+		c.sendRaw(protocol.KindSnapshot, f.raw)
 	}
 }
 
@@ -1225,6 +1240,12 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			case errors.Is(err, ErrGameOverUndo):
 				c.sendError(frame.ID, protocol.CodeBadRequest,
 					"the game is over — only the admin can undo past its end")
+			case errors.Is(err, ErrUndoPastBot):
+				c.sendError(frame.ID, protocol.CodeBadRequest,
+					"a bot has acted since — a bot's move can't be taken back")
+			case errors.Is(err, ErrUndoTooDeep):
+				c.sendError(frame.ID, protocol.CodeBadRequest,
+					"undo only goes back 8 actions")
 			case errors.Is(err, ErrNotYourUndo):
 				c.sendError(frame.ID, protocol.CodeBadRequest,
 					"you can only undo your own most recent action")

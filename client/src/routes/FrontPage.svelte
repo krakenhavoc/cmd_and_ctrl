@@ -3,14 +3,22 @@
   // #/login (ADR 0156 §4, mockup A). A session never sees it: the router
   // sends every session here on to the Lobby (ADR 0112 §1).
   //
+  // DESIGN TRIAL (design/plugin-trial, not for merge as is): the taste
+  // skill's art direction and Vercel's interface guidelines applied to
+  // this page. The idea: the four seats of a pod become the hero picture.
+  // It is drawn in HTML from the table's own vocabulary (seat colours,
+  // life totals, the turn ring) and shows no card art, which ADR 0092
+  // keeps away from signed-out visitors.
+  //
   //   - The hero: the pitch, Sign in with Discord and Join our Discord
-  //     server side by side, Try a practice game under them, and beside
-  //     them the steps to an account. With the gate on (GET /community's
-  //     `gate`) those are join the C2 Discord, request access, sign in;
-  //     with it off, only the last, and a line inviting people to the
-  //     server.
-  //   - Below: Have an invite? (the sign-in page's invite box, unchanged),
-  //     Check a deck, Roadmap and About.
+  //     side by side, Try a practice game under them; beside them, the
+  //     table.
+  //   - The steps to an account, as a band under the hero. With the gate
+  //     on (GET /community's `gate`) those are join the C2 Discord,
+  //     request access, sign in; with it off, only the last, and a line
+  //     inviting people to the server.
+  //   - Below: Have an invite? as a band of its own, then Check a deck,
+  //     Roadmap and New here? as plain links.
   //
   // Every Discord placement hides when the server names no invite. The
   // sign-in button shows only once /auth/discord/config says Discord
@@ -25,12 +33,40 @@
   import { PRIVACY_HASH } from "../lib/privacy";
   import { ABOUT_HASH, GUIDE_HASH } from "../lib/about";
   import { L } from "../lib/labels";
+  import { seatColor } from "../lib/colors";
 
   let discordEnabled = $state(false);
+
+  // The table in the hero. One seat takes 3 from a bot's attacker and the
+  // turn passes once, so the picture reads as a game in progress. Played
+  // once, never on a loop, and not at all under reduced motion.
+  const seats = [
+    { name: "You", life: 40, bot: false },
+    { name: "Mara", life: 33, bot: false },
+    { name: "Bot", life: 28, bot: true },
+    { name: "Dev", life: 40, bot: false },
+  ];
+  let lives = $state(seats.map((s) => s.life));
+  let turn = $state(2);
+  let hit = $state(-1);
+
   onMount(() => {
     void discordAuthEnabled().then((on) => {
       discordEnabled = on;
     });
+    const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? true;
+    if (still) return;
+    const timers = [
+      setTimeout(() => {
+        hit = 0;
+        lives[0] = 37;
+      }, 1400),
+      setTimeout(() => {
+        hit = -1;
+        turn = 3;
+      }, 2600),
+    ];
+    return () => timers.forEach(clearTimeout);
   });
 
   const invite = $derived($community.invite_url);
@@ -46,17 +82,16 @@
 
   <section class="hero" aria-labelledby="front-title">
     <div class="pitch">
-      <p class="eyebrow">Free, unofficial, four seats</p>
-      <h1 id="front-title" class="title">
-        Your Commander pod's table, <span class="hot">over the wire.</span>
+      <h1 id="front-title" class="title rise" style="--d: 0ms">
+        Your Commander pod’s table, <span class="hot">over the wire.</span>
       </h1>
-      <p class="lede">
+      <p class="lede rise" style="--d: 80ms">
         Four seats, a rules engine that resolves thousands of cards for you, and bots to fill an
         empty chair. Free and unofficial.
       </p>
 
       {#if discordEnabled || invite}
-        <div class="ctas">
+        <div class="ctas rise" style="--d: 160ms">
           {#if discordEnabled}
             <a class="btn discord lg" href={discordLoginHref()}>
               <Icon name="discord" size={18} />
@@ -71,16 +106,16 @@
         </div>
       {/if}
 
-      <p class="practice">
+      <p class="practice rise" style="--d: 220ms">
         <a class="btn ghost" href="#/practice"
           ><Icon name="robot" size={15} /> {L.tryPracticeGame}</a
         >
         <span
-          >No account needed: five minutes against a bot that shows you where everything is.</span
+          >No account needed: 5&nbsp;minutes against a bot that shows you where everything is.</span
         >
       </p>
 
-      <p class="fine">
+      <p class="fine rise" style="--d: 280ms">
         {#if discordEnabled}
           Your Discord name and avatar become your seat, and your tables, games and decks follow you
           to any device.
@@ -89,45 +124,68 @@
       </p>
     </div>
 
-    <aside class="steps-panel" aria-label="how to get an account">
-      {#if gate}
-        <ol class="steps">
-          <li class="step">
-            <span class="n" aria-hidden="true">1</span>
-            <div>
-              <h2>Join the C2 Discord</h2>
-              <p>That's where pods form, bugs get reported and new cards are announced.</p>
-            </div>
-          </li>
-          <li class="step">
-            <span class="n" aria-hidden="true">2</span>
-            <div>
-              <h2>Request account access</h2>
-              <p>
-                Answer yes to “request account access” in the server's onboarding, and a mod gives
-                you the Elder Dragon Highlander role.
-              </p>
-            </div>
-          </li>
-          <li class="step">
-            <span class="n hot" aria-hidden="true">3</span>
-            <div>
-              <h2>Sign in and sit down</h2>
-              <p>Create a table, invite your pod, or start a practice game against bots.</p>
-            </div>
-          </li>
-        </ol>
-      {:else}
-        <div class="step solo">
-          <span class="n hot" aria-hidden="true"><Icon name="check" size={16} /></span>
-          <div>
-            <h2>Sign in and sit down</h2>
-            <p>Create a table, invite your pod, or start a practice game against bots.</p>
-          </div>
+    <div
+      class="table rise"
+      style="--d: 120ms"
+      data-ui
+      role="img"
+      aria-label="A four-seat table in progress: you, two friends and a bot in the empty chair"
+    >
+      {#each seats as seat, i (seat.name)}
+        <div
+          class="seat"
+          class:you={i === 0}
+          class:turn={turn === i}
+          class:hit={hit === i}
+          style="--seat: {seatColor(i)}"
+        >
+          <span class="who">
+            {seat.name}{#if seat.bot}<span class="chip">bot</span>{/if}
+          </span>
+          <span class="life">{lives[i]}</span>
+          <span class="row">
+            <span class="zone">Hand {7 - i}</span>
+            <span class="zone">Library {88 - 3 * i}</span>
+          </span>
+        </div>
+      {/each}
+      <div class="centre">
+        <span class="step">Combat</span>
+        <span class="whose"
+          >{seats[turn].name === "You" ? "Your" : `${seats[turn].name}’s`} turn</span
+        >
+      </div>
+    </div>
+  </section>
+
+  <aside class="steps-panel" aria-label="how to get an account">
+    {#if gate}
+      <ol class="steps">
+        <li class="step-item">
+          <h2>Join the C2 Discord</h2>
+          <p>That’s where pods form, bugs get reported and new cards are announced.</p>
+        </li>
+        <li class="step-item">
+          <h2>Request account access</h2>
+          <p>
+            Answer yes to “request account access” in the server’s onboarding, and a mod gives you
+            the Elder Dragon Highlander role.
+          </p>
+        </li>
+        <li class="step-item last">
+          <h2>Sign in and sit down</h2>
+          <p>Create a table, invite your pod, or start a practice game against bots.</p>
+        </li>
+      </ol>
+    {:else}
+      <div class="solo">
+        <div>
+          <h2>Sign in and sit down</h2>
+          <p>Create a table, invite your pod, or start a practice game against bots.</p>
         </div>
         {#if invite}
           <p class="invite-line">
-            <Icon name="discord" size={16} />
+            <Icon name="discord" size={18} />
             <span
               >Looking for a pod? <a href={invite} target="_blank" rel="noopener noreferrer"
                 >Come and say hello on the C2 Discord.</a
@@ -135,46 +193,48 @@
             >
           </p>
         {/if}
-      {/if}
-    </aside>
-  </section>
+      </div>
+    {/if}
+  </aside>
 
   <section class="cards" aria-label="more ways in">
-    <div class="card invite-card">
-      <h2>Have an invite?</h2>
-      <p>A host's link or code seats you as a guest. No account needed.</p>
+    <div class="invite-band">
+      <div>
+        <h2>Have an invite?</h2>
+        <p>A host’s link or code seats you as a guest. No account needed.</p>
+      </div>
       <InviteBox />
     </div>
-    <div class="card">
-      <h2>Check a deck</h2>
-      <p>Paste a list and see how much of it plays as printed.</p>
-      <a class="link-arrow" href="#/decks">Decks</a>
-    </div>
-    <div class="card">
-      <h2>Roadmap</h2>
-      <p>What the engine does today, what's partial, and what's next.</p>
-      <a class="link-arrow" href="#/roadmap">Roadmap</a>
-    </div>
-    <div class="card">
-      <h2>New here?</h2>
-      <p>How to get in, find a pod and play your first game; and what this project is.</p>
-      <p class="links">
-        <a class="link-arrow" href={GUIDE_HASH}>Getting started</a>
-        <a class="link-arrow" href={ABOUT_HASH}>About</a>
-      </p>
+    <div class="ways">
+      <div class="way">
+        <h2>Check a deck</h2>
+        <p>Paste a list and see how much of it plays as printed.</p>
+        <a class="link-arrow" href="#/decks">Decks</a>
+      </div>
+      <div class="way">
+        <h2>Roadmap</h2>
+        <p>What the engine does today, what’s partial, and what’s next.</p>
+        <a class="link-arrow" href="#/roadmap">Roadmap</a>
+      </div>
+      <div class="way">
+        <h2>New here?</h2>
+        <p>How to get in, find a pod and play your first game; and what this project is.</p>
+        <p class="links">
+          <a class="link-arrow" href={GUIDE_HASH}>Getting started</a>
+          <a class="link-arrow" href={ABOUT_HASH}>About</a>
+        </p>
+      </div>
     </div>
   </section>
 </main>
 
 <style>
-  /* Page.svelte's wide frame (its rules are scoped to it): the hero is
-     not a page head, so this page draws the frame itself. */
   .front {
     flex: 1 0 auto;
     width: 100%;
-    max-width: calc(1200px + 2 * var(--page-gutter));
+    max-width: calc(1240px + 2 * var(--page-gutter));
     margin: 0 auto;
-    padding: 64px var(--page-gutter) 64px;
+    padding: 72px var(--page-gutter) 96px;
     box-sizing: border-box;
     min-width: 0;
   }
@@ -183,147 +243,242 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 14px;
-    border-radius: 10px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
     background: var(--accent-soft);
-    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
     color: var(--accent-strong);
-    font-size: 12.5px;
+    font-size: 15px;
   }
 
+  /* The hero: the pitch on the left, the table as its picture. */
   .hero {
     display: grid;
-    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-    gap: 40px 64px;
-    align-items: start;
-  }
-  .eyebrow {
-    margin: 0 0 16px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--accent);
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 48px 72px;
+    align-items: center;
   }
   .title {
     margin: 0;
     font-family: var(--font-display);
-    font-size: clamp(38px, 3.9vw, 54px);
+    font-size: clamp(44px, 5.6vw, 84px);
     font-weight: 800;
-    line-height: 1.04;
-    letter-spacing: -0.035em;
+    line-height: 0.98;
+    letter-spacing: -0.04em;
     text-transform: none;
+    text-wrap: balance;
     color: var(--fg);
-    max-width: 19ch;
+    max-width: 17ch;
   }
+  /* The brand's one accented phrase, in the brighter orange (10:1 on the
+     page) so it carries at a glance. */
   .hot {
-    color: var(--accent);
+    color: var(--accent-strong);
   }
   .lede {
-    margin: 22px 0 0;
-    max-width: 52ch;
-    font-size: 17px;
+    margin: 28px 0 0;
+    max-width: 46ch;
+    font-size: 18px;
     line-height: 1.55;
-    color: var(--fg-muted);
+    color: var(--fg);
   }
   .ctas {
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
-    margin-top: 32px;
+    margin-top: 36px;
   }
   .btn.lg {
-    height: 50px;
-    padding: 0 24px;
-    font-size: 15px;
+    height: 52px;
+    padding: 0 26px;
+    font-size: 16px;
   }
   .practice {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 10px 14px;
-    margin: 18px 0 0;
-    font-size: 13px;
-    color: var(--fg-dim);
+    gap: 10px 16px;
+    margin: 20px 0 0;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--fg-muted);
   }
   .practice span {
-    flex: 1 1 22ch;
+    flex: 1 1 24ch;
     max-width: 40ch;
   }
   .fine {
-    margin: 18px 0 0;
-    max-width: 60ch;
-    font-size: 12px;
+    margin: 20px 0 0;
+    max-width: 56ch;
+    font-size: 16px;
     line-height: 1.5;
-    color: var(--fg-dim);
+    color: var(--fg-muted);
   }
   .fine a {
+    color: var(--fg);
+  }
+
+  /* The table, laid out as the real board is: the three opponents across
+     the top, the step strip, and your seat along the bottom. One raised
+     surface with a visible edge holds all four, so it reads as one table
+     rather than four tiles (Ian's review on #3839). */
+  .table {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    padding: 14px;
+    border-radius: var(--radius-xl);
+    background: var(--surface-raised);
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--fg) 16%, transparent);
+  }
+  .seat {
+    order: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+    padding: 14px 16px;
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--seat) 18%, var(--bg-1));
+    box-shadow: inset 0 4px 0 var(--seat);
+    transition:
+      background 300ms var(--ease),
+      box-shadow 300ms var(--ease);
+  }
+  .seat .life {
+    font-size: clamp(34px, 3vw, 44px);
+  }
+  .seat.you {
+    order: 3;
+    grid-column: 1 / -1;
+    padding: 20px 24px;
+    box-shadow: inset 0 -4px 0 var(--seat);
+  }
+  .seat.you .life {
+    font-size: clamp(56px, 6vw, 88px);
+  }
+  .seat.turn {
+    background: color-mix(in srgb, var(--seat) 28%, var(--bg-1));
+    box-shadow:
+      inset 0 4px 0 var(--seat),
+      inset 0 0 0 2px var(--priority);
+  }
+  .seat.you.turn {
+    box-shadow:
+      inset 0 -4px 0 var(--seat),
+      inset 0 0 0 2px var(--priority);
+  }
+  .who {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--fg);
+  }
+  .chip {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--seat) 30%, transparent);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .life {
+    font-family: var(--font-display);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg);
+  }
+  .seat.hit .life {
+    color: var(--attack);
+    animation: knock 420ms var(--ease);
+  }
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    font-size: 14px;
+    color: color-mix(in srgb, var(--fg) 78%, transparent);
+    font-variant-numeric: tabular-nums;
+  }
+  /* The step strip sits between the opponents and you, as the table's own
+     step bar does. */
+  .centre {
+    order: 2;
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    background: var(--bg);
+  }
+  .step {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--priority-strong);
+  }
+  .whose {
+    font-size: 14px;
     color: var(--fg-muted);
   }
 
+  /* How to get an account: a band two tone steps up from the page
+     (1.3:1), so it reads as its own section; one step (1.06:1) blended in. */
+  .steps-panel {
+    margin-top: 88px;
+    padding: 36px 40px;
+    border-radius: var(--radius-xl);
+    background: var(--surface-raised);
+  }
   .steps {
     list-style: none;
     margin: 0;
     padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .step {
-    display: flex;
-    gap: 16px;
-    padding: 20px 22px;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-strong);
-    background: var(--surface);
-  }
-  .n {
-    flex: none;
     display: grid;
-    place-items: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: var(--surface-raised);
-    color: var(--fg);
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 15px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 32px;
   }
-  .n.hot {
-    color: var(--accent);
-    background: var(--accent-soft);
-  }
-  .step h2,
-  .card h2 {
+  .steps-panel h2,
+  .cards h2 {
     margin: 0;
     font-family: var(--font-display);
-    font-size: 17px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
     text-transform: none;
+    text-wrap: balance;
     color: var(--fg);
   }
-  .step p,
-  .card p {
-    margin: 6px 0 0;
-    font-size: 13.5px;
-    line-height: 1.5;
+  .step-item.last h2 {
+    color: var(--accent-strong);
+  }
+  .steps-panel p,
+  .cards p {
+    margin: 8px 0 0;
+    font-size: 16px;
+    line-height: 1.55;
     color: var(--fg-muted);
+  }
+  .solo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px 48px;
   }
   .invite-line {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 10px;
-    margin: 14px 4px 0;
-    font-size: 13.5px;
-    line-height: 1.5;
-    color: var(--fg-muted);
+    margin: 0;
   }
   .invite-line :global(svg) {
     flex: none;
-    margin-top: 2px;
     color: #aab3ff;
   }
   .invite-line a {
@@ -331,41 +486,135 @@
     font-weight: 600;
   }
 
+  /* More ways in: the invite box gets a band, the rest are plain links. */
   .cards {
+    margin-top: 120px;
+  }
+  .invite-band {
     display: grid;
-    grid-template-columns: minmax(320px, 1.4fr) repeat(3, minmax(0, 1fr));
-    gap: 16px;
-    margin-top: 56px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: 24px 64px;
+    align-items: center;
+    padding: 40px;
+    border-radius: var(--radius-xl);
+    background: var(--surface-raised);
   }
-  .card {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
+  .invite-band h2 {
+    font-size: 32px;
   }
-  .card .link-arrow {
+  .ways {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 40px;
+    margin-top: 64px;
+  }
+  .way .link-arrow {
     margin-top: 14px;
-    font-size: 13.5px;
+    font-size: 16px;
   }
-  /* Two links in one card, side by side, in the place one would sit. */
-  .card .links {
+  .way .links {
     margin: 14px 0 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 6px 16px;
+    gap: 6px 20px;
   }
-  .card .links .link-arrow {
+  .way .links .link-arrow {
     margin-top: 0;
   }
-  .invite-card p {
-    margin-bottom: 16px;
+
+  /* Entrances: each part rises once, staggered. Nothing stays hidden
+     without motion: the animation only runs where motion is allowed. */
+  @media (prefers-reduced-motion: no-preference) {
+    :global(:root:not([data-reduce-motion="1"])) .rise {
+      animation: rise 560ms var(--ease) both;
+      animation-delay: var(--d, 0ms);
+    }
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes knock {
+    30% {
+      transform: translateX(-6px);
+    }
+    60% {
+      transform: translateX(4px);
+    }
   }
 
-  /* Below the tablet design target the hero and the cards stack; there is
-     no layout of their own (the tablet-minimum rule). */
+  /* Below the tablet design target the hero and the bands stack. */
   @media (max-width: 819px) {
     .hero,
-    .cards {
+    .steps,
+    .invite-band,
+    .ways {
       grid-template-columns: minmax(0, 1fr);
+    }
+    .steps-panel,
+    .invite-band {
+      padding: 28px 24px;
+    }
+  }
+
+  /* Phone width. The table itself stays tablet-minimum, but this page is
+     what a link tapped in Discord opens, so it gets a layout of its own:
+     opponents shrink to a name and a life total, the actions go full
+     width, and the gaps tighten. */
+  @media (max-width: 599px) {
+    .front {
+      padding-top: 40px;
+      padding-bottom: 64px;
+    }
+    .title {
+      font-size: clamp(36px, 10vw, 44px);
+    }
+    .lede {
+      font-size: 17px;
+    }
+    .ctas .btn,
+    .practice .btn {
+      width: 100%;
+    }
+    .table {
+      gap: 8px;
+      padding: 10px;
+    }
+    .seat {
+      padding: 10px 12px;
+      gap: 6px;
+    }
+    .seat:not(.you) .row,
+    .chip {
+      display: none;
+    }
+    .seat .life {
+      font-size: 30px;
+    }
+    .seat.you .life {
+      font-size: 52px;
+    }
+    .who {
+      font-size: 14px;
+    }
+    .steps-panel {
+      margin-top: 56px;
+    }
+    .cards {
+      margin-top: 72px;
+    }
+    .invite-band h2 {
+      font-size: 26px;
+    }
+    .ways {
+      gap: 28px;
+      margin-top: 40px;
     }
   }
 </style>

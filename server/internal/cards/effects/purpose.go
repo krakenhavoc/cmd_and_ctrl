@@ -52,7 +52,8 @@ import (
 //     2026-10-08) that names no clause of its statement, names one
 //     twice, says nothing, or says what the clause's pick cannot be
 //     given (checkTargetPurposes).
-//   - Answers (ADR 0142) off an activated row, or a declaration
+//   - Answers (ADR 0142) off an activated row, other than AnswerRemove on
+//     a triggered one (an edict, #3882), or a declaration
 //     answers.go refuses (checkActivatedAnswers, checkManaAnswers).
 //   - Kicked or FaceUp (ADR 0126's amendment of 2026-10-15, #3762) off
 //     the card, on a card with no single kicker / no face-down cast
@@ -142,10 +143,11 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.PreventCombatDamageToSelf && !onSource {
 		fail("sets PreventCombatDamageToSelf off a triggered or activated row")
 	}
-	if p.Answers != 0 && !onActivated(slot) {
-		fail("declares Answers off an activated row — nothing reads it there yet (ADR 0142 §2)")
+	if p.Answers != 0 && !onActivated(slot) && !(slot == purposeOnTriggered && p.Answers == game.AnswerRemove) {
+		fail("declares Answers off an activated row, other than AnswerRemove (an edict) on a triggered one — nothing reads it there yet (ADR 0142 §2, ADR 0009 #3882)")
 	}
 	checkAnswerBits(p.Answers, fail)
+	checkSaves(p, slot, fail)
 	if p.AwakenLand != 0 && slot != purposeOnAltCost {
 		fail("sets AwakenLand off an alternative cost — it is what an awaken offer adds (ADR 0135 §3)")
 	}
@@ -167,6 +169,25 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 // Answers may be declared on (ADR 0142 §2).
 func onActivated(slot purposeSlot) bool {
 	return slot == purposeOnActivated || slot == purposeOnAnyPlayerActivated
+}
+
+// checkSaves is checkPurpose's half for a declared Saves (#2939 gap 3):
+// on an activated row that declares survive or protect, naming one of
+// the sweep classes.
+func checkSaves(p game.Purpose, slot purposeSlot, fail func(string)) {
+	s := p.Saves
+	if s == nil {
+		return
+	}
+	if !onActivated(slot) {
+		fail("sets Saves off an activated row — it is what a survive or protect row covers")
+	}
+	if !p.Answers.HasAny(game.AnswerSurvive | game.AnswerProtect) {
+		fail("sets Saves on a row that declares neither survive nor protect")
+	}
+	if !slices.Contains(game.SweepMatches, s.Matches) {
+		fail(fmt.Sprintf("sets Saves to the unknown class %q", s.Matches))
+	}
 }
 
 // checkPump is checkPurpose's half for a declared Pump (ADR 0130's
@@ -545,6 +566,19 @@ func CostWithPurpose(ac game.AlternativeCost, p game.Purpose) game.AlternativeCo
 //		DiscardPayoff: &game.DiscardPayoff{Any: true, Counters: 1}})
 func TriggerWithPurpose(t game.TriggeredAbility, p game.Purpose) game.TriggeredAbility {
 	t.Purpose = p
+	return t
+}
+
+// TriggerEdict declares a triggered row an untargeted edict ("each
+// opponent sacrifices a creature"): it sets AnswerRemove on the row's
+// Purpose, keeping what it already declares. Smart autopass reads it,
+// with a declared Sweep, when an opponent's trigger is on the stack
+// (ADR 0009's #3882 amendment). A sweep needs no wrapper: its
+// Purpose.Sweep is read as it stands.
+//
+//	TriggerEdict(WhenThisEnters("Fleshbag Marauder — each player sacrifices a creature", ...))
+func TriggerEdict(t game.TriggeredAbility) game.TriggeredAbility {
+	t.Purpose.Answers |= game.AnswerRemove
 	return t
 }
 

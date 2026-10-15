@@ -413,6 +413,10 @@ type GameSnapshot struct {
 	LoopNotice    *LoopNotice `json:"loopNotice,omitempty"`
 	LoopThreshold int         `json:"loopThreshold,omitempty"`
 
+	// LoopRecording is ADR 0193's demonstrated loop: plain data,
+	// embedded by value. Additive within this schema version (#522).
+	LoopRecording *LoopRecording `json:"loopRecording,omitempty"`
+
 	DiscardPending map[uuid.UUID]int `json:"discardPending,omitempty"`
 
 	// Promises is a slice because its live form is keyed by a
@@ -767,6 +771,10 @@ type playerSnapshot struct {
 	// (Leyline of Sanctity's "you have hexproof") is not here and
 	// needs nothing: it comes back with the battlefield.
 	Statics []PlayerStatic `json:"statics,omitempty"`
+	// TriggerOrderMemory is Player.TriggerOrderMemory (ADR 0018's eighth
+	// amendment, #3016). Additive: a file written before it restores
+	// with none, so every batch is asked by hand again.
+	TriggerOrderMemory map[string]RememberedTriggerOrder `json:"triggerOrderMemory,omitempty"`
 }
 
 type zoneSnapshot struct {
@@ -1940,8 +1948,36 @@ func (g *Game) CaptureSnapshot() *GameSnapshot {
 	return g.captureSnapshotLocked()
 }
 
+// CaptureRestorePoint is CaptureSnapshot for the room's restore-point
+// writer (#3823). The one difference is the event log: the snapshot's
+// Events is the live log itself, capped at its current length, not a
+// copy, and the log's EventLogGeneration is returned with it.
+//
+// The share is safe because the log is append-only under one
+// generation (projection_cache.go): nothing writes an index below the
+// capped length while the generation holds, and an append past the cap
+// reallocates rather than writing into the shared array. Copying 5,000
+// events on every commit was most of the capture's bytes, and the
+// writer only reads them, to encode each one once
+// (EncodedEventLog). A caller that might write to the snapshot's
+// Events uses CaptureSnapshot.
+//
+// Concurrency: takes a read lock, like CaptureSnapshot.
+func (g *Game) CaptureRestorePoint() (*GameSnapshot, uint64) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.captureSnapshotEventsLocked(false), g.eventLogGen
+}
+
 // captureSnapshotLocked is the unlocked variant. Caller must hold g.mu.
 func (g *Game) captureSnapshotLocked() *GameSnapshot {
+	return g.captureSnapshotEventsLocked(true)
+}
+
+// captureSnapshotEventsLocked is captureSnapshotLocked with a choice of
+// copying the event log (copyEvents) or sharing it capped at its
+// length (CaptureRestorePoint). Caller must hold g.mu.
+func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s := &GameSnapshot{
 		Schema:                SnapshotSchemaVersion,
 		TakenAt:               time.Now().UTC(),
@@ -2038,6 +2074,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.Activations = cloneActivationTally(g.Activations)
 	s.LoopNotice = cloneLoopNotice(g.LoopNotice)
 	s.LoopThreshold = g.LoopThreshold
+	s.LoopRecording = cloneLoopRecording(g.LoopRecording)
 	s.DiscardPending = copyIntMap(g.DiscardPending)
 
 	if len(g.Promises) > 0 {
@@ -2081,9 +2118,13 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	// #3613: the end of the resolution parked behind those prompts.
 	s.PausedResolutionTail = snapshotResolutionTail(g, g.pausedResolutionTail, cen)
 
-	if len(g.Events) > 0 {
-		s.Events = make([]Event, len(g.Events))
+	switch n := len(g.Events); {
+	case n == 0:
+	case copyEvents:
+		s.Events = make([]Event, n)
 		copy(s.Events, g.Events)
+	default:
+		s.Events = g.Events[:n:n]
 	}
 
 	if len(g.lastKnownBattlefield) > 0 {
@@ -2430,6 +2471,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Speed:                 p.Speed,
 		LandDropsPerTurn:      p.LandDropsPerTurn,
 	}
+	// ADR 0018's eighth amendment (#3016): the remembered trigger orders.
+	out.TriggerOrderMemory = copyTriggerOrderMemory(p.TriggerOrderMemory)
 	if len(p.LifeHistory) > 0 {
 		out.LifeHistory = make([]LifeChange, len(p.LifeHistory))
 		copy(out.LifeHistory, p.LifeHistory)
@@ -3046,6 +3089,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.Activations = cloneActivationTally(s.Activations)
 	g.LoopNotice = cloneLoopNotice(s.LoopNotice)
 	g.LoopThreshold = s.LoopThreshold
+	g.LoopRecording = cloneLoopRecording(s.LoopRecording)
 	g.LandsPlayedThisTurn = copyIntMap(s.LandsPlayedThisTurn)
 	g.ExtraLandDropsThisTurn = copyIntMap(s.ExtraLandDropsThisTurn)
 	g.DrawnThisTurn = copyUUIDListMap(s.DrawnThisTurn)
@@ -3371,6 +3415,8 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Speed:              p.Speed,
 		LandDropsPerTurn:   p.LandDropsPerTurn,
 	}
+	// ADR 0018's eighth amendment (#3016): additive, absent restores empty.
+	out.TriggerOrderMemory = copyTriggerOrderMemory(p.TriggerOrderMemory)
 	// #500: a snapshot written before the field existed carries no
 	// value for it, and restoring 0 would seat a player who may never
 	// play a land again. Nothing in the catalog sets an allowance of

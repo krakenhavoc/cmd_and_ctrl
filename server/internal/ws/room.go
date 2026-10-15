@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -71,7 +72,9 @@ type Room struct {
 	// undoStack holds pre-mutation Game clones paired with the seat
 	// ID of the player whose action produced the post-state. Oldest
 	// first; capped at undoStackCap. Each Apply pushes one entry;
-	// Snapshot does NOT push (it's a no-op for state).
+	// Snapshot does NOT push (it's a no-op for state). Only the top
+	// undoSnapshotDepth entries hold a clone, and a bot's commit holds
+	// none: those entries are barriers nobody can pop (ADR 0194).
 	//
 	// Per-entry caller tracking gates Undo: a seated player may only
 	// pop an entry whose caller matches their own seat. Admin
@@ -148,7 +151,7 @@ type Room struct {
 	// recently WRITTEN restore point (persist.go), so that a shutdown
 	// census (#524) can report how far a live table has drifted from
 	// what disk holds without re-reading or re-marshalling the file.
-	// Guarded by mu, like seq: set only inside writeRestorePointLocked
+	// Guarded by mu, like seq: set only inside publishRestorePointLocked
 	// on a successful write, and by restoreOne at boot (before the
 	// room is registered, so no lock is needed there). The zero value
 	// (a zero At) means "no restore point has ever been written" —
@@ -160,8 +163,31 @@ type Room struct {
 	// points (ADR 0041 phase 3, P7, #1497): the evidence the shutdown
 	// census cannot give, since it reads one instant per deploy and an
 	// idle table at that instant hides everything that happened
-	// mid-game. Guarded by mu; written only by writeRestorePointLocked.
+	// mid-game. Guarded by mu; written only by captureRestorePointLocked.
 	skips skipTally
+
+	// The restore-point rate limit and the encoded event log (#3823,
+	// restore_rate.go). All guarded by mu except restoreGate, a leaf
+	// lock of its own. restoreEvery is how often a restore point may be
+	// written (zero: every restorable commit); restoreLastWrite when the
+	// last write was attempted; restorePending the newest restorable
+	// capture not yet written; restoreTimer the trailing write, with
+	// restoreTimerTok telling a stale firing from the current one;
+	// restoreWrites counts the files written, for tests; eventLog is
+	// each event's JSON, encoded once.
+	restoreEvery     time.Duration
+	restoreLastWrite time.Time
+	restorePending   *pendingRestorePoint
+	restoreTimer     *time.Timer
+	restoreTimerTok  uint64
+	restoreWrites    int
+	restoreGate      restoreGate
+	eventLog         game.EncodedEventLog
+
+	// bootFirstFrame is set on a room the boot's restore pass brought
+	// back and cleared when its first snapshot frame goes to a client,
+	// which is what cmdctrl_boot_first_frame_seconds times (#3037).
+	bootFirstFrame atomic.Bool
 
 	// tableRolls is the hub's rate limit on roll_table_die (ADR 0121
 	// §5, table_roll.go): when each seat last rolled at the table.
@@ -172,6 +198,10 @@ type Room struct {
 	// chat is the last few chat lines, for a player report's excerpt
 	// (chat_recent.go). Its own mutex; in memory only.
 	chat chatRing
+
+	// loopBudget overrides game.MaxLoopReplayDispatches for this room's
+	// loop replays (loop_replay.go); zero is the default. Set by tests.
+	loopBudget int
 }
 
 // restorePointRecord is Room's bookkeeping about its own last written
@@ -181,9 +211,9 @@ type restorePointRecord struct {
 	At  time.Time
 }
 
-// skipTally counts the captures writeRestorePointLocked skipped, by
-// census kind, and the runs of consecutive skips between two written
-// restore points. In-memory only; it dies with the process, which is
+// skipTally counts the captures captureRestorePointLocked skipped, by
+// census kind, and the runs of consecutive skips between two restorable
+// captures. In-memory only; it dies with the process, which is
 // fine, because the shutdown census logs it on the way out.
 type skipTally struct {
 	// ByKind is skipped captures per census counter name
@@ -191,7 +221,7 @@ type skipTally struct {
 	// counts once under each.
 	ByKind map[string]int
 	// Run is the current run of consecutive skipped captures, in
-	// actions; zero right after a restore point is written.
+	// actions; zero right after a restorable capture.
 	Run int
 	// LongestRun is the longest run this process has seen.
 	LongestRun int
@@ -211,8 +241,9 @@ func (s *skipTally) noteSkip(c game.ContinuationCensus) {
 	}
 }
 
-// noteWrite records a written restore point: the current run ends.
-func (s *skipTally) noteWrite() { s.Run = 0 }
+// noteRestorable records a capture that is a restore point, written or
+// pending (restore_rate.go): the current run ends.
+func (s *skipTally) noteRestorable() { s.Run = 0 }
 
 // copyByKind returns a copy of the per-kind map for a report.
 func (s *skipTally) copyByKind() map[string]int {
@@ -231,8 +262,12 @@ func (s *skipTally) copyByKind() map[string]int {
 // Caller == uuid.Nil means the action came from an admin / spectator
 // session and the entry is undoable by any seated player or admin.
 type undoEntry struct {
-	pre    *game.Game
-	caller uuid.UUID
+	// pre is the game before the commit, or nil for a barrier: an
+	// entry nobody can pop, admin included (ADR 0194). barrier says
+	// why it holds no clone.
+	pre     *game.Game
+	barrier undoBarrier
+	caller  uuid.UUID
 	// freeUndo exempts this entry from the undoing player's
 	// UndosRemaining budget. Set only for entries a player is
 	// cleaning up after somebody else — today, a bot improvisation
@@ -260,12 +295,34 @@ type undoEntry struct {
 	autoAnswerSeq uint64
 }
 
-// undoStackCap bounds the per-room undo ring. 32 is a casual-game-
-// reasonable depth — the most common use is "I clicked the wrong
-// card, let me back up one or two", not deep history rewind.
-// Keeping it small bounds the per-room memory footprint (each clone
-// is ~10-100 KB depending on board state).
+// undoBarrier says why an undo entry holds no clone (ADR 0194). The
+// zero value is an entry that holds one.
+type undoBarrier uint8
+
+const (
+	// barrierNone: the entry holds its pre-commit clone.
+	barrierNone undoBarrier = iota
+	// barrierBot: a bot seat's commit. Nobody may take back a bot's
+	// move, admin included, so the room never clones for one; nothing
+	// under it can be reached either (owner decision 1).
+	barrierBot
+	// barrierDepth: the entry fell below the top undoSnapshotDepth
+	// entries and its clone was dropped (owner decision 2).
+	barrierDepth
+)
+
+// undoStackCap bounds the per-room undo ring. The most common use is
+// "I clicked the wrong card, let me back up one or two", not deep
+// history rewind. Entries below the top undoSnapshotDepth keep only
+// their metadata (who made them), so the cap costs next to nothing.
 const undoStackCap = 32
+
+// undoSnapshotDepth is how many entries from the top of the ring keep
+// their full pre-commit clone (ADR 0194, K = 8). A clone of a four-seat
+// midgame is about 650 KB (BenchmarkCloneMidgame: ~400 cards at
+// 1.4 KB), so the ring holds at most about 5 MB a table, and none at a
+// table of bots, whose commits leave barriers.
+const undoSnapshotDepth = 8
 
 // ErrNothingToUndo is returned by Undo when the undo stack is empty
 // (no actions have been applied since the room was created or since
@@ -293,6 +350,16 @@ var ErrGameOverUndo = errSentinel("ws: the game is over; only the admin can undo
 // 4): taking it back would let the last voter vote again knowing every
 // other ballot. The admin (caller == uuid.Nil) can still undo.
 var ErrUndoPastSecretVote = errSentinel("ws: that action revealed a secret vote and can't be taken back")
+
+// ErrUndoPastBot is returned by Undo when the top entry is a bot's
+// commit (ADR 0194 owner decision 1): a bot's move is never taken back,
+// by anyone, admin included, and nothing before it can be reached.
+var ErrUndoPastBot = errSentinel("ws: a bot has acted since; a bot's move can't be taken back")
+
+// ErrUndoTooDeep is returned by Undo when the top entry is older than
+// the last undoSnapshotDepth actions (ADR 0194 owner decision 2), for
+// every caller, admin included.
+var ErrUndoTooDeep = errSentinel("ws: undo only goes back 8 actions")
 
 type errSentinel string
 
@@ -353,23 +420,52 @@ func (r *Room) apply(caller uuid.UUID, fn func() error, st *commitStat) (protoco
 	// Stash a pre-mutation clone for the undo stack BEFORE running
 	// fn. Done eagerly so a failing fn doesn't grow history with a
 	// no-op snapshot. If fn fails we drop the clone on the floor.
-	pre := r.Game.Clone()
+	// A bot's commit takes none: it leaves a barrier (ADR 0194).
+	barrier := r.undoBarrierFor(caller)
+	var pre *game.Game
+	if barrier == barrierNone {
+		pre = r.Game.Clone()
+	}
 	if err := fn(); err != nil {
 		return protocol.GameView{}, 0, err
 	}
 	st.applied = true
-	r.pushUndoLocked(undoEntry{pre: pre, caller: caller})
+	r.pushUndoLocked(undoEntry{pre: pre, barrier: barrier, caller: caller})
 	return r.autoAnswerThenCaptureLocked()
 }
 
-// pushUndoLocked pushes one entry onto the undo ring. Caller MUST hold
-// r.mu.
+// undoBarrierFor is barrierBot when stamp is a bot seat, whose commits
+// leave a barrier rather than a clone (ADR 0194), and barrierNone for
+// everyone else: a person, an agent, the admin (uuid.Nil). Caller MUST
+// hold r.mu.
+func (r *Room) undoBarrierFor(stamp uuid.UUID) undoBarrier {
+	if stamp == uuid.Nil {
+		return barrierNone
+	}
+	if bot, _ := r.Game.SeatDriver(stamp); bot {
+		return barrierBot
+	}
+	return barrierNone
+}
+
+// pushUndoLocked pushes one entry onto the undo ring. A barrier entry
+// drops whatever clone it was handed. The entry that falls below the
+// top undoSnapshotDepth drops its clone and becomes a barrier, so the
+// ring never holds more than undoSnapshotDepth clones (ADR 0194).
+// Caller MUST hold r.mu.
 func (r *Room) pushUndoLocked(e undoEntry) {
+	if e.barrier != barrierNone {
+		e.pre = nil
+	}
 	r.undoStack = append(r.undoStack, e)
+	if n := len(r.undoStack) - undoSnapshotDepth - 1; n >= 0 {
+		if old := &r.undoStack[n]; old.barrier == barrierNone {
+			old.pre = nil
+			old.barrier = barrierDepth
+		}
+	}
 	if len(r.undoStack) > undoStackCap {
-		// Drop the oldest entry. Trim by reslicing forward — the
-		// underlying array's first slot is now unreachable, GC'd on
-		// next allocation. Keeping the cap small bounds the leak.
+		// Drop the oldest entry, shifting the rest down in place.
 		r.undoStack = append(r.undoStack[:0], r.undoStack[1:]...)
 	}
 }
@@ -423,7 +519,17 @@ func (r *Room) autoAnswerThenCaptureLocked() (protocol.GameView, uint64, error) 
 			continue
 		}
 		r.Game.SettlePassTurn()
-		r.pushUndoLocked(undoEntry{pre: pre, caller: chooser, freeUndo: true, autoAnswered: choiceID, autoAnswerSeq: seq})
+		// A bot never has a standing answer, so this is never a
+		// barrier today; the clone is taken anyway, for the rollback.
+		r.pushUndoLocked(undoEntry{pre: pre, barrier: r.undoBarrierFor(chooser), caller: chooser, freeUndo: true, autoAnswered: choiceID, autoAnswerSeq: seq})
+	}
+	// ADR 0193: a commit that answered the last seat of a loop proposal
+	// (or moved the game past a recording) is followed, under the same
+	// lock, by the replay — a commit and an undo entry of its own,
+	// captured in the frame returned here.
+	r.Game.TendLoopRecording()
+	if r.Game.LoopReplayDue() {
+		r.replayLoopLocked()
 	}
 	return r.captureLocked(true)
 }
@@ -499,6 +605,10 @@ func (r *Room) applyBundle(b Bundle, st *commitStat) (protocol.GameView, uint64,
 	defer r.mu.Unlock()
 	defer st.hold()()
 
+	// A bundle always clones, because a failing step rolls back to it;
+	// under a bot's stamp the entry drops it once the bundle commits
+	// (ADR 0194). An improvisation is nil-stamped and keeps it.
+	barrier := r.undoBarrierFor(b.Caller)
 	pre := r.Game.Clone()
 	for i, step := range b.Steps {
 		if step == nil {
@@ -515,7 +625,7 @@ func (r *Room) applyBundle(b Bundle, st *commitStat) (protocol.GameView, uint64,
 	}
 
 	st.applied = true
-	r.pushUndoLocked(undoEntry{pre: pre, caller: b.Caller, freeUndo: b.FreeUndo})
+	r.pushUndoLocked(undoEntry{pre: pre, barrier: barrier, caller: b.Caller, freeUndo: b.FreeUndo})
 	r.pendingAnnotation = b.Annotation
 	return r.autoAnswerThenCaptureLocked()
 }
@@ -663,9 +773,10 @@ func (r *Room) notify() {
 // a human undoes as maintenance rather than as a take-back.
 //
 // Returns ErrNothingToUndo (empty stack), ErrGameOverUndo (the game
-// has ended and the caller is not the admin — ADR 0057), ErrNotYourUndo
-// (top entry belongs to another seat), or game.ErrNoUndosRemaining
-// (budget at 0).
+// has ended and the caller is not the admin — ADR 0057), ErrUndoPastBot
+// or ErrUndoTooDeep (the top entry is a barrier, for every caller —
+// ADR 0194), ErrNotYourUndo (top entry belongs to another seat), or
+// game.ErrNoUndosRemaining (budget at 0).
 // Bumps seq on success so connected clients see a regular snapshot
 // frame and don't have to special-case the rewind. The undo itself
 // is NOT pushed onto the stack — no redo at v1.
@@ -692,6 +803,13 @@ func (r *Room) undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
 	// entry that ended the game.
 	if caller != uuid.Nil && r.Game.CurrentState() == game.StateEnded {
 		return protocol.GameView{}, 0, ErrGameOverUndo
+	}
+
+	// ADR 0194: a barrier holds no clone, so nobody can pop it, the
+	// admin included. Checked before the caller gate, because "a bot
+	// has acted since" is the reason that will not go away.
+	if err := top.barrier.err(); err != nil {
+		return protocol.GameView{}, 0, err
 	}
 
 	// Caller gate. Admin (uuid.Nil) bypasses; otherwise the top
@@ -729,6 +847,10 @@ func (r *Room) undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
 	if top.autoAnswered != uuid.Nil {
 		r.Game.MarkAskedByHand(top.autoAnswered, game.AskedByHandUndone)
 	}
+	// ADR 0193 §2 and owner decision 8: an undo ends any loop
+	// recording, since the history it describes is gone. Undoing a
+	// replay returns to the demonstrated iteration's end with it spent.
+	r.Game.DiscardLoopRecording("an undo was taken")
 
 	// Spend the budget AFTER restore — the restore reset the budget
 	// to its pre-action value (which had not yet been spent), so the
@@ -753,6 +875,18 @@ func (r *Room) revealedSecretVoteSinceLocked(e undoEntry) bool {
 		return false
 	}
 	return r.Game.RevealedSecretVoteAfter(e.pre.LastEventSeq())
+}
+
+// err is the refusal an undo of a barrier entry gets, or nil for an
+// entry that holds its clone.
+func (b undoBarrier) err() error {
+	switch b {
+	case barrierBot:
+		return ErrUndoPastBot
+	case barrierDepth:
+		return ErrUndoTooDeep
+	}
+	return nil
 }
 
 // IsErrNothingToUndo reports whether err is one of the expected
@@ -907,20 +1041,11 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 	// Failure is warn-only for the same reason the dump's is: losing
 	// a restore point costs a rewind on the next deploy; refusing the
 	// player's action costs them the move they just made.
+	//
+	// The write itself is rate-limited (restore_rate.go, #3823): the
+	// capture is taken here, and written now or within the interval.
 	if r.dumpDir != "" && advanceSeq {
-		wrote, err := r.writeRestorePointLocked(nextSeq)
-		if err != nil {
-			r.log.Warn("restore point write failed", "err", err, "seq", nextSeq)
-		}
-		// An ended table keeps its final state as its restore point, so
-		// a deploy does not take it from the players still looking at it
-		// (#2919; RestoreRooms brings it back for EndedTableRetention).
-		// If that state could not be written, the older file on disk is
-		// a live game: drop it rather than let a boot resurrect the
-		// table as active.
-		if !wrote && r.Game.CurrentState() == game.StateEnded {
-			r.RemoveRestorePoint()
-		}
+		r.noteRestorePointLocked(nextSeq)
 	}
 	return view, nextSeq, nil
 }
@@ -1035,7 +1160,7 @@ func (r *Room) stampUndoAutoAnswerLocked(view *protocol.GameView) {
 		return
 	}
 	top := r.undoStack[len(r.undoStack)-1]
-	if top.autoAnswered == uuid.Nil || top.autoAnswerSeq == 0 {
+	if top.pre == nil || top.autoAnswered == uuid.Nil || top.autoAnswerSeq == 0 {
 		return
 	}
 	id := top.caller.String()
@@ -1048,7 +1173,8 @@ func (r *Room) stampUndoAutoAnswerLocked(view *protocol.GameView) {
 
 // stampUndoBlockedLocked tells each seat why an `undo` from it would be
 // refused by the stack, using the same gates as undo(): an empty stack,
-// the game's end (checked before the caller gate, ADR 0057), and a top
+// the game's end (checked before the caller gate, ADR 0057), a barrier
+// (a bot's move, or past the snapshot depth, ADR 0194), and a top
 // entry some other seat owns. Room state, like the host: the engine
 // does not know the undo stack. Caller MUST hold r.mu.
 func (r *Room) stampUndoBlockedLocked(view *protocol.GameView) {
@@ -1066,6 +1192,10 @@ func (r *Room) stampUndoBlockedLocked(view *protocol.GameView) {
 			view.Seats[i].UndoBlocked = protocol.UndoBlockedNothing
 		case ended:
 			view.Seats[i].UndoBlocked = protocol.UndoBlockedGameOver
+		case top.barrier == barrierBot:
+			view.Seats[i].UndoBlocked = protocol.UndoBlockedPastBot
+		case top.barrier == barrierDepth:
+			view.Seats[i].UndoBlocked = protocol.UndoBlockedTooDeep
 		case err == nil && top.caller != uuid.Nil && top.caller != id:
 			view.Seats[i].UndoBlocked = protocol.UndoBlockedNotYours
 		case revealed:

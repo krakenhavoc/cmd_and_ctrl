@@ -26,6 +26,11 @@ package ws
 // than resurrecting it subtly wrong, and as continuations become
 // data-driven the rewind distance shrinks to nothing. Silently
 // dropping a Fog would be worse than a rewind the players can see.
+//
+// The write is rate-limited (restore_rate.go, #3823): the newest
+// restorable capture is written at most once per interval, and always
+// at shutdown, so the file is still the last clean state, at most one
+// interval late after a crash.
 
 import (
 	"encoding/json"
@@ -75,48 +80,6 @@ type restorePointFile struct {
 	Snapshot   *game.GameSnapshot `json:"snapshot"`
 }
 
-// writeRestorePointLocked captures the game and publishes it as this
-// room's restore point, atomically, IF the capture is restorable.
-//
-// Returns (false, nil) when the game is holding continuations — that
-// is the ordinary, expected case mid-prompt and is not an error. The
-// previous restore point stays on disk.
-//
-// Caller MUST hold r.mu.
-func (r *Room) writeRestorePointLocked(seq uint64) (bool, error) {
-	if r.dumpDir == "" {
-		return false, nil
-	}
-	snap := r.Game.CaptureSnapshot()
-	if !snap.Restorable() {
-		// ADR 0041 P7 (#1497): count what blocked it, by kind, so the
-		// shutdown census can say what keeps restore points stale
-		// between deploys rather than only at the instant of one.
-		r.skips.noteSkip(snap.Continuations)
-		return false, nil
-	}
-
-	// r.generation is read under r.mu (the caller already holds it) —
-	// every later write in this room's life carries forward the
-	// generation the room is CURRENTLY serving, so the file always
-	// answers "if the process died and came back right now, what
-	// generation would clients already holding this room's frames be
-	// told about". Only restoreOne ever advances it.
-	payload, err := json.Marshal(restorePointFile{Seq: seq, Generation: r.generation, Snapshot: snap})
-	if err != nil {
-		return false, fmt.Errorf("marshal restore point: %w", err)
-	}
-	if err := writeFileAtomic(restorePointPath(r.dumpDir, r.Game.ID), payload); err != nil {
-		return false, err
-	}
-	// Bookkeeping only, for the shutdown census (#524) — the write
-	// above already succeeded, so this cannot be the thing that fails
-	// a caller's Apply.
-	r.lastRestorePoint = restorePointRecord{Seq: seq, At: time.Now().UTC()}
-	r.skips.noteWrite()
-	return true, nil
-}
-
 // EndedTableRetention is how long an ended table's restore point brings
 // it back at boot (#2919). The players stay on an ended table, looking
 // at the final board, the banner and the log, until they leave it, and
@@ -139,8 +102,10 @@ func (r *Room) RemoveRestorePoint() {
 
 // writeFileAtomic publishes payload at path via CreateTemp + rename,
 // the same way dumpSnapshotLocked does: a crash mid-write leaves the
-// previous file intact rather than a truncated one.
-func writeFileAtomic(path string, payload []byte) error {
+// previous file intact rather than a truncated one. The file is the
+// parts written one after another, so a caller that assembles a file
+// from pieces (encodeRestorePointLocked) need not copy them into one.
+func writeFileAtomic(path string, parts ...[]byte) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
@@ -156,8 +121,10 @@ func writeFileAtomic(path string, payload []byte) error {
 			_ = os.Remove(tmpPath)
 		}
 	}()
-	if _, err := tmp.Write(payload); err != nil {
-		return fmt.Errorf("write tmp: %w", err)
+	for _, part := range parts {
+		if _, err := tmp.Write(part); err != nil {
+			return fmt.Errorf("write tmp: %w", err)
+		}
 	}
 	if err := tmp.Close(); err != nil {
 		return fmt.Errorf("close tmp: %w", err)
@@ -192,6 +159,13 @@ type RestoreOutcome struct {
 	// back) versus something that needs attention. Empty unless Err
 	// is set.
 	Reason string
+
+	// RestoredSeq and RestorePointAt are the seq and capture time of
+	// the restore point a Restored game came back from: what the
+	// previous process's shutdown record is compared against to say how
+	// far the table rewound (deploy_cost.go).
+	RestoredSeq    uint64
+	RestorePointAt time.Time
 
 	// AbilityShortfalls are the cards this game came back with fewer
 	// catalog abilities than its restore point recorded (#522). The
@@ -278,6 +252,15 @@ type RestoreAdmission func(cands []RestoreCandidate) (deferred map[uuid.UUID]boo
 // alternative (ending the table) throws away a game the server simply
 // had no room for yet.
 func (m *RoomManager) RestoreRoomsAdmitting(admit RestoreAdmission) []RestoreOutcome {
+	bm := m.takeBootMeasurement()
+	out := m.restoreRoomsAdmitting(admit)
+	if bm != nil {
+		m.observeBoot(bm, out)
+	}
+	return out
+}
+
+func (m *RoomManager) restoreRoomsAdmitting(admit RestoreAdmission) []RestoreOutcome {
 	if m.dumpDir == "" {
 		return nil
 	}
@@ -473,6 +456,7 @@ func (m *RoomManager) restoreFile(path string, file *restorePointFile) RestoreOu
 	}
 
 	room := NewRoom(g, m.log, m.dumpDir)
+	room.restoreEvery = m.restorePointInterval()
 	room.seq = file.Seq
 	// This IS a restore: the room this process is about to serve is
 	// one generation past what the file recorded, whether the file's
@@ -490,6 +474,8 @@ func (m *RoomManager) restoreFile(path string, file *restorePointFile) RestoreOu
 	room.lastRestorePoint = restorePointRecord{Seq: file.Seq, At: file.Snapshot.TakenAt}
 	m.Register(room)
 	res.Room = room
+	res.RestoredSeq = file.Seq
+	res.RestorePointAt = file.Snapshot.TakenAt
 	restorePointAge := time.Since(file.Snapshot.TakenAt)
 	m.log.Info("game restored",
 		"game_id", g.ID,

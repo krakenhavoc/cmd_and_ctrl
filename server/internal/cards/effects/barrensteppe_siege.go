@@ -34,11 +34,11 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenChosen("Abzan", AtYourEndStep("Barrensteppe Siege — put a +1/+1 counter on each creature you control",
 				b11PutCounterOnEachCreatureYouControl)),
-			WhenChosen("Mardu", On(game.EventBeginEndStep,
+			WhenChosen("Mardu", TriggerEdict(On(game.EventBeginEndStep,
 				AllOf(ByYou, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return aCreatureDiedUnderYourControlThisTurn(g, source.Controller)
 				}),
-				"Barrensteppe Siege — each opponent sacrifices a creature", barrensteppeSiegeEdict)),
+				"Barrensteppe Siege — each opponent sacrifices a creature", barrensteppeSiegeEdict))),
 		},
 	})
 }

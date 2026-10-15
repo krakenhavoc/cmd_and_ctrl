@@ -804,8 +804,14 @@ deploy costs each live table on the way down and the way back up, so
 "did that restart rewind anybody" is a `journalctl` search rather than
 a question for the players.
 
-At SIGTERM, after the HTTP listener closes and before the hub drops any
-connection, one line per live game:
+At SIGTERM, after the HTTP listener closes, the server first writes every
+table's held restore point (restore points are written at most once per
+`CMDCTRL_RESTORE_POINT_INTERVAL`, default 5 s, #3823), and writes them
+again once the hub and the bots have stopped, so nothing that landed in
+between is lost. A graceful restart therefore rewinds a table no
+further than its last clean state, as before the rate limit; only a
+crash or `SIGKILL` can cost up to one interval more. Then, before the
+hub drops any connection, one line per live game:
 
 ```
 level=INFO msg="shutdown census: game" game_id=d3b53ef1-… archived=false clean=true seq=1 has_restore_point=true restore_seq=1 seq_behind=0 restore_age=0s
@@ -837,13 +843,77 @@ level=INFO msg="restore from disk complete" duration=118ms resumed=1
 
 `restore_point_age` is how stale that table's restore point was — how
 long it had been since a clean boundary, at the moment the PREVIOUS
-process wrote it. It is deliberately not paired with "how far this
-table rewound": that number is the restored seq against the seq the
-previous process was showing to clients right before it died, and the
-only record of that is the previous process's own shutdown census line
-above — this process has no reliable way to read that back. The
-shutdown line already carries the true rewind delta (`seq_behind`) for
-the process that is about to stop.
+process wrote it. It does not say how far the table rewound: that is the
+restored seq against the seq the previous process was showing to
+clients right before it stopped. The shutdown census line above carries
+it (`seq_behind`) for the process that is stopping, and since #3037 the
+process that stops also leaves a record for the next boot to compare
+against, which is what the metrics below are made from.
+
+#### Reading a deploy's cost from the metrics
+
+(#3037, ADR 0195 phase 0: the numbers the overlap deploy's 10-minute
+deadline and the memory budget wait on.) Every deploy starts a new
+process, so each series below is one deploy's reading and the next
+deploy replaces it. They are on the **Engine and bots** dashboard, in
+the *Deploy cost* row at the bottom; pick `prod` in the env picker.
+Prometheus keeps them for a year, so the row's time-series panels draw
+one step per deploy.
+
+| Question | Metric | Panel |
+|---|---|---|
+| How long until the server could serve? | `cmdctrl_boot_ready_seconds`: process start until the listener is bound | *Last boot: ready after*, *Boot to ready, by deploy* |
+| Where did that time go? | `cmdctrl_boot_phase_seconds{phase}`: `database`, `card_index`, `restore`. The rest is package init and wiring | *Last boot: phases* |
+| How long did nothing answer? | `cmdctrl_boot_downtime_seconds`: the previous process's shutdown record to this process starting. NaN if it left none | *Last boot: time down* |
+| How many tables came back, ended or were lost? | `cmdctrl_boot_restore_games{outcome}`: `restored`, `ended`, `abandoned` (existing); `cmdctrl_boot_restore_deferred_games` for the load cap | *Last boot: restored* and its neighbours |
+| How many were rewound? | `cmdctrl_boot_rewound_games` | *Last boot: tables rewound* |
+| By how much? | `cmdctrl_boot_rewind_actions` and `cmdctrl_boot_rewind_seconds`: one observation per restored table, 0 for a table that came back where it stood. The `le="0"` bucket is the tables that did not rewind; `_sum` is the total | *Actions rewound per restored table*, *Play rewound per restored table* |
+| How long did a table wait for its first frame? | `cmdctrl_boot_first_frame_seconds`: process start until the first snapshot frame went to any client of a restored table | *First frame after boot* |
+| Did the shutdown flush each table? | `cmdctrl_boot_previous_shutdown_games{flush}`: `written`, `nothing_pending`, `failed`, `no_restore_point` | *Previous shutdown: tables by flush* |
+| How much memory? | `process_resident_memory_bytes`, `go_memstats_heap_inuse_bytes` (standard) against `cmdctrl_games{state="active"}` | *Memory against live tables* |
+
+How they are made, and what they cannot say:
+
+- **The shutdown side is a file.** A stopped process cannot be scraped,
+  so after the second restore-point flush the server writes
+  `<data>/deploy/shutdown-record.json` (per table: last commit seq,
+  restore point seq, whether the live state was clean, and what the flush
+  did) and logs `shutdown record written` with the totals. The next boot
+  reads it, **removes it**, and compares each restored table's restore
+  point with that last commit. Not backed up, on purpose.
+- **First deploy after this ships has no record.** The process that
+  stops is the old build, which writes none. That boot reports ready
+  time, phases, restore counts and first frames; `cmdctrl_boot_downtime_seconds`
+  is NaN and the rewind histograms are empty. That deploy's rewind is in
+  the old process's `shutdown census: summary` line (`would_rewind`,
+  `actions_rewound`), on the Logs dashboard's census panel or with
+  `{env="prod", unit="cmd-and-ctrl.service"} |= "shutdown census"`.
+  Dev rehearses the new path on every `develop` deploy, so compare.
+- **A crash leaves no record**, so the boot after one has no rewind
+  numbers either. A downtime of many minutes means the server sat
+  stopped, not that a deploy was slow.
+- **Seconds rewound is an upper bound.** It runs from when the table's
+  restore point was captured to the shutdown, not from the last action
+  lost. `cmdctrl_boot_rewind_actions` is exact.
+- **First frame includes the players' reconnect backoff** and is zero-
+  based at process start, so add `cmdctrl_boot_downtime_seconds` to get
+  from the old server going quiet to the first frame. A table nobody
+  reconnects to before the next deploy is never observed. A spectator's
+  or an admin's connection counts as a frame for the table.
+- **Ready is "listener bound"**, after the restore pass, the card
+  index and every wiring step. Clock zero is the metrics package's
+  initialisation, within milliseconds of the Go runtime starting;
+  `time() - process_start_time_seconds` includes the exec as well.
+- **Per-table lines** are in the journal: `deploy cost: table rewound`
+  (WARN, with the actions and seconds behind), `deploy cost: previous
+  shutdown compared` (the totals) and `deploy cost: first frame after
+  boot`. Metrics carry no game ids (ADR 0123 §3); these lines do.
+
+Reading one deploy: ready time and `restore` against the 10-minute
+deadline of ADR 0195; `rewound` and the 95th percentile of actions
+against whether a deploy gate (#3038) is worth building; the first-frame
+median against what players feel; memory against the 4 GB the overlap
+needs.
 
 **Resetting preview state.** Preview games are disposable:
 

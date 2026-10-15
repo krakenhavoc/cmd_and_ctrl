@@ -233,6 +233,15 @@ type Purpose struct {
 	// triggered row, which nothing reads it on yet (ADR 0142 §2).
 	Answers Answers
 
+	// Saves says which of its controller's permanents a `survive` or
+	// `protect` row covers, when it covers more than its own source
+	// (#2939 gap 3): Selfless Spirit's "creatures you control gain
+	// indestructible". Nil is "its own source only", which every other
+	// survive and protect row is. A pointer so Purpose stays comparable.
+	// Refused off an activated row, and on one that declares neither
+	// answer.
+	Saves *Saves
+
 	// Aura says which way an Aura cuts for the permanent it enchants
 	// (#3309): a buff helps its host (Rancor), a curse hurts it
 	// (Pacifism). Nothing on the wire tells the two apart, so the bot
@@ -421,6 +430,20 @@ type Pump struct {
 	Power     int
 	Toughness int
 	Keywords  []string
+}
+
+// Saves is the permanents a `survive` or `protect` row covers besides, or
+// instead of, its own source (Purpose.Saves). It names a class the way a
+// Sweep does, so a reader asks the same question of a sweep and of the
+// answer to it: is this permanent in the class?
+type Saves struct {
+	// Matches is the class of its controller's permanents the row covers
+	// ("creatures" for Selfless Spirit). It is one of SweepMatches.
+	Matches SweepMatch
+	// Partial is set when the row covers only some of the Matches class
+	// by a condition this type does not name: creature tokens, creatures
+	// with counters, nontoken Vampires. Matches is then an upper bound.
+	Partial bool
 }
 
 // DiscardPayoff says which discarded cards a triggered row pays on, and

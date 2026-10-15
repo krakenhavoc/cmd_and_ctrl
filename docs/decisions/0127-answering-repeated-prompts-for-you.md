@@ -103,7 +103,7 @@ A prompt is **covered** when one standing answer can be the whole answer, and no
 - **A targeted, modal or trading trigger** (Artisan of Kozilek's "you may return target creature card", Perplexing Chimera). The answer leads into a choice of target or a trade.
 - **A cast** (`may_cast`: cascade, discover, miracle). A cast has its own costs, targets and timing.
 - **A life payment** (`confirm` with `LifeCost`, `entry_pay_life` on a shockland). Life is the board.
-- **Every pick**: cards, targets, colours, options, numbers, damage assignment, the trigger order, the CR 732 shortcut.
+- **Every pick**: cards, targets, colours, options, numbers, damage assignment, the trigger order, the CR 732 shortcut. (The one exception since #3016: a trigger order the player chose to remember, [ADR 0018](0018-triggers-on-the-stack.md)'s eighth amendment, answered through this mechanism.)
 
 `commander_return` and the commander's `optional_replacement` are plain yes/no questions about one card. They are not covered (owner decision 6). Covering them later would be a small follow-up on the same mechanism.
 

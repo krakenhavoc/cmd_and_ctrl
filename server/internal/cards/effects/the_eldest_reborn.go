@@ -26,8 +26,8 @@ func init() {
 		Name:         "The Eldest Reborn",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			ChapterTrigger(1, "The Eldest Reborn — I: each opponent sacrifices a creature or planeswalker",
-				eachOpponentSacrificesACreatureOrPlaneswalker),
+			TriggerEdict(ChapterTrigger(1, "The Eldest Reborn — I: each opponent sacrifices a creature or planeswalker",
+				eachOpponentSacrificesACreatureOrPlaneswalker)),
 			ChapterTrigger(2, "The Eldest Reborn — II: each opponent discards a card",
 				eachOpponentDiscardsOne),
 			ChapterTriggerTargeting(3, "The Eldest Reborn — III: reanimate under your control",

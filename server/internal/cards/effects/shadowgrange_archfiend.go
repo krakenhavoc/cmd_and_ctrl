@@ -38,9 +38,9 @@ func init() {
 		Madness:      "{2}{B}",
 		MadnessLife:  8,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventETB, Self,
+			TriggerEdict(On(game.EventETB, Self,
 				"Shadowgrange Archfiend — each opponent sacrifices a creature with the greatest power; you gain that much life",
-				shadowgrangeArchfiendETB),
+				shadowgrangeArchfiendETB)),
 		},
 	})
 }

@@ -76,7 +76,7 @@ package game
 // the resolution that made the copy, so it is stamped.
 func choiceBelongsToResolution(c *PendingChoice) bool {
 	switch c.Kind {
-	case PendingChoiceTriggerOrder, PendingChoiceLoopShortcut:
+	case PendingChoiceTriggerOrder, PendingChoiceLoopShortcut, PendingChoiceLoopProposal:
 		return false
 	case PendingChoiceTurnSkipOrder:
 		// ADR 0188 Decision 12: the which-skip question belongs to the

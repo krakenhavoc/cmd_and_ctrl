@@ -289,6 +289,22 @@ describe("GameMenu", () => {
     expect(item(m.container, L.sandboxPassTurn)!.title).toMatch(/no end step/);
   });
 
+  it("offers Forget remembered trigger orders (N) while the seat has one (#3016)", async () => {
+    let m = mountMenu();
+    await open(m.trigger);
+    expect(item(m.container, /^Forget remembered trigger orders/)).toBeUndefined();
+    cleanup();
+
+    const calls: unknown[] = [];
+    m = mountMenu({ forgetTriggerOrders: 2, onForgetTriggerOrders: () => calls.push(1) });
+    await open(m.trigger);
+    const entry = item(m.container, L.forgetTriggerOrders(2));
+    expect(entry).toBeDefined();
+    click(entry!);
+    expect(m.container.querySelector('[role="menu"]')).toBeNull();
+    expect(calls).toHaveLength(1);
+  });
+
   it("sends the sandbox jump from its entry, and closes", async () => {
     const calls: unknown[] = [];
     const m = mountMenu({ sandboxPassTurn: true, onSandboxPassTurn: () => calls.push(1) });
@@ -670,6 +686,8 @@ describe("the ⋯ menu at the table", () => {
       "hold",
       "Skip to my turn",
       "bluff",
+      // ADR 0193: the loop control, while the seat holds priority.
+      "Record loop",
       "Undo (1 left)",
       "more actions",
     ]);
@@ -768,5 +786,122 @@ describe("the ⋯ menu at the table", () => {
       expect(names).not.toContain(seatOnly);
     }
     expect(names.some((n) => /^Draw a card/.test(n))).toBe(false);
+  });
+});
+
+// ADR 0193 (CR 732.2): the loop control on the dock, the recorder's
+// propose sheet and another player's proposal, through the Game route.
+describe("demonstrating a loop", () => {
+  const buttonNamed = (c: ParentNode, name: string): HTMLButtonElement | undefined =>
+    [...c.querySelectorAll<HTMLButtonElement>("button")].find((b) => accessibleName(b) === name);
+
+  it("records, stops and cancels from the dock", async () => {
+    const c = await mountGame("player");
+    click(buttonNamed(c, L.recordLoop)!);
+    expect(FakeSocket.last!.last("loop_record_start")).toBeTruthy();
+    cleanup();
+
+    const recording = await mountGame(
+      "player",
+      view({
+        loop_recording: { recorder: ME, status: "recording", steps: 3, max_iterations: 1000 },
+      }),
+    );
+    expect(dockOf(recording)!.textContent).toContain("Recording a loop · 3 steps");
+    click(buttonNamed(recording, L.stopLoop)!);
+    click(buttonNamed(recording, L.cancelLoop)!);
+    expect(FakeSocket.last!.actions()).toEqual(
+      expect.arrayContaining(["loop_record_stop", "loop_record_cancel"]),
+    );
+  });
+
+  it("opens the propose sheet once the loop closes, and proposes the count", async () => {
+    const c = await mountGame(
+      "player",
+      view({
+        loop_recording: {
+          recorder: ME,
+          status: "ready",
+          steps: 2,
+          name: "Basalt Monolith",
+          net: "Me: library -1",
+          iteration: [
+            { actor: ME, label: "Me activates Basalt Monolith" },
+            { actor: OPP, label: "Opp passes" },
+          ],
+          max_iterations: 1000,
+        },
+      }),
+    );
+    await settle();
+    const sheet = c.querySelector(`[role="dialog"][aria-label="${L.proposeLoop}"]`);
+    expect(sheet, "the propose sheet is open").toBeTruthy();
+    expect(sheet!.textContent).toContain("Me activates Basalt Monolith");
+    click(buttonNamed(c, "Max (1000)")!);
+    flushSync();
+    click(buttonNamed(c, "Propose ×1000")!);
+    expect(FakeSocket.last!.last("loop_propose")?.payload?.params).toEqual({ count: 1000 });
+  });
+
+  it("shows the table what is being built, and answers a proposal", async () => {
+    const watching = await mountGame(
+      "player",
+      view({
+        loop_recording: { recorder: OPP, status: "recording", steps: 1, max_iterations: 1000 },
+      }),
+    );
+    expect(dockOf(watching)!.textContent).toContain("Opp is recording a loop");
+    cleanup();
+
+    const c = await mountGame(
+      "player",
+      view({
+        turn: {
+          seq: 3,
+          number: 3,
+          active_seat: 1,
+          priority_holder: 1,
+          phase: "precombat_main",
+          step: "precombat_main",
+        },
+        loop_recording: {
+          recorder: OPP,
+          status: "proposed",
+          steps: 2,
+          max_iterations: 1000,
+          count: 5,
+        },
+        pending_choices: [
+          {
+            id: "q-1",
+            kind: "loop_proposal",
+            chooser: ME,
+            loop_proposal: {
+              proposer: OPP,
+              name: "Basalt Monolith",
+              count: 5,
+              end: { iteration: 5, step: 2 },
+              steps: [
+                { actor: OPP, label: "Opp activates Basalt Monolith" },
+                { actor: ME, label: "Me passes" },
+              ],
+              choice_points: [1],
+            },
+          },
+        ],
+      } as unknown as Partial<GameView>),
+    );
+    await settle();
+    expect(c.querySelector(`[role="dialog"][aria-label="${L.loopProposal}"]`)).toBeTruthy();
+    click(buttonNamed(c, "Shorten here")!);
+    expect(FakeSocket.last!.last("resolve_loop_proposal")?.payload?.params).toEqual({
+      choice_id: "q-1",
+      shorten: { iteration: 1, step: 1 },
+    });
+    click(buttonNamed(c, "Accept")!);
+    expect(FakeSocket.last!.last("resolve_loop_proposal")?.payload?.params).toEqual({
+      choice_id: "q-1",
+      accept: true,
+    });
   });
 });

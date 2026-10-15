@@ -4508,6 +4508,18 @@ func (g *Game) payCostWithLifeLocked(p *Player, cost ParsedCost, source uuid.UUI
 // Caller must NOT hold g.mu — this method takes the write lock.
 // Added in S19 sub-PR 8.
 func (g *Game) ResolveTriggerOrder(choiceID, chooserID uuid.UUID, resolutionOrder []uuid.UUID) error {
+	return g.ResolveTriggerOrderRemember(choiceID, chooserID, resolutionOrder, nil)
+}
+
+// ResolveTriggerOrderRemember is ResolveTriggerOrder with the "Use this
+// order again" toggle (ADR 0018's eighth amendment, #3016): nil changes
+// nothing, true files the answer's ranking under the prompt's key in
+// the same commit, false forgets any order filed there. A true on a
+// prompt with no key, or on an answer that interleaves copies of one
+// row, is refused and nothing changes.
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+func (g *Game) ResolveTriggerOrderRemember(choiceID, chooserID uuid.UUID, resolutionOrder []uuid.UUID, remember *bool) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -4543,7 +4555,21 @@ func (g *Game) ResolveTriggerOrder(choiceID, chooserID uuid.UUID, resolutionOrde
 		}
 		want[id]--
 	}
-	g.dequeueChoiceLocked(idx)
+	if remember != nil {
+		if err := g.rememberTriggerOrderLocked(choice, resolutionOrder, *remember); err != nil {
+			return err
+		}
+	}
+	g.applyTriggerOrderLocked(idx, resolutionOrder, false)
+	return nil
+}
+
+// applyTriggerOrderLocked takes the trigger-order prompt at idx out of
+// the queue — as a player decision, or for an automatic answer without
+// restarting the CR 732 loop run (ADR 0127 §7) — and puts its items in
+// resolutionOrder, then runs the drain again. Caller must hold g.mu.
+func (g *Game) applyTriggerOrderLocked(idx int, resolutionOrder []uuid.UUID, auto bool) {
+	g.answerChoiceLocked(idx, auto)
 
 	// Rebuild PendingTriggers: other seats' items keep their
 	// positions; this seat's prompted items are replaced, in place
@@ -4579,7 +4605,6 @@ func (g *Game) ResolveTriggerOrder(choiceID, chooserID uuid.UUID, resolutionOrde
 	}
 	g.PendingTriggers = rebuilt
 	g.runStateChecksLocked()
-	return nil
 }
 
 // PendingChoiceKindFor returns the kind of the queue entry with the

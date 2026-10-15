@@ -73,8 +73,10 @@ func grantedByView(g *game.Game, o game.AbilityOrigin) *GrantedByView {
 // that needs the game handle: the grantor's NAME on each granted mana
 // row (viewOfManaAbilities runs without a game and stamps the ID), and
 // the CardView's granted_abilities list. Runs under the read lock
-// ViewOfGame already holds.
-func stampGrantedAbilities(g *game.Game, card game.Card, c *CardView) {
+// ViewOfGame already holds. The card is the live one, by pointer, and is
+// only read (#3823: by value it escaped, a kilobyte per permanent per
+// frame).
+func stampGrantedAbilities(g *game.Game, card *game.Card, c *CardView) {
 	for i := range c.ManaAbilities {
 		gb := c.ManaAbilities[i].GrantedBy
 		if gb == nil || gb.Name != "" || gb.ID == "" {
@@ -84,7 +86,7 @@ func stampGrantedAbilities(g *game.Game, card game.Card, c *CardView) {
 		if err != nil {
 			continue
 		}
-		if src, ok := g.LookupCardForEffect(id); ok {
+		if src, ok := g.LookupCardPtrForEffect(id); ok {
 			named := *gb
 			named.Name = src.Name
 			c.ManaAbilities[i].GrantedBy = &named
@@ -98,7 +100,7 @@ func stampGrantedAbilities(g *game.Game, card game.Card, c *CardView) {
 		}
 	}
 	c.GrantedAbilities = viewOfGrantedAbilities(g, card)
-	c.UnautomatedLenders = viewOfUnautomatedLenders(g, &card)
+	c.UnautomatedLenders = viewOfUnautomatedLenders(g, card)
 }
 
 // viewOfUnautomatedLenders projects game.UnautomatedLendersOf: each lender
@@ -257,8 +259,8 @@ func hideLendersInMana(rows []ManaAbilityView, viewerID string, seatIDs []string
 }
 
 // viewOfGrantedAbilities projects game.GrantedAbilitiesOf.
-func viewOfGrantedAbilities(g *game.Game, card game.Card) []GrantedAbilityView {
-	infos := game.GrantedAbilitiesOf(card)
+func viewOfGrantedAbilities(g *game.Game, card *game.Card) []GrantedAbilityView {
+	infos := game.GrantedAbilitiesOfPtr(card)
 	if len(infos) == 0 {
 		return nil
 	}
@@ -267,7 +269,7 @@ func viewOfGrantedAbilities(g *game.Game, card game.Card) []GrantedAbilityView {
 		v := GrantedAbilityView{Text: info.Text}
 		if info.Source != uuid.Nil {
 			v.SourceID = info.Source.String()
-			if src, ok := g.LookupCardForEffect(info.Source); ok {
+			if src, ok := g.LookupCardPtrForEffect(info.Source); ok {
 				v.SourceName = src.Name
 			}
 		}

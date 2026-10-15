@@ -6242,6 +6242,11 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 		for i, t := range items {
 			ids[i] = t.ID
 		}
+		// ADR 0018's eighth amendment (#3016): the batch's set of rows
+		// is the key a remembered order is filed under, and the room
+		// answers the prompt with it as an ADR 0127 automatic answer.
+		// Empty when an item has no row or a hidden source.
+		key, _ := g.triggerOrderBatchKeyLocked(items)
 		g.QueueChoiceForEffect(PendingChoice{
 			Kind:            PendingChoiceTriggerOrder,
 			Chooser:         p.ID,
@@ -6250,6 +6255,7 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 			TriggerOrderIDs: ids,
 			// #3015: the same reason, said to the player.
 			TriggerOrderWhy: g.triggerOrderSentenceLocked(why, p.ID),
+			AutoAnswerKey:   key,
 		})
 	}
 	if held {

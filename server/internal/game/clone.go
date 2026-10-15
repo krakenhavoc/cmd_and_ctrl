@@ -63,6 +63,9 @@ func (g *Game) cloneLocked() *Game {
 		// pointer rather than sharing the live one.
 		LoopThreshold: g.LoopThreshold,
 		LoopNotice:    cloneLoopNotice(g.LoopNotice),
+		// ADR 0193: the demonstrated loop is plain data and rewinds
+		// with an undo (which then discards it, ws.Room.undo).
+		LoopRecording: cloneLoopRecording(g.LoopRecording),
 		// The randomness is copied, not shared: the key by value
 		// (an array) and the counters deeply, because randForLocked
 		// increments the live map in place. The clone therefore
@@ -551,34 +554,45 @@ func cloneZone(z *Zone) *Zone {
 	}
 	cloned := &Zone{Kind: z.Kind, Owner: z.Owner}
 	if len(z.Cards) > 0 {
+		// ADR 0194 option 1: copy the array once and deepen each card in
+		// its slot. Card is about 1.4 KB, and cloneCard's by-value
+		// round trip moved each one four more times.
 		cloned.Cards = make([]Card, len(z.Cards))
-		for i, c := range z.Cards {
-			cloned.Cards[i] = cloneCard(c)
+		copy(cloned.Cards, z.Cards)
+		for i := range cloned.Cards {
+			deepenCard(&cloned.Cards[i])
 		}
 	}
 	return cloned
 }
 
 func cloneCard(c Card) Card {
-	out := c
-	if len(c.Keywords) > 0 {
-		out.Keywords = append([]string(nil), c.Keywords...)
+	deepenCard(&c)
+	return c
+}
+
+// deepenCard gives *out its own copy of everything a value copy of a
+// Card would share with the card it was copied from: every slice, map
+// and pointer. out holds that value copy on entry.
+func deepenCard(out *Card) {
+	if len(out.Keywords) > 0 {
+		out.Keywords = append([]string(nil), out.Keywords...)
 	}
-	if len(c.GrantedAbilities) > 0 {
-		out.GrantedAbilities = append([]string(nil), c.GrantedAbilities...)
+	if len(out.GrantedAbilities) > 0 {
+		out.GrantedAbilities = append([]string(nil), out.GrantedAbilities...)
 	}
-	if len(c.ManaAbilities) > 0 {
-		out.ManaAbilities = append([]ManaAbilityShape(nil), c.ManaAbilities...)
+	if len(out.ManaAbilities) > 0 {
+		out.ManaAbilities = append([]ManaAbilityShape(nil), out.ManaAbilities...)
 	}
-	if len(c.ActivatedAbilities) > 0 {
-		out.ActivatedAbilities = append([]ActivatedAbilityShape(nil), c.ActivatedAbilities...)
+	if len(out.ActivatedAbilities) > 0 {
+		out.ActivatedAbilities = append([]ActivatedAbilityShape(nil), out.ActivatedAbilities...)
 	}
-	if len(c.Colors) > 0 {
-		out.Colors = append([]string(nil), c.Colors...)
+	if len(out.Colors) > 0 {
+		out.Colors = append([]string(nil), out.Colors...)
 	}
 	// #1706: a multi-blocker's further attackers.
-	if len(c.AlsoBlocking) > 0 {
-		out.AlsoBlocking = append([]uuid.UUID(nil), c.AlsoBlocking...)
+	if len(out.AlsoBlocking) > 0 {
+		out.AlsoBlocking = append([]uuid.UUID(nil), out.AlsoBlocking...)
 	}
 	// ADR 0034 faces. ActiveFace and Layout are scalars and ride the
 	// value copy, but Faces is a slice of structs each holding its
@@ -587,12 +601,12 @@ func cloneCard(c Card) Card {
 	// today (only SetFace reads it), so this is belt-and-braces; a
 	// later transform effect that rewrites a face in place would make
 	// it load-bearing, and by then the aliasing bug would be silent.
-	if len(c.Faces) > 0 {
-		out.Faces = make([]Face, len(c.Faces))
-		copy(out.Faces, c.Faces)
+	if faces := out.Faces; len(faces) > 0 {
+		out.Faces = make([]Face, len(faces))
+		copy(out.Faces, faces)
 		for i := range out.Faces {
-			if len(c.Faces[i].Colors) > 0 {
-				out.Faces[i].Colors = append([]string(nil), c.Faces[i].Colors...)
+			if len(faces[i].Colors) > 0 {
+				out.Faces[i].Colors = append([]string(nil), faces[i].Colors...)
 			}
 		}
 	}
@@ -601,64 +615,64 @@ func cloneCard(c Card) Card {
 	// Clone that dies after the snapshot would restore its printed
 	// values through the shared pointer and the undo would find it
 	// already un-cloned.
-	out.PrintedSelf = copyPrintedValues(c.PrintedSelf)
+	out.PrintedSelf = copyPrintedValues(out.PrintedSelf)
 	// #1593: the duration-copy baseline is a pointer for the same
 	// reason, and an undo that shared it would revert a Cytoshape to
 	// whatever the live game's baseline had become.
-	out.DurationCopyBase = copyPrintedValues(c.DurationCopyBase)
+	out.DurationCopyBase = copyPrintedValues(out.DurationCopyBase)
 	// #1270: the listed face-down body is a pointer too. Never
 	// mutated through, but copied for PrintedSelf's reason — an undo
 	// snapshot must not share anything with the live card.
-	out.FaceDownListed = c.FaceDownListed.clone()
+	out.FaceDownListed = out.FaceDownListed.clone()
 	// ADR 0097: the "hasn't been chosen" memory is a map of slices,
 	// and a value copy would share both levels with the live card.
-	out.ModesChosen = copyModesChosen(c.ModesChosen)
+	out.ModesChosen = copyModesChosen(out.ModesChosen)
 	// ADR 0101: the keyword counters' timestamps ride an undo with the
 	// counters they order.
-	out.CounterStampedAt = copyStringInt64Map(c.CounterStampedAt)
-	if len(c.Counters) > 0 {
-		out.Counters = make(map[string]int, len(c.Counters))
-		for k, v := range c.Counters {
+	out.CounterStampedAt = copyStringInt64Map(out.CounterStampedAt)
+	if counters := out.Counters; len(counters) > 0 {
+		out.Counters = make(map[string]int, len(counters))
+		for k, v := range counters {
 			out.Counters[k] = v
 		}
 	} else {
 		out.Counters = nil
 	}
-	if len(c.NextUntapSkips) > 0 {
-		out.NextUntapSkips = append([]UntapSkip(nil), c.NextUntapSkips...)
+	if len(out.NextUntapSkips) > 0 {
+		out.NextUntapSkips = append([]UntapSkip(nil), out.NextUntapSkips...)
 	} else {
 		out.NextUntapSkips = nil
 	}
 	// #1598: one entry per goader. A value copy would share the backing
 	// array, so a goad added after the snapshot could surface in it.
-	out.Goads = cloneGoads(c.Goads)
+	out.Goads = cloneGoads(out.Goads)
 	// CR 400.7d (#653 / ADR 0073): what the spell that became this
 	// permanent was cast for. Its one slice would alias the live
 	// record into every undo snapshot under a value copy.
-	out.Provenance = c.Provenance.Clone()
+	out.Provenance = out.Provenance.Clone()
 	// ADR 0137: the craft link is a slice, aliased by a value copy.
-	out.CraftedWith = cloneObjectRefs(c.CraftedWith)
+	out.CraftedWith = cloneObjectRefs(out.CraftedWith)
 	// ADR 0145: the meld print is a pointer and a melded permanent's
 	// cards are a slice of whole cards, each with its own maps.
-	out.Meld = c.Meld.clone()
-	if len(c.MeldedFrom) > 0 {
-		out.MeldedFrom = make([]Card, len(c.MeldedFrom))
-		for i := range c.MeldedFrom {
-			out.MeldedFrom[i] = cloneCard(c.MeldedFrom[i])
+	out.Meld = out.Meld.clone()
+	if from := out.MeldedFrom; len(from) > 0 {
+		out.MeldedFrom = make([]Card, len(from))
+		copy(out.MeldedFrom, from)
+		for i := range out.MeldedFrom {
+			deepenCard(&out.MeldedFrom[i])
 		}
 	}
 	// S13.5 knowledge set: a value copy would alias the live map, so
 	// reveals after the snapshot would leak into it and undo couldn't
 	// roll knowledge back.
-	if len(c.KnownBy) > 0 {
-		out.KnownBy = make(map[uuid.UUID]bool, len(c.KnownBy))
-		for k, v := range c.KnownBy {
+	if known := out.KnownBy; len(known) > 0 {
+		out.KnownBy = make(map[uuid.UUID]bool, len(known))
+		for k, v := range known {
 			out.KnownBy[k] = v
 		}
 	} else {
 		out.KnownBy = nil
 	}
-	return out
 }
 
 func clonePlayer(p *Player) *Player {
@@ -699,6 +713,8 @@ func clonePlayer(p *Player) *Player {
 	out.Emblems = cloneZone(p.Emblems)
 	out.Companion = cloneZone(p.Companion)
 	out.Sideboard = cloneZone(p.Sideboard)
+	// ADR 0018's eighth amendment: game state, cloned with the seat.
+	out.TriggerOrderMemory = copyTriggerOrderMemory(p.TriggerOrderMemory)
 	if len(p.CommanderDamage) > 0 {
 		out.CommanderDamage = make(map[uuid.UUID]int, len(p.CommanderDamage))
 		for k, v := range p.CommanderDamage {
@@ -1189,6 +1205,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	// the notice it is asking about is a question about nothing.
 	g.LoopNotice = src.LoopNotice
 	g.LoopThreshold = src.LoopThreshold
+	g.LoopRecording = cloneLoopRecording(src.LoopRecording)
 	g.DiscardPending = src.DiscardPending
 	g.Promises = src.Promises
 	g.Vote = src.Vote

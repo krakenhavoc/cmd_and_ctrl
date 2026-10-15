@@ -63,6 +63,12 @@ var allTypes = []Type{
 	TypeSetTriggerOrderPreference,
 	TypeSetAutoAnswers,
 	TypeCancelAssist,
+	TypeLoopRecordStart,
+	TypeLoopRecordStop,
+	TypeLoopRecordCancel,
+	TypeLoopPropose,
+	TypeResolveLoopProposal,
+	TypeForgetTriggerOrder,
 }
 
 // Types returns every action type, in declaration order. The slice is

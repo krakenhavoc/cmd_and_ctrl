@@ -27,10 +27,10 @@ func init() {
 		Name:         "Accursed Marauder",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Accursed Marauder — each player sacrifices a nontoken creature", Do(EachPlayerSacrifices{
+			TriggerEdict(WhenThisEnters("Accursed Marauder — each player sacrifices a nontoken creature", Do(EachPlayerSacrifices{
 				Match: b04NontokenCreature,
 				Label: "a nontoken creature",
-			})),
+			}))),
 		},
 	})
 }

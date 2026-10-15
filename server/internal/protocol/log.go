@@ -46,6 +46,7 @@ package protocol
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -328,6 +329,13 @@ const (
 	// the LogZone line for the discard that paid the cost, which is
 	// the same motion in words that do not say "cycled".
 	LogCycle LogKind = "cycle"
+	// LogLoop — a step of ADR 0193's demonstrated-loop conversation (a
+	// recording started, closed, was discarded, proposed, accepted or
+	// shortened), or a replay, which is ONE line however many
+	// iterations it ran: "Luke repeats Basalt Monolith ×500: Luke:
+	// library -500". `Label` is the line after the actor's name; it
+	// names only public cards (CR 732.1a).
+	LogLoop LogKind = "loop"
 	// LogAutoAnswer — the server answered a prompt with its chooser's
 	// standing answer (ADR 0127 §6): "Bob paid {1} for Rhystic Study
 	// (automatic)". `Call` is the answer ("pay", "dont_pay", "yes",
@@ -887,10 +895,22 @@ func hiddenZone(z game.ZoneKind) bool {
 // names, knower sets, text — depends on the current board, so it runs
 // on a copy of the ring's entries every time, exactly as before.
 //
+// #3823: and most frames do not need the finish either. A bot's priority
+// pass adds no line, and three frames in four of a bot table's leave the
+// ring exactly as the frame before found it. When the ring is the one
+// the last finished log was drained from, unchanged since, and every
+// name and knower set its entries resolve to in THIS view is the one
+// they resolved to then, the last finished log is this frame's, and it
+// is returned as it is: no copy of the ring and no text rendered. The
+// returned log is shared with the earlier frame and is read-only, as
+// every view's is (StampHostOnLog copies before it writes).
+//
 // Caller must hold the read lock ViewOfGame already holds.
 func publicLogOf(g *game.Game, v *GameView) []LogEvent {
 	seatIDs := seatIDsOf(v)
-	var out []LogEvent
+	var out, reused []LogEvent
+	var ring *logRing
+	var version uint64
 	g.LogProjectionCache().Do(func(slot *any) {
 		c, _ := (*slot).(*logCache)
 		if c == nil {
@@ -901,9 +921,27 @@ func publicLogOf(g *game.Game, v *GameView) []LogEvent {
 			c.fold = newLogFold(seatIDs, g.EventLogGeneration())
 		}
 		c.folded += c.fold.feed(g.Events)
+		ring, version = c.fold.ring, c.fold.ring.version
+		if c.finishedRing == ring && c.finishedVersion == version && logStillResolves(ring, c.finished, v) {
+			reused = c.finished
+			c.reused++
+			return
+		}
 		out = c.fold.entries()
 	})
-	return finishLog(out, v)
+	if reused != nil {
+		return reused
+	}
+	out = finishLog(out, v)
+	g.LogProjectionCache().Do(func(slot *any) {
+		// Kept only while it still describes the ring: another view may
+		// have fed the fold between the two locks, and its own finish
+		// is the one to keep.
+		if c, _ := (*slot).(*logCache); c != nil && c.fold != nil && c.fold.ring == ring && ring.version == version {
+			c.finished, c.finishedRing, c.finishedVersion = out, ring, version
+		}
+	})
+	return out
 }
 
 // logCache is what publicLogOf and publicRevealsOf keep in the game's
@@ -914,6 +952,14 @@ func publicLogOf(g *game.Game, v *GameView) []LogEvent {
 type logCache struct {
 	fold   *logFold
 	folded int
+	// finished is the last log publicLogOf finished, read-only, and
+	// finishedRing / finishedVersion the ring and the ring version it
+	// was drained at (#3823). reused counts the frames that returned it
+	// unchanged, for the cost test; production never reads it.
+	finished        []LogEvent
+	finishedRing    *logRing
+	finishedVersion uint64
+	reused          int
 	// reveals is the reveal window's grouping fold (#3131), kept in the
 	// same slot because it is valid under the same conditions.
 	reveals *revealFold
@@ -994,6 +1040,10 @@ type logFold struct {
 	// the searcher, so a search by someone else is still its own line.
 	revealedSearch     bool
 	revealedSearchSeat int
+	// replaying is set from a loop replay's EventLoopReplayBegin to its
+	// EventLoopReplayed: every event between is folded out, and the
+	// replay is the one line EventLoopReplayed writes (ADR 0193 §7).
+	replaying bool
 }
 
 func newLogFold(seatIDs []uuid.UUID, gen uint64) *logFold {
@@ -1041,6 +1091,20 @@ func (f *logFold) feed(events []game.Event) int {
 	ring := f.ring
 	start := f.cursor
 	for i := start; i < len(events); i++ {
+		// ADR 0193 §7: a loop replay's own events still fire (triggers
+		// and tallies see every iteration), but the log tells the replay
+		// as one line.
+		switch events[i].Kind {
+		case game.EventLoopReplayBegin:
+			f.replaying = true
+			continue
+		case game.EventLoopReplayed:
+			f.replaying = false
+		default:
+			if f.replaying {
+				continue
+			}
+		}
 		e, ok := projectEvent(events[i], f.seatOf, &f.turn, &f.step, &f.sacrificed)
 		if !ok {
 			continue
@@ -1768,6 +1832,14 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventLoopRecording, game.EventLoopReplayed:
+		// ADR 0193 §7: the loop conversation, and a replay's one line.
+		// The engine writes the whole line after the actor's name.
+		base.Kind = LogLoop
+		base.Label = ev.Label
+		base.Amount = ev.Amount
+		return base, true
+
 	case game.EventAutoAnswer:
 		// ADR 0127 §6. Every automatic answer is a line for the whole
 		// table: the answer, the card, and that it was a standing one.
@@ -2153,32 +2225,45 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 		return
 	}
 	wanted := make(map[string]bool, len(entries)*2)
-	for _, e := range entries {
-		if e.CardID != "" {
-			wanted[e.CardID] = true
-		}
-		if e.Target != "" {
-			wanted[e.Target] = true
-		}
-		for i, id := range e.revealIDs {
-			if i >= logRevealNamesMax {
-				break
-			}
-			wanted[id] = true
-		}
+	for i := range entries {
+		addLogWanted(wanted, &entries[i])
 	}
+	r := newLogNameResolver(v, wanted)
+	for i := range entries {
+		r.resolve(&entries[i])
+	}
+}
 
+// addLogWanted adds the IDs an entry names to the set the resolver
+// indexes.
+func addLogWanted(wanted map[string]bool, e *LogEvent) {
+	if e.CardID != "" {
+		wanted[e.CardID] = true
+	}
+	if e.Target != "" {
+		wanted[e.Target] = true
+	}
+	for i, id := range e.revealIDs {
+		if i >= logRevealNamesMax {
+			break
+		}
+		wanted[id] = true
+	}
+}
+
+// logNameResolver is resolveLogNames' lookup over one view: the seats'
+// names, and the view's cards that some entry names.
+type logNameResolver struct {
+	v         *GameView
+	seatNames []string
+	cards     map[string]*CardView
+}
+
+func newLogNameResolver(v *GameView, wanted map[string]bool) logNameResolver {
 	seatNames := make([]string, len(v.Seats))
 	for i, s := range v.Seats {
 		seatNames[i] = s.Name
 	}
-	nameOfSeat := func(i int) string {
-		if i < 0 || i >= len(seatNames) {
-			return ""
-		}
-		return seatNames[i]
-	}
-
 	// Pointers into the view's own zones, not copies: a CardView is
 	// large, and the lookups below ran once or twice per entry per
 	// frame (#3131). Nothing here writes through them.
@@ -2194,51 +2279,117 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 			}
 		}
 	}
+	return logNameResolver{v: v, seatNames: seatNames, cards: cards}
+}
 
-	for i := range entries {
-		e := &entries[i]
-		e.actorName = nameOfSeat(e.Seat)
-		if e.TargetSeat != nil {
-			e.targetSeatName = nameOfSeat(*e.TargetSeat)
-		}
-		if len(e.Seats) > 0 {
-			e.seatNames = make([]string, len(e.Seats))
-			for j, s := range e.Seats {
-				e.seatNames[j] = nameOfSeat(s)
-			}
-		}
-		if c, ok := cards[e.CardID]; ok {
-			e.cardName = logNameOf(*c)
-			e.cardKnowers = c.knowers
-			e.cardFound = true
-		} else if e.cardHint != "" {
-			e.cardName, e.cardKnowers = e.cardHint, allSeatKnowers(v)
-		}
-		if c, ok := cards[e.Target]; ok {
-			e.targetName = logNameOf(*c)
-			e.targetKnowers = c.knowers
-		} else if e.targetHint != "" {
-			e.targetName, e.targetKnowers = e.targetHint, allSeatKnowers(v)
-		}
-		// Revealed cards are looked up in every zone, hands and
-		// libraries included, without a knower check: see
-		// revealEntry. A card that has since left every tracked zone
-		// renders as "a card".
-		if len(e.revealIDs) > 0 {
-			e.revealNames = make([]string, 0, min(len(e.revealIDs), logRevealNamesMax))
-			for j, id := range e.revealIDs {
-				if j >= logRevealNamesMax {
-					break
-				}
-				name := ""
-				if c, ok := cards[id]; ok {
-					name = c.Name
-				}
-				e.revealNames = append(e.revealNames, name)
-			}
-			e.revealIDs = nil
+func (r *logNameResolver) nameOfSeat(i int) string {
+	if i < 0 || i >= len(r.seatNames) {
+		return ""
+	}
+	return r.seatNames[i]
+}
+
+// resolve fills one entry's resolved fields: the ones sameLogResolution
+// compares. A field added here must be added there, or a reused log
+// keeps the old value (TestLogResolutionFieldsAreAllCompared).
+func (r *logNameResolver) resolve(e *LogEvent) {
+	e.actorName = r.nameOfSeat(e.Seat)
+	if e.TargetSeat != nil {
+		e.targetSeatName = r.nameOfSeat(*e.TargetSeat)
+	}
+	if len(e.Seats) > 0 {
+		e.seatNames = make([]string, len(e.Seats))
+		for j, s := range e.Seats {
+			e.seatNames[j] = r.nameOfSeat(s)
 		}
 	}
+	if c, ok := r.cards[e.CardID]; ok {
+		e.cardName = logNameOf(c)
+		e.cardKnowers = c.knowers
+		e.cardFound = true
+	} else if e.cardHint != "" {
+		e.cardName, e.cardKnowers = e.cardHint, allSeatKnowers(r.v)
+	}
+	if c, ok := r.cards[e.Target]; ok {
+		e.targetName = logNameOf(c)
+		e.targetKnowers = c.knowers
+	} else if e.targetHint != "" {
+		e.targetName, e.targetKnowers = e.targetHint, allSeatKnowers(r.v)
+	}
+	// Revealed cards are looked up in every zone, hands and
+	// libraries included, without a knower check: see
+	// revealEntry. A card that has since left every tracked zone
+	// renders as "a card".
+	if len(e.revealIDs) > 0 {
+		e.revealNames = make([]string, 0, min(len(e.revealIDs), logRevealNamesMax))
+		for j, id := range e.revealIDs {
+			if j >= logRevealNamesMax {
+				break
+			}
+			name := ""
+			if c, ok := r.cards[id]; ok {
+				name = c.Name
+			}
+			e.revealNames = append(e.revealNames, name)
+		}
+		e.revealIDs = nil
+	}
+}
+
+// logStillResolves reports whether `finished`, the log finishLog made
+// from the ring's current entries against an earlier view, is exactly
+// what it would make of them against v (#3823). The entries are the
+// same (the caller checked the ring's version), and an entry's text is
+// a function of the entry and its resolved fields, so the log is the
+// same when every entry resolves the same in v: the same seat names,
+// the same card names and the same knower sets. A knower set compares
+// by content, never by identity, so a card revealed to one more seat,
+// or put back where nobody knows it, refinishes the log.
+func logStillResolves(ring *logRing, finished []LogEvent, v *GameView) bool {
+	if v == nil || ring == nil || len(finished) == 0 || len(finished) != ring.n {
+		return false
+	}
+	wanted := make(map[string]bool, ring.n*2)
+	for i := 0; i < ring.n; i++ {
+		addLogWanted(wanted, ring.at(i))
+	}
+	r := newLogNameResolver(v, wanted)
+	for i := 0; i < ring.n; i++ {
+		e := *ring.at(i)
+		r.resolve(&e)
+		if !sameLogResolution(&e, &finished[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+// sameLogResolution compares the fields logNameResolver.resolve fills.
+func sameLogResolution(a, b *LogEvent) bool {
+	return a.actorName == b.actorName &&
+		a.targetSeatName == b.targetSeatName &&
+		slices.Equal(a.seatNames, b.seatNames) &&
+		a.cardName == b.cardName &&
+		a.cardFound == b.cardFound &&
+		sameKnowers(a.cardKnowers, b.cardKnowers) &&
+		a.targetName == b.targetName &&
+		sameKnowers(a.targetKnowers, b.targetKnowers) &&
+		slices.Equal(a.revealNames, b.revealNames) &&
+		slices.Equal(a.revealIDs, b.revealIDs)
+}
+
+// sameKnowers compares two knower sets by content. Nil and empty are
+// different sets: nil is "no knower set" (a public card).
+func sameKnowers(a, b map[string]bool) bool {
+	if (a == nil) != (b == nil) || len(a) != len(b) {
+		return false
+	}
+	for k, v := range a {
+		if w, ok := b[k]; !ok || w != v {
+			return false
+		}
+	}
+	return true
 }
 
 // allSeatKnowers is the knower set of a captured public name: every
@@ -2716,6 +2867,8 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s activated %s's %s", actor, target, card)
 	case LogCycle:
 		return fmt.Sprintf("%s cycled %s", actor, card)
+	case LogLoop:
+		return actor + " " + e.Label
 	case LogAutoAnswer:
 		return renderAutoAnswerText(*e, actor, cardName)
 	case LogTrigger:
@@ -3080,11 +3233,18 @@ func StampHostOnLog(v *GameView) {
 	if host == NoSeat {
 		return
 	}
+	copied := false
 	for i := range v.Log {
-		e := &v.Log[i]
-		if e.Kind != LogSpawn || e.Seat != host {
+		if v.Log[i].Kind != LogSpawn || v.Log[i].Seat != host {
 			continue
 		}
+		if !copied {
+			// #3823: the log may be an earlier frame's, shared and
+			// read-only (publicLogOf), so the stamp goes on a copy.
+			v.Log = slices.Clone(v.Log)
+			copied = true
+		}
+		e := &v.Log[i]
 		e.ActorIsHost = true
 		e.Text = renderLogText(*e, e.cardName, e.targetName)
 	}
@@ -3338,6 +3498,10 @@ type logRing struct {
 	// total counts every push ever made, evicted or not, so a caller
 	// can name an entry by its push ordinal and ask for it back.
 	total int
+	// version moves on every push and every handout of a pointer an
+	// entry can be written through (pushed, last), so an unchanged
+	// version is an unchanged ring (#3823).
+	version uint64
 }
 
 func newLogRing(capacity int) *logRing {
@@ -3351,10 +3515,18 @@ func (r *logRing) pushed(ord int) *LogEvent {
 	if ord < r.total-r.n || ord >= r.total {
 		return nil
 	}
+	r.version++
 	return &r.buf[(r.start+r.n-(r.total-ord))%len(r.buf)]
 }
 
+// at returns the i-th oldest entry, for reading only. Caller keeps i
+// within [0, n).
+func (r *logRing) at(i int) *LogEvent {
+	return &r.buf[(r.start+i)%len(r.buf)]
+}
+
 func (r *logRing) push(e LogEvent) {
+	r.version++
 	r.total++
 	if r.n < len(r.buf) {
 		r.buf[(r.start+r.n)%len(r.buf)] = e
@@ -3371,6 +3543,7 @@ func (r *logRing) last() *LogEvent {
 	if r.n == 0 {
 		return nil
 	}
+	r.version++
 	return &r.buf[(r.start+r.n-1)%len(r.buf)]
 }
 
@@ -3434,7 +3607,7 @@ func countWord(n int) string {
 // a Room with both doors locked — which has no name (CR 709.5, ADR
 // 0103) — its printed halves joined, because a log line is display
 // and the card's identity is public.
-func logNameOf(c CardView) string {
+func logNameOf(c *CardView) string {
 	if c.Name != "" || c.Layout != game.LayoutSplit || len(c.Faces) < 2 {
 		return c.Name
 	}
@@ -3447,6 +3620,7 @@ func logNameOf(c CardView) string {
 //	Bob paid {1} for Rhystic Study (automatic)
 //	Bob didn't pay for Rhystic Study (automatic)
 //	Alice answered Yes to Consecrated Sphinx — draw two cards (automatic)
+//	Luke ordered Pitiless Plunderer — create a Treasure, then Falkenrath Noble — drain 1 (automatic)
 //
 // A redacted entry has lost the card's name and the label with it, and
 // says only that a standing answer was given.
@@ -3460,6 +3634,11 @@ func renderAutoAnswerText(e LogEvent, actor, cardName string) string {
 		return fmt.Sprintf("%s paid %s for %s (automatic)", actor, e.Label, card)
 	case game.AutoAnswerCallDontPay:
 		return fmt.Sprintf("%s didn't pay for %s (automatic)", actor, card)
+	case game.AutoAnswerCallOrder:
+		// ADR 0018's eighth amendment: a remembered trigger order. Label
+		// is the rows' stack labels in resolution order, which the stack
+		// shows the table anyway.
+		return fmt.Sprintf("%s ordered %s (automatic)", actor, nameOr(e.Label, "their triggers"))
 	}
 	// ADR 0188 Decision 12: the which-skip question. Yes spent the
 	// player's own skip; No let the other effect (Label) take the turn.

@@ -127,6 +127,12 @@ type PurposeView struct {
 	// declares only answers is not Priced. A pointer so PurposeView
 	// stays comparable.
 	Answers *[]string `json:"answers,omitempty"`
+	// Saves is which of its controller's other permanents a `survive` or
+	// `protect` row covers (#2939 gap 3): Selfless Spirit's "creatures you
+	// control gain indestructible" is {matches: "creatures"}. Absent for a
+	// row that covers only its own source. Not an amount, like Answers. A
+	// pointer so PurposeView stays comparable.
+	Saves *SavesView `json:"saves,omitempty"`
 	// Aura is "benefit" or "harm" on an Aura card (#3309): what it does
 	// to the permanent it enchants. Absent when the card declares none.
 	// Not an amount, like Answers.
@@ -161,6 +167,7 @@ func (p *PurposeView) Priced() bool {
 	}
 	q := *p
 	q.Answers = nil
+	q.Saves = nil
 	q.Aura = ""
 	q.FlashCleanupSacrifice = false
 	// What it does only when kicked or turned face up is read by the
@@ -226,6 +233,14 @@ type TargetReturnView struct {
 	LifeEqualToPower bool `json:"life_equal_to_power,omitempty"`
 	Lands            int  `json:"lands,omitempty"`
 	LandsUntapped    int  `json:"lands_untapped,omitempty"`
+}
+
+// SavesView is game.Saves on the wire: the class of its controller's
+// permanents a survive or protect row covers, named as a sweep names its
+// class (SweepView.Matches).
+type SavesView struct {
+	Matches string `json:"matches"`
+	Partial bool   `json:"partial,omitempty"`
 }
 
 // PumpView is game.Pump on the wire: a self pump until end of turn.
@@ -385,6 +400,9 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 	}
 	if w := p.Answers.Wire(); len(w) > 0 {
 		v.Answers = &w
+	}
+	if s := p.Saves; s != nil {
+		v.Saves = &SavesView{Matches: string(s.Matches), Partial: s.Partial}
 	}
 	if s := p.Sweep; !s.IsZero() {
 		v.Sweep = &SweepView{

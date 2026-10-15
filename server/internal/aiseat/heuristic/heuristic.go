@@ -146,6 +146,26 @@ type Config struct {
 	// A's value-only rule for the tier (rules.Options). Off (the zero
 	// value) is the heuristic before ADR 0142.
 	PriceAnswers bool
+	// PriceRepeatedPumps prices a declared `pump` row that needs more
+	// than one activation to keep a creature alive (#2939 gap 2,
+	// answers.go): Evernight Shade's {B}: +1/+1 against a Bolt for 3.
+	// The bot works out how many activations the threat takes, counts
+	// those already on the stack and those its mana can still pay, and
+	// prices each step by what the creature is worth, less a flat
+	// ActivateBase for every step still to come. Needs PriceAnswers.
+	// Off (the zero value) prices a pump only when one activation
+	// covers the damage.
+	PriceRepeatedPumps bool
+	// PriceSaveOthers prices a declared `survive` or `protect` row that
+	// covers other permanents of the bot's (#2939 gap 3, answers.go):
+	// Selfless Spirit's "creatures you control gain indestructible" in
+	// answer to a Wrath of God, or to a Murder aimed at a creature worth
+	// more than the Spirit. The row declares what it covers
+	// (`purpose.saves`); the price is the covered permanents the stack
+	// would remove, by their value, less the row's own source when it is
+	// sacrificed to pay. Needs PriceAnswers. Off (the zero value) prices
+	// a row only on the creature it saves.
+	PriceSaveOthers bool
 
 	// RampPerMana is the cast-time premium per mana a new repeatable
 	// mana source closes of the bot's mana deficit (ADR 0126 §2,
@@ -823,7 +843,9 @@ func DefaultConfig() Config {
 		SacrificeDyingAnyway: true,
 		DeathPayoff:          0.60,
 
-		PriceAnswers: true,
+		PriceAnswers:       true,
+		PriceRepeatedPumps: true,
+		PriceSaveOthers:    true,
 
 		DamageToOpponent: 0.30,
 		DesperateDamage:  2.00,
@@ -937,6 +959,10 @@ func BaselineConfig() Config {
 	c.DeathPayoff = 0
 	// ADR 0142 decision 6: declared answers.
 	c.PriceAnswers = false
+	// #2939 gap 2: a pump that takes several activations.
+	c.PriceRepeatedPumps = false
+	// #2939 gap 3: a row that saves the bot's other permanents.
+	c.PriceSaveOthers = false
 	// ADR 0126's amendment of 2026-10-06: discard payoffs.
 	c.PriceDiscardPayoffs = false
 	// ADR 0126's amendment of 2026-10-12 (#2457): self-replacing discards.

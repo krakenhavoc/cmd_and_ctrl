@@ -502,6 +502,80 @@ describe("the order kinds are sheets", () => {
   });
 });
 
+// #3016 (ADR 0018's eighth amendment): "Use this order again".
+describe("trigger_order: Use this order again", () => {
+  const rows = [
+    { id: "p1", label: "Plunderer", row: 1 },
+    { id: "n", label: "Noble", row: 2 },
+    { id: "p2", label: "Plunderer", row: 1 },
+  ];
+  const keyedSnap = (over: Partial<PendingChoiceView> = {}) =>
+    snap({
+      kind: "trigger_order",
+      trigger_options: rows,
+      auto_answer_key: "trigger_order|noble+plunderer",
+      ...over,
+    });
+  const toggle = () =>
+    inSheet("button.remember-toggle").find((b) => b.textContent?.includes(L.useThisOrderAgain));
+
+  it("is absent on a prompt with no key", () => {
+    mount(snap({ kind: "trigger_order", trigger_options: rows }));
+    expect(toggle()).toBeUndefined();
+  });
+
+  it("is off by default, and sends remember with the answer", () => {
+    const { sent } = mount(keyedSnap());
+    const t = toggle()!;
+    expect(t.getAttribute("aria-pressed")).toBe("false");
+    click(t);
+    expect(toggle()!.getAttribute("aria-pressed")).toBe("true");
+    click(inSheet("button.prompt-opt")[1]);
+    click(inSheet("button.prompt-opt")[0]);
+    click(inSheet("button.prompt-opt")[2]);
+    click(barButton("Resolve in this order")!);
+    expect(sent[0].params).toEqual({
+      choice_id: "choice-1",
+      order: ["n", "p1", "p2"],
+      remember: true,
+    });
+  });
+
+  it("starts on when the batch already has a remembered order", () => {
+    const { sent } = mount(keyedSnap({ trigger_order_remembered: true }));
+    expect(toggle()!.getAttribute("aria-pressed")).toBe("true");
+    click(toggle()!);
+    click(inSheet("button.prompt-opt")[0]);
+    click(inSheet("button.prompt-opt")[2]);
+    click(inSheet("button.prompt-opt")[1]);
+    click(barButton("Resolve in this order")!);
+    expect(sent[0].params).toEqual({
+      choice_id: "choice-1",
+      order: ["p1", "p2", "n"],
+      remember: false,
+    });
+  });
+
+  it("is disabled, with its hint, on an order that splits a card's triggers", () => {
+    const { sent } = mount(keyedSnap({ trigger_order_remembered: true }));
+    click(inSheet("button.prompt-opt")[0]);
+    click(inSheet("button.prompt-opt")[1]);
+    click(inSheet("button.prompt-opt")[2]);
+    const t = toggle() as HTMLButtonElement;
+    expect(t.disabled).toBe(true);
+    expect(t.getAttribute("aria-pressed")).toBe("false");
+    expect(sheetPanel()?.textContent).toContain(
+      "Only an order that keeps each card's triggers together can be reused.",
+    );
+    click(barButton("Resolve in this order")!);
+    expect(sent[0].params).toEqual({
+      choice_id: "choice-1",
+      order: ["p1", "n", "p2"],
+      remember: false,
+    });
+  });
+});
+
 describe("mode_pick is a sheet", () => {
   it("is named by its source, and Choose takes Enter once a mode is picked", () => {
     const { sent } = mount(

@@ -791,6 +791,8 @@ func seatDeck(cfg Config, spec SeatSpec) ([]game.Card, error) {
 		return ExertBattleDeck(uuid.Nil), nil
 	case MonolithDeckID:
 		return MonolithBattleDeck(uuid.Nil), nil
+	case AnswersDeckID:
+		return AnswersBattleDeck(uuid.Nil), nil
 	}
 	return CuratedDeck(cfg.Index, spec.Deck)
 }

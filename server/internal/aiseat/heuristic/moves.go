@@ -369,6 +369,10 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 				if saved, why, ok := p.answerSave(st, src, row, cp); ok && saved > v {
 					v, reason = saved, why
 				}
+				// #2939 gap 3: a row that saves the bot's other permanents.
+				if saved, why, ok := p.answerSaveOthers(st, src, row, cp); ok && saved > v {
+					v, reason = saved, why
+				}
 			}
 		}
 		// #2028: a row that returns its own source to hand pays for the

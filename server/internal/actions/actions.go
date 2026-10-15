@@ -200,6 +200,13 @@ const (
 	// request"). Nothing was moved or paid, so the cast simply is not
 	// made. Player-scoped; never a bot move, since bots never ask.
 	TypeCancelAssist Type = "cancel_assist"
+	// ADR 0018's eighth amendment (#3016) — forget a remembered trigger
+	// order, params `{key?: string}`: the prompt's auto_answer_key, or
+	// absent (or empty) to forget every one the seat has. The
+	// automatic-answer notice's "Ask me next time" and the game menu's
+	// "Forget remembered trigger orders" send it. Player-scoped, mints
+	// no undo entry, never a bot move.
+	TypeForgetTriggerOrder Type = "forget_trigger_order"
 )
 
 // openingRollActions are the only action types Dispatch accepts while
@@ -241,7 +248,12 @@ func MintsNoUndo(g *game.Game, t Type) bool {
 	switch t {
 	case TypeRollOpening, TypeHostRollRemaining, TypeChooseStartingPlayer,
 		TypeRollTableDie, TypeSetTableSettings, TypeSetUndoLimit,
-		TypeSetTriggerOrderPreference, TypeSetAutoAnswers:
+		TypeSetTriggerOrderPreference, TypeSetAutoAnswers, TypeForgetTriggerOrder:
+		return true
+	}
+	// ADR 0193: the loop conversation is not a play. The replay it
+	// leads to is one undo entry of its own (ws.Room's replay).
+	if isLoopVerb(t) {
 		return true
 	}
 	return g.OpeningRollOpen()
@@ -521,6 +533,8 @@ var playerScopedActions = map[Type]struct{}{
 	TypeSetTriggerOrderPreference: {},
 	// ADR 0127 §3: and only its own standing answers.
 	TypeSetAutoAnswers: {},
+	// ADR 0018's eighth amendment: and only its own remembered orders.
+	TypeForgetTriggerOrder: {},
 	// Poison and energy follow change_life's posture: the affected
 	// player adjusts their own counters in the sandbox. Monarch and
 	// initiative are NOT player-scoped — any seated player may flip
@@ -544,6 +558,12 @@ var playerScopedActions = map[Type]struct{}{
 	TypeCastVote: {},
 	// ADR 0150 §4: a caster withdraws only their own request for help.
 	TypeCancelAssist: {},
+	// ADR 0193: a seat records, proposes and answers loops only as itself.
+	TypeLoopRecordStart:     {},
+	TypeLoopRecordStop:      {},
+	TypeLoopRecordCancel:    {},
+	TypeLoopPropose:         {},
+	TypeResolveLoopProposal: {},
 	// #1279: a seat finishes its OWN block declaration, never
 	// another seat's — finishing a defender early would decide their
 	// blocks for them.
@@ -567,11 +587,20 @@ var playerScopedActions = map[Type]struct{}{
 // #2881: SettlePassTurn last, so an active player who passed the turn
 // passes again whenever this action handed them priority — an
 // opponent's pass, an answered prompt, a resolution.
+//
+// ADR 0193: while a loop is being recorded, an action that succeeds is
+// also recorded as a step (loop.go), and TendLoopRecording ends a
+// recording the action moved the game past.
 func Dispatch(g *game.Game, a Action) error {
+	draft := beginLoopStep(g, a)
 	err := dispatch(g, a)
 	g.SettleResolution()
 	g.SettleBlockDeclaration()
 	g.SettlePassTurn()
+	if err == nil {
+		commitLoopStep(g, draft, a)
+	}
+	g.TendLoopRecording()
 	return err
 }
 
@@ -1110,6 +1139,9 @@ func dispatch(g *game.Game, a Action) error {
 		}
 		return fmt.Errorf("%w: %s trigger_order", ErrMissingParams, a.Type)
 
+	case TypeLoopRecordStart, TypeLoopRecordStop, TypeLoopRecordCancel, TypeLoopPropose, TypeResolveLoopProposal:
+		return dispatchLoopVerb(g, a)
+
 	case TypeCancelAssist:
 		if a.Player == uuid.Nil {
 			return ErrInvalidPlayer
@@ -1131,6 +1163,20 @@ func dispatch(g *game.Game, a Action) error {
 			choiceID = id
 		}
 		return g.CancelAssistRequest(a.Player, choiceID)
+
+	case TypeForgetTriggerOrder:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			Key string `json:"key"`
+		}
+		if len(a.Params) > 0 {
+			if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+				return err
+			}
+		}
+		return g.ForgetTriggerOrder(a.Player, p.Key)
 
 	case TypeSetAutoAnswers:
 		if a.Player == uuid.Nil {
@@ -1885,6 +1931,10 @@ func dispatch(g *game.Game, a Action) error {
 			// other kinds. Dispatcher routes by presence. Added in
 			// S17 sub-PR 2.
 			Order []string `json:"order"`
+			// Remember rides a trigger_order answer (ADR 0018's eighth
+			// amendment, #3016): true remembers the order for the
+			// batch, false forgets it, absent changes nothing.
+			Remember *bool `json:"remember"`
 			// OptionalApply populates an S17 sub-PR 6
 			// PendingChoiceOptionalReplacement yes/no pick — the
 			// client returns {apply: true|false} for the "may"
@@ -2310,7 +2360,7 @@ func dispatch(g *game.Game, a Action) error {
 					}
 					ids = append(ids, id)
 				}
-				return g.ResolveTriggerOrder(choiceID, a.Player, ids)
+				return g.ResolveTriggerOrderRemember(choiceID, a.Player, ids, p.Remember)
 			}
 			order := make([]game.ReplacementEffectID, 0, len(p.Order))
 			for i, raw := range p.Order {

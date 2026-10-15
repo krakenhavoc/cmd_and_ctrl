@@ -3,6 +3,7 @@
 **Status:** Accepted (2026-10-15) · proposed 2026-10-14 · S73 — Big boards: layout and per-action cost
 **Issue:** [#3136](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3136)
 **Owner decisions (2026-10-15):** every recommendation accepted, see [Owner decisions](#owner-decisions-2026-10-15). The view cost is split out to its own issue.
+**Amended:** 2026-10-15, the restore-point half of the split-out cost is decided on [#3823](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3823): see [the amendment](#amendment--2026-10-15-the-restore-point-decided-on-3823).
 **Numbering:** checked on 2026-10-14 across every remote head (`develop`, `main`, `cost-ledger`, `docs/adr-demonstrate-a-loop`, `docs/issue-audit`, `feat/3536-graveyard-exile-cast-cost`, `feat/3546-target-crewed-or-saddled`, `feat/3547-gitrog-ravenous-ride-fortune`, `feat/3560-skip-extra-turns-ugins-nexus`, `feat/750-conditional-block-restrictions`, `feat/playmats`, `fix/2947-resolution-copy-casts`, `fix/2950-darkness-replacement-continuation`, `fix/caddy-reload-admin-off`, `issue-3016-reuse-trigger-order`, `wip/836-one-click-default`, `pr/2326`) and open PRs. The highest in use is 0193 (PR #3699). 0190 is a gap below merged numbers and is left alone, as #3699 did. This is **0194**.
 **Builds on:** [ADR 0054](0054-dice-rolls-and-coin-flips.md) decision 4 (undo rewinds the random stream), [ADR 0057](0057-win-and-lose-by-effect.md) (the end is final for all but the admin), [ADR 0075](0075-table-settings-and-host-controls.md) (the undo budget), [ADR 0127](0127-answering-repeated-prompts-for-you.md) §4 and §6 (automatic answers are free undo entries), [ADR 0148](0148-capacity-limits-for-a-public-launch.md) (per-table cost and the capacity cap), [ADR 0180](0180-secret-council.md) decision 4 (undo stops at a revealed secret vote).
 
@@ -83,3 +84,32 @@ The owner approved the recommendations on 2026-10-15. Each one is accepted as wr
 - `undoEntry` gains a barrier kind (`pre == nil`), and `undo`, `stampUndoBlockedLocked` and the undo tooltip learn to explain it. `revealedSecretVoteSinceLocked` already treats `pre == nil` as "no reveal".
 - `BenchmarkCloneMidgame` stays as the measure. The soak profile is the acceptance test (S73 exit criterion 3), alongside the existing undo tests, which must pass unchanged.
 - The comment over `undoStackCap` is corrected with the measured size.
+
+## Amendment — 2026-10-15: the restore point, decided on #3823
+
+Owner decision 3 above split the view and restore-point cost out of
+#3136 into #3823. Its write-up found the restore point, not the view,
+was the largest per-commit cost in production (about 10–12 ms and
+14 MB a commit at 5,000 events, 86 % of it re-encoding the event log),
+and this ADR's own candidate, "skip the restore-point write for a bot's
+priority pass", a weaker version of a time-based limit that a human
+table gets nothing from.
+
+**Owner decision (2026-10-15):** rate-limit restore-point writes, then
+encode each event once. Recorded, with the design and the numbers, in
+[ADR 0041](0041-game-persistence.md)'s amendment of the same date:
+
+- a room writes its restore point at most once per
+  `CMDCTRL_RESTORE_POINT_INTERVAL` (default 5 s), always its newest
+  clean state, at once when the game ends, and at shutdown;
+- the event log is encoded once per event and spliced into the file,
+  which stays byte-identical;
+- a whole one-event commit on `BenchmarkRestorePointMidgame` fell from
+  16.5 ms and 35 MB to 2.4 ms and 3.3 MB;
+- the encoded log costs a table about 0.86 KB per event (4.4 MB at
+  5,000 events), released when the game ends. With this ADR's undo
+  ring at most 5 MB a table (0 at a four-bot table), ADR 0148's
+  per-table weights should be re-measured with both.
+
+The wire deltas and the forensic dump's library cards (#3823 items 2
+and 3) remain open there.

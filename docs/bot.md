@@ -3,8 +3,11 @@
 A bot is a seat at the table with no browser attached. A goroutine on
 the server watches the room, asks a policy which of its legal moves to
 make, and dispatches it down exactly the path a WebSocket client's
-action takes — so a bot's move is one `seq`, one snapshot, one replay
-line and one undo entry, the same as yours.
+action takes — so a bot's move is one `seq`, one snapshot and one replay
+line, the same as yours. Its undo entry is a barrier: nobody, the admin
+included, can take a bot's move back or undo past it
+([ADR 0194](decisions/0194-snapshot-only-what-someone-can-undo.md)). An
+improvisation (below) is the exception, and anyone can undo it.
 
 This page is the player-facing guide: how to add one, what the tiers
 and decks are, and what a bot will and will not do. The architecture,
@@ -243,6 +246,14 @@ through the enumerator, as it always has: the enumerator never offers
 checks that a seat is human before it answers anything for it. A
 person's automatic answer reaches a bot as an ordinary state change and
 an `auto_answer` log line.
+
+The same holds for a remembered trigger order ("use this order again",
+#3016, ADR 0018's eighth amendment). A bot orders its triggers from the
+heuristic at no cost, so it is never offered the `remember: true` answer
+and never sends `forget_trigger_order`; the server ignores `remember`
+from a bot seat, which therefore never has a memory. An agent seat (MCP)
+is offered one extra move on a keyed trigger-order prompt, "…, and use
+this order again", since it pays for every prompt in tokens.
 
 ### What a bot answers when somebody else's card asks (#796 / #568 / #929)
 
@@ -1562,13 +1573,23 @@ is on the stack:
     bot passes. A row that declares both is a `survive` row.
   - `prevent` saves it only when every threat is declared damage that
     can be prevented: a target entry's `damage`, or a damage sweep.
-  - `pump` saves it only when one activation's declared `pump` keeps it
-    alive against the declared damage and −N/−N.
+  - `pump` saves it only when its declared `pump` keeps it alive against
+    the declared damage and −N/−N. With `PriceRepeatedPumps` on (#2939),
+    that may take several activations: the bot finds the fewest that
+    cover the damage, counts the pumps it already has on the stack above
+    the threat and the ones its mana can still pay for (a row that costs
+    anything but mana counts once), and activates when they add up. Each
+    activation is priced by what the creature is worth, less a flat
+    `ActivateBase` for every activation still to come after it, so a
+    pump that takes four is cheaper to start than one that takes two.
+    With the switch off, only a pump that one activation completes is
+    priced. A plain self pump that adds toughness (Evernight Shade,
+    Basalt Gargoyle, Restless Apparition) declares its amounts in the
+    catalog; `TestSelfPumpRowsDeclareTheirPump` holds the rest to it.
 
-  A row already activated from that creature, above the threats on the
-  stack, has answered them, so the bot does not stack a second shield.
-  A pump that needs several activations to cover the damage is not
-  priced.
+  Any other row already activated from that creature, above the threats
+  on the stack, has answered them, so the bot does not stack a second
+  shield.
 - **A `value` row waits.** A row declared `value` is priced below a pass
   while anything is on the stack: what it buys is the same once the
   stack resolves. The exception is a row whose cost spends a permanent
@@ -1594,9 +1615,25 @@ rule off when its Config has `PriceAnswers` off, so
 The model tiers' prompt and the MCP seat's move list show a row's
 answers after its label, "(answers: protect)".
 
-Not covered: a combat grant (the combat planner's business), a row on
-another permanent that saves this one (Selfless Spirit), and spells,
-which declare no answers yet.
+With `PriceSaveOthers` on (#2939 gap 3), a `survive` or `protect` row
+that declares `saves` (Selfless Spirit, Dauntless Escort, Boromir; Ainok
+Strike Leader, Bulwark Ox and Dusk Legion Sergeant for part of the
+class) is priced by the permanents of the bot's in that class that the
+stack would remove: each at the creature's value times the chance it is
+lost, halved for a partial class, less the dying-anyway price of the row's
+own source when it is sacrificed. Only a spell counts as removal here
+(declared damage, a declared sweep, or a spell that targets the
+permanent): a targeted ability is not taken for one, since a row that
+costs a card should not be spent on a planeswalker's "can't be blocked".
+A sacrificed source's ability already above the threats on the stack
+counts as having answered them, so a second Spirit is not sacrificed for
+the same Wrath. `survive` is still read as saving from every kind of
+removal (an exile spell is a false positive), as it is for a single
+creature.
+
+Not covered: a combat grant (the combat planner's business), a `sac_outlet`
+whose sacrifice is chosen at resolution (no catalog row has one), and
+spells, which declare no answers yet.
 
 ### The old prices, kept runnable
 
@@ -2329,7 +2366,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 | Flag | What it does |
 |---|---|
 | `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert` or `heuristic-noplan`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. Arena names only; the lobby and `GET /bot/options` never offer them. |
-| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, and `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's. |
+| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, and `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
 | `--lockstep` | plays each game on one goroutine, seat by seat, so the same `--seed` replays the same games move for move (#1503). Off by default — see "Lockstep runs" below for what it changes. |
@@ -3920,6 +3957,16 @@ guarantee is in the enumerator rather than in a policy on purpose: a
 policy that can rank "100 more" top can rank it top every time, and a
 random one eventually will. A human at the same prompt types any
 number up to 1000 into the client's field.
+
+**A bot accepts every demonstrated loop and never records one.** When a
+player records a loop and proposes repeating it
+([ADR 0193](decisions/0193-demonstrate-a-loop-record-once-replay-n-times.md),
+CR 732.2), each other seat gets a `loop_proposal` prompt. `internal/legal`
+offers a bot seat exactly one answer, accept (owner decision 9), so every
+policy accepts; a person or an agent seat is also offered a shorten. The
+recording verbs (`loop_record_start` and the rest) are enumerated only for
+an agent seat (`is_agent`), so a bot is never offered them. A bot that
+finds and records combos is strategy work for a separate issue.
 
 **A loop the bot is feeding itself gets "stop" on the first ask, and
 the bot stops activating.** An activation loop is the other shape of

@@ -100,6 +100,7 @@ var silentEventKinds = map[string]string{
 	"EventEffectError":             silentServerDiagnostic,
 	"EventCostWarning":             silentServerDiagnostic,
 	"EventLoopSuspected":           "GameView.loop_notice is the table's copy of this one, and it is a live control rather than history (#628)",
+	"EventLoopReplayBegin":         "a fold marker, not a fact: the replay it opens is the one line EventLoopReplayed writes (ADR 0193 §7)",
 	"EventPendingChoiceDropped":    silentServerDiagnostic,
 	"EventPendingChoiceReassigned": silentServerDiagnostic,
 	// #1017 / #812 declared this silence when it added the kind, and

@@ -623,21 +623,44 @@ func (g *Game) flagAbilitiesLostLocked(cardID uuid.UUID) {
 	}
 }
 
-// AbilityPurpose is the Purpose declared on the catalog activated row
-// this stack item came from, for #3825's threat gate: a sweep or an
-// edict that arrives as an ability has no card type to read, so the
-// row's declared Answers and Sweep are the only description of it.
-// False for a spell, a triggered ability, and an item with no catalog
-// row (a sandbox activation, an item restored without its row).
-func (s *StackItem) AbilityPurpose() (Purpose, bool) {
-	if s == nil || s.Kind != StackItemActivated || s.Params.Ability == nil {
+// AbilityPurpose is the Purpose declared on the catalog row (activated
+// or triggered) this stack item came from, for the threat gate (#3825,
+// #3882): a sweep or an edict that arrives as an ability has no card
+// type to read, so the row's declared Answers and Sweep are the only
+// description of it. False for a spell, and for an item with no catalog
+// row (a sandbox activation, a trigger built as an unkeyed closure, an
+// item restored without its row).
+//
+// A permanent declares its enters effect on the card, not on the
+// trigger row (Massacre Wurm's -2/-2 is Spec.Purpose, ADR 0126 §6). So
+// a triggered row that watches an enters event and declares no sweep of
+// its own takes the sweep of `source`, the card on the battlefield, when
+// it has one. A card with another enters-watching trigger reads as
+// sweeping through it too: a stop over a missed window (ADR 0009 §3).
+// `source` is nil when the card is not at hand, and the row is read alone.
+func (s *StackItem) AbilityPurpose(source *Card) (Purpose, bool) {
+	if s == nil || s.Params.Ability == nil {
 		return Purpose{}, false
 	}
-	row, _, outcome := resolveActivatedAbilityRef(*s.Params.Ability)
-	if outcome == abilityRefLost {
-		return Purpose{}, false
+	switch s.Kind {
+	case StackItemActivated:
+		row, _, outcome := resolveActivatedAbilityRef(*s.Params.Ability)
+		if outcome == abilityRefLost {
+			return Purpose{}, false
+		}
+		return row.Purpose, true
+	case StackItemTriggered:
+		row, _, outcome := resolveTriggeredAbilityRef(*s.Params.Ability)
+		if outcome == abilityRefLost {
+			return Purpose{}, false
+		}
+		p := row.Purpose
+		if p.Sweep.IsZero() && source != nil && triggerWatches(row.Watches, EventETB) {
+			p.Sweep = CardPurposeOfPtr(source).Sweep
+		}
+		return p, true
 	}
-	return row.Purpose, true
+	return Purpose{}, false
 }
 
 // builds reports whether the declaration can put an item on the stack

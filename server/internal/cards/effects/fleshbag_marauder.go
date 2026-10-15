@@ -27,10 +27,10 @@ func init() {
 		Name:         "Fleshbag Marauder",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Fleshbag Marauder — each player sacrifices a creature", Do(EachPlayerSacrifices{
+			TriggerEdict(WhenThisEnters("Fleshbag Marauder — each player sacrifices a creature", Do(EachPlayerSacrifices{
 				Match: Creature(),
 				Label: "a creature",
-			})),
+			}))),
 		},
 	})
 }

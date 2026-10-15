@@ -57,10 +57,10 @@ func TestEventLogIsReplacedOnlyWhereTheGenerationMoves(t *testing.T) {
 		"RestoreFrom": "bumps eventLogGen",
 		// #3613: a resolution that paused moves its "resolved" line
 		// by marking its own EventResolve, emitted under the same lock.
-		"deferResolveLogLineLocked": "bumps eventLogGen",
-		"cloneLocked":               "fills a new *Game",
-		"restoreGame":               "fills a new *Game",
-		"captureSnapshotLocked":     "fills a GameSnapshot",
+		"deferResolveLogLineLocked":   "bumps eventLogGen",
+		"cloneLocked":                 "fills a new *Game",
+		"restoreGame":                 "fills a new *Game",
+		"captureSnapshotEventsLocked": "fills a GameSnapshot",
 	}
 	files, err := filepath.Glob("*.go")
 	if err != nil {

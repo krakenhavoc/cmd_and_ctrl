@@ -23,10 +23,10 @@ func init() {
 		Name:         "Demon's Disciple",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Demon's Disciple — each player sacrifices a creature or planeswalker", Do(EachPlayerSacrifices{
+			TriggerEdict(WhenThisEnters("Demon's Disciple — each player sacrifices a creature or planeswalker", Do(EachPlayerSacrifices{
 				Match: b10CreatureOrPlaneswalker(),
 				Label: "a creature or planeswalker",
-			})),
+			}))),
 		},
 	})
 }

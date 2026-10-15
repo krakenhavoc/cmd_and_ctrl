@@ -29,7 +29,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "Sacrifice this creature: Creatures you control with counters on them gain hexproof and indestructible until end of turn.",
-				Purpose: game.Purpose{Answers: game.AnswerProtect | game.AnswerSurvive},
+				Purpose: game.Purpose{Answers: game.AnswerProtect | game.AnswerSurvive, Saves: &game.Saves{Matches: game.SweepCreatures, Partial: true}},
 				Cost:    SacrificeThis(),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return GrantKeywordUntilEOT{

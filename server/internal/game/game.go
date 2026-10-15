@@ -371,6 +371,18 @@ type Game struct {
 	// tree sharing the setting; set it before Start.
 	LoopThreshold int
 
+	// LoopRecording is a loop being demonstrated, ready, or proposed
+	// (CR 732.2, ADR 0193); nil when there is none. Plain data, carried
+	// by Clone, RestoreFrom and the snapshot. See loop_recording.go.
+	LoopRecording *LoopRecording
+
+	// loopReplaying is true while ws.Room replays an accepted loop
+	// proposal, under one hold of the room lock. The CR 732 breaker
+	// sits out while it is set (loopSuspectedLocked). Never true
+	// between commits, so neither Clone nor RestoreFrom touches it:
+	// a replay that rolls back to an iteration's clone keeps it set.
+	loopReplaying bool
+
 	// DiscardPending is the cleanup-step pause map (S13.4): keys
 	// are player IDs that need to discard, values are the count
 	// each player must discard. Set at cleanup-step entry by

@@ -1,6 +1,8 @@
 package heuristic
 
 import (
+	"strconv"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
@@ -26,7 +28,8 @@ import (
 //     can be prevented. `pump` saves it only when the row's declared
 //     Pump keeps it alive against the declared damage and −N/−N. A row
 //     already activated from that creature above the threats has done
-//     its job, so the bot does not stack a second shield.
+//     its job, so the bot does not stack a second shield (a pump is the
+//     exception: see repeatedPumpSave).
 //   - A `value` ROW WAITS. A row declared `value` answers nothing, so
 //     it is priced below passing while anything is on the stack: what
 //     it buys is the same once the stack resolves. The exception is a
@@ -40,10 +43,13 @@ import (
 //     keep-chance price, and clears the same leftover bar when that is
 //     all it costs besides mana and taps.
 //
+// Two more prices sit behind their own switches: a pump that needs
+// several activations (Config.PriceRepeatedPumps, #2939 gap 2,
+// repeatedPumpSave), and a row on one permanent that saves others, such
+// as Selfless Spirit (Config.PriceSaveOthers, gap 3, answerSaveOthers).
+//
 // What it does not price: a combat grant (the combat planner's
-// business, ADR 0142 decision 6 "Not covered"), a row on another
-// permanent that saves this one (Selfless Spirit), and a pump that needs
-// more than one activation to cover the damage.
+// business, ADR 0142 decision 6 "Not covered").
 
 // valueInResponse is what a declared-value activation is worth while
 // the stack is not empty: below passing, so the bot waits for the stack.
@@ -86,6 +92,16 @@ type threats struct {
 	// sweep is set when any threat is a declared sweep, which names no
 	// target: hexproof, shroud and protection do nothing against it.
 	sweep bool
+	// fromSpell is set when some threat is a spell: declared damage, a
+	// declared sweep, or a spell that targets the creature. A targeted
+	// ability alone (a planeswalker's phase out, "can't be blocked") is
+	// presumed removal like any targeted item, but a row that costs a
+	// card to use (Selfless Spirit) does not take it for one.
+	fromSpell bool
+	// beyondDestroy is set when some declared sweep takes the creature
+	// by something other than destroy or damage: exile, sacrifice,
+	// bounce, −N/−N. Indestructible and persist are no answer to those.
+	beyondDestroy bool
 }
 
 // threatsTo reads the stack for what would remove creature c, with conf
@@ -132,8 +148,10 @@ func (st *state) threatsTo(c *protocol.CardView, conf float64) (threats, bool) {
 					}
 				}
 				if dmg > 0 {
+					t.fromSpell = true
 					add(i, threatDamage, conf, dmg, src, cantPrevent || it.DamageCantBePrevented)
 				} else {
+					t.fromSpell = t.fromSpell || it.Kind == "spell"
 					add(i, threatRemoval, conf, 0, nil, false)
 				}
 			}
@@ -151,6 +169,7 @@ func (st *state) threatsTo(c *protocol.CardView, conf float64) (threats, bool) {
 				continue
 			}
 			t.sweep = true
+			t.fromSpell = true
 			n := s.Amount
 			if s.AmountIsX {
 				n = it.XValue
@@ -159,8 +178,10 @@ func (st *state) threatsTo(c *protocol.CardView, conf float64) (threats, bool) {
 			case "damage":
 				add(i, threatDamage, share, n, src, cantPrevent || it.DamageCantBePrevented)
 			case "minus":
+				t.beyondDestroy = true
 				add(i, threatMinus, share, n, nil, false)
 			default:
+				t.beyondDestroy = t.beyondDestroy || s.How != "destroy"
 				add(i, threatRemoval, share, 0, nil, false)
 			}
 		}
@@ -222,7 +243,13 @@ func (p *Policy) answerSave(st *state, src *protocol.CardView, row *protocol.Act
 		return 0, "", false
 	}
 	t, ok := st.threatsTo(src, p.cfg.RemovalConfidence)
-	if !ok || st.answeredFrom(src.InstanceID, t.top) {
+	if !ok {
+		return 0, "", false
+	}
+	// #2939 gap 2: a plain pump row is answered by its own earlier
+	// activations only in part, so it is counted rather than refused.
+	repeats := p.cfg.PriceRepeatedPumps && repeatablePump(pv)
+	if !repeats && st.answeredFrom(src.InstanceID, t.top) {
 		return 0, "", false
 	}
 	saved := t.chance * st.permanentValue(src)
@@ -235,10 +262,176 @@ func (p *Policy) answerSave(st *state, src *protocol.CardView, row *protocol.Act
 		return 0, "", false
 	case pv.Declares("prevent") && t.minus == 0 && !t.unpreventable:
 		return saved, "answer: prevent the damage", true
+	case repeats:
+		return p.repeatedPumpSave(st, src, row, t, saved)
 	case pv.Declares("pump") && pv.Pump != nil && pv.Pump.Toughness > 0 && !dies(src, t, pv.Pump):
 		return saved, "answer: pump it out of range", true
 	}
 	return 0, "", false
+}
+
+// maxPumpSteps caps how many activations of one pump row the bot
+// plans for, so a free or very cheap row cannot be read as unlimited.
+const maxPumpSteps = 8
+
+// repeatablePump reports whether a row's declared purpose is a plain
+// self pump that adds toughness: the only kind a second activation
+// stacks on (#2939 gap 2). A row that also shields or prevents is
+// priced as it was.
+func repeatablePump(pv *protocol.PurposeView) bool {
+	return pv.Declares("pump") && pv.Pump != nil && pv.Pump.Toughness > 0 &&
+		!pv.Declares("survive") && !pv.Declares("protect") && !pv.Declares("prevent")
+}
+
+// repeatedPumpSave prices one more activation of a pump row on creature
+// src whose first activation may not be enough (#2939 gap 2). The
+// activations it takes are the fewest whose summed pump keeps src alive
+// through the declared damage and −N/−N; those already on the stack from
+// src count toward them, and so do the ones its mana can still pay.
+// When all of that adds up, this activation is priced by what saving the
+// creature is worth, less a flat ActivateBase for every activation still
+// to come after it. ok is false when the creature is out of reach, or
+// the pumps on the stack already cover it.
+func (p *Policy) repeatedPumpSave(st *state, src *protocol.CardView, row *protocol.ActivatedAbilityView, t threats, saved float64) (float64, string, bool) {
+	pump := row.Purpose.Pump
+	need := 0
+	for k := 1; k <= maxPumpSteps; k++ {
+		if !dies(src, t, &protocol.PumpView{Power: pump.Power * k, Toughness: pump.Toughness * k, Keywords: pump.Keywords}) {
+			need = k
+			break
+		}
+	}
+	pending := st.activationsFrom(src.InstanceID, t.top)
+	if need == 0 || need <= pending || need > pending+p.pumpActivations(st, row) {
+		return 0, "", false
+	}
+	if need == 1 {
+		return saved, "answer: pump it out of range", true
+	}
+	steps := need - pending
+	return saved - float64(steps-1)*p.cfg.ActivateBase, "answer: pump it out of range (" + strconv.Itoa(need) + " activations)", true
+}
+
+// activationsFrom counts the bot's own stack items from source id above
+// index top: the activations it has already made in answer. Every item
+// counts, whichever row made it, so the bot errs toward stopping.
+func (st *state) activationsFrom(id string, top int) int {
+	n := 0
+	for i := top + 1; i < len(st.view.StackItems); i++ {
+		it := &st.view.StackItems[i]
+		if it.Controller == st.me && it.SourceCardID == id {
+			n++
+		}
+	}
+	return n
+}
+
+// pumpActivations is how many times the bot's mana can pay for row now:
+// at least the one on offer. A row that costs anything but mana (a tap,
+// energy, a sacrifice, a discard) is counted once.
+func (p *Policy) pumpActivations(st *state, row *protocol.ActivatedAbilityView) int {
+	if !rowCostsOnlyManaAndTaps(row) || row.TapCost || row.EnergyCost > 0 || row.MillCost > 0 || row.Exert ||
+		row.CrewCost > 0 || row.RevealCostN > 0 || row.RevealHandCost {
+		return 1
+	}
+	cost := row.ManaCost
+	if row.ChargedManaCost != nil {
+		cost = *row.ChargedManaCost
+	}
+	c := parseManaCost(cost, 0)
+	units := st.manaAvailable(p.cfg.PlanFilterLands)
+	n := 0
+	for n < maxPumpSteps {
+		var ok bool
+		if units, ok = payMana(units, c, nil); !ok {
+			break
+		}
+		n++
+	}
+	return max(n, 1)
+}
+
+// destroyShare is the chance a targeted removal spell with no declared
+// damage destroys its target, and so is answered by a grant of
+// indestructible (answerSaveOthers). Half: a Murder, not a Swords to
+// Plowshares.
+const destroyShare = 0.5
+
+// answerSaveOthers prices an untargeted `survive` or `protect` row of
+// the bot's whose declared Saves covers permanents besides its own
+// source (#2939 gap 3, Config.PriceSaveOthers): Selfless Spirit's
+// "creatures you control gain indestructible" in answer to a Wrath of
+// God. Every permanent of the bot's in the declared class that the stack
+// would remove is worth what saving it is worth (the chance the bot
+// loses it, times its value; half of that for a class the row only
+// partly covers). A row that sacrifices its source pays for it at the
+// dying-anyway price, and does not count itself among the saved. ok is
+// false when it saves nothing here, or the bot has already answered.
+func (p *Policy) answerSaveOthers(st *state, src *protocol.CardView, row *protocol.ActivatedAbilityView, cp activateParams) (float64, string, bool) {
+	if !p.cfg.PriceAnswers || !p.cfg.PriceSaveOthers || len(st.view.StackItems) == 0 || src == nil || row == nil ||
+		src.Controller != st.me || len(cp.Targets) > 0 || row.Purpose == nil || row.Purpose.Saves == nil {
+		return 0, "", false
+	}
+	pv := row.Purpose
+	survive := pv.Declares("survive")
+	if !survive && !pv.Declares("protect") {
+		return 0, "", false
+	}
+	saves := pv.Saves
+	var total float64
+	covered, top := 0, -1
+	for i := range st.view.Battlefield.Cards {
+		c := &st.view.Battlefield.Cards[i]
+		if c.Controller != st.me || !sweepClassHolds(c, saves.Matches) || (row.SacrificeSelf && c.InstanceID == src.InstanceID) {
+			continue
+		}
+		t, ok := st.threatsTo(c, p.cfg.RemovalConfidence)
+		if !ok || !t.fromSpell || t.beyondDestroy || (!survive && t.sweep) {
+			continue
+		}
+		share := 1.0
+		if saves.Partial {
+			share = 0.5
+		}
+		// A targeted spell with no declared damage is presumed removal,
+		// and indestructible answers it only when it destroys: no wire
+		// field tells a Murder from a Swords to Plowshares. Hexproof
+		// answers it either way.
+		if !t.sweep && t.damage == 0 && !pv.Declares("protect") {
+			share *= destroyShare
+		}
+		total += share * t.chance * st.permanentValue(c)
+		covered++
+		top = max(top, t.top)
+	}
+	if covered == 0 || st.answeredOthers(src, row, top) {
+		return 0, "", false
+	}
+	if row.SacrificeSelf {
+		total -= p.selfSacrificeCost(st, src)
+	}
+	return total, "answer: save " + strconv.Itoa(covered) + " other permanents", true
+}
+
+// answeredOthers reports whether the bot already has an ability above
+// index top on the stack that answers it: one from src itself, or, for a
+// row that sacrifices its source, one from a permanent that has left the
+// battlefield (the Spirit that paid for it). A guess, so the bot errs
+// toward not stacking a second Selfless Spirit on the same Wrath.
+func (st *state) answeredOthers(src *protocol.CardView, row *protocol.ActivatedAbilityView, top int) bool {
+	if st.answeredFrom(src.InstanceID, top) {
+		return true
+	}
+	if !row.SacrificeSelf {
+		return false
+	}
+	for i := top + 1; i < len(st.view.StackItems); i++ {
+		it := &st.view.StackItems[i]
+		if it.Controller == st.me && it.Kind == "ability" && st.bf[it.SourceCardID] == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // valueWaits reports whether a row declared `value` should wait for the

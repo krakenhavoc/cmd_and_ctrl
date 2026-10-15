@@ -3,6 +3,7 @@ package game
 import (
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -42,6 +43,12 @@ const (
 	// AutoAnswerNever answers No, or Don't pay.
 	AutoAnswerNever AutoAnswer = "never"
 )
+
+// autoAnswerRemembered is the rule a remembered trigger order is (ADR
+// 0018's eighth amendment, #3016). It lives in Player.TriggerOrderMemory,
+// not in AutoAnswers, so it is never Valid: set_auto_answers cannot set
+// it.
+const autoAnswerRemembered AutoAnswer = "remembered"
 
 // Valid reports whether a is one of the two standing answers.
 func (a AutoAnswer) Valid() bool { return a == AutoAnswerAlways || a == AutoAnswerNever }
@@ -355,6 +362,14 @@ func (g *Game) autoAnswerRuleLocked(c *PendingChoice) (AutoAnswer, bool) {
 	if p == nil || p.Eliminated || p.IsBot {
 		return "", false
 	}
+	// ADR 0018's eighth amendment: a trigger order's rule is a
+	// remembered order, which is game state rather than a setting.
+	if c.Kind == PendingChoiceTriggerOrder {
+		if _, ok := p.TriggerOrderMemory[c.AutoAnswerKey]; !ok {
+			return "", false
+		}
+		return autoAnswerRemembered, true
+	}
 	answer, ok := p.AutoAnswers[c.AutoAnswerKey]
 	if !ok || !answer.Valid() {
 		return "", false
@@ -372,6 +387,9 @@ func (g *Game) autoAnswerHandReasonLocked(c *PendingChoice, answer AutoAnswer) A
 	}
 	if g.LoopNotice != nil {
 		return AskedByHandLoop
+	}
+	if answer == autoAnswerRemembered {
+		return g.triggerOrderHandReasonLocked(c)
 	}
 	if answer != AutoAnswerAlways {
 		return ""
@@ -460,6 +478,24 @@ func (g *Game) AutoAnswer(choiceID uuid.UUID) (uint64, error) {
 		if o := c.TurnSkipOrder; o != nil && len(o.Others) > 0 {
 			ev.Label = o.Others[0]
 		}
+	case PendingChoiceTriggerOrder:
+		// ADR 0018's eighth amendment: the remembered ranking, applied
+		// by a stable sort. Label names the rows in the order they will
+		// resolve, as the stack is about to show them.
+		mem := g.playerByIDLocked(c.Chooser).TriggerOrderMemory[c.AutoAnswerKey]
+		order, labels, ok := g.rememberedTriggerOrderLocked(c, mem)
+		if !ok {
+			return 0, ErrNotAutoAnswerable
+		}
+		ev.Call = AutoAnswerCallOrder
+		ev.Label = strings.Join(labels, TriggerOrderLabelJoin)
+		g.EmitEvent(ev)
+		seq := g.eventSeq
+		// Applying it makes it the most recently used (owner decision 7).
+		p := g.playerByIDLocked(c.Chooser)
+		g.storeTriggerOrderLocked(p, c.AutoAnswerKey, mem.Rows)
+		g.applyTriggerOrderLocked(idx, order, true)
+		return seq, nil
 	default:
 		return 0, ErrNotAutoAnswerable
 	}

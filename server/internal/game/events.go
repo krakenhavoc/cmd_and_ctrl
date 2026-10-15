@@ -1368,6 +1368,21 @@ const (
 	// Added for #628 (ADR 0055).
 	EventLoopSuspected EventKind = "loop_suspected"
 
+	// EventLoopRecording — a step of ADR 0193's demonstrated-loop
+	// conversation (CR 732.2): a recording started, closed, was
+	// discarded, proposed, accepted or shortened. Call is the phase
+	// (LoopPhaseStarted, ...), Actor the player and Label the rest of
+	// the public line ("started recording a loop (CR 732.2a)").
+	EventLoopRecording EventKind = "loop_recording"
+	// EventLoopReplayBegin opens a replay of an accepted loop. Every
+	// event up to the matching EventLoopReplayed is folded out of the
+	// public log, which writes the replay as one line (ADR 0193 §7).
+	EventLoopReplayBegin EventKind = "loop_replay_begin"
+	// EventLoopReplayed closes a replay: Actor is the proposer, Amount
+	// the iterations completed and Label the rest of the one public
+	// line ("repeats Basalt Monolith ×500: Luke: library -500").
+	EventLoopReplayed EventKind = "loop_replayed"
+
 	// EventRollDie and EventFlipCoin are public random outcomes. One event is
 	// emitted per die/coin; BatchSeq identifies the instruction that made them.
 	EventRollDie  EventKind = "roll_die"

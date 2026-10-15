@@ -56,6 +56,12 @@ the end of this file. It replaces the priority order in "Phase 3 (not
 in this change)" and sets the design for the rest of phase 3: scoped
 continuous effects and delayed triggers become data records, and every
 closure left in game state must be rebuilt, keyed, or transient.
+**Amended by:** the owner's decision of 2026-10-15
+([#3823](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3823)), at
+the end of this file. Restore points are written at most once per
+`CMDCTRL_RESTORE_POINT_INTERVAL` (default 5 s) and at shutdown, still at
+the last clean boundary, and each event is encoded once. Decision 4's
+rule holds; a crash can rewind a busy table up to one interval more.
 
 ## Context
 
@@ -2605,3 +2611,96 @@ which replaces, so a green Bear would have lost its green.
 - **Back-out.** Delete the `ModAddColors` case from the layer switch:
   `scoped_effects_test.go`'s `addColors` case fails (the base colours are not
   kept). Delete the `modKinds` row: registration refuses the kind.
+
+## Amendment — 2026-10-15: restore points at most once per interval, each event encoded once (#3823)
+
+**Owner decision (2026-10-15):** rate-limit restore-point writes, then
+encode each event once. Both are accepted as recommended on #3823.
+
+### Why
+
+Profiling a production commit on the midgame board (four seats,
+100-card decks, about 25 permanents a seat, 5,000 events) put the
+restore point at about 10–12 ms and 14 MB per commit, the largest
+per-commit cost by an order of magnitude, and 86 % of the file (3.7 of
+4.2 MB) was `events`: the whole log copied by `CaptureSnapshot` and
+re-encoded on every restorable commit. A game's cost per commit was
+linear in its length and its total cost quadratic, and a bot table
+commits several times a second.
+
+### What changes
+
+1. **Rate limit** (`ws/restore_rate.go`). Every commit still captures
+   the game, because only the capture says whether the state is a
+   restore point (Decision 4). A restorable capture becomes the room's
+   *pending* restore point, the newest replacing the older. It is
+   written at once when the last write is at least the interval old,
+   otherwise by a trailing timer when the interval runs out, and at once
+   when the game has ended (#2919). The interval is
+   `CMDCTRL_RESTORE_POINT_INTERVAL`, default **5 s**; `0` restores the
+   old write-every-commit behaviour, and is what `ws.NewRoom` and a bare
+   `RoomManager` use, so tooling and tests are unchanged.
+2. **Shutdown flush.** At SIGTERM the server writes every pending
+   restore point (`RoomManager.FlushRestorePoints`) before the shutdown
+   census, so the census reads what is on disk, and again after the hub
+   and the bots stop. Every deploy, rollback and Scryfall-refresh
+   restart is a `systemctl restart`, so SIGTERM, so it rewinds no table
+   further than before.
+3. **Encode once** (`game.EncodedEventLog`). The room's capture
+   (`Game.CaptureRestorePoint`) shares the live log, capped at its
+   length, instead of copying it, and the room keeps each event's JSON,
+   appending only the new ones. The file is written as the snapshot
+   marshalled without `events` with the cached array spliced in before
+   `"eventSeq"`, and is **byte-identical** to marshalling it whole
+   (`TestRestorePointFromTheCacheIsByteIdentical`, over a growing log,
+   an undo, and every fixture in `testdata/snapshots`). A new log
+   generation (an undo, a deferred resolution line) re-encodes the log
+   once. No schema change: the reader is untouched.
+
+### What still holds
+
+- **The restore point is the last clean state.** Because the pending
+  point is a capture, not a dirty flag, a table that walks into a
+  prompt after a held commit still gets that commit written, at the
+  timer or the flush (`TestRateLimitKeepsTheLastCleanState`). After a
+  flush, a clean table's `seq_behind` is 0 and an unclean one's counts
+  only the commits since its last clean state, as #3038 and
+  [ADR 0195](0195-deploys-that-hand-each-table-over-at-a-clean-point.md)
+  read them. ADR 0195's `Room.HandOff`, when it is built, flushes
+  (`FlushRestorePoint`) before it confirms the restore point is at the
+  live seq.
+- **The bounded rewind on a crash.** A crash or `SIGKILL` loses the
+  pending point, so a busy table can rewind up to one interval (5 s of
+  play) further than its last clean state. A quiet table is on disk
+  within the interval. `cmdctrl_rooms_behind_restore_point` now counts
+  a busy table as behind for up to the interval; `RestorePointLagging`
+  (10 minutes) is unaffected.
+- A deleted table's pending write and its timer are dropped
+  (`closeRestorePoints`, before the reaper removes the file), so neither
+  brings the file back.
+
+### Measured
+
+`BenchmarkRestorePointMidgame` (`server/internal/ws`), the midgame board
+at 5,000 events, `GOMAXPROCS=2`, 100 iterations × 3 on the shared host:
+
+| | before | encode once | encode once + rate limit |
+|---|---|---|---|
+| one restore point written (capture, encode, file) | 12.3 ms, 13.5 MB | 2.7 ms, 2.1 MB | same, once per 5 s |
+| a whole one-event commit (view, dump, replay, restore point) | 16.5 ms, 35 MB | 5.0 ms, 7.0 MB | **2.4 ms, 3.3 MB** |
+
+**Memory** (`TestEncodedEventLogMemory`): the cache holds about
+**0.86 KB per event** (the encoding itself, an 8-byte offset, and
+append's growth slack): 4.4 MB at 5,000 events, beside a 4.1 MB file,
+and growing with the game (a 20,000-event game holds about 17 MB). It is
+released when the table ends. Against
+[ADR 0148](0148-capacity-limits-for-a-public-launch.md)'s ~40 MB per
+table, a typical game adds a few MB, about what
+[ADR 0194](0194-snapshot-only-what-someone-can-undo.md) took off the
+undo ring; ADR 0148's load test should be re-run with both.
+
+### Back-out
+
+Set `CMDCTRL_RESTORE_POINT_INTERVAL=0` to write on every commit again
+(no deploy needed beyond the env). Reverting the change restores the
+whole-file marshal; files written either way read the same.
