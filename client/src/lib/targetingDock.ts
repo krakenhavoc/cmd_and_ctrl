@@ -27,9 +27,11 @@ import { L } from "./labels";
 import type { GameView } from "./protocol";
 import {
   canConfirm,
+  effectiveShareScope,
   isCardSetPick,
   isMultiPick,
   legalTargetCount,
+  type ShareScope,
   type TargetingMode,
   type TargetingState,
 } from "./targeting";
@@ -171,14 +173,67 @@ export interface TargetingHandlers {
   // #2394: a card-set pick answered on the board offers the same
   // choice as the list. Called with the choice's ID.
   onShowList?: (choiceID: string) => void;
-  // #3265: the same ability has `count` more instances waiting for a
-  // target, and the player may answer them all with this pick.
-  share?: { count: number; on: boolean; onToggle: () => void };
+  // #3265: the same ability on this source has `count` more instances
+  // waiting for a target, and the player may answer them all with this
+  // pick. #3817: `card` is the reach over every copy of the card (the
+  // other instances, and the sources in all), offered as a second
+  // choice when more than one source has them waiting.
+  share?: {
+    scope: ShareScope;
+    count: number;
+    card?: { count: number; sources: number };
+    onScope: (scope: ShareScope) => void;
+  };
 }
 
-// sameTargetLabel is the toggle's text: this prompt and the rest.
-export function sameTargetLabel(count: number): string {
-  return `Same target for all ${count + 1}`;
+// sameTargetSourceLabel is the source scope's button: this source's
+// instances, this prompt included.
+export function sameTargetSourceLabel(name: string, n: number): string {
+  return `Same target for this ${name}'s ${n} triggers`;
+}
+
+// sameTargetCardLabel is the card scope's button (#3817): every copy's
+// instances, this prompt included.
+export function sameTargetCardLabel(name: string, n: number): string {
+  return `Same target for all ${n} ${name} triggers`;
+}
+
+// shareRow is the dock's row of share choices: none for a lone
+// instance, the source scope when this source repeats, and the card
+// scope when more than one source of the card has instances waiting.
+// Each button turns its scope on, or off again when it is the one on.
+function shareRow(name: string, share: NonNullable<TargetingHandlers["share"]>): DockAction[] {
+  const cardOK = (share.card?.sources ?? 0) > 1 && (share.card?.count ?? 0) > 0;
+  const scope = effectiveShareScope(share.scope, cardOK);
+  const press = (s: "source" | "card") => () => share.onScope(scope === s ? "off" : s);
+  const row: DockAction[] = [];
+  if (share.count > 0) {
+    row.push({
+      id: "same-target",
+      label: sameTargetSourceLabel(name, share.count + 1),
+      title:
+        scope === "source"
+          ? `your pick also answers this ${name}'s other triggers, where it is legal`
+          : `use one target for this ${name}'s triggers`,
+      pressed: scope === "source",
+      alignEnd: true,
+      onPress: press("source"),
+    });
+  }
+  if (cardOK) {
+    row.push({
+      id: "same-target-card",
+      label: sameTargetCardLabel(name, share.card!.count + 1),
+      title:
+        scope === "card"
+          ? `your pick also answers every ${name}'s triggers, where it is legal`
+          : `use one target for the triggers of every ${name} you control`,
+      pressed: scope === "card",
+      alignEnd: true,
+      onPress: press("card"),
+    });
+  }
+  return row;
 }
 
 export function targetingRequest(
@@ -212,6 +267,7 @@ export function targetingRequest(
   // in the modal's grid, for a player who would rather read names.
   const showList = h.onShowList;
   const share = multi ? undefined : h.share;
+  const rowOf = share ? shareRow(state.card.name, share) : [];
   const choiceID = state.choiceID;
   const secondary: DockAction[] = choiceID
     ? cardSet && showList
@@ -244,22 +300,7 @@ export function targetingRequest(
     detail: targetingDetail(state, view) || undefined,
     primary,
     secondary,
-    ...(share && share.count > 0
-      ? {
-          row: [
-            {
-              id: "same-target",
-              label: sameTargetLabel(share.count),
-              title: share.on
-                ? "your pick also answers the other instances of this trigger, where it is legal"
-                : "ask for each instance's target separately",
-              pressed: share.on,
-              alignEnd: true,
-              onPress: share.onToggle,
-            },
-          ],
-        }
-      : {}),
+    ...(rowOf.length > 0 ? { row: rowOf } : {}),
   };
 }
 

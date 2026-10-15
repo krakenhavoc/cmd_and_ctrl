@@ -162,9 +162,8 @@
     isLegalPlayerTarget,
     isMultiPick,
     lonePick,
-    repeatsOf,
-    shareTargetOn,
-    sharedFrom,
+    shareTargetScope,
+    sharedAfterAnswer,
     sharedPick,
     sharedStillWanted,
     sharedTarget,
@@ -1745,10 +1744,10 @@
       const answer = choiceAnswer(state, targets);
       const dist = distributionOf(state);
       if (dist) answer.distribution = dist;
-      // #3265: one target for every instance of a repeated trigger.
-      if ($shareTargetOn && targets.length === 1 && repeatsOf(state, view) > 0) {
-        sharedTarget.set(sharedFrom(state, targets[0]!));
-      }
+      // #3265: one target for every instance of a repeated trigger;
+      // #3817: or for every copy of the card's, as the dock says.
+      const kept = sharedAfterAnswer(state, targets, $shareTargetScope, view);
+      if (kept) sharedTarget.set(kept);
       // Answered: its re-opened prompt is not answered for the player
       // again, by the kept target or any other.
       autoAnswered.add(state.choiceID);

@@ -820,6 +820,14 @@ type PendingChoiceView struct {
 	// present only on trigger_prompt and pick_target choices.
 	DoubledBy     string `json:"doubled_by,omitempty"`
 	DoubledByName string `json:"doubled_by_name,omitempty"`
+	// SharedTargetKey is, on a trigger's pick_target, the trigger's
+	// identity as card and ability (game.PendingChoice.SharedTargetKey,
+	// #3817): every copy of one card shares it, two abilities do not.
+	// The client offers one target for all of a card's waiting triggers
+	// over the prompts that share it. Opaque; the chooser's alone, like
+	// the auto-answer fields. Absent when the trigger has no catalog
+	// identity or its source is face down.
+	SharedTargetKey string `json:"shared_target_key,omitempty"`
 	// CouncilVote marks an option_pick as one player's BALLOT in a
 	// vote (CR 701.38, ADR 0146) and carries the vote so far. Public:
 	// every seat sees each vote as it is cast, except in a secret vote
@@ -8601,6 +8609,8 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if subject := c.TradeSubject(); subject != uuid.Nil {
 				v.TradeFor = subject.String()
 			}
+			// #3817: one target for every copy of the card's trigger.
+			v.SharedTargetKey = c.SharedTargetKey()
 		}
 		if answerer != c.Chooser {
 			v.OnBehalfOf = c.Chooser.String()
@@ -10029,6 +10039,9 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].AutoAnswerCard = ""
 			out[i].AutoAnswerPrompt = ""
 			out[i].AskedByHand = ""
+			// #3817: so is the trigger's card identity, which names the
+			// card behind a prompt only its chooser answers.
+			out[i].SharedTargetKey = ""
 		}
 		if c.Kind == string(game.PendingChoiceSearchLibrary) && c.Chooser != viewerID {
 			out[i].Options = nil

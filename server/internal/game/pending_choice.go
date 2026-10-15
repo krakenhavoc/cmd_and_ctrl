@@ -3,6 +3,7 @@ package game
 import (
 	"errors"
 	"slices"
+	"strconv"
 
 	"github.com/google/uuid"
 )
@@ -1243,6 +1244,34 @@ func (c *PendingChoice) TriggerDoubler() (uuid.UUID, string) {
 		return c.pickTargetResume.doubledBy.id, c.pickTargetResume.doubledBy.name
 	}
 	return uuid.Nil, ""
+}
+
+// SharedTargetKey is the identity of the trigger a pick_target prompt
+// asks about, as card and ability rather than as source object (#3817,
+// ADR 0127's 2026-10-15 amendment): the source's catalog key, the
+// triggered row's index and label, and the clause being asked. Every
+// copy of one card (twenty Blood Artists, a Clone of one) shares it;
+// two abilities of one card, or two clauses of one ability, do not.
+// The client offers "same target for all of this card's triggers" over
+// the prompts that share it and the same chooser.
+//
+// "" when the prompt is not a trigger's target pick, when the row is not
+// a catalog row (an engine-built or reflexive trigger), or when the
+// source is face down, so nothing is shared across an unknown identity.
+func (c *PendingChoice) SharedTargetKey() string {
+	if c == nil || c.Kind != PendingChoicePickTarget || c.copyResume != nil {
+		return ""
+	}
+	f := c.pickTargetResume
+	if f == nil || f.source.FaceDown {
+		return ""
+	}
+	t := f.ability
+	if t.row.key == "" || t.Key == "" {
+		return ""
+	}
+	return t.row.key + "|" + AbilitySlotTriggered + "|" + strconv.Itoa(t.row.index) + "|" + t.Key +
+		"|step" + strconv.Itoa(f.step)
 }
 
 // DamageAssignmentFrame is the payload for a
