@@ -320,6 +320,12 @@ func (e *enumerator) choiceMoves() bool {
 			}
 			if action := c.PayAction(); action != nil {
 				pool := g.PayActionOptionsForEffect(c.Chooser, action)
+				if action.Kind == game.PayActionExileFromGraveyard {
+					// ADR 0187 §7: the cards the seat would miss least go
+					// first, as delve and escape do, so the payments the
+					// expansion cap keeps are the cheapest ones.
+					pool = e.cheapestFuelFirst(pool)
+				}
 				// ADR 0150 §6: an any-player sacrifice or discard says
 				// whose effect it stops, as a mana link does.
 				payVerb, declineVerb := anyPlayerVerbs(g, c, c.PayCost, e.seat)

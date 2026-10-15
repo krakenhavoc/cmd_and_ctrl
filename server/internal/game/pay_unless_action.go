@@ -64,6 +64,14 @@ const (
 	// Distant Memories' "any opponent may have you put that card into
 	// your hand". Always payable.
 	PayActionNothing PayActionKind = "nothing"
+	// PayActionExileFromGraveyard exiles Count cards from the payer's
+	// OWN graveyard (ADR 0187 §3): Carrion Rats' "any player may exile
+	// a card from their graveyard", Carrion Wurm's three. A card pick,
+	// so it takes the {apply, card_ids} answer like a discard, and
+	// "Pay" is a payment only from a graveyard of at least Count cards
+	// (CR 118.3). Graveyards are public, so the options go to every
+	// seat.
+	PayActionExileFromGraveyard PayActionKind = "exile_graveyard"
 )
 
 // NamesNothing reports whether a "Pay" of this payment names no cards
@@ -131,8 +139,9 @@ func (g *Game) PayActionPayableForEffect(chooser uuid.UUID, a *PayAction) bool {
 	return g.payActionPayableLocked(chooser, a)
 }
 
-// PayAction is a non-mana pay-unless payment: "discard N cards" or
-// "sacrifice N permanents of a type".
+// PayAction is a non-mana pay-unless payment: "discard N cards",
+// "sacrifice N permanents of a type" or "exile N cards from your
+// graveyard".
 type PayAction struct {
 	Kind PayActionKind
 	// Count is how many cards or permanents one payment takes. A
@@ -145,9 +154,10 @@ type PayAction struct {
 
 // payActionOptionsLocked is every card or permanent `chooser` could
 // name toward `a` right now: their hand, in hand order, for a discard;
-// the permanents they control matching a.Of, in the policy-neutral
-// sacrifice payment order (SacrificePaymentOrderForEffect), for a
-// sacrifice. Caller must hold g.mu with fresh layers.
+// their graveyard, in zone order, for a graveyard exile; the permanents
+// they control matching a.Of, in the policy-neutral sacrifice payment
+// order (SacrificePaymentOrderForEffect), for a sacrifice. Caller must
+// hold g.mu with fresh layers.
 func (g *Game) payActionOptionsLocked(chooser uuid.UUID, a *PayAction) []uuid.UUID {
 	if a == nil {
 		return nil
@@ -163,6 +173,14 @@ func (g *Game) payActionOptionsLocked(chooser uuid.UUID, a *PayAction) []uuid.UU
 			return nil
 		}
 		for _, c := range p.Hand.Cards {
+			out = append(out, c.InstanceID)
+		}
+	case PayActionExileFromGraveyard:
+		// ADR 0187 §3: only the payer's own graveyard, in zone order.
+		if p.Graveyard == nil {
+			return nil
+		}
+		for _, c := range p.Graveyard.Cards {
 			out = append(out, c.InstanceID)
 		}
 	case PayActionSacrifice:
@@ -228,6 +246,26 @@ func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked [
 				}
 				return then(g)
 			},
+		})
+	case PayActionExileFromGraveyard:
+		// ADR 0187 §3: one batch through the exit primitive, a leg at
+		// a time from each leg's continuation, so a leg that stops on
+		// a CR 903.9 prompt resumes into the rest and `then` runs once
+		// after the LAST card has landed. A commander exiled this way
+		// lands like any card (ADR 0115) and its owner is offered the
+		// command zone by the CR 903.9a state-based action. Not
+		// MustSettleNow and not payExileCardsCostLocked: this payment
+		// is made while something resolves, not during a cast.
+		return g.routeAllThenLocked(zoneRoute{
+			Dst:    ZoneExile,
+			Actor:  chooser,
+			Source: source,
+			Cause:  MoveCause{Kind: MoveCauseCost, Controller: chooser},
+		}, picked, func(g *Game, _ []uuid.UUID) error {
+			if then == nil {
+				return nil
+			}
+			return then(g)
 		})
 	case PayActionSacrifice:
 		if err := g.payCostSacrificesLocked(picked, nil); err != nil {
