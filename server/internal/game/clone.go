@@ -534,6 +534,11 @@ func (g *Game) cloneLocked() *Game {
 			out.replacementsAppliedThisEvent[evID] = cp
 		}
 	}
+	// #3482: the serials those marks and an open prompt's IDs name
+	// their source objects by. Copied, since minting inserts.
+	out.replacementObjectSerials = cloneReplacementObjectSerials(g.replacementObjectSerials)
+	out.nextReplacementObjectSerial = g.nextReplacementObjectSerial
+	out.replacementSerialsCompactAt = g.replacementSerialsCompactAt
 	// #1019, #1027: the prompted runs in flight — sacrifices and
 	// discards alike. Deep in the counter and the per-seat landed
 	// lists, shallow in the continuation closure — clonePromptRuns
@@ -1274,6 +1279,11 @@ func (g *Game) RestoreFrom(src *Game) {
 	// #808: the paused events' once-per-event marks rewind with the
 	// prompts that own them — see cloneLocked.
 	g.replacementsAppliedThisEvent = src.replacementsAppliedThisEvent
+	// #3482: the object serials those marks name, copied rather than
+	// shared because minting inserts and src may be restored again.
+	g.replacementObjectSerials = cloneReplacementObjectSerials(src.replacementObjectSerials)
+	g.nextReplacementObjectSerial = src.nextReplacementObjectSerial
+	g.replacementSerialsCompactAt = src.replacementSerialsCompactAt
 	// #1019, #1027: a half-answered prompted run rewinds with the
 	// prompts still owing it — see cloneLocked.
 	g.promptRuns = src.promptRuns

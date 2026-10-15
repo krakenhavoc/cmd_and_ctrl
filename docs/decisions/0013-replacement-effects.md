@@ -11,6 +11,7 @@
 **Amended:** 2026-09-29 · Branch `fix/shuffle-after-replacement-1735` — a redirected library destination can now be a genuine shuffle, not just a placement, see [§5ah](#5ah-amendment-2026-09-29-a-redirected-library-destination-can-ask-for-a-shuffle)
 **Amended:** 2026-10-01 · Branch `feat/1743-explore-the-vastlands` — §5x's run takes an arbitrary choose_cards leg per seat, and a look-and-take can name two kinds of card at once, see [§5ai](#5ai-amendment-2026-10-01-a-card-set-pick-is-a-run-too--every-player-chooses-from-their-own-look)
 **Amended:** 2026-10-04 · Branch `feat/s58-0115-pr3-commander-return-switch` — the CR 903.9 built-in applies to a HAND or LIBRARY destination only (CR 903.9b); a commander put into a graveyard or exile lands there and the CR 903.9a state-based action asks its owner afterwards. §5f's resume and §5af's ask-before-paying now serve bounces and tucks only. See [ADR 0115](0115-commanders-die.md)
+**Amended:** 2026-10-15 · Branch `fix/3482-stable-replacement-ids` — a catalog or dredge `ReplacementEffectID` names its source OBJECT, not its position in a zone, see [§5aj](#5aj-amendment-2026-10-15-an-effect-id-names-an-object-not-a-slot)
 
 ## Context
 
@@ -4112,6 +4113,37 @@ runs last, once: "each player gains 3 life".
 would be the same fan-out with `RevealTopOfLibraryForEffect` in place
 of the look; no card in the catalog's gap needs it yet, so the field
 was not added.
+
+### 5aj. Amendment, 2026-10-15: an effect ID names an object, not a slot
+
+*Amendment, 2026-10-15, branch `fix/3482-stable-replacement-ids`, #3482.*
+
+A catalog replacement's `ReplacementEffectID` packed its source's
+battlefield index, and a dredge offer's packed its graveyard index.
+Both outlive a pause: §4's once-per-event marks, §5's prompt IDs, an
+expanded draw's inherited history and a damage instance's remembered
+redirection order hold them while a prompt is open. A permanent earlier
+on the battlefield leaving in that time renumbered every later effect,
+so an applied Rhox Faithmender was gathered again under its new number
+and doubled the same gain twice.
+
+The IDs now pack a per-game **object serial** in place of the index
+(`replacement_serials.go`). It is handed out the first time a gather
+sees the object, keyed by instance ID and `Card.ObjectEpoch`
+(CR 400.7), and never reused. So an ID follows its object wherever the
+zone's slice puts it, an object that has left names nothing rather than
+its neighbour, and a card that comes back is a new object with a new
+ID. The registry is not in the snapshot (a game paused on a replacement
+prompt is never a restore point); `Clone` and `RestoreFrom` copy it,
+so an undo into an open prompt replays against the same IDs. A gather
+under a read lock (the auto-tap planner's mana preview) hands an
+unseen object a provisional serial instead of writing the registry.
+
+A gathered catalog effect also records its source object, because its
+`source` pointer is into the battlefield slice and shifts the same way.
+The CR 616 order answer and the "may" answer find the source again by
+that object before applying it, and drop the effect if its source has
+left.
 
 ### 6. Six pipeline integration points (five mutations + step transition)
 

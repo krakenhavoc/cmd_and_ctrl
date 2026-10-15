@@ -337,29 +337,33 @@ func (g *Game) settleResumedDrawLocked(ev *ReplacementEvent, cancelled bool) err
 // graveyardReplacementIDBase is where graveyard replacements' IDs
 // start. Inside the self-replacement range's headroom (its users sit in
 // the first few strides above selfReplacementIDBase) and far below the
-// scoped range. An ID packs (seat, graveyard index, slot), so two
-// dredge cards in one graveyard are two effects and one card with two
-// of them is two.
+// scoped range. An ID packs (object serial, slot), so two dredge cards
+// in one graveyard are two effects and one card with two of them is
+// two. The serial, not the card's graveyard index: an ID outlives the
+// dredge offer's pause, and an index shifts when an earlier card leaves
+// the graveyard (#3482, replacement_serials.go).
 const graveyardReplacementIDBase = selfReplacementIDBase + 1<<40
 
-const graveyardIndexStride = 1024
+// graveyardReplacementIDSpan is the size of the graveyard range.
+const graveyardReplacementIDSpan = 1 << 39
 
-func encodeGraveyardReplacementID(seat, cardIdx, slot int) (ReplacementEffectID, bool) {
-	if seat < 0 || cardIdx < 0 || cardIdx >= graveyardIndexStride || slot < 0 || slot >= MaxCatalogReplacementSlots {
+func encodeGraveyardReplacementID(serial, slot int) (ReplacementEffectID, bool) {
+	if serial < 0 || slot < 0 || slot >= MaxCatalogReplacementSlots {
 		return 0, false
 	}
-	return graveyardReplacementIDBase +
-		ReplacementEffectID((seat*graveyardIndexStride+cardIdx)*MaxCatalogReplacementSlots+slot), true
+	raw := ReplacementEffectID(serial)*MaxCatalogReplacementSlots + ReplacementEffectID(slot)
+	if raw >= graveyardReplacementIDSpan {
+		return 0, false
+	}
+	return graveyardReplacementIDBase + raw, true
 }
 
-func decodeGraveyardReplacementID(id ReplacementEffectID) (seat, cardIdx, slot int, ok bool) {
-	if id < graveyardReplacementIDBase || id >= graveyardReplacementIDBase+1<<39 {
-		return 0, 0, 0, false
+func decodeGraveyardReplacementID(id ReplacementEffectID) (serial, slot int, ok bool) {
+	if id < graveyardReplacementIDBase || id >= graveyardReplacementIDBase+graveyardReplacementIDSpan {
+		return 0, 0, false
 	}
 	raw := int(id - graveyardReplacementIDBase)
-	slot = raw % MaxCatalogReplacementSlots
-	raw /= MaxCatalogReplacementSlots
-	return raw / graveyardIndexStride, raw % graveyardIndexStride, slot, true
+	return raw / MaxCatalogReplacementSlots, raw % MaxCatalogReplacementSlots, true
 }
 
 // gatherGraveyardReplacementsLocked appends the FromGraveyard
@@ -371,7 +375,7 @@ func decodeGraveyardReplacementID(id ReplacementEffectID) (seat, cardIdx, slot i
 // slice, because a prompt can outlive the slice it was gathered from.
 //
 // Caller must hold g.mu.
-func (g *Game) gatherGraveyardReplacementsLocked(ev *ReplacementEvent, applied map[ReplacementEffectID]bool, out []activeReplacement) []activeReplacement {
+func (g *Game) gatherGraveyardReplacementsLocked(ev *ReplacementEvent, applied map[ReplacementEffectID]bool, serials *replacementSerialMinter, out []activeReplacement) []activeReplacement {
 	if CatalogReplacements == nil || ev == nil || ev.Kind != RepEventDraw || ev.DrawCount <= 0 {
 		return out
 	}
@@ -390,12 +394,16 @@ func (g *Game) gatherGraveyardReplacementsLocked(ev *ReplacementEvent, applied m
 		card := &gy.Cards[cardIdx]
 		key := catalogAbilityKeyOf(card)
 		reps := CatalogReplacements(key)
+		serial := -1
 		for repIdx := range reps {
 			eff := reps[repIdx]
 			if !eff.FromGraveyard {
 				continue
 			}
-			id, ok := encodeGraveyardReplacementID(seat, cardIdx, repIdx)
+			if serial < 0 {
+				serial = serials.serial(card)
+			}
+			id, ok := encodeGraveyardReplacementID(serial, repIdx)
 			if !ok || applied[id] {
 				continue
 			}
@@ -421,22 +429,33 @@ func (g *Game) gatherGraveyardReplacementsLocked(ev *ReplacementEvent, applied m
 }
 
 // graveyardReplacementMetaLocked names a graveyard replacement for the
-// prompt view: its label and its source card.
+// prompt view: its label and its source card, found by the serial its
+// ID packs among the graveyards' cards. A card that has left its
+// graveyard names nothing.
+//
+// Caller must hold g.mu (a read lock is enough).
 func (g *Game) graveyardReplacementMetaLocked(id ReplacementEffectID) (label string, card uuid.UUID, ok bool) {
-	seat, cardIdx, slot, ok := decodeGraveyardReplacementID(id)
+	serial, slot, ok := decodeGraveyardReplacementID(id)
 	if !ok {
 		return "", uuid.Nil, false
 	}
-	if seat >= len(g.Seats) || g.Seats[seat] == nil || g.Seats[seat].Graveyard == nil ||
-		cardIdx >= len(g.Seats[seat].Graveyard.Cards) {
-		return "", uuid.Nil, true
+	for _, p := range g.Seats {
+		if p == nil || p.Graveyard == nil {
+			continue
+		}
+		for i := range p.Graveyard.Cards {
+			c := &p.Graveyard.Cards[i]
+			if s, known := g.replacementObjectSerialOfLocked(c); !known || s != serial {
+				continue
+			}
+			reps := CatalogReplacements(catalogAbilityKeyOf(c))
+			if slot >= len(reps) {
+				return "", c.InstanceID, true
+			}
+			return reps[slot].Label, c.InstanceID, true
+		}
 	}
-	c := &g.Seats[seat].Graveyard.Cards[cardIdx]
-	reps := CatalogReplacements(catalogAbilityKeyOf(c))
-	if slot >= len(reps) {
-		return "", c.InstanceID, true
-	}
-	return reps[slot].Label, c.InstanceID, true
+	return "", uuid.Nil, true
 }
 
 // allGraveyardOptions reports whether every gathered replacement is a

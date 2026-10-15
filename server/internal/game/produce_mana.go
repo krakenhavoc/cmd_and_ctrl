@@ -250,7 +250,7 @@ func (g *Game) producedManaPreviewLocked(playerID, source uuid.UUID, colors []st
 			return nil
 		}
 		chosen := -1
-		gathered := g.gatherActiveReplacementsLocked(ev)
+		gathered := g.gatherActiveReplacementsReadOnlyLocked(ev)
 		for i := range gathered {
 			if applied[gathered[i].id] || asksItsOwnQuestion(gathered[i].effect) {
 				continue
