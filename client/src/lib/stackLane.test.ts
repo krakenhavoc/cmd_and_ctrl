@@ -122,6 +122,50 @@ describe("stack lane ordering", () => {
   });
 });
 
+describe("stack lane printed text (#3830)", () => {
+  const purphoros =
+    "Whenever another creature you control enters, Purphoros deals 2 damage to each opponent.";
+
+  it("draws an ability's printed text, keeps its label as the name and the summary short", () => {
+    const m = buildStackLane(
+      input({
+        stack: zone("stack"),
+        stackItems: [
+          {
+            ...trigger("t1", ME, "vivi", "Purphoros, God of the Forge — 2 damage to each opponent"),
+            ability_text: purphoros,
+          },
+        ],
+      }),
+    );
+    const it0 = m.stackItems[0];
+    expect(it0.text).toBe(purphoros);
+    expect(it0.name).toBe("Purphoros, God of the Forge — 2 damage to each opponent");
+    expect(m.summary).toBe("Vivi Ornitier's trigger resolves next — 2 damage to each opponent");
+  });
+
+  it("falls back to the label when the server sends no text", () => {
+    const m = buildStackLane(
+      input({
+        stack: zone("stack"),
+        stackItems: [trigger("t1", ME, "vivi", "Impact Tremors — 1 damage to each opponent")],
+        pendingTriggers: [trigger("t2", ME, "vivi", "Vivi Ornitier — +1/+1 counter")],
+      }),
+    );
+    expect(m.stackItems[0].text).toBe("Impact Tremors — 1 damage to each opponent");
+    expect(m.pendingTriggers[0].text).toBe("Vivi Ornitier — +1/+1 counter");
+  });
+
+  it("never draws text in place of a spell's name", () => {
+    const m = buildStackLane(
+      input({
+        stackItems: [spell("bolt", ME, { ability_text: "not a spell's" }), spell("cs", BOT2)],
+      }),
+    );
+    expect(m.stackItems.map((i) => i.text)).toEqual(["Counterspell", "Lightning Bolt"]);
+  });
+});
+
 describe("stack lane items", () => {
   it("names an ability by its label verbatim and previews its source permanent", () => {
     const m = buildStackLane(

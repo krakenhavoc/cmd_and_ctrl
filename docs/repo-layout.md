@@ -31,7 +31,8 @@ cmd_and_ctrl/
 │   │   ├── lobby/       # GameMeta registry, invite flow, lobby HTTP handler, WSAuthorizer, deck upload
 │   │   ├── adminview/   # the admin views' read side: every SQL statement behind /admin/users* and /admin/games* (SELECT only, guarded by a test), their response types, and pure merges with the lobby's live tables; imports no lobby or ws (ADR 0124)
 │   │   ├── cards/       # Scryfall index (streaming load) + disk-backed image cache + /cards routes
-│   │   │   └── coverage/ # measures the live catalog; fails CI when the coverage docs or a card's Caveats stop being true
+│   │   │   ├── coverage/ # measures the live catalog; fails CI when the coverage docs or a card's Caveats stop being true
+│   │   │   └── oracletext/ # reads printed Oracle text: the comparison form coverage's drift guards use, and the catalog row → printed ability map behind a stack item's ability_text (#3830)
 │   │   ├── catalog/     # /catalog routes (public) — what the engine automates + how completely (ADR 0042)
 │   │   ├── roadmap/     # the curated registry of keywords, mechanics and engine seams behind the public roadmap; generates docs/engine-seams.md's open table (ADR 0092) and its closed list from docs/engine-seams/closed/ (#1461)
 │   │   ├── playmat/     # a signed-in person's playmat (ADR 0128): decode + re-encode, SSRF-guarded link fetch, uuid-keyed files, users.playmat_id

@@ -119,3 +119,9 @@ export const CARDS = {
   Forest: "Forest",
   Island: "Island",
 } as const;
+
+// MULLDRIFTER_ON_STACK is what the stack draws for Mulldrifter's enters
+// trigger: its printed text when the server has the card's Oracle text
+// (#3830, the E2E job loads the Scryfall dump), else its label.
+export const MULLDRIFTER_ON_STACK =
+  /When this creature enters, draw two cards|Mulldrifter — draw two cards/i;

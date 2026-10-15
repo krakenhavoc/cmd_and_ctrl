@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/oracletext"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -280,7 +281,7 @@ func TestOneSentenceTriggerShapes(t *testing.T) {
 		{"Whenever this creature attacks, draw a card, then discard a card.", ""},
 	} {
 		names := []string{"Marwyn, the Nurturer", "Marwyn", "Guttersnipe"}
-		if got := oneSentenceShape(normalize(c.line, names)); got != c.shape {
+		if got := oneSentenceShape(oracletext.Normalize(c.line, names)); got != c.shape {
 			t.Errorf("%q: shape %q, want %q", c.line, got, c.shape)
 		}
 	}

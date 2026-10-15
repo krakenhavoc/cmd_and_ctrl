@@ -18,8 +18,11 @@
   //   - the top card, the Scryfall `normal` image at the host's width,
   //     the caster's colour as a band on its left edge. An ability has
   //     no card of its own (CR 405.1), so it is drawn as its source's
-  //     card with a band across the text box carrying its verbatim
-  //     label and its kind. A face-down spell or a source the viewer
+  //     card with a band across the text box carrying its kind and
+  //     its printed text (#3830), or its label when it has none.
+  //     Every line too narrow for the text (the lower items, the
+  //     "+N more" rows, the pending rows) truncates it and carries all
+  //     of it in its title. A face-down spell or a source the viewer
   //     may not see is a card back (#697);
   //   - the caption: caster, title, the target line, the chips
   //     (`manual` and the taken-from chip included) and Counter;
@@ -288,7 +291,7 @@
           style:--targeted-ring={ring}
           style:--depth={d}
           data-stack-item-id={item.id}
-          title={item.previewCard ? `${item.name} — hover to preview` : item.name}
+          title={item.previewCard ? `${item.text} — hover to preview` : item.text}
           onpointerenter={() => controls.hoverEnter(item)}
           onpointerleave={() => controls.hoverLeave(item)}
           onfocusin={() => controls.hoverEnter(item)}
@@ -299,7 +302,7 @@
           {/if}
           <span class="seat-band" aria-hidden="true"></span>
           <span class="peek-line">
-            <span class="peek-title">{item.name}</span>
+            <span class="peek-title">{item.text}</span>
             <span class="peek-caster">{whoOf(item)}</span>
           </span>
           {@render targetButton(item)}
@@ -316,7 +319,7 @@
         style:--seat-color={top.casterColor}
         style:--targeted-ring={topRing}
         data-stack-item-id={top.id}
-        title={top.previewCard ? `${top.name} — hover to preview` : top.name}
+        title={top.previewCard ? `${top.text} — hover to preview` : top.text}
         onpointerenter={() => controls.hoverEnter(top)}
         onpointerleave={() => controls.hoverLeave(top)}
         onfocusin={() => controls.hoverEnter(top)}
@@ -339,7 +342,7 @@
         {#if tag}
           <div class="ability-band">
             <span class="kind-tag" data-tag={top.kind}>{tag}</span>
-            <span class="title band-title">{top.name}</span>
+            <span class="title band-title" class:long={top.text.length > 110}>{top.text}</span>
           </div>
         {/if}
         {@render targetButton(top)}
@@ -353,7 +356,7 @@
         {@render counterButton(top, false)}
       </div>
       {#if !tag}
-        <div class="title top-title">{top.name}</div>
+        <div class="title top-title">{top.text}</div>
       {/if}
       {#if top.targets.length > 0}
         <div class="aim" title={aimOf(top)}>{aimOf(top)}</div>
@@ -395,7 +398,7 @@
             {#if src}<img {src} alt="" loading="lazy" decoding="async" />{/if}
           </span>
           <span class="row-info">
-            <span class="row-title">{item.name}</span>
+            <span class="row-title" title={item.text}>{item.text}</span>
             <span class="row-sub">
               <span class="seat-dot"></span>
               <span class="caster">{whoOf(item)}</span>
@@ -429,7 +432,7 @@
             onpointerleave={() => controls.hoverLeave(t)}
           >
             <span class="seat-dot"></span>
-            <span class="waiting-name">{t.name}</span>
+            <span class="waiting-name" title={t.text}>{t.text}</span>
           </li>
         {/each}
       </ul>
@@ -666,6 +669,16 @@
     -webkit-line-clamp: 4;
     line-clamp: 4;
     -webkit-box-orient: vertical;
+    /* #3830: a modal ability's "•" lines each start a line. */
+    white-space: pre-line;
+  }
+  /* #3830: the printed text of a long ability fits the text box in
+     smaller type; the card's title attribute has all of it. */
+  .band-title.long {
+    font-size: 11.5px;
+    line-height: 1.25;
+    -webkit-line-clamp: 6;
+    line-clamp: 6;
   }
   .target-btn {
     position: absolute;
@@ -720,6 +733,7 @@
     line-height: 1.2;
     color: var(--fg);
     overflow-wrap: anywhere;
+    white-space: pre-line;
   }
   .aim {
     font-size: 12px;
