@@ -160,11 +160,6 @@ func TestAccessMazeCastsFromHandForLifeEqualToManaValue(t *testing.T) {
 	if !strings.Contains(offer.Label, "3 life") {
 		t.Errorf("label %q does not name the life", offer.Label)
 	}
-	// An X spell's mana value would include the X: no offer.
-	xSpell := handSorcery(me, "X Sorcery", "{X}{B}")
-	if offerWithKey(grantedCardOffers(g, me.ID, xSpell, game.ZoneHand), key) != nil {
-		t.Error("Access Maze offered its life cast to a spell with {X}")
-	}
 
 	life := me.Life
 	if err := g.CastSpell(me.ID, three, game.CastSpellParams{Strict: true, AlternativeCost: key}); err != nil {

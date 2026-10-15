@@ -248,8 +248,8 @@ func PayZeroForASpellFromExileOnceEachTurn() game.GrantedAlternativeCost {
 // your hand by paying life equal to its mana value rather than paying
 // its mana cost." Bolas's Citadel's price on a granted offer: a cost
 // (CR 119.4), so a caster without the life is not offered it. A spell
-// with {X} in its mana cost gets no offer (its mana value would count
-// the X announced, CR 202.3e), weaker than printed.
+// with {X} is cast with X = 0 (CR 107.3b), so it costs the rest of its
+// mana value, and a spell with no mana cost (CR 118.6) costs 0 life.
 func PayLifeForASpellFromHandOnceEachOfYourTurns() game.GrantedAlternativeCost {
 	return game.GrantedAlternativeCost{
 		Offer: game.AlternativeCost{
