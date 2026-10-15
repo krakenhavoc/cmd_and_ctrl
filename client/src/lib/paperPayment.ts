@@ -18,9 +18,12 @@
 
 import type { PaperPaymentPrompt } from "./protocol";
 
+// count, when above one, is that many identical mana (#3904): the
+// answer to a counted slot.
 export interface PaperMana {
   color: string;
   artifact?: boolean;
+  count?: number;
 }
 
 export interface PaperPayment {
@@ -29,27 +32,43 @@ export interface PaperPayment {
 }
 
 // The picker's state for one slot: the symbol chosen and, when the
-// prompt asks about sources, whether an artifact made it.
+// prompt asks about sources, whether an artifact made it. count is the
+// slot's own count when it names a run of mana (#3904); the one choice
+// pays all of them.
 export interface PaperSlotChoice {
   color: string;
   artifact: boolean;
+  count?: number;
+}
+
+// slotCount is how many mana a slot stands for: its count, or one.
+export function slotCount(slot: { count?: number }): number {
+  return slot.count !== undefined && slot.count > 1 ? slot.count : 1;
 }
 
 // prefillPaperPayment is the cost minus what the pool paid: each slot's
 // first option — the colour a coloured slot names, the first half of a
 // hybrid — and {C} for a generic slot, whose options end in C.
 export function prefillPaperPayment(prompt: PaperPaymentPrompt): PaperSlotChoice[] {
-  return prompt.slots.map((s) => ({
-    color: s.symbol === "{1}" ? "C" : (s.options[0] ?? "C"),
-    artifact: false,
-  }));
+  return prompt.slots.map((s) => {
+    const choice: PaperSlotChoice = {
+      color: s.symbol === "{1}" ? "C" : (s.options[0] ?? "C"),
+      artifact: false,
+    };
+    if (slotCount(s) > 1) choice.count = slotCount(s);
+    return choice;
+  });
 }
 
-// paperPaymentValid: one choice per slot, each one of its slot's options.
+// paperPaymentValid: one choice per slot, each one of its slot's options
+// and for as many mana as the slot.
 export function paperPaymentValid(prompt: PaperPaymentPrompt, choices: PaperSlotChoice[]): boolean {
   return (
     choices.length === prompt.slots.length &&
-    choices.every((c, i) => prompt.slots[i]!.options.includes(c.color))
+    choices.every(
+      (c, i) =>
+        prompt.slots[i]!.options.includes(c.color) && slotCount(c) === slotCount(prompt.slots[i]!),
+    )
   );
 }
 
@@ -60,11 +79,12 @@ export function declaredPayment(
   choices: PaperSlotChoice[],
 ): PaperPayment {
   return {
-    mana: choices.map((c) =>
-      prompt.artifact_sources && c.artifact
-        ? { color: c.color, artifact: true }
-        : { color: c.color },
-    ),
+    mana: choices.map((c) => {
+      const m: PaperMana = { color: c.color };
+      if (prompt.artifact_sources && c.artifact) m.artifact = true;
+      if (slotCount(c) > 1) m.count = slotCount(c);
+      return m;
+    }),
   };
 }
 
@@ -73,9 +93,11 @@ export function declaredPayment(
 export const FREE_PAYMENT: PaperPayment = { free: true };
 
 // paperPaymentSymbols is a declaration as the log will print it,
-// "{C}{G}", for the confirm button.
+// "{C}{G}", for the confirm button; a counted choice is "{B}×1000".
 export function paperPaymentSymbols(choices: PaperSlotChoice[]): string {
-  return choices.map((c) => `{${c.color}}`).join("");
+  return choices
+    .map((c) => (slotCount(c) > 1 ? `{${c.color}}×${slotCount(c)}` : `{${c.color}}`))
+    .join("");
 }
 
 // withPaperPayment is the refused action's own payload with the answer

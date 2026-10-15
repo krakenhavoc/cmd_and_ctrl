@@ -6,6 +6,7 @@ import {
   paperPaymentSymbols,
   paperPaymentValid,
   prefillPaperPayment,
+  slotCount,
   withPaperPayment,
 } from "./paperPayment";
 import type { PaperPaymentPrompt } from "./protocol";
@@ -58,6 +59,32 @@ describe("paperPayment (#3855)", () => {
       mana: [{ color: "B", artifact: true }, { color: "W" }, { color: "C", artifact: true }],
     });
     expect(paperPaymentSymbols(choices)).toBe("{B}{W}{C}");
+  });
+
+  // #3904: a run longer than the server lists slot by slot (an X-sized
+  // shortfall) is one slot with a count, answered by one counted entry.
+  it("answers a counted slot with one counted entry", () => {
+    const drain: PaperPaymentPrompt = {
+      slots: [
+        { symbol: "{B}", options: ["B"], count: 999991 },
+        { symbol: "{1}", options: ANY },
+      ],
+      artifact_sources: true,
+    };
+    const choices = prefillPaperPayment(drain);
+    expect(choices).toEqual([
+      { color: "B", artifact: false, count: 999991 },
+      { color: "C", artifact: false },
+    ]);
+    expect(paperPaymentValid(drain, choices)).toBe(true);
+    expect(paperPaymentValid(drain, [{ color: "B", artifact: false }, choices[1]!])).toBe(false);
+    choices[0] = { ...choices[0]!, artifact: true };
+    expect(declaredPayment(drain, choices)).toEqual({
+      mana: [{ color: "B", artifact: true, count: 999991 }, { color: "C" }],
+    });
+    expect(paperPaymentSymbols(choices)).toBe("{B}×999991{C}");
+    expect(slotCount({})).toBe(1);
+    expect(slotCount({ count: 1 })).toBe(1);
   });
 
   it("re-sends the refused action's own payload with the answer", () => {

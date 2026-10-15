@@ -120,10 +120,12 @@ export interface ErrorPayload {
 // PaperPaymentPrompt is a paper_payment_required frame's detail (#3855):
 // what the pool left unpaid, one slot per mana, coloured requirements
 // first. `options` are the symbols that may pay the slot (W U B R G C
-// for a generic one). `artifact_sources` asks, per mana, whether an
+// for a generic one). `count`, when above one, is a long run of that
+// many identical mana named once (#3904), answered by one mana entry
+// with the same count. `artifact_sources` asks, per mana, whether an
 // artifact made it (Coin of Mastery reads that).
 export interface PaperPaymentPrompt {
-  slots: { symbol: string; options: string[] }[];
+  slots: { symbol: string; options: string[]; count?: number }[];
   artifact_sources?: boolean;
 }
 

@@ -15,7 +15,7 @@ import (
 // find the payload to re-send.
 func TestPaperPaymentPayload(t *testing.T) {
 	pp := &game.PaperPaymentRequiredError{
-		Slots:           []game.PaperSlot{{Symbol: "{B}", Options: []string{"B"}}, {Symbol: "{1}", Options: []string{"W", "U", "B", "R", "G", "C"}}},
+		Slots:           []game.PaperSlot{{Symbol: "{B}", Options: []string{"B"}}, {Symbol: "{1}", Options: []string{"W", "U", "B", "R", "G", "C"}, Count: 1000}},
 		ArtifactSources: true,
 	}
 	for _, tc := range []struct {
@@ -28,7 +28,8 @@ func TestPaperPaymentPayload(t *testing.T) {
 		if body.Code != protocol.CodePaperPaymentRequired || body.CardID != "abc" || body.PaperPayment == nil {
 			t.Fatalf("%s: payload = %+v", tc.kind, body)
 		}
-		want := []protocol.PaperPaymentSlot{{Symbol: "{B}", Options: []string{"B"}}, {Symbol: "{1}", Options: []string{"W", "U", "B", "R", "G", "C"}}}
+		// #3904: a counted slot keeps its count.
+		want := []protocol.PaperPaymentSlot{{Symbol: "{B}", Options: []string{"B"}}, {Symbol: "{1}", Options: []string{"W", "U", "B", "R", "G", "C"}, Count: 1000}}
 		if !reflect.DeepEqual(body.PaperPayment.Slots, want) || !body.PaperPayment.ArtifactSources {
 			t.Errorf("%s: prompt = %+v", tc.kind, body.PaperPayment)
 		}

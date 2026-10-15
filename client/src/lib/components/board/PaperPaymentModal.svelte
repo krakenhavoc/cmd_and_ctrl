@@ -29,6 +29,7 @@
     paperPaymentSymbols,
     paperPaymentValid,
     prefillPaperPayment,
+    slotCount,
     type PaperPayment,
     type PaperSlotChoice,
   } from "../../paperPayment";
@@ -104,7 +105,10 @@
     <ol class="slots">
       {#each prompt.slots as slot, i (i)}
         <li class="slot">
-          <span class="symbol">{slot.symbol}</span>
+          <span class="symbol"
+            >{slot.symbol}{#if slotCount(slot) > 1}<span class="count">×{slotCount(slot)}</span
+              >{/if}</span
+          >
           <span class="options" role="group" aria-label={`paid for ${slot.symbol}`}>
             {#each slot.options as opt (opt)}
               <button
@@ -150,6 +154,9 @@
     font-family: var(--font-mono);
     min-width: 3.5rem;
     color: var(--fg);
+  }
+  .count {
+    color: var(--fg-muted);
   }
   .options {
     display: flex;

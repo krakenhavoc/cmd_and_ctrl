@@ -175,7 +175,7 @@ Any server-side failure in processing a client frame.
 |---|---|---|---|
 | `payload.code` | string | yes | Short machine-readable code. v0 codes: `bad_version`, `bad_json`, `bad_request`, `internal`. S15 adds `insufficient_mana`, #3855 adds `paper_payment_required`, #705 adds `illegal_block`, #1063 adds `attack_tax_unpaid`, and #1507 adds `illegal_attack` (#1571 gives it a second reason) — see below. [ADR 0122](decisions/0122-an-agent-at-the-table-a-local-mcp-seat.md) §6.1 adds `no_decision` and `rate_limited`, answers to a [`legal_moves_request`](#legal_moves_request-client--server--adr-0122-61). [ADR 0148](decisions/0148-capacity-limits-for-a-public-launch.md) adds `server_full`, the one error frame a [refused newcomer](#server-full) gets before the socket closes with 1013. [ADR 0177](decisions/0177-away-players-and-moving-the-table-on.md) §6 adds `stand_in`, the answer to an action from a seat a bot is playing while its player was away ([below](#who-is-at-the-table-presence-and-stand_in-adr-0177)). |
 | `payload.message` | string | yes | Human-readable message safe to display to the user. |
-| `payload.missing` | string[] | no | Present only when `code == "insufficient_mana"` (S15). List of mana symbols the caller's pool could not cover, in the order they appear in the printed cost (e.g. `["{R}", "{1}"]`). Client renders these verbatim into the override toast. |
+| `payload.missing` | string[] | no | Present only when `code == "insufficient_mana"` (S15). List of mana symbols the caller's pool could not cover, in the order they appear in the printed cost (e.g. `["{R}", "{1}"]`). A long generic shortfall is one `{N}`, and a run of more than 16 of one coloured symbol (an X-sized "spend only black mana on X" shortfall) is one `"{B}×N"` entry (#3895, #3904). Client renders these verbatim into the override toast. |
 | `payload.card_id` | string (UUID) | no | Present when `code == "insufficient_mana"` (S15) or `code == "paper_payment_required"` (#3855): instance ID of the card whose cast was rejected (for `paper_payment_required` on an `activate_ability`, the ability's source). Lets the client's "Cast anyway" / "Auto-tap & cast" buttons re-fire the same cast without needing to round-trip through the user's last click. Also present when `code == "illegal_block"` (#705): instance ID of the refused blocker; and when `code == "illegal_attack"` (#1507): a creature from the refused declaration. |
 | `payload.paper_payment` | object | no | Present only when `code == "paper_payment_required"` (#3855): `{ "slots": [{ "symbol": "{B}", "options": ["B"] }, …], "artifact_sources"?: true }` — see below. |
 | `payload.reason` | string | no | Present when `code == "illegal_block"` (#705): the stable snake_case token naming why the block was refused — see below. Also carries the attack tax's price on `attack_tax_unpaid` (#1063) and `attack_limit` (#1507) or `attack_requirement` (#1571) on `illegal_attack`. |
@@ -222,7 +222,9 @@ paid. [ADR 0068 amendment 2026-10-15](decisions/0068-the-mana-spent-on-a-spell.m
 `paper_payment.slots` is what the pool would leave unpaid, one entry
 per mana, coloured requirements first and then the generic: `symbol`
 is the printed symbol (`"{R}"`, `"{W/U}"`, `"{1}"`) and `options` the
-symbols that may pay it (`W U B R G C` for a generic slot).
+symbols that may pay it (`W U B R G C` for a generic slot). A run of
+more than 16 identical slots (a shortfall sized by an announced X) is
+one entry with `count` (#3904); every other slot has none.
 `artifact_sources: true` means a reader counts mana from artifact
 sources (Coin of Mastery), so the picker also asks, per mana, whether
 an artifact made it.
@@ -234,6 +236,11 @@ The client asks the player and re-sends the refused action with
 { "paper_payment": { "mana": [{ "color": "B" }, { "color": "C", "artifact": true }, { "color": "W" }] } }
 { "paper_payment": { "free": true } }
 ```
+
+A `mana` entry may carry `count` (absent means one): that many
+identical mana, the answer to a counted slot (`{ "color": "B",
+"count": 999991 }`). A count below zero, or one that takes the total
+past the shortfall, is refused.
 
 `mana` must be a legal payment of exactly the slots — as many mana,
 each coloured slot paid by one of its options (a hybrid by either
