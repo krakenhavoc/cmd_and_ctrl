@@ -9243,6 +9243,14 @@ Static: []game.StaticAbility{LivingMetal()},
   trample until end of turn", a delayed trigger bound to that object, as
   Optimus Prime, Autobot Leader does) inside it. With no creature, `Then`
   does not run.
+- **"Can't be sacrificed"** (#3275) has two forms. The printed static
+  ("Alexios ... can't be sacrificed") is `CantBeSacrificed()` in `Static`;
+  "it can't be sacrificed this turn" from a resolving ability (Slicer,
+  Hired Muscle) is `CantBeSacrificedThisTurn{Target}`. The engine reads
+  both everywhere a sacrifice happens, so a card file never checks it.
+  A card that builds its own sacrifice candidate list outside
+  `EffectSacrificeCandidatesForEffect` or `SacrificeChoice` should ask
+  `g.CantBeSacrificedForEffect(id)`.
 
 ### "If a spell or ability an opponent controls causes you to discard" (ADR 0153, #1861)
 

@@ -366,6 +366,14 @@ const (
 	// (assigns_no_combat_damage.go), where the combat damage pass builds
 	// its per-combatant amount. Reads nothing.
 	ModAssignsNoCombatDamage ModKind = "assignsNoCombatDamage"
+	// ModCantBeSacrificed is "<that permanent> can't be sacrificed this
+	// turn" (#3275; CR 101.2): Slicer, Hired Muscle. Pinned to the
+	// permanent, with PinnedTo the duration (CR 400.7, 514.2). Read at
+	// one gate, permanentCantBeSacrificedLocked (cant_be_sacrificed.go),
+	// which also reads the static form, Characteristic.CantBeSacrificed.
+	// Not an ability, so losing all abilities does not end it. Reads
+	// nothing.
+	ModCantBeSacrificed ModKind = "cantBeSacrificed"
 	// ModSkipTurns is "<player> skips their next <Amount> turns" (ADR
 	// 0188 Decision 1, #3559; CR 614.10, 614.10a): Magosi, the
 	// Waterveil's and Lethal Vapors' "skip your next turn". Scope
@@ -966,6 +974,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantBeRegenerated: {reader: readerRule},
 	// ADR 0187 §4 (#3569): the combat-damage assignment gate.
 	ModAssignsNoCombatDamage: {reader: readerRule},
+	// #3275: the sacrifice gate.
+	ModCantBeSacrificed: {reader: readerRule},
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
 	ModCantBeBlockedExceptBy:    {reader: readerBlockRule},
 	ModLimitBlockersPerDefender: {reader: readerBlockRule},

@@ -11675,18 +11675,16 @@ func castSourceOf(g *game.Game, caster uuid.UUID, instanceID string) game.Target
 // when the cost also sacrifices it, because the engine refuses paying
 // one permanent twice.
 func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetSpec, sourceID uuid.UUID, selfToo bool) *LegalTargetsView {
-	lt := g.SpecCandidatesForEffect(controller, spec)
+	// #3275: the controller's permanents that can be sacrificed.
 	var ids []uuid.UUID
-	for _, id := range lt.Cards {
+	for _, id := range g.SacrificeCostCandidatesForEffect(controller, spec) {
 		if (selfToo || spec.ExcludeSource) && id == sourceID {
 			continue
 		}
 		if !g.AttachedToSourceOKForEffect(spec, sourceID, id) {
 			continue
 		}
-		if c, ok := g.LookupCardForEffect(id); ok && c.Controller == controller {
-			ids = append(ids, id)
-		}
+		ids = append(ids, id)
 	}
 	// #1213: the bounds come from the one function the announce path
 	// validates against and the enumerator pays from, so the picker

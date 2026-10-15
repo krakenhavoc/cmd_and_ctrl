@@ -831,6 +831,11 @@ func (g *Game) altCostCardOKLocked(p *Player, alt *AlternativeCost, spec *Target
 		if alt != nil && alt.TapOthers != nil && c.Tapped {
 			return false
 		}
+		// #3275, CR 118.3: a permanent that can't be sacrificed can't
+		// pay a sacrifice.
+		if alt != nil && alt.Sacrifice != nil && g.permanentCantBeSacrificedLocked(&c) {
+			return false
+		}
 		return g.specMatchLocked(SourceChooser(p.ID), spec, TargetRef{Kind: TargetCard, ID: c.InstanceID}, false)
 	}
 	return spec.CardOK == nil || spec.CardOK(g, p.ID, c, zone)
@@ -1249,7 +1254,8 @@ var evokeSacrificeBody BodyRef
 
 func init() {
 	evokeSacrificeBody = SimpleDelayedBody("evoke/sacrifice", func(g *Game, it *StackItem) error {
-		if g.AbilitySourceGoneForEffect(it) {
+		// #3275: an evoked creature that can't be sacrificed stays.
+		if g.AbilitySourceGoneForEffect(it) || g.cantBeSacrificedLocked(it.SourceCardID) {
 			return nil
 		}
 		return g.sacrificePermanentLocked(it.SourceCardID)

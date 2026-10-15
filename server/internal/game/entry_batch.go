@@ -429,7 +429,7 @@ func (ev *ReplacementEvent) takeEntryBatch() (*entryBatch, int, bool) {
 // Caller must hold g.mu.
 func (g *Game) landEntryBatchLocked(b *entryBatch) error {
 	if b.exchangeSacrifice != uuid.Nil {
-		if len(g.unprotectedFromSacrificeLocked([]uuid.UUID{b.exchangeSacrifice})) == 0 {
+		if len(g.sacrificeableLocked(g.unprotectedFromSacrificeLocked([]uuid.UUID{b.exchangeSacrifice}))) == 0 {
 			b.exchangeSacrifice = uuid.Nil
 			return g.landEntryBatchLocked(b)
 		}

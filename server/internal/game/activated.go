@@ -2377,6 +2377,11 @@ func (g *Game) validateCrewCostLocked(playerID, sourceID uuid.UUID, cost Ability
 func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost AbilityCost, chosen []uuid.UUID, x int) ([]uuid.UUID, error) {
 	var out []uuid.UUID
 	if cost.SacrificeSelf {
+		// #3275, CR 118.3: a source that can't be sacrificed can't pay
+		// "Sacrifice this".
+		if g.cantBeSacrificedLocked(sourceID) {
+			return nil, ErrCantBeSacrificed
+		}
 		out = append(out, sourceID)
 	}
 	if cost.SacrificeOther == nil {
@@ -2406,6 +2411,10 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 		// CR 701.21a — you can only sacrifice what you control.
 		if c.Controller != playerID {
 			return nil, ErrCardCallerMismatch
+		}
+		// #3275, CR 118.3: nor what can't be sacrificed.
+		if g.permanentCantBeSacrificedLocked(c) {
+			return nil, ErrCantBeSacrificed
 		}
 		// specMatchLocked, not targetLegalLocked: sacrificing a
 		// permanent to pay a cost does not target it (CR 601.2h), so
