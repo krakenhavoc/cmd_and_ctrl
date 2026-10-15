@@ -308,6 +308,12 @@ type Config struct {
 	// its file picker. See ADR 0017 §6.
 	BugStore *bugstore.Store
 
+	// BugForum mirrors filed reports into a Discord forum channel (ADR
+	// 0196). Nil turns the mirror off: nothing is posted anywhere.
+	// Production wires it when CMDCTRL_DISCORD_BUG_FORUM_ID and the bot
+	// token are set.
+	BugForum *BugForum
+
 	// BugLimits tunes the throttle in front of POST /bugreport (ADR
 	// 0017 §10): per-account window, daily cap, dedupe window. The zero
 	// value means the defaults; production sets nothing.

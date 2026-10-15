@@ -462,6 +462,7 @@ func (g *bugGate) report(c Config, w http.ResponseWriter, r *http.Request) error
 		return httpError(http.StatusFailedDependency, fmt.Sprintf("filing the issue failed: %s", err))
 	}
 	g.recordFiled(now, keys, number, url)
+	mirrorBugReport(c, p, req.Context, kind, title, in, number, url)
 	if report != nil {
 		// A manifest that fails to write costs forensics later, not
 		// the report the user just filed — log-and-continue.
@@ -487,6 +488,32 @@ func (g *bugGate) report(c Config, w http.ResponseWriter, r *http.Request) error
 		body["report_id"] = report.ID
 	}
 	return writeJSON(w, http.StatusCreated, body)
+}
+
+// mirrorBugReport hands a filed report to the Discord forum mirror (ADR
+// 0196), when there is one and the report may leave the table it came
+// from. It runs after the issue exists, and its work is in the
+// background: it can neither delay nor fail the answer to the reporter.
+//
+// Everything sent is the text the issue already carries, redacted the
+// same way (#721), plus the reporter's Discord id, which is what makes
+// the thread notify them.
+func mirrorBugReport(c Config, p auth.Principal, bctx *bugReportContext, kind bugKind, title string, in bugIssue, number int, url string) {
+	if c.BugForum == nil || !c.bugMirrorable(p, bctx) {
+		return
+	}
+	m := bugMirror{
+		Number:      number,
+		URL:         url,
+		Title:       redact.Secrets(title),
+		Kind:        kind.Noun,
+		Description: redact.Secrets(in.Desc),
+		ReporterID:  p.DiscordID,
+	}
+	for _, img := range in.Images {
+		m.Images = append(m.Images, img.URL)
+	}
+	c.BugForum.Mirror(m)
 }
 
 // statusCoder is implemented by upstream errors carrying an HTTP
