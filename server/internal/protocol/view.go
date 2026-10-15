@@ -547,6 +547,13 @@ type PendingChoiceView struct {
 	// reason, on every other kind, and on a prompt queued before the
 	// field existed.
 	TriggerOrderWhy string `json:"trigger_order_why,omitempty"`
+	// TriggerOrderRemembered is, on a keyed "trigger_order" prompt,
+	// whether its chooser has an order remembered for this batch (ADR
+	// 0018's eighth amendment, #3016): the "Use this order again"
+	// toggle's starting state. Such a prompt is normally answered for
+	// the seat, so it is seen only when asked by hand. The chooser's
+	// alone, like AutoAnswerKey.
+	TriggerOrderRemembered bool `json:"trigger_order_remembered,omitempty"`
 
 	// PickTarget populates the S20 "pick_target" kind: the legal
 	// players / cards a targeted trigger's controller may choose
@@ -1971,6 +1978,13 @@ type ReplacementOptionView struct {
 	ID           string `json:"id"`
 	Label        string `json:"label,omitempty"`
 	SourceCardID string `json:"source_card_id,omitempty"`
+	// Row is, on a keyed "trigger_order" prompt's option, which of the
+	// batch's rows the trigger is (1, 2, … in first-appearance order;
+	// ADR 0018's eighth amendment, #3016): copies of one ability share
+	// it, so the client can tell an order that keeps them together,
+	// the only kind it may remember. Absent on an unkeyed prompt and on
+	// every other kind. The chooser's alone, like AutoAnswerKey.
+	Row int `json:"row,omitempty"`
 }
 
 // StackItemView is the wire shape of a stack-item's announce-time
@@ -2294,6 +2308,13 @@ type PlayerView struct {
 	// IsHost. Private to its seat: FilterViewFor clears it for every
 	// other viewer.
 	UndoAutoAnswer uint64 `json:"undo_auto_answer,omitempty"`
+
+	// TriggerOrderMemoryCount is how many trigger orders this seat has
+	// remembered this game (ADR 0018's eighth amendment, #3016), for
+	// the game menu's "Forget remembered trigger orders (N)". Absent at
+	// zero. Private to its seat: FilterViewFor clears it for every
+	// other viewer.
+	TriggerOrderMemoryCount int `json:"trigger_order_memory_count,omitempty"`
 
 	// UndoBlocked says why an `undo` from this seat would be refused
 	// by the undo stack right now, or is empty when the stack would
@@ -9160,11 +9181,16 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// list reads as card names, not UUIDs.
 		if c.Kind == game.PendingChoiceTriggerOrder {
 			v.TriggerOrderWhy = c.TriggerOrderWhy
+			v.TriggerOrderRemembered = g.TriggerOrderRememberedLocked(c)
 		}
 		if c.Kind == game.PendingChoiceTriggerOrder && len(c.TriggerOrderIDs) > 0 {
 			v.TriggerOptions = make([]ReplacementOptionView, 0, len(c.TriggerOrderIDs))
-			for _, id := range c.TriggerOrderIDs {
+			rows := g.TriggerOrderRowsLocked(c)
+			for i, id := range c.TriggerOrderIDs {
 				opt := ReplacementOptionView{ID: id.String()}
+				if i < len(rows) {
+					opt.Row = rows[i]
+				}
 				for _, t := range g.PendingTriggers {
 					if t != nil && t.ID == id {
 						opt.Label = t.Label
@@ -9462,7 +9488,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 	for _, c := range p.SideboardCards() {
 		sideboard = append(sideboard, viewOfCard(c))
 	}
-	return PlayerView{
+	pv := PlayerView{
 		ID:                    p.ID.String(),
 		Name:                  p.Name,
 		Seat:                  p.Seat,
@@ -9519,6 +9545,9 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		EndGates:            viewOfGameEndGates(g.GameEndGatesForEffect(p)),
 		CounterShields:      viewOfCounterShields(g.CounterShieldGrantsForEffect(p)),
 	}
+	// #3016: how many trigger orders the seat remembered, for its menu.
+	pv.TriggerOrderMemoryCount = g.TriggerOrderMemoryCountLocked(p.ID)
+	return pv
 }
 
 // viewOfCounterShields projects a seat's live "can't be countered"
@@ -9892,6 +9921,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 			// ADR 0127 §8: and so are its standing answers.
 			out.AutoAnswers = nil
 			out.UndoAutoAnswer = 0
+			out.TriggerOrderMemoryCount = 0
 			out.UndoBlocked = ""
 		}
 		// S13.5: redact every visible card based on KnownBy.
@@ -10100,6 +10130,16 @@ func legalTruncatedFor(bySeat map[string]bool, viewerID string) bool {
 	return bySeat[viewerID]
 }
 
+// hasTriggerRows reports whether any trigger-order option carries a row.
+func hasTriggerRows(opts []ReplacementOptionView) bool {
+	for _, o := range opts {
+		if o.Row != 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // filterPendingChoices projects each choice's Options through the
 // viewer's knower filter. Unknown cards come back redacted (backs)
 // so an opponent browsing the wire can't peek at a Thoughtseize-
@@ -10154,6 +10194,17 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].AutoAnswerCard = ""
 			out[i].AutoAnswerPrompt = ""
 			out[i].AskedByHand = ""
+			// ADR 0018's eighth amendment: and so are the remembered
+			// order and the rows a trigger order is grouped by.
+			out[i].TriggerOrderRemembered = false
+			if hasTriggerRows(c.TriggerOptions) {
+				opts := make([]ReplacementOptionView, len(c.TriggerOptions))
+				for j, o := range c.TriggerOptions {
+					o.Row = 0
+					opts[j] = o
+				}
+				out[i].TriggerOptions = opts
+			}
 			// #3817: so is the trigger's card identity, which names the
 			// card behind a prompt only its chooser answers.
 			out[i].SharedTargetKey = ""

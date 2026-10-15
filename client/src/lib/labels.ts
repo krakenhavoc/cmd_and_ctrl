@@ -1188,6 +1188,24 @@ export const LABEL_SPECS = {
     owners: ["lib/components/AutoAnswersSettings.svelte"],
     doc: "removes one standing answer in Settings → Gameplay, so its prompt is asked again",
   }),
+  useThisOrderAgain: label({
+    name: "Use this order again",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}ChoicePromptModal.svelte`],
+    doc: "the toggle under the trigger-order list (#3016, ADR 0018's eighth amendment); on, the next batch of the same abilities is ordered the same way for you. Disabled on an order that splits one card's triggers apart",
+  }),
+  forgetTriggerOrders: dynamicLabel({
+    stem: "Forget remembered trigger orders",
+    match: "prefix",
+    shape: "Forget remembered trigger orders (<N>)",
+    make: (n: number) => `Forget remembered trigger orders (${n})`,
+    example: [2],
+    kind: "text",
+    role: "menuitem",
+    owners: [`${BOARD}GameMenu.svelte`],
+    doc: "the ⋯ menu's entry that forgets every trigger order you asked to reuse this game (#3016); shown while you have one",
+  }),
 
   // -- Combat damage assignment (#2956, ADR 0147) --
   damageAutoAssigned: label({

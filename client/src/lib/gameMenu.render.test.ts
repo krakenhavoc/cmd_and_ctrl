@@ -289,6 +289,22 @@ describe("GameMenu", () => {
     expect(item(m.container, L.sandboxPassTurn)!.title).toMatch(/no end step/);
   });
 
+  it("offers Forget remembered trigger orders (N) while the seat has one (#3016)", async () => {
+    let m = mountMenu();
+    await open(m.trigger);
+    expect(item(m.container, /^Forget remembered trigger orders/)).toBeUndefined();
+    cleanup();
+
+    const calls: unknown[] = [];
+    m = mountMenu({ forgetTriggerOrders: 2, onForgetTriggerOrders: () => calls.push(1) });
+    await open(m.trigger);
+    const entry = item(m.container, L.forgetTriggerOrders(2));
+    expect(entry).toBeDefined();
+    click(entry!);
+    expect(m.container.querySelector('[role="menu"]')).toBeNull();
+    expect(calls).toHaveLength(1);
+  });
+
   it("sends the sandbox jump from its entry, and closes", async () => {
     const calls: unknown[] = [];
     const m = mountMenu({ sandboxPassTurn: true, onSandboxPassTurn: () => calls.push(1) });

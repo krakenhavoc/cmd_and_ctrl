@@ -6607,6 +6607,11 @@ seats[].statics[].timing.label	string
 seats[].statics[].timing.timing	string
 seats[].triggerOrder	string
 seats[].triggerOrderAlwaysAsk	bool
+seats[].triggerOrderMemory	map:string
+seats[].triggerOrderMemory{}	object
+seats[].triggerOrderMemory{}.rows	array
+seats[].triggerOrderMemory{}.rows[]	string
+seats[].triggerOrderMemory{}.used	number:int
 seats[].turnsBegun	number:int
 seats[].undosRemaining	number:int
 seats[].upkeepsBegun	number:int

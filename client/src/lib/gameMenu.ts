@@ -60,6 +60,12 @@ export interface GameMenuOptions {
   // matching the server's rate, and the items are disabled until then.
   tableRoll?: { ready: boolean } | null;
   onTableRoll?: (die: TableDie) => void;
+  // #3016 (ADR 0018's eighth amendment): how many trigger orders the
+  // viewer's seat asked to reuse this game. Above zero, the Table group
+  // offers "Forget remembered trigger orders (N)", which forgets them
+  // all (forget_trigger_order with no key). Zero or absent hides it.
+  forgetTriggerOrders?: number;
+  onForgetTriggerOrders?: () => void;
   // #3028: the Sort hand group, the one-time sorts (handOrder.ts), for
   // a seat of the viewer's own holding more than one card. The hand
   // has no button of its own. `sortKey` is the sortHand shortcut's

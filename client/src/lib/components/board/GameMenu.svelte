@@ -385,6 +385,19 @@
           <Icon name="drop" size={15} /> Life history
         </button>
       {/if}
+      {#if props.seated && (props.forgetTriggerOrders ?? 0) > 0 && props.onForgetTriggerOrders}
+        <!-- #3016: the trigger orders this seat asked to reuse, all at
+             once. Each one can also be forgotten from its own notice. -->
+        <button
+          class="mi"
+          role="menuitem"
+          onclick={via(props.onForgetTriggerOrders)}
+          title="ask me to order my triggers again each time, instead of reusing the orders I chose this game"
+        >
+          <Icon name="undo" size={15} />
+          {L.forgetTriggerOrders(props.forgetTriggerOrders ?? 0)}
+        </button>
+      {/if}
       <!-- ADR 0075 §2.5. Open to everyone, because the settings are
            public on purpose; the panel disables its own controls for
            anyone who is not the host or the admin. -->

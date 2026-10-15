@@ -262,6 +262,10 @@ export type ActionType =
   // answers to repeated prompts, replacing the list ("always" or
   // "never"; Ask is no rule). A setting, not a play: never undoable.
   | "set_auto_answers"
+  // ADR 0018's eighth amendment (#3016): `{key?: string}` — forget the
+  // trigger order remembered under `key` (a trigger_order prompt's
+  // auto_answer_key), or every one with no key. Never undoable.
+  | "forget_trigger_order"
   // ADR 0150 §4 (owner decision 5): `{choice_id?}` — the caster
   // withdraws the request for help an assisted cast is parked on.
   | "cancel_assist"
@@ -1347,8 +1351,9 @@ export interface LogEvent {
   sides?: number;
   results?: number[];
   faces?: string[];
-  // A coin call on a `flip`; on an `auto_answer` (ADR 0127), the answer.
-  call?: "heads" | "tails" | "pay" | "dont_pay" | "yes" | "no";
+  // A coin call on a `flip`; on an `auto_answer` (ADR 0127), the answer,
+  // "order" for a remembered trigger order (#3016, `label` the rows).
+  call?: "heads" | "tails" | "pay" | "dont_pay" | "yes" | "no" | "order";
   wins?: number;
   // ADR 0121 §3: the seats an `opening_roll` entry names — the seats
   // that tied, or the seats the host rolled for. On `votes_revealed`
@@ -1777,6 +1782,11 @@ export interface PendingChoiceView {
   // itself ("Ajani's Pridemate watches life totals."). Display text,
   // shown under the heading; absent when there is no reason.
   trigger_order_why?: string;
+  // #3016 (ADR 0018's eighth amendment): on a keyed trigger_order
+  // prompt, true when the chooser has an order remembered for this
+  // batch — the "Use this order again" toggle's starting state. The
+  // chooser's alone.
+  trigger_order_remembered?: boolean;
   // S20 sub-PR 2: populated for kind "pick_target" — a targeted
   // trigger's controller chooses its target. The client enters the
   // board-click targeting flow with this legal set (no modal) and
@@ -2079,6 +2089,11 @@ export interface ReplacementOptionView {
   id: string;
   label?: string;
   source_card_id?: string;
+  // #3016: on a keyed trigger_order prompt, which of the batch's rows
+  // this trigger is (1, 2, …; copies of one ability share it). Only an
+  // order that keeps each row together can be remembered. The
+  // chooser's alone.
+  row?: number;
 }
 
 // DamageAssignmentView mirrors protocol.DamageAssignmentView — the
@@ -2390,6 +2405,10 @@ export interface PlayerView {
   // automatic answer while it is the top undo entry, so `undo` takes it
   // back. Own view only; absent once anything else sits on top.
   undo_auto_answer?: number;
+  // #3016: how many trigger orders this seat has remembered this game,
+  // for the game menu's "Forget remembered trigger orders (N)". Own
+  // view only.
+  trigger_order_memory_count?: number;
   // Why an `undo` from this seat would be refused by the undo stack
   // right now (#2963): "nothing" (nothing on the stack), "not_yours"
   // (the most recent action is another seat's), "game_over" or
@@ -5105,7 +5124,16 @@ export interface TableSettingsView {
 // ADR 0127: why a prompt with a standing answer is asked by hand.
 // "controlled" (ADR 0167 §4): another player controls the chooser, so
 // their standing answer does not apply.
-export type AskedByHand = "no_mana" | "empty_library" | "loop" | "undone" | "controlled";
+export type AskedByHand =
+  | "no_mana"
+  | "empty_library"
+  | "loop"
+  | "undone"
+  | "controlled"
+  // #3016: a remembered trigger order whose batch changed, or whose
+  // source is now hidden.
+  | "changed"
+  | "hidden";
 
 /** ADR 0166 / 0167: one player making another's decisions right now. */
 export interface PlayerControlView {

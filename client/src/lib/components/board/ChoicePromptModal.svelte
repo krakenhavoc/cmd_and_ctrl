@@ -91,6 +91,13 @@
   import { settings, updateSettings } from "../../settings";
   import { rememberedRule, ruleRefusalText, withRule } from "../../autoAnswerPref";
   import {
+    REUSE_ORDER_HINT,
+    SPLIT_ORDER_HINT,
+    canRememberTriggerOrder,
+    keepsRowsTogether,
+    triggerOrderAnswer,
+  } from "../../triggerOrderMemory";
+  import {
     rejectionForPrompt,
     type ChoiceRejection,
     type ChoiceSubmission,
@@ -226,6 +233,10 @@
   // then not sent, so the player can untick and answer.
   let remember = $state(false);
   let rememberRefusal = $state<string | null>(null);
+  // #3016 (ADR 0018's eighth amendment): "Use this order again" on a
+  // keyed trigger_order prompt. Off by default, and on when the batch
+  // already has a remembered order (a prompt asked by hand).
+  let rememberOrder = $state(false);
 
   // Reset selection whenever the modal opens fresh (active changes
   // from null → non-null, or the choice ID changes).
@@ -272,6 +283,7 @@
       rejection = null;
       remember = false;
       rememberRefusal = null;
+      rememberOrder = active?.kind === "trigger_order" && active.trigger_order_remembered === true;
       submission = null;
       lastChoiceID = nextID;
       inlineRefusal.set(null);
@@ -772,8 +784,19 @@
   function submitReplacementOrder(): void {
     if (!active || !viewerID) return;
     if (ordered.length !== replacementOptions.length) return;
+    if (isTriggerOrder) {
+      answer(triggerOrderAnswer(active, ordered, rememberOrder));
+      return;
+    }
     answer({ order: ordered });
   }
+
+  // #3016: the toggle shows on a keyed trigger_order, and takes only an
+  // order that keeps each card's triggers together.
+  const showRememberOrder = $derived(canRememberTriggerOrder(active));
+  const orderSplitsRows = $derived(
+    showRememberOrder && !keepsRowsTogether(ordered, replacementOptions),
+  );
 
   // Auto-order: the order the server uses for a batch it does not ask
   // about. A skipped batch goes on the stack in the order it was
@@ -2690,6 +2713,28 @@
           </li>
         {/each}
       </ul>
+      {#if showRememberOrder}
+        <!-- #3016: reuse this order for the same abilities, this game. -->
+        <div class="remember-order">
+          <button
+            type="button"
+            class="remember-toggle"
+            class:on={rememberOrder && !orderSplitsRows}
+            aria-pressed={rememberOrder && !orderSplitsRows}
+            disabled={orderSplitsRows}
+            title={orderSplitsRows ? SPLIT_ORDER_HINT : REUSE_ORDER_HINT}
+            onclick={() => (rememberOrder = !rememberOrder)}
+          >
+            <span class="remember-box" aria-hidden="true"
+              >{rememberOrder && !orderSplitsRows ? "✓" : ""}</span
+            >
+            {L.useThisOrderAgain}
+          </button>
+          {#if orderSplitsRows}
+            <p class="prompt-hint warn">{SPLIT_ORDER_HINT}</p>
+          {/if}
+        </div>
+      {/if}
     {:else}
       <p class="prompt-hint">
         {#if isSacrifice}
@@ -3326,6 +3371,35 @@
   .prompt-why {
     color: var(--fg);
     font-weight: 500;
+  }
+  .remember-order {
+    margin-top: 8px;
+  }
+  .remember-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border: 1px solid var(--line, rgba(255, 255, 255, 0.18));
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .remember-toggle:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .remember-box {
+    display: inline-grid;
+    place-items: center;
+    width: 14px;
+    height: 14px;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    font-size: 11px;
+    line-height: 1;
   }
   .assign-input input {
     width: 70px;

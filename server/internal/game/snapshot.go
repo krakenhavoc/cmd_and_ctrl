@@ -771,6 +771,10 @@ type playerSnapshot struct {
 	// (Leyline of Sanctity's "you have hexproof") is not here and
 	// needs nothing: it comes back with the battlefield.
 	Statics []PlayerStatic `json:"statics,omitempty"`
+	// TriggerOrderMemory is Player.TriggerOrderMemory (ADR 0018's eighth
+	// amendment, #3016). Additive: a file written before it restores
+	// with none, so every batch is asked by hand again.
+	TriggerOrderMemory map[string]RememberedTriggerOrder `json:"triggerOrderMemory,omitempty"`
 }
 
 type zoneSnapshot struct {
@@ -2435,6 +2439,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Speed:                 p.Speed,
 		LandDropsPerTurn:      p.LandDropsPerTurn,
 	}
+	// ADR 0018's eighth amendment (#3016): the remembered trigger orders.
+	out.TriggerOrderMemory = copyTriggerOrderMemory(p.TriggerOrderMemory)
 	if len(p.LifeHistory) > 0 {
 		out.LifeHistory = make([]LifeChange, len(p.LifeHistory))
 		copy(out.LifeHistory, p.LifeHistory)
@@ -3377,6 +3383,8 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Speed:              p.Speed,
 		LandDropsPerTurn:   p.LandDropsPerTurn,
 	}
+	// ADR 0018's eighth amendment (#3016): additive, absent restores empty.
+	out.TriggerOrderMemory = copyTriggerOrderMemory(p.TriggerOrderMemory)
 	// #500: a snapshot written before the field existed carries no
 	// value for it, and restoring 0 would seat a player who may never
 	// play a land again. Nothing in the catalog sets an allowance of

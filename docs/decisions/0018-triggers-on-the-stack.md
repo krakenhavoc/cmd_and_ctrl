@@ -4960,3 +4960,18 @@ The owner approved the recommendations on 2026-10-15. Each one is accepted as wr
    (H). **Accepted.**
 6. **Agent seats.** (I1) MCP seats get the remember move. **Accepted.**
 7. **The cap.** 32 remembered orders per seat per game, the least recently applied replaced. **Accepted.**
+
+### As built (2026-10-15)
+
+Built for #3016 as written. The details the amendment left open:
+
+- **The key.** `trigger_order|` and the sorted rows joined by `+`. A catalog row is `key|slot|ref|name`; a keyword row
+  is `<body>@<source catalog key>` for the engine keyword triggers (prowess, exalted, annihilator, undying, persist,
+  decayed, modular, evolve, renown, casualty, madness, miracle, suspend). Every other body is a delayed or reflexive
+  trigger and leaves the batch unkeyed (`game/trigger_order_memory.go`).
+- **The client's grouping.** Each `trigger_options[i]` of a keyed prompt carries `row`, so the client can tell an
+  interleaved order without knowing the rows. The chooser's alone, like the key.
+- **The hand reasons.** Check 1 failing marks the prompt `asked_by_hand: "changed"`, check 2 `"hidden"`.
+- **A controlled chooser.** `remember` from a chooser another player controls changes nothing: the order is not
+  theirs to teach (CR 723.5), and their prompts are asked by hand anyway.
+- **The agent move.** "The order shown" is the listed order with each row's later copies moved up beside its first.
