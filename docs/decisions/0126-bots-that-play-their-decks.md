@@ -905,6 +905,7 @@ The tables, and every seed that changes, are under [Measurements, #2474](#2474-t
 
 - **The full mirror ends on a misblock.** In both games the defender, on 3, blocks the Bear with its commander instead of the bot's commander, takes 3 and dies. So the games end on the first swing of the line. The block planner (`decideBlock`) scores each block on its own, and the Bear block scores higher (+6.90). Nothing checks that the blocks together leave the defender alive. With the right block the line takes two more turns. `TestAttritionWaitsForTheCommanderItCastAgain` pins those two turns at the decision, but no whole game in the tree plays them. The misblock is [#3066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3066).
 - **The second pass runs only when the first finds nothing.** A commander-trade line that ends sooner than the line the first pass finds is never sent.
+- **The waiting turn is often not needed** ([#3080](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3080), closed by `HorizonRecastsSameTurn`). Once #3066 fixed the misblock, the full Wurm mirror showed the bot casting its commander again in the trade turn's second main phase, so it can attack on the next turn. The horizon now models that when the bot's untapped mana pays the tax after combat, and waits only when it does not; see [#3080's measurements](#3080-the-commander-cast-again-after-combat-2026-10-14).
 
 ### Questions for the owner (#2474, answered 2026-10-12)
 
@@ -2544,6 +2545,15 @@ Every gate game ends on the same turn with the same winner. Heuristic vs random 
 - `go test ./internal/aiseat/heuristic/`: green. `TestBaselineConfigRanksTheSuiteAsBefore` holds, since `BaselineConfig()` turns both switches off.
 - `AISEAT_GAME_TESTS=1 AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12 AISEAT_WALLCLOCK=600s` over `./internal/aiseat/...` and `./internal/botarena/` with `-race`: green. The gate seeds under `-race` match the non-race runs game for game, and heuristic vs random is 12–0. Decision latency over 2534 decisions is p50 96µs, p99 6.00ms and max 35.2ms (`-race`, on a box shared with another agent's test runs), under the 50ms p99 bar. Rebased onto `032e1f138` the run is green again, its gate seeds match too, and latency over 2389 decisions is p50 96µs, p99 7.74ms and max 33.7ms. #2400 measured 105µs, 4.44ms and 21.4ms. The second pass runs only in a decision whose first pass found no line, and wall-clock numbers on a shared box are not a reliable comparison.
 - Back-outs: `TestAttritionTradesCommandersForTheKill` turns each switch off in turn and the bot sends nothing, and the full Wurm board stalls at `[6 3]` with either off (the F and H rows). `TestOutcomeOfTheCommanderTrade` reads the outcome under each of the four combinations.
+
+### #3080: the commander cast again after combat (2026-10-14)
+
+A follow-up to the #2474 amendment, behind `HorizonRecastsSameTurn` (on in `DefaultConfig()`, off in `BaselineConfig()`). In the pass that casts the bot's commander again, one that dies in an exchange is cast in the same turn's second main phase when the bot's mana sources still untapped at the attack pay its mana value plus its tax (every source of the bot's on a later turn the line plays forward, which starts with its untap step). It is then ready to attack on the next board (CR 302.6), so the line does not spend a turn waiting for it. When the untapped mana does not pay, the commander is back summoning sick as before. `TestAttritionRecastsInTheSameTurn` pins the issue's board: one exchange instead of two, and two with the lands tapped or the switch off.
+
+Measured on `develop` `8624909a9`, the switch on against the same tree with it off. The gate runs are #2474's (non-race lockstep, `AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12`), and run 1 is §8's with `--lockstep`.
+
+- **Gates.** 23 of 24 gate games end on the same turn with the same winner and lives. Seed 212 ends on turn 13 instead of 15, same winner (seat 1). Heuristic vs random is 12–0 both ways. The seed-1409 mirrors are unchanged: the Drake mirror 8 / 8, Wurm + Bear 1 / 2, Wurm + Ogre 5 / 7, the full Wurm mirror 8 / 7.
+- **Run 1** (`--games 64 --rotate --lockstep --seed 1`, esper-control, mono-red-aggro, mono-black-aristocrats, simic-ramp): win counts identical both ways (20, 24, 10, 10 of 64), 0 stalls, turns p50 12. Two games differ, each two turns shorter with the switch on and the same winner (seeds 2 and 38).
 
 ### #2480: Izzet and Simic after the rebalance (2026-10-12)
 

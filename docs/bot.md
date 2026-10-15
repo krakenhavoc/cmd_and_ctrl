@@ -3238,7 +3238,7 @@ unknown.
 [ADR 0126's amendment on blocks that survive as a
 set](decisions/0126-bots-that-play-their-decks.md#amendment-2026-10-12-blocks-that-survive-as-a-set),
 accepted on 2026-10-12. The horizon's unneeded waiting turn the
-full Wurm mirror showed is #3080.
+full Wurm mirror showed was #3080 (`HorizonRecastsSameTurn`, below).
 
 ### Combat priced by what combat does (#2675, #2690, #2676)
 
@@ -3427,6 +3427,7 @@ defender's side, inside the race.
 |---|---|---|
 | `HorizonRecastsCommander` | on | When the search finds no line, a second pass in which the bot's commander that dies in an exchange is cast again, summoning sick, and the line may wait a turn for it. |
 | `HorizonPlaysFreeAnswer` | on | Where blockToSurvive's model only guessed, the line plays the free answer forward. |
+| `HorizonRecastsSameTurn` | on | #3080: that commander is cast again in the same turn's second main phase when the bot's mana still untapped at the attack pays its tax (all its mana, on a later turn of the line). It is ready to attack on the next board, and the line waits no turn for it. |
 
 `BaselineConfig()` turns both off. The decision and its numbers are in
 [ADR 0126's amendment on a commander

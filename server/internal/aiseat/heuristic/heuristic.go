@@ -614,6 +614,14 @@ type Config struct {
 	// when the crack-back on that turn is less than my life. Off (the
 	// zero value) has no second pass, so it counts dead for good.
 	HorizonRecastsCommander bool
+	// HorizonRecastsSameTurn has the attrition horizon cast that
+	// commander again in the same turn's second main phase (#3080),
+	// when the mana sources of mine still untapped at the attack pay
+	// its tax (every source of mine, on a later turn the line plays
+	// forward). It is then ready to attack on my next turn, as in a
+	// real game, and the line does not wait a turn for it. Off (the
+	// zero value) has it back summoning sick on the next board.
+	HorizonRecastsSameTurn bool
 	// HorizonPlaysFreeAnswer is which answer the attrition horizon
 	// plays forward where blockToSurvive's model only guessed at the
 	// defender's blocks (#2474): the free answer, when the defender
@@ -813,6 +821,8 @@ func DefaultConfig() Config {
 		// #2474: the attrition horizon trades commanders.
 		HorizonRecastsCommander: true,
 		HorizonPlaysFreeAnswer:  true,
+		// #3080: and casts mine again after combat, in main phase 2.
+		HorizonRecastsSameTurn: true,
 		// #3066: the defender's blocks survive as a set.
 		BlockSetSurvives: true,
 		LethalBonus:      25.00,
@@ -930,6 +940,8 @@ func BaselineConfig() Config {
 	// #2474: the attrition horizon never traded my commander.
 	c.HorizonRecastsCommander = false
 	c.HorizonPlaysFreeAnswer = false
+	// #3080: a commander of mine cast again waited a turn.
+	c.HorizonRecastsSameTurn = false
 	// #3066: each block was scored on its own.
 	c.BlockSetSurvives = false
 	// #2677 and #2691: land searches by colour, discards by distance.
@@ -1087,6 +1099,10 @@ type state struct {
 	// dying caches dyingAnyway per permanent for this decision (ADR
 	// 0126 §7, sacrifice.go).
 	dying map[string]float64
+	// laterTurn marks a board the attrition horizon plays forward to
+	// the start of a later turn of mine (afterExchange, afterWait):
+	// every permanent of mine has untapped, whatever its Tapped says.
+	laterTurn bool
 }
 
 func (p *Policy) newState(in aiseat.Input) *state {

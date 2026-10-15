@@ -488,6 +488,12 @@ func (p *Policy) freeRules() freeRules {
 // commander's own mana ability is not counted, since it is the card
 // that died.
 func (st *state) canRecast(seat string, c *protocol.CardView) bool {
+	return st.paysCommander(seat, c, false)
+}
+
+// paysCommander is canRecast, counting only the untapped sources when
+// untapped is set.
+func (st *state) paysCommander(seat string, c *protocol.CardView, untapped bool) bool {
 	casts := 0
 	for i := range st.view.Seats {
 		if st.view.Seats[i].ID == seat {
@@ -497,7 +503,7 @@ func (st *state) canRecast(seat string, c *protocol.CardView) bool {
 	mana := 0
 	for i := range st.view.Battlefield.Cards {
 		s := &st.view.Battlefield.Cards[i]
-		if s.Controller == seat && s.InstanceID != c.InstanceID {
+		if s.Controller == seat && s.InstanceID != c.InstanceID && !(untapped && s.Tapped) {
 			mana += repeatableMana(s)
 		}
 	}
