@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { CARDS } from "./s19-deck-fixture";
+import { CARDS, MULLDRIFTER_ON_STACK } from "./s19-deck-fixture";
 import {
   seedHandWithCard,
   setupS19Game,
@@ -27,7 +27,7 @@ import {
 // controlled by the caster, so to the opponent it is "an opponent's
 // item", which is what the hold is keyed on.
 
-const LABEL = /Mulldrifter — draw two cards/i;
+const LABEL = MULLDRIFTER_ON_STACK;
 const HOLD_MS = 2000;
 
 test.describe("ADR 0119 stack hold", () => {

@@ -2076,6 +2076,12 @@ export interface StackItemView {
   owner: string;
   source_card_id: string;
   label?: string;
+  // #3830: the printed Oracle text of the ability this item is — a
+  // triggered ability's clause, an activated ability's whole
+  // "cost: effect" line. Absent on a spell, a copy, an item with no
+  // single clause of its own (granted, delayed, rule-made) and any
+  // item whose source the table cannot see; show `label` then.
+  ability_text?: string;
   targets?: TargetRefView[];
   modes?: number[];
   // #764: the oracle bullet of each chosen mode, in announce order

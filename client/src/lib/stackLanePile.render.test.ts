@@ -282,6 +282,25 @@ describe("the pile (ADR 0119 §1)", () => {
     expect(p.qa(".caption .chip").map((c) => c.textContent)).not.toContain("triggered");
   });
 
+  it("#3830: puts an ability's printed text on its band and its peeking line", () => {
+    const printed =
+      "Whenever Vivi Ornitier deals noncombat damage to a player, put a +1/+1 counter on it.";
+    const withText = { ...viviTrigger, ability_text: printed };
+    const top = mountPile(gameView([withText], { stackCards: [] }));
+    expect(top.q(".top-card .ability-band .title")?.textContent).toBe(printed);
+    expect(top.q(".top-card")?.getAttribute("title")).toBe(`${printed} — hover to preview`);
+
+    // Under a spell, the peeking line truncates it and its title has all of it.
+    const under = mountPile(gameView([withText, spell("cs", OPP)]));
+    const peek = under.q('.peek[data-stack-item-id="trig-vivi"]');
+    expect(peek?.querySelector(".peek-title")?.textContent).toBe(printed);
+    expect(peek?.getAttribute("title")).toBe(`${printed} — hover to preview`);
+    // The Counter button keeps the label as its accessible name.
+    expect(peek?.querySelector("button[aria-label^='Counter']")?.getAttribute("aria-label")).toBe(
+      `Counter ${viviTrigger.label}`,
+    );
+  });
+
   it("draws a card back for a spell the viewer may not see", () => {
     const hidden = card("cs", "", OPP, { known_by_you: false, scryfall_id: undefined });
     const p = mountPile(gameView([spell("cs", OPP)], { stackCards: [hidden] }));

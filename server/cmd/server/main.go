@@ -206,6 +206,7 @@ import (
 	// this is the one place that knows both the catalog and the
 	// lobby's config.
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/oracletext"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/tokenart"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
@@ -487,6 +488,11 @@ func main() {
 	// This keeps the server bootable on a fresh deployment before
 	// the cron has landed its first dump.
 	cardIdx, imgCache := loadCardAssets(log, cfg.DataDir)
+	// #3830: the stack shows an ability's printed text, read from the
+	// same index.
+	if cardIdx != nil {
+		oracletext.SetSource(oracleTextSource(cardIdx))
+	}
 
 	// The bot policy factory. This is the line that decides which
 	// tiers this deployment can seat: aiseat itself can only build
@@ -1817,6 +1823,25 @@ func loadCardAssets(log *slog.Logger, dataDir string) (*cards.Index, *cards.Imag
 		return idx, nil
 	}
 	return idx, cache
+}
+
+// oracleTextSource answers oracletext with a card's printed faces from
+// the Scryfall index (#3830).
+func oracleTextSource(idx *cards.Index) oracletext.Source {
+	return func(id uuid.UUID) (oracletext.Card, bool) {
+		c, ok := idx.FindByOracleID(id)
+		if !ok {
+			return oracletext.Card{}, false
+		}
+		out := oracletext.Card{Name: c.Name}
+		if len(c.CardFaces) == 0 {
+			out.Faces = []oracletext.Face{{Name: c.Name, Text: c.OracleText}}
+		}
+		for _, f := range c.CardFaces {
+			out.Faces = append(out.Faces, oracletext.Face{Name: f.Name, Text: f.OracleText})
+		}
+		return out, true
+	}
 }
 
 // seedDemoGame builds a 4-player Commander game in the active state,

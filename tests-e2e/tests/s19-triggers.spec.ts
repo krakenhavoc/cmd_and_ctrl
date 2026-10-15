@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { L } from "../../client/src/lib/labels";
-import { CARDS } from "./s19-deck-fixture";
+import { CARDS, MULLDRIFTER_ON_STACK } from "./s19-deck-fixture";
 import {
   adminMoveByName,
   findCardInPlayerGraveyard,
@@ -133,11 +133,11 @@ test.describe("S19 ETB triggers", () => {
     // sleeping: this is still a polling `toBeVisible`, so a genuinely
     // stuck broadcast still fails, just past a bound that survives
     // load instead of racing it.
-    await expect(caster.page.getByText(/Mulldrifter — draw two cards/i).first()).toBeVisible({
+    await expect(caster.page.getByText(MULLDRIFTER_ON_STACK).first()).toBeVisible({
       timeout: 20_000,
     });
     await expect(
-      opponent.page.getByText(/Mulldrifter — draw two cards/i).first(),
+      opponent.page.getByText(MULLDRIFTER_ON_STACK).first(),
     ).toBeVisible({ timeout: 20_000 });
 
     await resolveStack(setup);

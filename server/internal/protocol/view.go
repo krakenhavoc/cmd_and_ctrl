@@ -1976,12 +1976,22 @@ type StackItemView struct {
 	// (ADR 0104, CR 110.2b). Sent only when it differs from
 	// Controller, so the client can say "taken from X" and a bot
 	// prompt can say who cast it; empty for every spell nobody took.
-	DefaultController string          `json:"default_controller,omitempty"`
-	Owner             string          `json:"owner"`
-	SourceCardID      string          `json:"source_card_id"`
-	Label             string          `json:"label,omitempty"`
-	Targets           []TargetRefView `json:"targets,omitempty"`
-	Modes             []int           `json:"modes,omitempty"`
+	DefaultController string `json:"default_controller,omitempty"`
+	Owner             string `json:"owner"`
+	SourceCardID      string `json:"source_card_id"`
+	Label             string `json:"label,omitempty"`
+	// AbilityText is the printed Oracle text of the ability this item
+	// is (#3830): a triggered ability's clause, an activated ability's
+	// whole "cost: effect" line, as the card prints it ("Whenever another
+	// creature you control enters, Purphoros deals 2 damage to each
+	// opponent."). Label stays the engine's short name. Empty for a
+	// spell, a copy, an item no single clause of its source's own
+	// answers (a granted or borrowed ability, a delayed or reflexive
+	// trigger, a rule's item), and an item whose source the table cannot
+	// see (face down, or in a hand or library nobody else knows).
+	AbilityText string          `json:"ability_text,omitempty"`
+	Targets     []TargetRefView `json:"targets,omitempty"`
+	Modes       []int           `json:"modes,omitempty"`
 	// ModeLabels is the oracle bullet of each chosen mode, in
 	// printed (resolution) order and with repeats — what "modes: 0, 2" used to
 	// make the table guess. The caster's hand card is gone by the
@@ -5157,7 +5167,7 @@ func ViewOfGame(g *game.Game) GameView {
 			StartingSeat:          g.StartingSeat,
 			OpeningRoll:           viewOfOpeningRoll(g.OpeningRoll),
 			StackItems:            viewOfStackItemsInStackOrder(g),
-			PendingTriggers:       viewOfStackItemSlice(g.PendingTriggers),
+			PendingTriggers:       viewOfStackItemSlice(g, g.PendingTriggers),
 			DelayedTriggers:       viewOfDelayedTriggers(g.DelayedTriggers),
 			SplitSecondActive:     g.SplitSecondActive,
 			DamageCantBePrevented: g.DamageCantBePreventedThisTurnLabels(),
@@ -9177,10 +9187,14 @@ func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
 	}
 	sort.SliceStable(abilities, func(i, j int) bool { return abilities[i].Seq < abilities[j].Seq })
 	for _, item := range abilities {
-		entries = append(entries, entry{item.Seq, viewOfStackItem(item)})
+		v := viewOfStackItem(item)
+		v.AbilityText = abilityTextOf(g, item)
+		entries = append(entries, entry{item.Seq, v})
 	}
 	if held != nil && !seen[held.ID] && g.StackMeta[held.ID] == nil {
-		entries = append(entries, entry{held.Seq, viewOfStackItem(held)})
+		v := viewOfStackItem(held)
+		v.AbilityText = abilityTextOf(g, held)
+		entries = append(entries, entry{held.Seq, v})
 	}
 	sort.SliceStable(entries, func(i, j int) bool { return entries[i].seq < entries[j].seq })
 	if len(entries) == 0 {
@@ -9196,7 +9210,7 @@ func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
 // viewOfStackItemSlice projects a slice of *StackItem (the pending-
 // triggers queue) to the wire shape, preserving order. Returns nil
 // for an empty input.
-func viewOfStackItemSlice(items []*game.StackItem) []StackItemView {
+func viewOfStackItemSlice(g *game.Game, items []*game.StackItem) []StackItemView {
 	if len(items) == 0 {
 		return nil
 	}
@@ -9205,7 +9219,9 @@ func viewOfStackItemSlice(items []*game.StackItem) []StackItemView {
 		if it == nil {
 			continue
 		}
-		out = append(out, viewOfStackItem(it))
+		v := viewOfStackItem(it)
+		v.AbilityText = abilityTextOf(g, it)
+		out = append(out, v)
 	}
 	if len(out) == 0 {
 		return nil
