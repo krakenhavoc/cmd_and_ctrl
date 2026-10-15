@@ -467,6 +467,18 @@ an opponent's, a curse (Pacifism) costs the value of the bot's own
 creature and keeps the removal price on an opponent's. `PriceAuraPurpose`
 turns it off. An Aura that declares nothing keeps the old reading.
 
+**A flash permanent that is sacrificed at cleanup waits for the main phase**
+(#3712). A card that prints "you may cast this spell as though it had flash;
+if you cast it any time a sorcery couldn't have been cast, sacrifice it at the
+next cleanup step" (Necromancy, Lightning Reflexes, Parapet, the Visions Auras)
+rides the wire as `purpose.flash_cleanup_sacrifice`. Outside the bot's own
+sorcery-speed window the bot declines its cast unless the permanent does
+something before cleanup: an Aura on its own permanent with something on the
+stack, an Aura on its own attacking or blocking creature, or a non-Aura at an
+opponent's declare attackers (a blocker) or at declare blockers with its own
+creature in combat. `HoldFlashSacrifice` turns it off
+(`flash_sacrifice.go`).
+
 **A reanimation target is priced as the permanent it becomes** (#3161,
 [ADR 0154](decisions/0154-auras-that-enchant-a-card-in-a-graveyard.md) Q5).
 A spell that declares `reanimates` on a graveyard target entry (Reanimate,

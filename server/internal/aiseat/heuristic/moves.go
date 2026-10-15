@@ -546,6 +546,10 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	if castSacrificesAll(card) {
 		return sacrificeAllDeclined, "cast declined: its cost sacrifices everything (#2097)"
 	}
+	// #3712: cast now, it is sacrificed at cleanup before it does anything.
+	if p.holdsFlashSacrifice(st, card, cp) {
+		return flashSacrificeDeclined, "cast declined: sacrificed at cleanup, held for the main phase (#3712)"
+	}
 	// ADR 0135 §3: an awaken cast's last target is its own land, which
 	// awakenValue prices as the body it becomes; it is not a pump on a
 	// permanent of the bot's (OwnPermanentTarget), and it does not make
