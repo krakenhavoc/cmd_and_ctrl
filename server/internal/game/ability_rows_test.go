@@ -45,6 +45,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"CastConditionLabel":         "the spell's own cast gate's text",
 	"CantBeCountered":            "a property of the spell on the stack, shown there",
 	"CantBeCounteredIf":          "a property of the spell on the stack, shown there",
+	"FlashWithCleanupSacrifice":  "the spell's own cast timing, read by the cast gate (#3156)",
 	"SpellDamageCantBePrevented": "a property of the spell's damage",
 	"Emblem":                     "an emblem's presentation",
 	"TokenText":                  "a token's printed text, already token_text",

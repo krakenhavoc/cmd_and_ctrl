@@ -684,5 +684,8 @@ func (g *Game) runEntryHooksLocked(l entryLanding) {
 	g.fireETBHookLocked(l.entered, key)
 	if l.ev.stackItem != nil {
 		g.queueAltCostEntryTriggerLocked(l.moved, l.ev.stackItem)
+		// #3156: a spell cast with its own flash when a sorcery
+		// couldn't have been is sacrificed at the next cleanup step.
+		g.scheduleOwnFlashCleanupSacrificeLocked(l.entered, l.ev.stackItem)
 	}
 }

@@ -257,6 +257,12 @@ type CardDef struct {
 	ActivationTimings []ActivationTiming
 
 	CantBeCountered bool
+	// FlashWithCleanupSacrifice is "You may cast this spell as though
+	// it had flash. If you cast it any time a sorcery couldn't have
+	// been cast, the controller of the permanent it becomes sacrifices
+	// it at the beginning of the next cleanup step" (#3156). See
+	// flash_cleanup_sacrifice.go.
+	FlashWithCleanupSacrifice bool
 	// CantBeCounteredIf is the CONDITIONAL "this spell can't be
 	// countered" (Banefire's X of 5 or more, Demonfire's hellbent),
 	// judged when something tries to counter the spell. Nil is never.

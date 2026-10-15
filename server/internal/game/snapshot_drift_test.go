@@ -799,6 +799,9 @@ var stackItemFields = plan(
 	// stack, and the fact cannot be recomputed — the card turned face
 	// up as it was cast, so the object it was read from is gone.
 	"Foretold", carried, "",
+	// #3156. Carried: whether a spell was cast with its own flash at a
+	// time a sorcery couldn't have been is known only at announce.
+	"OwnFlashCast", carried, "",
 	// CR 708.4 (#1194, ADR 0082). Carried: a restore that lost it
 	// would resolve a morph on the stack into a face-UP creature,
 	// revealing the card to the table and handing it back every

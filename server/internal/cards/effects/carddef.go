@@ -205,6 +205,7 @@ func buildDef(spec Spec) *game.CardDef {
 		UntapOptOuts:                        spec.UntapOptOuts,
 		DrawStep:                            spec.DrawStep,
 		CantBeCountered:                     spec.CantBeCountered,
+		FlashWithCleanupSacrifice:           spec.FlashWithCleanupSacrifice,
 		CantBeCounteredIf:                   spec.CantBeCounteredIf,
 		SpellDamageCantBePrevented:          spec.SpellDamageCantBePrevented,
 		SpellsCantBeCountered:               spec.SpellsCantBeCountered,

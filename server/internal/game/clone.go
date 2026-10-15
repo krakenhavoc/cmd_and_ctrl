@@ -809,6 +809,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		SplitSecond:      s.SplitSecond,
 		AltCost:          s.AltCost,
 		Foretold:         s.Foretold,
+		OwnFlashCast:     s.OwnFlashCast,
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		CastFromZone:     s.CastFromZone,
