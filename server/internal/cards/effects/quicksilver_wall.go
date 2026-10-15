@@ -28,7 +28,7 @@ func init() {
 		PrintedKeywords: []string{"defender"},
 		Activated: []ActivatedAbility{{
 			Label:     "{4}: Return this creature to its owner's hand. Any player may activate this ability.",
-			Purpose:   game.Purpose{Answers: game.AnswerProtect},
+			Purpose:   game.Purpose{Answers: game.AnswerSurvive},
 			Cost:      ManaCost("{4}"),
 			AnyPlayer: true,
 			Effect:    returnThisPermanentToOwnersHand,

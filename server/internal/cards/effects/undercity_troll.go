@@ -22,7 +22,7 @@ func init() {
 		PrintedKeywords: []string{"renown 1"},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{G}: Regenerate this creature.",
-			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    ManaCost("{2}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return Regenerate{Target: item.SourceCardID}.Apply(NewContext(g, item))

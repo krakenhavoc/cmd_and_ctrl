@@ -97,6 +97,7 @@ func TestAnswersGuardKeepsTheCostRule(t *testing.T) {
 		{"outlet declared pump", outlet, game.AnswerPump, "sacrifices, exiles or returns a creature"},
 		{"outlet declared sac_outlet", outlet, game.AnswerSacOutlet | game.AnswerPump, ""},
 		{"outlet declared protect", outlet, game.AnswerProtect, ""},
+		{"outlet declared survive", outlet, game.AnswerSurvive, ""},
 		{"food is a price", food, game.AnswerValue, ""},
 		{"crew without animate", game.AbilityCost{Crew: 1}, game.AnswerCombatGrant, "crew row"},
 		{"crew with animate", game.AbilityCost{Crew: 1}, game.AnswerAnimate, ""},

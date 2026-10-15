@@ -1549,8 +1549,12 @@ is on the stack:
   untargeted row on that creature is priced by what it saves: the
   creature's value times the chance the bot loses it
   (`RemovalConfidence` for a target, the sweep's share for a sweep).
-  - `protect` (regenerate, indestructible, hexproof, a blink, …) saves
-    it from anything.
+  - `survive` (regenerate, indestructible, a blink, phasing out, …)
+    saves it from anything, a sweep included.
+  - `protect` (hexproof, shroud, protection) saves it only from what
+    targets it. A declared sweep names no target, so against one (alone
+    or beside a targeted item) a `protect` row is not an answer and the
+    bot passes. A row that declares both is a `survive` row.
   - `prevent` saves it only when every threat is declared damage that
     can be prevented: a target entry's `damage`, or a damage sweep.
   - `pump` saves it only when one activation's declared `pump` keeps it
@@ -3588,7 +3592,7 @@ held on purpose or priced short:
 
 - Scrounging Skyray's and Marauding Mako's cycling lose to casting the
   creature, which is the better use of the card.
-- Solphim's indestructible counter is a `protect` answer. It is taken
+- Solphim's indestructible counter is a `survive` answer. It is taken
   when removal targets Solphim, and is a pure cost otherwise.
 - Burnished Hart's land search is priced as two lands against its own
   body. In simic-ramp those lands are worth more than that, because

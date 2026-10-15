@@ -38,7 +38,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{3}: Return this Equipment to its owner's hand",
-				Purpose: game.Purpose{Answers: game.AnswerProtect},
+				Purpose: game.Purpose{Answers: game.AnswerSurvive},
 				Cost:    ManaCost("{3}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return BounceToHand{Target: item.SourceCardID}.Apply(NewContext(g, item))

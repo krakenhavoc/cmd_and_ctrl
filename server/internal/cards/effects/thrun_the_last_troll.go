@@ -28,7 +28,7 @@ func init() {
 		PrintedKeywords: []string{"hexproof"},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{G}: Regenerate Thrun.",
-			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    ManaCost("{1}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return Regenerate{Target: item.SourceCardID}.Apply(NewContext(g, item))

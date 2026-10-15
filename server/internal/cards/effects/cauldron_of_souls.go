@@ -17,7 +17,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Choose any number of target creatures. Each of those creatures gains persist until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    TapCost(),
 			Targets: TargetCreature("any number of target creatures").WithCount(0, 0),
 			Effect: func(g *game.Game, item *game.StackItem) error {

@@ -1422,7 +1422,8 @@ in code, not declared.
 
 | Constant | Tier | Declare it when the row… | Examples |
 |---|---|---|---|
-| `game.AnswerProtect` | stack | keeps a permanent of yours: regenerate, indestructible, hexproof, shroud, protection, phase out, a blink, returns itself to hand, grants persist or undying | Albino Troll, Selfless Spirit |
+| `game.AnswerProtect` | stack | puts a permanent of yours out of reach of what *targets* it: hexproof, shroud, protection, "can't be countered". Does nothing against a Wrath | Bristling Hydra, Hell-Bent Raider |
+| `game.AnswerSurvive` | stack | keeps a permanent of yours on the battlefield, or brings it back, whatever removes it: regenerate, indestructible, phase out, a blink, returns itself to hand, grants persist or undying. A row that does both declares both | Albino Troll, Selfless Spirit, Bulwark Ox (both) |
 | `game.AnswerPump` | stack | raises power or toughness: +N/+N, +1/+1 counters, monstrosity, adapt, a base power and toughness | Arbor Colossus |
 | `game.AnswerPrevent` | stack | prevents or redirects damage, or sets a damage shield | Spore Frog, Opal-Eye |
 | `game.AnswerRemove` | stack | removes, destroys, damages or shrinks other permanents with no target | Pestilence, Nevinyrral's Disk |
@@ -1434,7 +1435,7 @@ in code, not declared.
 | `game.AnswerValue` | — | answers nothing: draw, mana, ramp, a fetch, scry, a non-creature token, a counter that only counts | Mind Stone, a Clue, cycling |
 
 ```go
-Purpose: game.Purpose{Answers: game.AnswerProtect},                     // "{1}{G}: Regenerate this creature."
+Purpose: game.Purpose{Answers: game.AnswerSurvive},                      // "{1}{G}: Regenerate this creature."
 Purpose: game.Purpose{Answers: game.AnswerPump, Pump: &game.Pump{...}}, // a self pump the bot also prices
 Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1},            // Mind Stone's draw
 ```
@@ -1463,7 +1464,7 @@ both where both are true; neither is derived from the other.
   announcement has a target;
 - a crew row without `AnswerAnimate`;
 - a row whose cost sacrifices, exiles or returns a creature without
-  `AnswerSacOutlet` or `AnswerProtect`;
+  `AnswerSacOutlet`, `AnswerSurvive` or `AnswerProtect`;
 - on a mana ability, anything but `AnswerSacOutlet` or `AnswerValue`, or
   a creature-sacrifice cost declared without `AnswerSacOutlet`.
 

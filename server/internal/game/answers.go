@@ -23,11 +23,18 @@ import "strings"
 type Answers uint16
 
 const (
-	// AnswerProtect keeps a permanent of yours on the battlefield, or
-	// out of reach: regenerate, indestructible, hexproof, shroud,
-	// protection, phase out, a blink, returning itself to hand, granting
-	// persist or undying.
+	// AnswerProtect puts a permanent of yours out of reach of what
+	// TARGETS it: hexproof, shroud, protection, "can't be countered".
+	// It does nothing against a sweep, which names no target. A row
+	// that also survives a Wrath declares AnswerSurvive beside it
+	// (ADR 0142, amendment 2026-10-15).
 	AnswerProtect Answers = 1 << iota
+	// AnswerSurvive keeps a permanent of yours on the battlefield, or
+	// brings it back, whatever removes it, targeted or not:
+	// regenerate, indestructible (a keyword grant or a counter), phase
+	// out, a blink, returning itself to hand, granting persist or
+	// undying. It is what a bot may hold up against a sweep.
+	AnswerSurvive
 	// AnswerPump raises power or toughness: +N/+N, +1/+1 counters,
 	// monstrosity, adapt, a base power and toughness set until end of
 	// turn.
@@ -90,6 +97,7 @@ type answerInfo struct {
 // order the wire lists a set in.
 var answerTable = []answerInfo{
 	{AnswerProtect, "protect", TierStack},
+	{AnswerSurvive, "survive", TierStack},
 	{AnswerPump, "pump", TierStack},
 	{AnswerPrevent, "prevent", TierStack},
 	{AnswerRemove, "remove", TierStack},

@@ -29,7 +29,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{U}, Discard two cards: Return this creature to its owner's hand.",
-			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    Plus(ManaCost("{1}{U}"), DiscardN(2, "two cards")),
 			Effect:  returnThisPermanentToOwnersHand,
 		}},

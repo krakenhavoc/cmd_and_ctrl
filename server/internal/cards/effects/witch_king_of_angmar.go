@@ -47,7 +47,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Discard a card: Witch-king of Angmar gains indestructible until end of turn. Tap him",
-			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    DiscardACard(),
 			Effect:  witchKingShield,
 		}},

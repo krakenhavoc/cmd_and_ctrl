@@ -29,7 +29,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{B}: Regenerate this creature.",
-			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    ManaCost("{B}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return Regenerate{Target: item.SourceCardID}.Apply(NewContext(g, item))
