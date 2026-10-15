@@ -1844,7 +1844,13 @@ func ptWithCounters(eff Characteristic, counters map[string]int) (power, toughne
 // cache, and are three cache validations and three kilobyte receiver
 // copies after it (#1498).
 func (c *Card) PowerToughness() (current, forComparison, toughness int) {
-	forComparison, toughness = ptWithCounters(effectiveOf(c), c.Counters)
+	return PowerToughnessFrom(c, effectiveOf(c))
+}
+
+// PowerToughnessFrom is PowerToughness for a caller that already holds
+// the card's effective characteristic, EffectiveOf(c) (#3823).
+func PowerToughnessFrom(c *Card, eff Characteristic) (current, forComparison, toughness int) {
+	forComparison, toughness = ptWithCounters(eff, c.Counters)
 	return clampPower(forComparison), forComparison, toughness
 }
 

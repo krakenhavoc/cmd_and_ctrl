@@ -111,8 +111,12 @@ func GoadRequirements(source *Card, by uuid.UUID) []AttackRequirement {
 func (c Card) StaticGoaders() []uuid.UUID { return staticGoadersOf(&c) }
 
 func staticGoadersOf(c *Card) []uuid.UUID {
+	return staticGoadersIn(effectiveOf(c).AttackRequirements)
+}
+
+func staticGoadersIn(reqs []AttackRequirement) []uuid.UUID {
 	var out []uuid.UUID
-	for _, r := range effectiveOf(c).AttackRequirements {
+	for _, r := range reqs {
 		if r.GoadedBy == uuid.Nil || slices.Contains(out, r.GoadedBy) {
 			continue
 		}
@@ -144,9 +148,18 @@ func (c Card) Goaded() bool {
 func (c Card) AllGoaders() []uuid.UUID { return AllGoadersOf(&c) }
 
 // AllGoadersOf is AllGoaders without the receiver copy (#2113).
-func AllGoadersOf(c *Card) []uuid.UUID {
+func AllGoadersOf(c *Card) []uuid.UUID { return allGoaders(c, staticGoadersOf(c)) }
+
+// AllGoadersFrom is AllGoadersOf for a caller that already holds the
+// card's effective characteristic, EffectiveOf(c) (#3823): the view
+// reads it once per card per frame and need not have it rebuilt.
+func AllGoadersFrom(c *Card, eff *Characteristic) []uuid.UUID {
+	return allGoaders(c, staticGoadersIn(eff.AttackRequirements))
+}
+
+func allGoaders(c *Card, static []uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
-	for _, p := range staticGoadersOf(c) {
+	for _, p := range static {
 		if !isGoadedBy(c, p) {
 			out = append(out, p)
 		}

@@ -5152,14 +5152,17 @@ func ViewOfGameFor(g *game.Game, viewerID string) GameView {
 func ViewOfGame(g *game.Game) GameView {
 	var view GameView
 	g.ReadSnapshot(func() {
+		// #3823: one memo of the seat IDs' strings for every card of
+		// the frame, whose owner, controller and knowers are all seats.
+		ids := newIDStrings(g.Seats)
 		view = GameView{
 			ID:          g.ID.String(),
 			State:       string(g.State),
-			Seats:       viewOfSeats(g, g.Seats),
-			Battlefield: viewOfZone(g.Battlefield),
-			Stack:       viewOfZone(g.Stack),
-			Exile:       viewOfZone(g.Exile),
-			PhasedOut:   viewOfZone(g.PhasedOut),
+			Seats:       viewOfSeats(g, g.Seats, ids),
+			Battlefield: viewOfZone(g.Battlefield, ids),
+			Stack:       viewOfZone(g.Stack, ids),
+			Exile:       viewOfZone(g.Exile, ids),
+			PhasedOut:   viewOfZone(g.PhasedOut, ids),
 			Turn: TurnView{
 				Seq:            g.Turn.Seq,
 				Number:         g.Turn.Round,
@@ -6228,6 +6231,12 @@ func exileListIsHidden(zone string) bool {
 // slice already on the card. Nothing is filed, and nothing allocated,
 // for a permanent whose rows carry no hidden list.
 func (c *CardView) fileAbilityOffers(controller uuid.UUID) {
+	// #3823: ask first, copy after. Almost no row is private, and the
+	// public copies below were made for every permanent with a row on
+	// every frame, then dropped.
+	if !c.hasPrivateAbilityRow() {
+		return
+	}
 	var act []ActivatedAbilityView
 	var mana []ManaAbilityView
 	private := false
@@ -6259,6 +6268,24 @@ func (c *CardView) fileAbilityOffers(controller uuid.UUID) {
 	}
 	c.ActivatedAbilities = act
 	c.ManaAbilities = mana
+}
+
+// hasPrivateAbilityRow reports whether any of the card's rows carries a
+// list fileAbilityOffers must keep from other viewers. It asks the same
+// two functions that make the public rows, on a stack copy of each row,
+// so the two cannot disagree about what is private.
+func (c *CardView) hasPrivateAbilityRow() bool {
+	for i := range c.ActivatedAbilities {
+		if _, p := publicActivatedAbilityRow(c.ActivatedAbilities[i]); p {
+			return true
+		}
+	}
+	for i := range c.ManaAbilities {
+		if _, p := publicManaAbilityRow(c.ManaAbilities[i]); p {
+			return true
+		}
+	}
+	return false
 }
 
 // castFace names the printed half ONE cast surface is computed for
@@ -7713,7 +7740,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		c.ActivatedAbilities = viewOfActivatedAbilities(g, *card, controller, game.ZoneBattlefield, restricted)
 		// ADR 0093 Decision 8: the grantor's name on each granted mana
 		// row, and the granted-ability text list.
-		stampGrantedAbilities(g, *card, c)
+		stampGrantedAbilities(g, card, c)
 		// ADR 0082 decision 9: a FACE-DOWN permanent carries its
 		// CR 116.2g "turn face up" row, from the same projection the
 		// hand's foretell and suspend rows come from and with the
@@ -9355,15 +9382,15 @@ func viewOfStackItem(it *game.StackItem) StackItemView {
 	return view
 }
 
-func viewOfSeats(g *game.Game, seats []*game.Player) []PlayerView {
+func viewOfSeats(g *game.Game, seats []*game.Player, ids *idStrings) []PlayerView {
 	out := make([]PlayerView, len(seats))
 	for i, p := range seats {
-		out[i] = viewOfPlayer(g, p)
+		out[i] = viewOfPlayer(g, p, ids)
 	}
 	return out
 }
 
-func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
+func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 	cmdrDamage := make(map[string]int, len(p.CommanderDamage))
 	for k, v := range p.CommanderDamage {
 		cmdrDamage[k.String()] = v
@@ -9421,10 +9448,10 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		Poison:                p.Poison,
 		Energy:                p.Energy,
 		Speed:                 p.Speed,
-		Library:               viewOfZone(p.Library),
-		Hand:                  viewOfZone(p.Hand),
-		Graveyard:             viewOfZone(p.Graveyard),
-		Command:               viewOfZone(p.Command),
+		Library:               viewOfZone(p.Library, ids),
+		Hand:                  viewOfZone(p.Hand, ids),
+		Graveyard:             viewOfZone(p.Graveyard, ids),
+		Command:               viewOfZone(p.Command, ids),
 		CommanderDamage:       cmdrDamage,
 		LifeHistory:           history,
 		Eliminated:            p.Eliminated,
@@ -9686,7 +9713,7 @@ func uuidStringOrEmpty(u uuid.UUID) string {
 	return u.String()
 }
 
-func viewOfZone(z *game.Zone) ZoneView {
+func viewOfZone(z *game.Zone, ids *idStrings) ZoneView {
 	if z == nil {
 		return ZoneView{}
 	}
@@ -9698,7 +9725,7 @@ func viewOfZone(z *game.Zone) ZoneView {
 		// a copy of it per card per frame, then handed it on to a
 		// dozen by-value helpers that each copied it again.
 		c := &z.Cards[i]
-		cards[i] = viewOfCardPtr(c)
+		cards[i] = viewOfCardPtrIDs(c, ids)
 		// #1199: read off the zone rather than off the card, because
 		// the card carries no flag — ADR 0084 keeps phasing as a
 		// membership rather than as a bit several subsystems have to
@@ -10932,7 +10959,52 @@ func viewOfCard(c game.Card) CardView { return viewOfCardPtr(&c) }
 // kilobyte: a by-value parameter plus the ten by-value helpers it used
 // to call copied it eleven times per card per frame (#2113, ~4.5% of a
 // bot table's CPU). Nothing here writes to the card.
-func viewOfCardPtr(c *game.Card) CardView {
+func viewOfCardPtr(c *game.Card) CardView { return viewOfCardPtrIDs(c, nil) }
+
+// idStrings memoizes the canonical strings of the few UUIDs that recur
+// on every card of a frame: the seats, which are each card's owner,
+// its controller and the keys of its knower set (#3823). Formatting
+// them afresh was three to six 48-byte allocations per card per frame.
+// A string is immutable, so every CardView may share one. A nil memo
+// formats every ID, which is what a caller with no frame gets.
+type idStrings struct {
+	ids  []uuid.UUID
+	strs []string
+}
+
+// idStringsMax bounds the memo: a linear scan stays cheaper than a map
+// for the seats of a table, and an ID that is not a seat (a card whose
+// owner left the table, a test fixture) is formatted, not remembered.
+const idStringsMax = 8
+
+func newIDStrings(seats []*game.Player) *idStrings {
+	m := &idStrings{
+		ids:  make([]uuid.UUID, 0, idStringsMax),
+		strs: make([]string, 0, idStringsMax),
+	}
+	for _, p := range seats {
+		if p != nil && len(m.ids) < idStringsMax {
+			m.ids = append(m.ids, p.ID)
+			m.strs = append(m.strs, p.ID.String())
+		}
+	}
+	return m
+}
+
+// of returns id.String(), out of the memo when id is a seat.
+func (m *idStrings) of(id uuid.UUID) string {
+	if m != nil {
+		for i, known := range m.ids {
+			if known == id {
+				return m.strs[i]
+			}
+		}
+	}
+	return id.String()
+}
+
+// viewOfCardPtrIDs is viewOfCardPtr with the frame's seat-ID memo.
+func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 	var counters map[string]int
 	if len(c.Counters) > 0 {
 		counters = make(map[string]int, len(c.Counters))
@@ -10944,7 +11016,7 @@ func viewOfCardPtr(c *game.Card) CardView {
 	if len(c.KnownBy) > 0 {
 		knowers = make(map[string]bool, len(c.KnownBy))
 		for k := range c.KnownBy {
-			knowers[k.String()] = true
+			knowers[ids.of(k)] = true
 		}
 	}
 	// S16 sub-PR 1: read post-layer characteristics off Card.Effective()
@@ -10956,12 +11028,12 @@ func viewOfCardPtr(c *game.Card) CardView {
 	// byte-for-byte via the parser round-trip.
 	eff := game.EffectiveOf(c)
 	// One read for all three P/T fields below (#1498).
-	power, powerForComparison, toughness := c.PowerToughness()
+	power, powerForComparison, toughness := game.PowerToughnessFrom(c, eff)
 	view := CardView{
 		InstanceID: c.InstanceID.String(),
 		Name:       eff.Name,
-		Owner:      c.Owner.String(),
-		Controller: c.Controller.String(),
+		Owner:      ids.of(c.Owner),
+		Controller: ids.of(c.Controller),
 		ScryfallID: c.ScryfallID,
 		IsToken:    game.IsTokenPtr(c),
 		TokenCopy:  game.IsTokenPtr(c) && c.OracleID != "",
@@ -11111,7 +11183,7 @@ func viewOfCardPtr(c *game.Card) CardView {
 	// goad too. AllGoaders lists those first, so the last entry, which
 	// the legacy single field repeats, is the latest marker goader
 	// whenever there is one.
-	if goaders := game.AllGoadersOf(c); len(goaders) > 0 {
+	if goaders := game.AllGoadersFrom(c, &eff); len(goaders) > 0 {
 		view.GoadedBy = goaders[len(goaders)-1].String()
 		view.Goaders = make([]string, len(goaders))
 		for i, id := range goaders {
@@ -11939,11 +12011,14 @@ func castSourceOf(g *game.Game, caster uuid.UUID, instanceID string) game.Target
 	if err != nil {
 		return game.SourceChooser(caster)
 	}
-	c, ok := g.LookupCardForEffect(id)
+	// #3823: the live card, not a copy. The copy escaped through the
+	// source, a kilobyte on the heap per cast surface per frame, and
+	// the target walk only reads it under the lock the view holds.
+	c, ok := g.LookupCardPtrForEffect(id)
 	if !ok {
 		return game.SourceChooser(caster)
 	}
-	return game.SourceObject(caster, &c)
+	return game.SourceObject(caster, c)
 }
 
 // sacrificeCostOptions is the set of permanents that can pay an

@@ -619,13 +619,18 @@ type GrantedAbilityInfo struct {
 // A bundle with no registered text is skipped — there is nothing to
 // show — and so is every grant on an object whose own abilities are
 // gone, for the copy half.
-func GrantedAbilitiesOf(c Card) []GrantedAbilityInfo {
-	grants := layeredGrants(&c)
+func GrantedAbilitiesOf(c Card) []GrantedAbilityInfo { return GrantedAbilitiesOfPtr(&c) }
+
+// GrantedAbilitiesOfPtr is GrantedAbilitiesOf without the copy of the
+// card (#3823): the view asks it of every permanent on every frame, and
+// the by-value parameter escaped, a kilobyte on the heap each time.
+func GrantedAbilitiesOfPtr(c *Card) []GrantedAbilityInfo {
+	grants := layeredGrants(c)
 	copyGrants := c.GrantedAbilities
-	if c.HasLostAllAbilities() || c.FaceDownIsPermanent() {
+	if c.lostAllAbilities() || c.faceDownPermanent() {
 		copyGrants = nil
 	}
-	if len(grants) == 0 && len(copyGrants) == 0 && len(layeredBorrows(&c)) == 0 {
+	if len(grants) == 0 && len(copyGrants) == 0 && len(layeredBorrows(c)) == 0 {
 		return nil
 	}
 	var out []GrantedAbilityInfo
@@ -642,7 +647,7 @@ func GrantedAbilitiesOf(c Card) []GrantedAbilityInfo {
 	}
 	// ADR 0155 Decision 10: one line per borrowing static, its printed
 	// clause. The lent rows themselves are in the ability menu.
-	for _, b := range BorrowsOf(c) {
+	for _, b := range borrowsOf(c) {
 		out = append(out, GrantedAbilityInfo{Text: b.Label, Source: b.Source})
 	}
 	return out
