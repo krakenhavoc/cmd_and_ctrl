@@ -1,11 +1,11 @@
 # ADR 0193 — Demonstrate a loop: record one iteration, propose N, replay it (CR 732.2)
 
-**Status:** Proposed · 2026-10-14 · Sprint: none (Backlog — parked on a dependency or a single card). Waits on the owner's answers to [Open questions for the owner](#open-questions-for-the-owner).
+**Status:** Accepted (owner decisions 2026-10-15) · 2026-10-15 · Sprint: none (Backlog — parked on a dependency or a single card). Proposed 2026-10-14; the owner took every recommendation, recorded under [Owner decisions](#owner-decisions-2026-10-15).
 **Issue:** [#3382](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3382). Related: [#628](https://github.com/krakenhavoc/cmd_and_ctrl/issues/628) and [#804](https://github.com/krakenhavoc/cmd_and_ctrl/issues/804) (the loop breaker and its shortcut prompt), [#3016](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3016) ("use this order again" for trigger batches), [#2506](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2506).
 **Builds on:** [ADR 0055](0055-loop-breaker.md) (the CR 732 loop breaker and `PendingChoiceLoopShortcut`), [ADR 0127](0127-answering-repeated-prompts-for-you.md) (standing answers, answered by the room as their own commits), [ADR 0033](0033-ai-bot-seat.md) §8 (`Room.ApplyBundle`: one atomic commit, one undo entry), [ADR 0009](0009-smart-priority-autopass.md) (autopass lives in the client), [ADR 0111](0111-action-dock.md) (the action dock), [ADR 0122](0122-an-agent-at-the-table-a-local-mcp-seat.md) and [ADR 0126](0126-bots-that-play-their-decks.md) (agent and bot seats read `internal/legal`).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-14 after `git fetch --all --prune`: `origin/develop`, `origin/main`, `origin/cost-ledger`, `origin/docs/issue-audit`, `origin/feat/3536-graveyard-exile-cast-cost`, `origin/feat/750-conditional-block-restrictions`, `origin/feat/playmats`, `origin/fix/2947-resolution-copy-casts`, `origin/fix/2950-darkness-replacement-continuation`, `origin/fix/caddy-reload-admin-off`, `origin/wip/836-one-click-default` and `pr/2326`, plus every open PR's files. The highest number in use is 0192. 0190 is unused on every branch but sits below two merged numbers, so it may be held by a claim comment; this ADR skips it and takes **0193**.
 
-This ADR is plan-first. No code changes with it.
+This ADR is plan-first. No code changed with it.
 
 ---
 
@@ -45,14 +45,14 @@ What the rules settle for this feature:
 
 ## Decisions
 
-Each decision says where it comes from: **[CR]** for a rule quoted above, **[0055]** etc. for an accepted ADR, and **[proposed]** for an engineering choice this ADR makes. Every product choice is under [Open questions](#open-questions-for-the-owner) with a recommendation, and the text below is written as if the recommendation is taken.
+Each decision says where it comes from: **[CR]** for a rule quoted above, **[0055]** etc. for an accepted ADR, and **[proposed]** for an engineering choice this ADR makes. Every product choice was put to the owner and is recorded under [Owner decisions](#owner-decisions-2026-10-15); a reference such as "owner decision 2" points there.
 
 ### 1. The flow: record, stop, propose, answer, replay
 
 1. **Record.** The priority holder turns on "Record loop" (`loop_record_start`). From that commit on, the room records every action any seat dispatches, in order, until the recorder stops.
 2. **Play one iteration by hand.** Everything happens for real: the iteration is ordinary play, each step its own commit and undo entry. Opponents pass (or do anything else) as they normally would.
 3. **Stop** (`loop_record_stop`). The recorder must hold priority again. The server checks the recording closes (§3). If it does not, the recording is discarded and the recorder is told why in one sentence. If it does, the game holds a **ready recording**: its steps and its net change per iteration.
-4. **Propose** (`loop_propose {count}`). The recorder, still holding priority, asks for N more iterations, 1 ≤ N ≤ the cap (Q2). The proposal is the remaining sequence: the recording, N times, ending where the recorder has priority at the end of the N-th iteration [CR 732.2a].
+4. **Propose** (`loop_propose {count}`). The recorder, still holding priority, asks for N more iterations, 1 ≤ N ≤ the cap (owner decision 2). The proposal is the remaining sequence: the recording, N times, ending where the recorder has priority at the end of the N-th iteration [CR 732.2a].
 5. **Answer.** Each other seat still in the game, in turn order after the proposer, gets a blocking `loop_proposal` prompt: **accept**, or **shorten** to a named place (§4) [CR 732.2b].
 6. **Replay.** After the last answer the server replays the sequence to the earliest named ending point, as one commit (§5), and writes one log line (§7).
 
@@ -77,7 +77,7 @@ The room keeps a per-iteration birth list while recording and while replaying: t
 
 Recording state lives on `Game` as plain data (`Game.LoopRecording`: recorder, status, start sequence, steps as JSON, the closure signature) so it is cloned for undo and carried by snapshots, additively within the current `SnapshotSchemaVersion` (#522). The `game` package stores the steps opaquely; only `ws` and `actions` decode them. **[proposed]**
 
-**A recording ends without a proposal** when: the recorder cancels; any undo is taken while recording (the history it describes is gone); the step, turn or active player changes; the game ends; or the recorder leaves the game. Each says why in the log. **[proposed; the same-step limit is Q3]**
+**A recording ends without a proposal** when: the recorder cancels; any undo is taken while recording (the history it describes is gone); the step, turn or active player changes; the game ends; or the recorder leaves the game. Each says why in the log. **[proposed; the same-step limit is owner decision 3]**
 
 ### 3. "Is it a loop?" — the closure check
 
@@ -94,7 +94,7 @@ Allowed to **differ**: life totals, poison and other player counters, counters o
 
 A failed check names the first difference ("Basalt Monolith is tapped at the end and was untapped at the start"). The same signature is checked again after **every** replayed iteration (§5), so each repetition is provably the same loop and not only the first.
 
-The **net change per iteration** is the diff of the allowed-to-differ fields (life per player, counters, pool, tokens created, cards drawn or milled). It is shown in the proposal and the log line. The replay never multiplies it: it runs the iterations (Q1).
+The **net change per iteration** is the diff of the allowed-to-differ fields (life per player, counters, pool, tokens created, cards drawn or milled). It is shown in the proposal and the log line. The replay never multiplies it: it runs the iterations (owner decision 1).
 
 ### 4. The opponents' answer: accept or shorten
 
@@ -104,7 +104,7 @@ It carries the proposer, the recording's summary (each step's label, as the log 
 
 The answer is **accept**, or **shorten to (iteration i, step s)** where `i` is 1…N and `s` is one of the answering seat's **own** choice points in the recording (CR 732.2b: "a place where they will make a game choice"). The default in the client is the first of their choice points in iteration 1 — usually "I respond to the first activation". A shortening later than the current ending point is refused; an earlier one replaces it [CR 732.2b].
 
-After the last answer the replay runs to the ending point. If it was shortened, the shortening seat ends with priority at that point, and the log names who shortened and where [CR 732.2c]. Whether the engine then forces them off the recorded choice is Q7.
+After the last answer the replay runs to the ending point. If it was shortened, the shortening seat ends with priority at that point, and the log names who shortened and where [CR 732.2c]. The engine does not force them off the recorded choice (owner decision 7).
 
 ### 5. Replay: through the engine, one commit, stop on divergence
 
@@ -117,19 +117,19 @@ The replay is a room operation (`Room.ReplayLoop`) built like `ApplyBundle`: one
 
 At the end of each iteration the loop signature (§3) is compared with the start.
 
-**Divergence stops the replay** [CR 732.2a: no conditional actions]. It is any of: a dispatch refused (a target gone, a cost unpayable), a reference that resolves to nothing, a prompt the recording has no answer for, a recorded answer to a prompt that was not asked, a signature mismatch, the game ending, or the step budget (Q2) running out. The room then **rolls back to the end of the last complete iteration** — it keeps one clone per iteration start for this — so the table is never left mid-iteration. The proposer gets priority there, and the log says "stopped after k of N: <reason>". A replay that completes no iteration commits nothing and says why.
+**Divergence stops the replay** [CR 732.2a: no conditional actions]. It is any of: a dispatch refused (a target gone, a cost unpayable), a reference that resolves to nothing, a prompt the recording has no answer for, a recorded answer to a prompt that was not asked, a signature mismatch, the game ending, or the step budget (owner decision 2) running out. The room then **rolls back to the end of the last complete iteration** — it keeps one clone per iteration start for this — so the table is never left mid-iteration. The proposer gets priority there, and the log says "stopped after k of N: <reason>". A replay that completes no iteration commits nothing and says why.
 
-Hidden information and randomness (a draw, a shuffle, a coin flip) are allowed inside a recording as long as the *choices* do not depend on them; when they do, the replay sees a different prompt or an illegal step and stops. This is the recommendation in Q4.
+Hidden information and randomness (a draw, a shuffle, a coin flip) are allowed inside a recording as long as the *choices* do not depend on them; when they do, the replay sees a different prompt or an illegal step and stops. This is owner decision 4.
 
 **The loop breaker sits out.** A replay is a shortcut the whole table agreed to, so ADR 0055's detector must not raise its notice or queue a `loop_shortcut` prompt inside one — that prompt would be an unexpected prompt and stop every activation loop at iteration 25. `Room.ReplayLoop` sets a game flag that `loopSuspectedLocked` reads, and clears every run when the replay ends, as a decision does. **[0055 §3, proposed]**
 
 ### 6. Bounds
 
-The cap on N is `MaxLoopShortcutIterations` (1000), ADR 0055's existing number for the same question, and a replay also has a step budget (dispatches, default 20 000) so a long iteration cannot hold the room lock for long. The proposal modal shows the cap and fills "max" with it. **[0055; the numbers are Q2]**
+The cap on N is `MaxLoopShortcutIterations` (1000), ADR 0055's existing number for the same question, and a replay also has a step budget (dispatches, default 20 000) so a long iteration cannot hold the room lock for long. The proposal modal shows the cap and fills "max" with it. **[0055; the numbers are owner decision 2]**
 
 ### 7. The log, the snapshot and the wire
 
-- **Log:** the per-step entries of a replay are folded into **one** public line: "Luke repeats *Basalt Monolith ⇄ Rings of Brighthearth* ×500: +1000 {C}" (the name is the first step's source and the first other source it touched; the delta is per-iteration × iterations completed). Engine events still fire, so triggers and tallies behave exactly as if clicked; only the log projection is folded. A shortened or stopped replay says so in the same line. **[proposed; Q10]**
+- **Log:** the per-step entries of a replay are folded into **one** public line: "Luke repeats *Basalt Monolith ⇄ Rings of Brighthearth* ×500: +1000 {C}" (the name is the first step's source and the first other source it touched; the delta is per-iteration × iterations completed). Engine events still fire, so triggers and tallies behave exactly as if clicked; only the log projection is folded. A shortened or stopped replay says so in the same line. **[proposed; owner decision 10]**
 - **Snapshot:** `Game.LoopRecording`, the replay flag and the new pending-choice fields are additive and `carried` by `Clone`, `RestoreFrom` and the snapshot (ADR 0055's undo lesson: both copies, in the same change). **[#522]**
 - **Wire:** four action types (`loop_record_start`, `loop_record_stop`, `loop_record_cancel`, `loop_propose`), one prompt kind (`loop_proposal`, answered with `resolve_loop_proposal {choice_id, accept | shorten: {iteration, step}}`), and `GameView.loop_recording` (recorder, status, step count, net change once ready) for every seat. Documented in `docs/protocol.md` in the PR that adds them.
 
@@ -138,8 +138,8 @@ The cap on N is `MaxLoopShortcutIterations` (1000), ADR 0055's existing number f
 Every new move and the new kind are enumerated in `internal/legal`, so bots and MCP seats see them; a kind with no case there is an empty move list (#499, #618) **[0055 §6]**:
 
 - `loop_record_start` for the priority holder when no recording is open; `loop_record_stop` and `loop_record_cancel` for the recorder while one is; `loop_propose` with a bounded set of counts (1, 10, 100, the cap) for a ready recording.
-- `loop_proposal`: accept first (always legal), then "shorten to iteration 1 at my first choice point". Bots take the first move, so **a bot opponent accepts**. **[0055 §6's bot rule: first in the list is what a bot takes; Q9]**
-- Bots never start a recording: the heuristic policies rank the record moves last and never pick them. MCP seats may, since an agent can play a loop by hand as a person can. **[Q9]**
+- `loop_proposal`: accept first (always legal), then "shorten to iteration 1 at my first choice point". Bots take the first move, so **a bot opponent accepts**. **[0055 §6's bot rule: first in the list is what a bot takes; owner decision 9]**
+- Bots never start a recording: the heuristic policies rank the record moves last and never pick them. MCP seats may, since an agent can play a loop by hand as a person can. **[owner decision 9]**
 
 ### 9. The client
 
@@ -150,7 +150,7 @@ Every new move and the new kind are enumerated in `internal/legal`, so bots and 
 
 ## Delivery
 
-1. **Engine** (one PR, after the owner answers): `Game.LoopRecording`, the reference rewriting, the closure signature, `Room.ReplayLoop` with divergence and roll-back to the last complete iteration, the breaker flag, with tests: Basalt Monolith + Rings of Brighthearth recorded and replayed ×N equals N iterations by hand; a recording that leaves Monolith tapped is refused with its reason; a replay whose target disappears at iteration k stops with k−1 iterations committed; a replay never trips the loop breaker; undo takes the whole replay back.
+1. **Engine** (one PR): `Game.LoopRecording`, the reference rewriting, the closure signature, `Room.ReplayLoop` with divergence and roll-back to the last complete iteration, the breaker flag, with tests: Basalt Monolith + Rings of Brighthearth recorded and replayed ×N equals N iterations by hand; a recording that leaves Monolith tapped is refused with its reason; a replay whose target disappears at iteration k stops with k−1 iterations committed; a replay never trips the loop breaker; undo takes the whole replay back.
 2. **Protocol, prompt and `internal/legal`**: the four actions, `loop_proposal` with turn-order answering and shortening, the moves for bots and agent seats, `docs/protocol.md`.
 3. **Client**: the dock control, the propose modal, the opponents' prompt, labels.
 
@@ -166,7 +166,7 @@ Every new move and the new kind are enumerated in `internal/legal`, so bots and 
 
 - Replay cost grows with the count. With the cap and step budget it is bounded, and it is paid once under the lock instead of 500 round trips.
 - Loops that need a different choice each iteration (a different target each time, a growing X) cannot be recorded; CR 732.2a's "no conditional actions" excludes some of them, and "nested loops" (also 732.2a) are not built.
-- A recording cannot cross a step or turn (Q3), though CR 732.2a allows it.
+- A recording cannot cross a step or turn (owner decision 3), though CR 732.2a allows it.
 
 ## Out of scope
 
@@ -175,18 +175,18 @@ Every new move and the new kind are enumerated in `internal/legal`, so bots and 
 - CR 732.4's draw (ADR 0055 amendment, owner decision 8).
 - The trigger-order reuse of #3016. A trigger order answered by hand during the recording is a step and is replayed; a standing order from #3016, once built, is answered by the room like any standing answer.
 
-## Open questions for the owner
+## Owner decisions (2026-10-15)
 
-Each has a recommendation; the text above assumes it.
+The owner accepted every recommendation on 2026-10-15. Each is binding.
 
-1. **Replay or compute?** Replay every iteration through the engine (always correct, cost grows with N), or verify one iteration and multiply its net change (fast, needs a proof the iteration is deterministic)? *Recommended: replay every iteration. Triggers, replacement effects and "whenever you gain life" cards then work without a proof, and the cap bounds the cost.*
-2. **The bounds.** Cap N at 1000 (`MaxLoopShortcutIterations`, ADR 0055's number) and a replay at 20 000 dispatches? *Recommended: yes to both; raise them on measured cost, not before.*
-3. **Where a recording may start and stop.** Same step, recorder holding priority at both ends, same stack contents? CR 732.2a allows sequences that cross steps and turns. *Recommended: yes, same step only, for now. Every known infinite fits, and crossing a step means recording the turn machinery.*
-4. **Hidden information and randomness.** Allow draws, shuffles and coin flips inside a recording, stopping the replay at the first divergence? Or refuse a recording that contains any? *Recommended: allow, stop on divergence. A "draw a card" loop is a real combo and its choices do not depend on the card.*
-5. **The opponents' prompt.** A blocking accept-or-shorten prompt to each other seat in turn order (CR 732.2b), with no standing "always accept loops" setting and no timeout of its own? *Recommended: yes. The rule makes it a question to each player; a standing answer can follow ADR 0127's pattern later if tables ask.*
-6. **Where an opponent can shorten.** Any (iteration, one of their own choice points in it), defaulting to their first choice point in iteration 1? Or iteration numbers only? *Recommended: iteration plus their choice point. "I respond to the activation in iteration 3" is the usual shape, and it is a place where they have priority (CR 732.2a's ending point).*
-7. **CR 732.2c's "must make a different game choice".** Enforce it by removing the recorded choice from the shortening seat's moves at the ending point (when they have another legal move), or hand them priority and log that they shortened? *Recommended: do not enforce. CR 732.1a keeps shortcuts informal, enforcing it can strand a seat whose only legal move was the recorded pass, and the log makes the shortening visible.*
-8. **Undo.** The whole replay is one undo entry, costing one undo from the proposer's budget? *Recommended: yes. Undoing it returns to the end of the demonstrated iteration with the recording discarded.*
-9. **Bots and agent seats.** Bot opponents always accept; bots never record or propose a loop; MCP seats may do both. *Recommended: yes. A bot accepting is ADR 0055's "first move" rule; a bot that finds and records combos is ADR 0126 strategy work and a separate issue.*
-10. **The log line.** One public line per replay with the per-iteration net change times the iterations completed, the per-step entries folded away? *Recommended: yes; the issue's acceptance asks for one entry.*
-11. **The control's place.** "Record loop" in the action dock, shown only while the player holds priority, with no keyboard shortcut at first? *Recommended: yes.*
+1. **Replay, not compute.** Every iteration is replayed through the engine; one iteration's net change is never multiplied. Triggers, replacement effects and "whenever you gain life" cards work without a determinism proof, and the cap bounds the cost.
+2. **Bounds.** N is capped at 1000 (`MaxLoopShortcutIterations`, ADR 0055's number) and a replay at 20 000 dispatches. Raise them on measured cost, not before.
+3. **Recording window.** A recording starts and stops in the same step, with the recorder holding priority at both ends and the same stack contents. Crossing steps or turns, which CR 732.2a allows, is not built for now.
+4. **Hidden information and randomness are allowed.** Draws, shuffles and coin flips may be inside a recording; the replay stops at the first divergence.
+5. **The opponents' prompt.** A blocking accept-or-shorten prompt goes to each other seat in turn order (CR 732.2b), with no standing "always accept loops" setting and no timeout of its own.
+6. **Where an opponent can shorten.** At any (iteration, one of their own choice points in it), defaulting to their first choice point in iteration 1.
+7. **CR 732.2c's "must make a different game choice" is not enforced.** The shortening seat gets priority at the ending point and the log shows the shortening (CR 732.1a keeps shortcuts informal, and enforcing it could strand a seat whose only legal move was the recorded pass).
+8. **Undo.** The whole replay is one undo entry, costing one undo from the proposer's budget. Undoing it returns to the end of the demonstrated iteration with the recording discarded.
+9. **Bots and agent seats.** Bot opponents always accept; bots never record or propose a loop; MCP seats may do both. A bot that finds and records combos is ADR 0126 strategy work and a separate issue.
+10. **The log line.** One public line per replay, with the per-iteration net change times the iterations completed; the per-step entries are folded away.
+11. **The control's place.** "Record loop" is in the action dock, shown only while the player holds priority, with no keyboard shortcut at first.
