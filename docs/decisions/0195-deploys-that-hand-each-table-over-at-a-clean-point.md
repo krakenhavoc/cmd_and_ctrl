@@ -1,9 +1,9 @@
 # ADR 0195 — Deploys that hand each table over at a clean point: a short two-process overlap, not hours of blue/green
 
-**Status:** Proposed · 2026-10-14 · Backlog (operability). Not for merge until the owner answers the open questions at the end.
+**Status:** Accepted (2026-10-15) · proposed 2026-10-14 · Backlog (operability). The owner's decisions are at the end.
 **Issue:** [#3039](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3039). Related, both open: [#3037](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3037) (measure what a prod deploy costs a live table) and [#3038](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3038) (wait for a clean restore point before restarting prod).
 **Numbering:** checked on 2026-10-14 across every remote head (`develop`, `main`, `cost-ledger`, `docs/adr-demonstrate-a-loop`, `docs/issue-audit`, `feat/3536-graveyard-exile-cast-cost`, `feat/3546-target-crewed-or-saddled`, `feat/3552-pilot-token-makers`, `feat/3560-skip-extra-turns-ugins-nexus`, `feat/750-conditional-block-restrictions`, `feat/playmats`, `fix/2947-resolution-copy-casts`, `fix/2950-darkness-replacement-continuation`, `fix/3080-commander-trade-wait`, `fix/3724-access-maze-x`, `fix/caddy-reload-admin-off`, `issue-3016-reuse-trigger-order`, `perf/clone-3136`, `wip/836-one-click-default`, `pr/2326`) and the open PRs. `develop` ends at 0192; 0193 is #3699 (`docs/adr-demonstrate-a-loop`) and 0194 is #3730 (`perf/clone-3136`). 0190 is a gap below merged numbers that #3699 and #3730 both left alone as possibly reserved, so this takes **0195**.
-**Supersedes in part, once accepted:** [ADR 0044](0044-surviving-a-deploy.md) decision 1 ("cold restore, not drain … revisit only if the topology gains a second node"). Decisions 2–8 stand.
+**Supersedes in part:** [ADR 0044](0044-surviving-a-deploy.md) decision 1 ("cold restore, not drain … revisit only if the topology gains a second node"). Decisions 2–8 stand.
 **Builds on:** [ADR 0041](0041-game-persistence.md) (restore points, decision 5's version-skew refusal), [ADR 0044](0044-surviving-a-deploy.md) (HMAC sessions, close 1001, restore generation, no undo across a restore), [ADR 0148](0148-capacity-limits-for-a-public-launch.md) (VM size, per-table memory, the cap and its hot restore route), [ADR 0023](0023-develop-environment.md) (dev rehearses prod), [ADR 0159](0159-per-table-discord-voice-rooms.md) and [ADR 0161](0161-an-lfg-board-in-discord.md) (boot reconcilers), [ADR 0181](0181-deploy-credentials-fail-closed.md) (deploy runners).
 
 ---
@@ -106,7 +106,7 @@ Postgres for users, lobby and restore points, ownership leases with the restore 
 
 A Cloudflare load balancer or Worker routing by game id, or two VMs behind them: a new hosted service and a second VPS. Rejected under AGENTS.md §2.
 
-## Decision (proposed)
+## Decision
 
 **Adopt D.** A deploy starts the new release beside the old one, cuts new connections over once the new process is ready, hands each table over at its own clean point, and lets the old process exit when it holds nothing or the deadline passes. Running games finish on the **new** version, after one reconnect, without a rewind in the common case. That is a deliberate change from #3039's title: keeping the old binary alive for the life of a Commander game (C) costs hours of double memory on a 4 GB VM, hours-long migration compatibility, two-process Discord reconcilers and versioned client assets, and it keeps fixes away from the games that need them. D gets most of C's benefit for a few minutes of overlap.
 
@@ -153,13 +153,16 @@ ADR 0044 decision 1's reasoning ("nowhere to drain to") is answered by a second 
 
 Remove the hand-off steps from CD and restart as today. The server pieces are inert without a `drain` (one process holds the lock and the listener, as now).
 
-## Open questions for the owner
+## Owner decisions (2026-10-15)
 
-1. **The goal.** Accept "running games move to the new version at a clean point, after one reconnect" instead of #3039's literal "finish on the old version"? *Recommendation: yes; C's cost is hours of doubled memory and state on a 4 GB VM, and fixes would never reach running games.*
-2. **The deadline.** How long may a deploy wait for a table to come clean before handing it over with a rewind: 5, 10 or 15 minutes? *Recommendation: 10, then tune from #3037.*
-3. **Memory.** The overlap peaks near 3.7 GB on a 4 GB VM at the 30-table target. Raise prod memory (Terraform `memory_mb`) to 6 GB before phase 2, or wait for #3037's RSS numbers? *Recommendation: wait for #3037, but expect to raise it.*
-4. **Routing.** Share `127.0.0.1:8080` with `SO_REUSEPORT` and keep Caddy unchanged, or give each instance its own port and switch in Caddy with active health checks (one Caddy restart to introduce it)? *Recommendation: `SO_REUSEPORT`.*
-5. **The server's systemd unit.** It comes from HomeLab's cloud-init. Move it into this repo and install it from CD (as the bot unit already is), or change HomeLab? *Recommendation: move it here.*
-6. **Migrations.** Adopt "compatible with the previous binary, or marked cold" with a CI check? *Recommendation: yes.*
-7. **#3038.** Ship it as a stopgap first, or go straight to phase 1? *Recommendation: skip it if #3037 justifies this ADR; its readiness summary is phase 1 item 3 anyway.*
-8. **Undo across a hand-off.** Accept that it is lost (as on every restart today), or block on carrying it? *Recommendation: accept.*
+The owner approved the recommendations on 2026-10-15. Each one is accepted as written:
+
+1. **The goal.** Running games move to the new version at a clean point, after one reconnect, instead of #3039's
+   literal "finish on the old version". **Accepted.**
+2. **The deadline.** 10 minutes, then tune from #3037. **Accepted.**
+3. **Memory.** Wait for #3037's RSS numbers before raising prod memory, and expect to raise it. **Accepted.**
+4. **Routing.** Share `127.0.0.1:8080` with `SO_REUSEPORT` and keep Caddy unchanged. **Accepted.**
+5. **The server's systemd unit.** Move it into this repo and install it from CD. **Accepted.**
+6. **Migrations.** Adopt "compatible with the previous binary, or marked cold" with a CI check. **Accepted.**
+7. **#3038.** Skip it if #3037 justifies this ADR; its readiness summary is phase 1 item 3. **Accepted.**
+8. **Undo across a hand-off.** Accept that it is lost, as on every restart today. **Accepted.**
