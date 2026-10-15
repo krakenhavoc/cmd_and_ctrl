@@ -43,11 +43,13 @@ import (
 //     keep-chance price, and clears the same leftover bar when that is
 //     all it costs besides mana and taps.
 //
+// Two more prices sit behind their own switches: a pump that needs
+// several activations (Config.PriceRepeatedPumps, #2939 gap 2,
+// repeatedPumpSave), and a row on one permanent that saves others, such
+// as Selfless Spirit (Config.PriceSaveOthers, gap 3, answerSaveOthers).
+//
 // What it does not price: a combat grant (the combat planner's
-// business, ADR 0142 decision 6 "Not covered"), a row on another
-// permanent that saves this one (Selfless Spirit). A pump that needs
-// several activations is priced under Config.PriceRepeatedPumps
-// (#2939 gap 2): see repeatedPumpSave.
+// business, ADR 0142 decision 6 "Not covered").
 
 // valueInResponse is what a declared-value activation is worth while
 // the stack is not empty: below passing, so the bot waits for the stack.
@@ -90,6 +92,16 @@ type threats struct {
 	// sweep is set when any threat is a declared sweep, which names no
 	// target: hexproof, shroud and protection do nothing against it.
 	sweep bool
+	// fromSpell is set when some threat is a spell: declared damage, a
+	// declared sweep, or a spell that targets the creature. A targeted
+	// ability alone (a planeswalker's phase out, "can't be blocked") is
+	// presumed removal like any targeted item, but a row that costs a
+	// card to use (Selfless Spirit) does not take it for one.
+	fromSpell bool
+	// beyondDestroy is set when some declared sweep takes the creature
+	// by something other than destroy or damage: exile, sacrifice,
+	// bounce, −N/−N. Indestructible and persist are no answer to those.
+	beyondDestroy bool
 }
 
 // threatsTo reads the stack for what would remove creature c, with conf
@@ -136,8 +148,10 @@ func (st *state) threatsTo(c *protocol.CardView, conf float64) (threats, bool) {
 					}
 				}
 				if dmg > 0 {
+					t.fromSpell = true
 					add(i, threatDamage, conf, dmg, src, cantPrevent || it.DamageCantBePrevented)
 				} else {
+					t.fromSpell = t.fromSpell || it.Kind == "spell"
 					add(i, threatRemoval, conf, 0, nil, false)
 				}
 			}
@@ -155,6 +169,7 @@ func (st *state) threatsTo(c *protocol.CardView, conf float64) (threats, bool) {
 				continue
 			}
 			t.sweep = true
+			t.fromSpell = true
 			n := s.Amount
 			if s.AmountIsX {
 				n = it.XValue
@@ -163,8 +178,10 @@ func (st *state) threatsTo(c *protocol.CardView, conf float64) (threats, bool) {
 			case "damage":
 				add(i, threatDamage, share, n, src, cantPrevent || it.DamageCantBePrevented)
 			case "minus":
+				t.beyondDestroy = true
 				add(i, threatMinus, share, n, nil, false)
 			default:
+				t.beyondDestroy = t.beyondDestroy || s.How != "destroy"
 				add(i, threatRemoval, share, 0, nil, false)
 			}
 		}
@@ -332,6 +349,89 @@ func (p *Policy) pumpActivations(st *state, row *protocol.ActivatedAbilityView) 
 		n++
 	}
 	return max(n, 1)
+}
+
+// destroyShare is the chance a targeted removal spell with no declared
+// damage destroys its target, and so is answered by a grant of
+// indestructible (answerSaveOthers). Half: a Murder, not a Swords to
+// Plowshares.
+const destroyShare = 0.5
+
+// answerSaveOthers prices an untargeted `survive` or `protect` row of
+// the bot's whose declared Saves covers permanents besides its own
+// source (#2939 gap 3, Config.PriceSaveOthers): Selfless Spirit's
+// "creatures you control gain indestructible" in answer to a Wrath of
+// God. Every permanent of the bot's in the declared class that the stack
+// would remove is worth what saving it is worth (the chance the bot
+// loses it, times its value; half of that for a class the row only
+// partly covers). A row that sacrifices its source pays for it at the
+// dying-anyway price, and does not count itself among the saved. ok is
+// false when it saves nothing here, or the bot has already answered.
+func (p *Policy) answerSaveOthers(st *state, src *protocol.CardView, row *protocol.ActivatedAbilityView, cp activateParams) (float64, string, bool) {
+	if !p.cfg.PriceAnswers || !p.cfg.PriceSaveOthers || len(st.view.StackItems) == 0 || src == nil || row == nil ||
+		src.Controller != st.me || len(cp.Targets) > 0 || row.Purpose == nil || row.Purpose.Saves == nil {
+		return 0, "", false
+	}
+	pv := row.Purpose
+	survive := pv.Declares("survive")
+	if !survive && !pv.Declares("protect") {
+		return 0, "", false
+	}
+	saves := pv.Saves
+	var total float64
+	covered, top := 0, -1
+	for i := range st.view.Battlefield.Cards {
+		c := &st.view.Battlefield.Cards[i]
+		if c.Controller != st.me || !sweepClassHolds(c, saves.Matches) || (row.SacrificeSelf && c.InstanceID == src.InstanceID) {
+			continue
+		}
+		t, ok := st.threatsTo(c, p.cfg.RemovalConfidence)
+		if !ok || !t.fromSpell || t.beyondDestroy || (!survive && t.sweep) {
+			continue
+		}
+		share := 1.0
+		if saves.Partial {
+			share = 0.5
+		}
+		// A targeted spell with no declared damage is presumed removal,
+		// and indestructible answers it only when it destroys: no wire
+		// field tells a Murder from a Swords to Plowshares. Hexproof
+		// answers it either way.
+		if !t.sweep && t.damage == 0 && !pv.Declares("protect") {
+			share *= destroyShare
+		}
+		total += share * t.chance * st.permanentValue(c)
+		covered++
+		top = max(top, t.top)
+	}
+	if covered == 0 || st.answeredOthers(src, row, top) {
+		return 0, "", false
+	}
+	if row.SacrificeSelf {
+		total -= p.selfSacrificeCost(st, src)
+	}
+	return total, "answer: save " + strconv.Itoa(covered) + " other permanents", true
+}
+
+// answeredOthers reports whether the bot already has an ability above
+// index top on the stack that answers it: one from src itself, or, for a
+// row that sacrifices its source, one from a permanent that has left the
+// battlefield (the Spirit that paid for it). A guess, so the bot errs
+// toward not stacking a second Selfless Spirit on the same Wrath.
+func (st *state) answeredOthers(src *protocol.CardView, row *protocol.ActivatedAbilityView, top int) bool {
+	if st.answeredFrom(src.InstanceID, top) {
+		return true
+	}
+	if !row.SacrificeSelf {
+		return false
+	}
+	for i := top + 1; i < len(st.view.StackItems); i++ {
+		it := &st.view.StackItems[i]
+		if it.Controller == st.me && it.Kind == "ability" && st.bf[it.SourceCardID] == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // valueWaits reports whether a row declared `value` should wait for the

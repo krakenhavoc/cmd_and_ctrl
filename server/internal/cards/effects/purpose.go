@@ -147,6 +147,7 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 		fail("declares Answers off an activated row, other than AnswerRemove (an edict) on a triggered one — nothing reads it there yet (ADR 0142 §2, ADR 0009 #3882)")
 	}
 	checkAnswerBits(p.Answers, fail)
+	checkSaves(p, slot, fail)
 	if p.AwakenLand != 0 && slot != purposeOnAltCost {
 		fail("sets AwakenLand off an alternative cost — it is what an awaken offer adds (ADR 0135 §3)")
 	}
@@ -168,6 +169,25 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 // Answers may be declared on (ADR 0142 §2).
 func onActivated(slot purposeSlot) bool {
 	return slot == purposeOnActivated || slot == purposeOnAnyPlayerActivated
+}
+
+// checkSaves is checkPurpose's half for a declared Saves (#2939 gap 3):
+// on an activated row that declares survive or protect, naming one of
+// the sweep classes.
+func checkSaves(p game.Purpose, slot purposeSlot, fail func(string)) {
+	s := p.Saves
+	if s == nil {
+		return
+	}
+	if !onActivated(slot) {
+		fail("sets Saves off an activated row — it is what a survive or protect row covers")
+	}
+	if !p.Answers.HasAny(game.AnswerSurvive | game.AnswerProtect) {
+		fail("sets Saves on a row that declares neither survive nor protect")
+	}
+	if !slices.Contains(game.SweepMatches, s.Matches) {
+		fail(fmt.Sprintf("sets Saves to the unknown class %q", s.Matches))
+	}
 }
 
 // checkPump is checkPurpose's half for a declared Pump (ADR 0130's

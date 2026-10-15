@@ -32,7 +32,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Sacrifice this creature: Creature tokens you control gain indestructible until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerSurvive},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive, Saves: &game.Saves{Matches: game.SweepCreatures, Partial: true}},
 			Cost:    game.AbilityCost{SacrificeSelf: true},
 			Effect: Do(GrantKeywordUntilEOT{
 				Match:    And(Creature(), IsTokenPredicate(), YouControl()),

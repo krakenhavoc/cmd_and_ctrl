@@ -156,6 +156,16 @@ type Config struct {
 	// Off (the zero value) prices a pump only when one activation
 	// covers the damage.
 	PriceRepeatedPumps bool
+	// PriceSaveOthers prices a declared `survive` or `protect` row that
+	// covers other permanents of the bot's (#2939 gap 3, answers.go):
+	// Selfless Spirit's "creatures you control gain indestructible" in
+	// answer to a Wrath of God, or to a Murder aimed at a creature worth
+	// more than the Spirit. The row declares what it covers
+	// (`purpose.saves`); the price is the covered permanents the stack
+	// would remove, by their value, less the row's own source when it is
+	// sacrificed to pay. Needs PriceAnswers. Off (the zero value) prices
+	// a row only on the creature it saves.
+	PriceSaveOthers bool
 
 	// RampPerMana is the cast-time premium per mana a new repeatable
 	// mana source closes of the bot's mana deficit (ADR 0126 §2,
@@ -835,6 +845,7 @@ func DefaultConfig() Config {
 
 		PriceAnswers:       true,
 		PriceRepeatedPumps: true,
+		PriceSaveOthers:    true,
 
 		DamageToOpponent: 0.30,
 		DesperateDamage:  2.00,
@@ -950,6 +961,8 @@ func BaselineConfig() Config {
 	c.PriceAnswers = false
 	// #2939 gap 2: a pump that takes several activations.
 	c.PriceRepeatedPumps = false
+	// #2939 gap 3: a row that saves the bot's other permanents.
+	c.PriceSaveOthers = false
 	// ADR 0126's amendment of 2026-10-06: discard payoffs.
 	c.PriceDiscardPayoffs = false
 	// ADR 0126's amendment of 2026-10-12 (#2457): self-replacing discards.
