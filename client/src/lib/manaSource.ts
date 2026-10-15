@@ -398,6 +398,10 @@ export function manaClickPlan(card: CardView, ctx: ManaOptionContext = {}): Mana
   return { kind: "pick", options };
 }
 
+// The most pips one colour button draws; a bigger amount is one pip and
+// the amount in the caption.
+const MAX_PIPS_PER_OPTION = 3;
+
 /**
  * colorPickOptions adapts a mana_pick / choose_color prompt's buttons
  * (manaPick.colorButtons, already in the server's order) to picker
@@ -409,7 +413,11 @@ export function colorPickOptions(
 ): ManaPickOption[] {
   return buttons.map((b) => {
     const amount = Math.max(1, b.amount);
-    const symbols = Array.from({ length: Math.min(amount, 5) }, () => b.color);
+    // A pair or a triple reads at a glance as pips ({C}{C}); past that the
+    // pips only crowd the row and the caption already says the number
+    // (The Aetherspark's ten mana, #3864), so draw one.
+    const pips = amount > MAX_PIPS_PER_OPTION ? 1 : amount;
+    const symbols = Array.from({ length: pips }, () => b.color);
     const title =
       verb === "add"
         ? amount > 1
