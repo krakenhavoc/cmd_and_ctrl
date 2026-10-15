@@ -2119,6 +2119,12 @@ const (
 	// UndoBlockedSecretVote: the action that would be taken back
 	// revealed a secret vote (ADR 0180 decision 4).
 	UndoBlockedSecretVote = "secret_vote"
+	// UndoBlockedPastBot: the most recent action is a bot's, which
+	// nobody can take back (ADR 0194 owner decision 1).
+	UndoBlockedPastBot = "past_bot"
+	// UndoBlockedTooDeep: the most recent action left is older than the
+	// last eight, whose snapshots the room keeps (ADR 0194).
+	UndoBlockedTooDeep = "too_deep"
 )
 
 // PlayerView is the wire representation of a Player. Full-fidelity
@@ -2284,8 +2290,10 @@ type PlayerView struct {
 	// by the undo stack right now, or is empty when the stack would
 	// allow it: UndoBlockedNothing (nothing on the stack),
 	// UndoBlockedNotYours (the most recent action is another seat's),
-	// UndoBlockedGameOver (the game has ended) or UndoBlockedSecretVote
-	// (it revealed a secret vote, ADR 0180). It does not cover
+	// UndoBlockedGameOver (the game has ended), UndoBlockedSecretVote
+	// (it revealed a secret vote, ADR 0180), UndoBlockedPastBot (a bot
+	// has acted since) or UndoBlockedTooDeep (past the last eight
+	// actions, ADR 0194). It does not cover
 	// the per-turn budget, which the client reads from
 	// UndosRemaining. The client disables its Undo from this and shows
 	// the reason, so the badge never offers an undo the server

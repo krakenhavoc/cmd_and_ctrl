@@ -135,4 +135,17 @@ describe("undoBlockedReason", () => {
     expect(undoBlockedReason(null, true)).toBeNull();
     expect(undoBlockedReason(seat({ undo_blocked: "not_yours" }), true)).toBeNull();
   });
+
+  // ADR 0194: a bot's move, and anything older than the last eight
+  // actions, is refused for everyone, the admin included.
+  it("names a barrier for everyone, admin included", () => {
+    for (const admin of [false, true]) {
+      expect(
+        undoBlockedReason(seat({ undos_remaining: 1, undo_blocked: "past_bot" }), admin),
+      ).toContain("a bot has acted since");
+      expect(
+        undoBlockedReason(seat({ undos_remaining: 1, undo_blocked: "too_deep" }), admin),
+      ).toContain("only goes back 8 actions");
+    }
+  });
 });

@@ -1225,6 +1225,12 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			case errors.Is(err, ErrGameOverUndo):
 				c.sendError(frame.ID, protocol.CodeBadRequest,
 					"the game is over — only the admin can undo past its end")
+			case errors.Is(err, ErrUndoPastBot):
+				c.sendError(frame.ID, protocol.CodeBadRequest,
+					"a bot has acted since — a bot's move can't be taken back")
+			case errors.Is(err, ErrUndoTooDeep):
+				c.sendError(frame.ID, protocol.CodeBadRequest,
+					"undo only goes back 8 actions")
 			case errors.Is(err, ErrNotYourUndo):
 				c.sendError(frame.ID, protocol.CodeBadRequest,
 					"you can only undo your own most recent action")
