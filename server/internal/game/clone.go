@@ -1016,6 +1016,11 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 			// live game declares later cannot reach the snapshot's event.
 			ev.lifeAfterMove = append([]lifeInstruction(nil), f.ev.lifeAfterMove...)
 		}
+		if len(f.ev.extraTurnsAfterMove) > 0 {
+			// ADR 0188: the extra turns a replacement declared on this
+			// move, copied for the reason the life instructions are.
+			ev.extraTurnsAfterMove = append([]extraTurnInstruction(nil), f.ev.extraTurnsAfterMove...)
+		}
 		// #478: and the ENTRY tail, for exactly the reason the route
 		// gets a copy. runEntryTailLocked nils `then` on the tail rather
 		// than the tail on the event, because the rest of what it

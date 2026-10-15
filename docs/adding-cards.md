@@ -7918,6 +7918,25 @@ A cancel is the skip, and a delayed trigger bound to that turn goes with
 it (CR 614.10a). The window cannot pause (ADR 0059 amendment 2026-10-07),
 so write the replacement as a pure cancel.
 
+"If a PLAYER would begin an extra turn, that player skips that turn instead"
+(Ugin's Nexus, Gerrard's Hourglass Pendant; ADR 0188 Decision 2, #3560) is
+`SkipExtraTurns()`, the same replacement without the opponent test, so the
+controller's own extra turns are skipped too. Both build from one
+constructor in
+[skip_extra_turns.go](../server/internal/cards/effects/skip_extra_turns.go).
+The skip is judged when the turn WOULD BEGIN, so a turn queued under the
+card is taken if the card has left by then.
+
+"Instead exile it and take an extra turn after this one" (Ugin's Nexus) is a
+self-replacement on the move that also declares the turn, with
+`g.TakeExtraTurnAfterReplacedMoveForEffect(ev, src.InstanceID, src.Controller)`
+from the `Replace` callback. Never call `TakeExtraTurnsForEffect` there: it
+emits an event, which a callback must not do. The declaration rides the move
+event and the finisher queues the turn after the card has landed, before any
+declared life change (`game/move_extra_turn.go`), so the log reads the move
+first and `extra_turn` after it. It survives a later cancel of the move (CR
+614.6) and is dropped for a taker who has left the game.
+
 "Skip your next turn" (CR 614.10: Magosi, the Waterveil; Lethal Vapors) is
 a different shape, a debt rather than a replacement, and it is two
 primitives in [skip_turns.go](../server/internal/cards/effects/skip_turns.go)

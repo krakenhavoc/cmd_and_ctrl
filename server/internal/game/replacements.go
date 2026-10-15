@@ -774,6 +774,14 @@ type ReplacementEvent struct {
 	// continuation (runMoveTailLocked). Unexported engine plumbing.
 	lifeAfterMove []lifeInstruction
 
+	// extraTurnsAfterMove is ADR 0188's list of extra turns a replacement
+	// declared as part of the modified move ("instead exile it and take
+	// an extra turn after this one"), set only through
+	// TakeExtraTurnAfterReplacedMoveForEffect. They are queued after the
+	// card has landed and before the life instructions
+	// (runMoveTailLocked). Unexported engine plumbing.
+	extraTurnsAfterMove []extraTurnInstruction
+
 	// asCommanderMove is an unexported breadcrumb set by
 	// MoveCardByIDAsCommander when the caller flagged the move as
 	// a commander-initiated one. It is NOT a gate on the CR 903.9
