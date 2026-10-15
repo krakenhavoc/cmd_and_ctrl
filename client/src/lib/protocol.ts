@@ -1757,6 +1757,14 @@ export interface PendingChoiceView {
   pay_life?: number;
   pay_damage?: number;
   pay_nothing?: boolean;
+  // ADR 0187 §5: an either payment — one offer with two or more ways to
+  // pay (Worms of the Earth: "sacrifice two lands or take 5 damage").
+  // One entry per branch, in the card's order; pay_cost holds the whole
+  // offer's words. The "Pay" answer names the branch as `pay_option` (an
+  // index here) beside `apply: true`, with `card_ids` for a branch that
+  // names cards. Instead of pay_cards, pay_life, pay_damage, pay_energy
+  // and pay_nothing.
+  pay_either?: PayOptionView[];
   // ADR 0129 §3: a "pay_amount" prompt, "you may pay any amount of
   // {E}". Answered with { amount }: 0, or min..max.
   pay_amount?: PayAmountView;
@@ -2885,6 +2893,24 @@ export interface PayCardsView {
   action: "discard" | "sacrifice" | "exile_graveyard";
   count: number;
   options: string[];
+}
+
+// One branch of an either payment (ADR 0187 §5).
+export interface PayOptionView {
+  // "sacrifice", "discard", "exile_graveyard", "life", "damage",
+  // "energy" or "nothing".
+  action: string;
+  // How many cards one payment names, or the amount of life, damage or
+  // energy. Absent for a branch with no amount.
+  count?: number;
+  // The branch as a verb phrase: "sacrifice two lands", "take 5 damage".
+  words: string;
+  // Whether the chooser can make this branch right now (CR 118.3). A
+  // branch they can't is shown greyed.
+  payable: boolean;
+  // The instance IDs that could pay a branch that names cards, as
+  // pay_cards.options are (a discard's reach the chooser only).
+  options?: string[];
 }
 
 export interface TapCostView {

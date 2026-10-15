@@ -154,6 +154,8 @@ func TestAnyPlayerAnswerTextNamesThePayment(t *testing.T) {
 		{false, "6 damage", "Alice didn't take 6 damage from X"},
 		{true, "sacrifice a land", "Alice chose to sacrifice a land for X"},
 		{false, "discard three cards", "Alice chose not to discard three cards for X"},
+		{true, "sacrifice two lands or take 5 damage", "Alice paid for X (sacrifice two lands or take 5 damage)"},
+		{false, "sacrifice two lands or take 5 damage", "Alice didn't pay for X (sacrifice two lands or take 5 damage)"},
 		{true, "", "Alice said yes to X"},
 		{false, "", "Alice said no to X"},
 	} {

@@ -72,6 +72,15 @@ const (
 	// (CR 118.3). Graveyards are public, so the options go to every
 	// seat.
 	PayActionExileFromGraveyard PayActionKind = "exile_graveyard"
+	// PayActionEither is one offer with two or more ways to pay (ADR
+	// 0187 §5): Worms of the Earth's "any player may sacrifice two
+	// lands of their choice or have this enchantment deal 5 damage to
+	// that player. If a player does either, …". It is one condition,
+	// not two offers, so the payer is asked once and the answer names
+	// the branch (`pay_option`, an index into PayAction.Either). It is
+	// a wrapper only: the engine pays the chosen branch, as that
+	// PayAction, and a branch is never itself an Either.
+	PayActionEither PayActionKind = "either"
 )
 
 // NamesNothing reports whether a "Pay" of this payment names no cards
@@ -139,6 +148,38 @@ func (g *Game) PayActionPayableForEffect(chooser uuid.UUID, a *PayAction) bool {
 	return g.payActionPayableLocked(chooser, a)
 }
 
+// payActionCanPayLocked reports whether `chooser` can make payment `a`
+// right now, whichever kind it is (CR 118.3): a payment that names
+// nothing by its state, a card pick when enough cards qualify, and an
+// Either when any one branch can be paid (ADR 0187 §5, so Worms of the
+// Earth's offer is always payable, its damage branch being so). Caller
+// must hold g.mu with fresh layers.
+func (g *Game) payActionCanPayLocked(chooser uuid.UUID, a *PayAction) bool {
+	if a == nil {
+		return false
+	}
+	switch {
+	case a.Kind == PayActionEither:
+		for i := range a.Either {
+			if g.payActionCanPayLocked(chooser, &a.Either[i]) {
+				return true
+			}
+		}
+		return false
+	case a.NamesNothing():
+		return g.payActionPayableLocked(chooser, a)
+	}
+	return len(g.payActionOptionsLocked(chooser, a)) >= a.Count
+}
+
+// PayActionCanPayForEffect is payActionCanPayLocked for callers already
+// under g.mu: the protocol view marks each branch of an Either payable
+// or not, and the enumerator offers only the branches the engine would
+// take.
+func (g *Game) PayActionCanPayForEffect(chooser uuid.UUID, a *PayAction) bool {
+	return g.payActionCanPayLocked(chooser, a)
+}
+
 // PayAction is a non-mana pay-unless payment: "discard N cards",
 // "sacrifice N permanents of a type" or "exile N cards from your
 // graveyard".
@@ -150,6 +191,68 @@ type PayAction struct {
 	// Of narrows a sacrifice ("a land", "a creature"). The zero value is
 	// any permanent. Unused by a discard.
 	Of PermanentQuery
+	// Either lists the ways to pay a PayActionEither (ADR 0187 §5):
+	// two or more payments, none of them an Either. Plain data on the
+	// frame, like the rest of PayAction. Unused by every other kind.
+	Either []PayAction
+	// Words is the phrase naming a branch of an Either on the wire and
+	// in the move list ("sacrifice two lands", "take 5 damage"). Empty
+	// falls back to PayActionPhrase. Unused outside an Either.
+	Words string
+}
+
+// PayActionPhrase is the verb phrase for one payment when its card gives
+// no words of its own: "take 5 damage", "pay 5 life", "discard 2 cards",
+// "sacrifice 2 permanents", "exile 3 cards from your graveyard". The view
+// and the move list use it for the branches of an Either.
+func PayActionPhrase(a PayAction) string {
+	if a.Words != "" {
+		return a.Words
+	}
+	n := strconv.Itoa(a.Count)
+	switch a.Kind {
+	case PayActionDamage:
+		return "take " + n + " damage"
+	case PayActionLife:
+		return "pay " + n + " life"
+	case PayActionEnergy:
+		return "pay " + EnergyPaymentWords(a.Count)
+	case PayActionDiscard:
+		return "discard " + n + " cards"
+	case PayActionSacrifice:
+		return "sacrifice " + n + " permanents"
+	case PayActionExileFromGraveyard:
+		return "exile " + n + " cards from your graveyard"
+	case PayActionNothing:
+		return "say yes"
+	}
+	return string(a.Kind)
+}
+
+// validEither reports whether an Either is well formed: at least two
+// branches, none of them an Either (ADR 0187 §5). A branch's own shape
+// is the card's business, as it is for a plain payment.
+func validEither(a *PayAction) bool {
+	if a == nil || a.Kind != PayActionEither || len(a.Either) < 2 {
+		return false
+	}
+	for i := range a.Either {
+		if a.Either[i].Kind == PayActionEither || len(a.Either[i].Either) > 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// EitherBranch is the branch `option` names on an Either, or nil when
+// `a` is not an Either or the index is out of range. The branch is a
+// copy.
+func EitherBranch(a *PayAction, option int) *PayAction {
+	if a == nil || a.Kind != PayActionEither || option < 0 || option >= len(a.Either) {
+		return nil
+	}
+	b := a.Either[option]
+	return &b
 }
 
 // payActionOptionsLocked is every card or permanent `chooser` could
@@ -210,7 +313,9 @@ func (g *Game) PayActionOptionsForEffect(chooser uuid.UUID, a *PayAction) []uuid
 // `chooser`: exactly Count distinct cards, each one of the live options.
 // Caller must hold g.mu.
 func (g *Game) validatePayActionLocked(chooser uuid.UUID, a *PayAction, picked []uuid.UUID) error {
-	if a == nil || len(picked) != a.Count {
+	// An Either is never validated whole: the answer names a branch
+	// (resolvePayUnless), and the branch is validated as its own payment.
+	if a == nil || a.Kind == PayActionEither || len(picked) != a.Count {
 		return ErrInvalidParam
 	}
 	legal := make(map[uuid.UUID]bool)
@@ -236,6 +341,10 @@ func (g *Game) validatePayActionLocked(chooser uuid.UUID, a *PayAction, picked [
 // Caller must hold g.mu in write mode and must have validated `picked`.
 func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked []uuid.UUID, then func(g *Game) error) error {
 	switch a.Kind {
+	case PayActionEither:
+		// Never paid whole: the chosen branch is paid, as its own
+		// PayAction (ADR 0187 §5). Reaching here is a caller bug.
+		return ErrInvalidParam
 	case PayActionDiscard:
 		return g.discardCardsLocked(chooser, picked, discardOptions{
 			cause:  DiscardCauseCost,
@@ -311,5 +420,8 @@ func (c *PendingChoice) PayAction() *PayAction {
 		return nil
 	}
 	a := *c.payUnlessResume.action
+	if len(a.Either) > 0 {
+		a.Either = append([]PayAction(nil), a.Either...)
+	}
 	return &a
 }

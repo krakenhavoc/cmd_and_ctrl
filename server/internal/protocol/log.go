@@ -3472,7 +3472,9 @@ func renderAutoAnswerText(e LogEvent, actor, cardName string) string {
 // "Alice paid 5 life for Dash Hopes", "Alice took 6 damage from Book
 // Burning", "Alice chose to sacrifice a land for Argothian Wurm", and
 // "Alice said yes to Distant Memories" for an offer that costs
-// nothing. A decline is the same sentence negated.
+// nothing, and "Alice paid for Worms of the Earth (sacrifice two lands
+// or take 5 damage)" for an either payment. A decline is the same
+// sentence negated.
 func anyPlayerAnswerText(paid bool, actor, label, card string) string {
 	switch {
 	case label == "":
@@ -3480,6 +3482,14 @@ func anyPlayerAnswerText(paid bool, actor, label, card string) string {
 			return fmt.Sprintf("%s said yes to %s", actor, card)
 		}
 		return fmt.Sprintf("%s said no to %s", actor, card)
+	case strings.Contains(label, " or "):
+		// ADR 0187 §5: an either payment ("sacrifice two lands or take
+		// 5 damage"). The offer's words name both ways to pay; which one
+		// was taken is the sacrifice or the damage line that follows.
+		if paid {
+			return fmt.Sprintf("%s paid for %s (%s)", actor, card, label)
+		}
+		return fmt.Sprintf("%s didn't pay for %s (%s)", actor, card, label)
 	case strings.HasSuffix(label, " damage"):
 		if paid {
 			return fmt.Sprintf("%s took %s from %s", actor, label, card)

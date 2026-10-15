@@ -648,6 +648,81 @@ describe("pay_unless with picks is a sheet", () => {
   });
 });
 
+// ADR 0187 §5, §8 (#3575): an either payment is one question with a button
+// for each way to pay; the answer names the branch.
+describe("an either payment is a sheet with a button for each way to pay", () => {
+  const worms = (
+    over: Partial<PendingChoiceView> = {},
+    sacrificePayable = true,
+  ): Partial<PendingChoiceView> =>
+    ({
+      kind: "pay_unless",
+      reason: "Worms of the Earth — sacrifice two lands or take 5 damage?",
+      pay_cost: "sacrifice two lands or take 5 damage",
+      pay_either: [
+        {
+          action: "sacrifice",
+          count: 2,
+          words: "sacrifice two lands",
+          payable: sacrificePayable,
+          options: sacrificePayable ? ["l1", "l2", "l3"] : undefined,
+        },
+        { action: "damage", count: 5, words: "take 5 damage", payable: true },
+      ],
+      ...over,
+    }) as Partial<PendingChoiceView>;
+  const lands = [card("l1", "Forest"), card("l2", "Island"), card("l3", "Swamp")];
+
+  it("Take 5 damage answers at once with pay_option 1", () => {
+    const { sent } = mount(snap(worms(), { battlefield: lands }));
+    expectSheet("Worms of the Earth — sacrifice two lands or take 5 damage?");
+    click(barButton("Take 5 damage")!);
+    expect(sent[0].params).toEqual({ choice_id: "choice-1", apply: true, pay_option: 1 });
+  });
+
+  it("Sacrifice two lands waits for the picks, then names branch 0 and the lands", () => {
+    const { sent } = mount(snap(worms(), { battlefield: lands }));
+    const sacrifice = barPrimary()!;
+    expect(nameOf(sacrifice)).toBe("Sacrifice two lands");
+    expect(sacrifice.disabled).toBe(true);
+    click(inSheet("button.prompt-opt").find((b) => nameOf(b) === "Island")!);
+    expect(barPrimary()!.disabled).toBe(true);
+    click(inSheet("button.prompt-opt").find((b) => nameOf(b) === "Swamp")!);
+    expect(barPrimary()!.disabled).toBe(false);
+    click(barPrimary()!);
+    expect(sent[0].params).toEqual({
+      choice_id: "choice-1",
+      apply: true,
+      pay_option: 0,
+      card_ids: ["l2", "l3"],
+    });
+  });
+
+  it("never answers on Y or Enter: yes names no branch", () => {
+    const { sent } = mount(snap(worms(), { battlefield: lands }));
+    keyFromBody("y");
+    keyFromBody("Enter");
+    expect(sent).toEqual([]);
+  });
+
+  it("Don't pay declines with no pay_option", () => {
+    const { sent } = mount(snap(worms(), { battlefield: lands }));
+    click(barButton("Don't pay")!);
+    expect(sent[0].params).toEqual({ choice_id: "choice-1", apply: false });
+  });
+
+  it("a sacrifice the seat can't make is greyed, and the damage still answers", () => {
+    const { sent } = mount(snap(worms({}, false), { battlefield: lands }));
+    const sacrifice = barPrimary()!;
+    expect(nameOf(sacrifice)).toBe("Sacrifice two lands");
+    expect(sacrifice.disabled).toBe(true);
+    click(sacrifice);
+    expect(sent).toEqual([]);
+    click(barButton("Take 5 damage")!);
+    expect(sent[0].params).toEqual({ choice_id: "choice-1", apply: true, pay_option: 1 });
+  });
+});
+
 describe("a sheet's refusal", () => {
   it("is shown in the dock as Not accepted, and the sheet stays open", () => {
     const r = mount(snap({ kind: "scry", reason: "Opt — scry 1", options: [card("a", "Island")] }));

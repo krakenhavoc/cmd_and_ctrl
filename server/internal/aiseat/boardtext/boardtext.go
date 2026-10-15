@@ -265,6 +265,20 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		if ch.PayDamage != nil {
 			fmt.Fprintf(&b, " (take %d damage)", *ch.PayDamage)
 		}
+		// ADR 0187 §5: an either payment names each way to pay (the
+		// moves repeat them by index), so a reader of the board alone
+		// sees what the one question offers.
+		if len(ch.PayEither) > 0 {
+			words := make([]string, 0, len(ch.PayEither))
+			for _, o := range ch.PayEither {
+				w := o.Words
+				if !o.Payable {
+					w += " (you can't)"
+				}
+				words = append(words, w)
+			}
+			fmt.Fprintf(&b, " (pay one of: %s)", strings.Join(words, "; or "))
+		}
 		if ch.Kind == "pay_unless" && ch.LifeCost > 0 {
 			fmt.Fprintf(&b, " (also pay %d life)", ch.LifeCost)
 			if ch.LifeCostUnpayable {

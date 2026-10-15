@@ -28,11 +28,15 @@ type choiceParams struct {
 	TapIDs []string `json:"tap_ids,omitempty"`
 	// PhyrexianLife rides a pay_unless "pay" that spends 2 life on each
 	// of that many symbols of the cost (ADR 0131 §2).
-	PhyrexianLife int           `json:"phyrexian_life,omitempty"`
-	Assignments   []assignParam `json:"assignments,omitempty"`
-	TrampleTo     int           `json:"trample_to_player,omitempty"`
-	Target        *targetWire   `json:"target,omitempty"`
-	Targets       []targetWire  `json:"targets"`
+	PhyrexianLife int `json:"phyrexian_life,omitempty"`
+	// PayOption rides a pay_unless "pay" to an either payment (ADR 0187
+	// §5): the index of the branch taken. A pointer, because 0 is the
+	// first branch.
+	PayOption   *int          `json:"pay_option,omitempty"`
+	Assignments []assignParam `json:"assignments,omitempty"`
+	TrampleTo   int           `json:"trample_to_player,omitempty"`
+	Target      *targetWire   `json:"target,omitempty"`
+	Targets     []targetWire  `json:"targets"`
 	// Distribution rides a pick_target answer whose clause divides
 	// (#1563): game.PickTargetDefaultDistribution, the even split.
 	Distribution map[string]int `json:"distribution,omitempty"`
@@ -287,6 +291,69 @@ func (e *enumerator) choiceMoves() bool {
 			// ADR 0150 §3: life, damage and nothing name nothing
 			// either, and "Pay" is a move exactly when the engine
 			// would take it as a payment (CR 119.4, 119.8 for life).
+			if action := c.PayAction(); action != nil && action.Kind == game.PayActionEither {
+				// ADR 0187 §5: one offer, several ways to pay. Each
+				// payable branch is its own move naming it by index
+				// (pay_option), and a card branch adds one move per
+				// combination, as a plain card payment does. A branch
+				// the seat cannot pay is not offered (CR 118.3); the
+				// decline always is.
+				for i := range action.Either {
+					branch := action.Either[i]
+					if !g.PayActionCanPayForEffect(c.Chooser, &branch) {
+						continue
+					}
+					option := i
+					payVerb, _ := anyPlayerVerbs(g, c, game.PayActionPhrase(branch), e.seat)
+					if branch.NamesNothing() {
+						a := true
+						p := base()
+						p.Apply = &a
+						p.PayOption = &option
+						var price *MoveCost
+						switch branch.Kind {
+						case game.PayActionEnergy:
+							price = withEnergy(nil, branch.Count)
+						case game.PayActionLife:
+							if branch.Count > 0 {
+								price = &MoveCost{Life: branch.Count}
+							}
+						}
+						e.add(Move{
+							Type:   TypeResolveChoice,
+							Player: e.seat,
+							Kind:   KindChoice,
+							Label:  reason + ": " + payVerb,
+							Source: c.Source,
+							Params: mustJSON(p),
+							Cost:   price,
+						})
+						continue
+					}
+					pool := g.PayActionOptionsForEffect(c.Chooser, &branch)
+					if branch.Kind == game.PayActionExileFromGraveyard {
+						pool = e.cheapestFuelFirst(pool)
+					}
+					for _, set := range e.combos(pool, branch.Count, branch.Count, e.opts.MaxExpansionPerSource, CapPerSource) {
+						a := true
+						p := base()
+						p.Apply = &a
+						p.PayOption = &option
+						p.CardIDs = idStrings(set)
+						label := reason + ": " + payVerb + " —"
+						for _, id := range set {
+							label += " " + cardNameFor(g, id, e.seat)
+						}
+						e.addChoice(c, label, p)
+					}
+				}
+				_, declineVerb := anyPlayerVerbs(g, c, c.PayCost, e.seat)
+				a := false
+				p := base()
+				p.Apply = &a
+				e.addChoice(c, reason+": "+declineVerb, p)
+				continue
+			}
 			if action := c.PayAction(); action.NamesNothing() {
 				payVerb, declineVerb := payNamingNothingVerbs(g, c, action, e.seat)
 				if g.PayActionPayableForEffect(c.Chooser, action) {

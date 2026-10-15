@@ -638,6 +638,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// yes, but not so emphatically that a targeted alternative
 		// in the same window cannot outbid it.
 		if cp.Apply != nil && *cp.Apply {
+			// ADR 0187 §7: an either payment (Worms of the Earth) is
+			// scored branch by branch (either_payment.go).
+			if kind == choicePayUnless && ch != nil && len(ch.PayEither) > 0 {
+				return p.eitherPaymentValue(st, ch, cp.PayOption, cp.CardIDs, lookup)
+			}
 			// ADR 0108 §5 decision 6: a payment that discards or
 			// sacrifices is still paid, giving up the least valuable
 			// cards. The tie-break stays above the decline's 0.5.
