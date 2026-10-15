@@ -22,6 +22,7 @@ func init() {
 		Name:         "Zombify",
 		Completeness: CompletenessFull,
 		Targets:      targetCreatureInYourGraveyard(),
+		Purpose:      ForTargets(Reanimates(0)),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			_, _ = reanimateSingleTarget(ctx, ctx.Controller())
 			return nil

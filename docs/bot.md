@@ -467,6 +467,18 @@ an opponent's, a curse (Pacifism) costs the value of the bot's own
 creature and keeps the removal price on an opponent's. `PriceAuraPurpose`
 turns it off. An Aura that declares nothing keeps the old reading.
 
+**A reanimation target is priced as the permanent it becomes** (#3161,
+[ADR 0154](decisions/0154-auras-that-enchant-a-card-in-a-graveyard.md) Q5).
+A spell that declares `reanimates` on a graveyard target entry (Reanimate,
+Animate Dead, Dance of the Dead, Zombify, Beacon of Unrest, Dread Return,
+Late to Dinner, Soul Exchange, Rewrite Regrets) puts the pick onto the
+battlefield under its caster's control, so the pick is worth the creature's
+value whoever owns the graveyard. Before, an opponent's graveyard was worth
+`OwnPermanentTarget` and the bot's own `cardValue`, whose 0.6 "can't cast it
+for a while" discount took 40% off exactly the expensive creature that
+reanimation exists for. `PriceReanimation` turns it off (it needs
+`PriceTargetPurposes`).
+
 **Whether to reveal (`entry_reveal_from_hand`, #1198, CR 614.1c).** The
 one card-set pick whose answer is FREE, and the reason it is a branch
 of its own rather than a second spelling of `choose_cards`. "As this

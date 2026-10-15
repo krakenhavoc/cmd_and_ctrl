@@ -28,6 +28,7 @@ func init() {
 		Name:          "Dread Return",
 		Completeness:  CompletenessFull,
 		Targets:       TargetCardInGraveyard("target creature card in your graveyard", YouOwn(), Creature()),
+		Purpose:       ForTargets(Reanimates(0)),
 		CastableZones: []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{
 			FlashbackSacrifice(3, "three creatures", Creature()),

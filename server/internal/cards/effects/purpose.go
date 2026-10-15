@@ -363,6 +363,9 @@ func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSp
 		if (e.Damage != 0 || e.DamageIsX) && !clause.Players && !slices.Contains(clause.Zones, game.ZoneBattlefield) {
 			fail(fmt.Sprintf("deals damage to slot %d, whose clause %q can target neither a player nor a permanent", e.Slot, clause.Label))
 		}
+		if e.Reanimates && !slices.Contains(clause.Zones, game.ZoneGraveyard) {
+			fail(fmt.Sprintf("reanimates slot %d, whose clause %q cannot target a card in a graveyard", e.Slot, clause.Label))
+		}
 		if r := e.Returns; !r.IsZero() {
 			if !slices.Contains(clause.Zones, game.ZoneBattlefield) {
 				fail(fmt.Sprintf("returns something to the controller of slot %d, whose clause %q cannot target a permanent", e.Slot, clause.Label))
@@ -408,6 +411,14 @@ func DamageToTarget(slot, n int) game.TargetPurpose {
 // Awakened Inferno's −X is ForTargets(DamageXToTarget(0)).
 func DamageXToTarget(slot int) game.TargetPurpose {
 	return game.TargetPurpose{Slot: slot, DamageIsX: true}
+}
+
+// Reanimates is the target entry for a spell that puts the graveyard
+// card picked for clause `slot` onto the battlefield under its caster's
+// control (#3161): Reanimate is ForTargets(Reanimates(0)). The bot prices
+// the pick by the permanent it becomes, whoever owns the graveyard.
+func Reanimates(slot int) game.TargetPurpose {
+	return game.TargetPurpose{Slot: slot, Reanimates: true}
 }
 
 // ModeWithPurpose is a mode bullet with its declared purpose: the

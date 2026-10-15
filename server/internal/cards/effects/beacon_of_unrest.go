@@ -23,6 +23,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets: TargetCardInGraveyard("target artifact or creature card from a graveyard",
 			Or(Artifact(), Creature())),
+		Purpose: ForTargets(Reanimates(0)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			reanimateSingleTarget(ctx, ctx.Controller())
 			owner := item.Owner

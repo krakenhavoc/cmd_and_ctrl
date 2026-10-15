@@ -34,6 +34,7 @@ func init() {
 		Name:         "Reanimate",
 		Completeness: CompletenessFull,
 		Targets:      targetCreatureInAnyGraveyard(),
+		Purpose:      ForTargets(Reanimates(0)),
 		OnResolve:    reanimateLosingItsManaValue,
 	})
 }

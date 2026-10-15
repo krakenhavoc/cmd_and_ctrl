@@ -3,6 +3,7 @@ package heuristic_test
 import (
 	"testing"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/heuristic"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
@@ -140,4 +141,59 @@ func TestAuraPurposePricesTheHost(t *testing.T) {
 			}
 		})
 	}
+}
+
+// #3161: a reanimation target is priced as the permanent it becomes,
+// whoever owns the graveyard.
+func TestReanimationTargetIsPricedByCreatureValue(t *testing.T) {
+	spell := creature(cardID(1), 0, "Reanimate", 0, 0)
+	spell.TypeLine = "Sorcery"
+	spell.ManaCost = "{B}"
+	spell.Purpose = &protocol.PurposeView{Targets: &[]protocol.TargetPurposeView{{Slot: 0, Reanimates: true}}}
+
+	// An expensive creature of the bot's own is discounted by cardValue;
+	// the opponent's smaller one used to be worth OwnPermanentTarget.
+	mineBig := creature(cardID(2), 0, "My Titan", 8, 8)
+	mineBig.ManaCost = "{8}{G}{G}"
+	theirs := creature(cardID(3), 1, "Their Dragon", 6, 6)
+	theirs.ManaCost = "{4}{R}{R}"
+	small := creature(cardID(4), 0, "My Squire", 1, 1)
+	small.ManaCost = "{W}"
+
+	castAt := func(t *testing.T, target protocol.CardView, label string) legal.Move {
+		m := castMove(t, 0, spell.InstanceID, label)
+		m.Params = mustJSON(t, map[string]any{"instance_id": spell.InstanceID, "from_zone": "hand",
+			"targets": []map[string]string{cardTarget(target.InstanceID)}})
+		return m
+	}
+	in := func(t *testing.T, moves ...legal.Move) aiseat.Input {
+		v := newView([]protocol.PlayerView{
+			newSeat(0, withHand(spell), withGraveyardCards(mineBig, small)),
+			newSeat(1, withGraveyardCards(theirs)),
+		}, withTurn(9, 0, "precombat_main"))
+		return input(0, v, append([]legal.Move{passMove(0)}, moves...)...)
+	}
+
+	t.Run("an opponent's creature beats a small one of the bot's own", func(t *testing.T) {
+		onTheirs, onSmall := castAt(t, theirs, "theirs"), castAt(t, small, "small")
+		i := in(t, onTheirs, onSmall)
+		pol := heuristic.NewWithConfig(heuristic.DefaultConfig())
+		if a, b := rankValue(t, pol, i, "theirs"), rankValue(t, pol, i, "small"); a <= b {
+			t.Errorf("their dragon %.3f, my squire %.3f; want the dragon ahead", a, b)
+		}
+		// Baseline: the opponent's graveyard was worth OwnPermanentTarget.
+		base := heuristic.NewWithConfig(heuristic.BaselineConfig())
+		if a, b := rankValue(t, base, i, "theirs"), rankValue(t, base, i, "small"); a > b {
+			t.Errorf("baseline: dragon %.3f above squire %.3f; the old price should rank it below", a, b)
+		}
+	})
+
+	t.Run("an expensive creature is not discounted", func(t *testing.T) {
+		onBig, onTheirs := castAt(t, mineBig, "big"), castAt(t, theirs, "theirs")
+		i := in(t, onBig, onTheirs)
+		pol := heuristic.NewWithConfig(heuristic.DefaultConfig())
+		if a, b := rankValue(t, pol, i, "big"), rankValue(t, pol, i, "theirs"); a <= b {
+			t.Errorf("my 8/8 %.3f, their 6/6 %.3f; want the bigger creature ahead", a, b)
+		}
+	})
 }

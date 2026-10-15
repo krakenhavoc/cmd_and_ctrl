@@ -20,6 +20,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets: TargetCardInGraveyard("target creature or planeswalker card with mana value 6 or less from your graveyard",
 			Or(Creature(), Planeswalker()), YouOwn(), ManaValueLE(6)),
+		Purpose: ForTargets(Reanimates(0)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			reanimateSingleTarget(ctx, ctx.Controller())
 			return EmpowerJace{N: 2}.Apply(ctx)

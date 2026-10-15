@@ -240,6 +240,14 @@ type Config struct {
 	// declares itself a curse is never put on the bot's own. Off (the
 	// baseline) prices every Aura's host as a target to hit.
 	PriceAuraPurpose bool
+	// PriceReanimation prices a graveyard target a spell declares it
+	// reanimates (TargetPurpose.Reanimates, #3161) as the permanent it
+	// becomes, whoever owns the graveyard: the creature's value, with no
+	// "can't cast it for a while" discount, where cardValue discounts an
+	// expensive one and an opponent's graveyard is worth a cheap
+	// OwnPermanentTarget. Needs PriceTargetPurposes. Off (the baseline)
+	// prices the pick as cardTargetValue always did.
+	PriceReanimation bool
 	// PriceSweeps turns on ADR 0126 §4: a declared sweep is priced as
 	// the change in ScoreEval with the permanents it removes taken off
 	// the board (sweepValue), so the bot stops casting a wipe onto its
@@ -688,6 +696,7 @@ func DefaultConfig() Config {
 		NetLandSwaps:        true,
 		PriceTargetPurposes: true,
 		PriceAuraPurpose:    true,
+		PriceReanimation:    true,
 		DamageByLethality:   true,
 		DamageChip:          0.00,
 		NetRemoval:          true,
@@ -842,6 +851,8 @@ func BaselineConfig() Config {
 	c.PriceTargetPurposes = false
 	// #3309: an Aura's host priced by what the Aura does to it.
 	c.PriceAuraPurpose = false
+	// #3161: a reanimation target priced as the permanent it becomes.
+	c.PriceReanimation = false
 	c.DamageByLethality = false
 	c.DamageChip = 0
 	// #2679: removal net of what its target's controller gets back.

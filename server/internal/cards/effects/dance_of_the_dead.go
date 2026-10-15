@@ -33,6 +33,7 @@ func init() {
 		Name:                  "Dance of the Dead",
 		Completeness:          CompletenessFull,
 		Targets:               EnchantCreatureCardInGraveyard(),
+		Purpose:               ForTargets(Reanimates(0)),
 		Static:                []game.StaticAbility{PumpAttached(1, 1)},
 		UntapStepRestrictions: []game.UntapStepRestriction{enchantedDoesntUntap()},
 		Triggered: []game.TriggeredAbility{

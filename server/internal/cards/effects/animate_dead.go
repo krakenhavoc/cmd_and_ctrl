@@ -32,6 +32,7 @@ func init() {
 		Name:         "Animate Dead",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreatureCardInGraveyard(),
+		Purpose:      ForTargets(Reanimates(0)),
 		Static:       []game.StaticAbility{PumpAttached(-1, 0)},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Animate Dead — return enchanted creature card to the battlefield under your control",
