@@ -18,7 +18,8 @@ import (
 //
 //   - a bit that names no answer;
 //   - AnswerValue beside any other answer;
-//   - Answers on a spell, a mode, an alternative cost or a triggered row,
+//   - Answers on a spell, a mode or an alternative cost, or anything but
+//     AnswerRemove (an edict) on a triggered row,
 //     which nothing reads it on yet (checkPurpose, ADR 0142 §2);
 //   - Answers on a row whose every announcement must name a target (a
 //     clause with Min 0, "up to one", still has the empty announcement):

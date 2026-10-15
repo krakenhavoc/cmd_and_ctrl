@@ -52,11 +52,11 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Sheoldred — each opponent sacrifices a nontoken creature or planeswalker", Do(EachPlayerSacrifices{
+			TriggerEdict(WhenThisEnters("Sheoldred — each opponent sacrifices a nontoken creature or planeswalker", Do(EachPlayerSacrifices{
 				ExceptController: true,
 				Match:            And(Or(Creature(), Planeswalker()), Not(IsTokenPredicate())),
 				Label:            "a nontoken creature or planeswalker",
-			})),
+			}))),
 		},
 		Activated: []ActivatedAbility{{
 			Label: "{4}{B}: Exile Sheoldred, then return it to the battlefield transformed under its owner's control. " +

@@ -414,3 +414,5 @@ The vocabulary, the tiers in `game/answers.go`, the declarations and the ratchet
 the game in `internal/legal` (`stackThreatens`), like owner answer 4, which it leaves as it is.
 
 [ADR 0009's #3825 amendment](0009-smart-priority-autopass.md#amendment-an-untargeted-wipe-from-an-activated-ability-is-a-threat-3825) adds one more threat: an opponent's activated ability whose row declares a `Purpose.Sweep` (or `remove`) that reaches something the seat controls. It reads the declarations above and changes none of them.
+
+[ADR 0009's #3882 amendment](0009-smart-priority-autopass.md#amendment-a-sweep-or-an-edict-from-a-triggered-ability-is-a-threat-3882) reads an opponent's triggered row the same way. It lets a triggered row declare `AnswerRemove` (an edict), which §2 refused; no other answer is accepted off an activated row.

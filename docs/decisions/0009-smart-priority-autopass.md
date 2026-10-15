@@ -48,6 +48,10 @@ threatens you, and never at an empty-stack end step. Combat is unchanged. See
 **Amended again by:** S72 (#3825), 2026-10-15 — an opponent's activated
 ability that wipes or edicts without a target (a planeswalker's minus,
 Nevinyrral's Disk, Pestilence) is a threat too, read from its catalog row.
+**Amended again by:** S72 (#3882), 2026-10-15 — an opponent's triggered
+ability that sweeps or edicts (a saga chapter that destroys all creatures, a
+Massacre Wurm's enters trigger, a Fleshbag Marauder's edict) is a threat
+too, read from its catalog row the same way.
 **Input changed by:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md),
 2026-10-09 — `interacts` reads what the ability row declares it answers
 (`Purpose.Answers`) before the printed-text read, and `combat_interacts`
@@ -685,11 +689,11 @@ and after). Combat stops were unchanged (244, 128 acted on).
 
 **Costs.**
 
-- A wipe or an edict that arrives as a triggered ability with no target (a
-  Massacre Wurm's enters trigger) does not stop you for a free outlet, a
-  shield or a pump. Tick the step, pin it, arm the hold, or turn on "Value
-  abilities" in "Stop for" to see it. An activated ability is read since
-  #3825, below.
+- A wipe or an edict that arrives as an ability with no target does not stop
+  you for a free outlet, a shield or a pump when its catalog row declares
+  neither a sweep nor an edict. Tick the step, pin it, arm the hold, or turn
+  on "Value abilities" in "Stop for" to see it. An activated ability is read
+  since #3825 and a triggered one since #3882, below.
 - An opponent's untargeted instant or sorcery still stops you, a Divination
   included: without reading the spell's effect, the gate cannot tell it from a
   Wrath.
@@ -723,10 +727,8 @@ catalog row it came from declares (`StackItem.AbilityPurpose`, through the
 Everything else about an opponent's activated ability is as before: it
 threatens by its targets, and an ability that pumps, shields or draws on its
 own board does not. An activation with no catalog row (a sandbox activation,
-a card carrying its own ability list) is not read, and a triggered ability is
-still not read: its row carries a `Footprint` for trigger ordering, not a
-sweep, so a Massacre Wurm's enters trigger stays the cost above. A later PR
-can declare it the way activated rows do.
+a card carrying its own ability list) is not read. A triggered ability is
+read since #3882, below.
 
 Pernicious Deed is not in the catalog yet. When it lands, its `{X}, Sacrifice
 this: Destroy each artifact, creature and enchantment with mana value X or
@@ -736,6 +738,58 @@ Nevinyrral's Disk, Pestilence, The Eternal Wanderer's -4 and Liliana of the
 Veil's -6 stop Viscera Seer, Undercity Troll, Evernight Shade, Spore Frog,
 Selfless Spirit and Ashnod's Altar; an opponent's Evernight Shade pump, an
 ability with no row and the seat's own Pestilence do not.
+
+### Amendment: a sweep or an edict from a triggered ability is a threat (#3882)
+
+**Status:** Accepted · 2026-10-15 · Sprint S72
+
+#3825 left triggered abilities as a recorded cost: a saga chapter that
+destroys all creatures, a Massacre Wurm's enters trigger, a "whenever ...
+each opponent sacrifices a creature" trigger arrive untargeted and are no
+instant or sorcery, so a free outlet, shield or pump did not stop you for
+them.
+
+An opponent's triggered ability now threatens the seat by the same rule as an
+activated one (`abilityReaches`). A triggered stack item carries the same
+`Params.Ability` ref, to the catalog triggered row, and
+`StackItem.AbilityPurpose` reads that row's `Purpose`:
+
+- a declared `Sweep` threatens when the seat controls a permanent of its class
+  (`sweepReaches`, unchanged). Triggered rows already declared it for the bot:
+  the saga chapters (Phyrexian Scriptures II, The Elder Dragon War I, One Ring
+  to Rule Them All II, The Great Synthesis II, The Argent Etchings III),
+  Toxrill, Noxious Ghoul, Balefire Dragon, Plague Boiler and others;
+- an edict is declared `AnswerRemove` on the triggered row, which
+  `effects.Register` now accepts on a triggered row and nowhere else off an
+  activated one (the guard in ADR 0142 §2 refused it). `effects.TriggerEdict`
+  wraps the row. Declared: Fleshbag Marauder, Merciless Executioner,
+  Accursed Marauder, Plaguecrafter, Demon's Disciple, Sheoldred (the True
+  Scriptures), Tithing Blade, and the dies edicts Butcher of Malakir, Grave
+  Pact and Dictate of Erebos. `remove` is a gate input only; the bot prices
+  none of it (`PurposeView.Priced` ignores `Answers`);
+- a permanent declares its enters effect on the card, not on the row, so an
+  enters-watching row with no sweep of its own takes the sweep of its source
+  card on the battlefield (Massacre Wurm, Crater Hellion). A card with a
+  second enters-watching trigger would read as sweeping through it too, a stop
+  over a missed window (decision 3).
+
+A trigger that only touches their own board (a graveyard exile, damage to
+each opponent), a death trigger that is not a sweep (Massacre Wurm's life
+loss), the seat's own trigger, and a trigger built as an unkeyed closure (no
+catalog ref) do not stop you.
+
+**Costs.** An edict trigger not listed above (Barrensteppe Siege's, Witch of
+the Moors', Winter's, and those whose effect is written in a helper) still
+does not stop you until it declares `TriggerEdict`; the sweep triggers need
+nothing. A sweep a card declares on a mode or an alternative cost is not
+read here.
+
+`trigger_threat_test.go` (internal/legal) pins it: Fleshbag Marauder's edict,
+Butcher of Malakir's dies edict, Phyrexian Scriptures II, Toxrill's slime
+counters and Massacre Wurm's enters trigger stop Viscera Seer, Undercity
+Troll, Evernight Shade, Spore Frog, Selfless Spirit and Ashnod's Altar;
+Phyrexian Scriptures III, Massacre Wurm's life loss, Purphoros's damage and the
+seat's own Fleshbag Marauder do not.
 
 ## Context
 

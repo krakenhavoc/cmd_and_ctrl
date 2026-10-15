@@ -126,9 +126,9 @@ const threatGated = game.AnswerProtect | game.AnswerSurvive | game.AnswerPump | 
 // not control threatens it (ADR 0009 amendment #3555): the item targets
 // `seat`, a permanent `seat` controls or an item on the stack `seat`
 // controls, or it is an instant or sorcery spell with no target, which
-// could be a wipe, an edict or a steal, or it is an activated ability
-// whose catalog row declares a sweep or an edict that reaches something
-// the seat controls (abilityReaches, #3825). A permanent spell does nothing
+// could be a wipe, an edict or a steal, or it is an activated or
+// triggered ability whose catalog row declares a sweep or an edict that
+// reaches something the seat controls (abilityReaches, #3825, #3882). A permanent spell does nothing
 // to the board while it is on the stack; its enters trigger is an item
 // of its own, judged when it is put there. With no game to read it says
 // yes: a stop over a missed window (ADR 0009 §3).
@@ -172,18 +172,20 @@ func stackThreatens(g *game.Game, seat uuid.UUID) bool {
 	return false
 }
 
-// abilityReaches reports whether an opponent's activated ability affects
-// permanents `seat` controls without targeting them (#3825): a wipe, an
-// edict, damage or -N/-N to each creature, which arrives as a planeswalker's
-// minus, Nevinyrral's Disk, Pestilence or Pernicious Deed. A permanent
-// spell tells nothing about this, and an ability has no card type, so it
-// reads what the catalog row declares: Purpose.Sweep, else
+// abilityReaches reports whether an opponent's activated or triggered
+// ability affects permanents `seat` controls without targeting them
+// (#3825, #3882): a wipe, an edict, damage or -N/-N to each creature,
+// which arrives as a planeswalker's minus, Nevinyrral's Disk, Pestilence,
+// Pernicious Deed, a saga chapter or a "whenever ..., destroy all
+// creatures" or "each opponent sacrifices a creature" trigger. A
+// permanent spell tells nothing about this, and an ability has no card
+// type, so it reads what the catalog row declares: Purpose.Sweep, else
 // AnswerRemove (an edict or a sweep with no class named). A sweep whose
 // class holds nothing the seat controls does not reach it. An ability
-// with no declared row (a sandbox activation) and a triggered ability are
-// not read: the cost ADR 0009's #3555 amendment records for triggers.
+// with no declared row (a sandbox activation, a trigger built as an
+// unkeyed closure) is not read.
 func abilityReaches(g *game.Game, seat uuid.UUID, item *game.StackItem) bool {
-	p, ok := item.AbilityPurpose()
+	p, ok := item.AbilityPurpose(battlefieldCardByID(g, item.SourceCardID))
 	if !ok {
 		return false
 	}
@@ -239,6 +241,19 @@ func sweepReaches(g *game.Game, seat uuid.UUID, m game.SweepMatch) bool {
 		}
 	}
 	return false
+}
+
+// battlefieldCardByID is the permanent with this id, or nil.
+func battlefieldCardByID(g *game.Game, id uuid.UUID) *game.Card {
+	if g.Battlefield == nil || id == uuid.Nil {
+		return nil
+	}
+	for i := range g.Battlefield.Cards {
+		if c := &g.Battlefield.Cards[i]; c.InstanceID == id {
+			return c
+		}
+	}
+	return nil
 }
 
 // controlledBy reports whether id is a permanent or an item on the

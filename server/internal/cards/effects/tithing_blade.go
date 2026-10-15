@@ -29,8 +29,8 @@ func init() {
 		Name:         "Tithing Blade",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Tithing Blade — each opponent sacrifices a creature",
-				Do(EachPlayerSacrifices{ExceptController: true, Match: Creature(), Label: "a creature"})),
+			TriggerEdict(WhenThisEnters("Tithing Blade — each opponent sacrifices a creature",
+				Do(EachPlayerSacrifices{ExceptController: true, Match: Creature(), Label: "a creature"}))),
 		},
 		Activated: []ActivatedAbility{
 			Craft("Craft with creature {4}{B}", "{4}{B}", CraftWith("creature")),
