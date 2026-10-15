@@ -402,6 +402,13 @@ type TurnTally struct {
 	// and flushed with the rest of the tally when the turn begins.
 	// Read through Game.modesChosenLocked. See mode_memory.go.
 	ModesChosen map[string][]int `json:"modesChosen,omitempty"`
+	// GrantedAltCostsClaimed is the once-each-turn granted alternative
+	// costs claimed this turn (#3174: Warped Space, Access Maze), keyed
+	// by ObjectTallyKey(source, epoch, offer key): PER OBJECT, so two
+	// such permanents give two claims and one that left and came back
+	// has a fresh one (CR 400.7). Written as the spell becomes cast;
+	// read by GrantedAlternativeCost.gatedOn. Additive within schema v9.
+	GrantedAltCostsClaimed map[string]int `json:"grantedAltCostsClaimed,omitempty"`
 	// Attacks is every attack declared this turn, in declaration order
 	// (ADR 0059 Decision 8): one record per attacking creature per
 	// declaration, so a creature that attacks in two combats has two.
@@ -1445,6 +1452,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.LoopLow, out.LoopLowSet, out.LoopActivated = t.LoopLow, t.LoopLowSet, t.LoopActivated
 	out.LoopProgressed = t.LoopProgressed
 	out.ModesChosen = copyModesChosen(t.ModesChosen)
+	out.GrantedAltCostsClaimed = copyStringIntMap(t.GrantedAltCostsClaimed)
 	if len(t.Attacks) > 0 {
 		out.Attacks = append([]AttackRecord(nil), t.Attacks...)
 	}

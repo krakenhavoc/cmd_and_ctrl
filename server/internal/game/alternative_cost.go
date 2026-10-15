@@ -437,6 +437,12 @@ type AlternativeCost struct {
 	// query, and a claim reaches the stack as its key alone.
 	Granted bool
 
+	// onceEachTurnKey is the TurnTally.GrantedAltCostsClaimed key a
+	// claim of this granted offer spends (#3174, GrantedAlternativeCost.
+	// OnceEachTurn): set only on a derived copy, naming the source
+	// object that made it. Never serialised.
+	onceEachTurnKey string
+
 	// AsThoughFlash is "if you cast a spell this way, you may cast it as
 	// though it had flash" (Primal Prayers, ADR 0129 §5). CR 601.3c: an
 	// effect that lets a spell be cast as though it had flash only if an

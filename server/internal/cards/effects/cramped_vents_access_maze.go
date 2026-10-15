@@ -13,16 +13,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Cramped Vents reads the creature's damage before and after the hit, so
 // the excess (CR 120.10) is how far past lethal THIS damage pushed it
-// and prevention is already accounted for. Access Maze is NOT
-// implemented: a standing "pay life equal to mana value rather than the
-// mana cost, once each of your turns" has no primitive (ADR 0103's
-// table). The door is empty, which is weaker than printed.
+// and prevention is already accounted for. Access Maze is a granted
+// alternative cost behind its door (#3174, ADR 0118 §3): life equal to
+// the spell's mana value, from hand, once during each of your turns per
+// Access Maze. A spell with {X} in its cost is not offered it.
 func init() {
 	Register(Room(RoomSpec{
 		OracleID:     "1e847d69-e527-4bb9-a624-17c25ac4fed4",
 		Name:         "Cramped Vents // Access Maze",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Access Maze's pay-life casting isn't implemented, so that half does nothing."},
+		Completeness: CompletenessFull,
 		Left: Door{Triggered: []game.TriggeredAbility{
 			TriggerWithPurpose(Targeting(
 				WhenYouUnlockThisDoor(game.DoorLeft, "Cramped Vents — 6 damage to target creature an opponent controls; gain life equal to the excess",
@@ -30,6 +29,7 @@ func init() {
 				TargetCreature("target creature an opponent controls", OpponentControls())),
 				ForTargets(DamageToTarget(0, 6))),
 		}},
+		Right: Door{GrantedAlternativeCosts: []game.GrantedAlternativeCost{PayLifeForASpellFromHandOnceEachOfYourTurns()}},
 	}))
 }
 
