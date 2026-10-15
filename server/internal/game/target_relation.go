@@ -14,12 +14,18 @@ type TargetRelationKind string
 const (
 	TargetInControllersGraveyard TargetRelationKind = "controllers_graveyard"
 	TargetAttachedTo             TargetRelationKind = "attached_to"
+	// TargetControlledBySameController is "another target creature that
+	// player controls", where that player controls the earlier target
+	// (Breaking of the Fellowship). An anchor that has left the
+	// battlefield answers with its last-known controller (CR 608.2h).
+	TargetControlledBySameController TargetRelationKind = "same_controller"
 )
 
 // TargetRelationMatchesForEffect judges the relationship using the current
 // objects, at announcement and again at resolution (CR 601.2c, 608.2b).
-// A missing anchor supplies no information; a different mode's pick cannot
-// fill it. Caller holds g.mu.
+// A missing anchor supplies no information, except to the same-controller
+// relationship, which reads the anchor's last-known controller (CR 608.2h);
+// a different mode's pick cannot fill it. Caller holds g.mu.
 func (g *Game) TargetRelationMatchesForEffect(clause *TargetClause, ref TargetRef, targets []TargetRef) bool {
 	if clause == nil || clause.Relation == nil {
 		return true
@@ -50,8 +56,32 @@ func (g *Game) TargetRelationMatchesForEffect(clause *TargetClause, ref TargetRe
 		return anchor.Kind == TargetCard && a != nil && z.Kind == ZoneGraveyard && z.Owner == a.Controller
 	case TargetAttachedTo:
 		return anchor.Kind == TargetCard && findBattlefieldCard(g, anchor.ID) != nil && z.Kind == ZoneBattlefield && c.AttachedTo.ID == anchor.ID
+	case TargetControlledBySameController:
+		controller, ok := g.relationAnchorControllerLocked(anchor)
+		return ok && z.Kind == ZoneBattlefield && c.Controller == controller
 	}
 	return false
+}
+
+// relationAnchorControllerLocked is "that player" for a relation whose
+// anchor is a permanent: its controller now while it is on the
+// battlefield, and otherwise the controller it last had there this turn
+// (CR 608.2h). An anchor that is still on the battlefield but illegal
+// (it gained hexproof, or changed controller) answers with its current
+// controller, since it is still in the zone the effect expects. A card
+// that never left the battlefield this turn and is not on it answers
+// nothing.
+func (g *Game) relationAnchorControllerLocked(anchor TargetRef) (uuid.UUID, bool) {
+	if anchor.Kind != TargetCard {
+		return uuid.Nil, false
+	}
+	if a := findBattlefieldCard(g, anchor.ID); a != nil {
+		return a.Controller, true
+	}
+	if info, ok := g.LastKnownPermanentForEffect(anchor.ID); ok {
+		return info.Controller, true
+	}
+	return uuid.Nil, false
 }
 
 // LegalTargetsForClauseForEffect narrows the ordinary candidate set by the

@@ -1339,10 +1339,50 @@ target is illegal, it does nothing, including leaving the Equipment alone,
 as the Foundations release notes specify. Legal damage is followed by
 Equipment exile and the existing exile-instead-of-dying rider.
 
-This is a partial seam: Breaking of the Fellowship remains waiting for a
+This was a partial seam: Breaking of the Fellowship waited for a
 same-controller relationship that can read the first target's last-known
-controller after that target becomes illegal. No resolution-only workaround
-or incomplete catalog entry is added for it.
+controller after that target becomes illegal. The 2026-10-15 (b) amendment
+below adds it.
+
+## Amendment 2026-10-15 (b): the same-controller relation and an illegal anchor (#1943)
+
+Sprint S58, tracker #2077. This closes the partial seam the 2026-10-11
+amendment left open. A third relationship, `same_controller`
+(`game.TargetControlledBySameController`, card-facing builder
+`ControlledByTargetsController`), is "another target creature that player
+controls", where that player controls the earlier target. Registration
+accepts it under the same rules as the other two: a required single
+anchor and at most one dependent pick.
+
+**"That player" is read from the anchor as CR 608.2h reads any object.**
+While the anchor is on the battlefield, its current controller decides,
+even if the anchor has become an illegal target (it gained hexproof, or
+changed controller to another opponent). Once it has left the
+battlefield, its last-known controller decides
+(`Game.LastKnownPermanentForEffect`, the turn-long record #1379 added). Only this relationship falls back to last-known
+information: the attachment and graveyard relationships still need a
+present anchor, because an Equipment cannot be attached to a creature
+that is gone and Goblin Welder's exchange needs both halves.
+
+The fallback matters because it decides whether the spell resolves. If
+Breaking of the Fellowship's first creature dies in response, the second
+creature, still under that player's control, is still a legal target
+(CR 608.2b), so the spell resolves and the Ring tempts its caster. No
+damage is dealt, because an illegal target performs no action. Had the
+relation answered "no information", both targets would be illegal, the
+spell would not resolve and the Ring would not tempt.
+
+The wire, the client and the bot need nothing new: `relation.pairs`
+already carries the compatible second picks for each anchor, and the
+enumerator already narrows a first pick that has no possible second.
+
+Card: Breaking of the Fellowship (Full). Tests:
+`TestBreakingOfTheFellowshipRechecksTheRelationOnResolution` (either
+creature changing controller, the first dying, the first dying and the
+second changing controller, the first gaining hexproof),
+`TestBreakingOfTheFellowshipRefusesAnUnrelatedSecondTarget`,
+`TestBreakingOfTheFellowshipEnumeratesSameControllerPairs` and
+`TestSameControllerRelationViewShipsCompatiblePairs`.
 
 ## Amendment 2026-10-15: tiered is Spree with exactly one bullet (#3777)
 
