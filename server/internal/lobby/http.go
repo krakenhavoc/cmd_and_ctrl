@@ -2339,9 +2339,10 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	xValue := 0
 	if xs := r.URL.Query().Get("x"); xs != "" {
+		// #3895: bounded as the cast and the activation bound it.
 		v, err := strconv.Atoi(xs)
-		if err != nil || v < 0 {
-			return httpError(http.StatusBadRequest, "x must be a non-negative integer")
+		if err != nil || v < 0 || v > game.MaxAnnouncedX {
+			return httpError(http.StatusBadRequest, fmt.Sprintf("x must be an integer from 0 to %d", game.MaxAnnouncedX))
 		}
 		xValue = v
 	}

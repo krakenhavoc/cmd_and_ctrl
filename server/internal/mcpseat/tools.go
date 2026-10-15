@@ -1008,6 +1008,11 @@ func applyValue(m legal.Move, value any) (json.RawMessage, error) {
 		if !ok || f != math.Trunc(f) {
 			return nil, errors.New("value must be a whole number for X")
 		}
+		// #3895: bounded before the conversion, which is undefined for
+		// a float outside int's range.
+		if f < 0 || f > legal.MaxAnnouncedX {
+			return nil, fmt.Errorf("value for X must be from 0 to %d", legal.MaxAnnouncedX)
+		}
 		x := int(f)
 		if (m.Value.Min != nil && x < *m.Value.Min) || (m.Value.Max != nil && x > *m.Value.Max) {
 			return nil, fmt.Errorf("value %d for X is outside the range the server stated", x)

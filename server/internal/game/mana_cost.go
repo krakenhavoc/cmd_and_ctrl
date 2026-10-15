@@ -281,12 +281,13 @@ func (c ParsedCost) String() string {
 
 // XMana is the generic mana the {X} symbols ask for at the announced
 // x, less what a cost reduction took off them (XReduced, #2701), and
-// never below zero. A negative x reads as zero.
+// never below zero. A negative x reads as zero, and the product
+// saturates at maxManaDemand rather than wrapping (x_bound.go, #3895).
 func (c ParsedCost) XMana(x int) int {
 	if x < 0 {
 		x = 0
 	}
-	n := c.XSlots*x - c.XReduced
+	n := satMulMana(c.XSlots, x) - c.XReduced
 	if n < 0 {
 		return 0
 	}
@@ -297,8 +298,10 @@ func (c ParsedCost) XMana(x int) int {
 // announced x: the generic component plus XMana. The one way every
 // payment solver, affordability probe and fold reads it, so none of
 // them can forget XReduced.
+//
+// Saturates at maxManaDemand rather than wrapping (#3895).
 func (c ParsedCost) GenericWithX(x int) int {
-	return c.Generic + c.XMana(x)
+	return satAddMana(c.Generic, c.XMana(x))
 }
 
 // SettleX is the cost with X settled at the announced x: XMana(x)

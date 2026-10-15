@@ -1,6 +1,11 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+	"strconv"
+
+	"github.com/google/uuid"
+)
 
 // mana.go is the per-player mana economy: a `ManaPool` slice of
 // `ManaToken` RUNS (#3041), each standing for Count identical mana,
@@ -493,8 +498,14 @@ func colouredPass(pool ManaPool, used []int, order []int, reqs []ColorRequiremen
 	if len(reqs) == 0 {
 		return nil, nil
 	}
-	var units ManaPool
-	var unitRun []int
+	// Sized in one pass first, so a long run of requirements does not
+	// regrow the unit slices on the way.
+	n := 0
+	for _, i := range order {
+		n += min(pool[i].N()-used[i], len(reqs))
+	}
+	units := make(ManaPool, 0, n)
+	unitRun := make([]int, 0, n)
 	for _, i := range order {
 		for range min(pool[i].N()-used[i], len(reqs)) {
 			units = append(units, pool[i])
@@ -507,10 +518,33 @@ func colouredPass(pool ManaPool, used []int, order []int, reqs []ColorRequiremen
 	}
 	booked := make([]bool, len(units))
 	owner := newTokenOwners(len(units))
+	// #3895: consecutive requirements with the same options — the
+	// folded "spend only black mana on X" is X of them — share what
+	// the previous one learned, so the pass stays linear in X:
+	//
+	//   - the first-match walk resumes at `from`, where the previous
+	//     one stopped. Exact: a unit is never unbooked (a booking is
+	//     moved, not dropped), so every unit before `from` that prints
+	//     these options is still booked;
+	//   - once the augmenting path has failed for these options, it is
+	//     not searched again. Exact: a failed search books nothing, so
+	//     the next one would search the same bookings and fail too.
+	var prevOptions []string
+	from, reassignFailed := 0, false
 	for ri, req := range reqs {
-		idx := firstPrintedMatch(units, booked, unitOrder, req)
-		if idx < 0 && !req.AnyMana {
+		if ri == 0 || !slices.Equal(req.Options, prevOptions) {
+			from, reassignFailed = 0, false
+		}
+		prevOptions = req.Options
+		idx := firstPrintedMatch(units, booked, unitOrder[from:], req)
+		if idx >= 0 {
+			from = idx + 1
+		} else {
+			from = len(units)
+		}
+		if idx < 0 && !req.AnyMana && !reassignFailed {
 			idx = reassignColored(units, booked, unitOrder, owner, reqs, ri)
+			reassignFailed = idx < 0
 		}
 		if idx < 0 {
 			if req.AnyMana {
@@ -743,8 +777,14 @@ func (p ManaPool) MissingFor(cost ParsedCost, xValue int, ctx ManaSpendContext) 
 	// attemptSpend's two passes, mirrored: a widened slot no printed
 	// colour paid waits for the generic pass (#1600).
 	deferred, unpaid := colouredPass(p, used, order, widenedLast(cost.Required))
-	for _, req := range unpaid {
-		missing = append(missing, "{"+formatRequirement(req)+"}")
+	// A run of identical symbols — a folded "spend only black mana on
+	// X" left unpaid is X of them — shares one formatted string.
+	var sym string
+	for i, req := range unpaid {
+		if i == 0 || !sameSymbol(req, unpaid[i-1]) {
+			sym = "{" + formatRequirement(req) + "}"
+		}
+		missing = append(missing, sym)
 	}
 
 	generic := cost.GenericWithX(xValue)
@@ -759,6 +799,10 @@ func (p ManaPool) MissingFor(cost ParsedCost, xValue int, ctx ManaSpendContext) 
 			missing = append(missing, "{"+formatRequirement(req)+"}")
 		}
 		need = generic
+	}
+	// #3895: a long generic shortfall is one {N} (maxListedGeneric).
+	if need > maxListedGeneric {
+		return append(missing, "{"+strconv.Itoa(need)+"}")
 	}
 	for need > 0 {
 		missing = append(missing, "{1}")
@@ -835,6 +879,14 @@ func reassignColored(work ManaPool, used []bool, order []int, owner []int, reqs 
 			if prev < 0 || reqs[prev].AnyMana {
 				continue
 			}
+			// #3895: an owner that prints the same colours as `r` is
+			// not moved. Any token it could move to, this loop reaches
+			// next with the same tokens visited, and taking it here
+			// books the same tokens. Following it instead rescans the
+			// pool once per level, which is quadratic in a folded X.
+			if slices.Equal(reqs[prev].Options, reqs[r].Options) {
+				continue
+			}
 			if j := augment(prev); j >= 0 {
 				used[j] = true
 				owner[j] = prev
@@ -909,4 +961,9 @@ func formatRequirement(req ColorRequirement) string {
 		out += "/P"
 	}
 	return out
+}
+
+// sameSymbol reports whether formatRequirement writes a and b alike.
+func sameSymbol(a, b ColorRequirement) bool {
+	return a.Phyrexian == b.Phyrexian && slices.Equal(a.Options, b.Options)
 }
