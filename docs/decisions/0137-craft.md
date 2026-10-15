@@ -140,3 +140,13 @@ Ten ship `full`: **Saheeli's Lattice**, **Altar of the Wretched**, **Sunbird Sta
 ### Out of scope, stated
 
 **The Enigma Jewel** moves to the "Having another card's activated abilities" row (#1557). Its craft clause is expressible as data, but Locus of Enlightenment "has each activated ability of the exiled cards used to craft it", each once a turn, which is that row's seam and needs its own ADR; and "nonlands with activated abilities" must know whether a card the catalog does not automate has one, which the engine cannot read off a `Card`.
+
+## Amendment, 2026-10-15: the "tapped and attacking" put is not craft's (#3771)
+
+**Status:** Accepted · S58 — Deck requests, October batch.
+
+The Grim Captain's put (Decision 8) used a file-private helper, `putAttackingYourChoice`, that asked what the card attacks and moved it from exile. Interceptor, Shadow's Hound does the same thing from the graveyard, so the helper moved to `cards/effects/put_attacking.go` and takes the zone the card must still be in: `putAttackingYourChoice(ctx, card, from, name)`.
+
+- **Two checks, one zone.** The controller's answer to "what does it attack?" is a pause in which the card can leave, and a card that has changed zones is a new object (CR 400.7). The move re-reads the card's zone and does nothing when it is not `from`; without that check the engine rejects the move and raises an effect error. The Grim Captain keeps `ZoneExile`.
+- **The defender is chosen, not inherited** (CR 506.3c, CR 508.4): any player, planeswalker or battle the controller could attack, with no question when there is one. The card was never declared, so nothing that watches attacks sees it.
+- **Cards:** Interceptor, Shadow's Hound (a graveyard-zone attack trigger behind `MayPay`, anchored to the declare attackers step so the answer cannot arrive after blockers).
