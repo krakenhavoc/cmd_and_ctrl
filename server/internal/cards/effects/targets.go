@@ -665,6 +665,13 @@ func ControlledBy(player uuid.UUID) CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.Controller == player }
 }
 
+// OwnedBy passes for cards the named player owns — "target creature
+// card in that player's graveyard" (Sepulchral Primordial). ControlledBy
+// is the battlefield sibling.
+func OwnedBy(player uuid.UUID) CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.Owner == player }
+}
+
 // Multicolored passes when the card has two or more colours — the
 // "each player who controls a multicolored creature draws a card"
 // half of Depopulate, and the predicate half of any gold-hoser.

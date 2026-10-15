@@ -187,6 +187,11 @@ var (
 				YouOwn(), Creature(), PowerLE(3))
 		}))
 
+	// Espers to Magicite (#3655): "when you do, choose up to one creature
+	// card exiled this way ... create a token that's a copy of it" —
+	// untargeted, the exiled creature cards ride the payload.
+	espersCopyBody = game.SimpleDelayedBody("espers-to-magicite/copy", espersCopy)
+
 	// The Falcon, Airship Restored (#3655): "when you do, return target
 	// creature card from your graveyard to the battlefield".
 	falconReturnBody = game.ReflexiveBody("the-falcon-airship-restored/return",

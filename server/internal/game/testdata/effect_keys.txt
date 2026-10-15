@@ -250,3 +250,4 @@ body cait-sith/boost
 body summon-kujata/fire-damage
 body good-king-mog/copy-a-non-saga-token
 condition good-king-mog/you-cast-a-noncreature-spell
+body espers-to-magicite/copy
