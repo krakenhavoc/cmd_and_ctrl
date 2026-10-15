@@ -65,6 +65,9 @@ var labelSets = map[string]labelSet{
 	"resource": oneOf(capacityResources...),
 	// Bot model budget (botwatch.go).
 	"period": oneOf(budgetPeriods...),
+	// Deploy cost (deploy.go, #3037).
+	"phase": oneOf(bootPhaseLabels...),
+	"flush": oneOf(flushLabels...),
 }
 
 // familyLabelSets are rows for one metric family only, consulted
