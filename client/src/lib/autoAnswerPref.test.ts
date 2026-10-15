@@ -276,6 +276,36 @@ describe("the notice", () => {
     expect(autoAnswerNotice(line({}), "Rhystic Study", view(undefined), "me").undoable).toBe(false);
   });
 
+  // ADR 0188 Decision 12: the which-skip question is neither Yes nor No
+  // to the player, so its notice says what happened to the extra turn.
+  it("words the which-skip answers by what happened to the extra turn", () => {
+    const v = view(undefined, {}, { undo_auto_answer: 40 });
+    const key = "engine|turn_skip_order";
+    expect(
+      autoAnswerNotice(
+        line({ call: "yes", label: undefined, auto_answer_key: key }),
+        "Magosi, the Waterveil",
+        v,
+        "me",
+      ).text,
+    ).toBe("Magosi, the Waterveil: used your own skip on your extra turn");
+    expect(
+      autoAnswerNotice(
+        line({ call: "no", label: "Trouble in Pairs", auto_answer_key: key }),
+        "Magosi, the Waterveil",
+        v,
+        "me",
+      ).text,
+    ).toBe("Trouble in Pairs: skipped your extra turn, your own skip stays");
+    expect(autoAnswerNotice(line({ call: "yes", auto_answer_key: key }), "", v, "me").text).toBe(
+      "Your skip: used your own skip on your extra turn",
+    );
+    // Every other key keeps its wording.
+    expect(autoAnswerNotice(line({ call: "yes" }), "Sphinx", v, "me").text).toBe(
+      "Sphinx: answered Yes for you",
+    );
+  });
+
   it("is a step request with Undo and Ask me next time", () => {
     const undo = vi.fn();
     const ask = vi.fn();

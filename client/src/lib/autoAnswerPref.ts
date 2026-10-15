@@ -148,10 +148,22 @@ export function rememberedRule(c: PendingChoiceView, apply: boolean): AutoAnswer
   };
 }
 
+/**
+ * The fixed key of the which-skip question (ADR 0188 Decision 12), the
+ * one engine-wide key ADR 0127 allows without a catalog row. Always is
+ * answer 0, "use my skip"; Never is answer 1.
+ */
+export const TURN_SKIP_ORDER_KEY = "engine|turn_skip_order";
+
 /** canRemember reports whether a prompt shows "Remember this answer". */
 export function canRemember(c: PendingChoiceView | null | undefined): boolean {
   if (!c?.auto_answer_key) return false;
-  return c.kind === "pay_unless" || c.kind === "trigger_prompt" || c.kind === "confirm";
+  return (
+    c.kind === "pay_unless" ||
+    c.kind === "trigger_prompt" ||
+    c.kind === "confirm" ||
+    c.kind === "turn_skip_order"
+  );
 }
 
 /**
@@ -219,6 +231,22 @@ export function newAutoAnswerEntries(
 }
 
 /**
+ * noticeText is the notice's line. The which-skip question (ADR 0188
+ * Decision 12) is not a yes or a no, so it says what happened to the
+ * extra turn: "Magosi, the Waterveil: used your own skip on your extra
+ * turn". Yes spent the viewer's own skip; No let the effect named by the
+ * entry's label take the turn.
+ */
+function noticeText(e: LogEvent, cardName: string): string {
+  if (e.auto_answer_key === TURN_SKIP_ORDER_KEY) {
+    return e.call === "yes"
+      ? `${cardName || "Your skip"}: used your own skip on your extra turn`
+      : `${e.label || "Another effect"}: skipped your extra turn, your own skip stays`;
+  }
+  return `${cardName || "A card"}: ${answerWords(e)} for you`;
+}
+
+/**
  * autoAnswerNotice builds the notice for `entry`, an auto_answer line of
  * the viewer's. `cardName` is the asking card's name as the viewer sees
  * it ("" when hidden). The Undo works exactly while the room stamps this
@@ -234,7 +262,7 @@ export function autoAnswerNotice(
   const me = view?.seats.find((s) => s.id === viewerID);
   return {
     seq: entry.seq,
-    text: `${cardName || "A card"}: ${answerWords(entry)} for you`,
+    text: noticeText(entry, cardName),
     key: entry.auto_answer_key ?? "",
     undoable: (me?.undo_auto_answer ?? 0) === entry.seq,
   };

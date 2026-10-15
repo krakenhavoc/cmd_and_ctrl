@@ -1050,6 +1050,20 @@ export const LABEL_SPECS = {
     owners: ["lib/choiceDock.ts"],
     doc: "the toggle under a prompt that can take a standing answer; on, the next button pressed also sets the rule (Yes or Pay: Always; No or Don't pay: Never)",
   }),
+  recommendedAnswer: label({
+    name: "Recommended",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/choiceDock.ts"],
+    doc: 'the tag after the recommended answer of the which-skip question, "Use my skip" (ADR 0188 Decision 12); Enter takes it',
+  }),
+  choosingNextTurn: label({
+    name: "Choosing the next turn",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/components/board/PhaseDisplay.svelte"],
+    doc: "the step label while the turn change waits on the which-skip question (turn.between_turns, ADR 0188 Decision 12): the old turn is over and the next has not begun",
+  }),
   automaticAnswer: label({
     name: "automatic answer",
     kind: "aria",

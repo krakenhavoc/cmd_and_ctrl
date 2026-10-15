@@ -372,7 +372,7 @@ type TurnSkipOrder struct {            // PendingChoice.TurnSkipOrder, plain dat
 
 **The default, everywhere it can be applied:**
 
-- **The dock** (slice 4) draws it as a two-button prompt. "Use my skip" has focus and a "Recommended" tag, so Enter takes it. A one-line explanation reads: "Your extra turn is skipped either way. Use it to pay off your own 'skip your next turn'?"
+- **The dock** (slice 4) draws it as a two-button prompt. "Use my skip" has focus and a "Recommended" tag, so Enter takes it (the answers also take U and L, their initials, since neither is a "no"). A one-line explanation reads: "Your extra turn is skipped either way. Use it to pay off your own 'skip your next turn'?"
 - **A standing answer** (ADR 0127). The prompt is covered with a fixed engine key, `engine|turn_skip_order`, which is the one exception to ADR 0127 §2's "no catalog row, no key". Always is answer 0 and Never is answer 1. The "Remember this answer" toggle sets it, and `NextAutoAnswer` answers it without asking.
 - **Bots.** The heuristic picks answer 0. The model seat's prompt marks it "(recommended)". The MCP seat lists it first, as "(recommended)".
 - **Away and disconnected players.** C2 has no prompt timer. The away flow (ADR 0177) is the timeout: a seat handed to the heuristic stand-in picks answer 0. Conceding for the seat drops the prompt, which runs answer 0 as above.

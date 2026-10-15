@@ -138,6 +138,8 @@ registered, or when this file is stale.
 | `tip` | `tip` | complementary | aria | `lib/components/hints/HintCard.svelte` | a first-use hint's card (ADR 0125 §3.6); one at a time, and Go to the tip (i) moves focus to it |
 | `keyboardShortcuts` | `keyboard shortcuts` | dialog | text | `lib/components/ShortcutsOverlay.svelte` | the keymap overlay (?), named by its heading |
 | `rememberThisAnswer` | `Remember this answer` | button | text | `lib/choiceDock.ts` | the toggle under a prompt that can take a standing answer; on, the next button pressed also sets the rule (Yes or Pay: Always; No or Don't pay: Never) |
+| `recommendedAnswer` | `Recommended` | generic | text | `lib/choiceDock.ts` | the tag after the recommended answer of the which-skip question, "Use my skip" (ADR 0188 Decision 12); Enter takes it |
+| `choosingNextTurn` | `Choosing the next turn` | generic | text | `lib/components/board/PhaseDisplay.svelte` | the step label while the turn change waits on the which-skip question (turn.between_turns, ADR 0188 Decision 12): the old turn is over and the next has not begun |
 | `automaticAnswer` | `automatic answer` | dialog | aria | `lib/autoAnswerPref.ts` | the dock's notice after the server answered a prompt for you ("Rhystic Study: paid {1} for you"), for about six seconds |
 | `undoAutomaticAnswer` | `Undo` | button | text | `lib/autoAnswerPref.ts` | the automatic-answer notice's undo; greyed once anything else is the top undo entry |
 | `autoPassNotice` | `auto-pass notice` | dialog | aria | `lib/passReason.ts` | the dock's chip after the client passed priority for you ("Passed for you: nothing to respond with", #3343), for about six seconds |

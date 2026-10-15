@@ -936,6 +936,12 @@
   // and N, because neither answer is a "no".
   const isEntryRiot = $derived(active?.kind === "entry_riot");
 
+  // ADR 0188 Decision 12 — "which skip takes this extra turn?", CR
+  // 616.1. The same {choice_id, apply} payload: apply uses the viewer's
+  // own skip (answer 0, recommended). Answered from the keyboard with U
+  // and L, the answers' initials; Enter takes the focused first button.
+  const isTurnSkipOrder = $derived(active?.kind === "turn_skip_order");
+
   // #74 confirm — the chained-choice two-way prompt, "do A, or do B."
   // Same {choice_id, apply} payload as the other yes/no kinds; the
   // server routes to ResolveConfirm by kind, and the card supplies
@@ -1339,6 +1345,16 @@
         e.preventDefault();
         answerOptional(true);
       } else if (e.key === "h" || e.key === "H") {
+        e.preventDefault();
+        answerOptional(false);
+      }
+      return;
+    }
+    if (isTurnSkipOrder) {
+      if (e.key === "u" || e.key === "U") {
+        e.preventDefault();
+        answerOptional(true);
+      } else if (e.key === "l" || e.key === "L") {
         e.preventDefault();
         answerOptional(false);
       }

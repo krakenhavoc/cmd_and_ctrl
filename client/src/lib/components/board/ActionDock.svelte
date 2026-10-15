@@ -800,7 +800,10 @@
               onclick={p.onPress}
               onkeydown={(e) => enterPresses(e, !p.disabled, p.onPress)}
             >
-              {p.label}{#if p.cap}<kbd class="cap" aria-hidden="true">{p.cap}</kbd>{/if}
+              {p.label}{#if p.note}{" "}<span class="note">{p.note}</span>{/if}{#if p.cap}<kbd
+                  class="cap"
+                  aria-hidden="true">{p.cap}</kbd
+                >{/if}
             </button>
           {/if}
         </div>
@@ -1285,6 +1288,13 @@
   }
   .dock-btn.request-primary:hover:not(:disabled) {
     background: var(--accent-strong);
+  }
+  /* The recommended tag on a request's primary (the which-skip
+     question): the muted note colour would sit on the gold fill. */
+  .dock-btn.request-primary .note {
+    color: inherit;
+    font-weight: 500;
+    opacity: 0.85;
   }
 
   /* ADR 0111 §3 (PR 6): a sheet grows up out of the dock, right-aligned
