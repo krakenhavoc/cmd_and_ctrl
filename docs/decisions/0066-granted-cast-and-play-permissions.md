@@ -3718,3 +3718,19 @@ and reads the permission as having no total, as it reads a `CastsLeft` or `PerTy
 Back-out: remove the budget test in `spellManaValueWithinCap` and `TestManaValueBudgetIsOnePermissionSpentByEachCast` fails; write
 the budget in place in `spendManaValueBudget` and `TestManaValueBudgetIsNeverSpentInPlace` fails; make the offer per copy and both of
 those fail.
+
+## Amendment — 2026-10-15 (#3783): a card copy cast for a named alternative cost
+
+Blue Mage's Cane (granted to the equipped creature): "exile up to one target instant or sorcery card from defending player's
+graveyard. If you do, copy it. You may cast the copy by paying {3} rather than paying its mana cost." That is the card-copy
+offer of the 2026-10-13 amendment with a price other than "free" or "the printed cost" (CR 118.9).
+
+`game.CardCopyOffer.Cost` already carried any price: it is the cost paid instead of the printed mana cost, and a cost
+with no `{X}` locks an `{X}` at 0 (CR 107.3b), as the free cast does. The card-facing door, `effects.CopyAndCast`, could only reach
+`"{0}"` (`Free`) or the printed cost (empty). It gains `Cost string`, written as a mana cost and passed through to the offer;
+`Free` wins when both are set, since `Free` is `Cost: "{0}"`. The copy is cast through the same grant, so its other costs and
+cost increases still apply, the copy lives in exile and ceases to exist if it is not cast by the controller's next priority pass,
+and the original stays exiled (CR 707.12, CR 704.5e). No wire or snapshot change.
+
+Back-out: pass `Cost` through to the offer no longer and `TestBlueMagesCaneExilesTheDefendersSpellAndOffersACopyForThree` fails
+on the permission's cost and on the cast for `{3}`.

@@ -7416,6 +7416,7 @@ the stack) and not `CreateTokenCopy` (a permanent):
 ```go
 CopyAndCast{Cards: exiled, Free: true}.Apply(ctx)       // "without paying its mana cost"
 CopyAndCast{Cards: exiled, FollowUp: key}.Apply(ctx)    // "you may cast the copy. If you do, ..."
+CopyAndCast{Cards: exiled, Cost: "{3}"}.Apply(ctx)      // "cast the copy by paying {3} rather than its mana cost" (Blue Mage's Cane)
 ```
 
 Hand it the cards that REALLY reached exile (the continuation of

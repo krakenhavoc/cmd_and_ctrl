@@ -39,9 +39,15 @@ type CopyAndCast struct {
 	Player uuid.UUID
 
 	// Free is "without paying its mana cost" ({0}, which also locks an X
-	// at 0, CR 107.3b). False is "you may cast the copy": its printed
-	// mana cost is paid.
+	// at 0, CR 107.3b). False with an empty Cost is "you may cast the
+	// copy": its printed mana cost is paid.
 	Free bool
+
+	// Cost is "you may cast the copy by paying {3} rather than paying its
+	// mana cost" (CR 118.9, Blue Mage's Cane, #3783): the price paid
+	// INSTEAD of the printed mana cost, written as a mana cost. Free wins
+	// when both are set, since Free is Cost "{0}".
+	Cost string
 
 	// FollowUp is a registered body (game.RegisterCastFollowUp) run when a
 	// copy is cast because of this offer — "if you do, you lose 2 life".
@@ -87,8 +93,11 @@ func (c CopyAndCast) Apply(ctx *Context) error {
 	if src, ok := ctx.Game.LookupCardForEffect(ctx.Source()); ok {
 		offer.SourceName = src.Name
 	}
-	if c.Free {
+	switch {
+	case c.Free:
 		offer.Cost = "{0}"
+	case c.Cost != "":
+		offer.Cost = c.Cost
 	}
 	ctx.Game.CopyCardsAndOfferCastsForEffect(offer, c.Cards)
 	return nil
