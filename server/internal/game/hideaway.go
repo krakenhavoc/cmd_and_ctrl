@@ -99,6 +99,38 @@ func (g *Game) ExileHiddenForEffect(source PermissionCardRef, actor, cardID uuid
 	})
 }
 
+// ExileHiddenLinkedForEffect is ExileHiddenForEffect for an ability that
+// exiles a card face down and later says "cards exiled WITH <this>"
+// (CR 607.2a), not "the exiled card": Urianger Augurelt's Draw Arcanum,
+// "look at the top card of your library. You may exile it face down", and
+// Play Arcanum's "you may play cards exiled with Urianger Augurelt"
+// (ADR 0091's 2026-10-15 amendment, #3787).
+//
+// The card lands FaceDownHidden, HiddenBy `source`, exactly as a
+// hideaway card does, so the controller of the permanent that exiled it
+// may look at it and nobody else may (CR 406.3), and it ALSO carries
+// Card.ExiledWith naming `source`, which is the link a cast permission's
+// filter reads (PermissionFilter.ExiledWithSource) and the one
+// ExiledWithForEffect lists. Hideaway's own exile does not stamp it:
+// that card is read back through HiddenBy ("the exiled card"), and a
+// standing permission over "cards exiled with" would otherwise reach
+// the hideaway land's card too.
+//
+// Answers whether the move paused on a CR 903.9 commander prompt.
+//
+// Caller must hold g.mu.
+func (g *Game) ExileHiddenLinkedForEffect(source PermissionCardRef, actor, cardID uuid.UUID) (bool, error) {
+	return g.routeCardToZoneLocked(zoneRoute{
+		CardID:     cardID,
+		Dst:        ZoneExile,
+		Actor:      actor,
+		Source:     source.ID,
+		FaceDown:   FaceDownHidden,
+		HiddenBy:   source,
+		ExiledWith: source,
+	})
+}
+
 // HiddenCardsForEffect is CR 607.2a's "the exiled card" for a hideaway
 // permanent: the cards still in exile that `source` — that exact
 // object — exiled with its hideaway, oldest first. Empty once the card

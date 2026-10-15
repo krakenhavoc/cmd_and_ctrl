@@ -244,6 +244,12 @@ type PermissionFilter struct {
 	// ownership rule.
 	NotOwnedByHolder bool `json:"notOwnedByHolder,omitempty"`
 
+	// OwnedByHolder is Kayla's Music Box's "cards YOU OWN exiled with
+	// ...": a card whose owner is anyone but the permission's holder does
+	// not qualify (#3787). NotOwnedByHolder's mirror, read in the same
+	// place for the same reason.
+	OwnedByHolder bool `json:"ownedByHolder,omitempty"`
+
 	// WithCounter is the name of a counter the card must carry — the
 	// "stash" counter on Tinybones' exiled cards. Counters on a card in
 	// exile are per object (CR 122.2, 400.7) and MoveCard clears them
@@ -440,6 +446,21 @@ type CastPermission struct {
 	// cheaper printed price. Strictly weaker than printed, never
 	// stronger.
 	Cost string `json:"cost,omitempty"`
+
+	// CostLess is "spells you cast this way cost {N} less to cast"
+	// (Urianger Augurelt's Play Arcanum, ADR 0066's 2026-10-15
+	// amendment, #3787): generic mana taken off the price of a spell
+	// cast through this permission. A cost REDUCTION, not a flat price,
+	// so it composes with whatever the cast would otherwise pay (the
+	// printed cost, an alternative cost the cast claims) rather than
+	// replacing it, and with the board's increases, which are all added
+	// before it comes off (CR 601.2f). It never goes below {0}, and a
+	// land has no cost to reduce. Read by the one pricer
+	// (costAfterModifiersLocked) and, from the permission it already
+	// holds, by the enumerator, so the payment, the preview and the bot
+	// all agree. Zero is no reduction, which is every permission written
+	// before this.
+	CostLess int `json:"costLess,omitempty"`
 
 	// LifeEqualToManaValue is Bolas's Citadel: "pay life equal to its
 	// mana value rather than pay its mana cost". A COST (CR 119.4),
@@ -1488,6 +1509,9 @@ func permissionReachesPileLocked(holder uuid.UUID, perm *CastPermission, card Ca
 	if perm.Filter.NotOwnedByHolder && card.Owner == holder {
 		return false
 	}
+	if perm.Filter.OwnedByHolder && card.Owner != holder {
+		return false
+	}
 	if zone != ZoneGraveyard && zone != ZoneLibrary {
 		return true
 	}
@@ -2142,4 +2166,21 @@ func requiresColorless(req ColorRequirement) bool {
 		}
 	}
 	return true
+}
+
+// grantReductionLocked is CostQuery.GrantReduction for one announcement:
+// the CostLess of the permission the cast claims, or 0 for a cast that
+// uses none (a hand cast, an unclaimed zone, a permission that prints no
+// reduction). It asks CastPermissionForClaimLocked with the same claim
+// the price and the announce path ask it with, so all three judge the
+// cast under the same permission. Caller must hold g.mu.
+func (g *Game) grantReductionLocked(playerID uuid.UUID, card Card, from ZoneKind, params CastSpellParams) int {
+	if from == ZoneHand || from == ZoneCommand {
+		return 0
+	}
+	grant := g.CastPermissionForClaimLocked(playerID, card, from, params.AlternativeCost)
+	if grant == nil || grant.CostLess <= 0 {
+		return 0
+	}
+	return grant.CostLess
 }

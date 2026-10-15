@@ -1020,6 +1020,13 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// every announcement below; the other payments are repriced on their
 	// own when they are offered against it (first.base).
 	altMV := emergeManaValue(g, offer, altCostSets[0])
+	// #3787: the permission's own "cost {N} less" (Urianger Augurelt), read
+	// off the permission the announcement is made under, as the engine's
+	// pricer reads it off the one the cast claims.
+	grantLess := 0
+	if perm != nil {
+		grantLess = perm.CostLess
+	}
 	discardSets := [][]uuid.UUID{nil}
 	sacrificeSets := [][]uuid.UUID{nil}
 	// ADR 0100 §6: a VARIABLE sacrifice clause on a cast — "sacrifice X
@@ -1170,6 +1177,7 @@ modeLoop:
 				Controller:            e.seat,
 				FromZone:              fromZone,
 				AltSacrificeManaValue: altMV,
+				GrantReduction:        grantLess,
 				ExilingFromHand:       len(handExile),
 			})
 			if err != nil {
@@ -1268,6 +1276,7 @@ modeLoop:
 					FromZone:              fromZone,
 					Targets:               targets,
 					AltSacrificeManaValue: altMV,
+					GrantReduction:        grantLess,
 					ExilingFromHand:       len(handExile),
 				})
 				if err != nil {
@@ -1345,6 +1354,7 @@ modeLoop:
 							Targets:               tgts,
 							Sacrificing:           len(sacs),
 							AltSacrificeManaValue: altMV,
+							GrantReduction:        grantLess,
 							ExilingFromHand:       len(handExile),
 						})
 						if err != nil {

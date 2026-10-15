@@ -3866,3 +3866,45 @@ No wire or snapshot change: the follow-up key already rode `castPermissions[].fo
 
 Back-out: drop `FromPermission` from `castUsesGrantLocked` and `TestEmetSelchCastOfAFlashbackCardCountsAndPaysManaCost`
 fails (the second loss offers again); drop the `FollowUp` key and `TestEmetSelchOffersOnlyOnceEachTurn` fails.
+
+## Amendment — 2026-10-15 (#3787): a temporary play grant over "cards exiled with" a source, with a cost reduction
+
+Urianger Augurelt's Play Arcanum: "Until end of turn, you may play cards exiled with Urianger Augurelt. Spells you cast
+this way cost {2} less to cast." Kayla's Music Box prints the same grant without the discount and over "cards you own".
+Two pieces were missing, both small.
+
+**1. A STORED standing permission may carry the "exiled with" filter.** `PermissionFilter.ExiledWithSource` was built for
+a STANDING permission derived off the battlefield (Valgavoth), where `stampStandingPermissionLocked` writes the granting
+object into `ExiledWith`. A resolution that grants "until end of turn, cards exiled with this" has the object in hand
+(`effects.HiddenRefOfActivation`), so it stores a `ScopeStanding` permission over exile with `ExiledWithSource` and
+`ExiledWith` both set. That is a rule over the zone, not a set locked at resolution (CR 611.2c is the wrong reading
+of "cards exiled with this": a card exiled with it after the activation is playable too), and the epoch in the
+reference still ends the claim when the source leaves (CR 400.7). `effects.PlayCardsExiledWith` is the one door.
+It is play, not cast, so a land is covered (CR 305.1) and `CastOnly` stays unset.
+
+**2. `CastPermission.CostLess` — "spells you cast this way cost {N} less".** Generic mana taken off the price of a spell
+cast through the permission. A reduction, not a flat price: `Cost` replaces the cost the cast would pay, while this
+composes with it (a printed cost, a claimed alternative cost) and with the board's cost modifiers. It reaches the pricer
+as `CostQuery.GrantReduction`, taken off in `applyCostModifiersLocked` with the board's reductions and emerge's, so every
+increase has been added first and a `CostFloor` still applies after (CR 601.2f), and it clamps at {0} like any generic
+reduction (`reduceGeneric`, including the mana announced for {X}). The one pricer (`costAfterModifiersLocked`) reads it
+from the permission the cast claims (`grantReductionLocked`, the same `CastPermissionForClaimLocked` lookup the price and
+the announce path use); the enumerator reads it from the permission it is announcing under, so the payment, the preview,
+the view's price and the bot agree (#544). A hand or command-zone cast reads none.
+
+**3. `PermissionFilter.OwnedByHolder`** — Kayla's Music Box's "cards YOU OWN exiled with it". `NotOwnedByHolder`'s mirror,
+read in `permissionReachesPileLocked` where the holder and the owner are both known.
+
+### Snapshot
+
+Additive within v9, omitted when zero: `seats[].castPermissions[].costLess` and `...filter.ownedByHolder` (the filter
+is also mirrored under the statics that carry one, hence the six lines in `testdata/snapshot_shape/v9.txt`). A file
+written before them restores with no reduction and no ownership clause. A binary from before them drops the key and reads
+the permission without the discount (weaker than printed) or, for the Box, without the ownership clause, which matters
+only to a table that restores mid-turn after the Box changed hands. No wire change: the view prices through
+`PriceCastForEffect`, which already reads the grant.
+
+Back-out: pass `GrantReduction: 0` in `costAfterModifiersLocked` and `TestUriangerPlayArcanumCastsAnExiledSpellForTwoLess`
+fails; read `0` for it in the enumerator and `TestUriangerEnumerationPricesTheDiscount` fails; take it off before the
+increases are added (drop it from the full-modifier path) and `TestUriangerReductionComesOffAfterTheIncreases` fails; drop
+the `OwnedByHolder` test and `TestKaylasMusicBoxPlaysOnlyCardsTheHolderOwns` fails.
