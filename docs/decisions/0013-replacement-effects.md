@@ -1574,7 +1574,11 @@ wired onto the eleven catalog cards that print it. Golgari Charm's
 regenerate mode still waits on the modal-clause seam (#764), which is
 the only reason it is not in that list. Totem armor (CR 702.111) and
 CR 701.19b's static "if this would be destroyed, regenerate it"
-remain unmodelled; no catalog card needs either yet.
+remain unmodelled; no catalog card needs either yet. *(Update
+2026-10-14, #3654: umbra armor, the renamed totem armor, is CR 702.89,
+not 702.111, and has shipped as a catalog replacement on the Aura,
+`effects.UmbraArmor`. It reads the same `ev.Destruction` flag and
+ignores "can't be regenerated"; see engine-seams.md.)*
 
 ### 5q. Amendment, 2026-09-18: every graveyard arrival opens the window
 
