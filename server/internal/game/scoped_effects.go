@@ -385,6 +385,16 @@ const (
 	// instead of handing the player a turn their card took. Reads
 	// Player and Amount.
 	ModSkipTurns ModKind = "skipTurns"
+	// ModSkipExtraTurnStep is "skip the <Step> of that turn" (ADR 0188
+	// Decision 3a, #3563; CR 614.10, 500.11): Savor the Moment's "Skip
+	// the untap step of that turn". Scope ScopeGame, IndefiniteDuration,
+	// with Step the step to skip and ExtraTurn the ExtraTurn.Ref the skip
+	// is bound to. Read only at step entry (runStepEntryHooksLocked),
+	// where the first matching step of that turn is passed over and the
+	// record is spent. A record whose turn is skipped or has ended is
+	// swept as the next turn begins
+	// (sweepUnreachableBoundTriggersLocked). Reads Step and ExtraTurn.
+	ModSkipExtraTurnStep ModKind = "skipExtraTurnStep"
 )
 
 // The block-rule kinds (ADR 0041 P8, tier 3b, #1497). These are not
@@ -570,6 +580,11 @@ type Mod struct {
 	// absorbs damage is replaced by a record with a lower Amount, never
 	// mutated in place (see ScopedEffect's contract).
 	Amount int `json:"amount,omitempty"`
+	// Step and ExtraTurn are ModSkipExtraTurnStep's (ADR 0188 Decision
+	// 3a): the step to skip and the ExtraTurn.Ref it is bound to. Refused
+	// on every other kind (skipExtraTurnStepModProblem).
+	Step      Step `json:"step,omitempty"`
+	ExtraTurn int  `json:"extraTurn,omitempty"`
 	// CombatOnly narrows ModPreventDamage to combat damage.
 	CombatOnly bool `json:"combatOnly,omitempty"`
 	// Then is ModExileInsteadOfGraveyard's delayed-trigger body key: a
@@ -1000,6 +1015,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAttackTax: {reader: readerRule},
 	// ADR 0188 Decision 1 (#3559): the skip-your-next-turn debt.
 	ModSkipTurns: {reader: readerRule},
+	// ADR 0188 Decision 3a (#3563): a step of one extra turn skipped.
+	ModSkipExtraTurnStep: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1367,7 +1384,48 @@ func (g *Game) RegisterScopedRuleEffectForEffect(sourceID uuid.UUID, scope Affec
 //
 // Caller must hold g.mu (write).
 func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedObject, scope AffectedScope, controller uuid.UUID, mods []Mod, d Duration, label string, ts int64) bool {
-	named := false
+	g.appendBuiltScopedEffectLocked(g.buildScopedEffectLocked(sourceID, affected, scope, controller, mods, d, label, ts))
+	return true
+}
+
+// appendBuiltScopedEffectLocked mints the record's Seq (a record with a
+// non-layer mod is named, so a pause can hold its identity) and puts it
+// on the registry. It is the second half of appendScopedEffectLocked and
+// the way a record built earlier joins the registry later: an extra
+// turn's deferred effects (ExtraTurn.Effects) are built when the card
+// resolves and registered when that turn begins (ADR 0188 Decision 3b).
+//
+// Caller must hold g.mu (write).
+func (g *Game) appendBuiltScopedEffectLocked(e ScopedEffect) {
+	if scopedModsAreNamed(e.Mods) {
+		g.scopedEffectSeq++
+		e.Seq = g.scopedEffectSeq
+	}
+	g.ScopedEffects = append(g.ScopedEffects, e)
+	g.layerVersion.Add(1)
+}
+
+// scopedModsAreNamed reports whether a record carrying these mods is
+// given a Seq: any mod read by something other than the layer pass, the
+// copy fold or the text pass.
+func scopedModsAreNamed(mods []Mod) bool {
+	for _, m := range mods {
+		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy && r != readerText {
+			return true
+		}
+	}
+	return false
+}
+
+// buildScopedEffectLocked validates and builds a record without
+// registering it: every check appendScopedEffectLocked has always made
+// (an unknown kind, a malformed mod, a duration restore would refuse
+// all panic, as programming errors caught by the first test), and the
+// source's epoch, name and controller read now. The record has no Seq
+// yet. A non-nil `controller` overrides the one read off the source.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedObject, scope AffectedScope, controller uuid.UUID, mods []Mod, d Duration, label string, ts int64) ScopedEffect {
 	for _, m := range mods {
 		if !KnownModKind(m.Kind) {
 			panic(fmt.Sprintf("game: scoped effect %q uses unknown mod kind %q", label, m.Kind))
@@ -1432,8 +1490,8 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		if problem := skipTurnsModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
-		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy && r != readerText {
-			named = true
+		if problem := skipExtraTurnStepModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 	}
 	if problem := stackPinProblem(affected, mods); problem != "" {
@@ -1464,13 +1522,7 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 	if controller != uuid.Nil {
 		e.Controller = controller
 	}
-	if named {
-		g.scopedEffectSeq++
-		e.Seq = g.scopedEffectSeq
-	}
-	g.ScopedEffects = append(g.ScopedEffects, e)
-	g.layerVersion.Add(1)
-	return true
+	return e
 }
 
 func cloneMods(mods []Mod) []Mod {

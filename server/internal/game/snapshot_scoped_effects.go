@@ -29,7 +29,16 @@ import (
 // this binary registered restores; any other is refused.
 func (s *GameSnapshot) checkEffectKeys() error {
 	unknown := append([]string(nil), s.unknownEffectFields...)
-	for _, e := range s.ScopedEffects {
+	// ADR 0188 Decision 3b: the effects an extra turn is queued with are
+	// records too, registered as the turn begins, so they are held to the
+	// same vocabulary as the live ones.
+	records := s.ScopedEffects
+	for _, et := range s.ExtraTurns {
+		if len(et.Effects) > 0 {
+			records = append(append([]ScopedEffect(nil), records...), et.Effects...)
+		}
+	}
+	for _, e := range records {
 		for _, m := range e.Mods {
 			if !KnownModKind(m.Kind) {
 				unknown = append(unknown, "mod kind "+string(m.Kind))
@@ -125,6 +134,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			}
 			// ADR 0188: a skip debt owed by no one, or owing nothing.
 			if problem := skipTurnsModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// ADR 0188 Decision 3a: a skipped step that names no turn or
+			// no real step, or a step field on another kind.
+			if problem := skipExtraTurnStepModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
 		}

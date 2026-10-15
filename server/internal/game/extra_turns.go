@@ -40,6 +40,15 @@ type ExtraTurn struct {
 	Seat int `json:"seat"`
 	// Source is the card whose effect created the turn, for the log.
 	Source uuid.UUID `json:"source,omitempty"`
+	// Effects are rules effects (no affected objects) created by the
+	// effect that queued this turn, built and validated when the card
+	// resolved (DuringExtraTurnRuleEffectForEffect) and registered as the
+	// turn begins with UntilEndOfTurnDuration() and their original
+	// Timestamp (ADR 0188 Decision 3b): Alchemist's Gambit's "During that
+	// turn, damage can't be prevented". They live on the queue entry, so
+	// a turn that is skipped or dropped takes them with it (CR 614.10a)
+	// and an undo that restores the queue restores them.
+	Effects []ScopedEffect `json:"effects,omitempty"`
 }
 
 // TakeExtraTurnsForEffect gives `player` n extra turns directly after
@@ -269,9 +278,93 @@ func (g *Game) extraTurnPendingLocked(ref int) bool {
 	return false
 }
 
+// extraTurnQueuedLocked reports whether `ref` names an extra turn still
+// on the queue (not the one in progress).
+func (g *Game) extraTurnQueuedLocked(ref int) bool {
+	for _, et := range g.ExtraTurns {
+		if et.Ref == ref {
+			return true
+		}
+	}
+	return false
+}
+
+// DuringExtraTurnRuleEffectForEffect attaches a rules effect to queued
+// extra turn `ref`: "During that turn, damage can't be prevented"
+// (Alchemist's Gambit; ADR 0188 Decision 3b, CR 611.2a). The effect is
+// created now but starts with the turn, because no Duration begins in a
+// future turn and starting it now would cover the rest of this turn too.
+//
+// scope must not be ScopeNone: an effect that modifies objects fixes its
+// affected set when it begins (CR 611.2c), which a deferred record cannot
+// honour, so the API takes a scope and never affected objects. The record
+// is validated now by the checks every registration makes
+// (buildScopedEffectLocked) and stamped with the creation timestamp
+// (CR 613.7a). `controller` is the effect's "you", as for
+// RegisterScopedRuleEffectForEffect.
+//
+// Returns false, writing nothing, when ref is not queued, the scope is
+// unusable or there are no mods. Copy on write: the queue is rebuilt, so
+// an undo snapshot that shares the old backing array is not touched.
+//
+// Caller must hold g.mu (write).
+func (g *Game) DuringExtraTurnRuleEffectForEffect(ref int, sourceID uuid.UUID, scope AffectedScope, controller uuid.UUID, mods []Mod, label string) bool {
+	if scope == ScopeNone || !KnownAffectedScope(scope) || len(mods) == 0 {
+		return false
+	}
+	at := -1
+	for i, et := range g.ExtraTurns {
+		if et.Ref == ref {
+			at = i
+			break
+		}
+	}
+	if at < 0 {
+		return false
+	}
+	// The duration is a placeholder: startTurnLocked stamps
+	// UntilEndOfTurnDuration() as the turn begins.
+	e := g.buildScopedEffectLocked(sourceID, nil, scope, controller, mods, IndefiniteDuration(), label, timeNowUnixNano())
+	queue := cloneExtraTurns(g.ExtraTurns)
+	queue[at].Effects = append(queue[at].Effects, e)
+	g.ExtraTurns = queue
+	return true
+}
+
+// registerExtraTurnEffectsLocked puts the deferred effects of the extra
+// turn that has just begun on the registry, each lasting until the end of
+// this turn (CR 514.2) and keeping the timestamp it was created with
+// (CR 613.7a). Called from startTurnLocked after onTurnBeganLocked, so
+// the turn-began sweeps cannot see them.
+//
+// Caller must hold g.mu (write).
+func (g *Game) registerExtraTurnEffectsLocked(effects []ScopedEffect) {
+	for _, e := range effects {
+		e.Duration = g.UntilEndOfTurnDuration()
+		e.Mods = cloneMods(e.Mods)
+		g.appendBuiltScopedEffectLocked(e)
+	}
+}
+
+// cloneExtraTurns deep-copies the queue: the deferred Effects carry
+// slices of their own (Mods, Affected), and an undo snapshot must not
+// share them with the live game.
 func cloneExtraTurns(in []ExtraTurn) []ExtraTurn {
 	if len(in) == 0 {
 		return nil
 	}
-	return append([]ExtraTurn(nil), in...)
+	out := make([]ExtraTurn, len(in))
+	for i, et := range in {
+		if len(et.Effects) > 0 {
+			effects := make([]ScopedEffect, len(et.Effects))
+			for j, e := range et.Effects {
+				e.Affected = append([]AffectedObject(nil), e.Affected...)
+				e.Mods = cloneMods(e.Mods)
+				effects[j] = e
+			}
+			et.Effects = effects
+		}
+		out[i] = et
+	}
+	return out
 }

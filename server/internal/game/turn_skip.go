@@ -222,3 +222,141 @@ func (g *Game) emitTurnSkippedLocked(seat int, source uuid.UUID, extraRef int) {
 		Label:  label,
 	})
 }
+
+// --- a step of one extra turn (ADR 0188 Decision 3a, #3563) -----------
+
+// SkipStepOfExtraTurnForEffect is "skip the <step> of that turn" (CR
+// 614.10; Savor the Moment's "Skip the untap step of that turn"): one
+// ScopedEffect, ScopeGame, IndefiniteDuration, with a
+// ModSkipExtraTurnStep mod naming the queued turn `ref` and the step.
+//
+// The record is spent at step entry (spendSkippedStepLocked), by the
+// first matching step of that turn, so an untap step in a beginning
+// phase added later in the same turn (Sphinx of the Second Sun) still
+// happens (owner answer 2). It is swept, with the delayed triggers bound
+// to the same ref, when the turn is skipped or ends without reaching the
+// step (sweepUnreachableBoundTriggersLocked), because CR 614.10a says
+// anything scheduled for a skipped turn won't happen.
+//
+// Returns false, writing nothing, when ref names no queued extra turn or
+// step is not a step that can be skipped.
+//
+// Caller must hold g.mu (write).
+func (g *Game) SkipStepOfExtraTurnForEffect(ref int, step Step, source uuid.UUID, label string) bool {
+	if !g.extraTurnQueuedLocked(ref) {
+		return false
+	}
+	m := Mod{Kind: ModSkipExtraTurnStep, Step: step, ExtraTurn: ref}
+	if skipExtraTurnStepModProblem(m) != "" {
+		return false
+	}
+	return g.RegisterScopedRuleEffectForEffect(source, ScopeGame, uuid.Nil,
+		[]Mod{m}, IndefiniteDuration(), label)
+}
+
+// skipExtraTurnStepModProblem is the registration and restore check for
+// ModSkipExtraTurnStep: it names a real, skippable step and a real turn,
+// and the two fields it adds appear on no other kind. "" when the mod
+// is sound or is another kind with neither field set.
+func skipExtraTurnStepModProblem(m Mod) string {
+	if m.Kind != ModSkipExtraTurnStep {
+		if m.Step != "" || m.ExtraTurn != 0 {
+			return fmt.Sprintf("a step or extra-turn ref on a %s mod", m.Kind)
+		}
+		return ""
+	}
+	if m.ExtraTurn < 1 {
+		return "a skipExtraTurnStep mod names no extra turn"
+	}
+	known := false
+	for _, s := range turnSequence {
+		if s == m.Step {
+			known = true
+			break
+		}
+	}
+	if !known {
+		return fmt.Sprintf("a skipExtraTurnStep mod names step %q", m.Step)
+	}
+	if m.Step == StepCleanup {
+		// The cleanup step carries the turn's end-of-turn sweep. No card
+		// skips it, and a skip that did would leave "until end of turn"
+		// effects running into the next turn.
+		return "a skipExtraTurnStep mod names the cleanup step"
+	}
+	return ""
+}
+
+// spendSkippedStepLocked reports whether the step now being entered is
+// skipped by a ModSkipExtraTurnStep record bound to the extra turn in
+// progress, and if so removes the record (CR 614.10a: a skip is
+// satisfied by the first occurrence). Copy on write, so an undo snapshot
+// taken before keeps the record.
+//
+// Called from runStepEntryHooksLocked only, after the step is known to
+// exist and before the CR 614 replacement window opens: a skipped step
+// is never offered to Stasis.
+//
+// Caller must hold g.mu (write).
+func (g *Game) spendSkippedStepLocked() bool {
+	if !g.Turn.Extra || g.Turn.ExtraRef == 0 || len(g.ScopedEffects) == 0 {
+		return false
+	}
+	at := -1
+	for i := range g.ScopedEffects {
+		for _, m := range g.ScopedEffects[i].Mods {
+			if m.Kind == ModSkipExtraTurnStep && m.ExtraTurn == g.Turn.ExtraRef && m.Step == g.Turn.Step {
+				at = i
+				break
+			}
+		}
+		if at >= 0 {
+			break
+		}
+	}
+	if at < 0 {
+		return false
+	}
+	g.dropScopedEffectsLocked(func(i int, _ ScopedEffect) bool { return i == at })
+	return true
+}
+
+// sweepSkippedStepsLocked removes every ModSkipExtraTurnStep record
+// whose extra turn is neither the turn now beginning nor still queued:
+// the turn was skipped (Trouble in Pairs, Ugin's Nexus, a skip debt) or
+// ended before the step came (CR 614.10a). Called from
+// sweepUnreachableBoundTriggersLocked. Copy on write.
+//
+// Caller must hold g.mu (write).
+func (g *Game) sweepSkippedStepsLocked() {
+	g.dropScopedEffectsLocked(func(_ int, e ScopedEffect) bool {
+		for _, m := range e.Mods {
+			if m.Kind == ModSkipExtraTurnStep && !g.extraTurnPendingLocked(m.ExtraTurn) {
+				return true
+			}
+		}
+		return false
+	})
+}
+
+// dropScopedEffectsLocked rebuilds the registry without the records
+// `drop` selects, into a fresh slice (the backing array is shared with
+// every undo snapshot). Nothing is written when nothing is dropped.
+//
+// Caller must hold g.mu (write).
+func (g *Game) dropScopedEffectsLocked(drop func(i int, e ScopedEffect) bool) {
+	var next []ScopedEffect
+	dropped := false
+	for i, e := range g.ScopedEffects {
+		if drop(i, e) {
+			dropped = true
+			continue
+		}
+		next = append(next, e)
+	}
+	if !dropped {
+		return
+	}
+	g.ScopedEffects = next
+	g.layerVersion.Add(1)
+}

@@ -1949,6 +1949,17 @@ func (g *Game) runStepEntryHooksLocked() {
 		g.runStepEntryHooksLocked()
 		return
 	}
+	// ADR 0188 Decision 3a: "skip the untap step of that turn" (Savor the
+	// Moment) names one step of one extra turn. It is spent here, after
+	// the step is known to exist and before the CR 614 window opens, and
+	// the cursor walks past the step exactly as a cancelled one does
+	// (CR 500.11), so nothing in it happens: no phasing, no day/night
+	// check, no untap.
+	if g.spendSkippedStepLocked() {
+		g.advanceCursorLocked()
+		g.runStepEntryHooksLocked()
+		return
+	}
 	// S17 sub-PR 2: step-transition replacement hook. Stasis
 	// cancels StepUntap; Necropotence's "skip your draw step"
 	// cancels StepDraw. A cancelled step is a SKIPPED step
