@@ -190,12 +190,50 @@ const (
 // monolith-battle`. Synthetic, so it needs no Scryfall dump.
 const MonolithDeckID = "monolith-battle"
 
+// AnswersDeckID is the arena deck id of AnswersBattleDeck: `--decks
+// answers-battle`. Synthetic, so it needs no Scryfall dump.
+const AnswersDeckID = "answers-battle"
+
 // IsSynthetic reports whether a deck id is dealt by this package with no
-// Scryfall dump behind it: the empty id (BattleDeck), exert-battle and
-// monolith-battle.
+// Scryfall dump behind it: the empty id (BattleDeck), exert-battle,
+// monolith-battle and answers-battle.
 func IsSynthetic(id string) bool {
-	return id == "" || id == ExertDeckID || id == MonolithDeckID
+	return id == "" || id == ExertDeckID || id == MonolithDeckID || id == AnswersDeckID
 }
+
+// AnswersBattleDeck is BattleDeck with ten Basalt Gargoyles in it, for
+// #2939's arena checks of ADR 0142's answer pricing: a 3/2 flier whose
+// "{R}: +0/+1" needs two activations to live through the deck's Lightning
+// Bolts. No curated deck holds a pump creature of the kind. Dealt by
+// oracle ID so the catalog gives the Gargoyle its abilities; the printed
+// cost and stats are the card's own.
+func AnswersBattleDeck(owner uuid.UUID) []game.Card {
+	deck := BattleDeck(owner)
+	out := make([]game.Card, 0, len(deck))
+	dropBears, dropOgres := 6, 4
+	for _, c := range deck {
+		switch {
+		case c.Name == "Bear" && dropBears > 0:
+			dropBears--
+		case c.Name == "Ogre" && dropOgres > 0:
+			dropOgres--
+		default:
+			out = append(out, c)
+		}
+	}
+	for i := 0; i < 10; i++ {
+		c := game.NewCard("Basalt Gargoyle", owner)
+		c.OracleID = oracleBasaltGargoyle
+		c.TypeLine, c.ManaCost = "Creature — Gargoyle", "{2}{R}"
+		c.Power, c.Toughness = 3, 2
+		c.Keywords = []string{"flying"}
+		out = append(out, c)
+	}
+	return out
+}
+
+// Basalt Gargoyle's catalog key.
+const oracleBasaltGargoyle = "83a38c8d-e2f6-404b-83be-9cfce037d6e2"
 
 // MonolithBattleDeck is BattleDeck with ten of the two Monoliths in it,
 // for #2500's arena measurement: Basalt Monolith ("{T}: Add {C}{C}{C}",

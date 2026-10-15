@@ -416,3 +416,18 @@ the game in `internal/legal` (`stackThreatens`), like owner answer 4, which it l
 [ADR 0009's #3825 amendment](0009-smart-priority-autopass.md#amendment-an-untargeted-wipe-from-an-activated-ability-is-a-threat-3825) adds one more threat: an opponent's activated ability whose row declares a `Purpose.Sweep` (or `remove`) that reaches something the seat controls. It reads the declarations above and changes none of them.
 
 [ADR 0009's #3882 amendment](0009-smart-priority-autopass.md#amendment-a-sweep-or-an-edict-from-a-triggered-ability-is-a-threat-3882) reads an opponent's triggered row the same way. It lets a triggered row declare `AnswerRemove` (an edict), which §2 refused; no other answer is accepted off an activated row.
+
+## Amendment 2026-10-15 — a pump that takes several activations (#2939 gap 2) · Accepted
+
+Decision 6 priced a `pump` row only when one activation's declared `Pump` kept the creature alive. Evernight Shade's {B}: +1/+1 against a Lightning Bolt at a 2/2 takes two, so the bot never started either and the Shade died with its mana up.
+
+**The price** (`Config.PriceRepeatedPumps`, on in `DefaultConfig()`, off in `BaselineConfig()`; needs `PriceAnswers`). For a row that declares `pump` with a `Pump` that adds toughness, and no `survive`, `protect` or `prevent`, the bot finds the fewest activations whose summed pump keeps the creature alive through the declared damage and −N/−N. The pumps it already has on the stack from that creature above the threat count toward them, and so do the ones its untapped mana can still pay for (a row that costs anything but mana counts as one). When the two add up, this activation is priced at what saving the creature is worth (decision 6), less a flat `ActivateBase` for each activation still to come after it. The first of three costs a point less than the last, so a deep pump starts later than a shallow one. When the pumps on the stack already cover the threat, or the mana cannot reach it, the row keeps the price it had. Any other row from the same creature above the threat still counts as having answered it.
+
+**The declarations.** No activated row declared `Pump` before this; only exert rows did. The seven mana-only self pumps that add toughness now do: Evernight Shade, Knight of Dusk's Shadow, Nirkana Revenant, Restless Apparition, Basalt Gargoyle, Luminous Guardian and Mutant Surveyor. `Pump` is read only by the exert price and by this one, so no other price moves. `TestSelfPumpRowsDeclareTheirPump` holds every catalog row of the form "{cost}: This creature gets +N/+M until end of turn." to its declaration. Rows with a non-mana cost (energy, a discard, an any-player row) are left for a later pass.
+
+**Wire.** None: `purpose.pump` already existed.
+
+**Measurement** (ADR 0052; one tree built twice, the switch off then on, `boteval arena --rotate --lockstep --block-grace 0 --seed 1`, the synthetic `answers-battle` deck: `BattleDeck` with ten Basalt Gargoyles, the only deck with a pump creature of this kind). 0 stalls, 0 draws in every run.
+
+- Four `heuristic` seats, 12 games with the decision log. The reason "answer: pump it out of range (2 activations)" was chosen 0 times off and 8 times on (16 activations); each of the eight Gargoyles was still on the battlefield after the Bolt. Of the Bolts aimed at a bot's own Gargoyle, 17 of 34 left it alive off and 22 of 35 on.
+- Two `heuristic` against two `heuristic-baseline`, 160 games. `heuristic` won 87 of 320 (27.2%, 22.6%–32.3%) off and 89 of 320 (27.8%, 23.2%–33.0%) on: flat, as expected for a price that fires only on a Bolted Gargoyle. Gargoyle activations taken 1,672 off and 1,683 on.

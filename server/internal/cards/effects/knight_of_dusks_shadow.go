@@ -22,7 +22,7 @@ func init() {
 		CantGainLife:    OpponentsCantGainLife(),
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{B}: This creature gets +1/+1 until end of turn.",
-			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Purpose: game.Purpose{Answers: game.AnswerPump, Pump: &game.Pump{Power: 1, Toughness: 1}},
 			Cost:    ManaCost("{1}{B}"),
 			Effect:  thisGetsUntilEndOfTurn(1, 1, "Knight of Dusk's Shadow — +1/+1 until end of turn"),
 		}},
