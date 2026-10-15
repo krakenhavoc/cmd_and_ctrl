@@ -168,6 +168,47 @@ func ActivationCostsLessEach(amount func(q game.CostQuery) int, label string, wh
 	return m
 }
 
+// ActivationCostsLessIfItTargets is "<matching> abilities cost {n} less
+// to activate if they target [a card that matches]" (#3779) — Professor
+// Hojo's "that targets a creature you control". The activation twin of
+// CostsLessIfItTargets: `match` is judged for the ACTIVATOR against the
+// announced card targets as they stand when the cost is determined
+// (CR 602.2b, 601.2c before 601.2f).
+//
+// Sets ReadsTargets, so the engine hands it the targets and the
+// enumerator and the view price each legal target on its own.
+func ActivationCostsLessIfItTargets(n int, label string, match CardPredicate, when ...CostPredicate) game.CostModifier {
+	preds := append(append([]CostPredicate(nil), when...), ItTargets(match))
+	m := ActivationCostsLess(n, label, preds...)
+	m.ReadsTargets = true
+	return m
+}
+
+// ActivatedDuringYourTurn passes when the activator is the active
+// player — "...you activate during your turn".
+func ActivatedDuringYourTurn() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Game != nil && IsYourTurn(q.Game, q.Controller)
+	}
+}
+
+// TheFirstOwnCreatureTargetingActivationThisTurn passes while the
+// activator has not yet made an activation this turn that targeted a
+// creature they control (#3779) — "the FIRST activated ability you
+// activate ... that targets a creature you control". Reads
+// Game.OwnCreatureTargetedActivationsThisTurn, written when an
+// activation is announced, so a refused activation never uses up the
+// discount and a countered one does (it was activated).
+//
+// Pair it with ActivationCostsLessIfItTargets: the record says what the
+// turn has already done, the target predicate says whether THIS
+// activation is one of those.
+func TheFirstOwnCreatureTargetingActivationThisTurn() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Game != nil && q.Game.OwnCreatureTargetedActivationsThisTurn(q.Controller) == 0
+	}
+}
+
 // ChannelDiscountPerLegendaryCreature is the Kamigawa: Neon Dynasty
 // channel lands' "This ability costs {1} less to activate for each
 // legendary creature you control" (Boseiju, Otawara, Takenuma, …).

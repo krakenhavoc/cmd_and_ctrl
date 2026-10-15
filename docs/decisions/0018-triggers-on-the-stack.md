@@ -9,6 +9,7 @@
 **Amendment:** 2026-10-12 · **Accepted** · [An identical batch is asked again when its copies read their subjects](#amendment-2026-10-12--an-identical-batch-is-asked-again-when-its-copies-read-their-subjects-3021--accepted) · [#3021](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3021)
 **Amendment:** 2026-10-13 · **Accepted** · [The order prompt says why it asked](#amendment-2026-10-13--the-order-prompt-says-why-it-asked-3015--accepted) · [#3015](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3015)
 **Amendment:** 2026-10-13 (second) · **Accepted** · [The six remaining villainous-choice cards](#amendment-2026-10-13-second--the-six-remaining-villainous-choice-cards-3143--accepted--backlog) · [#3143](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3143)
+**Amendment:** 2026-10-15 · **Accepted** · [A became-target event says what kind of object targeted](#amendment-2026-10-15--a-became-target-event-says-what-kind-of-object-targeted-3779--accepted) · [#3779](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3779)
 
 ## Context
 
@@ -4737,3 +4738,26 @@ closure-field change.
 
 **Back-outs.** `TestACastTriggersSnapshotCountsTheXTheSpellWasCastWith` and `TestKrileCountsTheXAnXSpellWasCastWith`
 fail without the X read; `TestKrileUsesTheTurnOnlyWhenACardIsReturned` fails without the `NoteDoneThisTurn` call.
+
+## Amendment 2026-10-15 (seventh) — a became-target event says what kind of object targeted (#3779) · Accepted
+
+"Whenever one or more creatures you control become the target of an activated ability" (Professor Hojo) has to tell an
+activated ability from a spell or a triggered ability. `EventBecomesTarget` carried `StackItemID` but not the kind of
+the thing it named, so a trigger would have had to look the item up on the stack itself, which works only while the
+item is still there.
+
+### Decision
+
+1. **`Event.TargeterKind`** (`StackItemKind`: `spell`, `activated` or `triggered`) is stamped by
+   `emitBecameTargetLocked`, once for the whole fan-out, from `StackMeta[itemID].Kind`. Every caller creates its stack
+   item before it emits (the cast, the catalog and sandbox activations, a spell copy, an ability copy, a change of
+   targets, and the CR 603.3b drain for a trigger), so one helper stamps all of the sites. An item that is not on the
+   stack reads empty, which matches nothing. A copy of an activated ability is an activated ability (CR 707.10).
+2. **The predicate** is `creatureYouControlBecameTargetOfAnActivatedAbility` in `professor_hojo.go`: a card target, a
+   creature on the battlefield controlled by the source's controller, `TargeterKind == StackItemActivated`.
+3. **"One or more … only once each turn" is one gate.** An activation naming two creatures is two events;
+   `b11TriggeredThisTurn` declines the second because the first trigger is already counted from the moment it is put
+   on the stack, the same way Welcoming Vampire collapses a batch. A trigger that was countered still counts.
+4. **Snapshot.** `events[].targeter_kind` and the same field inside every embedded trigger event are additive under v9
+   and omitted when empty. A binary that drops the key reads the old events as having no kind, which only means an
+   older Hojo trigger does not fire for them.

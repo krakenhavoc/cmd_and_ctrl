@@ -4282,6 +4282,7 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 	// (activated.go) and the manual trigger announce below: after the
 	// item exists, so a ward or "becomes the target" trigger harvested
 	// off it lands on the stack above the thing that targeted.
+	g.noteOwnCreatureTargetedLocked(playerID, params.Targets) // #3779: an activation, however it was announced
 	g.emitAnnouncedTargetsLocked(playerID, sourceCardID, id, params.Targets)
 	// And the drain the catalog path runs for the same reason: the
 	// activator receives priority right after activating (CR 117.3c),

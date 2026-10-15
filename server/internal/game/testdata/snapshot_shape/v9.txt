@@ -8,6 +8,8 @@
 activations	object
 activations.ever	map:string
 activations.ever{}	number:int
+activations.own_creature_targeted	map:string
+activations.own_creature_targeted{}	number:int
 activations.turn	map:string
 activations.turn{}	number:int
 activeSeatLeftPending	bool
@@ -549,6 +551,7 @@ events[].source	custom(uuid.UUID)
 events[].stack_item_id	custom(uuid.UUID)
 events[].step	string
 events[].target	custom(uuid.UUID)
+events[].targeter_kind	string
 events[].unpaid	bool
 events[].vote_options	array
 events[].vote_options[]	string
@@ -1976,6 +1979,7 @@ lastKnownStack[].item.trigger.Event.source	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.stack_item_id	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.step	string
 lastKnownStack[].item.trigger.Event.target	custom(uuid.UUID)
+lastKnownStack[].item.trigger.Event.targeter_kind	string
 lastKnownStack[].item.trigger.Event.unpaid	bool
 lastKnownStack[].item.trigger.Event.vote_options	array
 lastKnownStack[].item.trigger.Event.vote_options[]	string
@@ -2266,6 +2270,7 @@ pausedModeWalk.item.trigger.Event.source	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.stack_item_id	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.step	string
 pausedModeWalk.item.trigger.Event.target	custom(uuid.UUID)
+pausedModeWalk.item.trigger.Event.targeter_kind	string
 pausedModeWalk.item.trigger.Event.unpaid	bool
 pausedModeWalk.item.trigger.Event.vote_options	array
 pausedModeWalk.item.trigger.Event.vote_options[]	string
@@ -2510,6 +2515,7 @@ pausedResolutionTail.item.trigger.Event.source	custom(uuid.UUID)
 pausedResolutionTail.item.trigger.Event.stack_item_id	custom(uuid.UUID)
 pausedResolutionTail.item.trigger.Event.step	string
 pausedResolutionTail.item.trigger.Event.target	custom(uuid.UUID)
+pausedResolutionTail.item.trigger.Event.targeter_kind	string
 pausedResolutionTail.item.trigger.Event.unpaid	bool
 pausedResolutionTail.item.trigger.Event.vote_options	array
 pausedResolutionTail.item.trigger.Event.vote_options[]	string
@@ -3081,6 +3087,7 @@ pendingTriggers[].trigger.Event.source	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.stack_item_id	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.step	string
 pendingTriggers[].trigger.Event.target	custom(uuid.UUID)
+pendingTriggers[].trigger.Event.targeter_kind	string
 pendingTriggers[].trigger.Event.unpaid	bool
 pendingTriggers[].trigger.Event.vote_options	array
 pendingTriggers[].trigger.Event.vote_options[]	string
@@ -7010,6 +7017,7 @@ stackMeta[].trigger.Event.source	custom(uuid.UUID)
 stackMeta[].trigger.Event.stack_item_id	custom(uuid.UUID)
 stackMeta[].trigger.Event.step	string
 stackMeta[].trigger.Event.target	custom(uuid.UUID)
+stackMeta[].trigger.Event.targeter_kind	string
 stackMeta[].trigger.Event.unpaid	bool
 stackMeta[].trigger.Event.vote_options	array
 stackMeta[].trigger.Event.vote_options[]	string
