@@ -1,6 +1,9 @@
 package effects
 
 import (
+	"fmt"
+	"strconv"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -36,6 +39,21 @@ import (
 // grant Urza, Lord High Artificer's free play and cascade make.
 // Additional costs are still owed (CR 118.9a), and a land is simply
 // played.
+//
+// TotalManaValueAtMost is "you may cast any number of spells with total
+// mana value N or less from among them without paying their mana costs"
+// (Primeval Spawn, #2017). It is not a window for the turn: the casts are
+// the resolving ability's (CR 608.2g), so the grant is a free, flash-speed,
+// cast-only permission that closes on the holder's next pass and leaves an
+// uncast card in exile. The cards the exile lands share ONE permission
+// carrying a running total (game.CastPermission.ManaValueBudget): each cast
+// spends its spell's mana value, X at 0 as a free cast locks it, and a card
+// whose mana value is more than what is left is not offered, by the one
+// gate the cast path, the client's offers and the bot enumerator share. A
+// land among the cards is stranded, as for any cast-only grant. It is its
+// own shape, so it refuses the options that mean a different window (Free,
+// CastOnly, WhileExiled, Window, FaceDown, Condition, Filter) rather than
+// quietly overriding them.
 type ExileTopWithPermission struct {
 	// From is whose library is exiled off. Often an opponent's.
 	From uuid.UUID
@@ -52,12 +70,19 @@ type ExileTopWithPermission struct {
 	Condition   *game.PermissionCondition
 	Window      *game.Duration
 	Filter      game.PermissionFilter
+
+	// TotalManaValueAtMost is the shared budget described above. Nil is the
+	// ordinary one-grant-per-turn impulse exile.
+	TotalManaValueAtMost *int
 }
 
 func (e ExileTopWithPermission) Apply(ctx *Context) error {
 	n := e.N
 	if n <= 0 {
 		n = 1
+	}
+	if e.TotalManaValueAtMost != nil {
+		return e.applyBudgeted(ctx, n)
 	}
 	perm := game.CastPermission{
 		CastOnly: e.CastOnly,
@@ -81,6 +106,36 @@ func (e ExileTopWithPermission) Apply(ctx *Context) error {
 	}
 	if e.FaceDown {
 		return ctx.Game.ExileTopFaceDownWithPermissionForEffect(e.From, e.GrantTo, n, perm)
+	}
+	_, err := ctx.Game.ExileTopWithPermissionForEffect(e.From, e.GrantTo, n, perm)
+	return err
+}
+
+// applyBudgeted is the TotalManaValueAtMost form: one free, flash-speed,
+// cast-only permission over the cards that landed, spent down by each cast.
+func (e ExileTopWithPermission) applyBudgeted(ctx *Context, n int) error {
+	if e.Free || e.CastOnly || e.WhileExiled || e.Window != nil || e.FaceDown ||
+		e.Condition != nil || e.Filter != (game.PermissionFilter{}) {
+		return fmt.Errorf("ExileTopWithPermission: TotalManaValueAtMost is its own window and takes no other option")
+	}
+	budget := *e.TotalManaValueAtMost
+	if budget < 0 {
+		return fmt.Errorf("ExileTopWithPermission: TotalManaValueAtMost %d is negative", budget)
+	}
+	perm := game.CastPermission{
+		// "{0}", not empty: an empty Cost means "pay the printed cost".
+		Cost:            "{0}",
+		Timing:          game.TimingFlash,
+		CastOnly:        true,
+		AnyColor:        e.AnyColor || e.AnyType,
+		AnyType:         e.AnyType,
+		LapseOnPass:     game.LapseStaysInExile,
+		ManaValueBudget: &budget,
+		Source:          ctx.Source(),
+		Label:           "Cast any number of spells with total mana value " + strconv.Itoa(budget) + " or less without paying their mana costs",
+	}
+	if src, ok := ctx.Game.LookupCardForEffect(ctx.Source()); ok {
+		perm.SourceName = src.Name
 	}
 	_, err := ctx.Game.ExileTopWithPermissionForEffect(e.From, e.GrantTo, n, perm)
 	return err

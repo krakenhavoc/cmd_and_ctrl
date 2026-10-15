@@ -25,17 +25,32 @@ package game
 // The zero value is "nothing was spent, and that is known" — a free
 // cast, a copy of a spell (CR 707.10), a permanent that was never
 // cast at all. `unknown` is the other absence: a payment the engine
-// WAIVED (an insufficient permissive pool or ForceCast), where every
-// question below answers in the weaker-than-printed direction because
-// the engine genuinely does not know (ADR 0068 §3).
+// WAIVED in part (an insufficient permissive pool or ForceCast), where
+// every question below answers in the weaker-than-printed direction
+// because the engine genuinely does not know (ADR 0068 §3).
+//
+// Since #3844 (ADR 0068 amendment 2026-10-15) a waived payment still
+// spends what the pool could pay, so an unknown record can carry real
+// tokens: the mana that left the pool. Every counting question below
+// reads them as a LOWER BOUND — what is certainly true of the payment —
+// which is never stronger than printed for a reader that grows with
+// the mana spent. None is the one reader that shrinks with it, and it
+// answers false for an unknown record whatever it holds.
+//
+// Since #3855 an undeclared waived payment also carries the AMOUNT it
+// paid outside the pool (`paper`), so Total is exact on every record;
+// only the colours and sources of that share stay unknown. A payment a
+// reader cares about is never undeclared: the caster is asked, and the
+// answer is in the tokens.
 type ManaSpent struct {
 	tokens  []ManaToken
+	paper   int
 	unknown bool
 }
 
 // Spent is the readable view of the mana half of this record.
 func (p PaidCost) Spent() ManaSpent {
-	return ManaSpent{tokens: p.Mana, unknown: p.OnPaper}
+	return ManaSpent{tokens: p.Mana, paper: p.PaperMana, unknown: p.OnPaper}
 }
 
 // Known reports whether this is a fact rather than a waived charge.
@@ -44,10 +59,11 @@ func (p PaidCost) Spent() ManaSpent {
 func (m ManaSpent) Known() bool { return !m.unknown }
 
 // Tokens is the tokens themselves, copied, in the order the solver
-// spent them. Each is a RUN (#3041): read its amount with N. Nil for an unknown payment, because there is nothing to
-// hand out. For a reader that needs a fact this file does not name.
+// spent them. Each is a RUN (#3041): read its amount with N. For an
+// unknown payment, the tokens the pool did pay (#3844) — nil when it
+// paid none. For a reader that needs a fact this file does not name.
 func (m ManaSpent) Tokens() []ManaToken {
-	if m.unknown || len(m.tokens) == 0 {
+	if len(m.tokens) == 0 {
 		return nil
 	}
 	return append([]ManaToken(nil), m.tokens...)
@@ -55,13 +71,14 @@ func (m ManaSpent) Tokens() []ManaToken {
 
 // Total is how many mana paid — "if five or more mana was spent to
 // cast that spell" (Colorstorm Stallion), "at least seven mana"
-// (Raggadragga), and the amount Memory Deluge draws off. Zero for an
-// unknown payment.
+// (Raggadragga), and the amount Memory Deluge draws off. For an
+// unknown payment, the mana that left the pool: a lower bound, and
+// zero when the pool paid nothing.
+//
+// Since #3855 that bound is the whole amount: an undeclared waived
+// payment carries the shortfall it asserted paid on paper.
 func (m ManaSpent) Total() int {
-	if m.unknown {
-		return 0
-	}
-	return TotalMana(m.tokens)
+	return TotalMana(m.tokens) + m.paper
 }
 
 // Count is how many mana of one SYMBOL paid: `{W}` through `{G}` and
@@ -70,11 +87,10 @@ func (m ManaSpent) Total() int {
 // Desecrate Reality's "at least three colorless mana" is Count("C")
 // >= 3 — the reason this takes a symbol rather than a colour.
 //
-// Zero for an unknown payment, which is adamant not turning on.
+// For an unknown payment, the mana of that symbol that left the pool:
+// a lower bound, so adamant turns on only when the pool alone paid
+// three.
 func (m ManaSpent) Count(symbol string) int {
-	if m.unknown {
-		return 0
-	}
 	n := 0
 	for _, t := range m.tokens {
 		if t.Color == symbol {
@@ -90,12 +106,9 @@ func (m ManaSpent) Count(symbol string) int {
 // and why an Etched Oracle paid for entirely out of Sol Rings enters
 // as a 0/0.
 //
-// Empty for an unknown payment: an unrecorded payment claims no
-// colours rather than guessing five.
+// For an unknown payment, only the colours that left the pool: the
+// part paid on paper claims no colours rather than guessing five.
 func (m ManaSpent) Colors() []string {
-	if m.unknown {
-		return nil
-	}
 	seen := make(map[string]bool, 5)
 	for _, t := range m.tokens {
 		if isColorSymbol(t.Color) {
@@ -121,8 +134,10 @@ func (m ManaSpent) ColorCount() int { return len(m.Colors()) }
 // True only when the engine KNOWS nothing was spent. An unknown
 // payment answers FALSE — the player did pay something the engine did
 // not see, and a punisher that fired on it would counter half the
-// spells cast at a permissive table.
-func (m ManaSpent) None() bool { return !m.unknown && len(m.tokens) == 0 }
+// spells cast at a permissive table. The one reader that does not take
+// an unknown record's tokens as a lower bound, because it is the one
+// that shrinks as the mana spent grows.
+func (m ManaSpent) None() bool { return !m.unknown && m.paper == 0 && len(m.tokens) == 0 }
 
 // CountFrom is how many of the mana came from a source matching ANY
 // of `kinds` — Marut's "create a Treasure token for each mana from a
@@ -131,10 +146,14 @@ func (m ManaSpent) None() bool { return !m.unknown && len(m.tokens) == 0 }
 //
 // The kinds were snapshotted when each mana was MADE (mana_source.go),
 // so a Treasure that sacrificed itself to pay for this spell still
-// counts. Zero for an unknown payment, and zero for a zero `kinds`,
-// which asks about nothing.
+// counts. Zero for a zero `kinds`, which asks about nothing.
+//
+// For an unknown payment, the mana from those sources that left the
+// pool (#3844). That is exact rather than a bound for any source the
+// engine runs: its mana exists only as a token in the pool, so mana
+// from it that did not leave the pool was not spent.
 func (m ManaSpent) CountFrom(kinds ManaSourceKinds) int {
-	if m.unknown || kinds == 0 {
+	if kinds == 0 {
 		return 0
 	}
 	n := 0
@@ -147,8 +166,8 @@ func (m ManaSpent) CountFrom(kinds ManaSourceKinds) int {
 }
 
 // From reports "if mana from a <kind> was spent" — the clause
-// eighteen printed cards spell with Treasure. False for an unknown
-// payment.
+// eighteen printed cards spell with Treasure. For an unknown payment,
+// true when such mana left the pool (#3844).
 func (m ManaSpent) From(kinds ManaSourceKinds) bool {
 	return m.CountFrom(kinds) > 0
 }

@@ -299,7 +299,7 @@
             class:previewable
             style:--seat-color={item.casterColor}
             data-stack-item-id={item.id}
-            title={previewable ? `${item.name} — hover to preview` : item.name}
+            title={previewable ? `${item.text} — hover to preview` : item.text}
             onpointerenter={() => handleItemEnter(item)}
             onpointerleave={() => handleItemLeave(item)}
             onfocusin={() => handleItemEnter(item)}
@@ -327,7 +327,7 @@
               {/if}
             </div>
             <div class="info">
-              <div class="title">{item.name}</div>
+              <div class="title">{item.text}</div>
               <div class="sub">
                 <span class="seat-dot"></span>
                 <span class="caster-name">{item.casterName}</span>
@@ -377,7 +377,7 @@
               title={`from ${t.casterName}`}
             >
               <span class="seat-dot"></span>
-              <span class="trigger-label">{t.name}</span>
+              <span class="trigger-label" title={t.text}>{t.text}</span>
             </li>
           {/each}
         </ul>
@@ -570,13 +570,19 @@
     flex-direction: column;
     gap: 2px;
   }
+  /* #3830: an ability's printed text gets two lines; the item's title
+     attribute has the rest. */
   .title {
     font-weight: 700;
     font-size: 12.5px;
+    line-height: 1.25;
     color: var(--fg);
-    white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
   .sub {
     display: flex;

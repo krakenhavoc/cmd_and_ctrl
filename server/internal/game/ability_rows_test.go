@@ -55,7 +55,9 @@ var abilityRowFieldsNotRows = map[string]string{
 	"MadnessLife":                "the life a madness cost charges, read when pricing the cast",
 	"XCeiling":                   "a bound on a spell's announced X, read at cast",
 	"WantsDistinctColors":        "an auto-tapper hint",
+	"ReadsManaSpent":             "a waived payment's question, not an ability (#3855)",
 	"WantsManaFrom":              "an auto-tapper hint",
+	"WantsColors":                "an auto-tapper hint",
 }
 
 func TestEveryCardDefSlotIsClassifiedForAbilityRows(t *testing.T) {

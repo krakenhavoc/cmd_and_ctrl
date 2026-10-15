@@ -103,7 +103,7 @@ func volverSpec(oracleID, name string, first, second volverKicker) Spec {
 			kicked := volverKickedWith(k.cost)
 			spec.Activated = append(spec.Activated, ActivatedAbility{
 				Label:   "Pay 3 life: Regenerate this creature.",
-				Purpose: game.Purpose{Answers: game.AnswerProtect},
+				Purpose: game.Purpose{Answers: game.AnswerSurvive},
 				Cost:    PayLife(3),
 				Condition: func(g *game.Game, _, source uuid.UUID) bool {
 					return kicked(g, source)

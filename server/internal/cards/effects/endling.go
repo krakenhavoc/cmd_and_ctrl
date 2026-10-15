@@ -35,7 +35,7 @@ func init() {
 			},
 			{
 				Label:   "{B}: This creature gains undying until end of turn.",
-				Purpose: game.Purpose{Answers: game.AnswerProtect},
+				Purpose: game.Purpose{Answers: game.AnswerSurvive},
 				Cost:    ManaCost("{B}"),
 				Effect:  thisGainsKeywordUntilEndOfTurn(game.KeywordUndying, "Endling — undying until end of turn"),
 			},

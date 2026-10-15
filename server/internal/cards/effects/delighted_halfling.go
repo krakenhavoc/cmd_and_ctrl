@@ -36,15 +36,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // "And that spell can't be countered" is a spend rider (#1547) —
 // Cavern of Souls' shape exactly: the legendary spell the coloured mana
-// pays for is marked uncounterable on the stack. One declared
-// simplification, weaker than printed: with an unrecorded payment the pool is
-// never spent (ADR 0068 §3), so the spell can still be countered.
+// pays for is marked uncounterable on the stack.
+//
+// No simplification is left (#3844, ADR 0068 amendment 2026-10-15). A
+// waived payment (strict mana off with too little in the pool, or Cast
+// anyway) still spends the share of the cost the pool can pay, so this
+// mana pays whenever it can and its rider fires. Mana that never
+// entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
-		OracleID:     "f9d3b046-0b95-4103-a630-4b3fb88bb60b",
-		Name:         "Delighted Halfling",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so a spell cast with the Halfling's colored mana can still be countered."},
+		OracleID:       "f9d3b046-0b95-4103-a630-4b3fb88bb60b",
+		Name:           "Delighted Halfling",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},

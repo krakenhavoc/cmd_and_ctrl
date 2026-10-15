@@ -25,7 +25,10 @@
   //
   // ADR 0119 §1: the pile, the default, is placed differently from the
   // other three. They centre across the table; the pile anchors 12px
-  // from the board's left edge, centred on the same seam but kept below
+  // from the board's left edge (#3380, the ADR 0176 amendment: only on a
+  // table whose top row has one seat; with two or more it is centred on
+  // the seam between them, lib/stackPile.ts pileLeft), centred
+  // vertically on the same seam but kept below
   // the attention strip's content and above a bottom-left fixture (the
   // tutorial's coach card, the dev dock), with its card sized to the
   // room it has (lib/stackPile.ts). It also gets a collapse button on
@@ -60,10 +63,13 @@
     pileBounds,
     pileCardWidth,
     pileDepth,
+    pileLeft,
     pileTop,
+    seatSlots,
     stripContentBottom,
+    tableSeams,
   } from "../../stackPile";
-  import { stackPixels } from "../../stackPosition";
+  import { laneSpot } from "../../stackPosition";
   import { createStackPlacement } from "../../stackPlacement.svelte";
   import { createStackHover } from "../../stackHover";
   import { previewableCard } from "../../stackPreview";
@@ -190,6 +196,8 @@
       stack: view.stack,
       stackItems: view.stack_items,
       pendingTriggers: view.pending_triggers,
+      // #3817: the triggers still asking for a target count as waiting.
+      pendingChoices: view.pending_choices,
       seats: view.seats,
       battlefield: view.battlefield,
       exile: view.exile,
@@ -237,6 +245,8 @@
   // and clamped so a tall lane never hangs off the board's edge.
   let laneEl: HTMLElement | null = $state(null);
   let seamY = $state<number | null>(null);
+  // #3380: the seam between two top-row seats, where the pile docks.
+  let seamX = $state<number | null>(null);
   let boardH = $state(0);
   let boardW = $state(0);
   let laneH = $state(0);
@@ -251,19 +261,14 @@
     const b = boardEl.getBoundingClientRect();
     boardH = b.height;
     boardW = b.width;
-    const self = boardEl.querySelector<HTMLElement>(':scope > .slot[data-pos="self"]');
-    const opponents = boardEl.querySelectorAll(':scope > .slot:not([data-pos="self"])');
-    if (!self || opponents.length === 0) {
-      seamY = null;
-    } else {
-      // Half the grid's 8px gap above the slot is the seam itself.
-      seamY = self.getBoundingClientRect().top - b.top - 4;
-    }
+    // Half the grid's 8px gap above the self slot is the row seam.
+    ({ seamY, seamX } = tableSeams(b.width, seatSlots(boardEl)));
     laneH = laneEl?.offsetHeight ?? 0;
     laneW = laneEl?.offsetWidth ?? 0;
     if (style === "pile") {
       stripBottom = stripContentBottom(boardEl);
-      fixtureTop = bottomLeftFixtureTop(boardEl, PILE_INSET + (laneEl?.offsetWidth ?? 0));
+      const left = pileLeft({ boardW: b.width, pileW: laneW, seamX }) ?? PILE_INSET;
+      fixtureTop = bottomLeftFixtureTop(boardEl, left + laneW, left);
     } else {
       stripBottom = null;
       fixtureTop = null;
@@ -306,6 +311,10 @@
     return Math.max(margin, Math.min(top, boardH - laneH - margin));
   });
 
+  // In pixels from the board's left edge, or null for the CSS fallback
+  // (the centred styles, and the pile on a table with one top-row seat).
+  const laneLeft = $derived(style === "pile" ? pileLeft({ boardW, pileW: laneW, seamX }) : null);
+
   // ---- #3429 movable ---------------------------------------------------
   const move = createStackPlacement({
     position: () => position,
@@ -315,13 +324,16 @@
     board: () => boardEl,
     before: () => measure(),
   });
-  // The lane's drawn top-left in board pixels, or null while it sits at
-  // its style's anchor (nothing saved, or the board not measured yet).
-  const placedPx = $derived.by(() => {
-    const p = move.placed;
-    if (!p || boardH <= 0 || boardW <= 0 || laneW <= 0) return null;
-    return stackPixels(p, { width: boardW, height: boardH }, { width: laneW, height: laneH });
-  });
+  // The lane's drawn top-left in board pixels: the saved spot when there
+  // is one (and the board is measured), else its style's anchor.
+  const spot = $derived(
+    laneSpot(
+      move.placed,
+      { width: boardW, height: boardH },
+      { width: laneW, height: laneH },
+      { left: laneLeft, top: laneTop },
+    ),
+  );
 
   const stackCount = $derived(model.stackItems.length);
 
@@ -363,10 +375,10 @@
   <div
     class="lane-host"
     class:measured={laneTop !== null}
-    class:placed={placedPx !== null}
+    class:placed={spot.placed}
     class:dragging={move.dragging}
-    style:top={placedPx ? `${placedPx.top}px` : laneTop !== null ? `${laneTop}px` : null}
-    style:left={placedPx ? `${placedPx.left}px` : null}
+    style:top={spot.top !== null ? `${spot.top}px` : null}
+    style:left={spot.left !== null ? `${spot.left}px` : null}
     data-stack-style={style}
   >
     {#if style === "pile" && collapsed}
@@ -450,7 +462,22 @@
           {/if}
         </header>
         {#if model.summary}
-          <p class="summary">{model.summary}</p>
+          <!-- #3830: the line keeps the label's short effect; the top
+               item's printed text is on its card below, and here on
+               hover. -->
+          <p
+            class="summary"
+            title={model.top && model.top.text !== model.top.name ? model.top.text : undefined}
+          >
+            {model.summary}
+          </p>
+        {/if}
+        <!-- #3817: a batch of the same trigger waiting to go on the stack,
+             counted, so a player answering the third of forty target
+             prompts can see that there are forty. With nothing on the
+             stack it is the summary itself. -->
+        {#if model.top && model.waitingLine}
+          <p class="waiting" data-stack-waiting>{model.waitingLine}</p>
         {/if}
         <Body {model} {controls} styleName={style} pile={pileSizing} />
       </section>
@@ -521,6 +548,7 @@
     gap: 6px;
   }
   .lane-host[data-stack-style="pile"] .summary,
+  .lane-host[data-stack-style="pile"] .waiting,
   .lane-host[data-stack-style="pile"] .head {
     /* As wide as the card under them, never wider. */
     width: 0;
@@ -652,6 +680,12 @@
     font-size: 13.5px;
     line-height: 1.35;
     color: var(--fg);
+  }
+  .waiting {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--accent);
   }
   .sr-only {
     position: absolute;

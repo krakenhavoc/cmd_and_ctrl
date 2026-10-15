@@ -1028,6 +1028,11 @@ The model prompt and the MCP seat read the same facts from
 added phase and ends "next turn: <seat>", and a seat line says "skips
 their next turn" or "skips their next 2 turns".
 
+When the engine's `turn.pass_hint` is set (#3826) the turn line ends with "last
+priority this turn: passing ends your turn" or "last priority before your
+turn: passing starts your turn", so a model weighs its last window to act
+before the turn changes.
+
 A land sacrifice counts as mana here when the same cast's declared
 `purpose.lands` more than replaces it
 ([#2469](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2469),
@@ -1549,8 +1554,12 @@ is on the stack:
   untargeted row on that creature is priced by what it saves: the
   creature's value times the chance the bot loses it
   (`RemovalConfidence` for a target, the sweep's share for a sweep).
-  - `protect` (regenerate, indestructible, hexproof, a blink, …) saves
-    it from anything.
+  - `survive` (regenerate, indestructible, a blink, phasing out, …)
+    saves it from anything, a sweep included.
+  - `protect` (hexproof, shroud, protection) saves it only from what
+    targets it. A declared sweep names no target, so against one (alone
+    or beside a targeted item) a `protect` row is not an answer and the
+    bot passes. A row that declares both is a `survive` row.
   - `prevent` saves it only when every threat is declared damage that
     can be prevented: a target entry's `damage`, or a damage sweep.
   - `pump` saves it only when one activation's declared `pump` keeps it
@@ -1652,6 +1661,13 @@ the worse case. The model is advisory. When it is wrong, the next spell
 is not offered in the next window, the bot plans again, and the worst
 case is a one-spell turn. The arena counts these windows as plan
 misses ([Reading the report](#reading-the-report)).
+
+The bot never pays on paper. Every cast and activation it is offered
+is strict and auto-tapped, so it never uses Cast anyway, never has a
+payment waived, and never meets the "what did you pay?" question a
+human player is asked when a waived payment is read by something on
+the table ([#3855](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3855),
+pinned by `legal`'s `TestBotMovesNeverWaiveAPaymentSomethingReads`).
 
 ### Which sets it compares
 
@@ -1907,10 +1923,10 @@ The decks are "upgraded precons" ([#2436](https://github.com/krakenhavoc/cmd_and
 fetchlands and dual lands, but few tutors and little fast mana (Sol
 Ring everywhere, Ancient Tomb only in mono-black), and each one
 teaches the single mechanic in its row above.
-Every non-basic card is graded `full` in the catalog, apart from a
-short list of minor caveats named in `internal/decks/full_test.go`
-(Path of Ancestry, Delighted Halfling, Cultivate, Tireless Provisioner,
-the two partner Pirates, Ragavan and the two Artillerists), and that
+Every non-basic card is graded `full` in the catalog, apart from any
+minor caveats named in `internal/decks/full_test.go` (none since
+[#3844](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3844) made
+Path of Ancestry and Delighted Halfling, the last two, full), and that
 test fails the build when a card falls below it. A saved table setup
 names a deck by ID, so it seats the current list.
 
@@ -3588,7 +3604,7 @@ held on purpose or priced short:
 
 - Scrounging Skyray's and Marauding Mako's cycling lose to casting the
   creature, which is the better use of the card.
-- Solphim's indestructible counter is a `protect` answer. It is taken
+- Solphim's indestructible counter is a `survive` answer. It is taken
   when removal targets Solphim, and is a pure cost otherwise.
 - Burnished Hart's land search is priced as two lands against its own
   body. In simic-ramp those lands are worth more than that, because

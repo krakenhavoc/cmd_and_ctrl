@@ -32,7 +32,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{1}{G}, {T}, Return Shigeki to its owner's hand: Reveal the top four cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest into your graveyard.",
-				Purpose: game.Purpose{Answers: game.AnswerProtect},
+				Purpose: game.Purpose{Answers: game.AnswerSurvive},
 				Cost:    Plus(ManaCost("{1}{G}"), TapCost(), ReturnThis()),
 				Effect:  shigekiDig,
 			},

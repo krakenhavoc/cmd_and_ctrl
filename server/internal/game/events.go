@@ -859,7 +859,9 @@ const (
 
 	// EventCostWarning — a cast_spell action proceeded under the S15
 	// permissive-default cost path OR under a strict-mode override
-	// (ForceCast=true) despite the pool not covering the cost.
+	// (ForceCast=true) despite the pool not covering the cost. The
+	// pool still paid the share it could (#3844); a ForceCast the
+	// pool covers in full is an ordinary payment and warns nothing.
 	// Breadcrumb for the client's auto-toast UI and a debug signal
 	// for operators that want to audit "did the caster actually pay
 	// for this?" Actor = caster, Source = card being cast.
@@ -1602,9 +1604,11 @@ type Event struct {
 	// (CR 105.1) and never appears; Amount carries the total number
 	// of mana, colourless included.
 	//
-	// Empty on a payment the engine waived (permissive mode, a
-	// ForceCast) and on a genuinely free cast, which the log tells
-	// apart by the EventCostWarning that accompanies the first.
+	// On a payment the engine waived (permissive mode, a ForceCast),
+	// the colours of the share the pool paid (#3844), and no event
+	// at all when it paid none; the EventCostWarning that
+	// accompanies a waived payment tells it apart from a genuinely
+	// free cast, whose event is empty.
 	//
 	// On EventManaAdded (#763) it is the ONE symbol that token
 	// carried, "C" included — one event per token, so there is never
@@ -1686,17 +1690,24 @@ type Event struct {
 	// clause that cares. Added for #1326.
 	Played bool `json:"played,omitempty"`
 
-	// Unpaid marks an EventCast whose mana the caster chose not to
-	// pay: the cast was made with CastSpellParams.ForceCast, which is
-	// the client's "Cast anyway (don't pay)" row and the dock's Cast
-	// anyway after a refused cast (ADR 0118 §2). The log reads it to
-	// say "<player> cast <card> without paying its mana cost", so the
-	// table sees the cast. A permissive cast (strict off) does not set
-	// it: that seat may be paying on paper, and the line belongs to
-	// force_cast (ADR 0118 owner decision 2). Life for Phyrexian
-	// symbols and additional costs are still paid; only the mana gate
-	// is waived. False on every other kind. Added for #2188.
+	// Unpaid marks an EventCast whose caster DECLARED it cast without
+	// paying its mana cost — an effect on paper (#3855, the paper
+	// payment picker's free answer). The log reads it to say "<player>
+	// cast <card> without paying its mana cost", so the table sees a
+	// claim that dodges its Vexing Bauble. Until #3855 it marked every
+	// strict-mode Cast anyway (ADR 0118 §2); a one-click Cast anyway now
+	// asserts the rest was paid on paper and says so through PaperPaid.
+	// False on every other kind. Added for #2188.
 	Unpaid bool `json:"unpaid,omitempty"`
+
+	// PaperPaid is the mana an EventCast's caster paid outside the
+	// pool, as a cost string (#3855): the mana they declared at the
+	// paper payment picker (PaperDeclared), or the shortfall a
+	// one-click Cast anyway asserts was paid on paper. Empty for a
+	// paid cast and for a permissive cast nobody asked about (ADR 0118
+	// owner decision 2). Public, like Unpaid.
+	PaperPaid     string `json:"paperPaid,omitempty"`
+	PaperDeclared bool   `json:"paperDeclared,omitempty"`
 
 	// DiscardCause is why a discard happened, on EventDiscardCard: an
 	// effect's instruction, a cost, or the cleanup step's turn-based

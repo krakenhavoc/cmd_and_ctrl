@@ -60,6 +60,16 @@ func CreaturesYouControlEnterWithCountersPerManaFrom(label string, kinds game.Ma
 	}
 }
 
+// selfEntersWithNoManaSpent is the shared condition of "if it wasn't cast
+// or no mana was spent to cast it": this permanent's own entry, with
+// nothing known to have been spent (EntrySpentForEffect's None).
+func selfEntersWithNoManaSpent(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+	return ev.Kind == game.RepEventMove &&
+		ev.NewZone == game.ZoneBattlefield &&
+		src != nil && ev.CardID == src.InstanceID &&
+		g.EntrySpentForEffect(ev).None()
+}
+
 // SelfEntersWithCountersIfNoManaSpent is "this creature enters with <n>
 // <kind> counters on it if it wasn't cast or no mana was spent to cast
 // it" (Freestrider Commando). One question, because an entry that was
@@ -72,16 +82,38 @@ func SelfEntersWithCountersIfNoManaSpent(kind string, n int) game.ReplacementEff
 		RowLabel:  "Enters with " + counterCountPhrase(n, kind) + " on it if no mana was spent to cast it.",
 		EntryOnly: true,
 		Watches:   []game.EventKind{game.EventZoneMove},
-		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-			return ev.Kind == game.RepEventMove &&
-				ev.NewZone == game.ZoneBattlefield &&
-				src != nil && ev.CardID == src.InstanceID &&
-				g.EntrySpentForEffect(ev).None()
-		},
+		AppliesTo: selfEntersWithNoManaSpent,
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 			ev.AddCounterAtETB(kind, n)
 			return nil
 		},
+	}
+}
+
+// SelfExiledInsteadIfNoManaSpent is "If this creature would enter and it
+// wasn't cast or no mana was spent to cast it, exile it instead" (Primeval
+// Spawn, #2017): a CR 614.1 self-replacement that rewrites the entry to a
+// move to exile, so the creature never enters, triggers nothing that
+// watches an entry and never has a leaves-the-battlefield to trigger. The
+// question is Freestrider Commando's, read the same way: an entry that was
+// not a cast spent nothing, and a spell cast without paying its mana cost
+// spent a known nothing, so both are exiled. A waived payment (an
+// insufficient permissive pool or Cast anyway) is unknown, None is false,
+// and the creature enters (ADR 0068 §3).
+func SelfExiledInsteadIfNoManaSpent(name string) game.ReplacementEffect {
+	return game.ReplacementEffect{
+		RowLabel:        "Exiled instead of entering if it wasn't cast or no mana was spent to cast it.",
+		EntryOnly:       true,
+		SelfReplacement: true,
+		Watches:         []game.EventKind{game.EventZoneMove},
+		AppliesTo:       selfEntersWithNoManaSpent,
+		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+			ev.NewZone = game.ZoneExile
+			ev.NewZoneOwner = uuid.Nil
+			return nil
+		},
+		Controller: EnteringPermanentChooser,
+		Label:      name + ": exiled instead of entering",
 	}
 }
 

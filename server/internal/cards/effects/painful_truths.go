@@ -19,25 +19,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     the usual colourless-first order. Cast off a Swamp, an Island
 //     and a Forest, this draws three; cast off a Swamp and two Sol
 //     Ring mana, it draws one, which is also correct.
-//   - ctx.ColorsSpentCount() answers 0 for a payment the engine
-//     waived (an unfunded permissive cast or Cast anyway). That is the
-//     weaker-than-printed direction: the spell resolves and does
-//     nothing rather than guessing five.
+//   - For a payment the engine waived (an unfunded permissive cast or
+//     Cast anyway), the caster is asked what they paid outside the
+//     pool (#3855), so ctx.ColorsSpentCount() counts every colour
+//     they paid.
 //
 // CR 702.86 makes converge an ability word, so the counting lives on
 // the card; the drawing and the life loss are one instruction, so a
 // player who converges for five at four life draws five and then dies
 // to the CR 704.5a state-based check, as printed.
 //
-// One caveat for the player, because it is visible at a normal table:
-// with an unrecorded payment, the engine never sees the payment and the
-// spell draws nothing.
+// It declares ReadsManaSpent, which is what makes a waived cast ask.
 func init() {
 	Register(Spec{
 		OracleID:            "58a2d15f-1b4b-4303-b524-8cc0d1b3e7d2",
 		Name:                "Painful Truths",
-		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so Painful Truths draws nothing — turn on “Charge mana costs” for it to count colours."},
+		ReadsManaSpent:      game.ReadsOwnPayment,
+		Completeness:        CompletenessFull,
 		WantsDistinctColors: true,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			x := ctx.ColorsSpentCount()

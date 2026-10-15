@@ -26,7 +26,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Pay {E}{E}{E}{E}: Return this creature to its owner's hand.",
-			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    PayEnergy(4),
 			Effect:  returnThisPermanentToOwnersHand,
 		}},

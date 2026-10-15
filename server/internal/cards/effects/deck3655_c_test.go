@@ -113,12 +113,14 @@ func TestDeck3655RejoinTheFightLetsEachOpponentChooseOne(t *testing.T) {
 	}
 }
 
-func TestDeck3655CoinOfFateSplitsTheExiledCardsAndCrownsYou(t *testing.T) {
-	g := newCatalogGame(t)
-	me := g.Seats[0]
+// coinOfFateActivation exiles two creature cards from `me`'s graveyard and
+// resolves Coin of Fate's ability, leaving whatever prompt it queues open.
+func coinOfFateActivation(t *testing.T, g *game.Game) (me *game.Player, one, two uuid.UUID) {
+	t.Helper()
+	me = g.Seats[0]
 	coin := pushCatalogPermanent(g, me.ID, "Coin of Fate", "Artifact", deck3655CoinOracle, false)
-	one := deck3655GraveyardCreature(me, "One", 1)
-	two := deck3655GraveyardCreature(me, "Two", 1)
+	one = deck3655GraveyardCreature(me, "One", 1)
+	two = deck3655GraveyardCreature(me, "Two", 1)
 	for _, id := range []uuid.UUID{one, two} {
 		if err := g.MoveCardByID(
 			game.ZoneRef{Kind: game.ZoneGraveyard, Owner: me.ID},
@@ -130,17 +132,16 @@ func TestDeck3655CoinOfFateSplitsTheExiledCardsAndCrownsYou(t *testing.T) {
 	spec, _ := Lookup(deck3655CoinOracle)
 	item := &game.StackItem{Kind: game.StackItemActivated, Controller: me.ID, SourceCardID: coin,
 		Paid: game.PaidCost{Exiled: []uuid.UUID{one, two}}}
-	libBefore := len(me.Library.Cards)
 	if err := spec.Activated[0].Effect(g, item); err != nil {
 		t.Fatalf("effect: %v", err)
 	}
-	chooser := g.Seats[1]
-	prompt := chooseCardsChoiceFor(g, chooser.ID)
-	if prompt == nil {
-		t.Fatal("the next opponent was not asked to choose")
-	}
-	answerChooseCards(t, g, chooser.ID, one)
+	return me, one, two
+}
 
+// finishCoinOfFate checks the cards were split as `one` chosen: bottom of
+// the library, `two` back tapped, and the crown taken.
+func finishCoinOfFate(t *testing.T, g *game.Game, me *game.Player, libBefore int) {
+	t.Helper()
 	if len(me.Library.Cards) != libBefore+1 {
 		t.Errorf("library grew by %d, want 1", len(me.Library.Cards)-libBefore)
 	}
@@ -156,4 +157,60 @@ func TestDeck3655CoinOfFateSplitsTheExiledCardsAndCrownsYou(t *testing.T) {
 	if g.Monarch != me.ID {
 		t.Error("the controller did not become the monarch")
 	}
+}
+
+// "An opponent chooses": the controller names WHICH opponent, so the
+// answer is not the next seat in turn order (#3846).
+func TestDeck3655CoinOfFateControllerNamesTheChoosingOpponent(t *testing.T) {
+	g := newCatalogGame(t)
+	libBefore := len(g.Seats[0].Library.Cards)
+	me, one, _ := coinOfFateActivation(t, g)
+	pick := pendingOfKind(g, game.PendingChoiceOptionPick)
+	if pick == nil {
+		t.Fatal("the controller was not asked which opponent chooses")
+	}
+	if pick.Chooser != me.ID {
+		t.Errorf("the prompt is for %v, want the controller", pick.Chooser)
+	}
+	if len(pick.PickOptions) != 3 {
+		t.Errorf("offered %d seats, want the three opponents", len(pick.PickOptions))
+	}
+	for _, opt := range pick.PickOptions {
+		if opt.Player == me.ID {
+			t.Error("the controller offered themself as the opponent")
+		}
+	}
+	// Name the LAST seat: neither seat 1 (next in turn order) nor anyone
+	// else may be asked to choose.
+	last := g.Seats[3]
+	answerChosenPlayer(t, g, me.ID, last.ID)
+	if chooseCardsChoiceFor(g, g.Seats[1].ID) != nil {
+		t.Error("the next opponent in turn order was asked, not the one named")
+	}
+	if chooseCardsChoiceFor(g, last.ID) == nil {
+		t.Fatal("the named opponent was not asked to choose")
+	}
+	answerChooseCards(t, g, last.ID, one)
+	finishCoinOfFate(t, g, me, libBefore)
+}
+
+// With a single opponent there is nobody to name: no prompt, and that
+// opponent chooses.
+func TestDeck3655CoinOfFateSkipsTheNamingPromptWithOneOpponent(t *testing.T) {
+	g := newCatalogGame(t)
+	libBefore := len(g.Seats[0].Library.Cards)
+	g.WithWriteLock(func() {
+		g.Seats[1].Eliminated = true
+		g.Seats[2].Eliminated = true
+	})
+	last := g.Seats[3]
+	me, one, _ := coinOfFateActivation(t, g)
+	if pendingOfKind(g, game.PendingChoiceOptionPick) != nil {
+		t.Fatal("the controller was asked to name an opponent with only one left")
+	}
+	if chooseCardsChoiceFor(g, last.ID) == nil {
+		t.Fatal("the only opponent was not asked to choose")
+	}
+	answerChooseCards(t, g, last.ID, one)
+	finishCoinOfFate(t, g, me, libBefore)
 }

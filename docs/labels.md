@@ -46,6 +46,8 @@ registered, or when this file is stale.
 | `skipToMyTurn` | `Skip to my turn` | button | aria | `lib/components/board/ActionDock.svelte` | the dock's Skip to my turn toggle (ADR 0143 §4.2, formerly autopass; state in aria-pressed): passes for you until your next main phase; the tutorial's let-the-bot-play step anchors here, within actions |
 | `pass` | `Pass` | button | aria | `lib/components/board/ActionDock.svelte` | the dock's primary while the stack holds something (#3267): pass priority so the top item can resolve (its visible text and its aria-label); the tutorial's stack step anchors here, within actions |
 | `next` | `Next` | button | aria | `lib/components/board/ActionDock.svelte` | the dock's primary on an empty stack (#3267): pass priority so the game moves to the next step (its visible text and its aria-label); the tutorial's stack step anchors here too, within actions |
+| `nextEndsTurn` | `Pass · turn ends` | button | aria | `lib/components/board/ActionDock.svelte` | the dock's primary at your last priority of your own turn (#3826, turn.pass_hint ends_turn): a pass hands the turn over; ringed, and named so End turn stays the one button of that name (its visible text and its aria-label) |
+| `nextYourTurn` | `Pass · your turn next` | button | aria | `lib/components/board/ActionDock.svelte` | the dock's primary at your last priority before your turn begins (#3826, turn.pass_hint your_turn_next): your next decision is in your own turn; ringed (its visible text and its aria-label) |
 | `attackWith` | `Attack with <N>` (starts with `Attack with `) | button | aria | `lib/components/board/ActionDock.svelte` | the dock's primary in declare attackers while creatures are staged (#3266): sends them as one declaration, then passes (its visible text and its aria-label) |
 | `noAttacks` | `No attacks` | button | aria | `lib/components/board/ActionDock.svelte` | the dock's primary in declare attackers while creatures could attack and none has (#3267): pass priority with no attackers, which skips the rest of combat (CR 508.8) |
 | `attackAll` | `Attack <name> with all <N> creature(s)` (contains ` with all `) | button | aria | `lib/attackAll.ts` | the dock's attack-with-all button in a duel (its aria-label equals its visible text); the tutorial's attack step anchors here, within actions |
@@ -65,10 +67,12 @@ registered, or when this file is stale.
 | `selectTarget` | `Select target for <card>` (starts with `Select target for `) | dialog | aria | `lib/targetingDock.ts` | the targeting request |
 | `chooseOnBoard` | `Choose on the board for <card>` (starts with `Choose on the board for `) | dialog | aria | `lib/targetingDock.ts` | a card-set pick answered by clicking permanents on the board (#2394) |
 | `showAsList` | `Show as list` | button | text | `lib/targetingDock.ts` | a board-answered card-set pick's fallback: open the same choice as the list |
-| `castWithoutPaying` | `Cast <card> without paying its mana cost?` (ends with ` without paying its mana cost?`) | dialog | aria | `lib/targetingDock.ts` | Cast anyway's confirm (ADR 0118 §2), with its Cast and Cancel |
-| `cast` | `Cast` | button | text | `lib/targetingDock.ts` | Cast anyway's confirm: cast it unpaid |
+| `castPayingOnPaper` | `Cast <card> and pay the rest on paper?` (ends with ` and pay the rest on paper?`) | dialog | aria | `lib/targetingDock.ts` | Cast anyway's confirm (ADR 0118 §2, renamed by #3855), with its Cast and Cancel |
+| `paperPayment` | `What did you pay for <card>?` (starts with `What did you pay for `) | dialog | aria | `lib/components/board/PaperPaymentModal.svelte` | the paper payment picker (#3855): what a waived payment something reads paid outside the pool |
+| `castFree` | `Cast without paying its mana cost` | button | text | `lib/components/board/PaperPaymentModal.svelte` | the paper payment picker's other answer: an effect on paper let you cast it free (#3855) |
+| `cast` | `Cast` | button | text | `lib/targetingDock.ts` | Cast anyway's confirm: cast it, the pool paying what it can and the rest paid on paper |
 | `cancel` | `Cancel` | button | text | `lib/targetingDock.ts`<br>`lib/dock.ts` | Cast anyway's confirm, and every flow's Cancel (the dock's cancelAction), the first-turn confirm's included |
-| `castAnyway` | `Cast anyway (don't pay)` | menuitem | text | `lib/castAnyway.ts` | the card menu's row that casts without paying (ADR 0118 §2) |
+| `castAnyway` | `Cast anyway (pay on paper)` | menuitem | text | `lib/castAnyway.ts` | the card menu's row that casts what the pool can't pay, the rest paid on paper (ADR 0118 §2, renamed by #3855) |
 | `energyToPay` | `energy to pay` | group | aria | `lib/components/board/ChoicePromptModal.svelte` | the pay_amount prompt's stepper (ADR 0129 §3): how much energy to pay, from its floor to the seat's energy |
 | `payEnergy` | `Pay <N> {E}` (ends with ` {E}`) | button | text | `lib/choiceDock.ts` | the pay_amount prompt's primary: pays the stepper's amount |
 | `payNothing` | `Pay nothing` | button | text | `lib/choiceDock.ts` | the pay_amount prompt's decline when the card says any amount; it reads Don't pay when the card says one or more |
@@ -94,6 +98,7 @@ registered, or when this file is stale.
 | `rollD6` | `Roll a d6` | menuitem | text | `lib/gameMenu.ts` | a table roll (ADR 0121 §5); disabled for 2 s after the viewer's own roll |
 | `rollD20` | `Roll a d20` | menuitem | text | `lib/gameMenu.ts` | a table roll (ADR 0121 §5) |
 | `flipCoin` | `Flip a coin` | menuitem | text | `lib/gameMenu.ts` | a table roll (ADR 0121 §5) |
+| `rulings` | `Rulings` | menuitem | text | `lib/components/board/CardContextMenu.svelte`<br>`lib/components/board/ManaAbilityMenu.svelte` | a card menu's link to the card's official rulings in a new tab (#3831); not offered for a hidden or face-down card or a token |
 | `adminViews` | `admin views` | navigation | aria | `routes/Admin.svelte` | the admin views' tabs: Live now, Games, Accounts |
 | `adminLiveNowTab` | `Live now` | link | text | `routes/Admin.svelte` | the admin views' first tab |
 | `adminGamesTab` | `Games` | link | text | `routes/Admin.svelte` | the admin views' tab for every table |

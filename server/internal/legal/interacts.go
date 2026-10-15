@@ -29,7 +29,7 @@ import (
 // data) counts as interacting, following ADR 0009 §3's "a
 // false-positive stop over a false-negative skip" (owner answer 3).
 //
-// Two inputs are not declared on an activated row:
+// Three inputs are not declared on an activated row:
 //
 //   - a mana ability reads ManaAbility.Answers, else its sacrifice cost
 //     (manaAnswersOf): a creature sacrifice outlet answers, the mana
@@ -38,7 +38,14 @@ import (
 //     is a target of an opponent's item on the stack, and
 //     combat-interacts while it is attacking or blocking (owner answer
 //     4, selfSacrificeThreatened). That is read from the game, not the
-//     row.
+//     row;
+//   - a protect, survive, pump, prevent or sac_outlet answer is gated (ADR
+//     0009 amendment #3555, owner 2026-10-15): it sets interacts only
+//     while an opponent's item on the stack threatens the seat
+//     (stackThreatens), and otherwise counts in the combat tier. So a
+//     free sacrifice outlet or Selfless Spirit stops you for removal, a
+//     wipe or a fight, and not for every opponent spell. That is read
+//     from the game too.
 
 // CostAnswers is what an activated ability's cost alone answers: a
 // creature sacrifice, exile or return outlet (sac_outlet), or crew
@@ -105,16 +112,177 @@ func selfSacrificeThreatened(g *game.Game, source *game.Card, zone game.ZoneKind
 	return false, combat
 }
 
+// threatGated are the stack answers that count only against a threat
+// (ADR 0009 amendment #3555, owner answers Q1 (a) and Q2 (a),
+// 2026-10-15). Each saves or trades away something of yours, so it
+// answers an item that reaches for your things, not an opponent's
+// Divination. survive is the half of protect that ADR 0142's 2026-10-15
+// amendment split off (regenerate, indestructible), so it is gated with
+// it. remove and restrict act on what an opponent has or may do next, so
+// they keep counting against any item.
+const threatGated = game.AnswerProtect | game.AnswerSurvive | game.AnswerPump | game.AnswerPrevent | game.AnswerSacOutlet
+
+// stackThreatens reports whether an item on the stack that `seat` does
+// not control threatens it (ADR 0009 amendment #3555): the item targets
+// `seat`, a permanent `seat` controls or an item on the stack `seat`
+// controls, or it is an instant or sorcery spell with no target, which
+// could be a wipe, an edict or a steal, or it is an activated ability
+// whose catalog row declares a sweep or an edict that reaches something
+// the seat controls (abilityReaches, #3825). A permanent spell does nothing
+// to the board while it is on the stack; its enters trigger is an item
+// of its own, judged when it is put there. With no game to read it says
+// yes: a stop over a missed window (ADR 0009 §3).
+func stackThreatens(g *game.Game, seat uuid.UUID) bool {
+	if g == nil {
+		return true
+	}
+	if g.Stack == nil {
+		return false
+	}
+	for i := range g.Stack.Cards {
+		card := &g.Stack.Cards[i]
+		item := g.StackMeta[card.InstanceID]
+		if item == nil || item.Controller == seat {
+			continue
+		}
+		targeted := false
+		for _, r := range item.Targets {
+			switch r.Kind {
+			case game.TargetPlayer:
+				targeted = true
+				if r.ID == seat {
+					return true
+				}
+			case game.TargetCard:
+				targeted = true
+				if controlledBy(g, r.ID, seat) {
+					return true
+				}
+			case game.TargetSelf:
+				targeted = true
+			}
+		}
+		if !targeted && item.Kind == game.StackItemSpell && (card.IsInstant() || card.IsSorcery()) {
+			return true
+		}
+		if abilityReaches(g, seat, item) {
+			return true
+		}
+	}
+	return false
+}
+
+// abilityReaches reports whether an opponent's activated ability affects
+// permanents `seat` controls without targeting them (#3825): a wipe, an
+// edict, damage or -N/-N to each creature, which arrives as a planeswalker's
+// minus, Nevinyrral's Disk, Pestilence or Pernicious Deed. A permanent
+// spell tells nothing about this, and an ability has no card type, so it
+// reads what the catalog row declares: Purpose.Sweep, else
+// AnswerRemove (an edict or a sweep with no class named). A sweep whose
+// class holds nothing the seat controls does not reach it. An ability
+// with no declared row (a sandbox activation) and a triggered ability are
+// not read: the cost ADR 0009's #3555 amendment records for triggers.
+func abilityReaches(g *game.Game, seat uuid.UUID, item *game.StackItem) bool {
+	p, ok := item.AbilityPurpose()
+	if !ok {
+		return false
+	}
+	if p.Sweep.IsZero() {
+		return p.Answers.Has(game.AnswerRemove)
+	}
+	return sweepReaches(g, seat, p.Sweep.Matches)
+}
+
+// sweepReaches reports whether `seat` controls a permanent of the class a
+// sweep matches. Matches is an upper bound (Sweep.Partial), so a miss is
+// certain and a hit is a possible. An unnamed or unknown class says yes.
+func sweepReaches(g *game.Game, seat uuid.UUID, m game.SweepMatch) bool {
+	if g.Battlefield == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller != seat {
+			continue
+		}
+		switch m {
+		case game.SweepCreatures:
+			if c.IsCreature() {
+				return true
+			}
+		case game.SweepCreaturesManaValue3OrLess:
+			if c.IsCreature() && c.ManaValue() <= 3 {
+				return true
+			}
+		case game.SweepCreaturesManaValue4OrMore:
+			if c.IsCreature() && c.ManaValue() >= 4 {
+				return true
+			}
+		case game.SweepNonlandPermanents:
+			if !c.IsLand() {
+				return true
+			}
+		case game.SweepArtifacts:
+			if c.IsArtifact() {
+				return true
+			}
+		case game.SweepEnchantments:
+			if c.IsEnchantment() {
+				return true
+			}
+		case game.SweepArtifactsAndEnchantments:
+			if c.IsArtifact() || c.IsEnchantment() {
+				return true
+			}
+		default:
+			return true
+		}
+	}
+	return false
+}
+
+// controlledBy reports whether id is a permanent or an item on the
+// stack that `seat` controls.
+func controlledBy(g *game.Game, id, seat uuid.UUID) bool {
+	if g.Battlefield != nil {
+		for i := range g.Battlefield.Cards {
+			if c := &g.Battlefield.Cards[i]; c.InstanceID == id {
+				return c.Controller == seat
+			}
+		}
+	}
+	if item := g.StackMeta[id]; item != nil {
+		return item.Controller == seat
+	}
+	return false
+}
+
+// inCombatStep is the server's half of the client's combat window
+// (inCombatWindow, #2871): beginning of combat, declare attackers or
+// declare blockers. A mana move carries no combat_interacts, so a
+// threat-gated sacrifice outlet that makes mana reads the step here.
+func inCombatStep(g *game.Game) bool {
+	if g == nil {
+		return false
+	}
+	switch g.Turn.Step {
+	case game.StepBeginCombat, game.StepDeclareAttackers, game.StepDeclareBlockers:
+		return true
+	}
+	return false
+}
+
 // combatFlags is an activate move's combat_interacts and
 // combat_defender_only.
 type combatFlags struct {
 	any, defenderOnly bool
 }
 
-// untargetedFlags is an activate move's interacts and combat flags: the
-// row's answers by tier, and owner answer 4's threatened self-sacrifice.
-// A move with a target sets none (has_targets already stops you).
-func untargetedFlags(g *game.Game, source *game.Card, zone game.ZoneKind, ab game.ActivatedAbilityShape, targets []game.TargetRef) (bool, combatFlags) {
+// untargetedFlags is an activate move's interacts and combat flags for
+// `seat`: the row's answers by tier, owner answer 4's threatened
+// self-sacrifice, and #3555's threat gate. A move with a target sets
+// none (has_targets already stops you).
+func untargetedFlags(g *game.Game, seat uuid.UUID, source *game.Card, zone game.ZoneKind, ab game.ActivatedAbilityShape, targets []game.TargetRef) (bool, combatFlags) {
 	if hasTargets(targets) {
 		return false, combatFlags{}
 	}
@@ -130,32 +298,43 @@ func untargetedFlags(g *game.Game, source *game.Card, zone game.ZoneKind, ab gam
 		return true, combatFlags{}
 	}
 	threatened, fighting := selfSacrificeThreatened(g, source, zone, ab.Cost.SacrificeSelf)
-	return answerFlags(answers, threatened, fighting)
+	threat := answers.HasAny(threatGated) && stackThreatens(g, seat)
+	return answerFlags(answers, threatened, fighting, threat)
 }
 
-// answerFlags maps a row's answers and its threatened self-sacrifice
-// onto the move's flags. combat_interacts is never set beside interacts,
-// which already counts in every window (#2871), and an ability whose
-// only combat answer is a token blocker (makes_blocker) matters only to
-// a defending player (combat_defender_only).
-func answerFlags(answers game.Answers, threatened, fighting bool) (bool, combatFlags) {
-	if answers.HasTier(game.TierStack) || threatened {
+// answerFlags maps a row's answers, its threatened self-sacrifice and
+// whether the stack threatens the seat onto the move's flags.
+// combat_interacts is never set beside interacts, which already counts
+// in every window (#2871), and an ability whose only combat answer is a
+// token blocker (makes_blocker) matters only to a defending player
+// (combat_defender_only).
+//
+// A threat-gated answer (#3555) sets interacts only with `threat`.
+// Without one it counts as a combat answer: a pump, a regeneration
+// shield or a sacrifice outlet still changes a fight, so combat is
+// unchanged. It is never defender-only, since it helps an attacker too.
+func answerFlags(answers game.Answers, threatened, fighting, threat bool) (bool, combatFlags) {
+	gated := answers.HasAny(threatGated)
+	if (answers &^ threatGated).HasTier(game.TierStack) || threatened || (gated && threat) {
 		return true, combatFlags{}
 	}
-	if !answers.HasTier(game.TierCombat) && !fighting {
+	if !answers.HasTier(game.TierCombat) && !gated && !fighting {
 		return false, combatFlags{}
 	}
-	blockerOnly := answers&(game.AnswerCombatGrant|game.AnswerAnimate|game.AnswerMakesBlocker) == game.AnswerMakesBlocker
+	blockerOnly := answers&(game.AnswerCombatGrant|game.AnswerAnimate|game.AnswerMakesBlocker|threatGated) == game.AnswerMakesBlocker
 	return false, combatFlags{any: true, defenderOnly: blockerOnly && !fighting}
 }
 
-// manaMoveInteracts is a mana move's interacts: a declared or read
-// sacrifice outlet, or (owner answer 4) a creature that sacrifices
-// itself while an opponent's item targets it. A mana move never sets
-// combat_interacts.
-func manaMoveInteracts(g *game.Game, source *game.Card, zone game.ZoneKind, ab game.ManaAbilityShape) bool {
-	if manaAnswersOf(ab).HasTier(game.TierStack) {
-		return true
+// manaMoveInteracts is a mana move's interacts for `seat`: a declared
+// or read sacrifice outlet while the stack threatens the seat or in a
+// combat step (#3555's gate; a mana move never sets combat_interacts,
+// so the combat window is read here), or (owner answer 4) a creature
+// that sacrifices itself while an opponent's item targets it.
+func manaMoveInteracts(g *game.Game, seat uuid.UUID, source *game.Card, zone game.ZoneKind, ab game.ManaAbilityShape) bool {
+	if answers := manaAnswersOf(ab); answers.HasTier(game.TierStack) {
+		if !answers.HasAny(threatGated) || inCombatStep(g) || stackThreatens(g, seat) {
+			return true
+		}
 	}
 	threatened, _ := selfSacrificeThreatened(g, source, zone, ab.SacrificeCost)
 	return threatened

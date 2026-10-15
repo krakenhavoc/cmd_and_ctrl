@@ -493,6 +493,10 @@ func Register(spec Spec) {
 		if ma.Cost.Exert && (ma.Cost.Sacrifice || ma.Cost.ExileSelf) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d exerts its source AND moves it — not modelled (ADR 0130 §4)", spec.Name, i))
 		}
+		// #3845: zero is "no mill component".
+		if ma.Cost.Mill < 0 {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d declares a negative mill cost %d", spec.Name, i, ma.Cost.Mill))
+		}
 		// ADR 0129 §5: zero is "no energy component".
 		if ma.Cost.Energy < 0 {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d declares a negative energy cost %d", spec.Name, i, ma.Cost.Energy))
@@ -1952,6 +1956,16 @@ func checkLibraryCosts(name string, i int, cost game.AbilityCost) {
 	if cost.PutFromHandOnLibraryTop < 0 || cost.ExileFromLibraryTop < 0 {
 		panic(fmt.Sprintf("effects.Register: %q ability %d declares a negative library cost (%d on top, %d exiled)",
 			name, i, cost.PutFromHandOnLibraryTop, cost.ExileFromLibraryTop))
+	}
+	// #3845: and the mill component, which is the same kind of
+	// mistake and one more thing: a mill beside an exile of the top
+	// would have to be paid from a library that must hold both counts,
+	// which no printed cost asks.
+	if cost.Mill < 0 {
+		panic(fmt.Sprintf("effects.Register: %q ability %d declares a negative mill cost %d", name, i, cost.Mill))
+	}
+	if cost.Mill > 0 && cost.ExileFromLibraryTop > 0 {
+		panic(fmt.Sprintf("effects.Register: %q ability %d both mills and exiles the top of the library as a cost — no printed cost does both", name, i))
 	}
 	if cost.PutFromHandOnLibraryTop > 0 && cost.ExileFromLibraryTop > 0 {
 		panic(fmt.Sprintf("effects.Register: %q ability %d both puts a card on top of the library and exiles the top of it — no printed cost does both",

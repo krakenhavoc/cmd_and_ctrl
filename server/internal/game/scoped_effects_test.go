@@ -291,6 +291,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// the pass. Its cases are in text_box_test.go here and in
 		// cards/effects.
 		ModExchangeText: true,
+		// ADR 0160's 2026-10-15 amendment: changeText is layer 3 too,
+		// materialised onto Card.TextWords before the pass. Its cases are
+		// in text_words_test.go here and in cards/effects.
+		ModChangeText: true,
 		// ADR 0107 §5: rules gates and Flames of the Blood Hand's life
 		// replacement, read by no layer. Their cases are in
 		// unpreventable_damage_test.go and cant_gain_life_test.go.

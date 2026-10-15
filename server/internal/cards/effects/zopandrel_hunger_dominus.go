@@ -53,7 +53,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{G/P}{G/P}, Sacrifice two other creatures: Put an indestructible counter on Zopandrel.",
-			Purpose: game.Purpose{Answers: game.AnswerProtect | game.AnswerSacOutlet},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive | game.AnswerSacOutlet},
 			Cost:    Plus(ManaCost("{G/P}{G/P}"), SacrificeAnotherN(2, "two other creatures", Creature())),
 			Effect:  putIndestructibleCounterOnSource(),
 		}},

@@ -16,8 +16,8 @@ func init() {
 	Register(Spec{
 		OracleID:            "4022e540-8fa0-4eee-bcf1-df5046289f2b",
 		Name:                "Solarion",
-		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so it enters with no counters at all."},
+		ReadsManaSpent:      game.ReadsOwnPayment,
+		Completeness:        CompletenessFull,
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Activated: []ActivatedAbility{{

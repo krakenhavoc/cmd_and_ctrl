@@ -16,8 +16,8 @@ func init() {
 	Register(Spec{
 		OracleID:            "a20bb8b3-b724-4fec-b179-ca9e6adc4718",
 		Name:                "Baton of Courage",
-		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so it enters with no counters at all."},
+		ReadsManaSpent:      game.ReadsOwnPayment,
+		Completeness:        CompletenessFull,
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{"flash", game.KeywordSunburst},
 		Activated: []ActivatedAbility{{

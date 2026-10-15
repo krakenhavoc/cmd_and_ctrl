@@ -52,11 +52,14 @@ type PaidCost struct {
 	// between "nothing" and "we did not charge you".
 	Mana []ManaToken
 
-	// OnPaper marks a payment the engine did NOT take: permissive
-	// mode (the human default, client/src/lib/settings.ts) and the
-	// strict-mode ForceCast override both let the cast through with
-	// the pool untouched and an EventCostWarning in the log. The
-	// player paid on paper; the engine has no record of WHAT.
+	// OnPaper marks a payment the engine did NOT take in full: an
+	// insufficient pool in permissive mode, and the strict-mode
+	// ForceCast override, let the cast through with an
+	// EventCostWarning in the log. Since #3844 the pool still pays
+	// the share it can, and those tokens are in Mana; the rest was
+	// paid on paper, and the engine has no record of WHAT. So Mana
+	// is a lower bound on an OnPaper record, and empty when the pool
+	// paid nothing.
 	//
 	// It exists so "no mana was spent to cast it" is never ambiguous.
 	// Without it an unrecorded payment and a genuinely free cast look
@@ -66,6 +69,15 @@ type PaidCost struct {
 	// answers "unknown", and every reader treats unknown as the
 	// weaker-than-printed answer — see NoManaSpent and ColorsSpent.
 	OnPaper bool
+
+	// PaperMana is how much mana an UNDECLARED waived payment paid
+	// outside the pool (#3855): the shortfall's amount, colours
+	// unknown. The one-click waived path asserts the rest was paid on
+	// paper, so the AMOUNT is a fact even when the colours are not, and
+	// Spent().Total() counts it. Always beside OnPaper; zero on a
+	// declared payment, whose paper mana is in Mana as tokens with no
+	// source (paper_payment.go).
+	PaperMana int `json:"paperMana,omitempty"`
 
 	// CountersRemoved is how many counters a RemoveCounters
 	// component actually took off, across every permanent it took
@@ -187,6 +199,16 @@ type PaidCost struct {
 	// cost put it there. A count would be Sacrificed's shape answering
 	// a question nobody on this component asks.
 	Exiled []uuid.UUID `json:"exiled,omitempty"`
+
+	// Milled is the cards a "Mill N cards" cost component put into the
+	// payer's graveyard, in the order they came off the top (#3849;
+	// ADR 0020's 2026-10-15 amendment). Charmed Pendant's "for each
+	// colored mana symbol in the milled card's mana cost" reads it. A
+	// card a replacement sent elsewhere (Rest in Peace) is still in it
+	// (CR 701.17c: an effect that refers to the milled card finds it in
+	// whatever public zone it went to; #3847). A leg parked on a CR 616
+	// ordering prompt is not, and reads as "nothing milled".
+	Milled []uuid.UUID `json:"milled,omitempty"`
 
 	// ExiledObjects is WHICH battlefield permanents an ExilePermanents
 	// additional cost took on a cast (#3402), each as the object it was,
@@ -456,11 +478,11 @@ func (p PaidCost) Known() bool { return !p.OnPaper }
 // was made and none was waived. Used by the clone and snapshot
 // paths to keep the common case sparse.
 func (p PaidCost) IsZero() bool {
-	return len(p.Mana) == 0 && !p.OnPaper &&
+	return len(p.Mana) == 0 && !p.OnPaper && p.PaperMana == 0 &&
 		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0 &&
 		p.Sacrificed == 0 && len(p.SacrificedObjects) == 0 && len(p.AltCostObjects) == 0 &&
 		p.ReturnedAttacking == uuid.Nil && len(p.OptionalCosts) == 0 &&
-		len(p.TappedOthers) == 0 && len(p.Exiled) == 0 && len(p.ExiledObjects) == 0 && len(p.Delved) == 0 &&
+		len(p.TappedOthers) == 0 && len(p.Exiled) == 0 && len(p.Milled) == 0 && len(p.ExiledObjects) == 0 && len(p.Delved) == 0 &&
 		p.CostBranch == 0 && len(p.Discarded) == 0 && len(p.Convoked) == 0 &&
 		p.AssistedBy == uuid.Nil && p.AssistPaid == 0
 }
@@ -485,6 +507,9 @@ func clonePaidCost(p PaidCost) PaidCost {
 	}
 	if len(p.Exiled) > 0 {
 		out.Exiled = append([]uuid.UUID(nil), p.Exiled...)
+	}
+	if len(p.Milled) > 0 {
+		out.Milled = append([]uuid.UUID(nil), p.Milled...)
 	}
 	if len(p.ExiledObjects) > 0 {
 		out.ExiledObjects = append([]ObjectRef(nil), p.ExiledObjects...)

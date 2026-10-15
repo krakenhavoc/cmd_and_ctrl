@@ -221,16 +221,18 @@ func TestManaSpentIsZeroForAFreeCast(t *testing.T) {
 	}
 }
 
-// A payment the engine waived (permissive mode) is unknown, and an
-// unknown amount reads as zero — never as "enough" (ADR 0068 §3).
-func TestManaSpentIsZeroWhenThePaymentWasWaived(t *testing.T) {
+// A payment the engine waived (permissive mode) that nothing asked about
+// records the shortfall it asserts was paid on paper, so the amount is
+// the whole cost (#3855, ADR 0068 amendment 2026-10-15). Before #3855 it
+// read as zero.
+func TestManaSpentCountsTheShortfallAWaivedPaymentAsserts(t *testing.T) {
 	g := newActiveGame(t)
 	stubEntryCountersFromCast(t, testSpentCountersOracle, spentEntryCounters())
 	me := g.Seats[g.Turn.ActiveSeat]
 	id := seedSpentCreature(t, g, me, "{2}{G}")
 
-	if got := castAndCountSpent(t, g, me, id, CastSpellParams{}); got != 0 {
-		t.Errorf("a waived payment entered with %d counters, want 0", got)
+	if got := castAndCountSpent(t, g, me, id, CastSpellParams{}); got != 3 {
+		t.Errorf("a waived payment entered with %d counters, want 3", got)
 	}
 }
 

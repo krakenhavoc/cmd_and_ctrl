@@ -40,6 +40,14 @@ steps and combat abilities (#2871)" below.
 to the next turn. It sends `end_turn`, which passes priority for the active
 player until their turn ends, so every step still happens and its triggers
 fire. See "Amendment: pass turn walks the turn (#2881)" below.
+**Amended by:** S72 (#3555), 2026-10-15 — owner answer 2 of the #2853
+amendment is narrowed: an untargeted sacrifice outlet, protection, pump or
+prevention effect stops you on an opponent's stack item only when that item
+threatens you, and never at an empty-stack end step. Combat is unchanged. See
+"Amendment: a free answer stops you only for a threat (#3555)" below.
+**Amended again by:** S72 (#3825), 2026-10-15 — an opponent's activated
+ability that wipes or edicts without a target (a planeswalker's minus,
+Nevinyrral's Disk, Pestilence) is a threat too, read from its catalog row.
 **Input changed by:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md),
 2026-10-09 — `interacts` reads what the ability row declares it answers
 (`Purpose.Answers`) before the printed-text read, and `combat_interacts`
@@ -583,6 +591,151 @@ The sandbox jump is unchanged and still reachable: `pass_turn`
 (`Game.PassTurn`). [ADR 0143](0143-gameplay-settings-overhaul.md) Q5 moves it to
 the ⋯ menu and relabels the dock's control "End turn"; that is its delivery PR
 5, not this change.
+
+## Amendment: a free answer stops you only for a threat (#3555)
+
+**Status:** Accepted · 2026-10-15 · Sprint S72
+
+Two bot arena audits (2026-10-14, 64 seat-games, every priority window put
+through `autopassDecision` on default settings) found untargeted stack-tier
+answers stopping their controller on almost every opponent spell and almost
+never being used. A free sacrifice outlet (Viscera Seer, Ashnod's Altar)
+stopped on about 120 opponent items it never acted on. Selfless Spirit
+(`protect`) stopped on 18 opponent stack items and acted once, and on 8
+empty-stack opponent end steps and acted on none. Purphoros (`pump`) and
+Batterskull (`protect`) acted on none of theirs. In combat the same answers
+were used often (Selfless Spirit: 29 stops, 13 acted). Owner answer 2 of the
+#2853 amendment made these answers stop you by default, wherever an opponent's
+item waits, and that is the half of the goal ("not thinking why do I have to
+click to pass") it missed.
+
+**Owner answers (2026-10-15, "Use recommendations for all").**
+
+1. **Q1 (a): threat-gate a free sacrifice outlet.** On an opponent's stack item
+   a `sac_outlet` answer counts only when that item threatens you. At an
+   opponent's end step with an empty stack it never counts. Combat is
+   unchanged.
+2. **Q2 (a): the same gate for `protect`, `pump` and `prevent`.** `remove`,
+   `restrict`, instants and flash keep stopping as they do today. `survive`
+   (regenerate, indestructible, persist, undying, phasing, a blink), which
+   [ADR 0142's 2026-10-15 amendment](0142-declared-answers-on-catalog-abilities.md)
+   split from `protect` the same day, is gated with it: the question was
+   asked about `protect` before the split, and Selfless Spirit, its example,
+   now declares `survive`.
+3. **Q3 (a): the server applies it** when it sets `interacts`, as it does for
+   ADR 0142's owner answer 4. There is no protocol change, and the client, the
+   bot and the MCP seat all get it.
+
+**What "threatens you" means.** An item on the stack that the seat does not
+control threatens it when:
+
+- it **targets** the seat, a permanent the seat controls, or an item on the
+  stack the seat controls (removal on your creature, a steal, an Aura, burn
+  or an edict aimed at you, a counterspell aimed at your spell); or
+- it is an **instant or sorcery spell with no target**, which could be a
+  wipe, an edict or a steal.
+
+Two readings the recommendation left open, settled here. A target on the
+seat itself counts, not only on its permanents: `prevent` answers burn to the
+face, and a targeted edict ("target player sacrifices a creature") is an
+edict. And "a spell" means an instant or a sorcery. A permanent spell with no
+target does nothing to the board while it is on the stack; its enters
+trigger is an item of its own, and counts when it targets something of yours.
+An untargeted triggered or activated ability is not a threat either, as the
+recommendation said: the enumerator cannot tell a Massacre Wurm's enters
+trigger from a draw trigger without the effect, so a wipe that arrives as a
+trigger is the missed window this costs. An instant or sorcery is the
+conservative reading: an opponent's Divination still stops you.
+
+**How it is applied** (`server/internal/legal/interacts.go`):
+
+- A row whose declared answers include `protect`, `survive`, `pump`,
+  `prevent` or `sac_outlet` sets `interacts` only while the stack threatens the seat
+  (`stackThreatens`). A row that also declares `remove` or `restrict` is not
+  gated.
+- Without a threat the row sets `combat_interacts` instead (never
+  `combat_defender_only`: a pump or a shield helps an attacker too). The
+  client counts that in its combat window (beginning of combat, declare
+  attackers, declare blockers, an attack or block trigger on the stack), so
+  combat stops for these answers as it did, and the empty-stack end step,
+  an opponent's upkeep and an untargeted opponent spell do not.
+- A mana sacrifice outlet (Ashnod's Altar) cannot carry `combat_interacts`, so
+  the server reads the step itself: it sets `interacts` while the stack
+  threatens the seat or in beginning of combat, declare attackers or declare
+  blockers.
+- ADR 0142's owner answer 4 is unchanged: "Sacrifice this creature: …" sets
+  `interacts` while its creature is targeted by an opponent's item, and
+  `combat_interacts` while it attacks or blocks, whatever the row declares.
+  A row that declares nothing still sets `interacts` (ADR 0142 owner answer 3).
+
+`threat_gate_test.go` and `TestAnswerFlagsThreatGate` (internal/legal) pin
+both halves: an empty stack, an opponent's removal aimed at another player, an
+opponent's creature spell and an untargeted trigger do not set `interacts` for
+Viscera Seer, Undercity Troll, Evernight Shade, Spore Frog, Selfless Spirit or
+Ashnod's Altar; removal on your creature, an untargeted sorcery, a spell aimed
+at you, a counterspell aimed at your spell and a trigger aimed at your
+creature do, and Pestilence (`remove`) interacts throughout.
+
+**Measured.** Four seeded lockstep games (mono-black aristocrats, mono-white
+weenie, esper control, boros voltron; 9,113 priority windows) replayed through
+`autopassDecision` on default settings, before and after: stops on opponent
+stack items fell from 96 to 87 and at opponent end steps from 15 to 13, and
+none of the stops removed was one the bot acted on (27 and 4 acted on, before
+and after). Combat stops were unchanged (244, 128 acted on).
+
+**Costs.**
+
+- A wipe or an edict that arrives as a triggered ability with no target (a
+  Massacre Wurm's enters trigger) does not stop you for a free outlet, a
+  shield or a pump. Tick the step, pin it, arm the hold, or turn on "Value
+  abilities" in "Stop for" to see it. An activated ability is read since
+  #3825, below.
+- An opponent's untargeted instant or sorcery still stops you, a Divination
+  included: without reading the spell's effect, the gate cannot tell it from a
+  Wrath.
+
+### Amendment: an untargeted wipe from an activated ability is a threat (#3825)
+
+**Status:** Accepted · 2026-10-15 · Sprint S72
+
+The first cut above missed the wipes that arrive as an activated ability: a
+planeswalker's minus, Nevinyrral's Disk, Pestilence, Pernicious Deed, Ratchet
+Bomb, Oblivion Stone. They have no target and are no instant or sorcery, and
+a free sacrifice outlet, a regeneration shield or a protect effect matters
+most against exactly these.
+
+An activated ability of an item the seat does not control now also threatens
+the seat when it **affects permanents the seat controls without targeting
+them**. A stack item has no card type to read, so the server reads what the
+catalog row it came from declares (`StackItem.AbilityPurpose`, through the
+`Params.Ability` ref every catalog activation carries):
+
+- a declared sweep (`Purpose.Sweep`: destroy, exile, bounce, damage, -N/-N or
+  sacrifice) threatens when the seat controls a permanent of the class it
+  matches (`sweepReaches`). `Matches` is an upper bound (`Partial`), so a
+  miss is certain and a hit is a possibility. A sweep that names only the
+  opponents' permanents (`OpponentsOnly`) is read the same way: the opponent
+  is the ability's controller, so the seat is who it reaches. A creature
+  sweep against a board with no creature does not stop you;
+- else a row that declares `remove` (an edict, a sweep with no class named)
+  threatens, since its candidates cannot be narrowed.
+
+Everything else about an opponent's activated ability is as before: it
+threatens by its targets, and an ability that pumps, shields or draws on its
+own board does not. An activation with no catalog row (a sandbox activation,
+a card carrying its own ability list) is not read, and a triggered ability is
+still not read: its row carries a `Footprint` for trigger ordering, not a
+sweep, so a Massacre Wurm's enters trigger stays the cost above. A later PR
+can declare it the way activated rows do.
+
+Pernicious Deed is not in the catalog yet. When it lands, its `{X}, Sacrifice
+this: Destroy each artifact, creature and enchantment with mana value X or
+less` row declares the sweep and gets this with no further change.
+`ability_threat_test.go` and `TestSweepReaches` (internal/legal) pin it:
+Nevinyrral's Disk, Pestilence, The Eternal Wanderer's -4 and Liliana of the
+Veil's -6 stop Viscera Seer, Undercity Troll, Evernight Shade, Spore Frog,
+Selfless Spirit and Ashnod's Altar; an opponent's Evernight Shade pump, an
+ability with no row and the seat's own Pestilence do not.
 
 ## Context
 

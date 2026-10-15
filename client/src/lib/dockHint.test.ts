@@ -65,6 +65,27 @@ describe("primaryKind (#3267)", () => {
     expect(primaryKind(view("precombat_main"), 2)).toBe("next");
     expect(primaryKind(null, 2)).toBe("next");
   });
+
+  // #3826: the server's pass_hint, on a "next" only.
+  it("is endsTurn or yourTurnNext when the server marks the pass", () => {
+    const hinted = (hint: "ends_turn" | "your_turn_next") =>
+      view("end", {
+        turn: {
+          number: 2,
+          active_seat: 0,
+          priority_holder: 0,
+          phase: "end",
+          step: "end",
+          pass_hint: hint,
+        },
+      } as Partial<GameView>);
+    expect(primaryKind(hinted("ends_turn"), 0)).toBe("endsTurn");
+    expect(primaryKind(hinted("your_turn_next"), 0)).toBe("yourTurnNext");
+    // Something on the stack is a Pass whatever the hint says.
+    const stacked = { ...hinted("ends_turn"), stack_items: [boltItem] } as GameView;
+    expect(primaryKind(stacked, 0)).toBe("pass");
+    expect(primaryKind(view("end"), 0)).toBe("next");
+  });
 });
 
 describe("passHint", () => {
@@ -95,6 +116,21 @@ describe("passHint", () => {
     ["end", "passing ends the turn"],
   ])("on an empty stack at %s: %s", (step, want) => {
     expect(passHint(view(step), true)).toBe(want);
+  });
+
+  // #3826: in the end step before your own turn, a pass starts it.
+  it("says passing starts your turn when the server marks the pass", () => {
+    const v = view("end", {
+      turn: {
+        number: 2,
+        active_seat: 1,
+        priority_holder: 0,
+        phase: "end",
+        step: "end",
+        pass_hint: "your_turn_next",
+      },
+    } as Partial<GameView>);
+    expect(passHint(v, true)).toBe("passing starts your turn");
   });
 
   it("skips to end of combat when nothing attacked (CR 508.8)", () => {

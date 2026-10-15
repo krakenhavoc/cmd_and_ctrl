@@ -11,8 +11,41 @@ import {
   issueURL,
   matchesRoadmapQuery,
   nextItems,
+  parseRoadmapHash,
+  roadmapHash,
   type RoadmapItem,
 } from "./roadmap";
+
+describe("roadmapHash / parseRoadmapHash", () => {
+  it("is the bare route for an empty filter", () => {
+    expect(roadmapHash(EMPTY_ROADMAP_FILTER)).toBe("#/roadmap");
+    expect(parseRoadmapHash("#/roadmap")).toEqual(EMPTY_ROADMAP_FILTER);
+  });
+
+  it("round-trips a query and both chip sets", () => {
+    const hash = roadmapHash({
+      query: "first strike & more",
+      kinds: ["seam", "keyword"],
+      statuses: ["missing", "partial"],
+    });
+    expect(hash).toBe(
+      "#/roadmap?q=first+strike+%26+more&kind=keyword%2Cseam&status=partial%2Cmissing",
+    );
+    expect(parseRoadmapHash(hash)).toEqual({
+      query: "first strike & more",
+      kinds: ["keyword", "seam"],
+      statuses: ["partial", "missing"],
+    });
+  });
+
+  it("drops values the registry does not know", () => {
+    expect(parseRoadmapHash("#/roadmap?kind=keyword,bogus&status=nope")).toEqual({
+      query: "",
+      kinds: ["keyword"],
+      statuses: [],
+    });
+  });
+});
 
 function item(over: Partial<RoadmapItem> & Pick<RoadmapItem, "slug">): RoadmapItem {
   return {

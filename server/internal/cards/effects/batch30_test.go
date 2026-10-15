@@ -891,13 +891,32 @@ func TestB30SatoruDrawsWhenCreaturesArriveUncast(t *testing.T) {
 	if me.Hand.Size() != hand+1 {
 		t.Errorf("an opponent's reanimation draws nothing: %d", me.Hand.Size())
 	}
-	// A creature cast with its payment unrecorded (an insufficient pool) is
-	// not known to have cost nothing, and draws nothing.
+	// #3855: a creature cast with an insufficient pool under Satoru asks
+	// what was paid outside the pool. Declared paid, it draws nothing.
 	batch01AdvanceToStepOf(t, g, 0, game.StepPostcombatMain)
-	castFromHandForTest(t, g, me, "Cast Bear", "Creature — Bear", "{1}{G}", "", game.CastSpellParams{})
+	asking := uuid.New()
+	g.WithWriteLock(func() {
+		me.Hand.PushTop(game.Card{InstanceID: asking, Name: "Asking Bear", TypeLine: "Creature — Bear", ManaCost: "{1}{G}", Owner: me.ID, Controller: me.ID})
+	})
+	var ask *game.PaperPaymentRequiredError
+	if err := g.CastSpell(me.ID, asking, game.CastSpellParams{}); !errors.As(err, &ask) {
+		t.Fatalf("an unfunded cast under Satoru = %v, want a paper payment prompt", err)
+	}
+	g.WithWriteLock(func() { me.Hand.Remove(asking) })
+	castFromHandForTest(t, g, me, "Cast Bear", "Creature — Bear", "{1}{G}", "", game.CastSpellParams{
+		PaperPayment: &game.PaperPayment{Mana: []game.PaperMana{{Color: "G"}, {Color: "G"}}},
+	})
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != hand+1 {
-		t.Errorf("a cast creature draws nothing: %d", me.Hand.Size())
+		t.Errorf("a creature declared paid draws nothing: %d", me.Hand.Size())
+	}
+	// Declared cast without paying its mana cost, it draws.
+	castFromHandForTest(t, g, me, "Free Bear", "Creature — Bear", "{1}{G}", "", game.CastSpellParams{
+		PaperPayment: &game.PaperPayment{Free: true},
+	})
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand+2 {
+		t.Errorf("a creature declared free draws: %d → %d", hand+1, me.Hand.Size())
 	}
 	// Satoru itself arriving uncast draws.
 	batch01AdvanceToStepOf(t, g, 0, game.StepEnd)
@@ -912,8 +931,8 @@ func TestB30SatoruDrawsWhenCreaturesArriveUncast(t *testing.T) {
 	if me.Hand.Size() != hand+1 {
 		t.Errorf("a reanimated Satoru draws for itself: %d → %d", hand, me.Hand.Size())
 	}
-	if spec, _ := Lookup(b30SatoruOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the unrecorded-payment half is a declared gap")
+	if spec, _ := Lookup(b30SatoruOracle); spec.Completeness != CompletenessFull {
+		t.Error("Satoru is complete since a waived payment asks (#3855)")
 	}
 }
 

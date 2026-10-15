@@ -3364,3 +3364,85 @@ straddles the downgrade.
 ### Cards
 
 Professor Hojo (Full).
+
+## Amendment (2026-10-15, [#3845](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3845)): "Mill a card" as a cost
+
+The Warring Triad's "{T}, Mill a card: Target player adds one mana of any color" and Millikin's "{T}, Mill a card: Add
+{C}" had no cost component to be built from. Millikin worked around it with the two slots a mana ability did have, a
+`Condition` gating on a non-empty library and a `Rider` that milled after the mana landed. The Triad could not (its ability
+targets, so it is not a mana ability, CR 605.1a), and shipped without the ability.
+
+### Decision 65: `AbilityCost.Mill` and `ManaAbilityCost.Mill`, one count, paid last through the mill door
+
+`game.AbilityCost.Mill int` (CR 701.17a) is "Mill N cards"; `ManaAbilityShape.MillCost` and
+`effects.ManaAbilityCost.Mill` are the same component on a mana ability. Zero means no such component. A cost with a
+count and nothing to choose, so it rides no params field and no wire pick, exactly as `ExileFromLibraryTop` (ADR 0109
+§7) does. Built with `effects.MillCardsCost(n)` (named so because `MillCards` is the effect primitive) and composed
+with `Plus`.
+
+It is not an exile. `ExileFromLibraryTop` is a plain CR 406 move; a mill is a keyword action, so the payer is
+`payMillCostLocked`, which calls `MillNForEffect`, the one mill door. The CR 614 window on the amount (Bruvac the
+Grandiloquent) and on each card (Rest in Peace, Leyline of the Void) therefore applies, "whenever you mill" payoffs see
+one `EventMill` per card, and a milled commander is offered the command zone once it has landed (CR 903.9a). A card a
+replacement sent to exile is still a card that left the library, so the cost is paid. Nothing is recorded on
+`PaidCost`: no card reads "the milled card" yet (Charmed Pendant would, and is not in the catalog).
+
+### Decision 66: validated with the other components, paid last, and an empty library is not an offer
+
+CR 701.17b makes a cost that mills more cards than the library holds one that can't be paid (CR 118.3), so
+`MillCostShortfall` (`game/library_cost.go`) is checked in `activateCatalogAbilityLocked` and `ActivateManaAbility`
+with the rest of the validation, before anything is tapped or paid, and answers `ErrCantPayLibraryCost`. CR 601.2h pays
+a cost that moves objects from the library to a public zone after every other cost, so the mill is the last payment on
+both paths; on a mana ability the mana still lands in the pool afterwards and the graveyard-arrival triggers wait for the
+state-check pass on the way out (CR 605.3a, 605.3b).
+
+The same predicate is read by the three places that decide whether an ability is on offer: the legal-move enumerator (an
+activated move and a mana move are not emitted, so a bot is never offered one, #544), the view (`mill_cost`, plus
+`cant_activate` carrying the engine's own refusal text on an activated row and on a mana row, which is what greys the
+row), and the auto-tapper. The auto-tapper never plans a mana ability with a mill cost: milling a library to pay for a
+spell is the player's call, which the opaque `Rider` it replaces did by accident. A library is public in size, so the
+refusal is `rowPublic` in the ability-row privacy table.
+
+A replacement that must be ordered (two amount replacements, CR 616.1) can park a prompt inside the payment. The ability is
+already paid for and the mill finishes when the prompt is answered, as it would for the same replacements meeting a mill
+inside an effect. This is the same posture Millikin's rider had.
+
+`effects.Register` refuses a negative mill count on either ability kind and a mill beside an exile of the top, which no
+printed card has: the exile reads its cards at announce and the library would have to hold both counts.
+
+### Cards
+
+The Warring Triad (Full: `Plus(TapCost(), MillCardsCost(1))`, a player target, and an `AddMana` of any color whose pick
+goes to the target player) and Millikin (Full, now on the real cost).
+
+The Triad's layer-cache note was stale and is corrected: a card reaching a graveyard from outside the battlefield bumps
+the layer version unconditionally (`layerVersionBump`, #1117), so the eighth card, including the one this ability mills,
+wakes it at once.
+
+### Still out of scope
+
+Deranged Assistant, Manakin and Millikin, Charmed Pendant, Sinister Concoction and Rot Farm Skeleton print a mill cost
+and are not in the catalog; each is a card on this component (Charmed Pendant additionally needs the milled card
+recorded on `PaidCost`). The bot's `MoveCost` carries no mill price, so a policy sees a mill-paid move as free; the only
+catalog cards that use the component are mana, which the heuristic does not weigh by cost.
+
+## Amendment 2026-10-15 (#3849): the milled card on `PaidCost`, and the five cards
+
+`PaidCost.Milled` (`[]uuid.UUID`, `json:"milled,omitempty"`) records the cards a `Mill` component put into the payer's
+graveyard, in the order they came off the top. Both payers fill it: `ActivateCatalogAbility` and `ActivateManaAbility`
+take the cards `payMillCostLocked` now returns (the moved cards, wherever they ended up). Every
+card the mill took from the library is in it, through `MillToZoneThenMovedForEffect` (#3847): a card Rest in Peace
+exiled is still one (CR 701.17c finds the milled card in whatever public zone it went to). A leg parked on a CR 616
+ordering prompt is not, and reads as "nothing milled", the weaker-than-printed direction. It is cloned with the
+record and counts toward `IsZero`.
+
+The first reader is Charmed Pendant's `ProducedForPaid`: one mana per coloured symbol of the milled card's mana cost. A
+hybrid symbol of two colours is a pipe pick, a Phyrexian or two-brid symbol is its one colour, generic, `{C}` and `{X}`
+add nothing.
+
+Cards: Deranged Assistant, Manakin and Millikin, Sinister Concoction, Rot Farm Skeleton (a graveyard-zone sorcery-speed
+return beside a `can't block` self-restriction) and Charmed Pendant, all Full.
+
+Still out of scope, unchanged: the bot's `MoveCost` carries no mill price, so a policy sees a mill-paid move as free.
+Sinister Concoction and Rot Farm Skeleton are the first non-mana users, so the bot may pay a library for them without
+weighing it.

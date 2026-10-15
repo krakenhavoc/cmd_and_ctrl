@@ -235,11 +235,11 @@
         class:targeted={ring !== null}
         style:--targeted-ring={ring}
         data-stack-item-id={item.id}
-        title={item.previewCard ? `${item.name} — hover to preview` : item.name}
+        title={item.previewCard ? `${item.text} — hover to preview` : item.text}
       >
         {#if item.isTop}<span class="next-badge">Next</span>{/if}
         {#if tag}<span class="tag" data-tag={item.kind}>{tag}</span>{/if}
-        <span class="name">{item.name}</span>
+        <span class="name">{item.text}</span>
         <div class="art">
           {#if src}
             <img {src} alt="" loading="lazy" decoding="async" use:cardArt={src} />
@@ -253,7 +253,9 @@
         </div>
         {#if item.effect || chips.length > 0}
           <div class="tile-foot">
-            {#if item.effect}<span class="effect">{item.effect.text}</span>{/if}
+            {#if item.effect && item.text === item.name}<span class="effect"
+                >{item.effect.text}</span
+              >{/if}
             {#if chips.length > 0}
               <span class="chips">
                 {#each chips as chip, ci (ci)}

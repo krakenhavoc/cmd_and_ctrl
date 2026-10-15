@@ -199,7 +199,7 @@ test.describe("first-use hints", () => {
       // The roadmap: its own hint first, and the site's Help tip on the
       // next visit (one tip a visit). Then the usual cycle: nothing on
       // a reload, and Help → Tips for this page shows both again.
-      const roadmapSearch = page.getByRole("textbox", {
+      const roadmapSearch = page.getByRole("searchbox", {
         name: L.searchRoadmap,
         exact: true,
       });

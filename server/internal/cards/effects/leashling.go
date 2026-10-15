@@ -23,7 +23,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "Put a card from your hand on top of your library: Return this creature to its owner's hand.",
-			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    PutACardFromHandOnTop(),
 			Effect:  returnThisPermanentToOwnersHand,
 		}},

@@ -717,16 +717,43 @@ it has not spent yet. Without it the payment is colourless-first and the
 card converges for less than the board allowed. Adamant deliberately
 does not set it.
 
-A fully funded floating pool is spent and recorded in either payment
-mode. Permissive mode waives only a pool that cannot cover the whole
-cost; Cast anyway always waives it, even when funded.
+A card that reads one NAMED colour of its payment ("if {R} was spent to
+cast it", adamant, Moonhold's {R} and {W}) sets `Spec.WantsColors` — the
+colours, as `[]string{"R"}`. Auto-pay then pays the generic half with a
+source (or a floating mana) of that colour when it has a free choice
+(#3853, ADR 0068 amendment 2026-10-15). It is an ordering hint like
+`WantsManaFrom`: the card is never made uncastable by it, and a payment
+made by hand reads as it was made. Do not set it for a colour the cost
+already prints as a pip, which is paid in that colour whatever the
+planner prefers.
 
-One rule covers every reader, and no card has to restate it: a payment
-the engine WAIVED — an insufficient pool in permissive mode or a
-Cast anyway override — answers "unknown", and unknown is always the
-weaker-than-printed answer. Converge counts no colours, adamant does not
-turn on, and "if no mana was spent" is false. Say so in a caveat, as
-Painful Truths and Vexing Bauble do.
+A fully funded floating pool is spent and recorded in either payment
+mode. A waived payment (an insufficient pool in permissive mode, or a
+Cast anyway the pool cannot cover) spends what the pool can and waives
+only the shortfall (#3844).
+
+**Every card that reads the mana spent declares
+`Spec.ReadsManaSpent`** (#3855, [ADR 0068 amendment
+2026-10-15](decisions/0068-the-mana-spent-on-a-spell.md)). It is what makes
+a waived payment ASK: when something reads a payment the engine waived,
+the caster is asked what they paid outside the pool (a legal payment of
+exactly the shortfall), or whether they cast it without paying its mana
+cost, and the record becomes exact. So a mana-spent reader needs no
+strict-mana caveat. Pick the declaration by who reads what:
+
+| The card reads | Declare |
+|---|---|
+| its own payment: converge, sunburst, adamant, "the amount spent to cast it", "if no mana was spent to cast it" | `game.ReadsOwnPayment` |
+| the payment of spells its controller casts (Coin of Mastery, Lux Artillery, Satoru, expend) | `game.ReadsYourCasts` |
+| the payment of spells its opponents cast (Boromir) | `game.ReadsOpponentsCasts` |
+| every cast (Vexing Bauble, Roiling Vortex) | `game.ReadsEveryCast` |
+| the mana spent on its own activation (Protective Sphere) | `game.ReadsOwnActivations` |
+| plus: "mana from an artifact source", which a paper source can be | `\| game.ReadsSourceKinds` |
+| only Treasure mana or a spend rider's token, which paper mana never is | `game.ReadsPoolManaOnly` (never asks) |
+| the amount spent on a spell it did not watch being cast (Mana Sculpt) | `game.ReadsAnotherSpellsAmount` (never asks; the amount is always recorded) |
+
+`TestManaSpentReadersDeclareIt` scans the card files and fails one that
+reads the vocabulary without declaring, or declares without reading.
 
 **Mana that does something when it's spent (#1547)** — "and that
 spell can't be countered", "if that mana is spent on a creature
@@ -1422,7 +1449,8 @@ in code, not declared.
 
 | Constant | Tier | Declare it when the row… | Examples |
 |---|---|---|---|
-| `game.AnswerProtect` | stack | keeps a permanent of yours: regenerate, indestructible, hexproof, shroud, protection, phase out, a blink, returns itself to hand, grants persist or undying | Albino Troll, Selfless Spirit |
+| `game.AnswerProtect` | stack | puts a permanent of yours out of reach of what *targets* it: hexproof, shroud, protection, "can't be countered". Does nothing against a Wrath | Bristling Hydra, Hell-Bent Raider |
+| `game.AnswerSurvive` | stack | keeps a permanent of yours on the battlefield, or brings it back, whatever removes it: regenerate, indestructible, phase out, a blink, returns itself to hand, grants persist or undying. A row that does both declares both | Albino Troll, Selfless Spirit, Bulwark Ox (both) |
 | `game.AnswerPump` | stack | raises power or toughness: +N/+N, +1/+1 counters, monstrosity, adapt, a base power and toughness | Arbor Colossus |
 | `game.AnswerPrevent` | stack | prevents or redirects damage, or sets a damage shield | Spore Frog, Opal-Eye |
 | `game.AnswerRemove` | stack | removes, destroys, damages or shrinks other permanents with no target | Pestilence, Nevinyrral's Disk |
@@ -1434,7 +1462,7 @@ in code, not declared.
 | `game.AnswerValue` | — | answers nothing: draw, mana, ramp, a fetch, scry, a non-creature token, a counter that only counts | Mind Stone, a Clue, cycling |
 
 ```go
-Purpose: game.Purpose{Answers: game.AnswerProtect},                     // "{1}{G}: Regenerate this creature."
+Purpose: game.Purpose{Answers: game.AnswerSurvive},                      // "{1}{G}: Regenerate this creature."
 Purpose: game.Purpose{Answers: game.AnswerPump, Pump: &game.Pump{...}}, // a self pump the bot also prices
 Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1},            // Mind Stone's draw
 ```
@@ -1463,7 +1491,7 @@ both where both are true; neither is derived from the other.
   announcement has a target;
 - a crew row without `AnswerAnimate`;
 - a row whose cost sacrifices, exiles or returns a creature without
-  `AnswerSacOutlet` or `AnswerProtect`;
+  `AnswerSacOutlet`, `AnswerSurvive` or `AnswerProtect`;
 - on a mana ability, anything but `AnswerSacOutlet` or `AnswerValue`, or
   a creature-sacrifice cost declared without `AnswerSacOutlet`.
 
@@ -1483,6 +1511,14 @@ A "Sacrifice this creature: …" row needs no special declaration for the
 moment its creature is threatened: the enumerator sets `interacts` while
 an opponent's stack item targets it, and `combat_interacts` while it
 attacks or blocks, from the game state (ADR 0142 owner answer 4).
+
+Declare what a row answers, not when it should stop a player. The
+enumerator gates `protect`, `survive`, `pump`, `prevent` and `sac_outlet` itself:
+they set `interacts` only while an opponent's stack item threatens the
+seat, and count in combat otherwise
+([ADR 0009 amendment #3555](decisions/0009-smart-priority-autopass.md#amendment-a-free-answer-stops-you-only-for-a-threat-3555)).
+Don't declare `value` or a combat answer to keep a row from stopping
+players.
 
 ### Paying energy (ADR 0129, #1995)
 
@@ -2479,9 +2515,8 @@ EntersAsCopyOfFromCast("Mockingbird",
 
 The counts come from `game.EntryCastCountsForEffect(ev)`, and they are the
 zero value when the permanent was not cast (reanimated, flickered, put onto
-the battlefield) or when the engine did not charge the cast (strict mana
-off). Both read as "nothing was spent", the weaker answer. So a card like this
-carries the strict-mana caveat every mana-spent reader carries.
+the battlefield). A card like this declares `Spec.ReadsManaSpent`, so a cast
+the engine did not charge asks what was paid (#3855) and the count is exact.
 
 **Granting an ability (CR 707.9a, #665).** A granted ability is part
 of the COPIABLE VALUES — a Clone copying a Phantasmal Image gets the
@@ -2620,8 +2655,30 @@ Targeting(WhenThisEnters(label, ExchangeTargetTextBoxesWhileSourceRemains),
 Any other duration calls `g.ExchangeTextBoxesForEffect(source, a, b,
 d, label)` directly; it refuses a partial exchange (CR 701.12a). Never
 read `Card.OracleID` to ask what a permanent DOES — `CatalogKey` /
-`CatalogAbilityKey` are what follow the exchange. Changing single
-words (Glamerdye, Magical Hack) has no shape yet; ADR 0160 §9 plans it.
+`CatalogAbilityKey` are what follow the exchange.
+
+### Changing one word of a card's text (ADR 0160 amendment 2026-10-15)
+
+"Replace all instances of one color word / basic land type / creature
+type with another" (CR 612.2) is a substitution the target's word
+readers consult, not a rewrite:
+
+```go
+OnResolve: changeTextOfTarget(textColorWords, false, nil),   // Sleight of Mind
+OnResolve: changeTextOfTarget(textEitherWords, true, nil),   // Whim of Volrath: either class, until end of turn
+ChangeCreatureTypeWord{Target: id, Except: []string{"Wall"}} // Artificial Evolution
+```
+
+The other side matters more, because it is every card file: **a colour
+or type word in your card's rules is only changeable if it is read
+through one of the doors.** Target clauses already are when they use
+`OfColor` / `NonBlack` / `Subtype` / `HasSubtype` / `OfCreatureType`
+(the walk lends the source's words), and so are `TribeFilter` lords and
+`KeywordGrant`. A static or trigger that holds its source should read
+`target.HasColor(source.TextColor("G"))`, not `target.HasColor("G")`, and
+`source.TextSubtype("Island")` for a land type. A CHOSEN colour or type
+(`ChosenColor`, `NamedTribe`) is not text: read it directly. The
+amendment lists the files that still hard-code a word.
 
 ### Adding a combat-keyword card (S18+)
 
@@ -3858,6 +3915,20 @@ draws the cards, paid after every other cost (CR 601.2h), and
 `ctx.DiscardedCard()` reads them like any discard. Compose each with
 `Plus`. Register refuses a random discard with a predicate and both
 library components on one cost.
+
+**Mill as a cost (#3845, ADR 0020 amendment 2026-10-15):**
+`MillCardsCost(n)` is "Mill N cards" (The Warring Triad's and
+Millikin's "{T}, Mill a card:", Rot Farm Skeleton's "Mill four cards:").
+It is not an exile: the cards go through the ordinary mill, so Rest in
+Peace exiles them instead and "whenever you mill" payoffs see them. A
+library of fewer than N cards can't pay it (CR 701.17b), so the ability
+is not offered (the enumerator, the view's `cant_activate` and the
+engine all ask `MillCostShortfall`). A mana ability declares it as
+`ManaAbilityCost{Tap: true, Mill: 1}`; the auto-tapper never pays such
+a row. An ability that also TARGETS is not a mana ability (CR 605.1a):
+declare it on `Activated` with `Plus(TapCost(), MillCardsCost(1))`, as
+The Warring Triad does. Register refuses a mill beside an exile of the
+top of the library.
 
 **A target bounded by X (#1559, #1723, ADR 0109 §9):** the bound is
 a flag on the clause, never a predicate, because a predicate cannot see
@@ -8347,7 +8418,8 @@ and then discard the change to `docs/engine-seams.md`.
   `DiscardCards`, and `DiscardYourHand` for "discard your hand"), exile
   from the hand or graveyard (`ExileCards`), exile the top of your
   library, put a card from your hand on top of it (`library_cost.go`,
-  ADR 0109 §7), return a permanent to its owner's hand, tap other
+  ADR 0109 §7), **mill N cards** (`MillCardsCost(n)`, #3845, ADR 0020's
+  2026-10-15 amendment), return a permanent to its owner's hand, tap other
   permanents, and **waterbend** (`WaterbendCost("{X}")`, Katara,
   Waterbending Master). The struct's field comments are the list of
   record; check it before calling a cost shapeless.
@@ -10091,6 +10163,13 @@ ctx.SourcePermanent()                                                           
   enumerator offers the cast. "Every card in your hand" (The Great Synthesis) writes the same grant over each card with
   its own `AltCostKey` and no pick (#3270). A pick behind a draw (Cecily, Haunted Mage) runs from a
   `game.DrawThen` body through `offerFreeHandCastFrom(g, controller, source, ...)`, the Context-free form (#2110).
+  "Any number of spells from your hand" (Aetherflux Conduit) is `grantFreeHandCastsFrom`: the same grant, one per
+  nonland card in hand and no pick, because a grant naming several cards is spent by the first cast. "Look at the top
+  N cards of your library. You may cast a spell from among them without paying its mana cost. Put the rest on the
+  bottom in a random order" (Aetherworks Marvel) is `lookAtTopAndOfferFreeCast` in `free_library_cast.go`: a private
+  look, a `ChooseCastFreeFromLibrary` pick over the nonland cards, the rest bottomed, and
+  `Game.FreeCastFromLibraryPermission` over the pick (an uncast pick goes to the bottom too). ADR 0099 amendment
+  2026-10-15 (#2110).
 - **"Exile the top card of your library. You may cast that card. If you don't, X"** (Chandra, Torch of Defiance) is
   `g.ExileTopThenPaidCastOrElseForEffect(game.PaidCastOrElse{Player, Source, SourceName, IfNotCast, DeclineLabel})`
   (`game/cast_paid_or_else.go`, #3510). The cast is PAID at the card's own cost and ignores timing (CR 608.2g); X is a
@@ -10187,8 +10266,9 @@ DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b
   known from the reveal, so its owner's pile shows it), then grant a `ScopeCards` permission in `ZoneLibrary` with
   `LapseOnPass: LapseToLibraryBottom`; the lapse bottoms an uncast pick out of the zone the grant opens. Sunbird's Invocation.
 - **Cards that stay caveated**, with the gap named: Transmutation Font (a "different names" rule over a three-permanent
-  sacrifice), The Warring Triad (mill as an activated-ability cost), Vorinclex, Monstrous Raider (counter placements that name no
-  placer). Tower Winder landed Full with #3217.
+  sacrifice), Vorinclex, Monstrous Raider (counter placements that name no
+  placer). Tower Winder landed Full with #3217, and The Warring Triad
+  with #3845 (mill as a cost).
 
 ### Adding a `Spec` slot (#622)
 

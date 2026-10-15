@@ -72,14 +72,11 @@ func TestDeck3655EspersExilesOpponentGraveyardsAndCopiesAsAnArtifact(t *testing.
 
 	castCatalogSpell(t, g, "Espers to Magicite", "Instant", deck3655EspersOracle, nil)
 	passPriorityAroundTable(t, g)
-	prompt := chooseCardsChoiceFor(g, me.ID)
-	if prompt == nil {
-		t.Fatal("no choice for the creature card exiled this way")
+	prompt := pickTargetPrompt(t, g)
+	if len(prompt.PickTargetCards) != 1 || prompt.PickTargetCards[0] != dragon {
+		t.Errorf("offered %v, want only the opposing creature card", prompt.PickTargetCards)
 	}
-	if len(prompt.ChooseCards) != 1 || prompt.ChooseCards[0] != dragon {
-		t.Errorf("offered %v, want only the opposing creature card", prompt.ChooseCards)
-	}
-	answerChooseCards(t, g, me.ID, dragon)
+	answerPickTarget(t, g, dragon)
 	passPriorityAroundTable(t, g)
 
 	if len(opp.Graveyard.Cards) != 0 {

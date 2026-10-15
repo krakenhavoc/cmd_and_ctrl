@@ -322,6 +322,20 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}ActionDock.svelte`],
     doc: "the dock's primary on an empty stack (#3267): pass priority so the game moves to the next step (its visible text and its aria-label); the tutorial's stack step anchors here too, within actions",
   }),
+  nextEndsTurn: label({
+    name: "Pass · turn ends",
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}ActionDock.svelte`],
+    doc: "the dock's primary at your last priority of your own turn (#3826, turn.pass_hint ends_turn): a pass hands the turn over; ringed, and named so End turn stays the one button of that name (its visible text and its aria-label)",
+  }),
+  nextYourTurn: label({
+    name: "Pass · your turn next",
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}ActionDock.svelte`],
+    doc: "the dock's primary at your last priority before your turn begins (#3826, turn.pass_hint your_turn_next): your next decision is in your own turn; ringed (its visible text and its aria-label)",
+  }),
   attackWith: dynamicLabel({
     stem: "Attack with ",
     match: "prefix",
@@ -485,23 +499,41 @@ export const LABEL_SPECS = {
     owners: ["lib/targetingDock.ts"],
     doc: "a board-answered card-set pick's fallback: open the same choice as the list",
   }),
-  castWithoutPaying: dynamicLabel({
-    stem: " without paying its mana cost?",
+  castPayingOnPaper: dynamicLabel({
+    stem: " and pay the rest on paper?",
     match: "suffix",
-    shape: "Cast <card> without paying its mana cost?",
-    make: (card: string) => `Cast ${card} without paying its mana cost?`,
+    shape: "Cast <card> and pay the rest on paper?",
+    make: (card: string) => `Cast ${card} and pay the rest on paper?`,
     example: ["Craw Wurm"],
     kind: "aria",
     role: "dialog",
     owners: ["lib/targetingDock.ts"],
-    doc: "Cast anyway's confirm (ADR 0118 §2), with its Cast and Cancel",
+    doc: "Cast anyway's confirm (ADR 0118 §2, renamed by #3855), with its Cast and Cancel",
+  }),
+  paperPayment: dynamicLabel({
+    stem: "What did you pay for ",
+    match: "prefix",
+    shape: "What did you pay for <card>?",
+    make: (card: string) => `What did you pay for ${card}?`,
+    example: ["Painful Truths"],
+    kind: "aria",
+    role: "dialog",
+    owners: [`${BOARD}PaperPaymentModal.svelte`],
+    doc: "the paper payment picker (#3855): what a waived payment something reads paid outside the pool",
+  }),
+  castFree: label({
+    name: "Cast without paying its mana cost",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}PaperPaymentModal.svelte`],
+    doc: "the paper payment picker's other answer: an effect on paper let you cast it free (#3855)",
   }),
   cast: label({
     name: "Cast",
     kind: "text",
     role: "button",
     owners: ["lib/targetingDock.ts"],
-    doc: "Cast anyway's confirm: cast it unpaid",
+    doc: "Cast anyway's confirm: cast it, the pool paying what it can and the rest paid on paper",
   }),
   cancel: label({
     name: "Cancel",
@@ -511,11 +543,11 @@ export const LABEL_SPECS = {
     doc: "Cast anyway's confirm, and every flow's Cancel (the dock's cancelAction), the first-turn confirm's included",
   }),
   castAnyway: label({
-    name: "Cast anyway (don't pay)",
+    name: "Cast anyway (pay on paper)",
     kind: "text",
     role: "menuitem",
     owners: ["lib/castAnyway.ts"],
-    doc: "the card menu's row that casts without paying (ADR 0118 §2)",
+    doc: "the card menu's row that casts what the pool can't pay, the rest paid on paper (ADR 0118 §2, renamed by #3855)",
   }),
   energyToPay: label({
     name: "energy to pay",
@@ -715,6 +747,14 @@ export const LABEL_SPECS = {
     role: "menuitem",
     owners: ["lib/gameMenu.ts"],
     doc: "a table roll (ADR 0121 §5)",
+  }),
+
+  rulings: label({
+    name: "Rulings",
+    kind: "text",
+    role: "menuitem",
+    owners: [`${BOARD}CardContextMenu.svelte`, `${BOARD}ManaAbilityMenu.svelte`],
+    doc: "a card menu's link to the card's official rulings in a new tab (#3831); not offered for a hidden or face-down card or a token",
   }),
 
   // -- The admin views (ADR 0124 §7, §8) --

@@ -3,6 +3,7 @@ package game
 import (
 	"errors"
 	"slices"
+	"strconv"
 
 	"github.com/google/uuid"
 )
@@ -700,6 +701,14 @@ type PendingChoice struct {
 	// is the same; only the wording differs. Wire `exchanges_text`.
 	ExchangesText bool
 
+	// ExcludedTypes are creature types a PendingChoiceCreatureType may
+	// NOT be answered with (ADR 0160's 2026-10-15 amendment): Artificial
+	// Evolution's "The new creature type can't be Wall", and the word
+	// being replaced, since a word can't be changed to itself. Canonical
+	// spelling. The resolver refuses them, the enumerator and the wire's
+	// type_options leave them out. Empty on every other prompt.
+	ExcludedTypes []string
+
 	// ScryCards is the set of cards a PendingChoiceScry's chooser is
 	// looking at, in top-to-bottom library order (so the first entry
 	// is the card that would be drawn next if nothing moves).
@@ -1243,6 +1252,34 @@ func (c *PendingChoice) TriggerDoubler() (uuid.UUID, string) {
 		return c.pickTargetResume.doubledBy.id, c.pickTargetResume.doubledBy.name
 	}
 	return uuid.Nil, ""
+}
+
+// SharedTargetKey is the identity of the trigger a pick_target prompt
+// asks about, as card and ability rather than as source object (#3817,
+// ADR 0127's 2026-10-15 amendment): the source's catalog key, the
+// triggered row's index and label, and the clause being asked. Every
+// copy of one card (twenty Blood Artists, a Clone of one) shares it;
+// two abilities of one card, or two clauses of one ability, do not.
+// The client offers "same target for all of this card's triggers" over
+// the prompts that share it and the same chooser.
+//
+// "" when the prompt is not a trigger's target pick, when the row is not
+// a catalog row (an engine-built or reflexive trigger), or when the
+// source is face down, so nothing is shared across an unknown identity.
+func (c *PendingChoice) SharedTargetKey() string {
+	if c == nil || c.Kind != PendingChoicePickTarget || c.copyResume != nil {
+		return ""
+	}
+	f := c.pickTargetResume
+	if f == nil || f.source.FaceDown {
+		return ""
+	}
+	t := f.ability
+	if t.row.key == "" || t.Key == "" {
+		return ""
+	}
+	return t.row.key + "|" + AbilitySlotTriggered + "|" + strconv.Itoa(t.row.index) + "|" + t.Key +
+		"|step" + strconv.Itoa(f.step)
 }
 
 // DamageAssignmentFrame is the payload for a

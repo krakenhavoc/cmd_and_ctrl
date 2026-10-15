@@ -5,7 +5,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
 
 // vote_test.go — ADR 0146, #2143: voting (CR 701.38) and the cards that
@@ -435,5 +437,41 @@ func TestCoercivePortal(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(portal) || g.Battlefield.Contains(bear) {
 		t.Error("carnage sacrifices the Portal and destroys every nonland permanent")
+	}
+}
+
+// #3669: a ballot has no abstain, so the enumerator's first option is
+// the answer a stalled bot or the MCP seat falls back on (AlwaysLegal,
+// aiseat.SafeIndex). That flag has to stay on the wire even though the
+// text seat no longer calls the option "always legal": every ballot is
+// equally legal, and a mandatory vote must never leave a seat with no
+// way out.
+func TestCouncilsJudgmentBallotKeepsItsEscapeAnswer(t *testing.T) {
+	g := newCatalogGame(t)
+	order := voteOrder(g)
+	me := order[0]
+	ctrlPushCreature(g, order[1].ID, "Alpha Bear")
+	ctrlPushCreature(g, order[2].ID, "Beta Bear")
+	castCatalogSpell(t, g, "Council's Judgment", "Sorcery", councilsJudgmentOracle, nil)
+	passPriorityAroundTable(t, g)
+	if ballotFor(g, me.ID) == nil {
+		t.Fatalf("no ballot open for the caster: %+v", g.PendingChoices)
+	}
+
+	moves := legal.EnumerateFor(g, me.ID)
+	if len(moves) < 2 {
+		t.Fatalf("a ballot over two permanents offered %d moves", len(moves))
+	}
+	safe := aiseat.SafeIndex(moves)
+	if safe < 0 {
+		t.Fatal("a mandatory vote has no always-legal answer: a bot that cannot place a ballot would hold the table")
+	}
+	if !moves[0].AlwaysLegal || safe != 0 {
+		t.Errorf("the escape is move %d (always_legal on 0: %v), want the first option", safe, moves[0].AlwaysLegal)
+	}
+	for i, m := range moves[1:] {
+		if m.AlwaysLegal {
+			t.Errorf("ballot option %d is also always_legal; only the first is the escape", i+1)
+		}
 	}
 }

@@ -557,8 +557,9 @@ var (
 	// happen before anything else is paid. Added for #789.
 	ErrCantPayCounterCost = errors.New("game: that permanent can't have those counters put on it")
 	// ErrCantPayLibraryCost is returned when an "Exile the top N
-	// cards of your library" cost meets a library of fewer than N
-	// cards (CR 118.3). ADR 0109 §7, #1902.
+	// cards of your library" or "Mill N cards" cost meets a library
+	// of fewer than N cards (CR 118.3, CR 701.17b). ADR 0109 §7,
+	// #1902; the mill form is #3845.
 	ErrCantPayLibraryCost = errors.New("game: not enough cards in your library to pay that cost")
 	// ErrCantPayRandomDiscard is returned when a "Discard N cards at
 	// random" cost meets a hand that can't supply N cards (CR 118.3).

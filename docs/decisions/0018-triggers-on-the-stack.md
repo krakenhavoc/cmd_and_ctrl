@@ -4761,3 +4761,202 @@ item is still there.
 4. **Snapshot.** `events[].targeter_kind` and the same field inside every embedded trigger event are additive under v9
    and omitted when empty. A binary that drops the key reads the old events as having no kind, which only means an
    older Hojo trigger does not fire for them.
+
+## Amendment 2026-10-14 (eighth) — "use this order again" for a repeated batch (#3016) · Accepted (2026-10-15)
+
+Issue [#3016](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3016), c2 of the #3013 amendment. The owner chose
+the feature on 2026-10-11 (decision 4 there) and asked for this amendment **for review before anything is built**.
+No code changes with it. It builds on [ADR 0127](0127-answering-repeated-prompts-for-you.md) (standing answers),
+whose §1 lists the trigger order as "never covered"; this amendment is the exception. Numbering: an amendment to
+ADR 0018, so no ADR number is taken.
+
+### The question
+
+A seat that orders the same rows again and again is asked again and again. The #3013 work removes the prompt where
+the order cannot change the game, and #3540 (2026-10-14) took #3016's reported pair (Pitiless Plunderer and
+Falkenrath Noble) off the prompt entirely. What is left is a batch the check still asks about: a reactor on the
+board, an undescribed row, or a pair whose order really matters (prowess beside Caldera Pyremaw). The player there
+has a policy ("Treasure first, then the drain") and gives it ten times a game. CR 603.3b makes the order theirs to
+choose, and nothing stops them choosing it once, as a CR 732.1a shortcut the table can see.
+
+The issue's five questions: what counts as the same batch; how a remembered order meets the three modes (#1968,
+#2334); undo and snapshots; the bot seat; how a player sees and clears it. Two more came up: hidden information, and
+when a remembered order expires.
+
+### What exists
+
+- **The prompt.** `drainPendingTriggersAPNAPLocked` (`game/mutations.go`) asks a seat whose batch
+  `triggerOrderAskWhyLocked` says needs an order, by queueing one `PendingChoiceTriggerOrder` with the items' IDs
+  (`TriggerOrderIDs`) and the #3015 sentence. `ResolveTriggerOrder` (`game/pending_choice.go`) takes a resolution
+  order, marks the items `Ordered`, dequeues the prompt (a player decision, so the CR 732 loop run restarts) and
+  runs the drain again.
+- **Row identity.** A stamped catalog trigger carries `Params.Ability`, an `AbilityRef` `{key, slot, ref, name}`
+  (ADR 0041 P9). An engine keyword trigger carries a keyed body (`"prowess/pump"`). A closure trigger with no ref,
+  and an engine-built delayed or reflexive trigger, have neither.
+- **Standing answers** (ADR 0127, `game/auto_answer.go`). A prompt with an `AutoAnswerKey` and a rule for it is
+  answered by the room after the commit that raised it, as a commit of its own (`NextAutoAnswer`, then
+  `AutoAnswer`). That commit is the chooser's and is `freeUndo`. It writes an `auto_answer` log line marked
+  "(automatic)" and does not restart the loop run. Undoing it reopens the prompt marked `AskedByHand: undone`. A
+  controlled chooser (ADR 0167 §4), an open loop notice and a bot seat are never answered. The rules live in
+  `Player.AutoAnswers` (account-synced, `always` or `never`).
+- **The client.** `ChoicePromptModal.svelte` draws the order as a click-to-number list with **Resolve in this order**
+  and **Auto-order** (#3036). The dock's notice for an automatic answer has **Undo** and **Ask me next time** (ADR
+  0127 §6).
+
+### A. Which batches are "the same"
+
+- **(A1) The set of distinct rows. Recommended.** Each item maps to a *row identity*: its `AbilityRef` as
+  `key|slot|ref|name`, or, for an engine keyword trigger, its keyed body plus its source's catalog key
+  (`prowess/pump@<key>`, since prowess on two different creatures pumps two different creatures). The batch key is
+  the sorted set of distinct identities. Counts don't matter: three Falkenrath drains and one Solemn draw are the
+  same batch as one drain and one draw. Source instances don't matter: a second Blood Artist, or a token copy, is
+  the same row.
+- **(A2) The multiset of rows.** A1 with counts. Three drains and a draw would differ from one and one, so the player
+  answers once per batch size. More exact, and more prompts in exactly the case the issue is about.
+- **(A3) Source instances and labels.** A new copy of a card, or a card that dies and comes back, starts over.
+  Rejected: it fails the aristocrats board, where sources come and go.
+- **(A4) Oracle ID and label.** Like A1, but it merges rows the catalog keeps apart. Rejected: `AbilityRef` is
+  already the identity the snapshot trusts.
+
+An item with no row identity leaves the whole batch unkeyed, and it is asked as today. So does an item whose source
+is face down or in a hidden zone (G).
+
+### B. What is remembered
+
+**A ranking of the batch's rows, not a permutation of item IDs.** Applying it is a stable sort of the new batch by
+rank, so copies of one row stay together in the order they triggered (owner decision 2 of #1968). An answer that
+interleaves copies of one row (Plunderer, Noble, Plunderer) is not a ranking. The **Use this order again** toggle is
+disabled on it, with the hint "Only an order that keeps each card's triggers together can be reused."
+
+### C. Where it lives and when it expires
+
+- **(C1) Per seat, per game. Recommended, and what the issue says the owner chose.** `Player.TriggerOrderMemory`, a
+  map from batch key to ranking, at most **32** entries (a 33rd replaces the one applied least recently). It is game
+  state: cloned, snapshotted additively as `triggerOrderMemory` (shape file updated, no schema bump; absent restores
+  empty), and gone when the game ends. It needs no expiry inside the game: it applies only when the same rows
+  trigger together, and a row no longer in play never does.
+- **(C2) The account's synced settings, like ADR 0127's rules.** One answer for every game with that deck. Rejected
+  for now: the right order depends on the board around it, and the issue chose per game.
+
+### D. Opting in and out
+
+- **(D1) A toggle on the prompt. Recommended.** The trigger-order prompt shows **Use this order again** under the
+  list. It is off by default, and on when the batch already has a remembered order (a prompt asked by hand). **Resolve
+  in this order** with it on sends `remember: true`, and the server stores the ranking in the same commit. With it
+  off, `remember: false` clears any remembered order for that key. The toggle is hidden on a prompt with no key.
+- **(D2) A "Same as last time" button, and nothing standing.** One click per prompt instead of none. Simpler (no
+  automatic answer, no new state), but it doesn't remove the interruption the issue is about.
+- **(D3) Remember every answer without asking.** Rejected: a one-off order would silently become a policy.
+
+**Seeing and clearing it.** An applied order is an ADR 0127 automatic answer, so it reuses all of that: the public
+log line "Luke ordered Pitiless Plunderer, then Falkenrath Noble (automatic)", the chooser's notice with **Undo** and
+**Ask me next time**, and the `freeUndo` commit. **Ask me next time** sends a new action, `forget_trigger_order
+{key}` (seat-scoped, mints no undo entry, never offered by the enumerator). The game menu gets **Forget remembered
+trigger orders (N)**, which sends it with no key to forget all. Every name goes in `client/src/lib/labels.ts`, each
+with a hint (the AGENTS.md labels contract).
+
+### E. The three modes
+
+- **When it matters** (the default): a remembered order answers only a batch the check would ask. A batch the check
+  skips is never touched, since its order can't change the game.
+- **Always ask.** **(E1) A remembered order still answers. Recommended.** The toggle is an explicit, per-batch choice
+  made after the global one, so it is the more specific instruction. (E2) Always ask wins and the toggle is hidden.
+  That keeps #1530's promise literally, but an always-ask player then can't use the feature at all.
+- **Never ask:** no prompt is queued, so nothing is answered and nothing is learnt. A memory from before the switch is
+  kept but unused. "Never" means "order them for me", and the game's order is the order they triggered in.
+
+### F. Applying it, and the validity check
+
+The prompt is queued as today, with `AutoAnswerKey = "trigger_order|" + batch key` (empty when unkeyed).
+`NextAutoAnswer` reads the rule from `TriggerOrderMemory` instead of `AutoAnswers` for this kind, and `AutoAnswer`
+gains a `PendingChoiceTriggerOrder` case. Before it answers, it checks again, on the live batch:
+
+1. every item in `TriggerOrderIDs` still maps to a row identity, and their set equals the stored key;
+2. no source is face down or in a hidden zone;
+3. the chooser is not controlled by another player (asked by hand, `controlled`), and no loop notice is open
+   (`loop`).
+
+If a check fails, the prompt is asked by hand with that reason, as in ADR 0127. Otherwise the answer is the stable
+sort, applied through `ResolveTriggerOrder`'s body without `dequeueChoiceLocked`'s player-decision mark. So a
+remembered order never restarts the CR 732 loop run, and a Plunderer and Noble sacrifice loop still reaches ADR
+0055's breaker. Applying the order inside the drain instead was considered and rejected: it would leave nothing to
+undo, no notice and no log line.
+
+### G. Hidden information
+
+The key and the ranking are private to the seat: `auto_answer_key` and `trigger_order_remembered` are on the
+chooser's view only. The applied order is public, because the items go on the stack in that order and the log line
+names only what the stack already names. A face-down source is never keyed: its row identity is its real catalog key,
+and an automatic log line built from it would name the card to the table (CR 708.2). An item whose source is in a
+hidden zone is not keyed for the same reason.
+
+### H. Undo and snapshot
+
+- **The memory is written by the commit that answered the prompt.** Undoing that commit takes the memory back with
+  the answer. This differs from `AutoAnswers` and `TriggerOrder`, which `RestoreFrom` carries across an undo as
+  settings. The memory is part of the play that taught it, not a setting, so `RestoreFrom` does not carry it.
+- **`forget_trigger_order` mints no undo entry.** An undo of a commit made after the forget keeps it forgotten; an
+  undo of a commit made between teaching and forgetting brings the order back. That is the cost of not carrying the
+  memory across `RestoreFrom`, and it is rare.
+- **Undoing an automatic answer** reopens the prompt marked `undone`, as ADR 0127 §6 does. The player answers by
+  hand, and the toggle decides whether the memory stays.
+- **Snapshot.** `triggerOrderMemory` is additive. The prompt's `AutoAnswerKey` is already snapshotted. A prompt
+  queued by an older binary has no key and is asked by hand.
+
+### I. Bots and agent seats
+
+- **Bots don't use it.** They answer an order prompt from the heuristic at no cost, a bot seat never has a memory,
+  and `autoAnswerRuleLocked` already skips `IsBot`.
+- **Agent seats (MCP).** #3016's evidence came from one: Claude-QA was asked the same pair about ten times. **(I1)**
+  `legal` offers an agent seat one extra move on a keyed trigger-order prompt, "resolve in the order shown and use it
+  again", which sends `remember: true`. Recommended, since an agent seat pays for every prompt in tokens. **(I2)**
+  Agent seats don't get it.
+
+### J. ADR 0193 (proposed, PR #3699)
+
+A recorded loop replays the prompt answers it recorded; a standing order is answered by the room, like any standing
+answer. They share no state. A remembered order that fires during a recording is an automatic commit, which ADR
+0193 §2 would record or skip; that is its call.
+
+### Wire
+
+- `resolve_choice` for `trigger_order` gains `remember?: boolean`. Absent means "change nothing", so an older client
+  is unaffected.
+- `PendingChoiceView` for `trigger_order`: `auto_answer_key` (exists) and `trigger_order_remembered`, both on the
+  chooser's view only.
+- `PlayerView.trigger_order_memory_count`, own view only, for the menu entry.
+- `forget_trigger_order {key?: string}`; no key forgets all.
+- The `auto_answer` log line gains a trigger-order rendering (`Event.Call = "order"`, the row labels in order).
+- `docs/protocol.md` documents each; `docs/bot.md` says bots ignore it.
+
+### Tests (when built)
+
+- `game`: batch keys (counts and source instances ignored; a closure row, a delayed trigger and a face-down source
+  leave the batch unkeyed); a remembered order applied by stable sort; an interleaved answer refused for `remember`;
+  each validity failure asked by hand with its reason; the loop run not restarted, and a sacrifice loop stopped by
+  the breaker; "never" untouched and "always" answered (E1); a skipped batch untouched; the 33rd entry; clone,
+  snapshot and shape; undoing the teaching commit removes the memory.
+- `ws`: the automatic commit is the chooser's and `freeUndo`; undoing it reopens the prompt marked `undone`.
+- `legal`: the agent-seat move, never offered to a bot.
+- `protocol`: the fields on the chooser's view only; the log line.
+- Client (vitest): the toggle's default and disabled states and hint, the payload, the notice's **Ask me next time**,
+  the menu entry, `labels.test.ts`. Playwright: two batches of the same rows, the second answered automatically and
+  shown in both seats' logs.
+
+### Delivery (after review)
+
+1. Server: keys, memory, `AutoAnswer`'s new case, `forget_trigger_order`, snapshot, view, log, `legal`, docs.
+2. Client: the toggle, the notice reuse, the menu entry, labels and tests.
+
+### Owner decisions (2026-10-15)
+
+The owner approved the recommendations on 2026-10-15. Each one is accepted as written:
+
+1. **The same batch.** (A1) the set of distinct rows, counts ignored. **Accepted.**
+2. **Rankings only.** Only an order that keeps each row's copies together is remembered (B). **Accepted.**
+3. **Opt-in.** (D1) a toggle on the prompt, off by default. **Accepted.**
+4. **Always ask.** (E1) a remembered order still answers. **Accepted.**
+5. **Undo.** The memory is game state, undone with the answer that taught it and not carried across `RestoreFrom`
+   (H). **Accepted.**
+6. **Agent seats.** (I1) MCP seats get the remember move. **Accepted.**
+7. **The cap.** 32 remembered orders per seat per game, the least recently applied replaced. **Accepted.**

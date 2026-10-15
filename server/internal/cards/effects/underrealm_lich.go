@@ -51,7 +51,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "Pay 4 life: This creature gains indestructible until end of turn. Tap it.",
-			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Purpose: game.Purpose{Answers: game.AnswerSurvive},
 			Cost:    PayLife(4),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

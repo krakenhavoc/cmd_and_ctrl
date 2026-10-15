@@ -30,14 +30,17 @@ import (
 // anywhere else, the commander still gets the counters for its earlier
 // command-zone casts, as printed.
 //
-// One declared simplification, the rider's: with an unrecorded payment the
-// engine never spends the pool, so no rider fires (ADR 0068 §3).
+// No simplification is left (#3844, ADR 0068 amendment 2026-10-15). A
+// waived payment (strict mana off with too little in the pool, or Cast
+// anyway) still spends the share of the cost the pool can pay, so this
+// mana pays whenever it can and its rider fires. Mana that never
+// entered the pool was not this card's mana.
 func init() {
 	Register(Spec{
-		OracleID:     "aa6723a2-75da-49f5-a1ba-cbfa82c55301",
-		Name:         "Opal Palace",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so your commander gets no extra +1/+1 counters."},
+		OracleID:       "aa6723a2-75da-49f5-a1ba-cbfa82c55301",
+		Name:           "Opal Palace",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},

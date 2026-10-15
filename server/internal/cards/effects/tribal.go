@@ -124,8 +124,12 @@ func (f TribeFilter) Matches(target *game.Card, _ *game.Game, source *game.Card)
 	if len(f.Tribes) == 0 {
 		return true
 	}
+	// A printed tribe is a word of the source's text, so it reads
+	// through the source's changed words (CR 612.2): Artificial
+	// Evolution on a Goblin King makes it a lord of Elves. A chosen
+	// tribe (above) is not text and stays.
 	for _, t := range f.Tribes {
-		if target.HasSubtype(t) {
+		if target.HasSubtype(source.TextSubtype(t)) {
 			return true
 		}
 	}
@@ -202,8 +206,10 @@ func KeywordGrant(applies func(target *game.Card, g *game.Game, source *game.Car
 		Label:     "Grants " + keyword + ".",
 		Layer:     game.Layer6Ability,
 		AppliesTo: applies,
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			c.Abilities = game.AppendKeywordAbility(c.Abilities, keyword)
+		// The keyword is a word of the SOURCE's text (CR 612.2): Magical
+		// Hack on a Goblin King makes its mountainwalk grant islandwalk.
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+			c.Abilities = game.AppendKeywordAbility(c.Abilities, source.TextKeyword(keyword))
 		},
 	}
 }

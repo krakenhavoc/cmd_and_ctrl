@@ -20,11 +20,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // asks about a colour its cost never requires. A Gruul player pays the
 // generic half with a Mountain and gets haste; one who pays it with
 // two Forests and a Sol Ring gets a 3/2 that has to wait. That is the
-// printed behaviour, and it is also why WantsManaFrom is NOT set here:
-// the wish declares a mana SOURCE (Treasure, creature), and "prefer a
-// red source" is a colour preference the solver has no switch for.
-// ADR 0068 §5 left the concentrating strategy out rather than invent
-// one nobody asked for, and this card is the same call one layer down.
+// printed behaviour for a payment made by hand. An AUTO-paid cast gets
+// the {R} for free since #3853: WantsColors names the colour, and the
+// auto-tapper pays the generic half with a source that makes it when it
+// has a free choice (an ordering, never a filter — a board with no red
+// source still casts it, as an ordinary 3/2). WantsManaFrom stays unset:
+// that wish names a mana SOURCE kind (Treasure, creature), not a colour.
 //
 // CR 603.4: the clause is an intervening if, checked in AppliesTo, so
 // an unhasty Scrapper puts nothing on the stack.
@@ -35,10 +36,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // handles.
 func init() {
 	Register(Spec{
-		OracleID:     "878e8980-a2cc-4335-aafe-f5166ef48f79",
-		Name:         "Gruul Scrapper",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so Gruul Scrapper never gains haste."},
+		OracleID:       "878e8980-a2cc-4335-aafe-f5166ef48f79",
+		Name:           "Gruul Scrapper",
+		ReadsManaSpent: game.ReadsOwnPayment,
+		Completeness:   CompletenessFull,
+		WantsColors:    []string{"R"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, AllOf(Self, func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return source.ManaSpentToCast().Count("R") > 0

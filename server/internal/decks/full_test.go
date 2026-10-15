@@ -13,14 +13,11 @@ import (
 // a new caveat card in a deck is a choice for the owner, not for
 // whoever is adding the card, so it fails the test below until it is
 // named here in a PR that says why.
-var minorCaveats = map[string]string{
-	// With strict mana off the scry 1 never happens; it still taps
-	// for the commander's colours, which is what it is here for.
-	"Path of Ancestry": "a mana land whose scry rider is the missing clause",
-	// With strict mana off a spell cast with its mana can still be
-	// countered; it is in the Simic deck as a one-drop mana creature.
-	"Delighted Halfling": "a mana creature whose \"can't be countered\" rider is the missing clause",
-}
+//
+// Empty since #3844: Path of Ancestry and Delighted Halfling, the two
+// it named, became full when a waived payment started spending the
+// pool's share, so their riders fire in every payment mode.
+var minorCaveats = map[string]string{}
 
 // TestEveryCuratedCardIsFull is the owner's card-quality bar for the
 // curated decks (#2436): every non-basic card the engine carries out

@@ -32,6 +32,13 @@ export const ErrorCode = {
   // the client can render an "Override strict mode for this cast"
   // toast that re-fires the action with `force_cast: true`.
   InsufficientMana: "insufficient_mana",
+  // #3855 (ADR 0068 amendment 2026-10-15): a waived payment (strict mana
+  // off with a short pool, or Cast anyway) that something on the table
+  // READS. Nothing was paid. `paper_payment` carries the shortfall slot
+  // by slot and `card_id` the card cast (or the ability's source); the
+  // client asks what was paid outside the pool and re-sends the action
+  // with `paper_payment` (paperPayment.ts).
+  PaperPaymentRequired: "paper_payment_required",
   // #705 (ADR 0045 addendum Decision 8): a declare_blocker was refused
   // by the server's block-legality check. `message` is a server-built
   // sentence to show verbatim, `reason` the stable token and `card_id`
@@ -106,6 +113,18 @@ export interface ErrorPayload {
   // ErrorPayload.Reason is a bare string on the wire either way.
   // #1507: and one of AttackRefusalReason when code === "illegal_attack".
   reason?: BlockRefusalReason | AttackRefusalReason | string;
+  // #3855: the shortfall, when code === "paper_payment_required".
+  paper_payment?: PaperPaymentPrompt;
+}
+
+// PaperPaymentPrompt is a paper_payment_required frame's detail (#3855):
+// what the pool left unpaid, one slot per mana, coloured requirements
+// first. `options` are the symbols that may pay the slot (W U B R G C
+// for a generic one). `artifact_sources` asks, per mana, whether an
+// artifact made it (Coin of Mastery reads that).
+export interface PaperPaymentPrompt {
+  slots: { symbol: string; options: string[] }[];
+  artifact_sources?: boolean;
 }
 
 // BLOCK_REFUSAL_REASONS mirrors game.BlockReason (server/internal/game/
@@ -803,7 +822,10 @@ export interface LegalMoveView {
   // mana ability, that can still answer something on the stack: a
   // sacrifice outlet, regeneration, protection or indestructible,
   // phasing, a blink, damage prevention, a pump. Smart autopass stops
-  // for it as for a targeted ability. Absent on older servers.
+  // for it as for a targeted ability. Absent on older servers. #3555:
+  // protect, survive, pump, prevent and sac_outlet set it only while an
+  // opponent's stack item threatens the viewer; otherwise they set
+  // combat_interacts (the server applies the gate).
   interacts?: boolean;
   // #2871: true on an activation with no target that changes a fight
   // without answering a spell: crew, a manland, a granted flying or
@@ -1226,6 +1248,13 @@ export interface LogEvent {
   // " without paying its mana cost"; this is for a client that wants
   // the bit. Public: never redacted with the card's name.
   unpaid?: boolean;
+  // #3855: the mana paid outside the pool on a `cast` (or `activate`)
+  // entry, as a cost string: declared at the "What did you pay?" picker
+  // when `paper_declared`, or the shortfall a one-click Cast anyway
+  // asserts. `unpaid` is now the picker's "cast without paying its mana
+  // cost" answer. The `text` already says all of it.
+  paper_paid?: string;
+  paper_declared?: boolean;
   // #984: the value named at a "choose a ..." prompt — the colour
   // LETTER on a `choose_color` entry ("G"), the creature type on a
   // `choose_type` one ("Elf"). Absent on a `choose_player` entry,
@@ -1880,7 +1909,8 @@ export interface PendingChoiceView {
   // Where the named card goes when the card says so: "battlefield",
   // "battlefield_tapped", or "cast_free" ("you may cast a spell from
   // your hand without paying its mana cost" — answering with a card
-  // opens its cast at once), or "manifest" (ADR 0189: the named hand
+  // opens its cast at once), "cast_free_library" (the same over cards the
+  // chooser looked at on top of their own library, #2110), or "manifest" (ADR 0189: the named hand
   // cards are put onto the battlefield face down as 2/2 creatures).
   // Absent on a plain discard or look.
   choose_destination?: string;
@@ -1896,6 +1926,11 @@ export interface PendingChoiceView {
   // server omits both fields for ordinary choices.
   doubled_by?: string;
   doubled_by_name?: string;
+  // #3817: on a trigger's pick_target, the trigger as card and ability.
+  // Every copy of one card shares it, two abilities do not, so it groups
+  // "same target for all of this card's triggers". Opaque, the
+  // chooser's alone, and absent for a trigger with no catalog identity.
+  shared_target_key?: string;
   // S30 coin call prompt metadata. `coins` is the number of coins
   // covered by one call; wins tracks an ongoing chain.
   allow_stop?: boolean;
@@ -2068,6 +2103,12 @@ export interface StackItemView {
   owner: string;
   source_card_id: string;
   label?: string;
+  // #3830: the printed Oracle text of the ability this item is — a
+  // triggered ability's clause, an activated ability's whole
+  // "cost: effect" line. Absent on a spell, a copy, an item with no
+  // single clause of its own (granted, delayed, rule-made) and any
+  // item whose source the table cannot see; show `label` then.
+  ability_text?: string;
   targets?: TargetRefView[];
   modes?: number[];
   // #764: the oracle bullet of each chosen mode, in announce order
@@ -3244,6 +3285,10 @@ export interface ActivatedAbilityView {
   // the activator's next untap step. Always payable, so it never greys
   // the row, and nothing is sent.
   exert?: boolean;
+  // #3845: "Mill N cards" as a cost (The Warring Triad). Nothing is
+  // sent. A library too short to pay it makes the server stamp
+  // cant_activate, which greys the row.
+  mill_cost?: number;
   discard_cost_n?: number;
   discard_cost_label?: string;
   discard_cost_options?: string[];
@@ -4434,6 +4479,11 @@ export interface CardView extends CastSurfaceView {
   // printed oracle text the inspector fetches is not. Absent when the
   // permanent has its own text.
   text_box_from?: string;
+  // ADR 0160's 2026-10-15 amendment (CR 612.2) — the words of this
+  // object's text a text-changing effect replaced, one line each:
+  // "black → blue", "Swamp → Island" (Sleight of Mind, Magical Hack).
+  // The printed oracle text uses the old words. Absent when none.
+  text_changes?: string[];
   // #2219 — the card's non-keyword triggered, static and activated
   // abilities right now, triggered first, each with a short label the
   // SERVER wrote (the stack's label for a triggered or activated row).
@@ -4679,6 +4729,10 @@ export interface ManaAbilityView {
   // Glory, Oasis Ritualist). The auto-tapper never pays such a row; the
   // player activates it from this menu.
   exert?: boolean;
+  // #3845: "Mill N cards" as a cost (Millikin's "{T}, Mill a card").
+  // The auto-tapper never pays such a row. A library too short to pay
+  // it makes the server stamp cant_activate, which greys the row.
+  mill_cost?: number;
   // S32 (#352): a mana component of the activation cost — the Signet
   // cycle's "{1}, {T}", Cabal Coffers' "{2}, {T}". Advisory like
   // life_cost. The client sends every activate_mana_ability with
@@ -4820,6 +4874,13 @@ export interface TurnView {
   // charges. Seat 0 is a real answer. Absent when the game is not in
   // play. It cannot see a replacement skip (Trouble in Pairs).
   next_seat?: number;
+  // #3826: what the viewer's own next pass hands over. "ends_turn": it is
+  // the viewer's turn, they hold priority on an empty stack and no later
+  // step of the turn grants priority. "your_turn_next": the same in
+  // another player's turn, with the viewer's turn next (next_seat counts
+  // extra turns and skips). Absent for a routine pass. Per viewer; it
+  // ignores the viewer's own auto-pass and stops.
+  pass_hint?: "ends_turn" | "your_turn_next";
   // ADR 0188 Decision 12: set while the turn change waits on a
   // "turn_skip_order" question. The old turn is over and the next has
   // not begun; step still names the old turn's step, and nobody holds

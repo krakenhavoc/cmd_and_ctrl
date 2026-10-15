@@ -458,3 +458,18 @@ The owner answered the five questions on 2026-10-02. Every answer was the recomm
 3. **The ⋯ menu.** It moves into the dock as a ⋯ button on the toggles row, opening upward, with the sandbox entries, life history, table settings, spawn, the vote launcher and Concede with its confirm. The command bar keeps Lobby, the status, mute, log, settings and the bug button (§1, §7). It lands in Delivery PR 7. Undo comes out of the menu earlier, in Delivery PR 3.
 4. **Bluff options.** The dock's bluff button arms and disarms in one click, and so does `b`. Its `▾` sets which bluff (counterspell, instant) and how (timed, manual), writing the same `gameplay.bluff*` settings the Settings panel writes. A click with nothing set up arms "represent a counterspell". The pause range stays in Settings (§5). It lands in Delivery PR 1.
 5. **Card menus.** The right-click menu, a land's mana choices and the ability popover stay at the card, because they open under the pointer. Everything after them (targets, costs, payment, confirm) is in the dock (§6, Out of scope). No PR moves them. Delivery PRs 4 and 6 move what follows them.
+
+---
+
+## Amendment: the primary says when a pass changes the turn (#3826)
+
+2026-10-15. The primary kept one face at every priority pass (#3267 gave it Pass, Next, No attacks and Attack with N). Two passes are not routine, and the owner asked the button to say so:
+
+- **The last pass of your own turn.** On an empty stack, with no later step of the turn that grants priority, the primary reads **Pass · turn ends** and is ringed in the danger colour.
+- **The last pass before your turn.** In another player's turn, on an empty stack, with no later priority step in it and `next_seat` the viewer's, the primary reads **Pass · your turn next** and is ringed in the priority gold. The status line says "passing starts your turn".
+
+The server decides, per viewer, in `TurnView.pass_hint` (`ends_turn` or `your_turn_next`, additive; `protocol/pass_hint.go`). It reads the turn plan (`upcoming`, so an added end step or phase keeps the hint off) and `next_seat` (ADR 0188 Decision 9, so an extra turn, a skip charge and a departed seat are already counted), and it is empty unless the viewer holds priority. The model prompt and the MCP seat print it on the turn line.
+
+Not decided here: the viewer's own auto-pass and stops stay on the client (ADR 0009), so the hint is the structural fact and never a promise about which earlier window the client stops at. A viewer who is stopped mid-turn sees Next, and the hint appears at the end step they are stopped at; it is never wrong, only absent when they do not stop there. An opponent's response after the pass still asks the viewer again.
+
+The label is not "End turn", as the issue suggested, because End turn is already the name of the secondary button (ADR 0143 §4.2) and two buttons with one accessible name break the e2e suite's `getByRole` and a screen reader's list. It does not contain "end turn" as a substring either, so a substring match on End turn still finds one button.

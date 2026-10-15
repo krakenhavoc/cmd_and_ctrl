@@ -209,6 +209,11 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// pinned grants are handed to the permanent separately (CR
 	// 400.7a, inheritSpellControlLocked).
 	c.stackGranted = nil
+	// ADR 0160's 2026-10-15 amendment / CR 400.7: a changed word belongs
+	// to the object. A permanent spell's record is handed to the
+	// permanent it becomes (CR 400.7a) and rebuilt from there by the
+	// next recompute.
+	c.TextWords = nil
 	// ADR 0093 amendment 2026-10-13 / CR 400.7: an ability a static
 	// gave this card in its old hand, graveyard or exile is that
 	// object's, and the new one is not given it until the next layer

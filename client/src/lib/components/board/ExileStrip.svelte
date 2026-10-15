@@ -209,7 +209,7 @@
   }
 
   // ADR 0118 §2: with strict payment on, a commander and an exile entry
-  // whose verb is "cast" offer "Cast anyway (don't pay)" in their
+  // whose verb is "cast" offer "Cast anyway (pay on paper)" in their
   // popover, payable or not. The row opens the dock's confirmation
   // (castAnyway.ts), which starts the same cast chain a click does.
   function castAnywayHere(e: CastStripEntry): boolean {

@@ -24,25 +24,25 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     not an object) record a KNOWN nothing. The Bauble counters
 //     them, which is what it is for.
 //   - A cast the engine did not charge — an insufficient pool in
-//     permissive mode, or Cast anyway — records "unknown"
-//     (PaidCost.OnPaper). The Bauble does NOT fire. It is the weaker
-//     answer, and it is the only sane one: a Bauble that countered
-//     every spell at a permissive table would end the game.
+//     permissive mode, or Cast anyway — asks the caster what they
+//     paid outside the pool, or whether they cast it without paying
+//     its mana cost (#3855: the Bauble declares ReadsEveryCast). A
+//     spell declared free with nothing from the pool is countered; a
+//     declared payment is not. The declaration is in the game log.
 //
 // The intervening-if is checked when the trigger would go on the
 // stack and again on resolution (CR 603.4) — the trigger's AppliesTo
 // and the effect's own re-read — so a spell whose payment somehow
 // changed in between does not get countered on a stale reading.
 //
-// One caveat for the player, because the difference is invisible from
-// the table: with an unrecorded payment, the Bauble never counters
-// anything.
+// A cast the engine already knows is free (cascade, a {0} alternative
+// cost, a copy) asks nothing: nothing was waived.
 func init() {
 	Register(Spec{
-		OracleID:     "4514777d-0589-4631-978b-ff244167c176",
-		Name:         "Vexing Bauble",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track what you spent, so the Bauble never counters a spell — turn on “Charge mana costs” for it to work."},
+		OracleID:       "4514777d-0589-4631-978b-ff244167c176",
+		Name:           "Vexing Bauble",
+		ReadsManaSpent: game.ReadsEveryCast,
+		Completeness:   CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},
 			Key:     "Vexing Bauble — counter a spell cast for no mana",

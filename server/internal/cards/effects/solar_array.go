@@ -26,15 +26,15 @@ import (
 // one.
 //
 // The grant arrives after the costs are paid, so the payment is not
-// spread across colours for it. One declared simplification, the
-// paid-cost record's: with an unrecorded payment the engine never saw what
-// paid, so the spell counts no colours (ADR 0068 §3).
+// spread across colours for it. Solar Array declares
+// ReadsYourCasts, so a waived cast while it is on the battlefield asks
+// what was paid outside the pool and the colours are exact (#3855).
 func init() {
 	Register(Spec{
-		OracleID:     "e8e2f273-5e74-4f16-8d49-2e86e9c9f2dc",
-		Name:         "Solar Array",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so the artifact you cast next gets no counters from it."},
+		OracleID:       "e8e2f273-5e74-4f16-8d49-2e86e9c9f2dc",
+		Name:           "Solar Array",
+		ReadsManaSpent: game.ReadsYourCasts,
+		Completeness:   CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",

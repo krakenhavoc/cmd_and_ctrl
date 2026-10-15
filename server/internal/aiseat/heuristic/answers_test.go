@@ -70,7 +70,47 @@ func noAnswers() *heuristic.Policy {
 }
 
 func troll() protocol.CardView {
-	return creature(cardID(1), 0, "Albino Troll", 3, 3, answering("{1}{G}: Regenerate this creature.", nil, "protect"))
+	return creature(cardID(1), 0, "Albino Troll", 3, 3, answering("{1}{G}: Regenerate this creature.", nil, "survive"))
+}
+
+// hexproofer is a creature whose only row grants itself hexproof.
+func hexproofer() protocol.CardView {
+	return creature(cardID(1), 0, "Hydra", 3, 3, answering("{G}: This creature gains hexproof until end of turn.", nil, "protect"))
+}
+
+// wrathItem is an opponent's Wrath of God on the stack: a declared
+// destroy sweep, no target.
+func wrathItem(controller int, spellID string) (protocol.CardView, protocol.StackItemView) {
+	c := wrathOfGod(spellID, controller)
+	return c, protocol.StackItemView{ID: "item-" + spellID, Kind: "spell", Controller: seatID(controller).String(), SourceCardID: spellID}
+}
+
+// ADR 0142 amendment 2026-10-15, gap 1 of #2939: against targeted
+// removal both kinds are an answer, and against a sweep only `survive`
+// is. Hexproof does nothing to a Wrath of God.
+func TestProtectAnswersTargetedRemovalButNotASweep(t *testing.T) {
+	murder, mi := removal(1, cardID(9), cardID(1))
+	wrath, wi := wrathItem(1, cardID(9))
+	for _, tc := range []struct {
+		name  string
+		card  protocol.CardView
+		stack protocol.CardView
+		item  protocol.StackItemView
+		label string
+		want  string
+	}{
+		{"survive vs targeted removal", troll(), murder, mi, "Regenerate", "Regenerate"},
+		{"protect vs targeted removal", hexproofer(), murder, mi, "Hexproof", "Hexproof"},
+		{"survive vs a sweep", troll(), wrath, wi, "Regenerate", "Regenerate"},
+		{"protect vs a sweep", hexproofer(), wrath, wi, "Hexproof", "Pass priority"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			in := input(0, respond([]protocol.CardView{tc.card}, tc.stack, tc.item), passMove(0), activate(t, 0, cardID(1), tc.label, nil))
+			if got := chose(t, in, decide(t, heuristic.New(), in)); got != tc.want {
+				t.Errorf("the heuristic chose %q, want %q", got, tc.want)
+			}
+		})
+	}
 }
 
 // The ADR's `regenerate-the-targeted-troll`: an opponent's Murder

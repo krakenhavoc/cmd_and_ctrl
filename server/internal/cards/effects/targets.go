@@ -167,9 +167,13 @@ func Permanent() CardPredicate {
 // IsCreature guard is not redundant: a Kindred (Tribal) card in a
 // graveyard prints a creature type on a non-creature line, and
 // "target Goblin creature" does not mean it.
+//
+// The type is a WORD in the clause's text, so it is read through the
+// judging object's changed words (HasSubtypeWord, CR 612.2): an
+// Artificial Evolution on the source turns its "Goblin" into "Elf".
 func OfCreatureType(subtype string) CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-		return c.IsCreature() && c.HasSubtype(subtype)
+		return c.IsCreature() && c.HasSubtypeWord(subtype)
 	}
 }
 
@@ -183,8 +187,14 @@ func Noncreature() CardPredicate { return Not(Creature()) }
 // --- colour predicates -------------------------------------------
 
 // OfColor passes when the card is the given colour letter.
+//
+// The letter is a colour WORD in the clause's text, so it is read
+// through the judging object's changed words (HasColorWord, CR 612.2;
+// ADR 0160's 2026-10-15 amendment): Doom Blade's "nonblack" under a
+// Sleight of Mind that made it "nonblue" passes a black creature and
+// refuses a blue one. With no lens lent the letter stands.
 func OfColor(color string) CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.HasColor(color) }
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.HasColorWord(color) }
 }
 
 // NonBlack — Doom Blade. Likewise NonBlue etc. via Not(OfColor("U")).
@@ -558,6 +568,20 @@ func TargetCardInExile(label string, preds ...CardPredicate) *game.TargetSpec {
 	}
 }
 
+// AmongTheCardsNamed narrows a reflexive trigger's clause to the cards
+// its parent resolution named (CR 603.12): "choose up to one target
+// creature card exiled this way" (Espers to Magicite, #3846). The set is
+// the ReflexiveTrigger's Cards payload, stamped onto the clause by the
+// engine when the trigger is created and again when a restored item
+// re-derives it, so declare it on the body's ReflexiveBody registration
+// like any reflexive clause. Pair it with the zone the cards are in:
+//
+//	AmongTheCardsNamed(TargetCardInExile("up to one target creature card exiled this way", Creature()).WithCount(0, 1))
+func AmongTheCardsNamed(spec *game.TargetSpec) *game.TargetSpec {
+	spec.AmongPayload = true
+	return spec
+}
+
 // ExiledWithThis narrows a clause to the cards exiled with its own
 // source (CR 607.2a): "target creature card exiled with The Darkness
 // Crystal". It is data on the clause (game.TargetSpec.ExiledWithSource),
@@ -638,8 +662,11 @@ func Except(base CardPredicate, exceptions ...CardPredicate) CardPredicate {
 // through HasCardType rather than through the printed type line.
 //
 // Case-insensitive, matching HasSubtype.
+//
+// A basic land type or a creature type is a word of the clause's text
+// and reads through the judging object's changed words (CR 612.2).
 func Subtype(name string) CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.HasSubtype(name) }
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.HasSubtypeWord(name) }
 }
 
 // AnySubtype passes when the card has ANY of the named subtypes —
@@ -648,7 +675,7 @@ func Subtype(name string) CardPredicate {
 func AnySubtype(names ...string) CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		for _, n := range names {
-			if c.HasSubtype(n) {
+			if c.HasSubtypeWord(n) {
 				return true
 			}
 		}
@@ -691,7 +718,7 @@ func Multicolored() CardPredicate {
 // printed type line everywhere else.
 func OfSubtype(subtype string) CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-		return c.HasSubtype(subtype)
+		return c.HasSubtypeWord(subtype)
 	}
 }
 
@@ -806,7 +833,7 @@ func PermanentYouControl(label string, preds ...CardPredicate) *game.TargetSpec 
 // subtypes, so a land something else turned into an Island counts,
 // which is what the printed clause means.
 func HasSubtype(sub string) CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hasSubtype(c, sub) }
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.HasSubtypeWord(sub) }
 }
 
 // Legendary passes for a permanent with the Legendary supertype —

@@ -1171,9 +1171,8 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // Mill COSTS are the other half of CR 701.17b — "can't pay a cost
 // that includes milling a number of cards greater than the number of
 // cards in their library" — and they are not this function's
-// business: the engine has no mill cost component. The one catalog
-// card with a mill-a-card cost, Millikin, gates its activation on a
-// non-empty library itself; The Warring Triad declares the gap.
+// business: they are the AbilityCost.Mill component (#3845), whose
+// validator is MillCostShortfall and whose payer calls this function.
 //
 // The error is the up-front one — an unseated player, a destination
 // that is neither a graveyard nor exile. A leg that cannot move is
@@ -1272,6 +1271,34 @@ func (g *Game) MillToZoneThenForEffect(
 		then = func(*Game, []uuid.UUID) error { return nil }
 	}
 	_, err := g.millThroughReplacementsLocked(playerID, n, dest, until, then)
+	return err
+}
+
+// MillToZoneThenMovedForEffect is MillToZoneThenForEffect for a clause
+// that refers to "those cards" (CR 701.17c, #3846): `then` is handed
+// every card the mill took out of the library, wherever it ended up,
+// rather than only the ones that landed in `dest`. A card Rest in Peace
+// exiled instead of milling is still one of them; the caller reads each
+// card's zone. A card a CR 614 window left in the library, or a mill
+// that was cancelled, is not in the list.
+//
+// No `until`: a run is a sequence of one-card instructions whose
+// clause asks what ARRIVED, which is the other form's question.
+// Existing callers are unchanged -- this is a separate entry point, not
+// a flag on theirs.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) MillToZoneThenMovedForEffect(
+	playerID uuid.UUID,
+	n int,
+	dest ZoneKind,
+	then func(g *Game, moved []uuid.UUID) error,
+) error {
+	if then == nil {
+		then = func(*Game, []uuid.UUID) error { return nil }
+	}
+	_, err := g.millThroughReplacementsTailLocked(playerID, n, dest, nil,
+		&millTail{dest: dest, then: then, allMoved: true})
 	return err
 }
 

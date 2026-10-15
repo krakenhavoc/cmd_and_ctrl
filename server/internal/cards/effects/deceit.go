@@ -24,14 +24,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // trigger's controller (CR 113.8). "Other" on the first is object
 // identity (Another).
 //
-// Declared weaker than printed: with an unrecorded payment the game does not
-// record which mana paid, and neither trigger fires.
+// A waived payment (strict mana off with too little in the pool, or Cast
+// anyway) no longer leaves this card guessing: it declares ReadsManaSpent,
+// so the caster is asked what they paid outside the pool, or whether they
+// cast it without paying its mana cost, and the record it reads is exact
+// (#3855, ADR 0068 amendment 2026-10-15).
 func init() {
 	Register(Spec{
-		OracleID:     "d7dddeac-c6ed-4111-ba40-e2830c08d480",
-		Name:         "Deceit",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so neither of Deceit's enters abilities happens."},
+		OracleID:       "d7dddeac-c6ed-4111-ba40-e2830c08d480",
+		Name:           "Deceit",
+		ReadsManaSpent: game.ReadsOwnPayment,
+		Completeness:   CompletenessFull,
 		AlternativeCosts: []game.AlternativeCost{
 			Evoke("{U/B}{U/B}"),
 		},

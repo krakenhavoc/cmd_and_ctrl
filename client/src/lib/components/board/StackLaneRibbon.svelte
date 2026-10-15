@@ -71,7 +71,7 @@
           class:previewable={item.previewCard !== null}
           style:--seat-color={item.casterColor}
           data-stack-item-id={item.id}
-          title={item.previewCard ? `${item.name} — hover to preview` : item.name}
+          title={item.previewCard ? `${item.text} — hover to preview` : item.text}
           onpointerenter={() => controls.hoverEnter(item)}
           onpointerleave={() => controls.hoverLeave(item)}
           onfocusin={() => controls.hoverEnter(item)}
@@ -95,7 +95,7 @@
           </div>
           <div class="r-info">
             <span class="r-badge">{badge(item)}</span>
-            <span class="r-name">{item.name}</span>
+            <span class="r-name">{item.text}</span>
             <span class="r-caster">
               <span class="seat-dot"></span>{item.casterIsViewer ? "You" : item.casterName}
             </span>

@@ -24,7 +24,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{B}, Sacrifice another creature: Regenerate this creature.",
-				Purpose: game.Purpose{Answers: game.AnswerProtect | game.AnswerSacOutlet},
+				Purpose: game.Purpose{Answers: game.AnswerSurvive | game.AnswerSacOutlet},
 				Cost:    Plus(ManaCost("{B}"), SacrificeAnotherN(1, "another creature", Creature())),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return Regenerate{Target: item.SourceCardID}.Apply(NewContext(g, item))

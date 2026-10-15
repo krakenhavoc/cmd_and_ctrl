@@ -27,17 +27,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // internal/deck reads off the oracle text: Abby and another Survivors
 // card are a legal pair of commanders (#2874).
 //
-// Declared simplification (weaker than printed): with an unrecorded payment
-// the engine does not know what was spent, and "unknown" is always the
-// weaker answer (docs/adding-cards.md), so no tokens are made.
+// A waived payment (strict mana off with too little in the pool, or Cast
+// anyway) no longer leaves this card guessing: it declares ReadsManaSpent,
+// so the caster is asked what they paid outside the pool, or whether they
+// cast it without paying its mana cost, and the record it reads is exact
+// (#3855, ADR 0068 amendment 2026-10-15).
 func init() {
 	Register(Spec{
-		OracleID:     "e05efd01-0202-4bd6-bac6-c6210819d463",
-		Name:         "Abby, Merciless Soldier",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track what you spent, so Abby makes no Cordyceps Infected tokens — turn on “Charge mana costs” for it to count.",
-		},
+		OracleID:       "e05efd01-0202-4bd6-bac6-c6210819d463",
+		Name:           "Abby, Merciless Soldier",
+		ReadsManaSpent: game.ReadsOwnPayment,
+		Completeness:   CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			EntersUnderTheControlOfAnOpponentOfYourChoice("Abby, Merciless Soldier", game.ControlForHarm),
 		},

@@ -37,6 +37,8 @@
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
   import { requestCastAnyway } from "../../castAnyway";
   import { settings } from "../../settings";
+  import { L } from "../../labels";
+  import { useRulings } from "../../rulings.svelte";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -82,7 +84,7 @@
   const where = $derived(locateCard(view, open.card.instance_id));
   const zoneLabel = $derived(where ? ZONE_LABELS[where.zone] : "gone");
   // ADR 0118 §2: with strict payment on, a card the viewer could cast
-  // carries "Cast anyway (don't pay)" in a "cast" section.
+  // carries "Cast anyway (pay on paper)" in a "cast" section.
   const sections = $derived(
     buildMenuSections(
       view,
@@ -94,6 +96,11 @@
       $settings.gameplay.strictMana,
     ),
   );
+
+  // #3831: "Rulings" opens the card's official rulings in a new tab. It is
+  // not an override, so it is offered for every card the viewer can see,
+  // whoever controls it; null for a hidden or face-down card and a token.
+  const rulings = useRulings(() => card);
 
   // trail is the drill-down path, held as item IDs rather than item
   // objects so a snapshot arriving while a submenu is open refreshes
@@ -301,11 +308,12 @@
     {#each drilled.items as item (item.id)}
       {@render row(item)}
     {/each}
-  {:else if sections.length === 0}
-    <p class="ctx-empty">
-      No overrides here — you can only override cards you control (admins can override any).
-    </p>
   {:else}
+    {#if sections.length === 0}
+      <p class="ctx-empty">
+        No overrides here — you can only override cards you control (admins can override any).
+      </p>
+    {/if}
     {#each sections as sec (sec.id)}
       {#if sec.label}
         <div class="ctx-label">{sec.label}</div>
@@ -314,6 +322,27 @@
         {@render row(item)}
       {/each}
     {/each}
+    {#if rulings.url}
+      <!-- A real link, so a middle-click or Ctrl-click works too. The menu
+           closes a tick after the click, not during it, so the anchor is
+           still in the page when the browser follows it. -->
+      <a
+        class="ctx-item"
+        role="menuitem"
+        href={rulings.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Open this card's official rulings in a new tab"
+        data-rulings
+        onclick={(ev) => {
+          ev.stopPropagation();
+          setTimeout(onClose, 0);
+        }}
+      >
+        <span class="ctx-text">{L.rulings}</span>
+        <span class="ctx-more" aria-hidden="true">↗</span>
+      </a>
+    {/if}
   {/if}
 </div>
 
@@ -383,6 +412,10 @@
     cursor: pointer;
     font-size: 11px;
     line-height: 1.2;
+  }
+  a.ctx-item {
+    box-sizing: border-box;
+    text-decoration: none;
   }
   .ctx-item:hover:not(:disabled),
   .ctx-item:focus-visible:not(:disabled) {

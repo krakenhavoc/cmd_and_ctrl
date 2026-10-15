@@ -21,16 +21,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // A spell paid partly with Treasure mana counts, and a cascaded free
 // cast, which spends no mana, never does.
 //
-// Declared weaker than printed: the payment record exists only when
-// mana is actually charged. A cast whose payment the engine waived
-// (an insufficient permissive pool or Cast anyway) is "unknown", and
-// unknown is the weaker answer.
+// No simplification is left (#3844, ADR 0068 amendment 2026-10-15). A
+// waived payment (strict mana off with too little in the pool, or Cast
+// anyway) still spends the share of the cost the pool can pay, and
+// Treasure mana exists only as mana in the pool, so the record says
+// exactly whether (and how much) Treasure mana paid.
 func init() {
 	Register(Spec{
-		OracleID:     "ef1e2d3d-e977-4729-9430-eba6242e5dfe",
-		Name:         "Rain of Riches",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so Rain of Riches never gives a spell its bonus."},
+		OracleID:       "ef1e2d3d-e977-4729-9430-eba6242e5dfe",
+		Name:           "Rain of Riches",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Rain of Riches — create two Treasure tokens",
 				Do(CreateToken{Template: TreasureToken(), N: 2})),

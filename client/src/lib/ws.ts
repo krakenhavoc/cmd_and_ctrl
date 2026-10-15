@@ -19,6 +19,7 @@ import {
   type VisibilityPayload,
   type PongPayload,
   type ErrorPayload,
+  type PaperPaymentPrompt,
   type SnapshotPayload,
   type AckPayload,
   type ChatPayload,
@@ -282,6 +283,8 @@ export class GameClient {
     // the error frame's `reason` field carries for this code. See
     // ErrorPayload.reason (protocol.ts).
     reason?: string;
+    // #3855: a paper_payment_required frame's shortfall.
+    paperPayment?: PaperPaymentPrompt;
     // #1533: the id of the action frame this error answers — the
     // server echoes the refused frame's id on its error frame, and
     // sendAction returns it. Lets a caller claim the refusal of ITS
@@ -839,7 +842,13 @@ export class GameClient {
   private raiseError(
     code: string,
     message: string,
-    extra: { missing?: string[]; cardID?: string; reason?: string; replyTo?: string } = {},
+    extra: {
+      missing?: string[];
+      cardID?: string;
+      reason?: string;
+      paperPayment?: PaperPaymentPrompt;
+      replyTo?: string;
+    } = {},
   ): void {
     this.lastError.set({ code, message, at: new Date(), ...extra });
     if (this.errorClearTimer !== null) {
@@ -1133,6 +1142,7 @@ export class GameClient {
           missing: p?.missing,
           cardID: p?.card_id,
           reason: p?.reason,
+          paperPayment: p?.paper_payment,
           replyTo: frame.id || undefined,
         });
         break;

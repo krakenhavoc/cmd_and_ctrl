@@ -703,12 +703,20 @@ type LogEvent struct {
 	// anywhere is untagged, so the tag's presence alone says there are
 	// two beats to show. #187, ADR 0053 Decision 1.
 	CombatStep string `json:"combat_step,omitempty"`
-	// Unpaid marks a LogCast entry whose caster cast it without paying
-	// its mana cost (force_cast, the "Cast anyway (don't pay)" row;
-	// ADR 0118 §2). Copied from game.Event.Unpaid. Public: the pool
-	// and the cost are public, so it is not redacted with the card's
-	// name. #2188.
+	// Unpaid marks a LogCast (or LogActivate) entry whose caster
+	// declared it cast without paying its mana cost — an effect on
+	// paper, the paper payment picker's free answer (#3855; until then
+	// every force_cast, ADR 0118 §2). Copied from game.Event.Unpaid.
+	// Public: the pool and the cost are public, so it is not redacted
+	// with the card's name. #2188.
 	Unpaid bool `json:"unpaid,omitempty"`
+	// PaperPaid is the mana a LogCast / LogActivate entry's player paid
+	// outside the pool, as a cost string (#3855): declared at the paper
+	// payment picker when PaperDeclared, or the shortfall a one-click
+	// Cast anyway asserts. Public for the reason Unpaid is: it is a
+	// claim the table may want to dispute.
+	PaperPaid     string `json:"paper_paid,omitempty"`
+	PaperDeclared bool   `json:"paper_declared,omitempty"`
 	// Random outcomes are public. One entry groups a whole instruction.
 	Sides   int      `json:"sides,omitempty"`
 	Results []int    `json:"results,omitempty"`
@@ -1287,6 +1295,8 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 			base.OldZone = string(ev.OldZone)
 		}
 		base.Unpaid = ev.Unpaid
+		base.PaperPaid = ev.PaperPaid
+		base.PaperDeclared = ev.PaperDeclared
 		return base, true
 
 	case game.EventResolve, game.EventResolutionFinished:
@@ -1722,6 +1732,10 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 			base.ability = true
 			base.CardID = uuidStringOrEmpty(ev.CardID)
 			base.Label = ev.Label
+			// #3855: a declared payment is said out loud.
+			base.Unpaid = ev.Unpaid
+			base.PaperPaid = ev.PaperPaid
+			base.PaperDeclared = ev.PaperDeclared
 			return base, true
 		}
 		base.Kind = LogActivateAcross
@@ -2533,11 +2547,10 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return "Turn " + strconv.Itoa(e.Turn) + " (round " + strconv.Itoa(e.Round) + ") — " + actor + " · " + prettyStep(e.Step)
 	case LogCast:
 		// ADR 0118 owner decision 4: an unpaid cast says so, in these
-		// words, after the zone.
-		unpaid := ""
-		if e.Unpaid {
-			unpaid = " without paying its mana cost"
-		}
+		// words, after the zone. #3855: a cast declared free is the
+		// unpaid one now, and a payment made outside the pool names
+		// its mana.
+		unpaid := paperPaidSuffix(*e)
 		if e.OldZone != "" {
 			return fmt.Sprintf("%s cast %s from %s%s", actor, card, prettyZone(e.OldZone), unpaid)
 		}
@@ -2716,7 +2729,7 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		}
 		return line
 	case LogActivate:
-		return fmt.Sprintf("%s activated %s", actor, abilityName(e.Label, cardName))
+		return fmt.Sprintf("%s activated %s%s", actor, abilityName(e.Label, cardName), paperPaidSuffix(*e))
 	case LogCounters:
 		return renderCountersText(*e, card)
 	case LogCountCapped:
@@ -3506,4 +3519,21 @@ func anyPlayerAnswerText(paid bool, actor, label, card string) string {
 		return fmt.Sprintf("%s paid %s for %s", actor, label, card)
 	}
 	return fmt.Sprintf("%s didn't pay %s for %s", actor, label, card)
+}
+
+// paperPaidSuffix is what a cast or activation line says about a
+// payment made outside the mana pool (#3855): "without paying its mana
+// cost" for one declared free, ", declaring {C}{R} paid on paper" for a
+// declared payment, ", paying {4}{G}{G} on paper" for a one-click Cast
+// anyway's shortfall. Empty for an ordinary payment.
+func paperPaidSuffix(e LogEvent) string {
+	switch {
+	case e.Unpaid:
+		return " without paying its mana cost"
+	case e.PaperPaid != "" && e.PaperDeclared:
+		return ", declaring " + e.PaperPaid + " paid on paper"
+	case e.PaperPaid != "":
+		return ", paying " + e.PaperPaid + " on paper"
+	}
+	return ""
 }

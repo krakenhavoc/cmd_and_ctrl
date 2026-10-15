@@ -820,6 +820,14 @@ type PendingChoiceView struct {
 	// present only on trigger_prompt and pick_target choices.
 	DoubledBy     string `json:"doubled_by,omitempty"`
 	DoubledByName string `json:"doubled_by_name,omitempty"`
+	// SharedTargetKey is, on a trigger's pick_target, the trigger's
+	// identity as card and ability (game.PendingChoice.SharedTargetKey,
+	// #3817): every copy of one card shares it, two abilities do not.
+	// The client offers one target for all of a card's waiting triggers
+	// over the prompts that share it. Opaque; the chooser's alone, like
+	// the auto-answer fields. Absent when the trigger has no catalog
+	// identity or its source is face down.
+	SharedTargetKey string `json:"shared_target_key,omitempty"`
 	// CouncilVote marks an option_pick as one player's BALLOT in a
 	// vote (CR 701.38, ADR 0146) and carries the vote so far. Public:
 	// every seat sees each vote as it is cast, except in a secret vote
@@ -1968,12 +1976,22 @@ type StackItemView struct {
 	// (ADR 0104, CR 110.2b). Sent only when it differs from
 	// Controller, so the client can say "taken from X" and a bot
 	// prompt can say who cast it; empty for every spell nobody took.
-	DefaultController string          `json:"default_controller,omitempty"`
-	Owner             string          `json:"owner"`
-	SourceCardID      string          `json:"source_card_id"`
-	Label             string          `json:"label,omitempty"`
-	Targets           []TargetRefView `json:"targets,omitempty"`
-	Modes             []int           `json:"modes,omitempty"`
+	DefaultController string `json:"default_controller,omitempty"`
+	Owner             string `json:"owner"`
+	SourceCardID      string `json:"source_card_id"`
+	Label             string `json:"label,omitempty"`
+	// AbilityText is the printed Oracle text of the ability this item
+	// is (#3830): a triggered ability's clause, an activated ability's
+	// whole "cost: effect" line, as the card prints it ("Whenever another
+	// creature you control enters, Purphoros deals 2 damage to each
+	// opponent."). Label stays the engine's short name. Empty for a
+	// spell, a copy, an item no single clause of its source's own
+	// answers (a granted or borrowed ability, a delayed or reflexive
+	// trigger, a rule's item), and an item whose source the table cannot
+	// see (face down, or in a hand or library nobody else knows).
+	AbilityText string          `json:"ability_text,omitempty"`
+	Targets     []TargetRefView `json:"targets,omitempty"`
+	Modes       []int           `json:"modes,omitempty"`
 	// ModeLabels is the oracle bullet of each chosen mode, in
 	// printed (resolution) order and with repeats — what "modes: 0, 2" used to
 	// make the table guess. The caster's hand card is gone by the
@@ -2033,10 +2051,12 @@ type StackItemView struct {
 	// deciding whether to answer it.
 	//
 	// ManaSpentUnknown is PaidCost.OnPaper: the cast went through
-	// permissive mode or a strict-mode override, so the engine did
-	// not take the mana and has no record of what it was. The client
-	// greys the pill rather than rendering "0 mana", which would be
-	// a claim nobody made. Absent on an ability item and on a copy
+	// permissive mode or a strict-mode override with a pool that did
+	// not cover the cost, so the engine took only the share the pool
+	// could pay (#3844) and has no record of the rest. ManaSpent and
+	// ColorsSpent are then that share, a lower bound. The client
+	// greys the pill rather than rendering it as the whole payment,
+	// which would be a claim nobody made. Absent on an ability item and on a copy
 	// (CR 707.10 — nothing was spent to cast a copy, and that zero
 	// is real).
 	ManaSpent        int      `json:"mana_spent,omitempty"`
@@ -3323,6 +3343,16 @@ type CardView struct {
 	// which is nearly always — means the permanent has its own text.
 	// Cleared with the ability rows for a viewer who cannot see them.
 	TextBoxFrom string `json:"text_box_from,omitempty"`
+	// TextChanges are the words of this object's text that a
+	// text-changing effect replaced (CR 612.2, ADR 0160's 2026-10-15
+	// amendment): "black → blue", "Swamp → Island", one line per changed
+	// word, colours first. Sleight of Mind, Magical Hack, Glamerdye. Its
+	// type line and keywords already read the new words; its other rules
+	// are closures the printed oracle text describes with the OLD words,
+	// so this is the line that says which words now read differently.
+	// Absent — nearly always — means none. Cleared with the ability rows
+	// for a viewer who cannot see them.
+	TextChanges []string `json:"text_changes,omitempty"`
 
 	// AbilityRows are the card's non-keyword triggered, static and
 	// activated abilities right now, triggered first, each with a short
@@ -4140,6 +4170,12 @@ type ActivatedAbilityView struct {
 	// ("Not enough energy (have 2, need 3)").
 	EnergyCost  int  `json:"energy_cost,omitempty"`
 	EnergyCostX bool `json:"energy_cost_x,omitempty"`
+	// MillCost is the printed "Mill N cards" component (#3845, CR
+	// 701.17a): the cards an activation mills off the top of the
+	// activator's library. Omitted at zero. When the library is short
+	// (CR 701.17b, CR 118.3), CantActivate carries the engine's refusal
+	// and the enumerator offers no move.
+	MillCost int `json:"mill_cost,omitempty"`
 	// ConditionUnmet is true when the ability carries an activation
 	// condition (CR 602.1b — "Activate only if an opponent controls
 	// four or more lands", "Activate only during your turn") and that
@@ -4756,6 +4792,11 @@ type ManaAbilityView struct {
 	// short, CantActivate carries the engine's refusal ("Not enough
 	// energy (have 0, need 1)").
 	EnergyCost int `json:"energy_cost,omitempty"`
+	// MillCost is a "Mill N cards" component (#3845, CR 701.17a) —
+	// Millikin's "{T}, Mill a card:". Omitted at zero. When the library
+	// is short, CantActivate carries the engine's refusal. The
+	// auto-tapper never pays such a row; the player activates it.
+	MillCost int `json:"mill_cost,omitempty"`
 	// Exert is an "Exert this land" / "Exert this creature" component
 	// (ADR 0130 §4): Arena of Glory, Oasis Ritualist. Always payable
 	// (CR 701.43b). The auto-tapper never pays such a row on its own,
@@ -4949,6 +4990,16 @@ type TurnView struct {
 	// cannot see a replacement skip (Trouble in Pairs, Ugin's Nexus),
 	// which is decided as the turn would begin. Public.
 	NextSeat *int `json:"next_seat,omitempty"`
+	// PassHint is what the viewer's own next pass hands over (#3826):
+	// "ends_turn" when it is the viewer's turn and no later step of it
+	// grants priority, "your_turn_next" when it is another player's turn,
+	// none of its remaining steps grants priority and the next turn is
+	// the viewer's. Empty (and omitted) for a routine pass, when the
+	// viewer does not hold priority, or when the stack is not empty.
+	// Per viewer, stamped by FilterViewFor from the plan and next_seat.
+	// It ignores the viewer's own auto-pass and stops, which live on the
+	// client. See pass_hint.go.
+	PassHint string `json:"pass_hint,omitempty"`
 	// BetweenTurns is set while the turn change waits on a
 	// "turn_skip_order" question (ADR 0188 Decision 12): the old turn
 	// is over, the next has not begun, and the cursor still shows the
@@ -5139,7 +5190,7 @@ func ViewOfGame(g *game.Game) GameView {
 			StartingSeat:          g.StartingSeat,
 			OpeningRoll:           viewOfOpeningRoll(g.OpeningRoll),
 			StackItems:            viewOfStackItemsInStackOrder(g),
-			PendingTriggers:       viewOfStackItemSlice(g.PendingTriggers),
+			PendingTriggers:       viewOfStackItemSlice(g, g.PendingTriggers),
 			DelayedTriggers:       viewOfDelayedTriggers(g.DelayedTriggers),
 			SplitSecondActive:     g.SplitSecondActive,
 			DamageCantBePrevented: g.DamageCantBePreventedThisTurnLabels(),
@@ -8052,6 +8103,14 @@ func stampManaConditions(g *game.Game, card *game.Card, controller uuid.UUID, vi
 				views[i].CantActivate = short.Error()
 			}
 		}
+		// #3845, CR 701.17b / 118.3: Millikin's "Mill a card" on a
+		// library that is short, from the predicate the engine refuses
+		// with.
+		if views[i].CantActivate == "" && raw[r].MillCost > 0 {
+			if short := g.MillCostShortfall(controller, raw[r].MillCost); short != nil {
+				views[i].CantActivate = short.Error()
+			}
+		}
 		// #1183: the exhaust flag, stamped beside the condition
 		// because the client reads them off the same row and greys
 		// with the same code — and separately from it, because the
@@ -8601,6 +8660,8 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if subject := c.TradeSubject(); subject != uuid.Nil {
 				v.TradeFor = subject.String()
 			}
+			// #3817: one target for every copy of the card's trigger.
+			v.SharedTargetKey = c.SharedTargetKey()
 		}
 		if answerer != c.Chooser {
 			v.OnBehalfOf = c.Chooser.String()
@@ -8970,7 +9031,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// package-level slice off the wire path, where a marshaller
 		// has no business holding a reference to it.
 		if c.Kind == game.PendingChoiceCreatureType {
-			v.TypeOptions = append([]string(nil), game.AllCreatureTypes...)
+			v.TypeOptions = make([]string, 0, len(game.AllCreatureTypes))
+			// ADR 0160's 2026-10-15 amendment: a type the prompt refuses
+			// is not offered ("can't be Wall").
+			for _, t := range game.AllCreatureTypes {
+				if !slices.Contains(c.ExcludedTypes, t) {
+					v.TypeOptions = append(v.TypeOptions, t)
+				}
+			}
 		}
 		// PendingChoiceCardName — #1210. There is no vocabulary to
 		// send (CR 201.2 admits any card name), so what goes on the
@@ -9157,10 +9225,14 @@ func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
 	}
 	sort.SliceStable(abilities, func(i, j int) bool { return abilities[i].Seq < abilities[j].Seq })
 	for _, item := range abilities {
-		entries = append(entries, entry{item.Seq, viewOfStackItem(item)})
+		v := viewOfStackItem(item)
+		v.AbilityText = abilityTextOf(g, item)
+		entries = append(entries, entry{item.Seq, v})
 	}
 	if held != nil && !seen[held.ID] && g.StackMeta[held.ID] == nil {
-		entries = append(entries, entry{held.Seq, viewOfStackItem(held)})
+		v := viewOfStackItem(held)
+		v.AbilityText = abilityTextOf(g, held)
+		entries = append(entries, entry{held.Seq, v})
 	}
 	sort.SliceStable(entries, func(i, j int) bool { return entries[i].seq < entries[j].seq })
 	if len(entries) == 0 {
@@ -9176,7 +9248,7 @@ func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
 // viewOfStackItemSlice projects a slice of *StackItem (the pending-
 // triggers queue) to the wire shape, preserving order. Returns nil
 // for an empty input.
-func viewOfStackItemSlice(items []*game.StackItem) []StackItemView {
+func viewOfStackItemSlice(g *game.Game, items []*game.StackItem) []StackItemView {
 	if len(items) == 0 {
 		return nil
 	}
@@ -9185,7 +9257,9 @@ func viewOfStackItemSlice(items []*game.StackItem) []StackItemView {
 		if it == nil {
 			continue
 		}
-		out = append(out, viewOfStackItem(it))
+		v := viewOfStackItem(it)
+		v.AbilityText = abilityTextOf(g, it)
+		out = append(out, v)
 	}
 	if len(out) == 0 {
 		return nil
@@ -9881,7 +9955,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// the same way — a permanent can phase out face down, and the
 		// card under it is no more knowable for having phased.
 		PhasedOut:     redactZone(v.PhasedOut, isKnower),
-		Turn:          v.Turn,
+		Turn:          turnViewFor(v, viewerID),
 		MulligansOpen: v.MulligansOpen,
 		Monarch:       v.Monarch,
 		Initiative:    v.Initiative,
@@ -10029,6 +10103,9 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].AutoAnswerCard = ""
 			out[i].AutoAnswerPrompt = ""
 			out[i].AskedByHand = ""
+			// #3817: so is the trigger's card identity, which names the
+			// card behind a prompt only its chooser answers.
+			out[i].SharedTargetKey = ""
 		}
 		if c.Kind == string(game.PendingChoiceSearchLibrary) && c.Chooser != viewerID {
 			out[i].Options = nil
@@ -10589,6 +10666,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.UnautomatedLenders = nil
 	// ADR 0160: and so does where its text box came from.
 	out.TextBoxFrom = ""
+	out.TextChanges = nil
 	// #2219: the tile's ability rows are read off the card's catalog
 	// entry exactly as the ability lists above are, and "Draw a card"
 	// under a face-down card says which card it is.
@@ -10917,6 +10995,7 @@ func viewOfCardPtr(c *game.Card) CardView {
 		// presented as automated for the rest of the game.
 		Auto:                   game.IsAutoCard(game.CatalogKeyOf(c)) && !c.AbilitiesLostOnRestore,
 		TextBoxFrom:            c.TextBoxFrom(),
+		TextChanges:            c.TextChanges(),
 		Unimplemented:          game.UnimplementedOf(c),
 		MayMakeManaUnautomated: game.MayMakeManaUnautomatedOf(c),
 		// #992: `target_mode` is the one announce field this
@@ -11620,6 +11699,15 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.TopCostOptions = cardIDStrings(g.PutOnTopCostOptionsForEffect(caster, c.InstanceID, n))
 		}
 		v.LibraryExileCostN = a.Cost.ExileFromLibraryTop
+		// #3845: the mill component, and the refusal's own text when
+		// the library is short (CR 701.17b), from the predicate
+		// ActivateCatalogAbility refuses with.
+		v.MillCost = a.Cost.Mill
+		if v.CantActivate == "" && a.Cost.Mill > 0 {
+			if short := g.MillCostShortfall(caster, a.Cost.Mill); short != nil {
+				v.CantActivate = short.Error()
+			}
+		}
 		// #1297: the exile-N-cards component, off the walk the engine
 		// validates against — the mana view's four fields, one ability
 		// kind over.
@@ -12211,6 +12299,7 @@ func viewOfManaAbilitiesFromZone(c *game.Card, zone game.ZoneKind) []ManaAbility
 			ExileSelf:     a.ExileSelf,
 			LifeCost:      a.LifeCost,
 			EnergyCost:    a.EnergyCost,
+			MillCost:      a.MillCost,
 			Exert:         a.ExertCost,
 			ManaCost:      a.ManaCost,
 			Restrictions:  a.Restrictions,

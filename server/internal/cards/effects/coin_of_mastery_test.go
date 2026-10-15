@@ -32,8 +32,8 @@ func TestCoinOfMasteryTapsForATreasureAndDeclaresItsGap(t *testing.T) {
 	}
 
 	spec, ok := Lookup(coinOfMasteryOracle)
-	if !ok || spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Fatalf("Coin of Mastery ships with exactly one caveat: %v / %v", spec.Completeness, spec.Caveats)
+	if !ok || spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Fatalf("Coin of Mastery is complete since a waived payment asks (#3855): %v / %v", spec.Completeness, spec.Caveats)
 	}
 	// The counters are a replacement on the Coin over another
 	// creature's entry, and nothing else.

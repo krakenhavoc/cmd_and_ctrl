@@ -218,7 +218,7 @@ export interface MenuItem {
   action?: MenuAction;
   prompt?: MenuPrompt;
   activate?: MenuActivate;
-  // ADR 0118 §2: the "Cast anyway (don't pay)" row, out of this zone. It
+  // ADR 0118 §2: the "Cast anyway (pay on paper)" row, out of this zone. It
   // hands the card to the Board's confirmation (castAnyway.ts) rather
   // than sending anything: the cast chain and the dock are the Board's.
   castAnyway?: CastAnywayZone;
@@ -2061,7 +2061,7 @@ export function specialActionItems(
   return readyFirst(items, (i) => i.ready === true);
 }
 
-// ---- Cast anyway (don't pay), ADR 0118 §2 -----------------------------
+// ---- Cast anyway (pay on paper), ADR 0118 §2 -----------------------------
 //
 // castAnywayItem is the row, for the popover's Sandbox section and for
 // the admin override menu's "cast" section: one builder for both, as
@@ -2120,7 +2120,7 @@ export function buildMenuSections(
   // menus never grey on the digest. Omitted: no information.
   gate: LegalActions = NO_LEGAL_ACTIONS,
   // ADR 0118 §2: the viewer's `gameplay.strictMana`. On, a card the
-  // viewer could cast gets the "Cast anyway (don't pay)" row in a
+  // viewer could cast gets the "Cast anyway (pay on paper)" row in a
   // "cast" section above "move to". Omitted: off, no row.
   strictMana = false,
 ): MenuSection[] {
@@ -2202,7 +2202,7 @@ export function buildMenuSections(
   }
 
   // ADR 0118 §2: with admin overrides on, a right-click opens this menu
-  // instead of the popover, so the popover's "Cast anyway (don't pay)"
+  // instead of the popover, so the popover's "Cast anyway (pay on paper)"
   // row is here too, above "move to".
   const castAnyway = strictMana ? castAnywayMenuItem(view, card, location.zone, viewerID) : null;
   if (castAnyway) sections.push({ id: "cast", label: "cast", items: [castAnyway] });

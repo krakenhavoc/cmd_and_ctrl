@@ -20,9 +20,9 @@ import (
 // "skulk": the card does not have that keyword.
 //
 // Mug mills every player still in the game, one card each, and waits
-// for each mill to land (a commander can stop on the CR 903.9 prompt,
-// and one that went to the command zone was not milled into a
-// graveyard). Then a Treasure if any of those cards is a land — one
+// for each mill to settle (a commander can stop on the CR 903.9 prompt,
+// and one that went to the command zone is no longer in a public zone to
+// be cast from, so it is not counted). Then a Treasure if any of those cards is a land — one
 // Treasure however many lands ("Additional land cards milled beyond the
 // first won't cause you to create additional Treasures", ruling
 // 2025-06-06) — and one permission over the cards, wherever they are:
@@ -40,20 +40,17 @@ import (
 //     of the spell you cast" and "You must pay the costs to cast that
 //     spell": the permission changes neither (TimingNormal, no price).
 //
-// One simplification, declared. CR 701.17c lets an effect that refers to
-// a milled card find it in whatever public zone it went to, so a card a
+// Where a milled card went does not matter (CR 701.17c): a card a
 // replacement exiled instead of milling into a graveyard (Rest in Peace)
-// is still "those cards". The mill reports only the cards that reached a
-// graveyard, so such a card is not covered by the permission. Strictly
-// weaker than printed.
+// is still "those cards", and the permission covers it in exile. The mill
+// reports every card it took out of the library
+// (MillToZoneThenMovedForEffect), and the grant is one permission per
+// zone those cards are in, sharing a single "a spell" (BudgetGroup).
 func init() {
 	Register(Spec{
 		OracleID:     "a800bec4-bacc-43f9-a773-dd795959935b",
 		Name:         "Locke, Treasure Hunter",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"If a milled card is exiled instead of going to a graveyard, Mug doesn't let you cast it.",
-		},
+		Completeness: CompletenessFull,
 		BlockRules: []game.BlockRule{
 			CantBeBlockedByComparing(OnSelf(), GreaterPowerThanAttacker(), "creatures with greater power"),
 		},
@@ -78,8 +75,17 @@ func lockeMug(g *game.Game, item *game.StackItem) error {
 		if i == len(seats) {
 			return lockeMugPayoff(g, item, milled)
 		}
-		return g.MillToZoneThenForEffect(seats[i], 1, game.ZoneGraveyard, nil, func(g *game.Game, landed []uuid.UUID) error {
-			milled = append(milled, landed...)
+		// The "moved" form: a card Rest in Peace exiled instead of milling
+		// is still one of "those cards" (CR 701.17c).
+		return g.MillToZoneThenMovedForEffect(seats[i], 1, game.ZoneGraveyard, func(g *game.Game, moved []uuid.UUID) error {
+			for _, id := range moved {
+				// Graveyard or exile only: a commander its owner moved
+				// to the command zone is neither a land to count nor a
+				// card a stored permission can open.
+				if z := g.FindCardZoneForEffect(id); z != nil && (z.Kind == game.ZoneGraveyard || z.Kind == game.ZoneExile) {
+					milled = append(milled, id)
+				}
+			}
 			return step(g, i+1)
 		})
 	}
@@ -104,9 +110,8 @@ func lockeMugPayoff(g *game.Game, item *game.StackItem, milled []uuid.UUID) erro
 			return err
 		}
 	}
-	g.GrantCastPermissionToCardsForEffect(game.CastPermission{
+	g.GrantCastPermissionAcrossZonesForEffect(game.CastPermission{
 		Player:     item.Controller,
-		Zone:       game.ZoneGraveyard,
 		CastOnly:   true,
 		CastsLeft:  1,
 		Source:     item.SourceCardID,

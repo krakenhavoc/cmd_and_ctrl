@@ -24,15 +24,16 @@ import (
 // cleanup.
 //
 // One caveat, Vexing Bauble's: a cast the engine did not charge
-// (an insufficient permissive pool or Cast anyway) records an UNKNOWN
-// payment, and unknown is never "no mana". A known free cast in either
-// payment mode is punished. Weaker than printed for unrecorded casts.
+// (an insufficient permissive pool or Cast anyway) asks the caster what
+// they paid outside the pool, or whether they cast it without paying its
+// mana cost (#3855): the Vortex declares ReadsEveryCast. A known free
+// cast in either payment mode is punished.
 func init() {
 	Register(Spec{
-		OracleID:     "34f83b7a-45a7-40a8-abcb-31d7aae4cea1",
-		Name:         "Roiling Vortex",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track what was spent, so a spell cast for no mana isn't punished — turn on “Charge mana costs” for that ability to work."},
+		OracleID:       "34f83b7a-45a7-40a8-abcb-31d7aae4cea1",
+		Name:           "Roiling Vortex",
+		ReadsManaSpent: game.ReadsEveryCast,
+		Completeness:   CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginUpkeep, func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor != uuid.Nil

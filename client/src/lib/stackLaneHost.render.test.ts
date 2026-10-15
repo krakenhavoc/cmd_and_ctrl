@@ -108,11 +108,25 @@ const view = {
   turn: { number: 3, active_seat: 0, priority_holder: 0, phase: "main1", step: "main" },
 } as unknown as GameView;
 
-function mountLane(style: StackLaneStyle, extra: Record<string, unknown> = {}) {
+/** A seat slot under the board, as Board.svelte draws one. */
+function slot(pos: string, r: DOMRect): HTMLElement {
+  const el = document.createElement("div");
+  el.className = "slot";
+  el.dataset.pos = pos;
+  el.getBoundingClientRect = () => r;
+  return el;
+}
+
+function mountLane(
+  style: StackLaneStyle,
+  extra: Record<string, unknown> = {},
+  slots: HTMLElement[] = [],
+) {
   install();
   const board = document.createElement("div");
   let boardRect = rect(0, 0, 1000, 600);
   board.getBoundingClientRect = () => boardRect;
+  for (const s of slots) board.appendChild(s);
   document.body.appendChild(board);
   const r = render(StackLaneHost, {
     view,
@@ -265,6 +279,47 @@ for (const style of ["pile", "fan"] as const) {
     });
   });
 }
+
+// #3380, the ADR 0176 amendment: with nothing saved the pile docks on the
+// seam between the top row's seats. The board is 1000x600 with an 8px gap.
+describe("the pile's default spot", () => {
+  const fourSeats = () => [
+    slot("across", rect(0, 0, 496, 200)),
+    slot("across_next", rect(504, 0, 496, 200)),
+    slot("next", rect(0, 208, 496, 392)),
+    slot("self", rect(504, 208, 496, 392)),
+  ];
+
+  it("is centred on the seam between the top seats of a four-seat table", () => {
+    const { r } = mountLane("pile", {}, fourSeats());
+    const el = host(r.container);
+    // The seam is at 500; the 300px pile is centred on it.
+    expect(el.style.left).toBe("350px");
+    // Centred on the row seam (204) and kept inside the board.
+    expect(el.style.top).toBe("104px");
+    expect(el.classList.contains("placed")).toBe(false);
+  });
+
+  it("keeps the left edge on a two-seat table", () => {
+    const { r } = mountLane("pile", {}, [
+      slot("across", rect(0, 0, 1000, 296)),
+      slot("self", rect(0, 304, 1000, 296)),
+    ]);
+    expect(host(r.container).style.left).toBe("");
+  });
+
+  it("gives way to a saved spot", () => {
+    const { r } = mountLane("pile", { position: { x: 0.1, y: 0.1 } }, fourSeats());
+    expect(host(r.container).style.left).toBe("100px");
+    expect(host(r.container).style.top).toBe("60px");
+    expect(host(r.container).classList.contains("placed")).toBe(true);
+  });
+
+  it("leaves the centred styles where they were", () => {
+    const { r } = mountLane("fan", {}, fourSeats());
+    expect(host(r.container).style.left).toBe("");
+  });
+});
 
 describe("the lane header handle", () => {
   it("without a board it shows no drag affordance", () => {

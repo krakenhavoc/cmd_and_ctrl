@@ -629,3 +629,362 @@ Path of Ancestry now scries when its token actually pays for a matching
 creature in either mode. Its remaining caveat describes an unrecorded
 payment, and the other mana-spent readers use that same narrower wording.
 None is marked complete merely because default strict payment works.
+
+
+## Amendment — a waived payment spends what the pool can pay (2026-10-15, [#3844](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3844))
+
+This supersedes the 2026-10-12 amendment's "no partial payment is
+invented" and its rule that `ForceCast` always leaves the pool intact.
+
+### The decision
+
+When the engine waives a charge (a permissive cast or activation whose
+pool cannot cover the cost, or a strict-mode Cast anyway), the pool
+pays the share of the cost it can legally pay, and only the shortfall
+is waived. The share is chosen by the same solver a funded payment
+uses (`ManaPool.allocate`, behind both `attemptSpend` and the new
+`SpendWhatPaysForWith`): the spend context's restrictions, the
+restriction-first order, the colour-requirement matching and the
+spell's colour strategy. Mana the cost cannot use (a {U} beside a
+{R}{R} cost, Cavern mana named Elf beside a Goblin) stays in the pool.
+Nothing is auto-tapped. The life half (Phyrexian symbols) is still paid
+in full, and now before the pool is touched, so a refused life payment
+spends nothing.
+
+The record is `PaidCost{Mana: <the tokens the pool paid>, OnPaper:
+true}`. A Cast anyway whose pool covers the whole cost is an ordinary
+paid cast: `OnPaper` is false, no `EventCostWarning` is emitted, and
+`EventCast.Unpaid` is false, because "cast without paying its mana
+cost" would be untrue (ADR 0118 §2's log line now reads
+`ForceCast && OnPaper`).
+
+### What the record means now
+
+`OnPaper` still means "the engine does not know the whole payment".
+The tokens beside it are a fact: they left the pool. So §3's table
+becomes:
+
+| Reader | Known | Unknown (`OnPaper`) |
+|---|---|---|
+| `None()` | true when empty | **false**, whatever the record holds |
+| `Total()`, `Count()`, `Colors()` | exact | **the tokens' figure, a lower bound** (0 when the pool paid nothing) |
+| `CountFrom()`, `From()` | exact | **the tokens' figure** |
+| spend riders | fire on the tokens | **fire on the tokens** |
+
+The rule is unchanged: unknown is never the stronger answer. Every
+counting reader grows with the mana spent, so a lower bound is never
+stronger than printed. `None` is the one reader that shrinks as the
+mana grows, so it ignores the tokens and keeps answering false.
+Readers that mix the figures non-monotonically opt out through
+`Known()`, as Soul Burn already does.
+
+### Why this removes Path of Ancestry's caveat honestly
+
+A spend rider keys on one token: "when THAT mana is spent". A source the
+engine runs makes its mana only as a token in the pool, so under a
+waived payment there are two cases. The token was in the pool and the
+cost could use it: it pays, exactly as a funded payment would have
+spent it, and the rider fires. Or the token was never made, or the cost
+cannot use it, or the solver paid that part with other mana first: then
+that mana genuinely was not spent, and a token still in the pool is
+still the player's to spend. Neither case is the engine failing to do
+what the card prints. The last case is §5's solver choice, which a
+funded strict payment has always had.
+
+Source-kind readers of a source the engine always runs read the same
+way: Treasure mana exists only as a pool token, so "if mana from a
+Treasure was spent" and "for each mana from a Treasure" are exact.
+
+So these cards are `CompletenessFull` (18): Path of Ancestry, Cavern of
+Souls, Boseiju, Who Shelters All, Delighted Halfling, Hall of the
+Bandit Lord, Arena of Glory, Generator Servant, Carnelian Orb of
+Dragonkind, Domri, Chaos Bringer, Biophagus, Opal Palace, Scaled
+Nurturer, Pyromancer's Goggles, Primal Wellspring, Tecutlan, the
+Searing Rift (token riders); Hired Hexblade, Rain of Riches and Kalain,
+Reclusive Painter (Treasure mana).
+
+### What stays caveated, reworded
+
+Readers of colour or amount (sunburst, converge, adamant, "if {U} was
+spent", "the amount of mana spent") still cannot see the share paid on
+paper, which was real mana of an unknown colour. Their figure is now a
+lower bound rather than zero, and their caveats say so: "only mana
+spent from your mana pool counts, so ...". That is the 16 printed
+sunburst cards, Lux Artillery, Solar Array, Painful Truths, Kurbis,
+Mockingbird, Memory Deluge, Abby, Deceit, Gruul Scrapper, Boros
+Fury-Shield, Ribbons of Night, Slaying Fire, Protective Sphere and Mana
+Sculpt. Coin of Mastery stays too: "mana from an artifact source"
+includes artifacts the engine does not run, whose mana is exactly what
+Cast anyway exists to pay on paper.
+
+The "if no mana was spent" readers (Vexing Bauble, Boromir, Roiling
+Vortex, Satoru, Freestrider Commando) keep their caveat: a spell whose
+whole payment was waived may or may not have cost mana, and the engine
+still cannot tell. Their wording now says that rather than "doesn't
+track what was spent".
+
+### Client
+
+The Cast anyway tooltips and the dock confirmation's hint said no mana
+is spent. They now say the pool's mana pays. The label contract (ADR
+0118 §2: the row, the dialog name, Cast and Cancel) is unchanged.
+
+## Amendment (2026-10-15, [#3853](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3853)): auto-pay picks the mana that does something
+
+A5 gave the auto-tapper one wish: the spell being cast names the *kinds* of
+source it reads back (Hired Hexblade → a Treasure). Two more choices of mana
+mattered and were left to chance. This amendment widens the same wish to cover
+them. Its bound is A5's, restated because every decision below leans on it.
+
+### B1. The bound: an ordering, and nothing else
+
+The wish reaches the candidate sort (`sortTapSources`), the generic recruit
+(`orderUnusedByGenericPreference`, `recruitGeneric`) and the order the pool
+solver walks its runs (`spendOrder`, `spendGenericWished`). It adds no candidate
+and drops none, and no payability test reads it. So the legal-move enumerator
+(which asks the same planner for its bool) and the cast gate keep agreeing: a
+cast is offered exactly when it can be paid. `TestTheWishNeverChangesWhetherACostIsPayable`
+runs five spells' worth of wishes over three boards and eleven costs and compares
+the planner's answer with and without the whole wish.
+
+Every new key is a tiebreak **below** the planner's own thrift tiers (sacrifice,
+card out of hand, energy, pain, frozen) and above restrictiveness / the colour-count
+tier. A rider or a colour reading is a bonus, and a bonus does not cost a Treasure,
+a card or a life point; #1212's source wish is the one exception, because there the
+card's text *is* the instruction. Consequently Boseiju (pay 2 life), Hall of the
+Bandit Lord (pay 3) and Generator Servant (sacrifice itself) stay behind a painless
+land even when their rider would fire. `TestARiderDoesNotOutrankTheThriftTiers`
+and `TestAutoPayDoesNotSacrificeGeneratorServantJustForTheHaste` pin it.
+
+### B2. Source-side riders: a rank, from the check the rider fires by
+
+`tapSource.RiderRank` is -1 when one of the ability's `SpendRiders` would fire on
+this spell, +1 when it carries riders the planner can judge and none would (the
+source is **held back** behind ordinary ones), and 0 for a source with no rider.
+It is a tier, never an exclusion: a board whose only source is a held-back rider
+land still pays (`TestAHeldBackSourceStillPaysWhenItIsTheOnlyOne`).
+
+"Would fire" is `ManaSpendContext.riderFires`, which is the test
+`applyManaSpendRidersLocked` makes at the spend: the rider's `When` filter against
+the spend context, then the registered `Condition` of a trigger rider
+(`ManaSpendTrigger.Condition`, Path of Ancestry's "shares a creature type with your
+commander") or a counted one (`ManaRiderCount.Condition`, Opal Palace's "your
+commander"). A rider the planner cannot judge — a keep-until-end-of-turn mark, an
+unregistered key, a Condition nobody could answer — ranks neutral, the weaker claim.
+The Condition is asked of the spell found by ID in whatever zone holds it, once per
+planning call.
+
+What this does not reach, by the same bound: the auto-tapper refuses a mana ability
+with a spend restriction (autotap.go, `autoTapAbilityAccepts`: restricted output is
+"a decision, not a resource"). Cavern of Souls' coloured half and Delighted
+Halfling's legendary-only half are therefore not planned however well their rider
+would suit the spell; planning them would add a candidate. Floating mana they made
+is ranked like any other token (B4). Cavern's `{C}` and Halfling's `{C}` carry no rider.
+
+### B3. Colour readers: a new declaration, a static key and a bounded greedy
+
+Existing declarations expose the *kinds* of source (`WantsManaFrom`) and the
+converge / sunburst spread (`WantsDistinctColors`). "If {R} was spent", adamant
+and the hybrid readers (Moonhold, River's Grasp) read one named colour, which
+neither covers, so `Spec.WantsColors []string` (WUBRG) is added, read through
+`CatalogWantsColors`. Declared on Gruul Scrapper, Boros Fury-Shield, Ribbons of
+Night, Slaying Fire, Moonhold and River's Grasp. Painful Truths and Etched Oracle
+already set `WantsDistinctColors`. Memory Deluge and its kin read the *total* spent,
+which the cost fixes, so there is nothing to plan.
+
+`tapSource.ReadsColor` marks a candidate that makes a colour the spell names (any
+colour, for a converge spell). The generic recruit ranks it above the colour-count
+tier, so a `{2}{G}` Gruul Scrapper pays its generic half with the Mountain rather
+than the Sol Ring. The coloured pass is untouched: a pip is paid in its own colour
+whatever the planner prefers.
+
+For a spell that counts *how many* of its colours were spent (converge, or a card
+naming two colours), `colorSpread` re-ranks inside the group the order already
+declared equal (`sameGenericGroup`) toward a source that adds a colour the plan does
+not make yet. It is greedy and consults no node budget, so it cannot change which plan
+`solveColored` finds. When it recruits a dual land for a colour it records it as
+`plannedTap.Prefer`, and the executor makes that colour on the slot's fall-through
+only (`pickColorForPlanned`): a still-unpaid pip is paid first, exactly as before,
+so the hint can steer a land's mana and cannot leave a pip unpaid.
+
+The "bounded search over the plans the solver already finds" the issue allows was
+not needed: the greedy re-rank gets the converge case (three Plains and an Island
+beside a Sol Ring spend a Plains and the Island) without it.
+
+### B4. The floating pool: same order, same rule
+
+`ManaSpendContext` of a cast carries a data-only `spendWish` (the spell's ID, its
+three declarations, and the answers to its tokens' conditioned riders), stamped when
+the context is built; an ability's payment carries none. Plain data on purpose, so a
+context stored in `AssistPrompt.spend` carries no closure or `*Game` into the ADR 0041
+closure ratchet. `spendOrder` ranks runs by `tokenRank` inside a restriction tier
+(restricted-first stays dominant), and the generic half is spent firing-rider mana
+first, then mana of a colour the spell reads, then the usual colourless-first order,
+and mana whose rider would be wasted last (`spendGenericWished`). A token made by a
+source of a kind the spell wants (#1212) ranks with the firing riders, so Hired
+Hexblade spends a floating Treasure mana before a plain one. The conditioned riders on
+the payer's tokens are answered against the game at the spend
+(`stampRiderVerdictsLocked`, called where `applyCastCostLocked` builds its context).
+
+### B5. Out of scope, and why
+
+- **Riders on an activation's payment.** A Path of Ancestry mana spent on an equip
+  cost is "wasted" in the same sense, but an activation's context carries no wish and
+  `granted_mana_spent_readers` pins the pool order of one. Separable.
+- **Raising a rider above the thrift tiers.** Whether a firing Boseiju is worth two
+  life is a player's call; the planner does not make it.
+- **Restricted mana abilities** (B2).
+- **Adamant "at least three" as a hard target.** The ordering concentrates red mana
+  when the board has it; a card is not made castable or uncastable by it.
+
+### Tests
+
+`game/autotap_wish_test.go` (every shape, in both battlefield orders, and the
+payability bound), `cards/effects/autotap_rider_wish_test.go` (the printed cards) and
+`aiseat/autopay_rider_bot_test.go` (a bot's enumerated cast pays the same way).
+
+## Amendment — what was paid on paper (2026-10-15, [#3855](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3855))
+
+An owner decision (Ian, 2026-10-15). It closes what the #3844
+amendment left caveated: the readers of colour, amount and "no mana
+was spent" under a waived payment. This supersedes §3's table for a
+payment something reads, and the #3844 amendment's "What stays
+caveated".
+
+### The decision
+
+When a payment is waived with a non-zero shortfall and something
+READS the mana spent, the engine asks the caster what they paid
+outside the pool before anything is paid. A cast nothing reads stays
+one click.
+
+- **"Something reads it"** is a declaration on the card,
+  `effects.Spec.ReadsManaSpent` (`game.ManaSpentReads`, a bit set, in
+  `game/paper_payment.go`): `ReadsOwnPayment` (the spell, its own
+  triggers and its own entry: converge, sunburst, adamant, Memory
+  Deluge, Freestrider Commando), `ReadsYourCasts` /
+  `ReadsOpponentsCasts` / `ReadsEveryCast` (a permanent on the
+  battlefield watching casts: Coin of Mastery, Lux Artillery, Solar
+  Array, Satoru, Trailtracker Scout's expend; Boromir; Vexing Bauble,
+  Roiling Vortex), `ReadsOwnActivations` (Protective Sphere). Two
+  declarations never ask: `ReadsPoolManaOnly` for a reader of Treasure
+  mana or of a spend rider's token, which paper mana can never be, and
+  `ReadsAnotherSpellsAmount` for Mana Sculpt (below). `ReadsSourceKinds`
+  rides beside a reader of "mana from an artifact source".
+- **Enforced by a test, not by memory.** `TestManaSpentReadersDeclareIt`
+  scans the card files: one whose code touches the mana-spent
+  vocabulary (every `…Spent…` accessor, the helpers built on them,
+  sunburst, converge, expend) without declaring fails, and so does a
+  declaration with nothing behind it. A new reader cannot forget.
+- **The question** is a refusal, `*game.PaperPaymentRequiredError`,
+  wire code `paper_payment_required`: the shortfall slot by slot,
+  coloured requirements first, each with the symbols that may pay it.
+  It is computed by the same solver the payment uses
+  (`ManaPool.allocateRest`, behind `allocate`), so the slots are
+  exactly what the pool will leave unpaid. It comes before the life
+  half and the pool are touched, so the re-send starts from the same
+  board. The client prefills each slot with its first option, the
+  cost minus what the pool paid.
+- **The answer** rides `cast_spell` / `activate_ability` as
+  `paper_payment`: the mana paid outside the pool, or `free`.
+  - Mana must be a legal payment of EXACTLY the shortfall: as many
+    mana, each coloured slot paid by a symbol it admits (a hybrid by
+    either half, never a third colour), the rest generic, in any
+    order (`paperShortfall.tokensFor`, the solver's own coloured pass
+    over the declared mana). The tokens join `PaidCost.Mana` with no
+    source and, when declared, the artifact kind. `OnPaper` is false:
+    the record is exact.
+  - `free` is "an effect on paper let me cast it without paying its
+    mana cost". The waived share is recorded as zero, so the record is
+    the pool's tokens alone, also exact. A cast declared free with
+    nothing from the pool is "no mana was spent", and Vexing Bauble,
+    Boromir, Roiling Vortex, Satoru and Freestrider Commando read it
+    as printed.
+  - **CR 601.2h, followed literally:** a cast declared free whose pool
+    still paid part of the cost spent that mana, so it is NOT "no mana
+    was spent", and the Bauble does not counter it. The total is
+    whatever the pool really paid.
+- **The declaration is public** (Ian's follow-up). `EventCast` carries
+  `Unpaid` for a cast declared free ("<player> cast <card> without
+  paying its mana cost") and `PaperPaid` + `PaperDeclared` for a
+  declared payment ("<player> cast <card>, declaring {C}{C}{G} paid
+  on paper"); an activation's line says the same through
+  `EventActivateAbility`. Opponents can see a claim that dodges their
+  Bauble.
+- **Engine-known free casts never ask.** Cascade, Omniscience, a
+  `{0}` alternative cost, a granted free cast: the cost is zero,
+  nothing is waived, the shortfall is zero, so there is no question,
+  and the record is the known nothing §4 always made it.
+  `TestPaperPaymentEngineKnownFreeCastAsksNothing` pins that the Bauble
+  still counters one, in every payment mode, Cast anyway included.
+
+### A cast nothing reads, and Mana Sculpt
+
+A waived payment nothing asked about keeps `OnPaper`, and now also
+records the shortfall's AMOUNT, `PaidCost.PaperMana` (carried onto
+`CastProvenance.PaperMana`). The one-click path asserts the rest was
+paid on paper — the Cast anyway row says so, and a strict-mode Cast
+anyway's log line names the shortfall ("…, paying {4}{G}{G} on paper")
+— so `Total()` is exact on every record; only the colours and sources
+of that share stay unknown, and `None()` stays false. Nothing that
+reads colours can see such a record, because every colour reader asks.
+
+That is what makes Mana Sculpt exact without asking. It reads the
+amount spent on the spell it counters, and nothing at the cast knows
+it is coming: a counterspell in a hand cannot be a watcher without
+telling the table it is there. It declares `ReadsAnotherSpellsAmount`,
+which never asks; the amount it reads is the declared one when a
+reader asked, and otherwise the asserted shortfall. The same holds for
+expend's turn tally.
+
+Until #3855, `EventCast.Unpaid` marked every strict-mode Cast anyway
+and the log said "without paying its mana cost". That line now belongs
+to a cast DECLARED free; a one-click Cast anyway asserts the opposite,
+and its line says so. The row is renamed "Cast anyway (pay on paper)"
+and its confirmation "Cast <card> and pay the rest on paper?". ADR
+0118 §2's label contract is updated deliberately, with the e2e spec
+that pins it.
+
+### §3's table, for a payment something reads
+
+| Reader | Declared paid | Declared free | Nothing reads it (undeclared) |
+|---|---|---|---|
+| `Known()` | true | true | false |
+| `Total()` | exact | the pool's share | exact (the shortfall asserted) |
+| `Colors()`, `Count()` | exact | the pool's share | lower bound (no colour reader sees it) |
+| `CountFrom(artifact)` | exact (declared per mana) | the pool's share | lower bound |
+| `None()` | false | true iff the pool paid nothing | false |
+
+### Cards
+
+`CompletenessFull`, caveat removed (40): the sixteen printed sunburst
+cards (Arcbound Wanderer, Baton of Courage, Clearwater Goblet,
+Engineered Explosives, Etched Oracle, Heliophial, Infused Arrows,
+Lunar Avenger, Opaline Bracers, Pentad Prism, Sawtooth Thresher,
+Skyreach Manta, Solarion, Spinal Parasite, Suncrusher, Suntouched
+Myr), Lux Artillery, Solar Array, Painful Truths, Memory Deluge,
+Slaying Fire, Boros Fury-Shield, Ribbons of Night, Gruul Scrapper,
+Deceit, Kurbis, Mockingbird, Abby, Mana Sculpt, Protective Sphere,
+Coin of Mastery, Vexing Bauble, Boromir, Roiling Vortex, Satoru,
+Freestrider Commando, Primeval Spawn, Moonhold and River's Grasp
+(#3849, #3850), and Aetherflux Conduit (#2110, `ReadsYourCasts`: its
+energy is the amount spent on each spell you cast). Soul Burn keeps
+its own caveat, which is about which black mana paid for X, not about
+a waived payment.
+
+Not in the catalog, so nothing to change: Lavinia, Azorius Renegade
+and the other "no mana was spent" punishers a grep of the card files
+found none of; one added later declares `ReadsOpponentsCasts` (or
+`ReadsEveryCast`) and is exact, and the scan test makes it.
+
+### Out of scope
+
+- A watcher off the battlefield. `castPaymentReadLocked` walks the
+  battlefield; a delayed "the next artifact spell you cast gains
+  sunburst" whose Solar Array has since left does not ask. Weaker,
+  never stronger: the count is the pool's lower bound.
+- Snow. A `{S}` slot takes any declared symbol; no printed card reads
+  whether snow mana was spent (§A6).
+- The bot. Every cast and activation the enumerator offers is strict
+  and auto-tapped, so it never waives a payment and never sees the
+  question (`TestBotMovesNeverWaiveAPaymentSomethingReads`).

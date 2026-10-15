@@ -275,11 +275,13 @@ describe("castAnywayOffered", () => {
 describe("castAnywayItem — the row's builder", () => {
   it("is the named row, live, with its title", () => {
     const item = castAnywayItem("");
-    expect(item.label).toBe("Cast anyway (don't pay)");
+    expect(item.label).toBe("Cast anyway (pay on paper)");
     expect(item.label).toBe(CAST_ANYWAY_LABEL);
     expect(item.disabled).toBeFalsy();
     expect(item.hint).toBe(CAST_ANYWAY_TITLE);
-    expect(item.hint).toBe("Cast it without paying its mana cost. The game log shows the table.");
+    expect(item.hint).toBe(
+      "Cast it: the mana in your pool pays what it can and you pay the rest on paper. The game log shows the table.",
+    );
     expect(item.castAnyway).toBe("hand");
     // It sends nothing itself: no action rides it.
     expect(item.action).toBeUndefined();
@@ -313,7 +315,7 @@ describe("castAnywayConfirmRequest (owner decision 6)", () => {
   it("names the dialog by the question, with Cast and Cancel", () => {
     const h = { onCast: vi.fn(), onCancel: vi.fn() };
     const r = castAnywayConfirmRequest("Craw Wurm", h);
-    expect(r.label).toBe("Cast Craw Wurm without paying its mana cost?");
+    expect(r.label).toBe("Cast Craw Wurm and pay the rest on paper?");
     expect(castAnywayConfirmLabel("Craw Wurm")).toBe(r.label);
     expect(r.question).toBe(r.label);
     expect(r.rank).toBe("flow");
@@ -433,7 +435,7 @@ describe("the admin override menu's cast section", () => {
     expect(ids).toContain("cast");
     expect(ids.indexOf("cast")).toBe(ids.indexOf("move") - 1);
     const row = s.find((x) => x.id === "cast")!.items[0];
-    expect(row.label).toBe("Cast anyway (don't pay)");
+    expect(row.label).toBe("Cast anyway (pay on paper)");
     expect(row.castAnyway).toBe("hand");
     expect(row.disabled).toBeFalsy();
   });

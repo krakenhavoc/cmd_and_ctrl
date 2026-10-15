@@ -27,14 +27,17 @@ import { L } from "./labels";
 import type { GameView } from "./protocol";
 import {
   canConfirm,
+  effectiveShareScope,
   isCardSetPick,
   isMultiPick,
   legalTargetCount,
+  type ShareScope,
   type TargetingMode,
   type TargetingState,
 } from "./targeting";
 import { doubledTriggerLabel } from "./triggerDoubling";
 import { targetPriceSummary } from "./targetPrices";
+import { batchPosition, type BatchPosition } from "./triggerBatch";
 
 function modeHint(mode: TargetingMode | string | undefined): string {
   switch (mode) {
@@ -74,7 +77,7 @@ function cardSetCount(state: TargetingState): string {
 }
 
 // targetingQuestion is the question line's sentence.
-function targetingQuestion(state: TargetingState): string {
+function targetingQuestion(state: TargetingState, batch: BatchPosition | null = null): string {
   const name = state.card.name;
   if (isCardSetPick(state)) {
     // #2394: a choice made as the card resolves, not a target. The
@@ -88,7 +91,12 @@ function targetingQuestion(state: TargetingState): string {
     // "Deflecting Swat triggered" would be the wrong sentence.
     return `${name} — click ${state.label || "a new target"}`;
   }
-  if (state.choiceID) return `${name} triggered — click ${state.label || "a target"}`;
+  if (state.choiceID) {
+    // #3817: one of many — twenty Blood Artists and two deaths are forty
+    // prompts, each looking like the last. Say how many.
+    const times = batch && batch.total > 1 ? ` ${batch.total} times` : "";
+    return `${name} triggered${times} — click ${state.label || "a target"}`;
+  }
   // #764: a multi-clause or per-mode announcement is a WALK, so the
   // line names the clause it is asking about right now (and the detail
   // says where in the walk the player is). Without this a two-slot card
@@ -132,6 +140,9 @@ function priceLine(state: TargetingState, view: GameView | null | undefined): st
 // doubler, the division, the pick tally and the price.
 export function targetingDetail(state: TargetingState, view?: GameView | null): string {
   const parts: string[] = [];
+  // #3817: which of a batch of the same trigger this prompt answers.
+  const batch = view ? batchPosition(view, state.choiceID) : null;
+  if (batch) parts.push(`trigger ${batch.index} of ${batch.total}`);
   if (!state.choiceID && state.steps.length > 1) {
     parts.push(`step ${state.step + 1} of ${state.steps.length}`);
   }
@@ -162,14 +173,67 @@ export interface TargetingHandlers {
   // #2394: a card-set pick answered on the board offers the same
   // choice as the list. Called with the choice's ID.
   onShowList?: (choiceID: string) => void;
-  // #3265: the same ability has `count` more instances waiting for a
-  // target, and the player may answer them all with this pick.
-  share?: { count: number; on: boolean; onToggle: () => void };
+  // #3265: the same ability on this source has `count` more instances
+  // waiting for a target, and the player may answer them all with this
+  // pick. #3817: `card` is the reach over every copy of the card (the
+  // other instances, and the sources in all), offered as a second
+  // choice when more than one source has them waiting.
+  share?: {
+    scope: ShareScope;
+    count: number;
+    card?: { count: number; sources: number };
+    onScope: (scope: ShareScope) => void;
+  };
 }
 
-// sameTargetLabel is the toggle's text: this prompt and the rest.
-export function sameTargetLabel(count: number): string {
-  return `Same target for all ${count + 1}`;
+// sameTargetSourceLabel is the source scope's button: this source's
+// instances, this prompt included.
+export function sameTargetSourceLabel(name: string, n: number): string {
+  return `Same target for this ${name}'s ${n} triggers`;
+}
+
+// sameTargetCardLabel is the card scope's button (#3817): every copy's
+// instances, this prompt included.
+export function sameTargetCardLabel(name: string, n: number): string {
+  return `Same target for all ${n} ${name} triggers`;
+}
+
+// shareRow is the dock's row of share choices: none for a lone
+// instance, the source scope when this source repeats, and the card
+// scope when more than one source of the card has instances waiting.
+// Each button turns its scope on, or off again when it is the one on.
+function shareRow(name: string, share: NonNullable<TargetingHandlers["share"]>): DockAction[] {
+  const cardOK = (share.card?.sources ?? 0) > 1 && (share.card?.count ?? 0) > 0;
+  const scope = effectiveShareScope(share.scope, cardOK);
+  const press = (s: "source" | "card") => () => share.onScope(scope === s ? "off" : s);
+  const row: DockAction[] = [];
+  if (share.count > 0) {
+    row.push({
+      id: "same-target",
+      label: sameTargetSourceLabel(name, share.count + 1),
+      title:
+        scope === "source"
+          ? `your pick also answers this ${name}'s other triggers, where it is legal`
+          : `use one target for this ${name}'s triggers`,
+      pressed: scope === "source",
+      alignEnd: true,
+      onPress: press("source"),
+    });
+  }
+  if (cardOK) {
+    row.push({
+      id: "same-target-card",
+      label: sameTargetCardLabel(name, share.card!.count + 1),
+      title:
+        scope === "card"
+          ? `your pick also answers every ${name}'s triggers, where it is legal`
+          : `use one target for the triggers of every ${name} you control`,
+      pressed: scope === "card",
+      alignEnd: true,
+      onPress: press("card"),
+    });
+  }
+  return row;
 }
 
 export function targetingRequest(
@@ -203,6 +267,7 @@ export function targetingRequest(
   // in the modal's grid, for a player who would rather read names.
   const showList = h.onShowList;
   const share = multi ? undefined : h.share;
+  const rowOf = share ? shareRow(state.card.name, share) : [];
   const choiceID = state.choiceID;
   const secondary: DockAction[] = choiceID
     ? cardSet && showList
@@ -231,26 +296,11 @@ export function targetingRequest(
     tag: cardSet ? "choose" : "target",
     tone: "gold",
     live: true,
-    question: targetingQuestion(state),
+    question: targetingQuestion(state, view ? batchPosition(view, state.choiceID) : null),
     detail: targetingDetail(state, view) || undefined,
     primary,
     secondary,
-    ...(share && share.count > 0
-      ? {
-          row: [
-            {
-              id: "same-target",
-              label: sameTargetLabel(share.count),
-              title: share.on
-                ? "your pick also answers the other instances of this trigger, where it is legal"
-                : "ask for each instance's target separately",
-              pressed: share.on,
-              alignEnd: true,
-              onPress: share.onToggle,
-            },
-          ],
-        }
-      : {}),
+    ...(rowOf.length > 0 ? { row: rowOf } : {}),
   };
 }
 
@@ -293,7 +343,8 @@ export function insufficientManaRequest(
   const castAnyway: DockAction = {
     id: "cast-anyway",
     label: "Cast anyway",
-    title: "cast it without paying its mana cost; the game log says so",
+    title:
+      "cast it: the mana in your pool pays what it can and you pay the rest on paper; the game log says so",
     onPress: h.onCastAnyway,
   };
   const base = {
@@ -327,14 +378,15 @@ export interface CastAnywayConfirmHandlers {
 }
 
 // castAnywayConfirmLabel is the confirmation's dialog name (ADR 0118 §2,
-// owner decision 6), e.g. "Cast Craw Wurm without paying its mana cost?".
+// owner decision 6; renamed by #3855), e.g. "Cast Craw Wurm and pay the
+// rest on paper?".
 // A label contract (AGENTS.md §5, ADR 0111 §10): cast-anyway-2188.spec.ts
 // selects the dialog by it.
 export function castAnywayConfirmLabel(cardName: string): string {
-  return L.castWithoutPaying(cardName);
+  return L.castPayingOnPaper(cardName);
 }
 
-// castAnywayConfirmRequest: the "Cast anyway (don't pay)" row was chosen
+// castAnywayConfirmRequest: the "Cast anyway (pay on paper)" row was chosen
 // from a card's menu, and nothing has been sent yet (ADR 0118 §2, owner
 // decision 6). The question is the dialog's name; Cast and Cancel are
 // its two buttons, and both names are a label contract. Cancel answers
@@ -357,12 +409,13 @@ export function castAnywayConfirmRequest(
     tag: "unpaid",
     tone: "gold",
     question,
-    hint: "No mana is spent. Life and any other costs are still paid, and the game log shows the table.",
+    hint: "The mana in your pool pays what it can and you pay the rest on paper. If something on the table reads what was paid, you'll be asked what you paid. Life and any other costs are still paid, and the game log shows the table.",
     focus: "dialog",
     primary: {
       id: "cast",
       label: L.cast,
-      title: "cast it without paying its mana cost; the game log says so",
+      title:
+        "cast it: the mana in your pool pays what it can and you pay the rest on paper; the game log says so",
       onPress: h.onCast,
     },
     secondary: [

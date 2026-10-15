@@ -17,9 +17,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The {U} is paid out of the generic half, exactly as Gruul Scrapper's
 // {R} is: a Dimir player taps an Island for one of the four and draws,
-// a mono-black one does not. No wish is declared for the same reason —
-// a colour is not a mana SOURCE, and the solver has no switch that
-// concentrates a payment into one (ADR 0068 §5).
+// a mono-black one does not. Since #3853 the card declares WantsColors,
+// so an auto-paid cast taps the Island for the generic half rather than
+// the Swamp beside it (an ordering, not a filter: no Island, no draw).
 //
 // Printed order, which is also the only order: the damage and the life
 // happen whatever was spent, and the draw is the rider. A target that
@@ -29,12 +29,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // applied to a spell with one target.
 func init() {
 	Register(Spec{
-		OracleID:     "f074c0d0-8455-484d-ae75-820fdfbc4740",
-		Name:         "Ribbons of Night",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so Ribbons of Night never draws the card."},
-		Targets:      TargetCreature("target creature"),
-		Purpose:      ForTargets(DamageToTarget(0, 4)),
+		OracleID:       "f074c0d0-8455-484d-ae75-820fdfbc4740",
+		Name:           "Ribbons of Night",
+		ReadsManaSpent: game.ReadsOwnPayment,
+		Completeness:   CompletenessFull,
+		WantsColors:    []string{"U"},
+		Targets:        TargetCreature("target creature"),
+		Purpose:        ForTargets(DamageToTarget(0, 4)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := ctx.Game.DamageInstanceForEffect(func() error {
 				for _, ref := range ctx.LegalTargets() {

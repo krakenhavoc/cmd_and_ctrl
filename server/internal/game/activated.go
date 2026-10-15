@@ -573,6 +573,30 @@ type AbilityCost struct {
 	// beside PutFromHandOnLibraryTop, which no printed card has: the
 	// put would change which cards are on top. See library_cost.go.
 	ExileFromLibraryTop int
+
+	// Mill is "Mill N cards" as a cost (#3845, ADR 0020's 2026-10-15
+	// amendment; CR 701.17a) — The Warring Triad's and Millikin's
+	// "{T}, Mill a card:", Rot Farm Skeleton's "Mill four cards:".
+	// Zero means no such component. Nothing to choose, so it rides no
+	// params and no wire pick.
+	//
+	// ExileFromLibraryTop's sibling, and NOT the same cost: an exile
+	// is a plain CR 406 move to a public zone, a mill is the CR 701.17a
+	// keyword action, so it goes through the mill door
+	// (MillNForEffect). The CR 614 window on the amount (Bruvac the
+	// Grandiloquent) and on each card (Rest in Peace, Leyline of the
+	// Void) therefore applies, "whenever you mill" payoffs see it, and
+	// a milled commander is offered the command zone afterwards
+	// (CR 903.9a).
+	//
+	// CR 701.17b / 118.3: a player can't pay a cost that mills more
+	// cards than their library holds, so a library of fewer than N
+	// cards refuses the activation (ErrCantPayLibraryCost) and the
+	// enumerator and the view never offer it. CR 601.2h: a cost that
+	// moves objects from the library to a public zone is paid after
+	// every other cost, so it is paid last. effects.Register refuses
+	// it beside ExileFromLibraryTop, which no printed card has.
+	Mill int
 }
 
 // DemandsX reports whether the ability's mana component contains
@@ -1201,6 +1225,11 @@ type ActivateAbilityParams struct {
 	// is refused before anything is paid.
 	PhyrexianLife int
 
+	// PaperPayment mirrors CastSpellParams.PaperPayment (#3855): the
+	// answer to a *PaperPaymentRequiredError from a permissive
+	// activation whose ability reads the mana spent on it.
+	PaperPayment *PaperPayment
+
 	// Strict / AutoTap mirror CastSpellParams: they gate the mana
 	// component of the cost the same way a cast is gated.
 	Strict  bool
@@ -1640,6 +1669,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err != nil {
 		return err
 	}
+	// #3845, CR 701.17b / 118.3: "Mill a card" (The Warring Triad,
+	// Millikin) can't be paid from an empty library. Checked here with
+	// everything else so a refusal taps nothing and mills nothing; the
+	// mill itself is paid last.
+	if err := g.MillCostShortfall(playerID, ab.Cost.Mill); err != nil {
+		return err
+	}
 	// #1221: the discard component's sibling one zone over —
 	// scavenge's and embalm's "Exile this card from your graveyard",
 	// and since #1404 Perpetual Timepiece's "Exile this artifact" off
@@ -1814,6 +1850,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// below. The effect reads the paid counter count back out of it
 	// (Context.CountersRemoved), the same way it reads X.
 	paid := PaidCost{}
+	// #3855: what the activator declared about a waived payment, for
+	// the activation's log line.
+	var paper paperNote
 	// #1547: the object the mana paid for, as the payment saw it —
 	// taken here because a sacrifice-this cost below ends the source,
 	// and the spend riders are judged on what the payment was FOR.
@@ -1860,12 +1899,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// owed and a tap pays part of what is owed — CR 601.2f
 		// before 601.2h, the order the cast path already follows.
 		manaCost = WaterbendReduced(manaCost, params.XValue, len(params.WaterbendIDs))
-		spent, err := g.payAbilityManaCostLocked(p, cardID, source.Name, manaCost, params, riderCtx, excluded)
+		spent, note, err := g.payAbilityManaCostNoteLocked(p, cardID, source.Name, manaCost, params, riderCtx, excluded)
 		if err != nil {
 			return err
 		}
+		paper = note
 		paid.Mana = spent.Mana
 		paid.OnPaper = spent.OnPaper
+		paid.PaperMana = spent.PaperMana
 		// CR 107.4f (#917): the life the activator announced for the
 		// cost's Phyrexian symbols. It is already paid — the helper
 		// pays it with the mana half, in one indivisible step — and
@@ -2105,6 +2146,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return err
 	}
 	paid.Exiled = append(paid.Exiled, libraryExiles...)
+	// #3845, CR 601.2h: "Mill N cards" moves cards from the library to
+	// a public zone, so it is paid after everything else, through the
+	// mill door so replacements and "whenever you mill" see it.
+	milled, err := g.payMillCostLocked(playerID, ab.Cost.Mill)
+	if err != nil {
+		return err
+	}
+	paid.Milled = append(paid.Milled, milled...)
 
 	// --- announce -----------------------------------------------
 	itemID := uuid.New()
@@ -2237,6 +2286,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// loyalty ability is one with a loyalty symbol in its cost
 		// (CR 606.2), granted or printed.
 		Loyalty: ab.Cost.Loyalty != nil,
+		// #3855: what the activator declared about a waived payment
+		// is public, as a cast's is.
+		Unpaid:        paper.Free,
+		PaperPaid:     declaredSymbols(paper),
+		PaperDeclared: paper.Declared && !paper.Free,
 		// ADR 0106 §1 decision 6: the permanent's controller, set only
 		// when somebody else activated its "Any player may activate"
 		// row — the log's "Bob activated Alice's Xantcha". Read before
@@ -2464,8 +2518,9 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 
 // payAbilityManaCostLocked charges an activated ability's mana
 // component through the same pool / auto-tap machinery a cast uses.
-// Permissive mode (the default) leaves the pool alone and emits a
-// cost warning, matching how S15 treats an unaffordable cast.
+// Permissive mode spends a pool that covers the cost; one that does
+// not pays the share it can, and the rest is waived with a cost
+// warning (#3844), matching how a cast treats an unaffordable cost.
 // Caller must hold g.mu.
 // `spendCtx` describes the ability's SOURCE permanent, which is what
 // a restricted token is matched against when the restriction says
@@ -2487,7 +2542,16 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 // and that function needs the source card and the ability shape this
 // one no longer has.
 func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, sourceName string, cost ParsedCost, params ActivateAbilityParams, spendCtx ManaSpendContext, excluded map[uuid.UUID]bool) (PaidCost, error) {
+	paid, _, err := g.payAbilityManaCostNoteLocked(p, sourceID, sourceName, cost, params, spendCtx, excluded)
+	return paid, err
+}
+
+// payAbilityManaCostNoteLocked is payAbilityManaCostLocked, also
+// returning what the activator declared about a waived payment (#3855),
+// which the activation's log line says.
+func (g *Game) payAbilityManaCostNoteLocked(p *Player, sourceID uuid.UUID, sourceName string, cost ParsedCost, params ActivateAbilityParams, spendCtx ManaSpendContext, excluded map[uuid.UUID]bool) (PaidCost, paperNote, error) {
 	var paid PaidCost
+	var note paperNote
 	// #1600, CR 609.4b: the cost as this player may pay it. Here, at
 	// the top of the one helper a CR 602 activation, a special action
 	// and an attack tax all pay through — after the caller's waterbend
@@ -2514,7 +2578,7 @@ func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, sourceNam
 	// stranding it.
 	cost, phyrexianLife, err := g.strikePhyrexianLifeLocked(p, sourceName, cost, spendCtx, params.PhyrexianLife, &paid)
 	if err != nil {
-		return paid, err
+		return paid, note, err
 	}
 	// The announced X multiplies into the generic demand exactly as
 	// it does for a cast: cost.GenericWithX(x), which leaves out what a
@@ -2523,26 +2587,52 @@ func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, sourceNam
 	x := params.XValue
 	if !params.Strict && !params.AutoTap {
 		if !p.ManaPool.CanPayFor(cost, x, spendCtx) {
+			// #3855: an ability that reads the mana spent to activate
+			// it asks what paid the rest, exactly as a cast does —
+			// refused here, before anything is paid, when nothing was
+			// declared.
+			short := p.ManaPool.shortfallFor(cost, x, spendCtx, SpendPreserveColors)
+			var read, kinds bool
+			if src := g.findCardByIDLocked(sourceID); src != nil {
+				read, kinds = abilityPaymentRead(*src)
+			}
+			declared, n, err := settlePaperPayment(short, params.PaperPayment, read, kinds)
+			if err != nil {
+				return paid, note, err
+			}
+			note = n
+			// The LIFE half is still paid, and first — a life total
+			// is engine state in every mode, and permissive mode's
+			// bargain is only about the mana the player tracks on
+			// paper; a refusal must not have spent the pool.
+			if err := g.payPhyrexianLifeLocked(sourceID, p.ID, phyrexianLife); err != nil {
+				return paid, note, err
+			}
+			// #3844: the pool pays the share it can, as the cast path's
+			// waived charge does, and only the shortfall is waived.
+			spent, _ := p.ManaPool.SpendWhatPaysForWith(cost, x, spendCtx, SpendPreserveColors)
+			paid.Mana = spent
+			if len(spent) > 0 {
+				g.EmitEvent(manaSpentEvent(p.ID, sourceID, spent))
+			}
 			g.EmitEvent(Event{
 				Kind:   EventCostWarning,
 				Actor:  p.ID,
 				Source: sourceID,
 			})
-			// #761: the charge was waived, and the record says so
-			// rather than reading as "nothing was spent". The LIFE
-			// half is still paid — a life total is engine state in
-			// every mode, and permissive mode's bargain is only about
-			// the mana the player tracks on paper.
-			paid.OnPaper = true
-			return paid, g.payPhyrexianLifeLocked(sourceID, p.ID, phyrexianLife)
+			// #761 / #3855: the rest of the charge was waived. A
+			// declaration completes the record; otherwise it says so
+			// rather than reading as "this is all that was spent".
+			recordPaperPayment(&paid, short, declared, note)
+			return paid, note, nil
 		}
 		if err := g.payPhyrexianLifeLocked(sourceID, p.ID, phyrexianLife); err != nil {
-			return paid, err
+			return paid, note, err
 		}
 		spent, _ := p.ManaPool.SpendManaFor(cost, x, spendCtx)
 		paid.Mana = spent
 		g.EmitEvent(manaSpentEvent(p.ID, sourceID, spent))
-		return paid, nil
+		return paid, note, nil
 	}
 	if params.AutoTap && !p.ManaPool.CanPayFor(cost, x, spendCtx) {
 		// ADR 0118 §1: plan only what the floating pool is missing.
@@ -2550,12 +2640,12 @@ func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, sourceNam
 		// #2461: a plan that would not fund the cost is refused before
 		// anything taps.
 		if !ok || !g.planFundsLocked(p, plan, short, cost, x, spendCtx) {
-			return paid, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
+			return paid, note, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
 		}
 		g.materializePlanLocked(p, plan, short)
 	}
 	if !p.ManaPool.CanPayFor(cost, x, spendCtx) {
-		return paid, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
+		return paid, note, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
 	}
 	// CR 602.2b pays every component of an activation together, so
 	// the order is an engine-safety choice, not a rules one: the
@@ -2565,10 +2655,10 @@ func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, sourceNam
 	// pool was emptied would charge for an activation that did not
 	// happen.
 	if err := g.payPhyrexianLifeLocked(sourceID, p.ID, phyrexianLife); err != nil {
-		return paid, err
+		return paid, note, err
 	}
 	spent, _ := p.ManaPool.SpendManaFor(cost, x, spendCtx)
 	paid.Mana = spent
 	g.EmitEvent(manaSpentEvent(p.ID, sourceID, spent))
-	return paid, nil
+	return paid, note, nil
 }

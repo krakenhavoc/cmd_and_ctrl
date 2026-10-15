@@ -7,14 +7,13 @@ import (
 	"io/fs"
 	"os"
 	"path"
-	"regexp"
 	"sort"
 	"strings"
-	"unicode"
 
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/oracletext"
 )
 
 // oracle.go — the third drift guard (#1276): a registered ability
@@ -320,21 +319,21 @@ func checkSpec(r *OracleReport, s effects.Spec, card OracleCard, face int) {
 	var registered []string // normalised cost keys of every label
 	for _, a := range s.Activated {
 		r.Abilities++
-		label := stripReminder(a.Label)
-		cost, effect, hasColon := splitCost(label)
+		label := oracletext.StripReminder(a.Label)
+		cost, effect, hasColon := oracletext.SplitCost(label)
 		if !hasColon {
-			kw := normalize(label, names)
+			kw := oracletext.Normalize(label, names)
 			registered = append(registered, kw)
 			if !keywordPrinted(kw, all) {
 				add(OracleFinding{Kind: OracleCostNotPrinted, Label: a.Label, Cost: kw})
 			}
 			continue
 		}
-		keys := costKeys(cost, names)
+		keys := oracletext.CostKeys(cost, names)
 		registered = append(registered, keys...)
 		var atCost []oracleLine
 		for _, l := range all {
-			if l.hasCost && intersects(keys, l.keys) {
+			if l.hasCost && oracletext.Intersects(keys, l.keys) {
 				atCost = append(atCost, l)
 			}
 		}
@@ -342,14 +341,14 @@ func checkSpec(r *OracleReport, s effects.Spec, card OracleCard, face int) {
 			add(OracleFinding{Kind: OracleCostNotPrinted, Label: a.Label, Cost: keys[0]})
 			continue
 		}
-		lw := contentWords(normalize(effect, names))
+		lw := oracletext.ContentWords(oracletext.Normalize(effect, names))
 		if len(lw) == 0 {
 			continue
 		}
 		r.EffectsCompared++
 		best, bestLine := -1.0, ""
 		for _, l := range atCost {
-			if sc := containment(lw, l.words); sc > best {
+			if sc := oracletext.Containment(lw, l.words); sc > best {
 				best, bestLine = sc, l.raw
 			}
 		}
@@ -366,7 +365,7 @@ func checkSpec(r *OracleReport, s effects.Spec, card OracleCard, face int) {
 			continue
 		}
 		r.PrintedLines++
-		if intersects(l.keys, registered) || caveatNames(s.Caveats, l, names) {
+		if oracletext.Intersects(l.keys, registered) || caveatNames(s.Caveats, l, names) {
 			continue
 		}
 		add(OracleFinding{Kind: OracleAbilityMissing, Line: l.raw, Cost: l.keys[0]})
@@ -391,191 +390,38 @@ type oracleLine struct {
 func abilityLines(text string, names []string) []oracleLine {
 	var out []oracleLine
 	for _, rawLine := range strings.Split(text, "\n") {
-		line := strings.TrimSpace(stripReminder(rawLine))
+		line := strings.TrimSpace(oracletext.StripReminder(rawLine))
 		if line == "" {
 			continue
 		}
 		if strings.HasPrefix(line, "•") && len(out) > 0 && out[len(out)-1].hasCost {
 			prev := &out[len(out)-1]
-			for w := range contentWords(normalize(strings.TrimPrefix(line, "•"), names)) {
+			for w := range oracletext.ContentWords(oracletext.Normalize(strings.TrimPrefix(line, "•"), names)) {
 				prev.words[w] = true
 			}
 			continue
 		}
-		l := oracleLine{raw: line, norm: normalize(line, names)}
-		if cost, effect, ok := splitCost(line); ok {
+		l := oracleLine{raw: line, norm: oracletext.Normalize(line, names)}
+		if cost, effect, ok := oracletext.SplitCost(line); ok {
 			l.hasCost = true
-			l.keys = costKeys(cost, names)
-			l.words = contentWords(normalize(effect, names))
-			l.checkable = isCostPrefix(cost) && !isManaEffect(effect)
+			l.keys = oracletext.CostKeys(cost, names)
+			l.words = oracletext.ContentWords(oracletext.Normalize(effect, names))
+			l.checkable = oracletext.IsCostPrefix(cost) && !oracletext.IsManaEffect(effect)
 		}
 		out = append(out, l)
 	}
 	return out
 }
 
-var reminderRe = regexp.MustCompile(`\s*\([^()]*\)`)
-
-// stripReminder removes parenthesised reminder text, innermost first.
-func stripReminder(s string) string {
-	for {
-		t := reminderRe.ReplaceAllString(s, "")
-		if t == s {
-			return s
-		}
-		s = t
-	}
-}
-
-// splitCost splits at the first colon outside quotation marks.
-func splitCost(s string) (cost, effect string, ok bool) {
-	quoted := false
-	for i, r := range s {
-		switch r {
-		case '"', '“', '”':
-			quoted = !quoted
-		case ':':
-			if !quoted {
-				return s[:i], s[i+1:], true
-			}
-		}
-	}
-	return "", "", false
-}
-
-var (
-	abilityWordRe = regexp.MustCompile(`^[^—:]+ — `)    // "Threshold — ", "Exhaust — "
-	stationRe     = regexp.MustCompile(`^\d+\+ \| `)    // "12+ | " (station, CR 702.184)
-	bracketLoyRe  = regexp.MustCompile(`^\[([^\]]*)\]`) // "[+1]" / "[0]" as some labels write it
-)
-
-// costKeys returns the normalised cost plus its forms without a
-// leading ability word or station threshold, so "Exhaust — {4}" and
-// "{4}" name the same cost. The full form is always keys[0].
-func costKeys(cost string, names []string) []string {
-	cost = strings.TrimSpace(cost)
-	cost = bracketLoyRe.ReplaceAllString(cost, "$1")
-	keys := []string{normalize(cost, names)}
-	for _, re := range []*regexp.Regexp{abilityWordRe, stationRe} {
-		if t := re.ReplaceAllString(cost, ""); t != cost {
-			keys = append(keys, normalize(t, names))
-		}
-	}
-	return keys
-}
-
-var (
-	loyaltyCostRe = regexp.MustCompile(`^[+-]?(\d+|x)$`)
-	costPartRe    = regexp.MustCompile(`^((\{[^}]+\})+|(sacrifice|discard|exile|pay|remove|tap|untap|return|put|reveal|mill|collect|forage|waterbend)\b.*)$`)
-	manaEffectRe  = regexp.MustCompile(`(?i)\badds?\b|\bunspent mana\b`)
-)
-
-// isCostPrefix reports whether a colon prefix is an activation cost:
-// a loyalty cost, or a comma-separated list every part of which is a
-// cost component. Anything else with a colon ("Chapter", a Class
-// level, prose) is not an ability line.
-func isCostPrefix(cost string) bool {
-	c := normalize(bracketLoyRe.ReplaceAllString(strings.TrimSpace(cost), "$1"), nil)
-	c = stationRe.ReplaceAllString(abilityWordRe.ReplaceAllString(c, ""), "")
-	if loyaltyCostRe.MatchString(c) {
-		return true
-	}
-	for _, part := range strings.Split(c, ", ") {
-		if !costPartRe.MatchString(strings.TrimSpace(part)) {
-			return false
-		}
-	}
-	return c != ""
-}
-
-func isManaEffect(effect string) bool { return manaEffectRe.MatchString(effect) }
-
-var selfRefRe = regexp.MustCompile(`(?i)\bthis (creature|artifact|land|enchantment|permanent|vehicle|equipment|card|planeswalker|spacecraft|aura|saga|battle|spell)\b`)
-
 // cardNames lists every way the card's text names itself: the Spec
-// name, each face, and a legendary's short name ("Teferi" for
-// "Teferi, Temporal Pilgrim"). Longest first, so the short name never
-// eats part of the full one.
+// name, the card's and each face's (oracletext.CardNames).
 func cardNames(specName string, card OracleCard) []string {
-	seen := map[string]bool{}
-	var out []string
-	add := func(n string) {
-		for _, part := range strings.Split(n, " // ") {
-			for _, cand := range []string{part, strings.SplitN(part, ",", 2)[0]} {
-				cand = strings.TrimSpace(cand)
-				if cand != "" && !seen[strings.ToLower(cand)] {
-					seen[strings.ToLower(cand)] = true
-					out = append(out, cand)
-				}
-			}
-		}
-	}
-	add(specName)
-	add(card.Name)
+	names := []string{specName, card.Name}
 	for _, f := range card.AllFaces() {
-		add(f.Name)
+		names = append(names, f.Name)
 	}
-	sort.SliceStable(out, func(i, j int) bool { return len(out[i]) > len(out[j]) })
-	return out
+	return oracletext.CardNames(names...)
 }
-
-// normalize is the one comparison form for costs, lines and labels:
-// reminder text gone, U+2212 minus and en dash as "-", the card's own
-// name and "this creature"-style self-references as "~", loyalty
-// brackets dropped, whitespace collapsed, lower case, no final period.
-func normalize(s string, names []string) string {
-	s = stripReminder(s)
-	s = strings.NewReplacer("−", "-", "–", "-", "’", "'").Replace(s)
-	for _, n := range names {
-		s = replaceWord(s, n, "~")
-	}
-	s = selfRefRe.ReplaceAllString(s, "~")
-	s = strings.Join(strings.Fields(s), " ")
-	s = strings.ToLower(strings.TrimSpace(s))
-	return strings.TrimSuffix(s, ".")
-}
-
-// replaceWord replaces name case-insensitively where it is not part of
-// a longer word ("Ao" must not rewrite "Aura").
-func replaceWord(s, name, with string) string {
-	lower, ln := strings.ToLower(s), strings.ToLower(name)
-	var b strings.Builder
-	i := 0
-	for {
-		j := strings.Index(lower[i:], ln)
-		if j < 0 {
-			b.WriteString(s[i:])
-			return b.String()
-		}
-		j += i
-		end := j + len(ln)
-		if isWordByteBefore(s, j) || isWordByteAt(s, end) {
-			b.WriteString(s[i : j+1])
-			i = j + 1
-			continue
-		}
-		b.WriteString(s[i:j])
-		b.WriteString(with)
-		i = end
-	}
-}
-
-func isWordByteBefore(s string, i int) bool {
-	if i == 0 {
-		return false
-	}
-	r := []rune(s[:i])
-	return isWordRune(r[len(r)-1])
-}
-
-func isWordByteAt(s string, i int) bool {
-	if i >= len(s) {
-		return false
-	}
-	return isWordRune([]rune(s[i:])[0])
-}
-
-func isWordRune(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }
 
 // keywordPrinted: a colon-less label ("crew 3") begins some line or
 // some comma-separated keyword on a line, ending at a word boundary
@@ -587,8 +433,8 @@ func keywordPrinted(kw string, lines []oracleLine) bool {
 			// A keyword line may lead with an ability word: Final
 			// Fantasy's "Death Sickle — Equip {2}" prints the keyword
 			// after it.
-			for _, s := range []string{seg, abilityWordRe.ReplaceAllString(seg, "")} {
-				if strings.HasPrefix(s, kw) && !isWordByteAt(s, len(kw)) {
+			for _, s := range []string{seg, oracletext.AbilityWordRe.ReplaceAllString(seg, "")} {
+				if strings.HasPrefix(s, kw) && !oracletext.IsWordByteAt(s, len(kw)) {
 					return true
 				}
 			}
@@ -602,9 +448,9 @@ func keywordPrinted(kw string, lines []oracleLine) bool {
 // isn't offered").
 func caveatNames(caveats []string, l oracleLine, names []string) bool {
 	for _, cv := range caveats {
-		c := normalize(cv, names)
+		c := oracletext.Normalize(cv, names)
 		for _, k := range l.keys {
-			if strings.Contains(c, k) && (!loyaltyCostRe.MatchString(k) || loyaltyMentioned(c, k)) {
+			if strings.Contains(c, k) && (!oracletext.LoyaltyCostRe.MatchString(k) || loyaltyMentioned(c, k)) {
 				return true
 			}
 		}
@@ -629,55 +475,4 @@ func loyaltyMentioned(c, k string) bool {
 		}
 		i = j + 1
 	}
-}
-
-var (
-	wordRe    = regexp.MustCompile(`[\pL\pN{}/+\-~']+`)
-	stopWords = map[string]bool{
-		"a": true, "an": true, "the": true, "of": true, "to": true, "and": true, "or": true,
-		"it": true, "its": true, "this": true, "that": true, "on": true, "in": true,
-		"for": true, "with": true, "from": true, "your": true, "you": true, "target": true,
-	}
-)
-
-// contentWords is the bag the EFFECT check compares: lower-case words
-// minus a short stop list, with a trailing plural "s" dropped.
-func contentWords(s string) map[string]bool {
-	out := map[string]bool{}
-	for _, w := range wordRe.FindAllString(strings.ToLower(s), -1) {
-		w = strings.Trim(w, "'")
-		if w == "" || stopWords[w] {
-			continue
-		}
-		if len(w) > 3 && strings.HasSuffix(w, "s") {
-			w = strings.TrimSuffix(w, "s")
-		}
-		out[w] = true
-	}
-	return out
-}
-
-// containment is |label ∩ line| / |label|.
-func containment(label, line map[string]bool) float64 {
-	if len(label) == 0 {
-		return 1
-	}
-	n := 0
-	for w := range label {
-		if line[w] {
-			n++
-		}
-	}
-	return float64(n) / float64(len(label))
-}
-
-func intersects(a, b []string) bool {
-	for _, x := range a {
-		for _, y := range b {
-			if x == y {
-				return true
-			}
-		}
-	}
-	return false
 }

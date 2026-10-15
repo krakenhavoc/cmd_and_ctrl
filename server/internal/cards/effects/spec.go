@@ -1288,6 +1288,31 @@ type Spec struct {
 	// player happened to spend.
 	WantsDistinctColors bool
 
+	// ReadsManaSpent declares what this card reads of the mana spent to
+	// cast a spell or activate an ability (#3855, ADR 0068 amendment
+	// 2026-10-15): its own payment (game.ReadsOwnPayment — sunburst,
+	// converge, adamant, Memory Deluge, "if no mana was spent to cast
+	// it"), the payments of spells it watches being cast
+	// (game.ReadsYourCasts / ReadsOpponentsCasts / ReadsEveryCast —
+	// Vexing Bauble, Coin of Mastery, Lux Artillery), its own
+	// activations' (game.ReadsOwnActivations — Protective Sphere).
+	//
+	// It is what makes a WAIVED payment ask: when a cast or activation
+	// is let through short (strict off, or Cast anyway) and something
+	// reads its payment, the caster is asked what they paid outside the
+	// pool, or whether they cast it without paying its mana cost, and
+	// the record becomes exact. A cast nothing reads stays one click.
+	//
+	// Every card file that reads the mana spent must say something
+	// here, including the two declarations that never ask:
+	// game.ReadsPoolManaOnly for a reader of Treasure mana or of a spend
+	// rider's token, which a paper payment can never be, and
+	// game.ReadsAnotherSpellsAmount for a card that reads the amount
+	// spent on a spell it did not watch being cast (Mana Sculpt).
+	// TestManaSpentReadersDeclareIt enforces it by scanning the source,
+	// so a new reader cannot forget.
+	ReadsManaSpent game.ManaSpentReads
+
 	// WantsManaFrom declares the kinds of mana SOURCE this card's own
 	// text reads back — game.ManaSourceTreasure for "if mana from a
 	// Treasure was spent to cast it" (Hired Hexblade, Jaded
@@ -1311,6 +1336,30 @@ type Spec struct {
 	// Zero for every card that does not read its payment's sources,
 	// which is all but about twenty of them.
 	WantsManaFrom game.ManaSourceKinds
+
+	// WantsColors declares the colours this card's own text reads back
+	// from the mana that paid for it — "if {R} was spent to cast it"
+	// (Gruul Scrapper, Boros Fury-Shield, Moonhold, River's Grasp,
+	// Ribbons of Night) and adamant's "at least three {R}" (Slaying
+	// Fire). Uppercase WUBRG letters (#3853).
+	//
+	// WantsDistinctColors' sibling for the readers that count one
+	// colour and not the spread: the auto-tapper recruits a source of a
+	// named colour for a generic pip it has a free choice of, and the
+	// floating pool spends a named-colour mana on the generic half
+	// before one of another colour.
+	//
+	// Like WantsManaFrom it changes the PAYMENT and not the effect, and
+	// as softly: an ORDERING that never adds or drops a source, so the
+	// cast is payable exactly when it was (game.autotap_wish.go). The
+	// card still reads ctx.ManaSpentOfColor and gets the truth — a Gruul
+	// Scrapper paid by hand with two Forests and a Sol Ring has no haste,
+	// wish or no wish.
+	//
+	// Not set for a card whose cost already NAMES the colour (the pip
+	// pays it whatever the planner does), and not for converge or
+	// sunburst, which count the spread and set WantsDistinctColors.
+	WantsColors []string
 
 	// AdditionalLandPlays declares the printed static "you may play
 	// an additional land on each of your turns" — 1 for Exploration,
@@ -2160,6 +2209,16 @@ type ManaAbilityCost struct {
 	// mana ability (CR 605.1a). The auto-tapper never pays it on its
 	// own; the player activates the row.
 	Exert bool
+
+	// Mill is "Mill N cards" (#3845, CR 701.17a) — Millikin's "{T},
+	// Mill a card: Add {C}". The component AbilityCost.Mill carries,
+	// paid last through the ordinary mill so replacements apply. A
+	// library of fewer than N cards can't pay it (CR 701.17b), so the
+	// row is not offered then. The auto-tapper never pays it on its own;
+	// the player activates the row. A mana ability that TARGETS is not
+	// a mana ability (CR 605.1a) and declares the cost on Activated
+	// with MillCardsCost instead (The Warring Triad).
+	Mill int
 
 	// Mana is a mana component of the activation cost — the Signet
 	// cycle's "{1}, {T}: Add {W}{U}", Cabal Coffers' "{2}, {T}",

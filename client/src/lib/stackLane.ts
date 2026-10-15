@@ -17,9 +17,9 @@
 //
 // What the model answers, per item:
 //
-//   - the name to show, verbatim (e2e specs look for labels such as
-//     "Mulldrifter — draw two cards", so an ability's label is never
-//     reworded);
+//   - the name, verbatim (an ability's label is never reworded), and
+//     the text to draw: an ability's printed Oracle text when the
+//     server sends it (#3830), else the name;
 //   - which card to draw and which card the hover preview may zoom
 //     (for an ability, its source permanent — `previewableCard` is the
 //     rule for whether the viewer may see it at all, #697);
@@ -53,10 +53,11 @@
 // to "<name> resolves next". A wrong summary on the stack is worse than
 // none: the player is deciding whether to respond to it.
 
-import type { CardView, PlayerView, StackItemView, ZoneView } from "./protocol";
+import type { CardView, PendingChoiceView, PlayerView, StackItemView, ZoneView } from "./protocol";
 import { seatColor } from "./colors";
 import { doubledTriggerLabel } from "./triggerDoubling";
 import { previewableCard } from "./stackPreview";
+import { waitingLine, waitingTriggers, type WaitingTriggers } from "./triggerBatch";
 
 /** The five ways the board can draw the stack (settings.display.stackStyle). */
 export type StackStyle = "pile" | "compact" | "fan" | "spotlight" | "ribbon";
@@ -143,6 +144,14 @@ export interface StackLaneItem {
   /** The display name, verbatim — the spell's card name or the ability's label. */
   name: string;
   /**
+   * #3830: what the item says where it is drawn. An ability's printed
+   * Oracle text (the server's `ability_text`: "Whenever another creature
+   * you control enters, Purphoros deals 2 damage to each opponent."),
+   * else `name`. The one-line summary keeps the short label's effect,
+   * and accessible names ("Counter …") keep `name`.
+   */
+  text: string;
+  /**
    * The name of the card behind an ability (its source), or the
    * spell's own name. Null when the source cannot be named.
    */
@@ -203,9 +212,20 @@ export interface StackLaneModel {
   top: StackLaneItem | null;
   /** The plain-words line for the top item, from the viewer's side. "" when nothing is live. */
   summary: string;
+  /**
+   * #3817: the triggers waiting to go on the stack, by player and source
+   * name, counting the ones still asking for a target. Empty unless the
+   * input carried the pending choices.
+   */
+  waiting: WaitingTriggers[];
+  /**
+   * #3817: the batches in `waiting` (more than one trigger) as one
+   * sentence ("Blood Artist ×40 waiting …"), or "".
+   */
+  waitingLine: string;
   priority: StackLanePriority;
   splitSecond: boolean;
-  /** True iff there are stack items or pending triggers. */
+  /** True iff there are stack items, pending triggers or triggers asking for a target. */
   live: boolean;
 }
 
@@ -213,6 +233,12 @@ export interface StackLaneInput {
   stack: ZoneView;
   stackItems: StackItemView[] | undefined;
   pendingTriggers: StackItemView[] | undefined;
+  /**
+   * #3817: the pending choices, so the triggers still asking for a
+   * target count as waiting. Optional: without them only the answered
+   * triggers (`pendingTriggers`) do.
+   */
+  pendingChoices?: PendingChoiceView[];
   seats: PlayerView[];
   battlefield?: ZoneView;
   exile?: ZoneView;
@@ -605,10 +631,14 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
         : (anyCard.get(item.source_card_id)?.card.name ?? labelSource(item.label));
     const isStack = kind !== "pending";
     const preview = previewableCard(art);
+    const name = kind === "pending" ? item.label || "trigger" : titleFor(item);
     return {
       id: item.id,
       kind,
-      name: kind === "pending" ? item.label || "trigger" : titleFor(item),
+      name,
+      // Never a spell's: its card is on the stack to be read. The server
+      // sends none for a source the viewer may not see.
+      text: (item.kind !== "spell" && item.ability_text) || name,
       sourceName: sourceName || null,
       artCard: art ?? null,
       previewCard: preview,
@@ -653,15 +683,43 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
   };
 
   const top = stackOut[0] ?? null;
+  // #3817: forty Blood Artist triggers on the stack resolve one by one;
+  // the line says how many of the same one are in a row from the top.
+  let run = top ? 1 : 0;
+  while (
+    top &&
+    run < stackOut.length &&
+    stackOut[run].name === top.name &&
+    stackOut[run].sourceName === top.sourceName &&
+    stackOut[run].casterSeat === top.casterSeat
+  ) {
+    run++;
+  }
+  const names = new Map<string, string>();
+  for (const [id, v] of anyCard) if (v.card.name) names.set(id, v.card.name);
+  const waiting = input.pendingChoices
+    ? waitingTriggers(input.pendingChoices, wirePending, names)
+    : [];
+  // Only a batch is worth a line: a lone trigger is already said by the
+  // pending rows, or asked for by the dock.
+  const waitLine = waitingLine(
+    waiting.filter((w) => w.count > 1),
+    viewerID,
+    (id) => seatByID.get(id)?.name,
+  );
   return {
     items: [...stackOut, ...pendingOut],
     stackItems: stackOut,
     pendingTriggers: pendingOut,
     top,
-    summary: summarize(top, pendingOut),
+    summary: !top && waitLine ? waitLine : summarize(top, pendingOut, run),
+    waiting,
+    waitingLine: waitLine,
     priority,
     splitSecond: splitSecondActive,
-    live: stackOut.length > 0 || pendingOut.length > 0,
+    // A lone trigger asking for its target opens no panel of its own (the
+    // dock asks); a batch of them does, to say how many there are.
+    live: stackOut.length > 0 || pendingOut.length > 0 || waitLine !== "",
   };
 }
 
@@ -669,9 +727,14 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
  * summarize is the plain-words line for the top item. The subject is
  * the spell's name, or "<source>'s trigger / ability" for an ability
  * (its label is already "<source> — <effect>", so repeating it whole
- * would say the effect twice).
+ * would say the effect twice). `run` is how many of the same item sit
+ * in a row from the top, said as "(1 of N)" when more than one (#3817).
  */
-export function summarize(top: StackLaneItem | null, pending: StackLaneItem[] = []): string {
+export function summarize(
+  top: StackLaneItem | null,
+  pending: StackLaneItem[] = [],
+  run = 1,
+): string {
   if (!top) {
     if (pending.length === 1) return `${pending[0].name} is waiting to go on the stack`;
     if (pending.length > 1) return `${pending.length} triggers are waiting to go on the stack`;
@@ -681,7 +744,7 @@ export function summarize(top: StackLaneItem | null, pending: StackLaneItem[] = 
     top.kind === "spell" || !top.sourceName
       ? top.name
       : `${possessive(top.sourceName)} ${top.kind === "triggered" ? "trigger" : "ability"}`;
-  const head = `${subject} resolves next`;
+  const head = run > 1 ? `${subject} resolves next (1 of ${run})` : `${subject} resolves next`;
   const targets = joinPhrases(top.targets.map((t) => t.phrase));
   const eff = top.effect;
 

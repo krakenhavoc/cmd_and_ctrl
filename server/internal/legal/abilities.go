@@ -605,6 +605,12 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		if !g.LibraryExileCostPayableForEffect(e.seat, ab.Cost.ExileFromLibraryTop) {
 			continue
 		}
+		// #3845, CR 701.17b / 118.3: "Mill a card" (The Warring Triad)
+		// can't be paid from a library that is short, the predicate the
+		// engine refuses with.
+		if g.MillCostShortfall(e.seat, ab.Cost.Mill) != nil {
+			continue
+		}
 		if n := ab.Cost.RandomDiscardCount(); n > 0 && len(g.RandomDiscardPoolForEffect(e.seat, source.InstanceID, handTaken)) < n {
 			continue
 		}
@@ -959,7 +965,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								}
 								// ADR 0142: the row's declared answers, by tier
 								// (an undeclared row interacts).
-								interacts, combat := untargetedFlags(g, source, zone, ab, targets)
+								interacts, combat := untargetedFlags(g, e.seat, source, zone, ab, targets)
 								e.add(Move{
 									Type:   TypeActivateAbility,
 									Player: e.seat,
@@ -2267,6 +2273,11 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		if game.EnergyShortfall(e.p, ab.EnergyCost) != nil {
 			continue
 		}
+		// #3845, CR 701.17b / 118.3: Millikin's "Mill a card", through
+		// the predicate ActivateManaAbility refuses with.
+		if g.MillCostShortfall(e.seat, ab.MillCost) != nil {
+			continue
+		}
 		// A mana component in the cost is paid from the pool and,
 		// for what the pool is missing, from the seat's other
 		// sources (#2215: the move carries auto_tap). Affordability
@@ -2456,7 +2467,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 							// #2853: a sacrifice outlet that makes mana
 							// still answers removal (ADR 0142: declared,
 							// or read from the cost).
-							Interacts: manaMoveInteracts(g, source, zone, ab),
+							Interacts: manaMoveInteracts(g, e.seat, source, zone, ab),
 							Params: mustJSON(manaParams{
 								CardID:            source.InstanceID.String(),
 								AbilityIndex:      idx,

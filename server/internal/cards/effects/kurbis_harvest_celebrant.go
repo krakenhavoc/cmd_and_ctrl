@@ -17,17 +17,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // target still has a +1/+1 counter is checked again as the ability
 // resolves (CR 608.2b); the shield then lasts the turn.
 //
-// Declared caveat, the one every mana-spent reader carries (Mockingbird,
-// Abby): with an unrecorded payment the engine does not know what was spent,
-// and answers zero, the weaker direction (ADR 0068 §3).
+// A waived payment (strict mana off with too little in the pool, or Cast
+// anyway) no longer leaves this card guessing: it declares ReadsManaSpent,
+// so the caster is asked what they paid outside the pool, or whether they
+// cast it without paying its mana cost, and the record it reads is exact
+// (#3855, ADR 0068 amendment 2026-10-15).
 func init() {
 	Register(Spec{
-		OracleID:     "991fab9c-8554-4e64-a933-6cc2ffa4edb1",
-		Name:         "Kurbis, Harvest Celebrant",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track how much mana you spent, so Kurbis enters with no counters — turn on “Charge mana costs” for it to count.",
-		},
+		OracleID:       "991fab9c-8554-4e64-a933-6cc2ffa4edb1",
+		Name:           "Kurbis, Harvest Celebrant",
+		ReadsManaSpent: game.ReadsOwnPayment,
+		Completeness:   CompletenessFull,
 		EntersWithCountersFromCast: []game.EntryCountersFromCast{{
 			Kind:  game.CounterPlusOne,
 			Count: func(cast game.CastCounts) int { return cast.ManaSpent },

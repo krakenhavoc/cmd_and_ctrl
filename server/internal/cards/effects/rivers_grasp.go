@@ -18,16 +18,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // still legal (CR 608.2b). The black half is the revealed-hand pick
 // (ADR 0116) with Thoughtseize's nonland filter.
 //
-// A copy has no mana spent on it (the rulings), and neither has a cast
-// the engine did not charge, so neither half happens: weaker than
-// printed, never stronger.
+// WantsColors names both halves' colours (#3853): an auto-paid cast pays
+// the generic half with a blue and a black source when the board has
+// them, so "do both" is what auto-pay reaches for.
 //
-// No simplification.
+// A copy has no mana spent on it (the rulings), so neither half happens.
+// A waived payment (strict mana off with too little in the pool, or Cast
+// anyway) asks the caster what they paid outside the pool, because the
+// card declares ReadsManaSpent, so the colours are exact (#3855, ADR 0068
+// amendment 2026-10-15).
 func init() {
 	Register(Spec{
-		OracleID:     "f671583f-bd22-4d3e-bf19-fb740c607f8f",
-		Name:         "River's Grasp",
-		Completeness: CompletenessFull,
+		OracleID:       "f671583f-bd22-4d3e-bf19-fb740c607f8f",
+		Name:           "River's Grasp",
+		ReadsManaSpent: game.ReadsOwnPayment,
+		Completeness:   CompletenessFull,
+		WantsColors:    []string{"U", "B"},
 		Targets: TargetCreature("up to one target creature").WithCount(0, 1).
 			Then(TargetPlayer("target player")),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

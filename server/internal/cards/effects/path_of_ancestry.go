@@ -23,17 +23,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (sharesCreatureTypeWithYourCommander) — and SharesCreatureType is the
 // one place that question is answered, changelings and all.
 //
-// A funded pool is spent in either payment mode. The remaining sandbox
-// simplification is an unrecorded payment: when permissive mode waives
-// an insufficient pool, or a player chooses Cast anyway, no token pays
-// and the scry cannot fire (ADR 0068 §3).
+// A funded pool is spent in either payment mode, and since #3844 so is
+// the share a waived payment's pool can pay (strict mana off with too
+// little in the pool, or Cast anyway; ADR 0068 amendment 2026-10-15).
+// So the token pays whenever it can and the scry fires whenever it
+// does. Mana that never entered the pool was not Path's mana.
 func init() {
 	Register(Spec{
-		OracleID:     "b473e293-59e3-4e04-acf2-622604aeb25f",
-		Name:         "Path of Ancestry",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Scry 1 requires a recorded mana payment — it doesn't happen when an insufficient mana pool is paid on paper or you choose Cast anyway."},
-		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
+		OracleID:       "b473e293-59e3-4e04-acf2-622604aeb25f",
+		Name:           "Path of Ancestry",
+		ReadsManaSpent: game.ReadsPoolManaOnly,
+		Completeness:   CompletenessFull,
+		Replacements:   []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",

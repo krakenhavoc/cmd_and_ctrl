@@ -12,12 +12,12 @@ import (
 // the vocabulary's order, and ["value"] is sent so a reader can tell a
 // declared "answers nothing" from an undeclared row.
 func TestPurposeViewCarriesAnswers(t *testing.T) {
-	v := viewOfPurpose(game.Purpose{Answers: game.AnswerSacOutlet | game.AnswerProtect})
+	v := viewOfPurpose(game.Purpose{Answers: game.AnswerSacOutlet | game.AnswerSurvive | game.AnswerProtect})
 	if v == nil || v.Answers == nil {
 		t.Fatalf("answers-only purpose projected as %+v", v)
 	}
-	if got := *v.Answers; !slices.Equal(got, []string{"protect", "sac_outlet"}) {
-		t.Fatalf("answers = %v, want [protect sac_outlet]", got)
+	if got := *v.Answers; !slices.Equal(got, []string{"protect", "survive", "sac_outlet"}) {
+		t.Fatalf("answers = %v, want [protect survive sac_outlet]", got)
 	}
 	raw, err := json.Marshal(viewOfPurpose(game.Purpose{Answers: game.AnswerValue}))
 	if err != nil {

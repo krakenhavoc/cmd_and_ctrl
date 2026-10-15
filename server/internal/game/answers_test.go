@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// ADR 0142 decision 1: ten values, in the table's order, in two tiers.
+// ADR 0142 decision 1 and its 2026-10-15 amendment: eleven values, in the table's order, in two tiers.
 func TestAnswersVocabulary(t *testing.T) {
-	want := []string{"protect", "pump", "prevent", "remove", "sac_outlet", "restrict", "combat_grant", "animate", "makes_blocker", "value"}
+	want := []string{"protect", "survive", "pump", "prevent", "remove", "sac_outlet", "restrict", "combat_grant", "animate", "makes_blocker", "value"}
 	if got := AnswerWireNames(); !slices.Equal(got, want) {
 		t.Fatalf("AnswerWireNames() = %v, want %v", got, want)
 	}
@@ -19,7 +19,7 @@ func TestAnswersVocabulary(t *testing.T) {
 		a             Answers
 		stack, combat bool
 	}{
-		{AnswerProtect | AnswerPump | AnswerPrevent | AnswerRemove | AnswerSacOutlet | AnswerRestrict, true, false},
+		{AnswerProtect | AnswerSurvive | AnswerPump | AnswerPrevent | AnswerRemove | AnswerSacOutlet | AnswerRestrict, true, false},
 		{AnswerCombatGrant | AnswerAnimate | AnswerMakesBlocker, false, true},
 		{AnswerProtect | AnswerCombatGrant, true, true},
 		{AnswerValue, false, false},

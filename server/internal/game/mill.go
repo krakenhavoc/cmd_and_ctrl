@@ -177,6 +177,16 @@ type millTail struct {
 	// tail carries no `until` of its own any more — an instruction is
 	// an instruction, and the run is a loop over instructions.
 	then func(g *Game, milled []uuid.UUID) error
+
+	// allMoved changes what `then` is handed: not the cards that LANDED
+	// in dest, but every card the mill took out of the library, wherever
+	// it ended up (CR 701.17c, #3846). Rest in Peace sends a milled card
+	// to exile, where it did not "land" in a graveyard and is still a
+	// card that was milled -- Locke, Treasure Hunter's "a spell from
+	// among those cards". The caller reads each card's zone itself. Plain
+	// data, so the tail stays a restore point; false for every caller but
+	// MillToZoneThenMovedForEffect.
+	allMoved bool
 }
 
 // millRun is one "mills a card, then repeats this process until …"
@@ -251,6 +261,22 @@ func (g *Game) millThroughReplacementsLocked(
 	until func([]Card) bool,
 	then func(g *Game, milled []uuid.UUID) error,
 ) ([]uuid.UUID, error) {
+	return g.millThroughReplacementsTailLocked(playerID, n, dest, until, &millTail{dest: dest, then: then})
+}
+
+// millThroughReplacementsTailLocked is that body with the tail built by
+// the caller, so a variant can set a tail field (allMoved) the plain
+// entry points never do.
+//
+// Caller must hold g.mu.
+func (g *Game) millThroughReplacementsTailLocked(
+	playerID uuid.UUID,
+	n int,
+	dest ZoneKind,
+	until func([]Card) bool,
+	tail *millTail,
+) ([]uuid.UUID, error) {
+	then := tail.then
 	// The up-front errors, asked before the window rather than inside
 	// millPlanLocked's copy of them: an unseated player and a
 	// destination that is neither a graveyard nor exile are not mills
@@ -282,7 +308,7 @@ func (g *Game) millThroughReplacementsLocked(
 		Actor:      playerID,
 		MillPlayer: playerID,
 		MillCount:  n,
-		mill:       &millTail{dest: dest, then: then},
+		mill:       tail,
 	}
 	if !millAmountIsReplaceable(dest, n) {
 		// Not a mill of a number: an exile of the top N, or a mill of
@@ -524,7 +550,30 @@ func (g *Game) applyResolvedMillLocked(ev *ReplacementEvent) ([]uuid.UUID, error
 	// cloneReplacementResume gives it).
 	then := tail.then
 	tail.then = nil
+	if tail.allMoved {
+		landed := then
+		then = func(g *Game, _ []uuid.UUID) error {
+			return landed(g, g.leftLibraryLocked(ids))
+		}
+	}
 	return nil, g.routeAllThenLocked(r, ids, then)
+}
+
+// leftLibraryLocked is the subset of `ids`, in order, that is no longer
+// in a library -- the mill took it out and it is somewhere else now: a
+// graveyard, exile (Rest in Peace), the command zone. A card a CR 614
+// window left where it was is not in it. Read off the live board, like
+// landedInZoneLocked, so it is true after an undo replays an open prompt.
+//
+// Caller must hold g.mu.
+func (g *Game) leftLibraryLocked(ids []uuid.UUID) []uuid.UUID {
+	var out []uuid.UUID
+	for _, id := range ids {
+		if z := g.findCardZoneLocked(id); z != nil && z.Kind != ZoneLibrary {
+			out = append(out, id)
+		}
+	}
+	return out
 }
 
 // abandonMillLocked is the terminal outcome of a mill that moved

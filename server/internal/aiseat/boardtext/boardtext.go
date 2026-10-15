@@ -112,6 +112,15 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 			fmt.Fprintf(&b, " — next turn: %s", SeatLabel(ns, me))
 		}
 	}
+	// #3826: the engine's answer to "what does my pass hand over", so a
+	// model or the MCP seat weighs a last chance to act before the turn
+	// changes. Only the viewer's own frame carries it.
+	switch v.Turn.PassHint {
+	case protocol.PassHintEndsTurn:
+		b.WriteString(" — last priority this turn: passing ends your turn")
+	case protocol.PassHintYourTurnNext:
+		b.WriteString(" — last priority before your turn: passing starts your turn")
+	}
 	b.WriteByte('\n')
 
 	// Seats, starting with this one.

@@ -108,6 +108,9 @@
     type PassNotice,
   } from "../lib/passReason";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
+  import PaperPaymentModal from "../lib/components/board/PaperPaymentModal.svelte";
+  import { withPaperPayment, type PaperPayment } from "../lib/paperPayment";
+  import type { PaperPaymentPrompt } from "../lib/protocol";
   import AttackDeclarationModal from "../lib/components/board/AttackDeclarationModal.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
   import ActionDock from "../lib/components/board/ActionDock.svelte";
@@ -152,8 +155,9 @@
   import {
     cancel as cancelTargeting,
     confirm as confirmTargeting,
+    cardRepeats,
     repeatsOf,
-    shareTargetOn,
+    shareTargetScope,
     targeting,
   } from "../lib/targeting";
   import type { ActionType, PlayerView } from "../lib/protocol";
@@ -788,6 +792,13 @@
   // user's already-picked target[s] / modes / x_value / distribution,
   // leaving the spell to resolve as a silent no-op.
   const lastCastByCardID = new Map<string, Record<string, unknown>>();
+  // #3855: the last cast_spell or activate_ability per card (the spell,
+  // or the ability's source), so a paper_payment_required refusal can be
+  // answered by re-sending that same action with `paper_payment`.
+  const lastPayableByCardID = new Map<
+    string,
+    { type: "cast_spell" | "activate_ability"; params: Record<string, unknown> }
+  >();
 
   const sendAction = (type: ActionType, params?: unknown, player?: string): void => {
     // ADR 0167 §9: while another player plays the viewer's turn, the
@@ -811,6 +822,14 @@
       const instanceID = stash.instance_id;
       if (typeof instanceID === "string") {
         lastCastByCardID.set(instanceID, { ...stash });
+        lastPayableByCardID.set(instanceID, { type, params: { ...stash } });
+      }
+    }
+    if (type === "activate_ability") {
+      const stash = (params ?? {}) as Record<string, unknown>;
+      const sourceID = stash.source_card_id;
+      if (typeof sourceID === "string") {
+        lastPayableByCardID.set(sourceID, { type, params: { ...stash } });
       }
     }
     // #672: pulling a creature out of combat must not let smart
@@ -882,6 +901,35 @@
   }
   function dismissManaOverride(): void {
     manaOverride = null;
+    client.lastError.set(null);
+  }
+
+  // #3855 (ADR 0068 amendment 2026-10-15): a waived payment something on
+  // the table reads comes back as paper_payment_required. The picker
+  // stays up until it is answered or cancelled — it is not cleared with
+  // the error toast's timer, because nothing was cast yet.
+  let paperPrompt = $state<{
+    cardID: string;
+    type: "cast_spell" | "activate_ability";
+    prompt: PaperPaymentPrompt;
+  } | null>(null);
+  $effect(() => {
+    const err = $lastError;
+    if (!err || err.code !== "paper_payment_required" || !err.cardID || !err.paperPayment) return;
+    const prev = lastPayableByCardID.get(err.cardID);
+    if (!prev) return;
+    paperPrompt = { cardID: err.cardID, type: prev.type, prompt: err.paperPayment };
+  });
+  function answerPaperPayment(payment: PaperPayment): void {
+    if (!paperPrompt) return;
+    const prev = lastPayableByCardID.get(paperPrompt.cardID);
+    paperPrompt = null;
+    client.lastError.set(null);
+    if (!prev) return;
+    sendAction(prev.type, withPaperPayment(prev.params, payment), actingID ?? undefined);
+  }
+  function cancelPaperPayment(): void {
+    paperPrompt = null;
     client.lastError.set(null);
   }
 
@@ -2238,11 +2286,13 @@
           // targeting flow once the choice is no longer board-answered,
           // and ChoicePromptModal opens it.
           onShowList: showChoiceAsList,
-          // #3265: one target for every instance of a repeated trigger.
+          // #3265: one target for every instance of a repeated trigger;
+          // #3817: or for every copy of the card's, a second choice.
           share: {
+            scope: $shareTargetScope,
             count: repeatsOf($targeting, view),
-            on: $shareTargetOn,
-            onToggle: () => shareTargetOn.update((on) => !on),
+            card: cardRepeats($targeting, view),
+            onScope: (s) => shareTargetScope.set(s),
           },
         })
       : null,
@@ -2913,7 +2963,7 @@
             <!-- ADR 0111 PR 4: the insufficient-mana prompt (Auto-tap &
                  cast / Cast anyway) is a request in the action dock
                  (lib/targetingDock.ts), not a strip toast. -->
-            {#if $lastError && !(manaOverride && dockShown) && !(bulkRefusal && attackRowShown) && $lastError !== $inlineRefusal}
+            {#if $lastError && !(manaOverride && dockShown) && !(paperPrompt && $lastError.code === "paper_payment_required") && !(bulkRefusal && attackRowShown) && $lastError !== $inlineRefusal}
               <!-- A refusal of the last attack-with-all is answered in
                    the dock's attack row (ADR 0111 PR 3) while the row is
                    there; otherwise it is an ordinary rejection. A
@@ -3234,6 +3284,13 @@
         castParams={autoTapCastParams}
         onConfirm={confirmAutoTap}
         onCancel={cancelAutoTap}
+      />
+      <PaperPaymentModal
+        cardName={paperPrompt ? (cardNameAnywhere(paperPrompt.cardID) ?? "this card") : null}
+        prompt={paperPrompt?.prompt ?? null}
+        verb={paperPrompt?.type === "activate_ability" ? "Activate" : "Cast"}
+        onConfirm={answerPaperPayment}
+        onCancel={cancelPaperPayment}
       />
       <AttackDeclarationModal
         view={actingView ?? view}

@@ -2,7 +2,7 @@
 //
 // castAnyway.render.test.ts — ADR 0118 §2 (#2188), on the REAL Board.
 // With strict payment on, every card the viewer could cast offers
-// "Cast anyway (don't pay)" in its right-click popover's Sandbox
+// "Cast anyway (pay on paper)" in its right-click popover's Sandbox
 // section: a hand card (even a plain spell, which had no menu before),
 // and an exile entry and a commander in the castable-from-other-zones
 // strip (since #2349 the commander's only surface). Choosing the row sends
@@ -167,7 +167,7 @@ function castAnywayRow(container: HTMLElement): HTMLButtonElement | null {
   return container.querySelector<HTMLButtonElement>("[data-cast-anyway]");
 }
 
-const DIALOG = "Cast Craw Wurm without paying its mana cost?";
+const DIALOG = "Cast Craw Wurm and pay the rest on paper?";
 
 describe("the row on a hand card", () => {
   it("opens the popover on a plain spell's right-click, in the Sandbox section", () => {
@@ -176,7 +176,7 @@ describe("the row on a hand card", () => {
     const row = castAnywayRow(b.container);
     expect(row, "a plain spell's right-click opens the popover").toBeTruthy();
     expect(row!.getAttribute("role")).toBe("menuitem");
-    expect(row!.textContent?.trim()).toBe("Cast anyway (don't pay)");
+    expect(row!.textContent?.trim()).toBe("Cast anyway (pay on paper)");
     expect(row!.disabled).toBe(false);
     expect(row!.closest("[role='group']")?.getAttribute("aria-label")).toBe("sandbox");
     // On a hand card it is the section's only row.
@@ -262,7 +262,7 @@ describe("the row on the other surfaces", () => {
     click(castAnywayRow(b.container)!);
     flushSync();
     expect(b.sent).toEqual([]);
-    expect(get(activeDockRequest)?.label).toBe("Cast Impulse Bolt without paying its mana cost?");
+    expect(get(activeDockRequest)?.label).toBe("Cast Impulse Bolt and pay the rest on paper?");
     get(activeDockRequest)!.primary!.onPress();
     flushSync();
     expect(b.sent).toEqual([
@@ -281,7 +281,7 @@ describe("the row on the other surfaces", () => {
     rightClick(el!);
     click(castAnywayRow(b.container)!);
     flushSync();
-    expect(get(activeDockRequest)?.label).toBe("Cast Kenrith without paying its mana cost?");
+    expect(get(activeDockRequest)?.label).toBe("Cast Kenrith and pay the rest on paper?");
     get(activeDockRequest)!.primary!.onPress();
     flushSync();
     expect(b.sent).toEqual([
@@ -301,7 +301,7 @@ describe("the admin override menu", () => {
     const menu = document.querySelector<HTMLElement>("[role='menu'][aria-label='card overrides']");
     expect(menu).toBeTruthy();
     const row = [...menu!.querySelectorAll<HTMLButtonElement>("[role='menuitem']")].find(
-      (el) => el.textContent?.trim() === "Cast anyway (don't pay)",
+      (el) => el.textContent?.trim() === "Cast anyway (pay on paper)",
     );
     expect(row).toBeTruthy();
     click(row!);

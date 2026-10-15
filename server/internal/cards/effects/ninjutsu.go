@@ -106,8 +106,8 @@ func Ninjutsu(cost string) ActivatedAbility {
 		Cost:  Plus(ManaCost(cost), ReturnAnUnblockedAttacker()),
 		Zones: []game.ZoneKind{game.ZoneHand},
 		// ADR 0142: the cost pulls an attacker out of reach of whatever
-		// is on the stack (the guard asks for protect or sac_outlet).
-		Purpose: game.Purpose{Answers: game.AnswerProtect},
+		// is on the stack (the guard asks for survive, protect or sac_outlet).
+		Purpose: game.Purpose{Answers: game.AnswerSurvive},
 		Effect:  ninjutsuEnter,
 	}
 }
@@ -145,7 +145,7 @@ func CommanderNinjutsu(cost string) ActivatedAbility {
 			"Put this card onto the battlefield from your hand or the command zone tapped and attacking.)",
 		Cost:    Plus(ManaCost(cost), ReturnAnUnblockedAttacker()),
 		Zones:   []game.ZoneKind{game.ZoneHand, game.ZoneCommand},
-		Purpose: game.Purpose{Answers: game.AnswerProtect}, // as Ninjutsu
+		Purpose: game.Purpose{Answers: game.AnswerSurvive}, // as Ninjutsu
 		Effect:  ninjutsuEnter,
 	}
 }

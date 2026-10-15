@@ -34,7 +34,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{3}, Sacrifice a modified creature: Return this card from your graveyard to the battlefield tapped.",
-			Purpose: game.Purpose{Answers: game.AnswerSacOutlet | game.AnswerProtect},
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet | game.AnswerSurvive},
 			Cost: Plus(ManaCost("{3}"), game.AbilityCost{
 				SacrificeOther: sacrificeSpec("a modified creature", Creature(), YouControl(), modifiedCreature),
 			}),

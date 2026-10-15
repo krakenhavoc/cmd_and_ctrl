@@ -17,7 +17,7 @@ import { get } from "svelte/store";
 import { begin, beginChoice, cancel, targeting, togglePick } from "./targeting";
 import { insufficientManaRequest, targetingRequest } from "./targetingDock";
 import { dockKeyAction, takesBar } from "./dock";
-import type { CardView, PendingChoiceView } from "./protocol";
+import type { CardView, GameView, PendingChoiceView } from "./protocol";
 
 afterEach(() => {
   targeting.set(null);
@@ -163,6 +163,59 @@ describe("the targeting request (ADR 0111 §6)", () => {
   });
 });
 
+// #3817: twenty Blood Artists and two deaths are forty target prompts,
+// and each one looked exactly like the last, so a player answering the
+// third read it as the click not working. The prompt says how many there
+// are and which one it is.
+describe("a trigger's target prompt among a batch of the same trigger (#3817)", () => {
+  const artist = (id: string) => card("Blood Artist", { instance_id: id });
+  const prompt = (id: string, source: string) =>
+    ({
+      id,
+      kind: "pick_target",
+      chooser: "me",
+      from_player: "me",
+      count: 0,
+      source,
+      reason: "target player",
+      pick_target: { players: ["me", "bot"], min: 1, max: 1 },
+    }) as PendingChoiceView;
+  const view = (choices: PendingChoiceView[], answered: string[] = []) =>
+    ({
+      battlefield: { kind: "battlefield", count: 2, cards: [artist("a1"), artist("a2")] },
+      stack: { kind: "stack", count: 0, cards: [] },
+      seats: [
+        { id: "me", name: "LUke" },
+        { id: "bot", name: "Bot 1" },
+      ],
+      pending_choices: choices,
+      pending_triggers: answered.map((src, i) => ({
+        id: `t${i}`,
+        kind: "triggered",
+        controller: "me",
+        owner: "me",
+        source_card_id: src,
+        label: "Blood Artist — drain 1",
+      })),
+    }) as unknown as GameView;
+
+  it("says how many triggered and which one this is", () => {
+    const choices = [prompt("p1", "a1"), prompt("p2", "a2"), prompt("p3", "a1")];
+    beginChoice(choices[0], artist("a1"));
+    const r = targetingRequest(get(targeting)!, view(choices, ["a2", "a1"]), handlers());
+    expect(r.question).toBe("Blood Artist triggered 5 times — click target player");
+    expect(r.detail).toMatch(/^trigger 3 of 5 · 2 legal/);
+  });
+
+  it("says nothing extra for a lone trigger", () => {
+    const choices = [prompt("p1", "a1")];
+    beginChoice(choices[0], artist("a1"));
+    const r = targetingRequest(get(targeting)!, view(choices), handlers());
+    expect(r.question).toBe("Blood Artist triggered — click target player");
+    expect(r.detail).toBe("2 legal");
+  });
+});
+
 describe("the insufficient-mana request (S15, ADR 0111 PR 4)", () => {
   it("offers Auto-tap & cast as the primary, Cast anyway and Cancel beside it", () => {
     const h = { onAutoTap: vi.fn(), onCastAnyway: vi.fn(), onCancel: vi.fn() };
@@ -181,7 +234,7 @@ describe("the insufficient-mana request (S15, ADR 0111 PR 4)", () => {
     // Cast anyway is a click only: no key reaches the override.
     expect(h.onCastAnyway).not.toHaveBeenCalled();
     expect(r.secondary?.find((a) => a.label === "Cast anyway")?.title).toBe(
-      "cast it without paying its mana cost; the game log says so",
+      "cast it: the mana in your pool pays what it can and you pay the rest on paper; the game log says so",
     );
   });
 
@@ -206,7 +259,7 @@ describe("the insufficient-mana request (S15, ADR 0111 PR 4)", () => {
     expect(h.onCancel).toHaveBeenCalledTimes(1);
     expect(r.secondary?.[0].keyShortcuts).toBeUndefined();
     expect(r.secondary?.[0].title).toBe(
-      "cast it without paying its mana cost; the game log says so",
+      "cast it: the mana in your pool pays what it can and you pay the rest on paper; the game log says so",
     );
     r.secondary![0].onPress();
     expect(h.onCastAnyway).toHaveBeenCalledTimes(1);

@@ -3,6 +3,8 @@ package legal
 import (
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -29,6 +31,50 @@ func TestSacrificeInteracts(t *testing.T) {
 	}
 	if sacrificeInteracts(nil) {
 		t.Error("no sacrifice cost is not an outlet")
+	}
+}
+
+// #3825: a sweep reaches the seat only when the seat controls something of
+// the class it matches. Matches is an upper bound (Sweep.Partial), so a
+// miss is certain and a hit is a possibility.
+func TestSweepReaches(t *testing.T) {
+	g := game.NewGame()
+	seat, opp := uuid.New(), uuid.New()
+	put := func(owner uuid.UUID, typeLine, cost string) {
+		g.Battlefield.PushTop(game.Card{InstanceID: uuid.New(), Controller: owner, Owner: owner, TypeLine: typeLine, ManaCost: cost})
+	}
+	put(seat, "Basic Land — Swamp", "")
+	put(seat, "Artifact", "{3}")
+	put(opp, "Creature — Bear", "{1}{G}")
+
+	cases := []struct {
+		m    game.SweepMatch
+		want bool
+	}{
+		{game.SweepCreatures, false},
+		{game.SweepCreaturesManaValue3OrLess, false},
+		{game.SweepCreaturesManaValue4OrMore, false},
+		{game.SweepEnchantments, false},
+		{game.SweepArtifacts, true},
+		{game.SweepArtifactsAndEnchantments, true},
+		{game.SweepNonlandPermanents, true},
+		{game.SweepAllPermanents, true},
+		{"", true}, // an unnamed class is a stop over a miss
+	}
+	for _, tc := range cases {
+		if got := sweepReaches(g, seat, tc.m); got != tc.want {
+			t.Errorf("sweepReaches(%q) = %v, want %v", tc.m, got, tc.want)
+		}
+	}
+
+	put(seat, "Creature — Bear", "{1}{G}")
+	for _, m := range []game.SweepMatch{game.SweepCreatures, game.SweepCreaturesManaValue3OrLess} {
+		if !sweepReaches(g, seat, m) {
+			t.Errorf("sweepReaches(%q) = false with a 2-mana creature of the seat's", m)
+		}
+	}
+	if sweepReaches(g, seat, game.SweepCreaturesManaValue4OrMore) {
+		t.Error("a 2-mana creature is not in the 4-or-more class")
 	}
 }
 
@@ -61,7 +107,7 @@ func TestUndeclaredRowInteracts(t *testing.T) {
 		if c.targeted {
 			targets = []game.TargetRef{{Kind: game.TargetCard}}
 		}
-		interacts, combat := untargetedFlags(nil, nil, game.ZoneBattlefield, c.ab, targets)
+		interacts, combat := untargetedFlags(nil, uuid.Nil, nil, game.ZoneBattlefield, c.ab, targets)
 		if interacts != c.interacts || combat.any != c.combat {
 			t.Errorf("%s: interacts=%v combat_interacts=%v, want %v/%v", c.name, interacts, combat.any, c.interacts, c.combat)
 		}
@@ -83,14 +129,50 @@ func TestUpToOneTargetRowReadsItsDeclaration(t *testing.T) {
 		Label:   "{T}: Choose any number of target creatures. Each gains persist until end of turn.",
 		Targets: upTo, Purpose: game.Purpose{Answers: game.AnswerProtect},
 	}
-	if interacts, combat := untargetedFlags(nil, nil, game.ZoneBattlefield, value, nil); interacts || combat.any {
+	if interacts, combat := untargetedFlags(nil, uuid.Nil, nil, game.ZoneBattlefield, value, nil); interacts || combat.any {
 		t.Errorf("value, no target: interacts=%v combat=%v, want neither", interacts, combat.any)
 	}
-	if interacts, _ := untargetedFlags(nil, nil, game.ZoneBattlefield, protect, nil); !interacts {
+	if interacts, _ := untargetedFlags(nil, uuid.Nil, nil, game.ZoneBattlefield, protect, nil); !interacts {
 		t.Error("protect, no target: want interacts")
 	}
 	targeted := []game.TargetRef{{Kind: game.TargetCard}}
-	if interacts, combat := untargetedFlags(nil, nil, game.ZoneBattlefield, protect, targeted); interacts || combat.any {
+	if interacts, combat := untargetedFlags(nil, uuid.Nil, nil, game.ZoneBattlefield, protect, targeted); interacts || combat.any {
 		t.Error("a targeted announcement sets no interacts (has_targets stops you)")
+	}
+}
+
+// #3555 (ADR 0009 amendment, owner 2026-10-15): protect, survive, pump, prevent
+// and sac_outlet interact only against a threat, and otherwise count in
+// the combat tier. remove and restrict are not gated, so a row that
+// declares one of them beside a gated answer still interacts. Owner
+// answer 4's threatened self-sacrifice interacts whatever the gate says.
+func TestAnswerFlagsThreatGate(t *testing.T) {
+	cases := []struct {
+		name                         string
+		answers                      game.Answers
+		threatened, fighting, threat bool
+		interacts, combat, defender  bool
+	}{
+		{name: "sac_outlet, no threat", answers: game.AnswerSacOutlet, combat: true},
+		{name: "sac_outlet, threat", answers: game.AnswerSacOutlet, threat: true, interacts: true},
+		{name: "protect, no threat", answers: game.AnswerProtect, combat: true},
+		{name: "pump, threat", answers: game.AnswerPump, threat: true, interacts: true},
+		{name: "prevent, no threat", answers: game.AnswerPrevent, combat: true},
+		{name: "remove, no threat", answers: game.AnswerRemove, interacts: true},
+		{name: "restrict, no threat", answers: game.AnswerRestrict, interacts: true},
+		{name: "protect|remove, no threat", answers: game.AnswerProtect | game.AnswerRemove, interacts: true},
+		{name: "pump|makes_blocker, no threat", answers: game.AnswerPump | game.AnswerMakesBlocker, combat: true},
+		{name: "makes_blocker alone", answers: game.AnswerMakesBlocker, combat: true, defender: true},
+		{name: "value, threat", answers: game.AnswerValue, threat: true},
+		{name: "value, self-sacrifice threatened", answers: game.AnswerValue, threatened: true, interacts: true},
+		{name: "protect, self-sacrifice threatened", answers: game.AnswerProtect, threatened: true, interacts: true},
+		{name: "value, fighting", answers: game.AnswerValue, fighting: true, combat: true},
+	}
+	for _, c := range cases {
+		interacts, combat := answerFlags(c.answers, c.threatened, c.fighting, c.threat)
+		if interacts != c.interacts || combat.any != c.combat || combat.defenderOnly != c.defender {
+			t.Errorf("%s: interacts=%v combat=%v defender=%v, want %v/%v/%v",
+				c.name, interacts, combat.any, combat.defenderOnly, c.interacts, c.combat, c.defender)
+		}
 	}
 }

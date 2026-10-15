@@ -311,7 +311,33 @@ func (p *ManaPool) SpendManaFor(cost ParsedCost, xValue int, ctx ManaSpendContex
 // costs O(runs × requirements) and not O(mana). What it spends is
 // exactly what the one-token-per-mana solver spent, expanded.
 func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext, strategy ManaSpendStrategy) (ManaPool, []ManaToken, bool) {
-	used := make([]int, len(p))
+	used, short := p.allocate(cost, xValue, ctx, strategy)
+	if short {
+		return nil, nil, false
+	}
+	out, spent := p.split(used)
+	return out, spent, true
+}
+
+// allocate books, run by run, the mana this pool would spend on `cost`
+// and reports whether any of the cost was left unpaid (`short`). It is
+// attemptSpend's solver and SpendWhatPaysForWith's. When the pool
+// cannot cover the cost, the bookings are the most of it the pool can
+// legally pay, under the same restrictions, order and strategy a funded
+// payment uses (#3844); when it can, they are exactly the funded
+// payment.
+func (p ManaPool) allocate(cost ParsedCost, xValue int, ctx ManaSpendContext, strategy ManaSpendStrategy) (used []int, short bool) {
+	used, unpaid, need := p.allocateRest(cost, xValue, ctx, strategy)
+	return used, len(unpaid) > 0 || need > 0
+}
+
+// allocateRest is allocate, also reporting WHAT it left unpaid: the
+// coloured requirements no mana could take, and how much of the
+// any-mana demand (generic, X, and widened slots) is still owed. That
+// remainder is the shortfall a waived payment declares on paper
+// (#3855, paper_payment.go).
+func (p ManaPool) allocateRest(cost ParsedCost, xValue int, ctx ManaSpendContext, strategy ManaSpendStrategy) (used []int, unpaid []ColorRequirement, need int) {
+	used = make([]int, len(p))
 	// One pass decides which runs are legal here and in what order
 	// the solver should prefer them. Every pass below walks `order`
 	// rather than the pool, so the restriction-first preference
@@ -325,10 +351,13 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 	// that decides whether a cost can be paid at all, and a colour
 	// preference that could steer it into a dead end would make
 	// payability depend on what the spell happens to read.
+	//
+	// An unpaid requirement does not stop the walk (#3844): the
+	// generic pass below still books what it can, so a waived payment
+	// spends every mana that can pay. attemptSpend discards the
+	// bookings of a short allocation, so a funded payment's answer is
+	// what it always was.
 	deferred, unpaid := colouredPass(p, used, order, widenedLast(cost.Required))
-	if len(unpaid) > 0 {
-		return nil, nil, false
-	}
 
 	// Step 2 — generic requirement. Total = explicit Generic +
 	// XSlots * xValue, plus the widened slots no printed colour paid
@@ -338,7 +367,7 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 	// not spent yet, because those cards count colours rather than
 	// mana. Every bucket is walked either way, so the answer to
 	// "payable?" is the same under both.
-	need := cost.GenericWithX(xValue) + len(deferred)
+	need = cost.GenericWithX(xValue) + len(deferred)
 	// #2170: mana that can't pay generic costs may still pay the
 	// slots that only LOOK generic here — a widened coloured symbol
 	// and a coloured symbol a cast permission folded into Generic. It
@@ -359,7 +388,7 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 		for need > 0 {
 			idx, fresh := pickDistinctColor(p, used, order, spentColors)
 			if idx < 0 {
-				return nil, nil, false
+				break
 			}
 			// A fresh colour is taken one mana at a time, since the
 			// next pick wants a different one. Any other pick is the
@@ -378,15 +407,20 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 			need -= take
 		}
 	} else if need > 0 {
-		if spendGeneric(p, used, order, need) > 0 {
-			return nil, nil, false
-		}
+		// #3853: mana that does something for THIS spell first, mana
+		// whose rider would be wasted on it last. The same runs, only
+		// walked in another order, so payability is untouched.
+		need = spendGenericWished(p, used, order, need, ctx)
 	}
+	return used, unpaid, need
+}
 
-	// Split each run into what was spent and what is left, preserving
-	// order. Runs `order` excluded as unspendable were never booked and
-	// survive here, which is what has to happen: refusing to spend
-	// restricted mana on this cast must not delete it.
+// split divides each run into what `used` booked as spent and what is
+// left, preserving order. Runs `order` excluded as unspendable were
+// never booked and survive here, which is what has to happen: refusing
+// to spend restricted mana on this cast must not delete it. The
+// remaining pool is nil when nothing is left.
+func (p ManaPool) split(used []int) (ManaPool, []ManaToken) {
 	out := make(ManaPool, 0, len(p))
 	var spent []ManaToken
 	for i, tok := range p {
@@ -399,9 +433,29 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 		}
 	}
 	if len(out) == 0 {
-		return nil, spent, true
+		return nil, spent
 	}
-	return out, spent, true
+	return out, spent
+}
+
+// SpendWhatPaysForWith spends the share of `cost` this pool can legally
+// pay, and returns the tokens it spent and whether they covered the
+// whole cost (#3844, ADR 0068 amendment 2026-10-15).
+//
+// It is the payment a WAIVED charge makes: an insufficient permissive
+// pool, or a strict-mode Cast anyway. The pool pays what it can, with
+// the allocation a funded payment uses (restrictions, the
+// restriction-first order, the spell's colour strategy), and only the
+// shortfall is waived. A pool that covers the whole cost is spent
+// exactly as SpendManaForWith would spend it, and `full` is true.
+//
+// Mana the cost cannot use stays in the pool: a {U} floating beside a
+// {R}{R} cost is not spent, and is still the player's to spend.
+func (p *ManaPool) SpendWhatPaysForWith(cost ParsedCost, xValue int, ctx ManaSpendContext, strategy ManaSpendStrategy) (spent []ManaToken, full bool) {
+	used, short := p.allocate(cost, xValue, ctx, strategy)
+	remaining, spent := p.split(used)
+	*p = remaining
+	return spent, !short
 }
 
 // colouredPass pays each requirement in `reqs` with one mana, booking
@@ -609,6 +663,10 @@ func spendOrder(pool ManaPool, ctx ManaSpendContext) []int {
 			order[j], order[j-1] = order[j-1], order[j]
 		}
 	}
+	// #3853: inside a restriction tier, mana that does something for the
+	// object being paid for first and mana whose rider it would waste
+	// last. A no-op for every context that names no object.
+	rankPoolOrder(pool, order, ctx)
 	return order
 }
 

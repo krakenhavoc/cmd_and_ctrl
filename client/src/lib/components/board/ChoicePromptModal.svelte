@@ -130,6 +130,7 @@
     freeCastRequest,
     handFreeCastRequest,
     isFreeCastPick,
+    isLibraryFreeCastPick,
     mayCastKeywordsThatOpenACast,
   } from "../../freeCastRequest";
 
@@ -570,6 +571,12 @@
     // grant arrives; picking none clears any earlier request.
     if (isFreeCastPick(active)) {
       handFreeCastRequest.set(selected.size > 0 ? (Array.from(selected)[0] ?? null) : null);
+    }
+    // #2110: the same for a card looked at on top of the library
+    // (Aetherworks Marvel). The pick stays in the library with a grant on
+    // it, so Board finds it there through freeCastRequest.
+    if (isLibraryFreeCastPick(active) && selected.size > 0) {
+      freeCastRequest.set(Array.from(selected)[0] ?? null);
     }
     answer({ card_ids: Array.from(selected) });
   }
@@ -2749,6 +2756,11 @@
             The card you pick is cast right now without paying its mana cost, whatever its timing,
             and you choose its targets next. If you don't cast it now you can't later. Pick none to
             cast nothing.
+          {:else if isLibraryFreeCastPick(active)}
+            <!-- #2110: Aetherworks Marvel. -->
+            The card you pick is cast right now without paying its mana cost, whatever its timing, and
+            you choose its targets next. The rest go on the bottom of your library in a random order,
+            and so does this one if you don't cast it now. Pick none to cast nothing.
           {:else if isManifestPick}
             <!-- ADR 0189: Kozilek, the Broken Reality; Scroll of Fate. -->
             The cards you pick are put onto the battlefield face down as 2/2 creatures under your control.

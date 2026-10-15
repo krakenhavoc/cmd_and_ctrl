@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { CardView, PlayerView, StackItemView, ZoneView } from "./protocol";
+import type { CardView, PendingChoiceView, PlayerView, StackItemView, ZoneView } from "./protocol";
 import { seatColor } from "./colors";
 import {
   DEFAULT_STACK_STYLE,
@@ -119,6 +119,50 @@ describe("stack lane ordering", () => {
     expect(buildStackLane(input({ stack: zone("stack"), stackItems: [] })).live).toBe(false);
     expect(stackLaneLive([], [])).toBe(false);
     expect(stackLaneLive(undefined, [trigger("t", ME, "vivi", "x")])).toBe(true);
+  });
+});
+
+describe("stack lane printed text (#3830)", () => {
+  const purphoros =
+    "Whenever another creature you control enters, Purphoros deals 2 damage to each opponent.";
+
+  it("draws an ability's printed text, keeps its label as the name and the summary short", () => {
+    const m = buildStackLane(
+      input({
+        stack: zone("stack"),
+        stackItems: [
+          {
+            ...trigger("t1", ME, "vivi", "Purphoros, God of the Forge — 2 damage to each opponent"),
+            ability_text: purphoros,
+          },
+        ],
+      }),
+    );
+    const it0 = m.stackItems[0];
+    expect(it0.text).toBe(purphoros);
+    expect(it0.name).toBe("Purphoros, God of the Forge — 2 damage to each opponent");
+    expect(m.summary).toBe("Vivi Ornitier's trigger resolves next — 2 damage to each opponent");
+  });
+
+  it("falls back to the label when the server sends no text", () => {
+    const m = buildStackLane(
+      input({
+        stack: zone("stack"),
+        stackItems: [trigger("t1", ME, "vivi", "Impact Tremors — 1 damage to each opponent")],
+        pendingTriggers: [trigger("t2", ME, "vivi", "Vivi Ornitier — +1/+1 counter")],
+      }),
+    );
+    expect(m.stackItems[0].text).toBe("Impact Tremors — 1 damage to each opponent");
+    expect(m.pendingTriggers[0].text).toBe("Vivi Ornitier — +1/+1 counter");
+  });
+
+  it("never draws text in place of a spell's name", () => {
+    const m = buildStackLane(
+      input({
+        stackItems: [spell("bolt", ME, { ability_text: "not a spell's" }), spell("cs", BOT2)],
+      }),
+    );
+    expect(m.stackItems.map((i) => i.text)).toEqual(["Counterspell", "Lightning Bolt"]);
   });
 });
 
@@ -371,6 +415,74 @@ describe("stack lane summary", () => {
     expect(one.summary).toBe("Vivi Ornitier — draw a card is waiting to go on the stack");
     const none = buildStackLane(input({ stack: zone("stack"), stackItems: [] }));
     expect(none.summary).toBe("");
+  });
+});
+
+// #3817: a batch of the same trigger, on the stack or waiting to go on it.
+describe("stack lane: a batch of the same trigger (#3817)", () => {
+  const artist = (id: string) => card(id, "Blood Artist", ME);
+  const drain = (id: string, src: string) => trigger(id, ME, src, "Blood Artist — drain 1");
+  const prompt = (id: string, source: string) =>
+    ({
+      id,
+      kind: "pick_target",
+      chooser: ME,
+      from_player: ME,
+      count: 0,
+      source,
+      reason: "target player",
+    }) as PendingChoiceView;
+
+  it("says how many of the same trigger are in a row from the top", () => {
+    const m = buildStackLane(
+      input({
+        stack: zone("stack"),
+        battlefield: zone("battlefield", [artist("a1"), artist("a2")]),
+        // bottom..top: a Bolt, then three drains on top of it.
+        stackItems: [spell("bolt", ME), drain("t1", "a1"), drain("t2", "a2"), drain("t3", "a1")],
+      }),
+    );
+    expect(m.summary).toBe("Blood Artist's trigger resolves next (1 of 3) — drain 1");
+  });
+
+  it("counts the triggers still asking for a target, and opens the panel for them", () => {
+    const m = buildStackLane(
+      input({
+        stack: zone("stack"),
+        stackItems: [],
+        battlefield: zone("battlefield", [artist("a1"), artist("a2")]),
+        pendingTriggers: [drain("t1", "a1")],
+        pendingChoices: [prompt("p1", "a1"), prompt("p2", "a2"), prompt("p3", "a2")],
+      }),
+    );
+    expect(m.live).toBe(true);
+    expect(m.waitingLine).toBe("Blood Artist ×4 waiting to go on the stack · 3 need your target");
+    // With nothing on the stack, the waiting line is the summary.
+    expect(m.summary).toBe(m.waitingLine);
+  });
+
+  it("keeps the summary for what resolves next and adds the waiting line beside it", () => {
+    const m = buildStackLane(
+      input({
+        battlefield: zone("battlefield", [birds, vivi, artist("a1"), artist("a2")]),
+        pendingChoices: [prompt("p1", "a1"), prompt("p2", "a2")],
+      }),
+    );
+    expect(m.summary).toBe("Counterspell resolves next and counters your Lightning Bolt");
+    expect(m.waitingLine).toBe("Blood Artist ×2 waiting to go on the stack · 2 need your target");
+  });
+
+  it("opens no panel and adds no line for a lone trigger asking for its target", () => {
+    const m = buildStackLane(
+      input({
+        stack: zone("stack"),
+        stackItems: [],
+        battlefield: zone("battlefield", [artist("a1")]),
+        pendingChoices: [prompt("p1", "a1")],
+      }),
+    );
+    expect(m.live).toBe(false);
+    expect(m.waitingLine).toBe("");
   });
 });
 

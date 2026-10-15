@@ -162,9 +162,8 @@
     isLegalPlayerTarget,
     isMultiPick,
     lonePick,
-    repeatsOf,
-    shareTargetOn,
-    sharedFrom,
+    shareTargetScope,
+    sharedAfterAnswer,
     sharedPick,
     sharedStillWanted,
     sharedTarget,
@@ -1400,10 +1399,10 @@
     guardedSendAction("special_action", unlockParams(req.cardID, req.door), viewerID ?? undefined);
   });
 
-  // ADR 0118 §2 (owner decision 6): "Cast anyway (don't pay)" asks
+  // ADR 0118 §2 (owner decision 6): "Cast anyway (pay on paper)" asks
   // first. The row (Hand, the strip, the command zone panel, the admin
   // menu) only sets castAnywayPending; while it is set the dock asks
-  // "Cast <card> without paying its mana cost?". Cast starts the ordinary
+  // "Cast <card> and pay the rest on paper?". Cast starts the ordinary
   // cast chain with `forceCast`; Cancel and Escape send nothing. The
   // question goes away, also sending nothing, once the card has left the
   // zone it was asked about.
@@ -1745,10 +1744,10 @@
       const answer = choiceAnswer(state, targets);
       const dist = distributionOf(state);
       if (dist) answer.distribution = dist;
-      // #3265: one target for every instance of a repeated trigger.
-      if ($shareTargetOn && targets.length === 1 && repeatsOf(state, view) > 0) {
-        sharedTarget.set(sharedFrom(state, targets[0]!));
-      }
+      // #3265: one target for every instance of a repeated trigger;
+      // #3817: or for every copy of the card's, as the dock says.
+      const kept = sharedAfterAnswer(state, targets, $shareTargetScope, view);
+      if (kept) sharedTarget.set(kept);
       // Answered: its re-opened prompt is not answered for the player
       // again, by the kept target or any other.
       autoAnswered.add(state.choiceID);
