@@ -459,6 +459,12 @@ var items = []Item{
 		Mechanic: "dash",
 	},
 	{
+		Slug: "blitz", Name: "Blitz", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Cast a creature for its blitz cost; it has haste and draws you a card when it dies, and it's sacrificed at the beginning of the next end step.",
+		Rules:    []string{"702.152"},
+		Mechanic: "blitz",
+	},
+	{
 		Slug: "freerunning", Name: "Freerunning", Kind: KindMechanic, Status: StatusImplemented,
 		Summary:  "Cast a spell for its freerunning cost if an Assassin or a commander you controlled dealt combat damage to a player this turn.",
 		Rules:    []string{"702.173"},
