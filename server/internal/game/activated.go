@@ -573,6 +573,30 @@ type AbilityCost struct {
 	// beside PutFromHandOnLibraryTop, which no printed card has: the
 	// put would change which cards are on top. See library_cost.go.
 	ExileFromLibraryTop int
+
+	// Mill is "Mill N cards" as a cost (#3845, ADR 0020's 2026-10-15
+	// amendment; CR 701.17a) — The Warring Triad's and Millikin's
+	// "{T}, Mill a card:", Rot Farm Skeleton's "Mill four cards:".
+	// Zero means no such component. Nothing to choose, so it rides no
+	// params and no wire pick.
+	//
+	// ExileFromLibraryTop's sibling, and NOT the same cost: an exile
+	// is a plain CR 406 move to a public zone, a mill is the CR 701.17a
+	// keyword action, so it goes through the mill door
+	// (MillNForEffect). The CR 614 window on the amount (Bruvac the
+	// Grandiloquent) and on each card (Rest in Peace, Leyline of the
+	// Void) therefore applies, "whenever you mill" payoffs see it, and
+	// a milled commander is offered the command zone afterwards
+	// (CR 903.9a).
+	//
+	// CR 701.17b / 118.3: a player can't pay a cost that mills more
+	// cards than their library holds, so a library of fewer than N
+	// cards refuses the activation (ErrCantPayLibraryCost) and the
+	// enumerator and the view never offer it. CR 601.2h: a cost that
+	// moves objects from the library to a public zone is paid after
+	// every other cost, so it is paid last. effects.Register refuses
+	// it beside ExileFromLibraryTop, which no printed card has.
+	Mill int
 }
 
 // DemandsX reports whether the ability's mana component contains
@@ -1640,6 +1664,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err != nil {
 		return err
 	}
+	// #3845, CR 701.17b / 118.3: "Mill a card" (The Warring Triad,
+	// Millikin) can't be paid from an empty library. Checked here with
+	// everything else so a refusal taps nothing and mills nothing; the
+	// mill itself is paid last.
+	if err := g.MillCostShortfall(playerID, ab.Cost.Mill); err != nil {
+		return err
+	}
 	// #1221: the discard component's sibling one zone over —
 	// scavenge's and embalm's "Exile this card from your graveyard",
 	// and since #1404 Perpetual Timepiece's "Exile this artifact" off
@@ -2105,6 +2136,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return err
 	}
 	paid.Exiled = append(paid.Exiled, libraryExiles...)
+	// #3845, CR 601.2h: "Mill N cards" moves cards from the library to
+	// a public zone, so it is paid after everything else, through the
+	// mill door so replacements and "whenever you mill" see it.
+	if err := g.payMillCostLocked(playerID, ab.Cost.Mill); err != nil {
+		return err
+	}
 
 	// --- announce -----------------------------------------------
 	itemID := uuid.New()

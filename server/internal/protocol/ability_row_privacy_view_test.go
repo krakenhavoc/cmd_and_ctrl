@@ -71,6 +71,9 @@ var activatedRowScopes = map[string]rowScope{
 	// ADR 0129 §8: the printed energy component; a player's energy is
 	// public, so the shortfall it greys the row with is too.
 	"EnergyCost": rowPublic, "EnergyCostX": rowPublic,
+	// #3845: the printed mill component; library sizes are public, so
+	// the shortfall it greys the row with is too.
+	"MillCost":     rowPublic,
 	"SorcerySpeed": rowPublic, "LoyaltyCost": rowPublic, "LoyaltyCostX": rowPublic, "DiscardSelf": rowPublic,
 	"ExileSelf": rowPublic, "ReturnSelf": rowPublic, "BottomSelf": rowPublic, "Exert": rowPublic, "CrewCost": rowPublic, "Saddle": rowPublic, "DemandsX": rowPublic,
 	"MinX": rowPublic, "XSlots": rowPublic, "PhyrexianSymbols": rowPublic, "PhyrexianGranted": rowPublic,
@@ -133,7 +136,7 @@ var manaRowScopes = map[string]rowScope{
 	"SacrificeCost": rowPublic, "ExileSelf": rowPublic, "LifeCost": rowPublic,
 	// ADR 0129 §5: the printed energy component (a player's energy is
 	// public).
-	"EnergyCost": rowPublic, "Exert": rowPublic,
+	"EnergyCost": rowPublic, "MillCost": rowPublic, "Exert": rowPublic,
 	"ManaCost": rowPublic, "Produced": rowPublic, "Restrictions": rowPublic,
 	"SacrificeLabel": rowPublic, "SacrificeOptions": rowPublic,
 	"TapOthersLabel": rowPublic, "TapOthersOptions": rowPublic,

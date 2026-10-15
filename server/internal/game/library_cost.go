@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 // library_cost.go — ADR 0109 §7 (#1902): the three activation-cost
 // components that move cards to or from a library, or by chance.
@@ -278,4 +282,71 @@ func (g *Game) payPutOnTopCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UU
 // Caller must hold g.mu and have validated the list.
 func (g *Game) payLibraryExileCostLocked(playerID, sourceID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool) error {
 	return g.payExileCardsCostLocked(playerID, sourceID, ids, answers)
+}
+
+// MillCostPayableForEffect reports whether `playerID`'s library holds
+// the N cards a "Mill N cards" cost mills (#3845, CR 701.17b / 118.3:
+// a player can't pay a cost that mills more cards than their library
+// has). True for n <= 0, a cost with no such component. It is the same
+// count test as LibraryExileCostPayableForEffect, kept under its own
+// name so each cost's readers say which rule they are asking about.
+//
+// CALLER MUST ALREADY HOLD g.mu (read or write).
+func (g *Game) MillCostPayableForEffect(playerID uuid.UUID, n int) bool {
+	return g.LibraryExileCostPayableForEffect(playerID, n)
+}
+
+// MillCostShortfall is the refusal an announcement of a "Mill N cards"
+// cost gets when the library is short, or nil when it can be paid (or
+// when n <= 0, no such component). The view stamps its text as
+// CantActivate so a row greys with the engine's own words, and both
+// activation paths return it unchanged.
+//
+// CALLER MUST ALREADY HOLD g.mu (read or write).
+func (g *Game) MillCostShortfall(playerID uuid.UUID, n int) error {
+	if g.MillCostPayableForEffect(playerID, n) {
+		return nil
+	}
+	have := 0
+	if p := g.playerByIDLocked(playerID); p != nil && p.Library != nil {
+		have = p.Library.Size()
+	}
+	return millShortfallError{have: have, need: n}
+}
+
+// millShortfallError is MillCostShortfall's refusal. Its text is what a
+// greyed row says (CantActivate), so it is written for the player, as
+// insufficientEnergyError's is; errors.Is still matches
+// ErrCantPayLibraryCost, the refusal every other library cost returns.
+type millShortfallError struct{ have, need int }
+
+func (e millShortfallError) Error() string {
+	return fmt.Sprintf("Not enough cards in your library to mill (have %d, need %d)", e.have, e.need)
+}
+
+// Is reports the library-cost refusal this one is a case of.
+func (e millShortfallError) Is(target error) bool { return target == ErrCantPayLibraryCost }
+
+// payMillCostLocked pays a "Mill N cards" component (#3845): the top N
+// cards of the payer's library go to their graveyard through the one
+// mill door, MillNForEffect, so the CR 614 window on the amount and on
+// each card applies (Bruvac the Grandiloquent, Rest in Peace), a
+// commander is offered CR 903.9a once it has landed, and "whenever you
+// mill" watchers see one EventMill per card.
+//
+// Validated by the caller (MillCostShortfall) before ANYTHING was
+// paid, and paid last (CR 601.2h): a cost that moves objects from the
+// library to a public zone follows every other cost.
+//
+// A replacement that must ORDER (two amount replacements, CR 616.1)
+// can still park a prompt; the ability is already paid for and the
+// mill finishes when the prompt is answered, as it would for the same
+// replacements meeting a mill inside an effect.
+//
+// Caller must hold g.mu for writing.
+func (g *Game) payMillCostLocked(playerID uuid.UUID, n int) error {
+	if n <= 0 {
+		return nil
+	}
+	return g.MillNForEffect(playerID, n)
 }

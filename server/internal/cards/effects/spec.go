@@ -2161,6 +2161,16 @@ type ManaAbilityCost struct {
 	// own; the player activates the row.
 	Exert bool
 
+	// Mill is "Mill N cards" (#3845, CR 701.17a) — Millikin's "{T},
+	// Mill a card: Add {C}". The component AbilityCost.Mill carries,
+	// paid last through the ordinary mill so replacements apply. A
+	// library of fewer than N cards can't pay it (CR 701.17b), so the
+	// row is not offered then. The auto-tapper never pays it on its own;
+	// the player activates the row. A mana ability that TARGETS is not
+	// a mana ability (CR 605.1a) and declares the cost on Activated
+	// with MillCardsCost instead (The Warring Triad).
+	Mill int
+
 	// Mana is a mana component of the activation cost — the Signet
 	// cycle's "{1}, {T}: Add {W}{U}", Cabal Coffers' "{2}, {T}",
 	// the filter lands' "{W/U}, {T}". Scryfall brace grammar.

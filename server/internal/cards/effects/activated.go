@@ -388,6 +388,13 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.ExileFromLibraryTop != 0 {
 			out.ExileFromLibraryTop = c.ExileFromLibraryTop
 		}
+		// #3845: and the mill component. A composed "{T}, Mill a card"
+		// that dropped its mill would be a free mana ability every turn
+		// that never fills the graveyard — stronger than printed, the
+		// #259 direction.
+		if c.Mill != 0 {
+			out.Mill = c.Mill
+		}
 		// #1600: and the "spend only <colour> mana" clause. A composed
 		// "{3}, {T}, spend only mana of the chosen color" that dropped
 		// it would be a Throne of Eldraine that draws off any three
@@ -713,6 +720,22 @@ func PutACardFromHandOnTop() game.AbilityCost {
 // with ctx.Exiled(), top first.
 func ExileTopOfLibrary(n int) game.AbilityCost {
 	return game.AbilityCost{ExileFromLibraryTop: n}
+}
+
+// MillCardsCost is "Mill N cards" as a cost (#3845, CR 701.17a) —
+// The Warring Triad's and Millikin's "{T}, Mill a card:", Rot Farm
+// Skeleton's "Mill four cards:". Compose it with the rest of the cost:
+//
+//	Plus(TapCost(), MillCardsCost(1))
+//
+// A mana ability declares the same component as
+// ManaAbilityCost{Mill: 1}. Nothing to choose; a library of fewer than
+// N cards can't pay it (CR 701.17b, CR 118.3), so the ability is not
+// offered then. It is paid through the ordinary mill, so Rest in Peace
+// and Bruvac the Grandiloquent apply. Named MillCardsCost because
+// MillCards is the effect primitive.
+func MillCardsCost(n int) game.AbilityCost {
+	return game.AbilityCost{Mill: n}
 }
 
 // ExileCardsFromHand is "Exile N <kind> cards from your hand" as a

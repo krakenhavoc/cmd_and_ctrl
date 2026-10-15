@@ -605,6 +605,12 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		if !g.LibraryExileCostPayableForEffect(e.seat, ab.Cost.ExileFromLibraryTop) {
 			continue
 		}
+		// #3845, CR 701.17b / 118.3: "Mill a card" (The Warring Triad)
+		// can't be paid from a library that is short, the predicate the
+		// engine refuses with.
+		if g.MillCostShortfall(e.seat, ab.Cost.Mill) != nil {
+			continue
+		}
 		if n := ab.Cost.RandomDiscardCount(); n > 0 && len(g.RandomDiscardPoolForEffect(e.seat, source.InstanceID, handTaken)) < n {
 			continue
 		}
@@ -2265,6 +2271,11 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		// ADR 0129 §5, CR 118.3: the energy component, through the
 		// predicate ActivateManaAbility refuses with (#544).
 		if game.EnergyShortfall(e.p, ab.EnergyCost) != nil {
+			continue
+		}
+		// #3845, CR 701.17b / 118.3: Millikin's "Mill a card", through
+		// the predicate ActivateManaAbility refuses with.
+		if g.MillCostShortfall(e.seat, ab.MillCost) != nil {
 			continue
 		}
 		// A mana component in the cost is paid from the pool and,

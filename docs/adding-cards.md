@@ -3868,6 +3868,20 @@ draws the cards, paid after every other cost (CR 601.2h), and
 `Plus`. Register refuses a random discard with a predicate and both
 library components on one cost.
 
+**Mill as a cost (#3845, ADR 0020 amendment 2026-10-15):**
+`MillCardsCost(n)` is "Mill N cards" (The Warring Triad's and
+Millikin's "{T}, Mill a card:", Rot Farm Skeleton's "Mill four cards:").
+It is not an exile: the cards go through the ordinary mill, so Rest in
+Peace exiles them instead and "whenever you mill" payoffs see them. A
+library of fewer than N cards can't pay it (CR 701.17b), so the ability
+is not offered (the enumerator, the view's `cant_activate` and the
+engine all ask `MillCostShortfall`). A mana ability declares it as
+`ManaAbilityCost{Tap: true, Mill: 1}`; the auto-tapper never pays such
+a row. An ability that also TARGETS is not a mana ability (CR 605.1a):
+declare it on `Activated` with `Plus(TapCost(), MillCardsCost(1))`, as
+The Warring Triad does. Register refuses a mill beside an exile of the
+top of the library.
+
 **A target bounded by X (#1559, #1723, ADR 0109 §9):** the bound is
 a flag on the clause, never a predicate, because a predicate cannot see
 the announcement. `WithManaValueAtMostX()`, `WithManaValueEqualsX()`,
@@ -8356,7 +8370,8 @@ and then discard the change to `docs/engine-seams.md`.
   `DiscardCards`, and `DiscardYourHand` for "discard your hand"), exile
   from the hand or graveyard (`ExileCards`), exile the top of your
   library, put a card from your hand on top of it (`library_cost.go`,
-  ADR 0109 §7), return a permanent to its owner's hand, tap other
+  ADR 0109 §7), **mill N cards** (`MillCardsCost(n)`, #3845, ADR 0020's
+  2026-10-15 amendment), return a permanent to its owner's hand, tap other
   permanents, and **waterbend** (`WaterbendCost("{X}")`, Katara,
   Waterbending Master). The struct's field comments are the list of
   record; check it before calling a cost shapeless.
@@ -10196,8 +10211,9 @@ DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b
   known from the reveal, so its owner's pile shows it), then grant a `ScopeCards` permission in `ZoneLibrary` with
   `LapseOnPass: LapseToLibraryBottom`; the lapse bottoms an uncast pick out of the zone the grant opens. Sunbird's Invocation.
 - **Cards that stay caveated**, with the gap named: Transmutation Font (a "different names" rule over a three-permanent
-  sacrifice), The Warring Triad (mill as an activated-ability cost), Vorinclex, Monstrous Raider (counter placements that name no
-  placer). Tower Winder landed Full with #3217.
+  sacrifice), Vorinclex, Monstrous Raider (counter placements that name no
+  placer). Tower Winder landed Full with #3217, and The Warring Triad
+  with #3845 (mill as a cost).
 
 ### Adding a `Spec` slot (#622)
 

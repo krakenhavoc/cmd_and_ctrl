@@ -4158,6 +4158,12 @@ type ActivatedAbilityView struct {
 	// ("Not enough energy (have 2, need 3)").
 	EnergyCost  int  `json:"energy_cost,omitempty"`
 	EnergyCostX bool `json:"energy_cost_x,omitempty"`
+	// MillCost is the printed "Mill N cards" component (#3845, CR
+	// 701.17a): the cards an activation mills off the top of the
+	// activator's library. Omitted at zero. When the library is short
+	// (CR 701.17b, CR 118.3), CantActivate carries the engine's refusal
+	// and the enumerator offers no move.
+	MillCost int `json:"mill_cost,omitempty"`
 	// ConditionUnmet is true when the ability carries an activation
 	// condition (CR 602.1b — "Activate only if an opponent controls
 	// four or more lands", "Activate only during your turn") and that
@@ -4774,6 +4780,11 @@ type ManaAbilityView struct {
 	// short, CantActivate carries the engine's refusal ("Not enough
 	// energy (have 0, need 1)").
 	EnergyCost int `json:"energy_cost,omitempty"`
+	// MillCost is a "Mill N cards" component (#3845, CR 701.17a) —
+	// Millikin's "{T}, Mill a card:". Omitted at zero. When the library
+	// is short, CantActivate carries the engine's refusal. The
+	// auto-tapper never pays such a row; the player activates it.
+	MillCost int `json:"mill_cost,omitempty"`
 	// Exert is an "Exert this land" / "Exert this creature" component
 	// (ADR 0130 §4): Arena of Glory, Oasis Ritualist. Always payable
 	// (CR 701.43b). The auto-tapper never pays such a row on its own,
@@ -8077,6 +8088,14 @@ func stampManaConditions(g *game.Game, card *game.Card, controller uuid.UUID, vi
 		// and the engine agree.
 		if views[i].CantActivate == "" && raw[r].EnergyCost > 0 {
 			if short := game.EnergyShortfall(g.PlayerByIDForEffect(controller), raw[r].EnergyCost); short != nil {
+				views[i].CantActivate = short.Error()
+			}
+		}
+		// #3845, CR 701.17b / 118.3: Millikin's "Mill a card" on a
+		// library that is short, from the predicate the engine refuses
+		// with.
+		if views[i].CantActivate == "" && raw[r].MillCost > 0 {
+			if short := g.MillCostShortfall(controller, raw[r].MillCost); short != nil {
 				views[i].CantActivate = short.Error()
 			}
 		}
@@ -11659,6 +11678,15 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.TopCostOptions = cardIDStrings(g.PutOnTopCostOptionsForEffect(caster, c.InstanceID, n))
 		}
 		v.LibraryExileCostN = a.Cost.ExileFromLibraryTop
+		// #3845: the mill component, and the refusal's own text when
+		// the library is short (CR 701.17b), from the predicate
+		// ActivateCatalogAbility refuses with.
+		v.MillCost = a.Cost.Mill
+		if v.CantActivate == "" && a.Cost.Mill > 0 {
+			if short := g.MillCostShortfall(caster, a.Cost.Mill); short != nil {
+				v.CantActivate = short.Error()
+			}
+		}
 		// #1297: the exile-N-cards component, off the walk the engine
 		// validates against — the mana view's four fields, one ability
 		// kind over.
@@ -12250,6 +12278,7 @@ func viewOfManaAbilitiesFromZone(c *game.Card, zone game.ZoneKind) []ManaAbility
 			ExileSelf:     a.ExileSelf,
 			LifeCost:      a.LifeCost,
 			EnergyCost:    a.EnergyCost,
+			MillCost:      a.MillCost,
 			Exert:         a.ExertCost,
 			ManaCost:      a.ManaCost,
 			Restrictions:  a.Restrictions,
