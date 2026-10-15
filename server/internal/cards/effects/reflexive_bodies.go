@@ -176,6 +176,14 @@ var (
 				YouOwn(), Creature(), PowerLE(3))
 		}))
 
+	// The Falcon, Airship Restored (#3655): "when you do, return target
+	// creature card from your graveyard to the battlefield".
+	falconReturnBody = game.ReflexiveBody("the-falcon-airship-restored/return",
+		simpleBody(returnFirstLegalGraveyardTargetToBattlefield),
+		constTargets(func() *game.TargetSpec {
+			return TargetCardInGraveyard("target creature card in your graveyard", YouOwn(), Creature())
+		}))
+
 	// Agatha's Soul Cauldron (#3201): "When a creature card is exiled this
 	// way, put a +1/+1 counter on target creature you control."
 	agathasSoulCauldronCounterBody = game.ReflexiveBody("agathas-soul-cauldron/counter", simpleBody(PlusOneCounterOnChosenTarget),
