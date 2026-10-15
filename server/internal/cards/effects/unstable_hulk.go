@@ -22,6 +22,12 @@ func init() {
 		Name:             "Unstable Hulk",
 		Completeness:     CompletenessFull,
 		AlternativeCosts: []game.AlternativeCost{Morph("{3}{R}{R}")},
+		// The skip happens only when it is turned face up, so it rides
+		// Purpose.FaceUp (ADR 0126's amendment of 2026-10-15, #3762): the
+		// heuristic charges the turn when it prices the turn_face_up
+		// special action. The +6/+6 and trample are not priced; no purpose
+		// field prices a one-turn pump on a permanent being flipped.
+		Purpose: game.Purpose{FaceUp: &game.Purpose{SkipsTurns: 1}},
 		Triggered: []game.TriggeredAbility{
 			WhenThisIsTurnedFaceUp(label, func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

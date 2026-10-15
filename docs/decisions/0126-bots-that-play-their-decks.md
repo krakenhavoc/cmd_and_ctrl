@@ -1392,6 +1392,52 @@ The tables are under [Measurements, #3146](#3146-landfall-doublers-payoff-casts-
 - **Simic's balance** stays about where #3071 left it. Moving it needs more than landfall pricing.
 - **Virtue of Knowledge** also doubles landfall, but it is an Adventure card whose card-slot purpose the bot reads for the spell, so it declares no `landfall_extra_triggers`.
 
+## Amendment 2026-10-15: what a card does only when kicked or turned face up
+
+**Status:** Accepted (a seam the coordinator filed, with the owner's brief). The code is in the PR that adds this section. No `Config` switch: the new fields are read by prices that already have their own (`PriceSweeps`, `Weights.Turn`), and `BaselineConfig()` prices neither.
+**Issue:** [#3762](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3762), found landing [#3565](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3565) (the cards that skip your next turn). Sprint: none.
+**Amends:** §6 (a declared purpose) and [ADR 0188](0188-skipped-turns-and-turn-bound-effects.md) Decision 10 (a skipped turn is priced).
+
+### The problem
+
+`game.Purpose` says what a spell or an ability does. It had no slot for what a card does only if an optional cost is paid, or only when it is turned face up, and two cards from #3565 showed what that costs:
+
+- **Waterspout Elemental** ("Kicker {U} ... When this creature enters, if it was kicked, return all other creatures to their owners' hands and you skip your next turn") had to declare its `Sweep` on the card, because `TestRealDumpPurposeAudit` fails a catalog card that reads as a wipe and declares none. So the heuristic priced the **unkicked** cast as a mass bounce. Its skip had no home at all, so the bot never charged it.
+- **Unstable Hulk** ("When this creature is turned face up, it gets +6/+6 ... You skip your next turn") could declare nothing: a face-down permanent has no text (CR 708.2a), so no purpose reaches the wire for it, and the skip is not something the card does when cast.
+
+### Decision
+
+**1. Two conditional purposes**, both on the card slot, both a `*Purpose` (a pointer, so `Purpose` stays comparable and `IsZero` still works):
+
+```go
+Purpose: game.Purpose{Kicked: &game.Purpose{Sweep: …, SkipsTurns: 1}}   // Waterspout Elemental
+Purpose: game.Purpose{FaceUp: &game.Purpose{SkipsTurns: 1}}             // Unstable Hulk
+```
+
+The fields beside them are what the card does however it is cast, so an unkicked Elemental declares nothing and is priced as the 3/4 flyer it is.
+
+**2. A reader recognises the condition from the move.** The wire carries them as `purpose.kicked` and `purpose.turned_face_up`. The heuristic reads `kicked` only when the cast move names an optional cost (`optional_costs` is non-empty), and adds it to whatever the cast's slot already declared (`castPurpose`, so the fuel, tax and plan readers agree). It reads `turned_face_up` only when pricing the `turn_face_up` special action, which adds `purposeValue` of it to the flat `SpecialActionValue`: the Hulk's turn costs `Weights.Turn`. `Priced()` does not count either field, so a card that declares only a conditional purpose keeps its mana-value proxy on every other path.
+
+**3. Kicked is for one kicker.** `effects.Register` refuses `Kicked` unless the card has exactly one optional cost and it is a kicker. With two ("Kicker {R} and/or {W}") the view cannot say which was paid, and a multikicker's amounts are counted at resolution; those cards keep declaring nothing. It refuses `FaceUp` on a card with no face-down cast offer (Morph, Megamorph, Disguise). Both inner purposes must say something, may not nest, and may not declare `Targets`, `Aura`, `ExtraLandDrops`, `LandfallExtraTriggers` or `FlashCleanupSacrifice`, which belong to the card's own slot. Everything else is checked as a card-slot purpose is.
+
+**4. A face-down permanent's controller is sent `turned_face_up`, and only that.** `CardPurposeOfPtr` still answers the zero purpose for a face-down object, except for `FaceUp` of the card underneath, read by oracle ID. `redactCardForViewer` clears `purpose` for a viewer who may not look at the face, so an opponent sees nothing, as before. A face-up Hulk also carries `turned_face_up`; nothing reads it there.
+
+**5. The audit reads through them.** `Purpose.DeclaresSweep()` is true for a sweep declared directly or under `Kicked` or `FaceUp`, and `TestRealDumpPurposeAudit` uses it. A wipe that only a kicked cast makes still has to be declared, and now it can be declared where it is true.
+
+### Cards
+
+Waterspout Elemental moves its partial creature bounce and its skip to `Kicked`. Unstable Hulk declares its skip under `FaceUp`. The other catalog kicker cards were read against the dump. None declares a purpose that is true only when kicked; the ones with a kicked effect the Purpose model has a field for (Sunscape Battlemage's draw, Stormscape Battlemage's life) have two kickers, which decision 3 leaves alone, and the rest are counters, tokens counted at resolution or targeted effects the model has no field for.
+
+### Not priced
+
+The Hulk's +6/+6 and trample until end of turn. No purpose field prices a one-turn pump on a permanent being flipped (`Pump` is an exert row's), so turning the Hulk up now costs a turn and credits nothing. At `Weights.Turn` 6.00 against a flat 1.00 the bot will not turn a Hulk up, where before it flipped it for the flat value and skipped its next turn without ever pricing it. A flip for lethal is the case this loses; pricing it needs the attack the pump enables, and is a separate change.
+
+### Options considered and rejected
+
+- **Per-mode purposes.** Kicker is not a mode (CR 702.33), and the cards that choose among modes already declare per bullet.
+- **A `Purpose` slot on the optional cost.** `AdditionalCost` is engine data the view projects as `OptionalCostView`; putting the bot's pricing there would make the engine own a bot concern, and the wipe still has to be found by the audit on the spec's purposes.
+- **Leaving the sweep on the card and reviewing it as not-a-wipe.** `reviewedNotAWipe` says a card does not wipe. Waterspout does.
+
 ## Consequences
 
 - About a third of each curated deck stops being dead. The decks can then be judged on their lists, which is what #2436 needs.

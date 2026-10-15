@@ -3455,6 +3455,10 @@ export interface PurposeView {
   // #3712: the card may be cast as though it had flash and is sacrificed
   // at the next cleanup step when it was. Absent otherwise.
   flash_cleanup_sacrifice?: boolean;
+  // ADR 0126 (amendment of 2026-10-15, #3762): what the card does only
+  // when its kicker is paid, and what turning it face up does. Bot data.
+  kicked?: PurposeView;
+  turned_face_up?: PurposeView;
   draws?: number;
   controller_loses_life?: number;
   discards?: number;

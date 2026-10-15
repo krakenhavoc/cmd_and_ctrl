@@ -527,7 +527,7 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		case "companion":
 			return p.valueOfCompanion(st, sp)
 		case "turn_face_up":
-			return p.valueOfTurnFaceUp(m, sp)
+			return p.valueOfTurnFaceUp(st, m, sp)
 		}
 		return p.cfg.SpecialActionValue, "special action: " + sp.Kind
 
@@ -1162,8 +1162,20 @@ func (p *Policy) valueOfUnlock(st *state, sp specialActionParams) (float64, stri
 // The megamorph route is read off the move label, which names the
 // route and its counter whenever a permanent has two offers (a lone
 // offer has nothing to choose between, so it needs no bonus).
-func (p *Policy) valueOfTurnFaceUp(m legal.Move, sp specialActionParams) (float64, string) {
+func (p *Policy) valueOfTurnFaceUp(st *state, m legal.Move, sp specialActionParams) (float64, string) {
 	v := p.cfg.SpecialActionValue
+	// #3762: what the card under the face-down permanent does when it is
+	// turned up, if it declares one: Unstable Hulk's skipped turn. The
+	// view sends the controller that purpose and nothing else of the
+	// card, since a face-down object has no text (CR 708.2a). Priced
+	// like any declared purpose, so a turn lost is charged Weights.Turn.
+	if c := st.bf[sp.CardID]; c != nil && c.Purpose != nil && c.Purpose.TurnedFaceUp != nil {
+		var ps purposeSet
+		ps.add(c.Purpose.TurnedFaceUp)
+		if p.purposePriced(ps) {
+			v += p.purposeValue(st, ps, 0, c, false)
+		}
+	}
 	if sp.Route == "morph" && strings.Contains(m.Label, "megamorph") {
 		return v * 1.1, "turn face up (megamorph, +1/+1 counter)"
 	}
