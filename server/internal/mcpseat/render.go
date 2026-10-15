@@ -650,7 +650,11 @@ func moveLine(i int, m legal.Move, v *protocol.GameView, me string, nw nameWrapp
 			notes = append(notes, "open: pass value = X from "+lo+" to "+hi)
 		}
 	}
-	if m.AlwaysLegal {
+	// #3669: the vote's first option carries the flag as the bots' and
+	// the seat's own escape hatch (it stays on the wire and still
+	// unlocks the move after refusals), but every ballot is equally
+	// legal, so the line does not single one out.
+	if m.AlwaysLegal && !boardtext.AnswersCouncilVote(v, m) {
 		notes = append(notes, "always legal")
 	}
 	// ADR 0188 Decision 12: the answer the engine recommends.
