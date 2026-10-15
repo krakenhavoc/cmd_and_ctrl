@@ -31,8 +31,9 @@ func TestRoomsSeamWaveDeclareTheirGaps(t *testing.T) {
 	// complete. So is Experimental Lab // Staff Room, whose Staff Room
 	// turns a creature face up since #2590, and Dazzling Theater // Prop
 	// Room, whose Theater gives creature spells convoke since #2137.
-	for _, id := range []string{
-		charredFoyerOracle, crampedVentsOracle, secretArcadeOracle} {
+	// Charred Foyer // Warped Space and Cramped Vents // Access Maze
+	// completed with #3174's door-gated granted alternative costs.
+	for _, id := range []string{secretArcadeOracle} {
 		spec, ok := Lookup(id)
 		if !ok {
 			t.Fatalf("%s is not registered", id)

@@ -2033,6 +2033,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	tally.ManaSpent += spent
 	tally.ManaSpentLast = spent
 	g.SpellsCastThisTurn[playerID] = tally
+	// #3174: a once-each-turn granted offer (Warped Space, Access Maze)
+	// is spent by the cast it paid for, here where the cast is made.
+	g.noteGrantedOfferClaimedLocked(alt)
 	// CR 722.3c / 601.2i (ADR 0090): "that permanent loses the prepared
 	// designation at the time the spell becomes cast" — here, with
 	// every cost paid and just before EventCast announces the cast.

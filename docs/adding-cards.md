@@ -959,6 +959,12 @@ GrantedAlternativeCosts: []game.GrantedAlternativeCost{PayWUBRGForSpellsYouCast(
 
 Nothing is stored: the offer is derived from the battlefield on every cast query, so it lasts exactly as long as the permanent is under its controller, and a permanent that has lost its abilities grants nothing. It is claimable only where the printed mana cost could be paid (CR 118.9a), is priced and timed like the spell, and shows in the cost picker labelled with the source's name. The keys (`granted-wubrg`, `granted-free`) are on-disk identities, never renamed or reused. A new shape (a spell filter, a condition: Hunting Velociraptor's granted prowl) is a new constructor in that file, never an edit to one a card uses. `checkGrantedAlternativeCosts` refuses a declaration that carries more than a price and a label, with two exceptions it checks: energy and "as though it had flash" (ADR 0129 §5), and emerge's one-creature sacrifice (Herigast, Erupting Nullkite, `EmergeForCreatureSpellsYouCast()`, ADR 0135 PR 6). `GrantedAlternativeCost.PricedAtManaCost` prices an offer at the mana cost of the spell being cast ("The emerge cost is equal to its mana cost"), so its `Offer.ManaCost` stays empty. A card that reads "if its emerge cost was paid" asks `PaidEmerge(key)`, which is true for its own emerge and for Herigast's.
 
+A Room door's grant goes in `Door.GrantedAlternativeCosts`, and `Room` gates it on the door (`GrantedAlternativeCost.ActiveWhen`, #3174). "Once each turn" is `OnceEachTurn`, a limit per source object spent as the spell becomes cast (`TurnTally.GrantedAltCostsClaimed`); "during each of your turns" adds `YourTurnOnly`; "by paying life equal to its mana value" is `LifeEqualToManaValue`, with the offer's mana cost, life and energy left empty (a spell with {X} or no mana cost gets no offer). Warped Space is `PayZeroForASpellFromExileOnceEachTurn()` and Access Maze `PayLifeForASpellFromHandOnceEachOfYourTurns()`:
+
+```go
+Right: Door{GrantedAlternativeCosts: []game.GrantedAlternativeCost{PayLifeForASpellFromHandOnceEachOfYourTurns()}},
+```
+
 ### Granting an ability to another permanent (ADR 0093, #754)
 
 "Creatures you control have '{T}: Add one mana of any color.'" is a

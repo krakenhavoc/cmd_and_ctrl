@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/google/uuid"
@@ -57,8 +58,9 @@ import (
 type GrantedAlternativeCost struct {
 	// Offer is the price. Key, Label, ManaCost, Energy (Nissa,
 	// Worldsoul Speaker's eight {E}, ADR 0129 §5) and AsThoughFlash
-	// (Primal Prayers) are read; Life and the card components stay
-	// unused (no printed card grants one, and Register refuses them). An
+	// (Primal Prayers) are read; Life is derived (LifeEqualToManaValue)
+	// rather than declared, and the card components other than emerge's
+	// stay unused (Register refuses them). An
 	// empty ManaCost is free — "without paying its mana cost" — as for
 	// any AlternativeCost.
 	Offer AlternativeCost
@@ -107,6 +109,81 @@ type GrantedAlternativeCost struct {
 	// 118.6), or one whose cost does not parse, gets no offer: there is
 	// no mana cost for the price to equal.
 	PricedAtManaCost bool
+
+	// ActiveWhen gates the static on a designation of its source: a
+	// Room door (CR 709.5, #3174). A locked half has no rules text, so
+	// Access Maze and Warped Space offer nothing until their door is
+	// unlocked. Zero is always on. effects.Room stamps it.
+	ActiveWhen Designation
+
+	// OnceEachTurn is "once each turn, you may pay ..." (Warped Space)
+	// and "once during each of your turns" (Access Maze), #3174. The
+	// limit belongs to the SOURCE OBJECT: a claim is recorded in
+	// TurnTally.GrantedAltCostsClaimed under ObjectTallyKey(source,
+	// epoch, offer key) as the spell becomes cast, so two such Rooms
+	// give two claims, a Room that left and came back is a new object
+	// with a fresh one (CR 400.7), and a cast that fails records
+	// nothing. Flushed with the rest of the tally as a turn begins.
+	OnceEachTurn bool
+
+	// YourTurnOnly is "during each of your turns" (Access Maze): the
+	// offer is made only while its controller is the active player.
+	YourTurnOnly bool
+
+	// LifeEqualToManaValue is Access Maze's "by paying life equal to its
+	// mana value rather than paying its mana cost" (#3174), Bolas's
+	// Citadel's price on a granted offer: the derived offer charges
+	// AlternativeCost.Life equal to the mana value of the face being
+	// cast, and no mana. A spell with {X} in its mana cost gets no
+	// offer, since its mana value would include the X announced (CR
+	// 202.3e), and neither does one with no mana cost (CR 118.6):
+	// weaker than printed, never stronger. Offer.ManaCost, Life and
+	// Energy must be empty.
+	LifeEqualToManaValue bool
+}
+
+// gatedOn reports whether this static is switched on for `src` right
+// now and still has its once-each-turn claim for `caster`: the door
+// gate, the "your turn" clause and the per-object limit. Caller must
+// hold g.mu.
+func (gr GrantedAlternativeCost) gatedOn(g *Game, caster uuid.UUID, src *Card) bool {
+	if gr.ActiveWhen.IsGate() && !gr.ActiveWhen.Active(*src) {
+		return false
+	}
+	if gr.YourTurnOnly && g.activePlayerIDLocked() != caster {
+		return false
+	}
+	return !gr.OnceEachTurn || g.TurnTally.GrantedAltCostsClaimed[gr.claimKey(src)] == 0
+}
+
+// claimKey is the TurnTally.GrantedAltCostsClaimed key of this
+// static's claim on `src`, the object it is printed on.
+func (gr GrantedAlternativeCost) claimKey(src *Card) string {
+	return ObjectTallyKey(src.InstanceID, src.ObjectEpoch, gr.Offer.Key)
+}
+
+// noteGrantedOfferClaimedLocked records a once-each-turn granted offer
+// as used, as the spell paid with it becomes cast (#3174). A no-op for
+// an offer with no such limit. Caller must hold g.mu in write mode.
+func (g *Game) noteGrantedOfferClaimedLocked(alt *AlternativeCost) {
+	if alt == nil || alt.onceEachTurnKey == "" {
+		return
+	}
+	if g.TurnTally.GrantedAltCostsClaimed == nil {
+		g.TurnTally.GrantedAltCostsClaimed = map[string]int{}
+	}
+	g.TurnTally.GrantedAltCostsClaimed[alt.onceEachTurnKey]++
+}
+
+// lifeEqualToManaValueOK reports whether `card` has a mana value a
+// LifeEqualToManaValue offer can charge: a printed, parseable mana cost
+// with no {X}.
+func lifeEqualToManaValueOK(card Card) bool {
+	if !pricedAtManaCostOK(card) {
+		return false
+	}
+	pc, _ := ParseCost(card.ManaCost)
+	return pc.XSlots == 0
 }
 
 // covers reports whether this static's offer reaches a cast of `card`
@@ -185,7 +262,17 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 			if gr.Offer.Key == "" || !gr.reaches(zone) || !gr.covers(g, playerID, card) || seen[gr.Offer.Key] {
 				continue
 			}
+			// #3174: a door, a turn and a once-each-turn claim. Asked
+			// before the key is marked seen, so a second source whose
+			// claim is unspent still makes the offer when the first's is
+			// spent.
+			if !gr.gatedOn(g, playerID, src) {
+				continue
+			}
 			if gr.PricedAtManaCost && !pricedAtManaCostOK(card) {
+				continue
+			}
+			if gr.LifeEqualToManaValue && !lifeEqualToManaValueOK(card) {
 				continue
 			}
 			if seen == nil {
@@ -202,6 +289,16 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 				// shown in the label ("Emerge {4}{G}{G}").
 				offer.ManaCost = card.ManaCost
 				offer.Label += " " + card.ManaCost
+			}
+			if gr.LifeEqualToManaValue {
+				// #3174: Bolas's Citadel's price (CastPermission.
+				// AlternativeCostFor), read off the face being cast.
+				offer.ManaCost = ""
+				offer.Life = card.ManaValue()
+				offer.Label += fmt.Sprintf(" (%d life)", offer.Life)
+			}
+			if gr.OnceEachTurn {
+				offer.onceEachTurnKey = gr.claimKey(src)
 			}
 			if src.Name != "" {
 				offer.Label += " (" + src.Name + ")"

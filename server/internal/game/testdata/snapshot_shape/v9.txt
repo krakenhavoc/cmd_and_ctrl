@@ -6880,6 +6880,8 @@ turnTally.exerts[].object	custom(uuid.UUID)
 turnTally.exerts[].phaseId	number:int
 turnTally.exerts[].player	custom(uuid.UUID)
 turnTally.firstEvent	number:int
+turnTally.grantedAltCostsClaimed	map:string
+turnTally.grantedAltCostsClaimed{}	number:int
 turnTally.loopActivated	string
 turnTally.loopAllowance	map:string
 turnTally.loopAllowance{}	number:int
