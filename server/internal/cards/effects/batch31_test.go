@@ -200,8 +200,11 @@ func TestB31TheWarringTriadWakesAtEightCardsInTheGraveyard(t *testing.T) {
 	if got := effectivePower(t, g, triad); got != 5 {
 		t.Errorf("power %d, want 5", got)
 	}
-	if spec, _ := Lookup(b31TheWarringTriadOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the mill-cost gap must be declared")
+	// #3845: the tap-and-mill ability is real now, so nothing is
+	// declared as missing. The ability's own tests are in
+	// mill_cost_test.go.
+	if spec, _ := Lookup(b31TheWarringTriadOracle); spec.Completeness != CompletenessFull {
+		t.Error("the mill cost is implemented; the Triad is complete")
 	}
 }
 

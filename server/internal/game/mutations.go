@@ -7230,6 +7230,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if err := EnergyShortfall(p, ab.EnergyCost); err != nil {
 		return err
 	}
+	// #3845, CR 701.17b / 118.3: "Mill a card" (Millikin) can't be
+	// paid from an empty library; refused with the rest, before a tap.
+	if err := g.MillCostShortfall(playerID, ab.MillCost); err != nil {
+		return err
+	}
 	// #789: the counter components, validated by the SAME functions
 	// the CR 602 activated path uses, because it is the same
 	// component — a Vivid land's charge counter and Heart of Kiran's
@@ -7663,6 +7668,16 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// triggers, so drain them on the way out with the mana
 		// already in the pool — the posture the sacrifice and the
 		// discard above each take.
+		needStateChecks = true
+	}
+	// #3845, CR 601.2h: "Mill a card", last of the costs. The mill
+	// door (MillNForEffect) opens the CR 614 windows, and the
+	// graveyard-arrival triggers it queues wait for the state-check
+	// pass on the way out, with the mana already in the pool.
+	if ab.MillCost > 0 {
+		if err := g.payMillCostLocked(playerID, ab.MillCost); err != nil {
+			return err
+		}
 		needStateChecks = true
 	}
 	defer func() {
