@@ -23,6 +23,10 @@ const (
 	oracleToxrill            = "c71b2325-bde6-4364-a93b-8477ffeb25d8"
 	oraclePurphoros          = "4fdbbec2-e921-4b63-958d-f9ba1e417197"
 	oracleMassacreWurm       = "93cf50cf-0ecc-4d3e-abea-778c1ebacec4"
+
+	oracleBarrensteppeSiege = "228d3307-69a9-45ce-a610-77754ed50877"
+	oracleWitchOfTheMoors   = "7ad97dd9-1342-4ed4-bea9-1bb21d748e04"
+	oracleWinterLoner       = "84eaac2e-74ce-4a16-9faa-409df7c58eb3"
 )
 
 // pushTriggered puts a triggered ability of `source` (a catalog card on
@@ -108,4 +112,69 @@ func TestTriggerThatTouchesOnlyTheirBoardDoesNotThreaten(t *testing.T) {
 		b.pushTriggered(t, b.seat, marauder, "each player sacrifices")
 		b.checkGated(t, false)
 	})
+}
+
+// The edicts written in a card's own body function (Barrensteppe Siege,
+// Witch of the Moors, Winter) declare the edict on their trigger row, as
+// the ones written inline do.
+func TestEdictsWrittenInHelpersThreatenTheSeat(t *testing.T) {
+	cases := []struct {
+		name  string
+		card  game.Card
+		label string
+	}{
+		{"Barrensteppe Siege's Mardu edict", game.Card{Name: "Barrensteppe Siege", TypeLine: "Enchantment", OracleID: oracleBarrensteppeSiege, ManaCost: "{2}{W}{B}"}, "each opponent sacrifices"},
+		{"Witch of the Moors' edict", game.Card{Name: "Witch of the Moors", TypeLine: "Creature — Human Warlock", OracleID: oracleWitchOfTheMoors, ManaCost: "{3}{B}{B}", Power: 4, Toughness: 4}, "each opponent sacrifices"},
+		{"Winter, Tormented Loner's enters trigger", game.Card{Name: "Winter, Tormented Loner", TypeLine: "Legendary Creature — Human Warlock", OracleID: oracleWinterLoner, ManaCost: "{2}{B}", Power: 0, Toughness: 3}, "you may sacrifice"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			b := newThreatBoard(t, game.StepPrecombatMain)
+			b.pushTriggered(t, b.opp, b.oppCard(tc.card), tc.label)
+			b.checkGated(t, true)
+		})
+	}
+	t.Run("the seat's own Witch of the Moors", func(t *testing.T) {
+		b := newThreatBoard(t, game.StepPrecombatMain)
+		witch := battlefieldCard(b.g, b.seat, game.Card{Name: "Witch of the Moors", TypeLine: "Creature — Human Warlock", OracleID: oracleWitchOfTheMoors, ManaCost: "{3}{B}{B}", Power: 4, Toughness: 4})
+		b.pushTriggered(t, b.seat, witch, "each opponent sacrifices")
+		b.checkGated(t, false)
+	})
+	t.Run("Barrensteppe Siege's Abzan counters touch only their own board", func(t *testing.T) {
+		b := newThreatBoard(t, game.StepPrecombatMain)
+		siege := b.oppCard(game.Card{Name: "Barrensteppe Siege", TypeLine: "Enchantment", OracleID: oracleBarrensteppeSiege, ManaCost: "{2}{W}{B}"})
+		b.pushTriggered(t, b.opp, siege, "+1/+1 counter")
+		b.checkGated(t, false)
+	})
+}
+
+// Every row of a card that sacrifices from the opponents declares the
+// edict, so none depends on which row happens to be on the stack. Witch
+// of the Moors has two rows for one printed ability.
+func TestEveryEdictTriggerRowDeclaresIt(t *testing.T) {
+	cases := []struct {
+		oracle string
+		rows   int
+	}{
+		{oracleBarrensteppeSiege, 1},
+		{oracleWitchOfTheMoors, 2},
+		{oracleWinterLoner, 1},
+		{"2eb1b429-8d11-42f3-8815-5a60b6a4e2d5", 1},   // Witch-king of Angmar
+		{"44ed4c0c-a012-4895-a547-b04150553bba", 1},   // The Eldest Reborn, chapter I
+		{"a7c96442-706b-4fd8-9b38-052872dafe58#1", 1}, // The Grim Captain
+		{"301d1d8e-d3fc-4010-8b29-4724fa0b31cd", 1},   // Portal to Phyrexia, enters
+		{"8f3705ff-e8e5-48e7-ab68-df6849d78867", 1},   // Shadowgrange Archfiend
+		{"087d2e42-c69f-4cd2-b2e3-e0b64ac2893b", 1},   // Momentum Breaker
+	}
+	for _, tc := range cases {
+		n := 0
+		for _, row := range game.CatalogTriggers(tc.oracle) {
+			if row.Purpose.Answers.Has(game.AnswerRemove) {
+				n++
+			}
+		}
+		if n != tc.rows {
+			t.Errorf("%s: %d trigger rows declare the edict, want %d", tc.oracle, n, tc.rows)
+		}
+	}
 }

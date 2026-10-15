@@ -28,7 +28,7 @@ func init() {
 		Name:         "Winter, Tormented Loner",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Winter, Tormented Loner — you may sacrifice a creature or planeswalker", winterMaySacrifice),
+			TriggerEdict(WhenThisEnters("Winter, Tormented Loner — you may sacrifice a creature or planeswalker", winterMaySacrifice)),
 		},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,

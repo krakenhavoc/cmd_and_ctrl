@@ -765,8 +765,13 @@ activated one (`abilityReaches`). A triggered stack item carries the same
   wraps the row. Declared: Fleshbag Marauder, Merciless Executioner,
   Accursed Marauder, Plaguecrafter, Demon's Disciple, Sheoldred (the True
   Scriptures), Tithing Blade, and the dies edicts Butcher of Malakir, Grave
-  Pact and Dictate of Erebos. `remove` is a gate input only; the bot prices
-  none of it (`PurposeView.Priced` ignores `Answers`);
+  Pact and Dictate of Erebos. Edicts whose effect is written in a body
+  function of the card declare it on the row all the same: Barrensteppe
+  Siege (Mardu), Witch of the Moors (both of its rows), Winter, Tormented
+  Loner, Witch-king of Angmar, The Eldest Reborn (chapter I), The Grim
+  Captain, Portal to Phyrexia, Shadowgrange Archfiend and Momentum Breaker.
+  `remove` is a gate input only; the bot prices none of it
+  (`PurposeView.Priced` ignores `Answers`);
 - a permanent declares its enters effect on the card, not on the row, so an
   enters-watching row with no sweep of its own takes the sweep of its source
   card on the battlefield (Massacre Wurm, Crater Hellion). A card with a
@@ -778,18 +783,24 @@ each opponent), a death trigger that is not a sweep (Massacre Wurm's life
 loss), the seat's own trigger, and a trigger built as an unkeyed closure (no
 catalog ref) do not stop you.
 
-**Costs.** An edict trigger not listed above (Barrensteppe Siege's, Witch of
-the Moors', Winter's, and those whose effect is written in a helper) still
-does not stop you until it declares `TriggerEdict`; the sweep triggers need
-nothing. A sweep a card declares on a mode or an alternative cost is not
-read here.
+**Costs.** The declaration is per row: a body function cannot be read, so a
+new edict trigger stops you only once it is wrapped in `TriggerEdict`. The
+sweep triggers need nothing. A declared edict stops you for the whole row, so
+Winter's enters trigger stops you before it is known whether anything is
+sacrificed (its "when you do" edict is a separate item with no row), and
+Pharika's Spawn, whose edict needs the escape, is not declared because it
+would also stop you for a cast from hand. A sweep a card declares on a mode or
+an alternative cost is not read here.
 
 `trigger_threat_test.go` (internal/legal) pins it: Fleshbag Marauder's edict,
 Butcher of Malakir's dies edict, Phyrexian Scriptures II, Toxrill's slime
 counters and Massacre Wurm's enters trigger stop Viscera Seer, Undercity
 Troll, Evernight Shade, Spore Frog, Selfless Spirit and Ashnod's Altar;
 Phyrexian Scriptures III, Massacre Wurm's life loss, Purphoros's damage and the
-seat's own Fleshbag Marauder do not.
+seat's own Fleshbag Marauder do not. The same file pins Barrensteppe Siege's
+Mardu edict, Witch of the Moors' and Winter's enters trigger as stops, and
+Barrensteppe Siege's Abzan counters and the seat's own Witch of the Moors as
+not.
 
 ## Context
 
