@@ -65,6 +65,23 @@ func (c *Context) Source() uuid.UUID {
 	return c.Item.SourceCardID
 }
 
+// textReader is the object whose text this effect is, for a clause
+// that judges cards by a colour or subtype WORD (CR 612.2, ADR 0160's
+// 2026-10-15 amendment): the resolving spell, or the permanent whose
+// ability this is, when its words have been changed. nil when nothing
+// changed them, so the printed words stand; lend it with
+// game.ThroughTextOf.
+func (c *Context) textReader() *game.Card {
+	if c == nil || c.Game == nil || c.Item == nil || c.Item.SourceCardID == uuid.Nil {
+		return nil
+	}
+	src, ok := c.Game.LookupCardForEffect(c.Item.SourceCardID)
+	if !ok || src.TextWords == nil {
+		return nil
+	}
+	return &src
+}
+
 // Grantor returns the object that granted the resolving ability, for
 // an activated ability a layer-6 grant put on its source (ADR 0109 §2,
 // owner decision 2) — Teferi's Talent, for the −12 it gives the

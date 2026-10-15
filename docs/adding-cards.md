@@ -2629,8 +2629,30 @@ Targeting(WhenThisEnters(label, ExchangeTargetTextBoxesWhileSourceRemains),
 Any other duration calls `g.ExchangeTextBoxesForEffect(source, a, b,
 d, label)` directly; it refuses a partial exchange (CR 701.12a). Never
 read `Card.OracleID` to ask what a permanent DOES — `CatalogKey` /
-`CatalogAbilityKey` are what follow the exchange. Changing single
-words (Glamerdye, Magical Hack) has no shape yet; ADR 0160 §9 plans it.
+`CatalogAbilityKey` are what follow the exchange.
+
+### Changing one word of a card's text (ADR 0160 amendment 2026-10-15)
+
+"Replace all instances of one color word / basic land type / creature
+type with another" (CR 612.2) is a substitution the target's word
+readers consult, not a rewrite:
+
+```go
+OnResolve: changeTextOfTarget(textColorWords, false, nil),   // Sleight of Mind
+OnResolve: changeTextOfTarget(textEitherWords, true, nil),   // Whim of Volrath: either class, until end of turn
+ChangeCreatureTypeWord{Target: id, Except: []string{"Wall"}} // Artificial Evolution
+```
+
+The other side matters more, because it is every card file: **a colour
+or type word in your card's rules is only changeable if it is read
+through one of the doors.** Target clauses already are when they use
+`OfColor` / `NonBlack` / `Subtype` / `HasSubtype` / `OfCreatureType`
+(the walk lends the source's words), and so are `TribeFilter` lords and
+`KeywordGrant`. A static or trigger that holds its source should read
+`target.HasColor(source.TextColor("G"))`, not `target.HasColor("G")`, and
+`source.TextSubtype("Island")` for a land type. A CHOSEN colour or type
+(`ChosenColor`, `NamedTribe`) is not text: read it directly. The
+amendment lists the files that still hard-code a word.
 
 ### Adding a combat-keyword card (S18+)
 

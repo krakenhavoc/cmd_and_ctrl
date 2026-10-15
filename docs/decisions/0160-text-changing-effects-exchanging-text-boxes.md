@@ -166,7 +166,7 @@ immutable `*TextBoxValues` pointer, as it shares `Card.printed`. No closure is a
 ceiling is unchanged. A binary that does not know the `textBox` kind refuses the restore point
 (`ErrUnknownEffectKey`), as for any other kind.
 
-### 9. The word-changing half (not in this ADR's PR)
+### 9. The word-changing half (not in this ADR's PR; shipped by the 2026-10-15 amendment below)
 
 Glamerdye's family changes a colour word, basic land type or creature type "everywhere it appears in
 the text" of one object. In this engine the words are not text either: they are arguments to
@@ -213,3 +213,134 @@ row as waiting.
   token key) do not travel with its text; every token template in the catalog registers its key since
   #521.
 - A copy exception's dropped devoid (`Card.ColorCDADropped`, #2322) is not carried with the text.
+
+---
+
+## Amendment 2026-10-15 — changing one word: colour words, basic land types and creature types (#2779)
+
+**Status:** Accepted · 2026-10-15 · Backlog. Ships §9 as a mechanism, with a list of what it does not reach.
+No new ADR number: this is the half §9 planned.
+
+### The rules
+
+- **CR 612.2:** a text-changing effect changes only words used in the right way: a colour word as a colour
+  word, a land type as a land type. It never changes a name ("you can't Sleight proper nouns … a Black
+  Vise"; Magical Hack can't change "Island Fish Jasconius"), and the cards' rulings add that it "alters all
+  occurrences of the chosen word in the text box and the type line", that a word can't be changed to
+  itself, that the words are chosen on resolution, and that a spell that becomes a permanent keeps the
+  change.
+- **CR 612.3:** effects that add or remove abilities do not change text, so a granted ability is never
+  translated, and "it only changes what is printed on the card … it will not change any effects that are on
+  the permanent."
+- **CR 305.6:** a land with a basic land type has that type's mana ability, so a Forest changed to an Island
+  taps for {U} (Magical Hack's ruling says exactly that). Its supertype stays: it is still basic.
+- **CR 400.7 / 400.7a:** the change is the object's; a permanent spell hands it to the permanent.
+- **CR 608.2b:** a spell whose targets are now illegal under its changed text does nothing.
+
+### Decisions
+
+**A1. The record.** A second layer-3 mod, `game.ModChangeText` (`"changeText"`, reader `readerText`),
+carrying exactly one `TextWordChange{Kind, From, To}` in `Mod.Words`, where `Kind` is `color` (stored as the
+WUBRG letter), `basicLandType` (CR 305.6's five) or `creatureType` (CR 205.3m). `Normalised` refuses a word
+of the wrong class and a word changed to itself, at registration and at restore (`textWordsModProblem`).
+The record is pinned to the changed object: a permanent by its entry stamp, or a spell on the stack by
+ADR 0104's stack pin, which `repinSpellControlLocked` moves onto the permanent the spell becomes (CR
+400.7a). `stackPinProblem` admits the kind on a spell pin. The duration is the card's: indefinite, or "until
+end of turn" (Crystal Spray, Whim of Volrath). Plain data, so the closure ceiling is unchanged and a
+restore point holding one is a restore point.
+
+**A2. The result is materialised.** `materialiseTextWordsLocked` composes every record on an object in
+timestamp order (CR 613.7) into the derived `Card.TextWords`, for battlefield permanents and stack spells,
+at the top of every recompute (after the text boxes) and when the sweep drops a record. Composition is a
+substitution: after "black → blue" then "blue → red", the printed black AND the printed blue read red; a
+word that comes back to itself drops out. `MoveCard` clears `TextWords` on every zone change (CR 400.7);
+the snapshot does not carry it (the drift table says rebuilt).
+
+**A3. Who reads a word, and how.** The words are arguments, not text, so each reader that holds a word
+consults the object whose text the word is in:
+
+1. **The type line and printed keywords, in the layer pass.** `layerPassWithLocked` runs
+   `TextWords.applyToBaseline` on each permanent's fresh baseline, before any layer-4 or layer-6 effect:
+   basic land types and creature types in the subtypes (an Island Swamp under "Swamp → Island" is one
+   Island), and the keyword tokens "protection from <colour>", "hexproof from <colour>" and basic landwalk.
+   The catalog's printed-keyword row (layer 6, `Spec.PrintedKeywords`) reads through
+   `PrintedKeywordsHonouringCopy`, which now translates too, so a catalog card's protection follows. Name and
+   colour are not words in the text and do not move. A face-down permanent has no text and is skipped.
+2. **Target clauses, through the source.** A target predicate is handed the caster and the candidate, never
+   the object whose clause it is, and changing `CardOK`'s signature would touch hundreds of card files. So
+   the targeting walk lends the CANDIDATE COPY its source's words (`TargetSource.lend`, `game.ThroughTextOf`
+   setting the unexported `Card.wordLens`), and the effects package's word predicates read through it:
+   `OfColor` (and so `NonBlack`) with `Card.HasColorWord`, and `Subtype`, `AnySubtype`, `OfSubtype`,
+   `HasSubtype` and `OfCreatureType` with `Card.HasSubtypeWord`. The legal set, the announce check (CR
+   601.2c) and the resolution re-check (CR 608.2b) are one walk, so they agree. The lens lives only on a
+   value copy handed to a predicate; it is never stored, so it needs no snapshot, clone or race story (the
+   view reads under the read lock concurrently and never writes a card).
+3. **Effects that judge cards against their own clause.** `MatchingBattlefield` (every "destroy / exile /
+   bounce all <predicate>") and `CounterAllMatching` lend the resolving spell's or ability source's words
+   (`Context.textReader`).
+4. **Statics that hold their source.** `Card.TextColor`, `TextSubtype` and `TextKeyword` answer a word as the
+   source's text now reads it. `TribeFilter.Matches` reads a lord's printed tribes through it (a CHOSEN tribe
+   is not text and stays), `KeywordGrant` the keyword it grants (Goblin King's mountainwalk grant becomes an
+   islandwalk grant under Magical Hack), and Sylvan Anthem, Shield of the Oversoul and Tidal Influence their
+   colour.
+
+**A4. The choice.** No new prompt kind. The colour and land-type words are two ordinary `option_pick`
+prompts: the word to replace (Mind Bend and its kin offer the five colours and the five land types
+together), then the other words of the same class. A creature type is the `choose_creature_type` prompt
+twice; for "the new creature type can't be Wall" the prompt gained `PendingChoice.ExcludedTypes` (snapshot
+`excludedTypes`, additive within v9): the resolver refuses an excluded type, the wire's `type_options`
+leaves it out, and the enumerator drops it and never offers nothing (it falls back to the first allowed
+type). The replaced word is always excluded from the second prompt. The continuations are closures, so a
+table waiting on one is not a restore point, as for a pile split; the answer comes within the resolution.
+Crystal Spray's draw runs after the words are chosen, in printed order.
+
+**A5. Wire.** `CardView.text_changes` lists the changed words ("black → blue", colours first), on a
+permanent and on a spell; the inspector shows it beside the printed oracle text, which still uses the old
+words. Cleared with the ability rows for a viewer who cannot see the card.
+
+### What the substitution does not reach (honest coverage)
+
+A word is translated only where it passes through one of the doors in A3. These do not:
+
+- **Colours hard-coded in a closure.** About 30 card files call `Card.HasColor` with a literal colour (or a
+  colour inside an `OfColor` evaluated where no lens is lent): triggers and conditions such as Ayara, First
+  of Locthwain, Heroism, Inquisitor's Snare, Kefnet's Monument, Marang River Prowler, Merchant Scroll,
+  Nightscape Familiar, Oran-Rief, Pyroblast, Soot Imp, Sorin of House Markov, Trusted Advisor, Veil of
+  Summer and Goblin Anarchomancer, the cost-modifier helper `ColoredSpell`, and every `WheneverYouCast(OfColor
+  …)` trigger (its helper judges the cast spell without lending it the source's words). `grep -l 'HasColor("'
+  server/internal/cards/effects/*.go` lists them. A file that reads a CHOSEN colour (Lurebound Scarecrow,
+  Case of the Shattered Pact) is correctly untranslated: a choice is not text.
+- **Land types hard-coded in a closure.** About 30 files call `HasSubtype("Island")` (or another basic land
+  type) directly rather than through a predicate: "if you control an Island" conditions, Seasinger, and
+  the land-count readers. The predicates in A3.2 cover target clauses and sweeps only.
+- **A creature type inside a protection quality** ("protection from Goblins"): the plural has no reliable
+  singular round trip, so `TextWords.keyword` leaves it.
+- **A departed source's text.** A target re-check against a source that has left reads its last-known
+  characteristics, which do not record `TextWords`; the printed words stand.
+- **A spell's own characteristics on the stack.** The baseline is translated in the battlefield layer pass
+  only, so a creature spell's type line on the stack keeps its printed creature type until it resolves (its
+  target clauses do follow, through A3.2).
+- **Mana symbols** are not words (CR 612.2), so "{T}: Add {B}" never changes, which is correct.
+
+Each of these is a card-file migration onto the A3 doors, not a new seam: a card that should change reads
+`source.TextColor("W")` instead of `"W"`. They are left as they are rather than migrated blind, because each
+needs its own oracle check that the literal really is a colour word of that card's text.
+
+### Cards
+
+Glamerdye (retrace), Sleight of Mind, Alter Reality (flashback), Magical Hack, Mind Bend, Crystal Spray,
+Whim of Volrath (buyback) and Artificial Evolution ship **Full**. The rest of the original list wait on other
+seams, each filed with its own row: Spectral Shift (entwine, #3866), Trait Doctoring (cipher, #3867), New
+Blood (tapping a creature as an additional cost, #3868) and Balduvian Shaman (testing for and granting
+cumulative upkeep, #3869). The `text-changing-effects` row is implemented.
+
+### Alternatives considered
+
+- **Pass the source to every predicate** (`CardPredicate` gaining a parameter). Correct, and the cleanest
+  read, but it touches every predicate and every card file that writes one, for a family of a dozen cards.
+  The lens reaches the same predicates with one change each.
+- **Pull the candidate's colours back through the substitution** instead of translating the word. It works
+  for "is it black?", but breaks every colour reader that is not a colour word ("colorless",
+  "multicolored", a colour count): a blue creature under "blue → black" would read as colourless.
+- **A goroutine-free "current source" field on `Game`** set during the walk. The view enumerates targets
+  under the read lock concurrently, so a shared field is a data race.

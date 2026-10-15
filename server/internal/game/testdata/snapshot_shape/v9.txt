@@ -1102,6 +1102,11 @@ extraTurns[].effects[].mods[].unautomated[].kind	number:uint8
 extraTurns[].effects[].mods[].unautomated[].lender	custom(uuid.UUID)
 extraTurns[].effects[].mods[].unautomated[].lenderName	string
 extraTurns[].effects[].mods[].unautomated[].slot	string
+extraTurns[].effects[].mods[].words	array
+extraTurns[].effects[].mods[].words[]	object
+extraTurns[].effects[].mods[].words[].from	string
+extraTurns[].effects[].mods[].words[].kind	string
+extraTurns[].effects[].mods[].words[].to	string
 extraTurns[].effects[].scope	string
 extraTurns[].effects[].seq	number:int64
 extraTurns[].effects[].source	object
@@ -2772,6 +2777,8 @@ pendingChoices[].discardLabel	string
 pendingChoices[].discardOptions	array
 pendingChoices[].discardOptions[]	custom(uuid.UUID)
 pendingChoices[].exchangesText	bool
+pendingChoices[].excludedTypes	array
+pendingChoices[].excludedTypes[]	string
 pendingChoices[].fromPlayer	custom(uuid.UUID)
 pendingChoices[].guardsStackItem	custom(uuid.UUID)
 pendingChoices[].id	custom(uuid.UUID)
@@ -3735,6 +3742,11 @@ scopedEffects[].mods[].unautomated[].kind	number:uint8
 scopedEffects[].mods[].unautomated[].lender	custom(uuid.UUID)
 scopedEffects[].mods[].unautomated[].lenderName	string
 scopedEffects[].mods[].unautomated[].slot	string
+scopedEffects[].mods[].words	array
+scopedEffects[].mods[].words[]	object
+scopedEffects[].mods[].words[].from	string
+scopedEffects[].mods[].words[].kind	string
+scopedEffects[].mods[].words[].to	string
 scopedEffects[].scope	string
 scopedEffects[].seq	number:int64
 scopedEffects[].source	object

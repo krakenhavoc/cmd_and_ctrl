@@ -707,6 +707,10 @@ type Mod struct {
 	// entry, required on that kind and refused on every other. A slice
 	// for the reason Copy is one.
 	TextBox []TextBoxValues `json:"textBox,omitempty"`
+	// Words is ModChangeText's change (ADR 0160's 2026-10-15
+	// amendment): exactly one entry, required on that kind and refused
+	// on every other.
+	Words []TextWordChange `json:"words,omitempty"`
 }
 
 // AffectedObject is one member of a ScopedEffect's affected set: the
@@ -1008,7 +1012,10 @@ var modKinds = map[ModKind]modKindSpec{
 	// ADR 0160: one half of an exchange of text boxes, applied to the
 	// key before the pass (text_box.go).
 	ModExchangeText: {reader: readerText, layer: Layer3Text},
-	ModSetTypes:     {layer: Layer4Type},
+	// ADR 0160's 2026-10-15 amendment: one word of one object's text,
+	// materialised onto Card.TextWords before the pass (text_words.go).
+	ModChangeText: {reader: readerText, layer: Layer3Text},
+	ModSetTypes:   {layer: Layer4Type},
 	// #2144: "becomes a Frog" (set_creature_types.go).
 	ModSetCreatureTypes: {layer: Layer4Type},
 	// #3398: a duration-bound attack tax, read by the attack pricer.
@@ -1481,6 +1488,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 		if problem := textBoxModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
+		if problem := textWordsModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
 		if problem := attackTaxModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
@@ -1546,6 +1556,7 @@ func cloneMods(mods []Mod) []Mod {
 		m.RecipientFilter = cloneRecipientFilters(m.RecipientFilter)
 		m.Copy = clonePrintedValuesSlice(m.Copy)
 		m.TextBox = cloneTextBoxSlice(m.TextBox)
+		m.Words = cloneTextWordChanges(m.Words)
 		out[i] = m
 	}
 	return out

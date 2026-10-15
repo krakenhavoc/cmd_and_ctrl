@@ -3343,6 +3343,16 @@ type CardView struct {
 	// which is nearly always — means the permanent has its own text.
 	// Cleared with the ability rows for a viewer who cannot see them.
 	TextBoxFrom string `json:"text_box_from,omitempty"`
+	// TextChanges are the words of this object's text that a
+	// text-changing effect replaced (CR 612.2, ADR 0160's 2026-10-15
+	// amendment): "black → blue", "Swamp → Island", one line per changed
+	// word, colours first. Sleight of Mind, Magical Hack, Glamerdye. Its
+	// type line and keywords already read the new words; its other rules
+	// are closures the printed oracle text describes with the OLD words,
+	// so this is the line that says which words now read differently.
+	// Absent — nearly always — means none. Cleared with the ability rows
+	// for a viewer who cannot see them.
+	TextChanges []string `json:"text_changes,omitempty"`
 
 	// AbilityRows are the card's non-keyword triggered, static and
 	// activated abilities right now, triggered first, each with a short
@@ -9021,7 +9031,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// package-level slice off the wire path, where a marshaller
 		// has no business holding a reference to it.
 		if c.Kind == game.PendingChoiceCreatureType {
-			v.TypeOptions = append([]string(nil), game.AllCreatureTypes...)
+			v.TypeOptions = make([]string, 0, len(game.AllCreatureTypes))
+			// ADR 0160's 2026-10-15 amendment: a type the prompt refuses
+			// is not offered ("can't be Wall").
+			for _, t := range game.AllCreatureTypes {
+				if !slices.Contains(c.ExcludedTypes, t) {
+					v.TypeOptions = append(v.TypeOptions, t)
+				}
+			}
 		}
 		// PendingChoiceCardName — #1210. There is no vocabulary to
 		// send (CR 201.2 admits any card name), so what goes on the
@@ -10649,6 +10666,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.UnautomatedLenders = nil
 	// ADR 0160: and so does where its text box came from.
 	out.TextBoxFrom = ""
+	out.TextChanges = nil
 	// #2219: the tile's ability rows are read off the card's catalog
 	// entry exactly as the ability lists above are, and "Draw a card"
 	// under a face-down card says which card it is.
@@ -10977,6 +10995,7 @@ func viewOfCardPtr(c *game.Card) CardView {
 		// presented as automated for the rest of the game.
 		Auto:                   game.IsAutoCard(game.CatalogKeyOf(c)) && !c.AbilitiesLostOnRestore,
 		TextBoxFrom:            c.TextBoxFrom(),
+		TextChanges:            c.TextChanges(),
 		Unimplemented:          game.UnimplementedOf(c),
 		MayMakeManaUnautomated: game.MayMakeManaUnautomatedOf(c),
 		// #992: `target_mode` is the one announce field this

@@ -148,9 +148,10 @@ func MatchingBattlefield(ctx *Context, match CardPredicate) []game.Card {
 		return nil
 	}
 	caster := ctx.Controller()
+	reader := ctx.textReader()
 	var out []game.Card
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-		if match(ctx.Game, caster, c) {
+		if match(ctx.Game, caster, game.ThroughTextOf(reader, c)) {
 			out = append(out, c)
 		}
 	}

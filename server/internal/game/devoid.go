@@ -120,11 +120,20 @@ func (c *Card) SetCopyExceptionColors(colors ...string) {
 // its copied oracle ID's entry declares. Every reader that merges
 // Spec.PrintedKeywords into an object's abilities calls this, so the
 // catalog road cannot disagree with the baseline (#2322).
+//
+// It also translates the list through the object's changed words (ADR
+// 0160's 2026-10-15 amendment, CR 612.2): the catalog's printed keywords
+// are the object's text, so Sleight of Mind on a White Knight makes its
+// layer-6 printed-keyword row "protection from blue" as it does the
+// baseline's.
 func (c *Card) PrintedKeywordsHonouringCopy(kws []string) []string {
-	if c == nil || !c.ColorCDADropped {
+	if c == nil {
 		return kws
 	}
-	return withoutKeyword(kws, KeywordDevoid)
+	if c.ColorCDADropped {
+		kws = withoutKeyword(kws, KeywordDevoid)
+	}
+	return c.TextWords.keywords(kws)
 }
 
 // withoutKeyword returns list minus every occurrence of kw, as a new

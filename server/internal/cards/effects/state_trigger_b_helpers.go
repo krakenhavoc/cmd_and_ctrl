@@ -61,5 +61,6 @@ func tideCounters(n int) string {
 // thisCreatureOnly is the `who` of a self-only whileExactlyTideCounters.
 func thisCreatureOnly(target, source *game.Card) bool { return target.InstanceID == source.InstanceID }
 
-// blueCreatures is the `who` of "all blue creatures", anyone's.
-func blueCreatures(target, _ *game.Card) bool { return target.HasColor("U") }
+// blueCreatures is the `who` of "all blue creatures", anyone's. "Blue"
+// is a word of the source's text (CR 612.2).
+func blueCreatures(target, source *game.Card) bool { return target.HasColor(source.TextColor("U")) }

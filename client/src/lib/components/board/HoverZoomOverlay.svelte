@@ -260,6 +260,13 @@
           Has the text box of {card.text_box_from} — the printed text below doesn't apply.
         </div>
       {/if}
+      <!-- ADR 0160's amendment: changed words. The oracle text below
+           still prints the old ones. -->
+      {#if card.text_changes?.length}
+        <div class="text-box-from">
+          Text changed: {card.text_changes.join(", ")}
+        </div>
+      {/if}
       {#if meta?.oracle_text}
         <div class="oracle">{meta.oracle_text}</div>
       {:else if meta === null}

@@ -207,6 +207,24 @@ type Card struct {
 	// through, so Clone shares the pointer.
 	TextBox *TextBoxValues
 
+	// TextWords is the word substitution this object's text is under
+	// (CR 612.2; ADR 0160's 2026-10-15 amendment): the result of the
+	// changeText records, written by materialiseTextWordsLocked for a
+	// permanent and for a spell on the stack, and read through
+	// TextColor / TextSubtype, the layer pass's baseline and the
+	// targeting walk's lens. Derived, never persisted — a restore
+	// rebuilds it from ScopedEffects — and cleared on every zone change
+	// (CR 400.7). IMMUTABLE once set: replaced, never written through,
+	// so Clone shares the pointer.
+	TextWords *TextWords
+
+	// wordLens is the text of the object JUDGING this card, lent to a
+	// value copy by ThroughTextOf so a colour or subtype predicate reads
+	// its word as that object's text says it (HasColorWord,
+	// HasSubtypeWord). Set only on a copy handed to a predicate — never
+	// on a card in a zone — and so never persisted or cloned.
+	wordLens *TextWords
+
 	// ColorCDADropped lives in the bool block at the end of Card, for alignment.
 
 	// NeedsEffect lives in the bool block at the end of Card, for alignment.

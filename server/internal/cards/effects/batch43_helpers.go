@@ -175,8 +175,10 @@ func b43AttachedHasColor(color string) func(target *game.Card, g *game.Game, sou
 		if !AttachedToSource(target, g, source) {
 			return false
 		}
+		// The colour is a word of the source's text (CR 612.2).
+		want := source.TextColor(color)
 		for _, c := range target.EffectiveColors() {
-			if c == color {
+			if c == want {
 				return true
 			}
 		}
