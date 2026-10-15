@@ -971,12 +971,12 @@ var items = []Item{
 	{
 		Slug: "saddle-crew-power-bonus", Name: "Crewing and saddling as though a creature's power were greater", Kind: KindSeam, Status: StatusPartial,
 		Summary:     "Pilots count for more than their power when you tap them to crew a Vehicle or saddle a Mount.",
-		Missing:     "The Pilot creatures count for more when they crew or saddle. The cards that make Pilot tokens, and the creatures that react to crewing or saddling, aren't supported yet.",
+		Missing:     "The Pilot creatures count for more when they crew or saddle. The cards that make Pilot tokens aren't supported yet.",
 		Rules:       []string{"702.122", "702.171"},
 		Issue:       2705,
-		Examples:    []string{"Cloudspire Captain", "Dynamite Diver", "Deathless Pilot", "Interface Ace"},
-		Waiting:     []string{"Cloudspire Coordinator", "Defend the Rider", "Valor's Flagship", "Back on Track", "Roadside Assistance", "Country Roads", "Foul Roads", "Reef Roads", "Rocky Roads", "Wild Roads", "Canyon Vaulter", "Reckless Velocitaur"},
-		EngineNotes: "cost component: **the counting is built** (ADR 0186 slices 7-9, #3549, #3550, #3551). `Characteristic.CostPower` is written by the layer 6 statics `CrewsAsThoughPowerGreater` and `CrewsUsingToughness` (`effects/vehicles.go`) and read through `Card.CountedPower`, which `validateCrewCostLocked`, the enumerator's `crewPayment`, the `crew_power` wire map and the client picker all use. The two Pilot token templates (`PilotToken`, `CrewPilotToken`, `effects/tokens.go`) and the four Pilot creatures ship with it. What waits: the cards that mint Pilot tokens (slice 10) and `EventCrewedVehicle` / `EventSaddledMount` for Canyon Vaulter and Reckless Velocitaur (slice 3, #3545).",
+		Examples:    []string{"Cloudspire Captain", "Dynamite Diver", "Deathless Pilot", "Interface Ace", "Canyon Vaulter", "Reckless Velocitaur"},
+		Waiting:     []string{"Cloudspire Coordinator", "Defend the Rider", "Valor's Flagship", "Back on Track", "Roadside Assistance", "Country Roads", "Foul Roads", "Reef Roads", "Rocky Roads", "Wild Roads"},
+		EngineNotes: "cost component: **the counting is built** (ADR 0186 slices 7-9, #3549, #3550, #3551). `Characteristic.CostPower` is written by the layer 6 statics `CrewsAsThoughPowerGreater` and `CrewsUsingToughness` (`effects/vehicles.go`) and read through `Card.CountedPower`, which `validateCrewCostLocked`, the enumerator's `crewPayment`, the `crew_power` wire map and the client picker all use. The two Pilot token templates (`PilotToken`, `CrewPilotToken`, `effects/tokens.go`) and the four Pilot creatures ship with it. The crews-a-Vehicle / saddles-a-Mount event is built too (ADR 0186 slice 3, #3545): `EventCrewedVehicle` / `EventSaddledMount` fire per creature straight after its `EventTapCard` in the payment loop, `effects.WhenThisCrewsOrSaddles` builds the trigger, and Canyon Vaulter and Reckless Velocitaur ship on it. What waits: the cards that mint Pilot tokens (slice 10).",
 	},
 	{
 		Slug: "reality-fracture", Name: "Reality Fracture cards that wait on a mechanic", Kind: KindSeam, Status: StatusImplemented,

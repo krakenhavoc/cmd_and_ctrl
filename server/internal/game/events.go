@@ -960,6 +960,23 @@ const (
 	// the layer version for EventBecameMonstrous's reason.
 	EventBecameSaddled EventKind = "became_saddled"
 
+	// EventCrewedVehicle — a creature crewed a Vehicle (CR 702.122b,
+	// ADR 0186 §2, #3545). One event per creature tapped to pay a crew
+	// cost, emitted straight after that creature's EventTapCard while
+	// the cost is paid: CardID is the creature, Target and Source the
+	// Vehicle, Actor the activator. Being emitted at payment is what
+	// puts a "whenever this creature crews a Vehicle" trigger on the
+	// stack above the crew ability (CR 603.3b, CR 208.3a's example), and
+	// a crew ability that is countered still had its creatures crew.
+	EventCrewedVehicle EventKind = "crewed_vehicle"
+
+	// EventSaddledMount — a creature saddled a Mount (CR 702.171c).
+	// Shaped exactly like EventCrewedVehicle: one per creature tapped
+	// to pay a saddle cost, CardID the creature, Target and Source the
+	// Mount. Distinct from EventBecameSaddled, which fires once per
+	// Mount when the ability resolves.
+	EventSaddledMount EventKind = "saddled_mount"
+
 	// EventBecameRenowned — a permanent became renowned (CR 702.112,
 	// ADR 0071 amendment 2026-10-09, #2049). Source / CardID / Target =
 	// the permanent, Actor = its controller, Amount = the N of the

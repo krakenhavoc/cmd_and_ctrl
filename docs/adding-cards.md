@@ -8970,6 +8970,21 @@ state a trigger needs when it is BUILT, not when it resolves, if the
 Mount might leave in response (`caustic_bronco.go` carries it on
 `item.Params`); the saddlers need no such care.
 
+**"Whenever this creature crews a Vehicle / saddles a Mount" (ADR 0186
+§2, #3545).** A creature that is tapped to pay a crew or saddle cost
+emits `EventCrewedVehicle` or `EventSaddledMount` while the cost is paid
+(`CardID` the creature, `Target` and `Source` the Vehicle or Mount), so
+the trigger goes on the stack above the ability and resolves first. Write
+it with `WhenThisCrewsOrSaddles(label, crew, saddle, effect)`
+([crew_triggers.go](../server/internal/cards/effects/crew_triggers.go));
+"during your main phase" is `DuringYourMainPhase(...)` around it, a
+condition on the event. "That Mount or Vehicle" is the object the creature
+paid for: read it with `CrewedOrSaddledObject(g, item)`, which answers
+false when it left and came back as a new object (CR 400.7). Canyon
+Vaulter and Reckless Velocitaur are the proof cards. The Vehicle is not a
+creature yet when the trigger resolves (CR 208.3a), so grant keywords and
+pumps to it as a permanent, not as a creature.
+
 **A creature that counts for more when it crews or saddles (ADR 0186
 Decision 4, #3549).** "This creature crews Vehicles as though its power
 were 2 greater" and "… using its toughness rather than its power" are

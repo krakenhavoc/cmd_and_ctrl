@@ -141,6 +141,8 @@ var silentEventKinds = map[string]string{
 	"EventHarnessed":       silentBoardStateIsVisible,
 	"EventBecameMonstrous": silentBoardStateIsVisible,
 	"EventBecameSaddled":   silentBoardStateIsVisible,
+	"EventCrewedVehicle":   silentImpliedByAnotherLine, // #3545: the activation line and the taps already say it
+	"EventSaddledMount":    silentImpliedByAnotherLine, // #3545
 	"EventBecameRenowned":  silentBoardStateIsVisible,
 	"EventRegenerated":     silentImpliedByAnotherLine,
 	"EventBattleDefeated":  silentBoardStateIsVisible,
