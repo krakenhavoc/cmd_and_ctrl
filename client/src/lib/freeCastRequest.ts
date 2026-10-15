@@ -44,6 +44,25 @@ export function freeCastTarget(
   return card.castable_here ? card : null;
 }
 
+// freeCastLocation is freeCastTarget over the two places an offered card
+// can sit: exile (discover, cascade) and the viewer's own library, where a
+// "look at the top card, you may cast it free" offer (#3801, Ziatora's
+// Envoy) leaves it. The library copy of a card is only on the wire for a
+// seat that has looked at it, so a request for a card in neither place is
+// still "not yet".
+export function freeCastLocation(
+  exile: CardView[] | undefined,
+  library: CardView[] | undefined,
+  id: string | null,
+): { card: CardView; zone: "exile" | "library" } | null | undefined {
+  if (!id) return null;
+  const inExile = exile?.find((c) => c.instance_id === id);
+  if (inExile) return inExile.castable_here ? { card: inExile, zone: "exile" } : null;
+  const inLibrary = library?.find((c) => c.instance_id === id);
+  if (inLibrary) return inLibrary.castable_here ? { card: inLibrary, zone: "library" } : null;
+  return undefined;
+}
+
 // #3270 (CR 608.2g): "you may cast a spell from your hand without paying
 // its mana cost" (Buster Sword, Kari Zev's and Rishkar's Expertise,
 // Surtland Elementalist, Great Intelligence's Plan). The pick prompt is a

@@ -716,6 +716,10 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// "you may cast that card. If you don't, ..." (paid_or_else,
 		// Chandra, Torch of Defiance, #3510) is the same: a pass without
 		// the cast runs the "if you don't", exactly as declining does.
+		// The looked-at top of a library (free_or_hand, play_or_hand,
+		// #3801: Ziatora's Envoy) is the same shape, and a land offered
+		// under play_or_hand is played on the spot: a free card either
+		// way, so yes.
 		if cp.Apply != nil && *cp.Apply {
 			return 1, "may cast: take the free cast"
 		}

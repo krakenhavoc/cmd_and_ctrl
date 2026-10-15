@@ -1295,15 +1295,20 @@ func (e *enumerator) choiceMoves() bool {
 			// both are offered, and the decline is the always-legal
 			// way out: it is the answer that commits the seat to
 			// nothing.
+			// #3801: a looked-at land is played, not cast.
+			verb := "cast"
+			if c.MayCastKeyword == game.MayCastKeywordPlayOrHand {
+				verb = "play"
+			}
 			accept := true
 			p := base()
 			p.Apply = &accept
-			e.addChoice(c, reason+": cast it", p)
+			e.addChoice(c, reason+": "+verb+" it", p)
 
 			decline := false
 			d := base()
 			d.Apply = &decline
-			e.addAlwaysLegalChoice(c, reason+": don't cast it", d)
+			e.addAlwaysLegalChoice(c, reason+": don't "+verb+" it", d)
 
 		case game.PendingChoiceCreatureType:
 			// #499. "As this enters, choose a creature type" — Cavern

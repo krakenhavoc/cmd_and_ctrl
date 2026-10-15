@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mayCastCopy } from "./mayCast";
-import { freeCastTarget, mayCastKeywordsThatOpenACast } from "./freeCastRequest";
+import { freeCastLocation, freeCastTarget, mayCastKeywordsThatOpenACast } from "./freeCastRequest";
 import type { CardView } from "./protocol";
 
 describe("mayCastCopy (ADR 0099 §7)", () => {
@@ -73,6 +73,25 @@ describe("freeCastTarget", () => {
 
   it("drops a request whose card is in exile but not castable", () => {
     expect(freeCastTarget([card("a", false)], "a")).toBeNull();
+  });
+
+  it("finds an offered card in the viewer's library when it is not in exile (#3801)", () => {
+    expect(freeCastLocation([], [card("a", true)], "a")).toEqual({
+      card: card("a", true),
+      zone: "library",
+    });
+    expect(freeCastLocation([card("a", true)], [], "a")?.zone).toBe("exile");
+    expect(freeCastLocation([], [card("a", false)], "a")).toBeNull();
+    expect(freeCastLocation([], [], "a")).toBeUndefined();
+    expect(freeCastLocation([], [], null)).toBeNull();
+  });
+
+  it("words a play-or-hand prompt and does not open a cast (#3801)", () => {
+    const c = mayCastCopy("play_or_hand");
+    expect(c.accept).toBe("Play it");
+    expect(c.decline).toBe("Put it into your hand");
+    expect(mayCastKeywordsThatOpenACast.has("play_or_hand")).toBe(false);
+    expect(mayCastKeywordsThatOpenACast.has("free_or_hand")).toBe(true);
   });
 
   it("only discover, cascade and suspend open a free cast", () => {

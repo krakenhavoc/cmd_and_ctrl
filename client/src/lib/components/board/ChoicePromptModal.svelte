@@ -918,7 +918,11 @@
   const isMayCast = $derived(active?.kind === "may_cast");
   const mayCastCard = $derived(
     active?.may_cast_card
-      ? snap.exile?.cards?.find((c) => c.instance_id === active.may_cast_card)
+      ? (snap.exile?.cards?.find((c) => c.instance_id === active.may_cast_card) ??
+          // #3801: a looked-at top card of the viewer's own library.
+          snap.seats
+            ?.find((s) => s.id === viewerID)
+            ?.library?.cards?.find((c) => c.instance_id === active.may_cast_card))
       : active?.options?.[0],
   );
 

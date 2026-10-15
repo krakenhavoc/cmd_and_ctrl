@@ -63,6 +63,18 @@ export function mayCastCopy(
         decline: "Put it into your hand",
       };
       break;
+    case "play_or_hand":
+      // #3801: "look at the top card of your library. You may play a land
+      // from the top ... If you don't, put that card into your hand"
+      // (Ziatora's Envoy). Accepting plays the land at once; there is no
+      // cast to open.
+      copy = {
+        source: "play · CR 608.2g",
+        hint: "Play it from the top of your library now, or put it into your hand.",
+        accept: "Play it",
+        decline: "Put it into your hand",
+      };
+      break;
     case "paid_or_else":
       // #3510: "you may cast that card. If you don't, ..." (Chandra,
       // Torch of Defiance). The cast is paid; the server's decline label
