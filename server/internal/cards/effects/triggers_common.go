@@ -605,6 +605,26 @@ func AtBeginningOfEachCombat(label string, effect Effect) game.TriggeredAbility 
 	return AtEachStep(game.StepBeginCombat, label, effect)
 }
 
+// YourSecondMainPhaseBegan — the step that just began is the second main
+// phase of this turn, on the source controller's turn (CR 505.1b). It is
+// the postcombat main phase counted by the turn's main-phase ordinal, so
+// an added combat phase's extra main phase (Relentless Assault) is the
+// third and does not match, and a turn whose combat was skipped still
+// reaches its second main phase.
+func YourSecondMainPhaseBegan(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventStepBegan || ev.Step != game.StepPostcombatMain || ev.Actor != source.Controller {
+		return false
+	}
+	return g.Turn.Phase == game.PhasePostcombatMain && g.Turn.PhaseOrdinal == 2
+}
+
+// AtYourSecondMainPhase — "At the beginning of your second main phase".
+// Unlike AtYourPostcombatMain it does not fire in an added third main
+// phase.
+func AtYourSecondMainPhase(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventStepBegan, YourSecondMainPhaseBegan, label, effect)
+}
+
 // AtYourPostcombatMain — "At the beginning of your postcombat main
 // phase" / "your second main phase".
 func AtYourPostcombatMain(label string, effect Effect) game.TriggeredAbility {
