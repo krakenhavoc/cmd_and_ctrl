@@ -156,6 +156,12 @@ func appendColorOnce(xs []string, c string) []string {
 // fold twice, so a caller that folds and then hands the cost and the
 // same X to a solver gets the same answer.
 //
+// The restricted mana are identical requirements, so they are written
+// as one counted run (ParsedCost.folded) after the printed ones rather
+// than one requirement each (#3909): an X at MaxAnnouncedX is one run,
+// not a million entries. It stands for exactly the list the fold used
+// to write, which unfolded writes out again.
+//
 // Pure.
 func (c ParsedCost) foldSpendOnly(x int) ParsedCost {
 	lim := c.SpendOnly
@@ -176,8 +182,6 @@ func (c ParsedCost) foldSpendOnly(x int) ParsedCost {
 	n := c.XMana(x)
 	out.XSlots = 0
 	out.XReduced = 0
-	// #3895: sized by the printed symbols only. The restricted mana is
-	// appended below, so nothing here preallocates by X.
 	req := make([]ColorRequirement, 0, len(c.Required))
 	for _, r := range c.Required {
 		if !lim.XOnly {
@@ -188,27 +192,49 @@ func (c ParsedCost) foldSpendOnly(x int) ParsedCost {
 		}
 		req = append(req, r)
 	}
+	out.Required = req
 	if !lim.XOnly {
 		n = satAddMana(n, c.Generic)
 		out.Generic = 0
 	}
-	// One requirement per restricted mana. Every announced X is bounded
-	// by MaxAnnouncedX first (x_bound.go), so n is too; a larger n
-	// can only come from a caller that skipped that gate, and is
-	// written as one requirement no mana can pay rather than millions:
-	// an unpayable cost is the weaker direction, a smaller one is not.
+	// Every announced X is bounded by MaxAnnouncedX first
+	// (x_bound.go), so n is too; a larger n can only come from a caller
+	// that skipped that gate, and is written as one requirement no mana
+	// can pay: an unpayable cost is the weaker direction, a smaller one
+	// is not.
 	if n > maxFoldedMana {
 		out.Required = append(req, ColorRequirement{Options: []string{noManaColor}})
 		return out
 	}
-	// The requirements share one options slice. It is clipped, so an
-	// append to any of them copies instead of writing into the others.
-	opts := slices.Clip(append([]string(nil), allowed...))
-	req = slices.Grow(req, n)
-	for i := 0; i < n; i++ {
-		req = append(req, ColorRequirement{Options: opts})
+	// The run's options are a clipped copy, so an append to them copies
+	// instead of writing into the restriction.
+	out.folded = reqRun{req: ColorRequirement{Options: slices.Clip(append([]string(nil), allowed...))}, n: n}
+	return out
+}
+
+// requiredCount is how many coloured requirements the cost has: the
+// listed ones and the folded run.
+func (c ParsedCost) requiredCount() int {
+	return len(c.Required) + c.folded.n
+}
+
+// unfolded is `c` with its folded run written out, one requirement per
+// restricted mana after Required, as the fold wrote it before #3909.
+// `c` itself when there is no run. For a reader that works one
+// requirement at a time (the auto-tap planner, the plan executor, the
+// delve subtraction) and is sized by the requirements anyway; the pool
+// solver and the readers below read the run as it is.
+func (c ParsedCost) unfolded() ParsedCost {
+	if c.folded.n <= 0 {
+		return c
 	}
-	out.Required = req
+	out := c
+	out.Required = make([]ColorRequirement, 0, len(c.Required)+c.folded.n)
+	out.Required = append(out.Required, c.Required...)
+	for range c.folded.n {
+		out.Required = append(out.Required, c.folded.req)
+	}
+	out.folded = reqRun{}
 	return out
 }
 

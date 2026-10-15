@@ -300,11 +300,15 @@ func (g *Game) autoTapTopUpLocked(
 	p := g.playerByIDLocked(controller)
 	if p == nil {
 		plan, ok := g.autoTapWishedLocked(controller, cost, xValue, excluded, wish)
-		return plan, cost, ok
+		return plan, cost.unfolded(), ok
 	}
 	if p.ManaPool.CanPayFor(cost, xValue, ctx) {
 		return nil, ParsedCost{}, true
 	}
+	// The planners below, and the executor that colour-picks against
+	// the cost returned, work one requirement at a time, so a folded
+	// run is written out for them (#3909).
+	cost = cost.unfolded()
 	for _, short := range poolShortfalls(p.ManaPool, cost, xValue, ctx) {
 		if plan, ok := g.autoTapWishedLocked(controller, short, 0, excluded, wish); ok {
 			return plan, short, true

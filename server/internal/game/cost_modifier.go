@@ -1335,6 +1335,9 @@ func (c ParsedCost) ManaValue() int {
 	for _, r := range c.Required {
 		mv += r.ManaValue()
 	}
+	if c.folded.n > 0 {
+		mv += c.folded.n * c.folded.req.ManaValue()
+	}
 	return mv
 }
 
@@ -1357,7 +1360,7 @@ func (c ParsedCost) ManaValueWithX(x int) int {
 // charged, so it is not counted: Trinisphere measures what the spell
 // "would cost" after every reduction.
 func (c ParsedCost) totalManaWithX(x int) int {
-	return c.GenericWithX(x) + len(c.Required)
+	return c.GenericWithX(x) + c.requiredCount()
 }
 
 // ManaValue is the card's printed mana value, or zero when the cost

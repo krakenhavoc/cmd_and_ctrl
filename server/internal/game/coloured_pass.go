@@ -18,7 +18,8 @@ import (
 // works on the runs themselves:
 //
 //   - the requirements are grouped into reqRuns, n identical
-//     requirements each, so the long X run is one entry;
+//     requirements each, so the long X run is one entry (since #3909
+//     the fold writes it as one run to begin with);
 //   - each pool run keeps how many of its mana are booked and, run-length
 //     too, which requirement run each booked mana belongs to (ownerSeg);
 //   - what the pass leaves unpaid, or defers to the generic pass, comes
@@ -72,10 +73,11 @@ func appendReqRun(runs []reqRun, r ColorRequirement, n int) []reqRun {
 	return append(runs, reqRun{req: r, n: n})
 }
 
-// requirementRuns is reqs as runs, in widenedLast's order (every slot a
-// spend grant widened to any mana behind the ones that still name their
-// colours), without copying reqs.
-func requirementRuns(reqs []ColorRequirement) []reqRun {
+// requirementRuns is reqs followed by the counted run `tail` (a
+// cost's folded run, #3909), as runs, in widenedLast's order (every
+// slot a spend grant widened to any mana behind the ones that still
+// name their colours), without copying reqs or writing the tail out.
+func requirementRuns(reqs []ColorRequirement, tail reqRun) []reqRun {
 	var out []reqRun
 	widened := false
 	for _, r := range reqs {
@@ -85,6 +87,9 @@ func requirementRuns(reqs []ColorRequirement) []reqRun {
 		}
 		out = appendReqRun(out, r, 1)
 	}
+	if !tail.req.AnyMana {
+		out = appendReqRun(out, tail.req, tail.n)
+	}
 	if widened {
 		for _, r := range reqs {
 			if r.AnyMana {
@@ -92,7 +97,16 @@ func requirementRuns(reqs []ColorRequirement) []reqRun {
 			}
 		}
 	}
+	if tail.req.AnyMana {
+		out = appendReqRun(out, tail.req, tail.n)
+	}
 	return out
+}
+
+// requirementRuns is the cost's coloured requirements as runs: the
+// listed ones and the folded run, in widenedLast's order.
+func (c ParsedCost) requirementRuns() []reqRun {
+	return requirementRuns(c.Required, c.folded)
 }
 
 // reqRunsTotal is how many requirements the runs stand for.

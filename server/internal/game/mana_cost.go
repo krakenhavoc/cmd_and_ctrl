@@ -53,7 +53,20 @@ type ParsedCost struct {
 	// Required is one ColorRequirement per colored-mana slot in the
 	// cost, in the order they appear in the string. A {1}{R}{R} cost
 	// produces two entries in Required, both with Options = {"R"}.
+	//
+	// After the spend-only fold, more coloured requirements follow
+	// these, counted rather than listed: see folded.
 	Required []ColorRequirement
+
+	// folded is the mana a "spend only <colour> mana" clause restricts,
+	// as one counted run of identical requirements that comes after
+	// Required (#3909). Only foldSpendOnly writes it, so only a cost as
+	// paid (costAsPaidByLocked) has one; every other cost has the zero
+	// run. A reader of a paid cost's requirements reads the run too
+	// (requirementRuns, requiredCount, or the run itself, which is one
+	// requirement n times), or writes it out first with unfolded
+	// (spend_only.go). One that read Required alone would undercharge.
+	folded reqRun
 
 	// XSlots is the count of {X} tokens (always 0 or 1 for real
 	// printings, but the parser admits N — deduplication is the
@@ -276,6 +289,11 @@ func (c ParsedCost) String() string {
 		b.WriteString(r.String())
 		b.WriteByte('}')
 	}
+	for range c.folded.n {
+		b.WriteByte('{')
+		b.WriteString(c.folded.req.String())
+		b.WriteByte('}')
+	}
 	return b.String()
 }
 
@@ -322,7 +340,7 @@ func (c ParsedCost) SettleX(x int) ParsedCost {
 // one with no printed mana component at all, since there is nothing
 // left for the planner to decide.
 func (c ParsedCost) Empty() bool {
-	return c.Generic == 0 && c.XSlots == 0 && len(c.Required) == 0
+	return c.Generic == 0 && c.XSlots == 0 && c.requiredCount() == 0
 }
 
 // ParseCost walks s and produces a ParsedCost. Returns an error on

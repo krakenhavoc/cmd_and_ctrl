@@ -183,8 +183,8 @@ func TestKrrikDoesNotReachSpendOnlyFoldedMana(t *testing.T) {
 	g.ReadSnapshot(func() {
 		got = g.costAsPaidByLocked(me.ID, ManaSpendContext{}, cost, 2)
 	})
-	if len(got.Required) != 3 {
-		t.Fatalf("folded cost has %d requirements, want the {B} and two X black: %s", len(got.Required), got.String())
+	if got.requiredCount() != 3 {
+		t.Fatalf("folded cost has %d requirements, want the {B} and two X black: %s", got.requiredCount(), got.String())
 	}
 	if n := got.PhyrexianSymbols(); n != 1 {
 		t.Errorf("symbols payable with life = %d, want 1 (the printed {B})", n)

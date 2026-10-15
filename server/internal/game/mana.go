@@ -362,7 +362,7 @@ func (p ManaPool) allocateRest(cost ParsedCost, xValue int, ctx ManaSpendContext
 	// spends every mana that can pay. attemptSpend discards the
 	// bookings of a short allocation, so a funded payment's answer is
 	// what it always was.
-	deferred, unpaid := colouredPass(p, used, order, requirementRuns(cost.Required))
+	deferred, unpaid := colouredPass(p, used, order, cost.requirementRuns())
 	nDeferred := reqRunsTotal(deferred)
 
 	// Step 2 — generic requirement. Total = explicit Generic +
@@ -677,7 +677,7 @@ func (p ManaPool) MissingFor(cost ParsedCost, xValue int, ctx ManaSpendContext) 
 	// colour paid waits for the generic pass (#1600).
 	// A long run of one symbol — a folded "spend only black mana on X"
 	// left unpaid is X of them — is named once, with its count (#3904).
-	deferred, unpaid := colouredPass(p, used, order, requirementRuns(cost.Required))
+	deferred, unpaid := colouredPass(p, used, order, cost.requirementRuns())
 	for _, r := range unpaid {
 		missing = appendSymbolRun(missing, "{"+formatRequirement(r.req)+"}", r.n)
 	}

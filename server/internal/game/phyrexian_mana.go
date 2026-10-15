@@ -73,6 +73,9 @@ func (c ParsedCost) PhyrexianSymbols() int {
 			n++
 		}
 	}
+	if c.folded.req.PaysWithLife() {
+		n += c.folded.n
+	}
 	return n
 }
 
@@ -85,6 +88,9 @@ func (c ParsedCost) printedPhyrexianSymbols() int {
 		if req.Phyrexian {
 			n++
 		}
+	}
+	if c.folded.req.Phyrexian {
+		n += c.folded.n
 	}
 	return n
 }
@@ -110,6 +116,13 @@ func (c ParsedCost) printedPhyrexianSymbols() int {
 func PhyrexianLifePlan(cost ParsedCost, pool ManaPool, ctx ManaSpendContext, n int) (ParsedCost, int) {
 	if n <= 0 {
 		return cost, 0
+	}
+	// A folded run is never Phyrexian and is marked for life only when
+	// a grant reaches a folded cost (LifeGrantedCostForEffect). Then it
+	// is struck one requirement at a time, so it is written out first;
+	// otherwise nothing below touches it and it is kept as it is.
+	if cost.folded.req.PaysWithLife() {
+		cost = cost.unfolded()
 	}
 	spendable := spendOrder(pool, ctx)
 	// Rank the Phyrexian symbols: pass 0 is the ones no token in the

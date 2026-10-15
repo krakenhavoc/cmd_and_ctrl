@@ -16,8 +16,8 @@ import (
 // also holds the view / enumerator / payment agreement tests.
 
 func requirementOptions(c ParsedCost) [][]string {
-	out := make([][]string, 0, len(c.Required))
-	for _, r := range c.Required {
+	out := make([][]string, 0, c.requiredCount())
+	for _, r := range c.unfolded().Required {
 		out = append(out, r.Options)
 	}
 	return out
