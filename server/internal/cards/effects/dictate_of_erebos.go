@@ -28,7 +28,7 @@ func init() {
 				ExceptController: true,
 				Match:            Creature(),
 				Label:            "a creature",
-			})), game.Purpose{DeathPayoff: true}),
+			})), game.Purpose{DeathPayoff: true, Answers: game.AnswerRemove}),
 		},
 	})
 }

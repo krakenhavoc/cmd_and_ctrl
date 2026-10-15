@@ -27,10 +27,10 @@ func init() {
 		Name:         "Merciless Executioner",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Merciless Executioner — each player sacrifices a creature", Do(EachPlayerSacrifices{
+			TriggerEdict(WhenThisEnters("Merciless Executioner — each player sacrifices a creature", Do(EachPlayerSacrifices{
 				Match: Creature(),
 				Label: "a creature",
-			})),
+			}))),
 		},
 	})
 }

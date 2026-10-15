@@ -27,7 +27,7 @@ func init() {
 		Name:         "Plaguecrafter",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Plaguecrafter — each player sacrifices a creature or planeswalker", func(g *game.Game, item *game.StackItem) error {
+			TriggerEdict(WhenThisEnters("Plaguecrafter — each player sacrifices a creature or planeswalker", func(g *game.Game, item *game.StackItem) error {
 				for _, p := range g.Seats {
 					if p == nil || p.Eliminated || b05ControlsCreatureOrPlaneswalker(g, p.ID) {
 						continue
@@ -44,7 +44,7 @@ func init() {
 					Match: Or(Creature(), Planeswalker()),
 					Label: "a creature or planeswalker",
 				}.Apply(NewContext(g, item))
-			}),
+			})),
 		},
 	})
 }

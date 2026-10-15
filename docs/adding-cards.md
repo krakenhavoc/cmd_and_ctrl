@@ -1413,6 +1413,13 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   nothing else stays a plain `Landfall`. The bot prices every land it
   puts onto the battlefield (Burnished Hart, Harrow, an extra land drop)
   by what these rows pay.
+- **An edict on a triggered row** ("each opponent sacrifices a
+  creature") is wrapped in `TriggerEdict(...)`, which declares
+  `AnswerRemove`; a sweep on a triggered row (a saga chapter that
+  destroys all creatures) declares its `Sweep` as above. Smart autopass
+  stops a player holding a free answer for an opponent's trigger that
+  declares either and reaches something they control (ADR 0009, #3882).
+  A permanent whose enters effect is a wipe keeps its `Sweep` on the card.
 - `effects.Register` refuses a negative amount, `ControllerLosesLife` off
   an any-player row, `DeathPayoff` or `LandfallPayoff` off a triggered
   row, a `LandfallPayoff` that pays nothing, and a malformed `Sweep`.
