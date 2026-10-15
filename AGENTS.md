@@ -151,23 +151,22 @@ title follows the same rule, since it becomes the squash commit.
 A PR description has `## Summary` (1–3 bullets), `## Sprint` (S<NN> — name),
 `## Issues` and `## Test plan` (a checklist), in that order. In `## Issues`, put
 each closing directive on its own line (`Closes #<n>`, `Fixes`, `Resolves`).
-Feature PRs target `develop`, so GitHub does not apply closing keywords there, and
+Feature PRs target `develop`, so GitHub ignores closing keywords there;
 `main-promotion-issue-close.yml` reads those lines after promotion. Prose such as
 "does not close" is ignored on purpose.
 
 ### Storing anything about a person (ADR 0149)
 
-A change that stores something new about a person, or changes how long something
-is kept, updates three things in the same PR: `accountdelete.Inventory` and
-`Delete`, the privacy page (`client/src/routes/Privacy.svelte`), and the numbers in
-`client/src/lib/privacy.ts`. The tests in `accountdelete` and `lobby` enforce it,
-and every migration newer than `PRIVACY_SCHEMA_VERSION` needs that one-line bump.
+A change that stores something new about a person, or changes how long it is kept,
+updates in the same PR: `accountdelete.Inventory` and `Delete`, the privacy page
+(`client/src/routes/Privacy.svelte`) and the numbers in `client/src/lib/privacy.ts`. Tests in
+`accountdelete` and `lobby` enforce it; every migration newer than
+`PRIVACY_SCHEMA_VERSION` needs that one-line bump.
 
 ### Model tiers
 
-Triage gives every open issue one `tier:*` label: the weakest model that can take
-it from start to merged PR without supervision. The tiers are ordered 1 < 2 < 3.
-Tier by the hardest part of the work, and pick the higher tier when unsure.
+Every open issue has one `tier:*` label: the weakest model that can take it to a
+merged PR unsupervised (1 < 2 < 3). Tier by the hardest part; pick higher when unsure.
 
 | Label | Takes it to a merged PR |
 |---|---|
@@ -177,9 +176,8 @@ Tier by the hardest part of the work, and pick the higher tier when unsure.
 
 An agent told to stay at or below a tier lists candidates with
 `gh issue list --label tier:1-mechanical` (plus `tier:2-standard` when allowed),
-and skips issues labelled `in-progress` or `question`. If the work turns out
-harder than its label, it stops, comments on the issue saying why, and relabels it.
-Re-tier an issue when its scope changes.
+skipping `in-progress` and `question`. If the work is harder than its label, it
+stops, comments why, and relabels. Re-tier an issue when its scope changes.
 
 ---
 
@@ -192,9 +190,9 @@ Commands, environment variables, endpoints and test knobs are in `docs/`
 
 The host has no Go. Run it only through `scripts/go-docker.sh`, from the worktree
 root: `scripts/go-docker.sh test ./...`, `lint`, `vet`, `go <args>`. Redirect its
-output to a file and read that. Never pipe it through `tail` or `head`, which hides
-the exit status. Never hand-write a `docker run` for Go, and never create a cache
-volume beyond `cmdctrl-gomod`, `cmdctrl-gobuild` and `cmdctrl-golangci` (#2035).
+output to a file and read that; piping through `tail` or `head` hides the exit
+status. Never hand-write a `docker run` for Go, and never create a cache volume
+beyond `cmdctrl-gomod`, `cmdctrl-gobuild` and `cmdctrl-golangci` (#2035).
 Usage and env pass-through: [docs/commands.md](docs/commands.md#commands).
 
 ### Rules the code depends on
@@ -219,8 +217,9 @@ Usage and env pass-through: [docs/commands.md](docs/commands.md#commands).
   detail is in [docs/bot.md](docs/bot.md#engineering-notes).
 - **Labels are a contract.** Render a UI name as `L.<key>` from
   `client/src/lib/labels.ts`, never as a literal, and rename it in the registry.
-  A rename updates the e2e specs and any `*.hint.ts` in the same PR. The list is
-  [docs/labels.md](docs/labels.md).
+  A rename updates the e2e specs and any `*.hint.ts` in the same PR.
+  List: [docs/labels.md](docs/labels.md).
+- **Design skills** (`.claude/skills/`): `web-design-guidelines` for UI review; `design-taste-frontend` for signed-out pages only. See each `C2.md`.
 
 ---
 
