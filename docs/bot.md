@@ -479,6 +479,19 @@ opponent's declare attackers (a blocker) or at declare blockers with its own
 creature in combat. `HoldFlashSacrifice` turns it off
 (`flash_sacrifice.go`).
 
+**A creature cast for evoke, warp, dash or blitz is a body that leaves**
+(#3802). The bot reads the alternative-cost key off the cast move (`evoke`,
+`warp`, `dash`, `blitz`, and a bound offer such as `blitz-graveyard`) and
+prices the cast as what it buys: the lasting board value of the creature is
+taken out, its enters effect stays (it rides the card's purpose), a creature
+that will attack this turn with haste (dash and blitz, and a warped creature
+that has haste) is worth that attack when it is still ahead, a blitz adds the
+card its death draws, and dash and warp, which keep the card, give back the
+card the cast spends. So with the mana for both, the bot hard-casts a body it
+wants rather than blitzing it, and still evokes Mulldrifter when the two cards
+are the point or dashes a haste attacker when the swing is lethal.
+`PriceTemporaryBodies` turns it off (`temporary_body.go`).
+
 **A reanimation target is priced as the permanent it becomes** (#3161,
 [ADR 0154](decisions/0154-auras-that-enchant-a-card-in-a-graveyard.md) Q5).
 A spell that declares `reanimates` on a graveyard target entry (Reanimate,
@@ -996,8 +1009,13 @@ permanent is turned face up, is declared under `kicked` or
 kicker (Waterspout Elemental: the creature bounce and the lost turn) and
 prices the unkicked cast as the body it is. It charges `turned_face_up` to
 the `turn_face_up` special action (Unstable Hulk), so at `Weights.Turn`
-6.00 it will not flip a Hulk for the flat special-action value; the
-+6/+6 is not priced.
+6.00 it will not flip a Hulk for the flat special-action value on its own.
+The +6/+6 and trample ride the same slot as a `pump` (#3776): the flip is also
+worth the attack the pump enables this turn, the pumped creature's attack less
+the plain one, plus the lethal bonus when the pump is what makes the swing
+kill a seat, so a flip for lethal is taken and a flip with nothing to attack
+into, or after combat, is not. `PriceFaceUpPump` turns it off
+(`face_up_pump.go`).
 
 Final Fortune, Last Chance and Warrior's Oath take an extra turn and lose
 the game at its end step, so they declare no `extra_turns`: a bot that

@@ -246,6 +246,18 @@ type Config struct {
 	// main phase unless it earns its keep before cleanup. Off (the
 	// baseline) prices it like any other cast.
 	HoldFlashSacrifice bool
+	// PriceTemporaryBodies prices a creature cast for evoke, warp, dash
+	// or blitz as the body that leaves this turn (#3802,
+	// temporary_body.go): no lasting board value, its enters effect and
+	// any haste attack this turn still counted, blitz's card and the card
+	// dash and warp keep added back. Off (the baseline) prices it like a
+	// creature that stays.
+	PriceTemporaryBodies bool
+	// PriceFaceUpPump prices the one-turn pump a turn-face-up trigger
+	// gives its source (Unstable Hulk's +6/+6 and trample, #3776,
+	// face_up_pump.go) by the attack it enables this turn, so a flip for
+	// lethal is taken. Off (the baseline) prices the flip without it.
+	PriceFaceUpPump bool
 	// PriceReanimation prices a graveyard target a spell declares it
 	// reanimates (TargetPurpose.Reanimates, #3161) as the permanent it
 	// becomes, whoever owns the graveyard: the creature's value, with no
@@ -745,6 +757,10 @@ func DefaultConfig() Config {
 		DiscardCostByCard:   true,
 		LastLandDiscard:     1.00,
 
+		// #3802, #3776: a body that leaves this turn, and a flip that wins.
+		PriceTemporaryBodies: true,
+		PriceFaceUpPump:      true,
+
 		PriceDiscardPayoffs:   true,
 		SelfReplacingDiscards: true,
 
@@ -893,6 +909,8 @@ func BaselineConfig() Config {
 	c.PriceAuraPurpose = false
 	// #3712: a flash-with-cleanup-sacrifice card held for the main phase.
 	c.HoldFlashSacrifice = false
+	c.PriceTemporaryBodies = false
+	c.PriceFaceUpPump = false
 	// #3161: a reanimation target priced as the permanent it becomes.
 	c.PriceReanimation = false
 	c.DamageByLethality = false

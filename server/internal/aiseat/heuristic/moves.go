@@ -594,6 +594,12 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 			v += st.w.ManaSource * float64(n)
 		}
 		v += p.resolvedValueFor(st, card, cp.XValue, ps, false, len(targets) > 0)
+		// #3802: evoke, warp, dash and blitz put a body that leaves
+		// (temporary_body.go), not the permanent resolvedValueFor priced.
+		tempKind := ""
+		var tempDelta float64
+		tempDelta, tempKind = p.temporaryBodyDelta(st, card, cp)
+		v += tempDelta
 		// #3146: a landfall payoff or doubler is also worth what it will
 		// pay for the lands the bot puts down next (landfall.go).
 		v += p.landfallCastValue(st, card)
@@ -616,6 +622,9 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 			reason = "cast spell (declared purpose)"
 		default:
 			reason = "cast spell"
+		}
+		if tempKind != "" {
+			reason += " (" + tempKind + ": a body that leaves this turn)"
 		}
 	}
 	// A card leaves HAND: one fewer resource. #673 — a cast out of the
@@ -1164,6 +1173,7 @@ func (p *Policy) valueOfUnlock(st *state, sp specialActionParams) (float64, stri
 // offer has nothing to choose between, so it needs no bonus).
 func (p *Policy) valueOfTurnFaceUp(st *state, m legal.Move, sp specialActionParams) (float64, string) {
 	v := p.cfg.SpecialActionValue
+	pumpNote := ""
 	// #3762: what the card under the face-down permanent does when it is
 	// turned up, if it declares one: Unstable Hulk's skipped turn. The
 	// view sends the controller that purpose and nothing else of the
@@ -1175,9 +1185,15 @@ func (p *Policy) valueOfTurnFaceUp(st *state, m legal.Move, sp specialActionPara
 		if p.purposePriced(ps) {
 			v += p.purposeValue(st, ps, 0, c, false)
 		}
+		// #3776: and the pump it gives the creature for this turn's attack
+		// (face_up_pump.go).
+		if pv, note := p.faceUpPumpValue(st, c, c.Purpose.TurnedFaceUp.Pump); note != "" {
+			v += pv
+			pumpNote = note
+		}
 	}
 	if sp.Route == "morph" && strings.Contains(m.Label, "megamorph") {
 		return v * 1.1, "turn face up (megamorph, +1/+1 counter)"
 	}
-	return v, "special action: turn_face_up"
+	return v, "special action: turn_face_up" + pumpNote
 }

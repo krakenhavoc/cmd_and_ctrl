@@ -2877,3 +2877,13 @@ The arena's Cards table leaves lands out, so the fetches are read from the decis
 
 - `boteval suite run --policy heuristic`: 42 of 42.
 - `go test -race ./...` and `golangci-lint`: green, including `TestGreenwardenDoublesTheLandfallPrice`, `TestALandfallPayoffIsWorthTheLandsAhead`, `TestGreenwardenCastIsWorthTheDoubling`, `TestAFetchPaysTheLandfallPayoffs`, `TestLandfallDoublerDeclarations`, `TestLandfallDoublerGuard` and `TestFetchLandDeclarations`. With the dump, `TestCuratedDeckPurposes` and `TestRealDumpPurposeLandsUntapped` pass with the seven untapped fetches on `curatedLandsUntapped`.
+
+## Amendment 2026-10-15 (b): the pump of a turn-face-up trigger, and bodies that leave
+
+**Status:** Accepted. The code is in the PR that adds this section. Two `Config` switches, both on in `DefaultConfig()` and off in `BaselineConfig()`: `PriceFaceUpPump` and `PriceTemporaryBodies`.
+**Issues:** [#3776](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3776) (the "Not priced" paragraph of the amendment above), [#3802](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3802). Sprint: none.
+
+1. **`Purpose.FaceUp` may declare a `Pump`.** `Pump` was a triggered or activated row's field; the inner purpose of `FaceUp` is a turn-face-up trigger's effect, so it may carry one too (`effects.Register`: a `purposeOnFaceUp` slot, which `checkPump` also validates). Unstable Hulk declares `Pump{6, 6, trample}`. `Kicked` still may not.
+2. **The flip is priced by the attack the pump enables.** `valueOfTurnFaceUp` adds, for a creature that can still attack this turn (untapped and not summoning-sick before attackers, or already attacking before damage), the attack value of the pumped creature less that of the plain one, per opponent, and takes the best. When the pump is what turns the swing into a kill (`lethalPushAs` true with the pumped creature and false without) it adds `LethalBonus`, so a flip for lethal outweighs the skipped turn's `Weights.Turn`. Out of that window the pump is worth nothing.
+3. **A creature cast for evoke, warp, dash or blitz is a temporary body.** `valueOfCast` reads the alternative-cost key off the move and replaces the lasting body `resolvedValueFor` priced with what the cast buys: its enters effect (unchanged, the card's purpose), a haste attack this turn when it has one and it is still ahead, blitz's death draw, and the card dash and warp keep. Evoke keeps only the enters effect.
+
