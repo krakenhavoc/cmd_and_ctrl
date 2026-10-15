@@ -4689,3 +4689,23 @@ The #3013 closing note left 24 cards on the ratchet. 21 of them re-check an inte
   board-condition draws skip the prompt, a board condition beside a token maker asks under `condition`, and The
   Gaffer beside Indulging Patrician skips it.
 - The ratchet file goes from 24 lines to 3.
+
+### Note (2026-10-14): the last three, counted and X amounts and Ikra
+
+- **X from the cast.** `TriggeredAbility.XFromCast` makes the engine set the built item's `XValue` to its source's
+  `Card.CastX` (CR 107.3m). The row needs no Build. The check accepts that `XValue` only on such a row, since it is
+  a constant of the item fixed before the batch exists. Arboreal Alliance is `Do(CreateXByXToken{Template})`. An
+  item queued before this change carries X in `Params.Amount`, which the step still reads, and is never plain.
+  Arboreal Alliance's own "when this enters" row watches entering, so the check still treats the board as having a
+  reactor. Its batches still ask (`reactor`) until the deferred c1 rule exists.
+- **A count of the board.** `CreateTokensForEach{Template, Count}` declares a board read (`FootprintCondBoard`)
+  and then the token step, so a token maker or anything else that changes the battlefield conflicts with it.
+  Cadira, Caller of the Small uses it.
+- **The subject is the event's source.** `TriggeredAbility.SubjectIsEventSource` snapshots `Event.Source` as
+  `TriggerContext.Object`, at the moment and with the CR 603.10 reading the event's own object gets. That is
+  catalog data, so there is no snapshot field and no new closure route. Ikra Shidiqi is
+  `Do(GainLifeEqualToSubject{SubjectToughness})`. The creature that dealt the damage gives its toughness as it
+  last existed once it has left, where the old body gave the toughness it had when it dealt the damage. An older
+  queued item's `Params.Amount` is the fallback.
+- **The ratchet file is empty.** `unfootprinted_trigger_lines.txt` keeps only its header, and the audit still fails
+  on any new one-sentence trigger written as a closure.

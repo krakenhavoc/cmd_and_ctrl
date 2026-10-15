@@ -422,6 +422,24 @@ type TriggeredAbility struct {
 	// there and was swallowing the next one. See event_batch.go.
 	OncePerBatch bool
 
+	// SubjectIsEventSource makes the trigger's subject
+	// (TriggerContext.Object) the event's SOURCE rather than its
+	// object: "whenever a creature you control deals combat damage to
+	// a player, you gain life equal to that creature's toughness"
+	// (Ikra Shidiqi), where the creature is Event.Source and the
+	// damaged player has no object. The snapshot is the same CR 603.10
+	// last-known information, taken at the same moment (#3033). Catalog
+	// data, never persisted.
+	SubjectIsEventSource bool
+
+	// XFromCast stamps the built item's XValue with the X its source
+	// was cast with (Card.CastX), the engine's own cast record: "when
+	// this enters, create an X/X token" (Arboreal Alliance, CR
+	// 107.3m). Only for a row with a declared Effect and no Build. The
+	// independence check accepts that XValue as plain (#3033). Catalog
+	// data, never persisted.
+	XFromCast bool
+
 	// PerCounter is "whenever a [kind] counter is put on ~": the
 	// counter kind whose placement this ability triggers on ONCE PER
 	// COUNTER (#1841, CR 603.2c and the Fathom Mage rulings). The
@@ -864,6 +882,12 @@ func (g *Game) dispatchTriggerInstanceLocked(ev Event, source Card, lki Characte
 	// as its walk ends — so a context built any later would be
 	// missing exactly the half a dies-trigger needs.
 	tc := g.triggerContextLocked(ev)
+	if t.SubjectIsEventSource {
+		// #3033: the subject is the object that caused the event
+		// (the creature that dealt the damage), read here for the
+		// same reason the event's own object is.
+		tc.Object = g.objectSnapshotLocked(ev.Source)
+	}
 	// CR 603.3d, checked before any prompt: an ability whose target
 	// clause cannot be filled is never put on the stack, so nobody is
 	// asked a question whose only answer is "nothing happens".

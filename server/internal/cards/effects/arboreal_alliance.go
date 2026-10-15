@@ -31,28 +31,13 @@ func init() {
 				Watches:   []game.EventKind{game.EventETB},
 				AppliesTo: Self,
 				Key:       "Arboreal Alliance — create an X/X green Treefolk",
-				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-					item := game.NewTriggeredItem(source, "Arboreal Alliance — create an X/X green Treefolk")
-					item.Params.Amount = source.CastX()
-					return item
-				},
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					x := item.Params.Amount
-					if x <= 0 {
-						return nil
-					}
-					return CreateToken{
-						Controller: item.Controller,
-						Template: game.Card{
-							Name:      "Treefolk",
-							TypeLine:  "Token Creature — Treefolk",
-							Colors:    []string{"G"},
-							Power:     x,
-							Toughness: x,
-						},
-						N: 1,
-					}.Apply(NewContext(g, item))
-				},
+				// The engine stamps the cast's X on the item (#3033).
+				XFromCast: true,
+				Effect: Do(CreateXByXToken{Template: game.Card{
+					Name:     "Treefolk",
+					TypeLine: "Token Creature — Treefolk",
+					Colors:   []string{"G"},
+				}}),
 			},
 			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if !attackDeclaredByYou(ev, source.Controller) {
