@@ -155,3 +155,59 @@ func PlayFromTopOfYourLibrary(filter game.PermissionFilter, label string) game.C
 		Label:            label,
 	}
 }
+
+// OfferGraveyardCast is "you may cast target <card> from your graveyard.
+// If that spell would be put into your graveyard, exile it instead"
+// (Emet-Selch of the Third Seat, #3785): a cast made as the ability
+// resolves (CR 608.2g), at the card's mana cost, that exiles the spell
+// wherever it leaves the stack (CR 702.34a's replacement, the one
+// flashback uses).
+//
+// It is Torrential Gearhulk's grant with the price left at "its mana
+// cost" and a FollowUp. The offer is flash-timed and closed by the
+// holder's next priority pass (LapseStaysInHand: an uncast card simply
+// stays in the graveyard), and it is claimed under the shared
+// "granted-cost" key rather than "flashback", so a card that prints
+// flashback is still cast for its MANA cost here (a flashback claim
+// would take the card's own flashback price), and the cast counts as
+// this permission's: the FollowUp runs for it.
+//
+// FollowUp runs only when the cast is made (game.CastPermission.FollowUp,
+// #2173), which is what lets "do this only once each turn" count a
+// cast and not a declined or lapsed offer. The body is handed the
+// permission's Source, the ability's source object.
+type OfferGraveyardCast struct {
+	// Target is the card in the controller's graveyard.
+	Target uuid.UUID
+	// SourceName is the granting card's name, for the log.
+	SourceName string
+	// FollowUp is a registered game.RegisterCastFollowUp key, or empty.
+	FollowUp game.CastFollowUpKey
+}
+
+func (e OfferGraveyardCast) Apply(ctx *Context) error {
+	if e.Target == uuid.Nil {
+		return nil
+	}
+	g := ctx.Game
+	z := g.FindCardZoneForEffect(e.Target)
+	c, ok := g.LookupCardForEffect(e.Target)
+	if !ok || z == nil || z.Kind != game.ZoneGraveyard || c.Owner != ctx.Controller() {
+		return nil
+	}
+	g.GrantCastPermissionToCardsForEffect(game.CastPermission{
+		Player:            ctx.Controller(),
+		Zone:              game.ZoneGraveyard,
+		Duration:          g.UntilEndOfTurnDuration(),
+		AltCostKey:        game.AltCostKeyGrantedCost,
+		Timing:            game.TimingFlash,
+		CastOnly:          true,
+		ExileOnResolution: true,
+		LapseOnPass:       game.LapseStaysInHand,
+		FollowUp:          e.FollowUp,
+		Source:            ctx.Source(),
+		SourceName:        e.SourceName,
+		Label:             e.SourceName + " — cast " + c.Name + " from your graveyard",
+	}, []game.Card{c})
+	return nil
+}

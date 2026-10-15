@@ -99,6 +99,19 @@ type BecomeCopy struct {
 // and no Values given — does nothing, which is CR 608.2b's "as much as
 // possible" for an effect that has nothing to copy.
 func (b BecomeCopy) Apply(ctx *Context) error {
+	_, err := b.ApplyReports(ctx)
+	return err
+}
+
+// ApplyReports is Apply, and says whether a copy effect really began:
+// the "if you do" of "you may have Gogo become a copy of another target
+// creature you control until end of turn … If you do, …" (#3774). It
+// is false when there was nothing to copy, when every target had left
+// the battlefield or come back as a new object (CR 400.7, #1432), and
+// when the engine found no target on the battlefield to affect — all
+// the cases where the copy did not happen and a rider hanging off it
+// must not.
+func (b BecomeCopy) ApplyReports(ctx *Context) (bool, error) {
 	var v game.PrintedValues
 	switch {
 	case b.Values != nil:
@@ -106,7 +119,7 @@ func (b BecomeCopy) Apply(ctx *Context) error {
 	default:
 		got, ok := ctx.Game.CopiableValuesForEffect(b.Of)
 		if !ok {
-			return nil
+			return false, nil
 		}
 		v = got
 	}
@@ -119,7 +132,7 @@ func (b BecomeCopy) Apply(ctx *Context) error {
 		}
 	}
 	if len(targets) == 0 {
-		return nil
+		return false, nil
 	}
 	if b.Except != nil {
 		b.Except(&v)
@@ -133,7 +146,7 @@ func (b BecomeCopy) Apply(ctx *Context) error {
 	case CopyWhileOfRemainsTapped:
 		var ok bool
 		if d, ok = ctx.Game.ForAsLongAsPinnedTappedDuration(b.Of); !ok {
-			return nil // CR 611.2b: it never starts
+			return false, nil // CR 611.2b: it never starts
 		}
 	default:
 		d = ctx.Game.UntilEndOfTurnDuration()
@@ -142,8 +155,7 @@ func (b BecomeCopy) Apply(ctx *Context) error {
 	if label == "" {
 		label = "becomes a copy"
 	}
-	ctx.Game.BecomeCopyForEffect(ctx.Source(), b.Of, targets, v, d, label)
-	return nil
+	return ctx.Game.BecomeCopyForEffect(ctx.Source(), b.Of, targets, v, d, label), nil
 }
 
 // selfBecomesCopyOfTarget is the Effect of every "{cost}: this

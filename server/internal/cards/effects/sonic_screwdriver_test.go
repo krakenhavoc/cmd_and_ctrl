@@ -102,7 +102,7 @@ func TestSonicScrewdriverManaAbility(t *testing.T) {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
 	found := false
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Color == "U" {
 			found = true
 		}

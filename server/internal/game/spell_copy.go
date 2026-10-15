@@ -545,8 +545,10 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 		Distribution: cloneDistributionLocked(item.Distribution),
 		AltCost:      item.AltCost,
 		SplitSecond:  item.SplitSecond,
-		IsCopy:       true,
-		Seq:          g.nextStackSeqLocked(),
+		// #3781, CR 707.10: what the original fixed as it was cast.
+		CastValues: copyStringIntMap(item.CastValues),
+		IsCopy:     true,
+		Seq:        g.nextStackSeqLocked(),
 	}
 	// CantBeCountered is deliberately left empty too (ADR 0106 §4
 	// decision 4): a mark is an EFFECT on the original object, not a

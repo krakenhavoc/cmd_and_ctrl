@@ -1902,6 +1902,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 			g.recordCrewLocked(ab.Cost.Saddle > 0,
 				sourceObject,
 				ObjectRef{ID: id, Epoch: c.ObjectEpoch})
+			// ADR 0186 §2: the same moment, said as an event, so a
+			// "whenever this creature crews a Vehicle" trigger is put
+			// on the stack above this ability (CR 603.3b).
+			kind := EventCrewedVehicle
+			if ab.Cost.Saddle > 0 {
+				kind = EventSaddledMount
+			}
+			g.EmitEvent(Event{Kind: kind, Actor: playerID, CardID: id, Target: cardID, Source: cardID})
 			if ab.Cost.Saddle > 0 {
 				// #2695: who saddled it, as the objects they were, for
 				// CR 702.171c.
@@ -2172,6 +2180,12 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// not moved the object out from under it.
 	g.noteAbilityActivationLocked(activationKey)
 	g.noteBorrowedActivationLocked(borrowedKey)
+	// #3779: and whether it targeted a creature of the activator's own
+	// — the record "the first activated ability you activate … that
+	// targets a creature you control" (Professor Hojo) reads. Written
+	// here for the reason the two above are: a countered activation was
+	// still made, and a refused one never reaches this line.
+	g.noteOwnCreatureTargetedLocked(playerID, item.Targets)
 	// ADR 0097 Decision 4: the modes are used as the activation puts
 	// the ability on the stack — here, after every refusal is behind
 	// us, so a failed activation records nothing.
@@ -2377,6 +2391,11 @@ func (g *Game) validateCrewCostLocked(playerID, sourceID uuid.UUID, cost Ability
 func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost AbilityCost, chosen []uuid.UUID, x int) ([]uuid.UUID, error) {
 	var out []uuid.UUID
 	if cost.SacrificeSelf {
+		// #3275, CR 118.3: a source that can't be sacrificed can't pay
+		// "Sacrifice this".
+		if g.cantBeSacrificedLocked(sourceID) {
+			return nil, ErrCantBeSacrificed
+		}
 		out = append(out, sourceID)
 	}
 	if cost.SacrificeOther == nil {
@@ -2406,6 +2425,10 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 		// CR 701.21a — you can only sacrifice what you control.
 		if c.Controller != playerID {
 			return nil, ErrCardCallerMismatch
+		}
+		// #3275, CR 118.3: nor what can't be sacrificed.
+		if g.permanentCantBeSacrificedLocked(c) {
+			return nil, ErrCantBeSacrificed
 		}
 		// specMatchLocked, not targetLegalLocked: sacrificing a
 		// permanent to pay a cost does not target it (CR 601.2h), so

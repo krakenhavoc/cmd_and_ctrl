@@ -73,6 +73,7 @@ export interface PendingChoice {
   source?: string;
   reason?: string;
   pay_cost?: string;
+  choose_destination?: string;
 }
 
 export interface SnapshotStackItem {
@@ -827,12 +828,23 @@ function findCardAnywhere(v: SnapshotView, name: string): SnapshotCard | null {
 // best-effort: a click that finds the button disabled just
 // re-reads the snapshot and tries the new holder. Bounded at
 // `maxAttempts` so a wedged stack fails loudly instead of spinning.
-export async function resolveStack(setup: S19Setup, maxAttempts = 20): Promise<SnapshotView> {
+//
+// A resolution that asks a question (a search, an edict) stays on the
+// stack until the answer is in (CR 608.2c, #3644), so the stack never
+// empties while its prompt is open. Pass `until` to stop as soon as
+// that prompt is queued, answer it, then call resolveStack again if
+// anything is left.
+export async function resolveStack(
+  setup: S19Setup,
+  maxAttempts = 20,
+  until?: (v: SnapshotView) => boolean,
+): Promise<SnapshotView> {
   const { admin, caster, opponent } = setup;
   for (let i = 0; i < maxAttempts; i++) {
     const v = admin.snapshot();
     const items = v.stack_items ?? [];
     if (items.length === 0) return v;
+    if (until?.(v)) return v;
     const holderSeat = v.turn?.priority_holder ?? -1;
     const holder = v.seats.find((s) => s.seat === holderSeat);
     const page =

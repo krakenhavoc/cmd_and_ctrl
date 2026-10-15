@@ -908,6 +908,9 @@ func TestB28BrimazMakesAnAttackingCatAndABlockingOne(t *testing.T) {
 	}
 	life := me.Life
 	advanceTo(t, g, game.StepCombatDamage)
+	// The double-blocked raider assigns its damage before any of the
+	// step's is dealt (#3665, CR 510.2).
+	b26AnswerDamageAssignments(t, g)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(raider) {
 		t.Error("Brimaz (3) and the blocking Cat Soldier (1) kill the 2/2 raider")

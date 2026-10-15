@@ -3211,7 +3211,8 @@ The rating lives in `decks.power_level` (migration 0027). Saving the
 deck again with a changed list clears it, since it described the old
 list; saving the same list keeps it. A seat holding a rated library
 deck carries it as `SeatInfo.deck_power`, and the table's seat line
-shows it after the deck name (`Atraxa · power 3.5`).
+shows it as a `PWR 3.5` badge ahead of the deck name, which never
+shrinks: on a narrow seat the deck name is what gets cut off.
 
 ### `GET /me/decks/{id}/coverage` (ADR 0110 section 6)
 
@@ -4999,6 +5000,14 @@ that is true.
 A rejected attachment fails the whole report — no issue is filed — and
 a report whose GitHub call fails has its stored artifacts deleted, so
 an outage never leaves orphaned images at live URLs.
+
+**Discord mirror** ([ADR 0196](decisions/0196-bug-reports-mirrored-to-a-discord-forum.md)).
+With `CMDCTRL_DISCORD_BUG_FORUM_ID` set, a `201 filed` report also opens a
+thread in that forum, in the background, after the response is decided:
+nothing about the response changes, and a Discord failure is only logged.
+A `200 commented` and a `202 queued` report open no thread. A report whose
+context or session names a table is mirrored only if the host posted that
+table to #lfg. The thread is archived, with a note, when the issue closes.
 
 ### `GET /admin/bugreport`
 

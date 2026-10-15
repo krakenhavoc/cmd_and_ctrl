@@ -409,10 +409,10 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 		bestowed bool
 	)
 	src := g.findCardZoneLocked(ev.CardID)
-	switch {
-	case src == g.Battlefield:
+	switch src {
+	case g.Battlefield:
 		return entryLanding{}, false, nil
-	case src == nil:
+	case nil:
 		// #762: a CREATED TOKEN, staged in Game.enteringTokens while
 		// its entry window was open. It is minted rather than moved —
 		// a token comes from no zone at all (CR 111.1) — so it is
@@ -684,5 +684,8 @@ func (g *Game) runEntryHooksLocked(l entryLanding) {
 	g.fireETBHookLocked(l.entered, key)
 	if l.ev.stackItem != nil {
 		g.queueAltCostEntryTriggerLocked(l.moved, l.ev.stackItem)
+		// #3156: a spell cast with its own flash when a sorcery
+		// couldn't have been is sacrificed at the next cleanup step.
+		g.scheduleOwnFlashCleanupSacrificeLocked(l.entered, l.ev.stackItem)
 	}
 }

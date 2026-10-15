@@ -82,7 +82,9 @@ type attritionStep struct {
 
 // search is one pass of the attrition search: the swings it may still
 // evaluate, and whether a commander of mine that dies in an exchange is
-// cast again (recast, Config.HorizonRecastsCommander's pass).
+// cast again (recast, Config.HorizonRecastsCommander's pass), and
+// whether it may be cast again in the same turn's second main phase
+// (Config.HorizonRecastsSameTurn).
 type search struct {
 	budget int
 	recast bool
@@ -221,9 +223,10 @@ type exchange struct {
 
 // outcome is the answer to one swing that an attrition line plays
 // forward: the attackers of mine that die, the ones of those I cast
-// again, and the defender's creatures that die.
+// again, the ones of those I cast again in this turn's second main
+// phase (mineReady, #3080), and the defender's creatures that die.
 type outcome struct {
-	mineDead, mineBack, theirDead map[string]bool
+	mineDead, mineBack, mineReady, theirDead map[string]bool
 }
 
 // outcomeOf is the answer the line plays forward. It is
@@ -245,8 +248,16 @@ type outcome struct {
 // zone (CR 903.9a) when my mana sources pay its mana value plus its
 // tax (CR 903.8, canRecast), so it is not lost. The defender's
 // commander has always been counted that way here.
+//
+// With Config.HorizonRecastsSameTurn (#3080) one cast again is cast in
+// this turn's second main phase, after combat, when the sources of mine
+// still untapped pay its tax — every source of mine on a later turn
+// the line plays forward, which starts with my untap step. It is then
+// under my control from the start of my next turn and can attack on it
+// (CR 302.6). That is what the bot does in a real game (#3066, #3079).
+// Otherwise it is cast on my next turn and is summoning sick there.
 func (p *Policy) outcomeOf(st *state, def *SeatEval, e raceEval, recast bool) outcome {
-	o := outcome{mineDead: e.mineDead, mineBack: map[string]bool{}, theirDead: e.d.deadDef}
+	o := outcome{mineDead: e.mineDead, mineBack: map[string]bool{}, mineReady: map[string]bool{}, theirDead: e.d.deadDef}
 	if p.cfg.HorizonPlaysFreeAnswer && e.d.guessed && e.free < def.Life {
 		o.mineDead, o.theirDead = e.freeAns.mineDead, map[string]bool{}
 	}
@@ -255,6 +266,9 @@ func (p *Policy) outcomeOf(st *state, def *SeatEval, e raceEval, recast bool) ou
 			c := &st.view.Battlefield.Cards[i]
 			if o.mineDead[c.InstanceID] && c.IsCommander && c.Owner == st.me && st.canRecast(st.me, c) {
 				o.mineBack[c.InstanceID] = true
+				if p.cfg.HorizonRecastsSameTurn && st.paysCommander(st.me, c, !st.laterTurn) {
+					o.mineReady[c.InstanceID] = true
+				}
 			}
 		}
 	}
@@ -294,9 +308,11 @@ func (x exchange) acceptable(st *state) bool {
 //
 // In the pass that casts my commander again (#2474), a commander of
 // mine cast again after the last exchange is summoning sick on this
-// board: it can block, and it counts for a race's next turn, but it
-// cannot attack yet. When nothing else works the line may wait a turn
-// for it (afterWait), and that turn counts as an exchange.
+// board unless it was cast in that turn's second main phase
+// (outcome.mineReady, #3080): it can block, and it counts for a race's
+// next turn, but it cannot attack yet. When nothing else works the
+// line may wait a turn for it (afterWait), and that turn counts as an
+// exchange.
 func (p *Policy) racesFrom(st *state, def *SeatEval, depth int, s *search) (int, bool) {
 	if def.Life <= 0 {
 		return 0, true
@@ -387,6 +403,7 @@ func (st *state) afterWait() (*state, bool) {
 	view.Battlefield.Cards = cards
 	next := *st
 	next.view = &view
+	next.laterTurn = true
 	me := *st.myEval
 	me.Life -= crack
 	next.myEval = &me
@@ -415,7 +432,7 @@ func hasEdge(st *state, def *SeatEval) bool {
 // attrition search assumes it: every creature o kills gone, except a
 // commander of theirs, which is cast again, and a commander of mine o
 // casts again (mineBack), which is back summoning sick unless it has
-// haste; mine and the defender's untapped, undamaged and out of
+// haste or was cast again this turn (mineReady); mine and the defender's untapped, undamaged and out of
 // combat; the defender's life down by the damage sure to connect and
 // mine by the crack-back. A commander of mine cast again counts one
 // more cast from the command zone, so a second trade in the same line
@@ -429,7 +446,7 @@ func (st *state) afterExchange(def *SeatEval, o outcome, x exchange) (*state, *S
 			continue
 		}
 		if isCreature(&c) && (c.Controller == st.me || c.Controller == def.ID) {
-			c.Tapped, c.SummoningSick = false, back && !hasKeyword(&c, "haste")
+			c.Tapped, c.SummoningSick = false, back && !o.mineReady[c.InstanceID] && !hasKeyword(&c, "haste")
 			c.AttackingTarget, c.BlockingTarget, c.BlockingTargets = "", "", nil
 			c.DamageMarked = 0
 		}
@@ -456,6 +473,7 @@ func (st *state) afterExchange(def *SeatEval, o outcome, x exchange) (*state, *S
 	}
 	next := *st
 	next.view = &view
+	next.laterTurn = true
 	nd := *def
 	nd.Life -= x.sure
 	next.opps = make([]*SeatEval, len(st.opps))

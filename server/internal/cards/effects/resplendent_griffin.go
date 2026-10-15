@@ -32,9 +32,10 @@ func init() {
 // an intervening "if you have the city's blessing" (Resplendent Griffin,
 // Mausoleum Harpy): the blessing is asked again as the trigger resolves
 // (CR 603.4).
-func blessedSelfCounter(g *game.Game, item *game.StackItem) error {
-	if !YouHaveTheCitysBlessing(g, item.Controller) || !onBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
-		return nil
-	}
-	return g.AddCounterForEffect(item.SourceCardID, game.CounterPlusOne, 1)
-}
+//
+// CounterOnThis puts nothing on a source that has left the battlefield
+// or come back as a new object (CR 400.7).
+var blessedSelfCounter = Do(If{
+	Cond: CondCitysBlessing{},
+	Then: []Applier{CounterOnThis{Kind: game.CounterPlusOne, N: 1}},
+})

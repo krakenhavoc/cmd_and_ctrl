@@ -244,6 +244,12 @@ type PermissionFilter struct {
 	// ownership rule.
 	NotOwnedByHolder bool `json:"notOwnedByHolder,omitempty"`
 
+	// OwnedByHolder is Kayla's Music Box's "cards YOU OWN exiled with
+	// ...": a card whose owner is anyone but the permission's holder does
+	// not qualify (#3787). NotOwnedByHolder's mirror, read in the same
+	// place for the same reason.
+	OwnedByHolder bool `json:"ownedByHolder,omitempty"`
+
 	// WithCounter is the name of a counter the card must carry — the
 	// "stash" counter on Tinybones' exiled cards. Counters on a card in
 	// exile are per object (CR 122.2, 400.7) and MoveCard clears them
@@ -268,6 +274,17 @@ type PermissionFilter struct {
 	// the battlefield on every query, a Valgavoth that has left grants
 	// nothing at all.
 	ExiledWithSource bool `json:"exiledWithSource,omitempty"`
+
+	// PutInGraveyardThisTurn is Banon, the Returners' Leader's "cards in
+	// your graveyard that were put there from anywhere other than the
+	// battlefield this turn" (#3769): the card must have ARRIVED in the
+	// graveyard during the current turn, from a zone that is not the
+	// battlefield. A discarded, milled or countered card qualifies; a
+	// creature that died does not; a card that left the graveyard and
+	// came back is a new object (CR 400.7) judged by its latest arrival
+	// only. Read off Card.PutInGraveyardFrom / PutInGraveyardThisTurn,
+	// which MoveCard stamps, so the clause is pure card data.
+	PutInGraveyardThisTurn bool `json:"putInGraveyardThisTurn,omitempty"`
 
 	// ExiledWith is ExiledWithSource's derived payload: the source
 	// object the card must be linked to. Zero on every catalog entry.
@@ -317,6 +334,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.WithCounter != "" && c.Counters[f.WithCounter] <= 0 {
+		return false
+	}
+	if f.PutInGraveyardThisTurn && !c.PutInGraveyardNotFromBattlefieldThisTurn() {
 		return false
 	}
 	if f.ExiledWithSource && (f.ExiledWith.ID == uuid.Nil || c.ExiledWith != f.ExiledWith) {
@@ -426,6 +446,21 @@ type CastPermission struct {
 	// cheaper printed price. Strictly weaker than printed, never
 	// stronger.
 	Cost string `json:"cost,omitempty"`
+
+	// CostLess is "spells you cast this way cost {N} less to cast"
+	// (Urianger Augurelt's Play Arcanum, ADR 0066's 2026-10-15
+	// amendment, #3787): generic mana taken off the price of a spell
+	// cast through this permission. A cost REDUCTION, not a flat price,
+	// so it composes with whatever the cast would otherwise pay (the
+	// printed cost, an alternative cost the cast claims) rather than
+	// replacing it, and with the board's increases, which are all added
+	// before it comes off (CR 601.2f). It never goes below {0}, and a
+	// land has no cost to reduce. Read by the one pricer
+	// (costAfterModifiersLocked) and, from the permission it already
+	// holds, by the enumerator, so the payment, the preview and the bot
+	// all agree. Zero is no reduction, which is every permission written
+	// before this.
+	CostLess int `json:"costLess,omitempty"`
 
 	// LifeEqualToManaValue is Bolas's Citadel: "pay life equal to its
 	// mana value rather than pay its mana cost". A COST (CR 119.4),
@@ -568,6 +603,37 @@ type CastPermission struct {
 	// Game.grantHasteForCastLocked for the layer-6 grant it becomes
 	// and for the declared duration simplification.
 	GrantsHaste bool `json:"grantsHaste,omitempty"`
+
+	// EntersTapped is "If you cast a spell this way, that <permanent>
+	// enters tapped" (Edgar, Master Machinist; #3768, ADR 0066's
+	// 2026-10-15 amendment). Like GrantsHaste it belongs to the
+	// PERMISSION: the same artifact hard-cast from hand enters untapped.
+	//
+	// Read once, in CastSpell, where the permission is consumed, and
+	// carried on the spell as StackItem.EntersTapped, because by the time
+	// the spell resolves the permission may be spent or gone. The
+	// resolution seeds it onto the entry event before the CR 614
+	// pipeline runs (CR 614.1c), so the permanent ENTERS tapped: no
+	// EventTapCard, and nothing that watches an untapped permanent
+	// entering sees one. A spell that does not become a permanent
+	// ignores it.
+	EntersTapped bool `json:"entersTapped,omitempty"`
+
+	// GainsKeywords and GainsAbilities are "If you cast a creature spell
+	// this way, it gains haste and 'At the beginning of the end step,
+	// sacrifice this creature.'" (Strago and Relm; #3768): keywords, and
+	// ADR 0093 ability bundles by grant key, that the permanent this cast
+	// produces gains. The printed text states no duration, so neither
+	// has one (CR 611.2a): they last for as long as that permanent is on
+	// the battlefield as the same object, whoever controls it, and end
+	// for good when it leaves (CR 400.7). See
+	// Game.grantGainsForCastLocked.
+	//
+	// Read once, in CastSpell, like GrantsHaste. Only a permanent spell
+	// becomes something that can gain anything; an instant or sorcery
+	// cast this way gains nothing. Empty gains nothing.
+	GainsKeywords  []string `json:"gainsKeywords,omitempty"`
+	GainsAbilities []string `json:"gainsAbilities,omitempty"`
 
 	// MaxSpellManaValue caps the mana value of the SPELL this
 	// permission lets a player cast (ADR 0099 §3). Discover's "if the
@@ -726,6 +792,13 @@ type CastPermission struct {
 	// A key for FollowUp's reason. Empty is "nothing happens", which is
 	// every permission written before #3510.
 	IfNotCast CastFollowUpKey `json:"ifNotCast,omitempty"`
+
+	// FollowUpObject is handed to FollowUp as CastFollowUp.Object: an
+	// object the "if you do" acts on that the cast spell does not name.
+	// Spellweaver Volute's "if you do, exile the enchanted card" is about
+	// the card the copy was made from, decided as its trigger resolved
+	// (#3157). Nil names nothing, which is every permission before it.
+	FollowUpObject *ObjectRef `json:"followUpObject,omitempty"`
 
 	// RequiresNoSpellsCast ends the permission the moment its holder
 	// has cast any spell this turn. It is the "if you haven't cast a
@@ -898,10 +971,11 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 		return nil
 	}
 	out := AlternativeCost{
-		Key:      p.AltCostKey,
-		Label:    p.Label,
-		ManaCost: card.ManaCost,
-		FromZone: p.Zone,
+		Key:            p.AltCostKey,
+		Label:          p.Label,
+		ManaCost:       card.ManaCost,
+		FromZone:       p.Zone,
+		FromPermission: true,
 	}
 	if p.Cost != "" {
 		out.ManaCost = p.Cost
@@ -1433,6 +1507,9 @@ func permissionReachesPileLocked(holder uuid.UUID, perm *CastPermission, card Ca
 	// card's, the holder is the permission's, and exile is shared, so
 	// this is the one place both are known.
 	if perm.Filter.NotOwnedByHolder && card.Owner == holder {
+		return false
+	}
+	if perm.Filter.OwnedByHolder && card.Owner != holder {
 		return false
 	}
 	if zone != ZoneGraveyard && zone != ZoneLibrary {
@@ -2089,4 +2166,21 @@ func requiresColorless(req ColorRequirement) bool {
 		}
 	}
 	return true
+}
+
+// grantReductionLocked is CostQuery.GrantReduction for one announcement:
+// the CostLess of the permission the cast claims, or 0 for a cast that
+// uses none (a hand cast, an unclaimed zone, a permission that prints no
+// reduction). It asks CastPermissionForClaimLocked with the same claim
+// the price and the announce path ask it with, so all three judge the
+// cast under the same permission. Caller must hold g.mu.
+func (g *Game) grantReductionLocked(playerID uuid.UUID, card Card, from ZoneKind, params CastSpellParams) int {
+	if from == ZoneHand || from == ZoneCommand {
+		return 0
+	}
+	grant := g.CastPermissionForClaimLocked(playerID, card, from, params.AlternativeCost)
+	if grant == nil || grant.CostLess <= 0 {
+		return 0
+	}
+	return grant.CostLess
 }

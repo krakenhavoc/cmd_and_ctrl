@@ -40,8 +40,10 @@ func enterFromHand(t *testing.T, g *game.Game, owner uuid.UUID, name, typeLine, 
 }
 
 func TestMigratedEntersTriggersUseTheStack(t *testing.T) {
-	edictFired := func(g *game.Game, _ *game.Player, _ uuid.UUID) bool {
-		return sacrificeChoiceFor(g, g.Seats[1].ID) != nil
+	// Every seat has one creature, so the edict's picks are forced and
+	// collected unasked (ADR 0175, #3664): it fired when the bear is gone.
+	edictFired := func(g *game.Game, _ *game.Player, bear uuid.UUID) bool {
+		return !g.Battlefield.Contains(bear)
 	}
 	opponentBear := func(_ *testing.T, g *game.Game, _ *game.Player) uuid.UUID {
 		return seedCreature(g, "Bear", g.Seats[1].ID)

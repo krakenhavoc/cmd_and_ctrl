@@ -240,6 +240,32 @@ type Config struct {
 	// declares itself a curse is never put on the bot's own. Off (the
 	// baseline) prices every Aura's host as a target to hit.
 	PriceAuraPurpose bool
+	// HoldFlashSacrifice holds an instant-speed cast of a card that
+	// prints the "flash, but sacrificed at cleanup" rider (Necromancy,
+	// Lightning Reflexes; #3712, flash_sacrifice.go) for the bot's own
+	// main phase unless it earns its keep before cleanup. Off (the
+	// baseline) prices it like any other cast.
+	HoldFlashSacrifice bool
+	// PriceTemporaryBodies prices a creature cast for evoke, warp, dash
+	// or blitz as the body that leaves this turn (#3802,
+	// temporary_body.go): no lasting board value, its enters effect and
+	// any haste attack this turn still counted, blitz's card and the card
+	// dash and warp keep added back. Off (the baseline) prices it like a
+	// creature that stays.
+	PriceTemporaryBodies bool
+	// PriceFaceUpPump prices the one-turn pump a turn-face-up trigger
+	// gives its source (Unstable Hulk's +6/+6 and trample, #3776,
+	// face_up_pump.go) by the attack it enables this turn, so a flip for
+	// lethal is taken. Off (the baseline) prices the flip without it.
+	PriceFaceUpPump bool
+	// PriceReanimation prices a graveyard target a spell declares it
+	// reanimates (TargetPurpose.Reanimates, #3161) as the permanent it
+	// becomes, whoever owns the graveyard: the creature's value, with no
+	// "can't cast it for a while" discount, where cardValue discounts an
+	// expensive one and an opponent's graveyard is worth a cheap
+	// OwnPermanentTarget. Needs PriceTargetPurposes. Off (the baseline)
+	// prices the pick as cardTargetValue always did.
+	PriceReanimation bool
 	// PriceSweeps turns on ADR 0126 §4: a declared sweep is priced as
 	// the change in ScoreEval with the permanents it removes taken off
 	// the board (sweepValue), so the bot stops casting a wipe onto its
@@ -353,6 +379,26 @@ type Config struct {
 	// Hart, Harrow), an extra land drop's lands this turn, and a land put
 	// from hand. Off (the zero value) prices those lands as mana alone.
 	PriceLandfallPayoffs bool
+	// PriceLandfallDoublers multiplies the bot's landfall payoffs by the
+	// doublers it controls (#3146, landfall.go): Ancient Greenwarden's
+	// `landfall_extra_triggers` 1 makes each land pay twice. Off (the
+	// zero value) prices each payoff once.
+	PriceLandfallDoublers bool
+	// PriceLandfallCasts adds, to the cast price of a permanent with a
+	// landfall payoff or a landfall doubler, what it adds to the bot's
+	// landfall over the lands it expects to put down in its next turns
+	// (#3146, landfall.go): Tireless Tracker's Clues, Greenwarden's
+	// doubling of a Tatyova already out. Off (the zero value) prices
+	// the cast by its body alone.
+	PriceLandfallCasts bool
+	// PriceFetchLandfall adds, to a fetch land's activation (a land
+	// that sacrifices itself to put `lands` onto the battlefield), what
+	// the bot's landfall payoffs pay for each land it puts down, and
+	// prices lands beyond the one it replaces as ramp (#3146,
+	// landfall.go). The flat ActivateBase stays under it, so a fetch is
+	// cracked as before when no payoff is out. Off (the zero value)
+	// prices the activation at the flat ActivateBase.
+	PriceFetchLandfall bool
 	// PriceTokenPayoffs adds, to every creature token a declared purpose
 	// makes, what the bot's own creature-enter payoffs pay for it
 	// (#3165, token_payoff.go): Purphoros's 2 damage, Impact Tremors's 1.
@@ -580,6 +626,14 @@ type Config struct {
 	// when the crack-back on that turn is less than my life. Off (the
 	// zero value) has no second pass, so it counts dead for good.
 	HorizonRecastsCommander bool
+	// HorizonRecastsSameTurn has the attrition horizon cast that
+	// commander again in the same turn's second main phase (#3080),
+	// when the mana sources of mine still untapped at the attack pay
+	// its tax (every source of mine, on a later turn the line plays
+	// forward). It is then ready to attack on my next turn, as in a
+	// real game, and the line does not wait a turn for it. Off (the
+	// zero value) has it back summoning sick on the next board.
+	HorizonRecastsSameTurn bool
 	// HorizonPlaysFreeAnswer is which answer the attrition horizon
 	// plays forward where blockToSurvive's model only guessed at the
 	// defender's blocks (#2474): the free answer, when the defender
@@ -688,6 +742,8 @@ func DefaultConfig() Config {
 		NetLandSwaps:        true,
 		PriceTargetPurposes: true,
 		PriceAuraPurpose:    true,
+		HoldFlashSacrifice:  true,
+		PriceReanimation:    true,
 		DamageByLethality:   true,
 		DamageChip:          0.00,
 		NetRemoval:          true,
@@ -700,6 +756,10 @@ func DefaultConfig() Config {
 		PriceSweeps:         true,
 		DiscardCostByCard:   true,
 		LastLandDiscard:     1.00,
+
+		// #3802, #3776: a body that leaves this turn, and a flip that wins.
+		PriceTemporaryBodies: true,
+		PriceFaceUpPump:      true,
 
 		PriceDiscardPayoffs:   true,
 		SelfReplacingDiscards: true,
@@ -733,6 +793,9 @@ func DefaultConfig() Config {
 		PriceExtraLandDrops:    true,
 		ExtraLandDropRecurring: 0.50,
 		PriceLandfallPayoffs:   true,
+		PriceLandfallDoublers:  true,
+		PriceLandfallCasts:     true,
+		PriceFetchLandfall:     true,
 		PriceTokenPayoffs:      true,
 
 		FuelFloor:  0.05,
@@ -774,6 +837,8 @@ func DefaultConfig() Config {
 		// #2474: the attrition horizon trades commanders.
 		HorizonRecastsCommander: true,
 		HorizonPlaysFreeAnswer:  true,
+		// #3080: and casts mine again after combat, in main phase 2.
+		HorizonRecastsSameTurn: true,
 		// #3066: the defender's blocks survive as a set.
 		BlockSetSurvives: true,
 		LethalBonus:      25.00,
@@ -842,6 +907,12 @@ func BaselineConfig() Config {
 	c.PriceTargetPurposes = false
 	// #3309: an Aura's host priced by what the Aura does to it.
 	c.PriceAuraPurpose = false
+	// #3712: a flash-with-cleanup-sacrifice card held for the main phase.
+	c.HoldFlashSacrifice = false
+	c.PriceTemporaryBodies = false
+	c.PriceFaceUpPump = false
+	// #3161: a reanimation target priced as the permanent it becomes.
+	c.PriceReanimation = false
 	c.DamageByLethality = false
 	c.DamageChip = 0
 	// #2679: removal net of what its target's controller gets back.
@@ -856,6 +927,8 @@ func BaselineConfig() Config {
 	c.BestowShare = 0
 	// ADR 0129 §7: energy, priced at nothing before it.
 	c.Weights.Energy = 0
+	// ADR 0188 Decision 10: extra and skipped turns, priced at nothing.
+	c.Weights.Turn = 0
 	c.PriceSweeps = false
 	c.DiscardCostByCard = false
 	c.LastLandDiscard = 0
@@ -887,6 +960,8 @@ func BaselineConfig() Config {
 	// #2474: the attrition horizon never traded my commander.
 	c.HorizonRecastsCommander = false
 	c.HorizonPlaysFreeAnswer = false
+	// #3080: a commander of mine cast again waited a turn.
+	c.HorizonRecastsSameTurn = false
 	// #3066: each block was scored on its own.
 	c.BlockSetSurvives = false
 	// #2677 and #2691: land searches by colour, discards by distance.
@@ -914,6 +989,10 @@ func BaselineConfig() Config {
 	c.ExtraLandDropRecurring = 0
 	// #3072: landfall payoffs.
 	c.PriceLandfallPayoffs = false
+	// #3146: landfall doublers, payoff casts and fetch lands.
+	c.PriceLandfallDoublers = false
+	c.PriceLandfallCasts = false
+	c.PriceFetchLandfall = false
 	// #3165: creature-enter payoffs on tokens.
 	c.PriceTokenPayoffs = false
 	// #2693: the mulligan counted lands only.
@@ -1040,6 +1119,10 @@ type state struct {
 	// dying caches dyingAnyway per permanent for this decision (ADR
 	// 0126 §7, sacrifice.go).
 	dying map[string]float64
+	// laterTurn marks a board the attrition horizon plays forward to
+	// the start of a later turn of mine (afterExchange, afterWait):
+	// every permanent of mine has untapped, whatever its Tapped says.
+	laterTurn bool
 }
 
 func (p *Policy) newState(in aiseat.Input) *state {
@@ -1123,10 +1206,22 @@ func (p *Policy) newState(in aiseat.Input) *state {
 }
 
 // nextTurnSeat is the index into v.Seats of the player whose turn comes
-// after this one: the first queued extra turn (CR 500.7), or else the
-// next seat in turn order that is still in the game. -1 when the view
-// cannot say.
+// after this one. It reads TurnView.NextSeat, the engine's own answer
+// (ADR 0188 Decision 9, #3566): the queued extra turns, a skip charge,
+// a departed seat, and rotation from the seat whose normal turn this
+// follows. Only a view that does not carry it (an older server, a
+// hand-built test view) falls back to walking the view: the first
+// queued extra turn, else the next live seat after the ACTIVE one. That
+// walk is wrong during an extra turn (seat 2's extra turn after seat
+// 0's names seat 3, not seat 1), which is why it is the fallback.
+// -1 when the view cannot say.
 func nextTurnSeat(v *protocol.GameView) int {
+	if ns := v.Turn.NextSeat; ns != nil {
+		if *ns >= 0 && *ns < len(v.Seats) {
+			return *ns
+		}
+		return -1
+	}
 	if len(v.Turn.ExtraTurns) > 0 {
 		if i := v.Turn.ExtraTurns[0]; i >= 0 && i < len(v.Seats) {
 			return i

@@ -376,6 +376,20 @@ type CastSpellParams struct {
 	// `exile_permanent_ids`, the name an activation already uses.
 	ExilePermanentIDs []uuid.UUID
 
+	// ExileFromHandIDs names the hand cards paid to a mandatory
+	// ExileFromHand additional cost (#3175) — March of Swirling Mist's
+	// "you may exile any number of blue cards from your hand". Any number,
+	// none included; their count is CostQuery.ExilingFromHand, which the
+	// card's per-card discount reads. Validated at announce, exiled with
+	// the spell on the stack. On the wire as `exile_from_hand_ids`.
+	ExileFromHandIDs []uuid.UUID
+	// ExileIDs names the cards paid to a mandatory ExileCards additional
+	// cost (#3536) — Abhorrent Oculus's "exile six cards from your
+	// graveyard". Validated at announce by the activation's own validator
+	// and exiled with the spell on the stack. On the wire as `exile_ids`,
+	// the name an activation already uses.
+	ExileIDs []uuid.UUID
+
 	// RevealIDs names the ONE card an announced reveal / behold cost
 	// shows (CR 701.20, ADR 0100 amendment 2026-10-07): a matching card
 	// in the caster's hand, or — to behold — a matching permanent they
@@ -701,6 +715,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// grantHasteForCastLocked for the layer-6 grant and its declared
 	// duration simplification.
 	grantsHaste := grant != nil && grant.GrantsHaste
+	// #3768: the permission's other riders on the permanent this cast
+	// produces, copied out for the same reason.
+	castGains := permissionCastGainsOf(grant)
 	face, ok := faceForCastLocked(card, params.Face, grant, playerID, params.AlternativeCost)
 	if !ok {
 		slog.Warn("cast_spell rejected: face not offered by this card",
@@ -821,8 +838,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #2173: the follow-up the permission carries runs when the cast is
 	// made through it, decided on the same question as the spend above.
 	followUp := CastFollowUpKey("")
+	followUpObject := ObjectRef{}
 	if grant != nil && grant.FollowUp != "" && g.castUsesGrantLocked(card, src.Kind, alt) {
 		followUp = grant.FollowUp
+		if grant.FollowUpObject != nil {
+			followUpObject = *grant.FollowUpObject
+		}
 	}
 	grantSource := uuid.Nil
 	if grant != nil {
@@ -893,7 +914,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// pitched or bounced to pay it. Validated here, next to the claim
 	// it belongs to; paid further down with the spell already on the
 	// stack, so a Blood Artist watching the pitch triggers above it.
-	if err := g.validateAlternativeCostPaymentLocked(playerID, cardID, alt, params.AltCostIDs); err != nil {
+	if err := g.validateAlternativeCostPaymentLocked(playerID, cardID, alt, params.AltCostIDs, params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad alternative cost payment",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -1356,6 +1377,30 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #3175: and the hand-exile cost (March of Swirling Mist), with every
+	// hand card another component of this cast already pays with (CR 118.3).
+	if err := g.validateCastHandExileLocked(playerID, cardID, costPlan, params.ExileFromHandIDs,
+		append(append([]uuid.UUID(nil), params.DiscardIDs...), params.AltCostIDs...)); err != nil {
+		slog.Warn("cast_spell rejected: bad exile-from-hand payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"exile_from_hand_received", len(params.ExileFromHandIDs),
+			"err", err,
+		)
+		return err
+	}
+	// #3536: and the exile-cards-from-your-graveyard cost, with every card
+	// another component of this cast already spends (CR 118.3).
+	if err := g.validateCastExileCardsLocked(playerID, cardID, costPlan, params.ExileIDs,
+		castExileAlsoSpent(params)); err != nil {
+		slog.Warn("cast_spell rejected: bad exile-cards payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"exile_cards_received", len(params.ExileIDs),
+			"err", err,
+		)
+		return err
+	}
 	if err := g.validateRevealLocked(playerID, cardID, costPlan, params.RevealIDs); err != nil {
 		slog.Warn("cast_spell rejected: bad reveal payment",
 			"card_name", card.Name,
@@ -1432,6 +1477,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	} else if !g.CastTimingForOfferOpenLocked(playerID, card, src.Kind, grant, alt) {
 		return ErrSorcerySpeedRequired
 	}
+	// #3156: whether the cast needed the card's own "as though it had
+	// flash" at a time a sorcery couldn't have been cast. Read now,
+	// before the card moves to the stack and the window changes.
+	ownFlashCast := !card.IsLand() && g.castUsesOwnFlashLocked(playerID, card, src.Kind, grant, alt)
 	// Lands skip the stack entirely (CR 305). Move the card to the
 	// battlefield and stamp the controller — same shape as PlayCard.
 	if card.IsLand() {
@@ -1579,6 +1628,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	moving = append(moving, params.DelveIDs...)
 	// #3402: and the permanents an exile-a-permanent cost takes.
 	moving = append(moving, params.ExilePermanentIDs...)
+	// #3175: and the hand cards a hand-exile cost takes.
+	moving = append(moving, params.ExileFromHandIDs...)
+	// #3536: and the graveyard cards an exile-cards cost takes.
+	moving = append(moving, params.ExileIDs...)
 	// #1445 / #1427: a card an EFFECT has already paused on its way
 	// out cannot pay — moved, or tapped to convoke / waterbend
 	// (TapIDs), tapped to teamwork or blighted (#1703). See
@@ -1743,6 +1796,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// CR 406.3a turns the card face up as it is cast, and
 		// MoveCard has already done so by here.
 		Foretold: foretold,
+		// #3156: cast with its own flash when a sorcery couldn't have
+		// been (flash_cleanup_sacrifice.go).
+		OwnFlashCast: ownFlashCast,
+		// #3768: "if you cast a spell this way, that artifact enters
+		// tapped" — the permission's, read where it was consumed.
+		EntersTapped: castGains.entersTapped,
 		// CR 708.4, ADR 0082 decision 3: the permanent this spell
 		// becomes enters FACE DOWN. Carried on the item because the
 		// permanent is a new object and MoveCard clears the state on
@@ -1798,7 +1857,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// component pays with, named while they are still where they were
 		// — Adipose Offspring's "the sacrificed creature's toughness".
 		Paid: paidWithAltCostObjects(paidWithBranchAndDiscards(
-			paidWithGift(paidWithExiledPermanents(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), g.sacrificeRefsLocked(params.SacrificeIDs)), params.ExilePermanentIDs, g.exiledRefsLocked(params.ExilePermanentIDs)), params.GiftOpponent),
+			paidWithGift(paidWithExiledCards(paidWithExiledPermanents(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), g.sacrificeRefsLocked(params.SacrificeIDs)), params.ExilePermanentIDs, g.exiledRefsLocked(params.ExilePermanentIDs)), params.ExileIDs), params.GiftOpponent),
 			params.CostBranch, params.DiscardIDs), g.sacrificeRefsLocked(params.AltCostIDs)),
 		Seq: g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
@@ -1826,6 +1885,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if grantsHaste {
 		g.grantHasteForCastLocked(playerID, cardID)
 	}
+	// #3768: "it gains haste and '<ability>'", registered here for the
+	// same reason and against the same object.
+	g.grantGainsForCastLocked(cardID, castGains)
 	// CR 601.2h: pay the costs. The mana component was charged
 	// above (pre-move, as S15 wrote it); the additional cost is
 	// paid HERE, with the spell already on the stack, because a
@@ -1851,6 +1913,33 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if len(params.ExilePermanentIDs) > 0 {
 		if _, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers); err != nil {
 			slog.Error("cast_spell: exile-a-permanent cost failed after validation",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"err", err,
+			)
+			return err
+		}
+	}
+	// #3175: the hand-exile cost (March of Swirling Mist), with the spell
+	// on the stack, through the exile-a-card cost's payer: a plain move to
+	// exile, not a discard, so a countered March keeps nothing back.
+	if len(params.ExileFromHandIDs) > 0 {
+		if err := g.payExileCardsCostLocked(playerID, cardID, params.ExileFromHandIDs, params.commanderAnswers); err != nil {
+			slog.Error("cast_spell: exile-from-hand cost failed after validation",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"err", err,
+			)
+			return err
+		}
+	}
+	// #3536: the exile-cards-from-your-graveyard cost, beside the
+	// sacrifices and for the same reason — with the spell on the stack, so a
+	// graveyard-leaves watcher lands above it and a countered spell does not
+	// give the cards back (CR 601.2h).
+	if len(params.ExileIDs) > 0 {
+		if err := g.payExileCardsCostLocked(playerID, cardID, params.ExileIDs, params.commanderAnswers); err != nil {
+			slog.Error("cast_spell: exile-cards cost failed after validation",
 				"card_name", card.Name,
 				"oracle_id", card.OracleID,
 				"err", err,
@@ -1991,6 +2080,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	tally.ManaSpent += spent
 	tally.ManaSpentLast = spent
 	g.SpellsCastThisTurn[playerID] = tally
+	// #3174: a once-each-turn granted offer (Warped Space, Access Maze)
+	// is spent by the cast it paid for, here where the cast is made.
+	g.noteGrantedOfferClaimedLocked(alt)
 	// CR 722.3c / 601.2i (ADR 0090): "that permanent loses the prepared
 	// designation at the time the spell becomes cast" — here, with
 	// every cost paid and just before EventCast announces the cast.
@@ -2017,6 +2109,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// half, and it reuses the ZoneMove-shaped fields rather than
 	// growing a new one, because a cast IS a zone move — hand (or
 	// exile, or the command zone) to the stack.
+	// #3781, CR 601.2i: "as you cast this spell" values are fixed here,
+	// with every cost paid and nobody yet holding priority.
+	g.stampCastTimeValuesLocked(card, g.StackMeta[cardID])
 	g.EmitEvent(Event{
 		Kind:    EventCast,
 		Actor:   playerID,
@@ -2059,7 +2154,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		}
 	}
 	if followUp != "" {
-		f := CastFollowUp{Player: playerID, Source: grantSource, Spell: cardID}
+		f := CastFollowUp{Player: playerID, Source: grantSource, Spell: cardID, Object: followUpObject}
 		if err := g.runCastFollowUpLocked(followUp, f); err != nil {
 			return err
 		}
@@ -3107,10 +3202,16 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		// settles before 601.2f totals the cost (Torgaar's "{2} less
 		// for each creature sacrificed this way").
 		Sacrificing: len(params.SacrificeIDs),
+		// #3175: the announced hand-exile count, settled at CR 601.2b
+		// for the same reason (March of Swirling Mist's "{2} less for
+		// each card exiled this way").
+		ExilingFromHand: len(params.ExileFromHandIDs),
 		// ADR 0135 §4, CR 702.119a: emerge's reduction, read off the
 		// permanent the claimed offer names while it is still on the
 		// battlefield.
 		AltSacrificeManaValue: g.altSacrificeManaValueLocked(p.ID, card, params),
+		// #3787: the cast permission's "cost {N} less" (Urianger Augurelt).
+		GrantReduction: g.grantReductionLocked(p.ID, card, fromZone, params),
 	})
 	if err != nil {
 		return ParsedCost{}, err
@@ -3724,6 +3825,11 @@ func (g *Game) finishSpellResolutionLocked(top Card, item *StackItem) error {
 			// the counters below so the pause-and-resume path
 			// carries it.
 			EntersUnlocked: castDoors,
+			// #3768: "if you cast a spell this way, that artifact
+			// enters tapped" (CastPermission.EntersTapped), seeded
+			// before the pipeline like FaceDown, so the permanent
+			// ENTERS tapped and every other replacement sees it.
+			EntersTapped: item.EntersTapped,
 		}
 		// S29: "this creature escapes with a +1/+1 counter on it"
 		// (CR 702.138c). Seeded onto the event BEFORE the pipeline
@@ -3748,7 +3854,9 @@ func (g *Game) finishSpellResolutionLocked(top Card, item *StackItem) error {
 		defer g.clearReplacementEventLocked(ev.ID)
 		if out == nil || out.Canceled {
 			g.restoreEntryControllerLocked(ev)
-			return nil
+			// #1985, CR 608.3e: a permanent spell that can't enter goes
+			// to its owner's graveyard.
+			return g.settleRefusedStackEntryLocked(ev)
 		}
 		// #653: THE push, rather than a second copy of it. This branch
 		// used to reproduce executeEntryToBattlefieldLocked inline —
@@ -4193,6 +4301,7 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 	// (activated.go) and the manual trigger announce below: after the
 	// item exists, so a ward or "becomes the target" trigger harvested
 	// off it lands on the stack above the thing that targeted.
+	g.noteOwnCreatureTargetedLocked(playerID, params.Targets) // #3779: an activation, however it was announced
 	g.emitAnnouncedTargetsLocked(playerID, sourceCardID, id, params.Targets)
 	// And the drain the catalog path runs for the same reason: the
 	// activator receives priority right after activating (CR 117.3c),
@@ -4982,6 +5091,13 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 //
 // Caller must hold g.mu.
 func (g *Game) stateChecksLocked(drain bool) (sbaFired bool) {
+	// #3665, CR 510.2: a combat damage step held behind its
+	// damage-assignment prompts whose last prompt has gone without an
+	// answer (its chooser left the game) is dealt now, before anything
+	// below reads the board. ResolveDamageAssignment settles the
+	// answered case itself; this is the backstop. No-op when nothing is
+	// held, or while a prompt is still open.
+	g.settleHeldCombatDamageLocked()
 	// ADR 0107 §6, CR 615.5: the instance of damage is over before a
 	// player receives priority, so the next-damage shields' "the damage
 	// prevented this way" runs now, once per shield with the total —
@@ -8636,6 +8752,9 @@ func (g *Game) passPriorityLocked() error {
 	// a pass that resolves the top of the stack moves the game on
 	// just as surely, and the enumerator has always modelled the rule
 	// this way. See choice_gate.go.
+	if g.TurnChangePending {
+		return ErrTurnChangePending
+	}
 	if c := g.blockingChoiceLocked(); c != nil {
 		return choicePendingErrorLocked(c)
 	}
@@ -9524,7 +9643,9 @@ func (c *Card) combatDamagePower() int {
 //     the attacker's damage lands only after resolve.
 //
 // Blockers deal their power back to the attacker simultaneously
-// (CR 510.1d). Lifelink and deathtouch are dispatched inside the
+// (CR 510.1d). When the step queues any prompt, none of its damage is
+// dealt until the last one is answered (#3665, CR 510.2): see
+// combat_damage_hold.go. Lifelink and deathtouch are dispatched inside the
 // damage-marking helpers so they fire uniformly via the replacement
 // pipeline.
 //
@@ -9602,10 +9723,38 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 		}
 	}
 
+	// #3665, CR 510.1-510.2: every assignment of the step comes before
+	// any of its damage is dealt. The damage the step decides by itself
+	// is collected here, and the prompts it needs are queued after the
+	// walk. With no prompt the marks are dealt at once, in this order;
+	// with one they are held until the last prompt is answered
+	// (combat_damage_hold.go).
+	var marks []heldCombatMark
+	var prompts []func()
+	mark := func(target, source uuid.UUID, amount int) {
+		if amount > 0 {
+			marks = append(marks, heldCombatMark{source: source, target: target, amount: amount})
+		}
+	}
+	assignedTo := func(id uuid.UUID) int {
+		n := 0
+		for _, m := range marks {
+			if m.target == id && !m.toAttackTarget {
+				n += m.amount
+			}
+		}
+		return n
+	}
+	markAttackTarget := func(target, source uuid.UUID, amount int) {
+		if amount > 0 {
+			marks = append(marks, heldCombatMark{source: source, target: target, amount: amount, toAttackTarget: true})
+		}
+	}
+
 	for _, atkID := range attackerIDs {
 		atk := findBattlefieldCard(g, atkID)
 		if atk == nil {
-			continue // died during this step's iteration
+			continue
 		}
 		atkParticipates := g.participatesInStepLocked(atk, firstStrike)
 		atkPower := power[atkID]
@@ -9641,7 +9790,7 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 				// as it always did.
 				blocked := g.attackerBlockedLocked(atkID)
 				if atkPower > 0 && (!blocked || HasKeyword(atk, "trample")) {
-					g.dealCombatDamageToAttackTargetLocked(atk.AttackingTarget, atkID, atkPower, step)
+					markAttackTarget(atk.AttackingTarget, atkID, atkPower)
 				}
 			} else if len(liveBlockers) == 1 {
 				// Single blocker: attacker assigns all power. Trample
@@ -9650,7 +9799,10 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 				blkID := liveBlockers[0]
 				blk := findBattlefieldCard(g, blkID)
 				if blk != nil && atkPower > 0 {
-					lethalThreshold := blk.CurrentToughness() - blk.DamageMarked
+					// CR 702.19b: lethal counts the damage other
+					// attackers have already been assigned to it in
+					// this step, which is not marked yet (#3665).
+					lethalThreshold := blk.CurrentToughness() - blk.DamageMarked - assignedTo(blkID)
 					if HasKeyword(atk, "deathtouch") && lethalThreshold > 1 {
 						lethalThreshold = 1
 					}
@@ -9664,27 +9816,28 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 						toPlayer = atkPower - lethalThreshold
 					}
 					if toBlocker > 0 {
-						g.markCombatDamageOnCardLocked(blkID, toBlocker, atkID, step)
+						mark(blkID, atkID, toBlocker)
 					}
 					if toPlayer > 0 {
-						g.dealCombatDamageToAttackTargetLocked(atk.AttackingTarget, atkID, toPlayer, step)
+						markAttackTarget(atk.AttackingTarget, atkID, toPlayer)
 					}
 				}
 			} else if atkPower > 0 {
 				// A multi-blocked attacker that assigns 0 has nothing to
 				// divide (CR 510.1a), so it queues no prompt.
-				// Multi-blocker → queue damage-assignment prompt.
-				// Server pauses here; the resume path fires the actual
-				// marks. The prompt blocks the table
-				// (choice_gate.go), so the cursor cannot leave this
-				// damage step until it is answered — which is what
-				// stops a first-strike assignment being overtaken by
-				// the regular step (#702). Until resume, the
-				// attacker's damage is NOT applied. Blocker damage
-				// still flows (simultaneous)
-				// because blockers deal power back regardless of
-				// attacker's assignment (CR 510.1d).
-				g.queueDamageAssignmentPromptLocked(atk, liveBlockers, atkPower, step)
+				// Multi-blocker → a damage-assignment prompt. The
+				// prompt blocks the table (choice_gate.go), so the
+				// cursor cannot leave this damage step until it is
+				// answered — which is what stops a first-strike
+				// assignment being overtaken by the regular step
+				// (#702). The blockers' damage back is assigned below
+				// as usual, but held with the rest of the step's until
+				// the answer (#3665): nothing is dealt, and nothing
+				// dies, while an assignment is still open.
+				atk, blockers, p := atk, liveBlockers, atkPower
+				prompts = append(prompts, func() {
+					g.queueDamageAssignmentPromptLocked(atk, blockers, p, step)
+				})
 			}
 		}
 
@@ -9706,28 +9859,42 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 			if blkPower <= 0 {
 				continue
 			}
-			g.markCombatDamageOnCardLocked(atkID, blkPower, blkID, step)
+			mark(atkID, blkID, blkPower)
 		}
 	}
 
 	// #1706, CR 510.1d: a blocker blocking two or more attackers
 	// assigns its combat damage "divided as its controller chooses
 	// among them". The CR 510.1c prompt carries it, with the roles
-	// turned round (queueBlockerDamageDivisionLocked). Its set is
-	// re-read now, after the attackers' damage, because the
-	// simultaneity is the prompt's: every mark it makes is on the same
-	// board the other blockers' marks landed on, and SBAs run only once
-	// the step's marks are all down.
+	// turned round (queueBlockerDamageDivisionLocked), and its damage
+	// is held with the rest of the step's until it is answered.
 	for _, blkID := range dividing {
 		blk := findBattlefieldCard(g, blkID)
 		if blk == nil || !g.participatesInStepLocked(blk, firstStrike) || power[blkID] <= 0 {
 			continue
 		}
 		if live := g.liveBlockedAttackersLocked(blk); len(live) >= 2 {
-			g.queueBlockerDamageDivisionLocked(blk, live, power[blkID], step)
+			p := power[blkID]
+			prompts = append(prompts, func() {
+				g.queueBlockerDamageDivisionLocked(blk, live, p, step)
+			})
 		} else if len(live) == 1 {
-			g.markCombatDamageOnCardLocked(live[0], power[blkID], blkID, step)
+			mark(live[0], blkID, power[blkID])
 		}
+	}
+
+	if len(prompts) == 0 {
+		for _, m := range marks {
+			g.dealCombatMarkLocked(m, step)
+		}
+		return
+	}
+	// #3665: hold the step's damage before the prompts open, so the
+	// state checks the step runs next find nothing dealt and nothing
+	// to settle. The last answer deals it all (combat_damage_hold.go).
+	g.heldCombatDamage = &heldCombatDamage{step: step, marks: marks}
+	for _, q := range prompts {
+		q()
 	}
 }
 
@@ -9965,6 +10132,9 @@ func (g *Game) clearCombatLocked() {
 	// #716: and so does the combat damage steps' participation
 	// record — it describes these same attackers and blockers.
 	g.firstStrikeStepParticipants = nil
+	// #3665: a hold is settled before the cursor can leave its step;
+	// one still here describes a combat that is over.
+	g.heldCombatDamage = nil
 }
 
 // Concede marks the given player as eliminated (CR 104.3a). If one
@@ -10074,6 +10244,9 @@ func (g *Game) PassTurn() error {
 	// this verb walks the cursor through every remaining step of the
 	// turn. A prompt left open behind it is unanswerable in practice.
 	// See choice_gate.go.
+	if g.TurnChangePending {
+		return ErrTurnChangePending
+	}
 	if c := g.blockingChoiceLocked(); c != nil {
 		return choicePendingErrorLocked(c)
 	}
@@ -10081,7 +10254,12 @@ func (g *Game) PassTurn() error {
 	// skipped, the cleanup sweep runs and per-turn caches clear.
 	g.clearCombatLocked()
 	g.sweepTurnEndLocked()
-	g.beginNextTurnLocked()
+	if g.beginNextTurnLocked() {
+		// ADR 0188 Decision 12: the turn change waits on the which-skip
+		// question. Nothing has begun, so there are no step hooks to
+		// run; the answer's resume runs them.
+		return nil
+	}
 	// Refresh per-turn budgets (undo, future per-turn counters) on
 	// the new active seat — same hook AdvanceStep / PassPriority's
 	// wrap branch run when stepping into untap. The hook also auto-
@@ -10910,7 +11088,19 @@ func (g *Game) MoveCardByIDToBottom(src, dst ZoneRef, cardID uuid.UUID, asComman
 // count. Reports whether it removed any.
 //
 // Caller must hold g.mu.
+//
+// Each cancelled card emits EventCounterPlaced for both kinds, Amount
+// the count left on it AFTER the cancel (zero when that kind is gone).
+// The public log narrates them as the counter lines a player reads
+// ("now has 1 +1/+1 counter", "has no -1/-1 counters left"), so the
+// line that announced the -1/-1 placement is not the last word on it.
+// They are emitted after the sweep, not during it.
 func (g *Game) cancelPlusMinusCountersLocked() (fired bool) {
+	type cancelled struct {
+		id          uuid.UUID
+		plus, minus int
+	}
+	var done []cancelled
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if !c.IsCreature() || c.Counters == nil {
@@ -10918,10 +11108,14 @@ func (g *Game) cancelPlusMinusCountersLocked() (fired bool) {
 		}
 		if c.Counters[CounterPlusOne] > 0 && c.Counters[CounterMinusOne] > 0 {
 			*c = afterPlusMinusCancel(*c)
-			fired = true
+			done = append(done, cancelled{c.InstanceID, c.Counters[CounterPlusOne], c.Counters[CounterMinusOne]})
 		}
 	}
-	return fired
+	for _, d := range done {
+		g.EmitEvent(Event{Kind: EventCounterPlaced, Target: d.id, Label: CounterPlusOne, Amount: d.plus})
+		g.EmitEvent(Event{Kind: EventCounterPlaced, Target: d.id, Label: CounterMinusOne, Amount: d.minus})
+	}
+	return len(done) > 0
 }
 
 // afterPlusMinusCancel is the card as CR 704.5q leaves it: N of each of

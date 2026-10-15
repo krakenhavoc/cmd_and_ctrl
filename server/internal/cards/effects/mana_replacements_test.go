@@ -52,10 +52,10 @@ func TestManaReflectionDoublesYourLand(t *testing.T) {
 	forest := pushLandFor(g, me.ID, "Forest", "Basic Land — Forest")
 
 	tapForMana(t, g, me.ID, forest)
-	if got := len(me.ManaPool); got != 2 {
+	if got := me.ManaPool.Total(); got != 2 {
 		t.Errorf("a Mana-Reflected Forest made %d mana, want 2", got)
 	}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Color != "G" {
 			t.Errorf("twice as much of THAT mana: got %q, want G", tok.Color)
 		}
@@ -74,7 +74,7 @@ func TestManaReflectionDoesNotDoubleAnOpponentsLand(t *testing.T) {
 	island := pushLandFor(g, opp.ID, "Island", "Basic Land — Island")
 
 	tapForMana(t, g, opp.ID, island)
-	if got := len(opp.ManaPool); got != 1 {
+	if got := opp.ManaPool.Total(); got != 1 {
 		t.Errorf("the opponent's Island made %d mana, want 1", got)
 	}
 }
@@ -91,7 +91,7 @@ func TestManaReflectionDoesNotDoubleASpellsMana(t *testing.T) {
 			t.Fatalf("AddManaForEffect: %v", err)
 		}
 	})
-	if got := len(me.ManaPool); got != 3 {
+	if got := me.ManaPool.Total(); got != 3 {
 		t.Errorf("a spell's Add {B}{B}{B} made %d mana, want 3 (nothing was tapped)", got)
 	}
 }
@@ -107,7 +107,7 @@ func TestTwoManaReflectionsQuadrupleWithNoPrompt(t *testing.T) {
 	forest := pushLandFor(g, me.ID, "Forest", "Basic Land — Forest")
 
 	tapForMana(t, g, me.ID, forest)
-	if got := len(me.ManaPool); got != 4 {
+	if got := me.ManaPool.Total(); got != 4 {
 		t.Errorf("two Mana Reflections: got %d mana, want 4", got)
 	}
 	if len(g.PendingChoices) != 0 {
@@ -124,7 +124,7 @@ func TestNyxbloomAncientTriplesYourLand(t *testing.T) {
 	mountain := pushLandFor(g, me.ID, "Mountain", "Basic Land — Mountain")
 
 	tapForMana(t, g, me.ID, mountain)
-	if got := len(me.ManaPool); got != 3 {
+	if got := me.ManaPool.Total(); got != 3 {
 		t.Errorf("a Nyxbloomed Mountain made %d mana, want 3", got)
 	}
 }
@@ -140,7 +140,7 @@ func TestManaReflectionAndNyxbloomCompose(t *testing.T) {
 	swamp := pushLandFor(g, me.ID, "Swamp", "Basic Land — Swamp")
 
 	tapForMana(t, g, me.ID, swamp)
-	if got := len(me.ManaPool); got != 6 {
+	if got := me.ManaPool.Total(); got != 6 {
 		t.Errorf("Mana Reflection + Nyxbloom Ancient on one Swamp: got %d mana, want 6", got)
 	}
 	for _, c := range g.PendingChoices {

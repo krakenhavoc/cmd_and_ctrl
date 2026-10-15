@@ -310,6 +310,33 @@ func TestSwappedClauseWithNothingReturnedIsIllegal(t *testing.T) {
 	}
 }
 
+// #3156: an Aura whose enchant ability is only the swapped clause (it
+// prints none, as Necromancy, which becomes an Aura through its trigger)
+// attached to nothing is illegal too. Without the clause the catalog has
+// no Targets for it, which is the uncatalogued-Aura exemption.
+func TestSwappedAuraWithNoPrintedClauseAttachedToNothingIsIllegal(t *testing.T) {
+	withGraveyardAuraCatalog(t)
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	aura := pushAttachTestCard(g, me.ID, "Becomes an Aura", "Enchantment — Aura")
+	g.WithWriteLock(func() {
+		g.runStateChecksLocked()
+	})
+	if _, ok := battlefieldCardByID(g, aura); !ok {
+		t.Fatal("an unswapped uncatalogued Aura should keep the manual-object exemption")
+	}
+	g.WithWriteLock(func() {
+		g.SwapEnchantClauseForEffect(aura)
+		g.runStateChecksLocked()
+	})
+	if _, ok := battlefieldCardByID(g, aura); ok {
+		t.Fatal("a swapped Aura attached to nothing stayed on the battlefield")
+	}
+	if !graveyardHas(me, aura) {
+		t.Error("the Aura should be in its owner's graveyard")
+	}
+}
+
 // CR 400.7: the swapped clause belongs to the object. Every zone change
 // clears both fields, and so does the exile return's new-object reset.
 func TestMoveCardClearsTheSwappedClause(t *testing.T) {

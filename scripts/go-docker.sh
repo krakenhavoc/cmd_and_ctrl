@@ -10,6 +10,12 @@
 #
 # The container's exit status is the script's exit status. Do not pipe the
 # script through tail or head: that replaces the status with the pipe's.
+#
+# The container runs as root, so files it creates under the repo (-update
+# goldens, new fixtures, boteval arena --out) would be root-owned on the host.
+# On every exit, including failure and Ctrl-C (trap), a second throwaway
+# container chowns back to the caller's uid:gid only the uid 0 paths under
+# /work (the repo mount, never the cache volumes), and the exit status is kept.
 set -euo pipefail
 
 GO_IMAGE="${CMDCTRL_GO_IMAGE:-golang:1.27}" # matches server/go.mod; lint runs on it too
@@ -161,8 +167,27 @@ esac
 
 enforce_cap
 
-# Not exec, so the status is passed through explicitly.
+# Hand back ownership of whatever the root container created under /work.
+# Only uid 0 paths, only inside the repo mount, symlinks not followed.
+# Failures here are reported but never change the command's exit status.
+# shellcheck disable=SC2329 # called from the EXIT trap
+chown_back() {
+  [ "$(id -u)" -ne 0 ] || return 0
+  docker run --rm -v "$ROOT:/work" "$GO_IMAGE" \
+    find /work -xdev -uid 0 -exec chown -h "$(id -u):$(id -g)" {} + \
+    || echo "go-docker: could not chown root-owned files back under $ROOT" >&2
+}
 rc=0
+# shellcheck disable=SC2329 # called from the EXIT trap
+cleanup() {
+  trap '' INT TERM
+  chown_back
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+# Not exec, so the status is passed through explicitly.
 docker run --rm "${tty_flag[@]}" \
   -v "$ROOT:/work" -w /work/server \
   -v "$VOL_MOD:/go/pkg/mod" \

@@ -236,6 +236,12 @@ type CardDef struct {
 	// PERMANENT imposes (ADR 0109 §4, #1895). Read from the battlefield
 	// through CatalogAbilityKey, like CastRestrictions.
 	LandPlayRestrictions []LandPlayRestriction
+	// EntryRestrictions are the "can't enter the battlefield" statics
+	// this PERMANENT imposes (#1985, entry_gate.go): Worms of the
+	// Earth's lands, Grafdigger's Cage's creature cards in graveyards
+	// and libraries. Read from the battlefield through
+	// CatalogAbilityKey, like LandPlayRestrictions.
+	EntryRestrictions []EntryRestriction
 	// ActivationRestrictions are the "can't be activated" statics
 	// this PERMANENT imposes on other objects' activated abilities
 	// (Cursed Totem, Linvala, Collector Ouphe, Pithing Needle). Read
@@ -257,6 +263,16 @@ type CardDef struct {
 	ActivationTimings []ActivationTiming
 
 	CantBeCountered bool
+	// FlashWithCleanupSacrifice is "You may cast this spell as though
+	// it had flash. If you cast it any time a sorcery couldn't have
+	// been cast, the controller of the permanent it becomes sacrifices
+	// it at the beginning of the next cleanup step" (#3156). See
+	// flash_cleanup_sacrifice.go.
+	FlashWithCleanupSacrifice bool
+	// CastTimeValues are the numbers the spell fixes as it is cast
+	// (#3781): "where X is the greatest power among creatures you
+	// controlled as you cast this spell". See cast_time_values.go.
+	CastTimeValues []CastTimeValue
 	// CantBeCounteredIf is the CONDITIONAL "this spell can't be
 	// countered" (Banefire's X of 5 or more, Demonfire's hellbent),
 	// judged when something tries to counter the spell. Nil is never.
@@ -799,6 +815,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogEntryRestrictions = func(key string) []EntryRestriction {
+		if d := catalogDef(key); d != nil {
+			return d.EntryRestrictions
+		}
+		return nil
+	}
 	CatalogTargetingRestrictions = func(key string) []TargetingRestriction {
 		if d := catalogDef(key); d != nil {
 			return d.TargetingRestrictions
@@ -848,6 +870,12 @@ func init() {
 	CatalogCantBeCounteredIf = func(key string) SpellCondition {
 		if d := catalogDef(key); d != nil {
 			return d.CantBeCounteredIf
+		}
+		return nil
+	}
+	CatalogCastTimeValues = func(key string) []CastTimeValue {
+		if d := catalogDef(key); d != nil {
+			return d.CastTimeValues
 		}
 		return nil
 	}

@@ -81,6 +81,11 @@ type PurposeView struct {
 	Pump *PumpView `json:"pump,omitempty"`
 	// ExtraCombat is the additional combat phases it adds.
 	ExtraCombat int `json:"extra_combat,omitempty"`
+	// ExtraTurns is the extra turns its controller takes after this one
+	// (CR 500.7, ADR 0188 Decision 10).
+	ExtraTurns int `json:"extra_turns,omitempty"`
+	// SkipsTurns is the next turns its controller skips (CR 614.10).
+	SkipsTurns int `json:"skips_turns,omitempty"`
 	// PreventCombatDamageToSelf: it prevents all combat damage that
 	// would be dealt to its source this turn.
 	PreventCombatDamageToSelf bool `json:"prevent_combat_damage_to_self,omitempty"`
@@ -98,6 +103,11 @@ type PurposeView struct {
 	// each turn on a permanent ("you may play an additional land on
 	// each of your turns"), this turn on an instant or sorcery (#2678).
 	ExtraLandDrops int `json:"extra_land_drops,omitempty"`
+	// LandfallExtraTriggers is how many additional times a landfall
+	// trigger of a permanent its controller controls triggers, on the
+	// card of a permanent that doubles them (#3146): Ancient
+	// Greenwarden 1.
+	LandfallExtraTriggers int `json:"landfall_extra_triggers,omitempty"`
 	// Impulse is the cards it exiles from the top of its controller's
 	// library that its controller may play this turn (#2480).
 	Impulse int `json:"impulse,omitempty"`
@@ -121,6 +131,23 @@ type PurposeView struct {
 	// to the permanent it enchants. Absent when the card declares none.
 	// Not an amount, like Answers.
 	Aura string `json:"aura,omitempty"`
+	// FlashCleanupSacrifice is true on a card that may be cast as though
+	// it had flash and is sacrificed at the next cleanup step when it was
+	// (Necromancy, Lightning Reflexes, #3712). Not an amount, like Aura.
+	FlashCleanupSacrifice bool `json:"flash_cleanup_sacrifice,omitempty"`
+	// Kicked is what the card does only when its kicker is paid, on top
+	// of the fields above (ADR 0126's amendment of 2026-10-15, #3762).
+	// A reader prices it on a cast that pays the kicker (the move's
+	// optional_costs is non-empty), and on no other. Not an amount of
+	// this purpose, so Priced does not count it.
+	Kicked *PurposeView `json:"kicked,omitempty"`
+	// TurnedFaceUp is what turning the permanent face up does (CR
+	// 708.8): the morph trigger's effect. On a face-down permanent its
+	// controller may look at, it is the only field sent (a face-down
+	// object has no text of its own, CR 708.2a). Read by the price of
+	// the turn_face_up special action. Not an amount of this purpose, so
+	// Priced does not count it.
+	TurnedFaceUp *PurposeView `json:"turned_face_up,omitempty"`
 }
 
 // Priced reports whether the purpose declares anything the bot prices:
@@ -135,6 +162,11 @@ func (p *PurposeView) Priced() bool {
 	q := *p
 	q.Answers = nil
 	q.Aura = ""
+	q.FlashCleanupSacrifice = false
+	// What it does only when kicked or turned face up is read by the
+	// cast that pays the kicker and the special action that turns it up
+	// (#3762). On the unkicked cast it is nothing it does.
+	q.Kicked, q.TurnedFaceUp = nil, nil
 	return q != PurposeView{}
 }
 
@@ -166,16 +198,22 @@ type TargetPurposeView struct {
 	Slot     int `json:"slot"`
 	Draws    int `json:"draws,omitempty"`
 	Discards int `json:"discards,omitempty"`
-	Tokens   int `json:"tokens,omitempty"`
-	LifeGain int `json:"life_gain,omitempty"`
-	LifeLoss int `json:"life_loss,omitempty"`
-	Damage   int `json:"damage,omitempty"`
+	// ExtraTurns: the target player takes this many extra turns (Time
+	// Warp 1, Time Stretch 2; ADR 0188 Decision 10).
+	ExtraTurns int `json:"extra_turns,omitempty"`
+	Tokens     int `json:"tokens,omitempty"`
+	LifeGain   int `json:"life_gain,omitempty"`
+	LifeLoss   int `json:"life_loss,omitempty"`
+	Damage     int `json:"damage,omitempty"`
 	// DamageIsX: the damage is the spell's or ability's X (#1944);
 	// Damage is then absent.
 	DamageIsX bool `json:"damage_is_x,omitempty"`
 	// Returns is what the target's controller is given when the target
 	// is removed (#2679). Absent when nothing comes back.
 	Returns *TargetReturnView `json:"returns,omitempty"`
+	// Reanimates: the spell puts the picked graveyard card onto the
+	// battlefield under its caster's control (#3161).
+	Reanimates bool `json:"reanimates,omitempty"`
 }
 
 // TargetReturnView is game.TargetReturn on the wire: what a removal
@@ -270,6 +308,8 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		return nil
 	}
 	v := &PurposeView{
+		Kicked:                    viewOfPurpose(derefPurpose(p.Kicked)),
+		TurnedFaceUp:              viewOfPurpose(derefPurpose(p.FaceUp)),
 		Draws:                     p.Draws,
 		ControllerLosesLife:       p.ControllerLosesLife,
 		Discards:                  p.Discards,
@@ -283,14 +323,18 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		Energy:                    p.Energy,
 		DeathPayoff:               p.DeathPayoff,
 		ExtraCombat:               p.ExtraCombat,
+		ExtraTurns:                p.ExtraTurns,
+		SkipsTurns:                p.SkipsTurns,
 		PreventCombatDamageToSelf: p.PreventCombatDamageToSelf,
 		DamageToCreature:          p.DamageToCreature,
 		DamageEachOpponent:        p.DamageEachOpponent,
 		LifeGain:                  p.LifeGain,
 		AwakenLand:                p.AwakenLand,
 		ExtraLandDrops:            p.ExtraLandDrops,
+		LandfallExtraTriggers:     p.LandfallExtraTriggers,
 		Impulse:                   p.Impulse,
 		Aura:                      string(p.Aura),
+		FlashCleanupSacrifice:     p.FlashCleanupSacrifice,
 	}
 	if pm := p.Pump; pm != nil {
 		v.Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...)}
@@ -327,8 +371,8 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		out := make([]TargetPurposeView, len(ts))
 		for i, t := range ts {
 			out[i] = TargetPurposeView{
-				Slot: t.Slot, Draws: t.Draws, Discards: t.Discards, Tokens: t.Tokens,
-				LifeGain: t.LifeGain, LifeLoss: t.LifeLoss, Damage: t.Damage, DamageIsX: t.DamageIsX,
+				Slot: t.Slot, Draws: t.Draws, Discards: t.Discards, ExtraTurns: t.ExtraTurns, Tokens: t.Tokens,
+				LifeGain: t.LifeGain, LifeLoss: t.LifeLoss, Damage: t.Damage, DamageIsX: t.DamageIsX, Reanimates: t.Reanimates,
 			}
 			if r := t.Returns; !r.IsZero() {
 				out[i].Returns = &TargetReturnView{
@@ -353,4 +397,12 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		}
 	}
 	return v
+}
+
+// derefPurpose is *p, the zero Purpose for nil.
+func derefPurpose(p *game.Purpose) game.Purpose {
+	if p == nil {
+		return game.Purpose{}
+	}
+	return *p
 }

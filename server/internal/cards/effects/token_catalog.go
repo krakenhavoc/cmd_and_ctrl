@@ -256,6 +256,15 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// ADR 0185 (#2417): the Incubator, the first double-faced token.
 	printedIncubatorToken,
+
+	// ADR 0186 §5 (#3551): the two Pilot tokens, which count extra when
+	// they crew or saddle.
+	printedPilotToken,
+	printedCrewPilotToken,
+
+	// #3767: the first Vehicle tokens, with crew.
+	printedBlackjackToken,
+	printedVehicleCrew1Token,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

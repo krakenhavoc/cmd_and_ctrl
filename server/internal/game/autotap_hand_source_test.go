@@ -63,12 +63,12 @@ func TestAutoTapExecutorExilesTheSpiritGuide(t *testing.T) {
 		t.Error("the planned Spirit Guide is still in hand")
 	}
 	exiledCard(t, g, guide)
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "R" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "R" {
 		t.Fatalf("mana pool = %v, want one {R}", me.ManaPool)
 	}
 	// #1212 / #1216: the snapshot survives the exile, on the auto-tap
 	// route exactly as on the hand-clicked one.
-	if !me.ManaPool[0].SourceKinds.Has(ManaSourceCreature) {
+	if !me.ManaPool.Units()[0].SourceKinds.Has(ManaSourceCreature) {
 		t.Error("the auto-tapped Spirit Guide's mana records no creature source")
 	}
 }

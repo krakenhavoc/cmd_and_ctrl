@@ -42,16 +42,13 @@ func init() {
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.IsLand() && b04LandNamesControlled(g, source.Controller) >= 7
-			}, "Field of the Dead — create a 2/2 Zombie", func(g *game.Game, item *game.StackItem) error {
-				if b04LandNamesControlled(g, item.Controller) < 7 {
-					return nil // CR 603.4: the "if" is re-checked on resolution.
-				}
-				return CreateToken{
-					Controller: item.Controller,
-					Template:   TokenCard("2/2 black Zombie"),
-					N:          1,
-				}.Apply(NewContext(g, item))
-			}),
+			}, "Field of the Dead — create a 2/2 Zombie", Do(If{
+				// CR 603.4: the "if" is re-checked on resolution.
+				Cond: CondBoard{Name: "seven or more lands with different names", Test: func(ctx *Context) bool {
+					return b04LandNamesControlled(ctx.Game, ctx.Controller()) >= 7
+				}},
+				Then: []Applier{CreateToken{Template: TokenCard("2/2 black Zombie"), N: 1}},
+			})),
 		},
 	})
 }

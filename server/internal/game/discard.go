@@ -208,7 +208,7 @@ func (g *Game) discardedThisWayLocked(playerID, cardID uuid.UUID) bool {
 //
 // Caller must hold g.mu.
 func (g *Game) discardCardsLocked(playerID uuid.UUID, cards []uuid.UUID, opts discardOptions) error {
-	return g.discardBatchLocked(playerID, cards, nil, opts)
+	return g.discardBatchLocked(playerID, cards, nil, nil, opts)
 }
 
 // discardBatchLocked is discardCardsLocked with the LANDED list it has
@@ -218,8 +218,14 @@ func (g *Game) discardCardsLocked(playerID uuid.UUID, cards []uuid.UUID, opts di
 // CR 903.9 prompt has nothing half-written to put back and a replayed
 // answer builds the same list a clean run would. #1027.
 //
+// `tops` is carried the same way (#3541): the legs a replacement put
+// on TOP of the discarding player's library (Library of Leng), each
+// with the object epoch it landed with, in landing order. It records
+// the placement as it settled, not where the card is by the end of the
+// batch, because a later leg can shuffle the library under it.
+//
 // Caller must hold g.mu.
-func (g *Game) discardBatchLocked(playerID uuid.UUID, cards, landed []uuid.UUID, opts discardOptions) error {
+func (g *Game) discardBatchLocked(playerID uuid.UUID, cards, landed []uuid.UUID, tops []discardTopPlacement, opts discardOptions) error {
 	p := g.playerByIDLocked(playerID)
 	for len(cards) > 0 {
 		next, rest := cards[0], cards[1:]
@@ -234,6 +240,11 @@ func (g *Game) discardBatchLocked(playerID uuid.UUID, cards, landed []uuid.UUID,
 			cards = rest
 			continue
 		}
+		// #3541: the event log's position before this leg, so its
+		// continuation can read how the leg settled (a top placement or
+		// a shuffle-in) off the events it emitted. A scalar, so an undo
+		// that rewinds the log rewinds the mark with it.
+		mark := g.eventSeq
 		// Paused or not, the rest of the batch belongs to the route's
 		// continuation from here: it runs inline the moment this card
 		// lands, or from the CR 903.9 resume when its owner answers.
@@ -265,7 +276,14 @@ func (g *Game) discardBatchLocked(playerID uuid.UUID, cards, landed []uuid.UUID,
 					grown = make([]uuid.UUID, 0, len(landed)+1)
 					grown = append(append(grown, landed...), next)
 				}
-				return g.discardBatchLocked(playerID, rest, grown, opts)
+				placed := tops
+				if g.discardLegPutOnTopLocked(playerID, next, mark) {
+					placed = make([]discardTopPlacement, 0, len(tops)+1)
+					placed = append(append(placed, tops...), discardTopPlacement{
+						id: next, epoch: g.cardObjectEpochLocked(next),
+					})
+				}
+				return g.discardBatchLocked(playerID, rest, grown, placed, opts)
 			},
 		})
 		return err
@@ -274,7 +292,14 @@ func (g *Game) discardBatchLocked(playerID uuid.UUID, cards, landed []uuid.UUID,
 	// one discard that a replacement put on top of the library (Library
 	// of Leng) were put there at the same time, so their owner arranges
 	// them. The rest of the effect waits for that order.
-	if top := g.discardBatchOnTopOfLibraryLocked(playerID, landed); len(top) >= 2 {
+	//
+	// #3541: CR 701.24g — when the same discard also shuffled a card
+	// into that library (Blightsteel Colossus), the library is shuffled
+	// and THEN the top cards are put on top. The legs run one after
+	// another, so a later leg's shuffle may already have scattered the
+	// earlier top placements; they are put back on top here, through
+	// the same prompt (or at once, when there is one card).
+	if top, displaced := g.discardBatchTopPlacementsLocked(playerID, tops); len(top) >= 2 || (len(top) == 1 && displaced) {
 		then := opts.then
 		return g.PutInLibraryInChosenOrderThenForEffect(PutInLibrarySpec{
 			Chooser:   playerID,
@@ -297,37 +322,81 @@ func (g *Game) discardBatchLocked(playerID uuid.UUID, cards, landed []uuid.UUID,
 	return opts.then(g, landed)
 }
 
-// discardBatchOnTopOfLibraryLocked lists the cards of a finished
-// discard batch that a replacement sent to the top of the discarding
-// player's library, top-first, when they are exactly the top of that
-// library: each was put on top as its leg landed, and nothing else in
-// the batch puts a card there. A card the window sent anywhere else in
-// the library (a shuffle-in) breaks that, and then nothing is offered,
-// because the cards are no longer one placement at one position.
+// discardTopPlacement is one leg of a discard batch that a replacement
+// put on top of the discarding player's library: the card, and the
+// object epoch it landed with (CR 400.7: a card that leaves the library
+// and comes back is a new object the batch no longer names). Scalars
+// only, so a continuation carrying it survives Clone.
+type discardTopPlacement struct {
+	id    uuid.UUID
+	epoch int
+}
+
+// discardLegPutOnTopLocked reports whether the discard leg of cardID
+// that began at event sequence `mark` settled ON TOP of playerID's
+// library: its EventDiscardCard names the library, and the library was
+// not shuffled as the card landed. A shuffle-in replacement (Blightsteel
+// Colossus, ADR 0013 §5ah) puts the card in the same library at no
+// particular position, and its shuffle event is emitted before the
+// discard event. That shuffle is what tells the two apart: a shuffled
+// card can land on top by chance.
+//
+// The leg's events are the ones after `mark`. Called from the leg's
+// own continuation, so nothing else has moved the card since.
 //
 // Caller must hold g.mu.
-func (g *Game) discardBatchOnTopOfLibraryLocked(playerID uuid.UUID, landed []uuid.UUID) []uuid.UUID {
+func (g *Game) discardLegPutOnTopLocked(playerID, cardID uuid.UUID, mark uint64) bool {
+	z := g.findCardZoneLocked(cardID)
+	if z == nil || z.Kind != ZoneLibrary || z.Owner != playerID {
+		return false
+	}
+	discarded := false
+	for i := len(g.Events) - 1; i >= 0; i-- {
+		ev := &g.Events[i]
+		if ev.Seq <= mark {
+			break
+		}
+		switch {
+		case ev.Kind == EventDiscardCard && ev.CardID == cardID:
+			if ev.NewZone != ZoneLibrary {
+				return false
+			}
+			discarded = true
+		case discarded && ev.Kind == EventSearchLibrary && ev.Label == "shuffle" && ev.Actor == playerID:
+			return false
+		}
+	}
+	return discarded
+}
+
+// discardBatchTopPlacementsLocked lists a finished discard batch's top
+// placements that are still the objects that were placed (in the
+// discarding player's library, with the epoch they landed with),
+// top-first. That is the reverse of landing order, since each leg put
+// its card on top of the one before. CR 401.4 lets the owner order
+// exactly these cards; nothing else the batch did (a card shuffled in,
+// one sent to the graveyard or exile) is part of that placement.
+//
+// displaced reports that they are not already the top of the library
+// in that order, which happens when a later leg shuffled the library.
+//
+// Caller must hold g.mu.
+func (g *Game) discardBatchTopPlacementsLocked(playerID uuid.UUID, tops []discardTopPlacement) (top []uuid.UUID, displaced bool) {
 	p := g.playerByIDLocked(playerID)
-	if p == nil || p.Library == nil || len(landed) < 2 {
-		return nil
+	if p == nil || p.Library == nil {
+		return nil, false
 	}
-	inLibrary := make(map[uuid.UUID]bool, len(landed))
-	for _, id := range landed {
-		if p.Library.Contains(id) {
-			inLibrary[id] = true
+	for i := len(tops) - 1; i >= 0; i-- {
+		t := tops[i]
+		if p.Library.Contains(t.id) && g.cardObjectEpochLocked(t.id) == t.epoch {
+			top = append(top, t.id)
 		}
 	}
-	n := len(inLibrary)
-	if n < 2 || n > len(p.Library.Cards) {
-		return nil
-	}
-	top := make([]uuid.UUID, 0, n)
-	for i := len(p.Library.Cards) - 1; i >= len(p.Library.Cards)-n; i-- {
-		id := p.Library.Cards[i].InstanceID
-		if !inLibrary[id] {
-			return nil
+	cards := p.Library.Cards
+	for i, id := range top {
+		if at := len(cards) - 1 - i; at < 0 || cards[at].InstanceID != id {
+			return top, true
 		}
-		top = append(top, id)
 	}
-	return top
+	return top, false
 }

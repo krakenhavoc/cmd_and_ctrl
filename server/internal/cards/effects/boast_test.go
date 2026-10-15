@@ -58,8 +58,8 @@ func TestBoastRefusedUntilTheCreatureAttacks(t *testing.T) {
 	if !errors.Is(err, game.ErrBoastNotAttacked) {
 		t.Fatalf("before attacking: %v, want ErrBoastNotAttacked", err)
 	}
-	if len(me.ManaPool) != 3 {
-		t.Errorf("pool holds %d mana, want 3 — a refused activation pays nothing", len(me.ManaPool))
+	if me.ManaPool.Total() != 3 {
+		t.Errorf("pool holds %d mana, want 3 — a refused activation pays nothing", me.ManaPool.Total())
 	}
 
 	attackWith(t, g, opp.ID, dwarf)
@@ -287,8 +287,8 @@ func TestDragonkinBerserkerDiscountsBoastPerDragon(t *testing.T) {
 	if got := dwarfTokens(g, me.ID); got != 1 {
 		t.Errorf("tokens = %d, want 1", got)
 	}
-	if len(me.ManaPool) != 0 {
-		t.Errorf("pool holds %d mana, want 0: %+v", len(me.ManaPool), me.ManaPool)
+	if me.ManaPool.Total() != 0 {
+		t.Errorf("pool holds %d mana, want 0: %+v", me.ManaPool.Total(), me.ManaPool)
 	}
 }
 

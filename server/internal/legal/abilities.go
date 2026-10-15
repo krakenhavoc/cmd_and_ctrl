@@ -230,6 +230,12 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		if !game.MayActivate(e.seat, *source, zone, ab, origins.At(idx)) {
 			continue
 		}
+		// #3275, CR 118.3: "Sacrifice this" can't be paid by a
+		// permanent that can't be sacrificed (validateSacrificeCostLocked
+		// refuses it, #544).
+		if ab.Cost.SacrificeSelf && zone == game.ZoneBattlefield && g.CantBeSacrificedForEffect(source.InstanceID) {
+			continue
+		}
 		// #1208: ONE identity for both reads below, built the way
 		// the activation path builds it, so CR 606.3's "a loyalty
 		// ability is sorcery-speed" cannot be spelled differently
@@ -1743,6 +1749,35 @@ func counterPaymentChoices(opts []game.CounterCostOption, rc *game.CounterRemova
 	if rc == nil {
 		return []counterChoice{{}}
 	}
+	if rc.Among && rc.Variable {
+		// #3276: a variable among cost is printed on cards that turn
+		// counters into mana, so, as for the single-permanent
+		// variable form below, the one payment worth offering is the
+		// largest: every counter of the kind on every matched
+		// permanent, in one part each. The announced total is their
+		// sum, and it must reach the floor.
+		var parts []counterPart
+		total, best := 0, 0
+		for _, o := range opts {
+			for _, k := range o.Kinds {
+				if rc.Counter != "" && k.Kind != rc.Counter {
+					continue
+				}
+				parts = append(parts, counterPart{cardID: o.CardID, kind: k.Kind, n: k.Count})
+				total += k.Count
+				if k.Count > best {
+					best = k.Count
+				}
+			}
+		}
+		if total < rc.N || total < 1 {
+			return nil
+		}
+		return []counterChoice{{
+			parts: parts, total: total, count: best,
+			fromOther: true, anyKind: rc.Counter == "", explicitCounts: true,
+		}}
+	}
 	if rc.Among {
 		// One pool, drained biggest first. For a printed kind the
 		// pool is that kind's counters; for an any-kind among cost
@@ -1923,19 +1958,17 @@ func (cc counterChoice) label(g *game.Game) string {
 func (e *enumerator) sacrificePool(sourceID uuid.UUID, selfToo bool, spec *game.TargetSpec) []uuid.UUID {
 	// Sacrificing is a cost, not targeting, so this is the
 	// candidate walk rather than the legal-TARGET walk — the
-	// hexproof / shroud gate must not shrink the pool.
-	lt := e.g.SpecCandidatesForEffect(e.seat, spec)
+	// hexproof / shroud gate must not shrink the pool. It is the
+	// seat's own permanents that can be sacrificed (#3275).
 	var pool []uuid.UUID
-	for _, id := range lt.Cards {
+	for _, id := range e.g.SacrificeCostCandidatesForEffect(e.seat, spec) {
 		if (selfToo || spec.ExcludeSource) && id == sourceID {
 			continue
 		}
 		if !e.g.AttachedToSourceOKForEffect(spec, sourceID, id) {
 			continue
 		}
-		if c := findBattlefield(e.g, id); c != nil && c.Controller == e.seat {
-			pool = append(pool, id)
-		}
+		pool = append(pool, id)
 	}
 	return pool
 }
@@ -2181,6 +2214,11 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		// rule is that a bot is never offered a move the engine
 		// refuses.
 		if g.ManaAbilityExhausted(e.seat, source.InstanceID, ab) {
+			continue
+		}
+		// #3275, CR 118.3: a Treasure that can't be sacrificed can't
+		// pay its own sacrifice (validateSacrificeCostLocked).
+		if ab.SacrificeCost && zone == game.ZoneBattlefield && g.CantBeSacrificedForEffect(source.InstanceID) {
 			continue
 		}
 		// ADR 0155 Decision 7: the lent once-each-turn row, as

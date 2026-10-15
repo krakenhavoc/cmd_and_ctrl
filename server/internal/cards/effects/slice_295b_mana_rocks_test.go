@@ -178,7 +178,7 @@ func TestB295HerdHeirloomManaIsRestrictedToCreatureSpells(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, rock, 0, game.ManaAbilityParams{Colors: []string{"G"}}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 1 {
+	if me.ManaPool.Total() != 1 {
 		t.Fatalf("pool = %v, want one mana", me.ManaPool)
 	}
 

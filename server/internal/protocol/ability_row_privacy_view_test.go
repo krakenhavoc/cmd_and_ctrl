@@ -156,6 +156,9 @@ var manaRowScopes = map[string]rowScope{
 	"ExileCostOptions":   rowHiddenUnlessGraveyard,
 }
 
+// fillingPointer is the pointer types fillEveryField is inside of.
+var fillingPointer = map[reflect.Type]bool{}
+
 // fillEveryField sets every exported field of v, recursing into
 // embedded and pointed-to structs, so the scope check below sees every
 // key the wire could carry rather than a struct that was mostly empty.
@@ -169,6 +172,14 @@ func fillEveryField(t *testing.T, v reflect.Value) {
 			}
 		}
 	case reflect.Pointer:
+		// A type that holds a pointer to itself (PurposeView.Kicked, #3762)
+		// is filled one level deep: the inner pointer stays nil, or this
+		// recurses until the stack is gone.
+		if fillingPointer[v.Type()] {
+			return
+		}
+		fillingPointer[v.Type()] = true
+		defer delete(fillingPointer, v.Type())
 		p := reflect.New(v.Type().Elem())
 		fillEveryField(t, p.Elem())
 		v.Set(p)

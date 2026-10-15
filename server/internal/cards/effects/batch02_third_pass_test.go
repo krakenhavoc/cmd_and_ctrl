@@ -291,7 +291,7 @@ func TestB02cUnclaimedTerritoryRestrictsItsColouredMana(t *testing.T) {
 			}
 		}
 	}
-	if len(me.ManaPool) != 1 || len(me.ManaPool[0].Restrictions) == 0 {
+	if me.ManaPool.Total() != 1 || len(me.ManaPool.Units()[0].Restrictions) == 0 {
 		t.Errorf("the picked mana must carry the chosen-type restriction: %+v", me.ManaPool)
 	}
 }

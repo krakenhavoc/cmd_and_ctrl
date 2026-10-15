@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"fmt"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // tokens.go holds token templates used by CreateToken primitives.
 // Each helper returns a game.Card with the "printed" fields set;
@@ -482,5 +486,120 @@ func printedMunitionsToken() tokenTemplate {
 				TargetAny()),
 		},
 		Text: "When this token leaves the battlefield, it deals 2 damage to any target.",
+	}
+}
+
+// PilotToken is the 1/1 colorless Pilot creature token with "This token
+// saddles Mounts and crews Vehicles as though its power were 2 greater."
+// that Cloudspire Coordinator, Defend the Rider, Valor's Flagship, Back
+// on Track, Roadside Assistance and the Roads make (ADR 0186 §5, #2705).
+// Its power stays 1: only the crew and saddle payment counts it as 3.
+func PilotToken() game.Card { return tokenFromCatalog(printedPilotToken) }
+
+// printedPilotToken is that Pilot as PRINTED. The ability is a layer 6
+// self-only static registered under the token key, so it survives a
+// snapshot round trip as the key alone and a Pilot that loses all
+// abilities counts its plain power again (CR 613.1f).
+//
+// The slug is an on-disk identity (a snapshot carries the token key) and
+// is never renamed.
+func printedPilotToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "pilot-saddles-and-crews",
+		Card: game.Card{
+			Name:      "Pilot",
+			TypeLine:  "Token Creature — Pilot",
+			Power:     1,
+			Toughness: 1,
+		},
+		Static: []game.StaticAbility{
+			CrewsAsThoughPowerGreater(2, game.CostPowerCrew|game.CostPowerSaddle),
+		},
+		Text: "This token saddles Mounts and crews Vehicles as though its power were 2 greater.",
+	}
+}
+
+// CrewPilotToken is the crew-only Pilot: Shorikai, Genesis Engine,
+// Prodigy's Prototype and Born to Drive make a 1/1 colorless Pilot with
+// "This token crews Vehicles as though its power were 2 greater." It
+// does not count extra for a Mount, so a saddle cost counts it as 1.
+func CrewPilotToken() game.Card { return tokenFromCatalog(printedCrewPilotToken) }
+
+// printedCrewPilotToken is that Pilot as PRINTED. Its slug is an on-disk
+// identity and is never renamed.
+func printedCrewPilotToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "pilot-crews",
+		Card: game.Card{
+			Name:      "Pilot",
+			TypeLine:  "Token Creature — Pilot",
+			Power:     1,
+			Toughness: 1,
+		},
+		Static: []game.StaticAbility{
+			CrewsAsThoughPowerGreater(2, game.CostPowerCrew),
+		},
+		Text: "This token crews Vehicles as though its power were 2 greater.",
+	}
+}
+
+// --- Vehicle tokens (#3767) -----------------------------------------
+//
+// A Vehicle token is a Vehicle like any other (CR 301.7): an artifact
+// with a printed power and toughness and a crew ability, and a creature
+// only while crewed. Its crew ability is the same CR 602 activated
+// ability a printed Vehicle declares (CrewCost, CrewEffect), registered
+// under the token's key because a token has no oracle ID to find it by.
+
+// crewTokenAbility is a Vehicle token's "Crew N" for a token named name.
+func crewTokenAbility(name string, n int) game.ActivatedAbilityShape {
+	return game.ActivatedAbilityShape{
+		Label:   fmt.Sprintf("Crew %d", n),
+		Cost:    CrewCost(n),
+		Purpose: game.Purpose{Answers: game.AnswerAnimate},
+		Effect:  CrewEffect(name),
+	}
+}
+
+// BlackjackToken is Setzer, Wandering Gambler's The Blackjack, a
+// legendary 3/3 colorless Vehicle artifact token with flying and crew 2.
+// Legendary, so a second Setzer's Blackjack puts its controller to the
+// legend rule (CR 704.5j).
+func BlackjackToken() game.Card { return tokenFromCatalog(printedBlackjackToken) }
+
+// printedBlackjackToken is The Blackjack as PRINTED. Its slug is an
+// on-disk identity and is never renamed.
+func printedBlackjackToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "the-blackjack",
+		Card: game.Card{
+			Name:      "The Blackjack",
+			TypeLine:  "Token Legendary Artifact — Vehicle",
+			Power:     3,
+			Toughness: 3,
+			Keywords:  []string{"flying"},
+		},
+		Activated: []game.ActivatedAbilityShape{crewTokenAbility("The Blackjack", 2)},
+		Text:      "Flying\nCrew 2",
+	}
+}
+
+// VehicleCrew1Token is Mu Yanling, Wind Rider's 3/2 colorless Vehicle
+// artifact token with crew 1.
+func VehicleCrew1Token() game.Card { return tokenFromCatalog(printedVehicleCrew1Token) }
+
+// printedVehicleCrew1Token is that Vehicle as PRINTED. Its slug is an
+// on-disk identity and is never renamed.
+func printedVehicleCrew1Token() tokenTemplate {
+	return tokenTemplate{
+		Slug: "vehicle-crew-1",
+		Card: game.Card{
+			Name:      "Vehicle",
+			TypeLine:  "Token Artifact — Vehicle",
+			Power:     3,
+			Toughness: 2,
+		},
+		Activated: []game.ActivatedAbilityShape{crewTokenAbility("Vehicle", 1)},
+		Text:      "Crew 1",
 	}
 }

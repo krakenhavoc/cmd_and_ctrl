@@ -142,11 +142,11 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **6066** |
-| — whole cards (bare `oracle_id`) | **5810** |
-| — back faces (`<oracle_id>#1`) | 256 |
-| Declared `full` | 5933 |
-| Declared `caveats` | 100 |
+| Registry keys (`len(effects.All())`) | **6367** |
+| — whole cards (bare `oracle_id`) | **6103** |
+| — back faces (`<oracle_id>#1`) | 264 |
+| Declared `full` | 6235 |
+| Declared `caveats` | 99 |
 | Declared `unreviewed` | 33 |
 
 A back face is usually half a card: the modal-DFC land cycle registers
@@ -1046,7 +1046,8 @@ toxic, now has one,
 [#748](https://github.com/krakenhavoc/cmd_and_ctrl/issues/748), filed
 from the card-coverage audit, and shipped on 2026-09-24. In the last row, regeneration is
 [#667](https://github.com/krakenhavoc/cmd_and_ctrl/issues/667); phasing
-and totem armor are on demand too. The same footnote applies to the
+is on demand too, and umbra armor (CR 702.89, formerly totem armor)
+shipped with Bear Umbra (#3654). The same footnote applies to the
 two tables below.
 
 ² *Update 2026-09-16:* these rows used to say #278, the multi-face

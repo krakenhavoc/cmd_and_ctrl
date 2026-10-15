@@ -753,19 +753,16 @@ func TestB20StarfallInvocationDestroysAllCreaturesAndDeclaresTheGift(t *testing.
 
 func TestB20MercilessExecutionerMakesEveryoneSacrifice(t *testing.T) {
 	g := newCatalogGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
+	opp := g.Seats[1]
 	theirs := b16Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2, "G")
 	executioner := castCatalogSpell(t, g, "Merciless Executioner", "Creature — Orc Warrior", b20MercilessExecutionerOracle, nil)
 	passPriorityAroundTable(t, g)
-	if sacrificeChoiceFor(g, me.ID) == nil || sacrificeChoiceFor(g, opp.ID) == nil {
-		t.Fatal("each player with a creature is asked")
-	}
+	// Each player has exactly one creature — the Executioner is its own
+	// controller's — so every pick is forced and nobody is asked (ADR
+	// 0175, #3664).
 	if sacrificeChoiceFor(g, g.Seats[2].ID) != nil {
 		t.Error("a player with no creature is skipped, not prompted")
 	}
-	// Feeding it to itself is the printed line.
-	answerSacrifice(t, g, me.ID, executioner)
-	answerSacrifice(t, g, opp.ID, theirs)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(executioner) || g.Battlefield.Contains(theirs) {
 		t.Error("the sacrifices happen")

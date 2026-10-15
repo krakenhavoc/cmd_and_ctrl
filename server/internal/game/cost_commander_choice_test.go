@@ -96,7 +96,7 @@ func battlefieldZone(g *Game) *Zone { return g.Battlefield }
 func exileZone(g *Game) *Zone       { return g.Exile }
 
 func oneAbilityOnStack(g *Game) bool { return len(g.StackMeta) == 1 }
-func manaInPool(g *Game) bool        { return len(g.Seats[0].ManaPool) > 0 }
+func manaInPool(g *Game) bool        { return g.Seats[0].ManaPool.Total() > 0 }
 func spellOnStack(id uuid.UUID) func(*Game) bool {
 	return func(g *Game) bool { return g.Stack.Contains(id) }
 }
@@ -672,14 +672,14 @@ func TestACommanderSacrificedForACostCannotPayTwice(t *testing.T) {
 	if err := sac(); err != nil {
 		t.Fatalf("first activation: %v", err)
 	}
-	if got := len(me.ManaPool); got != 2 {
+	if got := me.ManaPool.Total(); got != 2 {
 		t.Fatalf("mana pool = %d after the first sacrifice, want {C}{C}", got)
 	}
 	assertOnlyIn(t, cmd, opp.Graveyard, g.Battlefield, opp.Command)
 	if err := sac(); err == nil {
 		t.Fatal("a second activation sacrificed a commander that is already in the graveyard")
 	}
-	if got := len(me.ManaPool); got != 2 {
+	if got := me.ManaPool.Total(); got != 2 {
 		t.Errorf("mana pool = %d, want the {C}{C} of ONE sacrifice", got)
 	}
 	answerCommanderReturn(t, g, opp, cmd, true)

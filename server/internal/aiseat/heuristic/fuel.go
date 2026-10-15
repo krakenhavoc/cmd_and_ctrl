@@ -227,7 +227,11 @@ func (p *Policy) resolvedValueFor(st *state, c *protocol.CardView, x int, ps pur
 		// not put under a priced sweep: §4 exists to price a bad wipe
 		// below zero.
 		sweep := p.cfg.PriceSweeps && len(ps.sweeps) > 0
-		if v < p.cfg.SpellFloor && !sweep && !targeted && !c.Unimplemented && untargetedSpell(c) {
+		// ADR 0188 Decision 10: nor under a skipped turn. The floor is a
+		// card that replaces itself, and Meditate's turn lost is a price
+		// the spell charges, not a proxy the floor may cancel.
+		skips := p.cfg.Weights.Turn != 0 && ps.turns < 0
+		if v < p.cfg.SpellFloor && !sweep && !skips && !targeted && !c.Unimplemented && untargetedSpell(c) {
 			v = p.cfg.SpellFloor
 		}
 	}

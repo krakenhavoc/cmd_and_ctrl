@@ -14,6 +14,7 @@ import {
   ptCounterDelta,
   rowBadges,
   rowEntries,
+  cardGroupKey,
   selectFirstN,
   tokenGroupKey,
 } from "./tokenGroups";
@@ -34,6 +35,130 @@ function soldier(extra: Partial<CardView> = {}): CardView {
     ...extra,
   };
 }
+
+// #3046: identical nontoken permanents pile, but only when nothing the
+// player can see tells them apart.
+let b = 0;
+function bear(extra: Partial<CardView> = {}): CardView {
+  b++;
+  return {
+    instance_id: `b${b}`,
+    name: "Grizzly Bears",
+    owner: "me",
+    controller: "me",
+    type_line: "Creature — Bear",
+    colors: ["G"],
+    power: 2,
+    toughness: 2,
+    scryfall_id: "bears-1",
+    battle_x: 100 + b,
+    ...extra,
+  };
+}
+
+describe("cardGroupKey (#3046)", () => {
+  it("gives identical copies the same key, whatever their ID, position or tapped state", () => {
+    const k = cardGroupKey(bear());
+    expect(k).not.toBeNull();
+    expect(cardGroupKey(bear({ battle_x: 7, battle_y: 3 }))).toBe(k);
+    expect(cardGroupKey(bear({ tapped: true }))).toBe(k);
+  });
+
+  it("is null for a token, a commander, a face-down, phased-out or hidden card and a Ring-bearer", () => {
+    expect(cardGroupKey(soldier())).toBeNull();
+    expect(cardGroupKey(bear({ is_token: true, token_copy: true }))).toBeNull();
+    expect(cardGroupKey(bear({ is_commander: true }))).toBeNull();
+    expect(cardGroupKey(bear({ face_down: true }))).toBeNull();
+    expect(cardGroupKey(bear({ phased_out: true }))).toBeNull();
+    expect(cardGroupKey(bear({ known_by_you: false }))).toBeNull();
+    expect(cardGroupKey(bear({ ring_bearer: true }))).toBeNull();
+  });
+
+  it("splits on everything the player sees: counters, damage, sickness, P/T, combat, goad, art", () => {
+    const k = cardGroupKey(bear());
+    const variants: Partial<CardView>[] = [
+      { counters: { "+1/+1": 1 }, power: 3, toughness: 3 },
+      { counters: { stun: 1 } },
+      { damage_marked: 1 },
+      { summoning_sick: true },
+      { power: 4, toughness: 4 },
+      { attacking_target: "bob" },
+      { blocking_target: "ogre" },
+      { goaded_by: "bob" },
+      { scryfall_id: "bears-2" },
+      { controller: "bob" },
+      { monstrous: true },
+      { chosen_name: "Lightning Bolt" },
+    ];
+    for (const extra of variants) {
+      expect(cardGroupKey(bear(extra)), JSON.stringify(extra)).not.toBe(k);
+    }
+  });
+
+  it("does not care about field order", () => {
+    const a = bear({ instance_id: "x", battle_x: 0 });
+    const reordered = Object.fromEntries(Object.entries(a).reverse()) as unknown as CardView;
+    expect(cardGroupKey(reordered)).toBe(cardGroupKey(a));
+  });
+
+  it("ignores per-instance ability detail: cost options that name the other copy", () => {
+    const ability = (other: string, unmet: boolean) => ({
+      index: 0,
+      ref: "own:0",
+      label: "Tap another untapped creature you control: draw a card",
+      tap_others_options: { cards: [other] },
+      condition_unmet: unmet,
+    });
+    const x = bear({ instance_id: "x", activated_abilities: [ability("y", true)] as never });
+    const y = bear({ instance_id: "y", activated_abilities: [ability("x", false)] as never });
+    expect(cardGroupKey(x)).toBe(cardGroupKey(y));
+    // ...but a spent exhaust ability marks a copy apart.
+    const spent = bear({
+      instance_id: "z",
+      activated_abilities: [{ ...ability("x", false), exhausted: true }] as never,
+    });
+    expect(cardGroupKey(spent)).not.toBe(cardGroupKey(x));
+  });
+});
+
+describe("rowEntries for printed cards (#3046)", () => {
+  it("five identical untapped creatures draw as one group; a tapped one splits off", () => {
+    const five = [bear(), bear(), bear(), bear(), bear()];
+    const [only, ...rest] = rowEntries(five);
+    expect(rest).toEqual([]);
+    expect(only.kind === "group" && only.members).toEqual(five);
+    const tapped = { ...five[2], tapped: true };
+    const split = rowEntries([five[0], five[1], tapped, five[3], five[4]]);
+    expect(split.map((e) => e.kind)).toEqual(["group", "card"]);
+    expect(split[1].kind === "card" && split[1].card).toBe(tapped);
+  });
+
+  it("draws one card per highlight, so a ring never stands for a copy drawn elsewhere", () => {
+    const [x, y, z, w] = [bear(), bear(), bear(), bear()];
+    const ready = new Set([y.instance_id, w.instance_id]);
+    const highlight = (c: CardView) => (ready.has(c.instance_id) ? "ready" : "");
+    const entries = rowEntries([x, y, z, w], {}, { highlight });
+    expect(entries.map((e) => e.kind === "group" && e.members)).toEqual([
+      [x, z],
+      [y, w],
+    ]);
+    // One group behind both cards: the member list still shows all four.
+    expect(new Set(entries.map((e) => e.kind === "group" && e.groupKey)).size).toBe(1);
+    expect(new Set(entries.map((e) => e.key)).size).toBe(2);
+  });
+
+  it("leaves token groups whole whatever the highlight (#1724)", () => {
+    const [s1, s2] = [soldier(), soldier()];
+    const highlight = (c: CardView) => (c === s1 ? "ready" : "");
+    expect(rowEntries([s1, s2], {}, { highlight }).map((e) => e.kind)).toEqual(["group"]);
+  });
+
+  it("never mixes a token copy into a pile of the card it copies", () => {
+    const card = bear();
+    const copy = bear({ is_token: true, token_copy: true });
+    expect(rowEntries([card, copy]).map((e) => e.kind)).toEqual(["card", "card"]);
+  });
+});
 
 describe("isToken", () => {
   it("reads the Token supertype off the type line, as the engine does", () => {
@@ -106,17 +231,20 @@ describe("groupTokens", () => {
     expect(groupTokens([soldier(), soldier()]).size).toBe(1);
   });
 
-  it("never groups two copies of a printed card", () => {
-    const bear = (id: string): CardView => ({
-      instance_id: id,
-      name: "Grizzly Bears",
-      owner: "me",
-      controller: "me",
-      type_line: "Creature — Bear",
-      power: 2,
-      toughness: 2,
-    });
-    expect(groupTokens([bear("b1"), bear("b2")]).size).toBe(0);
+  it("groups two identical copies of a printed card (#3046)", () => {
+    expect(groupTokens([bear(), bear()]).size).toBe(1);
+  });
+
+  it("nontoken: false leaves printed cards alone, as the land strip needs", () => {
+    expect(groupTokens([bear(), bear()], {}, { nontoken: false }).size).toBe(0);
+    expect(groupTokens([soldier(), soldier()], {}, { nontoken: false }).size).toBe(1);
+  });
+
+  it("never piles a printed card that has anything attached", () => {
+    const a = bear();
+    const b = bear();
+    const aura: CardView = { instance_id: "aura", name: "Pacifism", owner: "me", controller: "me" };
+    expect(groupTokens([a, b], { [b.instance_id]: [aura] }).size).toBe(0);
   });
 
   it("keeps an equipped token in the group even though the Equipment changed its P/T", () => {

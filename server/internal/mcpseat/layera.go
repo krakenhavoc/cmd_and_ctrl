@@ -20,8 +20,11 @@ import (
 // (landfall, a discard outlet), and the owner's list ("empty priority
 // passes, forced moves, mana steps") did not include it. Neither is
 // `opening-choice`: who takes the first turn is a real choice (CR 103.1),
-// so the winner's window reaches the model.
-var DefaultAbsorb = []string{rules.RuleForced, rules.RuleManaOnly, rules.RuleCoinCall, rules.RuleOpeningRoll}
+// so the winner's window reaches the model. `value-only` is among them
+// (#2939): a window whose only alternatives to passing are activations
+// of rows the catalog declares `value` (ADR 0142 decision 6) has nothing
+// in it to answer, and Layer A already passes it for the bots.
+var DefaultAbsorb = []string{rules.RuleForced, rules.RuleManaOnly, rules.RuleCoinCall, rules.RuleOpeningRoll, rules.RuleValueOnly}
 
 // absorbable is every rule --absorb may name. A rule can be removed so
 // more windows reach the model; nothing outside Layer A can be added,
@@ -33,10 +36,12 @@ var absorbable = map[string]bool{
 	rules.RuleSameLand:      true,
 	rules.RuleOpeningRoll:   true,
 	rules.RuleOpeningChoice: true,
+	rules.RuleValueOnly:     true,
 }
 
 // ParseAbsorb reads --absorb: a comma-separated subset of forced,
-// mana-only, coin-call, same-land, opening-roll and opening-choice.
+// mana-only, coin-call, same-land, opening-roll, opening-choice and
+// value-only.
 // "none" absorbs nothing, so every window reaches the model.
 func ParseAbsorb(s string) (map[string]bool, error) {
 	out := map[string]bool{}

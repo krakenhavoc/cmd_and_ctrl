@@ -44,6 +44,8 @@ import (
 //     harm (#3309);
 //   - ExtraLandDrops anywhere but the card, or on a card whose
 //     AdditionalLandPlays says a different number (#2678);
+//   - LandfallExtraTriggers anywhere but the card, or on a card with
+//     no TriggerDoubler (#3146);
 //   - a Sweep with an unknown class or verb, an amount on a verb that
 //     has none, or none on a verb that needs one;
 //   - a target entry (Purpose.Targets, ADR 0126's amendment of
@@ -52,6 +54,10 @@ import (
 //     given (checkTargetPurposes).
 //   - Answers (ADR 0142) off an activated row, or a declaration
 //     answers.go refuses (checkActivatedAnswers, checkManaAnswers).
+//   - Kicked or FaceUp (ADR 0126's amendment of 2026-10-15, #3762) off
+//     the card, on a card with no single kicker / no face-down cast
+//     offer, or whose inner purpose is empty, nests another, or
+//     declares what only the card's own slot may (checkConditionalPurposes).
 
 // purposeSlot says where a Purpose was declared, for the guard's rules.
 type purposeSlot int
@@ -63,6 +69,10 @@ const (
 	purposeOnActivated
 	purposeOnAnyPlayerActivated
 	purposeOnTriggered
+	// purposeOnFaceUp is the inner purpose of Purpose.FaceUp (#3776): the
+	// card's own slot, plus the one-turn pump a turn-face-up trigger gives
+	// its source ("it gets +6/+6 and gains trample until end of turn").
+	purposeOnFaceUp
 )
 
 // checkPurpose panics when p is not a legal declaration for its slot.
@@ -76,8 +86,8 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	}
 	if p.Draws < 0 || p.ControllerLosesLife < 0 || p.Discards < 0 || p.Lands < 0 ||
 		p.Tutors < 0 || p.SelfMillTutor < 0 || p.Tokens < 0 || p.Energy < 0 || p.Sweep.Amount < 0 ||
-		p.ExtraCombat < 0 || p.DamageToCreature < 0 || p.DamageEachOpponent < 0 || p.LifeGain < 0 ||
-		p.AwakenLand < 0 || p.ExtraLandDrops < 0 || p.LandsUntapped < 0 || p.Impulse < 0 || p.CreatureTokens < 0 {
+		p.ExtraCombat < 0 || p.ExtraTurns < 0 || p.SkipsTurns < 0 || p.DamageToCreature < 0 || p.DamageEachOpponent < 0 || p.LifeGain < 0 ||
+		p.AwakenLand < 0 || p.ExtraLandDrops < 0 || p.LandfallExtraTriggers < 0 || p.LandsUntapped < 0 || p.Impulse < 0 || p.CreatureTokens < 0 {
 		fail("has a negative amount")
 	}
 	if p.LandsUntapped > p.Lands {
@@ -89,11 +99,17 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.Aura != "" && p.Aura != game.AuraBenefit && p.Aura != game.AuraHarm {
 		fail("sets an Aura other than benefit or harm (#3309)")
 	}
+	if p.LandfallExtraTriggers != 0 && slot != purposeOnCard {
+		fail("sets LandfallExtraTriggers off the card — a landfall doubler is the card's own static (#3146)")
+	}
 	if p.ExtraLandDrops != 0 && slot != purposeOnCard {
 		fail("sets ExtraLandDrops off the card — an additional land drop is the card's own static or its spell's effect (#2678)")
 	}
 	if p.ControllerLosesLife != 0 && slot != purposeOnAnyPlayerActivated {
 		fail("names ControllerLosesLife off an any-player activated row — the activator and the controller are one player there")
+	}
+	if (p.ExtraTurns != 0 || p.SkipsTurns != 0) && slot == purposeOnAnyPlayerActivated {
+		fail("sets ExtraTurns or SkipsTurns on an any-player activated row — the activator is not the controller, so the caster's own turns would be the wrong player's, and a bot must never activate another player's copy (ADR 0106 decision 2, ADR 0188 Decision 10)")
 	}
 	if p.DeathPayoff && slot != purposeOnTriggered {
 		fail("sets DeathPayoff off a triggered row")
@@ -119,7 +135,7 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if t := p.TokensPerControlled; t != strings.ToLower(t) || strings.ContainsAny(t, " \t—") {
 		fail("names a TokensPerControlled subtype that is not one lowercase word (#3165)")
 	}
-	onSource := slot == purposeOnTriggered || slot == purposeOnActivated || slot == purposeOnAnyPlayerActivated
+	onSource := slot == purposeOnTriggered || slot == purposeOnFaceUp || slot == purposeOnActivated || slot == purposeOnAnyPlayerActivated
 	if p.Pump != nil && !onSource {
 		fail("sets Pump off a triggered or activated row — a pump is what an ability gives its own source")
 	}
@@ -142,6 +158,9 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 		checkLandfallPayoff(&l, fail)
 	}
 	checkSweep(p.Sweep, fail)
+	if (p.Kicked != nil || p.FaceUp != nil) && slot != purposeOnCard {
+		fail("sets Kicked or FaceUp off the card — what a kicker or a turn face up adds is the card's own (#3762)")
+	}
 }
 
 // onActivated reports whether a slot is an activated row, the one slot
@@ -251,7 +270,11 @@ func checkSpecPurposes(spec Spec) {
 		panic(fmt.Sprintf("effects.Register: %q declares ExtraLandDrops %d but AdditionalLandPlays %d: the purpose says what the static does (#2678)",
 			name, n, spec.AdditionalLandPlays))
 	}
+	if spec.Purpose.LandfallExtraTriggers != 0 && len(spec.TriggerDoublers) == 0 {
+		panic(fmt.Sprintf("effects.Register: %q declares LandfallExtraTriggers but has no TriggerDoubler: the purpose says what the static does (#3146)", name))
+	}
 	checkTargetPurposes(name, "card", spec.Purpose, spec.Targets, true)
+	checkConditionalPurposes(spec)
 	checkModePurposes(name, "spell", spec.Modes)
 	for _, a := range spec.AlternativeCosts {
 		where := fmt.Sprintf("alternative cost %q", a.Key)
@@ -276,6 +299,68 @@ func checkSpecPurposes(spec Spec) {
 		checkTriggeredPurpose(name, fmt.Sprintf("triggered ability %d", i), t)
 	}
 	checkManaAbilitiesAnswers(name, "card", spec.ManaAbilities)
+}
+
+// checkConditionalPurposes is the guard for Purpose.Kicked and
+// Purpose.FaceUp (ADR 0126's amendment of 2026-10-15, #3762). Each is
+// read only when its condition holds, so it must be one a reader can
+// recognise:
+//
+//   - Kicked on a card with exactly one optional cost, which is a
+//     (single) kicker. With two kickers ("Kicker {R} and/or {W}") the
+//     view cannot say which was paid, and a multikicker's amounts are
+//     counted at resolution; both keep their old, unconditional silence.
+//   - FaceUp on a card with a face-down cast offer (morph, megamorph,
+//     disguise), the only way the special action exists to price.
+//
+// The inner purpose says something, and is a plain one: no further
+// Kicked or FaceUp, no Targets (the clauses it would index belong to
+// the statement the cast announces), and nothing that is the card
+// slot's own static (Aura, ExtraLandDrops, LandfallExtraTriggers) or
+// the view's own stamp (FlashCleanupSacrifice).
+func checkConditionalPurposes(spec Spec) {
+	name := spec.Name
+	inner := func(which string, p *game.Purpose) {
+		if p == nil {
+			return
+		}
+		where := "card " + which
+		fail := func(why string) {
+			panic(fmt.Sprintf("effects.Register: %q %s declares a Purpose that %s (#3762)", name, where, why))
+		}
+		switch {
+		case p.IsZero():
+			fail("says nothing — leave it nil")
+		case p.Kicked != nil || p.FaceUp != nil:
+			fail("nests Kicked or FaceUp")
+		case p.Targets != nil:
+			fail("declares Targets — a conditional purpose has no clause list of its own")
+		case p.Aura != "" || p.ExtraLandDrops != 0 || p.LandfallExtraTriggers != 0 || p.FlashCleanupSacrifice:
+			fail("declares Aura, ExtraLandDrops, LandfallExtraTriggers or FlashCleanupSacrifice, which are the card's own")
+		}
+		slot := purposeOnCard
+		if which == "face up" {
+			slot = purposeOnFaceUp
+		}
+		checkPurpose(name, where, slot, *p)
+	}
+	if spec.Purpose.Kicked != nil {
+		if len(spec.OptionalCosts) != 1 || spec.OptionalCosts[0].Key != game.KickerKey {
+			panic(fmt.Sprintf("effects.Register: %q declares Purpose.Kicked but not exactly one kicker optional cost — "+
+				"with two kickers the view cannot say which was paid (#3762)", spec.Name))
+		}
+		inner("kicked", spec.Purpose.Kicked)
+	}
+	if spec.Purpose.FaceUp != nil {
+		offered := false
+		for _, a := range spec.AlternativeCosts {
+			offered = offered || a.FaceDown != nil
+		}
+		if !offered {
+			panic(fmt.Sprintf("effects.Register: %q declares Purpose.FaceUp but has no face-down cast offer (Morph, Megamorph, Disguise) (#3762)", spec.Name))
+		}
+		inner("face up", spec.Purpose.FaceUp)
+	}
 }
 
 // checkActivatedPurpose checks one activated row's purpose and its
@@ -347,7 +432,7 @@ func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSp
 			fail(fmt.Sprintf("names slot %d twice", e.Slot))
 		}
 		seen[e.Slot] = true
-		if e.Draws < 0 || e.Discards < 0 || e.Tokens < 0 || e.LifeGain < 0 || e.LifeLoss < 0 || e.Damage < 0 {
+		if e.Draws < 0 || e.Discards < 0 || e.ExtraTurns < 0 || e.Tokens < 0 || e.LifeGain < 0 || e.LifeLoss < 0 || e.Damage < 0 {
 			fail(fmt.Sprintf("has a negative amount on slot %d", e.Slot))
 		}
 		if e.IsZero() {
@@ -362,6 +447,9 @@ func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSp
 		}
 		if (e.Damage != 0 || e.DamageIsX) && !clause.Players && !slices.Contains(clause.Zones, game.ZoneBattlefield) {
 			fail(fmt.Sprintf("deals damage to slot %d, whose clause %q can target neither a player nor a permanent", e.Slot, clause.Label))
+		}
+		if e.Reanimates && !slices.Contains(clause.Zones, game.ZoneGraveyard) {
+			fail(fmt.Sprintf("reanimates slot %d, whose clause %q cannot target a card in a graveyard", e.Slot, clause.Label))
 		}
 		if r := e.Returns; !r.IsZero() {
 			if !slices.Contains(clause.Zones, game.ZoneBattlefield) {
@@ -408,6 +496,14 @@ func DamageToTarget(slot, n int) game.TargetPurpose {
 // Awakened Inferno's −X is ForTargets(DamageXToTarget(0)).
 func DamageXToTarget(slot int) game.TargetPurpose {
 	return game.TargetPurpose{Slot: slot, DamageIsX: true}
+}
+
+// Reanimates is the target entry for a spell that puts the graveyard
+// card picked for clause `slot` onto the battlefield under its caster's
+// control (#3161): Reanimate is ForTargets(Reanimates(0)). The bot prices
+// the pick by the permanent it becomes, whoever owns the graveyard.
+func Reanimates(slot int) game.TargetPurpose {
+	return game.TargetPurpose{Slot: slot, Reanimates: true}
 }
 
 // ModeWithPurpose is a mode bullet with its declared purpose: the

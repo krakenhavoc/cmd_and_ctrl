@@ -144,7 +144,7 @@ func TestADiscountedManaAbilityCostIsWhatActivationActuallyPays(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, src, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("activation with an empty pool: %v (want no error — the discount took the printed {1} to {0})", err)
 	}
-	if len(me.ManaPool) != 3 {
+	if me.ManaPool.Total() != 3 {
 		t.Errorf("pool = %v, want the produced {C}{C}{C} — the {1} discounted to {0} spent nothing", me.ManaPool)
 	}
 }
@@ -185,7 +185,7 @@ func TestADiscountedManaAbilityCostIsPlannedByTheAutoTapper(t *testing.T) {
 		}
 		g.materializePlanLocked(me, plan, cost)
 	})
-	if len(me.ManaPool) != 3 {
+	if me.ManaPool.Total() != 3 {
 		t.Fatalf("pool = %v, want the planned {C}{C}{C} — the executor must not have paid the {1} it never priced", me.ManaPool)
 	}
 	if !tappedForTest(g, src) {

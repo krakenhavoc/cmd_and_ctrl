@@ -77,3 +77,51 @@ func WheneverYouRollDice(label string, effect func(*game.Game, *game.StackItem, 
 		},
 	}
 }
+
+// YouWonACoinFlip is "whenever you win a coin flip" (CR 705.2, ADR 0054
+// Decision 6, amended 2026-10-15 for #3767): an EventFlipCoin that the
+// source's controller flipped and won. Only the player who flips a coin
+// wins or loses it, so the flipper is the event's Actor and nobody else's
+// ability of this kind sees the flip. One event is emitted per coin, so a
+// flip of two coins that wins both fires twice: once per won flip.
+//
+// A face-only flip (Game.FlipCoinsForEffect: nobody calls it, so nobody
+// wins) carries Won false and never matches, and a coin flipped at the
+// table for fun is an EventTableRoll, never this kind.
+func YouWonACoinFlip(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventFlipCoin && ev.Won && ev.Actor != uuid.Nil && ev.Actor == source.Controller
+}
+
+// WheneverYouWinACoinFlip is "Whenever you win a coin flip, <effect>"
+// (Chance Encounter, Tavern Scoundrel, Setzer, Wandering Gambler).
+func WheneverYouWinACoinFlip(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventFlipCoin, YouWonACoinFlip, label, effect)
+}
+
+// FlipACoin is a bare "flip a coin" that prints nothing for winning or
+// losing (Tavern Scoundrel's activated ability, Setzer's Vehicle trigger).
+// The flip still has a winner: CR 705.2 has the flipper call it when
+// something cares whether they win, and on both cards their own "whenever
+// you win a coin flip" does. So it is Game.FlipCoinForEffect's called flip
+// with no continuation, and what winning does is whatever triggers on the
+// EventFlipCoin it emits.
+//
+// The flipper is the controller of the resolving ability.
+type FlipACoin struct {
+	// Question is the coin-call prompt's text.
+	Question string
+}
+
+// Apply queues the coin call.
+func (f FlipACoin) Apply(ctx *Context) error {
+	flipper := ctx.Controller()
+	if flipper == uuid.Nil {
+		return nil
+	}
+	ctx.Game.FlipCoinForEffect(game.CoinFlipSpec{
+		Flipper:  flipper,
+		Source:   ctx.Source(),
+		Question: f.Question,
+	})
+	return nil
+}

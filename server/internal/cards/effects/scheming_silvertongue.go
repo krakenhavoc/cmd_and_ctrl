@@ -17,8 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // oracle ID and its prepare spell under "<oracle>#1". The prepare spell
 // is Sign in Blood word for word, so it shares that card's body.
 //
-// "Your second main phase" is the postcombat main phase, and the
-// "if you gained 2 or more life this turn" clause is an intervening if
+// "Your second main phase" is the second main phase of the turn
+// (YourSecondMainPhaseBegan), not every postcombat main phase: an added
+// third main phase does not prepare it. The "if you gained 2 or more
+// life this turn" clause is an intervening if
 // (CR 603.4): asked as the phase begins, so no life gain means no
 // trigger, and again as the ability resolves. Lifelink damage counts,
 // because it is life gain (CR 702.15b). A Silvertongue that is already
@@ -34,7 +36,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "lifelink"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventStepBegan, AllOf(StepBegan(game.StepPostcombatMain, true), silvertongueGainedTwo),
+			On(game.EventStepBegan, AllOf(YourSecondMainPhaseBegan, silvertongueGainedTwo),
 				"Scheming Silvertongue — becomes prepared", silvertongueBecomePrepared),
 		},
 	})

@@ -32,7 +32,7 @@ func TestJeganthaAddsRestrictedFiveColorMana(t *testing.T) {
 	if got := poolColors(me); !slices.Equal(got, []string{"W", "U", "B", "R", "G"}) {
 		t.Fatalf("pool = %v, want W U B R G", got)
 	}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if !slices.Equal(tok.Restrictions, []string{game.ManaRestrictNoGeneric}) {
 			t.Errorf("token %+v is not restricted to non-generic costs", tok)
 		}
@@ -50,13 +50,13 @@ func TestJeganthaManaPaysAFiveColorSpellButNotGeneric(t *testing.T) {
 	four := handSpell(me, "Four", "Artifact", "{4}")
 	five := handSpell(me, "Five Colors", "Sorcery", "{W}{U}{B}{R}{G}")
 	refusedForMana(t, g.CastSpell(me.ID, four, game.CastSpellParams{Strict: true}), "Jegantha mana for {4}")
-	if len(me.ManaPool) != 5 {
+	if me.ManaPool.Total() != 5 {
 		t.Fatalf("a refused cast spent mana: pool %v", poolColors(me))
 	}
 	if err := g.CastSpell(me.ID, five, game.CastSpellParams{Strict: true}); err != nil {
 		t.Fatalf("{W}{U}{B}{R}{G} off Jegantha: %v", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool %v after the cast, want empty", poolColors(me))
 	}
 }
@@ -116,7 +116,7 @@ func TestKruphixConversionKeepsJeganthasRestriction(t *testing.T) {
 	jeganthaTapped(t, g, me)
 	mkAdvance(t, g)
 	mkWantPool(t, me, map[string]int{"C": 5})
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if !slices.Equal(tok.Restrictions, []string{game.ManaRestrictNoGeneric}) {
 			t.Fatalf("converted token %+v lost the restriction", tok)
 		}

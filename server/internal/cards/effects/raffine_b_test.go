@@ -26,7 +26,7 @@ const (
 	rbVirtuePersistOracle = "fae36da0-bf9c-484f-b2fe-dd8ab2effc5c"
 )
 
-func rbPoolSize(p *game.Player) int { return len(p.ManaPool) }
+func rbPoolSize(p *game.Player) int { return p.ManaPool.Total() }
 
 func rbUntap(g *game.Game, id uuid.UUID) {
 	g.WithWriteLock(func() {
@@ -239,7 +239,7 @@ func TestPlazaOfHeroesColourlessAndLegendaryRestrictedMana(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, plaza, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatal(err)
 	}
-	if rbPoolSize(me) != 1 || me.ManaPool[0].Color != "C" {
+	if rbPoolSize(me) != 1 || me.ManaPool.Units()[0].Color != "C" {
 		t.Fatalf("pool = %v, want one {C}", me.ManaPool)
 	}
 	me.ManaPool = nil
@@ -292,7 +292,7 @@ func TestPlazaOfHeroesColorAmongLegendaryPermanents(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, plaza, 2, game.ManaAbilityParams{}); err != nil {
 		t.Fatal(err)
 	}
-	if rbPoolSize(me) != 1 || me.ManaPool[0].Color != "U" {
+	if rbPoolSize(me) != 1 || me.ManaPool.Units()[0].Color != "U" {
 		t.Errorf("pool = %v, want one {U}", me.ManaPool)
 	}
 }

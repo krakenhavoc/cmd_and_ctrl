@@ -126,6 +126,16 @@ const (
 	// draws by the same player in the same step collapse into one
 	// entry with a count.
 	LogDraw LogKind = "draw"
+	// LogMill — a player milled cards from their library (CR 701.17a).
+	// Names the cards, which are public once they are in a graveyard.
+	// Consecutive mills by one player in one turn collapse into one
+	// entry, so "mill three" reads as one line naming all three.
+	LogMill LogKind = "mill"
+	// LogSearch — a player searched a library (CR 701.23), or shuffled
+	// one (Label "shuffle"). Never names a card: what a search takes is
+	// not public until it is revealed, and a search that reveals was
+	// already narrated by its LogReveal line.
+	LogSearch LogKind = "search"
 	// LogLife — a player's life total changed. Amount is signed.
 	LogLife LogKind = "life"
 	// LogDamage — damage was dealt to a player or a permanent.
@@ -970,6 +980,12 @@ type logFold struct {
 	// cycle line already told that activation (ADR 0119 §5), the way
 	// `sacrificed` keeps a sacrifice from being told twice.
 	cycled string
+	// revealedSearch is set by a reveal that a library search made
+	// (revealTo set), and cleared by the search's own LogSearch line,
+	// which the fold then drops: the reveal already said it. The seat is
+	// the searcher, so a search by someone else is still its own line.
+	revealedSearch     bool
+	revealedSearchSeat int
 }
 
 func newLogFold(seatIDs []uuid.UUID, gen uint64) *logFold {
@@ -1065,6 +1081,11 @@ func (f *logFold) feed(events []game.Event) int {
 			}
 			f.randomAt[e.batchSeq] = ring.total
 		}
+		if e.Kind == LogReveal && e.revealTo != "" {
+			// The search this reveal belongs to comes after it; see the
+			// LogSearch case below.
+			f.revealedSearch, f.revealedSearchSeat = true, e.Seat
+		}
 		if e.Kind == LogReveal && e.revealSeq != 0 {
 			if at, seen := f.revealAt[e.revealSeq]; seen {
 				if prev := ring.pushed(at); prev != nil {
@@ -1088,6 +1109,27 @@ func (f *logFold) feed(events []game.Event) int {
 		if prev := ring.last(); prev != nil && e.Kind == LogDraw && prev.Kind == LogDraw &&
 			prev.Seat == e.Seat && prev.Turn == e.Turn {
 			prev.Amount += e.Amount
+			continue
+		}
+		// One mill instruction is one EventMill per card, back to back;
+		// the line names them all. Adjacency is the grouping, the way a
+		// draw run is: a different ability's resolution pushes its own
+		// line between two mills, so they stay two lines.
+		if prev := ring.last(); prev != nil && e.Kind == LogMill && prev.Kind == LogMill &&
+			prev.Seat == e.Seat && prev.Turn == e.Turn {
+			prev.Amount++
+			if len(prev.revealIDs) < logRevealNamesMax {
+				prev.revealIDs = append(prev.revealIDs, e.revealIDs...)
+			}
+			continue
+		}
+		// A search that fetched a card, or revealed one on its way to
+		// hand, has already been told by the reveal line the engine emits
+		// before it (the move and the other lines it causes come in
+		// between, so this is a flag, not the last line). Saying
+		// "searched their library" again would say the same thing twice.
+		if e.Kind == LogSearch && e.Label != "shuffle" && f.revealedSearch && f.revealedSearchSeat == e.Seat {
+			f.revealedSearch = false
 			continue
 		}
 		// CR 702.29b: a cycling's cost DISCARDED the card, and the
@@ -1427,6 +1469,32 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 
 	case game.EventRevealCards:
 		return revealEntry(base, ev, seatOf), true
+
+	case game.EventMill:
+		// The engine emits one EventMill per card (routeCardToZone), so
+		// each card is one entry here and the feed folds a run of them.
+		// A milled card is public: it is in a graveyard. Its name rides
+		// revealIDs, which resolveLogNames looks up in every zone with
+		// no knower check, as it does for a reveal.
+		base.Kind = LogMill
+		base.Amount = 1
+		if ev.CardID != uuid.Nil {
+			base.revealIDs = []string{ev.CardID.String()}
+		}
+		return base, true
+
+	case game.EventSearchLibrary:
+		// A library search, or a plain shuffle (Label "shuffle"). The
+		// searcher is the actor; Target names whose library it was, which
+		// is the searcher's own unless it is another player's (#1335).
+		base.Kind = LogSearch
+		base.Label = ev.Label
+		if ev.Target != uuid.Nil {
+			if seat := seatOf(ev.Target); seat != NoSeat {
+				base.TargetSeat = &seat
+			}
+		}
+		return base, true
 
 	case game.EventColorChosen:
 		// CR 105.4: the choice is made at the table and heard by
@@ -2502,6 +2570,10 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s drew a card", actor)
 		}
 		return fmt.Sprintf("%s drew %d cards", actor, e.Amount)
+	case LogMill:
+		return renderMillText(*e, actor)
+	case LogSearch:
+		return renderSearchText(*e, actor)
 	case LogLife:
 		if e.Amount > 0 {
 			return fmt.Sprintf("%s gained %d life", actor, e.Amount)
@@ -3152,6 +3224,56 @@ func renderRevealText(e LogEvent, actor string) string {
 	return fmt.Sprintf("%s %s %s%s%s: %s", actor, verb, what, from, onto, list)
 }
 
+// renderMillText words a LogMill run: "P1 milled Swamp, Terramorphic
+// Expanse and Sanguine Bond", with "and N more" past the names kept
+// (logRevealNamesMax) and "a card" for a name the view cannot find.
+func renderMillText(e LogEvent, actor string) string {
+	if len(e.revealNames) == 0 {
+		if e.Amount <= 1 {
+			return fmt.Sprintf("%s milled a card", actor)
+		}
+		return fmt.Sprintf("%s milled %d cards", actor, e.Amount)
+	}
+	names := make([]string, len(e.revealNames))
+	for i, n := range e.revealNames {
+		names[i] = nameOr(n, "a card")
+	}
+	list := naturalList(names)
+	if more := e.Amount - len(names); more > 0 {
+		list += fmt.Sprintf(" and %d more", more)
+	}
+	return fmt.Sprintf("%s milled %s", actor, list)
+}
+
+// renderSearchText words a LogSearch: "P1 searched their library",
+// "P1 searched P2's library and shuffled it" (a search that shuffled),
+// or "P1 shuffled their library" for a plain shuffle (Label "shuffle").
+// It never names a card.
+func renderSearchText(e LogEvent, actor string) string {
+	owner := "their"
+	if e.TargetSeat != nil && *e.TargetSeat != e.Seat {
+		owner = nameOr(e.targetSeatName, "a player") + "'s"
+	}
+	switch e.Label {
+	case "shuffle":
+		return fmt.Sprintf("%s shuffled %s library", actor, owner)
+	case game.SearchShuffledLabel:
+		return fmt.Sprintf("%s searched %s library and shuffled it", actor, owner)
+	}
+	return fmt.Sprintf("%s searched %s library", actor, owner)
+}
+
+// naturalList joins names as English does: "A", "A and B", "A, B and C".
+func naturalList(names []string) string {
+	switch len(names) {
+	case 0:
+		return ""
+	case 1:
+		return names[0]
+	}
+	return strings.Join(names[:len(names)-1], ", ") + " and " + names[len(names)-1]
+}
+
 func nameOr(s, fallback string) string {
 	if s == "" {
 		return fallback
@@ -3326,6 +3448,14 @@ func renderAutoAnswerText(e LogEvent, actor, cardName string) string {
 	case game.AutoAnswerCallDontPay:
 		return fmt.Sprintf("%s didn't pay for %s (automatic)", actor, card)
 	}
+	// ADR 0188 Decision 12: the which-skip question. Yes spent the
+	// player's own skip; No let the other effect (Label) take the turn.
+	if e.AutoAnswerKey == game.TurnSkipOrderAutoAnswerKey {
+		if e.Call == game.AutoAnswerCallYes {
+			return fmt.Sprintf("%s used their own skip (%s) on their extra turn (automatic)", actor, card)
+		}
+		return fmt.Sprintf("%s let %s skip their extra turn (automatic)", actor, nameOr(e.Label, "another effect"))
+	}
 	answer := "No"
 	if e.Call == game.AutoAnswerCallYes {
 		answer = "Yes"
@@ -3342,7 +3472,9 @@ func renderAutoAnswerText(e LogEvent, actor, cardName string) string {
 // "Alice paid 5 life for Dash Hopes", "Alice took 6 damage from Book
 // Burning", "Alice chose to sacrifice a land for Argothian Wurm", and
 // "Alice said yes to Distant Memories" for an offer that costs
-// nothing. A decline is the same sentence negated.
+// nothing, and "Alice paid for Worms of the Earth (sacrifice two lands
+// or take 5 damage)" for an either payment. A decline is the same
+// sentence negated.
 func anyPlayerAnswerText(paid bool, actor, label, card string) string {
 	switch {
 	case label == "":
@@ -3350,6 +3482,14 @@ func anyPlayerAnswerText(paid bool, actor, label, card string) string {
 			return fmt.Sprintf("%s said yes to %s", actor, card)
 		}
 		return fmt.Sprintf("%s said no to %s", actor, card)
+	case strings.Contains(label, " or "):
+		// ADR 0187 §5: an either payment ("sacrifice two lands or take
+		// 5 damage"). The offer's words name both ways to pay; which one
+		// was taken is the sacrifice or the damage line that follows.
+		if paid {
+			return fmt.Sprintf("%s paid for %s (%s)", actor, card, label)
+		}
+		return fmt.Sprintf("%s didn't pay for %s (%s)", actor, card, label)
 	case strings.HasSuffix(label, " damage"):
 		if paid {
 			return fmt.Sprintf("%s took %s from %s", actor, label, card)

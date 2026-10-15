@@ -64,15 +64,15 @@ func init() {
 				return ev.Kind == game.EventBeginEndStep && ev.Actor == source.Controller &&
 					permanentsYouControlButDontOwn(g, source.Controller) >= 3
 			}, "Agent of Treachery — draw three cards",
-				func(g *game.Game, item *game.StackItem) error {
-					// CR 603.4: the condition is checked again on
-					// resolution, so an Agent whose stolen permanents
-					// went home in response draws nothing.
-					if permanentsYouControlButDontOwn(g, item.Controller) < 3 {
-						return nil
-					}
-					return DrawCards{Player: item.Controller, N: 3}.Apply(NewContext(g, item))
-				}),
+				// CR 603.4: the condition is checked again on
+				// resolution, so an Agent whose stolen permanents
+				// went home in response draws nothing.
+				Do(If{
+					Cond: CondBoard{Name: "three or more permanents you control but don't own", Test: func(ctx *Context) bool {
+						return permanentsYouControlButDontOwn(ctx.Game, ctx.Controller()) >= 3
+					}},
+					Then: []Applier{DrawCards{N: 3}},
+				})),
 		},
 	})
 }

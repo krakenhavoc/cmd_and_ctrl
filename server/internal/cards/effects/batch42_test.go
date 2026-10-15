@@ -801,7 +801,7 @@ func TestB42RingOfTheLuciiTapsForTwoAndTapsDownForALife(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, ring, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("tap for mana: %v", err)
 	}
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Errorf("{T}: Add {C}{C} adds two: pool %v", me.ManaPool)
 	}
 

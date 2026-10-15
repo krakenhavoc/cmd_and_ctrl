@@ -36,10 +36,10 @@ func TestCabalStrongholdCountsOnlyYourBasicSwamps(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, stronghold, 1, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Fatalf("pool = %v, want two {B} (two basic Swamps, the {3} was spent)", me.ManaPool)
 	}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Color != "B" {
 			t.Errorf("token %v, want black", tok)
 		}
@@ -194,10 +194,10 @@ func TestCastleGarenbrigMakesSixRestrictedGreen(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, castle, 1, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 6 {
+	if me.ManaPool.Total() != 6 {
 		t.Fatalf("pool = %v, want six {G}", me.ManaPool)
 	}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Color != "G" || len(tok.Restrictions) != 1 {
 			t.Errorf("token %+v, want restricted {G}", tok)
 		}

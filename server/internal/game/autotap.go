@@ -890,6 +890,11 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 			if (picked.SacrificeCost || picked.TapCost) && g.zoneChangePausedLocked(c.InstanceID) {
 				continue
 			}
+			// #3275: nor is one that can't be sacrificed, for an ability
+			// that sacrifices it (the executor's validator refuses it).
+			if picked.SacrificeCost && g.permanentCantBeSacrificedLocked(&c) {
+				continue
+			}
 			// #540: CR 302.6. A mana creature that entered this turn
 			// cannot pay a {T} cost, and the auto-tapper is not a way
 			// around the rule the hand-click path enforces — a Delighted

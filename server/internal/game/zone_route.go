@@ -657,9 +657,12 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 		// runRouteTailLocked — from the deferred call above, unless a
 		// replacement declared a life change before the cancel: that
 		// still happens (ADR 0178, CR 614.6), and the continuation
-		// waits for it.
-		if out != nil && len(out.lifeAfterMove) > 0 {
-			return false, g.runMoveTailLocked(out)
+		// waits for it. Likewise an extra turn (ADR 0188). Read off `ev`,
+		// not `out`: applyReplacementsLocked returns nil for a cancelled
+		// event, so the instructions a replacement declared before the
+		// cancel are only reachable through the event itself.
+		if len(ev.lifeAfterMove) > 0 || len(ev.extraTurnsAfterMove) > 0 {
+			return false, g.runMoveTailLocked(ev)
 		}
 		return false, nil
 	}

@@ -145,8 +145,8 @@ func TestArmageddonClockCountsUpAndAnyoneMayWindItBackDuringAnUpkeep(t *testing.
 	if err := g.ActivateCatalogAbility(other.ID, clock, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
 		t.Fatalf("another player activates Armageddon Clock in an upkeep: %v", err)
 	}
-	if len(other.ManaPool) != 0 || len(owner.ManaPool) != 4 {
-		t.Errorf("pools after paying {4}: activator %d (want 0), controller %d (want 4)", len(other.ManaPool), len(owner.ManaPool))
+	if other.ManaPool.Total() != 0 || owner.ManaPool.Total() != 4 {
+		t.Errorf("pools after paying {4}: activator %d (want 0), controller %d (want 4)", other.ManaPool.Total(), owner.ManaPool.Total())
 	}
 	passPriorityAroundTable(t, g)
 	if n := apbCounters(g, clock, "doom"); n != 0 {
@@ -201,8 +201,8 @@ func TestInfiniteHourglassPumpsEveryCreatureAndAnyoneMayRemoveATimeCounter(t *te
 	if err := g.ActivateCatalogAbility(other.ID, glass, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
 		t.Fatalf("another player activates Infinite Hourglass in an upkeep: %v", err)
 	}
-	if len(other.ManaPool) != 0 {
-		t.Errorf("activator's pool holds %d after paying {3}", len(other.ManaPool))
+	if other.ManaPool.Total() != 0 {
+		t.Errorf("activator's pool holds %d after paying {3}", other.ManaPool.Total())
 	}
 	passPriorityAroundTable(t, g)
 	if n := apbCounters(g, glass, game.CounterTime); n != 0 {
@@ -233,8 +233,8 @@ func TestSamiteSanctuaryShieldsAnotherPlayersCreatureForOne(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("another player activates Samite Sanctuary: %v", err)
 	}
-	if len(other.ManaPool) != 0 {
-		t.Errorf("activator's pool holds %d after paying {2}", len(other.ManaPool))
+	if other.ManaPool.Total() != 0 {
+		t.Errorf("activator's pool holds %d after paying {2}", other.ManaPool.Total())
 	}
 	passPriorityAroundTable(t, g)
 
@@ -282,8 +282,8 @@ func TestTidalControlEitherCostCountersARedOrGreenSpell(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("mana row: %v", err)
 	}
-	if len(me.ManaPool) != 0 {
-		t.Errorf("activator's pool holds %d after paying {2}", len(me.ManaPool))
+	if me.ManaPool.Total() != 0 {
+		t.Errorf("activator's pool holds %d after paying {2}", me.ManaPool.Total())
 	}
 	passPriorityAroundTable(t, g)
 	if me.Life != before || !caster.Graveyard.Contains(bolt2) {
@@ -385,8 +385,8 @@ func TestWishmongerColourIsChosenByTheTargetsController(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("another player activates Wishmonger: %v", err)
 	}
-	if len(other.ManaPool) != 0 {
-		t.Errorf("activator's pool holds %d after paying {2}", len(other.ManaPool))
+	if other.ManaPool.Total() != 0 {
+		t.Errorf("activator's pool holds %d after paying {2}", other.ManaPool.Total())
 	}
 	passPriorityAroundTable(t, g)
 	prompt := answerColor(t, g, ctrl.ID, "R")

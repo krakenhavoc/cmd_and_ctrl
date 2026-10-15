@@ -210,7 +210,15 @@ import (
 // silently restoring different targets. It also carries the completed-draw
 // step tally and copiable permanent LKI; older draw tallies are reconstructed
 // from the recorded step boundary. A v7 reader cannot interpret these rules.
-const SnapshotSchemaVersion = 8
+//
+// v9 is #3041, and it is the emblem shape of the argument again. A
+// mana token (in a pool, a payment record or a permanent's provenance)
+// is now a RUN, with a `count` key for how many identical mana it
+// stands for. A v8 file has no key, reads as one mana per token, and
+// restores exactly as it did, so no migration is needed. What forces
+// the bump is the other direction: a v8 binary handed a v9 file would
+// drop the key and restore a pool of a million {G} as one {G}.
+const SnapshotSchemaVersion = 9
 
 // settingsSchemaVersion is the first schema that carries
 // GameSnapshot.Settings. Older files are migrated from UndoLimit.
@@ -334,6 +342,11 @@ type GameSnapshot struct {
 	// departure of an active player who lost by an effect
 	// mid-resolution, consumed by the next SBA loss pass.
 	ActiveSeatLeftPending bool `json:"activeSeatLeftPending,omitempty"`
+	// TurnChangePending is ADR 0188 Decision 12's turn change waiting on
+	// its turn_skip_order question. Additive in v8: an older binary
+	// refuses the file anyway, because the open prompt's kind is unknown
+	// to it.
+	TurnChangePending bool `json:"turnChangePending,omitempty"`
 	// TurnEndPending is CR 724.1's deferred half (#2165): an effect
 	// ended the turn, the stack is exiled, and the skip to the cleanup
 	// step has not happened yet. omitempty, so no schema bump; an older
@@ -882,8 +895,16 @@ type cardSnapshot struct {
 	// ControlledSinceUpkeep is Card.ControlledSinceUpkeep (ADR 0108
 	// §5): echo's "came under your control since your last upkeep".
 	// Absent from every earlier file, which restores as 0.
-	ControlledSinceUpkeep    int       `json:"controlledSinceUpkeep,omitempty"`
-	SummonedThisTurn         bool      `json:"summonedThisTurn"`
+	ControlledSinceUpkeep int  `json:"controlledSinceUpkeep,omitempty"`
+	SummonedThisTurn      bool `json:"summonedThisTurn"`
+	// PutInGraveyardFrom / PutInGraveyardThisTurn are Card's graveyard
+	// arrival record (#3769, Banon): carried, because a restore that
+	// dropped them would shut a graveyard permission that reads "put
+	// there this turn" for the rest of the turn the game was saved in.
+	// Absent from every earlier file, which restores as "arrived
+	// nowhere", the state before the record existed.
+	PutInGraveyardFrom       ZoneKind  `json:"putInGraveyardFrom,omitempty"`
+	PutInGraveyardThisTurn   bool      `json:"putInGraveyardThisTurn,omitempty"`
 	MarkedLethalByDeathtouch bool      `json:"markedLethalByDeathtouch"`
 	LostLastCounter          bool      `json:"lostLastCounter,omitempty"`
 	PrintedPTKnown           bool      `json:"printedPTKnown,omitempty"`
@@ -1362,6 +1383,17 @@ type stackItemSnapshot struct {
 	CastFromZone ZoneKind          `json:"castFromZone,omitempty"`
 	AltCost      string            `json:"altCost,omitempty"`
 	Foretold     bool              `json:"foretold,omitempty"`
+	// OwnFlashCast (#3156): the spell was cast with its own flash
+	// permission when a sorcery couldn't have been. Carried: the timing
+	// of the cast cannot be recomputed after a restore.
+	OwnFlashCast bool `json:"ownFlashCast,omitempty"`
+	// CastValues (#3781): the numbers the spell fixed as it was cast.
+	// Carried: the board at cast time cannot be recomputed after a restore.
+	CastValues map[string]int `json:"castValues,omitempty"`
+	// EntersTapped (#3768): the spell was cast through a permission
+	// that makes its permanent enter tapped. Carried: the permission may
+	// be spent or gone by the time the spell resolves.
+	EntersTapped bool `json:"entersTapped,omitempty"`
 	// FaceDown is CR 708.4 (#1194): the state the permanent this
 	// spell becomes enters in. Carried, and it has to be — a restore
 	// that lost it would resolve a morph on the stack into a face-UP
@@ -1443,7 +1475,12 @@ type delayedTriggerSnapshot struct {
 	// Additive: an older binary drops it, but every card that binds a
 	// trigger also names a body that binary lacks, so it refuses the
 	// file (ErrUnknownEffectKey) rather than firing the trigger early.
-	OnExtraTurn int         `json:"onExtraTurn,omitempty"`
+	OnExtraTurn int `json:"onExtraTurn,omitempty"`
+	// OnPhaseID / OnSeq are ADR 0188 Decision 5's binding to one phase
+	// of one turn. Additive, and an older binary refuses the file the
+	// same way: both cards that bind a trigger name a body it lacks.
+	OnPhaseID   int         `json:"onPhaseId,omitempty"`
+	OnSeq       int         `json:"onSeq,omitempty"`
 	CreatedSeq  int         `json:"createdSeq,omitempty"`
 	CreatedTurn int         `json:"createdTurn,omitempty"`
 	Cards       []uuid.UUID `json:"cards,omitempty"`
@@ -1626,6 +1663,9 @@ type pendingChoiceSnapshot struct {
 	// ADR 0146: a ballot's vote so far (CR 701.38). Its continuation
 	// key is checked like pickThen's.
 	CouncilVote *CouncilVote `json:"councilVote,omitempty"`
+	// ADR 0188 Decision 12: the which-skip question of a paused turn
+	// change. Plain data, so a table waiting on it is a restore point.
+	TurnSkipOrder *TurnSkipOrder `json:"turnSkipOrder,omitempty"`
 	// ADR 0150: a pay_unless link of an any-player offer. Its branches
 	// are closures, so a table waiting on one is not a restore point;
 	// the data rides the undo clone like every other field.
@@ -1921,6 +1961,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 		EventBatch:            g.eventBatch,
 		ResolutionOpen:        g.resolutionOpen,
 		ActiveSeatLeftPending: g.ActiveSeatLeftPending,
+		TurnChangePending:     g.TurnChangePending,
 		TurnEndPending:        g.TurnEndPending,
 		turnSeqPresent:        true,
 	}
@@ -2024,6 +2065,14 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 			}
 			s.PendingChoices = append(s.PendingChoices, snapshotPendingChoice(c, cen))
 		}
+	}
+	// #3665: a combat damage step's damage held behind its
+	// damage-assignment prompts. Not carried: the table is not a
+	// restore point while it waits, so a restart rewinds to before the
+	// step rather than dealing half of it.
+	if g.heldCombatDamage != nil {
+		cen.ChoiceResumeFrames++
+		cen.note("combat damage step holds its damage behind damage_assignment prompts")
 	}
 	// #2789: a modal item's later bullets parked behind one of those
 	// prompts (mode_walk.go).
@@ -2258,6 +2307,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		TurnOvers:                c.TurnOvers,
 		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
 		SummonedThisTurn:         c.SummonedThisTurn,
+		PutInGraveyardFrom:       c.PutInGraveyardFrom,
+		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
 		PrintedPTKnown:           c.PrintedPTKnown,
@@ -2429,6 +2480,9 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		CastFromZone:     s.CastFromZone,
 		AltCost:          s.AltCost,
 		Foretold:         s.Foretold,
+		OwnFlashCast:     s.OwnFlashCast,
+		CastValues:       copyStringIntMap(s.CastValues),
+		EntersTapped:     s.EntersTapped,
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		SplitSecond:      s.SplitSecond,
@@ -2548,6 +2602,8 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
 		OnExtraTurn:        d.OnExtraTurn,
+		OnPhaseID:          d.OnPhaseID,
+		OnSeq:              d.OnSeq,
 		TurnOf:             uuidPtrOrNil(d.TurnOf),
 		CreatedSeq:         d.CreatedSeq,
 		HasEffect:          d.Body.key != "",
@@ -2671,6 +2727,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
 		OptionCarry:          copyUUIDs(c.OptionCarry),
 		CouncilVote:          cloneCouncilVote(c.CouncilVote),
+		TurnSkipOrder:        cloneTurnSkipOrder(c.TurnSkipOrder),
 		AnyPlayerOffer:       cloneAnyPlayerOffer(c.AnyPlayerOffer),
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
@@ -2851,6 +2908,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.SplitSecondActive = s.SplitSecondActive
 	g.Outcome = cloneGameOutcome(s.Outcome)
 	g.ActiveSeatLeftPending = s.ActiveSeatLeftPending
+	g.TurnChangePending = s.TurnChangePending
 	g.TurnEndPending = s.TurnEndPending
 	g.eventSeq = s.EventSeq
 	g.eventBatch = s.EventBatch
@@ -3159,6 +3217,8 @@ func restoreCard(c *cardSnapshot) Card {
 		TurnOvers:                c.TurnOvers,
 		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
 		SummonedThisTurn:         c.SummonedThisTurn,
+		PutInGraveyardFrom:       c.PutInGraveyardFrom,
+		PutInGraveyardThisTurn:   c.PutInGraveyardThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
 		LostLastCounter:          c.LostLastCounter,
 		PrintedPTKnown:           c.PrintedPTKnown,
@@ -3378,6 +3438,9 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		CastFromZone:     s.CastFromZone,
 		AltCost:          s.AltCost,
 		Foretold:         s.Foretold,
+		OwnFlashCast:     s.OwnFlashCast,
+		CastValues:       copyStringIntMap(s.CastValues),
+		EntersTapped:     s.EntersTapped,
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		SplitSecond:      s.SplitSecond,
@@ -3440,6 +3503,8 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
 		OnExtraTurn:        d.OnExtraTurn,
+		OnPhaseID:          d.OnPhaseID,
+		OnSeq:              d.OnSeq,
 		TurnOf:             uuidOrNil(d.TurnOf),
 		CreatedSeq:         d.CreatedSeq,
 		// checkEffectKeys has already refused a key this binary has
@@ -3555,6 +3620,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
 		OptionCarry:          copyUUIDs(c.OptionCarry),
 		CouncilVote:          cloneCouncilVote(c.CouncilVote),
+		TurnSkipOrder:        cloneTurnSkipOrder(c.TurnSkipOrder),
 		AnyPlayerOffer:       cloneAnyPlayerOffer(c.AnyPlayerOffer),
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,

@@ -14,8 +14,8 @@ import (
 // the one place the engine makes a copy of a CARD and offers a cast of it.
 // Mizzix's Mastery and Arcane Bombardment use it for a set of any size,
 // Kaervek, the Punisher with a price and a follow-up, and Uldaros Theorix
-// with a total mana value budget (#2017); Spellweaver Volute is the same
-// call when it ships. It is NOT CopySpellForEffect (a copy of a spell
+// with a total mana value budget (#2017), and Spellweaver Volute with a
+// follow-up about the card it copied (#3157). It is NOT CopySpellForEffect (a copy of a spell
 // already on the stack, which is cast already) and NOT CreateTokenCopy (a
 // permanent on the battlefield).
 //
@@ -39,13 +39,28 @@ type CopyAndCast struct {
 	Player uuid.UUID
 
 	// Free is "without paying its mana cost" ({0}, which also locks an X
-	// at 0, CR 107.3b). False is "you may cast the copy": its printed
-	// mana cost is paid.
+	// at 0, CR 107.3b). False with an empty Cost is "you may cast the
+	// copy": its printed mana cost is paid.
 	Free bool
+
+	// Cost is "you may cast the copy by paying {3} rather than paying its
+	// mana cost" (CR 118.9, Blue Mage's Cane, #3783): the price paid
+	// INSTEAD of the printed mana cost, written as a mana cost. Free wins
+	// when both are set, since Free is Cost "{0}".
+	Cost string
 
 	// FollowUp is a registered body (game.RegisterCastFollowUp) run when a
 	// copy is cast because of this offer — "if you do, you lose 2 life".
 	FollowUp game.CastFollowUpKey
+
+	// FollowUpObject is handed to FollowUp as CastFollowUp.Object, for an
+	// "if you do" about an object the copy spell does not name
+	// (Spellweaver Volute's "exile the enchanted card", #3157).
+	FollowUpObject game.ObjectRef
+
+	// LastKnown copies a card the effect saw in a graveyard even after it
+	// has left (CR 608.2h; game.CardCopyOffer.LastKnown).
+	LastKnown bool
 
 	// TotalManaValueAtMost is "any number of spells with total mana value
 	// N or less from among the copies" (Uldaros Theorix, #2017): the casts
@@ -67,6 +82,9 @@ func (c CopyAndCast) Apply(ctx *Context) error {
 		Timing:   game.TimingFlash,
 		Lapse:    game.LapseStaysInExile,
 		FollowUp: c.FollowUp,
+
+		FollowUpObject: c.FollowUpObject,
+		LastKnown:      c.LastKnown,
 	}
 	if c.TotalManaValueAtMost != nil {
 		n := *c.TotalManaValueAtMost
@@ -75,8 +93,11 @@ func (c CopyAndCast) Apply(ctx *Context) error {
 	if src, ok := ctx.Game.LookupCardForEffect(ctx.Source()); ok {
 		offer.SourceName = src.Name
 	}
-	if c.Free {
+	switch {
+	case c.Free:
 		offer.Cost = "{0}"
+	case c.Cost != "":
+		offer.Cost = c.Cost
 	}
 	ctx.Game.CopyCardsAndOfferCastsForEffect(offer, c.Cards)
 	return nil

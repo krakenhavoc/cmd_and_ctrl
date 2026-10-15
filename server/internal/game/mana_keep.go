@@ -201,8 +201,10 @@ func (t ManaToken) withoutRider(kind ManaRiderKind) ManaToken {
 
 // sweepManaPoolLocked is the CR 106.4 step-boundary sweep for one
 // player: it keeps what the player's rules and marks allow, converts
-// what Kruphix converts, and returns how many tokens were LOST (a
-// converted token is not lost). Caller must hold g.mu (write).
+// what Kruphix converts, and returns how many mana were LOST (a
+// converted mana is not lost). Each run (#3041) is kept, converted or
+// lost whole: every rule here reads the run's colour and marks, which
+// its mana share. Caller must hold g.mu (write).
 func (g *Game) sweepManaPoolLocked(p *Player) int {
 	// The boundary that ends "until end of turn": cleanup begins (CR
 	// 514.2), or a new turn's untap when no cleanup ran in between.
@@ -235,7 +237,7 @@ func (g *Game) sweepManaPoolLocked(p *Player) int {
 			t.Color = "C"
 			kept = append(kept, t)
 		default:
-			lost++
+			lost += t.N()
 		}
 	}
 	p.ManaPool = kept

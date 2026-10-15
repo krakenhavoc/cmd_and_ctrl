@@ -75,7 +75,7 @@ func TestAlternativeCostLifePayableAtTheBoundary(t *testing.T) {
 		// so they must answer alike on every one of these.
 		var accepted bool
 		g.WithWriteLock(func() {
-			accepted = g.validateAlternativeCostPaymentLocked(me.ID, self, offer, nil) == nil
+			accepted = g.validateAlternativeCostPaymentLocked(me.ID, self, offer, nil, 0) == nil
 		})
 		if accepted != tc.want {
 			t.Errorf("at %d life, the announce validator accepted = %v but the offer predicate said %v",

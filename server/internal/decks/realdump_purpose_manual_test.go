@@ -114,8 +114,10 @@ var reviewedNotAWipe = map[string]string{
 	"Council's Judgment":                       "exiles the permanents with the most votes, one per voter: removal, not a wipe",
 	"Crypt Incursion":                          "exiles a graveyard",
 	"Eliminate the Impossible":                 "-2/-0 kills nothing",
+	"Espers to Magicite":                       "exiles the opponents' graveyards, no permanents",
 	"Eye of Singularity":                       "destroys only permanents sharing a name, which no class says",
 	"Glorious End":                             "ends the turn",
+	"Golden Argosy":                            "exiles only the creatures that crewed it and returns them tapped at the next end step: a flicker of its own crewers, not a wipe",
 	"Jace, Reality Sculptor":                   "its 0 exiles all but the bottom card of each opponent's library, no permanents",
 	"Jace, the Mind Sculptor":                  "exiles a library",
 	"Karn Liberated":                           "restarts the game",
@@ -146,7 +148,9 @@ func anyPurpose(s effects.Spec) (declared, sweep bool) {
 			sweep = true
 		}
 	}
-	note(s.Purpose.IsZero(), !s.Purpose.Sweep.IsZero())
+	// A wipe declared under Kicked or FaceUp is a declared wipe (ADR
+	// 0126's amendment of 2026-10-15, #3762): DeclaresSweep reads them.
+	note(s.Purpose.IsZero(), s.Purpose.DeclaresSweep())
 	if s.Modes != nil {
 		for _, o := range s.Modes.Options {
 			note(o.Purpose.IsZero(), !o.Purpose.Sweep.IsZero())

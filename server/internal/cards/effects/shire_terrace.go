@@ -27,7 +27,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, {T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
-			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Lands: 1},
 			Cost:    Plus(ManaCost("{1}"), TapCost(), SacrificeThis()),
 			Effect:  fetchBasicTapped,
 		}},

@@ -259,7 +259,7 @@ func TestCastPaysAHybridPhyrexianSymbolWithMana(t *testing.T) {
 	if !g.Stack.Contains(id) {
 		t.Fatalf("the spell is not on the stack")
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool after the cast = %v, want empty", me.ManaPool)
 	}
 	if me.Life != life {
@@ -307,7 +307,7 @@ func TestCastPaysAHybridPhyrexianSymbolWithLife(t *testing.T) {
 	if me.Life != life-PhyrexianLifePerSymbol {
 		t.Errorf("life = %d, want %d (CR 107.4f: 2 life)", me.Life, life-PhyrexianLifePerSymbol)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool after the cast = %v, want empty", me.ManaPool)
 	}
 }
@@ -343,7 +343,7 @@ func TestCastRefusesAnOverclaimedPhyrexianLife(t *testing.T) {
 	if me.Life != 1 {
 		t.Errorf("life = %d, want 1 — a refused cast paid anyway", me.Life)
 	}
-	if len(me.ManaPool) != 5 {
+	if me.ManaPool.Total() != 5 {
 		t.Errorf("pool = %v, want the five tokens back — a refused cast spent mana", me.ManaPool)
 	}
 	me.Life = life
@@ -423,7 +423,7 @@ func TestUndoAcrossAPhyrexianLifePayment(t *testing.T) {
 	if !seat().Hand.Contains(id) {
 		t.Fatalf("the rewind did not put the card back in hand")
 	}
-	if len(seat().ManaPool) != 4 {
+	if seat().ManaPool.Total() != 4 {
 		t.Errorf("pool after the undo = %v, want the four tokens back", seat().ManaPool)
 	}
 

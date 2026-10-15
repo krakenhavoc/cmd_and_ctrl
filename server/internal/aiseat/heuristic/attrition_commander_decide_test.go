@@ -95,12 +95,56 @@ func TestAttritionKeepsACommanderItCannotRecast(t *testing.T) {
 	}
 }
 
+// TestAttritionRecastsInTheSameTurn is #3080. Swinging both on the
+// issue's board, the bot's commander dies and it casts it again in the
+// second main phase, from the two lands it left untapped, as it does in
+// the full Wurm mirror (#3079). On its next turn the commander can
+// attack, so the Bear and the commander are lethal into one blocker:
+// the line is one exchange, with no turn spent waiting for it.
+//
+// With the lands tapped before combat, or with
+// Config.HorizonRecastsSameTurn off, the commander is cast on the next
+// turn, summoning sick, and the line waits a turn for it: two
+// exchanges.
+func TestAttritionRecastsInTheSameTurn(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		tapped bool
+		tweak  func(*heuristic.Config)
+		want   string
+	}{
+		{"cast again after combat", false, nil, "within 1 exchange(s)"},
+		{"my lands tapped before combat", true, nil, "within 2 exchange(s)"},
+		{"the switch off", false, func(c *heuristic.Config) { c.HorizonRecastsSameTurn = false }, "within 2 exchange(s)"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			v, moves := lastBoard(t, 2)
+			if tc.tapped {
+				for i := range v.Battlefield.Cards {
+					if c := &v.Battlefield.Cards[i]; c.Controller == seatID(0).String() && c.TypeLine == "Basic Land — Mountain" {
+						c.Tapped = true
+					}
+				}
+			}
+			in := input(0, v, moves...)
+			d := decideWith(t, in, tc.tweak)
+			if !strings.Contains(d.Reason, attritionLabel) || !strings.Contains(d.Reason, tc.want) {
+				t.Fatalf("decided %q (%s); want an attrition swing %s", chose(t, in, d), d.Reason, tc.want)
+			}
+		})
+	}
+}
+
 // TestAttritionWaitsForTheCommanderItCastAgain is the line's middle
-// turn, when the defender blocks commander with commander: it is on 1,
-// its commander is back, and mine was cast again this turn and cannot
-// attack. The Bear alone dies to a block that costs the defender
-// nothing, so the bot keeps it home. A turn later both swing into the
-// one blocker, and one gets through.
+// turn, when the defender blocks commander with commander and my mana
+// did not pay to cast mine again after combat: the defender is on 1,
+// its commander is back, and mine was cast again in this turn's first
+// main phase and cannot attack. The Bear alone dies to a block that
+// costs the defender nothing, so the bot keeps it home. A turn later
+// both swing into the one blocker, and one gets through. Where the
+// mana did pay, mine was cast in the second main phase of the trade's
+// turn (TestAttritionRecastsInTheSameTurn), and the reachable board is
+// the second one below, where both attack.
 func TestAttritionWaitsForTheCommanderItCastAgain(t *testing.T) {
 	board := func(opts ...cardOpt) (protocol.GameView, []legal.Move) {
 		v, moves := smallBoard(t, 3, 1,

@@ -262,6 +262,9 @@ func specDesignations(spec Spec) []game.Designation {
 	for _, gr := range spec.GrantedTapCosts {
 		out = append(out, gr.ActiveWhen)
 	}
+	for _, gr := range spec.GrantedAlternativeCosts {
+		out = append(out, gr.ActiveWhen)
+	}
 	// ADR 0103: a Room door's replacement (Torture Pit), untap-step
 	// permission (Prop Room) and "no maximum hand size" (Steaming
 	// Sauna) carry the gate too.

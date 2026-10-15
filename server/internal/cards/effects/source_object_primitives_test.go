@@ -467,6 +467,7 @@ func TestEveryPrimitiveThatActsOnACardAsksAboutItsSource(t *testing.T) {
 		"ReturnFromExile":             "follows the card: the card is in exile",
 		"ReturnFromExileTogether":     "follows the cards: each is in exile, never a permanent that left and came back",
 		"GrantFlashbackToCard":        "a card in a graveyard",
+		"OfferGraveyardCast":          "a card in a graveyard, refused unless it is still there",
 		"PlotExiled":                  "a card in exile",
 		"CreateTokenCopy":             "reads copiable values; last-known information is the answer for a source that left (CR 707.4)",
 	}
@@ -556,7 +557,9 @@ func scanPrimitives(t *testing.T) primitiveScan {
 	}
 	// untilEndOfTurn (until_end_of_turn.go) is ScopedEffectFor with an
 	// until-end-of-turn duration, and so eotSnapshot underneath (#1497).
-	markers := map[string]bool{"isNewSourceObject": true, "isNewSourceObjectAsThis": true, "withoutNewSourceObject": true, "eotSnapshot": true, "applyFor": true, "untilEndOfTurn": true}
+	// ApplyReports is BecomeCopy's Apply with the "if you do" report
+	// (#3774): Apply delegates to it, and the guard lives there.
+	markers := map[string]bool{"isNewSourceObject": true, "isNewSourceObjectAsThis": true, "withoutNewSourceObject": true, "eotSnapshot": true, "applyFor": true, "untilEndOfTurn": true, "ApplyReports": true}
 	guarded := map[string]bool{}
 	for changed := true; changed; {
 		changed = false
@@ -639,7 +642,9 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		// "Shuffle Beacon of Immortality into its owner's library." (#3245)
 		"beacon_of_immortality.go": true,
 		"temporal_mastery.go":      true, "temporal_trespass.go": true,
-		"bound_determined.go": true, // Bound's "Exile this card." (ADR 0106 PR 3)
+		// "Exile Draconic Intervention." (#3537)
+		"draconic_intervention.go": true,
+		"bound_determined.go":      true, // Bound's "Exile this card." (ADR 0106 PR 3)
 		// Restorative Burst, the sorcery back face: "Exile Restorative Burst."
 		"pestilent_cauldron.go": true,
 		// "Exile Morningtide's Light." (ADR 0108 PR 7, #1904)
@@ -657,6 +662,12 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		"beacon_of_unrest.go": true,
 		// "Exile Burning Wish." and "Exile Living Wish." (ADR 0191, #3506)
 		"burning_wish.go": true, "living_wish.go": true,
+		// "Exile Cunning Wish.", "Exile Glittering Wish.", "Exile Golden
+		// Wish." and "Exile Death Wish." (#3525)
+		"cunning_wish.go": true, "glittering_wish.go": true,
+		"golden_wish.go": true, "death_wish.go": true,
+		// "Exile Alchemist's Gambit." (ADR 0188, #3563)
+		"alchemists_gambit.go": true,
 	}
 	isSelf := func(e ast.Expr) bool {
 		s := exprString(e)

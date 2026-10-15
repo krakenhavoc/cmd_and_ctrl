@@ -85,7 +85,7 @@ func TestSignetFundedByAColorlessLand(t *testing.T) {
 			t.Errorf("%s was not tapped", s)
 		}
 	}
-	if len(p.ManaPool) != 1 || p.ManaPool[0].Color != "B" {
+	if p.ManaPool.Total() != 1 || p.ManaPool.Units()[0].Color != "B" {
 		t.Errorf("pool = %v, want the Signet's {B} floating", p.ManaPool)
 	}
 }
@@ -116,7 +116,7 @@ func TestPlainsAndSignetPayTwo(t *testing.T) {
 	if err := castAutoTapped(g, p, "{1}{W}"); err != nil {
 		t.Fatalf("cast refused: %v", err)
 	}
-	if len(p.ManaPool) != 0 {
+	if p.ManaPool.Total() != 0 {
 		t.Errorf("pool = %v, want everything spent", p.ManaPool)
 	}
 }
@@ -133,7 +133,7 @@ func TestSignetAloneDoesNotPay(t *testing.T) {
 	if !errors.As(err, &ime) {
 		t.Fatalf("cast: want InsufficientManaError, got %v", err)
 	}
-	if tappedForTest(g, ids["zz-orzhov"][0]) || len(p.ManaPool) != 0 {
+	if tappedForTest(g, ids["zz-orzhov"][0]) || p.ManaPool.Total() != 0 {
 		t.Error("a refused cast tapped the Signet or left mana floating")
 	}
 }
@@ -149,7 +149,7 @@ func TestTwoSignetsCannotPayForEachOther(t *testing.T) {
 	if err := castAutoTapped(g, p, "{1}{W}"); err == nil {
 		t.Fatal("cast should be refused")
 	}
-	if n := tappedCount(g, p.ID); n != 0 || len(p.ManaPool) != 0 {
+	if n := tappedCount(g, p.ID); n != 0 || p.ManaPool.Total() != 0 {
 		t.Errorf("refused cast left %d tapped, pool %v", n, p.ManaPool)
 	}
 }
@@ -173,7 +173,7 @@ func TestOneLandChainsTwoSignets(t *testing.T) {
 			t.Error("a source of the chain was not tapped")
 		}
 	}
-	if len(p.ManaPool) != 0 {
+	if p.ManaPool.Total() != 0 {
 		t.Errorf("pool = %v, want everything spent", p.ManaPool)
 	}
 }
@@ -190,7 +190,7 @@ func TestSignetIsPaidWithTheManaThePlanNamed(t *testing.T) {
 	if err := castAutoTapped(g, p, "{W}{U}"); err != nil {
 		t.Fatalf("cast refused: %v", err)
 	}
-	if len(p.ManaPool) != 1 || p.ManaPool[0].Color != "R" {
+	if p.ManaPool.Total() != 1 || p.ManaPool.Units()[0].Color != "R" {
 		t.Errorf("pool = %v, want the Signet's {R} floating", p.ManaPool)
 	}
 }
@@ -206,7 +206,7 @@ func TestFloatingManaFundsASignet(t *testing.T) {
 	if err := castAutoTapped(g, p, "{W}"); err != nil {
 		t.Fatalf("cast refused: %v", err)
 	}
-	if len(p.ManaPool) != 1 || p.ManaPool[0].Color != "B" {
+	if p.ManaPool.Total() != 1 || p.ManaPool.Units()[0].Color != "B" {
 		t.Errorf("pool = %v, want {B} floating", p.ManaPool)
 	}
 }
@@ -224,7 +224,7 @@ func TestFilterLandIsFunded(t *testing.T) {
 	if !tappedForTest(g, ids["zz-gate"][0]) {
 		t.Error("the Gate was not tapped")
 	}
-	if len(p.ManaPool) != 0 {
+	if p.ManaPool.Total() != 0 {
 		t.Errorf("pool = %v, want everything spent", p.ManaPool)
 	}
 }
@@ -245,7 +245,7 @@ func TestManaActivationAutoTapStillPaysTheSignet(t *testing.T) {
 	if err := g.ActivateManaAbility(p.ID, ids["zz-orzhov"][0], 0, ManaAbilityParams{AutoTap: true}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if len(p.ManaPool) != 2 {
+	if p.ManaPool.Total() != 2 {
 		t.Errorf("pool = %v, want {W}{B}", p.ManaPool)
 	}
 }

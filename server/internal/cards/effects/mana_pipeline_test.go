@@ -85,10 +85,10 @@ func TestAzoriusSignetFiltersOneManaIntoTwo(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, signet, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Fatalf("pool = %v, want {W}{U}", me.ManaPool)
 	}
-	if me.ManaPool[0].Color != "W" || me.ManaPool[1].Color != "U" {
+	if me.ManaPool.Units()[0].Color != "W" || me.ManaPool.Units()[1].Color != "U" {
 		t.Errorf("pool = %v, want {W} then {U}", me.ManaPool)
 	}
 }
@@ -123,10 +123,10 @@ func TestSelesnyaSignetIgnoresCommanderIdentity(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, signet, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Fatalf("pool = %v, want {G}{W}", me.ManaPool)
 	}
-	if me.ManaPool[0].Color != "G" {
+	if me.ManaPool.Units()[0].Color != "G" {
 		t.Errorf("pool = %v, want green first — the Signet's colours are printed, not derived", me.ManaPool)
 	}
 }
@@ -147,10 +147,10 @@ func TestCabalCoffersScalesWithSwampsAndCostsTwo(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, coffers, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 3 {
+	if me.ManaPool.Total() != 3 {
 		t.Fatalf("pool = %v, want three {B} (the {2} was spent)", me.ManaPool)
 	}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Color != "B" {
 			t.Errorf("token %v, want black", tok)
 		}
@@ -167,7 +167,7 @@ func TestCabalCoffersWithoutTheTwoManaIsRefused(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, coffers, 0, game.ManaAbilityParams{}); err == nil {
 		t.Fatal("Cabal Coffers activated for {1}")
 	}
-	if len(me.ManaPool) != 1 {
+	if me.ManaPool.Total() != 1 {
 		t.Errorf("pool = %v, want the one floating mana untouched", me.ManaPool)
 	}
 }
@@ -185,7 +185,7 @@ func TestGaeasCradleCountsCreatures(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, cradle, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Errorf("pool = %v, want two {G}", me.ManaPool)
 	}
 }
@@ -204,7 +204,7 @@ func TestTempleOfTheFalseGodNeedsFiveLands(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, temple, 0, game.ManaAbilityParams{}); !errors.Is(err, game.ErrConditionNotMet) {
 		t.Fatalf("err = %v, want ErrConditionNotMet", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Fatalf("pool = %v, want empty — a failed gate pays nothing", me.ManaPool)
 	}
 
@@ -213,7 +213,7 @@ func TestTempleOfTheFalseGodNeedsFiveLands(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, temple, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility at five lands: %v", err)
 	}
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Errorf("pool = %v, want {C}{C}", me.ManaPool)
 	}
 }
@@ -277,7 +277,7 @@ func TestExoticOrchardWithNoOpposingLandsProducesNothing(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, orchard, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 0 || manaPickFor(g, me.ID) != nil {
+	if me.ManaPool.Total() != 0 || manaPickFor(g, me.ID) != nil {
 		t.Errorf("pool = %v, pick = %v; want nothing produced", me.ManaPool, manaPickFor(g, me.ID))
 	}
 }
@@ -319,7 +319,7 @@ func TestLoneReflectingPoolProducesNothing(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, pool, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 0 || manaPickFor(g, me.ID) != nil {
+	if me.ManaPool.Total() != 0 || manaPickFor(g, me.ID) != nil {
 		t.Error("a lone Reflecting Pool produced mana")
 	}
 }
@@ -335,7 +335,7 @@ func TestFellwarStoneNoLongerOffersColoursNoOpponentCanMake(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, stone, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "G" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "G" {
 		t.Fatalf("pool = %v, pick = %v; a single-colour derivation should drop straight in as {G}",
 			me.ManaPool, manaPickFor(g, me.ID))
 	}
@@ -366,7 +366,7 @@ func TestFellwarStoneSeesThroughAnOpposingExoticOrchard(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, stone, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "G" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "G" {
 		t.Errorf("pool = %v, pick = %v; Fellwar Stone should see {G} through the Orchard's one-way derivation of MY OWN Forest",
 			me.ManaPool, manaPickFor(g, me.ID))
 	}
@@ -388,7 +388,7 @@ func TestFellwarStoneVersusFellwarStoneIsNotACycle(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, mine, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "U" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "U" {
 		t.Errorf("pool = %v, pick = %v; my Fellwar Stone should see {U} off their Island — their own Fellwar Stone is not a land and never enters the derivation",
 			me.ManaPool, manaPickFor(g, me.ID))
 	}
@@ -406,7 +406,7 @@ func TestMoxAmberReadsLegendaryPermanentColours(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, amber, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 0 || manaPickFor(g, me.ID) != nil {
+	if me.ManaPool.Total() != 0 || manaPickFor(g, me.ID) != nil {
 		t.Fatal("Mox Amber produced mana with no legendary creatures out")
 	}
 
@@ -430,7 +430,7 @@ func TestMoxAmberReadsLegendaryPermanentColours(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, amber, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility with a legend out: %v", err)
 	}
-	if len(me.ManaPool) != 1 || me.ManaPool[0].Color != "G" {
+	if me.ManaPool.Total() != 1 || me.ManaPool.Units()[0].Color != "G" {
 		t.Errorf("pool = %v, want one {G}", me.ManaPool)
 	}
 }
@@ -464,7 +464,7 @@ func TestDelightedHalflingManaIsLockedToLegendarySpells(t *testing.T) {
 	if err := g.ResolveManaChoice(pick.ID, me.ID, "G"); err != nil {
 		t.Fatalf("ResolveManaChoice: %v", err)
 	}
-	if len(me.ManaPool) != 1 {
+	if me.ManaPool.Total() != 1 {
 		t.Fatalf("pool = %v, want one token", me.ManaPool)
 	}
 
@@ -501,7 +501,7 @@ func TestDelightedHalflingColorlessHalfIsUnrestricted(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, halfling, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 1 || len(me.ManaPool[0].Restrictions) != 0 {
+	if me.ManaPool.Total() != 1 || len(me.ManaPool.Units()[0].Restrictions) != 0 {
 		t.Errorf("pool = %v, want one unrestricted {C}", me.ManaPool)
 	}
 }
@@ -516,7 +516,7 @@ func TestEldraziTempleManaIsLockedToColorlessEldrazi(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, temple, 1, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Fatalf("pool = %v, want {C}{C}", me.ManaPool)
 	}
 
@@ -560,7 +560,7 @@ func TestShrineOfTheForsakenGodsGatesAndRestricts(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, shrine, 1, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility at seven lands: %v", err)
 	}
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Fatalf("pool = %v, want {C}{C}", me.ManaPool)
 	}
 

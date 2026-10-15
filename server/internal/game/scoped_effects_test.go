@@ -309,6 +309,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0187 §4: a rules gate read in the combat damage pass. Its
 		// cases are in assigns_no_combat_damage_test.go.
 		ModAssignsNoCombatDamage: true,
+		// #3275: a rules gate read by every sacrifice route. Its cases
+		// are in cant_be_sacrificed_test.go.
+		ModCantBeSacrificed: true,
 		// ADR 0108 §4: Yawgmoth's Will's replacement. Its cases are in
 		// scoped_exile_your_graveyard_test.go.
 		ModExileInsteadOfYourGraveyard: true,
@@ -347,6 +350,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0188 Decision 1 (#3559): the skip-your-next-turn debt. Its
 		// cases are in turn_skip_test.go.
 		ModSkipTurns: true,
+		// ADR 0188 Decision 3a (#3563): a step of one extra turn skipped.
+		// Its cases are in turn_skip_step_test.go.
+		ModSkipExtraTurnStep: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {
@@ -613,7 +619,8 @@ func TestEveryDurationKindAndConditionIsKnown(t *testing.T) {
 	}
 	for _, c := range []DurationCondition{WhileSourceOnBattlefield, WhileYouControlSource,
 		WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped, WhilePinnedHasCounter,
-		WhilePinnedRemainsTapped, WhilePinnedPowerAtMostSource} {
+		WhilePinnedRemainsTapped, WhilePinnedPowerAtMostSource, WhileSourceAttachedToPinned,
+		WhileSourceOnceItLands} {
 		if !c.Known() {
 			t.Errorf("duration condition %d is not Known — is it after durationConditionEnd?", c)
 		}

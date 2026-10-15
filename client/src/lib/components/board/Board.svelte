@@ -34,6 +34,7 @@
     ZoneView,
   } from "../../protocol";
   import { answeredOnBoard, listFallback } from "../../boardAnsweredChoice";
+  import { manaPoolTotal } from "../../manaPool";
   import { boardChoicePick, isBoardPickable, pickOnBoard } from "../../boardChoicePick";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
   import { consideringDelayMs, isResponseWindowFor, responseWindowKey } from "../../considering";
@@ -77,7 +78,7 @@
   import { zoneBrowser, closeZoneBrowser } from "../../zoneBrowser";
   import {
     freeCastRequest,
-    freeCastTarget,
+    freeCastLocation,
     handFreeCastRequest,
     handFreeCastTarget,
     isFreeCastPick,
@@ -141,6 +142,10 @@
     castBlightOffer,
     castRevealCost,
     castExilePermanentCost,
+    castHandExileCost,
+    altCostPayDefinesX,
+    altCostPayX,
+    castExileCardsCost,
     tapCostOf,
     tapCostLimit,
     alternativeCostsOf,
@@ -398,7 +403,7 @@
   const suggestedX = $derived.by(() => {
     if (!viewerID) return 0;
     const me = view.seats.find((s) => s.id === viewerID);
-    const floating = me?.mana_pool?.length ?? 0;
+    const floating = manaPoolTotal(me?.mana_pool);
     let sources = 0;
     for (const c of view.battlefield.cards) {
       if (c.controller !== viewerID || c.tapped) continue;
@@ -738,6 +743,57 @@
     afterSacrificeCost(p.card, { ...p.choices, exilePermanentIDs: ids });
   }
 
+  // #3175: "you may exile any number of blue cards from your hand" (March
+  // of Swirling Mist) — the same picker with the verb "Exile", over the
+  // server's `exile_from_hand_options`, any number including none. The
+  // answer rides as `exile_from_hand_ids`; it comes before the X prompt, so
+  // the X picker's price preview already carries the discount.
+  let handExilePrompt = $state<{
+    card: CardView;
+    label: string;
+    choices: CastChoices;
+  } | null>(null);
+  let handExilePromptOptionIDs = $state<string[]>([]);
+  const handExilePromptOptions = $derived.by(() => {
+    const me = view.seats.find((s) => s.id === viewerID);
+    return orderSacrificeOptions(me?.hand.cards ?? [], handExilePromptOptionIDs);
+  });
+
+  function confirmHandExile(ids: string[]): void {
+    const p = handExilePrompt;
+    handExilePrompt = null;
+    if (!p) return;
+    afterSacrificeCost(p.card, { ...p.choices, exileFromHandIDs: ids });
+  }
+
+  // #3536: "exile six cards from your graveyard" as a spell's additional
+  // cost (Abhorrent Oculus) — the discard picker with the verb "Exile",
+  // over the server's `exile_cost_options` resolved out of the graveyard,
+  // the answer sent as `exile_ids`. Skipped when the graveyard holds
+  // exactly what the clause demands.
+  let exileCardsPrompt = $state<{
+    card: CardView;
+    cost: AdditionalCostView;
+    label: string;
+    count: number;
+    choices: CastChoices;
+  } | null>(null);
+  const exileCardsOptions = $derived.by(() => {
+    const p = exileCardsPrompt;
+    if (!p || !viewerID) return [];
+    return exileCostOptionCards(
+      view.seats.find((s) => s.id === viewerID),
+      p.cost,
+    );
+  });
+
+  function confirmExileCards(ids: string[]): void {
+    const p = exileCardsPrompt;
+    exileCardsPrompt = null;
+    if (!p) return;
+    afterSacrificeCost(p.card, { ...p.choices, exileIDs: ids });
+  }
+
   function confirmReveal(ids: string[]): void {
     const p = revealPrompt;
     revealPrompt = null;
@@ -779,6 +835,28 @@
     if (ex && choices.exilePermanentIDs === undefined) {
       exilePromptOptionIDs = ex.options;
       exilePrompt = { card, label: ex.label, count: ex.count, choices };
+      return;
+    }
+    const he = castHandExileCost(card, choices);
+    if (he && choices.exileFromHandIDs === undefined) {
+      // None is the only answer when the hand holds nothing that pays.
+      if (he.options.length === 0) {
+        afterSacrificeCost(card, { ...choices, exileFromHandIDs: [] });
+        return;
+      }
+      handExilePromptOptionIDs = he.options;
+      handExilePrompt = { card, label: he.label, choices };
+      return;
+    }
+    const ec = castExileCardsCost(card, choices);
+    if (ec && choices.exileIDs === undefined) {
+      if (ec.options.length > ec.count) {
+        exileCardsPrompt = { card, cost: ec.cost, label: ec.label, count: ec.count, choices };
+        return;
+      }
+      // Exactly what the clause demands: nothing to ask. Re-enter the chain
+      // with `exileIDs` set, which falls through to afterCastCosts.
+      afterSacrificeCost(card, { ...choices, exileIDs: ec.options });
       return;
     }
     afterCastCosts(card, choices);
@@ -901,10 +979,18 @@
   function confirmAltPay(instanceIDs: string[]): void {
     const card = altPayPromptCard;
     const choices = altPayPromptChoices;
+    // #3175: a pitch bound to X (Shining Shoal's "a white card with mana
+    // value X") announces the picked card's mana value as X, read before
+    // the prompt state is cleared.
+    const x = altCostPayX(altPayOffer, instanceIDs);
     altPayPromptCard = null;
     altPayPromptChoices = {};
     if (!card) return;
-    afterAltCostPayment(card, { ...choices, altCostIDs: instanceIDs });
+    afterAltCostPayment(card, {
+      ...choices,
+      altCostIDs: instanceIDs,
+      ...(x !== undefined ? { xValue: x } : {}),
+    });
   }
 
   // #1727: an offer whose card half is a SACRIFICE (Dread Return's
@@ -1043,7 +1129,13 @@
     // and it is 0, so the picker is skipped and nothing is sent. The
     // server refuses a non-zero X on such a cast, which is what makes
     // this a prompt decision rather than a rule the client enforces.
+    // #3175: a pitch bound to X has already announced it — the pitched
+    // card's mana value — so the X picker would only offer a wrong answer.
+    const xFromPitch =
+      choices.xValue !== undefined &&
+      altCostPayDefinesX(alternativeCostByKey(card, choices.altCost));
     if (
+      !xFromPitch &&
       hasXCost(card, choices.altCost, choices.optionalCosts) &&
       !castLocksXAtZero(card, choices.altCost)
     ) {
@@ -1355,10 +1447,11 @@
   $effect(() => {
     const id = $freeCastRequest;
     if (!id) return;
-    const target = freeCastTarget(view.exile?.cards, id);
+    const me = view.seats.find((s) => s.id === viewerID);
+    const target = freeCastLocation(view.exile?.cards, me?.library.cards, id);
     if (target === undefined) return;
     freeCastRequest.set(null);
-    if (target) handlePlayCard(target, "exile");
+    if (target) handlePlayCard(target.card, target.zone);
   });
 
   // #3270 (CR 608.2g): "you may cast a spell from your hand without paying
@@ -3669,6 +3762,19 @@
     onConfirm={confirmReveal}
     onCancel={() => (revealPrompt = null)}
   />
+  <!-- #3536: exile six cards from your graveyard, as a spell's additional
+       cost — the discard picker with the verb "Exile", over the graveyard. -->
+  <DiscardCostModal
+    card={exileCardsPrompt?.card ?? null}
+    options={exileCardsOptions}
+    need={exileCardsPrompt?.count}
+    label={exileCardsPrompt?.label}
+    verb="Exile"
+    note={exileCardsPrompt ? exileCostNote(exileCardsPrompt.cost) : undefined}
+    where={exileCardsPrompt ? exileCostWhere(exileCardsPrompt.cost) : undefined}
+    onConfirm={confirmExileCards}
+    onCancel={() => (exileCardsPrompt = null)}
+  />
   <!-- #3402: exile a creature you control, as a spell's additional cost. -->
   <SacrificeCostModal
     source={exilePrompt?.card ?? null}
@@ -3678,6 +3784,18 @@
     verb="Exile"
     onConfirm={confirmExilePermanent}
     onCancel={() => (exilePrompt = null)}
+  />
+  <!-- #3175: exile any number of blue cards from your hand (a March). -->
+  <SacrificeCostModal
+    source={handExilePrompt?.card ?? null}
+    label={handExilePrompt?.label ?? "any number of cards from your hand"}
+    options={handExilePromptOptions}
+    count={handExilePromptOptions.length}
+    min={0}
+    verb="Exile"
+    castName={handExilePrompt?.card.name}
+    onConfirm={confirmHandExile}
+    onCancel={() => (handExilePrompt = null)}
   />
   <CounterCostModal
     card={counterPrompt?.card ?? manaCounterPrompt?.card ?? null}

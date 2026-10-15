@@ -135,10 +135,10 @@ func TestTheFirstPayerEndsTheAnyPlayerOffer(t *testing.T) {
 	if !sameIDs(out.paidBy, seatIDs(g, 1)) || out.nobody != 0 {
 		t.Errorf("paid by %v, nobody %d; want seat 1 and no OnNobody", out.paidBy, out.nobody)
 	}
-	if n := len(g.Seats[1].ManaPool); n != 0 {
+	if n := g.Seats[1].ManaPool.Total(); n != 0 {
 		t.Errorf("seat 1 has %d mana left, want the {2} spent", n)
 	}
-	if n := len(g.Seats[2].ManaPool); n != 2 {
+	if n := g.Seats[2].ManaPool.Total(); n != 2 {
 		t.Errorf("seat 2 paid too: %d mana left", n)
 	}
 	paid := false

@@ -112,6 +112,12 @@ function dynamicLabel<K extends LabelKind, A extends unknown[]>(
   return { type: "dynamic", ...spec };
 }
 
+// "A", "A and B", "A, B and C".
+const andList = (names: readonly string[]): string =>
+  names.length <= 1
+    ? (names[0] ?? "")
+    : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // ---- The registry ----
@@ -244,6 +250,33 @@ export const LABEL_SPECS = {
     role: "button",
     owners: [`${BOARD}AbilityKindChips.svelte`],
     doc: "an art tile's ability chip (#2219): one per kind the card has, its hover or focus lists the server's labels; the e2e suite reads Mulldrifter's",
+  }),
+
+  crewedBadge: dynamicLabel({
+    stem: "crewed ",
+    match: "prefix",
+    shape: "crewed by <names>, or crewed this turn",
+    make: (names: readonly string[]) =>
+      names.length > 0 ? `crewed by ${andList(names)}` : "crewed this turn",
+    example: [["Llanowar Elves", "Birds of Paradise"]],
+    kind: "aria",
+    role: "generic",
+    owners: [`${BOARD}Card.svelte`],
+    doc: "a Vehicle's crewed badge (ADR 0186 §6): the creatures tapped this turn to crew it; the names come from the board, and an ID with no card there is left out",
+  }),
+  saddledBadge: dynamicLabel({
+    stem: "saddled ",
+    match: "prefix",
+    shape: "saddled by <names> until end of turn, or saddled until end of turn",
+    make: (names: readonly string[]) =>
+      names.length > 0
+        ? `saddled by ${andList(names)} until end of turn`
+        : "saddled until end of turn",
+    example: [["Llanowar Elves", "Birds of Paradise"]],
+    kind: "aria",
+    role: "generic",
+    owners: [`${BOARD}Card.svelte`],
+    doc: "a Mount's saddled badge (ADR 0186 §6): the creatures tapped this turn to saddle it; the names come from the board, and an ID with no card there is left out",
   }),
 
   // -- The action dock (ADR 0111) --
@@ -532,7 +565,7 @@ export const LABEL_SPECS = {
     kind: "text",
     role: "button",
     owners: [`${BOARD}ChoicePromptModal.svelte`],
-    doc: "a sacrifice choice's confirm in the dock (sacrifice_choice, entry_sacrifice): enabled once the permanents are picked, in the sheet or on the board (#2880)",
+    doc: "a sacrifice choice's confirm in the dock (sacrifice_choice, entry_sacrifice, an edict's choose_cards): enabled once the permanents are picked, in the sheet or on the board (#2880)",
   }),
   numberToChoose: label({
     name: "number to choose",
@@ -1016,6 +1049,20 @@ export const LABEL_SPECS = {
     role: "button",
     owners: ["lib/choiceDock.ts"],
     doc: "the toggle under a prompt that can take a standing answer; on, the next button pressed also sets the rule (Yes or Pay: Always; No or Don't pay: Never)",
+  }),
+  recommendedAnswer: label({
+    name: "Recommended",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/choiceDock.ts"],
+    doc: 'the tag after the recommended answer of the which-skip question, "Use my skip" (ADR 0188 Decision 12); Enter takes it',
+  }),
+  choosingNextTurn: label({
+    name: "Choosing the next turn",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/components/board/PhaseDisplay.svelte"],
+    doc: "the step label while the turn change waits on the which-skip question (turn.between_turns, ADR 0188 Decision 12): the old turn is over and the next has not begun",
   }),
   automaticAnswer: label({
     name: "automatic answer",

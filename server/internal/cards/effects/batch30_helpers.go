@@ -379,22 +379,21 @@ func b30BetorEndStep(g *game.Game, item *game.StackItem) error {
 // b30LoseOneIfYouGainedLifeThisTurn is Lunar Convocation's first
 // end-step body: the intervening-if re-checked at resolution, then
 // each opponent loses 1.
-func b30LoseOneIfYouGainedLifeThisTurn(g *game.Game, item *game.StackItem) error {
-	if b15LifeGainedThisTurn(g, item.Controller) <= 0 {
-		return nil
-	}
-	return eachOpponentLosesLife(g, item, 1)
-}
+var b30LoseOneIfYouGainedLifeThisTurn = Do(If{
+	Cond: CondLifeGained{},
+	Then: []Applier{EachOpponentLosesLife{N: 1}},
+})
 
 // b30BatIfYouGainedAndLostLifeThisTurn is Lunar Convocation's second
 // end-step body: the intervening-if re-checked at resolution, then a
-// Bat.
-func b30BatIfYouGainedAndLostLifeThisTurn(g *game.Game, item *game.StackItem) error {
-	if b15LifeGainedThisTurn(g, item.Controller) <= 0 || b18LifeLostThisTurn(g, item.Controller) <= 0 {
-		return nil
-	}
-	return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 black Bat with flying"), N: 1}.Apply(NewContext(g, item))
-}
+// Bat. "Gained and lost" is one If inside another.
+var b30BatIfYouGainedAndLostLifeThisTurn = Do(If{
+	Cond: CondLifeGained{},
+	Then: []Applier{If{
+		Cond: CondLifeLost{},
+		Then: []Applier{CreateToken{Template: TokenCard("1/1 black Bat with flying"), N: 1}},
+	}},
+})
 
 // b30FetchBasicTapped is Promising Vein's search: a basic land card
 // (by supertype, so a snow basic qualifies), onto the battlefield

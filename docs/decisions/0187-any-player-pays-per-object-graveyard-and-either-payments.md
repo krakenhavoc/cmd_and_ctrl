@@ -105,6 +105,14 @@ Every seat sees the same entries. The battlefield and these choices are public (
 
 Card side: `effects.AnyPlayerPaysForEach{Objects func(ctx) []uuid.UUID, EachLife, Noun, Question, OnUnsaved func(ctx, []uuid.UUID) error}`, bound to the resolving item as `AnyPlayerPays` is.
 
+**As built (slice 4, #3572, 2026-10-15).** Three details the text above left open:
+
+- `AnyPlayerOffer.Declined` on a leg lists, in `Order`, the earlier players who chose nothing **and** the players who were given no leg because they can't pay. Both said no. `EarlierChoices` lists only players who were asked, so a player with no leg has no entry there.
+- A leg's `EarlierChoices` and `ChooseSuggested` are fixed when the leg is queued, like every ADR 0175 prompt. A player who leaves afterwards takes their lands off the table, so the candidate list and the payments shrink at once, but a leg already open keeps the earlier entry it was built with.
+- `ChooseSuggested` is cleared on every seat's view but the chooser's, with `Options` and the bounds that `choose_cards` already withholds from them. The offer, `Declined` and `EarlierChoices` stay public (CR 101.4b).
+
+- `SnapshotSchemaVersion` is 9 now, not 8 (§9 was written against 8). The additive `anyPlayerOffer.eachLife` line went into `testdata/snapshot_shape/v9.txt`, and `v8.txt` stays frozen. The rest of §9 holds without a bump.
+
 ### 3. Exiling cards from your own graveyard as the payment (#3206)
 
 A new `PayActionKind`, **`PayActionExileFromGraveyard`** (`"exile_graveyard"`), in `pay_unless_action.go`: exile `Count` cards from the payer's own graveyard.
@@ -135,6 +143,15 @@ The other 24 cards that print "assigns no combat damage" are not in scope. Under
 - **Paying** runs `payActionLocked` with the chosen branch. `onPay` runs once that branch is paid. For damage, that is once the damage event has settled, however much landed (CR 118.12).
 - **Wire:** `PendingChoiceView.PayEither []PayOptionView`, where each entry carries `{action, count, words, options}` (options only for a card branch, filtered as `PayCards` is: hand cards to the chooser only). `PayCost` carries the card's words. At most one of `PayCards` / `PayLife` / `PayDamage` / `PayNothing` / `PayEither` is present.
 - Card side: `effects.EitherPayment(a, b UpkeepPayment) UpkeepPayment`.
+
+**As built (slice 7, #3575, 2026-10-15).** Details the text above left open:
+
+- `PayOptionView` also carries `payable` (always sent): whether the chooser can make that branch right now. The client greys a branch it can't pay with the reason, and no rule is duplicated in it. A card branch's `options` is omitted when empty, unlike `PayCards.options`.
+- `PayAction` gains `Words`, the verb phrase naming a branch ("sacrifice two lands", "take 5 damage"). `EitherPayment` fills it from the two `UpkeepPayment`s; `PayActionPhrase` falls back to one built from the kind and count. It is plain data on the frame, so §6's census claim holds.
+- `ResolvePayUnlessWithOption(choiceID, chooser, apply, option *int, cardIDs)` takes the index as a pointer, because 0 is the first branch. `resolvePayUnless` resolves the chosen branch first and validates it as its own payment, and `answerPayUnlessLocked` takes that branch as its payment. A branch the payer can't make, named with no cards, is a decline (CR 118.3), as every other unpayable "yes" is. An automatic answer names no branch and is never payable, so it declines (an either offer is step-owed and takes no standing answer in any case).
+- An `Either` with fewer than two branches, or with an `Either` branch, is a programming error: `queuePayUnlessLocked` reports it as an `EventEffectError` and runs the decline, so the card still does something. `EitherPayment` panics on a mana or nested branch.
+- The log line reads "Alice paid for Worms of the Earth (sacrifice two lands or take 5 damage)": the `any_player_paid` event is emitted by a closure that doesn't know the branch, so it carries the whole offer's words, and the sacrifice or damage event that follows names the branch taken.
+- Bot (§7): damage at or above `phyrexianLifeFloor` scores 0.9; a sacrifice branch scores between 0.55 and 0.85 by what the lands are worth, and 0.25 when it would leave fewer than three lands (`eitherLandFloor`); both sit on either side of the decline's 0.5 as that rule needs. The MCP seat gets the branches from the enumerator's moves and from `boardtext`'s "(pay one of: …)" line.
 
 ### 6. How it pauses and resumes
 
@@ -178,6 +195,14 @@ Nothing new. Every link is a prompt with a closure frame the restore census alre
     `anyPlayerOfferRequest` (`choiceDock.ts`) and `dockHint.ts` give every other seat the read-only line for a `choose_cards` leg too, with the same summary: "Carol is choosing lands to pay 1 life for (Bob's Cleansing). So far: Alice 3, Dan none." Nothing is paid until the last player has chosen, and the hint says so.
   - The status chip for `assigns_no_combat_damage`.
   - New player-facing names go through `L.<key>` in `client/src/lib/labels.ts` (AGENTS.md §5).
+
+**As built (slice 5, #3573, 2026-10-15).**
+
+- **The leg is answered in the sheet, not on the board.** A `choose_cards` over battlefield permanents is board-answered by default (`answeredOnBoard`, #2394). A per-land leg opts out: the badge, the warning and the running price have nowhere to sit on the board. "Show as list" is not needed for it.
+- **Where the words live.** `choiceDock.ts` holds `isAnyPlayerEachLeg`, `anyPlayerEachHeader`, `anyPlayerEachSummary`, `anyPlayerEachPrice`, `anyPlayerEachBadge` and `anyPlayerEachWarning`. `anyPlayerOfferLine`, `anyPlayerWaiting` and `anyPlayerOfferRequest` switch to the per-land wording when the leg carries `each_life`, so the other seats' read-only line and `passHint` both include "So far: Alice 3, Dan none."
+- **The noun.** The wire carries no noun, so the copy says "lands" when every option is a land, and otherwise "permanents". A seat watching has no options (they are the chooser's), so it reads the earlier picks off the board; before anyone has chosen it says "permanents".
+- **No new contract labels.** The new elements are not tutorial anchors or e2e selectors, so `labels.ts` is unchanged.
+- **The bot.** `aiseat/heuristic/any_player_each.go` scores each enumerated answer. An answer naming an opponent's land or a land an earlier player chose scores 0.25, below "pay for none" (0.5). One that would take the bot below `phyrexianLifeFloor` scores `phyrexianLifeDeclined`. Any other answer scores above 0.5, rising with the number and value of lands, so the bot pays for as many of its own unchosen lands as the floor allows, most valuable first.
 
 ### 9. Snapshot, restore and undo
 
@@ -375,7 +400,7 @@ Engine tests use a test-only offer, since no catalog card uses it until slice 8.
 **Scope:**
 - `cards/effects/worms_of_the_earth.go`:
   - the land-play prohibition (the existing static in `land_play_restriction.go`);
-  - the #1985 "lands can't enter" static;
+  - the #1985 "lands can't enter" static: `EntryRestrictions: []game.EntryRestriction{LandsCantEnter("Lands can't enter the battlefield.")}` (shipped 2026-10-15, ADR 0109 amendment of that date);
   - the upkeep trigger `AnyPlayerPays{Pay: EitherPayment(SacrificePayment(2, "land", "lands", QueryType("land")), DamagePayment(5)), OnPaid: destroy this enchantment}`.
 - Card tests and the oracle fixture.
 - The registry row's final update: the row turns Implemented, apart from the recorded out-of-scope cards.

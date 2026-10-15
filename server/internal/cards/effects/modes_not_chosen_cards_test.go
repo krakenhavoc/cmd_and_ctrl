@@ -56,7 +56,7 @@ func handSize(p *game.Player) int { return p.Hand.Size() }
 
 func poolCount(p *game.Player, color string) int {
 	n := 0
-	for _, m := range p.ManaPool {
+	for _, m := range p.ManaPool.Units() {
 		if m.Color == color {
 			n++
 		}

@@ -37,8 +37,8 @@ func TestPermissiveCastSpendsOnlyAFullyFundedPool(t *testing.T) {
 			if len(item.Paid.Mana) != tc.spent || item.Paid.OnPaper != tc.onPaper {
 				t.Fatalf("payment = %+v, want %d spent, onPaper %v", item.Paid, tc.spent, tc.onPaper)
 			}
-			if len(p.ManaPool) != len(before)-tc.spent {
-				t.Fatalf("pool has %d tokens, want %d", len(p.ManaPool), len(before)-tc.spent)
+			if p.ManaPool.Total() != len(before)-tc.spent {
+				t.Fatalf("pool has %d tokens, want %d", p.ManaPool.Total(), len(before)-tc.spent)
 			}
 			if tc.onPaper && !reflect.DeepEqual(p.ManaPool, before) {
 				t.Fatalf("waived charge changed pool: %+v -> %+v", before, p.ManaPool)

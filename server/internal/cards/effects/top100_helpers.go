@@ -33,10 +33,10 @@ func youControlPowerFourOrGreater(g *game.Game, controller uuid.UUID) bool {
 // you control a creature with power 4 or greater, draw a card" — the
 // intervening-if (CR 603.4) checked again as the trigger resolves, so
 // a big creature killed in response leaves no card. Colossal Majesty's
-// upkeep trigger and Beastbond Outcaster's enters trigger share it.
-func drawIfYouControlPowerFourOrGreater(g *game.Game, item *game.StackItem) error {
-	if !youControlPowerFourOrGreater(g, item.Controller) {
-		return nil
-	}
-	return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-}
+// upkeep trigger, Beastbond Outcaster's enters trigger and Garruk's
+// Uprising's enters trigger share it. A Do with an If, so the rows
+// declare a footprint (#3033).
+var drawIfYouControlPowerFourOrGreater = Do(If{
+	Cond: CondPowerAtLeast{N: 4},
+	Then: []Applier{DrawCards{N: 1}},
+})

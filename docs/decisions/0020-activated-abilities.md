@@ -3290,3 +3290,77 @@ row is `boast`.
 - **Goldmaw Champion, Hagi Mob** — no blocker; left for a later slice of the same keyword.
 - **Besieged Viking Village** — not Commander-legal; its "all creatures have 'Boast — …'" needs an ability grant
   carrying the bit, which the grant path would pick up for free once the card is wanted.
+
+## Amendment (2026-10-15, [#3778](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3778)): the equip bit on an activation's cost query
+
+A board cost modifier could price activations (`CostModifier.Activations`,
+#1184) and read their announced targets (`ReadsTargets`, #1296), and it
+could tell an exhaust or a boast ability from the rest by a bit on
+`game.AbilityCostSubject`. It could not tell an equip ability, so
+"Equip abilities you activate that target this creature cost {2} less to
+activate" (Helitrooper) had nothing to read but the label.
+
+`AbilityCostSubject.Equip` is that bit, copied from
+`ActivatedAbilityShape.Equip` by `abilityCostQueryLocked`, the one
+builder the activation, `internal/legal` and the view all price through.
+`ActivatedAbilityShape.Equip` is still set by `effects.EquipAbility` and
+by no card file, so the bit means exactly "a CR 702.6 equip ability".
+The mana-ability query never sets it.
+
+Card side (`effects/cost_modifier.go`): `AnEquipAbilityCost()`,
+`YouActivate()` (the activator is the modifier source's controller) and
+`ThatTargetThisPermanent()` (one announced target is the modifier's
+source), composed as `EquipAbilitiesYouActivateCostLess(n, label)` and
+`EquipAbilitiesThatTargetThisCostLess(n, label)`. The second sets
+`ReadsTargets`, so `AbilityPriceReadsTargetsForEffect` answers true with
+it on the battlefield and the enumerator and the view price each target
+on its own: a seat with one land and a {3} equip is offered the equip
+onto Helitrooper and not onto anything else. A reduction takes generic
+mana only (CR 118.7a), so Fervent Champion's {3} off a {3} equip is free
+and off an equip with coloured symbols leaves them.
+
+Cards (Full): Helitrooper, Dwarven Mauler, Fervent Champion, Bureau
+Headmaster, Cloud, Planet's Champion.
+
+Not covered: Bladehold War-Whip's "of other Equipment" (needs the
+ability's source compared with the modifier's, one predicate), Strong
+Back's Aura half (a cast modifier over targets), Nahiri, Storm of Stone
+and Fighter Class, Éowyn, Lady of Rohan. None needs another engine
+field.
+
+## Amendment (2026-10-15, [#3779](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3779)): "the first activated ability you activate … that targets a creature you control"
+
+Professor Hojo's "The first activated ability you activate during your turn that targets a creature you control costs
+{2} less to activate" needs two things the activation path did not have: a record of what the turn's activations have
+already targeted, and a way for an activation-pricing modifier to read it beside the targets it was handed.
+
+### Decision 64: a per-player record of activations that targeted the activator's own creature
+
+`ActivationTally` gains `OwnCreatureTargeted map[string]int`, keyed by the activating player's ID. It counts the
+activations this turn whose announced targets included a creature on the battlefield controlled by that player, at most
+one per activation however many of their creatures it names. It sits beside `Turn` rather than inside it because `Turn`
+is keyed by object and ability label and summed by prefix, and a player-keyed entry would be swept into every prefix
+sum. `resetActivationTurnTallyLocked` empties it on the turn advance; `cloneActivationTally` copies it.
+
+It is written by `noteOwnCreatureTargetedLocked`, at the announce, on both activation paths that put an ability on the
+stack (the catalog path in `activated.go`, beside `noteAbilityActivationLocked`, and the manual sandbox announce in
+`mutations.go`). The write is at the announce for the reason the rest of the tally is: a countered or fizzled
+activation was still made, and a refused one never reaches the line, so it does not spend the discount. The creature's
+controller is read as the activation is announced. `Game.OwnCreatureTargetedActivationsThisTurn(player)` is the reader.
+
+The cost side needs no new engine type: an activation modifier that sets `ReadsTargets` already receives the announced
+targets (ADR 0048 addendum §13), so `effects.ActivationCostsLessIfItTargets` (the activation twin of
+`CostsLessIfItTargets`), `YouActivate`, `ActivatedDuringYourTurn` and
+`TheFirstOwnCreatureTargetingActivationThisTurn` compose into the clause. Because the modifier reads targets, the
+enumerator and the ability view already price each legal target on its own (`AbilityPriceReadsTargetsForEffect`), so a
+bot and the client see the discounted price on the right targets only.
+
+### Snapshot
+
+`activations.own_creature_targeted` is additive under v9: absent in an older file it reads as no activations, and a
+binary that drops it restarts the turn's record at zero, which can offer the discount a second time in the one turn that
+straddles the downgrade.
+
+### Cards
+
+Professor Hojo (Full).

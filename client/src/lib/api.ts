@@ -1566,6 +1566,10 @@ export async function fetchAutoTapPreview(
     if (cast.exilePermanentIDs && cast.exilePermanentIDs.length > 0) {
       params.set("exile_permanent_ids", cast.exilePermanentIDs.join(","));
     }
+    // #3175: each hand card a March exiles takes {2} off the price.
+    if (cast.exileFromHandIDs && cast.exileFromHandIDs.length > 0) {
+      params.set("exile_from_hand_ids", cast.exileFromHandIDs.join(","));
+    }
     // ADR 0135 §4: an emerge creature lowers the price by its mana value.
     if (cast.altCostIDs && cast.altCostIDs.length > 0) {
       params.set("alt_cost_ids", cast.altCostIDs.join(","));

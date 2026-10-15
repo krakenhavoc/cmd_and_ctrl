@@ -443,6 +443,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// while it sits in exile" true with no special case: a move
 	// within a zone is not a move, and never reaches here.
 	c.ClearFaceDown()
+	// ADR 0066 amendment 2026-10-15 (#3769): the graveyard-arrival
+	// record. Every move rewrites it, so a card that leaves a graveyard
+	// names nothing and one that arrives names where it came from.
+	stampGraveyardArrival(&c, src.Kind, dst.Kind)
 	// ADR 0090: a CR 722.3c prepare copy is castable only from the
 	// exile it was created in, for as long as its permanent stays
 	// prepared. Any move at all ends that — the cast itself (exile to
@@ -540,10 +544,35 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// is not its carrier (meldPassengers) and owe it a landing.
 	if c.IsMelded() && dst.Kind != ZoneBattlefield && dst.Kind != ZoneStack {
 		for _, part := range splitMeldedForMove(c, dst.Kind) {
+			stampGraveyardArrival(&part, src.Kind, dst.Kind)
 			dst.PushTop(part)
 		}
 		return c, nil
 	}
 	dst.PushTop(c)
 	return c, nil
+}
+
+// stampGraveyardArrival records where a card came from when it lands in a
+// graveyard (Card.PutInGraveyardFrom / PutInGraveyardThisTurn), and
+// forgets the record for any other destination. ADR 0066's 2026-10-15
+// amendment (#3769).
+func stampGraveyardArrival(c *Card, from, to ZoneKind) {
+	if to == ZoneGraveyard {
+		c.PutInGraveyardFrom = from
+		c.PutInGraveyardThisTurn = true
+		return
+	}
+	c.PutInGraveyardFrom = ""
+	c.PutInGraveyardThisTurn = false
+}
+
+// PutInGraveyardNotFromBattlefieldThisTurn is the clause "put into a
+// graveyard from anywhere other than the battlefield this turn": the
+// card sits in a graveyard now, arrived during the current turn, and did
+// not come from the battlefield. It is Card data rather than an event-log
+// walk so the cast path, the enumerator and the view agree by
+// construction.
+func (c Card) PutInGraveyardNotFromBattlefieldThisTurn() bool {
+	return c.PutInGraveyardThisTurn && c.PutInGraveyardFrom != "" && c.PutInGraveyardFrom != ZoneBattlefield
 }

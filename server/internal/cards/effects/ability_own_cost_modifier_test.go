@@ -63,7 +63,7 @@ func strictEquip(t *testing.T, g *game.Game, controller, equipment, target uuid.
 func poolSize(g *game.Game, player uuid.UUID) int {
 	for _, p := range g.Seats {
 		if p.ID == player {
-			return len(p.ManaPool)
+			return p.ManaPool.Total()
 		}
 	}
 	return -1

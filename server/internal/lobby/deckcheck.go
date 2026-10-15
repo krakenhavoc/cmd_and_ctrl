@@ -843,7 +843,7 @@ func mdUserText(s string, n int) string {
 	s = strings.NewReplacer("\n", " ", "\r", " ").Replace(s)
 	s = clip(s, n)
 	s = mdEscaper.Replace(s)
-	s = strings.ReplaceAll(s, "@", "@​")
+	s = strings.ReplaceAll(s, "@", "@\u200b")
 	return strings.TrimSpace(s)
 }
 
@@ -879,7 +879,7 @@ func plainUserText(s string, n int) string {
 	s = redact.Secrets(s)
 	s = strings.NewReplacer("\n", " ", "\r", " ").Replace(s)
 	s = clip(s, n)
-	s = strings.ReplaceAll(s, "@", "@​")
+	s = strings.ReplaceAll(s, "@", "@\u200b")
 	return strings.TrimSpace(s)
 }
 

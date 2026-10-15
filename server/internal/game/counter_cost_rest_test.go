@@ -71,8 +71,8 @@ func TestManaAbilityCounterCostIsPaid(t *testing.T) {
 	if got := counterOf(g, land, "charge"); got != 1 {
 		t.Errorf("charge counters %d, want 1", got)
 	}
-	if len(me.ManaPool) != 1 {
-		t.Fatalf("pool has %d tokens, want 1", len(me.ManaPool))
+	if me.ManaPool.Total() != 1 {
+		t.Fatalf("pool has %d tokens, want 1", me.ManaPool.Total())
 	}
 	if !findBattlefieldCard(g, land).Tapped {
 		t.Error("the land did not tap")
@@ -98,8 +98,8 @@ func TestManaAbilityCounterCostRefusedWithNothingToRemove(t *testing.T) {
 	if findBattlefieldCard(g, land).Tapped {
 		t.Error("the land tapped for a cost it could not pay")
 	}
-	if len(me.ManaPool) != 0 {
-		t.Errorf("pool has %d tokens, want 0", len(me.ManaPool))
+	if me.ManaPool.Total() != 0 {
+		t.Errorf("pool has %d tokens, want 0", me.ManaPool.Total())
 	}
 }
 
@@ -120,8 +120,8 @@ func TestManaAbilityCounterCostWithoutATap(t *testing.T) {
 	if got := counterOf(g, ramos, "+1/+1"); got != 1 {
 		t.Errorf("+1/+1 counters %d, want 1", got)
 	}
-	if len(me.ManaPool) != 10 {
-		t.Fatalf("pool has %d tokens, want 10", len(me.ManaPool))
+	if me.ManaPool.Total() != 10 {
+		t.Fatalf("pool has %d tokens, want 10", me.ManaPool.Total())
 	}
 	if findBattlefieldCard(g, ramos).Tapped {
 		t.Error("an ability with no {T} tapped its source")
@@ -227,8 +227,8 @@ func TestAutoTapExecutorPaysTheCounter(t *testing.T) {
 	if !findBattlefieldCard(g, land).Tapped {
 		t.Error("the land did not tap")
 	}
-	if len(me.ManaPool) != 1 {
-		t.Errorf("pool has %d tokens, want 1", len(me.ManaPool))
+	if me.ManaPool.Total() != 1 {
+		t.Errorf("pool has %d tokens, want 1", me.ManaPool.Total())
 	}
 }
 
@@ -309,8 +309,8 @@ func TestVariableCounterCostReachesTheProducedMana(t *testing.T) {
 	if got := counterOf(g, land, "storage"); got != 1 {
 		t.Errorf("storage counters %d, want 1", got)
 	}
-	if len(me.ManaPool) != 3 {
-		t.Fatalf("pool has %d tokens, want 3 — the paid count did not reach the effect", len(me.ManaPool))
+	if me.ManaPool.Total() != 3 {
+		t.Fatalf("pool has %d tokens, want 3 — the paid count did not reach the effect", me.ManaPool.Total())
 	}
 }
 

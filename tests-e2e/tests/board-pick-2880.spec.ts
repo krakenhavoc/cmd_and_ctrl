@@ -8,6 +8,7 @@ import {
   resolveStack,
   setupS19Game,
   triggerOnStack,
+  type PendingChoice,
   type S19Setup,
 } from "./s19-helpers";
 
@@ -25,6 +26,11 @@ import {
 const BEARS = "Grizzly Bears";
 const ELVES = "Llanowar Elves";
 const MARAUDER = "Fleshbag Marauder";
+
+// #3664: "each player sacrifices" asks one choose_cards leg per seat,
+// tagged with the "sacrifice" destination (ADR 0175's ordered collector).
+const isEdictPick = (c: PendingChoice) =>
+  c.kind === "choose_cards" && c.choose_destination === "sacrifice";
 
 const dockOf = (page: Page) => page.getByRole("region", { name: "actions", exact: true });
 
@@ -61,12 +67,14 @@ test.describe("#2880 choose permanents on the board", () => {
       (v) => triggerOnStack(v, MARAUDER) !== null,
       "Fleshbag Marauder's trigger on the stack",
     );
-    await resolveStack(setup);
+    // The trigger stays on the stack while its prompts are open
+    // (#3644), so stop passing once the caster's prompt is queued.
+    await resolveStack(setup, 20, (v) => (v.pending_choices ?? []).some(isEdictPick));
 
     const queued = await admin.waitFor(
       (v) =>
         (v.pending_choices ?? []).some(
-          (c) => c.kind === "sacrifice_choice" && c.chooser === caster.playerID,
+          (c) => isEdictPick(c) && c.chooser === caster.playerID,
         ),
       "the caster's sacrifice prompt",
     );
@@ -76,7 +84,7 @@ test.describe("#2880 choose permanents on the board", () => {
     // The opponent sacrifices their only creature, the Marauder, from
     // the admin socket.
     const theirs = (queued.pending_choices ?? []).find(
-      (c) => c.kind === "sacrifice_choice" && c.chooser === opponent.playerID,
+      (c) => isEdictPick(c) && c.chooser === opponent.playerID,
     );
     if (theirs) {
       const marauder = findCardOnBattlefield(queued, MARAUDER)!;
@@ -86,8 +94,14 @@ test.describe("#2880 choose permanents on the board", () => {
       });
     }
 
-    // The sheet opens in the dock, with Sacrifice waiting on a pick.
+    // Every candidate is a permanent, so #2394 asks the pick on the
+    // board first (a single pick completes on the click, with no
+    // Sacrifice). This spec is about the sheet's Sacrifice, so open
+    // the same choice as the list.
     const page = caster.page;
+    await dockOf(page).getByRole("button", { name: L.showAsList, exact: true }).click();
+
+    // The sheet opens in the dock, with Sacrifice waiting on a pick.
     const sheet = dockOf(page).getByRole("dialog").filter({
       has: page.getByRole("button", { name: L.sacrifice, exact: true }),
     });
@@ -136,7 +150,7 @@ test.describe("#2880 choose permanents on the board", () => {
     const after = await admin.waitFor(
       (v) =>
         !(v.pending_choices ?? []).some(
-          (c) => c.kind === "sacrifice_choice" && c.chooser === caster.playerID,
+          (c) => isEdictPick(c) && c.chooser === caster.playerID,
         ),
       "the caster's sacrifice answered",
     );

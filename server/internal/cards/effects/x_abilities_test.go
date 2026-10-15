@@ -122,7 +122,7 @@ func TestTreasureVaultChargesBothXSlotsAndMakesXTreasures(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if got := len(me.ManaPool); got != 1 {
+	if got := me.ManaPool.Total(); got != 1 {
 		t.Errorf("pool after paying {X}{X} at X=3: %d, want 1", got)
 	}
 	// Tap and sacrifice are cost components, paid at announce.
@@ -157,7 +157,7 @@ func TestTreasureVaultRefusesAnXItCannotPay(t *testing.T) {
 	if c := findTestCard(g, vault); c != nil && c.Tapped {
 		t.Error("a refused activation must not tap the land")
 	}
-	if got := len(me.ManaPool); got != 5 {
+	if got := me.ManaPool.Total(); got != 5 {
 		t.Errorf("pool after a refused activation: %d, want 5", got)
 	}
 }
@@ -188,7 +188,7 @@ func TestSoothsayingLooksAtTheTopXCards(t *testing.T) {
 	if err := g.ActivateCatalogAbility(me.ID, sooth, 1, game.ActivateAbilityParams{XValue: 3, Strict: true}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if got := len(me.ManaPool); got != 0 {
+	if got := me.ManaPool.Total(); got != 0 {
 		t.Errorf("pool after {X} at X=3: %d, want 0", got)
 	}
 	passPriorityAroundTable(t, g)
@@ -297,7 +297,7 @@ func TestHelmOfObedienceMillsUntilACreatureAndReanimatesIt(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if got := len(me.ManaPool); got != 0 {
+	if got := me.ManaPool.Total(); got != 0 {
 		t.Errorf("pool after {X} at X=5: %d, want 0", got)
 	}
 	passPriorityAroundTable(t, g)

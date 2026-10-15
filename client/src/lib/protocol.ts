@@ -928,6 +928,13 @@ export type LogKind =
   // is set when the reveal was to one player only, in which case the
   // text names no card for anyone.
   | "reveal"
+  // A player milled cards from their library (CR 701.17a). The milled cards
+  // are named in `text`; no card_id, and `amount` is the card count.
+  | "mill"
+  // A player searched a library, or shuffled one. `label` "shuffle" is a plain
+  // shuffle; "search_shuffled" is a search that also shuffled. Names no card;
+  // `target_seat` is set when the library was another player's.
+  | "search"
   // S30 random effects: the server-rendered public outcome of a die
   // roll or coin flip. The event text is already redacted and ready
   // for both the log and the attention strip.
@@ -1273,6 +1280,21 @@ export interface LogEvent {
 // Drives the client picker modal for deferred-choice effects
 // (Thoughtseize, future Vendilion-style cards). The Options slice
 // is pre-filtered to what the viewer is legally allowed to see.
+// ADR 0188 Decision 12: the which-skip question's details
+// (PendingChoiceView.turn_skip_order).
+export interface TurnSkipOrderView {
+  // The extra turn the question is about (an entry of turn.extra_turns).
+  extra_turn_ref: number;
+  // The card whose "skip your next turn" answer 0 spends, and its name
+  // as the question was asked.
+  skip_source?: string;
+  skip_source_name?: string;
+  // The extra-turn skips that apply: answer 1's effect.
+  others?: string[];
+  // The recommended answer's index: always 0, "use my skip".
+  recommended: number;
+}
+
 export interface PendingChoiceView {
   id: string;
   kind:
@@ -1449,6 +1471,15 @@ export interface PendingChoiceView {
     // Mandatory — both answers are always accepted. accept_label and
     // decline_label name the two; source is the entering card.
     | "entry_riot"
+    // ADR 0188 Decision 12, CR 616.1: the player owes "skip your next
+    // turn" and an extra-turn skip (Trouble in Pairs, Ugin's Nexus)
+    // applies to the same extra turn, so they choose which takes it.
+    // The {choice_id, apply} payload: apply true uses their own skip
+    // (answer 0, recommended), false lets the other effect skip it.
+    // accept_label and decline_label name the two; turn_skip_order
+    // carries the details. The turn change waits on it
+    // (turn.between_turns).
+    | "turn_skip_order"
     // #2123, CR 702.155b: read ahead's "choose the chapter this Saga
     // starts on", asked before the Saga enters. The chapters ride
     // pick_options in order ("Chapter I", "Chapter II", …) and the
@@ -1620,6 +1651,8 @@ export interface PendingChoiceView {
   // "entry_read_ahead" prompt "read ahead" (#2123). Absent on every
   // other prompt, and on a "may" that is not unleash's.
   entry_keyword?: "riot" | "unleash" | "read ahead" | string;
+  // ADR 0188 Decision 12: populated for kind "turn_skip_order".
+  turn_skip_order?: TurnSkipOrderView;
   // ADR 0104: on a "trigger_prompt" whose yes TRADES the source for a
   // spell (Perplexing Chimera) — that spell's instance ID. The client
   // does not read it; the bot weighs the trade with it.
@@ -1724,6 +1757,14 @@ export interface PendingChoiceView {
   pay_life?: number;
   pay_damage?: number;
   pay_nothing?: boolean;
+  // ADR 0187 §5: an either payment — one offer with two or more ways to
+  // pay (Worms of the Earth: "sacrifice two lands or take 5 damage").
+  // One entry per branch, in the card's order; pay_cost holds the whole
+  // offer's words. The "Pay" answer names the branch as `pay_option` (an
+  // index here) beside `apply: true`, with `card_ids` for a branch that
+  // names cards. Instead of pay_cards, pay_life, pay_damage, pay_energy
+  // and pay_nothing.
+  pay_either?: PayOptionView[];
   // ADR 0129 §3: a "pay_amount" prompt, "you may pay any amount of
   // {E}". Answered with { amount }: 0, or min..max.
   pay_amount?: PayAmountView;
@@ -2169,6 +2210,11 @@ export interface AnyPlayerOfferView {
   // Paying is what the controller wants (Icy Prison: it keeps the
   // permanent), so the words say "keep", not "stop".
   helps_controller?: boolean;
+  // ADR 0187 §2: the life one object costs on a per-object offer. Set,
+  // the prompt is a choose_cards whose answer is the objects the chooser
+  // will pay that much for; earlier_choices carries each earlier player's
+  // picks. Absent on every other any-player offer.
+  each_life?: number;
 }
 
 export interface VoteView {
@@ -2178,6 +2224,12 @@ export interface VoteView {
   initiator: string;
   // voter player ID → option index
   ballots: Record<string, number>;
+}
+
+// ManaPoolRun is one run of PlayerView.mana_pool (#3041).
+export interface ManaPoolRun {
+  color: string;
+  count: number;
 }
 
 export interface PlayerView {
@@ -2330,12 +2382,14 @@ export interface PlayerView {
   // grant is already summed in. Normally 1 / 0.
   land_drops_per_turn?: number;
   lands_played_this_turn?: number;
-  // S15: per-player mana pool. Each entry is an uppercase mana
-  // letter ("W", "U", "B", "R", "G", "C") — order reflects
-  // insertion order so the UI can highlight the most recent add.
-  // Empties at every step boundary (CR 106.4), so this is absent
-  // / empty in the common case outside an active cast sequence.
-  mana_pool?: string[];
+  // S15: per-player mana pool, in insertion order, as runs of one
+  // colour (#3041): `color` is an uppercase mana letter ("W", "U",
+  // "B", "R", "G", "C") and `count` how many of it sit together.
+  // Read the amount with manaPoolTotal (lib/manaPool.ts), never
+  // `.length`, which counts runs. Empties at every step boundary
+  // (CR 106.4), so this is absent / empty in the common case
+  // outside an active cast sequence.
+  mana_pool?: ManaPoolRun[];
   // #623 (CR 114): the emblems this seat has, in creation order.
   // Absent for a seat with none, which is nearly every seat.
   //
@@ -2584,6 +2638,24 @@ export interface AdditionalCostView {
   // cannot be paid right now.
   exile_permanent_label?: string;
   exile_permanent_options?: LegalTargetsView;
+  // #3175: a "you may exile any number of blue cards from your hand"
+  // additional cost (March of Swirling Mist). `exile_from_hand_options`
+  // lists the caster's hand cards that could pay it, min 0: none is always
+  // legal. The picks ride cast_spell as `exile_from_hand_ids`, and their
+  // number is the card's per-card discount. The options reach the card's
+  // owner alone.
+  exile_from_hand_label?: string;
+  exile_from_hand_options?: LegalTargetsView;
+  // #3536: an "exile N cards from your graveyard" additional cost
+  // (Abhorrent Oculus), the activated ability's four fields of the same
+  // names. `exile_cost_options` lists the cards that could pay it, in pile
+  // order; the picks ride cast_spell as `exile_ids`, exactly
+  // `exile_cost_n` of them. Fewer options than `exile_cost_n` means the
+  // cost cannot be paid right now (CR 118.3).
+  exile_cost_n?: number;
+  exile_cost_label?: string;
+  exile_cost_options?: string[];
+  exile_cost_zone?: ExileCostZone;
   payable?: boolean;
 }
 
@@ -2816,9 +2888,29 @@ export interface PayAmountView {
 }
 
 export interface PayCardsView {
-  action: "discard" | "sacrifice";
+  // "exile_graveyard" (ADR 0187 §3): options are the chooser's own
+  // graveyard, public to every seat.
+  action: "discard" | "sacrifice" | "exile_graveyard";
   count: number;
   options: string[];
+}
+
+// One branch of an either payment (ADR 0187 §5).
+export interface PayOptionView {
+  // "sacrifice", "discard", "exile_graveyard", "life", "damage",
+  // "energy" or "nothing".
+  action: string;
+  // How many cards one payment names, or the amount of life, damage or
+  // energy. Absent for a branch with no amount.
+  count?: number;
+  // The branch as a verb phrase: "sacrifice two lands", "take 5 damage".
+  words: string;
+  // Whether the chooser can make this branch right now (CR 118.3). A
+  // branch they can't is shown greyed.
+  payable: boolean;
+  // The instance IDs that could pay a branch that names cards, as
+  // pay_cards.options are (a discard's reach the chooser only).
+  options?: string[];
 }
 
 export interface TapCostView {
@@ -2871,6 +2963,13 @@ export interface SpecialActionView {
   // and what the special_action payload names back. Absent on every
   // other kind.
   door?: "left" | "right";
+  // ADR 0189: which rule a "turn_face_up" row is taken under —
+  // "mana_cost", "morph" or "disguise" — and what the special_action
+  // payload names back. A manifested or cloaked card whose card also
+  // prints morph or disguise lists two rows, possibly at the same
+  // cost, and this is what tells them apart. Absent on every other
+  // kind.
+  route?: "mana_cost" | "morph" | "disguise";
 }
 
 // RoomDoorsView is a Room's two CR 709.5c designations (ADR 0103):
@@ -3353,6 +3452,13 @@ export interface ActivatedAbilityView {
 export interface PurposeView {
   // #3309: on an Aura card, what it does to the permanent it enchants.
   aura?: "benefit" | "harm" | string;
+  // #3712: the card may be cast as though it had flash and is sacrificed
+  // at the next cleanup step when it was. Absent otherwise.
+  flash_cleanup_sacrifice?: boolean;
+  // ADR 0126 (amendment of 2026-10-15, #3762): what the card does only
+  // when its kicker is paid, and what turning it face up does. Bot data.
+  kicked?: PurposeView;
+  turned_face_up?: PurposeView;
   draws?: number;
   controller_loses_life?: number;
   discards?: number;
@@ -3374,6 +3480,11 @@ export interface PurposeView {
   // ADR 0130 (amendment of 2026-10-07): what an exert row does.
   pump?: { power?: number; toughness?: number; keywords?: string[] };
   extra_combat?: number;
+  // ADR 0188 Decision 10 (#3566): extra turns its controller takes
+  // after this one (CR 500.7) and next turns it makes them skip
+  // (CR 614.10).
+  extra_turns?: number;
+  skips_turns?: number;
   prevent_combat_damage_to_self?: boolean;
   damage_to_creature?: number;
   damage_each_opponent?: number;
@@ -3385,6 +3496,9 @@ export interface PurposeView {
   // #3072: on a landfall row, what it pays for each land that enters
   // under its controller's control.
   landfall_payoff?: LandfallPayoffView;
+  // #3146: on the card of a landfall doubler (Ancient Greenwarden), how
+  // many additional times each landfall trigger of its controller's fires.
+  landfall_extra_triggers?: number;
   // #3165: on a row that pays for each creature that enters under its
   // controller's control.
   creature_enter_payoff?: LandfallPayoffView;
@@ -3402,12 +3516,16 @@ export interface TargetPurposeView {
   slot: number;
   draws?: number;
   discards?: number;
+  // ADR 0188 Decision 10: the target player takes this many extra turns.
+  extra_turns?: number;
   tokens?: number;
   life_gain?: number;
   life_loss?: number;
   damage?: number;
   // #1944: the damage is the announced X; `damage` is then absent.
   damage_is_x?: boolean;
+  // #3161: the spell puts the picked graveyard card onto the battlefield under its caster.
+  reanimates?: boolean;
   // #2679: what the target's controller is given when it is removed.
   returns?: TargetReturnView;
 }
@@ -4216,6 +4334,14 @@ export interface CardView extends CastSurfaceView {
   // while saddled" triggers read. Public, read straight off the card.
   // Absent — not `false` — for everything else.
   saddled?: boolean;
+  // ADR 0186 §6 (#3543, CR 702.122c / 702.171c): the card IDs of the
+  // creatures tapped this turn to pay for this Vehicle's crew ability
+  // (`crewed_by`) or this Mount's saddle ability (`saddled_by`), in the
+  // order they were tapped, that are still on the battlefield as the same
+  // objects. Public. Absent — not `[]` — when nobody paid, and absent from
+  // the next turn on.
+  crewed_by?: string[];
+  saddled_by?: string[];
   // ADR 0071 amendment, #2698 (CR 701.60): this permanent is
   // suspected — it has menace and can't block for as long as it is.
   // Public, and kept on a face-down permanent: the designation was
@@ -4688,6 +4814,17 @@ export interface TurnView {
   // Seat indices of queued extra turns, in the order they will be
   // taken (next first). Turns of players who have left are omitted.
   extra_turns?: number[];
+  // ADR 0188 Decision 9 (#3566): the seat index whose turn begins after
+  // this one, as the engine decides it: queued extra turns first, then
+  // normal rotation, passing a seat that has left and spending skip
+  // charges. Seat 0 is a real answer. Absent when the game is not in
+  // play. It cannot see a replacement skip (Trouble in Pairs).
+  next_seat?: number;
+  // ADR 0188 Decision 12: set while the turn change waits on a
+  // "turn_skip_order" question. The old turn is over and the next has
+  // not begun; step still names the old turn's step, and nobody holds
+  // priority.
+  between_turns?: boolean;
   // ADR 0059 Decision 11 (#753): the phase in progress. `phase_id` is
   // unique within the turn (the template's phases are 1..5, an added
   // phase gets the next id); `phase_ordinal` is the nth phase of its

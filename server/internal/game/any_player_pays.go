@@ -104,6 +104,11 @@ type AnyPlayerOffer struct {
 	Opponents  bool        `json:"opponents,omitempty"`
 	// HelpsController is AnyPlayerPays.HelpsController.
 	HelpsController bool `json:"helpsController,omitempty"`
+	// EachLife is the life one object costs on a per-object offer
+	// (ADR 0187 §2, AnyPlayerPaysForEach): the leg is a choose_cards
+	// whose answer is the objects the chooser will pay that much for.
+	// Zero on every other offer.
+	EachLife int `json:"eachLife,omitempty"`
 }
 
 func cloneAnyPlayerOffer(o *AnyPlayerOffer) *AnyPlayerOffer {
@@ -126,6 +131,7 @@ func cloneAnyPlayerOffer(o *AnyPlayerOffer) *AnyPlayerOffer {
 func (g *Game) QueueAnyPlayerPaysForEffect(p AnyPlayerPays) error {
 	if p.Action != nil {
 		a := *p.Action
+		a.Either = append([]PayAction(nil), a.Either...)
 		p.Action = &a
 	} else if _, err := ParseCost(p.Cost); err != nil && p.PerPayer == nil {
 		// (A PerPayer offer builds each link's payment as it is

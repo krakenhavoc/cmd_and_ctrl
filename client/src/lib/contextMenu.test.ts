@@ -228,6 +228,51 @@ describe("buildMenuSections — battlefield", () => {
     });
   });
 
+  // ADR 0189: a manifested Den Protector turns up for its megamorph
+  // cost or its mana cost, both {1}{G}. Two rows, told apart by route.
+  it("lists one row per route when a permanent can turn up two ways", () => {
+    const manifested = card("m3", "a", {
+      name: "",
+      type_line: "Creature",
+      face_down: true,
+      face_down_kind: "manifested",
+      special_actions: [
+        {
+          kind: "turn_face_up",
+          label: "Turn face up {1}{G} (megamorph, +1/+1 counter)",
+          cost: "{1}{G}",
+          available: true,
+          route: "morph",
+        },
+        {
+          kind: "turn_face_up",
+          label: "Turn face up {1}{G} (mana cost)",
+          cost: "{1}{G}",
+          available: true,
+          route: "mana_cost",
+        },
+      ],
+    });
+    const v2 = view([seat("a", "Alice")], { battlefield: [manifested] });
+    const sections = buildMenuSections(v2, manifested, "a", false);
+    const morph = itemById(sections, "special-turn_face_up-morph");
+    const mana = itemById(sections, "special-turn_face_up-mana_cost");
+    expect(morph?.label).toBe("Turn face up {1}{G} (megamorph, +1/+1 counter)");
+    expect(mana?.label).toBe("Turn face up {1}{G} (mana cost)");
+    expect(morph?.action).toEqual({
+      type: "special_action",
+      params: { card_id: "m3", kind: "turn_face_up", route: "morph", strict: true, auto_tap: true },
+      player: "a",
+    });
+    expect(mana?.action?.params).toEqual({
+      card_id: "m3",
+      kind: "turn_face_up",
+      route: "mana_cost",
+      strict: true,
+      auto_tap: true,
+    });
+  });
+
   // CR 708.6 says the CONTROLLER turns it face up, so a stolen morph
   // is turned up by the thief — the one kind whose actor is not the
   // card's owner.

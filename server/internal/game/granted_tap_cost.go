@@ -43,7 +43,15 @@ func (g *Game) TapPermanentsCostForCastLocked(caster uuid.UUID, card Card, from 
 	if own := TapPermanentsCostFor(CatalogKey(card)); !own.Empty() {
 		return own
 	}
-	if CatalogGrantedTapCosts == nil || g.Battlefield == nil || caster == uuid.Nil {
+	if caster == uuid.Nil {
+		return nil
+	}
+	// "The next spell you cast this turn has improvise" (Archway of
+	// Innovation): a one-use promise on the caster, not a permanent's static.
+	if c := g.improvisePromiseCostLocked(caster, card); c != nil {
+		return c
+	}
+	if CatalogGrantedTapCosts == nil || g.Battlefield == nil {
 		return nil
 	}
 	for i := range g.Battlefield.Cards {

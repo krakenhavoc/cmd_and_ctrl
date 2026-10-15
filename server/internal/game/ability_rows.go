@@ -226,6 +226,11 @@ type staticRowSlot struct {
 	// structs: a bool, a count, a keyword list. It returns one label per
 	// row, nil for none.
 	label func(v reflect.Value) []string
+	// elemLabel words one entry of a list slot whose entries have no
+	// Label of their own but may carry ActiveWhen (a granted
+	// alternative cost behind a Room door, #3174), so the gate still
+	// applies row by row.
+	elemLabel func(e reflect.Value) string
 }
 
 // staticRowSlots is every CardDef slot, other than Static, that holds
@@ -260,6 +265,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "DrawStep", fallback: "Extra draw", ownLabel: true},
 	{field: "CastRestrictions", fallback: "Casting restriction", ownLabel: true},
 	{field: "LandPlayRestrictions", fallback: "Land-play restriction", ownLabel: true},
+	{field: "EntryRestrictions", fallback: "Can't enter the battlefield", ownLabel: true},
 	{field: "ActivationRestrictions", fallback: "Activation restriction", ownLabel: true},
 	{field: "ActivationTimings", fallback: "Changes when abilities can be activated", ownLabel: true},
 	{field: "SpellsCantBeCountered", fallback: "Spells can't be countered", ownLabel: true},
@@ -284,7 +290,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "CastPermissions", fallback: "Lets you play cards from another zone", ownLabel: true},
 	{field: "GatedCastPermissions", fallback: "Lets you play cards from another zone", ownLabel: true, nestedLabel: "Permission"},
 	{field: "CastTimings", fallback: "Changes when spells can be cast", ownLabel: true},
-	{field: "GrantedAlternativeCosts", label: grantedAlternativeCostRows},
+	{field: "GrantedAlternativeCosts", elemLabel: grantedAlternativeCostRow},
 	{field: "LibraryTopVisible", label: libraryTopRows},
 }
 
@@ -336,7 +342,9 @@ func (s staticRowSlot) appendRows(out []AbilityRow, c *Card, v reflect.Value, na
 					continue
 				}
 			}
-			if s.ownLabel {
+			if s.elemLabel != nil {
+				label = s.elemLabel(e)
+			} else if s.ownLabel {
 				holder := e
 				if s.nestedLabel != "" {
 					holder = e.FieldByName(s.nestedLabel)

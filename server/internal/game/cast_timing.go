@@ -384,7 +384,7 @@ func castTimingAffects(a CastTimingAffects, controller, caster uuid.UUID) bool {
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind, perm *CastPermission) bool {
-	return g.castTimingOpenLocked(playerID, card, zone, perm, false)
+	return g.castTimingOpenLocked(playerID, card, zone, perm, false, true)
 }
 
 // CastTimingForOfferOpenLocked is CastTimingOpenLocked for a cast that
@@ -399,10 +399,13 @@ func (g *Game) CastTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) CastTimingForOfferOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind, perm *CastPermission, offer *AlternativeCost) bool {
-	return g.castTimingOpenLocked(playerID, card, zone, perm, offer != nil && offer.AsThoughFlash)
+	return g.castTimingOpenLocked(playerID, card, zone, perm, offer != nil && offer.AsThoughFlash, true)
 }
 
-func (g *Game) castTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind, perm *CastPermission, offerFlash bool) bool {
+// ownFlash is false only for castUsesOwnFlashLocked's question: would
+// the cast be open WITHOUT the card's own "as though it had flash"
+// (flash_cleanup_sacrifice.go)?
+func (g *Game) castTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind, perm *CastPermission, offerFlash, ownFlash bool) bool {
 	// CR 702.61a — no cast begins under split second.
 	if g.SplitSecondActive {
 		return false
@@ -431,6 +434,12 @@ func (g *Game) castTimingOpenLocked(playerID uuid.UUID, card Card, zone ZoneKind
 	}
 	// 1. The card's own timing.
 	instantSpeed := card.IsInstant() || HasKeyword(&card, "flash")
+	// 1b. The card's own "you may cast this spell as though it had
+	// flash" (Necromancy, #3156). Not the keyword: nothing that asks
+	// whether a card has flash sees it.
+	if ownFlash && printsFlashWithCleanupSacrifice(card) {
+		instantSpeed = true
+	}
 	// 2. The permission's override, if it carries one.
 	if perm != nil {
 		switch perm.Timing {

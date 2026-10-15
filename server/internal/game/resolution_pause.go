@@ -78,6 +78,10 @@ func choiceBelongsToResolution(c *PendingChoice) bool {
 	switch c.Kind {
 	case PendingChoiceTriggerOrder, PendingChoiceLoopShortcut:
 		return false
+	case PendingChoiceTurnSkipOrder:
+		// ADR 0188 Decision 12: the which-skip question belongs to the
+		// turn change, which never runs inside a resolution.
+		return false
 	}
 	if c.triggerResume != nil || c.pickTargetResume != nil || c.modePickResume != nil {
 		return false

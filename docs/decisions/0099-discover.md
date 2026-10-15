@@ -359,3 +359,25 @@ The SANDBOX SIMPLIFICATION of §Decision 4 stands, and it is a little wider for 
 **Back-out.** Removing the `IfNotCast` block from `lapseCastPermissionLocked` fails `TestPaidCastOrElsePassingWithoutCastingRunsIfNotCastOnce`, `TestPaidCastOrElseSweepBackstopRunsIfNotCast` and `TestChandraTorchAcceptThenPassDealsTheDamage`; dropping `TimingFlash` or `LapseOnPass` from the grant fails `TestPaidCastOrElseAcceptGrantsAPaidPassClosedCast`; setting `Cost: "{0}"` fails `TestChandraTorchAcceptPaysTheCostAndDealsNoDamage`.
 
 **Snapshot impact.** One new omitempty field on a persisted shape (`ifNotCast`). An old snapshot reads it empty, which is every permission written before this.
+
+## Amendment 2026-10-15: a free play or cast from the top of the library, else into your hand (#3801)
+
+Ziatora's Envoy: "Whenever this creature deals combat damage to a player, look at the top card of your library. You may play a land from the top of your library or cast a spell with mana value less than or equal to the damage dealt from the top of your library without paying its mana cost. If you don't, put that card into your hand." Rashmi, Eternities Crafter prints the revealed, spell-only form. The pieces existed apart: §4's pass-closed free cast (from exile, or from hand since #3270), `PlayLandDuringResolutionForEffect` (hideaway's land, any zone). Nothing offered either one over a card still in the **library**, in one window, with "if you don't, into your hand" as the lapse.
+
+**Decision.**
+
+1. **One helper.** `Game.OfferFreePlayFromTopOrHandForEffect(FreePlayFromTop)` (`game/free_play_from_top.go`) looks at (or, with `Reveal`, reveals) the top card of `Player`'s library and runs the offer. `MaxManaValue` caps the spell inclusively; `Land` says the clause also allows a land play. An empty library does nothing.
+2. **A nonland card within the cap** gets a `may_cast` under the existing `free_or_hand` keyword. Accepting grants §4's window over the card **where it sits in the library**: `Zone: ZoneLibrary`, `ScopeCards` (the object, so the position is not re-checked once the grant is made), `Cost: "{0}"`, `TimingFlash`, `CastOnly`, `MaxSpellManaValue`, and `LapseOnPass: LapseToHand`. `lapseCastPermissionLocked` already reads the zone the grant opens, so an uncast card goes from the library to its owner's hand on the holder's next pass. Declining puts it into the hand at once.
+3. **A land** the player could play right now (`CanPlayLandDuringResolutionForEffect`: CR 305.2b land drop left, CR 305.3 their turn, CR 101.2 no "can't play lands") gets a `may_cast` under the new keyword `play_or_hand` (`MayCastKeywordPlayOrHand`). Accepting plays it through `PlayLandDuringResolutionForEffect`, a real land play that spends the drop (CR 305.2a); if the play ends up ignored the card goes to the hand. Declining puts it into the hand.
+4. **Everything else** (a land with no drop left, a spell over the cap, a land when the card does not allow the play, an unreadable cost) goes straight to the hand with no question: the player could not have played it, so "if you don't" is already true.
+5. **The look is private (CR 701.20).** `LookAtTopOfLibraryForEffect` marks only the looker a knower. `MayCastPrompt.Private` marks the offer, because its question names the card: the existing `PendingChoice.private` / `private_text` pair (ADR 0133) already strips words from every non-chooser, and the view now also clears `may_cast_card` for a private `may_cast` and words the neutral line for it, so the card's instance id is not a handle on a hidden-zone card. A reveal (Rashmi) is public and the prompt is not private.
+6. **Client.** `mayCast.ts` words `play_or_hand` ("Play it" / "Put it into your hand"), which does **not** open a cast; `free_or_hand` still does. Board's free-cast request (`freeCastLocation`) now looks in the viewer's own library as well as exile and casts with `from_zone: "library"`, and the may_cast prompt finds its card there too. A looked-at library card is on the wire for its looker only.
+7. **Bot.** The enumerator labels a `play_or_hand` accept "play it". The heuristic's yes stands: either branch is a free card.
+
+The SANDBOX SIMPLIFICATION of §Decision 4 stands: the cast is an ordinary `cast_spell` after the resolution rather than a frame inside it. The trigger's controller is the active player (combat damage), so CR 117.3b gives them priority first.
+
+**Cards.** Ziatora's Envoy (Full, with blitz from #3772), Rashmi, Eternities Crafter (Full). Both are one file and one call.
+
+**Back-out.** Dropping `LapseOnPass` from the grant fails `TestZiatorasEnvoyPassingWithoutCastingPutsItInHand`; clearing `Private` fails `TestZiatorasEnvoyTheLookIsPrivate` and `TestALookedAtTopCardOfferIsPrivateToItsChooser`; offering a land without the land-drop gate fails `TestZiatorasEnvoyNoLandDropLeftPutsTheLandInHand`; removing the mana-value cap fails `TestZiatorasEnvoySpellAboveTheDamageGoesToHand`.
+
+**Snapshot impact.** None. The grant is the existing `CastPermission` with fields already persisted, and a `private` prompt carries a continuation frame, so it is never written to a restore point.

@@ -108,7 +108,7 @@ func TestATableFullOfTokensIsStillARestorePoint(t *testing.T) {
 	if err := restored.ResolveManaChoice(pending.ID, you.ID, "R"); err != nil {
 		t.Fatalf("ResolveManaChoice: %v", err)
 	}
-	if len(you.ManaPool) != 1 || you.ManaPool[0].Color != "R" {
+	if you.ManaPool.Total() != 1 || you.ManaPool.Units()[0].Color != "R" {
 		t.Fatalf("mana pool after cracking the restored Treasure = %+v, want one {R}", you.ManaPool)
 	}
 

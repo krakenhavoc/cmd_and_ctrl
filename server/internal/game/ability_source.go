@@ -150,6 +150,40 @@ func (g *Game) AbilitySourceIsNewObjectForEffect(item *StackItem) bool {
 	return true
 }
 
+// AbilitySourceLeftBattlefieldForEffect reports whether the card `item`'s
+// ability came from has left the battlefield while the ability waited
+// (#3667, CR 400.7): it was sacrificed or killed in response and is now
+// a new object in another zone. "Put a +1/+1 counter on this creature"
+// then names a permanent that no longer exists, so the instruction does
+// nothing (CR 608.2b) rather than stamping the graveyard card.
+//
+// It is the zone-change twin of AbilitySourceIsNewObjectForEffect, which
+// only looks at the battlefield. Same exceptions: a spell, an item with
+// no source or no stamp reads false, and so does a card that is nowhere
+// (a vanished token keeps its own ErrCardNotFound path) and a move this
+// very resolution made (CR 400.7 lets the rest of the effect follow it).
+// An ability stamped from a graveyard or hand has that zone's epoch, so
+// it reads false while the card stays there.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) AbilitySourceLeftBattlefieldForEffect(item *StackItem) bool {
+	if item == nil || item.Kind == StackItemSpell || item.SourceCardID == uuid.Nil {
+		return false
+	}
+	ref := item.SourceObject
+	if ref.ID != item.SourceCardID || findBattlefieldCard(g, item.SourceCardID) != nil {
+		return false
+	}
+	epoch := g.cardObjectEpochLocked(item.SourceCardID)
+	if epoch < 0 || epoch == ref.Epoch {
+		return false
+	}
+	if start, ok := g.resolvingSourceEpochLocked(item); ok && start != epoch {
+		return false
+	}
+	return true
+}
+
 // followedSourceObjectLocked is the object `item`'s source is as
 // `item`'s own resolution sees it (#1432): its stamp, unless this very
 // resolution has moved the card ONTO THE BATTLEFIELD — then the

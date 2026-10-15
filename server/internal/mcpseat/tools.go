@@ -1009,7 +1009,7 @@ func applyValue(m legal.Move, value any) (json.RawMessage, error) {
 		}
 		x := int(f)
 		if (m.Value.Min != nil && x < *m.Value.Min) || (m.Value.Max != nil && x > *m.Value.Max) {
-			return nil, fmt.Errorf("X=%d is outside the range the server stated", x)
+			return nil, fmt.Errorf("value %d for X is outside the range the server stated", x)
 		}
 		filled = x
 	}

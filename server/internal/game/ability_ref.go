@@ -667,6 +667,10 @@ func (g *Game) buildTriggerItemLocked(t TriggeredAbility, ev Event, source Card,
 	case t.Effect != nil:
 		item = NewTriggeredItem(&source, t.Key)
 		item.Effect = t.Effect
+		if t.XFromCast {
+			// CR 107.3m: the X of the spell this permanent was (#3033).
+			item.XValue = source.CastX()
+		}
 	default:
 		return nil
 	}

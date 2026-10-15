@@ -168,6 +168,47 @@ func ActivationCostsLessEach(amount func(q game.CostQuery) int, label string, wh
 	return m
 }
 
+// ActivationCostsLessIfItTargets is "<matching> abilities cost {n} less
+// to activate if they target [a card that matches]" (#3779) — Professor
+// Hojo's "that targets a creature you control". The activation twin of
+// CostsLessIfItTargets: `match` is judged for the ACTIVATOR against the
+// announced card targets as they stand when the cost is determined
+// (CR 602.2b, 601.2c before 601.2f).
+//
+// Sets ReadsTargets, so the engine hands it the targets and the
+// enumerator and the view price each legal target on its own.
+func ActivationCostsLessIfItTargets(n int, label string, match CardPredicate, when ...CostPredicate) game.CostModifier {
+	preds := append(append([]CostPredicate(nil), when...), ItTargets(match))
+	m := ActivationCostsLess(n, label, preds...)
+	m.ReadsTargets = true
+	return m
+}
+
+// ActivatedDuringYourTurn passes when the activator is the active
+// player — "...you activate during your turn".
+func ActivatedDuringYourTurn() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Game != nil && IsYourTurn(q.Game, q.Controller)
+	}
+}
+
+// TheFirstOwnCreatureTargetingActivationThisTurn passes while the
+// activator has not yet made an activation this turn that targeted a
+// creature they control (#3779) — "the FIRST activated ability you
+// activate ... that targets a creature you control". Reads
+// Game.OwnCreatureTargetedActivationsThisTurn, written when an
+// activation is announced, so a refused activation never uses up the
+// discount and a countered one does (it was activated).
+//
+// Pair it with ActivationCostsLessIfItTargets: the record says what the
+// turn has already done, the target predicate says whether THIS
+// activation is one of those.
+func TheFirstOwnCreatureTargetingActivationThisTurn() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Game != nil && q.Game.OwnCreatureTargetedActivationsThisTurn(q.Controller) == 0
+	}
+}
+
 // ChannelDiscountPerLegendaryCreature is the Kamigawa: Neon Dynasty
 // channel lands' "This ability costs {1} less to activate for each
 // legendary creature you control" (Boseiju, Otawara, Takenuma, …).
@@ -180,6 +221,56 @@ func ActivationCostsLessEach(amount func(q game.CostQuery) int, label string, wh
 func ChannelDiscountPerLegendaryCreature() game.CostModifier {
 	return CostsLessEach(PermanentsYouControl(And(Creature(), Legendary())),
 		"This ability costs {1} less to activate for each legendary creature you control.")
+}
+
+// AnEquipAbilityCost — the ability being priced is a CR 702.6 equip
+// ability (#3778). Reads the keyword bit, never the label.
+//
+// AnExhaustAbilityCost is its exhaust twin.
+func AnEquipAbilityCost() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Ability != nil && q.Ability.Equip
+	}
+}
+
+// YouActivate — "abilities YOU activate": the activator is the
+// modifier source's controller. An activation's q.Controller is the
+// player activating, not the controller of the ability's source.
+func YouActivate() CostPredicate {
+	return func(q game.CostQuery) bool { return q.Controller == q.Source.Controller }
+}
+
+// ThatTargetThisPermanent — "… that target this creature": one of the
+// announced targets (CR 601.2c, read at 601.2f) is the modifier's own
+// source. Reads q.Targets, so the modifier it is in must set
+// ReadsTargets; EquipAbilitiesThatTargetThisCostLess does.
+func ThatTargetThisPermanent() CostPredicate {
+	return func(q game.CostQuery) bool {
+		for _, t := range q.Targets {
+			if t.Kind == game.TargetCard && t.ID == q.Source.InstanceID {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// EquipAbilitiesYouActivateCostLess is "Equip abilities you activate
+// cost {n} less to activate" (Bureau Headmaster, #3778).
+func EquipAbilitiesYouActivateCostLess(n int, label string) game.CostModifier {
+	return ActivationCostsLess(n, label, AnEquipAbilityCost(), YouActivate())
+}
+
+// EquipAbilitiesThatTargetThisCostLess is "Equip abilities you
+// activate that target this creature cost {n} less to activate"
+// (Helitrooper, Dwarven Mauler, Fervent Champion; #3778). Before a
+// target is chosen it prices nothing off, which is why it declares
+// ReadsTargets: the enumerator and the view then price each target on
+// its own.
+func EquipAbilitiesThatTargetThisCostLess(n int, label string) game.CostModifier {
+	m := ActivationCostsLess(n, label, AnEquipAbilityCost(), YouActivate(), ThatTargetThisPermanent())
+	m.ReadsTargets = true
+	return m
 }
 
 // AnExhaustAbilityCost — the ability being priced prints the exhaust
@@ -313,6 +404,16 @@ func CastFromGraveyardOrExile() CostPredicate {
 	return func(q game.CostQuery) bool {
 		return q.FromZone == game.ZoneGraveyard || q.FromZone == game.ZoneExile
 	}
+}
+
+// CastFromGraveyard passes on a spell being cast from a graveyard —
+// "spells you cast from your graveyard cost {2} less to cast"
+// (Emet-Selch of the Third Seat). Reads the zone the cast is coming
+// FROM, so a flashed-back, escaped, Snapcaster'd or Emet-granted cast is
+// matched and a hand or exile cast is not. Pair it with YourSpell() for
+// "you cast".
+func CastFromGraveyard() CostPredicate {
+	return func(q game.CostQuery) bool { return q.FromZone == game.ZoneGraveyard }
 }
 
 // --- what kind of spell ------------------------------------------

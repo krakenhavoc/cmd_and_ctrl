@@ -316,8 +316,8 @@ Every paper Room in the dump. "PR 3" means the card is expected to need nothing 
 |---|---|---|
 | Bottomless Pool // Locker Room | PR 3 | |
 | Central Elevator // Promising Stairs | PR 3 | uses `NamesOf` and the unlocked-door names reader |
-| Charred Foyer // Warped Space | waits | Warped Space: a standing "pay {0} rather than the mana cost" for spells cast from exile, once each turn. No primitive. |
-| Cramped Vents // Access Maze | waits | Access Maze: a standing "pay life equal to its mana value rather than its mana cost", once during each of your turns. No primitive. |
+| Charred Foyer // Warped Space | done | Warped Space is a door-gated, once-each-turn granted alternative cost (#3174). |
+| Cramped Vents // Access Maze | done | Access Maze is a door-gated granted alternative cost for life equal to mana value, once during each of your turns (#3174). |
 | Dazzling Theater // Prop Room | waits | Dazzling Theater: "creature spells you cast have convoke". No primitive grants convoke to spells. Prop Room needs the `UntapStep` gate from PR 1. |
 | Defiled Crypt // Cadaver Lab | PR 3 | |
 | Derelict Attic // Widow's Walk | PR 3 | |

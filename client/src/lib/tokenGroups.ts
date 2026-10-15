@@ -11,9 +11,14 @@
 // The rules below are the whole contract, and each is here for a
 // reason the board would otherwise get wrong:
 //
-//   - Only tokens group. A printed card is never folded away, even two
-//     copies of the same basic creature: the land strip's piles are
-//     the one existing exception and they keep their own logic.
+//   - Tokens group by the looser rules below. Nontoken permanents
+//     (#3046) group too, but only when they are identical in
+//     everything the wire says about them (cardGroupKey): counters,
+//     damage, summoning sickness, combat, goad, chosen names, art.
+//     Anything that differs splits the pile. A token never groups
+//     with a card, even a card it is a copy of. The land strip keeps
+//     its own name piles, so a row drawn as a strip passes
+//     `nontoken: false` and only its tokens group.
 //   - The key is what the table SEES: controller, name, type line,
 //     colours, the token's printed text, and power / toughness with
 //     the P/T counters taken back off. Counters stay in the group (the
@@ -28,6 +33,8 @@
 //     unadorned token that otherwise matches. The attachment itself is
 //     still drawn behind the group's card, so it never leaves the
 //     board, and its name is a badge on the row.
+//     A nontoken permanent with anything attached never groups.
+//   - Commanders never group, nor does a card the viewer can't see.
 //   - Face-down and phased-out objects never group: the first shows a
 //     card back that must not be merged with anything, the second is
 //     "treated as though it does not exist" and is drawn inert. Nor
@@ -85,10 +92,16 @@ function basePT(c: CardView): string {
   return `${signedPower - d.power}/${(c.toughness ?? 0) - d.toughness}`;
 }
 
-// canGroup reports whether a card may be folded into a group at all.
+// canGroup reports whether a token may be folded into a group at all.
 export function canGroup(c: CardView): boolean {
   if (!isToken(c)) return false;
-  if (c.is_commander || c.face_down || c.phased_out || c.known_by_you === false) return false;
+  return canPile(c);
+}
+
+// canPile is what rules a permanent out of any pile, token or not.
+function canPile(c: CardView): boolean {
+  if (c.is_commander || c.is_companion || c.face_down || c.phased_out || c.known_by_you === false)
+    return false;
   // ADR 0114: a Ring-bearer is one of a kind (one per player), and its
   // marker must stay on a card of its own rather than behind a count.
   if (c.ring_bearer) return false;
@@ -121,6 +134,82 @@ export function tokenGroupKey(c: CardView): string | null {
   return `${looseKey(c)}\u0001${basePT(c)}`;
 }
 
+// The parts of a card view that are about WHERE or WHICH it is, not
+// what it looks like: they never split a pile. `tapped` is handled by
+// the pile's two halves (rowEntries).
+const PER_INSTANCE = new Set(["instance_id", "battle_x", "battle_y", "tapped"]);
+
+// The ability lists carry per-instance detail that is not on the card
+// face: legal targets and cost options name other permanents (two
+// copies of "tap another untapped creature" each offer the other), and
+// availability flags follow the moment. A pile keeps only what marks
+// the copies apart for good: which abilities each has, from where,
+// and whether one is spent (an exhaust ability).
+const ABILITY_LISTS = new Set([
+  "activated_abilities",
+  "zone_abilities",
+  "mana_abilities",
+  "zone_mana_abilities",
+]);
+function abilityShape(a: Record<string, unknown>): unknown {
+  return [
+    a.ref ?? a.index,
+    a.label ?? "",
+    a.granted_by ?? null,
+    a.borrowed_from ?? null,
+    !!a.exhausted,
+  ];
+}
+
+// canonical serialises a value with its object keys sorted, so two
+// views built in different field orders give the same string.
+function canonical(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    return `{${Object.keys(o)
+      .filter((k) => o[k] !== undefined)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${canonical(o[k])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(v) ?? "null";
+}
+
+// cardGroupKey is the key two NONTOKEN permanents must share to pile
+// (#3046), or null for a card that never piles. It is the whole view
+// minus PER_INSTANCE, with the ability lists cut down to abilityShape.
+// Strict on purpose: a printed card the player may want to tell apart
+// is never hidden behind a count. Exported for tests.
+export function cardGroupKey(c: CardView): string | null {
+  if (isToken(c) || !canPile(c)) return null;
+  const view: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(c)) {
+    if (PER_INSTANCE.has(k)) continue;
+    view[k] =
+      ABILITY_LISTS.has(k) && Array.isArray(v)
+        ? v.map((a) => abilityShape(a as Record<string, unknown>))
+        : v;
+  }
+  return `${CARD_KEY}${canonical(view)}`;
+}
+const CARD_KEY = "card\u0001";
+
+// GroupOptions:
+//   - nontoken: identical nontoken permanents pile (#3046). On by
+//     default; the land strip turns it off to keep its name piles.
+//   - highlight: what the board is lighting on a card right now (its
+//     ready pips, combat rings, a targeting or choice ring, a combat
+//     selection), as a string. A nontoken pile draws one card per
+//     distinct highlight, so a ring on the pile always means "every
+//     copy drawn here", never "one of them, somewhere". The group (and
+//     so its member list) stays whole. Token groups keep #1724's rule:
+//     the card lights when any member does.
+export interface GroupOptions {
+  nontoken?: boolean;
+  highlight?: (c: CardView) => string;
+}
+
 export interface TokenGroup {
   key: string;
   // Every member, in the order the row was given them (battle_x).
@@ -136,7 +225,9 @@ export interface TokenGroup {
 export function groupTokens(
   cards: readonly CardView[],
   attachmentsByHost: Record<string, readonly CardView[]> = {},
+  opts: GroupOptions = {},
 ): Map<string, TokenGroup> {
+  const nontoken = opts.nontoken ?? true;
   const adorned = (c: CardView) => (attachmentsByHost[c.instance_id] ?? []).length > 0;
   const plainKeys = new Set<string>();
   const plainByLoose = new Map<string, string>();
@@ -150,7 +241,11 @@ export function groupTokens(
   const groups = new Map<string, TokenGroup>();
   for (const c of cards) {
     let k = tokenGroupKey(c);
-    if (k === null) continue;
+    if (k === null) {
+      // A nontoken pile is exact: nothing attached, nothing folded in.
+      k = nontoken && !adorned(c) ? cardGroupKey(c) : null;
+      if (k === null) continue;
+    }
     if (adorned(c) && !plainKeys.has(k)) k = plainByLoose.get(looseKey(c)) ?? k;
     const g = groups.get(k);
     if (g) g.members.push(c);
@@ -204,8 +299,9 @@ function plainest(
 export function rowEntries(
   cards: readonly CardView[],
   attachmentsByHost: Record<string, readonly CardView[]> = {},
+  opts: GroupOptions = {},
 ): RowEntry[] {
-  const groups = groupTokens(cards, attachmentsByHost);
+  const groups = groupTokens(cards, attachmentsByHost, opts);
   const groupOf = new Map<string, TokenGroup>();
   for (const g of groups.values()) for (const m of g.members) groupOf.set(m.instance_id, g);
   const out: RowEntry[] = [];
@@ -218,21 +314,31 @@ export function rowEntries(
     }
     if (placed.has(g.key)) continue;
     placed.add(g.key);
+    const lit = g.key.startsWith(CARD_KEY) ? opts.highlight : undefined;
     for (const tapped of [false, true]) {
-      const half = g.members.filter((m) => !!m.tapped === tapped);
-      if (half.length === 0) continue;
-      if (half.length === 1) {
-        out.push({ kind: "card", key: half[0].instance_id, card: half[0] });
-        continue;
+      // Each half splits further by highlight, in row order (#3046).
+      const parts = new Map<string, CardView[]>();
+      for (const m of g.members) {
+        if (!!m.tapped !== tapped) continue;
+        const sig = lit ? lit(m) : "";
+        const part = parts.get(sig);
+        if (part) part.push(m);
+        else parts.set(sig, [m]);
       }
-      out.push({
-        kind: "group",
-        key: `group:${tapped ? "t" : "u"}:${g.key}`,
-        groupKey: g.key,
-        tapped,
-        rep: plainest(half, attachmentsByHost),
-        members: half,
-      });
+      for (const [sig, half] of parts) {
+        if (half.length === 1) {
+          out.push({ kind: "card", key: half[0].instance_id, card: half[0] });
+          continue;
+        }
+        out.push({
+          kind: "group",
+          key: `group:${tapped ? "t" : "u"}:${sig ? `${sig}:` : ""}${g.key}`,
+          groupKey: g.key,
+          tapped,
+          rep: plainest(half, attachmentsByHost),
+          members: half,
+        });
+      }
     }
   }
   return out;

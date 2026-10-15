@@ -356,6 +356,23 @@ type LegalMoveView = legal.Move
 // revealed cards in full; others see either backs (for
 // discard_from_hand targeting an opponent's hand) or the raw
 // IDs plus redacted characteristics.
+// TurnSkipOrderView is PendingChoiceView.TurnSkipOrder (ADR 0188
+// Decision 12).
+type TurnSkipOrderView struct {
+	// ExtraTurnRef is the extra turn the question is about (an entry of
+	// TurnView.ExtraTurns until it is settled).
+	ExtraTurnRef int `json:"extra_turn_ref"`
+	// SkipSource is the card whose "skip your next turn" answer 0 spends,
+	// and SkipSourceName its name as the question was asked.
+	SkipSource     string `json:"skip_source,omitempty"`
+	SkipSourceName string `json:"skip_source_name,omitempty"`
+	// Others names the extra-turn skips that apply, answer 1's effect.
+	Others []string `json:"others,omitempty"`
+	// Recommended is the recommended answer's index: always 0, "use my
+	// skip". Not omitempty: 0 is the value.
+	Recommended int `json:"recommended"`
+}
+
 type PendingChoiceView struct {
 	ID      string `json:"id"`
 	Kind    string `json:"kind"`
@@ -445,6 +462,15 @@ type PendingChoiceView struct {
 	// entering Aura does to its host, "benefit" or "harm", from the
 	// card's declared Purpose.Aura. Absent when it declares none.
 	AuraPurpose string `json:"aura_purpose,omitempty"`
+
+	// TurnSkipOrder populates the "turn_skip_order" kind (ADR 0188
+	// Decision 12, CR 616.1): the player who owes "skip your next turn"
+	// chooses which skip takes an extra turn another effect would skip
+	// too. Answered with `apply`: true uses their own skip (answer 0),
+	// false lets the other effect take it (answer 1). Public: the cards
+	// are on the battlefield and the debt is on the player's panel.
+	// Absent on every other prompt.
+	TurnSkipOrder *TurnSkipOrderView `json:"turn_skip_order,omitempty"`
 
 	// EntryKeyword names the entry keyword an "entry_riot",
 	// "entry_read_ahead" or "optional_replacement" prompt is asking
@@ -599,6 +625,16 @@ type PendingChoiceView struct {
 	PayLife    *int `json:"pay_life,omitempty"`
 	PayDamage  *int `json:"pay_damage,omitempty"`
 	PayNothing bool `json:"pay_nothing,omitempty"`
+
+	// PayEither is an either payment (ADR 0187 §5): one offer with two
+	// or more ways to pay, Worms of the Earth's "sacrifice two lands or
+	// have it deal 5 damage to you". Each entry is one branch; the
+	// answer names the branch it takes as `pay_option`, its index here,
+	// beside `apply: true` and, for a branch that names cards,
+	// `card_ids`. PayCost carries the card's words for the whole offer.
+	// At most one of PayCards / PayEnergy / PayLife / PayDamage /
+	// PayNothing / PayEither is present.
+	PayEither []PayOptionView `json:"pay_either,omitempty"`
 
 	// PayAmount populates the "pay_amount" kind (ADR 0129 §3): "you may
 	// pay any amount of {E}". The chooser answers `{amount: n}` with
@@ -825,6 +861,10 @@ type AnyPlayerOfferView struct {
 	// HelpsController is true when paying is what the controller wants
 	// (Icy Prison: paying keeps it), so "pay to stop it" reads wrong.
 	HelpsController bool `json:"helps_controller,omitempty"`
+	// EachLife is the life one object costs on a per-object offer
+	// (ADR 0187 §2): the prompt is a choose_cards whose answer is the
+	// objects the chooser will pay that much for. Absent otherwise.
+	EachLife int `json:"each_life,omitempty"`
 }
 
 // CouncilVoteView is a vote in progress (game.CouncilVote), as the open
@@ -1275,6 +1315,30 @@ type AdditionalCostView struct {
 	// a hexproof creature you control is on it (CR 601.2h).
 	ExilePermanentLabel   string            `json:"exile_permanent_label,omitempty"`
 	ExilePermanentOptions *LegalTargetsView `json:"exile_permanent_options,omitempty"`
+	// ExileFromHandLabel / ExileFromHandOptions describe a "you may exile
+	// any number of blue cards from your hand" additional cost (#3175,
+	// March of Swirling Mist): the clause as printed and the caster's hand
+	// cards that could pay it (game.HandExileOptionsForEffect), min 0 and
+	// max every option — none is always a legal payment, so the cost never
+	// makes the spell uncastable. The picks ride back on cast_spell as
+	// `exile_from_hand_ids`, and their number is what the card's per-card
+	// discount reads.
+	ExileFromHandLabel   string            `json:"exile_from_hand_label,omitempty"`
+	ExileFromHandOptions *LegalTargetsView `json:"exile_from_hand_options,omitempty"`
+	// ExileCostN / Label / Options / Zone describe an "exile six cards
+	// from your graveyard" additional cost (#3536, Abhorrent Oculus): the
+	// activated ability's four fields of the same names, off the same
+	// engine walk (game.ExileCostOptionsForEffect). Options is every card
+	// in the caster's graveyard that could pay, in pile order, the spell
+	// itself excluded; the picks ride back on cast_spell as `exile_ids`,
+	// exactly ExileCostN of them. Absent when the cost has no such
+	// component; N present with fewer than N options means it cannot be
+	// paid right now, which makes the spell uncastable (CR 118.3). The
+	// graveyard is public, so the list is not a private one.
+	ExileCostN       int      `json:"exile_cost_n,omitempty"`
+	ExileCostLabel   string   `json:"exile_cost_label,omitempty"`
+	ExileCostOptions []string `json:"exile_cost_options,omitempty"`
+	ExileCostZone    string   `json:"exile_cost_zone,omitempty"`
 	// DemandsX marks a "pay X life" clause (Toxic Deluge). The
 	// client must open its X prompt for this card even though the
 	// printed mana cost has no {X} in it, and the announced X is
@@ -1676,15 +1740,41 @@ type TapCostView struct {
 // what it does, how many cards it takes, and which cards could pay it
 // right now.
 type PayCardsView struct {
-	// Action is "discard" or "sacrifice".
+	// Action is "discard", "sacrifice" or "exile_graveyard" (ADR 0187
+	// §3).
 	Action string `json:"action"`
 	// Count is exactly how many of Options one payment names.
 	Count int `json:"count"`
 	// Options are the instance IDs that could pay: the chooser's hand
 	// for a discard, the permanents of the clause's kind they control
-	// for a sacrifice (in the payment order "Choose for me" uses).
-	// Present-and-empty when there is nothing to pay with.
+	// for a sacrifice (in the payment order "Choose for me" uses), the
+	// chooser's own graveyard for an exile_graveyard. Only a discard's
+	// are withheld from the other seats: a sacrifice's and a
+	// graveyard's are public. Present-and-empty when there is nothing
+	// to pay with.
 	Options []string `json:"options"`
+}
+
+// PayOptionView is one branch of an either payment (ADR 0187 §5).
+type PayOptionView struct {
+	// Action is the branch's kind: "sacrifice", "discard",
+	// "exile_graveyard", "life", "damage", "energy" or "nothing".
+	Action string `json:"action"`
+	// Count is how many cards one payment names, or the amount of life,
+	// damage or energy.
+	Count int `json:"count,omitempty"`
+	// Words names the branch as a verb phrase: "sacrifice two lands",
+	// "take 5 damage".
+	Words string `json:"words"`
+	// Payable is whether the chooser can make this branch right now
+	// (CR 118.3): enough cards to name, enough life, or a damage branch,
+	// which is always payable. An unpayable branch is shown greyed.
+	Payable bool `json:"payable"`
+	// Options are the instance IDs that could pay a branch that names
+	// cards, as PayCardsView.Options are: a discard's go to the chooser
+	// only. Absent for a branch that names nothing, and when there are
+	// none.
+	Options []string `json:"options,omitempty"`
 }
 
 // PayAmountView is the wire shape of a "pay_amount" prompt (ADR 0129
@@ -2228,14 +2318,16 @@ type PlayerView struct {
 	LandDropsPerTurn    int `json:"land_drops_per_turn"`
 	LandsPlayedThisTurn int `json:"lands_played_this_turn"`
 
-	// ManaPool is the player's current mana pool projection — one
-	// entry per floating mana token, in insertion order. Entries
-	// are uppercase single-character mana letters ("W", "U", "B",
-	// "R", "G", "C"). Empty / nil when the pool is empty (CR 106.4
-	// empties at every step boundary, so this is the common case
-	// outside a cast). Drives the S15 ManaPoolPips UI. Added in
-	// S15 sub-PR 2.
-	ManaPool []string `json:"mana_pool,omitempty"`
+	// ManaPool is the player's current mana pool projection, in
+	// insertion order, as runs of one colour (#3041): `{color,
+	// count}`, with `color` an uppercase single-character mana letter
+	// ("W", "U", "B", "R", "G", "C") and adjacent mana of the same
+	// colour folded into one run. Before #3041 it was one letter per
+	// mana, so a million floating {G} was a four-megabyte frame.
+	// Empty / nil when the pool is empty (CR 106.4 empties at every
+	// step boundary, so this is the common case outside a cast).
+	// Drives the S15 ManaPoolPips UI. Added in S15 sub-PR 2.
+	ManaPool []ManaPoolRun `json:"mana_pool,omitempty"`
 
 	// Emblems are the emblems this player has (CR 114), in creation
 	// order. Absent for every seat that has none, which is nearly
@@ -3261,7 +3353,8 @@ type CardView struct {
 	// On the hand, the battlefield and the stack. Public on a card the
 	// viewer can see, and cleared with `ability_rows` for a viewer who
 	// cannot, so an opponent's hand card and a face-down object never
-	// carry one.
+	// carry one. The one thing a face-down permanent's controller is
+	// sent is `turned_face_up`, what turning it up does (#3762).
 	Purpose *PurposeView `json:"purpose,omitempty"`
 
 	// Abilities is the card's effective keyword list — strings like
@@ -3864,6 +3957,12 @@ type SpecialActionView struct {
 	// (ADR 0103) — and what the action payload names back. Empty for
 	// every other kind.
 	Door string `json:"door,omitempty"`
+	// Route is which rule a "turn_face_up" row is taken under —
+	// "mana_cost", "morph" or "disguise" (ADR 0189 decision 4) — and
+	// what the action payload names back. A manifested or cloaked card
+	// whose card also prints morph or disguise lists two rows, which
+	// can cost the same. Empty for every other kind.
+	Route string `json:"route,omitempty"`
 }
 
 // RoomDoorsView is a Room's unlocked designations (CR 709.5c, ADR
@@ -4841,6 +4940,20 @@ type TurnView struct {
 	// who has left is omitted: it will not begin (CR 800.4k). Public
 	// information — the spell that queued it was public.
 	ExtraTurns []int `json:"extra_turns,omitempty"`
+	// NextSeat is the seat index whose turn begins after this one, as far
+	// as the records can say (ADR 0188 Decision 9, #3566): the queued
+	// extra turns from the top, then normal rotation from the seat whose
+	// normal turn this follows, passing a seat that has left and spending
+	// each seat's skip charges. A pointer, because seat 0 is a real answer
+	// that omitempty would drop. Absent when the game is not in play. It
+	// cannot see a replacement skip (Trouble in Pairs, Ugin's Nexus),
+	// which is decided as the turn would begin. Public.
+	NextSeat *int `json:"next_seat,omitempty"`
+	// BetweenTurns is set while the turn change waits on a
+	// "turn_skip_order" question (ADR 0188 Decision 12): the old turn
+	// is over, the next has not begun, and the cursor still shows the
+	// old turn's step with nobody holding priority. Public.
+	BetweenTurns bool `json:"between_turns,omitempty"`
 	// PhaseID identifies the phase in progress within this turn (ADR
 	// 0059 Decision 11): the template's phases are 1..5, and a phase an
 	// effect added (Relentless Assault's combat) gets the next id. Two
@@ -5005,6 +5118,8 @@ func ViewOfGame(g *game.Game) GameView {
 				Step:           string(g.Turn.Step),
 				Extra:          g.Turn.Extra,
 				ExtraTurns:     viewOfExtraTurns(g),
+				NextSeat:       viewOfNextSeat(g),
+				BetweenTurns:   g.TurnChangePending,
 				PhaseID:        g.Turn.PhaseID,
 				PhaseOrdinal:   g.Turn.PhaseOrdinal,
 				Upcoming:       viewOfUpcoming(g),
@@ -5896,10 +6011,24 @@ func publicAlternativeCosts(offers []AlternativeCostView) []AlternativeCostView 
 func handPublicCastSurface(s CastSurfaceView) CastSurfaceView {
 	return CastSurfaceView{
 		TargetMode:     s.TargetMode,
-		AdditionalCost: s.AdditionalCost,
+		AdditionalCost: handPublicAdditionalCost(s.AdditionalCost),
 		OptionalCosts:  s.OptionalCosts,
 		CantCast:       s.CantCast,
 	}
+}
+
+// handPublicAdditionalCost is the additional cost a viewer shown the card
+// may read: the printed clause, without the one picker that reads the
+// owner's HAND rather than the battlefield — a hand-exile cost's options
+// (#3175) would tell the viewer which of the owner's hidden cards are
+// blue. A copy, so the owner's own stamp keeps its list.
+func handPublicAdditionalCost(ac *AdditionalCostView) *AdditionalCostView {
+	if ac == nil || ac.ExileFromHandOptions == nil {
+		return ac
+	}
+	out := *ac
+	out.ExileFromHandOptions = nil
+	return &out
 }
 
 // stampsFor files one seat's answer on the card for FilterViewFor to
@@ -7109,7 +7238,9 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			// cascade's {0}, airbend's {2} — never reaches this
 			// function; `exile_play.x_locked_at_zero` is where the
 			// same predicate answers for those.
-			XLockedAtZero: game.CastCost{Printed: offerPrinted, Paid: ac.ManaCost}.LocksXAtZero(),
+			// #3175: an offer whose card half includes X (Shining
+			// Shoal's "a white card with mana value X") leaves X open.
+			XLockedAtZero: game.CastCost{Printed: offerPrinted, Paid: ac.ManaCost, AltIncludesX: ac.PaymentDefinesX()}.LocksXAtZero(),
 			// #916: the offer replaces the mana cost, so it replaces
 			// the "or 2 life" count the client's stepper is bounded
 			// by.
@@ -7132,8 +7263,17 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 		// the hexproof / shroud gate must not narrow what the client
 		// offers.
 		if paySpec := ac.ExileFromHand; paySpec != nil {
-			opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, paySpec), paySpec)
+			cands := g.SpecCandidatesForEffect(caster, paySpec)
+			opts := viewOfLegalTargets(cands, paySpec)
 			opts.Players = nil
+			// CR 601.2a: the spell is on the stack before the cost is
+			// paid, so it never pitches itself (a white Shining Shoal is
+			// a white card in hand until then).
+			opts.Cards = withoutID(opts.Cards, self)
+			// #3175: "a white card with mana value X" (Shining Shoal)
+			// ships mana_value_equals_x and each card's mana value, so
+			// the picked card's value is the X the client announces.
+			stampTargetSetRule(g, opts, cands.Cards, paySpec)
 			v.PayOptions = opts
 		} else if paySpec := ac.DiscardFromHand; paySpec != nil {
 			// Retrace's discard (#2528): the caster's own hand, so the
@@ -7236,6 +7376,21 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		if out.ExilePermanentOptions == nil {
 			out.ExilePermanentOptions = &LegalTargetsView{Min: ec.Count, Max: ec.Count}
 		}
+	}
+	if he := ac.ExileFromHand; he != nil {
+		// #3175: the engine's own walk, so the picker offers exactly the
+		// cards the validator accepts (#544). Any number, none included.
+		opts := g.HandExileOptionsForEffect(caster, castID, he)
+		out.ExileFromHandLabel = he.Label
+		out.ExileFromHandOptions = &LegalTargetsView{Min: 0, Max: len(opts), Cards: cardIDStrings(opts)}
+	}
+	if ec := ac.ExileCards; ec != nil && ec.N > 0 {
+		// #3536: the activation's own walk, so the picker offers exactly
+		// the cards the validator accepts (#544).
+		out.ExileCostN = ec.N
+		out.ExileCostLabel = ec.Label
+		out.ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(caster, castID, ec))
+		out.ExileCostZone = string(ec.Zone())
 	}
 	if ac.BlightX {
 		// #2174: the same creature walk, and the ceiling the validator
@@ -7830,6 +7985,7 @@ func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID, zone ga
 			Cost:      sa.Cost,
 			Available: g.SpecialActionTimingOKLocked(owner, card, sa.Kind),
 			Door:      game.DoorName(sa.Door),
+			Route:     string(sa.Route),
 		}
 		// #1319: the charged price, after every CR 601.2f cost
 		// modifier on the battlefield — Ranar the Ever-Watchful's
@@ -8392,7 +8548,22 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// ADR 0108 §5: the discard or sacrifice half of a pay-unless;
 		// ADR 0129 §3: or its energy.
 		// ADR 0150 §3: or its life, its damage, or nothing at all.
-		if a := c.PayAction(); a != nil && a.NamesNothing() {
+		if a := c.PayAction(); a != nil && a.Kind == game.PayActionEither {
+			// ADR 0187 §5: one entry per branch, in the card's order.
+			for i := range a.Either {
+				b := a.Either[i]
+				opt := PayOptionView{
+					Action:  string(b.Kind),
+					Count:   b.Count,
+					Words:   game.PayActionPhrase(b),
+					Payable: g.PayActionCanPayForEffect(c.Chooser, &b),
+				}
+				if !b.NamesNothing() {
+					opt.Options = cardIDStrings(g.PayActionOptionsForEffect(c.Chooser, &b))
+				}
+				v.PayEither = append(v.PayEither, opt)
+			}
+		} else if a != nil && a.NamesNothing() {
 			n := a.Count
 			switch a.Kind {
 			case game.PayActionEnergy:
@@ -8657,7 +8828,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// public information: counters are on the table. ADR 0170's
 		// entry_choose_permanents carries a suggestion the same way
 		// (public permanents, no seats).
-		if c.Kind == game.PendingChoiceProliferate || c.Kind == game.PendingChoiceEntryChoosePermanents {
+		// ADR 0187 §2: a per-object any-player offer's choose_cards leg
+		// carries the chooser's suggested set the same way (public
+		// permanents, no seats).
+		if c.Kind == game.PendingChoiceProliferate || c.Kind == game.PendingChoiceEntryChoosePermanents ||
+			(c.Kind == game.PendingChoiceChooseCards && c.AnyPlayerOffer != nil) {
 			for _, id := range c.ChoosePlayers {
 				v.ChoosePlayers = append(v.ChoosePlayers, id.String())
 			}
@@ -8705,6 +8880,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				Opponents:  o.Opponents,
 
 				HelpsController: o.HelpsController,
+				EachLife:        o.EachLife,
 			}
 		}
 		if a := c.Assist; a != nil {
@@ -8727,6 +8903,18 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c.Kind == game.PendingChoiceEntryRiot {
 			v.AcceptLabel = c.AcceptLabel
 			v.DeclineLabel = c.DeclineLabel
+		}
+		// ADR 0188 Decision 12: the which-skip question's two answers.
+		if o := c.TurnSkipOrder; c.Kind == game.PendingChoiceTurnSkipOrder && o != nil {
+			v.AcceptLabel = c.AcceptLabel
+			v.DeclineLabel = c.DeclineLabel
+			v.TurnSkipOrder = &TurnSkipOrderView{
+				ExtraTurnRef:   o.ExtraTurnRef,
+				SkipSource:     uuidStringOrEmpty(o.SkipSource),
+				SkipSourceName: o.SkipName,
+				Others:         append([]string(nil), o.Others...),
+				Recommended:    0,
+			}
 		}
 		if (c.Kind == game.PendingChoiceEntryRiot || c.Kind == game.PendingChoiceOptionalReplacement ||
 			c.Kind == game.PendingChoiceEntryReadAhead) && len(c.ReplacementEffectIDs) == 1 {
@@ -9122,13 +9310,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 			Seq:      c.Seq,
 		}
 	}
-	var manaPool []string
-	if len(p.ManaPool) > 0 {
-		manaPool = make([]string, len(p.ManaPool))
-		for i, t := range p.ManaPool {
-			manaPool[i] = t.Color
-		}
-	}
+	manaPool := manaPoolRunsOf(p.ManaPool)
 	// #623 / CR 114. The label and text come from the catalog, so a
 	// game restored on a binary whose card file reworded the emblem
 	// shows the new wording.
@@ -9861,6 +10043,13 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 		if c.PrivateText && c.Chooser != viewerID {
 			out[i].Source = ""
 			out[i].Reason = "Deciding on an opening-hand action"
+			// #3801: a may_cast over a card only the chooser has looked
+			// at (the top of a library). The card's id is a handle on a
+			// hidden-zone card, so it goes too.
+			if c.Kind == string(game.PendingChoiceMayCast) {
+				out[i].Reason = "Deciding whether to play the card they looked at"
+				out[i].MayCastCard = ""
+			}
 			out[i].AcceptLabel = ""
 			out[i].DeclineLabel = ""
 			continue
@@ -9886,6 +10075,11 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].ChooseMin = 0
 			out[i].ChooseMax = 0
 			out[i].ChooseDestination = ""
+			// ADR 0187 §2: a per-object offer leg's suggested set is
+			// the chooser's own answer to make, so it goes with the
+			// rest of the pick. The offer and the earlier choices
+			// stay: they are the table's public record (CR 101.4b).
+			out[i].ChooseSuggested = nil
 			continue
 		}
 		// ADR 0108 §5: a pay-unless discard's options are the chooser's
@@ -9897,6 +10091,17 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			pc := *c.PayCards
 			pc.Options = []string{}
 			out[i].PayCards = &pc
+		}
+		// ADR 0187 §5: the same for a discard branch of an either
+		// payment. Copied before it is changed, as PayCards is.
+		if len(c.PayEither) > 0 && c.Chooser != viewerID {
+			branches := append([]PayOptionView(nil), c.PayEither...)
+			for k := range branches {
+				if branches[k].Action == string(game.PayActionDiscard) {
+					branches[k].Options = nil
+				}
+			}
+			out[i].PayEither = branches
 		}
 		if len(c.Options) > 0 {
 			out[i].Options = redactChoiceCards(c, c.Options, isKnower, viewerID)
@@ -11675,18 +11880,16 @@ func castSourceOf(g *game.Game, caster uuid.UUID, instanceID string) game.Target
 // when the cost also sacrifices it, because the engine refuses paying
 // one permanent twice.
 func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetSpec, sourceID uuid.UUID, selfToo bool) *LegalTargetsView {
-	lt := g.SpecCandidatesForEffect(controller, spec)
+	// #3275: the controller's permanents that can be sacrificed.
 	var ids []uuid.UUID
-	for _, id := range lt.Cards {
+	for _, id := range g.SacrificeCostCandidatesForEffect(controller, spec) {
 		if (selfToo || spec.ExcludeSource) && id == sourceID {
 			continue
 		}
 		if !g.AttachedToSourceOKForEffect(spec, sourceID, id) {
 			continue
 		}
-		if c, ok := g.LookupCardForEffect(id); ok && c.Controller == controller {
-			ids = append(ids, id)
-		}
+		ids = append(ids, id)
 	}
 	// #1213: the bounds come from the one function the announce path
 	// validates against and the enumerator pays from, so the picker
@@ -12159,6 +12362,15 @@ func viewOfExtraTurns(g *game.Game) []int {
 		out = append(out, et.Seat)
 	}
 	return out
+}
+
+// viewOfNextSeat is TurnView.NextSeat. Caller holds g's read lock.
+func viewOfNextSeat(g *game.Game) *int {
+	seat, ok := g.NextTurnSeatForEffect()
+	if !ok {
+		return nil
+	}
+	return &seat
 }
 
 // PlannedStepView is one step still to come this turn (TurnView.upcoming).

@@ -74,8 +74,14 @@
     selectionLegal,
   } from "../../boardChoicePick";
   import {
+    anyPlayerEachBadge,
+    anyPlayerEachHeader,
+    anyPlayerEachPayers,
+    anyPlayerEachPrice,
+    anyPlayerEachWarning,
     anyPlayerOfferLine,
     anyPlayerWhose,
+    isAnyPlayerEachLeg,
     ballotNote,
     choiceRequest,
     inlineRefusal,
@@ -94,6 +100,14 @@
   import { colorPickOptions } from "../../manaSource";
   import ManaSymbolPicker from "./ManaSymbolPicker.svelte";
   import { payUnlessAnswer, waterbendLimit } from "../../waterbend";
+  import {
+    branchLabel,
+    branchNamesCards,
+    branchPicker,
+    branchReady,
+    branchWhyNot,
+    defaultPickerBranch,
+  } from "../../payEither";
   import {
     energyShortBy,
     payAmountAnswerable,
@@ -240,9 +254,13 @@
       // #2525: a proliferate opens on the engine's suggested pick — the
       // answer a player takes nearly every time — and the player's click
       // is the deviation.
+      // ADR 0187 §8: a per-land any-player offer opens the same way, on
+      // the chooser's own lands no earlier player chose.
       selected =
-        active?.kind === "proliferate" || active?.kind === "entry_choose_permanents"
-          ? new Set(active.choose_suggested ?? [])
+        active?.kind === "proliferate" ||
+        active?.kind === "entry_choose_permanents" ||
+        isAnyPlayerEachLeg(active)
+          ? new Set(active?.choose_suggested ?? [])
           : preselect || searchPreselect
             ? new Set(options.map((c) => c.instance_id))
             : new Set();
@@ -334,8 +352,20 @@
   // earlier seats chose. This is viewer-filtered protocol data; only
   // resolve IDs against the current public battlefield snapshot, and
   // let Card render any face-down permanent as its redacted back.
+  // ADR 0187 §8: one player's leg of a per-land any-player offer. The
+  // earlier players' picks ride as badges on the lands, so the faces
+  // section below is for the other choose_cards shapes.
+  const isEachLeg = $derived(isAnyPlayerEachLeg(active));
+  // The viewer's pick, priced: how many are chosen, and how many of those
+  // an earlier player already pays for.
+  const eachAlreadyPaid = $derived.by(() => {
+    if (!isEachLeg || !active) return 0;
+    let n = 0;
+    for (const id of selected) if (anyPlayerEachPayers(active, id).length > 0) n++;
+    return n;
+  });
   const earlierChoices = $derived.by(() => {
-    if (!isChooseCards || !active) return [];
+    if (!isChooseCards || !active || isEachLeg) return [];
     const choices = active.earlier_choices ?? [];
     return choices.map((choice, index) => ({
       key: `${choice.player_id}-${index}`,
@@ -813,13 +843,31 @@
       payTapsFor = id;
       payTaps = [];
       payCardPicks = [];
+      eitherOpen = null;
     }
   });
   // ADR 0108 §5: a pay-unless whose payment discards or sacrifices
   // ("Echo—Discard a card", "Cumulative upkeep—Sacrifice a land")
   // ships pay_cards; the "Pay" answer names exactly `count` of them.
   let payCardPicks = $state<string[]>([]);
-  const payCards = $derived(isPayUnless ? (active?.pay_cards ?? null) : null);
+  // ADR 0187 §5: an either payment ("sacrifice two lands or take 5
+  // damage") draws one button per way to pay. A branch that names cards
+  // shows the same picker a plain card payment does, for the one branch
+  // that is open: the player's last click, else the first they can pay.
+  const payEither = $derived(isPayUnless ? (active?.pay_either ?? null) : null);
+  let eitherOpen = $state<number | null>(null);
+  const eitherPicker = $derived.by((): number => {
+    if (!payEither) return -1;
+    const open = eitherOpen !== null ? payEither[eitherOpen] : undefined;
+    if (open && branchNamesCards(open)) return eitherOpen as number;
+    return defaultPickerBranch(payEither);
+  });
+  const payCards = $derived(
+    isPayUnless
+      ? (active?.pay_cards ??
+          (payEither && eitherPicker >= 0 ? branchPicker(payEither[eitherPicker]) : null))
+      : null,
+  );
   const payCardOptions = $derived.by((): CardView[] => {
     if (!payCards) return [];
     return payCardsOptions(
@@ -833,7 +881,10 @@
   const viewerEnergy = $derived(snap.seats?.find((s) => s.id === viewerID)?.energy ?? 0);
   const viewerLife = $derived(snap.seats?.find((s) => s.id === viewerID)?.life ?? 0);
   const payBlocked = $derived(
-    (payCards !== null && !payCardsReady(payCards, payCardPicks)) ||
+    // An either payment is answered by a branch's own button, never by
+    // a bare "Pay" (answerEither).
+    payEither !== null ||
+      (payCards !== null && !payCardsReady(payCards, payCardPicks)) ||
       (isPayUnless && energyShortBy(active, viewerEnergy) > 0) ||
       (isPayUnless &&
         ((active?.life_cost ?? 0) > viewerLife || active?.life_cost_unpayable === true)),
@@ -867,7 +918,11 @@
   const isMayCast = $derived(active?.kind === "may_cast");
   const mayCastCard = $derived(
     active?.may_cast_card
-      ? snap.exile?.cards?.find((c) => c.instance_id === active.may_cast_card)
+      ? (snap.exile?.cards?.find((c) => c.instance_id === active.may_cast_card) ??
+          // #3801: a looked-at top card of the viewer's own library.
+          snap.seats
+            ?.find((s) => s.id === viewerID)
+            ?.library?.cards?.find((c) => c.instance_id === active.may_cast_card))
       : active?.options?.[0],
   );
 
@@ -884,6 +939,12 @@
   // the counter. Answered from the keyboard with C and H rather than Y
   // and N, because neither answer is a "no".
   const isEntryRiot = $derived(active?.kind === "entry_riot");
+
+  // ADR 0188 Decision 12 — "which skip takes this extra turn?", CR
+  // 616.1. The same {choice_id, apply} payload: apply uses the viewer's
+  // own skip (answer 0, recommended). Answered from the keyboard with U
+  // and L, the answers' initials; Enter takes the focused first button.
+  const isTurnSkipOrder = $derived(active?.kind === "turn_skip_order");
 
   // #74 confirm — the chained-choice two-way prompt, "do A, or do B."
   // Same {choice_id, apply} payload as the other yes/no kinds; the
@@ -1293,6 +1354,16 @@
       }
       return;
     }
+    if (isTurnSkipOrder) {
+      if (e.key === "u" || e.key === "U") {
+        e.preventDefault();
+        answerOptional(true);
+      } else if (e.key === "l" || e.key === "L") {
+        e.preventDefault();
+        answerOptional(false);
+      }
+      return;
+    }
     if (!isYesNo) return;
     if (e.key === "y" || e.key === "Y") {
       e.preventDefault();
@@ -1319,6 +1390,24 @@
     }
     updateSettings("gameplay", "autoAnswers", next);
     return true;
+  }
+
+  // answerEither presses one branch of an either payment (ADR 0187 §5).
+  // A branch that names cards first opens its picker; once the picks add
+  // up, pressing it again answers { apply: true, pay_option, card_ids },
+  // and a branch that names nothing answers { apply: true, pay_option }
+  // at once.
+  function answerEither(option: number): void {
+    if (!active || !viewerID || !payEither) return;
+    const b = payEither[option];
+    if (!b) return;
+    if (branchNamesCards(b) && eitherPicker !== option) {
+      eitherOpen = option;
+      payCardPicks = [];
+      return;
+    }
+    if (!branchReady(b, payCardPicks)) return;
+    answer(payUnlessAnswer(active, true, [], branchNamesCards(b) ? payCardPicks : [], 0, option));
   }
 
   function answerOptional(apply: boolean, phyrexianLife = 0): void {
@@ -1706,6 +1795,35 @@
         secondary: [],
       };
     }
+    if (isPayUnless && payEither) {
+      // ADR 0187 §5: one button for each way to pay, then "Don't pay".
+      // No Y: with several ways to pay, "yes" names none of them.
+      const ways: DockAction[] = payEither.map((b, k) => ({
+        id: `pay-option-${k}`,
+        label: branchLabel(b),
+        title: branchWhyNot(b),
+        disabled:
+          !b.payable ||
+          (branchNamesCards(b) && eitherPicker === k && !branchReady(b, payCardPicks)),
+        onPress: () => answerEither(k),
+      }));
+      return {
+        label: c.reason || `${triggerSourceName(c.source)} — ${c.pay_cost ?? "pay"}?`,
+        src: "pay unless",
+        width: 560,
+        primary: ways[0],
+        secondary: [
+          ...ways.slice(1),
+          {
+            id: "no",
+            label: "Don't pay",
+            keyShortcuts: "N",
+            cap: "N",
+            onPress: () => answerOptional(false),
+          },
+        ],
+      };
+    }
     if (isPayUnless) {
       // Y / N, as the inline pay_unless: a payment is not one stray
       // Enter away.
@@ -1818,47 +1936,54 @@
                                       `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
                                       isExilePick ? "exile" : isSelfSource ? "discard" : "reveal",
                                     ];
-    const verb = isSacrifice
-      ? L.sacrifice
-      : isSearch
-        ? "Take"
-        : isCopyTarget
+    // #3664: an "each player sacrifices" edict is a choose_cards tagged
+    // "sacrifice"; its confirm keeps the verb the old sacrifice_choice had.
+    const verb =
+      isSacrifice || (isChooseCards && c.choose_destination === "sacrifice")
+        ? L.sacrifice
+        : isEachLeg
           ? none
-            ? c.exchanges_text
-              ? "Keep its own text"
-              : "Enter as itself"
-            : c.exchanges_text
-              ? "Exchange text boxes"
-              : "Enter as a copy"
-          : isUntapChoice
-            ? "Untap"
-            : isEntryReveal
+            ? "Pay for none"
+            : `Pay ${(c.any_player_offer?.each_life ?? 0) * selected.size} life`
+          : isSearch
+            ? "Take"
+            : isCopyTarget
               ? none
-                ? "Reveal nothing"
-                : "Reveal"
-              : isEntryDiscard
-                ? none
-                  ? `Don't discard — put ${enteringCardName(c.source)} into its owner's graveyard`
-                  : "Discard"
-                : isEntrySacrifice
-                  ? L.sacrifice
-                  : isEntryChoose
+                ? c.exchanges_text
+                  ? "Keep its own text"
+                  : "Enter as itself"
+                : c.exchanges_text
+                  ? "Exchange text boxes"
+                  : "Enter as a copy"
+              : isUntapChoice
+                ? "Untap"
+                : isEntryReveal
+                  ? none
+                    ? "Reveal nothing"
+                    : "Reveal"
+                  : isEntryDiscard
                     ? none
-                      ? "Choose nothing"
-                      : "Choose"
-                    : isChooseSource
-                      ? "Choose this source"
-                      : isProliferate
+                      ? `Don't discard — put ${enteringCardName(c.source)} into its owner's graveyard`
+                      : "Discard"
+                    : isEntrySacrifice
+                      ? L.sacrifice
+                      : isEntryChoose
                         ? none
-                          ? "Proliferate nothing"
-                          : "Proliferate"
-                        : isManifestPick
-                          ? "Manifest"
-                          : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
-                            ? "Choose"
-                            : isRevealedVariant && none && pickMin === 0
-                              ? "Choose nothing"
-                              : "Confirm";
+                          ? "Choose nothing"
+                          : "Choose"
+                        : isChooseSource
+                          ? "Choose this source"
+                          : isProliferate
+                            ? none
+                              ? "Proliferate nothing"
+                              : "Proliferate"
+                            : isManifestPick
+                              ? "Manifest"
+                              : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
+                                ? "Choose"
+                                : isRevealedVariant && none && pickMin === 0
+                                  ? "Choose nothing"
+                                  : "Confirm";
     const clearable =
       isSearch || isCopyTarget || ((isCardSetPick || isRevealedVariant) && pickMin === 0);
     return {
@@ -2299,9 +2424,8 @@
           </p>
         {/if}
         <p class="prompt-hint">
-          Pay — {active.pay_cost ?? "the cost"} — or don't and let {triggerSourceName(
-            active.source,
-          )} do its thing.
+          {payEither ? "Choose how to pay" : "Pay"} — {active.pay_cost ?? "the cost"} — or don't and let
+          {triggerSourceName(active.source)} do its thing.
         </p>
         {#if !canPayCards(payCards)}
           <p class="prompt-hint">You don't have enough to pay this.</p>
@@ -2328,6 +2452,23 @@
           </ul>
           <p class="prompt-hint sub">{payCardPicks.length} / {payCards.count} chosen</p>
         {/if}
+      {:else if payEither}
+        <!-- ADR 0187 §5: an either payment with no card branch open
+             (every way to pay names nothing, or none that names cards
+             can be paid): the buttons say what each does. -->
+        {#if active.any_player_offer}
+          <p class="prompt-hint">
+            {anyPlayerWhose(active, snap.seats ?? [], triggerSourceName(active.source))}. {anyPlayerOfferLine(
+              active,
+              snap.seats ?? [],
+            )}
+          </p>
+        {/if}
+        <p class="prompt-hint">
+          Choose how to pay — {active.pay_cost ?? "the cost"} — or don't and let {triggerSourceName(
+            active.source,
+          )} do its thing.
+        </p>
       {:else}
         <!-- A waterbend tap list without card picks (#1311). -->
         <p class="prompt-hint">
@@ -2617,10 +2758,17 @@
             The cards you pick go on the bottom of your library{pickMax > 1
               ? ", and you choose their order next"
               : ""}. The rest are your opening hand.
+          {:else if active.choose_destination === "sacrifice"}
+            <!-- #3664: an "each player sacrifices" edict (CR 101.4). -->
+            The permanents you pick are sacrificed once every player has chosen, all at the same time.
           {:else if active.choose_destination === "outside"}
             <!-- ADR 0191: a pick over the cards your deck owns outside the game. -->
             These are the cards you own outside the game: your sideboard. Only you can see them, and the
             card says what the table is shown. Choosing costs nothing on its own.
+          {:else if isEachLeg}
+            <!-- ADR 0187 §8: a per-land any-player offer. -->
+            You pay {active.any_player_offer?.each_life} life for each one you pick, once everyone has
+            chosen.
           {:else}
             What happens to them is the card's business, and it will tell you next — choosing them
             costs nothing on its own.
@@ -2708,6 +2856,21 @@
           them all.
         {/if}
       </p>
+      {#if isEachLeg}
+        <!-- ADR 0187 §8: whose effect, the rule, who is next, what the
+             earlier players chose (CR 101.4b), and the running price. -->
+        <p class="prompt-hint">
+          {anyPlayerEachHeader(
+            active,
+            snap.seats ?? [],
+            triggerSourceName(active.source),
+            snap.battlefield?.cards,
+          )}
+        </p>
+        <p class="each-price" aria-live="polite">
+          {anyPlayerEachPrice(active, selected.size, eachAlreadyPaid, snap.battlefield?.cards)}
+        </p>
+      {/if}
       {#if isChooseCards && earlierChoices.length > 0}
         <section class="earlier-choices" aria-label="Earlier choices">
           <h3>Earlier choices</h3>
@@ -2779,6 +2942,17 @@
                 <span class="source-caption">{damageSourceCaption(snap, c, viewerID)}</span>
               {:else if isChooseCards || isUntapChoice || isProliferate}
                 <span class="source-caption">{permanentWhoseCaption(snap, c, viewerID)}</span>
+                {#if isEachLeg}
+                  {@const payers = anyPlayerEachPayers(active, c.instance_id)}
+                  {#if payers.length > 0}
+                    <span class="pay-badge">{anyPlayerEachBadge(payers, snap.seats ?? [])}</span>
+                    {#if selected.has(c.instance_id)}
+                      <span class="pay-warn">
+                        {anyPlayerEachWarning(active, payers, snap.seats ?? [])}
+                      </span>
+                    {/if}
+                  {/if}
+                {/if}
               {:else if graveyardIDs.has(c.instance_id)}
                 <span class="source-caption">in graveyard</span>
               {/if}
@@ -2973,6 +3147,28 @@
     line-height: 1.3;
     color: var(--fg-muted);
     text-align: center;
+  }
+  /* ADR 0187 §8: a per-land any-player offer. The badge names who already
+     pays for a land; the warning replaces it in colour once the viewer
+     selects that land, since paying twice saves nothing extra. */
+  .each-price {
+    margin: 0 0 12px;
+    font-weight: 600;
+  }
+  .pay-badge,
+  .pay-warn {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    line-height: 1.3;
+    text-align: center;
+  }
+  .pay-badge {
+    color: var(--accent);
+  }
+  .pay-warn {
+    color: var(--danger);
+    font-weight: 600;
   }
   /* S26 creature-type picker. The list is the whole CR 205.3m
      vocabulary, so it scrolls inside a fixed box rather than growing

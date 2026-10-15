@@ -133,12 +133,32 @@ type Purpose struct {
 
 	// Pump is what the row gives its own source until end of turn:
 	// "this creature gets +2/+0 and gains trample until end of turn".
-	// Nil is "no pump". Refused off a triggered or activated row. A
-	// pointer so Purpose stays comparable.
+	// Nil is "no pump". Refused off a triggered or activated row, except
+	// as the inner purpose of FaceUp (a turn-face-up trigger's pump:
+	// Unstable Hulk, #3776). A pointer so Purpose stays comparable.
 	Pump *Pump
 	// ExtraCombat is the additional combat phases it adds ("after this
 	// phase, there is an additional combat phase"): Combat Celebrant 1.
 	ExtraCombat int
+	// ExtraTurns is the extra turns its controller takes after this one
+	// (CR 500.7): Capture of Jingzhou 1, Magosi's fourth ability 1. The
+	// CASTER's own turns, as Draws is the caster's own cards; "target
+	// player takes an extra turn" (Time Warp) is a TargetPurpose entry,
+	// because who takes it is whoever the move aims it at. Left off a
+	// card that makes its controller lose the game in that turn (Final
+	// Fortune, Last Chance, Warrior's Oath): the turn is the price, and a
+	// bot that priced it as a gain would cast them. Refused on an
+	// any-player activated row, where the activator is not the
+	// controller. ADR 0188 Decision 10, #3566.
+	ExtraTurns int
+	// SkipsTurns is the next turns its controller skips (CR 614.10):
+	// Magosi's third ability 1, Eater of Days 2. The caster's own turns,
+	// like ExtraTurns. Priced negatively (Weights.Turn). Refused on an
+	// any-player activated row: Lethal Vapors' skip falls on whoever
+	// activates it, a bot never activates another player's copy, and a
+	// declared cost would only hide that rule (ADR 0106 decision 2,
+	// ADR 0188 Decision 10, #3566).
+	SkipsTurns int
 	// PreventCombatDamageToSelf is set when it prevents all combat
 	// damage that would be dealt to its source this turn: Oketra's
 	// Avenger. Refused off a triggered or activated row.
@@ -170,6 +190,16 @@ type Purpose struct {
 	// engine's own field for the static, and effects.Register refuses
 	// one that does not.
 	ExtraLandDrops int
+
+	// LandfallExtraTriggers is how many additional times a triggered
+	// ability of a permanent its controller controls triggers when a
+	// land entering causes it to trigger (#3146): Ancient Greenwarden
+	// 1, Elesh Norn, Mother of Machines 1 (its doubler covers every
+	// permanent, lands among them). Declared on the card slot only, of
+	// a card whose Spec has a TriggerDoubler, which is the engine's own
+	// field for the static; the heuristic multiplies the bot's landfall
+	// payoffs by it.
+	LandfallExtraTriggers int
 
 	// Impulse is how many cards it exiles from the top of its
 	// controller's library that its controller may play this turn
@@ -210,6 +240,52 @@ type Purpose struct {
 	// of an Aura only; the zero value is "not declared" and keeps that
 	// price. effects.Register refuses it off the card.
 	Aura AuraPurpose
+
+	// FlashCleanupSacrifice is set on the wire for a card that prints
+	// the Visions-era "you may cast this as though it had flash; cast at
+	// a time a sorcery couldn't be, it is sacrificed at the next cleanup
+	// step" rider (#3712). It is read off Spec.FlashWithCleanupSacrifice
+	// by CardPurposeOfPtr, never declared on a Purpose by hand: the bot
+	// holds an instant-speed cast of such a card unless it matters before
+	// cleanup.
+	FlashCleanupSacrifice bool
+
+	// Kicked is what the card does ONLY when its kicker is paid (ADR
+	// 0126's amendment of 2026-10-15, #3762): Waterspout Elemental's
+	// "if it was kicked, return all other creatures to their owners'
+	// hands and you skip your next turn". The fields above are what the
+	// card does however it is cast; these are added to them on a cast
+	// that pays the kicker, and only then, so an unkicked Elemental is
+	// priced as a Merfolk body and not as a mass bounce. Declared on the
+	// card slot only, of a card with exactly one optional cost, which is
+	// a kicker; effects.Register refuses it elsewhere. The inner purpose
+	// may not itself declare Kicked or FaceUp, nor Targets (its clauses
+	// would index a statement the cast announces without them). A
+	// pointer so Purpose stays comparable.
+	Kicked *Purpose
+	// FaceUp is what turning the permanent face up does (CR 708.8): the
+	// triggered ability of a morph, megamorph or disguise creature
+	// ("When this creature is turned face up, ... You skip your next
+	// turn" is Unstable Hulk). A face-down permanent has no text (CR
+	// 708.2a), so nothing else on the wire says what is under it; the
+	// view projects this, and only this, for its controller (see
+	// CardPurposeOfPtr), and the heuristic prices the turn-face-up
+	// special action by it. Declared on the card slot only, of a card
+	// with a face-down cast offer. Same restrictions as Kicked. A pointer
+	// so Purpose stays comparable.
+	FaceUp *Purpose
+}
+
+// DeclaresSweep reports whether the purpose declares a board wipe in
+// any condition it is read under: its own, or the one it adds when
+// kicked or turned face up. The registry audit asks this, because a
+// card that wipes the board only when kicked still wipes it (ADR 0126's
+// amendment of 2026-10-15).
+func (p Purpose) DeclaresSweep() bool {
+	if !p.Sweep.IsZero() {
+		return true
+	}
+	return (p.Kicked != nil && p.Kicked.DeclaresSweep()) || (p.FaceUp != nil && p.FaceUp.DeclaresSweep())
 }
 
 // AuraPurpose is Purpose.Aura: what an Aura does to what it enchants.
@@ -239,6 +315,11 @@ type TargetPurpose struct {
 	Slot int
 	// Draws is the cards the target player draws: Sign in Blood 2.
 	Draws int
+	// ExtraTurns is the extra turns the target player takes after this
+	// one (CR 500.7): Time Warp 1, Time Stretch 2. Whoever the move
+	// aims it at takes them, so a bot aims it at itself (ADR 0188
+	// Decision 10, #3566).
+	ExtraTurns int
 	// Discards is the cards the target player discards on resolution:
 	// Prismari Command's loot 2.
 	Discards int
@@ -263,6 +344,11 @@ type TargetPurpose struct {
 	// land. Declared on a clause that targets a permanent; the zero
 	// value is "nothing comes back".
 	Returns TargetReturn
+	// Reanimates is set when the spell puts the picked graveyard card
+	// onto the battlefield under the caster's control, whoever owns the
+	// graveyard (#3161): Reanimate, Animate Dead, Zombify. The bot prices
+	// the pick as the permanent it becomes, not as a card it would cast.
+	Reanimates bool
 }
 
 // TargetReturn is what a removal spell hands the controller of the
@@ -298,13 +384,13 @@ func (r TargetReturn) IsZero() bool { return r == TargetReturn{} }
 
 // IsZero reports whether the entry says nothing about its target.
 func (t TargetPurpose) IsZero() bool {
-	return !t.HasPlayerAmount() && t.Damage == 0 && !t.DamageIsX && t.Returns.IsZero()
+	return !t.HasPlayerAmount() && t.Damage == 0 && !t.DamageIsX && t.Returns.IsZero() && !t.Reanimates
 }
 
 // HasPlayerAmount reports whether the entry names an amount only a
 // player can be given: a draw, a discard, a token or a life change.
 func (t TargetPurpose) HasPlayerAmount() bool {
-	return t.Draws != 0 || t.Discards != 0 || t.Tokens != 0 || t.LifeGain != 0 || t.LifeLoss != 0
+	return t.Draws != 0 || t.Discards != 0 || t.Tokens != 0 || t.LifeGain != 0 || t.LifeLoss != 0 || t.ExtraTurns != 0
 }
 
 // ForTargets is the Purpose.Targets of these entries, nil for none.
@@ -501,9 +587,21 @@ func CardPurposeOf(c Card) Purpose { return CardPurposeOfPtr(&c) }
 func CardPurposeOfPtr(c *Card) Purpose {
 	d := catalogDef(catalogKeyOf(c))
 	if d == nil {
+		// CR 708.2a: a face-down permanent has no text, so no purpose
+		// of its own. What turning it face up does is not text it has;
+		// it is the card underneath's, which only the viewer allowed to
+		// look at it is sent (redactCardForViewer clears Purpose
+		// otherwise). Nothing else of the card's purpose crosses.
+		if c.faceDownPermanent() {
+			if fd := catalogDef(underlyingTextKeyOf(c)); fd != nil && fd.Purpose.FaceUp != nil {
+				return Purpose{FaceUp: fd.Purpose.FaceUp}
+			}
+		}
 		return Purpose{}
 	}
-	return d.Purpose
+	p := d.Purpose
+	p.FlashCleanupSacrifice = d.FlashWithCleanupSacrifice
+	return p
 }
 
 // plus is what two effects declare together: a fused split spell
@@ -532,12 +630,15 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 		CreatureEnterPayoff:       p.CreatureEnterPayoff,
 		Pump:                      p.Pump,
 		ExtraCombat:               p.ExtraCombat + o.ExtraCombat,
+		ExtraTurns:                p.ExtraTurns + o.ExtraTurns,
+		SkipsTurns:                p.SkipsTurns + o.SkipsTurns,
 		PreventCombatDamageToSelf: p.PreventCombatDamageToSelf || o.PreventCombatDamageToSelf,
 		DamageToCreature:          p.DamageToCreature + o.DamageToCreature,
 		DamageEachOpponent:        p.DamageEachOpponent + o.DamageEachOpponent,
 		LifeGain:                  p.LifeGain + o.LifeGain,
 		AwakenLand:                p.AwakenLand + o.AwakenLand,
 		ExtraLandDrops:            p.ExtraLandDrops + o.ExtraLandDrops,
+		LandfallExtraTriggers:     p.LandfallExtraTriggers + o.LandfallExtraTriggers,
 		Impulse:                   p.Impulse + o.Impulse,
 		Answers:                   p.Answers | o.Answers,
 	}
@@ -546,6 +647,13 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 	}
 	if out.Sweep.IsZero() {
 		out.Sweep = o.Sweep
+	}
+	out.Kicked, out.FaceUp = p.Kicked, p.FaceUp
+	if out.Kicked == nil {
+		out.Kicked = o.Kicked
+	}
+	if out.FaceUp == nil {
+		out.FaceUp = o.FaceUp
 	}
 	if out.DiscardPayoff == nil {
 		out.DiscardPayoff = o.DiscardPayoff

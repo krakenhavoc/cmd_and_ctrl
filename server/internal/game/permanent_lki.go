@@ -128,6 +128,27 @@ type PermanentInfo struct {
 	// Aura's "enchanted creature" reads it after the Aura has gone.
 	AttachedTo TargetRef `json:"attachedTo,omitempty"`
 
+	// AttachedObject is the card it was attached to as the OBJECT that
+	// link was made to (CR 400.7), set only while the link still named
+	// that object: a pinned link (Card.AttachedPinned) whose host has
+	// the epoch it was attached at. An Aura whose card host was exiled
+	// a moment before the Aura itself left enchanted nothing by then,
+	// though AttachedTo still holds the ID (Spellweaver Volute's
+	// 2007-05-01 rulings, #3157). Nil for a player host, an unpinned
+	// link, or none.
+	AttachedObject *ObjectRef `json:"attachedObject,omitempty"`
+
+	// Attachments is every Aura, Equipment and Fortification that was
+	// attached to it as it last existed (CR 301.5, 303.4, 301.6), each as
+	// the OBJECT that was attached (CR 400.7), in battlefield order. The
+	// state-based action that unattaches an Equipment (CR 704.5n) or puts
+	// an Aura away (CR 704.5m) runs before a sacrifice-cost ability
+	// resolves, so the attachment's own link is gone by then: Zack Fair's
+	// "attach an Equipment that was attached to Zack Fair" reads this
+	// (#3780). Resolve it with Game.LiveAttachmentsForEffect. Nil when
+	// nothing was attached.
+	Attachments []ObjectRef `json:"attachments,omitempty"`
+
 	// Tapped is its tapped status (CR 110.5). Not a characteristic,
 	// but last-known information all the same: Mana Vault's "if this
 	// artifact is tapped" is re-checked when its draw-step trigger
@@ -284,6 +305,8 @@ func (g *Game) rememberDepartingPermanentLocked(cardID uuid.UUID) {
 	info := permanentInfoOf(c)
 	info.Left = true
 	info.Enchanted = g.isEnchantedLocked(cardID)
+	info.AttachedObject = g.attachedObjectLocked(c)
+	info.Attachments = g.attachmentObjectsLocked(c)
 	if g.lastKnownPermanents == nil {
 		g.lastKnownPermanents = make(map[uuid.UUID][]PermanentInfo)
 	}
@@ -299,6 +322,48 @@ func (g *Game) rememberDepartingPermanentLocked(cardID uuid.UUID) {
 		}
 	}
 	g.lastKnownPermanents[cardID] = append(recs, info)
+}
+
+// attachmentObjectsLocked is every permanent attached to the battlefield
+// card `host` as the OBJECT the link was made to (PermanentInfo.
+// Attachments). A pinned link whose host has since left and come back
+// under the same ID names the earlier object, not this one (#3159), so it
+// is not counted. Nil when nothing is attached.
+//
+// Caller must hold g.mu.
+func (g *Game) attachmentObjectsLocked(host *Card) []ObjectRef {
+	if g.Battlefield == nil || host == nil {
+		return nil
+	}
+	var out []ObjectRef
+	for i := range g.Battlefield.Cards {
+		a := &g.Battlefield.Cards[i]
+		if !a.IsAttachedTo(host.InstanceID) {
+			continue
+		}
+		if a.AttachedPinned && a.AttachedEpoch != host.ObjectEpoch {
+			continue
+		}
+		out = append(out, ObjectRef{ID: a.InstanceID, Epoch: a.ObjectEpoch})
+	}
+	return out
+}
+
+// LiveAttachmentsForEffect is the permanents in `refs` that are still
+// the same objects on the battlefield (CR 400.7), in the order given:
+// an Aura that was put into a graveyard by the state-based action is
+// gone, an Equipment that was blinked in response is a new object and is
+// skipped. Used with PermanentInfo.Attachments (#3780).
+//
+// Caller must hold g.mu.
+func (g *Game) LiveAttachmentsForEffect(refs []ObjectRef) []uuid.UUID {
+	var out []uuid.UUID
+	for _, ref := range refs {
+		if c := findBattlefieldCard(g, ref.ID); c != nil && c.ObjectEpoch == ref.Epoch {
+			out = append(out, ref.ID)
+		}
+	}
+	return out
 }
 
 // lastKnownPermanentLocked returns the record for one departed object,
@@ -375,6 +440,8 @@ func (g *Game) PermanentForEffect(ref ObjectRef) (PermanentInfo, bool) {
 	if c := findBattlefieldCard(g, ref.ID); c != nil && c.ObjectEpoch == ref.Epoch {
 		info := permanentInfoOf(c)
 		info.Enchanted = g.isEnchantedLocked(c.InstanceID)
+		info.AttachedObject = g.attachedObjectLocked(c)
+		info.Attachments = g.attachmentObjectsLocked(c)
 		return info, true
 	}
 	return g.lastKnownPermanentLocked(ref)
@@ -417,6 +484,11 @@ func cloneLastKnownPermanents(src map[uuid.UUID][]PermanentInfo) map[uuid.UUID][
 			if v[i].Copiable != nil {
 				values := v[i].Copiable.Clone()
 				out[k][i].Copiable = &values
+			}
+			out[k][i].Attachments = cloneObjectRefs(v[i].Attachments)
+			if v[i].AttachedObject != nil {
+				ref := *v[i].AttachedObject
+				out[k][i].AttachedObject = &ref
 			}
 		}
 	}

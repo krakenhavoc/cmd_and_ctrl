@@ -61,6 +61,17 @@ var (
 	// Samurai you control" — untargeted, the Equipment ride the payload.
 	gilgameshAttachBody = game.SimpleDelayedBody("gilgamesh/attach-equipment", gilgameshAttach)
 
+	// Summon: Kujata, chapter III: "when you discard a card this way,
+	// this creature deals damage equal to that card's mana value to
+	// each opponent" — untargeted, the amount rides Params.Amount.
+	summonKujataFireBody = game.DelayedBody("summon-kujata/fire-damage", summonKujataFireEffect)
+
+	// Cait Sith, Fortune Teller: "when you exile a card this way, target
+	// creature you control gets +X/+0 until end of turn", X the exiled
+	// card's mana value, carried as Params.Amount.
+	caitSithBoostBody = game.ReflexiveBody("cait-sith/boost", caitSithBoost,
+		constTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
+
 	// Breeches, the Blastmaker: "when you lose the flip, deal damage
 	// equal to that spell's mana value to any target" — the amount is
 	// fixed when the flip was lost, so it rides Params.Amount rather
@@ -166,6 +177,28 @@ var (
 	// division is announced with the targets (CR 601.2d).
 	blasterHulkDamageBody = game.ReflexiveBody("blaster-hulk/divided-damage", simpleBody(blasterHulkDamage),
 		constTargets(func() *game.TargetSpec { return TargetAny().WithCount(0, 8).Dividing(Divide(8)) }))
+
+	// Terra, Herald of Hope (#3655): "when you do, return target creature
+	// card with power 3 or less from your graveyard to the battlefield
+	// tapped".
+	terraReturnBody = game.ReflexiveBody("terra-herald-of-hope/return", simpleBody(returnFirstLegalGraveyardTargetToBattlefieldTapped),
+		constTargets(func() *game.TargetSpec {
+			return TargetCardInGraveyard("target creature card with power 3 or less in your graveyard",
+				YouOwn(), Creature(), PowerLE(3))
+		}))
+
+	// Espers to Magicite (#3655): "when you do, choose up to one creature
+	// card exiled this way ... create a token that's a copy of it" —
+	// untargeted, the exiled creature cards ride the payload.
+	espersCopyBody = game.SimpleDelayedBody("espers-to-magicite/copy", espersCopy)
+
+	// The Falcon, Airship Restored (#3655): "when you do, return target
+	// creature card from your graveyard to the battlefield".
+	falconReturnBody = game.ReflexiveBody("the-falcon-airship-restored/return",
+		simpleBody(returnFirstLegalGraveyardTargetToBattlefield),
+		constTargets(func() *game.TargetSpec {
+			return TargetCardInGraveyard("target creature card in your graveyard", YouOwn(), Creature())
+		}))
 
 	// Agatha's Soul Cauldron (#3201): "When a creature card is exiled this
 	// way, put a +1/+1 counter on target creature you control."

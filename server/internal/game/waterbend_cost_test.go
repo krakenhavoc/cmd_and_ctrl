@@ -137,7 +137,7 @@ func TestWaterbendAbilitySplitsBetweenTapsAndMana(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	if n := len(me.ManaPool); n != 0 {
+	if n := me.ManaPool.Total(); n != 0 {
 		t.Errorf("pool has %d mana left, want the {C} spent", n)
 	}
 	if !tappedIn(g, a) || !tappedIn(g, b) {
@@ -215,7 +215,7 @@ func TestWaterbendAbilityRefusalsTapNothing(t *testing.T) {
 			t.Errorf("a refused activation tapped %v", id)
 		}
 	}
-	if n := len(me.ManaPool); n != 4 {
+	if n := me.ManaPool.Total(); n != 4 {
 		t.Errorf("a refused activation spent mana: pool %d, want 4", n)
 	}
 }
@@ -417,8 +417,8 @@ func TestWaterbendWardSplitsBetweenTapsAndMana(t *testing.T) {
 	if !spellStillOnStack(g, spell) {
 		t.Error("a paid ward countered the spell")
 	}
-	if len(caster.ManaPool) != 0 {
-		t.Errorf("pool has %d left, want the {2} spent", len(caster.ManaPool))
+	if caster.ManaPool.Total() != 0 {
+		t.Errorf("pool has %d left, want the {2} spent", caster.ManaPool.Total())
 	}
 }
 

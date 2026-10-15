@@ -15,22 +15,27 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // so the creatures and everything attached to them leave together
 // (CR 702.26a, 702.26g) — Clever Concealment's shape.
 //
-// One declared simplification, weaker than printed:
+// The additional cost (#3175) is ExileAnyNumberFromHandCost: any number
+// of blue cards from the caster's hand, none included, named at announce
+// (CR 601.2b) and exiled with the spell on the stack (CR 601.2h). The
+// count is CostQuery.ExilingFromHand, and CostsLessPerExiledFromHand takes
+// {2} of generic mana off per card at CR 601.2f — the announced X is
+// generic mana a reduction may eat (#2701), the {U} never. The X on the
+// stack stays the announced X, so exiling two cards casts an X = 4 March
+// for {U}.
 //
-//   - The optional exile-blue-cards discount is not offered. An
-//     additional cost that exiles a variable number of cards from hand
-//     and reduces the price per card has no shape (no Spec slot pairs
-//     an exile-from-hand cost with a per-card reduction), so the spell
-//     always costs its full {X}{U}.
-//   - "Up to X targets" is CountFromX with UpToX: the announced X is the
-//     ceiling and fewer targets are legal (#1738).
+// "Up to X targets" is CountFromX with UpToX: the announced X is the
+// ceiling and fewer targets are legal (#1738).
+//
+// No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "debc69ea-372a-4720-838a-16856cd50b07",
-		Name:         "March of Swirling Mist",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"You can't exile blue cards from your hand to make it cheaper, so it always costs its full price.",
+		OracleID:       "debc69ea-372a-4720-838a-16856cd50b07",
+		Name:           "March of Swirling Mist",
+		Completeness:   CompletenessFull,
+		AdditionalCost: ExileAnyNumberFromHandCost("blue cards", "U"),
+		SelfCostModifiers: []game.CostModifier{
+			CostsLessPerExiledFromHand("{2}", "This spell costs {2} less to cast for each card exiled this way"),
 		},
 		Targets: marchOfSwirlingMistTargets(),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

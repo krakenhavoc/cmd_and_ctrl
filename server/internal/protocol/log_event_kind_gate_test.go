@@ -69,7 +69,6 @@ var silentEventKinds = map[string]string{
 	"EventConcede":         "the EventPlayerEliminated that follows it (Label \"concede\") is the one line a concession writes (ADR 0057 Decision 1)",
 	"EventETB":             silentAlreadyToldAsAZoneMove,
 	"EventLTB":             silentAlreadyToldAsAZoneMove,
-	"EventMill":            silentAlreadyToldAsAZoneMove,
 	"EventDiscardCard":     silentAlreadyToldAsAZoneMove,
 	"EventBecomesTarget":   "the cast or activation line already named the spell; targeting is announce-time bookkeeping the stack view carries",
 	"EventSpellCopied":     "the copy is a spell on the stack the table is looking at, and whatever made it (a storm trigger, a Twincast) is a log line of its own; the kind exists for magecraft (CR 207.2c)",
@@ -112,6 +111,7 @@ var silentEventKinds = map[string]string{
 	// catalog soak, which is exactly the posture the two rows above
 	// take.
 	"EventAttachSkipped": "CR 701.3b's attach that doesn't happen changes nothing a player could observe; the event is a breadcrumb for a stall dump, not a table fact (#812, #1017)",
+	"EventEntryRefused":  "a refused entry (#1985) changes nothing: the card stays where it was, and naming it would leak a card from a hidden zone (a fetched land still in the library); a refused land play is already told to its player by the refusal's toast",
 	// #1382. A card becomes plotted two ways and the table is told
 	// both: the plot special action's LogSpecialAction line names the
 	// card and the price ("Plot {3}{R}"), and an "it becomes plotted"
@@ -142,13 +142,12 @@ var silentEventKinds = map[string]string{
 	"EventHarnessed":       silentBoardStateIsVisible,
 	"EventBecameMonstrous": silentBoardStateIsVisible,
 	"EventBecameSaddled":   silentBoardStateIsVisible,
+	"EventCrewedVehicle":   silentImpliedByAnotherLine, // #3545: the activation line and the taps already say it
+	"EventSaddledMount":    silentImpliedByAnotherLine, // #3545
 	"EventBecameRenowned":  silentBoardStateIsVisible,
 	"EventRegenerated":     silentImpliedByAnotherLine,
 	"EventBattleDefeated":  silentBoardStateIsVisible,
 	"EventEvolved":         silentImpliedByAnotherLine, // #1805: the +1/+1 counter is the `counters` line
-
-	// --- hidden-zone work ----------------------------------------------
-	"EventSearchLibrary": "the number of matches is itself hidden information about a hidden zone (see the search_library prompt's redaction)",
 
 	// --- waiting on the PR that writes the line ------------------------
 	// The same posture as EventSettingsChanged above, and the same

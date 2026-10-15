@@ -104,7 +104,7 @@ func TestManaTokenCloneDoesNotAliasRiders(t *testing.T) {
 	g.WithWriteLock(func() { g.Seats[0].ManaPool.AddMana(orig) })
 	before := g.Clone()
 	g.WithWriteLock(func() { g.Seats[0].ManaPool[0].Riders[0].Applied = true })
-	if before.Seats[0].ManaPool[0].Riders[0].Applied {
+	if before.Seats[0].ManaPool.Units()[0].Riders[0].Applied {
 		t.Error("an undo snapshot shares its pool's riders with the live game")
 	}
 }

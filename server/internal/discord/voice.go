@@ -448,6 +448,14 @@ func (v Voice) call(ctx context.Context, client *http.Client, method, path strin
 // log. The errors are voice.go's sentinels; lfg.go renames the two
 // that read differently for a message.
 func botREST(ctx context.Context, client *http.Client, token, reason, method, path string, body, out any, goneOK []int) error {
+	return botRESTLimit(ctx, client, token, reason, method, path, body, out, goneOK, maxDMBody)
+}
+
+// botRESTLimit is botREST with the cap on how much of the response it
+// reads. The default (maxDMBody) suits the small objects every other
+// call gets back; a listing, such as a guild's active threads
+// (bugforum.go), needs more.
+func botRESTLimit(ctx context.Context, client *http.Client, token, reason, method, path string, body, out any, goneOK []int, limit int64) error {
 	if client == nil {
 		client = &http.Client{Timeout: 10 * time.Second}
 	}
@@ -480,7 +488,7 @@ func botREST(ctx context.Context, client *http.Client, token, reason, method, pa
 		return fmt.Errorf("%w: %v", ErrVoiceUnavailable, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-	payload, err := io.ReadAll(io.LimitReader(resp.Body, maxDMBody))
+	payload, err := io.ReadAll(io.LimitReader(resp.Body, limit))
 	if err != nil {
 		return fmt.Errorf("%w: read response: %v", ErrVoiceUnavailable, err)
 	}

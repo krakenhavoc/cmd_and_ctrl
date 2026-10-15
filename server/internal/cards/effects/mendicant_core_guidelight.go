@@ -24,21 +24,7 @@ func init() {
 		Name:            "Mendicant Core, Guidelight",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{StartYourEngines},
-		Static: []game.StaticAbility{{
-			Label:     "Power is equal to the number of artifacts you control.",
-			Layer:     game.Layer7PT,
-			SubLayer:  game.SubLayer7A_CDA,
-			AppliesTo: selfOnly,
-			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				n := 0
-				for _, p := range g.Battlefield.Cards {
-					if p.Controller == source.Controller && p.IsArtifact() {
-						n++
-					}
-				}
-				c.Power = n
-			},
-		}},
+		Static:          []game.StaticAbility{PowerEqualToArtifactsYouControl()},
 		Triggered: []game.TriggeredAbility{
 			MaxSpeedTrigger(WheneverYouCast(Artifact(), "Mendicant Core, Guidelight — you may pay {1} to copy that artifact spell",
 				func(g *game.Game, item *game.StackItem) error {

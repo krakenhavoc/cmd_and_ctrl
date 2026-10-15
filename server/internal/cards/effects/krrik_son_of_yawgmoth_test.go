@@ -190,7 +190,7 @@ func TestKrrikPaysFetidHeathsFilterCostWithLife(t *testing.T) {
 		t.Errorf("life = %d, want %d", me.Life, life-game.PhyrexianLifePerSymbol)
 	}
 	black := 0
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Color == "B" {
 			black++
 		}

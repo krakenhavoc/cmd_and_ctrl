@@ -584,8 +584,13 @@ func keywordPrinted(kw string, lines []oracleLine) bool {
 	for _, l := range lines {
 		for _, seg := range append([]string{l.norm}, strings.Split(l.norm, ", ")...) {
 			seg = strings.TrimSpace(seg)
-			if strings.HasPrefix(seg, kw) && !isWordByteAt(seg, len(kw)) {
-				return true
+			// A keyword line may lead with an ability word: Final
+			// Fantasy's "Death Sickle — Equip {2}" prints the keyword
+			// after it.
+			for _, s := range []string{seg, abilityWordRe.ReplaceAllString(seg, "")} {
+				if strings.HasPrefix(s, kw) && !isWordByteAt(s, len(kw)) {
+					return true
+				}
 			}
 		}
 	}

@@ -195,6 +195,41 @@ describe("passHint while an any-player offer is open (ADR 0150 §5)", () => {
   });
 });
 
+describe("passHint while a per-land any-player offer is open (ADR 0187 §8)", () => {
+  const seats = [
+    { id: "a", name: "Alice", seat: 0 },
+    { id: "b", name: "Bob", seat: 1 },
+    { id: "c", name: "Carol", seat: 2 },
+  ] as never;
+  const leg = {
+    id: "c1",
+    kind: "choose_cards",
+    chooser: "c",
+    count: 0,
+    source: "src",
+    any_player_offer: { controller: "b", order: ["a", "b", "c"], declined: ["b"], each_life: 1 },
+    earlier_choices: [
+      { player_id: "a", card_ids: ["l1", "l2", "l3"] },
+      { player_id: "b", card_ids: [] },
+    ],
+  } as never;
+  const battlefield = {
+    cards: [
+      { instance_id: "src", name: "Cleansing", type_line: "Sorcery" },
+      { instance_id: "l1", name: "Forest", type_line: "Basic Land — Forest" },
+      { instance_id: "l2", name: "Forest", type_line: "Basic Land — Forest" },
+      { instance_id: "l3", name: "Forest", type_line: "Basic Land — Forest" },
+    ],
+  } as never;
+
+  it("names who is choosing, whose effect it is and the choices so far", () => {
+    const v = view("precombat_main", { seats, battlefield, pending_choices: [leg] });
+    expect(passHint(v, false)).toBe(
+      "Carol is choosing lands to pay 1 life for (Bob's Cleansing). So far: Alice 3, Bob none.",
+    );
+  });
+});
+
 describe("passHint while an assisted cast waits (ADR 0150 §5)", () => {
   const seats = [
     { id: "a", name: "Alice", seat: 0 },

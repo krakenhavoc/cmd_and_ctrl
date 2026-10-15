@@ -166,11 +166,11 @@ func TestWallOfRootsPaysToughnessForGreenOnceATurn(t *testing.T) {
 	advanceToMain(t, g)
 	b16Tap(g, wall)
 
-	before := len(me.ManaPool)
+	before := me.ManaPool.Total()
 	if err := g.ActivateManaAbility(me.ID, wall, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if got := len(me.ManaPool) - before; got != 1 || me.ManaPool[len(me.ManaPool)-1].Color != "G" {
+	if got := me.ManaPool.Total() - before; got != 1 || me.ManaPool.Units()[me.ManaPool.Total()-1].Color != "G" {
 		t.Fatalf("pool %v, want one more {G}", me.ManaPool)
 	}
 	if n := counterCount(g, wall, "-0/-1"); n != 1 {

@@ -317,29 +317,32 @@ func TestB38InnocentBloodMakesEveryPlayerSacrificeIncludingYou(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	mine := b12Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
+	other := b12Creature(g, me.ID, "My Other Bear", "Creature — Bear", 2, 2)
 	theirs := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
 	rock := b12Permanent(g, me.ID, "Sol Ring", "Artifact")
 	castCatalogSpell(t, g, "Innocent Blood", "Sorcery", b38InnocentBloodOracle, nil)
 	passPriorityAroundTable(t, g)
-	// One prompt per player, each offering only their own creatures.
-	for _, seat := range []*game.Player{me, opp} {
-		if sacrificeChoiceFor(g, seat.ID) == nil {
-			t.Fatalf("no sacrifice prompt for %s", seat.Name)
-		}
-	}
+	// The caster chooses first, from their own creatures only.
 	p := sacrificeChoiceFor(g, me.ID)
-	if hasID(p.SacrificeOptions, theirs) {
+	if p == nil {
+		t.Fatalf("no sacrifice prompt for %s", me.Name)
+	}
+	opts := sacrificeOptions(p)
+	if hasID(opts, theirs) {
 		t.Error("you never pick an opponent's creature")
 	}
-	if hasID(p.SacrificeOptions, rock) {
+	if hasID(opts, rock) {
 		t.Error("an artifact is not a creature")
 	}
-	if !hasID(p.SacrificeOptions, mine) {
-		t.Error("your own creature is the only choice you have")
+	if !hasID(opts, mine) || !hasID(opts, other) {
+		t.Error("your own creatures are the choices you have")
 	}
 	answerSacrifice(t, g, me.ID, mine)
-	if g.Battlefield.Contains(mine) {
-		t.Error("the caster's own creature goes too")
+	if g.Battlefield.Contains(mine) || g.Battlefield.Contains(theirs) {
+		t.Error("the caster's own creature goes too, with the opponent's only one")
+	}
+	if !g.Battlefield.Contains(other) {
+		t.Error("only the chosen creature goes")
 	}
 }
 

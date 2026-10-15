@@ -172,6 +172,21 @@ func Spree(options ...game.ModeOption) *game.ModeSpec {
 	return &game.ModeSpec{Prompt: "Spree (choose one or more)", Options: options, Min: 1, Max: len(options)}
 }
 
+// TieredPrompt is the mode prompt every Tiered spell carries. The
+// roadmap's tiered row matches on it, as the spree row matches on
+// Spree's.
+const TieredPrompt = "Tiered (choose one additional cost)"
+
+// Tiered — CR 702.183a: "Tiered (Choose one additional cost.)" Spree's
+// per-bullet cost with exactly one bullet chosen (#3777). Each bullet
+// is a SpreeMode / SpreeModeDoing — the cost is paid if and only if
+// that bullet is the one chosen, so a "{0}" bullet (Cross-Slash, Fire,
+// Thunder) charges nothing beyond the printed cost. Exactly one: the
+// cast gate refuses no bullet and refuses two.
+func Tiered(options ...game.ModeOption) *game.ModeSpec {
+	return &game.ModeSpec{Prompt: TieredPrompt, Options: options, Min: 1, Max: 1}
+}
+
 // ManaValueGE passes when the card's mana value is ≥ n (Austere
 // Command's "mana value 4 or greater").
 // Same reading as ManaValueLE: game.(*Game).ManaValueForEffect.

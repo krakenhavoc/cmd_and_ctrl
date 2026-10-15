@@ -3718,3 +3718,193 @@ and reads the permission as having no total, as it reads a `CastsLeft` or `PerTy
 Back-out: remove the budget test in `spellManaValueWithinCap` and `TestManaValueBudgetIsOnePermissionSpentByEachCast` fails; write
 the budget in place in `spendManaValueBudget` and `TestManaValueBudgetIsNeverSpentInPlace` fails; make the offer per copy and both of
 those fail.
+
+## Amendment — 2026-10-15 (#3783): a card copy cast for a named alternative cost
+
+Blue Mage's Cane (granted to the equipped creature): "exile up to one target instant or sorcery card from defending player's
+graveyard. If you do, copy it. You may cast the copy by paying {3} rather than paying its mana cost." That is the card-copy
+offer of the 2026-10-13 amendment with a price other than "free" or "the printed cost" (CR 118.9).
+
+`game.CardCopyOffer.Cost` already carried any price: it is the cost paid instead of the printed mana cost, and a cost
+with no `{X}` locks an `{X}` at 0 (CR 107.3b), as the free cast does. The card-facing door, `effects.CopyAndCast`, could only reach
+`"{0}"` (`Free`) or the printed cost (empty). It gains `Cost string`, written as a mana cost and passed through to the offer;
+`Free` wins when both are set, since `Free` is `Cost: "{0}"`. The copy is cast through the same grant, so its other costs and
+cost increases still apply, the copy lives in exile and ceases to exist if it is not cast by the controller's next priority pass,
+and the original stays exiled (CR 707.12, CR 704.5e). No wire or snapshot change.
+
+Back-out: pass `Cost` through to the offer no longer and `TestBlueMagesCaneExilesTheDefendersSpellAndOffersACopyForThree` fails
+on the permission's cost and on the cast for `{3}`.
+
+## Amendment — 2026-10-15 (#3769): a card remembers how and when it reached a graveyard
+
+Banon, the Returners' Leader: "Once during each of your turns, you may cast a creature spell from among cards in your graveyard that
+were put there from anywhere other than the battlefield this turn." The once-per-turn budget is Gisa and Geralf's shape
+(`PerType` holding `creature`, `TimingYourTurnOnly`). What was missing is a fact about the card: nothing recorded **where a card was
+put into a graveyard from, or when**, so no permission filter could ask.
+
+### Decision 1: the arrival record is Card data, stamped by `MoveCard`
+
+`Card.PutInGraveyardFrom` (the zone the card came from) and `Card.PutInGraveyardThisTurn` (that arrival happened during the current
+turn). `MoveCard` is the one zone move, so a mill, a discard, a counter, a destroy, a spell resolving and a sandbox drag are all
+recorded without a caller having to remember. It rewrites the record on every move: a card that lands in a graveyard names its
+source, and a card that goes anywhere else names nothing. That is CR 400.7 for free: a card that left the graveyard and came back is
+a new object judged by its latest arrival only. A melded pair leaving to a graveyard stamps both cards.
+
+A flag rather than a turn number, because `MoveCard` is a zone function and does not hold the game's clock. `onTurnBeganLocked`
+clears `PutInGraveyardThisTurn` in every seat's graveyard as each turn begins, the per-turn-flag shape `SummonedThisTurn` already
+has. `PutInGraveyardFrom` is a fact that does not expire and stays.
+
+### Decision 2: the permission clause rides the filter
+
+`PermissionFilter.PutInGraveyardThisTurn` is true for a card that arrived this turn from a zone that is not the battlefield
+(`Card.PutInGraveyardNotFromBattlefieldThisTurn`). It is a property of the card being cast, not a game-state condition, so it is a
+filter flag and not a registered `PermissionCondition` (see the 2026-10-13 second amendment, which draws the same line for a
+spell-type gate). The cast path, the enumerator and the view all reach it through `CoversCard`, so they agree by construction.
+
+### Snapshot
+
+Additive within v9: `…cards[].putInGraveyardFrom`, `…cards[].putInGraveyardThisTurn` and
+`seats[].castPermissions[].filter.putInGraveyardThisTurn`, all omitted at their zero values. A binary from before it drops the keys
+on restore, which reads every card as having arrived nowhere and so shuts a permission that reads the record for the rest of the turn
+the game was saved in. `-update-shape` recorded the paths; no version bump.
+
+### What it does not do
+
+Cards that count arrivals ("if three or more cards were put into your graveyard from anywhere other than the battlefield this turn",
+Dimir Strandcatcher) cannot read this record: a card that has since left the graveyard no longer carries it. That wants a per-turn
+tally, not a per-card fact.
+
+Back-out: stop stamping in `MoveCard` and `TestMoveCardStampsGraveyardArrival` and six of Banon's tests fail; drop the stamp on a melded
+pair's parts and `TestMeldedPairStampsBothCards` fails; drop the clear in `onTurnBeganLocked` and `TestGraveyardArrivalEndsWithTheTurn`
+and `TestBanonForgetsLastTurnsArrivals` fail; drop the filter clause in `Matches` and `TestPermissionFilterReadsTheArrivalRecord` fails
+with Banon opening a creature that died; drop the battlefield exclusion and the same filter test and
+`TestBanonOpensDiscardedAndMilledCreaturesButNotOnesThatDied` fail.
+
+## Amendment — 2026-10-15 (#3768): what a permission puts on the permanent its cast produces
+
+`GrantsHaste` (suspend, CR 702.62a) was the only rider a permission could hang on the permanent its cast becomes. Two printed
+sentences in deck request #3655 needed more, and both say "this way", which makes them the permission's and not the card's: the
+same artifact hard-cast from hand enters untapped, and the same creature hard-cast has no haste.
+
+- Edgar, Master Machinist: "Once during each of your turns, you may cast an artifact spell from your graveyard. If you cast a
+  spell this way, that artifact enters tapped."
+- Strago and Relm: "You may cast that card without paying its mana cost. If you cast a creature spell this way, it gains haste
+  and 'At the beginning of the end step, sacrifice this creature.'"
+
+### Decision 1 — `CastPermission.EntersTapped`, carried by the spell to its entry
+
+Read once in `CastSpell`, where the permission is consumed, and copied onto the spell as `StackItem.EntersTapped`, because the
+permission may be spent, swept or gone before the spell resolves. Resolution seeds it onto the entry event with `FaceDown`, before
+the CR 614 pipeline runs (CR 614.1c), so the permanent ENTERS tapped: no `EventTapCard`, and every other entry replacement sees it.
+A copy of the spell does not carry it (CR 707.10: a copy was not cast this way); `createSpellCopyLocked` lists its fields and leaves it
+out. Snapshot: additive `stackMeta[].entersTapped` and `castPermissions[].entersTapped`.
+
+### Decision 2 — `GainsKeywords` / `GainsAbilities`, one scoped effect with no duration
+
+Keywords and ADR 0093 grant keys the permanent gains. Registered at cast, like suspend's haste and for the same reason, as one
+layer-6 record (`AddKeywordsMod`, `GrantAbilitiesMod`) pinned to the spell's instance with no controller. The printed text states
+no duration (CR 611.2a), so the record lasts for the new condition `WhileSourceOnceItLands`
+(`ForThePermanentThisSpellBecomesDuration`): suspend's `WhileYouControlSourceOnceItLands` without the control test. It holds while
+the spell is on the stack, then while the permanent is on the battlefield whoever controls it, and is over for good once the object
+is anywhere else (a countered spell, or a permanent that left; CR 400.7). An instant or sorcery cast this way registers nothing:
+it never becomes an object that could gain anything, which is the printed "if you cast a creature spell" for a permission that
+opens only instants, sorceries and creatures. The granted "At the beginning of the end step, sacrifice this creature" is an ability
+of the creature, so it fires at every end step it sees, starting with this one, and not once like a delayed trigger. Snapshot:
+additive `castPermissions[].gainsKeywords` / `gainsAbilities`; the condition is appended to the enum.
+
+Not covered: a rider with a duration of its own ("it gains haste until end of turn", Thundermane Dragon, which also needs a
+power filter on a top-of-library permission).
+
+Back-out: drop `EntersTapped: item.EntersTapped` from the resolving entry event and
+`TestEdgarCastsOneArtifactFromTheGraveyardThatEntersTapped` fails; drop the `grantGainsForCastLocked` call and
+`TestStragoAndRelmCastCreatureGainsHasteAndIsSacrificedAtEndStep` fails; give `WhileSourceOnceItLands` the control test and the
+same test fails, as does `TestPermanentThisSpellBecomesDurationFollowsTheObject`.
+
+## Amendment — 2026-10-15 (#3785): a graveyard cast at its mana cost that counts toward a once-each-turn limit only when made
+
+Emet-Selch of the Third Seat: "Whenever one or more opponents lose life, you may cast target instant or sorcery card from
+your graveyard. If that spell would be put into your graveyard, exile it instead. Do this only once each turn." Three of its
+pieces already existed: the batch trigger (`OncePerBatch` over the two life-loss events, read through `b04OpponentLostLife`,
+CR 603.2c), the exile replacement (`ExileOnResolution`, Torrential Gearhulk's) and the cast follow-up of #2173
+(`CastPermission.FollowUp`, Conduit of Worlds). What was missing is small and is the whole of this amendment.
+
+### Decision 1 — the offer is claimed under `AltCostKeyGrantedCost` with the price left empty
+
+Snapcaster's grant is keyed `"flashback"`, which is wrong here for two reasons. A card that prints flashback offers its own
+`"flashback"` at its own price, so the claim resolves to the card's offer and Emet's "cast" would be charged the flashback
+cost. And a cast made under the card's own text is, by `castUsesGrantLocked`, not the permission's, so the follow-up would
+not run. `effects.OfferGraveyardCast` (`granted_permissions.go`) keys the permission `AltCostKeyGrantedCost` with an empty
+`Cost`, which `AlternativeCostFor` reads as "the card's mana cost", flash-timed and pass-closed like the free-cast grants
+(CR 608.2g), with `ExileOnResolution` and a `FollowUp` key.
+
+### Decision 2 — a claim of the permission's own synthesised offer is the permission's cast
+
+`AlternativeCost.FromPermission` is set only on the offer `CastPermission.AlternativeCostFor` builds, and
+`castUsesGrantLocked` answers true for it before asking whether the card opens its own zone. A card the graveyard already
+lets you cast (Lingering Souls, Faithless Looting) cast through the permission therefore runs the follow-up and spends
+`CastsLeft` and `PerType` budgets, as a Gravecrawler-style card under Underworld Breach's escape does. A claim of the card's
+own key stays the card's own cast. The field is never serialised.
+
+### Decision 3 — "do this only once each turn" is written by the follow-up, not by the grant
+
+The limit counts a cast, so it is `Game.NoteDoneThisTurn` (per object, #3247's shape) called from the registered follow-up,
+which runs only once the spell is on the stack through the permission. It is read when the ability triggers (no trigger once
+spent) and again as it resolves. A declined or lapsed offer writes nothing and leaves the turn's use for a later batch.
+
+### Decision 4 — the discount is a constructor, not machinery
+
+`CostQuery.FromZone` was already on the modifier input; `effects.CastFromGraveyard()` is the predicate, so "spells you cast
+from your graveyard cost {2} less" is `CostsLess(2, label, YourSpell(), CastFromGraveyard())`.
+
+### Declared
+
+"If that spell would be put into your graveyard, exile it instead" is implemented with flashback's wider replacement
+(CR 702.34a: instead of anywhere else it would go when it leaves the stack). The only difference is an instant or sorcery
+that would be shuffled into a library or returned to a hand; it is exiled here, never stronger than printed.
+
+No wire or snapshot change: the follow-up key already rode `castPermissions[].followUp`.
+
+Back-out: drop `FromPermission` from `castUsesGrantLocked` and `TestEmetSelchCastOfAFlashbackCardCountsAndPaysManaCost`
+fails (the second loss offers again); drop the `FollowUp` key and `TestEmetSelchOffersOnlyOnceEachTurn` fails.
+
+## Amendment — 2026-10-15 (#3787): a temporary play grant over "cards exiled with" a source, with a cost reduction
+
+Urianger Augurelt's Play Arcanum: "Until end of turn, you may play cards exiled with Urianger Augurelt. Spells you cast
+this way cost {2} less to cast." Kayla's Music Box prints the same grant without the discount and over "cards you own".
+Two pieces were missing, both small.
+
+**1. A STORED standing permission may carry the "exiled with" filter.** `PermissionFilter.ExiledWithSource` was built for
+a STANDING permission derived off the battlefield (Valgavoth), where `stampStandingPermissionLocked` writes the granting
+object into `ExiledWith`. A resolution that grants "until end of turn, cards exiled with this" has the object in hand
+(`effects.HiddenRefOfActivation`), so it stores a `ScopeStanding` permission over exile with `ExiledWithSource` and
+`ExiledWith` both set. That is a rule over the zone, not a set locked at resolution (CR 611.2c is the wrong reading
+of "cards exiled with this": a card exiled with it after the activation is playable too), and the epoch in the
+reference still ends the claim when the source leaves (CR 400.7). `effects.PlayCardsExiledWith` is the one door.
+It is play, not cast, so a land is covered (CR 305.1) and `CastOnly` stays unset.
+
+**2. `CastPermission.CostLess` — "spells you cast this way cost {N} less".** Generic mana taken off the price of a spell
+cast through the permission. A reduction, not a flat price: `Cost` replaces the cost the cast would pay, while this
+composes with it (a printed cost, a claimed alternative cost) and with the board's cost modifiers. It reaches the pricer
+as `CostQuery.GrantReduction`, taken off in `applyCostModifiersLocked` with the board's reductions and emerge's, so every
+increase has been added first and a `CostFloor` still applies after (CR 601.2f), and it clamps at {0} like any generic
+reduction (`reduceGeneric`, including the mana announced for {X}). The one pricer (`costAfterModifiersLocked`) reads it
+from the permission the cast claims (`grantReductionLocked`, the same `CastPermissionForClaimLocked` lookup the price and
+the announce path use); the enumerator reads it from the permission it is announcing under, so the payment, the preview,
+the view's price and the bot agree (#544). A hand or command-zone cast reads none.
+
+**3. `PermissionFilter.OwnedByHolder`** — Kayla's Music Box's "cards YOU OWN exiled with it". `NotOwnedByHolder`'s mirror,
+read in `permissionReachesPileLocked` where the holder and the owner are both known.
+
+### Snapshot
+
+Additive within v9, omitted when zero: `seats[].castPermissions[].costLess` and `...filter.ownedByHolder` (the filter
+is also mirrored under the statics that carry one, hence the six lines in `testdata/snapshot_shape/v9.txt`). A file
+written before them restores with no reduction and no ownership clause. A binary from before them drops the key and reads
+the permission without the discount (weaker than printed) or, for the Box, without the ownership clause, which matters
+only to a table that restores mid-turn after the Box changed hands. No wire change: the view prices through
+`PriceCastForEffect`, which already reads the grant.
+
+Back-out: pass `GrantReduction: 0` in `costAfterModifiersLocked` and `TestUriangerPlayArcanumCastsAnExiledSpellForTwoLess`
+fails; read `0` for it in the enumerator and `TestUriangerEnumerationPricesTheDiscount` fails; take it off before the
+increases are added (drop it from the full-modifier path) and `TestUriangerReductionComesOffAfterTheIncreases` fails; drop
+the `OwnedByHolder` test and `TestKaylasMusicBoxPlaysOnlyCardsTheHolderOwns` fails.

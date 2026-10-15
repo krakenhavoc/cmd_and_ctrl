@@ -32,7 +32,7 @@ func TestFanaticOfRhonasFerociousNeedsABigCreature(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, fanatic, 1, game.ManaAbilityParams{}); !errors.Is(err, game.ErrConditionNotMet) {
 		t.Fatalf("err = %v, want ErrConditionNotMet", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Fatalf("pool = %v, want empty — a failed gate pays nothing", me.ManaPool)
 	}
 	if c, ok := g.LookupCardForEffect(fanatic); !ok || c.Tapped {

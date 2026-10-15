@@ -20,9 +20,9 @@ func TestNameRefusesListedWordsAndTheirDisguises(t *testing.T) {
 		"reeetaaarded",    // stretched letters
 		"r e t a r d e d", // spaced out
 		"r.e.t.a.r.d.e.d",
-		"re​tarded", // zero-width space
-		"ｒｅｔａｒｄｅｄ",  // fullwidth
-		"rеtarded",  // Cyrillic е
+		"re\u200btarded", // zero-width space
+		"ｒｅｔａｒｄｅｄ",       // fullwidth
+		"rеtarded",       // Cyrillic е
 		"slut",
 		"Sl_u_t",
 		"SLUUUT",

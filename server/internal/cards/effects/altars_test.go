@@ -39,10 +39,10 @@ func TestAshnodsAltarEatsACreatureForTwoColorless(t *testing.T) {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
 
-	if len(me.ManaPool) != 2 {
-		t.Fatalf("mana pool: got %d tokens, want 2", len(me.ManaPool))
+	if me.ManaPool.Total() != 2 {
+		t.Fatalf("mana pool: got %d tokens, want 2", me.ManaPool.Total())
 	}
-	for i, tok := range me.ManaPool {
+	for i, tok := range me.ManaPool.Units() {
 		if tok.Color != "C" {
 			t.Errorf("token[%d]: got color %q, want C", i, tok.Color)
 		}
@@ -74,8 +74,8 @@ func TestAshnodsAltarActivatesRepeatedlyInOneTurn(t *testing.T) {
 			t.Fatalf("activation %d: %v", i+1, err)
 		}
 	}
-	if len(me.ManaPool) != 4 {
-		t.Errorf("mana pool: got %d tokens, want 4", len(me.ManaPool))
+	if me.ManaPool.Total() != 4 {
+		t.Errorf("mana pool: got %d tokens, want 4", me.ManaPool.Total())
 	}
 }
 
@@ -92,8 +92,8 @@ func TestAshnodsAltarRejectsSacrificingItself(t *testing.T) {
 	}); err == nil {
 		t.Fatal("sacrificing the Altar to its own cost was accepted")
 	}
-	if len(me.ManaPool) != 0 {
-		t.Errorf("mana pool: got %d tokens after a rejected activation, want 0", len(me.ManaPool))
+	if me.ManaPool.Total() != 0 {
+		t.Errorf("mana pool: got %d tokens after a rejected activation, want 0", me.ManaPool.Total())
 	}
 	if _, ok := battlefieldCard(g, altar); !ok {
 		t.Error("Altar left the battlefield on a rejected activation")

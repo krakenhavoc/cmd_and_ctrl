@@ -17,6 +17,9 @@ type specialActionParams struct {
 	Cost string `json:"cost,omitempty"`
 	// Door is the door an unlock unlocks (ADR 0103).
 	Door string `json:"door,omitempty"`
+	// Route names which turn-face-up offer this is, sent only when the
+	// card offers turn_face_up more than once (ADR 0189 decision 4).
+	Route string `json:"route,omitempty"`
 }
 
 // specialActionMoves enumerates the CR 116.2 special actions the seat
@@ -87,7 +90,8 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 	if !e.enter(scope{source: card.InstanceID}) {
 		return
 	}
-	for _, sa := range g.SpecialActionsOfferedLocked(e.seat, card, zone) {
+	offers := g.SpecialActionsOfferedLocked(e.seat, card, zone)
+	for _, sa := range offers {
 		if !game.SpecialActionKindBuilt(sa.Kind) {
 			continue
 		}
@@ -143,6 +147,12 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 		if sa.Zone != "" {
 			params.Cost = sa.Cost
 		}
+		// ADR 0189: a manifested or cloaked card whose card also has
+		// morph or disguise offers turn_face_up twice, perhaps at the
+		// same price, so each move names its route.
+		if sa.Kind == game.SpecialActionTurnFaceUp && sa.Route != "" && turnFaceUpOffers(offers) > 1 {
+			params.Route = string(sa.Route)
+		}
 		if sa.Zone == game.ZoneLibrary {
 			label += " from the top of your library"
 		}
@@ -155,4 +165,15 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 			Params: mustJSON(params),
 		})
 	}
+}
+
+// turnFaceUpOffers counts the turn_face_up offers in a card's list.
+func turnFaceUpOffers(offers []game.SpecialAction) int {
+	n := 0
+	for _, sa := range offers {
+		if sa.Kind == game.SpecialActionTurnFaceUp {
+			n++
+		}
+	}
+	return n
 }

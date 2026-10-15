@@ -322,7 +322,7 @@ func manaLeft(v *protocol.GameView, seat string) int {
 	n := 0
 	for i := range v.Seats {
 		if v.Seats[i].ID == seat {
-			n += len(v.Seats[i].ManaPool)
+			n += protocol.ManaPoolTotal(v.Seats[i].ManaPool)
 		}
 	}
 	for i := range v.Battlefield.Cards {

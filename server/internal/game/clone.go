@@ -49,6 +49,8 @@ func (g *Game) cloneLocked() *Game {
 		// an active player who lost mid-resolution.
 		Outcome:               cloneGameOutcome(g.Outcome),
 		ActiveSeatLeftPending: g.ActiveSeatLeftPending,
+		// ADR 0188 Decision 12: a turn change waiting on its question.
+		TurnChangePending: g.TurnChangePending,
 		// #2165: CR 724.1's deferred half — the turn an effect ended
 		// whose cleanup step has not begun.
 		TurnEndPending: g.TurnEndPending,
@@ -283,6 +285,7 @@ func (g *Game) cloneLocked() *Game {
 			cloned.OptionCarry = copyUUIDs(c.OptionCarry)
 			// ADR 0146: a ballot's vote is mutated as it is cast.
 			cloned.CouncilVote = cloneCouncilVote(c.CouncilVote)
+			cloned.TurnSkipOrder = cloneTurnSkipOrder(c.TurnSkipOrder)
 			cloned.AnyPlayerOffer = cloneAnyPlayerOffer(c.AnyPlayerOffer)
 			cloned.Assist = cloneAssistPrompt(c.Assist)
 			// #793: the replacement resume frame holds the in-flight
@@ -412,6 +415,9 @@ func (g *Game) cloneLocked() *Game {
 	// window between the two steps that dropped it would let every
 	// first-striker deal its damage a second time in the regular step.
 	out.firstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
+	// #3665: the step's damage held behind its prompts rewinds with
+	// them. Copy on write, so it is shared.
+	out.heldCombatDamage = g.heldCombatDamage
 	if len(g.Listeners) > 0 {
 		out.Listeners = make([]Listener, len(g.Listeners))
 		copy(out.Listeners, g.Listeners)
@@ -776,6 +782,17 @@ func cloneCastPermissions(in []CastPermission) []CastPermission {
 		if len(in[i].PerTypeUsed) > 0 {
 			out[i].PerTypeUsed = append([]string(nil), in[i].PerTypeUsed...)
 		}
+		if in[i].FollowUpObject != nil {
+			ref := *in[i].FollowUpObject
+			out[i].FollowUpObject = &ref
+		}
+		// #3768: what the permanent the cast produces gains.
+		if len(in[i].GainsKeywords) > 0 {
+			out[i].GainsKeywords = append([]string(nil), in[i].GainsKeywords...)
+		}
+		if len(in[i].GainsAbilities) > 0 {
+			out[i].GainsAbilities = append([]string(nil), in[i].GainsAbilities...)
+		}
 	}
 	return out
 }
@@ -806,6 +823,9 @@ func cloneStackItem(s *StackItem) *StackItem {
 		SplitSecond:      s.SplitSecond,
 		AltCost:          s.AltCost,
 		Foretold:         s.Foretold,
+		OwnFlashCast:     s.OwnFlashCast,
+		CastValues:       copyStringIntMap(s.CastValues),
+		EntersTapped:     s.EntersTapped,
 		FaceDown:         s.FaceDown,
 		AltCostExiles:    s.AltCostExiles,
 		CastFromZone:     s.CastFromZone,
@@ -1008,6 +1028,11 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 			// live game declares later cannot reach the snapshot's event.
 			ev.lifeAfterMove = append([]lifeInstruction(nil), f.ev.lifeAfterMove...)
 		}
+		if len(f.ev.extraTurnsAfterMove) > 0 {
+			// ADR 0188: the extra turns a replacement declared on this
+			// move, copied for the reason the life instructions are.
+			ev.extraTurnsAfterMove = append([]extraTurnInstruction(nil), f.ev.extraTurnsAfterMove...)
+		}
 		// #478: and the ENTRY tail, for exactly the reason the route
 		// gets a copy. runEntryTailLocked nils `then` on the tail rather
 		// than the tail on the event, because the rest of what it
@@ -1126,6 +1151,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.SplitSecondActive = src.SplitSecondActive
 	g.Outcome = src.Outcome
 	g.ActiveSeatLeftPending = src.ActiveSeatLeftPending
+	g.TurnChangePending = src.TurnChangePending
 	g.TurnEndPending = src.TurnEndPending
 	g.passTurn = clonePassTurnOrder(src.passTurn)
 	g.StackMeta = src.StackMeta
@@ -1208,6 +1234,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.attacksDeclared = src.attacksDeclared
 	g.combatHadAttackers = src.combatHadAttackers
 	g.firstStrikeStepParticipants = src.firstStrikeStepParticipants
+	g.heldCombatDamage = src.heldCombatDamage
 	g.Listeners = src.Listeners
 	g.PendingChoices = src.PendingChoices
 	g.BuiltinReplacements = src.BuiltinReplacements

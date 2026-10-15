@@ -437,10 +437,9 @@ draw) runs from the prompt's `Then`, so it waits for the order.
   counts as "discarded this way" and is seen by every payoff (CR 701.9a). Only the order moves.
 - Privacy is the prompt's: the owner is the only knower of two or more cards in one lane, and
   nobody else learns the order.
-- No prompt for zero or one saved card, for a cost or cleanup discard (Leng does not apply), or
-  when the saved cards are not exactly the top of the library. In that last case another
-  replacement sent one of them elsewhere in the library (a shuffle-in), so they are no longer one
-  placement at one position.
+- No prompt for zero or one saved card, or for a cost or cleanup discard (Leng does not apply).
+  The 2026-10-14 (#3541) amendment below replaced this amendment's "not exactly the top of the
+  library" rule.
 - The prompt is the ordinary paused frame: undo, restore and a chooser leaving the game behave as
   for every other `put_in_library` prompt.
 
@@ -450,3 +449,32 @@ draw) runs from the prompt's `Then`, so it waits for the order.
 chosen non-default order, with the effect's "then" waiting for it; one saved and one declined
 (no prompt); the discard events still fire and opponents do not know the ordered cards. The
 existing Leng, Bone Miser, Lion's Eye Diamond and Mox Diamond tests still pass.
+
+## Amendment 2026-10-14 (#3541): a top placement and a shuffle-in in one discard
+
+The amendment above found the saved cards by reading the library once the batch finished: every
+discarded card in the library had to be its top N cards. One discard can also shuffle a card into
+the same library. Blightsteel Colossus discarded beside Library of Leng, with Leng ordered first and
+declined, is shuffled in. That card is in the library but at no position. Its shuffle can also
+scatter cards Leng put on top earlier in the batch, because the legs settle one at a time. The
+batch then saw no top N and offered nothing. CR 701.24g: when an effect both shuffles a library and
+puts cards into it at a specific position, the library is shuffled and then those cards are put
+there. CR 401.4 still gives their owner the order.
+
+**Decision.** The batch records each placement as it settles, not where the card is at the end.
+`discardBatchLocked` carries a `tops` list beside `landed`: each leg whose `EventDiscardCard` names
+the library with no shuffle of that library during the leg (`discardLegPutOnTopLocked`), with the
+card's object epoch. When the batch ends, the saved cards are the entries still in that library with
+the same epoch (CR 400.7), top-first in reverse landing order. The `put_in_library` prompt covers
+exactly those cards. A single saved card that a later shuffle moved is put back on top with no
+prompt. Shuffles stay where they happen, one per shuffle-in (CR 701.24f). Putting the saved cards
+back on top afterwards gives the CR 701.24g result, so no shuffle is deferred.
+
+- A card shuffled in, sent to the graveyard or exiled (madness) is never one of the saved cards.
+- `tops` is a value carried forward, like `landed`, and the leg reads its own events after a scalar
+  mark. Undo, restore and a replayed answer rebuild it the same way.
+
+**Test plan.** `cards/effects/library_of_leng_shuffle_test.go`: two saved cards and Blightsteel in
+each of the three batch positions (one shuffle, an order over exactly the two, the chosen order on
+top, the "then" waiting); one saved card put back on top after a later shuffle; library, graveyard
+and exile in one discard; undo to the open CR 616 prompt and replay.

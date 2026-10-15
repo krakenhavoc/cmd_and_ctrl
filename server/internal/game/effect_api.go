@@ -1367,6 +1367,11 @@ func (g *Game) SacrificePermanentForEffect(cardID uuid.UUID) error {
 	if g.effectSacrificeBlockedLocked(g.controllerOfBattlefieldCardLocked(cardID)) {
 		return nil
 	}
+	// #3275: nor can it sacrifice a permanent that can't be sacrificed
+	// (CR 101.2); the instruction does nothing.
+	if g.cantBeSacrificedLocked(cardID) {
+		return nil
+	}
 	return g.sacrificePermanentLocked(cardID)
 }
 
@@ -3110,8 +3115,13 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 		}
 		return nil
 	}
+	label := ""
+	if spec.Shuffle {
+		label = SearchShuffledLabel
+	}
 	g.EmitEvent(Event{
 		Kind:  EventSearchLibrary,
+		Label: label,
 		Actor: spec.Player,
 		// #1335: `p` is always the library owner (SearchLibraryThenForEffect
 		// resolves it via libraryOwnerID before calling here), which

@@ -194,6 +194,15 @@ type CostQuery struct {
 	// clause's payment. Zero for an activation or special action.
 	Sacrificing int
 
+	// ExilingFromHand is how many hand cards the announcement's
+	// additional cost names to exile (#3175) — March of Swirling Mist's
+	// "This spell costs {2} less to cast for each card exiled this way".
+	// Announced at CR 601.2b, read at 601.2f, filled from
+	// len(CastSpellParams.ExileFromHandIDs) by the one pricer and per
+	// payment by the enumerator, as Sacrificing is. Zero for an
+	// activation or special action.
+	ExilingFromHand int
+
 	// AltSacrificeManaValue is emerge's reduction (CR 702.119a, ADR 0135
 	// §4): the mana value of the permanent the claimed alternative cost
 	// sacrifices, when that offer is ReducedBySacrificedManaValue, read
@@ -209,6 +218,17 @@ type CostQuery struct {
 	// off. Filled by the one pricer (costAfterModifiersLocked) and, per
 	// payment, by the enumerator, so the two agree (#544).
 	AltSacrificeManaValue int
+
+	// GrantReduction is the generic mana a cast permission takes off the
+	// spell cast through it (CastPermission.CostLess, #3787): Urianger
+	// Augurelt's "spells you cast this way cost {2} less to cast". Read
+	// from the permission the cast claims, so it is zero for a hand cast
+	// and for any permission that prints no reduction. Taken off with the
+	// board's reductions (CR 601.2f), after every increase and before a
+	// CostFloor, clamped at {0}. Filled by the one pricer
+	// (costAfterModifiersLocked) and by the enumerator from the
+	// permission it is announcing under, so the two agree (#544).
+	GrantReduction int
 
 	// Cost is the cost as it stands at the moment this modifier is
 	// consulted: after the alternative-cost swap and the commander
@@ -280,6 +300,12 @@ type AbilityCostSubject struct {
 	// abilities you activate cost {1} less to activate" (Dragonkin
 	// Berserker).
 	Boast bool
+
+	// Equip is the CR 702.6 equip bit (ActivatedAbilityShape.Equip,
+	// #3778): "Equip abilities you activate that target this creature
+	// cost {2} less to activate" (Helitrooper). Read off the shape's
+	// keyword field rather than the label, which is prose.
+	Equip bool
 
 	// Mana says this is a CR 605 mana ability rather than a CR 602
 	// activation. Always false today — the mana path prices its cost
@@ -750,7 +776,7 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 	if len(mods) == 0 {
 		// ADR 0135 §4: emerge's reduction is the one reduction that
 		// needs no modifier on the board.
-		return reduceGeneric(base, q.AltSacrificeManaValue), nil
+		return reduceGeneric(reduceGeneric(base, q.AltSacrificeManaValue), q.GrantReduction), nil
 	}
 	cost := base
 	// CR 601.2f step 3: every increase, in any order. Additive, so
@@ -787,6 +813,9 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 	// permanent's mana value, with the other reductions (CR 601.2f) and
 	// clamped the same way, so it is taken after every increase.
 	cost = reduceGeneric(cost, q.AltSacrificeManaValue)
+	// #3787: and the cast permission's own "cost {N} less", the same
+	// kind of reduction.
+	cost = reduceGeneric(cost, q.GrantReduction)
 	// Trinisphere last. A second floor on top of the first is a
 	// no-op by construction — the cost already clears the higher
 	// minimum — so two Trinispheres behave like one, as printed.
@@ -834,6 +863,7 @@ func (g *Game) abilityCostQueryLocked(activator uuid.UUID, source Card, zone Zon
 			Label:   ab.Label,
 			Exhaust: ab.Exhaust,
 			Boast:   ab.Boast,
+			Equip:   ab.Equip,
 			own:     ab.CostModifiers,
 		},
 		Targets: targets,

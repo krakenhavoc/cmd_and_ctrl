@@ -1,6 +1,7 @@
 // payCards.ts — ADR 0108 §5: a pay-unless prompt whose payment is not
-// mana. "Echo—Discard a card", "Echo—Sacrifice two lands" and the
-// cumulative upkeeps that discard or sacrifice ship `pay_cards`; the
+// mana. "Echo—Discard a card", "Echo—Sacrifice two lands", the
+// cumulative upkeeps that discard or sacrifice and an any-player offer
+// that exiles from a graveyard ship `pay_cards`; the
 // "Pay" answer names exactly `count` of its options as `card_ids`. The
 // payer may only answer "Pay" once they have picked that many, and when
 // there are fewer options than that they cannot pay at all (CR 118.3).
@@ -25,14 +26,19 @@ export function togglePayCard(pc: PayCardsView, picks: string[], id: string): st
 }
 
 // payCardsOptions resolves the option IDs to the cards they name: the
-// chooser's hand for a discard, the battlefield for a sacrifice, in the
-// server's order.
+// chooser's hand for a discard, their own graveyard for an exile (ADR
+// 0187 §3), the battlefield for a sacrifice, in the server's order.
 export function payCardsOptions(
   pc: PayCardsView,
   battlefield: CardView[] | undefined,
   chooser: PlayerView | undefined,
 ): CardView[] {
-  const pool = pc.action === "discard" ? (chooser?.hand?.cards ?? []) : (battlefield ?? []);
+  const pool =
+    pc.action === "discard"
+      ? (chooser?.hand?.cards ?? [])
+      : pc.action === "exile_graveyard"
+        ? (chooser?.graveyard?.cards ?? [])
+        : (battlefield ?? []);
   const byID = new Map(pool.map((c) => [c.instance_id, c]));
   return pc.options.map((id) => byID.get(id)).filter((c): c is CardView => c !== undefined);
 }
@@ -40,5 +46,7 @@ export function payCardsOptions(
 // payCardsVerb is the picker's instruction.
 export function payCardsVerb(pc: PayCardsView): string {
   const n = pc.count === 1 ? "one card" : `${pc.count} cards`;
-  return pc.action === "discard" ? `Choose ${n} to discard.` : `Choose ${n} to sacrifice.`;
+  if (pc.action === "discard") return `Choose ${n} to discard.`;
+  if (pc.action === "exile_graveyard") return `Choose ${n} from your graveyard to exile.`;
+  return `Choose ${n} to sacrifice.`;
 }

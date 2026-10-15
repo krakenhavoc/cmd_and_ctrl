@@ -85,6 +85,10 @@ var gameFields = plan(
 	// waiting on the next SBA loss pass. Carried: a restore between
 	// the effect loss and that pass must still move the turn on.
 	"ActiveSeatLeftPending", carried, "",
+	// ADR 0188 Decision 12: a turn change waiting on its turn_skip_order
+	// question. Carried: a restore point taken mid-question restores
+	// mid-question.
+	"TurnChangePending", carried, "",
 	// #2165, CR 724.1: an effect ended the turn and the rest of the
 	// process (724.1c onwards) has not run. Carried: a restore between
 	// the effect and its boundary must still skip to the cleanup step.
@@ -248,6 +252,7 @@ var gameFields = plan(
 	// record would let every first-striker deal its damage again in
 	// the regular step.
 	"firstStrikeStepParticipants", carried, "",
+	"heldCombatDamage", dropped, "#3665: a combat damage step's damage held behind its damage_assignment prompts; counted in ContinuationCensus.ChoiceResumeFrames, so a table holding it is not a restore point; Clone shares it (copy on write) for undo",
 	"lastKnownBattlefield", carried, "",
 	"lastKnownTriggerIdentity", carried, "",
 	"lastKnownCounters", carried, "",
@@ -420,6 +425,10 @@ var cardFields = plan(
 	// charge every echo permanent again, or never.
 	"ControlledSinceUpkeep", carried, "",
 	"SummonedThisTurn", carried, "",
+	// #3769: the graveyard arrival record. Carried: a restore that
+	// dropped it would close Banon's permission on the cards it opens.
+	"PutInGraveyardFrom", carried, "",
+	"PutInGraveyardThisTurn", carried, "",
 	"MarkedLethalByDeathtouch", carried, "",
 	// #683: carried — a restore that dropped it would let a 0/0 that
 	// lost its last counter survive the next state-based check.
@@ -798,6 +807,13 @@ var stackItemFields = plan(
 	// stack, and the fact cannot be recomputed — the card turned face
 	// up as it was cast, so the object it was read from is gone.
 	"Foretold", carried, "",
+	// #3156. Carried: whether a spell was cast with its own flash at a
+	// time a sorcery couldn't have been is known only at announce.
+	"OwnFlashCast", carried, "",
+	"CastValues", carried, "",
+	// #3768. Carried: the permission that said "that artifact enters
+	// tapped" may be spent or gone by the time the spell resolves.
+	"EntersTapped", carried, "",
 	// CR 708.4 (#1194, ADR 0082). Carried: a restore that lost it
 	// would resolve a morph on the stack into a face-UP creature,
 	// revealing the card to the table and handing it back every
@@ -868,6 +884,9 @@ var delayedTriggerFields = plan(
 	"ControllerTurnOnly", carried, "",
 	// ADR 0059 Decision 8: the binding to one extra turn.
 	"OnExtraTurn", carried, "",
+	// ADR 0188 Decision 5: the binding to one phase of one turn.
+	"OnPhaseID", carried, "",
+	"OnSeq", carried, "",
 	"TurnOf", carried, "",
 	"CreatedSeq", carried, "",
 	"Cards", carried, "",
@@ -1060,6 +1079,8 @@ var pendingChoiceFields = plan(
 	// vote: a restored ballot that forgot it would be an option pick
 	// whose answer counts for nothing.
 	"CouncilVote", carried, "",
+	// ADR 0188 Decision 12: the which-skip question's plain data.
+	"TurnSkipOrder", carried, "",
 	"AnyPlayerOffer", carried, "",
 	"Assist", dropped, "ADR 0150 §4: an assist helper's prompt is a pay_amount, which always carries a chooseValueResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
 	// #804's CR 732 shortcut prompt. Carried for the reason

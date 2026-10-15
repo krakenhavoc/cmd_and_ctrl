@@ -133,6 +133,7 @@ func Register(spec Spec) {
 			}
 		}
 	}
+	checkCastTimeValues(spec)
 	// S22: an alternative cost is claimed by name on the wire, so a
 	// blank or duplicated key is unaddressable — the cast either
 	// can't name it or names two of them. Both are copy-paste
@@ -187,6 +188,7 @@ func Register(spec Spec) {
 		// enumerator all read off it.
 		checkSacrificeClause(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice, false, false, false)
 		checkAltCostSetRule(spec.Name, ac)
+		checkAltCostXBound(spec, ac)
 		checkAltCostTapOthers(spec.Name, ac)
 		checkEmerge(spec.Name, ac)
 		checkAwaken(spec, ac)
@@ -382,6 +384,8 @@ func Register(spec Spec) {
 	checkCastRestrictions(spec.Name, spec.CastRestrictions)
 	// ADR 0109 §4: the same two checks for the land-play twin.
 	checkLandPlayRestrictions(spec.Name, spec.LandPlayRestrictions)
+	// #1985: and for the entry twin.
+	checkEntryRestrictions(spec.Name, spec.EntryRestrictions)
 	// ADR 0109 §6: and for a targeting restriction, which must also say
 	// which zone it is about.
 	checkTargetingRestrictions(spec.Name, spec.TargetingRestrictions)
@@ -972,6 +976,12 @@ func checkLandPlayRestrictions(card string, rs []game.LandPlayRestriction) {
 	}
 }
 
+func checkEntryRestrictions(card string, rs []game.EntryRestriction) {
+	for _, r := range rs {
+		checkRestriction(card, "entry", r.Label, r.Forbids == nil)
+	}
+}
+
 // checkTargetingRestrictions also refuses a restriction about no zone,
 // which the targeting check would never ask.
 func checkTargetingRestrictions(card string, rs []game.TargetingRestriction) {
@@ -1036,8 +1046,15 @@ func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.
 			if rc.From == nil {
 				panic(fmt.Sprintf("effects.Register: %q %s splits a counter removal among nothing — an Among cost needs its \"from among …\" clause", card, where))
 			}
-			if rc.Variable {
-				panic(fmt.Sprintf("effects.Register: %q %s removes a variable number of counters from among several permanents — no printed card does, and it has no shape", card, where))
+			// A variable count split across permanents is a shape since
+			// #3276 (Jetfire, Ingenious Scientist: "one or more +1/+1
+			// counters from among artifacts you control"). Only the
+			// printed form is: one kind, and a floor of at least one.
+			if rc.Variable && rc.Counter == "" {
+				panic(fmt.Sprintf("effects.Register: %q %s removes a variable number of counters of any kind from among several permanents — no printed card does", card, where))
+			}
+			if rc.Variable && rc.N < 1 {
+				panic(fmt.Sprintf("effects.Register: %q %s removes \"any number\" of counters from among several permanents — no printed card does; a variable among cost prints \"one or more\" (floor 1)", card, where))
 			}
 		}
 	}
@@ -1183,6 +1200,37 @@ func checkAltCostSetRule(card string, ac game.AlternativeCost) {
 			card, where, len(spec.EachOf), spec.Min, spec.Max))
 	}
 	checkSetRuleEntries(card, where, spec)
+}
+
+// checkAltCostXBound is #3175's guard for an alternative cost whose card
+// component is bound to the announced X (Shining Shoal's "exile a white
+// card with mana value X from your hand"). Only the hand pitch reads the
+// bound (validateAlternativeCostPaymentLocked), only "mana value X" is a
+// printed form, the pitch names one card, and the card must read its X
+// (XMatters) — a bound on an X the spell never uses binds nothing.
+func checkAltCostXBound(spec Spec, ac game.AlternativeCost) {
+	where := fmt.Sprintf("alternative cost %q", ac.Key)
+	for _, s := range []*game.TargetSpec{ac.ReturnToHand, ac.ExileFromGraveyard, ac.Sacrifice, ac.DiscardFromHand} {
+		if s != nil && (s.ManaValueAtMostX || s.ManaValueEqualsX || s.PowerAtMostX || s.ToughnessAtMostX) {
+			panic(fmt.Sprintf("effects.Register: %q %s bounds a component by X that does not read the bound — only a hand pitch (ExileFromHand) does", spec.Name, where))
+		}
+	}
+	s := ac.ExileFromHand
+	if s == nil {
+		return
+	}
+	if s.ManaValueAtMostX || s.PowerAtMostX || s.ToughnessAtMostX || s.BoundByCountersRemoved {
+		panic(fmt.Sprintf("effects.Register: %q %s bounds its pitch by a statistic other than \"mana value X\" — no printed pitch does", spec.Name, where))
+	}
+	if !s.ManaValueEqualsX {
+		return
+	}
+	if s.Min > 1 || s.Max > 1 || s.CountFromX {
+		panic(fmt.Sprintf("effects.Register: %q %s binds X to a pitch of more than one card — the card's mana value is the X", spec.Name, where))
+	}
+	if !spec.XMatters {
+		panic(fmt.Sprintf("effects.Register: %q %s binds its pitch to X but the card does not read X (XMatters) — the bound would bind nothing the spell uses", spec.Name, where))
+	}
 }
 
 // checkReturnClause is #1213's registration guard for the

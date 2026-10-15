@@ -65,10 +65,10 @@ func init() {
 			if p == nil {
 				return nil
 			}
-			switch held := len(p.Hand.Cards); {
-			case held == 0:
+			switch len(p.Hand.Cards) {
+			case 0:
 				return nil
-			case held == 1:
+			case 1:
 				ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
 					Player:   who,
 					Source:   ctx.Source(),

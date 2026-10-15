@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Temporal Manipulation — Sorcery {3}{U}{U}:
 //
 //	"Take an extra turn after this one."
@@ -13,6 +15,8 @@ func init() {
 		OracleID:     "6b6ac99a-7548-4cad-9fe5-ea611618ab9e",
 		Name:         "Temporal Manipulation",
 		Completeness: CompletenessFull,
-		OnResolve:    youTakeAnExtraTurn,
+		// ADR 0188 Decision 10: the caster's extra turn, priced by the bot.
+		Purpose:   game.Purpose{ExtraTurns: 1},
+		OnResolve: youTakeAnExtraTurn,
 	})
 }

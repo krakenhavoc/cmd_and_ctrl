@@ -78,7 +78,7 @@ func b33Goaded(t *testing.T, g *game.Game, id uuid.UUID) uuid.UUID {
 // b33PoolCount counts the tokens of one colour in a player's pool.
 func b33PoolCount(p *game.Player, color string) int {
 	n := 0
-	for _, tok := range p.ManaPool {
+	for _, tok := range p.ManaPool.Units() {
 		if tok.Color == color {
 			n++
 		}
@@ -311,7 +311,7 @@ func TestB33CoalitionRelicBanksChargeCountersForYourFirstMainPhase(t *testing.T)
 	// Entering the main phase fires the trigger with no counters on
 	// the Relic: it resolves and adds nothing.
 	passPriorityAroundTable(t, g)
-	if len(g.PendingChoices) != 0 || len(me.ManaPool) != 0 {
+	if len(g.PendingChoices) != 0 || me.ManaPool.Total() != 0 {
 		t.Fatal("no counters, no mana")
 	}
 	if err := g.ActivateManaAbility(me.ID, relic, 0, game.ManaAbilityParams{}); err != nil {
@@ -331,7 +331,7 @@ func TestB33CoalitionRelicBanksChargeCountersForYourFirstMainPhase(t *testing.T)
 	// The pool empties between steps; the trigger fires at the
 	// start of the controller's next precombat main.
 	advanceToPrecombatMainOf(t, g, 0)
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Fatal("the pool is empty as the main phase begins")
 	}
 	passPriorityAroundTable(t, g)
@@ -352,7 +352,7 @@ func TestB33CoalitionRelicBanksChargeCountersForYourFirstMainPhase(t *testing.T)
 	}
 	advanceToPrecombatMainOf(t, g, 0)
 	passPriorityAroundTable(t, g)
-	if len(g.PendingChoices) != 0 || len(me.ManaPool) != 0 {
+	if len(g.PendingChoices) != 0 || me.ManaPool.Total() != 0 {
 		t.Error("no counters, no mana")
 	}
 }
@@ -414,7 +414,7 @@ func TestB33DoublingCubeDoublesWhatIsLeftAfterPayingThree(t *testing.T) {
 	if !b16Tapped(t, g, cube) {
 		t.Error("the tap is the cost")
 	}
-	if got := len(me.ManaPool); got != 6 {
+	if got := me.ManaPool.Total(); got != 6 {
 		t.Fatalf("three paid, three left, three added: pool %v", poolColors(me))
 	}
 	if r, gr, c := b33PoolCount(me, "R"), b33PoolCount(me, "G"), b33PoolCount(me, "C"); r != 4 || gr != 2 || c != 0 {
@@ -427,7 +427,7 @@ func TestB33DoublingCubeDoublesWhatIsLeftAfterPayingThree(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, cube, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("nothing left to double: pool %v", poolColors(me))
 	}
 }

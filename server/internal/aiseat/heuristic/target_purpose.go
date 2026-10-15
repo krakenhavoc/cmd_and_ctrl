@@ -52,12 +52,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 // giftAmounts is what the priced entries give one seat.
 type giftAmounts struct {
 	draws, discards, tokens, lifeGain, lifeLoss, damage int
+	// turns is the extra turns the seat takes (ADR 0188 Decision 10).
+	turns int
 }
 
 // givesPlayer reports whether an entry names an amount only a player
 // can be given (game.TargetPurpose.HasPlayerAmount on the wire).
 func givesPlayer(e *protocol.TargetPurposeView) bool {
-	return e != nil && (e.Draws != 0 || e.Discards != 0 || e.Tokens != 0 || e.LifeGain != 0 || e.LifeLoss != 0)
+	return e != nil && (e.Draws != 0 || e.Discards != 0 || e.Tokens != 0 || e.LifeGain != 0 || e.LifeLoss != 0 || e.ExtraTurns != 0)
 }
 
 // entryAt is the entry for clause `slot` in a statement's purpose, nil
@@ -157,6 +159,11 @@ func (p *Policy) pricedTargetsGross(st *state, targets []targetRef, entryOf func
 	for _, t := range targets {
 		e := entryOf(t)
 		if t.Kind != "player" {
+			if v, ok := p.reanimationValue(st, t.ID, e); ok {
+				cards += v
+				priced = true
+				continue
+			}
 			if lethality && e != nil && e.Damage > 0 {
 				if v, ok := p.damageCardValue(st, t.ID, e.Damage, source); ok {
 					cards += v
@@ -185,6 +192,7 @@ func (p *Policy) pricedTargetsGross(st *state, targets []targetRef, entryOf func
 		g.tokens += e.Tokens
 		g.lifeGain += e.LifeGain
 		g.lifeLoss += e.LifeLoss
+		g.turns += e.ExtraTurns
 		if damage {
 			g.damage += e.Damage
 		} else if e.Damage > 0 {
@@ -217,7 +225,8 @@ func (p *Policy) giftsValue(st *state, gifts map[string]*giftAmounts, self *prot
 			continue
 		}
 		x := st.w.Hand*float64(g.draws) - p.cfg.DiscardWeight*float64(g.discards) +
-			p.cfg.TokenWeight*float64(g.tokens) + st.w.lifeChange(e, g.lifeGain-g.lifeLoss)
+			p.cfg.TokenWeight*float64(g.tokens) + st.w.lifeChange(e, g.lifeGain-g.lifeLoss) +
+			st.w.Turn*float64(g.turns)
 		if seat == st.me {
 			// Mary Read's Treasure for the Island the loot pitches, as
 			// purposeValue counts it for an untargeted loot.
@@ -241,6 +250,28 @@ func (p *Policy) giftsValue(st *state, gifts map[string]*giftAmounts, self *prot
 		after[seat] = &cp
 	}
 	return st.w.ScoreEval(after, st.me) - st.w.ScoreEval(st.evals, st.me) + lethal
+}
+
+// reanimationValue is a declared reanimation's price at the graveyard
+// card `id` (#3161): the permanent it becomes, whoever owns the pile.
+// Reanimate, Animate Dead and the rest of the family return the card
+// under the caster's control (a creature's value, undiscounted: an
+// expensive one is the point), so an opponent's graveyard is worth as
+// much as the bot's own. False for a pick it does not price: no
+// declared reanimation, or a card the view does not show in a
+// graveyard; targetsValue prices those as before.
+func (p *Policy) reanimationValue(st *state, id string, e *protocol.TargetPurposeView) (float64, bool) {
+	if !p.cfg.PriceReanimation || e == nil || !e.Reanimates {
+		return 0, false
+	}
+	c := st.graveyard[id]
+	if c == nil {
+		return 0, false
+	}
+	if isCreature(c) {
+		return st.w.CreatureValue(c), true
+	}
+	return st.w.permanentValue(c), true
 }
 
 // damageCardValue is a declared damage entry's price at permanent `id`

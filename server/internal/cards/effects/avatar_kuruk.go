@@ -48,7 +48,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Exhaust — Waterbend {20}: Take an extra turn after this one.",
-			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Purpose: game.Purpose{Answers: game.AnswerValue, ExtraTurns: 1},
 			Cost:    WaterbendCost("{20}"),
 			Exhaust: true,
 			Effect:  youTakeAnExtraTurnEffect,

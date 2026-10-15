@@ -7,6 +7,8 @@
 2026-10-10 — Decision 10 lifted for layer-7c statics, and a name and type-line set (#2562); see
 "Amendment 2026-10-10 — a permanent that becomes an Equipment".
 2026-10-13 — a grant to cards in a hand, graveyard or exile (#3233); see "Amendment 2026-10-13".
+2026-10-15 — a granted static in layer 6, 7b or 7e, at CR 613.7a's timestamp (#3784); see
+"Amendment 2026-10-15".
 **Issue:** [#754](https://github.com/krakenhavoc/cmd_and_ctrl/issues/754) (this seam — the public roadmap's
 top missing seam, `abilities-granted-to-other-permanents` in `server/internal/roadmap/registry.go`)
 **Numbering:** swept with the AGENTS.md §4 check on 2026-09-24 — `git fetch origin`, then every
@@ -417,6 +419,8 @@ names a key no card registered, or if a layer-6 grant names a bundle with a `Sta
   combination until an ADR amendment does it.
   *Lifted for a layer-7c static ("Equipped creature gets +3/+3") by the amendment of 2026-10-10
   (#2562): the second gather after layer 6. Layers 1-6, 7a and 7b stay refused.*
+  *Lifted for layer 6, 7b and 7e by the amendment of 2026-10-15 (#3784): a granted layer-6 static
+  joins the layer-6 bucket when its grant applies. Layers 1-5 and 7a stay refused.*
 - **Granted replacement effects and the CR 614.12 look-ahead**, including riot (Rhythm of the Wild).
   Riot is a keyword, so granting it already works once the keyword exists. What is missing is riot
   and "abilities it would have on the battlefield" as it enters. PR 1 moves Rhythm of the Wild off
@@ -921,3 +925,81 @@ Pinned by `TestSatoruGivesCreatureCardsInHandNinjutsuWhileHeIsOut`, `TestACardDr
 `TestGrantedCyclingCyclesTheCard`, `TestAZoneGrantEndsWhenTheCardChangesZone`,
 `TestZoneGrantRegistrationRefusals` (`internal/cards/effects`), `TestAGrantedNinjutsuIsEnumeratedForABot`
 (`internal/legal`) and `TestAGrantedHandAbilityIsAZoneAbilitiesRowForItsOwnerOnly` (`internal/protocol`).
+
+## Amendment 2026-10-15 — a granted static in layer 6, and the timestamp it carries (#3784)
+
+Dancer's Chakrams reads "Equipped creature gets +2/+2, has lifelink and 'Other commanders you control get
++2/+2 and have lifelink,' and is a Performer in addition to its other types." The quoted ability is a static
+the equipped CREATURE has. Its +2/+2 is a granted layer-7c static, which the amendment of 2026-10-10 already
+applies. Its lifelink is a granted layer-6 static, and `GrantedStaticProblem` refused it. Putting the lifelink
+on the Equipment instead would keep it working after the creature lost its abilities, which is stronger than
+printed, so the card was left out (#3784, from deck #3657). The Kaldheim Runes ("As long as enchanted
+permanent is an Equipment, it has 'Equipped creature has flying.'") and Giant's Amulet ("has 'This creature
+has hexproof as long as it's untapped.'") waited on the same thing.
+
+**1. The ordering, from CR 613.8a and 613.7a.** A granted layer-6 static does not exist until the effect that
+grants its bundle applies, and that effect is in the same layer. CR 613.8a calls that a dependency: applying
+the grant changes the static's existence, so the static waits for the grant. CR 613.7a gives the static its
+timestamp: the host's, "or the timestamp of the effect that created the ability, if that effect is later".
+That is never earlier than the grant's. So the static's place in the bucket is fixed by two rules, and both
+point the same way: after its grant, and at its own timestamp among everything else.
+
+`applyBucketLocked` therefore runs the layer-6 bucket through `applyGrantingBucketLocked`
+(`game/granted_statics.go`). After each effect it looks at the grants that effect just wrote. For every
+bundle that carries a layer-6 static, it inserts that static into the part of the bucket still to run, after
+every effect whose timestamp is earlier or equal. No re-run of the bucket and no fixed point: the static
+enters the queue where it belongs and is applied when the loop reaches it. A bucket that grants no
+static-bearing bundle runs exactly as the plain loop did. The first test of that is one length comparison
+per effect.
+
+**2. A removal on the host is the second dependency.** A removal still waiting in the bucket that applies to
+the HOST would take the grant away, so it changes the static's existence too (CR 613.8a, Decision 3's rule
+from the other side). The inserted static goes after the last such removal, whatever the timestamps. When its
+turn comes, the static asks whether the host still has the grant, matching the bundle key and the grantor,
+before its own `AppliesTo` (`grantedStaticEffect.AppliesTo`). That is how a host that loses all abilities
+after the Chakrams are attached stops buffing the commanders, and how one that lost them before keeps the
+grant (CR 613.6) and the buff with it.
+
+A removal on a RECIPIENT is not a dependency. The static's existence does not depend on it, so the two sort
+by timestamp, as two keyword effects always have. A commander that lost its abilities before the Chakrams
+were attached gets the lifelink back; one that loses them afterwards does not. Applying granted layer-6
+statics after the whole bucket would get the second case wrong, and that is why the static is inserted
+rather than appended.
+
+**3. The timestamp is pass-local.** `GrantedAbility` does not carry the grant's timestamp, and it does not
+need to. It is embedded by value in last-known information and in the snapshot corpus, and it is only
+meaningful inside one pass. `applyOneEffectLocked` records each grant of a static-bearing bundle on the pass
+state (`layerPassState.granted`: host, bundle, grantor, the granting effect's timestamp). The layer-6
+insertion reads it as it goes. The layer-7 gather after the bucket reads it to give each granted 7b, 7c or 7e
+static the same CR 613.7a timestamp. So 7b and 7e are allowed now: a granted "set" or "switch" sorts against
+the host's own effects by the right timestamp. Nothing is persisted, and there is no new wire field.
+
+**4. What a granted static still may not be** (`GrantedStaticProblem`, the one statement):
+
+- Layers 1-5. The host's own layers 1-5 are applied before layer 6 gives it the ability, and CR 613.6 does
+  not reach back. No card in the catalog asks for one.
+- Sublayer 7a. A characteristic-defining ability is never one another object grants (CR 604.3a).
+- A removal, a grant or a borrow. Each one changes which grants exist, which would put the bucket into a loop
+  with no guaranteed end ("this creature has 'creatures you control have "…"'"). The issue asked for
+  `GrantAbilities` on a granted static. No printed card needs it: lifelink, flying, haste, hexproof and the
+  rest are keyword tokens an `Apply` appends, not bundles. So the refusal stands, and the amendment says why.
+- The refusals the 2026-10-10 amendment listed: `ActiveWhen`, zones, spells and invalidation hints.
+
+**5. Other layer-6 dependencies stay timestamp order.** A layer-6 effect whose "applies to" reads a keyword
+a granted static gives ("creatures with lifelink have …") is not reordered, as Decision 3 already says of two
+grants. No catalogued pair reaches it.
+
+**Cards.** Dancer's Chakrams (Full), the five Kaldheim Runes (Rune of Flight, Rune of Might, Rune of
+Mortality, Rune of Speed, Rune of Sustenance; Full) and Giant's Amulet (Full; its tap-state hexproof is
+re-read on every tap, which already invalidates the layer cache). Each one's quoted ability is a granted
+bundle, so it goes away when the host loses its abilities. The Equipment or Aura stays attached.
+
+Pinned by `TestAGrantedLayer6StaticAppliesThroughItsHost`, `TestALaterRemovalOnTheHostEndsItsGrantedLayer6Static`,
+`TestAnEarlierRemovalOnTheHostLeavesItsGrantedLayer6Static`,
+`TestAGrantedLayer6StaticSortsAgainstARemovalOnItsRecipient`, `TestAGrantedLayer7bStaticTakesTheGrantsLaterTimestamp`
+and `TestGrantedStaticProblemNamesWhatAGrantCannotCarry` (`internal/game`), and in `internal/cards/effects`
+`TestDancersChakramsBuffsOtherCommandersYouControl`, `TestDancersChakramsOnACommanderBuffsTheOtherOneOnly`,
+`TestDancersChakramsHostThatLosesItsAbilitiesStopsBuffingCommanders`,
+`TestDancersChakramsLifelinkSortsAgainstARemovalOnTheCommander`, `TestDancersChakramsJobSelectEquipsAHero`,
+`TestKaldheimRunesGiveACreatureAndAnEquipmentsCreatureTheirKeyword`,
+`TestGiantsAmuletHexproofFollowsTheEquippedCreaturesTapState` and `TestGiantsAmuletMayPayForAGiantToWearIt`.

@@ -448,30 +448,29 @@ func TestB10SheoldredsEdictModesAskForTheRightKindOfPermanent(t *testing.T) {
 	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(opp.ID, RedGoblinToken(), 1) })
 	goblin := findBattlefieldByName(g, "Goblin")
 
+	// Each mode leaves the opponent exactly one matching permanent, so
+	// the pick is forced and collected without a prompt (ADR 0175,
+	// #3664): what the mode admits shows in what is sacrificed.
 	castModal(t, g, "Sheoldred's Edict", "Instant", b10SheoldredsEdictOracle, []int{0}, nil)
 	passPriorityAroundTable(t, g)
-	c := sacrificeChoiceFor(g, opp.ID)
-	if c == nil {
-		t.Fatal("the opponent should be asked to sacrifice a nontoken creature")
-	}
-	if len(c.SacrificeOptions) != 1 || c.SacrificeOptions[0] != bear {
-		t.Errorf("nontoken mode offered %v, want only the bear", c.SacrificeOptions)
-	}
 	if sacrificeChoiceFor(g, me.ID) != nil || sacrificeChoiceFor(g, other.ID) != nil {
 		t.Error("only opponents with a matching creature are asked")
 	}
-	answerSacrifice(t, g, opp.ID, bear)
 	if g.Battlefield.Contains(bear) {
-		t.Error("the bear was not sacrificed")
+		t.Error("the bear, the only nontoken creature, was not sacrificed")
+	}
+	if !g.Battlefield.Contains(goblin) {
+		t.Error("nontoken mode took the Goblin token")
 	}
 
 	castModal(t, g, "Sheoldred's Edict", "Instant", b10SheoldredsEdictOracle, []int{1}, nil)
 	passPriorityAroundTable(t, g)
-	c = sacrificeChoiceFor(g, opp.ID)
-	if c == nil || len(c.SacrificeOptions) != 1 || c.SacrificeOptions[0] != goblin {
-		t.Fatalf("token mode should offer only the Goblin, got %+v", c)
+	if g.Battlefield.Contains(goblin) {
+		t.Error("token mode did not take the Goblin")
 	}
-	answerSacrifice(t, g, opp.ID, goblin)
+	if findBattlefieldByName(g, "Mine") == uuid.Nil {
+		t.Error("the caster is not an opponent")
+	}
 
 	castModal(t, g, "Sheoldred's Edict", "Instant", b10SheoldredsEdictOracle, []int{2}, nil)
 	passPriorityAroundTable(t, g)
@@ -493,18 +492,16 @@ func TestB10SoulShatterTakesEachOpponentsBiggestCreatureOrPlaneswalker(t *testin
 
 	castCatalogSpell(t, g, "Soul Shatter", "Instant", b10SoulShatterOracle, nil)
 	passPriorityAroundTable(t, g)
-	c := sacrificeChoiceFor(g, opp.ID)
-	if c == nil || len(c.SacrificeOptions) != 1 || c.SacrificeOptions[0] != dragon {
-		t.Fatalf("the first opponent should be offered only the mana-value-5 Dragon, got %+v", c)
-	}
-	answerSacrifice(t, g, opp.ID, dragon)
-	c = sacrificeChoiceFor(g, other.ID)
-	if c == nil || len(c.SacrificeOptions) != 1 || c.SacrificeOptions[0] != walker {
-		t.Fatalf("the second opponent should be offered their only planeswalker, got %+v", c)
-	}
-	answerSacrifice(t, g, other.ID, walker)
+	// Each opponent has exactly one permanent of greatest mana value,
+	// so neither is asked (ADR 0175's forced pick, #3664).
 	if sacrificeChoiceFor(g, me.ID) != nil {
 		t.Error("the caster is not an opponent")
+	}
+	if g.Battlefield.Contains(dragon) {
+		t.Error("the first opponent's mana-value-5 Dragon was not sacrificed")
+	}
+	if g.Battlefield.Contains(walker) {
+		t.Error("the second opponent's only planeswalker was not sacrificed")
 	}
 	if !g.Battlefield.Contains(small) || !g.Battlefield.Contains(mine) {
 		t.Error("only the greatest mana value goes")

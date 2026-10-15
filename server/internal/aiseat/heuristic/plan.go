@@ -705,9 +705,11 @@ func colorMask(letter string) uint8 {
 func (st *state) manaAvailable(filterLands bool) []uint8 {
 	var units []uint8
 	if st.seat != nil {
-		for _, sym := range st.seat.ManaPool {
-			if m := colorMask(sym); m != 0 {
-				units = append(units, m)
+		for _, run := range st.seat.ManaPool {
+			if m := colorMask(run.Color); m != 0 {
+				for range run.Count {
+					units = append(units, m)
+				}
 			}
 		}
 	}

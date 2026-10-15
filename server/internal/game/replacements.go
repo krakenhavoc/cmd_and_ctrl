@@ -538,6 +538,13 @@ type ReplacementEvent struct {
 	// keyed on what can change the answer mid-window.
 	lookAhead *entryLookAheadCache
 
+	// entryRefused marks an entry an entry restriction cancelled
+	// (#1985, entry_gate.go) rather than a replacement, so the finisher
+	// can tell CR 608.3e's refused permanent spell (owner's graveyard)
+	// from a cancelled one. Set and read within one call chain: a
+	// refusal never pauses.
+	entryRefused bool
+
 	// EntersUnlocked is CR 709.5d's designation for a Room spell that
 	// resolves (ADR 0103): the door of the half that was cast, seeded
 	// from the resolving stack item before the CR 614 pipeline and
@@ -773,6 +780,14 @@ type ReplacementEvent struct {
 	// They run after the card has landed and before the route's
 	// continuation (runMoveTailLocked). Unexported engine plumbing.
 	lifeAfterMove []lifeInstruction
+
+	// extraTurnsAfterMove is ADR 0188's list of extra turns a replacement
+	// declared as part of the modified move ("instead exile it and take
+	// an extra turn after this one"), set only through
+	// TakeExtraTurnAfterReplacedMoveForEffect. They are queued after the
+	// card has landed and before the life instructions
+	// (runMoveTailLocked). Unexported engine plumbing.
+	extraTurnsAfterMove []extraTurnInstruction
 
 	// asCommanderMove is an unexported breadcrumb set by
 	// MoveCardByIDAsCommander when the caller flagged the move as
@@ -1465,6 +1480,16 @@ type ReplacementEffect struct {
 	// different objects into the event, so they are ordered, not merged.
 	RedirectsDamage bool
 
+	// ActsOnItsSource declares a replacement whose Replace does
+	// something to its own SOURCE object, so two copies of one printed
+	// effect are not interchangeable: umbra armor (CR 702.89a, "destroy
+	// this Aura") destroys a different Aura depending on which copy is
+	// applied. Like RedirectsDamage it takes the effect out of the
+	// shared identity (catalogReplacementIdentity), so two Bear Umbras on
+	// one creature are ordered by its controller (CR 616.1) rather than
+	// collapsed by #792's sameModification.
+	ActsOnItsSource bool
+
 	// Then is a prevention static's CR 615.5 additional effect (ADR 0108
 	// §8, #1906): a registered body, run after the prevention with what
 	// it prevented — Nine Lives's incarnation counter, Immortal Coil's
@@ -1642,9 +1667,10 @@ func (r replacementIdentity) known() bool { return r.card != "" }
 // object's creature into the event, so two Pariahs on two creatures are
 // two different modifications, and the affected player orders them
 // (CR 616.1). The zero identity never matches, so sameModification never
-// collapses them.
+// collapses them. ActsOnItsSource (umbra armor) is the same shape: each
+// copy destroys its own Aura.
 func catalogReplacementIdentity(eff ReplacementEffect, key string, slot int, controller uuid.UUID) replacementIdentity {
-	if eff.RedirectsDamage {
+	if eff.RedirectsDamage || eff.ActsOnItsSource {
 		return replacementIdentity{}
 	}
 	return replacementIdentity{card: key, slot: slot, controller: controller}
@@ -1777,6 +1803,14 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		}
 		g.splitExpandedDrawLocked(ev)
 		if ev.Canceled {
+			return nil, nil
+		}
+		// #1985: "can't enter the battlefield" (CR 101.2) is asked
+		// before anything is gathered, on every pass — so nothing asks
+		// a question about an entry that cannot happen, and an entry a
+		// copy replacement turned into a land is caught on the next
+		// pass. Not a replacement: see entry_gate.go.
+		if g.refuseForbiddenEntryLocked(ev) {
 			return nil, nil
 		}
 		applicable := g.gatherActiveReplacementsLocked(ev)

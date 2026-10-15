@@ -156,6 +156,8 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		}
 	case choiceEntryRiot:
 		return st.riotValue(ch, cp.Apply)
+	case choiceTurnSkipOrder:
+		return turnSkipOrderValue(ch, cp.Apply)
 	case choiceDamageAssignment:
 		// The enumerator offers the canonical most-kills split first and
 		// the other divisions after it (#3620). Equal values go to the
@@ -376,6 +378,24 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// answer is always chosen: a seat owing a choice is offered
 		// nothing else, and a policy with no opinion must still pick
 		// (#544).
+		// ADR 0187 §7: one player's leg of a per-object any-player offer
+		// (Cleansing) is a choose_cards that names the lands it pays
+		// for, not ones it gives up (any_player_each.go).
+		if v, why, ok := st.anyPlayerEachValue(ch, cp.CardIDs, lookup); ok {
+			return v, why
+		}
+		// #3664: an edict's pick ("each player sacrifices a creature")
+		// is a sacrifice, priced as the sacrifice_choice kind above
+		// prices one: give up the least.
+		if ch != nil && ch.ChooseDestination == chooseSacrifice {
+			var v float64
+			for _, id := range cp.CardIDs {
+				if c := lookup(id); c != nil {
+					v -= st.permanentValue(c)
+				}
+			}
+			return v, "sacrifice the least"
+		}
 		// #2680: a prompt that says the named card goes onto the
 		// battlefield is not a discard (puts.go).
 		if v, ok := p.valuePutOntoBattlefield(st, ch, cp.CardIDs); ok {
@@ -594,6 +614,16 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 				return 1, "any player: let an opponent's permanent go"
 			}
 		}
+		// ADR 0187 §7 (owner decision 3): a card exiled from the bot's
+		// own graveyard is paid only against a creature that is fighting
+		// the bot. Its price is then the cards it exiles (fuelValue,
+		// below); out of that combat it is not worth a card.
+		if kind == choicePayUnless && exilesFromMyGraveyard(ch) && !st.inCombatWithMe(ch.Source) {
+			if cp.Apply != nil && *cp.Apply {
+				return 0.25, "any player: that creature is not fighting me, keep the graveyard"
+			}
+			return 1, "any player: not my combat"
+		}
 		if kind == choicePayUnless {
 			if decline, why, ok := p.taxAgainstPlan(st, ch); ok {
 				yes := cp.Apply != nil && *cp.Apply
@@ -608,6 +638,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// yes, but not so emphatically that a targeted alternative
 		// in the same window cannot outbid it.
 		if cp.Apply != nil && *cp.Apply {
+			// ADR 0187 §7: an either payment (Worms of the Earth) is
+			// scored branch by branch (either_payment.go).
+			if kind == choicePayUnless && ch != nil && len(ch.PayEither) > 0 {
+				return p.eitherPaymentValue(st, ch, cp.PayOption, cp.CardIDs, lookup)
+			}
 			// ADR 0108 §5 decision 6: a payment that discards or
 			// sacrifices is still paid, giving up the least valuable
 			// cards. The tie-break stays above the decline's 0.5.
@@ -681,6 +716,10 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// "you may cast that card. If you don't, ..." (paid_or_else,
 		// Chandra, Torch of Defiance, #3510) is the same: a pass without
 		// the cast runs the "if you don't", exactly as declining does.
+		// The looked-at top of a library (free_or_hand, play_or_hand,
+		// #3801: Ziatora's Envoy) is the same shape, and a land offered
+		// under play_or_hand is played on the spot: a free card either
+		// way, so yes.
 		if cp.Apply != nil && *cp.Apply {
 			return 1, "may cast: take the free cast"
 		}
@@ -973,6 +1012,10 @@ const chooseFromOutside = "outside"
 // chooseManifest is game.ChooseManifest on the wire: the named cards
 // from the bot's own hand are manifested (Kozilek, the Broken Reality).
 const chooseManifest = "manifest"
+
+// chooseSacrifice is game.ChooseSacrifice on the wire: the named
+// permanents are sacrificed (an "each player sacrifices" edict, #3664).
+const chooseSacrifice = "sacrifice"
 
 // --- "choose a color" (#780) -----------------------------------------
 

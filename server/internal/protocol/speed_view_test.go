@@ -15,7 +15,7 @@ func TestPlayerViewCarriesSpeedForEveryViewer(t *testing.T) {
 
 	for _, viewer := range []string{me.ID.String(), them.ID.String()} {
 		v := ViewOfGameFor(g, viewer)
-		var got, other int = -1, -1
+		var got, other = -1, -1
 		for _, s := range v.Seats {
 			if s.ID == me.ID.String() {
 				got = s.Speed

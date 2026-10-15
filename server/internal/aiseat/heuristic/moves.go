@@ -335,6 +335,16 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			ps.add(rowPurpose(src, cp.AbilityIndex))
 			ps.targetsPriced = targetsPriced
 			row := rowAt(src, cp.AbilityIndex)
+			// #3146: a fetch land keeps the flat ActivateBase, and the
+			// lands it puts down add what the bot's landfall payoffs pay
+			// (landfall.go). Its declared lands are read nowhere else.
+			if len(cp.Targets) == 0 && st.fetchRow(src, row, ps) {
+				if p.cfg.PriceFetchLandfall {
+					v += p.fetchLandfallValue(st, ps)
+					reason = "activate fetch"
+				}
+				ps = purposeSet{}
+			}
 			if p.purposePriced(ps) {
 				v, reason, purposed = p.purposeValue(st, ps, cp.XValue, nil, false), "activate (declared purpose)", true
 				// A row that taps a creature pays for it below, by when the
@@ -516,6 +526,8 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			return p.valueOfUnlock(st, sp)
 		case "companion":
 			return p.valueOfCompanion(st, sp)
+		case "turn_face_up":
+			return p.valueOfTurnFaceUp(st, m, sp)
 		}
 		return p.cfg.SpecialActionValue, "special action: " + sp.Kind
 
@@ -533,6 +545,10 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	card = castFaceOf(card, cp.Face)
 	if castSacrificesAll(card) {
 		return sacrificeAllDeclined, "cast declined: its cost sacrifices everything (#2097)"
+	}
+	// #3712: cast now, it is sacrificed at cleanup before it does anything.
+	if p.holdsFlashSacrifice(st, card, cp) {
+		return flashSacrificeDeclined, "cast declined: sacrificed at cleanup, held for the main phase (#3712)"
 	}
 	// ADR 0135 §3: an awaken cast's last target is its own land, which
 	// awakenValue prices as the body it becomes; it is not a pump on a
@@ -578,6 +594,15 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 			v += st.w.ManaSource * float64(n)
 		}
 		v += p.resolvedValueFor(st, card, cp.XValue, ps, false, len(targets) > 0)
+		// #3802: evoke, warp, dash and blitz put a body that leaves
+		// (temporary_body.go), not the permanent resolvedValueFor priced.
+		tempKind := ""
+		var tempDelta float64
+		tempDelta, tempKind = p.temporaryBodyDelta(st, card, cp)
+		v += tempDelta
+		// #3146: a landfall payoff or doubler is also worth what it will
+		// pay for the lands the bot puts down next (landfall.go).
+		v += p.landfallCastValue(st, card)
 		// ADR 0126 §2: the ramp premium is a CAST price only. It is
 		// what one more source is worth to a seat that is short of
 		// mana now, which a card being pitched to a cost is not.
@@ -597,6 +622,9 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 			reason = "cast spell (declared purpose)"
 		default:
 			reason = "cast spell"
+		}
+		if tempKind != "" {
+			reason += " (" + tempKind + ": a body that leaves this turn)"
 		}
 	}
 	// A card leaves HAND: one fewer resource. #673 — a cast out of the
@@ -645,6 +673,12 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	for _, id := range cp.DelveIDs {
 		v -= p.fuelValue(st, id)
 	}
+	// #3536: and the graveyard cards an exile-N-cards additional cost
+	// spends, priced as delve's and the ability form's are, so the
+	// payment the enumerator ordered cheapest is the one it prices so.
+	for _, id := range cp.ExileIDs {
+		v -= p.fuelValue(st, id)
+	}
 	// Additional costs are paid out of the same pool of resources.
 	// ADR 0126 §7: a discarded card costs what IT is worth to the bot,
 	// so the enumerator's one payment per discard combination lets the
@@ -667,6 +701,15 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	// #3402: and the permanent an exile-a-permanent additional cost
 	// gives up leaves the board as surely.
 	v -= p.sacrificeCost(st, cp.ExilePermanentIDs)
+	// #3175: a hand card exiled to a March is a card lost from hand, as a
+	// discarded one is, without a discard's payoffs (it is not a discard).
+	if p.cfg.DiscardCostByCard {
+		for _, id := range cp.ExileFromHandIDs {
+			v -= p.discardCost(st, id, cp.InstanceID, cp.ExileFromHandIDs)
+		}
+	} else {
+		v -= st.w.Hand * float64(len(cp.ExileFromHandIDs))
+	}
 	v += targetV
 	if cp.FromZone == "command" {
 		// Each cast from the command zone makes the next one cost
@@ -1038,10 +1081,10 @@ func manaValue(cost string, x int) int {
 		}
 		sym := cost[i+1 : i+j]
 		cost = cost[i+j+1:]
-		switch {
-		case sym == "X" || sym == "x":
+		switch sym {
+		case "X", "x":
 			total += x
-		case sym == "":
+		case "":
 			// malformed; skip
 		default:
 			if n, err := strconv.Atoi(sym); err == nil {
@@ -1114,4 +1157,43 @@ func (p *Policy) valueOfUnlock(st *state, sp specialActionParams) (float64, stri
 		return p.cfg.SpecialActionValue, "unlock door"
 	}
 	return p.cfg.SpellPerMana * float64(manaValue(c.Faces[face].ManaCost, 0)), "unlock " + c.Faces[face].Name
+}
+
+// valueOfTurnFaceUp prices the CR 708.6 turn-face-up special action
+// (ADR 0189 decision 4). It keeps the flat special-action value and
+// adds a small bonus for the megamorph route (CR 702.37b), the one
+// offer that turns the permanent up AND adds a +1/+1 counter. A
+// manifested Den Protector offers its mana cost and its megamorph cost
+// for the same {1}{G}, so the bonus is what makes the bot take the
+// counter; when the two cost differently the flat values tie and the
+// enumerator's order, cheaper first, decides.
+//
+// The megamorph route is read off the move label, which names the
+// route and its counter whenever a permanent has two offers (a lone
+// offer has nothing to choose between, so it needs no bonus).
+func (p *Policy) valueOfTurnFaceUp(st *state, m legal.Move, sp specialActionParams) (float64, string) {
+	v := p.cfg.SpecialActionValue
+	pumpNote := ""
+	// #3762: what the card under the face-down permanent does when it is
+	// turned up, if it declares one: Unstable Hulk's skipped turn. The
+	// view sends the controller that purpose and nothing else of the
+	// card, since a face-down object has no text (CR 708.2a). Priced
+	// like any declared purpose, so a turn lost is charged Weights.Turn.
+	if c := st.bf[sp.CardID]; c != nil && c.Purpose != nil && c.Purpose.TurnedFaceUp != nil {
+		var ps purposeSet
+		ps.add(c.Purpose.TurnedFaceUp)
+		if p.purposePriced(ps) {
+			v += p.purposeValue(st, ps, 0, c, false)
+		}
+		// #3776: and the pump it gives the creature for this turn's attack
+		// (face_up_pump.go).
+		if pv, note := p.faceUpPumpValue(st, c, c.Purpose.TurnedFaceUp.Pump); note != "" {
+			v += pv
+			pumpNote = note
+		}
+	}
+	if sp.Route == "morph" && strings.Contains(m.Label, "megamorph") {
+		return v * 1.1, "turn face up (megamorph, +1/+1 counter)"
+	}
+	return v, "special action: turn_face_up" + pumpNote
 }

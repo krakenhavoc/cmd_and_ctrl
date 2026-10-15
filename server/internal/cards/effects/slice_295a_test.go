@@ -292,7 +292,7 @@ func TestFaeburrowElderScalesWithColorsAmongYourPermanents(t *testing.T) {
 	if err := g.ActivateManaAbility(me, elder, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	pool := g.Seats[0].ManaPool
+	pool := g.Seats[0].ManaPool.Units()
 	if len(pool) != 3 {
 		t.Fatalf("pool = %+v, want three tokens (one per colour, no picker)", pool)
 	}
@@ -521,7 +521,7 @@ func TestIncubationDruidManaTriplesWithACounterAndAdaptsOnce(t *testing.T) {
 	if err := g.ResolveManaChoice(pick.ID, me.ID, "G"); err != nil {
 		t.Fatalf("ResolveManaChoice: %v", err)
 	}
-	if len(me.ManaPool) != 1 {
+	if me.ManaPool.Total() != 1 {
 		t.Fatalf("pool = %+v, want one green token", me.ManaPool)
 	}
 	untapAndEmptyPool()
@@ -554,7 +554,7 @@ func TestIncubationDruidManaTriplesWithACounterAndAdaptsOnce(t *testing.T) {
 	if err := g.ResolveManaChoice(pick2.ID, me.ID, "G"); err != nil {
 		t.Fatalf("ResolveManaChoice: %v", err)
 	}
-	if len(me.ManaPool) != 3 {
+	if me.ManaPool.Total() != 3 {
 		t.Fatalf("pool = %+v, want three green tokens", me.ManaPool)
 	}
 	untapAndEmptyPool()
@@ -595,7 +595,7 @@ func TestPriestOfTitaniaCountsEveryElfOnTheBattlefield(t *testing.T) {
 	if err := g.ActivateManaAbility(me, priest, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	pool := g.Seats[0].ManaPool
+	pool := g.Seats[0].ManaPool.Units()
 	// Priest herself, "My Elf" and the opponent's Elf: three, straight
 	// into the pool with no picker (fixed colour).
 	if len(pool) != 3 {
@@ -641,7 +641,7 @@ func TestUrzaCreatesAScalingConstructAndTapsArtifactsForMana(t *testing.T) {
 	if err := g.ActivateManaAbility(me, urza, 0, game.ManaAbilityParams{TapIDs: []uuid.UUID{rock}}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	pool := g.Seats[0].ManaPool
+	pool := g.Seats[0].ManaPool.Units()
 	if len(pool) != 1 || pool[0].Color != "U" {
 		t.Fatalf("pool = %+v, want one blue token", pool)
 	}

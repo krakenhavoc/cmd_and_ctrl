@@ -112,14 +112,7 @@ type BecomeArtifactCreature struct {
 }
 
 func (b BecomeArtifactCreature) Apply(ctx *Context) error {
-	return BecomeCreatureUntilEOT{
-		Target:       b.Target,
-		Types:        b.Types,
-		Subtypes:     b.Subtypes,
-		SetPower:     b.SetPower,
-		SetToughness: b.SetToughness,
-		Label:        b.Label,
-	}.applyFor(ctx, game.IndefiniteDuration())
+	return BecomeCreatureUntilEOT(b).applyFor(ctx, game.IndefiniteDuration())
 }
 
 // applyFor is the shared body: one registration, two durations.

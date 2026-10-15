@@ -1548,3 +1548,24 @@ Convoke is not an optional cost but a tap cost (`CardDef.TapCost`, S22), so it g
 **Snapshot impact.** None: the grant is catalog data and the payment records it already wrote.
 
 Tests: `cards/effects/convoke_grant_test.go`.
+
+## Amendment 2026-10-15: improvise, and giving it to the next spell (#3654)
+
+Improvise (CR 702.126) is the same tap-permanents cost as convoke over artifacts: `effects.Improvise()` (key
+`improvise`, pool "an untapped artifact you control", no colour clause), so a tapped artifact pays generic mana only and
+the tap budget is the spell's generic alone (`tapPermanentsBudget`). A card prints it as `Spec.TapCost` (Kappa Cannoneer).
+
+"The next spell you cast this turn has improvise" (Archway of Innovation) is `NextSpellPromise.Improvise`, a one-use
+promise on the caster that lapses at end of turn. `TapPermanentsCostForCastLocked` offers `game.ImproviseTapCost` (wired
+by the effects package at init) to the caster's next matching spell, ahead of the permanents' grants, so validation,
+pricing and the cast view agree. The next spell cast spends the promise whether or not it improvised.
+
+**Not covered.** As for convoke, the move enumerator never offers improvise taps; it prices the printed cost.
+
+**Snapshot impact.** One new omitempty field on the promise payload (`improvise`); older snapshots read as false.
+
+Tests: `cards/effects/improvise_test.go`.
+
+**Native improvise cards (#3654).** The twenty-odd cards that print improvise declare `TapCost: Improvise()` and share the payment
+code above; `effects.SpellsYouCastHaveImprovise` (beside the convoke grant) is the permanent's "noncreature spells you cast have
+improvise" (Ironheart, Clever Champion). Tests: `cards/effects/improvise_cards_test.go`.

@@ -42,8 +42,8 @@ func seedLand(g *game.Game, owner uuid.UUID, name, typeLine, oracleID string) uu
 // poolColors lists the colour letters currently in a player's mana
 // pool, in pool order.
 func poolColors(p *game.Player) []string {
-	out := make([]string, 0, len(p.ManaPool))
-	for _, tok := range p.ManaPool {
+	out := make([]string, 0, p.ManaPool.Total())
+	for _, tok := range p.ManaPool.Units() {
 		out = append(out, tok.Color)
 	}
 	return out

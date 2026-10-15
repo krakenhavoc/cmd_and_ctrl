@@ -28,7 +28,7 @@ func init() {
 			Cost:      Plus(ManaCost("{2}{U}{U}"), TapCost(), PutThisOnTheBottomOfItsOwnersLibrary()),
 			Condition: YouHaveTheCitysBlessingCondition(),
 			// ADR 0142: an extra turn answers nothing on the stack.
-			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Purpose: game.Purpose{Answers: game.AnswerValue, ExtraTurns: 1},
 			Effect:  youTakeAnExtraTurnEffect,
 		}},
 	})

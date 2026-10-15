@@ -376,6 +376,11 @@ func (g *Game) autoAnswerHandReasonLocked(c *PendingChoice, answer AutoAnswer) A
 	if answer != AutoAnswerAlways {
 		return ""
 	}
+	// ADR 0188 Decision 12: "use my skip" draws nothing and pays
+	// nothing, so neither hand check below is about it.
+	if c.Kind == PendingChoiceTurnSkipOrder {
+		return ""
+	}
 	p := g.playerByIDLocked(c.Chooser)
 	if p == nil || p.Library == nil || p.Library.Size() == 0 {
 		return AskedByHandEmptyLibrary
@@ -445,6 +450,16 @@ func (g *Game) AutoAnswer(choiceID uuid.UUID) (uint64, error) {
 		if yes {
 			ev.Call = AutoAnswerCallYes
 		}
+	case PendingChoiceTurnSkipOrder:
+		// ADR 0188 Decision 12: Always is answer 0, "use my skip"; Never
+		// is answer 1. Label names the other effect for the log line.
+		ev.Call = AutoAnswerCallNo
+		if yes {
+			ev.Call = AutoAnswerCallYes
+		}
+		if o := c.TurnSkipOrder; o != nil && len(o.Others) > 0 {
+			ev.Label = o.Others[0]
+		}
 	default:
 		return 0, ErrNotAutoAnswerable
 	}
@@ -452,11 +467,13 @@ func (g *Game) AutoAnswer(choiceID uuid.UUID) (uint64, error) {
 	seq := g.eventSeq
 	switch c.Kind {
 	case PendingChoicePayUnless:
-		g.answerPayUnlessLocked(idx, c, c.Chooser, yes, nil, nil, 0, false, true)
+		g.answerPayUnlessLocked(idx, c, c.Chooser, yes, nil, nil, 0, false, true, nil)
 	case PendingChoiceTriggerPrompt:
 		g.answerTriggerPromptLocked(idx, c, yes, true)
 	case PendingChoiceConfirm:
 		g.answerConfirmLocked(idx, c, c.Chooser, yes, true)
+	case PendingChoiceTurnSkipOrder:
+		g.answerTurnSkipOrderLocked(idx, c, yes, true)
 	}
 	return seq, nil
 }

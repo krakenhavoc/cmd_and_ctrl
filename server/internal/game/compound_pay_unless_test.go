@@ -57,7 +57,7 @@ func TestCompoundWardPaymentIsAllOrNothing(t *testing.T) {
 				t.Fatal(err)
 			}
 			if tc.wantPaid {
-				if payer.Life != tc.life-2 || len(payer.ManaPool) != 0 || g.StackMeta[spell] == nil {
+				if payer.Life != tc.life-2 || payer.ManaPool.Total() != 0 || g.StackMeta[spell] == nil {
 					t.Fatal("complete payment did not preserve the spell and pay both components")
 				}
 				for _, id := range lands {
@@ -66,7 +66,7 @@ func TestCompoundWardPaymentIsAllOrNothing(t *testing.T) {
 					}
 				}
 			} else {
-				if payer.Life != tc.life || len(payer.ManaPool) != tc.mana || g.StackMeta[spell] != nil {
+				if payer.Life != tc.life || payer.ManaPool.Total() != tc.mana || g.StackMeta[spell] != nil {
 					t.Fatal("failed/declined payment charged a component or did not counter")
 				}
 				for _, id := range lands {
@@ -91,7 +91,7 @@ func TestCompoundPaymentAllowsExactlyEnoughLife(t *testing.T) {
 	}
 	var paid bool
 	g.WithWriteLock(func() { paid = g.payCostWithLifeLocked(payer, cost, uuid.Nil, nil, 0, 2) })
-	if !paid || payer.Life != 0 || len(payer.ManaPool) != 0 {
+	if !paid || payer.Life != 0 || payer.ManaPool.Total() != 0 {
 		t.Fatal("paying exactly the life total is legal before state checks")
 	}
 }
@@ -127,7 +127,7 @@ func TestCompoundPaymentDoesNotChargeForDepartedSpell(t *testing.T) {
 	if err := g.ResolvePayUnless(choice.ID, payer.ID, true); err != nil && !errors.Is(err, ErrPendingChoiceNotFound) {
 		t.Fatal(err)
 	}
-	if payer.Life != 40 || len(payer.ManaPool) != 2 {
+	if payer.Life != 40 || payer.ManaPool.Total() != 2 {
 		t.Fatal("a departed guarded spell charged mana or life")
 	}
 }
@@ -184,7 +184,7 @@ func TestCompoundCanceledLifePaymentChargesNoMana(t *testing.T) {
 	if err := g.ResolvePayUnless(choice.ID, payer.ID, true); err != nil {
 		t.Fatal(err)
 	}
-	if payer.Life != 40 || len(payer.ManaPool) != 0 || tappedForTest(g, first) || tappedForTest(g, second) || g.StackMeta[spell] != nil {
+	if payer.Life != 40 || payer.ManaPool.Total() != 0 || tappedForTest(g, first) || tappedForTest(g, second) || g.StackMeta[spell] != nil {
 		t.Fatal("canceled life cost charged a partial mana payment")
 	}
 }

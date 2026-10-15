@@ -74,34 +74,30 @@ export function contextLine(
   return parts.join(" · ");
 }
 
-// deckWithPower is a seated deck's name and, once an admin has rated
-// it, its power level: "Atraxa · power 3.5" (#3671).
-export function deckWithPower(p: Pick<SeatInfo, "deck_name" | "deck_power">): string {
-  const name = p.deck_name || "deck ready";
-  return p.deck_power ? `${name} · power ${p.deck_power}` : name;
-}
-
-// seatLine is a taken seat's second line: the deck and its power level
-// in the lobby, with the life total in play. A bot names its tier and
-// deck.
+// seatLine is a taken seat's second line: the deck in the lobby, the
+// deck and life total in play. A bot names its tier and deck. power is
+// the seated deck's estimated power level, 0 when unrated (#3671), kept
+// out of text because the line is cut off on a narrow seat: it renders
+// as a DeckPowerBadge ahead of the text.
 export function seatLine(
   g: GameMeta,
   p: SeatInfo,
   botDeckName: (id: string | undefined) => string,
-): { text: string; pending: boolean } {
+): { text: string; pending: boolean; power: number } {
   const life = g.state === "active" && typeof p.life === "number" ? `${p.life} life` : "";
   let deck: string;
   if (p.is_bot) {
     const tier = p.bot_own_key ? `${p.bot_tier || "bot"} (own key)` : p.bot_tier || "bot";
     deck = [tier, botDeckName(p.bot_deck) || p.deck_name || ""].filter(Boolean).join(" · ");
   } else if (p.deck_uploaded) {
-    deck = deckWithPower(p);
+    deck = p.deck_name || "deck ready";
   } else if (g.state === "lobby") {
-    return { text: "deck pending", pending: true };
+    return { text: "deck pending", pending: true, power: 0 };
   } else {
     deck = "";
   }
-  return { text: [deck, life].filter(Boolean).join(" · "), pending: false };
+  const power = !p.is_bot && p.deck_uploaded ? (p.deck_power ?? 0) : 0;
+  return { text: [deck, life].filter(Boolean).join(" · "), pending: false, power };
 }
 
 // --- History (§1 item 3) ---------------------------------------------

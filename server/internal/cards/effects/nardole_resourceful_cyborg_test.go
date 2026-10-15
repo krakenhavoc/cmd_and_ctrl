@@ -18,7 +18,7 @@ func TestNardoleManaCastsNoncreatureSpellsOnly(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, nardole, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("tap Nardole: %v", err)
 	}
-	if n := len(me.ManaPool); n != 2 {
+	if n := me.ManaPool.Total(); n != 2 {
 		t.Fatalf("pool has %d mana, want one {U} per counter (2)", n)
 	}
 
@@ -48,7 +48,7 @@ func TestNardoleWithNoCountersAddsNothing(t *testing.T) {
 	g, me, _ := spendTable(t)
 	nardole := pushCatalogPermanent(g, me.ID, "Nardole, Resourceful Cyborg", "Legendary Artifact Creature — Scientist", nardoleOracle, false)
 	_ = g.ActivateManaAbility(me.ID, nardole, 0, game.ManaAbilityParams{})
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("pool = %v, want empty", me.ManaPool)
 	}
 }

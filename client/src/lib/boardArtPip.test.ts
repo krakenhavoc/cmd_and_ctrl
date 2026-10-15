@@ -69,7 +69,7 @@ const ROW_PAD_LEFT = px(decl(block(rowSvelte, ".row"), "padding").split(/\s+/)[1
 // --- the strip ----------------------------------------------------------
 //
 // In the strip every land is inside a .pile: one pile per name among
-// the untapped lands, one pile per tapped land. The between-pile
+// the untapped lands, then one per name among the tapped ones (#3044). The between-pile
 // margin-left rules, in source order, with a matcher and specificity
 // each, so the cascade is resolved the way a browser does.
 interface Item {
@@ -122,10 +122,12 @@ const WITHIN = '.row.strip .pile > [role="listitem"] + [role="listitem"]';
 const WITHIN_HOVER = '.row.strip .pile.multi:hover > [role="listitem"] + [role="listitem"]';
 const withinRest = (w: number, h: number) =>
   w + px(decl(block(rowSvelte, WITHIN), "margin-left"), w, h);
-const withinHover = (w: number, h: number) =>
-  w + px(decl(block(rowSvelte, WITHIN_HOVER), "margin-left"), w, h);
+const WITHIN_HOVER_TAPPED =
+  '.row.strip .pile.tapped.multi:hover > [role="listitem"] + [role="listitem"]';
+const withinHover = (w: number, h: number, tapped = false) =>
+  w + px(decl(block(rowSvelte, tapped ? WITHIN_HOVER_TAPPED : WITHIN_HOVER), "margin-left"), w, h);
 
-// A pile of `n` same-name lands (n is 1 for a tapped land), and the
+// A pile of `n` same-name lands, and the
 // pip of each tile in it with the room it has: right of the row's
 // clip edge and left of whatever paints over it next. At rest the top
 // copy (the last in the DOM) is what must be readable; every copy
@@ -166,10 +168,11 @@ function pipsInStrip(piles: Pile[], w: number, h: number): Check[] {
     // Every copy under it, spread: each one's room ends at the copy
     // after it.
     for (let k = 0; k + 1 < p.n; k++) {
-      const left = pileLeft + withinHover(w, h) * k;
+      const step = withinHover(w, h, p.tapped);
+      const left = pileLeft + step * k;
       out.push({
         pip: pipOf(left, p.tapped),
-        room: [-ROW_PAD_LEFT, left + withinHover(w, h)],
+        room: [-ROW_PAD_LEFT, visualLeft(left + step, p.tapped)],
         state: "spread",
       });
     }
@@ -222,7 +225,7 @@ const ROW_LAYOUTS = [
   [false, false, false],
 ];
 const u = (n: number): Pile => ({ tapped: false, n });
-const T = (): Pile => ({ tapped: true, n: 1 });
+const T = (n = 1): Pile => ({ tapped: true, n });
 const STRIP_LAYOUTS: Pile[][] = [
   [T(), T(), T()],
   [u(1), u(1), T(), T()],
@@ -232,6 +235,8 @@ const STRIP_LAYOUTS: Pile[][] = [
   [u(4), u(2), T(), T()],
   [u(3), u(1), u(2)],
   [u(2), T()],
+  [u(4), T(3)],
+  [T(2), T(4)],
 ];
 
 function assertVisible(checks: Check[]) {

@@ -98,14 +98,11 @@ func manaPoolRows(v reflect.Value) []string {
 	return out
 }
 
-// grantedAlternativeCostRows words CardDef.GrantedAlternativeCosts.
-func grantedAlternativeCostRows(v reflect.Value) []string {
-	grants, _ := v.Interface().([]GrantedAlternativeCost)
-	out := make([]string, 0, len(grants))
-	for _, gr := range grants {
-		out = append(out, gr.rowLabel())
-	}
-	return out
+// grantedAlternativeCostRow words one CardDef.GrantedAlternativeCosts
+// entry; the row walk applies its door gate first.
+func grantedAlternativeCostRow(e reflect.Value) string {
+	gr, _ := e.Interface().(GrantedAlternativeCost)
+	return gr.rowLabel()
 }
 
 // rowLabel reads the offer's price, the spells it reaches and the zones
@@ -123,6 +120,7 @@ func (gr GrantedAlternativeCost) rowLabel() string {
 		return "Each " + strings.TrimSuffix(subject, "s") + " you cast can be cast by sacrificing a creature, reducing its cost by that creature's mana value."
 	}
 	fromHand := len(gr.Zones) == 1 && gr.Zones[0] == ZoneHand
+	fromExile := len(gr.Zones) == 1 && gr.Zones[0] == ZoneExile
 	var limit string
 	switch {
 	case gr.MaxManaValue != nil:
@@ -132,6 +130,9 @@ func (gr GrantedAlternativeCost) rowLabel() string {
 	}
 	if fromHand {
 		limit += " from your hand"
+	}
+	if fromExile {
+		limit += " from exile"
 	}
 	var price string
 	switch {
@@ -143,13 +144,26 @@ func (gr GrantedAlternativeCost) rowLabel() string {
 		price = fmt.Sprintf("pay %d {E}", o.Energy)
 	}
 	var s string
-	if price == "" {
+	switch {
+	case gr.LifeEqualToManaValue:
+		s = "You may cast " + subject + limit + " by paying life equal to their mana value rather than paying their mana costs."
+	case price == "":
 		s = "You may cast " + subject + limit + " without paying their mana costs."
-	} else {
+	default:
 		s = "You may " + price + " rather than pay the mana cost for " + subject + " you cast" + limit + "."
 	}
 	if o.AsThoughFlash {
 		s += " Spells cast this way can be cast as though they had flash."
+	}
+	// #3174: the once-each-turn limit and the "your turn" clause lead
+	// the sentence, as printed.
+	switch {
+	case gr.OnceEachTurn && gr.YourTurnOnly:
+		s = "Once during each of your turns, you" + strings.TrimPrefix(s, "You")
+	case gr.OnceEachTurn:
+		s = "Once each turn, you" + strings.TrimPrefix(s, "You")
+	case gr.YourTurnOnly:
+		s = "During your turn, you" + strings.TrimPrefix(s, "You")
 	}
 	return s
 }

@@ -131,6 +131,13 @@ export interface CastChoices {
   // #3402: the permanents a mandatory "exile a creature you control"
   // additional cost exiles. Rides cast_spell as `exile_permanent_ids`.
   exilePermanentIDs?: string[];
+  // #3175: the hand cards a "you may exile any number of blue cards from
+  // your hand" additional cost exiles (March of Swirling Mist). Rides
+  // cast_spell as `exile_from_hand_ids`; `[]` is the answer "none".
+  exileFromHandIDs?: string[];
+  // #3536: the graveyard cards a mandatory "exile N cards from your
+  // graveyard" additional cost exiles. Rides cast_spell as `exile_ids`.
+  exileIDs?: string[];
   blightIDs?: string[];
   // ADR 0100 amendment 2026-10-07: the one card a chosen reveal / behold
   // branch shows. Set only after the branch is chosen; the server refuses
@@ -248,6 +255,10 @@ export function applyCastChoices(
     params.reveal_ids = choices.revealIDs;
   if (choices.exilePermanentIDs !== undefined && choices.exilePermanentIDs.length > 0)
     params.exile_permanent_ids = choices.exilePermanentIDs;
+  if (choices.exileFromHandIDs !== undefined && choices.exileFromHandIDs.length > 0)
+    params.exile_from_hand_ids = choices.exileFromHandIDs;
+  if (choices.exileIDs !== undefined && choices.exileIDs.length > 0)
+    params.exile_ids = choices.exileIDs;
   // #916: omitted at 0, which is the server default and what every
   // client that predates the stepper sends.
   if (choices.phyrexianLife !== undefined && choices.phyrexianLife > 0)
@@ -1249,6 +1260,79 @@ export function castExilePermanentCost(
     label: cost.exile_permanent_label ?? "a permanent you control",
     count: opts.min ?? 1,
     options: opts.cards ?? [],
+  };
+}
+
+// ClaimedHandExileCost is the "you may exile any number of blue cards
+// from your hand" additional cost a cast pays (#3175): the clause as
+// printed and the hand cards that could pay it. Any number, none included.
+export interface ClaimedHandExileCost {
+  label: string;
+  options: string[];
+}
+
+// castHandExileCost is the hand-exile cost a cast pays, if any: the card's
+// mandatory additional cost. The prompt after the sacrifice step asks
+// which cards to exile, and skips itself when the hand holds none.
+export function castHandExileCost(
+  card: CardView,
+  choices: CastChoices | undefined,
+): ClaimedHandExileCost | undefined {
+  const cost = castAdditionalCost(card, choices);
+  const opts = cost?.exile_from_hand_options;
+  if (!cost || !opts) return undefined;
+  return {
+    label: cost.exile_from_hand_label ?? "any number of cards from your hand",
+    options: opts.cards ?? [],
+  };
+}
+
+// altCostPayDefinesX reports whether the chosen offer's card IS the X
+// announcement (#3175): Shining Shoal's "exile a white card with mana
+// value X from your hand". The server ships the picker with
+// `mana_value_equals_x` and each card's `mana_values`, and the client
+// sends the picked card's value as the x_value instead of asking for X.
+export function altCostPayDefinesX(offer: AlternativeCostView | undefined): boolean {
+  return offer?.pay_options?.mana_value_equals_x === true;
+}
+
+// altCostPayX is the X a pitch bound to X announces: the picked card's
+// mana value, or undefined when the offer does not bind X or the server
+// sent no value for the card.
+export function altCostPayX(
+  offer: AlternativeCostView | undefined,
+  picked: string[],
+): number | undefined {
+  if (!altCostPayDefinesX(offer) || picked.length !== 1) return undefined;
+  return offer?.pay_options?.mana_values?.[picked[0]];
+}
+
+// ClaimedExileCardsCost is the "exile N cards from your graveyard"
+// additional cost this cast pays (#3536): the clause as printed, how many
+// cards to pick and which could pay it. `cost` is the additional-cost view
+// itself, so the picker resolves the ids through exileCost.ts exactly as an
+// ability's does.
+export interface ClaimedExileCardsCost {
+  label: string;
+  count: number;
+  options: string[];
+  cost: AdditionalCostView;
+}
+
+// castExileCardsCost is the exile-cards cost a cast pays, if any: the
+// card's mandatory additional cost. The prompt after the exile-a-permanent
+// step asks which cards to exile.
+export function castExileCardsCost(
+  card: CardView,
+  choices: CastChoices | undefined,
+): ClaimedExileCardsCost | undefined {
+  const cost = castAdditionalCost(card, choices);
+  if (!cost || !cost.exile_cost_n) return undefined;
+  return {
+    label: cost.exile_cost_label ?? "cards",
+    count: cost.exile_cost_n,
+    options: cost.exile_cost_options ?? [],
+    cost,
   };
 }
 

@@ -467,6 +467,43 @@ an opponent's, a curse (Pacifism) costs the value of the bot's own
 creature and keeps the removal price on an opponent's. `PriceAuraPurpose`
 turns it off. An Aura that declares nothing keeps the old reading.
 
+**A flash permanent that is sacrificed at cleanup waits for the main phase**
+(#3712). A card that prints "you may cast this spell as though it had flash;
+if you cast it any time a sorcery couldn't have been cast, sacrifice it at the
+next cleanup step" (Necromancy, Lightning Reflexes, Parapet, the Visions Auras)
+rides the wire as `purpose.flash_cleanup_sacrifice`. Outside the bot's own
+sorcery-speed window the bot declines its cast unless the permanent does
+something before cleanup: an Aura on its own permanent with something on the
+stack, an Aura on its own attacking or blocking creature, or a non-Aura at an
+opponent's declare attackers (a blocker) or at declare blockers with its own
+creature in combat. `HoldFlashSacrifice` turns it off
+(`flash_sacrifice.go`).
+
+**A creature cast for evoke, warp, dash or blitz is a body that leaves**
+(#3802). The bot reads the alternative-cost key off the cast move (`evoke`,
+`warp`, `dash`, `blitz`, and a bound offer such as `blitz-graveyard`) and
+prices the cast as what it buys: the lasting board value of the creature is
+taken out, its enters effect stays (it rides the card's purpose), a creature
+that will attack this turn with haste (dash and blitz, and a warped creature
+that has haste) is worth that attack when it is still ahead, a blitz adds the
+card its death draws, and dash and warp, which keep the card, give back the
+card the cast spends. So with the mana for both, the bot hard-casts a body it
+wants rather than blitzing it, and still evokes Mulldrifter when the two cards
+are the point or dashes a haste attacker when the swing is lethal.
+`PriceTemporaryBodies` turns it off (`temporary_body.go`).
+
+**A reanimation target is priced as the permanent it becomes** (#3161,
+[ADR 0154](decisions/0154-auras-that-enchant-a-card-in-a-graveyard.md) Q5).
+A spell that declares `reanimates` on a graveyard target entry (Reanimate,
+Animate Dead, Dance of the Dead, Zombify, Beacon of Unrest, Dread Return,
+Late to Dinner, Soul Exchange, Rewrite Regrets) puts the pick onto the
+battlefield under its caster's control, so the pick is worth the creature's
+value whoever owns the graveyard. Before, an opponent's graveyard was worth
+`OwnPermanentTarget` and the bot's own `cardValue`, whose 0.6 "can't cast it
+for a while" discount took 40% off exactly the expensive creature that
+reanimation exists for. `PriceReanimation` turns it off (it needs
+`PriceTargetPurposes`).
+
 **Whether to reveal (`entry_reveal_from_hand`, #1198, CR 614.1c).** The
 one card-set pick whose answer is FREE, and the reason it is a branch
 of its own rather than a second spelling of `choose_cards`. "As this
@@ -942,7 +979,54 @@ otherwise keep, and it needs to clear only `LeftoverThreshold`
   no creature. An instant, a flash spell or an instant-speed ability
   waits for the next window instead, keeping the mana up meanwhile.
 - **The end step of the seat whose turn comes just before the bot's.**
-  This is the end-of-turn Entomb, Vampiric Tutor or loot.
+  This is the end-of-turn Entomb, Vampiric Tutor or loot. "Whose turn
+  comes next" is the engine's answer, `turn.next_seat`
+  ([ADR 0188](decisions/0188-skipped-turns-and-turn-bound-effects.md)
+  Decision 9, #3566): a queued extra turn, a skip charge and a departed
+  seat are all in it. Until #3566 the heuristic rotated from the
+  ACTIVE seat, so in seat 2's extra turn after seat 0's it named seat 3
+  where seat 1's turn begins, and it opened this window for the wrong
+  bot. A view without the field (an older server) falls back to that walk.
+
+### Extra and skipped turns (#3566)
+
+A whole turn is priced by one weight, `Weights.Turn` (6.00: a draw, a land
+drop, a full untap and the mana to spend it, in the units of a 1.20 card
+in hand). A declared purpose's `extra_turns` (Capture of Jingzhou, the
+extra-turn rows of Magosi, Magistrate's Scepter, Avatar Kuruk and
+Timestream Navigator) is credited that much, and `skips_turns` (Magosi's
+third ability, Meditate's clause) is charged it. "Target player takes an
+extra turn" (Time Warp 1, Time Stretch 2) is a target entry, priced like
+a draw: a turn gained at the bot, a turn gained at an opponent counted
+against it, so the bot aims it at itself. A spell that skips a turn is
+exempt from `SpellFloor`: the floor is a card that replaces itself, and
+the turn is a price. `BaselineConfig` sets the weight to zero, which
+prices turns at nothing and keeps the mana-value proxy.
+
+A turn skipped only when an optional cost is paid, or only when the
+permanent is turned face up, is declared under `kicked` or
+`turned_face_up` (#3762). The bot adds `kicked` to a cast that pays the
+kicker (Waterspout Elemental: the creature bounce and the lost turn) and
+prices the unkicked cast as the body it is. It charges `turned_face_up` to
+the `turn_face_up` special action (Unstable Hulk), so at `Weights.Turn`
+6.00 it will not flip a Hulk for the flat special-action value on its own.
+The +6/+6 and trample ride the same slot as a `pump` (#3776): the flip is also
+worth the attack the pump enables this turn, the pumped creature's attack less
+the plain one, plus the lethal bonus when the pump is what makes the swing
+kill a seat, so a flip for lethal is taken and a flip with nothing to attack
+into, or after combat, is not. `PriceFaceUpPump` turns it off
+(`face_up_pump.go`).
+
+Final Fortune, Last Chance and Warrior's Oath take an extra turn and lose
+the game at its end step, so they declare no `extra_turns`: a bot that
+priced the turn as a gain would cast them. Lethal Vapors' "you skip your
+next turn" is on an any-player row, which `Register` refuses a turn
+amount on, so a bot never activates another player's copy.
+
+The model prompt and the MCP seat read the same facts from
+`aiseat/boardtext`: the turn line says "(combat 2)" or "(main 3)" in an
+added phase and ends "next turn: <seat>", and a seat line says "skips
+their next turn" or "skips their next 2 turns".
 
 A land sacrifice counts as mana here when the same cast's declared
 `purpose.lands` more than replaces it
@@ -1364,6 +1448,26 @@ already taken before any cast. So with Tatyova out, Burnished Hart's
 activation on turn 8 with seven lands is +1.44 rather than −1.20, and
 the bot cracks it; with only Courser of Kruphix's life, or with an
 opponent's Tatyova, it keeps the Hart.
+
+#3146 closed three gaps, each behind its own switch:
+
+- **Doublers** (`PriceLandfallDoublers`). A card that makes landfall
+  triggers fire again declares `landfall_extra_triggers` (Ancient
+  Greenwarden 1, Elesh Norn, Mother of Machines 1). Each land then pays
+  the bot's payoffs once, plus once more for each such doubler it
+  controls.
+- **A payoff's own cast** (`PriceLandfallCasts`). A permanent with a
+  landfall row or a doubler adds what it adds per land, times the lands
+  the bot expects to put down this turn and over its next two turns. Those
+  are its land drops, filled from the lands in hand plus 0.4 of a land
+  per draw. Tireless Tracker with two lands in hand is worth two Clues
+  more. The commander is not repriced, because a command-zone card
+  carries no ability rows on the wire.
+- **Fetch lands** (`PriceFetchLandfall`). A fetch's activation declares
+  `lands` (1, or Myriad Landscape's 2). It keeps the flat `ActivateBase`,
+  and each land it puts down adds what the payoffs pay. A land beyond
+  the one it sacrifices is ramp. So a fetch with no payoff out is
+  cracked as before.
 
 ### An opponent's tax against the turn plan (ADR 0136, 2026-10-09)
 
@@ -2381,7 +2485,7 @@ game.
   contestant's `never` cards. Below it, ADR 0126's acceptance-bar cards:
   every mana rock and dork (A2: a repeatable tap mana ability, so not
   Lotus Petal or an Altar), and the six A3 canaries (Sol Ring, Rhystic
-  Study, Mary Read and Anne Bonny's loot, Entomb, Harrow, Viscera Seer),
+  Study, Faithless Looting, Entomb, Harrow, Viscera Seer),
   each with the share of games it was used in and the bar it is held
   to. A canary nobody was dealt says `not offered`. Each A2 row also
   counts the owner's way (#2435), in the `deficit open` columns. These
@@ -3194,7 +3298,7 @@ unknown.
 [ADR 0126's amendment on blocks that survive as a
 set](decisions/0126-bots-that-play-their-decks.md#amendment-2026-10-12-blocks-that-survive-as-a-set),
 accepted on 2026-10-12. The horizon's unneeded waiting turn the
-full Wurm mirror showed is #3080.
+full Wurm mirror showed was #3080 (`HorizonRecastsSameTurn`, below).
 
 ### Combat priced by what combat does (#2675, #2690, #2676)
 
@@ -3383,6 +3487,7 @@ defender's side, inside the race.
 |---|---|---|
 | `HorizonRecastsCommander` | on | When the search finds no line, a second pass in which the bot's commander that dies in an exchange is cast again, summoning sick, and the line may wait a turn for it. |
 | `HorizonPlaysFreeAnswer` | on | Where blockToSurvive's model only guessed, the line plays the free answer forward. |
+| `HorizonRecastsSameTurn` | on | #3080: that commander is cast again in the same turn's second main phase when the bot's mana still untapped at the attack pays its tax (all its mana, on a later turn of the line). It is ready to attack on the next board, and the line waits no turn for it. |
 
 `BaselineConfig()` turns both off. The decision and its numbers are in
 [ADR 0126's amendment on a commander

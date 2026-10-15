@@ -46,6 +46,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // put-in-library prompt over exactly those cards once the last of them
 // has landed, and the rest of the effect ("then draw") waits for it
 // (ADR 0088 amendment 2026-10-14, #2949). Only the owner sees the order.
+// When the same discard also shuffles a card into that library
+// (Blightsteel Colossus), the shuffle comes first and the saved cards
+// go back on top after it (CR 701.24g, #3541).
 //
 // No simplification.
 func init() {

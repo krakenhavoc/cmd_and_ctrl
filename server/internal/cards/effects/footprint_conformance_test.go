@@ -46,6 +46,17 @@ type conformanceCase struct {
 	// movedOn then exiles it from the graveyard, so no last-known record
 	// matches the card any more (a commander gone to the command zone).
 	movedOn bool
+	// setup arranges the board before the probe, under the write lock:
+	// an If's condition made to hold (#3033).
+	setup func(t *testing.T, g *game.Game, me *game.Player, src uuid.UUID)
+	// x is the item's XValue, as XFromCast stamps it (CreateXByXToken).
+	x int
+}
+
+// ifCase is an If case: its condition is made to hold by setup, and its
+// Then step must emit something for the probe to prove anything.
+func ifCase(cond Condition, then Applier, setup func(t *testing.T, g *game.Game, me *game.Player, src uuid.UUID)) conformanceCase {
+	return conformanceCase{step: If{Cond: cond, Then: []Applier{then}}, setup: setup}
 }
 
 // footprintConformanceCases has one case per type that implements
@@ -83,6 +94,47 @@ var footprintConformanceCases = map[string]conformanceCase{
 	"CreateTokenAdvanced:tapped": {
 		step: CreateTokenAdvanced{Spec: Token(TreasureToken()).EntersTapped(), N: 2},
 	},
+	// An intervening "if" (#3033), one case per Condition type
+	// (TestEveryConditionHasAConformanceCase). The condition reads and
+	// writes nothing, so each case proves the If declares its Then.
+	"If:life-gained": ifCase(CondLifeGained{AtLeast: 3}, DrawCards{N: 1},
+		func(t *testing.T, g *game.Game, me *game.Player, src uuid.UUID) {
+			if err := g.ChangePlayerLifeForEffect(src, me.ID, 3); err != nil {
+				t.Fatal(err)
+			}
+		}),
+	"If:life-lost": ifCase(CondLifeLost{}, GainLife{Amount: 2},
+		func(t *testing.T, g *game.Game, me *game.Player, src uuid.UUID) {
+			if err := g.ChangePlayerLifeForEffect(src, me.ID, -1); err != nil {
+				t.Fatal(err)
+			}
+		}),
+	"If:creature-died": ifCase(CondCreatureDied{}, MillCards{N: 2},
+		func(t *testing.T, g *game.Game, me *game.Player, _ uuid.UUID) {
+			if err := g.DestroyPermanentForEffect(pushBattlefieldCreature(g, me.ID)); err != nil {
+				t.Fatal(err)
+			}
+		}),
+	"If:citys-blessing": ifCase(CondCitysBlessing{}, CounterOnThis{Kind: game.CounterPlusOne, N: 1},
+		func(_ *testing.T, _ *game.Game, me *game.Player, _ uuid.UUID) { me.CitysBlessing = true }),
+	"If:no-spells-cast": ifCase(CondNoSpellsCast{}, CounterOnThis{Kind: game.CounterPlusOne, N: 2}, nil),
+	"If:monarch": ifCase(CondMonarch{}, CreateToken{Template: TokenCard("1/1 green Elf Warrior"), N: 1},
+		func(_ *testing.T, g *game.Game, me *game.Player, _ uuid.UUID) { g.Monarch = me.ID }),
+	"If:source": ifCase(CondFewerCountersOnThis{Kind: game.CounterPlusOne, N: 3}, CounterOnThis{Kind: game.CounterPlusOne, N: 1}, nil),
+	"If:power":  ifCase(CondPowerAtLeast{N: 2}, DamageEachOpponent{N: 2}, nil),
+	"If:board": ifCase(CondBoard{Name: "a creature", Test: func(ctx *Context) bool {
+		return len(ctx.Game.Battlefield.Cards) > 0
+	}}, EachOpponentLosesLife{N: 2}, nil),
+	// Counted and X amounts (#3033).
+	"CreateXByXToken": {step: CreateXByXToken{Template: game.Card{Name: "Treefolk", TypeLine: "Token Creature — Treefolk"}}, x: 3},
+	"CreateTokensForEach": {step: CreateTokensForEach{
+		Template: TokenCard("1/1 white Rabbit"), Name: "creature",
+		Count: func(ctx *Context) int { return len(ctx.Game.Battlefield.Cards) },
+	}},
+	"If:nested": {step: If{Cond: CondNoSpellsCast{}, Then: []Applier{
+		GainLife{Amount: 1},
+		If{Cond: CondMonarch{}, Then: []Applier{DrawCards{N: 1}}},
+	}}, setup: func(_ *testing.T, g *game.Game, me *game.Player, _ uuid.UUID) { g.Monarch = me.ID }},
 }
 
 // footprinterTypes lists the receiver types of every footprint() method
@@ -106,7 +158,7 @@ func footprinterTypes(t *testing.T) []string {
 		}
 		for _, d := range f.Decls {
 			fn, ok := d.(*ast.FuncDecl)
-			if !ok || fn.Recv == nil || fn.Name.Name != "footprint" || len(fn.Recv.List) != 1 {
+			if !ok || fn.Recv == nil || (fn.Name.Name != "footprint" && fn.Name.Name != "footprints") || len(fn.Recv.List) != 1 {
 				continue
 			}
 			typ := fn.Recv.List[0].Type
@@ -289,6 +341,7 @@ func TestFootprintStepsDoOnlyWhatTheyDeclare(t *testing.T) {
 				victim := pushBattlefieldCreature(g, opp.ID)
 				item.Targets = []game.TargetRef{{Kind: game.TargetCard, ID: victim}}
 			}
+			item.XValue = c.x
 			if c.targetPlayer {
 				item.Targets = []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}
 			}
@@ -317,11 +370,7 @@ func TestFootprintStepsDoOnlyWhatTheyDeclare(t *testing.T) {
 					Object: &game.ObjectSnapshot{ID: subject, Epoch: epoch},
 				}
 			}
-			f, ok := c.step.(footprinter)
-			if !ok {
-				t.Fatalf("%s is not a footprinter", name)
-			}
-			step, ok := f.footprint()
+			steps, ok := stepFootprints(c.step)
 			if !ok {
 				t.Fatalf("the case's %s declares no footprint: give it fields that do", name)
 			}
@@ -331,7 +380,10 @@ func TestFootprintStepsDoOnlyWhatTheyDeclare(t *testing.T) {
 			var events int
 			var applyErr error
 			g.WithWriteLock(func() {
-				decl, ok = g.FootprintDeclarationForTest(item, step)
+				if c.setup != nil {
+					c.setup(t, g, me, src)
+				}
+				decl, ok = footprintDeclarationOfSteps(g, item, steps)
 				before = captureConformance(g)
 				events = len(g.Events)
 				applyErr = c.step.Apply(NewContext(g, item))
@@ -409,6 +461,75 @@ func TestFootprintStepsDoOnlyWhatTheyDeclare(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// footprintDeclarationOfSteps is the union of the check's reading of
+// each step, or false when it refuses one. Caller holds the write lock.
+func footprintDeclarationOfSteps(g *game.Game, item *game.StackItem, steps []game.FootprintStep) (game.FootprintDeclaration, bool) {
+	out := game.FootprintDeclaration{
+		Reads: map[uuid.UUID]bool{}, Writes: map[uuid.UUID]bool{},
+		LifeUp: map[uuid.UUID]bool{}, LifeDown: map[uuid.UUID]bool{},
+		Cards: map[uuid.UUID]bool{}, Emits: map[game.EventKind]bool{},
+	}
+	for _, s := range steps {
+		d, ok := g.FootprintDeclarationForTest(item, s)
+		if !ok {
+			return game.FootprintDeclaration{}, false
+		}
+		for _, pair := range []struct{ dst, src map[uuid.UUID]bool }{
+			{out.Reads, d.Reads}, {out.Writes, d.Writes}, {out.LifeUp, d.LifeUp}, {out.LifeDown, d.LifeDown}, {out.Cards, d.Cards},
+		} {
+			for k := range pair.src {
+				pair.dst[k] = true
+			}
+		}
+		for k := range d.Emits {
+			out.Emits[k] = true
+		}
+		out.Monarch = out.Monarch || d.Monarch
+	}
+	return out, true
+}
+
+// A Condition type with no If case would be an intervening "if" whose
+// read nothing resolves on a real board.
+func TestEveryConditionHasAConformanceCase(t *testing.T) {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "footprint_if.go", nil, parser.SkipObjectResolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	covered := map[string]bool{}
+	var walk func(a Applier)
+	walk = func(a Applier) {
+		if s, ok := a.(If); ok {
+			covered[strings.TrimPrefix(fmt.Sprintf("%T", s.Cond), "effects.")] = true
+			for _, th := range s.Then {
+				walk(th)
+			}
+		}
+	}
+	for _, c := range footprintConformanceCases {
+		walk(c.step)
+	}
+	found := 0
+	for _, d := range f.Decls {
+		fn, ok := d.(*ast.FuncDecl)
+		if !ok || fn.Recv == nil || fn.Name.Name != "condition" || len(fn.Recv.List) != 1 {
+			continue
+		}
+		id, ok := fn.Recv.List[0].Type.(*ast.Ident)
+		if !ok {
+			continue
+		}
+		found++
+		if !covered[id.Name] {
+			t.Errorf("Condition %s has no If case in footprintConformanceCases", id.Name)
+		}
+	}
+	if found == 0 {
+		t.Fatal("found no condition() methods: the scan is broken")
 	}
 }
 

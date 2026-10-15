@@ -409,7 +409,7 @@ func TestMarchOfSwirlingMistTakesUpToXTargets(t *testing.T) {
 		t.Fatalf("one target with X = 2 is \"up to X\": %v", err)
 	}
 	spec, _ := Lookup(marchOfSwirlingMistOracle)
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Errorf("March of Swirling Mist keeps only its discount caveat: %q %v", spec.Completeness, spec.Caveats)
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Errorf("March of Swirling Mist is Full since its discount shipped (#3175): %q %v", spec.Completeness, spec.Caveats)
 	}
 }

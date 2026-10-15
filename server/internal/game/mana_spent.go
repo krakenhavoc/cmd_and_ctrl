@@ -44,7 +44,7 @@ func (p PaidCost) Spent() ManaSpent {
 func (m ManaSpent) Known() bool { return !m.unknown }
 
 // Tokens is the tokens themselves, copied, in the order the solver
-// spent them. Nil for an unknown payment, because there is nothing to
+// spent them. Each is a RUN (#3041): read its amount with N. Nil for an unknown payment, because there is nothing to
 // hand out. For a reader that needs a fact this file does not name.
 func (m ManaSpent) Tokens() []ManaToken {
 	if m.unknown || len(m.tokens) == 0 {
@@ -61,7 +61,7 @@ func (m ManaSpent) Total() int {
 	if m.unknown {
 		return 0
 	}
-	return len(m.tokens)
+	return TotalMana(m.tokens)
 }
 
 // Count is how many mana of one SYMBOL paid: `{W}` through `{G}` and
@@ -78,7 +78,7 @@ func (m ManaSpent) Count(symbol string) int {
 	n := 0
 	for _, t := range m.tokens {
 		if t.Color == symbol {
-			n++
+			n += t.N()
 		}
 	}
 	return n
@@ -140,7 +140,7 @@ func (m ManaSpent) CountFrom(kinds ManaSourceKinds) int {
 	n := 0
 	for _, t := range m.tokens {
 		if t.SourceKinds.HasAny(kinds) {
-			n++
+			n += t.N()
 		}
 	}
 	return n

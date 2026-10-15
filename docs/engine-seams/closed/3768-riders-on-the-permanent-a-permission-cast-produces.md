@@ -1,0 +1,6 @@
+---
+title: "Riders on the permanent a permission's cast produces"
+date: 2026-10-15
+issues: [3768]
+---
+**Riders on the permanent a permission's cast produces** (#3768, [ADR 0066 amendment 2026-10-15](decisions/0066-granted-cast-and-play-permissions.md), CR 614.1c, CR 611.2a, CR 400.7) — "If you cast a spell this way, that artifact enters tapped" is `CastPermission.EntersTapped`: read where the permission is consumed, carried on the spell as `StackItem.EntersTapped`, and seeded onto the entry event before the CR 614 pipeline, so the permanent enters tapped with no tap event; a copy of the spell does not carry it. "If you cast a creature spell this way, it gains haste and '<ability>'" is `CastPermission.GainsKeywords` / `GainsAbilities`: one layer-6 scoped effect registered at cast with no controller and the new `WhileSourceOnceItLands` duration (`ForThePermanentThisSpellBecomesDuration`), which holds on the stack, then on the battlefield under any controller, and ends for good once the object is elsewhere; an instant or sorcery registers nothing. Snapshot: additive fields, condition appended. **Cards:** Edgar, Master Machinist and Strago and Relm (deck request #3655), both Full. Still open: a rider with a duration of its own ("it gains haste until end of turn", Thundermane Dragon).

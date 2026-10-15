@@ -132,6 +132,14 @@ type AlternativeCost struct {
 	// ExileFromGraveyard's N has. Commandeer's "exile two blue cards
 	// from your hand" is a spec of Min 2 (#1745); every other pitch
 	// names one card.
+	//
+	// #3175: the spec may carry ManaValueEqualsX — Shining Shoal's "exile
+	// a white card with mana value X from your hand rather than pay this
+	// spell's mana cost". That makes the price an alternative cost that
+	// INCLUDES X (CR 107.3a), so CR 107.3b does not lock X at 0: the
+	// caster announces X (CR 601.2b) and the named card's mana value must
+	// equal it. The offer is shown whenever a matching card of any mana
+	// value is in hand, since X is the caster's to choose (PaymentDefinesX).
 	ExileFromHand *TargetSpec
 
 	// ReturnToHand is "return an Island you control to its owner's
@@ -337,6 +345,16 @@ type AlternativeCost struct {
 	// discounted creature that keeps its haste and never goes home.
 	Dash bool
 
+	// Blitz is blitz's "it gains haste and 'When this creature dies,
+	// draw a card.' Sacrifice it at the beginning of the next end step"
+	// (CR 702.152a, #3772). Dash's sibling with the same shape: the
+	// clause attaches to the permanent's ENTRY — one layer-6 scoped
+	// effect granting haste and the BlitzDrawGrant bundle, and a CR 603.7
+	// delayed sacrifice (blitz.go). Set it with effects.Blitz, never by
+	// hand: a hand-rolled offer would be a discounted creature that keeps
+	// its haste and never dies.
+	Blitz bool
+
 	// EntersWithCounterName / EntersWithCounterCount is "this
 	// creature escapes with a +1/+1 counter on it" (CR 702.138c) —
 	// the clause most escape creatures print directly under the
@@ -428,6 +446,20 @@ type AlternativeCost struct {
 	// 118.9a). Never serialised: an offer is catalog data built per
 	// query, and a claim reaches the stack as its key alone.
 	Granted bool
+
+	// FromPermission marks the offer CastPermission.AlternativeCostFor
+	// synthesised: the price a cast permission charges under its own
+	// key (#3785). A claim of it is made BY the permission, which is
+	// what castUsesGrantLocked answers even when the card also opens
+	// its own zone (a flashback card cast through Emet-Selch's grant).
+	// Never serialised: built per query.
+	FromPermission bool
+
+	// onceEachTurnKey is the TurnTally.GrantedAltCostsClaimed key a
+	// claim of this granted offer spends (#3174, GrantedAlternativeCost.
+	// OnceEachTurn): set only on a derived copy, naming the source
+	// object that made it. Never serialised.
+	onceEachTurnKey string
 
 	// AsThoughFlash is "if you cast a spell this way, you may cast it as
 	// though it had flash" (Primal Prayers, ADR 0129 §5). CR 601.3c: an
@@ -554,6 +586,17 @@ func (a *AlternativeCost) cardComponent() (*TargetSpec, ZoneKind, int) {
 		return a.TapOthers.Filter, ZoneBattlefield, a.TapOthers.Count
 	}
 	return nil, "", 0
+}
+
+// PaymentDefinesX reports whether this offer's card component is bound
+// to the announced X — Shining Shoal's "a white card with mana value X"
+// (#3175, CR 107.3a). Such an offer is an alternative cost that includes
+// X, so CR 107.3b leaves the X announcement open (CastCost.AltIncludesX),
+// and the payment validator holds the named card's mana value to it.
+// Nil-safe.
+func (a *AlternativeCost) PaymentDefinesX() bool {
+	spec, _, _ := a.cardComponent()
+	return spec != nil && spec.ManaValueEqualsX
 }
 
 // Clears reports whether paying this cost deletes the spell's target
@@ -831,6 +874,11 @@ func (g *Game) altCostCardOKLocked(p *Player, alt *AlternativeCost, spec *Target
 		if alt != nil && alt.TapOthers != nil && c.Tapped {
 			return false
 		}
+		// #3275, CR 118.3: a permanent that can't be sacrificed can't
+		// pay a sacrifice.
+		if alt != nil && alt.Sacrifice != nil && g.permanentCantBeSacrificedLocked(&c) {
+			return false
+		}
 		return g.specMatchLocked(SourceChooser(p.ID), spec, TargetRef{Kind: TargetCard, ID: c.InstanceID}, false)
 	}
 	return spec.CardOK == nil || spec.CardOK(g, p.ID, c, zone)
@@ -850,8 +898,13 @@ func (g *Game) altCostCardOKLocked(p *Player, alt *AlternativeCost, spec *Target
 // price for a cast the player thought was free is the worst available
 // failure.
 //
+// `x` is the X the cast announces. It is read only by an offer whose
+// card component is bound to it (#3175, PaymentDefinesX): Shining
+// Shoal's pitched card must have mana value exactly X, read as the card
+// is in hand (CR 202.3e: an {X} in its own cost counts as 0 there).
+//
 // Caller must hold g.mu.
-func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID) error {
+func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, alt *AlternativeCost, ids []uuid.UUID, x int) error {
 	if alt == nil {
 		if len(ids) > 0 {
 			return ErrInvalidParam
@@ -928,6 +981,13 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 		// counts candidates with, so "the client was offered this"
 		// and "the engine accepts this" are one rule (#695).
 		if !g.altCostCardOKLocked(p, alt, spec, zone, c) {
+			return ErrInvalidParam
+		}
+		// #3175, CR 107.3a / 601.2b: "a white card with mana value X" —
+		// the card and the announced X must agree. The offer is judged
+		// without X (any white card makes it available), so this is the
+		// line that ties the two together.
+		if spec.ManaValueEqualsX && !boundAdmitsAt(g, spec, c, x) {
 			return ErrInvalidParam
 		}
 	}
@@ -1212,6 +1272,9 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 	if alt.Dash {
 		g.applyDashLocked(card, item, alt)
 	}
+	if alt.Blitz {
+		g.applyBlitzLocked(card, item, alt)
+	}
 	if !alt.SacrificeOnEntry {
 		return
 	}
@@ -1249,7 +1312,8 @@ var evokeSacrificeBody BodyRef
 
 func init() {
 	evokeSacrificeBody = SimpleDelayedBody("evoke/sacrifice", func(g *Game, it *StackItem) error {
-		if g.AbilitySourceGoneForEffect(it) {
+		// #3275: an evoked creature that can't be sacrificed stays.
+		if g.AbilitySourceGoneForEffect(it) || g.cantBeSacrificedLocked(it.SourceCardID) {
 			return nil
 		}
 		return g.sacrificePermanentLocked(it.SourceCardID)

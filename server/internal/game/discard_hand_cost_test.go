@@ -82,7 +82,7 @@ func TestDiscardYourHandManaCostDiscardsEveryCard(t *testing.T) {
 	if findBattlefieldCard(g, src) != nil {
 		t.Error("the source is still on the battlefield; the sacrifice was not paid")
 	}
-	if got := len(me.ManaPool); got != 3 {
+	if got := me.ManaPool.Total(); got != 3 {
 		t.Errorf("pool has %d mana, want 3", got)
 	}
 }
@@ -98,7 +98,7 @@ func TestDiscardYourHandManaCostIsPaidByAnEmptyHand(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, src, 0, ManaAbilityParams{}); err != nil {
 		t.Fatalf("an empty hand must pay \"Discard your hand\": %v", err)
 	}
-	if got := len(me.ManaPool); got != 3 {
+	if got := me.ManaPool.Total(); got != 3 {
 		t.Errorf("pool has %d mana, want 3", got)
 	}
 	if findBattlefieldCard(g, src) != nil {
@@ -125,7 +125,7 @@ func TestDiscardYourHandRefusesNamedCards(t *testing.T) {
 	if findBattlefieldCard(g, src) == nil {
 		t.Error("a refused activation sacrificed the source")
 	}
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Error("a refused activation minted mana")
 	}
 }
@@ -164,7 +164,7 @@ func TestDiscardYourHandIsNotPaidWhenAnotherComponentFails(t *testing.T) {
 	if !me.Hand.Contains(seed) {
 		t.Error("an activation of a source that is gone discarded a card")
 	}
-	if got := len(me.ManaPool); got != 3 {
+	if got := me.ManaPool.Total(); got != 3 {
 		t.Errorf("pool has %d mana, want the first activation's 3 and nothing more", got)
 	}
 }
@@ -227,8 +227,8 @@ func TestDiscardYourHandTriggersGoOnTheStackAfterTheMana(t *testing.T) {
 	if len(g.PendingTriggers) != 0 {
 		t.Errorf("%d triggers still pending", len(g.PendingTriggers))
 	}
-	if len(me.ManaPool) != 3 {
-		t.Errorf("pool has %d mana, want 3", len(me.ManaPool))
+	if me.ManaPool.Total() != 3 {
+		t.Errorf("pool has %d mana, want 3", me.ManaPool.Total())
 	}
 }
 
@@ -290,7 +290,7 @@ func TestActivateOnlyAsAnInstantWindow(t *testing.T) {
 		if !errors.Is(err, ErrConditionNotMet) {
 			t.Fatalf("%s: err = %v, want ErrConditionNotMet", why, err)
 		}
-		if me.Hand.Size() != size || findBattlefieldCard(g, src) == nil || len(me.ManaPool) != 0 {
+		if me.Hand.Size() != size || findBattlefieldCard(g, src) == nil || me.ManaPool.Total() != 0 {
 			t.Fatalf("%s: a refused activation paid something", why)
 		}
 	}

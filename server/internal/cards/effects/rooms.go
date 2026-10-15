@@ -37,7 +37,10 @@ type Door struct {
 	Replacements         []game.ReplacementEffect
 	UntapStep            []game.UntapStepPermission
 	GrantedTapCosts      []game.GrantedTapCost
-	NoMaxHandSize        bool
+	// GrantedAlternativeCosts are a door's "you may pay … rather than
+	// pay the mana cost" statics (#3174: Access Maze, Warped Space).
+	GrantedAlternativeCosts []game.GrantedAlternativeCost
+	NoMaxHandSize           bool
 }
 
 // RoomSpec is a Room's catalog declaration: its identity, its two
@@ -105,6 +108,10 @@ func Room(r RoomSpec) Spec {
 		for _, gr := range d.GrantedTapCosts {
 			gr.ActiveWhen = gate
 			s.GrantedTapCosts = append(s.GrantedTapCosts, gr)
+		}
+		for _, gr := range d.GrantedAlternativeCosts {
+			gr.ActiveWhen = gate
+			s.GrantedAlternativeCosts = append(s.GrantedAlternativeCosts, gr)
 		}
 		if d.NoMaxHandSize {
 			// One door at most prints it; two would need two gates.

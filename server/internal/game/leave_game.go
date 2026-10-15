@@ -662,6 +662,18 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// finishDroppedReplacementLocked abandons the entry and the Aura
 	// stays where it was.
 	PendingChoiceAuraHost: {},
+	// turn_skip_order (ADR 0188 Decision 12) is never reassigned: the
+	// question is about the departed player's own extra turn, which
+	// doesn't begin now (CR 800.4k). The drop itself takes no action.
+	// What the question was holding up is the turn change, and the
+	// departure moves it on: advancePastEliminatedLocked, which every
+	// departure reaches once it has settled, finds the flag set with no
+	// question open and resumes, and the selection loop drops the turn
+	// as it would begin. That is answer 0's outcome without spending a
+	// charge nobody can owe any more. The resume waits for the departure
+	// to finish instead of running inside it, which is why this is not
+	// dropDefault.
+	PendingChoiceTurnSkipOrder: {},
 	// mana_pick is a cost's other half: the mana would enter a pool
 	// that has left the game with its player.
 	PendingChoiceMana: {},

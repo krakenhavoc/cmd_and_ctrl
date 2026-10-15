@@ -1013,6 +1013,12 @@ type PendingChoice struct {
 	// frame, as every pay_amount does.
 	Assist *AssistPrompt
 
+	// TurnSkipOrder makes a prompt the which-skip question of a paused
+	// turn change (ADR 0188 Decision 12, turn_skip_order.go). Plain
+	// data, written to a restore point and shown to every seat; nil on
+	// every other prompt.
+	TurnSkipOrder *TurnSkipOrder
+
 	// chooseValueResume is the continuation for a resolution-time
 	// PendingChoiceColor (Wash Out's "return all permanents of the
 	// color of your choice"). nil for the stored form, whose answer is
@@ -2828,6 +2834,12 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// through the entry tail.
 		g.restoreEntryControllerLocked(ev)
 		g.dropEnteringTokenLocked(ev.CardID)
+		// #1985, CR 608.3e: a resumed permanent spell's entry refused
+		// (a Clone told to copy a land under Worms of the Earth) goes to
+		// its owner's graveyard rather than staying on the stack.
+		if err := g.settleRefusedStackEntryLocked(ev); err != nil {
+			return err
+		}
 		// ADR 0178: a life change a replacement declared before the
 		// cancel still happens, and the route waits for it.
 		if err := g.runMoveTailLocked(ev); err != nil {
@@ -3165,7 +3177,9 @@ func (g *Game) ResolveDamageAssignment(
 			case blk == nil:
 				lethal = 0
 			case !frame.HasDeathtouch:
-				lethal = max(blk.CurrentToughness()-blk.DamageMarked, 0)
+				// #3665: and the damage other creatures have been
+				// assigned to it in this step, held until it is dealt.
+				lethal = max(blk.CurrentToughness()-blk.DamageMarked-g.heldCombatDamageToLocked(blk.InstanceID), 0)
 				if lethal == 0 {
 					break
 				}
@@ -3178,12 +3192,20 @@ func (g *Game) ResolveDamageAssignment(
 	}
 	g.dequeueChoiceLocked(idx)
 
-	// Apply damage using the frame-cached source keywords: the
-	// attacker may have been destroyed by blocker damage (which
-	// resolved in the same substep before this prompt fires), so
-	// looking up HasKeyword on the attacker at resume time would
-	// miss deathtouch / lifelink. The frame captured those at
-	// queue time.
+	// #3665, CR 510.2: the step this prompt belongs to is holding its
+	// damage. The answer joins it, and the last answer deals the whole
+	// step at once; the state-based actions see all of it together.
+	if g.heldCombatDamage != nil {
+		g.holdDamageAssignmentAnswerLocked(frame, ordered, trampleToPlayer)
+		if g.settleHeldCombatDamageLocked() {
+			g.runStateChecksLocked()
+		}
+		return nil
+	}
+
+	// A prompt with no hold behind it was restored from a snapshot
+	// written before #3665, whose step dealt the rest of its damage
+	// when the prompt was queued: the answer is dealt now, as it was.
 	//
 	// ADR 0108 §7: the assigned damage is one group of the step's
 	// instance, collected while a charged shield is live so the shield
@@ -3193,58 +3215,69 @@ func (g *Game) ResolveDamageAssignment(
 	if g.anyChargedShieldLocked() {
 		prevStage, staged = g.openDamageStageLocked(g.combatDamageInstanceLocked(), true, false)
 	}
+	g.applyDamageAssignmentLocked(frame, ordered, trampleToPlayer)
+	if staged {
+		g.closeDamageStageLocked(prevStage)
+	}
+	g.runStateChecksLocked()
+	return nil
+}
+
+// applyDamageAssignmentLocked deals one answered damage-assignment
+// prompt's division: each share to its blocker (or, for a blocker
+// dividing, to its attacker), and a trampler's excess to what it is
+// attacking.
+//
+// The source keywords come from the frame, which snapshotted them as
+// the prompt was queued: the source may have left the battlefield
+// since (a player leaving the game, or a pre-#3665 step that dealt the
+// blockers' damage first), so looking up HasKeyword on it now would
+// miss deathtouch / lifelink.
+//
+// The caller opens any damage stage and runs the state-based actions.
+//
+// Caller must hold g.mu.
+func (g *Game) applyDamageAssignmentLocked(frame *DamageAssignmentFrame, ordered []DamageAssignmentEntry, trampleToPlayer int) {
 	for _, e := range ordered {
 		if e.Amount <= 0 {
 			continue
 		}
 		g.markCombatDamageFromFrameLocked(e.BlockerID, e.Amount, frame)
 	}
-	if trampleToPlayer > 0 {
-		// Determine the defending player: find the attacker if
-		// still on battlefield; otherwise look at the prompt's
-		// original intent — trample-to-player was only allowed
-		// for a live attacker that had declared a target. Fall
-		// back to any seat that isn't the controller (best-effort).
-		//
-		// S27: the attacker may have been attacking a planeswalker or
-		// a battle, in which case trample overflow goes to THAT, not
-		// to its defending player (CR 702.19b — excess damage is
-		// assigned to the player or permanent the creature is
-		// attacking). So the target id is used as-is and the routing
-		// happens in dealCombatDamageToAttackTargetLocked.
-		var defenderID uuid.UUID
-		if atkCard := findBattlefieldCard(g, frame.AttackerID); atkCard != nil {
-			defenderID = atkCard.AttackingTarget
-		}
-		if defenderID != uuid.Nil && g.classifyAttackTargetLocked(defenderID) != AttackTargetPlayer {
-			g.markCombatDamageFromFrameLocked(defenderID, trampleToPlayer, frame)
-			defenderID = uuid.Nil
-			trampleToPlayer = 0
-		}
-		if trampleToPlayer > 0 && defenderID == uuid.Nil {
-			for _, s := range g.Seats {
-				if s.ID != frame.SourceController {
-					defenderID = s.ID
-					break
-				}
+	if trampleToPlayer <= 0 {
+		return
+	}
+	// Determine the defending player: find the attacker if still on
+	// battlefield; otherwise look at the prompt's original intent —
+	// trample-to-player was only allowed for a live attacker that had
+	// declared a target. Fall back to any seat that isn't the
+	// controller (best-effort).
+	//
+	// S27: the attacker may have been attacking a planeswalker or a
+	// battle, in which case trample overflow goes to THAT, not to its
+	// defending player (CR 702.19b — excess damage is assigned to the
+	// player or permanent the creature is attacking). So the target id
+	// is used as-is and the routing happens in
+	// dealCombatDamageToAttackTargetLocked.
+	var defenderID uuid.UUID
+	if atkCard := findBattlefieldCard(g, frame.AttackerID); atkCard != nil {
+		defenderID = atkCard.AttackingTarget
+	}
+	if defenderID != uuid.Nil && g.classifyAttackTargetLocked(defenderID) != AttackTargetPlayer {
+		g.markCombatDamageFromFrameLocked(defenderID, trampleToPlayer, frame)
+		return
+	}
+	if defenderID == uuid.Nil {
+		for _, s := range g.Seats {
+			if s.ID != frame.SourceController {
+				defenderID = s.ID
+				break
 			}
 		}
-		if defenderID != uuid.Nil {
-			g.markCombatDamageToPlayerFromFrameLocked(defenderID, trampleToPlayer, frame)
-		}
 	}
-	if staged {
-		g.closeDamageStageLocked(prevStage)
+	if defenderID != uuid.Nil {
+		g.markCombatDamageToPlayerFromFrameLocked(defenderID, trampleToPlayer, frame)
 	}
-	// Blockers also deal their power back (simultaneous damage —
-	// CR 510.1d). The attacker loop in assignAndDealCombatDamageLocked
-	// already marked blocker→attacker damage before queuing the
-	// prompt, so we don't re-fire it here.
-	//
-	// Run SBAs so deaths from this assignment land before the next
-	// substep / step advance.
-	g.runStateChecksLocked()
-	return nil
 }
 
 // queueTriggerPromptLocked queues a CR 603.5 yes/no prompt for an
@@ -3735,6 +3768,11 @@ func (g *Game) queuePayUnlessLocked(
 	var err error
 	if extra.action == nil {
 		parsed, err = ParseCost(cost)
+	} else if extra.action.Kind == PayActionEither && !validEither(extra.action) {
+		// ADR 0187 §5: an either payment needs two or more branches,
+		// none of them an either. A programming error, surfaced once; the
+		// consequence still runs so the card does something.
+		err = ErrInvalidParam
 	}
 	if err != nil {
 		g.EmitEvent(Event{
@@ -3908,6 +3946,11 @@ type MayCastPrompt struct {
 	// the client's defaults.
 	AcceptLabel, DeclineLabel string
 	OnAccept, OnDecline       func(g *Game) error
+	// Private marks a prompt whose words name a card only the chooser
+	// has looked at (a "look at the top card" offer, #3801): the wire
+	// strips the question, the labels and the card from every other
+	// viewer (PendingChoice.PrivateText).
+	Private bool
 }
 
 // QueueMayCastPromptForEffect is QueueMayCastForEffect with the
@@ -3937,6 +3980,7 @@ func (g *Game) QueueMayCastPromptForEffect(p MayCastPrompt) error {
 			onAccept:  p.OnAccept,
 			onDecline: p.OnDecline,
 		},
+		private: p.Private,
 	})
 	return nil
 }
@@ -4038,7 +4082,7 @@ func (g *Game) ResolvePayUnless(choiceID, chooserID uuid.UUID, apply bool) error
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 func (g *Game) ResolvePayUnlessWithTaps(choiceID, chooserID uuid.UUID, apply bool, tapIDs []uuid.UUID) error {
-	return g.resolvePayUnless(choiceID, chooserID, apply, tapIDs, nil, 0)
+	return g.resolvePayUnless(choiceID, chooserID, apply, tapIDs, nil, 0, nil)
 }
 
 // ResolvePayUnlessWithLife is ResolvePayUnlessWithTaps with the number
@@ -4056,7 +4100,7 @@ func (g *Game) ResolvePayUnlessWithTaps(choiceID, chooserID uuid.UUID, apply boo
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 func (g *Game) ResolvePayUnlessWithLife(choiceID, chooserID uuid.UUID, apply bool, tapIDs []uuid.UUID, phyrexianLife int) error {
-	return g.resolvePayUnless(choiceID, chooserID, apply, tapIDs, nil, phyrexianLife)
+	return g.resolvePayUnless(choiceID, chooserID, apply, tapIDs, nil, phyrexianLife, nil)
 }
 
 // ResolvePayUnlessWithCards is ResolvePayUnless for a prompt whose
@@ -4074,12 +4118,31 @@ func (g *Game) ResolvePayUnlessWithLife(choiceID, chooserID uuid.UUID, apply boo
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 func (g *Game) ResolvePayUnlessWithCards(choiceID, chooserID uuid.UUID, apply bool, cardIDs []uuid.UUID) error {
-	return g.resolvePayUnless(choiceID, chooserID, apply, nil, cardIDs, 0)
+	return g.resolvePayUnless(choiceID, chooserID, apply, nil, cardIDs, 0, nil)
+}
+
+// ResolvePayUnlessWithOption is ResolvePayUnlessWithCards for an either
+// payment (ADR 0187 §5, PayActionEither): `option` is the index into the
+// payment's branches the chooser takes, and `cardIDs` name the cards that
+// branch pays with when it is a card pick ("sacrifice two lands"). A
+// branch that names nothing ("take 5 damage") sends no cards.
+//
+// Every malformed answer is REFUSED with the prompt left in place, the
+// posture of the other pay-unless resolvers: an `option` out of range,
+// an `option` on a prompt that is not an either payment or on a "Don't
+// pay", `apply: true` on an either payment with no `option` (no branch
+// is ever guessed), and cards that are not exactly the branch's payment.
+// A branch the chooser cannot pay at all is a decline, as an unfundable
+// mana "yes" is (CR 118.3).
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+func (g *Game) ResolvePayUnlessWithOption(choiceID, chooserID uuid.UUID, apply bool, option *int, cardIDs []uuid.UUID) error {
+	return g.resolvePayUnless(choiceID, chooserID, apply, nil, cardIDs, 0, option)
 }
 
 // resolvePayUnless is the one body behind the three pay-unless
 // resolvers.
-func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapIDs, cardIDs []uuid.UUID, phyrexianLife int) error {
+func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapIDs, cardIDs []uuid.UUID, phyrexianLife int, option *int) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -4119,7 +4182,29 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 	if frame != nil {
 		action = frame.action
 	}
-	if len(cardIDs) > 0 && (!apply || action == nil || action.NamesNothing()) {
+	// ADR 0187 §5: an either payment is answered with the branch it
+	// takes (`pay_option`), and the rest of the validation is that
+	// branch's, as its own payment. `pays` is the payment this answer
+	// makes: the chosen branch, or the prompt's own payment.
+	pays := action
+	switch {
+	case action != nil && action.Kind == PayActionEither:
+		if apply {
+			// No branch is ever guessed, and none past the list.
+			if option == nil {
+				return ErrInvalidParam
+			}
+			if pays = EitherBranch(action, *option); pays == nil {
+				return ErrInvalidParam
+			}
+		} else if option != nil {
+			return ErrInvalidParam
+		}
+	case option != nil:
+		// A `pay_option` on anything but an either payment.
+		return ErrInvalidParam
+	}
+	if len(cardIDs) > 0 && (!apply || pays == nil || pays.NamesNothing() || pays.Kind == PayActionEither) {
 		return ErrInvalidParam
 	}
 	// ADR 0131 §2: the life half of a mana payment, announced beside the
@@ -4142,20 +4227,24 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 		}
 	}
 	payable := false
-	if apply && action.NamesNothing() {
+	if apply && pays.NamesNothing() {
 		// ADR 0129 §3: an energy payment names nothing. "Pay" is a
 		// payment exactly when the energy is there (CR 118.3). ADR
 		// 0150 §3: so do life (CR 119.4, 119.8), damage and nothing.
-		payable = g.payActionPayableLocked(chooserID, action)
-	} else if apply && action != nil {
-		if len(cardIDs) > 0 || len(g.payActionOptionsLocked(chooserID, action)) >= action.Count {
-			if err := g.validatePayActionLocked(chooserID, action, cardIDs); err != nil {
+		payable = g.payActionPayableLocked(chooserID, pays)
+	} else if apply && pays != nil {
+		if len(cardIDs) > 0 || len(g.payActionOptionsLocked(chooserID, pays)) >= pays.Count {
+			if err := g.validatePayActionLocked(chooserID, pays, cardIDs); err != nil {
 				return err
 			}
 			payable = true
 		}
 	}
-	g.answerPayUnlessLocked(idx, choice, chooserID, apply, tapIDs, cardIDs, phyrexianLife, payable, false)
+	var branch *PayAction
+	if apply && action != nil && action.Kind == PayActionEither {
+		branch = pays
+	}
+	g.answerPayUnlessLocked(idx, choice, chooserID, apply, tapIDs, cardIDs, phyrexianLife, payable, false, branch)
 	return nil
 }
 
@@ -4167,11 +4256,16 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 // the prompt out of the queue without counting it as a player decision.
 // The branch runs as the answered prompt's branch, so a prompt it
 // queues is keyed from this one's (§2). Caller must hold g.mu.
-func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID uuid.UUID, apply bool, tapIDs, cardIDs []uuid.UUID, phyrexianLife int, payable, auto bool) {
+func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID uuid.UUID, apply bool, tapIDs, cardIDs []uuid.UUID, phyrexianLife int, payable, auto bool, branch *PayAction) {
 	frame := choice.payUnlessResume
 	var action *PayAction
 	if frame != nil {
 		action = frame.action
+	}
+	// ADR 0187 §5: an either payment pays the branch the answer named
+	// (`branch`); the automatic answer names none, and is never payable.
+	if branch != nil {
+		action = branch
 	}
 	g.answerChoiceLocked(idx, auto)
 	if frame == nil {
@@ -4181,7 +4275,7 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 		g.runStateChecksLocked()
 		return
 	}
-	branch := func(fn func(g *Game) error) {
+	runBranch := func(fn func(g *Game) error) {
 		g.runPromptBranchLocked(choice.AutoAnswerKey, func() {
 			g.runPayUnlessBranchLocked(choice, chooserID, fn)
 		})
@@ -4191,12 +4285,12 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 		// discard is the payment, and the "yes" branch runs once it has
 		// been made. An unpayable "yes" is the decline.
 		if !payable {
-			branch(frame.onDecline)
+			runBranch(frame.onDecline)
 			g.runStateChecksLocked()
 			return
 		}
 		if err := g.payActionLocked(chooserID, choice.Source, action, cardIDs, func(g *Game) error {
-			branch(frame.onPay)
+			runBranch(frame.onPay)
 			return nil
 		}); err != nil {
 			g.EmitEvent(Event{Kind: EventEffectError, Actor: chooserID, Source: choice.Source, ErrorMsg: err.Error()})
@@ -4222,7 +4316,7 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 	if paid {
 		consequence = frame.onPay
 	}
-	branch(consequence)
+	runBranch(consequence)
 	g.runStateChecksLocked()
 }
 

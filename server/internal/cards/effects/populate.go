@@ -58,6 +58,11 @@ type Populate struct {
 	Player uuid.UUID
 	Except func(t *game.Card)
 	Then   func(ctx *Context, created []uuid.UUID) error
+
+	// Match narrows the tokens that can be copied. Nil is populate's own
+	// "creature token you control"; Summon: Good King Mog XII widens it
+	// to "a non-Saga token you control".
+	Match CardPredicate
 }
 
 func (p Populate) Apply(ctx *Context) error {
@@ -65,8 +70,11 @@ func (p Populate) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	candidates := permanentsControlledByMatching(ctx.Game, player,
-		And(Creature(), IsTokenPredicate()))
+	match := p.Match
+	if match == nil {
+		match = And(Creature(), IsTokenPredicate())
+	}
+	candidates := permanentsControlledByMatching(ctx.Game, player, match)
 	switch {
 	case len(candidates) == 0:
 		return p.finish(ctx, nil)

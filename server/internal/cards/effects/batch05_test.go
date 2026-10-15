@@ -444,28 +444,25 @@ func TestAftermathAnalystMillsThenReturnsEveryLandTapped(t *testing.T) {
 func TestPlaguecrafterEdictsThoseWhoCanAndDiscardsThoseWhoCant(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp1 := g.Seats[0], g.Seats[1]
-	seedCreature(g, "Their Bear", opp1.ID)
+	bear := seedCreature(g, "Their Bear", opp1.ID)
 	// Seats 2 and 3 control nothing; they hold seven cards each.
 
-	castCatalogSpell(t, g, "Plaguecrafter", "Creature — Human Shaman", b05PlaguecrafterOracle, nil)
+	crafter := castCatalogSpell(t, g, "Plaguecrafter", "Creature — Human Shaman", b05PlaguecrafterOracle, nil)
 	passPriorityAroundTable(t, g)
 
-	sac := map[uuid.UUID]bool{}
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceSacrifice {
-			sac[c.Chooser] = true
-		}
+	// The controller's only creature is the Plaguecrafter and the
+	// opponent's is the bear, so both picks are forced and collected
+	// unasked (ADR 0175, #3664).
+	if g.Battlefield.Contains(crafter) || g.Battlefield.Contains(bear) {
+		t.Error("the Plaguecrafter's controller and the bear's owner must sacrifice")
 	}
 	// "Each player who can't discards a card" is the Mind Rot path:
 	// its own prompt, addressed to that player over their own hand.
-	if !sac[me.ID] || !sac[opp1.ID] {
-		t.Errorf("the Plaguecrafter's controller and the bear's owner must be asked to sacrifice: %v", sac)
-	}
 	if discardOwed(g, g.Seats[2].ID) != 1 || discardOwed(g, g.Seats[3].ID) != 1 {
 		t.Error("players with no creature or planeswalker must be asked to discard one card")
 	}
-	if discardOwed(g, me.ID) != 0 || discardOwed(g, opp1.ID) != 0 || sac[g.Seats[2].ID] {
-		t.Error("a player gets exactly one of the two prompts")
+	if discardOwed(g, me.ID) != 0 || discardOwed(g, opp1.ID) != 0 || sacrificeChoiceFor(g, g.Seats[2].ID) != nil {
+		t.Error("a player gets exactly one of the two")
 	}
 }
 

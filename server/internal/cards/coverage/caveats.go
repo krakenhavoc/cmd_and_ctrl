@@ -289,6 +289,14 @@ var mechanics = []Mechanic{
 		Adopt:      `AlternativeCosts: []game.AlternativeCost{Dash("{cost}")} — the haste and the return-to-hand ride the constructor (#3172)`,
 	},
 	{
+		Name:       "blitz",
+		Phrases:    []string{"blitz"},
+		Implements: altCost("blitz"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "blitz") resolves`,
+		Confidence: Exact,
+		Adopt:      `AlternativeCosts: []game.AlternativeCost{Blitz("{cost}")} — the haste, the draw and the end-step sacrifice ride the constructor (#3772)`,
+	},
+	{
 		Name:       "freerunning",
 		Phrases:    []string{"freerunning"},
 		Implements: altCost("freerunning"),

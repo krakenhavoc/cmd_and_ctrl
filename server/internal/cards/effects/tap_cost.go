@@ -53,6 +53,22 @@ func Convoke() *game.TapPermanentsCost {
 	}
 }
 
+// Improvise is "Improvise (Your artifacts can help cast this spell. Each
+// artifact you tap after you're done activating mana abilities pays for
+// {1}.)" — CR 702.126. Convoke's twin over artifacts and without the
+// colour clause: each tapped artifact pays generic mana only. Tapping is
+// not the {T} symbol, so an artifact that entered this turn may be tapped.
+func Improvise() *game.TapPermanentsCost {
+	return &game.TapPermanentsCost{
+		Key:   "improvise",
+		Label: "Improvise",
+		Spec: TargetPermanent("an untapped artifact you control",
+			Artifact(), YouControl(), Untapped()),
+	}
+}
+
+func init() { game.ImproviseTapCost = Improvise() }
+
 // Waterbend is "Waterbend {cost}. (While paying a waterbend cost,
 // you can tap your artifacts and creatures to help. Each one pays
 // for {1}.)"

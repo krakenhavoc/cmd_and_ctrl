@@ -266,8 +266,7 @@ func TestAMarkDoesNotReachAnEarlierClone(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.MarkSpellCantBeCounteredForEffect(spell, CounterShieldMark{SourceName: "first"})
 	})
-	var before *Game
-	before = g.Clone()
+	before := g.Clone()
 	g.WithWriteLock(func() {
 		g.MarkSpellCantBeCounteredForEffect(spell, CounterShieldMark{SourceName: "second"})
 	})

@@ -35,7 +35,7 @@ func init() {
 				if p == nil {
 					return
 				}
-				n := len(p.ManaPool)
+				n := p.ManaPool.Total()
 				c.Power += n
 				c.Toughness += n
 			},

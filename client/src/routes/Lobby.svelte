@@ -95,6 +95,7 @@
   import { BLOCK_HINT, BLOCK_LABEL, canManageBlocks } from "../lib/moderation";
   import BlockList from "../lib/components/BlockList.svelte";
   import AgentChip from "../lib/components/AgentChip.svelte";
+  import DeckPowerBadge from "../lib/components/DeckPowerBadge.svelte";
   import Page from "../lib/components/Page.svelte";
   import { noteMyGames } from "../lib/hints/endedGame";
   import {
@@ -1415,7 +1416,9 @@
                         {/if}
                         <div class="sstat" class:pend={line.pending}>
                           {#if !line.pending && (p.is_bot || p.deck_uploaded)}<i class="dot ok"
-                            ></i>{/if}{line.text}
+                            ></i>{/if}<DeckPowerBadge power={line.power} /><span class="stext"
+                            >{line.text}</span
+                          >
                         </div>
                       </div>
                       {#if !p.is_bot && isAdmin}
@@ -2408,6 +2411,13 @@
   }
   .sstat.pend {
     color: var(--accent-strong);
+  }
+  /* The deck text is what gives way on a narrow seat; the dot and the
+     power badge beside it never shrink (#3671). */
+  .stext {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .seat.bot {
     border-style: dashed;

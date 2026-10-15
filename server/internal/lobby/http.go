@@ -308,6 +308,12 @@ type Config struct {
 	// its file picker. See ADR 0017 §6.
 	BugStore *bugstore.Store
 
+	// BugForum mirrors filed reports into a Discord forum channel (ADR
+	// 0196). Nil turns the mirror off: nothing is posted anywhere.
+	// Production wires it when CMDCTRL_DISCORD_BUG_FORUM_ID and the bot
+	// token are set.
+	BugForum *BugForum
+
 	// BugLimits tunes the throttle in front of POST /bugreport (ADR
 	// 0017 §10): per-account window, daily cap, dedupe window. The zero
 	// value means the defaults; production sets nothing.
@@ -1332,8 +1338,8 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 		} else if out.Seat != nil {
 			// The seat is on the table now; Get still carries both invites.
 			if fresh, gerr := c.Lobby.Get(meta.ID); gerr == nil {
-				out.GameMeta.Players = fresh.Players
-				out.GameMeta.HostPlayerID = fresh.HostPlayerID
+				out.Players = fresh.Players
+				out.HostPlayerID = fresh.HostPlayerID
 			}
 		}
 		out.GameMeta = redactMetaFor(p, c.isAdmin(p), meta.ID, out.GameMeta)
@@ -2586,6 +2592,11 @@ func castParamsFromPreviewQuery(r *http.Request, xValue int) (game.CastSpellPara
 	}
 	// #3402: and the permanents an exile-a-permanent cost takes.
 	if params.ExilePermanentIDs, err = uuidListParam(q.Get("exile_permanent_ids"), "exile_permanent_ids"); err != nil {
+		return params, err
+	}
+	// #3175: and the hand cards a hand-exile cost takes. Their count
+	// changes the PRICE (March of Swirling Mist's "{2} less for each").
+	if params.ExileFromHandIDs, err = uuidListParam(q.Get("exile_from_hand_ids"), "exile_from_hand_ids"); err != nil {
 		return params, err
 	}
 	// ADR 0135 §4: the alternative cost's named payment. An emerge

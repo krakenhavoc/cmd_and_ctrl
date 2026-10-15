@@ -217,12 +217,12 @@ func TestTecutlanTapsForRed(t *testing.T) {
 		t.Fatalf("tap for mana: %v", err)
 	}
 	red := 0
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Color == "R" {
 			red++
 		}
 	}
-	if red != 1 || len(me.ManaPool) != 1 {
+	if red != 1 || me.ManaPool.Total() != 1 {
 		t.Errorf("pool %+v, want one red mana", me.ManaPool)
 	}
 }

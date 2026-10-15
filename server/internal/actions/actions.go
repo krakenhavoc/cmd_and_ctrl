@@ -687,6 +687,14 @@ func dispatch(g *game.Game, a Action) error {
 			// additional cost exiles ("exile a creature you control").
 			// The name an activate_ability already uses.
 			ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
+			// #3175 — the hand cards a mandatory hand-exile additional
+			// cost exiles ("you may exile any number of blue cards from
+			// your hand"). Any number, none included.
+			ExileFromHandIDs []string `json:"exile_from_hand_ids,omitempty"`
+			// #3536 — the graveyard cards a mandatory exile-cards
+			// additional cost exiles ("exile six cards from your
+			// graveyard"). The name an activate_ability already uses.
+			ExileIDs []string `json:"exile_ids,omitempty"`
 			// S22 — the untapped permanents tapped to help pay
 			// (convoke, waterbend). Optional even on a card that
 			// offers the cost: tapping nothing and paying the whole
@@ -840,6 +848,8 @@ func dispatch(g *game.Game, a Action) error {
 			{"blight_ids", p.BlightIDs, &params.BlightIDs},
 			{"reveal_ids", p.RevealIDs, &params.RevealIDs},
 			{"exile_permanent_ids", p.ExilePermanentIDs, &params.ExilePermanentIDs},
+			{"exile_from_hand_ids", p.ExileFromHandIDs, &params.ExileFromHandIDs},
+			{"exile_ids", p.ExileIDs, &params.ExileIDs},
 			{"delve_ids", p.DelveIDs, &params.DelveIDs},
 		} {
 			for i, raw := range l.raw {
@@ -1184,7 +1194,7 @@ func dispatch(g *game.Game, a Action) error {
 		if err := requireCardController(g, a.Caller, attackerID); err != nil {
 			return err
 		}
-		declParams, err := p.attackTaxParams.decode("declare_attacker")
+		declParams, err := p.decode("declare_attacker")
 		if err != nil {
 			return err
 		}
@@ -1229,7 +1239,7 @@ func dispatch(g *game.Game, a Action) error {
 			}
 			decls = append(decls, game.AttackDeclaration{Attacker: attackerID, Target: targetID, Exert: e.Exert})
 		}
-		declParams, err := p.attackTaxParams.decode("declare_attackers")
+		declParams, err := p.decode("declare_attackers")
 		if err != nil {
 			return err
 		}
@@ -1887,6 +1897,14 @@ func dispatch(g *game.Game, a Action) error {
 			// activations use. Refused on a "Don't pay" and on a
 			// non-mana payment.
 			PhyrexianLife int `json:"phyrexian_life,omitempty"`
+			// PayOption rides a PendingChoicePayUnless "pay" answer to
+			// an either payment (ADR 0187 §5, Worms of the Earth): the
+			// index into the prompt's pay_either branches the chooser
+			// takes, with card_ids for a branch that names cards. A
+			// pointer, because 0 is the first branch. Refused on a
+			// prompt that is not an either payment, on a "Don't pay",
+			// and (by its absence) on an either payment's "Pay".
+			PayOption *int `json:"pay_option,omitempty"`
 			// Assignments populates an S18 sub-PR 3
 			// PendingChoiceDamageAssignment pick — each entry is
 			// {blocker_id, amount}. The attacker's controller
@@ -2203,6 +2221,20 @@ func dispatch(g *game.Game, a Action) error {
 					}
 					tapIDs = append(tapIDs, id)
 				}
+				// ADR 0187 §5: an either payment names its branch in
+				// pay_option, and the cards that branch pays with (if
+				// any) in card_ids. The engine refuses the rest: an
+				// index out of range, a pay_option on any other prompt.
+				if p.PayOption != nil {
+					if len(tapIDs) > 0 || p.PhyrexianLife != 0 {
+						return game.ErrInvalidParam
+					}
+					cardIDs, err := parseUUIDs(p.CardIDs, "card_ids")
+					if err != nil {
+						return err
+					}
+					return g.ResolvePayUnlessWithOption(choiceID, a.Player, *p.OptionalApply, p.PayOption, cardIDs)
+				}
 				// ADR 0108 §5: a non-mana payment ("discard a card",
 				// "sacrifice two lands") names what it pays with in
 				// card_ids beside the apply.
@@ -2246,6 +2278,12 @@ func dispatch(g *game.Game, a Action) error {
 				// CR 903.9a (ADR 0115): apply puts the commander into
 				// its owner's command zone.
 				return g.ResolveCommanderReturn(choiceID, a.Player, *p.OptionalApply)
+			case game.PendingChoiceTurnSkipOrder:
+				// ADR 0188 Decision 12, CR 616.1: apply uses the
+				// player's own "skip your next turn" on the extra turn
+				// (answer 0, recommended); not applying lets the
+				// extra-turn skip take it (answer 1).
+				return g.ResolveTurnSkipOrder(choiceID, a.Player, *p.OptionalApply)
 			default:
 				return g.ResolveOptionalReplacement(choiceID, a.Player, *p.OptionalApply)
 			}
@@ -2576,6 +2614,9 @@ func dispatch(g *game.Game, a Action) error {
 			// ADR 0103: which door an unlock unlocks — "left" or
 			// "right". Required for kind "unlock", refused otherwise.
 			Door string `json:"door,omitempty"`
+			// ADR 0189: which turn_face_up offer — "mana_cost",
+			// "morph" or "disguise". Empty takes the first.
+			Route string `json:"route,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -2583,6 +2624,10 @@ func dispatch(g *game.Game, a Action) error {
 		cardID, err := uuid.Parse(p.CardID)
 		if err != nil {
 			return fmt.Errorf("special_action card_id: %w", err)
+		}
+		route, routeOK := game.ParseTurnFaceUpRoute(p.Route)
+		if !routeOK {
+			return fmt.Errorf("special_action route: %q is not mana_cost, morph or disguise", p.Route)
 		}
 		door := game.ParseDoorName(p.Door)
 		if p.Door != "" && door == game.DoorNone {
@@ -2593,6 +2638,7 @@ func dispatch(g *game.Game, a Action) error {
 			AutoTap: p.AutoTap,
 			Cost:    p.Cost,
 			Door:    door,
+			Route:   route,
 		})
 
 	case TypeSacrificePermanent:

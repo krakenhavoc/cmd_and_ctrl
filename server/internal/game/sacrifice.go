@@ -67,6 +67,13 @@ func (g *Game) sacrificeWithAnswerLocked(cardID uuid.UUID, answer commanderZoneA
 	if g.controllerOfBattlefieldCardLocked(cardID) == uuid.Nil {
 		return ErrCardNotFound
 	}
+	// #3275, CR 101.2: a permanent that can't be sacrificed stays, and
+	// nothing is announced. An error, not nil, so a caller that reads
+	// "nil means it went" (the Saga rule's "something happened") does
+	// not loop on it.
+	if g.cantBeSacrificedLocked(cardID) {
+		return ErrCantBeSacrificed
+	}
 	r := sacrificeRoute(uuid.Nil)
 	r.commanderAnswer = answer
 	r.MustSettleNow = mustSettleNow
@@ -125,9 +132,10 @@ func (g *Game) SacrificePermanent(playerID, cardID uuid.UUID) error {
 	return nil
 }
 
-// EachPlayerSacrificesForEffect queues one PendingChoiceSacrifice per
-// affected player, in APNAP seat order starting from the active
-// player — "each player sacrifices a creature" (Fleshbag Marauder),
+// EachPlayerSacrificesForEffect asks each affected player, in APNAP
+// seat order starting from the active player, for a permanent to
+// sacrifice, then sacrifices every pick at once (CR 101.4, 608.2e;
+// #3664) — "each player sacrifices a creature" (Fleshbag Marauder),
 // "each other player sacrifices a creature" (Grave Pact), "each
 // opponent sacrifices a creature" (Butcher of Malakir).
 //
@@ -141,39 +149,48 @@ func (g *Game) SacrificePermanent(playerID, cardID uuid.UUID) error {
 // permanent are skipped at queue time — the requirement is "if you
 // can", and prompting them with an empty list would wedge the queue.
 //
-// Returns the number of prompts queued, so a caller can tell "nobody
-// had a creature" from "everyone was asked".
+// Returns the number of players who will be asked, so a caller can
+// tell "nobody had a creature" from "everyone was asked".
 //
 // THE FIRE-AND-FORGET FORM, and the count is not an outcome: nothing
 // has left the battlefield when it returns, and a clause written on
 // the next line pays out for a sacrifice nobody has chosen yet. A
 // card with anything hanging off the answer uses
 // EachPlayerSacrificesThenForEffect (#1019, sacrifice_run.go), which
-// is this queue loop with the rest of the card attached.
+// is this with the rest of the card attached.
 //
-// The choices are queued in APNAP order and answered as players click.
-// Moves happen on each answer. A dies payoff that leaves early may miss
-// later deaths; this legacy fan-out does not provide a simultaneous action.
-// A caller requiring public choices followed by one shared exit uses
-// ChoosePermanentsInOrderThenForEffect and SacrificeAllThenForEffect
-// (ADR 0175), as Liliana, Dreadhorde General does.
+// The choices go through ADR 0175's ordered collector: one player is
+// asked at a time, in APNAP order, each seeing the earlier picks, and
+// nothing moves until the last player has chosen. Then every pick
+// leaves in one SacrificeAllThenForEffect, so a Blood Artist sees every
+// death in one batch and no death trigger can resolve while a later
+// player is still choosing (sacrificeTogetherLocked, sacrifice_run.go).
 //
-// Caller must hold g.mu (it is an effect-time helper).
+// Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) EachPlayerSacrificesForEffect(source uuid.UUID, except uuid.UUID, spec *TargetSpec, reason string) int {
-	queued := 0
-	numSeats := len(g.Seats)
-	if numSeats == 0 {
-		return 0
+	asked, err := g.sacrificeTogetherLocked(source, g.apnapSeatsExceptLocked(except), spec, reason, nil)
+	if err != nil {
+		g.EmitEvent(Event{Kind: EventEffectError, Source: source, ErrorMsg: err.Error()})
 	}
-	start := g.Turn.ActiveSeat
-	for i := 0; i < numSeats; i++ {
-		p := g.Seats[(start+i)%numSeats]
+	return asked
+}
+
+// apnapSeatsExceptLocked lists the living players in APNAP order from
+// the active player (CR 101.4), leaving out `except` (uuid.Nil leaves
+// out nobody).
+//
+// Caller must hold g.mu.
+func (g *Game) apnapSeatsExceptLocked(except uuid.UUID) []uuid.UUID {
+	var seats []uuid.UUID
+	n := len(g.Seats)
+	for i := 0; i < n; i++ {
+		p := g.Seats[(g.Turn.ActiveSeat+i)%n]
 		if p == nil || p.Eliminated || p.ID == except {
 			continue
 		}
-		queued += g.PlayerSacrificesForEffect(source, p.ID, spec, reason)
+		seats = append(seats, p.ID)
 	}
-	return queued
+	return seats
 }
 
 // PlayerSacrificesForEffect queues ONE sacrifice prompt, for one
@@ -208,7 +225,8 @@ func (g *Game) PlayerSacrificesForEffect(source, playerID uuid.UUID, spec *Targe
 //
 // Note this is NOT LegalTargetsForEffect: the effect doesn't target,
 // so a hexproof or protected creature is still a legal choice. Only
-// the spec's own card predicate and control matter.
+// the spec's own card predicate and control matter, and whether the
+// permanent can be sacrificed at all (#3275).
 func (g *Game) sacrificeCandidatesLocked(playerID uuid.UUID, spec *TargetSpec) []uuid.UUID {
 	var out []uuid.UUID
 	for i := range g.Battlefield.Cards {
@@ -217,6 +235,11 @@ func (g *Game) sacrificeCandidatesLocked(playerID uuid.UUID, spec *TargetSpec) [
 			continue
 		}
 		if spec != nil && spec.CardOK != nil && !spec.CardOK(g, playerID, c, ZoneBattlefield) {
+			continue
+		}
+		// #3275, CR 101.2: a permanent that can't be sacrificed is not a
+		// legal choice, so an edict passes over it.
+		if g.permanentCantBeSacrificedLocked(&c) {
 			continue
 		}
 		out = append(out, c.InstanceID)

@@ -54,10 +54,10 @@ func discardTwoUnlessOne(key, question string, qualifies func(game.Card) bool) g
 		if p == nil {
 			return nil
 		}
-		switch held := len(p.Hand.Cards); {
-		case held == 0:
+		switch len(p.Hand.Cards) {
+		case 0:
 			return nil
-		case held == 1:
+		case 1:
 			g.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: d.Player, Source: d.Source, N: 1, Question: question})
 		default:
 			g.QueueDiscardChoiceForEffect(game.DiscardPrompt{

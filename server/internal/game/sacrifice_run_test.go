@@ -6,21 +6,22 @@ import (
 	"github.com/google/uuid"
 )
 
-// sacrifice_run_test.go pins #1019: the prompted sacrifice has a
-// continuation, and it runs once, after the LAST asked seat has
+// sacrifice_run_test.go pins #1019 and #3664: a prompted sacrifice has
+// a continuation, and it runs once, after the LAST asked seat has
 // settled.
 //
-// The two entry points do not sacrifice anything — they queue a
-// question per seat and return how many seats were asked — so every
-// clause a card wrote on the next line was a payout on a move that had
-// not happened. Rise of the Witch-king returned a permanent from the
-// graveyard before anybody had chosen a creature.
+// The fan-out ("each player sacrifices", EachPlayerSacrificesThenForEffect)
+// is ADR 0175's ordered collector since #3664: one seat is asked at a
+// time in APNAP order, nothing moves until the last has chosen, and
+// every pick then leaves in one simultaneous exit (CR 101.4, 608.2e).
+// A seat with exactly as many candidates as it owes is collected
+// without a prompt, so the tests below give each asked seat two bears.
 //
 // What a run has to survive, one test each below: several seats
-// answering in any order, a leg an optional replacement has PAUSED, a seat
-// that leaves mid-prompt, a seat that had nothing to sacrifice, a
-// prompt the engine withdraws, and an undo across a half-answered
-// fan-out.
+// answering, a leg an optional replacement has PAUSED, a seat that
+// leaves mid-prompt, a seat that had nothing to sacrifice, a seat
+// whose candidates leave before its turn, and an undo across a
+// half-answered fan-out.
 
 // sacrificeRunCall records one run of a continuation.
 type sacrificeRunCall struct {
@@ -47,60 +48,105 @@ func eachPlayerSacrificesThen(t *testing.T, g *Game, source, except uuid.UUID) *
 	return out
 }
 
+// isSacrificePromptKind reports whether c asks its chooser to
+// sacrifice: the single-seat sacrifice_choice, or a fan-out's
+// choose_cards leg (ChooseSacrifice).
+func isSacrificePromptKind(c *PendingChoice) bool {
+	return c != nil && (c.Kind == PendingChoiceSacrifice ||
+		(c.Kind == PendingChoiceChooseCards && c.ChooseDestination == ChooseSacrifice))
+}
+
+// sacrificePromptFor returns the open sacrifice prompt owed by `seat`,
+// or nil.
+func sacrificePromptFor(g *Game, seat uuid.UUID) *PendingChoice {
+	for _, c := range g.PendingChoices {
+		if isSacrificePromptKind(c) && c.Chooser == seat {
+			return c
+		}
+	}
+	return nil
+}
+
 // answerSacrifice answers the open sacrifice prompt owed by `seat`
 // with `card`.
 func answerSacrifice(t *testing.T, g *Game, seat, card uuid.UUID) {
 	t.Helper()
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == PendingChoiceSacrifice && c.Chooser == seat {
-			if err := g.ResolveSacrificeChoice(c.ID, seat, card); err != nil {
-				t.Fatalf("ResolveSacrificeChoice: %v", err)
-			}
-			return
-		}
+	c := sacrificePromptFor(g, seat)
+	if c == nil {
+		t.Fatalf("seat %s owes no sacrifice prompt", seat)
 	}
-	t.Fatalf("seat %s owes no sacrifice prompt", seat)
+	if c.Kind == PendingChoiceChooseCards {
+		if err := g.ResolveChooseCards(c.ID, seat, []uuid.UUID{card}); err != nil {
+			t.Fatalf("ResolveChooseCards: %v", err)
+		}
+		return
+	}
+	if err := g.ResolveSacrificeChoice(c.ID, seat, card); err != nil {
+		t.Fatalf("ResolveSacrificeChoice: %v", err)
+	}
 }
 
 // openSacrificePrompts counts the sacrifice prompts still queued.
 func openSacrificePrompts(g *Game) int {
 	n := 0
 	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == PendingChoiceSacrifice {
+		if isSacrificePromptKind(c) {
 			n++
 		}
 	}
 	return n
 }
 
+// twoBears gives `seat` two bears, so a one-permanent edict has a real
+// choice to ask it, and returns the first.
+func twoBears(g *Game, seat uuid.UUID) uuid.UUID {
+	first := pushBear(g, seat)
+	pushBear(g, seat)
+	return first
+}
+
 // TestAPromptedSacrificeRunWaitsForEveryAskedSeat is the headline, and
 // Rise of the Witch-king's shape: three seats are asked, and the
 // continuation runs exactly once — after the third answer, not after
 // the third QUESTION.
+//
+// #3664: the seats are asked one at a time in APNAP order, a later
+// seat cannot answer first, and no picked permanent moves until the
+// last seat has chosen.
 func TestAPromptedSacrificeRunWaitsForEveryAskedSeat(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	seats := g.Seats[:3]
 	source := departureTestSource(g, seats[0].ID, "Rise of the Witch-king")
 	bears := map[uuid.UUID]uuid.UUID{}
 	for _, p := range seats {
-		bears[p.ID] = pushBear(g, p.ID)
+		bears[p.ID] = twoBears(g, p.ID)
 	}
 
 	run := eachPlayerSacrificesThen(t, g, source, g.Seats[3].ID)
 
 	if run.ran != 0 {
-		t.Fatalf("the continuation ran %d times with three prompts open, want 0 — "+
+		t.Fatalf("the continuation ran %d times with prompts open, want 0 — "+
 			"queueing a question is not sacrificing anything", run.ran)
 	}
-	if openSacrificePrompts(g) != 3 {
-		t.Fatalf("expected three prompts, got %d", openSacrificePrompts(g))
-	}
-
-	// Answered out of ask order on purpose: the run is a join, not a
-	// sequence.
-	for _, i := range []int{2, 0, 1} {
-		seat := seats[i].ID
-		answerSacrifice(t, g, seat, bears[seat])
+	for i, p := range seats {
+		if openSacrificePrompts(g) != 1 {
+			t.Fatalf("before seat %d answers: %d prompts open, want exactly 1 (CR 101.4: "+
+				"one player chooses at a time)", i, openSacrificePrompts(g))
+		}
+		if sacrificePromptFor(g, p.ID) == nil {
+			t.Fatalf("seat %d (%s) is not the one being asked; APNAP order is broken", i, p.Name)
+		}
+		for _, later := range seats[i+1:] {
+			if sacrificePromptFor(g, later.ID) != nil {
+				t.Fatalf("seat %s can answer before %s", later.Name, p.Name)
+			}
+		}
+		for _, q := range seats {
+			if findBattlefieldCard(g, bears[q.ID]) == nil {
+				t.Fatalf("%s's pick left the battlefield before every player had chosen (CR 608.2e)", q.Name)
+			}
+		}
+		answerSacrifice(t, g, p.ID, bears[p.ID])
 	}
 
 	if run.ran != 1 {
@@ -117,9 +163,6 @@ func TestAPromptedSacrificeRunWaitsForEveryAskedSeat(t *testing.T) {
 			t.Errorf("seat %s sacrificed %v, want the bear it named", p.Name, got)
 		}
 	}
-	// The ask order is APNAP from the active player, whatever order the
-	// answers arrived in: a continuation that walked the landed map
-	// would decide differently on two runs of one game.
 	for i, e := range run.got {
 		if e.Seat != seats[i].ID {
 			t.Errorf("entry %d is seat %s, want the ask order (%s)", i, e.Seat, seats[i].Name)
@@ -128,12 +171,11 @@ func TestAPromptedSacrificeRunWaitsForEveryAskedSeat(t *testing.T) {
 }
 
 // TestAPromptedSacrificeRunWaitsForAPausedLeg is the paused-leg
-// half, and the reason the answer goes through SacrificeThenForEffect
-// rather than the fire-and-forget call: a sacrificed card whose "may"
-// replacement is pending (a test one; a commander was the vehicle
-// before ADR 0115) is STILL ON THE BATTLEFIELD while its owner is
-// asked, so a run that settled on the line after the answer would pay
-// out with the permanent still in play.
+// half: a sacrificed card whose "may" replacement is pending (a test
+// one; a commander was the vehicle before ADR 0115) is STILL ON THE
+// BATTLEFIELD while its owner is asked, so a run that settled on the
+// line after the answer would pay out with the permanent still in
+// play.
 func TestAPromptedSacrificeRunWaitsForAPausedLeg(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
@@ -169,14 +211,13 @@ func TestAPromptedSacrificeRunWaitsForAPausedLeg(t *testing.T) {
 }
 
 // TestAPromptedSacrificeRunIgnoresASeatWithNothingToSacrifice: a seat
-// with no legal permanent is skipped at queue time (CR 701.21a's "if
-// you can"), so it is never part of the run and the run does not wait
-// for it.
+// with no legal permanent is skipped (CR 701.21a's "if you can"), so
+// it is never part of the run and the run does not wait for it.
 func TestAPromptedSacrificeRunIgnoresASeatWithNothingToSacrifice(t *testing.T) {
 	g := newActiveGame(t)
 	me, empty := g.Seats[0], g.Seats[1]
 	source := departureTestSource(g, me.ID, "Fleshbag Marauder")
-	bear := pushBear(g, me.ID)
+	bear := twoBears(g, me.ID)
 
 	run := eachPlayerSacrificesThen(t, g, source, uuid.Nil)
 
@@ -217,86 +258,70 @@ func TestAPromptedSacrificeRunWithNobodyToAskStillRunsTheRestOfTheCard(t *testin
 	}
 }
 
-// TestAWithdrawnSacrificePromptSettlesItsLegWithNothing is the
-// dropDefault half (#1016's rule at a second kind): the engine
-// withdraws a prompt whose board has emptied under it, and the run
-// hears "this seat sacrificed nothing" rather than waiting forever.
-//
-// pruneSacrificeChoicesLocked is the real caller — one seat's answer
-// can kill another seat's last creature — and it reaches
-// dropChoiceLocked, which is the door every prune in the tree goes
-// through.
-func TestAWithdrawnSacrificePromptSettlesItsLegWithNothing(t *testing.T) {
+// TestASeatWhoseCandidatesLeaveBeforeItsTurnIsSkipped: the later seat's
+// permanents leave by some other route while an earlier seat is still
+// choosing, so when its turn comes it has nothing to choose and the
+// run finishes rather than waiting for an answer that can never come.
+func TestASeatWhoseCandidatesLeaveBeforeItsTurnIsSkipped(t *testing.T) {
 	g := newActiveGame(t)
 	me, them := g.Seats[0], g.Seats[1]
 	source := departureTestSource(g, me.ID, "Fleshbag Marauder")
-	mine := pushBear(g, me.ID)
-	theirs := pushBear(g, them.ID)
+	mine := twoBears(g, me.ID)
+	theirs := []uuid.UUID{pushBear(g, them.ID), pushBear(g, them.ID)}
 
 	run := eachPlayerSacrificesThen(t, g, source, uuid.Nil)
-	if openSacrificePrompts(g) != 2 {
-		t.Fatalf("expected two prompts, got %d", openSacrificePrompts(g))
+	if sacrificePromptFor(g, me.ID) == nil {
+		t.Fatal("the active player is asked first")
 	}
 
-	// Their creature leaves by some other route, so the prune has no
-	// legal answer left to offer them.
 	g.WithWriteLock(func() {
-		if err := g.ExileCardForEffect(theirs); err != nil {
-			t.Fatalf("ExileCardForEffect: %v", err)
+		for _, id := range theirs {
+			if err := g.ExileCardForEffect(id); err != nil {
+				t.Fatalf("ExileCardForEffect: %v", err)
+			}
 		}
-		g.pruneSacrificeChoicesLocked()
 	})
 	if run.ran != 0 {
-		t.Fatalf("the continuation ran %d times with one prompt still open, want 0", run.ran)
+		t.Fatalf("the continuation ran %d times with a prompt still open, want 0", run.ran)
 	}
 
 	answerSacrifice(t, g, me.ID, mine)
 
 	if run.ran != 1 {
-		t.Fatalf("the continuation ran %d times, want 1 — a withdrawn leg must settle, "+
-			"or the run waits for an answer that is never coming", run.ran)
+		t.Fatalf("the continuation ran %d times, want 1 — a seat with nothing left must be "+
+			"skipped, or the run waits for an answer that is never coming", run.ran)
 	}
 	if !run.got.Sacrificed(me.ID) {
 		t.Error("the seat that answered sacrificed its bear")
 	}
-	if run.got.Sacrificed(them.ID) {
-		t.Errorf("the withdrawn leg reports a sacrifice: %v", run.got)
-	}
 	if got := run.got.By(them.ID); got != nil {
-		t.Errorf("the withdrawn leg reports %v, want nothing", got)
-	}
-	// The seat is still IN the answer: it was asked, and "asked and
-	// sacrificed nothing" is a different fact from "never asked".
-	if len(run.got) != 2 {
-		t.Errorf("the run reports %d asked seats, want 2", len(run.got))
+		t.Errorf("the emptied seat reports %v, want nothing", got)
 	}
 }
 
 // TestASeatLeavingMidPromptSettlesItsSacrificeLeg is the departure
-// sweep's half, gated exactly like every other dropDefault: the card
-// belongs to a seat still at the table, so the drop settles the leg
-// and the rest of the instruction finishes for everybody else.
+// sweep's half: the seat being asked concedes, its leg drops with no
+// picks, and the rest of the instruction finishes for everybody else —
+// including the earlier seat's pick, which had not moved yet.
 func TestASeatLeavingMidPromptSettlesItsSacrificeLeg(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	caster, leaver := g.Seats[0], g.Seats[1]
 	source := departureTestSource(g, caster.ID, "Rise of the Witch-king")
-	mine := pushBear(g, caster.ID)
-	pushBear(g, leaver.ID)
+	mine := twoBears(g, caster.ID)
+	twoBears(g, leaver.ID)
 
 	run := eachPlayerSacrificesThen(t, g, source, uuid.Nil)
-	// Only the two seats with a permanent were asked.
-	if openSacrificePrompts(g) != 2 {
-		t.Fatalf("expected two prompts, got %d", openSacrificePrompts(g))
+	answerSacrifice(t, g, caster.ID, mine)
+	if sacrificePromptFor(g, leaver.ID) == nil {
+		t.Fatal("the second seat is asked after the first answers")
+	}
+	if findBattlefieldCard(g, mine) == nil {
+		t.Fatal("the caster's pick moved before the second seat had chosen")
 	}
 
 	if err := g.Concede(leaver.ID); err != nil {
 		t.Fatalf("Concede: %v", err)
 	}
-	if run.ran != 0 {
-		t.Fatalf("the continuation ran %d times with the caster's prompt still open, want 0", run.ran)
-	}
-
-	answerSacrifice(t, g, caster.ID, mine)
 
 	if run.ran != 1 {
 		t.Fatalf("the continuation ran %d times, want 1 — a seat that leaves mid-prompt must "+
@@ -311,16 +336,15 @@ func TestASeatLeavingMidPromptSettlesItsSacrificeLeg(t *testing.T) {
 }
 
 // TestAnUndoAcrossAHalfAnsweredSacrificeRunReplaysIdentically is the
-// clone contract. A run is shared mutable state — the counter and the
-// per-seat landed lists — so an undo that rewound the queue and not
-// the run would replay the second answer against a counter that had
-// already been decremented and pay out a seat early.
+// clone contract: an undo that rewound the queue and not the collected
+// picks would replay the second answer against a stale receipt list and
+// sacrifice the wrong set.
 func TestAnUndoAcrossAHalfAnsweredSacrificeRunReplaysIdentically(t *testing.T) {
 	g := newActiveGame(t)
 	me, them := g.Seats[0], g.Seats[1]
 	source := departureTestSource(g, me.ID, "Fleshbag Marauder")
-	mine := pushBear(g, me.ID)
-	theirs := pushBear(g, them.ID)
+	mine := twoBears(g, me.ID)
+	theirs := twoBears(g, them.ID)
 
 	run := eachPlayerSacrificesThen(t, g, source, uuid.Nil)
 
@@ -333,18 +357,16 @@ func TestAnUndoAcrossAHalfAnsweredSacrificeRunReplaysIdentically(t *testing.T) {
 	}
 
 	g.WithWriteLock(func() { g.RestoreFrom(snapshot) })
-	if openSacrificePrompts(g) != 2 {
-		t.Fatalf("the undo restored %d prompts, want 2", openSacrificePrompts(g))
+	if sacrificePromptFor(g, me.ID) == nil || openSacrificePrompts(g) != 1 {
+		t.Fatalf("the undo restored %d prompts, want the first seat's one", openSacrificePrompts(g))
 	}
 	if run.ran != 0 {
 		t.Fatalf("the undo itself ran the continuation %d times", run.ran)
 	}
 
-	// Replay the same answer, then the other seat's.
 	answerSacrifice(t, g, me.ID, mine)
 	if run.ran != 0 {
-		t.Fatalf("the replayed answer ran the continuation %d times, want 0 — the counter "+
-			"rewound with the queue", run.ran)
+		t.Fatalf("the replayed answer ran the continuation %d times, want 0", run.ran)
 	}
 	answerSacrifice(t, g, them.ID, theirs)
 
@@ -352,8 +374,7 @@ func TestAnUndoAcrossAHalfAnsweredSacrificeRunReplaysIdentically(t *testing.T) {
 		t.Fatalf("the continuation ran %d times, want exactly 1", run.ran)
 	}
 	if run.got.Count() != 2 {
-		t.Errorf("the run sacrificed %d permanents, want 2 — a landed list that grew across "+
-			"the undo would report three (%v)", run.got.Count(), run.got)
+		t.Errorf("the run sacrificed %d permanents, want 2 (%v)", run.got.Count(), run.got)
 	}
 	if got := run.got.By(me.ID); len(got) != 1 {
 		t.Errorf("the replayed seat sacrificed %v, want exactly one permanent", got)

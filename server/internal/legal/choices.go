@@ -28,11 +28,15 @@ type choiceParams struct {
 	TapIDs []string `json:"tap_ids,omitempty"`
 	// PhyrexianLife rides a pay_unless "pay" that spends 2 life on each
 	// of that many symbols of the cost (ADR 0131 §2).
-	PhyrexianLife int           `json:"phyrexian_life,omitempty"`
-	Assignments   []assignParam `json:"assignments,omitempty"`
-	TrampleTo     int           `json:"trample_to_player,omitempty"`
-	Target        *targetWire   `json:"target,omitempty"`
-	Targets       []targetWire  `json:"targets"`
+	PhyrexianLife int `json:"phyrexian_life,omitempty"`
+	// PayOption rides a pay_unless "pay" to an either payment (ADR 0187
+	// §5): the index of the branch taken. A pointer, because 0 is the
+	// first branch.
+	PayOption   *int          `json:"pay_option,omitempty"`
+	Assignments []assignParam `json:"assignments,omitempty"`
+	TrampleTo   int           `json:"trample_to_player,omitempty"`
+	Target      *targetWire   `json:"target,omitempty"`
+	Targets     []targetWire  `json:"targets"`
 	// Distribution rides a pick_target answer whose clause divides
 	// (#1563): game.PickTargetDefaultDistribution, the even split.
 	Distribution map[string]int `json:"distribution,omitempty"`
@@ -287,6 +291,69 @@ func (e *enumerator) choiceMoves() bool {
 			// ADR 0150 §3: life, damage and nothing name nothing
 			// either, and "Pay" is a move exactly when the engine
 			// would take it as a payment (CR 119.4, 119.8 for life).
+			if action := c.PayAction(); action != nil && action.Kind == game.PayActionEither {
+				// ADR 0187 §5: one offer, several ways to pay. Each
+				// payable branch is its own move naming it by index
+				// (pay_option), and a card branch adds one move per
+				// combination, as a plain card payment does. A branch
+				// the seat cannot pay is not offered (CR 118.3); the
+				// decline always is.
+				for i := range action.Either {
+					branch := action.Either[i]
+					if !g.PayActionCanPayForEffect(c.Chooser, &branch) {
+						continue
+					}
+					option := i
+					payVerb, _ := anyPlayerVerbs(g, c, game.PayActionPhrase(branch), e.seat)
+					if branch.NamesNothing() {
+						a := true
+						p := base()
+						p.Apply = &a
+						p.PayOption = &option
+						var price *MoveCost
+						switch branch.Kind {
+						case game.PayActionEnergy:
+							price = withEnergy(nil, branch.Count)
+						case game.PayActionLife:
+							if branch.Count > 0 {
+								price = &MoveCost{Life: branch.Count}
+							}
+						}
+						e.add(Move{
+							Type:   TypeResolveChoice,
+							Player: e.seat,
+							Kind:   KindChoice,
+							Label:  reason + ": " + payVerb,
+							Source: c.Source,
+							Params: mustJSON(p),
+							Cost:   price,
+						})
+						continue
+					}
+					pool := g.PayActionOptionsForEffect(c.Chooser, &branch)
+					if branch.Kind == game.PayActionExileFromGraveyard {
+						pool = e.cheapestFuelFirst(pool)
+					}
+					for _, set := range e.combos(pool, branch.Count, branch.Count, e.opts.MaxExpansionPerSource, CapPerSource) {
+						a := true
+						p := base()
+						p.Apply = &a
+						p.PayOption = &option
+						p.CardIDs = idStrings(set)
+						label := reason + ": " + payVerb + " —"
+						for _, id := range set {
+							label += " " + cardNameFor(g, id, e.seat)
+						}
+						e.addChoice(c, label, p)
+					}
+				}
+				_, declineVerb := anyPlayerVerbs(g, c, c.PayCost, e.seat)
+				a := false
+				p := base()
+				p.Apply = &a
+				e.addChoice(c, reason+": "+declineVerb, p)
+				continue
+			}
 			if action := c.PayAction(); action.NamesNothing() {
 				payVerb, declineVerb := payNamingNothingVerbs(g, c, action, e.seat)
 				if g.PayActionPayableForEffect(c.Chooser, action) {
@@ -320,6 +387,12 @@ func (e *enumerator) choiceMoves() bool {
 			}
 			if action := c.PayAction(); action != nil {
 				pool := g.PayActionOptionsForEffect(c.Chooser, action)
+				if action.Kind == game.PayActionExileFromGraveyard {
+					// ADR 0187 §7: the cards the seat would miss least go
+					// first, as delve and escape do, so the payments the
+					// expansion cap keeps are the cheapest ones.
+					pool = e.cheapestFuelFirst(pool)
+				}
 				// ADR 0150 §6: an any-player sacrifice or discard says
 				// whose effect it stops, as a mana link does.
 				payVerb, declineVerb := anyPlayerVerbs(g, c, c.PayCost, e.seat)
@@ -842,10 +915,23 @@ func (e *enumerator) choiceMoves() bool {
 			// the card's rule — and is deliberately left unmarked
 			// rather than given a synthesised fallback the resolver
 			// would refuse.
+			// ADR 0187 §2: one leg of a per-object any-player offer
+			// (Cleansing). The answer is the objects the chooser pays
+			// life for; its moves are priced in life and named for the
+			// card, and the suggested set is always reachable.
+			offerLeg := c.Kind == game.PendingChoiceChooseCards && c.AnyPlayerOffer != nil && c.AnyPlayerOffer.EachLife > 0
+			offerName := reason
+			if offerLeg {
+				offerName = cardNameFor(g, c.Source, e.seat)
+			}
 			if c.ChooseMin == 0 {
 				p := base()
 				p.CardIDs = []string{}
-				e.addAlwaysLegalChoice(c, reason+": choose nothing", p)
+				if offerLeg {
+					e.addAlwaysLegalChoice(c, offerName+": pay for none", p)
+				} else {
+					e.addAlwaysLegalChoice(c, reason+": choose nothing", p)
+				}
 			}
 			// filteredCombinations, not combinations() plus a filter:
 			// it spreads the budget across set sizes, so a "choose one
@@ -911,6 +997,9 @@ func (e *enumerator) choiceMoves() bool {
 				sets = withSuggestedFirst(g, c, sets)
 				verb = ": proliferate"
 			}
+			if offerLeg {
+				sets = withSuggestedFirst(g, c, sets)
+			}
 			if c.Kind == game.PendingChoiceEntryChoosePermanents {
 				// ADR 0170: Phylactery Lich's artifact, Sin's any
 				// number of permanents. The declaration's suggested
@@ -922,6 +1011,11 @@ func (e *enumerator) choiceMoves() bool {
 			for _, set := range sets {
 				p := base()
 				p.CardIDs = idStrings(set)
+				if offerLeg {
+					e.addChoiceCost(c, offerLegLabel(g, c, set, offerName, e.seat), p,
+						moveCost(len(set)*c.AnyPlayerOffer.EachLife, 0))
+					continue
+				}
 				label := reason + verb
 				for _, id := range set {
 					if playerByID(g, id) != nil {
@@ -1001,6 +1095,20 @@ func (e *enumerator) choiceMoves() bool {
 				}
 				e.addChoice(c, reason+": "+label, p)
 			}
+
+		case game.PendingChoiceTurnSkipOrder:
+			// ADR 0188 Decision 12, CR 616.1: which skip takes the
+			// extra turn. Both answers are always accepted; "use my
+			// skip" is the recommended one, and the one a seat that
+			// cannot be asked gets, so it is the always-legal answer and
+			// comes first.
+			useSkip, letOther := true, false
+			p := base()
+			p.Apply = &useSkip
+			e.addAlwaysLegalChoice(c, "which skip takes your extra turn: "+c.AcceptLabel, p)
+			p = base()
+			p.Apply = &letOther
+			e.addChoice(c, "which skip takes your extra turn: "+c.DeclineLabel, p)
 
 		case game.PendingChoiceEntryRiot:
 			// Riot (CR 702.136a, ADR 0109 §10): a +1/+1 counter or
@@ -1187,15 +1295,20 @@ func (e *enumerator) choiceMoves() bool {
 			// both are offered, and the decline is the always-legal
 			// way out: it is the answer that commits the seat to
 			// nothing.
+			// #3801: a looked-at land is played, not cast.
+			verb := "cast"
+			if c.MayCastKeyword == game.MayCastKeywordPlayOrHand {
+				verb = "play"
+			}
 			accept := true
 			p := base()
 			p.Apply = &accept
-			e.addChoice(c, reason+": cast it", p)
+			e.addChoice(c, reason+": "+verb+" it", p)
 
 			decline := false
 			d := base()
 			d.Apply = &decline
-			e.addAlwaysLegalChoice(c, reason+": don't cast it", d)
+			e.addAlwaysLegalChoice(c, reason+": don't "+verb+" it", d)
 
 		case game.PendingChoiceCreatureType:
 			// #499. "As this enters, choose a creature type" — Cavern
@@ -2077,7 +2190,10 @@ func planDamage(g *game.Game, c *game.PendingChoice) (splitPlan, bool) {
 		pl.cost[i] = 1
 		if b := findBattlefield(g, id); b != nil {
 			if !f.HasDeathtouch {
-				pl.cost[i] = max(b.CurrentToughness()-b.DamageMarked, 1)
+				// #3665, CR 702.19b: lethal counts the damage other
+				// creatures have been assigned to it in this step,
+				// which is held, not marked, until the step is dealt.
+				pl.cost[i] = max(b.CurrentToughness()-b.DamageMarked-g.HeldCombatDamageToForEffect(id), 1)
 			}
 			pl.value[i] = killValue(b, attacker)
 		}
@@ -2515,6 +2631,10 @@ func (e *enumerator) cardSetPickPool(c *game.PendingChoice) []uuid.UUID {
 		// ADR 0114 §7: the seat's own creatures, best Ring-bearer
 		// first — the opposite end from own_permanents'.
 		return e.bestRingBearerFirst(c.ChooseCards)
+	case game.PendingChoiceChooseCards:
+		if c.AnyPlayerOffer != nil && c.AnyPlayerOffer.EachLife > 0 {
+			return e.offerLegPool(c)
+		}
 	case game.PendingChoiceProliferate, game.PendingChoiceEntryChoosePermanents:
 		// #2525: permanents AND seats, the engine's suggestion first so
 		// its members survive MaxExpansionPerSource (and withSuggestedFirst
@@ -2523,6 +2643,62 @@ func (e *enumerator) cardSetPickPool(c *game.PendingChoice) []uuid.UUID {
 		return proliferatePool(c)
 	}
 	return c.ChooseCards
+}
+
+// offerLegPool is a per-object any-player offer leg's candidates in the
+// order the expansion budget should be spent on (ADR 0187 §7): the
+// chooser's own objects that no earlier seat chose, then their own that
+// someone already did, then everyone else's. Within a group the most
+// valuable come first (OrderTargets), so the cap keeps the objects worth
+// paying for.
+func (e *enumerator) offerLegPool(c *game.PendingChoice) []uuid.UUID {
+	chosen := make(map[uuid.UUID]bool)
+	for _, earlier := range c.EarlierPermanentChoicesForEffect() {
+		for _, id := range earlier.Cards {
+			chosen[id] = true
+		}
+	}
+	var fresh, taken, others []uuid.UUID
+	for _, id := range c.ChooseCards {
+		card := findBattlefield(e.g, id)
+		switch {
+		case card == nil || card.Controller != e.seat:
+			others = append(others, id)
+		case chosen[id]:
+			taken = append(taken, id)
+		default:
+			fresh = append(fresh, id)
+		}
+	}
+	out := make([]uuid.UUID, 0, len(c.ChooseCards))
+	for _, group := range [][]uuid.UUID{fresh, taken, others} {
+		out = append(out, e.mostValuableFirst(group)...)
+	}
+	return out
+}
+
+// offerLegLabel names one answer of a per-object any-player offer leg:
+// "Cleansing: pay 3 life for Forest, Island, Plains". A land an earlier
+// seat already pays for is called out, because paying for it too is
+// paying twice for nothing: "(Alice also pays for Forest)".
+func offerLegLabel(g *game.Game, c *game.PendingChoice, set []uuid.UUID, name string, seat uuid.UUID) string {
+	names := make([]string, 0, len(set))
+	for _, id := range set {
+		names = append(names, cardNameFor(g, id, seat))
+	}
+	label := name + ": pay " + strconv.Itoa(len(set)*c.AnyPlayerOffer.EachLife) + " life for " + strings.Join(names, ", ")
+	for _, earlier := range c.EarlierPermanentChoicesForEffect() {
+		var also []string
+		for _, id := range set {
+			if slices.Contains(earlier.Cards, id) {
+				also = append(also, cardNameFor(g, id, seat))
+			}
+		}
+		if len(also) > 0 {
+			label += " (" + choiceSeatName(g, earlier.Seat) + " also pays for " + strings.Join(also, ", ") + ")"
+		}
+	}
+	return label
 }
 
 // proliferatePool is a proliferate prompt's candidates, permanents then

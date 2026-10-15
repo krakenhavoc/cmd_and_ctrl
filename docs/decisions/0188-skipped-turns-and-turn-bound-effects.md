@@ -243,6 +243,11 @@ type DelayedTrigger struct {
 - Effects side: `ScheduleDelayedTrigger.OnPhase int` (the id `AddPhasesForEffect` returned); the effects layer stamps `OnSeq` from `g.Turn.Seq`.
 - **Body keys.** World at War gets its own key, `extra-combat/untap-attackers-at-that-combat` (the same function as Full Throttle's `untapCreaturesThatAttackedThisTurn`), and Moraug gets `extra-combat/untap-all-you-control`. A new key makes an older binary refuse the file (ADR 0041 phase 3). An unbound World at War untap would otherwise fire at the regular combat, where nothing has attacked yet, and miss the added one.
 
+**As built (slice 6, #3564, 2026-10-15).** Two details differ from the text above, neither in what a player sees:
+
+- **`OnSeq` is stamped by the engine, not the effects layer.** `ScheduleDelayedTriggerForEffect` sets `OnSeq` to the current turn whenever `OnPhaseID` is set, because the reachability check it has just made is against this turn's plan, so no other turn is possible. The effects layer sets only `ScheduleDelayedTrigger.OnPhase`. The fire test and the sweep read both fields as written.
+- **The binding is `AddPhases.AtThatCombat`, not a separate call.** The phase ids exist only once `AddPhasesForEffect` has returned them, so the helper schedules the trigger against the first combat id in the order the kinds were given, and schedules nothing when no combat was added (World at War in the third main phase has no "that combat").
+
 ### 6. Timing across extra phases and turns: what holds today, pinned by tests
 
 No code changes. These follow from the shipped design, and the slices below pin each one with a test:
@@ -372,12 +377,18 @@ type TurnSkipOrder struct {            // PendingChoice.TurnSkipOrder, plain dat
 
 **The default, everywhere it can be applied:**
 
-- **The dock** (slice 4) draws it as a two-button prompt. "Use my skip" has focus and a "Recommended" tag, so Enter takes it. A one-line explanation reads: "Your extra turn is skipped either way. Use it to pay off your own 'skip your next turn'?"
+- **The dock** (slice 4) draws it as a two-button prompt. "Use my skip" has focus and a "Recommended" tag, so Enter takes it (the answers also take U and L, their initials, since neither is a "no"). A one-line explanation reads: "Your extra turn is skipped either way. Use it to pay off your own 'skip your next turn'?"
 - **A standing answer** (ADR 0127). The prompt is covered with a fixed engine key, `engine|turn_skip_order`, which is the one exception to ADR 0127 §2's "no catalog row, no key". Always is answer 0 and Never is answer 1. The "Remember this answer" toggle sets it, and `NextAutoAnswer` answers it without asking.
 - **Bots.** The heuristic picks answer 0. The model seat's prompt marks it "(recommended)". The MCP seat lists it first, as "(recommended)".
 - **Away and disconnected players.** C2 has no prompt timer. The away flow (ADR 0177) is the timeout: a seat handed to the heuristic stand-in picks answer 0. Conceding for the seat drops the prompt, which runs answer 0 as above.
 
 **Log.** No line for the question. The answer's effect logs as today: `turn_skipped` for answer 0, `extra_turn_skipped` for answer 1. An automatic answer adds ADR 0127's "(automatic)" line.
+
+**As built (slice 3, #3561, 2026-10-14).** Three details differ from the text above, none in what a player sees:
+
+- **The chooser leaving.** The departure table row is the plain drop (`{}`), not `dropDefault`. `dropDefault`'s gate needs a surviving object controlled by someone other than the chooser, which this question has not got, and it would run the resume inside the departure, before CR 800.4a has finished. Instead `advancePastEliminatedLocked`, which every departure reaches once it has settled, finds `TurnChangePending` set with no question open and resumes. The selection loop then drops the departed player's turn as it would begin (CR 800.4k), which is answer 0's outcome without spending a charge nobody can owe any more.
+- **The step-hook guard.** Beside the callers' `paused` checks, `runStepEntryHooksLocked` returns at once while `TurnChangePending` is set, so the six `advanceCursorLocked` callers need no edit and a future caller cannot enter a step of a turn that has not begun.
+- **Snapshot version.** The fields are additive in v9 (the version current when the slice landed), not v8. `pass_priority` and `end_turn` are refused with `ErrTurnChangePending` too.
 
 ## Owner decisions (2026-10-14)
 

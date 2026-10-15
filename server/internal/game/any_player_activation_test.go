@@ -69,14 +69,14 @@ func TestAnyPlayerRowIsAnyonesToActivate(t *testing.T) {
 	if err := g.ActivateCatalogAbility(active.ID, src, 0, ActivateAbilityParams{Strict: true}); !errors.Is(err, ErrCardCallerMismatch) {
 		t.Fatalf("non-controller on the controller-only row: err = %v, want ErrCardCallerMismatch", err)
 	}
-	if len(active.ManaPool) != 2 {
+	if active.ManaPool.Total() != 2 {
 		t.Fatalf("a refused activation spent mana")
 	}
 	if err := g.ActivateCatalogAbility(active.ID, src, 1, ActivateAbilityParams{Strict: true}); err != nil {
 		t.Fatalf("non-controller on the any-player row: %v", err)
 	}
-	if len(active.ManaPool) != 1 {
-		t.Errorf("activator's pool = %d after paying {1}, want 1 (CR 602.1a)", len(active.ManaPool))
+	if active.ManaPool.Total() != 1 {
+		t.Errorf("activator's pool = %d after paying {1}, want 1 (CR 602.1a)", active.ManaPool.Total())
 	}
 	it := anyPlayerItemFor(g, src)
 	if it == nil {

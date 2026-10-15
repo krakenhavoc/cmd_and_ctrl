@@ -214,6 +214,19 @@ const (
 	// #812.
 	EventAttachSkipped EventKind = "attach_skipped"
 
+	// EventEntryRefused — an object was about to enter the battlefield
+	// and an entry restriction forbade it (#1985, entry_gate.go: "Lands
+	// can't enter the battlefield", "creature cards in graveyards can't
+	// enter the battlefield"), so the move did not happen (CR 101.2).
+	// CardID is the object (a created token's staged ID), OldZone where
+	// it stays (empty for a token, which is never created), Source the
+	// permanent whose static refused it, and Label that static's clause
+	// and name.
+	//
+	// A quiet breadcrumb, not EventEffectError, for the reason
+	// EventAttachSkipped is not one: nothing failed.
+	EventEntryRefused EventKind = "entry_refused"
+
 	// EventControlChanged — CardID changed controller (CR 613.1b).
 	// Actor is the player who GAINED control, Target the player who
 	// LOST it; Source is the card whose effect took it, and is
@@ -358,6 +371,12 @@ const (
 	// trigger source that S19 listens for (Panoptic Mirror,
 	// Archivist of Oghma, etc.).
 	EventSearchLibrary EventKind = "search_library"
+
+	// SearchShuffledLabel is the Label on an EventSearchLibrary whose
+	// search also shuffled the library, so the log can say both. It is
+	// not "shuffle": that label is a plain shuffle with no search, which
+	// the search triggers ignore (AnOpponentSearchesTheirOwnLibrary).
+	SearchShuffledLabel = "search_shuffled"
 
 	// EventCounterSpell — a stack item was countered (spell or
 	// ability). Source is the counter itself; Target is the
@@ -954,6 +973,23 @@ const (
 	// the layer version for EventBecameMonstrous's reason.
 	EventBecameSaddled EventKind = "became_saddled"
 
+	// EventCrewedVehicle — a creature crewed a Vehicle (CR 702.122b,
+	// ADR 0186 §2, #3545). One event per creature tapped to pay a crew
+	// cost, emitted straight after that creature's EventTapCard while
+	// the cost is paid: CardID is the creature, Target and Source the
+	// Vehicle, Actor the activator. Being emitted at payment is what
+	// puts a "whenever this creature crews a Vehicle" trigger on the
+	// stack above the crew ability (CR 603.3b, CR 208.3a's example), and
+	// a crew ability that is countered still had its creatures crew.
+	EventCrewedVehicle EventKind = "crewed_vehicle"
+
+	// EventSaddledMount — a creature saddled a Mount (CR 702.171c).
+	// Shaped exactly like EventCrewedVehicle: one per creature tapped
+	// to pay a saddle cost, CardID the creature, Target and Source the
+	// Mount. Distinct from EventBecameSaddled, which fires once per
+	// Mount when the ability resolves.
+	EventSaddledMount EventKind = "saddled_mount"
+
 	// EventBecameRenowned — a permanent became renowned (CR 702.112,
 	// ADR 0071 amendment 2026-10-09, #2049). Source / CardID / Target =
 	// the permanent, Actor = its controller, Amount = the N of the
@@ -1466,6 +1502,16 @@ type Event struct {
 	// Source alone, and ward is the first effect that has to.
 	StackItemID uuid.UUID `json:"stack_item_id,omitempty"`
 
+	// TargeterKind is what KIND of object did the targeting, on an
+	// EventBecomesTarget: spell, activated or triggered (#3779). It is
+	// read off the stack item at the moment the event is emitted, so a
+	// trigger that must tell "an activated ability" from "a spell or a
+	// triggered ability" (Professor Hojo) does not have to look the item
+	// up on the stack itself, where it may already be gone by the time a
+	// later reader asks. Empty on every other event, and on a
+	// became-target event whose item was not on the stack (none today).
+	TargeterKind StackItemKind `json:"targeter_kind,omitempty"`
+
 	// ResolvedStackItemID names the item that left the stack, on an
 	// ABILITY's EventResolve / EventFizzle (ADR 0119 §3), so the public
 	// log can say which item it was. A separate field from StackItemID
@@ -1956,6 +2002,13 @@ func (g *Game) emitBecameTargetLocked(actor, source, itemID uuid.UUID, targets [
 	if len(announcedCrimeSlot) > 0 {
 		crimeSlot = announcedCrimeSlot[0]
 	}
+	// #3779: what kind of object is doing the targeting, taken once for
+	// the whole fan-out. Every caller creates its item before it emits
+	// (the doc above), so the stack answers; a missing item reads empty.
+	var kind StackItemKind
+	if item := g.StackMeta[itemID]; item != nil {
+		kind = item.Kind
+	}
 	for i, t := range targets {
 		switch t.Kind {
 		case TargetCard:
@@ -1964,6 +2017,7 @@ func (g *Game) emitBecameTargetLocked(actor, source, itemID uuid.UUID, targets [
 				Actor:          actor,
 				Source:         source,
 				StackItemID:    itemID,
+				TargeterKind:   kind,
 				Target:         t.ID,
 				CardID:         t.ID,
 				CrimeCommitted: i == crimeSlot,
@@ -1974,6 +2028,7 @@ func (g *Game) emitBecameTargetLocked(actor, source, itemID uuid.UUID, targets [
 				Actor:          actor,
 				Source:         source,
 				StackItemID:    itemID,
+				TargeterKind:   kind,
 				Target:         t.ID,
 				CrimeCommitted: i == crimeSlot,
 			})

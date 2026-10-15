@@ -9,6 +9,7 @@
 **Amendment:** 2026-10-12 · **Accepted** · [An identical batch is asked again when its copies read their subjects](#amendment-2026-10-12--an-identical-batch-is-asked-again-when-its-copies-read-their-subjects-3021--accepted) · [#3021](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3021)
 **Amendment:** 2026-10-13 · **Accepted** · [The order prompt says why it asked](#amendment-2026-10-13--the-order-prompt-says-why-it-asked-3015--accepted) · [#3015](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3015)
 **Amendment:** 2026-10-13 (second) · **Accepted** · [The six remaining villainous-choice cards](#amendment-2026-10-13-second--the-six-remaining-villainous-choice-cards-3143--accepted--backlog) · [#3143](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3143)
+**Amendment:** 2026-10-15 · **Accepted** · [A became-target event says what kind of object targeted](#amendment-2026-10-15--a-became-target-event-says-what-kind-of-object-targeted-3779--accepted) · [#3779](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3779)
 
 ## Context
 
@@ -4630,3 +4631,133 @@ Two small gaps found clearing the caveats of the incubate cards (Assimilate Esse
 2. **`TurnTally.DiedSubtypes` (#3592).** "If a Phyrexian died under your control this turn." The tally had a per-controller count of creatures that died and a table-wide power by type; this is the per-controller count by creature type, with the same last-known types (CR 603.10a), the same "under the controller it left from" (`LeftUnderControlOf`), the same changeling bucket (`enteredAllCreatureTypes`) and the same keys as `EnteredSubtypes`. Read through `Game.DiedWithSubtypeThisTurn(player, subtype)`. It shares `diedSubtypesLocked` with `recordDiedPowerLocked`, so the two tallies cannot read different types for one death. Additive in snapshot schema v8 (`turnTally.diedSubtypes`, omitted when empty, carried by `cloneTurnTally`, reset by `resetTurnTallyLocked`).
 
 **Back-outs.** `TestACounterUnlessPaidRunsOnPaidOnlyForAPaymentThatWasMade` and `TestAssimilateEssenceIncubatesTwoForTheCasterWhenTheTaxIsPaid` fail without the `onPay` pass-through; `TestDiedSubtypesCountsPerControllerAndPerType` (and Brimaz's `TestBrimazBlightProliferatesAtTheEndStepAfterAPhyrexianDiedUnderYou`) fail without the record call; `TestDiedSubtypesSurvivesCloneTurnTally` without the clone line.
+
+## Amendment 2026-10-14 (fourth) — an intervening "if" as a footprint step (#3033) · Accepted
+
+The #3013 closing note left 24 cards on the ratchet. 21 of them re-check an intervening "if" as the ability resolves
+(CR 603.4), and a bare `Do` can't say that. This amendment adds the step that closing note sketched and moves the
+21 onto it. Arboreal Alliance, Cadira and Ikra Shidiqi are left for the next slice.
+
+### Decision
+
+1. **The step.** `effects.If{Cond, Then}` runs its `Then` steps only when `Cond` holds as the item resolves. Its
+   footprint is one `FootprintCondition` step that names the state the condition reads (`FootprintStep.Cond`),
+   followed by the footprint of every `Then` step, declared as if it runs. If a `Then` step can't declare a
+   footprint, the row gets none, as with a plain `Do`. An `If` can sit inside another `If` (Lunar Convocation's
+   "gained and lost life").
+2. **The conditions.** Each `effects.Condition` is a named value whose `condition()` names one
+   `game.FootprintCond`, and `addConditionReadLocked` reads each one:
+
+   | Condition | Cards | What the check reads |
+   | --- | --- | --- |
+   | `CondLifeGained{N}`, `CondLifeLost{N}`, `CondCreatureDied` | The Gaffer, Crested Sunmare, Indulging Patrician, Lunar Convocation, Faramir | Nothing, once the tally already holds. The tally only rises during a turn, and a turn can't end with the batch on the stack. A tally that doesn't hold yet is refused, since another item could make it true. |
+   | `CondCitysBlessing` | Deadeye Brawler, Mausoleum Harpy, Resplendent Griffin | Nothing, once held: the blessing is never lost (CR 702.131c). Refused before then. |
+   | `CondNoSpellsCast` | Edgar, Moonlit Sovereign | Nothing while it holds, since no step casts a spell. Refused once a spell was cast. |
+   | `CondMonarch` | Ginger, Queen of Sweets | `monarchRead`. It conflicts with an item that makes a player the monarch. |
+   | `CondFewerCountersOnThis{Kind, N}` | Runaway Steam-Kin | A read of the item's source, like a counter on it. |
+   | `CondPowerAtLeast{N}`, `CondBoard{Test}` | Agent of Treachery, Beastbond Outcaster, Colossal Majesty, Garruk's Uprising, Bugenhagen, Field of the Dead, Keeper of the Accord, Inventors' Fair, Lux Artillery, Padeem, Satoru | `boardReads`: the whole battlefield, read through the layers. `CondBoard`'s test may read only the battlefield, the item's controller, source and triggering event, and this turn's event log. |
+
+3. **What a board read conflicts with** (`boardConditionSees`). Another item conflicts if it changes or pumps a
+   permanent, creates a token, moves a card, puts a counter on a permanent, makes someone the monarch, or gives a
+   player counters. Since a static may read the monarch or a player's counters without declaring it, those two
+   conflict too. An item that only moves life totals conflicts only when some static on the board declares
+   `DependsOnLifeTotal`. One that only touches a hand or library conflicts only when a static declares
+   `DependsOnHandSize` or `DependsOnLibraryTop`. A pump on an object that bears rules (`pumpRules`) conflicts, as it
+   does with a characteristic read. So does an item that can take a player out of the game, since that player's
+   permanents leave with them (CR 800.4a).
+4. **A new reason, `condition`.** A conflict found by rule 3, or by the monarch read, is counted under
+   `cmdctrl_trigger_order_prompts_total{reason="condition"}`. The prompt then says: "<Card>'s trigger checks its
+   "if" again as it resolves, and another of these triggers can change the answer."
+
+### What changes for players
+
+- **Lunar Convocation.** With life both gained and lost, the drain and the Bat no longer ask for an order.
+  `TestB30LunarConvocationDrainsOnGainAndMakesABatOnGainAndLoss` now pins that.
+- **Edgar, Runaway Steam-Kin and the blessed counters.** These move onto `CounterOnThis`, which already puts
+  nothing on a source that has left (CR 400.7). Edgar's old body had no such check.
+- **Keeper of the Accord.** Its Soldier row no longer reads a missing trigger context.
+- **Unchanged.** Every row keeps its label and its trigger-time condition, so a queued item restores onto the same
+  row, and there's no snapshot, wire or closure-field change.
+
+### Tests
+
+- `game/trigger_condition_test.go` covers each condition kind. It checks the refusal before a tally holds and the
+  empty read after, the monarch and source reads, a board read against every step kind, the static-driven life
+  and hand cases, and elimination.
+- `footprint_conformance_test.go` resolves an `If` case for every `Condition` type
+  (`TestEveryConditionHasAConformanceCase`), and a nested one.
+- `trigger_independence_if_test.go` checks that each of the 21 rows declares its condition. On real boards, two
+  board-condition draws skip the prompt, a board condition beside a token maker asks under `condition`, and The
+  Gaffer beside Indulging Patrician skips it.
+- The ratchet file goes from 24 lines to 3.
+
+### Note (2026-10-14): the last three, counted and X amounts and Ikra
+
+- **X from the cast.** `TriggeredAbility.XFromCast` makes the engine set the built item's `XValue` to its source's
+  `Card.CastX` (CR 107.3m). The row needs no Build. The check accepts that `XValue` only on such a row, since it is
+  a constant of the item fixed before the batch exists. Arboreal Alliance is `Do(CreateXByXToken{Template})`. An
+  item queued before this change carries X in `Params.Amount`, which the step still reads, and is never plain.
+  Arboreal Alliance's own "when this enters" row watches entering, so the check still treats the board as having a
+  reactor. Its batches still ask (`reactor`) until the deferred c1 rule exists.
+- **A count of the board.** `CreateTokensForEach{Template, Count}` declares a board read (`FootprintCondBoard`)
+  and then the token step, so a token maker or anything else that changes the battlefield conflicts with it.
+  Cadira, Caller of the Small uses it.
+- **The subject is the event's source.** `TriggeredAbility.SubjectIsEventSource` snapshots `Event.Source` as
+  `TriggerContext.Object`, at the moment and with the CR 603.10 reading the event's own object gets. That is
+  catalog data, so there is no snapshot field and no new closure route. Ikra Shidiqi is
+  `Do(GainLifeEqualToSubject{SubjectToughness})`. The creature that dealt the damage gives its toughness as it
+  last existed once it has left, where the old body gave the toughness it had when it dealt the damage. An older
+  queued item's `Params.Amount` is the fallback.
+- **The ratchet file is empty.** `unfootprinted_trigger_lines.txt` keeps only its header, and the audit still fails
+  on any new one-sentence trigger written as a closure.
+
+## Amendment 2026-10-15 (fifth) — the attachments of a permanent that left (#3780) · Accepted
+
+Decision 12's `PermanentInfo` records what a departed permanent was attached TO (`AttachedTo`, `AttachedObject`) but not what was attached to IT. By the time a sacrifice-cost ability resolves, the state-based action has already unattached an Equipment from the departed host (CR 704.5n) or put an Aura into a graveyard (CR 704.5m), so the attachment's own link is gone. Zack Fair's "attach an Equipment that was attached to Zack Fair to that creature" (the Cloud, Ex-SOLDIER deck, #3656) had nothing to read and shipped with a caveat.
+
+- **`PermanentInfo.Attachments []ObjectRef`.** Every Aura, Equipment and Fortification attached to the permanent as it last existed, each as the object (CR 400.7), in battlefield order. It is written at the same moment and from the same live card as the rest of the record (`rememberDepartingPermanentLocked`), and filled on a live read too, so a reader sees one shape either way. A pinned link whose host has the same ID but a newer epoch (#3159) names an earlier object and is not counted (`attachmentObjectsLocked`).
+- **`Game.LiveAttachmentsForEffect(refs)`.** The refs that are still the same object on the battlefield, in order. An Aura the state-based action binned is gone; an Equipment that was blinked is a new object and is skipped.
+- **Zack Fair.** Of those, only an Equipment that could legally be attached to the target (`AttachLegalForEffect`, CR 701.3b) counts. One is attached; with several the controller picks one (`choose_cards`, min and max 1, "an Equipment"); none does nothing. A target that left in response ends the ability before this runs (CR 608.2b). Zack Fair is Full.
+- **Snapshot.** `lastKnownPermanents{}[].attachments` is additive in v9 and recorded in the shape file. A file from before this carries no attachments, so the Equipment is simply not moved; a binary from before this that drops the key restores the game, with the same result. No bump.
+
+**Back-outs.** Without the write in `rememberDepartingPermanentLocked`, `TestPermanentLKIRecordsWhatWasAttachedToIt`, `TestZackFairMovesTheEquipmentThatWasAttachedToHim` and `TestZackFairWithTwoEquipmentAsksWhichMoves` fail. Without the epoch comparison in `LiveAttachmentsForEffect` the same game test fails; without the pinned-epoch skip `TestPermanentLKIIgnoresALinkToAnEarlierObject` fails; without the copy in `cloneLastKnownPermanents` `TestPermanentLKIAttachmentsRideCloneAndSnapshot` fails.
+
+## Amendment 2026-10-15 (sixth) — "that spell's mana value" counts X in the trigger snapshot (#3782) · Accepted
+
+Krile Baldesion returns "target creature card with mana value equal to that spell's mana value". The clause is built as
+the trigger goes on the stack (CR 603.3d) by a `TargetsFrom` that reads only its trigger context, so restore can
+re-derive it and the row needs no `TargetsFromReadsBoard`. The context's `Object.ManaValue` was `Card.ManaValue()`,
+which reads `{X}` as zero, so a Fireball cast for X=3 would have offered the one-drops.
+
+`objectSnapshotLocked` now takes the value the spell has on the stack (CR 202.3e): when the object is a spell on the
+stack with an announced X, the snapshot's `ManaValue` is the cost's mana value with that X. The snapshot is taken as
+the event fires, while the spell is still on the stack, and is carried verbatim on the item and across a clone or
+restore, so the value cannot drift once the spell resolves. Every other object (a permanent, a card in a graveyard)
+still reads `{X}` as zero, which is what Scrap Trawler's "lesser mana value" wants. No wire, snapshot-schema or
+closure-field change.
+
+**Back-outs.** `TestACastTriggersSnapshotCountsTheXTheSpellWasCastWith` and `TestKrileCountsTheXAnXSpellWasCastWith`
+fail without the X read; `TestKrileUsesTheTurnOnlyWhenACardIsReturned` fails without the `NoteDoneThisTurn` call.
+
+## Amendment 2026-10-15 (seventh) — a became-target event says what kind of object targeted (#3779) · Accepted
+
+"Whenever one or more creatures you control become the target of an activated ability" (Professor Hojo) has to tell an
+activated ability from a spell or a triggered ability. `EventBecomesTarget` carried `StackItemID` but not the kind of
+the thing it named, so a trigger would have had to look the item up on the stack itself, which works only while the
+item is still there.
+
+### Decision
+
+1. **`Event.TargeterKind`** (`StackItemKind`: `spell`, `activated` or `triggered`) is stamped by
+   `emitBecameTargetLocked`, once for the whole fan-out, from `StackMeta[itemID].Kind`. Every caller creates its stack
+   item before it emits (the cast, the catalog and sandbox activations, a spell copy, an ability copy, a change of
+   targets, and the CR 603.3b drain for a trigger), so one helper stamps all of the sites. An item that is not on the
+   stack reads empty, which matches nothing. A copy of an activated ability is an activated ability (CR 707.10).
+2. **The predicate** is `creatureYouControlBecameTargetOfAnActivatedAbility` in `professor_hojo.go`: a card target, a
+   creature on the battlefield controlled by the source's controller, `TargeterKind == StackItemActivated`.
+3. **"One or more … only once each turn" is one gate.** An activation naming two creatures is two events;
+   `b11TriggeredThisTurn` declines the second because the first trigger is already counted from the moment it is put
+   on the stack, the same way Welcoming Vampire collapses a batch. A trigger that was countered still counts.
+4. **Snapshot.** `events[].targeter_kind` and the same field inside every embedded trigger event are additive under v9
+   and omitted when empty. A binary that drops the key reads the old events as having no kind, which only means an
+   older Hojo trigger does not fire for them.

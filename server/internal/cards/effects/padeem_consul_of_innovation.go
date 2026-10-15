@@ -85,9 +85,9 @@ func padeemControlsGreatestArtifact(g *game.Game, controller uuid.UUID) bool {
 	return false
 }
 
-func padeemDrawIfGreatestArtifact(g *game.Game, item *game.StackItem) error {
-	if !padeemControlsGreatestArtifact(g, item.Controller) {
-		return nil
-	}
-	return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-}
+var padeemDrawIfGreatestArtifact = Do(If{
+	Cond: CondBoard{Name: "the artifact with the greatest mana value", Test: func(ctx *Context) bool {
+		return padeemControlsGreatestArtifact(ctx.Game, ctx.Controller())
+	}},
+	Then: []Applier{DrawCards{N: 1}},
+})

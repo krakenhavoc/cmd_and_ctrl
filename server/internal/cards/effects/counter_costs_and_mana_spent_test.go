@@ -109,8 +109,8 @@ func TestRamosBanksSpellColoursAndCashesFiveCountersForTenMana(t *testing.T) {
 	if got := counterCount(g, ramos, game.CounterPlusOne); got != 0 {
 		t.Errorf("+1/+1 counters %d after the payout, want 0", got)
 	}
-	if len(me.ManaPool) != 10 {
-		t.Errorf("pool has %d tokens, want 10", len(me.ManaPool))
+	if me.ManaPool.Total() != 10 {
+		t.Errorf("pool has %d tokens, want 10", me.ManaPool.Total())
 	}
 
 	// "Activate only once each turn."
@@ -134,10 +134,10 @@ func TestMageRingNetworkCashesStorageCountersForColourless(t *testing.T) {
 	if got := counterCount(g, land, game.CounterStorage); got != 1 {
 		t.Errorf("storage counters %d, want 1", got)
 	}
-	if len(me.ManaPool) != 3 {
-		t.Fatalf("pool has %d tokens, want 3 — one per counter removed", len(me.ManaPool))
+	if me.ManaPool.Total() != 3 {
+		t.Fatalf("pool has %d tokens, want 3 — one per counter removed", me.ManaPool.Total())
 	}
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Color != "C" {
 			t.Errorf("minted %q, want colourless", tok.Color)
 		}

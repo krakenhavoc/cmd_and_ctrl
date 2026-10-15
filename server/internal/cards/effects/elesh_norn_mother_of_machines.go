@@ -31,12 +31,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // abilities apply to permanents entering at the same time as Elesh
 // Norn, including Elesh Norn itself, because an enters trigger is
 // judged on the board after the event (CR 603.10).
+//
+// A land is a permanent, so the doubler doubles landfall too: the card
+// declares LandfallExtraTriggers 1 for the heuristic (#3146).
 func init() {
 	Register(Spec{
 		OracleID:           "5ade11c0-41dd-4b6a-9f5b-c5903a3a0d7f",
 		Name:               "Elesh Norn, Mother of Machines",
 		Completeness:       CompletenessFull,
 		PrintedKeywords:    []string{"vigilance"},
+		Purpose:            game.Purpose{LandfallExtraTriggers: 1},
 		TriggerDoublers:    []game.TriggerDoubler{eleshNornMotherOfMachinesDoubler()},
 		TriggerSuppressors: []game.TriggerSuppressor{eleshNornMotherOfMachinesSuppressor()},
 	})

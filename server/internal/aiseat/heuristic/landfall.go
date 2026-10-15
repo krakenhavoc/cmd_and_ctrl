@@ -44,27 +44,67 @@ const landfallManaShare = 0.5
 
 // landfallPayoff is what one land entering under the bot's control pays
 // it: the sum, over the triggered rows of the permanents it controls, of
-// each declared landfall payoff. Zero when the Config does not price
-// landfall payoffs.
+// each declared landfall payoff, times the triggers each land causes
+// (landfallTriggers: two with Ancient Greenwarden out). Zero when the
+// Config does not price landfall payoffs.
 func (st *state) landfallPayoff(cfg Config) float64 {
 	if !cfg.PriceLandfallPayoffs || st.view == nil {
 		return 0
 	}
+	return st.boardLandfall(cfg) * float64(st.landfallTriggers(cfg))
+}
+
+// boardLandfall is the sum of the bot's own permanents' landfall rows
+// for one trigger each (landfallRows), before any doubler.
+func (st *state) boardLandfall(cfg Config) float64 {
 	var v float64
 	cards := st.view.Battlefield.Cards
 	for i := range cards {
-		src := &cards[i]
-		if src.Controller != st.me {
-			continue
-		}
-		for _, r := range src.AbilityRows {
-			if r.Kind != "triggered" || r.Purpose == nil || r.Purpose.LandfallPayoff == nil {
-				continue
-			}
-			v += st.landfallRowValue(cfg, r.Purpose.LandfallPayoff)
+		if src := &cards[i]; src.Controller == st.me {
+			v += st.landfallRows(cfg, src)
 		}
 	}
 	return v
+}
+
+// landfallRows is what card c's own landfall rows pay its controller
+// for one land, one trigger each.
+func (st *state) landfallRows(cfg Config, c *protocol.CardView) float64 {
+	var v float64
+	for _, r := range c.AbilityRows {
+		if r.Kind != "triggered" || r.Purpose == nil || r.Purpose.LandfallPayoff == nil {
+			continue
+		}
+		v += st.landfallRowValue(cfg, r.Purpose.LandfallPayoff)
+	}
+	return v
+}
+
+// landfallTriggers is how many times each landfall row of the bot's
+// triggers for one land (#3146): one, plus each declared
+// `landfall_extra_triggers` on a permanent it controls (Ancient
+// Greenwarden, Elesh Norn, Mother of Machines). One when the Config does
+// not price doublers.
+func (st *state) landfallTriggers(cfg Config) int {
+	n := 1
+	if !cfg.PriceLandfallDoublers || st.view == nil {
+		return n
+	}
+	cards := st.view.Battlefield.Cards
+	for i := range cards {
+		if c := &cards[i]; c.Controller == st.me {
+			n += landfallExtraTriggers(c)
+		}
+	}
+	return n
+}
+
+// landfallExtraTriggers is the doubling card c declares, zero for none.
+func landfallExtraTriggers(c *protocol.CardView) int {
+	if c == nil || c.Purpose == nil {
+		return 0
+	}
+	return c.Purpose.LandfallExtraTriggers
 }
 
 // landfallRowValue prices one row's payoff for one land.
@@ -88,4 +128,108 @@ func (p *Policy) landfallValue(st *state, n int) float64 {
 		return 0
 	}
 	return float64(n) * st.landfallPayoff(p.cfg)
+}
+
+// #3146: the three gaps #3072 left open.
+//
+// A payoff's own cast. Tireless Tracker, Lotus Cobra or a second
+// Tatyova cast before a turn of land drops is worth what it will pay for
+// them, which its body alone does not price. landfallCastValue adds, to
+// a permanent's cast price, what it adds to the bot's landfall per land
+// (its own rows, and its doubling of the board's, Ancient Greenwarden's)
+// times the lands the bot expects to put down while it is out
+// (expectedLandfalls). The commander is cast from the command zone,
+// whose cards carry no ability rows on the wire, so it is not repriced.
+//
+// Fetch lands. A fetch's activation keeps the flat ActivateBase it has
+// always had, and each land it puts down adds what the bot's payoffs pay
+// for it (fetchLandfallValue). A land beyond the one it sacrifices
+// (Myriad Landscape's second) is ramp, as a declared purpose's lands
+// are. The fetch's declared `lands` is read nowhere else, so with the
+// switch off a fetch is priced exactly as before.
+
+// landfallCastTurns is how many of the bot's turns after this one
+// landfallCastValue counts the lands of.
+const landfallCastTurns = 2
+
+// landfallCastValue is what casting permanent c adds to the bot's
+// landfall: the per-land payoff with c on the battlefield less the one
+// without it, times expectedLandfalls. Zero for a card with no landfall
+// row and no doubling, and when the Config does not price it.
+func (p *Policy) landfallCastValue(st *state, c *protocol.CardView) float64 {
+	cfg := p.cfg
+	if !cfg.PriceLandfallCasts || !cfg.PriceLandfallPayoffs || st.view == nil || c == nil ||
+		isLand(c) || !(isCreature(c) || isPermanentSpell(c)) {
+		return 0
+	}
+	own := st.landfallRows(cfg, c)
+	extra := 0
+	if cfg.PriceLandfallDoublers {
+		extra = landfallExtraTriggers(c)
+	}
+	if own == 0 && extra == 0 {
+		return 0
+	}
+	board, k := st.boardLandfall(cfg), st.landfallTriggers(cfg)
+	gain := (board+own)*float64(k+extra) - board*float64(k)
+	if gain <= 0 {
+		return 0
+	}
+	return gain * st.expectedLandfalls(c)
+}
+
+// expectedLandfalls is how many lands the bot expects to put onto the
+// battlefield from now to the end of its landfallCastTurns-th turn after
+// this one, with card `self` cast: its land drops left this turn, met
+// from the lands in hand, then its land drops on each later turn (with
+// any `self` adds), met from the lands left in hand and a land drawn in
+// millLandShare of its draws.
+func (st *state) expectedLandfalls(self *protocol.CardView) float64 {
+	if st.seat == nil {
+		return 0
+	}
+	hand := 0
+	for i := range st.seat.Hand.Cards {
+		if c := &st.seat.Hand.Cards[i]; c.InstanceID != self.InstanceID && isLand(c) {
+			hand++
+		}
+	}
+	drops := max(1, st.seat.LandDropsPerTurn)
+	if self.Purpose != nil {
+		drops += self.Purpose.ExtraLandDrops
+	}
+	now := 0
+	if st.myTurn {
+		now = min(hand, max(0, st.seat.LandDropsPerTurn-st.seat.LandsPlayedThisTurn))
+	}
+	later := min(float64(hand-now)+millLandShare*landfallCastTurns, float64(drops*landfallCastTurns))
+	return float64(now) + later
+}
+
+// fetchRow reports whether an activated row of src is a fetch: src is a
+// land of the bot's own, the row sacrifices it, and what the row declares
+// is lands alone (Misty Rainforest's 1, Myriad Landscape's 2).
+func (st *state) fetchRow(src *protocol.CardView, row *protocol.ActivatedAbilityView, ps purposeSet) bool {
+	if src == nil || row == nil || !row.SacrificeSelf || src.Controller != st.me || !isLand(src) || ps.lands <= 0 {
+		return false
+	}
+	rest := ps
+	rest.lands, rest.landsUntapped = 0, 0
+	return !rest.hasAmounts() && len(ps.sweeps) == 0 && ps.impulse == 0 && ps.extraLands == 0
+}
+
+// fetchLandfallValue is what a fetch's activation is worth beyond the
+// flat ActivateBase: each land it puts down pays the bot's landfall
+// payoffs, and the lands beyond the one it sacrifices are ramp
+// (ManaSource and the ramp premium). Zero when the Config does not
+// price it.
+func (p *Policy) fetchLandfallValue(st *state, ps purposeSet) float64 {
+	if !p.cfg.PriceFetchLandfall {
+		return 0
+	}
+	v := p.landfallValue(st, ps.lands)
+	if net := ps.lands - 1; net > 0 && p.cfg.PricePurposes {
+		v += st.w.ManaSource*float64(net) + p.rampFor(st, nil, net)
+	}
+	return v
 }

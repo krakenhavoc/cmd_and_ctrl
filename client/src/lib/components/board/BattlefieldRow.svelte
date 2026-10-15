@@ -18,7 +18,15 @@
   import { etbPulse } from "../../animations";
   import { emit as tutorialEmit } from "../../tutorialBus";
   import { rowEntries } from "../../tokenGroups";
-  import { fitRow } from "../../rowFit";
+  import { targeting, isLegalCardTarget, isPicked, type TargetingState } from "../../targeting";
+  import {
+    boardChoicePick,
+    isBoardPickable,
+    isBoardPicked,
+    type BoardChoicePick,
+  } from "../../boardChoicePick";
+  import { fitRow, type RowReport } from "../../rowFit";
+  import { namePileKey, pileDepths, STRIP_DEPTH } from "../../landStrip";
   import {
     NO_COMBAT_RINGS,
     NO_LEGAL_ACTIONS,
@@ -118,6 +126,11 @@
     // #3028: how many piles the row draws, read back by PlayerPanel to
     // share the back row's width between the lands and the rest.
     pileCount?: number;
+    // #3044: the height the panel gives this row (allocateRowHeights),
+    // which a crowded row may wrap into rather than shrink; 0 or unset
+    // keeps it on one line. `demand` reads back what the row asks for.
+    budget?: number;
+    demand?: RowReport | null;
     // ADR 0105 (#1789): the frame's legal-action lookups. `legal` is
     // what may be highlighted ("nothing" while highlights are off or
     // autopass is passing; on an opponent's panel only that panel's
@@ -170,6 +183,8 @@
     onSpecialAction,
     combat = NO_COMBAT_RINGS,
     pileCount = $bindable(0),
+    budget = 0,
+    demand = $bindable(null),
   }: Props = $props();
 
   // ADR 0120 §3: the surface this row is drawn on, table or expanded.
@@ -199,15 +214,16 @@
   });
 
   // Piles (strip only). One pile per NAME among the untapped lands,
-  // in first-appearance order, then one single-card pile per tapped
-  // land. A card that carries an attachment (an enchanted land) or is
-  // a commander keeps a pile of its own: stacking it under identical
-  // basics would hide the very thing that makes it different. The
-  // non-strip rows render `sorted` as one pile each so the markup
-  // has a single shape.
+  // in first-appearance order, then (#3044) one per name among the
+  // tapped lands (landStrip.ts namePileKey). A card that carries an
+  // attachment (an enchanted land) or is a commander keeps a pile of
+  // its own: stacking it under identical basics would hide the very
+  // thing that makes it different. The non-strip rows render `sorted`
+  // as one pile each so the markup has a single shape.
   //
   // #1724: before any of that, identical tokens fold into groups
-  // (lib/tokenGroups.ts). A group half is always a pile of its own —
+  // (lib/tokenGroups.ts), and so do identical nontoken permanents
+  // outside the strip (#3046). A group half is always a pile of its own —
   // one card, with the group's count — and its members never reach
   // the name piles.
   interface Pile {
@@ -218,11 +234,44 @@
     // drawn one first.
     group?: { groupKey: string; members: CardView[] };
   }
-  const entries = $derived(
-    onGroupClick
-      ? rowEntries(sorted, attachmentsByHost)
-      : sorted.map((c) => ({ kind: "card" as const, key: c.instance_id, card: c })),
-  );
+  // #3046: what the board lights on one card, so a pile of printed
+  // cards draws one card per distinct highlight (tokenGroups.ts
+  // GroupOptions). Every ring and pip a card can wear on its own is in
+  // it: the ready pips, the combat rings and pip, a targeting or
+  // choice ring, and a combat selection.
+  function highlightOf(
+    c: CardView,
+    t: TargetingState | null,
+    pick: BoardChoicePick | null,
+  ): string {
+    const id = c.instance_id;
+    const p = readyPips(legal, c, "battlefield");
+    return [
+      p.abilities,
+      p.mana ? 1 : 0,
+      p.special,
+      combat.candidates.has(id) ? "c" : "",
+      combat.targets.has(id) ? "t" : "",
+      JSON.stringify(combatPipFor(legal, combat, [id]) ?? null),
+      t && isLegalCardTarget(t, id) ? "L" : "",
+      t && isPicked(t, id) ? "P" : "",
+      isBoardPickable(pick, id) ? "b" : "",
+      isBoardPicked(pick, id) ? "B" : "",
+      selectedCombatCardID === id ? "s" : "",
+      stagedAttackers?.has(id) ? "a" : "",
+    ].join("|");
+  }
+  const entries = $derived.by(() => {
+    if (!onGroupClick) {
+      return sorted.map((c) => ({ kind: "card" as const, key: c.instance_id, card: c }));
+    }
+    const t = $targeting;
+    const pick = $boardChoicePick;
+    return rowEntries(sorted, attachmentsByHost, {
+      nontoken: !strip,
+      highlight: (c) => highlightOf(c, t, pick),
+    });
+  });
   const piles = $derived.by((): Pile[] => {
     const out: Pile[] = [];
     const byName = new Map<string, Pile>();
@@ -248,29 +297,30 @@
         continue;
       }
       const c = e.card;
-      const solo =
-        !strip ||
-        !!c.tapped ||
-        !!c.is_commander ||
-        (attachmentsByHost[c.instance_id] ?? []).length > 0;
-      if (solo) {
+      const key = strip
+        ? namePileKey(c, (attachmentsByHost[c.instance_id] ?? []).length > 0)
+        : null;
+      if (!key) {
         out.push({ key: c.instance_id, tapped: !!c.tapped, cards: [c] });
         continue;
       }
-      const name = c.name || c.instance_id;
-      const hit = byName.get(name);
+      const hit = byName.get(key);
       if (hit) {
         hit.cards.push(c);
         continue;
       }
-      const p: Pile = { key: `pile:${name}`, tapped: false, cards: [c] };
-      byName.set(name, p);
+      const p: Pile = { key, tapped: !!c.tapped, cards: [c] };
+      byName.set(key, p);
       out.push(p);
     }
     return out;
   });
+  // #3044: a tapped pile still counts each land in it, as each was a
+  // pile of its own before tapped lands piled. A turned land is wide,
+  // and the back row's share by pile count (#3028) would otherwise give
+  // the strip less room for piling them.
   $effect(() => {
-    pileCount = piles.length;
+    pileCount = piles.reduce((n, p) => n + (strip && p.tapped && !p.group ? p.cards.length : 1), 0);
   });
 
   // The attachments drawn behind a pile's card: its own, or for a
@@ -294,15 +344,23 @@
        taller or wider than the row (an empty row is one label high) is
        never scroll overflow. -->
   <span class="fit-probe" aria-hidden="true"><span class="fit-probe-card"></span></span>
-  <div class="row-cards" role="list" aria-label={label} use:fitRow={strip}>
+  <div
+    class="row-cards"
+    role="list"
+    aria-label={label}
+    use:fitRow={{ strip, budget, onDemand: (d) => (demand = d) }}
+  >
     {#each piles as p (p.key)}
+      {@const depths = pileDepths(p.cards.length)}
       <!-- ADR 0076 §2.5: a pointer-only hover signal for the tutorial; not a control. -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
         class="pile"
         class:tapped={p.tapped}
         class:multi={p.cards.length > 1}
+        class:deep={p.cards.length > STRIP_DEPTH}
         class:group={!!p.group}
+        style:--pile-n={p.cards.length}
         onpointerenter={p.cards.length > 1 ? () => tutorialEmit("pile-hovered") : undefined}
         title={p.group
           ? `${p.group.members.length} × ${p.cards[0].name} — click to choose which`
@@ -315,7 +373,13 @@
           {@const memberIDs = p.group?.members.map((m) => m.instance_id)}
           {@const cPips = readyPips(legal, c, "battlefield")}
           {@const cTarget = anyIn(combat.targets, c, memberIDs)}
-          <div role="listitem" class:tapped={!!c.tapped} style:--i={i} use:etbPulse>
+          <div
+            role="listitem"
+            class:tapped={!!c.tapped}
+            class:buried={i > 0 && depths[i] === depths[i - 1]}
+            style:--i={depths[i]}
+            use:etbPulse
+          >
             <div class="host-stack" class:has-attachments={attached.length > 0}>
               {#each attached as a (a.instance_id)}
                 {@const aPips = readyPips(legal, a, "battlefield")}
@@ -549,6 +613,15 @@
   .row:not(.strip) .pile:hover {
     z-index: 6;
   }
+  /* #3044: except a row fitRow wraps, because one line would shrink its
+     cards a long way and the panel holds the height for more lines of
+     larger ones (lib/rowFit.ts fitWrap). It has no overlap. An
+     across-table opponent's list is turned 180° (PlayerPanel), so its
+     first line sits against the table's centre, as yours does. */
+  .row:not(.strip) .row-cards:global([data-wrap]) {
+    flex-wrap: wrap;
+    align-content: flex-start;
+  }
   /* #2442: a tapped card turns 90 degrees about its centre, so it
      overhangs its box by (h - w) / 2 on each side while its box keeps
      the upright width, and the turned card painted over its
@@ -626,10 +699,22 @@
   .row.strip .pile > [role="listitem"] {
     position: relative;
     top: calc(var(--i, 0) * -3px);
+  }
+  /* The spread eases open on hover only. #3044: an always-on transition
+     animated every copy's margin whenever fitRow resized the cards, so
+     the strip measured itself mid-animation, resized again, and never
+     settled once tapped lands piled too. */
+  .row.strip .pile:hover > [role="listitem"] {
     transition: margin-left 140ms var(--ease);
   }
   .row.strip .pile > [role="listitem"] + [role="listitem"] {
     margin-left: calc(var(--card-w, 88px) * -1 + 4px);
+  }
+  /* #3044: a pile shows at most STRIP_DEPTH steps (lib/landStrip.ts), so
+     28 Forests read as one card and a count, not a fan of slivers. The
+     copies past that sit exactly under the bottom one. */
+  .row.strip .pile > [role="listitem"] + [role="listitem"].buried {
+    margin-left: calc(var(--card-w, 88px) * -1);
   }
   /* Hovering a pile spreads it to the between-pile overlap so each
      copy can be told apart, hovered and clicked (a specific Forest
@@ -637,6 +722,27 @@
      leaves visible between names. */
   .row.strip .pile.multi:hover > [role="listitem"] + [role="listitem"] {
     margin-left: calc(var(--card-w, 88px) * -0.6);
+  }
+  /* #3044: tapped lands pile by name too. A turned copy is a height
+     wide, so a spread tapped pile steps by a share of the height, which
+     leaves each copy's pip (#33) clear of the next. */
+  .row.strip .pile.tapped.multi:hover > [role="listitem"] + [role="listitem"] {
+    margin-left: calc(var(--card-w, 88px) * -1 + var(--card-h, 123px) * 0.45);
+  }
+  /* #3044: a deep pile spreads no wider than four more cards, so a
+     hover over 28 Forests stays near the pile; each copy still shows a
+     sliver to hover (it zooms) and click. */
+  .row.strip .pile.deep:hover > [role="listitem"] + [role="listitem"] {
+    margin-left: calc(
+      var(--card-w, 88px) * -1 +
+        min(var(--card-w, 88px) * 0.4, var(--card-w, 88px) * 4 / (var(--pile-n, 2) - 1))
+    );
+  }
+  .row.strip .pile.tapped.deep:hover > [role="listitem"] + [role="listitem"] {
+    margin-left: calc(
+      var(--card-w, 88px) * -1 +
+        min(var(--card-h, 123px) * 0.45, var(--card-w, 88px) * 4 / (var(--pile-n, 2) - 1))
+    );
   }
   /* #1724: a token group's card. The host box is what the hidden
      members' anchors cover, so a lookup by any member's instance ID

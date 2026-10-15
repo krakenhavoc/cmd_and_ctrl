@@ -4,7 +4,7 @@
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
-**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12). 2026-10-12, [the attrition horizon trades commanders](#amendment-2026-10-12-the-attrition-horizon-trades-commanders) ([#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474)): accepted (owner decisions 2026-10-12). 2026-10-12, [Izzet and Simic after the rebalance](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance) ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)): accepted (owner decisions 2026-10-12). 2026-10-12, [blocks that survive as a set](#amendment-2026-10-12-blocks-that-survive-as-a-set) ([#3066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3066)): accepted (owner decisions 2026-10-12). 2026-10-12, [landfall payoffs](#amendment-2026-10-12-landfall-payoffs) ([#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072)): accepted (owner decisions 2026-10-13). 2026-10-13, [izzet-aggro rebuilt around Purphoros](#amendment-2026-10-13-izzet-aggro-rebuilt-around-purphoros) ([#3071](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3071)): accepted (owner decisions 2026-10-13).
+**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12). 2026-10-12, [the attrition horizon trades commanders](#amendment-2026-10-12-the-attrition-horizon-trades-commanders) ([#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474)): accepted (owner decisions 2026-10-12). 2026-10-12, [Izzet and Simic after the rebalance](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance) ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)): accepted (owner decisions 2026-10-12). 2026-10-12, [blocks that survive as a set](#amendment-2026-10-12-blocks-that-survive-as-a-set) ([#3066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3066)): accepted (owner decisions 2026-10-12). 2026-10-12, [landfall payoffs](#amendment-2026-10-12-landfall-payoffs) ([#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072)): accepted (owner decisions 2026-10-13). 2026-10-13, [izzet-aggro rebuilt around Purphoros](#amendment-2026-10-13-izzet-aggro-rebuilt-around-purphoros) ([#3071](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3071)): accepted (owner decisions 2026-10-13). 2026-10-14, [landfall doublers, payoff casts and fetch lands](#amendment-2026-10-14-landfall-doublers-payoff-casts-and-fetch-lands) ([#3146](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3146)): proposed.
 **Purpose gains a field:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md), 2026-10-09 — `Purpose.Answers`, what an activated row can do in response, on the wire as `purpose.answers`. It is not an amount, so a purpose that declares only answers is not priced (`PurposeView.Priced`).
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) (the seat, §3's type gate, §5's funnel), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena, the position suite, the report block every bot PR carries), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §1 decision 8 (catalog-declared `purpose` on an activated row, read by the bot), [ADR 0037](0037-unimplemented-card-signal.md) (the `unimplemented` mark).
 
@@ -286,7 +286,7 @@ Every sub-PR from §1 onward carries ADR 0052's report block in its description,
 |---|---|---|---|---|
 | A1 | `never` count per deck (run 1) | 19–30 | **≤ 5 for every deck** | Some cards are legitimately held: a counterspell with nothing to counter, a removal spell with no target worth it, Kismet. Five per deck leaves room for those and nothing else. |
 | A2 | Mana rocks and dorks (run 1) | used in 0% of games where offered | **used in ≥ 80% of the games in which each was offered** (amended for S66 on 2026-10-07: see [Exit decisions](#exit-decisions-2026-10-07)) | Casting a rock is almost always right. 80% leaves room for a turn where a land and a bigger spell use all the mana. |
-| A3 | The six canaries: Sol Ring, Rhystic Study, Mary Read's loot, Entomb, Harrow, Viscera Seer (run 1) | 0 uses | **each used in ≥ 50% of the games in which it was offered** | They name the six classes. If one stays dead, its class is not fixed. |
+| A3 | The six canaries: Sol Ring, Rhystic Study, Faithless Looting (cast, for Mary Read's loot, see the note below), Entomb, Harrow, Viscera Seer (run 1) | 0 uses | **each used in ≥ 50% of the games in which it was offered** | They name the six classes. If one stays dead, its class is not fixed. |
 | A4 | Wipes (suite) | always cast | **both new wipe positions pass, and are gated** | Arena games rarely set up the bad-wipe board, so a fixed position is the reliable test. |
 | A5 | New against baseline (run 2) | n/a | **`beats null: yes` for `heuristic`**: the Wilson interval's lower bound above 25% | The claim is that the bot plays its deck better, so it must beat the old bot in a fair seating. With 192 seat-games, that needs about 31% or more (about 60 of 96 games). |
 | A6 | Balance (run 1) | mono-black 63%, interval 49.9%–75.2% | **no deck's interval lies entirely above 50%** | The pricing must not widen black's lead. Making the decks even is #2436's job. This bar only says this ADR did not make it worse. |
@@ -296,6 +296,8 @@ Every sub-PR from §1 onward carries ADR 0052's report block in its description,
 Each intermediate sub-PR must hold A7 and A8, and its run 2 must not be detectably worse: the `heuristic` interval's upper bound must not fall below 25%. Its own class's canaries should move, and the PR says by how much. A1 to A6 are judged at the end, because the classes interact. Casting rocks means more mana for engines, and the `never` count only falls far once all of them land.
 
 If A5 or A6 fails at the end, the owner decides whether to ship, retune or narrow the scope, with the numbers in [Measurements](#measurements).
+
+**Canary swap (2026-10-13, #3071 question 4; #3164).** Mary Read and Anne Bonny left every curated deck when #3071 rebuilt izzet-aggro as `mono-red-aggro` around Purphoros, so her loot canary was in no deck and the arena report marked it `not offered`. The owner replaced it with **Faithless Looting (cast)**, the loot in the rebuilt deck. The class stays "loot" and the bar stays 50%. Mary Read's loot is still priced by the discard-payoff amendment, but it is no longer measured as a canary.
 
 **Positions added, one or more per sub-PR**, each harvested from that PR's run-1 decision logs with `boteval suite harvest`, labelled, and gated for `heuristic`:
 
@@ -903,6 +905,7 @@ The tables, and every seed that changes, are under [Measurements, #2474](#2474-t
 
 - **The full mirror ends on a misblock.** In both games the defender, on 3, blocks the Bear with its commander instead of the bot's commander, takes 3 and dies. So the games end on the first swing of the line. The block planner (`decideBlock`) scores each block on its own, and the Bear block scores higher (+6.90). Nothing checks that the blocks together leave the defender alive. With the right block the line takes two more turns. `TestAttritionWaitsForTheCommanderItCastAgain` pins those two turns at the decision, but no whole game in the tree plays them. The misblock is [#3066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3066).
 - **The second pass runs only when the first finds nothing.** A commander-trade line that ends sooner than the line the first pass finds is never sent.
+- **The waiting turn is often not needed** ([#3080](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3080), closed by `HorizonRecastsSameTurn`). Once #3066 fixed the misblock, the full Wurm mirror showed the bot casting its commander again in the trade turn's second main phase, so it can attack on the next turn. The horizon now models that when the bot's untapped mana pays the tax after combat, and waits only when it does not; see [#3080's measurements](#3080-the-commander-cast-again-after-combat-2026-10-14).
 
 ### Questions for the owner (#2474, answered 2026-10-12)
 
@@ -1324,6 +1327,116 @@ The tables are under [Measurements, #3165](#3165-token-makers-priced-by-what-the
 - **A creature spell triggers the same payoffs** (Purphoros with a creature in hand) and nothing prices that.
 - **Creature-token makers with fixed counts elsewhere in the catalog** (Siege-Gang Commander, Beetleback Chief and the other enters-effects) declare no `creature_tokens`; they keep their body price.
 - **Pashalik Mons's sacrifice and Fearless Liberator's boast**, the deck's other `never` rows, are related and untouched.
+
+## Amendment 2026-10-14: landfall doublers, payoff casts and fetch lands
+
+**Status:** Proposed. The code is in the PR that adds this section, behind three switches, each on in `DefaultConfig()` and off in `BaselineConfig()`.
+**Issue:** [#3146](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3146), the open items of [#3072](#open-3072). Sprint S75.
+**Amends:** the [landfall payoffs](#amendment-2026-10-12-landfall-payoffs) amendment (one new purpose field, `landfall_extra_triggers`, and `lands` declared on the fetch lands' activations). No weight is new and no deck changes.
+
+### The problem
+
+#3072 priced a land the bot puts down by what its landfall payoffs pay, and left three gaps, all in simic-ramp:
+
+1. **Ancient Greenwarden** makes each landfall trigger fire twice, and the price counted each payoff once.
+2. **A payoff's own cast** (Tireless Tracker, Lotus Cobra, Sporemound) was priced by its body alone, not by what it pays for the lands the bot puts down in the next turns.
+3. **Fetch lands** (Simic has seven) were cracked at the flat `ActivateBase`, so a payoff on the board did not make them more likely to be cracked.
+
+### Decision
+
+**1. Doublers** (`PriceLandfallDoublers`). A card whose `TriggerDoubler` covers lands declares `landfall_extra_triggers` on the card: Ancient Greenwarden 1, and Elesh Norn, Mother of Machines 1, because her doubler covers every permanent. `effects.Register` refuses it off the card, and on a card with no `TriggerDoubler`. Each land pays the bot's payoffs (1 + the declared extras on its own permanents) times. An opponent's doubler doubles only the opponent's triggers, so it adds nothing.
+
+**2. A payoff's cast** (`PriceLandfallCasts`). A permanent with a landfall row or a doubler adds the per-land gain it brings, `(board + own) × (k + extra) − board × k`, where `k` is the triggers per land already counted. That gain is multiplied by the lands the bot expects to put down:
+
+```
+expected = min(lands in hand, land drops left this turn)
+         + min(lands left in hand + 0.4 × 2, land drops per turn × 2)
+```
+
+The second term covers the bot's next two turns, and 0.4 is `millLandShare`, a land in 0.4 of its draws. Tireless Tracker with two lands in hand and the drop used is 2.85 off and 3.85 on: two Clues more (`TestALandfallPayoffIsWorthTheLandsAhead`). Greenwarden with Tatyova out is worth her card and life again for each of those lands (`TestGreenwardenCastIsWorthTheDoubling`). The commander is not repriced: a command-zone card carries no ability rows on the wire, and Tatyova is cast in nearly every game anyway.
+
+**3. Fetch lands** (`PriceFetchLandfall`). The fetch activations declare `lands` (1, or Myriad Landscape's 2) and `lands_untapped` where the land enters untapped. A fetch is a self-sacrificing land row that declares lands and nothing else. It is not priced as a purpose, because that would charge the sacrificed land and drop a fetch under `PassThreshold` with no payoff out. It keeps the flat `ActivateBase`, and:
+
+- each land it puts down adds what the bot's payoffs pay (`landfallValue`);
+- a land beyond the one it sacrifices is ramp (`ManaSource` and the ramp premium).
+
+Misty Rainforest is +0.50 with no payoff out, as before, and +1.82 with Tatyova (`TestAFetchPaysTheLandfallPayoffs`). With the switch off, a fetch's declared `lands` is read nowhere.
+
+### Measured
+
+The tables are under [Measurements, #3146](#3146-landfall-doublers-payoff-casts-and-fetch-lands-2026-10-14). One tree was built twice, with the three switches off (`develop`'s behaviour) and on. Run 1 was at seeds 1, 1001, 2001 and 3001, with the rebuilt `mono-red-aggro` in the rotation, as #3071's owner decision 3 asked. Run 2's half B (`heuristic` on mono-black and Simic) was at seeds 1 and 1001, and half A at seed 1. Half A was kept small because the host is shared.
+
+| | Switches off | Switches on |
+|---|---|---|
+| simic-ramp, run 1 (four seed blocks) | 43 / 256, 16.8% (12.7%–21.9%) | **49 / 256, 19.1% (14.8%–24.4%)** |
+| Simic, every `heuristic` seat-game (run 1 and run 2 half B) | 77 / 448, 17.2% (14.0%–21.0%) | 76 / 448, 17.0% (13.8%–20.7%) |
+| run 2 `heuristic`, the three runs | 97 / 288, 33.7% (28.5%–39.3%) | 93 / 288, 32.3% (27.2%–37.9%) |
+| Tireless Tracker cast, run 1, games used of offered | 73 of 81 | **87 of 91** |
+| Sporemound cast | 62 of 97 | 74 of 92 |
+| a fetch cracked while a payoff is out (seed 1, decision logs), windows | 77 of 1,020 (7.5%) | **90 of 534 (16.9%)** |
+
+- **The cards are used.** Tracker, Sporemound, Avenger of Zendikar (66 of 74 to 76 of 82) and Courser (64 of 71 to 72 of 76) are cast in more of the games they are offered in. With a payoff out, a fetch is cracked in more than twice the share of windows, and it sits uncracked for half as many windows.
+- **Simic's win rate does not move beyond noise.** Run 1 rises from 16.8% to 19.1%, against the 17.2% (13.1%–22.3%) the owner accepted for #3071. Run 2's half B falls from 34 / 96 to 27 / 96. Over every `heuristic` seat-game it is flat. Every interval overlaps the one before it.
+- **Run 2 is not detectably worse.** `heuristic`'s upper bound stays at 37.9%, above 25%. Half A changes 5 of 48 games, through mono-red-aggro's Myriad Landscape, whose second land is now ramp.
+- **Health:** 0 stalls and 0 rejected moves in every run. Turns p50 is unchanged (11 to 12). The suite is 42 of 42.
+
+### Options considered and rejected
+
+- **Declaring `lands: 1` on a fetch and pricing it as a purpose.** It would charge the sacrificed land, and with no payoff out it would drop the fetch under `PassThreshold`, so the bot would stop cracking fetches.
+- **Reading the doubler off the engine's `TriggerDoubler`.** A doubler is a closure, so the bot cannot read which events it covers. Every other purpose is also declared, never derived.
+- **A longer horizon for the payoff's cast.** Two turns prices a Tracker at about two Clues. A longer horizon would put the payoffs above the ramp that finds the lands.
+
+### Open (#3146)
+
+- **The commander's cast.** A command-zone card has no ability rows on the wire, so Tatyova's cast is not repriced. Projecting the rows there is a protocol change, and it has not been measured.
+- **Simic's balance** stays about where #3071 left it. Moving it needs more than landfall pricing.
+- **Virtue of Knowledge** also doubles landfall, but it is an Adventure card whose card-slot purpose the bot reads for the spell, so it declares no `landfall_extra_triggers`.
+
+## Amendment 2026-10-15: what a card does only when kicked or turned face up
+
+**Status:** Accepted (a seam the coordinator filed, with the owner's brief). The code is in the PR that adds this section. No `Config` switch: the new fields are read by prices that already have their own (`PriceSweeps`, `Weights.Turn`), and `BaselineConfig()` prices neither.
+**Issue:** [#3762](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3762), found landing [#3565](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3565) (the cards that skip your next turn). Sprint: none.
+**Amends:** §6 (a declared purpose) and [ADR 0188](0188-skipped-turns-and-turn-bound-effects.md) Decision 10 (a skipped turn is priced).
+
+### The problem
+
+`game.Purpose` says what a spell or an ability does. It had no slot for what a card does only if an optional cost is paid, or only when it is turned face up, and two cards from #3565 showed what that costs:
+
+- **Waterspout Elemental** ("Kicker {U} ... When this creature enters, if it was kicked, return all other creatures to their owners' hands and you skip your next turn") had to declare its `Sweep` on the card, because `TestRealDumpPurposeAudit` fails a catalog card that reads as a wipe and declares none. So the heuristic priced the **unkicked** cast as a mass bounce. Its skip had no home at all, so the bot never charged it.
+- **Unstable Hulk** ("When this creature is turned face up, it gets +6/+6 ... You skip your next turn") could declare nothing: a face-down permanent has no text (CR 708.2a), so no purpose reaches the wire for it, and the skip is not something the card does when cast.
+
+### Decision
+
+**1. Two conditional purposes**, both on the card slot, both a `*Purpose` (a pointer, so `Purpose` stays comparable and `IsZero` still works):
+
+```go
+Purpose: game.Purpose{Kicked: &game.Purpose{Sweep: …, SkipsTurns: 1}}   // Waterspout Elemental
+Purpose: game.Purpose{FaceUp: &game.Purpose{SkipsTurns: 1}}             // Unstable Hulk
+```
+
+The fields beside them are what the card does however it is cast, so an unkicked Elemental declares nothing and is priced as the 3/4 flyer it is.
+
+**2. A reader recognises the condition from the move.** The wire carries them as `purpose.kicked` and `purpose.turned_face_up`. The heuristic reads `kicked` only when the cast move names an optional cost (`optional_costs` is non-empty), and adds it to whatever the cast's slot already declared (`castPurpose`, so the fuel, tax and plan readers agree). It reads `turned_face_up` only when pricing the `turn_face_up` special action, which adds `purposeValue` of it to the flat `SpecialActionValue`: the Hulk's turn costs `Weights.Turn`. `Priced()` does not count either field, so a card that declares only a conditional purpose keeps its mana-value proxy on every other path.
+
+**3. Kicked is for one kicker.** `effects.Register` refuses `Kicked` unless the card has exactly one optional cost and it is a kicker. With two ("Kicker {R} and/or {W}") the view cannot say which was paid, and a multikicker's amounts are counted at resolution; those cards keep declaring nothing. It refuses `FaceUp` on a card with no face-down cast offer (Morph, Megamorph, Disguise). Both inner purposes must say something, may not nest, and may not declare `Targets`, `Aura`, `ExtraLandDrops`, `LandfallExtraTriggers` or `FlashCleanupSacrifice`, which belong to the card's own slot. Everything else is checked as a card-slot purpose is.
+
+**4. A face-down permanent's controller is sent `turned_face_up`, and only that.** `CardPurposeOfPtr` still answers the zero purpose for a face-down object, except for `FaceUp` of the card underneath, read by oracle ID. `redactCardForViewer` clears `purpose` for a viewer who may not look at the face, so an opponent sees nothing, as before. A face-up Hulk also carries `turned_face_up`; nothing reads it there.
+
+**5. The audit reads through them.** `Purpose.DeclaresSweep()` is true for a sweep declared directly or under `Kicked` or `FaceUp`, and `TestRealDumpPurposeAudit` uses it. A wipe that only a kicked cast makes still has to be declared, and now it can be declared where it is true.
+
+### Cards
+
+Waterspout Elemental moves its partial creature bounce and its skip to `Kicked`. Unstable Hulk declares its skip under `FaceUp`. The other catalog kicker cards were read against the dump. None declares a purpose that is true only when kicked; the ones with a kicked effect the Purpose model has a field for (Sunscape Battlemage's draw, Stormscape Battlemage's life) have two kickers, which decision 3 leaves alone, and the rest are counters, tokens counted at resolution or targeted effects the model has no field for.
+
+### Not priced
+
+The Hulk's +6/+6 and trample until end of turn. No purpose field prices a one-turn pump on a permanent being flipped (`Pump` is an exert row's), so turning the Hulk up now costs a turn and credits nothing. At `Weights.Turn` 6.00 against a flat 1.00 the bot will not turn a Hulk up, where before it flipped it for the flat value and skipped its next turn without ever pricing it. A flip for lethal is the case this loses; pricing it needs the attack the pump enables, and is a separate change.
+
+### Options considered and rejected
+
+- **Per-mode purposes.** Kicker is not a mode (CR 702.33), and the cards that choose among modes already declare per bullet.
+- **A `Purpose` slot on the optional cost.** `AdditionalCost` is engine data the view projects as `OptionalCostView`; putting the bot's pricing there would make the engine own a bot concern, and the wipe still has to be found by the audit on the spec's purposes.
+- **Leaving the sweep on the card and reviewing it as not-a-wipe.** `reviewedNotAWipe` says a card does not wipe. Waterspout does.
 
 ## Consequences
 
@@ -2479,6 +2592,15 @@ Every gate game ends on the same turn with the same winner. Heuristic vs random 
 - `AISEAT_GAME_TESTS=1 AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12 AISEAT_WALLCLOCK=600s` over `./internal/aiseat/...` and `./internal/botarena/` with `-race`: green. The gate seeds under `-race` match the non-race runs game for game, and heuristic vs random is 12–0. Decision latency over 2534 decisions is p50 96µs, p99 6.00ms and max 35.2ms (`-race`, on a box shared with another agent's test runs), under the 50ms p99 bar. Rebased onto `032e1f138` the run is green again, its gate seeds match too, and latency over 2389 decisions is p50 96µs, p99 7.74ms and max 33.7ms. #2400 measured 105µs, 4.44ms and 21.4ms. The second pass runs only in a decision whose first pass found no line, and wall-clock numbers on a shared box are not a reliable comparison.
 - Back-outs: `TestAttritionTradesCommandersForTheKill` turns each switch off in turn and the bot sends nothing, and the full Wurm board stalls at `[6 3]` with either off (the F and H rows). `TestOutcomeOfTheCommanderTrade` reads the outcome under each of the four combinations.
 
+### #3080: the commander cast again after combat (2026-10-14)
+
+A follow-up to the #2474 amendment, behind `HorizonRecastsSameTurn` (on in `DefaultConfig()`, off in `BaselineConfig()`). In the pass that casts the bot's commander again, one that dies in an exchange is cast in the same turn's second main phase when the bot's mana sources still untapped at the attack pay its mana value plus its tax (every source of the bot's on a later turn the line plays forward, which starts with its untap step). It is then ready to attack on the next board (CR 302.6), so the line does not spend a turn waiting for it. When the untapped mana does not pay, the commander is back summoning sick as before. `TestAttritionRecastsInTheSameTurn` pins the issue's board: one exchange instead of two, and two with the lands tapped or the switch off.
+
+Measured on `develop` `8624909a9`, the switch on against the same tree with it off. The gate runs are #2474's (non-race lockstep, `AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12`), and run 1 is §8's with `--lockstep`.
+
+- **Gates.** 23 of 24 gate games end on the same turn with the same winner and lives. Seed 212 ends on turn 13 instead of 15, same winner (seat 1). Heuristic vs random is 12–0 both ways. The seed-1409 mirrors are unchanged: the Drake mirror 8 / 8, Wurm + Bear 1 / 2, Wurm + Ogre 5 / 7, the full Wurm mirror 8 / 7.
+- **Run 1** (`--games 64 --rotate --lockstep --seed 1`, esper-control, mono-red-aggro, mono-black-aristocrats, simic-ramp): win counts identical both ways (20, 24, 10, 10 of 64), 0 stalls, turns p50 12. Two games differ, each two turns shorter with the switch on and the same winner (seeds 2 and 38).
+
 ### #2480: Izzet and Simic after the rebalance (2026-10-12)
 
 The [amendment of 2026-10-12](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance), accepted (owner decisions 2026-10-12). `develop` is `0e81b3af4`, with #3062's deterministic lockstep and #3063, #3064 and #3065's heuristic. Step 1 is the impulse price: `PriceImpulse` and `OneShotManaAsToken`, both true in `DefaultConfig()` and false in `BaselineConfig()`; no weight is new. Step 2 adds the Izzet swap. Every run is `--rotate --lockstep` with the real dump. Run 1 is §8's (four `heuristic` seats, 64 games); run 2 is §8's, `--games 48` with `heuristic` on esper-control and izzet-aggro (half A), then on mono-black-aristocrats and simic-ramp (half B). **0 stalls, 0 rejected moves and 0 runner fallbacks in every run.** The raw decision logs were deleted once the tables were extracted.
@@ -2711,3 +2833,57 @@ The [amendment of 2026-10-14](#amendment-2026-10-14-token-makers-priced-by-what-
 
 - `boteval suite run --policy heuristic`: 42 of 42, every tag at 100%.
 - `go test -race ./...` and `golangci-lint`: green, including `TestHordelingOutburstIsWorthMoreWithPurphorosOut`, `TestTokenPayoffNeedsMineAndCreaturesAndTheSwitch`, `TestKrenkoActivationIsPricedByItsGoblins`, `TestCreatureEnterPayoffDeclarations`, `TestCreatureTokenDeclarations`, `TestCreatureEnterPayoffGuard` and `TestTokenPayoffsOnTheWire`.
+
+### #3146: landfall doublers, payoff casts and fetch lands (2026-10-14)
+
+The [amendment of 2026-10-14](#amendment-2026-10-14-landfall-doublers-payoff-casts-and-fetch-lands). The base is `develop` at `1687b44ee`. The branch is that tree with the three switches and the declarations. The comparison is one tree built twice, with `PriceLandfallDoublers`, `PriceLandfallCasts` and `PriceFetchLandfall` off and then on, so the declarations alone change nothing. Every run is `--rotate --lockstep` with the real dump. Run 1 is §8's at seeds 1, 1001, 2001 and 3001. Run 2 is §8's `--games 48`, with half B (`heuristic` on mono-black-aristocrats and simic-ramp) at seeds 1 and 1001 and half A at seed 1. **0 stalls and 0 rejected moves in every run.** A logged copy of run 1 at seed 1 replayed the unlogged games exactly, and was deleted once the tables were extracted.
+
+**Run 1** (wins of 64 per seed block):
+
+| Deck | Seed 1, off | Seed 1, on | Seed 1001, off | Seed 1001, on | Seed 2001, off | Seed 2001, on | Seed 3001, off | Seed 3001, on | Pooled, off | Pooled, on |
+|---|---|---|---|---|---|---|---|---|---|---|
+| esper-control | 20 | 18 | 20 | 16 | 12 | 16 | 15 | 12 | 67 / 256, 26.2% (21.2%–31.9%) | 62 / 256, 24.2% (19.4%–29.8%) |
+| mono-red-aggro | 24 | 23 | 18 | 23 | 29 | 23 | 23 | 26 | 94 / 256, 36.7% (31.1%–42.8%) | 95 / 256, 37.1% (31.4%–43.2%) |
+| mono-black-aristocrats | 10 | 11 | 14 | 11 | 11 | 13 | 17 | 15 | 52 / 256, 20.3% (15.8%–25.7%) | 50 / 256, 19.5% (15.1%–24.8%) |
+| simic-ramp | 10 | 12 | 12 | 14 | 12 | 12 | 9 | 11 | 43 / 256, 16.8% (12.7%–21.9%) | **49 / 256, 19.1% (14.8%–24.4%)** |
+| games that differ | — | 31 | — | 23 | — | 27 | — | 22 | | |
+| turns p50 | 12 | 12 | 12 | 11 | 11 | 11 | 11 | 11 | | |
+
+**Run 2** (`heuristic` wins, of 48 games per half):
+
+| | Seed 1 half A | Seed 1 half B | Seed 1001 half B | `heuristic` | `heuristic` on Simic, half B |
+|---|---|---|---|---|---|
+| off | 38 (esper 17, red 21) | 31 (black 12, Simic 19) | 28 (black 13, Simic 15) | 97 / 288, 33.7% (28.5%–39.3%) | 34 / 96, 35.4% (26.6%–45.4%) |
+| on | 38 (esper 17, red 21) | 28 (black 15, Simic 13) | 27 (black 13, Simic 14) | 93 / 288, 32.3% (27.2%–37.9%) | 27 / 96, 28.1% (20.1%–37.8%) |
+| games that differ | 5 | 20 | 26 | | |
+
+**Simic's landfall cards, run 1** (games used of games offered, four seed blocks):
+
+| Card | off | on |
+|---|---|---|
+| Tireless Tracker, cast | 73 of 81 | **87 of 91** |
+| Sporemound, cast | 62 of 97 | 74 of 92 |
+| Avenger of Zendikar, cast | 66 of 74 | 76 of 82 |
+| Courser of Kruphix, cast | 64 of 71 | 72 of 76 |
+| Tireless Provisioner, cast | 64 of 71 | 65 of 68 |
+| Lotus Cobra, cast | 63 of 72 | 64 of 70 |
+| Rampaging Baloths, cast | 69 of 69 | 69 of 71 |
+| Ancient Greenwarden, cast | 81 of 81 (85 of 186 windows) | 77 of 79 (78 of 150 windows) |
+| Burnished Hart, activation | 21 of 35 | 16 of 28 |
+
+The arena's Cards table leaves lands out, so the fetches are read from the decision logs of run 1 at seed 1, for the Simic seat. With a landfall payoff of its own out, a fetch was cracked in 77 of 1,020 windows it was offered in (30 of 36 games) with the switches off, and in 90 of 534 (35 of 36 games) with them on. With no payoff out, it was cracked in 170 of 1,315 and 154 of 882 (61 of 63 games on both). Payoff casts in those logs moved by about a turn at most: Greenwarden's median turn went from 8 to 7, and Courser's from 6 to 5.
+
+**Other gates on the branch:**
+
+- `boteval suite run --policy heuristic`: 42 of 42.
+- `go test -race ./...` and `golangci-lint`: green, including `TestGreenwardenDoublesTheLandfallPrice`, `TestALandfallPayoffIsWorthTheLandsAhead`, `TestGreenwardenCastIsWorthTheDoubling`, `TestAFetchPaysTheLandfallPayoffs`, `TestLandfallDoublerDeclarations`, `TestLandfallDoublerGuard` and `TestFetchLandDeclarations`. With the dump, `TestCuratedDeckPurposes` and `TestRealDumpPurposeLandsUntapped` pass with the seven untapped fetches on `curatedLandsUntapped`.
+
+## Amendment 2026-10-15 (b): the pump of a turn-face-up trigger, and bodies that leave
+
+**Status:** Accepted. The code is in the PR that adds this section. Two `Config` switches, both on in `DefaultConfig()` and off in `BaselineConfig()`: `PriceFaceUpPump` and `PriceTemporaryBodies`.
+**Issues:** [#3776](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3776) (the "Not priced" paragraph of the amendment above), [#3802](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3802). Sprint: none.
+
+1. **`Purpose.FaceUp` may declare a `Pump`.** `Pump` was a triggered or activated row's field; the inner purpose of `FaceUp` is a turn-face-up trigger's effect, so it may carry one too (`effects.Register`: a `purposeOnFaceUp` slot, which `checkPump` also validates). Unstable Hulk declares `Pump{6, 6, trample}`. `Kicked` still may not.
+2. **The flip is priced by the attack the pump enables.** `valueOfTurnFaceUp` adds, for a creature that can still attack this turn (untapped and not summoning-sick before attackers, or already attacking before damage), the attack value of the pumped creature less that of the plain one, per opponent, and takes the best. When the pump is what turns the swing into a kill (`lethalPushAs` true with the pumped creature and false without) it adds `LethalBonus`, so a flip for lethal outweighs the skipped turn's `Weights.Turn`. Out of that window the pump is worth nothing.
+3. **A creature cast for evoke, warp, dash or blitz is a temporary body.** `valueOfCast` reads the alternative-cost key off the move and replaces the lasting body `resolvedValueFor` priced with what the cast buys: its enters effect (unchanged, the card's purpose), a haste attack this turn when it has one and it is still ahead, blitz's death draw, and the card dash and warp keep. Evoke keeps only the enters effect.
+

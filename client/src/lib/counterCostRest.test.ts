@@ -128,6 +128,41 @@ describe("a variable counter cost", () => {
   });
 });
 
+describe("a variable counter cost split among permanents (#3276)", () => {
+  const jetfire: ActivatedAbilityView = {
+    index: 0,
+    label: "Remove one or more +1/+1 counters from among artifacts you control: ...",
+    counter_cost_n: 1,
+    counter_cost_kind: "+1/+1",
+    counter_cost_label: "artifacts you control",
+    counter_cost_among: true,
+    counter_cost_variable: true,
+    counter_cost_max: 5,
+    counter_cost_options: [
+      { card_id: "jet", kinds: [{ kind: "+1/+1", count: 3 }] },
+      { card_id: "rock", kinds: [{ kind: "+1/+1", count: 2 }] },
+    ],
+  };
+
+  it("always asks, and takes any split at or above the floor", () => {
+    expect(counterCostNeedsPrompt(jetfire)).toBe(true);
+    expect(counterCostBlocked(jetfire)).toBe("");
+    const picks = [
+      { cardID: "jet", kind: "+1/+1", count: 3, n: 2 },
+      { cardID: "rock", kind: "+1/+1", count: 2, n: 1 },
+    ];
+    expect(counterPaymentReady(jetfire, picks)).toBe(true);
+    expect(counterPaymentParams(jetfire, picks)).toEqual({
+      counter_source_ids: ["jet", "rock"],
+      counter_counts: [2, 1],
+    });
+  });
+
+  it("refuses a payment of nothing under the floor of one", () => {
+    expect(counterPaymentReady(jetfire, [])).toBe(false);
+  });
+});
+
 describe("an among counter cost", () => {
   it("asks for a split and sends one count per permanent", () => {
     expect(counterCostNeedsPrompt(ironSpider)).toBe(true);

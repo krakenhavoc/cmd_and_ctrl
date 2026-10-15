@@ -94,7 +94,7 @@ func TestNehebAfflictsThenAddsRedPerLifeLostThisTurn(t *testing.T) {
 	advanceTo(t, g, game.StepPostcombatMain)
 	passPriorityAroundTable(t, g)
 	red := 0
-	for _, m := range me.ManaPool {
+	for _, m := range me.ManaPool.Units() {
 		if m.Color == "R" {
 			red++
 		}
@@ -110,7 +110,7 @@ func TestNehebAddsNothingWhenNoOpponentLostLife(t *testing.T) {
 	pushDiesCreatureForTest(g, me.ID, "Neheb, the Eternal", nehebEternalOracle, "Legendary Creature — Zombie Minotaur Warrior", 4, 6)
 	advanceTo(t, g, game.StepPostcombatMain)
 	passPriorityAroundTable(t, g)
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Errorf("mana pool = %+v, want empty", me.ManaPool)
 	}
 }
@@ -126,7 +126,7 @@ func TestNehebCountsLifeLostByEveryOpponentButNotYours(t *testing.T) {
 	})
 	advanceTo(t, g, game.StepPostcombatMain)
 	passPriorityAroundTable(t, g)
-	if len(me.ManaPool) != 3 {
+	if me.ManaPool.Total() != 3 {
 		t.Errorf("mana pool = %+v, want 3 red (2 + 1, not your own 5)", me.ManaPool)
 	}
 }

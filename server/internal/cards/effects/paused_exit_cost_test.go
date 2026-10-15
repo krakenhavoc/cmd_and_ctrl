@@ -90,8 +90,8 @@ func TestAshnodsAltarCannotEatABouncedCommanderWhileItsOwnerIsAsked(t *testing.T
 	if err := g.ActivateManaAbility(me.ID, altar, 0, game.ManaAbilityParams{SacrificeIDs: []uuid.UUID{cmdr}}); !errors.Is(err, game.ErrChoicePending) {
 		t.Fatalf("Ashnod's Altar naming the bounced commander: err = %v, want ErrChoicePending", err)
 	}
-	if len(me.ManaPool) != 0 {
-		t.Fatalf("pool = %d mana — a bounced commander paid for mana", len(me.ManaPool))
+	if me.ManaPool.Total() != 0 {
+		t.Fatalf("pool = %d mana — a bounced commander paid for mana", me.ManaPool.Total())
 	}
 	if err := g.ResolveOptionalReplacement(prompt.ID, me.ID, false); err != nil {
 		t.Fatalf("ResolveOptionalReplacement: %v", err)
@@ -102,8 +102,8 @@ func TestAshnodsAltarCannotEatABouncedCommanderWhileItsOwnerIsAsked(t *testing.T
 	if err := g.ActivateManaAbility(me.ID, altar, 0, game.ManaAbilityParams{SacrificeIDs: []uuid.UUID{fodder}}); err != nil {
 		t.Fatalf("the Altar after the answer: %v", err)
 	}
-	if len(me.ManaPool) != 2 {
-		t.Errorf("pool = %d mana, want 2", len(me.ManaPool))
+	if me.ManaPool.Total() != 2 {
+		t.Errorf("pool = %d mana, want 2", me.ManaPool.Total())
 	}
 }
 

@@ -36,18 +36,11 @@ func init() {
 				return combatDamageToPlayerBy(ev, source.Controller, g)
 			},
 			Key: "Ikra Shidiqi, the Usurper — gain life equal to that creature's toughness",
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				dealer := ev.Source
-				fallback := 0
-				if c, ok := g.LookupCardForEffect(dealer); ok {
-					fallback = c.CurrentToughness()
-				}
-				item := game.NewTriggeredItem(source, "Ikra Shidiqi, the Usurper — gain life equal to that creature's toughness")
-				item.Params.Object = game.ObjectRef{ID: dealer}
-				item.Params.Amount = fallback
-				return item
-			},
-			Effect: b35GainLifeEqualToToughness,
+			// The subject is the creature that dealt the damage
+			// (Event.Source), read as it resolves, or as it last
+			// existed once it has left (#3033).
+			SubjectIsEventSource: true,
+			Effect:               Do(GainLifeEqualToSubject{Stat: SubjectToughness}),
 		}},
 	})
 }

@@ -115,8 +115,8 @@ func TestATriggerOnTheStackBlocksASorcery(t *testing.T) {
 	if err := g.CastSpell(me.ID, land, CastSpellParams{}); !errors.Is(err, ErrSorcerySpeedRequired) {
 		t.Errorf("land play over a trigger: err = %v, want ErrSorcerySpeedRequired (CR 305.1)", err)
 	}
-	if len(me.ManaPool) != 2 {
-		t.Errorf("mana pool = %d, want 2 — a refused cast paid for itself", len(me.ManaPool))
+	if me.ManaPool.Total() != 2 {
+		t.Errorf("mana pool = %d, want 2 — a refused cast paid for itself", me.ManaPool.Total())
 	}
 	if err := g.CastSpell(me.ID, bolt, CastSpellParams{}); err != nil {
 		t.Errorf("an instant over a trigger is instant-speed (CR 117.1a): %v", err)
@@ -166,7 +166,7 @@ func TestATriggerOnTheStackBlocksASorcerySpeedActivation(t *testing.T) {
 			if len(g.StackMeta) != 1 || g.StackMeta[trig] == nil {
 				t.Errorf("StackMeta has %d items, want only the trigger", len(g.StackMeta))
 			}
-			if len(me.ManaPool) != 1 || counterOf(g, src.InstanceID, CounterLoyalty) != 3 {
+			if me.ManaPool.Total() != 1 || counterOf(g, src.InstanceID, CounterLoyalty) != 3 {
 				t.Error("a refused activation paid its cost")
 			}
 

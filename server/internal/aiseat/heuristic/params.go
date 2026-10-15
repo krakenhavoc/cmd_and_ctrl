@@ -42,6 +42,12 @@ type castParams struct {
 	// flashed-back Faithless Looting from a hard-cast one, which are
 	// the same card at two prices with two different consequences.
 	AlternativeCost string `json:"alternative_cost"`
+	// OptionalCosts are the optional additional costs this cast pays
+	// (CR 601.2b), as positions in the card's OptionalCosts, repeated
+	// once per payment for a multikicker. Non-empty on a card with one
+	// kicker means the kicker is paid: what the card's `purpose.kicked`
+	// declares then happens too (castPurpose, #3762).
+	OptionalCosts []int `json:"optional_costs"`
 	// AltCostIDs are the cards paid to the NON-MANA half of that
 	// price: escape's exiled graveyard, Force of Will's pitched blue
 	// card, Daze's returned Island. Real resources, priced below.
@@ -59,6 +65,13 @@ type castParams struct {
 	// additional cost gives up (#3402) — gone from the board exactly as a
 	// sacrificed one is, and priced the same way.
 	ExilePermanentIDs []string `json:"exile_permanent_ids"`
+	// ExileFromHandIDs are the hand cards a March's additional cost exiles
+	// for its discount (#3175) — lost from hand as a discarded card is.
+	ExileFromHandIDs []string `json:"exile_from_hand_ids"`
+	// ExileIDs are the graveyard cards a mandatory exile-N-cards
+	// additional cost spends (#3536) — the same resource escape's exiled
+	// graveyard and delve are, priced the same way.
+	ExileIDs []string `json:"exile_ids"`
 }
 
 type activateParams struct {
@@ -92,6 +105,9 @@ type specialActionParams struct {
 	Kind   string `json:"kind"`
 	// Door is the door an "unlock" opens — "left" or "right" (ADR 0103).
 	Door string `json:"door"`
+	// Route is which of a permanent's two turn-face-up offers this is
+	// — "mana_cost", "morph" or "disguise" (ADR 0189 decision 4).
+	Route string `json:"route"`
 }
 
 type attackParams struct {
@@ -138,6 +154,9 @@ type choiceParams struct {
 	// Amount answers a pay_amount prompt (ADR 0129 §3): the energy
 	// paid.
 	Amount *int `json:"amount"`
+	// PayOption answers an either payment (ADR 0187 §5): the index of
+	// the branch taken, into the prompt's pay_either.
+	PayOption *int `json:"pay_option"`
 }
 
 type mulliganParams struct {

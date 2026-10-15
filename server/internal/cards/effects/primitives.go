@@ -603,6 +603,13 @@ type ScheduleDelayedTrigger struct {
 	// (Final Fortune). Zero is unbound.
 	OnExtraTurn int
 
+	// OnPhase binds the trigger to one phase of THIS turn: the id
+	// game.AddPhasesForEffect returned for an added combat, "at the
+	// beginning of THAT combat" (ADR 0188 Decision 5; use
+	// AddPhases.AtThatCombat). Zero is unbound. The engine stamps the
+	// turn and refuses an id that cannot still begin.
+	OnPhase int
+
 	// EachThisTurn is "at the beginning of EACH <step> this turn"
 	// (Full Throttle's "each combat this turn"): the trigger fires at
 	// every matching step for the rest of the turn instead of once, and
@@ -631,6 +638,7 @@ func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
 		Body:               s.Body,
 		Params:             s.Params,
 		OnExtraTurn:        s.OnExtraTurn,
+		OnPhaseID:          s.OnPhase,
 	}
 	if s.EachThisTurn {
 		d := ctx.Game.UntilEndOfTurnDuration()
@@ -908,6 +916,12 @@ func (a AddCounter) Apply(ctx *Context) error {
 	// object; see source_object_guard.go.
 	// Removal (N < 0) is the same act on the same object.
 	if ctx.isNewSourceObject(a.Target) {
+		return nil
+	}
+	// #3667: "this creature" sacrificed or killed in response is a new
+	// object in another zone (CR 400.7); the instruction does nothing
+	// (CR 608.2b).
+	if ctx.sourceLeftBattlefield(a.Target) {
 		return nil
 	}
 	err := ctx.Game.AddCounterForEffect(a.Target, a.Kind, a.N)
@@ -1355,11 +1369,16 @@ func (p GuardedPayUnless) Apply(ctx *Context) error {
 // "each opponent sacrifices a creature" (Butcher of Malakir) — CR
 // 701.21a.
 //
-// Every affected player chooses their own, so this fans out one prompt
-// per player rather than picking for them; that is the whole rules
-// content of the card, and it is why the effect is not targeted. A
-// creature with hexproof or protection is still a legal choice, and
-// the effect resolves whether or not anyone has a creature.
+// Every affected player chooses their own, so this asks each player
+// rather than picking for them; that is the whole rules content of the
+// card, and it is why the effect is not targeted. A creature with
+// hexproof or protection is still a legal choice, and the effect
+// resolves whether or not anyone has a creature.
+//
+// The players choose one at a time in APNAP order, each seeing the
+// earlier choices, and every chosen permanent is sacrificed together
+// after the last (CR 101.4, 608.2e; ADR 0175's ordered collector,
+// #3664). A player with exactly one candidate is not asked.
 //
 // Set ExceptController for "each OTHER player" / "each opponent".
 // Leave Match nil for "a permanent"; pass Creature() for the usual

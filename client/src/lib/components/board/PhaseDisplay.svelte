@@ -25,7 +25,13 @@
   import { seatColor } from "../../colors";
   import { avatarURL } from "../../api";
   import { getAvatarColor } from "../../avatarColor";
-  import { STEP_LABELS, type StepID } from "../../turn";
+  import {
+    STEP_LABELS,
+    addedPhaseMarkers,
+    nextTurnLine,
+    phaseCaption,
+    type StepID,
+  } from "../../turn";
   import { canManuallyStop, manualStops, toggleManualStop } from "../../priorityStops";
   import PhaseIcon from "./PhaseIcon.svelte";
   import {
@@ -111,15 +117,28 @@
   const activeSeat = $derived(turn.active_seat ?? 0);
   const priorityHeld = $derived((turn.priority_holder ?? -1) >= 0);
   const activePlayer = $derived(seats[activeSeat]);
-  const stepLabel = $derived(STEP_LABELS[turn.step as keyof typeof STEP_LABELS] ?? turn.step);
-  // ADR 0059 Decision 11 (#753): the next queued extra turn, if any.
-  // "R{n}" is the round (owner decision 1, ADR 0059); an extra turn is marked
-  // instead, and the queue shows who takes the next one.
-  const nextExtra = $derived.by(() => {
-    const seat = turn.extra_turns?.[0];
-    if (seat === undefined) return null;
-    return seats[seat]?.name ?? `seat ${seat}`;
-  });
+  // ADR 0188 Decision 12: while the turn change waits on the which-skip
+  // question the old turn is over and the next has not begun, so the
+  // cleanup step's name would be wrong.
+  const betweenTurns = $derived(turn.between_turns === true);
+  const stepLabel = $derived(
+    betweenTurns
+      ? L.choosingNextTurn
+      : (STEP_LABELS[turn.step as keyof typeof STEP_LABELS] ?? turn.step),
+  );
+  // ADR 0059 Decision 11 / ADR 0188 Decision 9: "Next:" names a queued
+  // extra turn, or the seat after a skip; the plain case has no line.
+  const nextLine = $derived(nextTurnLine(turn, seats));
+  const phaseMarkers = $derived(addedPhaseMarkers(turn.upcoming, turn.phase_id));
+  // "Combat 2" / "Main 3": only the phase in progress knows its ordinal.
+  const captionFor = (phase: { key: string; caption: string; steps: readonly StepID[] }) =>
+    phase.steps.includes(turn.step as StepID)
+      ? phaseCaption(
+          phase.key === "combat" ? "combat" : phase.key.endsWith("main") ? "main" : "other",
+          phase.caption,
+          turn.phase_ordinal,
+        )
+      : phase.caption;
 
   // #2214: the track is CR 500.1's five phases, each a labelled group
   // with a tiny caption under its steps. `name` is the group's
@@ -224,19 +243,19 @@
     {#if turn.extra}
       <span class="extra-turn" title="This turn was created by an effect">Extra turn</span>
     {/if}
-    {#if nextExtra}
+    {#if nextLine}
       <span
         class="next-extra"
-        title="Queued extra turns are taken before normal turn order resumes"
+        title="Queued extra turns are taken before normal turn order resumes; a skipped turn passes to the next seat"
       >
-        Next: {nextExtra} (extra)
+        {nextLine}
       </span>
     {/if}
     <!-- The step label shares the turn line, which keeps the dock one
          row shorter (and the self panel's rows one row taller). -->
     <span class="step-label">
       {stepLabel}
-      {#if !priorityHeld && !mulligansOpen}
+      {#if !priorityHeld && !mulligansOpen && !betweenTurns}
         <span
           class="no-priority"
           title={`no player holds priority during ${stepLabel} (turn-based actions auto-fire)`}
@@ -288,8 +307,11 @@
         </div>
         <!-- The group's name says it to a screen reader; this is the
              sighted half. -->
-        <span class="phase-caption" aria-hidden="true">{phase.caption}</span>
+        <span class="phase-caption" aria-hidden="true">{captionFor(phase)}</span>
       </div>
+    {/each}
+    {#each phaseMarkers as marker, i (i)}
+      <span class="phase-marker" data-added-phase>{marker}</span>
     {/each}
   </div>
 
@@ -347,6 +369,15 @@
     border-radius: 999px;
     border: 1px solid var(--active-player-color, currentColor);
     white-space: nowrap;
+  }
+  .phase-marker {
+    align-self: center;
+    margin-left: 6px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    color: var(--fg-dim);
   }
   .next-extra {
     opacity: 0.75;

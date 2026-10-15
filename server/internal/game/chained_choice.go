@@ -348,6 +348,27 @@ type ChooseCardsPrompt struct {
 	// transient frame data rather than persisted PendingChoice fields.
 	earlierPermanentChoices []SeatCards
 	permanentEpochs         map[uuid.UUID]int
+	// The three fields below are ADR 0187 §2's, for ONE caller:
+	// QueueAnyPlayerPaysForEachForEffect, whose legs are choose_cards
+	// prompts of an any-player offer.
+	//
+	// anyPlayerOffer is the offer's plain data, shared by every leg as a
+	// template. The collector files, per leg, a copy whose Declined
+	// lists the earlier seats that chose nothing: the seats in the
+	// template's Declined (those that got no leg) plus every earlier
+	// receipt that is empty. The queued prompt carries that copy.
+	//
+	// suggestUnchosenOwn has the collector work out ChooseSuggested for
+	// each leg as it is queued: the chooser's own candidates that no
+	// earlier seat chose, cut to the leg's Max. A land an earlier seat
+	// already pays for is left out, so the suggestion never pays twice
+	// for nothing.
+	//
+	// suggested is that result, and what the queue copies onto the
+	// prompt.
+	anyPlayerOffer     *AnyPlayerOffer
+	suggestUnchosenOwn bool
+	suggested          []uuid.UUID
 }
 
 // QueueChooseCardsForEffect queues a card-set pick and returns its ID.
@@ -389,6 +410,8 @@ func (g *Game) QueueChooseCardsForEffect(p ChooseCardsPrompt) uuid.UUID {
 		promptRun:   p.promptRun,
 
 		ChooseDestination: p.Destination,
+		ChooseSuggested:   append([]uuid.UUID(nil), p.suggested...),
+		AnyPlayerOffer:    cloneAnyPlayerOffer(p.anyPlayerOffer),
 		chooseCardsResume: &chooseCardsFrame{
 			earlierPermanentChoices: p.earlierPermanentChoices,
 			permanentEpochs:         p.permanentEpochs,
@@ -688,4 +711,9 @@ const (
 	// The client says "Manifest"; the bot prices the pick as cards it
 	// gives up, because a face-down 2/2 is not the card.
 	ChooseManifest ChooseDestination = "manifest"
+	// ChooseSacrifice: the named permanents are sacrificed, together
+	// with every other player's picks, once the last player in APNAP
+	// order has chosen (CR 101.4, 608.2e; #3664). The client says so;
+	// the bot prices the pick as the permanents it gives up.
+	ChooseSacrifice ChooseDestination = "sacrifice"
 )

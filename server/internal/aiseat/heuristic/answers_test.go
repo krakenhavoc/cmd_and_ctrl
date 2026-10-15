@@ -204,3 +204,30 @@ func TestExileOutletSpendsTheTargetedCreature(t *testing.T) {
 		t.Errorf("without PriceAnswers it chose %q, want the old pass", got)
 	}
 }
+
+// #2939 gap 5: a rock's sacrifice-to-draw row that declares Draws is
+// priced by the cards, a Hedron Archive's two worth one Mind Stone's
+// card more, and not as the flat ActivateBase every such row got before.
+func TestRockDrawRowIsPricedByItsDraws(t *testing.T) {
+	pol := heuristic.New()
+	price := func(draws int) float64 {
+		src := rock(cardID(1), 0, "Rock", "{2}", protocol.ManaAbilityView{})
+		src.ManaAbilities = nil
+		a := []string{"value"}
+		src.ActivatedAbilities = []protocol.ActivatedAbilityView{{
+			Index: 0, TapCost: true, SacrificeSelf: true, ManaCost: "{1}",
+			Purpose: &protocol.PurposeView{Draws: draws, Answers: &a},
+		}}
+		bf := append(manaLands(4, 0, 100), src)
+		v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)}, withBattlefield(bf...), withTurn(5, 0, "precombat_main"))
+		act := activate(t, 0, src.InstanceID, "Crack", nil)
+		return rankValue(t, pol, input(0, v, passMove(0), act), "Crack")
+	}
+	one, two := price(1), price(2)
+	if !nearly(two-one, 1.2) {
+		t.Errorf("two cards priced %.3f against one card's %.3f, want a card (1.2) more", two, one)
+	}
+	if flat := price(0); nearly(flat, one) {
+		t.Errorf("a row with no declared draws priced like one with a draw (%.3f)", flat)
+	}
+}

@@ -100,7 +100,7 @@ func TestColorPayloadRoutesByKind(t *testing.T) {
 	if chosen != "U" {
 		t.Errorf("ChosenColor = %q, want U", chosen)
 	}
-	if n := len(me.ManaPool); n != 3 {
+	if n := me.ManaPool.Total(); n != 3 {
 		t.Errorf("pool = %v, want three {G}", me.ManaPool)
 	}
 }

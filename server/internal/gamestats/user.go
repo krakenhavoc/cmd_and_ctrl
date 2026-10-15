@@ -147,7 +147,7 @@ func (s *SQLStore) ForUser(ctx context.Context, userID string) (UserStats, error
 			out.Unfinished++
 			continue
 		}
-		out.Tally.add(rg.Result, rg.Place)
+		out.add(rg.Result, rg.Place)
 		bump := func(m map[string]*Group, order *[]string, key, name string) {
 			grp := m[key]
 			if grp == nil {
@@ -180,7 +180,7 @@ func (s *SQLStore) ForUser(ctx context.Context, userID string) (UserStats, error
 	if err := rows.Err(); err != nil {
 		return UserStats{}, fmt.Errorf("gamestats: user stats: %w", err)
 	}
-	out.Tally.finish()
+	out.finish()
 	out.ByDeck = finishGroups(decks, deckOrder)
 	out.ByCommander = finishGroups(cmdrs, cmdrOrder)
 	if out.TopCards, err = s.topCards(ctx, userID); err != nil {

@@ -402,6 +402,13 @@ type TurnTally struct {
 	// and flushed with the rest of the tally when the turn begins.
 	// Read through Game.modesChosenLocked. See mode_memory.go.
 	ModesChosen map[string][]int `json:"modesChosen,omitempty"`
+	// GrantedAltCostsClaimed is the once-each-turn granted alternative
+	// costs claimed this turn (#3174: Warped Space, Access Maze), keyed
+	// by ObjectTallyKey(source, epoch, offer key): PER OBJECT, so two
+	// such permanents give two claims and one that left and came back
+	// has a fresh one (CR 400.7). Written as the spell becomes cast;
+	// read by GrantedAlternativeCost.gatedOn. Additive within schema v9.
+	GrantedAltCostsClaimed map[string]int `json:"grantedAltCostsClaimed,omitempty"`
 	// Attacks is every attack declared this turn, in declaration order
 	// (ADR 0059 Decision 8): one record per attacking creature per
 	// declaration, so a creature that attacks in two combats has two.
@@ -806,6 +813,33 @@ func (g *Game) PlayersDealtCombatDamageThisTurnBySubtype(controller uuid.UUID, s
 	return g.combatDamagedPlayersLocked(controller, combatDamageSubtypeKey(subtype), IsCreatureType(subtype))
 }
 
+// PlayersDealtCombatDamageThisTurnByAnySubtype is the set of players
+// dealt combat damage this turn by a creature of `subtype` under ANY
+// controller — Estinien Varlineau's "dealt combat damage by Estinien
+// Varlineau or a Dragon", where the Dragon is whoever's it is. It is
+// PlayersDealtCombatDamageThisTurnBySubtype's cell walked once per
+// seat as the dealer's controller and unioned, because the tally is
+// keyed by that controller and "a Dragon you control" is the other,
+// narrower question (#3786). A creature that had every creature type
+// as it dealt the damage counts for any creature type (CR 702.73a).
+//
+// Caller must hold g.mu.
+func (g *Game) PlayersDealtCombatDamageThisTurnByAnySubtype(subtype string) map[uuid.UUID]bool {
+	out := map[uuid.UUID]bool{}
+	if subtype == "" {
+		return out
+	}
+	for _, p := range g.Seats {
+		if p == nil {
+			continue
+		}
+		for victim := range g.PlayersDealtCombatDamageThisTurnBySubtype(p.ID, subtype) {
+			out[victim] = true
+		}
+	}
+	return out
+}
+
 // PlayersDealtCombatDamageThisTurnByCommander is the same set for a
 // COMMANDER: a creature that was a commander (Card.IsCommander, whoever
 // owns it) and was under `controller`'s control as it dealt the damage
@@ -1010,6 +1044,28 @@ func (g *Game) CreaturesThatDealtDamageToThisTurn(victim uuid.UUID) []ObjectRef 
 // Caller must hold g.mu.
 func (g *Game) ObjectDealtCombatDamageToPlayerThisTurn(cardID, victim uuid.UUID) bool {
 	return g.objectDealtDamageToPlayerLocked(cardID, victim, true)
+}
+
+// ObjectRefDealtCombatDamageToPlayerThisTurn is the same question for
+// an object named by its stamped ref rather than by whatever the card
+// is right now: "dealt combat damage by Estinien Varlineau" as that
+// ability resolves, where Estinien may have died or been exiled in
+// response and the ability still counts the damage the OBJECT dealt
+// (CR 608.2h, last known information). A ref whose epoch is not the
+// recorded one answers false, so a creature that left and came back is
+// a stranger (CR 400.7). The card does not have to exist anywhere.
+//
+// Caller must hold g.mu.
+func (g *Game) ObjectRefDealtCombatDamageToPlayerThisTurn(ref ObjectRef, victim uuid.UUID) bool {
+	if ref.ID == uuid.Nil || victim == uuid.Nil {
+		return false
+	}
+	for _, r := range g.TurnTally.DamageDealers {
+		if r.Source == ref.ID && r.Epoch == ref.Epoch && r.Victim == victim && r.Combat {
+			return true
+		}
+	}
+	return false
 }
 
 // ObjectDealtDamageToPlayerThisTurn is the any-damage sibling of
@@ -1445,6 +1501,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.LoopLow, out.LoopLowSet, out.LoopActivated = t.LoopLow, t.LoopLowSet, t.LoopActivated
 	out.LoopProgressed = t.LoopProgressed
 	out.ModesChosen = copyModesChosen(t.ModesChosen)
+	out.GrantedAltCostsClaimed = copyStringIntMap(t.GrantedAltCostsClaimed)
 	if len(t.Attacks) > 0 {
 		out.Attacks = append([]AttackRecord(nil), t.Attacks...)
 	}

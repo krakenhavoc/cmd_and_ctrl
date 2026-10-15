@@ -45,22 +45,24 @@ func TestRiseOfTheWitchKingWaitsForEveryAnswer(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	mine := pushVanillaCreature(g, me.ID, "My Bear", 2, 2)
+	pushVanillaCreature(g, me.ID, "My Spare", 2, 2)
 	theirs := pushVanillaCreature(g, opp.ID, "Their Bear", 2, 2)
+	pushVanillaCreature(g, opp.ID, "Their Spare", 2, 2)
 	rock := b17GraveyardCard(me, "Sol Ring", "Artifact", "{1}")
 
 	castCatalogSpell(t, g, "Rise of the Witch-king", "Sorcery",
 		b17RiseOfTheWitchKingOracle, nil)
 	passPriorityAroundTable(t, g)
 
-	if chooseCardsChoiceFor(g, me.ID) != nil {
+	if returnPickFor(g, me.ID) != nil {
 		t.Fatal("the return was offered before anybody had chosen a creature")
 	}
 	answerSacrifice(t, g, me.ID, mine)
-	if chooseCardsChoiceFor(g, me.ID) != nil {
+	if returnPickFor(g, me.ID) != nil {
 		t.Error("the run waits for every asked seat, not only for the controller's own answer")
 	}
 	answerSacrifice(t, g, opp.ID, theirs)
-	if chooseCardsChoiceFor(g, me.ID) == nil {
+	if returnPickFor(g, me.ID) == nil {
 		t.Fatal("once every seat has answered, the controller chooses the permanent card")
 	}
 	answerChooseCards(t, g, me.ID, rock)
@@ -181,7 +183,9 @@ func TestRiseOfTheWitchKingPaysNothingForASacrificeThatDidNotHappen(t *testing.T
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	mine := pushVanillaCreature(g, me.ID, "My Bear", 2, 2)
+	spare := pushVanillaCreature(g, me.ID, "My Spare", 2, 2)
 	theirs := pushVanillaCreature(g, opp.ID, "Their Bear", 2, 2)
+	pushVanillaCreature(g, opp.ID, "Their Spare", 2, 2)
 	rock := b17GraveyardCard(me, "Sol Ring", "Artifact", "{1}")
 
 	castCatalogSpell(t, g, "Rise of the Witch-king", "Sorcery",
@@ -191,15 +195,16 @@ func TestRiseOfTheWitchKingPaysNothingForASacrificeThatDidNotHappen(t *testing.T
 		t.Fatal("the controller is asked")
 	}
 
-	// The controller's only creature dies to something else, so their
+	// The controller's creatures die to something else, so their
 	// prompt has no legal answer left and is withdrawn.
 	b18Kill(t, g, mine)
+	b18Kill(t, g, spare)
 	if sacrificeChoiceFor(g, me.ID) != nil {
 		t.Fatal("a prompt with no legal answer left is withdrawn")
 	}
 
 	answerSacrifice(t, g, opp.ID, theirs)
-	if chooseCardsChoiceFor(g, me.ID) != nil || g.Battlefield.Contains(rock) {
+	if returnPickFor(g, me.ID) != nil || g.Battlefield.Contains(rock) {
 		t.Error("nothing was sacrificed by the controller, so nothing comes back — " +
 			"the gate is the sacrifice, not the question")
 	}
@@ -267,6 +272,7 @@ func TestCorneredByBlackMagesMakesTheWizardAfterTheSacrifice(t *testing.T) {
 	g := newCatalogGame(t)
 	opp := g.Seats[1]
 	fodder := pushVanillaCreature(g, opp.ID, "Fodder", 1, 1)
+	pushVanillaCreature(g, opp.ID, "Keeper", 1, 1)
 
 	castCatalogSpell(t, g, "Cornered by Black Mages", "Sorcery", b29CorneredByBlackMagesOracle,
 		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})

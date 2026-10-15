@@ -576,3 +576,42 @@ The owner answered the four questions on 2026-10-02. Every answer was the recomm
 2. **Granted loyalty abilities.** ADR 0093 Decision 10's loyalty exclusion is lifted. A granted loyalty row shares the planeswalker's CR 606.3 count, and the stack item carries its grantor, so an emblem it creates is the grantor's. Teferi's Talent becomes Full, and Elspeth's, Liliana's, Rowan's and Vivien's Talent land (§2 decision 4; Delivery PR 4).
 3. **"Discard a card at random" as a cost.** `DiscardCost.Random` is added. The engine picks the card at payment, after every other cost (CR 601.2h), and records it on `PaidCost.Discarded` for §8's readers. About 15 of the 17 cards land (§7 decision 3; Delivery PR 8).
 4. **Cards that need nothing new but share a PR's code.** Each PR lands the cards of its family that need nothing else, about 49 in all, each verified against its full text: about 11 static land-type Auras and enchantments in Delivery PR 1, about 25 single "for as long as this remains tapped" cards in PR 2, and about 13 printed sunburst cards in PR 10 (§1, §3 and §11 Cards).
+
+---
+
+## Amendment 2026-10-15 — lands can't enter the battlefield (#1985)
+
+Out of scope above: "Lands can't enter the battlefield" (Worms of the Earth). It is now built, as a fourth rule gate beside §4's, and general enough for every "… can't enter the battlefield" card.
+
+#### The rules
+
+- **CR 305.4:** putting a land onto the battlefield is not playing it, so §4's land-play gate never reached a fetched, reanimated or flickered land.
+- **CR 101.2:** "can't" beats "can", and the part of an instruction that can't be done just doesn't happen. A card that can't enter stays where it was.
+- **CR 305.1:** playing a land puts it onto the battlefield, so a land that can't enter can't be played either.
+- **CR 608.3e:** a permanent spell whose controller can't put it onto the battlefield goes to its owner's graveyard.
+- **CR 111.1:** a token exists only on the battlefield, so one that can't enter is never created.
+- **CR 614.12:** whether the entering object is a land is judged on the permanent it would be, including a copy it was told to enter as and how it enters (face down, CR 708.2, it has no card types other than creature).
+
+#### Decision
+
+1. **The static.** `Spec.EntryRestrictions []game.EntryRestriction`, each `{Label, Forbids func(EntryQuery) bool, ActiveWhen}`, read from the battlefield and emblems through `CatalogAbilityKey`, exactly like §4's `LandPlayRestriction`. `Register` refuses an empty label or a nil `Forbids`. `EntryQuery` carries the object as it is in the zone it is leaving (`Card`, `FromZone`, `Token`), its would-be controller, the source, and `WouldBe()`, the CR 614.12 look-ahead's permanent, computed only when a restriction asks. Constructors (`effects/entry_restriction.go`): `LandsCantEnter(label)`, about `WouldBe()`; `CardsInZonesCantEnter(label, match, zones…)`, about the card in its zone and never a token.
+2. **Not a replacement effect.** A prohibition replaces nothing, so it is not gathered, ordered (CR 616) or applied once per event (CR 614.5). `Game.refuseForbiddenEntryLocked` is asked at the top of **every** pass of `applyReplacementsLocked` for a battlefield entry, before anything is gathered. Before the first pass, so no question (a shockland's 2 life, riot, a Clone's copy) is asked about an entry that cannot happen. After each replacement, so a creature told to enter as a copy of a land is refused once it would be one. Every battlefield entry runs that loop (land play, permanent spell, search, reanimation, exile return, hand put, entry batch, created token), and a resume after a prompt re-enters it, so this is the one choke point.
+3. **What a refused entry does, per zone.** It is a cancel, which every entry site already settles:
+   - **hand, graveyard, library, exile, command zone:** the card stays there. A search still shuffles and reports the card as not found; a flickered land stays in exile for good, its delayed return doing nothing.
+   - **a created token:** it is never created (`EventTokenCreated` is not emitted); the rest of the instruction runs with the tokens that did enter.
+   - **an entry batch** (Genesis Wave): the refused member stays, the others land.
+   - **the stack:** the permanent spell goes to its owner's graveyard (CR 608.3e) through the ordinary unresolved stack exit, so flashback's exile still applies. This closes, for refusals only, the gap ADR 0098 recorded ("canceled permanents stay on the stack"); a stack entry cancelled by a replacement is unchanged.
+   - **a land play:** refused before it is made (decision 4), so no land drop is spent.
+4. **The land-play gate asks it too.** `LandPlayGateLocked` asks the same restrictions about the land being played, judged as it is (it may be asked under a read lock, so there is no look-ahead), and returns a `*CantPlayLandError` naming the clause. Its four callers (the play, hideaway's play, the enumerator, the view) need no change: a bot is never offered a land that can't enter, and the client greys it with the clause.
+5. **What the table sees.** A refused land play's tooltip and toast. Any other refusal leaves a quiet `EventEntryRefused` breadcrumb (card, zone, source, clause), not an effect error.
+6. **Grafdigger's Cage moves** from its cancelling replacement onto the slot. Same result, without a CR 616 ordering question beside the entering card's own replacements.
+
+Not built: the enumerator does not prune a spell whose only effect is to put a land onto the battlefield; under Worms it resolves and does nothing.
+
+#### Snapshot impact
+
+None. The statics are catalog data and nothing is stored.
+
+#### Cards
+
+Kunoros, Hound of Athreos, Soulless Jailer and Weathered Runestone land Full; Grafdigger's Cage moves. Worms of the Earth lands with ADR 0187 slice 8 (#3576; the either payment it also needs shipped in PR #3754), declaring `LandPlayRestrictions: PlayersCantPlayLands(…)` and `EntryRestrictions: LandsCantEnter("Lands can't enter the battlefield.")`.

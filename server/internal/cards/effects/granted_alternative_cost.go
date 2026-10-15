@@ -50,6 +50,15 @@ const (
 	// pay the mana cost for Zombie creature spells you cast." (Rooftop
 	// Storm).
 	GrantedAltCostZeroZombieCreatures = "granted-zero-zombie-creatures"
+	// GrantedAltCostZeroFromExileOnceEachTurn is "Once each turn, you
+	// may pay {0} rather than pay the mana cost for a spell you cast
+	// from exile." (Warped Space, #3174).
+	GrantedAltCostZeroFromExileOnceEachTurn = "granted-zero-from-exile-once-each-turn"
+	// GrantedAltCostLifeFromHandOnceYourTurn is "Once during each of
+	// your turns, you may cast a spell from your hand by paying life
+	// equal to its mana value rather than paying its mana cost."
+	// (Access Maze, #3174).
+	GrantedAltCostLifeFromHandOnceYourTurn = "granted-life-from-hand-once-your-turn"
 )
 
 // PaidEmerge reports whether `key` — a StackItem's or a permanent's
@@ -215,6 +224,45 @@ func PayZeroForZombieCreatureSpellsYouCast() game.GrantedAlternativeCost {
 	}
 }
 
+// PayZeroForASpellFromExileOnceEachTurn is Warped Space's static
+// (#3174): "Once each turn, you may pay {0} rather than pay the mana
+// cost for a spell you cast from exile." Free, so X is 0 (CR 107.3b);
+// only where the printed mana cost could be paid from exile (an
+// impulse-exiled card, CR 118.9a), so a foretold or plotted card, which
+// is already alternatively costed, gets none. The limit is per Warped
+// Space and spent as the spell becomes cast. Put it in a Door so the
+// door gates it.
+func PayZeroForASpellFromExileOnceEachTurn() game.GrantedAlternativeCost {
+	return game.GrantedAlternativeCost{
+		Offer: game.AlternativeCost{
+			Key:   GrantedAltCostZeroFromExileOnceEachTurn,
+			Label: "Pay {0} rather than pay this spell's mana cost",
+		},
+		Zones:        []game.ZoneKind{game.ZoneExile},
+		OnceEachTurn: true,
+	}
+}
+
+// PayLifeForASpellFromHandOnceEachOfYourTurns is Access Maze's static
+// (#3174): "Once during each of your turns, you may cast a spell from
+// your hand by paying life equal to its mana value rather than paying
+// its mana cost." Bolas's Citadel's price on a granted offer: a cost
+// (CR 119.4), so a caster without the life is not offered it. A spell
+// with {X} is cast with X = 0 (CR 107.3b), so it costs the rest of its
+// mana value, and a spell with no mana cost (CR 118.6) costs 0 life.
+func PayLifeForASpellFromHandOnceEachOfYourTurns() game.GrantedAlternativeCost {
+	return game.GrantedAlternativeCost{
+		Offer: game.AlternativeCost{
+			Key:   GrantedAltCostLifeFromHandOnceYourTurn,
+			Label: "Pay life equal to its mana value rather than pay its mana cost",
+		},
+		Zones:                []game.ZoneKind{game.ZoneHand},
+		OnceEachTurn:         true,
+		YourTurnOnly:         true,
+		LifeEqualToManaValue: true,
+	}
+}
+
 // checkGrantedAlternativeCosts refuses a declaration the engine would
 // read wrongly, at boot: a key outside the namespace (it could shadow a
 // card's own offer, or be shadowed by one), a key declared twice, and a
@@ -249,6 +297,9 @@ func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost)
 		if gr.MaxManaValueFunc != nil && gr.MaxManaValueText == "" {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q has a MaxManaValueFunc and no MaxManaValueText — the ability row words it", name, o.Key))
 		}
+		if gr.LifeEqualToManaValue && (o.ManaCost != "" || o.Energy != 0 || gr.PricedAtManaCost) {
+			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q pays life equal to mana value and also declares another price", name, o.Key))
+		}
 		if gr.PricedAtManaCost && o.ManaCost != "" {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q is priced at the spell's mana cost and also declares ManaCost %q", name, o.Key, o.ManaCost))
 		}
@@ -262,7 +313,7 @@ func checkGrantedAlternativeCosts(name string, in []game.GrantedAlternativeCost)
 			checkEmerge(name, o)
 		}
 		if o.Life != 0 || (o.PaysCards() && !emerge) || o.Condition != nil || o.Targets != nil || o.ClearsTargets ||
-			o.SacrificeOnEntry || o.FromZone != "" || o.ExileOnLeavingStack || o.WarpExile || o.Dash ||
+			o.SacrificeOnEntry || o.FromZone != "" || o.ExileOnLeavingStack || o.WarpExile || o.Dash || o.Blitz ||
 			o.EntersWithCounterName != "" || o.FaceDown != nil || o.RequiresGrant || o.CastsFace != 0 || o.Granted || o.XCeiling != 0 {
 			panic(fmt.Sprintf("effects.Register: %q granted alternative cost %q declares more than a price and a label — narrow its zones with Zones, not FromZone", name, o.Key))
 		}

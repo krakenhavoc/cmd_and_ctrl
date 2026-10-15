@@ -20,7 +20,7 @@ import (
 
 func planSeatView(me uuid.UUID, bf []protocol.CardView, pool ...string) protocol.GameView {
 	var v protocol.GameView
-	v.Seats = []protocol.PlayerView{{ID: me.String(), Life: 40, ManaPool: pool}}
+	v.Seats = []protocol.PlayerView{{ID: me.String(), Life: 40, ManaPool: protocol.ManaPoolOf(pool...)}}
 	v.Turn.ActiveSeat = 0
 	v.Turn.Step = "precombat_main"
 	for i := range bf {

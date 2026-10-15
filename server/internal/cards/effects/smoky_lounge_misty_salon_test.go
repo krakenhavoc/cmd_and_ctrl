@@ -24,14 +24,14 @@ func TestSmokyLoungeAddsRestrictedManaInTheFirstMainPhase(t *testing.T) {
 	advanceToMain(t, g)
 	roomsDSettle(t, g, me.ID)
 
-	if len(me.ManaPool) != 2 {
+	if me.ManaPool.Total() != 2 {
 		t.Fatalf("pool = %+v, want two mana", me.ManaPool)
 	}
 	want := game.ManaRestrictAnyOf(
 		[]string{game.ManaRestrictCast, game.ManaRestrictSubtype("Room")},
 		[]string{game.ManaRestrictUnlock},
 	)
-	for _, tok := range me.ManaPool {
+	for _, tok := range me.ManaPool.Units() {
 		if tok.Color != "R" || len(tok.Restrictions) != 1 || tok.Restrictions[0] != want {
 			t.Errorf("token = %+v, want {R} restricted to Room spells and unlocking", tok)
 		}
@@ -44,7 +44,7 @@ func TestSmokyLoungeLockedAddsNothing(t *testing.T) {
 	roomsDOnBattlefield(g, me.ID, smokyLoungeOracle, "Smoky Lounge", "Misty Salon", game.DoorRightUnlocked)
 	advanceToMain(t, g)
 	roomsDSettle(t, g, me.ID)
-	if len(me.ManaPool) != 0 {
+	if me.ManaPool.Total() != 0 {
 		t.Fatalf("pool = %+v, want empty: the Smoky Lounge door is locked", me.ManaPool)
 	}
 }
