@@ -158,9 +158,11 @@ func TestCombatTierAnswersSetCombatInteracts(t *testing.T) {
 				t.Errorf("Endling's deathtouch: interacts=%v combat_interacts=%v, want combat only (%s)", m.Interacts, m.CombatInteracts, m.Label)
 			}
 		case strings.Contains(m.Label, "undying"):
+			// protect is threat-gated (#3555): with nothing on the stack
+			// it counts in combat only.
 			sawUndying = true
-			if !m.Interacts || m.CombatInteracts {
-				t.Errorf("Endling's undying: interacts=%v combat_interacts=%v, want interacts only (%s)", m.Interacts, m.CombatInteracts, m.Label)
+			if m.Interacts || !m.CombatInteracts {
+				t.Errorf("Endling's undying, nothing threatening: interacts=%v combat_interacts=%v, want combat only (%s)", m.Interacts, m.CombatInteracts, m.Label)
 			}
 		}
 	}

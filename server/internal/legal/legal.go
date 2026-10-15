@@ -178,7 +178,9 @@ type Move struct {
 	// untargetedFlags (ADR 0142: the row's declared Purpose.Answers; an
 	// undeclared row sets it). Owner answer 4: a "Sacrifice this creature"
 	// move also sets it while an opponent's stack item targets the
-	// creature.
+	// creature. #3555: protect, survive, pump, prevent and sac_outlet set it only
+	// while an opponent's stack item threatens the seat (stackThreatens),
+	// and otherwise set CombatInteracts.
 	Interacts bool `json:"interacts,omitempty"`
 
 	// CombatInteracts is true on an activation with no target that

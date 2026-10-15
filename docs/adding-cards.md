@@ -1485,6 +1485,14 @@ moment its creature is threatened: the enumerator sets `interacts` while
 an opponent's stack item targets it, and `combat_interacts` while it
 attacks or blocks, from the game state (ADR 0142 owner answer 4).
 
+Declare what a row answers, not when it should stop a player. The
+enumerator gates `protect`, `survive`, `pump`, `prevent` and `sac_outlet` itself:
+they set `interacts` only while an opponent's stack item threatens the
+seat, and count in combat otherwise
+([ADR 0009 amendment #3555](decisions/0009-smart-priority-autopass.md#amendment-a-free-answer-stops-you-only-for-a-threat-3555)).
+Don't declare `value` or a combat answer to keep a row from stopping
+players.
+
 ### Paying energy (ADR 0129, #1995)
 
 Energy is a counter on the player (CR 107.14, CR 122.1):

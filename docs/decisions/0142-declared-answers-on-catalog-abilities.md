@@ -400,3 +400,15 @@ Gap 1 of [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939). `prot
 **Known approximations**, kept from decision 6: `survive` is read as saving the creature from every kind of sweep, though an indestructible creature is still exiled, sacrificed or shrunk by one, and "can't be regenerated" (Wrath of God itself) beats a regeneration shield. The sweep's `How` is on the wire, so a later PR can narrow it; nothing here prevents that.
 
 **Wire.** Additive. `purpose.answers` may now contain `"survive"`, listed after `"protect"`. A client that ignores `answers` sees no change. A reader that treated `protect` as "regenerate and indestructible" (the bot, `boardtext`'s "(answers: …)" label, the MCP seat's move list, which print the names as they come) is updated here or passes the name through. `interacts` is unchanged: `survive` is stack tier like `protect`. `SnapshotSchemaVersion` stays 7.
+
+## Amendment 2026-10-15 — five stack answers are threat-gated (#3555) · Accepted
+
+[ADR 0009's #3555 amendment](0009-smart-priority-autopass.md#amendment-a-free-answer-stops-you-only-for-a-threat-3555)
+(owner, 2026-10-15) narrows what decision 3's stack tier means for `interacts`. `protect`, `survive` (split from
+`protect` in the amendment above), `pump`, `prevent` and `sac_outlet` set `interacts` only while an item on the stack that the seat does not control targets the seat,
+something it controls or an item it controls, or is an instant or sorcery spell with no target. Without one they set
+`combat_interacts`, so they still count in a combat window, and a mana sacrifice outlet reads the combat step itself.
+`remove` and `restrict` keep the stack tier as decision 1's table gives it.
+
+The vocabulary, the tiers in `game/answers.go`, the declarations and the ratchet do not change: the gate is read from
+the game in `internal/legal` (`stackThreatens`), like owner answer 4, which it leaves as it is.
