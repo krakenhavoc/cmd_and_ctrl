@@ -48,7 +48,7 @@
 
 <SiteHeader />
 
-<main class="site-page {width}">
+<main id="main" class="site-page {width}">
   <header class="page-head">
     <div class="page-head-main">
       {#if eyebrow}<p class="page-eyebrow">{eyebrow}</p>{/if}

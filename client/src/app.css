@@ -313,6 +313,50 @@
   transition-duration: 0.01ms !important;
 }
 
+/* The OS preference holds from first paint, before the settings load and
+   set data-reduce-motion (the rule above). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* The sticky site header (about 61px) must not cover a focused element or
+   an anchor target. */
+html {
+  scroll-padding-top: 80px;
+}
+
+/* Skip link: the first focusable thing in the site shell, hidden until
+   it has keyboard focus (SiteHeader.svelte). */
+.skip-link {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 100;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+.skip-link:focus {
+  transform: none;
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+}
+:where(main[id="main"]):focus {
+  outline: none;
+}
+
 /* Always-visible focus outlines — bypass the default
    :focus-visible suppression for users who need a consistent
    keyboard-nav signal. */
@@ -507,6 +551,7 @@ h2,
 h3 {
   font-family: var(--font-display);
   letter-spacing: -0.01em;
+  text-wrap: balance;
 }
 
 h1 {
@@ -531,6 +576,13 @@ a {
 }
 a:hover {
   color: var(--fg);
+}
+/* Every link gets a ring of its own: the browser default is invisible on
+   the dark skins. The nav, wordmark, footer and .link-arrow all inherit it. */
+a:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .tag {
@@ -673,6 +725,18 @@ select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
   background: var(--bg-2);
+}
+
+/* The focus ring above is a box-shadow, which forced-colors mode drops. */
+@media (forced-colors: active) {
+  input[type="text"]:focus,
+  input[type="password"]:focus,
+  input[type="number"]:focus,
+  textarea:focus,
+  select:focus {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
 }
 
 input::placeholder,
