@@ -511,7 +511,10 @@ func (g *Game) autoTapWishedLocked(
 	for i := range sources {
 		consumed[i] = make([]bool, len(sources[i].Slots))
 	}
-	plan := make(tapPlan, 0, len(cost.Required))
+	// A plan taps each source at most once, so it is never longer than
+	// the sources; the requirements can be as many as an announced X
+	// (#3904).
+	plan := make(tapPlan, 0, min(len(cost.Required), len(sources)))
 	budget := AutoTapBudget
 	// #1589: a Phyrexian slot a spend grant widened to any mana is
 	// solved last, as the pool solver pays it last — the backtracking

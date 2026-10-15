@@ -3,7 +3,9 @@ package game
 import (
 	"errors"
 	"math"
+	"reflect"
 	"runtime"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -199,8 +201,9 @@ func TestSpendOnlyXAtTheBoundShortOfManaIsRefused(t *testing.T) {
 	if !errors.As(err, &short) {
 		t.Fatalf("err = %v, want *InsufficientManaError", err)
 	}
-	if want := MaxAnnouncedX + 1 - have; len(short.Missing) != want {
-		t.Errorf("%d missing symbols, want %d", len(short.Missing), want)
+	// #3904: the shortfall is one run of {B}, named once with its count.
+	if want := []string{symbolRun("{B}", MaxAnnouncedX+1-have)}; !slices.Equal(short.Missing, want) {
+		t.Errorf("missing %.80v, want %v", short.Missing, want)
 	}
 	if me.ManaPool.Total() != have || !me.Hand.Contains(id) {
 		t.Error("a refused cast spent mana or left the hand")
@@ -396,4 +399,72 @@ func TestFoldSpendOnlyIsBoundedByTheAnnouncement(t *testing.T) {
 	if len(grown) != 2 || len(out.Required[2].Options) != 1 || out.Required[2].Options[0] != "B" {
 		t.Fatalf("appending to one folded requirement's options changed another: %v", out.Required[2].Options)
 	}
+}
+
+// --- per-mana work below the bound (#3904) -------------------------
+
+// A long run of one coloured symbol left unpaid is named once with its
+// count; a short one is still listed symbol by symbol.
+func TestMissingNamesALongColouredShortfallOnce(t *testing.T) {
+	cost, err := ParseCost("{X}{B}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cost.SpendOnly = &ManaSpendOnly{Colors: []string{"B"}, XOnly: true}
+	pool := ManaPool{{Color: "R"}}
+	if got, want := pool.Missing(cost.foldSpendOnly(MaxAnnouncedX), MaxAnnouncedX), []string{"{B}×1000001"}; !slices.Equal(got, want) {
+		t.Errorf("Missing at X=%d = %.80v, want %v", MaxAnnouncedX, got, want)
+	}
+	short := maxListedRun - 1
+	got := pool.Missing(cost.foldSpendOnly(short), short)
+	if len(got) != maxListedRun || got[0] != "{B}" {
+		t.Errorf("Missing at X=%d = %v, want %d of {B}", short, got, maxListedRun)
+	}
+}
+
+// The Phyrexian strike's life count is a client's number (cast_spell's
+// and activate_ability's phyrexian_life, an attack tax's). The plan is
+// sized by the cost, so the largest count allocates no more than the
+// right one, and strikes every symbol.
+func TestPhyrexianLifePlanIsSizedByTheCost(t *testing.T) {
+	cost, err := ParseCost("{1}{B/P}{B/P}{G}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, wantLife := PhyrexianLifePlan(cost, nil, ManaSpendContext{}, 2)
+	for _, n := range []int{3, MaxAnnouncedX, math.MaxInt} {
+		got, life := PhyrexianLifePlan(cost, nil, ManaSpendContext{}, n)
+		if life != wantLife || !reflect.DeepEqual(got, want) {
+			t.Fatalf("n=%d: %v and %d life, want %v and %d", n, got, life, want, wantLife)
+		}
+		requireCheapRefusal(t, func() { PhyrexianLifePlan(cost, nil, ManaSpendContext{}, n) })
+	}
+	if got, life := PhyrexianLifePlan(cost, nil, ManaSpendContext{}, math.MinInt); life != 0 || len(got.Required) != len(cost.Required) {
+		t.Errorf("a negative count struck %d symbols", len(cost.Required)-len(got.Required))
+	}
+}
+
+// The auto-tapper's plan taps each source once, so a cost of an X's
+// worth of requirements reserves nothing by X.
+func TestAutoTapPlanIsNotSizedByTheRequirements(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	for range 3 {
+		pushBattlefieldForTest(g, me.ID, "Swamp", "Basic Land — Swamp", "")
+	}
+	cost, err := ParseCost("{X}{B}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cost.SpendOnly = &ManaSpendOnly{Colors: []string{"B"}, XOnly: true}
+	small := cost.foldSpendOnly(2)
+	if plan, ok := g.AutoTapForCost(me.ID, small, 2); !ok || len(plan) != 3 {
+		t.Fatalf("three Swamps for {B} and two black X: plan %v, ok %v", plan, ok)
+	}
+	big := cost.foldSpendOnly(MaxAnnouncedX)
+	requireSmall(t, 1<<20, func() {
+		if _, ok := g.AutoTapForCost(me.ID, big, MaxAnnouncedX); ok {
+			t.Error("three Swamps paid a million black mana")
+		}
+	})
 }

@@ -95,10 +95,13 @@ func catalogReadsManaSpent(key string) ManaSpentReads {
 
 // PaperMana is one mana a caster declares they paid outside the pool:
 // its symbol (W U B R G or C) and, when a reader asks, whether an
-// artifact made it.
+// artifact made it. Count, when above one, makes the entry that many
+// identical mana (#3904), so a declaration of a long shortfall stays
+// small; 0 and 1 both mean one.
 type PaperMana struct {
 	Color    string `json:"color"`
 	Artifact bool   `json:"artifact,omitempty"`
+	Count    int    `json:"count,omitempty"`
 }
 
 // PaperPayment is the caster's answer to a PaperPaymentRequiredError
@@ -111,10 +114,14 @@ type PaperPayment struct {
 }
 
 // PaperSlot is one mana the pool left unpaid: its symbol as printed
-// ("{R}", "{W/U}", "{1}") and the symbols that may pay it.
+// ("{R}", "{W/U}", "{1}") and the symbols that may pay it. Count, when
+// above one, is a run of that many identical mana named once (#3904):
+// a run longer than maxListedRun is one slot rather than one per mana,
+// and is answered by one PaperMana with the same count.
 type PaperSlot struct {
 	Symbol  string   `json:"symbol"`
 	Options []string `json:"options"`
+	Count   int      `json:"count,omitempty"`
 }
 
 // ErrPaperPaymentRequired is the sentinel a *PaperPaymentRequiredError
@@ -127,9 +134,9 @@ var ErrInvalidPaperPayment = fmt.Errorf("%w: the declared mana does not pay what
 
 // PaperPaymentRequiredError refuses a waived payment that something
 // reads until the caster says what they paid (#3855). Nothing has been
-// paid. Slots is the shortfall, one entry per mana, coloured
-// requirements first and then the generic; the client prefills each
-// slot with its first option.
+// paid. Slots is the shortfall, one entry per mana (a long run is one
+// entry with its count, #3904), coloured requirements first and then
+// the generic; the client prefills each slot with its first option.
 type PaperPaymentRequiredError struct {
 	Slots []PaperSlot
 	// ArtifactSources asks, per mana, whether an artifact made it
@@ -147,9 +154,10 @@ func (e *PaperPaymentRequiredError) Unwrap() error { return ErrPaperPaymentRequi
 var paperSymbols = []string{"W", "U", "B", "R", "G", "C"}
 
 // paperShortfall is what a waived payment left unpaid: the coloured
-// requirements no pool mana could take, and the any-mana remainder.
+// requirements no pool mana could take, as runs (#3904), and the
+// any-mana remainder.
 type paperShortfall struct {
-	reqs    []ColorRequirement
+	reqs    []reqRun
 	generic int
 }
 
@@ -160,34 +168,51 @@ func (p ManaPool) shortfallFor(cost ParsedCost, xValue int, ctx ManaSpendContext
 	return paperShortfall{reqs: unpaid, generic: need}
 }
 
-func (s paperShortfall) amount() int { return len(s.reqs) + s.generic }
+func (s paperShortfall) amount() int { return satAddMana(reqRunsTotal(s.reqs), s.generic) }
 
-// slots is the shortfall one mana at a time, for the picker.
+// slots is the shortfall one mana at a time, for the picker, except
+// that a run longer than maxListedRun is one slot with its count
+// (#3904): the shortfall can carry an announced X, and a picker of X
+// slots is neither sendable nor answerable.
 func (s paperShortfall) slots() []PaperSlot {
-	// #3895: the shortfall can carry an announced X, so the capacity
-	// is a hint with a ceiling, not the amount.
 	out := make([]PaperSlot, 0, min(s.amount(), maxPreallocSlots))
 	for _, r := range s.reqs {
-		opts := append([]string(nil), r.Options...)
+		opts := append([]string(nil), r.req.Options...)
 		if len(opts) == 0 {
 			opts = append([]string(nil), paperSymbols...)
 		}
-		out = append(out, PaperSlot{Symbol: "{" + formatRequirement(r) + "}", Options: opts})
+		out = appendPaperSlots(out, PaperSlot{Symbol: "{" + formatRequirement(r.req) + "}", Options: opts}, r.n)
 	}
-	for range s.generic {
-		out = append(out, PaperSlot{Symbol: "{1}", Options: append([]string(nil), paperSymbols...)})
+	if s.generic > 0 {
+		out = appendPaperSlots(out, PaperSlot{Symbol: "{1}", Options: append([]string(nil), paperSymbols...)}, s.generic)
 	}
 	return out
 }
 
-// String is the shortfall as a cost, generic first: "{4}{G}{G}".
+// appendPaperSlots appends n of slot: one per mana up to maxListedRun,
+// and past it one slot carrying the count.
+func appendPaperSlots(out []PaperSlot, slot PaperSlot, n int) []PaperSlot {
+	if n > maxListedRun {
+		slot.Count = n
+		return append(out, slot)
+	}
+	for range n {
+		one := slot
+		one.Options = append([]string(nil), slot.Options...)
+		out = append(out, one)
+	}
+	return out
+}
+
+// String is the shortfall as a cost, generic first: "{4}{G}{G}". A run
+// longer than maxListedRun is written once with its count, "{B}×500000".
 func (s paperShortfall) String() string {
 	var b strings.Builder
 	if s.generic > 0 {
 		b.WriteString("{" + strconv.Itoa(s.generic) + "}")
 	}
 	for _, r := range s.reqs {
-		b.WriteString("{" + formatRequirement(r) + "}")
+		writeSymbolRun(&b, "{"+formatRequirement(r.req)+"}", r.n)
 	}
 	return b.String()
 }
@@ -199,6 +224,10 @@ func (s paperShortfall) String() string {
 // as many mana as it is short, each coloured requirement paid by a
 // symbol it admits (a hybrid by either half, never by a third colour),
 // and the rest paying generic.
+//
+// A counted entry (PaperMana.Count) is one run of that many mana. The
+// counts are checked against the shortfall as they are read, so no
+// count, however large, is summed past it or allocated by (#3904).
 func (s paperShortfall) tokensFor(d PaperPayment) ([]ManaToken, error) {
 	if d.Free {
 		if len(d.Mana) > 0 {
@@ -206,20 +235,30 @@ func (s paperShortfall) tokensFor(d PaperPayment) ([]ManaToken, error) {
 		}
 		return nil, nil
 	}
-	if len(d.Mana) != s.amount() {
+	amount := s.amount()
+	if len(d.Mana) > amount {
 		return nil, ErrInvalidPaperPayment
 	}
 	pool := make(ManaPool, len(d.Mana))
 	order := make([]int, len(d.Mana))
+	total := 0
 	for i, m := range d.Mana {
 		if !isColorSymbol(m.Color) && m.Color != "C" {
 			return nil, ErrInvalidPaperPayment
 		}
-		pool[i] = ManaToken{Color: m.Color}
+		n := max(m.Count, 1)
+		if m.Count < 0 || n > amount-total {
+			return nil, ErrInvalidPaperPayment
+		}
+		total += n
+		pool[i] = ManaToken{Color: m.Color}.withN(n)
 		if m.Artifact {
 			pool[i].SourceKinds = ManaSourceArtifact
 		}
 		order[i] = i
+	}
+	if total != amount {
+		return nil, ErrInvalidPaperPayment
 	}
 	used := make([]int, len(pool))
 	if _, unpaid := colouredPass(pool, used, order, s.reqs); len(unpaid) > 0 {
@@ -229,11 +268,12 @@ func (s paperShortfall) tokensFor(d PaperPayment) ([]ManaToken, error) {
 }
 
 // paperSymbolsOf is a declaration as a cost string for the log, in the
-// order declared: "{C}{C}{R}".
+// order declared: "{C}{C}{R}". A counted entry longer than
+// maxListedRun is written once with its count, "{B}×500000".
 func paperSymbolsOf(d PaperPayment) string {
 	var b strings.Builder
 	for _, m := range d.Mana {
-		b.WriteString("{" + m.Color + "}")
+		writeSymbolRun(&b, "{"+m.Color+"}", max(m.Count, 1))
 	}
 	return b.String()
 }

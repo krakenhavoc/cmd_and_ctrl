@@ -1,7 +1,6 @@
 package game
 
 import (
-	"slices"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -340,8 +339,9 @@ func (p ManaPool) allocate(cost ParsedCost, xValue int, ctx ManaSpendContext, st
 // coloured requirements no mana could take, and how much of the
 // any-mana demand (generic, X, and widened slots) is still owed. That
 // remainder is the shortfall a waived payment declares on paper
-// (#3855, paper_payment.go).
-func (p ManaPool) allocateRest(cost ParsedCost, xValue int, ctx ManaSpendContext, strategy ManaSpendStrategy) (used []int, unpaid []ColorRequirement, need int) {
+// (#3855, paper_payment.go). The unpaid requirements come back as runs
+// (#3904), so a long one is one entry.
+func (p ManaPool) allocateRest(cost ParsedCost, xValue int, ctx ManaSpendContext, strategy ManaSpendStrategy) (used []int, unpaid []reqRun, need int) {
 	used = make([]int, len(p))
 	// One pass decides which runs are legal here and in what order
 	// the solver should prefer them. Every pass below walks `order`
@@ -362,7 +362,8 @@ func (p ManaPool) allocateRest(cost ParsedCost, xValue int, ctx ManaSpendContext
 	// spends every mana that can pay. attemptSpend discards the
 	// bookings of a short allocation, so a funded payment's answer is
 	// what it always was.
-	deferred, unpaid := colouredPass(p, used, order, widenedLast(cost.Required))
+	deferred, unpaid := colouredPass(p, used, order, requirementRuns(cost.Required))
+	nDeferred := reqRunsTotal(deferred)
 
 	// Step 2 — generic requirement. Total = explicit Generic +
 	// XSlots * xValue, plus the widened slots no printed colour paid
@@ -372,13 +373,13 @@ func (p ManaPool) allocateRest(cost ParsedCost, xValue int, ctx ManaSpendContext
 	// not spent yet, because those cards count colours rather than
 	// mana. Every bucket is walked either way, so the answer to
 	// "payable?" is the same under both.
-	need = cost.GenericWithX(xValue) + len(deferred)
+	need = satAddMana(cost.GenericWithX(xValue), nDeferred)
 	// #2170: mana that can't pay generic costs may still pay the
 	// slots that only LOOK generic here — a widened coloured symbol
 	// and a coloured symbol a cast permission folded into Generic. It
 	// is spent on those first, because it can pay nothing else, and
 	// never reaches the generic loops below.
-	need -= spendNoGenericSlots(p, used, order, noGenericSlots(cost, len(deferred)))
+	need -= spendNoGenericSlots(p, used, order, noGenericSlots(cost, nDeferred))
 	if need > 0 && strategy == SpendDistinctColors {
 		// One colour at a time, because the question is about the SET
 		// of colours: a bucket loop that emptied {W} before touching
@@ -461,108 +462,6 @@ func (p *ManaPool) SpendWhatPaysForWith(cost ParsedCost, xValue int, ctx ManaSpe
 	remaining, spent := p.split(used)
 	*p = remaining
 	return spent, !short
-}
-
-// colouredPass pays each requirement in `reqs` with one mana, booking
-// it in `used`, and returns the widened slots it left to the generic
-// pass and the requirements it could not pay, both in `reqs` order.
-//
-// Each requirement names a set of allowed colors (monocolored = one
-// entry, hybrid = two). It takes the first available mana whose color
-// matches. Phyrexian / numeric-alt requirements pay the color half
-// here (the life half is strikePhyrexianLifeLocked's).
-//
-// A WIDENED slot (AnyMana — a spend grant's, #1589 / #1600) takes a
-// mana of a colour it PRINTS here, like any other slot, and otherwise
-// joins the generic demand, which any mana pays. That is the same
-// answer to "payable?" as admitting any mana here, and a better answer
-// to "with what?": the colour the card asked for is spent when the
-// pool has it, so a grant the player "may" use never costs a Firespout
-// its red mode.
-//
-// ADR 0118 §1: a requirement the first-match walk leaves unpaid is
-// given one more chance by reassignColored before it is called unpaid.
-// A payment the walk already makes is made with exactly the same mana
-// as before.
-//
-// The walk and the augmenting path work on single mana, so each run in
-// `order` is expanded into UNITS for them, but at most len(reqs) units
-// a run (#3041). That is exact, not an approximation: every booking is
-// one requirement, the booked units of a run are always its first ones
-// (both searches take the first unbooked unit in order, and a booking
-// is moved but never dropped), and a search only looks past booked
-// units to the first unbooked one. So no search reaches a run's
-// (len(reqs)+1)-th unit, and the pass costs O(runs × reqs) however
-// much mana the pool holds.
-func colouredPass(pool ManaPool, used []int, order []int, reqs []ColorRequirement) (deferred, unpaid []ColorRequirement) {
-	if len(reqs) == 0 {
-		return nil, nil
-	}
-	// Sized in one pass first, so a long run of requirements does not
-	// regrow the unit slices on the way.
-	n := 0
-	for _, i := range order {
-		n += min(pool[i].N()-used[i], len(reqs))
-	}
-	units := make(ManaPool, 0, n)
-	unitRun := make([]int, 0, n)
-	for _, i := range order {
-		for range min(pool[i].N()-used[i], len(reqs)) {
-			units = append(units, pool[i])
-			unitRun = append(unitRun, i)
-		}
-	}
-	unitOrder := make([]int, len(units))
-	for u := range unitOrder {
-		unitOrder[u] = u
-	}
-	booked := make([]bool, len(units))
-	owner := newTokenOwners(len(units))
-	// #3895: consecutive requirements with the same options — the
-	// folded "spend only black mana on X" is X of them — share what
-	// the previous one learned, so the pass stays linear in X:
-	//
-	//   - the first-match walk resumes at `from`, where the previous
-	//     one stopped. Exact: a unit is never unbooked (a booking is
-	//     moved, not dropped), so every unit before `from` that prints
-	//     these options is still booked;
-	//   - once the augmenting path has failed for these options, it is
-	//     not searched again. Exact: a failed search books nothing, so
-	//     the next one would search the same bookings and fail too.
-	var prevOptions []string
-	from, reassignFailed := 0, false
-	for ri, req := range reqs {
-		if ri == 0 || !slices.Equal(req.Options, prevOptions) {
-			from, reassignFailed = 0, false
-		}
-		prevOptions = req.Options
-		idx := firstPrintedMatch(units, booked, unitOrder[from:], req)
-		if idx >= 0 {
-			from = idx + 1
-		} else {
-			from = len(units)
-		}
-		if idx < 0 && !req.AnyMana && !reassignFailed {
-			idx = reassignColored(units, booked, unitOrder, owner, reqs, ri)
-			reassignFailed = idx < 0
-		}
-		if idx < 0 {
-			if req.AnyMana {
-				deferred = append(deferred, req)
-			} else {
-				unpaid = append(unpaid, req)
-			}
-			continue
-		}
-		booked[idx] = true
-		owner[idx] = ri
-	}
-	for u, b := range booked {
-		if b {
-			used[unitRun[u]]++
-		}
-	}
-	return deferred, unpaid
 }
 
 // genericColorOrder is the default strategy's generic pass:
@@ -776,31 +675,29 @@ func (p ManaPool) MissingFor(cost ParsedCost, xValue int, ctx ManaSpendContext) 
 
 	// attemptSpend's two passes, mirrored: a widened slot no printed
 	// colour paid waits for the generic pass (#1600).
-	deferred, unpaid := colouredPass(p, used, order, widenedLast(cost.Required))
-	// A run of identical symbols — a folded "spend only black mana on
-	// X" left unpaid is X of them — shares one formatted string.
-	var sym string
-	for i, req := range unpaid {
-		if i == 0 || !sameSymbol(req, unpaid[i-1]) {
-			sym = "{" + formatRequirement(req) + "}"
-		}
-		missing = append(missing, sym)
+	// A long run of one symbol — a folded "spend only black mana on X"
+	// left unpaid is X of them — is named once, with its count (#3904).
+	deferred, unpaid := colouredPass(p, used, order, requirementRuns(cost.Required))
+	for _, r := range unpaid {
+		missing = appendSymbolRun(missing, "{"+formatRequirement(r.req)+"}", r.n)
 	}
 
 	generic := cost.GenericWithX(xValue)
-	need := len(deferred) + generic
-	need -= spendNoGenericSlots(p, used, order, noGenericSlots(cost, len(deferred)))
+	nDeferred := reqRunsTotal(deferred)
+	need := satAddMana(nDeferred, generic)
+	need -= spendNoGenericSlots(p, used, order, noGenericSlots(cost, nDeferred))
 	need = spendGeneric(p, used, order, need)
 	// The widened slots are paid before the generic, so what is still
 	// owed is the generic and then, past it, the widened slots from the
 	// back — named by their printed symbol, as they were before #1600.
 	if short := need - generic; short > 0 {
-		for _, req := range deferred[len(deferred)-short:] {
-			missing = append(missing, "{"+formatRequirement(req)+"}")
+		for _, r := range lastOfReqRuns(deferred, short) {
+			missing = appendSymbolRun(missing, "{"+formatRequirement(r.req)+"}", r.n)
 		}
 		need = generic
 	}
-	// #3895: a long generic shortfall is one {N} (maxListedGeneric).
+	// #3895: a long generic shortfall is one {N} (maxListedGeneric),
+	// the way a printed cost writes it.
 	if need > maxListedGeneric {
 		return append(missing, "{"+strconv.Itoa(need)+"}")
 	}
@@ -809,93 +706,6 @@ func (p ManaPool) MissingFor(cost ParsedCost, xValue int, ctx ManaSpendContext) 
 		need--
 	}
 	return missing
-}
-
-// firstPrintedMatch is the token a coloured requirement takes in the
-// pool solver's first pass: the first unused token in `order` whose
-// colour the requirement PRINTS (matchColor over Options), or -1. A
-// widened slot (AnyMana) is asked the same question here; what it
-// admits beyond its printed colours is paid in the generic pass
-// instead (#1600), so the two passes together admit exactly what
-// ColorRequirement.Admits does.
-func firstPrintedMatch(work ManaPool, used []bool, order []int, req ColorRequirement) int {
-	for _, i := range order {
-		if used[i] {
-			continue
-		}
-		if matchColor(work[i].Color, req.Options) {
-			return i
-		}
-	}
-	return -1
-}
-
-// newTokenOwners is the colored pass's booking sheet: for each token,
-// the index of the requirement it was booked for, or -1.
-func newTokenOwners(n int) []int {
-	owner := make([]int, n)
-	for i := range owner {
-		owner[i] = -1
-	}
-	return owner
-}
-
-// reassignColored finds a token for requirement `ri` when no unused
-// token prints its colour, by moving a token already booked for an
-// earlier requirement onto another token that requirement also
-// prints: an augmenting path, so the colored pass pays every
-// requirement whenever some assignment of tokens to requirements
-// could (CR 601.2h: the player chooses which mana pays which symbol,
-// and would choose an assignment that works). It returns the token
-// now free for `ri`, with every booking along the path already moved,
-// or -1 with every booking left as it was. The caller books the
-// returned token for `ri`.
-//
-// It is asked only after firstPrintedMatch has failed, so a payment
-// the first-match walk could already make is made with the same
-// tokens: this repairs a refusal and never changes a success. ADR 0118
-// §1's top-up is the case it exists for. A {G} that floated before the
-// auto-tapper ran sits in front of the plan's own mana, so the walk
-// alone pays {G/W}{G} out of [{G}, {W}] by spending the {G} on the
-// hybrid and then finds no {G} for the second symbol, with lands
-// already tapped for a cast it refuses.
-//
-// Widened slots (AnyMana) never come here: they are walked last and
-// defer to the generic pass rather than fail, so no booking this moves
-// can belong to one.
-func reassignColored(work ManaPool, used []bool, order []int, owner []int, reqs []ColorRequirement, ri int) int {
-	visited := make([]bool, len(work))
-	var augment func(r int) int
-	augment = func(r int) int {
-		for _, i := range order {
-			if visited[i] || !matchColor(work[i].Color, reqs[r].Options) {
-				continue
-			}
-			visited[i] = true
-			if !used[i] {
-				return i
-			}
-			prev := owner[i]
-			if prev < 0 || reqs[prev].AnyMana {
-				continue
-			}
-			// #3895: an owner that prints the same colours as `r` is
-			// not moved. Any token it could move to, this loop reaches
-			// next with the same tokens visited, and taking it here
-			// books the same tokens. Following it instead rescans the
-			// pool once per level, which is quadratic in a folded X.
-			if slices.Equal(reqs[prev].Options, reqs[r].Options) {
-				continue
-			}
-			if j := augment(prev); j >= 0 {
-				used[j] = true
-				owner[j] = prev
-				return i
-			}
-		}
-		return -1
-	}
-	return augment(ri)
 }
 
 // manaSpentEvent builds the EventManaSpent breadcrumb for a payment
@@ -961,9 +771,4 @@ func formatRequirement(req ColorRequirement) string {
 		out += "/P"
 	}
 	return out
-}
-
-// sameSymbol reports whether formatRequirement writes a and b alike.
-func sameSymbol(a, b ColorRequirement) bool {
-	return a.Phyrexian == b.Phyrexian && slices.Equal(a.Options, b.Options)
 }

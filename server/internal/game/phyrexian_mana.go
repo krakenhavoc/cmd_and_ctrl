@@ -103,20 +103,23 @@ func (c ParsedCost) printedPhyrexianSymbols() int {
 //
 // Pure: `cost` is not mutated, and neither is the pool, and it takes
 // no lock — which is why the read-only auto-tap preview can call it
-// too (#916). An n outside [0, PhyrexianSymbols()] is the caller's
-// error, not this function's — strikePhyrexianLifeLocked rejects it
-// before anything is paid.
+// too (#916). An n above PhyrexianSymbols() strikes every symbol, and
+// one below 1 none: rejecting it is the announce gate's job
+// (strikePhyrexianLifeLocked, before anything is paid), and n is a
+// client's number, so nothing here is sized or looped by it (#3904).
 func PhyrexianLifePlan(cost ParsedCost, pool ManaPool, ctx ManaSpendContext, n int) (ParsedCost, int) {
 	if n <= 0 {
 		return cost, 0
 	}
 	spendable := spendOrder(pool, ctx)
 	// Rank the Phyrexian symbols: pass 0 is the ones no token in the
-	// pool could pay, pass 1 is the rest.
-	struck := make(map[int]bool, n)
-	for pass := 0; pass < 2 && len(struck) < n; pass++ {
+	// pool could pay, pass 1 is the rest. The marks are sized by the
+	// cost, never by n.
+	struck := make([]bool, len(cost.Required))
+	nStruck := 0
+	for pass := 0; pass < 2 && nStruck < n; pass++ {
 		for i, req := range cost.Required {
-			if len(struck) == n {
+			if nStruck == n {
 				break
 			}
 			if !req.PaysWithLife() || struck[i] {
@@ -133,7 +136,11 @@ func PhyrexianLifePlan(cost ParsedCost, pool ManaPool, ctx ManaSpendContext, n i
 				continue
 			}
 			struck[i] = true
+			nStruck++
 		}
+	}
+	if nStruck == 0 {
+		return cost, 0
 	}
 	out := cost
 	out.Required = make([]ColorRequirement, 0, len(cost.Required))
@@ -143,7 +150,7 @@ func PhyrexianLifePlan(cost ParsedCost, pool ManaPool, ctx ManaSpendContext, n i
 		}
 		out.Required = append(out.Required, req)
 	}
-	return out, len(struck) * PhyrexianLifePerSymbol
+	return out, nStruck * PhyrexianLifePerSymbol
 }
 
 // strikePhyrexianLifeLocked is the announce half of the one

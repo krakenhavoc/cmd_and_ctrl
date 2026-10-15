@@ -228,10 +228,14 @@ type PaperPaymentPrompt struct {
 	ArtifactSources bool `json:"artifact_sources,omitempty"`
 }
 
-// PaperPaymentSlot is one mana of a shortfall.
+// PaperPaymentSlot is one mana of a shortfall, or, with Count above
+// one, a run of that many identical mana named once (#3904): a run
+// longer than the engine lists slot by slot. The answer for it is one
+// `paper_payment.mana` entry with the same count.
 type PaperPaymentSlot struct {
 	Symbol  string   `json:"symbol"`
 	Options []string `json:"options"`
+	Count   int      `json:"count,omitempty"`
 }
 
 // ActionPayload is the payload body for a Kind == KindAction frame

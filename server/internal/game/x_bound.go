@@ -48,12 +48,23 @@ package game
 //
 // # Below the bound
 //
-// What stays sized by X is linear in it. A plain {X} is a count the
-// run-length pool pays in O(runs). A restricted X ("spend only black
-// mana on X") is X requirements, which the pool solver pays in one
-// pass (colouredPass); a long generic shortfall is named as one {N}
-// (MissingFor). XMana and GenericWithX saturate rather than wrap, and
-// no list reserves capacity by X.
+// A plain {X} is a count the run-length pool pays in O(runs). A
+// restricted X ("spend only black mana on X") is folded into X
+// identical requirements (foldSpendOnly), and that list is the one
+// thing still sized by X: linear in it, and capped by maxFoldedMana.
+// Everything after the fold works on runs (#3904): the pool solver's
+// coloured pass books a run of requirements against a run of mana in
+// one step (coloured_pass.go), and what it leaves unpaid comes back as
+// runs, so MissingFor, the paper-payment picker and its declaration
+// name a long shortfall once, with its count (maxListedRun). XMana and
+// GenericWithX saturate rather than wrap, and no list reserves capacity
+// by X.
+//
+// The other numbers a client sends are bounded where they are read:
+// the Phyrexian life count sizes nothing (PhyrexianLifePlan), a paper
+// declaration's counts are checked against the shortfall as they are
+// summed (paperShortfall.tokensFor), and the auto-tapper's plan is
+// sized by the sources, not the requirements.
 const MaxAnnouncedX = 1_000_000
 
 // announcedXInRange reports whether x is an X the engine accepts at
@@ -96,9 +107,9 @@ func satMulMana(a, b int) int {
 const maxFoldedMana = 4 * MaxAnnouncedX
 
 // maxPreallocSlots is the most capacity a per-mana list (a paper
-// payment's slots, a missing-mana breakdown) reserves up front. Such
-// a list can be as long as an announced X, so it grows past this by
-// appending rather than reserving X up front.
+// payment's slots, a missing-mana breakdown) reserves up front. A run
+// longer than maxListedRun is one entry in such a list (#3904), so it
+// rarely grows past this.
 const maxPreallocSlots = 64
 
 // maxListedGeneric is the longest generic shortfall MissingFor names
