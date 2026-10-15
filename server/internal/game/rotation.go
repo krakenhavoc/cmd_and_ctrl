@@ -31,6 +31,15 @@ import "log/slog"
 // (Game.ActiveSeatLeftPending, consumed by the SBA loss pass, which is
 // the resolution bookend's or a later prompt answer's). A new caller
 // that can be reached mid-resolution must defer the same way.
+//
+// The seam can pause for exactly one question (ADR 0188 Decision 12,
+// turn_skip_order.go): which skip takes an extra turn when the player
+// owes "skip your next turn" and an extra-turn skip applies too. Because
+// the seam only runs at action boundaries, so does the pause.
+// beginNextTurnLocked splits into closeTurnLocked (once per ended turn)
+// and chooseNextTurnLocked (the selection loop, re-run by the answer),
+// and reports paused; while Game.TurnChangePending is set no step entry
+// hook runs and advancePastEliminatedLocked does not rotate again.
 
 // sweepTurnEndLocked is the non-interactive part of the cleanup step
 // (CR 514.2): marked damage and deathtouch marks are removed, and
@@ -165,12 +174,30 @@ func (g *Game) sweepTurnEndLocked() {
 // play it is already empty here (the cleanup hook advances only once
 // it drains); the early ways out of a turn are what can leave it set.
 //
+// paused reports that the choice is waiting on a question (ADR 0188
+// Decision 12, turn_skip_order.go): the old turn has closed, nothing
+// has begun, and Game.TurnChangePending is set. A caller that sees it
+// must not run the step entry hooks — runStepEntryHooksLocked also
+// refuses while the flag is set, so a caller that forgets is a no-op
+// rather than a step of a turn that has not begun. The answer's resume
+// chooses the turn and runs them.
+//
 // Caller must hold g.mu.
-func (g *Game) beginNextTurnLocked() {
-	n := len(g.Seats)
-	if n == 0 {
-		return
+func (g *Game) beginNextTurnLocked() (paused bool) {
+	if len(g.Seats) == 0 {
+		return false
 	}
+	g.closeTurnLocked()
+	return g.chooseNextTurnLocked()
+}
+
+// closeTurnLocked is the part of a turn change that runs once per
+// ended turn, before any candidate turn is chosen (ADR 0188 Decision
+// 12). A turn change that pauses for the which-skip question has run it
+// already, so the resume does not run it again.
+//
+// Caller must hold g.mu.
+func (g *Game) closeTurnLocked() {
 	// ADR 0167 §2: a turn-long player control ends as the next turn
 	// begins (CR 723.1), and queues the extra turn it owes before the
 	// next turn is chosen below.
@@ -181,7 +208,25 @@ func (g *Game) beginNextTurnLocked() {
 	// ADR 0132, CR 502.2: and the spells its active player cast, which
 	// the NEXT untap step's day/night check reads.
 	g.recordPrevTurnSpellsLocked()
-	if et, ok := g.popExtraTurnLocked(); ok {
+}
+
+// chooseNextTurnLocked is the selection loop: the queued extra turns,
+// then normal rotation, then startTurnLocked. It reports paused when an
+// extra turn is waiting on the which-skip question (ADR 0188 Decision
+// 12); the cursor is then left where the old turn left it, with nobody
+// holding priority.
+//
+// Caller must hold g.mu.
+func (g *Game) chooseNextTurnLocked() (paused bool) {
+	n := len(g.Seats)
+	if n == 0 {
+		return false
+	}
+	et, ok, paused := g.popExtraTurnLocked()
+	if paused {
+		return true
+	}
+	if ok {
 		g.Turn = Turn{
 			Seq:            g.Turn.Seq + 1,
 			Round:          g.Turn.Round,
@@ -194,7 +239,7 @@ func (g *Game) beginNextTurnLocked() {
 			OrderSeat:      g.Turn.OrderSeat,
 		}
 		g.startTurnLocked(et.Effects)
-		return
+		return false
 	}
 	from := g.Turn
 	from.Step = StepCleanup
@@ -247,6 +292,7 @@ func (g *Game) beginNextTurnLocked() {
 	next.Seq = g.Turn.Seq + 1
 	g.Turn = next
 	g.startTurnLocked(nil)
+	return false
 }
 
 // startTurnLocked is the tail both kinds of turn share once the cursor
@@ -461,6 +507,19 @@ func (g *Game) advancePastEliminatedLocked() {
 	if numSeats == 0 {
 		return
 	}
+	// ADR 0188 Decision 12: while the turn change waits on its question,
+	// the old turn is already over and the next has not begun. Running
+	// the seam again would end a turn twice. The pending answer chooses
+	// the turn — unless the question has gone with its chooser (CR
+	// 800.4k), in which case the departure is what moves play on: the
+	// resume runs with the recommended answer's outcome, and the
+	// departed player's extra turn is dropped as it would begin.
+	if g.TurnChangePending {
+		if !g.turnSkipOrderOpenLocked() {
+			g.resumeTurnChangeLocked()
+		}
+		return
+	}
 	active := g.Turn.ActiveSeat
 	if active < 0 || active >= numSeats || !g.Seats[active].Eliminated {
 		ph := g.Turn.PriorityHolder
@@ -471,6 +530,8 @@ func (g *Game) advancePastEliminatedLocked() {
 	}
 	g.clearCombatLocked()
 	g.sweepTurnEndLocked()
-	g.beginNextTurnLocked()
+	if g.beginNextTurnLocked() {
+		return
+	}
 	g.runStepEntryHooksLocked()
 }

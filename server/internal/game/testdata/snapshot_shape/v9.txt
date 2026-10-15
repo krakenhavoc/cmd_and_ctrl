@@ -2855,6 +2855,13 @@ pendingChoices[].source	custom(uuid.UUID)
 pendingChoices[].triggerOrderIds	array
 pendingChoices[].triggerOrderIds[]	custom(uuid.UUID)
 pendingChoices[].triggerOrderWhy	string
+pendingChoices[].turnSkipOrder	object
+pendingChoices[].turnSkipOrder.extraTurnRef	number:int
+pendingChoices[].turnSkipOrder.others	array
+pendingChoices[].turnSkipOrder.others[]	string
+pendingChoices[].turnSkipOrder.skipName	string
+pendingChoices[].turnSkipOrder.skipSeq	number:int64
+pendingChoices[].turnSkipOrder.skipSource	custom(uuid.UUID)
 pendingTriggers	array
 pendingTriggers[]	object
 pendingTriggers[].altCost	string
@@ -7043,6 +7050,7 @@ turn.PriorityHolder	number:int
 turn.Seq	number:int
 turn.Step	string
 turn.StepOrdinal	number:int
+turnChangePending	bool
 turnEndPending	bool
 turnPlan	array
 turnPlan[]	object

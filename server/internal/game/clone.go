@@ -49,6 +49,8 @@ func (g *Game) cloneLocked() *Game {
 		// an active player who lost mid-resolution.
 		Outcome:               cloneGameOutcome(g.Outcome),
 		ActiveSeatLeftPending: g.ActiveSeatLeftPending,
+		// ADR 0188 Decision 12: a turn change waiting on its question.
+		TurnChangePending: g.TurnChangePending,
 		// #2165: CR 724.1's deferred half — the turn an effect ended
 		// whose cleanup step has not begun.
 		TurnEndPending: g.TurnEndPending,
@@ -283,6 +285,7 @@ func (g *Game) cloneLocked() *Game {
 			cloned.OptionCarry = copyUUIDs(c.OptionCarry)
 			// ADR 0146: a ballot's vote is mutated as it is cast.
 			cloned.CouncilVote = cloneCouncilVote(c.CouncilVote)
+			cloned.TurnSkipOrder = cloneTurnSkipOrder(c.TurnSkipOrder)
 			cloned.AnyPlayerOffer = cloneAnyPlayerOffer(c.AnyPlayerOffer)
 			cloned.Assist = cloneAssistPrompt(c.Assist)
 			// #793: the replacement resume frame holds the in-flight
@@ -1139,6 +1142,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.SplitSecondActive = src.SplitSecondActive
 	g.Outcome = src.Outcome
 	g.ActiveSeatLeftPending = src.ActiveSeatLeftPending
+	g.TurnChangePending = src.TurnChangePending
 	g.TurnEndPending = src.TurnEndPending
 	g.passTurn = clonePassTurnOrder(src.passTurn)
 	g.StackMeta = src.StackMeta

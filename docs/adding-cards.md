@@ -7967,7 +7967,10 @@ cursor: each writes a `skipTurns` ScopedEffect record that the rotation
 seam spends when that player's next turn, extra or normal, would begin. So
 the turn in progress is never cut short, two skips skip two turns (CR
 614.10a), and a skip plus a queued extra turn of the same player skips the
-extra turn (the Magosi ruling). A card that says "skip" in its own
+extra turn (the Magosi ruling). When an extra-turn skip (Trouble in Pairs,
+Ugin's Nexus) applies to that same extra turn too, the engine asks the
+player which takes it (CR 616.1, ADR 0188 Decision 12, `turn_skip_order`):
+the card needs nothing for that. A card that says "skip" in its own
 sentence ("Put a counter. Skip your next turn.") writes the skip whether or
 not the rest of the effect happened.
 

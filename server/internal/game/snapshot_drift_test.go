@@ -85,6 +85,10 @@ var gameFields = plan(
 	// waiting on the next SBA loss pass. Carried: a restore between
 	// the effect loss and that pass must still move the turn on.
 	"ActiveSeatLeftPending", carried, "",
+	// ADR 0188 Decision 12: a turn change waiting on its turn_skip_order
+	// question. Carried: a restore point taken mid-question restores
+	// mid-question.
+	"TurnChangePending", carried, "",
 	// #2165, CR 724.1: an effect ended the turn and the rest of the
 	// process (724.1c onwards) has not run. Carried: a restore between
 	// the effect and its boundary must still skip to the cleanup step.
@@ -1064,6 +1068,8 @@ var pendingChoiceFields = plan(
 	// vote: a restored ballot that forgot it would be an option pick
 	// whose answer counts for nothing.
 	"CouncilVote", carried, "",
+	// ADR 0188 Decision 12: the which-skip question's plain data.
+	"TurnSkipOrder", carried, "",
 	"AnyPlayerOffer", carried, "",
 	"Assist", dropped, "ADR 0150 §4: an assist helper's prompt is a pay_amount, which always carries a chooseValueResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
 	// #804's CR 732 shortcut prompt. Carried for the reason

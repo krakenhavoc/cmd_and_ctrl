@@ -1280,6 +1280,21 @@ export interface LogEvent {
 // Drives the client picker modal for deferred-choice effects
 // (Thoughtseize, future Vendilion-style cards). The Options slice
 // is pre-filtered to what the viewer is legally allowed to see.
+// ADR 0188 Decision 12: the which-skip question's details
+// (PendingChoiceView.turn_skip_order).
+export interface TurnSkipOrderView {
+  // The extra turn the question is about (an entry of turn.extra_turns).
+  extra_turn_ref: number;
+  // The card whose "skip your next turn" answer 0 spends, and its name
+  // as the question was asked.
+  skip_source?: string;
+  skip_source_name?: string;
+  // The extra-turn skips that apply: answer 1's effect.
+  others?: string[];
+  // The recommended answer's index: always 0, "use my skip".
+  recommended: number;
+}
+
 export interface PendingChoiceView {
   id: string;
   kind:
@@ -1456,6 +1471,15 @@ export interface PendingChoiceView {
     // Mandatory — both answers are always accepted. accept_label and
     // decline_label name the two; source is the entering card.
     | "entry_riot"
+    // ADR 0188 Decision 12, CR 616.1: the player owes "skip your next
+    // turn" and an extra-turn skip (Trouble in Pairs, Ugin's Nexus)
+    // applies to the same extra turn, so they choose which takes it.
+    // The {choice_id, apply} payload: apply true uses their own skip
+    // (answer 0, recommended), false lets the other effect skip it.
+    // accept_label and decline_label name the two; turn_skip_order
+    // carries the details. The turn change waits on it
+    // (turn.between_turns).
+    | "turn_skip_order"
     // #2123, CR 702.155b: read ahead's "choose the chapter this Saga
     // starts on", asked before the Saga enters. The chapters ride
     // pick_options in order ("Chapter I", "Chapter II", …) and the
@@ -1627,6 +1651,8 @@ export interface PendingChoiceView {
   // "entry_read_ahead" prompt "read ahead" (#2123). Absent on every
   // other prompt, and on a "may" that is not unleash's.
   entry_keyword?: "riot" | "unleash" | "read ahead" | string;
+  // ADR 0188 Decision 12: populated for kind "turn_skip_order".
+  turn_skip_order?: TurnSkipOrderView;
   // ADR 0104: on a "trigger_prompt" whose yes TRADES the source for a
   // spell (Perplexing Chimera) — that spell's instance ID. The client
   // does not read it; the bot weighs the trade with it.
@@ -4759,6 +4785,11 @@ export interface TurnView {
   // charges. Seat 0 is a real answer. Absent when the game is not in
   // play. It cannot see a replacement skip (Trouble in Pairs).
   next_seat?: number;
+  // ADR 0188 Decision 12: set while the turn change waits on a
+  // "turn_skip_order" question. The old turn is over and the next has
+  // not begun; step still names the old turn's step, and nobody holds
+  // priority.
+  between_turns?: boolean;
   // ADR 0059 Decision 11 (#753): the phase in progress. `phase_id` is
   // unique within the turn (the template's phases are 1..5, an added
   // phase gets the next id); `phase_ordinal` is the nth phase of its

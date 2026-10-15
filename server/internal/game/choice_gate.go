@@ -293,6 +293,10 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// state-based action, and CR 704.3 performs every state-based
 	// action before any player gets priority, so the table waits.
 	PendingChoiceCommanderReturn: true,
+	// ADR 0188 Decision 12, CR 616.1. The which-skip question pauses
+	// the turn change itself: the old turn is over and the next has not
+	// begun, so there is nothing a table could walk on to.
+	PendingChoiceTurnSkipOrder: true,
 }
 
 // ChoiceBlocksTable is THE question "does an unanswered prompt of this

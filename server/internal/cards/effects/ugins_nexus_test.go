@@ -324,26 +324,3 @@ func TestNexusWithRestInPeaceRestInPeaceFirstGivesNoTurn(t *testing.T) {
 		t.Fatalf("%d extra turns queued, want 0 (Rest in Peace first)", got)
 	}
 }
-
-// Slice 1's debt is spent before the Nexus' window (the interim default
-// until the which-skip prompt, slice 3).
-func TestASkipDebtIsSpentBeforeTheNexusWindow(t *testing.T) {
-	g := newCatalogGame(t)
-	me := g.Turn.ActiveSeat
-	nexus := seedNexus(g, g.Seats[me].ID)
-	g.WithWriteLock(func() {
-		if !g.SkipNextTurnsForEffect(g.Seats[me].ID, nexus, 1, "test skip") {
-			t.Fatal("no skip recorded")
-		}
-	})
-
-	queueOwnExtraTurn(t, g)
-	endTurn(t, g)
-	assertTurnOf(t, g, (me+1)%len(g.Seats), false, "after the skipped extra turn")
-	if got := g.TurnSkipsFor(g.Seats[me].ID); got != 0 {
-		t.Errorf("the debt was not spent: %d owed", got)
-	}
-	if got := skippedExtraTurnEvents(g); got != 0 {
-		t.Errorf("the Nexus window skipped it too (%d extra_turn_skipped), the debt should have been spent first", got)
-	}
-}

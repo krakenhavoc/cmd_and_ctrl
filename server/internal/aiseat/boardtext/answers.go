@@ -69,3 +69,37 @@ func AnswersNote(v *protocol.GameView, m legal.Move) string {
 	}
 	return AnswersPrefix + strings.Join(a, ", ")
 }
+
+// RecommendedText is the note RecommendedNote returns.
+const RecommendedText = "recommended"
+
+// RecommendedNote is "recommended" for the answer the engine recommends
+// to the prompt a move answers, and "" for every other move: a
+// "turn_skip_order" question's "use my skip" (ADR 0188 Decision 12,
+// PendingChoiceView.TurnSkipOrder.Recommended). Read from the view
+// alone, so the bot's prompt and the MCP seat mark the answer the dock
+// preselects.
+func RecommendedNote(v *protocol.GameView, m legal.Move) string {
+	if m.Kind != legal.KindChoice || v == nil {
+		return ""
+	}
+	var p struct {
+		ChoiceID string `json:"choice_id"`
+		Apply    *bool  `json:"apply"`
+	}
+	if json.Unmarshal(m.Params, &p) != nil || p.ChoiceID == "" || p.Apply == nil {
+		return ""
+	}
+	for i := range v.PendingChoices {
+		ch := &v.PendingChoices[i]
+		if ch.ID != p.ChoiceID {
+			continue
+		}
+		// Recommended is the answer's index: 0 is apply true.
+		if o := ch.TurnSkipOrder; o != nil && *p.Apply == (o.Recommended == 0) {
+			return RecommendedText
+		}
+		return ""
+	}
+	return ""
+}

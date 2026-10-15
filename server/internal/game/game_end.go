@@ -219,6 +219,7 @@ func (g *Game) endGameLocked(o GameOutcome) {
 	g.PendingTriggers = nil
 	g.DiscardPending = nil
 	g.ActiveSeatLeftPending = false
+	g.TurnChangePending = false
 	g.EmitEvent(Event{
 		Kind:   EventGameOver,
 		Actor:  o.Winner,

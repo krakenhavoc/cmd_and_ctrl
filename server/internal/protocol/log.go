@@ -3448,6 +3448,14 @@ func renderAutoAnswerText(e LogEvent, actor, cardName string) string {
 	case game.AutoAnswerCallDontPay:
 		return fmt.Sprintf("%s didn't pay for %s (automatic)", actor, card)
 	}
+	// ADR 0188 Decision 12: the which-skip question. Yes spent the
+	// player's own skip; No let the other effect (Label) take the turn.
+	if e.AutoAnswerKey == game.TurnSkipOrderAutoAnswerKey {
+		if e.Call == game.AutoAnswerCallYes {
+			return fmt.Sprintf("%s used their own skip (%s) on their extra turn (automatic)", actor, card)
+		}
+		return fmt.Sprintf("%s let %s skip their extra turn (automatic)", actor, nameOr(e.Label, "another effect"))
+	}
 	answer := "No"
 	if e.Call == game.AutoAnswerCallYes {
 		answer = "Yes"

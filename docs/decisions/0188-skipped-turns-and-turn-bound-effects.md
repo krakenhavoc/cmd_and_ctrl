@@ -379,6 +379,12 @@ type TurnSkipOrder struct {            // PendingChoice.TurnSkipOrder, plain dat
 
 **Log.** No line for the question. The answer's effect logs as today: `turn_skipped` for answer 0, `extra_turn_skipped` for answer 1. An automatic answer adds ADR 0127's "(automatic)" line.
 
+**As built (slice 3, #3561, 2026-10-14).** Three details differ from the text above, none in what a player sees:
+
+- **The chooser leaving.** The departure table row is the plain drop (`{}`), not `dropDefault`. `dropDefault`'s gate needs a surviving object controlled by someone other than the chooser, which this question has not got, and it would run the resume inside the departure, before CR 800.4a has finished. Instead `advancePastEliminatedLocked`, which every departure reaches once it has settled, finds `TurnChangePending` set with no question open and resumes. The selection loop then drops the departed player's turn as it would begin (CR 800.4k), which is answer 0's outcome without spending a charge nobody can owe any more.
+- **The step-hook guard.** Beside the callers' `paused` checks, `runStepEntryHooksLocked` returns at once while `TurnChangePending` is set, so the six `advanceCursorLocked` callers need no edit and a future caller cannot enter a step of a turn that has not begun.
+- **Snapshot version.** The fields are additive in v9 (the version current when the slice landed), not v8. `pass_priority` and `end_turn` are refused with `ErrTurnChangePending` too.
+
 ## Owner decisions (2026-10-14)
 
 Recorded from the owner's answers to the four questions this ADR asked. They are binding. The options not chosen are kept under [Open owner questions (answered)](#open-owner-questions-answered).
