@@ -344,9 +344,12 @@ func (e millShortfallError) Is(target error) bool { return target == ErrCantPayL
 // replacements meeting a mill inside an effect.
 //
 // Caller must hold g.mu for writing.
-func (g *Game) payMillCostLocked(playerID uuid.UUID, n int) error {
+//
+// Returns the cards that landed in the graveyard, for PaidCost.Milled
+// (#3849).
+func (g *Game) payMillCostLocked(playerID uuid.UUID, n int) ([]uuid.UUID, error) {
 	if n <= 0 {
-		return nil
+		return nil, nil
 	}
-	return g.MillNForEffect(playerID, n)
+	return g.MillToZoneForEffect(playerID, n, ZoneGraveyard)
 }

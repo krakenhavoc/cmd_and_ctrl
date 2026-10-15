@@ -16,14 +16,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // A payment the engine did not record (a free cast, a waived charge)
 // spends no mana it knows of, so neither half applies: weaker than
-// printed, never stronger.
-//
-// No simplification.
+// printed, never stronger. With "Charge mana costs" off, or after a
+// Cast anyway, only mana spent from the pool counts (ADR 0068 §3 and its
+// 2026-10-15 amendment), the same caveat Ribbons of Night carries (#3850).
 func init() {
 	Register(Spec{
 		OracleID:     "9b515bb8-6e37-4b2d-8d56-bb517c3b267c",
 		Name:         "Moonhold",
-		Completeness: CompletenessFull,
+		Completeness: CompletenessCaveats,
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, only mana spent from your mana pool counts, so Moonhold may not stop lands or creature spells as printed."},
 		Targets:      TargetPlayer("target player"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if ctx.ManaSpentOfColor("R") > 0 {

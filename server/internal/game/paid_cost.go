@@ -188,6 +188,16 @@ type PaidCost struct {
 	// a question nobody on this component asks.
 	Exiled []uuid.UUID `json:"exiled,omitempty"`
 
+	// Milled is the cards a "Mill N cards" cost component put into the
+	// payer's graveyard, in the order they came off the top (#3849;
+	// ADR 0020's 2026-10-15 amendment). Charmed Pendant's "for each
+	// colored mana symbol in the milled card's mana cost" reads it. A
+	// card a replacement sent elsewhere (Rest in Peace) is not in it,
+	// because it was not milled (CR 701.17a), and neither is a card
+	// whose mill is still parked on a CR 616 ordering prompt; both read
+	// as "nothing milled", the weaker-than-printed direction.
+	Milled []uuid.UUID `json:"milled,omitempty"`
+
 	// ExiledObjects is WHICH battlefield permanents an ExilePermanents
 	// additional cost took on a cast (#3402), each as the object it was,
 	// instance ID and CR 400.7 epoch, in the order named; their IDs are
@@ -460,7 +470,7 @@ func (p PaidCost) IsZero() bool {
 		p.CountersRemoved == 0 && p.CountersAdded == 0 && p.LifePaid == 0 &&
 		p.Sacrificed == 0 && len(p.SacrificedObjects) == 0 && len(p.AltCostObjects) == 0 &&
 		p.ReturnedAttacking == uuid.Nil && len(p.OptionalCosts) == 0 &&
-		len(p.TappedOthers) == 0 && len(p.Exiled) == 0 && len(p.ExiledObjects) == 0 && len(p.Delved) == 0 &&
+		len(p.TappedOthers) == 0 && len(p.Exiled) == 0 && len(p.Milled) == 0 && len(p.ExiledObjects) == 0 && len(p.Delved) == 0 &&
 		p.CostBranch == 0 && len(p.Discarded) == 0 && len(p.Convoked) == 0 &&
 		p.AssistedBy == uuid.Nil && p.AssistPaid == 0
 }
@@ -485,6 +495,9 @@ func clonePaidCost(p PaidCost) PaidCost {
 	}
 	if len(p.Exiled) > 0 {
 		out.Exiled = append([]uuid.UUID(nil), p.Exiled...)
+	}
+	if len(p.Milled) > 0 {
+		out.Milled = append([]uuid.UUID(nil), p.Milled...)
 	}
 	if len(p.ExiledObjects) > 0 {
 		out.ExiledObjects = append([]ObjectRef(nil), p.ExiledObjects...)
