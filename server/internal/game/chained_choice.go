@@ -700,6 +700,16 @@ const (
 	// the moment the pick is submitted, and the bot prices the pick
 	// as the cast it is rather than as a discard.
 	ChooseCastFree ChooseDestination = "cast_free"
+	// ChooseCastFreeFromLibrary: the same free cast, over a card the
+	// chooser looked at on top of their library ("look at the top six
+	// cards of your library. You may cast a spell from among them
+	// without paying its mana cost", Aetherworks Marvel, #2110). The
+	// continuation puts the rest on the bottom in a random order and
+	// grants FreeCastFromLibraryPermission over the pick, which stays
+	// where it is. The client opens the cast chain from the library
+	// pile the moment the pick is submitted; the bot prices the pick
+	// as it prices any card taken from its own library.
+	ChooseCastFreeFromLibrary ChooseDestination = "cast_free_library"
 	// ChooseLibraryBottom: the named cards go on the bottom of their
 	// owner's library, in an order asked for next when there is more
 	// than one — the London mulligan's cost (ADR 0168). The client says

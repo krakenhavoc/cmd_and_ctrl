@@ -1035,9 +1035,17 @@ func AnArtifactYouControlWasPutIntoAGraveyard(ev game.Event, source *game.Card, 
 	return permanentYouControlWasPutIntoAGraveyard(ev, source, g, "artifact")
 }
 
+// APermanentYouControlWasPutIntoAGraveyard — "whenever a permanent you
+// control is put into a graveyard" (Aetherworks Marvel): any permanent,
+// whatever its types, the source itself included.
+func APermanentYouControlWasPutIntoAGraveyard(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	return permanentYouControlWasPutIntoAGraveyard(ev, source, g)
+}
+
 // permanentYouControlWasPutIntoAGraveyard is the shared test: a move
 // from the battlefield to a graveyard of a permanent that had any of
-// `cardTypes` and was under the source's controller's control.
+// `cardTypes` (any permanent, with none given) and was under the
+// source's controller's control.
 func permanentYouControlWasPutIntoAGraveyard(ev game.Event, source *game.Card, g *game.Game, cardTypes ...string) bool {
 	if ev.Kind != game.EventLTB || ev.NewZone != game.ZoneGraveyard {
 		return false
@@ -1045,6 +1053,9 @@ func permanentYouControlWasPutIntoAGraveyard(ev game.Event, source *game.Card, g
 	c, ok := g.LookupCardForEffect(ev.CardID)
 	if !ok || leftUnderControlOf(ev, c) != source.Controller {
 		return false
+	}
+	if len(cardTypes) == 0 {
+		return true
 	}
 	for _, t := range cardTypes {
 		if leftAsType(ev, c, t) {
