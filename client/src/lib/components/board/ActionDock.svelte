@@ -161,6 +161,8 @@
   const PRIMARY_LABELS: Record<Exclude<PrimaryKind, "attack">, string> = {
     pass: L.pass,
     next: L.next,
+    endsTurn: L.nextEndsTurn,
+    yourTurnNext: L.nextYourTurn,
     noAttacks: L.noAttacks,
   };
   const primary = $derived(primaryKind(view, attackersReady, attackersStaged));
@@ -836,6 +838,8 @@
         type="button"
         class="dock-btn primary next"
         class:viewer-priority={canPass}
+        class:ends-turn={primary === "endsTurn"}
+        class:your-turn-next={primary === "yourTurnNext"}
         aria-label={primaryLabel}
         disabled={!canPass}
         aria-keyshortcuts={ariaKeys(keys.passPriority)}
@@ -1093,6 +1097,21 @@
   .dock-btn.next.viewer-priority:hover:not(:disabled) {
     background: var(--accent-strong);
     border-color: var(--accent-strong);
+  }
+  /* #3826: the two passes that are not routine. The text says which;
+     the ring is the second cue, so neither reads like a plain Next. */
+  .dock-btn.next.ends-turn,
+  .dock-btn.next.your-turn-next {
+    white-space: normal;
+    line-height: 1.2;
+    padding-block: 4px;
+    text-align: center;
+  }
+  .dock-btn.next.viewer-priority.ends-turn {
+    box-shadow: 0 0 0 2px var(--danger);
+  }
+  .dock-btn.next.viewer-priority.your-turn-next {
+    box-shadow: 0 0 0 2px var(--priority);
   }
   .cap {
     font-family: var(--font-mono);

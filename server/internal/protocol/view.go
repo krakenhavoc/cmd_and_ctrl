@@ -4957,6 +4957,16 @@ type TurnView struct {
 	// cannot see a replacement skip (Trouble in Pairs, Ugin's Nexus),
 	// which is decided as the turn would begin. Public.
 	NextSeat *int `json:"next_seat,omitempty"`
+	// PassHint is what the viewer's own next pass hands over (#3826):
+	// "ends_turn" when it is the viewer's turn and no later step of it
+	// grants priority, "your_turn_next" when it is another player's turn,
+	// none of its remaining steps grants priority and the next turn is
+	// the viewer's. Empty (and omitted) for a routine pass, when the
+	// viewer does not hold priority, or when the stack is not empty.
+	// Per viewer, stamped by FilterViewFor from the plan and next_seat.
+	// It ignores the viewer's own auto-pass and stops, which live on the
+	// client. See pass_hint.go.
+	PassHint string `json:"pass_hint,omitempty"`
 	// BetweenTurns is set while the turn change waits on a
 	// "turn_skip_order" question (ADR 0188 Decision 12): the old turn
 	// is over, the next has not begun, and the cursor still shows the
@@ -9891,7 +9901,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// the same way — a permanent can phase out face down, and the
 		// card under it is no more knowable for having phased.
 		PhasedOut:     redactZone(v.PhasedOut, isKnower),
-		Turn:          v.Turn,
+		Turn:          turnViewFor(v, viewerID),
 		MulligansOpen: v.MulligansOpen,
 		Monarch:       v.Monarch,
 		Initiative:    v.Initiative,

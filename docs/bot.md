@@ -1028,6 +1028,11 @@ The model prompt and the MCP seat read the same facts from
 added phase and ends "next turn: <seat>", and a seat line says "skips
 their next turn" or "skips their next 2 turns".
 
+When the engine's `turn.pass_hint` is set (#3826) the turn line ends with "last
+priority this turn: passing ends your turn" or "last priority before your
+turn: passing starts your turn", so a model weighs its last window to act
+before the turn changes.
+
 A land sacrifice counts as mana here when the same cast's declared
 `purpose.lands` more than replaces it
 ([#2469](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2469),

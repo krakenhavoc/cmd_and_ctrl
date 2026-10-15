@@ -186,6 +186,65 @@ describe("ActionDock", () => {
     expect(buttonsNamed(d.container, "End turn")).toHaveLength(0);
   });
 
+  // #3826: the server marks the last pass of your turn, and the last one
+  // before it begins; the primary says so and is ringed, and End turn
+  // stays the only button of that name.
+  it("says when a pass ends your turn, and keeps End turn the only End turn", () => {
+    const d = mountDock({
+      view: gameView({ turn: turn({ step: "end", phase: "ending", pass_hint: "ends_turn" }) }),
+    });
+    const primary = buttonsNamed(d.container, "Pass · turn ends");
+    expect(primary).toHaveLength(1);
+    expect(primary[0]!.classList.contains("primary")).toBe(true);
+    expect(primary[0]!.classList.contains("ends-turn")).toBe(true);
+    expect(primary[0]!.classList.contains("your-turn-next")).toBe(false);
+    expect(primary[0]!.getAttribute("aria-label")).toBe("Pass · turn ends");
+    expect(primary[0]!.title).toMatch(/your turn ends/);
+    expect(buttonsNamed(d.container, "Next")).toHaveLength(0);
+    expect(buttonsNamed(d.container, "End turn")).toHaveLength(1);
+    expect(d.q(".dock-status")!.textContent?.trim()).toBe("passing ends the turn");
+  });
+
+  it("says when a pass is the last one before your turn", () => {
+    const d = mountDock({
+      viewerIsActive: false,
+      view: gameView({
+        turn: turn({
+          step: "end",
+          phase: "ending",
+          active_seat: 1,
+          next_seat: 0,
+          pass_hint: "your_turn_next",
+        }),
+      }),
+    });
+    const primary = buttonsNamed(d.container, "Pass · your turn next");
+    expect(primary).toHaveLength(1);
+    expect(primary[0]!.classList.contains("your-turn-next")).toBe(true);
+    expect(primary[0]!.classList.contains("ends-turn")).toBe(false);
+    expect(primary[0]!.classList.contains("viewer-priority")).toBe(true);
+    expect(buttonsNamed(d.container, "End turn")).toHaveLength(0);
+    expect(d.q(".dock-status")!.textContent?.trim()).toBe("passing starts your turn");
+  });
+
+  it("goes back to Next when the hint goes, and never rings a button without priority", () => {
+    const d = mountDock({
+      view: gameView({ turn: turn({ step: "end", phase: "ending", pass_hint: "ends_turn" }) }),
+    });
+    d.setProps({ view: gameView({ turn: turn({ step: "end", phase: "ending" }) }) } as never);
+    expect(buttonsNamed(d.container, "Next")).toHaveLength(1);
+    expect(d.q("button.primary")!.classList.contains("ends-turn")).toBe(false);
+    // The server stamps the hint only for the seat holding priority, so a
+    // seat without it has none; a stale one still must not ring.
+    d.setProps({
+      viewerHasPriority: false,
+      view: gameView({ turn: turn({ step: "end", phase: "ending", pass_hint: "ends_turn" }) }),
+    } as never);
+    const btn = buttonsNamed(d.container, "Pass · turn ends")[0]!;
+    expect(btn.disabled).toBe(true);
+    expect(btn.classList.contains("viewer-priority")).toBe(false);
+  });
+
   it("names the old autopass toggle Skip to my turn, and says when it ends", () => {
     const d = mountDock({ viewerIsActive: false });
     const skip = d.q("button.action.skip-to-my-turn")!;
