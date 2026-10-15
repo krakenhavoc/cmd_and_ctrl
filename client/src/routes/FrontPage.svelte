@@ -83,7 +83,7 @@
   <section class="hero" aria-labelledby="front-title">
     <div class="pitch">
       <h1 id="front-title" class="title rise" style="--d: 0ms">
-        Your Commander pod’s table, online
+        Your Commander pod’s table, <span class="hot">over the wire.</span>
       </h1>
       <p class="lede rise" style="--d: 80ms">
         Four seats, a rules engine that resolves thousands of cards for you, and bots to fill an
@@ -134,6 +134,7 @@
       {#each seats as seat, i (seat.name)}
         <div
           class="seat"
+          class:you={i === 0}
           class:turn={turn === i}
           class:hit={hit === i}
           style="--seat: {seatColor(i)}"
@@ -266,7 +267,12 @@
     text-transform: none;
     text-wrap: balance;
     color: var(--fg);
-    max-width: 15ch;
+    max-width: 17ch;
+  }
+  /* The brand's one accented phrase, in the brighter orange (10:1 on the
+     page) so it carries at a glance. */
+  .hot {
+    color: var(--accent-strong);
   }
   .lede {
     margin: 28px 0 0;
@@ -311,35 +317,55 @@
     color: var(--fg);
   }
 
-  /* The table: four seats round a centre, drawn with fills, not lines. */
+  /* The table, laid out as the real board is: the three opponents across
+     the top, the step strip, and your seat along the bottom. One raised
+     surface with a visible edge holds all four, so it reads as one table
+     rather than four tiles (Ian's review on #3839). */
   .table {
-    position: relative;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
-    padding: 10px;
+    padding: 14px;
     border-radius: var(--radius-xl);
-    background: var(--bg-1);
-    grid-template-rows: 1fr auto 1fr;
-    aspect-ratio: 1 / 0.86;
+    background: var(--surface-raised);
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--fg) 16%, transparent);
   }
   .seat {
-    position: relative;
+    order: 1;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 18px 20px;
+    gap: 10px;
+    min-width: 0;
+    padding: 14px 16px;
     border-radius: var(--radius-lg);
-    background: color-mix(in srgb, var(--seat) 12%, var(--bg-2));
-    box-shadow: inset 4px 0 0 var(--seat);
+    background: color-mix(in srgb, var(--seat) 18%, var(--bg-1));
+    box-shadow: inset 0 4px 0 var(--seat);
     transition:
       background 300ms var(--ease),
       box-shadow 300ms var(--ease);
   }
+  .seat .life {
+    font-size: clamp(34px, 3vw, 44px);
+  }
+  .seat.you {
+    order: 3;
+    grid-column: 1 / -1;
+    padding: 20px 24px;
+    box-shadow: inset 0 -4px 0 var(--seat);
+  }
+  .seat.you .life {
+    font-size: clamp(56px, 6vw, 88px);
+  }
   .seat.turn {
-    background: color-mix(in srgb, var(--seat) 22%, var(--bg-2));
+    background: color-mix(in srgb, var(--seat) 28%, var(--bg-1));
     box-shadow:
-      inset 4px 0 0 var(--seat),
+      inset 0 4px 0 var(--seat),
+      inset 0 0 0 2px var(--priority);
+  }
+  .seat.you.turn {
+    box-shadow:
+      inset 0 -4px 0 var(--seat),
       inset 0 0 0 2px var(--priority);
   }
   .who {
@@ -359,7 +385,6 @@
   }
   .life {
     font-family: var(--font-display);
-    font-size: clamp(48px, 5vw, 76px);
     font-weight: 800;
     line-height: 1;
     letter-spacing: -0.04em;
@@ -378,10 +403,10 @@
     color: color-mix(in srgb, var(--fg) 78%, transparent);
     font-variant-numeric: tabular-nums;
   }
-  /* The step strip sits between the two rows, as the table's own step
-     bar does, so it never covers a seat. */
+  /* The step strip sits between the opponents and you, as the table's own
+     step bar does. */
   .centre {
-    order: 1;
+    order: 2;
     grid-column: 1 / -1;
     display: flex;
     align-items: baseline;
@@ -390,9 +415,6 @@
     padding: 10px 16px;
     border-radius: var(--radius);
     background: var(--bg);
-  }
-  .seat:nth-child(n + 3) {
-    order: 2;
   }
   .step {
     font-family: var(--font-display);
@@ -405,12 +427,13 @@
     color: var(--fg-muted);
   }
 
-  /* How to get an account: a band one tone up from the page. */
+  /* How to get an account: a band two tone steps up from the page
+     (1.3:1), so it reads as its own section; one step (1.06:1) blended in. */
   .steps-panel {
     margin-top: 88px;
     padding: 36px 40px;
     border-radius: var(--radius-xl);
-    background: var(--bg-1);
+    background: var(--surface-raised);
   }
   .steps {
     list-style: none;
@@ -474,7 +497,7 @@
     align-items: center;
     padding: 40px;
     border-radius: var(--radius-xl);
-    background: var(--surface);
+    background: var(--surface-raised);
   }
   .invite-band h2 {
     font-size: 32px;
@@ -526,8 +549,7 @@
     }
   }
 
-  /* Below the tablet design target everything stacks; there is no layout
-     of its own (the tablet-minimum rule). */
+  /* Below the tablet design target the hero and the bands stack. */
   @media (max-width: 819px) {
     .hero,
     .steps,
@@ -539,15 +561,60 @@
     .invite-band {
       padding: 28px 24px;
     }
+  }
+
+  /* Phone width. The table itself stays tablet-minimum, but this page is
+     what a link tapped in Discord opens, so it gets a layout of its own:
+     opponents shrink to a name and a life total, the actions go full
+     width, and the gaps tighten. */
+  @media (max-width: 599px) {
+    .front {
+      padding-top: 40px;
+      padding-bottom: 64px;
+    }
+    .title {
+      font-size: clamp(36px, 10vw, 44px);
+    }
+    .lede {
+      font-size: 17px;
+    }
+    .ctas .btn,
+    .practice .btn {
+      width: 100%;
+    }
     .table {
-      aspect-ratio: auto;
+      gap: 8px;
+      padding: 10px;
     }
     .seat {
-      min-height: 150px;
-      gap: 12px;
+      padding: 10px 12px;
+      gap: 6px;
     }
-    .life {
+    .seat:not(.you) .row,
+    .chip {
+      display: none;
+    }
+    .seat .life {
+      font-size: 30px;
+    }
+    .seat.you .life {
       font-size: 52px;
+    }
+    .who {
+      font-size: 14px;
+    }
+    .steps-panel {
+      margin-top: 56px;
+    }
+    .cards {
+      margin-top: 72px;
+    }
+    .invite-band h2 {
+      font-size: 26px;
+    }
+    .ways {
+      gap: 28px;
+      margin-top: 40px;
     }
   }
 </style>
