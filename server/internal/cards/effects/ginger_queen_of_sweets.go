@@ -32,12 +32,10 @@ func init() {
 					return YoureTheMonarch(g, source.Controller)
 				},
 				"Ginger, Queen of Sweets — create a Gingerbrute token",
-				func(g *game.Game, item *game.StackItem) error {
-					if !YoureTheMonarch(g, item.Controller) {
-						return nil
-					}
-					return CreateToken{Controller: item.Controller, Template: GingerbruteToken(), N: 1}.Apply(NewContext(g, item))
-				}),
+				Do(If{
+					Cond: CondMonarch{},
+					Then: []Applier{CreateToken{Template: GingerbruteToken(), N: 1}},
+				})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, {T}, Sacrifice Ginger: You gain 6 life.",

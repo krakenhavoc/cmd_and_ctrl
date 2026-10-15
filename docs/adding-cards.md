@@ -3599,8 +3599,12 @@ you"), `EachOpponentLosesLife` (a drain is
 `Do(TargetPlayerLosesLife{N: 1}, GainLife{Amount: 1})`),
 `ExileChosenTarget` and `GainLifeEqualToSubject`
 ("you gain life equal to its toughness", read off the trigger's
-subject as it resolves). A hand-written closure
-doing the same thing keeps its batches asking. The coverage audit
+subject as it resolves). An intervening "if" re-checked as the
+ability resolves (CR 603.4) is `If{Cond, Then}` inside the `Do`, with a
+named condition from `cards/effects/footprint_if.go`
+(`Do(If{Cond: CondLifeGained{AtLeast: 3}, Then: []Applier{DrawCards{N: 1}}})`);
+keep the trigger-time check in the row's condition as before (#3033).
+A hand-written closure doing the same thing keeps its batches asking. The coverage audit
 `TestOneSentenceTriggersDeclareFootprints` reads the oracle fixtures
 and fails on a new card whose one-sentence trigger ("…, put a +1/+1
 counter on ~", "…, you gain 2 life") has no footprint.

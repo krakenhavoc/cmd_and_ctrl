@@ -552,8 +552,11 @@ func TestB30LunarConvocationDrainsOnGainAndMakesABatOnGainAndLoss(t *testing.T) 
 	b14Gain(t, g, me.ID, 1)
 	before = b30Lives(g)
 	batch01AdvanceToStepOf(t, g, 0, game.StepEnd)
-	if triggerOrderPrompt(g) == nil {
-		t.Fatal("both triggers fire and the controller orders them")
+	// Both triggers fire. Their "if"s read only this turn's life tallies,
+	// which nothing can lower, and a drain and a Bat commute, so the
+	// batch goes on with no order prompt (#3033).
+	if ch := triggerOrderPrompt(g); ch != nil {
+		t.Fatalf("a drain and a Bat behind life-tally conditions asked for an order: %+v", ch)
 	}
 	b30SettleOrder(t, g)
 	for i := 1; i < 4; i++ {

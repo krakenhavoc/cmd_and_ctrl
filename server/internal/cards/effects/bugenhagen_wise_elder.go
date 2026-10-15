@@ -33,12 +33,10 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && b24ControlsCreatureWithPowerAtLeast(g, source.Controller, 7)
-			}, "Bugenhagen, Wise Elder — draw a card", func(g *game.Game, item *game.StackItem) error {
-				if !b24ControlsCreatureWithPowerAtLeast(g, item.Controller, 7) {
-					return nil
-				}
-				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-			}),
+			}, "Bugenhagen, Wise Elder — draw a card", Do(If{
+				Cond: CondPowerAtLeast{N: 7},
+				Then: []Applier{DrawCards{N: 1}},
+			})),
 		},
 	})
 }

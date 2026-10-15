@@ -27,9 +27,8 @@ func init() {
 	})
 }
 
-func deadeyeBrawlerDraw(g *game.Game, item *game.StackItem) error {
-	if !YouHaveTheCitysBlessing(g, item.Controller) {
-		return nil // CR 603.4
-	}
-	return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-}
+// deadeyeBrawlerDraw re-checks the blessing as it resolves (CR 603.4).
+var deadeyeBrawlerDraw = Do(If{
+	Cond: CondCitysBlessing{},
+	Then: []Applier{DrawCards{N: 1}},
+})

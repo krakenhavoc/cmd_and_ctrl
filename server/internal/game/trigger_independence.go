@@ -73,6 +73,46 @@ const (
 	// an engine keyword trigger's body (keyedBodyFootprints), not by a
 	// catalog primitive: prowess (#3013).
 	FootprintPumpSource FootprintKind = "pump_source"
+	// FootprintCondition: an intervening "if" re-checked as the item
+	// resolves (CR 603.4). It changes nothing and emits nothing; it
+	// declares the state its condition (Cond) reads, and the other steps
+	// of the footprint are what the item does when the condition holds
+	// (#3033). Every step a condition guards is declared as if it runs,
+	// the conservative reading of "maybe".
+	FootprintCondition FootprintKind = "condition"
+)
+
+// FootprintCond names the state an intervening "if" reads (#3033). The
+// check reads each one as addConditionReadLocked says, and nothing else:
+// a condition joins only with the argument made there for what can
+// change it while the batch resolves.
+type FootprintCond string
+
+const (
+	// FootprintCondLifeGained: the item's controller gained N or more
+	// life this turn (The Gaffer). The turn's tally only rises.
+	FootprintCondLifeGained FootprintCond = "life_gained"
+	// FootprintCondLifeLost: the item's controller lost N or more life
+	// this turn (Lunar Convocation's Bat). The tally only rises.
+	FootprintCondLifeLost FootprintCond = "life_lost"
+	// FootprintCondCreatureDied: a creature died under the item's
+	// controller's control this turn (Faramir). The tally only rises.
+	FootprintCondCreatureDied FootprintCond = "creature_died"
+	// FootprintCondCitysBlessing: the item's controller has the city's
+	// blessing, which is never lost once had (CR 702.131c).
+	FootprintCondCitysBlessing FootprintCond = "citys_blessing"
+	// FootprintCondNoSpellsCast: the item's controller cast no spells
+	// this turn (Edgar). No step in the vocabulary casts a spell.
+	FootprintCondNoSpellsCast FootprintCond = "no_spells_cast"
+	// FootprintCondMonarch: the item's controller is the monarch (Ginger).
+	FootprintCondMonarch FootprintCond = "monarch"
+	// FootprintCondSource: a fact about the item's source object, such as
+	// its counters (Runaway Steam-Kin's "fewer than three").
+	FootprintCondSource FootprintCond = "source"
+	// FootprintCondBoard: a fact about the permanents on the battlefield,
+	// read through the layers (a creature with power 4 or greater, three
+	// artifacts, seven land names, thirty counters).
+	FootprintCondBoard FootprintCond = "board"
 )
 
 // keyedBodyFootprints is the footprint of each engine keyword trigger
@@ -134,6 +174,9 @@ type FootprintStep struct {
 	// once it has left, the amount is its frozen last-known value and
 	// nothing another item does can change it (#3013).
 	AmountFromSubject bool
+	// Cond is the state a FootprintCondition step reads, with N its
+	// threshold where it has one.
+	Cond FootprintCond
 }
 
 // FootprintTokenOf describes a token template for a FootprintStep.
@@ -204,7 +247,16 @@ type triggerAccess struct {
 	// the trigger's subject, #3013): a static on the board can change
 	// it when another item changes what that static reads.
 	charReads bool
-	emits     map[EventKind]bool
+	// boardReads is set when the item's intervening "if" reads the
+	// battlefield (FootprintCondBoard): another item that changes a
+	// permanent, puts one onto or off the battlefield, or changes what a
+	// static on the board reads can change whether the item does
+	// anything (#3033).
+	boardReads bool
+	// monarchRead is set when the item's intervening "if" asks whether
+	// its controller is the monarch (#3033).
+	monarchRead bool
+	emits       map[EventKind]bool
 }
 
 // writesAnything reports whether the item changes any game state a
@@ -229,6 +281,11 @@ type layerStatics struct {
 	// ptCard and lifeCard name the first card behind each flag, for
 	// the sentence that says why the prompt was asked.
 	ptCard, lifeCard string
+	// anyLife and anyCards are set when any static, in any layer, reads
+	// a life total, or a hand or the top of a library: what a board
+	// condition can see change when another item only moves life or
+	// cards (#3033).
+	anyLife, anyCards bool
 }
 
 // layerStaticsLocked reads the battlefield and the emblems for static
@@ -260,6 +317,8 @@ func (g *Game) layerStaticsLocked() layerStatics {
 				continue
 			}
 			for _, st := range d.Static {
+				out.anyLife = out.anyLife || st.DependsOnLifeTotal
+				out.anyCards = out.anyCards || st.DependsOnHandSize || st.DependsOnLibraryTop
 				if st.Layer == Layer7PT || st.Layer == Layer1Copy || st.RemovesAbilities {
 					if !out.pt {
 						out.ptCard = whyCardName(z.Cards[i])
@@ -350,6 +409,9 @@ const (
 	// toughness), and another item changes something a static on the
 	// board could read to compute it (#3013).
 	TriggerOrderReasonCharacteristic TriggerOrderReason = "characteristic"
+	// TriggerOrderReasonCondition: an item's intervening "if" reads state
+	// another item in the batch can change (#3033).
+	TriggerOrderReasonCondition TriggerOrderReason = "condition"
 )
 
 // TriggerOrderReasons is every TriggerOrderReason, in a fixed order.
@@ -358,7 +420,7 @@ func TriggerOrderReasons() []TriggerOrderReason {
 		TriggerOrderReasonAlways, TriggerOrderReasonUndescribed, TriggerOrderReasonBoardOpaque,
 		TriggerOrderReasonReactor, TriggerOrderReasonRipple, TriggerOrderReasonElimination,
 		TriggerOrderReasonObjectTie, TriggerOrderReasonRules, TriggerOrderReasonLibrary,
-		TriggerOrderReasonMonarch, TriggerOrderReasonCharacteristic,
+		TriggerOrderReasonMonarch, TriggerOrderReasonCharacteristic, TriggerOrderReasonCondition,
 	}
 }
 
@@ -536,7 +598,7 @@ func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.U
 	if a.rules {
 		return triggerOrderWhy{reason: TriggerOrderReasonRules, card: g.whyCardNameLocked(a.source)}
 	}
-	if a.pumpRules && (b.charReads || b.traitReads) {
+	if a.pumpRules && (b.charReads || b.traitReads || b.boardReads) {
 		return triggerOrderWhy{reason: TriggerOrderReasonRules, card: g.whyCardNameLocked(a.source)}
 	}
 	// b reads a characteristic through the layers, and a changes
@@ -548,6 +610,13 @@ func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.U
 	}
 	if a.monarch && b.monarch {
 		return triggerOrderWhy{reason: TriggerOrderReasonMonarch}
+	}
+	// b's intervening "if" reads what a changes (#3033).
+	if a.monarch && b.monarchRead {
+		return triggerOrderWhy{reason: TriggerOrderReasonCondition, card: g.whyCardNameLocked(b.source)}
+	}
+	if b.boardReads && boardConditionSees(a, statics) {
+		return triggerOrderWhy{reason: TriggerOrderReasonCondition, card: g.whyCardNameLocked(b.source)}
 	}
 	// A tie on one object asks, whatever the two do to it.
 	for _, id := range sortedIDs(a.writes) {
@@ -579,7 +648,9 @@ func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.U
 		// a can take p out of the game: then whatever b does to p, or
 		// to anything p owns or controls, depends on whether b comes
 		// first. Another loss of life is the same either way.
-		if b.life[p]&lifeUp != 0 || b.cards[p] || b.playerReads[p] {
+		// A player who leaves takes their permanents with them (CR
+		// 800.4a), which a board condition sees.
+		if b.life[p]&lifeUp != 0 || b.cards[p] || b.playerReads[p] || b.boardReads {
 			return triggerOrderWhy{reason: TriggerOrderReasonElimination, player: p}
 		}
 		if g.touchesObjectsOfLocked(b, p) {
@@ -587,6 +658,76 @@ func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.U
 		}
 	}
 	return triggerOrderWhy{}
+}
+
+// boardConditionSees reports whether what a does can change a board
+// condition (FootprintCondBoard) another item reads: a permanent it
+// changes or pumps, a permanent or token it puts onto or takes off the
+// battlefield, a counter it puts on one, the monarch or a player's
+// counters (a static could read either without declaring it), and a
+// life total, a hand or a library only when a static on the board
+// declares that it reads one (#3033). The layer engine's contract
+// (layerVersionBump) is that a static's output reads nothing else.
+func boardConditionSees(a *triggerAccess, statics func() layerStatics) bool {
+	if len(a.writes) > 0 || len(a.pumped) > 0 || a.monarch || a.rules || a.pumpRules {
+		return true
+	}
+	for _, k := range []EventKind{EventTokenCreated, EventETB, EventZoneMove, EventLTB, EventCounterPlaced, EventPlayerCounterPlaced} {
+		if a.emits[k] {
+			return true
+		}
+	}
+	if len(a.life) > 0 && statics().anyLife {
+		return true
+	}
+	return len(a.cards) > 0 && statics().anyCards
+}
+
+// addConditionReadLocked adds what an intervening "if" reads, or reports
+// that the check cannot say (#3033). Each condition is argued here:
+//
+//   - A tally that only rises this turn (life gained, life lost, a
+//     creature died) and a designation that is never lost (the city's
+//     blessing) cannot be made false: once it holds, it holds until the
+//     batch has resolved, since a turn cannot end with the batch still on
+//     the stack. So a condition that holds now reads nothing the batch
+//     can change. One that does not hold yet could be made true by
+//     another item, so the step is refused.
+//   - "You cast no spells this turn" can only become false, by a cast,
+//     and no step in the vocabulary casts. The same rule applies: it
+//     reads nothing while it holds, and is refused once it does not.
+//   - The monarch: an item that makes a player the monarch can change it
+//     (monarchRead).
+//   - The source: a read of the item's source object, as a counter on
+//     it is.
+//   - The board: boardReads, which boardConditionSees conflicts with.
+//
+// Caller must hold g.mu.
+func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s FootprintStep) bool {
+	you := t.Controller
+	tally := g.TurnTallyFor(you)
+	atLeast := max(s.N, 1)
+	switch s.Cond {
+	case FootprintCondLifeGained:
+		return tally.LifeGained >= atLeast
+	case FootprintCondLifeLost:
+		return tally.LifeLost >= atLeast
+	case FootprintCondCreatureDied:
+		return tally.CreaturesDied > 0
+	case FootprintCondCitysBlessing:
+		return g.CitysBlessingForEffect(you)
+	case FootprintCondNoSpellsCast:
+		return g.CastTallyFor(you).Total == 0
+	case FootprintCondMonarch:
+		a.monarchRead = true
+	case FootprintCondSource:
+		a.reads[t.SourceCardID] = true
+	case FootprintCondBoard:
+		a.boardReads = true
+	default:
+		return false
+	}
+	return true
 }
 
 // accessLifeDirection is the way an item moves life totals, folded across players.
@@ -947,6 +1088,8 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 	case FootprintMonarch:
 		a.monarch = true
 		a.emit(EventMonarchChanged)
+	case FootprintCondition:
+		return g.addConditionReadLocked(a, t, s)
 	case FootprintPumpSource:
 		// resolveProwess: nothing for a source that left, or left and
 		// came back as a new object (CR 400.7); otherwise a layer-7c

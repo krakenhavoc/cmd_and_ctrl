@@ -203,6 +203,9 @@ const (
 	// TriggerOrderReasonCharacteristic: a characteristic read a static
 	// on the board could change (#3013 sub-PR 2).
 	TriggerOrderReasonCharacteristic = "characteristic"
+	// TriggerOrderReasonCondition: an intervening "if" another item can
+	// change (#3033).
+	TriggerOrderReasonCondition = "condition"
 	// TriggerOrderReasonOther is a reason this list does not hold: a
 	// value the engine added without adding it here.
 	TriggerOrderReasonOther = "other"
@@ -212,7 +215,8 @@ var triggerOrderReasonLabels = []string{
 	TriggerOrderReasonAlways, TriggerOrderReasonUndescribed, TriggerOrderReasonBoardOpaque,
 	TriggerOrderReasonReactor, TriggerOrderReasonRipple, TriggerOrderReasonElimination,
 	TriggerOrderReasonObjectTie, TriggerOrderReasonRules, TriggerOrderReasonLibrary,
-	TriggerOrderReasonMonarch, TriggerOrderReasonCharacteristic, TriggerOrderReasonOther,
+	TriggerOrderReasonMonarch, TriggerOrderReasonCharacteristic, TriggerOrderReasonCondition,
+	TriggerOrderReasonOther,
 }
 
 // TriggerOrderReasonLabels is the reason label's closed set, other

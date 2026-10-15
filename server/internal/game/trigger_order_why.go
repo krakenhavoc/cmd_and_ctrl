@@ -175,6 +175,11 @@ func (g *Game) triggerOrderSentenceLocked(w triggerOrderWhy, chooser uuid.UUID) 
 			return what + " can change a bonus that another trigger counts."
 		}
 		return what + " can change " + possessive(w.card) + " bonus, which another trigger counts."
+	case TriggerOrderReasonCondition:
+		if w.card != "" {
+			return possessive(w.card) + " trigger checks its \"if\" again as it resolves, and another of these triggers can change the answer."
+		}
+		return "One of these triggers checks its \"if\" again as it resolves, and another can change the answer."
 	}
 	return "The order of these triggers can change how they resolve."
 }

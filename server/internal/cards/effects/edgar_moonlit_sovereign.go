@@ -33,12 +33,10 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginEndStep, AllOf(ByYou, rfCreatureBYouCastNoSpellThisTurn),
 				"Edgar, Moonlit Sovereign — put two +1/+1 counters on Edgar",
-				func(g *game.Game, item *game.StackItem) error {
-					if g.CastTallyFor(item.Controller).Total > 0 {
-						return nil
-					}
-					return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 2}.Apply(NewContext(g, item))
-				}),
+				Do(If{
+					Cond: CondNoSpellsCast{},
+					Then: []Applier{CounterOnThis{Kind: game.CounterPlusOne, N: 2}},
+				})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{4}{G}: Put a +1/+1 counter on each creature you control with a +1/+1 counter on it.",

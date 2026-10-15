@@ -53,9 +53,10 @@ func satoruEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *g
 
 // satoruDraw re-checks the condition over the whole batch as it
 // resolves (CR 603.4), then draws.
-func satoruDraw(g *game.Game, item *game.StackItem) error {
-	if item.Trigger == nil || !noneCastWithManaInBatch(g, item.Trigger.Event.Batch, item.Controller) {
-		return nil
-	}
-	return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-}
+var satoruDraw = Do(If{
+	Cond: CondBoard{Name: "none of the creatures that entered was cast with mana", Test: func(ctx *Context) bool {
+		item := ctx.Item
+		return item.Trigger != nil && noneCastWithManaInBatch(ctx.Game, item.Trigger.Event.Batch, item.Controller)
+	}},
+	Then: []Applier{DrawCards{N: 1}},
+})

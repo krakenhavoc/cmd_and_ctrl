@@ -120,22 +120,42 @@ func footprintOfRow(t game.TriggeredAbility) []game.FootprintStep {
 	}
 	out := make([]game.FootprintStep, 0, len(steps))
 	for _, s := range steps {
-		f, ok := s.(footprinter)
+		more, ok := stepFootprints(s)
 		if !ok {
 			return nil
 		}
-		step, ok := f.footprint()
-		if !ok {
-			return nil
+		for _, step := range more {
+			// A step that acts on the chosen target needs a declared
+			// target clause to choose it from.
+			if (step.Kind == game.FootprintExileTargets || step.Kind == game.FootprintTargetPlayerLosesLife) && t.Targets == nil {
+				return nil
+			}
 		}
-		// A step that acts on the chosen target needs a declared
-		// target clause to choose it from.
-		if (step.Kind == game.FootprintExileTargets || step.Kind == game.FootprintTargetPlayerLosesLife) && t.Targets == nil {
-			return nil
-		}
-		out = append(out, step)
+		out = append(out, more...)
 	}
 	return out
+}
+
+// multiFootprinter is a primitive whose footprint is several steps: an
+// If, which declares its condition's read and then its guarded steps
+// (footprint_if.go, #3033).
+type multiFootprinter interface {
+	footprints() ([]game.FootprintStep, bool)
+}
+
+// stepFootprints is one Do step's footprint, or false when it has none.
+func stepFootprints(s Applier) ([]game.FootprintStep, bool) {
+	switch f := s.(type) {
+	case footprinter:
+		step, ok := f.footprint()
+		if !ok {
+			return nil, false
+		}
+		return []game.FootprintStep{step}, true
+	case multiFootprinter:
+		return f.footprints()
+	}
+	return nil, false
 }
 
 // classifyFootprint sets Footprint on every triggered row of a

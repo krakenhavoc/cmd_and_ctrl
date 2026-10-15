@@ -40,17 +40,11 @@ func init() {
 			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b33EndStepAndYouGainedLifeThisTurn(ev, source, g)
 			}, "Crested Sunmare — create a 5/5 white Horse",
-				func(g *game.Game, item *game.StackItem) error {
-					// CR 603.4: re-checked on resolution.
-					if b15LifeGainedThisTurn(g, item.Controller) <= 0 {
-						return nil
-					}
-					return CreateToken{
-						Controller: item.Controller,
-						Template:   TokenCard("5/5 white Horse"),
-						N:          1,
-					}.Apply(NewContext(g, item))
-				}),
+				// CR 603.4: re-checked on resolution.
+				Do(If{
+					Cond: CondLifeGained{},
+					Then: []Applier{CreateToken{Template: TokenCard("5/5 white Horse"), N: 1}},
+				})),
 		},
 	})
 }
