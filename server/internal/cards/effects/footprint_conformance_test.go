@@ -49,6 +49,8 @@ type conformanceCase struct {
 	// setup arranges the board before the probe, under the write lock:
 	// an If's condition made to hold (#3033).
 	setup func(t *testing.T, g *game.Game, me *game.Player, src uuid.UUID)
+	// x is the item's XValue, as XFromCast stamps it (CreateXByXToken).
+	x int
 }
 
 // ifCase is an If case: its condition is made to hold by setup, and its
@@ -123,6 +125,12 @@ var footprintConformanceCases = map[string]conformanceCase{
 	"If:board": ifCase(CondBoard{Name: "a creature", Test: func(ctx *Context) bool {
 		return len(ctx.Game.Battlefield.Cards) > 0
 	}}, EachOpponentLosesLife{N: 2}, nil),
+	// Counted and X amounts (#3033).
+	"CreateXByXToken": {step: CreateXByXToken{Template: game.Card{Name: "Treefolk", TypeLine: "Token Creature — Treefolk"}}, x: 3},
+	"CreateTokensForEach": {step: CreateTokensForEach{
+		Template: TokenCard("1/1 white Rabbit"), Name: "creature",
+		Count: func(ctx *Context) int { return len(ctx.Game.Battlefield.Cards) },
+	}},
 	"If:nested": {step: If{Cond: CondNoSpellsCast{}, Then: []Applier{
 		GainLife{Amount: 1},
 		If{Cond: CondMonarch{}, Then: []Applier{DrawCards{N: 1}}},
@@ -333,6 +341,7 @@ func TestFootprintStepsDoOnlyWhatTheyDeclare(t *testing.T) {
 				victim := pushBattlefieldCreature(g, opp.ID)
 				item.Targets = []game.TargetRef{{Kind: game.TargetCard, ID: victim}}
 			}
+			item.XValue = c.x
 			if c.targetPlayer {
 				item.Targets = []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}
 			}

@@ -3604,6 +3604,11 @@ ability resolves (CR 603.4) is `If{Cond, Then}` inside the `Do`, with a
 named condition from `cards/effects/footprint_if.go`
 (`Do(If{Cond: CondLifeGained{AtLeast: 3}, Then: []Applier{DrawCards{N: 1}}})`);
 keep the trigger-time check in the row's condition as before (#3033).
+"Create an X/X token" with X from the cast is `CreateXByXToken` on a
+row with `XFromCast: true`; "a token for each …" on the battlefield is
+`CreateTokensForEach`; and a subject that is the event's source ("that
+creature" that dealt the damage) is `SubjectIsEventSource: true` with
+`GainLifeEqualToSubject`.
 A hand-written closure doing the same thing keeps its batches asking. The coverage audit
 `TestOneSentenceTriggersDeclareFootprints` reads the oracle fixtures
 and fails on a new card whose one-sentence trigger ("…, put a +1/+1

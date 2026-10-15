@@ -874,7 +874,9 @@ func (g *Game) triggerAccessLocked(t *StackItem) (triggerAccess, bool) {
 	}
 	params := t.Params
 	params.Ability = nil
-	if !reflect.ValueOf(params).IsZero() || len(t.Payload) > 0 || t.XValue != 0 || len(t.Distribution) > 0 {
+	// An X the engine stamped from its own cast record (XFromCast) is a
+	// constant of the item, fixed before the batch exists (#3033).
+	if !reflect.ValueOf(params).IsZero() || len(t.Payload) > 0 || (t.XValue != 0 && !row.XFromCast) || len(t.Distribution) > 0 {
 		return triggerAccess{}, false
 	}
 	a := newTriggerAccess(t.Controller)

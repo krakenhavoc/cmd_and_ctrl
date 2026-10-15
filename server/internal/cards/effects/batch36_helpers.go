@@ -328,13 +328,13 @@ func b36DamageEachOpponentForDevotionToRed(g *game.Game, item *game.StackItem) e
 // Rabbit for each token the controller controls as the trigger
 // resolves — the Rabbits enter together, so none of them counts
 // itself.
-func b36RabbitsPerTokenYouControl(g *game.Game, item *game.StackItem) error {
-	n := b36TokensControlled(g, item.Controller)
-	if n <= 0 {
-		return nil
-	}
-	return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 white Rabbit"), N: n}.Apply(NewContext(g, item))
-}
+var b36RabbitsPerTokenYouControl = Do(CreateTokensForEach{
+	Template: TokenCard("1/1 white Rabbit"),
+	Name:     "token you control",
+	Count: func(ctx *Context) int {
+		return b36TokensControlled(ctx.Game, ctx.Controller())
+	},
+})
 
 // b36DrawAndLoseOne is Tegwyll's dies body: the controller draws a
 // card, then loses 1 life, in printed order.
