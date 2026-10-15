@@ -3981,6 +3981,18 @@ Frenzied Raider) and `ABoastAbilityCost` on a cost query (Dragonkin
 Berserker, with `ActivationCostsLessEach`). `Register` panics when the
 label prints "Boast —" without the bit or the bit without the label.
 
+**Cheaper equip abilities (#3778):** the activation's cost query
+carries the equip bit too, so "Equip abilities you activate cost {1}
+less to activate" is `EquipAbilitiesYouActivateCostLess(1, label)`
+(Bureau Headmaster) and "Equip abilities you activate that target this
+creature cost {2} less to activate" is
+`EquipAbilitiesThatTargetThisCostLess(2, label)` (Helitrooper, Dwarven
+Mauler), both in `Spec.CostModifiers`. The second reads the announced
+target, so it sets `ReadsTargets` and the enumerator and the view price
+each target on its own. Build other equip clauses from
+`AnEquipAbilityCost()`, `YouActivate()` and `ThatTargetThisPermanent()`;
+never match on the label.
+
 **Adding an additional cost to cast (S21 sub-PR 5):** "As an
 additional cost to cast this spell, discard a card" goes in
 `Spec.AdditionalCost`, not in `OnResolve`:
