@@ -33,6 +33,11 @@ type CastFollowUp struct {
 	Player uuid.UUID
 	Source uuid.UUID
 	Spell  uuid.UUID
+
+	// Object is the permission's FollowUpObject: an object the "if you
+	// do" acts on besides the spell (Spellweaver Volute's enchanted
+	// card, #3157). Zero when the permission names none.
+	Object ObjectRef
 }
 
 // CastFollowUpFunc is the body of a follow-up. It runs with g.mu held,

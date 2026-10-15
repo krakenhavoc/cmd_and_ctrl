@@ -727,6 +727,13 @@ type CastPermission struct {
 	// every permission written before #3510.
 	IfNotCast CastFollowUpKey `json:"ifNotCast,omitempty"`
 
+	// FollowUpObject is handed to FollowUp as CastFollowUp.Object: an
+	// object the "if you do" acts on that the cast spell does not name.
+	// Spellweaver Volute's "if you do, exile the enchanted card" is about
+	// the card the copy was made from, decided as its trigger resolved
+	// (#3157). Nil names nothing, which is every permission before it.
+	FollowUpObject *ObjectRef `json:"followUpObject,omitempty"`
+
 	// RequiresNoSpellsCast ends the permission the moment its holder
 	// has cast any spell this turn. It is the "if you haven't cast a
 	// spell this turn, you may cast that card" half of Conduit of

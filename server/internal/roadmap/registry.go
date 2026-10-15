@@ -2008,13 +2008,13 @@ var items = []Item{
 		EngineNotes: "**Shipped in #3156** (ADR 0154's 2026-10-14 amendment). `effects.BecomeAnAuraAndReanimateTarget` is the targeted enters trigger: the CR 603.4 re-check, a layer-4 `AddSubtypesMod(\"Aura\")` pinned to the object (CR 611.2c), ADR 0154's swapped clause, the return under your control and decision 5's attach and delayed sacrifice. A target gone by resolution leaves a plain enchantment (CR 608.2b). `attachmentLegalLocked` judges a swapped Aura attached to nothing illegal, since Necromancy prints no enchant clause. The flash rider is `Spec.FlashWithCleanupSacrifice` (`game/flash_cleanup_sacrifice.go`): step 1b of the cast timing gate, `StackItem.OwnFlashCast` stamped at announce only when no other permission would have opened the window (ruling 2022-12-08), and a `StepCleanup` delayed trigger scheduled as the spell becomes a permanent. The same rider is printed on nine Visions-era Auras and Parapet, none catalogued yet.",
 	},
 	{
-		Slug: "cast-a-copy-of-the-enchanted-card", Name: "Casting a copy of the card an Aura enchants", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Auras like Spellweaver Volute, which enchant an instant card in a graveyard and let you copy it and cast the copy.",
-		Missing:     "Copying a card in a graveyard and casting the copy isn't supported, so Spellweaver Volute isn't available.",
+		Slug: "cast-a-copy-of-the-enchanted-card", Name: "Casting a copy of the card an Aura enchants", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Auras like Spellweaver Volute, which enchant an instant card in a graveyard and let you copy it and cast the copy, then move the Aura to another instant card.",
+		Rules:       []string{"707.12", "608.2h", "701.3b", "704.5m"},
 		Issue:       3157,
 		ADR:         "0154-auras-that-enchant-a-card-in-a-graveyard.md",
-		Waiting:     []string{"Spellweaver Volute"},
-		EngineNotes: "Found by ADR 0154. The graveyard host works (`effects.EnchantCardInGraveyard(\"instant\", Instant())`), and \"copy the enchanted instant card. You may cast the copy without paying its mana cost\" is `effects.CopyAndCast` since #3258 (the copy is made in the graveyard the card is in). Still missing: the trigger on casting a sorcery that reads the enchanted card, and the \"if you do\" continuation that exiles the enchanted card and attaches the Aura to another instant card (the attach itself is `AttachForEffect`, which accepts a card in a graveyard since ADR 0154; #3158 closed the separate CR 303.4f choice for an Aura that enters).",
+		Examples:    []string{"Spellweaver Volute"},
+		EngineNotes: "**Shipped in #3157** (ADR 0154's 2026-10-14 amendment (#3157)). The trigger reads \"the enchanted card\" with `game.EnchantedCardObjectForEffect` (CR 608.2h): the live Aura's host, or the host it had as it last existed, recorded as `PermanentInfo.AttachedObject` only while the link still named that object, so a card exiled before the Aura left reads as nothing. `effects.CopyAndCast` makes the copy (`LastKnown` copies a card that has left the graveyard since) and carries the original as `FollowUpObject` onto the permission, which hands it to the follow-up as `CastFollowUp.Object`. The \"if you do\" asks for the new host first (`game.GraveyardCardsAuraCanEnchantForEffect`, the CR 701.3b test without targeting; one candidate is forced), attaches, then exiles the original, so the Aura is never attached to nothing while the question is open. With no other instant card the Aura falls off (CR 704.5m).",
 	},
 	{
 		Slug: "aura-chooses-its-host-as-it-enters", Name: "An Aura put onto the battlefield chooses what it enchants", Kind: KindSeam, Status: StatusImplemented,

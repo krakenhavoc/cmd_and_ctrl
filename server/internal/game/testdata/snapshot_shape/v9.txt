@@ -1026,6 +1026,9 @@ lastKnownCounters{}{}	number:int
 lastKnownPermanents	map:array
 lastKnownPermanents{}	array
 lastKnownPermanents{}[]	object
+lastKnownPermanents{}[].attachedObject	object
+lastKnownPermanents{}[].attachedObject.epoch	number:int
+lastKnownPermanents{}[].attachedObject.id	custom(uuid.UUID)
 lastKnownPermanents{}[].attachedTo	object
 lastKnownPermanents{}[].attachedTo.ID	custom(uuid.UUID)
 lastKnownPermanents{}[].attachedTo.Kind	string
@@ -3561,6 +3564,9 @@ seats[].castPermissions[].filter.notOwnedByHolder	bool
 seats[].castPermissions[].filter.sorceryOnly	bool
 seats[].castPermissions[].filter.withCounter	string
 seats[].castPermissions[].followUp	string
+seats[].castPermissions[].followUpObject	object
+seats[].castPermissions[].followUpObject.epoch	number:int
+seats[].castPermissions[].followUpObject.id	custom(uuid.UUID)
 seats[].castPermissions[].grantsHaste	bool
 seats[].castPermissions[].ifNotCast	string
 seats[].castPermissions[].label	string

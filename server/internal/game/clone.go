@@ -779,6 +779,10 @@ func cloneCastPermissions(in []CastPermission) []CastPermission {
 		if len(in[i].PerTypeUsed) > 0 {
 			out[i].PerTypeUsed = append([]string(nil), in[i].PerTypeUsed...)
 		}
+		if in[i].FollowUpObject != nil {
+			ref := *in[i].FollowUpObject
+			out[i].FollowUpObject = &ref
+		}
 	}
 	return out
 }
