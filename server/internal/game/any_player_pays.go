@@ -104,6 +104,11 @@ type AnyPlayerOffer struct {
 	Opponents  bool        `json:"opponents,omitempty"`
 	// HelpsController is AnyPlayerPays.HelpsController.
 	HelpsController bool `json:"helpsController,omitempty"`
+	// EachLife is the life one object costs on a per-object offer
+	// (ADR 0187 §2, AnyPlayerPaysForEach): the leg is a choose_cards
+	// whose answer is the objects the chooser will pay that much for.
+	// Zero on every other offer.
+	EachLife int `json:"eachLife,omitempty"`
 }
 
 func cloneAnyPlayerOffer(o *AnyPlayerOffer) *AnyPlayerOffer {

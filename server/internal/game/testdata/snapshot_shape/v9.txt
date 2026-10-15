@@ -2334,6 +2334,7 @@ pendingChoices[].anyPlayerOffer	object
 pendingChoices[].anyPlayerOffer.controller	custom(uuid.UUID)
 pendingChoices[].anyPlayerOffer.declined	array
 pendingChoices[].anyPlayerOffer.declined[]	custom(uuid.UUID)
+pendingChoices[].anyPlayerOffer.eachLife	number:int
 pendingChoices[].anyPlayerOffer.helpsController	bool
 pendingChoices[].anyPlayerOffer.opponents	bool
 pendingChoices[].anyPlayerOffer.order	array

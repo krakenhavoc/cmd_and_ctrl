@@ -210,3 +210,54 @@ func anyPlayerMaySacrificeALandToTuckThis(name string) game.TriggeredAbility {
 			}.Apply(NewContext(g, item))
 		})
 }
+
+// AnyPlayerPaysForEach is "For each <object>, <effect> unless any
+// player pays <N life>" (ADR 0187 §2, #3572: Cleansing). It is ONE
+// offer for the whole set, not a prompt per object: every player in
+// APNAP order from the active player chooses which objects they will pay
+// for, knowing what the earlier players chose, then every payment is
+// made, one life payment per object chosen. An object anyone paid for is
+// saved; OnUnsaved gets the rest (game.QueueAnyPlayerPaysForEachForEffect).
+//
+// Unlike AnyPlayerPays the first payer does not end it: two players may
+// pay for the same object, and each pays. Bound to the resolving stack
+// item the way AnyPlayerPays is, so OnUnsaved reads the item's targets
+// and X when it finally runs.
+type AnyPlayerPaysForEach struct {
+	// Objects are the battlefield objects, worked out as the effect
+	// is applied (CR 608.2h).
+	Objects func(ctx *Context) []uuid.UUID
+	// EachLife is the life one object costs.
+	EachLife int
+	// Noun names one object ("land").
+	Noun string
+	// Question is the prompt header each player sees. Optional.
+	Question string
+	// OnUnsaved is the effect on the objects nobody paid for. It is
+	// handed only objects that are still the same objects.
+	OnUnsaved func(ctx *Context, unsaved []uuid.UUID) error
+}
+
+func (a AnyPlayerPaysForEach) Apply(ctx *Context) error {
+	item := ctx.Item
+	var objects []uuid.UUID
+	if a.Objects != nil {
+		objects = a.Objects(ctx)
+	}
+	var onUnsaved func(*game.Game, []uuid.UUID) error
+	if a.OnUnsaved != nil {
+		unsaved := a.OnUnsaved
+		onUnsaved = func(g *game.Game, ids []uuid.UUID) error {
+			return unsaved(NewContext(g, item), ids)
+		}
+	}
+	return ctx.Game.QueueAnyPlayerPaysForEachForEffect(game.AnyPlayerPaysForEach{
+		Source:     ctx.Source(),
+		Controller: ctx.Controller(),
+		Objects:    objects,
+		EachLife:   a.EachLife,
+		Noun:       a.Noun,
+		Question:   a.Question,
+		OnUnsaved:  onUnsaved,
+	})
+}

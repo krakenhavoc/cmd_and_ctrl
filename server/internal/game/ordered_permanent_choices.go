@@ -119,7 +119,18 @@ func (g *Game) collectPermanentChoicesLocked(legs []permanentChoiceLeg, receipts
 	}
 	p.Cards = cards
 	p.permanentEpochs = leg.epochs
-	p.earlierPermanentChoices = copyPermanentChoices([]SeatCards(g.permanentChoicePicksLocked(receipts)))
+	earlier := g.permanentChoicePicksLocked(receipts)
+	p.earlierPermanentChoices = copyPermanentChoices([]SeatCards(earlier))
+	hi := p.Max
+	if hi <= 0 || hi > len(cards) {
+		hi = len(cards)
+	}
+	if p.anyPlayerOffer != nil {
+		p.anyPlayerOffer = offerWithDeclined(p.anyPlayerOffer, p.Chooser, earlier)
+	}
+	if p.suggestUnchosenOwn {
+		p.suggested = g.suggestUnchosenOwnLocked(p.Chooser, cards, hi, earlier)
+	}
 	// Each continuation owns a new receipt slice. The remaining legs and
 	// epoch maps are immutable, so clones/undo may share the closure safely.
 	seat := p.Chooser
@@ -128,10 +139,6 @@ func (g *Game) collectPermanentChoicesLocked(legs []permanentChoiceLeg, receipts
 		copy(next, receipts)
 		next = append(next, permanentChoiceReceipt{seat: seat, cards: append([]uuid.UUID(nil), picked...), epochs: leg.epochs})
 		return g.collectPermanentChoicesLocked(legs[1:], next, then)
-	}
-	hi := p.Max
-	if hi <= 0 || hi > len(cards) {
-		hi = len(cards)
 	}
 	lo := max(0, min(p.Min, hi))
 	if lo == len(cards) && hi == len(cards) {
@@ -146,4 +153,55 @@ func (g *Game) collectPermanentChoicesLocked(legs []permanentChoiceLeg, receipts
 	}
 	g.QueueChooseCardsForEffect(p)
 	return nil
+}
+
+// offerWithDeclined is the any-player offer one leg carries (ADR 0187
+// §2): the template's copy whose Declined lists, in Order, the seats
+// before `chooser` that chose nothing. That is every seat the template
+// already lists (those that got no leg at all, since they could pay for
+// nothing) and every earlier receipt that picked nothing.
+func offerWithDeclined(template *AnyPlayerOffer, chooser uuid.UUID, earlier PromptedPicks) *AnyPlayerOffer {
+	declined := make(map[uuid.UUID]bool, len(template.Declined)+len(earlier))
+	for _, id := range template.Declined {
+		declined[id] = true
+	}
+	for _, e := range earlier {
+		if len(e.Cards) == 0 {
+			declined[e.Seat] = true
+		}
+	}
+	out := cloneAnyPlayerOffer(template)
+	out.Declined = nil
+	for _, id := range template.Order {
+		if id == chooser {
+			break
+		}
+		if declined[id] {
+			out.Declined = append(out.Declined, id)
+		}
+	}
+	return out
+}
+
+// suggestUnchosenOwnLocked is the chooser's own candidates that no
+// earlier seat chose, in candidate order, cut to `limit` (ADR 0187 §2,
+// owner decision 6). "Own" is read off the permanent's controller now.
+// Caller must hold g.mu.
+func (g *Game) suggestUnchosenOwnLocked(chooser uuid.UUID, cards []uuid.UUID, limit int, earlier PromptedPicks) []uuid.UUID {
+	taken := make(map[uuid.UUID]bool)
+	for _, e := range earlier {
+		for _, id := range e.Cards {
+			taken[id] = true
+		}
+	}
+	var out []uuid.UUID
+	for _, id := range cards {
+		if len(out) >= limit {
+			break
+		}
+		if c := findBattlefieldCard(g, id); c != nil && c.Controller == chooser && !taken[id] {
+			out = append(out, id)
+		}
+	}
+	return out
 }

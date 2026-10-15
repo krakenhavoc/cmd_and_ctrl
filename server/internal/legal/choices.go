@@ -848,10 +848,23 @@ func (e *enumerator) choiceMoves() bool {
 			// the card's rule — and is deliberately left unmarked
 			// rather than given a synthesised fallback the resolver
 			// would refuse.
+			// ADR 0187 §2: one leg of a per-object any-player offer
+			// (Cleansing). The answer is the objects the chooser pays
+			// life for; its moves are priced in life and named for the
+			// card, and the suggested set is always reachable.
+			offerLeg := c.Kind == game.PendingChoiceChooseCards && c.AnyPlayerOffer != nil && c.AnyPlayerOffer.EachLife > 0
+			offerName := reason
+			if offerLeg {
+				offerName = cardNameFor(g, c.Source, e.seat)
+			}
 			if c.ChooseMin == 0 {
 				p := base()
 				p.CardIDs = []string{}
-				e.addAlwaysLegalChoice(c, reason+": choose nothing", p)
+				if offerLeg {
+					e.addAlwaysLegalChoice(c, offerName+": pay for none", p)
+				} else {
+					e.addAlwaysLegalChoice(c, reason+": choose nothing", p)
+				}
 			}
 			// filteredCombinations, not combinations() plus a filter:
 			// it spreads the budget across set sizes, so a "choose one
@@ -917,6 +930,9 @@ func (e *enumerator) choiceMoves() bool {
 				sets = withSuggestedFirst(g, c, sets)
 				verb = ": proliferate"
 			}
+			if offerLeg {
+				sets = withSuggestedFirst(g, c, sets)
+			}
 			if c.Kind == game.PendingChoiceEntryChoosePermanents {
 				// ADR 0170: Phylactery Lich's artifact, Sin's any
 				// number of permanents. The declaration's suggested
@@ -928,6 +944,11 @@ func (e *enumerator) choiceMoves() bool {
 			for _, set := range sets {
 				p := base()
 				p.CardIDs = idStrings(set)
+				if offerLeg {
+					e.addChoiceCost(c, offerLegLabel(g, c, set, offerName, e.seat), p,
+						moveCost(len(set)*c.AnyPlayerOffer.EachLife, 0))
+					continue
+				}
 				label := reason + verb
 				for _, id := range set {
 					if playerByID(g, id) != nil {
@@ -2524,6 +2545,10 @@ func (e *enumerator) cardSetPickPool(c *game.PendingChoice) []uuid.UUID {
 		// ADR 0114 §7: the seat's own creatures, best Ring-bearer
 		// first — the opposite end from own_permanents'.
 		return e.bestRingBearerFirst(c.ChooseCards)
+	case game.PendingChoiceChooseCards:
+		if c.AnyPlayerOffer != nil && c.AnyPlayerOffer.EachLife > 0 {
+			return e.offerLegPool(c)
+		}
 	case game.PendingChoiceProliferate, game.PendingChoiceEntryChoosePermanents:
 		// #2525: permanents AND seats, the engine's suggestion first so
 		// its members survive MaxExpansionPerSource (and withSuggestedFirst
@@ -2532,6 +2557,62 @@ func (e *enumerator) cardSetPickPool(c *game.PendingChoice) []uuid.UUID {
 		return proliferatePool(c)
 	}
 	return c.ChooseCards
+}
+
+// offerLegPool is a per-object any-player offer leg's candidates in the
+// order the expansion budget should be spent on (ADR 0187 §7): the
+// chooser's own objects that no earlier seat chose, then their own that
+// someone already did, then everyone else's. Within a group the most
+// valuable come first (OrderTargets), so the cap keeps the objects worth
+// paying for.
+func (e *enumerator) offerLegPool(c *game.PendingChoice) []uuid.UUID {
+	chosen := make(map[uuid.UUID]bool)
+	for _, earlier := range c.EarlierPermanentChoicesForEffect() {
+		for _, id := range earlier.Cards {
+			chosen[id] = true
+		}
+	}
+	var fresh, taken, others []uuid.UUID
+	for _, id := range c.ChooseCards {
+		card := findBattlefield(e.g, id)
+		switch {
+		case card == nil || card.Controller != e.seat:
+			others = append(others, id)
+		case chosen[id]:
+			taken = append(taken, id)
+		default:
+			fresh = append(fresh, id)
+		}
+	}
+	out := make([]uuid.UUID, 0, len(c.ChooseCards))
+	for _, group := range [][]uuid.UUID{fresh, taken, others} {
+		out = append(out, e.mostValuableFirst(group)...)
+	}
+	return out
+}
+
+// offerLegLabel names one answer of a per-object any-player offer leg:
+// "Cleansing: pay 3 life for Forest, Island, Plains". A land an earlier
+// seat already pays for is called out, because paying for it too is
+// paying twice for nothing: "(Alice also pays for Forest)".
+func offerLegLabel(g *game.Game, c *game.PendingChoice, set []uuid.UUID, name string, seat uuid.UUID) string {
+	names := make([]string, 0, len(set))
+	for _, id := range set {
+		names = append(names, cardNameFor(g, id, seat))
+	}
+	label := name + ": pay " + strconv.Itoa(len(set)*c.AnyPlayerOffer.EachLife) + " life for " + strings.Join(names, ", ")
+	for _, earlier := range c.EarlierPermanentChoicesForEffect() {
+		var also []string
+		for _, id := range set {
+			if slices.Contains(earlier.Cards, id) {
+				also = append(also, cardNameFor(g, id, seat))
+			}
+		}
+		if len(also) > 0 {
+			label += " (" + choiceSeatName(g, earlier.Seat) + " also pays for " + strings.Join(also, ", ") + ")"
+		}
+	}
+	return label
 }
 
 // proliferatePool is a proliferate prompt's candidates, permanents then
