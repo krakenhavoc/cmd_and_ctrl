@@ -108,7 +108,7 @@ func (p *Policy) notePlan(st *state, moves []legal.Move, plan []aiseat.PlanMembe
 // answered as before. decline is the answer, and why the reason.
 func (p *Policy) taxAgainstPlan(st *state, ch *protocol.PendingChoiceView) (decline bool, why string, ok bool) {
 	if !p.cfg.PlanWeighTaxes || ch == nil || ch.Kind != choicePayUnless || ch.Chooser != st.me ||
-		ch.PayCost == "" || ch.PayCards != nil || ch.PayEnergy != nil || ch.PayLife != nil || ch.PayDamage != nil || ch.PayNothing || ch.TapCost != nil || ch.PhyrexianSymbols > 0 {
+		ch.PayCost == "" || ch.PayCards != nil || len(ch.PayEither) > 0 || ch.PayEnergy != nil || ch.PayLife != nil || ch.PayDamage != nil || ch.PayNothing || ch.TapCost != nil || ch.PhyrexianSymbols > 0 {
 		return false, "", false
 	}
 	var (

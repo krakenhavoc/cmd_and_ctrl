@@ -3756,6 +3756,11 @@ func (g *Game) queuePayUnlessLocked(
 	var err error
 	if extra.action == nil {
 		parsed, err = ParseCost(cost)
+	} else if extra.action.Kind == PayActionEither && !validEither(extra.action) {
+		// ADR 0187 §5: an either payment needs two or more branches,
+		// none of them an either. A programming error, surfaced once; the
+		// consequence still runs so the card does something.
+		err = ErrInvalidParam
 	}
 	if err != nil {
 		g.EmitEvent(Event{
@@ -4059,7 +4064,7 @@ func (g *Game) ResolvePayUnless(choiceID, chooserID uuid.UUID, apply bool) error
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 func (g *Game) ResolvePayUnlessWithTaps(choiceID, chooserID uuid.UUID, apply bool, tapIDs []uuid.UUID) error {
-	return g.resolvePayUnless(choiceID, chooserID, apply, tapIDs, nil, 0)
+	return g.resolvePayUnless(choiceID, chooserID, apply, tapIDs, nil, 0, nil)
 }
 
 // ResolvePayUnlessWithLife is ResolvePayUnlessWithTaps with the number
@@ -4077,7 +4082,7 @@ func (g *Game) ResolvePayUnlessWithTaps(choiceID, chooserID uuid.UUID, apply boo
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 func (g *Game) ResolvePayUnlessWithLife(choiceID, chooserID uuid.UUID, apply bool, tapIDs []uuid.UUID, phyrexianLife int) error {
-	return g.resolvePayUnless(choiceID, chooserID, apply, tapIDs, nil, phyrexianLife)
+	return g.resolvePayUnless(choiceID, chooserID, apply, tapIDs, nil, phyrexianLife, nil)
 }
 
 // ResolvePayUnlessWithCards is ResolvePayUnless for a prompt whose
@@ -4095,12 +4100,31 @@ func (g *Game) ResolvePayUnlessWithLife(choiceID, chooserID uuid.UUID, apply boo
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 func (g *Game) ResolvePayUnlessWithCards(choiceID, chooserID uuid.UUID, apply bool, cardIDs []uuid.UUID) error {
-	return g.resolvePayUnless(choiceID, chooserID, apply, nil, cardIDs, 0)
+	return g.resolvePayUnless(choiceID, chooserID, apply, nil, cardIDs, 0, nil)
+}
+
+// ResolvePayUnlessWithOption is ResolvePayUnlessWithCards for an either
+// payment (ADR 0187 §5, PayActionEither): `option` is the index into the
+// payment's branches the chooser takes, and `cardIDs` name the cards that
+// branch pays with when it is a card pick ("sacrifice two lands"). A
+// branch that names nothing ("take 5 damage") sends no cards.
+//
+// Every malformed answer is REFUSED with the prompt left in place, the
+// posture of the other pay-unless resolvers: an `option` out of range,
+// an `option` on a prompt that is not an either payment or on a "Don't
+// pay", `apply: true` on an either payment with no `option` (no branch
+// is ever guessed), and cards that are not exactly the branch's payment.
+// A branch the chooser cannot pay at all is a decline, as an unfundable
+// mana "yes" is (CR 118.3).
+//
+// Caller must NOT hold g.mu — this method takes the write lock.
+func (g *Game) ResolvePayUnlessWithOption(choiceID, chooserID uuid.UUID, apply bool, option *int, cardIDs []uuid.UUID) error {
+	return g.resolvePayUnless(choiceID, chooserID, apply, nil, cardIDs, 0, option)
 }
 
 // resolvePayUnless is the one body behind the three pay-unless
 // resolvers.
-func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapIDs, cardIDs []uuid.UUID, phyrexianLife int) error {
+func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapIDs, cardIDs []uuid.UUID, phyrexianLife int, option *int) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -4140,7 +4164,29 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 	if frame != nil {
 		action = frame.action
 	}
-	if len(cardIDs) > 0 && (!apply || action == nil || action.NamesNothing()) {
+	// ADR 0187 §5: an either payment is answered with the branch it
+	// takes (`pay_option`), and the rest of the validation is that
+	// branch's, as its own payment. `pays` is the payment this answer
+	// makes: the chosen branch, or the prompt's own payment.
+	pays := action
+	switch {
+	case action != nil && action.Kind == PayActionEither:
+		if apply {
+			// No branch is ever guessed, and none past the list.
+			if option == nil {
+				return ErrInvalidParam
+			}
+			if pays = EitherBranch(action, *option); pays == nil {
+				return ErrInvalidParam
+			}
+		} else if option != nil {
+			return ErrInvalidParam
+		}
+	case option != nil:
+		// A `pay_option` on anything but an either payment.
+		return ErrInvalidParam
+	}
+	if len(cardIDs) > 0 && (!apply || pays == nil || pays.NamesNothing() || pays.Kind == PayActionEither) {
 		return ErrInvalidParam
 	}
 	// ADR 0131 §2: the life half of a mana payment, announced beside the
@@ -4163,20 +4209,24 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 		}
 	}
 	payable := false
-	if apply && action.NamesNothing() {
+	if apply && pays.NamesNothing() {
 		// ADR 0129 §3: an energy payment names nothing. "Pay" is a
 		// payment exactly when the energy is there (CR 118.3). ADR
 		// 0150 §3: so do life (CR 119.4, 119.8), damage and nothing.
-		payable = g.payActionPayableLocked(chooserID, action)
-	} else if apply && action != nil {
-		if len(cardIDs) > 0 || len(g.payActionOptionsLocked(chooserID, action)) >= action.Count {
-			if err := g.validatePayActionLocked(chooserID, action, cardIDs); err != nil {
+		payable = g.payActionPayableLocked(chooserID, pays)
+	} else if apply && pays != nil {
+		if len(cardIDs) > 0 || len(g.payActionOptionsLocked(chooserID, pays)) >= pays.Count {
+			if err := g.validatePayActionLocked(chooserID, pays, cardIDs); err != nil {
 				return err
 			}
 			payable = true
 		}
 	}
-	g.answerPayUnlessLocked(idx, choice, chooserID, apply, tapIDs, cardIDs, phyrexianLife, payable, false)
+	var branch *PayAction
+	if apply && action != nil && action.Kind == PayActionEither {
+		branch = pays
+	}
+	g.answerPayUnlessLocked(idx, choice, chooserID, apply, tapIDs, cardIDs, phyrexianLife, payable, false, branch)
 	return nil
 }
 
@@ -4188,11 +4238,16 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 // the prompt out of the queue without counting it as a player decision.
 // The branch runs as the answered prompt's branch, so a prompt it
 // queues is keyed from this one's (§2). Caller must hold g.mu.
-func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID uuid.UUID, apply bool, tapIDs, cardIDs []uuid.UUID, phyrexianLife int, payable, auto bool) {
+func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID uuid.UUID, apply bool, tapIDs, cardIDs []uuid.UUID, phyrexianLife int, payable, auto bool, branch *PayAction) {
 	frame := choice.payUnlessResume
 	var action *PayAction
 	if frame != nil {
 		action = frame.action
+	}
+	// ADR 0187 §5: an either payment pays the branch the answer named
+	// (`branch`); the automatic answer names none, and is never payable.
+	if branch != nil {
+		action = branch
 	}
 	g.answerChoiceLocked(idx, auto)
 	if frame == nil {
@@ -4202,7 +4257,7 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 		g.runStateChecksLocked()
 		return
 	}
-	branch := func(fn func(g *Game) error) {
+	runBranch := func(fn func(g *Game) error) {
 		g.runPromptBranchLocked(choice.AutoAnswerKey, func() {
 			g.runPayUnlessBranchLocked(choice, chooserID, fn)
 		})
@@ -4212,12 +4267,12 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 		// discard is the payment, and the "yes" branch runs once it has
 		// been made. An unpayable "yes" is the decline.
 		if !payable {
-			branch(frame.onDecline)
+			runBranch(frame.onDecline)
 			g.runStateChecksLocked()
 			return
 		}
 		if err := g.payActionLocked(chooserID, choice.Source, action, cardIDs, func(g *Game) error {
-			branch(frame.onPay)
+			runBranch(frame.onPay)
 			return nil
 		}); err != nil {
 			g.EmitEvent(Event{Kind: EventEffectError, Actor: chooserID, Source: choice.Source, ErrorMsg: err.Error()})
@@ -4243,7 +4298,7 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 	if paid {
 		consequence = frame.onPay
 	}
-	branch(consequence)
+	runBranch(consequence)
 	g.runStateChecksLocked()
 }
 

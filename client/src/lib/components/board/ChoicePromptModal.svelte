@@ -101,6 +101,14 @@
   import ManaSymbolPicker from "./ManaSymbolPicker.svelte";
   import { payUnlessAnswer, waterbendLimit } from "../../waterbend";
   import {
+    branchLabel,
+    branchNamesCards,
+    branchPicker,
+    branchReady,
+    branchWhyNot,
+    defaultPickerBranch,
+  } from "../../payEither";
+  import {
     energyShortBy,
     payAmountAnswerable,
     payAmountCanSubmit,
@@ -835,13 +843,31 @@
       payTapsFor = id;
       payTaps = [];
       payCardPicks = [];
+      eitherOpen = null;
     }
   });
   // ADR 0108 §5: a pay-unless whose payment discards or sacrifices
   // ("Echo—Discard a card", "Cumulative upkeep—Sacrifice a land")
   // ships pay_cards; the "Pay" answer names exactly `count` of them.
   let payCardPicks = $state<string[]>([]);
-  const payCards = $derived(isPayUnless ? (active?.pay_cards ?? null) : null);
+  // ADR 0187 §5: an either payment ("sacrifice two lands or take 5
+  // damage") draws one button per way to pay. A branch that names cards
+  // shows the same picker a plain card payment does, for the one branch
+  // that is open: the player's last click, else the first they can pay.
+  const payEither = $derived(isPayUnless ? (active?.pay_either ?? null) : null);
+  let eitherOpen = $state<number | null>(null);
+  const eitherPicker = $derived.by((): number => {
+    if (!payEither) return -1;
+    const open = eitherOpen !== null ? payEither[eitherOpen] : undefined;
+    if (open && branchNamesCards(open)) return eitherOpen as number;
+    return defaultPickerBranch(payEither);
+  });
+  const payCards = $derived(
+    isPayUnless
+      ? (active?.pay_cards ??
+          (payEither && eitherPicker >= 0 ? branchPicker(payEither[eitherPicker]) : null))
+      : null,
+  );
   const payCardOptions = $derived.by((): CardView[] => {
     if (!payCards) return [];
     return payCardsOptions(
@@ -855,7 +881,10 @@
   const viewerEnergy = $derived(snap.seats?.find((s) => s.id === viewerID)?.energy ?? 0);
   const viewerLife = $derived(snap.seats?.find((s) => s.id === viewerID)?.life ?? 0);
   const payBlocked = $derived(
-    (payCards !== null && !payCardsReady(payCards, payCardPicks)) ||
+    // An either payment is answered by a branch's own button, never by
+    // a bare "Pay" (answerEither).
+    payEither !== null ||
+      (payCards !== null && !payCardsReady(payCards, payCardPicks)) ||
       (isPayUnless && energyShortBy(active, viewerEnergy) > 0) ||
       (isPayUnless &&
         ((active?.life_cost ?? 0) > viewerLife || active?.life_cost_unpayable === true)),
@@ -1343,6 +1372,24 @@
     return true;
   }
 
+  // answerEither presses one branch of an either payment (ADR 0187 §5).
+  // A branch that names cards first opens its picker; once the picks add
+  // up, pressing it again answers { apply: true, pay_option, card_ids },
+  // and a branch that names nothing answers { apply: true, pay_option }
+  // at once.
+  function answerEither(option: number): void {
+    if (!active || !viewerID || !payEither) return;
+    const b = payEither[option];
+    if (!b) return;
+    if (branchNamesCards(b) && eitherPicker !== option) {
+      eitherOpen = option;
+      payCardPicks = [];
+      return;
+    }
+    if (!branchReady(b, payCardPicks)) return;
+    answer(payUnlessAnswer(active, true, [], branchNamesCards(b) ? payCardPicks : [], 0, option));
+  }
+
   function answerOptional(apply: boolean, phyrexianLife = 0): void {
     if (!active || !viewerID) return;
     if (!rememberAnswer(apply, phyrexianLife)) return;
@@ -1726,6 +1773,35 @@
         width: 560,
         primary: confirmAction("Choose", answerModes, { disabled: !canConfirmModes }),
         secondary: [],
+      };
+    }
+    if (isPayUnless && payEither) {
+      // ADR 0187 §5: one button for each way to pay, then "Don't pay".
+      // No Y: with several ways to pay, "yes" names none of them.
+      const ways: DockAction[] = payEither.map((b, k) => ({
+        id: `pay-option-${k}`,
+        label: branchLabel(b),
+        title: branchWhyNot(b),
+        disabled:
+          !b.payable ||
+          (branchNamesCards(b) && eitherPicker === k && !branchReady(b, payCardPicks)),
+        onPress: () => answerEither(k),
+      }));
+      return {
+        label: c.reason || `${triggerSourceName(c.source)} — ${c.pay_cost ?? "pay"}?`,
+        src: "pay unless",
+        width: 560,
+        primary: ways[0],
+        secondary: [
+          ...ways.slice(1),
+          {
+            id: "no",
+            label: "Don't pay",
+            keyShortcuts: "N",
+            cap: "N",
+            onPress: () => answerOptional(false),
+          },
+        ],
       };
     }
     if (isPayUnless) {
@@ -2328,9 +2404,8 @@
           </p>
         {/if}
         <p class="prompt-hint">
-          Pay — {active.pay_cost ?? "the cost"} — or don't and let {triggerSourceName(
-            active.source,
-          )} do its thing.
+          {payEither ? "Choose how to pay" : "Pay"} — {active.pay_cost ?? "the cost"} — or don't and let
+          {triggerSourceName(active.source)} do its thing.
         </p>
         {#if !canPayCards(payCards)}
           <p class="prompt-hint">You don't have enough to pay this.</p>
@@ -2357,6 +2432,23 @@
           </ul>
           <p class="prompt-hint sub">{payCardPicks.length} / {payCards.count} chosen</p>
         {/if}
+      {:else if payEither}
+        <!-- ADR 0187 §5: an either payment with no card branch open
+             (every way to pay names nothing, or none that names cards
+             can be paid): the buttons say what each does. -->
+        {#if active.any_player_offer}
+          <p class="prompt-hint">
+            {anyPlayerWhose(active, snap.seats ?? [], triggerSourceName(active.source))}. {anyPlayerOfferLine(
+              active,
+              snap.seats ?? [],
+            )}
+          </p>
+        {/if}
+        <p class="prompt-hint">
+          Choose how to pay — {active.pay_cost ?? "the cost"} — or don't and let {triggerSourceName(
+            active.source,
+          )} do its thing.
+        </p>
       {:else}
         <!-- A waterbend tap list without card picks (#1311). -->
         <p class="prompt-hint">

@@ -131,6 +131,7 @@ func cloneAnyPlayerOffer(o *AnyPlayerOffer) *AnyPlayerOffer {
 func (g *Game) QueueAnyPlayerPaysForEffect(p AnyPlayerPays) error {
 	if p.Action != nil {
 		a := *p.Action
+		a.Either = append([]PayAction(nil), a.Either...)
 		p.Action = &a
 	} else if _, err := ParseCost(p.Cost); err != nil && p.PerPayer == nil {
 		// (A PerPayer offer builds each link's payment as it is

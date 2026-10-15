@@ -600,6 +600,16 @@ type PendingChoiceView struct {
 	PayDamage  *int `json:"pay_damage,omitempty"`
 	PayNothing bool `json:"pay_nothing,omitempty"`
 
+	// PayEither is an either payment (ADR 0187 §5): one offer with two
+	// or more ways to pay, Worms of the Earth's "sacrifice two lands or
+	// have it deal 5 damage to you". Each entry is one branch; the
+	// answer names the branch it takes as `pay_option`, its index here,
+	// beside `apply: true` and, for a branch that names cards,
+	// `card_ids`. PayCost carries the card's words for the whole offer.
+	// At most one of PayCards / PayEnergy / PayLife / PayDamage /
+	// PayNothing / PayEither is present.
+	PayEither []PayOptionView `json:"pay_either,omitempty"`
+
 	// PayAmount populates the "pay_amount" kind (ADR 0129 §3): "you may
 	// pay any amount of {E}". The chooser answers `{amount: n}` with
 	// min <= n <= max. Absent for other kinds.
@@ -1717,6 +1727,28 @@ type PayCardsView struct {
 	// graveyard's are public. Present-and-empty when there is nothing
 	// to pay with.
 	Options []string `json:"options"`
+}
+
+// PayOptionView is one branch of an either payment (ADR 0187 §5).
+type PayOptionView struct {
+	// Action is the branch's kind: "sacrifice", "discard",
+	// "exile_graveyard", "life", "damage", "energy" or "nothing".
+	Action string `json:"action"`
+	// Count is how many cards one payment names, or the amount of life,
+	// damage or energy.
+	Count int `json:"count,omitempty"`
+	// Words names the branch as a verb phrase: "sacrifice two lands",
+	// "take 5 damage".
+	Words string `json:"words"`
+	// Payable is whether the chooser can make this branch right now
+	// (CR 118.3): enough cards to name, enough life, or a damage branch,
+	// which is always payable. An unpayable branch is shown greyed.
+	Payable bool `json:"payable"`
+	// Options are the instance IDs that could pay a branch that names
+	// cards, as PayCardsView.Options are: a discard's go to the chooser
+	// only. Absent for a branch that names nothing, and when there are
+	// none.
+	Options []string `json:"options,omitempty"`
 }
 
 // PayAmountView is the wire shape of a "pay_amount" prompt (ADR 0129
@@ -8483,7 +8515,22 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// ADR 0108 §5: the discard or sacrifice half of a pay-unless;
 		// ADR 0129 §3: or its energy.
 		// ADR 0150 §3: or its life, its damage, or nothing at all.
-		if a := c.PayAction(); a != nil && a.NamesNothing() {
+		if a := c.PayAction(); a != nil && a.Kind == game.PayActionEither {
+			// ADR 0187 §5: one entry per branch, in the card's order.
+			for i := range a.Either {
+				b := a.Either[i]
+				opt := PayOptionView{
+					Action:  string(b.Kind),
+					Count:   b.Count,
+					Words:   game.PayActionPhrase(b),
+					Payable: g.PayActionCanPayForEffect(c.Chooser, &b),
+				}
+				if !b.NamesNothing() {
+					opt.Options = cardIDStrings(g.PayActionOptionsForEffect(c.Chooser, &b))
+				}
+				v.PayEither = append(v.PayEither, opt)
+			}
+		} else if a != nil && a.NamesNothing() {
 			n := a.Count
 			switch a.Kind {
 			case game.PayActionEnergy:
@@ -9992,6 +10039,17 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			pc := *c.PayCards
 			pc.Options = []string{}
 			out[i].PayCards = &pc
+		}
+		// ADR 0187 §5: the same for a discard branch of an either
+		// payment. Copied before it is changed, as PayCards is.
+		if len(c.PayEither) > 0 && c.Chooser != viewerID {
+			branches := append([]PayOptionView(nil), c.PayEither...)
+			for k := range branches {
+				if branches[k].Action == string(game.PayActionDiscard) {
+					branches[k].Options = nil
+				}
+			}
+			out[i].PayEither = branches
 		}
 		if len(c.Options) > 0 {
 			out[i].Options = redactChoiceCards(c, c.Options, isKnower, viewerID)

@@ -92,7 +92,9 @@ export function isInlineChoice(c: PendingChoiceView | null | undefined): boolean
     case "pay_unless":
       // With card picks (ADR 0108 §5) or a waterbend tap list (#1311)
       // the picks need room: a sheet, PR 6.
-      return !c.pay_cards && !c.tap_cost;
+      // An either payment (ADR 0187 §5) has a button for each way to
+      // pay and, usually, a card picker behind one of them.
+      return !c.pay_cards && !c.tap_cost && !c.pay_either;
     case "coin_call":
     case "loop_shortcut":
     case "mana_pick":
@@ -797,10 +799,21 @@ function lowerFirst(s: string): string {
 export function payPhrase(
   c: Pick<
     PendingChoiceView,
-    "pay_cost" | "pay_damage" | "pay_nothing" | "pay_cards" | "accept_label" | "life_cost"
+    | "pay_cost"
+    | "pay_damage"
+    | "pay_nothing"
+    | "pay_cards"
+    | "pay_either"
+    | "accept_label"
+    | "life_cost"
   >,
 ): string {
   const cost = c.pay_cost ?? "";
+  // ADR 0187 §5: the whole offer's words, "sacrifice two lands or take 5
+  // damage".
+  if (c.pay_either && c.pay_either.length > 0) {
+    return lowerFirst(cost) || c.pay_either.map((b) => b.words).join(" or ");
+  }
   if (c.pay_damage !== undefined && c.pay_damage !== null) {
     return `take ${cost || `${c.pay_damage} damage`}`;
   }
@@ -827,6 +840,11 @@ function lifeShortBy(c: PendingChoiceView, ctx: ChoiceDockContext): number {
 // anyPlayerHowToPay is the last sentence of an any-player link's hint:
 // how the payment is made.
 function anyPlayerHowToPay(c: PendingChoiceView, ctx: ChoiceDockContext): string {
+  if (c.pay_either && c.pay_either.length > 0) {
+    // ADR 0187 §5: one question, one button for each way to pay.
+    const ways = c.pay_either.map((b) => (b.payable ? b.words : `${b.words} (you can't)`));
+    return `Choose how to pay: ${ways.join(", or ")}. Or don't.`;
+  }
   if (c.pay_life !== undefined && c.pay_life !== null) {
     return lifeShortBy(c, ctx) > 0
       ? `You have ${ctx.life ?? 0} life, so you can't pay ${c.pay_life}.`

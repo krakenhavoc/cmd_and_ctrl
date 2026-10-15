@@ -36,7 +36,8 @@ type AnyPlayerPays struct {
 	// mana, and the "any opponent" and "counter it" shapes.
 
 	// Pay is a payment that is not mana: LifePayment, DamagePayment,
-	// SacrificePayment, DiscardPayment or NoPayment. Cost is unused
+	// SacrificePayment, DiscardPayment, ExileFromGraveyardPayment,
+	// EitherPayment (ADR 0187 §5) or NoPayment. Cost is unused
 	// when it is set; the offer's words are the payment's, lower-cased
 	// ("sacrifice a land", "5 life").
 	Pay UpkeepPayment
@@ -86,6 +87,54 @@ func ExileFromGraveyardPayment(n int) UpkeepPayment {
 		words = "Exile " + numberWord(n) + " cards from your graveyard"
 	}
 	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionExileFromGraveyard, Count: n}, Words: words}
+}
+
+// EitherPayment is "<a> or <b>" as one payment (ADR 0187 §5): Worms of
+// the Earth's "any player may sacrifice two lands of their choice or
+// have this enchantment deal 5 damage to that player". It is ONE offer
+// with two ways to pay, not two offers: "if a player does either" is a
+// single condition, so each player is asked once and their answer names
+// the branch (`pay_option`).
+//
+// Both arguments are the ordinary non-mana payments (SacrificePayment,
+// DamagePayment, LifePayment, DiscardPayment, ExileFromGraveyardPayment).
+// A mana payment or another EitherPayment has no branch shape and
+// panics: a programming error in the card file, caught by the first test
+// that resolves the card.
+func EitherPayment(a, b UpkeepPayment) UpkeepPayment {
+	branches := make([]game.PayAction, 0, 2)
+	phrases := make([]string, 0, 2)
+	for _, p := range []UpkeepPayment{a, b} {
+		if p.Action == nil || p.Action.Kind == game.PayActionEither {
+			panic("effects.EitherPayment: each branch must be a non-mana payment that is not itself an either")
+		}
+		branch := *p.Action
+		branch.Words = eitherPhrase(p)
+		branches = append(branches, branch)
+		phrases = append(phrases, branch.Words)
+	}
+	words := phrases[0] + " or " + phrases[1]
+	return UpkeepPayment{
+		Action: &game.PayAction{Kind: game.PayActionEither, Either: branches},
+		Words:  strings.ToUpper(words[:1]) + words[1:],
+	}
+}
+
+// eitherPhrase is how a branch of an either payment reads as a verb
+// phrase after "may": "sacrifice two lands", "take 5 damage", "pay 5
+// life". A damage or life payment carries only its amount ("5 damage"),
+// so it needs the verb; a card payment's words already are one.
+func eitherPhrase(p UpkeepPayment) string {
+	switch p.Action.Kind {
+	case game.PayActionDamage:
+		return "take " + p.Words
+	case game.PayActionLife:
+		return "pay " + p.Words
+	}
+	if p.Words == "" {
+		return game.PayActionPhrase(*p.Action)
+	}
+	return strings.ToLower(p.Words[:1]) + p.Words[1:]
 }
 
 // HalfTheirLifeRoundedUp is a PerPayer for "pay half their life,

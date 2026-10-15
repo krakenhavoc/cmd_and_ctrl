@@ -368,3 +368,22 @@ func TestBattlefieldCutPrefersNewestWithinAClass(t *testing.T) {
 		t.Errorf("newest arrival should survive:\n%s", got)
 	}
 }
+
+// ADR 0187 §5, §7: an either payment names each way to pay, so a reader
+// of the board alone (the MCP seat) sees what the one question offers,
+// and which branch the seat can't make.
+func TestRenderEitherPayment(t *testing.T) {
+	v := view()
+	v.PendingChoices = []protocol.PendingChoiceView{{
+		ID: "w", Kind: "pay_unless", Chooser: "a", Reason: "Worms of the Earth — sacrifice two lands or take 5 damage?", Count: 1,
+		PayEither: []protocol.PayOptionView{
+			{Action: "sacrifice", Count: 2, Words: "sacrifice two lands", Payable: false},
+			{Action: "damage", Count: 5, Words: "take 5 damage", Payable: true},
+		},
+	}}
+	got := boardtext.Render(v, "a", boardtext.Options{})
+	want := "(pay one of: sacrifice two lands (you can't); or take 5 damage) (choose 1)"
+	if !strings.Contains(got, want) {
+		t.Errorf("missing %q in\n%s", want, got)
+	}
+}

@@ -148,6 +148,9 @@ type choiceParams struct {
 	// Amount answers a pay_amount prompt (ADR 0129 §3): the energy
 	// paid.
 	Amount *int `json:"amount"`
+	// PayOption answers an either payment (ADR 0187 §5): the index of
+	// the branch taken, into the prompt's pay_either.
+	PayOption *int `json:"pay_option"`
 }
 
 type mulliganParams struct {

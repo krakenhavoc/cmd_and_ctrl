@@ -1897,6 +1897,14 @@ func dispatch(g *game.Game, a Action) error {
 			// activations use. Refused on a "Don't pay" and on a
 			// non-mana payment.
 			PhyrexianLife int `json:"phyrexian_life,omitempty"`
+			// PayOption rides a PendingChoicePayUnless "pay" answer to
+			// an either payment (ADR 0187 §5, Worms of the Earth): the
+			// index into the prompt's pay_either branches the chooser
+			// takes, with card_ids for a branch that names cards. A
+			// pointer, because 0 is the first branch. Refused on a
+			// prompt that is not an either payment, on a "Don't pay",
+			// and (by its absence) on an either payment's "Pay".
+			PayOption *int `json:"pay_option,omitempty"`
 			// Assignments populates an S18 sub-PR 3
 			// PendingChoiceDamageAssignment pick — each entry is
 			// {blocker_id, amount}. The attacker's controller
@@ -2212,6 +2220,20 @@ func dispatch(g *game.Game, a Action) error {
 						return fmt.Errorf("resolve_choice tap_ids[%d]: %w", i, err)
 					}
 					tapIDs = append(tapIDs, id)
+				}
+				// ADR 0187 §5: an either payment names its branch in
+				// pay_option, and the cards that branch pays with (if
+				// any) in card_ids. The engine refuses the rest: an
+				// index out of range, a pay_option on any other prompt.
+				if p.PayOption != nil {
+					if len(tapIDs) > 0 || p.PhyrexianLife != 0 {
+						return game.ErrInvalidParam
+					}
+					cardIDs, err := parseUUIDs(p.CardIDs, "card_ids")
+					if err != nil {
+						return err
+					}
+					return g.ResolvePayUnlessWithOption(choiceID, a.Player, *p.OptionalApply, p.PayOption, cardIDs)
 				}
 				// ADR 0108 §5: a non-mana payment ("discard a card",
 				// "sacrifice two lands") names what it pays with in
