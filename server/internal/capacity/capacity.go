@@ -40,6 +40,8 @@ const RetryAfterSeconds = 30
 // ErrServerFull is what a refused request returns. Its text is the
 // player-facing Message; the HTTP layer maps it to 503 with
 // CodeServerFull.
+//
+//nolint:staticcheck // ST1005: Message is a player-facing sentence, so it ends in a full stop on purpose.
 var ErrServerFull = errors.New(Message)
 
 // Environment variable names. See docs/lobby.md and AGENTS.md.

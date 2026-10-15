@@ -51,7 +51,7 @@ func (d *DB) Backup(ctx context.Context) error {
 	// VACUUM INTO takes a single connection for its duration; go
 	// through Conn rather than sql.DB.ExecContext so a pooled
 	// connection isn't recycled mid-statement.
-	conn, err := d.DB.Conn(ctx)
+	conn, err := d.Conn(ctx)
 	if err != nil {
 		return fmt.Errorf("db: backup: %w", err)
 	}

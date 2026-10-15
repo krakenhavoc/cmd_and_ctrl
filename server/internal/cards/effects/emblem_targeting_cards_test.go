@@ -318,8 +318,7 @@ func TestGraveyardRestrictionMakesARegrowthOnTheStackFizzle(t *testing.T) {
 		if me.Hand.Contains(dead) || !me.Graveyard.Contains(dead) {
 			t.Errorf("%s: Regrowth returned a card it can no longer target", tc.name)
 		}
-		var legal []uuid.UUID
-		legal = a109p6LegalCards(g, me.ID, TargetCardInGraveyard("target card in a graveyard"))
+		legal := a109p6LegalCards(g, me.ID, TargetCardInGraveyard("target card in a graveyard"))
 		if len(legal) != 0 {
 			t.Errorf("%s: graveyard cards are still legal targets: %v", tc.name, legal)
 		}

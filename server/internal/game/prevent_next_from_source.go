@@ -346,10 +346,10 @@ func (g *Game) damageFromChosenSourceLocked(m Mod, id uuid.UUID) bool {
 		return false
 	}
 	now := g.cardObjectEpochLocked(id)
-	switch {
-	case now == ref.Epoch, now == -1:
+	switch now {
+	case ref.Epoch, -1:
 		return true
-	case now == ref.Epoch+1:
+	case ref.Epoch + 1:
 		onBattlefield := findBattlefieldCard(g, id) != nil
 		switch m.SourceZone {
 		case ZoneStack:

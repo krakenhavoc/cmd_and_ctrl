@@ -585,7 +585,7 @@ type bugArtifacts struct{ *bugstore.Report }
 
 func (b *bugArtifacts) discard() {
 	if b != nil {
-		b.Report.Discard()
+		b.Discard()
 	}
 }
 

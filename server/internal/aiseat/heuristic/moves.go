@@ -1081,10 +1081,10 @@ func manaValue(cost string, x int) int {
 		}
 		sym := cost[i+1 : i+j]
 		cost = cost[i+j+1:]
-		switch {
-		case sym == "X" || sym == "x":
+		switch sym {
+		case "X", "x":
 			total += x
-		case sym == "":
+		case "":
 			// malformed; skip
 		default:
 			if n, err := strconv.Atoi(sym); err == nil {

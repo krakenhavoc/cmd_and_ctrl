@@ -41,15 +41,15 @@ func init() {
 			// S17 manual testing — without these returns the spell
 			// resolved to graveyard without any trace.
 			if len(item.Targets) == 0 {
-				return errors.New("Path to Exile: cast with no target (client UI skipped targeting?)")
+				return errors.New("path to Exile: cast with no target (client UI skipped targeting?)")
 			}
 			if item.Targets[0].Kind != game.TargetCard {
-				return errors.New("Path to Exile: first target is not a card")
+				return errors.New("path to Exile: first target is not a card")
 			}
 			targetID := item.Targets[0].ID
 			card, ok := ctx.Game.LookupCardForEffect(targetID)
 			if !ok {
-				return errors.New("Path to Exile: target card not found in any zone")
+				return errors.New("path to Exile: target card not found in any zone")
 			}
 			controller := card.Controller
 			return ExileTarget{
