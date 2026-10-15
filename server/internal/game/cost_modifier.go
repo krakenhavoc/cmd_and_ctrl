@@ -290,6 +290,12 @@ type AbilityCostSubject struct {
 	// Berserker).
 	Boast bool
 
+	// Equip is the CR 702.6 equip bit (ActivatedAbilityShape.Equip,
+	// #3778): "Equip abilities you activate that target this creature
+	// cost {2} less to activate" (Helitrooper). Read off the shape's
+	// keyword field rather than the label, which is prose.
+	Equip bool
+
 	// Mana says this is a CR 605 mana ability rather than a CR 602
 	// activation. Always false today — the mana path prices its cost
 	// without this pass at all — and present so that a predicate
@@ -843,6 +849,7 @@ func (g *Game) abilityCostQueryLocked(activator uuid.UUID, source Card, zone Zon
 			Label:   ab.Label,
 			Exhaust: ab.Exhaust,
 			Boast:   ab.Boast,
+			Equip:   ab.Equip,
 			own:     ab.CostModifiers,
 		},
 		Targets: targets,

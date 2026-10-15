@@ -3290,3 +3290,40 @@ row is `boast`.
 - **Goldmaw Champion, Hagi Mob** — no blocker; left for a later slice of the same keyword.
 - **Besieged Viking Village** — not Commander-legal; its "all creatures have 'Boast — …'" needs an ability grant
   carrying the bit, which the grant path would pick up for free once the card is wanted.
+
+## Amendment (2026-10-15, [#3778](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3778)): the equip bit on an activation's cost query
+
+A board cost modifier could price activations (`CostModifier.Activations`,
+#1184) and read their announced targets (`ReadsTargets`, #1296), and it
+could tell an exhaust or a boast ability from the rest by a bit on
+`game.AbilityCostSubject`. It could not tell an equip ability, so
+"Equip abilities you activate that target this creature cost {2} less to
+activate" (Helitrooper) had nothing to read but the label.
+
+`AbilityCostSubject.Equip` is that bit, copied from
+`ActivatedAbilityShape.Equip` by `abilityCostQueryLocked`, the one
+builder the activation, `internal/legal` and the view all price through.
+`ActivatedAbilityShape.Equip` is still set by `effects.EquipAbility` and
+by no card file, so the bit means exactly "a CR 702.6 equip ability".
+The mana-ability query never sets it.
+
+Card side (`effects/cost_modifier.go`): `AnEquipAbilityCost()`,
+`YouActivate()` (the activator is the modifier source's controller) and
+`ThatTargetThisPermanent()` (one announced target is the modifier's
+source), composed as `EquipAbilitiesYouActivateCostLess(n, label)` and
+`EquipAbilitiesThatTargetThisCostLess(n, label)`. The second sets
+`ReadsTargets`, so `AbilityPriceReadsTargetsForEffect` answers true with
+it on the battlefield and the enumerator and the view price each target
+on its own: a seat with one land and a {3} equip is offered the equip
+onto Helitrooper and not onto anything else. A reduction takes generic
+mana only (CR 118.7a), so Fervent Champion's {3} off a {3} equip is free
+and off an equip with coloured symbols leaves them.
+
+Cards (Full): Helitrooper, Dwarven Mauler, Fervent Champion, Bureau
+Headmaster, Cloud, Planet's Champion.
+
+Not covered: Bladehold War-Whip's "of other Equipment" (needs the
+ability's source compared with the modifier's, one predicate), Strong
+Back's Aura half (a cast modifier over targets), Nahiri, Storm of Stone
+and Fighter Class, Éowyn, Lady of Rohan. None needs another engine
+field.
