@@ -137,6 +137,48 @@ func TestEitherPaymentDropsASacrificeBranchTheSeatCannotPay(t *testing.T) {
 	}
 }
 
+// A branch that names nothing is offered only when the seat can make it
+// (CR 118.3, 119.4): paying more life than the seat has is not a move,
+// and paying life that it has is, carrying the life as its price.
+func TestEitherPaymentOffersALifeBranchOnlyWhenTheSeatHasTheLife(t *testing.T) {
+	for _, tc := range []struct {
+		life      int
+		wantLife  bool
+		wantPrice int
+	}{{100, false, 0}, {7, true, 7}} {
+		g := newTable(t)
+		controller := g.Seats[1]
+		source := uuid.New()
+		g.Battlefield.PushTop(game.Card{InstanceID: source, Name: "Thing", TypeLine: "Enchantment", Owner: controller.ID, Controller: controller.ID})
+		g.WithWriteLock(func() {
+			if err := g.QueueAnyPlayerPaysForEffect(game.AnyPlayerPays{
+				Source: source, Controller: controller.ID, Cost: "pay life or take 5 damage", Question: "Thing?",
+				Action: &game.PayAction{Kind: game.PayActionEither, Either: []game.PayAction{
+					{Kind: game.PayActionLife, Count: tc.life},
+					{Kind: game.PayActionDamage, Count: 5},
+				}},
+			}); err != nil {
+				t.Fatalf("queue: %v", err)
+			}
+		})
+		chooser := g.PendingChoices[0].Chooser
+		moves := legal.EnumerateFor(g, chooser)
+		var life *legal.Move
+		for i, m := range moves {
+			if p := eitherParams(t, m); p.PayOption != nil && *p.PayOption == 0 {
+				life = &moves[i]
+			}
+		}
+		if (life != nil) != tc.wantLife {
+			t.Fatalf("life %d: life branch offered = %v, want %v: %v", tc.life, life != nil, tc.wantLife, labels(moves))
+		}
+		if life != nil && (life.Cost == nil || life.Cost.Life != tc.wantPrice) {
+			t.Errorf("the life branch's price is %+v, want %d life", life.Cost, tc.wantPrice)
+		}
+		dispatchAll(t, g, chooser, moves)
+	}
+}
+
 func containsLabel(moves []legal.Move, sub string) bool {
 	for _, m := range moves {
 		if strings.Contains(m.Label, sub) {
