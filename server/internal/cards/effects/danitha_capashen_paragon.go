@@ -6,8 +6,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // {2}{W}, 2/2:
 //
 //	"First strike, vigilance, lifelink
-//	 Aura and Equipment spells you cast cost {1} less to cast.
-//	 Equip abilities you activate cost {1} less to activate."
+//	 Aura and Equipment spells you cast cost {1} less to cast."
 //
 // The three keywords ride PrintedKeywords. The discount names two
 // subtypes rather than a card type — HasSubtype("Aura") for an
@@ -15,10 +14,6 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // so it's a small closure local to this card rather than a shared
 // ArtifactOrEnchantmentSpell()-style predicate, which would also (and
 // wrongly) discount a plain enchantment or a plain artifact.
-//
-// The equip clause is an activation-scoped modifier keyed on the
-// ability's Equip bit (#3666), so it discounts equip abilities and not
-// any other activated ability of an Equipment.
 //
 // No simplification.
 func init() {
@@ -30,8 +25,6 @@ func init() {
 		CostModifiers: []game.CostModifier{
 			CostsLess(1, "Aura and Equipment spells you cast cost {1} less to cast.",
 				YourSpell(), auraOrEquipmentSpell()),
-			ActivationCostsLess(1, "Equip abilities you activate cost {1} less to activate.",
-				ActivatedByTheModifiersController(), anEquipAbilityCost()),
 		},
 	})
 }
@@ -40,8 +33,4 @@ func auraOrEquipmentSpell() CostPredicate {
 	return func(q game.CostQuery) bool {
 		return q.Card.HasSubtype("Aura") || q.Card.HasSubtype("Equipment")
 	}
-}
-
-func anEquipAbilityCost() CostPredicate {
-	return func(q game.CostQuery) bool { return q.Ability != nil && q.Ability.Equip }
 }
