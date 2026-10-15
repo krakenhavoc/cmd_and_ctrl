@@ -777,6 +777,11 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	PendingChoiceCoinCall: {},
 	// CR 732: the allowance is on THEIR loop's tally key.
 	PendingChoiceLoopShortcut: {},
+	// ADR 0193: CR 732.2b asks each player still in the game, so a
+	// departed seat's question is simply dropped. TendLoopRecording then
+	// ends the recording: a player leaving changes the board the
+	// proposal was made against.
+	PendingChoiceLoopProposal: {},
 	// untap_choice is CR 502.3's determination, and it is doubly
 	// theirs: the permanents in question are the ones they control
 	// (ADR 0070 Decision 4 scopes the caps and opt-outs to the active

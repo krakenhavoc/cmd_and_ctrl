@@ -174,6 +174,10 @@ type Room struct {
 	// chat is the last few chat lines, for a player report's excerpt
 	// (chat_recent.go). Its own mutex; in memory only.
 	chat chatRing
+
+	// loopBudget overrides game.MaxLoopReplayDispatches for this room's
+	// loop replays (loop_replay.go); zero is the default. Set by tests.
+	loopBudget int
 }
 
 // restorePointRecord is Room's bookkeeping about its own last written
@@ -494,6 +498,14 @@ func (r *Room) autoAnswerThenCaptureLocked() (protocol.GameView, uint64, error) 
 		// barrier today; the clone is taken anyway, for the rollback.
 		r.pushUndoLocked(undoEntry{pre: pre, barrier: r.undoBarrierFor(chooser), caller: chooser, freeUndo: true, autoAnswered: choiceID, autoAnswerSeq: seq})
 	}
+	// ADR 0193: a commit that answered the last seat of a loop proposal
+	// (or moved the game past a recording) is followed, under the same
+	// lock, by the replay — a commit and an undo entry of its own,
+	// captured in the frame returned here.
+	r.Game.TendLoopRecording()
+	if r.Game.LoopReplayDue() {
+		r.replayLoopLocked()
+	}
 	return r.captureLocked(true)
 }
 
@@ -810,6 +822,10 @@ func (r *Room) undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
 	if top.autoAnswered != uuid.Nil {
 		r.Game.MarkAskedByHand(top.autoAnswered, game.AskedByHandUndone)
 	}
+	// ADR 0193 §2 and owner decision 8: an undo ends any loop
+	// recording, since the history it describes is gone. Undoing a
+	// replay returns to the demonstrated iteration's end with it spent.
+	r.Game.DiscardLoopRecording("an undo was taken")
 
 	// Spend the budget AFTER restore — the restore reset the budget
 	// to its pre-action value (which had not yet been spent), so the

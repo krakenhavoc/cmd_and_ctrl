@@ -814,6 +814,8 @@ func (e *enumerator) run() {
 		e.activatedMoves()
 		e.specialActionMoves()
 		e.manaMoves()
+		// ADR 0193 §8: an agent seat's loop recording verbs.
+		e.loopMoves()
 	}
 	// Combat declarations are not priority-gated in the engine
 	// (declare_attacker / declare_blocker / finish_blocks only check the

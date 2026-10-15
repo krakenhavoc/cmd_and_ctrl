@@ -127,6 +127,7 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		Reveals: []RevealView{{Seq: 1, Turn: 3, Seat: 0, Source: "Fact or Fiction"}},
 
 		LoopNotice:              &LoopNoticeView{Source: ownerID, Label: "loop", Controller: ownerID, Count: 3},
+		LoopRecording:           &LoopRecordingView{Recorder: ownerID, Status: "ready", Steps: 4, MaxIterations: 1000},
 		PlayerControls:          []PlayerControlView{{Controller: ownerID, Controlled: ownerID, Source: ownerID, Until: "turn"}},
 		ScheduledPlayerControls: []ScheduledPlayerControlView{{Controller: ownerID, Controlled: oppID, SourceName: "Emrakul, the Promised End"}},
 		Outcome:                 &OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect"},

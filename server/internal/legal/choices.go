@@ -1376,6 +1376,10 @@ func (e *enumerator) choiceMoves() bool {
 				})
 			}
 
+		case game.PendingChoiceLoopProposal:
+			// ADR 0193 §4, CR 732.2b: accept or shorten (loop.go).
+			e.loopProposalMoves(c)
+
 		case game.PendingChoiceLoopShortcut:
 			// #804, CR 732. "<card> — <ability> has resolved N times
 			// this turn. Resolve it K more times, then stop?" The

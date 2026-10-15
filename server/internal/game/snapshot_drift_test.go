@@ -150,6 +150,9 @@ var gameFields = plan(
 	// re-default.
 	"LoopNotice", carried, "",
 	"LoopThreshold", carried, "",
+	// ADR 0193: a restore mid-recording or mid-proposal resumes it.
+	"LoopRecording", carried, "",
+	"loopReplaying", dropped, "not game state between commits: set and cleared inside one hold of the room lock by ws.Room's loop replay (ADR 0193 §5)",
 	"DiscardPending", carried, "",
 	"Promises", carried, "",
 	"Vote", carried, "",
@@ -1261,6 +1264,8 @@ func TestEmbeddedDomainTypesStayPureData(t *testing.T) {
 		// value "" is right for a file written before them, so no
 		// schema bump (combat_step_snapshot_test.go).
 		DamageAssignmentFrame{}, ManaPool{},
+		// ADR 0193: the snapshot embeds the demonstrated loop by value.
+		LoopRecording{}, LoopStep{}, LoopSignature{}, LoopTotals{}, LoopProposal{},
 		// Player.CastPermissions is one of these: PlayerSnapshot holds
 		// []CastPermission by value, so the type's fields never reach
 		// playerFields and a func or an unexported field added to it

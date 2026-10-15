@@ -3924,6 +3924,16 @@ policy that can rank "100 more" top can rank it top every time, and a
 random one eventually will. A human at the same prompt types any
 number up to 1000 into the client's field.
 
+**A bot accepts every demonstrated loop and never records one.** When a
+player records a loop and proposes repeating it
+([ADR 0193](decisions/0193-demonstrate-a-loop-record-once-replay-n-times.md),
+CR 732.2), each other seat gets a `loop_proposal` prompt. `internal/legal`
+offers a bot seat exactly one answer, accept (owner decision 9), so every
+policy accepts; a person or an agent seat is also offered a shorten. The
+recording verbs (`loop_record_start` and the rest) are enumerated only for
+an agent seat (`is_agent`), so a bot is never offered them. A bot that
+finds and records combos is strategy work for a separate issue.
+
 **A loop the bot is feeding itself gets "stop" on the first ask, and
 the bot stops activating.** An activation loop is the other shape of
 runaway: nothing repeats on its own, the seat just keeps taking the

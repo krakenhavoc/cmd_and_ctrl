@@ -311,6 +311,11 @@ type GameView struct {
 	// is something the whole table can see running. Added for #628
 	// (ADR 0055).
 	LoopNotice *LoopNoticeView `json:"loop_notice,omitempty"`
+	// LoopRecording is a loop a player is demonstrating, has
+	// demonstrated, or has proposed (ADR 0193, CR 732.2); absent when
+	// there is none. Public, like the loop notice: every seat sees the
+	// shortcut being built (CR 732.1a).
+	LoopRecording *LoopRecordingView `json:"loop_recording,omitempty"`
 	// Outcome is the result of an ended game: who won, or a draw, and
 	// why (ADR 0057 Decisions 5 and 7). Absent while the game is
 	// active and for a table an admin ended with no result. The client
@@ -782,6 +787,10 @@ type PendingChoiceView struct {
 	// `{choice_id, iterations}`, where 0 means "stop here".
 	LoopCount         int `json:"loop_count,omitempty"`
 	LoopMaxIterations int `json:"loop_max_iterations,omitempty"`
+	// LoopProposal populates the ADR 0193 "loop_proposal" kind (CR
+	// 732.2b): the proposal, its steps, and the chooser's own choice
+	// points. Answered with the resolve_loop_proposal action. Public.
+	LoopProposal *LoopProposalView `json:"loop_proposal,omitempty"`
 	// PickOptions populates the #568 "option_pick" kind: one entry
 	// per branch of "choose one of the following", in the card's
 	// printed order. The client renders a button per option and
@@ -5211,6 +5220,7 @@ func ViewOfGame(g *game.Game) GameView {
 			PendingChoices:        viewOfPendingChoices(g),
 			PlayerControls:        viewOfPlayerControls(g),
 			LoopNotice:            viewOfLoopNotice(g.LoopNotice),
+			LoopRecording:         viewOfLoopRecording(g),
 		}
 		// #1279: where each defender's block declaration stands.
 		view.Turn.BlockPendingSeats, view.Turn.BlocksDeclaredSeats = g.BlockDeclarationSeatsLocked()
@@ -8843,6 +8853,10 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.LoopCount = c.LoopShortcutCount
 			v.LoopMaxIterations = game.MaxLoopShortcutIterations
 		}
+		// ADR 0193: CR 732.2b's accept-or-shorten question.
+		if c.Kind == game.PendingChoiceLoopProposal {
+			v.LoopProposal = viewOfLoopProposal(g, c.Chooser)
+		}
 		// PendingChoiceChooseCards — the chained-choice card-set pick.
 		// The candidates are frequently cards in a hand, so they go
 		// through the ordinary per-viewer knower redaction in
@@ -10018,6 +10032,8 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// #628: public, and identical for every seat — see the field
 		// comment. Nothing in it names a card in a hidden zone.
 		LoopNotice: v.LoopNotice,
+		// ADR 0193: public, and identical for every seat.
+		LoopRecording: v.LoopRecording,
 		// ADR 0166: public, and identical for every seat: who is making
 		// whose decisions. What it lets the controller see is applied
 		// through isKnower above.
