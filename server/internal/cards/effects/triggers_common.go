@@ -128,8 +128,21 @@ func OnAny(kinds []game.EventKind, when When, label string, effect Effect) game.
 	return t
 }
 
-// Optional makes a trigger a CR 603.5 "you may": the harvester asks
-// `question` before Build runs, and a "No" drops the trigger.
+// DamageToFirstTarget is "this deals N damage to any target" as a
+// trigger's Effect: N damage from the item's source to its first target,
+// or nothing when it has none (Omnath, Locus of Rage; Valakut).
+func DamageToFirstTarget(n int) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		if len(item.Targets) == 0 {
+			return nil
+		}
+		return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: n}.Apply(NewContext(g, item))
+	}
+}
+
+// Optional makes a trigger a CR 603.5 "you may": the ability goes on
+// the stack like any other and `question` is asked as it resolves; a
+// "No" resolves it doing nothing (#2494).
 func Optional(t game.TriggeredAbility, question string) game.TriggeredAbility {
 	t.OptionalPrompt = &game.TriggerOptionalPrompt{Question: question}
 	return t

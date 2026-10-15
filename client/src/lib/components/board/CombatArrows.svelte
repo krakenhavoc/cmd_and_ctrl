@@ -43,6 +43,7 @@
   import { get } from "svelte/store";
   import type { CardView, GameView } from "../../protocol";
   import { blockedAttackersOf } from "../../attackTargets";
+  import { blockBoard } from "../../blockPick";
   import { EASE, cancelAnimations, canAnimate, run } from "../../motion";
   import { settings } from "../../settings";
   import { cardAnchors, cardSelector, findAnchor, seatSelector } from "../../boardAnchor";
@@ -84,6 +85,9 @@
   type Pair =
     | { kind: "attack"; id: string; fromCardID: string; toSeatID: string }
     | { kind: "block"; id: string; fromCardID: string; toCardID: string }
+    // #3898: a creature in the group being collected for a menace
+    // attacker, not sent yet: dashed until the group is complete.
+    | { kind: "block-pending"; id: string; fromCardID: string; toCardID: string }
     | { kind: "stack-target-player"; id: string; fromStackID: string; toSeatID: string }
     | { kind: "stack-target-card"; id: string; fromStackID: string; toCardID: string };
 
@@ -114,6 +118,17 @@
         });
       }
     }
+    const group = $blockBoard?.group;
+    if (group && byID.has(group.attacker)) {
+      for (const b of group.blockers) {
+        out.push({
+          kind: "block-pending",
+          id: `pend-${b}-${group.attacker}`,
+          fromCardID: b,
+          toCardID: group.attacker,
+        });
+      }
+    }
     // S14: stack-item target arrows. Each StackItem carries its
     // announce-time targets[]; draw one arrow per player / card slot
     // so the board shows who each spell is aimed at. Self / none
@@ -141,7 +156,12 @@
     return out;
   });
 
-  type ArrowKind = "attack" | "block" | "stack-target-player" | "stack-target-card";
+  type ArrowKind =
+    | "attack"
+    | "block"
+    | "block-pending"
+    | "stack-target-player"
+    | "stack-target-card";
 
   interface ArrowGeo {
     id: string;
@@ -182,7 +202,7 @@
       // (stack-target-*). Route through the matching data attribute
       // in each case.
       let from: { x: number; y: number } | null = null;
-      if (p.kind === "attack" || p.kind === "block") {
+      if (p.kind === "attack" || p.kind === "block" || p.kind === "block-pending") {
         from = rectIn(boardRect, cardSelector(p.fromCardID));
       } else {
         from = rectIn(boardRect, `[data-stack-item-id="${cssEscape(p.fromStackID)}"]`);
@@ -473,6 +493,7 @@
       case "attack":
         return "url(#arrowhead-attack)";
       case "block":
+      case "block-pending":
         return "url(#arrowhead-block)";
       case "stack-target-player":
       case "stack-target-card":
@@ -534,12 +555,20 @@
         <path d="M 0 0 L 10 5 L 0 10 z" fill="#ffd07a" />
       </marker>
     </defs>
-    {#each arrows as a (a.id)}
+    {#each arrows.filter((a) => a.kind !== "block-pending") as a (a.id)}
       <path
         d={`M ${a.x1} ${a.y1} Q ${a.cx} ${a.cy} ${a.x2} ${a.y2}`}
         class={a.kind}
         marker-end={markerFor(a.kind)}
         use:drawOn
+      />
+    {/each}
+    <!-- #3898: not drawn on: the dash is the point. -->
+    {#each arrows.filter((a) => a.kind === "block-pending") as a (a.id)}
+      <path
+        d={`M ${a.x1} ${a.y1} Q ${a.cx} ${a.cy} ${a.x2} ${a.y2}`}
+        class={a.kind}
+        marker-end={markerFor(a.kind)}
       />
     {/each}
     <!-- ADR 0053 beat effects. A pulse is a wide soft stroke over a
@@ -596,6 +625,11 @@
   }
   path.block {
     stroke: var(--block);
+  }
+  path.block-pending {
+    stroke: var(--block);
+    stroke-dasharray: 5 5;
+    opacity: 0.85;
   }
   /* S14: stack-target arrows use the same gold palette as the
      AUTO badge + targeting banner — reads as "a catalog spell is

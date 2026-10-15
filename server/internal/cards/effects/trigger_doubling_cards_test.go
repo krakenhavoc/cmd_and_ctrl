@@ -282,20 +282,11 @@ func TestCloudDoublesAnAttachedEquipmentLeavingTrigger(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	var prompts []*game.PendingChoice
-	for _, choice := range g.PendingChoices {
-		if choice.Kind == game.PendingChoiceTriggerPrompt && choice.Source == solemn {
-			prompts = append(prompts, choice)
-		}
+	if n := owedMays(g, me.ID); n != 2 {
+		t.Fatalf("attached Solemn death prompts = %d, want 2", n)
 	}
-	if len(prompts) != 2 {
-		t.Fatalf("attached Solemn death prompts = %d, want 2", len(prompts))
-	}
-	for _, choice := range prompts {
-		if err := g.ResolveTriggerPrompt(choice.ID, me.ID, true); err != nil {
-			t.Fatal(err)
-		}
-	}
+	answerLatestTriggerPrompt(t, g, me.ID, true)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if got := me.Hand.Size() - before; got != 2 {
 		t.Errorf("attached Solemn doubled death draw = %d, want 2", got)

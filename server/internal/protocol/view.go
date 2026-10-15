@@ -3010,6 +3010,23 @@ type CardView struct {
 	// declarations. The client renders it and never derives a
 	// requirement.
 	MustBlock bool `json:"must_block,omitempty"`
+	// BlockRefusals (#3898) lists, on a creature a defending player who
+	// is still declaring could put into the declaration, each attacker
+	// it could not be declared blocking on its own right now, with the
+	// validator's reason token (one of the illegal_block reasons) and
+	// its sentence, addressed to the creature's controller. A lone block
+	// on a menace attacker reads too_few_blockers, and the attacker's
+	// MinBlockers says how many it takes. Pairs the declaration already
+	// holds are left out, and so is anything face down. Only during
+	// declare_blockers (game.LoneBlockRefusalsForEffect). The client
+	// greys those attackers while this creature is selected and shows
+	// the sentence; it never derives a block rule.
+	BlockRefusals []BlockRefusalView `json:"block_refusals,omitempty"`
+	// MinBlockers (#3898) is the fewest creatures that may block this
+	// attacker (CR 509.1b): 2 for menace. Only on an attacking creature
+	// during declare_blockers, and only when it is 2 or more
+	// (game.MinBlockersForEffect).
+	MinBlockers int `json:"min_blockers,omitempty"`
 	// AttachedTo is the CR 301.5c / CR 303.4 attachment relation for
 	// an Equipment or an Aura: the permanent or player this card is
 	// attached to. Omitted for the overwhelming majority of cards,
@@ -7057,6 +7074,17 @@ func viewOfProtection(c *game.Card) []ProtectionView {
 	return out
 }
 
+// BlockRefusalView is one entry of CardView.BlockRefusals (#3898): an
+// attacker this creature could not block on its own right now.
+type BlockRefusalView struct {
+	Attacker string `json:"attacker"`
+	// Reason is the illegal_block reason token (game.BlockReason).
+	Reason string `json:"reason"`
+	// Message is the refusal's sentence, as the illegal_block frame
+	// would carry it to the creature's controller.
+	Message string `json:"message"`
+}
+
 // AttackTargetRestrictionView is one CR 508.1c restriction on whom a
 // creature may attack (ADR 0106 §2, #1794), resolved for the client:
 // the player it names, and whether it also covers planeswalkers that
@@ -8306,6 +8334,7 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 	}
 	// #1597: the creatures a defending player owes a block with.
 	if g.Turn.Step == game.StepDeclareBlockers {
+		stampBlockRefusals(g, view)
 		if owed := g.MustBlockForEffect(); len(owed) > 0 {
 			for i := range view.Battlefield.Cards {
 				c := &view.Battlefield.Cards[i]
@@ -8384,6 +8413,38 @@ func attackTaxProbe(g *game.Game, seat uuid.UUID) uuid.UUID {
 		}
 	}
 	return uuid.Nil
+}
+
+// stampBlockRefusals is #3898's two declare-blockers stamps: on each
+// creature a pending defender could declare, the attackers it could not
+// block alone and why; on each attacker, the fewest creatures that may
+// block it when that is more than one.
+//
+// Caller must hold g's read lock with fresh layers (ReadSnapshot does).
+func stampBlockRefusals(g *game.Game, view *GameView) {
+	if g.Battlefield == nil {
+		return
+	}
+	refusals := g.LoneBlockRefusalsForEffect()
+	for i := range view.Battlefield.Cards {
+		if i >= len(g.Battlefield.Cards) {
+			break
+		}
+		card := &g.Battlefield.Cards[i]
+		c := &view.Battlefield.Cards[i]
+		if card.AttackingTarget != uuid.Nil && !card.FaceDown {
+			if n := g.MinBlockersForEffect(card); n >= 2 {
+				c.MinBlockers = n
+			}
+		}
+		for _, r := range refusals[card.InstanceID] {
+			c.BlockRefusals = append(c.BlockRefusals, BlockRefusalView{
+				Attacker: r.Attacker.String(),
+				Reason:   string(r.Reason),
+				Message:  r.Sentence,
+			})
+		}
+	}
 }
 
 // stampNoUntap projects the untap-step state that needs the game handle.
@@ -10655,6 +10716,11 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.IsCompanion = false
 	out.ManaCost = ""
 	out.Abilities = nil
+	// #3898: a block refusal's sentence names the card, and a minimum
+	// block count comes from its abilities. Neither is stamped on a
+	// face-down permanent; this keeps any other unknown card clear too.
+	out.BlockRefusals = nil
+	out.MinBlockers = 0
 	// ADR 0109 §10: "its haste came from riot" says the card has riot,
 	// which names it as loudly as the ability list does.
 	out.RiotHaste = false

@@ -130,30 +130,90 @@ func TestAutoAnswerRhysticStudyAlwaysPayWithNothingAsks(t *testing.T) {
 	}
 }
 
-func TestAutoAnswerConsecratedSphinxAlwaysBuildsTheTrigger(t *testing.T) {
+// sphinxOnStack draws a card for the drawer under the owner's
+// Consecrated Sphinx and returns the trigger on the stack: CR 603.5
+// puts it there and asks its "you may" as it resolves (#2494).
+func sphinxOnStack(t *testing.T, g *game.Game, drawer, sphinxID uuid.UUID) *game.StackItem {
+	t.Helper()
+	if err := g.DrawCard(drawer); err != nil {
+		t.Fatal(err)
+	}
+	if latestChoiceOfKind(g, game.PendingChoiceTriggerPrompt) != nil {
+		t.Fatal("the Sphinx asked before its trigger went on the stack")
+	}
+	if triggerOnStack(g, sphinxID) == nil {
+		g.RunStateChecksForTest()
+	}
+	item := triggerOnStack(g, sphinxID)
+	if item == nil {
+		t.Fatal("the Sphinx's trigger is not on the stack")
+	}
+	if item.Optional == nil {
+		t.Fatal("the Sphinx's trigger does not carry its \"you may\"")
+	}
+	return item
+}
+
+func TestAutoAnswerConsecratedSphinxAlwaysAnswersAtResolution(t *testing.T) {
 	g := newCatalogGame(t)
 	drawer, owner := g.Seats[0], g.Seats[1]
 	sphinxID := pushDiesCreatureForTest(g, owner.ID, "Consecrated Sphinx", consecratedSphinxOracle,
 		"Creature — Sphinx", 4, 6)
 	advanceToMain(t, g)
-	if err := g.DrawCard(drawer.ID); err != nil {
+	item := sphinxOnStack(t, g, drawer.ID, sphinxID)
+	key := item.Optional.AnswerKey
+	if !strings.HasSuffix(key, "|triggered|Consecrated Sphinx — draw two cards") {
+		t.Fatalf("Sphinx key = %q, want its row", key)
+	}
+	if err := g.SetAutoAnswers(owner.ID, map[string]game.AutoAnswer{key: game.AutoAnswerAlways}); err != nil {
 		t.Fatal(err)
 	}
-	ask := latestChoiceOfKind(g, game.PendingChoiceTriggerPrompt)
-	if ask == nil {
-		t.Fatal("no Sphinx prompt")
+	// Nothing to answer while the trigger waits on the stack.
+	if n := autoAnswerAll(t, g); n != 0 {
+		t.Fatalf("answered %d before the trigger resolved, want 0", n)
 	}
-	if !strings.HasSuffix(ask.AutoAnswerKey, "|triggered|Consecrated Sphinx — draw two cards") {
-		t.Fatalf("Sphinx key = %q, want its row", ask.AutoAnswerKey)
-	}
-	if err := g.SetAutoAnswers(owner.ID, map[string]game.AutoAnswer{ask.AutoAnswerKey: game.AutoAnswerAlways}); err != nil {
-		t.Fatal(err)
+	handBefore := owner.Hand.Size()
+	ask := awaitTriggerPrompt(t, g, owner.ID)
+	if ask.AutoAnswerKey != key {
+		t.Fatalf("prompt key = %q, want the item's %q", ask.AutoAnswerKey, key)
 	}
 	if n := autoAnswerAll(t, g); n != 1 {
 		t.Fatalf("answered %d, want 1", n)
 	}
-	if triggerOnStack(g, sphinxID) == nil {
-		t.Error("Always did not put the Sphinx's trigger on the stack")
+	if got := owner.Hand.Size() - handBefore; got != 2 {
+		t.Errorf("Always drew %d, want 2", got)
+	}
+	var logged *game.Event
+	for i := range g.Events {
+		if g.Events[i].Kind == game.EventAutoAnswer {
+			logged = &g.Events[i]
+		}
+	}
+	if logged == nil || logged.Call != game.AutoAnswerCallYes || logged.Label != item.Label {
+		t.Errorf("auto-answer event = %+v, want a yes naming %q", logged, item.Label)
+	}
+}
+
+func TestAutoAnswerConsecratedSphinxNeverResolvesDoingNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	drawer, owner := g.Seats[0], g.Seats[1]
+	sphinxID := pushDiesCreatureForTest(g, owner.ID, "Consecrated Sphinx", consecratedSphinxOracle,
+		"Creature — Sphinx", 4, 6)
+	advanceToMain(t, g)
+	item := sphinxOnStack(t, g, drawer.ID, sphinxID)
+	if err := g.SetAutoAnswers(owner.ID, map[string]game.AutoAnswer{item.Optional.AnswerKey: game.AutoAnswerNever}); err != nil {
+		t.Fatal(err)
+	}
+	handBefore := owner.Hand.Size()
+	awaitTriggerPrompt(t, g, owner.ID)
+	if n := autoAnswerAll(t, g); n != 1 {
+		t.Fatalf("answered %d, want 1", n)
+	}
+	if got := owner.Hand.Size() - handBefore; got != 0 {
+		t.Errorf("Never drew %d, want 0", got)
+	}
+	if triggerOnStack(g, sphinxID) != nil || len(g.PendingChoices) != 0 {
+		t.Error("the declined trigger did not finish resolving")
 	}
 }
 
@@ -202,7 +262,23 @@ func TestAutoAnswerTwoSphinxesStopAtTheLoopBreaker(t *testing.T) {
 	if err := g.DrawCard(a.ID); err != nil {
 		t.Fatal(err)
 	}
-	key := latestChoiceOfKind(g, game.PendingChoiceTriggerPrompt).AutoAnswerKey
+	// The trigger is on the stack, carrying the key it will be asked
+	// under as it resolves (CR 603.5, #2494).
+	var key string
+	g.ReadSnapshot(func() {
+		items := append([]*game.StackItem(nil), g.PendingTriggers...)
+		for _, it := range g.StackMeta {
+			items = append(items, it)
+		}
+		for _, it := range items {
+			if it != nil && it.Optional != nil {
+				key = it.Optional.AnswerKey
+			}
+		}
+	})
+	if key == "" {
+		t.Fatal("no Sphinx trigger carrying a standing-answer key")
+	}
 	for _, p := range []*game.Player{a, b} {
 		if err := g.SetAutoAnswers(p.ID, map[string]game.AutoAnswer{key: game.AutoAnswerAlways}); err != nil {
 			t.Fatal(err)

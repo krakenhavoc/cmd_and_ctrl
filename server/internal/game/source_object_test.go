@@ -163,11 +163,10 @@ func TestADiesTriggerNamesThePermanentThatLeft(t *testing.T) {
 	}
 }
 
-// The object is taken when the ability TRIGGERS, not when the item is
-// finally built. An optional trigger waits on its "you may" prompt; a
-// card that moved in that window is a new object, and the trigger still
-// names the one it came from — the dispatch's value copy of the source,
-// not a board read at Build.
+// The object is taken when the ability TRIGGERS. An optional trigger is
+// built then too, its "you may" waiting for resolution (CR 603.5,
+// #2494); a card that moves while the trigger waits on the stack is a
+// new object, and the trigger still names the one it came from.
 func TestAnOptionalTriggerNamesTheObjectThatTriggeredNotTheOneAtBuild(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
@@ -181,16 +180,9 @@ func TestAnOptionalTriggerNamesTheObjectThatTriggeredNotTheOneAtBuild(t *testing
 	})
 	src := watcherNamed(g, me.ID, "Watcher")
 	first := refOf(t, g, src)
-	var prompt *PendingChoice
 	g.WithWriteLock(func() {
 		g.EmitEvent(Event{Kind: EventDealDamage, Amount: 1, Actor: me.ID})
-		for _, c := range g.PendingChoices {
-			if c.Kind == PendingChoiceTriggerPrompt {
-				prompt = c
-			}
-		}
-		// The move a prompt window cannot normally host, done under
-		// the lock so the gate does not refuse it.
+		// The source leaves and comes back while its trigger waits.
 		if err := g.BounceToHandForEffect(src); err != nil {
 			t.Fatalf("bounce: %v", err)
 		}
@@ -198,12 +190,6 @@ func TestAnOptionalTriggerNamesTheObjectThatTriggeredNotTheOneAtBuild(t *testing
 			t.Fatalf("return: %v", err)
 		}
 	})
-	if prompt == nil {
-		t.Fatal("the optional trigger queued no prompt")
-	}
-	if err := g.ResolveTriggerPrompt(prompt.ID, me.ID, true); err != nil {
-		t.Fatalf("answer yes: %v", err)
-	}
 	var item *StackItem
 	g.WithWriteLock(func() {
 		for _, it := range append(append([]*StackItem(nil), g.PendingTriggers...), mapValues(g.StackMeta)...) {
@@ -213,7 +199,10 @@ func TestAnOptionalTriggerNamesTheObjectThatTriggeredNotTheOneAtBuild(t *testing
 		}
 	})
 	if item == nil {
-		t.Fatal("no item after the yes")
+		t.Fatal("the optional trigger was not put on the stack")
+	}
+	if item.Optional == nil {
+		t.Error("the item does not carry its \"you may\"")
 	}
 	if item.SourceObject != first {
 		t.Errorf("SourceObject = %+v, want the object that triggered %+v", item.SourceObject, first)

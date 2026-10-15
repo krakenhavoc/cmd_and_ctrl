@@ -936,6 +936,16 @@ var CatalogPrintedKeywords func(oracleID string) []string
 // sub-PR 1.
 var CatalogTriggers func(oracleID string) []TriggeredAbility
 
+// CatalogTriggerInterveningIf returns a triggered row's declared CR
+// 603.4 intervening "if", read as an item of that row resolves, or nil
+// when the row declares none (#3907). The cards/effects package reads
+// it off the row's Effect: a Do whose first step is an If. The
+// resolution of an optional trigger asks it BEFORE its CR 603.5 "you
+// may" (optional_trigger.go), so a trigger whose condition has failed
+// does nothing and asks nothing. A package hook rather than a field, so
+// nothing reachable from Game holds the closure.
+var CatalogTriggerInterveningIf func(t TriggeredAbility) func(g *Game, item *StackItem) bool
+
 // CatalogTriggerDoublers returns the CR 603.2d doublers declared by a
 // catalog card. It is a separate slot so game-package tests can stub the
 // count without importing the effects package.

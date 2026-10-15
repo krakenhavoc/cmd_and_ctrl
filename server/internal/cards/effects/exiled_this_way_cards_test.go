@@ -259,9 +259,9 @@ func TestGreenwardenReturnsTheCardOnceItsOwnExileLands(t *testing.T) {
 
 	b18Kill(t, g, warden)
 	markCommanderCard(t, g, me, warden)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	pickCard(t, g, me.ID, buried)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if !g.Exile.Contains(warden) {

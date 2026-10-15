@@ -460,6 +460,20 @@ export const LABEL_SPECS = {
     owners: ["lib/combatDock.ts"],
     doc: "the block request's dialog and its row group",
   }),
+  removeBlock: label({
+    name: "Remove block",
+    kind: "text",
+    role: "button",
+    owners: ["lib/combatDock.ts"],
+    doc: "#3898: the dock's button that takes the selected blocker's block back while blockers are declared on the board",
+  }),
+  chooseBlockers: label({
+    name: "choose blockers",
+    kind: "aria",
+    role: "dialog",
+    owners: [`${BOARD}BlockListSheet.svelte`],
+    doc: "#3898: the block declaration as a list, opened from the block request's Show as list; the keyboard path",
+  }),
 
   // -- Dock requests --
   mulligan: label({
@@ -531,8 +545,8 @@ export const LABEL_SPECS = {
     name: "Show as list",
     kind: "text",
     role: "button",
-    owners: ["lib/targetingDock.ts"],
-    doc: "a board-answered card-set pick's fallback: open the same choice as the list",
+    owners: ["lib/targetingDock.ts", "lib/combatDock.ts"],
+    doc: "a board-answered card-set pick's fallback: open the same choice as the list; #3898: the block request's way to the blockers list",
   }),
   castPayingOnPaper: dynamicLabel({
     stem: " and pay the rest on paper?",

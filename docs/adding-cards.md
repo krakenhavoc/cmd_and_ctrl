@@ -6551,9 +6551,18 @@ and resolution re-checks it (CR 608.2b). Never pick a target
 inside `Build`.
 
 **"You may" triggers** set `OptionalPrompt: &game.TriggerOptionalPrompt{Question: "..."}`.
-The harvester queues a yes/no `PendingChoice` instead of calling
-`Build`; on "Yes", `Build` runs (via the target pick first, if the
-trigger is targeted) and the item goes onto the stack.
+The ability goes on the stack like any other (its target picked first,
+if it is targeted) and the yes/no `PendingChoice` is asked as it
+resolves (CR 603.5, [ADR 0197](decisions/0197-optional-triggers-ask-as-they-resolve.md)):
+"Yes" runs the `Effect`, "No" resolves it doing nothing. "Do this only
+once each turn" limits the doing, not the trigger: note it with
+`b28NoteDoneThisTurn` on a "yes" and read `b28DoneThisTurn`, never the
+stack label's trigger or resolution tally, which a declined trigger
+also counts. An intervening "if" (CR 603.4) on a "you may" trigger is
+declared, not written inside the Effect: `Do(If{Cond: …, Then: …})`,
+or `InterveningIf(cond, row)` around a hand-written Effect (Valakut,
+Land Tax). Then a condition that fails in response removes the trigger
+before its question is asked (#3907).
 
 **"Unless that player pays {N}"** (Rhystic Study, Smothering Tithe,
 Esper Sentinel) is a `PayUnless` primitive the trigger's `Effect`
@@ -6593,8 +6602,9 @@ the spell *and* the trigger it queues (the helper waits for
 `Game.Stack`, `StackMeta`, and `PendingTriggers` to all empty).
 Assert the trigger is on the stack with `triggerOnStack(g, cardID)`
 before the second pass if the timing is the point of the test. For
-optional triggers, `answerLatestTriggerPrompt` then
-`passPriorityAroundTable` again. Upkeep triggers: `advanceToUpkeepOf`
+optional triggers, `answerLatestTriggerPrompt` (which passes priority
+until the trigger resolves and asks) then `passPriorityAroundTable`
+again. Upkeep triggers: `advanceToUpkeepOf`
 then `passPriorityAroundTable`. See the S19 sections of
 [cards_test.go](../server/internal/cards/effects/cards_test.go).
 

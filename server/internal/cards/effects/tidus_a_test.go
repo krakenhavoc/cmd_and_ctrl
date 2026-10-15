@@ -277,9 +277,9 @@ func TestTidusASummonersSendingExilesForASpiritThatGrowsOnABigCard(t *testing.T)
 	big := pushGraveyardCreature(g, g.Seats[1].ID, "Big Dead", "{3}{G}")
 
 	advanceToEndStepOf(t, g, seat)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	pickCard(t, g, me.ID, big)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if !g.Exile.Contains(big) {
 		t.Fatal("the creature card was not exiled")

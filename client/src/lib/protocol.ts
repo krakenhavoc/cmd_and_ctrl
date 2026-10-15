@@ -120,10 +120,12 @@ export interface ErrorPayload {
 // PaperPaymentPrompt is a paper_payment_required frame's detail (#3855):
 // what the pool left unpaid, one slot per mana, coloured requirements
 // first. `options` are the symbols that may pay the slot (W U B R G C
-// for a generic one). `artifact_sources` asks, per mana, whether an
+// for a generic one). `count`, when above one, is a long run of that
+// many identical mana named once (#3904), answered by one mana entry
+// with the same count. `artifact_sources` asks, per mana, whether an
 // artifact made it (Coin of Mastery reads that).
 export interface PaperPaymentPrompt {
-  slots: { symbol: string; options: string[] }[];
+  slots: { symbol: string; options: string[]; count?: number }[];
   artifact_sources?: boolean;
 }
 
@@ -1353,7 +1355,9 @@ export interface LogEvent {
   faces?: string[];
   // A coin call on a `flip`; on an `auto_answer` (ADR 0127), the answer,
   // "order" for a remembered trigger order (#3016, `label` the rows).
-  call?: "heads" | "tails" | "pay" | "dont_pay" | "yes" | "no" | "order";
+  // On a `fizzle`, "condition": an optional trigger's intervening "if"
+  // no longer held as it resolved (CR 603.4, #3907).
+  call?: "heads" | "tails" | "pay" | "dont_pay" | "yes" | "no" | "order" | "condition";
   wins?: number;
   // ADR 0121 §3: the seats an `opening_roll` entry names — the seats
   // that tied, or the seats the host rolled for. On `votes_revealed`
@@ -4317,6 +4321,19 @@ export interface CardView extends CastSurfaceView {
   // blocked if able"). Server-computed; the client renders it and never
   // derives a requirement. Omitted otherwise.
   must_block?: boolean;
+  // #3898: on a creature a defending player who is still declaring
+  // could put into the declaration, each attacker it could not be
+  // declared blocking on its own right now, with the server's reason
+  // token and sentence (addressed to its controller). A lone block on a
+  // menace attacker reads too_few_blockers; the attacker's
+  // `min_blockers` says how many it takes. Pairs already declared and
+  // anything face down are left out. Only during declare_blockers. The
+  // board greys those attackers while this creature is selected.
+  block_refusals?: BlockRefusalView[];
+  // #3898: the fewest creatures that may block this attacker (CR
+  // 509.1b: 2 for menace), while its defending player is declaring.
+  // Omitted when it is less than 2.
+  min_blockers?: number;
   // S24 (ADR 0036): the attachment relation for an Equipment or an
   // Aura — the permanent (`kind: "card"`) or player
   // (`kind: "player"`) this card is attached to. Omitted for every
@@ -4677,6 +4694,16 @@ export interface AbilityRowView {
   // ADR 0130 (amendment of 2026-10-07): "linked" on exert's "when you
   // do" trigger, "payoff" on "Whenever you exert a creature". Bot data.
   exert?: "linked" | "payoff";
+}
+
+// #3898: one entry of CardView.block_refusals, an attacker this creature
+// could not block on its own right now. Mirrors protocol.BlockRefusalView.
+export interface BlockRefusalView {
+  attacker: string;
+  // One of BlockRefusalReason (the illegal_block reasons).
+  reason: BlockRefusalReason | string;
+  // The server's sentence, for the hover.
+  message: string;
 }
 
 // ADR 0106 §2 (#1794): one CR 508.1c restriction on whom a creature may

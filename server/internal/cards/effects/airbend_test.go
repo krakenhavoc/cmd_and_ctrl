@@ -72,8 +72,8 @@ func TestAangAirbendsAnOpponentsPermanentAndOwnerRebuysIt(t *testing.T) {
 	if me.ID != g.Seats[g.Turn.ActiveSeat].ID {
 		t.Fatalf("test assumes seat 0 is active")
 	}
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, victim)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	assertAirbent(t, g, victim, opp.ID)
@@ -99,8 +99,8 @@ func TestAirbendingACommanderKeepsTheRebuyWhenItsOwnerDeclines(t *testing.T) {
 
 		castAndResolveCreature(t, g, "Aang, the Last Airbender",
 			"Legendary Creature — Human Avatar Ally", aangTheLastAirbenderOracle)
-		answerLatestTriggerPrompt(t, g, me.ID, true)
 		pickCard(t, g, me.ID, vivi)
+		answerLatestTriggerPrompt(t, g, me.ID, true)
 		passPriorityAroundTable(t, g)
 
 		if !g.Exile.Contains(vivi) {
@@ -170,10 +170,9 @@ func TestAangWillNotAirbendHimself(t *testing.T) {
 
 	aang := castAndResolveCreature(t, g, "Aang, the Last Airbender",
 		"Legendary Creature — Human Avatar Ally", aangTheLastAirbenderOracle)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	p := latestPickTarget(g, me.ID)
 	if p == nil {
-		t.Fatalf("no pick_target prompt after saying yes")
+		t.Fatalf("no pick_target prompt as the trigger went on the stack")
 	}
 	if hasID(p.PickTargetCards, aang) {
 		t.Errorf("the picker offered Aang to his own \"another target\" trigger")

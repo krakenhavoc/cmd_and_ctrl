@@ -1694,7 +1694,7 @@ func paperPaymentPayload(pp *game.PaperPaymentRequiredError, payload protocol.Ac
 	}
 	prompt := &protocol.PaperPaymentPrompt{ArtifactSources: pp.ArtifactSources}
 	for _, s := range pp.Slots {
-		prompt.Slots = append(prompt.Slots, protocol.PaperPaymentSlot{Symbol: s.Symbol, Options: s.Options})
+		prompt.Slots = append(prompt.Slots, protocol.PaperPaymentSlot{Symbol: s.Symbol, Options: s.Options, Count: s.Count})
 	}
 	return protocol.ErrorPayload{
 		Code:         protocol.CodePaperPaymentRequired,

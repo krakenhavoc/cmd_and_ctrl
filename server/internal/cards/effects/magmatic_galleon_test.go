@@ -20,7 +20,7 @@ func TestMagmaticGalleonETBDamageOverkillMakesATreasure(t *testing.T) {
 	castCatalogSpell(t, g, "Magmatic Galleon", "Artifact — Vehicle", magmaticGalleonOracle, nil)
 	passPriorityAroundTable(t, g)
 
-	if latestTriggerPrompt(g, caster.ID) != nil {
+	if owedMays(g, caster.ID) > 0 {
 		t.Errorf("Magmatic Galleon's ETB damage is mandatory — no yes/no prompt")
 	}
 	prompt := latestPickTarget(g, caster.ID)

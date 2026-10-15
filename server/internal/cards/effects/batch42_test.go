@@ -550,8 +550,8 @@ func TestB42WallOfReverenceGainsLifeEqualToATargetsPower(t *testing.T) {
 	fatty := pushVanillaCreature(g, me.ID, "Fatty", 7, 7)
 	life := me.Life
 	advanceToEndStepOf(t, g, 0)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, fatty)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if me.Life != life+7 {
 		t.Errorf("gain life equal to the target's power: %d → %d, want +7", life, me.Life)

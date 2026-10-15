@@ -502,6 +502,15 @@ type PendingChoice struct {
 	// without a HasLegalTarget predicate. Added in S19 follow-up.
 	NoLegalTarget bool
 
+	// OptionalItem is, on a trigger_prompt asked as an optional trigger
+	// resolves (CR 603.5, #2494), the ID of that resolving item, which
+	// the parked resolution tail holds; uuid.Nil on the harvest-time
+	// prompt (miracle's reveal) and every other kind. Plain data, so
+	// the prompt is a restore point. OptionalTradeFor is the item's
+	// OptionalTrigger.TradeFor, for TradeSubject.
+	OptionalItem     uuid.UUID
+	OptionalTradeFor uuid.UUID
+
 	// PickTargetPlayers / PickTargetCards are the legal-target set a
 	// PendingChoicePickTarget offers, computed when the trigger fired.
 	// Wire-serialised (as ID lists) so the client can highlight the
@@ -1229,7 +1238,13 @@ type triggerResumeFrame struct {
 // ability declares TriggerOptionalPrompt.Trade (Perplexing Chimera's
 // spell, ADR 0104). uuid.Nil on every other prompt.
 func (c *PendingChoice) TradeSubject() uuid.UUID {
-	if c == nil || c.triggerResume == nil {
+	if c == nil {
+		return uuid.Nil
+	}
+	if c.OptionalItem != uuid.Nil {
+		return c.OptionalTradeFor
+	}
+	if c.triggerResume == nil {
 		return uuid.Nil
 	}
 	p := c.triggerResume.ability.OptionalPrompt
@@ -2081,8 +2096,11 @@ func (g *Game) ResolveOptionalReplacement(choiceID, chooserID uuid.UUID, apply b
 	// re-evaluate this effect again for this event (CR 614.5: the
 	// decision is once per event).
 	g.replacementsAppliedThisEvent[ev.ID][chosen.id] = true
-	if apply {
-		g.runReplaceLocked(ev, chosen)
+	// #3482: a "yes" fires the effect of the object that offered it,
+	// found again by that object rather than by its battlefield slot;
+	// if it has left, its effect has gone with it.
+	if live, present := g.liveReplacementSourceLocked(chosen); apply && present {
+		g.runReplaceLocked(ev, live)
 	}
 
 	// Re-enter the apply-loop for any newly-applicable effects.
@@ -2411,6 +2429,15 @@ func (g *Game) resolveReplacementOrderLocked(choiceID, chooserID uuid.UUID, orde
 		if ev.Canceled {
 			// A prior Cancel short-circuits the remaining chain.
 			break
+		}
+		// #3482: the source as it is now, found by the object it was
+		// gathered from, not by the battlefield slot the gather read it
+		// at. One that has left takes its effect with it; a
+		// card that came back is a new object (CR 400.7), gathered
+		// afresh by the apply-loop re-entry below if it applies.
+		chosen, ok = g.liveReplacementSourceLocked(chosen)
+		if !ok {
+			continue
 		}
 		if !g.stillAppliesLocked(ev, chosen) {
 			// CR 616.1f: after each applied effect the process repeats
@@ -3676,13 +3703,15 @@ func (g *Game) ResolvePickTargetsDivided(choiceID, chooserID uuid.UUID, targets 
 	return nil
 }
 
-// ResolveTriggerPrompt processes the controller's yes/no answer for
-// a PendingChoiceTriggerPrompt entry. On `apply: true` the stashed
-// Build closure runs against the captured event + LKI; the resulting
-// StackItem (if non-nil) appends to PendingTriggers via the same
-// queueHarvestedTriggerLocked the mandatory path uses and is drained
-// onto the stack right away. On `apply: false` the entry is dropped
-// silently — the trigger is treated as having never been declared.
+// ResolveTriggerPrompt processes the chooser's yes/no answer for a
+// PendingChoiceTriggerPrompt entry. Almost every such prompt is an
+// optional trigger's CR 603.5 "you may", asked as it resolves (#2494):
+// `apply: true` runs the item's effect, `apply: false` lets it finish
+// doing nothing (answerOptionalTriggerLocked). The one asked before the
+// stack (TriggerOptionalPrompt.BeforeStack, miracle's reveal) still
+// works as it always did: on `apply: true` the stashed Build closure
+// runs against the captured event + LKI and the item is queued for the
+// drain; on `apply: false` the trigger is never put on the stack.
 //
 // Caller must NOT hold g.mu — this method takes the write lock.
 // Added in S19 sub-PR 2.
@@ -3717,6 +3746,11 @@ func (g *Game) ResolveTriggerPrompt(choiceID, chooserID uuid.UUID, apply bool) e
 // the automatic answer (ADR 0127 §4): `auto` takes the prompt out of the
 // queue without counting it as a player decision. Caller must hold g.mu.
 func (g *Game) answerTriggerPromptLocked(idx int, choice *PendingChoice, apply, auto bool) {
+	if choice.OptionalItem != uuid.Nil {
+		// CR 603.5 (#2494): the "you may" of a resolving item.
+		g.answerOptionalTriggerLocked(idx, choice, apply, auto)
+		return
+	}
 	frame := choice.triggerResume
 	g.answerChoiceLocked(idx, auto)
 	if !apply || frame == nil || !frame.ability.builds() {

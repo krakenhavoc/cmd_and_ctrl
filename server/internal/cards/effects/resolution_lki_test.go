@@ -46,7 +46,7 @@ func TestCreamOfTheCropReadsTheLastKnownPowerOfACreatureThatLeft(t *testing.T) {
 	g.WithWriteLock(func() {
 		_ = g.CreateTokenForEffect(me.ID, game.Card{Name: "Beast", TypeLine: "Token Creature — Beast", Power: 3, Toughness: 3}, 1)
 	})
-	answerLatestTriggerPrompt(t, g, me.ID, true)
+	g.RunStateChecksForTest()
 	beast := findBattlefieldByName(g, "Beast")
 	g.WithWriteLock(func() {
 		if err := g.AddCounterForEffect(beast, game.CounterPlusOne, 1); err != nil {
@@ -54,6 +54,7 @@ func TestCreamOfTheCropReadsTheLastKnownPowerOfACreatureThatLeft(t *testing.T) {
 		}
 	})
 	removeInResponse(t, g, beast, false)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	ask := putInLibraryChoiceFor(g, me.ID)

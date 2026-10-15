@@ -151,7 +151,6 @@ func TestHeWhoHungersSacrificesASpiritAndSoulshifts(t *testing.T) {
 	}
 
 	// Soulshift: "you may", then the target.
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	p := latestPickTarget(g, me.ID)
 	if p == nil {
 		t.Fatal("no soulshift target prompt")
@@ -160,6 +159,7 @@ func TestHeWhoHungersSacrificesASpiritAndSoulshifts(t *testing.T) {
 		t.Fatalf("soulshift offered %v; want only the mana value 4 Spirit %v", p.PickTargetCards, smallSpirit)
 	}
 	pickCard(t, g, me.ID, smallSpirit)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if !me.Hand.Contains(smallSpirit) {
 		t.Error("soulshift did not return the Spirit card")

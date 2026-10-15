@@ -4139,6 +4139,20 @@ func (g *Game) resolveTopAbilityLocked() {
 		})
 		return
 	}
+	// CR 603.4 before CR 603.5 (#3907): an optional trigger whose
+	// intervening "if" no longer holds is removed and does nothing, so
+	// its "you may" is never asked.
+	if top.Optional != nil && g.optionalTriggerConditionFailsLocked(top) {
+		g.EmitEvent(Event{
+			Kind:                EventFizzle,
+			Actor:               top.Controller,
+			Source:              top.SourceCardID,
+			Label:               top.Label,
+			ResolvedStackItemID: top.ID,
+			Call:                FizzleCallCondition,
+		})
+		return
+	}
 	g.EmitEvent(Event{
 		Kind:                EventResolve,
 		Actor:               top.Controller,
@@ -4147,6 +4161,14 @@ func (g *Game) resolveTopAbilityLocked() {
 		ResolvedStackItemID: top.ID,
 	})
 	resolveSeq := g.eventSeq
+	// CR 603.5 (#2494): an optional trigger's "you may" is chosen now,
+	// as it resolves, and the rest of the resolution waits for the
+	// answer (answerOptionalTriggerLocked runs it on a "yes").
+	if top.Optional != nil {
+		g.askOptionalTriggerLocked(top)
+		g.holdResolutionTailLocked(top, resolveSeq)
+		return
+	}
 	if top.Effect != nil {
 		if err := top.Effect(g, top); err != nil {
 			g.EmitEvent(Event{

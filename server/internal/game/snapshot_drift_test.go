@@ -302,6 +302,9 @@ var gameFields = plan(
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
 	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
 	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",
+	"replacementObjectSerials", dropped, "the object serials catalog and graveyard ReplacementEffectIDs pack (#3482); an ID outlives an action only inside a paused replacement event, whose prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames, so a restored game mints afresh; Clone copies it for undo",
+	"nextReplacementObjectSerial", dropped, "mints serials for the map above, which restores empty",
+	"replacementSerialsCompactAt", dropped, "the map above's compaction threshold, which restores empty",
 	"promptRuns", dropped, "non-empty between actions only for a printed sacrifice, discard or resolution-time pick instruction paused on its prompts (#1214), and each of those prompts is counted in ContinuationCensus.ChoiceResumeFrames through PendingChoice.promptRun; the run holds a continuation closure the snapshot could not carry anyway; Clone deep-copies it for undo (#1019, #1027)",
 	"enteringTokens", dropped, "non-empty between actions only for a created token whose battlefield entry is paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo (#762)",
 	"resolving", dropped, "the CR 707.10 self-copy source (#920); set between actions only for a resolution paused on a prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; it holds a *StackItem, whose Effect is a closure the snapshot could not carry anyway; Clone shares it for undo",
@@ -858,6 +861,10 @@ var stackItemFields = plan(
 	// #1539: a held trigger's owed "becomes the target" event.
 	// Carried for Ordered's reason — the restored drain emits it.
 	"TargetsAnnouncePending", carried, "",
+	// #2494: an optional trigger's CR 603.5 "you may", asked as the
+	// item resolves. Carried: a restore that lost it would resolve the
+	// trigger without asking.
+	"Optional", carried, "",
 	// #789 / #761: what the announcement paid — the counters
 	// removed, the life, and the mana tokens that left the pool.
 	// Carried, and it has to be: the counters are off the board and
@@ -966,6 +973,11 @@ var pendingChoiceFields = plan(
 	"DivideShield", dropped, "ADR 0108 §7: a divide_shield prompt always carries a confirmResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
 	"PayAmount", dropped, "ADR 0129 §3: a pay_amount prompt always carries a chooseValueResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
 	"NoLegalTarget", carried, "",
+	// #2494: the resolving item a resolution-time "you may" asks about,
+	// and what a "yes" trades for. Carried: the item rides the parked
+	// tail, so the open question is a restore point.
+	"OptionalItem", carried, "",
+	"OptionalTradeFor", carried, "",
 	"PickTargetPlayers", carried, "",
 	"PickTargetCards", carried, "",
 	"PickTargetMin", carried, "",

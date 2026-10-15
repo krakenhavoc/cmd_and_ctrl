@@ -414,10 +414,7 @@ func TestPoppetStitcherMakesDecayedZombiesAndTransforms(t *testing.T) {
 		t.Fatalf("%d Zombies, want 3", got)
 	}
 	b12ToMyNextUpkeep(t, g)
-	prompt := latestTriggerPrompt(g, me.ID)
-	if prompt == nil {
-		t.Fatal("no transform offer with three creature tokens")
-	}
+	prompt := awaitTriggerPrompt(t, g, me.ID)
 	if err := g.ResolveTriggerPrompt(prompt.ID, me.ID, true); err != nil {
 		t.Fatalf("ResolveTriggerPrompt: %v", err)
 	}

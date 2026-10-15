@@ -91,8 +91,8 @@ func TestArtisanOfKozilekReturnsACreatureOnCast(t *testing.T) {
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
 		t.Fatalf("CastSpell: %v", err)
 	}
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, bear)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if !annOnBattlefield(g, bear) {
 		t.Error("the creature card did not return to the battlefield")

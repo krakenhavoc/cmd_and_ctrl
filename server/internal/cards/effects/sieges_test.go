@@ -694,8 +694,8 @@ func TestFrontierSiegeDragonsLetsAnEnteringFlierFight(t *testing.T) {
 		Keywords: []string{"flying"},
 	})
 	emitETBForTest(g, me.ID, flier)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	answerPickTarget(t, g, victim)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if g.Battlefield.Contains(victim) {

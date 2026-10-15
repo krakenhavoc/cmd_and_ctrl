@@ -33,12 +33,12 @@ func TestHordewingSkaabCountsDistinctOpponentsDealtDamage(t *testing.T) {
 
 	emitCombatHits(g, []uuid.UUID{z1, z2, z3}, []uuid.UUID{opp1.ID, opp1.ID, opp2.ID})
 	g.RunStateChecksForTest()
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	if got := triggerAmountsFrom(g, skaab); len(got) != 1 || got[0] != 2 {
 		t.Fatalf("one trigger counting the two opponents hit, want [2], got %v", got)
 	}
 	// Resolving it draws two and then owes a discard of two.
 	hand := me.Hand.Size()
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if got := me.Hand.Size() - hand; got != 2 {
 		t.Errorf("drew %d cards, want 2 (one per opponent dealt damage)", got)
@@ -58,7 +58,6 @@ func TestHordewingSkaabCountsOneForOneOpponent(t *testing.T) {
 
 	emitCombatHits(g, []uuid.UUID{skaab, z1, z2}, []uuid.UUID{opp.ID, opp.ID, opp.ID})
 	g.RunStateChecksForTest()
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	if got := triggerAmountsFrom(g, skaab); len(got) != 1 || got[0] != 1 {
 		t.Fatalf("one trigger counting one opponent, want [1], got %v", got)
 	}
@@ -74,7 +73,6 @@ func TestHordewingSkaabIgnoresNonZombieDamage(t *testing.T) {
 
 	emitCombatHits(g, []uuid.UUID{zombie, bear}, []uuid.UUID{opp1.ID, opp2.ID})
 	g.RunStateChecksForTest()
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	if got := triggerAmountsFrom(g, skaab); len(got) != 1 || got[0] != 1 {
 		t.Fatalf("only the Zombie's opponent counts, want [1], got %v", got)
 	}

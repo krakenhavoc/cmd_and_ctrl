@@ -258,7 +258,6 @@ func TestSunTitanAttackReanimatesChosenPermanent(t *testing.T) {
 	dear := pushGraveyardPermanent(me, "Serra Angel", "Creature — Angel", "{3}{W}{W}")
 
 	declareAttack(t, g, opp.ID, titan)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 
 	prompt := latestPickTarget(g, me.ID)
 	if prompt == nil {
@@ -278,6 +277,7 @@ func TestSunTitanAttackReanimatesChosenPermanent(t *testing.T) {
 	if g.Battlefield.Contains(cheap) {
 		t.Errorf("reanimation happened before the trigger resolved")
 	}
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(cheap) {
@@ -296,8 +296,8 @@ func TestSunTitanEntersHalfStillFires(t *testing.T) {
 	cheap := pushGraveyardPermanent(me, "Grizzly Bears", "Creature — Bear", "{1}{G}")
 
 	castAndResolveCreature(t, g, "Sun Titan", "Creature — Giant", sunTitanOracle)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	pickCard(t, g, me.ID, cheap)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if !g.Battlefield.Contains(cheap) {

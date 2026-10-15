@@ -362,10 +362,11 @@ func TestConsecratedSphinxOpponentDrawYesDrawsTwo(t *testing.T) {
 	if err := g.DrawCard(drawer.ID); err != nil {
 		t.Fatalf("DrawCard: %v", err)
 	}
-	answerLatestTriggerPrompt(t, g, owner.ID, true)
+	g.RunStateChecksForTest()
 	if triggerOnStack(g, sphinxID) == nil {
-		t.Fatalf("Sphinx trigger not on the stack after Yes")
+		t.Fatalf("Sphinx trigger not on the stack before it resolved")
 	}
+	answerLatestTriggerPrompt(t, g, owner.ID, true)
 	passPriorityAroundTable(t, g)
 	if got := owner.Hand.Size() - handBefore; got != 2 {
 		t.Errorf("Sphinx: owner hand delta %d, want 2", got)

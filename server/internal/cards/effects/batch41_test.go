@@ -375,7 +375,6 @@ func TestB41AuramancerMayRebuyAnEnchantmentCard(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	// "You MAY return" is the CR 603.3c optional-trigger prompt; the
 	// target is picked only after it is accepted.
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	b04WaitForPick(t, g, me.ID)
 	p := latestPickTarget(g, me.ID)
@@ -386,6 +385,7 @@ func TestB41AuramancerMayRebuyAnEnchantmentCard(t *testing.T) {
 		t.Error("a creature card in the same graveyard is not")
 	}
 	pickCard(t, g, me.ID, aura)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if !me.Hand.Contains(aura) {
 		t.Error("the Aura goes to hand")

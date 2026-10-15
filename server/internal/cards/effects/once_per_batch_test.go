@@ -94,14 +94,8 @@ func TestOncePerBatchCoversThePromptWindow(t *testing.T) {
 		g.EmitEvent(game.Event{Kind: game.EventDrawCard, Actor: me.ID, CardID: uuid.New()})
 		g.EmitEvent(game.Event{Kind: game.EventDrawCard, Actor: me.ID, CardID: uuid.New()})
 	})
-	prompts := 0
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceTriggerPrompt && c.Chooser == me.ID {
-			prompts++
-		}
-	}
-	if prompts != 1 {
-		t.Fatalf("%d trigger prompts for two draws, want 1 — the second event arrived while the first was waiting on its prompt", prompts)
+	if prompts := owedMays(g, me.ID); prompts != 1 {
+		t.Fatalf("%d triggers for two draws of one batch, want 1", prompts)
 	}
 	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)

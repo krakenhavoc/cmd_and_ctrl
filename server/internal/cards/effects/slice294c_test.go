@@ -210,12 +210,12 @@ func TestMortuaryMireEntersTappedAndOffersToRebuyACreature(t *testing.T) {
 		t.Fatal("Mortuary Mire must enter tapped")
 	}
 
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	prompt := latestPickTarget(g, me.ID)
 	if prompt == nil {
 		t.Fatal("no pick_target prompt after the \"you may\"")
 	}
 	pickCard(t, g, me.ID, zombie)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if me.Graveyard.Contains(zombie) {

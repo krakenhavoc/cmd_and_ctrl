@@ -620,13 +620,13 @@ func TestB23DiscipleOfTheVaultDrainsPerArtifactDeath(t *testing.T) {
 	exiled := b12Permanent(g, opp.ID, "Their Other Rock", "Artifact")
 	// An opponent's artifact destroyed: you may, target opponent.
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(theirRock) })
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	p := latestPickTarget(g, me.ID)
 	if hasID(p.PickTargetPlayers, me.ID) || !hasID(p.PickTargetPlayers, opp.ID) || !hasID(p.PickTargetPlayers, other.ID) {
 		t.Error("target OPPONENT")
 	}
 	pickPlayer(t, g, me.ID, other.ID)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if other.Life != 39 || opp.Life != 40 {
 		t.Errorf("the chosen opponent loses 1: %d / %d", other.Life, opp.Life)
@@ -648,12 +648,12 @@ func TestB23DiscipleOfTheVaultDrainsPerArtifactDeath(t *testing.T) {
 	// #730: the colour pick gates the table. Answer it so the death
 	// trigger the sacrifice also queued can be passed around.
 	riderAnswerManaPicks(t, g, me.ID, "B")
-	if !b19HasTriggerPromptFor(g, me.ID) {
+	if !b19HasTriggerPromptFor(g, me.ID) && latestPickTarget(g, me.ID) == nil {
 		t.Fatal("a Treasure sacrificed for mana is an artifact put into a graveyard")
 	}
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	pickPlayer(t, g, me.ID, opp.ID)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if opp.Life != 39 {
 		t.Errorf("the Treasure drains: life %d, want 39", opp.Life)

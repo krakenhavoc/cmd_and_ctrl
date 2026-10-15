@@ -352,8 +352,8 @@ func TestDeputyOfAcquittalsReturnsChosenCreature(t *testing.T) {
 		deputyOfAcquittalsOracle, nil)
 	passPriorityAroundTable(t, g)
 
-	answerLatestTriggerPrompt(t, g, p0.ID, true)
 	pickCard(t, g, p0.ID, bear)
+	answerLatestTriggerPrompt(t, g, p0.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if _, stillOut := aangCardOnBF(g, bear); stillOut {

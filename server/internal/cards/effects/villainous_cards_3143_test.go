@@ -178,13 +178,14 @@ func TestTheMasterDoesNothingIfTheDeadCardLeftTheGraveyardInResponse(t *testing.
 	g, me, robot := masterBoard(t)
 
 	villainDestroy(g, robot)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
+	g.RunStateChecksForTest()
 	// In response, the card goes back to its owner's hand.
 	g.WithWriteLock(func() {
 		if err := g.ReturnFromGraveyardUnderControlForEffect(robot, game.ZoneHand, uuid.Nil); err != nil {
 			t.Fatal(err)
 		}
 	})
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
 	if villainInExile(g, robot) {

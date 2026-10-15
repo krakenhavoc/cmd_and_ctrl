@@ -255,10 +255,10 @@ func TestArcboundWandererMovesItsCountersWhenItDies(t *testing.T) {
 		}
 	})
 	passPriorityAroundTable(t, g)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	if pick := latestPickTarget(g, me.ID); pick != nil {
 		answerTriggerTargets(t, g, me.ID, golem)
 	}
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if got := counterCount(g, golem, game.CounterPlusOne); got != 4 {
 		t.Errorf("+1/+1 counters on the Golem = %d, want the Wanderer's 4", got)

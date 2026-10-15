@@ -62,11 +62,13 @@ func TestCavAEmeriaRechecksThePlainsOnResolution(t *testing.T) {
 	}
 	dead := pushGraveyardCardForTest(owner, "Dead Bear")
 	advanceToUpkeepOf(t, g, 1)
-	answerLatestTriggerPrompt(t, g, owner.ID, true)
 	b04WaitForPick(t, g, owner.ID)
 	pickCard(t, g, owner.ID, dead)
 	b14Kill(g, plains[0])
 	passPriorityAroundTable(t, g)
+	if latestTriggerPrompt(g, owner.ID) != nil {
+		t.Error("a trigger whose condition failed asked its \"you may\" (#3907)")
+	}
 	if g.Battlefield.Contains(dead) {
 		t.Error("six Plains as the trigger resolved: the creature must not return")
 	}

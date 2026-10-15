@@ -713,23 +713,35 @@ func TestTriggerDoublerOptionalPromptsAreIndependent(t *testing.T) {
 		return []TriggerDoubler{{Label: "Doubler", Applies: func(*Game, TriggerDoublingQuery) bool { return true }}}
 	})
 	g.WithWriteLock(func() { g.EmitEvent(Event{Kind: EventDrawCard, Actor: owner.ID}) })
-	if len(g.PendingChoices) != 2 {
-		t.Fatalf("optional prompts = %d, want 2", len(g.PendingChoices))
+	// CR 603.5 (#2494): both instances go on the stack, each with its
+	// own "you may", asked as each resolves.
+	if len(g.PendingTriggers) != 2 || len(g.PendingChoices) != 0 {
+		t.Fatalf("instances = %d, prompts = %d; want 2 instances and no prompt yet", len(g.PendingTriggers), len(g.PendingChoices))
 	}
-	first, second := g.PendingChoices[0], g.PendingChoices[1]
-	if id, name := second.TriggerDoubler(); id == uuid.Nil || name != "Doubler" {
-		t.Fatalf("prompt attribution = %s %q", id, name)
+	doubled := 0
+	for _, it := range g.PendingTriggers {
+		if it.Optional == nil {
+			t.Fatal("an instance does not carry its own \"you may\"")
+		}
+		if it.DoubledBy != uuid.Nil && it.DoubledByName == "Doubler" {
+			doubled++
+		}
 	}
+	if doubled != 1 {
+		t.Fatalf("%d instances attributed to the doubler, want 1", doubled)
+	}
+	first := passUntilTriggerPrompt(t, g)
 	if err := g.ResolveTriggerPrompt(first.ID, owner.ID, false); err != nil {
 		t.Fatal(err)
 	}
-	if len(g.PendingChoices) != 1 {
-		t.Fatalf("declining one removed %d prompts", 2-len(g.PendingChoices))
+	if len(g.PendingChoices) != 0 {
+		t.Fatalf("declining one left %d prompts open", len(g.PendingChoices))
+	}
+	second := passUntilTriggerPrompt(t, g)
+	if second.ID == first.ID {
+		t.Fatal("the second instance did not ask on its own")
 	}
 	if err := g.ResolveTriggerPrompt(second.ID, owner.ID, true); err != nil {
 		t.Fatal(err)
-	}
-	if len(g.PendingTriggers)+len(g.StackMeta) != 1 {
-		t.Fatalf("accepted second did not independently build")
 	}
 }

@@ -920,21 +920,21 @@ func TestB35GreenwardenRegrowsOnEntryAndAgainByExilingItself(t *testing.T) {
 	second := b17GraveyardCard(me, "Dead Bolt", "Instant", "{R}")
 	warden := castCatalogSpell(t, g, "Greenwarden of Murasa", "Creature — Elemental", b35GreenwardenOracle, nil)
 	passPriorityAroundTable(t, g)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	pickCard(t, g, me.ID, first)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if !me.Hand.Contains(first) {
 		t.Fatal("the entry did not return the chosen card")
 	}
 	b18Kill(t, g, warden)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	b04WaitForPick(t, g, me.ID)
 	p := latestPickTarget(g, me.ID)
 	if !hasID(p.PickTargetCards, warden) || !hasID(p.PickTargetCards, second) {
 		t.Errorf("any card in your graveyard, the Greenwarden included: %v", p.PickTargetCards)
 	}
 	pickCard(t, g, me.ID, second)
+	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if !g.Exile.Contains(warden) {
 		t.Error("the Greenwarden is exiled from the graveyard")

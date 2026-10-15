@@ -225,7 +225,15 @@ export function attackRowRequest(input: AttackRowInput): DockRequest {
 // window that cannot be got back (#328), and since the owner's
 // 2026-10-02 decision it also passes priority, so it takes a click (or
 // Enter on the button itself once it has focus), never a stray Enter.
-export function blockRequest(staged: number, onFinish: () => void): DockRequest {
+//
+// #3898: blocks are made on the board (click your creature, then the
+// attacker), so the question says how, and "Show as list" opens the same
+// declaration as a list: the keyboard path, and the fallback.
+export function blockRequest(
+  staged: number,
+  onFinish: () => void,
+  onShowList?: () => void,
+): DockRequest {
   const done = staged > 0;
   return {
     rank: "blocks",
@@ -237,6 +245,17 @@ export function blockRequest(staged: number, onFinish: () => void): DockRequest 
       staged > 0
         ? `${staged} ${staged === 1 ? "blocker" : "blockers"} declared`
         : "Choose blockers, or declare none",
+    detail: "click your creature, then the attacker it blocks",
+    secondary: onShowList
+      ? [
+          {
+            id: "blocks-list",
+            label: L.showAsList,
+            title: "choose blockers from a list instead of on the board",
+            onPress: onShowList,
+          },
+        ]
+      : undefined,
     primary: {
       id: "finish-blocks",
       label: done ? "Done blocking" : "No blocks",
@@ -247,6 +266,84 @@ export function blockRequest(staged: number, onFinish: () => void): DockRequest 
       cap: done ? "⏎" : undefined,
       onPress: onFinish,
     },
+  };
+}
+
+// blockSelectionRequest is #3898's selected blocker: the hint, Cancel,
+// and "Remove block" when the creature already blocks something. The
+// next click on an attacker commits, so there is no primary.
+export function blockSelectionRequest(
+  cardName: string,
+  blocking: boolean,
+  onCancel: () => void,
+  onRemove: () => void,
+  // The server's reason the last attacker clicked can't be blocked by
+  // it, if that click was refused.
+  refused = "",
+): DockRequest {
+  const secondary: DockAction[] = [
+    {
+      id: "cancel",
+      label: "Cancel",
+      cap: "Esc",
+      keyShortcuts: "Escape",
+      title: "cancel the selection",
+      onPress: onCancel,
+    },
+  ];
+  if (blocking) {
+    secondary.unshift({
+      id: "remove-block",
+      label: L.removeBlock,
+      title: `take ${cardName}'s block back`,
+      onPress: onRemove,
+    });
+  }
+  return {
+    rank: "flow",
+    label: `blocking with ${cardName}`,
+    tag: "block",
+    tone: "danger",
+    live: true,
+    question: blocking
+      ? `${cardName} is blocking — click another attacker to change it, or its attacker to take it back.`
+      : `Blocking with ${cardName} — click the attacker it blocks, or the creature again to cancel.`,
+    detail: refused
+      ? `can't block that one: ${refused}`
+      : "greyed attackers can't be blocked by it: hover or tap one to see why",
+    primary: null,
+    secondary,
+  };
+}
+
+// blockGroupRequest is #3898's group for an attacker that takes more
+// than one blocker (menace): how many more to click, and Cancel.
+export function blockGroupRequest(
+  attackerName: string,
+  have: number,
+  need: number,
+  onCancel: () => void,
+): DockRequest {
+  const more = need - have;
+  return {
+    rank: "flow",
+    label: `blocking ${attackerName}`,
+    tag: "block",
+    tone: "danger",
+    live: true,
+    question: `${attackerName} needs ${need} blockers — click ${more} more of your creatures.`,
+    detail: "nothing is declared until the group is complete",
+    primary: null,
+    secondary: [
+      {
+        id: "cancel",
+        label: "Cancel",
+        cap: "Esc",
+        keyShortcuts: "Escape",
+        title: "drop this group",
+        onPress: onCancel,
+      },
+    ],
   };
 }
 

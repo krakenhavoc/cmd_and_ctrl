@@ -64,12 +64,7 @@ func b19CastXModal(t *testing.T, g *game.Game, name, typeLine, oracle, manaCost 
 // b19HasTriggerPromptFor reports whether an optional-trigger prompt
 // is waiting on `chooser`.
 func b19HasTriggerPromptFor(g *game.Game, chooser uuid.UUID) bool {
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceTriggerPrompt && c.Chooser == chooser {
-			return true
-		}
-	}
-	return false
+	return owedMays(g, chooser) > 0
 }
 
 // b19TriggerQueuedFrom reports whether a triggered ability from

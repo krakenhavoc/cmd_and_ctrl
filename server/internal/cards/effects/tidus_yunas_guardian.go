@@ -24,10 +24,10 @@ import (
 //
 // Cheer is one trigger per player your countered creatures connect with
 // (CR 603.2c), whether the creature had a counter read as the damage is
-// dealt. "Do this only once each turn" is Nykthos Paragon's pair of
-// checks: a Cheer already put on the stack this turn, or one still
-// asking, stops another, and declining the "you may" does not use up the
-// turn. The draw comes first, then the proliferate, which the controller
+// dealt. "Do this only once each turn" is Nykthos Paragon's tally
+// (b28DoneThisTurn): the first Cheer the controller says "yes" to as it
+// resolves uses up the turn, and declining one does not. The draw comes
+// first, then the proliferate, which the controller
 // chooses (#2525).
 //
 // No simplification.
@@ -50,15 +50,21 @@ func init() {
 	})
 }
 
-// tidusCheerLabel is Cheer's stack label, which the once-each-turn tally
-// matches on.
+// tidusCheerLabel is Cheer's stack label.
 const tidusCheerLabel = "Cheer — draw a card and proliferate"
+
+// tidusCheerDone is Cheer's once-each-turn tally label (b28DoneThisTurn).
+const tidusCheerDone = "Cheer — drew and proliferated this turn"
 
 func tidusCheer() game.TriggeredAbility {
 	t := WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(
 		func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hasCounterOfKind(c, "") },
 		tidusCheerLabel,
 		func(g *game.Game, item *game.StackItem) error {
+			if b28DoneThisTurn(g, item.SourceCardID, tidusCheerDone) {
+				return nil
+			}
+			b28NoteDoneThisTurn(g, item.SourceCardID, tidusCheerDone)
 			ctx := NewContext(g, item)
 			if err := (DrawCards{N: 1}).Apply(ctx); err != nil {
 				return err
@@ -68,8 +74,7 @@ func tidusCheer() game.TriggeredAbility {
 	when := t.AppliesTo
 	t.AppliesTo = func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 		return when(ev, source, lki, g) &&
-			!b11TriggeredThisTurn(g, source.InstanceID, tidusCheerLabel) &&
-			!b28TriggerPromptPendingFrom(g, source)
+			!b28DoneThisTurn(g, source.InstanceID, tidusCheerDone)
 	}
 	t.OptionalPrompt = &game.TriggerOptionalPrompt{Question: "Cheer — draw a card and proliferate?"}
 	return t

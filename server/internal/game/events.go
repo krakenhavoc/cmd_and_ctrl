@@ -1631,7 +1631,9 @@ type Event struct {
 	Colors []string `json:"colors,omitempty"`
 
 	// Sides is the die size for EventRollDie. Call and Won describe an
-	// EventFlipCoin; Won is false for a face-only flip.
+	// EventFlipCoin; Won is false for a face-only flip. On an
+	// EventFizzle, Call FizzleCallCondition says the item was an
+	// optional trigger whose intervening "if" no longer held (#3907).
 	Sides int    `json:"sides,omitempty"`
 	Call  string `json:"call,omitempty"`
 	Won   bool   `json:"won,omitempty"`
