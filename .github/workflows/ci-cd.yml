@@ -2438,3 +2438,74 @@ jobs:
     environment: prod
     env: *cd-env
     steps: *cd-steps
+
+  # Discord notifications (#3326). Both are optional: each step is skipped when
+  # its secret is unset, and neither can fail a deploy, since discord-post.sh
+  # turns a failed post into a warning. The webhook URL is never echoed.
+  #
+  # Release notes after a successful production deploy. The secret is in the
+  # `prod` environment, the same place as the deploy's own secrets.
+  release-notes:
+    needs: cmdctrl-cd-prod
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      needs.cmdctrl-cd-prod.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: prod
+    permissions:
+      contents: read
+    env:
+      RELEASE_HOOK_SET: ${{ secrets.CMDCTRL_DISCORD_RELEASE_WEBHOOK != '' }}
+    steps:
+      - name: Checkout code
+        if: env.RELEASE_HOOK_SET == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Post the release notes
+        if: env.RELEASE_HOOK_SET == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.CMDCTRL_DISCORD_RELEASE_WEBHOOK }}
+        run: scripts/release-notes.sh
+
+  # Ops alert when a deploy to dev or prod fails, which covers the health checks
+  # (Verify service is active, Verify reported environment) and any other step.
+  # Posts to the same channel as the uptime watcher's alerts.
+  deploy-alert:
+    needs: [cmdctrl-cd-dev, cmdctrl-cd-prod]
+    if: >-
+      always() && (needs.cmdctrl-cd-dev.result == 'failure' ||
+      needs.cmdctrl-cd-prod.result == 'failure')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      ALERT_HOOK_SET: ${{ secrets.CMDCTRL_ALERT_DISCORD_WEBHOOK != '' }}
+    steps:
+      - name: Checkout code
+        if: env.ALERT_HOOK_SET == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Post the deploy failure
+        if: env.ALERT_HOOK_SET == 'true'
+        env:
+          DEV_RESULT: ${{ needs.cmdctrl-cd-dev.result }}
+          PROD_RESULT: ${{ needs.cmdctrl-cd-prod.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHORT_SHA: ${{ github.sha }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.CMDCTRL_ALERT_DISCORD_WEBHOOK }}
+        run: |
+          msg=""
+          [ "$DEV_RESULT" = "failure" ] && msg+="Deploy to dev failed."$'\n'
+          [ "$PROD_RESULT" = "failure" ] && msg+="Deploy to prod failed."$'\n'
+          msg+="Commit \`${SHORT_SHA:0:7}\`: ${RUN_URL}"
+          printf '%s\n' "$msg" | scripts/discord-post.sh
