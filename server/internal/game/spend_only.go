@@ -1,6 +1,9 @@
 package game
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // spend_only.go — #1600, ADR 0040's 2026-10-03 amendment: a COST that
 // says which mana may pay it.
@@ -173,7 +176,9 @@ func (c ParsedCost) foldSpendOnly(x int) ParsedCost {
 	n := c.XMana(x)
 	out.XSlots = 0
 	out.XReduced = 0
-	req := make([]ColorRequirement, 0, len(c.Required)+n+c.Generic)
+	// #3895: sized by the printed symbols only. The restricted mana is
+	// appended below, so nothing here preallocates by X.
+	req := make([]ColorRequirement, 0, len(c.Required))
 	for _, r := range c.Required {
 		if !lim.XOnly {
 			r.Options = intersectColors(r.Options, allowed)
@@ -184,11 +189,24 @@ func (c ParsedCost) foldSpendOnly(x int) ParsedCost {
 		req = append(req, r)
 	}
 	if !lim.XOnly {
-		n += c.Generic
+		n = satAddMana(n, c.Generic)
 		out.Generic = 0
 	}
+	// One requirement per restricted mana. Every announced X is bounded
+	// by MaxAnnouncedX first (x_bound.go), so n is too; a larger n
+	// can only come from a caller that skipped that gate, and is
+	// written as one requirement no mana can pay rather than millions:
+	// an unpayable cost is the weaker direction, a smaller one is not.
+	if n > maxFoldedMana {
+		out.Required = append(req, ColorRequirement{Options: []string{noManaColor}})
+		return out
+	}
+	// The requirements share one options slice. It is clipped, so an
+	// append to any of them copies instead of writing into the others.
+	opts := slices.Clip(append([]string(nil), allowed...))
+	req = slices.Grow(req, n)
 	for i := 0; i < n; i++ {
-		req = append(req, ColorRequirement{Options: append([]string(nil), allowed...)})
+		req = append(req, ColorRequirement{Options: opts})
 	}
 	out.Required = req
 	return out

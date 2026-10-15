@@ -164,7 +164,9 @@ func (s paperShortfall) amount() int { return len(s.reqs) + s.generic }
 
 // slots is the shortfall one mana at a time, for the picker.
 func (s paperShortfall) slots() []PaperSlot {
-	out := make([]PaperSlot, 0, s.amount())
+	// #3895: the shortfall can carry an announced X, so the capacity
+	// is a hint with a ceiling, not the amount.
+	out := make([]PaperSlot, 0, min(s.amount(), maxPreallocSlots))
 	for _, r := range s.reqs {
 		opts := append([]string(nil), r.Options...)
 		if len(opts) == 0 {

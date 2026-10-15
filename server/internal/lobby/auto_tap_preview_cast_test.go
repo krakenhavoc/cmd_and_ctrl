@@ -228,6 +228,10 @@ func TestAutoTapPreviewRefusesAMalformedAnnouncement(t *testing.T) {
 		"&face=-1",
 		"&optional_costs=kicker",
 		"&tap_ids=not-a-uuid",
+		// #3895: an X the cast itself would refuse.
+		"&x=1000001",
+		"&x=-1",
+		"&x=99999999999999999999",
 	} {
 		path := "/games/" + f.gameID.String() + "/auto-tap-preview?card=" + card.String() + q
 		resp := f.get(path)
