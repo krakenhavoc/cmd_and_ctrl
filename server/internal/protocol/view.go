@@ -820,6 +820,14 @@ type PendingChoiceView struct {
 	// present only on trigger_prompt and pick_target choices.
 	DoubledBy     string `json:"doubled_by,omitempty"`
 	DoubledByName string `json:"doubled_by_name,omitempty"`
+	// SharedTargetKey is, on a trigger's pick_target, the trigger's
+	// identity as card and ability (game.PendingChoice.SharedTargetKey,
+	// #3817): every copy of one card shares it, two abilities do not.
+	// The client offers one target for all of a card's waiting triggers
+	// over the prompts that share it. Opaque; the chooser's alone, like
+	// the auto-answer fields. Absent when the trigger has no catalog
+	// identity or its source is face down.
+	SharedTargetKey string `json:"shared_target_key,omitempty"`
 	// CouncilVote marks an option_pick as one player's BALLOT in a
 	// vote (CR 701.38, ADR 0146) and carries the vote so far. Public:
 	// every seat sees each vote as it is cast, except in a secret vote
@@ -1968,12 +1976,22 @@ type StackItemView struct {
 	// (ADR 0104, CR 110.2b). Sent only when it differs from
 	// Controller, so the client can say "taken from X" and a bot
 	// prompt can say who cast it; empty for every spell nobody took.
-	DefaultController string          `json:"default_controller,omitempty"`
-	Owner             string          `json:"owner"`
-	SourceCardID      string          `json:"source_card_id"`
-	Label             string          `json:"label,omitempty"`
-	Targets           []TargetRefView `json:"targets,omitempty"`
-	Modes             []int           `json:"modes,omitempty"`
+	DefaultController string `json:"default_controller,omitempty"`
+	Owner             string `json:"owner"`
+	SourceCardID      string `json:"source_card_id"`
+	Label             string `json:"label,omitempty"`
+	// AbilityText is the printed Oracle text of the ability this item
+	// is (#3830): a triggered ability's clause, an activated ability's
+	// whole "cost: effect" line, as the card prints it ("Whenever another
+	// creature you control enters, Purphoros deals 2 damage to each
+	// opponent."). Label stays the engine's short name. Empty for a
+	// spell, a copy, an item no single clause of its source's own
+	// answers (a granted or borrowed ability, a delayed or reflexive
+	// trigger, a rule's item), and an item whose source the table cannot
+	// see (face down, or in a hand or library nobody else knows).
+	AbilityText string          `json:"ability_text,omitempty"`
+	Targets     []TargetRefView `json:"targets,omitempty"`
+	Modes       []int           `json:"modes,omitempty"`
 	// ModeLabels is the oracle bullet of each chosen mode, in
 	// printed (resolution) order and with repeats — what "modes: 0, 2" used to
 	// make the table guess. The caster's hand card is gone by the
@@ -4949,6 +4967,16 @@ type TurnView struct {
 	// cannot see a replacement skip (Trouble in Pairs, Ugin's Nexus),
 	// which is decided as the turn would begin. Public.
 	NextSeat *int `json:"next_seat,omitempty"`
+	// PassHint is what the viewer's own next pass hands over (#3826):
+	// "ends_turn" when it is the viewer's turn and no later step of it
+	// grants priority, "your_turn_next" when it is another player's turn,
+	// none of its remaining steps grants priority and the next turn is
+	// the viewer's. Empty (and omitted) for a routine pass, when the
+	// viewer does not hold priority, or when the stack is not empty.
+	// Per viewer, stamped by FilterViewFor from the plan and next_seat.
+	// It ignores the viewer's own auto-pass and stops, which live on the
+	// client. See pass_hint.go.
+	PassHint string `json:"pass_hint,omitempty"`
 	// BetweenTurns is set while the turn change waits on a
 	// "turn_skip_order" question (ADR 0188 Decision 12): the old turn
 	// is over, the next has not begun, and the cursor still shows the
@@ -5139,7 +5167,7 @@ func ViewOfGame(g *game.Game) GameView {
 			StartingSeat:          g.StartingSeat,
 			OpeningRoll:           viewOfOpeningRoll(g.OpeningRoll),
 			StackItems:            viewOfStackItemsInStackOrder(g),
-			PendingTriggers:       viewOfStackItemSlice(g.PendingTriggers),
+			PendingTriggers:       viewOfStackItemSlice(g, g.PendingTriggers),
 			DelayedTriggers:       viewOfDelayedTriggers(g.DelayedTriggers),
 			SplitSecondActive:     g.SplitSecondActive,
 			DamageCantBePrevented: g.DamageCantBePreventedThisTurnLabels(),
@@ -8601,6 +8629,8 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if subject := c.TradeSubject(); subject != uuid.Nil {
 				v.TradeFor = subject.String()
 			}
+			// #3817: one target for every copy of the card's trigger.
+			v.SharedTargetKey = c.SharedTargetKey()
 		}
 		if answerer != c.Chooser {
 			v.OnBehalfOf = c.Chooser.String()
@@ -9157,10 +9187,14 @@ func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
 	}
 	sort.SliceStable(abilities, func(i, j int) bool { return abilities[i].Seq < abilities[j].Seq })
 	for _, item := range abilities {
-		entries = append(entries, entry{item.Seq, viewOfStackItem(item)})
+		v := viewOfStackItem(item)
+		v.AbilityText = abilityTextOf(g, item)
+		entries = append(entries, entry{item.Seq, v})
 	}
 	if held != nil && !seen[held.ID] && g.StackMeta[held.ID] == nil {
-		entries = append(entries, entry{held.Seq, viewOfStackItem(held)})
+		v := viewOfStackItem(held)
+		v.AbilityText = abilityTextOf(g, held)
+		entries = append(entries, entry{held.Seq, v})
 	}
 	sort.SliceStable(entries, func(i, j int) bool { return entries[i].seq < entries[j].seq })
 	if len(entries) == 0 {
@@ -9176,7 +9210,7 @@ func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
 // viewOfStackItemSlice projects a slice of *StackItem (the pending-
 // triggers queue) to the wire shape, preserving order. Returns nil
 // for an empty input.
-func viewOfStackItemSlice(items []*game.StackItem) []StackItemView {
+func viewOfStackItemSlice(g *game.Game, items []*game.StackItem) []StackItemView {
 	if len(items) == 0 {
 		return nil
 	}
@@ -9185,7 +9219,9 @@ func viewOfStackItemSlice(items []*game.StackItem) []StackItemView {
 		if it == nil {
 			continue
 		}
-		out = append(out, viewOfStackItem(it))
+		v := viewOfStackItem(it)
+		v.AbilityText = abilityTextOf(g, it)
+		out = append(out, v)
 	}
 	if len(out) == 0 {
 		return nil
@@ -9881,7 +9917,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// the same way — a permanent can phase out face down, and the
 		// card under it is no more knowable for having phased.
 		PhasedOut:     redactZone(v.PhasedOut, isKnower),
-		Turn:          v.Turn,
+		Turn:          turnViewFor(v, viewerID),
 		MulligansOpen: v.MulligansOpen,
 		Monarch:       v.Monarch,
 		Initiative:    v.Initiative,
@@ -10029,6 +10065,9 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].AutoAnswerCard = ""
 			out[i].AutoAnswerPrompt = ""
 			out[i].AskedByHand = ""
+			// #3817: so is the trigger's card identity, which names the
+			// card behind a prompt only its chooser answers.
+			out[i].SharedTargetKey = ""
 		}
 		if c.Kind == string(game.PendingChoiceSearchLibrary) && c.Chooser != viewerID {
 			out[i].Options = nil

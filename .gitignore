@@ -47,7 +47,12 @@ Thumbs.db
 # Claude Code per-project state. `.claude/settings.json` is a
 # command-permission allowlist; remove this line (or add
 # `!.claude/settings.json`) if you want to share it with collaborators.
-.claude/
+# `.claude/skills/` is tracked (vendored agent skills, #3838); the rest stays ignored.
+.claude/*
+!.claude/skills/
+
+# Output of the design-taste-frontend skill's inspect.mjs (run from a scratch dir)
+.taste-skill/
 
 # Node / Vite (for client/)
 node_modules/

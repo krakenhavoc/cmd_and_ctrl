@@ -69,9 +69,25 @@ func TestRenderLeavesOrdinaryTurnsAlone(t *testing.T) {
 	v.Turn.Phase = "precombat_main"
 	v.Turn.PhaseOrdinal = 1
 	got := boardtext.Render(v, "a", boardtext.Options{})
-	for _, bad := range []string{"(main", "(combat", "next turn:", "skips"} {
+	for _, bad := range []string{"(main", "(combat", "next turn:", "skips", "last priority"} {
 		if strings.Contains(got, bad) {
 			t.Errorf("an ordinary turn mentions %q in\n%s", bad, got)
+		}
+	}
+}
+
+// TestRenderSaysWhenAPassEndsTheTurnOrStartsYours: #3826, the engine's
+// pass_hint reaches the model and the MCP seat on the turn line.
+func TestRenderSaysWhenAPassEndsTheTurnOrStartsYours(t *testing.T) {
+	for hint, want := range map[string]string{
+		"ends_turn":      " — last priority this turn: passing ends your turn\n",
+		"your_turn_next": " — last priority before your turn: passing starts your turn\n",
+	} {
+		v := view()
+		v.Turn.PassHint = hint
+		got := boardtext.Render(v, "a", boardtext.Options{})
+		if !strings.Contains(got, want) {
+			t.Errorf("pass_hint %q: missing %q in\n%s", hint, want, got)
 		}
 	}
 }

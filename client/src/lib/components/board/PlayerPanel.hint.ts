@@ -14,7 +14,7 @@ const hint: Hint = {
   order: 40,
   anchor: { label: L.yourBoard },
   title: "Abilities live on right-click",
-  body: "Right-click a permanent to see its abilities and use them. On a touch screen, tap the small bolt on a ready card.",
+  body: "Right-click a permanent to use its abilities or read its rulings. On a touch screen, tap the small bolt on a ready card.",
   when: controlsAbility,
 };
 

@@ -1899,6 +1899,11 @@ export interface PendingChoiceView {
   // server omits both fields for ordinary choices.
   doubled_by?: string;
   doubled_by_name?: string;
+  // #3817: on a trigger's pick_target, the trigger as card and ability.
+  // Every copy of one card shares it, two abilities do not, so it groups
+  // "same target for all of this card's triggers". Opaque, the
+  // chooser's alone, and absent for a trigger with no catalog identity.
+  shared_target_key?: string;
   // S30 coin call prompt metadata. `coins` is the number of coins
   // covered by one call; wins tracks an ongoing chain.
   allow_stop?: boolean;
@@ -2071,6 +2076,12 @@ export interface StackItemView {
   owner: string;
   source_card_id: string;
   label?: string;
+  // #3830: the printed Oracle text of the ability this item is — a
+  // triggered ability's clause, an activated ability's whole
+  // "cost: effect" line. Absent on a spell, a copy, an item with no
+  // single clause of its own (granted, delayed, rule-made) and any
+  // item whose source the table cannot see; show `label` then.
+  ability_text?: string;
   targets?: TargetRefView[];
   modes?: number[];
   // #764: the oracle bullet of each chosen mode, in announce order
@@ -4823,6 +4834,13 @@ export interface TurnView {
   // charges. Seat 0 is a real answer. Absent when the game is not in
   // play. It cannot see a replacement skip (Trouble in Pairs).
   next_seat?: number;
+  // #3826: what the viewer's own next pass hands over. "ends_turn": it is
+  // the viewer's turn, they hold priority on an empty stack and no later
+  // step of the turn grants priority. "your_turn_next": the same in
+  // another player's turn, with the viewer's turn next (next_seat counts
+  // extra turns and skips). Absent for a routine pass. Per viewer; it
+  // ignores the viewer's own auto-pass and stops.
+  pass_hint?: "ends_turn" | "your_turn_next";
   // ADR 0188 Decision 12: set while the turn change waits on a
   // "turn_skip_order" question. The old turn is over and the next has
   // not begun; step still names the old turn's step, and nobody holds

@@ -62,7 +62,7 @@
         class:previewable={top.previewCard !== null}
         style:--seat-color={top.casterColor}
         data-stack-item-id={top.id}
-        title={top.previewCard ? `${top.name} — hover to preview` : top.name}
+        title={top.previewCard ? `${top.text} — hover to preview` : top.text}
         onpointerenter={() => controls.hoverEnter(top)}
         onpointerleave={() => controls.hoverLeave(top)}
         onfocusin={() => controls.hoverEnter(top)}
@@ -85,12 +85,12 @@
       </div>
       <div class="hero-info">
         <span class="next-chip">Resolves next</span>
-        <h3 class="name">{top.name}</h3>
+        <h3 class="name">{top.text}</h3>
         <div class="caster" style:--seat-color={top.casterColor}>
           <span class="seat-dot"></span>
           <span class="caster-name">{top.casterIsViewer ? "You" : top.casterName}</span>
         </div>
-        {#if top.effect}
+        {#if top.effect && top.text === top.name}
           <p class="effect">{top.effect.text}</p>
         {/if}
         {#if top.targets.length > 0}
@@ -138,7 +138,7 @@
               class:previewable={item.previewCard !== null}
               style:--seat-color={item.casterColor}
               data-stack-item-id={item.id}
-              title={item.previewCard ? `${item.name} — hover to preview` : item.name}
+              title={item.previewCard ? `${item.text} — hover to preview` : item.text}
               onpointerenter={() => controls.hoverEnter(item)}
               onpointerleave={() => controls.hoverLeave(item)}
               onfocusin={() => controls.hoverEnter(item)}
@@ -163,7 +163,7 @@
               </div>
               <div class="q-info">
                 <div class="q-title">
-                  <span class="q-name">{item.name}</span>
+                  <span class="q-name">{item.text}</span>
                   {#if kl}<span class="q-kind">{kl}</span>{/if}
                 </div>
                 <div class="q-sub">

@@ -322,6 +322,20 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}ActionDock.svelte`],
     doc: "the dock's primary on an empty stack (#3267): pass priority so the game moves to the next step (its visible text and its aria-label); the tutorial's stack step anchors here too, within actions",
   }),
+  nextEndsTurn: label({
+    name: "Pass · turn ends",
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}ActionDock.svelte`],
+    doc: "the dock's primary at your last priority of your own turn (#3826, turn.pass_hint ends_turn): a pass hands the turn over; ringed, and named so End turn stays the one button of that name (its visible text and its aria-label)",
+  }),
+  nextYourTurn: label({
+    name: "Pass · your turn next",
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}ActionDock.svelte`],
+    doc: "the dock's primary at your last priority before your turn begins (#3826, turn.pass_hint your_turn_next): your next decision is in your own turn; ringed (its visible text and its aria-label)",
+  }),
   attackWith: dynamicLabel({
     stem: "Attack with ",
     match: "prefix",
@@ -715,6 +729,14 @@ export const LABEL_SPECS = {
     role: "menuitem",
     owners: ["lib/gameMenu.ts"],
     doc: "a table roll (ADR 0121 §5)",
+  }),
+
+  rulings: label({
+    name: "Rulings",
+    kind: "text",
+    role: "menuitem",
+    owners: [`${BOARD}CardContextMenu.svelte`, `${BOARD}ManaAbilityMenu.svelte`],
+    doc: "a card menu's link to the card's official rulings in a new tab (#3831); not offered for a hidden or face-down card or a token",
   }),
 
   // -- The admin views (ADR 0124 §7, §8) --

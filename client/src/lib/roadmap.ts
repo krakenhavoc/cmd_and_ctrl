@@ -228,3 +228,37 @@ export function adrLabel(file: string): string {
 export function catalogSearchHash(name: string): string {
   return `#/catalog?q=${encodeURIComponent(name)}`;
 }
+
+/**
+ * roadmapHash is the hash a filtered Roadmap lives at: `#/roadmap` plus
+ * `?q=`, `?kind=` and `?status=` for whatever is set (the chips as
+ * comma lists, in registry order), so a filtered view can be linked.
+ * An empty filter is the bare `#/roadmap`.
+ */
+export function roadmapHash(filter: RoadmapFilter): string {
+  const p = new URLSearchParams();
+  const q = filter.query.trim();
+  if (q) p.set("q", q);
+  const kinds = KINDS.filter((k) => filter.kinds.includes(k));
+  if (kinds.length > 0) p.set("kind", kinds.join(","));
+  const statuses = STATUSES.filter((s) => filter.statuses.includes(s));
+  if (statuses.length > 0) p.set("status", statuses.join(","));
+  const qs = p.toString();
+  return qs ? `#/roadmap?${qs}` : "#/roadmap";
+}
+
+/**
+ * parseRoadmapHash is roadmapHash's inverse: the filter a hash names.
+ * A value the registry does not know is dropped, never sent on.
+ */
+export function parseRoadmapHash(hash: string): RoadmapFilter {
+  const qi = hash.indexOf("?");
+  if (qi < 0) return { query: "", kinds: [], statuses: [] };
+  const p = new URLSearchParams(hash.slice(qi + 1));
+  const list = (name: string): string[] => (p.get(name) ?? "").split(",").filter(Boolean);
+  return {
+    query: p.get("q") ?? "",
+    kinds: KINDS.filter((k) => list("kind").includes(k)),
+    statuses: STATUSES.filter((s) => list("status").includes(s)),
+  };
+}

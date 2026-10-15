@@ -17,9 +17,9 @@
 //
 // What the model answers, per item:
 //
-//   - the name to show, verbatim (e2e specs look for labels such as
-//     "Mulldrifter — draw two cards", so an ability's label is never
-//     reworded);
+//   - the name, verbatim (an ability's label is never reworded), and
+//     the text to draw: an ability's printed Oracle text when the
+//     server sends it (#3830), else the name;
 //   - which card to draw and which card the hover preview may zoom
 //     (for an ability, its source permanent — `previewableCard` is the
 //     rule for whether the viewer may see it at all, #697);
@@ -143,6 +143,14 @@ export interface StackLaneItem {
   kind: StackLaneItemKind;
   /** The display name, verbatim — the spell's card name or the ability's label. */
   name: string;
+  /**
+   * #3830: what the item says where it is drawn. An ability's printed
+   * Oracle text (the server's `ability_text`: "Whenever another creature
+   * you control enters, Purphoros deals 2 damage to each opponent."),
+   * else `name`. The one-line summary keeps the short label's effect,
+   * and accessible names ("Counter …") keep `name`.
+   */
+  text: string;
   /**
    * The name of the card behind an ability (its source), or the
    * spell's own name. Null when the source cannot be named.
@@ -623,10 +631,14 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
         : (anyCard.get(item.source_card_id)?.card.name ?? labelSource(item.label));
     const isStack = kind !== "pending";
     const preview = previewableCard(art);
+    const name = kind === "pending" ? item.label || "trigger" : titleFor(item);
     return {
       id: item.id,
       kind,
-      name: kind === "pending" ? item.label || "trigger" : titleFor(item),
+      name,
+      // Never a spell's: its card is on the stack to be read. The server
+      // sends none for a source the viewer may not see.
+      text: (item.kind !== "spell" && item.ability_text) || name,
       sourceName: sourceName || null,
       artCard: art ?? null,
       previewCard: preview,

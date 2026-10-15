@@ -338,6 +338,9 @@ export interface TargetingState {
   // target. The server supplies the public doubler metadata.
   doubledBy?: string;
   doubledByName?: string;
+  // #3817: the pick_target's card-and-ability identity
+  // (`shared_target_key`), which groups every copy of the card's trigger.
+  sharedKey?: string;
   // S22: the announce-time payments and choices collected before
   // this prompt opened — X, additional-cost picks, the alternative
   // cost being paid. They ride the cast_spell payload verbatim via
@@ -1688,60 +1691,157 @@ export function lonePick(t: TargetingState): TargetRef | null {
 // it is answered with it. Each instance is still its own ability on the
 // stack with its own target; this only fills in the choice.
 //
-// Siblings are prompts of the same chooser from the same source with
-// the same clause wording: the same ability on the same permanent,
-// doubled instances included. Two copies of one card stay separate.
+// The player chooses how far the kept target reaches (#3817, ADR 0127's
+// 2026-10-15 amendment: the owner chose to offer both):
+//
+//   - "source": the prompts of the same chooser from the same source
+//     with the same clause wording — the same ability on the same
+//     permanent, doubled instances included (#3265's scope, the
+//     default);
+//   - "card": the prompts of the same player for the same card and
+//     ability, from every copy of it (twenty Blood Artists and two
+//     deaths are forty prompts, one click). The server's
+//     `shared_target_key` is that identity; a prompt without one is
+//     only ever shared within its source. Never across players and
+//     never across abilities: the key carries both;
+//   - "off": every instance asks.
+
+export type ShareScope = "source" | "card" | "off";
 
 export interface SharedTarget {
+  scope: "source" | "card";
   source: string;
   reason: string;
+  /** For the card scope: the player-qualified `sharedKey` it covers. */
+  key?: string;
   ref: TargetRef;
 }
 
 /** The target kept for the rest of a repeated trigger's instances. */
 export const sharedTarget: Writable<SharedTarget | null> = guardedWritable(null, "sharedTarget");
 
-/** The dock's "Same target for all" toggle: on unless the player turns it off. */
-export const shareTargetOn: Writable<boolean> = guardedWritable(true, "shareTargetOn");
+/** The dock's choice of how far one pick reaches; this source's repeats by default. */
+export const shareTargetScope: Writable<ShareScope> = guardedWritable<ShareScope>(
+  "source",
+  "shareTargetScope",
+);
+
+/**
+ * effectiveShareScope is the scope that applies to one prompt: the card
+ * scope falls back to the source scope where it reaches no further (one
+ * source, or no card identity), so choosing "all of them" never turns
+ * sharing off.
+ */
+export function effectiveShareScope(scope: ShareScope, cardReaches: boolean): ShareScope {
+  return scope === "card" && !cardReaches ? "source" : scope;
+}
+
+/** sharedKeyOf is a prompt's card-and-ability identity for its player, or "" for none. */
+export function sharedKeyOf(c: PendingChoiceView): string {
+  if (!c.shared_target_key) return "";
+  return `${c.on_behalf_of ?? c.chooser}\u0000${c.shared_target_key}`;
+}
 
 function isRepeatable(t: TargetingState): boolean {
   return t.choiceKind === "pick_target" && t.max === 1 && !!t.choiceID;
 }
 
-/**
- * repeatsOf counts the OTHER pick_target prompts waiting on the same
- * chooser for the same ability as `t`'s, or 0 when `t` is not a
- * one-target trigger prompt.
- */
-export function repeatsOf(t: TargetingState, view: GameView | null | undefined): number {
-  if (!isRepeatable(t) || !view) return 0;
+function siblingsOf(
+  t: TargetingState,
+  view: GameView | null | undefined,
+  same: (mine: PendingChoiceView, c: PendingChoiceView) => boolean,
+): PendingChoiceView[] {
+  if (!isRepeatable(t) || !view) return [];
   const choices = view.pending_choices ?? [];
   const mine = choices.find((c) => c.id === t.choiceID);
-  if (!mine) return 0;
+  if (!mine) return [];
   return choices.filter(
     (c) =>
       c.id !== mine.id &&
       c.kind === "pick_target" &&
       c.chooser === mine.chooser &&
-      c.source === mine.source &&
-      c.reason === mine.reason,
-  ).length;
-}
-
-/** sharedFrom is what to keep after answering `t` with `ref`. */
-export function sharedFrom(t: TargetingState, ref: TargetRef): SharedTarget | null {
-  if (!isRepeatable(t)) return null;
-  return { source: t.card.instance_id, reason: t.label ?? "", ref: { kind: ref.kind, id: ref.id } };
+      c.reason === mine.reason &&
+      same(mine, c),
+  );
 }
 
 /**
- * sharedPick is the kept target, when `t` is a sibling of the prompt it
- * answered and the target is still legal for it; otherwise null, and
- * the player is asked as usual.
+ * repeatsOf counts the OTHER pick_target prompts waiting on the same
+ * chooser for the same ability on the same source as `t`'s, or 0 when
+ * `t` is not a one-target trigger prompt.
+ */
+export function repeatsOf(t: TargetingState, view: GameView | null | undefined): number {
+  return siblingsOf(t, view, (mine, c) => c.source === mine.source).length;
+}
+
+/**
+ * cardRepeats is the card scope's reach from `t`: how many OTHER prompts
+ * of the same player wait for the same card and ability, and from how
+ * many sources in all (this one included). `sources` under 2 means the
+ * card scope would reach no further than the source scope.
+ */
+export function cardRepeats(
+  t: TargetingState,
+  view: GameView | null | undefined,
+): { count: number; sources: number } {
+  const key = t.sharedKey;
+  if (!key) return { count: 0, sources: t.choiceID ? 1 : 0 };
+  const others = siblingsOf(t, view, (_mine, c) => sharedKeyOf(c) === key);
+  const sources = new Set([t.card.instance_id, ...others.map((c) => c.source ?? "")]);
+  return { count: others.length, sources: sources.size };
+}
+
+/** sharedFrom is what to keep after answering `t` with `ref` under `scope`. */
+export function sharedFrom(
+  t: TargetingState,
+  ref: TargetRef,
+  scope: "source" | "card" = "source",
+): SharedTarget | null {
+  if (!isRepeatable(t)) return null;
+  if (scope === "card" && !t.sharedKey) return null;
+  return {
+    scope,
+    source: t.card.instance_id,
+    reason: t.label ?? "",
+    ...(scope === "card" ? { key: t.sharedKey } : {}),
+    ref: { kind: ref.kind, id: ref.id },
+  };
+}
+
+/**
+ * sharedAfterAnswer is what to keep after `t` is answered with
+ * `targets` under the dock's `scope`: the card scope where it reaches
+ * other sources, else the source scope where this source repeats, else
+ * nothing (a lone instance, a multi-target pick, or sharing off).
+ */
+export function sharedAfterAnswer(
+  t: TargetingState,
+  targets: readonly TargetRef[],
+  scope: ShareScope,
+  view: GameView | null | undefined,
+): SharedTarget | null {
+  if (targets.length !== 1 || scope === "off") return null;
+  const card = cardRepeats(t, view);
+  const eff = effectiveShareScope(scope, card.sources > 1 && card.count > 0);
+  if (eff === "card") return sharedFrom(t, targets[0]!, "card");
+  if (eff === "source" && repeatsOf(t, view) > 0) return sharedFrom(t, targets[0]!, "source");
+  return null;
+}
+
+function covers(shared: SharedTarget, source: string, reason: string, key: string): boolean {
+  if (reason !== shared.reason) return false;
+  if (shared.scope === "card") return !!shared.key && key === shared.key;
+  return source === shared.source;
+}
+
+/**
+ * sharedPick is the kept target, when `t` is within its reach and the
+ * target is still legal for it; otherwise null, and the player is asked
+ * as usual.
  */
 export function sharedPick(t: TargetingState, shared: SharedTarget | null): TargetRef | null {
   if (!shared || !isRepeatable(t) || !t.legal || t.picked.length > 0) return null;
-  if (t.card.instance_id !== shared.source || (t.label ?? "") !== shared.reason) return null;
+  if (!covers(shared, t.card.instance_id, t.label ?? "", t.sharedKey ?? "")) return null;
   const legal = shared.ref.kind === "player" ? t.legal.players : t.legal.cards;
   return legal.has(shared.ref.id) ? { kind: shared.ref.kind, id: shared.ref.id } : null;
 }
@@ -1756,7 +1856,8 @@ export function sharedStillWanted(
 ): boolean {
   if (!shared || !view) return false;
   return (view.pending_choices ?? []).some(
-    (c) => c.kind === "pick_target" && c.source === shared.source && c.reason === shared.reason,
+    (c) =>
+      c.kind === "pick_target" && covers(shared, c.source ?? "", c.reason ?? "", sharedKeyOf(c)),
   );
 }
 
@@ -1786,6 +1887,7 @@ export function beginChoice(choice: PendingChoiceView, card: CardView): void {
       label: choice.reason,
       doubledBy: choice.doubled_by,
       doubledByName: choice.doubled_by_name,
+      sharedKey: sharedKeyOf(choice) || undefined,
     }),
   );
 }

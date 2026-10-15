@@ -5149,6 +5149,13 @@ illustrator's name, and each entry of `card_faces` carries its own
 line, is the main view of a card: the board's art tiles and the stack
 lane's tiles. Full card images print the line themselves.
 
+`multiverse_ids` (#3831, additive, omitted when Gatherer lists none) are
+the printing's Gatherer ids, one per printed face of a double-faced card.
+With `set` and `collector_number` they build the card menu's "Rulings"
+link: Gatherer (`Details.aspx?multiverseid=`, which redirects to the
+card's page) when the printing has an id, otherwise the Scryfall card
+page at `#rulings`. The client never fetches either site.
+
 `released_at`, `promo`, `full_art`, `digital`, `oversized` and
 `frame_effects` (#3605, [ADR 0192](decisions/0192-a-deck-names-its-printing.md),
 additive, each omitted when empty) are Scryfall's own words for how a

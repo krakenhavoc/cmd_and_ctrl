@@ -103,8 +103,9 @@ describe("the table's hints", () => {
     );
     for (const h of TABLE) {
       // ADR 0143 §4.2 renamed the dock's Pass turn and autopass, so the
-      // dock's hint is offered again at version 2 (ADR 0125 §7).
-      expect(h.version, h.id).toBe(h.id === "table.dock" ? 3 : 1);
+      // dock's hint is offered again at version 2 (ADR 0125 §7); #3267
+      // made it 3, and #3826 (the primary warns of a turn change) 4.
+      expect(h.version, h.id).toBe(h.id === "table.dock" ? 4 : 1);
       expect(h.place, h.id).toBe("table");
     }
     expect(new Set(TABLE.map((h) => h.order)).size).toBe(TABLE.length);

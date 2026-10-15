@@ -462,7 +462,15 @@
           {/if}
         </header>
         {#if model.summary}
-          <p class="summary">{model.summary}</p>
+          <!-- #3830: the line keeps the label's short effect; the top
+               item's printed text is on its card below, and here on
+               hover. -->
+          <p
+            class="summary"
+            title={model.top && model.top.text !== model.top.name ? model.top.text : undefined}
+          >
+            {model.summary}
+          </p>
         {/if}
         <!-- #3817: a batch of the same trigger waiting to go on the stack,
              counted, so a player answering the third of forty target

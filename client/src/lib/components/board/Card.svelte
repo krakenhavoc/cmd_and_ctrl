@@ -82,6 +82,7 @@
   import { displayName, isFlippedFlipCard } from "../../faces";
   import { ICONS } from "../../icons";
   import { L } from "../../labels";
+  import { offersRulings } from "../../rulings";
   import { crewNames } from "../../crewedBy";
   import { ringBearerTitle } from "../../ringEmblem";
   import {
@@ -443,7 +444,9 @@
       loyaltyRows.length > 0 ||
       sandbox ||
       !!castAnywayRow ||
-      !!payLifeRow,
+      !!payLifeRow ||
+      // #3831: any card the viewer can see has its rulings.
+      offersRulings(card),
   );
   // ADR 0105: a pip is drawn only where the popover it points at is
   // wired. A pip on a card whose abilities this viewer cannot open is

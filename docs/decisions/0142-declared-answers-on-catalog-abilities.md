@@ -412,3 +412,5 @@ something it controls or an item it controls, or is an instant or sorcery spell 
 
 The vocabulary, the tiers in `game/answers.go`, the declarations and the ratchet do not change: the gate is read from
 the game in `internal/legal` (`stackThreatens`), like owner answer 4, which it leaves as it is.
+
+[ADR 0009's #3825 amendment](0009-smart-priority-autopass.md#amendment-an-untargeted-wipe-from-an-activated-ability-is-a-threat-3825) adds one more threat: an opponent's activated ability whose row declares a `Purpose.Sweep` (or `remove`) that reaches something the seat controls. It reads the declarations above and changes none of them.
