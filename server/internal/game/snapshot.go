@@ -1948,8 +1948,36 @@ func (g *Game) CaptureSnapshot() *GameSnapshot {
 	return g.captureSnapshotLocked()
 }
 
+// CaptureRestorePoint is CaptureSnapshot for the room's restore-point
+// writer (#3823). The one difference is the event log: the snapshot's
+// Events is the live log itself, capped at its current length, not a
+// copy, and the log's EventLogGeneration is returned with it.
+//
+// The share is safe because the log is append-only under one
+// generation (projection_cache.go): nothing writes an index below the
+// capped length while the generation holds, and an append past the cap
+// reallocates rather than writing into the shared array. Copying 5,000
+// events on every commit was most of the capture's bytes, and the
+// writer only reads them, to encode each one once
+// (EncodedEventLog). A caller that might write to the snapshot's
+// Events uses CaptureSnapshot.
+//
+// Concurrency: takes a read lock, like CaptureSnapshot.
+func (g *Game) CaptureRestorePoint() (*GameSnapshot, uint64) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.captureSnapshotEventsLocked(false), g.eventLogGen
+}
+
 // captureSnapshotLocked is the unlocked variant. Caller must hold g.mu.
 func (g *Game) captureSnapshotLocked() *GameSnapshot {
+	return g.captureSnapshotEventsLocked(true)
+}
+
+// captureSnapshotEventsLocked is captureSnapshotLocked with a choice of
+// copying the event log (copyEvents) or sharing it capped at its
+// length (CaptureRestorePoint). Caller must hold g.mu.
+func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s := &GameSnapshot{
 		Schema:                SnapshotSchemaVersion,
 		TakenAt:               time.Now().UTC(),
@@ -2090,9 +2118,13 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	// #3613: the end of the resolution parked behind those prompts.
 	s.PausedResolutionTail = snapshotResolutionTail(g, g.pausedResolutionTail, cen)
 
-	if len(g.Events) > 0 {
-		s.Events = make([]Event, len(g.Events))
+	switch n := len(g.Events); {
+	case n == 0:
+	case copyEvents:
+		s.Events = make([]Event, n)
 		copy(s.Events, g.Events)
+	default:
+		s.Events = g.Events[:n:n]
 	}
 
 	if len(g.lastKnownBattlefield) > 0 {

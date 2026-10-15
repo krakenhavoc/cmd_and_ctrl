@@ -5,6 +5,7 @@ import (
 	"os"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -27,6 +28,28 @@ type RoomManager struct {
 	rooms   map[uuid.UUID]*Room
 	log     *slog.Logger
 	dumpDir string
+	// restoreEvery is the restore-point interval given to every room
+	// Create makes and every room the restore pass rebuilds (#3823,
+	// restore_rate.go). Zero, the default, writes on every restorable
+	// commit; the server sets CMDCTRL_RESTORE_POINT_INTERVAL's value.
+	restoreEvery time.Duration
+}
+
+// SetRestorePointInterval sets the restore-point interval for rooms
+// this manager creates or restores from now on (#3823). Zero or less
+// writes on every restorable commit. The server calls it once, at
+// boot, before the restore pass.
+func (m *RoomManager) SetRestorePointInterval(d time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.restoreEvery = max(d, 0)
+}
+
+// restorePointInterval reads the interval under the manager's lock.
+func (m *RoomManager) restorePointInterval() time.Duration {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.restoreEvery
 }
 
 // NewRoomManager constructs an empty RoomManager. dumpDir is the root
@@ -55,6 +78,7 @@ func (m *RoomManager) Create(g *game.Game) *Room {
 		return existing
 	}
 	r := NewRoom(g, m.log, m.dumpDir)
+	r.restoreEvery = m.restoreEvery
 	m.rooms[g.ID] = r
 	return r
 }
@@ -120,9 +144,16 @@ func (m *RoomManager) List() []*Room {
 // clients bound to the deleted game separately.
 func (m *RoomManager) Delete(id uuid.UUID) {
 	m.mu.Lock()
+	r := m.rooms[id]
 	delete(m.rooms, id)
 	dumpDir := m.dumpDir
 	m.mu.Unlock()
+
+	// Before the files go: a pending restore point, or its trailing
+	// timer, must not write the file back after the reaper (#3823).
+	if r != nil {
+		r.closeRestorePoints()
+	}
 
 	if dumpDir == "" {
 		return

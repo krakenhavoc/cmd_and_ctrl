@@ -150,7 +150,7 @@ type Room struct {
 	// recently WRITTEN restore point (persist.go), so that a shutdown
 	// census (#524) can report how far a live table has drifted from
 	// what disk holds without re-reading or re-marshalling the file.
-	// Guarded by mu, like seq: set only inside writeRestorePointLocked
+	// Guarded by mu, like seq: set only inside publishRestorePointLocked
 	// on a successful write, and by restoreOne at boot (before the
 	// room is registered, so no lock is needed there). The zero value
 	// (a zero At) means "no restore point has ever been written" —
@@ -162,8 +162,26 @@ type Room struct {
 	// points (ADR 0041 phase 3, P7, #1497): the evidence the shutdown
 	// census cannot give, since it reads one instant per deploy and an
 	// idle table at that instant hides everything that happened
-	// mid-game. Guarded by mu; written only by writeRestorePointLocked.
+	// mid-game. Guarded by mu; written only by captureRestorePointLocked.
 	skips skipTally
+
+	// The restore-point rate limit and the encoded event log (#3823,
+	// restore_rate.go). All guarded by mu except restoreGate, a leaf
+	// lock of its own. restoreEvery is how often a restore point may be
+	// written (zero: every restorable commit); restoreLastWrite when the
+	// last write was attempted; restorePending the newest restorable
+	// capture not yet written; restoreTimer the trailing write, with
+	// restoreTimerTok telling a stale firing from the current one;
+	// restoreWrites counts the files written, for tests; eventLog is
+	// each event's JSON, encoded once.
+	restoreEvery     time.Duration
+	restoreLastWrite time.Time
+	restorePending   *pendingRestorePoint
+	restoreTimer     *time.Timer
+	restoreTimerTok  uint64
+	restoreWrites    int
+	restoreGate      restoreGate
+	eventLog         game.EncodedEventLog
 
 	// tableRolls is the hub's rate limit on roll_table_die (ADR 0121
 	// §5, table_roll.go): when each seat last rolled at the table.
@@ -187,9 +205,9 @@ type restorePointRecord struct {
 	At  time.Time
 }
 
-// skipTally counts the captures writeRestorePointLocked skipped, by
-// census kind, and the runs of consecutive skips between two written
-// restore points. In-memory only; it dies with the process, which is
+// skipTally counts the captures captureRestorePointLocked skipped, by
+// census kind, and the runs of consecutive skips between two restorable
+// captures. In-memory only; it dies with the process, which is
 // fine, because the shutdown census logs it on the way out.
 type skipTally struct {
 	// ByKind is skipped captures per census counter name
@@ -197,7 +215,7 @@ type skipTally struct {
 	// counts once under each.
 	ByKind map[string]int
 	// Run is the current run of consecutive skipped captures, in
-	// actions; zero right after a restore point is written.
+	// actions; zero right after a restorable capture.
 	Run int
 	// LongestRun is the longest run this process has seen.
 	LongestRun int
@@ -217,8 +235,9 @@ func (s *skipTally) noteSkip(c game.ContinuationCensus) {
 	}
 }
 
-// noteWrite records a written restore point: the current run ends.
-func (s *skipTally) noteWrite() { s.Run = 0 }
+// noteRestorable records a capture that is a restore point, written or
+// pending (restore_rate.go): the current run ends.
+func (s *skipTally) noteRestorable() { s.Run = 0 }
 
 // copyByKind returns a copy of the per-kind map for a report.
 func (s *skipTally) copyByKind() map[string]int {
@@ -1016,20 +1035,11 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 	// Failure is warn-only for the same reason the dump's is: losing
 	// a restore point costs a rewind on the next deploy; refusing the
 	// player's action costs them the move they just made.
+	//
+	// The write itself is rate-limited (restore_rate.go, #3823): the
+	// capture is taken here, and written now or within the interval.
 	if r.dumpDir != "" && advanceSeq {
-		wrote, err := r.writeRestorePointLocked(nextSeq)
-		if err != nil {
-			r.log.Warn("restore point write failed", "err", err, "seq", nextSeq)
-		}
-		// An ended table keeps its final state as its restore point, so
-		// a deploy does not take it from the players still looking at it
-		// (#2919; RestoreRooms brings it back for EndedTableRetention).
-		// If that state could not be written, the older file on disk is
-		// a live game: drop it rather than let a boot resurrect the
-		// table as active.
-		if !wrote && r.Game.CurrentState() == game.StateEnded {
-			r.RemoveRestorePoint()
-		}
+		r.noteRestorePointLocked(nextSeq)
 	}
 	return view, nextSeq, nil
 }

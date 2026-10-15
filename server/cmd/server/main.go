@@ -326,6 +326,8 @@ func main() {
 	// set but too short fails the boot. There is no default key.
 	authenticator := newAuthenticator(log, cfg)
 	mgr := ws.NewRoomManager(log, cfg.DataDir)
+	// Before the restore pass, so restored rooms get it too (#3823).
+	mgr.SetRestorePointInterval(cfg.RestorePointInterval)
 	// With a database, games / seats / invites are rows (ADR 0051
 	// decision 4, S34 sub-PR 3) and RestoreFromDisk imports any
 	// lobby/*.json the previous binary left. Without one, the lobby
@@ -901,6 +903,12 @@ func main() {
 	// looks the game up in the lobby (a fact ws itself does not know)
 	// so an archived table's line says so rather than reading as an
 	// abandoned live one.
+	//
+	// First, write every room's pending restore point (#3823): the
+	// rate limit holds the newest clean state back for up to the
+	// interval, and a restart must not rewind a table past it. Then the
+	// census reads what is really on disk.
+	mgr.FlushRestorePoints()
 	ws.LogShutdownCensus(log, mgr.List(), func(id uuid.UUID) bool {
 		meta, err := l.Get(id)
 		return err == nil && meta.Archived()
@@ -908,6 +916,9 @@ func main() {
 
 	hub.Shutdown(shutdownCtx)
 	bots.Shutdown()
+	// Again, now that no socket or bot can commit: a move that landed
+	// between the first flush and the hub closing is written too.
+	mgr.FlushRestorePoints()
 	if database != nil {
 		if err := database.Close(); err != nil {
 			log.Error("database close", "err", err)
@@ -1118,6 +1129,11 @@ type config struct {
 	// INTO backup sweep runs (CMDCTRL_DB_BACKUP_INTERVAL). Defaults to
 	// db.DefaultBackupInterval; <= 0 disables the sweep.
 	DBBackupInterval time.Duration
+	// RestorePointInterval is how often a room may write its restore
+	// point (CMDCTRL_RESTORE_POINT_INTERVAL, #3823). Defaults to
+	// ws.DefaultRestorePointInterval; 0 writes on every restorable
+	// commit, as before the rate limit.
+	RestorePointInterval time.Duration
 	// Env is the deployment identity from CMDCTRL_ENV. Unset means
 	// production — a forgotten variable fails closed.
 	Env appenv.Env
@@ -1149,18 +1165,19 @@ func loadConfig(log *slog.Logger) config {
 	}
 
 	c := config{
-		Addr:             envOr("CMDCTRL_ADDR", ":8080"),
-		AdminToken:       os.Getenv("CMDCTRL_ADMIN_TOKEN"),
-		SeedDemo:         os.Getenv("CMDCTRL_SEED_DEMO") == "1",
-		SessionTTL:       12 * time.Hour,
-		IdentityTTL:      720 * time.Hour,
-		BotDecisionLog:   strings.TrimSpace(os.Getenv("CMDCTRL_BOT_DECISION_LOG")),
-		BotModel:         strings.TrimSpace(os.Getenv("CMDCTRL_BOT_MODEL")),
-		BotFrontierModel: strings.TrimSpace(os.Getenv("CMDCTRL_BOT_FRONTIER_MODEL")),
-		BotNoImprovise:   isOff(os.Getenv("CMDCTRL_BOT_IMPROVISE")),
-		DBBackupInterval: db.DefaultBackupInterval,
-		Env:              env,
-		Features:         appenv.LoadFeatures(env),
+		Addr:                 envOr("CMDCTRL_ADDR", ":8080"),
+		AdminToken:           os.Getenv("CMDCTRL_ADMIN_TOKEN"),
+		SeedDemo:             os.Getenv("CMDCTRL_SEED_DEMO") == "1",
+		SessionTTL:           12 * time.Hour,
+		IdentityTTL:          720 * time.Hour,
+		BotDecisionLog:       strings.TrimSpace(os.Getenv("CMDCTRL_BOT_DECISION_LOG")),
+		BotModel:             strings.TrimSpace(os.Getenv("CMDCTRL_BOT_MODEL")),
+		BotFrontierModel:     strings.TrimSpace(os.Getenv("CMDCTRL_BOT_FRONTIER_MODEL")),
+		BotNoImprovise:       isOff(os.Getenv("CMDCTRL_BOT_IMPROVISE")),
+		DBBackupInterval:     db.DefaultBackupInterval,
+		RestorePointInterval: ws.DefaultRestorePointInterval,
+		Env:                  env,
+		Features:             appenv.LoadFeatures(env),
 	}
 
 	// CMDCTRL_DB_BACKUP_INTERVAL is a misconfiguration worth failing
@@ -1174,6 +1191,18 @@ func loadConfig(log *slog.Logger) config {
 			os.Exit(1)
 		}
 		c.DBBackupInterval = d
+	}
+
+	// CMDCTRL_RESTORE_POINT_INTERVAL (#3823): the same posture. An
+	// operator who asked for a shorter crash rewind and silently got
+	// the default would learn otherwise from the next crash.
+	if raw := os.Getenv("CMDCTRL_RESTORE_POINT_INTERVAL"); raw != "" {
+		d, err := time.ParseDuration(raw)
+		if err != nil || d < 0 {
+			log.Error("CMDCTRL_RESTORE_POINT_INTERVAL invalid: want a Go duration, 0 or more", "value", raw, "err", err)
+			os.Exit(1)
+		}
+		c.RestorePointInterval = d
 	}
 
 	// CMDCTRL_BOT_MAX_THINK is a misconfiguration worth failing the
