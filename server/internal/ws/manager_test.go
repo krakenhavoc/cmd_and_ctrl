@@ -18,7 +18,7 @@ import (
 // buildTestGame is a test helper that stands up a 2-seat game with
 // deterministic decks and starts it with a fixed RNG. Used by manager
 // tests so that every room we register has a real, active game ID.
-func buildTestGame(t *testing.T, label string) *game.Game {
+func buildTestGame(t testing.TB, label string) *game.Game {
 	t.Helper()
 	g := game.NewGame()
 	for i := range 2 {
