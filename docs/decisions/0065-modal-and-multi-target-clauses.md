@@ -1343,3 +1343,33 @@ This is a partial seam: Breaking of the Fellowship remains waiting for a
 same-controller relationship that can read the first target's last-known
 controller after that target becomes illegal. No resolution-only workaround
 or incomplete catalog entry is added for it.
+
+## Amendment 2026-10-15: tiered is Spree with exactly one bullet (#3777)
+
+CR 702.183a: "Tiered represents a static ability found on modal spells.
+'Tiered' means 'As an additional cost to cast this spell, choose one of
+its modes and pay the additional cost associated with that mode.'"
+That is the 2026-09-23 Spree shape with the count fixed at one, so it
+is a constructor and not a new field:
+
+```go
+Modes: Tiered(
+    SpreeModeDoing("Cross-Slash — Destroy target tapped creature.", "{0}", …),
+    SpreeModeDoing("Blade Beam — …", "{1}", …),
+    SpreeModeDoing("Omnislash — Destroy all tapped creatures.", "{3}{W}", nil, …),
+),
+```
+
+`effects.Tiered` is `Min: 1, Max: 1` with `effects.TieredPrompt`, which
+the roadmap's `tiered` row matches the way the spree row matches
+"Spree". Everything else is Spree's and unchanged: the bullet's cost is
+summed into the cast price at the optional-cost point (ADR 0073 §3), the
+enumerator prices each selection on its own (#544), and the client's
+mode picker shows each bullet's cost.
+
+A `{0}` bullet is written `"{0}"`, not `""`: both price the same, but
+the printed tier is a cost and every tiered bullet prints one, which
+`TestTieredIsExactlyOneMode` pins.
+
+Proof cards (all Full): Cloud's Limit Break, Thunder Magic, Fire Magic,
+Tifa's Limit Break, Restoration Magic.
