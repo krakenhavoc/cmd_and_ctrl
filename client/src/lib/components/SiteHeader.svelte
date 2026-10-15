@@ -23,7 +23,7 @@
   //
   // Below the 820px design target the row wraps; there is no separate
   // phone layout (the tablet-minimum rule).
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import Wordmark from "./Wordmark.svelte";
   import { route, navigate } from "../router";
   import { canSignOutEverywhere, LobbyApiError, session } from "../session";
@@ -120,9 +120,26 @@
     accountOpen = false;
   }
 
-  function toggleAccount(): void {
+  // Opening the menu moves focus into it, so a keyboard user is not left
+  // on the button with the items a Tab away behind other controls.
+  async function toggleAccount(): Promise<void> {
     accountError = "";
     accountOpen = !accountOpen;
+    if (!accountOpen) return;
+    await tick();
+    accountEl?.querySelector<HTMLElement>(".acct-menu .acct-item")?.focus();
+  }
+
+  // The skip link (first focusable thing in the shell). A plain
+  // href="#main" would rewrite the hash and re-route, so it focuses the
+  // page's <main> itself.
+  function skipToMain(e: MouseEvent): void {
+    const main = document.getElementById("main");
+    if (!main) return;
+    e.preventDefault();
+    main.setAttribute("tabindex", "-1");
+    main.focus();
+    main.scrollIntoView({ block: "start" });
   }
 
   // Escape closes the account menu and hands focus back to its button;
@@ -172,7 +189,10 @@
       closeAccount();
       navigate("#/login");
     } catch (err) {
-      accountError = err instanceof LobbyApiError ? err.message : "could not sign out everywhere";
+      accountError =
+        err instanceof LobbyApiError
+          ? err.message
+          : "Couldn’t sign out everywhere. Check your connection and try again.";
     }
   }
 </script>
@@ -184,6 +204,8 @@
     >{text}</a
   >
 {/snippet}
+
+<a class="skip-link" href="#main" onclick={skipToMain}>Skip to main content</a>
 
 <header class="site-header">
   <div class="row">
@@ -263,7 +285,6 @@
           <button
             type="button"
             class="acct-btn"
-            aria-haspopup="true"
             aria-expanded={accountOpen}
             aria-controls="account-menu"
             class:admin-on={adminOn}

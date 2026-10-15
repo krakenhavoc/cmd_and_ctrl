@@ -26,6 +26,8 @@
     adrURL,
     adrLabel,
     catalogSearchHash,
+    parseRoadmapHash,
+    roadmapHash,
     KINDS,
     STATUSES,
     KIND_LABELS,
@@ -40,9 +42,29 @@
   let loading = $state(true);
   let error = $state("");
 
-  let query = $state("");
-  let kinds = $state<RoadmapKind[]>([]);
-  let statuses = $state<RoadmapStatus[]>([]);
+  // The search and the chips live in the hash (#/roadmap?q=…&kind=…&status=…),
+  // so a filtered view can be linked. They are read back on load and when
+  // the hash changes under us; every change is written with replaceState,
+  // so typing does not fill the history and the router is not re-run.
+  const fromHash = parseRoadmapHash(typeof location === "undefined" ? "" : location.hash);
+  let query = $state(fromHash.query);
+  let kinds = $state<RoadmapKind[]>(fromHash.kinds);
+  let statuses = $state<RoadmapStatus[]>(fromHash.statuses);
+
+  $effect(() => {
+    const want = roadmapHash({ query, kinds, statuses });
+    if (location.hash !== want && location.hash.startsWith("#/roadmap")) {
+      history.replaceState(history.state, "", want);
+    }
+  });
+
+  function onHashChange(): void {
+    if (!location.hash.startsWith("#/roadmap")) return;
+    const f = parseRoadmapHash(location.hash);
+    query = f.query;
+    kinds = f.kinds;
+    statuses = f.statuses;
+  }
 
   const items = $derived(data?.items ?? []);
   const upNext = $derived(data ? nextItems(data) : []);
@@ -84,8 +106,9 @@
     return data ? data.counts[s] : 0;
   }
 
+  const numberFormat = new Intl.NumberFormat("en-US");
   function fmt(n: number): string {
-    return n.toLocaleString("en-US");
+    return numberFormat.format(n);
   }
 
   onMount(() => {
@@ -96,7 +119,7 @@
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === "AbortError") return;
-        error = err instanceof Error ? err.message : "couldn't load the roadmap";
+        error = err instanceof Error ? err.message : "couldn’t load the roadmap";
       })
       .finally(() => {
         loading = false;
@@ -128,7 +151,10 @@
 
 {#snippet searchBox()}
   <input
-    type="text"
+    type="search"
+    name="roadmap-search"
+    autocomplete="off"
+    spellcheck="false"
     class="search"
     placeholder="search a mechanic, keyword or card name"
     aria-label={L.searchRoadmap}
@@ -137,20 +163,22 @@
   />
 {/snippet}
 
-<Page eyebrow="Cards" title="What the engine plays, and what's next" width="wide">
+<svelte:window onhashchange={onHashChange} />
+
+<Page eyebrow="Cards" title="What the engine plays, and what’s next" width="wide">
   {#snippet lede()}
     Every keyword, mechanic and engine gap the rules engine knows about.
     <strong class="t-implemented">Implemented</strong> means it resolves on its own.
     <strong class="t-partial">Partial</strong> means most of it works, and the entry says which part
     you still do by hand.
-    <strong class="t-missing">Missing</strong> means it isn't built yet: cards that need it still play,
+    <strong class="t-missing">Missing</strong> means it isn’t built yet: cards that need it still play,
     and you resolve that part yourself.
   {/snippet}
   <div class="stack">
     {#if !loading && error}
       <p class="notice err" role="alert">
         <Icon name="x" size={14} />
-        <span>Couldn't load the roadmap ({error}).</span>
+        <span>Couldn’t load the roadmap ({error}). Reload the page to try again.</span>
       </p>
     {/if}
     {#if data}
@@ -158,7 +186,7 @@
         {#each STATUSES as s (s)}
           <li class="lg-item {s}">
             <span class="badge {s}">{STATUS_LABELS[s]}</span>
-            <span class="lg-n">{statusCount(s)}</span>
+            <span class="lg-n">{fmt(statusCount(s))}</span>
             <p class="lg-blurb">{STATUS_BLURBS[s]}</p>
           </li>
         {/each}
@@ -194,7 +222,7 @@
                 <div class="nc-foot">
                   {#if (it.unblocks ?? 0) > 0}
                     <p class="nc-impact">
-                      <strong>{it.unblocks}</strong>
+                      <strong>{fmt(it.unblocks ?? 0)}</strong>
                       <span>{it.unblocks === 1 ? "card" : "cards"} unblocked</span>
                     </p>
                   {:else if it.waiting && it.waiting.length > 0}
@@ -268,9 +296,9 @@
           </div>
           <div class="countbar">
             <p class="count" aria-live="polite">
-              <strong>{shown.length}</strong>
+              <strong>{fmt(shown.length)}</strong>
               {shown.length === 1 ? "entry" : "entries"}
-              {#if filtered}<span class="dim">of {items.length}</span>{/if}
+              {#if filtered}<span class="dim">of {fmt(items.length)}</span>{/if}
             </p>
             {#if filtered}
               <button type="button" class="ghost sm" onclick={reset}>
@@ -299,7 +327,7 @@
               <h2 id="rm-{s}">
                 <span class="dot {s}" aria-hidden="true"></span>
                 {STATUS_LABELS[s]}
-                <span class="sec-n">{groups[s].length}</span>
+                <span class="sec-n">{fmt(groups[s].length)}</span>
               </h2>
               <span class="sec-note">{SECTION_NOTES[s]}</span>
             </summary>
@@ -315,7 +343,7 @@
 
                   {#if s !== "implemented" && it.missing}
                     <p class="it-missing">
-                      <span class="lbl">What's missing</span>
+                      <span class="lbl">What’s missing</span>
                       {it.missing}
                     </p>
                   {/if}
@@ -370,6 +398,13 @@
 </Page>
 
 <style>
+  .lg-n,
+  .sec-n,
+  .nc-impact strong,
+  .count,
+  .cardline {
+    font-variant-numeric: tabular-nums;
+  }
   .stack {
     min-width: 0;
     display: flex;
@@ -706,10 +741,34 @@
     padding-top: 6px;
     border-top: 1px solid var(--border);
   }
+  /* A type="search" field: app.css styles the text inputs, so this one
+     carries the same look itself. */
   .search {
     width: 100%;
     box-sizing: border-box;
     margin-top: 10px;
+    background: var(--surface-sunken);
+    color: var(--fg);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    padding: 0.55rem 0.8rem;
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition:
+      border-color 120ms var(--ease),
+      box-shadow 120ms var(--ease),
+      background 120ms var(--ease);
+  }
+  .search:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+    background: var(--bg-2);
+  }
+  @media (forced-colors: active) {
+    .search:focus {
+      outline: 2px solid Highlight;
+    }
   }
   .facets {
     display: flex;

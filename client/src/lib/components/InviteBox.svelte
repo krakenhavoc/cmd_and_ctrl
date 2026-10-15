@@ -18,6 +18,8 @@
   let joinName = $state(loadGuestName());
   let error = $state("");
   let joining = $state(false);
+  let inviteEl = $state<HTMLInputElement | null>(null);
+  let nameEl = $state<HTMLInputElement | null>(null);
 
   const needsName = $derived(invite.trim() !== "" && inviteHash(invite.trim()) === "");
 
@@ -25,11 +27,23 @@
     e.preventDefault();
     error = "";
     const raw = invite.trim();
-    if (!raw) return;
+    if (!raw) {
+      // The button stays enabled: an empty submit says what to do and
+      // puts the cursor where the answer goes.
+      error = "Paste an invite link or type a code to join a table.";
+      inviteEl?.focus();
+      return;
+    }
 
     const hash = inviteHash(raw);
     if (hash) {
       navigate(hash);
+      return;
+    }
+
+    if (!joinName.trim()) {
+      error = "Enter your name to join with a code.";
+      nameEl?.focus();
       return;
     }
 
@@ -41,7 +55,10 @@
       // player imports a deck and sees the other seats (s085 / #43).
       navigate("#/lobby");
     } catch (err) {
-      error = err instanceof LobbyApiError ? err.message : "could not join with that code";
+      error =
+        err instanceof LobbyApiError
+          ? err.message
+          : "Couldn’t join with that code. Check it and try again, or ask the host for a fresh invite.";
     } finally {
       joining = false;
     }
@@ -53,21 +70,31 @@
     <input
       class="mono"
       type="text"
+      name="invite"
+      autocomplete="off"
+      autocapitalize="off"
+      spellcheck="false"
       placeholder="invite code or link"
       aria-label="invite code or link"
+      bind:this={inviteEl}
       bind:value={invite}
     />
-    <button
-      type="submit"
-      class="btn primary"
-      disabled={joining || !invite.trim() || (needsName && !joinName.trim())}
-    >
-      {joining ? "…" : "join"}
+    <button type="submit" class="btn primary" disabled={joining} aria-busy={joining}>
+      {joining ? "joining…" : "join"}
       <Icon name="chevronRight" size={14} />
     </button>
   </div>
   {#if needsName}
-    <input type="text" placeholder="your name" aria-label="your name" bind:value={joinName} />
+    <input
+      type="text"
+      name="name"
+      autocomplete="nickname"
+      spellcheck="false"
+      placeholder="your name"
+      aria-label="your name"
+      bind:this={nameEl}
+      bind:value={joinName}
+    />
   {/if}
   {#if error}
     <p class="error" role="alert">{error}</p>

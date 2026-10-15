@@ -39,7 +39,7 @@
 
 <SiteHeader />
 
-<main class="site-page wide front">
+<main id="main" class="site-page wide front">
   {#if $expiryNotice}
     <p class="notice" role="status"><Icon name="undo" size={14} /> {$expiryNotice}</p>
   {/if}
