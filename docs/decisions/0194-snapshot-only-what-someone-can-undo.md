@@ -1,8 +1,8 @@
 # ADR 0194 — The undo ring: snapshot only what someone can undo
 
-**Status:** Proposed · 2026-10-14 · S73 — Big boards: layout and per-action cost
+**Status:** Accepted (2026-10-15) · proposed 2026-10-14 · S73 — Big boards: layout and per-action cost
 **Issue:** [#3136](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3136)
-**Owner decisions:** open. The questions are under [Open questions](#open-questions). Nothing here is built until they are answered.
+**Owner decisions (2026-10-15):** every recommendation accepted, see [Owner decisions](#owner-decisions-2026-10-15). The view cost is split out to its own issue.
 **Numbering:** checked on 2026-10-14 across every remote head (`develop`, `main`, `cost-ledger`, `docs/adr-demonstrate-a-loop`, `docs/issue-audit`, `feat/3536-graveyard-exile-cast-cost`, `feat/3546-target-crewed-or-saddled`, `feat/3547-gitrog-ravenous-ride-fortune`, `feat/3560-skip-extra-turns-ugins-nexus`, `feat/750-conditional-block-restrictions`, `feat/playmats`, `fix/2947-resolution-copy-casts`, `fix/2950-darkness-replacement-continuation`, `fix/caddy-reload-admin-off`, `issue-3016-reuse-trigger-order`, `wip/836-one-click-default`, `pr/2326`) and open PRs. The highest in use is 0193 (PR #3699). 0190 is a gap below merged numbers and is left alone, as #3699 did. This is **0194**.
 **Builds on:** [ADR 0054](0054-dice-rolls-and-coin-flips.md) decision 4 (undo rewinds the random stream), [ADR 0057](0057-win-and-lose-by-effect.md) (the end is final for all but the admin), [ADR 0075](0075-table-settings-and-host-controls.md) (the undo budget), [ADR 0127](0127-answering-repeated-prompts-for-you.md) §4 and §6 (automatic answers are free undo entries), [ADR 0148](0148-capacity-limits-for-a-public-launch.md) (per-table cost and the capacity cap), [ADR 0180](0180-secret-council.md) decision 4 (undo stops at a revealed secret vote).
 
@@ -67,11 +67,16 @@ Do **not** start 4, 5 or 6 for this issue. After 2 and 3, Clone is paid only for
 
 **The bigger per-action cost is the view, not the clone.** `ViewOfGame` is half the soak's CPU and two thirds of its allocation, built once per commit (and then, in production, marshalled and written as the restore point and the replay line). Exit criterion 3 of S73 names both. That half should be its own issue: building the view once per commit and sharing it with every subscriber whose seat sees the same thing, and skipping the restore-point write for commits that do not need one (a bot's priority pass), are the first candidates.
 
-## Open questions
+## Owner decisions (2026-10-15)
 
-1. **May a bot's move become impossible to undo, even for the admin?** Players cannot undo it today; only the admin can. If the admin's rewind of a bot's move matters (debugging a bot, fixing a catalog gap the bot hit), the alternative is to keep one snapshot for the newest bot entry only, which costs one clone per bot commit again but not the 21 MB.
-2. **How deep should full snapshots go?** K = 8 is proposed. A player with the budget raised could take back more than 8 of their own commits in a row today; nobody can past a bot's.
-3. **Should the view and restore-point cost be split out of #3136** into its own S73 issue, as above, so #3136 closes with options 1–3?
+The owner approved the recommendations on 2026-10-15. Each one is accepted as written:
+
+1. **May a bot's move become impossible to undo, even for the admin?** Yes. Option 2 is taken: a bot's commit leaves
+   a barrier, and nobody can pop it. The admin's rewind of a bot's move is given up. **Accepted.**
+2. **How deep should full snapshots go?** K = 8 full snapshots for the top entries, older entries become barriers.
+   **Accepted.**
+3. **Should the view and restore-point cost be split out of #3136** into its own issue? Yes. It is filed as its own
+   issue with a profile-driven fix asked for, and #3136 is decided by options 1–3 alone. **Accepted.**
 
 ## Consequences
 
