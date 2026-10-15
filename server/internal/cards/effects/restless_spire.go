@@ -11,13 +11,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 strike.' It's still a land.
 //	 Whenever this land attacks, scry 1."
 //
-// A manland built like Raging Ravine. The quoted first strike is
-// declared as a layer 6 static on the land that reads the turn and
-// whether the land is a creature, so an idle land carries no badge and
-// the keyword blinks off on an opponent's turn. The scry trigger is the
-// land's own printed ability.
+// A manland built like Raging Ravine. The quoted first strike is a GRANT
+// (ADR 0093, #3808): the animation gives the land the bundle until end of
+// turn, and the bundle's layer 6 static reads the turn and whether the
+// land is a creature, so an idle land carries no badge and the keyword
+// blinks off on an opponent's turn. Being a granted ability and not the
+// land's own, an ability-removing effect that began before the activation
+// (Humility) leaves it (CR 613.6, 613.7a). The scry trigger is the land's
+// own printed ability.
 //
 // No simplification.
+const restlessSpireFirstStrikeGrant = "restless-spire/first-strike"
+
 func init() {
 	Register(Spec{
 		OracleID:     "0ca4e80e-c19c-4b74-b531-c5a4dc5a8ba9",
@@ -29,7 +34,11 @@ func init() {
 			Produced: "{U|R}",
 			Label:    "Add {U} or {R}",
 		}},
-		Static: []game.StaticAbility{rfReprintBFirstStrikeWhileCreatureOnYourTurn()},
+		Grants: []AbilityGrant{{
+			Key:    restlessSpireFirstStrikeGrant,
+			Static: []game.StaticAbility{rfReprintBFirstStrikeWhileCreatureOnYourTurn()},
+			Text:   "During your turn, this creature has first strike.",
+		}},
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks("Restless Spire — scry 1",
 				Do(Scry{N: 1})),
@@ -50,6 +59,7 @@ func init() {
 						game.SetColorsMod("U", "R"),
 						game.SetBasePowerMod(2),
 						game.SetBaseToughnessMod(1),
+						game.GrantAbilitiesMod(restlessSpireFirstStrikeGrant),
 					},
 					Duration: DurationUntilEndOfTurn(NewContext(g, item)),
 					Label:    "Restless Spire — a 2/1 blue and red Elemental creature until end of turn",
