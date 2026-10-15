@@ -1,6 +1,7 @@
 package game
 
 import (
+	"slices"
 	"sort"
 
 	"github.com/google/uuid"
@@ -388,6 +389,26 @@ type TargetSpec struct {
 	// 608.2h). With no source at all the clause admits NOTHING. Build
 	// one with effects.ExiledWithThis.
 	ExiledWithSource bool
+
+	// PaidForSource is "that crewed it" / "that saddled it": the
+	// candidate must be a creature tapped to pay a crew (PaidCrewed) or
+	// saddle (PaidSaddled) cost of the clause's own source this turn, and
+	// still on the battlefield as the same object (CR 702.122c, CR
+	// 702.171c, CR 400.7) -- Giant Beaver's "target creature that saddled
+	// it this turn" (ADR 0186 section 3, #3546).
+	//
+	// DATA, not a closure, for the reason ExiledWithSource is: a spec
+	// rides a paused prompt and a stack item, and CardOK is never handed
+	// the object whose ability this is. It is judged in the one shared
+	// walk, so the legal set, the announce check (CR 601.2c), the
+	// resolution re-check (CR 608.2b), the client's picker and the bot's
+	// moves are one answer. The source is TargetSource.ObjectRef, read
+	// against the turn's crew records by object, so a source that has
+	// left the battlefield still answers (CR 608.2h) and one that came
+	// back as a new object answers nothing (CR 400.7). With no source
+	// object the clause admits NOTHING. Build one with effects.CrewedThis
+	// / SaddledThis.
+	PaidForSource PaidForSourceKind
 
 	// PlayerOK is the candidate predicate for player targets. Nil
 	// means every seated, non-eliminated player qualifies. Same
@@ -1388,12 +1409,52 @@ func (s *TargetSpec) exiledWithAdmits(src TargetSource, c Card) bool {
 	return ok && ref.ID != uuid.Nil && c.ExiledWith == ref
 }
 
+// PaidForSourceKind names which payment PaidForSource asks about. The
+// zero value is no clause at all.
+type PaidForSourceKind string
+
+const (
+	// PaidCrewed is "creature that crewed it this turn" (CR 702.122c).
+	PaidCrewed PaidForSourceKind = "crewed"
+	// PaidSaddled is "creature that saddled it this turn" (CR 702.171c).
+	PaidSaddled PaidForSourceKind = "saddled"
+)
+
+// paidForAdmits is PaidForSource's gate: true without the clause, and
+// with it only a creature among the creatures that crewed / saddled the
+// source object this turn that are still here as the same objects
+// (CreaturesThatCrewedForEffect / CreaturesThatSaddledForEffect). A walk
+// with no source object admits nothing, never everything.
+//
+// Caller must hold g.mu.
+func (s *TargetSpec) paidForAdmits(g *Game, src TargetSource, c Card) bool {
+	if s.PaidForSource == "" {
+		return true
+	}
+	ref, ok := src.ObjectRef()
+	if !ok || ref.ID == uuid.Nil {
+		return false
+	}
+	obj := ObjectRef{ID: ref.ID, Epoch: ref.Epoch}
+	var paid []uuid.UUID
+	switch s.PaidForSource {
+	case PaidCrewed:
+		paid = g.CreaturesThatCrewedForEffect(obj)
+	case PaidSaddled:
+		paid = g.CreaturesThatSaddledForEffect(obj)
+	default:
+		return false
+	}
+	return slices.Contains(paid, c.InstanceID)
+}
+
 // sourceAdmits is the source-relative gate: RelativeToSource's stat
-// comparisons, CombatWithSource's combat relation and
-// ExiledWithSource's exile link. True with none of them, false when
-// there is one and the walk has no source to be relative to.
+// comparisons, CombatWithSource's combat relation, ExiledWithSource's
+// exile link and PaidForSource's crew / saddle payment. True with none
+// of them, false when there is one and the walk has no source to be
+// relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) {
+	if !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

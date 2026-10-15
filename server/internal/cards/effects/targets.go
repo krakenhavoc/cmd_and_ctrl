@@ -580,6 +580,30 @@ func ExiledWithThis(spec *game.TargetSpec) *game.TargetSpec {
 	return spec
 }
 
+// SaddledThis narrows a clause to the creatures that saddled its own
+// source this turn (CR 702.171c): Giant Beaver's "target creature that
+// saddled it this turn". It is data on the clause
+// (game.TargetSpec.PaidForSource), judged in the one shared walk, so the
+// legal set, the announce check (CR 601.2c), the resolution re-check (CR
+// 608.2b), the client's picker and the bot's moves are one answer. The
+// payment is read by the source's OBJECT, so a creature that saddled a
+// different Mount is not offered, a saddler that left the battlefield (or
+// left and came back, CR 400.7) is not, and a Mount that left still has
+// its saddlers. Wrap the whole clause, like ExiledWithThis:
+//
+//	Targets: SaddledThis(TargetCreature("target creature that saddled it this turn"))
+func SaddledThis(spec *game.TargetSpec) *game.TargetSpec {
+	spec.PaidForSource = game.PaidSaddled
+	return spec
+}
+
+// CrewedThis is SaddledThis for a Vehicle: "target creature that crewed
+// it this turn" (CR 702.122c).
+func CrewedThis(spec *game.TargetSpec) *game.TargetSpec {
+	spec.PaidForSource = game.PaidCrewed
+	return spec
+}
+
 // --- S23 mass-effect predicates ----------------------------------
 //
 // Board wipes are written as exclusions far more often than target

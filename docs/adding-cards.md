@@ -171,6 +171,20 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    event-log record (`b27ExiledWith`) and a choice. A face-down
    exiled card its chooser has not seen is never offered (#3259, ADR 0019
    amendment 2026-10-13).
+   "Target creature that saddled it this turn" (Giant Beaver) and
+   "…that crewed it this turn" wrap the clause in `SaddledThis(spec)` /
+   `CrewedThis(spec)`: `Targets: SaddledThis(TargetCreature("target
+   creature that saddled it this turn"))`. It is data on
+   `game.TargetSpec.PaidForSource`, judged at announce and at
+   resolution against the turn's crew records of the source OBJECT
+   (`CreaturesThatSaddledForEffect` / `CreaturesThatCrewedForEffect`),
+   so a creature that saddled a different Mount, a payer that left the
+   battlefield or came back as a new object, and an idle creature are
+   out; a source that has left is read from its last-known record, and
+   no source admits nothing. A trigger with no payer left on the
+   battlefield is removed for want of a target (CR 603.3d). Never
+   approximate it with a `CardOK` over `Card.SaddledBy`: that forgets a
+   Mount that has left (#3546, ADR 0186 section 3).
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
    count on the same spec — `TargetCreature("two target nonartifact
