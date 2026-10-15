@@ -21,6 +21,8 @@ func init() {
 		Name:         "Temporal Trespass",
 		Completeness: CompletenessFull,
 		Delve:        true,
+		// ADR 0188 Decision 10: the caster's extra turn, priced by the bot.
+		Purpose: game.Purpose{ExtraTurns: 1},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			_ = TakeExtraTurn{}.Apply(ctx)
 			return ctx.Game.ExileCardForEffect(item.SourceCardID)

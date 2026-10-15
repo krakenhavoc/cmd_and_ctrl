@@ -243,6 +243,7 @@
       "priority_holder": -1,
       "phase": "beginning",
       "step": "untap",
+      "next_seat": 0,
       "phase_id": 1,
       "upcoming": [
         {

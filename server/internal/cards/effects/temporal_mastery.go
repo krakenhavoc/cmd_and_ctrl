@@ -21,7 +21,9 @@ func init() {
 		Name:             "Temporal Mastery",
 		Completeness:     CompletenessFull,
 		AlternativeCosts: []game.AlternativeCost{Miracle("{1}{U}")},
-		OnResolve:        takeAnExtraTurnThenExileThisSpell,
+		// ADR 0188 Decision 10: the caster's extra turn, priced by the bot.
+		Purpose:   game.Purpose{ExtraTurns: 1},
+		OnResolve: takeAnExtraTurnThenExileThisSpell,
 	})
 }
 

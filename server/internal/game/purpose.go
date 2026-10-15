@@ -139,6 +139,25 @@ type Purpose struct {
 	// ExtraCombat is the additional combat phases it adds ("after this
 	// phase, there is an additional combat phase"): Combat Celebrant 1.
 	ExtraCombat int
+	// ExtraTurns is the extra turns its controller takes after this one
+	// (CR 500.7): Capture of Jingzhou 1, Magosi's fourth ability 1. The
+	// CASTER's own turns, as Draws is the caster's own cards; "target
+	// player takes an extra turn" (Time Warp) is a TargetPurpose entry,
+	// because who takes it is whoever the move aims it at. Left off a
+	// card that makes its controller lose the game in that turn (Final
+	// Fortune, Last Chance, Warrior's Oath): the turn is the price, and a
+	// bot that priced it as a gain would cast them. Refused on an
+	// any-player activated row, where the activator is not the
+	// controller. ADR 0188 Decision 10, #3566.
+	ExtraTurns int
+	// SkipsTurns is the next turns its controller skips (CR 614.10):
+	// Magosi's third ability 1, Eater of Days 2. The caster's own turns,
+	// like ExtraTurns. Priced negatively (Weights.Turn). Refused on an
+	// any-player activated row: Lethal Vapors' skip falls on whoever
+	// activates it, a bot never activates another player's copy, and a
+	// declared cost would only hide that rule (ADR 0106 decision 2,
+	// ADR 0188 Decision 10, #3566).
+	SkipsTurns int
 	// PreventCombatDamageToSelf is set when it prevents all combat
 	// damage that would be dealt to its source this turn: Oketra's
 	// Avenger. Refused off a triggered or activated row.
@@ -258,6 +277,11 @@ type TargetPurpose struct {
 	Slot int
 	// Draws is the cards the target player draws: Sign in Blood 2.
 	Draws int
+	// ExtraTurns is the extra turns the target player takes after this
+	// one (CR 500.7): Time Warp 1, Time Stretch 2. Whoever the move
+	// aims it at takes them, so a bot aims it at itself (ADR 0188
+	// Decision 10, #3566).
+	ExtraTurns int
 	// Discards is the cards the target player discards on resolution:
 	// Prismari Command's loot 2.
 	Discards int
@@ -328,7 +352,7 @@ func (t TargetPurpose) IsZero() bool {
 // HasPlayerAmount reports whether the entry names an amount only a
 // player can be given: a draw, a discard, a token or a life change.
 func (t TargetPurpose) HasPlayerAmount() bool {
-	return t.Draws != 0 || t.Discards != 0 || t.Tokens != 0 || t.LifeGain != 0 || t.LifeLoss != 0
+	return t.Draws != 0 || t.Discards != 0 || t.Tokens != 0 || t.LifeGain != 0 || t.LifeLoss != 0 || t.ExtraTurns != 0
 }
 
 // ForTargets is the Purpose.Targets of these entries, nil for none.
@@ -558,6 +582,8 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 		CreatureEnterPayoff:       p.CreatureEnterPayoff,
 		Pump:                      p.Pump,
 		ExtraCombat:               p.ExtraCombat + o.ExtraCombat,
+		ExtraTurns:                p.ExtraTurns + o.ExtraTurns,
+		SkipsTurns:                p.SkipsTurns + o.SkipsTurns,
 		PreventCombatDamageToSelf: p.PreventCombatDamageToSelf || o.PreventCombatDamageToSelf,
 		DamageToCreature:          p.DamageToCreature + o.DamageToCreature,
 		DamageEachOpponent:        p.DamageEachOpponent + o.DamageEachOpponent,

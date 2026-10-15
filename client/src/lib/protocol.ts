@@ -3419,6 +3419,11 @@ export interface PurposeView {
   // ADR 0130 (amendment of 2026-10-07): what an exert row does.
   pump?: { power?: number; toughness?: number; keywords?: string[] };
   extra_combat?: number;
+  // ADR 0188 Decision 10 (#3566): extra turns its controller takes
+  // after this one (CR 500.7) and next turns it makes them skip
+  // (CR 614.10).
+  extra_turns?: number;
+  skips_turns?: number;
   prevent_combat_damage_to_self?: boolean;
   damage_to_creature?: number;
   damage_each_opponent?: number;
@@ -3450,6 +3455,8 @@ export interface TargetPurposeView {
   slot: number;
   draws?: number;
   discards?: number;
+  // ADR 0188 Decision 10: the target player takes this many extra turns.
+  extra_turns?: number;
   tokens?: number;
   life_gain?: number;
   life_loss?: number;
@@ -4738,6 +4745,12 @@ export interface TurnView {
   // Seat indices of queued extra turns, in the order they will be
   // taken (next first). Turns of players who have left are omitted.
   extra_turns?: number[];
+  // ADR 0188 Decision 9 (#3566): the seat index whose turn begins after
+  // this one, as the engine decides it: queued extra turns first, then
+  // normal rotation, passing a seat that has left and spending skip
+  // charges. Seat 0 is a real answer. Absent when the game is not in
+  // play. It cannot see a replacement skip (Trouble in Pairs).
+  next_seat?: number;
   // ADR 0059 Decision 11 (#753): the phase in progress. `phase_id` is
   // unique within the turn (the template's phases are 1..5, an added
   // phase gets the next id); `phase_ordinal` is the nth phase of its

@@ -78,7 +78,7 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	}
 	if p.Draws < 0 || p.ControllerLosesLife < 0 || p.Discards < 0 || p.Lands < 0 ||
 		p.Tutors < 0 || p.SelfMillTutor < 0 || p.Tokens < 0 || p.Energy < 0 || p.Sweep.Amount < 0 ||
-		p.ExtraCombat < 0 || p.DamageToCreature < 0 || p.DamageEachOpponent < 0 || p.LifeGain < 0 ||
+		p.ExtraCombat < 0 || p.ExtraTurns < 0 || p.SkipsTurns < 0 || p.DamageToCreature < 0 || p.DamageEachOpponent < 0 || p.LifeGain < 0 ||
 		p.AwakenLand < 0 || p.ExtraLandDrops < 0 || p.LandfallExtraTriggers < 0 || p.LandsUntapped < 0 || p.Impulse < 0 || p.CreatureTokens < 0 {
 		fail("has a negative amount")
 	}
@@ -99,6 +99,9 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	}
 	if p.ControllerLosesLife != 0 && slot != purposeOnAnyPlayerActivated {
 		fail("names ControllerLosesLife off an any-player activated row — the activator and the controller are one player there")
+	}
+	if (p.ExtraTurns != 0 || p.SkipsTurns != 0) && slot == purposeOnAnyPlayerActivated {
+		fail("sets ExtraTurns or SkipsTurns on an any-player activated row — the activator is not the controller, so the caster's own turns would be the wrong player's, and a bot must never activate another player's copy (ADR 0106 decision 2, ADR 0188 Decision 10)")
 	}
 	if p.DeathPayoff && slot != purposeOnTriggered {
 		fail("sets DeathPayoff off a triggered row")
@@ -355,7 +358,7 @@ func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSp
 			fail(fmt.Sprintf("names slot %d twice", e.Slot))
 		}
 		seen[e.Slot] = true
-		if e.Draws < 0 || e.Discards < 0 || e.Tokens < 0 || e.LifeGain < 0 || e.LifeLoss < 0 || e.Damage < 0 {
+		if e.Draws < 0 || e.Discards < 0 || e.ExtraTurns < 0 || e.Tokens < 0 || e.LifeGain < 0 || e.LifeLoss < 0 || e.Damage < 0 {
 			fail(fmt.Sprintf("has a negative amount on slot %d", e.Slot))
 		}
 		if e.IsZero() {

@@ -4877,6 +4877,15 @@ type TurnView struct {
 	// who has left is omitted: it will not begin (CR 800.4k). Public
 	// information — the spell that queued it was public.
 	ExtraTurns []int `json:"extra_turns,omitempty"`
+	// NextSeat is the seat index whose turn begins after this one, as far
+	// as the records can say (ADR 0188 Decision 9, #3566): the queued
+	// extra turns from the top, then normal rotation from the seat whose
+	// normal turn this follows, passing a seat that has left and spending
+	// each seat's skip charges. A pointer, because seat 0 is a real answer
+	// that omitempty would drop. Absent when the game is not in play. It
+	// cannot see a replacement skip (Trouble in Pairs, Ugin's Nexus),
+	// which is decided as the turn would begin. Public.
+	NextSeat *int `json:"next_seat,omitempty"`
 	// PhaseID identifies the phase in progress within this turn (ADR
 	// 0059 Decision 11): the template's phases are 1..5, and a phase an
 	// effect added (Relentless Assault's combat) gets the next id. Two
@@ -5041,6 +5050,7 @@ func ViewOfGame(g *game.Game) GameView {
 				Step:           string(g.Turn.Step),
 				Extra:          g.Turn.Extra,
 				ExtraTurns:     viewOfExtraTurns(g),
+				NextSeat:       viewOfNextSeat(g),
 				PhaseID:        g.Turn.PhaseID,
 				PhaseOrdinal:   g.Turn.PhaseOrdinal,
 				Upcoming:       viewOfUpcoming(g),
@@ -12228,6 +12238,15 @@ func viewOfExtraTurns(g *game.Game) []int {
 		out = append(out, et.Seat)
 	}
 	return out
+}
+
+// viewOfNextSeat is TurnView.NextSeat. Caller holds g's read lock.
+func viewOfNextSeat(g *game.Game) *int {
+	seat, ok := g.NextTurnSeatForEffect()
+	if !ok {
+		return nil
+	}
+	return &seat
 }
 
 // PlannedStepView is one step still to come this turn (TurnView.upcoming).

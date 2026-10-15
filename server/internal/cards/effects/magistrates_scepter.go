@@ -30,7 +30,7 @@ func init() {
 			},
 			{
 				Label:   "{T}, Remove three charge counters from this artifact: Take an extra turn after this one.",
-				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Purpose: game.Purpose{Answers: game.AnswerValue, ExtraTurns: 1},
 				Cost:    Plus(TapCost(), RemoveCountersFromThis(game.CounterCharge, 3)),
 				Effect:  youTakeAnExtraTurnEffect,
 			},

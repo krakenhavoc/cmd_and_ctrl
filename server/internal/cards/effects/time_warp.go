@@ -21,7 +21,11 @@ func init() {
 		Name:         "Time Warp",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
-		OnResolve:    targetPlayerTakesExtraTurns(1),
+		// ADR 0188 Decision 10: the target takes the turns, so a bot aims
+		// it at itself (a TargetPurpose entry, not a Purpose amount).
+		Purpose: game.Purpose{Targets: game.ForTargets(
+			game.TargetPurpose{Slot: 0, ExtraTurns: 1})},
+		OnResolve: targetPlayerTakesExtraTurns(1),
 	})
 }
 
