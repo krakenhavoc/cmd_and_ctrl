@@ -23,6 +23,14 @@ const (
 	ncdGoblinVandal    = "50bebbb9-01b7-4eb6-8efd-307c9bcd2517"
 	ncdBadger          = "cf9fc317-3184-4999-84ef-945a8842096e"
 	ncdBoneDancer      = "13b5c9ef-d0e3-453d-ae5e-8de4f310cc38"
+	ncdWhelp           = "b16b10ec-a6a3-4bda-a561-9b7bb8eee194"
+	ncdGrunt           = "f973daa7-241e-4eb7-9d98-9ea7557caa3a"
+	ncdWarrior         = "bf957e0b-3070-4a85-a63d-3dadd7364d53"
+	ncdTitan           = "0d9ac5e0-2b4e-4e7b-937e-9e9bfce7e96b"
+	ncdPaladin         = "c4161335-1150-4f0d-bd2b-9211efb3bea6"
+	ncdCloak           = "5d258409-28d3-4eac-9f1a-3e494db818bf"
+	ncdMantle          = "ffae3ff4-67f7-4e41-b166-c63f88c7aa08"
+	ncdRig             = "0b583980-1508-4247-8a28-7127241d8ec0"
 )
 
 // ncdPlay attacks seat 1 with `attacker` (nobody blocks), answers every
@@ -30,9 +38,21 @@ const (
 // pick) until the table is quiet, and walks into the combat damage step.
 func ncdPlay(t *testing.T, g *game.Game, attacker uuid.UUID, yes bool, targets ...uuid.UUID) {
 	t.Helper()
+	ncdPlayBlocked(t, g, attacker, uuid.Nil, yes, targets...)
+}
+
+// ncdPlayBlocked is ncdPlay with `blocker` (when not uuid.Nil) blocking
+// the attacker.
+func ncdPlayBlocked(t *testing.T, g *game.Game, attacker, blocker uuid.UUID, yes bool, targets ...uuid.UUID) {
+	t.Helper()
 	me, opp := g.Seats[0], g.Seats[1]
 	pr7bAttack(t, g, opp.ID, attacker)
 	advanceTo(t, g, game.StepDeclareBlockers)
+	if blocker != uuid.Nil {
+		if err := g.DeclareBlocker(blocker, attacker); err != nil {
+			t.Fatalf("DeclareBlocker: %v", err)
+		}
+	}
 	finishBlockDeclarations(t, g)
 loop:
 	for i := 0; i < 24; i++ {
@@ -109,7 +129,7 @@ func TestFarrelsZealotShootsInsteadOfDealingDamage(t *testing.T) {
 		g := newCatalogGame(t)
 		opp := g.Seats[1]
 		id := ncdAttacker(g, "Farrel's Zealot", ncdFarrelsZealot, 2, 2)
-		victim := pr7Creature(g, opp.ID, "Victim", 1, "G")
+		victim := apaPush(g, opp.ID, opp.ID, game.Card{Name: "Victim", TypeLine: "Creature — Test", Power: 1, Toughness: 20})
 		life := opp.Life
 		ncdPlay(t, g, id, yes, victim)
 		got, lost := pr6Marked(g, victim), ncdLifeLost(g, life)
@@ -127,7 +147,7 @@ func TestDwarvenVigilantesDealsItsPower(t *testing.T) {
 	g := newCatalogGame(t)
 	opp := g.Seats[1]
 	id := ncdAttacker(g, "Dwarven Vigilantes", ncdVigilantes, 2, 2)
-	victim := pr7Creature(g, opp.ID, "Victim", 1, "G")
+	victim := apaPush(g, opp.ID, opp.ID, game.Card{Name: "Victim", TypeLine: "Creature — Test", Power: 1, Toughness: 20})
 	life := opp.Life
 	ncdPlay(t, g, id, true, victim)
 	if got := pr6Marked(g, victim); got != 2 {
@@ -281,5 +301,157 @@ func TestBoneDancerWithAnEmptyGraveyardStillHits(t *testing.T) {
 	ncdPlay(t, g, id, true)
 	if lost := ncdLifeLost(g, life); lost != 2 {
 		t.Errorf("defender lost %d, want 2", lost)
+	}
+}
+
+// The Laccolith creatures: blocked, a yes shoots the target for the creature's
+// power and the blocker takes nothing from it; a no lets combat go on.
+func TestLaccolithCreaturesShootInsteadOfFighting(t *testing.T) {
+	for _, tc := range []struct {
+		name, oracle string
+		power        int
+	}{
+		{"Laccolith Whelp", ncdWhelp, 1},
+		{"Laccolith Grunt", ncdGrunt, 2},
+		{"Laccolith Warrior", ncdWarrior, 3},
+		{"Laccolith Titan", ncdTitan, 6},
+	} {
+		for _, yes := range []bool{true, false} {
+			g := newCatalogGame(t)
+			opp := g.Seats[1]
+			id := ncdAttacker(g, tc.name, tc.oracle, tc.power, tc.power)
+			blocker := apaPush(g, opp.ID, opp.ID, game.Card{Name: "Wall", TypeLine: "Creature — Wall", Power: 0, Toughness: 20})
+			victim := apaPush(g, opp.ID, opp.ID, game.Card{Name: "Victim", TypeLine: "Creature — Test", Power: 1, Toughness: 20})
+			ncdPlayBlocked(t, g, id, blocker, yes, victim)
+			shot, onWall := pr6Marked(g, victim), pr6Marked(g, blocker)
+			if yes && (shot != tc.power || onWall != 0 || !ncdMarked(g, id)) {
+				t.Errorf("%s yes: victim %d (want %d), wall %d (want 0), marked %v", tc.name, shot, tc.power, onWall, ncdMarked(g, id))
+			}
+			if !yes && (shot != 0 || onWall != tc.power || ncdMarked(g, id)) {
+				t.Errorf("%s no: victim %d (want 0), wall %d (want %d), marked %v", tc.name, shot, onWall, tc.power, ncdMarked(g, id))
+			}
+		}
+	}
+}
+
+// Lim-Dûl's Paladin, unblocked: no combat damage and the defender loses 4.
+func TestLimDulsPaladinUnblockedDrains(t *testing.T) {
+	g := newCatalogGame(t)
+	id := ncdAttacker(g, "Lim-Dûl's Paladin", ncdPaladin, 0, 3)
+	life := g.Seats[1].Life
+	ncdPlay(t, g, id, true)
+	if lost := ncdLifeLost(g, life); lost != 4 {
+		t.Errorf("defender lost %d, want 4", lost)
+	}
+}
+
+// Lim-Dûl's Paladin, blocked: +6/+3 until end of turn.
+func TestLimDulsPaladinBlockedGrows(t *testing.T) {
+	g := newCatalogGame(t)
+	opp := g.Seats[1]
+	id := ncdAttacker(g, "Lim-Dûl's Paladin", ncdPaladin, 0, 3)
+	blocker := apaPush(g, opp.ID, opp.ID, game.Card{Name: "Wall", TypeLine: "Creature — Wall", Power: 0, Toughness: 20})
+	ncdPlayBlocked(t, g, id, blocker, true)
+	if got := pr6Marked(g, blocker); got != 6 {
+		t.Errorf("blocker took %d, want 6", got)
+	}
+}
+
+// Cloak of Confusion: the enchanted creature assigns nothing and the
+// defender discards a card at random.
+func TestCloakOfConfusionTradesDamageForADiscard(t *testing.T) {
+	for _, yes := range []bool{true, false} {
+		g := newCatalogGame(t)
+		me, opp := g.Seats[0], g.Seats[1]
+		bear := pr7Creature(g, me.ID, "Bear", 2, "G")
+		cloak := apaPush(g, me.ID, me.ID, game.Card{Name: "Cloak of Confusion", TypeLine: "Enchantment — Aura", OracleID: ncdCloak})
+		ncdAttach(t, g, cloak, bear)
+		pushHandCard(g, opp)
+		hand, life := opp.Hand.Size(), opp.Life
+		ncdPlay(t, g, bear, yes)
+		discarded, lost := hand-opp.Hand.Size(), ncdLifeLost(g, life)
+		if yes && (discarded != 1 || lost != 0) {
+			t.Errorf("yes: discarded %d (want 1), life lost %d (want 0)", discarded, lost)
+		}
+		if !yes && (discarded != 0 || lost != 2) {
+			t.Errorf("no: discarded %d (want 0), life lost %d (want 2)", discarded, lost)
+		}
+	}
+}
+
+// Farrel's Mantle: power plus 2 to another creature, and nothing to the player.
+func TestFarrelsMantleShootsForPowerPlusTwo(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	bear := pr7Creature(g, me.ID, "Bear", 2, "G")
+	mantle := apaPush(g, me.ID, me.ID, game.Card{Name: "Farrel's Mantle", TypeLine: "Enchantment — Aura", OracleID: ncdMantle})
+	ncdAttach(t, g, mantle, bear)
+	victim := apaPush(g, opp.ID, opp.ID, game.Card{Name: "Victim", TypeLine: "Creature — Test", Power: 1, Toughness: 20})
+	life := opp.Life
+	ncdPlay(t, g, bear, true, victim)
+	if got := pr6Marked(g, victim); got != 4 {
+		t.Errorf("victim took %d, want 4 (power 2 plus 2)", got)
+	}
+	if lost := ncdLifeLost(g, life); lost != 0 {
+		t.Errorf("defender lost %d, want 0", lost)
+	}
+}
+
+// Laccolith Rig: the enchanted creature, once blocked, shoots instead of fighting.
+func TestLaccolithRigShootsForTheEnchantedCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	bear := pr7Creature(g, me.ID, "Bear", 3, "G")
+	rig := apaPush(g, me.ID, me.ID, game.Card{Name: "Laccolith Rig", TypeLine: "Enchantment — Aura", OracleID: ncdRig})
+	ncdAttach(t, g, rig, bear)
+	blocker := apaPush(g, opp.ID, opp.ID, game.Card{Name: "Wall", TypeLine: "Creature — Wall", Power: 0, Toughness: 20})
+	victim := apaPush(g, opp.ID, opp.ID, game.Card{Name: "Victim", TypeLine: "Creature — Test", Power: 1, Toughness: 20})
+	ncdPlayBlocked(t, g, bear, blocker, true, victim)
+	if shot, onWall := pr6Marked(g, victim), pr6Marked(g, blocker); shot != 3 || onWall != 0 {
+		t.Errorf("victim %d (want 3), wall %d (want 0)", shot, onWall)
+	}
+}
+
+func ncdAttach(t *testing.T, g *game.Game, aura, host uuid.UUID) {
+	t.Helper()
+	var err error
+	g.WithWriteLock(func() { err = g.AttachForEffect(aura, game.TargetRef{Kind: game.TargetCard, ID: host}) })
+	if err != nil {
+		t.Fatalf("attach: %v", err)
+	}
+}
+
+// Lim-Dûl's Paladin's upkeep: discarding keeps it, declining sacrifices it
+// and draws a card.
+func TestLimDulsPaladinUpkeep(t *testing.T) {
+	for _, discard := range []bool{true, false} {
+		g := newCatalogGame(t)
+		me := g.Seats[0]
+		id := ncdAttacker(g, "Lim-Dûl's Paladin", ncdPaladin, 0, 3)
+		card := pushHandCard(g, me)
+		advanceToUpkeepOfSeat(t, g, 0)
+		passPriorityAroundTable(t, g)
+		hand := me.Hand.Size()
+		c := pr7bPrompt(t, g, game.PendingChoiceConfirm)
+		if err := g.ResolveConfirm(c.ID, me.ID, discard); err != nil {
+			t.Fatal(err)
+		}
+		if discard {
+			pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
+			if pick == nil {
+				t.Fatal("no discard prompt")
+			}
+			if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{card}); err != nil {
+				t.Fatalf("discard pick: %v", err)
+			}
+		}
+		passPriorityAroundTable(t, g)
+		alive := findBattlefieldCardForTest(g, id) != nil
+		switch {
+		case discard && (!alive || me.Hand.Size() != hand-1):
+			t.Errorf("discard: alive %v, hand %d (want alive, %d)", alive, me.Hand.Size(), hand-1)
+		case !discard && (alive || me.Hand.Size() != hand+1):
+			t.Errorf("decline: alive %v, hand %d (want gone, %d)", alive, me.Hand.Size(), hand+1)
+		}
 	}
 }

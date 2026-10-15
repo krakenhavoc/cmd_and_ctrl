@@ -45,6 +45,64 @@ func unblockedAttackerMay(card, question string, do func(ctx *Context, target uu
 	})
 }
 
+// laccolithBlocked builds "whenever this creature becomes blocked, you may
+// have it deal damage equal to its power to target creature. If you do, this
+// creature assigns no combat damage this turn" (the Laccolith creatures).
+// The target is chosen as the trigger goes on the stack and "you may" is
+// asked as it resolves.
+func laccolithBlocked(card string) game.TriggeredAbility {
+	label := card + " — you may have it deal damage equal to its power to target creature"
+	return Targeting(On(game.EventBecomesBlocked, Self, label, func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		target := firstLegalCardTarget(ctx)
+		return MayChoice{
+			Question: label + "? (it then assigns no combat damage this turn)",
+			OnYes: func(ctx *Context) error {
+				if err := (DealDamage{Source: ctx.Source(), Target: target, Amount: sourcePowerNow(ctx)}).Apply(ctx); err != nil {
+					return err
+				}
+				assignsNoCombatDamageThisTurn(ctx, card+" — assigns no combat damage this turn")
+				return nil
+			},
+		}.Apply(ctx)
+	}), TargetCreature("target creature"))
+}
+
+// enchantedCreatureAttacksAndIsNotBlocked is the AppliesTo half of "whenever
+// enchanted creature attacks and isn't blocked" (CR 509.3): `ev` is the
+// completed block declaration of the player the enchanted creature attacks,
+// and nothing blocks it. See attacksAndIsNotBlocked.
+func enchantedCreatureAttacksAndIsNotBlocked(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventBlockersDeclared || source == nil || source.AttachedTo.Kind != game.TargetCard {
+		return false
+	}
+	host := source.AttachedTo.ID
+	hc, ok := g.LookupCardForEffect(host)
+	if !ok || hc.AttackingTarget == uuid.Nil {
+		return false
+	}
+	if g.DefendingPlayerForAttackerForEffect(host) != ev.Actor {
+		return false
+	}
+	return g.UnblockedAttackerForEffect(host)
+}
+
+// enchantedCreatureOf is the creature the resolving Aura's source is
+// attached to, or uuid.Nil if the Aura has left or is unattached.
+func enchantedCreatureOf(ctx *Context) uuid.UUID {
+	aura, ok := ctx.Game.LookupCardForEffect(ctx.Source())
+	if !ok || aura.AttachedTo.Kind != game.TargetCard {
+		return uuid.Nil
+	}
+	return aura.AttachedTo.ID
+}
+
+// enchantedAssignsNoCombatDamage is "<the enchanted creature> assigns no
+// combat damage this turn" for an Aura's ability.
+func enchantedAssignsNoCombatDamage(ctx *Context, host uuid.UUID, label string) {
+	ctx.Game.AssignsNoCombatDamageThisTurnForEffect(ctx.Source(), host, label)
+}
+
 // firstLegalCardTarget is the first still-legal card target of the
 // resolving ability, in any zone, or uuid.Nil.
 func firstLegalCardTarget(ctx *Context) uuid.UUID {
