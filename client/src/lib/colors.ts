@@ -24,3 +24,10 @@ export function seatColor(seat: number): string {
   }
   return SEAT_PALETTE[seat];
 }
+
+// seatBandStyle is an inline style naming the four seat colours as
+// --s0..--s3, for the site's four-seat band (SiteHeader, SiteFooter), so
+// CSS draws it from this palette rather than from copied hex values.
+export function seatBandStyle(): string {
+  return SEAT_PALETTE.map((c, i) => `--s${i}: ${c}`).join("; ");
+}

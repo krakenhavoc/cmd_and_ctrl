@@ -16,6 +16,7 @@
   import type { Snippet } from "svelte";
   import SiteHeader from "./SiteHeader.svelte";
   import PageTipSlot from "./hints/PageTipSlot.svelte";
+  import SeatPips from "./SeatPips.svelte";
 
   interface Props {
     /** The small line above the title. */
@@ -51,7 +52,7 @@
 <main id="main" class="site-page {width}">
   <header class="page-head">
     <div class="page-head-main">
-      {#if eyebrow}<p class="page-eyebrow">{eyebrow}</p>{/if}
+      {#if eyebrow}<p class="page-eyebrow"><SeatPips />{eyebrow}</p>{/if}
       <!-- prettier-ignore -->
       <h1 class="page-title" aria-label={titleLabel}>{#if typeof title === "string"}{title}{:else}{@render title()}{/if}</h1>
       {#if lede}
@@ -98,7 +99,10 @@
     min-width: 0;
   }
   .page-eyebrow {
-    margin: 0 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 12px;
     font-family: var(--font-mono);
     font-size: 11px;
     font-weight: 700;
@@ -109,19 +113,20 @@
   .page-title {
     margin: 0;
     font-family: var(--font-display);
-    font-size: 34px;
-    font-weight: 700;
-    line-height: 1.12;
-    letter-spacing: -0.02em;
+    font-size: clamp(34px, 3.4vw, 46px);
+    font-weight: 800;
+    line-height: 1.04;
+    letter-spacing: -0.03em;
     text-transform: none;
+    text-wrap: balance;
     color: var(--fg);
     overflow-wrap: anywhere;
   }
   .page-lede {
-    margin: 10px 0 0;
+    margin: 14px 0 0;
     max-width: 68ch;
     color: var(--fg-muted);
-    font-size: 15px;
+    font-size: 16px;
     line-height: 1.55;
   }
   .page-actions {

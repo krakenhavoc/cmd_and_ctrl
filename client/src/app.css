@@ -545,6 +545,25 @@ body {
   padding: 22px;
   box-sizing: border-box;
 }
+/* On site pages (never the table), a filled button answers the pointer:
+   it lifts a glow of its own colour on hover and presses on click. */
+:where(.site-page) .btn {
+  transition:
+    background 120ms var(--ease),
+    border-color 120ms var(--ease),
+    color 120ms var(--ease),
+    box-shadow 160ms var(--ease),
+    transform 80ms var(--ease);
+}
+:where(.site-page) .btn.primary:hover {
+  box-shadow: 0 10px 30px -12px var(--accent);
+}
+:where(.site-page) .btn.discord:hover {
+  box-shadow: 0 10px 30px -12px #5865f2;
+}
+:where(.site-page) .btn:active {
+  transform: translateY(1px);
+}
 
 h1,
 h2,

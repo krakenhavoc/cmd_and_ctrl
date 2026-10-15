@@ -37,6 +37,10 @@
   import { openSettings } from "../settings";
   import Icon from "./Icon.svelte";
   import AdminChip from "./AdminChip.svelte";
+  import ServerPing from "./ServerPing.svelte";
+  import { seatBandStyle } from "../colors";
+
+  const SEAT_BAND = seatBandStyle();
   import HelpMenu from "./HelpMenu.svelte";
   import BugReportModal from "./BugReportModal.svelte";
   import { bugReportConfig } from "../bugReportConfig";
@@ -207,7 +211,7 @@
 
 <a class="skip-link" href="#main" onclick={skipToMain}>Skip to main content</a>
 
-<header class="site-header">
+<header class="site-header" style={SEAT_BAND}>
   <div class="row">
     <a class="wordmark" href={homeHref} aria-label="cmd_and_ctrl home">
       <Wordmark size="header" />
@@ -253,6 +257,7 @@
     </nav>
 
     <div class="account">
+      <span class="ping-slot"><ServerPing /></span>
       {#if invite}
         <!-- ADR 0156 §6: the C2 Discord on every page outside the table.
              Hidden when the server names no invite. -->
@@ -389,6 +394,30 @@
     background: color-mix(in srgb, var(--bg) 86%, transparent);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border);
+  }
+  /* The four seat colours along the top edge: four seats, one table. Hard
+     stops, so it is four flat bands, not a gradient. */
+  .site-header::before {
+    content: "";
+    display: block;
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      var(--s0) 0 25%,
+      var(--s1) 25% 50%,
+      var(--s2) 50% 75%,
+      var(--s3) 75% 100%
+    );
+  }
+  .ping-slot {
+    display: inline-flex;
+    margin-right: 4px;
+  }
+  /* At phone width the header needs the room more than the ping. */
+  @media (max-width: 599px) {
+    .ping-slot {
+      display: none;
+    }
   }
   .row {
     max-width: 1200px;

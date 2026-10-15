@@ -707,6 +707,18 @@
     overflow: hidden;
     background: var(--surface-sunken);
     border: 1px solid var(--border);
+    transition:
+      transform 180ms var(--ease),
+      box-shadow 180ms var(--ease);
+  }
+  /* A card answers the pointer the way one in hand does: it lifts and
+     tilts a little toward you. Pointer devices only; the global
+     reduced-motion rule stills it. */
+  @media (hover: hover) {
+    .tile:hover .art {
+      transform: translateY(-4px) rotate(-1deg);
+      box-shadow: 0 18px 36px -16px var(--shadow-ink);
+    }
   }
   .tile:focus-visible .art {
     outline: 2px solid var(--accent);
