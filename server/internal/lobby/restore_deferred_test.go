@@ -186,7 +186,7 @@ func TestHotRestoreHoldsItsAdmittedLoadAgainstConcurrentCreates(t *testing.T) {
 	if got := l.CapacityUsage().Load; got != 10 {
 		t.Errorf("load while the restore is in flight = %d, want the 10 it holds", got)
 	}
-	release, err := l.reserveLoad(capacity.Defaults().TableCost(0, 4), "table_load")
+	release, _, err := l.reserveLoad(capacity.Defaults().TableCost(0, 4), "table_load")
 	if err == nil {
 		release()
 		t.Fatal("a create passed while the restore held the room it was admitted into")
