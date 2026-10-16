@@ -1205,7 +1205,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// claimed alternative cost ("X if its madness cost was paid") is
 	// fixed here, with the targets, and never re-read.
 	g.bindDivideAmountsLocked(steps, DivideAmountArgs{
-		Controller: playerID, Source: cardID, AltCost: params.AlternativeCost,
+		Controller: playerID, Source: cardID, AltCost: AltCostKeyword(params.AlternativeCost),
 	})
 	params.Targets = assignAnnouncedSlots(steps, params.Targets)
 	for _, i := range xSteps {
@@ -1871,7 +1871,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		Distribution: cloneDistributionLocked(params.Distribution),
 		HoldPriority: params.HoldPriority,
 		SplitSecond:  splitSecond,
-		AltCost:      params.AlternativeCost,
+		// #3938: the keyword, not the claim. A granted instance of
+		// flashback is flashback (CR 702.34a), so "if the flashback cost
+		// was paid" reads the same whichever instance paid it.
+		AltCost: AltCostKeyword(params.AlternativeCost),
 		// CR 702.143c, #658: a spell cast from a foretold card is a
 		// foretold spell, whatever cost paid for it. Read off the
 		// value copy taken out of the source zone above, which is the
@@ -5305,6 +5308,15 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 	// Again now the resolution has closed: control over a forced spell
 	// lasts only while it resolves.
 	g.prunePlayerControlsLocked()
+	// #3856, CR 727.1: an effect restarted the game during the
+	// resolution this boundary follows. The game ends here and the new
+	// one begins; nothing of this boundary is owed to a game that no
+	// longer exists, and the new one is in its mulligan window, where
+	// nobody has priority. See restart.go.
+	if g.RestartPending != nil {
+		g.finishRestartLocked()
+		return false
+	}
 	// #2165, CR 724.1: an effect ended the turn during the resolution
 	// this boundary follows. The rest of the process — the 724.1c
 	// check, the skip to the cleanup step and that step itself — is

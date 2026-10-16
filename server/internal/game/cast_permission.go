@@ -1152,6 +1152,39 @@ func (g *Game) castPermissionHoldersLocked(c Card) []uuid.UUID {
 // its mana cost" over a hand card). An on-disk identity, never renamed.
 const AltCostKeyGrantedCost = "granted-cost"
 
+// grantedInstanceSuffix marks the claim of a GRANTED instance of a
+// keyword the card also prints (#3938, ADR 0066 decision 3 as amended
+// 2026-10-16): "flashback/granted" is Lier's or Past in Flames'
+// flashback on a card that prints its own.
+const grantedInstanceSuffix = "/granted"
+
+// GrantedInstanceKey is the claim key of a permission's offer under
+// `key` on a card that prints an offer under the same key. CR 113.2c:
+// an object with two instances of an ability has both, each functioning
+// independently, so a card that prints flashback and is granted
+// flashback has two flashback abilities and its owner casts it with
+// either (CR 702.34a, CR 601.2b). The two offers need two claims. The
+// printed one keeps the bare key, so every claim made before this
+// existed means what it meant.
+//
+// A wire spelling only. The spell records the keyword (AltCostKeyword),
+// so "if the flashback cost was paid" reads the same whichever instance
+// paid it, and nothing new reaches a snapshot.
+func GrantedInstanceKey(key string) string { return key + grantedInstanceSuffix }
+
+// AltCostKeyword is the keyword a claim names: the claim itself, or for
+// a GrantedInstanceKey the key it is an instance of. What a cast records
+// on StackItem.AltCost and what a permission's AltCostKey is matched
+// against.
+func AltCostKeyword(claim string) string { return strings.TrimSuffix(claim, grantedInstanceSuffix) }
+
+// grantedInstanceClaim reports whether claim names a granted instance,
+// and the keyword it is an instance of.
+func grantedInstanceClaim(claim string) (string, bool) {
+	base, ok := strings.CutSuffix(claim, grantedInstanceSuffix)
+	return base, ok && base != ""
+}
+
 // GrantCastPermissionOverCardForEffect grants `perm` over one card
 // wherever it currently sits, filling in the zone from where the card
 // actually is. Reports whether the card was found.
@@ -1319,7 +1352,11 @@ func (g *Game) CastPermissionForLocked(playerID uuid.UUID, card Card, zone ZoneK
 // lists the other permission's offer so a caster can make the claim.
 //
 // Caller must hold g.mu (read or write).
+//
+// A granted instance's claim (GrantedInstanceKey, #3938) picks by the
+// keyword it is an instance of.
 func (g *Game) CastPermissionForClaimLocked(playerID uuid.UUID, card Card, zone ZoneKind, claim string) *CastPermission {
+	claim = AltCostKeyword(claim)
 	if claim != "" && zone != ZoneCommand && zone != ZoneHand && !card.PrepareCopy {
 		if p := g.playerByIDLocked(playerID); p != nil {
 			for i := range p.CastPermissions {
@@ -1543,7 +1580,7 @@ func (p *CastPermission) ForClaim(alt *AlternativeCost) *CastPermission {
 	if p == nil || p.Zone != ZoneHand {
 		return p
 	}
-	if alt == nil || alt.Key != p.AltCostKey {
+	if alt == nil || AltCostKeyword(alt.Key) != p.AltCostKey {
 		return nil
 	}
 	return p

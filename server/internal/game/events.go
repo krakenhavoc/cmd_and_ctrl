@@ -1093,6 +1093,16 @@ const (
 	// no EventTurnEnded.
 	EventTurnEnded EventKind = "turn_ended"
 
+	// EventGameRestarted — the game was restarted (CR 727, #3856,
+	// restart.go): Karn Liberated's −14. Actor is the player who
+	// restarted it and starts the new game, Source the card whose
+	// ability did it (an object of the old game, so its name rides
+	// Label and PublicNames), and Amount how many cards the effect left
+	// in exile to put onto the battlefield. Emitted once, as the new
+	// game begins and before its hands are dealt: every event after it
+	// belongs to the new game, and the public log begins again here.
+	EventGameRestarted EventKind = "game_restarted"
+
 	// EventStepBegan — the turn cursor entered a step. Actor is the
 	// active player, Step the step (typed), Amount the turn sequence,
 	// Round the table-facing rotation, and Label the step name. Emitted
