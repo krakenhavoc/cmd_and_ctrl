@@ -2,7 +2,7 @@ package game
 
 import "github.com/google/uuid"
 
-// player_statics.go — CR 702.16i and CR 702.11d: the abilities a
+// player_statics.go — CR 702.16b and CR 702.11c: the abilities a
 // PLAYER has, and the one place they are read.
 //
 // ADR 0072 §10 listed this as out of scope with one reason: "Player
@@ -48,7 +48,7 @@ import "github.com/google/uuid"
 // THREE CONSUMERS, one predicate each, all of them a branch that
 // already existed and returned early:
 //
-//	targeting   canPlayerBeTargetedByLocked   targets.go               CR 702.11d / 702.16i
+//	targeting   canPlayerBeTargetedByLocked   targets.go               CR 702.11c / 702.16b
 //	damage      protectionPreventsDamageLocked builtin_replacements.go CR 702.16e
 //	attachment  attachmentLegalLocked          attach.go               CR 702.16c
 //
@@ -329,6 +329,43 @@ type PlayerStatic struct {
 // neither case exists, and undo needs no new state to clone.
 var CatalogPlayerKeywords func(oracleID string) []string
 
+// PlayerKeywordIf is a permanent's printed static that gives its
+// CONTROLLER an ability only while a condition holds: "During your
+// turn, you and this creature have hexproof" (Gruul Spellbreaker,
+// CR 702.11c), "As long as Captain America has a shield counter on him,
+// you … have hexproof". #2013, ADR 0072's 2026-10-16 amendment.
+//
+// The conditional twin of CatalogPlayerKeywords' plain token, and
+// DERIVED for the same reason: nothing is written to the player, so the
+// condition is asked on every query (CR 611.3a — a static ability's
+// effect is not locked in) and the answer changes the moment the turn
+// does, with nothing to sweep and nothing for undo to carry.
+//
+// Declared in the catalog, never stored: While is a closure and a
+// PlayerStatic is plain data, which is why a granted ability can't carry
+// one and this type is not a PlayerStatic.
+type PlayerKeywordIf struct {
+	// Keyword is the token, in PlayerKeywords' vocabulary: "hexproof",
+	// a "hexproof from …" or a "protection from …" token.
+	Keyword string
+	// While is the condition, asked with the granting permanent as it is
+	// on the battlefield now. Nil grants nothing (the weaker direction).
+	// It runs under g.mu, read or write, so it may only READ, and it
+	// must not ask a player's abilities: that would recurse into this
+	// walk.
+	While func(g *Game, source Card) bool
+	// Label is the printed sentence for the tile's ability row ("During
+	// your turn, you have hexproof."). Not a rules input.
+	Label string
+}
+
+// CatalogPlayerKeywordsIf returns the conditional player abilities a
+// battlefield permanent with this catalog key grants its controller,
+// nil for everything else. Populated from effects.Spec.PlayerKeywordsIf
+// and read beside CatalogPlayerKeywords by the same walk. A nil hook
+// means no permanent grants a conditional one.
+var CatalogPlayerKeywordsIf func(oracleID string) []PlayerKeywordIf
+
 // GrantPlayerStaticForEffect gives `player` an ability for a duration
 // — "you gain protection from everything until your next turn". The
 // *ForEffect surface: caller must hold g.mu (write), which a
@@ -380,7 +417,7 @@ func (g *Game) playerAbilityTokensLocked(p *Player, fn func(token string) bool) 
 	if p == nil {
 		return
 	}
-	if CatalogPlayerKeywords != nil && g.Battlefield != nil {
+	if (CatalogPlayerKeywords != nil || CatalogPlayerKeywordsIf != nil) && g.Battlefield != nil {
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
 			if c.Controller != p.ID {
@@ -395,17 +432,31 @@ func (g *Game) playerAbilityTokensLocked(p *Player, fn func(token string) bool) 
 			if key == "" {
 				continue
 			}
-			for _, tok := range CatalogPlayerKeywords(key) {
-				// #2742: the chosen card type is on the granting
-				// permanent, so it is read here, where the permanent
-				// is in hand. Nothing chosen grants nothing.
-				if tok == ProtectionFromTheChosenCardType {
-					if tok = ProtectionFromCardType(c.ChosenOption); tok == "" {
+			if CatalogPlayerKeywords != nil {
+				for _, tok := range CatalogPlayerKeywords(key) {
+					if tok = derivedPlayerToken(c, tok); tok == "" {
 						continue
 					}
+					if !fn(tok) {
+						return
+					}
 				}
-				if !fn(tok) {
-					return
+			}
+			// #2013: "during your turn, you … have hexproof". The
+			// condition is asked here, on every query, with the
+			// permanent as it is now (CR 611.3a).
+			if CatalogPlayerKeywordsIf != nil {
+				for _, kw := range CatalogPlayerKeywordsIf(key) {
+					if kw.While == nil || !kw.While(g, *c) {
+						continue
+					}
+					tok := derivedPlayerToken(c, kw.Keyword)
+					if tok == "" {
+						continue
+					}
+					if !fn(tok) {
+						return
+					}
 				}
 			}
 		}
@@ -425,6 +476,17 @@ func (g *Game) playerAbilityTokensLocked(p *Player, fn func(token string) bool) 
 			return
 		}
 	}
+}
+
+// derivedPlayerToken is the token a granting permanent's declared one
+// stands for. #2742: the chosen card type is on the granting permanent,
+// so it is read here, where the permanent is in hand; nothing chosen is
+// "" and grants nothing. Every other token is itself.
+func derivedPlayerToken(c *Card, tok string) string {
+	if tok == ProtectionFromTheChosenCardType {
+		return ProtectionFromCardType(c.ChosenOption)
+	}
+	return tok
 }
 
 // PlayerAbilitiesForEffect is the *ForEffect surface over the reader:
@@ -461,7 +523,7 @@ func (g *Game) PlayerHasKeywordLocked(p *Player, keyword string) bool {
 
 // PlayerProtectedFromLocked is the player-side MatchedProtection: does
 // this player have protection from a source with these
-// characteristics, and if so WHICH quality refused (CR 702.16i)?
+// characteristics, and if so WHICH quality refused (CR 702.16b)?
 //
 // The quality is returned for the same reason the object side returns
 // it: the player-facing sentence names it ("you have protection from
@@ -509,17 +571,17 @@ func (g *Game) PlayerProtectedFromLocked(p *Player, src *Characteristic) (Protec
 // comment used to end "players are not covered… TargetPlayer refs pass
 // this gate by not reaching it". They reach it now.
 //
-//   - hexproof (CR 702.11d) — can't be the target of spells or
+//   - hexproof (CR 702.11c) — can't be the target of spells or
 //     abilities your OPPONENTS control. So the test is the
 //     CONTROLLER's, and a hexproof player may still target THEMSELVES.
 //     That half is load-bearing rather than a nicety: Leyline of
 //     Sanctity must not stop you casting your own Sylvan Library, and
 //     a player who could not target themselves could not pay a cost or
 //     aim their own drain.
-//   - protection (CR 702.16i) — can't be the target of spells with the
+//   - protection (CR 702.16b) — can't be the target of spells with the
 //     stated quality, or of abilities from a SOURCE with it. Tested
-//     against the source OBJECT, never its controller, exactly as
-//     CR 702.16b is for a permanent.
+//     against the source OBJECT, never its controller, exactly as it
+//     is for a permanent.
 //
 // Shroud is absent on purpose: no card prints shroud on a player, and
 // a token with no card behind it is what CanonicalKeywords refuses a
@@ -549,7 +611,7 @@ func (g *Game) canPlayerBeTargetedByLocked(p *Player, src TargetSource) bool {
 	)
 	g.playerAbilityTokensLocked(p, func(tok string) bool {
 		if tok == KeywordHexproof {
-			// CR 702.11d asks WHO, and only who — unless a static
+			// CR 702.11c asks WHO, and only who — unless a static
 			// on the battlefield lets this source's controller
 			// target the player as though they didn't have it
 			// (Kaya, Bane of the Dead; #1560).
@@ -559,7 +621,7 @@ func (g *Game) canPlayerBeTargetedByLocked(p *Player, src TargetSource) bool {
 			}
 			return true
 		}
-		// CR 702.11e: "hexproof from [quality]" on a player (Veil of
+		// CR 702.11d: "hexproof from [quality]" on a player (Veil of
 		// Summer). The opponent test is hexproof's, the quality test
 		// protection's, and the waiver is hexproof's too.
 		if IsHexproofFromToken(tok) {

@@ -1140,13 +1140,12 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#2105): the player-damage path (`game/damage_tail.go`) stamps the part of the damage that cost no life on its `EventDealDamage` as `DamageNotLifeLoss` (all of it for a source with infect, or dealt as though it had infect, CR 702.90b, and for a player whose life total can't change, CR 119.8), and `Event.DamageLifeLoss()` is the life the damage actually cost. `Amount` is still the damage, so \"is dealt damage\" readers are unchanged. The three life-loss readers moved onto it: `s22PlayerLostLife`, `b04OpponentLostLife` (with The Master of Lake-Town's and the Ob Nixilis pre-filter) and the turn tally's `LifeLost`. The field records the part NOT lost so that its zero value, an event written before it existed, reads as it did then. Lich's Mastery ships Full on top of it.",
 	},
 	{
-		Slug: "player-hexproof-during-your-turn", Name: "\"You have hexproof\" only during your turn", Kind: KindSeam, Status: StatusMissing,
+		Slug: "player-hexproof-during-your-turn", Name: "\"You have hexproof\" only during your turn", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Permanents that give you hexproof only some of the time, such as Gruul Spellbreaker during your turn.",
-		Missing:     "A permanent can't yet give you hexproof only during your turn.",
-		Rules:       []string{"702.11c"},
+		Rules:       []string{"702.11c", "611.3a"},
 		Issue:       2013,
-		Waiting:     []string{"Gruul Spellbreaker"},
-		EngineNotes: "player statics: `Spec.PlayerKeywords` (read through `game.CatalogPlayerKeywords`, `game/player_statics.go`) is unconditional, so \"during your turn, you … have hexproof\" (CR 702.11c) has no spelling. The creature's own half is an ordinary conditional layer-6 grant. The likely shape is a condition on the player-keyword declaration, read at the same targeting query, so the static stays derived. Gruul Spellbreaker's riot already works (#1556). Found landing the riot cards.",
+		Examples:    []string{"Gruul Spellbreaker", "Captain America, Super-Soldier"},
+		EngineNotes: "**Shipped** (#2013, ADR 0072's 2026-10-16 amendment): `Spec.PlayerKeywordsIf` declares a permanent's printed \"<condition>, you have <keyword>\" as a token plus a `While(g, source)` predicate, read through `game.CatalogPlayerKeywordsIf` by the same `playerAbilityTokensLocked` walk as `PlayerKeywords`. The condition is asked on every query with the permanent as it is now (CR 611.3a), so nothing is stored or swept. `YouHaveDuringYourTurn` and `YouHaveWhile` build the entries; `ThisHasDuringYourTurn` is the object half. Gruul Spellbreaker and Captain America, Super-Soldier ship Full.",
 	},
 	{
 		Slug: "abilities-cant-be-countered", Name: "Abilities that can't be countered", Kind: KindSeam, Status: StatusMissing,
