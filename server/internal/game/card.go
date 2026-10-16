@@ -1296,6 +1296,16 @@ type Card struct {
 	// (PrintedValues), because a copy takes the copied card's text.
 	PrintsTapAbility bool
 
+	// ManaAbilityText records whether the card's printed oracle text has
+	// a mana ability as CR 605.1a/b defines one, per ManaAbilityInText
+	// (#3943). Stamped by the deck importer beside PrintsTapAbility, for
+	// the same reason; PrintedUnknown (the zero value) on a card that was
+	// never imported. Re-derived from the face that is up by SetFace, and
+	// a copiable value (PrintedValues). Read through
+	// HasPrintedManaAbility, for Moonsilver Key's "an artifact card with a
+	// mana ability".
+	ManaAbilityText PrintedFact
+
 	// ColorCDADropped records that a CR 707.9d copy exception gave
 	// this object a colour, so the copy did not take the copied
 	// object's colour-defining ability (devoid) at all. A copiable

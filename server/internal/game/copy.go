@@ -138,6 +138,11 @@ type PrintedValues struct {
 	// Stone can untap.
 	PrintsTapAbility bool
 
+	// ManaAbilityText is Card.ManaAbilityText (#3943): whether the
+	// printed text has a mana ability (CR 605.1). A copy takes the copied
+	// card's text (CR 707.2).
+	ManaAbilityText PrintedFact
+
 	Power           int
 	Toughness       int
 	StartingLoyalty int
@@ -277,6 +282,7 @@ func printedValuesOf(src Card) PrintedValues {
 		GrantedAbilities:  copyStringSlice(src.GrantedAbilities),
 		ColorCDADropped:   src.ColorCDADropped,
 		PrintsTapAbility:  src.PrintsTapAbility,
+		ManaAbilityText:   src.ManaAbilityText,
 		Power:             src.Power,
 		Toughness:         src.Toughness,
 		VariableToughness: src.VariableToughness,
@@ -637,6 +643,7 @@ func (c *Card) setPrintedValues(v PrintedValues) {
 	c.GrantedAbilities = v.GrantedAbilities
 	c.ColorCDADropped = v.ColorCDADropped
 	c.PrintsTapAbility = v.PrintsTapAbility
+	c.ManaAbilityText = v.ManaAbilityText
 	c.Power = v.Power
 	c.Toughness = v.Toughness
 	c.VariableToughness = v.VariableToughness
@@ -688,6 +695,7 @@ func (c *Card) restorePrintedSelf() {
 	c.GrantedAbilities = v.GrantedAbilities
 	c.ColorCDADropped = v.ColorCDADropped
 	c.PrintsTapAbility = v.PrintsTapAbility
+	c.ManaAbilityText = v.ManaAbilityText
 	c.Power = v.Power
 	c.Toughness = v.Toughness
 	c.VariableToughness = v.VariableToughness
