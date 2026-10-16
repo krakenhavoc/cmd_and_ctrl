@@ -47,7 +47,13 @@
   // cannot say different things about the same stack. The #322 hover
   // bookkeeping is lib/stackHover.ts for the same reason.
 
-  import type { PlayerView, StackItemView, StackPositionView, ZoneView } from "../../protocol";
+  import type {
+    CardView,
+    PlayerView,
+    StackItemView,
+    StackPositionView,
+    ZoneView,
+  } from "../../protocol";
   import { stackPixels, type Size } from "../../stackPosition";
   import { createStackPlacement } from "../../stackPlacement.svelte";
   import { cardImageURL } from "../../cardImage";
@@ -59,6 +65,7 @@
   import { buildStackLane, type StackLaneItem } from "../../stackLane";
   import { createStackHover } from "../../stackHover";
   import { L } from "../../labels";
+  import StackAbilityButtons from "./StackAbilityButtons.svelte";
 
   interface Props {
     stack: ZoneView;
@@ -75,6 +82,9 @@
     splitSecondActive: boolean;
     onCounter: (item: StackItemView) => void;
     onTargetStackItem?: (item: StackItemView) => void;
+    // #1865: announce an ability of a spell on the stack (Lightning
+    // Storm), through Board's chain. Undefined for a spectator.
+    onActivateAbility?: (card: CardView, abilityIndex: number) => void;
     // Whose window it is when the viewer doesn't hold priority — the
     // header names them instead of showing actions.
     priorityHolderName?: string | null;
@@ -102,6 +112,7 @@
     splitSecondActive,
     onCounter,
     onTargetStackItem,
+    onActivateAbility,
     priorityHolderName = null,
     priorityHolderConsidering = false,
     boardEl = null,
@@ -134,6 +145,17 @@
     const t = $targeting;
     return t !== null && isLegalCardTarget(t, item.id);
   }
+
+  // #1865: the row is on the spell's own stack card, which is what
+  // Board's chain reads the ability and its cost options from.
+  const activateOn = $derived(
+    onActivateAbility
+      ? (item: StackLaneItem, abilityIndex: number) => {
+          const card = stack.cards.find((c) => c.instance_id === item.id);
+          if (card) onActivateAbility(card, abilityIndex);
+        }
+      : undefined,
+  );
 
   const displayItems = $derived(model.stackItems);
   const triggers = $derived(model.pendingTriggers);
@@ -351,6 +373,7 @@
               </div>
             </div>
           </div>
+          <StackAbilityButtons {item} enabled={viewerHasPriority} onActivate={activateOn} />
           <button
             type="button"
             class="act counter-btn"
