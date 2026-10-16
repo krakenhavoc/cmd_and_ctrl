@@ -294,6 +294,12 @@ func (g *Game) attackRequirementCandidatesLocked(ap uuid.UUID, assign map[uuid.U
 			if g.attackTargetRestrictionRefusalLocked(c, t.ID) != nil {
 				continue
 			}
+			// #1936: nor a target its defender is not waived for (a
+			// goaded Weathered Sentinels owes an attack only at a
+			// player who attacked its controller last turn).
+			if g.defenderRefusalLocked(c, t.ID) != nil {
+				continue
+			}
 			w := g.requirementWeightLocked(reqs, t.ID)
 			if w == 0 {
 				continue

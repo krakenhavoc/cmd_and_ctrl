@@ -94,6 +94,9 @@
     considering?: boolean;
     onCounter: (item: StackItemView) => void;
     onTargetStackItem?: (item: StackItemView) => void;
+    // #1865: announce an ability of a spell on the stack (Lightning
+    // Storm), through Board's chain. Undefined for a spectator.
+    onActivateAbility?: (card: CardView, abilityIndex: number) => void;
     // #3429: the seat's saved spot and what a drop and a reset do about
     // it; a spectator passes no onSave / onReset.
     position?: StackPositionView | null;
@@ -109,6 +112,7 @@
     considering = false,
     onCounter,
     onTargetStackItem,
+    onActivateAbility,
     position = null,
     onSave,
     onReset,
@@ -229,6 +233,14 @@
     hoverEnter: (item: StackLaneItem) =>
       hover.enter(item.id, item.previewCard, $settings.display.hoverDelayMs),
     hoverLeave: (item: StackLaneItem) => hover.leave(item.id),
+    // #1865: the row is on the spell's own stack card, which is what
+    // Board's chain reads the ability and its cost options from.
+    activate: onActivateAbility
+      ? (item: StackLaneItem, abilityIndex: number) => {
+          const card = view.stack.cards.find((c) => c.instance_id === item.id);
+          if (card) onActivateAbility(card, abilityIndex);
+        }
+      : undefined,
   });
 
   // ---- position --------------------------------------------------------

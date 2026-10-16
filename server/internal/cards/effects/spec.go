@@ -1810,7 +1810,9 @@ type ActivatedAbility struct {
 	// battlefield. Cycling declares ZoneHand; a graveyard activation
 	// (Reassembling Skeleton) will declare ZoneGraveyard. Build the
 	// entry with Cycling / Typecycling rather than setting this by
-	// hand. See game.ActivatedAbilityShape.Zones and ADR 0062.
+	// hand. See game.ActivatedAbilityShape.Zones and ADR 0062. A
+	// spell's ability that works while it is on the stack declares
+	// ZoneStack (Lightning Storm; ADR 0106 §1 amendment 2026-10-16).
 	Zones []game.ZoneKind
 	// Cycling marks the card's cycling ability (CR 702.29a), so
 	// activating it emits EventCycle. Set by the Cycling /
@@ -1886,7 +1888,8 @@ type ActivatedAbility struct {
 	// effect is then whoever activated it (CR 109.5) — Context.Controller
 	// — and "this permanent's controller" is Context.SourcePermanent()'s.
 	// Register refuses it beside a {T}, loyalty, crew or sacrifice-this
-	// component and on an ability with a non-battlefield zone. See
+	// component and on an ability with a zone other than the battlefield
+	// or the stack (Lightning Storm, #1865). See
 	// game.ActivatedAbilityShape.AnyPlayer.
 	AnyPlayer bool
 	// OpponentsOnly is "Only your opponents may activate this ability"
