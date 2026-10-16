@@ -1050,13 +1050,14 @@ var items = []Item{
 		EngineNotes: "nothing encodes a card on a permanent: no link from an exiled card to its creature (the nearest is `Card.ExiledWith`, CR 607.2a), no exile-as-it-resolves in place of the graveyard, and no free cast of a copy on combat damage. Trait Doctoring's text change itself works (ADR 0160's 2026-10-15 amendment).",
 	},
 	{
-		Slug: "tap-as-an-additional-cost", Name: "Tapping a creature as an additional cost to cast", Kind: KindSeam, Status: StatusMissing,
+		// #3868. Closed; history in Closed seams.
+		Slug: "tap-as-an-additional-cost", Name: "Tapping a creature as an additional cost to cast", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Spells that cost you tapping an untapped creature of a kind you control as well as their mana, such as New Blood.",
-		Missing:     "Tapping a creature you control as an additional cost to cast a spell isn't supported yet.",
-		Rules:       []string{"601.2h"},
+		Rules:       []string{"601.2h", "118.3", "302.6"},
 		Issue:       3868,
-		Waiting:     []string{"New Blood"},
-		EngineNotes: "costs: `game.AdditionalCost` has no tap-a-permanent component (the tap-as-an-ALTERNATIVE-cost family has one: Orim's Cure, Zahid). New Blood's gain control and creature-type change exist (`GainControlOfTargetFor`, `game.ChangeTextWordForEffect` with `TextWordCreatureType`).",
+		Probe:       func(s effects.Spec) bool { return tapsAsAdditionalCost(s.AdditionalCost) },
+		Examples:    []string{"New Blood", "Shared Discovery", "Gaze of Justice", "Swallow Whole", "Disruption Protocol"},
+		EngineNotes: "**Shipped** (#3868): `game.AdditionalCost.TapOthers` is the activated abilities' and the alternative costs' `TapOthersCost` on a cast's mandatory slot or on one of its either/or branches, built with `effects.TapUntappedCost(n, label, preds…)`, so the candidate walk (`TapOthersOptionsForEffect`), the payability predicate and the validator are theirs. The caster names the permanents on `cast_spell`'s `teamwork_ids`, the list escalate's taps already ride; they are validated at announce (exactly the count, each once, the caster's own, untapped, matching the filter without targeting, and not also named to convoke or waterbend) and tapped with the spell on the stack, with no summoning-sickness check (CR 302.6). The payment is recorded on `PaidCost.TappedOthers`, read through `ctx.TappedToPay()`. The auto-tapper keeps them out of the mana. The view ships `additional_cost.tap_others_label/options` (and per branch), the client opens the sacrifice picker with the verb \"Tap\" and greys a spell with too few, and the enumerator offers one payment (the policy's cheapest to tap) named in the move label; the heuristic prices each tap as an alternative cost's tap. `Register` refuses it on an optional cost, the \"tap X\" and \"another\" forms, and beside teamwork or escalate's taps. **Cards** (8, all Full): New Blood, Shared Discovery, Gaze of Justice, Swallow Whole, Guardian of the Great Door, Warlord's Elite, Fear of Exposure and Disruption Protocol. **Still open:** \"tap any number of untapped creatures\" as a count the spell reads (Burn at the Stake) or a discount (Explosive Singularity).",
 	},
 	{
 		Slug: "gains-cumulative-upkeep", Name: "Testing for and granting cumulative upkeep", Kind: KindSeam, Status: StatusMissing,
@@ -1245,17 +1246,17 @@ var items = []Item{
 	{
 		Slug: "either-or-additional-cost", Name: "Either/or additional costs", Kind: KindSeam, Status: StatusPartial,
 		Summary:  "Spells that let you choose between two additional costs, like \"sacrifice an artifact or discard a card\", ask which one you're paying as you cast them.",
-		Missing:  "Some choices aren't supported yet: revealing or beholding a card, tapping an artifact, exiling cards from your graveyard, foraging, and a ward that asks for one cost or another.",
+		Missing:  "Some choices aren't supported yet: revealing or beholding a card, exiling cards from your graveyard, foraging, and a ward that asks for one cost or another.",
 		Rules:    []string{"601.2b", "601.2f", "601.2h", "118.3"},
 		Issue:    1732,
 		ADR:      "0100-delve-either-or-and-variable-sacrifice-costs.md",
 		Mechanic: "either/or additional cost",
 		Examples: []string{"Demand Answers", "Bone Shards", "Lightning Axe"},
 		Waiting: []string{
-			"Disruption Protocol", "Soaring Stoneglider", "Feed the Cycle", "Monstrous Emergence",
+			"Soaring Stoneglider", "Feed the Cycle", "Monstrous Emergence",
 			"Titania, Rugged Rumbler", "Dusk Mangler",
 		},
-		EngineNotes: "**Shipped** (ADR 0100 sub-PR 3): `AdditionalCost.Either` — one mandatory cost whose branches are ordinary `AdditionalCost`s with a `Key`, built with `effects.EitherCost(…)` and `.Keyed(…)` — plus the fixed `PayLife` component (`effects.PayLifeCost`), a mana branch (`effects.ManaAdditionalCost`) and blight in a branch (`effects.BlightCost`). The branch is announced as `CastSpellParams.CostBranch` (`cost_branch` on the wire and on the auto-tap preview), required on a branched card and refused on any other; `game.ChosenAdditionalCost` hands the chosen branch to `castCostPayments` as the plan's mandatory entry, so there is still one validator and one payer. `game.AdditionalCostMana` (which replaced `AddOptionalCostMana`) prices the branch's mana with the optional costs' at CR 601.2f. `Game.AdditionalCostBranchPayableLocked` is read by the view's `additional_cost.branches[].payable`, the enumerator (one move per payable branch) and `CastSpell`. `PaidCost.CostBranch` (index + 1, read by key through `ctx.PaidCostBranch`) and `PaidCost.Discarded` (every card the additional cost discarded, read through `ctx.Discarded`; owner decision 6, which is Grab the Prize) are additive within schema v7 and kept by a CR 707.10 copy. **Reveal and behold shipped** (ADR 0100 amendment 2026-10-07): `AdditionalCost.Reveal` (`effects.RevealCardCost` / `BeholdCost`, and the shared `effects.RevealOrPay` / `BeholdOrPay` for the printed \"or pay {N}\" pair) names one card on `cast_spell.reveal_ids`, from the hand or, to behold, from the permanents you control, and paying it shows a hand card to the table. Fifteen cards ship on it. **Still open:** the branch components the cast path has no shape for yet — tap an untapped artifact (Disruption Protocol), exile two cards from your graveyard (Soaring Stoneglider), forage (Feed the Cycle) and \"choose a creature you control or reveal a creature card\" (Monstrous Emergence, which also reads the power of what it chose); each arrives with its first card as a new branch component. Titania, Rugged Rumbler's cast cost works but her \"Ward—Discard a card or pay {2}\" is an either/or on a WARD. Dusk Mangler pays its cost today and is held for its entry trigger's sacrifice, discard and life loss in printed order. Betrayer's Bargain shipped with ADR 0108 PR 1 (#1886).",
+		EngineNotes: "**Shipped** (ADR 0100 sub-PR 3): `AdditionalCost.Either` — one mandatory cost whose branches are ordinary `AdditionalCost`s with a `Key`, built with `effects.EitherCost(…)` and `.Keyed(…)` — plus the fixed `PayLife` component (`effects.PayLifeCost`), a mana branch (`effects.ManaAdditionalCost`) and blight in a branch (`effects.BlightCost`). The branch is announced as `CastSpellParams.CostBranch` (`cost_branch` on the wire and on the auto-tap preview), required on a branched card and refused on any other; `game.ChosenAdditionalCost` hands the chosen branch to `castCostPayments` as the plan's mandatory entry, so there is still one validator and one payer. `game.AdditionalCostMana` (which replaced `AddOptionalCostMana`) prices the branch's mana with the optional costs' at CR 601.2f. `Game.AdditionalCostBranchPayableLocked` is read by the view's `additional_cost.branches[].payable`, the enumerator (one move per payable branch) and `CastSpell`. `PaidCost.CostBranch` (index + 1, read by key through `ctx.PaidCostBranch`) and `PaidCost.Discarded` (every card the additional cost discarded, read through `ctx.Discarded`; owner decision 6, which is Grab the Prize) are additive within schema v7 and kept by a CR 707.10 copy. **Reveal and behold shipped** (ADR 0100 amendment 2026-10-07): `AdditionalCost.Reveal` (`effects.RevealCardCost` / `BeholdCost`, and the shared `effects.RevealOrPay` / `BeholdOrPay` for the printed \"or pay {N}\" pair) names one card on `cast_spell.reveal_ids`, from the hand or, to behold, from the permanents you control, and paying it shows a hand card to the table. Fifteen cards ship on it. **Still open:** the branch components the cast path has no shape for yet — exile two cards from your graveyard (Soaring Stoneglider), forage (Feed the Cycle) and \"choose a creature you control or reveal a creature card\" (Monstrous Emergence, which also reads the power of what it chose); each arrives with its first card as a new branch component. Titania, Rugged Rumbler's cast cost works but her \"Ward—Discard a card or pay {2}\" is an either/or on a WARD. Dusk Mangler pays its cost today and is held for its entry trigger's sacrifice, discard and life loss in printed order. Betrayer's Bargain shipped with ADR 0108 PR 1 (#1886). Disruption Protocol's \"tap an untapped artifact you control\" branch shipped with #3868 (`effects.TapUntappedCost` in a branch).",
 	},
 	{
 		Slug: "variable-sacrifice-cast-cost", Name: "Variable sacrifice costs on spells", Kind: KindSeam, Status: StatusImplemented,
@@ -3644,6 +3645,24 @@ func declaresModesNotChosen(s effects.Spec) bool {
 	}
 	for _, a := range s.Activated {
 		if a.Modes != nil && a.Modes.NotChosen != game.ModeMemoryNone {
+			return true
+		}
+	}
+	return false
+}
+
+// tapsAsAdditionalCost is the "tap an untapped Vampire you control"
+// probe (#3868): a spell's mandatory additional cost, or one of its
+// either/or branches, taps permanents.
+func tapsAsAdditionalCost(ac *game.AdditionalCost) bool {
+	if ac == nil {
+		return false
+	}
+	if !ac.TapOthers.Empty() {
+		return true
+	}
+	for i := range ac.Either {
+		if !ac.Either[i].TapOthers.Empty() {
 			return true
 		}
 	}

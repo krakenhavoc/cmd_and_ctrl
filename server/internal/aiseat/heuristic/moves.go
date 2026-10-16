@@ -176,6 +176,25 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 	return v, false
 }
 
+// castTapsPermanents reports whether a cast of c pays a mandatory "tap an
+// untapped <permanent> you control" additional cost (#3868): the card's
+// own cost, or the either/or branch the cast names (Disruption Protocol's
+// "tap an untapped artifact you control or pay {1}"). Read off the wire's
+// tap_others_options, which only that cost carries.
+func castTapsPermanents(c *protocol.CardView, branch *int) bool {
+	if c == nil || c.AdditionalCost == nil {
+		return false
+	}
+	ac := c.AdditionalCost
+	if branch != nil {
+		if *branch < 0 || *branch >= len(ac.Branches) {
+			return false
+		}
+		return ac.Branches[*branch].TapOthersOptions != nil
+	}
+	return ac.TapOthersOptions != nil
+}
+
 // phyrexianLifeFloor is the life total the policy will not pay
 // Phyrexian symbols below (CR 107.4f, #1677): a move whose
 // legal.MoveCost.PhyrexianLife is non-zero is declined when paying its
@@ -675,6 +694,16 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 			continue
 		}
 		v -= p.fuelValue(st, id)
+	}
+	// #3868: a mandatory "tap an untapped Vampire you control" (New
+	// Blood) names its permanents on teamwork_ids. Tapping spends none of
+	// them, so each is charged what tapping it costs, as Orim's Cure's
+	// creature is just above. Only for that cost: teamwork's and
+	// escalate's taps ride the same list and keep their old price.
+	if castTapsPermanents(card, cp.CostBranch) {
+		for _, id := range cp.TeamworkIDs {
+			v -= p.tapFuelValue(st, id)
+		}
 	}
 	// ADR 0135 §2: an offer that DISCARDS its cards (Snag's Forest,
 	// retrace's land) pays the discard payoffs, as an additional cost's

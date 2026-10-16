@@ -365,7 +365,10 @@ type CastSpellParams struct {
 	// counters on (CR 701.68a). Same discipline as SacrificeIDs:
 	// validated at announce, paid with the spell on the stack, and
 	// refused rather than ignored when the announcement pays no such
-	// cost. Added for #1703.
+	// cost. Added for #1703. Escalate's taps (CR 702.120a) and a
+	// mandatory "tap an untapped Vampire you control" additional cost
+	// (#3868, AdditionalCost.TapOthers) ride the same list; a card
+	// carries at most one of the three.
 	TeamworkIDs []uuid.UUID
 	BlightIDs   []uuid.UUID
 
@@ -1400,6 +1403,17 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #3868: a mandatory "tap an untapped Vampire you control", on the
+	// same list, kept apart from the convoke / waterbend taps (CR 118.3).
+	if err := g.validateCastTapOthersLocked(playerID, cardID, costPlan, params.TeamworkIDs, params.TapIDs); err != nil {
+		slog.Warn("cast_spell rejected: bad tap-a-permanent payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"taps_received", len(params.TeamworkIDs),
+			"err", err,
+		)
+		return err
+	}
 	if err := g.validateBlightLocked(playerID, costPlan, params.BlightIDs, params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad blight payment",
 			"card_name", card.Name,
@@ -2054,7 +2068,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #1703: teamwork's taps and blight's counters, in the same
 	// window and for the same reason. A creature the blight kills
 	// dies at the closing state-based check, with the cost paid.
-	g.payTeamworkLocked(playerID, params.TeamworkIDs)
+	// #3868: or the mandatory tap-a-permanent cost's, recorded on the
+	// payment for "the creature tapped to pay" (Swallow Whole).
+	if !g.payCastTapOthersLocked(playerID, cardID, costPlan, params.TeamworkIDs) {
+		g.payTeamworkLocked(playerID, params.TeamworkIDs)
+	}
 	if err := g.payBlightLocked(playerID, costPlan, params.BlightIDs, params.XValue); err != nil {
 		slog.Error("cast_spell: blight cost failed after validation",
 			"card_name", card.Name,

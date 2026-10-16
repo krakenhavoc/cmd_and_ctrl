@@ -1380,6 +1380,19 @@ type AdditionalCostView struct {
 	// a hexproof creature you control is on it (CR 601.2h).
 	ExilePermanentLabel   string            `json:"exile_permanent_label,omitempty"`
 	ExilePermanentOptions *LegalTargetsView `json:"exile_permanent_options,omitempty"`
+	// TapOthersLabel / TapOthersOptions describe a "tap an untapped
+	// Vampire you control" additional cost (#3868, New Blood): the
+	// activated ability's two fields of the same names, off the same
+	// engine walk (game.TapOthersOptionsForEffect). min / max are the
+	// clause's count and the cards come in payment order; the picks ride
+	// back on cast_spell as `teamwork_ids`, the list escalate's taps use.
+	// Absent when the cost has no such component; fewer cards than `min`
+	// means it cannot be paid right now, which makes the spell uncastable
+	// (CR 118.3). Not a target list: a hexproof Vampire is on it, and so
+	// is one that came under the viewer's control this turn (the cost is
+	// not the {T} symbol, CR 302.6).
+	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
+	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
 	// ExileFromHandLabel / ExileFromHandOptions describe a "you may exile
 	// any number of blue cards from your hand" additional cost (#3175,
 	// March of Swirling Mist): the clause as printed and the caster's hand
@@ -7639,6 +7652,13 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		if out.ExilePermanentOptions == nil {
 			out.ExilePermanentOptions = &LegalTargetsView{Min: ec.Count, Max: ec.Count}
 		}
+	}
+	if tc := ac.TapOthers; !tc.Empty() {
+		// #3868: the activation's own walk and view, with no source — the
+		// spell is not on the battlefield — so the picker offers exactly
+		// the permanents the validator accepts (#544).
+		out.TapOthersLabel = tc.Label
+		out.TapOthersOptions = tapOthersCostOptions(g, caster, castID, tc, false)
 	}
 	if he := ac.ExileFromHand; he != nil {
 		// #3175: the engine's own walk, so the picker offers exactly the

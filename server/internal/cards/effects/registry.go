@@ -261,6 +261,8 @@ func Register(spec Spec) {
 	// for a shape that compiles and then behaves as something the card
 	// does not print.
 	checkTeamworkBlight(spec)
+	// #3868: a tap-permanents cost, on the mandatory slot or a branch.
+	checkTapOthersCost(spec)
 	// ADR 0100 §2: the either/or cost's shapes.
 	checkEitherCost(spec)
 	// ADR 0129 §5: energy in an additional cost, and replicate's pair.

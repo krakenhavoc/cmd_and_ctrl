@@ -1276,6 +1276,32 @@ export function castExilePermanentCost(
   };
 }
 
+// ClaimedTapCost is the "tap an untapped Vampire you control" additional
+// cost this cast pays (#3868): the clause as printed, how many to tap and
+// which permanents could pay it.
+export interface ClaimedTapCost {
+  label: string;
+  count: number;
+  options: string[];
+}
+
+// castTapCost is the tap-permanents cost a cast pays, if any: the card's
+// mandatory additional cost, or the chosen either/or branch's (Disruption
+// Protocol). The picks ride cast_spell as `teamwork_ids`.
+export function castTapCost(
+  card: CardView,
+  choices: CastChoices | undefined,
+): ClaimedTapCost | undefined {
+  const cost = castAdditionalCost(card, choices);
+  const opts = cost?.tap_others_options;
+  if (!cost || !opts) return undefined;
+  return {
+    label: cost.tap_others_label ?? "an untapped permanent you control",
+    count: opts.min ?? 1,
+    options: opts.cards ?? [],
+  };
+}
+
 // ClaimedHandExileCost is the "you may exile any number of blue cards
 // from your hand" additional cost a cast pays (#3175): the clause as
 // printed and the hand cards that could pay it. Any number, none included.
