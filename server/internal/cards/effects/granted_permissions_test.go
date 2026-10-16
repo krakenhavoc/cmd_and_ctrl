@@ -185,7 +185,8 @@ func TestPastInFlamesLocksTheSetAtResolution(t *testing.T) {
 
 // Past in Flames prints flashback as well as granting it, which pins
 // the precedence rule: a granted key never overrides an offer the card
-// itself makes.
+// itself makes. The printed offer keeps the bare key; a grant over the
+// card is a second instance beside it (#3938, two_flashbacks_test.go).
 func TestPastInFlamesKeepsItsOwnPrintedFlashback(t *testing.T) {
 	if !game.CardCastableFromZone(pastInFlamesOracle, game.ZoneGraveyard) {
 		t.Fatalf("Past in Flames does not declare the graveyard castable")

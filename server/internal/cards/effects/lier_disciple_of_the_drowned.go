@@ -19,20 +19,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // names no Cost, so the flashback cost is the card's mana cost, and
 // ExileOnResolution is flashback's CR 702.34a exile.
 //
-// ONE SIMPLIFICATION, the one Past in Flames already has: a card that
-// prints its own flashback is offered only that one. CR 702.34 would let
-// its owner pick either flashback cost; the printed one is kept, which
-// can only cost the player more.
+// A card that prints its own flashback has two flashback abilities
+// under Lier (CR 113.2c), and its owner casts it with either (CR
+// 702.34a): Faithless Looting for its printed {2}{R} or for its {R} mana
+// cost. The printed one is claimed as "flashback", Lier's as
+// "flashback/granted" (game.GrantedInstanceKey, #3938, ADR 0066
+// decision 3 as amended 2026-10-16), and the cast picker lists both.
 //
-// The caveat waits on the engine seam #3938 (triaged in #3863).
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "f224db3d-cdd2-43f2-b625-4b861efa6449",
 		Name:         "Lier, Disciple of the Drowned",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"An instant or sorcery that already has flashback can only be cast for its own flashback cost, not for its mana cost.",
-		},
+		Completeness: CompletenessFull,
 		SpellsCantBeCountered: []game.CounterShieldStatic{
 			AnyPlayersSpellsCantBeCountered("Spells can't be countered."),
 		},

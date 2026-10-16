@@ -191,6 +191,12 @@ the card already makes: Deep Analysis flashed back under Past in Flames costs
 `{1}{U}` + 3 life, not `{3}{U}`. This is the strictly-weaker direction, and it
 is the direction a sandbox must err in (#259).
 
+*Amended 2026-10-16 (#3938, [below](#amendment--2026-10-16-3938-a-printed-and-a-granted-instance-of-one-keyword-are-two-offers)):*
+the printed offer still keeps the bare key, and the grant's offer is a second
+instance of the keyword (CR 113.2c), offered beside it under
+`GrantedInstanceKey`. Deep Analysis under Past in Flames is offered both
+`{1}{U}` + 3 life and `{3}{U}`, and its owner picks.
+
 ### 4. Playing and casting from the top of your library (CR 401.5)
 
 `castZoneFromWire` gains `library`, and `castSourceZoneLocked` resolves it to
@@ -3975,3 +3981,62 @@ card is castable); drop `LapseOnPass` and the permission outlives the pass, so
 `TestPrimevalSpawnWindowClosesOnPassAndLeavesTheRestInExile` fails; drop `CastOnly` and
 `TestPrimevalSpawnLandIsExiledAndNotCastable` fails on the land play; take the self-replacement off the card and
 `TestPrimevalSpawnEntry` fails on the free cast and the reanimation.
+
+## Amendment — 2026-10-16 (#3938): a printed and a granted instance of one keyword are two offers
+
+**The gap.** Decision 3 said "a card that both prints and is granted the same key keeps its printed cost". It consulted the
+catalog first, and `CastOffersForLocked` dropped the grant's offer because it repeated a key already listed. That was the
+strictly-weaker direction, and it was not the rule. CR 113.2c: "An object may also be granted additional abilities by a spell or
+ability. If an object has multiple instances of the same ability, each instance functions independently." So a Faithless Looting
+under Lier, Disciple of the Drowned has two flashback abilities. Each says "you may cast this card from your graveyard by paying
+[cost] rather than paying its mana cost" (CR 702.34a), and its owner casts it with either one (CR 601.2b: the player announces
+which alternative cost they intend to pay). The engine offered only the printed {2}{R}, never Lier's {R}. Past in Flames under a
+second Past in Flames was offered its printed {4}{R} and never its {3}{R} mana cost, so its declared `Full` was not true.
+
+**Options.**
+
+1. *Keep the printed offer only* (decision 3 as written). It is weaker than the rules, and it costs the player real mana on the
+   cards these grants exist for.
+2. *Let the grant replace the printed offer* when it is cheaper. That is not the rule either: the player chooses, and a grant
+   whose offer costs more in some other component (life, an escape's exile) would take away the cheaper printed one.
+3. **Offer both, each under its own claim** (chosen; the most CR-faithful option). Each instance of the keyword is its own offer
+   with its own cost, and the player picks one.
+
+**Decision.**
+
+- **The printed instance keeps the bare key.** `"flashback"` on a card that prints flashback is the printed offer, as before, so
+  every claim, saved decision log and bot suite position written before this still means what it meant.
+- **The granted instance is claimed as `game.GrantedInstanceKey(key)`**, which is `"flashback/granted"`. `CastOffersForLocked`
+  lists it after the card's own offers whenever a permission's offer (`AlternativeCost.FromPermission`) repeats a key the card
+  prints (`secondInstanceOf`). It is not listed when it repeats the printed offer's whole price (`sameOfferPrice`: the same mana,
+  life and energy, and the same card component), because two abilities at one price are one choice: a printed retrace under
+  Wrenn and Six's emblem is still one retrace offer. Nor is it listed when the printed offer is claimable only under a grant of its
+  key (`RequiresGrant`): miracle's grant is the right to pay the printed miracle cost (CR 702.94a), not a second miracle. On a card
+  that prints no such key, the granted offer is claimed under the bare key, exactly as before. `resolveAlternativeCostLocked`
+  refuses the instance spelling wherever `CastOffersForLocked` would not list it (`grantedInstanceOffer`), so each offer has
+  exactly one spelling.
+- **The spell records the keyword, not the claim.** `StackItem.AltCost` and the cast event's `AltCost` take
+  `game.AltCostKeyword(claim)`, which is `"flashback"` whichever instance paid. CR 702.34a's "if the flashback cost was paid" does
+  not ask which flashback ability was used, and neither does a card that reads the key back (`PaidAltCost`). The exile on leaving
+  the stack comes from the resolved offer (`AltCostExiles`), as it has since decision 3. Nothing new reaches a snapshot, and the
+  wire carries one more offer in `alternative_costs`, with a key a client already treats as opaque.
+- **The permission behind the claim.** `CastPermissionForClaimLocked` and `ForClaim` match a permission's `AltCostKey` against
+  the keyword, so an instance claim is judged under the permission that made it. `castUsesGrantLocked` already counts a claim of a
+  permission's own offer as that permission's cast (#3785), so a limited permission is spent by the instance claim and not by the
+  printed one.
+
+The same holds for every keyword a permission grants under a key the card may also print: escape (an Uro under Underworld
+Breach), madness, and the rest. Flashback is the case the two cards need.
+
+**Cards.** Lier, Disciple of the Drowned loses its caveat and is `Full`. Past in Flames keeps `Full`, which is now true.
+
+**Tests.** `granted_instance_test.go` (game) covers the two offers, the printed claim still at its printed price, the instance
+claim at the card's mana cost recording `"flashback"` with the flashback exile, the single offer when the prices match (a flashback,
+and a retrace with its land discard), and the refusal of the instance spelling on a card that prints nothing.
+`TestMiracleEnumeratorOffersTheMiracleCastOnly` (effects) still holds: a revealed miracle card is offered its miracle cast once. `two_flashbacks_test.go` (effects) covers Lier on a Faithless
+Looting (both offers, both enumerated as moves, cast for {R}, exiled) and Past in Flames under a second Past in Flames (both
+offers, cast for {3}{R}, exiled).
+
+Back-out: restore the `seen` early return in `CastOffersForLocked`, and both effects tests and
+`TestGrantedFlashbackBesideAPrintedOneIsASecondOffer` fail on the offer list. Record the claim instead of the keyword on the stack,
+and the stack-item assertions fail.

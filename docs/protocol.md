@@ -2770,6 +2770,13 @@ fields the picker had no way to tell the two apart.
   per-player grant the same way the printed cost does, so this stays
   false for them; miracle's claim is the one with a clock of its own
   independent of the card's.
+- **Two instances of one keyword** (#3938, [ADR 0066](decisions/0066-granted-cast-and-play-permissions.md)
+  decision 3 as amended 2026-10-16). A card that prints flashback and is
+  granted flashback (Lier, Past in Flames) carries both in
+  `alternative_costs`: the printed one under `"flashback"`, the granted one
+  under `"flashback/granted"`, each with its own `mana_cost` and `label`.
+  `cast_spell`'s `alternative_cost` names either one. The spell on the stack
+  records `"flashback"` for both.
 
 Both are derived from `game.CastTimingOpenLocked`, under the grant
 narrowed to the specific claim being asked about
