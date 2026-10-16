@@ -211,13 +211,17 @@ func (g *Game) DiscardCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *D
 	if p == nil || p.Hand == nil || cost == nil {
 		return nil
 	}
+	// The clause's words read as its source's text says them
+	// (costTextLocked, #3984): Slumbering Tora's "a Spirit or Arcane
+	// card" under an Artificial Evolution names the new type.
+	text := g.costTextLocked(sourceID)
 	var out []uuid.UUID
 	for i := range p.Hand.Cards {
 		c := p.Hand.Cards[i]
 		if c.InstanceID == sourceID {
 			continue
 		}
-		if !cost.Matches(c) {
+		if !cost.Matches(lendCostText(text, c)) {
 			continue
 		}
 		out = append(out, c.InstanceID)
@@ -330,7 +334,7 @@ func (g *Game) validateDiscardCostLocked(playerID, sourceID uuid.UUID, srcZone Z
 			return nil, ErrCardNotFound
 		}
 		c := g.findHandCardLocked(p, id)
-		if c == nil || !cost.DiscardCards.Matches(*c) {
+		if c == nil || !cost.DiscardCards.Matches(lendCostText(g.costTextLocked(sourceID), *c)) {
 			return nil, ErrInvalidParam
 		}
 		// #2190: "Discard a card with mana value X" — the card's mana

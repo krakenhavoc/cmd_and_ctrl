@@ -40,9 +40,11 @@ func init() {
 				Label:     "Equipped creature is an Assassin in addition to its other types.",
 				Layer:     game.Layer4Type,
 				AppliesTo: AttachedToSource,
-				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-					if !eotHasType(c.Subtypes, "Assassin") {
-						c.Subtypes = append(c.Subtypes, "Assassin")
+				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+					// "Assassin" is a word of the Equipment's text (CR 612.2, #3984).
+					assassin := source.TextSubtype("Assassin")
+					if !eotHasType(c.Subtypes, assassin) {
+						c.Subtypes = append(c.Subtypes, assassin)
 					}
 				},
 			},

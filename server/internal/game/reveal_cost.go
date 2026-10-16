@@ -39,11 +39,16 @@ type RevealCost struct {
 // creature type when one is named, the colour when one is named. ONE
 // predicate for the cast path's candidate walk and the activation
 // path's, so "who can pay" is not written twice (#544).
-func (rc *RevealCost) matches(c *Card) bool {
-	if rc.Subtype != "" && !c.HasSubtype(rc.Subtype) {
+//
+// Both are words of the text of the object whose cost it is (CR 612.2,
+// #3984), read through the lens the walk lent `c` (HasSubtypeWord,
+// HasColorWord): Martyr of Bones' "Reveal X black cards" under a Sleight
+// of Mind is "X red cards". A copy lent nothing reads the printed word.
+func (rc *RevealCost) matches(c Card) bool {
+	if rc.Subtype != "" && !c.HasSubtypeWord(rc.Subtype) {
 		return false
 	}
-	if rc.Color != "" && !c.HasColor(rc.Color) {
+	if rc.Color != "" && !c.HasColorWord(rc.Color) {
 		return false
 	}
 	return true
@@ -69,6 +74,12 @@ func planReveal(plan []costPayment) *RevealCost {
 // ONE walk, read by the validator, the view and the bot enumerator, so
 // the three cannot disagree about who can pay (#544).
 //
+// The clause's words are read through the text of `castID` while it is
+// a permanent (costTextLocked, #3984): an activated ability's reveal
+// (the Martyrs) follows a text change of its source. A spell's reveal
+// reads its printed words, since its costs are paid before anything can
+// change its text.
+//
 // Caller must hold g.mu (read or write).
 func (g *Game) RevealCostOptionsForEffect(playerID, castID uuid.UUID, rc *RevealCost) []uuid.UUID {
 	if rc == nil {
@@ -78,10 +89,11 @@ func (g *Game) RevealCostOptionsForEffect(playerID, castID uuid.UUID, rc *Reveal
 	if p == nil {
 		return nil
 	}
+	text := g.costTextLocked(castID)
 	var out []uuid.UUID
 	for i := range p.Hand.Cards {
 		c := &p.Hand.Cards[i]
-		if c.InstanceID != castID && rc.matches(c) {
+		if c.InstanceID != castID && rc.matches(lendCostText(text, *c)) {
 			out = append(out, c.InstanceID)
 		}
 	}
@@ -89,7 +101,7 @@ func (g *Game) RevealCostOptionsForEffect(playerID, castID uuid.UUID, rc *Reveal
 		g.RecomputeLayersIfStaleLocked()
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
-			if c.Controller == playerID && rc.matches(c) {
+			if c.Controller == playerID && rc.matches(lendCostText(text, *c)) {
 				out = append(out, c.InstanceID)
 			}
 		}

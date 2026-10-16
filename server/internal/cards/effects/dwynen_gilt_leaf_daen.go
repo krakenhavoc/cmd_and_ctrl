@@ -31,7 +31,7 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks("Dwynen, Gilt-Leaf Daen — gain 1 life for each attacking Elf you control", func(g *game.Game, item *game.StackItem) error {
-				n := b24AttackingCreaturesOfSubtype(g, item.Controller, "Elf")
+				n := b24AttackingCreaturesOfSubtype(g, item.Controller, g.TextReaderForEffect(item).TextSubtype("Elf"))
 				return GainLife{Player: item.Controller, Amount: n}.Apply(NewContext(g, item))
 			}),
 		},

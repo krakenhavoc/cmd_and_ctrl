@@ -64,7 +64,7 @@ func mishraEminentOneWarform(g *game.Game, item *game.StackItem) error {
 		Controller: item.Controller,
 		Copy:       copyOf,
 		N:          1,
-		Except:     mishrasWarformException,
+		Except:     mishrasWarformExceptionFor(ctx.textReader()),
 	}).Apply(ctx); err != nil {
 		return err
 	}
@@ -89,14 +89,20 @@ func mishraEminentOneWarform(g *game.Game, item *game.StackItem) error {
 	}.Apply(ctx)
 }
 
-// mishrasWarformException is "except its name is Mishra's Warform and
-// it's a 4/4 Construct artifact creature in addition to its other
-// types" (CR 707.9b).
-func mishrasWarformException(t *game.Card) {
+// mishrasWarformExceptionFor is "except its name is Mishra's Warform
+// and it's a 4/4 Construct artifact creature in addition to its other
+// types" (CR 707.9b), with "Construct" read through `reader`, the
+// object whose text it is (CR 612.2, #3984); nil reads the printed word.
+func mishrasWarformExceptionFor(reader *game.Card) func(*game.Card) {
+	return func(t *game.Card) { mishrasWarformExceptionAs(t, reader.TextSubtype("Construct")) }
+}
+
+// mishrasWarformExceptionAs applies the exception with the type given.
+func mishrasWarformExceptionAs(t *game.Card, construct string) {
 	v := game.PrintedValues{TypeLine: t.TypeLine}
 	v.AddCardType("Artifact")
 	v.AddCardType("Creature")
-	v.AddSubtype("Construct")
+	v.AddSubtype(construct)
 	t.TypeLine = v.TypeLine
 	t.Name = "Mishra's Warform"
 	t.Power = 4

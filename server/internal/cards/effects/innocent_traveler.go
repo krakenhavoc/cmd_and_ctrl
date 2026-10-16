@@ -29,7 +29,9 @@ const innocentTravelerOracle = "7950a7ff-7c2e-40fe-b64a-324f4fbcf528"
 //
 // No simplification.
 func init() {
-	human := func(c game.Card) bool { return c.HasSubtype("Human") }
+	// "Human" is a word of the Invader's text; OpponentControlsAtLeast
+	// lends it (CR 612.2, #3984).
+	human := func(c game.Card) bool { return c.HasSubtypeWord("Human") }
 	opponentHasHuman := OpponentControlsAtLeast(1, human)
 	Register(Spec{
 		OracleID:     innocentTravelerOracle,

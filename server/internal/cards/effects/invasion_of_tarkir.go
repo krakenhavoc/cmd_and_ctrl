@@ -93,7 +93,8 @@ func tarkirAnyOtherTarget() *game.TargetSpec {
 // Caller holds g.mu (this runs from a resolving trigger).
 func invasionOfTarkirReveal(g *game.Game, item *game.StackItem) error {
 	controller := item.Controller
-	dragons := dragonCardsInHand(g, controller)
+	// "Dragon" is a word of the Siege's text (CR 612.2, #3984).
+	dragons := dragonCardsInHand(g, controller, g.TextReaderForEffect(item).TextSubtype("Dragon"))
 	if len(dragons) == 0 {
 		return invasionOfTarkirQueueDamage(g, item, nil)
 	}
@@ -167,20 +168,20 @@ func invasionOfTarkirDamage(g *game.Game, item *game.StackItem) error {
 }
 
 // dragonCardsInHand returns the Dragon cards in a player's hand, in
-// hand order. Subtypes are read through game.Card.HasSubtype, so a
+// hand order, `dragon` being the type as the Siege's text reads it. Subtypes are read through game.Card.HasSubtype, so a
 // changeling in hand counts — which is what the printed card says,
 // since a card in hand has its printed characteristics and
 // changeling is one of them.
 //
 // Caller holds g.mu.
-func dragonCardsInHand(g *game.Game, playerID uuid.UUID) []uuid.UUID {
+func dragonCardsInHand(g *game.Game, playerID uuid.UUID, dragon string) []uuid.UUID {
 	p := g.PlayerByIDForEffect(playerID)
 	if p == nil || p.Hand == nil {
 		return nil
 	}
 	var out []uuid.UUID
 	for _, c := range p.Hand.Cards {
-		if c.HasSubtype("Dragon") {
+		if c.HasSubtype(dragon) {
 			out = append(out, c.InstanceID)
 		}
 	}

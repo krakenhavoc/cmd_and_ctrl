@@ -41,7 +41,7 @@ func init() {
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 					return nil
 				}
-				x := b42CountCreaturesWithSubtype(g, "Elf")
+				x := b42CountCreaturesWithSubtype(g, g.TextReaderForEffect(item).TextSubtype("Elf"))
 				return BoostUntilEOT{
 					Target: item.Targets[0].ID,
 					Power:  x, Toughness: x,

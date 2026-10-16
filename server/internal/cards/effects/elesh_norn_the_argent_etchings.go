@@ -166,8 +166,10 @@ func eleshNornPayOrLose(g *game.Game, item *game.StackItem) error {
 func argentEtchingsChapterThree(g *game.Game, item *game.StackItem) error {
 	self := item.SourceCardID
 	return DestroyAllMatching{
+		// "Phyrexian" is a word of the Saga's text, which the sweep lends
+		// each permanent (MatchingBattlefield; CR 612.2, #3984).
 		Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-			return c.InstanceID != self && !c.IsArtifact() && !c.IsLand() && !c.HasSubtype("Phyrexian")
+			return c.InstanceID != self && !c.IsArtifact() && !c.IsLand() && !c.HasSubtypeWord("Phyrexian")
 		},
 		Then: func(ctx *Context, _ []game.Card, _ int) error {
 			return Flicker{Target: self}.Apply(ctx)

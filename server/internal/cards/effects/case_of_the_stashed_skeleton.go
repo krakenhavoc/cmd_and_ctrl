@@ -73,9 +73,11 @@ func caseOfTheStashedSkeletonEnters(g *game.Game, item *game.StackItem) error {
 }
 
 // youControlNoSuspectedSkeletons is the Case's solve condition.
-func youControlNoSuspectedSkeletons(g *game.Game, controller, _ uuid.UUID) bool {
+// "Skeletons" is a word of the Case's text (CR 612.2, #3984).
+func youControlNoSuspectedSkeletons(g *game.Game, controller, source uuid.UUID) bool {
+	skeleton := g.TextReaderOfForEffect(source).TextSubtype("Skeleton")
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.Suspected && c.HasSubtype("Skeleton") {
+		if c.Controller == controller && c.Suspected && c.HasSubtype(skeleton) {
 			return false
 		}
 	}

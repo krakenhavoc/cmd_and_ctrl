@@ -22,8 +22,10 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Goblin Matron — search for a Goblin card", func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
-					Player:    item.Controller,
-					Predicate: func(c game.Card) bool { return c.HasSubtype("Goblin") },
+					Player: item.Controller,
+					// "Goblin" is a word of the source's text; SearchLibrary
+					// lends it to each card (CR 612.2, #3984).
+					Predicate: func(c game.Card) bool { return c.HasSubtypeWord("Goblin") },
 					Dest:      game.ZoneHand,
 					Limit:     1,
 					Reveal:    true,

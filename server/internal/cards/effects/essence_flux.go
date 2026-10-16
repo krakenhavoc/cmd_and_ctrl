@@ -35,6 +35,9 @@ func init() {
 				return nil
 			}
 			target := item.Targets[0].ID
+			// "Spirit" is a word of the spell's text, read as it
+			// resolves (CR 612.2, #3984).
+			spirit := ctx.TextSubtype("Spirit")
 			return ExileTarget{
 				Target: target,
 				Then: func(ctx *Context, exiled bool) error {
@@ -43,7 +46,7 @@ func init() {
 					}
 					return ReturnFromExile{
 						Target: target,
-						Then:   essenceFluxCounterIfSpirit,
+						Then:   essenceFluxCounterIf(spirit),
 					}.Apply(ctx)
 				},
 			}.Apply(ctx)
@@ -51,17 +54,20 @@ func init() {
 	})
 }
 
-// essenceFluxCounterIfSpirit is "if it's a Spirit, put a +1/+1
-// counter on it" — the ReturnFromExile.Then contract, so it reads
-// nothing but the scalar new-object ID it is handed (#1327): an undo
-// across the return resolves this against the restored game.
-func essenceFluxCounterIfSpirit(g *game.Game, entered uuid.UUID) error {
-	if entered == uuid.Nil {
-		return nil
+// essenceFluxCounterIf is "if it's a Spirit, put a +1/+1 counter on
+// it", with `spirit` the creature type as the spell's text reads it —
+// the ReturnFromExile.Then contract, so it reads nothing but the scalar
+// new-object ID it is handed and the word it closed over (#1327): an
+// undo across the return resolves this against the restored game.
+func essenceFluxCounterIf(spirit string) func(g *game.Game, entered uuid.UUID) error {
+	return func(g *game.Game, entered uuid.UUID) error {
+		if entered == uuid.Nil {
+			return nil
+		}
+		c, ok := g.LookupCardForEffect(entered)
+		if !ok || !c.HasSubtype(spirit) {
+			return nil
+		}
+		return g.AddCounterForEffect(entered, "+1/+1", 1)
 	}
-	c, ok := g.LookupCardForEffect(entered)
-	if !ok || !c.HasSubtype("Spirit") {
-		return nil
-	}
-	return g.AddCounterForEffect(entered, "+1/+1", 1)
 }

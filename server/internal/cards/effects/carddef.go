@@ -224,6 +224,7 @@ func buildDef(spec Spec) *game.CardDef {
 		OpponentsFaceVillainousChoicesAgain: spec.OpponentsFaceVillainousChoicesAgain,
 		DamageCantBePrevented:               spec.DamageCantBePrevented,
 		CantGainLife:                        spec.CantGainLife,
+		DrawLimits:                          spec.DrawLimits,
 		DamageAsThough:                      spec.DamageAsThough,
 		AnyColorSpend:                       spec.AnyColorSpend,
 		LifeForMana:                         spec.LifeForMana,

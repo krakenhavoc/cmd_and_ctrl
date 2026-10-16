@@ -45,8 +45,9 @@ func init() {
 			Cost:    Plus(ManaCost("{W}{W}{U}{U}{B}{B}{R}{R}{G}{G}"), TapCost(), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
-					Player:    item.Controller,
-					Predicate: func(c game.Card) bool { return c.HasSubtype("God") },
+					Player: item.Controller,
+					// SearchLibrary lends the source's text (CR 612.2, #3984).
+					Predicate: func(c game.Card) bool { return c.HasSubtypeWord("God") },
 					Dest:      game.ZoneBattlefield,
 					Unbounded: true,
 					Shuffle:   true,

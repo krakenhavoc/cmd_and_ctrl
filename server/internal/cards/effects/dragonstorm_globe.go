@@ -28,7 +28,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			b28PermanentsYouControlEnterWithACounter("Dragonstorm Globe: a Dragon enters with an additional +1/+1 counter",
-				func(c game.Card) bool { return c.HasSubtype("Dragon") }),
+				// "Dragon" is a word of the source's text, read through the
+				// text the replacement lends its match (CR 612.2, #3984).
+				func(c game.Card) bool { return c.HasSubtypeWord("Dragon") }),
 		},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

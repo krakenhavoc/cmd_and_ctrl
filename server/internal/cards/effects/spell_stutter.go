@@ -58,7 +58,7 @@ func init() {
 				return nil
 			}
 			stackID := item.Targets[0].ID
-			tax := 2 + b38FaeriesYouControl(ctx.Game, item.Controller)
+			tax := 2 + b38FaeriesYouControl(ctx.Game, item.Controller, ctx.TextSubtype("Faerie"))
 			cost := "{" + strconv.Itoa(tax) + "}"
 			return CounterUnlessPaid{
 				StackID:  stackID,

@@ -85,7 +85,7 @@ func portalToPhyrexiaReanimate(g *game.Game, item *game.StackItem) error {
 			if len(entered) == 0 {
 				return nil
 			}
-			return (ScopedEffectFor{Target: entered[0], Mods: []game.Mod{game.AddSubtypesMod("Phyrexian")},
+			return (ScopedEffectFor{Target: entered[0], Mods: []game.Mod{game.AddSubtypesMod(g.TextReaderForEffect(item).TextSubtypes("Phyrexian")...)},
 				Duration: g.PinnedTo(game.IndefiniteDuration(), entered[0]),
 				Label:    "Portal to Phyrexia — it's a Phyrexian in addition to its other types"}).Apply(NewContext(g, item))
 		})

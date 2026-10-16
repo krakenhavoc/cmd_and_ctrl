@@ -239,9 +239,11 @@ func rfCreatureCDifferentPowers(g *game.Game, controller, _ uuid.UUID) int {
 // +1/+1 counter on each Angel you control", the set snapshotted first.
 func rfCreatureCPutCounterOnEachAngel(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
+	// "Angel" is a word of the source's text (CR 612.2, #3984).
+	angel := ctx.TextSubtype("Angel")
 	var ids []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == item.Controller && c.IsCreature() && c.HasSubtype("Angel") {
+		if c.Controller == item.Controller && c.IsCreature() && c.HasSubtype(angel) {
 			ids = append(ids, c.InstanceID)
 		}
 	}

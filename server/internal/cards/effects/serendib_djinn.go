@@ -42,13 +42,15 @@ func serendibDjinnUpkeep(g *game.Game, item *game.StackItem) error {
 	return g.PlayerSacrificesThenForEffect(item.SourceCardID, item.Controller,
 		sacrificeSpec("a land", Land()), "Serendib Djinn — sacrifice a land", 1,
 		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
+			// "Island" is a word of the Djinn's text (CR 612.2, #3984).
+			island := g.TextReaderForEffect(item).TextSubtype("Island")
 			for _, id := range sacrificed.By(item.Controller) {
 				ref, ok := g.PermanentRefForEffect(id)
 				if !ok {
 					continue
 				}
 				info, ok := g.PermanentForEffect(ref)
-				if !ok || !slices.ContainsFunc(info.Characteristic.Subtypes, func(s string) bool { return strings.EqualFold(s, "Island") }) {
+				if !ok || !slices.ContainsFunc(info.Characteristic.Subtypes, func(s string) bool { return strings.EqualFold(s, island) }) {
 					continue
 				}
 				return DealDamage{Source: item.SourceCardID, Target: item.Controller, Amount: 3}.Apply(NewContext(g, item))

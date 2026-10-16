@@ -38,6 +38,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Targeting costs and bars (#3860)](#targeting-costs-and-bars-3860)
   - ["Spells you control can't be countered" (ADR 0106, #1806)](#spells-you-control-cant-be-countered-adr-0106-1806)
   - ["Play with their hands revealed" (ADR 0199, #3953)](#play-with-their-hands-revealed-adr-0199-3953)
+  - ["Can't draw more than one card each turn" (#3927, CR 121.2b)](#cant-draw-more-than-one-card-each-turn-3927-cr-1212b)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
@@ -3535,6 +3536,34 @@ false). Never stamp `KnownBy` on the hand's cards for these: the view
 derives the reveal per frame (`game.HandRevealedLocked`), so cards drawn
 later are shown and the hand is hidden again when the effect ends.
 
+### "Can't draw more than one card each turn" (#3927, CR 121.2b)
+
+A permanent's draw restriction is `Spec.DrawLimits`
+([draw_limit.go](../server/internal/cards/effects/draw_limit.go)):
+
+```go
+DrawLimits: EachOpponentCantDrawMoreThanOneCardEachTurn(), // Narset, Parter of Veils; Leovold
+DrawLimits: EachPlayerCantDrawMoreThanOneCardEachTurn(),   // Spirit of the Labyrinth
+DrawLimits: PlayersCantDrawCards(),                        // Maralen of the Mornsong, Mornsong Aria
+```
+
+- **A restriction, not a replacement** (CR 614.17). The engine asks it for
+  each individual draw before that draw's replacement window
+  (`game.drawForbiddenLocked`), so a forbidden draw is not performed: no
+  replacement (dredge) sees it, nothing moves, no `EventDrawCard`, no
+  empty-library loss. "Draw three" draws up to the cap and the rest of
+  the instruction, a "then" included, still happens. Card files write
+  `DrawCards{N: 3}` as usual and need nothing else.
+- **The count is cards actually drawn this turn** (`Game.DrawnThisTurn`):
+  draws before the permanent arrived count, and a draw a replacement
+  turned into something else does not.
+- **A choice to draw** (CR 121.3: a player who can't draw can't choose
+  to) can ask `Game.CanDrawForEffect(player)` or
+  `DrawsLeftThisTurnForEffect(player)` before offering it. The generic
+  "you may draw" prompts don't yet; a yes there draws nothing.
+- A search or a "put into your hand" is not a draw (CR 121.5) and is
+  never limited.
+
 ### Maximum hand size (ADR 0113 §3, #2074)
 
 A permanent's static that sets or changes a player's maximum hand size
@@ -4687,8 +4716,34 @@ to the restore-point census (`closure_fields.txt`). `Register` refuses an
 empty or unlabelled cost, a spell that can choose only one mode, and
 `TapCreatures` anywhere but `ModeSpec.Escalate`.
 
-**Still out:** entwine (one extra cost for choosing ALL modes, which
-the per-mode escalate cost does not express), and "enters with a
+**Entwine (CR 702.42, #3866, ADR 0065's 2026-10-16 amendment):**
+"Entwine [cost]" is ONE extra cost for choosing every mode, so it is two
+things the engine already has: an optional cost keyed `game.EntwineKey`,
+and #1655's announcement-driven mode count raised to every bullet while
+that cost is announced. Declare both halves; `Register` refuses either
+alone:
+
+```go
+OptionalCosts: []game.AdditionalCost{Entwine("{2}")},
+Modes:         Entwining(ChooseOne(…)),                                          // Spectral Shift
+OptionalCosts: []game.AdditionalCost{EntwineSacrifice(3, "three lands", Land())},
+Modes:         Entwining(ChooseOne(…)),                                          // Betrayal of Flesh
+OptionalCosts: []game.AdditionalCost{Entwine("{3}")},
+Modes:         Entwining(ChooseN("Choose two", 2, 2, …)),                         // Kaya's Guile: two, or all four
+```
+
+Unentwined, the printed count stands; entwined, every bullet and no
+fewer (a count between is refused). The cost is paid like kicker's — its
+mana joins the total at CR 601.2f, a sacrifice rides `sacrifice_ids` with
+the spell on the stack — and the bullets run in printed order (CR
+702.42b), which every modal spell already does. Write each bullet with
+`ModeDoing` and read its own target group with `ModeTarget(ctx, occ)`:
+entwined, both bullets have targets, and `item.Targets[0]` would hand the
+second bullet the first one's. The client offers "Entwine {2}" where it
+offers kicker and the picker reads `modes.if_optional_paid`; the bot
+enumerator offers the entwined cast as its own move.
+
+**Still out:** "enters with a
 counter for each time it was kicked" (Everflowing Chalice, Joraga
 Warcaller) — that count is read during the CR 614 entry pipeline,
 before the record reaches the permanent.
@@ -7473,9 +7528,25 @@ A discard or a sacrifice is `CumulativeUpkeepPaying(label, payment,
 noun, plural)` with `DiscardPayment(1)` or `SacrificePayment(1, "land",
 "lands", game.PermanentQuery{Types: []string{"land"}})` (ADR 0108 §5):
 with N age counters it asks for N cards or N permanents, chosen and paid
-together or not at all (CR 702.24a). "Cumulative upkeep—Pay 2 life"
-(Glacial Chasm) and the other payments the prompt does not take yet wait
-rather than being approximated.
+together or not at all (CR 702.24a). "Cumulative upkeep—Pay 1 life" is
+`LifePayment(1)`, multiplied the same way. Payments the prompt does not
+take yet wait rather than being approximated.
+
+**Asking for it and giving it (#3869).** Every instance carries
+`game.KeywordCumulativeUpkeep`, so "that doesn't have cumulative upkeep"
+is the target clause `DoesNotHaveCumulativeUpkeep()` and the engine-side
+count is `game.HasCumulativeUpkeep` / `CumulativeUpkeepInstances`; both
+see a granted instance as well as a printed one. A QUOTED cumulative
+upkeep another effect gives ("Enchanted creature has 'Cumulative upkeep
+{1}.'", "That enchantment gains 'Cumulative upkeep {1}.'") is the ADR 0093
+bundle `CumulativeUpkeepGrant(key, "{1}")` (or
+`CumulativeUpkeepGrantPaying(key, LifePayment(1), "Cumulative upkeep—Pay 1
+life")`), named from `GrantAbilitiesToAttached`, `GrantAbilities` or a
+pinned indefinite `GrantAbilitiesFor`. The trigger's source is the host,
+so nothing else is needed: the counters, the prompt and the sacrifice are
+the host's, and each instance triggers and counts every age counter on
+its own (CR 702.24b). See `balduvian_shaman.go`, `mana_chains.go`,
+`breath_of_dreams.go` and `dreams_of_the_dead.go`.
 
 ### Echo (ADR 0108 §5, #1888, CR 702.30)
 

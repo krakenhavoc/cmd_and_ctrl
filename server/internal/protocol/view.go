@@ -12539,7 +12539,7 @@ func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetS
 	}
 	// #2526: a set rule ("a Swamp and a Forest") ships its entries so the
 	// picker can hold confirm until the picks fill them all.
-	out.EachOf = setGroupsView(g.SacrificeSetGroupsForEffect(spec, ordered))
+	out.EachOf = setGroupsView(g.SacrificeSetGroupsForEffect(sourceID, spec, ordered))
 	// #3940: a difference rule ("three artifact tokens with different
 	// names") ships each option's key under the target picker's own
 	// field, so the cost picker can grey a permanent whose key an earlier
@@ -12625,7 +12625,7 @@ func exilePermanentCostOptions(g *game.Game, controller, sourceID uuid.UUID, ec 
 	for _, id := range ids {
 		out.Cards = append(out.Cards, id.String())
 	}
-	for _, grp := range g.ExileSubtypeGroupsForEffect(controller, ec, ids) {
+	for _, grp := range g.ExileSubtypeGroupsForEffect(controller, sourceID, ec, ids) {
 		out.EachOf = append(out.EachOf, SacrificeGroupView{Label: grp.Label, Cards: cardIDStrings(grp.Candidates)})
 	}
 	if ec.ShareCardType {
