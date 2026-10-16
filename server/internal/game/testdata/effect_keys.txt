@@ -264,3 +264,4 @@ body gaze-of-pain/damage-equal-to-its-power
 condition attack/each-creature-you-control-unblocked
 condition attack/that-creature-unblocked
 body pygmy-hippo/add-colorless
+body construct-a-cosmic-cube/control

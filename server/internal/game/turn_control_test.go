@@ -482,3 +482,43 @@ func TestBeginTurnControlRefusals(t *testing.T) {
 		t.Errorf("records = %+v", g.PlayerControls)
 	}
 }
+
+// ADR 0167, 2026-10-16 amendment: a plain "you control target player
+// during that player's next turn" (Mindslaver, Worst Fears, Sorin
+// Markov's -7) controls the same turn and owes no extra one.
+func TestTurnControlWithoutAnExtraTurnOwesNone(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	var ok bool
+	g.WithWriteLock(func() {
+		ok = g.BeginTurnControlForEffect(TurnControl{
+			Controller:  g.Seats[0].ID,
+			Controlled:  g.Seats[1].ID,
+			Source:      uuid.New(),
+			SourceName:  "Mindslaver",
+			NoExtraTurn: true,
+		})
+	})
+	if !ok {
+		t.Fatal("BeginTurnControlForEffect refused")
+	}
+	if g.NextExtraRef != 0 {
+		t.Errorf("NextExtraRef = %d: a control with no extra turn minted a ref", g.NextExtraRef)
+	}
+	passTurn(t, g) // seat 1's turn: controlled
+	if got := controllerOfSeat(g, 1); got != 0 {
+		t.Fatalf("seat 1's turn is controlled by seat %d, want seat 0", got)
+	}
+	passTurn(t, g) // seat 2's turn: no extra turn for seat 1
+	if got := shapeOf(g); got != (turnShape{seat: 2, round: 1}) {
+		t.Errorf("after the controlled turn: %+v, want seat 2's normal turn", got)
+	}
+	if len(g.PlayerControls) != 0 {
+		t.Errorf("records left after the controlled turn: %+v", g.PlayerControls)
+	}
+	if n := len(turnControlEvents(g, EventExtraTurnAdded)); n != 0 {
+		t.Errorf("EventExtraTurnAdded emitted %d times, want 0", n)
+	}
+	if n := len(turnControlEvents(g, EventPlayerControlEnded)); n != 1 {
+		t.Errorf("EventPlayerControlEnded emitted %d times, want 1", n)
+	}
+}
