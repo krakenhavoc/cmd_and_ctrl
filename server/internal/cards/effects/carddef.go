@@ -191,6 +191,7 @@ func buildDef(spec Spec) *game.CardDef {
 		ExhaustPermissions:                  spec.ExhaustPermissions,
 		BoastLimits:                         spec.BoastLimits,
 		AttackTaxes:                         spec.AttackTaxes,
+		TargetTaxes:                         spec.TargetTaxes,
 		BlockRules:                          spec.BlockRules,
 		AttackLimits:                        spec.AttackLimits,
 		ExertOnAttack:                       spec.ExertOnAttack,
@@ -325,6 +326,9 @@ func buildDef(spec Spec) *game.CardDef {
 	}
 	if asEnters := spec.AsEnters; asEnters != nil {
 		d.AsEnters = liveCardHook(asEnters)
+	}
+	if asEntersOthers := spec.AsEntersOthers; asEntersOthers != nil {
+		d.AsEntersOthers = liveCardHook(asEntersOthers)
 	}
 	if asTransforms := spec.AsTransformsInto; asTransforms != nil {
 		d.AsTransformsInto = liveCardHook(asTransforms)

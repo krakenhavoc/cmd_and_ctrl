@@ -1592,7 +1592,7 @@ const (
 // the map counts as defFieldRules, and
 // TestEveryCardDefSlotHasAnIndependenceClass fails until it is added.
 var cardDefFieldClass = map[string]defFieldClass{
-	"Resolve": defFieldInert, "AsEnters": defFieldInert, "AsTransformsInto": defFieldInert, "AsAttached": defFieldInert,
+	"Resolve": defFieldInert, "AsEnters": defFieldInert, "AsEntersOthers": defFieldInert, "AsTransformsInto": defFieldInert, "AsAttached": defFieldInert,
 	"StartingLoyalty": defFieldInert, "BattleDefense": defFieldInert,
 	"TargetMode": defFieldInert, "Targets": defFieldInert, "Modes": defFieldInert,
 	"Purpose": defFieldInert, "ManaAbilities": defFieldInert, "Activated": defFieldInert,
@@ -1603,7 +1603,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"SpendOnlySources": defFieldInert, "SpellsYouCastHaveDelve": defFieldInert, "SplitSecondGrants": defFieldInert, "GrantedOptionalCosts": defFieldInert, "GrantedTapCosts": defFieldInert,
 	"CostModifiers": defFieldInert, "SelfCostModifiers": defFieldInert,
 	"ExhaustPermissions": defFieldInert, "BoastLimits": defFieldInert,
-	"AttackTaxes": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,
+	"AttackTaxes": defFieldInert, "TargetTaxes": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,
 	"ExertOnAttack": defFieldInert, "CastableZones": defFieldInert, "CastableZonesIf": defFieldInert,
 	"SpecialActions": defFieldInert, "SpecialActionGrants": defFieldInert,
 	"UntapStep": defFieldInert, "UntapStepRestrictions": defFieldInert,

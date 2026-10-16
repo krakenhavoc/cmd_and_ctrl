@@ -257,3 +257,9 @@ body blitz/sacrifice
 body weeping-angel/owner-shuffles-it-in
 body ltb/sacrifice-the-source
 condition ltb/the-listed-object
+option retarget/pinned-slot
+body delifs-cone/gain-life-equal-to-its-power
+body delifs-cube/no-combat-damage-and-a-cube-counter
+body gaze-of-pain/damage-equal-to-its-power
+condition attack/each-creature-you-control-unblocked
+condition attack/that-creature-unblocked

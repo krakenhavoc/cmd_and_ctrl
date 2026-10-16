@@ -38,21 +38,21 @@ package effects
 // ActivateAbilityParams.PhyrexianLife), so the ability costs {U} or 2
 // life, and the activation menu offers both.
 //
-// DECLARED CAVEAT: two instances of "target" that chose the SAME
-// object (CR 601.2c allows it unless the second says "another") are
-// one thing to click on the board, and picking it changes the earlier
-// slot. Which slot becomes Spellskite matters when the two clauses do
-// different things — Soul's Fire aimed at one creature twice — and
-// the board cannot point at an instance of a word, only at an object.
-// Weaker than printed, never stronger.
+// Two instances of "target" that chose the SAME object (CR 601.2c
+// allows it unless the second says "another") are one thing to click on
+// the board, and which slot becomes Spellskite matters when the two
+// clauses do different things (Azorius Ploy aimed at one creature
+// twice: one sentence stops its combat damage, the other stops damage
+// to it). The board cannot point at an instance of a word, only at an
+// object, so (#3860) once the creature is settled a second question
+// asks WHICH instance changes -- one option per slot, labelled with the
+// clause it answers -- and the choice is the controller's, as the
+// 2020-08-07 ruling has it. See game.finishPinnedRetargetLocked.
 func init() {
 	Register(Spec{
 		OracleID:     "e0aa6ce0-ca31-433b-ac6c-32b8675cdb71",
 		Name:         "Spellskite",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"If a spell or ability targets the same thing more than once, you can't choose which of those targets changes to Spellskite — the first one does.",
-		},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{U/P}: Change a target of target spell or ability to this creature.",
 			Cost:    ManaCost("{U/P}"),

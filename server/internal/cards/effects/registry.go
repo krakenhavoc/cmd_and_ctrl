@@ -390,6 +390,8 @@ func Register(spec Spec) {
 	// ADR 0109 §6: and for a targeting restriction, which must also say
 	// which zone it is about.
 	checkTargetingRestrictions(spec.Name, spec.TargetingRestrictions)
+	// #3860: a target tax names what it charges, whom and for what.
+	checkTargetTaxes(spec.Name, spec.TargetTaxes)
 	// ADR 0108 §10: a "dealt as though its source had" static names what
 	// the source is treated as having, and wither is about creatures only
 	// (CR 702.80a), so it can't be narrowed to damage dealt to a player.
@@ -831,6 +833,14 @@ func Register(spec Spec) {
 	// ADR 0093 amendment 2026-10-13: and the zone-grant statics, so the
 	// layer pass finds a Satoru by one map read per permanent.
 	game.IndexZoneGrants(spec.OracleID, spec.Static)
+	// #3862: and the counter kinds a static's "as long as it has N or
+	// more counters" begins on, so a counter placement on any other
+	// kind pays one map read.
+	game.IndexCounterThresholds(spec.Static)
+	// #3862: and the statics over objects off the battlefield, so the
+	// zone layer step finds a Mycosynth Lattice by one map read per
+	// permanent.
+	game.IndexZoneLayers(spec.OracleID, spec.Static)
 	// #623 / CR 114: a card that makes an emblem files a SECOND def
 	// for the emblem object, under "emblem:<this key>". It goes in
 	// `defs` and not in `registry`, so the engine finds the emblem's
@@ -933,6 +943,26 @@ func checkStaticZones(card, what string, statics []game.StaticAbility) {
 				panic(fmt.Sprintf("effects.Register: %q %s %d affects spells from a declared zone — only the battlefield's statics over spells are gathered", card, what, i))
 			case s.RemovesAbilities || len(s.GrantAbilities) > 0 || s.Borrows != nil:
 				panic(fmt.Sprintf("effects.Register: %q %s %d affects spells with a removal or an ability bundle — the stack step applies keywords only", card, what, i))
+			}
+		}
+		// #3862: a static over objects off the battlefield is a layer-4
+		// or layer-5 effect from the battlefield — what the zone layer
+		// step applies (game/zone_layers.go).
+		if len(s.AffectsZones) > 0 {
+			switch {
+			case s.Layer != game.Layer4Type && s.Layer != game.Layer5Color:
+				panic(fmt.Sprintf("effects.Register: %q %s %d affects objects off the battlefield in layer %d — the zone layer step applies layers 4 and 5 only", card, what, i, s.Layer))
+			case s.AppliesTo == nil || s.Apply == nil:
+				panic(fmt.Sprintf("effects.Register: %q %s %d affects objects off the battlefield but has no AppliesTo or Apply", card, what, i))
+			case len(s.Zones) > 0 || s.AffectsSpells || s.GrantZone != "":
+				panic(fmt.Sprintf("effects.Register: %q %s %d affects objects off the battlefield beside a declared source zone, a spell clause or a zone grant — declare those as a static of their own", card, what, i))
+			case s.RemovesAbilities || len(s.GrantAbilities) > 0 || s.Borrows != nil || s.ContinuesAfterRemoval:
+				panic(fmt.Sprintf("effects.Register: %q %s %d affects objects off the battlefield with a removal, a grant or a borrow — the zone layer step changes types and colours only", card, what, i))
+			}
+			for _, zone := range s.AffectsZones {
+				if why := game.AffectsZoneUnsupported(zone); why != "" {
+					panic(fmt.Sprintf("effects.Register: %q %s %d affects objects in %s — %s", card, what, i, zone, why))
+				}
 			}
 		}
 		for _, zone := range s.Zones {

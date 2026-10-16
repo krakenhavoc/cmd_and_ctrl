@@ -159,9 +159,10 @@ func PlayFromTopOfYourLibrary(filter game.PermissionFilter, label string) game.C
 // OfferGraveyardCast is "you may cast target <card> from your graveyard.
 // If that spell would be put into your graveyard, exile it instead"
 // (Emet-Selch of the Third Seat, #3785): a cast made as the ability
-// resolves (CR 608.2g), at the card's mana cost, that exiles the spell
-// wherever it leaves the stack (CR 702.34a's replacement, the one
-// flashback uses).
+// resolves (CR 608.2g), at the card's mana cost, whose spell is exiled
+// if it would be put into its owner's graveyard — as it resolves, or
+// when it is countered or fizzles — and goes anywhere else it is sent
+// (game.CastPermission.ExileInsteadOfGraveyard, #3863).
 //
 // It is Torrential Gearhulk's grant with the price left at "its mana
 // cost" and a FollowUp. The offer is flash-timed and closed by the
@@ -196,18 +197,18 @@ func (e OfferGraveyardCast) Apply(ctx *Context) error {
 		return nil
 	}
 	g.GrantCastPermissionToCardsForEffect(game.CastPermission{
-		Player:            ctx.Controller(),
-		Zone:              game.ZoneGraveyard,
-		Duration:          g.UntilEndOfTurnDuration(),
-		AltCostKey:        game.AltCostKeyGrantedCost,
-		Timing:            game.TimingFlash,
-		CastOnly:          true,
-		ExileOnResolution: true,
-		LapseOnPass:       game.LapseStaysInHand,
-		FollowUp:          e.FollowUp,
-		Source:            ctx.Source(),
-		SourceName:        e.SourceName,
-		Label:             e.SourceName + " — cast " + c.Name + " from your graveyard",
+		Player:                  ctx.Controller(),
+		Zone:                    game.ZoneGraveyard,
+		Duration:                g.UntilEndOfTurnDuration(),
+		AltCostKey:              game.AltCostKeyGrantedCost,
+		Timing:                  game.TimingFlash,
+		CastOnly:                true,
+		ExileInsteadOfGraveyard: true,
+		LapseOnPass:             game.LapseStaysInHand,
+		FollowUp:                e.FollowUp,
+		Source:                  ctx.Source(),
+		SourceName:              e.SourceName,
+		Label:                   e.SourceName + " — cast " + c.Name + " from your graveyard",
 	}, []game.Card{c})
 	return nil
 }

@@ -203,6 +203,12 @@ type DelayedTrigger struct {
 	// sibling of TriggeredAbility.AppliesTo with a DelayedTrigger in
 	// the source's place because there is no source card to hand it.
 	// Empty means every event of a watched kind matches.
+	//
+	// A condition registered with DelayedEachCondition also names the
+	// objects the event concerns, and the trigger triggers once for each
+	// of them with that object as the item's payload (CR 603.2c; ADR
+	// 0187 amendment 2026-10-16): Gaze of Pain's "whenever a creature you
+	// control attacks and isn't blocked".
 	Condition ConditionRef
 
 	// CondParams is the condition's plain data: the spell filter a
@@ -340,6 +346,12 @@ func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
 		return uuid.Nil
 	}
 	if dt.At == "" && len(dt.On) == 0 && !dt.isManaTrigger() && !(dt.Until && dt.UntilLeaves.ID != uuid.Nil) {
+		return uuid.Nil
+	}
+	if len(dt.Cards) > 0 && bodyHasTargets(dt.Body.key) {
+		// The instance's announced targets are its Targets, so a
+		// payload of Cards would be overwritten as it goes on the stack.
+		effectKeyFault(fmt.Sprintf("game: delayed trigger %q has a targeted body and Cards — dropped", dt.Label))
 		return uuid.Nil
 	}
 	if !dt.Params.Filter.Valid() || !dt.CondParams.Filter.Valid() {
@@ -626,7 +638,8 @@ func (g *Game) fireEventDelayedTriggersLocked(pass *harvestPass) {
 		return
 	}
 	ev := pass.ev
-	var keep, fire []*DelayedTrigger
+	var keep []*DelayedTrigger
+	var fire []delayedFiring
 	for _, dt := range g.DelayedTriggers {
 		if dt == nil {
 			continue
@@ -638,7 +651,8 @@ func (g *Game) fireEventDelayedTriggersLocked(pass *harvestPass) {
 			keep = append(keep, dt)
 			continue
 		}
-		if dt.matchesEventLocked(ev, g) && !g.delayedTriggerSuppressedLocked(pass, dt) {
+		objects, matched := dt.matchEventLocked(ev, g)
+		if matched && !g.delayedTriggerSuppressedLocked(pass, dt) {
 			// CR 603.2c: a "whenever you attack" fires once for the
 			// whole declaration. Test-and-set, so it sits last: a match
 			// the trigger did not take must not use the batch up.
@@ -646,7 +660,15 @@ func (g *Game) fireEventDelayedTriggersLocked(pass *harvestPass) {
 				keep = append(keep, dt)
 				continue
 			}
-			fire = append(fire, dt)
+			if !dt.Repeats && len(objects) > 1 {
+				// CR 603.7b: a trigger with no stated duration triggers
+				// once. Every each-condition a one-shot trigger names
+				// concerns one object (Delif's Cone, Delif's Cube), so
+				// this is never a choice in practice; the first object
+				// in the condition's order is the one.
+				objects = objects[:1]
+			}
+			fire = append(fire, delayedFiring{dt: dt, objects: objects})
 			if dt.Repeats {
 				// CR 603.7b: a stated duration ("this turn") keeps it
 				// queued; the duration sweep removes it.
@@ -660,9 +682,44 @@ func (g *Game) fireEventDelayedTriggersLocked(pass *harvestPass) {
 		return
 	}
 	g.DelayedTriggers = keep
-	for _, dt := range fire {
-		g.dispatchEventDelayedTriggerLocked(pass, dt)
+	for _, f := range fire {
+		if f.objects == nil {
+			g.dispatchEventDelayedTriggerLocked(pass, f.dt, uuid.Nil)
+			continue
+		}
+		// An each-condition (ADR 0187 amendment 2026-10-16): one
+		// instance for each object the event concerns (CR 603.2c), in
+		// the condition's order, each carrying its object as "it".
+		for _, obj := range f.objects {
+			g.dispatchEventDelayedTriggerLocked(pass, f.dt, obj)
+		}
 	}
+}
+
+// delayedFiring is one delayed trigger an event fired, and the objects
+// an each-condition fired it for (nil for an ordinary condition).
+type delayedFiring struct {
+	dt      *DelayedTrigger
+	objects []uuid.UUID
+}
+
+// matchEventLocked is matchesEventLocked that also answers an
+// each-condition's objects (DelayedEachCondition): matched is true when
+// the event is the trigger's, and objects lists what it triggered for,
+// nil for an ordinary condition.
+//
+// Caller must hold g.mu.
+func (dt *DelayedTrigger) matchEventLocked(ev Event, g *Game) (objects []uuid.UUID, matched bool) {
+	if dt.Condition.key != "" {
+		if each, ok := lookupEachCondition(dt.Condition.key); ok {
+			if dt.isManaTrigger() || len(dt.On) == 0 || !triggerWatches(dt.On, ev.Kind) {
+				return nil, false
+			}
+			objects = each(ev, dt, g, dt.CondParams)
+			return objects, len(objects) > 0
+		}
+	}
+	return nil, dt.matchesEventLocked(ev, g)
 }
 
 // matchesEventLocked is the event condition: a watched kind, then the
@@ -697,7 +754,7 @@ func (dt *DelayedTrigger) matchesEventLocked(ev Event, g *Game) bool {
 // closure clone-safe (ADR 0026 §4).
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) dispatchEventDelayedTriggerLocked(pass *harvestPass, dt *DelayedTrigger) {
+func (g *Game) dispatchEventDelayedTriggerLocked(pass *harvestPass, dt *DelayedTrigger, object uuid.UUID) {
 	ev := pass.ev
 	source, lki := g.triggerSourceLocked(dt.SourceCardID, dt.Controller)
 	label, body, params := dt.Label, dt.Body.key, cloneEffectParams(dt.Params)
@@ -708,12 +765,26 @@ func (g *Game) dispatchEventDelayedTriggerLocked(pass *harvestPass, dt *DelayedT
 	if dt.OptionalQuestion != "" {
 		optional = &TriggerOptionalPrompt{Question: dt.OptionalQuestion}
 	}
+	// The instance's "it": the object an each-condition fired it for, or
+	// the event's own object.
+	var payload []TargetRef
+	switch {
+	case object != uuid.Nil:
+		payload = []TargetRef{{Kind: TargetCard, ID: object}}
+	case ev.CardID != uuid.Nil:
+		payload = []TargetRef{{Kind: TargetCard, ID: ev.CardID}}
+	}
 	ability := TriggeredAbility{
 		// Watches / AppliesTo stay empty for the same reason a
 		// reflexive trigger leaves them empty: the dispatch is handed
 		// the match rather than asked to find one.
 		Key:            label,
 		OptionalPrompt: optional,
+		// ADR 0187 amendment 2026-10-16: a body registered with a target
+		// clause (TargetedDelayedBody) announces it as the instance goes
+		// on the stack (CR 603.3d), exactly as a reflexive trigger's
+		// does, and is removed when nothing can be chosen.
+		Targets: stampReflexivePayload(reflexiveTargetSpecFor(body, source.InstanceID, params), payload),
 		Build: func(ev Event, source *Card, _ Characteristic, _ *Game) *StackItem {
 			item := NewTriggeredItem(source, label)
 			item.Effect = bodyEffect(body, params)
@@ -727,9 +798,7 @@ func (g *Game) dispatchEventDelayedTriggerLocked(pass *harvestPass, dt *DelayedT
 					item.Targets = append(item.Targets, TargetRef{Kind: TargetCard, ID: cardID})
 				}
 			}
-			if ev.CardID != uuid.Nil {
-				item.Payload = append(item.Payload, TargetRef{Kind: TargetCard, ID: ev.CardID})
-			}
+			item.Payload = append(item.Payload, payload...)
 			// The event itself, so "that much life" / "that many cards" reads
 			// ctx.Trigger().Event.Amount like any harvested trigger does
 			// (Vizkopa Guildmage). Without Watches the harvester's own stamp

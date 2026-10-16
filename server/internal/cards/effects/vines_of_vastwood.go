@@ -17,30 +17,27 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // # What the first clause is
 //
 // "Can't be the target of spells or abilities your opponents control"
-// is hexproof, word for word (CR 702.11b) — the engine's own
-// definition of the keyword, granted for the turn, rather than a new
-// restriction. Everything follows from that: the creature's
-// controller can still target it (with a pump spell, an Aura, a
-// sacrifice outlet), an opponent's board wipe still kills it because
-// a wipe targets nothing, and an opponent's spell that had ALREADY
-// targeted it before the Vines resolved is not affected — it simply
-// fizzles later when the re-check finds an illegal target (CR
-// 608.2b).
+// is NOT hexproof (#3860). Hexproof (CR 702.11b) refuses what the
+// CREATURE'S CONTROLLER's opponents control; this clause refuses what
+// the Vines CASTER's opponents control. The two agree when the Vines
+// go on your own creature, which is nearly every game, and come apart
+// when they go on somebody else's: the printed card then locks the
+// creature's own controller out of targeting it, and hexproof would
+// not. The first cut of this card narrowed the target to "a creature
+// you control" so hexproof was the printed effect word for word, and
+// shipped weaker than printed (the Vines on an opponent's creature,
+// to stop that opponent sacrificing or bouncing it in response, or on a
+// creature you are about to steal, were not castable).
 //
-// # Declared simplification 1 (weaker): it only protects your own
-//
-// The printed clause protects against "YOUR opponents" — the Vines
-// caster's — while the hexproof keyword protects against the
-// CREATURE'S CONTROLLER's opponents. Those agree in every game the
-// card is actually played in and come apart only when Vines is cast
-// on a creature somebody else controls, where the printed card
-// locks the creature's own controller out of targeting it and
-// hexproof does not.
-//
-// Rather than ship a card that reads differently from its text in
-// that corner, the target clause is narrowed to "target creature you
-// control", where hexproof IS the printed effect exactly. That is
-// strictly fewer legal targets than printed and never more.
+// So the target is any creature, and the clause is its own continuous
+// record (CantBeTargetedByYourOpponentsUntilEOT, game/targeting_bar.go),
+// read live by the targeting gate: the creature's controller can still
+// target it if they are the caster, an opponent's board wipe still kills
+// it because a wipe targets nothing, and a spell that had ALREADY
+// targeted it before the Vines resolved fizzles at resolution when the
+// re-check finds the target illegal (CR 608.2b), as the card's ruling
+// says. A hexproof waiver (Nowhere to Run) does not lift it: it waives
+// hexproof and this is not hexproof.
 //
 // # Kicker
 //
@@ -48,27 +45,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // OptionalCosts: Kicker("{G}"), read back at resolution with
 // ctx.WasKicked(). A kicked Vines gives the same creature +4/+4 until
 // end of turn after the protection.
-//
-// The remaining simplification (1) is the only one left, and it only
-// takes targets away.
 func init() {
 	Register(Spec{
-		OracleID:     "8998d211-5ca6-41d2-bc64-f51f70bd41e5",
-		Name:         "Vines of Vastwood",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"It can only be cast on a creature you control.",
-		},
-		Targets:       TargetCreature("target creature you control", YouControl()),
+		OracleID:      "8998d211-5ca6-41d2-bc64-f51f70bd41e5",
+		Name:          "Vines of Vastwood",
+		Completeness:  CompletenessFull,
+		Targets:       TargetCreature("target creature"),
 		OptionalCosts: []game.AdditionalCost{Kicker("{G}")},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil
 			}
-			if err := (GrantKeywordUntilEOT{
-				Target:   item.Targets[0].ID,
-				Keywords: []string{"hexproof"},
-				Label:    "Vines of Vastwood — hexproof",
+			if err := (CantBeTargetedByYourOpponentsUntilEOT{
+				Target: item.Targets[0].ID,
+				Label:  "Vines of Vastwood — can't be the target of spells or abilities your opponents control",
 			}).Apply(ctx); err != nil {
 				return err
 			}

@@ -1519,6 +1519,13 @@ export interface PendingChoiceView {
     // filter over it beside a free-text box. The server accepts
     // whatever comes back, trimmed and non-empty.
     | "choose_card_name"
+    // ADR 0198: "a card you own from outside the game" for a seat whose
+    // deck has no sideboard — any card in the card database the effect's
+    // filter accepts. collection_options are suggestions (no
+    // instance_id); the picker also searches the database through GET
+    // /games/{id}/outside/cards. Answered with resolve_choice
+    // { card_names: ["Card Name"] }; [] declines when choose_min is 0.
+    | "outside_collection"
     // #74 chained choices: the general two-way prompt, "do A, or do
     // B." Answered with the shared yes/no {choice_id, apply} payload —
     // apply=true takes the accept branch. accept_label / decline_label
@@ -1775,6 +1782,11 @@ export interface PendingChoiceView {
   // picker filters it and also offers a free-text box, because CR
   // 201.2 lets a player name a card nobody at the table is holding.
   name_options?: string[];
+  // ADR 0198: populated for kind "outside_collection" — the cards the
+  // prompt suggests from the card database, each with an empty
+  // instance_id (no card exists until one is taken). Sent to the chooser
+  // only, with choose_min / choose_max.
+  collection_options?: CardView[];
   // S17: populated for kind "replacement_order" — the CR 616
   // affected-player-chooses-order prompt. Client renders a drag-
   // reorder list of these entries and submits the IDs in the
@@ -3807,6 +3819,15 @@ export interface LegalTargetsView {
   // and a card with no entry (an unreadable cost) meets no bound.
   mana_value_at_most_x?: boolean;
   mana_values?: Record<string, number>;
+  // #3860, CR 601.2f: the extra life each legal card costs the caster
+  // to name, keyed by card id. Terror of the Peaks: "spells your
+  // opponents cast that target this creature cost an additional 3 life".
+  // Present only on a spell's clause, only for taxed cards.
+  life_taxes?: Record<string, number>;
+  // The cards in `life_taxes` whose tax the viewer cannot pay right now
+  // (CR 119.4). A player who can't pay can't target them: the picker
+  // drops them from the legal set and the dock says why.
+  life_taxes_unpayable?: string[];
   // ADR 0109 §9: the rest of the X bounds, on the same superset rule.
   // `mana_value_equals_x` narrows from `mana_values` by an EXACT match
   // (Lazav); `power_at_most_x` and `toughness_at_most_x` narrow from

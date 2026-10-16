@@ -1945,6 +1945,13 @@ func (g *Game) exitSpellFromStackAtLocked(spellID uuid.UUID, dst *ZoneRef, fallb
 			break
 		}
 	}
+	// #3863: the narrower "if that spell would be put into your
+	// graveyard, exile it instead" replaces only a graveyard
+	// destination; a spell returned to a hand or put into a library
+	// goes there.
+	if destKind == ZoneGraveyard && exilesInsteadOfGraveyard(item) {
+		destKind, destOwner = ZoneExile, uuid.Nil
+	}
 	r := zoneRoute{
 		CardID:    spellID,
 		Dst:       destKind,

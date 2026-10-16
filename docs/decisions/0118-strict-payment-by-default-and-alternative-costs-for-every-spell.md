@@ -293,3 +293,28 @@ whose reach differs), capped at the creatures the caster controls off
 effective types. A spell whose printed cost is {0} is covered but its
 free offer is dropped as a repeat of the printed price (decision 3),
 which changes nothing.
+
+## Amendment 2026-10-15 — a printed {T} ability on a card the catalog does not run (#3860)
+
+Decision 8 stamps `Card.PrintsManaAbility` at import because `game.Card` carries no oracle text. Magewright's Stone —
+"Untap target creature that has an activated ability with {T} in its cost" — asks the same kind of question about a
+creature the catalog has no entry for, and the engine's only view of such a creature's abilities (the catalog) is empty.
+The clause is about what the creature HAS, not about whether the engine runs it, so the honest source for an
+uncatalogued creature is its printed text, read once.
+
+`game.PrintsTapAbilityText` (game/tap_ability_text.go) scans for the rules' own shape for an activated ability (CR
+602.1): a line, reminder text removed, shaped "<cost>: <effect>" whose cost names `{T}`. It refuses a colon inside
+quotation marks (a granted ability is not the card's own: "Creatures you control have '{T}: Add {G}.'", "Equipped creature
+has '{T}: …'"), a triggered lead-in, and an instant or sorcery. The importer stamps `Card.PrintsTapAbility` beside
+`PrintsManaAbility`; a multi-faced card is judged on the face that is up — `SetFace` re-derives the stamp from the face's
+own `OracleText`, so a transformed werewolf is judged on the side showing. It is a copiable value (`PrintedValues`), since
+a copy takes the copied card's text (CR 707.2), carried in restore points (additive; absent means false, which only
+under-reports), and false for a face-down permanent (CR 708.2a). `Card.PrintedTapAbility()` is the reader.
+
+`b27HasTapAbility` joins the stamp with the catalog's view by "or": the catalog also covers what a granting catalog
+permanent gave the creature, which no text read can see. What is not seen: an ability granted by a permanent the catalog
+does not run — but that granting effect is not happening in this game either. Magewright's Stone ships `full`.
+
+Back-out: drop the `PrintedTapAbility()` line in `b27HasTapAbility` and
+`TestMagewrightsStoneUntapsAnUncataloguedCreatureWithAPrintedTapAbility` fails; drop the importer's stamp and
+`TestImporterStampsPrintsTapAbility` fails.

@@ -644,6 +644,17 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	if ev.Kind == EventETB {
 		g.RecomputeLayersIfStaleLocked()
 	}
+	// #3862: the same for a spell just cast and a card that just moved
+	// between two zones off the battlefield, while a static gives such
+	// objects types or colours (zone_layers.go): "whenever you cast an
+	// enchantment spell" (Dusty Parlor) has to see the creature spell
+	// Secret Arcade made an enchantment, and the move cleared the
+	// object's stamp (CR 400.7). Neither touches the battlefield, so the
+	// pass reads the board the next reader would have recomputed.
+	if (ev.Kind == EventCast || (ev.OldZone != "" && ev.NewZone != "" && ev.OldZone != ev.NewZone &&
+		ev.OldZone != ZoneBattlefield && ev.NewZone != ZoneBattlefield)) && zoneLayerStaticIsLiveLocked(g) {
+		g.RecomputeLayersIfStaleLocked()
+	}
 	pass := g.newHarvestPassLocked(ev)
 	g.harvestDepth++
 	defer func() { g.harvestDepth-- }()
@@ -907,7 +918,7 @@ func (g *Game) dispatchTriggerInstanceLocked(ev Event, source Card, lki Characte
 	// #662: `source` is the value copy of the permanent whose ability
 	// this is, which is the object CR 702.16b tests the quality
 	// against — not its controller.
-	src := SourceObject(source.Controller, &source)
+	src := SourceObject(source.Controller, &source).WithTrigger(tc)
 	spec := g.triggerTargetsLocked(t, tc, &source)
 	if t.Modes == nil && spec != nil &&
 		g.anyClauseUnfillableLocked(src, AnnouncedClauses(spec, nil, nil)) {

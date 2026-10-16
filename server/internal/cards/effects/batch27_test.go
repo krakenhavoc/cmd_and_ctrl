@@ -840,8 +840,59 @@ func TestB27MagewrightsStoneUntapsOnlyTapAbilityCreatures(t *testing.T) {
 	if !b27Tapped(t, g, stone) {
 		t.Error("the Stone taps to do it")
 	}
-	if spec, _ := Lookup(b27MagewrightsStoneOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the catalog-only target set must be declared")
+	if spec, _ := Lookup(b27MagewrightsStoneOracle); spec.Completeness != CompletenessFull {
+		t.Error("the printed target set is reachable now (#3860)")
+	}
+}
+
+// #3860: the clause is about what the creature HAS, so a creature the
+// catalog has no entry for is a legal target when its printed text has
+// a "{T}: ..." ability. The importer stamps that from the Scryfall
+// text (game.PrintsTapAbilityText); a fixture sets the stamp directly.
+func TestMagewrightsStoneUntapsAnUncataloguedCreatureWithAPrintedTapAbility(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	stone := pushCatalogPermanent(g, me.ID, "Magewright's Stone", "Artifact", b27MagewrightsStoneOracle, false)
+	printed := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Uncatalogued Mystic", TypeLine: "Creature — Human Wizard",
+		Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID, PrintsTapAbility: true,
+	})
+	plain := pushTribalCreature(g, me.ID, "Uncatalogued Bear", "Creature — Bear", 2, 2)
+	b16Tap(g, printed)
+	b16Tap(g, plain)
+	advanceToMain(t, g)
+	b06AddMana(me, "C")
+	if err := g.ActivateCatalogAbility(me.ID, stone, 0, game.ActivateAbilityParams{Targets: cardRefs(plain)}); err == nil {
+		t.Fatal("a creature whose text has no {T} ability is not a legal target")
+	}
+	b16Activate(t, g, me.ID, stone, 0, game.ActivateAbilityParams{Targets: cardRefs(printed)})
+	if b27Tapped(t, g, printed) {
+		t.Error("the uncatalogued creature with a printed {T} ability is untapped")
+	}
+}
+
+// A multi-faced card is judged on the face that is up (CR 712.8): the
+// front has no tap ability, the back does.
+func TestMagewrightsStoneJudgesAMultiFacedCreatureOnTheFaceThatIsUp(t *testing.T) {
+	front := game.Face{Name: "Front", TypeLine: "Creature — Human", OracleText: "Vigilance"}
+	back := game.Face{Name: "Back", TypeLine: "Creature — Werewolf", OracleText: "{T}: Add {G}."}
+	card := game.Card{Name: "Front", TypeLine: "Creature — Human", Layout: "transform", Faces: []game.Face{front, back}}
+	card.SetFace(0)
+	if card.PrintedTapAbility() {
+		t.Error("the front face prints no tap ability")
+	}
+	card.SetFace(1)
+	if !card.PrintedTapAbility() {
+		t.Error("the back face prints one")
+	}
+}
+
+// A copy takes the copied card's text (CR 707.2), so the stamp is a
+// copiable value.
+func TestPrintsTapAbilityIsACopiableValue(t *testing.T) {
+	src := game.Card{Name: "Mystic", TypeLine: "Creature — Wizard", PrintsTapAbility: true}
+	if v := game.CopiableValuesOf(src); !v.PrintsTapAbility {
+		t.Error("a copy of a creature with a printed tap ability keeps it")
 	}
 }
 

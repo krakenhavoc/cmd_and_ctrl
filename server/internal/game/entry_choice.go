@@ -330,6 +330,7 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 	if err != nil || !ok {
 		return uuid.Nil, err
 	}
+	g.runAsEntersOthersLocked([]entryLanding{l})
 	g.announceEntryLocked(l)
 	g.runEntryHooksLocked(l)
 	// #1069: the card has left the zone it came from, and an open

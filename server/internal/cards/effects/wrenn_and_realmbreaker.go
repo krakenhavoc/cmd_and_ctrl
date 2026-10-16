@@ -25,23 +25,37 @@ import (
 // DurationUntilYourNextTurn; −2 is MillToZone + mayTakeOneFromAmongThem,
 // the Barrowgoyf shape, widened to Permanent() instead of Creature().
 //
-// The −7 ultimate is the gap. EmblemSpec has no CastPermissions slot
-// — an emblem's abilities reach the engine as Static / Triggered /
-// UntapStep / DrawStep / ActivationTimings, and a standing cast
-// permission ("you may play lands and cast permanent spells from your
-// graveyard") is derived from Spec.CastPermissions on a BATTLEFIELD
-// permanent, never from a command-zone object. There is consequently
-// no printed ability to give the emblem at all — EmblemSpec panics if
-// registered with none — so the ultimate is left out rather than
-// shipped as an emblem that does nothing.
+// The −7 is complete (#3861): the emblem carries two STANDING cast
+// permissions over its owner's graveyard (EmblemSpec.CastPermissions,
+// #2528, CR 114.3), derived from Player.Emblems on every query exactly
+// as Wrenn and Six's retrace emblem is. "Play lands" is the Crucible
+// of Worlds permission (LandsOnly: a land play, which spends the
+// turn's land drop, CR 305.2a); "cast permanent spells" is a second
+// permission over nonland permanent cards (NonLandPermanentOnly),
+// cast at their normal timing for their normal cost. Instants and
+// sorceries are not permanent cards (CR 110.4) and stay where they
+// are. The emblem lasts the rest of the game (CR 114.2).
 func init() {
 	const grant = "wrenn-and-realmbreaker/any-color"
 	Register(Spec{
 		OracleID:     "4566fb92-448e-4b3f-9045-9d74323c35d1",
 		Name:         "Wrenn and Realmbreaker",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The −7 isn't offered — it doesn't create a working emblem, since granting a standing cast permission from the command zone isn't supported yet.",
+		Completeness: CompletenessFull,
+		Emblem: &EmblemSpec{
+			Label: "Wrenn and Realmbreaker emblem",
+			Text:  "You may play lands and cast permanent spells from your graveyard.",
+			CastPermissions: []game.CastPermission{
+				{
+					Zone:   game.ZoneGraveyard,
+					Filter: game.PermissionFilter{LandsOnly: true},
+					Label:  "Play a land from your graveyard (Wrenn and Realmbreaker emblem)",
+				},
+				{
+					Zone:   game.ZoneGraveyard,
+					Filter: game.PermissionFilter{NonLandPermanentOnly: true},
+					Label:  "Cast a permanent spell from your graveyard (Wrenn and Realmbreaker emblem)",
+				},
+			},
 		},
 		Grants: []AbilityGrant{{
 			Key:  grant,
@@ -66,6 +80,13 @@ func init() {
 				Label:  "−2: Mill three cards. You may put a permanent card from among the milled cards into your hand.",
 				Cost:   LoyaltyCost(-2),
 				Effect: wrennMinusTwo,
+			},
+			{
+				Label: "−7: You get an emblem with \"You may play lands and cast permanent spells from your graveyard.\"",
+				Cost:  LoyaltyCost(-7),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return CreateEmblem{}.Apply(NewContext(g, item))
+				},
 			},
 		},
 	})

@@ -511,6 +511,19 @@ type StackItem struct {
 	// MarkSpellExilesWithCounterForEffect; never on a copy.
 	ExileWithCounter string `json:"exileWithCounter,omitempty"`
 
+	// ExileInsteadOfGraveyard is "If that spell would be put into your
+	// graveyard, exile it instead" as a fact about this stack object
+	// (Torrential Gearhulk, Emet-Selch of the Third Seat; #3863). The
+	// narrower sibling of AltCostExiles: it replaces only a move to the
+	// owner's graveyard, on every path that would make one — resolving
+	// (where it is one of the CR 616.1 resolution exits beside buyback
+	// and rebound), being countered, or fizzling. A spell returned to
+	// a hand or put into a library goes there. Stamped at the cast from
+	// the permission that granted it, because that permission is usually
+	// gone by the time the spell leaves the stack (CR 400.7g). Never set
+	// on a copy.
+	ExileInsteadOfGraveyard bool `json:"exileInsteadOfGraveyard,omitempty"`
+
 	// Uncopyable is "This ability can't be copied" as a fact about
 	// this stack object (#1574, ADR 0043 Decision 20). Set at
 	// activation from ActivatedAbilityShape.Uncopyable; a triggered

@@ -12,28 +12,30 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // First S16 Layer-4 catalog card. One static ability that walks
 // every battlefield permanent on each recompute pass and appends
 // "Artifact" to its effective types — idempotent so the printed
-// Forest stays a Forest, just gains the Artifact stamp.
+// Forest stays a Forest, just gains the Artifact stamp. Its ruling:
+// spells and cards in other zones "aren't permanents, so those spells
+// and cards don't become artifacts."
 //
 // The third line is the player static #1600 built for Chromatic
 // Orrery, covering every player rather than the controller: the engine
 // reads it at every payment any player makes (game/spend_any_color.go,
 // CR 609.4b).
 //
-// The second line is half built (#3172, cav-h1): a layer 5 static clears
-// the colors of every PERMANENT. The layer engine does not recompute a
-// spell on the stack or a card in a hidden zone, so "all cards that
-// aren't on the battlefield, spells" stays coloured, which is why the
-// card keeps its caveat. The half is the safe one to ship: a permanent
-// that loses its colors is the Lattice's own text, and a spell still
-// being coloured only matters to a "protection from red" or "colorless
-// spell" reader. The rest waits for a colour pass that reaches the
-// stack and the other zones.
+// The second line "makes everything, in every zone of the game,
+// colorless" (its ruling), and it is two statics: a layer 5 static
+// over every permanent (#3172), and one over every spell on the stack
+// and every card in a hand, library, graveyard, exile or the command
+// zone (#3862, game/zone_layers.go). A colourless card in a hand is
+// colourless to "protection from red", to "a colorless spell" and to a
+// "red card" search alike. A commander's colour identity is not its
+// colour (CR 903.4) and is unaffected.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:      "ae1f2ab5-c6a5-4d49-a746-3cb4668bf805",
 		Name:          "Mycosynth Lattice",
-		Completeness:  CompletenessCaveats,
-		Caveats:       []string{"Permanents are colorless, but spells on the stack and cards in hand, graveyard or exile keep their colors."},
+		Completeness:  CompletenessFull,
 		AnyColorSpend: PlayersMaySpendManaAsAnyColor(),
 		Static: []game.StaticAbility{
 			{
@@ -41,6 +43,17 @@ func init() {
 				Label: "All permanents are colorless.",
 				AppliesTo: func(_ *game.Card, _ *game.Game, _ *game.Card) bool {
 					return true // all permanents
+				},
+				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+					c.Colors = nil
+				},
+			},
+			{
+				Layer:        game.Layer5Color,
+				Label:        "All cards that aren't on the battlefield and spells are colorless.",
+				AffectsZones: OffTheBattlefield(),
+				AppliesTo: func(_ *game.Card, _ *game.Game, _ *game.Card) bool {
+					return true // all spells and cards
 				},
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 					c.Colors = nil

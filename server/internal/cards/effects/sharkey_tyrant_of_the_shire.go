@@ -19,17 +19,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // borrow lent. Sharkey has no ability of its own, so that is all of
 // "Sharkey's abilities".
 //
-// DECLARED SIMPLIFICATION, weaker than printed: "any type" is the
-// engine's any-colour spend, which widens a coloured symbol and leaves a
-// colourless {C} alone (CR 106.1b). A lent ability whose cost prints {C}
-// still needs colourless mana. Few lands print one.
+// "Mana of any TYPE" is the any-type spend (AnyType, Vizier of the
+// Menagerie's grant): colourless is a type too, so a red mana pays the
+// {C} in a lent Sea Gate Wreckage's {2}{C} as readily as it pays a
+// coloured symbol (#3863).
+//
+// No simplification.
 func init() {
 	const clause = "Sharkey has all activated abilities of lands your opponents control except mana abilities."
 	Register(Spec{
 		OracleID:     "93a476c0-c77e-43b0-8695-ada40368a002",
 		Name:         "Sharkey, Tyrant of the Shire",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Mana of any type pays coloured costs in Sharkey's abilities, but a colourless {C} cost in one still needs colourless mana."},
+		Completeness: CompletenessFull,
 		ActivationRestrictions: []game.ActivationRestriction{
 			OpponentsSourcesCantActivate(
 				"Sharkey, Tyrant of the Shire — activated abilities of lands your opponents control can't be activated unless they're mana abilities.",
@@ -40,7 +41,7 @@ func init() {
 			Except:  game.BorrowExceptMana,
 			Lenders: BattlefieldLenders(ByController(And(Land(), OpponentControls()))),
 		})},
-		AnyColorSpend: BorrowedAbilitiesSpendableAsAnyColor(
+		AnyColorSpend: BorrowedAbilitiesSpendableAsAnyType(
 			"Mana of any type can be spent to activate Sharkey's abilities.", clause),
 	})
 }

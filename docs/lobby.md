@@ -1213,6 +1213,29 @@ game for the same proxy-prefix reason as the token list below.
 **Errors**: 401 unauthenticated · 403 not the host or admin · 404 game not
 found · 503 card index not loaded.
 
+### `GET /games/{id}/outside/cards`
+
+The search behind an `outside_collection` prompt
+([ADR 0198](decisions/0198-outside-the-game-is-the-card-database-without-a-sideboard.md),
+[protocol.md](protocol.md)): "a card you own from outside the game" for a seat
+whose deck has no sideboard. `?choice=<choice_id>&q=<text>` returns at most 40
+cards whose name matches `q` **and** that the open pick's filter accepts (a
+Burning Wish's search finds only sorceries), in the spawn search's row shape.
+
+It is not a general card search. It answers only the player seat that owes the
+named open pick: no spectator, no admin bypass, and nothing once the pick is
+answered. Read-only.
+
+**Response 200**
+
+```json
+{ "cards": [{ "id": "<scryfall uuid>", "name": "Wrath of God", "type_line": "Sorcery", "mana_cost": "{2}{W}{W}", "set": "2xm" }] }
+```
+
+**Errors**: 400 `choice` is not a uuid · 401 unauthenticated · 403 not a seat
+in this game · 404 game not found, or no open outside-the-game pick for this
+seat.
+
 ### `GET /games/{id}/spawn/tokens`
 
 The token template keys the `token` field of a spawn request accepts, sorted.

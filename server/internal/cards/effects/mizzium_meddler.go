@@ -21,17 +21,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // change it, or decline with nothing. "Change A target" over an item
 // with several is the same choice of which one Spellskite makes.
 //
-// DECLARED CAVEAT, Spellskite's: two instances of "target" that chose
-// the same object are one thing to click, and picking it changes the
-// earlier of them.
+// The same-creature-twice case is Spellskite's (#3860): once the
+// creature is chosen, a second question asks which instance of "target"
+// changes to this creature.
 func init() {
 	Register(Spec{
-		OracleID:     "48a909b6-e6ee-4148-8b50-b35f11bc065f",
-		Name:         "Mizzium Meddler",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"If a spell or ability targets the same thing more than once, you can't choose which of those targets changes to Mizzium Meddler — the first one does.",
-		},
+		OracleID:        "48a909b6-e6ee-4148-8b50-b35f11bc065f",
+		Name:            "Mizzium Meddler",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},

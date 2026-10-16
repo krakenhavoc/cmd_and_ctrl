@@ -1315,6 +1315,36 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #3860, CR 601.2f: what the spell's TARGETS add to its cost -- Terror
+	// of the Peaks' "spells your opponents cast that target this creature
+	// cost an additional 3 life". It is an additional cost charged by a
+	// permanent other than the spell, so it is validated here with the
+	// rest of the announce-time choices (the targets are settled, CR
+	// 601.2c) and paid with the additional cost below, the spell already
+	// on the stack. CR 119.4: the caster may pay it only with the life
+	// they have left after every other life cost of this cast -- the
+	// Phyrexian symbols paid with life, the alternative cost's life and
+	// the additional cost's -- so the sum is what is checked.
+	targetTaxLines := g.castTargetTaxLinesLocked(playerID, card, params.Targets)
+	targetTax := 0
+	for _, l := range targetTaxLines {
+		targetTax += l.Life
+	}
+	if targetTax > 0 {
+		owed := targetTax + planLife(costPlan, params.XValue) + params.PhyrexianLife*PhyrexianLifePerSymbol
+		if alt != nil {
+			owed += alt.Life
+		}
+		if !g.CanPayLifeLocked(p, owed) {
+			slog.Warn("cast_spell rejected: can't pay the targeting tax",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"tax", targetTax,
+				"owed", owed,
+			)
+			return targetTaxRefusal(targetTaxLines, targetTax)
+		}
+	}
 	// #1727, CR 118.3: one permanent pays one sacrifice. The
 	// alternative cost's sacrifice (AltCostIDs) and the additional
 	// cost's (SacrificeIDs) are validated separately above, each
@@ -1837,7 +1867,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// leaves the stack, however it leaves — the same replacement
 		// flashback's cost carries.
 		AltCostExiles: (alt != nil && alt.ExileOnLeavingStack) || (src.Kind == ZoneGraveyard && isAftermathHalf(card)),
-		CastFromZone:  src.Kind,
+		// #3863: "if that spell would be put into your graveyard,
+		// exile it instead" — the narrower clause, carried for the same
+		// reason.
+		ExileInsteadOfGraveyard: alt != nil && alt.ExileInsteadOfGraveyard && !card.PrepareCopy && !card.CardCopy,
+		CastFromZone:            src.Kind,
 		// #761: the mana that actually paid, or the fact that the
 		// engine waived the charge. Stamped here for the reason
 		// XValue is: by resolution the tokens are gone from the pool
@@ -1912,7 +1946,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// The life the whole plan pays — a "pay X life" at the announced X,
 	// and a chosen branch's fixed "pay 3 life" (ADR 0100 §2) — the same
 	// sum the validator checked against CR 119.4.
-	payLife := planLife(costPlan, params.XValue)
+	payLife := planLife(costPlan, params.XValue) + targetTax
 	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs, payLife, params.commanderAnswers); err != nil {
 		slog.Error("cast_spell: additional cost failed after validation",
 			"card_name", card.Name,
@@ -4288,6 +4322,12 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// buyback or the Adventure to replace (paradigm.go).
 		paradigmRouteLocked(c, item, &r)
 	} else if altCostExilesFromStack(c, item) {
+		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
+	} else if !resolved && exilesInsteadOfGraveyard(item) {
+		// #3863: "if that spell would be put into your graveyard,
+		// exile it instead" — a countered or fizzled spell too. As it
+		// resolves the clause is one of the exits below instead, so it
+		// competes with buyback and rebound under CR 616.1.
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
 	} else if resolved {
 		// The three "as it resolves" exits (resolution_exits.go). Two
@@ -6902,6 +6942,9 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 		// ADR 0090, CR 722.3a — the sandbox move lands a preparation
 		// card prepared exactly as any other entry does.
 		g.applyEntersPreparedLocked(cardID, out.EntersPrepared)
+		// #3862: and its "as this enters" clause over other objects,
+		// before the arrival is announced (as_enters_others.go).
+		g.runAsEntersOthersForMoveLocked(cardID)
 	}
 
 	g.EmitEvent(Event{
@@ -8675,7 +8718,10 @@ func printedIdentityOf(c *Card) (colors []string, known bool) {
 			colors = original.Colors
 		}
 	} else if len(colors) == 0 {
-		colors = c.Effective().Colors
+		// The PRINTED colours (CR 903.4): a Mycosynth Lattice makes the
+		// commander colourless in every zone (#3862) and leaves its
+		// colour identity alone.
+		colors = printedShared(c).Colors
 	}
 	if len(colors) == 0 {
 		colors = distinctColorsInManaCost(cost)
@@ -10674,6 +10720,9 @@ func (g *Game) applyCounterByLocked(cardID uuid.UUID, name string, delta int, pl
 			// ADR 0101 / CR 613.7c: a keyword counter's timestamp moves
 			// on every placement and stays put on a removal.
 			z.Cards[i].stampKeywordCounter(name, delta, newAmount, timeNowUnixNano)
+			// #3862: and the moment a declared "N or more counters"
+			// threshold was reached (counter_thresholds.go).
+			stampCounterThresholdsLocked(&z.Cards[i], name, newAmount-delta, newAmount, timeNowUnixNano)
 			if z.Cards[i].Counters[name] <= 0 {
 				delete(z.Cards[i].Counters, name)
 				if len(z.Cards[i].Counters) == 0 {

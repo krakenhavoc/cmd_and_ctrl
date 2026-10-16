@@ -38,6 +38,12 @@ type CardDef struct {
 	// AsEnters runs the card's CR 614.12 "as enters" hook; nil for
 	// nearly every card.
 	AsEnters func(g *Game, cardID uuid.UUID) error
+	// AsEntersOthers runs the card's "as this enters" clause that
+	// changes OTHER objects (Ixidron), as part of the entry: after the
+	// landing and before any event announces it, with the permanents
+	// arriving in the same entry marked (ArrivingForEffect). #3862,
+	// as_enters_others.go. Nil for nearly every card.
+	AsEntersOthers func(g *Game, cardID uuid.UUID) error
 	// AsTransformsInto runs the face's "As this permanent transforms
 	// into <this face>, …" clause (Sephiroth, One-Winged Angel's Super
 	// Nova), registered on the face being turned TO. The transform
@@ -149,6 +155,11 @@ type CardDef struct {
 	// (CR 508.1a, ADR 0080) — Propaganda, Ghostly Prison, Windborn
 	// Muse. Read from the battlefield through AttackTaxesForCard.
 	AttackTaxes []AttackTax
+	// TargetTaxes are the "spells <whom> cast that target <what> cost an
+	// additional N life" statics this permanent contributes (CR 601.2f,
+	// #3860) -- Terror of the Peaks. Read from the battlefield through
+	// TargetTaxesForCard.
+	TargetTaxes []TargetTax
 	// BlockRules are the CR 509.1b block restrictions with a
 	// parameter this permanent imposes while it is on the battlefield
 	// — "can't be blocked except by Walls" (Prowler's Helm), "can't
@@ -768,6 +779,12 @@ func init() {
 	CatalogAttackTaxes = func(key string) []AttackTax {
 		if d := catalogDef(key); d != nil {
 			return d.AttackTaxes
+		}
+		return nil
+	}
+	CatalogTargetTaxes = func(key string) []TargetTax {
+		if d := catalogDef(key); d != nil {
+			return d.TargetTaxes
 		}
 		return nil
 	}

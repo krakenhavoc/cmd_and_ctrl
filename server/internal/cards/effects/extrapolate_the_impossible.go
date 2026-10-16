@@ -52,14 +52,19 @@ func init() {
 //
 // Caller holds g.mu.
 func extrapolateResolve(item *game.StackItem, ctx *Context) error {
-	var pool []game.Card
-	for _, id := range ctx.Game.OutsideCandidatesForEffect(ctx.Controller(), nil) {
-		if c, ok := ctx.Game.LookupOutsideCardForEffect(id); ok {
-			pool = append(pool, c)
+	// A deck with no sideboard chooses from the card database (ADR
+	// 0198), which always holds two cards with different names; the
+	// prompt's own set rule is what keeps the answer to two.
+	if ctx.Game.HasSideboardPool(ctx.Controller()) {
+		var pool []game.Card
+		for _, id := range ctx.Game.OutsideCandidatesForEffect(ctx.Controller(), nil) {
+			if c, ok := ctx.Game.LookupOutsideCardForEffect(id); ok {
+				pool = append(pool, c)
+			}
 		}
-	}
-	if !atLeastTwoNames(pool) {
-		return nil
+		if !atLeastTwoNames(pool) {
+			return nil
+		}
 	}
 	ctx.Game.QueueOutsidePickForEffect(game.OutsidePickPrompt{
 		Player:   ctx.Controller(),

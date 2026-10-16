@@ -519,6 +519,14 @@ type PendingChoiceView struct {
 	// a hidden-information leak.
 	NameOptions []string `json:"name_options,omitempty"`
 
+	// CollectionOptions populates the ADR 0198 "outside_collection" kind:
+	// the cards the prompt suggests from the card database, each with
+	// no instance_id (none exists yet). A SUGGESTION list: the chooser may
+	// search the whole database through the outside-cards route and
+	// answer with any card the search returns, by name. ChooseMin /
+	// ChooseMax carry the bounds. Sent to the chooser only.
+	CollectionOptions []CardView `json:"collection_options,omitempty"`
+
 	// ReplacementOptions populates the S17 "replacement_order" kind:
 	// one entry per applicable CR 614 replacement effect the
 	// chooser is ordering. The client renders a drag-reorder list
@@ -1021,6 +1029,26 @@ type LegalTargetsView struct {
 	// than the exact count: "up to X target cards". The picker lets
 	// the player confirm with fewer.
 	UpToX bool `json:"up_to_x,omitempty"`
+
+	// LifeTaxes is the extra life each legal card costs the caster to
+	// name, keyed by wire id (CR 601.2f, #3860): Terror of the Peaks'
+	// "spells your opponents cast that target this creature cost an
+	// additional 3 life to cast". Present only on a SPELL's target
+	// clause, only for the cards that carry a tax, and priced by the
+	// same CastTargetTaxForEffect the cast gate charges and the move
+	// list prices with, so the picker's "3 life" and the refusal
+	// cannot disagree. A card whose tax the viewer cannot pay stays in
+	// `cards` (it is a legal target, and the picker explains itself) and
+	// is also named in `life_taxes_unpayable`, because a player who
+	// can't pay can't target it: the move list drops the cast, and the
+	// picker greys the card with the reason instead of letting the click
+	// be refused.
+	LifeTaxes map[string]int `json:"life_taxes,omitempty"`
+	// LifeTaxesUnpayable lists the cards in LifeTaxes whose tax the
+	// viewer cannot pay right now (CR 119.4), on the viewer's own life
+	// total and nothing else: a cast with other life costs may be
+	// priced out sooner, and the move list is the last word.
+	LifeTaxesUnpayable []string `json:"life_taxes_unpayable,omitempty"`
 
 	// Label is the clause's printed wording — "target creature you
 	// control". Absent for a single-clause statement, where the
@@ -6524,6 +6552,73 @@ func (f *CardFaceView) stampsFor(seat uuid.UUID, s castStamps) {
 //
 // Caller must hold g.mu.
 func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind game.ZoneKind, grant *game.CastPermission) castStamps {
+	out := castStampsBaseFor(g, caster, c, f, kind, grant)
+	// #3860: what each legal target would cost the caster to name, for a
+	// board where something charges for it. Asked of the engine's own
+	// accessor and only when a tax exists at all, so no board without
+	// one pays for the walk.
+	if g.TargetTaxesExistForEffect() {
+		if live, ok := liveCardForView(g, c); ok {
+			live.SetFace(f.index)
+			stampCastTargetTaxes(g, caster, live, &out)
+		}
+	}
+	return out
+}
+
+// stampCastTargetTaxes writes the per-target life tax onto every target
+// clause a spell's stamps carry: the card's own, its multi-clause
+// statement, each mode's, and each alternative or optional cost that
+// rewrites the clause. Caller must hold g.mu.
+func stampCastTargetTaxes(g *game.Game, caster uuid.UUID, spell game.Card, out *castStamps) {
+	seat := g.PlayerByIDForEffect(caster)
+	stamp := func(v *LegalTargetsView) {
+		if v == nil {
+			return
+		}
+		for _, id := range v.Cards {
+			uid, err := uuid.Parse(id)
+			if err != nil {
+				continue
+			}
+			tax := g.TargetTaxOnTargetForEffect(caster, spell, uid)
+			if tax <= 0 {
+				continue
+			}
+			if v.LifeTaxes == nil {
+				v.LifeTaxes = make(map[string]int)
+			}
+			v.LifeTaxes[id] = tax
+			if !g.CanPayLifeLocked(seat, tax) {
+				v.LifeTaxesUnpayable = append(v.LifeTaxesUnpayable, id)
+			}
+		}
+	}
+	stampAll := func(single *LegalTargetsView, clauses []LegalTargetsView) {
+		stamp(single)
+		for i := range clauses {
+			stamp(&clauses[i])
+		}
+	}
+	stampAll(out.LegalTargets, out.Clauses)
+	if out.Modes != nil {
+		for i := range out.Modes.Options {
+			o := &out.Modes.Options[i]
+			stampAll(o.LegalTargets, o.Clauses)
+		}
+	}
+	for i := range out.AlternativeCosts {
+		a := &out.AlternativeCosts[i]
+		stampAll(a.LegalTargets, a.Clauses)
+	}
+	for i := range out.OptionalCosts {
+		o := &out.OptionalCosts[i]
+		stampAll(o.LegalTargets, o.Clauses)
+	}
+}
+
+// castStampsBaseFor is castStampsFor before the target-tax pass.
+func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind game.ZoneKind, grant *game.CastPermission) castStamps {
 	key := f.key
 	// #662 / #979: the source of a SPELL is the spell itself, so every
 	// legal-target stamp below names the card rather than only its
@@ -9212,6 +9307,19 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c.Kind == game.PendingChoiceCardName {
 			v.NameOptions = g.PublicCardNamesLocked()
 		}
+		// ADR 0198: a pick from the card database as the chooser's
+		// collection. The suggestions are plain names on the choice; the
+		// cards are rebuilt from the database for the picker.
+		if c.Kind == game.PendingChoiceOutsideCollection {
+			v.ChooseMin = c.ChooseMin
+			v.ChooseMax = c.ChooseMax
+			v.ChooseDestination = string(c.ChooseDestination)
+			for _, card := range game.CollectionCardsLocked(c.CollectionSuggestions) {
+				cv := viewOfCard(card)
+				cv.InstanceID = ""
+				v.CollectionOptions = append(v.CollectionOptions, cv)
+			}
+		}
 		// PendingChoiceReplacementOrder — S17 sub-PR 2. Emit the
 		// ordered list of replacement-effect IDs with a human-
 		// readable label + source-card ID (empty for engine
@@ -10302,6 +10410,16 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			// #3817: so is the trigger's card identity, which names the
 			// card behind a prompt only its chooser answers.
 			out[i].SharedTargetKey = ""
+		}
+		// ADR 0198: a collection pick is the chooser's. Nothing in it is
+		// hidden information (it is the card database), but what a player
+		// is shown while deciding is theirs, as a search's candidates are.
+		if c.Kind == string(game.PendingChoiceOutsideCollection) && c.Chooser != viewerID {
+			out[i].CollectionOptions = nil
+			out[i].ChooseMin = 0
+			out[i].ChooseMax = 0
+			out[i].ChooseDestination = ""
+			continue
 		}
 		if c.Kind == string(game.PendingChoiceSearchLibrary) && c.Chooser != viewerID {
 			out[i].Options = nil

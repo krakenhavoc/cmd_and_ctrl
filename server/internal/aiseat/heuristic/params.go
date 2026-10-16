@@ -157,6 +157,9 @@ type choiceParams struct {
 	// PayOption answers an either payment (ADR 0187 §5): the index of
 	// the branch taken, into the prompt's pay_either.
 	PayOption *int `json:"pay_option"`
+	// CardNames answers an outside_collection prompt (ADR 0198): the
+	// cards taken from the database, by name.
+	CardNames []string `json:"card_names"`
 }
 
 type mulliganParams struct {

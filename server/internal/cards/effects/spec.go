@@ -71,6 +71,19 @@ type Spec struct {
 	// nearly every card.
 	AsEnters func(card *game.Card, ctx *Context) error
 
+	// AsEntersOthers is an "as this enters" clause that changes OTHER
+	// objects — Ixidron's "As this creature enters, turn all other
+	// nontoken creatures face down." (#3862). It is part of the entry
+	// (CR 614.1c), so the engine runs it after the permanent has landed
+	// and BEFORE any event announces its arrival: nothing, not even a
+	// "whenever another creature enters" ability of one of the objects
+	// it changes, ever sees the board in between. The permanents
+	// entering at the same time are on the battlefield but are not
+	// "other" ones that were there: ask ctx.Game.ArrivingForEffect and
+	// leave them alone. Same contract as AsEnters otherwise (off the
+	// stack, Item is nil). Nil for nearly every card.
+	AsEntersOthers func(card *game.Card, ctx *Context) error
+
 	// AsTransformsInto is the face's "As this permanent transforms
 	// into <this face>, …" clause (Sephiroth, One-Winged Angel's Super
 	// Nova), declared on the Spec of the face being turned TO — a back
@@ -808,6 +821,23 @@ type Spec struct {
 	// Build the entries with AttackTax / AttackTaxCounting in
 	// attack_tax.go. Nil for nearly every card.
 	AttackTaxes []game.AttackTax
+
+	// TargetTaxes is a cost a permanent adds to spells that TARGET
+	// something: "Spells your opponents cast that target this creature
+	// cost an additional 3 life to cast" (Terror of the Peaks, #3860).
+	//
+	// CR 601.2f's additional costs, charged by a permanent other than
+	// the spell and read once the spell's targets are announced (CR
+	// 601.2c). The AttackTax family one verb over (ADR 0080): a static of
+	// the permanent, collected through the catalog key, gated by a
+	// designation in one accessor. CastSpell refuses a caster who can't
+	// pay it and charges it with the other additional costs; the
+	// legal-move enumerator prices each target set and drops the ones the
+	// caster can't afford; the view names each legal target's tax.
+	//
+	// Build the entries with OpponentsSpellsTargetingThisCostLife in
+	// target_tax.go. Nil for nearly every card.
+	TargetTaxes []game.TargetTax
 
 	// BlockRules are the CR 509.1b block restrictions with a
 	// PARAMETER this permanent imposes while it is on the battlefield

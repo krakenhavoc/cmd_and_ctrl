@@ -310,6 +310,17 @@ type MoveCost struct {
 	// mana it has.
 	PhyrexianLife int `json:"phyrexian_life,omitempty"`
 
+	// TargetTaxLife is the part of Life that a permanent charges for what
+	// the spell TARGETS (CR 601.2f, #3860): Terror of the Peaks' "spells
+	// your opponents cast that target this creature cost an additional 3
+	// life". Already INCLUDED in Life, and broken out for
+	// PhyrexianLife's reason: it buys nothing. A printed life cost is the
+	// only evidence of how much an ability does, so a policy may read it
+	// as a payoff proxy; life spent because the spell names a taxed
+	// permanent is the same spell at a worse price, and a policy that
+	// proxied it would prefer the taxed target.
+	TargetTaxLife int `json:"target_tax_life,omitempty"`
+
 	// Loyalty is a loyalty ability's counter delta (CR 606.4),
 	// SIGNED as printed: +1 adds a counter, −3 removes three. Zero
 	// covers both "[0]" and "not a loyalty ability"; the two are the
@@ -477,6 +488,22 @@ func moveCost(life, loyalty int) *MoveCost {
 // the move does not say which.
 func phyrexianLifeLabel(symbols int) string {
 	return fmt.Sprintf(" paying %d life instead of mana", symbols*game.PhyrexianLifePerSymbol)
+}
+
+// withTargetTax adds the life a cast's targets charge (CR 601.2f,
+// #3860) to a (possibly nil) MoveCost, counted in Life and broken out in
+// TargetTaxLife. The same shape as withPhyrexianLife.
+func withTargetTax(c *MoveCost, life int) *MoveCost {
+	if life <= 0 {
+		return c
+	}
+	out := MoveCost{}
+	if c != nil {
+		out = *c
+	}
+	out.Life += life
+	out.TargetTaxLife += life
+	return &out
 }
 
 // withPhyrexianLife adds `symbols` Phyrexian symbols paid with life

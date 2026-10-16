@@ -490,6 +490,12 @@ func canBeTargetedBy(g *Game, c *Card, zone ZoneKind, src TargetSource) bool {
 	if HasKeyword(c, "shroud") {
 		return false
 	}
+	// #3860: "can't be the target of spells or abilities your opponents
+	// control" -- a record, not a keyword, so no hexproof waiver touches
+	// it (targeting_bar.go).
+	if g.scopedTargetingBarLocked(c, src.Controller) {
+		return false
+	}
 	if HasKeyword(c, "hexproof") && c.Controller != src.Controller && !g.hexproofBypassedLocked(c, src.Controller) {
 		return false
 	}

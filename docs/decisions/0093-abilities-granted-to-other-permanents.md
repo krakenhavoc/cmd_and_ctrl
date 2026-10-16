@@ -8,7 +8,9 @@
 "Amendment 2026-10-10 — a permanent that becomes an Equipment".
 2026-10-13 — a grant to cards in a hand, graveyard or exile (#3233); see "Amendment 2026-10-13".
 2026-10-15 — a granted static in layer 6, 7b or 7e, at CR 613.7a's timestamp (#3784); see
-"Amendment 2026-10-15".
+"Amendment 2026-10-15 — a granted static in layer 6".
+2026-10-15 — a bundle can carry game-end gates (#3862); see "Amendment 2026-10-15 — a bundle can
+carry 'you can't lose the game'".
 **Issue:** [#754](https://github.com/krakenhavoc/cmd_and_ctrl/issues/754) (this seam — the public roadmap's
 top missing seam, `abilities-granted-to-other-permanents` in `server/internal/roadmap/registry.go`)
 **Numbering:** swept with the AGENTS.md §4 check on 2026-09-24 — `git fetch origin`, then every
@@ -1003,3 +1005,35 @@ and `TestGrantedStaticProblemNamesWhatAGrantCannotCarry` (`internal/game`), and 
 `TestDancersChakramsLifelinkSortsAgainstARemovalOnTheCommander`, `TestDancersChakramsJobSelectEquipsAHero`,
 `TestKaldheimRunesGiveACreatureAndAnEquipmentsCreatureTheirKeyword`,
 `TestGiantsAmuletHexproofFollowsTheEquippedCreaturesTapState` and `TestGiantsAmuletMayPayForAGiantToWearIt`.
+
+## Amendment 2026-10-15 — a bundle can carry "you can't lose the game" (#3862)
+
+Cloudsteel Kirin reads "Equipped creature has flying and 'You can't lose the game and your opponents
+can't win the game.'" The quoted ability belongs to the CREATURE. The card used to declare the two
+gates on the Kirin itself (`game.GameEndGate.You` naming the host's controller) and switch them off
+when the host `HasLostAllAbilities`. That is wrong in one direction. A creature that lost all its
+abilities BEFORE the Kirin was attached still gets the quoted ability, because the grant is a layer-6
+effect at the Kirin's attach timestamp (CR 613.7e). That makes it newer than the removal, and CR
+613.6's timestamp order keeps it (Decision 3).
+
+**1. The declaration.** `effects.AbilityGrant.GameEndGates` holds the gates, as `AttackLimits` and
+`DealtDamageCantBeRegenerated` hold their rules (the amendments of 2026-10-09). `buildGrantDef`
+copies them onto the bundle's `CardDef`, and `mergeCatalogParts` appends them to the recipient's
+composite definition.
+
+**2. The reader needs no change.** `forEachGameEndGateLocked` already reads
+`CatalogGameEndGates(catalogAbilityKeyOf(c))` for every permanent. The recipient's key carries the
+grant, so the creature has the gates while it has the grant. Their "you" is the creature's
+controller (the gate's default, CR 109.5), and they end the pass the grant does: when the Kirin is
+unattached, when a newer removal hits the creature, or when the Kirin itself is silenced (Decision
+3's dependency).
+
+**3. Refused for a zone grant.** A bundle given to cards in a hand, graveyard or exile still holds
+activated abilities only (the amendment of 2026-10-13), so `checkZoneGrantBundle` refuses
+`GameEndGates` too.
+
+**Cards.** Cloudsteel Kirin is now Full: a granted bundle `cloudsteel-kirin/cant-lose` plus
+`GrantAbilitiesToAttached`. Pinned by
+`TestCloudsteelKirinProtectsTheEquippedCreaturesController`,
+`TestCloudsteelKirinGrantsCantLoseToACreatureThatLostItsAbilitiesFirst` and
+`TestCloudsteelKirinsGrantEndsWhenTheCreatureLosesItsAbilitiesLater` (`internal/cards/effects`).

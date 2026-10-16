@@ -178,18 +178,22 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// paused mid-resolution with the pile still where it was, and the
 	// rest of the card (Brainstorm's nothing, Ponder-likes' draw)
 	// hangs off the answer.
-	PendingChoicePutInLibrary:    true,
-	PendingChoiceSearchLibrary:   true,
-	PendingChoiceMayCast:         true,
-	PendingChoiceCoinCall:        true,
-	PendingChoiceChooseProtector: true,
-	PendingChoiceLegendRule:      true,
-	PendingChoiceColor:           true,
-	PendingChoiceConfirm:         true,
-	PendingChoiceChooseCards:     true,
-	PendingChoiceEntryPayLife:    true,
-	PendingChoiceCopyTarget:      true,
-	PendingChoiceCreatureType:    true,
+	PendingChoicePutInLibrary:  true,
+	PendingChoiceSearchLibrary: true,
+	// ADR 0198: a pick from the card database is a sideboard pick by
+	// another route. The wish is paused mid-resolution and its "exile
+	// this" waits on the answer.
+	PendingChoiceOutsideCollection: true,
+	PendingChoiceMayCast:           true,
+	PendingChoiceCoinCall:          true,
+	PendingChoiceChooseProtector:   true,
+	PendingChoiceLegendRule:        true,
+	PendingChoiceColor:             true,
+	PendingChoiceConfirm:           true,
+	PendingChoiceChooseCards:       true,
+	PendingChoiceEntryPayLife:      true,
+	PendingChoiceCopyTarget:        true,
+	PendingChoiceCreatureType:      true,
 	// #1210, CR 614.12. "As this enters, choose a card name" — the
 	// as-enters family's fourth member, blocking for the reason the
 	// other three block: the permanent is on the battlefield with the
