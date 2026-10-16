@@ -729,8 +729,9 @@ func TestB04GravenCairnsFiltersOneHybridIntoTwo(t *testing.T) {
 	if me.ManaPool.Total() != 0 {
 		t.Errorf("the {R} should have been spent on the cost, pool = %v", batch01PoolColors(me))
 	}
+	// #3939: one choice, asked once per pick.
 	picks := 0
-	for _, c := range g.PendingChoices {
+	for c := riderLatestManaPick(g, me.ID); c != nil && picks < 8; c = riderLatestManaPick(g, me.ID) {
 		if c != nil && c.Kind == game.PendingChoiceMana && c.Chooser == me.ID {
 			picks++
 			if len(c.ColorOptions) != 2 {

@@ -2955,6 +2955,13 @@ pendingChoices[].manaChosen	array
 pendingChoices[].manaChosen[]	string
 pendingChoices[].manaDifferent	number:int
 pendingChoices[].manaLabel	string
+pendingChoices[].manaPicksLeft	array
+pendingChoices[].manaPicksLeft[]	object
+pendingChoices[].manaPicksLeft[].amounts	map:string
+pendingChoices[].manaPicksLeft[].amounts{}	number:int
+pendingChoices[].manaPicksLeft[].different	number:int
+pendingChoices[].manaPicksLeft[].options	array
+pendingChoices[].manaPicksLeft[].options[]	string
 pendingChoices[].manaRestrictions	array
 pendingChoices[].manaRestrictions[]	string
 pendingChoices[].manaRiders	array
@@ -2971,6 +2978,8 @@ pendingChoices[].manaRiders[].trigger	string
 pendingChoices[].manaRiders[].untilEndOfTurn	bool
 pendingChoices[].manaRiders[].when	array
 pendingChoices[].manaRiders[].when[]	string
+pendingChoices[].manaSettled	array
+pendingChoices[].manaSettled[]	string
 pendingChoices[].manaSourceKinds	number:uint16
 pendingChoices[].manaTapped	bool
 pendingChoices[].mayCastCard	custom(uuid.UUID)

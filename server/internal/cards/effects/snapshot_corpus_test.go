@@ -436,7 +436,12 @@ func corpusBoards() []corpusBoard {
 		// "when you next cast an artifact spell" delayed trigger, and a
 		// Dragon that kept the haste-until-end-of-turn its spell was given
 		// (a record re-pinned to the permanent with its duration).
-		{"granted_mana_spent_readers", corpusGrantedManaSpentReaders},
+		// #3939: the board that wrote granted_mana_spent_readers.json
+		// produced a multi-mana ability slot by slot, one production id
+		// per slot; an activation is one production now, so the ids
+		// minted after it moved. The file stays and is still restored;
+		// the same board is a new file.
+		{"granted_mana_spent_readers_one_production", corpusGrantedManaSpentReaders},
 		// v7, added by ADR 0108 PR 8 (#1906) as a new file: the scoped
 		// shields' CR 615.5 follow-ups (owner decision 2) as data — Test
 		// of Faith's charged shield with its Then, partly spent; Vengeful

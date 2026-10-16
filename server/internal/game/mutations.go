@@ -2901,37 +2901,55 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 			Exhaust: ab.Exhaust,
 		})
 		var addedColors []string
+		// #3939, CR 106.12b: the source's whole output is ONE production,
+		// as it is for ActivateManaAbility, so a replacement on "a land
+		// tapped for two or more mana" sees it as a unit. Each slot's
+		// colour is chosen as before, against a scratch copy of the
+		// ledger so a later slot does not re-pay a pip an earlier one
+		// covers; the real ledger is booked once the window has settled,
+		// from what actually arrived (bookProducedLocked).
+		scratch := append([]ColorRequirement(nil), pending...)
+		var asked, booked []string
 		for si, slot := range slots {
 			var color string
+			book := true
 			if si == oneColorIdx {
 				// #779: the plan's pick, not a fresh one. Its
-				// requirements are booked here so a later slot — or a
-				// later source in the same plan — does not re-pay a
-				// pip these N tokens already cover, which is the #273
-				// rule applied to a multi-token pick.
+				// requirements are booked so a later slot — or a later
+				// source in the same plan — does not re-pay a pip
+				// these N tokens already cover, which is the #273 rule
+				// applied to a multi-token pick.
 				color = planned.OneColor
 				for k := 0; k < slot.AmountFor(color); k++ {
-					bookColorRequirement(color, &pending)
+					bookColorRequirement(color, &scratch)
 				}
 			} else if ps, ok := plannedSlotColor(planned, si, len(slots), slot.Options); ok {
 				// #2455: an explicit plan's colour. Mana that funds a
 				// Costed entry books none of the cost being paid.
 				color = ps.Color
-				if !ps.Funds {
-					bookColorRequirement(color, &pending)
+				book = !ps.Funds
+				if book {
+					bookColorRequirement(color, &scratch)
 				}
 			} else {
-				color = pickColorForPlanned(planned, slot.Options, &pending)
+				color = pickColorForPlanned(planned, slot.Options, &scratch)
 			}
 			if color == "" {
 				continue
 			}
 			// #742: a one-colour-N-mana slot adds all N of the picked
-			// colour, in one activation. #1222: through the one
-			// production body, which opens the CR 106.12b window on the
-			// amount and books whatever surplus it adds against the
-			// requirements this cast still owes — the plan already
-			// priced the same window, so the ledger and the pool agree.
+			// colour, in one activation.
+			mana := repeatColor(color, slot.AmountFor(color))
+			asked = append(asked, mana...)
+			if book {
+				booked = append(booked, mana...)
+			}
+		}
+		if len(asked) > 0 {
+			// #1222: through the one production body, which opens the
+			// CR 106.12b window on the amount. The plan already priced
+			// the same window (priceProducedSlotsLocked), so the ledger
+			// and the pool agree.
 			//
 			// Restrictions ride here too. Since #3874 the planner
 			// books a restricted ability for a cast it admits (Cavern
@@ -2940,9 +2958,9 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 			// under the same context, and "the auto-tapper is the one
 			// path that mints unrestricted copies of restricted mana"
 			// (the bug #259 warns about) cannot happen.
-			addedColors = append(addedColors, g.produceManaLocked(
+			produced := g.produceManaLocked(
 				p, cardID,
-				repeatColor(color, slot.AmountFor(color)),
+				asked,
 				restrictionsFor(g, ab, p.ID, cardID),
 				ab.SpendRiders,
 				// #1212: what the source WAS, snapshotted off the copy
@@ -2950,17 +2968,13 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 				// mana abilities below use, so the two can never
 				// disagree about the permanent they describe.
 				//
-				// #1215 made that copy LOAD-BEARING here rather than
-				// merely consistent. This line used to be able to say
-				// "the auto-tapper never plans a sacrifice cost, so the
-				// permanent is still here"; it no longer can. The
-				// plan's own sacrifice runs between the tap and this
-				// mint, so by now a planned Treasure is in a graveyard
-				// and a Treasure TOKEN has ceased to exist (CR 111.7).
+				// #1215 made that copy LOAD-BEARING here. The plan's
+				// own sacrifice runs between the tap and this mint, so
+				// by now a planned Treasure is in a graveyard and a
+				// Treasure TOKEN has ceased to exist (CR 111.7).
 				// Reading `tappedForMana` is what makes "if mana from a
 				// Treasure was spent" answerable on the auto-tap path
-				// at all — exactly the reason ActivateManaAbility takes
-				// its own snapshot before paying.
+				// at all.
 				//
 				// #1222: every mana the CR 614 window ADDS carries the
 				// same snapshot, because CR 106.12b replaces how much
@@ -2974,8 +2988,10 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 				// not double it, which is the printed answer and the
 				// one ActivateManaAbility gives (it passes ab.TapCost).
 				tapped,
-				&pending,
-			)...)
+				nil,
+			)
+			bookProduced(asked, booked, produced, &pending)
+			addedColors = append(addedColors, produced...)
 		}
 		// #763, CR 605.1b / 605.4a: the third and last production
 		// site. `pending` goes in, so a trigger whose output is a
@@ -8048,6 +8064,16 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// #1443: the colours named up front, consumed one per picking slot
 	// in output order — the order ManaAbilityColorOptions lists them.
 	upfront := params.Colors
+	// #3939, CR 106.12b: the activation's whole output is ONE production
+	// — the event a replacement on "a land tapped for two or more mana"
+	// (Damping Sphere) has to see as a unit. The colours known now
+	// collect in `settled`, in output order; a slot whose colour is
+	// still to be picked joins `picks`. With nothing to pick, the lot is
+	// produced below in one window. Otherwise nothing reaches the pool
+	// yet: one pick is asked at a time, the settled colours ride the
+	// choice, and the last answer produces all of it (ResolveManaChoice).
+	var settled []string
+	var picks []ManaPickSlot
 	for _, slot := range slots {
 		// The printed option set, commander identity first (Birds of
 		// Paradise offers all five colours), or narrowed to the
@@ -8063,35 +8089,18 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		}
 		// #2558: "N mana of different colors". Named up front, the N
 		// colours (validated distinct before the cost was paid) are
-		// produced together; otherwise one pick asks for them one at a
-		// time and adds nothing until the last (ResolveManaChoice).
+		// settled; otherwise one pick asks for them one at a time.
 		if slot.DifferentColors() {
 			n := slot.DistinctCount(options)
 			if len(upfront) >= n {
 				named := upfront[:n]
 				upfront = upfront[n:]
 				if differentColorsAllowed(options, n, named) {
-					addedColors = append(addedColors, g.produceManaLocked(
-						p, cardID,
-						append([]string(nil), named...),
-						restrictionsFor(g, &ab, playerID, cardID),
-						ab.SpendRiders,
-						srcKinds,
-						ab.TapCost,
-						nil,
-					)...)
+					settled = append(settled, named...)
 					continue
 				}
 			}
-			g.queueDifferentColorsPickLocked(PendingChoice{
-				Chooser:          playerID,
-				FromPlayer:       playerID,
-				Source:           cardID,
-				ManaRestrictions: restrictionsFor(g, &ab, playerID, cardID),
-				ManaSourceKinds:  srcKinds,
-				ManaRiders:       copyManaRiders(ab.SpendRiders),
-				ManaTapped:       ab.TapCost,
-			}, options, n, ab.Label)
+			picks = append(picks, ManaPickSlot{Options: options, Different: n})
 			continue
 		}
 		// The PRINTED width decides whether this is a pick, not the
@@ -8099,29 +8108,15 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// still prompts, with one button, because the player is
 		// choosing a colour the card told them to choose.
 		if len(slot.Options) == 1 {
-			// Single-color slot — through the one production body,
-			// which opens the CR 106.12b window on the amount (#1222)
-			// and then mints one token per mana it settles on,
-			// carrying the ability's spend restrictions (Eldrazi
-			// Temple's "colorless Eldrazi only") and #1212's snapshot
-			// of what the source was. A Mana Reflection board makes
-			// this Forest two {G}, both of them still Forest mana.
-			addedColors = append(addedColors, g.produceManaLocked(
-				p, cardID,
-				[]string{options[0]},
-				restrictionsFor(g, &ab, playerID, cardID),
-				ab.SpendRiders,
-				srcKinds,
-				ab.TapCost,
-				nil,
-			)...)
+			// Single-color slot. Its mana carries the ability's spend
+			// restrictions (Eldrazi Temple's "colorless Eldrazi only")
+			// and #1212's snapshot of what the source was, like every
+			// colour this activation produces.
+			settled = append(settled, options[0])
 			continue
 		}
 		// #1443: the activator named this slot's colour before the
-		// cost was paid. Produce it here, through the same production
-		// body the answered pick uses (the CR 106.12b window, the
-		// restrictions, the source snapshot, the slot's amount), and
-		// queue nothing. Re-checked against the list read NOW, after
+		// cost was paid. Re-checked against the list read NOW, after
 		// the cost: a derived output the payment itself changed falls
 		// back to the prompt rather than minting a colour it no longer
 		// offers.
@@ -8129,33 +8124,44 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			color := upfront[0]
 			upfront = upfront[1:]
 			if containsColor(options, color) {
-				addedColors = append(addedColors, g.produceManaLocked(
-					p, cardID,
-					repeatColor(color, slot.AmountFor(color)),
-					restrictionsFor(g, &ab, playerID, cardID),
-					ab.SpendRiders,
-					srcKinds,
-					ab.TapCost,
-					nil,
-				)...)
+				settled = append(settled, repeatColor(color, slot.AmountFor(color))...)
 				continue
 			}
 		}
-		// Multi-option slot — see manaPickOptions above.
-		// Queue the pick. The restrictions ride ON THE CHOICE, not
+		// #742: "N mana of any one color" — one pick, N tokens.
+		picks = append(picks, ManaPickSlot{Options: options, Amounts: copyManaAmounts(slot.Amounts)})
+	}
+	if len(picks) == 0 {
+		// Through the one production body, which opens the CR 106.12b
+		// window on the whole output (#1222, #3939) and then mints one
+		// token per mana it settles on. A Mana Reflection board makes
+		// this Forest two {G}, both of them still Forest mana; a Damping
+		// Sphere board makes Ancient Tomb's {C}{C} one {C}.
+		if len(settled) > 0 {
+			addedColors = append(addedColors, g.produceManaLocked(
+				p, cardID,
+				settled,
+				restrictionsFor(g, &ab, playerID, cardID),
+				ab.SpendRiders,
+				srcKinds,
+				ab.TapCost,
+				nil,
+			)...)
+		}
+	} else {
+		// Queue the first pick. The restrictions ride ON THE CHOICE, not
 		// just on the ability: the token is minted later, in
 		// ResolveManaChoice, and without this a Delighted Halfling
 		// pick would land in the pool unrestricted — the #259
 		// direction, and the easiest place in this whole seam to
 		// leak it.
-		g.QueueChoiceForEffect(PendingChoice{
+		choice := PendingChoice{
 			Kind:             PendingChoiceMana,
 			Chooser:          playerID,
 			FromPlayer:       playerID,
 			Count:            1,
 			Source:           cardID,
 			Reason:           ab.Label,
-			ColorOptions:     options,
 			ManaRestrictions: restrictionsFor(g, &ab, playerID, cardID),
 			// #1212: and the source snapshot rides the choice for the
 			// same reason the restrictions do — the token is minted
@@ -8168,15 +8174,23 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			// restrictions ride here — a Cavern of Souls pick answered
 			// without them would mint mana whose spell CAN be countered.
 			ManaRiders: copyManaRiders(ab.SpendRiders),
-			// #742: "N mana of any one color" — one pick, N tokens.
-			ManaAmounts: copyManaAmounts(slot.Amounts),
 			// #763: this pick is part of TAPPING A PERMANENT FOR MANA
 			// (CR 106.12a), so answering it is what fires the triggered
 			// mana abilities — this is the only moment the colour a
 			// Birds-style source produced is known. A pick queued by a
 			// resolving spell leaves this false and fires nothing.
-			ManaTapped: ab.TapCost,
-		})
+			ManaTapped:    ab.TapCost,
+			ManaLabel:     ab.Label,
+			ManaSettled:   settled,
+			ManaPicksLeft: picks[1:],
+		}
+		if first := picks[0]; first.Different > 0 {
+			g.queueDifferentColorsPickLocked(choice, first.Options, first.Different, ab.Label)
+		} else {
+			choice.ColorOptions = first.Options
+			choice.ManaAmounts = first.Amounts
+			g.QueueChoiceForEffect(choice)
+		}
 	}
 	// --- rider --------------------------------------------------
 	//
