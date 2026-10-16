@@ -272,3 +272,4 @@ body destroy/the-payload-permanent
 body dies/controller-loses-life-equal-to-toughness
 condition damage/each-creature-dealt-damage
 condition dies/each-creature
+body return/the-objects-together-under-your-control

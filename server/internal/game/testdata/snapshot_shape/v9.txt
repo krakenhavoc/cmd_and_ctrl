@@ -422,6 +422,10 @@ delayedTriggers[].condParams.name	string
 delayedTriggers[].condParams.object	object
 delayedTriggers[].condParams.object.epoch	number:int
 delayedTriggers[].condParams.object.id	custom(uuid.UUID)
+delayedTriggers[].condParams.objects	array
+delayedTriggers[].condParams.objects[]	object
+delayedTriggers[].condParams.objects[].epoch	number:int
+delayedTriggers[].condParams.objects[].id	custom(uuid.UUID)
 delayedTriggers[].condParams.player	custom(uuid.UUID)
 delayedTriggers[].condition	string
 delayedTriggers[].controller	custom(uuid.UUID)
@@ -477,6 +481,10 @@ delayedTriggers[].params.name	string
 delayedTriggers[].params.object	object
 delayedTriggers[].params.object.epoch	number:int
 delayedTriggers[].params.object.id	custom(uuid.UUID)
+delayedTriggers[].params.objects	array
+delayedTriggers[].params.objects[]	object
+delayedTriggers[].params.objects[].epoch	number:int
+delayedTriggers[].params.objects[].id	custom(uuid.UUID)
 delayedTriggers[].params.player	custom(uuid.UUID)
 delayedTriggers[].repeats	bool
 delayedTriggers[].sourceCardId	custom(uuid.UUID)
@@ -1972,6 +1980,10 @@ lastKnownStack[].item.params.name	string
 lastKnownStack[].item.params.object	object
 lastKnownStack[].item.params.object.epoch	number:int
 lastKnownStack[].item.params.object.id	custom(uuid.UUID)
+lastKnownStack[].item.params.objects	array
+lastKnownStack[].item.params.objects[]	object
+lastKnownStack[].item.params.objects[].epoch	number:int
+lastKnownStack[].item.params.objects[].id	custom(uuid.UUID)
 lastKnownStack[].item.params.player	custom(uuid.UUID)
 lastKnownStack[].item.payload	array
 lastKnownStack[].item.payload[]	object
@@ -2371,6 +2383,10 @@ pausedModeWalk.item.params.name	string
 pausedModeWalk.item.params.object	object
 pausedModeWalk.item.params.object.epoch	number:int
 pausedModeWalk.item.params.object.id	custom(uuid.UUID)
+pausedModeWalk.item.params.objects	array
+pausedModeWalk.item.params.objects[]	object
+pausedModeWalk.item.params.objects[].epoch	number:int
+pausedModeWalk.item.params.objects[].id	custom(uuid.UUID)
 pausedModeWalk.item.params.player	custom(uuid.UUID)
 pausedModeWalk.item.payload	array
 pausedModeWalk.item.payload[]	object
@@ -2644,6 +2660,10 @@ pausedResolutionTail.item.params.name	string
 pausedResolutionTail.item.params.object	object
 pausedResolutionTail.item.params.object.epoch	number:int
 pausedResolutionTail.item.params.object.id	custom(uuid.UUID)
+pausedResolutionTail.item.params.objects	array
+pausedResolutionTail.item.params.objects[]	object
+pausedResolutionTail.item.params.objects[].epoch	number:int
+pausedResolutionTail.item.params.objects[].id	custom(uuid.UUID)
 pausedResolutionTail.item.params.player	custom(uuid.UUID)
 pausedResolutionTail.item.payload	array
 pausedResolutionTail.item.payload[]	object
@@ -3264,6 +3284,10 @@ pendingTriggers[].params.name	string
 pendingTriggers[].params.object	object
 pendingTriggers[].params.object.epoch	number:int
 pendingTriggers[].params.object.id	custom(uuid.UUID)
+pendingTriggers[].params.objects	array
+pendingTriggers[].params.objects[]	object
+pendingTriggers[].params.objects[].epoch	number:int
+pendingTriggers[].params.objects[].id	custom(uuid.UUID)
 pendingTriggers[].params.player	custom(uuid.UUID)
 pendingTriggers[].payload	array
 pendingTriggers[].payload[]	object
@@ -7409,6 +7433,10 @@ stackMeta[].params.name	string
 stackMeta[].params.object	object
 stackMeta[].params.object.epoch	number:int
 stackMeta[].params.object.id	custom(uuid.UUID)
+stackMeta[].params.objects	array
+stackMeta[].params.objects[]	object
+stackMeta[].params.objects[].epoch	number:int
+stackMeta[].params.objects[].id	custom(uuid.UUID)
 stackMeta[].params.player	custom(uuid.UUID)
 stackMeta[].payload	array
 stackMeta[].payload[]	object
