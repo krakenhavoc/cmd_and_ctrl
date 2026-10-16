@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -20,17 +22,13 @@ import (
 // so a COMMANDER exiled by it gets the CR 903.9 prompt and its owner
 // may choose the command zone instead (#529 / #539).
 //
-// THE +4 IS WEAKER THAN PRINTED, AND DELIBERATELY SO: the target
-// player DISCARDS the card instead of exiling it, so it lands in
-// their graveyard where they can still get it back. The choice is
-// still theirs — it is the ordinary pending-discard modal, the same
-// one Mind Rot uses — and the only hand picker in the engine is that
-// modal, with no exile lane on it. Every way this differs from the
-// printed card favours the player being attacked: a discarded card
-// can be reanimated, escaped or flashed back, and a card in exile
-// cannot. That is the right direction for a simplification, and a
-// Karn with no plus at all — able only to tick down toward an
-// ultimate he does not have — would be the worse card.
+// The +4 is complete (#3861): the TARGET player picks the card from
+// their own hand and it is exiled. It is the pick-from-hand prompt
+// Chrome Mox uses (game.ChooseCardsPrompt with Zone: ZoneHand), with
+// the target as the chooser and a floor of one, because "exiles a
+// card" is not a "may". A player with an empty hand is not asked:
+// there is nothing to exile. Until #3861 it was a discard, which put
+// the card in a graveyard it could be recurred from.
 //
 // THE −14 IS NOT REGISTERED, and this is the one omission in the
 // catalog that needs no argument. "Restart the game" is not an
@@ -45,7 +43,6 @@ func init() {
 		Name:         "Karn Liberated",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"The +4 makes the target player discard a card instead of exiling it, so it goes to their graveyard.",
 			"The -14 isn't offered — restarting the game isn't something this engine can do.",
 		},
 		// Printed loyalty reaches the card through deck import
@@ -57,20 +54,7 @@ func init() {
 				Label:   "+4: Target player exiles a card from their hand.",
 				Cost:    LoyaltyCost(4),
 				Targets: TargetPlayer("target player"),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind != game.TargetPlayer {
-							continue
-						}
-						g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-							Player: t.ID,
-							Source: item.SourceCardID,
-							N:      1,
-						})
-					}
-					return nil
-				},
+				Effect:  karnPlusFour,
 			},
 			{
 				Label:   "−3: Exile target permanent.",
@@ -80,4 +64,40 @@ func init() {
 			},
 		},
 	})
+}
+
+// karnPlusFour asks the target player to exile a card from their hand.
+// Package-level, and its continuation too, so the queued prompt
+// captures nothing.
+func karnPlusFour(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetPlayer {
+			continue
+		}
+		p := g.PlayerByIDForEffect(t.ID)
+		if p == nil || p.Hand == nil || p.Hand.Size() == 0 {
+			continue
+		}
+		cards := make([]uuid.UUID, 0, p.Hand.Size())
+		for _, c := range p.Hand.Cards {
+			cards = append(cards, c.InstanceID)
+		}
+		g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+			Chooser:    t.ID,
+			FromPlayer: t.ID,
+			Source:     item.SourceCardID,
+			Question:   "Karn Liberated — exile a card from your hand",
+			Cards:      cards,
+			Min:        1,
+			Max:        1,
+			// Re-checked on submit: the pick must still be in that
+			// player's hand when the answer arrives.
+			Zone: game.ZoneHand,
+			// Chrome Mox's continuation, shared as Semblance Anvil
+			// shares it: exile the one card picked.
+			Then: chromeMoxExileThePick,
+		})
+	}
+	return nil
 }
