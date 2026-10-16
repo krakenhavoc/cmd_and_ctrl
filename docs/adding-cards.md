@@ -3673,6 +3673,16 @@ BlockRules: []game.BlockRule{
   `AttackLimits` slot holds `NoMoreThanNCanAttackThisEachCombat(1)`,
   named by `GrantAbilitiesToYourPlaneswalkers(key)`. "This" is the
   recipient, so each walker is counted on its own.
+- **"This creature can only attack alone"** (Master of Cruelties,
+  #3531) is `CanOnlyAttackAlone()` in `Spec.AttackLimits`
+  (`AttackLimitOnlyAlone`, CR 506.5). It limits nobody until its own
+  creature attacks; then nothing may join it, and it may not join a
+  declaration that already has an attacker. The CR 508.1d requirement
+  count weighs it attacking alone against the others attacking without
+  it, so a goaded creature beside it keeps it home, and a goaded one of
+  its own keeps the others home
+  ([ADR 0187](decisions/0187-any-player-pays-per-object-graveyard-and-either-payments.md)
+  amendment 2026-10-16).
 
 Tests: [block_rules_test.go](../server/internal/cards/effects/block_rules_test.go)
 pins every shape through the verb, `legal.EnumerateFor` and
@@ -6286,6 +6296,35 @@ code an ETB uses. The triggering event's object rides on the item as
 reads it off the item and captures nothing. This reverses
 [ADR 0026](decisions/0026-delayed-triggers.md) §1-2 for this one
 case; the 2026-09-18 amendment there is the record.
+
+**Once for each object, and a delayed trigger that targets (#3531,
+[ADR 0187](decisions/0187-any-player-pays-per-object-graveyard-and-either-payments.md)
+amendment 2026-10-16).** "Until end of turn, whenever a creature you
+control attacks and isn't blocked, you may choose to have it deal
+damage equal to its power to a target creature" (Gaze of Pain) needs two
+more things, and both are registrations rather than fields:
+
+- An **each-condition**, `game.DelayedEachCondition(key, fn)`, whose
+  function returns the objects the event concerns. The trigger
+  triggers once for each (CR 603.2c), and each instance carries its
+  object as the payload, its "it" (`ctx.PayloadCards()`). One block
+  declaration that leaves two of your creatures unblocked is two
+  instances. A one-shot trigger (no `Repeats`) still triggers once
+  (CR 603.7b).
+- A **targeted body**, `game.TargetedDelayedBody(key, fn, targetsFrom)`:
+  the body and its target clause, as `ReflexiveBody` registers a
+  reflexive trigger's. Each instance announces the clause as it goes on
+  the stack (CR 603.3d) and is removed when nothing can be chosen; a
+  restored item re-derives the clause from its body key. A targeted
+  delayed trigger carries no `Cards`.
+
+The "attacks and isn't blocked" conditions live in
+[delayed_attacks_unblocked.go](../server/internal/cards/effects/delayed_attacks_unblocked.go):
+`eachCreatureYouControlAttacksUnblockedCondition` (Gaze of Pain) and
+`whenThatCreatureAttacksUnblocked(ctx, creature, label, body)` for "this
+turn, when target creature you control attacks and isn't blocked"
+(Delif's Cone, Delif's Cube), keyed by the creature as an object, so one
+that left and came back never fires it (CR 603.7c).
 
 **A reflexive trigger (CR 603.12, #636):** "<do something>. **When
 you do**, <do something else>" — Ziatora's fling, an Overlook land's

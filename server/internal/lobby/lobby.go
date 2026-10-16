@@ -616,7 +616,7 @@ func (l *Lobby) CreateWith(name string, createdBy uuid.UUID, hostDiscordID strin
 	// The cap comes first: a refused create must cost nothing, and a
 	// reservation closes the gap between this check and the entry
 	// appearing in l.games (capacity.go).
-	release, err := l.reserveLoad(l.Capacity().TableCost(0, 0), metrics.RefuseTableLoad)
+	release, releaseLocked, err := l.reserveLoad(l.Capacity().TableCost(0, 0), metrics.RefuseTableLoad)
 	if err != nil {
 		return GameMeta{}, err
 	}
@@ -680,6 +680,9 @@ func (l *Lobby) CreateWith(name string, createdBy uuid.UUID, hostDiscordID strin
 	entry := &gameEntry{meta: meta, room: room, stop: make(chan struct{}), startedKnown: true, createdBy: creator}
 	l.mu.Lock()
 	l.games[g.ID] = entry
+	// The entry now carries the cost: drop the reservation in the same
+	// section, or a concurrent create would see it twice (#3957).
+	releaseLocked()
 	l.mu.Unlock()
 
 	return copyMeta(meta), nil

@@ -426,3 +426,40 @@ The owner answered all six questions on 2026-10-14. The answers are binding and 
    - (c) adding those cards to this ADR now.
 5. **Building the either payment before Worms can ship (§5).** **Decision: (a)**, as recommended. It's built now as slice 7, and Worms (slice 8) waits on #1985. Not chosen: (b) waiting for #1985.
 6. **Cleansing's move list for bots and the MCP seat (§7).** **Decision: (a)**, as recommended: "pay for none", then the suggested set, then a capped set of other combinations. Under decision 1, the suggested set and the bot's pick leave out lands an earlier player already chose to pay for, so a bot doesn't pay twice for nothing. Not chosen: (b) every prefix of the seat's own lands as extra moves.
+
+## Amendment — 2026-10-16: the rest of #3531 (delayed "attacks and isn't blocked" triggers, "can only attack alone", "this combat")
+
+[#3531](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3531) was the follow-up seam owner decision 4 opened for the 24 other cards that print "assigns no combat damage". #3696 and #3700 shipped 18 of them on §4's gate. Six were left, each with a second clause the gate doesn't cover. This amendment ships four. The other two are split into new seam issues. Every rule was checked against the Comprehensive Rules effective 2026-09-25. Each decision below takes the most CR-faithful option.
+
+### A1. A delayed trigger that triggers once for each object (CR 603.2c, 603.7b, 509.3g)
+
+Gaze of Pain: "Until end of turn, whenever a creature you control attacks and isn't blocked, you may choose to have it deal damage equal to its power to a target creature. If you do, it assigns no combat damage this turn." This is a delayed triggered ability with a stated duration (CR 603.7a-b). It triggers once for each creature that attacks and isn't blocked (CR 603.2c, 509.3g), and "it" is that creature.
+
+A delayed trigger used to fire once per event. "Attacks and isn't blocked" is read off `EventBlockersDeclared`, one event per defending player, and that event concerns every attacker the declaration left unblocked. So a condition can now name the objects as well: `game.DelayedEachCondition(key, fn)` registers a function that returns the objects the event concerns. The trigger triggers once for each, and each instance carries its object as the item's `Payload`. On disk the key is an ordinary condition key, so the snapshot format doesn't change, and a binary without the key refuses the file as it already does (`ErrUnknownEffectKey`). A one-shot trigger (no `Repeats`) still triggers once (CR 603.7b). Every one-shot each-condition in the catalog concerns one object, so the controller's choice that CR 603.7b gives for simultaneous events never comes up.
+
+Not chosen: a new per-attacker "attacks and isn't blocked" event. Every combat would emit it, and every reader of the event stream would see it. That is more reach than one each-condition registry needs.
+
+### A2. A delayed trigger that targets (CR 603.3d, 608.2b)
+
+Gaze of Pain's "a target creature" is chosen as each instance goes on the stack. `game.TargetedDelayedBody(key, fn, targetsFrom)` registers the body together with its clause. It is `ReflexiveBody`'s registration, for the same reason: a delayed trigger has no catalog row that restore can re-derive a clause from. `dispatchEventDelayedTriggerLocked` hands the clause to the harvester's dispatch, which already does the CR 603.3d pick and the removal when nothing can be chosen. A restored item gets its clause back through the existing reflexive path, keyed by its body. A targeted delayed trigger can't carry `Cards`, because the announced targets would overwrite them, and the scheduler refuses one that does. This also closes the "can't target" half of `targeted-delayed-death-trigger` (#2057).
+
+### A3. "This turn, when target creature you control attacks and isn't blocked" (CR 603.7c)
+
+Delif's Cone and Delif's Cube create a one-shot delayed trigger about the creature they targeted. The each-condition `attack/that-creature-unblocked` names the creature as an object (`CondParams.Object`, instance and epoch), so a creature that left and came back is a new object and never fires it (CR 603.7c). The trigger's source is the artifact (CR 603.7d). The Cube's "you put a cube counter on this artifact" goes on that Cube object or nowhere, and the creature is marked either way.
+
+### A4. "This creature can only attack alone" (CR 506.5, 508.1c-d)
+
+Master of Cruelties' restriction is a new attack-limit scope, `AttackLimitOnlyAlone` (`effects.CanOnlyAttackAlone()`, Max 1). It counts every attack while its own creature is one of them, and counts nothing otherwise. Before that creature attacks, it limits nobody. After it attacks, nothing may join it. And it can't join a declaration that already has an attacker. Both declaration verbs and the legal-move enumerator already read the limit check, so the bot is never offered a refused attack. The refusal sentence is "Master of Cruelties can only attack alone."
+
+The CR 508.1d requirement count needed a change, because the limit is not a capacity: it depends on whether its creature is in the set. `attackRequirementReachLocked` takes the better of two options: the other creatures attacking without it (the existing min-cost flow), or it attacking alone (its best single attack). A declaration that already has an attacker leaves it out. One where it already attacks leaves no room. Without this, a goaded Master beside a goaded creature would leave the active player with no declaration the checkpoint accepts.
+
+### A5. "Assigns no combat damage this combat" (CR 510.1a, 511.3)
+
+Master's trigger marks it for the combat it resolves in, not the turn: `Game.AssignsNoCombatDamageThisCombatForEffect`. It is the same `ModAssignsNoCombatDamage` record timed by `UntilEndOfCombat`. In an added combat phase, Master deals its damage again. Neither the mod kind nor the duration kind is new. The client's chip still reads "Assigns no combat damage this turn", but for this mark it is only shown during the combat in which it applies.
+
+### Cards and what is left
+
+Shipped, `CompletenessFull`: Gaze of Pain, Delif's Cone, Delif's Cube and Master of Cruelties. Split out, each to a new seam issue:
+
+- Pygmy Hippo, [#3952](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3952). The defending player activates a mana ability of each land they control during a resolution, and the mana they lose is counted. Drain Power has the same shape.
+- Stromgald Spy, [#3953](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3953). A player plays with their hand revealed for a duration. Revelation (#1997) and Telepathy have the same shape.
