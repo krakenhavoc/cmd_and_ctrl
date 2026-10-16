@@ -1384,7 +1384,7 @@ func (e *enumerator) exilePermanentPayments(pool []uuid.UUID, ec *game.ExilePerm
 		}
 		return out
 	case len(ec.EachSubtype) > 0:
-		if pick := e.g.ExilePermanentsPaymentForEffect(e.seat, ec, ordered); pick != nil {
+		if pick := e.g.ExilePermanentsPaymentForEffect(e.seat, sourceID, ec, ordered); pick != nil {
 			return [][]uuid.UUID{pick}
 		}
 		return nil
@@ -1827,9 +1827,12 @@ func counterPaymentChoices(opts []game.CounterCostOption, rc *game.CounterRemova
 		if need > 0 {
 			return nil
 		}
+		// #3987's self form ("Remove two counters from Ghost-Spider")
+		// has the source as its one option, so the same walk drains its
+		// kinds; like every self payment it names no permanents.
 		return []counterChoice{{
 			parts: parts, total: rc.N, count: best,
-			fromOther: true, anyKind: rc.Counter == "", explicitCounts: true,
+			fromOther: rc.From != nil, anyKind: rc.Counter == "", explicitCounts: true,
 		}}
 	}
 	fromOther := rc.From != nil
@@ -2029,7 +2032,7 @@ func (e *enumerator) sacrificePayments(pool []uuid.UUID, spec *game.TargetSpec, 
 	}
 	if len(spec.EachOf) > 0 {
 		ordered := e.g.SacrificePaymentOrderForEffect(pool, sourceID)
-		pay := e.g.SacrificeSetPaymentForEffect(spec, ordered)
+		pay := e.g.SacrificeSetPaymentForEffect(sourceID, spec, ordered)
 		if pay == nil {
 			return nil
 		}

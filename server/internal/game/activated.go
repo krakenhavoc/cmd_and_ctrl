@@ -2542,7 +2542,7 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 	// clause's union predicate above; the SET must still fill every
 	// entry, one permanent each. Two Swamps are not a Swamp and a
 	// Forest.
-	if !g.sacrificeSetSatisfiedLocked(cost.SacrificeOther, chosen) {
+	if !g.sacrificeSetSatisfiedLocked(sourceID, cost.SacrificeOther, chosen) {
 		return nil, ErrIllegalTarget
 	}
 	// #3940: "Sacrifice three artifact tokens with different names" —

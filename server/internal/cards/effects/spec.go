@@ -1205,6 +1205,18 @@ type Spec struct {
 	// PlayerCantGainLifeForRestOfGame).
 	CantGainLife []game.CantGainLifeStatic
 
+	// DrawLimits declares this permanent's printed draw restrictions
+	// (CR 121.2b, #3927):
+	//
+	//	DrawLimits: EachOpponentCantDrawMoreThanOneCardEachTurn(), // Narset, Parter of Veils
+	//	DrawLimits: EachPlayerCantDrawMoreThanOneCardEachTurn(),   // Spirit of the Labyrinth
+	//	DrawLimits: PlayersCantDrawCards(),                        // Maralen of the Mornsong
+	//
+	// Read from the battlefield through game.CatalogDrawLimits, keyed by
+	// CatalogAbilityKey, before each individual draw's replacement
+	// window: a draw the cap forbids is not performed (draw_limit.go).
+	DrawLimits []game.DrawLimitStatic
+
 	// DamageAsThough declares this permanent's printed "damage is dealt
 	// as though its source had wither / infect" statics (CR 120.3, 609.4,
 	// ADR 0108 §10):

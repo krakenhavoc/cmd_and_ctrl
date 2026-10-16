@@ -1030,7 +1030,7 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 	// and another card"). Each card passed the clause's union predicate
 	// above; the SET must still fill every entry, one card each. Two
 	// non-Island cards are not an Island card and another card.
-	if !g.costSetSatisfiedLocked(spec, zone, ids) {
+	if !g.costSetSatisfiedLocked(spec, zone, ids, nil) {
 		return ErrInvalidParam
 	}
 	return nil

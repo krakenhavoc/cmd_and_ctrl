@@ -48,11 +48,12 @@ func b34WhiteZombieToken() game.Card { return TokenCard("1/1 white Zombie") }
 // b34ElementalsControlled counts the Elementals `controller`
 // controls — Omnath, Locus of the Roil's damage. Effective subtypes,
 // so a changeling counts; Omnath himself is one and counts, as
-// printed.
-func b34ElementalsControlled(g *game.Game, controller uuid.UUID) int {
+// printed. `elemental` is the type as the counting object's text reads
+// it (TextSubtype, CR 612.2, #3984).
+func b34ElementalsControlled(g *game.Game, controller uuid.UUID, elemental string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.HasSubtype("Elemental") {
+		if c.Controller == controller && c.HasSubtype(elemental) {
 			n++
 		}
 	}
@@ -152,9 +153,10 @@ func b34YouSacrificedAFoodThisTurn(g *game.Game, controller uuid.UUID) bool {
 // and the player it entered under at its EventETB, so it answers the
 // printed question directly, and it is the same accessor Lilypad
 // Village and Eowyn read. A changeling counts (CR 702.73a, the
-// tally's all-creature-types bucket).
-func b34GoblinsEnteredUnderYourControlThisTurn(g *game.Game, controller uuid.UUID) int {
-	return g.EnteredWithSubtypeThisTurn(controller, "Goblin")
+// tally's all-creature-types bucket). `goblin` is the creature type as
+// the counting object's text now reads it (TextSubtype, CR 612.2, #3984).
+func b34GoblinsEnteredUnderYourControlThisTurn(g *game.Game, controller uuid.UUID, goblin string) int {
+	return g.EnteredWithSubtypeThisTurn(controller, goblin)
 }
 
 // b34DamageSourceController resolves who controls the source of a
@@ -223,7 +225,7 @@ func b34SelfOrAnotherNontokenHistoricYouControlEntered(ev game.Event, source *ga
 // grant counts.
 func b34VampireYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Vampire")
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Vampire"))
 }
 
 // b34SourceYouControlDealtDamageToPlayerAtLeast is Dragonborn
@@ -243,9 +245,10 @@ func b34SourceYouControlDealtDamageToPlayerAtLeast(ev game.Event, source *game.C
 
 // b34ZombieOrTokenYouControl is On Wings of Gold's scope: a creature
 // the source's controller controls that is a Zombie and/or a token.
+// "Zombie" is a word of the source's text (CR 612.2, #3984).
 func b34ZombieOrTokenYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsCreature() && target.Controller == source.Controller &&
-		(target.HasSubtype("Zombie") || IsToken(*target))
+		(target.HasSubtype(source.TextSubtype("Zombie")) || IsToken(*target))
 }
 
 // b34ZombiesAndTokensYouControlGetPlusOne is the +1/+1 half of On
@@ -347,7 +350,7 @@ func b34DrawPerCreatureYouControlMatching(match func(game.Card) bool) func(g *ga
 // the damage is Omnath by last known information.
 func b34DamageChosenTargetPerElemental(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	n := b34ElementalsControlled(g, item.Controller)
+	n := b34ElementalsControlled(g, item.Controller, ctx.TextSubtype("Elemental"))
 	for _, t := range ctx.LegalTargets() {
 		return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: n}.Apply(ctx)
 	}
@@ -470,7 +473,7 @@ func b34DamageEachOpponentAndGainLife(damage, life int) func(g *game.Game, item 
 // activation is in the number — off the per-turn entry tally.
 func b34DamageChosenTargetPerGoblinEnteredThisTurn(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	n := b34GoblinsEnteredUnderYourControlThisTurn(g, item.Controller)
+	n := b34GoblinsEnteredUnderYourControlThisTurn(g, item.Controller, ctx.TextSubtype("Goblin"))
 	for _, t := range ctx.LegalTargets() {
 		return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: n}.Apply(ctx)
 	}

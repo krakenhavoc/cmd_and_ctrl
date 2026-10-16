@@ -30,20 +30,21 @@ func init() {
 			Text:      "Unearth {1}{B}",
 		}},
 		Static: []game.StaticAbility{
-			Labelled(GrantAbilitiesInZone(game.ZoneGraveyard, CardsYouOwn(doomguideRecipient), "solemn-doomguide/unearth"),
+			Labelled(GrantAbilitiesInZone(game.ZoneGraveyard, doomguideRecipient, "solemn-doomguide/unearth"),
 				"Each creature card in your graveyard that's a Cleric, Rogue, Warrior, and/or Wizard has unearth {1}{B}."),
 		},
 	})
 }
 
-// doomguideRecipient is a creature card that's a Cleric, Rogue, Warrior
-// and/or Wizard.
-func doomguideRecipient(card *game.Card) bool {
-	if !card.IsCreature() {
+// doomguideRecipient is a creature card you own that's a Cleric, Rogue,
+// Warrior and/or Wizard (CardsYouOwn's owner test). The four types are
+// words of the source's text (CR 612.2, #3984).
+func doomguideRecipient(card *game.Card, _ *game.Game, source *game.Card) bool {
+	if source == nil || card.Owner != source.Controller || !card.IsCreature() {
 		return false
 	}
 	for _, t := range []string{"Cleric", "Rogue", "Warrior", "Wizard"} {
-		if card.HasSubtype(t) {
+		if card.HasSubtype(source.TextSubtype(t)) {
 			return true
 		}
 	}

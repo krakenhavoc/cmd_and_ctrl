@@ -50,7 +50,8 @@ func breechesEagerPillagerTrigger() game.TriggeredAbility {
 			return false
 		}
 		c, ok := g.LookupCardForEffect(ev.CardID)
-		return ok && c.HasSubtype("Pirate")
+		// "Pirate" is a word of the source's text (CR 612.2, #3984).
+		return ok && c.HasSubtype(source.TextSubtype("Pirate"))
 	}, breechesEagerPillagerLabel, func(_ *game.Game, _ *game.StackItem) error { return nil })
 	t.Modes = ChooseOneNotChosenThisTurn(
 		ModeDoing("Create a Treasure token.", nil,

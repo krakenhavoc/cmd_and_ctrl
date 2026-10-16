@@ -24,10 +24,12 @@ func init() {
 	d := DoublesAbilitiesOf(nil, DoublesAbilitiesOfOptions{
 		SourceMatch: func(_ *game.Game, q game.TriggerDoublingQuery) bool {
 			src := characteristicCard(q.Source.InstanceID, q.Source, q.SourceLKI)
-			if src.HasSubtype("Shaman") {
+			// "Shaman" and "Wizard" are words of the Prodigy's text
+			// (CR 612.2, #3984).
+			if src.HasSubtype(q.Doubler.TextSubtype("Shaman")) {
 				return true
 			}
-			return q.Source.InstanceID != q.Doubler.InstanceID && src.HasSubtype("Wizard")
+			return q.Source.InstanceID != q.Doubler.InstanceID && src.HasSubtype(q.Doubler.TextSubtype("Wizard"))
 		},
 	})
 	d.Label = "Harmonic Prodigy"

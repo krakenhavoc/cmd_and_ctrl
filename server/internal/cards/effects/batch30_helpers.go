@@ -53,18 +53,20 @@ func b30IsBasicLandCard(c game.Card) bool {
 
 // b30SquirrelOrFood reports whether a permanent is a Squirrel or a
 // Food — Honored Dreyleader's count and trigger. Effective subtypes,
-// so a changeling is a Squirrel.
-func b30SquirrelOrFood(c game.Card) bool {
-	return c.HasSubtype("Squirrel") || c.HasSubtype("Food")
+// so a changeling is a Squirrel. `squirrel` is the creature type as
+// the source's text reads it (TextSubtype, CR 612.2, #3984); Food is
+// an artifact type, which no text change reaches.
+func b30SquirrelOrFood(c game.Card, squirrel string) bool {
+	return c.HasSubtype(squirrel) || c.HasSubtype("Food")
 }
 
 // b30OtherSquirrelsAndFoodControlled counts the Squirrels and Foods
 // `controller` controls other than `self` — Honored Dreyleader's
 // entry count.
-func b30OtherSquirrelsAndFoodControlled(g *game.Game, controller, self uuid.UUID) int {
+func b30OtherSquirrelsAndFoodControlled(g *game.Game, controller, self uuid.UUID, squirrel string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.InstanceID != self && c.Controller == controller && b30SquirrelOrFood(c) {
+		if c.InstanceID != self && c.Controller == controller && b30SquirrelOrFood(c, squirrel) {
 			n++
 		}
 	}
@@ -137,7 +139,7 @@ func b30CreaturesYouControlWithFlying(target *game.Card, _ *game.Game, source *g
 // token's entry emits the same EventETB a card's does.
 func b30AnotherSquirrelOrFoodYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
 	c, ok := enteredUnderYourControl(ev, source, g, true)
-	return ok && b30SquirrelOrFood(c)
+	return ok && b30SquirrelOrFood(c, source.TextSubtype("Squirrel"))
 }
 
 // b30SelfOrAnotherEnchantmentYouControlEntered is constellation —
@@ -326,7 +328,7 @@ func b30CountersForOtherSquirrelsAndFood(g *game.Game, item *game.StackItem) err
 	if !b09SourceStillOnBattlefield(g, item) {
 		return nil
 	}
-	n := b30OtherSquirrelsAndFoodControlled(g, item.Controller, item.SourceCardID)
+	n := b30OtherSquirrelsAndFoodControlled(g, item.Controller, item.SourceCardID, g.TextReaderForEffect(item).TextSubtype("Squirrel"))
 	if n <= 0 {
 		return nil
 	}

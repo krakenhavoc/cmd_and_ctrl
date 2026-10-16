@@ -287,14 +287,19 @@ func LoseAllAbilities(keep ...string) game.StaticAbility {
 // also what takes "is every creature type" away: a creature a
 // Maskwood Nexus made every type earlier in layer 4 and a Kenrith's
 // Transformation then set to Elk is an Elk (#670).
+//
+// The subtypes are words of the Aura's text (CR 612.2, #3984): each is
+// read through the source as the pass applies it, so Kenrith's
+// Transformation under an Artificial Evolution (Elk → Frog) makes a
+// Frog. A card type is no text word and is set as given.
 func SetAttachedTypes(types []string, subtypes []string) game.StaticAbility {
 	return game.StaticAbility{
 		Label:     attachedTypesLabel(types, subtypes),
 		Layer:     game.Layer4Type,
 		AppliesTo: AttachedToSource,
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
 			c.Types = append([]string(nil), types...)
-			c.SetSubtypes(subtypes)
+			c.SetSubtypes(source.TextSubtypes(subtypes...))
 		},
 	}
 }
@@ -307,6 +312,11 @@ func SetAttachedTypes(types []string, subtypes []string) game.StaticAbility {
 // No arguments means colourless, which is a real answer and not an
 // empty one: Song of the Dryads turning an opposing commander
 // colourless is how it dodges a colour-restricted removal spell.
+//
+// The colours are words of the Aura's text (CR 612.2, #3984), read
+// through the source as the pass applies them: Eye of Nidhogg's
+// "enchanted creature is black" under a Sleight of Mind (black → red)
+// makes it red.
 func SetAttachedColors(colors ...string) game.StaticAbility {
 	return game.StaticAbility{
 		Label: "Attached permanent's color is changed.",
@@ -318,8 +328,8 @@ func SetAttachedColors(colors ...string) game.StaticAbility {
 		// below. See game.StaticAbility.ContinuesAfterRemoval.
 		ContinuesAfterRemoval: true,
 		AppliesTo:             AttachedToSource,
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			c.Colors = append([]string(nil), colors...)
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+			c.Colors = append([]string(nil), source.TextColors(colors...)...)
 		},
 	}
 }

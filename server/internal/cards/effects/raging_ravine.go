@@ -75,8 +75,8 @@ func init() {
 					Keys:   []string{ragingRavineAttackCounter},
 					Also: []game.Mod{
 						game.AddTypesMod("Creature"),
-						game.AddSubtypesMod("Elemental"),
-						game.SetColorsMod("R", "G"),
+						game.AddSubtypesMod(g.TextReaderForEffect(item).TextSubtypes("Elemental")...),
+						game.SetColorsMod(g.TextReaderForEffect(item).TextColors("R", "G")...),
 						game.SetBasePowerMod(3),
 						game.SetBaseToughnessMod(3),
 					},

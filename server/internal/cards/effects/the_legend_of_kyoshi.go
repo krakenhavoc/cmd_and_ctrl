@@ -118,7 +118,7 @@ func kyoshiChapterTwo(g *game.Game, item *game.StackItem) error {
 func kyoshiChapterTwoBecomesIsland(ctx *Context, target uuid.UUID) error {
 	return ScopedEffectFor{
 		Target:   target,
-		Mods:     []game.Mod{game.AddSubtypesMod("Island")},
+		Mods:     []game.Mod{game.AddSubtypesMod(ctx.TextSubtypes("Island")...)},
 		Duration: ctx.Game.PinnedTo(game.IndefiniteDuration(), target),
 		Label:    "The Legend of Kyoshi — that land becomes an Island in addition to its other types",
 	}.Apply(ctx)

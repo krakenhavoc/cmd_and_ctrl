@@ -22,7 +22,9 @@ func init() {
 		Activated:       []ActivatedAbility{Saddle(3)},
 		Triggered: []game.TriggeredAbility{
 			AttacksWhileSaddled("Congregation Gryff — +X/+X, where X is the number of Mounts you control", func(g *game.Game, item *game.StackItem) error {
-				x := countControlled(g, item.Controller, func(c game.Card) bool { return c.HasSubtype("Mount") })
+				// "Mounts" is a word of the source's text (CR 612.2, #3984).
+				mount := g.TextReaderForEffect(item).TextSubtype("Mount")
+				x := countControlled(g, item.Controller, func(c game.Card) bool { return c.HasSubtype(mount) })
 				return BoostUntilEOT{Target: item.SourceCardID, Power: x, Toughness: x, Label: "Congregation Gryff — +X/+X"}.Apply(NewContext(g, item))
 			}),
 		},

@@ -49,11 +49,13 @@ func init() {
 				return attackDeclared(ev, source)
 			}, "Finneas, Ace Archer — a +1/+1 counter on each other token or Rabbit, then draw on total power 10", func(g *game.Game, item *game.StackItem) error {
 				var ids []uuid.UUID
+				// "Rabbit" is a word of the source's text (CR 612.2, #3984).
+				rabbit := g.TextReaderForEffect(item).TextSubtype("Rabbit")
 				for _, c := range g.BattlefieldCardsForEffect() {
 					if c.InstanceID == item.SourceCardID || c.Controller != item.Controller || !c.IsCreature() {
 						continue
 					}
-					if IsToken(c) || c.HasSubtype("Rabbit") {
+					if IsToken(c) || c.HasSubtype(rabbit) {
 						ids = append(ids, c.InstanceID)
 					}
 				}

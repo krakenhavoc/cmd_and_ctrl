@@ -84,8 +84,10 @@ func b36IsAuraCard(c game.Card) bool { return c.IsAura() }
 
 // b36IsDragonCreatureCard is Sarkhan's Triumph's search filter: a
 // creature card with the Dragon type, on the printed type line.
+// SearchLibrary lends the spell's text, so "Dragon" follows a text
+// change (CR 612.2, #3984).
 func b36IsDragonCreatureCard(c game.Card) bool {
-	return c.IsCreature() && c.HasSubtype("Dragon")
+	return c.IsCreature() && c.HasSubtypeWord("Dragon")
 }
 
 // --- card reads ----------------------------------------------------
@@ -114,7 +116,7 @@ func b36SelfOrAnotherNontokenCatYouControlEntered(ev game.Event, source *game.Ca
 		return true
 	}
 	c, ok := enteredUnderYourControl(ev, source, g, true)
-	return ok && c.IsCreature() && !IsToken(c) && c.HasSubtype("Cat")
+	return ok && c.IsCreature() && !IsToken(c) && c.HasSubtype(source.TextSubtype("Cat"))
 }
 
 // b36SelfOrAnotherHumanYouControlEntered is Lossarnach Captain's
@@ -126,7 +128,8 @@ func b36SelfOrAnotherHumanYouControlEntered(ev game.Event, source *game.Card, g 
 		return true
 	}
 	c, ok := enteredUnderYourControl(ev, source, g, true)
-	return ok && c.HasSubtype("Human")
+	// "Human" is a word of the source's text (CR 612.2, #3984).
+	return ok && c.HasSubtype(source.TextSubtype("Human"))
 }
 
 // b36NontokenVampiresYouControlAttacked is Mavren Fein, Dusk
@@ -141,7 +144,7 @@ func b36NontokenVampiresYouControlAttacked(ev game.Event, source *game.Card, g *
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsCreature() && !IsToken(c) && c.HasSubtype("Vampire")
+	return ok && c.IsCreature() && !IsToken(c) && c.HasSubtype(source.TextSubtype("Vampire"))
 }
 
 // b36ArtifactCreatureYouControlDealtCombatDamageToPlayer is Sharding
@@ -169,7 +172,7 @@ func b36SelfDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.
 // creature that was an Angel only through a grant.
 func b36AngelYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Angel")
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Angel"))
 }
 
 // b36AnotherFaerieYouControlDied is Tegwyll, Duke of Splendor's
@@ -178,7 +181,7 @@ func b36AngelYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool
 func b36AnotherFaerieYouControlDied(ev game.Event, source *game.Card, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
 	return ok && dead.InstanceID != source.InstanceID &&
-		leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Faerie")
+		leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Faerie"))
 }
 
 // b36EndStepAndAnOpponentLostThree is Sygg, River Cutthroat's

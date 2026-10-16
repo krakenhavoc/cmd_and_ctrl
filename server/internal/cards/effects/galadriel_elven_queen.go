@@ -56,13 +56,14 @@ func init() {
 // the battlefield under your control this turn": the turn's entry tally
 // for the source's controller, needing one more entry when the source
 // itself entered this turn (Éowyn, Shieldmaiden; Galadriel,
-// Elven-Queen).
+// Elven-Queen). `subtype` is the printed word, read through the source's
+// text (CR 612.2, #3984).
 func anotherEnteredWithSubtypeThisTurn(g *game.Game, source *game.Card, subtype string) bool {
 	need := 1
 	if g.EnteredThisTurn(source.InstanceID) {
 		need = 2
 	}
-	return g.EnteredWithSubtypeThisTurn(source.Controller, subtype) >= need
+	return g.EnteredWithSubtypeThisTurn(source.Controller, source.TextSubtype(subtype)) >= need
 }
 
 func galadrielElvenQueenVote(g *game.Game, item *game.StackItem) error {
