@@ -1530,6 +1530,14 @@ type Spec struct {
 	// NOW — no library mutation has to invalidate anything.
 	LibraryTopVisible game.LibraryTopVisibility
 
+	// HandsRevealed declares "your opponents play with their hands
+	// revealed" (game.HandRevealOpponents, Telepathy) or "players play
+	// with their hands revealed" (game.HandRevealEachPlayer,
+	// Revelation). Not a `Static` entry, for LibraryTopVisible's reason:
+	// it is a fact about players' hands, derived from the battlefield on
+	// every query (game.HandRevealedLocked, ADR 0199).
+	HandsRevealed game.HandRevealScope
+
 	// DiscardByOpponent declares what "if a spell or ability an
 	// opponent controls causes you to discard this card" does for this
 	// card while it sits in a hand: game.DiscardByOpponentBattlefield

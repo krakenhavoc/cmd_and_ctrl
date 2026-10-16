@@ -2639,6 +2639,11 @@ export interface PlayerView {
   // from your hand — Memory Vessel"). While it is set `cant_play_lands`
   // carries the same clause; the badge row shows one NO HAND badge.
   cant_play_from_hand?: string;
+  // ADR 0199 (#3953, CR 701.20a): why this seat plays with its hand
+  // revealed right now ("Telepathy", "Stromgald Spy"). While it is set the
+  // hand's cards reach every seat face up, cards drawn later included.
+  // Absent when the hand is as hidden as any other.
+  hand_revealed?: string[];
   // ADR 0057 (#749, CR 104.3): the "can't lose the game" / "can't win
   // the game" gates on this seat. `cant_lose` lists the causes that
   // can't make this player lose right now ("life", "empty_draw",

@@ -2565,6 +2565,13 @@ type PlayerView struct {
 	// the ban refuses every land out of the hand.
 	CantPlayFromHand string `json:"cant_play_from_hand,omitempty"`
 
+	// HandRevealed names why this player plays with their hand revealed
+	// right now ("Telepathy", "Stromgald Spy"), or is empty (ADR 0199,
+	// #3953). Public: the cards themselves reach every seat through the
+	// hand's projection while it is set, and this is the seat's banner
+	// that says why.
+	HandRevealed []string `json:"hand_revealed,omitempty"`
+
 	// CantLose lists the causes that can't make this player lose the
 	// game right now ("life", "empty_draw", "poison",
 	// "commander_damage", "effect") — all five under a Platinum Angel.
@@ -5368,6 +5375,7 @@ func ViewOfGame(g *game.Game) GameView {
 			}
 		}
 		stampLibraryTop(g, view.Seats)
+		stampHandRevealed(view.Seats)
 		stampDiscardByOpponent(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
 		stampZoneAbilities(g, view.Seats, &view.Exile)
@@ -9781,6 +9789,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		CantGainLife:        g.PlayerCantGainLifeLocked(p),
 		CantPlayLands:       g.LandPlayBanFor(p.ID),
 		CantPlayFromHand:    g.HandPlayBanFor(p.ID),
+		HandRevealed:        g.HandRevealedLocked(p.ID),
 		CantLose:            lossCauseStrings(g.CantLoseCausesForEffect(p)),
 		CantWin:             g.CantWinForEffect(p),
 		EndGates:            viewOfGameEndGates(g.GameEndGatesForEffect(p)),
@@ -11891,6 +11900,35 @@ func stampLibraryTop(g *game.Game, seats []PlayerView) {
 		}
 		for _, k := range knowers {
 			top.knowers[k.String()] = true
+		}
+	}
+}
+
+// stampHandRevealed makes every card in a hand its owner plays with
+// revealed (Telepathy, Revelation, Stromgald Spy; ADR 0199) known to
+// every seat, the way stampLibraryTop does for a revealed top card and
+// for its reasons: the view runs under a read lock, and the set of
+// cards is whatever is in the hand NOW, so a card drawn while the
+// effect lasts is shown and nothing is remembered once it ends.
+//
+// Reads the seat's own HandRevealed, which the seat projection has
+// already derived, so the battlefield is walked once per seat.
+func stampHandRevealed(seats []PlayerView) {
+	for si := range seats {
+		seat := &seats[si]
+		if len(seat.HandRevealed) == 0 || len(seat.Hand.Cards) == 0 {
+			continue
+		}
+		for ci := range seat.Hand.Cards {
+			c := &seat.Hand.Cards[ci]
+			if c.knowers == nil {
+				c.knowers = make(map[string]bool, len(seats))
+			}
+			for _, other := range seats {
+				if other.ID != "" {
+					c.knowers[other.ID] = true
+				}
+			}
 		}
 	}
 }

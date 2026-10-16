@@ -1629,7 +1629,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"AdditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
 	"GatedCastPermissions": defFieldInert, "CastTimings": defFieldInert,
 	"GrantedAlternativeCosts": defFieldInert, "OpeningHand": defFieldInert,
-	"LibraryTopVisible": defFieldInert, "DiscardByOpponent": defFieldInert, "DiscardByOpponentForHand": defFieldInert,
+	"LibraryTopVisible": defFieldInert, "HandsRevealed": defFieldInert, "DiscardByOpponent": defFieldInert, "DiscardByOpponentForHand": defFieldInert,
 
 	"Triggered": defFieldReactor, "Replacements": defFieldOwnRules,
 

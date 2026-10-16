@@ -779,7 +779,8 @@ func lenderUnautomated(l *Card) bool {
 //     revealed"), its owner under "you may look at the top card".
 //     Any other library card is seen by nobody.
 //   - A hand card is seen by its owner and by every seat it was revealed
-//     to (Card.KnownBy).
+//     to (Card.KnownBy), or by every seat while its owner plays with
+//     their hand revealed (HandRevealedLocked, ADR 0199).
 //
 // hidden is false, and knowers nil, for a lender in a public zone or one
 // the game no longer has, whose last-known name was public.
@@ -799,6 +800,15 @@ func (g *Game) LenderKnowersLocked(id uuid.UUID) (hidden bool, knowers []uuid.UU
 		return true, nil
 	case ZoneHand:
 		knowers = append(knowers, z.Owner)
+		// ADR 0199: a hand played revealed is seen by every seat.
+		if len(g.HandRevealedLocked(z.Owner)) > 0 {
+			for _, seat := range g.Seats {
+				if seat != nil && seat.ID != z.Owner {
+					knowers = append(knowers, seat.ID)
+				}
+			}
+			return true, knowers
+		}
 		for i := range z.Cards {
 			if z.Cards[i].InstanceID != id {
 				continue
