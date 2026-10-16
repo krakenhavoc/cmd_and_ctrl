@@ -387,7 +387,7 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 	// zone-bound offer); this lists it. A permission with a price of its
 	// own ("without paying its mana cost", escape, Bolas's Citadel)
 	// lists none: CR 118.9a allows one alternative cost per cast.
-	if grant != nil && grant.AltCostKey == "" && grant.Cost == "" && zone != ZoneHand && zone != ZoneCommand {
+	if grant != nil && grant.AltCostKey == "" && !grant.NamesPrice() && zone != ZoneHand && zone != ZoneCommand {
 		for _, ac := range AlternativeCostsOfferedFromZone(CatalogKey(card), ZoneHand) {
 			if ac.FromZone != "" {
 				continue

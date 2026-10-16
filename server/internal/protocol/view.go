@@ -6813,7 +6813,8 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	if haveLive {
 		// A permanent may grant this spell convoke (Hoarding Broodlord's
 		// "spells you cast from exile", Dazzling Theater's creature spells).
-		tc = g.TapPermanentsCostForCastLocked(caster, live, kind)
+		// #3989: a permission priced by waterbending (Hama) owes its own.
+		tc = g.TapPermanentsCostForGrantLocked(caster, live, kind, grant)
 	}
 	if !tc.Empty() {
 		out.TapCost = viewOfTapCost(g, caster, f.manaCost, tc)

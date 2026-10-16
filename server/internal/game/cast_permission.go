@@ -471,6 +471,21 @@ type CastPermission struct {
 	// before this.
 	CostLess int `json:"costLess,omitempty"`
 
+	// WaterbendManaValue is Hama, the Bloodbender's "you may cast the
+	// exiled card ... by waterbending {X} rather than paying its mana
+	// cost, where X is its mana value" (CR 701.67a, ADR 0066's
+	// 2026-10-16 amendment, #3989). The waterbend is the alternative
+	// cost (CR 118.9): CastCostFor charges "{N}", N the mana value of
+	// the face being cast with any {X} at 0 (CR 107.3b), so the
+	// commander tax and the board's cost modifiers apply to it
+	// (CR 118.9d), and TapPermanentsCostForGrantLocked hands the cast a
+	// waterbend {N} tap cost marked InCost, so tapped artifacts and
+	// creatures pay that {N} and nothing else (CR 701.67b). The
+	// validator, the pricer, the tap picker in the view and the
+	// enumerator all read those two. Cost stays empty: this is the
+	// price. Not applied to a land, which is not cast.
+	WaterbendManaValue bool `json:"waterbendManaValue,omitempty"`
+
 	// LifeEqualToManaValue is Bolas's Citadel: "pay life equal to its
 	// mana value rather than pay its mana cost". A COST (CR 119.4),
 	// so a player without the life cannot claim it at all —
@@ -984,6 +999,14 @@ func (p *CastPermission) NamedFace() (int, bool) {
 		return 0, false
 	}
 	return p.Faces[0], true
+}
+
+// NamesPrice reports whether the permission prices the cast itself
+// rather than letting it pay the card's printed mana cost: a flat Cost
+// (airbend, cascade) or a waterbend of the card's mana value (#3989).
+// Nil-safe.
+func (p *CastPermission) NamesPrice() bool {
+	return p != nil && (p.Cost != "" || p.WaterbendManaValue)
 }
 
 // AlternativeCostFor synthesises the CR 118.9 offer this permission
