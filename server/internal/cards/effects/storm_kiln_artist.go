@@ -43,9 +43,7 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			OnAny(magecraftEvents, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return instantOrSorceryCastOrCopiedByYou(ev, source, g)
-			}, "Storm-Kiln Artist — create a Treasure", Do(CreateToken{
+			Magecraft("Storm-Kiln Artist — create a Treasure", Do(CreateToken{
 				Template: TreasureToken(),
 				N:        1,
 			})),

@@ -329,9 +329,11 @@ const (
 	// new spell on the stack that was created, not cast, so it fires no
 	// EventCast. Actor is the copy's controller, CardID is the copy and
 	// Source the spell it copies. It exists for "whenever you cast OR
-	// COPY an instant or sorcery spell" (magecraft: Archmage Emeritus,
-	// Storm-Kiln Artist, Sedgemoor Witch), which watches this beside
-	// EventCast. A copy of an ABILITY (CR 707.10) is not a spell and
+	// COPY an instant or sorcery spell" (magecraft, effects.Magecraft:
+	// Extus, Oriq Overlord, Archmage Emeritus, Storm-Kiln Artist,
+	// Sedgemoor Witch, #2090), which watches this beside EventCast. A
+	// copy of a card CAST from another zone (CR 707.12) is cast and emits
+	// EventCast only. A copy of an ABILITY (CR 707.10) is not a spell and
 	// emits nothing here. Emitted by createSpellCopyLocked, after the
 	// copy is on the stack. The log says nothing: the copy is on the
 	// stack the table is looking at.
