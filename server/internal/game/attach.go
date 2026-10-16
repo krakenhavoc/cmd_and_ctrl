@@ -544,7 +544,14 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 	}
 	if c.IsAura() {
 		if spec := TargetSpecFor(catalogKeyOf(c)); spec != nil {
-			return g.specMatchLocked(SourceChooser(c.Controller), spec, c.AttachedTo, false)
+			// The enchant clause is the Aura's own text, so its words read
+			// as that text now says them (CR 612.2, #3872): Utopia
+			// Sprawl's "Enchant Forest" under a Magical Hack is "Enchant
+			// Island", and on a Forest it is put into its owner's
+			// graveyard (CR 704.5m).
+			src := SourceChooser(c.Controller)
+			src.text = c.TextWords
+			return g.specMatchLocked(src, spec, c.AttachedTo, false)
 		}
 	} else if !c.HasSubtype("Equipment") && !c.HasSubtype("Fortification") {
 		// CR 704.5p: a battle or creature that is attached to an

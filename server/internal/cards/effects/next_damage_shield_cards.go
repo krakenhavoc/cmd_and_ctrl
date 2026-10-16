@@ -79,7 +79,7 @@ func chosenColorShieldRow(label string, cost game.AbilityCost) ActivatedAbility 
 			if !ok || info.ChosenColor == "" {
 				return nil
 			}
-			return PreventNextDamageFromChosenSource(ShieldYou, QueryColors(info.ChosenColor)).Apply(ctx)
+			return PreventNextDamageFromChosenSource(ShieldYou, QueryColors(info.ChosenColor)).WithChosenQueries().Apply(ctx)
 		},
 	}
 }
@@ -101,8 +101,9 @@ func chosenTypeShieldRow(label string, cost game.AbilityCost) ActivatedAbility {
 				return nil
 			}
 			return PreventNextDamageFromSource{
-				Queries: []game.PermanentQuery{{Types: []string{"creature"}, Subtypes: []string{info.NamedTribe}}},
-				Protect: ShieldYou,
+				Queries:       []game.PermanentQuery{{Types: []string{"creature"}, Subtypes: []string{info.NamedTribe}}},
+				Protect:       ShieldYou,
+				ChosenQueries: true,
 			}.Apply(ctx)
 		},
 	}

@@ -71,15 +71,14 @@ func (c *Context) Source() uuid.UUID {
 // ability this is, when its words have been changed. nil when nothing
 // changed them, so the printed words stand; lend it with
 // game.ThroughTextOf.
+//
+// An ability whose source has left the battlefield reads the words that
+// source last had (CR 608.2h, game.TextReaderForEffect, #3872).
 func (c *Context) textReader() *game.Card {
-	if c == nil || c.Game == nil || c.Item == nil || c.Item.SourceCardID == uuid.Nil {
+	if c == nil || c.Game == nil || c.Item == nil {
 		return nil
 	}
-	src, ok := c.Game.LookupCardForEffect(c.Item.SourceCardID)
-	if !ok || src.TextWords == nil {
-		return nil
-	}
-	return &src
+	return c.Game.TextReaderForEffect(c.Item)
 }
 
 // TextColor is the colour letter the colour word `letter` reads as in

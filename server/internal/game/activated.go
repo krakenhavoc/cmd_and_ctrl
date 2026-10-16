@@ -2520,7 +2520,7 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 		// permanent to pay a cost does not target it (CR 601.2h), so
 		// the CR 702 keyword gate must not apply — Carrion Feeder can
 		// still eat your own hexproof creature.
-		if !g.specMatchLocked(SourceChooser(playerID), cost.SacrificeOther, TargetRef{Kind: TargetCard, ID: id}, false) {
+		if !g.specMatchLocked(g.costSourceLocked(playerID, sourceID), cost.SacrificeOther, TargetRef{Kind: TargetCard, ID: id}, false) {
 			return nil, ErrIllegalTarget
 		}
 		// Paying the same permanent twice (self-sacrifice plus the

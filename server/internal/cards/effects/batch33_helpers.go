@@ -78,11 +78,13 @@ func b33AnyGraveyardHasAtLeast(g *game.Game, n int) bool {
 // b33IslandsControlled counts the Islands `controller` controls —
 // Flow of Knowledge's "for each Island you control". Effective
 // subtypes, so an Urborg-style type grant counts and so does a
-// Prismatic Omen.
-func b33IslandsControlled(g *game.Game, controller uuid.UUID) int {
+// Prismatic Omen. `island` is the word as the spell's text reads it
+// (ctx.TextSubtype, CR 612.2).
+func b33IslandsControlled(g *game.Game, controller uuid.UUID, island string) int {
+	is := IsLandWithSubtype(island)
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && IsLandWithSubtype("Island")(c) {
+		if c.Controller == controller && is(c) {
 			n++
 		}
 	}
@@ -316,7 +318,7 @@ func b33EachPlayerDrawsThenDiscardsAtRandom(ctx *Context, n int) error {
 // of the controller's choice — the discard prompt opens after the
 // draws land, so the drawn cards are among the choices.
 func b33DrawPerIslandThenDiscardTwo(item *game.StackItem, ctx *Context) error {
-	return drawThenDiscard(ctx.Game, item.Controller, item.SourceCardID, b33IslandsControlled(ctx.Game, item.Controller), 2, "")
+	return drawThenDiscard(ctx.Game, item.Controller, item.SourceCardID, b33IslandsControlled(ctx.Game, item.Controller, ctx.TextSubtype("Island")), 2, "")
 }
 
 // b33CounterTargetThenControllerLosesLife is Countersquall's body:

@@ -35,12 +35,12 @@ func init() {
 				if ev.Actor == uuid.Nil || ev.Actor == source.Controller {
 					return false
 				}
-				return b18ControlsPermanentOfColor(g, source.Controller, "R")
+				return b18ControlsPermanentOfColor(g, source.Controller, source.TextColor("R"))
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Kederekt Parasite — deal 1 damage to the player who drew?"},
 			Key:            "Kederekt Parasite — 1 damage to the player who drew",
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				if !b18ControlsPermanentOfColor(g, item.Controller, "R") {
+				if !b18ControlsPermanentOfColor(g, item.Controller, NewContext(g, item).TextColor("R")) {
 					return nil
 				}
 				return DealDamage{Source: item.SourceCardID, Target: item.Trigger.Event.Actor, Amount: 1}.Apply(NewContext(g, item))

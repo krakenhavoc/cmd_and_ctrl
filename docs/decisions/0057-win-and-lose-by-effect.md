@@ -730,7 +730,7 @@ shipped, not a migration.
   **The turn after the active player leaves** is
   [ADR 0059](0059-turn-machinery.md) Decision 6 (#766). This ADR only
   fixes when the rotation may run (Decision 3).
-- **Restarting the game** (CR 104.6, Karn Liberated).
+- **Restarting the game** (CR 104.6, Karn Liberated). Built since: [ADR 0201](0201-restarting-the-game.md) (#3856, 2026-10-16).
 - **Angel's Grace's second sentence** ("damage that would reduce your
   life total to less than 1 reduces it to 1 instead") is a
   damage-result replacement that keeps lifelink whole (the 2021-03-19

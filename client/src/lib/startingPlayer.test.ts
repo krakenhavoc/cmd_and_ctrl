@@ -94,6 +94,35 @@ describe("openingRollWinner", () => {
     expect(winner).toEqual({ seat: 1, name: "B" });
     expect(openingRollText(winner!)).toBe("B goes first");
   });
+
+  // #3856, CR 727.1a: a restarted game's log begins with the restart,
+  // and the player who restarted it goes first, with no roll.
+  it("names the player who restarted the game", () => {
+    const log: LogEvent[] = [
+      {
+        seq: 90,
+        kind: "game_restarted",
+        seat: 2,
+        label: "Karn Liberated",
+        amount: 2,
+        text: "C restarted the game (Karn Liberated) and goes first",
+      },
+    ];
+    const winner = openingRollWinner({ starting_seat: 2, seats, log });
+    expect(winner).toEqual({ seat: 2, name: "C", restarted: { card: "Karn Liberated" } });
+    expect(openingRollText(winner!)).toBe(
+      "C restarted the game with Karn Liberated and goes first",
+    );
+    expect(firstTurnHeadline(winner!, 2)).toBe("You go first");
+  });
+
+  it("reads a restart with no card named", () => {
+    const log: LogEvent[] = [
+      { seq: 5, kind: "game_restarted", seat: 0, text: "A restarted the game and goes first" },
+    ];
+    const winner = openingRollWinner({ starting_seat: 0, seats, log });
+    expect(openingRollText(winner!)).toBe("A restarted the game and goes first");
+  });
 });
 
 describe("firstTurnHeadline", () => {

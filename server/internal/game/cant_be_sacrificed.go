@@ -114,14 +114,18 @@ func (g *Game) sacrificeableLocked(ids []uuid.UUID) []uuid.UUID {
 // options, the enumerator's pool and the additional-cost payability
 // check. It does not target, so hexproof and protection don't matter.
 //
+// `sourceID` is the permanent whose ability the cost is, whose text the
+// clause's words are read through (costSourceLocked, #3872): uuid.Nil
+// for a spell's additional cost, which reads its printed words.
+//
 // #3940: under a difference rule ("with different names") a permanent
 // with no key can never be part of the payment (CR 201.2b), so it is no
 // candidate either.
 //
 // Caller must hold g.mu (read or write).
-func (g *Game) SacrificeCostCandidatesForEffect(playerID uuid.UUID, spec *TargetSpec) []uuid.UUID {
+func (g *Game) SacrificeCostCandidatesForEffect(playerID, sourceID uuid.UUID, spec *TargetSpec) []uuid.UUID {
 	var out []uuid.UUID
-	for _, id := range g.specCandidatesLocked(playerID, spec).Cards {
+	for _, id := range g.costCandidatesLocked(playerID, sourceID, spec).Cards {
 		c := findBattlefieldCard(g, id)
 		if c == nil || c.Controller != playerID || g.permanentCantBeSacrificedLocked(c) {
 			continue

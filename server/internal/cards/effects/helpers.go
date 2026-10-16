@@ -585,9 +585,18 @@ func attackDeclaredByYou(ev game.Event, controller uuid.UUID) bool {
 // line, so "Forest" no longer matches a card that merely has the
 // word somewhere. Callers wanting "basic" semantics should compose
 // with IsBasicLand instead.
+//
+// `subtype` is a word of the text of the object whose clause this is
+// (CR 612.2, #3872), so it is read through the lens a lending walk
+// gives the candidate (HasSubtypeWord): SearchLibrary, the targeting
+// walk, the cost walks and the scans that lend their source. Nature's
+// Lore under a Magical Hack fetches the Island it now names. A caller
+// that applies it to a card nobody lent reads the printed word, so a
+// card file never does that with a literal
+// (TestNoHardCodedTextWordsInCardFiles).
 func IsLandWithSubtype(subtype string) func(game.Card) bool {
 	return func(c game.Card) bool {
-		return c.IsLand() && c.HasSubtype(subtype)
+		return c.IsLand() && c.HasSubtypeWord(subtype)
 	}
 }
 
@@ -1012,6 +1021,11 @@ func putIndestructibleCounterOnSource() Effect {
 	}
 }
 
+// EachLandIsAlso is "Each land is also a <subtype>" (Yavimaya, Cradle
+// of Growth; Urborg, Tomb of Yawgmoth). The type is a word of the
+// source's text (CR 612.2, #3872), read through it as the layer pass
+// applies the static: Yavimaya under a Magical Hack makes every land an
+// Island too.
 func EachLandIsAlso(subtype string) game.StaticAbility {
 	return game.StaticAbility{
 		Label: "Each land is also a " + subtype + ".",
@@ -1019,13 +1033,14 @@ func EachLandIsAlso(subtype string) game.StaticAbility {
 		AppliesTo: func(target *game.Card, _ *game.Game, _ *game.Card) bool {
 			return target.IsLand()
 		},
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+			now := source.TextSubtype(subtype)
 			for _, st := range c.Subtypes {
-				if strings.EqualFold(st, subtype) {
+				if strings.EqualFold(st, now) {
 					return
 				}
 			}
-			c.Subtypes = append(c.Subtypes, subtype)
+			c.Subtypes = append(c.Subtypes, now)
 		},
 	}
 }

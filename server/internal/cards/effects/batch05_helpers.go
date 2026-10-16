@@ -19,7 +19,9 @@ import (
 // reads the post-layer subtype list (#354), so an Urborg-made Swamp or
 // a type-changed permanent qualifies exactly as it does in the rules.
 func b05HasSubtype(subtype string) CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.HasSubtype(subtype) }
+	// A word of the clause's text, read through the lens the targeting
+	// walk lends (CR 612.2, #3872): Arbor Elf's "target Forest".
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.HasSubtypeWord(subtype) }
 }
 
 // b05Legendary is "target legendary permanent" (Minamo, School at

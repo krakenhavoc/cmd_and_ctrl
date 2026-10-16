@@ -125,6 +125,17 @@ var (
 			return AddMana{Amount: ManaN(p.Amount, "C")}.Apply(NewContext(g, item))
 		})
 
+	// Pygmy Hippo: add {C} × <Amount>, the mana the defending player lost
+	// (#3952). No plausibility bound like Mana Drain's: a pool may hold
+	// any amount, and AddMana applies the engine's MaxProducedMana ceiling.
+	pygmyHippoManaBody = game.DelayedBody("pygmy-hippo/add-colorless",
+		func(g *game.Game, item *game.StackItem, p game.EffectParams) error {
+			if p.Amount <= 0 {
+				return nil
+			}
+			return AddMana{Amount: ManaN(p.Amount, "C")}.Apply(NewContext(g, item))
+		})
+
 	// The event condition of "when you NEXT CAST a <filter> spell this
 	// turn": an EventCast by the trigger's controller whose spell
 	// passes CondParams.Filter.

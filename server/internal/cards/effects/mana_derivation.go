@@ -234,13 +234,17 @@ func SourcePower(g *game.Game, _, source uuid.UUID) int {
 // land — the printed outcome for Gaea's Cradle with an empty board.
 func ProducedPerPermanent(symbol string, match func(game.Card) bool) func(*game.Game, uuid.UUID, uuid.UUID) game.ManaAmount {
 	opts := []string{strings.ToUpper(symbol)}
-	return func(g *game.Game, controller, _ uuid.UUID) game.ManaAmount {
+	return func(g *game.Game, controller, source uuid.UUID) game.ManaAmount {
+		// "for each Swamp you control" names a word of the source's
+		// text (CR 612.2, #3872): a match that reads it through the
+		// lens (MatchLandSubtype, MatchCreatureSubtype) follows a change.
+		reader := g.TextReaderOfForEffect(source)
 		n := 0
 		for _, c := range g.BattlefieldCardsForEffect() {
 			if c.Controller != controller {
 				continue
 			}
-			if match(c) {
+			if match(game.ThroughTextOf(reader, c)) {
 				n++
 			}
 		}
@@ -252,12 +256,17 @@ func ProducedPerPermanent(symbol string, match func(game.Card) bool) func(*game.
 // the EFFECTIVE type line — so Urborg, Tomb of Yawgmoth turning every
 // land into a Swamp really does grow Cabal Coffers, which is half of
 // why anyone plays either card.
+//
+// `subtype` is a word of the clause's text, read through the lens the
+// evaluator lends (Card.LentSubtype, CR 612.2, #3872): ProducedPerPermanent,
+// ControlsAtLeast and OpponentControlsAtLeast lend their source's, so
+// Cabal Coffers under a Magical Hack counts the Islands it now names.
 func MatchLandSubtype(subtype string) func(game.Card) bool {
 	return func(c game.Card) bool {
 		if !c.IsLand() {
 			return false
 		}
-		return hasFold(c.Effective().Subtypes, subtype)
+		return hasFold(c.Effective().Subtypes, c.LentSubtype(subtype))
 	}
 }
 
@@ -273,13 +282,17 @@ func MatchEnchantment(c game.Card) bool { return c.IsEnchantment() }
 // False God is ControlsAtLeast(5, matchAnyLand); Mox Opal is
 // ControlsAtLeast(3, matchArtifact).
 func ControlsAtLeast(n int, match func(game.Card) bool) func(*game.Game, uuid.UUID, uuid.UUID) bool {
-	return func(g *game.Game, controller, _ uuid.UUID) bool {
+	return func(g *game.Game, controller, source uuid.UUID) bool {
+		// The match's words are the source's text (CR 612.2, #3872):
+		// Tainted Isle's "if you control a Swamp", Leechridden Swamp's
+		// "two or more black permanents".
+		reader := g.TextReaderOfForEffect(source)
 		count := 0
 		for _, c := range g.BattlefieldCardsForEffect() {
 			if c.Controller != controller {
 				continue
 			}
-			if !match(c) {
+			if !match(game.ThroughTextOf(reader, c)) {
 				continue
 			}
 			count++

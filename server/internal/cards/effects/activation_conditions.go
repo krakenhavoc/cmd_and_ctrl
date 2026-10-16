@@ -99,9 +99,12 @@ func eachOpponent(g *game.Game, controller uuid.UUID, fn func(opponent uuid.UUID
 // at least n on their own: in a four-player game the opponents' lands
 // are not added together.
 func OpponentControlsAtLeast(n int, match func(game.Card) bool) ActivationCondition {
-	return func(g *game.Game, controller, _ uuid.UUID) bool {
+	return func(g *game.Game, controller, source uuid.UUID) bool {
+		// The match's words are the source's text (CR 612.2, #3872).
+		reader := g.TextReaderOfForEffect(source)
+		lent := func(c game.Card) bool { return match(game.ThroughTextOf(reader, c)) }
 		return eachOpponent(g, controller, func(opp uuid.UUID) bool {
-			return countControlled(g, opp, match) >= n
+			return countControlled(g, opp, lent) >= n
 		})
 	}
 }
@@ -186,9 +189,11 @@ func MatchCreatureWithPowerAtLeast(n int) func(game.Card) bool {
 
 // MatchColor matches a permanent of the given colour letter —
 // Leechridden Swamp's "two or more black permanents". Reads
-// Card.HasColor, the same colour test the target predicates use.
+// Card.HasColorWord, the same colour test the target predicates use,
+// so the colour is read as the lending evaluator's source text says it
+// (ControlsAtLeast, CR 612.2, #3872).
 func MatchColor(color string) func(game.Card) bool {
-	return func(c game.Card) bool { return c.HasColor(color) }
+	return func(c game.Card) bool { return c.HasColorWord(color) }
 }
 
 // MatchLegendaryCreature matches a legendary creature — Rivendell's

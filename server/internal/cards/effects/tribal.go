@@ -365,8 +365,12 @@ func ChosenTypeCastOrActivateManaRestrictions() func(*game.Game, uuid.UUID, uuid
 // control". Sibling of MatchLandSubtype in mana_derivation.go, and
 // the reason it is separate: a subtype match that did not check
 // IsCreature would count a Kindred artifact naming Elf.
+//
+// The type is a word of the source's text, read through the lens
+// ProducedPerPermanent lends (HasSubtypeWord, CR 612.2, #3872):
+// Elvish Archdruid under an Artificial Evolution counts its new type.
 func MatchCreatureSubtype(subtype string) func(game.Card) bool {
 	return func(c game.Card) bool {
-		return c.IsCreature() && c.HasSubtype(subtype)
+		return c.IsCreature() && c.HasSubtypeWord(subtype)
 	}
 }

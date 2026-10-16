@@ -38,7 +38,7 @@ func init() {
 					if color == "" {
 						return nil
 					}
-					return PreventDamageFromSource{Protect: ShieldAnything, Queries: []game.PermanentQuery{QueryColors(color)}}.Apply(NewContext(g, item))
+					return PreventDamageFromSource{Protect: ShieldAnything, Queries: []game.PermanentQuery{QueryColors(color)}, ChosenQueries: true}.Apply(NewContext(g, item))
 				})
 			return nil
 		},

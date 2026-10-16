@@ -492,7 +492,12 @@ type Player struct {
 // life total. The library is populated and shuffled by the Game when
 // the game starts.
 func newPlayer(name string, seat int) *Player {
-	id := uuid.New()
+	return newPlayerWithID(uuid.New(), name, seat)
+}
+
+// newPlayerWithID is newPlayer for a player whose ID is already fixed:
+// the same player beginning a restarted game (CR 727, restart.go).
+func newPlayerWithID(id uuid.UUID, name string, seat int) *Player {
 	p := &Player{
 		ID:               id,
 		Name:             name,

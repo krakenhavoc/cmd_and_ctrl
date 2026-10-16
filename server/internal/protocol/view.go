@@ -8365,6 +8365,13 @@ func stampManaConditions(g *game.Game, card *game.Card, controller uuid.UUID, vi
 			views[i].CantActivate = g.CantActivateReasonLocked(controller, *card, game.ZoneBattlefield,
 				game.ActivationAbility{Label: raw[r].Label, Mana: true})
 		}
+		// #3976: a row whose spend restriction is computed (Cavern of
+		// Souls' chosen type) carries the list the mint would stamp now,
+		// not the empty declared one, so a reader without a game handle
+		// (the client's warning, the bot's turn planner) sees it.
+		if raw[r].RestrictionsFunc != nil {
+			views[i].Restrictions = g.ManaAbilityRestrictionsLocked(controller, card.InstanceID, raw[r])
+		}
 		// ADR 0129 §8: a controller short of the energy the row costs
 		// gets the engine's own refusal, so the row greys and the click
 		// and the engine agree.
@@ -12493,7 +12500,7 @@ func castSourceOf(g *game.Game, caster uuid.UUID, instanceID string) game.Target
 func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetSpec, sourceID uuid.UUID, selfToo bool) *LegalTargetsView {
 	// #3275: the controller's permanents that can be sacrificed.
 	var ids []uuid.UUID
-	for _, id := range g.SacrificeCostCandidatesForEffect(controller, spec) {
+	for _, id := range g.SacrificeCostCandidatesForEffect(controller, sourceID, spec) {
 		if (selfToo || spec.ExcludeSource) && id == sourceID {
 			continue
 		}

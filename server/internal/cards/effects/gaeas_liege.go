@@ -47,7 +47,7 @@ func init() {
 				if source.AttackingTarget != uuid.Nil {
 					whose = g.DefendingPlayerForAttackerForEffect(source.InstanceID)
 				}
-				n := b08LandsWithSubtypeControlled(g, whose, "Forest")
+				n := b08LandsWithSubtypeControlled(g, whose, source.TextSubtype("Forest"))
 				c.Power = n
 				c.Toughness = n
 			},

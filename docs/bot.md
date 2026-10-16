@@ -1678,9 +1678,12 @@ The bot counts its own mana from the view (§2, `plan.go`):
 
 - **Its mana:** the floating pool, plus one source for each untapped
   permanent it controls whose repeatable mana ability it can use now.
-  A summoning-sick creature without haste is left out. So is a source
-  whose mana is restricted (Delighted Halfling's coloured mana), and a
-  land with no mana ability of its own (a fetchland).
+  A summoning-sick creature without haste is left out, and so is a land
+  with no mana ability of its own (a fetchland). Mana that may be spent
+  only on some spells (Delighted Halfling's colour, Cavern of Souls'
+  chosen type) counts only for the spells its restriction admits, and
+  is spent first on them, as auto-pay does (the amendment of
+  2026-10-16, `PlanRestrictedMana`).
 - **Each spell's cost:** the total mana the cast move charges,
   including X, the commander tax and any cost reduction. The enumerator
   stamps this on the move as `cost.mana`.
@@ -1862,6 +1865,7 @@ and off in `BaselineConfig()`:
 | `PlanMaxCards` | 10 | How many cards the search considers. |
 | `PlanLandDropsAsRamp` | on | Extra land drops order with the mana (§4, 2026-10-08). |
 | `PlanFilterLands` | on | Filter lands modelled as filters (§2). |
+| `PlanRestrictedMana` | on | Restricted mana counted for the casts it admits (§2, 2026-10-16). |
 | `PlanRockTwoTurns`, `PlanNextTurnDiscount` | on, 0.75 | The two-turn comparison. |
 | `IdleLateRocks` | on | The idle late rock (ADR 0126 §2). |
 | `PlanWeighTaxes` | on | An opponent's tax weighed against the plan. |
@@ -3977,6 +3981,16 @@ mill worth more. A mill that would leave fewer than `DredgeLibraryFloor`
 (10) cards in the library is declined, whatever the ability buys. A row
 with a mill component no longer counts as costing only mana and taps
 (ADR 0126 §5). The baseline reads the mill as free.
+
+**An "Exile the top N cards of your library" cost is priced like a
+mill without the fuel** (#3966). ADR 0109 §7's component names no card
+either, so `Move.Cost.LibraryExile` carries the count (Seasoned
+Tactician, Arc-Slogger, Phyrexian Devourer), and the MCP seat's move
+line says `exiles the top 4 cards of your library`. Under
+`PriceLibraryExileCost` each exiled card costs the `Weights.Library` it
+was and buys nothing back, since exile is no graveyard to cast from, and
+the same `DredgeLibraryFloor` declines an exile that would leave fewer
+than 10 cards in the library. The baseline reads the exile as free.
 
 **"Tap any number of untapped creatures" is offered at each count**
 (#3961). Burn at the Stake and Explosive Singularity read the count, so

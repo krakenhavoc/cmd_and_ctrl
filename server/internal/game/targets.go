@@ -100,6 +100,14 @@ type TargetSource struct {
 	// legal set, the announce gate, the re-check and the bot's moves are
 	// one answer.
 	Trigger *TriggerContext
+
+	// text is the text change of the object whose clause this is, for a
+	// walk with no live Object to lend it (CR 612.2, #3872): a departed
+	// source's last-known words (CR 608.2h), or a cost's source on a walk
+	// that is not targeting (CostSourceLocked). Read only by lend, so it
+	// changes which words a clause names and nothing else: a cost walk
+	// that carries it still excludes nothing and compares nothing.
+	text *TextWords
 }
 
 // WithTrigger is this source judging a clause for the triggered ability
@@ -154,10 +162,47 @@ func (s TargetSource) ObjectRef() (PermissionCardRef, bool) {
 // Blade's "nonblack" under a Sleight of Mind is "nonblue". A walk with
 // no live source object lends nothing, and the printed words stand.
 func (s TargetSource) lend(c Card) Card {
-	if s.Object == nil {
-		return c
+	if s.Object != nil {
+		return ThroughTextOf(s.Object, c)
 	}
-	return ThroughTextOf(s.Object, c)
+	if s.text != nil {
+		c.wordLens = s.text
+	}
+	return c
+}
+
+// costSourceLocked is the source a cost-payment walk judges its clause
+// under: no source object, as SourceChooser declares (paying a cost
+// does not target, ADR 0038 §4), but the words of the clause read as
+// the text of the permanent whose ability it is (CR 612.2, #3872):
+// Heroism's "Sacrifice a white creature" under a Sleight of Mind is
+// "a green creature". The validator, the option walks the view and the
+// enumerator share, and the payability checks all build it here, so
+// the three agree.
+//
+// Only a source on the battlefield has changed words (a change lives on
+// a permanent or a spell, and a spell's costs are paid before anything
+// can change its text), so anything else reads the printed words.
+//
+// Caller must hold g.mu.
+func (g *Game) costSourceLocked(playerID, sourceID uuid.UUID) TargetSource {
+	src := SourceChooser(playerID)
+	if sourceID == uuid.Nil {
+		return src
+	}
+	if c := findBattlefieldCard(g, sourceID); c != nil {
+		src.text = c.TextWords
+	}
+	return src
+}
+
+// costCandidatesLocked is specCandidatesLocked for a cost of the ability
+// on `sourceID`: the same non-targeting walk, reading the clause's
+// words through the source's text (costSourceLocked).
+//
+// Caller must hold g.mu.
+func (g *Game) costCandidatesLocked(playerID, sourceID uuid.UUID, spec *TargetSpec) LegalTargets {
+	return g.specMatchesLocked(g.costSourceLocked(playerID, sourceID), spec, false)
 }
 
 // SourceObject is the ordinary case: a live spell or ability source.
@@ -245,6 +290,8 @@ func (g *Game) stackItemSourceBaseLocked(item *StackItem) TargetSource {
 				src := SourceSnapshot(item.Controller, lastKnownSourceCharacteristics(rec))
 				src.Power, src.Toughness, src.PTKnown = rec.Power, rec.Toughness, true
 				src.Departed, src.DepartedID = &rec, item.SourceCardID
+				// #3872: its words as they last were (CR 608.2h).
+				src.text = textWordsFromEntries(rec.TextWords)
 				return src
 			}
 		}

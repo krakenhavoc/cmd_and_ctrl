@@ -227,7 +227,7 @@ func (g *Game) CounterCostOptionsForEffect(playerID, sourceID uuid.UUID, rc *Cou
 	if rc.From == nil {
 		ids = []uuid.UUID{sourceID}
 	} else {
-		ids = g.specCandidatesLocked(playerID, rc.From).Cards
+		ids = g.costCandidatesLocked(playerID, sourceID, rc.From).Cards
 	}
 	floor := counterFloor(rc)
 	var out []CounterCostOption
@@ -527,7 +527,7 @@ func (g *Game) validateCounterRemovalLocked(playerID, sourceID uuid.UUID, rc *Co
 		// specMatchLocked(..., false), not targetLegalLocked: choosing
 		// a permanent to pay a cost does not target it (CR 601.2h /
 		// 602.2b), so the CR 702 keyword gate must not apply.
-		if rc.From != nil && !g.specMatchLocked(SourceChooser(playerID), rc.From, TargetRef{Kind: TargetCard, ID: id}, false) {
+		if rc.From != nil && !g.specMatchLocked(g.costSourceLocked(playerID, sourceID), rc.From, TargetRef{Kind: TargetCard, ID: id}, false) {
 			return counterPayment{}, ErrIllegalTarget
 		}
 		// "from among OTHER permanents": the source is not one of them.
