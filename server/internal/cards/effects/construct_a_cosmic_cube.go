@@ -61,7 +61,7 @@ func cosmicCubeSeventhPlan(ev game.Event, source *game.Card, _ game.Characterist
 	if ev.Kind != game.EventCounterPlaced || ev.Target != source.InstanceID || ev.Label != "plan" || ev.Amount < 7 {
 		return false
 	}
-	before, _ := b12CounterTotalBefore(ev, g)
+	before := b12CounterTotalBefore(ev, g)
 	return before < 7
 }
 
