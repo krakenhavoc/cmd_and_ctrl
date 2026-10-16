@@ -55,7 +55,7 @@ func guideOfSoulsAngel(g *game.Game, item *game.StackItem) error {
 		}
 		if err := (ScopedEffectFor{
 			Target:   t.ID,
-			Mods:     []game.Mod{game.AddSubtypesMod("Angel")},
+			Mods:     []game.Mod{game.AddSubtypesMod(ctx.TextSubtypes("Angel")...)},
 			Duration: game.IndefiniteDuration(),
 			Label:    "Guide of Souls — an Angel in addition to its other types",
 		}).Apply(ctx); err != nil {

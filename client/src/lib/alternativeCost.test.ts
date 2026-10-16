@@ -13,6 +13,7 @@ import {
   cancel,
   targeting,
 } from "./targeting";
+import { altCostTapRange, altCostTapsNothingToAsk } from "./sacrificeCost";
 import { canCastFromHand } from "./timing";
 import type { CardView, GameView, PlayerView, ZoneView } from "./protocol";
 
@@ -366,5 +367,52 @@ describe("a tap alternative cost", () => {
     const params: Record<string, unknown> = {};
     applyCastChoices(params, { altCost: "tap", altCostIDs: ["bear"] });
     expect(params).toEqual({ alternative_cost: "tap", alt_cost_ids: ["bear"] });
+  });
+});
+
+// #3931, CR 702.180a: harmonize taps UP TO one untapped creature, so its
+// tap half is min 0, max 1, and each candidate carries its price.
+describe("harmonize's optional tap", () => {
+  const fire = card({
+    instance_id: "fire",
+    name: "Channeled Dragonfire",
+    type_line: "Sorcery",
+    mana_cost: "{R}",
+    alternative_costs: [
+      {
+        key: "harmonize",
+        label: "Harmonize {5}{R}{R}",
+        mana_cost: "{5}{R}{R}",
+        pay_label: "up to one untapped creature you control",
+        tap_options: { cards: ["bear", "giant"], min: 0, max: 1 },
+        reduces_by_power: true,
+        tap_prices: {
+          bear: { power: 2, price: "{3}{R}{R}" },
+          giant: { power: 5, price: "{R}{R}" },
+        },
+      },
+    ],
+  });
+
+  it("reads min 0, max 1 as a range that accepts none", () => {
+    const clause = altCostTapClause(alternativeCostByKey(fire, "harmonize"));
+    expect(altCostTapRange(clause)).toEqual({ min: 0, max: 1 });
+    expect(altCostTapsNothingToAsk(clause)).toBe(false);
+  });
+
+  it("keeps a fixed tap clause at its count", () => {
+    expect(altCostTapRange({ cards: ["bear"], min: 1, max: 1 })).toEqual({ min: 1, max: 1 });
+    expect(altCostTapsNothingToAsk({ cards: [], min: 1, max: 1 })).toBe(false);
+  });
+
+  it("asks nothing when there is nothing to tap", () => {
+    expect(altCostTapsNothingToAsk({ cards: [], min: 0, max: 1 })).toBe(true);
+    expect(altCostTapsNothingToAsk(undefined)).toBe(false);
+  });
+
+  it("ships a price per creature", () => {
+    const offer = alternativeCostByKey(fire, "harmonize");
+    expect(offer?.reduces_by_power).toBe(true);
+    expect(offer?.tap_prices?.giant).toEqual({ power: 5, price: "{R}{R}" });
   });
 });

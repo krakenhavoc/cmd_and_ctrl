@@ -287,14 +287,19 @@ func LoseAllAbilities(keep ...string) game.StaticAbility {
 // also what takes "is every creature type" away: a creature a
 // Maskwood Nexus made every type earlier in layer 4 and a Kenrith's
 // Transformation then set to Elk is an Elk (#670).
+//
+// The subtypes are words of the Aura's text (CR 612.2, #3984): each is
+// read through the source as the pass applies it, so Kenrith's
+// Transformation under an Artificial Evolution (Elk → Frog) makes a
+// Frog. A card type is no text word and is set as given.
 func SetAttachedTypes(types []string, subtypes []string) game.StaticAbility {
 	return game.StaticAbility{
 		Label:     attachedTypesLabel(types, subtypes),
 		Layer:     game.Layer4Type,
 		AppliesTo: AttachedToSource,
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
 			c.Types = append([]string(nil), types...)
-			c.SetSubtypes(subtypes)
+			c.SetSubtypes(source.TextSubtypes(subtypes...))
 		},
 	}
 }
@@ -307,6 +312,11 @@ func SetAttachedTypes(types []string, subtypes []string) game.StaticAbility {
 // No arguments means colourless, which is a real answer and not an
 // empty one: Song of the Dryads turning an opposing commander
 // colourless is how it dodges a colour-restricted removal spell.
+//
+// The colours are words of the Aura's text (CR 612.2, #3984), read
+// through the source as the pass applies them: Eye of Nidhogg's
+// "enchanted creature is black" under a Sleight of Mind (black → red)
+// makes it red.
 func SetAttachedColors(colors ...string) game.StaticAbility {
 	return game.StaticAbility{
 		Label: "Attached permanent's color is changed.",
@@ -318,8 +328,8 @@ func SetAttachedColors(colors ...string) game.StaticAbility {
 		// below. See game.StaticAbility.ContinuesAfterRemoval.
 		ContinuesAfterRemoval: true,
 		AppliesTo:             AttachedToSource,
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			c.Colors = append([]string(nil), colors...)
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+			c.Colors = append([]string(nil), source.TextColors(colors...)...)
 		},
 	}
 }
@@ -550,20 +560,63 @@ func untapAllLandsControlledBy(g *game.Game, controller uuid.UUID, ctx *Context)
 // only card type any printed card writes here is a lone "Land", so
 // what is left is the land types, which the type set then replaces:
 // a Song'd Llanowar Elves is a Forest, not a Forest Elf Druid.
+//
+// `subtypes` are words of the source's text (CR 612.2, #3872), read
+// through it as the layer pass applies the static: Blood Moon under a
+// Magical Hack ("Mountain" → "Forest") makes nonbasic lands Forests. A
+// type the source's controller CHOSE is not text: those cards use
+// SetsChosenBasicLandType.
 func SetsBasicLandType(applies func(target *game.Card, g *game.Game, source *game.Card) bool, types []string, subtypes []string) game.StaticAbility {
 	return game.StaticAbility{
 		Label:            "Affected lands become " + joinWords(subtypes) + " and lose their other abilities.",
 		Layer:            game.Layer4Type,
 		RemovesAbilities: true,
 		AppliesTo:        applies,
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-			if len(types) > 0 {
-				c.Types = append([]string(nil), types...)
-				c.SetSubtypes(nil)
-			}
-			c.SetLandSubtypes(subtypes)
-		},
+		Apply:            setBasicLandTypes(types, subtypes, true),
 	}
+}
+
+// SetsChosenBasicLandType is SetsBasicLandType for a type that was
+// chosen (Illusionary Terrain, Phantasmal Terrain's "the chosen type"),
+// which a text change never reaches (CR 612.2: it changes words, and a
+// choice is not one).
+func SetsChosenBasicLandType(applies func(target *game.Card, g *game.Game, source *game.Card) bool, types []string, subtypes []string) game.StaticAbility {
+	return game.StaticAbility{
+		Label:            "Affected lands become " + joinWords(subtypes) + " and lose their other abilities.",
+		Layer:            game.Layer4Type,
+		RemovesAbilities: true,
+		AppliesTo:        applies,
+		Apply:            setBasicLandTypes(types, subtypes, false),
+	}
+}
+
+// setBasicLandTypes is the layer-4 write both share: the card types (and
+// with them the subtypes of the types taken away), then the land types,
+// read through the source's text when they are printed words of it.
+func setBasicLandTypes(types, subtypes []string, printed bool) func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+	return func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+		if len(types) > 0 {
+			c.Types = append([]string(nil), types...)
+			c.SetSubtypes(nil)
+		}
+		c.SetLandSubtypes(textSubtypesOf(source, subtypes, printed))
+	}
+}
+
+// textSubtypesOf is `subtypes` as `source`'s text reads them when they
+// are printed words of it, without repeats; the input itself when they
+// were chosen or nothing changes them.
+func textSubtypesOf(source *game.Card, subtypes []string, printed bool) []string {
+	if !printed || source == nil || source.TextWords == nil {
+		return subtypes
+	}
+	out := make([]string, 0, len(subtypes))
+	for _, s := range subtypes {
+		if now := source.TextSubtype(s); !hasFold(out, now) {
+			out = append(out, now)
+		}
+	}
+	return out
 }
 
 // SetAttachedBasePTPer is SetAttachedBasePT with the value COUNTED

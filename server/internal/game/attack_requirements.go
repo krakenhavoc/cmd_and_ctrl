@@ -347,6 +347,18 @@ func (g *Game) attackCapacityLocked(assign map[uuid.UUID]uuid.UUID) attackCapaci
 				continue
 			}
 			key = l.source.InstanceID
+		case AttackLimitOnlyAlone:
+			// Combat-wide, and only once its own creature attacks:
+			// before that it limits nobody, and the creature itself is
+			// kept out of a declaration that has any attacker by
+			// attackRequirementReachLocked.
+			if !l.sourceAttacksIn(assign) {
+				continue
+			}
+			if cp.global < 0 || room < cp.global {
+				cp.global = room
+			}
+			continue
 		default:
 			continue
 		}
@@ -497,7 +509,59 @@ func (g *Game) attackRequirementReachLocked(ap uuid.UUID, assign map[uuid.UUID]u
 		out.obeyed += g.requirementWeightLocked(g.attackRequirementsOfLocked(c), target)
 	}
 	out.cands = g.attackRequirementCandidatesLocked(ap, assign)
-	out.addition, out.witness = maxRequirementAssignment(out.cands, g.attackCapacityLocked(assign))
+	cp := g.attackCapacityLocked(assign)
+	loners := g.onlyAloneAttackersLocked()
+	if len(loners) == 0 {
+		out.addition, out.witness = maxRequirementAssignment(out.cands, cp)
+		return out
+	}
+	// "Can only attack alone" (AttackLimitOnlyAlone, CR 506.5): such a
+	// creature can join only an empty declaration, and then nothing joins
+	// it. So the best addition is the better of the others without it,
+	// and it attacking alone. A declaration that already has an attacker
+	// leaves it out; one where it already attacks leaves no room
+	// (attackCapacityLocked).
+	var rest, alone []reqCandidate
+	for _, c := range out.cands {
+		if loners[c.id] {
+			alone = append(alone, c)
+		} else {
+			rest = append(rest, c)
+		}
+	}
+	out.addition, out.witness = maxRequirementAssignment(rest, cp)
+	if len(assign) > 0 || cp.global == 0 {
+		return out
+	}
+	for _, c := range alone {
+		for _, p := range c.pairs {
+			if r, ok := cp.perTarget[p.target]; ok && r <= 0 {
+				continue
+			}
+			if p.weight > out.addition {
+				out.addition = p.weight
+				out.witness = map[uuid.UUID]uuid.UUID{c.id: p.target}
+			}
+		}
+	}
+	return out
+}
+
+// onlyAloneAttackersLocked is every creature an active "can only attack
+// alone" limit is about (AttackLimitOnlyAlone), or nil.
+//
+// Caller must hold g.mu with fresh layers.
+func (g *Game) onlyAloneAttackersLocked() map[uuid.UUID]bool {
+	var out map[uuid.UUID]bool
+	for _, l := range g.activeAttackLimitsLocked() {
+		if l.limit.Scope != AttackLimitOnlyAlone || l.source == nil {
+			continue
+		}
+		if out == nil {
+			out = map[uuid.UUID]bool{}
+		}
+		out[l.source.InstanceID] = true
+	}
 	return out
 }
 

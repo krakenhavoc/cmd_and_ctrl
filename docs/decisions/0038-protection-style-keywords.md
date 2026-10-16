@@ -601,3 +601,26 @@ pointer. `effects.WardDiscard(n)` is a fifth `WardCost` component beside
 mana, waterbend, life and sacrifice: a Confirm whose accept branch queues
 the payer's own discard prompt, with the spell countered on a decline or
 when the payer's hand is smaller than the cost.
+
+## Amendment (2026-10-15, #3860): "can't be the target of spells or abilities your opponents control" is not hexproof
+
+Vines of Vastwood: "Target creature can't be the target of spells or abilities your opponents control this turn." The
+first cut of the card narrowed its clause to "target creature you control" so that granting `hexproof` was the printed
+effect word for word. It was weaker than printed: hexproof (CR 702.11b) refuses what the CREATURE'S CONTROLLER's
+opponents control, and this clause refuses what the CASTER's opponents control. They agree on your own creature and come
+apart on anyone else's, where the printed card locks the creature's own controller out of targeting it and hexproof does
+not.
+
+`ModCantBeTargetedByOpponents` (game/targeting_bar.go, `game.CantBeTargetedByOpponentsMod()`, card side
+`effects.CantBeTargetedByYourOpponentsUntilEOT`) is its own ADR 0041 data record, `readerTargeting` like
+`ModWaiveHexproof`: the affected object is locked when the spell resolves (CR 611.2c) and followed as that object (CR
+400.7), "you" is the record's Controller, and the record ends at cleanup with the rest of the registry. It is read LIVE by
+`canBeTargetedBy`, ahead of the hexproof test, so both halves of targeting legality carry it — the CR 601.2c announce gate
+and the CR 608.2b resolution re-check — and a spell already aimed at the creature when the Vines resolve fizzles, as the
+card's ruling says. It is NOT hexproof: the keyword is not granted, so a "may be targeted as though it didn't have
+hexproof" waiver (Nowhere to Run, Detection Tower) cannot lift it, and the creature keeps every ability it had. Nothing
+about the caster's own targeting changes. Vines of Vastwood targets any creature and ships `full`; kicker was already
+modelled.
+
+Back-out: remove the `scopedTargetingBarLocked` test from `canBeTargetedBy` and all four `TestVinesOfVastwood…` tests
+fail.

@@ -200,6 +200,11 @@ const (
 	// request"). Nothing was moved or paid, so the cast simply is not
 	// made. Player-scoped; never a bot move, since bots never ask.
 	TypeCancelAssist Type = "cancel_assist"
+	// #3955 (Wish) — the holder of a "play a card you own from outside
+	// the game" right names the card now, no params: it opens the outside
+	// pick over the card database, and the named card is minted where the
+	// right already covers it. Player-scoped; priority holder only.
+	TypeOutsidePlay Type = "outside_play"
 	// ADR 0018's eighth amendment (#3016) — forget a remembered trigger
 	// order, params `{key?: string}`: the prompt's auto_answer_key, or
 	// absent (or empty) to forget every one the seat has. The
@@ -558,6 +563,8 @@ var playerScopedActions = map[Type]struct{}{
 	TypeCastVote: {},
 	// ADR 0150 §4: a caster withdraws only their own request for help.
 	TypeCancelAssist: {},
+	// #3955: a seat names a card for its own Wish right, never another's.
+	TypeOutsidePlay: {},
 	// ADR 0193: a seat records, proposes and answers loops only as itself.
 	TypeLoopRecordStart:     {},
 	TypeLoopRecordStop:      {},
@@ -1050,7 +1057,8 @@ func dispatch(g *game.Game, a Action) error {
 		if err := requireCardController(g, overrideCaller(a), instanceID); err != nil {
 			return err
 		}
-		return g.AddCounter(instanceID, p.Name, p.Delta)
+		// #3942: the seat making the edit puts the counters.
+		return g.AddCounterBy(overrideCaller(a), instanceID, p.Name, p.Delta)
 
 	case TypeSetCommanderDamage:
 		// `from` is a COMMANDER CARD instance ID since S25 (#77); it
@@ -1163,6 +1171,15 @@ func dispatch(g *game.Game, a Action) error {
 			choiceID = id
 		}
 		return g.CancelAssistRequest(a.Player, choiceID)
+
+	case TypeOutsidePlay:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		if err := requirePriorityHolder(g, a.Caller); err != nil {
+			return err
+		}
+		return g.NameOutsideCardToPlay(a.Player)
 
 	case TypeForgetTriggerOrder:
 		if a.Player == uuid.Nil {
@@ -2006,6 +2023,11 @@ func dispatch(g *game.Game, a Action) error {
 			// engine validates only its shape. Routed by presence,
 			// like CreatureType and Color above.
 			CardName string `json:"card_name"`
+			// CardNames answers a PendingChoiceOutsideCollection (ADR
+			// 0198): the cards taken from the database as a player's
+			// collection, by name. Routed by the choice's KIND, because
+			// the empty list (decline) is an ordinary answer.
+			CardNames []string `json:"card_names"`
 			// Graveyard answers a PendingChoiceSurveil (CR 701.25)
 			// alongside TopOrder: the looked-at cards going to the
 			// chooser's graveyard. Its PRESENCE is what distinguishes
@@ -2063,6 +2085,11 @@ func dispatch(g *game.Game, a Action) error {
 		// commonest value may be zero.
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoicePayAmount {
 			return g.ResolvePayAmount(choiceID, a.Player, p.Amount)
+		}
+		// ADR 0198: "a card you own from outside the game" from the card
+		// database. Routed by kind: declining is the empty list.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceOutsideCollection {
+			return g.ResolveOutsideCollection(choiceID, a.Player, p.CardNames)
 		}
 		// #568, CR 608.2: "choose one of the following", addressed to
 		// any seat. Routed by kind for the same reason the shortcut

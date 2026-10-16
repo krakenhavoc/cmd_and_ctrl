@@ -75,7 +75,7 @@ func midnightClockTwelfthHour(ev game.Event, source *game.Card, _ game.Character
 	if ev.Kind != game.EventCounterPlaced || ev.Target != source.InstanceID || ev.Label != "hour" || ev.Amount < 12 {
 		return false
 	}
-	before, _ := b12CounterTotalBefore(ev, g)
+	before := b12CounterTotalBefore(ev, g)
 	return before < 12
 }
 

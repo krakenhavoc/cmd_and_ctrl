@@ -158,11 +158,11 @@ func (d DiscardBecomes) causeMatches(cause game.DiscardCause) bool {
 //
 // With self set it is "causes you to discard THIS card" and also
 // requires the card to be the source (Sand Golem, Psychic Purge). Wrap
-// such a row in InGraveyard, like cycling's "when you cycle this card":
-// the card has already reached the graveyard when the ability triggers,
-// and "you" is its owner there (CR 108.4). A card a replacement sent to
-// exile instead does not trigger from exile, and each card's Caveats
-// says so (owner decision 6).
+// such a row in WhereverDiscarded: the card has already left the hand
+// when the ability triggers, and "you" is its owner wherever it went
+// (CR 108.4). A card a replacement sent to exile instead still triggers
+// from exile (#3859, ADR 0153's 2026-10-15 amendment of owner
+// decision 6).
 //
 // Without self it is "causes you to discard a card" (Spiritual Focus on
 // the battlefield).
@@ -173,6 +173,26 @@ func DiscardedByAnOpponent(self bool) When {
 		}
 		return game.DiscardCausedByOpponentOf(ev, source.Controller)
 	}
+}
+
+// WhereverDiscarded makes a "when you discard this card" trigger work
+// from wherever the discard left the card (#3859): the graveyard, exile
+// (madness, CR 702.35a, or Rest in Peace), the top of a library (Library
+// of Leng) and the command zone (CR 903.9, a commander). The card was
+// discarded all the same (CR 701.9a defines a discard by where the card
+// came from), and an ability that triggers on that move looks back at it
+// (CR 603.10a), so the replacement that rewrote the destination never
+// decided whether the ability fired.
+//
+// It replaces the zone list, as InGraveyard does, so the ability does
+// not also work from the battlefield or the hand. Pair it with
+// DiscardedByAnOpponent(true) or a predicate that names the card by
+// instance ID: the walk is over every card of these zones that declares
+// a trigger, and only the discarded card's ID matches the event.
+// "You" is the card's owner in every one of them (CR 108.4).
+func WhereverDiscarded(t game.TriggeredAbility) game.TriggeredAbility {
+	t.Zones = []game.ZoneKind{game.ZoneGraveyard, game.ZoneExile, game.ZoneLibrary, game.ZoneCommand}
+	return t
 }
 
 // OntoTheBattlefieldWhenAnOpponentMakesYouDiscardThis is the Obstinate

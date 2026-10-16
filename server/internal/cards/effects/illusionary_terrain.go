@@ -33,7 +33,7 @@ func init() {
 			word := from + ", then " + to
 			words = append(words, word)
 			first := from
-			statics = append(statics, StaticWhenChosen(word, SetsBasicLandType(
+			statics = append(statics, StaticWhenChosen(word, SetsChosenBasicLandType(
 				func(target *game.Card, _ *game.Game, _ *game.Card) bool {
 					return target.IsLand() && target.HasSupertype("basic") && target.HasSubtype(first)
 				}, nil, []string{to})))

@@ -86,6 +86,7 @@ func seatDeckCard(p *Player, c Card) {
 		if p.Sideboard == nil {
 			p.Sideboard = newZone(ZoneOutside, p.ID)
 		}
+		p.HasSideboard = true
 		c.AddKnower(p.ID)
 		p.Sideboard.PushTop(c)
 	default:

@@ -141,7 +141,11 @@ describe("the C2 Discord in the shell", () => {
     const header = render(SiteHeader as never, {} as never);
     const footer = render(SiteFooter as never, {} as never);
     await settle();
-    const icon = discordLink(header.container);
+    // The phone layout's panel row (#3877) is a second link to the invite,
+    // so the icon is found by its name.
+    const icon = header.container.querySelector<HTMLAnchorElement>(
+      `a[aria-label="the C2 Discord server"]`,
+    );
     expect(icon?.getAttribute("aria-label")).toBe("the C2 Discord server");
     expect(icon?.getAttribute("target")).toBe("_blank");
     expect(icon?.getAttribute("rel")).toContain("noopener");

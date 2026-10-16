@@ -19,6 +19,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"DiscardByOpponentForHand":   "a declaration the bot reads about the hand, not an ability of the object (ADR 0153 §5)",
 	"AsEnters":                   "the CR 614.12 choice as it enters; its answer is on the wire as chosen_color and the rest",
 	"AsTransformsInto":           "a transform's as-it-transforms clause, run once",
+	"AsEntersOthers":             "an as-it-enters clause over other objects, run once as the entry happens (#3862)",
 	"AsAttached":                 "an attachment's as-it-becomes-attached choice, run once per attach (#2709)",
 	"StartingLoyalty":            "a characteristic (loyalty), shown as the loyalty pip",
 	"BattleDefense":              "a characteristic (defense), shown on the card",

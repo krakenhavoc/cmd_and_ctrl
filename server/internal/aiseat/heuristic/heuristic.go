@@ -332,6 +332,20 @@ type Config struct {
 	// staying tapped (exert.go), and taken when it is worth more than
 	// the plain attack. Off (the zero value) never exerts.
 	PriceExert bool
+	// PriceMillCost prices a "Mill N cards" cost (#3870,
+	// legal.MoveCost.Mill; mill_cost.go): each milled card at what a
+	// dredge already pays for one (millValue, the graveyard's fuel
+	// read, less the Library weight), and a move that would leave the
+	// library under DredgeLibraryFloor declined. Off (the zero value)
+	// reads the mill as free, as before.
+	PriceMillCost bool
+	// PriceLibraryExileCost prices an "Exile the top N cards of your
+	// library" cost (#3966, legal.MoveCost.LibraryExile;
+	// library_exile_cost.go) as a mill without the graveyard fuel: each
+	// card at the Library weight it was, and a move that would leave the
+	// library under DredgeLibraryFloor declined. Off (the zero value)
+	// reads the exile as free, as before.
+	PriceLibraryExileCost bool
 	// ExertCostWeight scales an exert's cost: the creature's next-turn
 	// attack value plus its blocking value across the opponents' turns.
 	ExertCostWeight float64
@@ -449,6 +463,13 @@ type Config struct {
 	// names, instead of the plain {C} row that nets as much. Off (the
 	// zero value) models the land as its {C} row, as PR 4 shipped.
 	PlanFilterLands bool
+	// PlanRestrictedMana counts a mana ability whose mana may be spent
+	// only on some spells (Cavern of Souls' chosen type, Delighted
+	// Halfling's legendary spells) toward the casts its restriction
+	// admits, and never toward the rest, as auto-pay plans it (ADR 0136's
+	// amendment of 2026-10-16, #3976). Off (the zero value) leaves such a
+	// row out of the plan's mana model, as ADR 0136 §2 shipped.
+	PlanRestrictedMana bool
 	// PlanRockTwoTurns weighs a mana source against the turn's chosen
 	// line over two turns when this turn's mana pays for one or the
 	// other, not both (ADR 0136's amendment of 2026-10-09, rocknow.go):
@@ -570,7 +591,10 @@ type Config struct {
 	// DredgeLibraryFloor is the fewest cards a dredge may leave in the
 	// bot's library. A dredge that would mill it below this is
 	// declined whatever it returns: mill N with a few cards left puts
-	// the CR 704.5b decking loss on a timer.
+	// the CR 704.5b decking loss on a timer. A "Mill N cards" cost is
+	// held to the same floor under PriceMillCost (#3870), and an
+	// "Exile the top N cards of your library" cost under
+	// PriceLibraryExileCost (#3966).
 	DredgeLibraryFloor int
 
 	// DevourCommander is what eating the bot's own commander costs on
@@ -791,6 +815,11 @@ func DefaultConfig() Config {
 		PriceExert:      true,
 		ExertCostWeight: 1.00,
 
+		// #3870: a mill cost priced like the dredge's mill.
+		PriceMillCost: true,
+		// #3966: a library exile cost priced like a mill, without the fuel.
+		PriceLibraryExileCost: true,
+
 		LandColorNeed:       0.30,
 		DiscardByDistance:   true,
 		DistanceDiscount:    0.60,
@@ -800,6 +829,7 @@ func DefaultConfig() Config {
 		PlanMaxCards:        10,
 		PlanLandDropsAsRamp: true,
 		PlanFilterLands:     true,
+		PlanRestrictedMana:  true,
 		// A quarter off next turn: see ADR 0136's amendment of
 		// 2026-10-09 for the reason.
 		PlanRockTwoTurns:     true,
@@ -973,6 +1003,10 @@ func BaselineConfig() Config {
 	// ADR 0130 §9: exert, never taken before it.
 	c.PriceExert = false
 	c.ExertCostWeight = 0
+	// #3870: a mill cost, read as free before it.
+	c.PriceMillCost = false
+	// #3966: a library exile cost, read as free before it.
+	c.PriceLibraryExileCost = false
 	// #2675, #2690, #2676: combat priced by what combat does.
 	c.FocusNeedsValue = false
 	c.GangAwareAttacks = false
@@ -1001,6 +1035,7 @@ func BaselineConfig() Config {
 	c.PlanMaxCards = 0
 	c.PlanLandDropsAsRamp = false
 	c.PlanFilterLands = false
+	c.PlanRestrictedMana = false
 	c.PlanRockTwoTurns = false
 	c.PlanNextTurnDiscount = 0
 	// ADR 0126 §2's amendment of 2026-10-09: an idle late rock.
@@ -1149,6 +1184,9 @@ type state struct {
 	// the start of a later turn of mine (afterExchange, afterWait):
 	// every permanent of mine has untapped, whatever its Tapped says.
 	laterTurn bool
+	// restrictClasses numbers the restricted mana rows the turn plan
+	// counts in this decision (manaClasses), made on first use.
+	restrictClasses *manaClasses
 }
 
 func (p *Policy) newState(in aiseat.Input) *state {

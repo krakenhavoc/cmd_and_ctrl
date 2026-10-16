@@ -78,10 +78,10 @@ func (p *Policy) decideRockNow(ctx context.Context, st *state, moves []legal.Mov
 		}
 		lineMask |= 1 << k
 	}
-	base := st.manaAvailable(p.cfg.PlanFilterLands)
+	base := st.manaAvailable(p.manaModel(st))
 	want := st.rampWants()
 	sources := st.manaSourcesTotal()
-	units := make([]uint8, 0, 2*len(base)+8)
+	units := make([]manaUnit, 0, 2*len(base)+8)
 
 	var lineB *twoTurnLine
 	var best *twoTurnLine
@@ -238,7 +238,7 @@ func (p *Policy) nextTurnBest(ctx context.Context, st *state, moves []legal.Move
 		sources += c.amount
 	}
 	mask, val, ord, _, ok := p.bestSet(ctx, setSearch{
-		cands: cands, base: st.nextTurnMana(p.cfg.PlanFilterLands, now),
+		cands: cands, base: st.nextTurnMana(p.manaModel(st), now),
 		want: want, sources: sources, minSize: 1,
 	})
 	if !ok || val <= 0 {
@@ -254,14 +254,14 @@ func (p *Policy) nextTurnBest(ctx context.Context, st *state, moves []legal.Move
 // for the next land drop; and the mana sources this turn's casts (`now`)
 // leave on the battlefield, a ramp spell's lands included. The pool
 // empties before then and is not counted.
-func (st *state) nextTurnMana(filterLands bool, now []*planCandidate) []uint8 {
+func (st *state) nextTurnMana(mm manaModel, now []*planCandidate) []manaUnit {
 	var srcs []manaSource
 	for i := range st.view.Battlefield.Cards {
 		c := &st.view.Battlefield.Cards[i]
 		if c.Controller != st.me {
 			continue
 		}
-		if src, ok := manaSourceOf(c, filterLands); ok {
+		if src, ok := manaSourceOf(c, mm); ok {
 			srcs = append(srcs, src)
 		}
 	}
@@ -271,22 +271,22 @@ func (st *state) nextTurnMana(filterLands bool, now []*planCandidate) []uint8 {
 			if !isLand(c) {
 				continue
 			}
-			if src, ok := manaSourceOf(c, filterLands); ok {
+			if src, ok := manaSourceOf(c, mm); ok {
 				srcs = append(srcs, src)
 			} else if len(c.ManaAbilities) == 0 {
-				srcs = append(srcs, manaSource{units: []uint8{manaAnyColor}})
+				srcs = append(srcs, manaSource{units: []manaUnit{manaAnyColor}})
 			}
 			break
 		}
 	}
 	for _, c := range now {
 		if isPermanentSpell(c.card) && !isLand(c.card) && len(c.card.ManaAbilities) > 0 {
-			if src, ok := manaSourceOf(c.card, filterLands); ok {
+			if src, ok := manaSourceOf(c.card, mm); ok {
 				srcs = append(srcs, src)
 			}
 		}
 		for k := 0; k < c.lands; k++ {
-			srcs = append(srcs, manaSource{units: []uint8{manaAnyColor}})
+			srcs = append(srcs, manaSource{units: []manaUnit{manaAnyColor}})
 		}
 	}
 	return unitsOf(srcs)
@@ -294,8 +294,8 @@ func (st *state) nextTurnMana(filterLands bool, now []*planCandidate) []uint8 {
 
 // unitsOf is the mana a list of sources makes once each is activated:
 // the plain sources first, then the filters, fed as the engine would.
-func unitsOf(srcs []manaSource) []uint8 {
-	var units []uint8
+func unitsOf(srcs []manaSource) []manaUnit {
+	var units []manaUnit
 	var filters []manaSource
 	for _, s := range srcs {
 		if s.input > 0 {

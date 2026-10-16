@@ -85,6 +85,10 @@ type choiceParams struct {
 	// omitempty for CreatureType's reason: the dispatcher routes on
 	// its PRESENCE.
 	CardName string `json:"card_name,omitempty"`
+	// CardNames answers an outside_collection prompt (ADR 0198): the
+	// cards taken from the database, by name. Routed by KIND, so
+	// omitempty is safe: an absent list is the decline it would carry.
+	CardNames []string `json:"card_names,omitempty"`
 }
 
 type assignParam struct {
@@ -746,6 +750,26 @@ func (e *enumerator) choiceMoves() bool {
 					label += " " + cardNameFor(g, id, e.seat)
 				}
 				e.addChoice(c, label, p)
+			}
+
+		case game.PendingChoiceOutsideCollection:
+			// ADR 0198: "a card you own from outside the game", chosen
+			// from the card database. There is no closed candidate set
+			// (a human searches the whole database), so the answers
+			// offered are the prompt's own suggestions: cards the
+			// filter accepts, the ones the engine automates first.
+			// Declining is legal whenever the floor is zero, and is
+			// this choice's AlwaysLegal answer. Every offered set is
+			// put to the engine's own acceptance check first (#544).
+			// The labels name database cards, which hide nothing.
+			if c.ChooseMin == 0 {
+				p := base()
+				e.addAlwaysLegalChoice(c, reason+": take nothing", p)
+			}
+			for _, set := range e.collectionAnswers(g, c) {
+				p := base()
+				p.CardNames = set
+				e.addChoice(c, reason+": take "+strings.Join(set, " and "), p)
 			}
 
 		case game.PendingChoiceCoinCall:
@@ -2634,6 +2658,52 @@ func (e *enumerator) cardNameAnswers(c *game.PendingChoice) []string {
 		return []string{cardNameFallback}
 	}
 	return names
+}
+
+// collectionAnswers is the answers an outside_collection prompt offers
+// (ADR 0198): sets of the prompt's suggested card names, of every size
+// from the floor (at least one) to the ceiling, each one the engine
+// accepts (CollectionPickLegalLocked), at most MaxExpansionPerSource of
+// them. A suggestion list holds a few names, so the expansion is small;
+// sets of more than two are not offered (no card asks for more than
+// two, and the human picker reaches any set).
+func (e *enumerator) collectionAnswers(g *game.Game, c *game.PendingChoice) [][]string {
+	names := c.CollectionSuggestions
+	lo, hi := max(c.ChooseMin, 1), min(c.ChooseMax, 2)
+	limit := e.capOr(e.opts.MaxExpansionPerSource)
+	var out [][]string
+	try := func(set []string) bool {
+		if len(out) >= limit {
+			return false
+		}
+		if g.CollectionPickLegalLocked(c, set) {
+			out = append(out, set)
+		}
+		return true
+	}
+	if lo <= 1 && hi >= 1 {
+		for _, n := range names {
+			if !try([]string{n}) {
+				return out
+			}
+		}
+	}
+	if lo <= 2 && hi >= 2 {
+		for i := range names {
+			for j := i + 1; j < len(names); j++ {
+				if !try([]string{names[i], names[j]}) {
+					return out
+				}
+			}
+		}
+	}
+	// "Any number" (Spawnsire of Ulamog's cast, #3955): the whole
+	// suggestion list is one more answer, which is the set a bot that
+	// paid {20} wants and the pairs above would never reach.
+	if hi = min(c.ChooseMax, len(names)); hi > 2 && lo <= hi {
+		try(append([]string(nil), names[:hi]...))
+	}
+	return out
 }
 
 // sourceControllerSuffix is a choose_source candidate's controller, for

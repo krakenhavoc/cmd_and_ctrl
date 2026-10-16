@@ -92,6 +92,10 @@ type triggerIdentityLKI struct {
 	// creature dies" in its GAINED text triggers, and one that gave
 	// its own away does not. Immutable, shared like Card.TextBox.
 	TextBox *TextBoxValues `json:"textBox,omitempty"`
+	// TextWords is the text change it was under (Card.TextWords), as
+	// PermanentInfo.TextWords carries it: "when this creature dies"
+	// reads its own words as they last were (CR 603.10a, #3872).
+	TextWords []TextWordChange `json:"textWords,omitempty"`
 }
 
 // harvestPass is the event-local, immutable view shared by every matching
@@ -327,6 +331,7 @@ func (g *Game) withLastKnownTriggerIdentityLocked(c Card) Card {
 	c.ActiveFace = identity.ActiveFace
 	c.AttachedTo = identity.AttachedTo
 	c.TextBox = identity.TextBox
+	c.TextWords = textWordsFromEntries(identity.TextWords)
 	if lki, ok := g.lastKnownBattlefield[c.InstanceID]; ok {
 		c.Name = lki.Name
 		c.Controller = lki.Controller

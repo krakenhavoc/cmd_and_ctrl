@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -33,7 +35,10 @@ import (
 // other basic.
 func IsBasicLandWithSubtype(subtype string) func(game.Card) bool {
 	return func(c game.Card) bool {
-		return b30IsBasicLandCard(c) && containsFoldASCII(c.TypeLine, subtype)
+		// A word of the searching object's text, read through the lens
+		// SearchLibrary lends (CR 612.2, #3872). containsFoldASCII wants
+		// its needle lower-case.
+		return b30IsBasicLandCard(c) && containsFoldASCII(c.TypeLine, strings.ToLower(c.LentSubtype(subtype)))
 	}
 }
 

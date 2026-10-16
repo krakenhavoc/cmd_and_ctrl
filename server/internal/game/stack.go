@@ -91,6 +91,28 @@ type TargetRef struct {
 	// different Mode values, which is what gives each occurrence its
 	// own target group. Added by #764.
 	Mode int
+
+	// Epoch is the CR 400.7 object epoch of the permanent this ref
+	// named when a PAYLOAD recorded it (StackItem.Payload), so the
+	// resolving ability can read that object's last-known information
+	// (CR 608.2h) even when its card has since come back as a new one:
+	// Orvar's "create a token that's a copy of one of those permanents".
+	// Zero everywhere else, and for a payload that records no object:
+	// epoch zero is a real epoch, but a ref whose reader wants the
+	// object builds it with PayloadObjectRef and reads it back with
+	// ObjectRef. Never part of a target announcement. Added by #3859.
+	Epoch int `json:"epoch,omitempty"`
+}
+
+// PayloadObjectRef is the Payload entry that records one permanent
+// OBJECT (a card and its CR 400.7 epoch).
+func PayloadObjectRef(o ObjectRef) TargetRef {
+	return TargetRef{Kind: TargetCard, ID: o.ID, Epoch: o.Epoch}
+}
+
+// Object reads a payload entry back as the object it recorded.
+func (r TargetRef) Object() ObjectRef {
+	return ObjectRef{ID: r.ID, Epoch: r.Epoch}
 }
 
 // StackItem is the metadata for one item on the stack. Lives in
@@ -489,6 +511,19 @@ type StackItem struct {
 	// MarkSpellExilesWithCounterForEffect; never on a copy.
 	ExileWithCounter string `json:"exileWithCounter,omitempty"`
 
+	// ExileInsteadOfGraveyard is "If that spell would be put into your
+	// graveyard, exile it instead" as a fact about this stack object
+	// (Torrential Gearhulk, Emet-Selch of the Third Seat; #3863). The
+	// narrower sibling of AltCostExiles: it replaces only a move to the
+	// owner's graveyard, on every path that would make one — resolving
+	// (where it is one of the CR 616.1 resolution exits beside buyback
+	// and rebound), being countered, or fizzling. A spell returned to
+	// a hand or put into a library goes there. Stamped at the cast from
+	// the permission that granted it, because that permission is usually
+	// gone by the time the spell leaves the stack (CR 400.7g). Never set
+	// on a copy.
+	ExileInsteadOfGraveyard bool `json:"exileInsteadOfGraveyard,omitempty"`
+
 	// Uncopyable is "This ability can't be copied" as a fact about
 	// this stack object (#1574, ADR 0043 Decision 20). Set at
 	// activation from ActivatedAbilityShape.Uncopyable; a triggered
@@ -629,8 +664,9 @@ type StackItem struct {
 	TargetsAnnouncePending bool
 
 	// Optional is the CR 603.5 "you may" of an optional triggered
-	// ability: who is asked and how, asked as the item resolves
-	// (#2494, optional_trigger.go). Nil for every mandatory item.
+	// ability, or of an activated ability whose whole effect is one
+	// (ADR 0197 §10, #2731): who is asked and how, asked as the item
+	// resolves (#2494, optional_trigger.go). Nil for every other item.
 	// Plain data, carried by Clone and the snapshot.
 	Optional *OptionalTrigger
 

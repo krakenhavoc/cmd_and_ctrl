@@ -142,7 +142,11 @@ func returnTargetedCardToHand(g *game.Game, item *game.StackItem) error {
 // different costs around it.
 //
 // Post-layer subtypes are irrelevant here: the card being matched is
-// in a LIBRARY, where nothing changes its type line.
+// in a LIBRARY, where nothing changes its type line. The subtypes named
+// are words of the searching object's text (CR 612.2, #3984), read
+// through the lens the search lends (HasSubtypeWord): an Overlook
+// changed from "Forest" to "Swamp" and sacrificed to its own ability
+// finds a Swamp, from its last-known words.
 func IsBasicLandOfAnySubtype(subtypes ...string) func(game.Card) bool {
 	want := append([]string(nil), subtypes...)
 	return func(c game.Card) bool {
@@ -150,7 +154,7 @@ func IsBasicLandOfAnySubtype(subtypes ...string) func(game.Card) bool {
 			return false
 		}
 		for _, s := range want {
-			if c.HasSubtype(s) {
+			if c.HasSubtypeWord(s) {
 				return true
 			}
 		}
@@ -585,9 +589,18 @@ func attackDeclaredByYou(ev game.Event, controller uuid.UUID) bool {
 // line, so "Forest" no longer matches a card that merely has the
 // word somewhere. Callers wanting "basic" semantics should compose
 // with IsBasicLand instead.
+//
+// `subtype` is a word of the text of the object whose clause this is
+// (CR 612.2, #3872), so it is read through the lens a lending walk
+// gives the candidate (HasSubtypeWord): SearchLibrary, the targeting
+// walk, the cost walks and the scans that lend their source. Nature's
+// Lore under a Magical Hack fetches the Island it now names. A caller
+// that applies it to a card nobody lent reads the printed word, so a
+// card file never does that with a literal
+// (TestNoHardCodedTextWordsInCardFiles).
 func IsLandWithSubtype(subtype string) func(game.Card) bool {
 	return func(c game.Card) bool {
-		return c.IsLand() && c.HasSubtype(subtype)
+		return c.IsLand() && c.HasSubtypeWord(subtype)
 	}
 }
 
@@ -1002,6 +1015,21 @@ func plusOneCountersOnThis(n int) Effect {
 	}
 }
 
+// tapTargetAndStunIt is "Tap target creature. Put a stun counter on it."
+// (Cryotheory Adept, Loch Mare): the first legal target is tapped and
+// gets one stun counter; a target gone by resolution gets nothing.
+func tapTargetAndStunIt(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	ts := ctx.LegalTargets()
+	if len(ts) == 0 {
+		return nil
+	}
+	if err := (TapTarget{Target: ts[0].ID}).Apply(ctx); err != nil {
+		return err
+	}
+	return AddCounter{Target: ts[0].ID, Kind: game.CounterStun, N: 1}.Apply(ctx)
+}
+
 func putIndestructibleCounterOnSource() Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		if !b15OnBattlefield(g, item.SourceCardID) {
@@ -1012,6 +1040,11 @@ func putIndestructibleCounterOnSource() Effect {
 	}
 }
 
+// EachLandIsAlso is "Each land is also a <subtype>" (Yavimaya, Cradle
+// of Growth; Urborg, Tomb of Yawgmoth). The type is a word of the
+// source's text (CR 612.2, #3872), read through it as the layer pass
+// applies the static: Yavimaya under a Magical Hack makes every land an
+// Island too.
 func EachLandIsAlso(subtype string) game.StaticAbility {
 	return game.StaticAbility{
 		Label: "Each land is also a " + subtype + ".",
@@ -1019,13 +1052,14 @@ func EachLandIsAlso(subtype string) game.StaticAbility {
 		AppliesTo: func(target *game.Card, _ *game.Game, _ *game.Card) bool {
 			return target.IsLand()
 		},
-		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+			now := source.TextSubtype(subtype)
 			for _, st := range c.Subtypes {
-				if strings.EqualFold(st, subtype) {
+				if strings.EqualFold(st, now) {
 					return
 				}
 			}
-			c.Subtypes = append(c.Subtypes, subtype)
+			c.Subtypes = append(c.Subtypes, now)
 		},
 	}
 }
@@ -1088,19 +1122,16 @@ func firstLegalPlayerTarget(ctx *Context) (uuid.UUID, bool) {
 	return uuid.Nil, false
 }
 
-// notACreature strips the Creature card type, and the creature
-// subtypes that rode on it, from a characteristic being built in
-// layer 4. Not a CR citation — the Comprehensive Rules don't mandate
-// erasing a permanent's printed creature subtypes when it stops being
-// a creature; this engine does it anyway, for the reason below.
+// notACreature strips the Creature card type from a characteristic
+// being built in layer 4: every "as long as <condition>, this isn't a
+// creature" clause (a Theros God's devotion, The Warring Triad's
+// graveyard gate, impending's time counters).
 //
-// Shared by every "as long as <condition>, this isn't a creature"
-// clause — The Warring Triad's graveyard gate, impending's time
-// counters — because the second half is the half that gets forgotten.
-// Dropping Creature and leaving the subtypes behind leaves a God or an
-// Avatar Horror that is not a creature, which reads as a bug on the
-// card and, under a Maskwood Nexus, is one: the permanent would still
-// be every creature type while not being a creature at all (#670).
+// The creature subtypes go with it, and so does "is every creature
+// type", but not here: the layer pass applies CR 205.1a to every
+// layer-4 effect (game/card_type_loss.go, #2041), so a God that isn't a
+// creature is a "Legendary Enchantment" and an artifact creature keeps
+// its artifact types.
 //
 // It does NOT touch power and toughness. A characteristic with no
 // Creature type has no P/T that anything reads, and layer 7 runs
@@ -1113,7 +1144,6 @@ func notACreature(c *game.Characteristic) {
 		}
 	}
 	c.Types = kept
-	c.SetSubtypes(nil)
 }
 
 // EnteringPermanentChooser is the `Controller` hook every entry
@@ -1593,4 +1623,15 @@ func bounceEachLegalTarget(g *game.Game, item *game.StackItem) error {
 		}
 	}
 	return nil
+}
+
+// replacementSourceController is a static replacement's Controller when
+// the effect is controlled by its source's controller (CR 616.1): the
+// usual case for a permanent's own replacement effect. uuid.Nil for a
+// missing source.
+func replacementSourceController(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+	if src == nil {
+		return uuid.Nil
+	}
+	return src.Controller
 }

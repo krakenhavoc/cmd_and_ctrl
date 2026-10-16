@@ -386,6 +386,17 @@ describe("the yes/no family, inline in the dock", () => {
     expect(hint.textContent).toContain("No legal target");
   });
 
+  it("warns when a may ability's yes would not help (#2731)", async () => {
+    const c = await mountGame(
+      withChoice({ reason: "Arni Brokenbrow — set its base power?", no_gain: true }),
+    );
+    const hint = expectInDock(c, "Arni Brokenbrow — set its base power?").querySelector(
+      ".dock-hint",
+    )!;
+    expect(hint.classList.contains("warn")).toBe(true);
+    expect(hint.textContent).toContain("wouldn’t help");
+  });
+
   it("is not drawn for a seat that is not the chooser", async () => {
     const c = await mountGame(withChoice({ reason: "Reclamation Sage — destroy?", chooser: OPP }));
     expect(dockOf(c).querySelector('[role="dialog"]')).toBeNull();

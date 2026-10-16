@@ -178,18 +178,27 @@ func lowerASCII(s string) string {
 // wire type line unreadable and every subtype loop in the engine
 // quadratic, which is why it is one flag rather than the vocabulary.
 //
-// Off the battlefield there is no layered characteristic, so the
-// printed keyword answers directly — CR 702.73a is a
-// characteristic-defining ability and applies in every zone. A GRANT
-// (Maskwood Nexus) does not, because CR 113.6 says a static ability's
-// continuous effect applies only while its source is on the
-// battlefield. Both are the correct answer, for different reasons.
+// Off the battlefield the printed keyword answers — CR 702.73a is a
+// characteristic-defining ability and applies in every zone — and so
+// does the zone layer step's stamp, when a battlefield static has made
+// the object every creature type there: Maskwood Nexus' "creature cards
+// you own that aren't on the battlefield" (#3862, zone_layers.go).
 func HasAllCreatureTypes(c *Card) bool {
 	if c == nil {
 		return false
 	}
 	if c.effective != nil {
 		return c.effective.AllCreatureTypes
+	}
+	// #3862: off the battlefield, a static's layer-4 answer for the
+	// object (zone_layers.go) — Maskwood Nexus' creature card in hand.
+	// Its baseline carries a printed changeling already; a changeling
+	// the stack step granted is a keyword, asked below as before.
+	if z := c.zoneLayered; z != nil {
+		if z.AllCreatureTypes {
+			return true
+		}
+		return !c.Bestowed && HasKeyword(c, KeywordChangeling)
 	}
 	// ADR 0141, CR 702.103b: a bestowed spell is not a creature, so it
 	// has no creature types (CR 205.3d).

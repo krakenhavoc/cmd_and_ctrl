@@ -98,9 +98,12 @@ func (g *Game) paysLifeForColorsLocked(payer uuid.UUID) []string {
 func (g *Game) grantLifeForManaLocked(payer uuid.UUID, cost ParsedCost) ParsedCost {
 	// Cheap negative first: the enumerator asks this once per candidate
 	// and most costs print no coloured symbol the grant could reach.
-	need := false
+	reachable := func(r ColorRequirement) bool {
+		return !r.PaysWithLife() && len(r.Options) > 0 && !requiresColorless(r)
+	}
+	need := cost.folded.n > 0 && reachable(cost.folded.req)
 	for _, r := range cost.Required {
-		if !r.PaysWithLife() && len(r.Options) > 0 && !requiresColorless(r) {
+		if reachable(r) {
 			need = true
 			break
 		}
@@ -112,6 +115,14 @@ func (g *Game) grantLifeForManaLocked(payer uuid.UUID, cost ParsedCost) ParsedCo
 	if len(colors) == 0 {
 		return cost
 	}
+	return markLifeGranted(cost, colors)
+}
+
+// markLifeGranted is grantLifeForManaLocked's marking, for the granted
+// `colors`: every requirement holding one of them and not already
+// payable with life is marked LifeGranted. `cost` itself when none is.
+// Pure.
+func markLifeGranted(cost ParsedCost, colors []string) ParsedCost {
 	out := cost
 	copied := false
 	for i, r := range cost.Required {
@@ -124,6 +135,12 @@ func (g *Game) grantLifeForManaLocked(payer uuid.UUID, cost ParsedCost) ParsedCo
 		}
 		r.LifeGranted = true
 		out.Required[i] = r
+	}
+	// A folded run (#3909) is marked whole: its requirements are
+	// identical. Only a caller that grants on a cost already folded
+	// reaches it; costAsPaidByLocked grants before the fold.
+	if r := out.folded.req; out.folded.n > 0 && !r.PaysWithLife() && optionsIntersect(r.Options, colors) {
+		out.folded.req.LifeGranted = true
 	}
 	return out
 }
@@ -167,6 +184,9 @@ func (c ParsedCost) LifeGrantedSymbols() int {
 		if r.LifeGranted && !r.Phyrexian {
 			n++
 		}
+	}
+	if r := c.folded.req; r.LifeGranted && !r.Phyrexian {
+		n += c.folded.n
 	}
 	return n
 }

@@ -25,7 +25,7 @@ func init() {
 		HandSize:     []game.HandSizeStatic{YourMaxHandSizeChangedBy(2)},
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Trusted Advisor — return a blue creature you control", Do(ReturnOneYouControl{
-				Match:    func(c game.Card) bool { return c.IsCreature() && c.HasColor("U") },
+				Match:    func(c game.Card) bool { return c.IsCreature() && c.HasColorWord("U") },
 				Question: "Trusted Advisor — return a blue creature you control to its owner's hand",
 			})),
 		},

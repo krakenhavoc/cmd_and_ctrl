@@ -97,6 +97,13 @@ var CatalogCastableZonesIf func(oracleID string) []ConditionalCastZone
 //
 // Caller must hold g.mu.
 func (g *Game) cardOpensZoneLocked(card Card, key string, zone ZoneKind) bool {
+	// Outside the game is opened by a per-instance permission and by
+	// nothing a card prints (#3955): a card-level declaration would open
+	// the whole of a sideboard to every copy of the card, which is
+	// Wish's permission without Wish.
+	if zone == ZoneOutside {
+		return false
+	}
 	if CardCastableFromZone(key, zone) {
 		return true
 	}
@@ -232,6 +239,12 @@ func castZoneFromWire(fromZone string) (ZoneKind, bool) {
 		return ZoneExile, true
 	case string(ZoneGraveyard):
 		return ZoneGraveyard, true
+	case string(ZoneOutside):
+		// ADR 0198's 2026-10-16 amendment (#3955): "cast ... from outside
+		// the game". Not a zone (CR 400.11) but the one container a
+		// permission can name; castSourceZoneLocked resolves it to the
+		// caller's own and only a granted permission opens it.
+		return ZoneOutside, true
 	case string(ZoneLibrary):
 		// S42, CR 401.5. The wire says "library"; the TOP-CARD half of
 		// the rule is enforced by the permission (CastPermission.
@@ -294,11 +307,13 @@ func AlternativeCostsOfferedFromZone(oracleID string, zone ZoneKind) []Alternati
 // permission prices (rule 4).
 //
 // The rest are offers, in announce precedence: the card's own first,
-// then the one a granted permission synthesises, and a granted key
-// the card also prints is dropped rather than listed twice — the
-// same order resolveAlternativeCostLocked judges a claim in, so a
-// Deep Analysis flashed back under Past in Flames is listed at its
-// printed price and not at the grant's. The offers a battlefield static
+// then the one a granted permission synthesises — the same order
+// resolveAlternativeCostLocked judges a claim in. A granted key the card
+// also prints is a second instance of that keyword (CR 113.2c, #3938):
+// it is listed under GrantedInstanceKey unless it only repeats the
+// printed price, so a Deep Analysis flashed back under Past in Flames is
+// offered at its printed price under "flashback" and at the grant's
+// under "flashback/granted". The offers a battlefield static
 // applies to every spell the caster casts (ADR 0118 §3: Jodah,
 // Omniscience) come last, and one that only repeats a listed price is
 // dropped.
@@ -334,8 +349,20 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 	}
 	seen := make(map[string]bool, 2)
 	add := func(ac *AlternativeCost, under *CastPermission) {
-		if ac == nil || ac.Key == "" || seen[ac.Key] {
+		if ac == nil || ac.Key == "" {
 			return
+		}
+		if seen[ac.Key] {
+			// #3938, CR 113.2c: a permission's offer under a key the card
+			// prints is a second instance of that keyword, listed under
+			// its own claim unless it only repeats the printed price.
+			if !ac.FromPermission || !secondInstanceOf(card, ac) {
+				return
+			}
+			ac.Key = GrantedInstanceKey(ac.Key)
+			if seen[ac.Key] {
+				return
+			}
 		}
 		seen[ac.Key] = true
 		if g.validateCastPathLocked(card, zone, ac, under) != nil {
@@ -391,6 +418,33 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 		add(ac, grant)
 	}
 	return out
+}
+
+// secondInstanceOf reports whether `granted`, a permission's offer under
+// a key `card` prints, is a second instance of that keyword to offer
+// beside the printed one (#3938, CR 113.2c). It is not when the printed
+// offer is claimable only under a grant of its key (miracle, CR 702.94a:
+// the grant is the right to pay the printed cost, not a second miracle),
+// nor when it only repeats the printed price: two flashback abilities at
+// one price, or two retrace abilities, are one choice.
+func secondInstanceOf(card Card, granted *AlternativeCost) bool {
+	printed := AlternativeCostByKey(castOfferKey(card), granted.Key)
+	return printed != nil && !printed.RequiresGrant && !sameOfferPrice(printed, granted)
+}
+
+// sameOfferPrice reports whether two offers charge the same: the same
+// mana, life and energy, and the same card component (none on either,
+// or one of the same kind, count and prompt).
+func sameOfferPrice(a, b *AlternativeCost) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	sa, za, na := a.cardComponent()
+	sb, zb, nb := b.cardComponent()
+	if (sa == nil) != (sb == nil) || za != zb || na != nb || a.PayLabel != b.PayLabel {
+		return false
+	}
+	return sameManaPrice(a.ManaCost, b.ManaCost) && a.Life == b.Life && a.Energy == b.Energy
 }
 
 // castUsesGrantLocked reports whether a cast of `card` out of `srcKind`

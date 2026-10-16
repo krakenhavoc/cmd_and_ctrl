@@ -218,6 +218,23 @@ type AlternativeCost struct {
 	// price and the enumerator) prices from CastSpellParams.AltCostIDs.
 	ReducedBySacrificedManaValue bool
 
+	// ReducedByTappedPower is harmonize's "If you cast this spell using
+	// its harmonize ability, its total cost is reduced by an amount of
+	// generic mana equal to the tapped creature's power" (CR 702.180a,
+	// #3931, ADR 0135 amendment 2026-10-16). Only beside a TapOthers of
+	// up to one creature (TapOthersCost.UpTo, Count 1); effects.Register
+	// refuses it anywhere else.
+	//
+	// Emerge's shape with a tap for a sacrifice: CR 702.180b chooses
+	// the creature as the cost is chosen (601.2b) and taps it as the
+	// total is paid (601.2h), so CR 601.2f totals the cost while it is
+	// untapped and on the battlefield. The pricer reads its power
+	// (clamped at zero) into CostQuery.AltTappedPower and
+	// applyCostModifiersLocked takes it off the generic part with the
+	// board's reductions. Naming no creature is a legal payment and
+	// reduces nothing.
+	ReducedByTappedPower bool
+
 	// DiscardFromHand is retrace's "discarding a land card in addition
 	// to paying its other costs" (CR 702.81a, #2528): a card from the
 	// caster's HAND, named in CastSpellParams.AltCostIDs and DISCARDED
@@ -314,6 +331,12 @@ type AlternativeCost struct {
 	// its own printed text, and an escaped Kroxa does not exile at
 	// all. Flashback is the keyword that carries the clause.
 	ExileOnLeavingStack bool
+
+	// ExileInsteadOfGraveyard is the narrower "if that spell would be
+	// put into your graveyard, exile it instead" a granted cast carries
+	// (CastPermission.ExileInsteadOfGraveyard, #3863): only a move to
+	// its owner's graveyard is replaced. Stamped onto the stack item.
+	ExileInsteadOfGraveyard bool
 
 	// WarpExile is warp's "exile this permanent at the beginning of
 	// the next end step, then you may cast it from exile on a later
@@ -679,10 +702,20 @@ func validateAlternativeCost(oracleID, key string, targets []TargetRef) (*Altern
 // which is the order CastOffersForLocked lists them in. Their keys are
 // namespaced, so none can shadow a printed or permission key.
 //
+// #3938 (ADR 0066 decision 3, amended 2026-10-16): the printed offer
+// keeps the bare key, and the permission's offer under the same key is
+// still claimable, as a second instance of the keyword (CR 113.2c),
+// under GrantedInstanceKey. Lier's flashback on a Faithless Looting is
+// claimed as "flashback/granted" and costs {R}; "flashback" is still the
+// printed {2}{R}.
+//
 // Caller must hold g.mu.
 func (g *Game) resolveAlternativeCostLocked(caster uuid.UUID, card Card, zone ZoneKind, grant *CastPermission, key string, targets []TargetRef) (*AlternativeCost, error) {
 	if key == "" {
 		return nil, nil
+	}
+	if base, ok := grantedInstanceClaim(key); ok {
+		return grantedInstanceOffer(card, grant, base, key, targets)
 	}
 	if alt, err := validateAlternativeCost(castOfferKey(card), key, targets); err == nil {
 		return alt, nil
@@ -704,6 +737,25 @@ func (g *Game) resolveAlternativeCostLocked(caster uuid.UUID, card Card, zone Zo
 		return nil, ErrInvalidParam
 	}
 	return granted, nil
+}
+
+// grantedInstanceOffer resolves a claim of a granted instance (#3938):
+// the offer `grant` synthesises under `base`, on a card that prints an
+// offer under `base` too (secondInstanceOf), keyed by the claim. Any
+// other claim spelled this way is refused, so each offer has exactly one
+// spelling: a grant over a card that prints no such offer is claimed
+// under the bare key, and one that only repeats the printed price is not
+// a second offer at all.
+func grantedInstanceOffer(card Card, grant *CastPermission, base, claim string, targets []TargetRef) (*AlternativeCost, error) {
+	offer := grant.AlternativeCostFor(card)
+	if offer == nil || offer.Key != base || !secondInstanceOf(card, offer) {
+		return nil, ErrInvalidParam
+	}
+	if offer.ClearsTargets && len(targets) > 0 {
+		return nil, ErrInvalidParam
+	}
+	offer.Key = claim
+	return offer, nil
 }
 
 // PaysCards reports whether this cost has a component the caster
@@ -816,6 +868,11 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	}
 	spec, zone, want := alt.cardComponent()
 	if spec == nil {
+		return true
+	}
+	// #3931: harmonize taps UP TO one creature, so naming none pays it
+	// and the board never withholds the offer.
+	if alt.TapOthers != nil && alt.TapOthers.UpTo {
 		return true
 	}
 	setRule := len(SacrificeSetKinds(spec)) > 0
@@ -995,7 +1052,7 @@ func (g *Game) validateAlternativeCostPaymentLocked(playerID, castID uuid.UUID, 
 	// and another card"). Each card passed the clause's union predicate
 	// above; the SET must still fill every entry, one card each. Two
 	// non-Island cards are not an Island card and another card.
-	if !g.costSetSatisfiedLocked(spec, zone, ids) {
+	if !g.costSetSatisfiedLocked(spec, zone, ids, nil) {
 		return ErrInvalidParam
 	}
 	return nil

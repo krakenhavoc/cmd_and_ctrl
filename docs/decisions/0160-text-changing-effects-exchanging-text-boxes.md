@@ -344,3 +344,247 @@ cumulative upkeep, #3869). The `text-changing-effects` row is implemented.
   "multicolored", a colour count): a blue creature under "blue → black" would read as colourless.
 - **A goroutine-free "current source" field on `Game`** set during the walk. The view enumerates targets
   under the read lock concurrently, so a shared field is a data race.
+
+---
+
+## Follow-up 2026-10-16 — the card-file migration (#3872)
+
+**Status:** Accepted · 2026-10-16. No new decision: this moves cards onto the A3 doors the amendment
+built, as its "honest coverage" section said it would, and adds three small doors of the same kind.
+
+### What now reads its words through its text
+
+- **Effects** read through the object they are: `Context.TextColor` / `TextSubtype` (the resolving
+  spell, or the ability's source). Pyroblast's "if it's blue", Inquisitor's Snare, Heroism's attacking
+  red creatures, Oran-Rief, Veil of Summer (its draw and both hexproof grants), Sorin's −6, Jace,
+  Reality Sculptor's Islands, Rockalanche's Forests, Themberchaud's Mountains, the Swamp counts (Defile,
+  Consuming Corruption, Liliana of the Dark Realms' −3) and the devotion readers (Gray Merchant, Grim
+  Servant, Thassa's Oracle, Fanatic of Mogis, Acolyte's Reward).
+- **Triggers and statics** read through their source: `source.TextColor` / `TextSubtype` (Ayara,
+  Runaway Steam-Kin, Ivy Lane Denizen and Sylvan Anthem's trigger, Koth of the Homestead, Valakut, Roiling
+  Canopy, Blanchwood Armor, Tide Shaper, Liliana's emblem, every Theros God's devotion and Daxos and
+  Renata's), and cost modifiers through `CostQuery.Source` (`ColoredSpell`, so every Medallion,
+  Crystal and Monument; Kefnet's Monument, Nightscape Familiar, Goblin Anarchomancer).
+- **Helpers that judge a card against their own clause lend the text** (`game.ThroughTextOf`): the
+  cast triggers (`YouCast`, so every `WheneverYouCast(OfColor …)`; `AnOpponentCast`; Soot Imp's and
+  Mai's `castersLoseLife`), "one or more creatures you control deal combat damage", spell keyword
+  grants, counter shields, hexproof bypasses and ward suppression, borrowed abilities, `SearchLibrary`
+  (every "search for a Plains card") and `ReturnOneYouControl` (Trusted Advisor). A clause read there
+  through `HasColorWord` / `HasSubtypeWord` follows a change; a CHOSEN word is read with `HasColor`
+  and is not text, as before.
+- **Queries**: `PermanentQuery.ThroughTextOf` translates a query's subtypes and colours, so the state
+  triggers (`WhenYouControlNo` and its siblings: Seasinger, the serpents, Barbarian Outcast) and the
+  self-imposed attack clause ("can't attack unless defending player controls an Island") ask the
+  changed question. A restriction an EFFECT wrote (`ModCantAttackUnlessDefenderControls`) is not
+  translated: a text change does not change an effect already created (CR 612.3's ruling).
+- **A target clause whose word is not about the candidate** reads the lent text with
+  `Card.LentColor` / `LentSubtype`: Seasinger's "whose controller controls an Island", Vedalken
+  Shackles' "the number of Islands you control".
+
+### Two of the listed gaps, closed
+
+- **A creature type inside a protection quality.** `TextWords.keyword` reads "protection from
+  Goblins" through `ParseProtectionQuality` and spells the new type back as a plural the same parser
+  reads as that type (Elf → "Elves", Merfolk → "Merfolk"); a spelling that would not round-trip is
+  never written, so the worst case is the printed word, never a protection from nothing.
+- **A spell's own characteristics on the stack.** A spell has no layer pass, so `effectiveOf`,
+  `hasSubtype` and the off-battlefield keyword walk apply its `TextWords` to the baseline directly
+  (`TextWords` is only ever set on a battlefield permanent, which has its pass's characteristic, or a
+  stack spell). A Goblin creature spell made an Elf is an Elf spell before it resolves.
+
+### The guard
+
+`TestNoHardCodedTextWordsInCardFiles` (`cards/effects/text_word_guard_test.go`) scans every card file
+for a literal colour letter or basic land type passed straight to `Card.HasColor`, `Card.HasSubtype`
+or `devotionTo`, and fails unless the file is listed with the reason the word is out of reach (today
+one: Marang River Prowler, whose clause works only from the graveyard).
+
+### Still not reached
+
+- **A departed source's text.** A source that has left is read from its last-known record or its new
+  zone, neither of which carries `TextWords`; carrying it needs the LKI record and `TargetSource`'s
+  departed half to hold it, which is a snapshot question of its own.
+- **Words passed to a helper as an argument** rather than read in a closure: the land-type helpers
+  (`IsLandWithSubtype`, `MatchLandSubtype`, `ControlsA`, `b08LandsWithSubtypeControlled`,
+  `TargetLandBecomes…`, `SetsBasicLandType`, `EachLandIsAlso`), the colour ones (`QueryColors` in the
+  prevention cards, `b18ControlsPermanentOfColor`). Each is a per-helper change to take the source.
+- **Cost clauses.** A sacrifice, return or tap cost's predicate is judged with no source object
+  (`SourceChooser`), in the validator, the enumerator and the view alike, so Heroism's "Sacrifice a
+  white creature" and Kukemssa Serpent's "Sacrifice an Island" keep their printed word. Lending there
+  is an engine change across all three, not a card migration.
+
+All three are reached since slice 2, below.
+
+## Follow-up 2026-10-16, slice 2 — helper arguments, cost clauses and a departed source (#3872)
+
+**Status:** Accepted · 2026-10-16. No new decision: the three classes slice 1 left are moved onto the
+same doors, plus one engine seam each for costs and last-known information.
+
+### Words passed to a helper
+
+A helper that takes the word as an argument now reads it through the text of the object whose clause it
+is, in one of two ways:
+
+- **Doors** read the word themselves, so a card file names its printed word to them as a literal:
+  the predicate builders a lending walk evaluates (`IsLandWithSubtype`, `IsBasicLandWithSubtype`,
+  `MatchLandSubtype`, `MatchColor`, `MatchCreatureSubtype`, `b05HasSubtype`, through
+  `HasSubtypeWord` / `HasColorWord` / `LentSubtype`), with `ProducedPerPermanent`, `ControlsAtLeast`
+  and `OpponentControlsAtLeast` now lending their source's text (Cabal Coffers, Tainted Isle, the
+  Verges, Leechridden Swamp, Elvish Archdruid) and a mana trigger's land match lending its source's
+  (Crypt Ghast); the statics that read their source (`SetsBasicLandType`: Blood Moon, Magus of the
+  Moon, Spreading Seas and the rest; `EachLandIsAlso`: Yavimaya); the effects that read their context
+  (`TargetLandBecomes…`: Tidal Warrior, Kukemssa Serpent, Gaea's Liege; a choice among printed types
+  offers each translated type once); and the prevention shields, whose printed `Queries` and
+  `Filter.Except` are read through the resolving object's text as the shield is made (`QueryColors`:
+  the Circles and Runes of Protection, Burrenton Forge-Tender, Pilgrims, Luminesce, Radiant Kavu,
+  Hunter's Ambush). Each reads once, when the effect is applied, and keeps that answer (CR 608.2h; a
+  later change does not alter an effect already created, the cards' ruling on CR 612.3).
+- **Imperative helpers** judge the word as given (`ControlsA`, `AnOpponentControlsAAndYouControlA`,
+  `b08LandsWithSubtypeControlled`, `b12OtherMountainsControlled`, `b18ControlsPermanentOfColor`,
+  `b33IslandsControlled`, `leftAsColor`), so the caller translates first:
+  `source.TextSubtype("Island")` (Serpent of the Endless Sea, Staff of Titania, Gaea's Liege,
+  Emeria), `ctx.TextSubtype("Faerie")` (Ego Drain, Mana Sculpt, Diplomacy of the Wastes, Unholy
+  Annex), `c.LentSubtype("Island")` (Spectral Deluge), `g.TextReaderOfForEffect(source)` in a mana
+  condition (Tainted Field, Tainted Wood, Wastewood Verge).
+
+A word that was CHOSEN is not text (CR 612.2) and never translates: `SetsChosenBasicLandType`
+(Illusionary Terrain, Phantasmal Terrain) and a shield's `ChosenQueries` (Story Circle, Circle of Solace,
+Prismatic Strands, Mourner's Shield, Protective Sphere, Avacyn) say so.
+
+`TestNoHardCodedTextWordsInCardFiles` now also fails on a literal passed to an imperative helper, and
+lists the doors as its control. Two more reasons join its allowlist, both out of reach by rule: an
+alternative cost's condition (Snuff Out, Angelic Favor, Sivvi's Ruse …) is judged as the card is cast
+from a hand (CR 601.2b), and "enters tapped unless you control …" (Gingerbread Cabin, Idyllic Grange,
+Dwarven Mine) as the land enters, a new object (CR 400.7, 614.12); neither has a text change yet.
+
+### Cost clauses
+
+A sacrifice, return, tap-others or counter-removal cost is still judged on a walk that does not target
+(ADR 0038 §4): no source object, so nothing is excluded or compared that was not before. But the walk
+now carries the TEXT of the permanent whose ability it is (`TargetSource.text`, built by
+`Game.costSourceLocked`), and `lend` gives it to each candidate. The validators
+(`validateSacrificeCostLocked`, `validateReturnToHandCostLocked`, `validateTapOthersCostLocked`,
+`validateCounterRemovalLocked`), the option walks the view and the enumerator share
+(`SacrificeCostCandidatesForEffect`, which now takes the source, `ReturnToHandOptionsForEffect`,
+`TapOthersOptionsForEffect`, `CounterCostOptionsForEffect`) and the payability checks all build the
+walk there, so the three agree: Heroism under a Sleight of Mind offers, enumerates and accepts a green
+creature and refuses a white one. A spell's additional or alternative cost reads its printed words
+(its costs are paid before anything can change its text), as does a source off the battlefield.
+
+An Aura's enchant clause is checked the same way by the state-based action (CR 704.5m): Utopia Sprawl
+changed to "Enchant Island" falls off a Forest.
+
+### A departed source
+
+`PermanentInfo` and `triggerIdentityLKI` carry the words the permanent last read as
+(`TextWords []TextWordChange`: each printed word and what it read as, set side by side when rebuilt,
+never composed). It is additive within snapshot v9: a record written before it has none and reads the
+printed words, which is exactly what every binary did before; a binary that drops the key reads the
+printed words too. The readers:
+
+- the target re-check of an ability whose source has left (`stackItemSourceLocked`'s departed branch
+  lends the record's text, CR 608.2h);
+- an effect's own text (`Context.textReader`, now `Game.TextReaderForEffect`): the permanent while it
+  is still the same object, its record once it has gone, and, for a resolution continuation that
+  carries only the card (`OptionPickThen`), the card's last battlefield object while it has not moved
+  since (`departedDamageSourceLocked`'s rule). A fetchland changed from "Island" to "Forest" and
+  sacrificed to its own ability searches for a Forest; Liliana of the Dark Realms changed to Islands
+  whose −3 took her last loyalty still counts Islands; Kukemssa Serpent sacrificed by its own state
+  trigger before its ability resolves still makes the land a Forest;
+- a leaves-the-battlefield trigger's source (`withLastKnownTriggerIdentityLocked`, CR 603.10a).
+
+### Still not reached
+
+- **A clause's set rule** (`TargetSpec.EachOf`: Jarad's "Sacrifice a Swamp and a Forest") matches its
+  printed kinds. Each pick passes the translated union clause, so under a change the set cannot be
+  filled: the cost is unpayable in the validator, the enumerator and the view alike, never mis-paid.
+- **Discard, exile-from-a-zone and reveal costs** (the Martyrs' "Reveal X black cards") match a card
+  with no lens.
+- **Colour-setting effects** whose colour is printed ("becomes a white and blue Bird", "enchanted
+  creature is black": `SetColorsMod`, `AddColorsMod`, `SetAttachedColors`), a shield's protected-set
+  query (Pack Leader's Dogs) and `RedirectDamage`'s queries.
+- **Creature-type words in closures** generally: the guard covers colours and basic land types only,
+  and the creature-type callers migrated here (`ControlsA` in four effects) are the easy ones.
+
+All four are reached since the slice below.
+
+## Follow-up 2026-10-16, slice 3 — set rules, card costs, colour- and type-setting effects, creature types (#3984)
+
+**Status:** Accepted · 2026-10-16. No new decision: the classes slice 2 left are moved onto the same
+doors, and the cost walks that match a card without a `TargetSpec` lend the source's text the way the
+sacrifice walk does.
+
+### Costs that match a card
+
+`Game.costTextLocked(sourceID)` is the text a cost clause reads its words through (the permanent's, or
+nil for anything not on the battlefield, so a spell's costs read their printed words), and
+`lendCostText` gives it to each candidate. Every walk below is the one the validator, the enumerator
+and the view share, so the three still agree:
+
+- **A sacrifice clause's set rule.** `SacrificeKind.Matches` reads its subtypes with `HasSubtypeWord`,
+  and `costSetFitsLocked` lends the source's text; `sacrificeSetSatisfiedLocked`,
+  `SacrificeSetPaymentForEffect` and `SacrificeSetGroupsForEffect` take the source. "Sacrifice a Swamp
+  and a Forest" under "Swamp → Island" is paid by an Island and a Forest, in all three. Jarad's own
+  clause works from the graveyard, where no change reaches; a hand discard's set (Foil) is an
+  alternative cost and reads its printed words.
+- **Reveal, discard and exile costs.** `RevealCost.matches` reads its colour and creature type through
+  the lent text (Martyr of Bones' "X black cards" under a Sleight of Mind reveals red cards), the
+  discard and exile-from-a-zone walks lend it to the card's `Match` (Slumbering Tora's "a Spirit or
+  Arcane card"), and the exile-permanents component (craft) reads its colour, subtype and "one of
+  each" subtypes through it (`ExilePermanentsPaymentForEffect` and `ExileSubtypeGroupsForEffect` take
+  the source). A spell's additional cost ("you may exile any number of blue cards", the reveal-or-pay
+  and behold-or-pay costs) is paid as the spell is cast and reads its printed words.
+
+### Mana restrictions
+
+`restrictionsFor` reads a declared restriction's `subtype:` and `color:` tags through the producing
+permanent's text, and `spendRidersFor` does the same for a declared spend rider's filter: Eldrazi
+Temple's "colorless Eldrazi spells" under an Artificial Evolution mints mana for Elves, Pyromancer's
+Goggles' "red instant or sorcery spell" follows a Sleight of Mind. A computed restriction names a
+CHOSEN word (Cavern of Souls) and is used as it is.
+
+### Colour- and type-setting effects
+
+An effect reads its printed colours and types through its text as it is made, with
+`Context.TextColors` / `TextSubtypes` (`Card.TextColors` / `TextSubtypes`, each word once): the
+Restless lands and the other manlands, Chronatog and Foriysian Totems, Polymorphist's Jest, Liliana,
+Death's Majesty, Ghouls' Night Out, Nightcreep, Cerulean Wisps, the Gideons' animations,
+`thisEnchantmentBecomesACreature`, `Amass` ("amass Orcs") and `TurnManaTrigger` (High Tide's
+"an Island"). The attached statics read their source as the pass applies them (`SetAttachedColors`,
+`SetAttachedTypes`, `AttachedIsAlso`, Eye of Nidhogg's Dragon), as does a token-copy exception made
+by a trigger or an effect (The Scarab God, Sauron, Nexus of Becoming, Mishra). A Match selection
+(`ScopedEffectFor`, `untilEndOfTurn`) now lends the resolving object's text, as `MatchingBattlefield`
+does.
+
+### Shields
+
+A shield's recipient set (Pack Leader's "Dogs you control") and `RedirectDamage`'s source queries are
+read through the resolving object's text as they are made (`recipientsThroughText`,
+`queriesThroughText`).
+
+### Creature types
+
+More than 250 creature-type literals in closures and helper arguments now read through the object whose
+text they are, with the doors slices 1 and 2 built (`source.TextSubtype`, `ctx.TextSubtype`,
+`HasSubtypeWord` under a lending walk, `q.Source` in a cost modifier), and several helpers became
+doors (`OtherSpellOfCreatureType`, `SpellOfCreatureType`, `AnotherNontokenCreatureOfTypeEntered…`,
+`IsBasicLandOfAnySubtype` and others). `TestNoHardCodedTextWordsInCardFiles` now treats a creature
+type as a word: a literal from the engine's vetted CR 205.3m list (`game.AllCreatureTypes`, generated
+from the catalog's type lines), in its canonical spelling, passed to `Card.HasSubtype`, to a
+type-setting mod (`AddSubtypesMod`, `SetCreatureTypesMod`) or a colour-setting one (`SetColorsMod`,
+`AddColorsMod`), to a creature-type helper that judges it as given, or to a turn tally
+(`EnteredWithSubtypeThisTurn` and its kin). Words that only look like types ("Vehicle", "Arcane",
+"Food") are not in the list and are never findings. The allowlist gains the clauses no change can
+reach by rule: graveyard-only clauses (Gravecrawler, Quakebringer, embalm), conditions judged as a
+card is cast (Flame of Anor's mode count, Wolfkin Outcast's cost reduction, Submerge) or as a
+permanent enters (the Roads, Unbreathing Horde).
+
+### Still not reached
+
+- **Token descriptions** ("create a 2/2 black Zombie creature token"): a token spec's colours and
+  types are printed words the effect hands the token as data.
+- **Cast-permission filters and conditions** that name a creature type (Gisa and Geralf's Zombie
+  spells, Conspicuous Snoop, Deeproot Historian, Robber of the Rich): the filter is judged by the cast
+  path, which does not lend the granting permanent's text.
+- **A copy exception applied as a permanent enters as a copy** (Phantasmal Image's "it's an Illusion"):
+  out of reach by rule, like any enters condition.

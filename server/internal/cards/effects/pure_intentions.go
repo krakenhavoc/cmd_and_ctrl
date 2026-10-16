@@ -24,20 +24,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // "those cards" does.
 //
 // The second is the family's "this card" trigger (ADR 0153 §4), watching
-// from the GRAVEYARD, scheduling a delayed trigger for the next end step
+// from wherever the card landed (WhereverDiscarded, #3859), scheduling a delayed trigger for the next end step
 // that returns the card, pinned as an object (CR 400.7). It is not
 // Pure Intentions' own first ability: that one is only the spell's
 // effect, so a Pure Intentions that is discarded returns on its own.
 //
-// Caveat, declared: if madness or Rest in Peace sends the discarded card
-// to exile instead of the graveyard, its discard ability does not
-// trigger from exile (owner decision 6).
+// No simplification: a card that madness or Rest in Peace sent to exile
+// still triggers it, and the delayed return then finds nothing in a
+// graveyard to return, as "from your graveyard" prints.
 func init() {
 	Register(Spec{
 		OracleID:          "77ef82e6-16e3-44fa-9542-252060fa6c96",
 		Name:              "Pure Intentions",
-		Completeness:      CompletenessCaveats,
-		Caveats:           []string{discardTriggerFromExileCaveat},
+		Completeness:      CompletenessFull,
 		DiscardByOpponent: game.DiscardByOpponentTrigger,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DelayedOnEvent{
@@ -49,7 +48,7 @@ func init() {
 			}.Apply(ctx)
 		},
 		Triggered: []game.TriggeredAbility{
-			InGraveyard(On(game.EventDiscardCard, DiscardedByAnOpponent(true),
+			WhereverDiscarded(On(game.EventDiscardCard, DiscardedByAnOpponent(true),
 				"Pure Intentions — discarded: return it to your hand at the next end step",
 				func(g *game.Game, item *game.StackItem) error {
 					return scheduleReturnOfThisCard(g, item,

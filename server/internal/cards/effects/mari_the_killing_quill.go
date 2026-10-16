@@ -85,7 +85,7 @@ func init() {
 			{
 				Watches: []game.EventKind{game.EventDealDamage},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b24CombatDamageToPlayerByYourCreatureOfSubtypes(ev, source, g, "Assassin", "Mercenary", "Rogue")
+					return b24CombatDamageToPlayerByYourCreatureOfSubtypes(ev, source, g, source.TextSubtypes("Assassin", "Mercenary", "Rogue")...)
 				},
 				HasLegalTarget: func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 					_, ok := b24ExiledCardWithCounterOwnedBy(g, ev.Target, "hit")

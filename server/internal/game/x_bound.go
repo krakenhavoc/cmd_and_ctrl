@@ -50,12 +50,11 @@ package game
 //
 // A plain {X} is a count the run-length pool pays in O(runs). A
 // restricted X ("spend only black mana on X") is folded into X
-// identical requirements (foldSpendOnly), and that list is the one
-// thing still sized by X: linear in it, and capped by maxFoldedMana.
-// Everything after the fold works on runs (#3904): the pool solver's
-// coloured pass books a run of requirements against a run of mana in
-// one step (coloured_pass.go), and what it leaves unpaid comes back as
-// runs, so MissingFor, the paper-payment picker and its declaration
+// identical requirements (foldSpendOnly), kept as one counted run
+// (#3909), so the fold is constant in X too. The pool solver reads
+// the run as it is (#3904): its coloured pass books a run of
+// requirements against a run of mana in one step (coloured_pass.go),
+// and what it leaves unpaid comes back as runs, so MissingFor, the paper-payment picker and its declaration
 // name a long shortfall once, with its count (maxListedRun). XMana and
 // GenericWithX saturate rather than wrap, and no list reserves capacity
 // by X.
@@ -100,10 +99,11 @@ func satMulMana(a, b int) int {
 	return min(a*b, maxManaDemand)
 }
 
-// maxFoldedMana is the most restricted mana foldSpendOnly writes out
-// one requirement at a time: three {X} at MaxAnnouncedX plus room for
-// any generic part. Past it the fold writes one requirement no mana
-// can pay instead (see foldSpendOnly).
+// maxFoldedMana is the most restricted mana foldSpendOnly folds into
+// a run: three {X} at MaxAnnouncedX plus room for any generic part.
+// Past it the fold writes one requirement no mana can pay instead (see
+// foldSpendOnly). A run is one entry whatever its length, but the
+// readers that write it out (ParsedCost.unfolded) are sized by it.
 const maxFoldedMana = 4 * MaxAnnouncedX
 
 // maxPreallocSlots is the most capacity a per-mana list (a paper

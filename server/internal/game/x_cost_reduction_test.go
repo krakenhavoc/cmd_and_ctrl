@@ -217,10 +217,11 @@ func TestSpendOnlyOnXFoldsWhatTheReductionLeft(t *testing.T) {
 	if out.XSlots != 0 || out.XReduced != 0 || out.Generic != 0 {
 		t.Errorf("folded %+v, want X settled", out)
 	}
-	if len(out.Required) != 2 {
-		t.Fatalf("folded requirements %+v, want two black-only symbols", out.Required)
+	reqs := out.unfolded().Required
+	if len(reqs) != 2 {
+		t.Fatalf("folded requirements %+v, want two black-only symbols", reqs)
 	}
-	for _, r := range out.Required {
+	for _, r := range reqs {
 		if len(r.Options) != 1 || r.Options[0] != "B" {
 			t.Errorf("requirement %+v, want black only", r)
 		}

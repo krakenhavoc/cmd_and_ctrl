@@ -36,7 +36,10 @@ import (
 // the Plains SUBTYPE on its printed type line. Deliberately not "a
 // basic Plains" — the printed text says "a Plains card", so a
 // shockland, a Snow-Covered Plains and a typed tapland all qualify.
-func b39IsPlainsCard(c game.Card) bool { return c.HasSubtype("Plains") }
+//
+// "Plains" is a word of the searching card's text, read through the
+// text SearchLibrary lends (HasSubtypeWord, CR 612.2).
+func b39IsPlainsCard(c game.Card) bool { return c.HasSubtypeWord("Plains") }
 
 // b39IsVampireOrWizardCreatureCard is Bloodline Necromancer's
 // reanimation filter, read off a card in a graveyard: a creature card
@@ -81,8 +84,9 @@ func b39SeaMonsterYouControlDealtCombatDamageToPlayer(ev game.Event, source *gam
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Source)
-	return ok && (c.HasSubtype("Kraken") || c.HasSubtype("Leviathan") ||
-		c.HasSubtype("Octopus") || c.HasSubtype("Serpent"))
+	// The four types are words of the source's text (CR 612.2, #3984).
+	return ok && (c.HasSubtype(source.TextSubtype("Kraken")) || c.HasSubtype(source.TextSubtype("Leviathan")) ||
+		c.HasSubtype(source.TextSubtype("Octopus")) || c.HasSubtype(source.TextSubtype("Serpent")))
 }
 
 // b39AnotherCreatureYouControlDied is Erebos, Bleak-Hearted's
@@ -99,24 +103,56 @@ func b39AnotherCreatureYouControlDied(ev game.Event, source *game.Card, g *game.
 // condition: one or more +1/+1 counters were put on a creature its
 // controller controls, and this is how many landed.
 //
-// Built on b12CountersPlacedByYou, which carries the attribution
-// rules (and errs toward NOT firing) — see All Will Be One. The extra
-// narrowing here is the printed one: the counters must be +1/+1 and
-// the permanent they landed on must be a CREATURE the source's
-// controller controls.
+// WHO put them is not asked: the printed clause is passive ("are put
+// on"), so an opponent's effect growing your creature counts as much as
+// your own (#3863). So do the counters a creature enters with (CR 122.6:
+// "put" covers an object given counters as it enters).
+//
+// The event carries only the post-change total, so the count is the
+// difference from the previous total of the same kind on the same
+// object, read back off the log (b39CountersPlacedOnThisObject). The
+// permanent must still be on the battlefield, a creature, and the
+// source's controller's.
 func b39PlusOneCountersOnCreatureYouControl(ev game.Event, source *game.Card, g *game.Game) (int, bool) {
-	if ev.Label != game.CounterPlusOne {
+	if ev.Kind != game.EventCounterPlaced || ev.Label != game.CounterPlusOne || ev.Target == uuid.Nil {
 		return 0, false
 	}
-	n, ok := b12CountersPlacedByYou(ev, source, g)
-	if !ok {
+	if z := g.FindCardZoneForEffect(ev.Target); z == nil || z.Kind != game.ZoneBattlefield {
 		return 0, false
 	}
 	target, ok := g.LookupCardForEffect(ev.Target)
 	if !ok || !target.IsCreature() || target.Controller != source.Controller {
 		return 0, false
 	}
-	return n, true
+	n := b39CountersPlacedOnThisObject(ev, g)
+	return n, n > 0
+}
+
+// b39CountersPlacedOnThisObject is how many counters the
+// EventCounterPlaced `ev` PUT on its target, or zero for a removal. The
+// previous total is the most recent placement of the same kind on the
+// same card, unless the card changed zones (or was created) more
+// recently than that: a new object starts with no counters (CR 400.7).
+// Any zone move of the card ends the walk, not only an arrival, so the
+// counters a returning permanent enters with are not measured against
+// the ones it had in an earlier life (its "enters with" placement is
+// logged before its own arrival).
+func b39CountersPlacedOnThisObject(ev game.Event, g *game.Game) int {
+	before := 0
+	for i := len(g.Events) - 1; i >= 0; i-- {
+		prev := g.Events[i]
+		if prev.Seq >= ev.Seq {
+			continue
+		}
+		if prev.CardID == ev.Target && (prev.Kind == game.EventZoneMove || prev.Kind == game.EventETB || prev.Kind == game.EventTokenCreated) {
+			break
+		}
+		if prev.Kind == game.EventCounterPlaced && prev.Target == ev.Target && prev.Label == ev.Label {
+			before = prev.Amount
+			break
+		}
+	}
+	return max(0, ev.Amount-before)
 }
 
 // --- board reads ---------------------------------------------------

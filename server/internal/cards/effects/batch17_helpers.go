@@ -269,7 +269,7 @@ func b17SelfOrZombieYouControlDied(ev game.Event, source *game.Card, g *game.Gam
 		return false
 	}
 	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Zombie")
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Zombie"))
 }
 
 // b17SelfOrAnotherCreatureDied is Cordial Vampire's condition: any
@@ -328,7 +328,8 @@ func b17ElfSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.HasSubtype("Elf")
+	// "Elf" is a word of the source's text (CR 612.2, #3984).
+	return ok && c.HasSubtype(source.TextSubtype("Elf"))
 }
 
 // b17HistoricSpellCastByYou is Teshar's "whenever you cast a historic
@@ -386,9 +387,11 @@ func b17DoubleCountersOn(ctx *Context, target uuid.UUID) error {
 // one +1/+1 counter on every Vampire its controller controls, the
 // set snapshotted before the first counter lands.
 func b17PutCounterOnEachVampireYouControl(g *game.Game, item *game.StackItem) error {
+	// "Vampire" is a word of the source's text (CR 612.2, #3984).
+	vampire := g.TextReaderForEffect(item).TextSubtype("Vampire")
 	var ids []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == item.Controller && c.IsCreature() && c.HasSubtype("Vampire") {
+		if c.Controller == item.Controller && c.IsCreature() && c.HasSubtype(vampire) {
 			ids = append(ids, c.InstanceID)
 		}
 	}

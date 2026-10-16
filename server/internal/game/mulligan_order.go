@@ -234,6 +234,12 @@ func (g *Game) settleMulliganLocked() {
 	// asked, in turn order from the starting player (ADR 0133). The
 	// prompts hold the table the way any open choice does.
 	g.offerOpeningHandActionsLocked()
+	// CR 727.4 (#3856): in a restarted game, the effect that restarted
+	// it finishes resolving now, just before the first turn's untap
+	// step. Its entry begins that step when it is done (restart.go).
+	if g.runRestartTailLocked() {
+		return
+	}
 	// First-step entry happens here, not at Start: the cursor has been
 	// parked on Untap with NoPriority since Start, waiting for everyone
 	// to commit. Run the hook now so the starting seat's auto-untap

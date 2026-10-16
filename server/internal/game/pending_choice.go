@@ -431,6 +431,21 @@ type PendingChoice struct {
 	// stem Reason is rebuilt from after each answer.
 	ManaLabel string
 
+	// ManaSettled and ManaPicksLeft make one mana ability's whole output
+	// ONE production (#3939, CR 106.12b): the mana a replacement such as
+	// Damping Sphere's "if a land is tapped for two or more mana" has to
+	// see as a unit. When an activation has colours still to pick, the
+	// colours it already knows wait in ManaSettled instead of reaching
+	// the pool, the first pick is this choice, and the rest of the picks
+	// wait in ManaPicksLeft. Each answer moves its colours into
+	// ManaSettled and, while picks remain, rewrites the choice in place
+	// for the next one (a fresh ID, as a ManaDifferent pick does); the
+	// last answer produces ManaSettled in one window. Both are empty for
+	// an ordinary pick. Deep-copied by clone.go and carried by the
+	// snapshot.
+	ManaSettled   []string
+	ManaPicksLeft []ManaPickSlot
+
 	// ManaTapped marks a PendingChoiceMana that is part of TAPPING A
 	// PERMANENT FOR MANA (CR 106.12a) — a mana ability with a {T} cost
 	// whose colour the controller is still choosing.
@@ -510,6 +525,13 @@ type PendingChoice struct {
 	// OptionalTrigger.TradeFor, for TradeSubject.
 	OptionalItem     uuid.UUID
 	OptionalTradeFor uuid.UUID
+
+	// NoGain marks a resolution-time "you may" whose row says "yes"
+	// would leave the chooser no better off as things stand (ADR 0197
+	// §10, CatalogActivatedMayHelps): Arni Brokenbrow's new base power
+	// would be no higher than its old one. The client warns and the
+	// bot declines; the answer is still the player's. Plain data.
+	NoGain bool
 
 	// PickTargetPlayers / PickTargetCards are the legal-target set a
 	// PendingChoicePickTarget offers, computed when the trigger fired.
@@ -959,6 +981,14 @@ type PendingChoice struct {
 	// cannot see a constraint offers answers the engine refuses, and a
 	// bot that keeps picking one holds the table forever.
 	ChooseMin, ChooseMax int
+
+	// CollectionSuggestions are the card NAMES a
+	// PendingChoiceOutsideCollection suggests (ADR 0198): cards in the
+	// database that satisfy the effect's filter, in the collection's
+	// suggestion order. Plain data. The client shows them before the
+	// player searches, and the enumerator offers them as the answers a
+	// bot can give. Empty for every other kind.
+	CollectionSuggestions []string
 
 	// ChoosePlayers are the SEATS a PendingChoiceProliferate offers
 	// alongside ChooseCards (CR 701.34a: "permanents and/or players").
@@ -1556,6 +1586,59 @@ func (g *Game) ResolvePendingChoice(choiceID, chooserID uuid.UUID, picks []uuid.
 	}
 }
 
+// nextManaPickLocked rewrites an answered pick in place for the next
+// pick its activation owes (#3939): `produced` joins ManaSettled, and the
+// choice takes the next slot's options, amounts and different-colours
+// count, with a fresh ID so every seat sees a new question — the way
+// advanceDifferentColorsPickLocked re-asks a different-colours pick.
+//
+// Caller must hold g.mu.
+func (g *Game) nextManaPickLocked(choice *PendingChoice, produced []string) {
+	choice.ManaSettled = append(append([]string(nil), choice.ManaSettled...), produced...)
+	next := choice.ManaPicksLeft[0]
+	choice.ManaPicksLeft = copyManaPickSlots(choice.ManaPicksLeft[1:])
+	choice.ColorOptions = append([]string(nil), next.Options...)
+	choice.ManaChosen = nil
+	choice.ManaDifferent = next.Different
+	if next.Different > 0 {
+		choice.ManaAmounts = nil
+		choice.Reason = differentColorsReason(choice.ManaLabel, nil, next.Different)
+	} else {
+		choice.ManaAmounts = copyManaAmounts(next.Amounts)
+		choice.Reason = choice.ManaLabel
+	}
+	choice.ID = uuid.New()
+	g.notePlayerDecisionLocked()
+}
+
+// ManaPickSlot is one colour pick an activation still owes after the
+// pick open now (PendingChoice.ManaPicksLeft, #3939): the options the
+// activation offered, already narrowed and ordered, the per-colour
+// amounts of a "N mana of any one color" pick, and N for an "N mana of
+// different colors" pick.
+type ManaPickSlot struct {
+	Options   []string       `json:"options"`
+	Amounts   map[string]int `json:"amounts,omitempty"`
+	Different int            `json:"different,omitempty"`
+}
+
+// copyManaPickSlots deep-copies a pick queue for the clone and the
+// snapshot.
+func copyManaPickSlots(in []ManaPickSlot) []ManaPickSlot {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]ManaPickSlot, len(in))
+	for i, s := range in {
+		out[i] = ManaPickSlot{
+			Options:   append([]string(nil), s.Options...),
+			Amounts:   copyManaAmounts(s.Amounts),
+			Different: s.Different,
+		}
+	}
+	return out
+}
+
 // ResolveManaChoice processes a resolve_choice action for a
 // PendingChoiceMana entry. The chooser picks one color from the
 // entry's ColorOptions; the picked color drops into their pool as
@@ -1623,6 +1706,17 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 			return nil
 		}
 		produced = all
+	}
+	// #3939, CR 106.12b: one activation is one production. While the
+	// activation still owes picks, this answer's colours join the ones
+	// it already knows and the choice is asked again for the next pick;
+	// the last answer produces the whole output in one window.
+	if len(choice.ManaPicksLeft) > 0 {
+		g.nextManaPickLocked(choice, produced)
+		return nil
+	}
+	if len(choice.ManaSettled) > 0 {
+		produced = append(append([]string(nil), choice.ManaSettled...), produced...)
 	}
 	tapped := choice.ManaTapped
 	// #1222: through the one production body, which opens the
@@ -3458,7 +3552,7 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 		// was harvested, which is exactly the source CR 702.16b wants:
 		// the permanent may have left between the trigger and the
 		// prompt, and its qualities then are what count.
-		lt := g.LegalTargetsForAnnouncedClauseForEffect(SourceObject(f.source.Controller, &f.source), f.steps, f.step, append([]TargetRef{}, f.picked...))
+		lt := g.LegalTargetsForAnnouncedClauseForEffect(SourceObject(f.source.Controller, &f.source).WithTrigger(f.tc), f.steps, f.step, append([]TargetRef{}, f.picked...))
 		lt = withoutPicked(lt, f.picked, clause.Distinct)
 		// #1559: a clause with a set rule can have candidates and
 		// still no legal SET of Min picks ("two target creatures
@@ -3657,7 +3751,7 @@ func (g *Game) ResolvePickTargetsDivided(choiceID, chooserID uuid.UUID, targets 
 		stamped = append(stamped, t)
 	}
 	all := append(append([]TargetRef(nil), frame.picked...), stamped...)
-	if err := g.validateAnnouncedTargetsWithLocked(SourceObject(chooserID, &frame.source), frame.steps[:frame.step+1], all, func(i int, _ TargetRef) bool { return i < len(frame.picked) }); err != nil {
+	if err := g.validateAnnouncedTargetsWithLocked(SourceObject(chooserID, &frame.source).WithTrigger(frame.tc), frame.steps[:frame.step+1], all, func(i int, _ TargetRef) bool { return i < len(frame.picked) }); err != nil {
 		return err
 	}
 	if step.Distinct {
@@ -3965,6 +4059,28 @@ func (g *Game) queueMayPayLocked(
 		},
 	})
 	return nil
+}
+
+// QueueMayPayElseForEffect is QueueMayPayForEffect with a consequence on
+// BOTH answers: "you may pay <cost>. If you do, <onPay>. If you don't,
+// <onDecline>" — Springheart Nantuko's "if you didn't create a token
+// this way, create a 1/1 green Insect". It is the one pay-unless body
+// with the echo-style onPay beside the decline (payUnlessExtras), so
+// the dialog, the auto-tap and the "a yes you can't fund is a no" rule
+// are pay-unless's own.
+//
+// A chooser who is no longer seated is not asked and onDecline runs,
+// pay-unless's default: the answer that can no longer be given is the
+// payment.
+//
+// Caller must hold g.mu.
+func (g *Game) QueueMayPayElseForEffect(
+	chooser, source uuid.UUID,
+	cost, question string,
+	onPay, onDecline func(g *Game) error,
+) error {
+	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline,
+		TurnStep{}, uuid.Nil, nil, payUnlessExtras{onPay: onPay})
 }
 
 // QueueMayCastForEffect queues a "you may cast <card> without paying

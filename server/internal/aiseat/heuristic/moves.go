@@ -61,6 +61,12 @@ func (p *Policy) valueOf(st *state, m legal.Move) (float64, string) {
 	if m.Cost.PhyrexianLife > 0 && st.myLife()-m.Cost.Life < phyrexianLifeFloor {
 		return phyrexianLifeDeclined, "Phyrexian life would take it below the floor"
 	}
+	if p.millCostShortLibrary(st, m.Cost.Mill) {
+		return millCostDeclined, "the mill would leave the library too short"
+	}
+	if p.libraryExileCostShortLibrary(st, m.Cost.LibraryExile) {
+		return millCostDeclined, "exiling from the library would leave it too short"
+	}
 	c, refuse := p.costValue(st, st.bf[m.Source.String()], *m.Cost)
 	if refuse {
 		return suicideValue, "would pay its last life"
@@ -109,7 +115,14 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 		// above it. Proxied, the bot would pay 4 life for a Dismember
 		// with three Swamps untapped because the arithmetic called it
 		// a profit.
-		v += p.cfg.LifePayoff*float64(c.Life-c.PhyrexianLife) - st.w.LifeCostValue(life, c.Life)
+		//
+		// #3860: and from the life a target tax charges (Terror of the
+		// Peaks' "spells your opponents cast that target this creature
+		// cost an additional 3 life"). That life buys nothing either: it
+		// is the same spell at a worse price for naming the taxed
+		// permanent, so it is a pure price, and a bolt at the Dragon
+		// scores below the same bolt at a creature that is free to name.
+		v += p.cfg.LifePayoff*float64(c.Life-c.PhyrexianLife-c.TargetTaxLife) - st.w.LifeCostValue(life, c.Life)
 	}
 	if c.Loyalty != 0 {
 		// Loyalty counters are board value the evaluation already
@@ -159,7 +172,34 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 	if c.Exert && p.cfg.PriceExert && src != nil {
 		v -= p.costExertCost(st, src)
 	}
+	// #3870: "Mill N cards" (Sinister Concoction, Rot Farm Skeleton),
+	// at the dredge's price for the same cards (mill_cost.go). The
+	// library floor is valueOf's, beside the Phyrexian one.
+	v += p.millCostValue(st, c.Mill)
+	// #3966: "Exile the top N cards of your library" (Seasoned
+	// Tactician, Arc-Slogger), a mill without the graveyard fuel
+	// (library_exile_cost.go). Its floor is valueOf's too.
+	v -= p.libraryExileCostValue(st, c.LibraryExile)
 	return v, false
+}
+
+// castTapsPermanents reports whether a cast of c pays a mandatory "tap an
+// untapped <permanent> you control" additional cost (#3868): the card's
+// own cost, or the either/or branch the cast names (Disruption Protocol's
+// "tap an untapped artifact you control or pay {1}"). Read off the wire's
+// tap_others_options, which only that cost carries.
+func castTapsPermanents(c *protocol.CardView, branch *int) bool {
+	if c == nil || c.AdditionalCost == nil {
+		return false
+	}
+	ac := c.AdditionalCost
+	if branch != nil {
+		if *branch < 0 || *branch >= len(ac.Branches) {
+			return false
+		}
+		return ac.Branches[*branch].TapOthersOptions != nil
+	}
+	return ac.TapOthersOptions != nil
 }
 
 // phyrexianLifeFloor is the life total the policy will not pay
@@ -554,6 +594,10 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	if p.holdsFlashSacrifice(st, card, cp) {
 		return flashSacrificeDeclined, "cast declined: sacrificed at cleanup, held for the main phase (#3712)"
 	}
+	// #3961: Burn at the Stake tapping no creature deals no damage.
+	if tapsNoneForDamage(card, cp) {
+		return tapsNoneDeclined, "cast declined: taps no creature, so it deals no damage"
+	}
 	// ADR 0135 §3: an awaken cast's last target is its own land, which
 	// awakenValue prices as the body it becomes; it is not a pump on a
 	// permanent of the bot's (OwnPermanentTarget), and it does not make
@@ -563,7 +607,7 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	// declares an entry for is priced by what the spell does to it, and
 	// the cast is then priced by its purpose rather than its mana value.
 	targetV, targetsPriced := p.pricedTargetsValue(st, targets, func(t targetRef) *protocol.TargetPurposeView {
-		return entryAtX(castEntryFor(card, cp, t), cp.XValue)
+		return entryAtTapped(entryAtX(castEntryFor(card, cp, t), cp.XValue), len(cp.TeamworkIDs))
 	}, card, card)
 	// ADR 0141: a bestowed cast's target is the creature it pumps, not
 	// a creature it removes (bestow.go).
@@ -661,6 +705,16 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 			continue
 		}
 		v -= p.fuelValue(st, id)
+	}
+	// #3868: a mandatory "tap an untapped Vampire you control" (New
+	// Blood) names its permanents on teamwork_ids. Tapping spends none of
+	// them, so each is charged what tapping it costs, as Orim's Cure's
+	// creature is just above. Only for that cost: teamwork's and
+	// escalate's taps ride the same list and keep their old price.
+	if castTapsPermanents(card, cp.CostBranch) {
+		for _, id := range cp.TeamworkIDs {
+			v -= p.tapFuelValue(st, id)
+		}
 	}
 	// ADR 0135 §2: an offer that DISCARDS its cards (Snag's Forest,
 	// retrace's land) pays the discard payoffs, as an additional cost's
@@ -829,6 +883,13 @@ func (st *state) castSource(id string) *protocol.CardView {
 		for i := range st.seat.Library.Cards {
 			if st.seat.Library.Cards[i].InstanceID == id {
 				return &st.seat.Library.Cards[i]
+			}
+		}
+		// #3955: a card the bot owns outside the game and may cast or
+		// play under a permission (Spawnsire of Ulamog, Wish).
+		for i := range st.seat.Sideboard {
+			if st.seat.Sideboard[i].InstanceID == id {
+				return &st.seat.Sideboard[i]
 			}
 		}
 	}

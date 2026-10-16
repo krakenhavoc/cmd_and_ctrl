@@ -27,7 +27,7 @@ func init() {
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return shieldAgainstTheTargetThen(ctx, false, func(ctx *Context, target uuid.UUID) error {
 				c, ok := ctx.Game.LookupCardForEffect(target)
-				if !ok || !(c.HasColor("B") || c.HasColor("R")) {
+				if !ok || !(c.HasColor(ctx.TextColor("B")) || c.HasColor(ctx.TextColor("R"))) {
 					return nil
 				}
 				return DestroyTarget{Target: target}.Apply(ctx)

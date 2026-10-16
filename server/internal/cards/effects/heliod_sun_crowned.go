@@ -38,7 +38,7 @@ func init() {
 			Layer: game.Layer4Type,
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 				return target.InstanceID == source.InstanceID &&
-					devotionTo(g, source.Controller, "W") < 5
+					devotionTo(g, source.Controller, source.TextColor("W")) < 5
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				notACreature(c)

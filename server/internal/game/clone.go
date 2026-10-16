@@ -54,6 +54,10 @@ func (g *Game) cloneLocked() *Game {
 		// #2165: CR 724.1's deferred half — the turn an effect ended
 		// whose cleanup step has not begun.
 		TurnEndPending: g.TurnEndPending,
+		// #3856, CR 727: a restart waiting on its boundary, and the
+		// new game's "then" waiting on the mulligans. Own copies.
+		RestartPending: cloneGameRestart(g.RestartPending),
+		RestartTail:    cloneGameRestart(g.RestartTail),
 		// #2881: the active player's standing end_turn. Its own
 		// pointer, so a clone never shares the live order.
 		passTurn: clonePassTurnOrder(g.passTurn),
@@ -227,6 +231,12 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ManaChosen) > 0 {
 				cloned.ManaChosen = append([]string(nil), c.ManaChosen...)
 			}
+			// #3939: an activation's settled colours and the picks it
+			// still owes.
+			if len(c.ManaSettled) > 0 {
+				cloned.ManaSettled = append([]string(nil), c.ManaSettled...)
+			}
+			cloned.ManaPicksLeft = copyManaPickSlots(c.ManaPicksLeft)
 			if len(c.TriggerOrderIDs) > 0 {
 				cloned.TriggerOrderIDs = append([]uuid.UUID(nil), c.TriggerOrderIDs...)
 			}
@@ -498,6 +508,7 @@ func (g *Game) cloneLocked() *Game {
 	// answer with the mark gone — and the effect would fire a second
 	// time. Deep-copied, because the live pipeline writes the inner
 	// sets in place.
+	out.outsideEntering = g.outsideEntering
 	if len(g.enteringTokens) > 0 {
 		// #762: a token whose entry paused on a replacement prompt is
 		// here and nowhere else. An undo across that prompt has to
@@ -549,6 +560,10 @@ func (g *Game) cloneLocked() *Game {
 	// matches the original's at capture time.
 	out.layerVersion.Store(g.layerVersion.Load())
 	out.lastResolvedVersion.Store(g.lastResolvedVersion.Load())
+	// #3862: the cards carry their zone layer stamps across (cloneCard
+	// copies the pointer, which is never written after its pass), so
+	// the flag that says to clear them goes with them.
+	out.zoneLayersStamped = g.zoneLayersStamped
 	out.libraryTopWatch = append([]libraryTopMark(nil), g.libraryTopWatch...)
 	return out
 }
@@ -710,6 +725,7 @@ func clonePlayer(p *Player) *Player {
 		Agent:             p.Agent,
 		AgentClient:       p.AgentClient,
 		CitysBlessing:     p.CitysBlessing,
+		HasSideboard:      p.HasSideboard,
 	}
 	out.Library = cloneZone(p.Library)
 	out.Hand = cloneZone(p.Hand)
@@ -857,6 +873,8 @@ func cloneStackItem(s *StackItem) *StackItem {
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		Seq:              s.Seq,
+		// #3863
+		ExileInsteadOfGraveyard: s.ExileInsteadOfGraveyard,
 		// #789 / #761: what the announcement paid. Deep-copied
 		// (clonePaidCost reallocates the token slice and each
 		// token's Restrictions) because an undo snapshot that
@@ -1179,6 +1197,8 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.ActiveSeatLeftPending = src.ActiveSeatLeftPending
 	g.TurnChangePending = src.TurnChangePending
 	g.TurnEndPending = src.TurnEndPending
+	g.RestartPending = src.RestartPending
+	g.RestartTail = src.RestartTail
 	g.passTurn = clonePassTurnOrder(src.passTurn)
 	g.StackMeta = src.StackMeta
 	g.PendingTriggers = src.PendingTriggers
@@ -1288,6 +1308,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	// prompts still owing it — see cloneLocked.
 	g.promptRuns = src.promptRuns
 	g.enteringTokens = src.enteringTokens
+	g.outsideEntering = src.outsideEntering
 	// #920: the resolving item rewinds with the prompt that is reading
 	// it — see cloneLocked.
 	g.resolving = src.resolving
@@ -1310,6 +1331,9 @@ func (g *Game) RestoreFrom(src *Game) {
 	// snapshot-time state and must not be served as-is.
 	g.lastResolvedVersion.Store(src.lastResolvedVersion.Load())
 	g.layerVersion.Store(src.layerVersion.Load() + 1)
+	// #3862: the adopted cards may carry zone layer stamps; the forced
+	// recompute re-derives or clears them.
+	g.zoneLayersStamped = true
 	// ADR 0121 §5: a table roll is not part of the game, so an undo
 	// takes none back. tableRollNext is NOT restored (carried forward,
 	// like Settings): a roll after the undo is a fresh one, not a replay

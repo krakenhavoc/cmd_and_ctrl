@@ -995,6 +995,19 @@ so `CounterRemovalCost` gains two flags rather than growing two siblings:
 | **variable** | "Remove any number of storage counters from this land" | `RemoveCountersXFromThis("storage", 0)` — `Variable` |
 | **among** | "Remove two +1/+1 counters from among artifacts you control" | `RemoveCountersAmong("+1/+1", 2, …)` — `Among` |
 | **any-kind among** (#943) | "Remove three counters from among other artifacts, creatures, and planeswalkers you control" | `RemoveCountersAmong("", 3, …)` — `Counter == "" && Among` |
+| **any kinds off self** (#3987, 2026-10-16) | "Remove two counters from Ghost-Spider" | `RemoveCountersOfAnyKindsFromThis(2)` — `Counter == "" && Among`, no `From` |
+
+The last row is a 2026-10-16 amendment (#3987). "Remove two counters from
+this creature" prints no kind, so the two may differ (CR 602.2b, 118.3: the
+activator chooses while paying). One kind choice cannot say that, which is
+why Register refused an any-kind self cost above one. It is the any-kind
+among payment with the source as its one candidate: `Among` with no `From`
+means "split across the source's kinds", every part names the source, and
+the (permanent, kind) key refuses a kind named twice. Register accepts that
+spelling only for an empty kind and a fixed count of two or more. The client
+reads it as self and among together and opens the among picker on the
+source's kinds, or pays straight from the menu when the source holds one
+kind.
 
 One type means one validator (`validateCounterRemovalLocked`), one candidate
 walk (`CounterCostOptionsForEffect`), one enumerator arm, one protocol view
@@ -3446,3 +3459,29 @@ return beside a `can't block` self-restriction) and Charmed Pendant, all Full.
 Still out of scope, unchanged: the bot's `MoveCost` carries no mill price, so a policy sees a mill-paid move as free.
 Sinister Concoction and Rot Farm Skeleton are the first non-mana users, so the bot may pay a library for them without
 weighing it.
+
+## Amendment 2026-10-16 ([#3940](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3940)): "with different names" on a sacrifice clause
+
+Transmutation Font's "{3}, {T}, Sacrifice three artifact tokens with different names" is a rule over an attribute of the
+picks, which #2526's `EachOf` (one pick per printed kind) cannot say. It is the target clause's set rule instead:
+`TargetSpec.Different` (ADR 0019's amendment of 2026-09-24), a key no two picks may share, carried on the sacrifice
+clause and built with `effects.SacrificeNDifferent(n, label, EachDifferentName(), preds…)`. The field already hangs off
+`TargetSpec`, so no new route from `Game` to a func is added (ADR 0041).
+
+The four readers of a sacrifice clause each read it. `validateSacrificeCostLocked` refuses a payment in which two picks
+share a key, naming the rule. `legal.sacrificePayments` takes one payment from `game.SacrificeDifferentPaymentForEffect`,
+the first permanent of each key in the shared payment order, instead of "the first N" (permanents with one key are
+interchangeable under the rule, so the earliest in payment order is the one to lose). The view ships each option's key
+under `different` on `sacrifice_options`, the target picker's own field, and `SacrificeCostModal` greys an option whose
+key is already picked, holds Confirm until the picks differ, and its "Choose for me" takes the first of each key, as the
+enumerator does. The ability row's shortfall counts keys, not options.
+
+A cost reads the rule strictly, where a target clause reads it leniently. CR 201.2b: objects "have different names only
+if each of them has at least one name". A permanent the key can't be read from (a face-down permanent has no name) is
+therefore no candidate: `SacrificeCostCandidatesForEffect` drops it from every walk and the validator refuses it. The
+target clause's lenient reading (a pick with no key conflicts with nothing) is unchanged.
+
+`effects.Register` allows the rule on an activated ability's sacrifice clause only, at a fixed count of two or more, and
+not beside `EachOf`. A mana ability, a cast's additional cost (whose payability check counts candidates) and an optional
+or alternative cost each have payers or offer checks of their own that this change does not teach, so they refuse it
+until a printed card needs it there. Transmutation Font ships Full.

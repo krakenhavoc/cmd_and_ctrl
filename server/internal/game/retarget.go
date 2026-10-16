@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 // retarget.go — CR 115.7, changing the targets of a spell or ability
 // that is already on the stack.
@@ -656,9 +660,10 @@ func pinnedRetargetList(targets []TargetRef, i int, to TargetRef) []TargetRef {
 //
 // Two eligible slots that hold the SAME object (two instances of the
 // word "target" that chose one creature, CR 601.2c) are one option on
-// the board, and the answer changes the earlier of them —
-// resolvePinnedRetargetLocked. The board cannot point at a slot, only
-// at an object.
+// the board — it cannot point at a slot, only at an object — so once
+// the object is settled a second question asks WHICH slot changes
+// (#3860, finishPinnedRetargetLocked): a PendingChoiceOptionPick with
+// one option per slot, labelled with the slot's own clause.
 //
 // Caller must hold g.mu.
 func (g *Game) offerPinnedRetargetLocked(offer RetargetOffer, item *StackItem) error {
@@ -682,12 +687,11 @@ func (g *Game) offerPinnedRetargetLocked(offer RetargetOffer, item *StackItem) e
 	}
 	if len(seen) == 1 && !offer.Optional {
 		// One thing the board could offer, and no "you may": the
-		// answer is forced, so it is made rather than asked. It is the
-		// earliest eligible slot — the one the prompt's answer would
-		// have changed. RetargetStackItemForEffect re-runs the check
-		// that slot just passed.
-		return g.RetargetStackItemForEffect(item.ID, offer.Chooser, RetargetChangeOne,
-			pinnedRetargetList(item.Targets, eligible[0], offer.To))
+		// object is forced, so it is made rather than asked. If that
+		// one object fills several slots (CR 601.2c — two instances of
+		// the word "target" that chose it), WHICH slot is still the
+		// chooser's call (#3860), so finishPinnedRetargetLocked asks it.
+		return g.finishPinnedRetargetLocked(item, offer.Chooser, offer.To, item.Targets[eligible[0]], offer.Source, offer.Reason)
 	}
 	min := 1
 	if offer.Optional {
@@ -717,9 +721,145 @@ func (g *Game) offerPinnedRetargetLocked(offer RetargetOffer, item *StackItem) e
 	return nil
 }
 
+// pinnedSlotsHoldingLocked is the eligible slots of `item` (for the
+// destination `to`) that currently hold `obj`, in slot order.
+//
+// Caller must hold g.mu.
+func (g *Game) pinnedSlotsHoldingLocked(item *StackItem, to, obj TargetRef) []int {
+	var out []int
+	for _, i := range g.pinnedRetargetSlotsLocked(item, to) {
+		if item.Targets[i].Kind == obj.Kind && item.Targets[i].ID == obj.ID {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// pinnedRetargetSlotThen is the continuation of the "which instance of
+// target changes?" question. A KEYED option pick (option_pick_keyed.go),
+// so a table waiting on the answer is still a restore point, exactly as
+// the object prompt it follows is: everything it needs rides the prompt
+// as plain ids -- the stack item, the object being moved off, and the
+// destination.
+var pinnedRetargetSlotThen = RegisterOptionPickThen("retarget/pinned-slot", pinnedRetargetSlotChosen)
+
+// finishPinnedRetargetLocked carries a pinned retarget out once the
+// OBJECT to move off is settled (#3860): `picked` is the target the
+// chooser named -- or the only one the board could offer -- and the
+// question left is which of the slots holding it changes to `to`.
+//
+//   - One slot: it changes, with no prompt. There is nothing to ask.
+//   - Several (the same creature chosen for two instances of the word
+//     "target", CR 601.2c, e.g. Soul's Fire aimed at one creature
+//     twice): the chooser decides, as the ability resolves. CR 115.7b
+//     lets Spellskite change one target of the several, and the
+//     2020-08-07 rulings put the choice with its controller. The
+//     options are the slots, each labelled with the clause it answers.
+//
+// Caller must hold g.mu.
+func (g *Game) finishPinnedRetargetLocked(item *StackItem, chooser uuid.UUID, to, picked TargetRef, source uuid.UUID, reason string) error {
+	slots := g.pinnedSlotsHoldingLocked(item, to, picked)
+	switch len(slots) {
+	case 0:
+		return nil
+	case 1:
+		return g.RetargetStackItemForEffect(item.ID, chooser, RetargetChangeOne,
+			pinnedRetargetList(item.Targets, slots[0], to))
+	}
+	steps := g.itemAnnouncedClauses(item)
+	labels := make([]string, len(slots))
+	seen := make(map[string]int, len(slots))
+	for k, i := range slots {
+		label := "the target"
+		if clause := retargetClauseFor(steps, item.Targets[i]); clause != nil && clause.Label != "" {
+			label = clause.Label
+		}
+		labels[k] = label
+		seen[label]++
+	}
+	options := make([]ChoiceOption, len(slots))
+	for k := range slots {
+		label := labels[k]
+		if seen[label] > 1 {
+			// The same words twice: say which, by position.
+			label = fmt.Sprintf("%s (%s)", label, ordinalWord(k+1))
+		}
+		options[k] = ChoiceOption{Label: "Change " + label, Cards: cardIDsOf(picked)}
+	}
+	question := reason
+	if question == "" {
+		question = "Choose which target to change"
+	}
+	g.QueueOptionPickForEffect(OptionPickPrompt{
+		Chooser:  chooser,
+		Source:   source,
+		Question: question + " — it is targeted more than once",
+		Options:  options,
+		ThenKey:  pinnedRetargetSlotThen,
+		Carry:    []uuid.UUID{item.ID, picked.ID, to.ID},
+	})
+	return nil
+}
+
+// cardIDsOf is the ref's id as the Cards of a ChoiceOption when it names
+// a card, so the picker shows the creature; none for a player.
+func cardIDsOf(ref TargetRef) []uuid.UUID {
+	if ref.Kind != TargetCard {
+		return nil
+	}
+	return []uuid.UUID{ref.ID}
+}
+
+// ordinalWord is "first", "second", ... for the small positions a
+// repeated clause label needs; past "fifth" it falls back to "#N".
+func ordinalWord(n int) string {
+	words := []string{"first", "second", "third", "fourth", "fifth"}
+	if n >= 1 && n <= len(words) {
+		return words[n-1]
+	}
+	return fmt.Sprintf("#%d", n)
+}
+
+// pinnedRetargetSlotChosen answers the slot question: change the slot
+// the chooser picked, re-judged against the board as it is now. It is
+// handed NoChoiceIndex when the prompt ended unanswered (its chooser
+// left the game, CR 800.4a), and then nothing changes -- the original
+// targets stand, which is what CR 115.7a gives a change that was not
+// made. If the slots that could change are no longer the ones that were
+// offered (the list is recomputed, never trusted), nothing changes
+// either.
+func pinnedRetargetSlotChosen(g *Game, r OptionPicked) error {
+	if r.Index < 0 || len(r.Carry) != 3 {
+		return nil
+	}
+	item := g.StackMeta[r.Carry[0]]
+	if item == nil {
+		return nil
+	}
+	picked := g.refForIDLocked(r.Carry[1])
+	to := g.refForIDLocked(r.Carry[2])
+	slots := g.pinnedSlotsHoldingLocked(item, to, picked)
+	if r.Index >= len(slots) {
+		return nil
+	}
+	return g.RetargetStackItemForEffect(item.ID, r.Chooser, RetargetChangeOne,
+		pinnedRetargetList(item.Targets, slots[r.Index], to))
+}
+
+// refForIDLocked names an id as a target ref: a player when a seat has
+// that id, else a card. Caller must hold g.mu.
+func (g *Game) refForIDLocked(id uuid.UUID) TargetRef {
+	if g.playerByIDLocked(id) != nil {
+		return TargetRef{Kind: TargetPlayer, ID: id}
+	}
+	return TargetRef{Kind: TargetCard, ID: id}
+}
+
 // resolvePinnedRetargetLocked answers a pinned retarget prompt. The
 // one ref, if any, names the object CURRENTLY in the slot to change;
-// the destination is the prompt's RetargetTo, never the answer.
+// the destination is the prompt's RetargetTo, never the answer. When
+// that object fills several slots the chooser is then asked which one
+// (finishPinnedRetargetLocked).
 //
 // Eligibility is recomputed rather than read off the prompt, so the
 // change is judged against the board as it is answered. If no slot is
@@ -745,21 +885,28 @@ func (g *Game) resolvePinnedRetargetLocked(idx int, choice *PendingChoice, item 
 			g.dequeueChoiceLocked(idx)
 			break
 		}
-		slot := -1
-		for _, i := range eligible {
-			if item.Targets[i].Kind == t.Kind && item.Targets[i].ID == t.ID {
-				slot = i
-				break
-			}
-		}
-		if slot < 0 {
+		slots := g.pinnedSlotsHoldingLocked(item, choice.RetargetTo, t)
+		if len(slots) == 0 {
 			return ErrIllegalTarget
 		}
-		if err := g.RetargetStackItemForEffect(item.ID, choice.Chooser, RetargetChangeOne,
-			pinnedRetargetList(item.Targets, slot, choice.RetargetTo)); err != nil {
+		if len(slots) == 1 {
+			// One slot: change it, and only then close the prompt, so a
+			// refused change leaves the question open to be answered
+			// again.
+			if err := g.RetargetStackItemForEffect(item.ID, choice.Chooser, RetargetChangeOne,
+				pinnedRetargetList(item.Targets, slots[0], choice.RetargetTo)); err != nil {
+				return err
+			}
+			g.dequeueChoiceLocked(idx)
+			break
+		}
+		// Several slots hold the object: the prompt leaves the queue
+		// BEFORE the slot question goes up, so the table never holds two
+		// open modals for one seat (ResolveOptionPick's rule).
+		g.dequeueChoiceLocked(idx)
+		if err := g.finishPinnedRetargetLocked(item, choice.Chooser, choice.RetargetTo, t, choice.Source, choice.RetargetReason); err != nil {
 			return err
 		}
-		g.dequeueChoiceLocked(idx)
 	default:
 		return ErrInvalidParam
 	}

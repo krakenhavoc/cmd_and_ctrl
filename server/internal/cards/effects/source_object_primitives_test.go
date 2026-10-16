@@ -467,6 +467,7 @@ func TestEveryPrimitiveThatActsOnACardAsksAboutItsSource(t *testing.T) {
 		"ReturnFromExile":             "follows the card: the card is in exile",
 		"ReturnFromExileTogether":     "follows the cards: each is in exile, never a permanent that left and came back",
 		"GrantFlashbackToCard":        "a card in a graveyard",
+		"GrantHarmonizeToCard":        "a card in a graveyard",
 		"OfferGraveyardCast":          "a card in a graveyard, refused unless it is still there",
 		"PlotExiled":                  "a card in exile",
 		"CreateTokenCopy":             "reads copiable values; last-known information is the answer for a source that left (CR 707.4)",
@@ -658,6 +659,8 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		"travel_through_caradhras.go": true,
 		// "Exile Yawgmoth's Vile Offering." (#2953)
 		"yawgmoths_vile_offering.go": true,
+		// "Exile Worst Fears." (#3857)
+		"worst_fears.go": true,
 		// "Shuffle Beacon of Unrest into its owner's library." (#3209)
 		"beacon_of_unrest.go": true,
 		// "Exile Burning Wish." and "Exile Living Wish." (ADR 0191, #3506)
@@ -668,6 +671,9 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		"golden_wish.go": true, "death_wish.go": true,
 		// "Exile Alchemist's Gambit." (ADR 0188, #3563)
 		"alchemists_gambit.go": true,
+		// "Put Approach of the Second Sun into its owner's library
+		// seventh from the top." (#3654)
+		"approach_of_the_second_sun.go": true,
 	}
 	isSelf := func(e ast.Expr) bool {
 		s := exprString(e)

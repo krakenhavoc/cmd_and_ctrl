@@ -621,6 +621,19 @@ func moveLine(i int, m legal.Move, v *protocol.GameView, me string, nw nameWrapp
 		if m.Cost.Energy > 0 {
 			notes = append(notes, fmt.Sprintf("costs %d energy", m.Cost.Energy))
 		}
+		// #3870: the cards a "Mill N cards" cost takes off your library.
+		if m.Cost.Mill == 1 {
+			notes = append(notes, "mills a card from your library")
+		} else if m.Cost.Mill > 1 {
+			notes = append(notes, fmt.Sprintf("mills %d cards from your library", m.Cost.Mill))
+		}
+		// #3966: the cards an "Exile the top N cards of your library"
+		// cost takes.
+		if m.Cost.LibraryExile == 1 {
+			notes = append(notes, "exiles the top card of your library")
+		} else if m.Cost.LibraryExile > 1 {
+			notes = append(notes, fmt.Sprintf("exiles the top %d cards of your library", m.Cost.LibraryExile))
+		}
 		// ADR 0130 §4: an exert cost keeps the source tapped through the
 		// seat's next untap step.
 		if m.Cost.Exert {

@@ -59,3 +59,26 @@ func (g *Game) AssignsNoCombatDamageThisTurnForEffect(sourceID, cardID uuid.UUID
 		[]Mod{{Kind: ModAssignsNoCombatDamage}}, g.PinnedTo(g.UntilEndOfTurnDuration(), cardID),
 		label, timeNowUnixNano())
 }
+
+// AssignsNoCombatDamageThisCombatForEffect is "<that creature> assigns no
+// combat damage this combat" (Master of Cruelties, #3531; ADR 0187
+// amendment 2026-10-16; CR 510.1a): the same rule as
+// AssignsNoCombatDamageThisTurnForEffect, timed by the combat phase it is
+// created in (UntilEndOfCombat, CR 511.3), so in an added combat phase the
+// creature deals its damage again. Registers nothing, and returns false,
+// outside a combat phase or for a card that is not on the battlefield.
+//
+// Caller must hold g.mu (write).
+func (g *Game) AssignsNoCombatDamageThisCombatForEffect(sourceID, cardID uuid.UUID, label string) bool {
+	d, ok := g.UntilEndOfCombatDuration()
+	if !ok {
+		return false
+	}
+	affected := g.PinnedObjectsLocked(cardID)
+	if len(affected) == 0 {
+		return false
+	}
+	return g.appendScopedEffectLocked(sourceID, affected, ScopeNone, uuid.Nil,
+		[]Mod{{Kind: ModAssignsNoCombatDamage}}, g.PinnedTo(d, cardID),
+		label, timeNowUnixNano())
+}

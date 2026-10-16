@@ -71,6 +71,19 @@ type Spec struct {
 	// nearly every card.
 	AsEnters func(card *game.Card, ctx *Context) error
 
+	// AsEntersOthers is an "as this enters" clause that changes OTHER
+	// objects — Ixidron's "As this creature enters, turn all other
+	// nontoken creatures face down." (#3862). It is part of the entry
+	// (CR 614.1c), so the engine runs it after the permanent has landed
+	// and BEFORE any event announces its arrival: nothing, not even a
+	// "whenever another creature enters" ability of one of the objects
+	// it changes, ever sees the board in between. The permanents
+	// entering at the same time are on the battlefield but are not
+	// "other" ones that were there: ask ctx.Game.ArrivingForEffect and
+	// leave them alone. Same contract as AsEnters otherwise (off the
+	// stack, Item is nil). Nil for nearly every card.
+	AsEntersOthers func(card *game.Card, ctx *Context) error
+
 	// AsTransformsInto is the face's "As this permanent transforms
 	// into <this face>, …" clause (Sephiroth, One-Winged Angel's Super
 	// Nova), declared on the Spec of the face being turned TO — a back
@@ -809,6 +822,23 @@ type Spec struct {
 	// attack_tax.go. Nil for nearly every card.
 	AttackTaxes []game.AttackTax
 
+	// TargetTaxes is a cost a permanent adds to spells that TARGET
+	// something: "Spells your opponents cast that target this creature
+	// cost an additional 3 life to cast" (Terror of the Peaks, #3860).
+	//
+	// CR 601.2f's additional costs, charged by a permanent other than
+	// the spell and read once the spell's targets are announced (CR
+	// 601.2c). The AttackTax family one verb over (ADR 0080): a static of
+	// the permanent, collected through the catalog key, gated by a
+	// designation in one accessor. CastSpell refuses a caster who can't
+	// pay it and charges it with the other additional costs; the
+	// legal-move enumerator prices each target set and drops the ones the
+	// caster can't afford; the view names each legal target's tax.
+	//
+	// Build the entries with OpponentsSpellsTargetingThisCostLife in
+	// target_tax.go. Nil for nearly every card.
+	TargetTaxes []game.TargetTax
+
 	// BlockRules are the CR 509.1b block restrictions with a
 	// PARAMETER this permanent imposes while it is on the battlefield
 	// (ADR 0045 addendum, Decision 11): "can't be blocked except by
@@ -1124,6 +1154,14 @@ type Spec struct {
 	// permanent that lost its abilities is held to one. ADR 0145.
 	LoyaltyTwiceEachTurn bool
 
+	// ActivateAsThoughHaste declares the printed static "You may
+	// activate abilities of creatures you control as though those
+	// creatures had haste" (Thousand-Year Elixir, #3928): CR 302.6 no
+	// longer stops its controller paying a {T} or {Q} cost of a creature
+	// they control. The creatures gain no haste and still can't attack
+	// the turn they arrive (CR 609.4). Judged through CatalogAbilityKey.
+	ActivateAsThoughHaste bool
+
 	// ExtraVote declares the printed static "While voting, you get an
 	// additional vote" (game.ExtraVoteYouGet, Brago's Representative)
 	// or "While voting, you may vote an additional time"
@@ -1140,6 +1178,21 @@ type Spec struct {
 	// CatalogAbilityKey, so a permanent that lost its abilities adds
 	// none.
 	OpponentsFaceVillainousChoicesAgain bool
+
+	// ControlsOpponentsSearches declares Opposition Agent's two printed
+	// statics (CR 723.2, #3998, ADR 0166's 2026-10-16 amendment): "You
+	// control your opponents while they're searching their libraries"
+	// and "While an opponent is searching their library, they exile
+	// each card they find. You may play those cards for as long as they
+	// remain exiled, and you may spend mana as though it were mana of
+	// any color to cast them." The engine does both in its one search
+	// primitive (game/search_control.go): a search prompt an opponent
+	// owes over their own library is this permanent's controller's to
+	// answer while it is open, and the cards found are exiled face up
+	// with a play permission for that controller. Judged through
+	// CatalogAbilityKey, so a permanent that lost its abilities does
+	// neither.
+	ControlsOpponentsSearches bool
 
 	// DamageCantBePrevented declares this permanent's printed "damage
 	// can't be prevented" statics (CR 615.12, ADR 0107 §5):
@@ -1166,6 +1219,18 @@ type Spec struct {
 	// game" forms are stored instead (PlayersCantGainLifeThisTurn,
 	// PlayerCantGainLifeForRestOfGame).
 	CantGainLife []game.CantGainLifeStatic
+
+	// DrawLimits declares this permanent's printed draw restrictions
+	// (CR 121.2b, #3927):
+	//
+	//	DrawLimits: EachOpponentCantDrawMoreThanOneCardEachTurn(), // Narset, Parter of Veils
+	//	DrawLimits: EachPlayerCantDrawMoreThanOneCardEachTurn(),   // Spirit of the Labyrinth
+	//	DrawLimits: PlayersCantDrawCards(),                        // Maralen of the Mornsong
+	//
+	// Read from the battlefield through game.CatalogDrawLimits, keyed by
+	// CatalogAbilityKey, before each individual draw's replacement
+	// window: a draw the cap forbids is not performed (draw_limit.go).
+	DrawLimits []game.DrawLimitStatic
 
 	// DamageAsThough declares this permanent's printed "damage is dealt
 	// as though its source had wither / infect" statics (CR 120.3, 609.4,
@@ -1359,6 +1424,12 @@ type Spec struct {
 	// Not set for a card whose cost already NAMES the colour (the pip
 	// pays it whatever the planner does), and not for converge or
 	// sunburst, which count the spread and set WantsDistinctColors.
+	//
+	// The one exception is a colour read off the mana spent on a
+	// restricted {X} (#3941, Soul Burn's "the amount of {B} spent on X",
+	// beside a printed {B}): the pip pays the {B}, but X is paid with
+	// black and/or red, and the declared colour is the one the payment
+	// puts on X first (game.ManaSpendContext.favoredOnX).
 	WantsColors []string
 
 	// AdditionalLandPlays declares the printed static "you may play
@@ -1491,6 +1562,14 @@ type Spec struct {
 	// which also means the answer is always about whatever is on top
 	// NOW — no library mutation has to invalidate anything.
 	LibraryTopVisible game.LibraryTopVisibility
+
+	// HandsRevealed declares "your opponents play with their hands
+	// revealed" (game.HandRevealOpponents, Telepathy) or "players play
+	// with their hands revealed" (game.HandRevealEachPlayer,
+	// Revelation). Not a `Static` entry, for LibraryTopVisible's reason:
+	// it is a fact about players' hands, derived from the battlefield on
+	// every query (game.HandRevealedLocked, ADR 0199).
+	HandsRevealed game.HandRevealScope
 
 	// DiscardByOpponent declares what "if a spell or ability an
 	// opponent controls causes you to discard this card" does for this
@@ -1815,7 +1894,17 @@ type ActivatedAbility struct {
 	// bot reaching across the table. ControllerLosesLife is refused off
 	// an AnyPlayer row. See game.Purpose and purpose.go.
 	Purpose game.Purpose
-	Effect  func(g *game.Game, item *game.StackItem) error
+	// May is the ability's resolution-time "you may" when its WHOLE
+	// effect is optional ("Boast — {1}: You may have Arni's base power
+	// become …"). The question is asked as the ability resolves and
+	// "yes" runs Effect, by the machinery an optional trigger uses (ADR
+	// 0197 §10, #2731); a standing answer (ADR 0127) works on it. Nil
+	// for every other ability. A "you may" partway through an effect
+	// ("Mill two cards. Then you may sacrifice this land") is a
+	// MayChoice inside Effect instead. See game.ActivatedAbilityShape.
+	// MayQuestion and may_at_resolution.go.
+	May    *MayAtResolution
+	Effect func(g *game.Game, item *game.StackItem) error
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.

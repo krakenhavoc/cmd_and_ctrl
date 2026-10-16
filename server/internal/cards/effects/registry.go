@@ -66,10 +66,12 @@ func Register(spec Spec) {
 		}
 	}
 	checkEscalate(spec)
+	checkEntwine(spec)
 	checkFlatClauses(spec.Name, spec.Targets)
 	checkSpellXBound(spec.Name, spec.Targets)
 	checkExhaustAbilities(spec)
 	checkBoast(spec)
+	checkMayAtResolution(spec.Name, spec.Activated)
 	checkPlayerKeywords(spec)
 	checkHandSize(spec)
 	for _, a := range spec.Activated {
@@ -187,10 +189,12 @@ func Register(spec Spec) {
 		// a fixed count is what the announce path, the picker and the
 		// enumerator all read off it.
 		checkSacrificeClause(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice, false, false, false)
+		refuseSacrificeDifferent(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice)
 		checkAltCostSetRule(spec.Name, ac)
 		checkAltCostXBound(spec, ac)
 		checkAltCostTapOthers(spec.Name, ac)
 		checkEmerge(spec.Name, ac)
+		checkHarmonize(spec.Name, ac)
 		checkAwaken(spec, ac)
 		checkCastsFace(spec, ac)
 		if ac.FaceDown == nil {
@@ -239,6 +243,10 @@ func Register(spec Spec) {
 	// game.CastPermission (ADR 0066). Refused at boot so the retired
 	// shape cannot come back through a card file.
 	for _, z := range spec.CastableZones {
+		if z == game.ZoneOutside {
+			panic(fmt.Sprintf("effects.Register: %q declares ZoneOutside in CastableZones — a cast from outside the game is a per-instance game.CastPermission (#3955, ADR 0198), never a card-level declaration",
+				spec.Name))
+		}
 		if z == game.ZoneExile {
 			panic(fmt.Sprintf("effects.Register: %q declares ZoneExile in CastableZones — an exile cast is a per-instance game.CastPermission, never a card-level declaration (#659, ADR 0066)",
 				spec.Name))
@@ -260,6 +268,8 @@ func Register(spec Spec) {
 	// for a shape that compiles and then behaves as something the card
 	// does not print.
 	checkTeamworkBlight(spec)
+	// #3868: a tap-permanents cost, on the mandatory slot or a branch.
+	checkTapOthersCost(spec)
 	// ADR 0100 §2: the either/or cost's shapes.
 	checkEitherCost(spec)
 	// ADR 0129 §5: energy in an additional cost, and replicate's pair.
@@ -330,6 +340,7 @@ func Register(spec Spec) {
 		// every printed one sits (checkVariableSacrificePlan); no card
 		// prints a variable kicker or buyback.
 		checkSacrificeClause(spec.Name, fmt.Sprintf("optional cost %q", oc.Key), oc.Sacrifice, false, false, false)
+		refuseSacrificeDifferent(spec.Name, fmt.Sprintf("optional cost %q", oc.Key), oc.Sacrifice)
 		if oc.Empty() {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q demands nothing", spec.Name, oc.Key))
 		}
@@ -389,6 +400,8 @@ func Register(spec Spec) {
 	// ADR 0109 §6: and for a targeting restriction, which must also say
 	// which zone it is about.
 	checkTargetingRestrictions(spec.Name, spec.TargetingRestrictions)
+	// #3860: a target tax names what it charges, whom and for what.
+	checkTargetTaxes(spec.Name, spec.TargetTaxes)
 	// ADR 0108 §10: a "dealt as though its source had" static names what
 	// the source is treated as having, and wither is about creatures only
 	// (CR 702.80a), so it can't be narrowed to damage dealt to a player.
@@ -714,6 +727,7 @@ func Register(spec Spec) {
 		// announced X (CR 605.3b), so a "Sacrifice X …" clause there
 		// has nothing to read its count from.
 		checkSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther, true, false, false)
+		refuseSacrificeDifferent(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther)
 		checkTapOthersClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.TapOthers, false)
 		// #1228 / CR 113.6: the MANA half of the zone dimension, held
 		// to the same three rules the activated half is held to —
@@ -766,6 +780,7 @@ func Register(spec Spec) {
 		// rule that makes the flat payment list unambiguous is
 		// checkVariableSacrificePlan's.
 		checkSacrificeClause(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice, false, true, true)
+		refuseSacrificeDifferent(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice)
 	}
 	checkVariableSacrificePlan(spec)
 	checkSacrificeAllCost(spec)
@@ -830,6 +845,14 @@ func Register(spec Spec) {
 	// ADR 0093 amendment 2026-10-13: and the zone-grant statics, so the
 	// layer pass finds a Satoru by one map read per permanent.
 	game.IndexZoneGrants(spec.OracleID, spec.Static)
+	// #3862: and the counter kinds a static's "as long as it has N or
+	// more counters" begins on, so a counter placement on any other
+	// kind pays one map read.
+	game.IndexCounterThresholds(spec.Static)
+	// #3862: and the statics over objects off the battlefield, so the
+	// zone layer step finds a Mycosynth Lattice by one map read per
+	// permanent.
+	game.IndexZoneLayers(spec.OracleID, spec.Static)
 	// #623 / CR 114: a card that makes an emblem files a SECOND def
 	// for the emblem object, under "emblem:<this key>". It goes in
 	// `defs` and not in `registry`, so the engine finds the emblem's
@@ -934,6 +957,26 @@ func checkStaticZones(card, what string, statics []game.StaticAbility) {
 				panic(fmt.Sprintf("effects.Register: %q %s %d affects spells with a removal or an ability bundle — the stack step applies keywords only", card, what, i))
 			}
 		}
+		// #3862: a static over objects off the battlefield is a layer-4
+		// or layer-5 effect from the battlefield — what the zone layer
+		// step applies (game/zone_layers.go).
+		if len(s.AffectsZones) > 0 {
+			switch {
+			case s.Layer != game.Layer4Type && s.Layer != game.Layer5Color:
+				panic(fmt.Sprintf("effects.Register: %q %s %d affects objects off the battlefield in layer %d — the zone layer step applies layers 4 and 5 only", card, what, i, s.Layer))
+			case s.AppliesTo == nil || s.Apply == nil:
+				panic(fmt.Sprintf("effects.Register: %q %s %d affects objects off the battlefield but has no AppliesTo or Apply", card, what, i))
+			case len(s.Zones) > 0 || s.AffectsSpells || s.GrantZone != "":
+				panic(fmt.Sprintf("effects.Register: %q %s %d affects objects off the battlefield beside a declared source zone, a spell clause or a zone grant — declare those as a static of their own", card, what, i))
+			case s.RemovesAbilities || len(s.GrantAbilities) > 0 || s.Borrows != nil || s.ContinuesAfterRemoval:
+				panic(fmt.Sprintf("effects.Register: %q %s %d affects objects off the battlefield with a removal, a grant or a borrow — the zone layer step changes types and colours only", card, what, i))
+			}
+			for _, zone := range s.AffectsZones {
+				if why := game.AffectsZoneUnsupported(zone); why != "" {
+					panic(fmt.Sprintf("effects.Register: %q %s %d affects objects in %s — %s", card, what, i, zone, why))
+				}
+			}
+		}
 		for _, zone := range s.Zones {
 			if why := game.StaticZoneUnsupported(zone); why != "" {
 				panic(fmt.Sprintf("effects.Register: %q %s %d functions from %s — %s",
@@ -1030,9 +1073,12 @@ func checkTriggerZones(card, what string, triggers []game.TriggeredAbility) {
 //     single kind to name at announce (#625). Split across
 //     permanents it has one: #943 asks the kind per part, so an
 //     any-kind AMONG cost is a shape (Tekuthal, Inquiry Dominus) and
-//     is no longer refused here;
-//   - Among without a From clause names no permanents to split
-//     across, and Among with Variable is a shape no card prints;
+//     is no longer refused here. Nor is the same split across the
+//     source's own kinds, spelled Among with no From (#3987,
+//     Ghost-Spider's "Remove two counters from Ghost-Spider");
+//   - Among without a From clause is only that self form: any kinds,
+//     a fixed N of at least two. Among with Variable is a shape no
+//     card prints except Jetfire's one printed kind;
 //   - an add-a-counter cost with no kind, or none to add, would put
 //     nothing on and make the ability free.
 func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.CounterAddCost) {
@@ -1044,12 +1090,23 @@ func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.
 			panic(fmt.Sprintf("effects.Register: %q %s removes %d counters — a counter cost removes at least one", card, where, rc.N))
 		}
 		if rc.Counter == "" && !rc.Among && (rc.N > 1 || rc.Variable) {
-			panic(fmt.Sprintf("effects.Register: %q %s removes %d counters of any kind off one permanent — only \"a counter\" (N = 1) has an any-kind shape there; a removal that may mix kinds is spread across permanents (Among, #943)", card, where, rc.N))
+			panic(fmt.Sprintf("effects.Register: %q %s removes %d counters of any kind with one kind choice — a removal that may mix kinds asks the kind per part: RemoveCountersOfAnyKindsFromThis for this permanent (#3987), RemoveCountersAmong across permanents (#943)", card, where, rc.N))
 		}
-		if rc.Among {
-			if rc.From == nil {
-				panic(fmt.Sprintf("effects.Register: %q %s splits a counter removal among nothing — an Among cost needs its \"from among …\" clause", card, where))
+		if rc.Among && rc.From == nil {
+			// #3987: "Remove two counters from Ghost-Spider" splits across
+			// the SOURCE's kinds. Only that shape: with a printed kind
+			// there is one part and RemoveCountersFromThis says it, and no
+			// card prints a variable any-kind removal from itself.
+			switch {
+			case rc.Counter != "":
+				panic(fmt.Sprintf("effects.Register: %q %s splits a %s counter removal among nothing — use RemoveCountersFromThis, or give the Among cost its \"from among …\" clause", card, where, rc.Counter))
+			case rc.Variable:
+				panic(fmt.Sprintf("effects.Register: %q %s removes a variable number of counters of any kinds from itself — no printed card does", card, where))
+			case rc.N < 2:
+				panic(fmt.Sprintf("effects.Register: %q %s removes one counter of any kind from itself as an Among cost — use RemoveCountersFromThis(\"\", 1)", card, where))
 			}
+		}
+		if rc.Among && rc.From != nil {
 			// A variable count split across permanents is a shape since
 			// #3276 (Jetfire, Ingenious Scientist: "one or more +1/+1
 			// counters from among artifacts you control"). Only the
@@ -1145,6 +1202,43 @@ func checkSacrificeClause(card, where string, spec *game.TargetSpec, allowOpen, 
 		panic(fmt.Sprintf("effects.Register: %q %s admits players — a sacrifice clause matches permanents only", card, where))
 	}
 	checkSacrificeSetRule(card, where, spec)
+	checkSacrificeDifferentRule(card, where, spec)
+}
+
+// checkSacrificeDifferentRule is #3940's guard for TargetSpec.Different
+// on a sacrifice clause ("three artifact tokens with different names").
+// The readers that honour it (the validator, the enumerator's one
+// payment, the view's keys and the client picker) read a FIXED count of
+// at least two, with no EachOf beside it: a count of one has nothing to
+// differ from, and a variable count or a kind rule as well would need a
+// search none of them makes. The rule needs its Key and its Label, as a
+// target clause's does.
+func checkSacrificeDifferentRule(card, where string, spec *game.TargetSpec) {
+	d := spec.Different
+	if d == nil {
+		return
+	}
+	switch {
+	case d.Key == nil || d.Label == "":
+		panic(fmt.Sprintf("effects.Register: %q %s has a difference rule with no Key or no Label — build it with EachDifferentName", card, where))
+	case spec.CountFromX || game.SacrificeCostVariable(spec) || game.SacrificeCostCount(spec) < 2:
+		panic(fmt.Sprintf("effects.Register: %q %s has a difference rule on %d to %d permanents — it reads a fixed count of two or more (SacrificeNDifferent)", card, where, spec.Min, spec.Max))
+	case len(spec.EachOf) > 0:
+		panic(fmt.Sprintf("effects.Register: %q %s has both a difference rule and a kind rule (EachOf) — no reader searches for a set under both", card, where))
+	}
+}
+
+// refuseSacrificeDifferent keeps a difference rule (#3940) off the
+// sacrifice clauses whose own payers or offer checks do not read it: a
+// mana ability's, a cast's additional cost (its payability check counts
+// candidates) and an optional or alternative cost. Only an activated ability's SacrificeOther carries one, which
+// is where the one printed card of the family (Transmutation Font) has
+// it. Widen this when a card needs it elsewhere, with that site's
+// payer.
+func refuseSacrificeDifferent(card, where string, spec *game.TargetSpec) {
+	if spec != nil && spec.Different != nil {
+		panic(fmt.Sprintf("effects.Register: %q %s has a difference rule on its sacrifice clause — only an activated ability's sacrifice cost reads one (#3940)", card, where))
+	}
 }
 
 // checkSacrificeSetRule is #2526's guard for TargetSpec.EachOf on a
@@ -1333,6 +1427,10 @@ func checkTapOthersClause(card, where string, tc *game.TapOthersCost, allowX boo
 			card, where, tc.Count))
 	}
 	switch {
+	case tc.AnyNumber:
+		panic(fmt.Sprintf("effects.Register: %q %s taps any number of permanents — only a spell's additional cost may (#3961)", card, where))
+	case tc.UpTo:
+		panic(fmt.Sprintf("effects.Register: %q %s taps up to a count of permanents — only harmonize's alternative cost may (#3931)", card, where))
 	case tc.Filter.CountFromX && !allowX:
 		panic(fmt.Sprintf("effects.Register: %q %s taps X permanents but a mana ability has no X announcement", card, where))
 	case tc.Filter.CountFromX && tc.Count != 0:
@@ -1436,7 +1534,30 @@ func checkAltCostTapOthers(card string, ac game.AlternativeCost) {
 	if tc.Filter != nil && tc.Filter.CountFromX {
 		panic(fmt.Sprintf("effects.Register: %q %s taps X permanents — an alternative cost taps a fixed number", card, where))
 	}
+	if tc.UpTo {
+		// #3931: harmonize's "up to one", judged by checkHarmonize; the
+		// rest of the clause is held to the ordinary shape.
+		plain := *tc
+		plain.UpTo = false
+		tc = &plain
+	}
 	checkTapOthersClause(card, where, tc, false)
+}
+
+// checkHarmonize holds ReducedByTappedPower (#3931, CR 702.180a) and
+// TapOthersCost.UpTo to the one shape harmonize prints: the two
+// together, over up to ONE creature. The pricer reads the one permanent
+// AltCostIDs names, so the flag beside anything else would price a
+// discount the card does not print, and "up to" without the reduction
+// is no printed alternative cost.
+func checkHarmonize(card string, ac game.AlternativeCost) {
+	upTo := ac.TapOthers != nil && ac.TapOthers.UpTo
+	if !ac.ReducedByTappedPower && !upTo {
+		return
+	}
+	if !ac.ReducedByTappedPower || !upTo || ac.TapOthers.Count != 1 {
+		panic(fmt.Sprintf("effects.Register: %q offers %q reduced by a tapped creature's power without tapping up to one creature, or the reverse (CR 702.180a) — build it with Harmonize", card, ac.Key))
+	}
 }
 
 // checkEmerge holds ReducedBySacrificedManaValue (ADR 0135 §4) to the
@@ -1510,7 +1631,7 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 				panic(fmt.Sprintf("effects.Register: %q target clause %d must relate at most one pick", name, i))
 			}
 			switch r.Kind {
-			case game.TargetInControllersGraveyard, game.TargetAttachedTo:
+			case game.TargetInControllersGraveyard, game.TargetAttachedTo, game.TargetControlledBySameController:
 			default:
 				panic(fmt.Sprintf("effects.Register: %q target clause %d has an unknown target relation", name, i))
 			}
@@ -1995,6 +2116,12 @@ func checkLibraryCosts(name string, i int, cost game.AbilityCost) {
 func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 	if ec == nil {
 		return
+	}
+	if ec.CountFromX {
+		// #1948: "exile X cards" exists on a cast's mandatory slot only
+		// (checkCastExileCardsClause); no ability prints it.
+		panic(fmt.Sprintf("effects.Register: %q %s exiles X cards — the X form is a cast's additional cost only (#1948)",
+			name, where))
 	}
 	if ec.N <= 0 {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles %d cards — an exile cost exiles at least one",

@@ -171,8 +171,10 @@ const (
 	LogEliminated LogKind = "eliminated"
 	// LogGameOver — the game ended with a result: a winner, or a draw
 	// (ADR 0057 Decision 7). Seat is the winner, NoSeat for a draw;
-	// Cause is "last_standing", "effect" or "all_lost"; CardID names
-	// the winning source for an effect win.
+	// Cause is "last_standing", "effect", "all_lost" or
+	// "mandatory_loop"; CardID names the winning source for an effect
+	// win, and the loop's repeating source for a mandatory loop's draw
+	// (CR 732.4, #2506).
 	LogGameOver LogKind = "game_over"
 	// LogWinPrevented — an effect would have made Seat win the game
 	// and a "can't win the game" gate stopped it. CardID is the
@@ -582,6 +584,15 @@ const (
 	// to cleanup, and without this line the exile lines and the jump
 	// arrive unexplained. A turn that ends normally has no such line.
 	LogTurnEnded LogKind = "turn_ended"
+	// LogGameRestarted — the game was restarted (CR 727, #3856): Karn
+	// Liberated's −14. `seat` is the player who restarted it, who takes
+	// the new game's first turn, and `card_id` / `label` the card that
+	// did it. `amount` is how many cards were left in exile to put onto
+	// the battlefield. It is always the FIRST line of the log: the log
+	// begins again at a restart, because every card of the old game is
+	// a new object in the new one and the old lines could only say
+	// "a card".
+	LogGameRestarted LogKind = "game_restarted"
 	// LogPlayerControlScheduled — a player will control another during
 	// that player's next turn (CR 723.1, ADR 0167: Emrakul, the Promised
 	// End). `seat` is the controller, `target_seat` the controlled
@@ -1099,6 +1110,16 @@ func (f *logFold) feed(events []game.Event) int {
 			f.replaying = true
 			continue
 		case game.EventLoopReplayed:
+			f.replaying = false
+		case game.EventGameRestarted:
+			// CR 727 (#3856): the log begins again with the new game.
+			// Its restart line is the first entry, and nothing the
+			// fold remembers about the old game's lines carries over.
+			ring.reset()
+			f.turn, f.step = 0, ""
+			f.sacrificed = uuid.Nil
+			f.cycled = ""
+			f.revealedSearch = false
 			f.replaying = false
 		default:
 			if f.replaying {
@@ -2127,6 +2148,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		return base, true
 
+	case game.EventGameRestarted:
+		base.Kind = LogGameRestarted
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.Label = ev.Label
+		base.Amount = ev.Amount
+		return base, true
+
 	case game.EventPhasesAdded:
 		base.Kind = LogExtraPhase
 		base.CardID = uuidStringOrEmpty(ev.Source)
@@ -2773,6 +2801,11 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		switch e.Cause {
 		case game.OutcomeCauseAllLost:
 			return "The game is a draw"
+		case game.OutcomeCauseMandatoryLoop:
+			if cardName != "" {
+				return fmt.Sprintf("The game is a draw: %s's loop repeats with no way to stop (CR 732.4)", cardName)
+			}
+			return "The game is a draw: a loop repeats with no way to stop (CR 732.4)"
 		case game.OutcomeCauseEffect:
 			if cardName != "" {
 				return fmt.Sprintf("%s won the game (%s)", actor, cardName)
@@ -2993,6 +3026,18 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s's turn ends", actor)
 		}
 		return fmt.Sprintf("%s's turn ends (%s)", actor, card)
+	case LogGameRestarted:
+		line := fmt.Sprintf("%s restarted the game and goes first", actor)
+		if cardName != "" {
+			line = fmt.Sprintf("%s restarted the game (%s) and goes first", actor, cardName)
+		}
+		switch {
+		case e.Amount == 1:
+			line += "; 1 exiled card will enter the battlefield under their control"
+		case e.Amount > 1:
+			line += fmt.Sprintf("; %d exiled cards will enter the battlefield under their control", e.Amount)
+		}
+		return line
 	case LogPlayerControlScheduled, LogPlayerControlBegan, LogPlayerControlEnded:
 		// `target` is the controlled player's seat name (or "a
 		// player"), as in LogChoosePlayer.
@@ -3545,6 +3590,14 @@ func (r *logRing) push(e LogEvent) {
 	}
 	r.buf[r.start] = e
 	r.start = (r.start + 1) % len(r.buf)
+}
+
+// reset evicts every entry, as if each had fallen off the end: total
+// keeps counting, so an ordinal taken before the reset names nothing.
+func (r *logRing) reset() {
+	r.version++
+	r.start = (r.start + r.n) % len(r.buf)
+	r.n = 0
 }
 
 // last returns a pointer to the most recently pushed entry, for the

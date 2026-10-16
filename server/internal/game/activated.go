@@ -976,6 +976,17 @@ type ActivatedAbilityShape struct {
 	// declared there alone. The engine never reads it; see Purpose.
 	Purpose Purpose
 
+	// MayQuestion is the ability's resolution-time "you may" when its
+	// whole effect is optional — "Boast — {1}: You may have Arni's base
+	// power become …" (Arni Brokenbrow, #2731). The question is asked
+	// as the ability resolves (CR 608.2d), by the machinery an optional
+	// trigger uses (ADR 0197 §10, optional_trigger.go): the activation
+	// stamps StackItem.Optional, the resolution asks a trigger_prompt,
+	// and "yes" runs Effect. Empty for every ability whose effect is
+	// not a "you may" as a whole. Plain data: a "you may" in the
+	// middle of an effect is effects.MayChoice instead.
+	MayQuestion string
+
 	// Effect runs at resolution against the live game. Same contract
 	// as TriggeredAbility's stack items: never capture a *Card,
 	// read what you need off the item and the game.
@@ -1382,6 +1393,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// borrower where it named the lender. Read here, while `source` still
 	// points at the object — a cost below may move it.
 	itemLabel := BorrowedLabel(ab.Label, origins.At(index), source.Name)
+	// ADR 0197 §10: the standing answer's label and its face-down
+	// silence, read for the same reason.
+	answerCard, answerFaceDown := source.Name, source.FaceDown
 	// CR 113.6: an ability functions only from the zone it says it
 	// functions from. Checked after the index lookup (so the index
 	// is the one the view and the enumerator published) and before
@@ -1538,8 +1552,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// CR 302.6: a creature's {T} ability needs it to have been
 		// under your control since your most recent turn began.
 		// Non-creature sources (Krenko is a creature; an artifact
-		// with {T} isn't) are never sick.
-		if source.IsCreature() && HasSummoningSickness(source) {
+		// with {T} isn't) are never sick, and an "as though those
+		// creatures had haste" static of the activator's lifts it
+		// (#3928, CR 609.4).
+		if g.ActivationSummoningSickLocked(source, playerID) {
 			return ErrSummoningSick
 		}
 	}
@@ -2218,6 +2234,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		item.Body = CatalogActivatedBodyKey
 		item.Params = EffectParams{Ability: abilityRef}
 	}
+	// ADR 0197 §10 (#2731): a "you may" ability carries its question
+	// onto the stack and asks it as it resolves (optional_trigger.go).
+	stampOptionalActivated(item, ab, abilityRef, answerCard, answerFaceDown)
 	g.StackMeta[itemID] = item
 	// #1547: what the mana did when it was spent. The cast path's
 	// call, for an ability: a rider whose filter admits an activation
@@ -2501,7 +2520,7 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 		// permanent to pay a cost does not target it (CR 601.2h), so
 		// the CR 702 keyword gate must not apply — Carrion Feeder can
 		// still eat your own hexproof creature.
-		if !g.specMatchLocked(SourceChooser(playerID), cost.SacrificeOther, TargetRef{Kind: TargetCard, ID: id}, false) {
+		if !g.specMatchLocked(g.costSourceLocked(playerID, sourceID), cost.SacrificeOther, TargetRef{Kind: TargetCard, ID: id}, false) {
 			return nil, ErrIllegalTarget
 		}
 		// Paying the same permanent twice (self-sacrifice plus the
@@ -2523,8 +2542,13 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 	// clause's union predicate above; the SET must still fill every
 	// entry, one permanent each. Two Swamps are not a Swamp and a
 	// Forest.
-	if !g.sacrificeSetSatisfiedLocked(cost.SacrificeOther, chosen) {
+	if !g.sacrificeSetSatisfiedLocked(sourceID, cost.SacrificeOther, chosen) {
 		return nil, ErrIllegalTarget
+	}
+	// #3940: "Sacrifice three artifact tokens with different names" —
+	// every pick needs a key and no two may share one (CR 201.2b).
+	if !g.sacrificeDifferentSatisfiedLocked(cost.SacrificeOther, chosen) {
+		return nil, sacrificeDifferentError(cost.SacrificeOther.Different)
 	}
 	return append(out, chosen...), nil
 }
@@ -2655,7 +2679,7 @@ func (g *Game) payAbilityManaCostNoteLocked(p *Player, sourceID uuid.UUID, sourc
 		if !ok || !g.planFundsLocked(p, plan, short, cost, x, spendCtx) {
 			return paid, note, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
 		}
-		g.materializePlanLocked(p, plan, short)
+		g.materializePlanInLocked(p, plan, short, spendCtx)
 	}
 	if !p.ManaPool.CanPayFor(cost, x, spendCtx) {
 		return paid, note, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}

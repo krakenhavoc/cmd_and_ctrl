@@ -67,15 +67,13 @@ func init() {
 			Layer: game.Layer4Type,
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 				return target.InstanceID == source.InstanceID &&
-					devotionTo(g, source.Controller, "B") < 5
+					devotionTo(g, source.Controller, source.TextColor("B")) < 5
 			},
-			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-				// "Isn't a creature" removes only the creature type;
-				// the Legendary and Enchantment halves of the printed
-				// line stay, and so does the God subtype, because the
-				// clause says nothing about them.
-				c.Types = []string{"Enchantment"}
-			},
+			// "Isn't a creature" removes the creature type; the Legendary
+			// and Enchantment halves of the printed line stay. The God
+			// subtype goes with Creature (CR 205.1a, applied by the layer
+			// pass).
+			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) { notACreature(c) },
 		}},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

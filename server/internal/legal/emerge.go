@@ -105,13 +105,13 @@ func emergeManaValue(g *game.Game, offer *game.AlternativeCost, paid []uuid.UUID
 // altPaymentCost is the mana an alternative payment is offered at
 // against the first announcement (#1013): the first announcement's own
 // cost for every offer whose price does not depend on its payment, and
-// for an emerge offer that cost repriced with this payment's reduction
-// (ADR 0135 §4). ok is false when the payment cannot be repriced here —
+// for an emerge or harmonize offer that cost repriced with this
+// payment's reduction (ADR 0135 §4, #3931). ok is false when the payment cannot be repriced here —
 // an announcement that also paid Phyrexian symbols with life or delved,
 // which no emerge card prints — so the payment is not offered rather
 // than offered at a guess.
 func (e *enumerator) altPaymentCost(card game.Card, fromZone game.ZoneKind, first *announcedCast, paid []uuid.UUID, perTarget, varSac bool) (game.ParsedCost, bool) {
-	if first.offer == nil || !first.offer.ReducedBySacrificedManaValue {
+	if first.offer == nil || (!first.offer.ReducedBySacrificedManaValue && !first.offer.ReducedByTappedPower) {
 		return first.cost, true
 	}
 	if first.life > 0 || len(first.delve) > 0 {
@@ -123,6 +123,8 @@ func (e *enumerator) altPaymentCost(card game.Card, fromZone game.ZoneKind, firs
 		FromZone:              fromZone,
 		XValue:                first.x,
 		AltSacrificeManaValue: emergeManaValue(e.g, first.offer, paid),
+		// #3931: harmonize's payment is repriced the same way.
+		AltTappedPower: harmonizePower(e.g, first.offer, paid),
 	}
 	if perTarget {
 		q.Targets = first.targets

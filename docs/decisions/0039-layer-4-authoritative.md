@@ -240,3 +240,129 @@ its types is a fixture that will pass while the card is dead.
   new replacement capability plus an as-enters choice prompt plus
   client UI — a feature, not a follow-on, and deliberately left to
   #335.
+
+## Amendment (2026-10-15, #2041): losing a card type loses its subtypes (CR 205.1a)
+
+CR 205.1a: "If an object's card type is removed, the subtypes correlated
+with that card type will remain if they are also the subtypes of a card
+type the object currently has; otherwise, they are also removed for the
+entire time the object's card type is removed." Until now each effect
+that removed a type had to remember the second half, and
+`RemoveTypesMod("Creature")` did not: an "isn't a creature" Weeping Angel
+was still an Alien Angel to every Angel count and tribal lord.
+
+**The pass applies it, not the effects.** Every layer-4 application
+(`applyOneEffectLocked`, and the CR 613.8 probe's `applyRaw`) runs through
+`applyTypeChange` (`game/card_type_loss.go`): it notes which subtype lists
+the object's card types allow before the effect and after it, and drops
+the subtypes of every list the effect closed. Creature types are allowed
+by Creature or Kindred (Tribal), land types by Land, artifact types by
+Artifact, enchantment types by Enchantment, planeswalker types by
+Planeswalker (CR 205.3j's list, newly carried), spell types by Instant or
+Sorcery, battle types by Battle. "Is every creature type" goes with the
+creature list. A subtype on none of the lists is kept.
+
+**In the removing effect's slot.** The drop is part of the effect that
+removed the type, so CR 613.7 order decides: a later "becomes an artifact
+creature" makes the object a creature again without the creature types the
+earlier removal took (it is still removing the type, and CR 205.1b's
+"retains its prior subtypes" retains none), and a removal after an
+animation takes the animation's creature type too. When the removal ends,
+the next pass rebuilds from printed values and the subtypes are back. A
+filter at the end of layer 4 would have given the first case's subtypes
+back, which is why it is per application.
+
+**Not here.** The gaining half, CR 205.3d's "an object can't gain a
+subtype that doesn't correspond to one of that object's types", is not
+enforced by the pass: a scoped record is one continuous effect per mod,
+and a record listing its subtype before its card type would lose its own
+subtype. `SetTypesMod`'s registration check refuses the mismatch it can
+see.
+
+## Amendment (2026-10-15, #3862): layers 4 and 5 for objects off the battlefield
+
+Decision 1 of this ADR left an object off the battlefield at its printed values. Its reason was that
+"a static ability only does anything while its source is on the battlefield, so there is nothing
+for the effective view to say there". That reason confuses where the SOURCE is with where the
+OBJECT is. A battlefield static can be about objects anywhere (CR 611.3a), and three cards in the
+catalog say so:
+
+- Mycosynth Lattice: "All cards that aren't on the battlefield, spells, and permanents are
+  colorless." Its ruling: it "makes everything, in every zone of the game, colorless."
+- Maskwood Nexus: "The same is true for creature spells you control and creature cards you own that
+  aren't on the battlefield."
+- Secret Arcade: "Nonland permanents you control and permanent spells you control are enchantments
+  in addition to their other types."
+
+Each shipped its permanent half with a caveat. The visible failures were a Cavern of Souls named for
+Elf refusing to pay for a Bear in hand under a Nexus, and Dusty Parlor not seeing the creature spell
+Secret Arcade makes an enchantment.
+
+**1. The declaration.** `StaticAbility.AffectsZones` lists the zones whose objects a layer-4 or
+layer-5 static's `AppliesTo` is asked of. `ZoneStack` means spells: abilities on the stack are not
+spells, and a spell's `Controller` is settled by layer 2 first. `ZoneHand`, `ZoneLibrary`,
+`ZoneGraveyard`, `ZoneExile` and `ZoneCommand` mean cards, whose "you" is their owner (CR 108.4).
+A card whose sentence names both kinds declares two statics, so each predicate reads the right
+"you". `effects.OffTheBattlefield`, `CardsOffTheBattlefield` and `SpellsOnTheStack` are the lists.
+
+`effects.Register` refuses any of these:
+
+- a layer other than 4 or 5;
+- a missing `AppliesTo` or `Apply`;
+- a removal, grant, borrow or `ContinuesAfterRemoval`;
+- a source zone, a spell clause or a zone grant on the same static;
+- the battlefield.
+
+`GrantedStaticProblem` and the emblem check refuse it too. The battlefield gather skips such a
+static, so a predicate written for a hand card cannot reach a permanent.
+
+**2. The step.** `zoneLayerPassLocked` (`game/zone_layers.go`) runs in `recomputeLayersLocked` after
+layer 2 and after the zone grant step. It gathers every such static whose source still has its
+abilities after the battlefield pass, in layer order and then timestamp order (CR 613.7). It then
+walks every spell on the stack and every card in each seat's hand, library, graveyard and command
+zone and in exile. For each object, it applies the statics that accept it to a copy of the printed
+baseline, through `applyTypeChange` for layer 4 (CR 205.1a's subtype loss), and stamps the result on
+`Card.zoneLayered`. While a static is applied, the object's stamp is the characteristic in progress,
+so a later predicate reads what the earlier effects made it, as on the battlefield. With no such
+static on the battlefield, the step does nothing. `Game.zoneLayersStamped` makes the first such pass
+clear the old stamps once. A catalog index (`IndexZoneLayers`) keeps the battlefield walk to one map
+read per permanent.
+
+**3. The readers.** There are six:
+
+- `hasCardType`
+- `hasSubtype`
+- `HasSupertype`
+- `EffectiveColors`
+- `HasAllCreatureTypes`
+- `effectiveOf` (and so `Effective()`)
+
+Off the battlefield, each one now reads `zoneLayered` before it falls through to the printed card.
+Every other reader goes through these six: the cast's spend context, a tutor's filter, a "colorless
+spell" check, protection, the wire's type line, and `cdaAnywhereLocked`. A commander's colour
+identity is not its colour (CR 903.4), so `printedIdentityOf` now reads the printed colours instead
+of `Effective()`. Under a Lattice, a commander in the command zone is colourless, and its identity
+is unchanged.
+
+**4. Freshness.** The stamp is a derived cache like `effective`, with the same rules:
+
+- `MoveCard` clears it, because the card in its new zone is a new object (CR 400.7).
+- The battlefield pass clears it on a permanent.
+- It is never snapshotted. The drift test classifies it `rebuilt`, a clone shares the pointer, and a
+  restore in place forces a recompute that re-derives it.
+
+While such a static is live, `layerVersionBump` bumps the layer version for a cast and for a card
+moving between two zones off the battlefield. The trigger harvester recomputes before it reads
+`EventCast` or such a move, as it already did for `EventETB`. So "whenever you cast an enchantment
+spell" sees the creature spell Secret Arcade made an enchantment, and a card drawn under a Nexus is
+every creature type from the moment it is in hand.
+
+**5. Not covered.** Dependency ordering (CR 613.8) among these effects: off the battlefield no
+catalogued effect makes a card a creature, so timestamp order is the whole answer. Cards outside the
+game (a sideboard) are in no zone of the game.
+
+**Cards.** Mycosynth Lattice, Maskwood Nexus and Secret Arcade // Dusty Parlor are now Full. Pinned by
+`TestMycosynthLatticeMakesCardsAndSpellsInEveryZoneColorless`,
+`TestMaskwoodNexusMakesYourCreatureCardsAndSpellsEveryType`,
+`TestMaskwoodNexusReachesACardDrawnWhileItIsOut` and
+`TestSecretArcadeMakesYourPermanentSpellsEnchantments` (`internal/cards/effects`).

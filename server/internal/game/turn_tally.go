@@ -1,6 +1,7 @@
 package game
 
 import (
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -302,6 +303,16 @@ type TurnTally struct {
 	// NoncombatDamageThisTurnForEffect. Additive: omitted when empty,
 	// so an older snapshot reads back as no damage.
 	NoncombatDamage []NoncombatDamageRecord `json:"noncombatDamage,omitempty"`
+	// DamagedObjects records which permanent OBJECTS each source dealt
+	// damage to this turn (#1946): one entry per damage event to a
+	// permanent, in the order the damage was dealt, each side named by
+	// instance ID and ObjectEpoch (CR 400.7). Read through
+	// ObjectDealtDamageToObjectThisTurn and its siblings
+	// (dealt_damage_by.go): "creatures dealt damage by this creature this
+	// turn" (Bone Shaman, Runesword, Kumano). Never deduplicated, so an
+	// index into it is a moment in the turn (Mod.DamageSince). Additive:
+	// omitted when empty, so an older snapshot reads back as no records.
+	DamagedObjects []ObjectDamageRecord `json:"damagedObjects,omitempty"`
 	// LoopRun is Resolved restarted at every player decision: the
 	// CR 732 loop breaker's count of how many times one ability has
 	// resolved with nobody casting, activating, answering a prompt
@@ -347,6 +358,15 @@ type TurnTally struct {
 	// B). noteLoopWorkLocked applies it as the next triggered ability
 	// begins to resolve, and clears it.
 	LoopProgressed bool `json:"loopProgressed,omitempty"`
+	// LoopRepeat is, per loop key (TallyKey, like LoopRun), the
+	// position of the game the last time that triggered ability began
+	// to resolve, as a fingerprint (loopPositionLocked). Taken only
+	// once the key's run is one short of the threshold, so an ordinary
+	// turn never pays for it. Two equal fingerprints in a row mean one
+	// whole iteration of the loop changed nothing at all, which is
+	// what makes a mandatory loop CR 732.4's draw (#2506, ADR 0055's
+	// 2026-10-15 amendment). Cleared with the runs.
+	LoopRepeat map[string]string `json:"loopRepeat,omitempty"`
 	// Casts is every spell cast this turn, TABLE-WIDE, in cast order:
 	// the instance ID of each spell as it went on the stack. Read
 	// through Game.SpellsCastBeforeThisTurn.
@@ -1488,6 +1508,9 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	if len(t.DamageDealers) > 0 {
 		out.DamageDealers = append([]DamageDealtRecord(nil), t.DamageDealers...)
 	}
+	if len(t.DamagedObjects) > 0 {
+		out.DamagedObjects = append([]ObjectDamageRecord(nil), t.DamagedObjects...)
+	}
 	if len(t.NoncombatDamage) > 0 {
 		out.NoncombatDamage = make([]NoncombatDamageRecord, len(t.NoncombatDamage))
 		for i, r := range t.NoncombatDamage {
@@ -1500,6 +1523,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.LoopAllowance = copyStringIntMap(t.LoopAllowance)
 	out.LoopLow, out.LoopLowSet, out.LoopActivated = t.LoopLow, t.LoopLowSet, t.LoopActivated
 	out.LoopProgressed = t.LoopProgressed
+	out.LoopRepeat = maps.Clone(t.LoopRepeat)
 	out.ModesChosen = copyModesChosen(t.ModesChosen)
 	out.GrantedAltCostsClaimed = copyStringIntMap(t.GrantedAltCostsClaimed)
 	if len(t.Attacks) > 0 {
@@ -1558,7 +1582,13 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			}
 		})
 	case EventDealDamage:
-		if ev.Amount <= 0 || g.playerByIDLocked(ev.Target) == nil {
+		if ev.Amount <= 0 {
+			return
+		}
+		if g.playerByIDLocked(ev.Target) == nil {
+			// #1946: damage to a permanent, for "creatures dealt damage
+			// by this creature this turn".
+			g.recordDamagedObjectLocked(ev)
 			return
 		}
 		// #2105: the life the damage COST, not the damage — infect

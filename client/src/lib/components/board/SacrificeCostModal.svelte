@@ -23,19 +23,25 @@
 
   import type {
     AltCostPriceView,
+    AltCostTapPriceView,
     CardView,
     SacrificeGroupView,
+    TargetDifferenceView,
     TargetSharesView,
   } from "../../protocol";
   import {
     canConfirmSacrificeRange,
+    canFillDifferent,
     canFillEachOf,
     canFillShares,
     chooseForMeState,
+    chooseDifferentForMe,
     chooseSacrificeForMe,
     chooseSacrificeSetForMe,
     chooseSharedForMe,
+    differentAllows,
     fillsEachOf,
+    fitsDifferent,
     fitsShares,
     keepAvailablePicks,
     sacrificeAllWarning,
@@ -78,16 +84,27 @@
     // picks must share a key. A row that would break it is greyed, and
     // Confirm stays shut until the picks share one.
     shares?: TargetSharesView;
+    // #3940: "three artifact tokens with different names" — no two picks
+    // may share a key. A row whose key is already picked is greyed, and
+    // "Choose for me" takes the first of each key.
+    different?: TargetDifferenceView;
     // ADR 0135 §1: the spell this pays for, when the picker pays a
     // spell's alternative cost rather than an ability's cost. The hint
     // then reads "Tap an untapped creature you control to cast Orim's
     // Cure."
     castName?: string;
+    // #3868: the spell's cost is an ADDITIONAL one (New Blood's "tap an
+    // untapped Vampire you control"), so the sheet says so while the hint
+    // still names the spell. Only read with castName.
+    additional?: boolean;
     // ADR 0135 §4: an emerge offer's price per candidate (its mana value
     // and what the spell costs with it sacrificed), from the server's
     // pricer. Shown beside each option, so the player sees what each
     // creature saves.
     prices?: Record<string, AltCostPriceView>;
+    // #3931: a harmonize offer's price per creature (its power and what
+    // the spell costs with it tapped), from the server's pricer.
+    tapPrices?: Record<string, AltCostTapPriceView>;
     // #2097: the clause takes EVERY option ("sacrifice all creatures you
     // control"). Nothing is picked: the list shows what goes, all of it
     // marked, and the button confirms. onConfirm gets every option.
@@ -106,8 +123,11 @@
     countIsX = false,
     eachOf,
     shares,
+    different,
     castName,
+    additional = false,
     prices,
+    tapPrices,
     all = false,
     onConfirm,
     onCancel,
@@ -149,11 +169,15 @@
     all ||
       (canConfirmSacrificeRange(chosen, range, options.length) &&
         fillsEachOf(chosen, eachOf) &&
-        fitsShares(chosen, shares)),
+        fitsShares(chosen, shares) &&
+        fitsDifferent(chosen, different)),
   );
   const short = $derived(
     !all &&
-      (options.length < range.min || !canFillEachOf(eachOf) || !canFillShares(shares, range.min)),
+      (options.length < range.min ||
+        !canFillEachOf(eachOf) ||
+        !canFillShares(shares, range.min) ||
+        !canFillDifferent(different, range.min)),
   );
   const chooseForMeButton = $derived(
     all ? { shown: false, disabled: true } : chooseForMeState(range.min, options.length),
@@ -171,7 +195,9 @@
         ? chooseSacrificeSetForMe(ids, eachOf)
         : shares
           ? chooseSharedForMe(ids, range.min, shares)
-          : chooseSacrificeForMe(ids, range.min);
+          : different
+            ? chooseDifferentForMe(ids, range.min, different)
+            : chooseSacrificeForMe(ids, range.min);
   }
 
   function confirm(): void {
@@ -198,7 +224,7 @@
 {#if source}
   <DockSheet
     label={source.name}
-    src={castName ? "alternative cost" : "additional cost"}
+    src={castName && !additional ? "alternative cost" : "additional cost"}
     width={560}
     sheetKey={`sac:${source.instance_id}:${verb}:${label}`}
     count={chooseForMeButton.shown
@@ -221,8 +247,13 @@
     {#if shares}
       <p class="prompt-hint">The ones you pick must {shares.label}.</p>
     {/if}
+    {#if different}
+      <p class="prompt-hint">The ones you pick must {different.label}.</p>
+    {/if}
     {#if countIsX}
       <p class="prompt-hint">The number you pick is X.</p>
+    {:else if range.min === 0 && range.max === 1 && options.length > 0}
+      <p class="prompt-hint">Pick one, or none.</p>
     {:else if range.min === 0 && options.length > 0}
       <p class="prompt-hint">Pick as many as you like, or none.</p>
     {/if}
@@ -237,6 +268,8 @@
             You control {options.length} of the {range.min} permanents this cost needs.
           {:else if shares && !canFillShares(shares, range.min)}
             You don't have {range.min} that {shares.label}.
+          {:else if different && !canFillDifferent(different, range.min)}
+            You don't have {range.min} that {different.label}.
           {:else}
             You don't control a different permanent for every part of this cost.
           {/if}
@@ -253,7 +286,8 @@
               aria-pressed={on}
               disabled={all ||
                 (!on && ceiling > 1 && chosen.length >= ceiling) ||
-                !sharesAllows(chosen, c.instance_id, shares)}
+                !sharesAllows(chosen, c.instance_id, shares) ||
+                !differentAllows(chosen, c.instance_id, different)}
               onclick={() => pick(c.instance_id)}
             >
               <span class="prompt-radio" aria-hidden="true"></span>
@@ -267,6 +301,14 @@
                   class="note price"
                   title={`Mana value ${p.mana_value}: the spell costs ${p.price} with this sacrificed`}
                   >MV {p.mana_value} · costs {p.price}</span
+                >
+              {/if}
+              {#if tapPrices?.[c.instance_id]}
+                {@const p = tapPrices[c.instance_id]}
+                <span
+                  class="note price"
+                  title={`Power ${p.power}: the spell costs ${p.price} with this tapped`}
+                  >power {p.power} · costs {p.price}</span
                 >
               {/if}
             </button>

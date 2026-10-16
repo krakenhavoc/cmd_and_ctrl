@@ -40,7 +40,8 @@ func init() {
 		Name:         "Veil of Summer",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if anOpponentCastASpellThisTurn(ctx, func(c game.Card) bool { return c.HasColor("U") || c.HasColor("B") }) {
+			blue, black := ctx.TextColor("U"), ctx.TextColor("B")
+			if anOpponentCastASpellThisTurn(ctx, func(c game.Card) bool { return c.HasColor(blue) || c.HasColor(black) }) {
 				if err := (DrawCards{N: 1}).Apply(ctx); err != nil {
 					return err
 				}
@@ -50,7 +51,7 @@ func init() {
 				game.CounterShieldYouControl, game.PermissionFilter{})}).Apply(ctx); err != nil {
 				return err
 			}
-			hexproofFrom := []string{game.HexproofFromColor("U"), game.HexproofFromColor("B")}
+			hexproofFrom := []string{game.HexproofFromColor(blue), game.HexproofFromColor(black)}
 			if err := (GrantKeywordUntilEOT{
 				Match:    YouControl(),
 				Keywords: hexproofFrom,

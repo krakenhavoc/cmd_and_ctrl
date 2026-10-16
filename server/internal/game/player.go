@@ -153,6 +153,15 @@ type Player struct {
 	// restore of a seat with none: every reader asks SideboardCards.
 	Sideboard *Zone
 
+	// HasSideboard is whether this player's deck SEATED a sideboard,
+	// which makes the sideboard their pool of cards outside the game
+	// (ADR 0191). False means the pool is the card database (ADR 0198):
+	// a card brought in is chosen from OutsideCollection and minted.
+	// It is a fact about the deck, not the container, so a sideboard
+	// emptied by wishes is still the pool, and a card minted from the
+	// collection into the container does not make one.
+	HasSideboard bool
+
 	// CommanderDamage maps commander INSTANCE ID → total damage that
 	// one commander has dealt to this player across the game
 	// (CR 903.10a). See the note above the struct.
@@ -483,7 +492,12 @@ type Player struct {
 // life total. The library is populated and shuffled by the Game when
 // the game starts.
 func newPlayer(name string, seat int) *Player {
-	id := uuid.New()
+	return newPlayerWithID(uuid.New(), name, seat)
+}
+
+// newPlayerWithID is newPlayer for a player whose ID is already fixed:
+// the same player beginning a restarted game (CR 727, restart.go).
+func newPlayerWithID(id uuid.UUID, name string, seat int) *Player {
 	p := &Player{
 		ID:               id,
 		Name:             name,

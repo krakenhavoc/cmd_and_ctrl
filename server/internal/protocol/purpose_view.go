@@ -215,6 +215,10 @@ type TargetPurposeView struct {
 	// DamageIsX: the damage is the spell's or ability's X (#1944);
 	// Damage is then absent.
 	DamageIsX bool `json:"damage_is_x,omitempty"`
+	// DamagePerTapped: the damage is this many times the number of
+	// permanents the cast's "tap any number" cost taps (#3961); Damage is
+	// then absent.
+	DamagePerTapped int `json:"damage_per_tapped,omitempty"`
 	// Returns is what the target's controller is given when the target
 	// is removed (#2679). Absent when nothing comes back.
 	Returns *TargetReturnView `json:"returns,omitempty"`
@@ -387,7 +391,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		for i, t := range ts {
 			out[i] = TargetPurposeView{
 				Slot: t.Slot, Draws: t.Draws, Discards: t.Discards, ExtraTurns: t.ExtraTurns, Tokens: t.Tokens,
-				LifeGain: t.LifeGain, LifeLoss: t.LifeLoss, Damage: t.Damage, DamageIsX: t.DamageIsX, Reanimates: t.Reanimates,
+				LifeGain: t.LifeGain, LifeLoss: t.LifeLoss, Damage: t.Damage, DamageIsX: t.DamageIsX, DamagePerTapped: t.DamagePerTapped, Reanimates: t.Reanimates,
 			}
 			if r := t.Returns; !r.IsZero() {
 				out[i].Returns = &TargetReturnView{

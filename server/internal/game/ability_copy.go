@@ -236,8 +236,13 @@ func (g *Game) createAbilityCopyLocked(item *StackItem, controller uuid.UUID, ta
 		// A copy of a keyed item (a fired delayed trigger, #1497) is
 		// keyed too, so it stays data on the stack and the table stays
 		// a restore point while it waits (#1568 review).
-		Body:       item.Body,
-		Params:     cloneEffectParams(item.Params),
+		Body:   item.Body,
+		Params: cloneEffectParams(item.Params),
+		// CR 707.10: the copy has the original's text, "you may" and
+		// all, so it asks its own question as it resolves (ADR 0197
+		// §10, #2731). Before this a copied optional ability resolved
+		// as if its controller had said yes.
+		Optional:   cloneOptionalTrigger(item.Optional),
 		targetSpec: item.targetSpec,
 		modeSpec:   item.modeSpec,
 		IsCopy:     true,

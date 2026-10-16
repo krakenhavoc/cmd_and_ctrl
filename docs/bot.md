@@ -1678,9 +1678,12 @@ The bot counts its own mana from the view (§2, `plan.go`):
 
 - **Its mana:** the floating pool, plus one source for each untapped
   permanent it controls whose repeatable mana ability it can use now.
-  A summoning-sick creature without haste is left out. So is a source
-  whose mana is restricted (Delighted Halfling's coloured mana), and a
-  land with no mana ability of its own (a fetchland).
+  A summoning-sick creature without haste is left out, and so is a land
+  with no mana ability of its own (a fetchland). Mana that may be spent
+  only on some spells (Delighted Halfling's colour, Cavern of Souls'
+  chosen type) counts only for the spells its restriction admits, and
+  is spent first on them, as auto-pay does (the amendment of
+  2026-10-16, `PlanRestrictedMana`).
 - **Each spell's cost:** the total mana the cast move charges,
   including X, the commander tax and any cost reduction. The enumerator
   stamps this on the move as `cost.mana`.
@@ -1862,6 +1865,7 @@ and off in `BaselineConfig()`:
 | `PlanMaxCards` | 10 | How many cards the search considers. |
 | `PlanLandDropsAsRamp` | on | Extra land drops order with the mana (§4, 2026-10-08). |
 | `PlanFilterLands` | on | Filter lands modelled as filters (§2). |
+| `PlanRestrictedMana` | on | Restricted mana counted for the casts it admits (§2, 2026-10-16). |
 | `PlanRockTwoTurns`, `PlanNextTurnDiscount` | on, 0.75 | The two-turn comparison. |
 | `IdleLateRocks` | on | The idle late rock (ADR 0126 §2). |
 | `PlanWeighTaxes` | on | An opponent's tax weighed against the plan. |
@@ -3176,6 +3180,23 @@ a deck someone built for it. The model tiers see their own sideboard in the
 board text (`your sideboard (outside the game): …`) and an opponent's as a
 count.
 
+A pick that then casts or plays what it names (Spawnsire of Ulamog's free
+cast, Wish; `choose_destination: "cast_free_outside"` / `"play_outside"`, #3955)
+is priced as the same take, and the enumerator offers every card a permission
+opens in the sideboard as a cast ("Cast Ulamog's Crusher from outside the
+game") or a land play at every price the engine accepts. An "any number" pick
+from the database also offers the whole suggestion list as one answer. The
+heuristic finds a card it owns outside the game when it prices the cast, and a
+free cast from outside costs it no card in hand.
+
+Wish gives the seat a standing right to play one card chosen when it is
+played. A seat whose pool is the card database is offered
+`outside_play` ("Wish: name a card you own from outside the game to play this
+turn", a `special_action`-kind move) while its sideboard is empty; the pick it
+opens is answered like any collection pick, and the named card is then cast
+as an ordinary move. A seat with a sideboard needs no such move: its cards
+are cast directly.
+
 ## Never offered a banned cast (#760)
 
 The announce-time cast gate (`game.CastGateLocked`) is called once per
@@ -3892,6 +3913,20 @@ paid with life that make the move payable, after mana. The heuristic
 prices a life-paid ward like a Phyrexian cast: declined below the floor
 of 10, and below the all-mana answer above it.
 
+**A tax for targeting is a pure price too.** Terror of the Peaks makes
+an opponent's spell that targets it cost an additional 3 life
+([ADR 0080](decisions/0080-attack-taxes.md)'s 2026-10-15 amendment,
+#3860). The enumerator prices every target set with the accessor the
+engine charges with, so a cast at the Dragon carries the 3 life in
+`Move.Cost.Life` and, broken out, in `target_tax_life`; the label says
+`paying 3 life for what it targets`. A seat that cannot pay it (CR 119.4,
+against the sum of every life cost of the cast, Phyrexian symbols and an
+alternative cost's life included) is not offered that target at all, and
+every other target of the same spell still is. The heuristic reads
+`target_tax_life` as buying nothing, like Phyrexian life: of two equal
+targets it takes the untaxed one, and it refuses a tax that would pay its
+last life.
+
 **"Discard your hand" is priced by the hand it throws away.** Lion's
 Eye Diamond, Diamond Lion, Null Brooch and Slate of Ancestry
 ([#1600](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1600)) pay
@@ -3935,6 +3970,39 @@ baseline prices energy at nothing. The model tiers and the MCP seat read
 each seat's energy and other player counters on its board-text line
 ("4 energy, 2 poison").
 
+**A "Mill N cards" cost is priced like a dredge's mill** (#3870). The
+component (#3845) names no card, so `Move.Cost.Mill` carries the count,
+on activated and mana abilities alike (Sinister Concoction, Rot Farm
+Skeleton, Millikin), and the MCP seat's move line says `mills 4 cards
+from your library`. Under `PriceMillCost` the heuristic prices each
+milled card as the dredge answer does: the mean fuel value of its
+graveyard less `Weights.Library`, so a graveyard it casts from makes the
+mill worth more. A mill that would leave fewer than `DredgeLibraryFloor`
+(10) cards in the library is declined, whatever the ability buys. A row
+with a mill component no longer counts as costing only mana and taps
+(ADR 0126 §5). The baseline reads the mill as free.
+
+**An "Exile the top N cards of your library" cost is priced like a
+mill without the fuel** (#3966). ADR 0109 §7's component names no card
+either, so `Move.Cost.LibraryExile` carries the count (Seasoned
+Tactician, Arc-Slogger, Phyrexian Devourer), and the MCP seat's move
+line says `exiles the top 4 cards of your library`. Under
+`PriceLibraryExileCost` each exiled card costs the `Weights.Library` it
+was and buys nothing back, since exile is no graveyard to cast from, and
+the same `DredgeLibraryFloor` declines an exile that would leave fewer
+than 10 cards in the library. The baseline reads the exile as free.
+
+**"Tap any number of untapped creatures" is offered at each count**
+(#3961). Burn at the Stake and Explosive Singularity read the count, so
+the enumerator offers one cast per count: none, one to three creatures
+off the policy's cheapest-to-tap order, and every option, each priced
+with its own discount (an Explosive Singularity the lands alone cannot pay
+is offered only at the counts that make it affordable). The heuristic
+charges each tap as it does #3868's, and reads a damage entry declared
+`damage_per_tapped` at the count the move names, so Burn at the Stake
+taps the fewest creatures that kill its target. A cast that taps none for
+a damage that is all per-creature does nothing and is declined.
+
 **A spell whose target count is X is offered with X equal to the
 number of targets it picks.** Crackle with Power deals five times X
 damage to each of up to X targets, so the count and the announcement
@@ -3957,6 +4025,18 @@ guarantee is in the enumerator rather than in a policy on purpose: a
 policy that can rank "100 more" top can rank it top every time, and a
 random one eventually will. A human at the same prompt types any
 number up to 1000 into the client's field.
+
+**A bot passes through a mandatory loop's notice, and the game is a
+draw.** When the loop that tripped the breaker has only mandatory
+actions and its last iteration gave the game back exactly as it found
+it (CR 732.4, [#2506](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2506),
+ADR 0055's amendment of 2026-10-15), the notice is marked `mandatory`
+and no shortcut is asked. The runner does not hold its pass on that
+notice (`Game.MandatoryLoopStanding`): nobody has to break a loop
+(CR 732.5), and a bot looks for no way to. If every seat passes the
+loop round once more and it comes back unchanged, the game ends in a
+draw. A loop that changes anything on the way round — a counter, a
+token, a card moved — keeps the stop above.
 
 **A bot accepts every demonstrated loop and never records one.** When a
 player records a loop and proposes repeating it

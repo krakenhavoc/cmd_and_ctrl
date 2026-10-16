@@ -1347,7 +1347,9 @@ a creature's mana and an animated Mutavault does while it is one.
   have been (the black spent, less every mana that paid something other than
   X), because `PaidCost.Mana` records the whole payment and not which cost
   component each token paid. The card says so in its caveat. Exact accounting
-  needs the payment to record the component.
+  needs the payment to record the component. *Superseded by
+  [ADR 0068](0068-the-mana-spent-on-a-spell.md)'s 2026-10-16 amendment (#3941):
+  the payment records the mana that paid X, and Soul Burn is Full.*
 
 Proof cards: Drain Life, Consume Spirit (full); Imperiosaur, Myr Superion
 (full); Soul Burn (caveat). Tracker
@@ -1383,3 +1385,92 @@ window opens once per mana SLOT (`{C}{C}` is two slots, two windows), so a
 replacement cannot see the activation's total. It needs the window to carry
 the activation's slot count, and the preview the auto-tapper takes through
 `producedManaPreviewLocked` has to agree with it. The card keeps its caveat.
+
+## Amendment 2026-10-16 — restricted mana is planned for a cast it admits (#3874)
+
+**The gap.** §7 kept every mana ability with restricted output out of the
+auto-tapper: "restricted output is a decision, not a resource", because spending
+a Ziggurat {G} on the cast in front of you might waste the only mana that could
+have cast the creature you were saving it for. That holds when the planner does
+not know what the mana is for. It does not hold when the spell being cast is known
+and the restriction admits it: the restriction is then a filter the cast already
+passes. Cavern of Souls named for Elf, tapped for an Elf, is the mana the card
+exists to make, and its rider ("that spell can't be countered") fires. Under §7 a
+board of Cavern of Souls and nothing else read as unable to cast an Elf through
+auto-pay, and the Pay button tapped a Forest beside the Cavern instead of the
+Cavern. ADR 0068's #3853 amendment (B2) ranks rider sources but left the candidate
+set alone, so it could not reach these two cards.
+
+**The decision.** The picker (`autoTapAcceptsBesidesManaCost`) admits a mana
+ability with restricted output when, and only when, `autoTapAdmitsRestricted`
+says so:
+
+1. **The payment is a cast** (`ManaSpendContext.Purpose == SpendPurposeCast`).
+   Every cast payer names its spell (`ManaSpendForCast*`). An activation, a
+   prompt's cost, a combat tax and the context-free entry points
+   (`AutoTapForCost`) admit nothing, as §7 left them. An activation could be
+   admitted by the same matcher, but the issue scoped this to casts and an
+   activation's spend context carries no wish to rank by. Eldrazi Temple's
+   "activate abilities of colorless Eldrazi" half is still hand-tapped for an
+   activation.
+2. **The restrictions, resolved for this source as the mint resolves them**
+   (`restrictionsFor`, so Cavern's chosen type is read at planning time), **admit
+   the spell** under `ManaSpendContext.allows`, the matcher the pool solver spends
+   by. A Cavern with no type named admits nothing.
+3. **No symbol-level tag.** `ManaRestrictNoGeneric` (Jegantha) is a question about
+   which symbol the mana pays, which `allows` does not answer and the planner's
+   slot arithmetic does not ask. Such a source stays hand-tapped.
+
+#2455's costed planner takes no restricted output (`autoTapWish.withoutRestricted`):
+it books a source's mana either to the cost or to fund a Signet's `{1}`, and
+restricted mana may pay only the spell, so a costed plan that used it would be
+refused after planning. Weaker, never wrong.
+
+**Ranking.** An admitted source is ranked like any other. Its rider fires, so
+`tapSource.RiderRank` is -1 and it comes before a basic land that pays the same
+pip (B2). A new key, `tapSource.Restricted`, sits just below `RiderRank` in both
+comparators (in the generic recruit, below the colour reading and above the hand's
+demand): restricted mana this cast may spend goes before mana any cast could
+spend. It is §4's rule for the pool ("the solver spends restricted mana first")
+applied to sources. So for a creature spell, Ancient Ziggurat pays before the
+Forest beside it, and the Forest stays up for the instant. Neither key outranks
+the thrift tiers (sacrifice, hand, energy, pain, frozen).
+
+**The bound.** This is the one change in the auto-pay wish that adds candidates,
+so whether a cast is payable now depends on the spell. Three readers decide it,
+and each asks under the cast's own spend context:
+
+- the cast gate (`applyAutoTapLocked`, and `castManaShortLocked` for an assisted
+  cast) plans under `ManaSpendForCastParams`;
+- the legal-move enumerator (`canPayExcluding`) probes under
+  `ManaSpendForCastFrom`, through `AutoTapTopUpForEffectExcluding`, so the bot's
+  moves and the client's offers agree with auto-pay;
+- the `/autotap` preview plans and describes under the same context
+  (`AutoTapPlanToppingUp`, `describePlanLocked`).
+
+The executor re-finds every planned ability through the same picker, so it now
+takes the context the plan was made in (`materializePlanInLocked`; the clone that
+`planFundsLocked` runs and the assist payment pass it as well). The context-free
+`materializePlanLocked` re-finds no restricted ability. The minted token keeps its
+restriction (the `restrictionsFor` line in the executor, belt-and-braces under §7,
+is now load-bearing), and the cast's payment spends it under the same context.
+
+`TestRestrictedCandidatesKeepThePayabilityBound` (game) checks this over six boards,
+eleven costs and five spells:
+the enumerator's probe and a real auto-paid `CastSpell` on a clone always agree;
+payable with no context implies payable for the cast; and for a spell no
+restricted row on the board admits, the answer is exactly the context-free one.
+`TestRestrictedManaCastsAreOfferedExactlyWhenAutoPayCanPay` (legal) dispatches
+every offered cast of a Cavern-only and a Halfling-only board.
+
+**Cards.** Cavern of Souls and Delighted Halfling (both already Full): the Elf
+named for and the legendary spell are paid by the coloured half and can't be
+countered. A Goblin, or a nonlegendary spell, is paid by other mana, or refused
+when nothing else can pay. Ancient Ziggurat, Eldrazi Temple's cast half, and the
+rest of the restricted-mana group follow the same rule.
+`cards/effects/autotap_restricted_test.go` pins the two printed cards.
+
+**Still not done**, when this amendment was written: the bot's own turn planner
+(`aiseat/heuristic` `manaSourceOf`) left restricted rows out of its estimate of
+the mana it has. [ADR 0136's amendment of 2026-10-16](0136-planning-the-turns-mana.md#amendment-2026-10-16-restricted-mana-counts-for-the-casts-it-admits-3976)
+(#3976) counts them for the casts they admit, through the matcher above.

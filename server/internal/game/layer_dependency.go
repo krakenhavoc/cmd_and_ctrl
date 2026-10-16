@@ -84,8 +84,13 @@ type layerPassState struct {
 	// recipient: a removal later than the borrow takes the lent rows.
 	removedTS map[uuid.UUID]int64
 	// started records that a live source's continuous effect has
-	// already applied to an object — CR 613.6's "starts to apply".
-	started map[sourceTarget]bool
+	// already applied to an object — CR 613.6's "starts to apply" —
+	// with the layerOrder index of the first bucket it applied in.
+	started map[sourceTarget]int
+	// sourceStarted is the same record per source: the first bucket in
+	// which any of its effects applied to anything. The layer-6
+	// pre-sort reads it (orderRemovalsBeforeTheirVictimsLocked).
+	sourceStarted map[uuid.UUID]int
 	// granted records each grant of a bundle that carries a static,
 	// with the timestamp of the effect that wrote it (ADR 0093
 	// amendment 2026-10-15, granted_statics.go). Unlike the fields
@@ -104,7 +109,8 @@ func newLayerPassState(effects []ContinuousEffect) *layerPassState {
 			st.track = true
 			st.removedAt = make(map[uuid.UUID]int, 2)
 			st.removedTS = make(map[uuid.UUID]int64, 2)
-			st.started = make(map[sourceTarget]bool, 8)
+			st.started = make(map[sourceTarget]int, 8)
+			st.sourceStarted = make(map[uuid.UUID]int, 4)
 			break
 		}
 	}
@@ -144,12 +150,29 @@ func (st *layerPassState) removedAfter(target *Card, ts int64) bool {
 	return ok && at > ts
 }
 
-// recordApplied notes that `src`'s effect has applied to `target`.
-func (st *layerPassState) recordApplied(src *Card, target *Card) {
+// recordApplied notes that `src`'s effect has applied to `target` in
+// the bucket at `bucketIndex`. The first bucket is the one kept.
+func (st *layerPassState) recordApplied(src *Card, target *Card, bucketIndex int) {
 	if st == nil || !st.track || src == nil {
 		return
 	}
-	st.started[sourceTarget{source: src.InstanceID, target: target.InstanceID}] = true
+	key := sourceTarget{source: src.InstanceID, target: target.InstanceID}
+	if _, seen := st.started[key]; !seen {
+		st.started[key] = bucketIndex
+	}
+	if _, seen := st.sourceStarted[src.InstanceID]; !seen {
+		st.sourceStarted[src.InstanceID] = bucketIndex
+	}
+}
+
+// startedBefore reports whether an effect of `src` applied to anything
+// in a bucket earlier than `bucketIndex` in this pass.
+func (st *layerPassState) startedBefore(src *Card, bucketIndex int) bool {
+	if st == nil || !st.track || src == nil {
+		return false
+	}
+	at, ok := st.sourceStarted[src.InstanceID]
+	return ok && at < bucketIndex
 }
 
 // stillApplies answers CR 613.6 for an effect whose source has
@@ -158,26 +181,28 @@ func (st *layerPassState) recordApplied(src *Card, target *Card) {
 //
 // Yes in exactly one case — it is the later-layer half of a
 // continuous effect that had already started applying to this same
-// object before the removal landed. "If an effect starts to apply in
-// one layer and/or sublayer, it will continue to be applied to the
-// same set of objects in each other applicable layer and/or sublayer,
+// object in an EARLIER layer. "If an effect starts to apply in one
+// layer and/or sublayer, it will continue to be applied to the same
+// set of objects in each other applicable layer and/or sublayer,
 // even if the ability generating the effect is removed during this
 // process." Humility taking its own abilities away in layer 6 and
 // still making every creature 1/1 in layer 7b is that sentence.
 //
-// No in every other case, including within the removal's own bucket,
-// where timestamp order has already decided (two Song of the Dryads
-// enchanting each other) and CR 613.6 has nothing to say because
-// nothing has "started" in a later layer yet.
+// That includes the removal's own bucket (#3862, ADR 0067's amendment
+// of 2026-10-15). Idol of False Gods is a creature from layer 4 at
+// eight counters, so its annihilator in layer 6 is the same effect
+// carrying on: an older "loses all abilities" sorts before it and does
+// not stop it, and a newer one sorts after it and takes the keyword
+// away. Only an effect that has not started yet is stopped, which is
+// what two Song of the Dryads enchanting each other are: each one's
+// first layer is the removal's own, so the earlier one wins by
+// timestamp and the other never starts.
 func (st *layerPassState) stillApplies(src *Card, target *Card, bucketIndex int, continues bool) bool {
 	if st == nil || !st.track || src == nil || !continues {
 		return false
 	}
-	at, ok := st.removedAt[src.InstanceID]
-	if !ok || bucketIndex <= at {
-		return false
-	}
-	return st.started[sourceTarget{source: src.InstanceID, target: target.InstanceID}]
+	at, ok := st.started[sourceTarget{source: src.InstanceID, target: target.InstanceID}]
+	return ok && at < bucketIndex
 }
 
 // applyBucketLocked applies one timestamp-ordered bucket, reordering
@@ -209,7 +234,7 @@ func (g *Game) applyBucketLocked(bucket []ContinuousEffect, l Layer, bucketIndex
 	// `st.track` has already decided — so every other pass pays one
 	// bool test.
 	if l == Layer6Ability && len(bucket) > 1 && st != nil && st.track && g.Battlefield != nil {
-		bucket = g.orderRemovalsBeforeTheirVictimsLocked(bucket)
+		bucket = g.orderRemovalsBeforeTheirVictimsLocked(bucket, bucketIndex, st)
 	}
 	if len(bucket) > 1 && dependencyOrderedLayers[l] && g.Battlefield != nil {
 		remaining := bucket
@@ -266,7 +291,12 @@ func (g *Game) applyBucketLocked(bucket []ContinuousEffect, l Layer, bucketIndex
 //
 // Other layer-6 dependencies — a grant whose "applies to" reads another
 // grant's output — are NOT ordered; no catalogued pair reaches them.
-func (g *Game) orderRemovalsBeforeTheirVictimsLocked(bucket []ContinuousEffect) []ContinuousEffect {
+//
+// An effect that is the later-layer half of one that already started
+// in an earlier layer is nobody's victim (CR 613.6, #3862): the removal
+// can no longer change its existence, so the two are independent and
+// keep their timestamp order.
+func (g *Game) orderRemovalsBeforeTheirVictimsLocked(bucket []ContinuousEffect, bucketIndex int, st *layerPassState) []ContinuousEffect {
 	var removals []int
 	for i, e := range bucket {
 		if e.RemovesAbilities() {
@@ -281,6 +311,9 @@ func (g *Game) orderRemovalsBeforeTheirVictimsLocked(bucket []ContinuousEffect) 
 	for i, e := range bucket {
 		src := effectSourceLocked(e)
 		if src == nil {
+			continue
+		}
+		if e.ContinuesAfterRemoval() && st.startedBefore(src, bucketIndex) {
 			continue
 		}
 		for _, r := range removals {
@@ -488,6 +521,12 @@ func applyRaw(eff ContinuousEffect, c *Characteristic, target *Card, g *Game) {
 		c.GrantedAbilities = nil
 		c.BorrowedAbilities = nil
 		c.AbilitiesRemoved = true
+	}
+	if l, _ := eff.Layer(); l == Layer4Type {
+		// #2041: the CR 205.1a subtype loss is part of the
+		// instruction, so a probe sees it (card_type_loss.go).
+		applyTypeChange(eff, c, target, g)
+		return
 	}
 	eff.Apply(c, target, g)
 }

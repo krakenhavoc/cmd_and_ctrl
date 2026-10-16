@@ -76,6 +76,7 @@ registered, or when this file is stale.
 | `showAsList` | `Show as list` | button | text | `lib/targetingDock.ts`<br>`lib/combatDock.ts` | a board-answered card-set pick's fallback: open the same choice as the list; #3898: the block request's way to the blockers list |
 | `castPayingOnPaper` | `Cast <card> and pay the rest on paper?` (ends with ` and pay the rest on paper?`) | dialog | aria | `lib/targetingDock.ts` | Cast anyway's confirm (ADR 0118 §2, renamed by #3855), with its Cast and Cancel |
 | `paperPayment` | `What did you pay for <card>?` (starts with `What did you pay for `) | dialog | aria | `lib/components/board/PaperPaymentModal.svelte` | the paper payment picker (#3855): what a waived payment something reads paid outside the pool |
+| `paperSlotOnX` | `on X` | generic | text | `lib/components/board/PaperPaymentModal.svelte` | the paper payment picker's tag on a slot of the cost's {X} part, the mana a spend-only-on-X clause restricts (#3941) |
 | `castFree` | `Cast without paying its mana cost` | button | text | `lib/components/board/PaperPaymentModal.svelte` | the paper payment picker's other answer: an effect on paper let you cast it free (#3855) |
 | `cast` | `Cast` | button | text | `lib/targetingDock.ts` | Cast anyway's confirm: cast it, the pool paying what it can and the rest paid on paper |
 | `cancel` | `Cancel` | button | text | `lib/targetingDock.ts`<br>`lib/dock.ts` | Cast anyway's confirm, and every flow's Cancel (the dock's cancelAction), the first-turn confirm's included |
@@ -132,6 +133,7 @@ registered, or when this file is stale.
 | `tableMenu` | `actions for <table name>` (starts with `actions for `) | menu | aria | `routes/Lobby.svelte` | a table card's right-click menu (also the Menu key, Shift+F10 or a long press) |
 | `reportABug` | `Report a bug or idea` | button | aria | `routes/Game.svelte`<br>`lib/components/SiteHeader.svelte` | the bug button: the table's command bar, and the site header on every other page for someone signed in with Discord (#3492); the Guide and About name it |
 | `navTables` | `Tables` | link | text | `lib/components/SiteHeader.svelte` | the site header's link to #/lobby, first in the signed-in nav (it read Lobby before ADR 0156) |
+| `siteMenu` | `Site menu` | button | aria | `lib/components/SiteHeader.svelte` | the site header's menu button below 600px, which opens the nav links (a disclosure: aria-expanded, Escape closes it); hidden at tablet width and up (#3877) |
 | `signInWithDiscord` | `Sign in with Discord` | link | text | `routes/FrontPage.svelte` | the front page's Discord sign-in, shown when the server has Discord sign-in configured |
 | `joinDiscordServer` | `Join our Discord server` | link | text | `routes/FrontPage.svelte` | the front page's link to the C2 Discord invite; hidden when GET /community names none |
 | `tryPracticeGame` | `Try a practice game` | link | text | `routes/FrontPage.svelte`<br>`routes/RequestAccess.svelte` | the front page's and the gate page's way in without an account: #/practice, a guest practice game when signed out |

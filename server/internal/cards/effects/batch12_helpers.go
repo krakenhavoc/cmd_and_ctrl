@@ -81,19 +81,23 @@ func b12CardExiledFromYourLibraryOrGraveyard(ev game.Event, source *game.Card, g
 // one.
 func b12MountainYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
 	c, ok := enteredUnderYourControl(ev, source, g, false)
-	return ok && c.HasSubtype("Mountain")
+	// "Mountain" is a word of the source's text (CR 612.2).
+	return ok && c.HasSubtype(source.TextSubtype("Mountain"))
 }
 
 // b12OtherMountainsControlled counts the Mountains `controller`
 // controls other than `except` — Valakut's "at least five OTHER
 // Mountains", where the exception is the Mountain that just entered.
-func b12OtherMountainsControlled(g *game.Game, controller, except uuid.UUID) int {
+// `mountain` is the land type as the counting object's text now reads
+// it (TextSubtype, CR 612.2): Valakut under a Magical Hack counts
+// Islands.
+func b12OtherMountainsControlled(g *game.Game, controller, except uuid.UUID, mountain string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.InstanceID == except || c.Controller != controller {
 			continue
 		}
-		if c.HasSubtype("Mountain") {
+		if c.HasSubtype(mountain) {
 			n++
 		}
 	}
@@ -165,23 +169,14 @@ func b12InstantsAndSorceriesCastBeforeThisTurn(g *game.Game, controller, spell u
 //     if the card's arrival on the battlefield is more recent than
 //     that (CR 400.7 — it arrived with no counters). A removal, or a
 //     placement of zero, is not a placement.
-//   - WHO. Counters land during a resolution, and the player
-//     resolving is the player putting them — the Actor of the most
-//     recent EventResolve, which the engine emits before it runs an
-//     item's effect (Exemplar of Light reads "you put" the same
-//     way). A cast, a mana ability, an attack or a step beginning
-//     between that resolution and the placement means the placement
-//     was NOT part of it, and nobody is credited.
-//
-// Three placements happen outside any resolution and are attributed
-// by a stricter rule, so the card can never fire on an opponent's
-// action: a loyalty cost and a Saga's lore counter are put there by
-// the permanent's controller (CR 606.4, 714.3), and a permanent
-// "entering with" counters — whose counter event precedes its own
-// arrival event, which is how it is recognised — likewise. Each of
-// those counts only when the permanent is the source's controller's
-// AND no other player's resolution is in progress. Weaker than
-// printed where the two disagree, never stronger.
+//   - WHO. The event's Actor: since #3942 every placement names the
+//     player who put the counters at the source
+//     (game/counter_placer.go) — the controller of the resolving spell
+//     or ability, the payer of a loyalty cost (CR 606.4), the player
+//     whose Saga gets its lore counter (CR 714.3c), the controller of
+//     a permanent entering with counters (CR 122.6a). This used to be
+//     worked out from the last EventResolve in the log, which outlived
+//     the resolution it named.
 //
 // One event is one permanent, so "one or more counters on A
 // PERMANENT" needs no batching: Cathars' Crusade putting a counter
@@ -195,12 +190,12 @@ func b12CountersPlacedByYou(ev game.Event, source *game.Card, g *game.Game) (int
 // directly, with the battlefield test optional: a trigger that reads
 // the placement back AS IT RESOLVES (#2150, Aragorn's "one of each of
 // those kinds") reads it after the permanent may have left, and the
-// placement is no less a fact for that. With requireBattlefield false,
-// a target that can no longer be found is attributed only by the
-// resolving-controller rule, never by the two rules that need its
-// controller: weaker, never stronger.
+// placement is no less a fact for that.
 func b12CountersPlacedBy(ev game.Event, me uuid.UUID, g *game.Game, requireBattlefield bool) (int, bool) {
 	if ev.Kind != game.EventCounterPlaced || ev.Target == uuid.Nil || ev.Label == "" {
+		return 0, false
+	}
+	if me == uuid.Nil || ev.Actor != me {
 		return 0, false
 	}
 	if requireBattlefield {
@@ -208,35 +203,21 @@ func b12CountersPlacedBy(ev game.Event, me uuid.UUID, g *game.Game, requireBattl
 			return 0, false
 		}
 	}
-	target, found := g.LookupCardForEffect(ev.Target)
-	if requireBattlefield && !found {
-		return 0, false
-	}
-	before, arrivalLogged := b12CounterTotalBefore(ev, g)
+	before := b12CounterTotalBefore(ev, g)
 	delta := ev.Amount - before
 	if delta <= 0 {
 		return 0, false
-	}
-	resolving := b12ResolvingController(ev, g)
-	switch {
-	case !arrivalLogged, ev.Label == game.CounterLoyalty, ev.Label == game.CounterLore:
-		if !found || target.Controller != me || (resolving != uuid.Nil && resolving != me) {
-			return 0, false
-		}
-	default:
-		if resolving != me {
-			return 0, false
-		}
 	}
 	return delta, true
 }
 
 // b12CounterTotalBefore is the count of ev's counter kind on ev's
-// target before ev changed it, and whether the target's arrival on
-// the battlefield has been logged yet. It has not when the counters
-// are "enters with" ones: every entry site places those before it
-// emits the zone-move and ETB events.
-func b12CounterTotalBefore(ev game.Event, g *game.Game) (before int, arrivalLogged bool) {
+// target before ev changed it: the most recent EventCounterPlaced for
+// the same card and kind, or zero when the card's arrival on the
+// battlefield is more recent (CR 400.7) or nothing is logged. "Enters
+// with" counters land before the entry events are emitted, so they
+// read the count from before the arrival, which is zero.
+func b12CounterTotalBefore(ev game.Event, g *game.Game) int {
 	for i := len(g.Events) - 1; i >= 0; i-- {
 		prev := g.Events[i]
 		if prev.Seq >= ev.Seq {
@@ -245,40 +226,18 @@ func b12CounterTotalBefore(ev game.Event, g *game.Game) (before int, arrivalLogg
 		if prev.CardID == ev.Target {
 			switch prev.Kind {
 			case game.EventETB, game.EventTokenCreated:
-				return 0, true
+				return 0
 			case game.EventZoneMove:
 				if prev.NewZone == game.ZoneBattlefield {
-					return 0, true
+					return 0
 				}
 			}
 		}
 		if prev.Kind == game.EventCounterPlaced && prev.Target == ev.Target && prev.Label == ev.Label {
-			return prev.Amount, true
+			return prev.Amount
 		}
 	}
-	return 0, false
-}
-
-// b12ResolvingController is the controller of the spell or ability
-// whose resolution ev happened inside — the Actor of the most recent
-// EventResolve before ev — or uuid.Nil when an action that cannot
-// happen mid-resolution sits between the two: a cast, a mana ability,
-// an attack declaration, a fizzle, or a step beginning.
-func b12ResolvingController(ev game.Event, g *game.Game) uuid.UUID {
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		prev := g.Events[i]
-		if prev.Seq >= ev.Seq {
-			continue
-		}
-		switch prev.Kind {
-		case game.EventResolve:
-			return prev.Actor
-		case game.EventCast, game.EventManaAbilityActivated, game.EventAttack, game.EventFizzle,
-			game.EventBeginUpkeep, game.EventBeginPrecombatMain, game.EventBeginEndStep:
-			return uuid.Nil
-		}
-	}
-	return uuid.Nil
+	return 0
 }
 
 // --- target clauses ----------------------------------------------

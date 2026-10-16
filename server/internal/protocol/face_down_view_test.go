@@ -310,22 +310,23 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ZoneAbilities:      []ActivatedAbilityView{{Index: 0, Label: "Cycling {2}", DiscardSelf: true, ManaCost: "{2}"}},
 		// #1228: the CR 605 half of the same secret — "Exile this
 		// card from your hand: Add {R}" names Simian Spirit Guide.
-		ZoneManaAbilities: []ManaAbilityView{{Index: 0, Label: "Exile this card from your hand: Add {R}", ExileSelf: true, Produced: "{R}"}},
-		SpecialActions:    []SpecialActionView{{Kind: "foretell", Label: "Foretell {2}", Cost: "{2}", Available: true}},
-		SummoningSick:     true,
-		EchoDue:           true,
-		LoyaltyActivated:  true,
-		ClassLevel:        3,
-		Solved:            true,
-		Harnessed:         true,
-		Monstrous:         true,
-		Renowned:          true,
-		Saddled:           true,
-		CrewedBy:          []string{"crewer"},
-		SaddledBy:         []string{"saddler"},
-		RingBearer:        true,
-		Suspected:         true,
-		Prepared:          true,
+		ZoneManaAbilities:      []ManaAbilityView{{Index: 0, Label: "Exile this card from your hand: Add {R}", ExileSelf: true, Produced: "{R}"}},
+		SpecialActions:         []SpecialActionView{{Kind: "foretell", Label: "Foretell {2}", Cost: "{2}", Available: true}},
+		SummoningSick:          true,
+		ActivatesAsThoughHaste: true,
+		EchoDue:                true,
+		LoyaltyActivated:       true,
+		ClassLevel:             3,
+		Solved:                 true,
+		Harnessed:              true,
+		Monstrous:              true,
+		Renowned:               true,
+		Saddled:                true,
+		CrewedBy:               []string{"crewer"},
+		SaddledBy:              []string{"saddler"},
+		RingBearer:             true,
+		Suspected:              true,
+		Prepared:               true,
 		// #781. Deliberately NOT added to redactedCardKeys: both are
 		// public on a card the viewer can see and both are stripped
 		// from one they cannot, because "Elf" names Cavern of Souls
@@ -411,8 +412,11 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 			// ADR 0135 §4: an emerge offer's flag and prices.
 			ReducesByManaValue: true,
 			SacrificePrices:    map[string]AltCostPriceView{"x": {ManaValue: 4, Price: "{1}{U}{U}"}},
-			Discards:           true,
-			XLockedAtZero:      true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
+			// #3931: a harmonize offer's flag and prices.
+			ReducesByPower: true,
+			TapPrices:      map[string]AltCostTapPriceView{"x": {Power: 3, Price: "{2}{R}{R}"}},
+			Discards:       true,
+			XLockedAtZero:  true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
 			// #1686.
 			TimingClosed: true,
 			// #3225.
@@ -979,6 +983,8 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// price per creature YOU control is one seat's.
 	"ReducesByManaValue": surfacePublicPile,
 	"SacrificePrices":    surfacePrivate,
+	"ReducesByPower":     surfacePublicPile,
+	"TapPrices":          surfacePrivate,
 	// #1686: same reasoning as PrintedCostTimingClosed above — public
 	// board state, not per-viewer.
 	"TimingClosed": surfacePublicPile,

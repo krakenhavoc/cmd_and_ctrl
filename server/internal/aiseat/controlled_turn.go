@@ -69,15 +69,20 @@ func (p controlledTurnPolicy) Decide(_ context.Context, in Input) (Decision, err
 //
 // Paced like the seat's own decisions, except that a lone pass is not
 // held for (#2898). A pass is held, not sent, while the CR 732 loop
-// breaker suspends automatic passing, as the bot's own pass is.
+// breaker suspends automatic passing, as the bot's own pass is — and,
+// like it, sent through a mandatory loop's notice (#2506, CR 732.4).
 func (r *Runner) playControlledTurn(ctx context.Context, moves []legal.Move, started time.Time, minThink time.Duration) (ok, applied bool) {
-	pol := controlledTurnPolicy{inner: r.policy}
+	var pol Policy = controlledTurnPolicy{inner: r.policy}
+	if len(moves) > 0 && r.room.Game.ControlUntilOfPlayer(moves[0].Player) == game.ControlUntilSearch {
+		// #3998: a search the bot controls is answered in its interest.
+		pol = controlledSearchPolicy{inner: r.policy, g: r.room.Game}
+	}
 	d, err := pol.Decide(ctx, Input{Seat: r.seat, Moves: moves})
 	if err != nil || d.Index < 0 || d.Index >= len(moves) {
 		return true, false
 	}
 	mv := moves[d.Index]
-	if mv.Kind == legal.KindPass && r.room.Game.AutoPassSuspended() {
+	if mv.Kind == legal.KindPass && r.room.Game.AutoPassSuspended() && !r.room.Game.MandatoryLoopStanding() {
 		r.log.Warn("bot holding the controlled turn: automatic passing is suspended by the loop breaker (CR 732)")
 		return true, false
 	}
@@ -110,12 +115,17 @@ func (r *Runner) playControlledTurn(ctx context.Context, moves []legal.Move, sta
 }
 
 // splitControlledTurnMoves separates the seat's own moves from those it
-// makes for a seat whose turn it is playing (ADR 0167 §7). A move for a
-// seat it controls only during a resolution (Word of Command, ADR 0166)
-// stays with its own: its policy has always answered those.
+// makes for a seat whose turn it is playing (ADR 0167 §7) or whose
+// search it controls (#3998, controlled_search.go). A move for a seat it
+// controls only during a resolution (Word of Command, ADR 0166) stays
+// with its own: its policy has always answered those.
 func splitControlledTurnMoves(g *game.Game, seat uuid.UUID, moves []legal.Move) (own, controlled []legal.Move) {
 	for _, m := range moves {
-		if m.Player != seat && m.Player != uuid.Nil && g.ControlUntilOfPlayer(m.Player) == game.ControlUntilTurn {
+		if m.Player == seat || m.Player == uuid.Nil {
+			own = append(own, m)
+			continue
+		}
+		if until := g.ControlUntilOfPlayer(m.Player); until == game.ControlUntilTurn || until == game.ControlUntilSearch {
 			controlled = append(controlled, m)
 			continue
 		}

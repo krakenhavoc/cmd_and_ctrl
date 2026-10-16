@@ -80,8 +80,14 @@ func TestLibraryExileCostIsGatedOnTheLibrary(t *testing.T) {
 		}
 	})
 	moves := legal.EnumerateFor(g, active.ID)
-	if acts := activationsOf(moves, src); len(acts) != 1 {
+	acts := activationsOf(moves, src)
+	if len(acts) != 1 {
 		t.Fatalf("five cards: want one move, got %v", labels(acts))
+	}
+	// #3966: the move names the cards its cost exiles off the library,
+	// which the params cannot.
+	if c := acts[0].Cost; c == nil || c.LibraryExile != 4 || c.Mill != 0 {
+		t.Errorf("move %q: want cost.library_exile 4 and no mill, got %+v", acts[0].Label, c)
 	}
 	dispatchAll(t, g, active.ID, moves)
 }

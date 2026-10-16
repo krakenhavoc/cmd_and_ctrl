@@ -50,17 +50,40 @@ export function freeCastTarget(
 // Envoy) leaves it. The library copy of a card is only on the wire for a
 // seat that has looked at it, so a request for a card in neither place is
 // still "not yet".
+//
+// `offerOpen` is whether the may_cast prompt that offered the card is still
+// on the frame (mayCastOfferOpen). While it is, the answer has not landed
+// and the card has no grant yet, so that is "not yet" too. #3490: a rebound
+// or suspend card is in exile BEFORE the answer and not castable, so the
+// request used to be dropped as stale on the very frame "Cast it free" was
+// clicked on. Nothing opened, and the card stayed in exile.
 export function freeCastLocation(
   exile: CardView[] | undefined,
   library: CardView[] | undefined,
   id: string | null,
+  offerOpen = false,
 ): { card: CardView; zone: "exile" | "library" } | null | undefined {
   if (!id) return null;
+  if (offerOpen) return undefined;
   const inExile = exile?.find((c) => c.instance_id === id);
   if (inExile) return inExile.castable_here ? { card: inExile, zone: "exile" } : null;
   const inLibrary = library?.find((c) => c.instance_id === id);
   if (inLibrary) return inLibrary.castable_here ? { card: inLibrary, zone: "library" } : null;
   return undefined;
+}
+
+// mayCastOfferOpen reports whether the viewer still owes the may_cast
+// prompt offering card `id`: true on the frame "Cast it free" was clicked
+// on, false once the answer's frame (which carries the grant) arrives.
+export function mayCastOfferOpen(
+  pending: PendingChoiceView[] | undefined,
+  id: string | null,
+  viewerID: string | null,
+): boolean {
+  if (!id) return false;
+  return (pending ?? []).some(
+    (c) => c.kind === "may_cast" && c.may_cast_card === id && (!viewerID || c.chooser === viewerID),
+  );
 }
 
 // #3270 (CR 608.2g): "you may cast a spell from your hand without paying
@@ -89,6 +112,51 @@ export const GRANTED_COST_KEY = "granted-cost";
 // request goes to freeCastRequest (which Board resolves against the exile
 // and the viewer's library), not to the hand request.
 export const CHOOSE_CAST_FREE_LIBRARY = "cast_free_library";
+
+// #3955 (ADR 0198's 2026-10-16 amendment): "cast any number of Eldrazi
+// cards you own from outside the game without paying their mana costs"
+// (Spawnsire of Ulamog) and "you may play a card you own from outside the
+// game this turn" (Wish). The pick is a choose_cards over the viewer's
+// sideboard, or an outside_collection over the card database, and its
+// answer leaves the picked cards in the sideboard with a cast permission
+// on each. A database pick names cards that have no instance id until
+// the server creates them, so the request is a flag rather than an id:
+// once the answer lands, Board opens the sideboard tab, where every
+// granted card carries its cast button.
+export const outsideCastRequest = guardedWritable<boolean>(false, "outsideCastRequest");
+
+// CHOOSE_CAST_FREE_OUTSIDE and CHOOSE_PLAY_OUTSIDE are the pick prompts'
+// `choose_destination`.
+export const CHOOSE_CAST_FREE_OUTSIDE = "cast_free_outside";
+export const CHOOSE_PLAY_OUTSIDE = "play_outside";
+
+// isOutsideCastPick is the prompt whose answer opens a cast or a play from
+// outside the game.
+export function isOutsideCastPick(choice: PendingChoiceView | null | undefined): boolean {
+  if (!choice) return false;
+  if (choice.kind !== "choose_cards" && choice.kind !== "outside_collection") return false;
+  return (
+    choice.choose_destination === CHOOSE_CAST_FREE_OUTSIDE ||
+    choice.choose_destination === CHOOSE_PLAY_OUTSIDE
+  );
+}
+
+// outsideCastReady is Board's half: the request is ready to act on once
+// the viewer owes no such pick any more (the answer has landed, so the
+// frame carries the permissions) and the sideboard holds a card the viewer
+// may cast. `null` means the request is stale and is dropped (the pick
+// was declined, or nothing was granted); `undefined` means "not yet".
+export function outsideCastReady(
+  pending: PendingChoiceView[] | undefined,
+  sideboard: CardView[] | undefined,
+  viewerID: string | null,
+): boolean | null | undefined {
+  const open = (pending ?? []).some(
+    (c) => isOutsideCastPick(c) && (!viewerID || c.chooser === viewerID),
+  );
+  if (open) return undefined;
+  return (sideboard ?? []).some((c) => c.castable_here === true) ? true : null;
+}
 
 // isLibraryFreeCastPick is the library-looking free-cast pick.
 export function isLibraryFreeCastPick(choice: PendingChoiceView | null | undefined): boolean {

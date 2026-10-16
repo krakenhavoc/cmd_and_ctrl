@@ -288,6 +288,40 @@ func TestLenderSharkeyBorrowsOpponentsLandAbilitiesExceptManaAndGatesThem(t *tes
 	}
 }
 
+// #3863: "Mana of any TYPE can be spent to activate Sharkey's
+// abilities" reaches a colourless {C} too. Three red mana pay a lent Sea
+// Gate Wreckage's {2}{C}; the any-colour spend would leave the {C}
+// unpaid.
+func TestLenderSharkeyPaysALentColourlessCostWithColouredMana(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	sharkey := gaPut(g, me.ID, "Sharkey, Tyrant of the Shire", "Legendary Creature — Avatar Rogue", blSharkeyOracle)
+	gaPut(g, opp.ID, "Sea Gate Wreckage", "Land", "91f34686-cb96-49c0-b4a7-49dd1fd076e2")
+	idx, origins := blBorrowedActivated(t, g, sharkey)
+	if len(idx) != 1 {
+		t.Fatalf("Sharkey has %d lent rows, want the Wreckage's draw", len(idx))
+	}
+	me.Hand.Cards = nil
+	me.ManaPool = nil
+	me.ManaPool.AddMana(game.ManaToken{Color: "R"}, game.ManaToken{Color: "R"}, game.ManaToken{Color: "R"})
+	g.Turn.PriorityHolder = 0
+	g.Turn.ActiveSeat = 0
+	if err := g.ActivateCatalogAbility(me.ID, sharkey, idx[0], game.ActivateAbilityParams{Ref: origins[0].Ref}); err != nil {
+		t.Fatalf("three red mana did not pay the lent {2}{C}: %v", err)
+	}
+	if n := me.ManaPool.Total(); n != 0 {
+		t.Errorf("pool has %d mana left, want all three spent", n)
+	}
+	if n := len(g.StackMeta); n != 1 {
+		t.Fatalf("%d items on the stack, want the lent draw", n)
+	}
+	for _, it := range g.StackMeta {
+		if it.Paid.OnPaper || it.Paid.PaperMana != 0 {
+			t.Errorf("the {C} was left on paper (%d unpaid), want it paid with red", it.Paid.PaperMana)
+		}
+	}
+}
+
 func TestLenderNecroticOozeHasTheAbilitiesOfCreatureCardsInAnyGraveyard(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]

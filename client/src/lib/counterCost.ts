@@ -23,6 +23,11 @@
 //             counter_cost_among with NO counter_cost_kind: the kinds
 //             may differ per permanent, so a mixed payment sends
 //             counter_kinds beside counter_source_ids.
+//   any kinds "Remove two counters from Ghost-Spider" (#3987)
+//   off self  counter_cost_self AND counter_cost_among, no kind: the
+//             among picker with the source as its one option, one row
+//             per kind it holds. Like every self cost it sends no
+//             counter_source_ids, only the counts and kinds.
 //
 // The server lists what can pay right now in counter_cost_options —
 // permanents the viewer controls holding enough counters, each with the
@@ -111,12 +116,31 @@ export function counterChoices(a: CounterCostShape): CounterChoice[] {
 // A multi-pick cost is never auto-chosen even with one option: an
 // among payment still has to say how many, and a variable one is the
 // whole question. Null when there is a real choice (or none at all).
+//
+// The exception is #3987's self among cost ("Remove two counters from
+// Ghost-Spider"): its one option is the source, so when the source
+// holds a single kind the whole printed count comes off that kind and
+// there is nothing left to ask. With two kinds on it the split is the
+// player's, and the picker opens.
 export function autoCounterChoice(a: CounterCostShape): CounterChoice | null {
-  if (isMultiCounterCost(a)) return null;
+  if (isMultiCounterCost(a) && !isSelfAmongCounterCost(a)) return null;
   const opts = a.counter_cost_options ?? [];
   if (opts.length !== 1 || (opts[0].kinds ?? []).length !== 1) return null;
   const k = opts[0].kinds[0];
-  return { cardID: opts[0].card_id, kind: k.kind, count: k.count };
+  const choice: CounterChoice = { cardID: opts[0].card_id, kind: k.kind, count: k.count };
+  if (isSelfAmongCounterCost(a)) {
+    const n = a.counter_cost_n ?? 0;
+    if (k.count < n) return null;
+    choice.n = n;
+  }
+  return choice;
+}
+
+// isSelfAmongCounterCost reports #3987's shape: two (or more) counters
+// of any kinds off the source itself, which the server sends as self
+// AND among with no printed kind.
+export function isSelfAmongCounterCost(a: CounterCostShape): boolean {
+  return !!a.counter_cost_self && !!a.counter_cost_among && !a.counter_cost_variable;
 }
 
 // counterCostNeedsPrompt reports whether paying this cost still needs
@@ -128,6 +152,7 @@ export function autoCounterChoice(a: CounterCostShape): CounterChoice | null {
 export function counterCostNeedsPrompt(a: CounterCostShape): boolean {
   if (!hasCounterCost(a)) return false;
   if ((a.counter_cost_options ?? []).length === 0) return false;
+  if (isSelfAmongCounterCost(a)) return autoCounterChoice(a) === null;
   return isMultiCounterCost(a) || autoCounterChoice(a) === null;
 }
 
@@ -185,6 +210,7 @@ export function counterCostBlocked(a: CounterCostShape): string {
       }
     }
     if (available < n) {
+      if (a.counter_cost_self) return `fewer than ${n} ${kind}counters`;
       return `only ${available} ${kind}counters among ${a.counter_cost_label ?? "those permanents"}`;
     }
   }

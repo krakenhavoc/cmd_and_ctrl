@@ -362,7 +362,9 @@
   .table::before {
     content: "";
     position: absolute;
-    inset: -18% -14% -10%;
+    /* Sideways no further than the page gutter, so the lamp never makes
+       the page scroll sideways (#3877). */
+    inset: -18% max(-14%, calc(var(--page-gutter) * -1)) -10%;
     z-index: -1;
     background: radial-gradient(
       closest-side,

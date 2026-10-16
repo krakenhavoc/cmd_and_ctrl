@@ -117,9 +117,12 @@ func Eminence(m game.CostModifier) game.CostModifier {
 // cast". The subtype is read off the spell as it sits on the stack,
 // where HasSubtype answers true for every creature type on a changeling
 // (CR 702.73a).
+//
+// The type is a word of the source's text (CR 612.2, #3984), read
+// through the cost query's source.
 func OtherSpellOfCreatureType(subtype string) CostPredicate {
 	return func(q game.CostQuery) bool {
-		return q.Card.InstanceID != q.Source.InstanceID && q.Card.HasSubtype(subtype)
+		return q.Card.InstanceID != q.Source.InstanceID && q.Card.HasSubtype(q.Source.TextSubtype(subtype))
 	}
 }
 
@@ -479,8 +482,12 @@ func ArtifactSpell() CostPredicate {
 // EffectiveColors, so a layer-5 colour change is honoured and a
 // multicolour spell is every colour it is: a {U}{R} spell is a blue
 // spell and a red one, and each discount that names one applies.
+//
+// The colour is a word of the source's text, so it is read through it
+// (CR 612.2): The Water Crystal under a Sleight of Mind that made its
+// "blue" "red" discounts red spells.
 func ColoredSpell(color string) CostPredicate {
-	return func(q game.CostQuery) bool { return q.Card.HasColor(color) }
+	return func(q game.CostQuery) bool { return q.Card.HasColor(q.Source.TextColor(color)) }
 }
 
 // SpellManaValueAtLeast passes when the mana value of the spell
@@ -577,6 +584,9 @@ func ArtifactInstantOrSorcerySpell() CostPredicate {
 // cast". OtherSpellOfCreatureType is the "other" form. The subtype is
 // read off the spell as it sits on the stack, so a changeling counts
 // (CR 702.73a) and so does a kindred spell of the type (CR 308.3).
+//
+// The type is a word of the source's text (CR 612.2, #3984), read
+// through the cost query's source.
 func SpellOfCreatureType(subtype string) CostPredicate {
-	return func(q game.CostQuery) bool { return q.Card.HasSubtype(subtype) }
+	return func(q game.CostQuery) bool { return q.Card.HasSubtype(q.Source.TextSubtype(subtype)) }
 }

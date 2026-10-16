@@ -29,26 +29,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // controller controls: a loyalty counter, a charge counter, or a
 // +1/+1 counter on a noncreature artifact does nothing.
 //
-// SANDBOX SIMPLIFICATION, DECLARED. The printed text does not care
-// WHO puts the counters — an opponent's Ivy Lane Denizen growing your
-// creature would trigger it. The engine attributes counter placement
-// through b12CountersPlacedByYou (All Will Be One's read), which
-// fires only when the resolving spell or ability belongs to the
-// source's controller, and which errs toward not firing whenever the
-// event log cannot attribute the placer at all. So counters an
-// opponent puts on your creature are silent here. Weaker than
-// printed, never stronger.
+// WHO PUTS THE COUNTERS DOES NOT MATTER: the clause is passive ("are
+// put on"), so an opponent's effect growing your creature triggers it
+// as surely as your own, and so do the counters a creature enters with
+// (CR 122.6). b39PlusOneCountersOnCreatureYouControl asks only what
+// landed and where (#3863).
+//
+// No simplification.
 //
 // "Target opponent" is re-checked at resolution (CR 608.2b); an
 // opponent who has left the game in response takes nothing.
 func init() {
 	Register(Spec{
-		OracleID:     "e7604cd9-d00d-4957-82c9-46a7cdb88209",
-		Name:         "Shalai and Hallar",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Only +1/+1 counters you put on your own creatures trigger it — counters an opponent's effect puts on your creatures don't.",
-		},
+		OracleID:        "e7604cd9-d00d-4957-82c9-46a7cdb88209",
+		Name:            "Shalai and Hallar",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "vigilance"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCounterPlaced},

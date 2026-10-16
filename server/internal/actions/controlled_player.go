@@ -45,6 +45,7 @@ var turnRulesVerbs = map[Type]struct{}{
 	TypeActivateLoyalty:     {},
 	TypeActivateManaAbility: {},
 	TypeSpecialAction:       {},
+	TypeOutsidePlay:         {},
 	TypeDeclareAttacker:     {},
 	TypeDeclareAttackers:    {},
 	TypeResolveChoice:       {},
@@ -123,11 +124,20 @@ func routeControlledPlayer(g *game.Game, a Action) (Action, error) {
 	if a.Type == TypeConcede {
 		return a, ErrPlayerCallerMismatch
 	}
-	if g.ControlUntilOfPlayer(target) == game.ControlUntilTurn {
+	switch until := g.ControlUntilOfPlayer(target); {
+	case until == game.ControlUntilTurn:
 		if _, ok := turnRulesVerbs[a.Type]; !ok {
 			return a, game.ErrPlayerControlled
 		}
-	} else if g.LandManaOnly(target) {
+	case until == game.ControlUntilSearch:
+		// #3998: Opposition Agent controls the player only while they
+		// search, and the search is the prompt they owe. Answering it
+		// (and anything it raises) is the one decision the rules call
+		// for (CR 723.5b); nothing else may be sent as them.
+		if a.Type != TypeResolveChoice {
+			return a, game.ErrPlayerControlled
+		}
+	case g.LandManaOnly(target):
 		switch a.Type {
 		case TypeCastSpell, TypeActivateManaAbility, TypeResolveChoice:
 		default:

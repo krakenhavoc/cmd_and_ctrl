@@ -264,17 +264,16 @@ const (
 	// change, so a placement and a removal are the same event with a
 	// different number and neither carries the delta.
 	//
-	// ACTOR is the player who PUT the counters, when the placement
-	// came through the CR 614 counter window and named one
-	// (ReplacementEvent.CounterPlacer) — the source's controller for a
-	// CR 120.3d damage result, the proliferating player for CR 701.34.
-	// SOURCE is the card whose effect or damage placed them. Both stay
-	// uuid.Nil when the placement names neither, which is still most of
-	// them: applyCounterLocked is also reached from a paid cost, a
-	// trigger and the CR 704.5q cancel, and no single player is
-	// responsible for those. A "whenever YOU put" reader takes Actor
-	// first and falls back to its own heuristic on Nil (ADR 0056
-	// Decision 5).
+	// ACTOR is the player who PUT the counters. Every placement names
+	// one since #3942 (counter_placer.go): the controller of the
+	// resolving spell or ability, the source's controller for a
+	// CR 120.3d damage result, the proliferating player for CR 701.34,
+	// the payer of a cost, the activator of a mana ability, the
+	// controller of a permanent entering with counters (CR 122.6a), the
+	// seat making a sandbox edit. A REMOVAL (a lower Amount) names
+	// nobody, and neither does the CR 704.5q cancel. SOURCE is the card
+	// whose effect or damage placed them, when known. A "whenever YOU
+	// put" reader reads Actor (ADR 0056 Decision 5).
 	//
 	// Fires on AddCounter and on the SBA +1/+1 / -1/-1 cancel. The
 	// public log narrates it as the `counters` entry, for every kind
@@ -329,9 +328,11 @@ const (
 	// new spell on the stack that was created, not cast, so it fires no
 	// EventCast. Actor is the copy's controller, CardID is the copy and
 	// Source the spell it copies. It exists for "whenever you cast OR
-	// COPY an instant or sorcery spell" (magecraft: Archmage Emeritus,
-	// Storm-Kiln Artist, Sedgemoor Witch), which watches this beside
-	// EventCast. A copy of an ABILITY (CR 707.10) is not a spell and
+	// COPY an instant or sorcery spell" (magecraft, effects.Magecraft:
+	// Extus, Oriq Overlord, Archmage Emeritus, Storm-Kiln Artist,
+	// Sedgemoor Witch, #2090), which watches this beside EventCast. A
+	// copy of a card CAST from another zone (CR 707.12) is cast and emits
+	// EventCast only. A copy of an ABILITY (CR 707.10) is not a spell and
 	// emits nothing here. Emitted by createSpellCopyLocked, after the
 	// copy is on the stack. The log says nothing: the copy is on the
 	// stack the table is looking at.
@@ -1090,6 +1091,16 @@ const (
 	// with the ordinary EventStepBegan; a turn that ends normally emits
 	// no EventTurnEnded.
 	EventTurnEnded EventKind = "turn_ended"
+
+	// EventGameRestarted — the game was restarted (CR 727, #3856,
+	// restart.go): Karn Liberated's −14. Actor is the player who
+	// restarted it and starts the new game, Source the card whose
+	// ability did it (an object of the old game, so its name rides
+	// Label and PublicNames), and Amount how many cards the effect left
+	// in exile to put onto the battlefield. Emitted once, as the new
+	// game begins and before its hands are dealt: every event after it
+	// belongs to the new game, and the public log begins again here.
+	EventGameRestarted EventKind = "game_restarted"
 
 	// EventStepBegan — the turn cursor entered a step. Actor is the
 	// active player, Step the step (typed), Amount the turn sequence,

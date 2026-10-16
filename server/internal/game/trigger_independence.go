@@ -1592,7 +1592,7 @@ const (
 // the map counts as defFieldRules, and
 // TestEveryCardDefSlotHasAnIndependenceClass fails until it is added.
 var cardDefFieldClass = map[string]defFieldClass{
-	"Resolve": defFieldInert, "AsEnters": defFieldInert, "AsTransformsInto": defFieldInert, "AsAttached": defFieldInert,
+	"Resolve": defFieldInert, "AsEnters": defFieldInert, "AsEntersOthers": defFieldInert, "AsTransformsInto": defFieldInert, "AsAttached": defFieldInert,
 	"StartingLoyalty": defFieldInert, "BattleDefense": defFieldInert,
 	"TargetMode": defFieldInert, "Targets": defFieldInert, "Modes": defFieldInert,
 	"Purpose": defFieldInert, "ManaAbilities": defFieldInert, "Activated": defFieldInert,
@@ -1603,7 +1603,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"SpendOnlySources": defFieldInert, "SpellsYouCastHaveDelve": defFieldInert, "SplitSecondGrants": defFieldInert, "GrantedOptionalCosts": defFieldInert, "GrantedTapCosts": defFieldInert,
 	"CostModifiers": defFieldInert, "SelfCostModifiers": defFieldInert,
 	"ExhaustPermissions": defFieldInert, "BoastLimits": defFieldInert,
-	"AttackTaxes": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,
+	"AttackTaxes": defFieldInert, "TargetTaxes": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,
 	"ExertOnAttack": defFieldInert, "CastableZones": defFieldInert, "CastableZonesIf": defFieldInert,
 	"SpecialActions": defFieldInert, "SpecialActionGrants": defFieldInert,
 	"UntapStep": defFieldInert, "UntapStepRestrictions": defFieldInert,
@@ -1617,19 +1617,22 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"FlashWithCleanupSacrifice": defFieldInert, "CastTimeValues": defFieldInert,
 	"SpellDamageCantBePrevented": defFieldInert, "SpellsCantBeCountered": defFieldInert,
 	"HandSize": defFieldInert, "ManaPool": defFieldInert,
-	"DamageStaysThroughCleanup": defFieldInert, "AnyColorSpend": defFieldInert, "LoyaltyTwiceEachTurn": defFieldInert,
+	"DamageStaysThroughCleanup": defFieldInert, "AnyColorSpend": defFieldInert, "LoyaltyTwiceEachTurn": defFieldInert, "ActivateAsThoughHaste": defFieldInert,
 	// ADR 0146: an extra vote changes how a vote resolves while its
 	// permanent is there.
 	"ExtraVote": defFieldOwnRules,
 	// #3140: CR 701.55c, the count a villainous choice is faced.
 	"OpponentsFaceVillainousChoicesAgain": defFieldOwnRules,
-	"LifeForMana":                         defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
+	// #3998: Opposition Agent controls an opponent's search and exiles
+	// what it finds while its permanent is there.
+	"ControlsOpponentsSearches": defFieldOwnRules,
+	"LifeForMana":               defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
 	"GrantText": defFieldInert, "MadnessLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
 	"WantsDistinctColors": defFieldInert, "WantsManaFrom": defFieldInert, "WantsColors": defFieldInert, "ReadsManaSpent": defFieldInert,
 	"AdditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
 	"GatedCastPermissions": defFieldInert, "CastTimings": defFieldInert,
 	"GrantedAlternativeCosts": defFieldInert, "OpeningHand": defFieldInert,
-	"LibraryTopVisible": defFieldInert, "DiscardByOpponent": defFieldInert, "DiscardByOpponentForHand": defFieldInert,
+	"LibraryTopVisible": defFieldInert, "HandsRevealed": defFieldInert, "DiscardByOpponent": defFieldInert, "DiscardByOpponentForHand": defFieldInert,
 
 	"Triggered": defFieldReactor, "Replacements": defFieldOwnRules,
 
@@ -1639,9 +1642,10 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"HexproofBypasses": defFieldRules, "WardSuppressions": defFieldRules,
 	"TargetingRestrictions": defFieldRules, "PlayerKeywords": defFieldRules,
 	"PlayerLifeTotalLocked": defFieldRules, "DamageCantBePrevented": defFieldRules,
-	"CantGainLife": defFieldRules, "DamageAsThough": defFieldRules,
+	"CantGainLife": defFieldRules, "DrawLimits": defFieldRules, "DamageAsThough": defFieldRules,
 	"LegendRuleExemptions": defFieldRules, "ZeroLoyaltyExemptions": defFieldRules,
 	"OpponentEffectProtections": defFieldRules, "GameEndGates": defFieldRules,
+	"DealtDamageCantBeRegenerated": defFieldRules,
 }
 
 // defBearsRules reports whether a definition has a rules slot set

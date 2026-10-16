@@ -83,9 +83,14 @@ func eotSnapshot(ctx *Context, target uuid.UUID, match CardPredicate) eotAffecte
 	}
 	out := eotAffected{}
 	caster := ctx.Controller()
+	// A Match's colour and type words are the resolving object's text
+	// (CR 612.2, #3984): each candidate is lent it, as MatchingBattlefield
+	// does, so "each Elf creature you control" under an Artificial
+	// Evolution names the new type.
+	reader := ctx.textReader()
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if match != nil {
-			if !match(ctx.Game, caster, c) {
+			if !match(ctx.Game, caster, game.ThroughTextOf(reader, c)) {
 				continue
 			}
 		} else if c.InstanceID != target {
@@ -213,6 +218,27 @@ func (k GrantKeywordUntilEOT) Apply(ctx *Context) error {
 	return untilEndOfTurn(ctx, k.Target, k.Match,
 		eotLabel(k.Label, "keyword grant until end of turn"),
 		game.AddKeywordsMod(k.Keywords...))
+}
+
+// CantBeTargetedByYourOpponentsUntilEOT is "target creature can't be
+// the target of spells or abilities your opponents control this turn"
+// (Vines of Vastwood, #3860).
+//
+// NOT hexproof, and not GrantKeywordUntilEOT{"hexproof"}: hexproof
+// refuses what the creature's CONTROLLER's opponents control, this
+// refuses what the CASTER's opponents control, and they differ whenever
+// the creature belongs to someone else. "You" is the controller of the
+// resolving spell or ability. The set is locked now (CR 611.2c) and the
+// effect follows the object (CR 400.7). See game/targeting_bar.go.
+type CantBeTargetedByYourOpponentsUntilEOT struct {
+	Target uuid.UUID
+	Label  string
+}
+
+func (c CantBeTargetedByYourOpponentsUntilEOT) Apply(ctx *Context) error {
+	return untilEndOfTurn(ctx, c.Target, nil,
+		eotLabel(c.Label, "can't be the target of spells or abilities your opponents control until end of turn"),
+		game.CantBeTargetedByOpponentsMod())
 }
 
 // eotHasAbility reports whether the keyword is already present.

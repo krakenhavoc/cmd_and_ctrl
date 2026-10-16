@@ -259,9 +259,17 @@ flight does not).
 
 - **Tablet is the minimum screen.** Design at 820px wide and up
   ([PLAN.md](PLAN.md) §3: no phone-width table layouts). Below 820px the site
-  frame and header wrap; nothing gets a layout of its own (`Page.svelte`,
-  `SiteHeader.svelte`). The `max-width: 599px` rules that exist on the table
-  (ADR 0111 §8, ADR 0119 §1) are kept but not extended; don't add new ones.
+  frame wraps. The table and the app screens get no phone layout. The
+  `max-width: 599px` rules that exist on the table (ADR 0111 §8, ADR 0119 §1)
+  are kept but not extended; don't add new ones.
+- **The public pages have a phone header** (owner decision, 2026-10-15, #3877).
+  Below 600px `SiteHeader.svelte` is one row of about 60px: the wordmark, Help,
+  Sign in or the account button, and a menu button. The nav links, the C2
+  Discord and the bug report sit in a panel the menu button opens (a
+  disclosure: `aria-expanded`, focus moves in, Escape closes). Its controls are
+  44px targets, and below 360px the wordmark shows its mark alone. That is the
+  one phone rule on the site frame; keep the page body to the one 819px
+  breakpoint.
 - **One breakpoint for site pages: 819px** (`max-width: 819px`). Don't add
   page-specific breakpoints.
 - **Site pages sit in `Page.svelte`**: the header, then a centred column, `wide`
@@ -412,7 +420,7 @@ Don't:
 - Hard-code a hex for chrome, a seat hue, or an accent shade.
 - Use a game-signal colour for decoration, or the accent to mean "your turn".
 - Open a centred modal for something the game asks during play.
-- Add a phone-width table layout or a new page breakpoint.
+- Add a phone-width table layout, a phone layout for an app screen, or a new page breakpoint.
 - Put card art on the front-door pages, or anything from Scryfall behind a
   sign-in.
 - Use emoji, gradients on controls, glass panels, or decorative shapes.

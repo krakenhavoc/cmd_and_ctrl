@@ -48,8 +48,18 @@ func b27SacrificeAForest() *game.TargetSpec {
 // activated abilities and its mana abilities, intrinsic land ones
 // included — so the answer is exactly the set of creatures the Stone
 // could usefully untap.
+//
+// #3860: and, for a creature the catalog does not run, what its
+// PRINTED text says (Card.PrintedTapAbility, stamped at import by
+// game.PrintsTapAbilityText) — the printed clause is about text, and an
+// uncatalogued Llanowar-alike has no ability the engine could list. The
+// two are joined by "or": the catalog also covers what a granting
+// permanent gave the creature, which no text read can see.
 func b27HasTapAbility() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		if c.PrintedTapAbility() {
+			return true
+		}
 		for _, a := range game.ActivatedAbilitiesForCard(c) {
 			if a.Cost.Tap {
 				return true
@@ -78,7 +88,7 @@ func b27SelfOrNontokenZombieYouControlDied(ev game.Event, source *game.Card, g *
 		return false
 	}
 	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Zombie") && !IsToken(dead)
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Zombie")) && !IsToken(dead)
 }
 
 // b27ColorlessSpellWithManaValueAtLeastCastByYou is Sanctum of
@@ -102,7 +112,7 @@ func b27ColorlessSpellWithManaValueAtLeastCastByYou(ev game.Event, source *game.
 // control. Effective subtypes, so a changeling counts.
 func b27AnotherElfYouControlEntered(ev game.Event, source *game.Card, g *game.Game) (game.Card, bool) {
 	c, ok := enteredUnderYourControl(ev, source, g, true)
-	if !ok || !c.IsCreature() || !c.HasSubtype("Elf") {
+	if !ok || !c.IsCreature() || !c.HasSubtype(source.TextSubtype("Elf")) {
 		return game.Card{}, false
 	}
 	return c, true
@@ -162,7 +172,7 @@ func b27GreatestManaValueAmongArtifactsControlled(g *game.Game, controller uuid.
 // EventResolve naming the source and the label, and stays open until
 // the next thing that cannot happen mid-resolution — another
 // resolution, a cast, a mana ability, an attack, a fizzle or a step
-// beginning (b13ResolutionInProgressBy's boundary set). A card that
+// beginning. A card that
 // later left exile and came back under some other effect is not
 // counted: its newer move closes the older record. Only cards still
 // in exile are returned, oldest exile first, so the last entry is
@@ -194,6 +204,26 @@ func b27GreatestManaValueAmongArtifactsControlled(g *game.Game, controller uuid.
 // or merely re-resolving the label, says nothing of the kind on its
 // own.
 func b27ExiledWith(g *game.Game, source uuid.UUID, label string) []uuid.UUID {
+	return b27ExiledWithRecord(g, source, label, true)
+}
+
+// b27EverExiledWith is b27ExiledWith for a reader that wants the cards
+// the source exiled whether or not they are still in exile (#3859): a
+// leaves-the-battlefield ability that reads "the exiled card" by
+// last-known information (CR 608.2h), Skyclave Apparition's "X is the
+// mana value of the exiled card". A card that was exiled and has since
+// gone anywhere else is still listed, in the order it was exiled, and the
+// reader looks it up wherever it is now. The same re-entry boundary
+// applies (CR 400.7): an incarnation that left and came back remembers
+// nothing of the first.
+func b27EverExiledWith(g *game.Game, source uuid.UUID, label string) []uuid.UUID {
+	return b27ExiledWithRecord(g, source, label, false)
+}
+
+// b27ExiledWithRecord is the one walk behind both readers. stillInExile
+// closes a card's record when it moves again and lists only cards that
+// are in exile now.
+func b27ExiledWithRecord(g *game.Game, source uuid.UUID, label string, stillInExile bool) []uuid.UUID {
 	open := false
 	order := map[uuid.UUID]int{}
 	for _, ev := range g.Events {
@@ -217,15 +247,23 @@ func b27ExiledWith(g *game.Game, source uuid.UUID, label string) []uuid.UUID {
 			order[ev.CardID] = len(order) + 1
 			continue
 		}
-		delete(order, ev.CardID)
+		if stillInExile {
+			delete(order, ev.CardID)
+		}
 	}
 	if len(order) == 0 || g.Exile == nil {
 		return nil
 	}
 	out := make([]uuid.UUID, 0, len(order))
-	for _, c := range g.Exile.Cards {
-		if _, ok := order[c.InstanceID]; ok {
-			out = append(out, c.InstanceID)
+	if stillInExile {
+		for _, c := range g.Exile.Cards {
+			if _, ok := order[c.InstanceID]; ok {
+				out = append(out, c.InstanceID)
+			}
+		}
+	} else {
+		for id := range order {
+			out = append(out, id)
 		}
 	}
 	for i := 1; i < len(out); i++ {
@@ -260,8 +298,9 @@ func b27LastCreatureCardExiledWith(g *game.Game, source *game.Card) (game.Card, 
 // b27CreatureTypesPlusShapeshifter is the subtype list Duplicant
 // takes on: the exiled card's creature types (its land or other
 // subtypes stay behind), plus Shapeshifter — "It's still a
-// Shapeshifter."
-func b27CreatureTypesPlusShapeshifter(exiled game.Card) []string {
+// Shapeshifter." `shapeshifter` is that word as Duplicant's text now
+// reads it (TextSubtype, CR 612.2, #3984).
+func b27CreatureTypesPlusShapeshifter(exiled game.Card, shapeshifter string) []string {
 	_, _, subtypes := game.ParseTypeLine(exiled.TypeLine)
 	out := make([]string, 0, len(subtypes)+1)
 	for _, s := range subtypes {
@@ -269,8 +308,8 @@ func b27CreatureTypesPlusShapeshifter(exiled game.Card) []string {
 			out = append(out, s)
 		}
 	}
-	if !hasFold(out, "Shapeshifter") {
-		out = append(out, "Shapeshifter")
+	if !hasFold(out, shapeshifter) {
+		out = append(out, shapeshifter)
 	}
 	return out
 }
@@ -559,7 +598,7 @@ func b27DuplicantStatics() []game.StaticAbility {
 			DependsOnExile: true,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
 				if exiled, ok := b27LastCreatureCardExiledWith(g, source); ok {
-					c.SetSubtypes(b27CreatureTypesPlusShapeshifter(exiled))
+					c.SetSubtypes(b27CreatureTypesPlusShapeshifter(exiled, source.TextSubtype("Shapeshifter")))
 				}
 			},
 		},

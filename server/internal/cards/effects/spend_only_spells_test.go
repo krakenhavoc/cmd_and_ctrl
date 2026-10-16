@@ -284,7 +284,7 @@ func TestConsumeSpiritSpendsOnlyBlackManaOnXAndGainsX(t *testing.T) {
 // --- Soul Burn: "black and/or red" ----------------------------------
 
 // Red pays X as well as black, the {B} is still black, and the gain is
-// capped by the black mana that can have paid X.
+// capped by the black mana that paid X.
 func TestSoulBurnSpendsBlackAndOrRedOnX(t *testing.T) {
 	g, me, opp := spendTable(t)
 	swamps := basics(g, me, "Swamp", 1)
@@ -332,11 +332,12 @@ func TestSoulBurnGainsAsMuchAsTheBlackSpentOnX(t *testing.T) {
 		t.Fatalf("X=3 off five black and a red: %v", err)
 	}
 	passPriorityAroundTable(t, g)
-	// Six mana, five of them black, X=3 and three more for {2}{B}: at
-	// least two black paid X in the worst case, and the engine counts
-	// exactly that (the caveat) — never more than the printed three.
-	if gain := me.Life - before; gain != 2 {
-		t.Errorf("gained %d, want 2 — the black that must have paid X", gain)
+	// Six mana, five of them black, X=3 and three more for {2}{B}: the
+	// {B} takes one black and X takes the next three (#3941 — the record
+	// says which mana paid X, and the solver puts the black there), so
+	// all three of X is black and the gain is the printed three.
+	if gain := me.Life - before; gain != 3 {
+		t.Errorf("gained %d, want 3 — the black spent on X", gain)
 	}
 }
 

@@ -301,12 +301,12 @@ func (w *TextWords) subtype(sub string) string {
 }
 
 // keyword is a printed keyword token as the text now reads: the colour
-// in "protection from <colour>" and "hexproof from <colour>", and the
-// land type in a basic landwalk ("swampwalk"). Every other token — and
-// these two shapes for a word the substitution leaves alone — comes back
-// unchanged. A creature type inside a protection quality ("protection
-// from Goblins") is NOT translated: the plural has no reliable singular
-// round trip, so it is one of the amendment's listed gaps.
+// in "protection from <colour>" and "hexproof from <colour>", the
+// creature type in "protection from <creature type>" (read and respelled
+// through the protection parser, protectionFromCreatureType, #3872), and
+// the land type in a basic landwalk ("swampwalk"). Every other token —
+// and these shapes for a word the substitution leaves alone — comes back
+// unchanged.
 func (w *TextWords) keyword(tok string) string {
 	if w == nil {
 		return tok
@@ -319,6 +319,9 @@ func (w *TextWords) keyword(tok string) string {
 		rest := strings.TrimSpace(lower[len(prefix):])
 		letter, ok := protectionColors[rest]
 		if !ok {
+			if prefix == protectionPrefix {
+				return w.protectionFromCreatureType(tok)
+			}
 			return tok
 		}
 		now := w.color(letter)
@@ -339,6 +342,52 @@ func (w *TextWords) keyword(tok string) string {
 		return strings.ToLower(now) + "walk"
 	}
 	return tok
+}
+
+// protectionFromCreatureType translates the creature type of a
+// "protection from <creature type, plural>" token ("protection from
+// Goblins" under "Goblin → Elf" is "protection from Elves"), and returns
+// any other token unchanged.
+//
+// The token names its type in the plural and the substitution holds
+// singulars, so the type is read the way the protection parser reads it
+// (ParseProtectionQuality, through singulars and CanonicalCreatureType),
+// and the new word is spelled back as a plural that the same parser
+// reads as the new type. A spelling that would not round-trip is never
+// written: the token then stays as printed rather than becoming a
+// protection from nothing.
+func (w *TextWords) protectionFromCreatureType(tok string) string {
+	q, ok := ParseProtectionQuality(tok)
+	if !ok || q.Kind != ProtectionQualitySubtype {
+		return tok
+	}
+	now := w.word(TextWordCreatureType, q.Value)
+	if now == q.Value {
+		return tok
+	}
+	for _, spelled := range creatureTypePlurals(now) {
+		if back, ok := parseQuality(spelled); ok && back.Kind == ProtectionQualitySubtype && back.Value == now {
+			return tok[:len(protectionPrefix)] + spelled
+		}
+	}
+	return tok
+}
+
+// creatureTypePlurals are the plural spellings to try for a creature
+// type, most natural first: Elf → Elves, Goblin → Goblins, and a word
+// English leaves alone or that ends in a sibilant (Merfolk, Fox) as it is.
+func creatureTypePlurals(t string) []string {
+	lower := strings.ToLower(t)
+	var out []string
+	switch {
+	case strings.HasSuffix(lower, "f"):
+		out = append(out, t[:len(t)-1]+"ves")
+	case strings.HasSuffix(lower, "folk"), strings.HasSuffix(lower, "kin"),
+		strings.HasSuffix(lower, "s"), strings.HasSuffix(lower, "x"), strings.HasSuffix(lower, "z"),
+		strings.HasSuffix(lower, "ch"), strings.HasSuffix(lower, "sh"):
+		out = append(out, t)
+	}
+	return append(out, t+"s", t)
 }
 
 // keywords translates a keyword list, returning the input itself when
@@ -414,6 +463,36 @@ func (c *Card) TextSubtype(sub string) string {
 	return c.TextWords.subtype(sub)
 }
 
+// TextColors is TextColor over a list of colour words, each colour once
+// and in the order first read: a colour-setting effect's printed colours
+// ("becomes a white and blue Bird") as this object's text now says them
+// (#3984). Under "white → blue" that is one colour, blue.
+func (c *Card) TextColors(letters ...string) []string {
+	return textWordsOnce(letters, c.TextColor)
+}
+
+// TextSubtypes is TextSubtype over a list of subtype words, each once: a
+// type-setting effect's printed types ("becomes a Bird", "is a Zombie in
+// addition to its other types") as this object's text now says them.
+func (c *Card) TextSubtypes(subs ...string) []string {
+	return textWordsOnce(subs, c.TextSubtype)
+}
+
+// textWordsOnce maps each word through `read`, dropping a repeat.
+func textWordsOnce(words []string, read func(string) string) []string {
+	if len(words) == 0 {
+		return words
+	}
+	out := make([]string, 0, len(words))
+	for _, w := range words {
+		now := read(w)
+		if !typeListHas(out, now) {
+			out = append(out, now)
+		}
+	}
+	return out
+}
+
 // TextKeyword is the keyword token `tok` as this object's text now
 // reads it: the colour of "protection from <colour>", the land type of
 // a basic landwalk. For a static that grants a keyword its source
@@ -459,6 +538,81 @@ func (c Card) HasColorWord(letter string) bool {
 func (c Card) HasSubtypeWord(sub string) bool {
 	return c.HasSubtype(c.wordLens.subtype(sub))
 }
+
+// ThroughTextOf is q with its subtype and colour words read as `reader`'s
+// text now says them (CR 612.2): Seasinger's "When you control no
+// Islands" under a Magical Hack asks about Forests. q itself is never
+// written through; with nothing to translate it comes back as it was.
+func (q PermanentQuery) ThroughTextOf(reader *Card) PermanentQuery {
+	if reader == nil || reader.TextWords == nil {
+		return q
+	}
+	if len(q.Subtypes) > 0 {
+		subs := make([]string, len(q.Subtypes))
+		for i, s := range q.Subtypes {
+			subs[i] = reader.TextSubtype(s)
+		}
+		q.Subtypes = subs
+	}
+	if len(q.Colors) > 0 {
+		colors := make([]string, len(q.Colors))
+		for i, c := range q.Colors {
+			colors[i] = reader.TextColor(c)
+		}
+		q.Colors = colors
+	}
+	return q
+}
+
+// PermanentQueriesThroughTextOf is ThroughTextOf over an any-of list.
+func PermanentQueriesThroughTextOf(qs []PermanentQuery, reader *Card) []PermanentQuery {
+	if reader == nil || reader.TextWords == nil || len(qs) == 0 {
+		return qs
+	}
+	out := make([]PermanentQuery, len(qs))
+	for i, q := range qs {
+		out[i] = q.ThroughTextOf(reader)
+	}
+	return out
+}
+
+// LentColor is the colour letter the colour word `letter` reads as in
+// the text ThroughTextOf lent this copy, or `letter` when it was lent
+// none. For a target clause whose word is not about the candidate
+// itself: "target creature whose controller controls a black permanent".
+func (c Card) LentColor(letter string) string { return c.wordLens.color(letter) }
+
+// LentSubtype is LentColor for a subtype word: Seasinger's "whose
+// controller controls an Island", Vedalken Shackles' "the number of
+// Islands you control".
+func (c Card) LentSubtype(sub string) string { return c.wordLens.subtype(sub) }
+
+// manaTags reads a printed mana restriction's words through this text
+// (#3984): a "subtype:" tag's subtype and a "color:" tag's colour, each
+// the word as the text now says it. Every other tag, and a compound one,
+// is a word no text change names and comes back unchanged. Writes `tags`
+// in place, so callers pass a copy.
+func (w *TextWords) manaTags(tags []string) []string {
+	if w == nil {
+		return tags
+	}
+	for i, t := range tags {
+		switch {
+		case strings.HasPrefix(t, manaTagSubtype):
+			tags[i] = manaTagSubtype + w.subtype(t[len(manaTagSubtype):])
+		case strings.HasPrefix(t, manaTagColor):
+			tags[i] = manaTagColor + w.color(t[len(manaTagColor):])
+		}
+	}
+	return tags
+}
+
+// The two mana restriction tag prefixes that name a word of a card's
+// text (ManaRestrictSubtype, ManaRestrictColor).
+const (
+	manaTagSubtype = "subtype:"
+	manaTagColor   = "color:"
+)
 
 // --- materialising -------------------------------------------------
 
@@ -576,4 +730,138 @@ func cloneTextWordChanges(in []TextWordChange) []TextWordChange {
 		return nil
 	}
 	return append([]TextWordChange(nil), in...)
+}
+
+// --- last-known information ---------------------------------------
+
+// entries is the net substitution as plain data, one change per printed
+// word that now reads differently (From is the printed word, To what it
+// reads as), in Lines' order. Nil for no change. This is the form the
+// last-known records carry (PermanentInfo.TextWords,
+// triggerIdentityLKI.TextWords), so a source that has left the
+// battlefield is still read with the words it last had (CR 608.2h,
+// CR 603.10a; #3872).
+func (w *TextWords) entries() []TextWordChange {
+	if w == nil || len(w.words) == 0 {
+		return nil
+	}
+	var out []TextWordChange
+	for _, k := range []TextWordKind{TextWordColor, TextWordBasicLandType, TextWordCreatureType} {
+		m := w.words[k]
+		printed := make([]string, 0, len(m))
+		for p := range m {
+			printed = append(printed, p)
+		}
+		sort.Slice(printed, func(i, j int) bool { return wordOrder(k, printed[i]) < wordOrder(k, printed[j]) })
+		for _, p := range printed {
+			out = append(out, TextWordChange{Kind: k, From: p, To: m[p]})
+		}
+	}
+	return out
+}
+
+// textWordsFromEntries rebuilds the substitution entries wrote. Each
+// entry is a printed word and what it reads as, so they are set side by
+// side, never composed (a swap, black → blue and blue → black, is two
+// entries, which composing would collapse). An entry that is not a
+// sound change of its kind is skipped, so a damaged record reads as the
+// printed words rather than as a wrong one. Nil for none.
+func textWordsFromEntries(entries []TextWordChange) *TextWords {
+	if len(entries) == 0 {
+		return nil
+	}
+	out := &TextWords{words: map[TextWordKind]map[string]string{}}
+	for _, e := range entries {
+		norm, err := e.Normalised()
+		if err != nil {
+			continue
+		}
+		m := out.words[norm.Kind]
+		if m == nil {
+			m = map[string]string{}
+			out.words[norm.Kind] = m
+		}
+		m[norm.From] = norm.To
+	}
+	if len(out.words) == 0 {
+		return nil
+	}
+	out.key = out.describe()
+	return out
+}
+
+// textReaderOf is a stand-in object carrying only a text substitution, for
+// a reader whose object has left: Card.TextColor, TextSubtype and
+// ThroughTextOf read nothing else. Nil when nothing was changed.
+func textReaderOf(w *TextWords) *Card {
+	if w == nil {
+		return nil
+	}
+	return &Card{TextWords: w}
+}
+
+// TextReaderForEffect is the object whose text a resolving item's words
+// are in, as the word readers take it (Card.TextColor, TextSubtype,
+// ThroughTextOf), or nil when that text is printed (CR 612.2):
+//
+//   - a spell: the spell on the stack, read now;
+//   - an ability whose source is still the same object on the
+//     battlefield: that permanent, read now;
+//   - an ability whose source has left: its words as it last existed on
+//     the battlefield (CR 608.2h, #3872), from the last-known record.
+//     A fetchland changed from "Island" to "Forest" and sacrificed to
+//     its own ability searches for a Forest; a card in a graveyard is a
+//     new object whose text is printed (CR 400.7), so it is never read.
+//
+// The answer is a stand-in carrying only the text change, never a live
+// card: hold it as long as you like.
+//
+// Caller must hold g.mu.
+func (g *Game) TextReaderForEffect(item *StackItem) *Card {
+	if item == nil || item.SourceCardID == uuid.Nil {
+		return nil
+	}
+	if item.Kind != StackItemSpell {
+		if rec, ok := g.departedAbilitySourceLocked(item); ok {
+			return rec.TextReader()
+		}
+	}
+	if c := findBattlefieldCard(g, item.SourceCardID); c != nil {
+		return textReaderOf(c.TextWords)
+	}
+	if c, ok := g.stackCardLocked(item.SourceCardID); ok {
+		return textReaderOf(c.TextWords)
+	}
+	// Neither a permanent nor a spell: the card is in another zone, where
+	// its own text is printed (CR 400.7). An effect still finishing for
+	// the permanent it was — a resolution continuation, which carries
+	// the card and not the object (OptionPickThen) — reads that
+	// permanent's last words while the card has not moved on since it
+	// left (departedDamageSourceLocked's rule): Liliana of the Dark
+	// Realms' −3 that took her last loyalty still counts the land type
+	// her text last named.
+	if rec, ok := g.departedDamageSourceLocked(item.SourceCardID, nil); ok {
+		return rec.TextReader()
+	}
+	return nil
+}
+
+// TextReaderOfForEffect is TextReaderForEffect for a clause read off an
+// object by its id rather than off a stack item — a mana ability's
+// condition or amount — read through the card `id` while it is a
+// permanent or a spell, and nil otherwise (a card in any other zone has
+// its printed text, CR 400.7) or when its words are printed.
+//
+// Caller must hold g.mu.
+func (g *Game) TextReaderOfForEffect(id uuid.UUID) *Card {
+	if id == uuid.Nil {
+		return nil
+	}
+	if c := findBattlefieldCard(g, id); c != nil {
+		return textReaderOf(c.TextWords)
+	}
+	if c, ok := g.stackCardLocked(id); ok {
+		return textReaderOf(c.TextWords)
+	}
+	return nil
 }

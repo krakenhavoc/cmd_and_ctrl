@@ -528,11 +528,13 @@ const (
 
 // answerChoiceLocked takes an answered prompt out of the queue. A
 // player's answer is a decision and restarts the CR 732 loop run
-// (dequeueChoiceLocked); an automatic one is not (ADR 0127 §7). Caller
-// must hold g.mu.
+// (dequeueChoiceLocked); an automatic one is not (ADR 0127 §7), though
+// it is a choice standing in a loop, so a loop holding one is never
+// CR 732.4's draw (#2506). Caller must hold g.mu.
 func (g *Game) answerChoiceLocked(idx int, auto bool) {
 	if auto {
 		g.removeChoiceAtLocked(idx)
+		g.noteLoopAutoAnswerLocked()
 		return
 	}
 	g.dequeueChoiceLocked(idx)

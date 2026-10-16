@@ -43,7 +43,7 @@ func b15RedSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 		return false
 	}
 	spell, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && spell.HasColor("R")
+	return ok && spell.HasColor(source.TextColor("R"))
 }
 
 // b15AnotherNontokenCreatureYouControlEntered is Soul of the
@@ -153,16 +153,15 @@ func b15NotEnchanted() CardPredicate {
 }
 
 // b15ArtifactWithManaAbilityOrBasicLand is Moonsilver Key's search
-// clause. "An artifact card with a mana ability" is answered by the
-// same lookup the battlefield uses (game.ManaAbilitiesForCard reads
-// the catalog by oracle ID), so an artifact the catalog knows a mana
-// ability for qualifies and one it does not know is not found —
-// weaker than printed, declared on the card.
+// clause. "An artifact card with a mana ability" is what the card prints
+// (CR 605.1a/b), read by game.HasPrintedManaAbility: the importer's
+// stamp off the printed text for every imported card, catalogued or not
+// (#3943), and the catalog only for a card whose text was never read.
 func b15ArtifactWithManaAbilityOrBasicLand(c game.Card) bool {
 	if IsBasicLand(c) {
 		return true
 	}
-	return c.IsArtifact() && len(game.ManaAbilitiesForCard(c)) > 0
+	return c.IsArtifact() && game.HasPrintedManaAbility(c)
 }
 
 // --- board reads -------------------------------------------------

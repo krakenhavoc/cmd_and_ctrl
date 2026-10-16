@@ -214,8 +214,10 @@ func b24TargetAnyNotSubtype(subtype string) *game.TargetSpec {
 	spec := TargetAny()
 	spec.Label = "any target that isn't a " + subtype
 	base := spec.CardOK
+	// The type is a word of the source's text, read through the lens the
+	// targeting walk lends (CR 612.2, #3984).
 	spec.CardOK = func(g *game.Game, caster uuid.UUID, c game.Card, z game.ZoneKind) bool {
-		return base(g, caster, c, z) && !c.HasSubtype(subtype)
+		return base(g, caster, c, z) && !c.HasSubtypeWord(subtype)
 	}
 	return spec
 }

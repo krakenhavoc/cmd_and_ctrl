@@ -766,8 +766,8 @@ func TestB32TransmutationFontMakesTheChosenToken(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	spec, _ := Lookup(b32TransmutationFontOracle)
-	if len(spec.Activated) != 3 || spec.Completeness != CompletenessCaveats {
-		t.Fatalf("three token abilities and a declared tutor omission; got %d abilities", len(spec.Activated))
+	if len(spec.Activated) != 4 || spec.Completeness != CompletenessFull {
+		t.Fatalf("three token abilities and the tutor, Full; got %d abilities", len(spec.Activated))
 	}
 	font := pushCatalogPermanent(g, me.ID, "Transmutation Font", "Artifact", b32TransmutationFontOracle, false)
 	advanceToMain(t, g)

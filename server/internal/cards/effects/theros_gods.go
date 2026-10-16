@@ -10,7 +10,7 @@ import (
 
 // theros_gods.go — the Theros God clause, "As long as your devotion to
 // <colour> is less than five, <this> isn't a creature." (CR 700.5,
-// CR 205.1b), as one shared static.
+// CR 205.1a), as one shared static.
 //
 // A layer-4 type-changing static on the God itself, re-read on every
 // layer recompute, so the God turns on and off with the board and no
@@ -30,8 +30,9 @@ func godUnlessDevotion(color string) game.StaticAbility {
 		Label: "Isn't a creature unless your devotion to " + colorWords([]string{color}) + " is 5 or more.",
 		Layer: game.Layer4Type,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
+			// The colour is a word of the God's text (CR 612.2).
 			return target.InstanceID == source.InstanceID &&
-				devotionTo(g, source.Controller, color) < 5
+				devotionTo(g, source.Controller, source.TextColor(color)) < 5
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			notACreature(c)
@@ -82,8 +83,14 @@ func godUnlessDevotionToColors(threshold int, colors ...string) game.StaticAbili
 		Label: fmt.Sprintf("Isn't a creature unless your devotion to %s is %d or more.", colorWords(colors), threshold),
 		Layer: game.Layer4Type,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return target.InstanceID == source.InstanceID &&
-				devotionToColors(g, source.Controller, colors...) < threshold
+			if target.InstanceID != source.InstanceID {
+				return false
+			}
+			now := make([]string, len(colors))
+			for i, col := range colors {
+				now[i] = source.TextColor(col)
+			}
+			return devotionToColors(g, source.Controller, now...) < threshold
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			notACreature(c)

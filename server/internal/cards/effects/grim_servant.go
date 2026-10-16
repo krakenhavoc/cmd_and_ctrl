@@ -68,7 +68,7 @@ func init() {
 			WhenThisEnters("Grim Servant — tutor for a card within your devotion to black, then lose 3 life",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					limit := devotionTo(g, item.Controller, "B")
+					limit := devotionTo(g, item.Controller, ctx.TextColor("B"))
 					player, source := item.Controller, ctx.Source()
 					return SearchLibrary{
 						Player:    player,

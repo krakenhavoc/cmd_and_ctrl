@@ -82,8 +82,8 @@ func huntedBecomeHuman(ctx *Context, id uuid.UUID) error {
 	return ScopedEffectFor{
 		Target: id,
 		Mods: []game.Mod{
-			game.SetTypesMod([]string{"Creature"}, []string{"Human"}),
-			game.SetColorsMod("W"),
+			game.SetTypesMod([]string{"Creature"}, ctx.TextSubtypes("Human")),
+			game.SetColorsMod(ctx.TextColors("W")...),
 			game.LoseAllAbilitiesMod(),
 			game.SetBasePowerMod(1),
 			game.SetBaseToughnessMod(1),

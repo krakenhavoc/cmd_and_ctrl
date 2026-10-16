@@ -38,6 +38,12 @@ type CardDef struct {
 	// AsEnters runs the card's CR 614.12 "as enters" hook; nil for
 	// nearly every card.
 	AsEnters func(g *Game, cardID uuid.UUID) error
+	// AsEntersOthers runs the card's "as this enters" clause that
+	// changes OTHER objects (Ixidron), as part of the entry: after the
+	// landing and before any event announces it, with the permanents
+	// arriving in the same entry marked (ArrivingForEffect). #3862,
+	// as_enters_others.go. Nil for nearly every card.
+	AsEntersOthers func(g *Game, cardID uuid.UUID) error
 	// AsTransformsInto runs the face's "As this permanent transforms
 	// into <this face>, …" clause (Sephiroth, One-Winged Angel's Super
 	// Nova), registered on the face being turned TO. The transform
@@ -149,6 +155,11 @@ type CardDef struct {
 	// (CR 508.1a, ADR 0080) — Propaganda, Ghostly Prison, Windborn
 	// Muse. Read from the battlefield through AttackTaxesForCard.
 	AttackTaxes []AttackTax
+	// TargetTaxes are the "spells <whom> cast that target <what> cost an
+	// additional N life" statics this permanent contributes (CR 601.2f,
+	// #3860) -- Terror of the Peaks. Read from the battlefield through
+	// TargetTaxesForCard.
+	TargetTaxes []TargetTax
 	// BlockRules are the CR 509.1b block restrictions with a
 	// parameter this permanent imposes while it is on the battlefield
 	// — "can't be blocked except by Walls" (Prowler's Helm), "can't
@@ -163,6 +174,12 @@ type CardDef struct {
 	// CatalogAttackLimits, keyed by CatalogAbilityKey; see
 	// attack_limits.go and ADR 0045 Decision 44 (#1507).
 	AttackLimits []AttackLimit
+	// DealtDamageCantBeRegenerated are this permanent's "creatures dealt
+	// damage by this creature this turn can't be regenerated this turn"
+	// statics (#1946, CR 701.19c) — Bone Shaman's granted ability. Read
+	// from the battlefield through CatalogDealtDamageCantBeRegenerated,
+	// keyed by CatalogAbilityKey; see dealt_damage_by.go.
+	DealtDamageCantBeRegenerated []DealtDamageCantBeRegenerated
 	// ExertOnAttack is the static ability "You may exert this creature
 	// as it attacks" (CR 701.43d, ADR 0130 §2). Read through
 	// CatalogExertOnAttack, keyed by CatalogAbilityKey; see exert.go.
@@ -319,6 +336,12 @@ type CardDef struct {
 	// once" (CR 606.3, Urza, Planeswalker). Read from the battlefield
 	// through CatalogAbilityKey; see loyalty_limit.go.
 	LoyaltyTwiceEachTurn bool
+	// ActivateAsThoughHaste is this permanent's printed "You may
+	// activate abilities of creatures you control as though those
+	// creatures had haste" (CR 302.6, 609.4; Thousand-Year Elixir).
+	// Read from the battlefield through CatalogAbilityKey; see
+	// activate_as_though_haste.go.
+	ActivateAsThoughHaste bool
 	// ExtraVote is this permanent's printed "While voting, you get an
 	// additional vote" or "you may vote an additional time" (CR
 	// 701.38d, ADR 0146). Read from the battlefield through
@@ -330,6 +353,14 @@ type CardDef struct {
 	// battlefield through CatalogExtraVillainousChoice, keyed by
 	// CatalogAbilityKey; see villainous_choice.go.
 	OpponentsFaceVillainousChoicesAgain bool
+	// ControlsOpponentsSearches is this permanent's printed "You
+	// control your opponents while they're searching their libraries.
+	// While an opponent is searching their library, they exile each
+	// card they find. You may play those cards …" (Opposition Agent,
+	// CR 723.2, #3998). Read from the battlefield through
+	// CatalogControlsOpponentsSearches, keyed by CatalogAbilityKey; see
+	// search_control.go.
+	ControlsOpponentsSearches bool
 	// DamageCantBePrevented are this permanent's printed "damage can't
 	// be prevented" statics (CR 615.12, ADR 0107 §5). Read from the
 	// battlefield through CatalogUnpreventableDamage, keyed by
@@ -339,6 +370,11 @@ type CardDef struct {
 	// statics (CR 119.7, ADR 0107 §5). Read from the battlefield
 	// through CatalogCantGainLife; see cant_gain_life.go.
 	CantGainLife []CantGainLifeStatic
+	// DrawLimits are this permanent's printed "can't draw more than one
+	// card each turn" and "can't draw cards" statics (CR 121.2b, #3927).
+	// Read from the battlefield through CatalogDrawLimits; see
+	// draw_limit.go.
+	DrawLimits []DrawLimitStatic
 	// DamageAsThough are this permanent's printed "damage is dealt as
 	// though its source had wither / infect" statics (ADR 0108 §10). Read
 	// from the battlefield through CatalogDamageAsThough, keyed by
@@ -516,6 +552,13 @@ type CardDef struct {
 	// LibraryTopRevealed. Read through CatalogLibraryTopVisible; see
 	// library_top.go.
 	LibraryTopVisible LibraryTopVisibility
+
+	// HandsRevealed is whose hands this permanent's static reveals:
+	// "your opponents play with their hands revealed" (Telepathy) is
+	// HandRevealOpponents, "players play with their hands revealed"
+	// (Revelation) HandRevealEachPlayer. Read through
+	// CatalogHandsRevealed; see hand_revealed.go (ADR 0199).
+	HandsRevealed HandRevealScope
 
 	// DiscardByOpponent and DiscardByOpponentForHand are what the card
 	// declares about "if a spell or ability an opponent controls causes
@@ -759,6 +802,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogTargetTaxes = func(key string) []TargetTax {
+		if d := catalogDef(key); d != nil {
+			return d.TargetTaxes
+		}
+		return nil
+	}
 	CatalogBlockRules = func(key string) []BlockRule {
 		if d := catalogDef(key); d != nil {
 			return d.BlockRules
@@ -768,6 +817,12 @@ func init() {
 	CatalogAttackLimits = func(key string) []AttackLimit {
 		if d := catalogDef(key); d != nil {
 			return d.AttackLimits
+		}
+		return nil
+	}
+	CatalogDealtDamageCantBeRegenerated = func(key string) []DealtDamageCantBeRegenerated {
+		if d := catalogDef(key); d != nil {
+			return d.DealtDamageCantBeRegenerated
 		}
 		return nil
 	}
@@ -931,6 +986,10 @@ func init() {
 		d := catalogDef(key)
 		return d != nil && d.LoyaltyTwiceEachTurn
 	}
+	CatalogActivateAsThoughHaste = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.ActivateAsThoughHaste
+	}
 	CatalogExtraVote = func(key string) ExtraVote {
 		if d := catalogDef(key); d != nil {
 			return d.ExtraVote
@@ -941,6 +1000,10 @@ func init() {
 		d := catalogDef(key)
 		return d != nil && d.OpponentsFaceVillainousChoicesAgain
 	}
+	CatalogControlsOpponentsSearches = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.ControlsOpponentsSearches
+	}
 	CatalogUnpreventableDamage = func(key string) []UnpreventableDamageStatic {
 		if d := catalogDef(key); d != nil {
 			return d.DamageCantBePrevented
@@ -950,6 +1013,12 @@ func init() {
 	CatalogCantGainLife = func(key string) []CantGainLifeStatic {
 		if d := catalogDef(key); d != nil {
 			return d.CantGainLife
+		}
+		return nil
+	}
+	CatalogDrawLimits = func(key string) []DrawLimitStatic {
+		if d := catalogDef(key); d != nil {
+			return d.DrawLimits
 		}
 		return nil
 	}
@@ -1086,6 +1155,12 @@ func init() {
 			return d.LibraryTopVisible
 		}
 		return LibraryTopHidden
+	}
+	CatalogHandsRevealed = func(key string) HandRevealScope {
+		if d := catalogDef(key); d != nil {
+			return d.HandsRevealed
+		}
+		return HandRevealNone
 	}
 	CatalogTokenText = func(key string) string {
 		if d := catalogDef(key); d != nil {

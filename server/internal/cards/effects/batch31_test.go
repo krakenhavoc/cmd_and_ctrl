@@ -178,7 +178,7 @@ func TestB31TheWarringTriadWakesAtEightCardsInTheGraveyard(t *testing.T) {
 		t.Error("it is still an artifact")
 	}
 	if containsString(effectiveSubtypes(t, g, triad), "God") {
-		t.Error("a creature type goes with the creature type (CR 205.1b)")
+		t.Error("a creature type goes with the creature type (CR 205.1a)")
 	}
 	advanceTo(t, g, game.StepDeclareAttackers)
 	if err := g.DeclareAttacker(triad, g.Seats[1].ID); err == nil {

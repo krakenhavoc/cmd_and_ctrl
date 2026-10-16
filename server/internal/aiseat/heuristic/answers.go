@@ -339,7 +339,7 @@ func (p *Policy) pumpActivations(st *state, row *protocol.ActivatedAbilityView) 
 		cost = *row.ChargedManaCost
 	}
 	c := parseManaCost(cost, 0)
-	units := st.manaAvailable(p.cfg.PlanFilterLands)
+	units := st.manaAvailable(p.manaModel(st))
 	n := 0
 	for n < maxPumpSteps {
 		var ok bool

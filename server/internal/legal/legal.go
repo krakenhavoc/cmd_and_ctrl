@@ -97,6 +97,8 @@ const (
 	TypeMulligan         = "mulligan"
 	TypeDiscardSelection = "discard_selection"
 	TypeSpecialAction    = "special_action"
+	// TypeOutsidePlay is #3955's Wish right: name a card to play.
+	TypeOutsidePlay = "outside_play"
 	// ADR 0121 §4: the opening roll's two seat-scoped verbs. Never
 	// host_roll_remaining (a bot is never the host) and never a table
 	// roll (it changes nothing in the game).
@@ -310,6 +312,17 @@ type MoveCost struct {
 	// mana it has.
 	PhyrexianLife int `json:"phyrexian_life,omitempty"`
 
+	// TargetTaxLife is the part of Life that a permanent charges for what
+	// the spell TARGETS (CR 601.2f, #3860): Terror of the Peaks' "spells
+	// your opponents cast that target this creature cost an additional 3
+	// life". Already INCLUDED in Life, and broken out for
+	// PhyrexianLife's reason: it buys nothing. A printed life cost is the
+	// only evidence of how much an ability does, so a policy may read it
+	// as a payoff proxy; life spent because the spell names a taxed
+	// permanent is the same spell at a worse price, and a policy that
+	// proxied it would prefer the taxed target.
+	TargetTaxLife int `json:"target_tax_life,omitempty"`
+
 	// Loyalty is a loyalty ability's counter delta (CR 606.4),
 	// SIGNED as printed: +1 adds a counter, −3 removes three. Zero
 	// covers both "[0]" and "not a loyalty ability"; the two are the
@@ -389,6 +402,54 @@ type MoveCost struct {
 	// read the activation as free and could repeat it every priority.
 	// A reveal is always payable (an empty hand pays it).
 	RevealHand bool `json:"reveal_hand,omitempty"`
+
+	// Mill is how many cards the move mills off the seat's own library
+	// as its cost (#3870; the component is #3845's "Mill N cards",
+	// CR 701.17a) — Sinister Concoction's "Mill a card", Rot Farm
+	// Skeleton's "Mill four cards", Millikin's mana row. The params name
+	// no card, so without it a policy would read the library it pays as
+	// free. Always positive when present: the enumerator has already
+	// checked the library holds that many (CR 701.17b, CR 118.3).
+	Mill int `json:"mill,omitempty"`
+
+	// LibraryExile is how many cards the move exiles off the top of the
+	// seat's own library as its cost (#3966; the component is ADR 0109
+	// §7's "Exile the top N cards of your library", AbilityCost.
+	// ExileFromLibraryTop) — Seasoned Tactician's four, Arc-Slogger's
+	// ten, Phyrexian Devourer's one. Mill's sibling: the params name no
+	// card, so without it a policy would read the library it pays as
+	// free. Always positive when present: the enumerator has already
+	// checked the library holds that many (CR 118.3).
+	LibraryExile int `json:"library_exile,omitempty"`
+}
+
+// withLibraryExile adds an "Exile the top N cards of your library"
+// payment to a (possibly nil) MoveCost (#3966). Nil stays nil for zero
+// cards.
+func withLibraryExile(c *MoveCost, n int) *MoveCost {
+	if n <= 0 {
+		return c
+	}
+	out := MoveCost{}
+	if c != nil {
+		out = *c
+	}
+	out.LibraryExile = n
+	return &out
+}
+
+// withMill adds a "Mill N cards" payment to a (possibly nil) MoveCost
+// (#3870). Nil stays nil for zero cards.
+func withMill(c *MoveCost, n int) *MoveCost {
+	if n <= 0 {
+		return c
+	}
+	out := MoveCost{}
+	if c != nil {
+		out = *c
+	}
+	out.Mill = n
+	return &out
 }
 
 // withRevealHand marks a (possibly nil) MoveCost as revealing the
@@ -477,6 +538,22 @@ func moveCost(life, loyalty int) *MoveCost {
 // the move does not say which.
 func phyrexianLifeLabel(symbols int) string {
 	return fmt.Sprintf(" paying %d life instead of mana", symbols*game.PhyrexianLifePerSymbol)
+}
+
+// withTargetTax adds the life a cast's targets charge (CR 601.2f,
+// #3860) to a (possibly nil) MoveCost, counted in Life and broken out in
+// TargetTaxLife. The same shape as withPhyrexianLife.
+func withTargetTax(c *MoveCost, life int) *MoveCost {
+	if life <= 0 {
+		return c
+	}
+	out := MoveCost{}
+	if c != nil {
+		out = *c
+	}
+	out.Life += life
+	out.TargetTaxLife += life
+	return &out
 }
 
 // withPhyrexianLife adds `symbols` Phyrexian symbols paid with life
@@ -623,8 +700,9 @@ type TargetCandidate struct {
 	// reduction, the sacrificed permanent's mana value as the pricer
 	// takes it off. The policy prices the saving in its own units and
 	// subtracts it from what the candidate is worth to keep, so a spent
-	// six-drop can rank ahead of a token that saves nothing. Zero for
-	// every other cost.
+	// six-drop can rank ahead of a token that saves nothing. A harmonize
+	// tap (#3931) sets it beside Tap: the tapped creature's power as the
+	// pricer takes it off. Zero for every other cost.
 	Saves int
 }
 

@@ -52,7 +52,7 @@ type LenderPredicate func(g *game.Game, source *game.Card, c game.Card) bool
 // LenderPredicate whose caster is the borrowing source's controller.
 func ByController(p CardPredicate) LenderPredicate {
 	return func(g *game.Game, source *game.Card, c game.Card) bool {
-		return p(g, source.Controller, c)
+		return p(g, source.Controller, game.ThroughTextOf(source, c))
 	}
 }
 
@@ -136,6 +136,17 @@ func BorrowedAbilitiesSpendableAsAnyColor(label, borrowLabel string) []game.AnyC
 			return ctx.AbilityOrigin.LentByBorrow(borrowLabel)
 		},
 	}}
+}
+
+// BorrowedAbilitiesSpendableAsAnyType is the wider rider "Mana of any
+// type can be spent to activate <those> abilities." (Sharkey, Tyrant of
+// the Shire): BorrowedAbilitiesSpendableAsAnyColor with AnyType, so
+// colourless is a type too and coloured mana may also pay a {C} symbol
+// in a lent cost (CR 106.1b no longer stops it).
+func BorrowedAbilitiesSpendableAsAnyType(label, borrowLabel string) []game.AnyColorSpendStatic {
+	out := BorrowedAbilitiesSpendableAsAnyColor(label, borrowLabel)
+	out[0].AnyType = true
+	return out
 }
 
 // checkStaticBorrows is ADR 0155 Decision 1's refusal. A borrow is an

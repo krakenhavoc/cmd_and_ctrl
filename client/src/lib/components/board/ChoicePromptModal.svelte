@@ -125,6 +125,17 @@
     payAmountStart,
   } from "../../payEnergy";
   import { L } from "../../labels";
+  import { searchOutsideCards, type DevCardResult } from "../../api";
+  import {
+    COLLECTION_MIN_QUERY,
+    canTakeCollection,
+    collectionRows,
+    allowsRepeatedNames,
+    pickedCount,
+    takeCollectionLabel,
+    toggleCollectionPick,
+    unpickOneCollection,
+  } from "../../outsideCollection";
   import {
     canPayCards,
     payCardsOptions,
@@ -138,7 +149,9 @@
     handFreeCastRequest,
     isFreeCastPick,
     isLibraryFreeCastPick,
+    isOutsideCastPick,
     mayCastKeywordsThatOpenACast,
+    outsideCastRequest,
   } from "../../freeCastRequest";
 
   interface Props {
@@ -342,6 +355,16 @@
   // search ("a card", CR 701.23d) must find that many: the server sends
   // search_min then, and there is no such button.
   const isSearch = $derived(active?.kind === "search_library");
+
+  // #3998: a search another player owes (Opposition Agent controls them
+  // while they search, CR 723.2) is answered here by the controller.
+  // Its banner is the searcher's ("Search your library"), so say whose
+  // library it is.
+  function searchingFor(c: PendingChoiceView, label: string): string {
+    if (!c.on_behalf_of || c.on_behalf_of === viewerID) return label;
+    const who = snap.seats.find((s) => s.id === c.on_behalf_of)?.name;
+    return who ? `${label} (choosing for ${who})` : label;
+  }
 
   // S16.5 copy_target — "you may have this creature enter as a copy
   // of ...". Shares the card grid and the {choice_id, card_ids}
@@ -593,6 +616,10 @@
     if (isLibraryFreeCastPick(active) && selected.size > 0) {
       freeCastRequest.set(Array.from(selected)[0] ?? null);
     }
+    // #3955: the same for cards owned outside the game (Spawnsire of
+    // Ulamog's free cast, Wish's play): Board opens the sideboard tab,
+    // where every granted card carries its cast button.
+    if (isOutsideCastPick(active) && selected.size > 0) outsideCastRequest.set(true);
     answer({ card_ids: Array.from(selected) });
   }
 
@@ -755,6 +782,71 @@
     if (e.key !== "Enter") return;
     e.preventDefault();
     pickCardName(nameFilter);
+  }
+
+  // ADR 0198 outside_collection branch — "a card you own from outside
+  // the game" for a seat whose deck has no sideboard: any card in the
+  // card database the effect accepts. The prompt's suggestions show
+  // first; typing searches the database through the server, which
+  // filters by the effect, so every row is a legal pick. The answer is
+  // the picked cards' names (outsideCollection.ts holds the logic).
+  const isCollectionPick = $derived(active?.kind === "outside_collection");
+  let collectionQuery = $state("");
+  let collectionResults = $state<DevCardResult[]>([]);
+  let collectionPicked = $state<string[]>([]);
+  let lastCollectionID: string | null = null;
+  $effect(() => {
+    const id = isCollectionPick ? (active?.id ?? null) : null;
+    if (id !== lastCollectionID) {
+      lastCollectionID = id;
+      collectionQuery = "";
+      collectionResults = [];
+      collectionPicked = [];
+    }
+  });
+  const collectionMax = $derived(Math.max(active?.choose_max ?? 1, 1));
+  const collectionMin = $derived(active?.choose_min ?? 0);
+  // #3955: an "any number" pick takes the same name more than once.
+  const collectionRepeats = $derived(allowsRepeatedNames(collectionMax));
+  const collectionList = $derived(
+    collectionRows(active?.collection_options ?? [], collectionResults, collectionQuery),
+  );
+  // Debounced, and the in-flight request is aborted by the next one, so
+  // a slow early query cannot overwrite a later one's rows (the card
+  // spawner's search, for the same reason).
+  let collectionTimer: ReturnType<typeof setTimeout> | null = null;
+  let collectionInflight: AbortController | null = null;
+  $effect(() => {
+    const q = collectionQuery.trim();
+    const choiceID = isCollectionPick ? (active?.id ?? "") : "";
+    if (collectionTimer) clearTimeout(collectionTimer);
+    if (!choiceID || q.length < COLLECTION_MIN_QUERY) {
+      collectionResults = [];
+      return;
+    }
+    const gameID = snap.id;
+    collectionTimer = setTimeout(() => {
+      collectionInflight?.abort();
+      const ctrl = new AbortController();
+      collectionInflight = ctrl;
+      searchOutsideCards(gameID, choiceID, q, ctrl.signal).then((rows) => {
+        if (!ctrl.signal.aborted) collectionResults = rows;
+      });
+    }, 200);
+    return () => {
+      if (collectionTimer) clearTimeout(collectionTimer);
+    };
+  });
+
+  function toggleCollection(name: string): void {
+    collectionPicked = toggleCollectionPick(collectionPicked, name, collectionMax);
+  }
+
+  function takeCollection(): void {
+    if (!canTakeCollection(collectionPicked, collectionMin, collectionMax)) return;
+    // #3955: a pick that casts or plays what it names (see submit).
+    if (isOutsideCastPick(active)) outsideCastRequest.set(true);
+    answer({ card_names: collectionPicked });
   }
 
   // S17 replacement_order branch — CR 616 affected-player-chooses-
@@ -1779,6 +1871,28 @@
         secondary: [],
       };
     }
+    if (isCollectionPick) {
+      return {
+        label: c.reason || "Choose a card from outside the game",
+        src: "outside the game · CR 400.11",
+        width: 560,
+        primary: confirmAction(takeCollectionLabel(collectionPicked), takeCollection, {
+          disabled: !canTakeCollection(collectionPicked, collectionMin, collectionMax),
+        }),
+        secondary:
+          collectionMin === 0
+            ? [
+                {
+                  id: "none",
+                  label: "Take nothing",
+                  keyShortcuts: "N",
+                  cap: "N",
+                  onPress: () => answer({ card_names: [] }),
+                },
+              ]
+            : [],
+      };
+    }
     if (isCardNamePick) {
       const typed = nameFilter.trim();
       return {
@@ -1936,7 +2050,7 @@
     const [label, src] = isSacrifice
       ? [c.reason || "Sacrifice a permanent", "sacrifice"]
       : isSearch
-        ? [c.reason || "Search your library", "search · CR 701.23"]
+        ? [searchingFor(c, c.reason || "Search your library"), "search · CR 701.23"]
         : isCopyTarget
           ? c.exchanges_text
             ? [c.reason || "Exchange text boxes with…", "text box · CR 612.5"]
@@ -2328,6 +2442,63 @@
           <button type="button" class="type-pick" onclick={() => pickCreatureType(t)}>{t}</button>
         {:else}
           <p class="prompt-hint warn">No creature type matches “{typeFilter}”.</p>
+        {/each}
+      </div>
+    {:else if isCollectionPick}
+      <p class="prompt-hint">
+        Your deck has no sideboard, so any card that fits can come from your collection. Search for
+        one, or take a suggestion.
+      </p>
+      <input
+        class="type-filter"
+        type="search"
+        data-sheet-focus
+        placeholder="Search for a card…"
+        aria-label="Search for a card"
+        bind:value={collectionQuery}
+      />
+      {#if collectionPicked.length > 0}
+        <p class="prompt-hint collection-picked">Chosen: {collectionPicked.join(", ")}</p>
+      {/if}
+      <div class="type-list">
+        {#each collectionList as row (row.name)}
+          {@const copies = pickedCount(collectionPicked, row.name)}
+          <div class="collection-item">
+            <button
+              type="button"
+              class="type-pick collection-row"
+              class:picked={copies > 0}
+              aria-pressed={copies > 0}
+              onclick={() => toggleCollection(row.name)}
+            >
+              <span class="collection-name">{row.name}</span>
+              {#if collectionRepeats && copies > 0}
+                <span class="collection-copies" aria-label={`${copies} chosen`}>×{copies}</span>
+              {/if}
+              {#if row.manaCost}
+                <span class="pick-cost"><ManaCost cost={row.manaCost} size={14} /></span>
+              {/if}
+              <span class="collection-type">{row.typeLine}</span>
+            </button>
+            {#if collectionRepeats && copies > 0}
+              <!-- An "any number" pick takes a name as often as it is
+                   clicked; this takes one copy back. -->
+              <button
+                type="button"
+                class="type-pick collection-less"
+                aria-label={`take one ${row.name} back`}
+                onclick={() => (collectionPicked = unpickOneCollection(collectionPicked, row.name))}
+              >
+                −
+              </button>
+            {/if}
+          </div>
+        {:else}
+          <p class="prompt-hint">
+            {collectionQuery.trim().length >= COLLECTION_MIN_QUERY
+              ? `No card that fits matches “${collectionQuery.trim()}”.`
+              : "Type at least two letters to search."}
+          </p>
         {/each}
       </div>
     {:else if isCardNamePick}
@@ -2821,6 +2992,16 @@
           {:else if active.choose_destination === "sacrifice"}
             <!-- #3664: an "each player sacrifices" edict (CR 101.4). -->
             The permanents you pick are sacrificed once every player has chosen, all at the same time.
+          {:else if active.choose_destination === "cast_free_outside"}
+            <!-- #3955: Spawnsire of Ulamog's {20}. -->
+            These are the cards you own outside the game: your sideboard. Each one you pick can be cast
+            from your sideboard without paying its mana cost, until you next pass priority; the ones you
+            leave stay outside the game.
+          {:else if active.choose_destination === "play_outside"}
+            <!-- #3955: Wish. -->
+            These are the cards you own outside the game: your sideboard. The one you pick can be played
+            from your sideboard until the end of this turn, for its own cost; if you don't play it, it
+            stays outside the game.
           {:else if active.choose_destination === "outside"}
             <!-- ADR 0191: a pick over the cards your deck owns outside the game. -->
             These are the cards you own outside the game: your sideboard. Only you can see them, and the
@@ -3299,6 +3480,46 @@
   .type-pick:hover,
   .type-pick:focus-visible {
     background: color-mix(in srgb, var(--overlay-ink) 16%, transparent);
+  }
+  /* ADR 0198: a row of the outside-the-game picker is a card, so it is a
+     full-width row with its cost and type line, not a pill. */
+  .collection-item {
+    display: flex;
+    gap: 6px;
+    align-items: stretch;
+  }
+  .collection-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    border-radius: 8px;
+    text-align: left;
+  }
+  .collection-copies {
+    color: var(--accent-strong);
+    font-family: var(--font-mono);
+    font-weight: 700;
+  }
+  .collection-less {
+    flex: 0 0 auto;
+    border-radius: 8px;
+    padding: 0 12px;
+  }
+  .collection-row.picked {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+  .collection-name {
+    font-weight: 600;
+  }
+  .collection-type {
+    margin-left: auto;
+    color: var(--fg-muted);
+    font-size: 12px;
+  }
+  .collection-picked {
+    margin: 6px 0 0;
   }
   .order-label {
     display: flex;

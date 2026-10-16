@@ -15,6 +15,12 @@ export interface OpeningRollWinner {
   result?: number;
   /** The seat chosen to take the first turn, when it is not the winner's. */
   chosen?: { seat: number; name: string };
+  /**
+   * Set when this game began as a restart (CR 727.1a, #3856): the seat
+   * is the player who restarted it, and `card` the card that did it
+   * (Karn Liberated), when the log names one.
+   */
+  restarted?: { card?: string };
 }
 
 // openingRollWinner reads the durable public log rather than transient UI
@@ -28,6 +34,15 @@ export interface OpeningRollWinner {
 export function openingRollWinner(view: StartingView | null): OpeningRollWinner | null {
   if (!view || view.opening_roll) return null;
   const nameOf = (seat: number) => view.seats.find((s) => s.seat === seat)?.name;
+
+  // CR 727.1a (#3856): a restarted game has no opening roll; the player
+  // who restarted it goes first, and the log begins with that line.
+  const restart = (view.log ?? []).find((entry) => entry.kind === "game_restarted");
+  if (restart) {
+    const name = nameOf(restart.seat);
+    if (name === undefined) return null;
+    return { seat: restart.seat, name, restarted: restart.label ? { card: restart.label } : {} };
+  }
 
   let choice: LogEvent | undefined;
   for (const entry of view.log ?? []) {
@@ -69,6 +84,12 @@ export function openingRollWinner(view: StartingView | null): OpeningRollWinner 
 // line: "Carol won the d20 roll with 20 and goes first", or "… and chose
 // Bob to go first" when the winner gave the first turn away.
 export function openingRollText(winner: OpeningRollWinner): string {
+  if (winner.restarted) {
+    const card = winner.restarted.card;
+    return card
+      ? `${winner.name} restarted the game with ${card} and goes first`
+      : `${winner.name} restarted the game and goes first`;
+  }
   const won =
     winner.result === undefined
       ? winner.name

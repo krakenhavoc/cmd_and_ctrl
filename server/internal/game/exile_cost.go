@@ -230,6 +230,30 @@ type ExileCost struct {
 	// in that pile — printed characteristics, because a card in a hand
 	// or a graveyard has no layers applied.
 	Match func(Card) bool
+
+	// CountFromX is "exile X cards from your graveyard" as a spell's
+	// additional cost (Skeletal Scrying, Harvest Pyre, Chill Haunting,
+	// Haunting Misery; #1948, ADR 0189's 2026-10-16 amendment): the
+	// count is the X announced with the cast (CR 601.2b, CR 107.3a), so
+	// N is zero and Count(x) is the number the payment must name. One X
+	// per spell (CR 107.3i): Skeletal Scrying's {X} in its mana cost is
+	// the same number. The largest X a caster may announce is the number
+	// of cards the walk offers (ExileCardsXCeilingForEffect, CR 118.3).
+	// effects.Register allows it only on a cast's mandatory slot, never
+	// on an ability, an optional cost or an either/or branch.
+	CountFromX bool
+}
+
+// Count is how many cards the clause exiles at the announced X: N for
+// a printed count, X itself for CountFromX. Nil-safe.
+func (e *ExileCost) Count(x int) int {
+	if e == nil {
+		return 0
+	}
+	if e.CountFromX {
+		return x
+	}
+	return e.N
 }
 
 // Zone is the pile the clause exiles from: ZoneHand when From is unset,
@@ -288,17 +312,20 @@ func exileCostPile(p *Player, cost *ExileCost) *Zone {
 //
 // CALLER MUST ALREADY HOLD g.mu (read or write).
 func (g *Game) ExileCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *ExileCost) []uuid.UUID {
-	if cost == nil || cost.N <= 0 {
+	if cost == nil || (cost.N <= 0 && !cost.CountFromX) {
 		return nil
 	}
 	pile := exileCostPile(g.playerByIDLocked(playerID), cost)
 	if pile == nil {
 		return nil
 	}
+	// The clause's words read as its source's text says them
+	// (costTextLocked, #3984).
+	text := g.costTextLocked(sourceID)
 	var out []uuid.UUID
 	for i := range pile.Cards {
 		c := pile.Cards[i]
-		if c.InstanceID == sourceID || !cost.Matches(c) {
+		if c.InstanceID == sourceID || !cost.Matches(lendCostText(text, c)) {
 			continue
 		}
 		out = append(out, c.InstanceID)
@@ -356,7 +383,7 @@ func (g *Game) validateExileCardsCostLocked(playerID, sourceID uuid.UUID, cost *
 		if c == nil {
 			return nil, ErrCardNotFound
 		}
-		if !cost.Matches(*c) {
+		if !cost.Matches(lendCostText(g.costTextLocked(sourceID), *c)) {
 			return nil, ErrInvalidParam
 		}
 	}

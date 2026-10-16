@@ -44,9 +44,6 @@ var knownOracleMismatches = map[string]string{
 	"Tidal Control | cost not printed | pay 2 life":                      "one choice of cost written as two rows; this is the life row",
 	"Tidal Control | cost not printed | {2}":                             "one choice of cost written as two rows; this is the mana row",
 	"Tidal Control | printed ability not registered | pay 2 life or {2}": "registered as two rows, one per cost",
-
-	// No cost shape yet (#1381 lists them).
-	"Transmutation Font | printed ability not registered | {3}, {t}, sacrifice three artifact tokens with different names": "\"with different names\" has no sacrifice predicate",
 }
 
 func loadOracleFixture(t *testing.T) map[string]OracleCard {

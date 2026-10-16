@@ -59,9 +59,13 @@ func StateKeyFor(label string) string { return "state:" + label }
 // game.PermanentQuery, the one the serpents' attack clause reads
 // (QuerySubtype("Island")), so the two halves of a Sea Serpent ask one
 // question the same way.
+//
+// Every query below names its words through the source's text
+// (PermanentQuery.ThroughTextOf, CR 612.2): Seasinger's "no Islands"
+// under a Magical Hack is "no Forests".
 func WhenYouControlNo(q game.PermanentQuery, label string, effect Effect) game.TriggeredAbility {
-	return WhenState(label, func(g *game.Game, _ *game.Card, controller uuid.UUID) bool {
-		return !g.ControlsMatchingForEffect(controller, uuid.Nil, q)
+	return WhenState(label, func(g *game.Game, source *game.Card, controller uuid.UUID) bool {
+		return !g.ControlsMatchingForEffect(controller, uuid.Nil, q.ThroughTextOf(source))
 	}, effect)
 }
 
@@ -70,7 +74,7 @@ func WhenYouControlNo(q game.PermanentQuery, label string, effect Effect) game.T
 // creatures, Synod Centurion's artifacts.
 func WhenYouControlNoOther(q game.PermanentQuery, label string, effect Effect) game.TriggeredAbility {
 	return WhenState(label, func(g *game.Game, source *game.Card, controller uuid.UUID) bool {
-		return !g.ControlsMatchingForEffect(controller, source.InstanceID, q)
+		return !g.ControlsMatchingForEffect(controller, source.InstanceID, q.ThroughTextOf(source))
 	}, effect)
 }
 
@@ -78,16 +82,16 @@ func WhenYouControlNoOther(q game.PermanentQuery, label string, effect Effect) g
 // battlefield" — anyone's: Task Mage Assembly's creatures, Mana
 // Vortex's lands.
 func WhenThereAreNo(q game.PermanentQuery, label string, effect Effect) game.TriggeredAbility {
-	return WhenState(label, func(g *game.Game, _ *game.Card, _ uuid.UUID) bool {
-		return !g.AnyPermanentMatchingForEffect(q)
+	return WhenState(label, func(g *game.Game, source *game.Card, _ uuid.UUID) bool {
+		return !g.AnyPermanentMatchingForEffect(q.ThroughTextOf(source))
 	}, effect)
 }
 
 // WhenYouControlAtLeast is "When you control N or more <permanents
 // matching q>": Endrek Sahr's seven Thrulls.
 func WhenYouControlAtLeast(n int, q game.PermanentQuery, label string, effect Effect) game.TriggeredAbility {
-	return WhenState(label, func(g *game.Game, _ *game.Card, controller uuid.UUID) bool {
-		return g.CountControlledMatchingForEffect(controller, q) >= n
+	return WhenState(label, func(g *game.Game, source *game.Card, controller uuid.UUID) bool {
+		return g.CountControlledMatchingForEffect(controller, q.ThroughTextOf(source)) >= n
 	}, effect)
 }
 

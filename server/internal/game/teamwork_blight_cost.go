@@ -267,6 +267,11 @@ func (g *Game) TeamworkPayableForEffect(playerID uuid.UUID, n int) bool {
 //
 // Caller must hold g.mu.
 func (g *Game) validateTeamworkLocked(playerID uuid.UUID, plan []costPayment, ids, otherTaps []uuid.UUID) error {
+	// #3868: a mandatory "tap an untapped Vampire you control" owns the
+	// list on this cast; validateCastTapOthersLocked reads it.
+	if planTapOthers(plan) != nil {
+		return nil
+	}
 	n := planTeamwork(plan)
 	if tapN := planTapCreatures(plan); tapN > 0 {
 		return g.validateTapCreaturesLocked(playerID, tapN, ids, otherTaps)

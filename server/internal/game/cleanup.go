@@ -91,6 +91,35 @@ func (g *Game) exitCleanupStepLocked() {
 	g.runStepEntryHooksLocked()
 }
 
+// exitCleanupStepOnAnswerLocked is exitCleanupStepLocked for the two
+// callers that finish a cleanup step from an ANSWER rather than from the
+// step-entry hook: the hand-size discard (DiscardSelection) and the last
+// commander_return "no" (cleanupAfterCommanderReturnLocked).
+//
+// When the exit ends the turn, the next turn's untap and upkeep begin
+// inside it, and the upkeep queues its triggers on PendingTriggers: "at
+// the beginning of your upkeep", and the delayed ones that name it, such
+// as rebound's (#3490). The hook's own callers put them on the stack
+// straight after it (PassPriority's wrap drains, beginNextTurnLocked runs
+// the checks). An answer has no such caller, so before #3490 the new
+// active player got priority in the upkeep over an empty stack, the table
+// passed, and the triggers reached the stack in the draw step. CR 117.5:
+// each time a player would receive priority, state-based actions are
+// performed and then waiting triggers are put on the stack.
+//
+// Only when the cursor has moved. A cleanup step that gave the active
+// player priority (CR 514.3a) has already run the checks, and one still
+// waiting on an answer has given priority to nobody.
+//
+// Caller must hold g.mu.
+func (g *Game) exitCleanupStepOnAnswerLocked() {
+	before := g.Turn
+	g.exitCleanupStepLocked()
+	if g.State == StateActive && g.cursorMovedSince(before) {
+		g.runStateChecksLocked()
+	}
+}
+
 // cleanupGrantsPriorityLocked performs the CR 514.3a check and
 // reports whether the active player gets priority in this cleanup
 // step.

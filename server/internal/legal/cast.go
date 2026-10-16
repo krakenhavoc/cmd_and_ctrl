@@ -131,6 +131,10 @@ func (e *enumerator) castZones(anyGrant bool) []castZone {
 	if !anyGrant {
 		return out
 	}
+	// #3955: the cards this seat owns outside the game, castable only
+	// under a permission (a card's own text opens nothing there). Its
+	// OWN container only: another seat's is not reachable.
+	out = append(out, castZone{p.Sideboard, game.ZoneOutside, "outside", true})
 	for _, other := range g.Seats {
 		if other == nil || other.ID == e.seat {
 			continue
@@ -236,7 +240,7 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 	// empty list anyway — this just declines to build one for every
 	// card in a thirty-card graveyard on every bot decision.
 	switch kind {
-	case game.ZoneGraveyard, game.ZoneExile, game.ZoneLibrary:
+	case game.ZoneGraveyard, game.ZoneExile, game.ZoneLibrary, game.ZoneOutside:
 		// A card's own declaration opens ITS OWNER's zone and nobody
 		// else's: flashback, escape and Gravecrawler all print "your
 		// graveyard" (#1022), and nothing prints a library cast at all
@@ -356,7 +360,11 @@ func (e *enumerator) landPlayMove(card game.Card, kind game.ZoneKind, from strin
 		return
 	}
 	label := "Play " + card.Name
-	if kind != game.ZoneHand {
+	switch kind {
+	case game.ZoneHand:
+	case game.ZoneOutside:
+		label += " from outside the game"
+	default:
 		label += " from " + from
 	}
 	e.add(Move{
@@ -473,7 +481,11 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 					// #3175: a hand-exile cost (the Marches) is one announcement
 					// per count offered, each priced with its own discount.
 					for _, handExile := range e.handExilePayments(card) {
-						e.castMovesPayingOptional(card, from, perm, offer, chosen, to, branch, extra, handExile)
+						// #3961: and a "tap any number of untapped
+						// creatures" cost is one per count offered.
+						for _, tapAny := range e.tapAnyPayments(card) {
+							e.castMovesPayingOptional(card, from, perm, offer, chosen, to, branch, extra, handExile, tapAny)
+						}
 					}
 				}
 			}
@@ -691,7 +703,7 @@ func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.Addition
 // selections of exactly extra+1 modes are built, and the escalate
 // cost's discards and taps are demanded that many times — so a mode
 // count the seat cannot pay is not offered (#2126).
-func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int, giftTo uuid.UUID, branch *int, extra int, handExile []uuid.UUID) {
+func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int, giftTo uuid.UUID, branch *int, extra int, handExile, tapAny []uuid.UUID) {
 	g, p := e.g, e.p
 	// #662: the spell IS its own source (CR 702.16b), so every legal
 	// set below is computed against the card's colour and type. An
@@ -781,6 +793,9 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		Fuse: card.Fused,
 		// #3175: the hand cards this expansion exiles to a March.
 		ExileFromHandIDs: handExile,
+		// #3961: and the creatures it taps to a "tap any number" cost,
+		// whose count Explosive Singularity's discount reads.
+		TeamworkIDs: tapAny,
 	}
 	price, err := e.g.PriceCastForEffect(e.seat, card, announce)
 	if err != nil {
@@ -843,7 +858,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// card; otherwise each (modes, targets) set below is priced on its
 	// own and carries its own X.
 	spend := game.ManaSpendForCastFrom(card, fromZone)
-	perTarget := e.g.CastPriceReadsTargetsForEffect(card)
+	// #3860: and a permanent that adds life to the cost of a spell that
+	// targets it (Terror of the Peaks) makes the price a function of the
+	// targets too, so each set is solved against the life it leaves the
+	// seat -- the same rule, and the same reason, as a mana price that
+	// reads targets.
+	perTarget := e.g.CastPriceReadsTargetsForEffect(card) || e.g.TargetTaxesExistForEffect()
 	// Additional costs (CR 601.2f). Read before the X search because
 	// one of them can PRICE X: Toxic Deluge's "pay X life" is the
 	// whole of its X, and the mana cost it prints has no {X} slot at
@@ -867,6 +887,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	if bx := e.blightXCeiling(addCost); bx != noXCeiling {
 		// #2174: "blight X" is the other non-mana price on X.
 		xLifeCeiling = bx
+	}
+	if ex := e.exileXCeiling(card.InstanceID, addCost); ex != noXCeiling {
+		// #1948: and "exile X cards from your graveyard" — X is what the
+		// graveyard can pay. Skeletal Scrying's {X} in its mana cost is
+		// the same X, so the smaller of the two bounds it.
+		xLifeCeiling = ex
 	}
 	// #2581: and a printed "X can't be greater than <count>" bounds
 	// the same announcement without pricing it (x.go). Only where the
@@ -979,6 +1005,10 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			// permanent's mana value — and offered best first, up to the
 			// cap, among the payments the seat can afford.
 			altCostSets = e.emergePayments(card, offer, pool, cost, fromZone, spend, xFloor)
+		} else if offer.ReducedByTappedPower {
+			// #3931: harmonize's tap is priced per creature as emerge's
+			// sacrifice is (CR 702.180a), and tapping none is legal.
+			altCostSets = e.harmonizePayments(card, offer, pool, cost, fromZone, spend, xFloor)
 		} else if offer.PaymentDefinesX() {
 			// #3175: "a white card with mana value X" — the card is the X
 			// announcement, so each payment carries its own X.
@@ -1020,6 +1050,8 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// every announcement below; the other payments are repriced on their
 	// own when they are offered against it (first.base).
 	altMV := emergeManaValue(g, offer, altCostSets[0])
+	// #3931: and harmonize's, by the tapped creature's power.
+	altPower := harmonizePower(g, offer, altCostSets[0])
 	// #3787: the permission's own "cost {N} less" (Urianger Augurelt), read
 	// off the permission the announcement is made under, as the engine's
 	// pricer reads it off the one the cast claims.
@@ -1054,7 +1086,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	if sacrifice != nil {
 		// Cost, not target — see SacrificeCostCandidatesForEffect,
 		// which also leaves out what can't be sacrificed (#3275).
-		pool := g.SacrificeCostCandidatesForEffect(e.seat, sacrifice)
+		pool := g.SacrificeCostCandidatesForEffect(e.seat, uuid.Nil, sacrifice)
 		if addCost != nil && addCost.SacrificeAll && addCost.Sacrifice == sacrifice {
 			// #2097: "sacrifice all" has one payment, the engine's own
 			// set (empty included). It is named on the move so a policy
@@ -1101,6 +1133,14 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	exileCardIDs, ok := e.exileCardsCastPayment(card.InstanceID, addCost)
 	if !ok {
 		return
+	}
+	// #3868: a mandatory "tap an untapped Vampire you control" names its
+	// permanents on the same list. effects.Register keeps it off a card
+	// with teamwork or escalate taps, so nothing else is on the list.
+	if tapIDs, ok := e.tapCastPayment(card.InstanceID, addCost, tapAny); !ok {
+		return
+	} else if len(tapIDs) > 0 {
+		teamIDs = tapIDs
 	}
 	// CR 702.120a: Collective Effort's taps, one creature per extra mode,
 	// on the same list teamwork's ride.
@@ -1177,8 +1217,10 @@ modeLoop:
 				Controller:            e.seat,
 				FromZone:              fromZone,
 				AltSacrificeManaValue: altMV,
+				AltTappedPower:        altPower,
 				GrantReduction:        grantLess,
 				ExilingFromHand:       len(handExile),
+				TappingToPay:          len(tapAny),
 			})
 			if err != nil {
 				continue
@@ -1262,6 +1304,23 @@ modeLoop:
 			continue
 		}
 		for _, targets := range targetSets {
+			// #3860, CR 601.2f: the life the targets add to the cast.
+			// A seat that can't pay it (CR 119.4, once, of the whole
+			// total) is not offered the set -- a player who can't pay
+			// can't target it -- and the life it does pay is held back
+			// from every other use of the life total: the Phyrexian
+			// symbols, and the "pay X life" ceiling.
+			taxLife := e.g.CastTargetTaxForEffect(e.seat, card, targets)
+			setReserved, setLifeCeiling := lifeReserved, xLifeCeiling
+			if taxLife > 0 {
+				setReserved += taxLife
+				if !e.g.CanPayLifeLocked(e.p, setReserved) {
+					continue
+				}
+				if lc := xCeilingFromCost(addCost, e.p.Life-taxLife); lc < setLifeCeiling {
+					setLifeCeiling = lc
+				}
+			}
 			setX, setLife := x, phyLife
 			setCost, setPrinted := pricedAll, printedAll
 			setDelve, setDelveFull := delveIDs, delveFull
@@ -1276,13 +1335,15 @@ modeLoop:
 					FromZone:              fromZone,
 					Targets:               targets,
 					AltSacrificeManaValue: altMV,
+					AltTappedPower:        altPower,
 					GrantReduction:        grantLess,
 					ExilingFromHand:       len(handExile),
+					TappingToPay:          len(tapAny),
 				})
 				if err != nil {
 					continue
 				}
-				pay, ok := e.solveCast(priced, spend, xFloor, xLifeCeiling, lifeReserved, lifeAllowed, delvePool)
+				pay, ok := e.solveCast(priced, spend, xFloor, setLifeCeiling, setReserved, lifeAllowed, delvePool)
 				if !ok {
 					continue
 				}
@@ -1354,13 +1415,15 @@ modeLoop:
 							Targets:               tgts,
 							Sacrificing:           len(sacs),
 							AltSacrificeManaValue: altMV,
+							AltTappedPower:        altPower,
 							GrantReduction:        grantLess,
 							ExilingFromHand:       len(handExile),
+							TappingToPay:          len(tapAny),
 						})
 						if err != nil {
 							continue
 						}
-						pay, ok := e.solveCast(priced, spend, xFloor, xLifeCeiling, lifeReserved, lifeAllowed, delvePool)
+						pay, ok := e.solveCast(priced, spend, xFloor, setLifeCeiling, setReserved, lifeAllowed, delvePool)
 						if !ok {
 							continue
 						}
@@ -1412,10 +1475,13 @@ modeLoop:
 					// seat can pay — but only where nothing else in the
 					// move is fixed by that X: a target count or a
 					// "mana value X or less" bound, a division, a
-					// sacrifice count, a delve payment sized to it.
+					// sacrifice count, a delve payment sized to it — or
+					// the graveyard cards an "exile X cards" cost names
+					// (#1948), which number exactly the announced X.
 					var xv *MoveValue
+					exileX := addCost != nil && addCost.ExileCards != nil && addCost.ExileCards.CountFromX
 					if (modeCost.XSlots > 0 || (addCost != nil && (addCost.PayLifeX || addCost.BlightX))) &&
-						len(xSteps) == 0 && !xBound && !varSac && dist == nil && len(payDelve) == 0 {
+						len(xSteps) == 0 && !xBound && !varSac && dist == nil && len(payDelve) == 0 && !exileX {
 						xv = openX(xFloor, payX)
 					}
 					queued[si] = append(queued[si], announcedCast{
@@ -1477,7 +1543,7 @@ modeLoop:
 	// must not displace a target set. See castPayment for why this is
 	// the one extra count offered.
 	if (budget > 0 || e.report) && lifeAllowed {
-		if n, reduced, ok := e.allLifePayment(first, spend, lifeReserved); ok {
+		if n, reduced, ok := e.allLifePayment(first, spend, lifeReserved+e.g.CastTargetTaxForEffect(e.seat, card, first.targets)); ok {
 			if budget <= 0 {
 				// ADR 0122 §6.2: offered out of the leftover budget,
 				// and there was none.
@@ -1601,13 +1667,20 @@ func (e *enumerator) castMoveEmitter(
 	idle := e.idleCastHint(card, offer, chosen)
 	modeSpec := game.ModeSpecFor(game.CatalogKey(card))
 	permType := e.permType
+	exilePool := exileCardIDs
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, mana game.ParsedCost, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
+		// #1948: an "exile X cards" cost names exactly the announced X.
+		exileCardIDs := exileCardsForX(paying, exilePool, setX)
 		label := "Cast " + card.Name
 		switch from {
 		case "command":
 			label += " from the command zone"
 		case "graveyard", "exile", "library":
 			label += " from " + from
+		case "outside":
+			// #3955: a model tier reads this line, and "outside" alone
+			// is not a place.
+			label += " from outside the game"
 		}
 		// #2167: which of the card's types a per-type permission spends.
 		if permType != "" {
@@ -1636,6 +1709,13 @@ func (e *enumerator) castMoveEmitter(
 		if phyLife > 0 {
 			label += phyrexianLifeLabel(phyLife)
 		}
+		// #3860: and the life a taxed permanent among the targets
+		// charges, so the move log, a model seat and an MCP client read
+		// what naming it costs.
+		targetTax := g.CastTargetTaxForEffect(e.seat, card, targets)
+		if targetTax > 0 {
+			label += fmt.Sprintf(" paying %d life for what it targets", targetTax)
+		}
 		// #3402: the creature an exile-a-permanent cost gives up, named in
 		// the move so a bot trace, a model seat and an MCP client read it.
 		label += exileLabel(g, exileIDs)
@@ -1643,6 +1723,11 @@ func (e *enumerator) castMoveEmitter(
 		label += exileLabel(g, handExile)
 		// #3536: and the graveyard cards an exile-cards cost gives up.
 		label += exileLabel(g, exileCardIDs)
+		// #3868: and the permanents a mandatory tap cost taps — a Vampire
+		// tapped for New Blood is a blocker the seat gives up.
+		if paying != nil && !paying.TapOthers.Empty() {
+			label += tapLabel(g, teamIDs)
+		}
 		// ADR 0100: the delved and the undelved casts are otherwise the
 		// same line in the move log.
 		if len(delve) > 0 {
@@ -1686,8 +1771,8 @@ func (e *enumerator) castMoveEmitter(
 			// ADR 0136 §2: and the mana it charges in all, which the
 			// printed cost on the CardView is not (castManaCost), so a
 			// cast always carries a Cost.
-			Cost: withCastMana(withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying), 0), phyLife),
-				game.CastEnergyOwed(offer, nil, optional, chosen)), castManaCost(mana, setX)),
+			Cost: withTargetTax(withCastMana(withEnergy(withPhyrexianLife(moveCost(offerLife(offer)+branchLife(paying), 0), phyLife),
+				game.CastEnergyOwed(offer, nil, optional, chosen)), castManaCost(mana, setX)), targetTax),
 			// A modal spell may have a counter mode and a burn mode
 			// in the same expansion (Cryptic Command); the flag is
 			// per ANNOUNCEMENT, not per card, so only the modes that

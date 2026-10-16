@@ -40,6 +40,7 @@ func g2OtherCreaturesYouControlOfColor(color string) func(target *game.Card, g *
 	return func(target *game.Card, _ *game.Game, source *game.Card) bool {
 		return target.IsCreature() && target.Controller == source.Controller &&
 			target.InstanceID != source.InstanceID &&
-			slices.Contains(target.EffectiveColors(), color)
+			// The colour is a word of the Liege's text (CR 612.2, #3872).
+			slices.Contains(target.EffectiveColors(), source.TextColor(color))
 	}
 }

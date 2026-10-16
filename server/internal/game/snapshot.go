@@ -354,6 +354,14 @@ type GameSnapshot struct {
 	// with nobody on priority until the next AdvanceStep, which is
 	// weaker than the card and never stronger.
 	TurnEndPending bool `json:"turnEndPending,omitempty"`
+	// RestartPending and RestartTail are CR 727's deferred halves
+	// (#3856, ADR 0201): a restart waiting on its resolution's boundary,
+	// and the new game's "then" waiting on the mulligans. Additive in
+	// v9. An older binary that drops the tail begins the first turn
+	// without the exempted cards, which stay in exile: weaker than the
+	// card, never stronger.
+	RestartPending *GameRestart `json:"restartPending,omitempty"`
+	RestartTail    *GameRestart `json:"restartTail,omitempty"`
 
 	// StackMeta is a SLICE, not a map: map iteration order is
 	// unspecified and the stack is ordered by Seq anyway. Sorted on
@@ -669,6 +677,14 @@ type playerSnapshot struct {
 	// binary drops it, and the player loses the cards an effect could
 	// have brought in: weaker than printed, never stronger.
 	Sideboard *zoneSnapshot `json:"sideboard,omitempty"`
+	// HasSideboard is Player.HasSideboard (ADR 0198 §2): the deck seated
+	// a sideboard, so it is the pool even once it is empty. Additive
+	// within v9. A file without the key restores it from the sideboard
+	// key's presence, which is exact for every file whose sideboard
+	// still held a card; a file written before ADR 0198 whose sideboard
+	// had been emptied restores as a database pool, the one transitional
+	// case, and only for a game in flight across the deploy.
+	HasSideboard bool `json:"hasSideboard,omitempty"`
 	// CommanderDamage is keyed by commander card instance ID since
 	// S25 (#77). A snapshot written before that rekey restores with
 	// player-ID keys, which read as damage from commanders that do
@@ -835,14 +851,21 @@ type cardSnapshot struct {
 	NeedsEffect      bool           `json:"needsEffect"`
 	// PrintsManaAbility is Card.PrintsManaAbility (#2258). Additive;
 	// absent means false, which is what every older file says.
-	PrintsManaAbility bool                `json:"printsManaAbility,omitempty"`
-	Owner             uuid.UUID           `json:"owner"`
-	Controller        uuid.UUID           `json:"controller"`
-	Tapped            bool                `json:"tapped"`
-	NextUntapSkips    []untapSkipSnapshot `json:"nextUntapSkips,omitempty"`
-	BattleX           float64             `json:"battleX"`
-	BattleY           float64             `json:"battleY"`
-	Counters          map[string]int      `json:"counters,omitempty"`
+	PrintsManaAbility bool `json:"printsManaAbility,omitempty"`
+	// PrintsTapAbility is Card.PrintsTapAbility (#3860). Additive;
+	// absent means false, which is what every older file says.
+	PrintsTapAbility bool `json:"printsTapAbility,omitempty"`
+	// ManaAbilityText is Card.ManaAbilityText (#3943). Additive; absent
+	// means PrintedUnknown, which is what every older file says, and
+	// HasPrintedManaAbility then asks the catalog as it always did.
+	ManaAbilityText PrintedFact         `json:"manaAbilityText,omitempty"`
+	Owner           uuid.UUID           `json:"owner"`
+	Controller      uuid.UUID           `json:"controller"`
+	Tapped          bool                `json:"tapped"`
+	NextUntapSkips  []untapSkipSnapshot `json:"nextUntapSkips,omitempty"`
+	BattleX         float64             `json:"battleX"`
+	BattleY         float64             `json:"battleY"`
+	Counters        map[string]int      `json:"counters,omitempty"`
 	// Flipped is Card.Flipped (ADR 0151, CR 110.5): the flipped status.
 	// Additive within v8; absent means unflipped, which is true of every
 	// file written before flip cards could flip.
@@ -850,7 +873,10 @@ type cardSnapshot struct {
 	// CounterStampedAt is Card.CounterStampedAt (ADR 0101): the CR
 	// 613.7c timestamp of each keyword counter kind. Additive within v7;
 	// an older file has none, and an unstamped keyword counter is
-	// ordered at its permanent's own timestamp.
+	// ordered at its permanent's own timestamp. #3862 adds keys of a
+	// second shape, "<kind>>=<n>" (counter_thresholds.go), to the same
+	// map: additive, an older binary never asks for them, and an
+	// unstamped threshold sorts at the permanent's own timestamp.
 	CounterStampedAt map[string]int64 `json:"counterStampedAt,omitempty"`
 	IsCommander      bool             `json:"isCommander"`
 	// IsCompanion is Card.IsCompanion (ADR 0172 §4). Additive within
@@ -1416,9 +1442,14 @@ type stackItemSnapshot struct {
 	// restore that lost it would send the marked spell to the
 	// graveyard as it resolves.
 	ExileWithCounter string `json:"exileWithCounter,omitempty"`
-	Seq              uint64 `json:"seq"`
-	Ordered          bool   `json:"ordered"`
-	Commutes         bool   `json:"commutes,omitempty"` // #1511
+	// ExileInsteadOfGraveyard (#3863) is Torrential Gearhulk's and
+	// Emet-Selch's "if that spell would be put into your graveyard,
+	// exile it instead". Carried: a restore that lost it would let the
+	// spell reach the graveyard.
+	ExileInsteadOfGraveyard bool   `json:"exileInsteadOfGraveyard,omitempty"`
+	Seq                     uint64 `json:"seq"`
+	Ordered                 bool   `json:"ordered"`
+	Commutes                bool   `json:"commutes,omitempty"` // #1511
 
 	// TargetsAnnouncePending is StackItem.TargetsAnnouncePending
 	// (#1539): a queued trigger whose targets are chosen and whose
@@ -1572,6 +1603,8 @@ type pendingChoiceSnapshot struct {
 	ManaDifferent        int                    `json:"manaDifferent,omitempty"`
 	ManaChosen           []string               `json:"manaChosen,omitempty"`
 	ManaLabel            string                 `json:"manaLabel,omitempty"`
+	ManaSettled          []string               `json:"manaSettled,omitempty"`
+	ManaPicksLeft        []ManaPickSlot         `json:"manaPicksLeft,omitempty"`
 	ManaTapped           bool                   `json:"manaTapped,omitempty"`
 	ReplacementEffectIDs []ReplacementEffectID  `json:"replacementEffectIds,omitempty"`
 	DamageAssignment     *DamageAssignmentFrame `json:"damageAssignment,omitempty"`
@@ -1661,10 +1694,18 @@ type pendingChoiceSnapshot struct {
 	// resolving item whose CR 603.5 "you may" a trigger_prompt asks, and
 	// what a "yes" trades for. Plain data: the item rides the parked
 	// resolution tail, so the prompt is a restore point.
-	OptionalItem     uuid.UUID   `json:"optionalItem,omitempty"`
-	OptionalTradeFor uuid.UUID   `json:"optionalTradeFor,omitempty"`
-	ChooseCards      []uuid.UUID `json:"chooseCards,omitempty"`
-	ChooseMin        int         `json:"chooseMin,omitempty"`
+	OptionalItem     uuid.UUID `json:"optionalItem,omitempty"`
+	OptionalTradeFor uuid.UUID `json:"optionalTradeFor,omitempty"`
+	// NoGain is PendingChoice's (ADR 0197 §10, #2731): the row's "yes
+	// would not help" warning, computed as the question was asked.
+	NoGain      bool        `json:"noGain,omitempty"`
+	ChooseCards []uuid.UUID `json:"chooseCards,omitempty"`
+	ChooseMin   int         `json:"chooseMin,omitempty"`
+	// ADR 0198: a collection pick's suggested card names. Carried with
+	// the prompt they describe, as ChooseCards is, although the prompt's
+	// continuation keeps a game with one open from being restorable
+	// until it is answered.
+	CollectionSuggestions []string `json:"collectionSuggestions,omitempty"`
 	// #2525: a proliferate's seats on offer and the engine's suggested
 	// answer. Carried for ChooseCards' reason — the prompt is its
 	// options — even though the prompt's continuation frame keeps a
@@ -2013,6 +2054,8 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		ActiveSeatLeftPending: g.ActiveSeatLeftPending,
 		TurnChangePending:     g.TurnChangePending,
 		TurnEndPending:        g.TurnEndPending,
+		RestartPending:        cloneGameRestart(g.RestartPending),
+		RestartTail:           cloneGameRestart(g.RestartTail),
 		turnSeqPresent:        true,
 	}
 	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
@@ -2330,6 +2373,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		DurationCopyBase:         copyPrintedValues(c.DurationCopyBase),
 		NeedsEffect:              c.NeedsEffect,
 		PrintsManaAbility:        c.PrintsManaAbility,
+		PrintsTapAbility:         c.PrintsTapAbility,
+		ManaAbilityText:          c.ManaAbilityText,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
@@ -2452,6 +2497,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Emblems:               snapshotZone(p.Emblems, cen),
 		Companion:             snapshotCompanionZone(p.Companion, cen),
 		Sideboard:             snapshotCompanionZone(p.Sideboard, cen),
+		HasSideboard:          p.HasSideboard,
 		CommanderDamage:       copyIntMap(p.CommanderDamage),
 		TurnsBegun:            p.TurnsBegun,
 		UpkeepsBegun:          p.UpkeepsBegun,
@@ -2548,14 +2594,16 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		ExileWithCounter: s.ExileWithCounter,
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
-		Commutes:         s.Commutes,
-		Paid:             clonePaidCost(s.Paid),
-		HasEffect:        s.Effect != nil,
-		HasTargetSpec:    s.targetSpec != nil,
-		HasModeSpec:      s.modeSpec != nil,
-		OracleID:         oracleID,
-		Body:             s.Body,
-		Params:           effectParamsOrNil(s.Params),
+		// #3863
+		ExileInsteadOfGraveyard: s.ExileInsteadOfGraveyard,
+		Commutes:                s.Commutes,
+		Paid:                    clonePaidCost(s.Paid),
+		HasEffect:               s.Effect != nil,
+		HasTargetSpec:           s.targetSpec != nil,
+		HasModeSpec:             s.modeSpec != nil,
+		OracleID:                oracleID,
+		Body:                    s.Body,
+		Params:                  effectParamsOrNil(s.Params),
 	}
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
 	out.PromisedCounters = copyPromisedCounters(s.PromisedCounters) // #1852
@@ -2704,100 +2752,104 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 
 func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingChoiceSnapshot {
 	out := pendingChoiceSnapshot{
-		ID:                   c.ID,
-		Kind:                 c.Kind,
-		Chooser:              c.Chooser,
-		FromPlayer:           c.FromPlayer,
-		Count:                c.Count,
-		Source:               c.Source,
-		Reason:               c.Reason,
-		CoinAllowStop:        c.CoinAllowStop,
-		CoinCount:            c.CoinCount,
-		CoinMaxUsefulWins:    c.CoinMaxUsefulWins,
-		CoinWins:             c.CoinWins,
-		ColorOptions:         copyStrings(c.ColorOptions),
-		ColorPurpose:         c.ColorPurpose,
-		ControlPurpose:       c.ControlPurpose,
-		ManaRestrictions:     copyStrings(c.ManaRestrictions),
-		ManaRiders:           copyManaRiders(c.ManaRiders),
-		ManaSourceKinds:      c.ManaSourceKinds,
-		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
-		ManaDifferent:        c.ManaDifferent,
-		ManaChosen:           copyStrings(c.ManaChosen),
-		ManaLabel:            c.ManaLabel,
-		ManaTapped:           c.ManaTapped,
-		ReplacementEffectIDs: copyReplacementEffectIDs(c.ReplacementEffectIDs),
-		NoLegalTarget:        c.NoLegalTarget,
-		PickTargetPlayers:    copyUUIDs(c.PickTargetPlayers),
-		PickTargetCards:      copyUUIDs(c.PickTargetCards),
-		PickTargetMin:        c.PickTargetMin,
-		PickTargetMax:        c.PickTargetMax,
-		RetargetItem:         c.RetargetItem,
-		RetargetPolicy:       c.RetargetPolicy,
-		RetargetOptional:     c.RetargetOptional,
-		RetargetSlot:         c.RetargetSlot,
-		RetargetReason:       c.RetargetReason,
-		RetargetNext:         append([]TargetRef(nil), c.RetargetNext...),
-		RetargetTo:           c.RetargetTo,
-		ModeOptionIndex:      copyInts(c.ModeOptionIndex),
-		ModeOptionLabel:      copyStrings(c.ModeOptionLabel),
-		ModeMin:              c.ModeMin,
-		ModeMax:              c.ModeMax,
-		ModeRepeatable:       c.ModeRepeatable,
-		ModeUsedIndex:        copyInts(c.ModeUsedIndex),
-		ModeUsedLabel:        copyStrings(c.ModeUsedLabel),
-		ModeNotChosen:        c.ModeNotChosen,
-		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
-		DiscardOptions:       copyUUIDs(c.DiscardOptions),
-		DiscardLabel:         c.DiscardLabel,
-		PickDestination:      c.PickDestination,
-		PickOptional:         c.PickOptional,
-		PickFromGraveyard:    c.PickFromGraveyard,
-		PickThen:             c.PickThen,
-		PickMeasures:         copyInts(c.PickMeasures),
-		PickExiledWith:       pickExiledWithSnapshot(c.PickExiledWith),
-		CopyOptions:          copyUUIDs(c.CopyOptions),
-		ExchangesText:        c.ExchangesText,
-		ExcludedTypes:        copyStrings(c.ExcludedTypes),
-		ScryCards:            copyUUIDs(c.ScryCards),
-		LibraryPlacement:     c.LibraryPlacement,
-		LibraryTopCount:      c.LibraryTopCount,
-		LibraryTopDepth:      c.LibraryTopDepth,
-		TriggerOrderIDs:      copyUUIDs(c.TriggerOrderIDs),
-		TriggerOrderWhy:      c.TriggerOrderWhy,
-		PayCost:              c.PayCost,
-		SearchCards:          copyUUIDs(c.SearchCards),
-		SearchGraveyardCards: copyUUIDs(c.SearchGraveyardCards),
-		SearchMax:            c.SearchMax,
-		SearchMin:            c.SearchMin,
-		MayCastCard:          c.MayCastCard,
-		MayCastKeyword:       c.MayCastKeyword,
-		AcceptLabel:          c.AcceptLabel,
-		DeclineLabel:         c.DeclineLabel,
-		LifeCost:             c.LifeCost,
-		OwedInStep:           c.OwedInStep,
-		GuardsStackItem:      c.GuardsStackItem,
-		OptionalItem:         c.OptionalItem,
-		OptionalTradeFor:     c.OptionalTradeFor,
-		ChooseCards:          copyUUIDs(c.ChooseCards),
-		ChoosePlayers:        copyUUIDs(c.ChoosePlayers),
-		ChooseSuggested:      copyUUIDs(c.ChooseSuggested),
-		ChooseDestination:    c.ChooseDestination,
-		ChooseMin:            c.ChooseMin,
-		ChooseMax:            c.ChooseMax,
-		PickOptions:          cloneChoiceOptions(c.PickOptions),
-		OptionCarry:          copyUUIDs(c.OptionCarry),
-		CouncilVote:          cloneCouncilVote(c.CouncilVote),
-		TurnSkipOrder:        cloneTurnSkipOrder(c.TurnSkipOrder),
-		AnyPlayerOffer:       cloneAnyPlayerOffer(c.AnyPlayerOffer),
-		LoopShortcutKey:      c.LoopShortcutKey,
-		LoopShortcutCount:    c.LoopShortcutCount,
-		LoopShortcutRepeat:   c.LoopShortcutRepeat,
-		MidResolution:        c.midResolution,
-		AutoAnswerKey:        c.AutoAnswerKey,
-		AutoAnswerCard:       c.AutoAnswerCard,
-		AutoAnswerPrompt:     c.AutoAnswerPrompt,
-		AskedByHand:          c.AskedByHand,
+		ID:                    c.ID,
+		Kind:                  c.Kind,
+		Chooser:               c.Chooser,
+		FromPlayer:            c.FromPlayer,
+		Count:                 c.Count,
+		Source:                c.Source,
+		Reason:                c.Reason,
+		CoinAllowStop:         c.CoinAllowStop,
+		CoinCount:             c.CoinCount,
+		CoinMaxUsefulWins:     c.CoinMaxUsefulWins,
+		CoinWins:              c.CoinWins,
+		ColorOptions:          copyStrings(c.ColorOptions),
+		ColorPurpose:          c.ColorPurpose,
+		ControlPurpose:        c.ControlPurpose,
+		ManaRestrictions:      copyStrings(c.ManaRestrictions),
+		ManaRiders:            copyManaRiders(c.ManaRiders),
+		ManaSourceKinds:       c.ManaSourceKinds,
+		ManaAmounts:           copyManaAmounts(c.ManaAmounts),
+		ManaDifferent:         c.ManaDifferent,
+		ManaChosen:            copyStrings(c.ManaChosen),
+		ManaLabel:             c.ManaLabel,
+		ManaSettled:           copyStrings(c.ManaSettled),
+		ManaPicksLeft:         copyManaPickSlots(c.ManaPicksLeft),
+		ManaTapped:            c.ManaTapped,
+		ReplacementEffectIDs:  copyReplacementEffectIDs(c.ReplacementEffectIDs),
+		NoLegalTarget:         c.NoLegalTarget,
+		PickTargetPlayers:     copyUUIDs(c.PickTargetPlayers),
+		PickTargetCards:       copyUUIDs(c.PickTargetCards),
+		PickTargetMin:         c.PickTargetMin,
+		PickTargetMax:         c.PickTargetMax,
+		RetargetItem:          c.RetargetItem,
+		RetargetPolicy:        c.RetargetPolicy,
+		RetargetOptional:      c.RetargetOptional,
+		RetargetSlot:          c.RetargetSlot,
+		RetargetReason:        c.RetargetReason,
+		RetargetNext:          append([]TargetRef(nil), c.RetargetNext...),
+		RetargetTo:            c.RetargetTo,
+		ModeOptionIndex:       copyInts(c.ModeOptionIndex),
+		ModeOptionLabel:       copyStrings(c.ModeOptionLabel),
+		ModeMin:               c.ModeMin,
+		ModeMax:               c.ModeMax,
+		ModeRepeatable:        c.ModeRepeatable,
+		ModeUsedIndex:         copyInts(c.ModeUsedIndex),
+		ModeUsedLabel:         copyStrings(c.ModeUsedLabel),
+		ModeNotChosen:         c.ModeNotChosen,
+		SacrificeOptions:      copyUUIDs(c.SacrificeOptions),
+		DiscardOptions:        copyUUIDs(c.DiscardOptions),
+		DiscardLabel:          c.DiscardLabel,
+		PickDestination:       c.PickDestination,
+		PickOptional:          c.PickOptional,
+		PickFromGraveyard:     c.PickFromGraveyard,
+		PickThen:              c.PickThen,
+		PickMeasures:          copyInts(c.PickMeasures),
+		PickExiledWith:        pickExiledWithSnapshot(c.PickExiledWith),
+		CopyOptions:           copyUUIDs(c.CopyOptions),
+		ExchangesText:         c.ExchangesText,
+		ExcludedTypes:         copyStrings(c.ExcludedTypes),
+		ScryCards:             copyUUIDs(c.ScryCards),
+		LibraryPlacement:      c.LibraryPlacement,
+		LibraryTopCount:       c.LibraryTopCount,
+		LibraryTopDepth:       c.LibraryTopDepth,
+		TriggerOrderIDs:       copyUUIDs(c.TriggerOrderIDs),
+		TriggerOrderWhy:       c.TriggerOrderWhy,
+		PayCost:               c.PayCost,
+		SearchCards:           copyUUIDs(c.SearchCards),
+		SearchGraveyardCards:  copyUUIDs(c.SearchGraveyardCards),
+		SearchMax:             c.SearchMax,
+		SearchMin:             c.SearchMin,
+		MayCastCard:           c.MayCastCard,
+		MayCastKeyword:        c.MayCastKeyword,
+		AcceptLabel:           c.AcceptLabel,
+		DeclineLabel:          c.DeclineLabel,
+		LifeCost:              c.LifeCost,
+		OwedInStep:            c.OwedInStep,
+		GuardsStackItem:       c.GuardsStackItem,
+		OptionalItem:          c.OptionalItem,
+		OptionalTradeFor:      c.OptionalTradeFor,
+		NoGain:                c.NoGain,
+		ChooseCards:           copyUUIDs(c.ChooseCards),
+		ChoosePlayers:         copyUUIDs(c.ChoosePlayers),
+		ChooseSuggested:       copyUUIDs(c.ChooseSuggested),
+		ChooseDestination:     c.ChooseDestination,
+		ChooseMin:             c.ChooseMin,
+		CollectionSuggestions: copyStrings(c.CollectionSuggestions),
+		ChooseMax:             c.ChooseMax,
+		PickOptions:           cloneChoiceOptions(c.PickOptions),
+		OptionCarry:           copyUUIDs(c.OptionCarry),
+		CouncilVote:           cloneCouncilVote(c.CouncilVote),
+		TurnSkipOrder:         cloneTurnSkipOrder(c.TurnSkipOrder),
+		AnyPlayerOffer:        cloneAnyPlayerOffer(c.AnyPlayerOffer),
+		LoopShortcutKey:       c.LoopShortcutKey,
+		LoopShortcutCount:     c.LoopShortcutCount,
+		LoopShortcutRepeat:    c.LoopShortcutRepeat,
+		MidResolution:         c.midResolution,
+		AutoAnswerKey:         c.AutoAnswerKey,
+		AutoAnswerCard:        c.AutoAnswerCard,
+		AutoAnswerPrompt:      c.AutoAnswerPrompt,
+		AskedByHand:           c.AskedByHand,
 	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
@@ -2971,6 +3023,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.ActiveSeatLeftPending = s.ActiveSeatLeftPending
 	g.TurnChangePending = s.TurnChangePending
 	g.TurnEndPending = s.TurnEndPending
+	g.RestartPending = cloneGameRestart(s.RestartPending)
+	g.RestartTail = cloneGameRestart(s.RestartTail)
 	g.eventSeq = s.EventSeq
 	g.eventBatch = s.EventBatch
 	g.resolutionOpen = s.ResolutionOpen
@@ -3248,6 +3302,8 @@ func restoreCard(c *cardSnapshot) Card {
 		DurationCopyBase:         copyPrintedValues(c.DurationCopyBase),
 		NeedsEffect:              c.NeedsEffect,
 		PrintsManaAbility:        c.PrintsManaAbility,
+		PrintsTapAbility:         c.PrintsTapAbility,
+		ManaAbilityText:          c.ManaAbilityText,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
@@ -3402,6 +3458,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Emblems:            restoreZone(p.Emblems, ZoneCommand),
 		Companion:          restoreCompanionZone(p.Companion),
 		Sideboard:          restoreCompanionZone(p.Sideboard),
+		HasSideboard:       p.HasSideboard || p.Sideboard != nil,
 		TurnsBegun:         p.TurnsBegun,
 		UpkeepsBegun:       p.UpkeepsBegun,
 		EndStepTurn:        p.EndStepTurn,
@@ -3513,10 +3570,12 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		ExileWithCounter: s.ExileWithCounter,
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
-		Commutes:         s.Commutes,
-		Paid:             clonePaidCost(s.Paid),
-		Body:             s.Body,
-		Params:           effectParamsValue(s.Params),
+		// #3863
+		ExileInsteadOfGraveyard: s.ExileInsteadOfGraveyard,
+		Commutes:                s.Commutes,
+		Paid:                    clonePaidCost(s.Paid),
+		Body:                    s.Body,
+		Params:                  effectParamsValue(s.Params),
 		// Effect stays nil unless the item is keyed. A SPELL does not
 		// need one — resolution dispatches through EffectResolver by
 		// oracle ID — but an ability does, which is why a stack item
@@ -3604,100 +3663,104 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 
 func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 	out := &PendingChoice{
-		ID:                   c.ID,
-		Kind:                 c.Kind,
-		Chooser:              c.Chooser,
-		FromPlayer:           c.FromPlayer,
-		Count:                c.Count,
-		Source:               c.Source,
-		Reason:               c.Reason,
-		CoinAllowStop:        c.CoinAllowStop,
-		CoinCount:            c.CoinCount,
-		CoinMaxUsefulWins:    c.CoinMaxUsefulWins,
-		CoinWins:             c.CoinWins,
-		ColorOptions:         copyStrings(c.ColorOptions),
-		ColorPurpose:         c.ColorPurpose,
-		ControlPurpose:       c.ControlPurpose,
-		ManaRestrictions:     copyStrings(c.ManaRestrictions),
-		ManaRiders:           copyManaRiders(c.ManaRiders),
-		ManaSourceKinds:      c.ManaSourceKinds,
-		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
-		ManaDifferent:        c.ManaDifferent,
-		ManaChosen:           copyStrings(c.ManaChosen),
-		ManaLabel:            c.ManaLabel,
-		ManaTapped:           c.ManaTapped,
-		ReplacementEffectIDs: copyReplacementEffectIDs(c.ReplacementEffectIDs),
-		NoLegalTarget:        c.NoLegalTarget,
-		PickTargetPlayers:    copyUUIDs(c.PickTargetPlayers),
-		PickTargetCards:      copyUUIDs(c.PickTargetCards),
-		PickTargetMin:        c.PickTargetMin,
-		PickTargetMax:        c.PickTargetMax,
-		RetargetItem:         c.RetargetItem,
-		RetargetPolicy:       c.RetargetPolicy,
-		RetargetOptional:     c.RetargetOptional,
-		RetargetSlot:         c.RetargetSlot,
-		RetargetReason:       c.RetargetReason,
-		RetargetNext:         append([]TargetRef(nil), c.RetargetNext...),
-		RetargetTo:           c.RetargetTo,
-		ModeOptionIndex:      copyInts(c.ModeOptionIndex),
-		ModeOptionLabel:      copyStrings(c.ModeOptionLabel),
-		ModeMin:              c.ModeMin,
-		ModeMax:              c.ModeMax,
-		ModeRepeatable:       c.ModeRepeatable,
-		ModeUsedIndex:        copyInts(c.ModeUsedIndex),
-		ModeUsedLabel:        copyStrings(c.ModeUsedLabel),
-		ModeNotChosen:        c.ModeNotChosen,
-		SacrificeOptions:     copyUUIDs(c.SacrificeOptions),
-		DiscardOptions:       copyUUIDs(c.DiscardOptions),
-		DiscardLabel:         c.DiscardLabel,
-		PickDestination:      c.PickDestination,
-		PickOptional:         c.PickOptional,
-		PickFromGraveyard:    c.PickFromGraveyard,
-		PickThen:             c.PickThen,
-		PickMeasures:         copyInts(c.PickMeasures),
-		PickExiledWith:       pickExiledWithRestored(c.PickExiledWith),
-		CopyOptions:          copyUUIDs(c.CopyOptions),
-		ExchangesText:        c.ExchangesText,
-		ExcludedTypes:        copyStrings(c.ExcludedTypes),
-		ScryCards:            copyUUIDs(c.ScryCards),
-		LibraryPlacement:     c.LibraryPlacement,
-		LibraryTopCount:      c.LibraryTopCount,
-		LibraryTopDepth:      c.LibraryTopDepth,
-		TriggerOrderIDs:      copyUUIDs(c.TriggerOrderIDs),
-		TriggerOrderWhy:      c.TriggerOrderWhy,
-		PayCost:              c.PayCost,
-		SearchCards:          copyUUIDs(c.SearchCards),
-		SearchGraveyardCards: copyUUIDs(c.SearchGraveyardCards),
-		SearchMax:            c.SearchMax,
-		SearchMin:            c.SearchMin,
-		MayCastCard:          c.MayCastCard,
-		MayCastKeyword:       c.MayCastKeyword,
-		AcceptLabel:          c.AcceptLabel,
-		DeclineLabel:         c.DeclineLabel,
-		LifeCost:             c.LifeCost,
-		OwedInStep:           c.OwedInStep,
-		GuardsStackItem:      c.GuardsStackItem,
-		OptionalItem:         c.OptionalItem,
-		OptionalTradeFor:     c.OptionalTradeFor,
-		ChooseCards:          copyUUIDs(c.ChooseCards),
-		ChoosePlayers:        copyUUIDs(c.ChoosePlayers),
-		ChooseSuggested:      copyUUIDs(c.ChooseSuggested),
-		ChooseDestination:    c.ChooseDestination,
-		ChooseMin:            c.ChooseMin,
-		ChooseMax:            c.ChooseMax,
-		PickOptions:          cloneChoiceOptions(c.PickOptions),
-		OptionCarry:          copyUUIDs(c.OptionCarry),
-		CouncilVote:          cloneCouncilVote(c.CouncilVote),
-		TurnSkipOrder:        cloneTurnSkipOrder(c.TurnSkipOrder),
-		AnyPlayerOffer:       cloneAnyPlayerOffer(c.AnyPlayerOffer),
-		LoopShortcutKey:      c.LoopShortcutKey,
-		LoopShortcutCount:    c.LoopShortcutCount,
-		LoopShortcutRepeat:   c.LoopShortcutRepeat,
-		midResolution:        c.MidResolution,
-		AutoAnswerKey:        c.AutoAnswerKey,
-		AutoAnswerCard:       c.AutoAnswerCard,
-		AutoAnswerPrompt:     c.AutoAnswerPrompt,
-		AskedByHand:          c.AskedByHand,
+		ID:                    c.ID,
+		Kind:                  c.Kind,
+		Chooser:               c.Chooser,
+		FromPlayer:            c.FromPlayer,
+		Count:                 c.Count,
+		Source:                c.Source,
+		Reason:                c.Reason,
+		CoinAllowStop:         c.CoinAllowStop,
+		CoinCount:             c.CoinCount,
+		CoinMaxUsefulWins:     c.CoinMaxUsefulWins,
+		CoinWins:              c.CoinWins,
+		ColorOptions:          copyStrings(c.ColorOptions),
+		ColorPurpose:          c.ColorPurpose,
+		ControlPurpose:        c.ControlPurpose,
+		ManaRestrictions:      copyStrings(c.ManaRestrictions),
+		ManaRiders:            copyManaRiders(c.ManaRiders),
+		ManaSourceKinds:       c.ManaSourceKinds,
+		ManaAmounts:           copyManaAmounts(c.ManaAmounts),
+		ManaDifferent:         c.ManaDifferent,
+		ManaChosen:            copyStrings(c.ManaChosen),
+		ManaLabel:             c.ManaLabel,
+		ManaSettled:           copyStrings(c.ManaSettled),
+		ManaPicksLeft:         copyManaPickSlots(c.ManaPicksLeft),
+		ManaTapped:            c.ManaTapped,
+		ReplacementEffectIDs:  copyReplacementEffectIDs(c.ReplacementEffectIDs),
+		NoLegalTarget:         c.NoLegalTarget,
+		PickTargetPlayers:     copyUUIDs(c.PickTargetPlayers),
+		PickTargetCards:       copyUUIDs(c.PickTargetCards),
+		PickTargetMin:         c.PickTargetMin,
+		PickTargetMax:         c.PickTargetMax,
+		RetargetItem:          c.RetargetItem,
+		RetargetPolicy:        c.RetargetPolicy,
+		RetargetOptional:      c.RetargetOptional,
+		RetargetSlot:          c.RetargetSlot,
+		RetargetReason:        c.RetargetReason,
+		RetargetNext:          append([]TargetRef(nil), c.RetargetNext...),
+		RetargetTo:            c.RetargetTo,
+		ModeOptionIndex:       copyInts(c.ModeOptionIndex),
+		ModeOptionLabel:       copyStrings(c.ModeOptionLabel),
+		ModeMin:               c.ModeMin,
+		ModeMax:               c.ModeMax,
+		ModeRepeatable:        c.ModeRepeatable,
+		ModeUsedIndex:         copyInts(c.ModeUsedIndex),
+		ModeUsedLabel:         copyStrings(c.ModeUsedLabel),
+		ModeNotChosen:         c.ModeNotChosen,
+		SacrificeOptions:      copyUUIDs(c.SacrificeOptions),
+		DiscardOptions:        copyUUIDs(c.DiscardOptions),
+		DiscardLabel:          c.DiscardLabel,
+		PickDestination:       c.PickDestination,
+		PickOptional:          c.PickOptional,
+		PickFromGraveyard:     c.PickFromGraveyard,
+		PickThen:              c.PickThen,
+		PickMeasures:          copyInts(c.PickMeasures),
+		PickExiledWith:        pickExiledWithRestored(c.PickExiledWith),
+		CopyOptions:           copyUUIDs(c.CopyOptions),
+		ExchangesText:         c.ExchangesText,
+		ExcludedTypes:         copyStrings(c.ExcludedTypes),
+		ScryCards:             copyUUIDs(c.ScryCards),
+		LibraryPlacement:      c.LibraryPlacement,
+		LibraryTopCount:       c.LibraryTopCount,
+		LibraryTopDepth:       c.LibraryTopDepth,
+		TriggerOrderIDs:       copyUUIDs(c.TriggerOrderIDs),
+		TriggerOrderWhy:       c.TriggerOrderWhy,
+		PayCost:               c.PayCost,
+		SearchCards:           copyUUIDs(c.SearchCards),
+		SearchGraveyardCards:  copyUUIDs(c.SearchGraveyardCards),
+		SearchMax:             c.SearchMax,
+		SearchMin:             c.SearchMin,
+		MayCastCard:           c.MayCastCard,
+		MayCastKeyword:        c.MayCastKeyword,
+		AcceptLabel:           c.AcceptLabel,
+		DeclineLabel:          c.DeclineLabel,
+		LifeCost:              c.LifeCost,
+		OwedInStep:            c.OwedInStep,
+		GuardsStackItem:       c.GuardsStackItem,
+		OptionalItem:          c.OptionalItem,
+		OptionalTradeFor:      c.OptionalTradeFor,
+		NoGain:                c.NoGain,
+		ChooseCards:           copyUUIDs(c.ChooseCards),
+		ChoosePlayers:         copyUUIDs(c.ChoosePlayers),
+		ChooseSuggested:       copyUUIDs(c.ChooseSuggested),
+		ChooseDestination:     c.ChooseDestination,
+		ChooseMin:             c.ChooseMin,
+		CollectionSuggestions: copyStrings(c.CollectionSuggestions),
+		ChooseMax:             c.ChooseMax,
+		PickOptions:           cloneChoiceOptions(c.PickOptions),
+		OptionCarry:           copyUUIDs(c.OptionCarry),
+		CouncilVote:           cloneCouncilVote(c.CouncilVote),
+		TurnSkipOrder:         cloneTurnSkipOrder(c.TurnSkipOrder),
+		AnyPlayerOffer:        cloneAnyPlayerOffer(c.AnyPlayerOffer),
+		LoopShortcutKey:       c.LoopShortcutKey,
+		LoopShortcutCount:     c.LoopShortcutCount,
+		LoopShortcutRepeat:    c.LoopShortcutRepeat,
+		midResolution:         c.MidResolution,
+		AutoAnswerKey:         c.AutoAnswerKey,
+		AutoAnswerCard:        c.AutoAnswerCard,
+		AutoAnswerPrompt:      c.AutoAnswerPrompt,
+		AskedByHand:           c.AskedByHand,
 		// Every resume frame stays nil. This is the phase-1 line in
 		// the sand, and the census is how it is enforced rather than
 		// hoped for.

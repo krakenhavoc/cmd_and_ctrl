@@ -288,6 +288,15 @@ type PlayerStatic struct {
 	// `omitzero`, for Timing's reason above (#1492).
 	ActivationTiming ActivationTimingGrant `json:"activationTiming"`
 
+	// HandRevealed is a granted "<player> plays with their hand revealed"
+	// for a duration (Stromgald Spy's "for as long as this creature
+	// remains on the battlefield"). ADR 0199, #3953, hand_revealed.go.
+	// The TWELFTH payload, told apart by the bit; it carries no Keyword.
+	// It is stored on the player whose hand is revealed. Its READER is
+	// HandRevealedLocked, which folds it with the battlefield statics
+	// (Telepathy, Revelation).
+	HandRevealed bool `json:"handRevealed,omitempty"`
+
 	// Source is the card that granted it, for the log and for the
 	// view's attribution. Never read by any rule: a granted ability
 	// outlives its source, which is the whole reason it is stored

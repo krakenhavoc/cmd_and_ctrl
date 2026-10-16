@@ -362,15 +362,9 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 		if tail.ask {
 			return 0, g.proliferateAskLocked(ev.Actor, ev.Source, times, then)
 		}
-		for i := 0; i < times; i++ {
-			if err := g.applyProliferateLocked(ev.Actor, tail.cards, tail.players); err != nil {
-				return 0, err
-			}
-		}
-		if then != nil {
-			return 0, then(g)
-		}
-		return 0, nil
+		// #3930: each proliferate runs behind the last one's counters,
+		// since a placement can pause on a CR 616 prompt.
+		return 0, g.proliferateExplicitLocked(ev.Actor, tail.cards, tail.players, times, then)
 	case KeywordActionScry, KeywordActionSurveil:
 		return g.lookAtTopForEffect(tail.choice, ev.Actor, ev.Source, n, tail.then), nil
 	case KeywordActionAmass:
@@ -422,6 +416,22 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 // Caller must hold g.mu.
 func (g *Game) abandonKeywordActionLocked(ev *ReplacementEvent) error {
 	return g.runKeywordActionThenLocked(ev)
+}
+
+// proliferateExplicitLocked applies the same explicit choice `times`
+// times, each behind the last one's counters, then runs `then`.
+//
+// Caller must hold g.mu.
+func (g *Game) proliferateExplicitLocked(actor uuid.UUID, cards, players []uuid.UUID, times int, then func(g *Game) error) error {
+	if times <= 0 {
+		if then == nil {
+			return nil
+		}
+		return then(g)
+	}
+	return g.applyProliferateThenLocked(actor, cards, players, func(g *Game) error {
+		return g.proliferateExplicitLocked(actor, cards, players, times-1, then)
+	})
 }
 
 // takeKeywordActionThen detaches the plain `then` continuation from a

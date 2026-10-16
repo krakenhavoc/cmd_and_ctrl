@@ -570,6 +570,13 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}PaperPaymentModal.svelte`],
     doc: "the paper payment picker (#3855): what a waived payment something reads paid outside the pool",
   }),
+  paperSlotOnX: label({
+    name: "on X",
+    kind: "text",
+    role: "generic",
+    owners: [`${BOARD}PaperPaymentModal.svelte`],
+    doc: "the paper payment picker's tag on a slot of the cost's {X} part, the mana a spend-only-on-X clause restricts (#3941)",
+  }),
   castFree: label({
     name: "Cast without paying its mana cost",
     kind: "text",
@@ -1004,6 +1011,14 @@ export const LABEL_SPECS = {
     role: "link",
     owners: ["lib/components/SiteHeader.svelte"],
     doc: "the site header's link to #/lobby, first in the signed-in nav (it read Lobby before ADR 0156)",
+  }),
+
+  siteMenu: label({
+    name: "Site menu",
+    kind: "aria",
+    role: "button",
+    owners: ["lib/components/SiteHeader.svelte"],
+    doc: "the site header's menu button below 600px, which opens the nav links (a disclosure: aria-expanded, Escape closes it); hidden at tablet width and up (#3877)",
   }),
 
   // -- The front door (ADR 0156 §4–6) --

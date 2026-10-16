@@ -35,7 +35,7 @@ func init() {
 			SubLayer:  game.SubLayer7A_CDA,
 			AppliesTo: selfOnly,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				c.Power = devotionTo(g, source.Controller, "G")
+				c.Power = devotionTo(g, source.Controller, source.TextColor("G"))
 			},
 		}},
 		Replacements: []game.ReplacementEffect{

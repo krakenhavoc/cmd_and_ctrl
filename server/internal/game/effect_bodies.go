@@ -177,6 +177,12 @@ var (
 	// already-carried, already-restorable facts, so nothing new has to
 	// be captured to build the clause again.
 	reflexiveTargetSpecs = map[string]func(sourceID uuid.UUID, p EffectParams) *TargetSpec{}
+
+	// eachConditionObjects is the object half of an each-condition
+	// (DelayedEachCondition, ADR 0187 amendment 2026-10-16): the objects
+	// a matching event makes the trigger trigger for, one instance each.
+	// Keyed like effectConditions, which holds the same key's match.
+	eachConditionObjects = map[string]EachConditionFunc{}
 )
 
 func checkEffectKey(kind, key string) {
@@ -278,6 +284,71 @@ func DelayedCondition(key string, fn ConditionFunc) ConditionRef {
 	}
 	effectConditions[key] = fn
 	return ConditionRef{key: key}
+}
+
+// EachConditionFunc is an each-condition's match: the objects a watched
+// event makes the delayed trigger trigger for, in the order they trigger.
+// Empty is "not this trigger's event". Runs under g.mu held in write
+// mode; must not call locking mutators.
+type EachConditionFunc func(ev Event, dt *DelayedTrigger, g *Game, p EffectParams) []uuid.UUID
+
+// DelayedEachCondition registers an event condition that triggers ONCE
+// FOR EACH OBJECT the event concerns (ADR 0187 amendment 2026-10-16,
+// CR 603.2c): "until end of turn, whenever a creature you control attacks
+// and isn't blocked" (Gaze of Pain) triggers for each such creature, not
+// once per block declaration. Each instance carries its object as the
+// item's payload, so the body reads "it" with ctx.PayloadCards(). The key
+// is an ordinary condition key on disk, so a delayed trigger naming it
+// snapshots and restores exactly as one naming DelayedCondition's does.
+func DelayedEachCondition(key string, fn EachConditionFunc) ConditionRef {
+	if fn == nil {
+		panic(fmt.Sprintf("game: condition %q has no function", key))
+	}
+	ref := DelayedCondition(key, func(ev Event, dt *DelayedTrigger, g *Game, p EffectParams) bool {
+		return len(fn(ev, dt, g, p)) > 0
+	})
+	effectRegistryMu.Lock()
+	eachConditionObjects[key] = fn
+	effectRegistryMu.Unlock()
+	return ref
+}
+
+// lookupEachCondition is the object half of an each-condition, or false
+// for an ordinary condition.
+func lookupEachCondition(key string) (EachConditionFunc, bool) {
+	effectRegistryMu.RLock()
+	defer effectRegistryMu.RUnlock()
+	fn, ok := eachConditionObjects[resolveEffectAlias(key)]
+	return fn, ok
+}
+
+// TargetedDelayedBody registers a delayed trigger's body together with
+// its own target clause (ADR 0187 amendment 2026-10-16): "you may choose
+// to have it deal damage equal to its power to a target creature" (Gaze
+// of Pain). The clause is chosen as each fired instance is put on the
+// stack (CR 603.3d), and an instance with no legal target is removed. It
+// is ReflexiveBody's registration, for the same reason: a delayed trigger
+// has no catalog row to re-derive a clause from at restore, so the
+// registration is that row, and a restored item re-derives its clause
+// from its body key as a reflexive one does. targetsFrom is called with
+// the delayed trigger's source card's instance ID and its Params.
+//
+// A delayed trigger with a targeted body must not carry Cards: the
+// targets the instance announces are its Targets.
+func TargetedDelayedBody(key string, fn BodyFunc, targetsFrom func(sourceID uuid.UUID, p EffectParams) *TargetSpec) BodyRef {
+	if targetsFrom == nil {
+		panic(fmt.Sprintf("game: targeted body %q has no target clause", key))
+	}
+	return ReflexiveBody(key, fn, targetsFrom)
+}
+
+// bodyHasTargets reports whether a body was registered with a
+// target clause.
+func bodyHasTargets(key string) bool {
+	effectRegistryMu.RLock()
+	defer effectRegistryMu.RUnlock()
+	_, ok := reflexiveTargetSpecs[resolveEffectAlias(key)]
+	return ok
 }
 
 // EffectAlias keeps an old key resolving after a rename: a restore

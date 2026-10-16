@@ -23,7 +23,9 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, true)
-				return ok && (c.HasSubtype("Frog") || c.HasSubtype("Rabbit") || c.HasSubtype("Raccoon") || c.HasSubtype("Squirrel"))
+				// The four types are words of the source's text (CR 612.2, #3984).
+				return ok && (c.HasSubtype(source.TextSubtype("Frog")) || c.HasSubtype(source.TextSubtype("Rabbit")) ||
+					c.HasSubtype(source.TextSubtype("Raccoon")) || c.HasSubtype(source.TextSubtype("Squirrel")))
 			}, "Valley Mightcaller — put a +1/+1 counter on it", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})

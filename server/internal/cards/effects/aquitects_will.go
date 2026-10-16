@@ -24,7 +24,9 @@ func init() {
 			if err := FloodTargetLand(ctx, "Aquitect's Will"); err != nil {
 				return err
 			}
-			if !ControlsAtLeast(1, func(c game.Card) bool { return c.HasSubtype("Merfolk") })(ctx.Game, ctx.Controller(), ctx.Source()) {
+			// ControlsAtLeast lends the spell's text, so "Merfolk" follows a
+			// text change (CR 612.2, #3984).
+			if !ControlsAtLeast(1, func(c game.Card) bool { return c.HasSubtypeWord("Merfolk") })(ctx.Game, ctx.Controller(), ctx.Source()) {
 				return nil
 			}
 			return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)

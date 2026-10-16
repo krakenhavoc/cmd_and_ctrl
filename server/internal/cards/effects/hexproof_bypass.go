@@ -47,7 +47,7 @@ func AsThoughNoHexproof(by HexproofBypassSources, preds ...CardPredicate) game.H
 	match := And(preds...)
 	return game.HexproofBypass{
 		Permanent: func(g *game.Game, target *game.Card, source *game.Card) bool {
-			return match(g, source.Controller, *target)
+			return match(g, source.Controller, game.ThroughTextOf(source, *target))
 		},
 		YoursOnly: by == BySpellsAndAbilitiesYouControl,
 	}
@@ -81,7 +81,7 @@ func WardDoesNotTrigger(preds ...CardPredicate) game.WardSuppression {
 	match := And(preds...)
 	return game.WardSuppression{
 		Warded: func(g *game.Game, warded *game.Card, source *game.Card) bool {
-			return match(g, source.Controller, *warded)
+			return match(g, source.Controller, game.ThroughTextOf(source, *warded))
 		},
 	}
 }

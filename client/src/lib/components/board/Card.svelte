@@ -55,6 +55,7 @@
   import { tutorialRunning } from "../../tutorial";
   import {
     acrossFor,
+    activationSick,
     castAnywayItem,
     manualLoyaltyRows,
     menuAbilityRows,
@@ -1516,7 +1517,7 @@
         onActivate={activateManaRow}
         activated={onActivateAbility ? menuAbilities : []}
         onActivateAbility={(idx) => onActivateAbility?.(idx)}
-        summoningSick={!!card.summoning_sick}
+        summoningSick={activationSick(card, across)}
         timingReason={sorcerySpeedBlocked}
         cardID={card.instance_id}
         {legal}

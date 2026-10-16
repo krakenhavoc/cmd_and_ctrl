@@ -50,7 +50,7 @@ func b23AnotherGreenCreatureYouControlEntered(ev game.Event, source *game.Card, 
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.HasColor("G")
+	return ok && c.HasColor(source.TextColor("G"))
 }
 
 // b23DragonYouControlEntered is Encroaching Dragonstorm's second
@@ -59,7 +59,8 @@ func b23AnotherGreenCreatureYouControlEntered(ev game.Event, source *game.Card, 
 // is never a Dragon, so no "another" guard is needed.
 func b23DragonYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
 	c, ok := enteredUnderYourControl(ev, source, g, false)
-	return ok && c.HasSubtype("Dragon")
+	// "Dragon" is a word of the source's text (CR 612.2, #3984).
+	return ok && c.HasSubtype(source.TextSubtype("Dragon"))
 }
 
 // b23NoCreaturesOnBattlefield is Pyrohemia's intervening-if: no

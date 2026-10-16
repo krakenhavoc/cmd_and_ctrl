@@ -93,6 +93,11 @@ var gameFields = plan(
 	// process (724.1c onwards) has not run. Carried: a restore between
 	// the effect and its boundary must still skip to the cleanup step.
 	"TurnEndPending", carried, "",
+	// #3856, CR 727: a restart waiting on its resolution's boundary, and
+	// the new game's "then" waiting on its mulligans. Carried: a restore
+	// point taken in either gap must still finish the restart.
+	"RestartPending", carried, "",
+	"RestartTail", carried, "",
 	"Seats", carried, "",
 	"Battlefield", carried, "",
 	"Stack", carried, "",
@@ -171,6 +176,8 @@ var gameFields = plan(
 	"passTurn", dropped, "restores empty: the active player's standing end_turn (#2881, pass_turn.go); after a restore they hold priority as if they had not pressed it, and press it again. Nothing is passed that they did not pass",
 	"harvestDepth", rebuilt, "a pass-local counter: zero between trigger-harvest passes, which is the only time a snapshot is taken; a restored game starts at zero",
 	"mixedEntry", rebuilt, "zero outside the synchronous announcement of a simultaneous sacrifice and entry; no snapshot can be taken inside that announcement",
+	"arriving", rebuilt, "nil outside the synchronous AsEntersOthers clauses of one entry (#3862, as_enters_others.go); no snapshot can be taken inside them",
+	"zoneLayersStamped", rebuilt, "says the zone layer step has stamps to clear (#3862); a restored game has no stamps, and a restore in place sets it",
 	"eventLogGen", rebuilt, "names this *Game's log history; a restored game is a new receiver and starts a new one",
 	"logProjection", rebuilt, "derived cache of the public log; the first view of a restored game refolds Events",
 	// #1479: the card-location hint table. Every answer it gives is
@@ -307,6 +314,7 @@ var gameFields = plan(
 	"replacementSerialsCompactAt", dropped, "the map above's compaction threshold, which restores empty",
 	"promptRuns", dropped, "non-empty between actions only for a printed sacrifice, discard or resolution-time pick instruction paused on its prompts (#1214), and each of those prompts is counted in ContinuationCensus.ChoiceResumeFrames through PendingChoice.promptRun; the run holds a continuation closure the snapshot could not carry anyway; Clone deep-copies it for undo (#1019, #1027)",
 	"enteringTokens", dropped, "non-empty between actions only for a created token whose battlefield entry is paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo (#762)",
+	"outsideEntering", dropped, "the one card of the outside-the-game container the card index may see, for the span of a land's play from there (#3955); non-empty between actions only while that land's entry is paused on a replacement prompt (a shockland's payment), and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo",
 	"resolving", dropped, "the CR 707.10 self-copy source (#920); set between actions only for a resolution paused on a prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; it holds a *StackItem, whose Effect is a closure the snapshot could not carry anyway; Clone shares it for undo",
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
 	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
@@ -315,6 +323,7 @@ var gameFields = plan(
 	"stateTriggerHold", dropped, "not game state: it counts the open sections of one mutation the per-event check skips, defer-cleared, so it is zero between actions",
 	"stateTriggerChecking", dropped, "not game state: a re-entrancy guard for one check, defer-cleared, so it is false between actions",
 	"landingEntryCounters", dropped, "not game state: the permanent whose enters-with counters are landing inside one call, defer-cleared, so it is uuid.Nil between actions (#2123)",
+	"counterPlacerScope", dropped, "not game state: the players named as putting counters inside one mana ability or special action, pushed and popped around the call, so it is empty between actions (#3942)",
 )
 
 var cardFields = plan(
@@ -352,6 +361,8 @@ var cardFields = plan(
 	"ActiveFace", carried, "",
 	"NeedsEffect", carried, "",
 	"PrintsManaAbility", carried, "",
+	"PrintsTapAbility", carried, "",
+	"ManaAbilityText", carried, "",
 	"Owner", carried, "",
 	"Controller", carried, "",
 	"Tapped", carried, "",
@@ -630,8 +641,10 @@ var cardFields = plan(
 	"TextWords", rebuilt, "ADR 0160's 2026-10-15 amendment: derived from the changeText records in ScopedEffects by materialiseTextWordsLocked; restore forces a recompute",
 	"wordLens", rebuilt, "ADR 0160's 2026-10-15 amendment: set only on a value copy handed to a target predicate (ThroughTextOf), never on a card in a zone",
 	"printed", rebuilt, "printed-characteristic cache (#1498); self-validating, rebuilt by restoreZone's stamp or on the next zone insertion",
+	"basePower", rebuilt, "the layer pass's power after layer 7b (CR 208.4b, Card.BasePower); derived, rebuilt by the recompute restore forces",
 	"stackGranted", rebuilt, "the keywords the stack step gave a spell (ADR 0107 §3); rebuilt from the ScopedEffect records and battlefield statics by the recompute restore forces",
 	"zoneGranted", rebuilt, "the ability bundles a battlefield static gave this card in a hand, graveyard or exile (ADR 0093 amendment 2026-10-13); rebuilt from the battlefield statics by the recompute restore forces",
+	"zoneLayered", rebuilt, "the types and colours a battlefield static gave this object off the battlefield (#3862, zone_layers.go); rebuilt from the battlefield statics by the recompute restore forces",
 )
 
 var playerFields = plan(
@@ -658,6 +671,7 @@ var playerFields = plan(
 	// for Companion's reason: nothing else on the board says what an
 	// effect could still bring in. Written only while it holds a card.
 	"Sideboard", carried, "",
+	"HasSideboard", carried, "",
 	"CommanderDamage", carried, "",
 	"LifeHistory", carried, "",
 	// The seat-turn counter "until your next turn" durations end on
@@ -836,6 +850,7 @@ var stackItemFields = plan(
 	// gave flashback to could then be flashed back again forever.
 	"AltCostExiles", carried, "",
 	"ExileWithCounter", carried, "",
+	"ExileInsteadOfGraveyard", carried, "",
 	"SplitSecond", carried, "",
 	// S30 spell copies (#95). Carried, and it has to be: a restore
 	// that lost the flag would route a resolving copy to a graveyard
@@ -963,6 +978,8 @@ var pendingChoiceFields = plan(
 	"ManaDifferent", carried, "",
 	"ManaChosen", carried, "",
 	"ManaLabel", carried, "",
+	"ManaSettled", carried, "",
+	"ManaPicksLeft", carried, "",
 	// #763: whether answering this pick is "a permanent was tapped for
 	// mana" (CR 106.12a), which is what fires the triggered mana
 	// abilities. A restored Birds pick that lost it would put the mana
@@ -978,6 +995,9 @@ var pendingChoiceFields = plan(
 	// tail, so the open question is a restore point.
 	"OptionalItem", carried, "",
 	"OptionalTradeFor", carried, "",
+	// #2731: the row's "yes would not help" warning, computed as the
+	// question was asked. Carried with the question it qualifies.
+	"NoGain", carried, "",
 	"PickTargetPlayers", carried, "",
 	"PickTargetCards", carried, "",
 	"PickTargetMin", carried, "",
@@ -1081,6 +1101,7 @@ var pendingChoiceFields = plan(
 	"DeclineLabel", carried, "",
 	"ChooseCards", carried, "",
 	"ChooseMin", carried, "",
+	"CollectionSuggestions", carried, "",
 	"ChooseMax", carried, "",
 	"ChoosePlayers", carried, "",
 	"ChooseSuggested", carried, "",

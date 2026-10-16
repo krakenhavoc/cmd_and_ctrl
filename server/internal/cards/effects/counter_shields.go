@@ -51,7 +51,7 @@ func counterShield(whose game.CounterShieldWhose, label string, preds []CardPred
 	if len(preds) > 0 {
 		match := And(preds...)
 		s.Spell = func(g *game.Game, spell game.Card, source *game.Card) bool {
-			return match(g, source.Controller, spell)
+			return match(g, source.Controller, game.ThroughTextOf(source, spell))
 		}
 	}
 	return s

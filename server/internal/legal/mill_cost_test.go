@@ -57,10 +57,22 @@ func TestMillCostIsGatedOnTheLibraryOnAnActivatedAbility(t *testing.T) {
 		active.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Filler", TypeLine: "Land", Owner: active.ID, Controller: active.ID})
 	})
 	moves := legal.EnumerateFor(g, active.ID)
-	if acts := activationsOf(moves, src); len(acts) != 1 {
+	acts := activationsOf(moves, src)
+	if len(acts) != 1 {
 		t.Fatalf("one card: want one move, got %v", labels(acts))
 	}
+	assertMillPrice(t, acts[0], 1)
 	dispatchAll(t, g, active.ID, moves)
+}
+
+// assertMillPrice checks the move names the cards its cost mills
+// (#3870): the params name none, so MoveCost.Mill is the only place a
+// policy can read the library it pays.
+func assertMillPrice(t *testing.T, m legal.Move, n int) {
+	t.Helper()
+	if m.Cost == nil || m.Cost.Mill != n {
+		t.Errorf("move %q: want cost.mill %d, got %+v", m.Label, n, m.Cost)
+	}
 }
 
 func TestMillCostIsGatedOnTheLibraryOnAManaAbility(t *testing.T) {
@@ -77,8 +89,10 @@ func TestMillCostIsGatedOnTheLibraryOnAManaAbility(t *testing.T) {
 		active.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Filler", TypeLine: "Land", Owner: active.ID, Controller: active.ID})
 	})
 	moves := legal.EnumerateFor(g, active.ID)
-	if acts := manaMovesOf(moves, src); len(acts) != 1 {
+	acts := manaMovesOf(moves, src)
+	if len(acts) != 1 {
 		t.Fatalf("one card: want one move, got %v", labels(acts))
 	}
+	assertMillPrice(t, acts[0], 1)
 	dispatchAll(t, g, active.ID, moves)
 }

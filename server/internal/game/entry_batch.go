@@ -491,6 +491,9 @@ func (g *Game) landEntryBatchLocked(b *entryBatch) error {
 	// ADR 0109 §8: one simultaneous entry is ONE entry for the world
 	// rule's "shortest amount of time" (CR 704.5k) — every card it
 	// announces shares an ordinal.
+	// #3862: an "as this enters" clause that changes other objects is
+	// part of the entry, before any of it is announced.
+	g.runAsEntersOthersLocked(landings)
 	release := g.beginSimultaneousEntryLocked()
 	for _, l := range landings {
 		g.announceEntryLocked(l)

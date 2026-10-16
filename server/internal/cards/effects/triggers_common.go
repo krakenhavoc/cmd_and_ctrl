@@ -210,7 +210,7 @@ func WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(creature Card
 			return true
 		}
 		c, ok := g.LookupCardForEffect(ev.Source)
-		return ok && creature(g, source.Controller, c)
+		return ok && creature(g, source.Controller, game.ThroughTextOf(source, c))
 	}, label, effect))
 }
 
@@ -340,7 +340,10 @@ func YouCast(spell CardPredicate) When {
 			return false
 		}
 		c, ok := g.LookupCardForEffect(ev.CardID)
-		return ok && (spell == nil || spell(g, source.Controller, c))
+		// The spell's colour or type is a word of the source's text
+		// (CR 612.2): "whenever you cast a blue spell" under a Sleight
+		// of Mind is "a red spell".
+		return ok && (spell == nil || spell(g, source.Controller, game.ThroughTextOf(source, c)))
 	}
 }
 
@@ -369,7 +372,7 @@ func AnOpponentCast(spell CardPredicate) When {
 			return false
 		}
 		c, ok := g.LookupCardForEffect(ev.CardID)
-		return ok && (spell == nil || spell(g, ev.Actor, c))
+		return ok && (spell == nil || spell(g, ev.Actor, game.ThroughTextOf(source, c)))
 	}
 }
 
@@ -1025,7 +1028,8 @@ func WhenEnchantedCreatureDies(label string, effect Effect) game.TriggeredAbilit
 func AnotherNontokenCreatureOfTypeEnteredUnderYourControl(subtype string) When {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		c, ok := enteredUnderYourControl(ev, source, g, true)
-		return ok && c.IsCreature() && !c.IsToken() && c.HasSubtype(subtype)
+		// The type is a word of the source's text (CR 612.2, #3984).
+		return ok && c.IsCreature() && !c.IsToken() && c.HasSubtype(source.TextSubtype(subtype))
 	}
 }
 

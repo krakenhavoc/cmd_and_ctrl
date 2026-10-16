@@ -44,5 +44,5 @@ func init() {
 // for a single caller would put a field on a struct sixteen lords read.
 func zombieTokenYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
 	return target.IsCreature() && target.IsToken() &&
-		target.Controller == source.Controller && target.HasSubtype("Zombie")
+		target.Controller == source.Controller && target.HasSubtype(source.TextSubtype("Zombie")) // a word of the source's text (CR 612.2, #3984)
 }

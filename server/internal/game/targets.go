@@ -84,6 +84,41 @@ type TargetSource struct {
 	// the record does not carry (#1863). Nil for a live source.
 	Departed   *PermanentInfo
 	DepartedID uuid.UUID
+
+	// Trigger is the event that fired the triggered ability this walk
+	// belongs to, for a clause described RELATIVE TO THAT EVENT: "target
+	// artifact that opponent controls", where "that opponent" is the
+	// player the Dragons just dealt combat damage to (Parapet Thrasher,
+	// #3860; TargetSpec.ControlledByThatPlayer). Nil for every walk that
+	// is not a trigger's — a spell, an activation, a cost payment — and
+	// a clause that reads it then admits nothing.
+	//
+	// Set by WithTrigger at every point a trigger's target walk builds
+	// its source (the harvest's fillable check, the mode prompt, each
+	// pick step and its answer) and by stackItemSourceLocked from the
+	// item's carried context (the resolution re-check, CR 608.2b), so the
+	// legal set, the announce gate, the re-check and the bot's moves are
+	// one answer.
+	Trigger *TriggerContext
+
+	// text is the text change of the object whose clause this is, for a
+	// walk with no live Object to lend it (CR 612.2, #3872): a departed
+	// source's last-known words (CR 608.2h), or a cost's source on a walk
+	// that is not targeting (CostSourceLocked). Read only by lend, so it
+	// changes which words a clause names and nothing else: a cost walk
+	// that carries it still excludes nothing and compares nothing.
+	text *TextWords
+}
+
+// WithTrigger is this source judging a clause for the triggered ability
+// the event `tc` fired. A zero context (one that did not Fire) leaves
+// the source as it was.
+func (s TargetSource) WithTrigger(tc TriggerContext) TargetSource {
+	if !tc.Fired() {
+		return s
+	}
+	s.Trigger = &tc
+	return s
 }
 
 // PowerToughness is the source's power and toughness as a
@@ -127,10 +162,70 @@ func (s TargetSource) ObjectRef() (PermissionCardRef, bool) {
 // Blade's "nonblack" under a Sleight of Mind is "nonblue". A walk with
 // no live source object lends nothing, and the printed words stand.
 func (s TargetSource) lend(c Card) Card {
-	if s.Object == nil {
-		return c
+	if s.Object != nil {
+		return ThroughTextOf(s.Object, c)
 	}
-	return ThroughTextOf(s.Object, c)
+	if s.text != nil {
+		c.wordLens = s.text
+	}
+	return c
+}
+
+// costSourceLocked is the source a cost-payment walk judges its clause
+// under: no source object, as SourceChooser declares (paying a cost
+// does not target, ADR 0038 §4), but the words of the clause read as
+// the text of the permanent whose ability it is (CR 612.2, #3872):
+// Heroism's "Sacrifice a white creature" under a Sleight of Mind is
+// "a green creature". The validator, the option walks the view and the
+// enumerator share, and the payability checks all build it here, so
+// the three agree.
+//
+// Only a source on the battlefield has changed words (a change lives on
+// a permanent or a spell, and a spell's costs are paid before anything
+// can change its text), so anything else reads the printed words.
+//
+// Caller must hold g.mu.
+func (g *Game) costSourceLocked(playerID, sourceID uuid.UUID) TargetSource {
+	src := SourceChooser(playerID)
+	src.text = g.costTextLocked(sourceID)
+	return src
+}
+
+// costTextLocked is the text change a cost clause of the ability on
+// `sourceID` reads its words through (costSourceLocked's rule): the
+// permanent's, or nil — the printed words — for anything not on the
+// battlefield, uuid.Nil included. The cost walks that match a card with
+// no TargetSpec (a set rule's kinds, a reveal, discard or exile clause;
+// #3984) lend it with lendCostText.
+//
+// Caller must hold g.mu.
+func (g *Game) costTextLocked(sourceID uuid.UUID) *TextWords {
+	if sourceID == uuid.Nil {
+		return nil
+	}
+	if c := findBattlefieldCard(g, sourceID); c != nil {
+		return c.TextWords
+	}
+	return nil
+}
+
+// lendCostText gives the cost candidate `c` the text a cost clause reads
+// its words through (costTextLocked), as TargetSource.lend does for a
+// walk with a TargetSpec. Nil text lends nothing.
+func lendCostText(text *TextWords, c Card) Card {
+	if text != nil {
+		c.wordLens = text
+	}
+	return c
+}
+
+// costCandidatesLocked is specCandidatesLocked for a cost of the ability
+// on `sourceID`: the same non-targeting walk, reading the clause's
+// words through the source's text (costSourceLocked).
+//
+// Caller must hold g.mu.
+func (g *Game) costCandidatesLocked(playerID, sourceID uuid.UUID, spec *TargetSpec) LegalTargets {
+	return g.specMatchesLocked(g.costSourceLocked(playerID, sourceID), spec, false)
 }
 
 // SourceObject is the ordinary case: a live spell or ability source.
@@ -199,12 +294,27 @@ func (g *Game) stackItemSourceLocked(item *StackItem) TargetSource {
 	if item == nil {
 		return TargetSource{}
 	}
+	src := g.stackItemSourceBaseLocked(item)
+	if item.Trigger != nil {
+		// #3860: a triggered item re-checks a clause that is relative to
+		// its event ("that opponent controls") against the event it
+		// carries.
+		src = src.WithTrigger(*item.Trigger)
+	}
+	return src
+}
+
+// stackItemSourceBaseLocked is stackItemSourceLocked before the trigger
+// context is attached.
+func (g *Game) stackItemSourceBaseLocked(item *StackItem) TargetSource {
 	if item.SourceCardID != uuid.Nil {
 		if item.Kind != StackItemSpell {
 			if rec, ok := g.departedAbilitySourceLocked(item); ok {
 				src := SourceSnapshot(item.Controller, lastKnownSourceCharacteristics(rec))
 				src.Power, src.Toughness, src.PTKnown = rec.Power, rec.Toughness, true
 				src.Departed, src.DepartedID = &rec, item.SourceCardID
+				// #3872: its words as they last were (CR 608.2h).
+				src.text = textWordsFromEntries(rec.TextWords)
 				return src
 			}
 		}
@@ -401,6 +511,27 @@ type TargetSpec struct {
 	// 608.2h). With no source at all the clause admits NOTHING. Build
 	// one with effects.ExiledWithThis.
 	ExiledWithSource bool
+
+	// ControlledByThatPlayer is "that opponent controls" / "that player
+	// controls" on a TRIGGERED ability's clause: the candidate must be
+	// controlled by the player the triggering event's Target names -- the
+	// player the Dragons dealt combat damage to (Parapet Thrasher's
+	// "Destroy target artifact that opponent controls", #3860). A
+	// candidate controlled by anyone else is not offered, announced or
+	// kept at resolution.
+	//
+	// DATA, not a closure, for the reason RelativeToSource is: CardOK is
+	// handed the caster and the candidate, never the event, so a closure
+	// cannot say "that player", and a mode's clause is fixed on the card
+	// before the trigger exists. It is judged beside CardOK in the one
+	// shared walk (sourceAdmits), so the mode prompt (a bullet with no
+	// such artifact is not on offer, CR 603.3c), the legal set, the
+	// announce check (CR 601.2c), the resolution re-check (CR 608.2b), the
+	// client's picker and the bot's moves are one answer. The event is
+	// TargetSource.Trigger; a walk with none -- a spell, an activation --
+	// admits NOTHING, never everything. Build one with
+	// effects.ControlledByThatPlayer.
+	ControlledByThatPlayer bool
 
 	// PaidForSource is "that crewed it" / "that saddled it": the
 	// candidate must be a creature tapped to pay a crew (PaidCrewed) or
@@ -1509,13 +1640,28 @@ func (s *TargetSpec) paidForAdmits(g *Game, src TargetSource, c Card) bool {
 	return slices.Contains(paid, c.InstanceID)
 }
 
+// thatPlayerAdmits is ControlledByThatPlayer's gate: true without the
+// flag, and with it only a candidate controlled by the player the
+// triggering event names as its Target. No trigger, or an event that
+// names no player, admits nothing.
+func (s *TargetSpec) thatPlayerAdmits(src TargetSource, c Card) bool {
+	if !s.ControlledByThatPlayer {
+		return true
+	}
+	if src.Trigger == nil || !src.Trigger.Fired() {
+		return false
+	}
+	that := src.Trigger.Event.Target
+	return that != uuid.Nil && c.Controller == that
+}
+
 // sourceAdmits is the source-relative gate: RelativeToSource's stat
 // comparisons, CombatWithSource's combat relation, ExiledWithSource's
 // exile link and PaidForSource's crew / saddle payment. True with none
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) {
+	if !s.thatPlayerAdmits(src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

@@ -104,5 +104,16 @@ func adminRevokeUserSessions(c Config, w http.ResponseWriter, r *http.Request) e
 	if err != nil {
 		return err
 	}
+	if c.ModLog != nil {
+		var name string
+		if c.Users != nil {
+			if u, uerr := c.Users.Get(r.Context(), id); uerr == nil {
+				name = u.DisplayName
+			}
+		}
+		if p, ok := auth.PrincipalFromContext(r.Context()); ok {
+			c.ModLog.SessionsRevoked(p, id, name, out.SocketsClosed)
+		}
+	}
 	return writeJSON(w, http.StatusOK, out)
 }

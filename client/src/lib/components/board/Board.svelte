@@ -25,6 +25,7 @@
     ActivatedAbilityView,
     AdditionalCostView,
     AltCostPriceView,
+    AltCostTapPriceView,
     CardView,
     GameView,
     LegalTargetsView,
@@ -75,13 +76,16 @@
   import TargetingArrows from "./TargetingArrows.svelte";
   import VotingPanel from "./VotingPanel.svelte";
   import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
-  import { zoneBrowser, closeZoneBrowser } from "../../zoneBrowser";
+  import { zoneBrowser, closeZoneBrowser, openZoneBrowser } from "../../zoneBrowser";
   import {
     freeCastRequest,
     freeCastLocation,
+    mayCastOfferOpen,
     handFreeCastRequest,
     handFreeCastTarget,
     isFreeCastPick,
+    outsideCastRequest,
+    outsideCastReady,
   } from "../../freeCastRequest";
   import { phasedOutCards } from "../../phasedOut";
   import { canActivateSorcerySpeedAbility } from "../../timing";
@@ -142,10 +146,12 @@
     castBlightOffer,
     castRevealCost,
     castExilePermanentCost,
+    castTapCost,
     castHandExileCost,
     altCostPayDefinesX,
     altCostPayX,
     castExileCardsCost,
+    exileXChoice,
     tapCostOf,
     tapCostLimit,
     alternativeCostsOf,
@@ -182,6 +188,8 @@
   import { abilityMaxX, suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
   import { castPreviewParams } from "../../castPreview";
   import {
+    altCostTapRange,
+    altCostTapsNothingToAsk,
     castSacrificeRange,
     exilePermanentAutoPick,
     exilePermanentOptions,
@@ -742,6 +750,30 @@
     afterSacrificeCost(p.card, { ...p.choices, exilePermanentIDs: ids });
   }
 
+  // #3868: "tap an untapped Vampire you control" as a spell's additional
+  // cost (New Blood) — the sacrifice picker with the verb "Tap", over the
+  // server's `tap_others_options`, the answer sent as `teamwork_ids`.
+  // #3961: "tap any number of untapped creatures" (Burn at the Stake) is
+  // the same picker with `min` 0 and every option as the ceiling.
+  let addTapPrompt = $state<{
+    card: CardView;
+    label: string;
+    count: number;
+    min: number;
+    choices: CastChoices;
+  } | null>(null);
+  let addTapPromptOptionIDs = $state<string[]>([]);
+  const addTapPromptOptions = $derived.by(() =>
+    orderSacrificeOptions(view.battlefield.cards, addTapPromptOptionIDs),
+  );
+
+  function confirmAddTap(ids: string[]): void {
+    const p = addTapPrompt;
+    addTapPrompt = null;
+    if (!p) return;
+    afterSacrificeCost(p.card, { ...p.choices, teamworkIDs: ids });
+  }
+
   // #3175: "you may exile any number of blue cards from your hand" (March
   // of Swirling Mist) — the same picker with the verb "Exile", over the
   // server's `exile_from_hand_options`, any number including none. The
@@ -776,6 +808,8 @@
     label: string;
     count: number;
     choices: CastChoices;
+    // #1948: the X form, asked after the X prompt, continues there.
+    afterX?: boolean;
   } | null>(null);
   const exileCardsOptions = $derived.by(() => {
     const p = exileCardsPrompt;
@@ -790,6 +824,10 @@
     const p = exileCardsPrompt;
     exileCardsPrompt = null;
     if (!p) return;
+    if (p.afterX) {
+      afterXCost(p.card, { ...p.choices, exileIDs: ids });
+      return;
+    }
     afterSacrificeCost(p.card, { ...p.choices, exileIDs: ids });
   }
 
@@ -836,6 +874,17 @@
       exilePrompt = { card, label: ex.label, count: ex.count, choices };
       return;
     }
+    const tc = castTapCost(card, choices);
+    if (tc && choices.teamworkIDs === undefined) {
+      // #3961: none is the only answer to "any number" with nothing to tap.
+      if (tc.min === 0 && tc.options.length === 0) {
+        afterSacrificeCost(card, { ...choices, teamworkIDs: [] });
+        return;
+      }
+      addTapPromptOptionIDs = tc.options;
+      addTapPrompt = { card, label: tc.label, count: tc.count, min: tc.min, choices };
+      return;
+    }
     const he = castHandExileCost(card, choices);
     if (he && choices.exileFromHandIDs === undefined) {
       // None is the only answer when the hand holds nothing that pays.
@@ -848,7 +897,9 @@
       return;
     }
     const ec = castExileCardsCost(card, choices);
-    if (ec && choices.exileIDs === undefined) {
+    // #1948: "exile X cards" is asked after the X prompt (afterXCost),
+    // because its count is the X.
+    if (ec && !ec.fromX && choices.exileIDs === undefined) {
       if (ec.options.length > ec.count) {
         exileCardsPrompt = { card, cost: ec.cost, label: ec.label, count: ec.count, choices };
         return;
@@ -1031,11 +1082,14 @@
   let altTapPromptChoices: CastChoices = {};
   let altTapPromptClause = $state<LegalTargetsView | undefined>(undefined);
   let altTapPromptLabel = $state("an untapped creature you control");
+  // #3931: a harmonize offer's price per creature, shown in the picker.
+  let altTapPromptPrices = $state<Record<string, AltCostTapPriceView> | undefined>(undefined);
   const altTapOptions = $derived.by(() => {
     if (!altTapPromptCard) return [];
     return orderSacrificeOptions(view.battlefield.cards, altTapPromptClause?.cards);
   });
-  const altTapBounds = $derived(sacrificeRange(altTapPromptClause));
+  // #3931: harmonize's "up to one" is min 0 — tapping none pays it.
+  const altTapBounds = $derived(altCostTapRange(altTapPromptClause));
 
   function confirmAltTap(instanceIDs: string[]): void {
     const card = altTapPromptCard;
@@ -1043,6 +1097,7 @@
     altTapPromptCard = null;
     altTapPromptChoices = {};
     altTapPromptClause = undefined;
+    altTapPromptPrices = undefined;
     if (!card) return;
     afterAltCostPayment(card, { ...choices, altCostIDs: instanceIDs });
   }
@@ -1070,9 +1125,15 @@
       return;
     }
     const tapClause = altCostTapClause(offer);
+    // #3931: "up to one" with nothing to tap has one answer — none.
+    if (altCostTapsNothingToAsk(tapClause)) {
+      afterAltCostPayment(card, { ...choices, altCostIDs: [] });
+      return;
+    }
     if (tapClause !== undefined) {
       altTapPromptClause = tapClause;
       altTapPromptLabel = offer?.pay_label ?? "an untapped creature you control";
+      altTapPromptPrices = offer?.reduces_by_power ? offer.tap_prices : undefined;
       altTapPromptChoices = choices;
       altTapPromptCard = card;
       return;
@@ -1151,6 +1212,26 @@
   // its picker until X is known, so this step has to come after the X
   // prompt rather than before it.
   function afterXCost(card: CardView, choices: CastChoices): void {
+    // #1948: "exile X cards from your graveyard" — the picker's count is
+    // the X just announced. X = 0 names nothing; a graveyard holding
+    // exactly X matching cards has nothing to ask.
+    const xc = castExileCardsCost(card, choices);
+    if (xc?.fromX && choices.exileIDs === undefined) {
+      const next = exileXChoice(xc, choices);
+      if (next) {
+        afterXCost(card, next);
+        return;
+      }
+      exileCardsPrompt = {
+        card,
+        cost: xc.cost,
+        label: xc.label,
+        count: xc.count,
+        choices,
+        afterX: true,
+      };
+      return;
+    }
     // CR 107.4f (#916): "{U/P} can be paid with either {U} or 2
     // life", and CR 601.2b makes which one part of announcing the
     // spell. Asked after X for the same reason the tap picker is:
@@ -1447,7 +1528,9 @@
     const id = $freeCastRequest;
     if (!id) return;
     const me = view.seats.find((s) => s.id === viewerID);
-    const target = freeCastLocation(view.exile?.cards, me?.library.cards, id);
+    // #3490: wait out the frame the answer was given on.
+    const offerOpen = mayCastOfferOpen(view.pending_choices, id, viewerID);
+    const target = freeCastLocation(view.exile?.cards, me?.library.cards, id, offerOpen);
     if (target === undefined) return;
     freeCastRequest.set(null);
     if (target) handlePlayCard(target.card, target.zone);
@@ -1470,6 +1553,27 @@
     if (target === undefined) return;
     handFreeCastRequest.set(null);
     if (target) startHandFreeCast(target.card, target.key);
+  });
+
+  // #3955: "cast any number of Eldrazi cards you own from outside the game
+  // without paying their mana costs" (Spawnsire of Ulamog) and "you may
+  // play a card you own from outside the game this turn" (Wish). Answering
+  // the pick left a permission on each chosen card in the viewer's
+  // sideboard; once the frame carrying them arrives, the sideboard tab
+  // opens, where each granted card has its cast button (which hands off to
+  // the ordinary cast chain). Nothing granted, nothing opens.
+  $effect(() => {
+    if (!$outsideCastRequest) return;
+    const me = view.seats.find((s) => s.id === viewerID);
+    const ready = outsideCastReady(view.pending_choices, me?.sideboard, viewerID);
+    if (ready === undefined) return;
+    outsideCastRequest.set(false);
+    if (!ready || !me) return;
+    // One card granted (a Wish naming, a single Eldrazi): go straight into
+    // its cast or land play. Several: the tab, where each has its button.
+    const castable = (me.sideboard ?? []).filter((c) => c.castable_here === true);
+    if (castable.length === 1) handlePlayCard(castable[0], "outside");
+    else openZoneBrowser({ zoneKind: "sideboard", ownerID: me.id, ownerName: me.name });
   });
 
   // startHandFreeCast opens the cast of a hand card for its granted free
@@ -3717,6 +3821,7 @@
     count={sacrificeBounds.max}
     min={sacrificeBounds.min}
     eachOf={sacrificePrompt?.ability.sacrifice_options?.each_of}
+    different={sacrificePrompt?.ability.sacrifice_options?.different}
     onConfirm={confirmSacrifice}
     onCancel={() => {
       if (sacrificePrompt?.kind === "mana") resetManaCostPayment();
@@ -3784,6 +3889,20 @@
     onConfirm={confirmExilePermanent}
     onCancel={() => (exilePrompt = null)}
   />
+  <!-- #3868: tap an untapped Vampire you control, as a spell's additional
+       cost. The picks ride cast_spell's teamwork_ids. -->
+  <SacrificeCostModal
+    source={addTapPrompt?.card ?? null}
+    label={addTapPrompt?.label ?? "an untapped permanent you control"}
+    options={addTapPromptOptions}
+    count={addTapPrompt?.count ?? 1}
+    min={addTapPrompt?.min}
+    verb="Tap"
+    castName={addTapPrompt?.card.name}
+    additional
+    onConfirm={confirmAddTap}
+    onCancel={() => (addTapPrompt = null)}
+  />
   <!-- #3175: exile any number of blue cards from your hand (a March). -->
   <SacrificeCostModal
     source={handExilePrompt?.card ?? null}
@@ -3793,6 +3912,7 @@
     min={0}
     verb="Exile"
     castName={handExilePrompt?.card.name}
+    additional
     onConfirm={confirmHandExile}
     onCancel={() => (handExilePrompt = null)}
   />
@@ -3874,11 +3994,13 @@
     min={altTapBounds.min}
     verb="Tap"
     castName={altTapPromptCard?.name}
+    tapPrices={altTapPromptPrices}
     onConfirm={confirmAltTap}
     onCancel={() => {
       altTapPromptCard = null;
       altTapPromptChoices = {};
       altTapPromptClause = undefined;
+      altTapPromptPrices = undefined;
     }}
   />
   <!-- ADR 0100: the count and the label are the cost THIS cast pays —

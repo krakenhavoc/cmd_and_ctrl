@@ -12,48 +12,39 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // #2556: the "black and/or red" clause is SpellSpendOnlyOnX("B", "R").
 //
-// Simplification: the payment record knows how much black mana paid for
-// the WHOLE spell, not which of it went to X, and {2}{B} can absorb up
-// to (total - X) of it. So the black "spent on X" is counted as the
-// least it could have been: black spent, minus every mana that paid
-// something other than X. That is never more than printed, and exact
-// when the {2}{B} was paid with other mana; the caveat says so.
+// #3941 (ADR 0068, amendment 2026-10-16): "the amount of {B} spent on X"
+// is a recorded fact. The pool solver keeps, for each mana it spends,
+// whether it paid the restricted {X} part of the cost (ManaToken.ForX),
+// and this card reads ManaSpent().OnX().Count("B"). That is exact for a
+// payment the engine made, and for a waived one whose caster declared
+// what they paid (the picker marks the mana that paid X).
+//
+// Which mana pays X is the caster's choice (CR 601.2h). The auto-pay
+// solver makes it for them, and the card declares WantsColors B so it
+// makes it in the card's favour: the printed {B} is paid first, and the
+// X part then takes black before red, so the life gained is the most the
+// mana in the pool allows. A payment declared on paper states its own
+// allocation, and the record keeps it.
 func init() {
 	Register(Spec{
 		OracleID:       "063b0f5d-af27-4681-87b9-b553f6887061",
 		Name:           "Soul Burn",
 		ReadsManaSpent: game.ReadsOwnPayment,
+		WantsColors:    []string{"B"},
 		XMatters:       true,
-		Completeness:   CompletenessCaveats,
-		Caveats: []string{
-			"The life you gain counts black mana spent on X as the least it could have been, because the game can't tell which black mana paid for X rather than for the rest of the cost, so you may gain less life than printed.",
-		},
-		SpendOnly: SpellSpendOnlyOnX("B", "R"),
-		Targets:   TargetAny(),
+		Completeness:   CompletenessFull,
+		SpendOnly:      SpellSpendOnlyOnX("B", "R"),
+		Targets:        TargetAny(),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return damageThenGainUpToWhatItWas(ctx, item, blackSpentOnXAtLeast(ctx))
+			return damageThenGainUpToWhatItWas(ctx, item, blackSpentOnX(ctx))
 		},
 	})
 }
 
-// blackSpentOnXAtLeast is the fewest {B} that can have paid for X: all
-// the black mana spent, less every mana that paid for something other
-// than X (the spell's {2}{B} and anything a cost modifier added). Zero
-// for a payment the engine did not record.
-//
-// The mana that paid for X is X, unless a cost reduction ate into it
-// (#2701): a generic reduction takes the {2} first and then the X, so
-// once it reaches the X only the {B} is left beside it, and the X mana
-// paid is the total less that one symbol. No cost modifier adds a
-// coloured symbol to Soul Burn (only a spell's own strive-style
-// increase does), so the {B} is the whole of the coloured part.
-func blackSpentOnXAtLeast(ctx *Context) int {
-	spent := ctx.ManaSpent()
-	if !spent.Known() {
-		return 0
-	}
-	const colouredSymbols = 1 // Soul Burn's {B}
-	xPaid := max(0, min(ctx.X(), spent.Total()-colouredSymbols))
-	elsewhere := spent.Total() - xPaid
-	return max(0, min(xPaid, ctx.ManaSpentOfColor("B")-max(0, elsewhere)))
+// blackSpentOnX is "the amount of {B} spent on X": the black mana the
+// payment recorded against the {X} part of the cost. Zero for a payment
+// the engine did not record (a copy, a payment waived with nothing
+// declared), which is the weaker-than-printed answer.
+func blackSpentOnX(ctx *Context) int {
+	return ctx.ManaSpent().OnX().Count("B")
 }

@@ -93,6 +93,24 @@ type AbilityGrant struct {
 	// limit is gone the pass its grant is.
 	AttackLimits []game.AttackLimit
 
+	// DealtDamageCantBeRegenerated is a granted "Creatures dealt damage by
+	// this creature this turn can't be regenerated this turn." — the
+	// ability Bone Shaman gains (#1946). Not a layer effect either: the
+	// regeneration gate reads it live under the recipient's composite
+	// key, so "this creature" is the recipient and the rule is gone the
+	// pass its grant is.
+	DealtDamageCantBeRegenerated []game.DealtDamageCantBeRegenerated
+
+	// GameEndGates is a granted "You can't lose the game and your
+	// opponents can't win the game." — the ability Cloudsteel Kirin
+	// gives the equipped creature (#3862, ADR 0093 amendment
+	// 2026-10-15). Not a layer effect either: the loss and win checks
+	// read gates live under the recipient's composite key
+	// (game.CatalogGameEndGates), so "you" is the recipient's
+	// controller and the gate is gone the pass its grant is — a grant
+	// a newer removal took, and not one an older removal could not.
+	GameEndGates []game.GameEndGate
+
 	// Zone is where the bundle's RECIPIENTS are: empty is the battlefield,
 	// as for every bundle before #3233. A hand, graveyard or exile bundle
 	// ("each creature card in your hand has ninjutsu {2}{U}{B}") is given
@@ -154,6 +172,10 @@ func buildGrantDef(gr AbilityGrant) *game.CardDef {
 
 		LegendRuleExemptions: gr.LegendRuleExempt,
 		AttackLimits:         gr.AttackLimits,
+
+		DealtDamageCantBeRegenerated: gr.DealtDamageCantBeRegenerated,
+
+		GameEndGates: gr.GameEndGates,
 	}
 }
 
@@ -232,7 +254,8 @@ func checkGrants(name string, grants []AbilityGrant) {
 		if gr.Key == "" {
 			panic("effects.Register: " + name + " declares an ability grant with no Key — the recipient has no name to carry")
 		}
-		if len(gr.Triggered) == 0 && len(gr.Static) == 0 && len(gr.Activated) == 0 && len(gr.Mana) == 0 && len(gr.LegendRuleExempt) == 0 && len(gr.AttackLimits) == 0 {
+		if len(gr.Triggered) == 0 && len(gr.Static) == 0 && len(gr.Activated) == 0 && len(gr.Mana) == 0 && len(gr.LegendRuleExempt) == 0 && len(gr.AttackLimits) == 0 &&
+			len(gr.DealtDamageCantBeRegenerated) == 0 && len(gr.GameEndGates) == 0 {
 			panic("effects.Register: " + name + " declares the ability grant " + gr.Key + " with no abilities — a grant gives an ability or nothing")
 		}
 		if gr.Text == "" {
@@ -320,7 +343,8 @@ func checkZoneGrantBundle(name string, gr AbilityGrant, where func(kind string, 
 	if why := game.GrantZoneUnsupported(gr.Zone); why != "" {
 		panic(fmt.Sprintf("effects.Register: %q ability grant %s is given to cards in %s — %s", name, gr.Key, gr.Zone, why))
 	}
-	if len(gr.Triggered) > 0 || len(gr.Static) > 0 || len(gr.Mana) > 0 || len(gr.LegendRuleExempt) > 0 || len(gr.AttackLimits) > 0 {
+	if len(gr.Triggered) > 0 || len(gr.Static) > 0 || len(gr.Mana) > 0 || len(gr.LegendRuleExempt) > 0 || len(gr.AttackLimits) > 0 ||
+		len(gr.DealtDamageCantBeRegenerated) > 0 || len(gr.GameEndGates) > 0 {
 		panic(fmt.Sprintf("effects.Register: %q ability grant %s is given to cards in %s but declares more than activated abilities — only an activated ability is modelled on a card off the battlefield", name, gr.Key, gr.Zone))
 	}
 	for i, a := range gr.Activated {

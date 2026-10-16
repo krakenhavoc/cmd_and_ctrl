@@ -271,6 +271,29 @@ type AdditionalCost struct {
 	// only on a ModeSpec.Escalate cost.
 	TapCreatures int
 
+	// TapOthers is "As an additional cost to cast this spell, tap an
+	// untapped Vampire you control" (New Blood, #3868; CR 601.2h): the
+	// activated ability's and the alternative cost's TapOthersCost on a
+	// cast's mandatory slot, so the candidate walk, validator and payer
+	// are theirs. The caster names the permanents on
+	// CastSpellParams.TeamworkIDs, the list escalate's taps already ride
+	// (both are "tap permanents you control as a cost"). Tapping is not
+	// the {T} symbol, so a creature that came under the caster's control
+	// this turn may pay (CR 302.6). They are tapped with the spell on the
+	// stack and recorded on PaidCost.TappedOthers, which Swallow Whole's
+	// "the creature tapped to pay this spell's additional cost" reads.
+	// The mandatory slot or one of its either/or branches (Disruption
+	// Protocol's "tap an untapped artifact you control or pay {1}"), a
+	// fixed count: effects.Register refuses it on an optional cost, the
+	// "tap X" form, and beside teamwork or escalate's taps (one list
+	// cannot pay two). See tap_additional_cost.go.
+	//
+	// Or, on the mandatory slot only, "tap any number of untapped
+	// creatures you control" (#3961, TapOthersCost.AnyNumber): Burn at
+	// the Stake reads the count at resolution, Explosive Singularity as
+	// a discount (CostQuery.TappingToPay). None is a legal payment.
+	TapOthers *TapOthersCost
+
 	// Either is an either/or additional cost (ADR 0100 §2): "As an
 	// additional cost to cast this spell, sacrifice an artifact or
 	// discard a card" (Demand Answers). Each entry is one BRANCH, an
@@ -321,9 +344,12 @@ type AdditionalCost struct {
 	// ability's component (ExileCost) on a cast. The caster names the
 	// cards on CastSpellParams.ExileIDs, they are exiled with the spell on
 	// the stack, and they are recorded on PaidCost.Exiled so the spell
-	// reads them at resolution (CR 608.2h). Graveyard only, a fixed count,
-	// on the mandatory slot only: effects.Register refuses the hand form,
-	// a non-positive N, an optional cost and an either/or branch.
+	// reads them at resolution (CR 608.2h). Graveyard only, never on an
+	// optional cost: effects.Register refuses the hand form and a
+	// non-positive N. #1948 (ADR 0189's 2026-10-16 amendment) adds the X
+	// form (ExileCost.CountFromX, "exile X cards", the mandatory slot
+	// only) and a fixed count on a branch of an either/or cost (Soaring
+	// Stoneglider's "exile two cards from your graveyard or pay {1}{W}").
 	ExileCards *ExileCost
 }
 
@@ -402,7 +428,7 @@ func (c *AdditionalCost) MaxPayments() int {
 func (c *AdditionalCost) Empty() bool {
 	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
 		c.Teamwork == 0 && c.Blight == 0 && !c.BlightX && c.PayLife == 0 && c.Energy == 0 && c.TapCreatures == 0 && len(c.Either) == 0 &&
-		c.Reveal == nil && c.ExilePermanents.Empty() && c.ExileFromHand == nil && c.ExileCards == nil)
+		c.Reveal == nil && c.ExilePermanents.Empty() && c.ExileFromHand == nil && c.ExileCards == nil && c.TapOthers.Empty())
 }
 
 // CardsDemanded reports whether paying this cost needs the caster to
@@ -414,7 +440,8 @@ func (c *AdditionalCost) Empty() bool {
 // repeated one is refused with the rest. Nil-safe.
 func (c *AdditionalCost) CardsDemanded() bool {
 	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0 || c.BlightX ||
-		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0 || c.Reveal != nil || !c.ExilePermanents.Empty() || c.ExileFromHand != nil || c.ExileCards != nil)
+		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0 || c.Reveal != nil || !c.ExilePermanents.Empty() || c.ExileFromHand != nil || c.ExileCards != nil ||
+		!c.TapOthers.Empty())
 }
 
 // CatalogAdditionalCost is the catalog hook the effects package
@@ -476,6 +503,13 @@ const (
 	// (validateGiftChoiceLocked). Everything the gift DOES is the
 	// card's, grown by effects.Gift (ADR 0089).
 	GiftKey = "gift"
+	// EntwineKey is CR 702.42's entwine: an optional additional cost
+	// paid at most once, whose announcement raises the spell's mode
+	// count to every bullet (ADR 0065's 2026-10-16 amendment, #3866).
+	// The engine reads it only through the mode count's condition
+	// (effects.WasEntwined), so the cost, its validation and its
+	// payment are kicker's.
+	EntwineKey = "entwine"
 )
 
 // OptionalCostTimesPaid counts how many times the optional cost whose
@@ -1001,7 +1035,7 @@ func (g *Game) additionalCostPayableLocked(playerID, castID uuid.UUID, cost *Add
 	if cost.Sacrifice != nil {
 		// #3275: the permanents that can pay it, so one that can't be
 		// sacrificed doesn't count.
-		have := len(g.SacrificeCostCandidatesForEffect(playerID, cost.Sacrifice))
+		have := len(g.SacrificeCostCandidatesForEffect(playerID, uuid.Nil, cost.Sacrifice))
 		if have < SacrificeCostCount(cost.Sacrifice) {
 			return false
 		}
@@ -1013,6 +1047,16 @@ func (g *Game) additionalCostPayableLocked(playerID, castID uuid.UUID, cost *Add
 		return false
 	}
 	if !g.ExilePermanentsPayable(playerID, castID, cost.ExilePermanents) {
+		return false
+	}
+	// #1948: enough matching graveyard cards for a printed count
+	// (Soaring Stoneglider's "exile two cards from your graveyard"
+	// branch, CR 118.3). An X form is always payable at X = 0.
+	if ec := cost.ExileCards; ec != nil && !ec.CountFromX && len(g.ExileCostOptionsForEffect(playerID, castID, ec)) < ec.N {
+		return false
+	}
+	// #3868: enough untapped matching permanents to tap (CR 118.3).
+	if !g.TapOthersPayable(playerID, castID, cost.TapOthers) {
 		return false
 	}
 	return true

@@ -111,7 +111,11 @@ func abilityRowsOf(c *Card, onBattlefield bool) []AbilityRow {
 	names := abilityRowNames(c)
 	var out []AbilityRow
 	for _, t := range triggersOf(c) {
-		if t.Keyword != "" {
+		// Cumulative upkeep keeps its row (#3869): it has no keyword
+		// chip, because it is not a canonicalKeywords token, so the row
+		// is where the tile shows it — as it did before the trigger
+		// carried a Keyword.
+		if t.Keyword != "" && t.Keyword != KeywordCumulativeUpkeep {
 			continue
 		}
 		label, generic := abilityRowText(t.Key, names, "Triggered ability")
@@ -250,8 +254,10 @@ var staticRowSlots = []staticRowSlot{
 	{field: "ExhaustPermissions", fallback: "Exhaust abilities can be activated again", ownLabel: true},
 	{field: "BoastLimits", fallback: "Creatures can boast more than once each turn", ownLabel: true},
 	{field: "AttackTaxes", fallback: "Attack tax", ownLabel: true},
+	{field: "TargetTaxes", fallback: "Targeting tax", ownLabel: true},
 	{field: "BlockRules", label: blockRuleRows},
 	{field: "AttackLimits", label: attackLimitRows},
+	{field: "DealtDamageCantBeRegenerated", fallback: "Creatures it damaged can't be regenerated", ownLabel: true},
 	{field: "ExertOnAttack", fallback: "You may exert this creature as it attacks."},
 	{field: "HexproofBypasses", label: hexproofBypassRows},
 	{field: "WardSuppressions", fallback: "Stops ward from triggering"},
@@ -275,10 +281,13 @@ var staticRowSlots = []staticRowSlot{
 	{field: "PlayerLifeTotalLocked", label: boolRow("Your life total can't change.")},
 	{field: "DamageStaysThroughCleanup", label: boolRow("Damage isn't removed from this creature during cleanup steps.")},
 	{field: "LoyaltyTwiceEachTurn", label: boolRow("You may activate its loyalty abilities twice each turn rather than only once.")},
+	{field: "ActivateAsThoughHaste", label: boolRow("You may activate abilities of creatures you control as though those creatures had haste.")},
 	{field: "ExtraVote", label: extraVoteRows},
 	{field: "OpponentsFaceVillainousChoicesAgain", label: boolRow("If an opponent would face a villainous choice, they face that choice an additional time.")},
+	{field: "ControlsOpponentsSearches", label: boolRow("You control your opponents while they're searching their libraries, and they exile each card they find. You may play those cards.")},
 	{field: "DamageCantBePrevented", label: unpreventableDamageRows},
 	{field: "CantGainLife", fallback: "Life can't be gained", ownLabel: true},
+	{field: "DrawLimits", fallback: "Limits how many cards players draw", ownLabel: true},
 	{field: "DamageAsThough", fallback: "Changes how damage is dealt", ownLabel: true},
 	{field: "AnyColorSpend", label: anyColorSpendRows},
 	{field: "LifeForMana", fallback: "Lets you pay life for mana", ownLabel: true},
@@ -292,6 +301,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "CastTimings", fallback: "Changes when spells can be cast", ownLabel: true},
 	{field: "GrantedAlternativeCosts", elemLabel: grantedAlternativeCostRow},
 	{field: "LibraryTopVisible", label: libraryTopRows},
+	{field: "HandsRevealed", label: handsRevealedRows},
 }
 
 // staticRowSlotIndex is each staticRowSlots entry's field index in
@@ -413,6 +423,16 @@ func libraryTopRows(v reflect.Value) []string {
 		return []string{"You may look at the top card of your library any time."}
 	case LibraryTopRevealed:
 		return []string{"Play with the top card of your library revealed."}
+	}
+	return nil
+}
+
+func handsRevealedRows(v reflect.Value) []string {
+	switch scope, _ := v.Interface().(HandRevealScope); scope {
+	case HandRevealOpponents:
+		return []string{"Your opponents play with their hands revealed."}
+	case HandRevealEachPlayer:
+		return []string{"Players play with their hands revealed."}
 	}
 	return nil
 }

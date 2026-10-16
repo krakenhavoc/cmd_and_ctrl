@@ -41,12 +41,16 @@ type ReturnOneYouControl struct {
 
 func (r ReturnOneYouControl) Apply(ctx *Context) error {
 	match := r.Match
+	// The clause's colour or type is a word of the effect's text
+	// (CR 612.2): Trusted Advisor's "a blue creature" under a Sleight of
+	// Mind. A Match that reads HasColorWord follows it.
+	reader := ctx.textReader()
 	return ChoosePermanents{
 		Question: r.Question,
 		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
 			var out []uuid.UUID
 			for _, c := range g.BattlefieldCardsForEffect() {
-				if c.Controller == of && (match == nil || match(c)) {
+				if c.Controller == of && (match == nil || match(game.ThroughTextOf(reader, c))) {
 					out = append(out, c.InstanceID)
 				}
 			}

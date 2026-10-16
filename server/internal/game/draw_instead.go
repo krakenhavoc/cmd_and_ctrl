@@ -241,6 +241,16 @@ func (g *Game) drawOneLocked(playerID uuid.UUID, tail int, then DrawThen) (pause
 }
 
 func (g *Game) drawEventLocked(ev *ReplacementEvent) (paused bool, err error) {
+	// #3927, CR 121.2b / 614.17: a draw its player can't make (Narset's
+	// "can't draw more than one card each turn") is not performed and
+	// opens no CR 614 window, so no replacement sees it. The rest of the
+	// instruction goes on, each later draw asking again (draw_limit.go).
+	if g.drawForbiddenLocked(ev) {
+		if ev.ID != 0 {
+			defer g.clearReplacementEventLocked(ev.ID)
+		}
+		return false, g.finishDrawTailLocked(ev)
+	}
 	out, aerr := g.applyReplacementsLocked(ev)
 	if errors.Is(aerr, errReplacementPending) {
 		return true, nil

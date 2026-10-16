@@ -11,6 +11,8 @@ import { PROTOCOL_VERSION, type GameView } from "./protocol";
 import { session, type Session } from "./session";
 import { resetBoardStub } from "./test/boardStub";
 import { resetBugReportConfig } from "./bugReportConfig";
+import { _resetForTests as resetBugDraft } from "./bugReportDraft.svelte";
+import { isModalOpen, _resetForTests as resetModalLayers } from "./modalLayers";
 import { render, click, cleanup, flushSync } from "./test/render.svelte";
 
 vi.mock("./components/board/Board.svelte", async () => ({
@@ -87,6 +89,8 @@ beforeEach(() => {
   resetBoardStub();
   // The config is asked once per tab (#3492); each test is a new tab.
   resetBugReportConfig();
+  resetBugDraft();
+  resetModalLayers();
   session.set(playerSession());
 });
 
@@ -162,6 +166,66 @@ describe("Report a bug or idea on the game toolbar", () => {
     const items = [...c.querySelectorAll<HTMLElement>('[role="menuitem"]')];
     expect(items.length).toBeGreaterThan(0);
     expect(items.some((i) => /bug or idea/i.test(i.textContent ?? ""))).toBe(false);
+  });
+});
+
+// #4029: Minimize keeps the draft behind a pill in the command bar, next to the
+// bug button, and the page under it stays live.
+describe("minimizing the report on the table", () => {
+  const field = (): HTMLInputElement =>
+    document.querySelector<HTMLInputElement>('[role="dialog"] input[type="text"]')!;
+  const minimize = (): HTMLElement =>
+    document.querySelector<HTMLElement>('button[aria-label="Minimize the report"]')!;
+  const restorePill = (c: ParentNode): HTMLElement | null =>
+    c.querySelector<HTMLElement>('.bar-icons button[aria-label="Restore the bug report draft"]');
+
+  function typeTitle(value: string): void {
+    field().value = value;
+    field().dispatchEvent(new Event("input", { bubbles: true }));
+    flushSync();
+  }
+
+  async function minimizeNow(): Promise<void> {
+    click(minimize());
+    await new Promise((r) => setTimeout(r, 0));
+    flushSync();
+  }
+
+  it("leaves a pill in the toolbar that restores the draft, and so does the bug button", async () => {
+    stubConfig(true);
+    const c = await mountGame();
+    expect(restorePill(c)).toBeNull();
+
+    click(bugButtons(c)[0]!);
+    typeTitle("Hand covers the stack");
+    expect(isModalOpen()).toBe(true);
+
+    await minimizeNow();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(isModalOpen(), "a minimized report holds no modal layer").toBe(false);
+    expect(restorePill(c), "the pill sits beside the bug button").toBeTruthy();
+    expect(restorePill(c)!.nextElementSibling).toBe(bugButtons(c)[0]);
+
+    click(restorePill(c)!);
+    expect(field().value).toBe("Hand covers the stack");
+    expect(restorePill(c)).toBeNull();
+
+    // Minimize again; this time the toolbar's bug button restores it.
+    await minimizeNow();
+    click(bugButtons(c)[0]!);
+    expect(field().value).toBe("Hand covers the stack");
+  });
+
+  it("Cancel throws the draft away: no pill, and a fresh form next time", async () => {
+    stubConfig(true);
+    const c = await mountGame();
+    click(bugButtons(c)[0]!);
+    typeTitle("Never mind");
+    click(document.querySelector<HTMLElement>("button.cancel")!);
+
+    expect(restorePill(c)).toBeNull();
+    click(bugButtons(c)[0]!);
+    expect(field().value).toBe("");
   });
 });
 

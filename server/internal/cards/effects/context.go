@@ -71,15 +71,36 @@ func (c *Context) Source() uuid.UUID {
 // ability this is, when its words have been changed. nil when nothing
 // changed them, so the printed words stand; lend it with
 // game.ThroughTextOf.
+//
+// An ability whose source has left the battlefield reads the words that
+// source last had (CR 608.2h, game.TextReaderForEffect, #3872).
 func (c *Context) textReader() *game.Card {
-	if c == nil || c.Game == nil || c.Item == nil || c.Item.SourceCardID == uuid.Nil {
+	if c == nil || c.Game == nil || c.Item == nil {
 		return nil
 	}
-	src, ok := c.Game.LookupCardForEffect(c.Item.SourceCardID)
-	if !ok || src.TextWords == nil {
-		return nil
-	}
-	return &src
+	return c.Game.TextReaderForEffect(c.Item)
+}
+
+// TextColor is the colour letter the colour word `letter` reads as in
+// the text of the object this effect is (textReader): Pyroblast's
+// "if it's blue" is card.HasColor(ctx.TextColor("U")). The printed
+// letter when nothing changed the text.
+func (c *Context) TextColor(letter string) string { return c.textReader().TextColor(letter) }
+
+// TextSubtype is TextColor for a basic land type or creature type word.
+func (c *Context) TextSubtype(sub string) string { return c.textReader().TextSubtype(sub) }
+
+// TextColors is TextColor over a colour-setting effect's printed colours,
+// each once (game.Card.TextColors): "becomes a white and blue Bird" is
+// game.SetColorsMod(ctx.TextColors("W", "U")...).
+func (c *Context) TextColors(letters ...string) []string {
+	return c.textReader().TextColors(letters...)
+}
+
+// TextSubtypes is TextSubtype over a type-setting effect's printed types,
+// each once: game.AddSubtypesMod(ctx.TextSubtypes("Bird")...).
+func (c *Context) TextSubtypes(subs ...string) []string {
+	return c.textReader().TextSubtypes(subs...)
 }
 
 // Grantor returns the object that granted the resolving ability, for
@@ -264,6 +285,24 @@ func (c *Context) TappedPower() (power int, ok bool) {
 		return 0, false
 	}
 	return c.Game.PaidTapPowerForEffect(taps[0]), true
+}
+
+// TappedToPay is the permanents a tap-permanents cost tapped, as the
+// objects they were when tapped (instance ID and epoch), in the order
+// named — "the creature tapped to pay this spell's additional cost"
+// (Swallow Whole, #3868). A permanent that has since left and come back
+// is a new object (CR 400.7), which the epoch lets a reader tell. Nil
+// when the cost tapped nothing.
+func (c *Context) TappedToPay() []game.ObjectRef {
+	taps := c.Paid().TappedOthers
+	if len(taps) == 0 {
+		return nil
+	}
+	out := make([]game.ObjectRef, 0, len(taps))
+	for _, t := range taps {
+		out = append(out, game.ObjectRef{ID: t.ID, Epoch: t.Epoch})
+	}
+	return out
 }
 
 // Exiled is the cards the announcement's ExileCards cost exiled, in the

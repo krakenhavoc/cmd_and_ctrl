@@ -203,6 +203,17 @@ type CostQuery struct {
 	// activation or special action.
 	ExilingFromHand int
 
+	// TappingToPay is how many permanents the announcement names to a
+	// "tap any number of untapped creatures you control" additional cost
+	// (#3961) — Explosive Singularity's "This spell costs {1} less to
+	// cast for each creature tapped this way". Announced at CR 601.2b,
+	// read at 601.2f, filled from len(CastSpellParams.TeamworkIDs) by the
+	// one pricer and per payment by the enumerator, as ExilingFromHand
+	// is. The list is the tap cost's alone on a card that carries one
+	// (effects.Register keeps teamwork and escalate's taps off it). Zero
+	// for an activation or special action.
+	TappingToPay int
+
 	// AltSacrificeManaValue is emerge's reduction (CR 702.119a, ADR 0135
 	// §4): the mana value of the permanent the claimed alternative cost
 	// sacrifices, when that offer is ReducedBySacrificedManaValue, read
@@ -218,6 +229,15 @@ type CostQuery struct {
 	// off. Filled by the one pricer (costAfterModifiersLocked) and, per
 	// payment, by the enumerator, so the two agree (#544).
 	AltSacrificeManaValue int
+
+	// AltTappedPower is harmonize's reduction (CR 702.180a, #3931): the
+	// power of the creature the claimed alternative cost taps, when that
+	// offer is ReducedByTappedPower, read while the creature is on the
+	// battlefield (CR 601.2f before 601.2h) and clamped at zero. Taken
+	// off with AltSacrificeManaValue, by the same rule. Filled by the one
+	// pricer and, per payment, by the enumerator. Zero for every other
+	// cast and for a harmonize cast that taps nothing.
+	AltTappedPower int
 
 	// GrantReduction is the generic mana a cast permission takes off the
 	// spell cast through it (CastPermission.CostLess, #3787): Urianger
@@ -776,7 +796,8 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 	if len(mods) == 0 {
 		// ADR 0135 §4: emerge's reduction is the one reduction that
 		// needs no modifier on the board.
-		return reduceGeneric(reduceGeneric(base, q.AltSacrificeManaValue), q.GrantReduction), nil
+		// #3931: and harmonize's, the same kind of reduction.
+		return reduceGeneric(reduceGeneric(reduceGeneric(base, q.AltSacrificeManaValue), q.AltTappedPower), q.GrantReduction), nil
 	}
 	cost := base
 	// CR 601.2f step 3: every increase, in any order. Additive, so
@@ -813,6 +834,9 @@ func (g *Game) applyCostModifiersLocked(base ParsedCost, q CostQuery) (ParsedCos
 	// permanent's mana value, with the other reductions (CR 601.2f) and
 	// clamped the same way, so it is taken after every increase.
 	cost = reduceGeneric(cost, q.AltSacrificeManaValue)
+	// #3931, CR 702.180a: harmonize's reduction by the tapped
+	// creature's power, the same kind of reduction.
+	cost = reduceGeneric(cost, q.AltTappedPower)
 	// #3787: and the cast permission's own "cost {N} less", the same
 	// kind of reduction.
 	cost = reduceGeneric(cost, q.GrantReduction)
@@ -1335,6 +1359,9 @@ func (c ParsedCost) ManaValue() int {
 	for _, r := range c.Required {
 		mv += r.ManaValue()
 	}
+	if c.folded.n > 0 {
+		mv += c.folded.n * c.folded.req.ManaValue()
+	}
 	return mv
 }
 
@@ -1357,7 +1384,7 @@ func (c ParsedCost) ManaValueWithX(x int) int {
 // charged, so it is not counted: Trinisphere measures what the spell
 // "would cost" after every reduction.
 func (c ParsedCost) totalManaWithX(x int) int {
-	return c.GenericWithX(x) + len(c.Required)
+	return c.GenericWithX(x) + c.requiredCount()
 }
 
 // ManaValue is the card's printed mana value, or zero when the cost

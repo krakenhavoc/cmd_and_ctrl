@@ -29,6 +29,7 @@
     grantedFaceIndex,
     impulseActionLabel,
     impulseGrantFor,
+    outsideCastLabel,
     zoneTargetBans,
   } from "../../zoneBrowser.logic";
   import { printedCostClaimable, type CastSourceZone } from "../../targeting";
@@ -270,11 +271,17 @@
   };
 
   function castFromZone(card: CardView): void {
-    if (!onCastCard || zoneKind !== "graveyard") return;
+    if (!onCastCard || (zoneKind !== "graveyard" && zoneKind !== "sideboard")) return;
     if (!graveLegalityFor(card).legal) return;
-    onCastCard(card, "graveyard");
+    // #3955: the sideboard is the viewer's cards OUTSIDE the game; a cast
+    // out of it names that source zone and nothing else.
+    onCastCard(card, zoneKind === "sideboard" ? "outside" : "graveyard");
     onClose();
   }
+
+  // The verb pair for the button's labels: the sideboard's own, or the
+  // graveyard's.
+  const castSourceWord = $derived(zoneKind === "sideboard" ? "outside the game" : "graveyard");
 
   // playFromExile hands an impulse cast to the Board's one cast entry
   // point, exactly as the graveyard button does (#874). It used to
@@ -310,6 +317,22 @@
     sendAction("move_card", payload, viewerID);
   }
 
+  // #3955 (Wish): "you may play a card you own from outside the game this
+  // turn" with the card database as the pool. The card is named when it is
+  // played, so the right shows a button that opens the pick; naming it mints
+  // the card and the board starts its cast or land play at once. Only on the
+  // viewer's own sideboard tab.
+  const wishRight = $derived(
+    zoneKind === "sideboard" && viewerID && viewerID === ownerSeat.id
+      ? view.seats.find((s) => s.id === ownerSeat.id)?.outside_play
+      : undefined,
+  );
+  function nameWishedCard(): void {
+    if (!viewerID) return;
+    sendAction("outside_play", undefined, viewerID);
+    onClose();
+  }
+
   // Tabs switch zones for the same owner without closing (the stack
   // is a shared zone with no owner, so it stays a single view).
   // ADR 0191: the viewer's own sideboard is a fourth tab, offered only on
@@ -321,7 +344,11 @@
       { kind: "command", label: "command" },
     ];
     const own = view.seats.find((s) => s.id === ownerSeat.id);
-    if (viewerID && viewerID === ownerSeat.id && (own?.sideboard?.length ?? 0) > 0) {
+    if (
+      viewerID &&
+      viewerID === ownerSeat.id &&
+      ((own?.sideboard?.length ?? 0) > 0 || own?.outside_play?.can_name)
+    ) {
       base.push({ kind: "sideboard", label: "sideboard" });
     }
     return base;
@@ -405,10 +432,24 @@
     {#each targetBans as ban (ban)}
       <p class="zb-ban" role="note">{ban}</p>
     {/each}
+    {#if wishRight?.can_name}
+      <div class="zb-wish">
+        <button
+          type="button"
+          class="primary"
+          data-testid="name-outside-card"
+          onclick={nameWishedCard}
+          title="Pick any card from the card database; it is played now, at its own timing and cost"
+        >
+          Name a card to play ({wishRight.source_name})
+        </button>
+      </div>
+    {/if}
     {#if zoneKind === "sideboard"}
       <p class="zb-ban" role="note">
-        Cards you own outside the game. Only an effect that brings a card in from outside the game
-        can reach them.
+        Cards you own outside the game. Only an effect can reach them: one that brings a card in, or
+        one that lets you cast or play a card from here (Spawnsire of Ulamog, Wish), which puts a
+        button on that card.
       </p>
     {/if}
     {#if zoneCards.length === 0}
@@ -422,7 +463,11 @@
             <Card
               {card}
               ready={legal.isReady(card.instance_id)}
-              readyZone={zoneKind === "stack" || zoneKind === "sideboard" ? undefined : zoneKind}
+              readyZone={zoneKind === "stack"
+                ? undefined
+                : zoneKind === "sideboard"
+                  ? "outside"
+                  : zoneKind}
               onClick={onTargetCard ? () => void onTargetCard?.(card) : undefined}
               onActivateAbility={activateHandlerFor(card)}
               {sorcerySpeedBlocked}
@@ -491,22 +536,36 @@
                    has to hover to discover that will not discover
                    it. -->
               {@const graveLeg = graveLegalityFor(card)}
-              <div class="actions always" aria-label={`${castVerbFor(card)} from graveyard`}>
+              <div
+                class="actions always"
+                aria-label={`${castVerbFor(card)} from ${castSourceWord}`}
+              >
                 <button
                   type="button"
                   class="act impulse"
-                  class:ready={legal.castableFrom(card.instance_id, "graveyard")}
+                  class:ready={legal.castableFrom(
+                    card.instance_id,
+                    zoneKind === "sideboard" ? "outside" : "graveyard",
+                  )}
                   disabled={!graveLeg.legal}
                   title={graveLeg.legal
-                    ? `${castVerbFor(card)} from your graveyard`
-                    : (graveLeg.reason ?? "Not castable from your graveyard right now")}
+                    ? zoneKind === "sideboard"
+                      ? `${castVerbFor(card)} from outside the game, ${card.exile_play?.cost_override === "{0}" ? "without paying its mana cost" : "at its own cost"}`
+                      : `${castVerbFor(card)} from your graveyard`
+                    : (graveLeg.reason ??
+                      (zoneKind === "sideboard"
+                        ? "Not castable from outside the game right now"
+                        : "Not castable from your graveyard right now"))}
                   aria-label={withAvailable(
-                    `${castVerbFor(card)} ${card.name || "card"} from graveyard`,
-                    legal.castableFrom(card.instance_id, "graveyard"),
+                    `${castVerbFor(card)} ${card.name || "card"} from ${castSourceWord}`,
+                    legal.castableFrom(
+                      card.instance_id,
+                      zoneKind === "sideboard" ? "outside" : "graveyard",
+                    ),
                   )}
                   onclick={() => castFromZone(card)}
                 >
-                  {castLabelFor(card)}
+                  {zoneKind === "sideboard" ? outsideCastLabel(card) : castLabelFor(card)}
                 </button>
               </div>
             {/if}
@@ -633,6 +692,9 @@
     color: var(--fg-muted);
     font-size: 13px;
     margin: 4px 0 0;
+  }
+  .zb-wish {
+    display: flex;
   }
   .zb-ban {
     color: var(--fg-muted);

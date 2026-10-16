@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { mayCastCopy } from "./mayCast";
-import { freeCastLocation, freeCastTarget, mayCastKeywordsThatOpenACast } from "./freeCastRequest";
-import type { CardView } from "./protocol";
+import {
+  freeCastLocation,
+  freeCastTarget,
+  mayCastKeywordsThatOpenACast,
+  mayCastOfferOpen,
+} from "./freeCastRequest";
+import type { CardView, PendingChoiceView } from "./protocol";
 
 describe("mayCastCopy (ADR 0099 §7)", () => {
   it("words a discover prompt around the hand", () => {
@@ -84,6 +89,33 @@ describe("freeCastTarget", () => {
     expect(freeCastLocation([], [card("a", false)], "a")).toBeNull();
     expect(freeCastLocation([], [], "a")).toBeUndefined();
     expect(freeCastLocation([], [], null)).toBeNull();
+  });
+
+  // #3490: rebound's card is in exile, uncastable, on the frame "Cast it
+  // free" is clicked on. That frame must read "not yet", or the request is
+  // dropped before the grant arrives and nothing opens.
+  it("waits while the offer is still open, then finds the granted card (#3490)", () => {
+    const pending = [
+      { id: "p", kind: "may_cast", chooser: "me", may_cast_card: "a" },
+    ] as unknown as PendingChoiceView[];
+    const open = mayCastOfferOpen(pending, "a", "me");
+    expect(open).toBe(true);
+    expect(freeCastLocation([card("a", false)], [], "a", open)).toBeUndefined();
+    // The answer's frame: the prompt is gone and the card carries the grant.
+    expect(mayCastOfferOpen([], "a", "me")).toBe(false);
+    expect(freeCastLocation([card("a", true)], [], "a", false)?.zone).toBe("exile");
+  });
+
+  it("only counts the viewer's own offer of that card as open (#3490)", () => {
+    const pending = [
+      { id: "p", kind: "may_cast", chooser: "them", may_cast_card: "a" },
+      { id: "q", kind: "may_cast", chooser: "me", may_cast_card: "b" },
+      { id: "r", kind: "choose_cards", chooser: "me" },
+    ] as unknown as PendingChoiceView[];
+    expect(mayCastOfferOpen(pending, "a", "me")).toBe(false);
+    expect(mayCastOfferOpen(pending, "b", "me")).toBe(true);
+    expect(mayCastOfferOpen(pending, null, "me")).toBe(false);
+    expect(mayCastOfferOpen(undefined, "a", "me")).toBe(false);
   });
 
   it("words a play-or-hand prompt and does not open a cast (#3801)", () => {

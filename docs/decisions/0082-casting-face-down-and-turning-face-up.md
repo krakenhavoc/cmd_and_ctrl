@@ -1022,3 +1022,44 @@ run covers them with the Shrieker, Zimone and Staff Room cards in the catalog.
 Nothing ships stronger than printed (#259): the one place an effect could have
 exceeded the rules, a manifested noncreature card, is refused in D2, and the
 megamorph counter an effect does not owe is not given in D3.
+
+## Amendment (2026-10-15, #3862): Ixidron's sweep is part of its entry (CR 614.1c) · Accepted · S76
+
+Ixidron's "As this creature enters, turn all other nontoken creatures face down." is a CR 614.1c "as
+[this permanent] enters" clause. Its rulings are exact about what that means:
+
+- "You turn the creatures face-down *as* Ixidron enters. There is never a moment when Ixidron is on
+  the battlefield and the creatures are face-up. If a creature on the battlefield has a 'whenever
+  another creature enters' ability, it won't trigger because that creature will be face down before
+  Ixidron enters."
+- "If Ixidron and another creature are entering at the same time, the other creature enters face
+  up."
+
+The first amendment (A2) shipped the sweep on `Spec.AsEnters`. The engine runs that hook after the
+entry has been announced (`runEntryHooksLocked`, after `EventETB`). So a Soul Warden among the
+creatures saw Ixidron arrive while it was still face up, and gained its owner a life. The batch's
+hooks run after the whole batch has landed, so a creature entering with Ixidron was turned face down
+too. The card carried a caveat for the first problem, and the second had not been noticed.
+
+**E1. A hook of its own.** `Spec.AsEntersOthers` (`CardDef.AsEntersOthers`) is an "as this enters"
+clause that changes OTHER objects. `runAsEntersOthersLocked` (`game/as_enters_others.go`) runs it at
+every entry site, after the landing and before `announceEntryLocked`. The sites are the single entry,
+the simultaneous batch (every member's clause before any member is announced), both zone-route
+tails, and the sandbox move. The objects the clause changes are changed before any event about the
+arrival is emitted, so no trigger is harvested against the board in between. That is what "as it
+enters" means for them. `AsEnters` is unchanged. Its users (a choice already made, a note on the
+permanent itself) want the announced permanent.
+
+**E2. What "other" means.** While the clauses run, every permanent landing in the same entry is
+marked as arriving (`Game.ArrivingForEffect`). Ixidron's collector leaves those out, so "all other
+nontoken creatures" are the ones that were on the battlefield before this entry. The mark is a
+transient field (`Game.arriving`), nil outside the call and never snapshotted.
+
+**E3. Everything else is A2's.** The turn is still one `TurnFaceDownForEffect` batch that mutates
+every permanent before it emits anything. A face-down Ixidron (a manifest) still runs nothing,
+because its `CatalogKey` is silent (CR 708.2a).
+
+**Cards.** Ixidron is now Full. Pinned by `TestIxidronTurnsCreaturesDownBeforeTheyCanSeeItEnter`,
+`TestIxidronLeavesACreatureEnteringWithItFaceUp` and the existing
+`TestIxidronHidesEveryOtherNontokenCreatureAndSizesItself` and `TestIxidronAloneIsAZeroZero`
+(`internal/cards/effects`).

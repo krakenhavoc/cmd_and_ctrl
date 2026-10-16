@@ -58,14 +58,15 @@ func animateGideon(g *game.Game, item *game.StackItem, a gideonAnimation) error 
 		n := c.Counters[game.CounterLoyalty]
 		a.Power, a.Toughness = n, n
 	}
+	// His types and colour are words of his text (CR 612.2, #3984).
 	mods := []game.Mod{
 		game.AddTypesMod("Creature"),
-		game.AddSubtypesMod(a.Subtypes...),
+		game.AddSubtypesMod(ctx.TextSubtypes(a.Subtypes...)...),
 		game.SetBasePowerMod(a.Power),
 		game.SetBaseToughnessMod(a.Toughness),
 	}
 	if len(a.Colors) > 0 {
-		mods = append(mods, game.SetColorsMod(a.Colors...))
+		mods = append(mods, game.SetColorsMod(ctx.TextColors(a.Colors...)...))
 	}
 	if a.Indestructible {
 		mods = append(mods, game.AddKeywordsMod("indestructible"))

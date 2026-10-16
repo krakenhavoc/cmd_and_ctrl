@@ -44,7 +44,7 @@ func SpellsYouControlHave(spell CardPredicate, keywords ...string) game.StaticAb
 			if target.Controller != source.Controller {
 				return false
 			}
-			return spell == nil || spell(g, source.Controller, *target)
+			return spell == nil || spell(g, source.Controller, game.ThroughTextOf(source, *target))
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 			for _, kw := range keywords {

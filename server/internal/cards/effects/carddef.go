@@ -63,6 +63,7 @@ func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 			OwnerOnly:     a.OwnerOnly,
 			GrantorOnly:   a.GrantorOnly,
 			Purpose:       a.Purpose,
+			MayQuestion:   a.May.question(),
 			Effect:        a.Effect,
 		}
 	}
@@ -190,6 +191,7 @@ func buildDef(spec Spec) *game.CardDef {
 		ExhaustPermissions:                  spec.ExhaustPermissions,
 		BoastLimits:                         spec.BoastLimits,
 		AttackTaxes:                         spec.AttackTaxes,
+		TargetTaxes:                         spec.TargetTaxes,
 		BlockRules:                          spec.BlockRules,
 		AttackLimits:                        spec.AttackLimits,
 		ExertOnAttack:                       spec.ExertOnAttack,
@@ -217,10 +219,13 @@ func buildDef(spec Spec) *game.CardDef {
 		PlayerLifeTotalLocked:               spec.PlayerLifeTotalLocked,
 		DamageStaysThroughCleanup:           spec.DamageStaysThroughCleanup,
 		LoyaltyTwiceEachTurn:                spec.LoyaltyTwiceEachTurn,
+		ActivateAsThoughHaste:               spec.ActivateAsThoughHaste,
 		ExtraVote:                           spec.ExtraVote,
 		OpponentsFaceVillainousChoicesAgain: spec.OpponentsFaceVillainousChoicesAgain,
+		ControlsOpponentsSearches:           spec.ControlsOpponentsSearches,
 		DamageCantBePrevented:               spec.DamageCantBePrevented,
 		CantGainLife:                        spec.CantGainLife,
+		DrawLimits:                          spec.DrawLimits,
 		DamageAsThough:                      spec.DamageAsThough,
 		AnyColorSpend:                       spec.AnyColorSpend,
 		LifeForMana:                         spec.LifeForMana,
@@ -242,6 +247,7 @@ func buildDef(spec Spec) *game.CardDef {
 		GrantedAlternativeCosts:             spec.GrantedAlternativeCosts,
 		OpeningHand:                         spec.OpeningHand,
 		LibraryTopVisible:                   spec.LibraryTopVisible,
+		HandsRevealed:                       spec.HandsRevealed,
 		DiscardByOpponent:                   spec.DiscardByOpponent,
 		DiscardByOpponentForHand:            spec.DiscardByOpponentForHand,
 		CastCondition:                       spec.CastCondition,
@@ -323,6 +329,9 @@ func buildDef(spec Spec) *game.CardDef {
 	}
 	if asEnters := spec.AsEnters; asEnters != nil {
 		d.AsEnters = liveCardHook(asEnters)
+	}
+	if asEntersOthers := spec.AsEntersOthers; asEntersOthers != nil {
+		d.AsEntersOthers = liveCardHook(asEntersOthers)
 	}
 	if asTransforms := spec.AsTransformsInto; asTransforms != nil {
 		d.AsTransformsInto = liveCardHook(asTransforms)

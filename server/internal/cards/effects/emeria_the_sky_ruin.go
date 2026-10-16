@@ -39,12 +39,12 @@ func init() {
 		Triggered: []game.TriggeredAbility{InterveningIf(CondBoard{
 			Name: "you control seven or more Plains",
 			Test: func(ctx *Context) bool {
-				return b08LandsWithSubtypeControlled(ctx.Game, ctx.Controller(), "Plains") >= 7
+				return b08LandsWithSubtypeControlled(ctx.Game, ctx.Controller(), ctx.TextSubtype("Plains")) >= 7
 			},
 		}, game.TriggeredAbility{
 			Watches: []game.EventKind{game.EventBeginUpkeep},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return ev.Actor == source.Controller && b08LandsWithSubtypeControlled(g, source.Controller, "Plains") >= 7
+				return ev.Actor == source.Controller && b08LandsWithSubtypeControlled(g, source.Controller, source.TextSubtype("Plains")) >= 7
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Emeria, the Sky Ruin — return a creature card from your graveyard to the battlefield?"},
 			Targets:        TargetCardInGraveyard("target creature card in your graveyard", Creature(), YouOwn()),

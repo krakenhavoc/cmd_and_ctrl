@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"math"
+
+	"github.com/google/uuid"
+)
 
 // tap_others_cost.go — #758: tapping permanents OTHER than the source
 // as part of an ability's cost (CR 602.2, CR 118.3).
@@ -106,12 +110,38 @@ type TapOthersCost struct {
 	// ability" (#759), exactly as a return clause's label is. Not
 	// "choose 1".
 	Label string
+
+	// AnyNumber is "tap any number of untapped creatures you control"
+	// (#3961): Burn at the Stake, Explosive Singularity. The count is
+	// the payer's, from zero up to every option, and Count is zero. A
+	// spell's additional cost only (AdditionalCost.TapOthers on the
+	// mandatory slot); effects.Register refuses it on an activated
+	// ability, a mana ability, an alternative cost and an either/or
+	// branch. The number tapped is what the spell reads: its length on
+	// PaidCost.TappedOthers at resolution (ctx.TappedToPay), and
+	// CostQuery.TappingToPay at CR 601.2f for a per-creature discount.
+	AnyNumber bool
+
+	// UpTo is "tapping UP TO Count untapped creatures you control"
+	// (#3931): harmonize's "tapping up to one untapped creature you
+	// control" (CR 702.180a). The payer names from zero to Count, so
+	// the cost is always payable and none is a legal payment. An
+	// alternative cost's card component only (AlternativeCost.TapOthers
+	// beside ReducedByTappedPower); effects.Register refuses it
+	// anywhere else.
+	UpTo bool
 }
 
 // Empty reports whether the cost demands nothing. Nil-safe, so the
 // activation path can ask without a guard.
 func (c *TapOthersCost) Empty() bool {
-	return c == nil || c.Filter == nil || (c.Count < 1 && !c.Filter.CountFromX)
+	return c == nil || c.Filter == nil || (c.Count < 1 && !c.Filter.CountFromX && !c.AnyNumber)
+}
+
+// TapOthersAnyNumber reports the "tap any number of untapped …" form
+// (#3961): zero up to every option, the count the payer's.
+func TapOthersAnyNumber(c *TapOthersCost) bool {
+	return c != nil && c.Filter != nil && c.AnyNumber
 }
 
 // TapOthersCountFromX reports the "Tap X untapped ..." form. The
@@ -123,11 +153,19 @@ func TapOthersCountFromX(c *TapOthersCost) bool {
 
 // TapOthersCostBounds is the payment width at an announced X. A
 // fixed clause returns Count / Count; a CountFromX clause returns X /
-// X. Negative X is clamped to zero because the announce path rejects
-// it separately.
+// X; an AnyNumber clause (#3961) returns 0 / math.MaxInt, the options
+// being the only ceiling; an UpTo clause (#3931) returns 0 / Count.
+// Negative X is clamped to zero because the announce path rejects it
+// separately.
 func TapOthersCostBounds(c *TapOthersCost, x int) (lo, hi int) {
 	if c == nil || c.Filter == nil {
 		return 0, 0
+	}
+	if c.AnyNumber {
+		return 0, math.MaxInt
+	}
+	if c.UpTo {
+		return 0, c.Count
 	}
 	if TapOthersCountFromX(c) {
 		if x < 0 {
@@ -173,7 +211,7 @@ func (g *Game) TapOthersOptionsForEffect(playerID, sourceID uuid.UUID, tc *TapOt
 		return nil
 	}
 	var out []uuid.UUID
-	for _, id := range g.specCandidatesLocked(playerID, tc.Filter).Cards {
+	for _, id := range g.costCandidatesLocked(playerID, sourceID, tc.Filter).Cards {
 		if tc.ExcludeSource && id == sourceID {
 			continue
 		}
@@ -275,7 +313,7 @@ func (g *Game) validateTapOthersCostAtXLocked(playerID, sourceID uuid.UUID, tc *
 		// specMatchLocked(…, false), not targetLegalLocked: tapping a
 		// permanent to pay a cost does not target it (CR 601.2h /
 		// 602.2b), so the CR 702 keyword gate must not apply.
-		if !g.specMatchLocked(SourceChooser(playerID), tc.Filter, TargetRef{Kind: TargetCard, ID: id}, false) {
+		if !g.specMatchLocked(g.costSourceLocked(playerID, sourceID), tc.Filter, TargetRef{Kind: TargetCard, ID: id}, false) {
 			return ErrIllegalTarget
 		}
 	}

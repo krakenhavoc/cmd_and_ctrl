@@ -137,6 +137,27 @@ type OutsidePickPrompt struct {
 	// Then receives the picks, in the order the chooser submitted them,
 	// and runs with g.mu held. It may queue further choices.
 	Then func(g *Game, picked []uuid.UUID) error
+	// Destination says what the effect does with the picks, for the
+	// client and the bot (ChooseDestination). Empty is ChooseFromOutside,
+	// "bring it into the game" (every wish). A cast or a play from outside
+	// declares ChooseCastFreeFromOutside / ChoosePlayFromOutside (#3955),
+	// so the client opens the sideboard tab where the granted cards wait.
+	Destination ChooseDestination
+}
+
+// OutsideAnyNumber is the ceiling of an "any number of cards you own from
+// outside the game" pick (Spawnsire of Ulamog, #3955). It bounds the
+// SIZE OF THE ANSWER, not the game: the pick is a list of names, and a
+// sideboard of 15 or a table that has paid {20} three times a turn never
+// gets near it.
+const OutsideAnyNumber = 100
+
+// outsideDestination is the prompt's destination, defaulted.
+func (p OutsidePickPrompt) outsideDestination() ChooseDestination {
+	if p.Destination != "" {
+		return p.Destination
+	}
+	return ChooseFromOutside
 }
 
 // QueueOutsidePickForEffect asks `p.Player` to choose from the cards
@@ -152,8 +173,20 @@ type OutsidePickPrompt struct {
 // (seatDeckCard). Nobody else is, and the wire withholds the prompt's
 // options from every other seat (filterPendingChoices).
 //
+// A player whose deck seated no sideboard chooses from the card
+// database instead (ADR 0198): the same filter, bounds, set rule and
+// continuation, asked as a PendingChoiceOutsideCollection whose answer
+// mints the named cards into the container before Then runs. The pool
+// is closed the same way for both.
+//
 // Caller must hold g.mu.
 func (g *Game) QueueOutsidePickForEffect(p OutsidePickPrompt) bool {
+	if pl := g.playerByIDLocked(p.Player); pl != nil && !pl.HasSideboard {
+		if !g.outsidePoolOpenLocked(p.Player) {
+			return false
+		}
+		return g.queueCollectionPickLocked(p)
+	}
 	cands := g.OutsideCandidatesForEffect(p.Player, p.Match)
 	if len(cands) == 0 {
 		return false
@@ -173,7 +206,7 @@ func (g *Game) QueueOutsidePickForEffect(p OutsidePickPrompt) bool {
 		Zone:        ZoneOutside,
 		Validate:    p.Validate,
 		Then:        p.Then,
-		Destination: ChooseFromOutside,
+		Destination: p.outsideDestination(),
 	})
 	return true
 }

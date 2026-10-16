@@ -125,6 +125,17 @@ var (
 			return AddMana{Amount: ManaN(p.Amount, "C")}.Apply(NewContext(g, item))
 		})
 
+	// Pygmy Hippo: add {C} × <Amount>, the mana the defending player lost
+	// (#3952). No plausibility bound like Mana Drain's: a pool may hold
+	// any amount, and AddMana applies the engine's MaxProducedMana ceiling.
+	pygmyHippoManaBody = game.DelayedBody("pygmy-hippo/add-colorless",
+		func(g *game.Game, item *game.StackItem, p game.EffectParams) error {
+			if p.Amount <= 0 {
+				return nil
+			}
+			return AddMana{Amount: ManaN(p.Amount, "C")}.Apply(NewContext(g, item))
+		})
+
 	// The event condition of "when you NEXT CAST a <filter> spell this
 	// turn": an EventCast by the trigger's controller whose spell
 	// passes CondParams.Filter.
@@ -158,6 +169,11 @@ var (
 	// "Exile the creature" after it died (Whippoorwill): exile each
 	// listed card that is still in a graveyard (CR 603.7c).
 	exileListedFromGraveyardBody = game.SimpleDelayedBody("dies/exile-from-graveyard", exileListedCardsFromGraveyard)
+
+	// The event condition of "when that creature leaves the battlefield
+	// this turn" (Runesword, #1946): an EventLTB of the listed object, to
+	// any zone. The trigger's duration is pinned to the object.
+	theListedObjectLeftCondition = game.DelayedCondition("ltb/the-listed-object", theListedObjectLeft)
 
 	// "Flip this creature" after the creature it damaged died (Initiate of
 	// Blood, #3216): the scheduling source flips if it is still that
@@ -200,6 +216,22 @@ var (
 	// if the source is still on the battlefield as the object <Amount>
 	// names, and its owner says yes (Shirei, Shizo's Caretaker).
 	shireiReturnBody = game.DelayedBody("shirei/return-if-still-on-the-battlefield", shireiReturn)
+
+	// "You may choose to have it deal damage equal to its power to a
+	// target creature. If you do, it assigns no combat damage this turn"
+	// (Gaze of Pain, #3531): "it" is the instance's payload, and the
+	// target clause is chosen as each instance goes on the stack (ADR
+	// 0187 amendment 2026-10-16).
+	gazeOfPainBody = game.TargetedDelayedBody("gaze-of-pain/damage-equal-to-its-power", simpleBody(gazeOfPain),
+		constTargets(func() *game.TargetSpec { return TargetCreature("target creature") }))
+
+	// "You may gain life equal to its power. If you do, it assigns no
+	// combat damage this turn" (Delif's Cone, #3531).
+	delifsConeBody = game.SimpleDelayedBody("delifs-cone/gain-life-equal-to-its-power", delifsCone)
+
+	// "It assigns no combat damage this turn and you put a cube counter
+	// on this artifact" (Delif's Cube, #3531).
+	delifsCubeBody = game.SimpleDelayedBody("delifs-cube/no-combat-damage-and-a-cube-counter", delifsCube)
 )
 
 // maxManaDrainRefund bounds the refund a restored Mana Drain may add. No

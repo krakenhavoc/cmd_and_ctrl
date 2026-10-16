@@ -22,9 +22,7 @@ func init() {
 		Name:         "Archmage Emeritus",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			OnAny(magecraftEvents, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return instantOrSorceryCastOrCopiedByYou(ev, source, g)
-			}, "Archmage Emeritus — draw a card (magecraft)", Do(DrawCards{N: 1})),
+			Magecraft("Archmage Emeritus — draw a card (magecraft)", Do(DrawCards{N: 1})),
 		},
 	})
 }

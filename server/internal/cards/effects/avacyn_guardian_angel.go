@@ -60,7 +60,7 @@ func shieldTargetFromChosenColor(g *game.Game, item *game.StackItem) error {
 			if color == "" || target == uuid.Nil {
 				return nil
 			}
-			return PreventDamageFromSource{Protect: ShieldObject(target), Queries: []game.PermanentQuery{QueryColors(color)}}.Apply(NewContext(g, item))
+			return PreventDamageFromSource{Protect: ShieldObject(target), Queries: []game.PermanentQuery{QueryColors(color)}, ChosenQueries: true}.Apply(NewContext(g, item))
 		})
 	return nil
 }

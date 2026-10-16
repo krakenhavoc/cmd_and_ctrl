@@ -198,7 +198,8 @@ func (g *Game) proliferateAskLocked(actor, source uuid.UUID, remaining int, then
 }
 
 // proliferateThen is a proliferate prompt's continuation: apply the
-// picks, then ask for the next proliferate of the settled count.
+// picks, then, once every counter has landed, ask for the next
+// proliferate of the settled count.
 func proliferateThen(actor, source uuid.UUID, remaining int, then func(g *Game) error) func(g *Game, picked []uuid.UUID) error {
 	return func(g *Game, picked []uuid.UUID) error {
 		var cardIDs, playerIDs []uuid.UUID
@@ -209,10 +210,9 @@ func proliferateThen(actor, source uuid.UUID, remaining int, then func(g *Game) 
 				cardIDs = append(cardIDs, id)
 			}
 		}
-		if err := g.applyProliferateLocked(actor, cardIDs, playerIDs); err != nil {
-			return err
-		}
-		return g.proliferateAskLocked(actor, source, remaining, then)
+		return g.applyProliferateThenLocked(actor, cardIDs, playerIDs, func(g *Game) error {
+			return g.proliferateAskLocked(actor, source, remaining, then)
+		})
 	}
 }
 
@@ -230,7 +230,7 @@ func (g *Game) ResolveProliferate(choiceID, chooserID uuid.UUID, picks []uuid.UU
 // counter of each kind already there."
 //
 // The rule splits cleanly into a CHOICE and an APPLICATION.
-// applyProliferateLocked is the application: it takes the chosen
+// applyProliferateThenLocked is the application: it takes the chosen
 // permanents and players as arguments and does not decide anything.
 // The choice is the PendingChoiceProliferate prompt below (#2525): the
 // proliferating player picks any number of the permanents and players
@@ -262,10 +262,11 @@ func (g *Game) ResolveProliferate(choiceID, chooserID uuid.UUID, picks []uuid.UU
 //     each another counter"). That is what makes Vorinclex halve an
 //     opponent's proliferate onto your creature and double your own.
 
-// applyProliferateLocked gives each named permanent and each named
+// applyProliferateThenLocked gives each named permanent and each named
 // player one additional counter of every kind they already have —
 // ONE proliferate, the application half of CR 701.34 with the choice
-// already made and the CR 614 window already settled.
+// already made and the CR 614 window already settled — and then runs
+// `then`.
 //
 // Both lists may be empty — "any number" includes zero, and a
 // proliferate with nothing worth choosing is a legal no-op rather
@@ -274,31 +275,178 @@ func (g *Game) ResolveProliferate(choiceID, chooserID uuid.UUID, picks []uuid.UU
 // choice is made when the effect starts resolving and the board can
 // have moved underneath it.
 //
+// #3930: the counters are placed one at a time, each behind the last
+// one's continuation (AddCounterByThenForEffect), in the order the
+// loop this replaced placed them: permanents in the order named, kinds
+// sorted, then players. On the ordinary path every continuation runs
+// inline, so nothing changes. When a placement pauses on a CR 616
+// ordering prompt (a Doubling Season beside a Hardened Scales), the
+// rest of the proliferate, and `then`, wait for the answer instead of
+// running while the counter is still owed. That is what lets `then`
+// read what the proliferate really did (ProliferateChoosingThenForEffect).
+//
 // Caller must hold g.mu (it is an effect-time helper).
-func (g *Game) applyProliferateLocked(placer uuid.UUID, cardIDs []uuid.UUID, playerIDs []uuid.UUID) error {
-	for _, id := range cardIDs {
-		c, ok := g.LookupCardForEffect(id)
+func (g *Game) applyProliferateThenLocked(placer uuid.UUID, cardIDs, playerIDs []uuid.UUID, then func(g *Game) error) error {
+	return g.proliferateCardsLocked(placer, cardIDs, playerIDs, 0, then)
+}
+
+// proliferateCardsLocked proliferates onto cardIDs[i:], then onto the
+// players. Kinds are snapshotted as each permanent's turn comes, so a
+// replacement that adds a NEW kind mid-placement can't cascade.
+func (g *Game) proliferateCardsLocked(placer uuid.UUID, cardIDs, playerIDs []uuid.UUID, i int, then func(g *Game) error) error {
+	for ; i < len(cardIDs); i++ {
+		c, ok := g.LookupCardForEffect(cardIDs[i])
 		if !ok {
 			continue
 		}
-		for _, kind := range sortedCounterKinds(c.Counters) {
-			if err := g.AddCounterByForEffect(placer, id, kind, 1); err != nil {
-				return err
-			}
+		if kinds := sortedCounterKinds(c.Counters); len(kinds) > 0 {
+			return g.proliferateCardKindsLocked(placer, cardIDs, playerIDs, i, kinds, 0, then)
 		}
 	}
-	for _, id := range playerIDs {
-		p := g.playerByIDLocked(id)
+	return g.proliferatePlayersLocked(placer, playerIDs, 0, then)
+}
+
+// proliferateCardKindsLocked gives cardIDs[i] one counter of kinds[k],
+// and in its continuation the next kind, then the next permanent.
+func (g *Game) proliferateCardKindsLocked(placer uuid.UUID, cardIDs, playerIDs []uuid.UUID, i int, kinds []string, k int, then func(g *Game) error) error {
+	if k >= len(kinds) {
+		return g.proliferateCardsLocked(placer, cardIDs, playerIDs, i+1, then)
+	}
+	return g.AddCounterByThenForEffect(placer, cardIDs[i], kinds[k], 1, func(g *Game, _ int) error {
+		return g.proliferateCardKindsLocked(placer, cardIDs, playerIDs, i, kinds, k+1, then)
+	})
+}
+
+// proliferatePlayersLocked is proliferateCardsLocked's player half:
+// playerIDs[i:], one counter of each kind each player already has,
+// then `then`.
+func (g *Game) proliferatePlayersLocked(placer uuid.UUID, playerIDs []uuid.UUID, i int, then func(g *Game) error) error {
+	for ; i < len(playerIDs); i++ {
+		p := g.playerByIDLocked(playerIDs[i])
 		if p == nil || p.Eliminated {
 			continue
 		}
-		for _, kind := range sortedCounterKinds(p.Counters) {
-			if err := g.AddPlayerCounterByForEffect(placer, id, kind, 1); err != nil {
-				return err
+		if kinds := sortedCounterKinds(p.Counters); len(kinds) > 0 {
+			return g.proliferatePlayerKindsLocked(placer, playerIDs, i, kinds, 0, then)
+		}
+	}
+	if then == nil {
+		return nil
+	}
+	return then(g)
+}
+
+// proliferatePlayerKindsLocked gives playerIDs[i] one counter of
+// kinds[k], and in its continuation the next kind, then the next
+// player.
+func (g *Game) proliferatePlayerKindsLocked(placer uuid.UUID, playerIDs []uuid.UUID, i int, kinds []string, k int, then func(g *Game) error) error {
+	if k >= len(kinds) {
+		return g.proliferatePlayersLocked(placer, playerIDs, i+1, then)
+	}
+	return g.addPlayerCounterByThenLocked(placer, playerIDs[i], kinds[k], 1, func(g *Game, _ int) error {
+		return g.proliferatePlayerKindsLocked(placer, playerIDs, i, kinds, k+1, then)
+	})
+}
+
+// Proliferated is what one proliferate keyword action really gave
+// counters to (#3930): every permanent and every player that received
+// at least one counter, across every proliferate the CR 614 window
+// settled on ("proliferate twice" is one action), each named once, in
+// the order they first received one.
+//
+// "Really" is the point. A permanent that was chosen but had its
+// counter replaced away (Vorinclex halving one counter to none), or
+// that left before its turn came, got nothing and is not here; that is
+// what "had a counter put on them this way" (Ripples of Potential)
+// reads.
+type Proliferated struct {
+	Permanents []uuid.UUID
+	Players    []uuid.UUID
+}
+
+// ProliferateChoosingThenForEffect is ProliferateChoosingForEffect for
+// a sentence that goes on about what the proliferate did (#3930):
+// `then` runs once every proliferate of the settled count has been
+// answered and every counter has landed, told what really received
+// one. A cancelled, zero-count or empty-board proliferate tells it
+// nothing.
+//
+// The answer is read off the log rather than collected along the way:
+// every counter the proliferate places names the proliferating player
+// as its placer (CR 701.34a, "give"), and since the placements are
+// sequenced (applyProliferateThenLocked), every one of them is logged
+// by the time `then` runs. Only the event sequence number is captured,
+// so the continuation stays plain data plus the caller's own `then`
+// (the StackItem.Effect contract), and an undone-then-redone answer
+// reads the log it is handed.
+//
+// Caller must hold g.mu (it is an effect-time helper).
+func (g *Game) ProliferateChoosingThenForEffect(player, source uuid.UUID, then func(g *Game, got Proliferated) error) error {
+	since := g.eventSeq
+	return g.ProliferateChoosingForEffect(player, source, func(g *Game) error {
+		if then == nil {
+			return nil
+		}
+		return then(g, g.proliferatedSinceLocked(player, since))
+	})
+}
+
+// proliferatedSinceLocked is the permanents and players `player` put
+// counters on after event `since`: each EventCounterPlaced naming them
+// as placer that raised the count, and each EventPlayerCounterPlaced
+// naming them with a positive delta.
+//
+// Caller must hold g.mu.
+func (g *Game) proliferatedSinceLocked(player uuid.UUID, since uint64) Proliferated {
+	var out Proliferated
+	seen := map[uuid.UUID]bool{}
+	for i := range g.Events {
+		ev := &g.Events[i]
+		if ev.Seq <= since || ev.Actor != player || ev.Target == uuid.Nil || seen[ev.Target] {
+			continue
+		}
+		switch ev.Kind {
+		case EventCounterPlaced:
+			if ev.Amount > g.counterAmountBeforeLocked(i) {
+				seen[ev.Target] = true
+				out.Permanents = append(out.Permanents, ev.Target)
+			}
+		case EventPlayerCounterPlaced:
+			if ev.Amount > 0 {
+				seen[ev.Target] = true
+				out.Players = append(out.Players, ev.Target)
 			}
 		}
 	}
-	return nil
+	return out
+}
+
+// counterAmountBeforeLocked is the count of g.Events[i]'s counter kind
+// on its permanent before that event changed it: the most recent
+// earlier EventCounterPlaced for the same permanent and kind, or zero
+// when the permanent's arrival is more recent (CR 400.7) or nothing
+// earlier is logged.
+//
+// Caller must hold g.mu.
+func (g *Game) counterAmountBeforeLocked(i int) int {
+	ev := g.Events[i]
+	for j := i - 1; j >= 0; j-- {
+		prev := g.Events[j]
+		if prev.CardID == ev.Target {
+			switch prev.Kind {
+			case EventETB, EventTokenCreated:
+				return 0
+			case EventZoneMove:
+				if prev.NewZone == ZoneBattlefield {
+					return 0
+				}
+			}
+		}
+		if prev.Kind == EventCounterPlaced && prev.Target == ev.Target && prev.Label == ev.Label {
+			return prev.Amount
+		}
+	}
+	return 0
 }
 
 // sortedCounterKinds snapshots the counter names present on a

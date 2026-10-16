@@ -64,7 +64,8 @@ func init() {
 }
 
 func scarabGodUpkeep(g *game.Game, item *game.StackItem) error {
-	x := scarabGodZombieCount(g, item.Controller)
+	// "Zombies" is a word of the source's text (CR 612.2, #3984).
+	x := scarabGodZombieCount(g, item.Controller, g.TextReaderForEffect(item).TextSubtype("Zombie"))
 	if x <= 0 {
 		return nil
 	}
@@ -77,10 +78,10 @@ func scarabGodUpkeep(g *game.Game, item *game.StackItem) error {
 // scarabGodZombieCount is "the number of Zombies you control" — a
 // live battlefield read, changeling and layer-4 grants included
 // (HasSubtype reads effective subtypes).
-func scarabGodZombieCount(g *game.Game, controller uuid.UUID) int {
+func scarabGodZombieCount(g *game.Game, controller uuid.UUID, zombie string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.IsCreature() && c.HasSubtype("Zombie") {
+		if c.Controller == controller && c.IsCreature() && c.HasSubtype(zombie) {
 			n++
 		}
 	}
@@ -88,16 +89,24 @@ func scarabGodZombieCount(g *game.Game, controller uuid.UUID) int {
 }
 
 func scarabGodReanimateAsZombie(g *game.Game, item *game.StackItem) error {
-	return ExileTargetThenTokenCopy(g, item, scarabGodZombieException)
+	return ExileTargetThenTokenCopy(g, item, scarabGodZombieExceptionFor(g.TextReaderForEffect(item)))
 }
 
 // scarabGodZombieException is "except it's a 4/4 black Zombie" —
 // REPLACES the copy's creature types (CR 707.9a), same as Hashaton's
-// exception but with no "tapped" clause.
-func scarabGodZombieException(t *game.Card) {
-	t.Power = 4
-	t.Toughness = 4
-	t.VariableToughness = false
-	t.SetCopyExceptionColors("B")
-	t.TypeLine = retypedTypeLine(t.TypeLine, "Zombie")
+// exception but with no "tapped" clause. Read in the printed words; the
+// ability reads them through the God's text (scarabGodZombieExceptionFor).
+func scarabGodZombieException(t *game.Card) { scarabGodZombieExceptionFor(nil)(t) }
+
+// scarabGodZombieExceptionFor is the exception with "black" and "Zombie"
+// read through `reader`, the object whose text it is (CR 612.2, #3984);
+// nil reads the printed words.
+func scarabGodZombieExceptionFor(reader *game.Card) func(*game.Card) {
+	return func(t *game.Card) {
+		t.Power = 4
+		t.Toughness = 4
+		t.VariableToughness = false
+		t.SetCopyExceptionColors(reader.TextColor("B"))
+		t.TypeLine = retypedTypeLine(t.TypeLine, reader.TextSubtype("Zombie"))
+	}
 }

@@ -185,6 +185,27 @@ export interface SeatCantPlayFromHand {
   cant_play_from_hand?: string;
 }
 
+// ADR 0199 (#3953, CR 701.20a): a seat that plays with its hand revealed
+// (Telepathy, Revelation, Stromgald Spy). One badge, with the sources as
+// its tooltip, so the table knows why that hand is face up.
+export interface SeatHandRevealed {
+  hand_revealed?: string[];
+}
+
+/** The revealed-hand badge for one seat, or none. */
+export function handRevealedBadges(seat?: SeatHandRevealed): PlayerKeywordBadge[] {
+  const sources = seat?.hand_revealed ?? [];
+  if (sources.length === 0) return [];
+  return [
+    {
+      key: "hand-revealed",
+      short: "HAND OPEN",
+      title: `Plays with their hand revealed — ${sources.join(", ")}`,
+      kind: "plain",
+    },
+  ];
+}
+
 // ADR 0113 §3, owner decision 1 (#2074, CR 402.2): a seat whose maximum
 // hand size is not seven gets a badge, read from the existing
 // PlayerView.max_hand_size (the EFFECTIVE maximum: -1 for none, else 0
@@ -244,7 +265,8 @@ export function playerKeywordBadges(
     SeatCantGainLife &
     SeatCantPlayLands &
     SeatCantPlayFromHand &
-    SeatMaxHandSize,
+    SeatMaxHandSize &
+    SeatHandRevealed,
 ): PlayerKeywordBadge[] {
   const seen = new Set<string>();
   const badges: PlayerKeywordBadge[] = [];
@@ -308,5 +330,6 @@ export function playerKeywordBadges(
   badges.push(...endGateBadges(endGates));
   badges.push(...counterShieldBadges(endGates));
   badges.push(...maxHandSizeBadges(endGates));
+  badges.push(...handRevealedBadges(endGates));
   return badges;
 }

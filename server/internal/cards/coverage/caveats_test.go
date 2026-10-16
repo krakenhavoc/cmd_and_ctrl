@@ -61,25 +61,7 @@ a player right now.
 // cannot change in either direction without somebody saying why.
 //
 // Key is Finding.Key() — "<card name> / <mechanic>".
-var adoptableGaps = map[string]string{
-	"Lier, Disciple of the Drowned / flashback": `A phrase collision, pinned
-		rather than dodged (ADR 0106 PR 2, #1806). Lier's granted
-		flashback works (a standing CastPermission, Underworld Breach's
-		shape). The caveat is about precedence: a card that prints its
-		own flashback is offered only that one, because
-		resolveAlternativeCostLocked judges the printed offer before a
-		granted one, and CR 702.34 would let its owner pick either cost.
-		Past in Flames has the same gap. Closing it means offering both
-		offers under one key, which is its own change to the cast path.`,
-	"Damping Sphere / storm": `A phrase collision, pinned rather than dodged
-		(#1258 added the storm row). The caveat's "storm tax" is Damping
-		Sphere's own "each spell costs {1} more for each other spell
-		that player has cast this turn", which works; the gap it
-		describes is the land-mana half. Damping Sphere has no storm and
-		never will, so there is nothing to adopt — but narrowing the row's
-		phrases to dodge one caveat would blind it to "storm isn't
-		implemented" on the next card.`,
-}
+var adoptableGaps = map[string]string{}
 
 // TestAdoptableGapsArePinned fails on any movement in that set.
 func TestAdoptableGapsArePinned(t *testing.T) {

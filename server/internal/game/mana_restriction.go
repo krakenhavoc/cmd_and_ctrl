@@ -232,14 +232,12 @@ const (
 // per payment at the top of the spend path and threaded down into
 // ManaPool.attemptSpend.
 //
-// The characteristics are the object's EFFECTIVE ones where the layer
-// engine has computed them (a permanent on the battlefield whose
-// ability is being activated) and its printed ones otherwise (a spell
-// on the stack, which the layer engine does not currently recompute).
-// That is the conservative direction: a type-changing continuous
-// effect that would ADD a type the restriction wants goes unnoticed
-// and the payment is refused, which is weaker than printed rather
-// than stronger.
+// The characteristics are the object's EFFECTIVE ones: a permanent's
+// layered characteristic, and for a card being cast the types and
+// colours a battlefield static gives it off the battlefield (#3862,
+// zone_layers.go) — a creature card in hand under a Maskwood Nexus is
+// every creature type, so Cavern of Souls mana named for Elf pays for
+// it. With no such static it is the printed card.
 type ManaSpendContext struct {
 	// Purpose is what is being paid for. SpendPurposeUnknown
 	// matches no restriction at all.
@@ -536,13 +534,36 @@ func (ctx ManaSpendContext) matchesKeyed(key, value string) bool {
 // in the pool never aliases either the catalog's process-lifetime
 // slice or a slice the card file built and might reuse.
 //
+// A declared list is the ability's printed words, so a subtype or colour
+// it names is read through the source's text (CR 612.2, #3984): Eldrazi
+// Temple's "Eldrazi spell" under an Artificial Evolution names the new
+// type. A computed list names a CHOSEN word (Cavern of Souls), which no
+// text change reaches, and is used as it is.
+//
 // Caller must hold g.mu (every call site is inside a mana-ability
 // activation, which does).
 func restrictionsFor(g *Game, ab *ManaAbilityShape, controller, source uuid.UUID) []string {
 	if ab.RestrictionsFunc != nil {
 		return copyRestrictions(ab.RestrictionsFunc(g, controller, source))
 	}
-	return copyRestrictions(ab.Restrictions)
+	return g.costTextLocked(source).manaTags(copyRestrictions(ab.Restrictions))
+}
+
+// spendRidersFor is a mana ability's declared spend riders for one
+// production, copied, with each rider's filter read through the source's
+// text as restrictionsFor reads the restrictions (CR 612.2, #3984):
+// Pyromancer's Goggles' "a red instant or sorcery spell" under a Sleight
+// of Mind names the new colour.
+//
+// Caller must hold g.mu.
+func spendRidersFor(g *Game, ab *ManaAbilityShape, source uuid.UUID) []ManaSpendRider {
+	out := copyManaRiders(ab.SpendRiders)
+	if text := g.costTextLocked(source); text != nil {
+		for i := range out {
+			out[i].When = text.manaTags(out[i].When)
+		}
+	}
+	return out
 }
 
 // copyRestrictions returns a fresh backing array for a restriction
@@ -597,4 +618,54 @@ func containsFold(xs []string, want string) bool {
 // read as "colorless".
 func (ctx ManaSpendContext) hasPaidForObject() bool {
 	return ctx.Purpose != SpendPurposeUnknown && ctx.Purpose != SpendPurposeTurnFaceUp
+}
+
+// ManaAbilityRestrictionsLocked is the spend restrictions one activation
+// of `a` on `source` would stamp on its mana now (restrictionsFor): the
+// computed list for a RestrictionsFunc row (Cavern of Souls' chosen
+// type), the declared list otherwise. The view stamps it on a battlefield
+// row whose list is computed, so a reader without a game handle sees the
+// restriction the mint will apply (#3976).
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) ManaAbilityRestrictionsLocked(controller, source uuid.UUID, a ManaAbilityShape) []string {
+	return restrictionsFor(g, &a, controller, source)
+}
+
+// CastAdmitsRestrictedMana reports whether mana carrying `restrictions`
+// may pay for casting a spell with this type line and these colours,
+// from the zone `fromZone` names on the wire ("" is the hand), under the
+// matcher the pool solver spends by (ManaSpendContext.allows). It also
+// refuses a symbol-level tag (ManaRestrictNoGeneric), which `allows`
+// cannot answer, exactly as autoTapAdmitsRestricted does.
+//
+// For a reader that holds no Card: the bot's turn planner asks it
+// through protocol, since a policy may not import this package (ADR 0033
+// §3, #3976). allCreatureTypes is the object's changeling answer
+// (HasAllCreatureTypes). An estimate, not a legality answer: the cast
+// itself is decided by the enumerator, under the cast's own context.
+func CastAdmitsRestrictedMana(restrictions []string, typeLine string, colors []string, allCreatureTypes bool, fromZone string) bool {
+	if len(restrictions) == 0 {
+		return true
+	}
+	for _, r := range restrictions {
+		if r == ManaRestrictNoGeneric {
+			return false
+		}
+	}
+	from, ok := castZoneFromWire(fromZone)
+	if !ok {
+		return false
+	}
+	supers, types, subs := parseTypeLine(typeLine)
+	ctx := ManaSpendContext{
+		Purpose:          SpendPurposeCast,
+		Types:            types,
+		Subtypes:         subs,
+		Supertypes:       supers,
+		Colors:           colors,
+		AllCreatureTypes: allCreatureTypes,
+		CastFrom:         from,
+	}
+	return ctx.allows(restrictions)
 }

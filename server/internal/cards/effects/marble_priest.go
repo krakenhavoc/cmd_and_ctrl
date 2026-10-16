@@ -33,7 +33,8 @@ func init() {
 					return false
 				}
 				dealer, ok := g.LookupCardForEffect(ev.DamageSource)
-				return ok && dealer.HasSubtype("Wall")
+				// "Walls" is a word of the source's text (CR 612.2, #3984).
+				return ok && dealer.HasSubtype(src.TextSubtype("Wall"))
 			},
 			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 				ev.Cancel()

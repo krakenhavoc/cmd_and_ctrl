@@ -44,6 +44,7 @@ func (e *enumerator) specialActionMoves() {
 	if p == nil {
 		return
 	}
+	e.outsidePlayMove()
 	if p.Hand != nil {
 		for i := range p.Hand.Cards {
 			e.specialActionMovesForCard(p.Hand.Cards[i], game.ZoneHand)
@@ -165,6 +166,33 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 			Params: mustJSON(params),
 		})
 	}
+}
+
+// outsidePlayMove offers the Wish right's action (#3955): name a card from
+// the card database to play this turn. Offered while the seat holds the
+// right (game.CanNameOutsideCardLocked) and its container is empty. The
+// engine accepts the action whenever the right is live; the empty
+// container is policy for an automated seat, which would otherwise name
+// a fresh card at every priority it holds a card it cannot yet cast (a
+// sorcery on another player's turn). A human has the button regardless.
+func (e *enumerator) outsidePlayMove() {
+	g, p := e.g, e.p
+	if !g.CanNameOutsideCardLocked(e.seat) || (p.Sideboard != nil && p.Sideboard.Size() > 0) {
+		return
+	}
+	right := g.OutsidePlayRightLocked(e.seat)
+	if right == nil {
+		return
+	}
+	e.add(Move{
+		Type:   TypeOutsidePlay,
+		Player: e.seat,
+		Kind:   KindSpecialAction,
+		Label:  right.SourceName + ": name a card you own from outside the game to play this turn",
+		Params: mustJSON(struct {
+			Kind string `json:"kind"`
+		}{Kind: "outside_play"}),
+	})
 }
 
 // turnFaceUpOffers counts the turn_face_up offers in a card's list.

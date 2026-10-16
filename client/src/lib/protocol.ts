@@ -125,7 +125,10 @@ export interface ErrorPayload {
 // with the same count. `artifact_sources` asks, per mana, whether an
 // artifact made it (Coin of Mastery reads that).
 export interface PaperPaymentPrompt {
-  slots: { symbol: string; options: string[]; count?: number }[];
+  // `x` marks a slot of the cost's {X} part (#3941), the mana a "spend
+  // only <colours> mana on X" clause restricts; the mana declared for it
+  // carries `x: true`.
+  slots: { symbol: string; options: string[]; count?: number; x?: boolean }[];
   artifact_sources?: boolean;
 }
 
@@ -271,6 +274,10 @@ export type ActionType =
   // ADR 0150 §4 (owner decision 5): `{choice_id?}` — the caster
   // withdraws the request for help an assisted cast is parked on.
   | "cancel_assist"
+  // #3955 (Wish): no params. Opens the outside pick over the card database
+  // so the holder of a "play a card you own from outside the game" right
+  // names the card to play now.
+  | "outside_play"
   // ADR 0193 (CR 732.2): demonstrate a loop. `loop_record_start`,
   // `loop_record_stop` and `loop_record_cancel` take no params;
   // `loop_propose` takes `{count}` (1–1000); `resolve_loop_proposal`
@@ -541,6 +548,8 @@ export interface GameView {
   // controller and `on_behalf_of` to the controlled player.
   // ADR 0167: `until` is "resolution" (Word of Command) or "turn" (the
   // whole of a turn another player plays, Emrakul, the Promised End).
+  // #3998: or "search" (Opposition Agent: only while the controlled
+  // player's search prompt is open).
   // One entry per controlled player: the effect that applies now.
   player_controls?: PlayerControlView[];
   // ADR 0167 §8: turn-long controls still waiting for the controlled
@@ -622,9 +631,12 @@ export interface OutcomeView {
   winner_seat?: number;
   // "last_standing" (every opponent left, CR 104.2a), "effect" (an
   // effect said this player wins, CR 104.2b) or "all_lost" (everyone
-  // left lost at once, CR 104.4a — a draw).
-  cause: "last_standing" | "effect" | "all_lost";
-  // The object whose effect won, for an effect win.
+  // left lost at once, CR 104.4a — a draw) or "mandatory_loop" (a loop
+  // of only mandatory actions repeated with no way to stop, CR 732.4 —
+  // a draw).
+  cause: "last_standing" | "effect" | "all_lost" | "mandatory_loop";
+  // The object whose effect won, for an effect win; the loop's card,
+  // for a mandatory loop's draw.
   source?: string;
   source_name?: string;
 }
@@ -659,6 +671,10 @@ export interface LoopNoticeView {
   label: string;
   controller?: string;
   count: number;
+  // #2506, CR 732.4: the loop has only mandatory actions and repeats
+  // unchanged. If every seat passes it round once more, the game is a
+  // draw.
+  mandatory?: boolean;
 }
 
 // ADR 0193: GameView.loop_recording. `status` is "recording" (steps
@@ -1227,6 +1243,12 @@ export type LogKind =
   // `card_id` the card whose effect ended it. The stack's exile lines
   // and a `step` line for the cleanup step follow it.
   | "turn_ended"
+  // #3856, CR 727 (ADR 0201): the game was restarted (Karn Liberated's
+  // −14). `seat` is the player who restarted it and takes the new
+  // game's first turn, `card_id` / `label` the card, and `amount` how
+  // many exiled cards will enter under their control after the
+  // mulligans. Always the first line: the log begins again here.
+  | "game_restarted"
   // #1209, ADR 0082's 2026-09-23 amendment: a permanent that was
   // face up was turned face down (CR 708.2a). `card_id` is the
   // permanent; `target` is the object that did it (Ixidron, Cyber
@@ -1512,6 +1534,13 @@ export interface PendingChoiceView {
     // filter over it beside a free-text box. The server accepts
     // whatever comes back, trimmed and non-empty.
     | "choose_card_name"
+    // ADR 0198: "a card you own from outside the game" for a seat whose
+    // deck has no sideboard — any card in the card database the effect's
+    // filter accepts. collection_options are suggestions (no
+    // instance_id); the picker also searches the database through GET
+    // /games/{id}/outside/cards. Answered with resolve_choice
+    // { card_names: ["Card Name"] }; [] declines when choose_min is 0.
+    | "outside_collection"
     // #74 chained choices: the general two-way prompt, "do A, or do
     // B." Answered with the shared yes/no {choice_id, apply} payload —
     // apply=true takes the accept branch. accept_label / decline_label
@@ -1768,6 +1797,11 @@ export interface PendingChoiceView {
   // picker filters it and also offers a free-text box, because CR
   // 201.2 lets a player name a card nobody at the table is holding.
   name_options?: string[];
+  // ADR 0198: populated for kind "outside_collection" — the cards the
+  // prompt suggests from the card database, each with an empty
+  // instance_id (no card exists until one is taken). Sent to the chooser
+  // only, with choose_min / choose_max.
+  collection_options?: CardView[];
   // S17: populated for kind "replacement_order" — the CR 616
   // affected-player-chooses-order prompt. Client renders a drag-
   // reorder list of these entries and submits the IDs in the
@@ -1810,6 +1844,12 @@ export interface PendingChoiceView {
   // artifact, Eternal Witness with an empty graveyard, etc.). The
   // modal warns the chooser. Absent/false otherwise.
   no_legal_target?: boolean;
+  // ADR 0197 §10 (#2731): populated for kind "trigger_prompt" — true
+  // when the ability itself says "Yes" would leave the chooser no
+  // better off as things stand (Arni Brokenbrow's new base power would
+  // be no higher than its current one). The dock warns. Absent/false
+  // otherwise.
+  no_gain?: boolean;
   // S19 sub-PR 6: populated for kind "pay_unless" — the cost the
   // chooser is being asked to pay ("{2}"). Same {choice_id, apply}
   // payload as the other yes/no kinds: apply=true pays (from pool,
@@ -1986,7 +2026,10 @@ export interface PendingChoiceView {
   // "battlefield_tapped", or "cast_free" ("you may cast a spell from
   // your hand without paying its mana cost" — answering with a card
   // opens its cast at once), "cast_free_library" (the same over cards the
-  // chooser looked at on top of their own library, #2110), or "manifest" (ADR 0189: the named hand
+  // chooser looked at on top of their own library, #2110), "outside" (ADR 0191: the named cards
+  // come in from the chooser's sideboard), "cast_free_outside" / "play_outside" (#3955: the named
+  // sideboard cards are cast free, or played this turn, from outside the game; the pick opens the
+  // sideboard tab), or "manifest" (ADR 0189: the named hand
   // cards are put onto the battlefield face down as 2/2 creatures).
   // Absent on a plain discard or look.
   choose_destination?: string;
@@ -2545,6 +2588,12 @@ export interface PlayerView {
   // How many cards this seat owns outside the game. Public, like a
   // hand's size. Absent for a seat with none.
   sideboard_count?: number;
+  // #3955 (Wish): the seat's live "you may play a card you own from outside
+  // the game this turn" right, OWNER-ONLY. `can_name` is true when the seat's
+  // pool is the card database, so the `outside_play` action is how it names
+  // the card to play; with a sideboard its cards carry the cast surface
+  // directly.
+  outside_play?: { source_name: string; can_name?: boolean };
   // #1197/#1201 (CR 702.11d, CR 702.16i): the abilities this SEAT has
   // right now — bare engine tokens, "hexproof" or a general
   // "protection from <quality>" ("protection from everything" is the
@@ -2601,6 +2650,11 @@ export interface PlayerView {
   // from your hand — Memory Vessel"). While it is set `cant_play_lands`
   // carries the same clause; the badge row shows one NO HAND badge.
   cant_play_from_hand?: string;
+  // ADR 0199 (#3953, CR 701.20a): why this seat plays with its hand
+  // revealed right now ("Telepathy", "Stromgald Spy"). While it is set the
+  // hand's cards reach every seat face up, cards drawn later included.
+  // Absent when the hand is as hidden as any other.
+  hand_revealed?: string[];
   // ADR 0057 (#749, CR 104.3): the "can't lose the game" / "can't win
   // the game" gates on this seat. `cant_lose` lists the causes that
   // can't make this player lose right now ("life", "empty_draw",
@@ -2768,6 +2822,16 @@ export interface AdditionalCostView {
   // cannot be paid right now.
   exile_permanent_label?: string;
   exile_permanent_options?: LegalTargetsView;
+  // #3868: a "tap an untapped Vampire you control" additional cost (New
+  // Blood), on the cost or on one of its branches. `tap_others_options`
+  // lists the untapped permanents that could pay it, in payment order,
+  // min / max the clause's count; the picks ride cast_spell as
+  // `teamwork_ids`. Fewer cards than `min` means the cost cannot be paid
+  // right now. A creature that arrived this turn may pay: it is not {T}.
+  // #3961: min 0 (max every option) is "tap any number of untapped
+  // creatures you control" (Burn at the Stake); none is a legal payment.
+  tap_others_label?: string;
+  tap_others_options?: LegalTargetsView;
   // #3175: a "you may exile any number of blue cards from your hand"
   // additional cost (March of Swirling Mist). `exile_from_hand_options`
   // lists the caster's hand cards that could pay it, min 0: none is always
@@ -2786,6 +2850,13 @@ export interface AdditionalCostView {
   exile_cost_label?: string;
   exile_cost_options?: string[];
   exile_cost_zone?: ExileCostZone;
+  // #1948: "exile X cards from your graveyard" (Skeletal Scrying,
+  // Harvest Pyre). `demands_x` is set too, so the X prompt opens; the
+  // picks on `exile_ids` must number exactly the announced X
+  // (`exile_cost_n` is absent). `exile_cost_x_max` is the largest X the
+  // graveyard pays, absent at 0.
+  exile_cost_x?: boolean;
+  exile_cost_x_max?: number;
   payable?: boolean;
 }
 
@@ -2916,7 +2987,8 @@ export interface AlternativeCostView {
   // control that match, min == max == the count, in the shape an
   // ability's `tap_others_options` has, so the cast flow opens the tap
   // picker. Set instead of `pay_options` and `sacrifice_options`; the
-  // picked IDs ride `alt_cost_ids`.
+  // picked IDs ride `alt_cost_ids`. #3931: harmonize's "up to one
+  // untapped creature" is min 0, max 1 — tapping none is a payment.
   tap_options?: LegalTargetsView;
   // S28: the picker's prompt copy for `pay_options` ("a blue card"),
   // for `sacrifice_options` ("three creatures") or for `tap_options`
@@ -2929,6 +3001,13 @@ export interface AlternativeCostView {
   // instance IDs in `sacrifice_options`: the candidate's mana value and
   // the mana the cast pays with it sacrificed, from the server's pricer.
   sacrifice_prices?: Record<string, AltCostPriceView>;
+  // #3931: a harmonize offer (CR 702.180a) — the creature picked from
+  // `tap_options` reduces the cost by its power.
+  reduces_by_power?: boolean;
+  // #3931: a harmonize offer's price per candidate, keyed by the
+  // instance IDs in `tap_options`: the creature's power and the mana the
+  // cast pays with it tapped, from the server's pricer.
+  tap_prices?: Record<string, AltCostTapPriceView>;
   // CR 107.3b (#831): the card prints an {X} in its mana cost and
   // this offer does not, so claiming it fixes X at 0 — the cast flow
   // skips the X picker and sends nothing. Absent for nearly every
@@ -3658,6 +3737,9 @@ export interface TargetPurposeView {
   damage?: number;
   // #1944: the damage is the announced X; `damage` is then absent.
   damage_is_x?: boolean;
+  // #3961: the damage is this many times the number of creatures the
+  // cast's "tap any number" cost taps; `damage` is then absent.
+  damage_per_tapped?: number;
   // #3161: the spell puts the picked graveyard card onto the battlefield under its caster.
   reanimates?: boolean;
   // #2679: what the target's controller is given when it is removed.
@@ -3794,6 +3876,15 @@ export interface LegalTargetsView {
   // and a card with no entry (an unreadable cost) meets no bound.
   mana_value_at_most_x?: boolean;
   mana_values?: Record<string, number>;
+  // #3860, CR 601.2f: the extra life each legal card costs the caster
+  // to name, keyed by card id. Terror of the Peaks: "spells your
+  // opponents cast that target this creature cost an additional 3 life".
+  // Present only on a spell's clause, only for taxed cards.
+  life_taxes?: Record<string, number>;
+  // The cards in `life_taxes` whose tax the viewer cannot pay right now
+  // (CR 119.4). A player who can't pay can't target them: the picker
+  // drops them from the legal set and the dock says why.
+  life_taxes_unpayable?: string[];
   // ADR 0109 §9: the rest of the X bounds, on the same superset rule.
   // `mana_value_equals_x` narrows from `mana_values` by an EXACT match
   // (Lazav); `power_at_most_x` and `toughness_at_most_x` narrow from
@@ -4421,6 +4512,11 @@ export interface CardView extends CastSurfaceView {
   // S21 sub-PR 2: CR 302.6 summoning sickness — entered this turn
   // without haste, so it can't attack or pay a {T} cost.
   summoning_sick?: boolean;
+  // #3928: a summoning-sick creature whose controller may still pay its
+  // {T} costs, under an "as though those creatures had haste" static
+  // (Thousand-Year Elixir, CR 609.4). It still can't attack. Only ever
+  // set beside `summoning_sick`; read through `activationSick`.
+  activates_as_though_haste?: boolean;
   // ADR 0108 §5: this permanent's echo triggers at its controller's
   // next upkeep (CR 702.30a). Derived on the server; never set on a
   // face-down permanent.
@@ -5168,7 +5264,7 @@ export interface PlayerControlView {
   controlled: string;
   source?: string;
   source_name?: string;
-  until: "resolution" | "turn";
+  until: "resolution" | "turn" | "search";
 }
 
 /** ADR 0167 §8: a turn-long control waiting for the controlled player's next turn. */
@@ -5188,5 +5284,12 @@ export interface AutoAnswerRuleView {
 // and the cast's mana cost with it sacrificed ("{1}{U}{U}").
 export interface AltCostPriceView {
   mana_value: number;
+  price: string;
+}
+
+// #3931: one harmonize candidate's price — the creature's power, and the
+// cast's mana cost with it tapped ("{2}{R}{R}").
+export interface AltCostTapPriceView {
+  power: number;
   price: string;
 }

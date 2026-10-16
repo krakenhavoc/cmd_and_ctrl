@@ -17,8 +17,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
+	// "Mount" is a creature-type word of Kolodin's text, read through
+	// the source here and in `enters` (CR 612.2, #3984); "Vehicle" is an
+	// artifact type no text change reaches, and TextSubtype leaves it.
 	mountsAndVehicles := func(target *game.Card, _ *game.Game, source *game.Card) bool {
-		return target.Controller == source.Controller && (target.HasSubtype("Mount") || target.HasSubtype("Vehicle"))
+		return target.Controller == source.Controller && (target.HasSubtype(source.TextSubtype("Mount")) || target.HasSubtype("Vehicle"))
 	}
 	enters := func(subtype, label string, effect Effect) game.TriggeredAbility {
 		return game.TriggeredAbility{
@@ -26,7 +29,7 @@ func init() {
 			Key:     label,
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, true)
-				return ok && c.HasSubtype(subtype)
+				return ok && c.HasSubtype(source.TextSubtype(subtype))
 			},
 			Build:  eventCardTriggerItem(label),
 			Effect: effect,

@@ -207,6 +207,16 @@ var mechanics = []Mechanic{
 		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard} plus Flashback("{cost}") — see alternative_cost.go`,
 	},
 	{
+		// #3931, CR 702.180: a graveyard offer that taps up to one
+		// creature and is reduced by its power.
+		Name:       "harmonize",
+		Phrases:    []string{"harmonize"},
+		Implements: altCost("harmonize"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "harmonize") resolves`,
+		Confidence: Exact,
+		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard} plus Harmonize("{cost}") — see harmonize_keyword.go`,
+	},
+	{
 		// ADR 0100 sub-PR 1: CR 702.66, a way of paying rather than a
 		// cost, declared with one bit. Sub-PR 2 added the second bit, a
 		// permanent's "Spells you cast have delve" (Teval).
@@ -622,7 +632,7 @@ var mechanics = []Mechanic{
 		},
 		Evidence:   "the spec declares RemoveCounters on an activated or mana ability's cost",
 		Confidence: Exact,
-		Adopt:      `RemoveCountersFromThis / RemoveCountersFrom / RemoveCountersXFromThis / RemoveCountersAmong — see effects/activated.go`,
+		Adopt:      `RemoveCountersFromThis / RemoveCountersOfAnyKindsFromThis / RemoveCountersFrom / RemoveCountersXFromThis / RemoveCountersAmong — see effects/activated.go`,
 	},
 	{
 		// ADR 0093: a layer-6 grant of an ability bundle to OTHER

@@ -3,6 +3,8 @@ package effects
 import (
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -61,5 +63,89 @@ func TestIdolOfFalseGodsBasePTOutlivesAnOlderRemoval(t *testing.T) {
 	}
 	if c.CurrentPower() != 8 || c.CurrentToughness() != 8 {
 		t.Errorf("Idol is %d/%d, want 8/8 (base 0/0 outlives the older removal)", c.CurrentPower(), c.CurrentToughness())
+	}
+}
+
+// #3862: a removal OLDER than the Idol's effect (a Sludge Monster out
+// first) does not take the annihilator either. The layer 6 half is the
+// same effect as the layer 4 one, so CR 613.6 carries it past the
+// removal in the removal's own layer, and timestamp order puts the
+// older removal first.
+func TestIdolOfFalseGodsKeepsAnnihilatorUnderAnOlderRemoval(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	pushCatalogPermanent(g, me.ID, "Sludge Monster", "Creature — Horror", "2802fc92-49a0-43c8-bc10-24882eeee3f1", false)
+	idol := pushCatalogPermanent(g, me.ID, "Idol of False Gods", "Kindred Artifact — Eldrazi", idolOfFalseGodsOracle, false)
+	g.WithWriteLock(func() {
+		if err := g.AddCounterForEffect(idol, game.CounterPlusOne, 8); err != nil {
+			t.Fatalf("add counters: %v", err)
+		}
+		if err := g.AddCounterForEffect(idol, "slime", 1); err != nil {
+			t.Fatalf("add slime counter: %v", err)
+		}
+	})
+	c := annCard(t, g, idol)
+	if !c.HasLostAllAbilities() {
+		t.Fatal("setup: the Sludge Monster did not take the Idol's abilities")
+	}
+	if got := game.AnnihilatorAmounts(&c); len(got) != 1 || got[0] != 2 {
+		t.Errorf("annihilator %v under an older removal, want [2]", got)
+	}
+}
+
+// The Idol's ruling: "If Idol of False Gods loses its abilities before
+// gaining its eighth +1/+1 counter, it will have annihilator 2;
+// otherwise, it won't." The effect begins at the eighth counter, so a
+// removal that arrived at seven is older than it.
+func TestIdolOfFalseGodsThatLostItsAbilitiesBeforeTheEighthCounterHasAnnihilator(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	idol := pushCatalogPermanent(g, me.ID, "Idol of False Gods", "Kindred Artifact — Eldrazi", idolOfFalseGodsOracle, false)
+	g.WithWriteLock(func() {
+		if err := g.AddCounterForEffect(idol, game.CounterPlusOne, 7); err != nil {
+			t.Fatalf("add counters: %v", err)
+		}
+		g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(idol),
+			[]game.Mod{game.LoseAllAbilitiesMod()}, game.IndefiniteDuration(), "test — loses all abilities")
+	})
+	if c := annCard(t, g, idol); c.IsCreature() || !c.HasLostAllAbilities() {
+		t.Fatalf("setup at seven counters: creature %v, lost abilities %v", c.IsCreature(), c.HasLostAllAbilities())
+	}
+	g.WithWriteLock(func() {
+		if err := g.AddCounterForEffect(idol, game.CounterPlusOne, 1); err != nil {
+			t.Fatalf("add the eighth counter: %v", err)
+		}
+	})
+	c := annCard(t, g, idol)
+	if !c.IsCreature() || c.CurrentPower() != 8 || c.CurrentToughness() != 8 {
+		t.Errorf("at eight counters: creature %v, %d/%d; want an 8/8 creature", c.IsCreature(), c.CurrentPower(), c.CurrentToughness())
+	}
+	if got := game.AnnihilatorAmounts(&c); len(got) != 1 || got[0] != 2 {
+		t.Errorf("annihilator %v, want [2]: it lost its abilities before its eighth counter", got)
+	}
+}
+
+// "Otherwise, it won't": a removal after the eighth counter takes the
+// annihilator, and a ninth counter does not start the effect again.
+func TestIdolOfFalseGodsANinthCounterDoesNotOutrunALaterRemoval(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	idol := pushCatalogPermanent(g, me.ID, "Idol of False Gods", "Kindred Artifact — Eldrazi", idolOfFalseGodsOracle, false)
+	g.WithWriteLock(func() {
+		if err := g.AddCounterForEffect(idol, game.CounterPlusOne, 8); err != nil {
+			t.Fatalf("add counters: %v", err)
+		}
+		g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(idol),
+			[]game.Mod{game.LoseAllAbilitiesMod()}, game.IndefiniteDuration(), "test — loses all abilities")
+		if err := g.AddCounterForEffect(idol, game.CounterPlusOne, 1); err != nil {
+			t.Fatalf("add the ninth counter: %v", err)
+		}
+	})
+	c := annCard(t, g, idol)
+	if !c.IsCreature() || c.CurrentPower() != 9 {
+		t.Errorf("creature %v, power %d; want a 9/9 creature", c.IsCreature(), c.CurrentPower())
+	}
+	if got := game.AnnihilatorAmounts(&c); len(got) != 0 {
+		t.Errorf("annihilator %v, want none: it lost its abilities after its eighth counter", got)
 	}
 }

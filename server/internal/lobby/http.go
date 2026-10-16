@@ -314,6 +314,13 @@ type Config struct {
 	// token are set.
 	BugForum *BugForum
 
+	// ModLog posts player reports and admin actions to the community
+	// server's private #mod-log channel (ADR 0156's 2026-10-16
+	// amendment, #3325). Nil turns it off: nothing is posted. Production
+	// wires it when CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID and the bot token
+	// are set.
+	ModLog *ModLog
+
 	// BugLimits tunes the throttle in front of POST /bugreport (ADR
 	// 0017 §10): per-account window, daily cap, dedupe window. The zero
 	// value means the defaults; production sets nothing.
@@ -671,6 +678,10 @@ func Handler(c Config) http.Handler {
 	// can show the user which permanents will tap before they
 	// confirm. Read-only — no game state mutates.
 	mux.Handle("GET /games/{id}/auto-tap-preview", auth.Middleware(c.Auth)(handlerFunc(c, autoTapPreview)))
+	// ADR 0198 §3: the card search behind a pick from the card database
+	// as the chooser's collection. Answers only the seat that owes the
+	// named pick, and only with cards it would accept. Read-only.
+	mux.Handle(OutsideCardsRoute, auth.Middleware(c.Auth)(handlerFunc(c, outsideCardSearch)))
 	mux.Handle("POST /games/{id}/decks", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, uploadDeck))))
 	// Seat a deck already in the caller's library (ADR 0051 decision
 	// 7, S34 sub-PR 5) without re-pasting it. Same rate bucket as
@@ -1925,11 +1936,21 @@ func deleteGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	// The name, for the mod log, before the table is gone.
+	var name string
+	if c.ModLog != nil {
+		if meta, gerr := c.Lobby.Get(id); gerr == nil {
+			name = meta.Name
+		}
+	}
 	if err := c.Lobby.Delete(id); err != nil {
 		return err
 	}
 	if c.Evictor != nil {
 		c.Evictor.EvictGame(id)
+	}
+	if p, ok := auth.PrincipalFromContext(r.Context()); ok {
+		c.ModLog.TableDeleted(p, name)
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
@@ -1966,6 +1987,9 @@ func setGameArchived(c Config, w http.ResponseWriter, r *http.Request, archived 
 	}
 	if archived && c.Evictor != nil {
 		c.Evictor.EvictGame(id)
+	}
+	if p, ok := auth.PrincipalFromContext(r.Context()); ok {
+		c.ModLog.TableArchived(p, id, meta.Name, archived)
 	}
 	// The listing already strips these; an archive response is a
 	// listing row, not an ownership grant.
@@ -2382,6 +2406,15 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// ManaCost as costless, so a not-found-card path returns a
 	// clean 404 rather than a misleading "ok with empty plan."
 	card, ok := g.LookupCardForEffect(cardID)
+	if !ok {
+		// #3955: the caller's OWN card outside the game, which the index
+		// does not reach (CR 400.11c) and which a Wish play is previewed
+		// for. Read-only, and only the caller's own: another seat's
+		// container is a 404, as an unknown card is.
+		if oc, found := g.LookupOutsideCardForEffect(cardID); found && oc.Owner == p.PlayerID {
+			card, ok = oc, true
+		}
+	}
 	if !ok {
 		return httpError(http.StatusNotFound, "card not found in game")
 	}

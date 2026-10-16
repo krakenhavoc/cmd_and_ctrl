@@ -247,6 +247,23 @@ type PermanentInfo struct {
 	// died in response (#1863, TargetSpec.CombatWithSource). Nil when
 	// it was not blocking.
 	Blocking []uuid.UUID `json:"blocking,omitempty"`
+
+	// TextWords is the text change it was under (Card.TextWords, ADR
+	// 0160's 2026-10-15 amendment), as plain data: each printed colour
+	// word, basic land type or creature type and what it read as. A
+	// source that has left is read with the words it last had (CR
+	// 608.2h, #3872): a Swamp count on an ability whose source was
+	// Magical Hacked and then died still counts Islands. MoveCard clears
+	// the card's own field on the way out, a line after the record is
+	// written. Nil when nothing changed its words.
+	TextWords []TextWordChange `json:"textWords,omitempty"`
+}
+
+// TextReader is the record's text change as an object the word readers
+// accept (Card.TextColor, TextSubtype, game.ThroughTextOf), or nil when
+// its words were the printed ones.
+func (p PermanentInfo) TextReader() *Card {
+	return textReaderOf(textWordsFromEntries(p.TextWords))
 }
 
 // permanentManaValue is PermanentInfo.ManaValue's reading of a
@@ -284,6 +301,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		Renowned:       c.Renowned,
 		Attacking:      c.AttackingTarget != uuid.Nil,
 		Blocking:       c.BlockedAttackers(),
+		TextWords:      c.TextWords.entries(),
 	}
 }
 
@@ -486,6 +504,7 @@ func cloneLastKnownPermanents(src map[uuid.UUID][]PermanentInfo) map[uuid.UUID][
 				out[k][i].Copiable = &values
 			}
 			out[k][i].Attachments = cloneObjectRefs(v[i].Attachments)
+			out[k][i].TextWords = cloneTextWordChanges(v[i].TextWords)
 			if v[i].AttachedObject != nil {
 				ref := *v[i].AttachedObject
 				out[k][i].AttachedObject = &ref

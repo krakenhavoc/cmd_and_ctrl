@@ -27,19 +27,17 @@ import (
 // put onto the battlefield under your control if it is still in a
 // graveyard.
 //
-// Sandbox simplification, declared: a card a replacement sent
-// somewhere other than a graveyard (Rest in Peace) stays there, where
-// the ruling would still put it onto the battlefield. Weaker than
-// printed. An Aura put onto the battlefield chooses what it enchants as
-// it enters (CR 303.4f, #3158).
+// "That card" is the sacrificed card wherever the sacrifice left it
+// (#3859): a graveyard, exile under Rest in Peace, a library, or the
+// command zone. An Aura put onto the battlefield chooses what it enchants
+// as it enters (CR 303.4f, #3158).
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "1ea3ba2d-e88f-4879-92f2-681637094b45",
 		Name:         "Nazgûl Battle-Mace",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"A sacrificed card that went somewhere other than a graveyard isn't put onto the battlefield.",
-		},
+		Completeness: CompletenessFull,
 		Grants: []AbilityGrant{{
 			Key: nazgulBattleMaceGrant,
 			Triggered: []game.TriggeredAbility{
@@ -67,12 +65,7 @@ func nazgulBattleMaceTakeIt(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ev := ctx.Trigger().Event
 	victim, card, controller := ev.Actor, ev.CardID, item.Controller
-	take := func(ctx *Context) error {
-		if z := ctx.Game.FindCardZoneForEffect(card); card == uuid.Nil || z == nil || z.Kind != game.ZoneGraveyard {
-			return nil
-		}
-		return ReturnFromGraveyard{Target: card, Dest: game.ZoneBattlefield, Controller: controller}.Apply(ctx)
-	}
+	take := func(ctx *Context) error { return putSacrificedCardOntoBattlefield(ctx, card, controller) }
 	p := g.PlayerByIDForEffect(victim)
 	if p == nil || p.Eliminated || p.Life < 3 {
 		return take(ctx)
@@ -88,4 +81,32 @@ func nazgulBattleMaceTakeIt(g *game.Game, item *game.StackItem) error {
 			return take(ctx)
 		},
 	}.Apply(ctx)
+}
+
+// putSacrificedCardOntoBattlefield is "put that card onto the battlefield
+// under your control" for a card an opponent just sacrificed, from
+// wherever the sacrifice left it (#3859): the graveyard in the ordinary
+// case, exile under Rest in Peace, the library under a shuffle-in
+// replacement, the command zone for a commander (CR 903.9). The card was
+// sacrificed all the same (CR 701.17a); a replacement only rewrote where
+// it went, and "that card" is the card in that zone. A card that is
+// somewhere a sacrifice cannot have sent it, or no longer exists, is left
+// alone.
+func putSacrificedCardOntoBattlefield(ctx *Context, card, controller uuid.UUID) error {
+	if card == uuid.Nil {
+		return nil
+	}
+	z := ctx.Game.FindCardZoneForEffect(card)
+	if z == nil {
+		return nil
+	}
+	switch z.Kind {
+	case game.ZoneGraveyard:
+		return ReturnFromGraveyard{Target: card, Dest: game.ZoneBattlefield, Controller: controller}.Apply(ctx)
+	case game.ZoneExile:
+		return ReturnFromExile{Target: card, Controller: controller}.Apply(ctx)
+	case game.ZoneLibrary, game.ZoneCommand, game.ZoneHand:
+		return putCardsFromZoneTogether(ctx, z.Kind, []uuid.UUID{card}, controller, false, nil)
+	}
+	return nil
 }

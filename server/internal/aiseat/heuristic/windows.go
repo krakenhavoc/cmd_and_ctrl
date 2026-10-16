@@ -198,7 +198,7 @@ func (p *Policy) instantSpeed(st *state, m legal.Move) bool {
 // all of it on the wire (ADR 0033 §3).
 func (p *Policy) costsOnlyManaAndTaps(st *state, m legal.Move) bool {
 	if c := m.Cost; c != nil {
-		if c.Life > 0 || c.Loyalty != 0 || len(c.Counters) > 0 || c.Hand > 0 || c.Energy > 0 {
+		if c.Life > 0 || c.Loyalty != 0 || len(c.Counters) > 0 || c.Hand > 0 || c.Energy > 0 || c.Mill > 0 || c.LibraryExile > 0 {
 			return false
 		}
 	}
@@ -274,12 +274,13 @@ func (p *Policy) tapsACreature(st *state, m legal.Move) bool {
 }
 
 // rowCostsOnlyManaAndTaps reports whether an activated ability's
-// printed cost has no component but mana and tapping.
+// printed cost has no component but mana and tapping. A "Mill N cards"
+// component (#3845) is a library cost like LibraryExileCostN's (#3870).
 func rowCostsOnlyManaAndTaps(r *protocol.ActivatedAbilityView) bool {
 	return !r.SacrificeSelf && !r.DiscardSelf && !r.ExileSelf && !r.ReturnSelf && !r.BottomSelf &&
 		r.SacrificeLabel == "" && r.LifeCost == 0 && r.LoyaltyCost == nil &&
 		r.DiscardCostN == 0 && r.TopCostN == 0 && r.ExileCostN == 0 &&
-		r.LibraryExileCostN == 0 && r.ReturnLabel == "" && r.ExilePermanentLabel == ""
+		r.LibraryExileCostN == 0 && r.MillCost == 0 && r.ReturnLabel == "" && r.ExilePermanentLabel == ""
 }
 
 // activatedRow finds the activated ability with this index on c.

@@ -49,11 +49,47 @@ func planExileCards(plan []costPayment) *ExileCost {
 // the spell). `alsoSpent` is every card another component of the same cast
 // spends — one card pays one component (CR 118.3).
 //
+// #1948: an "exile X cards" clause demands exactly the announced X
+// (ExileCost.Count), and an X above what the graveyard can pay is
+// refused before anything is named (CR 118.3) — the ceiling the view
+// and the enumerator read, so the three agree. X = 0 names nothing.
+//
 // Caller must hold g.mu.
-func (g *Game) validateCastExileCardsLocked(playerID, castID uuid.UUID, plan []costPayment, ids, alsoSpent []uuid.UUID) error {
+func (g *Game) validateCastExileCardsLocked(playerID, castID uuid.UUID, plan []costPayment, ids, alsoSpent []uuid.UUID, xValue int) error {
 	ec := planExileCards(plan)
+	if ec != nil && ec.CountFromX {
+		if xValue > g.ExileCardsXCeilingForEffect(playerID, castID, ec) {
+			return ErrInvalidParam
+		}
+		if xValue <= 0 {
+			if len(ids) > 0 {
+				return ErrInvalidParam
+			}
+			return nil
+		}
+		fixed := *ec
+		fixed.N = xValue
+		fixed.CountFromX = false
+		ec = &fixed
+	}
 	_, err := g.validateExileCardsCostLocked(playerID, castID, ec, ids, alsoSpent)
 	return err
+}
+
+// ExileCardsXCeilingForEffect is the largest X an "exile X cards from
+// your graveyard" cost lets `playerID` announce for the spell `castID`
+// right now: the number of cards the clause's own walk offers (CR 118.3,
+// a cost can't be paid with cards you don't have). Zero for a clause
+// that is not an X form. ONE walk, read by the validator above, the
+// view's `exile_cost_x_max` and the bot enumerator, so they cannot
+// disagree about the cap (#544).
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) ExileCardsXCeilingForEffect(playerID, castID uuid.UUID, ec *ExileCost) int {
+	if ec == nil || !ec.CountFromX {
+		return 0
+	}
+	return len(g.ExileCostOptionsForEffect(playerID, castID, ec))
 }
 
 // paidWithExiledCards folds the cards the additional cost exiles into the

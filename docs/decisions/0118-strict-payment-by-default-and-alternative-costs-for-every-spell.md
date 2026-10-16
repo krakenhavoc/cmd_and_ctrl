@@ -293,3 +293,58 @@ whose reach differs), capped at the creatures the caster controls off
 effective types. A spell whose printed cost is {0} is covered but its
 free offer is dropped as a repeat of the printed price (decision 3),
 which changes nothing.
+
+## Amendment 2026-10-15 — a printed {T} ability on a card the catalog does not run (#3860)
+
+Decision 8 stamps `Card.PrintsManaAbility` at import because `game.Card` carries no oracle text. Magewright's Stone —
+"Untap target creature that has an activated ability with {T} in its cost" — asks the same kind of question about a
+creature the catalog has no entry for, and the engine's only view of such a creature's abilities (the catalog) is empty.
+The clause is about what the creature HAS, not about whether the engine runs it, so the honest source for an
+uncatalogued creature is its printed text, read once.
+
+`game.PrintsTapAbilityText` (game/tap_ability_text.go) scans for the rules' own shape for an activated ability (CR
+602.1): a line, reminder text removed, shaped "<cost>: <effect>" whose cost names `{T}`. It refuses a colon inside
+quotation marks (a granted ability is not the card's own: "Creatures you control have '{T}: Add {G}.'", "Equipped creature
+has '{T}: …'"), a triggered lead-in, and an instant or sorcery. The importer stamps `Card.PrintsTapAbility` beside
+`PrintsManaAbility`; a multi-faced card is judged on the face that is up — `SetFace` re-derives the stamp from the face's
+own `OracleText`, so a transformed werewolf is judged on the side showing. It is a copiable value (`PrintedValues`), since
+a copy takes the copied card's text (CR 707.2), carried in restore points (additive; absent means false, which only
+under-reports), and false for a face-down permanent (CR 708.2a). `Card.PrintedTapAbility()` is the reader.
+
+`b27HasTapAbility` joins the stamp with the catalog's view by "or": the catalog also covers what a granting catalog
+permanent gave the creature, which no text read can see. What is not seen: an ability granted by a permanent the catalog
+does not run — but that granting effect is not happening in this game either. Magewright's Stone ships `full`.
+
+Back-out: drop the `PrintedTapAbility()` line in `b27HasTapAbility` and
+`TestMagewrightsStoneUntapsAnUncataloguedCreatureWithAPrintedTapAbility` fails; drop the importer's stamp and
+`TestImporterStampsPrintsTapAbility` fails.
+
+## Amendment 2026-10-16 — "a card with a mana ability" is what the card prints (#3943)
+
+Moonsilver Key searches for "an artifact card with a mana ability". It asked the catalog, so an artifact the catalog does
+not run was never found. Scryfall's `produced_mana` is no answer: it is set for any card that makes mana, including Su-Chi
+("When this creature dies, add {C}{C}{C}{C}", a trigger that is not a mana ability, CR 605.5a), a card whose Treasure is
+in reminder text, and an Equipment that grants a mana ability. Of the 3,965 artifact cards in the dump, 85 carry
+`produced_mana` and have no mana ability of their own. `PrintsManaAbility` (decision 8) is no answer either: it flags any
+"Add" clause on purpose, for a warning that should over-report.
+
+The source of truth is the printed text, read by the rules' definition. `game.ManaAbilityInText` (game/mana_ability_text.go)
+recognises CR 605.1a's activated mana ability ("[cost]: [effect]" whose effect could add mana, with no target, not a
+loyalty ability, and whose cost and effect move no card to or from a library) and CR 605.1b's triggered one ("Whenever"
+a mana event, add mana, no target), plus the intrinsic ability of a land's basic land type (CR 305.6). Quoted text is a
+grant, not the card's own. A sentence of an effect that creates a delayed trigger ("When that mana is spent …", "Draw a
+card at the beginning of the next turn's upkeep") belongs to that trigger. The importer stamps the answer as
+`Card.ManaAbilityText`, a `PrintedFact`: unknown (never read), no or yes. `SetFace` re-derives it from the face that is
+up, so a card in a library is judged on its front face (CR 712.8a). It is a copiable value, carried in restore points
+(additive; absent means unknown), and a face-down card has none (CR 708.2a).
+
+`game.HasPrintedManaAbility` reads the stamp whenever the text was read, catalogued card or not, and asks the catalog
+only for a card whose text never was. It does not join the two by "or", as #3860 did for {T} abilities, because here the
+catalog is sometimes wrong by the rules: it runs Millikin's "{T}, Mill a card: Add {C}" and Chromatic Sphere's "Add one
+mana of any color. Draw a card." as mana abilities, and CR 605.1a says neither is one (#3971). For a card in a library the
+printed text is the whole answer, since nothing grants a library card an ability.
+
+`TestManaAbilityTextAgreesWithTheCatalog` checks the classifier against every catalogued face (6,437, of which 833
+print a mana ability). Seven disagree, each pinned with its reason: the five CR 605.1a cards (#3971), Filigree Familiar,
+whose catalog entry runs a mana ability the card does not print (#3970), and Dryad Arbor, whose Forest type the fixture
+can't show. Moonsilver Key ships `full`.

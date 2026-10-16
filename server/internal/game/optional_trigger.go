@@ -28,6 +28,17 @@ import "github.com/google/uuid"
 // makes the trigger. TriggerOptionalPrompt.BeforeStack keeps it on the
 // harvest-time prompt (queueTriggerPromptLocked).
 //
+// # Activated abilities (ADR 0197 §10, #2731)
+//
+// An activated ability whose whole effect is "you may …" (Arni
+// Brokenbrow's boast) is the same question at the same moment: CR 608.2d
+// makes the choice as the ability resolves. Its row declares the
+// question (ActivatedAbilityShape.MayQuestion), the activation stamps
+// the item (stampOptionalActivated), and from there it is this file's
+// path unchanged: the same prompt, the same standing answers under the
+// row's own key, the same parked tail. Only an activated row can say
+// when "yes" would not help (CatalogActivatedMayHelps → NoGain).
+//
 // # The prompt is part of the resolution
 //
 // The question is an ordinary trigger_prompt queued while the item
@@ -41,7 +52,10 @@ import "github.com/google/uuid"
 
 // OptionalTrigger is the CR 603.5 "you may" an optional triggered
 // ability carries on the stack: who is asked, and how. Plain data,
-// stamped as the item is built and read when it resolves.
+// stamped as the item is built and read when it resolves. An activated
+// ability whose whole effect is a "you may" carries the same (ADR 0197
+// §10); the name is the trigger's because it came first, and it is an
+// on-disk identity.
 type OptionalTrigger struct {
 	// Question is the prompt's header (TriggerOptionalPrompt.Question).
 	Question string `json:"question,omitempty"`
@@ -96,6 +110,52 @@ func (g *Game) stampOptionalTriggerLocked(item *StackItem, t TriggeredAbility, e
 	item.Optional = o
 }
 
+// stampOptionalActivated marks a freshly announced activated ability
+// whose row declares a resolution-time "you may" as its whole effect
+// (ActivatedAbilityShape.MayQuestion, ADR 0197 §10, #2731). The
+// activator is asked (CR 109.5: "you" is the ability's controller), and
+// the standing answer is keyed by the row (activatedPromptKey). card
+// and faceDown are the source's name and face as it was activated.
+func stampOptionalActivated(item *StackItem, ab ActivatedAbilityShape, ref *AbilityRef, card string, faceDown bool) {
+	if item == nil || ab.MayQuestion == "" {
+		return
+	}
+	o := &OptionalTrigger{Question: ab.MayQuestion}
+	if key := activatedPromptKey(ref, ab, faceDown); key != "" {
+		o.AnswerKey, o.AnswerCard, o.AnswerPrompt = key, card, ab.MayQuestion
+	}
+	item.Optional = o
+}
+
+// activatedPromptKey is the ADR 0127 key of an activated ability's
+// resolution-time "you may": `<catalog key>|activated|<row label>`, or
+// "" when the row is not a catalog row, the source is face down, the
+// key would be too long to store, or the row has a target or mode
+// clause (the coverage rule triggerPromptCovered applies to triggers).
+func activatedPromptKey(ref *AbilityRef, ab ActivatedAbilityShape, faceDown bool) string {
+	if ref == nil || ref.Key == "" || ref.Name == "" || faceDown || ab.Targets != nil || ab.Modes != nil {
+		return ""
+	}
+	key := ref.Key + "|" + AbilitySlotActivated + "|" + ref.Name
+	if len(key) > MaxAutoAnswerKeyLen {
+		return ""
+	}
+	return key
+}
+
+// optionalNoGainLocked is the NoGain warning a resolution-time "you
+// may" carries: its activated row declares when "yes" helps
+// (CatalogActivatedMayHelps) and, on the board it resolves on, it does
+// not. Rows that declare nothing, and items whose row cannot be found,
+// carry no warning. Caller must hold g.mu.
+func (g *Game) optionalNoGainLocked(item *StackItem) bool {
+	if CatalogActivatedMayHelps == nil || item.Kind != StackItemActivated || item.Params.Ability == nil {
+		return false
+	}
+	helps := CatalogActivatedMayHelps(*item.Params.Ability)
+	return helps != nil && !helps(g, item)
+}
+
 // optionalChooser is who answers item's "you may".
 func optionalChooser(item *StackItem) uuid.UUID {
 	if item.Optional != nil && item.Optional.Chooser != uuid.Nil {
@@ -119,6 +179,7 @@ func (g *Game) askOptionalTriggerLocked(item *StackItem) {
 		Source:           item.SourceCardID,
 		Reason:           o.Question,
 		NoLegalTarget:    g.optionalTriggerHasNoTargetLocked(item),
+		NoGain:           g.optionalNoGainLocked(item),
 		AutoAnswerKey:    o.AnswerKey,
 		AutoAnswerCard:   o.AnswerCard,
 		AutoAnswerPrompt: o.AnswerPrompt,

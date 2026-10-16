@@ -35,8 +35,10 @@ func init() {
 				Layer:                 game.Layer4Type,
 				ContinuesAfterRemoval: true,
 				AppliesTo:             AttachedToSource,
-				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-					c.SetSubtypes([]string{"Dragon"})
+				// "Dragon" and "black" are words of the Aura's text,
+				// read through it (CR 612.2, #3984).
+				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+					c.SetSubtypes(source.TextSubtypes("Dragon"))
 				},
 			},
 			SetAttachedColors("B"),

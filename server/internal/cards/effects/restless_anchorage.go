@@ -45,8 +45,8 @@ func init() {
 					Target: item.SourceCardID,
 					Mods: []game.Mod{
 						game.AddTypesMod("Creature"),
-						game.AddSubtypesMod("Bird"),
-						game.SetColorsMod("W", "U"),
+						game.AddSubtypesMod(g.TextReaderForEffect(item).TextSubtypes("Bird")...),
+						game.SetColorsMod(g.TextReaderForEffect(item).TextColors("W", "U")...),
 						game.SetBasePowerMod(2),
 						game.SetBaseToughnessMod(3),
 						game.AddKeywordsMod("flying"),

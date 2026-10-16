@@ -188,6 +188,19 @@ type StaticAbility struct {
 	// See ContinuousEffect.ContinuesAfterRemoval; ADR 0067 §2.
 	ContinuesAfterRemoval bool
 
+	// StartsAtCounters declares a static whose effect begins when its
+	// SOURCE gets its Nth counter of a kind — Idol of False Gods' "As
+	// long as this artifact has eight or more +1/+1 counters on it" —
+	// and gives the effect the timestamp of that moment when it is
+	// later than the source's own (#3862, ADR 0067 amendment
+	// 2026-10-15). The Idol's ruling is the reason: one that lost its
+	// abilities before its eighth counter has annihilator 2, one that
+	// lost them afterwards does not, so the effect sorts at the eighth
+	// counter, not at the Idol's entry. The condition itself stays in
+	// AppliesTo; this says only when it began. The zero value is "the
+	// source's own timestamp", which is every other static.
+	StartsAtCounters CounterThreshold
+
 	// GrantAbilities names the catalog ability bundles this static
 	// GIVES every object it applies to (CR 113.10, ADR 0093) —
 	// Cryptolith Rite's "{T}: Add one mana of any color", Chromatic
@@ -441,6 +454,26 @@ type StaticAbility struct {
 	// effects.Register refuses another at boot.
 	GrantZone ZoneKind
 
+	// AffectsZones declares a layer-4 or layer-5 static whose objects
+	// are NOT on the battlefield (#3862, ADR 0039 amendment 2026-10-15):
+	// Mycosynth Lattice's "All cards that aren't on the battlefield,
+	// spells, and permanents are colorless", Maskwood Nexus' "creature
+	// spells you control and creature cards you own that aren't on the
+	// battlefield", Secret Arcade's "permanent spells you control". Each
+	// entry is a zone whose objects AppliesTo is asked of: ZoneStack (a
+	// spell), ZoneHand, ZoneLibrary, ZoneGraveyard, ZoneExile and
+	// ZoneCommand (a card). For a spell, target.Controller is the
+	// spell's controller (layer 2 has settled it); for a card it is its
+	// owner, which is the "you own" of the printed text (CR 108.4).
+	//
+	// The battlefield pass never gathers it: the permanent half of such
+	// a sentence is a static of its own. The zone layer step
+	// (zone_layers.go) applies these after layer 2, in layer order and
+	// then timestamp order, and stamps the result on the object, where
+	// the type and colour readers find it (Card.zoneLayered).
+	// effects.Register refuses one outside layers 4 and 5.
+	AffectsZones []ZoneKind
+
 	// Label is this static's player-facing wording, as a stack label
 	// is for a triggered or activated row: "Attacks each combat if
 	// able." Shown in the art tile's static-ability chip (#2219,
@@ -664,10 +697,18 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 			if ab.GrantZone != "" {
 				continue
 			}
+			// #3862: and a static over objects off the battlefield is the
+			// zone layer step's (zone_layers.go).
+			if len(ab.AffectsZones) > 0 {
+				continue
+			}
 			out = append(out, staticContinuousEffect{
-				ability:   ab,
-				source:    src,
-				timestamp: ts,
+				ability: ab,
+				source:  src,
+				// #3862: an "as long as it has N or more counters"
+				// effect sorts at the moment it began, when that is
+				// later (counter_thresholds.go).
+				timestamp: staticTimestamp(src, ab, ts),
 				live:      true,
 			})
 		}
@@ -754,7 +795,9 @@ func (g *Game) applyLayerLocked(effects []ContinuousEffect, l Layer, sub SubLaye
 //   - IN the removal's bucket, timestamp order decides, which is
 //     what `HasLostAllAbilities` already answers: two Song of the
 //     Dryads each enchanting the other settle on "the earlier one
-//     wins" rather than on a paradox.
+//     wins" rather than on a paradox. The exception is the one the
+//     next bullet makes: an effect that started in an earlier layer
+//     carries on in this one too, at its own timestamp (#3862).
 //   - AFTER it, the source's effects stop — unless this effect is the
 //     later-layer half of one that already started applying to this
 //     object, which CR 613.6 says carries on regardless
@@ -771,6 +814,11 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 	// static is recorded with this effect's timestamp, which the
 	// granted static's CR 613.7a timestamp reads (granted_statics.go).
 	grants, grantor := grantKeysOf(eff)
+	// #2041: a layer-4 effect loses the subtypes of any card type it
+	// removes (CR 205.1a, card_type_loss.go). One interface call per
+	// effect, not per object.
+	effLayer, _ := eff.Layer()
+	typeChange := effLayer == Layer4Type
 	// The fast path, and it is the board almost every recompute runs
 	// on: nothing in play can remove an ability, so CR 613.6 has
 	// nothing to say, no source can be silenced, and the whole of the
@@ -784,7 +832,11 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 			if !eff.AppliesTo(target, g) {
 				continue
 			}
-			eff.Apply(target.effective, target, g)
+			if typeChange {
+				applyTypeChange(eff, target.effective, target, g)
+			} else {
+				eff.Apply(target.effective, target, g)
+			}
 			if definesPT {
 				target.effective.PTDefined = true
 			}
@@ -833,14 +885,18 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 				st.recordRemovalTimestamp(target, eff.Timestamp())
 			}
 		}
-		eff.Apply(target.effective, target, g)
+		if typeChange {
+			applyTypeChange(eff, target.effective, target, g)
+		} else {
+			eff.Apply(target.effective, target, g)
+		}
 		if definesPT {
 			target.effective.PTDefined = true
 		}
 		if grants != nil {
 			st.noteGrants(target, grants, grantor, eff.Timestamp())
 		}
-		st.recordApplied(src, target)
+		st.recordApplied(src, target, bucketIndex)
 	}
 }
 
@@ -1018,6 +1074,11 @@ func (g *Game) recomputeLayersLocked() {
 	// ninjutsu" (Satoru Umezawa). After layer 2 for the same reason: the
 	// "you" of a static reads the controller the pass just settled.
 	g.zoneGrantPassLocked()
+	// #3862: and layers 4 and 5 for every object off the battlefield —
+	// Mycosynth Lattice's colourless cards and spells, Maskwood Nexus'
+	// every-type creature cards (zone_layers.go). After layer 2 for the
+	// same reason as the two steps above.
+	g.zoneLayerPassLocked()
 	// #1313: untap holds end with their CR 611.2b duration, and the
 	// board those durations read — who controls the source, whether it
 	// is still here — is settled only now, after layer 2 has been
@@ -1103,6 +1164,9 @@ func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 				c.TextWords.applyToBaseline(&printed)
 			}
 			c.effective = &printed
+			// #3862: a permanent has no zone layer stamp, whatever
+			// route brought it here (zone_layers.go).
+			c.zoneLayered = nil
 		}
 	}
 	effects := g.activeStaticAbilitiesLocked()
@@ -1112,6 +1176,11 @@ func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 	st := newLayerPassState(effects)
 	for i, b := range layerOrder {
 		g.applyLayerLocked(effects, b.Layer, b.SubLayer, b.has7Sub, i, st)
+		if b.Layer == Layer7PT && b.SubLayer == SubLayer7B_Set {
+			// CR 208.4b: what the pass holds now is each permanent's
+			// base power (Card.BasePower).
+			g.recordBasePowerLocked()
+		}
 		if b.Layer == Layer6Ability {
 			// #1651: "can't have" beats every grant in the bucket,
 			// whatever its timestamp (CR 101.2). See cant_have.go.
@@ -1135,6 +1204,24 @@ func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 	g.foldDecayedLocked()
 	// CR 701.60c (#2737): a suspected permanent's granted "can't block".
 	g.foldSuspectedCantBlockLocked()
+}
+
+// recordBasePowerLocked stamps every permanent's power as it stands
+// after layer 7b onto Card.basePower: the base power CR 208.4b names,
+// which the later 7c to 7e buckets and the counters read on top of it
+// leave alone. Run once per pass, between those buckets.
+//
+// Caller holds g.mu in write mode (the layer pass).
+func (g *Game) recordBasePowerLocked() {
+	if g.Battlefield == nil {
+		return
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.effective != nil {
+			c.basePower = c.effective.Power
+		}
+	}
 }
 
 // materialiseControlLocked copies layer 2's output back onto

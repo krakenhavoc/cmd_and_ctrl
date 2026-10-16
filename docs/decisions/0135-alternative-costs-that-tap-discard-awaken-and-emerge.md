@@ -301,3 +301,24 @@ Each question lists the recommended option first. The recommendation is the most
    - (c) PRs 2 and 3 only (discard and tap, 16 cards). Awaken and emerge wait for a later sprint.
 
    **Answered: (a), as recommended (owner decision 7).**
+
+---
+
+## Amendment (2026-10-16, [#3931](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3931)): harmonize, a tap of up to one creature reduced by its power
+
+**Status:** Accepted · S76 — Cards: incubate, face-down and outside the game. Found in the #3654 top-1,000 sweep (Nature's Rhythm, EDHREC rank 862).
+
+**The rule.** CR 702.180a: harmonize "represents three static abilities". "Harmonize [cost]" means "You may cast this card from your graveyard by paying [cost] and tapping up to one untapped creature you control rather than paying this spell's mana cost", "If you cast this spell using its harmonize ability, its total cost is reduced by an amount of generic mana equal to the tapped creature's power", and "If the harmonize cost was paid, exile this card instead of putting it anywhere else any time it would leave the stack". It follows the alternative-cost rules of 601.2b and 601.2f–h. CR 702.180b: "You choose which creature to tap as you choose to pay a spell's harmonize cost (see rule 601.2b), and then tap that creature as you pay the total cost."
+
+**Decision.** Harmonize is the three pieces this ADR already has, and one flag. Each choice below is the CR-faithful one, and none needed an owner decision: the rule leaves no room for another reading.
+
+1. **Place and exile are flashback's.** `effects.Harmonize(cost)` is `{Key: "harmonize", FromZone: graveyard, ExileOnLeavingStack: true}`, so CR 702.180a's exile replaces every way off the stack (a fizzle and a counter included), as CR 702.34a's does.
+2. **The tap is §1's card component, widened to "up to".** `TapOthersCost.UpTo` makes the count a ceiling: `TapOthersCostBounds` is 0..Count, so the one validator, the payer and the candidate walk are §1's. Naming none is a legal payment, so `AlternativeCostPayableLocked` never withholds the offer for want of a creature. `game.HarmonizeTapCost()` is the one clause (an untapped creature you control, Count 1), shared by a printed and a granted offer. A cost does not target (CR 601.2h) and is not the {T} symbol (CR 302.6). The creature rides `alt_cost_ids`, which the auto-tapper already leaves alone, so it cannot also make the spell's mana.
+3. **The reduction is §4's, with power for mana value.** `AlternativeCost.ReducedByTappedPower` adds `CostQuery.AltTappedPower`, the named creature's power (clamped at zero) while it is still untapped on the battlefield, because CR 702.180b chooses it at 601.2b and taps it at 601.2h, after 601.2f totals the cost. `applyCostModifiersLocked` takes it off with emerge's reduction: the generic part first, then an announced X (#2701), never below {0}. So Nature's Rhythm's {X}{G}{G}{G}{G} with a 4-power creature tapped buys four more X for the same mana. The payment, the auto-tap preview, the view's per-candidate `tap_prices` and the enumerator read one price.
+4. **Granted harmonize is a permission key.** A `CastPermission` whose `AltCostKey` is `harmonize` synthesises the tap and the reduction in `AlternativeCostFor`, the way madness's life is read off its key, so Songcrafter Mage ("gains harmonize until end of turn. Its harmonize cost is equal to its mana cost") stores nothing new on the snapshot.
+5. **Guards.** `effects.Register` holds `ReducedByTappedPower` and `UpTo` together over exactly one creature (`checkHarmonize`), and refuses `UpTo` on an additional cost, an activated ability and a mana ability.
+6. **The bot.** The enumerator prices each creature on its own (`legal.harmonizePayments`, emerge's discipline), drops a creature that saves nothing, ranks the affordable ones by the policy's tap price less the mana saved (`TargetCandidate.Tap` with `Saves`), and adds the empty payment last when the seat can afford the full cost.
+
+**What does not change.** No snapshot field: the offer is catalog data and `harmonize` is a new `StackItem.AltCost` string. The client's tap picker reads honest bounds (`altCostTapRange`), so "none" is a confirmable answer for this offer alone, and is skipped when there is nothing to tap.
+
+**Cards** (12, all Full): Channeled Dragonfire, Glacial Dragonhunt, Mammoth Bellow, Nature's Rhythm, Roamer's Routine, Songcrafter Mage, Synchronized Charge, Unending Whisper, Ureni's Rebuff, Wild Ride, Winternight Stories and Zenith Festival. Ureni's Counsel prints harmonize but is an Alchemy card, not legal in Commander.

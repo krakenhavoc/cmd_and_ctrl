@@ -61,6 +61,21 @@ func SacrificeN(n int, label string, preds ...CardPredicate) game.AbilityCost {
 	return game.AbilityCost{SacrificeOther: sacrificeSpec(label, preds...).WithCount(n, n)}
 }
 
+// SacrificeNDifferent is SacrificeN with a rule over the set: no two of
+// the n permanents may share the key d reads (#3940). Transmutation
+// Font's "Sacrifice three artifact tokens with different names" is
+//
+//	SacrificeNDifferent(3, "three artifact tokens with different names",
+//	    EachDifferentName(), Artifact(), IsTokenPredicate())
+//
+// It is the target clause's set rule (TargetSpec.Different) on a
+// sacrifice clause. A cost reads it strictly (CR 201.2b): a permanent
+// with no name can't pay it at all. Register allows it on an activated
+// ability's cost only, at a count of two or more.
+func SacrificeNDifferent(n int, label string, d *game.TargetDifference, preds ...CardPredicate) game.AbilityCost {
+	return game.AbilityCost{SacrificeOther: sacrificeSpec(label, preds...).WithCount(n, n).EachDifferent(d)}
+}
+
 // Another is the printed word "another" / "other" on a clause: the
 // object the ability belongs to is not an eligible pick. It compares
 // OBJECTS (game.TargetSpec.ExcludeSource, CR 109.1), so a second card
@@ -815,6 +830,23 @@ func RemoveCountersFromThis(kind string, n int) game.AbilityCost {
 	return game.AbilityCost{RemoveCounters: &game.CounterRemovalCost{Counter: kind, N: n}}
 }
 
+// RemoveCountersOfAnyKindsFromThis is "Remove N counters from this
+// permanent" with no kind printed, for N of two or more (#3987):
+// Ghost-Spider's "Remove two counters from Ghost-Spider", Gnarlbark Elm's
+// "Remove two counters from this creature". The counters may be of any
+// kinds the permanent holds, mixed or not, and the activator names how
+// many of each as the cost is paid (CR 602.2b, 118.3): a +1/+1 and a
+// shield counter is a legal payment.
+//
+// It is #943's any-kind among payment with the source as its one
+// candidate (CounterRemovalCost.Among with no From), so the validator,
+// the enumerator and the client's per-kind picker are the among form's.
+// "Remove a counter from this creature" (N = 1) has one kind to name and
+// stays RemoveCountersFromThis("", 1).
+func RemoveCountersOfAnyKindsFromThis(n int) game.AbilityCost {
+	return game.AbilityCost{RemoveCounters: &game.CounterRemovalCost{N: n, Among: true}}
+}
+
 // RemoveCountersFrom is "Remove N <kind> counters from <a permanent
 // you control>": Heart of Kiran's "remove a loyalty counter from a
 // planeswalker you control" is
@@ -824,7 +856,8 @@ func RemoveCountersFromThis(kind string, n int) game.AbilityCost {
 // An empty kind is "a counter" of any kind (Fain, the Broker), and the
 // activator names the kind with the permanent; Register refuses an
 // empty kind with n > 1, because one kind choice cannot say how a
-// "remove two counters" that mixes kinds was paid.
+// "remove two counters" that mixes kinds was paid (from the source,
+// that is RemoveCountersOfAnyKindsFromThis).
 //
 // Like a sacrifice clause the permanent is chosen, not targeted, and
 // "you control" is the engine's rule rather than a predicate the card

@@ -337,26 +337,182 @@ func TestPinnedRetargetRefusesAChangeThatBreaksAnotherSlot(t *testing.T) {
 	})
 }
 
-// Two instances of "target" that named the SAME creature are one
-// object on the board: a mandatory change with nothing else eligible is
-// forced, and lands on the earlier slot. This is Spellskite's declared
-// caveat, pinned so that changing it is a decision.
-func TestPinnedRetargetSameObjectInTwoClausesChangesTheEarlier(t *testing.T) {
+// findOptionPick is the open "choose one" prompt addressed to `chooser`.
+func findOptionPick(g *Game, chooser uuid.UUID) *PendingChoice {
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == PendingChoiceOptionPick && c.Chooser == chooser {
+			return c
+		}
+	}
+	return nil
+}
+
+// pinnedSameObjectTwice casts a spell whose two clauses both name `a`
+// (two instances of the word "target" that chose one creature, CR
+// 601.2c) and offers the pinned change to `skite`.
+func pinnedSameObjectTwice(t *testing.T) (g *Game, item *StackItem, a, skite uuid.UUID, opp *Player) {
+	t.Helper()
+	g = newActiveGame(t)
+	pinnedSpecs(t)
+	advanceTo(t, g, StepPrecombatMain)
+	me := g.Seats[0]
+	opp = g.Seats[1]
+	a = pushRetargetCreature(g, opp, "A")
+	skite = pushRetargetCreature(g, opp, "Skite")
+	item = castTargeted(t, g, me, pinnedTwoClausesOracle, []TargetRef{
+		{Kind: TargetCard, ID: a, Slot: 0}, {Kind: TargetCard, ID: a, Slot: 1},
+	})
+	offerPinned(t, g, item, opp.ID, skite, false)
+	return g, item, a, skite, opp
+}
+
+// #3860: two instances of "target" that named the SAME creature are one
+// object on the board, and the board cannot point at an instance of a
+// word. So a mandatory change with only that object eligible no longer
+// guesses the earlier slot: it asks which one changes (Spellskite's
+// 2020-08-07 ruling puts the choice with its controller), one option
+// per slot, each labelled with the clause it answers and showing the
+// creature.
+func TestPinnedRetargetSameObjectInTwoClausesAsksWhichSlotChanges(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		pick int
+	}{
+		{"the first instance changes", 0},
+		{"the second instance changes", 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g, item, a, skite, opp := pinnedSameObjectTwice(t)
+			if findRetargetPrompt(g, opp.ID) != nil {
+				t.Fatal("one object to offer: no object prompt, only the slot question")
+			}
+			prompt := findOptionPick(g, opp.ID)
+			if prompt == nil {
+				t.Fatal("the chooser was never asked which instance of target changes")
+			}
+			if len(prompt.PickOptions) != 2 {
+				t.Fatalf("options = %+v, want one per slot", prompt.PickOptions)
+			}
+			if prompt.PickOptions[0].Label == prompt.PickOptions[1].Label {
+				t.Errorf("two slots under the same words must be told apart: %q", prompt.PickOptions[0].Label)
+			}
+			for _, o := range prompt.PickOptions {
+				if len(o.Cards) != 1 || o.Cards[0] != a {
+					t.Errorf("option %q shows %v, want the creature", o.Label, o.Cards)
+				}
+			}
+			if got := targetIDs(g, item.ID); got[0] != a || got[1] != a {
+				t.Fatalf("nothing moves before the answer: %v", got)
+			}
+			if err := g.ResolveOptionPick(prompt.ID, opp.ID, tc.pick); err != nil {
+				t.Fatalf("ResolveOptionPick: %v", err)
+			}
+			got := targetIDs(g, item.ID)
+			want := []uuid.UUID{skite, a}
+			if tc.pick == 1 {
+				want = []uuid.UUID{a, skite}
+			}
+			if got[0] != want[0] || got[1] != want[1] {
+				t.Errorf("targets = %v, want %v", got, want)
+			}
+			if findOptionPick(g, opp.ID) != nil {
+				t.Error("the question is closed once answered")
+			}
+		})
+	}
+}
+
+// The slot question is a keyed option pick, so a table waiting on it is
+// still a restore point (the object prompt before it always was), and
+// the answer made on the restored game moves the slot the chooser chose.
+func TestPinnedRetargetSlotQuestionSurvivesARestore(t *testing.T) {
+	g, item, a, skite, opp := pinnedSameObjectTwice(t)
+	if findOptionPick(g, opp.ID) == nil {
+		t.Fatal("setup: the slot question is open")
+	}
+	_, restored := roundTrip(t, g)
+	prompt := findOptionPick(restored, opp.ID)
+	if prompt == nil {
+		t.Fatal("the slot question did not survive the restore")
+	}
+	if err := restored.ResolveOptionPick(prompt.ID, opp.ID, 1); err != nil {
+		t.Fatalf("ResolveOptionPick on the restored game: %v", err)
+	}
+	if got := targetIDs(restored, item.ID); got[0] != a || got[1] != skite {
+		t.Errorf("targets = %v, want [A Skite]", got)
+	}
+}
+
+// A chooser who leaves under the slot question leaves the original
+// targets standing (CR 115.7a: a change that is not made leaves the
+// target alone) and wedges nothing.
+func TestPinnedRetargetSlotQuestionDroppedLeavesTheTargets(t *testing.T) {
+	g, item, a, _, opp := pinnedSameObjectTwice(t)
+	prompt := findOptionPick(g, opp.ID)
+	if prompt == nil {
+		t.Fatal("setup: the slot question is open")
+	}
+	g.WithWriteLock(func() {
+		idx, c := g.findChoiceLocked(prompt.ID)
+		if idx < 0 {
+			t.Fatal("setup: the prompt is queued")
+		}
+		g.dequeueChoiceLocked(idx)
+		g.defaultDroppedChoiceLocked(c)
+	})
+	if got := targetIDs(g, item.ID); got[0] != a || got[1] != a {
+		t.Errorf("targets = %v, want both unchanged", got)
+	}
+}
+
+// The slot question only appears when there IS one to ask: a creature
+// filling a single slot is moved with no prompt at all.
+func TestPinnedRetargetOneSlotAsksNoSlotQuestion(t *testing.T) {
 	g := newActiveGame(t)
 	pinnedSpecs(t)
 	advanceTo(t, g, StepPrecombatMain)
 	me, opp := g.Seats[0], g.Seats[1]
 	a := pushRetargetCreature(g, opp, "A")
 	skite := pushRetargetCreature(g, opp, "Skite")
+	item := castTargeted(t, g, me, retargetOneOracle, []TargetRef{{Kind: TargetCard, ID: a}})
+	offerPinned(t, g, item, opp.ID, skite, false)
+	if findOptionPick(g, opp.ID) != nil || findRetargetPrompt(g, opp.ID) != nil {
+		t.Error("one slot, one object: nothing to ask")
+	}
+	if got := targetIDs(g, item.ID); got[0] != skite {
+		t.Errorf("targets = %v, want [Skite]", got)
+	}
+}
+
+// A "you may" (Mizzium Meddler) over the same creature twice asks the
+// object first (so it can be declined) and then the slot.
+func TestPinnedRetargetYouMayThenAsksWhichSlot(t *testing.T) {
+	g := newActiveGame(t)
+	pinnedSpecs(t)
+	advanceTo(t, g, StepPrecombatMain)
+	me, opp := g.Seats[0], g.Seats[1]
+	a := pushRetargetCreature(g, opp, "A")
+	skite := pushRetargetCreature(g, opp, "Meddler")
 	item := castTargeted(t, g, me, pinnedTwoClausesOracle, []TargetRef{
 		{Kind: TargetCard, ID: a, Slot: 0}, {Kind: TargetCard, ID: a, Slot: 1},
 	})
-	offerPinned(t, g, item, opp.ID, skite, false)
-	if findRetargetPrompt(g, opp.ID) != nil {
-		t.Error("one object to offer, and a mandatory change: nothing to ask")
+	offerPinned(t, g, item, opp.ID, skite, true)
+	prompt := findRetargetPrompt(g, opp.ID)
+	if prompt == nil {
+		t.Fatal(`a "you may" opened no prompt`)
+	}
+	if err := g.ResolveRetarget(prompt.ID, opp.ID, []TargetRef{pinnedTo(a)}); err != nil {
+		t.Fatalf("ResolveRetarget: %v", err)
+	}
+	slot := findOptionPick(g, opp.ID)
+	if slot == nil || len(slot.PickOptions) != 2 {
+		t.Fatalf("after naming the creature the slot is asked, got %+v", slot)
+	}
+	if err := g.ResolveOptionPick(slot.ID, opp.ID, 0); err != nil {
+		t.Fatalf("ResolveOptionPick: %v", err)
 	}
 	if got := targetIDs(g, item.ID); got[0] != skite || got[1] != a {
-		t.Errorf("targets = %v, want [Skite A]", got)
+		t.Errorf("targets = %v, want [Meddler A]", got)
 	}
 }
 

@@ -310,6 +310,12 @@ func (g *Game) markReplacementAppliedLocked(ev *ReplacementEvent, id Replacement
 // Caller must hold g.mu.
 func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uuid.UUID, err error) {
 	defer func() {
+		// #3955: the entry of a land played from outside the game is over,
+		// whether it landed, was redirected or failed, and the card index
+		// stops seeing the container's card.
+		if g.outsideEntering == ev.CardID {
+			g.outsideEntering = uuid.Nil
+		}
 		if tailErr := g.runEntryTailLocked(ev, entered); tailErr != nil && err == nil {
 			err = tailErr
 		}
@@ -330,6 +336,7 @@ func (g *Game) executeEntryToBattlefieldLocked(ev *ReplacementEvent) (entered uu
 	if err != nil || !ok {
 		return uuid.Nil, err
 	}
+	g.runAsEntersOthersLocked([]entryLanding{l})
 	g.announceEntryLocked(l)
 	g.runEntryHooksLocked(l)
 	// #1069: the card has left the zone it came from, and an open

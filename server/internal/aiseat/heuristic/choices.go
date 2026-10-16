@@ -61,7 +61,36 @@ const (
 	choiceCommanderReturn     = "commander_return"
 	choicePayAmount           = "pay_amount"
 	choiceAuraHost            = "aura_host"
+	choiceOutsideCollection   = "outside_collection"
 )
+
+// valueTakenFromCollection scores one answer to an outside_collection
+// prompt (ADR 0198): a card named from the card database comes into the
+// bot's hand, so the answer is worth what valueTakenFromOutside says a
+// sideboard card is worth — each named card's value plus the take floor.
+// The cards are the prompt's suggestions (collection_options), matched by
+// name. Declining scores zero, so a "you may" takes the best card rather
+// than none, and an answer naming a card the view does not carry still
+// scores the floor, never less than nothing.
+func (st *state) valueTakenFromCollection(cfg Config, ch *protocol.PendingChoiceView, names []string) (float64, string) {
+	if len(names) == 0 {
+		return 0, "take nothing from outside the game"
+	}
+	byName := map[string]*protocol.CardView{}
+	if ch != nil {
+		for i := range ch.CollectionOptions {
+			byName[ch.CollectionOptions[i].Name] = &ch.CollectionOptions[i]
+		}
+	}
+	var v float64
+	for _, n := range names {
+		v += libraryTakeFloor
+		if c := byName[n]; c != nil {
+			v += st.cardValue(cfg, c)
+		}
+	}
+	return v, "take the best card from outside the game"
+}
 
 // damageSourceThreat ranks a choose_source candidate (ADR 0107 §6
 // decision 4): below zero for the bot's own, above every permanent for an
@@ -134,6 +163,8 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 	}
 
 	switch kind {
+	case choiceOutsideCollection:
+		return st.valueTakenFromCollection(p.cfg, ch, cp.CardNames)
 	case choicePayAmount:
 		return st.payAmountValue(ch, cp.Amount)
 	case choiceEntryController:
@@ -575,6 +606,15 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return st.copyTargetValue(cp.CardIDs, lookup)
 
 	case choiceTriggerPrompt, choicePayUnless:
+		// ADR 0197 §10 (#2731): a "you may" whose own ability says the
+		// "yes" would not help on this board (Arni Brokenbrow's set
+		// would not raise its base power) is declined.
+		if kind == choiceTriggerPrompt && ch != nil && ch.NoGain {
+			if cp.Apply != nil && *cp.Apply {
+				return 0.25, "may: yes would not help now"
+			}
+			return 1, "may: decline, yes would not help"
+		}
 		// ADR 0104 (owner decision 8): a "yes" that TRADES the source
 		// for a spell — Perplexing Chimera — is taken only when the
 		// spell is worth the creature: mana value 5 or more, or a
@@ -984,7 +1024,7 @@ func (st *state) valueTakenFromGraveyard(cfg Config, ch *protocol.PendingChoiceV
 // sets. "You may reveal" takes the best card rather than none, because
 // a taken card is never worth less than nothing.
 func (st *state) valueTakenFromOutside(cfg Config, ch *protocol.PendingChoiceView, named []string) (float64, bool) {
-	if ch == nil || ch.ChooseDestination != chooseFromOutside || len(ch.Options) == 0 || st.seat == nil {
+	if ch == nil || !isOutsidePick(ch.ChooseDestination) || len(ch.Options) == 0 || st.seat == nil {
 		return 0, false
 	}
 	side := make(map[string]bool, len(st.seat.Sideboard))
@@ -1008,6 +1048,22 @@ func (st *state) valueTakenFromOutside(cfg Config, ch *protocol.PendingChoiceVie
 
 // chooseFromOutside is game.ChooseFromOutside on the wire.
 const chooseFromOutside = "outside"
+
+// The two destinations of a pick whose cards are then CAST or PLAYED from
+// outside the game rather than brought into the hand (game.
+// ChooseCastFreeFromOutside, game.ChoosePlayFromOutside, #3955).
+const (
+	chooseCastFreeFromOutside = "cast_free_outside"
+	choosePlayFromOutside     = "play_outside"
+)
+
+// isOutsidePick is whether a choose_cards destination takes cards from
+// the bot's own container outside the game, whatever it then does with
+// them. Each is priced as the take it is: a card named for a free cast
+// is worth at least what bringing it into the hand is.
+func isOutsidePick(dest string) bool {
+	return dest == chooseFromOutside || dest == chooseCastFreeFromOutside || dest == choosePlayFromOutside
+}
 
 // chooseManifest is game.ChooseManifest on the wire: the named cards
 // from the bot's own hand are manifested (Kozilek, the Broken Reality).

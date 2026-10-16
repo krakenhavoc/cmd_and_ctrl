@@ -28,30 +28,32 @@ import (
 // Vorinclex doubles your proliferated experience counters and halves
 // the poison an opponent's infect creature gives you.
 //
-// WHO IS PUTTING THEM is read off the event now
+// WHO IS PUTTING THEM is read off the event
 // (game.ReplacementEvent.CounterPlacer), which is what the card
-// actually says. This shipped keyed on the counter TARGET's controller
-// for want of that field, and the two disagree exactly when it matters
-// most: an opponent's infect damage putting -1/-1 counters on YOUR
-// creature is a placement by an OPPONENT, and the old read doubled it.
-//
-// THE CAVEAT THAT REMAINS is the fallback. A placement that names no
-// placer — a paid cost, a permanent entering with counters, a sandbox
-// edit — still keys on the target's controller (on the receiving
-// player, for a player counter), which is CR 606.4 and CR 714.3's
-// answer for most of them and a guess for the rest.
+// actually says, and since #3942 every placement names one at its
+// source (game/counter_placer.go): the controller of the resolving
+// spell or ability, the player paying a cost (a loyalty ability's +N,
+// which this card does apply to — it names no "effect"), the activator
+// of a mana ability, the controller of a permanent entering with
+// counters (CR 122.6a), the player whose Saga gets its lore counter
+// (CR 714.3c), the seat making a sandbox edit. So your spell putting a
+// -1/-1 counter on an opponent's creature is doubled, and an opponent's
+// +1 on their own planeswalker or the lore counter on their Saga is
+// halved to nothing. This shipped keyed on the counter TARGET's
+// controller, which disagrees exactly when it matters most.
 //
 // Rounding is DOWN and floor division on a negative delta rounds the
 // wrong way in Go, so the halving arm is guarded to placements only.
 // A counter REMOVAL is not a placement and no replacement applies to
 // it (CR 614.1) — which is also what keeps damage-driven loyalty loss
 // out of this, since that path bypasses the pipeline entirely.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:        "5a3fdf5a-bff8-4896-b288-3f43f9a72d9b",
 		Name:            "Vorinclex, Monstrous Raider",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"A counter placement that names no placer — a paid cost, a permanent entering with counters, a sandbox edit — is credited to whoever controls the permanent (or to the player receiving the counters), so such a placement by one player onto another's permanent is halved or spared wrongly."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample", "haste"},
 		Replacements: []game.ReplacementEffect{
 			{
@@ -103,12 +105,14 @@ func init() {
 // "remove three loyalty counters" is not one this card names. Halving
 // a removal would also round the wrong way in Go, where integer
 // division truncates toward zero.
-func counterPlacementBy(ev *game.ReplacementEvent, g *game.Game, you uuid.UUID, mine bool) bool {
+func counterPlacementBy(ev *game.ReplacementEvent, _ *game.Game, you uuid.UUID, mine bool) bool {
 	if ev.Kind != game.RepEventCounter || ev.CounterDelta <= 0 {
 		return false
 	}
-	placer, ok := counterPlacerOrFallback(ev, g)
-	if !ok {
+	// The engine names the placer of every placement (#3942); Nil is
+	// a placement that is going nowhere, and nobody is putting it.
+	placer := ev.CounterPlacer
+	if placer == uuid.Nil {
 		return false
 	}
 	if mine {
@@ -139,33 +143,6 @@ func counterPlacementOn(ev *game.ReplacementEvent, g *game.Game, you uuid.UUID) 
 		return false
 	}
 	return target.Controller == you
-}
-
-// counterPlacerOrFallback answers "who is putting these counters", as
-// well as the event can say.
-//
-// game.ReplacementEvent.CounterPlacer is the fact when it is set
-// (ADR 0056 Decision 5): the source's controller for a CR 120.3d
-// damage result, the proliferating player for CR 701.34. uuid.Nil
-// means UNKNOWN rather than "nobody", so the fallback is the reading
-// this card shipped with — the player the counters are going ON, which
-// is CR 606.4's "its controller" for a loyalty cost and CR 714.3's for
-// a saga's lore counter, and a guess for a sandbox edit.
-//
-// The second return is false only when the event names neither a
-// player nor a findable card, which is an event that is going nowhere.
-func counterPlacerOrFallback(ev *game.ReplacementEvent, g *game.Game) (uuid.UUID, bool) {
-	if ev.CounterPlacer != uuid.Nil {
-		return ev.CounterPlacer, true
-	}
-	if ev.CounterPlayer != uuid.Nil {
-		return ev.CounterPlayer, true
-	}
-	target, ok := g.LookupCardForEffect(ev.CounterTarget)
-	if !ok {
-		return uuid.Nil, false
-	}
-	return target.Controller, true
 }
 
 func vorinclexController(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
