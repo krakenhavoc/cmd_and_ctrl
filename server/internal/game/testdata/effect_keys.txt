@@ -276,4 +276,5 @@ body fatal-fissure/earthbend-4
 body heroic-sacrifice/its-counters-and-draw
 condition dies/that-creature
 body return/the-objects-together-under-your-control
+body power-pack/cast-exiled-free
 body hostility/elemental-shamans

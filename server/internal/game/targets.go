@@ -575,6 +575,22 @@ type TargetSpec struct {
 	// AmongCards is AmongPayload's derived set; never set by a card.
 	AmongCards []uuid.UUID
 
+	// AtRandom is "target … chosen at random" on a TRIGGERED ability's
+	// clause: Witch Hunt's "target opponent chosen at random", Scab-Clan
+	// Giant's "target creature an opponent controls chosen at random"
+	// (#1815). Nobody is asked: as the trigger is put on the stack (CR
+	// 603.3d) the engine draws the target uniformly from the clause's
+	// legal set through the keyed random stream (ADR 0054), so an undo
+	// replays the draw ("all possible legal targets must have an equal
+	// chance of being chosen", the Witch Hunt ruling). With no legal
+	// target the ability is removed, as any required clause's is.
+	//
+	// Honoured only by the trigger target walk (queuePickTargetStepLocked);
+	// effects.Register refuses it anywhere else, and on a clause that
+	// picks anything but exactly one target. Built with
+	// effects.ChosenAtRandom.
+	AtRandom bool
+
 	// PlayerOK is the candidate predicate for player targets. Nil
 	// means every seated, non-eliminated player qualifies. Same
 	// locking rule as CardOK.

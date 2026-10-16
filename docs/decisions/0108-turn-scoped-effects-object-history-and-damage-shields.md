@@ -630,3 +630,35 @@ Additive within v9: `turnTally.damagedObjects` and `mods[].damageSince`, both om
 ### Cards
 
 Bone Shaman and Runesword ship `full`. The record also ships the "If a creature dealt damage by this creature this turn would die, exile it instead" family as catalog replacements: Kumano, Master Yamabushi, Frostwielder, Incendiary Oracle, Kumano's Pupils, and Kumano's Blessing (the enchanted creature's damage), all `full`.
+
+## Amendment 2026-10-16 — §9: redirections that are optional, read combat, or spare you (#2056)
+
+Delivery PR 9 left three redirections the scoped kind could not express. Blood of the Martyr ("Until end of turn, if damage would be dealt to any creature, you may have that damage dealt to you instead") is optional each time, and a scoped replacement could not ask "may". Kjeldoran Royal Guard ("{T}: All combat damage that would be dealt to you by unblocked creatures this turn is dealt to this creature instead") must read whether the source is unblocked as the damage would be dealt, and `Queries` reads characteristics only. Ascent of the Worthy's chapters I and II ("Choose a creature you control. Until your next turn, all damage that would be dealt to creatures you control is dealt to that creature instead") protect your creatures and not you, and the record could protect a player and their permanents, a pinned permanent or opponents. This amendment is how `redirectDamage` names all three.
+
+### The rules
+
+- **CR 614.9:** a redirection that would redirect damage to or from a permanent that has left the battlefield or is no longer a battle, creature or planeswalker, or to or from a player who has left the game, does nothing.
+- **CR 614.5:** a replacement effect gets one opportunity to affect an event, so an optional redirection is decided once for each damage event it meets.
+- **CR 616.1:** the affected player, or the controller of the affected object, chooses the order of the replacement effects that apply to the event. That rule is about order only. The "you" of Blood of the Martyr's "you may" is its controller, so the yes or no is theirs, whoever's creature is being dealt the damage.
+- **CR 509.1h:** an attacking creature becomes blocked or unblocked as blockers are declared and stays so until it is removed from combat or the combat phase ends.
+- **CR 609.7b:** an effect that applies to sources with certain properties rechecks them as the damage would be dealt.
+- **CR 611.2c:** a continuous effect from a resolved spell or ability that changes no characteristic and no controller can affect objects that were not affected when it began. A redirection changes neither, so "creatures you control" is the set as the damage would be dealt: a creature that enters later is covered, and one you lose control of is not.
+- **CR 615.12** covers prevention effects only. "Damage can't be prevented" does not stop a redirection, which is a replacement effect (CR 614.1a), as §9 already says.
+
+### Decision
+
+1. **The source, through #2026's filter.** `redirectDamage` reads `Mod.SourceFilter` (`DamageSourceFilter`, at most one entry) with the same meaning it has on `preventFromSource`, off the same view of the source (`damageSourceViewLocked`) as the damage would be dealt. "By unblocked creatures" is `Queries {creature}` with `Combat: unblocked`. It is refused beside a pinned source (`Objects`), as on the shield.
+2. **The protected set, through #2045's filter.** `redirectDamage` reads `Mod.RecipientFilter` (`DamageRecipientFilter`, at most one entry) through `nextFromSourceProtectsLocked`, the reader the shield uses. "Creatures you control" is `Permanents`, `Match {creature}`, `Controller: you`; "any creature" leaves out the controller. It stands alone: it is refused beside a protected player or types, beside the `Recipients` vocabulary ("to an opponent"), beside a charge, and on a pinned record. Damage to the destination itself is not redirected, because a redirection to the event's own recipient never applies (`canRedirectDamageLocked`).
+3. **"You may", through the existing prompt.** A new `Mod.Optional` bool on `redirectDamage`, refused on every other kind, on a record that deals its damage nowhere instead (Eye for an Eye's shape), and beside a charge. The gather sets `ReplacementEffect.Optional` on the effect it hands the pipeline, and its `Controller` returns the record's controller, so `offerOptionalReplacementLocked` asks that player through the `optional_replacement` prompt. The CR 616 ordering is unchanged: a damage event names the affected player itself (`affectedPlayerForEvent`). A yes runs the redirection; a no marks it applied to that event and the damage is dealt where it was. A window that cannot ask (an event that must settle now, a chooser who has left) declines it, the weaker direction, as every other "may" replacement.
+4. **What the prompt says.** The question is written from the event as it stands when it is asked, so an earlier effect in a CR 616 chain is reflected: "Blood of the Martyr — have the 3 damage from Shock to Grizzly Bears dealt to you instead?". The view carries the same facts as data (`redirect_amount`, `redirect_from`, `redirect_to`, read by `Game.DamageRedirectOfferLocked` on every view, never stored). The heuristic bot says yes only when the damage would destroy a creature it controls and its life stays at or above its floor; before this, every unknown "may" replacement got the default yes, which would have paid life for opponents' creatures.
+5. **The card side.** `effects.RedirectDamage` gains `Filter` and `Optional`, and reads the recipient sets `ShieldCreatures` and `ShieldCreaturesYouControl`. Ascent of the Worthy's chapter III is `ReturnFromGraveyardWithCountersThenForEffect` with a flying counter and a layer-4 subtype grant pinned to the returned object, as Liliana, Death's Majesty's −3 is.
+
+### Snapshot impact
+
+- New `Mod` key `optional`. A binary from before this amendment refuses a file carrying it (an unknown mod key, ADR 0041 P4). It does not drop it, because the redirection would then apply without asking, which is stronger than printed.
+- `sourceFilter` and `recipientFilter` were already `Mod` keys. A file from this binary can now hold them on a `redirectDamage` mod, and an older binary refuses that record (`nextFromSourceModProblem` and `recipientFilterModProblem` reject either filter on that kind) rather than restoring a redirection that protects or redirects more than printed.
+- Additive under v9 (`-update-shape`). No fixture changes. No new closure route: every field is plain data, and the prompt question and the offer are computed, not stored.
+
+### Cards
+
+All three ship `full`: Blood of the Martyr, Kjeldoran Royal Guard and Ascent of the Worthy. The seam row `redirection-conditions` is closed.

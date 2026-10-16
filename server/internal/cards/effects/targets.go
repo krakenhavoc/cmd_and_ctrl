@@ -604,6 +604,23 @@ func ExiledWithThis(spec *game.TargetSpec) *game.TargetSpec {
 	return spec
 }
 
+// ChosenAtRandom is "target … chosen at random" on a TRIGGERED
+// ability's clause: Witch Hunt's "target opponent chosen at random",
+// Scab-Clan Giant's "target creature an opponent controls chosen at
+// random" (#1815). The engine draws the target uniformly from the
+// clause's legal set as the trigger is put on the stack (CR 603.3d),
+// through the keyed random stream, and nobody is asked; with no legal
+// target the trigger is removed. It is game.TargetSpec.AtRandom.
+//
+// Register refuses it on a spell, on an activated ability and on a
+// clause that picks anything but exactly one target: only a trigger's
+// targets are chosen by the engine, and no printed card draws more than
+// one.
+func ChosenAtRandom(spec *game.TargetSpec) *game.TargetSpec {
+	spec.AtRandom = true
+	return spec
+}
+
 // ControlledByThatPlayer narrows a TRIGGERED ability's clause to what
 // "that player" / "that opponent" controls, where the triggering event
 // names the player: the opponent the Dragons just dealt combat damage
