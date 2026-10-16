@@ -1538,6 +1538,8 @@ export async function fetchAutoTapPreview(
     if (cast.optionalCosts && cast.optionalCosts.length > 0) {
       params.set("optional_costs", cast.optionalCosts.join(","));
     }
+    // ADR 0202: the spliced cards, whose splice costs join the total.
+    if (cast.splices && cast.splices.length > 0) params.set("splices", cast.splices.join(","));
     if (cast.tapIDs && cast.tapIDs.length > 0) {
       params.set("tap_ids", cast.tapIDs.join(","));
     }

@@ -311,6 +311,12 @@ func (g *Game) CastGateLocked(caster uuid.UUID, card Card, zone ZoneKind, params
 			return &CantCastError{Reason: reason, Source: banSource}
 		}
 	}
+	// #1987: "can't cast spells from their graveyards" (Shaman's
+	// Trance), the stored ban both this gate and the land-play gate
+	// read. Only the caster's own graveyard.
+	if reason, banSource, ok := g.graveyardPlayBanLocked(caster, card, zone); ok {
+		return &CantCastError{Reason: reason, Source: banSource}
+	}
 	// Then the spell's own condition (CR 205.4e). Last because a card
 	// that is legal to cast on its own terms is still stopped by the
 	// board, and reporting the board's reason is the more useful

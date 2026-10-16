@@ -273,6 +273,10 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.SearchGraveyardCards) > 0 {
 				cloned.SearchGraveyardCards = append([]uuid.UUID(nil), c.SearchGraveyardCards...)
 			}
+			// #3988: and the subset that sits in the searched hand.
+			if len(c.SearchHandCards) > 0 {
+				cloned.SearchHandCards = append([]uuid.UUID(nil), c.SearchHandCards...)
+			}
 			// S16.5 copy chooser: same reason again — the candidate
 			// list a Clone is choosing from is a slice.
 			if len(c.CopyOptions) > 0 {
@@ -387,6 +391,9 @@ func (g *Game) cloneLocked() *Game {
 	// ADR 0107 §6: owed follow-ups rewind with the shields they belong
 	// to. Copy on write everywhere, so the slice is shared.
 	out.preventionFollowUps = g.preventionFollowUps
+	// #2040: the parked continuations take the live *Game as an
+	// argument, so a clone shares them (copy on write).
+	out.followUpParks = g.followUpParks
 	// ADR 0108 PR 0: the instance counter rewinds with the records that
 	// name its IDs, and the combat step's instance with the batch it is
 	// keyed on, so a re-done instance can never reuse an ID an undone
@@ -858,6 +865,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		Label:            s.Label,
 		DoubledBy:        s.DoubledBy,
 		DoubledByName:    s.DoubledByName,
+		TargetChoosers:   copyTargetChoosers(s.TargetChoosers),
 		XValue:           s.XValue,
 		HoldPriority:     s.HoldPriority,
 		SplitSecond:      s.SplitSecond,
@@ -899,6 +907,9 @@ func cloneStackItem(s *StackItem) *StackItem {
 		out.Targets = make([]TargetRef, len(s.Targets))
 		copy(out.Targets, s.Targets)
 	}
+	// ADR 0202: the spliced texts and their targets, deep-copied for
+	// the reason Targets is.
+	out.Spliced = cloneSplicedTexts(s.Spliced)
 	// ADR 0106 §4 (#1806): the spell's "can't be countered" marks.
 	// Plain values, so a fresh backing array is all the isolation an
 	// undo snapshot needs.
@@ -946,6 +957,7 @@ func clonePickTargetFrame(f *pickTargetFrame) *pickTargetFrame {
 	out.picked = append([]TargetRef(nil), f.picked...)
 	out.modes = append([]int(nil), f.modes...)
 	out.dist = cloneDistributionLocked(f.dist)
+	out.choosers = copyTargetChoosers(f.choosers)
 	return &out
 }
 
@@ -1262,6 +1274,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.batchLifeLost = cloneBatchLifeLossTotals(src.batchLifeLost)
 	g.stagedBatchTriggers = src.stagedBatchTriggers
 	g.preventionFollowUps = src.preventionFollowUps
+	g.followUpParks = src.followUpParks
 	g.damageInstanceSeq = src.damageInstanceSeq
 	g.openDamageInstance = src.openDamageInstance
 	g.combatDamageInstance = src.combatDamageInstance

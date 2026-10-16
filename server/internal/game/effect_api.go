@@ -1030,10 +1030,14 @@ func (g *Game) dealDamageEachStepLocked(source uuid.UUID, targets []uuid.UUID, a
 		// target is gone. Skip it and keep the total.
 		targets = rest
 	}
-	if walk.owned {
-		g.endDamageInstanceLocked(walk.inst)
-	}
+	paused := walk.owned && g.endDamageInstanceLocked(walk.inst)
 	if then == nil {
+		return nil
+	}
+	if paused {
+		// #2040: a follow-up of the walk's instance is asking; the
+		// caller's total waits for the answer.
+		g.parkFollowUpContinuationLocked(walk.inst, func(g *Game) error { return then(g, dealtSoFar) })
 		return nil
 	}
 	return then(g, dealtSoFar)
@@ -1669,6 +1673,13 @@ func (g *Game) CounterTargetForEffect(stackID uuid.UUID) error {
 		}
 		return g.counterSpellLocked(stackID, nil)
 	case StackItemActivated, StackItemTriggered:
+		// #2014: "Spells and abilities can't be countered" (Spider-Punk).
+		// The ability stays a legal target, as a covered spell does.
+		if g.abilityCantBeCounteredLocked(item) {
+			slog.Info("counter had no effect: ability can't be countered",
+				"ability_id", stackID)
+			return nil
+		}
 		return g.counterAbilityLocked(stackID)
 	default:
 		return ErrCardNotOnStack
@@ -1703,6 +1714,11 @@ func (g *Game) CounterTargetToZoneForEffect(stackID uuid.UUID, dst ZoneRef) erro
 		}
 		return g.counterSpellLocked(stackID, &dst)
 	case StackItemActivated, StackItemTriggered:
+		if g.abilityCantBeCounteredLocked(item) {
+			slog.Info("counter had no effect: ability can't be countered",
+				"ability_id", stackID)
+			return nil
+		}
 		return g.counterAbilityLocked(stackID)
 	default:
 		return ErrCardNotOnStack
@@ -1740,6 +1756,10 @@ func (g *Game) CounterSpellToLibraryThenForEffect(stackID uuid.UUID, at TuckOpti
 		return tell(g, false)
 	}
 	if item.Kind == StackItemActivated || item.Kind == StackItemTriggered {
+		if g.abilityCantBeCounteredLocked(item) {
+			slog.Info("counter had no effect: ability can't be countered", "ability_id", stackID)
+			return tell(g, false)
+		}
 		if err := g.counterAbilityLocked(stackID); err != nil {
 			return err
 		}
@@ -2585,6 +2605,46 @@ type SearchLibrarySpec struct {
 	// with ToTop is not supported.
 	AlsoGraveyard bool
 
+	// AlsoGraveyardAndHand is "search <that player's> graveyard, hand,
+	// and library" (#3988, CR 701.23; Kotose, the Silent Spider, and the
+	// Surgical Extraction family): the library owner's graveyard and hand
+	// are searched beside the library, under the same predicate, in one
+	// prompt (PendingChoice.SearchGraveyardCards and SearchHandCards say
+	// which candidate is where).
+	//
+	// Unlike AlsoGraveyard's "and/or", the clause names all three zones,
+	// so all three are searched: the library is always searched, and the
+	// search always fires EventSearchLibrary and shuffles when Shuffle is
+	// set, whatever was taken. A hand is a hidden zone, so a search with
+	// a stated quality may find nothing there (CR 701.23b). Kotose and
+	// Surgical Extraction say "any number" (Unbounded); the rest of the
+	// family says "all" (TakeAll). The searcher looks at the whole hand
+	// as they search it, so every card in it becomes known to them, and
+	// the owner keeps knowing their own cards. Dest must be a zone the
+	// cards leave to.
+	AlsoGraveyardAndHand bool
+
+	// TakeAll is "search … for ALL cards with the same name …" on an
+	// AlsoGraveyardAndHand search (#4033: Eradicate, Extirpate, Quash,
+	// Scour, Splinter, Sowing Salt). There is no count, so it implies
+	// Unbounded. What it adds is the graveyard: a graveyard is a public
+	// zone (CR 400.2), and CR 701.23b's fail to find covers only hidden
+	// zones, so every graveyard match is found. Those matches are not
+	// offered as candidates, because nothing about them is a choice:
+	// they are taken with whatever the searcher picks from the hand and
+	// the library, which are hidden, so the searcher may still leave any
+	// of those (CR 701.23b). With no hidden match the search takes the
+	// graveyard's matches without a prompt. Ignored without
+	// AlsoGraveyardAndHand: "and/or graveyard" lets the searcher skip the
+	// graveyard, so nothing in it is forced.
+	TakeAll bool
+
+	// graveyardFinds is set by SearchLibraryThenForEffect, on the copy it
+	// carries to the take, for a TakeAll search: the graveyard matches the
+	// rules make the searcher find. executeSearchTakeLocked takes the ones
+	// still there with the searcher's picks. Never set by a card.
+	graveyardFinds []uuid.UUID
+
 	// libraryUntouched is set by executeSearchTakeLocked, on the copy it
 	// carries into the finish, when every card taken came out of the
 	// graveyard. Never set by a card.
@@ -2606,6 +2666,13 @@ type SearchLibrarySpec struct {
 // Tutor, Gamble, Entomb, Intuition).
 func (spec SearchLibrarySpec) statedQuality() bool {
 	return spec.Pred != nil || spec.Validate != nil
+}
+
+// searchesGraveyard reports whether the library owner's graveyard is
+// searched beside the library: "and/or graveyard" (AlsoGraveyard), or
+// "graveyard, hand, and library" (AlsoGraveyardAndHand).
+func (spec SearchLibrarySpec) searchesGraveyard() bool {
+	return spec.AlsoGraveyard || spec.AlsoGraveyardAndHand
 }
 
 // floor is the fewest cards the searcher may take when `matches` cards
@@ -2755,6 +2822,11 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
+	// #4033: "all cards" has no count.
+	takeAllInGraveyard := spec.TakeAll && spec.AlsoGraveyardAndHand
+	if takeAllInGraveyard {
+		spec.Unbounded = true
+	}
 	if spec.Limit <= 0 && !spec.Unbounded {
 		spec.Limit = 1
 	}
@@ -2775,17 +2847,43 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	// library's in one candidate list, and the prompt marks which are
 	// which (PendingChoice.SearchGraveyardCards).
 	var gyMatches []uuid.UUID
-	if spec.AlsoGraveyard {
+	if spec.searchesGraveyard() {
 		for _, c := range p.Graveyard.Cards {
 			if spec.Pred == nil || spec.Pred(c) {
+				if takeAllInGraveyard {
+					// #4033: found, not chosen (a public zone has no
+					// fail to find), so not a candidate either.
+					spec.graveyardFinds = append(spec.graveyardFinds, c.InstanceID)
+					continue
+				}
 				gyMatches = append(gyMatches, c.InstanceID)
+				matched = append(matched, c)
+			}
+		}
+	}
+	// #3988: "graveyard, hand, and library". The hand's matches follow
+	// the graveyard's (PendingChoice.SearchHandCards), and the searcher
+	// looks at the whole hand as they search it.
+	var handMatches []uuid.UUID
+	if spec.AlsoGraveyardAndHand {
+		for i := range p.Hand.Cards {
+			c := p.Hand.Cards[i]
+			p.Hand.Cards[i].AddKnower(spec.Player)
+			if spec.Pred == nil || spec.Pred(c) {
+				handMatches = append(handMatches, c.InstanceID)
 				matched = append(matched, c)
 			}
 		}
 	}
 	libMatches := len(matches)
 	matches = append(matches, gyMatches...)
+	matches = append(matches, handMatches...)
 	if len(matches) == 0 {
+		if len(spec.graveyardFinds) > 0 {
+			// #4033: nothing to choose, but the graveyard's matches
+			// are found all the same.
+			return g.executeSearchTakeLocked(spec, p, nil)
+		}
 		// Nothing to find. Still a search: the event fires and the
 		// shuffle happens, because the card said "then shuffle"
 		// unconditionally.
@@ -2798,7 +2896,7 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 		// whole match set rather than a forced take-all.
 		spec.Limit = len(matches)
 	}
-	if spec.floorZones(libMatches, len(gyMatches)) == len(matches) && len(matches) <= spec.Limit &&
+	if spec.floorZones(libMatches, len(gyMatches)+len(handMatches)) == len(matches) && len(matches) <= spec.Limit &&
 		(spec.Validate == nil || spec.Validate(matched)) {
 		// No decision to make — the rules force the searcher to take
 		// every match (CR 701.23d: an unconditional "a card" against a
@@ -2811,7 +2909,7 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 		// a chain rather than the line after the loop.
 		return g.executeSearchTakeLocked(spec, p, matches)
 	}
-	g.queueSearchChoiceLocked(spec, p, matches, gyMatches)
+	g.queueSearchChoiceLocked(spec, p, matches, gyMatches, handMatches)
 	return nil
 }
 
@@ -2855,7 +2953,7 @@ func (g *Game) searchDestZoneLocked(p *Player, dest ZoneKind) (*Zone, error) {
 // match set would hand the table a census of the library.
 //
 // Caller must hold g.mu.
-func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matches, gyMatches []uuid.UUID) {
+func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matches, gyMatches, handMatches []uuid.UUID) {
 	known := make(map[uuid.UUID]bool, len(matches))
 	for _, id := range matches {
 		known[id] = true
@@ -2878,11 +2976,15 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 		Reason:      reason,
 		SearchCards: append([]uuid.UUID(nil), matches...),
 		SearchMax:   spec.Limit,
-		SearchMin:   spec.floorZones(len(matches)-len(gyMatches), len(gyMatches)),
+		SearchMin:   spec.floorZones(len(matches)-len(gyMatches)-len(handMatches), len(gyMatches)+len(handMatches)),
 		// #3217: the graveyard half. Public, so it is never marked
 		// known the way the library's candidates are.
 		SearchGraveyardCards: append([]uuid.UUID(nil), gyMatches...),
-		searchResume:         &searchResumeFrame{spec: spec},
+		// #3988: the hand half of "graveyard, hand, and library". The
+		// searcher already looks at the whole hand
+		// (SearchLibraryThenForEffect marks it).
+		SearchHandCards: append([]uuid.UUID(nil), handMatches...),
+		searchResume:    &searchResumeFrame{spec: spec},
 	})
 	// #3998: "You control your opponents while they're searching their
 	// libraries" — for as long as this prompt is open. Only a search of
@@ -2904,6 +3006,19 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 //
 // Caller must hold g.mu.
 func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []uuid.UUID) error {
+	// #4033: "all cards" — the graveyard's matches are found with the
+	// searcher's picks, in one take. One that left the graveyard while
+	// the prompt was open is not there to find.
+	if len(spec.graveyardFinds) > 0 {
+		taken := make([]uuid.UUID, 0, len(spec.graveyardFinds)+len(ids))
+		for _, id := range spec.graveyardFinds {
+			if p.Graveyard.Contains(id) {
+				taken = append(taken, id)
+			}
+		}
+		ids = append(taken, ids...)
+		spec.graveyardFinds = nil
+	}
 	// #3998: "While an opponent is searching their library, they exile
 	// each card they find" (Opposition Agent). A replacement of the
 	// destination, whatever it was (hand, battlefield, top of the
@@ -2922,7 +3037,7 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 	// in the library, so it is not "searched" — no shuffle, no
 	// EventSearchLibrary (finishSearchLocked). A take of nothing, or of
 	// any library card, is a library search.
-	spec.libraryUntouched = spec.AlsoGraveyard && len(ids) > 0
+	spec.libraryUntouched = spec.AlsoGraveyard && !spec.AlsoGraveyardAndHand && len(ids) > 0
 	for _, id := range ids {
 		if !p.Graveyard.Contains(id) {
 			spec.libraryUntouched = false
@@ -3016,7 +3131,7 @@ func (g *Game) searchEnterEachThenFinishLocked(spec SearchLibrarySpec, ids, foun
 	// A card that is no longer in the library (or, for an "and/or
 	// graveyard" search, the graveyard) is skipped rather than fetched:
 	// it left while an earlier card's entry prompt was open.
-	for len(ids) > 0 && !p.Library.Contains(ids[0]) && !(spec.AlsoGraveyard && p.Graveyard.Contains(ids[0])) {
+	for len(ids) > 0 && !p.Library.Contains(ids[0]) && !(spec.searchesGraveyard() && p.Graveyard.Contains(ids[0])) && !(spec.AlsoGraveyardAndHand && p.Hand.Contains(ids[0])) {
 		ids = ids[1:]
 	}
 	if len(ids) == 0 {
@@ -3083,11 +3198,15 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 	// a self-replacement's condition ("unless you control two or
 	// fewer other lands") counts the lands of whoever that is.
 	from, zone := ZoneLibrary, p.Library
-	if spec.AlsoGraveyard && p.Graveyard.Contains(id) {
+	if spec.searchesGraveyard() && p.Graveyard.Contains(id) {
 		// #3217: the card came out of the graveyard, and the entry
 		// window must say so (moveRedirectedEntryLocked compares the
 		// event's OldZone to where the card actually is).
 		from, zone = ZoneGraveyard, p.Graveyard
+	}
+	if spec.AlsoGraveyardAndHand && p.Hand.Contains(id) {
+		// #3988: out of the hand, likewise.
+		from, zone = ZoneHand, p.Hand
 	}
 	for i := range zone.Cards {
 		if zone.Cards[i].InstanceID == id {

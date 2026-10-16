@@ -262,6 +262,7 @@ var gameFields = plan(
 	// record would let every first-striker deal its damage again in
 	// the regular step.
 	"firstStrikeStepParticipants", carried, "",
+	"followUpParks", dropped, "#2040: the rest of a damage instruction parked behind a prompt its prevention follow-up asked; counted in ContinuationCensus.ChoiceResumeFrames, so a table holding one is not a restore point; Clone shares it (copy on write) for undo",
 	"heldCombatDamage", dropped, "#3665: a combat damage step's damage held behind its damage_assignment prompts; counted in ContinuationCensus.ChoiceResumeFrames, so a table holding it is not a restore point; Clone shares it (copy on write) for undo",
 	"lastKnownBattlefield", carried, "",
 	"lastKnownTriggerIdentity", carried, "",
@@ -613,6 +614,13 @@ var cardFields = plan(
 	// #2530: the "exiled with" link, one field over from HiddenBy and
 	// for the same reason — the zero value is a legal state.
 	"ExiledWith", carried, "",
+	// #2651: the ability half of that link (CR 607.2a). The zero ref is
+	// a legal state too: a replacement's link, or a file before it.
+	"ExiledWithAbility", carried, "",
+	// #3867: cipher's encoding (CR 702.99b) and its layer-6 timestamp.
+	// Nothing else records either, and "not encoded" is a legal zero.
+	"EncodedOn", carried, "",
+	"EncodedAt", carried, "",
 	// #1199 / CR 702.26, ADR 0084. All four are the phased-out status
 	// and all four are legal zero values, so a restore that dropped
 	// them would bring a phased board back under the wrong player's
@@ -807,6 +815,9 @@ var stackItemFields = plan(
 	"DoubledBy", carried, "",
 	"DoubledByName", carried, "",
 	"Targets", carried, "",
+	// ADR 0202 (#1989): the texts spliced onto a spell and their
+	// targets. Nothing else records which cards were spliced.
+	"Spliced", carried, "",
 	// #636 reflexive triggers: a pending trigger's payload is what
 	// the resolution that created it told it (the cards revealed,
 	// the creature sacrificed). Carried, and it has to be — the
@@ -824,6 +835,8 @@ var stackItemFields = plan(
 	"Modes", carried, "",
 	"XValue", carried, "",
 	"Distribution", carried, "",
+	// #2055: which opponent chose each "of an opponent's choice" clause.
+	"TargetChoosers", carried, "",
 	"HoldPriority", carried, "",
 	"CastFromZone", carried, "",
 	"AltCost", carried, "",
@@ -1080,6 +1093,7 @@ var pendingChoiceFields = plan(
 	"GuardsStackItem", carried, "",
 	"SearchCards", carried, "",
 	"SearchGraveyardCards", carried, "",
+	"SearchHandCards", carried, "",
 	"SearchMax", carried, "",
 	"SearchMin", carried, "",
 	// S28 cascade: which card the "you may cast it without paying
@@ -1098,6 +1112,7 @@ var pendingChoiceFields = plan(
 	// it would render a question nobody can answer.
 	"AcceptLabel", carried, "",
 	"LifeCost", carried, "",
+	"DeclineEndsLoop", carried, "",
 	"DeclineLabel", carried, "",
 	"ChooseCards", carried, "",
 	"ChooseMin", carried, "",
@@ -1139,6 +1154,8 @@ var pendingChoiceFields = plan(
 
 	"replacementResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"costCommanderResume", dropped, "a parked cost announcement (#1397); counted in ContinuationCensus.ChoiceResumeFrames",
+	"opponentTargetResume", dropped, "#2055: a parked cast or activation waiting on an opponent's target; counted in ContinuationCensus.ChoiceResumeFrames",
+	"PickTargetFor", dropped, "#2055: rides only a pick_target that carries a pickTargetResume or opponentTargetResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
 	"modePickResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"pickTargetResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"copyResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",

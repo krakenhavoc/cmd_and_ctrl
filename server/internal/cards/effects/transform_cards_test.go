@@ -443,3 +443,48 @@ func TestReflectionOfKikiJikiCopiesWithHaste(t *testing.T) {
 		t.Error("the copied creature was sacrificed")
 	}
 }
+
+// TestStormTheVaultGoneBeforeItsTriggerResolvesTransformsNothing is
+// CR 701.27a / CR 608.2b: the end-step trigger's condition still holds
+// (five artifacts) but the Vault itself was destroyed in response, so
+// "transform Storm the Vault" has no permanent to turn over. That is
+// nothing happening, not an effect error (#4038).
+func TestStormTheVaultGoneBeforeItsTriggerResolvesTransformsNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	seat := g.Turn.ActiveSeat
+	me := g.Seats[seat]
+	id := importToBattlefield(t, g, stormTheVaultRow(), me)
+	pushArtifacts(g, me, 5)
+
+	advanceToEndStepOf(t, g, seat)
+	if triggerOnStack(g, id) == nil {
+		t.Fatal("the end-step ability did not trigger with five artifacts")
+	}
+	b25Destroy(g, id)
+	passPriorityAroundTable(t, g)
+
+	if errs := effectErrors(g); len(errs) != 0 {
+		t.Fatalf("effect errors: %v", errs)
+	}
+	if battlefieldCardFor(g, id) != nil {
+		t.Error("the Vault is back on the battlefield")
+	}
+}
+
+// TestTransformOfAPermanentThatLeftTheBattlefieldDoesNothing pins the
+// targeted verb: a Transform aimed at an ID that is now in the
+// graveyard returns nil (CR 701.27a transforms a permanent, CR 608.2b).
+func TestTransformOfAPermanentThatLeftTheBattlefieldDoesNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	id := importToBattlefield(t, g, stormTheVaultRow(), me)
+	b25Destroy(g, id)
+
+	var err error
+	g.WithWriteLock(func() {
+		err = Transform{Target: id}.Apply(NewContext(g, &game.StackItem{Controller: me.ID}))
+	})
+	if err != nil {
+		t.Fatalf("Transform of a card in the graveyard: %v, want nil", err)
+	}
+}

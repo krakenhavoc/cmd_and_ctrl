@@ -83,9 +83,11 @@ func arcaneDenialDraws(g *game.Game, item *game.StackItem, p game.EffectParams) 
 		return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
 	}
 	return ChooseNumber{
-		Chooser:  victim,
-		Min:      0,
-		Max:      2,
+		Chooser: victim,
+		Min:     0,
+		// CR 121.2b: "up to two" is a choice of how many to draw, so a
+		// draw limit caps it at the draws the victim has left (#4016).
+		Max:      g.DrawChoiceCeilingForEffect(victim, 2),
 		Question: "Arcane Denial — draw up to two cards",
 		Unit:     game.PayAmountCards,
 		Goal: func(ctx *Context) int {

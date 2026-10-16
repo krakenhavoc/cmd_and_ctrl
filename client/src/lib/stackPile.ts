@@ -148,6 +148,8 @@ export interface PileLeftInput {
   pileW: number;
   /** tableSeams().seamX: the seam between two top-row seats, or null. */
   seamX: number | null;
+  /** tableSeams().dock: the span the pile must stay inside, or null. */
+  dock?: DockSpan | null;
 }
 
 /**
@@ -157,8 +159,19 @@ export interface PileLeftInput {
  * inside the board. Null when the top row has one seat (a two-seat
  * table): the pile keeps ADR 0119's spot, 12px from the left edge.
  */
-export function pileLeft({ boardW, pileW, seamX }: PileLeftInput): number | null {
-  if (seamX === null || boardW <= 0 || pileW <= 0) return null;
+export function pileLeft({ boardW, pileW, seamX, dock = null }: PileLeftInput): number | null {
+  if (boardW <= 0 || pileW <= 0) return null;
+  if (dock) {
+    // #4065: the reflow's avatar cards are narrower than the pile, so it
+    // stays over the full boards, never over an avatar a player hovers
+    // to see that seat's board. On the seam if that fits, else at the
+    // full boards' left edge.
+    const lo = dock.left + PILE_INSET;
+    const hi = Math.max(lo, dock.right - pileW - PILE_INSET);
+    const want = seamX === null ? lo : seamX - pileW / 2;
+    return Math.round(Math.min(Math.max(want, lo), hi));
+  }
+  if (seamX === null) return null;
   const max = Math.max(PILE_INSET, boardW - pileW - PILE_INSET);
   return Math.round(Math.min(Math.max(seamX - pileW / 2, PILE_INSET), max));
 }
@@ -174,6 +187,20 @@ export interface SeatSlot {
   height: number;
   /** The viewer's own slot (`data-pos="self"`). */
   self: boolean;
+  /** A reflow avatar card (ADR 0077 §6 as amended, #4065), not a board. */
+  avatar?: boolean;
+}
+
+/** A horizontal span of the board, in board pixels. */
+export interface DockSpan {
+  left: number;
+  right: number;
+}
+
+/** Whether two spans (or two nulls) are the same. */
+export function sameSpan(a: DockSpan | null, b: DockSpan | null): boolean {
+  if (a === null || b === null) return a === b;
+  return a.left === b.left && a.right === b.right;
 }
 
 export interface TableSeams {
@@ -185,6 +212,11 @@ export interface TableSeams {
    * top row has a single seat.
    */
   seamX: number | null;
+  /**
+   * #4065: when the top row holds a reflow avatar card, the span of its
+   * full boards, which the pile stays inside; null otherwise.
+   */
+  dock: DockSpan | null;
 }
 
 /**
@@ -203,6 +235,7 @@ export function tableSeams(boardW: number, slots: readonly SeatSlot[]): TableSea
   // An unlaid-out slot (no width) has no seam beside it.
   const drawn = others.filter((s) => s.width > 0 && s.height > 0);
   let seamX: number | null = null;
+  let dock: DockSpan | null = null;
   if (drawn.length > 1) {
     const rowTop = Math.min(...drawn.map((s) => s.top));
     const row = drawn.filter((s) => Math.abs(s.top - rowTop) < 1).sort((a, b) => a.left - b.left);
@@ -213,8 +246,15 @@ export function tableSeams(boardW: number, slots: readonly SeatSlot[]): TableSea
       // the right-hand seam over the left.
       if (seamX === null || Math.abs(x - centre) < Math.abs(seamX - centre) - 0.5) seamX = x;
     }
+    const boards = row.filter((s) => !s.avatar);
+    if (boards.length > 0 && boards.length < row.length) {
+      dock = {
+        left: Math.min(...boards.map((s) => s.left)),
+        right: Math.max(...boards.map((s) => s.left + s.width)),
+      };
+    }
   }
-  return { seamY, seamX };
+  return { seamY, seamX, dock };
 }
 
 export interface PileFallbackInput {
@@ -334,6 +374,7 @@ export function seatSlots(board: HTMLElement): SeatSlot[] {
       width: r.width,
       height: r.height,
       self: el.dataset.pos === "self",
+      avatar: el.classList.contains("reflow-avatar"),
     };
   });
 }

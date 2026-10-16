@@ -33,6 +33,7 @@ func init() {
 					}
 					return MayChoice{
 						Question: "Spiritual Focus — draw a card?",
+						Draws:    1,
 						OnYes:    func(ctx *Context) error { return DrawCards{N: 1}.Apply(ctx) },
 					}.Apply(ctx)
 				}),

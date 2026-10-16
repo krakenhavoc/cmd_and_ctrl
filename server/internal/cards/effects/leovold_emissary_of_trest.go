@@ -28,9 +28,9 @@ func init() {
 		Completeness: CompletenessFull,
 		DrawLimits:   EachOpponentCantDrawMoreThanOneCardEachTurn(),
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventBecomesTarget, leovoldTargetedByAnOpponent,
+			OptionalDraw(On(game.EventBecomesTarget, leovoldTargetedByAnOpponent,
 				"Leovold, Emissary of Trest — you may draw a card", Do(DrawCards{N: 1})),
-				"Leovold, Emissary of Trest — draw a card?"),
+				"Leovold, Emissary of Trest — draw a card?", 1),
 		},
 	})
 }

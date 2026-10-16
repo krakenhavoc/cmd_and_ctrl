@@ -416,13 +416,13 @@ func b30FetchBasicTapped(g *game.Game, item *game.StackItem) error {
 // b30ZombiesIfThreeDeserts is Hour of Promise's rider, run from the
 // search's continuation once the fetched lands have entered: two 2/2
 // black Zombies if `controller` controls three or more Deserts.
-// Takes IDs only — the continuation outlives the resolution that
-// started it.
-func b30ZombiesIfThreeDeserts(g *game.Game, controller uuid.UUID) error {
+// The Zombies are words of the spell's text (#4005), read through it
+// with the item the continuation holds.
+func b30ZombiesIfThreeDeserts(g *game.Game, item *game.StackItem, controller uuid.UUID) error {
 	if b30DesertsControlled(g, controller) < 3 {
 		return nil
 	}
-	return g.CreateTokenForEffect(controller, BlackZombieToken(), 2)
+	return g.CreateTokenForEffect(controller, NewContext(g, item).TextToken(BlackZombieToken()), 2)
 }
 
 // b30SearchUpToTwoLandsTappedThenZombies is Hour of Promise's body:
@@ -441,7 +441,7 @@ func b30SearchUpToTwoLandsTappedThenZombies(item *game.StackItem, ctx *Context) 
 		TappedOnEntry: true,
 		Reason:        "Hour of Promise — choose up to two lands to put onto the battlefield tapped",
 		Then: func(g *game.Game, _ []uuid.UUID) error {
-			return b30ZombiesIfThreeDeserts(g, controller)
+			return b30ZombiesIfThreeDeserts(g, item, controller)
 		},
 	}.Apply(ctx)
 }

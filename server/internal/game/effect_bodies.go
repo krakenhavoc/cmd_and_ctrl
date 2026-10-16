@@ -44,6 +44,14 @@ type EffectParams struct {
 	Cost   string     `json:"cost,omitempty"`
 	Name   string     `json:"name,omitempty"`
 	Filter CastFilter `json:"filter,omitempty"`
+	// Objects is the payload of a body that acts on MORE than one
+	// object, each a card and its CR 400.7 epoch (ADR 0026 amendment
+	// 2026-10-16, #2099): Rescue from the Underworld's "return that
+	// card and the sacrificed card", where each card returns only if it
+	// is still the object it was when the trigger was created. Object
+	// stays the one-object slot every earlier body reads. Nil for every
+	// other body.
+	Objects []ObjectRef `json:"objects,omitempty"`
 	// Ability names the catalog row an ability's stack item came from
 	// (ADR 0041 P9, tier 4): read by the catalog/* bodies and by
 	// restore, never by a delayed trigger. A pointer so it is omitted
@@ -209,6 +217,10 @@ func checkEffectKey(kind, key string) {
 	// ADR 0146: and a vote's.
 	if _, dup := voteThens[key]; dup {
 		panic(fmt.Sprintf("game: %s key %q is already a vote continuation", kind, key))
+	}
+	// #2040: and a keyed choose_cards pick's.
+	if _, dup := chooseCardsThens[key]; dup {
+		panic(fmt.Sprintf("game: %s key %q is already a choose-cards continuation", kind, key))
 	}
 }
 
@@ -398,11 +410,12 @@ func KnownEffectCondition(key string) bool { _, ok := lookupCondition(key); retu
 // RegisteredEffectKeys lists every registered key as "body <key>",
 // "condition <key>", "alias <old> <new>", a revealed-hand pick's
 // continuation (#2115) as "pick <key>", or a keyed option pick's
-// (#2854) as "option <key>", sorted, for the ledger.
+// (#2854) as "option <key>", a keyed choose_cards pick's (#2040) as
+// "choose <key>", sorted, for the ledger.
 func RegisteredEffectKeys() []string {
 	effectRegistryMu.RLock()
 	defer effectRegistryMu.RUnlock()
-	out := make([]string, 0, len(effectBodies)+len(effectConditions)+len(effectAliases)+len(revealedPickThens)+len(optionPickThens)+len(voteThens))
+	out := make([]string, 0, len(effectBodies)+len(effectConditions)+len(effectAliases)+len(revealedPickThens)+len(optionPickThens)+len(voteThens)+len(chooseCardsThens))
 	for k := range effectBodies {
 		out = append(out, "body "+k)
 	}
@@ -415,6 +428,7 @@ func RegisteredEffectKeys() []string {
 	out = append(out, registeredRevealedPickKeysLocked()...)
 	out = append(out, registeredOptionPickKeysLocked()...)
 	out = append(out, registeredVoteKeysLocked()...)
+	out = append(out, registeredChooseCardsKeysLocked()...)
 	sort.Strings(out)
 	return out
 }
@@ -439,7 +453,7 @@ func bodyEffect(key string, p EffectParams) func(g *Game, item *StackItem) error
 // isZero reports whether p carries nothing — what the snapshot omits.
 func (p EffectParams) isZero() bool {
 	return p.Player == uuid.Nil && p.Object == (ObjectRef{}) && p.Amount == 0 &&
-		p.Cost == "" && p.Name == "" && len(p.Filter.Types) == 0 && p.Ability == nil
+		p.Cost == "" && p.Name == "" && len(p.Filter.Types) == 0 && len(p.Objects) == 0 && p.Ability == nil
 }
 
 // effectParamsOrNil is the snapshot mirror's form: a copy, or nil when

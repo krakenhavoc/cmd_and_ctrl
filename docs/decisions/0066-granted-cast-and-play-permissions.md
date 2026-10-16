@@ -829,7 +829,9 @@ printed cost puts a nil entry in the list (rule 4 of
 unpayable offer beside it. The OTHER direction is pinned too, and it is the
 one a reader will get wrong: a card that DECLARES and PRICES its own zone
 owes that price even under such a grant (rule 3), so an unpayable bound
-offer leaves no cast at all.
+offer leaves no cast at all. (Reversed by the 2026-10-16 amendment, #1987:
+the grant lets such a card be cast for its printed cost too, so it stays a
+cast surface on that price.)
 
 `stampGrantedPermissions`'s non-exile branch, which set the bit a second
 time behind a `cant_cast` guard, is now a `continue`. It also used to set it
@@ -4040,3 +4042,210 @@ offers, cast for {3}{R}, exiled).
 Back-out: restore the `seen` early return in `CastOffersForLocked`, and both effects tests and
 `TestGrantedFlashbackBesideAPrintedOneIsASecondOffer` fail on the offer list. Record the claim instead of the keyword on the stack,
 and the stack-item assertions fail.
+
+
+## Amendment — 2026-10-16 (#3989): a granted cast paid by waterbending its mana value
+
+Hama, the Bloodbender: "For as long as you control Hama, you may cast the exiled card during your turn by waterbending {X}
+rather than paying its mana cost, where X is its mana value." The permission, the window and the timing already existed
+(`forAsLongAsYouControlThisWindow`, `TimingYourTurnOnly`). The price did not: `CastPermission.Cost` is plain mana, and
+`TapPermanentsCostForCastLocked` found a tap cost only on the card, on a next-spell promise or on a permanent's grant.
+
+**The rules.** CR 701.67a: "Waterbend [cost]" means "Pay [cost]. For each generic mana in that cost, you may tap an
+untapped artifact or creature you control rather than pay that mana." CR 701.67b: when the waterbend cost is part of a
+spell's total cost, the taps may pay only the generic mana in the waterbend cost. Hama's waterbend is not an additional
+cost but the ALTERNATIVE cost (CR 118.9: "rather than paying its mana cost"), so CR 118.9d applies: additional costs, cost
+increases and cost reductions are applied to it. And the card's own {X}: the cast pays neither its mana cost nor an
+alternative cost that includes that X, so 0 is the only legal choice (CR 107.3b).
+
+**Options.**
+
+1. *Cost "{0}" plus a waterbend {N} added on top*, as Waterbender's Restoration's printed waterbend is. Simple, but the
+   {N} would be added after the cost modifiers (`costAfterTapsLocked` runs last), so a reduction would find {0} to reduce
+   and be lost, and the enumerator, which prices `CastPrice.Base`, would see a free spell.
+2. *Stamp `Cost: "{N}"` at grant and grant convoke-like taps.* The mana value is the face being cast (CR 202.3d for a
+   split card), unknown at grant, and taps that pay any generic would pay a tax or a kicker too (stronger than printed).
+3. **The waterbend {N} is the cost being paid, and the taps cover only it** (chosen; the most CR-faithful). The same split
+   an activated ability's "Waterbend {N}:" already makes (`waterbend_cost.go`): the mana lives in the cost, and the tap
+   clause names which part of it the taps may pay.
+
+**Decision.**
+
+- **`CastPermission.WaterbendManaValue`** (bool). `Cost` stays empty. `NamesPrice()` reports a permission that prices the
+  cast itself (a `Cost`, or this), and the readers that asked `Cost != ""` for that question now ask it: CR 118.6's
+  printed-cost check, the printed alternative costs a permission at the printed cost lets a card use, the claimability of a
+  granted offer, and the enumerator's no-mana-cost gate.
+- **`CastCostFor` charges `WaterbendManaValueCost(card)`**, "{N}" for the face being cast with {X} at 0 (the same read as
+  Bolas's Citadel's life), so the commander tax and every cost modifier apply to it (CR 118.9d), the X lock holds
+  (CR 107.3b), and `CastPrice.Base` is the waterbend's mana, which is what the enumerator and the view price.
+- **`TapPermanentsCostForGrantLocked`** is `TapPermanentsCostForCastLocked` for the permission the cast claims. Under a
+  waterbend permission it hands back `effects.Waterbend("{N}")` (installed as `game.WaterbendTapCost`) marked
+  **`TapPermanentsCost.InCost`**: its Extra is already in the cost, so `tapPermanentsAdjusted` takes the taps off it rather
+  than adding it, and the cast validator measures the budget against the total the modifiers leave (`WaterbendBudget`, as
+  for an ability), so a tap never pays a Thalia tax, a kicker or a {1} a reduction already removed (CR 701.67b). The
+  validator, the pricer, the view's tap picker (`castStampsBaseFor`) and the cast path all ask it.
+- **One tap cost per cast.** Under the permission the waterbend replaces any convoke or improvise the card or the board
+  would give the spell. A spell with both is rare and the loss is the weaker direction.
+
+### Snapshot
+
+Additive within v9, omitted when false: `seats[].castPermissions[].waterbendManaValue`. A file written before it has no such
+permission. A binary from before it drops the key and reads Hama's permission as a cast at the printed mana cost, which is
+only for a table restored across the upgrade while Hama's card is still in exile.
+
+**Card.** Hama, the Bloodbender, declared with a caveat: "A spell cast this way can't also use convoke or improvise." (the one-tap-cost limit above).
+
+**Tests.** `hama_the_bloodbender_test.go` (effects): the mill and the noncreature, nonland pick; the permission ends when Hama
+leaves; the cast paid by three taps, by {3} of colourless mana, by two taps and {1}; four taps refused; not on an opponent's
+turn; Thalia's {1} paid with mana and never a tap; Goblin Electromancer's reduction coming off the waterbend; an {X}{U}{U}
+spell cast as a waterbend {2} with X locked at 0. `waterbend_grant_view_test.go` (protocol): the view's tap picker reads
+"Waterbend {3}" with a budget of 3, and the enumerator offers the cast at three mana and not at two.
+
+Back-out: drop the `CastCostFor` clause and the cast is priced at its printed cost, so the colourless and enumerator tests
+fail; drop `InCost` and the {N} is charged twice, so every tap test fails; measure the budget against the base cost and
+`TestHamaReductionComesOffTheWaterbend` fails.
+
+## Amendment — 2026-10-16 (#2651): "exiled with" names the ability, and a play from exile carries the link
+
+The 2026-10-13 amendment stamped a resolving ability's linked exile with its source OBJECT only, and said the ability ref was
+not added. CR 607.2a links an ability to an ability: "the second ability refers only to cards in the exile zone that were put
+there as a result of an instruction to exile them in the first ability". An object with two exiling abilities, or a reader that
+has to see the link after the card has left exile, needs more than the object. Prowl, Stoic Strategist needs both: "Whenever
+Prowl attacks, exile up to one other target tapped creature or Vehicle. For as long as that card remains exiled, its owner may
+play it. Whenever a player plays a card exiled with Prowl, you draw a card and convert Prowl."
+
+- **The stamp names the ability too.** `Card.ExiledWithAbility` is the catalog row (`AbilityRef`, ADR 0041 P9) of the item
+  that was resolving when the card was exiled, beside `Card.ExiledWith`. That is the identity a stack item already carries
+  (`StackItem.Params.Ability`) and the one #3933's entry provenance reads (`Event.CauseAbility`). It is cleared by `MoveCard`
+  with the object half.
+- **No caller threads it.** `routeCardToZoneLocked` fills `zoneRoute.ExiledWithAbility` from `Game.resolving`
+  (`linkedExileAbilityLocked`) when the route names a link, and only while a resolution is open, the guard
+  `stampEntryProvenanceLocked` uses. It is the zero ref when nothing is resolving, when a spell is resolving, when the item has
+  no catalog row (a legacy closure trigger), or when the item's source object is not the one the route links to. So every linked
+  verb (`ExileLinkedForEffect`, `ExileLinkedThenForEffect`, the hideaway exile, the revealed-hand pick) stamps it without
+  change.
+- **A replacement's link names no ability.** The two landing functions take the ability from the event's route only while
+  `ReplacementEvent.ExiledWith` is still the route's own link (`ReplacementEvent.exiledWithAbility`). Valgavoth's replacement
+  writes its own link and resolves nothing, so CR 607.2b's link stays an object link.
+- **Readers.** `Game.ExiledWithRowForEffect(source, slot, name)` lists the cards in exile linked to that object by that row,
+  matched by `AbilityRef.IsRow`: the slot and the row's name (a triggered row's Key, an activated row's Label), as restore's
+  Q2 rule matches a row. `ExiledWithForEffect(source)` is unchanged, so the borrowers and Duplicant read every linked exile of
+  the object as before. This also closes the weakness ADR 0155 Decision 6 declared, for any reader that wants it.
+- **A play from exile carries the link.** Playing the card moves it out of exile and clears its link (CR 400.7), so a trigger on
+  the play has nothing left to read on the card. `Event.ExiledWith` and `Event.ExiledWithAbility` copy the link the card had onto
+  the spell's `EventCast` from exile (read off the copy `castSpellLocked` takes before the move) and onto a land's Played
+  `EventZoneMove` from exile (`entryLanding.playedFromExile`). `game.PlayedCardExiledWithRow(ev, source, slot, name)` is the
+  read. A card put onto the battlefield from exile is not played and carries nothing.
+- **The event-log readers stay.** The cards that read `b27ExiledWith` keep their walk. It is already keyed on the
+  ability (its label), so it is CR 607.2a-exact, and it runs at resolution, not on every layer pass. Moving them would make a
+  table restored from a file written before this amendment forget the cards it had exiled, because those cards carry no stamp.
+  Skyclave Apparition's `b27EverExiledWith` reads cards that have left exile, which the stamp cannot answer.
+- **Card side.** `effects.ExileWithPermission{Linked: true}` is the linked exile with the play grant.
+
+### Snapshot
+
+Additive within v9, omitted when empty: `…cards[].exiledWithAbility` (`{key, slot, ref, name}`) and `events[].exiled_with` /
+`events[].exiled_with_ability`. A file written before it restores the object link alone, which is every linked exile before it,
+and a reader by row finds nothing there, as it found nothing before. A binary before it drops the keys; it has no reader by row
+and no Prowl.
+
+**Card.** Prowl, Stoic Strategist // Prowl, Pursuit Vehicle, Full.
+
+**Tests.** `exiled_with_test.go` (game): the stamp carries the ability and `MoveCard` clears it; a route's ability rides only its
+own link; `PlayedCardExiledWithRow` matches a cast and a played land from exile, and not a put, another row, another object or a
+link with no ability; the ability survives a snapshot. `prowl_stoic_strategist_test.go` (effects): the attack trigger's exile is
+linked to the object and the row, and its owner may play it; only another tapped creature or Vehicle is a target; a cast from
+exile and a land played from exile draw and convert; a card linked by a replacement, by another row, to another Prowl object
+or to another permanent does not; the back face's counters and its convert on the second resolution.
+
+Back-out: stop filling `zoneRoute.ExiledWithAbility` and the Prowl tests that cast its card fail; drop the cast's
+`stampPlayedExiledWith` and the cast test fails while the land test passes.
+
+## Amendment — 2026-10-16 (#1987): playing from other players' graveyards, and a ban on playing from your own
+
+Shaman's Trance: "Other players can't play lands or cast spells from their graveyards this turn. You may play lands and cast
+spells from other players' graveyards this turn as though those cards were in your graveyard." Its two 2004-10-04 rulings:
+"This card does not allow you to activate the abilities of cards in other people's graveyards", and "You can use Flashback on
+cards to cast them."
+
+**The rules.** A spell may be cast only if a rule or effect allows it and none prohibits it (CR 601.3), and "can't" beats
+"may" (CR 101.2). The caster controls a spell cast from another player's graveyard (CR 601.2a), and it goes to its owner's
+graveyard afterwards (CR 400.3); a land played from there enters under the player who played it (CR 110.2) and is that
+turn's land play (CR 305.1, 305.2). "This turn" ends at cleanup (CR 514.2).
+
+### Decision 1 — the permission is a stored standing grant per other seat, and needs no new field
+
+#1022 and #1035 already gave a stored `ScopeStanding` permission a seat (`ZoneOwner`), and taught the cast path
+(`foreignPileForCastLocked`), the enumerator (`castZones` walks other seats' piles under any grant) and the view (the
+per-holder stamps of `stampGrantedPermissions`) to follow it. Xanathar's library grant was the only user. Shaman's Trance is
+`effects.GraveyardPlayThisTurn`'s grant (Yawgmoth's Will) pointed at another pile: one `CastPermission{Zone: graveyard,
+Scope: standing, ZoneOwner: <seat>}` per other seat still in the game, at the printed cost, until end of turn.
+
+Rejected: a new "every other graveyard" flag on one permission. It would be read in `permissionReachesPileLocked` only, so it
+is smaller, but it is a second spelling of a scope `ZoneOwner` already has, and every surface that reads `PileOwnerFor`
+would need to learn it.
+
+### Decision 2 — "as though those cards were in your graveyard" is the card's own text, and rule 3 gives way
+
+The card's own way out of a graveyard (flashback, escape, a Gravecrawler-style permission, an aftermath half) is opened by
+`cardOpensZoneLocked`, which asks the card and not whose pile it is in; the enumerator and the view open another seat's pile
+only under a permission. So under the grant those offers already reach the caster, which is the flashback ruling.
+
+What did not hold was the other price. `validateCastPathLocked`'s rule 3 ("a zone the card prices must be paid for") refused
+a cast at the printed cost of any card that also prints a graveyard price, even when a permission at the printed cost was the
+reason the cast was legal. That is wrong for Shaman's Trance, and it was already wrong for Yawgmoth's Will and Muldrotha over
+the caster's own graveyard. Rule 3 now gives way to a permission that names no price of its own (`AltCostKey` empty and
+`NamesPrice()` false): the caster may cast the card for its mana cost or claim its printed offer. A permission with a price
+(Snapcaster's flashback, Underworld Breach's escape, a flat `Cost`) is rule 4's and unchanged.
+
+This reverses a direction the view's #1015 section of this ADR pinned ("a card that DECLARES and PRICES its own zone owes
+that price even under such a grant"). That pin was the safe direction, weaker than printed, but not the rules: CR 601.3 makes
+the permission the reason the cast is legal, and nothing makes the card's own offer mandatory once something else allows the
+cast (Muldrotha's 2020-11-10 ruling, "If it has an alternative cost, you may cast it for that cost instead", reads the same
+way). `TestCastableHereUnderAPrintedCostGrantWhenTheCardsOwnPriceIsUnpayable` (protocol) replaces the test that pinned it.
+With no permission, rule 3 is unchanged: a flashback card in its owner's graveyard still owes flashback, and ADR 0118's
+granted offers still skip it. Under a printed-cost permission a granted offer (Jodah) now reaches such a card, which is
+CR 118.9a's "where the printed mana cost could be paid".
+
+### Decision 3 — the public stamp asks the pile rule too
+
+`CastPermissionOnCardForEffect`, the public `exile_play` read, asked a stored permission only whether it covered the card.
+A stored standing permission over a graveyard covered every graveyard card at the table, so the holder's grant over one
+seat's pile was stamped on every other pile, the holder's own included. It now asks `permissionReachesPileLocked` as the
+cast path does. A `ScopeCards` permission is unaffected (the pile rule passes it), and so is exile (shared).
+
+### Decision 4 — the ban is a rules-gate ScopedEffect read by both gates
+
+"Can't play lands or cast spells from their graveyards" is Memory Vessel's hand ban (the 2026-10-10 amendment, Decision 2)
+one zone over, stored for the same reasons: a new kind, `cantPlayFromOwnGraveyard` (reader `rule`, scope game, reads
+`Player`), registered by `Game.CantPlayFromOwnGraveyardThisTurnForEffect(source, players, label)`
+(`game/graveyard_play_ban.go`), one mod per banned player in one record, until end of turn. `uuid.Nil` names nobody, never
+everybody, because the printed form is "other players". The reader `graveyardPlayBanLocked` refuses a play only out of the
+banned player's OWN graveyard, told by the card's owner (a card in a graveyard is in its owner's, CR 404.1), and asks the
+duration itself. `CastGateLocked` and `LandPlayGateLocked` both ask it, so the cast path, a land played during a resolution,
+the enumerator and the view's `cant_cast` stamp all see it. Activated abilities of cards in a graveyard are not plays and
+stay open.
+
+### Snapshot
+
+Additive within v9: the mod kind `cantPlayFromOwnGraveyard`, and a stored permission with `zoneOwner` over a graveyard (the
+field existed). A binary from before this refuses a restore point naming the kind with `ErrUnknownEffectKey`; one that knows
+the field reads the permission as it is. Fixture `v9/shamans_trance.json`.
+
+**Card.** Shaman's Trance, with a caveat: the caster's own permissions over "your graveyard" (Underworld Breach's escape,
+Lurrus, Muldrotha) do not reach the other graveyards. The cards there are castable at their printed cost anyway; what is lost
+is the extra price such a permanent offers, which is the weaker direction. Its prompt picks among one permission per card,
+and teaching it to offer a standing permission's price beside a stored one's is a composition question for every graveyard
+grant, not this card's.
+
+**Tests.** `graveyard_play_ban_test.go` (game): the ban refuses a spell and a land out of the banned player's own graveyard
+and nothing else, and ends with the turn; an empty list bans nobody; a flashback card under a printed-cost permission is
+offered and cast at its printed cost; a stored grant over another graveyard is found on that pile only.
+`shamans_trance_test.go` (effects): every other graveyard opens and the caster's own does not; a land from another graveyard
+is the turn's land play under the caster with its owner kept; a Bolt cast from there is the caster's and returns to its
+owner's graveyard; a flashback card there offers both prices and flashes back; the ban and its `cant_cast`; both halves end
+with the turn; the enumerator and the view's `castable_here` offer the other graveyards to the caster only; a restore keeps
+both halves.
+
+Back-out: drop rule 3's exception and the flashback-offer tests fail; drop the pile check in `CastPermissionOnCardForEffect`
+and `TestAStoredGrantOverAnotherGraveyardIsOnlyOnThatPile` fails; drop either gate's read and the ban tests fail.

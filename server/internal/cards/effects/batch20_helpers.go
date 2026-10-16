@@ -201,6 +201,7 @@ func b20KwainAsk(ctx *Context, order, drew []uuid.UUID) error {
 	return MayChoice{
 		Player:   who,
 		Question: "Kwain, Itinerant Meddler — draw a card?",
+		Draws:    1,
 		OnYes: func(ctx *Context) error {
 			p := ctx.Game.PlayerByIDForEffect(who)
 			got := p != nil && p.Library != nil && p.Library.Size() > 0

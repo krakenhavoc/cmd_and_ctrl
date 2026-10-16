@@ -232,7 +232,10 @@ func (g *Game) createAbilityCopyLocked(item *StackItem, controller uuid.UUID, ta
 		XValue:       item.XValue,
 		Distribution: cloneDistributionLocked(item.Distribution),
 		Paid:         copiedPaidCost(item.Paid),
-		Effect:       item.Effect,
+		// #2055, CR 707.10: the opponents named are a choice made as
+		// the original was announced, and the copy keeps them.
+		TargetChoosers: copyTargetChoosers(item.TargetChoosers),
+		Effect:         item.Effect,
 		// A copy of a keyed item (a fired delayed trigger, #1497) is
 		// keyed too, so it stays data on the stack and the table stays
 		// a restore point while it waits (#1568 review).

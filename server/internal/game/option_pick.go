@@ -369,6 +369,9 @@ func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 		err = g.settleRunLegLocked(c.promptRun, c.Chooser, nil)
 	case c.chooseCardsResume != nil:
 		err = c.chooseCardsResume.runWithNoChoice(g)
+	case isKeyedChooseCards(c):
+		// #2040: a keyed choose_cards pick, run with nobody's choice.
+		err = g.runKeyedChooseCardsLocked(c, nil, false)
 	case c.chooseValueResume != nil:
 		// A resolution-time "choose a creature type" whose chooser left
 		// (Patriarch's Bidding asks every seat in turn). "" is the
@@ -454,6 +457,18 @@ type OptionPickPrompt struct {
 	// sweeping the Aura away while the question is still open.
 	attachesSource bool
 
+	// walk and parked are #2055's markers, set only by the "which
+	// opponent chooses" question of an "of an opponent's choice" clause
+	// (opponent_target.go): walk is the trigger's CR 603.3d target walk
+	// the question belongs to, carried as the prompt's pickTargetResume
+	// so the drain holds the batch behind it and the prompt belongs to
+	// no resolution; parked is the parked cast or activation, carried as
+	// its opponentTargetResume so the same announcement is not parked
+	// twice. Both are set on the choice BEFORE it is queued, where the
+	// queue reads them. Neither is the prompt's continuation.
+	walk   *pickTargetFrame
+	parked *opponentTargetFrame
+
 	// ThenKey is Then as a REGISTERED continuation
 	// (RegisterOptionPickThen, option_pick_keyed.go), and Carry is the
 	// plain data it is handed with the answer (#2854). A prompt queued
@@ -533,6 +548,8 @@ func (g *Game) QueueOptionPickForEffect(p OptionPickPrompt) uuid.UUID {
 		thenSeat:       p.ThenSeat,
 		attachesSource: p.attachesSource,
 	}
+	c.pickTargetResume = p.walk
+	c.opponentTargetResume = p.parked
 	return g.QueueChoiceForEffect(c)
 }
 

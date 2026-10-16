@@ -130,7 +130,7 @@ func incubateRounds(g *game.Game, item *game.StackItem, controller uuid.UUID, n,
 	}
 	return g.CreateTokensThenForEffect(game.TokenCreation{
 		Controller: controller,
-		Groups:     []game.TokenGroup{{Template: IncubatorToken(), Count: 1, Entry: opts}},
+		Groups:     []game.TokenGroup{{Template: ruleDefinedToken(IncubatorToken()), Count: 1, Entry: opts}},
 	}, func(g *game.Game, _ []uuid.UUID) error {
 		if left > 1 {
 			return incubateRounds(g, item, controller, n, left-1, then)

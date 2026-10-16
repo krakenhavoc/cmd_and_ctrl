@@ -817,7 +817,7 @@ const (
 	EventBeginDrawStep EventKind = "begin_draw_step"
 
 	// EventManaAbilityActivated — a mana-producing ability fired.
-	// Actor = controller, Source and CardID = the permanent that
+	// Actor = activator (see below), Source and CardID = the permanent that
 	// produced the mana, Label = the ability's printed label and
 	// Exhaust = whether it prints the exhaust keyword (#1183). S15
 	// sub-PR 2.
@@ -830,6 +830,12 @@ const (
 	// than an error. Both emit sites set it: the hand click and the
 	// AUTO-TAPPER's executor, which activates the ability too
 	// (CR 605.3 — a mana ability is activated like any other).
+	//
+	// Actor is the ACTIVATOR, who is the controller except on an "Any
+	// player may activate this ability" row (Mana Cache, #1864). Target
+	// is then the permanent's controller, as on EventActivateAbility, and
+	// the public log narrates it as LogActivateAcross; uuid.Nil for every
+	// other activation, which stays off the log (CR 605.3b).
 	EventManaAbilityActivated EventKind = "mana_ability_activated"
 
 	// EventManaAdded — one mana token landed in a player's pool.
@@ -1718,6 +1724,18 @@ type Event struct {
 	// clause that cares. Added for #1326.
 	Played bool `json:"played,omitempty"`
 
+	// ExiledWith and ExiledWithAbility are the CR 607.2a link a card
+	// PLAYED FROM EXILE had while it sat there (Card.ExiledWith and
+	// Card.ExiledWithAbility): set on the EventCast of a spell cast from
+	// exile and on the Played EventZoneMove of a land played from exile,
+	// when the card carried a link. The move clears the card's own
+	// link (CR 400.7), so the event is the only place "whenever a player
+	// plays a card exiled with Prowl" (Prowl, Stoic Strategist) can read
+	// it (#2651, ADR 0066's 2026-10-16 amendment). Nil on every other
+	// event. Engine-internal: protocol/log.go does not project them.
+	ExiledWith        *PermissionCardRef `json:"exiled_with,omitempty"`
+	ExiledWithAbility *AbilityRef        `json:"exiled_with_ability,omitempty"`
+
 	// Unpaid marks an EventCast whose caster DECLARED it cast without
 	// paying its mana cost — an effect on paper (#3855, the paper
 	// payment picker's free answer). The log reads it to say "<player>
@@ -1766,6 +1784,18 @@ type Event struct {
 	Cause           MoveCauseKind `json:"cause,omitempty"`
 	CauseController uuid.UUID     `json:"cause_controller,omitempty"`
 	CauseItem       uuid.UUID     `json:"cause_item,omitempty"`
+
+	// CauseSource and CauseAbility say WHICH ability put a permanent
+	// onto the battlefield, on its EventETB (#3933, entry_provenance.go):
+	// the resolving item's source object (StackItem.SourceObject) and its
+	// catalog row (StackItem.Params.Ability). Kodama of the East Tree's
+	// "if it wasn't put onto the battlefield with this ability" reads
+	// them (TriggeredAbility.NotPutByThisAbility). Nil on every other
+	// event, on an entry no ability made (a land played, a spell
+	// resolving into a permanent, a sandbox move), and on an entry made
+	// by a spell's effect, which has no catalog row of its own.
+	CauseSource  *ObjectRef  `json:"cause_source,omitempty"`
+	CauseAbility *AbilityRef `json:"cause_ability,omitempty"`
 
 	// PublicNames maps a referenced token's ID to its name, captured
 	// when the event was emitted so the log can still name a token that

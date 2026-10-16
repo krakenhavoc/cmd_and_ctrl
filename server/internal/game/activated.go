@@ -1264,6 +1264,10 @@ type ActivateAbilityParams struct {
 	// question and made again discards the same cards rather than
 	// drawing new ones. See randomDiscardsLocked.
 	randomDiscards []uuid.UUID
+
+	// opponentPicks is CastSpellParams.opponentPicks for an activation
+	// (#2055): set only by a parked announcement's resume.
+	opponentPicks []opponentPick
 }
 
 // ActivateCatalogAbility activates ability `index` on a permanent
@@ -1345,6 +1349,19 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		if !CanActivateAbilities(source) {
 			return ErrCantActivate
 		}
+	} else if srcZone == ZoneStack {
+		// CR 113.6 / ADR 0106 §1 amendment 2026-10-16 (#1865): an
+		// ability of a SPELL, which functions on the stack only when it
+		// says so (Lightning Storm). A spell has a controller (CR 112.2),
+		// so the battlefield's rule applies: the spell's controller, or
+		// anyone when a row says "Any player may activate this ability".
+		// The row named is held to MayActivate below, as on the
+		// battlefield. Arrest and its kin restrict a permanent; layer 6
+		// has nothing to say about a spell, so CanActivateAbilities is
+		// not asked.
+		if source.Controller != playerID && !HasAnyPlayerAbility(*source) {
+			return ErrCardCallerMismatch
+		}
 	} else if source.Owner != playerID {
 		// CR 108.4: a card outside the battlefield and the stack has
 		// no controller, so its owner is the "you" of the printed
@@ -1381,7 +1398,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// ordinary activation by the controller (or owner, off the
 	// battlefield).
 	var anyPlayerActivatedFrom uuid.UUID
-	if srcZone == ZoneBattlefield && source.Controller != playerID {
+	if (srcZone == ZoneBattlefield || srcZone == ZoneStack) && source.Controller != playerID {
 		anyPlayerActivatedFrom = source.Controller
 	}
 	// ADR 0041 P9 (#1497, tier 4): which catalog row this is, named
@@ -1765,7 +1782,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	bindStepsBound(steps, AnnouncedBound{X: params.XValue, CountersRemoved: counters.total})
 	// #1657: a divided amount read off the board, fixed at activation.
 	g.bindDivideAmountsLocked(steps, DivideAmountArgs{Controller: playerID, Source: cardID})
-	params.Targets = assignAnnouncedSlots(steps, params.Targets)
+	// #2055: the payload names targets for the controller's own clauses
+	// only; an "of an opponent's choice" clause is the opponent's, and
+	// its answer rides params.opponentPicks (opponent_target.go).
+	params.Targets = assignAnnouncedSlots(StepsChosenByController(steps), params.Targets)
+	ownTargets := params.Targets
+	oppTargets, err := splitOpponentTargets(steps, params.Targets, params.opponentPicks)
+	if err != nil {
+		return err
+	}
+	params.Targets = oppTargets.targets
 	for _, i := range xSteps {
 		if _, bad := xCountMismatch(steps[i], params.Targets, params.XValue); bad {
 			return ErrInvalidParam
@@ -1775,11 +1801,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// that has it, not its controller. A red player activating a
 	// colourless Equipment's ability may still target a pro-red
 	// creature; a red permanent's ability may not (#662).
-	if err := g.validateAnnouncedTargetsLocked(SourceObject(playerID, source), steps, params.Targets); err != nil {
+	if err := g.validateAnnouncedTargetsLocked(SourceObject(playerID, source), oppTargets.check, params.Targets); err != nil {
 		return err
 	}
 	// #1563, CR 601.2d via CR 602.2b: the division, with the targets.
-	dist, err := settleDistribution(steps, params.Targets, params.Distribution, params.XValue)
+	dist, err := settleDistribution(oppTargets.check, params.Targets, params.Distribution, params.XValue)
 	if err != nil {
 		return err
 	}
@@ -1851,10 +1877,29 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if ab.Cost.BottomSelf {
 		asking = append(asking, costCommanderMovesTo(ZoneLibrary, cardID)...)
 	}
+	// #2055: an "of an opponent's choice" clause still unanswered parks
+	// the announcement here, where nothing has been paid (CR 601.2c
+	// comes before CR 601.2h): the controller names an opponent and that
+	// opponent picks, and each answer makes it again (opponent_target.go).
+	if len(oppTargets.pending) > 0 {
+		parked := params
+		parked.Targets = ownTargets
+		return g.parkForOpponentTargetLocked(&opponentTargetFrame{
+			controller: playerID,
+			cardID:     cardID,
+			name:       source.Name,
+			activation: true,
+			index:      index,
+			activate:   parked,
+		}, SourceObject(playerID, source), oppTargets)
+	}
 	asked, answers := g.askCostCommanderLocked(playerID, asking, params.commanderAnswers, source.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {
 			again := params
 			again.commanderAnswers = answers
+			// The payload's own picks: the opponents' answers ride
+			// opponentPicks and are merged in again (#2055).
+			again.Targets = ownTargets
 			return g.activateCatalogAbilityLocked(playerID, cardID, index, again)
 		})
 	if asked {
@@ -2206,11 +2251,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		SourceTurnOvers: sourceTurnOvers,
 		// ADR 0109 §2, owner decision 2: the object that granted this
 		// row, uuid.Nil for the source's own. See StackItem.GrantedBy.
-		GrantedBy:    origins.At(index).GrantedBy,
-		Label:        itemLabel,
-		Targets:      append([]TargetRef(nil), params.Targets...),
-		Modes:        append([]int(nil), params.Modes...),
-		Distribution: cloneDistributionLocked(params.Distribution),
+		GrantedBy: origins.At(index).GrantedBy,
+		Label:     itemLabel,
+		Targets:   append([]TargetRef(nil), params.Targets...),
+		// #2055: who chose each "of an opponent's choice" clause.
+		TargetChoosers: copyTargetChoosers(oppTargets.choosers),
+		Modes:          append([]int(nil), params.Modes...),
+		Distribution:   cloneDistributionLocked(params.Distribution),
 		// CR 602.2b: X was announced above and is locked here. The
 		// effect reads it back through Context.X(), the same
 		// accessor an X spell's OnResolve uses, and the wire ships

@@ -199,15 +199,21 @@ func (g *Game) DamageInstanceForEffect(fn func() error) error {
 // run it then.
 //
 // Caller must hold g.mu (write).
-func (g *Game) endDamageInstanceLocked(inst DamageInstance) {
+//
+// Reports whether a follow-up it ran asked a question, or waits behind
+// one (#2040, prevention_then_pause.go): the caller then parks the rest
+// of its instruction (parkFollowUpContinuationLocked) instead of running
+// it.
+func (g *Game) endDamageInstanceLocked(inst DamageInstance) (paused bool) {
 	if inst == 0 || g.damageInstancePausedLocked(inst) {
-		return
+		return false
 	}
-	g.flushPreventionFollowUpsForInstanceLocked(inst)
+	paused = g.flushPreventionFollowUpsForInstanceLocked(inst)
 	// ADR 0108 §7: its events have all landed, so its shield divisions
 	// are spent.
 	g.dropShieldDivisionsLocked(inst)
 	g.dropRedirectOrdersLocked(inst)
+	return paused
 }
 
 // damageInstancePausedLocked reports whether a damage event of `inst` is

@@ -46,7 +46,13 @@
   import { blockBoard } from "../../blockPick";
   import { EASE, cancelAnimations, canAnimate, run } from "../../motion";
   import { settings } from "../../settings";
-  import { cardAnchors, cardSelector, findAnchor, seatSelector } from "../../boardAnchor";
+  import {
+    cardAnchors,
+    cardSelector,
+    findAnchor,
+    findStandIn,
+    seatSelector,
+  } from "../../boardAnchor";
   import { boardExpandLayout } from "../../boardExpand";
   import type { CombatCues } from "../../combatCues.svelte";
   import {
@@ -190,6 +196,20 @@
     };
   }
 
+  // cardIn is a battlefield card's board-relative centre: its tile, or,
+  // when its controller's board is drawn as the reflow's avatar card
+  // (ADR 0077 §6 as amended, #4065), that card. A blocker on a seat
+  // shrunk to its avatar still draws its arrow, from that player.
+  function cardIn(boardRect: DOMRect, cardID: string): { x: number; y: number } | null {
+    const tile = rectIn(boardRect, cardSelector(cardID));
+    if (tile || !boardEl) return tile;
+    const controller = view.battlefield.cards.find((c) => c.instance_id === cardID)?.controller;
+    const el = controller ? findStandIn(boardEl, controller) : null;
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2 - boardRect.left, y: r.top + r.height / 2 - boardRect.top };
+  }
+
   function recomputeArrows(): void {
     if (!boardEl) {
       arrows = [];
@@ -203,7 +223,7 @@
       // in each case.
       let from: { x: number; y: number } | null = null;
       if (p.kind === "attack" || p.kind === "block" || p.kind === "block-pending") {
-        from = rectIn(boardRect, cardSelector(p.fromCardID));
+        from = cardIn(boardRect, p.fromCardID);
       } else {
         from = rectIn(boardRect, `[data-stack-item-id="${cssEscape(p.fromStackID)}"]`);
       }
@@ -221,7 +241,7 @@
         // to the stack to cover Counterspell-style stack-on-stack
         // targeting.
         to =
-          rectIn(boardRect, cardSelector(p.toCardID)) ??
+          cardIn(boardRect, p.toCardID) ??
           rectIn(boardRect, `[data-stack-item-id="${cssEscape(p.toCardID)}"]`);
       }
       if (!to) continue;
@@ -341,7 +361,7 @@
   function measure(boardRect: DOMRect, cardID?: string, seatID?: string): Point | null {
     if (seatID) return rectIn(boardRect, seatSelector(seatID));
     if (!cardID || !view.battlefield.cards.some((c) => c.instance_id === cardID)) return null;
-    return rectIn(boardRect, cardSelector(cardID));
+    return cardIn(boardRect, cardID);
   }
 
   function playCue(cue: ScheduledCue): void {

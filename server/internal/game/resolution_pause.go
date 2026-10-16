@@ -119,6 +119,15 @@ func (g *Game) holdForOpenResolutionLocked() bool {
 	if g.pausedResolutionChoiceLocked() != nil {
 		return true
 	}
+	// #2040, CR 615.5: a prevention effect's additional effect asked a
+	// question as the damage was prevented. The instance's other
+	// follow-ups and the rest of the damage instruction that waited for
+	// the answer run now, before a modal item's next bullet, because they
+	// are the earlier instruction (prevention_then_pause.go). Either may
+	// ask again.
+	if g.resumeFollowUpParksLocked() {
+		return true
+	}
 	// #2789, CR 608.2c: the prompt a modal item's bullet was waiting on
 	// is answered, so its later bullets run now, still inside the
 	// resolution (mode_walk.go). One of them may pause again.

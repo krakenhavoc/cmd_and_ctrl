@@ -314,7 +314,7 @@ PRs 1, 2 and 4 are small and touch nothing in combat or priority, so they can go
 
 ## Out of scope
 
-- Any-player **mana** abilities (Mana Cache), and any-player abilities on a spell (Lightning Storm).
+- Any-player **mana** abilities (Mana Cache), and any-player abilities on a spell (Lightning Storm). Both shipped in the 2026-10-16 amendments below (#1864, #1865).
 - A ScopedEffect mod kind that grants "can't attack its owner" (Elrond), and "can't be sacrificed" (Alexios).
 - Savage Summoning's other two one-use promises ("can be cast as though it had flash" and "enters with an additional +1/+1 counter"). It waits on the `cant-be-countered-grant` row.
 - "Can't be countered by blue or black spells" (Autumn's Veil), which depends on the counterer.
@@ -449,3 +449,107 @@ Cards: Martyrdom (Full).
 §5 shipped with four cards of the "from a single graveyard" family held for their other text. One of those holds has lapsed without any change to this ADR's machinery: Qutrub Forayer waited on "target creature that was dealt damage this turn", and the engine has recorded that since Covert Cutpurse (#1855, `DealtDamageThisTurn`, which reads the turn's damage events and treats a creature that entered afterwards as a new object, CR 400.7). The card is built on the two halves that exist: a modal enters trigger (CR 700.2) whose first bullet targets a damaged creature and whose second bullet is the `Same` clause (`upToNCardsFromASingleGraveyard(2)`). Each bullet reads its own target group by occurrence (`ModeTargets`), so the second bullet's `exileTheModesTargetCards` re-checks each pick at resolution (CR 608.2b) and the sameness rule is judged at announce exactly as for a spell. A bullet with no legal target cannot be chosen (CR 603.3c), so with no damaged creature on the table only the graveyard bullet is offered; the enumerator and the bot take the mode through the existing mode-pick path, so no new choice exists. Full, no caveat.
 
 Still held, each for text outside this ADR: Martyr of Bones (a "reveal X black cards" activation cost), Feral Deathgorger // Dusk Sight (Omen, CR 720.3d) and Spellweaver Helix (casting a copy of an exiled card).
+
+---
+
+## Amendment (2026-10-16): "Any player may activate this ability" on a mana ability (#1864)
+
+§1 decision 1 refused `AnyPlayer` on a mana ability and listed Mana Cache under Out of scope: the mana path asked the CR 602.2 controller question on its own, and Mana Cache also needs "only during their turn before the end step". This closes it on the same option A: a bit on the row, read through one gate.
+
+- **The declaration.** `effects.ManaAbility.AnyPlayer`, mirrored on `game.ManaAbilityShape`. CR 602.1b makes the permission part of the ability, so a copy or a grant of the row carries it and ability removal takes it, as on the CR 602 row. `Register` refuses it beside a `{T}`, sacrifice-this, exert, put-a-counter or exile-this component and on a row that functions off the battlefield, for decision 1's reason: no printed any-player mana ability has one, and who may tap another player's permanent would be an untested rule.
+- **The gate.** `game.MayActivateMana(player, source, zone, ab)`, `MayActivate`'s twin for the CR 605 list: on the battlefield the controller, or anyone when the row is `AnyPlayer`; off it the CR 108.4a owner. `ActivateManaAbility` asks it after the index lookup and keeps the cheap refusal before it for a permanent with no any-player mana row (`HasAnyPlayerManaAbility`). The enumerator's `manaMoves` visits another player's permanent only for such a row and holds each row to the same gate, so the bot and the client are offered exactly what the engine accepts (#544). Arrest and the board-wide gate still apply to everyone: they restrict the object, not the activator.
+- **What the activator does.** The activator pays the cost (CR 602.1a). A counter cost in the self form ("Remove a charge counter from this enchantment") names the source whoever controls it, so the counter-cost validator lets a player who may activate the row remove counters from that source and from nothing else of another player's (`counterCostPayerMayUse`). The mana goes into the activator's pool (CR 106.4), the `Condition`'s `controller` argument is the activator (CR 109.5), so Mana Cache's "their turn" is `IsYourTurn(g, controller)`, and the exhaust and once-per-turn tallies stay keyed by object (CR 602.5b).
+- **The view and the digest.** `mana_abilities[i].any_player`, additive. Every seat that does not control the permanent gets its own copy of the mana rows through the `abilityOffers` carrier, with each `AnyPlayer` row re-stamped for that seat (condition, counter options, price), as decision 5's amendment does for the CR 602 rows. ADR 0105's digest needs no change: the enumerator's mana move lands under the permanent's ID in `mana_abilities` for the activator alone.
+- **The client.** A seated viewer's click on another player's permanent with a live any-player mana row taps it for mana as its own source would be tapped, and its popover and override menu list only those rows; the action is sent as the viewer. ADR 0105's drop pip lights on that permanent when the viewer's digest lists the row. Smart autopass is unchanged: a mana move is never a response unless it interacts (#2853), and this one does not.
+- **The log.** `EventManaAbilityActivated` carries the permanent's controller in `Target` when somebody else activated its any-player row, exactly as `EventActivateAbility` does, and the public log tells it as `activate_across` ("Bob activated Alice's Mana Cache"). Every other mana activation stays off the log (CR 605.3b).
+- **The auto-tapper and the bot.** The auto-tapper plans only a source with `{T}`, a sacrifice-this or a declared once-each-turn free row, so it never spends Mana Cache's counters, for its controller or anyone else: the activator floats the mana from the board, as with Pentad Prism. This is the planner's existing posture, not a new limit: it costs the player a click, not an option. The heuristic never chooses a bare mana move (`ManaFloat` is priced below passing), so decision 8's "no purpose, no reach" holds without a purpose on the row; the model tiers see the move, labelled with the controller.
+
+Snapshot impact: none. The flag is catalog data, and the event field is the same `Target` the log projection already reads.
+
+Cards: Mana Cache (Full).
+
+---
+
+## Amendment (2026-10-16): abilities of a spell on the stack (#1865)
+
+"Out of scope" above listed two any-player cards, and the amendment above took Mana Cache. This one takes Lightning Storm, whose ability belongs to a spell. "Lightning Storm deals X damage to any target, where X is 3 plus the number of charge counters on Lightning Storm. Discard a land card: Put two charge counters on Lightning Storm. You may choose a new target for it. Any player may activate this ability but only if Lightning Storm is on the stack." It is the only card that prints an activated ability working on the stack: a search of the Scryfall dump of 2026-10-13 for "only if/while … is on the stack" and "activate … on the stack" finds it alone. The rest of this section is checked in the code on `origin/develop` at `e2466a70` and against the pinned Comprehensive Rules (September 25, 2026).
+
+### The rules
+
+- **CR 113.6:** "Abilities of an instant or sorcery spell usually function only while that object is on the stack." The card's activation instruction says so of this one, and **CR 602.1b** makes that instruction (and "Any player may activate this ability") part of the ability, functioning at all times.
+- **CR 602.2:** only an object's controller may activate its ability "unless the object specifically says otherwise". **CR 112.2:** "A spell's controller is, by default, the player who put it on the stack. Every spell has a controller." So the battlefield's rule (decision 2) applies to a spell unchanged.
+- **CR 602.1a / 109.5 / 113.8:** the activator pays the cost (their own land card), controls the ability, and is its "you": the player who activated it chooses the new target, not the spell's controller. The issue text said the spell's controller; the rules say otherwise.
+- **CR 115.7d:** "choose new targets" lets the chooser leave a target unchanged; a changed target must be legal. Legality is the spell's, so hexproof and protection are judged against Lightning Storm and its controller.
+- **CR 122.1 / 400.7 / 707.2:** counters sit on the spell object, cease to exist when it changes zones, and are not copied. A copy of Lightning Storm starts with none.
+
+### What existed
+
+The source of an activation is already found in whatever zone holds it (`findCardAndZoneLocked`, ADR 0062), the stack included. `Card.Controller` on the stack is layer 2's answer (`stackControlPassLocked`, ADR 0104). Counters can be put on any card in any zone through the replacement window (`AddCounterByForEffect`). CR 115.7's retarget, with the item's own legality and a chooser who is not the item's controller, is `game.OfferRetargetForEffect` (ADR 0019's amendments, `effects.ChangeTargets`), and its prompt is data, so a table waiting on it is a restore point. The spell card on the stack, its counters included, is already in the snapshot.
+
+### Decision
+
+1. **Declaration.** A row declares `Zones: []game.ZoneKind{game.ZoneStack}`, as a cycling row declares the hand. `effects.Register` now allows `AnyPlayer` (and the other named activators) on a stack row; every other non-battlefield zone is still refused. The cost components that need a permanent are refused there as for any non-battlefield zone.
+2. **Who may activate.** `game.MayActivate` answers for `ZoneStack` exactly as for the battlefield: the spell's controller, or anyone for an `AnyPlayer` row. `ActivateCatalogAbility` gains the stack arm beside the battlefield one: a non-controller is let past only when the spell has a row that reaches across, and the named row is then held to `MayActivate`. Arrest-style "its activated abilities can't be activated" restricts a permanent and is not asked of a spell; the board-wide gate (Pithing Needle naming it) is asked as for every activation. The announce event's `Target` names the spell's controller when somebody else activated it, so the log reads "Bob activated Alice's Lightning Storm".
+3. **The effect acts on the spell only while it is the same object.** `game.AbilitySourceSpellForEffect(item)` is the spell the ability came from while it is still on the stack with the epoch the ability was activated from (CR 400.7). Countered or resolved in response, the ability does nothing: no counters on the card in the graveyard, and no prompt.
+4. **The enumerator** walks the stack after the other zones, through the same `abilityMovesForSource`: the seat's own spells, and another player's for the rows that reach across. The fast negative is `game.HasStackAbility`, since almost no spell has such a row. The label names the spell's controller for a non-controller, as for a permanent.
+5. **The view.** `stampStackAbilities` puts each seat's own copy of the rows on the stack card's `zone_abilities`, stamped with that seat as the activator (its price, verdicts and the land cards in its own hand), through `castOffers`; `FilterViewFor` now promotes the viewer's copy on the stack as it does in exile. Only the rows `MayActivate` opens to that seat are filed, and a spectator gets none. ADR 0105's digest needed no change.
+6. **The client.** Every stack surface (the docked card and the four lane styles) draws a button per row beside Counter (`StackAbilityButtons`, labelled `L.stackAbility`), live while the viewer holds priority, and hands the row to Board's announce chain, which asks for the land card as it does for cycling. The spell's counters are a chip ("2 charge").
+7. **Autopass.** The row declares `Answers: AnswerPrevent` (it redirects damage, ADR 0142), which is threat-gated (the ADR 0009 amendment of #3555): it counts as a response only for a seat an opponent's item threatens, which is the player the storm is aimed at. Decision 7's "another player's permanent is never a response" is about a permanent that sits on the table for the rest of the game; a spell's ability exists only while the spell waits, so it is a real response window and is classified like any other move. The client's `activatesAcross` reads battlefield controllers only, so it needed no change.
+8. **The bot.** Decision 8 applies to a spell as to a permanent: the heuristic reaches across to another player's spell only for a row whose `Purpose` it prices, and Lightning Storm's declares no draws or life loss, so a bot never pumps an opponent's storm (which may be aimed at it). On its own storm it prices the activation as any other row: the flat activation value less what the discarded land is worth to it. Redirecting a storm aimed at the bot is a follow-up.
+
+### Snapshot impact
+
+None. `Zones`, `AnyPlayer` and `Purpose` are catalog data. The ability item names its catalog row (ADR 0041 P9) and restores from it; the counters ride the spell card, which the stack zone already carries.
+
+### Cards
+
+Lightning Storm (Full).
+
+---
+
+## Amendment (2026-10-16): attacking certain players as though it didn't have defender (#1936)
+
+Weathered Sentinels: "This creature can attack players who attacked you during their last turn as though it didn't have defender." ADR 0108 §6 shipped the condition (`AttackedYouDuringTheirLastTurn`). What was missing is a waiver of defender that names WHOM the creature may attack. It is §2's per-target shape turned the other way: §2 forbids some targets to a creature that may otherwise attack, and this permits some targets to a creature that may otherwise attack nothing.
+
+### The rules
+
+- **CR 702.3b:** "A creature with defender can't attack."
+- **CR 609.4:** an "as though" effect "applies only to the stated effect … For all other purposes, treat the game normally." The creature keeps defender: a card that counts creatures with defender still counts it, and only the refusal of this attack is lifted.
+- **CR 508.1c / 508.1d:** defender is a restriction on the declaration, so CR 508.1d's maximum is counted "without disobeying" it. A goaded Sentinels attacks if able (CR 701.15b), and it is able only at a player the waiver reaches.
+- **CR 508.1b:** each attacker attacks a player, a planeswalker or a battle. An attack on a planeswalker or a battle is neither an attack "on you" for the condition (ADR 0108 §6 already reads it so) nor an attack on "a player" for the permission.
+
+### Options
+
+- **A. A waiver on the characteristic, asked per target (chosen).** `Characteristic.DefenderWaivers []DefenderWaiver{Source, SourceName, OnlyPlayersWhoAttackedYou}`, written by an ordinary layer-6 static and only ever appended to. One function, `defenderRefusalLocked(attacker, target)`, is CR 702.3b: nil without defender, or when a waiver covers the target.
+- **B. Lose the keyword while the condition holds**, as Stalked Researcher and Ghalta write the every-target form. It cannot be per target: the condition is about the defending player, and a creature either has the keyword or does not. In Commander it would let the Sentinels attack every opponent once any one of them had attacked you, which is stronger than printed.
+
+### Decision (A)
+
+1. **Where defender is asked.** `AttackerEligible` knows no target, and is the one attacker-side list that the bulk verb, the enumerator and the CR 508.1d search share (#544). It lets a creature with defender through only when the creature has a waiver. `canAttackTargetWithLocked` asks `defenderRefusalLocked` last, after CR 506.2 and the creature's restrictions, which is where the single verb has always refused defender. `AttackTargetsForAttackerForEffect` and `attackRequirementCandidatesLocked` drop a target it refuses. So both declaration verbs, the enumerator, the ADR 0105 digest's `attack_targets`, the client's per-attacker gate and the bot all read the one answer, and no client or bot code changes.
+2. **The condition** is read live at declaration, per target: `AttackedYouDuringTheirLastTurn(target, attacker.Controller)`. "You" is the creature's current controller, so a stolen Sentinels answers to its new controller's history.
+3. **The refusal.** A creature with defender and no waiver keeps the bare `ErrDefender`. One whose waivers miss the target gets a `*DefenderWaiverError` wrapping it: "Weathered Sentinels has defender: it can attack only players who attacked you during their last turn."
+4. **The every-target form for a turn** is a `ScopedEffect` mod kind, `waiveDefender` (`WaiveDefenderMod`, layer 6), which appends a waiver with no clause. Hightide Hermit's "Pay {E}{E}: This creature can attack this turn as though it didn't have defender" is an until-end-of-turn record of it (CR 514.2). It is an effect, not an ability the creature gains, so a "loses all abilities" leaves it. The cards that already lift defender by losing the keyword keep doing so: they differ only to a card that counts creatures with defender, and moving them is not in scope.
+5. **Ability removal.** The Sentinels' waiver is its own static, applied only while it has its abilities, and a creature that loses all abilities loses defender with them.
+6. **The view** carries nothing new. Whom the creature may attack is the digest's per-attacker answer, as in §2.
+
+### Snapshot impact
+
+`DefenderWaivers` reaches the snapshot only through `lastKnownBattlefield`, as `AttackTargetRestrictions` does, and `waiveDefender` is a new mod kind. Both are additive under the current schema version.
+
+Cards: Weathered Sentinels, Hightide Hermit (Full).
+
+---
+
+## Amendment (2026-10-16): abilities that can't be countered (#2014)
+
+§4 built the gate for spells only. To counter an *ability* is the same act, "cancel it, removing it from the stack" (CR 701.6a), and Spider-Punk's "Spells and abilities can't be countered" says that can't happen to any activated or triggered ability (CR 101.2). Stifle, Disallow, Tale's End, Voidslime, Sublime Epiphany's second mode and every ward trigger counter abilities today, so the clause has something to stop. This extends §4 on its own option A: one more source at the one gate, not a characteristic stamped on the stack item.
+
+- **The declaration.** `game.CounterShieldStatic.Abilities bool`: the battlefield static covers activated and triggered abilities on the stack as well as spells. `effects.SpellsAndAbilitiesCantBeCountered(label)` builds Spider-Punk's any-player form. It rides `Spec.SpellsCantBeCountered`, so it is catalog data read live off the battlefield and keyed by `CatalogAbilityKey`, like every §4 static: it ends when its source leaves, phases out or loses its abilities (CR 611.3a, 604.2, 613.1f).
+- **The gate.** `abilityCantBeCounteredLocked(item)` is the ability half of the gate. It asks the battlefield statics with `Abilities` set. `Whose` is judged against the ability's controller: "any player" covers every ability, "you control" covers its controller's, and "you cast" covers none, because an ability is activated or triggered, never cast. `Spell` narrows the spell half only. It has no other source, because no card prints a rider, a turn grant or a mark for an ability.
+- **The verbs.** `CounterTargetForEffect`, `CounterTargetToZoneForEffect` and `CounterSpellToLibraryThenForEffect` ask it for an activated or triggered item before `counterAbilityLocked`. The counter-unless-paid decline (ward included) goes through `CounterTargetForEffect`, so it follows. As with a spell, a covered ability stays a legal target: the Stifle resolves and does nothing, and it does not fizzle. The sandbox's manual `CounterAbility` is the table's override and, like `CounterSpell`, asks nothing.
+- **What the table sees.** `StackItemView.cant_be_countered` is now set on an ability item too, from the same gate, and the stack lane's chip is worded for an ability. The field already existed, so the wire change is a value it can now carry, not a new field.
+- **A mana ability** never reaches the stack (CR 605.3b), so nothing about it changes.
+
+Snapshot impact: none. The flag is catalog data.
+
+Cards: Spider-Punk (Full). Its riot, "Other Spiders you control have riot" and "Damage can't be prevented" already worked (ADR 0109 §10, ADR 0107 §5). The riot grant is not narrowed to creatures: "Spiders" names a creature type, which a kindred permanent shares (CR 205.3m). No other Commander-legal card prints "abilities can't be countered".

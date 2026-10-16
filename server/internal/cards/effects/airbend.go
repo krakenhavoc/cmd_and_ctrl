@@ -71,11 +71,22 @@ type ExileWithPermission struct {
 	// CostOverride is a mana cost paid instead of the card's printed
 	// one, in Scryfall brace notation. Empty means the printed cost.
 	CostOverride string
+
+	// Linked stamps CR 607.2a's "exiled with this" link on the card as
+	// it lands (ExileTarget.Linked's contract): the resolving item's
+	// source object and, since #2651, its ability row, for a card whose
+	// other ability reads "a card exiled with [this]" (Prowl, Stoic
+	// Strategist). A source with no object to name exiles with no link.
+	Linked bool
 }
 
 func (e ExileWithPermission) Apply(ctx *Context) error {
 	if ctx.isNewSourceObject(e.Target) { // #1432
 		return nil
+	}
+	if e.Linked {
+		link, _ := ctx.SourceRef()
+		return ctx.Game.ExileLinkedThenForEffect(link, []uuid.UUID{e.Target}, grantOverLanded(e.permission()))
 	}
 	return exileAllWithPermission(ctx.Game, []uuid.UUID{e.Target}, e.permission())
 }
@@ -121,14 +132,20 @@ func (e ExileWithPermission) permission() game.CastPermission {
 // one airbend of two players' permanents hands each player their own
 // card back.
 func exileAllWithPermission(g *game.Game, ids []uuid.UUID, perm game.CastPermission) error {
-	return g.ExileCardsThenForEffect(ids, func(g *game.Game, landed []uuid.UUID) error {
+	return g.ExileCardsThenForEffect(ids, grantOverLanded(perm))
+}
+
+// grantOverLanded is exileAllWithPermission's continuation: `perm` over
+// each card that landed in exile.
+func grantOverLanded(perm game.CastPermission) func(g *game.Game, landed []uuid.UUID) error {
+	return func(g *game.Game, landed []uuid.UUID) error {
 		for _, id := range landed {
 			p := perm
 			p.Zone = game.ZoneExile
 			g.GrantCastPermissionOverCardForEffect(id, p)
 		}
 		return nil
-	})
+	}
 }
 
 // Airbend is the AVATAR keyword action: "Exile it. While it's

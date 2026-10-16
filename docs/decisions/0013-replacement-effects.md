@@ -4145,6 +4145,51 @@ The CR 616 order answer and the "may" answer find the source again by
 that object before applying it, and drop the effect if its source has
 left.
 
+### 5ak. Amendment, 2026-10-16: an entry names the ability that made it
+
+*Amendment, 2026-10-16, branch `feat/3933-kodama-entry-provenance`, #3933.*
+
+Kodama of the East Tree: "Whenever another permanent you control enters,
+if it wasn't put onto the battlefield with this ability, you may put a
+permanent card with equal or lesser mana value from your hand onto the
+battlefield." The intervening "if" (CR 603.4) needs to know which ability
+put a permanent onto the battlefield, and no entry event said. Without it
+one Kodama chains off its own puts until the hand is empty.
+
+**Decision.** §5ad's inference, on the entry: an effect entry runs while
+the item that made it is resolving, and `Game.resolving` names that item
+through every paused continuation of its resolution (Kodama's put waits
+on a prompt). So the entry's `EventETB` is stamped at the one place every
+entry announces itself (`announceEntryLocked`,
+`stampEntryProvenanceLocked` in `game/entry_provenance.go`), never by its
+~40 callers, with two new fields: `CauseSource` (the item's
+`SourceObject`, CR 400.7) and `CauseAbility` (its catalog row,
+`Params.Ability`, ADR 0041 P9). Both are pointers with `omitempty`, so
+the change is additive within the snapshot version and no fixture moves.
+§5ad's `Cause` fields stay empty on an `EventETB`, as they always were:
+frozen fixtures hold those zero values. It is stamped only while the resolution is
+open (`resolutionOpen`), never in the window after it finished where
+`Game.resolving` is stale and a land may be played, and never on a spell
+resolving into a permanent, which nothing "put" there.
+
+`TriggeredAbility.NotPutByThisAbility` is the condition: an `EventETB`
+whose `CauseSource` is this trigger's source object and whose
+`CauseAbility` is this trigger's own row
+(`TriggeredAbilityRef`) does not trigger it (`harvestMatchLocked`).
+Object and row together are "this ability": a Kodama that left and came
+back is a new object with a new ability, and a second Kodama's put
+triggers the first, as printed. The cause is fixed with the event, so the
+CR 603.4 check as the ability resolves always agrees with the one as it
+triggered; there is nothing to re-read. `effects.Register` refuses the
+flag off an `EventETB` row with a declared Effect, since only such a row
+has an identity to compare.
+
+**Limits, declared.** A restore point taken while an ability is paused
+mid-put does not carry `Game.resolving`, so an entry finished after the
+restore names no ability and could trigger its maker once more. An ability
+copy (CR 707.10) carries its original's row, so it counts as the same
+ability; no card in the catalog copies a Kodama trigger.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-

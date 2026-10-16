@@ -107,6 +107,11 @@ type CardDef struct {
 	// Delve is CR 702.66: this spell may exile cards from its caster's
 	// graveyard to pay generic mana (ADR 0100). Read through DelveFor.
 	Delve bool
+	// Splice is CR 702.47's "Splice onto [quality] [cost]": while the
+	// card is in its owner's hand it may be revealed as they cast a spell
+	// of that quality, adding its rules text (the rest of this row) to
+	// the spell (#1989, ADR 0202). Read through SpliceAbilityFor.
+	Splice *SpliceAbility
 	// SpendOnly is the spell's own "Spend only black mana on X" (Drain
 	// Life, Consume Spirit) or "Spend only black and/or red mana on X"
 	// (Soul Burn), #2556: the colour half of a restriction on the mana
@@ -320,6 +325,12 @@ type CardDef struct {
 	// card's own zone; see game.CatalogPlayerKeywords and ADR 0072's
 	// 2026-09-22 amendment (#1197).
 	PlayerKeywords []string
+	// PlayerKeywordsIf are this permanent's printed statics that give
+	// its CONTROLLER an ability only while a condition holds — "During
+	// your turn, you … have hexproof" (Gruul Spellbreaker). Read beside
+	// PlayerKeywords by the same walk; see game.CatalogPlayerKeywordsIf
+	// and ADR 0072's 2026-10-16 amendment (#2013).
+	PlayerKeywordsIf []PlayerKeywordIf
 	// PlayerLifeTotalLocked is this permanent's printed "Your life
 	// total can't change" (CR 119.7 / CR 119.8 — Platinum Emperion),
 	// about its CONTROLLER. Read from the battlefield through
@@ -971,6 +982,12 @@ func init() {
 	CatalogPlayerKeywords = func(key string) []string {
 		if d := catalogDef(key); d != nil {
 			return d.PlayerKeywords
+		}
+		return nil
+	}
+	CatalogPlayerKeywordsIf = func(key string) []PlayerKeywordIf {
+		if d := catalogDef(key); d != nil {
+			return d.PlayerKeywordsIf
 		}
 		return nil
 	}

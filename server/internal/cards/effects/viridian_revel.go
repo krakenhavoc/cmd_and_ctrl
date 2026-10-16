@@ -41,10 +41,10 @@ func init() {
 		Name:         "Viridian Revel",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OptionalDraw(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b38ArtifactPutIntoAnOpponentsGraveyard(ev, source, g)
 			}, "Viridian Revel — draw a card", Do(DrawCards{N: 1})),
-				"Viridian Revel — draw a card?"),
+				"Viridian Revel — draw a card?", 1),
 		},
 	})
 }

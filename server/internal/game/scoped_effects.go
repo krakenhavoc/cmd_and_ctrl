@@ -74,6 +74,11 @@ const (
 	ModSetBasePower     ModKind = "setBasePower"     // layer 7b
 	ModSetBaseToughness ModKind = "setBaseToughness" // layer 7b
 	ModModifyPT         ModKind = "modifyPT"         // layer 7c
+	// ModSwitchPT is "switch <affected>'s power and toughness" (CR
+	// 613.4d, #3996): layer 7d, after every set, modify and counter.
+	// Reads nothing. See SwitchPowerAndToughness for how the counters
+	// read after the pass are switched too.
+	ModSwitchPT ModKind = "switchPT" // layer 7d (SubLayer7E_Switch)
 	// ModAddAttackRequirement is a CR 508.1d attack requirement
 	// (#1571): "attacks … if able", or — with Player set — "attacks a
 	// player other than Player if able". Layer 6 for the reason
@@ -186,6 +191,18 @@ const ModCantAttackPlayer ModKind = "cantAttackPlayer" // layer 6
 // an ability of its own: a later "loses all abilities" takes it (CR
 // 613.1f, dropSelfAttackTargetRestrictions) and an earlier one does not.
 const ModCantAttackOwner ModKind = "cantAttackOwner" // layer 6
+
+// ModWaiveDefender is "<affected> can attack this turn as though it
+// didn't have defender" from a resolved effect (Hightide Hermit, #1936,
+// CR 702.3b, CR 609.4): it appends an unconditional DefenderWaiver
+// attributed to the record's source. Reads nothing.
+//
+// Layer 6, in the record's timestamp slot. Unlike RemoveKeywordsMod it
+// leaves the keyword where it is, so the creature still counts as a
+// creature with defender; it only stops defender refusing its attacks
+// (defender_waivers.go). It is an effect, not an ability the creature
+// gains, so a "loses all abilities" does not take it.
+const ModWaiveDefender ModKind = "waiveDefender" // layer 6
 
 // ModSetBasicLandTypes is CR 305.7 from a resolved effect (ADR 0109 §1,
 // #1881): "target land becomes an Island until end of turn" (Tidal
@@ -325,6 +342,20 @@ const (
 	// an older binary refuses the file instead of banning nothing.
 	// Reads Player.
 	ModCantPlayFromHand ModKind = "cantPlayFromHand"
+	// ModCantPlayFromOwnGraveyard is "<player> can't play lands or cast
+	// spells from their graveyard" this turn (ADR 0066 amendment
+	// 2026-10-16, #1987; CR 101.2): the first sentence of Shaman's
+	// Trance, "Other players can't play lands or cast spells from their
+	// graveyards this turn." A play out of the player's OWN graveyard
+	// only: a card they may cast from another player's graveyard is not
+	// in "their graveyard", and nothing out of any other zone is touched.
+	// Scope ScopeGame with Player set to the one banned player (never
+	// zero: "other players" is a list, one mod each). Read by
+	// graveyardPlayBanLocked, which both CastGateLocked and
+	// LandPlayGateLocked ask. A ScopedEffect for ModCantPlayLands'
+	// reason: an older binary refuses the file instead of banning
+	// nothing. Reads Player.
+	ModCantPlayFromOwnGraveyard ModKind = "cantPlayFromOwnGraveyard"
 	// ModCantBecomeMonarch is "<player> can't become the monarch this
 	// turn" (ADR 0096 amendment 2026-10-08, #2039; CR 725): Jared
 	// Carthalion's "You can't become the monarch this turn". Scope
@@ -650,6 +681,13 @@ type Mod struct {
 	// the source's last-known information as the damage would be dealt.
 	// Refused on every other kind, and beside To (redirectDamageModProblem).
 	ToSourceController bool `json:"toSourceController,omitempty"`
+	// Optional is ModRedirectDamage's "you may have that damage dealt to
+	// you instead" (Blood of the Martyr; ADR 0108 amendment 2026-10-16,
+	// #2056): the redirection is a "may" its record's controller answers
+	// each time it would apply (CR 614.5's one opportunity per event).
+	// Refused on every other kind, on a record that deals its damage
+	// nowhere instead, and beside a charge (redirectDamageModProblem).
+	Optional bool `json:"optional,omitempty"`
 	// SourceZone, Queries and SpentBatch are ModPreventNextFromSource's
 	// (ADR 0107 §6, #1860; prevent_next_from_source.go), refused on every
 	// other kind. SourceZone is the zone the chosen source (Objects[0])
@@ -688,6 +726,8 @@ type Mod struct {
 	// record's. At most one entry, read as the damage would be dealt
 	// (CR 609.7b), refused on every other kind and beside a pinned source
 	// or AndDealtBy. A slice for the reason Objects is one.
+	// ModRedirectDamage reads it too, with the same meaning (#2056:
+	// Kjeldoran Royal Guard's "by unblocked creatures").
 	SourceFilter []DamageSourceFilter `json:"sourceFilter,omitempty"`
 	// ThenPer is ModPreventFromSource's unit for its follow-up (#2026):
 	// ThenPerSource runs Then once per damage SOURCE within one damage
@@ -705,7 +745,9 @@ type Mod struct {
 	// control", "to artifact creatures". At most one entry, read as the
 	// damage would be dealt (CR 611.2c, 615.1), on an unpinned record
 	// that names no Player or Types and no charge; refused on every
-	// other kind. A slice for the reason Objects is one.
+	// other kind but ModRedirectDamage, which reads it the same way
+	// (#2056: Ascent of the Worthy's "creatures you control", Blood of
+	// the Martyr's "any creature"). A slice for the reason Objects is one.
 	RecipientFilter []DamageRecipientFilter `json:"recipientFilter,omitempty"`
 	// Sources, Recipients and Next are ModMultiplyDamage's (ADR 0108 §3,
 	// #1890; multiply_damage.go), refused on every other kind. Sources is
@@ -738,6 +780,11 @@ type Mod struct {
 	// whole turn. Refused on every other record
 	// (dealtDamageByScopeProblem).
 	DamageSince int `json:"damageSince,omitempty"`
+	// AnyController is ModSkipNextUntapStep's "Creatures don't untap"
+	// (Blinding Beam, #3995): every permanent of its Types that would
+	// untap in Player's untap step, not only the ones Player controls.
+	// Refused on every other kind (skipNextUntapStepModProblem).
+	AnyController bool `json:"anyController,omitempty"`
 }
 
 // AffectedObject is one member of a ScopedEffect's affected set: the
@@ -954,6 +1001,7 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSetBasePower:     {layer: Layer7PT, subLayer: SubLayer7B_Set},
 	ModSetBaseToughness: {layer: Layer7PT, subLayer: SubLayer7B_Set},
 	ModModifyPT:         {layer: Layer7PT, subLayer: SubLayer7C_Modify},
+	ModSwitchPT:         {layer: Layer7PT, subLayer: SubLayer7E_Switch},
 	// #1571
 	ModAddAttackRequirement: {layer: Layer6Ability},
 	// #3172
@@ -975,6 +1023,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantAttackPlayer: {layer: Layer6Ability},
 	// ADR 0180: Elrond's granted "can't attack its owner".
 	ModCantAttackOwner: {layer: Layer6Ability},
+	// #1936: Hightide Hermit's "as though it didn't have defender".
+	ModWaiveDefender: {layer: Layer6Ability},
 	// ADR 0109 §1 (#1881): CR 305.7 from a resolved effect.
 	ModSetBasicLandTypes: {layer: Layer4Type, removes: true},
 	// ADR 0109 §2 (#1604): "loses all land types", Ultima's.
@@ -1010,6 +1060,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// ADR 0066 amendment 2026-10-10 (#2559): the hand ban, read by
 	// both the cast gate and the land-play gate.
 	ModCantPlayFromHand: {reader: readerRule},
+	// ADR 0066 amendment 2026-10-16 (#1987): the own-graveyard ban,
+	// read by both gates.
+	ModCantPlayFromOwnGraveyard: {reader: readerRule},
 	// ADR 0096 amendment (#2039): the monarch gate.
 	ModCantBecomeMonarch: {reader: readerRule},
 	// ADR 0032 amendment (#3515): the turn-limited legend-rule exemption.
@@ -1054,6 +1107,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSkipTurns: {reader: readerRule},
 	// ADR 0188 Decision 3a (#3563): a step of one extra turn skipped.
 	ModSkipExtraTurnStep: {reader: readerRule},
+	// ADR 0058 amendment 2026-10-16 (#3995): a player-wide "don't untap
+	// during <player>'s next untap step".
+	ModSkipNextUntapStep: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1321,6 +1377,12 @@ func CantAttackOwnerMod() Mod {
 	return Mod{Kind: ModCantAttackOwner}
 }
 
+// WaiveDefenderMod is "can attack as though it didn't have defender"
+// from a resolved effect, for every target (#1936).
+func WaiveDefenderMod() Mod {
+	return Mod{Kind: ModWaiveDefender}
+}
+
 // defenderControlsModProblem is the registration and restore check for
 // ModCantAttackUnlessDefenderControls: at least one query, since a
 // restriction that asks for nothing would refuse every target. "" when
@@ -1347,6 +1409,10 @@ func SetBasePTMods(power, toughness int) []Mod {
 func ModifyPTMod(power, toughness int) Mod {
 	return Mod{Kind: ModModifyPT, Power: power, Toughness: toughness}
 }
+
+// SwitchPTMod is "switch its power and toughness" (layer 7d, CR
+// 613.4d). Reads nothing.
+func SwitchPTMod() Mod { return Mod{Kind: ModSwitchPT} }
 
 // ---------------------------------------------------------------
 // Registration
@@ -1535,6 +1601,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := skipExtraTurnStepModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := skipNextUntapStepModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 	}
@@ -2104,6 +2173,14 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 			}
 			ch.AttackTargetRestrictions = append(ch.AttackTargetRestrictions, r)
 		}
+	case ModWaiveDefender:
+		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
+			w := DefenderWaiver{}
+			if src != nil {
+				w.Source, w.SourceName = src.InstanceID, src.Name
+			}
+			ch.DefenderWaivers = append(ch.DefenderWaivers, w)
+		}
 	case ModCantAttackOwner:
 		return func(ch *Characteristic, c *Card, _ *Game, _ *Card) {
 			r := AttackTargetRestriction{NotOwner: true}
@@ -2141,6 +2218,10 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.Power += p
 			ch.Toughness += t
+		}
+	case ModSwitchPT:
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			SwitchPowerAndToughness(ch)
 		}
 	}
 	return nil

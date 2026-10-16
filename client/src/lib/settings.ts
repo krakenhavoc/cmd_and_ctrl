@@ -90,9 +90,10 @@ export interface Settings {
     // across-table seats on top); "row" puts every opponent in turn
     // order across the top and gives your panel the full width.
     //
-    // #956 note: at THREE players those two are now identical — the
-    // viewer needs the whole bottom row there, and there is no third
-    // arrangement worth having.
+    // #956 note: at THREE players those two seat the table the same
+    // way — the viewer needs the whole bottom row there. Since #4066
+    // the row layout splits the table evenly between your board and the
+    // opponents' row, and quadrant keeps its shorter top row.
     //
     // "focus" (#2336) is the row arrangement split evenly: your board is
     // the bottom half, and every opponent is a summary in the top half,
@@ -128,16 +129,19 @@ export interface Settings {
     // cannot land mid-click the way a "something interesting
     // happened" trigger would. Off means a seat only ever expands
     // from something the viewer did — a targeting prompt, block or
-    // attack mode, or clicking an avatar to pin it.
+    // attack mode. With expandStyle "reflow" it also gates the reflow,
+    // under full boards as well as summaries (#4065).
     expandActivePlayer: boolean;
-    // TEMPORARY. Which mechanism an expanding panel uses.
+    // TEMPORARY. Which mechanism makes room for the active player.
     //
-    // "reflow" gives the expanded seat a larger grid share and
-    // shrinks the summaries, keeping every panel in one plane so
-    // CombatArrows can measure both endpoints against boardEl.
-    // "overlay" floats the expanded panel over the table, which
-    // animates far more easily but puts one arrow endpoint across a
-    // z-index boundary.
+    // "reflow" (ADR 0077 §6 as amended 2026-10-16, #4065): on an
+    // opponent's turn, with every opponent in one row, the active
+    // opponent's board takes most of the row and the others shrink to
+    // an avatar card (expansion.ts, decideReflow). Every panel stays in
+    // one plane, so CombatArrows measures both endpoints against
+    // boardEl. "overlay" is not built: it keeps the boards equal. The
+    // ADR 0120 overlay a hovered avatar opens is a different thing and
+    // works under both.
     //
     // Both ship so they can be compared in a real game. ONE OF THEM
     // IS GOING TO BE DELETED along with this setting once that

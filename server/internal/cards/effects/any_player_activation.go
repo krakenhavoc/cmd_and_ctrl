@@ -2,6 +2,7 @@ package effects
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -46,9 +47,11 @@ func checkGrantorOnlyIsGranted(name string, i int, ab ActivatedAbility) {
 //   - A {T}, loyalty, crew, sacrifice-this or exert component on an any-player
 //     row. No printed card has one, and who may tap or sacrifice
 //     another player's permanent is a rule nobody has tested.
-//   - A zone other than the battlefield. MayActivate keeps the CR 108.4a
-//     owner rule off the battlefield, so the permission would be
-//     silently ignored there.
+//   - A zone other than the battlefield or the stack. MayActivate keeps
+//     the CR 108.4a owner rule in every other zone, so the permission
+//     would be silently ignored there. The stack is allowed since #1865
+//     (ADR 0106 §1 amendment 2026-10-16): a spell has a controller
+//     (CR 112.2), and Lightning Storm is any-player.
 //
 // What the row's Purpose may say is checkActivatedPurpose's (purpose.go):
 // ControllerLosesLife only here, on an any-player row.
@@ -83,9 +86,34 @@ func checkAnyPlayerAbility(name, where string, ab ActivatedAbility) {
 		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability that exerts its source — not modelled (ADR 0106 §1, ADR 0130 §4)", name, where))
 	}
 	for _, z := range ab.Zones {
-		if z != game.ZoneBattlefield {
-			panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability that functions from the %s — only the battlefield is modelled (ADR 0106 §1)",
+		if z != game.ZoneBattlefield && z != game.ZoneStack {
+			panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability that functions from the %s — only the battlefield and the stack are modelled (ADR 0106 §1)",
 				name, where, z))
 		}
+	}
+}
+
+// checkAnyPlayerManaAbility is checkAnyPlayerAbility for a MANA ability
+// (ADR 0106 §1 amendment 2026-10-16, #1864): the same refusals, for the
+// same reason. Who may tap, sacrifice, exert or put a counter on another
+// player's permanent is a rule no printed any-player mana ability needs,
+// and a hand ability's CR 108.4a owner rule would silently ignore the
+// permission.
+func checkAnyPlayerManaAbility(name string, i int, ma ManaAbility) {
+	if !ma.AnyPlayer {
+		return
+	}
+	where := fmt.Sprintf("mana ability %d", i)
+	switch {
+	case ma.Cost.Tap:
+		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability with a {T} cost — not modelled (ADR 0106 §1)", name, where))
+	case ma.Cost.Sacrifice:
+		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability that sacrifices its source — not modelled (ADR 0106 §1)", name, where))
+	case ma.Cost.Exert:
+		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability that exerts its source — not modelled (ADR 0106 §1)", name, where))
+	case ma.Cost.AddCounter != nil:
+		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability that puts a counter on its source — not modelled (ADR 0106 §1)", name, where))
+	case ma.Cost.ExileSelf || slices.ContainsFunc(ma.Zones, func(z game.ZoneKind) bool { return z != game.ZoneBattlefield }):
+		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability off the battlefield — only the battlefield is modelled (ADR 0106 §1)", name, where))
 	}
 }

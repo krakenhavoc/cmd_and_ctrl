@@ -65,6 +65,7 @@ func tataruTaruEnter(g *game.Game, item *game.StackItem) error {
 		return MayChoice{
 			Player:   opp,
 			Question: "Tataru Taru — draw a card?",
+			Draws:    1,
 			YesLabel: "Draw a card",
 			NoLabel:  "Don't draw",
 			OnYes: func(ctx *Context) error {

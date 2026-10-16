@@ -179,7 +179,12 @@ func corpusBoards() []corpusBoard {
 		// it — the replacement mods, ScopeGame, ScopeYourPermanents,
 		// seq, amount and then on disk.
 		{"fog", corpusFog},
-		{"mending_hands_partial", corpusMendingHandsPartial},
+		// #2047: the board that wrote mending_hands_partial.json prevented damage
+		// without announcing it; a prevention that prevents something
+		// now emits EventDamagePrevented (CR 615.13), one more event in
+		// the log. The file stays and is still restored; the same board
+		// is a new file.
+		{"mending_hands_partial_announced", corpusMendingHandsPartial},
 		{"whip_redirect", corpusWhipRedirect},
 		{"cosmic_intervention", corpusCosmicIntervention},
 		// v7, added by tier 3b-2 (#1497) as new files: block-rule
@@ -314,7 +319,12 @@ func corpusBoards() []corpusBoard {
 		// follow-up body protecting a player and their creatures, already
 		// spent in this batch (SpentBatch); a no-choice "creature of the
 		// chosen type" shield; and a shield pinned to one permanent.
-		{"next_damage_shields", corpusNextDamageShields},
+		// #2047: the board that wrote next_damage_shields.json prevented damage
+		// without announcing it; a prevention that prevents something
+		// now emits EventDamagePrevented (CR 615.13), one more event in
+		// the log. The file stays and is still restored; the same board
+		// is a new file.
+		{"next_damage_shields_announced", corpusNextDamageShields},
 		// v7, added by ADR 0108 PR 1 (#1886, #1887) as a new file: the
 		// turn-scoped death and regeneration marks as data — a pinned
 		// exileIfWouldDie (Lava Coil), the same kind over the live
@@ -397,7 +407,12 @@ func corpusBoards() []corpusBoard {
 		// combat-only one pinned to a protected creature, Prismatic
 		// Strands' property-only shape, and Dark Sphere's half shield
 		// (Mod.Half on preventNextFromSource).
-		{"source_shields", corpusSourceShields},
+		// #2047: the board that wrote source_shields.json prevented damage
+		// without announcing it; a prevention that prevents something
+		// now emits EventDamagePrevented (CR 615.13), one more event in
+		// the log. The file stays and is still restored; the same board
+		// is a new file.
+		{"source_shields_announced", corpusSourceShields},
 		// v7, added by ADR 0109 PR 2 (#1894, #1604) as a new file: a
 		// duration with two conditions (Seasinger's "for as long as you
 		// control this creature and this creature remains tapped",
@@ -448,7 +463,12 @@ func corpusBoards() []corpusBoard {
 		// Archon's, whose follow-up deals its damage to a chosen player
 		// (Mod.To); and a combat shield with a follow-up (Inkshield's
 		// shape).
-		{"shield_follow_ups", corpusShieldFollowUps},
+		// #2047: the board that wrote shield_follow_ups.json prevented damage
+		// without announcing it; a prevention that prevents something
+		// now emits EventDamagePrevented (CR 615.13), one more event in
+		// the log. The file stays and is still restored; the same board
+		// is a new file.
+		{"shield_follow_ups_announced", corpusShieldFollowUps},
 		// v7, added by ADR 0108 PR 7 (#1904) as a new file: the
 		// recipient and to-and-by shields as data — Energy Arc's one
 		// to-and-by record over two creatures (Mod.AndDealtBy, an
@@ -560,7 +580,56 @@ func corpusBoards() []corpusBoard {
 		// pinned to the creature (a new vocabulary value an older
 		// binary must refuse rather than read as nothing).
 		{"cant_be_sacrificed", corpusCantBeSacrificed},
+		// v9, added by #2099 (ADR 0026's second 2026-10-16 amendment)
+		// as a new file: Rescue from the Underworld's upkeep return
+		// waiting, its body keyed and its two objects, the target and
+		// the card the cost sacrificed, each with its CR 400.7 epoch in
+		// the graveyard (delayedTriggers[].params.objects).
+		{"delayed_trigger_objects", corpusDelayedTriggerObjects},
+		// v9, added by #1987 (ADR 0066 amendment 2026-10-16) as a new
+		// file: a resolved Shaman's Trance — the cantPlayFromOwnGraveyard
+		// record (a game-scope rule kind, one mod per other player) and
+		// the caster's stored standing permissions, one per other seat's
+		// graveyard (castPermissions[].zoneOwner over a graveyard).
+		{"shamans_trance", corpusShamansTrance},
 	}
+}
+
+// corpusShamansTrance is #1987's stored shapes: the own-graveyard ban
+// on every other player and a permission over each of their graveyards.
+func corpusShamansTrance(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	toMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	castCatalogSpell(t, g, shamansTranceName, "Instant", shamansTranceOracle, nil)
+	passPriorityAroundTable(t, g)
+	if n := len(g.ScopedEffects); n != 1 || g.ScopedEffects[0].Mods[0].Kind != game.ModCantPlayFromOwnGraveyard {
+		t.Fatalf("setup: scoped records = %+v, want one cantPlayFromOwnGraveyard", g.ScopedEffects)
+	}
+	if got, want := len(me.CastPermissions), len(g.Seats)-1; got != want {
+		t.Fatalf("setup: the caster holds %d permissions, want %d", got, want)
+	}
+	return g
+}
+
+// corpusDelayedTriggerObjects is #2099's stored shape: a delayed
+// trigger whose body names more than one object.
+func corpusDelayedTriggerObjects(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	target := pushGraveyardCardTyped(me, "Old Friend", "Creature — Human")
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Grizzly Bears", 2, 2))
+	if _, err := castWithTapParams(t, g, "Rescue from the Underworld", "Instant", "{4}{B}", rescueFromTheUnderworldOracle, game.CastSpellParams{
+		Targets:      []game.TargetRef{{Kind: game.TargetCard, ID: target}},
+		SacrificeIDs: []uuid.UUID{bear},
+	}); err != nil {
+		t.Fatalf("setup: cast Rescue from the Underworld: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if len(g.DelayedTriggers) != 1 || len(g.DelayedTriggers[0].Params.Objects) != 2 {
+		t.Fatalf("setup: want one delayed trigger naming two objects, got %+v", g.DelayedTriggers)
+	}
+	return g
 }
 
 // corpusManaPoolRuns is #3041's stored shape: a pool of runs, and a

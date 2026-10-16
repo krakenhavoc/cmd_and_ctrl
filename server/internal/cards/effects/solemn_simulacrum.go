@@ -63,7 +63,7 @@ func init() {
 			// (cardDied gates graveyard-only — a bounced/exiled Solemn
 			// does not draw). Optional, so it queues a prompt; drawing
 			// always has an effect, so no HasLegalTarget predicate.
-			Optional(WhenThisDies("Solemn Simulacrum — draw a card", Do(DrawCards{N: 1})), "Solemn Simulacrum — draw a card?"),
+			OptionalDraw(WhenThisDies("Solemn Simulacrum — draw a card", Do(DrawCards{N: 1})), "Solemn Simulacrum — draw a card?", 1),
 		},
 	})
 }

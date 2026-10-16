@@ -55,7 +55,7 @@ func mechanizedProductionUpkeep(g *game.Game, item *game.StackItem) error {
 	return g.CreateTokensThenForEffect(game.TokenCreation{
 		Controller: item.Controller,
 		Source:     item.SourceCardID,
-		Groups:     []game.TokenGroup{{Template: tmpl, Count: 1}},
+		Groups:     []game.TokenGroup{{Template: copiedToken(tmpl), Count: 1}},
 	}, func(g *game.Game, _ []uuid.UUID) error {
 		return mechanizedProductionCheckWin(g, item)
 	})

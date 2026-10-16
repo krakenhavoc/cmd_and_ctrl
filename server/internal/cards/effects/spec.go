@@ -667,6 +667,19 @@ type Spec struct {
 	// static or a trigger (Soulflayer, Ethereal Forager).
 	Delve bool
 
+	// Splice is CR 702.47's "Splice onto [quality] [cost]" (#1989, ADR
+	// 0202). Declare it with SpliceOntoArcane / SpliceOntoInstantOrSorcery
+	// and write the rest of the card as usual: its Targets and OnResolve
+	// ARE the rules text a spell gains when the card is spliced onto it.
+	//
+	//	Splice: SpliceOntoArcane("{2}{R}{R}"), // Overblaze
+	//
+	// The engine does the rest: the offer while the card is in hand, the
+	// cost at CR 601.2f, the reveal, the targets (CR 702.47d) and the
+	// text running after the main spell's (CR 702.47b) with the spell as
+	// its source (CR 702.47c). Only a mana splice cost is expressed.
+	Splice *game.SpliceAbility
+
 	// SpendOnly is the spell's own "Spend only black mana on X" (Drain
 	// Life, Consume Spirit) or "Spend only black and/or red mana on X"
 	// (Soul Burn) — a restriction on the mana that pays THIS spell
@@ -1114,6 +1127,25 @@ type Spec struct {
 	//
 	// Issue #1197, ADR 0072's 2026-09-22 amendment.
 	PlayerKeywords []string
+
+	// PlayerKeywordsIf declares a printed static that gives this
+	// permanent's CONTROLLER an ability only while a condition holds —
+	// "During your turn, you and this creature have hexproof" (Gruul
+	// Spellbreaker's player half; the creature half is an ordinary
+	// Static entry):
+	//
+	//	PlayerKeywordsIf: []game.PlayerKeywordIf{YouHaveDuringYourTurn(KeywordHexproof)},
+	//
+	// Derived exactly as PlayerKeywords is, and read by the same walk:
+	// the condition is asked on every query with the permanent as it is
+	// now (CR 611.3a), so nothing is written to the player and nothing
+	// has to be swept when the condition stops holding. Build entries
+	// with YouHaveDuringYourTurn or YouHaveWhile; Register holds each
+	// to PlayerKeywords' vocabulary and requires a condition and a
+	// label.
+	//
+	// Issue #2013, ADR 0072's 2026-10-16 amendment.
+	PlayerKeywordsIf []game.PlayerKeywordIf
 
 	// PlayerLifeTotalLocked declares the printed static "Your life
 	// total can't change" (CR 119.7, CR 119.8 — Platinum Emperion),
@@ -1791,7 +1823,9 @@ type ActivatedAbility struct {
 	// battlefield. Cycling declares ZoneHand; a graveyard activation
 	// (Reassembling Skeleton) will declare ZoneGraveyard. Build the
 	// entry with Cycling / Typecycling rather than setting this by
-	// hand. See game.ActivatedAbilityShape.Zones and ADR 0062.
+	// hand. See game.ActivatedAbilityShape.Zones and ADR 0062. A
+	// spell's ability that works while it is on the stack declares
+	// ZoneStack (Lightning Storm; ADR 0106 §1 amendment 2026-10-16).
 	Zones []game.ZoneKind
 	// Cycling marks the card's cycling ability (CR 702.29a), so
 	// activating it emits EventCycle. Set by the Cycling /
@@ -1867,7 +1901,8 @@ type ActivatedAbility struct {
 	// effect is then whoever activated it (CR 109.5) — Context.Controller
 	// — and "this permanent's controller" is Context.SourcePermanent()'s.
 	// Register refuses it beside a {T}, loyalty, crew or sacrifice-this
-	// component and on an ability with a non-battlefield zone. See
+	// component and on an ability with a zone other than the battlefield
+	// or the stack (Lightning Storm, #1865). See
 	// game.ActivatedAbilityShape.AnyPlayer.
 	AnyPlayer bool
 	// OpponentsOnly is "Only your opponents may activate this ability"
@@ -1992,6 +2027,24 @@ type ManaAbility struct {
 	// Condition beside it: Vivi is
 	// `OncePerTurn: true, Condition: DuringYourTurn()`.
 	OncePerTurn bool
+
+	// AnyPlayer is the mana ability's printed "Any player may activate
+	// this ability" (CR 602.2, CR 602.1b; ADR 0106 §1 amendment
+	// 2026-10-16, #1864) — Mana Cache's "Remove a charge counter from
+	// this enchantment: Add {C}. Any player may activate this ability
+	// but only during their turn before the end step."
+	//
+	// Nothing else to write: the activator pays the cost (CR 602.1a),
+	// the mana goes to the activator's pool (CR 106.4), and Condition's
+	// `controller` argument is the activator, so "their turn" is
+	// IsYourTurn(g, controller). The engine asks game.MayActivateMana.
+	// Register refuses it beside a {T}, sacrifice-this, exert,
+	// put-a-counter or exile-this component and off the battlefield —
+	// the limits ActivatedAbility.AnyPlayer has, and no printed
+	// any-player mana ability has one. The auto-tapper never plans
+	// another player's any-player row; that player activates it from
+	// the board.
+	AnyPlayer bool
 
 	// Rider is everything the oracle text says AFTER the "Add …"
 	// clause, as one callback: the painland cycle's "This land deals

@@ -150,6 +150,25 @@ func (e *enumerator) activatedMoves() {
 			e.abilityMovesForSource(src, zone.kind, restricted)
 		}
 	}
+	// CR 113.6 / ADR 0106 §1 amendment 2026-10-16 (#1865): an ability of
+	// a SPELL that functions while it is on the stack (Lightning Storm).
+	// A spell has a controller (CR 112.2), so the walk is the
+	// battlefield's: the seat's own spells, and another player's for its
+	// "Any player may activate this ability" rows, each row held to
+	// game.MayActivate in the body. The fast negative is a row that
+	// functions from the stack at all, which almost no spell has.
+	if g.Stack != nil {
+		for i := range g.Stack.Cards {
+			src := &g.Stack.Cards[i]
+			if !game.HasStackAbility(*src) {
+				continue
+			}
+			if src.Controller != e.seat && !game.HasAnyPlayerAbility(*src) {
+				continue
+			}
+			e.abilityMovesForSource(src, game.ZoneStack, restricted)
+		}
+	}
 }
 
 // abilityZone is one non-battlefield pile the activation walk visits,
@@ -2163,7 +2182,12 @@ func (e *enumerator) manaMoves() {
 	restricted := g.AnyActivationRestrictionsForEffect()
 	for i := range g.Battlefield.Cards {
 		source := &g.Battlefield.Cards[i]
-		if source.Controller != e.seat {
+		// #1864 (ADR 0106 §1 amendment 2026-10-16): another player's
+		// permanent is visited only for its "Any player may activate
+		// this ability" mana rows (Mana Cache), and manaMovesForSource
+		// holds each row to game.MayActivateMana, the predicate
+		// ActivateManaAbility refuses with.
+		if source.Controller != e.seat && !game.HasAnyPlayerManaAbility(*source) {
 			continue
 		}
 		// CR 602.5, the mana half: Arrest stops these too, Faith's
@@ -2237,6 +2261,11 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		// and a Spirit Guide's hand ability is never offered from the
 		// battlefield either.
 		if !game.ManaAbilityFunctionsFromZone(ab, zone) {
+			continue
+		}
+		// CR 602.2 (#1864): who may activate this row — the one
+		// predicate ActivateManaAbility asks.
+		if !game.MayActivateMana(e.seat, *source, zone, ab) {
 			continue
 		}
 		// #1183: "Activate each exhaust ability only once", and
@@ -2457,9 +2486,15 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 						continue
 					}
 					for _, cc := range counterChoices {
-						label := source.Name + ": " + ab.Label
-						if ab.Label == "" {
-							label = source.Name + ": add " + ab.Produced
+						// #1864: another player's permanent is named
+						// with its controller, as an activated row is.
+						text := ab.Label
+						if text == "" {
+							text = "add " + ab.Produced
+						}
+						label := source.Name + ": " + text
+						if zone == game.ZoneBattlefield {
+							label = abilityMoveLabel(g, source, e.seat, text)
 						}
 						label += sacrificeLabel(g, sacs)
 						label += exileLabel(g, exiles)

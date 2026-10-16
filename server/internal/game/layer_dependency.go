@@ -592,6 +592,7 @@ func sameCharacteristic(a, b Characteristic) bool {
 		slices.Equal(a.BorrowedAbilities, b.BorrowedAbilities) &&
 		slices.Equal(a.AttackRequirements, b.AttackRequirements) &&
 		slices.EqualFunc(a.AttackTargetRestrictions, b.AttackTargetRestrictions, AttackTargetRestriction.Equal) &&
+		slices.Equal(a.DefenderWaivers, b.DefenderWaivers) &&
 		slices.Equal(a.BlockRequirements, b.BlockRequirements) &&
 		sameStringSlice(a.CantHave, b.CantHave)
 }

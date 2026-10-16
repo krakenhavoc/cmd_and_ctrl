@@ -455,8 +455,10 @@ type GameSnapshot struct {
 
 	// PreventionFollowUps is Game.preventionFollowUps (ADR 0107 §6): the
 	// CR 615.5 follow-ups owed for an instance of damage a CR 616 prompt
-	// paused half way. Empty on nearly every file. A body key this binary
-	// does not have is refused (ErrUnknownEffectKey).
+	// paused half way, and the CR 615.13 announcements owed beside them
+	// (#2047: `announce`, additive within v9). Empty on nearly every file.
+	// A body key this binary does not have is refused
+	// (ErrUnknownEffectKey).
 	PreventionFollowUps []PreventionFollowUp `json:"preventionFollowUps,omitempty"`
 
 	// ResolutionOpen is Game.resolutionOpen (#1289,
@@ -1161,9 +1163,25 @@ type cardSnapshot struct {
 	// Terror Eater). Carried: a restore that dropped it would leave the
 	// card in exile that nobody may play. An older file decodes as the
 	// zero ref, "exiled with nothing", which is every game before it.
-	ExiledWith        PermissionCardRef `json:"exiledWith"`
-	StartingDefense   int               `json:"startingDefense,omitempty"`
-	ProtectorPlayerID uuid.UUID         `json:"protectorPlayerId,omitempty"`
+	ExiledWith PermissionCardRef `json:"exiledWith"`
+	// ExiledWithAbility is the ability half of that link (#2651): the
+	// catalog row of the ExiledWith object's ability that exiled the
+	// card. Additive within v9 (ADR 0066's 2026-10-16 amendment): a file
+	// without it restores the object link alone, which is every linked
+	// exile before it; a reader by row then finds nothing, as it would
+	// have found nothing before. A pointer, so a card no ability linked
+	// writes nothing (the #1492 omitzero rule).
+	ExiledWithAbility *AbilityRef `json:"exiledWithAbility,omitempty"`
+	// EncodedOn and EncodedAt are cipher's link (CR 702.99b, #3867):
+	// the creature object a card in exile is encoded on and when. Carried
+	// because nothing else records it, and additive within v7: a file
+	// without them restores no encoding, which is every game before it.
+	// A pointer, so a card that is not encoded writes nothing (the
+	// #1492 omitzero rule).
+	EncodedOn         *PermissionCardRef `json:"encodedOn,omitempty"`
+	EncodedAt         int64              `json:"encodedAt,omitempty"`
+	StartingDefense   int                `json:"startingDefense,omitempty"`
+	ProtectorPlayerID uuid.UUID          `json:"protectorPlayerId,omitempty"`
 
 	// The CR 702.26 phased-out status (#1199, ADR 0084). Meaningful
 	// only for a card in GameSnapshot.PhasedOut, and carried for
@@ -1400,7 +1418,11 @@ type stackItemSnapshot struct {
 	DoubledBy     uuid.UUID   `json:"doubledBy,omitempty"`
 	DoubledByName string      `json:"doubledByName,omitempty"`
 	Targets       []TargetRef `json:"targets,omitempty"`
-	Payload       []TargetRef `json:"payload,omitempty"`
+	// Spliced is StackItem.Spliced (ADR 0202, #1989): the texts spliced
+	// onto a spell and their targets, by catalog key. Additive within v9:
+	// a file without it spliced nothing, which is every game before it.
+	Spliced []SplicedText `json:"spliced,omitempty"`
+	Payload []TargetRef   `json:"payload,omitempty"`
 	// Trigger is the triggering event (#1223). Carried, and it has
 	// to be: a targeted trigger waiting on its CR 603.3d prompt is a
 	// restorable snapshot, and a restore that lost the event would
@@ -1413,10 +1435,15 @@ type stackItemSnapshot struct {
 	Modes        []int             `json:"modes,omitempty"`
 	XValue       int               `json:"xValue"`
 	Distribution map[uuid.UUID]int `json:"distribution,omitempty"`
-	HoldPriority bool              `json:"holdPriority"`
-	CastFromZone ZoneKind          `json:"castFromZone,omitempty"`
-	AltCost      string            `json:"altCost,omitempty"`
-	Foretold     bool              `json:"foretold,omitempty"`
+	// TargetChoosers is StackItem.TargetChoosers (#2055): which opponent
+	// chose each "of an opponent's choice" clause. Additive within the
+	// schema version and omitted when empty, which is every item that
+	// has no such clause.
+	TargetChoosers []TargetChooser `json:"targetChoosers,omitempty"`
+	HoldPriority   bool            `json:"holdPriority"`
+	CastFromZone   ZoneKind        `json:"castFromZone,omitempty"`
+	AltCost        string          `json:"altCost,omitempty"`
+	Foretold       bool            `json:"foretold,omitempty"`
 	// OwnFlashCast (#3156): the spell was cast with its own flash
 	// permission when a sorcery couldn't have been. Carried: the timing
 	// of the cast cannot be recomputed after a restore.
@@ -1672,13 +1699,16 @@ type pendingChoiceSnapshot struct {
 	PayCost              string      `json:"payCost,omitempty"`
 	SearchCards          []uuid.UUID `json:"searchCards,omitempty"`
 	SearchGraveyardCards []uuid.UUID `json:"searchGraveyardCards,omitempty"`
+	SearchHandCards      []uuid.UUID `json:"searchHandCards,omitempty"`
 	SearchMax            int         `json:"searchMax"`
 	SearchMin            int         `json:"searchMin,omitempty"`
 	MayCastCard          uuid.UUID   `json:"mayCastCard,omitempty"`
 	MayCastKeyword       string      `json:"mayCastKeyword,omitempty"`
 	AcceptLabel          string      `json:"acceptLabel,omitempty"`
 	LifeCost             int         `json:"lifeCost,omitempty"`
-	DeclineLabel         string      `json:"declineLabel,omitempty"`
+	// DeclineEndsLoop is PendingChoice.DeclineEndsLoop (#2040).
+	DeclineEndsLoop bool   `json:"declineEndsLoop,omitempty"`
+	DeclineLabel    string `json:"declineLabel,omitempty"`
 	// OwedInStep: the step a pay-or-else prompt has to be answered in
 	// (#997). Carried so a restored game gates the same way, cheap
 	// and honest even though every prompt that sets it today also
@@ -2168,6 +2198,15 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		cen.ChoiceResumeFrames++
 		cen.note("combat damage step holds its damage behind damage_assignment prompts")
 	}
+	// #2040: the rest of a damage instruction parked behind a prompt
+	// its instance's prevention follow-up asked. A closure, as the
+	// CR 616 resume beside it is: not carried, so a restart rewinds to
+	// before the damage. The owed follow-ups themselves are data
+	// (PreventionFollowUps).
+	if n := len(g.followUpParks); n > 0 {
+		cen.ChoiceResumeFrames += n
+		cen.note("%d damage instruction(s) wait behind a prevention follow-up's prompt", n)
+	}
 	// #2789: a modal item's later bullets parked behind one of those
 	// prompts (mode_walk.go).
 	s.PausedModeWalk = snapshotModeWalk(g, g.pausedModeWalk, cen)
@@ -2454,6 +2493,9 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
+		ExiledWithAbility:        snapshotExiledWithAbility(c.ExiledWithAbility),
+		EncodedOn:                snapshotEncodedOn(c.EncodedOn),
+		EncodedAt:                c.EncodedAt,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
@@ -2574,11 +2616,13 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		DoubledBy:        s.DoubledBy,
 		DoubledByName:    s.DoubledByName,
 		Targets:          copyTargetRefs(s.Targets),
+		Spliced:          cloneSplicedTexts(s.Spliced),
 		Payload:          copyTargetRefs(s.Payload),
 		Trigger:          cloneTriggerContext(s.Trigger),
 		Modes:            copyInts(s.Modes),
 		XValue:           s.XValue,
 		Distribution:     copyIntMap(s.Distribution),
+		TargetChoosers:   copyTargetChoosers(s.TargetChoosers),
 		HoldPriority:     s.HoldPriority,
 		CastFromZone:     s.CastFromZone,
 		AltCost:          s.AltCost,
@@ -2818,6 +2862,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PayCost:               c.PayCost,
 		SearchCards:           copyUUIDs(c.SearchCards),
 		SearchGraveyardCards:  copyUUIDs(c.SearchGraveyardCards),
+		SearchHandCards:       copyUUIDs(c.SearchHandCards),
 		SearchMax:             c.SearchMax,
 		SearchMin:             c.SearchMin,
 		MayCastCard:           c.MayCastCard,
@@ -2825,6 +2870,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		AcceptLabel:           c.AcceptLabel,
 		DeclineLabel:          c.DeclineLabel,
 		LifeCost:              c.LifeCost,
+		DeclineEndsLoop:       c.DeclineEndsLoop,
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
 		OptionalItem:          c.OptionalItem,
@@ -2866,13 +2912,17 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		// owner. Dropping it drops the announcement, not half of it —
 		// nothing was paid — but the census still says so.
 		"costCommanderResume": c.costCommanderResume != nil,
-		"pickTargetResume":    c.pickTargetResume != nil,
-		"copyResume":          c.copyResume != nil,
-		"triggerResume":       c.triggerResume != nil,
-		"payUnlessResume":     c.payUnlessResume != nil,
-		"mayCastResume":       c.mayCastResume != nil,
-		"searchResume":        c.searchResume != nil,
-		"scryResume":          c.scryResume != nil,
+		// #2055: a parked cast or activation waiting on an opponent's
+		// target (or the controller's choice of opponent). Plain data,
+		// but not written with the prompt, so the census says so.
+		"opponentTargetResume": c.opponentTargetResume != nil,
+		"pickTargetResume":     c.pickTargetResume != nil,
+		"copyResume":           c.copyResume != nil,
+		"triggerResume":        c.triggerResume != nil,
+		"payUnlessResume":      c.payUnlessResume != nil,
+		"mayCastResume":        c.mayCastResume != nil,
+		"searchResume":         c.searchResume != nil,
+		"scryResume":           c.scryResume != nil,
 		// ADR 0088's ordered placement: handed the answer, then
 		// places the pile and runs the rest of the card.
 		"libraryOrderResume": c.libraryOrderResume != nil,
@@ -3382,6 +3432,9 @@ func restoreCard(c *cardSnapshot) Card {
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
+		ExiledWithAbility:        restoreExiledWithAbility(c.ExiledWithAbility),
+		EncodedOn:                restoreEncodedOn(c.EncodedOn),
+		EncodedAt:                c.EncodedAt,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
@@ -3550,11 +3603,13 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		DoubledBy:        s.DoubledBy,
 		DoubledByName:    s.DoubledByName,
 		Targets:          copyTargetRefs(s.Targets),
+		Spliced:          cloneSplicedTexts(s.Spliced),
 		Payload:          copyTargetRefs(s.Payload),
 		Trigger:          cloneTriggerContext(s.Trigger),
 		Modes:            copyInts(s.Modes),
 		XValue:           s.XValue,
 		Distribution:     copyIntMap(s.Distribution),
+		TargetChoosers:   copyTargetChoosers(s.TargetChoosers),
 		HoldPriority:     s.HoldPriority,
 		CastFromZone:     s.CastFromZone,
 		AltCost:          s.AltCost,
@@ -3729,6 +3784,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PayCost:               c.PayCost,
 		SearchCards:           copyUUIDs(c.SearchCards),
 		SearchGraveyardCards:  copyUUIDs(c.SearchGraveyardCards),
+		SearchHandCards:       copyUUIDs(c.SearchHandCards),
 		SearchMax:             c.SearchMax,
 		SearchMin:             c.SearchMin,
 		MayCastCard:           c.MayCastCard,
@@ -3736,6 +3792,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		AcceptLabel:           c.AcceptLabel,
 		DeclineLabel:          c.DeclineLabel,
 		LifeCost:              c.LifeCost,
+		DeclineEndsLoop:       c.DeclineEndsLoop,
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
 		OptionalItem:          c.OptionalItem,

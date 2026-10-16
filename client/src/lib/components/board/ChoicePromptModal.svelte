@@ -646,11 +646,24 @@
   // Command Tower in the library and one in the graveyard are two
   // different tiles — they are not the same pick.
   const searchGraveyardIDs = $derived(new Set(active?.search_graveyard ?? []));
+  // #3988: and the hand half of "search that player's graveyard, hand,
+  // and library" (Kotose, the Silent Spider).
+  const searchHandIDs = $derived(new Set(active?.search_hand ?? []));
+  function searchZoneKey(id: string): string {
+    if (searchGraveyardIDs.has(id)) return "gy:";
+    if (searchHandIDs.has(id)) return "hand:";
+    return "lib:";
+  }
+  function searchZoneCaption(id: string): string {
+    if (searchGraveyardIDs.has(id)) return "Graveyard · ";
+    if (searchHandIDs.has(id)) return "Hand · ";
+    return "";
+  }
   const searchGroups = $derived.by<CardView[][]>(() => {
     if (!isSearch) return [];
     const groups = new Map<string, CardView[]>();
     for (const c of optionCards) {
-      const zone = searchGraveyardIDs.has(c.instance_id) ? "gy:" : "lib:";
+      const zone = searchZoneKey(c.instance_id);
       const key = zone + (c.name || c.instance_id);
       const g = groups.get(key);
       if (g) g.push(c);
@@ -2920,7 +2933,10 @@
           {:else}
             Take up to {pickMax} of these, or find nothing — you may always come up short.
           {/if}
-          {#if searchGraveyardIDs.size > 0}
+          {#if active?.search_all_zones}
+            You're searching their graveyard, hand and library. Cards marked Graveyard or Hand are
+            there, the rest are in the library, and the library is shuffled either way.
+          {:else if searchGraveyardIDs.size > 0}
             Cards marked Graveyard are public. Taking one means you never looked in your library, so
             it isn't shuffled; taking a library card, or nothing, shuffles it.
           {:else}
@@ -3144,7 +3160,7 @@
       {/if}
       <div class="card-grid">
         {#if isSearch}
-          {#each searchGroups as group ((searchGraveyardIDs.has(group[0].instance_id) ? "gy:" : "lib:") + (group[0].name || group[0].instance_id))}
+          {#each searchGroups as group (searchZoneKey(group[0].instance_id) + (group[0].name || group[0].instance_id))}
             {@const picked = groupPicked(group)}
             <button
               type="button"
@@ -3158,8 +3174,7 @@
               <Card card={group[0]} />
               <PickName card={group[0]} />
               <span class="source-caption">
-                {searchGraveyardIDs.has(group[0].instance_id) ? "Graveyard · " : ""}{group.length >
-                1
+                {searchZoneCaption(group[0].instance_id)}{group.length > 1
                   ? `×${group.length}`
                   : ""}{picked > 0 ? `${group.length > 1 ? " · " : ""}${picked} taken` : ""}
               </span>

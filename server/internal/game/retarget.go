@@ -186,7 +186,9 @@ func (g *Game) StackItemTargetCountForEffect(itemID uuid.UUID) int {
 	if item == nil {
 		return 0
 	}
-	return countRealTargets(item.Targets)
+	// ADR 0202, CR 702.47d: a spliced text's targets are the spell's
+	// targets too, so a spell that gained one is not single-target.
+	return countRealTargets(item.AllTargets())
 }
 
 // retargetSourceLocked is the TargetSource a retarget's legality is

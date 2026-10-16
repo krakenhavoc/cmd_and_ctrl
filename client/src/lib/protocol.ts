@@ -653,6 +653,14 @@ export interface CounterShieldView {
   next_only?: boolean;
 }
 
+// A seat's draw limit (#4016): `max` cards each turn (0 for "can't draw
+// cards"), `left` more this turn, imposed by `sources` (card names).
+export interface DrawLimitView {
+  max: number;
+  left: number;
+  sources?: string[];
+}
+
 export interface GameEndGateView {
   source?: string;
   source_name: string;
@@ -1927,6 +1935,12 @@ export interface PendingChoiceView {
   // instance IDs among `options` that are in the searcher's graveyard.
   // Everything else is a library card. Absent for a library-only search.
   search_graveyard?: string[];
+  // #3988: on a "search that player's graveyard, hand, and library"
+  // prompt (Kotose, the Silent Spider), the instance IDs among `options`
+  // that are in the searched player's hand, and `search_all_zones` set:
+  // every zone is searched, so the library is shuffled whatever is taken.
+  search_hand?: string[];
+  search_all_zones?: boolean;
   // ADR 0160: a "copy_target" prompt whose pick is the creature to
   // exchange text boxes with rather than the object to copy (Deadpool,
   // Trading Card). Same {card_ids} answer, same empty decline.
@@ -1995,6 +2009,13 @@ export interface PendingChoiceView {
   // (CR 702.52a) — N, the number of cards the yes mills. The card it
   // returns rides `source`. Computed by the server on every view.
   dredge?: number;
+  // #2056: populated for an "optional_replacement" that offers a "may"
+  // redirection (Blood of the Martyr): the damage, the player or
+  // permanent it would be dealt to, and where the yes deals it instead.
+  // Computed by the server on every view.
+  redirect_amount?: number;
+  redirect_from?: string;
+  redirect_to?: string;
   // #2419: populated for an "entry_sacrifice" that is devour (CR
   // 702.82a) — N, the +1/+1 counters each sacrificed creature buys, and
   // what the entering creature's own "for each creature it devoured"
@@ -2011,6 +2032,10 @@ export interface PendingChoiceView {
   life_cost?: number;
   // Computed affordability of the mandatory life, including life locks.
   life_cost_unpayable?: boolean;
+  // #2040: a "confirm" whose accept would continue a loop the table is
+  // already in (Channel Harm against Channel Harm). A hint for bots;
+  // both answers stay legal and the client need not show it.
+  decline_ends_loop?: boolean;
   // #74: populated for kinds "choose_cards", "untap_choice",
   // "entry_reveal_from_hand", #1214's three resolution-time picks
   // ("reveal_pick", "their_permanents", "own_permanents") and ADR 0107's
@@ -2242,13 +2267,19 @@ export interface StackItemView {
   // spell is on the stack, so the overlay reads the labels off the
   // item rather than printing raw indexes.
   mode_labels?: string[];
+  // ADR 0202 (CR 702.47a): the cards whose text was spliced onto this
+  // spell, in the order that text happens. Their targets are in
+  // `targets`, each with `splice` naming its text.
+  spliced?: string[];
   x_value?: number;
   distribution?: Record<string, number>;
   hold_priority?: boolean;
   split_second?: boolean;
-  // #1553: the spell can't be countered — its own printed rider or the
-  // mana that paid for it (Cavern of Souls). Read from the engine's one
-  // counter gate; absent when false and on ability items.
+  // #1553: the spell can't be countered — its own printed rider, the
+  // mana that paid for it (Cavern of Souls), or a permanent's static.
+  // #2014: also an ability a permanent says can't be countered
+  // (Spider-Punk). Read from the engine's one counter gate; absent when
+  // false.
   cant_be_countered?: boolean;
   // ADR 0107 §5: the spell's own "the damage can't be prevented", under
   // its condition as it stands now (Combust; Banefire with X of 5 or
@@ -2299,6 +2330,9 @@ export interface TargetRefView {
   // announcement.
   slot?: number;
   mode?: number;
+  // ADR 0202: the spliced text this pick answered, 1-based in the
+  // item's `spliced`. Omitted for the spell's own text.
+  splice?: number;
 }
 
 // CouncilVoteView is a rules vote in progress (ADR 0146, CR 701.38), as
@@ -2672,6 +2706,10 @@ export interface PlayerView {
   // this turn", an unused Insist. Public, and absent for nearly every
   // seat.
   counter_shields?: CounterShieldView[];
+  // #3927, #4016 (CR 121.2b): the per-turn draw limit on this seat
+  // (Narset, Parter of Veils; Maralen of the Mornsong as a limit of 0).
+  // Derived, public, and absent when no limit applies.
+  draw_limit?: DrawLimitView;
 }
 
 // One emblem (CR 114). `label` is the board name ("Elspeth, Sun's
@@ -2858,6 +2896,21 @@ export interface AdditionalCostView {
   exile_cost_x?: boolean;
   exile_cost_x_max?: number;
   payable?: boolean;
+}
+
+// SpliceOfferView is one card in the viewer's hand that may be spliced
+// onto the spell being cast (ADR 0202, CR 702.47a): "Splice onto Arcane
+// {1}{R}". `card_id` rides cast_spell in `splices`, and the text's target
+// clause (judged from the spell, CR 702.47c) adds steps to the target
+// walk whose picks carry `splice`.
+export interface SpliceOfferView {
+  card_id: string;
+  name: string;
+  label: string;
+  mana_cost: string;
+  target_mode?: string;
+  legal_targets?: LegalTargetsView;
+  clauses?: LegalTargetsView[];
 }
 
 // OptionalCostView is one "you may pay an additional cost as you
@@ -3858,6 +3911,15 @@ export interface LegalTargetsView {
   // #764: this clause's picks must differ from every EARLIER
   // clause's ("a second target permanent you control").
   distinct?: boolean;
+  // #2055: a clause "of an opponent's choice". The controller's walk
+  // skips it and sends no target for it: the server asks the
+  // controller which opponent, and that opponent picks, through an
+  // ordinary pick_target. `players` / `cards` are the superset any
+  // opponent could pick from.
+  chosen_by_opponent?: boolean;
+  // #2055: on a pick_target an opponent answers for such a clause, the
+  // player whose spell or ability it is (the one still targeting).
+  chosen_for?: string;
   // #1559: the clause's rule over the chosen SET (CR 601.2c) — no two
   // picks may share a key ("that each have a different mana value",
   // "controlled by different players"). The picker greys a candidate
@@ -4020,6 +4082,9 @@ export interface CastSurfaceView {
   // same picker the alternative costs open, because CR 601.2b
   // announces them together. Absent for nearly every card.
   optional_costs?: OptionalCostView[];
+  // ADR 0202: the cards in the viewer's hand that splice onto this
+  // spell, offered as toggles beside the optional costs. Per viewer.
+  splice_offers?: SpliceOfferView[];
   // ADR 0150 §5 (CR 702.132a): a spell with assist's offer to this
   // caster — who may be asked to help pay its generic mana, and how
   // much generic there is. The cast modal's Assist row reads it and the
@@ -4874,6 +4939,14 @@ export interface ManaAbilityView {
   // itself. Absent on every row that is not lent, and when the lender sits
   // in a hidden zone.
   borrowed_from?: GrantedByView;
+  // ADR 0106 §1 amendment 2026-10-16 (#1864): the mana ability's own
+  // "Any player may activate this ability" (Mana Cache), as on
+  // ActivatedAbilityView. Each seat that does not control the permanent
+  // gets the row stamped with that seat as the activator (its
+  // condition_unmet, its counter options); the mana goes to the
+  // activator's pool. Whether it is live for the viewer right now is the
+  // digest's answer. Absent on every other row.
+  any_player?: boolean;
   tap_cost?: boolean;
   sacrifice_cost?: boolean;
   // #1228: the "Exile this card from your hand" component of a mana

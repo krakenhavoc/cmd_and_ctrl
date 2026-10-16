@@ -60,7 +60,7 @@ func castPaysPrintedCost(alt *AlternativeCost, grant *CastPermission) bool {
 	if alt != nil {
 		return false
 	}
-	if grant != nil && grant.Cost != "" {
+	if grant.NamesPrice() {
 		return false
 	}
 	return true

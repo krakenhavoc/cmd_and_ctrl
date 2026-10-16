@@ -62,6 +62,12 @@
   // unpayable branch is shown disabled. The chosen branch's own picker
   // (discard, sacrifice, blight) opens next in the chain.
   //
+  // ADR 0202 (CR 702.47a): an Arcane spell offers the splice cards in the
+  // caster's hand as one more group of toggles — revealing one and paying
+  // its splice cost is the same CR 601.2b "what am I paying for this?"
+  // question. The order they are ticked is the order their text happens
+  // (CR 702.47b), and each ticked row says so.
+  //
   // ADR 0150 §5 (CR 702.132a): a spell with assist adds an Assist row —
   // "Ask a player to help pay (up to {3})" — with nobody picked by
   // default. The pick rides the cast as `assist_player`, and the cast
@@ -80,6 +86,7 @@
     optionalCostSelection,
     optionalCostsOf,
     printedCostCastableNow,
+    spliceOffersOf,
   } from "../../targeting";
   import { cancelAction, confirmAction } from "../../dock";
   import DockSheet from "./DockSheet.svelte";
@@ -94,12 +101,14 @@
     // ADR 0100: and the either/or branch, present exactly when the card
     // has branches.
     // ADR 0150 §5: and the player asked to help pay, when one was picked.
+    // ADR 0202: and the cards spliced onto it, in the order ticked.
     onConfirm: (
       key: string | undefined,
       optional: number[],
       giftOpponent?: string,
       costBranch?: number,
       assistPlayer?: string,
+      splices?: string[],
     ) => void;
     onCancel: () => void;
     // #1267: the table, so a gift's opponent picker can name players
@@ -142,6 +151,12 @@
   // reject with a sorcery-speed error.
   const offers = $derived(card ? castableAlternativeCostsOf(card) : []);
   const addOns = $derived(card ? optionalCostsOf(card) : []);
+  // ADR 0202: the splice cards, and the ones ticked, in the order ticked.
+  const spliceOffers = $derived(card ? spliceOffersOf(card) : []);
+  let splicing = $state<string[]>([]);
+  function toggleSplice(id: string): void {
+    splicing = splicing.includes(id) ? splicing.filter((s) => s !== id) : [...splicing, id];
+  }
   // #1012 / #1686: whether "Its mana cost" is a row at all — on the
   // zone-and-payability question AND on timing.
   const printedOK = $derived(card ? printedCostCastableNow(card) : true);
@@ -192,6 +207,11 @@
   );
   const canConfirm = $derived((giftOffer === undefined || giftOpponent !== undefined) && branchOK);
 
+  // ordinal names a spliced text's place in the order: "first".
+  function ordinal(n: number): string {
+    return ["first", "second", "third", "fourth", "fifth"][n - 1] ?? `${n}th`;
+  }
+
   // energyCost spells n energy as pips for ManaCost: "{E}{E}".
   function energyCost(n: number): string {
     return "{E}".repeat(n);
@@ -237,6 +257,7 @@
       paying = new Map();
       giftTo = undefined;
       assistTo = undefined;
+      splicing = [];
       branch = card ? firstPayableBranch(card) : undefined;
     }
   });
@@ -249,6 +270,7 @@
       giftOpponent,
       branches.length > 0 ? branch : undefined,
       assistPlayer,
+      splicing.filter((id) => spliceOffers.some((o) => o.card_id === id)),
     );
   }
 </script>
@@ -270,9 +292,13 @@
     secondary={[cancelAction(onCancel)]}
   >
     <p class="prompt-hint">
-      {offers.length === 0 && addOns.length === 0 && branches.length === 0 && assist
+      {offers.length === 0 &&
+      addOns.length === 0 &&
+      branches.length === 0 &&
+      spliceOffers.length === 0 &&
+      assist
         ? "Ask another player to help pay?"
-        : offers.length === 0 && addOns.length === 0
+        : offers.length === 0 && addOns.length === 0 && spliceOffers.length === 0
           ? "Pay which additional cost?"
           : offers.length === 0
             ? "Pay any additional costs?"
@@ -430,6 +456,33 @@
                 </div>
               {/if}
             {/if}
+          </li>
+        {/each}
+      </ul>
+    {/if}
+    {#if spliceOffers.length > 0}
+      <p class="prompt-hint add-on-hint">
+        Splice from your hand <span class="prompt-src" aria-hidden="true">CR 702.47</span>
+      </p>
+      <ul class="prompt-options" aria-label="Splice onto this spell">
+        {#each spliceOffers as offer (offer.card_id)}
+          <li>
+            <button
+              type="button"
+              class="prompt-opt"
+              class:on={splicing.includes(offer.card_id)}
+              aria-pressed={splicing.includes(offer.card_id)}
+              onclick={() => toggleSplice(offer.card_id)}
+            >
+              <span class="prompt-radio" aria-hidden="true"></span>
+              <span class="name"
+                >{offer.name}{#if splicing.includes(offer.card_id) && splicing.length > 1}
+                  <span class="casts-face"
+                    >happens {ordinal(splicing.indexOf(offer.card_id) + 1)}, after the spell</span
+                  >{/if}</span
+              >
+              <span class="note cost"><ManaCost cost={offer.mana_cost} size={14} /></span>
+            </button>
           </li>
         {/each}
       </ul>

@@ -145,6 +145,12 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("P/T = %d/%d, want %d/%d", c.Power, c.Toughness, b.Power+3, b.Toughness-1)
 			}
 		}},
+		// #3996: CR 613.4d, after the 7c pump.
+		{"switchPT", []Mod{ModifyPTMod(3, 0), SwitchPTMod()}, func(t *testing.T, b, c Characteristic, _ *Game) {
+			if c.Power != b.Toughness || c.Toughness != b.Power+3 || !c.PTSwitched {
+				t.Errorf("P/T = %d/%d switched %v, want %d/%d switched", c.Power, c.Toughness, c.PTSwitched, b.Toughness, b.Power+3)
+			}
+		}},
 		// #1571: one requirement per mod, attributed to the source.
 		{"addAttackRequirement", []Mod{AddAttackRequirementMod(uuid.Nil), AddAttackRequirementMod(attackRequirementTestPlayer)}, func(t *testing.T, _, c Characteristic, _ *Game) {
 			if len(c.AttackRequirements) != 2 || c.AttackRequirements[0].OtherThan != uuid.Nil ||
@@ -255,11 +261,12 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModSetController: true, ModAddTypes: true, ModRemoveTypes: true, ModAddSubtypes: true,
 		ModAllCreatureTypes: true, ModSetColors: true, ModAddColors: true, ModAddKeywords: true, ModRemoveKeywords: true,
 		ModLoseAllAbilities: true, ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
-		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModGoad: true,
+		ModSetBaseToughness: true, ModModifyPT: true, ModSwitchPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModGoad: true,
 		ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 		ModCantAttackUnlessDefenderControls: true,
 		ModCantAttackPlayer:                 true, // #3400: cases in cards/effects/promise_of_loyalty_test.go
 		ModCantAttackOwner:                  true, // ADR 0180: cases in cant_attack_owner_mod_test.go
+		ModWaiveDefender:                    true, // #1936: cases in defender_waivers_test.go
 		ModSetBasicLandTypes:                true,
 		ModLoseLandTypes:                    true,
 		// ADR 0093 PR 4 (#1584): its cases are in scoped_grants_test.go,
@@ -337,6 +344,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0066 amendment 2026-10-10 (#2559): the hand ban, read by
 		// both gates. Its cases are in hand_play_ban_test.go.
 		ModCantPlayFromHand: true,
+		// ADR 0066 amendment 2026-10-16 (#1987): the own-graveyard ban,
+		// read by both gates. Its cases are in graveyard_play_ban_test.go.
+		ModCantPlayFromOwnGraveyard: true,
 		// ADR 0096 amendment (#2039): the monarch gate. Its cases are in
 		// monarch_test.go and jared_carthalion_test.go.
 		ModCantBecomeMonarch: true,
@@ -360,6 +370,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0188 Decision 3a (#3563): a step of one extra turn skipped.
 		// Its cases are in turn_skip_step_test.go.
 		ModSkipExtraTurnStep: true,
+		// ADR 0058 amendment 2026-10-16 (#3995): a player-wide untap
+		// skip. Its cases are in untap_player_skip_test.go.
+		ModSkipNextUntapStep: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

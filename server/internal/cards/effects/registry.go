@@ -61,14 +61,18 @@ func Register(spec Spec) {
 				panic(fmt.Sprintf("effects.Register: %q mode %d has no label — the bullet is the whole of what the picker shows", spec.Name, i))
 			}
 			checkFlatClauses(spec.Name, o.Targets)
+			refuseOpponentChoice(spec.Name, "a mode's", o.Targets)
 			checkSpellXBound(spec.Name, o.Targets)
 			checkModeCost(spec.Name, "mode", i, o.Cost, true)
+			checkTargetAtRandom(spec.Name, "a spell's mode", o.Targets, false)
 		}
 	}
 	checkEscalate(spec)
 	checkEntwine(spec)
+	checkSplice(spec)
 	checkFlatClauses(spec.Name, spec.Targets)
 	checkSpellXBound(spec.Name, spec.Targets)
+	checkTargetAtRandom(spec.Name, "a spell's", spec.Targets, false)
 	checkExhaustAbilities(spec)
 	checkBoast(spec)
 	checkMayAtResolution(spec.Name, spec.Activated)
@@ -76,6 +80,7 @@ func Register(spec Spec) {
 	checkHandSize(spec)
 	for _, a := range spec.Activated {
 		checkFlatClauses(spec.Name, a.Targets)
+		checkTargetAtRandom(spec.Name, "an activated ability's", a.Targets, false)
 		// #1723: an X-bound target clause is allowed on an activated
 		// ability whose OWN cost announces an X (CR 602.2b) — Lazav,
 		// the Multifarious's "{X}: ... with mana value X". Still
@@ -106,21 +111,27 @@ func Register(spec Spec) {
 					panic(fmt.Sprintf("effects.Register: %q activated mode %d has no label", spec.Name, i))
 				}
 				checkFlatClauses(spec.Name, o.Targets)
+				refuseOpponentChoice(spec.Name, "an activated mode's", o.Targets)
 				checkModeCost(spec.Name, "activated mode", i, o.Cost, false)
+				checkTargetAtRandom(spec.Name, "an activated mode's", o.Targets, false)
 			}
 		}
 	}
 	for _, t := range spec.Triggered {
 		checkStateTrigger(spec.Name, t)
+		checkNotPutByThisAbility(spec.Name, t)
 		checkFlatClauses(spec.Name, t.Targets)
 		// A trigger announces no X, ever (#1559) — unlike an activated
 		// ability (#1723), there is no cost to check.
 		checkNoXBound(spec.Name, "a trigger's", t.Targets, false, false)
 		checkNoDivideX(spec.Name, "a trigger's", t.Targets)
+		checkTargetAtRandom(spec.Name, "a trigger's", t.Targets, true)
 		if t.Modes != nil {
 			for _, o := range t.Modes.Options {
+				refuseOpponentChoice(spec.Name, "a trigger mode's", o.Targets)
 				checkNoXBound(spec.Name, "a trigger mode's", o.Targets, false, false)
 				checkNoDivideX(spec.Name, "a trigger mode's", o.Targets)
+				checkTargetAtRandom(spec.Name, "a trigger mode's", o.Targets, true)
 			}
 		}
 		if t.Modes != nil && t.Targets != nil {
@@ -291,6 +302,7 @@ func Register(spec Spec) {
 				panic(fmt.Sprintf("effects.Register: %q is modal and its gift rewrites the target clause — put the clause on the mode", spec.Name))
 			}
 			checkFlatClauses(spec.Name, g.Targets)
+			refuseOpponentChoice(spec.Name, "a gift's", g.Targets)
 		}
 	}
 	seenOptional := make(map[string]bool, len(spec.OptionalCosts))
@@ -313,6 +325,7 @@ func Register(spec Spec) {
 				panic(fmt.Sprintf("effects.Register: %q is modal and optional cost %q rewrites the target clause — put the clause on the mode", spec.Name, oc.Key))
 			}
 			checkFlatClauses(spec.Name, oc.Targets)
+			refuseOpponentChoice(spec.Name, "an optional cost's", oc.Targets)
 		}
 		if oc.ChoosesOpponent || oc.Key == game.GiftKey {
 			panic(fmt.Sprintf("effects.Register: %q declares a gift cost in OptionalCosts — declare Spec.Gift and let buildDef grow the cost (ADR 0089)", spec.Name))
@@ -734,6 +747,8 @@ func Register(spec Spec) {
 		// every one of them a boot-time refusal rather than a
 		// mysteriously-dead card.
 		checkManaAbilityZones(spec.Name, i, ma)
+		// #1864: an any-player mana ability's limits.
+		checkAnyPlayerManaAbility(spec.Name, i, ma)
 		// #789: the counter components are one declaration with two
 		// owners, so they are checked by one function in both places.
 		checkCounterCost(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.RemoveCounters, ma.Cost.AddCounter)
@@ -1637,6 +1652,7 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 			}
 		}
 		checkDivide(name, i, spec.Clause(i))
+		checkOpponentChoice(name, i, spec.Clause(i))
 		if d := spec.Clause(i).Different; d != nil && (d.Key == nil || d.Label == "") {
 			panic(fmt.Sprintf("effects.Register: %q target clause %d has a set rule with no Key or no Label — build it with EachDifferentManaValue / EachDifferentController / EachDifferentName", name, i))
 		}
@@ -1669,6 +1685,41 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 		}
 		if c.BoundByCountersRemoved && stats == 0 {
 			panic(fmt.Sprintf("effects.Register: %q target clause %d reads the counters removed but bounds no statistic — chain BoundByTheCountersRemoved after WithPowerAtMostX or its siblings", name, i))
+		}
+	}
+}
+
+// checkOpponentChoice validates an "of an opponent's choice" clause
+// (#2055, ADR 0019's 2026-10-16 amendment). "They control" means nothing
+// without an opponent choosing; and the clause is a plain one: chosen by
+// one opponent, at least one target, with no division, relation or set
+// rule tying it to the other clauses' picks and no X bound -- no printed
+// card has one, and the walk that asks the opponent judges one clause
+// alone.
+func checkOpponentChoice(name string, i int, c *game.TargetClause) {
+	if c.ControlledByChooser && !c.ChosenByOpponent {
+		panic(fmt.Sprintf("effects.Register: %q target clause %d says \"they control\" with no opponent choosing it — wrap it as TheyControl(OfAnOpponentsChoice(...))", name, i))
+	}
+	if !c.ChosenByOpponent {
+		return
+	}
+	switch {
+	case c.Divide != nil, c.Relation != nil, c.Different != nil, c.Same != nil, len(c.EachOf) > 0:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice and divides or relates its picks — no printed card does", name, i))
+	case c.CountFromX, c.ManaValueAtMostX, c.ManaValueEqualsX, c.PowerAtMostX, c.ToughnessAtMostX:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice bounded by X — no printed card is", name, i))
+	case c.Min < 1:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice of \"up to\" targets — no printed card is", name, i))
+	}
+}
+
+// refuseOpponentChoice refuses an "of an opponent's choice" clause where
+// the engine does not ask an opponent: a mode's clause, and a clause an
+// optional or gift cost swaps in (#2055).
+func refuseOpponentChoice(name, owner string, spec *game.TargetSpec) {
+	for i := 0; i < spec.ClauseCount(); i++ {
+		if spec.Clause(i).ChosenByOpponent {
+			panic(fmt.Sprintf("effects.Register: %q declares an opponent's-choice target on %s clause %d — only a spell's, an activated ability's or a trigger's own clause list is asked of an opponent", name, owner, i))
 		}
 	}
 }
@@ -1785,6 +1836,27 @@ func checkRaisedModeMax(name, owner string, ms *game.ModeSpec) {
 	// printed minimum — either would be a count no printed card has.
 	if ms.RaisedMin != 0 && (ms.RaisedMin <= ms.Min || ms.RaisedMin > ms.RaisedMax) {
 		panic(fmt.Sprintf("effects.Register: %q %s raises Min %d to %d with a raised Max of %d", name, owner, ms.Min, ms.RaisedMin, ms.RaisedMax))
+	}
+}
+
+// checkTargetAtRandom validates "target … chosen at random" (#1815,
+// game.TargetSpec.AtRandom): only a triggered ability's clause may
+// carry it (`allowed`), since only a trigger's targets are chosen by
+// the engine (CR 603.3d), and only on a clause that picks exactly one
+// target and divides nothing — the shape every printed card has, and
+// the only one the walk's draw honours.
+func checkTargetAtRandom(name, owner string, spec *game.TargetSpec, allowed bool) {
+	for i := 0; i < spec.ClauseCount(); i++ {
+		c := spec.Clause(i)
+		if !c.AtRandom {
+			continue
+		}
+		if !allowed {
+			panic(fmt.Sprintf("effects.Register: %q declares a target chosen at random on %s target clause %d — only a triggered ability's target is chosen by the engine (#1815)", name, owner, i))
+		}
+		if c.Min != 1 || c.Max != 1 || c.Divide != nil {
+			panic(fmt.Sprintf("effects.Register: %q declares a target chosen at random on %s target clause %d that is not exactly one undivided target", name, owner, i))
+		}
 	}
 }
 
@@ -1982,21 +2054,44 @@ func checkOneExhaustAbility(name, kind string, i int, label string, exhaust bool
 // Shroud is refused: no card prints shroud on a player, and a token
 // with no card behind it is what game.CanonicalKeywords refuses a
 // bare "protection" for.
+//
+// PlayerKeywordsIf (#2013) is held to the same vocabulary, and each
+// entry must carry its condition and its printed sentence: a nil While
+// would grant nothing, silently, and an empty Label would leave the
+// tile's row saying nothing about when the ability holds.
 func checkPlayerKeywords(spec Spec) {
 	for i, kw := range spec.PlayerKeywords {
-		if kw == game.KeywordHexproof || kw == game.ProtectionFromTheChosenCardType {
-			continue
+		if !playerKeywordHonoured(kw) {
+			panic(fmt.Sprintf("effects.Register: %q PlayerKeywords[%d] = %q is not a player ability the engine honours — "+
+				"use %q or a \"protection from <quality>\" token the closed grammar parses (ADR 0072, #1197)",
+				spec.Name, i, kw, game.KeywordHexproof))
 		}
-		if _, ok := game.ParseProtectionQuality(kw); ok {
-			continue
-		}
-		if _, ok := game.ParseHexproofFromQuality(kw); ok {
-			continue
-		}
-		panic(fmt.Sprintf("effects.Register: %q PlayerKeywords[%d] = %q is not a player ability the engine honours — "+
-			"use %q or a \"protection from <quality>\" token the closed grammar parses (ADR 0072, #1197)",
-			spec.Name, i, kw, game.KeywordHexproof))
 	}
+	for i, kw := range spec.PlayerKeywordsIf {
+		if !playerKeywordHonoured(kw.Keyword) {
+			panic(fmt.Sprintf("effects.Register: %q PlayerKeywordsIf[%d].Keyword = %q is not a player ability the engine honours — "+
+				"use %q or a \"protection from <quality>\" token the closed grammar parses (ADR 0072, #2013)",
+				spec.Name, i, kw.Keyword, game.KeywordHexproof))
+		}
+		if kw.While == nil || kw.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q PlayerKeywordsIf[%d] needs a condition and a label — "+
+				"build it with YouHaveDuringYourTurn or YouHaveWhile (#2013)", spec.Name, i))
+		}
+	}
+}
+
+// playerKeywordHonoured reports whether a token is one the player walk's
+// consumers read: bare hexproof, the chosen-card-type placeholder, or a
+// protection or hexproof-from token the closed grammar parses.
+func playerKeywordHonoured(kw string) bool {
+	if kw == game.KeywordHexproof || kw == game.ProtectionFromTheChosenCardType {
+		return true
+	}
+	if _, ok := game.ParseProtectionQuality(kw); ok {
+		return true
+	}
+	_, ok := game.ParseHexproofFromQuality(kw)
+	return ok
 }
 
 // checkAbilityWaterbend refuses, at boot, an activated ability whose
@@ -2165,5 +2260,26 @@ func checkAbilityCostModifiers(name string, i int, ab ActivatedAbility) {
 		if why := m.UnitProblem(); why != "" {
 			panic(fmt.Sprintf("effects.Register: %q %s declares %s (ADR 0048 addendum §16)", name, where, why))
 		}
+	}
+}
+
+// checkNotPutByThisAbility holds TriggeredAbility.NotPutByThisAbility
+// (#3933, Kodama of the East Tree) to the shape it reads: an entry
+// trigger (it watches EventETB, the event the engine stamps with the
+// ability that made the entry) with a declared Effect, so the row has a
+// catalog identity to compare with. Anything else would silently
+// trigger off its own puts.
+func checkNotPutByThisAbility(card string, t game.TriggeredAbility) {
+	if !t.NotPutByThisAbility {
+		return
+	}
+	watchesETB := false
+	for _, k := range t.Watches {
+		if k == game.EventETB {
+			watchesETB = true
+		}
+	}
+	if !watchesETB || t.Effect == nil || t.Build != nil {
+		panic(fmt.Sprintf("effects.Register: %q declares %q not put by this ability without an EventETB watch and a declared Effect (#3933)", card, t.Key))
 	}
 }

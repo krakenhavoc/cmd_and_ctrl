@@ -2603,6 +2603,13 @@ func castParamsFromPreviewQuery(r *http.Request, xValue int) (game.CastSpellPara
 		}
 		params.CostBranch = &v
 	}
+	// ADR 0202: the cards revealed to splice onto the spell. Each one's
+	// splice cost joins the total at CR 601.2f.
+	splices, err := uuidListParam(q.Get("splices"), "splices")
+	if err != nil {
+		return params, err
+	}
+	params.Splices = splices
 	ids, err := uuidListParam(q.Get("tap_ids"), "tap_ids")
 	if err != nil {
 		return params, err

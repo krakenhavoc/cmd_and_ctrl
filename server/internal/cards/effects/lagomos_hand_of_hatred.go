@@ -34,7 +34,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			AtBeginningOfYourCombat("Lagomos, Hand of Hatred — create a 2/1 Elemental", func(g *game.Game, item *game.StackItem) error {
 				cursor := b25LastEventSeq(g)
-				if err := g.CreateTokenForEffect(item.Controller, TokenCard("2/1 red Elemental with trample and haste"), 1); err != nil {
+				if err := g.CreateTokenForEffect(item.Controller, NewContext(g, item).TextToken(TokenCard("2/1 red Elemental with trample and haste")), 1); err != nil {
 					return err
 				}
 				tokens := b27TokensCreatedByAfter(g, item.Controller, cursor)

@@ -103,6 +103,18 @@ func (c *Context) TextSubtypes(subs ...string) []string {
 	return c.textReader().TextSubtypes(subs...)
 }
 
+// TextToken is a token description in this effect's text as the text
+// now says it (game.Card.TokenThroughText, #4005): "create a 2/2 black
+// Zombie creature token" is ctx.TextToken(TokenCard("2/2 black Zombie")).
+// CreateToken and CreateTokenAdvanced call it themselves; a card that
+// hands a template to the game's creation methods directly passes it
+// through here, or names it a copy (copiedToken) or a token a keyword
+// action defines (ruleDefinedToken). TestTokenDescriptionsReadThroughText
+// holds every card file to one of the three.
+func (c *Context) TextToken(tmpl game.Card) game.Card {
+	return c.textReader().TokenThroughText(tmpl)
+}
+
 // Grantor returns the object that granted the resolving ability, for
 // an activated ability a layer-6 grant put on its source (ADR 0109 §2,
 // owner decision 2) — Teferi's Talent, for the −12 it gives the

@@ -250,10 +250,13 @@ func nextFromSourceModProblem(m Mod) string {
 		// ADR 0108 §9: a redirection reads the one source vocabulary
 		// (Objects, SourceZone, Queries) and the "next time" spend
 		// (redirectDamageModProblem checks it).
+		// #2056: and #2026's source filter (redirectDamageModProblem
+		// checks it too).
+		filtered := len(m.SourceFilter) != 0
 		if m.Kind == ModRedirectDamage {
-			sourced, queries = false, false
+			sourced, queries, filtered = false, false, false
 		}
-		if sourced || queries || m.Half || m.AndDealtBy || len(m.SourceFilter) != 0 {
+		if sourced || queries || m.Half || m.AndDealtBy || filtered {
 			return fmt.Sprintf("mod %q carries a damage-source field only preventNextFromSource reads", m.Kind)
 		}
 		return ""
@@ -541,9 +544,14 @@ func (q PermanentQuery) matchesCharacteristic(ch *Characteristic) bool {
 // the params' Amount. The two differ when the damage couldn't be prevented
 // (CR 615.12: Polukranos still removes "that many" counters, Phyrexian
 // Hydra puts on none "for each 1 damage prevented this way") and when a
-// charge covered part of it. It is never emitted: CR 615.13's "whenever
-// damage is prevented" triggers are not modelled, and no card in the
-// catalog prints one.
+// charge covered part of it.
+//
+// It is also EMITTED, for CR 615.13's "whenever damage is prevented"
+// triggers (#2047, damage_prevented.go): once per application of one
+// prevention effect to one damage instance, per recipient, and only when
+// it prevented something. On the emitted event Target is the recipient
+// and Amount is what was PREVENTED ("that many": Selfless Squire), never
+// the damage the effect met.
 const EventDamagePrevented EventKind = "damage_prevented"
 
 // PreventionFollowUp is one prevention effect's CR 615.5 additional
@@ -623,6 +631,15 @@ type PreventionFollowUp struct {
 	// is prevented this way" (Judgment of Alexander). Handed to the body
 	// as the trigger event's LastKnownTypes.
 	SourceTypes []string `json:"sourceTypes,omitempty"`
+	// Announce marks CR 615.13's entry rather than a CR 615.5 follow-up
+	// (#2047, damage_prevented.go): one application of one prevention
+	// effect to the instance, owed as EventDamagePrevented and never as a
+	// body (Body is empty). Its key is the effect — Seq and Slot (the mod)
+	// for a scoped shield; Static, Source, Epoch and Slot for a catalog
+	// static or a built-in — and Unit, the recipient; Target is the
+	// recipient too. An announcement and a follow-up are never the same
+	// entry.
+	Announce bool `json:"announce,omitempty"`
 	// To and ToEpoch are the object the follow-up deals its damage to,
 	// chosen as the shield was made (Mod.To: Acolyte's Reward's second
 	// target, Vengeful Archon's player). Zero is none.
@@ -636,12 +653,18 @@ func (f PreventionFollowUp) owes(o PreventionFollowUp) bool {
 	if f.Instance != o.Instance || (f.Instance == 0 && f.Batch != o.Batch) {
 		return false
 	}
+	// #2047: an announcement is owed beside its effect's follow-up, never
+	// merged into it.
+	if f.Announce != o.Announce {
+		return false
+	}
 	if f.Static || o.Static {
 		return f.Static && o.Static && f.Source == o.Source && f.Epoch == o.Epoch && f.Slot == o.Slot && f.Unit == o.Unit
 	}
 	// A scoped shield's Unit is zero unless its follow-up is per source
-	// (Mod.ThenPer, #2026).
-	return f.Seq == o.Seq && f.Unit == o.Unit
+	// (Mod.ThenPer, #2026), and its Slot is zero but on an announcement,
+	// where it is the mod.
+	return f.Seq == o.Seq && f.Slot == o.Slot && f.Unit == o.Unit
 }
 
 // newPreventionFollowUpLocked is an entry for one application to `ev`,
@@ -726,42 +749,30 @@ func (g *Game) queuePreventionFollowUpLocked(e ScopedEffect, m Mod, ev *Replacem
 // CR 510.2 — and nothing has died of it yet), and as play moves on to a
 // new event batch (beginEventBatchLocked), whichever comes first. A
 // follow-up's own damage can meet another shield with a follow-up, so the
-// flush repeats, bounded, until nothing is owed.
+// flush goes on, bounded, until nothing is owed.
+//
+// A follow-up that ASKS stops the flush (#2040, prevention_then_pause.go):
+// the rest stay owed until the answer, and the result reports the pause,
+// so the priority boundary returns without the state-based actions.
 //
 // Caller must hold g.mu (write).
-func (g *Game) flushPreventionFollowUpsLocked() {
-	for round := 0; round < 8 && len(g.preventionFollowUps) > 0; round++ {
-		pending := g.preventionFollowUps
-		g.preventionFollowUps = nil
-		for _, f := range pending {
-			g.runPreventionFollowUpLocked(f)
-		}
-	}
+func (g *Game) flushPreventionFollowUpsLocked() (paused bool) {
+	return g.runOwedFollowUpsLocked(func(PreventionFollowUp) bool { return true })
 }
 
 // flushPreventionFollowUpsForInstanceLocked runs the follow-ups owed for
 // one instance of damage, as it ends (CR 615.5: "immediately afterward"),
 // and leaves every other entry owed. A follow-up's own damage is a new
-// instance, which runs its own as it ends.
+// instance, which runs its own as it ends. Reports whether one of them
+// asked a question, or waits behind one (#2040): the instruction's
+// continuation then waits for the answer.
 //
 // Caller must hold g.mu (write).
-func (g *Game) flushPreventionFollowUpsForInstanceLocked(inst DamageInstance) {
-	due := func(f PreventionFollowUp) bool { return f.Instance == inst }
-	if inst == 0 || !slices.ContainsFunc(g.preventionFollowUps, due) {
-		return
+func (g *Game) flushPreventionFollowUpsForInstanceLocked(inst DamageInstance) (paused bool) {
+	if inst == 0 {
+		return false
 	}
-	var run, kept []PreventionFollowUp
-	for _, f := range g.preventionFollowUps {
-		if due(f) {
-			run = append(run, f)
-		} else {
-			kept = append(kept, f)
-		}
-	}
-	g.preventionFollowUps = kept
-	for _, f := range run {
-		g.runPreventionFollowUpLocked(f)
-	}
+	return g.runOwedFollowUpsLocked(func(f PreventionFollowUp) bool { return f.Instance == inst })
 }
 
 // runPreventionFollowUpLocked runs one follow-up body. It is the rest of
@@ -778,6 +789,11 @@ func (g *Game) flushPreventionFollowUpsForInstanceLocked(inst DamageInstance) {
 //
 // Caller must hold g.mu (write).
 func (g *Game) runPreventionFollowUpLocked(f PreventionFollowUp) {
+	if f.Announce {
+		// CR 615.13 (#2047): not a body, the event the triggers watch.
+		g.emitDamagePreventedLocked(f)
+		return
+	}
 	fn, ok := lookupBody(f.Body)
 	if !ok {
 		effectKeyFault(fmt.Sprintf("game: prevention follow-up body %q is not registered", f.Body))
@@ -854,6 +870,7 @@ func clonePreventionFollowUps(in []PreventionFollowUp) []PreventionFollowUp {
 	out := make([]PreventionFollowUp, len(in))
 	for i, f := range in {
 		f.SourceColors = copyStrings(f.SourceColors)
+		f.SourceTypes = copyStrings(f.SourceTypes)
 		out[i] = f
 	}
 	return out

@@ -812,7 +812,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// string as a free {0}. Every move this function builds pays the
 	// printed cost, so none of them is legal; the engine refuses the
 	// cast with ErrNoManaCost.
-	if game.HasNoManaCost(card) && offer == nil && (perm == nil || perm.Cost == "") {
+	if game.HasNoManaCost(card) && offer == nil && !perm.NamesPrice() {
 		return
 	}
 	optional := e.g.OptionalCostsForCastLocked(e.seat, card)
@@ -2235,6 +2235,24 @@ func (e *enumerator) legalStepSets(src game.TargetSource, steps []game.Announced
 	out := [][]game.TargetRef{nil}
 	for i := range steps {
 		clause := steps[i].Clause
+		// #2055: an "of an opponent's choice" clause is not the
+		// controller's to pick. The announcement names nothing for it
+		// (the engine asks an opponent), so it adds no refs; it only
+		// keeps the prefixes some opponent could still complete
+		// (CR 601.2c), which is the engine's own gate.
+		if game.StepChosenByOpponent(steps[i]) {
+			kept := make([][]game.TargetRef, 0, len(out))
+			for _, prefix := range out {
+				if e.g.OpponentStepFillableForEffect(src, steps, i, prefix) {
+					kept = append(kept, prefix)
+				}
+			}
+			if len(kept) == 0 {
+				return nil
+			}
+			out = kept
+			continue
+		}
 		lt := e.g.LegalTargetsForAnnouncedClauseForEffect(src, steps, i, nil)
 		picks := e.legalTargetSetsFrom(&clause, budget, lt)
 		if len(picks) == 0 {

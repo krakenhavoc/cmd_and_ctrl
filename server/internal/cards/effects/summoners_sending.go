@@ -54,7 +54,7 @@ func summonersSendingExile(g *game.Game, item *game.StackItem) error {
 		return ctx.Game.CreateTokensThenForEffect(game.TokenCreation{
 			Controller: controller,
 			Source:     ctx.Source(),
-			Groups:     []game.TokenGroup{{Template: TokenCard("1/1 white Spirit with flying"), Count: 1}},
+			Groups:     []game.TokenGroup{{Template: ctx.TextToken(TokenCard("1/1 white Spirit with flying")), Count: 1}},
 		}, func(g *game.Game, created []uuid.UUID) error {
 			if !big {
 				return nil
