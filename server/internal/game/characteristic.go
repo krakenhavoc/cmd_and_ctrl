@@ -280,6 +280,16 @@ type Characteristic struct {
 	// creature, never stored here.
 	AttackTargetRestrictions []AttackTargetRestriction `json:",omitempty"`
 
+	// DefenderWaivers are this creature's "can attack … as though it
+	// didn't have defender" (CR 702.3b, CR 609.4), each asked per target:
+	// Weathered Sentinels' "players who attacked you during their last
+	// turn", or Hightide Hermit's every target for a turn. ADR 0106's
+	// 2026-10-16 amendment (#1936), defender_waivers.go. The keyword
+	// stays: a waiver only answers whether defender stops one attack.
+	// Written by ordinary layer-6 statics and the ModWaiveDefender mod,
+	// only ever appended to.
+	DefenderWaivers []DefenderWaiver `json:",omitempty"`
+
 	// CantBeAttacked is "this permanent can't be attacked" (The
 	// Aetherspark, while it is attached to a creature): the target-keyed
 	// twin of AttackTargetRestrictions. Written by an ordinary layer
@@ -482,6 +492,7 @@ func (c Characteristic) clone() Characteristic {
 	out.BorrowedAbilities = append([]BorrowedAbility(nil), c.BorrowedAbilities...)
 	out.AttackRequirements = append([]AttackRequirement(nil), c.AttackRequirements...)
 	out.AttackTargetRestrictions = append([]AttackTargetRestriction(nil), c.AttackTargetRestrictions...)
+	out.DefenderWaivers = append([]DefenderWaiver(nil), c.DefenderWaivers...)
 	out.BlockRequirements = append([]BlockRequirement(nil), c.BlockRequirements...)
 	out.CantHave = append([]string(nil), c.CantHave...)
 	out.CostPower = append([]CostPowerRule(nil), c.CostPower...)

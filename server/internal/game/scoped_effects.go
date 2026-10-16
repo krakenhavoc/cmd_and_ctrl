@@ -187,6 +187,18 @@ const ModCantAttackPlayer ModKind = "cantAttackPlayer" // layer 6
 // 613.1f, dropSelfAttackTargetRestrictions) and an earlier one does not.
 const ModCantAttackOwner ModKind = "cantAttackOwner" // layer 6
 
+// ModWaiveDefender is "<affected> can attack this turn as though it
+// didn't have defender" from a resolved effect (Hightide Hermit, #1936,
+// CR 702.3b, CR 609.4): it appends an unconditional DefenderWaiver
+// attributed to the record's source. Reads nothing.
+//
+// Layer 6, in the record's timestamp slot. Unlike RemoveKeywordsMod it
+// leaves the keyword where it is, so the creature still counts as a
+// creature with defender; it only stops defender refusing its attacks
+// (defender_waivers.go). It is an effect, not an ability the creature
+// gains, so a "loses all abilities" does not take it.
+const ModWaiveDefender ModKind = "waiveDefender" // layer 6
+
 // ModSetBasicLandTypes is CR 305.7 from a resolved effect (ADR 0109 §1,
 // #1881): "target land becomes an Island until end of turn" (Tidal
 // Warrior), "becomes the basic land type of your choice" (Reef Shaman),
@@ -980,6 +992,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantAttackPlayer: {layer: Layer6Ability},
 	// ADR 0180: Elrond's granted "can't attack its owner".
 	ModCantAttackOwner: {layer: Layer6Ability},
+	// #1936: Hightide Hermit's "as though it didn't have defender".
+	ModWaiveDefender: {layer: Layer6Ability},
 	// ADR 0109 §1 (#1881): CR 305.7 from a resolved effect.
 	ModSetBasicLandTypes: {layer: Layer4Type, removes: true},
 	// ADR 0109 §2 (#1604): "loses all land types", Ultima's.
@@ -1327,6 +1341,12 @@ func CantAttackPlayerMod(player uuid.UUID) Mod {
 // from a resolved effect (ADR 0180 decision 6).
 func CantAttackOwnerMod() Mod {
 	return Mod{Kind: ModCantAttackOwner}
+}
+
+// WaiveDefenderMod is "can attack as though it didn't have defender"
+// from a resolved effect, for every target (#1936).
+func WaiveDefenderMod() Mod {
+	return Mod{Kind: ModWaiveDefender}
 }
 
 // defenderControlsModProblem is the registration and restore check for
@@ -2114,6 +2134,14 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 				r.Source, r.SourceName = src.InstanceID, src.Name
 			}
 			ch.AttackTargetRestrictions = append(ch.AttackTargetRestrictions, r)
+		}
+	case ModWaiveDefender:
+		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
+			w := DefenderWaiver{}
+			if src != nil {
+				w.Source, w.SourceName = src.InstanceID, src.Name
+			}
+			ch.DefenderWaivers = append(ch.DefenderWaivers, w)
 		}
 	case ModCantAttackOwner:
 		return func(ch *Characteristic, c *Card, _ *Game, _ *Card) {

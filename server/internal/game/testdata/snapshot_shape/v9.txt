@@ -1256,6 +1256,11 @@ lastKnownBattlefield{}.CostPower[].UseToughness	bool
 lastKnownBattlefield{}.CostPower[].Uses	number:uint8
 lastKnownBattlefield{}.DamageAsPositivePower	bool
 lastKnownBattlefield{}.DamageByToughness	bool
+lastKnownBattlefield{}.DefenderWaivers	array
+lastKnownBattlefield{}.DefenderWaivers[]	object
+lastKnownBattlefield{}.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
+lastKnownBattlefield{}.DefenderWaivers[].Source	custom(uuid.UUID)
+lastKnownBattlefield{}.DefenderWaivers[].SourceName	string
 lastKnownBattlefield{}.GrantedAbilities	array
 lastKnownBattlefield{}.GrantedAbilities[]	object
 lastKnownBattlefield{}.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -1391,6 +1396,11 @@ lastKnownPermanents{}[].characteristic.CostPower[].UseToughness	bool
 lastKnownPermanents{}[].characteristic.CostPower[].Uses	number:uint8
 lastKnownPermanents{}[].characteristic.DamageAsPositivePower	bool
 lastKnownPermanents{}[].characteristic.DamageByToughness	bool
+lastKnownPermanents{}[].characteristic.DefenderWaivers	array
+lastKnownPermanents{}[].characteristic.DefenderWaivers[]	object
+lastKnownPermanents{}[].characteristic.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
+lastKnownPermanents{}[].characteristic.DefenderWaivers[].Source	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.DefenderWaivers[].SourceName	string
 lastKnownPermanents{}[].characteristic.GrantedAbilities	array
 lastKnownPermanents{}[].characteristic.GrantedAbilities[]	object
 lastKnownPermanents{}[].characteristic.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -2957,6 +2967,11 @@ pendingChoices[].damageAssignment.SourceLKI.CostPower[].UseToughness	bool
 pendingChoices[].damageAssignment.SourceLKI.CostPower[].Uses	number:uint8
 pendingChoices[].damageAssignment.SourceLKI.DamageAsPositivePower	bool
 pendingChoices[].damageAssignment.SourceLKI.DamageByToughness	bool
+pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers	array
+pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[]	object
+pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[].OnlyPlayersWhoAttackedYou	bool
+pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[].Source	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.DefenderWaivers[].SourceName	string
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities	array
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[]	object
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Activator	custom(uuid.UUID)
