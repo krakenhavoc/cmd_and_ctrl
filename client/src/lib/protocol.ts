@@ -2817,6 +2817,8 @@ export interface AdditionalCostView {
   // min / max the clause's count; the picks ride cast_spell as
   // `teamwork_ids`. Fewer cards than `min` means the cost cannot be paid
   // right now. A creature that arrived this turn may pay: it is not {T}.
+  // #3961: min 0 (max every option) is "tap any number of untapped
+  // creatures you control" (Burn at the Stake); none is a legal payment.
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
   // #3175: a "you may exile any number of blue cards from your hand"
@@ -3709,6 +3711,9 @@ export interface TargetPurposeView {
   damage?: number;
   // #1944: the damage is the announced X; `damage` is then absent.
   damage_is_x?: boolean;
+  // #3961: the damage is this many times the number of creatures the
+  // cast's "tap any number" cost taps; `damage` is then absent.
+  damage_per_tapped?: number;
   // #3161: the spell puts the picked graveyard card onto the battlefield under its caster.
   reanimates?: boolean;
   // #2679: what the target's controller is given when it is removed.

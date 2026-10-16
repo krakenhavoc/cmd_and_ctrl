@@ -1390,7 +1390,9 @@ type AdditionalCostView struct {
 	// means it cannot be paid right now, which makes the spell uncastable
 	// (CR 118.3). Not a target list: a hexproof Vampire is on it, and so
 	// is one that came under the viewer's control this turn (the cost is
-	// not the {T} symbol, CR 302.6).
+	// not the {T} symbol, CR 302.6). "Tap any number of untapped
+	// creatures you control" (#3961, Burn at the Stake) ships min 0 and
+	// max the number of cards: none is a legal payment.
 	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
 	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
 	// ExileFromHandLabel / ExileFromHandOptions describe a "you may exile
@@ -12637,6 +12639,10 @@ func tapOthersCostOptions(g *game.Game, controller, sourceID uuid.UUID, tc *game
 			continue
 		}
 		out.Cards = append(out.Cards, id.String())
+	}
+	// #3961: "tap any number" is bounded by what could pay it, min 0.
+	if game.TapOthersAnyNumber(tc) {
+		out.Max = len(out.Cards)
 	}
 	return out
 }

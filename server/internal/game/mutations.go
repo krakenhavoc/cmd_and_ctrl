@@ -3360,6 +3360,9 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		// for the same reason (March of Swirling Mist's "{2} less for
 		// each card exiled this way").
 		ExilingFromHand: len(params.ExileFromHandIDs),
+		// #3961: and the announced tap count (Explosive Singularity's
+		// "{1} less for each creature tapped this way").
+		TappingToPay: len(params.TeamworkIDs),
 		// ADR 0135 §4, CR 702.119a: emerge's reduction, read off the
 		// permanent the claimed offer names while it is still on the
 		// battlefield.

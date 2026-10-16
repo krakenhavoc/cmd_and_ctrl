@@ -1282,10 +1282,14 @@ export function castExilePermanentCost(
 
 // ClaimedTapCost is the "tap an untapped Vampire you control" additional
 // cost this cast pays (#3868): the clause as printed, how many to tap and
-// which permanents could pay it.
+// which permanents could pay it. `min` is the fewest the cast may name:
+// the count for a fixed clause, 0 for "tap any number of untapped
+// creatures you control" (#3961, Burn at the Stake), whose `count` is
+// then every option.
 export interface ClaimedTapCost {
   label: string;
   count: number;
+  min: number;
   options: string[];
 }
 
@@ -1299,10 +1303,14 @@ export function castTapCost(
   const cost = castAdditionalCost(card, choices);
   const opts = cost?.tap_others_options;
   if (!cost || !opts) return undefined;
+  const options = opts.cards ?? [];
+  const min = opts.min ?? 1;
   return {
     label: cost.tap_others_label ?? "an untapped permanent you control",
-    count: opts.min ?? 1,
-    options: opts.cards ?? [],
+    // #3961: min 0 is "any number": up to every option.
+    count: min === 0 ? options.length : min,
+    min,
+    options,
   };
 }
 

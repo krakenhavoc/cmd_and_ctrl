@@ -1411,6 +1411,8 @@ func checkTapOthersClause(card, where string, tc *game.TapOthersCost, allowX boo
 			card, where, tc.Count))
 	}
 	switch {
+	case tc.AnyNumber:
+		panic(fmt.Sprintf("effects.Register: %q %s taps any number of permanents — only a spell's additional cost may (#3961)", card, where))
 	case tc.Filter.CountFromX && !allowX:
 		panic(fmt.Sprintf("effects.Register: %q %s taps X permanents but a mana ability has no X announcement", card, where))
 	case tc.Filter.CountFromX && tc.Count != 0:
