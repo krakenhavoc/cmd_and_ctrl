@@ -1070,11 +1070,15 @@ func (g *Game) stampStartingLoyaltyLocked(cardID uuid.UUID, oracleID string) {
 	}
 	// ADR 0183: the event is marked as the starting loyalty, so
 	// compleated (CR 702.150a) can tell it from any later placement.
+	//
+	// #3942, CR 122.6a: the loyalty counters a planeswalker enters with
+	// are put by its controller.
 	if err := g.placeCountersThroughReplacementsLocked(&ReplacementEvent{
 		Kind:            RepEventCounter,
 		CounterTarget:   cardID,
 		CounterName:     CounterLoyalty,
 		CounterDelta:    loyalty,
+		CounterPlacer:   card.Controller,
 		StartingLoyalty: true,
 	}); err != nil {
 		g.EmitEvent(Event{

@@ -623,6 +623,20 @@ func pickColorForPlanned(planned plannedTap, options []string, pending *[]ColorR
 	return options[0]
 }
 
+// favoredOnX is the colours a payment's X part should be paid with
+// first (#3941): the colours the spell being cast reads back, for a
+// cost that restricts the mana on X. A spell that reads "the {B} spent
+// on X" (Soul Burn) gets the most black on X the pool can give it,
+// which is the choice CR 601.2h leaves to the caster and the one that
+// reads best for the card. Nil for an ability's payment, which names
+// no wish, and for a spell that reads no colour.
+func (ctx ManaSpendContext) favoredOnX() []string {
+	if ctx.wish == nil {
+		return nil
+	}
+	return ctx.wish.colors
+}
+
 // wantsColorList normalises a declaration's colours to the uppercase
 // WUBRG alphabet, dropping anything else.
 func wantsColorList(in []string) []string {

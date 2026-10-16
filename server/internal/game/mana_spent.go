@@ -58,6 +58,27 @@ func (p PaidCost) Spent() ManaSpent {
 // instead of folding it into the weaker answer.
 func (m ManaSpent) Known() bool { return !m.unknown }
 
+// OnX is the part of this payment that paid for the {X} of the cost
+// (#3941, ADR 0068 amendment 2026-10-16): the same questions, asked of
+// the mana the solver matched to a "spend only <colours> mana on X"
+// requirement. Soul Burn's "the amount of {B} spent on X" is
+// OnX().Count("B"). Empty when the cost had no restricted X, which is
+// every cost but those: an unrestricted {X} is generic mana, which the
+// record does not tell from the rest.
+//
+// Unknown stays unknown, in the same direction as the whole view: a
+// waived payment's undeclared share is on paper and claims no colours,
+// so every count here is a lower bound, and a declared one is exact.
+func (m ManaSpent) OnX() ManaSpent {
+	var xs []ManaToken
+	for _, t := range m.tokens {
+		if t.ForX {
+			xs = append(xs, t)
+		}
+	}
+	return ManaSpent{tokens: xs, unknown: m.unknown}
+}
+
 // Tokens is the tokens themselves, copied, in the order the solver
 // spent them. Each is a RUN (#3041): read its amount with N. For an
 // unknown payment, the tokens the pool did pay (#3844) — nil when it

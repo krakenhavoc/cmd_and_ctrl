@@ -134,7 +134,11 @@ func corpusBoards() []corpusBoard {
 		{"mass_diminish", corpusMassDiminish},
 		// v7, added by tier 2 (#1497) as new files: delayed triggers as data.
 		{"earthbend", corpusEarthbend},
-		{"suspend_haste", corpusSuspendHaste},
+		// #3942: the board that wrote suspend_haste.json logged a counter
+		// placement with no placer, a history this engine no longer
+		// makes (every placement names who put the counters). The file
+		// stays and is still restored; the same board is a new file.
+		{"suspend_haste_counter_placer", corpusSuspendHaste},
 		// v7, added by the #1568 review as new files: params, condParams
 		// and a fired keyed item on disk.
 		{"queued_mana_drain", corpusQueuedManaDrain},
@@ -246,7 +250,11 @@ func corpusBoards() []corpusBoard {
 		// and their CR 613.7c timestamps (counterStampedAt), one older and
 		// one newer than a "loses all abilities" record on the same
 		// creature, so a restore keeps the order.
-		{"keyword_counters", corpusKeywordCounters},
+		// #3942: the board that wrote keyword_counters.json logged a counter
+		// placement with no placer, a history this engine no longer
+		// makes (every placement names who put the counters). The file
+		// stays and is still restored; the same board is a new file.
+		{"keyword_counters_counter_placer", corpusKeywordCounters},
 		// v7, added by ADR 0100 sub-PR 1 as a new file: a delved spell
 		// on the stack — PaidCost.Delved, the objects in exile, on disk.
 		{"delved_spell_on_stack", corpusDelvedSpellOnStack},
@@ -269,7 +277,11 @@ func corpusBoards() []corpusBoard {
 		// v7, added by ADR 0100 sub-PR 2 as a new file: the CR 607.2q
 		// delve link on a permanent (CastProvenance.Delved) and on a
 		// departed one's last-known information (PermanentInfo.Delved).
-		{"delve_linked_permanents", corpusDelveLinkedPermanents},
+		// #3942: the board that wrote delve_linked_permanents.json logged a counter
+		// placement with no placer, a history this engine no longer
+		// makes (every placement names who put the counters). The file
+		// stays and is still restored; the same board is a new file.
+		{"delve_linked_permanents_counter_placer", corpusDelveLinkedPermanents},
 		// v7, added by ADR 0106 PR 3 (#1806) as a new file: "can't be
 		// countered" as data — a turn grant and an unspent one-use
 		// promise on a seat (PlayerStatic.CantBeCountered), and a spell
@@ -392,7 +404,11 @@ func corpusBoards() []corpusBoard {
 		// Duration.Also) and a counter-held one (Minas Morgul's "for as
 		// long as that creature has a shadow counter on it",
 		// WhilePinnedHasCounter with its CounterKind).
-		{"durations", corpusDurations},
+		// #3942: the board that wrote durations.json logged a counter
+		// placement with no placer, a history this engine no longer
+		// makes (every placement names who put the counters). The file
+		// stays and is still restored; the same board is a new file.
+		{"durations_counter_placer", corpusDurations},
 		// v7, added by ADR 0109 PR 6 (#1899) as a new file: Narset
 		// Transcendent's −2 waiting — a delayed trigger naming the
 		// condition key cast/you-next-cast-from-hand and the body key
@@ -404,7 +420,11 @@ func corpusBoards() []corpusBoard {
 		// loseLandTypes kind, in Ultima, Origin of Oblivion's record
 		// (loses all land types and abilities and has "{T}: Add {C}"
 		// for as long as the land has a blight counter on it).
-		{"lose_land_types", corpusLoseLandTypes},
+		// #3942: the board that wrote lose_land_types.json logged a counter
+		// placement with no placer, a history this engine no longer
+		// makes (every placement names who put the counters). The file
+		// stays and is still restored; the same board is a new file.
+		{"lose_land_types_counter_placer", corpusLoseLandTypes},
 		// v7, added by ADR 0109 PR 4 (#1604) as a new file: a granted
 		// loyalty ability on the stack, named by its grant ref and
 		// carrying its grantor (Teferi's Talent's −12, stackMeta's
@@ -416,7 +436,12 @@ func corpusBoards() []corpusBoard {
 		// "when you next cast an artifact spell" delayed trigger, and a
 		// Dragon that kept the haste-until-end-of-turn its spell was given
 		// (a record re-pinned to the permanent with its duration).
-		{"granted_mana_spent_readers", corpusGrantedManaSpentReaders},
+		// #3939: the board that wrote granted_mana_spent_readers.json
+		// produced a multi-mana ability slot by slot, one production id
+		// per slot; an activation is one production now, so the ids
+		// minted after it moved. The file stays and is still restored;
+		// the same board is a new file.
+		{"granted_mana_spent_readers_one_production", corpusGrantedManaSpentReaders},
 		// v7, added by ADR 0108 PR 8 (#1906) as a new file: the scoped
 		// shields' CR 615.5 follow-ups (owner decision 2) as data — Test
 		// of Faith's charged shield with its Then, partly spent; Vengeful
@@ -508,7 +533,11 @@ func corpusBoards() []corpusBoard {
 		// window ended (duration.Ended) and the second's open, both
 		// UntilSourceExilesAnother naming the Amulet object
 		// (duration.Source, duration.SourceEpoch).
-		{"until_you_exile_another", corpusUntilYouExileAnother},
+		// #3942: the board that wrote until_you_exile_another.json logged a counter
+		// placement with no placer, a history this engine no longer
+		// makes (every placement names who put the counters). The file
+		// stays and is still restored; the same board is a new file.
+		{"until_you_exile_another_counter_placer", corpusUntilYouExileAnother},
 		// v8, added by ADR 0172 (#3401) as a new file: a companion
 		// waiting outside the game (seats[].companion) for seat 0, and
 		// seat 1's companion already taken into its hand

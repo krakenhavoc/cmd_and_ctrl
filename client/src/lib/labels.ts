@@ -570,6 +570,13 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}PaperPaymentModal.svelte`],
     doc: "the paper payment picker (#3855): what a waived payment something reads paid outside the pool",
   }),
+  paperSlotOnX: label({
+    name: "on X",
+    kind: "text",
+    role: "generic",
+    owners: [`${BOARD}PaperPaymentModal.svelte`],
+    doc: "the paper payment picker's tag on a slot of the cost's {X} part, the mana a spend-only-on-X clause restricts (#3941)",
+  }),
   castFree: label({
     name: "Cast without paying its mana cost",
     kind: "text",
