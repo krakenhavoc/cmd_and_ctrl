@@ -208,8 +208,9 @@ func TestB18WoodedBastionFiltersHybridIntoTwoPicks(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, bastion, 1, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
+	// #3939: one choice, asked once per pick.
 	picks := 0
-	for _, c := range g.PendingChoices {
+	for c := riderLatestManaPick(g, me.ID); c != nil && picks < 8; c = riderLatestManaPick(g, me.ID) {
 		if c != nil && c.Kind == game.PendingChoiceMana && c.Chooser == me.ID {
 			picks++
 			if err := g.ResolveManaChoice(c.ID, me.ID, "W"); err != nil {

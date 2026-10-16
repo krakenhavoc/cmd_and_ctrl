@@ -35,6 +35,14 @@ import (
 //	addManaSlotsLocked       a spell's "Add {B}{B}{B}" (Dark Ritual)
 //	                         and #763's triggered mana abilities
 //
+// Since #3939 a mana ability's WHOLE output is one production (CR
+// 106.12b: the event "while such an ability is resolving and producing
+// mana"): ActivateManaAbility and the executor produce every slot of one
+// activation in one call, and an activation with colours to pick asks
+// them one at a time on one choice and produces the lot on the last
+// answer (PendingChoice.ManaSettled / ManaPicksLeft). That is what lets
+// Damping Sphere count "two or more mana".
+//
 // All four reach produceManaLocked, which is the only place in the
 // engine that mints a ManaToken and emits EventManaAdded. A slot whose
 // colour is NOT yet known — a pipe waiting on a pick — does not open a
@@ -151,14 +159,50 @@ func (g *Game) produceManaLocked(
 		g.EmitEvent(Event{Kind: EventManaAdded, Actor: p.ID, Source: source, Colors: []string{color}})
 	}
 	if pending != nil {
-		// Only the surplus: see the doc comment. Taken off the tail
-		// because a multiplication repeats each entry in place, so the
-		// tail is exactly the mana the caller did not book.
-		for i := len(colors); i < len(produced); i++ {
-			bookColorRequirement(produced[i], pending)
-		}
+		// Only the surplus: see the doc comment. Counted per colour,
+		// not taken off the tail: a multiplication repeats each entry in
+		// place, so a doubled {W}{U} is {W}{W}{U}{U}, whose tail is not
+		// the surplus (#3939).
+		bookProduced(colors, nil, produced, pending)
 	}
 	return produced
+}
+
+// bookProduced books against the auto-tapper's ledger what a production
+// actually added (#3939). `asked` is the mana the caller asked the window
+// for, `booked` the part of it the caller means to book (mana that funds
+// a Costed entry's own cost books nothing, #2455), and `produced` what
+// the window settled on.
+//
+// Each booked colour is booked if it arrived; a colour the window took
+// away (Damping Sphere turning {W}{U} into {C}) is not. Then whatever
+// arrived beyond what was asked — a doubler's surplus, the {C} a Sphere
+// substituted — is booked too, colour by colour.
+func bookProduced(asked, booked, produced []string, pending *[]ColorRequirement) {
+	if pending == nil {
+		return
+	}
+	arrived := make(map[string]int, len(produced))
+	for _, c := range produced {
+		arrived[c]++
+	}
+	for _, c := range booked {
+		if arrived[c] > 0 {
+			arrived[c]--
+			bookColorRequirement(c, pending)
+		}
+	}
+	unasked := make(map[string]int, len(asked))
+	for _, c := range asked {
+		unasked[c]++
+	}
+	for _, c := range produced {
+		if unasked[c] > 0 {
+			unasked[c]--
+			continue
+		}
+		bookColorRequirement(c, pending)
+	}
 }
 
 // replaceProducedManaLocked runs the CR 614 window on one production
@@ -352,6 +396,9 @@ func (g *Game) priceProducedSlotsLocked(
 	slots []ProducedManaEntry,
 	fromTap bool,
 ) []ProducedManaEntry {
+	if whole, ok := g.priceWholeOutputLocked(playerID, cardID, slots, fromTap); ok {
+		return whole
+	}
 	out := make([]ProducedManaEntry, 0, len(slots))
 	changed := false
 	for _, slot := range slots {
@@ -405,6 +452,93 @@ func (g *Game) priceProducedSlotsLocked(
 		return slots
 	}
 	return out
+}
+
+// priceWholeOutputLocked prices a source of two or more slots as the
+// ONE production its activation is (#3939, CR 106.12b), for a
+// replacement that reads the whole output rather than each mana:
+// Damping Sphere's "if a land is tapped for two or more mana, it
+// produces {C} instead". Pricing slot by slot, Ancient Tomb's two {C}
+// slots are one mana each and the Sphere never applies, so the planner
+// would count on two mana from a land that makes one.
+//
+// It previews the whole output, a representative colour standing in for
+// each pick (its first option), against the same output previewed slot
+// by slot. When the two agree, which is every board with no such
+// replacement (a doubler is per mana, so it agrees), it reports false and
+// the per-slot pricing below runs as it always has. When they disagree:
+//
+//   - a source whose every slot is a fixed colour becomes one fixed slot
+//     per mana the whole preview settled on (Ancient Tomb under a Sphere
+//     is one {C} slot);
+//   - a source with a pick is declined (nil), the weaker direction and
+//     #2558's posture: the planner's grammar cannot say "two picks that
+//     become one {C}", so the player taps it by hand and the real window
+//     applies.
+//
+// Caller must hold g.mu (a read lock is enough).
+func (g *Game) priceWholeOutputLocked(
+	playerID, cardID uuid.UUID,
+	slots []ProducedManaEntry,
+	fromTap bool,
+) ([]ProducedManaEntry, bool) {
+	if len(slots) < 2 {
+		return nil, false
+	}
+	var whole, perSlot []string
+	fixed := true
+	for _, slot := range slots {
+		if len(slot.Options) == 0 {
+			continue
+		}
+		var mana []string
+		if slot.DifferentColors() {
+			n := slot.DistinctCount(slot.Options)
+			if n > len(slot.Options) {
+				n = len(slot.Options)
+			}
+			mana = append(mana, slot.Options[:n]...)
+			fixed = false
+		} else {
+			if len(slot.Options) != 1 {
+				fixed = false
+			}
+			mana = repeatColor(slot.Options[0], slot.AmountFor(slot.Options[0]))
+		}
+		whole = append(whole, mana...)
+		perSlot = append(perSlot, g.producedManaPreviewLocked(playerID, cardID, mana, fromTap)...)
+	}
+	settled := g.producedManaPreviewLocked(playerID, cardID, whole, fromTap)
+	if sameManaMultiset(settled, perSlot) {
+		return nil, false
+	}
+	if !fixed {
+		return nil, true
+	}
+	out := make([]ProducedManaEntry, 0, len(settled))
+	for _, c := range settled {
+		out = append(out, ProducedManaEntry{Options: []string{c}})
+	}
+	return out, true
+}
+
+// sameManaMultiset reports whether a and b hold the same mana, in any
+// order.
+func sameManaMultiset(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	n := make(map[string]int, len(a))
+	for _, c := range a {
+		n[c]++
+	}
+	for _, c := range b {
+		n[c]--
+		if n[c] < 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // firstSlotOffering is the index of the first MULTI-OPTION slot that

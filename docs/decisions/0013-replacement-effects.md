@@ -4798,3 +4798,52 @@ anywhere, instead exile it with a void counter on it" is
   fails (no counter on a milled card). Delete the call in
   `executeBattlefieldLeaveLocked`: `TestDauthiVoidwalkerExilesADyingOpponentCreature`
   fails.
+
+## Amendment 2026-10-16 — a mana ability's production is one event (#3939)
+
+§5ab Decision 1 opened the production window once per mana SLOT, so
+Ancient Tomb's `{C}{C}` was two events of one mana each. CR 106.12b says
+the replacement modifies "the mana production event while such an ability
+is resolving and producing mana", which is the ability's whole output, and
+Damping Sphere's "if a land is tapped for two or more mana, it produces {C}
+instead of any other type and amount" can only be answered against it.
+
+- **One window per activation.** `ActivateManaAbility` collects every colour
+  it knows (fixed slots, colours named up front) and produces them in one
+  `produceManaLocked` call. When the activation also has colours to pick,
+  nothing reaches the pool yet. One `PendingChoiceMana` is asked once per
+  pick, carrying the known colours in `ManaSettled` and the picks still owed
+  in `ManaPicksLeft` (a `ManaPickSlot` each). Every answer but the last
+  rewrites the choice in place with a fresh ID, the way #2558's
+  different-colours pick does. The last produces everything in one window
+  and fires the triggered mana abilities once, so a filter land is one tap
+  for Mana Flare too. Both fields are additive snapshot data inside v9.
+- **The auto-tap executor** produces each source's whole output in one call
+  too. It books the ledger from what arrived (`bookProduced`): each colour
+  it meant to book is booked if it arrived, and anything that arrived beyond
+  what it asked for is booked as surplus. `produceManaLocked`'s own surplus
+  booking counts per colour, not off the tail. `MultiplyMana` repeats each
+  mana in place, so the tail of a doubled `{W}{U}` is not its surplus.
+- **The planner** (`priceWholeOutputLocked`) previews a source of two or more
+  slots as one production, beside the per-slot preview. When they agree,
+  which is every board without a whole-output replacement (a doubler is per
+  mana), nothing changes. When they disagree, a source of fixed slots is
+  priced as the whole preview (Ancient Tomb under a Sphere is one `{C}`
+  slot). A source with a pick is declined, the #2558 posture, and the player
+  taps it by hand.
+- **Order** stays §5ab Decision 2's: a production cannot pause, so the
+  gathered order applies. "Two or more" is read off the event as it stands,
+  so Mana Reflection doubling a Forest's `{G}` makes the Sphere apply to the
+  `{G}{G}`. This is the CR 616.1e re-check after each replacement.
+
+- **Snapshots.** `manaSettled` and `manaPicksLeft` are recorded in the v9
+  shape as additive fields. A file written before them has no grouped pick
+  to resume. A binary from before them restoring a newer file mid-pick drops
+  the colours the activation had settled, and loses that one activation's
+  mana, not the game. One corpus board,
+  `granted_mana_spent_readers`, minted one production id per slot, so the
+  ids after it moved. Its v9 fixture stays as written, and the same board is
+  a new file (`granted_mana_spent_readers_one_production`, the #2494
+  precedent).
+
+Damping Sphere ships `full`.

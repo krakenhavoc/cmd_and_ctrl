@@ -450,14 +450,14 @@ func TestB11ExemplarOfLightDoesNotDrawForAnOpponentsCounterOrARemoval(t *testing
 	me, opp := g.Seats[0], g.Seats[1]
 	exemplar := b11Push(g, me.ID, "Exemplar of Light", "Creature — Angel", b11ExemplarOfLightOracle, 3, 3)
 
-	// The opponent resolves something, then a counter lands on the
-	// Exemplar: that is their placement, not yours.
-	batch01OpponentCasts(t, g, opp, "Lightning Bolt", lightningBoltOracle, "",
-		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
-	passPriorityAroundTable(t, g)
+	// The opponent puts a counter on the Exemplar: that is their
+	// placement, not yours. (This used to be staged as "the opponent
+	// resolves something, then an unattributed counter lands", which
+	// credited the opponent only because the old reading took the last
+	// resolver in the log, long after that resolution had ended, #3942.)
 	before := me.Hand.Size()
-	if err := g.AddCounter(exemplar, "+1/+1", 1); err != nil {
-		t.Fatalf("AddCounter: %v", err)
+	if err := g.AddCounterBy(opp.ID, exemplar, "+1/+1", 1); err != nil {
+		t.Fatalf("AddCounterBy: %v", err)
 	}
 	passPriorityAroundTable(t, g)
 	if got := me.Hand.Size(); got != before {
