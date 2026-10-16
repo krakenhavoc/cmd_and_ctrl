@@ -31,12 +31,17 @@ import (
 // picks up is paid with mana (CR 701.67b). A spell with {X} in its cost
 // is cast with X 0 (CR 107.3b).
 //
-// No simplification.
+// SIMPLIFICATION (weaker than printed): the engine carries one tap cost
+// per cast, so under this permission the waterbend replaces any convoke
+// or improvise the spell would otherwise have.
 func init() {
 	Register(Spec{
 		OracleID:     "ef80e174-78e8-412d-a6fe-89c7af746669",
 		Name:         "Hama, the Bloodbender",
-		Completeness: CompletenessFull,
+		Completeness: CompletenessCaveats,
+		Caveats: []string{
+			"A spell cast this way can't also use convoke or improvise.",
+		},
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				WhenThisEnters("Hama — target opponent mills three cards; exile up to one noncreature, nonland card from their graveyard", hamaEnters),

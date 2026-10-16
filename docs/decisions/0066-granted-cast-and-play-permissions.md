@@ -4091,7 +4091,7 @@ Additive within v9, omitted when false: `seats[].castPermissions[].waterbendMana
 permission. A binary from before it drops the key and reads Hama's permission as a cast at the printed mana cost, which is
 only for a table restored across the upgrade while Hama's card is still in exile.
 
-**Card.** Hama, the Bloodbender (Full).
+**Card.** Hama, the Bloodbender, declared with a caveat: "A spell cast this way can't also use convoke or improvise." (the one-tap-cost limit above).
 
 **Tests.** `hama_the_bloodbender_test.go` (effects): the mill and the noncreature, nonland pick; the permission ends when Hama
 leaves; the cast paid by three taps, by {3} of colourless mana, by two taps and {1}; four taps refused; not on an opponent's
