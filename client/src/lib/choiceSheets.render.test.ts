@@ -294,6 +294,28 @@ describe("a card grid is a sheet", () => {
     ]);
   });
 
+  it("search: a search the viewer answers for another player names whose it is (#3998)", () => {
+    // Opposition Agent: the searcher's prompt arrives addressed to the
+    // controller, on the searcher's behalf.
+    const opts = [card("a", "Bear")];
+    const { sent } = mount(
+      snap({
+        kind: "search_library",
+        reason: "Demonic Tutor — a card",
+        on_behalf_of: "them",
+        search_max: 1,
+        search_min: 1,
+        options: opts,
+      }),
+    );
+    expectSheet("Demonic Tutor — a card (choosing for Them)");
+    // A lone match opens taken (#3053).
+    keyFromBody("Enter");
+    expect(sent).toEqual([
+      { type: "resolve_choice", params: { choice_id: "choice-1", card_ids: ["a"] } },
+    ]);
+  });
+
   it("search: library and graveyard copies of one name are two tiles, the graveyard one marked (#3217)", () => {
     const { sent } = mount(
       snap({

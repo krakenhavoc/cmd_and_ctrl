@@ -222,6 +222,7 @@ func buildDef(spec Spec) *game.CardDef {
 		ActivateAsThoughHaste:               spec.ActivateAsThoughHaste,
 		ExtraVote:                           spec.ExtraVote,
 		OpponentsFaceVillainousChoicesAgain: spec.OpponentsFaceVillainousChoicesAgain,
+		ControlsOpponentsSearches:           spec.ControlsOpponentsSearches,
 		DamageCantBePrevented:               spec.DamageCantBePrevented,
 		CantGainLife:                        spec.CantGainLife,
 		DrawLimits:                          spec.DrawLimits,

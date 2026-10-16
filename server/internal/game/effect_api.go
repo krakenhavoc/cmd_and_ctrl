@@ -2589,6 +2589,12 @@ type SearchLibrarySpec struct {
 	// carries into the finish, when every card taken came out of the
 	// graveyard. Never set by a card.
 	libraryUntouched bool
+
+	// exileFoundFor is set by executeSearchTakeLocked, on the copy it
+	// carries into the finish, when Opposition Agent's "they exile each
+	// card they find" applies (#3998, search_control.go): the player the
+	// exiled cards are granted to. Never set by a card.
+	exileFoundFor uuid.UUID
 }
 
 // statedQuality reports whether the search names something the card
@@ -2863,7 +2869,7 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 	if reason == "" {
 		reason = "Search your library"
 	}
-	g.QueueChoiceForEffect(PendingChoice{
+	id := g.QueueChoiceForEffect(PendingChoice{
 		Kind:        PendingChoiceSearchLibrary,
 		Chooser:     spec.Player,
 		FromPlayer:  spec.Player,
@@ -2878,6 +2884,12 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 		SearchGraveyardCards: append([]uuid.UUID(nil), gyMatches...),
 		searchResume:         &searchResumeFrame{spec: spec},
 	})
+	// #3998: "You control your opponents while they're searching their
+	// libraries" — for as long as this prompt is open. Only a search of
+	// the searcher's own library is "searching their library".
+	if spec.libraryOwnerID() == spec.Player {
+		g.beginSearchControlsLocked(spec.Player, id)
+	}
 }
 
 // executeSearchTakeLocked moves the chosen cards out of the library
@@ -2892,6 +2904,20 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 //
 // Caller must hold g.mu.
 func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []uuid.UUID) error {
+	// #3998: "While an opponent is searching their library, they exile
+	// each card they find" (Opposition Agent). A replacement of the
+	// destination, whatever it was (hand, battlefield, top of the
+	// library, graveyard): the cards go to exile face up through the
+	// same exit route, and finishSearchLocked grants them to the
+	// Agent's controller. Decided here, as the cards are found, not when
+	// the prompt opened.
+	if spec.exileFoundFor == uuid.Nil && spec.libraryOwnerID() == spec.Player && len(ids) > 0 {
+		if holder := g.searchExileHolderLocked(spec.Player); holder != uuid.Nil {
+			spec.exileFoundFor = holder
+			spec.Dest = ZoneExile
+			spec.FaceDown = FaceDownNone
+		}
+	}
 	// #3217: a take that came wholly out of the graveyard never looked
 	// in the library, so it is not "searched" — no shuffle, no
 	// EventSearchLibrary (finishSearchLocked). A take of nothing, or of
@@ -3140,13 +3166,22 @@ func (g *Game) revealLibraryCardsLocked(spec SearchLibrarySpec, p *Player, ids [
 // finishSearchLocked emits EventSearchLibrary, shuffles if the card
 // said to, and runs the continuation. Caller must hold g.mu.
 func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uuid.UUID) error {
+	// #3998: the cards Opposition Agent's static exiled are its
+	// controller's to play, and are not where the effect put them, so
+	// the effect's own continuation finds none of them (the reading
+	// every "exile it instead" gets).
+	thenFound := found
+	if spec.exileFoundFor != uuid.Nil {
+		g.grantImpulseExilePermissionLocked(SearchExilePermission(), spec.exileFoundFor, found)
+		thenFound = nil
+	}
 	if spec.libraryUntouched {
 		// #3217: the whole take came out of the graveyard, so the
 		// library was not searched: no EventSearchLibrary (an
 		// Archivist of Oghma must not fire), no shuffle. The
 		// instruction after the search still happens.
 		if spec.Then != nil {
-			return spec.Then(g, found)
+			return spec.Then(g, thenFound)
 		}
 		return nil
 	}
@@ -3201,7 +3236,7 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 		}
 	}
 	if spec.Then != nil {
-		return spec.Then(g, found)
+		return spec.Then(g, thenFound)
 	}
 	return nil
 }
