@@ -344,6 +344,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0066 amendment 2026-10-10 (#2559): the hand ban, read by
 		// both gates. Its cases are in hand_play_ban_test.go.
 		ModCantPlayFromHand: true,
+		// ADR 0066 amendment 2026-10-16 (#1987): the own-graveyard ban,
+		// read by both gates. Its cases are in graveyard_play_ban_test.go.
+		ModCantPlayFromOwnGraveyard: true,
 		// ADR 0096 amendment (#2039): the monarch gate. Its cases are in
 		// monarch_test.go and jared_carthalion_test.go.
 		ModCantBecomeMonarch: true,

@@ -342,6 +342,20 @@ const (
 	// an older binary refuses the file instead of banning nothing.
 	// Reads Player.
 	ModCantPlayFromHand ModKind = "cantPlayFromHand"
+	// ModCantPlayFromOwnGraveyard is "<player> can't play lands or cast
+	// spells from their graveyard" this turn (ADR 0066 amendment
+	// 2026-10-16, #1987; CR 101.2): the first sentence of Shaman's
+	// Trance, "Other players can't play lands or cast spells from their
+	// graveyards this turn." A play out of the player's OWN graveyard
+	// only: a card they may cast from another player's graveyard is not
+	// in "their graveyard", and nothing out of any other zone is touched.
+	// Scope ScopeGame with Player set to the one banned player (never
+	// zero: "other players" is a list, one mod each). Read by
+	// graveyardPlayBanLocked, which both CastGateLocked and
+	// LandPlayGateLocked ask. A ScopedEffect for ModCantPlayLands'
+	// reason: an older binary refuses the file instead of banning
+	// nothing. Reads Player.
+	ModCantPlayFromOwnGraveyard ModKind = "cantPlayFromOwnGraveyard"
 	// ModCantBecomeMonarch is "<player> can't become the monarch this
 	// turn" (ADR 0096 amendment 2026-10-08, #2039; CR 725): Jared
 	// Carthalion's "You can't become the monarch this turn". Scope
@@ -1035,6 +1049,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// ADR 0066 amendment 2026-10-10 (#2559): the hand ban, read by
 	// both the cast gate and the land-play gate.
 	ModCantPlayFromHand: {reader: readerRule},
+	// ADR 0066 amendment 2026-10-16 (#1987): the own-graveyard ban,
+	// read by both gates.
+	ModCantPlayFromOwnGraveyard: {reader: readerRule},
 	// ADR 0096 amendment (#2039): the monarch gate.
 	ModCantBecomeMonarch: {reader: readerRule},
 	// ADR 0032 amendment (#3515): the turn-limited legend-rule exemption.
