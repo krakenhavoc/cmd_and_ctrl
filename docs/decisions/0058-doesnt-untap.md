@@ -1082,3 +1082,69 @@ out of ADR 0103 PR 4 rather than ship weaker than printed. The seam row
   directly and are not routed through the lock. No card locks loyalty or any
   other kind today; the lock is the place to add it when one does.
 - Proof card: **Fear of Sleep Paralysis** (`Full`).
+
+## Amendment (2026-10-16, #3995): the player-wide "next untap step"
+
+Decision 2's two keyings both sit on a permanent, so both freeze a set:
+"those creatures don't untap during their controller's next untap step"
+(Sleep, Frost Breath) names the creatures the spell tapped. The
+player-keyed row of the census table also holds a second shape that names
+no permanent at all: "Lands target player controls don't untap during
+their next untap step" (Mana Vapors), "Creatures target player controls
+…" (Misstep), "Creatures and lands target opponent controls …"
+(Exhaustion), the Amonkhet Last cycle's "Lands you control don't untap
+during your next untap step", Icebreaker Kraken's "artifacts and
+creatures target opponent controls …", and Blinding Beam's bare
+"Creatures don't untap during target player's next untap step". Writing
+a marker on each permanent at resolution would miss a land played, or a
+creature cast or stolen, before that step. Such an effect changes no
+characteristic and no controller, so CR 611.2c does not lock its set: it
+is a rule read at the step.
+
+- **A record, not a marker.** `Game.SkipNextUntapStepForPlayerForEffect`
+  writes one `ScopedEffect` (`ScopeGame`, `IndefiniteDuration`) with a
+  `ModSkipNextUntapStep` mod (`readerRule`): `Player` is whose untap step,
+  `Types` the lowercase permanent types it covers (any of them), and
+  `AnyController` whether it covers every permanent of those types that
+  would untap in that step rather than only the ones `Player` controls.
+  A registry record rather than a field on the player, for ADR 0188
+  Decision 11's reason: a binary that does not know the kind refuses the
+  restore point (`ErrUnknownEffectKey`) instead of untapping what the
+  card held. Registration panics, and restore refuses, a mod naming no
+  player or no permanent type; `AnyController` on another kind is
+  refused too.
+- **Read where the marker is read.** `untapStepSetLocked` asks
+  `playerUntapSkippedLocked` beside `untapSkippedForLocked`, on fresh
+  layers, in both branches: for the active player's own permanents, and
+  for another player's permanent a permission would untap. "Creatures"
+  is whatever is a creature as the step asks.
+- **Used up where the marker is used up.** `performUntapStepLocked`
+  drops every record keyed to the active player right after
+  `consumeUntapSkipsLocked`, before anything untaps. So everything
+  Decision 2 says about the marker holds: a skipped untap step (Stasis)
+  uses nothing up (CR 614.10a), an extra turn's untap step is that
+  player's next one, and a record for a player who has left is never
+  used and has no effect. Two such records for the same step are both
+  used up by it.
+- **Blinding Beam's "Creatures".** The printed text names no controller.
+  Only the active player's permanents untap by CR 502.3, so the
+  difference shows only under a permission: a Seedborn Muse's creatures
+  would untap in the target player's step and stay tapped instead. The
+  card sets `AnyController`; every other card in the family says "<types>
+  target player controls" or "you control" and does not.
+- **The wire and the bots.** Decision 4's `no_untap.next` badge is
+  projected for each permanent a record covers and its named player
+  controls (`Game.PlayerUntapSkipsCoveringLocked`). Another player's
+  creature under Blinding Beam gets no badge: it untaps in its own
+  controller's step, so the badge would name a step it sits out anyway.
+  The heuristic already reads `no_untap.next`, so the bots need nothing
+  new.
+- **Effects side.** `effects.PermanentsDontUntapNextStep{Player, Types,
+  AnyController, Label}`, and `effects.LandsYouControlDontUntapNextStep`
+  for the Last cycle.
+- **Cards** (all Full): Blinding Beam, Mana Vapors, Misstep, Exhaustion,
+  Bontu's Last Reckoning, Rhonas's Last Stand, Oketra's Last Mercy,
+  Kefnet's Last Word and Icebreaker Kraken. Hazoret's Undying Fury prints
+  the same lands clause and waits on its other one, "you may cast any
+  number of spells with mana value 5 or less from among them without
+  paying their mana costs" (#4021).

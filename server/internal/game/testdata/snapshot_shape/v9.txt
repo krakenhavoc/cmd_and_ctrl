@@ -960,6 +960,7 @@ extraTurns[].effects[].mods	array
 extraTurns[].effects[].mods[]	object
 extraTurns[].effects[].mods[].amount	number:int
 extraTurns[].effects[].mods[].andDealtBy	bool
+extraTurns[].effects[].mods[].anyController	bool
 extraTurns[].effects[].mods[].borrows	array
 extraTurns[].effects[].mods[].borrows[]	object
 extraTurns[].effects[].mods[].borrows[].color	string
@@ -3794,6 +3795,7 @@ scopedEffects[].mods	array
 scopedEffects[].mods[]	object
 scopedEffects[].mods[].amount	number:int
 scopedEffects[].mods[].andDealtBy	bool
+scopedEffects[].mods[].anyController	bool
 scopedEffects[].mods[].borrows	array
 scopedEffects[].mods[].borrows[]	object
 scopedEffects[].mods[].borrows[].color	string
