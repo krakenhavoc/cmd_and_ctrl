@@ -49,7 +49,7 @@ func init() {
 		Replacements: []game.ReplacementEffect{
 			preventCombatDamageToYourAttackers(
 				"Goldbug, Humanity's Ally: prevent all combat damage that would be dealt to attacking Humans you control",
-				func(c game.Card) bool { return c.HasSubtype("Human") }),
+				func(c game.Card) bool { return c.HasSubtypeWord("Human") }),
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, YouCastYourSecondSpellEachTurn,
@@ -81,10 +81,12 @@ func goldbugAndAHumanAttack(ev game.Event, source *game.Card, ch game.Characteri
 	if !ThisAttacked(ev, source, ch, g) || g.Battlefield == nil {
 		return false
 	}
+	// "Human" is a word of the source's text (CR 612.2, #3984).
+	human := source.TextSubtype("Human")
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.InstanceID != source.InstanceID && c.Controller == source.Controller &&
-			c.AttackingTarget != uuid.Nil && c.IsCreature() && c.HasSubtype("Human") {
+			c.AttackingTarget != uuid.Nil && c.IsCreature() && c.HasSubtype(human) {
 			return true
 		}
 	}
@@ -95,7 +97,9 @@ func goldbugAndAHumanAttack(ev game.Event, source *game.Card, ch game.Characteri
 // would be dealt to attacking <kind> you control" (Goldbug, Humanity's
 // Ally): a CR 615 prevention over combat damage events, read off the
 // board while its source is on the battlefield. `kind` judges the
-// attacking creature.
+// attacking creature, lent the source's text so a kind that names a
+// word through HasSubtypeWord reads it as that text now says it
+// (CR 612.2, #3984).
 func preventCombatDamageToYourAttackers(label string, kind func(game.Card) bool) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches:    []game.EventKind{game.EventDealDamage},
@@ -106,7 +110,7 @@ func preventCombatDamageToYourAttackers(label string, kind func(game.Card) bool)
 			}
 			c, ok := g.LookupCardForEffect(ev.DamageTarget)
 			return ok && c.Controller == src.Controller && c.AttackingTarget != uuid.Nil &&
-				c.IsCreature() && kind(c)
+				c.IsCreature() && kind(game.ThroughTextOf(src, c))
 		},
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 			ev.Cancel()

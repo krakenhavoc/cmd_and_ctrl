@@ -89,12 +89,16 @@ func init() {
 					// Idempotent, and appended rather than
 					// prepended so a printed land type keeps its
 					// slot in the derived ability list.
+					// "Swamp" is a word of the source's text (CR 612.2,
+					// #3984): Urborg under a Magical Hack makes each land
+					// an Island.
+					swamp := source.TextSubtype("Swamp")
 					for _, st := range c.Subtypes {
-						if st == "Swamp" {
+						if st == swamp {
 							return
 						}
 					}
-					c.Subtypes = append(c.Subtypes, "Swamp")
+					c.Subtypes = append(c.Subtypes, swamp)
 				},
 			},
 		},

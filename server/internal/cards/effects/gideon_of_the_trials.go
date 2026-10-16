@@ -103,7 +103,7 @@ func gideonOfTheTrialsAnimate(g *game.Game, item *game.StackItem) error {
 		Target: self,
 		Mods: []game.Mod{
 			game.AddTypesMod("Creature"),
-			game.AddSubtypesMod("Human", "Soldier"),
+			game.AddSubtypesMod(ctx.TextSubtypes("Human", "Soldier")...),
 			game.SetBasePowerMod(4),
 			game.SetBaseToughnessMod(4),
 			game.AddKeywordsMod("indestructible"),

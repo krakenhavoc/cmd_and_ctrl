@@ -89,7 +89,7 @@ func init() {
 						Target: item.SourceCardID,
 						Mods: []game.Mod{
 							game.AddTypesMod("Creature"),
-							game.AddSubtypesMod("Werewolf"),
+							game.AddSubtypesMod(ctx.TextSubtypes("Werewolf")...),
 							game.SetBasePowerMod(5),
 							game.SetBaseToughnessMod(5),
 							game.AddKeywordsMod("trample", "indestructible", "haste"),

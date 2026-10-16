@@ -30,13 +30,17 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
-				return ok && (ev.CardID == source.InstanceID || c.HasSubtype("Kavu"))
+				// "Kavu" is a word of the source's text (CR 612.2, #3984).
+				return ok && (ev.CardID == source.InstanceID || c.HasSubtype(source.TextSubtype("Kavu")))
 			}, "Possibility Technician — exile the top card of your library", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				// The permission's "you control a Kavu" is read as the
+				// effect is created (CR 608.2h).
 				return ExileTopWithPermission{
 					From: item.Controller, GrantTo: item.Controller, N: 1,
 					WhileExiled: true,
-					Condition:   &game.PermissionCondition{Key: game.CondControlSubtype, Subtype: "Kavu"},
-				}.Apply(NewContext(g, item))
+					Condition:   &game.PermissionCondition{Key: game.CondControlSubtype, Subtype: ctx.TextSubtype("Kavu")},
+				}.Apply(ctx)
 			}),
 		},
 	})

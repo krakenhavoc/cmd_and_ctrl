@@ -187,13 +187,36 @@ func (s TargetSource) lend(c Card) Card {
 // Caller must hold g.mu.
 func (g *Game) costSourceLocked(playerID, sourceID uuid.UUID) TargetSource {
 	src := SourceChooser(playerID)
+	src.text = g.costTextLocked(sourceID)
+	return src
+}
+
+// costTextLocked is the text change a cost clause of the ability on
+// `sourceID` reads its words through (costSourceLocked's rule): the
+// permanent's, or nil — the printed words — for anything not on the
+// battlefield, uuid.Nil included. The cost walks that match a card with
+// no TargetSpec (a set rule's kinds, a reveal, discard or exile clause;
+// #3984) lend it with lendCostText.
+//
+// Caller must hold g.mu.
+func (g *Game) costTextLocked(sourceID uuid.UUID) *TextWords {
 	if sourceID == uuid.Nil {
-		return src
+		return nil
 	}
 	if c := findBattlefieldCard(g, sourceID); c != nil {
-		src.text = c.TextWords
+		return c.TextWords
 	}
-	return src
+	return nil
+}
+
+// lendCostText gives the cost candidate `c` the text a cost clause reads
+// its words through (costTextLocked), as TargetSource.lend does for a
+// walk with a TargetSpec. Nil text lends nothing.
+func lendCostText(text *TextWords, c Card) Card {
+	if text != nil {
+		c.wordLens = text
+	}
+	return c
 }
 
 // costCandidatesLocked is specCandidatesLocked for a cost of the ability

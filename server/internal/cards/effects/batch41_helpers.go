@@ -42,8 +42,9 @@ func b41Monocolored() CardPredicate {
 
 // b41NonHuman is Grumgully's "non-Human creature": effective
 // subtypes, so a changeling IS a Human and is excluded, and a
-// creature something turned into a Human stops qualifying.
-func b41NonHuman(c game.Card) bool { return !c.HasSubtype("Human") }
+// creature something turned into a Human stops qualifying. `human` is
+// the type as the source's text reads it (TextSubtype, CR 612.2, #3984).
+func b41NonHuman(c game.Card, human string) bool { return !c.HasSubtype(human) }
 
 // b41BasicLandYouControl is Ossification's enchant clause: a basic
 // land its controller controls. "Basic" is the supertype off the type
@@ -221,7 +222,8 @@ func b41ZombieYouControlDealtCombatDamageToAnOpponent(ev game.Event, source *gam
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Source)
-	return ok && c.Controller == source.Controller && c.HasSubtype("Zombie")
+	// "Zombie" is a word of the source's text (CR 612.2, #3984).
+	return ok && c.Controller == source.Controller && c.HasSubtype(source.TextSubtype("Zombie"))
 }
 
 // b41FirstZombieHitOnThatOpponent is true for the first event of this
@@ -261,7 +263,7 @@ func b41SliverYouControlBecameAnOpponentsTarget(ev game.Event, source *game.Card
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.Controller == source.Controller && c.IsCreature() && c.HasSubtype("Sliver")
+	return ok && c.Controller == source.Controller && c.IsCreature() && c.HasSubtype(source.TextSubtype("Sliver"))
 }
 
 // --- shared bodies -------------------------------------------------
@@ -284,7 +286,7 @@ func b41OtherNonHumanCreaturesYouControlEnterWithACounter(label string) game.Rep
 				return false
 			}
 			entering, ok := g.LookupCardForEffect(ev.CardID)
-			return ok && entering.IsCreature() && entering.Controller == src.Controller && b41NonHuman(entering)
+			return ok && entering.IsCreature() && entering.Controller == src.Controller && b41NonHuman(entering, src.TextSubtype("Human"))
 		},
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 			ev.AddCounterAtETB(game.CounterPlusOne, 1)

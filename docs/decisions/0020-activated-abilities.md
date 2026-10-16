@@ -995,6 +995,19 @@ so `CounterRemovalCost` gains two flags rather than growing two siblings:
 | **variable** | "Remove any number of storage counters from this land" | `RemoveCountersXFromThis("storage", 0)` — `Variable` |
 | **among** | "Remove two +1/+1 counters from among artifacts you control" | `RemoveCountersAmong("+1/+1", 2, …)` — `Among` |
 | **any-kind among** (#943) | "Remove three counters from among other artifacts, creatures, and planeswalkers you control" | `RemoveCountersAmong("", 3, …)` — `Counter == "" && Among` |
+| **any kinds off self** (#3987, 2026-10-16) | "Remove two counters from Ghost-Spider" | `RemoveCountersOfAnyKindsFromThis(2)` — `Counter == "" && Among`, no `From` |
+
+The last row is a 2026-10-16 amendment (#3987). "Remove two counters from
+this creature" prints no kind, so the two may differ (CR 602.2b, 118.3: the
+activator chooses while paying). One kind choice cannot say that, which is
+why Register refused an any-kind self cost above one. It is the any-kind
+among payment with the source as its one candidate: `Among` with no `From`
+means "split across the source's kinds", every part names the source, and
+the (permanent, kind) key refuses a kind named twice. Register accepts that
+spelling only for an empty kind and a fixed count of two or more. The client
+reads it as self and among together and opens the among picker on the
+source's kinds, or pays straight from the menu when the source holds one
+kind.
 
 One type means one validator (`validateCounterRemovalLocked`), one candidate
 walk (`CounterCostOptionsForEffect`), one enumerator arm, one protocol view

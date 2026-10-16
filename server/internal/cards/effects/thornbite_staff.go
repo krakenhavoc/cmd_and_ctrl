@@ -80,12 +80,13 @@ func init() {
 
 // shamanCreatureEntered is "whenever a Shaman creature enters" — any
 // player's.
-func shamanCreatureEntered(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+func shamanCreatureEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	if ev.Kind != game.EventETB {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsCreature() && c.HasSubtype("Shaman")
+	// "Shaman" is a word of the source's text (CR 612.2, #3984).
+	return ok && c.IsCreature() && c.HasSubtype(source.TextSubtype("Shaman"))
 }
 
 // attachSourceTo attaches the ability's source Equipment to `host`.

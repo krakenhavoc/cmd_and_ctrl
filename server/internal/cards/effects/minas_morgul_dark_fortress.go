@@ -32,7 +32,7 @@ func init() {
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return CounterThenWhileItHasIt(ctx, FirstLegalBattlefieldTarget(ctx), game.CounterShadow,
-					"Minas Morgul, Dark Fortress — a Wraith while it has a shadow counter", game.AddSubtypesMod("Wraith"))
+					"Minas Morgul, Dark Fortress — a Wraith while it has a shadow counter", game.AddSubtypesMod(ctx.TextSubtypes("Wraith")...))
 			},
 		}},
 	})

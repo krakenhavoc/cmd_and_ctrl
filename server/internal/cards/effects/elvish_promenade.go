@@ -22,7 +22,7 @@ func init() {
 		Name:         "Elvish Promenade",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			n := b26PermanentsOfSubtypeControlled(ctx.Game, item.Controller, "Elf")
+			n := b26PermanentsOfSubtypeControlled(ctx.Game, item.Controller, ctx.TextSubtype("Elf"))
 			if n <= 0 {
 				return nil
 			}

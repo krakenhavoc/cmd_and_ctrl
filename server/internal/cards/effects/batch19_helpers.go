@@ -30,15 +30,16 @@ import (
 // b19ZombieCardsInGraveyard counts the Zombie cards in `player`'s
 // graveyard — Diregraf Colossus's entry count. A card in a graveyard
 // has no layer cache, so this is the printed type line; a changeling
-// counts, as printed.
-func b19ZombieCardsInGraveyard(g *game.Game, player uuid.UUID) int {
+// counts, as printed. `zombie` is the creature type as the counting
+// object's text now reads it (TextSubtype, CR 612.2, #3984).
+func b19ZombieCardsInGraveyard(g *game.Game, player uuid.UUID, zombie string) int {
 	p := g.PlayerByIDForEffect(player)
 	if p == nil || p.Graveyard == nil {
 		return 0
 	}
 	n := 0
 	for _, c := range p.Graveyard.Cards {
-		if c.HasSubtype("Zombie") {
+		if c.HasSubtype(zombie) {
 			n++
 		}
 	}
@@ -56,7 +57,8 @@ func b19ZombieSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) boo
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.HasSubtype("Zombie")
+	// "Zombie" is a word of the source's text (CR 612.2, #3984).
+	return ok && c.HasSubtype(source.TextSubtype("Zombie"))
 }
 
 // b19AnotherNontokenCreatureYouControlDied is Liesa's condition:

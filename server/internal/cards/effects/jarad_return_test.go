@@ -136,7 +136,7 @@ func TestJaradEnumeratorFindsASetThatFillsBothParts(t *testing.T) {
 	}
 	spec := game.ActivatedAbilitiesForCard(game.Card{OracleID: b17JaradOracle})[1].Cost.SacrificeOther
 	g.WithWriteLock(func() {
-		if !g.SacrificeSetSatisfiedForEffect(spec, ids) {
+		if !g.SacrificeSetSatisfiedForEffect(jarad, spec, ids) {
 			t.Errorf("the offered payment %v does not fill both parts", picks)
 		}
 	})

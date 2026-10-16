@@ -34,7 +34,7 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return attackDeclaredByYou(ev, source.Controller) && attackerHasSubtype(g, ev, "Dragon")
+				return attackDeclaredByYou(ev, source.Controller) && attackerHasSubtype(g, ev, source.TextSubtype("Dragon"))
 			}, "The Ur-Dragon — draw that many cards, then you may put a permanent card from your hand onto the battlefield", urDragonDrawAndPut)),
 		},
 	})
@@ -45,7 +45,7 @@ func urDragonDrawAndPut(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
-	n := attackersOfSubtypeInTheSameBatch(g, item.Trigger.Event, item.Controller, "Dragon")
+	n := attackersOfSubtypeInTheSameBatch(g, item.Trigger.Event, item.Controller, g.TextReaderForEffect(item).TextSubtype("Dragon"))
 	ctx := NewContext(g, item)
 	if err := (DrawCards{Player: item.Controller, N: n}).Apply(ctx); err != nil {
 		return err

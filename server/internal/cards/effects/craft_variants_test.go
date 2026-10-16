@@ -207,10 +207,10 @@ func TestThroneOfTheGrimCaptainNeedsOneOfEachSubtype(t *testing.T) {
 	}
 	g.ReadSnapshot(func() {
 		ec := CraftWithEachOf("Dinosaur", "Merfolk", "Pirate", "Vampire").ExilePermanents
-		if g.ExilePermanentsPaymentForEffect(me.ID, ec, []uuid.UUID{dino, merfolk, changeling}) != nil {
+		if g.ExilePermanentsPaymentForEffect(me.ID, throne, ec, []uuid.UUID{dino, merfolk, changeling}) != nil {
 			t.Error("three cards paid a four-part clause")
 		}
-		pick := g.ExilePermanentsPaymentForEffect(me.ID, ec, []uuid.UUID{changeling, dino, merfolk, pirate, vampire})
+		pick := g.ExilePermanentsPaymentForEffect(me.ID, throne, ec, []uuid.UUID{changeling, dino, merfolk, pirate, vampire})
 		if len(pick) != 4 || slicesContain(pick, changeling) {
 			t.Errorf("payment = %v, want the four single-type cards and the changeling kept", pick)
 		}

@@ -319,10 +319,13 @@ func (g *Game) ExileCostOptionsForEffect(playerID, sourceID uuid.UUID, cost *Exi
 	if pile == nil {
 		return nil
 	}
+	// The clause's words read as its source's text says them
+	// (costTextLocked, #3984).
+	text := g.costTextLocked(sourceID)
 	var out []uuid.UUID
 	for i := range pile.Cards {
 		c := pile.Cards[i]
-		if c.InstanceID == sourceID || !cost.Matches(c) {
+		if c.InstanceID == sourceID || !cost.Matches(lendCostText(text, c)) {
 			continue
 		}
 		out = append(out, c.InstanceID)
@@ -380,7 +383,7 @@ func (g *Game) validateExileCardsCostLocked(playerID, sourceID uuid.UUID, cost *
 		if c == nil {
 			return nil, ErrCardNotFound
 		}
-		if !cost.Matches(*c) {
+		if !cost.Matches(lendCostText(g.costTextLocked(sourceID), *c)) {
 			return nil, ErrInvalidParam
 		}
 	}

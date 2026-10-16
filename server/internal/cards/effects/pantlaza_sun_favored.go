@@ -54,7 +54,8 @@ func pantlazaDinosaurEntered(ev game.Event, source *game.Card, _ game.Characteri
 	if !ok {
 		return false
 	}
-	return c.InstanceID == source.InstanceID || c.HasSubtype("Dinosaur")
+	// "Dinosaur" is a word of the source's text (CR 612.2, #3984).
+	return c.InstanceID == source.InstanceID || c.HasSubtype(source.TextSubtype("Dinosaur"))
 }
 
 // pantlazaDone is the once-each-turn tally's label: the turn's

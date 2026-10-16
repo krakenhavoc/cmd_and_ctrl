@@ -69,8 +69,9 @@ func init() {
 						}
 					}
 					return SearchLibrary{
-						Player:    item.Controller,
-						Predicate: func(card game.Card) bool { return card.IsCreature() && card.HasSubtype("Sphinx") },
+						Player: item.Controller,
+						// SearchLibrary lends the spell's text (CR 612.2, #3984).
+						Predicate: func(card game.Card) bool { return card.IsCreature() && card.HasSubtypeWord("Sphinx") },
 						Dest:      game.ZoneBattlefield,
 						Limit:     1,
 						Shuffle:   true,

@@ -36,7 +36,9 @@ func init() {
 					return false
 				}
 				target, ok := g.LookupCardForEffect(ev.CounterTarget)
-				return ok && (target.HasSubtype(game.ArmySubtype) || target.HasSubtype("Goblin") || target.HasSubtype("Orc"))
+				// Each type is a word of the source's text (CR 612.2, #3984).
+				return ok && (target.HasSubtype(src.TextSubtype(game.ArmySubtype)) ||
+					target.HasSubtype(src.TextSubtype("Goblin")) || target.HasSubtype(src.TextSubtype("Orc")))
 			},
 			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 				ev.CounterDelta++

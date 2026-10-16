@@ -42,8 +42,9 @@ func init() {
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if ctx.HasMode(0) {
 				best := 0
+				reader := ctx.textReader()
 				for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-					if !nonHumanCreatureYouControl(ctx.Game, ctx.Controller(), c) {
+					if !nonHumanCreatureYouControl(ctx.Game, ctx.Controller(), game.ThroughTextOf(reader, c)) {
 						continue
 					}
 					if p := c.CurrentPower(); p > best {
@@ -67,7 +68,9 @@ func init() {
 	})
 }
 
-// nonHumanCreatureYouControl is the clause both modes share.
+// nonHumanCreatureYouControl is the clause both modes share. "Human" is
+// a word of the spell's text (CR 612.2, #3984), read through the lens
+// each walk lends: mode 0's loop and BoostUntilEOT's snapshot.
 func nonHumanCreatureYouControl(_ *game.Game, caster uuid.UUID, c game.Card) bool {
-	return c.IsCreature() && c.Controller == caster && !hasSubtype(c, "Human")
+	return c.IsCreature() && c.Controller == caster && !c.HasSubtypeWord("Human")
 }

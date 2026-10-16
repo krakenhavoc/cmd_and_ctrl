@@ -50,10 +50,12 @@ func otherCatsControlled(g *game.Game, source *game.Card) int {
 	if g == nil || g.Battlefield == nil || source == nil {
 		return 0
 	}
+	// "Cat" is a word of the source's text (CR 612.2, #3984).
+	cat := source.TextSubtype("Cat")
 	n := 0
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.InstanceID != source.InstanceID && c.Controller == source.Controller && c.IsCreature() && c.HasSubtype("Cat") {
+		if c.InstanceID != source.InstanceID && c.Controller == source.Controller && c.IsCreature() && c.HasSubtype(cat) {
 			n++
 		}
 	}

@@ -117,9 +117,12 @@ func Eminence(m game.CostModifier) game.CostModifier {
 // cast". The subtype is read off the spell as it sits on the stack,
 // where HasSubtype answers true for every creature type on a changeling
 // (CR 702.73a).
+//
+// The type is a word of the source's text (CR 612.2, #3984), read
+// through the cost query's source.
 func OtherSpellOfCreatureType(subtype string) CostPredicate {
 	return func(q game.CostQuery) bool {
-		return q.Card.InstanceID != q.Source.InstanceID && q.Card.HasSubtype(subtype)
+		return q.Card.InstanceID != q.Source.InstanceID && q.Card.HasSubtype(q.Source.TextSubtype(subtype))
 	}
 }
 
@@ -581,6 +584,9 @@ func ArtifactInstantOrSorcerySpell() CostPredicate {
 // cast". OtherSpellOfCreatureType is the "other" form. The subtype is
 // read off the spell as it sits on the stack, so a changeling counts
 // (CR 702.73a) and so does a kindred spell of the type (CR 308.3).
+//
+// The type is a word of the source's text (CR 612.2, #3984), read
+// through the cost query's source.
 func SpellOfCreatureType(subtype string) CostPredicate {
-	return func(q game.CostQuery) bool { return q.Card.HasSubtype(subtype) }
+	return func(q game.CostQuery) bool { return q.Card.HasSubtype(q.Source.TextSubtype(subtype)) }
 }

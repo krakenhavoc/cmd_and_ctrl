@@ -32,9 +32,13 @@ func init() {
 			// The set of Humans is read once, before any of them turns
 			// over (CR 608.2h), so a Human whose back face is not a Human
 			// is not turned back by its own transformation.
+			// "Humans" is a word of the spell's text (CR 612.2, #3984);
+			// so are "Werewolves and Wolves", which the shield's Except
+			// reads through the same text as it is made (queriesThroughText).
+			human := ctx.TextSubtype("Human")
 			var humans []uuid.UUID
 			for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-				if c.HasSubtype("Human") {
+				if c.HasSubtype(human) {
 					humans = append(humans, c.InstanceID)
 				}
 			}

@@ -116,7 +116,7 @@ func anotherZombieYouControlDied(ev game.Event, source *game.Card, g *game.Game)
 		return false
 	}
 	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Zombie")
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Zombie"))
 }
 
 // anotherCreatureYouControlDied is Garna's condition: a creature
@@ -151,7 +151,7 @@ func b35PlusCountersPutOnAnotherNonHydraCreatureYouControl(ev game.Event, source
 	if !ok || !onBattlefield(g, ev.Target) {
 		return false
 	}
-	return c.IsCreature() && c.Controller == source.Controller && !c.HasSubtype("Hydra")
+	return c.IsCreature() && c.Controller == source.Controller && !c.HasSubtype(source.TextSubtype("Hydra"))
 }
 
 // b35DrawStepBegan is Nekusar's first condition: any player's draw

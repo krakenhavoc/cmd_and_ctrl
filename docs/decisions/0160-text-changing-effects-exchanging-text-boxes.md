@@ -505,3 +505,86 @@ printed words too. The readers:
   query (Pack Leader's Dogs) and `RedirectDamage`'s queries.
 - **Creature-type words in closures** generally: the guard covers colours and basic land types only,
   and the creature-type callers migrated here (`ControlsA` in four effects) are the easy ones.
+
+All four are reached since the slice below.
+
+## Follow-up 2026-10-16, slice 3 — set rules, card costs, colour- and type-setting effects, creature types (#3984)
+
+**Status:** Accepted · 2026-10-16. No new decision: the classes slice 2 left are moved onto the same
+doors, and the cost walks that match a card without a `TargetSpec` lend the source's text the way the
+sacrifice walk does.
+
+### Costs that match a card
+
+`Game.costTextLocked(sourceID)` is the text a cost clause reads its words through (the permanent's, or
+nil for anything not on the battlefield, so a spell's costs read their printed words), and
+`lendCostText` gives it to each candidate. Every walk below is the one the validator, the enumerator
+and the view share, so the three still agree:
+
+- **A sacrifice clause's set rule.** `SacrificeKind.Matches` reads its subtypes with `HasSubtypeWord`,
+  and `costSetFitsLocked` lends the source's text; `sacrificeSetSatisfiedLocked`,
+  `SacrificeSetPaymentForEffect` and `SacrificeSetGroupsForEffect` take the source. "Sacrifice a Swamp
+  and a Forest" under "Swamp → Island" is paid by an Island and a Forest, in all three. Jarad's own
+  clause works from the graveyard, where no change reaches; a hand discard's set (Foil) is an
+  alternative cost and reads its printed words.
+- **Reveal, discard and exile costs.** `RevealCost.matches` reads its colour and creature type through
+  the lent text (Martyr of Bones' "X black cards" under a Sleight of Mind reveals red cards), the
+  discard and exile-from-a-zone walks lend it to the card's `Match` (Slumbering Tora's "a Spirit or
+  Arcane card"), and the exile-permanents component (craft) reads its colour, subtype and "one of
+  each" subtypes through it (`ExilePermanentsPaymentForEffect` and `ExileSubtypeGroupsForEffect` take
+  the source). A spell's additional cost ("you may exile any number of blue cards", the reveal-or-pay
+  and behold-or-pay costs) is paid as the spell is cast and reads its printed words.
+
+### Mana restrictions
+
+`restrictionsFor` reads a declared restriction's `subtype:` and `color:` tags through the producing
+permanent's text, and `spendRidersFor` does the same for a declared spend rider's filter: Eldrazi
+Temple's "colorless Eldrazi spells" under an Artificial Evolution mints mana for Elves, Pyromancer's
+Goggles' "red instant or sorcery spell" follows a Sleight of Mind. A computed restriction names a
+CHOSEN word (Cavern of Souls) and is used as it is.
+
+### Colour- and type-setting effects
+
+An effect reads its printed colours and types through its text as it is made, with
+`Context.TextColors` / `TextSubtypes` (`Card.TextColors` / `TextSubtypes`, each word once): the
+Restless lands and the other manlands, Chronatog and Foriysian Totems, Polymorphist's Jest, Liliana,
+Death's Majesty, Ghouls' Night Out, Nightcreep, Cerulean Wisps, the Gideons' animations,
+`thisEnchantmentBecomesACreature`, `Amass` ("amass Orcs") and `TurnManaTrigger` (High Tide's
+"an Island"). The attached statics read their source as the pass applies them (`SetAttachedColors`,
+`SetAttachedTypes`, `AttachedIsAlso`, Eye of Nidhogg's Dragon), as does a token-copy exception made
+by a trigger or an effect (The Scarab God, Sauron, Nexus of Becoming, Mishra). A Match selection
+(`ScopedEffectFor`, `untilEndOfTurn`) now lends the resolving object's text, as `MatchingBattlefield`
+does.
+
+### Shields
+
+A shield's recipient set (Pack Leader's "Dogs you control") and `RedirectDamage`'s source queries are
+read through the resolving object's text as they are made (`recipientsThroughText`,
+`queriesThroughText`).
+
+### Creature types
+
+More than 250 creature-type literals in closures and helper arguments now read through the object whose
+text they are, with the doors slices 1 and 2 built (`source.TextSubtype`, `ctx.TextSubtype`,
+`HasSubtypeWord` under a lending walk, `q.Source` in a cost modifier), and several helpers became
+doors (`OtherSpellOfCreatureType`, `SpellOfCreatureType`, `AnotherNontokenCreatureOfTypeEntered…`,
+`IsBasicLandOfAnySubtype` and others). `TestNoHardCodedTextWordsInCardFiles` now treats a creature
+type as a word: a literal from the engine's vetted CR 205.3m list (`game.AllCreatureTypes`, generated
+from the catalog's type lines), in its canonical spelling, passed to `Card.HasSubtype`, to a
+type-setting mod (`AddSubtypesMod`, `SetCreatureTypesMod`) or a colour-setting one (`SetColorsMod`,
+`AddColorsMod`), to a creature-type helper that judges it as given, or to a turn tally
+(`EnteredWithSubtypeThisTurn` and its kin). Words that only look like types ("Vehicle", "Arcane",
+"Food") are not in the list and are never findings. The allowlist gains the clauses no change can
+reach by rule: graveyard-only clauses (Gravecrawler, Quakebringer, embalm), conditions judged as a
+card is cast (Flame of Anor's mode count, Wolfkin Outcast's cost reduction, Submerge) or as a
+permanent enters (the Roads, Unbreathing Horde).
+
+### Still not reached
+
+- **Token descriptions** ("create a 2/2 black Zombie creature token"): a token spec's colours and
+  types are printed words the effect hands the token as data.
+- **Cast-permission filters and conditions** that name a creature type (Gisa and Geralf's Zombie
+  spells, Conspicuous Snoop, Deeproot Historian, Robber of the Rich): the filter is judged by the cast
+  path, which does not lend the granting permanent's text.
+- **A copy exception applied as a permanent enters as a copy** (Phantasmal Image's "it's an Illusion"):
+  out of reach by rule, like any enters condition.

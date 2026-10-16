@@ -124,7 +124,10 @@ func (a Amass) Apply(ctx *Context) error {
 			return then(NewContext(g, item), army)
 		}
 	}
-	return ctx.Game.AmassForEffect(controller, ctx.Source(), ArmyToken(a.Subtype), a.Subtype, a.N, tail)
+	// "Amass Orcs 2": the creature type is a word of the text of the
+	// object that amasses (CR 612.2, #3984).
+	subtype := ctx.TextSubtype(a.Subtype)
+	return ctx.Game.AmassForEffect(controller, ctx.Source(), ArmyToken(subtype), subtype, a.N, tail)
 }
 
 // Army passes for an Army creature — the read side of "an Army you

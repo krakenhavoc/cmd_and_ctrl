@@ -43,7 +43,8 @@ func weddingInvitationResolve(g *game.Game, item *game.StackItem) error {
 		}).Apply(ctx); err != nil {
 			return err
 		}
-		if c, ok := g.LookupCardForEffect(t.ID); ok && c.HasSubtype("Vampire") {
+		// "Vampire" is a word of the source's text (CR 612.2, #3984).
+		if c, ok := g.LookupCardForEffect(t.ID); ok && c.HasSubtype(ctx.TextSubtype("Vampire")) {
 			return GrantKeywordUntilEOT{
 				Target:   t.ID,
 				Keywords: []string{"lifelink"},
