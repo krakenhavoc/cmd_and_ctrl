@@ -362,6 +362,11 @@ type CardDef struct {
 	// statics (CR 119.7, ADR 0107 §5). Read from the battlefield
 	// through CatalogCantGainLife; see cant_gain_life.go.
 	CantGainLife []CantGainLifeStatic
+	// DrawLimits are this permanent's printed "can't draw more than one
+	// card each turn" and "can't draw cards" statics (CR 121.2b, #3927).
+	// Read from the battlefield through CatalogDrawLimits; see
+	// draw_limit.go.
+	DrawLimits []DrawLimitStatic
 	// DamageAsThough are this permanent's printed "damage is dealt as
 	// though its source had wither / infect" statics (ADR 0108 §10). Read
 	// from the battlefield through CatalogDamageAsThough, keyed by
@@ -996,6 +1001,12 @@ func init() {
 	CatalogCantGainLife = func(key string) []CantGainLifeStatic {
 		if d := catalogDef(key); d != nil {
 			return d.CantGainLife
+		}
+		return nil
+	}
+	CatalogDrawLimits = func(key string) []DrawLimitStatic {
+		if d := catalogDef(key); d != nil {
+			return d.DrawLimits
 		}
 		return nil
 	}
