@@ -2545,6 +2545,11 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 	if !g.sacrificeSetSatisfiedLocked(cost.SacrificeOther, chosen) {
 		return nil, ErrIllegalTarget
 	}
+	// #3940: "Sacrifice three artifact tokens with different names" —
+	// every pick needs a key and no two may share one (CR 201.2b).
+	if !g.sacrificeDifferentSatisfiedLocked(cost.SacrificeOther, chosen) {
+		return nil, sacrificeDifferentError(cost.SacrificeOther.Different)
+	}
 	return append(out, chosen...), nil
 }
 
@@ -2674,7 +2679,7 @@ func (g *Game) payAbilityManaCostNoteLocked(p *Player, sourceID uuid.UUID, sourc
 		if !ok || !g.planFundsLocked(p, plan, short, cost, x, spendCtx) {
 			return paid, note, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
 		}
-		g.materializePlanLocked(p, plan, short)
+		g.materializePlanInLocked(p, plan, short, spendCtx)
 	}
 	if !p.ManaPool.CanPayFor(cost, x, spendCtx) {
 		return paid, note, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}

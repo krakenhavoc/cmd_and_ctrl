@@ -1,0 +1,6 @@
+---
+title: "A card with a mana ability, read off its printed text"
+date: 2026-10-16
+issues: [3943]
+---
+**A card with a mana ability, read off its printed text** (#3943, [ADR 0118 amendment 2026-10-16](decisions/0118-strict-payment-by-default-and-alternative-costs-for-every-spell.md)) — Moonsilver Key's "an artifact card with a mana ability" asked the catalog, so an artifact the catalog does not run was never found. Scryfall's `produced_mana` would have found too much (Su-Chi's dies trigger, a Treasure in reminder text, an Equipment's grant). `game.ManaAbilityInText` reads the printed text by CR 605.1a/b (no target, could add mana, not a loyalty ability, moves no card to or from a library; or a trigger on a mana event that adds mana) plus a land's basic land type (CR 305.6). The importer stamps it as `Card.ManaAbilityText` (unknown / no / yes), re-derived per face by `SetFace`, copiable, carried in restore points. `game.HasPrintedManaAbility` reads the stamp and falls back to the catalog only for a card whose text was never read. `TestManaAbilityTextAgreesWithTheCatalog` checks the classifier against all 6,437 catalogued faces; the seven that disagree are pinned, and six of them are catalog bugs filed as #3970 and #3971. **Moonsilver Key** ships `full`.

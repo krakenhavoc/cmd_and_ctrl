@@ -1667,6 +1667,11 @@ jobs:
       # CMDCTRL_DISCORD_BUG_FORUM_ID (ADR 0196 §1) is the forum channel an
       # in-app bug report is mirrored into; it needs no guild (the channel
       # knows its own), and is off without the bot token.
+      # CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID (ADR 0156, amendment 2026-10-16,
+      # #3325) is the private #mod-log channel the server posts player
+      # reports and admin actions to; it needs no guild, and is off without
+      # the bot token. "Sync bot env" writes the same variable for the
+      # gateway bot's approve/decline lines.
       #
       # BOTH hosts, and ALWAYS written, empty included, exactly like the
       # admin allowlist above: clearing a variable must turn the gate off
@@ -1698,6 +1703,7 @@ jobs:
           CMDCTRL_DISCORD_LFG_ROLE_ID: ${{ vars.CMDCTRL_DISCORD_LFG_ROLE_ID }}
           CMDCTRL_DISCORD_RESULTS_CHANNEL_ID: ${{ vars.CMDCTRL_DISCORD_RESULTS_CHANNEL_ID }}
           CMDCTRL_DISCORD_BUG_FORUM_ID: ${{ vars.CMDCTRL_DISCORD_BUG_FORUM_ID }}
+          CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID: ${{ vars.CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID }}
           CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS: ${{ vars.CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS }}
         run: |
           trim() { local v="${1#"${1%%[![:space:]]*}"}"; printf '%s' "${v%"${v##*[![:space:]]}"}"; }
@@ -1721,6 +1727,7 @@ jobs:
           lfg_role="$(trim "${CMDCTRL_DISCORD_LFG_ROLE_ID}")"
           results_channel="$(trim "${CMDCTRL_DISCORD_RESULTS_CHANNEL_ID}")"
           bug_forum="$(trim "${CMDCTRL_DISCORD_BUG_FORUM_ID}")"
+          mod_log="$(trim "${CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID}")"
           if [ -n "${results_channel}" ] && [ -z "${guild}" ]; then
             echo "::error::CMDCTRL_DISCORD_RESULTS_CHANNEL_ID is set but CMDCTRL_DISCORD_COMMUNITY_GUILD_ID is not; the server would refuse to boot. Set the guild too, or clear the channel, in the '${APP_ENV}' environment (or the repo) and rerun."
             exit 1
@@ -1741,7 +1748,7 @@ jobs:
             echo "::error::CMDCTRL_DISCORD_PLAYER_ROLE_ID is set but CMDCTRL_DISCORD_COMMUNITY_GUILD_ID is not; the server would refuse to boot. Set both (gate on) or neither (gate off) in the '${APP_ENV}' environment (or the repo) and rerun."
             exit 1
           fi
-          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}" "CMDCTRL_DISCORD_VOICE_CATEGORY_ID=${voice}" "CMDCTRL_DISCORD_LFG_CHANNEL_ID=${lfg_channel}" "CMDCTRL_DISCORD_LFG_ROLE_ID=${lfg_role}" "CMDCTRL_DISCORD_RESULTS_CHANNEL_ID=${results_channel}" "CMDCTRL_DISCORD_BUG_FORUM_ID=${bug_forum}"; do
+          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}" "CMDCTRL_DISCORD_VOICE_CATEGORY_ID=${voice}" "CMDCTRL_DISCORD_LFG_CHANNEL_ID=${lfg_channel}" "CMDCTRL_DISCORD_LFG_ROLE_ID=${lfg_role}" "CMDCTRL_DISCORD_RESULTS_CHANNEL_ID=${results_channel}" "CMDCTRL_DISCORD_BUG_FORUM_ID=${bug_forum}" "CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID=${mod_log}"; do
             name="${pair%%=*}"; id="${pair#*=}"
             if [ -n "${id}" ] && ! [[ "${id}" =~ ^[0-9]{1,20}$ ]]; then
               echo "::error::${name} is not a Discord id (digits only, at most 20); the server would refuse to boot. Fix the variable in the '${APP_ENV}' environment (or the repo) and rerun."
@@ -1752,7 +1759,7 @@ jobs:
             echo "::error::CMDCTRL_DISCORD_INVITE_URL must be an https URL such as https://discord.gg/<code>; the server would refuse to boot. Fix the variable in the '${APP_ENV}' environment (or the repo) and rerun."
             exit 1
           fi
-          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}" "CMDCTRL_DISCORD_INVITE_URL=${invite}" "CMDCTRL_DISCORD_VOICE_CATEGORY_ID=${voice}" "CMDCTRL_DISCORD_LFG_CHANNEL_ID=${lfg_channel}" "CMDCTRL_DISCORD_LFG_ROLE_ID=${lfg_role}" "CMDCTRL_DISCORD_RESULTS_CHANNEL_ID=${results_channel}" "CMDCTRL_DISCORD_BUG_FORUM_ID=${bug_forum}" "CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS=${exempt}"; do
+          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}" "CMDCTRL_DISCORD_INVITE_URL=${invite}" "CMDCTRL_DISCORD_VOICE_CATEGORY_ID=${voice}" "CMDCTRL_DISCORD_LFG_CHANNEL_ID=${lfg_channel}" "CMDCTRL_DISCORD_LFG_ROLE_ID=${lfg_role}" "CMDCTRL_DISCORD_RESULTS_CHANNEL_ID=${results_channel}" "CMDCTRL_DISCORD_BUG_FORUM_ID=${bug_forum}" "CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID=${mod_log}" "CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS=${exempt}"; do
             name="${pair%%=*}"; value="${pair#*=}"
             printf '%s' "${value}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
               "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${name} ${ENV_FILE}"
@@ -1764,7 +1771,8 @@ jobs:
           if [ -n "${lfg_role}" ]; then ping=set; else ping=unset; fi
           if [ -n "${results_channel}" ]; then feed=set; else feed=unset; fi
           if [ -n "${bug_forum}" ]; then mirror=set; else mirror=unset; fi
-          echo "set the community variables (sign-up gate ${gate}, invite ${shown}, voice category ${rooms}, lfg channel ${board}, lfg role ${ping}, results channel ${feed}, bug forum ${mirror}, ${#exempt_ids[@]} exempt id(s))"
+          if [ -n "${mod_log}" ]; then modlog=set; else modlog=unset; fi
+          echo "set the community variables (sign-up gate ${gate}, invite ${shown}, voice category ${rooms}, lfg channel ${board}, lfg role ${ping}, results channel ${feed}, bug forum ${mirror}, mod log ${modlog}, ${#exempt_ids[@]} exempt id(s))"
 
       # ADR 0179: optional shop links. One URL template per retailer,
       # holding {url} exactly once: an https wrapper with {url} after the
@@ -1939,6 +1947,17 @@ jobs:
       # list, never by clearing it. See the loop after the required keys
       # below. The user-ID list is also the server's admin allowlist, which
       # "Sync server env (admin allowlist)" above writes to ${ENV_FILE}.
+      #
+      # CMDCTRL_DISCORD_ACCESS_REQUEST_CHANNEL_ID, CMDCTRL_DISCORD_PLAYER_ROLE_ID
+      # and CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID (ADR 0156, amendment
+      # 2026-10-16, #3325) are optional and ALWAYS written, empty included,
+      # in that same loop: the access-request buttons are on only with the
+      # channel and the role both set, and the mod log line only with its
+      # channel. The role and the mod log are the same variables the server
+      # reads ("Sync server env (community)"). Checked before anything is
+      # written, with the bot's own rules (bot.Config.Validate): each a
+      # Discord id, and the channel only with the role; the bot refuses to
+      # start on either.
       - name: Sync bot env
         if: env.IS_DEV != 'true'
         env:
@@ -1948,10 +1967,31 @@ jobs:
           CMDCTRL_DISCORD_ADMIN_USER_IDS: ${{ vars.CMDCTRL_DISCORD_ADMIN_USER_IDS }}
           CMDCTRL_DISCORD_ADMIN_ROLE_IDS: ${{ vars.CMDCTRL_DISCORD_ADMIN_ROLE_IDS }}
           CMDCTRL_DISCORD_CARD_CHANNEL_IDS: ${{ vars.CMDCTRL_DISCORD_CARD_CHANNEL_IDS }}
+          CMDCTRL_DISCORD_ACCESS_REQUEST_CHANNEL_ID: ${{ vars.CMDCTRL_DISCORD_ACCESS_REQUEST_CHANNEL_ID }}
+          CMDCTRL_DISCORD_PLAYER_ROLE_ID: ${{ vars.CMDCTRL_DISCORD_PLAYER_ROLE_ID }}
+          CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID: ${{ vars.CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID }}
         run: |
           if [ "${BOT_TOKEN_SET}" != "true" ]; then
             echo "::notice::CMDCTRL_DISCORD_BOT_TOKEN secret not set; skipping bot env sync (the bot stays unconfigured)."
             exit 0
+          fi
+
+          # Trimmed and checked before anything is written, so a bad value
+          # fails the deploy with bot.env as it was (the bot would refuse to
+          # start on it).
+          for KEY in CMDCTRL_DISCORD_ACCESS_REQUEST_CHANNEL_ID CMDCTRL_DISCORD_PLAYER_ROLE_ID \
+                     CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID; do
+            VALUE="${!KEY}"
+            VALUE="${VALUE#"${VALUE%%[![:space:]]*}"}"; VALUE="${VALUE%"${VALUE##*[![:space:]]}"}"
+            printf -v "${KEY}" '%s' "${VALUE}"
+            if [ -n "${VALUE}" ] && ! [[ "${VALUE}" =~ ^[0-9]{1,20}$ ]]; then
+              echo "::error::${KEY} is not a Discord id (digits only, at most 20); the bot would refuse to start. Fix the variable in the '${APP_ENV}' environment (or the repo) and rerun."
+              exit 1
+            fi
+          done
+          if [ -n "${CMDCTRL_DISCORD_ACCESS_REQUEST_CHANNEL_ID}" ] && [ -z "${CMDCTRL_DISCORD_PLAYER_ROLE_ID}" ]; then
+            echo "::error::CMDCTRL_DISCORD_ACCESS_REQUEST_CHANNEL_ID is set but CMDCTRL_DISCORD_PLAYER_ROLE_ID is not; the bot would refuse to start. Set the role too, or clear the channel, in the '${APP_ENV}' environment (or the repo) and rerun."
+            exit 1
           fi
 
           prepared=$(ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} "
@@ -2008,7 +2048,9 @@ jobs:
           # 8). They do not add to `missing`: that counter feeds the "bot
           # will refuse to start" notice below, and the bot starts fine with
           # no configured admins.
-          for KEY in CMDCTRL_DISCORD_ADMIN_USER_IDS CMDCTRL_DISCORD_ADMIN_ROLE_IDS CMDCTRL_DISCORD_CARD_CHANNEL_IDS; do
+          for KEY in CMDCTRL_DISCORD_ADMIN_USER_IDS CMDCTRL_DISCORD_ADMIN_ROLE_IDS CMDCTRL_DISCORD_CARD_CHANNEL_IDS \
+                     CMDCTRL_DISCORD_ACCESS_REQUEST_CHANNEL_ID CMDCTRL_DISCORD_PLAYER_ROLE_ID \
+                     CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID; do
             VALUE="${!KEY}"
             printf '%s' "${VALUE}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
               "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${KEY} ${BOT_ENV_FILE}"

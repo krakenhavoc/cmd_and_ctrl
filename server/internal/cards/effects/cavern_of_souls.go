@@ -18,9 +18,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Two abilities, not one with a mode. The colorless half is
 // unconditional and unrestricted — Cavern is a Wastes that also does
 // something else — and the auto-tapper can plan around it freely. The
-// coloured half carries the restriction and is therefore invisible to
-// the auto-tapper, which is correct: which spell restricted mana is
-// for is a decision the planner cannot make.
+// coloured half carries the restriction, and the auto-tapper plans it
+// only for a cast the restriction admits (#3874, ADR 0040 amendment
+// 2026-10-16): a creature spell of the chosen type, which its rider then
+// makes uncounterable, and which it prefers to any other source. For any
+// other spell, and any payment that is not a cast, it is left alone.
 //
 // The restriction half is the reason this card was worth the S26
 // engine work: a Cavern named for Elf pays only for Elf creature

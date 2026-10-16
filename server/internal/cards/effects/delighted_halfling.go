@@ -23,13 +23,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // is the #259 direction and the reason both halves landed together in
 // #352.
 //
-// The restriction also means the second ability drops out of auto-tap
-// planning (autoTapAbilityFor skips restricted abilities): tapping the
-// Halfling for a restricted colour is a decision the planner cannot
-// make, because it may waste the only mana that could have cast the
-// commander. The colourless ability stays auto-tappable, so a Halfling
-// is still a mana source to the planner, just a colourless one. Same
-// arrangement the painlands and Talismans have.
+// Auto-pay plans the second ability only for a legendary spell (#3874,
+// ADR 0040 amendment 2026-10-16), where the restriction is satisfied and
+// the rider fires, so it is preferred to other sources there. For a
+// nonlegendary spell, or a payment that is not a cast, the Halfling is a
+// colourless source to the planner.
 //
 // Summoning sickness applies to both abilities — ActivateManaAbility
 // has enforced CR 302.6 on creature tap abilities since #233.
