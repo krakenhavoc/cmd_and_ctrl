@@ -627,3 +627,40 @@ Remove `EntersWithCounters: copyCounterMap(counters)` from the entry event in `r
 ### Snapshot impact
 
 None. The counters ride the entry event, which is not persisted.
+
+## Amendment 2026-10-16 — "When this is put into a graveyard from anywhere, shuffle it into its owner's library" (#2038)
+
+**Why it lands here.** §2 decision 7 built the Eldrazi titans' "When ~ is put into a graveyard from anywhere" as a graveyard trigger over a body that shuffles the whole graveyard. Seven Commander-legal cards print the same trigger over a different body: "shuffle **it** into its owner's library" (the Judgment Incarnations Hostility, Purity, Vigor, Dread and Guile; Serra Avatar; Worldspine Wurm). Hostility, Purity and Vigor waited on it since ADR 0108 §8 (#1906) shipped their prevention statics. It changes no earlier decision.
+
+### What exists, what was missing
+
+- **The trigger exists.** `effects.WhenThisIsPutIntoAGraveyardFromAnywhere` watches from the graveyard for the card's own arrival by a zone move, a mill, a discard or a counter, one event per route, so an arrival triggers once; the Kozilek tests prove every route. A card a replacement keeps out of the graveyard (Rest in Peace) is not there to be harvested.
+- **The body was missing.** Nothing moved "it", the card itself, from a graveyard into its owner's library and shuffled, and nothing told the card the trigger is about from a card that left the graveyard and came back while the trigger waited.
+
+### The rules
+
+- **CR 603.6c.** An ability that triggers when a card is put into a zone "from anywhere" is never a leaves-the-battlefield ability, even when the card came from the battlefield. **CR 603.10a** lists the zone-change triggers that look back in time, and this is not one: the ability is the card's in the graveyard, so it triggers even if the creature had lost its abilities on the battlefield.
+- **CR 400.7.** The card that arrives in the graveyard is a new object. If it leaves the graveyard and returns before the trigger resolves, it is a different object, and "it" no longer names it.
+- **CR 701.24c**, whose example is Guile: an effect that would shuffle specific objects into a library shuffles that library even if the objects are not in the zone they are expected to be in. Exiled in response, the Incarnation stays in exile and its owner still shuffles.
+- **CR 903.9b.** A commander put into a library may go to the command zone instead, so the move can pause.
+
+### Decision
+
+1. **`effects.WhenThisIsPutIntoAGraveyardFromAnywhereShuffleItIn(label)`**: decision 7's trigger with a fill-in `Build` (ADR 0041 P9) that stamps the graveyard object on `Params.Object`: the card's ID and its `ObjectEpoch` as the harvest found it in the graveyard. The stack item's own `SourceObject` cannot answer this, because for a death it names the permanent that left (the dies-trigger reading).
+2. **The body.** If the card is in a graveyard with the stamped epoch, `TuckToLibraryThenForEffect` puts it into its owner's library and the shuffle is the tuck's continuation, so a CR 903.9b pause finishes before the library is shuffled. Otherwise the owner's library is shuffled alone (CR 701.24c). An item with no stamp keeps the plain "is it in a graveyard" reading.
+3. **Hostility's "if a spell you control would deal damage".** `effects.FromASpellYouControl`, a prevention static's source filter over the new `Game.DamageSourceSpellControllerForEffect`: the damage source is a spell on the stack or the one resolving (CR 608.2n), and its controller is the static's. A permanent's damage, or a card's in a graveyard, is not a spell's. The filter type gains the `*game.Game` it needs.
+4. **Vigor's "another creature you control"** is `ToAnotherCreatureYouControl`, a prevention static recipient.
+
+### Cards
+
+- **Full:** Hostility, Purity, Vigor, Dread, Serra Avatar (a layer 7a characteristic-defining ability over its controller's life total, its owner's off the battlefield, CR 604.3, 113.6a) and Worldspine Wurm.
+- **Full, the replacement form** (Blightsteel Colossus's `ShuffleIntoOwnersLibraryInstead`, already shipped): Darksteel Colossus, Progenitus and Legacy Weapon. It is a static ability's replacement, not a CR 614.15 self-replacement, so against Rest in Peace the card's controller, or its owner when it has none, chooses (CR 616.1); a commander Progenitus sent to the library is then offered the command zone (CR 616.2, 903.9b).
+- **Not done:** Guile. Its "If a spell or ability you control would counter a spell, instead exile that spell and you may play that card without paying its mana cost" needs a replacement window on countering a spell, which the engine does not have (#4056).
+
+### Snapshot impact
+
+None to the shape: `EffectParams.Object` already exists. One new on-disk body key, `hostility/elemental-shamans` (Hostility's prevention follow-up); Purity reuses `prevention/gain-life-equal` and Vigor `prevention/counters-on-it-per-prevented`. A table with the trigger on the stack is a restore point.
+
+### Tests
+
+`cards/effects/shuffle_itself_from_graveyard_test.go`: killed, discarded, milled and countered, once each; each of the six cards killed; exiled in response (stays in exile, library shuffled); a new object in the graveyard (stays, library shuffled); Rest in Peace (no trigger); lost all abilities on the battlefield (still shuffled in); a JSON restore with the trigger waiting; and each card's other lines. `cards/effects/shuffle_into_library_instead_cards_test.go`: the replacement cards discarded and milled, Darksteel Colossus against Rest in Peace in both orders, a commander Progenitus offered the command zone, and Legacy Weapon's exile.

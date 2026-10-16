@@ -269,4 +269,8 @@ var tokenTable = map[string]game.Card{
 
 	// #2466: its own alignment block, so a long key does not re-flow the table above.
 	"2/2 red and white Dinosaur with flying and haste": {Name: "Dinosaur", TypeLine: "Token Creature — Dinosaur", Power: 2, Toughness: 2, Colors: []string{"R", "W"}, Keywords: []string{"flying", "haste"}},
+
+	// #2038: Hostility's and Worldspine Wurm's tokens.
+	"3/1 red Elemental Shaman with haste": {Name: "Elemental Shaman", TypeLine: "Token Creature — Elemental Shaman", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
+	"5/5 green Wurm with trample":         {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 5, Toughness: 5, Colors: []string{"G"}, Keywords: []string{"trample"}},
 }

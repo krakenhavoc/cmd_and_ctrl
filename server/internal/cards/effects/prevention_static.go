@@ -59,6 +59,10 @@ const (
 	// on the battlefield the static's controller controls (Rune-Tail's
 	// Essence, ADR 0151).
 	ToCreaturesYouControl
+	// ToAnotherCreatureYouControl is "to another creature you control":
+	// ToCreaturesYouControl without the permanent that has the static
+	// (Vigor, #2038).
+	ToAnotherCreatureYouControl
 )
 
 // StaticDamage narrows which damage a prevention static sees.
@@ -96,26 +100,38 @@ type PreventionStatic struct {
 // DamageSourceFilter is a prevention static's "a creature" / "a source
 // you control" / "this creature": `lki` is the source as the damage
 // would be dealt, `src` the permanent with the static.
-type DamageSourceFilter func(ev *game.ReplacementEvent, lki *game.Characteristic, src *game.Card) bool
+type DamageSourceFilter func(ev *game.ReplacementEvent, g *game.Game, lki *game.Characteristic, src *game.Card) bool
 
 // FromACreature is "if a creature would deal damage".
 func FromACreature() DamageSourceFilter {
-	return func(_ *game.ReplacementEvent, lki *game.Characteristic, _ *game.Card) bool {
+	return func(_ *game.ReplacementEvent, _ *game.Game, lki *game.Characteristic, _ *game.Card) bool {
 		return lki != nil && slices.Contains(lki.Types, "Creature")
 	}
 }
 
 // FromASourceYouControl is "if a source you control would deal damage".
 func FromASourceYouControl() DamageSourceFilter {
-	return func(_ *game.ReplacementEvent, lki *game.Characteristic, src *game.Card) bool {
+	return func(_ *game.ReplacementEvent, _ *game.Game, lki *game.Characteristic, src *game.Card) bool {
 		return lki != nil && lki.Controller == src.Controller
 	}
 }
 
 // FromThis is "if this creature would deal damage".
 func FromThis() DamageSourceFilter {
-	return func(ev *game.ReplacementEvent, _ *game.Characteristic, src *game.Card) bool {
+	return func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Characteristic, src *game.Card) bool {
 		return ev.DamageSource == src.InstanceID
+	}
+}
+
+// FromASpellYouControl is "if a spell you control would deal damage"
+// (Hostility, #2038): the source is a spell, on the stack or resolving,
+// and the static's controller controls it. Damage whose source is a
+// permanent, or a card in a graveyard (a cycled card's trigger), is not
+// a spell's.
+func FromASpellYouControl() DamageSourceFilter {
+	return func(ev *game.ReplacementEvent, g *game.Game, _ *game.Characteristic, src *game.Card) bool {
+		ctl, ok := g.DamageSourceSpellControllerForEffect(ev.DamageSource)
+		return ok && ctl == src.Controller
 	}
 }
 
@@ -205,7 +221,7 @@ func (p PreventionStatic) applies(ev *game.ReplacementEvent, g *game.Game, src *
 	if p.While != nil && !p.While(g, src) {
 		return false
 	}
-	if p.From != nil && !p.From(ev, ev.SourceLKI, src) {
+	if p.From != nil && !p.From(ev, g, ev.SourceLKI, src) {
 		return false
 	}
 	return staticProtects(p.To, ev.DamageTarget, g, src)
@@ -229,6 +245,8 @@ func staticProtects(to StaticRecipient, target uuid.UUID, g *game.Game, src *gam
 	case ToCreaturesYouControl:
 		c, ok := g.LookupCardForEffect(target)
 		return ok && c.IsCreature() && c.Controller == src.Controller && g.Battlefield.Contains(target)
+	case ToAnotherCreatureYouControl:
+		return target != src.InstanceID && staticProtects(ToCreaturesYouControl, target, g, src)
 	}
 	return false
 }
