@@ -36,6 +36,11 @@
     // is not the viewer's to act on — "7 theirs to play" on a seat whose
     // own exiled cards it may play (Memory Vessel). Also read out.
     note?: string;
+    // #3832: the same words as `note`, for the tooltip and the accessible
+    // name only. Nothing is drawn on the tile, so a pile that only needs
+    // explaining ("outside the game") is the height and width of the
+    // others instead of overflowing the rail.
+    hint?: string;
     // #2962: the click opens a menu (the library's draw / shuffle).
     haspopup?: boolean;
     expanded?: boolean;
@@ -51,6 +56,7 @@
     pile,
     owner,
     note,
+    hint,
     haspopup = false,
     expanded = false,
   }: Props = $props();
@@ -82,8 +88,8 @@
   onclick={onClick}
   aria-haspopup={haspopup ? "menu" : undefined}
   aria-expanded={haspopup ? expanded : undefined}
-  aria-label={`${label}: ${zone.count} card${zone.count === 1 ? "" : "s"}${readyCount > 0 ? `, ${readyCount} ready` : ""}${note ? `, ${note}` : ""}`}
-  title={`${label} · ${zone.count}${readyCount > 0 ? ` · ${readyCount} ready` : ""}${note ? ` · ${note}` : ""}`}
+  aria-label={`${label}: ${zone.count} card${zone.count === 1 ? "" : "s"}${readyCount > 0 ? `, ${readyCount} ready` : ""}${note ? `, ${note}` : ""}${hint ? `, ${hint}` : ""}`}
+  title={`${label} · ${zone.count}${readyCount > 0 ? ` · ${readyCount} ready` : ""}${note ? ` · ${note}` : ""}${hint ? ` · ${hint}` : ""}`}
 >
   <span class="thumb">
     {#if faceDown && zone.count > 0}
