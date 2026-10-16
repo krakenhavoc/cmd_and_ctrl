@@ -90,11 +90,31 @@ import (
 //     and owes Then with the amount, through the one follow-up queue
 //     (PreventionFollowUp). It does not declare RedirectsDamage: nothing
 //     is dealt instead to another permanent or player (§9 decision 3).
+//
+// THE AMENDMENT OF 2026-10-16 (#2056). Three more fields, each the
+// vocabulary another kind already reads:
+//
+//   - SourceFilter, #2026's DamageSourceFilter: "by unblocked creatures"
+//     (Kjeldoran Royal Guard) is Queries {creature} with Combat:
+//     unblocked, read as the damage would be dealt (CR 509.1h, 609.7b)
+//     off the same view of the source preventFromSource reads.
+//   - RecipientFilter, #2045's DamageRecipientFilter: "to creatures you
+//     control" without you (Ascent of the Worthy), "to any creature"
+//     (Blood of the Martyr), read as the damage would be dealt (CR
+//     611.2c: a redirection changes no characteristic, so a creature that
+//     arrives later is in the set).
+//   - Optional, "you may have that damage dealt to you instead" (Blood of
+//     the Martyr): the gathered effect is a "may" (ReplacementEffect.
+//     Optional), asked of the record's controller through the CR 616
+//     window's optional_replacement prompt, once per damage event it
+//     meets (CR 614.5). A window that cannot ask declines it, the weaker
+//     direction.
 
 // ModRedirectDamage is "<damage> is dealt to <destination> instead" (ADR
-// 0108 §9, CR 614.9). Reads Objects, SourceZone, Queries, Player, Types,
-// CombatOnly, Next, Amount, To, ToSourceController, Then, SpentBatch and
-// SpentInstance. Scope ScopeGame for a protected player or none; pinned
+// 0108 §9, CR 614.9). Reads Objects, SourceZone, Queries, SourceFilter,
+// Player, Types, Recipients, RecipientFilter, CombatOnly, Next, Amount,
+// To, ToSourceController, Optional, Then, SpentBatch and SpentInstance.
+// Scope ScopeGame for a protected player, a recipient set or none; pinned
 // (ScopeNone) to a protected permanent.
 const ModRedirectDamage ModKind = "redirectDamage"
 
@@ -111,6 +131,10 @@ type DamageRedirection struct {
 	Source     ObjectRef
 	SourceZone ZoneKind
 	Queries    []PermanentQuery
+	// SourceFilter is the rest of an unnamed source's description
+	// (#2026's vocabulary, #2056): "by unblocked creatures". Zero asks
+	// nothing. Only with no Source.
+	SourceFilter DamageSourceFilter
 
 	// ProtectPlayer, ProtectTypes and ProtectPermanent are whose damage is
 	// redirected; all zero is anyone's. ProtectPlayer beside
@@ -121,6 +145,11 @@ type DamageRedirection struct {
 	ProtectTypes      []string
 	ProtectPermanent  uuid.UUID
 	ProtectRecipients DamageRecipients
+	// ProtectSet is a set read as the damage would be dealt (#2045's
+	// vocabulary, #2056): "creatures you control" without you (Ascent of
+	// the Worthy), "any creature" (Blood of the Martyr). It stands alone,
+	// like ProtectRecipients.
+	ProtectSet DamageRecipientFilter
 
 	// CombatOnly is "combat damage".
 	CombatOnly bool
@@ -139,6 +168,10 @@ type DamageRedirection struct {
 
 	// Then is a follow-up body owed with the amount (Eye for an Eye).
 	Then BodyRef
+
+	// Optional is "you may have that damage dealt to <destination>
+	// instead" (Blood of the Martyr, #2056): Controller is asked each time.
+	Optional bool
 
 	// UntilYourNextTurn is "until your next turn" (CR 611.2b), "you" being
 	// Controller; false is "this turn" (CR 514.2).
@@ -167,12 +200,24 @@ func (g *Game) RedirectDamageThisTurnForEffect(r DamageRedirection) bool {
 		Next:               r.Next,
 		Amount:             r.Amount,
 		ToSourceController: r.ToSourceController,
+		Optional:           r.Optional,
 		Then:               r.Then.key,
 	}
 	if r.Source.ID != uuid.Nil {
 		m.Objects = []ObjectRef{r.Source}
 	} else {
 		m.SourceZone = ""
+	}
+	if !r.SourceFilter.IsZero() {
+		m.SourceFilter = []DamageSourceFilter{r.SourceFilter.clone()}
+	}
+	if !r.ProtectSet.IsZero() {
+		if r.ProtectPermanent != uuid.Nil {
+			// A pinned redirection protects its pinned permanent; a set
+			// beside it would go unread (recipientFilterScopeProblem).
+			return false
+		}
+		m.RecipientFilter = []DamageRecipientFilter{r.ProtectSet.clone()}
 	}
 	if r.To != uuid.Nil {
 		to, ok := g.redirectRefLocked(r.To)
@@ -181,7 +226,7 @@ func (g *Game) RedirectDamageThisTurnForEffect(r DamageRedirection) bool {
 		}
 		m.To = []ObjectRef{to}
 	}
-	if redirectDamageModProblem(m) != "" {
+	if redirectDamageModProblem(m) != "" || recipientFilterModProblem(m) != "" {
 		return false
 	}
 	label := r.Label
@@ -226,6 +271,9 @@ func redirectDamageModProblem(m Mod) string {
 		if m.ToSourceController {
 			return fmt.Sprintf("mod %q carries toSourceController, which only redirectDamage reads", m.Kind)
 		}
+		if m.Optional {
+			return fmt.Sprintf("mod %q carries optional, which only redirectDamage reads", m.Kind)
+		}
 		return ""
 	}
 	switch {
@@ -260,6 +308,21 @@ func redirectDamageModProblem(m Mod) string {
 		return "a redirectDamage effect deals its damage nowhere instead and has no follow-up"
 	case m.Then != "" && !KnownEffectBody(m.Then):
 		return fmt.Sprintf("redirectDamage names follow-up body %q, which is not registered", m.Then)
+	case len(m.SourceFilter) > 1:
+		return "a redirectDamage effect carries more than one source filter"
+	case len(m.SourceFilter) == 1 && len(m.Objects) != 0:
+		return "a redirectDamage effect names one source and a source filter"
+	case len(m.RecipientFilter) != 0 && m.Recipients != DamageRecipientsAny:
+		return "a redirectDamage effect names recipients and a recipient filter"
+	case m.Optional && !redirectsAnywhere(m):
+		return "an optional redirectDamage effect deals its damage nowhere instead"
+	case m.Optional && m.Amount > 0:
+		return "an optional redirectDamage effect carries a charge"
+	}
+	for _, f := range m.SourceFilter {
+		if problem := sourceFilterProblem(f); problem != "" {
+			return problem
+		}
 	}
 	return ""
 }
@@ -291,9 +354,18 @@ func (g *Game) redirectDamageAppliesLocked(e ScopedEffect, m Mod, ev *Replacemen
 	if len(m.Objects) == 1 && !g.damageFromChosenSourceLocked(m, ev.DamageSource) {
 		return false
 	}
-	// CR 609.7b: the properties are rechecked as the damage would be
-	// dealt, against the source as it is then.
-	if len(m.Queries) > 0 && !queriesMatchCharacteristic(m.Queries, ev.SourceLKI) {
+	if len(m.SourceFilter) == 1 {
+		// #2056: a filtered redirection reads its Queries and its filter
+		// off one view of the source as the damage would be dealt (CR
+		// 609.7b) — "unblocked" is CR 509.1h's status then — as #2026's
+		// filtered shield does.
+		v, ok := g.damageSourceViewLocked(ev)
+		if !ok || (len(m.Queries) > 0 && !queriesMatchView(m.Queries, v)) || !sourceFilterMatches(e, m.SourceFilter[0], v) {
+			return false
+		}
+	} else if len(m.Queries) > 0 && !queriesMatchCharacteristic(m.Queries, ev.SourceLKI) {
+		// CR 609.7b: the properties are rechecked as the damage would be
+		// dealt, against the source as it is then.
 		return false
 	}
 	if !g.redirectProtectsLocked(e, m, ev.DamageTarget) {
@@ -563,6 +635,74 @@ func (g *Game) applyRedirectDamageLocked(e ScopedEffect, mod int, m Mod, ev *Rep
 	g.queuePreventionFollowUpLocked(e, m, ev, 0, n)
 }
 
+// DamageRedirectOfferLocked is what an optional_replacement prompt that
+// offers a "may" redirection is about (#2056, Blood of the Martyr): the
+// damage, the player or permanent it would be dealt to, and where the yes
+// deals it instead. Zeros on every other prompt. Read off the paused
+// event on every view, never stored; a restore point carries no frame,
+// and so no prompt to describe.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) DamageRedirectOfferLocked(c *PendingChoice) (amount int, from, to uuid.UUID) {
+	if c == nil || c.Kind != PendingChoiceOptionalReplacement {
+		return 0, uuid.Nil, uuid.Nil
+	}
+	f := c.replacementResume
+	if f == nil || f.ev == nil || len(f.applicable) != 1 {
+		return 0, uuid.Nil, uuid.Nil
+	}
+	_, amount, from, to = g.redirectOfferLocked(f.ev, f.applicable[0].id)
+	return amount, from, to
+}
+
+// redirectOfferLocked reads a gathered scoped redirection's offer off
+// the event as it stands: its record, the damage, the recipient and the
+// destination. A nil record for anything else.
+//
+// Caller must hold g.mu.
+func (g *Game) redirectOfferLocked(ev *ReplacementEvent, id ReplacementEffectID) (e *ScopedEffect, amount int, from, to uuid.UUID) {
+	seq, mod, ok := decodeScopedReplacementID(id)
+	if !ok || ev == nil || ev.Kind != RepEventDamage {
+		return nil, 0, uuid.Nil, uuid.Nil
+	}
+	rec, m, ok := g.scopedReplacementModLocked(seq, mod, ModRedirectDamage)
+	if !ok || !redirectsAnywhere(m) {
+		return nil, 0, uuid.Nil, uuid.Nil
+	}
+	dest, ok := g.redirectDestinationLocked(m, ev)
+	if !ok {
+		return nil, 0, uuid.Nil, uuid.Nil
+	}
+	return &rec, ev.DamageAmount, ev.DamageTarget, dest
+}
+
+// redirectQuestionLocked is an optional redirection's yes/no question,
+// written from the event as it stands when it is asked (an earlier
+// effect in a CR 616 chain may have changed the amount): "Blood of the
+// Martyr — have the 3 damage from Shock to Grizzly Bears dealt to you
+// instead?". "" for any other effect.
+//
+// Caller must hold g.mu.
+func (g *Game) redirectQuestionLocked(ev *ReplacementEvent, chosen activeReplacement) string {
+	e, amount, from, to := g.redirectOfferLocked(ev, chosen.id)
+	if e == nil {
+		return ""
+	}
+	dest := g.redirectNameLocked(to)
+	if to == e.Controller {
+		dest = "you"
+	}
+	src := ""
+	if ev.DamageSource != uuid.Nil {
+		src = " from " + g.redirectNameLocked(ev.DamageSource)
+	}
+	q := fmt.Sprintf("have the %d damage%s to %s dealt to %s instead?", amount, src, g.redirectNameLocked(from), dest)
+	if n := scopedEffectDisplayName(e); n != "" {
+		return n + " — " + q
+	}
+	return strings.ToUpper(q[:1]) + q[1:]
+}
+
 // markRedirectSpentLocked spends a "next time" redirection with ev's
 // instance (CR 615.8's reading, ADR 0108's one spend rule).
 //
@@ -593,17 +733,46 @@ func (g *Game) DamageRedirectionLines() []string {
 	return out
 }
 
+// redirectNameLocked is a player's or a permanent's name as a
+// redirection's banner line and prompt show it: a face-down permanent is
+// "a permanent" (CR 708.2).
+//
+// Caller must hold g.mu.
+func (g *Game) redirectNameLocked(id uuid.UUID) string {
+	if p := g.playerByIDLocked(id); p != nil {
+		return p.Name
+	}
+	if c, ok := g.LookupCardForEffect(id); ok && c.Name != "" && !c.FaceDown {
+		return c.Name
+	}
+	return "a permanent"
+}
+
+// recipientSetPhraseLocked is a recipient set as the banner says it:
+// "creatures Alice controls", "creatures", "players".
+//
+// Caller must hold g.mu.
+func (g *Game) recipientSetPhraseLocked(e *ScopedEffect, f DamageRecipientFilter) string {
+	var parts []string
+	if f.Players {
+		parts = append(parts, "players")
+	}
+	if f.Permanents {
+		what := "permanents"
+		if slices.ContainsFunc(f.Match, func(q PermanentQuery) bool { return slices.Contains(q.Types, "creature") }) {
+			what = "creatures"
+		}
+		if f.Controller == RecipientControllerYou && e.Controller != uuid.Nil {
+			what += " " + g.redirectNameLocked(e.Controller) + " controls"
+		}
+		parts = append(parts, what)
+	}
+	return strings.Join(parts, " and ")
+}
+
 // damageRedirectionLineLocked writes one record's banner line.
 func (g *Game) damageRedirectionLineLocked(e *ScopedEffect, m Mod) string {
-	name := func(id uuid.UUID) string {
-		if p := g.playerByIDLocked(id); p != nil {
-			return p.Name
-		}
-		if c, ok := g.LookupCardForEffect(id); ok && c.Name != "" && !c.FaceDown {
-			return c.Name
-		}
-		return "a permanent"
-	}
+	name := g.redirectNameLocked
 	var b strings.Builder
 	if m.CombatOnly {
 		b.WriteString("Combat damage")
@@ -617,9 +786,16 @@ func (g *Game) damageRedirectionLineLocked(e *ScopedEffect, m Mod) string {
 		b.WriteString(" to " + name(m.Player) + " and their permanents")
 	case m.Player != uuid.Nil:
 		b.WriteString(" to " + name(m.Player))
+	case len(m.RecipientFilter) == 1:
+		b.WriteString(" to " + g.recipientSetPhraseLocked(e, m.RecipientFilter[0]))
 	}
-	if len(m.Objects) == 1 {
+	switch {
+	case len(m.Objects) == 1:
 		b.WriteString(" from " + name(m.Objects[0].ID))
+	case len(m.SourceFilter) == 1 && m.SourceFilter[0].Combat == SourceCombatUnblocked:
+		b.WriteString(" from unblocked creatures")
+	case len(m.SourceFilter) == 1 && m.SourceFilter[0].Combat == SourceCombatAttacking:
+		b.WriteString(" from attacking creatures")
 	}
 	switch {
 	case len(m.To) == 1:
@@ -634,6 +810,9 @@ func (g *Game) damageRedirectionLineLocked(e *ScopedEffect, m Mod) string {
 		b.WriteString(", the next time")
 	case m.Amount > 0:
 		fmt.Fprintf(&b, ", the next %d", m.Amount)
+	}
+	if m.Optional && e.Controller != uuid.Nil {
+		b.WriteString(", if " + name(e.Controller) + " chooses")
 	}
 	if n := scopedEffectDisplayName(e); n != "" {
 		b.WriteString(" — " + n)

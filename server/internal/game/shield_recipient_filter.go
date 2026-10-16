@@ -139,16 +139,20 @@ func recipientFilterModProblem(m Mod) string {
 		return ""
 	}
 	switch {
-	case m.Kind != ModPreventFromSource:
-		return fmt.Sprintf("a %s mod carries a recipient filter, which only preventFromSource reads", m.Kind)
+	case m.Kind != ModPreventFromSource && m.Kind != ModRedirectDamage:
+		// #2056: a redirection reads the set the way the shield does.
+		return fmt.Sprintf("a %s mod carries a recipient filter, which only preventFromSource and redirectDamage read", m.Kind)
 	case len(m.RecipientFilter) > 1:
-		return "a preventFromSource shield carries more than one recipient filter"
+		return fmt.Sprintf("a %s mod carries more than one recipient filter", m.Kind)
 	case m.Player != uuid.Nil || len(m.Types) != 0:
-		return "a preventFromSource shield names a protected player and a recipient filter"
+		return fmt.Sprintf("a %s mod names a protected player and a recipient filter", m.Kind)
 	case m.AndDealtBy:
 		return "a to-and-by preventFromSource shield carries a recipient filter"
 	case m.Amount != 0:
-		return "a charged preventFromSource shield carries a recipient filter (CR 615.11 makes one shield per recipient)"
+		// CR 615.11 makes "the next N damage ... to each of" one shield per
+		// recipient, not one shared charge; no printed redirection
+		// shares a charge across a set either.
+		return fmt.Sprintf("a charged %s mod carries a recipient filter", m.Kind)
 	}
 	return recipientFilterProblem(m.RecipientFilter[0])
 }

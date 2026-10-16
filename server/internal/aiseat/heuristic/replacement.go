@@ -35,6 +35,12 @@ import (
 //   - Moonlit Meditation's "create copies of the enchanted permanent
 //     instead": yes. It enchants a permanent its controller controls,
 //     which the bot chose, and the replacement is the Aura's only text.
+//   - a "may" redirection (#2056, Blood of the Martyr's "you may have
+//     that damage dealt to you instead"), redirect_amount on the prompt:
+//     yes only to save a creature the bot controls from damage that
+//     would destroy it, and only at a price in life that leaves the bot
+//     at or above its life floor. The default yes would have paid life
+//     for every creature at the table, an opponent's included.
 //
 // entry_pay_life (shocklands, the 3-life modal lands): pay only when the
 // untapped mana buys something this turn and the life is affordable.
@@ -67,11 +73,36 @@ func (p *Policy) optionalReplacementValue(st *state, ch *protocol.PendingChoiceV
 			return 0.5, "commander: headed for a hand, where it is cast without the tax"
 		}
 		return 1, "commander: keep it in hand"
+	case ch.RedirectAmount > 0 && ch.RedirectTo == st.me:
+		return st.redirectToMeValue(ch, yes)
 	}
 	if yes {
 		return 1, "yes"
 	}
 	return 0.5, "no"
+}
+
+// redirectToMeValue scores a "may" redirection that deals the damage to
+// the bot instead (#2056). The yes is worth taking only when it saves a
+// creature the bot controls that the damage would otherwise destroy
+// (effectiveToughness: the damage it has left room for; a deathtouch
+// source or an indestructible creature is not seen, so this errs toward
+// keeping the life), and only while the bot stays at or above
+// phyrexianLifeFloor afterwards.
+func (st *state) redirectToMeValue(ch *protocol.PendingChoiceView, yes bool) (float64, string) {
+	if !yes {
+		return 0.5, "redirect: leave the damage where it is"
+	}
+	c := st.bf[ch.RedirectFrom]
+	switch {
+	case c == nil || c.Controller != st.me || !isCreature(c):
+		return 0, "redirect: not a creature of mine"
+	case ch.RedirectAmount < effectiveToughness(c):
+		return 0, "redirect: my creature survives the damage"
+	case st.myLife()-ch.RedirectAmount < phyrexianLifeFloor:
+		return 0, "redirect: would take me below my life floor"
+	}
+	return 1, "redirect: take the damage to save my creature"
 }
 
 // entryPayLifeValue scores one answer to "as this enters, you may pay N

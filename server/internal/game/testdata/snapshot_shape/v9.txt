@@ -1071,6 +1071,7 @@ extraTurns[].effects[].mods[].objects	array
 extraTurns[].effects[].mods[].objects[]	object
 extraTurns[].effects[].mods[].objects[].epoch	number:int
 extraTurns[].effects[].mods[].objects[].id	custom(uuid.UUID)
+extraTurns[].effects[].mods[].optional	bool
 extraTurns[].effects[].mods[].player	custom(uuid.UUID)
 extraTurns[].effects[].mods[].power	number:int
 extraTurns[].effects[].mods[].queries	array
@@ -4026,6 +4027,7 @@ scopedEffects[].mods[].objects	array
 scopedEffects[].mods[].objects[]	object
 scopedEffects[].mods[].objects[].epoch	number:int
 scopedEffects[].mods[].objects[].id	custom(uuid.UUID)
+scopedEffects[].mods[].optional	bool
 scopedEffects[].mods[].player	custom(uuid.UUID)
 scopedEffects[].mods[].power	number:int
 scopedEffects[].mods[].queries	array

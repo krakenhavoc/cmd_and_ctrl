@@ -415,6 +415,15 @@ answer of its own (`aiseat/heuristic/replacement.go`, `dredge.go`):
   name the discarded card (it is in a hand), so the bot cannot price it, and
   keeping a card beats losing it. Moonlit Meditation enchants a permanent
   the bot chose, and the copies are the Aura's only text.
+- **A "may" redirection to the bot** (#2056, Blood of the Martyr's "you may
+  have that damage dealt to you instead"; the prompt carries
+  `redirect_amount`, `redirect_from` and `redirect_to`): yes only when the
+  damage would destroy a creature the bot controls (its toughness less the
+  damage already marked) and the bot's life stays at or above
+  `phyrexianLifeFloor` (10) after paying it. An opponent's creature, a
+  creature that survives the hit, or a price below the floor is a no.
+  Deathtouch and indestructible are not read, so it errs toward keeping the
+  life.
 - **Unleash**: unchanged, see riot and unleash above.
 - **A shockland's "pay 2 life"** (`entry_pay_life`): the pay move now carries
   its life as `cost.life`. The bot pays only when the untapped land lets it
