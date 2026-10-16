@@ -69,7 +69,7 @@ func init() {
 							Controller: item.Controller,
 							Copy:       discarded,
 							N:          1,
-							Except:     hashatonZombieException,
+							Except:     hashatonZombieExceptionThrough(ctx.textReader()),
 						}.Apply(ctx)
 					},
 				}.Apply(NewContext(g, item))
@@ -83,11 +83,18 @@ func init() {
 // CreateTokenForEffect copies it wholesale — the token is never
 // untapped on the battlefield, which is what "create a TAPPED token"
 // says and what an OnETB tap would get subtly wrong.
-func hashatonZombieException(t *game.Card) {
-	t.Power = 4
-	t.Toughness = 4
-	t.VariableToughness = false // a printed 4, not a `*` stand-in (#683)
-	t.SetCopyExceptionColors("B")
-	t.TypeLine = retypedTypeLine(t.TypeLine, "Zombie")
-	t.Tapped = true
+func hashatonZombieException(t *game.Card) { hashatonZombieExceptionThrough(nil)(t) }
+
+// hashatonZombieExceptionThrough is the exception with "black" and
+// "Zombie" read through `reader`, the text of the ability that makes
+// the copy (CR 612.2, #3984); nil reads the printed words.
+func hashatonZombieExceptionThrough(reader *game.Card) func(t *game.Card) {
+	return func(t *game.Card) {
+		t.Power = 4
+		t.Toughness = 4
+		t.VariableToughness = false // a printed 4, not a `*` stand-in (#683)
+		t.SetCopyExceptionColors(reader.TextColors("B")...)
+		t.TypeLine = retypedTypeLine(t.TypeLine, reader.TextSubtypes("Zombie")...)
+		t.Tapped = true
+	}
 }

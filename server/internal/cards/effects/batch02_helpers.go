@@ -98,11 +98,13 @@ func b02EachPlayerMills(g *game.Game, item *game.StackItem, n int) error {
 
 // b02PlantsYouControl lists the creatures with the Plant subtype
 // `controller` controls — Avenger of Zendikar's landfall targets
-// (not targeted: "each Plant creature you control").
-func b02PlantsYouControl(g *game.Game, controller uuid.UUID) []uuid.UUID {
+// (not targeted: "each Plant creature you control"). `plant` is the
+// creature type as the resolving ability's text now reads it
+// (TextSubtype, CR 612.2, #3984).
+func b02PlantsYouControl(g *game.Game, controller uuid.UUID, plant string) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.IsCreature() && hasSubtype(c, "Plant") {
+		if c.Controller == controller && c.IsCreature() && hasSubtype(c, plant) {
 			out = append(out, c.InstanceID)
 		}
 	}

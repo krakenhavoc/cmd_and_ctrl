@@ -34,5 +34,5 @@ func thisOrAnotherZombieDied(ev game.Event, source *game.Card, _ game.Characteri
 	if !ok {
 		return false
 	}
-	return ev.CardID == source.InstanceID || leftAsSubtype(ev, dead, "Zombie")
+	return ev.CardID == source.InstanceID || leftAsSubtype(ev, dead, source.TextSubtype("Zombie"))
 }

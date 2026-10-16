@@ -279,9 +279,11 @@ func b40ChaosSpillover(g *game.Game, item *game.StackItem, hit uuid.UUID, amount
 
 // b40HydraSpell passes on a Hydra spell — Gargos, Vicious Watcher's
 // "Hydra spells you cast cost {4} less". The subtype is read off the
-// card being cast, which on the stack is its printed type line.
+// card being cast, which on the stack is its printed type line; the
+// word is Gargos's text, read through the modifier's source (CR 612.2,
+// #3984).
 func b40HydraSpell() CostPredicate {
-	return func(q game.CostQuery) bool { return q.Card.HasSubtype("Hydra") }
+	return func(q game.CostQuery) bool { return q.Card.HasSubtype(q.Source.TextSubtype("Hydra")) }
 }
 
 // --- card reads ----------------------------------------------------

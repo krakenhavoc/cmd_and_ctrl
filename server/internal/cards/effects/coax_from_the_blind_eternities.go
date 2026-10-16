@@ -20,14 +20,13 @@ func init() {
 		Name:         "Coax from the Blind Eternities",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			// "Eldrazi" is a word of the spell's text (CR 612.2, #3984).
+			eldrazi := ctx.TextSubtype("Eldrazi")
 			return TakeFromExileOrOutside{
-				Match:           isEldraziCard,
+				Match:           func(c game.Card) bool { return c.HasSubtype(eldrazi) },
 				ExileQuestion:   "Coax from the Blind Eternities — choose a face-up Eldrazi card you own in exile, or none to reveal one from outside the game",
 				OutsideQuestion: "Coax from the Blind Eternities — reveal an Eldrazi card you own from outside the game, or none",
 			}.Apply(ctx)
 		},
 	})
 }
-
-// isEldraziCard is "an Eldrazi card".
-func isEldraziCard(c game.Card) bool { return c.HasSubtype("Eldrazi") }

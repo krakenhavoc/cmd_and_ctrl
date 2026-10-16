@@ -40,7 +40,8 @@ func init() {
 				Watches: []game.EventKind{game.EventETB},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					c, ok := enteredUnderYourControl(ev, source, g, false)
-					return ok && c.IsCreature() && hasSubtype(c, "Dragon")
+					// "Dragon" is a word of the source's text (CR 612.2, #3984).
+					return ok && c.IsCreature() && hasSubtype(c, source.TextSubtype("Dragon"))
 				},
 				Targets: TargetAny(),
 				Key:     damageLabel,
@@ -51,8 +52,9 @@ func init() {
 						return nil
 					}
 					x := 0
+					dragon := ctx.TextSubtype("Dragon")
 					for _, c := range g.BattlefieldCardsForEffect() {
-						if c.Controller == item.Controller && c.IsCreature() && hasSubtype(c, "Dragon") {
+						if c.Controller == item.Controller && c.IsCreature() && hasSubtype(c, dragon) {
 							x++
 						}
 					}

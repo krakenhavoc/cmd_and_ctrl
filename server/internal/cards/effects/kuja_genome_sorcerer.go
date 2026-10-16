@@ -61,7 +61,8 @@ func init() {
 					return false
 				}
 				ch, ok := damageSourceCharacteristics(ev, g)
-				return ok && (hasFold(ch.Subtypes, "Wizard") || hasFold(ch.Abilities, game.KeywordChangeling)) && ch.Controller == src.Controller
+				// "Wizard" is a word of Trance Kuja's text (CR 612.2, #3984).
+				return ok && (hasFold(ch.Subtypes, src.TextSubtype("Wizard")) || hasFold(ch.Abilities, game.KeywordChangeling)) && ch.Controller == src.Controller
 			},
 			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 				ev.DamageAmount *= 2
@@ -81,8 +82,10 @@ func kujaEndStep(g *game.Game, item *game.StackItem) error {
 		return err
 	}
 	wizards := 0
+	// "Wizards" is a word of the source's text (CR 612.2, #3984).
+	wizard := g.TextReaderForEffect(item).TextSubtype("Wizard")
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == item.Controller && c.IsCreature() && c.HasSubtype("Wizard") {
+		if c.Controller == item.Controller && c.IsCreature() && c.HasSubtype(wizard) {
 			wizards++
 		}
 	}

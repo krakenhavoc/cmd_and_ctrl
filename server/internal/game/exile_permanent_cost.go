@@ -197,7 +197,15 @@ func (c *ExilePermanentsCost) Empty() bool {
 // and subtype. The set rules (ShareCardType, EachSubtype) are about the
 // payment as a whole and are judged by exileSetSatisfied; a candidate
 // for an EachSubtype clause must still have one of its subtypes.
-func (c *ExilePermanentsCost) matches(card *Card) bool {
+//
+// The colour and subtypes are words of the text of the object whose
+// cost it is (CR 612.2, #3984), read through `text` (costTextLocked):
+// Throne of the Grim Captain's "a Dinosaur, a Merfolk, a Pirate, and a
+// Vampire" under an Artificial Evolution names the new type. Nil reads
+// the printed words.
+func (c *ExilePermanentsCost) matches(text *TextWords, card *Card) bool {
+	lent := lendCostText(text, *card)
+	card = &lent
 	if c.CardType != "" && !card.HasCardType(strings.ToLower(c.CardType)) {
 		return false
 	}
@@ -206,10 +214,10 @@ func (c *ExilePermanentsCost) matches(card *Card) bool {
 	}) {
 		return false
 	}
-	if c.Color != "" && !card.HasColor(c.Color) {
+	if c.Color != "" && !card.HasColorWord(c.Color) {
 		return false
 	}
-	if len(c.EachSubtype) > 0 && !slices.ContainsFunc(c.EachSubtype, card.HasSubtype) {
+	if len(c.EachSubtype) > 0 && !slices.ContainsFunc(c.EachSubtype, card.HasSubtypeWord) {
 		return false
 	}
 	if c.Nonland && card.HasCardType("land") {
@@ -218,7 +226,7 @@ func (c *ExilePermanentsCost) matches(card *Card) bool {
 	if c.WithActivatedAbilities && !hasActivatedAbility(card) {
 		return false
 	}
-	return c.Subtype == "" || card.HasSubtype(c.Subtype)
+	return c.Subtype == "" || card.HasSubtypeWord(c.Subtype)
 }
 
 // hasActivatedAbility reports whether `card` has an activated ability
@@ -271,7 +279,7 @@ func SharedCardTypes(cards []Card) []string {
 // is satisfied by anything (each material's own check already ran); the
 // count is the caller's question. Nil `cards` (a pick that is no
 // material) never satisfies a rule.
-func (c *ExilePermanentsCost) exileSetSatisfied(cards []*Card) bool {
+func (c *ExilePermanentsCost) exileSetSatisfied(text *TextWords, cards []*Card) bool {
 	if !c.ShareCardType && len(c.EachSubtype) == 0 {
 		return true
 	}
@@ -295,7 +303,7 @@ func (c *ExilePermanentsCost) exileSetSatisfied(cards []*Card) bool {
 		for i := range order {
 			order[i] = i
 		}
-		if assignSacrificeSet(c.subtypeFits(cards), order) == nil {
+		if assignSacrificeSet(c.subtypeFits(text, cards), order) == nil {
 			return false
 		}
 	}
@@ -303,13 +311,14 @@ func (c *ExilePermanentsCost) exileSetSatisfied(cards []*Card) bool {
 }
 
 // subtypeFits is the EachSubtype matching table: row i, column j says
-// whether candidate j has the i-th subtype.
-func (c *ExilePermanentsCost) subtypeFits(cards []*Card) [][]bool {
+// whether candidate j has the i-th subtype, read through `text` (the
+// clause's source's words, matches' rule).
+func (c *ExilePermanentsCost) subtypeFits(text *TextWords, cards []*Card) [][]bool {
 	fits := make([][]bool, len(c.EachSubtype))
 	for i, st := range c.EachSubtype {
 		fits[i] = make([]bool, len(cards))
 		for j, cd := range cards {
-			fits[i][j] = cd.HasSubtype(st)
+			fits[i][j] = lendCostText(text, *cd).HasSubtypeWord(st)
 		}
 	}
 	return fits
@@ -383,10 +392,11 @@ func (g *Game) ExilePermanentsOptionsForEffect(playerID, sourceID uuid.UUID, ec 
 	if ec.Empty() {
 		return nil
 	}
+	text := g.costTextLocked(sourceID)
 	var out []uuid.UUID
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if ec.GraveyardOnly || c.Controller != playerID || (ec.ExcludeSource && c.InstanceID == sourceID) || !ec.matches(c) {
+		if ec.GraveyardOnly || c.Controller != playerID || (ec.ExcludeSource && c.InstanceID == sourceID) || !ec.matches(text, c) {
 			continue
 		}
 		out = append(out, c.InstanceID)
@@ -397,7 +407,7 @@ func (g *Game) ExilePermanentsOptionsForEffect(playerID, sourceID uuid.UUID, ec 
 		if p := g.playerByIDLocked(playerID); p != nil && p.Graveyard != nil {
 			for i := range p.Graveyard.Cards {
 				c := &p.Graveyard.Cards[i]
-				if c.InstanceID == sourceID || !ec.matches(c) {
+				if c.InstanceID == sourceID || !ec.matches(text, c) {
 					continue
 				}
 				out = append(out, c.InstanceID)
@@ -415,7 +425,7 @@ func (g *Game) ExilePermanentsPayable(playerID, sourceID uuid.UUID, ec *ExilePer
 	if ec.Empty() {
 		return true
 	}
-	return g.ExilePermanentsPaymentForEffect(playerID, ec, g.ExilePermanentsOptionsForEffect(playerID, sourceID, ec)) != nil
+	return g.ExilePermanentsPaymentForEffect(playerID, sourceID, ec, g.ExilePermanentsOptionsForEffect(playerID, sourceID, ec)) != nil
 }
 
 // ExilePermanentsPaymentForEffect is ONE legal payment of `ec` out of
@@ -425,10 +435,12 @@ func (g *Game) ExilePermanentsPayable(playerID, sourceID uuid.UUID, ec *ExilePer
 // the first Count of the earliest card type (CR 205.2a order) that
 // enough candidates have; an EachSubtype clause is the one-to-one
 // matching, trying a candidate that fits fewer entries first, so a
-// changeling is kept for the entry nothing else fills.
+// changeling is kept for the entry nothing else fills. The subtypes are
+// read through the text of the ability's source `sourceID`
+// (costTextLocked, #3984), as the validator reads them.
 //
 // Caller must hold g.mu (read or write).
-func (g *Game) ExilePermanentsPaymentForEffect(playerID uuid.UUID, ec *ExilePermanentsCost, candidates []uuid.UUID) []uuid.UUID {
+func (g *Game) ExilePermanentsPaymentForEffect(playerID, sourceID uuid.UUID, ec *ExilePermanentsCost, candidates []uuid.UUID) []uuid.UUID {
 	if ec.Empty() || len(candidates) < ec.Count {
 		return nil
 	}
@@ -443,7 +455,7 @@ func (g *Game) ExilePermanentsPaymentForEffect(playerID uuid.UUID, ec *ExilePerm
 		if cards == nil {
 			return nil
 		}
-		fits := ec.subtypeFits(cards)
+		fits := ec.subtypeFits(g.costTextLocked(sourceID), cards)
 		versatility := make([]int, len(cards))
 		for j := range cards {
 			for i := range fits {
@@ -511,10 +523,11 @@ func (g *Game) ExileSharedTypeGroupsForEffect(playerID uuid.UUID, ec *ExilePerma
 // ExileSubtypeGroupsForEffect splits `candidates` by the EachSubtype
 // entry each could fill, for the protocol view's each_of: a candidate
 // that fits two entries (a changeling) appears under both. Nil without
-// the rule.
+// the rule. The subtypes are read through the text of the ability's
+// source `sourceID` (costTextLocked, #3984).
 //
 // Caller must hold g.mu (read or write).
-func (g *Game) ExileSubtypeGroupsForEffect(playerID uuid.UUID, ec *ExilePermanentsCost, candidates []uuid.UUID) []SacrificeSetGroup {
+func (g *Game) ExileSubtypeGroupsForEffect(playerID, sourceID uuid.UUID, ec *ExilePermanentsCost, candidates []uuid.UUID) []SacrificeSetGroup {
 	if ec.Empty() || len(ec.EachSubtype) == 0 {
 		return nil
 	}
@@ -522,7 +535,8 @@ func (g *Game) ExileSubtypeGroupsForEffect(playerID uuid.UUID, ec *ExilePermanen
 	if cards == nil {
 		return nil
 	}
-	fits := ec.subtypeFits(cards)
+	text := g.costTextLocked(sourceID)
+	fits := ec.subtypeFits(text, cards)
 	out := make([]SacrificeSetGroup, len(ec.EachSubtype))
 	for i, st := range ec.EachSubtype {
 		out[i].Label = subtypeArticle(st) + " " + st
@@ -589,7 +603,7 @@ func (g *Game) validateExilePermanentsCostLocked(playerID, sourceID uuid.UUID, e
 		// own graveyard. It is theirs by being there, so the clause is
 		// the only question.
 		if gc := g.graveyardMaterialLocked(playerID, ec, id); gc != nil {
-			if gc.InstanceID == sourceID || !ec.matches(gc) {
+			if gc.InstanceID == sourceID || !ec.matches(g.costTextLocked(sourceID), gc) {
 				return ErrIllegalTarget
 			}
 			continue
@@ -608,14 +622,14 @@ func (g *Game) validateExilePermanentsCostLocked(playerID, sourceID uuid.UUID, e
 		if c.Controller != playerID {
 			return ErrCardCallerMismatch
 		}
-		if !ec.matches(c) {
+		if !ec.matches(g.costTextLocked(sourceID), c) {
 			return ErrIllegalTarget
 		}
 	}
 	// ADR 0137's amendment: the clause's rule over the whole set ("two
 	// that share a card type", "a Dinosaur, a Merfolk, a Pirate, and a
 	// Vampire"), judged once every pick is known to be a material.
-	if !ec.exileSetSatisfied(g.exileMaterialsLocked(playerID, ec, ids)) {
+	if !ec.exileSetSatisfied(g.costTextLocked(sourceID), g.exileMaterialsLocked(playerID, ec, ids)) {
 		return ErrIllegalTarget
 	}
 	return nil

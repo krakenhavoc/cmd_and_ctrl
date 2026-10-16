@@ -91,8 +91,10 @@ func init() {
 // then the "you may" exile and its 13 damage. Captures only scalars.
 func dayOfTheDoctorFinale(g *game.Game, item *game.StackItem) error {
 	var doctors []uuid.UUID
+	// "Doctor" is a word of the Saga's text (CR 612.2, #3984).
+	doctor := g.TextReaderForEffect(item).TextSubtype("Doctor")
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.IsCreature() && c.HasSubtype("Doctor") {
+		if c.IsCreature() && c.HasSubtype(doctor) {
 			doctors = append(doctors, c.InstanceID)
 		}
 	}

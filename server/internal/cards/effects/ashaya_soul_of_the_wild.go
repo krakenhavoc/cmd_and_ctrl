@@ -45,12 +45,14 @@ func init() {
 				AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 					return target.IsCreature() && !target.IsToken() && target.Controller == source.Controller
 				},
-				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
 					if !slices.Contains(c.Types, "Land") {
 						c.Types = append(c.Types, "Land")
 					}
-					if !slices.Contains(c.Subtypes, "Forest") {
-						c.Subtypes = append(c.Subtypes, "Forest")
+					// "Forest" is a word of the source's text (CR 612.2, #3984).
+					forest := source.TextSubtype("Forest")
+					if !slices.Contains(c.Subtypes, forest) {
+						c.Subtypes = append(c.Subtypes, forest)
 					}
 				},
 			},

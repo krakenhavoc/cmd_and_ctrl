@@ -1080,7 +1080,8 @@ func WhenEnchantedCreatureDies(label string, effect Effect) game.TriggeredAbilit
 func AnotherNontokenCreatureOfTypeEnteredUnderYourControl(subtype string) When {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		c, ok := enteredUnderYourControl(ev, source, g, true)
-		return ok && c.IsCreature() && !c.IsToken() && c.HasSubtype(subtype)
+		// The type is a word of the source's text (CR 612.2, #3984).
+		return ok && c.IsCreature() && !c.IsToken() && c.HasSubtype(source.TextSubtype(subtype))
 	}
 }
 

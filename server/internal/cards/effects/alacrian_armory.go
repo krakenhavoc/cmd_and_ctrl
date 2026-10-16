@@ -30,7 +30,8 @@ func init() {
 			if !ok {
 				continue
 			}
-			if c.HasSubtype("Mount") {
+			// "Mount" is a word of the source's text (CR 612.2, #3984).
+			if c.HasSubtype(ctx.TextSubtype("Mount")) {
 				if err := (BecomeSaddled{Target: t.ID}).Apply(ctx); err != nil {
 					return err
 				}

@@ -534,13 +534,36 @@ func (ctx ManaSpendContext) matchesKeyed(key, value string) bool {
 // in the pool never aliases either the catalog's process-lifetime
 // slice or a slice the card file built and might reuse.
 //
+// A declared list is the ability's printed words, so a subtype or colour
+// it names is read through the source's text (CR 612.2, #3984): Eldrazi
+// Temple's "Eldrazi spell" under an Artificial Evolution names the new
+// type. A computed list names a CHOSEN word (Cavern of Souls), which no
+// text change reaches, and is used as it is.
+//
 // Caller must hold g.mu (every call site is inside a mana-ability
 // activation, which does).
 func restrictionsFor(g *Game, ab *ManaAbilityShape, controller, source uuid.UUID) []string {
 	if ab.RestrictionsFunc != nil {
 		return copyRestrictions(ab.RestrictionsFunc(g, controller, source))
 	}
-	return copyRestrictions(ab.Restrictions)
+	return g.costTextLocked(source).manaTags(copyRestrictions(ab.Restrictions))
+}
+
+// spendRidersFor is a mana ability's declared spend riders for one
+// production, copied, with each rider's filter read through the source's
+// text as restrictionsFor reads the restrictions (CR 612.2, #3984):
+// Pyromancer's Goggles' "a red instant or sorcery spell" under a Sleight
+// of Mind names the new colour.
+//
+// Caller must hold g.mu.
+func spendRidersFor(g *Game, ab *ManaAbilityShape, source uuid.UUID) []ManaSpendRider {
+	out := copyManaRiders(ab.SpendRiders)
+	if text := g.costTextLocked(source); text != nil {
+		for i := range out {
+			out[i].When = text.manaTags(out[i].When)
+		}
+	}
+	return out
 }
 
 // copyRestrictions returns a fresh backing array for a restriction

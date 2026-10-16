@@ -58,7 +58,7 @@ func init() {
 					return ScopedEffectFor{
 						Target: self,
 						Mods: []game.Mod{
-							game.SetCreatureTypesMod("Halfling", "Scout"),
+							game.SetCreatureTypesMod(g.TextReaderForEffect(item).TextSubtypes("Halfling", "Scout")...),
 							game.AddKeywordsMod("lifelink"),
 							game.SetBasePowerMod(2),
 							game.SetBaseToughnessMod(3),
@@ -82,7 +82,7 @@ func init() {
 					return GrantAbilitiesFor{
 						Target:   self,
 						Keys:     []string{frodoSauronsBaneRogueGrant},
-						Also:     []game.Mod{game.SetCreatureTypesMod("Halfling", "Rogue")},
+						Also:     []game.Mod{game.SetCreatureTypesMod(g.TextReaderForEffect(item).TextSubtypes("Halfling", "Rogue")...)},
 						Duration: g.PinnedTo(game.IndefiniteDuration(), self),
 						Label:    "Frodo, Sauron's Bane — a Halfling Rogue",
 					}.Apply(NewContext(g, item))
@@ -102,7 +102,8 @@ func frodoSauronsBaneIs(g *game.Game, item *game.StackItem, subtype string) bool
 		return false
 	}
 	c, ok := g.LookupCardForEffect(item.SourceCardID)
-	return ok && c.HasSubtype(subtype)
+	// "Citizen", "Scout": words of Frodo's text (CR 612.2, #3984).
+	return ok && c.HasSubtype(g.TextReaderForEffect(item).TextSubtype(subtype))
 }
 
 // frodoSauronsBaneRogueHits is the granted trigger's resolution: the

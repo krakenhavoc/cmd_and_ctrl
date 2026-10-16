@@ -52,10 +52,9 @@ import (
 // triggers_common.go takes it; `cost` is the printed cumulative upkeep
 // cost, charged once per age counter.
 //
-// A mana cost. "Cumulative upkeep—Sacrifice a land" and "—Discard a
-// card" are CumulativeUpkeepPaying (ADR 0108 §5). "Cumulative upkeep—Pay
-// 2 life" (Glacial Chasm) is the same trigger with a payment the prompt
-// does not take yet, and waits rather than being approximated here.
+// A mana cost. "Cumulative upkeep—Sacrifice a land", "—Discard a card"
+// and "—Pay 1 life" are CumulativeUpkeepPaying (ADR 0108 §5; the life
+// payment is LifePayment, #3869).
 func CumulativeUpkeep(label, cost string) game.TriggeredAbility {
 	return CumulativeUpkeepPaying(label, UpkeepPayment{Mana: cost}, "", "")
 }
@@ -69,10 +68,13 @@ func CumulativeUpkeep(label, cost string) game.TriggeredAbility {
 // With three age counters that is "Sacrifice three lands", chosen and
 // paid all at once or not at all (CR 702.24a: "either the entire set of
 // costs is paid, or none of them is paid"). `noun` and `plural` name a
-// sacrifice's permanents in the prompt; a mana or discard payment
+// sacrifice's permanents in the prompt; a mana, discard or life payment
 // ignores them.
+//
+// The trigger carries game.KeywordCumulativeUpkeep (#3869), which is
+// how game.HasCumulativeUpkeep finds an instance, printed or granted.
 func CumulativeUpkeepPaying(label string, each UpkeepPayment, noun, plural string) game.TriggeredAbility {
-	return AtYourUpkeep(label, func(g *game.Game, item *game.StackItem) error {
+	t := AtYourUpkeep(label, func(g *game.Game, item *game.StackItem) error {
 		source := item.SourceCardID
 		// CR 702.24a's "if this permanent is on the battlefield": a
 		// permanent that left in response has nothing to age and
@@ -104,6 +106,49 @@ func CumulativeUpkeepPaying(label string, each UpkeepPayment, noun, plural strin
 			}.Apply(ctx)
 		})
 	})
+	t.Keyword = game.KeywordCumulativeUpkeep
+	return t
+}
+
+// CumulativeUpkeepGrant is the ADR 0093 bundle for a QUOTED cumulative
+// upkeep that another effect gives a permanent (#3869): Mana Chains'
+// "Enchanted creature has 'Cumulative upkeep {1}.'", Balduvian Shaman's
+// "That enchantment gains 'Cumulative upkeep {1}.'". `key` is the
+// catalog-wide bundle key and `cost` the quoted mana cost, charged once
+// per age counter.
+//
+// Nothing about the trigger changes when it is granted. A granted
+// trigger's source is the HOST (ADR 0093 Decision 4), so the age
+// counter goes on the host, the host's controller is asked, and a
+// decline sacrifices the host. A permanent with several instances (its
+// own and a granted one, or two grants) triggers once per instance, and
+// each instance counts every age counter on the permanent as it
+// resolves (CR 702.24b), which is what reading the counters at
+// resolution already does.
+func CumulativeUpkeepGrant(key, cost string) AbilityGrant {
+	return CumulativeUpkeepGrantPaying(key, UpkeepPayment{Mana: cost}, "Cumulative upkeep "+cost)
+}
+
+// CumulativeUpkeepGrantPaying is CumulativeUpkeepGrant for a payment
+// that is not mana. Decomposition's "Cumulative upkeep—Pay 1 life." is
+//
+//	CumulativeUpkeepGrantPaying(key, LifePayment(1), "Cumulative upkeep—Pay 1 life")
+//
+// `text` is the quoted ability as printed, without its closing period;
+// it is also the trigger's stack label.
+func CumulativeUpkeepGrantPaying(key string, each UpkeepPayment, text string) AbilityGrant {
+	return AbilityGrant{
+		Key:       key,
+		Triggered: []game.TriggeredAbility{CumulativeUpkeepPaying(text, each, "", "")},
+		Text:      text + ".",
+	}
+}
+
+// DoesNotHaveCumulativeUpkeep is the target clause "that doesn't have
+// cumulative upkeep" (Balduvian Shaman, #3869): no instance of CR
+// 702.24 on the object, printed or granted, as the layers leave it.
+func DoesNotHaveCumulativeUpkeep() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return !game.HasCumulativeUpkeep(c) }
 }
 
 // counterCountOn reads one counter kind off a card in any zone.

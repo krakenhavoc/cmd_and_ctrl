@@ -35,8 +35,9 @@ func init() {
 				Creature(), shadowbornApostleNamed)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
-					Player:    item.Controller,
-					Predicate: func(c game.Card) bool { return c.IsCreature() && c.HasSubtype("Demon") },
+					Player: item.Controller,
+					// SearchLibrary lends the source's text (CR 612.2, #3984).
+					Predicate: func(c game.Card) bool { return c.IsCreature() && c.HasSubtypeWord("Demon") },
 					Dest:      game.ZoneBattlefield,
 					Limit:     1,
 					Shuffle:   true,

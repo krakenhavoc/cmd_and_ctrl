@@ -93,7 +93,8 @@ func b18AnotherAngelOrClericYouControlEntered(ev game.Event, source *game.Card, 
 	if !ok || !c.IsCreature() {
 		return game.Card{}, false
 	}
-	if !c.HasSubtype("Angel") && !c.HasSubtype("Cleric") {
+	// Both types are words of the source's text (CR 612.2, #3984).
+	if !c.HasSubtype(source.TextSubtype("Angel")) && !c.HasSubtype(source.TextSubtype("Cleric")) {
 		return game.Card{}, false
 	}
 	return c, true

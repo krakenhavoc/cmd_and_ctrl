@@ -46,11 +46,13 @@ func init() {
 				if err := (CreateToken{Controller: item.Controller, Template: TokenCard("3/3 black Wraith with menace"), N: 1}).Apply(ctx); err != nil {
 					return err
 				}
-				isWraith := func(c game.Card) bool { return c.HasSubtype("Wraith") }
+				// "Wraiths" is a word of the source's text (CR 612.2, #3984).
+				wraith := ctx.TextSubtype("Wraith")
+				isWraith := func(c game.Card) bool { return c.HasSubtype(wraith) }
 				if countControlled(g, item.Controller, isWraith) < 9 {
 					return nil
 				}
-				return untilEndOfTurn(ctx, uuid.Nil, And(Subtype("Wraith"), ControlledBy(item.Controller)),
+				return untilEndOfTurn(ctx, uuid.Nil, And(Subtype(wraith), ControlledBy(item.Controller)),
 					"Lord of the Nazgûl — Wraiths have base power and toughness 9/9",
 					game.SetBasePowerMod(9), game.SetBaseToughnessMod(9))
 			}),

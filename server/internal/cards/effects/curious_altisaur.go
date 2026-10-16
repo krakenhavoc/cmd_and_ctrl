@@ -24,7 +24,7 @@ func init() {
 		PrintedKeywords: []string{"reach", "vigilance"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b24CombatDamageToPlayerByYourCreatureOfSubtypes(ev, source, g, "Dinosaur")
+				return b24CombatDamageToPlayerByYourCreatureOfSubtypes(ev, source, g, source.TextSubtype("Dinosaur"))
 			}, "Curious Altisaur — draw a card", Do(DrawCards{N: 1})),
 		},
 	})

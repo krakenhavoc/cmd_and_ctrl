@@ -38,7 +38,8 @@ func init() {
 				Layer:    game.Layer7PT,
 				SubLayer: game.SubLayer7C_Modify,
 				AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
-					return target.IsCreature() && target.Controller == source.Controller && target.HasSubtype("Thopter")
+					// "Thopters" is a word of the source's text (CR 612.2, #3984).
+					return target.IsCreature() && target.Controller == source.Controller && target.HasSubtype(source.TextSubtype("Thopter"))
 				},
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 					c.Power++

@@ -40,27 +40,30 @@ import (
 //
 // No simplification.
 func init() {
-	nonZombieCreature := func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-		return c.IsCreature() && !c.HasSubtype("Zombie")
-	}
 	Register(Spec{
 		OracleID:     "602e421e-afab-4488-8a52-af66b4fdce4b",
 		Name:         "Noxious Ghoul",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			TriggerWithPurpose(On(game.EventETB, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+			// "Zombie" is a word of the source's text in both clauses
+			// (CR 612.2, #3984).
+			TriggerWithPurpose(On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.CardID == uuid.Nil {
 					return false
 				}
 				c, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && c.HasSubtype("Zombie")
+				return ok && c.HasSubtype(source.TextSubtype("Zombie"))
 			}, "Noxious Ghoul — all non-Zombie creatures get -1/-1 until end of turn", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				zombie := ctx.TextSubtype("Zombie")
 				return BoostUntilEOT{
-					Match:     nonZombieCreature,
+					Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+						return c.IsCreature() && !c.HasSubtype(zombie)
+					},
 					Power:     -1,
 					Toughness: -1,
 					Label:     "Noxious Ghoul — non-Zombies get -1/-1",
-				}.Apply(NewContext(g, item))
+				}.Apply(ctx)
 			}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 1, Partial: true}}),
 		},
 	})

@@ -63,16 +63,23 @@ func nexusOfBecomingBody(g *game.Game, item *game.StackItem) error {
 				Controller: player,
 				Copy:       picked[0],
 				N:          1,
-				Except:     nexusGolemException,
+				Except:     nexusGolemExceptionFor(g.TextReaderForEffect(item)),
 			}.Apply(NewContext(g, item))
 		},
 	})
 	return nil
 }
 
-// nexusGolemException is "except it's a 3/3 Golem artifact creature in
-// addition to its other types".
-func nexusGolemException(t *game.Card) {
+// nexusGolemExceptionFor is "except it's a 3/3 Golem artifact creature
+// in addition to its other types", with "Golem" read through
+// `reader`, the object whose text it is (CR 612.2, #3984); nil reads the
+// printed word.
+func nexusGolemExceptionFor(reader *game.Card) func(*game.Card) {
+	golem := reader.TextSubtype("Golem")
+	return func(t *game.Card) { nexusGolemExceptionAs(t, golem) }
+}
+
+func nexusGolemExceptionAs(t *game.Card, golem string) {
 	super, types, subs := game.ParseTypeLine(t.TypeLine)
 	for _, want := range []string{"Artifact", "Creature"} {
 		found := false
@@ -87,12 +94,12 @@ func nexusGolemException(t *game.Card) {
 	}
 	hasGolem := false
 	for _, s := range subs {
-		if strings.EqualFold(s, "Golem") {
+		if strings.EqualFold(s, golem) {
 			hasGolem = true
 		}
 	}
 	if !hasGolem {
-		subs = append([]string{"Golem"}, subs...)
+		subs = append([]string{golem}, subs...)
 	}
 	line := strings.Join(append(append([]string(nil), super...), types...), " ")
 	t.TypeLine = line + " — " + strings.Join(subs, " ")
