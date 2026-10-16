@@ -412,3 +412,96 @@ one: Marang River Prowler, whose clause works only from the graveyard).
   (`SourceChooser`), in the validator, the enumerator and the view alike, so Heroism's "Sacrifice a
   white creature" and Kukemssa Serpent's "Sacrifice an Island" keep their printed word. Lending there
   is an engine change across all three, not a card migration.
+
+All three are reached since slice 2, below.
+
+## Follow-up 2026-10-16, slice 2 — helper arguments, cost clauses and a departed source (#3872)
+
+**Status:** Accepted · 2026-10-16. No new decision: the three classes slice 1 left are moved onto the
+same doors, plus one engine seam each for costs and last-known information.
+
+### Words passed to a helper
+
+A helper that takes the word as an argument now reads it through the text of the object whose clause it
+is, in one of two ways:
+
+- **Doors** read the word themselves, so a card file names its printed word to them as a literal:
+  the predicate builders a lending walk evaluates (`IsLandWithSubtype`, `IsBasicLandWithSubtype`,
+  `MatchLandSubtype`, `MatchColor`, `MatchCreatureSubtype`, `b05HasSubtype`, through
+  `HasSubtypeWord` / `HasColorWord` / `LentSubtype`), with `ProducedPerPermanent`, `ControlsAtLeast`
+  and `OpponentControlsAtLeast` now lending their source's text (Cabal Coffers, Tainted Isle, the
+  Verges, Leechridden Swamp, Elvish Archdruid) and a mana trigger's land match lending its source's
+  (Crypt Ghast); the statics that read their source (`SetsBasicLandType`: Blood Moon, Magus of the
+  Moon, Spreading Seas and the rest; `EachLandIsAlso`: Yavimaya); the effects that read their context
+  (`TargetLandBecomes…`: Tidal Warrior, Kukemssa Serpent, Gaea's Liege; a choice among printed types
+  offers each translated type once); and the prevention shields, whose printed `Queries` and
+  `Filter.Except` are read through the resolving object's text as the shield is made (`QueryColors`:
+  the Circles and Runes of Protection, Burrenton Forge-Tender, Pilgrims, Luminesce, Radiant Kavu,
+  Hunter's Ambush). Each reads once, when the effect is applied, and keeps that answer (CR 608.2h; a
+  later change does not alter an effect already created, the cards' ruling on CR 612.3).
+- **Imperative helpers** judge the word as given (`ControlsA`, `AnOpponentControlsAAndYouControlA`,
+  `b08LandsWithSubtypeControlled`, `b12OtherMountainsControlled`, `b18ControlsPermanentOfColor`,
+  `b33IslandsControlled`, `leftAsColor`), so the caller translates first:
+  `source.TextSubtype("Island")` (Serpent of the Endless Sea, Staff of Titania, Gaea's Liege,
+  Emeria), `ctx.TextSubtype("Faerie")` (Ego Drain, Mana Sculpt, Diplomacy of the Wastes, Unholy
+  Annex), `c.LentSubtype("Island")` (Spectral Deluge), `g.TextReaderOfForEffect(source)` in a mana
+  condition (Tainted Field, Tainted Wood, Wastewood Verge).
+
+A word that was CHOSEN is not text (CR 612.2) and never translates: `SetsChosenBasicLandType`
+(Illusionary Terrain, Phantasmal Terrain) and a shield's `ChosenQueries` (Story Circle, Circle of Solace,
+Prismatic Strands, Mourner's Shield, Protective Sphere, Avacyn) say so.
+
+`TestNoHardCodedTextWordsInCardFiles` now also fails on a literal passed to an imperative helper, and
+lists the doors as its control. Two more reasons join its allowlist, both out of reach by rule: an
+alternative cost's condition (Snuff Out, Angelic Favor, Sivvi's Ruse …) is judged as the card is cast
+from a hand (CR 601.2b), and "enters tapped unless you control …" (Gingerbread Cabin, Idyllic Grange,
+Dwarven Mine) as the land enters, a new object (CR 400.7, 614.12); neither has a text change yet.
+
+### Cost clauses
+
+A sacrifice, return, tap-others or counter-removal cost is still judged on a walk that does not target
+(ADR 0038 §4): no source object, so nothing is excluded or compared that was not before. But the walk
+now carries the TEXT of the permanent whose ability it is (`TargetSource.text`, built by
+`Game.costSourceLocked`), and `lend` gives it to each candidate. The validators
+(`validateSacrificeCostLocked`, `validateReturnToHandCostLocked`, `validateTapOthersCostLocked`,
+`validateCounterRemovalLocked`), the option walks the view and the enumerator share
+(`SacrificeCostCandidatesForEffect`, which now takes the source, `ReturnToHandOptionsForEffect`,
+`TapOthersOptionsForEffect`, `CounterCostOptionsForEffect`) and the payability checks all build the
+walk there, so the three agree: Heroism under a Sleight of Mind offers, enumerates and accepts a green
+creature and refuses a white one. A spell's additional or alternative cost reads its printed words
+(its costs are paid before anything can change its text), as does a source off the battlefield.
+
+An Aura's enchant clause is checked the same way by the state-based action (CR 704.5m): Utopia Sprawl
+changed to "Enchant Island" falls off a Forest.
+
+### A departed source
+
+`PermanentInfo` and `triggerIdentityLKI` carry the words the permanent last read as
+(`TextWords []TextWordChange`: each printed word and what it read as, set side by side when rebuilt,
+never composed). It is additive within snapshot v9: a record written before it has none and reads the
+printed words, which is exactly what every binary did before; a binary that drops the key reads the
+printed words too. The readers:
+
+- the target re-check of an ability whose source has left (`stackItemSourceLocked`'s departed branch
+  lends the record's text, CR 608.2h);
+- an effect's own text (`Context.textReader`, now `Game.TextReaderForEffect`): the permanent while it
+  is still the same object, its record once it has gone, and, for a resolution continuation that
+  carries only the card (`OptionPickThen`), the card's last battlefield object while it has not moved
+  since (`departedDamageSourceLocked`'s rule). A fetchland changed from "Island" to "Forest" and
+  sacrificed to its own ability searches for a Forest; Liliana of the Dark Realms changed to Islands
+  whose −3 took her last loyalty still counts Islands; Kukemssa Serpent sacrificed by its own state
+  trigger before its ability resolves still makes the land a Forest;
+- a leaves-the-battlefield trigger's source (`withLastKnownTriggerIdentityLocked`, CR 603.10a).
+
+### Still not reached
+
+- **A clause's set rule** (`TargetSpec.EachOf`: Jarad's "Sacrifice a Swamp and a Forest") matches its
+  printed kinds. Each pick passes the translated union clause, so under a change the set cannot be
+  filled: the cost is unpayable in the validator, the enumerator and the view alike, never mis-paid.
+- **Discard, exile-from-a-zone and reveal costs** (the Martyrs' "Reveal X black cards") match a card
+  with no lens.
+- **Colour-setting effects** whose colour is printed ("becomes a white and blue Bird", "enchanted
+  creature is black": `SetColorsMod`, `AddColorsMod`, `SetAttachedColors`), a shield's protected-set
+  query (Pack Leader's Dogs) and `RedirectDamage`'s queries.
+- **Creature-type words in closures** generally: the guard covers colours and basic land types only,
+  and the creature-type callers migrated here (`ControlsA` in four effects) are the easy ones.

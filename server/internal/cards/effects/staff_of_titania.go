@@ -43,7 +43,7 @@ func init() {
 			SubLayer:  game.SubLayer7C_Modify,
 			AppliesTo: AttachedToSource,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				n := b08LandsWithSubtypeControlled(g, source.Controller, "Forest")
+				n := b08LandsWithSubtypeControlled(g, source.Controller, source.TextSubtype("Forest"))
 				c.Power += n
 				c.Toughness += n
 			},

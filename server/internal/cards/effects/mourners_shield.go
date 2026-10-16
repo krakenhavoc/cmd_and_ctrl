@@ -47,7 +47,7 @@ func init() {
 				if len(colors) == 0 {
 					return nil
 				}
-				return PreventDamageFromChosenSource(ShieldAnything, QueryColors(colors...)).Apply(NewContext(g, item))
+				return PreventDamageFromChosenSource(ShieldAnything, QueryColors(colors...)).WithChosenQueries().Apply(NewContext(g, item))
 			},
 		}},
 	})

@@ -62,7 +62,7 @@ func init() {
 			if err := (CounterTarget{StackID: stackID}).Apply(ctx); err != nil {
 				return err
 			}
-			if spent <= 0 || !ControlsA("Wizard")(ctx.Game, item.Controller) {
+			if spent <= 0 || !ControlsA(ctx.TextSubtype("Wizard"))(ctx.Game, item.Controller) {
 				return nil
 			}
 			return ScheduleDelayedTrigger{

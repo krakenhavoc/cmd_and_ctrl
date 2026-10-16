@@ -12320,7 +12320,7 @@ func castSourceOf(g *game.Game, caster uuid.UUID, instanceID string) game.Target
 func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetSpec, sourceID uuid.UUID, selfToo bool) *LegalTargetsView {
 	// #3275: the controller's permanents that can be sacrificed.
 	var ids []uuid.UUID
-	for _, id := range g.SacrificeCostCandidatesForEffect(controller, spec) {
+	for _, id := range g.SacrificeCostCandidatesForEffect(controller, sourceID, spec) {
 		if (selfToo || spec.ExcludeSource) && id == sourceID {
 			continue
 		}

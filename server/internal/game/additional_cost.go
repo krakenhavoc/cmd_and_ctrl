@@ -1001,7 +1001,7 @@ func (g *Game) additionalCostPayableLocked(playerID, castID uuid.UUID, cost *Add
 	if cost.Sacrifice != nil {
 		// #3275: the permanents that can pay it, so one that can't be
 		// sacrificed doesn't count.
-		have := len(g.SacrificeCostCandidatesForEffect(playerID, cost.Sacrifice))
+		have := len(g.SacrificeCostCandidatesForEffect(playerID, uuid.Nil, cost.Sacrifice))
 		if have < SacrificeCostCount(cost.Sacrifice) {
 			return false
 		}

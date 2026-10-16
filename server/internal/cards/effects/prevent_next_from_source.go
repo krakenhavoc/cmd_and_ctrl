@@ -146,6 +146,16 @@ type PreventNextDamageFromSource struct {
 	// default to the card's name.
 	Question string
 	Label    string
+
+	// ChosenQueries says Queries name a chosen colour or type, not a
+	// printed one (PreventDamageFromSource.ChosenQueries).
+	ChosenQueries bool
+}
+
+// WithChosenQueries marks the shield's Queries as chosen, not printed.
+func (p PreventNextDamageFromSource) WithChosenQueries() PreventNextDamageFromSource {
+	p.ChosenQueries = true
+	return p
 }
 
 // PreventNextDamageFromChosenSource is "The next time a [<queries>]
@@ -168,6 +178,7 @@ func (p PreventNextDamageFromSource) WithThen(then game.BodyRef) PreventNextDama
 }
 
 func (p PreventNextDamageFromSource) Apply(ctx *Context) error {
+	p.Queries = queriesThroughText(ctx, p.Queries, p.ChosenQueries)
 	label := p.Label
 	if label == "" {
 		label = shieldSourceName(ctx) + " — prevent the next damage from a source"

@@ -169,7 +169,9 @@ func WheneverYouTapALandOfSubtypeForMana(
 	byController := t.AppliesTo
 	match := MatchLandSubtype(subtype)
 	t.AppliesTo = func(prod game.ManaProduced, source *game.Card, g *game.Game) bool {
-		return byController(prod, source, g) && match(prod.Source)
+		// The land type is a word of the trigger's source's text (CR
+		// 612.2, #3872): Crypt Ghast's "a Swamp" under a Magical Hack.
+		return byController(prod, source, g) && match(game.ThroughTextOf(source, prod.Source))
 	}
 	return t
 }

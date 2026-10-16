@@ -674,3 +674,137 @@ func cloneTextWordChanges(in []TextWordChange) []TextWordChange {
 	}
 	return append([]TextWordChange(nil), in...)
 }
+
+// --- last-known information ---------------------------------------
+
+// entries is the net substitution as plain data, one change per printed
+// word that now reads differently (From is the printed word, To what it
+// reads as), in Lines' order. Nil for no change. This is the form the
+// last-known records carry (PermanentInfo.TextWords,
+// triggerIdentityLKI.TextWords), so a source that has left the
+// battlefield is still read with the words it last had (CR 608.2h,
+// CR 603.10a; #3872).
+func (w *TextWords) entries() []TextWordChange {
+	if w == nil || len(w.words) == 0 {
+		return nil
+	}
+	var out []TextWordChange
+	for _, k := range []TextWordKind{TextWordColor, TextWordBasicLandType, TextWordCreatureType} {
+		m := w.words[k]
+		printed := make([]string, 0, len(m))
+		for p := range m {
+			printed = append(printed, p)
+		}
+		sort.Slice(printed, func(i, j int) bool { return wordOrder(k, printed[i]) < wordOrder(k, printed[j]) })
+		for _, p := range printed {
+			out = append(out, TextWordChange{Kind: k, From: p, To: m[p]})
+		}
+	}
+	return out
+}
+
+// textWordsFromEntries rebuilds the substitution entries wrote. Each
+// entry is a printed word and what it reads as, so they are set side by
+// side, never composed (a swap, black → blue and blue → black, is two
+// entries, which composing would collapse). An entry that is not a
+// sound change of its kind is skipped, so a damaged record reads as the
+// printed words rather than as a wrong one. Nil for none.
+func textWordsFromEntries(entries []TextWordChange) *TextWords {
+	if len(entries) == 0 {
+		return nil
+	}
+	out := &TextWords{words: map[TextWordKind]map[string]string{}}
+	for _, e := range entries {
+		norm, err := e.Normalised()
+		if err != nil {
+			continue
+		}
+		m := out.words[norm.Kind]
+		if m == nil {
+			m = map[string]string{}
+			out.words[norm.Kind] = m
+		}
+		m[norm.From] = norm.To
+	}
+	if len(out.words) == 0 {
+		return nil
+	}
+	out.key = out.describe()
+	return out
+}
+
+// textReaderOf is a stand-in object carrying only a text substitution, for
+// a reader whose object has left: Card.TextColor, TextSubtype and
+// ThroughTextOf read nothing else. Nil when nothing was changed.
+func textReaderOf(w *TextWords) *Card {
+	if w == nil {
+		return nil
+	}
+	return &Card{TextWords: w}
+}
+
+// TextReaderForEffect is the object whose text a resolving item's words
+// are in, as the word readers take it (Card.TextColor, TextSubtype,
+// ThroughTextOf), or nil when that text is printed (CR 612.2):
+//
+//   - a spell: the spell on the stack, read now;
+//   - an ability whose source is still the same object on the
+//     battlefield: that permanent, read now;
+//   - an ability whose source has left: its words as it last existed on
+//     the battlefield (CR 608.2h, #3872), from the last-known record.
+//     A fetchland changed from "Island" to "Forest" and sacrificed to
+//     its own ability searches for a Forest; a card in a graveyard is a
+//     new object whose text is printed (CR 400.7), so it is never read.
+//
+// The answer is a stand-in carrying only the text change, never a live
+// card: hold it as long as you like.
+//
+// Caller must hold g.mu.
+func (g *Game) TextReaderForEffect(item *StackItem) *Card {
+	if item == nil || item.SourceCardID == uuid.Nil {
+		return nil
+	}
+	if item.Kind != StackItemSpell {
+		if rec, ok := g.departedAbilitySourceLocked(item); ok {
+			return rec.TextReader()
+		}
+	}
+	if c := findBattlefieldCard(g, item.SourceCardID); c != nil {
+		return textReaderOf(c.TextWords)
+	}
+	if c, ok := g.stackCardLocked(item.SourceCardID); ok {
+		return textReaderOf(c.TextWords)
+	}
+	// Neither a permanent nor a spell: the card is in another zone, where
+	// its own text is printed (CR 400.7). An effect still finishing for
+	// the permanent it was — a resolution continuation, which carries
+	// the card and not the object (OptionPickThen) — reads that
+	// permanent's last words while the card has not moved on since it
+	// left (departedDamageSourceLocked's rule): Liliana of the Dark
+	// Realms' −3 that took her last loyalty still counts the land type
+	// her text last named.
+	if rec, ok := g.departedDamageSourceLocked(item.SourceCardID, nil); ok {
+		return rec.TextReader()
+	}
+	return nil
+}
+
+// TextReaderOfForEffect is TextReaderForEffect for a clause read off an
+// object by its id rather than off a stack item — a mana ability's
+// condition or amount — read through the card `id` while it is a
+// permanent or a spell, and nil otherwise (a card in any other zone has
+// its printed text, CR 400.7) or when its words are printed.
+//
+// Caller must hold g.mu.
+func (g *Game) TextReaderOfForEffect(id uuid.UUID) *Card {
+	if id == uuid.Nil {
+		return nil
+	}
+	if c := findBattlefieldCard(g, id); c != nil {
+		return textReaderOf(c.TextWords)
+	}
+	if c, ok := g.stackCardLocked(id); ok {
+		return textReaderOf(c.TextWords)
+	}
+	return nil
+}

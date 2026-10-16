@@ -114,7 +114,7 @@ func (g *Game) ReturnToHandOptionsForEffect(playerID, sourceID uuid.UUID, rc *Re
 		return nil
 	}
 	var out []uuid.UUID
-	for _, id := range g.specCandidatesLocked(playerID, rc.Filter).Cards {
+	for _, id := range g.costCandidatesLocked(playerID, sourceID, rc.Filter).Cards {
 		if rc.ExcludeSource && id == sourceID {
 			continue
 		}
@@ -198,7 +198,7 @@ func (g *Game) validateReturnToHandCostLocked(playerID, sourceID uuid.UUID, rc *
 		// specMatchLocked(…, false), not targetLegalLocked: returning
 		// a permanent to pay a cost does not target it (CR 601.2h /
 		// 602.2b), so the CR 702 keyword gate must not apply.
-		if !g.specMatchLocked(SourceChooser(playerID), rc.Filter, TargetRef{Kind: TargetCard, ID: id}, false) {
+		if !g.specMatchLocked(g.costSourceLocked(playerID, sourceID), rc.Filter, TargetRef{Kind: TargetCard, ID: id}, false) {
 			return ErrIllegalTarget
 		}
 	}
