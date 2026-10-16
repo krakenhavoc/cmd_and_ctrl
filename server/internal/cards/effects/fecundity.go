@@ -25,7 +25,7 @@ func init() {
 		OracleID:     "ffa64ac6-fe55-48b8-b015-849982cd7ad8",
 		Name:         "Fecundity",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
+		Triggered: []game.TriggeredAbility{MayDraw(game.TriggeredAbility{
 			Watches: []game.EventKind{game.EventLTB},
 			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 				_, ok := diedCreature(ev, g)
@@ -52,6 +52,6 @@ func init() {
 					return leftUnderControlOf(ev, dead)
 				},
 			},
-		}},
+		}, 1)},
 	})
 }

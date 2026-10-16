@@ -653,13 +653,19 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 		// attached to the host its window settled, at the same point.
 		g.attachEnteringAuraLocked(l.entered, ev)
 	}
-	g.EmitEvent(Event{
+	etb := Event{
 		Kind:             EventETB,
 		Actor:            ev.Actor,
 		CardID:           l.entered,
 		EnteredFrom:      l.srcKind,
 		EnteredFromOwner: l.srcOwner,
-	})
+	}
+	// #3933: which spell or ability put it here, when one is resolving
+	// and the permanent is not that spell itself.
+	if ev.stackItem == nil {
+		g.stampEntryProvenanceLocked(&etb)
+	}
+	g.EmitEvent(etb)
 	// ADR 0103, CR 709.5h: "when you unlock this door" triggers on a
 	// door unlocked as the permanent enters, too. After EventETB, in
 	// the same batch.

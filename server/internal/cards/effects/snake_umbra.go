@@ -24,9 +24,9 @@ func init() {
 		Grants: []AbilityGrant{{
 			Key: snakeUmbraDraw,
 			Triggered: []game.TriggeredAbility{
-				Optional(On(game.EventDealDamage, snakeUmbraDealtDamageToOpponent,
+				OptionalDraw(On(game.EventDealDamage, snakeUmbraDealtDamageToOpponent,
 					"Snake Umbra — draw a card", Do(DrawCards{N: 1})),
-					"Snake Umbra — draw a card?"),
+					"Snake Umbra — draw a card?", 1),
 			},
 			Text: "Whenever this creature deals damage to an opponent, you may draw a card.",
 		}},

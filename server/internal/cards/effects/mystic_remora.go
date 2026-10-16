@@ -55,6 +55,7 @@ func init() {
 						OnDecline: func(ctx *Context) error {
 							return MayChoice{
 								Question: "Mystic Remora — draw a card?",
+								Draws:    1,
 								OnYes: func(ctx *Context) error {
 									return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
 								},

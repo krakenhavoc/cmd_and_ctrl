@@ -46,13 +46,13 @@ func init() {
 		Name:         "Runic Armasaur",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Optional(
+			OptionalDraw(
 				WheneverAnOpponentActivates(
 					"Runic Armasaur — draw a card",
 					Or(Creature(), Land()),
 					false,
 					func(uuid.UUID) Effect { return Do(DrawCards{N: 1}) }),
-				"Runic Armasaur — draw a card?"),
+				"Runic Armasaur — draw a card?", 1),
 		},
 	})
 }

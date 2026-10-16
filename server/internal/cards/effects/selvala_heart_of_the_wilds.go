@@ -57,7 +57,7 @@ func init() {
 		OracleID:     "1d725121-e50c-42f0-9128-56802f07c89e",
 		Name:         "Selvala, Heart of the Wilds",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
+		Triggered: []game.TriggeredAbility{MayDraw(game.TriggeredAbility{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				_, ok := selvalaBiggestCreatureEntered(ev, source, g)
@@ -93,7 +93,7 @@ func init() {
 					return entered.Controller
 				},
 			},
-		}},
+		}, 1)},
 		ManaAbilities: []ManaAbility{{
 			Cost:           ManaAbilityCost{Tap: true, Mana: "{G}"},
 			ProducedAmount: ProducedAnyCombinationOfColors(selvalaGreatestPower),

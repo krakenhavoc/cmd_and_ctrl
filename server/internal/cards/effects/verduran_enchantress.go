@@ -19,7 +19,7 @@ func init() {
 		Name:         "Verduran Enchantress",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventCast, enchantmentSpellCastByYou, "Verduran Enchantress — draw a card", Do(DrawCards{N: 1})), "Verduran Enchantress — draw a card?"),
+			OptionalDraw(On(game.EventCast, enchantmentSpellCastByYou, "Verduran Enchantress — draw a card", Do(DrawCards{N: 1})), "Verduran Enchantress — draw a card?", 1),
 		},
 	})
 }

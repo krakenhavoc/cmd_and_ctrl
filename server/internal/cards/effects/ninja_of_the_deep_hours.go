@@ -34,9 +34,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated:    []ActivatedAbility{Ninjutsu("{1}{U}")},
 		Triggered: []game.TriggeredAbility{
-			Optional(
+			OptionalDraw(
 				WheneverThisDealsCombatDamageToAPlayer("Ninja of the Deep Hours — draw a card", Do(DrawCards{N: 1})),
-				"Ninja of the Deep Hours — draw a card?",
+				"Ninja of the Deep Hours — draw a card?", 1,
 			),
 		},
 	})
