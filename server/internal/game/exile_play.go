@@ -310,6 +310,26 @@ func (g *Game) ExileTopFaceDownWithPermissionForEffect(fromPlayer, grantTo uuid.
 	return g.exileFaceDownPermittedLocked(plan, grantTo, perm)
 }
 
+// ExileCardsFaceDownWithPermissionForEffect is the face-down exile above
+// for cards the effect has already CHOSEN rather than the top N: "look
+// at the top three cards of your library. Exile one face down … For as
+// long as it remains exiled, you may cast it if it's a creature spell"
+// (Vivien, Champion of the Wilds, #3192). Each card lands as
+// FaceDownPermitted and is granted `perm`, which makes `grantTo` its one
+// viewer, through the same one-at-a-time continuation, so a commander's
+// CR 903.9 question and a card that went anywhere but exile behave as
+// they do there.
+//
+// Caller must hold g.mu (write).
+func (g *Game) ExileCardsFaceDownWithPermissionForEffect(ids []uuid.UUID, grantTo uuid.UUID, perm CastPermission) error {
+	if g.Exile == nil || grantTo == uuid.Nil || len(ids) == 0 {
+		return nil
+	}
+	perm.Player = grantTo
+	perm.Zone = ZoneExile
+	return g.exileFaceDownPermittedLocked(append([]uuid.UUID(nil), ids...), grantTo, perm)
+}
+
 // exileFaceDownPermittedLocked moves the first card of `ids` into
 // exile face down and, from the move's continuation, grants `perm`
 // over it if it landed there and moves the rest. Caller must hold g.mu.

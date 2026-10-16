@@ -125,7 +125,10 @@ export interface ErrorPayload {
 // with the same count. `artifact_sources` asks, per mana, whether an
 // artifact made it (Coin of Mastery reads that).
 export interface PaperPaymentPrompt {
-  slots: { symbol: string; options: string[]; count?: number }[];
+  // `x` marks a slot of the cost's {X} part (#3941), the mana a "spend
+  // only <colours> mana on X" clause restricts; the mana declared for it
+  // carries `x: true`.
+  slots: { symbol: string; options: string[]; count?: number; x?: boolean }[];
   artifact_sources?: boolean;
 }
 

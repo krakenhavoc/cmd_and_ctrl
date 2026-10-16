@@ -224,7 +224,10 @@ per mana, coloured requirements first and then the generic: `symbol`
 is the printed symbol (`"{R}"`, `"{W/U}"`, `"{1}"`) and `options` the
 symbols that may pay it (`W U B R G C` for a generic slot). A run of
 more than 16 identical slots (a shortfall sized by an announced X) is
-one entry with `count` (#3904); every other slot has none.
+one entry with `count` (#3904); every other slot has none. A slot
+with `x: true` (#3941) is part of the cost's `{X}` that a "spend only
+<colours> mana on X" clause restricts (Soul Burn); the picker lists
+those apart from the rest and marks the mana it declares for them.
 `artifact_sources: true` means a reader counts mana from artifact
 sources (Coin of Mastery), so the picker also asks, per mana, whether
 an artifact made it.
@@ -241,6 +244,15 @@ A `mana` entry may carry `count` (absent means one): that many
 identical mana, the answer to a counted slot (`{ "color": "B",
 "count": 999991 }`). A count below zero, or one that takes the total
 past the shortfall, is refused.
+
+A `mana` entry may carry `x: true` (#3941): this mana paid for the
+cost's `{X}` part (the picker sets it on the mana it prefilled from an
+`x` slot). When any entry is marked, the marked mana must be exactly
+the `x` slots' worth and pay them, and the unmarked mana must pay the
+rest; the marked mana is recorded as having paid `{X}` (a card that
+reads "the {B} spent on X" counts it). With no mark the engine assigns
+the declared mana to the slots itself and gives the `{X}` part the
+colours the card reads first. A mark with no `x` slot is refused.
 
 `mana` must be a legal payment of exactly the slots — as many mana,
 each coloured slot paid by one of its options (a hybrid by either

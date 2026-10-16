@@ -87,6 +87,25 @@ describe("paperPayment (#3855)", () => {
     expect(slotCount({ count: 1 })).toBe(1);
   });
 
+  // #3941: Soul Burn's "spend only black and/or red mana on X" — the X
+  // slots arrive marked, and the mana declared for them says so, so the
+  // record keeps which mana paid for X.
+  it("marks the mana declared for a slot of the X part", () => {
+    const soulBurn: PaperPaymentPrompt = {
+      slots: [
+        { symbol: "{B}", options: ["B"] },
+        { symbol: "{B/R}", options: ["B", "R"], x: true },
+        { symbol: "{B/R}", options: ["B", "R"], x: true },
+        { symbol: "{1}", options: ANY },
+      ],
+    };
+    const choices = prefillPaperPayment(soulBurn);
+    choices[2] = { ...choices[2]!, color: "R" };
+    expect(declaredPayment(soulBurn, choices)).toEqual({
+      mana: [{ color: "B" }, { color: "B", x: true }, { color: "R", x: true }, { color: "C" }],
+    });
+  });
+
   it("re-sends the refused action's own payload with the answer", () => {
     const prev = { instance_id: "abc", targets: [{ kind: "player", id: "p2" }], force_cast: true };
     expect(withPaperPayment(prev, FREE_PAYMENT)).toEqual({

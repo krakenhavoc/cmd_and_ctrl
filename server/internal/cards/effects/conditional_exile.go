@@ -65,6 +65,35 @@ func forAsLongAsOnBattlefieldWindow(g *game.Game, source uuid.UUID) game.Duratio
 	}
 }
 
+// forAsLongAsThisRemainsWindow is forAsLongAsOnBattlefieldWindow for
+// the resolving ability's OWN source ("for as long as Intet remains on
+// the battlefield", "as long as this Saga remains"): the source must
+// still be the object the ability came from. One that left and came
+// back is a new object (CR 400.7), so the window never starts.
+func forAsLongAsThisRemainsWindow(g *game.Game, item *game.StackItem) game.Duration {
+	if sourceIsNewObject(g, item) {
+		return game.Duration{
+			Kind: game.ForAsLongAs, Condition: game.WhileSourceOnBattlefield,
+			Source: item.SourceCardID, SourceEnteredAt: -1,
+		}
+	}
+	return forAsLongAsOnBattlefieldWindow(g, item.SourceCardID)
+}
+
+// forAsLongAsYouControlThisWindow is forAsLongAsYouControlWindow for the
+// resolving ability's OWN source and controller ("for as long as you
+// control this creature"), with forAsLongAsThisRemainsWindow's CR 400.7
+// guard: a source that left and came back is not "this creature".
+func forAsLongAsYouControlThisWindow(g *game.Game, item *game.StackItem) game.Duration {
+	if sourceIsNewObject(g, item) {
+		return game.Duration{
+			Kind: game.ForAsLongAs, Condition: game.WhileYouControlSource,
+			Player: item.Controller, Source: item.SourceCardID, SourceEnteredAt: -1,
+		}
+	}
+	return forAsLongAsYouControlWindow(g, item.SourceCardID, item.Controller)
+}
+
 // defendingPlayerOfAttack is the "defending player" of an attack
 // declaration event: the player attacked, or the controller of the
 // planeswalker or battle attacked.

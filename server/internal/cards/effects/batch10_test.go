@@ -99,14 +99,14 @@ func b10AddMana(p *game.Player, colors ...string) {
 // with `color`, returning how many were answered.
 func b10ResolveAllManaPicks(t *testing.T, g *game.Game, chooser uuid.UUID, color string) int {
 	t.Helper()
+	// #3939: a filter land's picks are one choice asked once per pick,
+	// so drain until none is open rather than walking a snapshot.
 	n := 0
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceMana && c.Chooser == chooser {
-			if err := g.ResolveManaChoice(c.ID, chooser, color); err != nil {
-				t.Fatalf("ResolveManaChoice: %v", err)
-			}
-			n++
+	for c := riderLatestManaPick(g, chooser); c != nil && n < 8; c = riderLatestManaPick(g, chooser) {
+		if err := g.ResolveManaChoice(c.ID, chooser, color); err != nil {
+			t.Fatalf("ResolveManaChoice: %v", err)
 		}
+		n++
 	}
 	return n
 }

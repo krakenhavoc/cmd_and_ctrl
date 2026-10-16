@@ -24,7 +24,7 @@ func counterPlacementDelta(ev game.Event, g *game.Game) int {
 	if ev.Kind != game.EventCounterPlaced || ev.Target == uuid.Nil || ev.Label == "" {
 		return 0
 	}
-	before, _ := b12CounterTotalBefore(ev, g)
+	before := b12CounterTotalBefore(ev, g)
 	if d := ev.Amount - before; d > 0 {
 		return d
 	}
@@ -32,15 +32,9 @@ func counterPlacementDelta(ev game.Event, g *game.Game) int {
 }
 
 // counterPlacedBy reports whether `me` put the counters ev placed: the
-// placer the event names when it names one (ADR 0056 Decision 5), and
-// b12CountersPlacedBy's attribution rule otherwise.
+// placer the event names (ADR 0056 Decision 5; every placement names
+// one since #3942).
 func counterPlacedBy(ev game.Event, me uuid.UUID, g *game.Game) bool {
-	if counterPlacementDelta(ev, g) == 0 {
-		return false
-	}
-	if ev.Actor != uuid.Nil {
-		return ev.Actor == me
-	}
 	_, ok := b12CountersPlacedBy(ev, me, g, false)
 	return ok
 }

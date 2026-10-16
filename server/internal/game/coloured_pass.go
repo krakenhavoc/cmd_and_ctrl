@@ -48,6 +48,12 @@ import (
 type reqRun struct {
 	req ColorRequirement
 	n   int
+	// x marks the run that is the mana paid for {X}, the part a "spend
+	// only <colours> mana on X" clause folded into coloured
+	// requirements (#3941, spend_only.go). It keeps that run apart from
+	// a printed requirement with the same options, so the pass can say
+	// which mana paid X; it changes nothing about how the run is paid.
+	x bool
 }
 
 // sameRequirement reports whether a and b are the same requirement in
@@ -63,14 +69,21 @@ func sameRequirement(a, b ColorRequirement) bool {
 // appendReqRun appends n of r, merging them into the last run when it
 // is the same requirement.
 func appendReqRun(runs []reqRun, r ColorRequirement, n int) []reqRun {
-	if n <= 0 {
+	return appendTaggedReqRun(runs, reqRun{req: r, n: n})
+}
+
+// appendTaggedReqRun is appendReqRun for a run that may be the X part.
+// It merges only into a run with the same tag, so the X part stays its
+// own run even beside a printed requirement of the same colours.
+func appendTaggedReqRun(runs []reqRun, r reqRun) []reqRun {
+	if r.n <= 0 {
 		return runs
 	}
-	if k := len(runs); k > 0 && sameRequirement(runs[k-1].req, r) {
-		runs[k-1].n = satAddMana(runs[k-1].n, n)
+	if k := len(runs); k > 0 && runs[k-1].x == r.x && sameRequirement(runs[k-1].req, r.req) {
+		runs[k-1].n = satAddMana(runs[k-1].n, r.n)
 		return runs
 	}
-	return append(runs, reqRun{req: r, n: n})
+	return append(runs, r)
 }
 
 // requirementRuns is reqs followed by the counted run `tail` (a
@@ -88,7 +101,7 @@ func requirementRuns(reqs []ColorRequirement, tail reqRun) []reqRun {
 		out = appendReqRun(out, r, 1)
 	}
 	if !tail.req.AnyMana {
-		out = appendReqRun(out, tail.req, tail.n)
+		out = appendTaggedReqRun(out, tail)
 	}
 	if widened {
 		for _, r := range reqs {
@@ -98,7 +111,7 @@ func requirementRuns(reqs []ColorRequirement, tail reqRun) []reqRun {
 		}
 	}
 	if tail.req.AnyMana {
-		out = appendReqRun(out, tail.req, tail.n)
+		out = appendTaggedReqRun(out, tail)
 	}
 	return out
 }
@@ -107,6 +120,18 @@ func requirementRuns(reqs []ColorRequirement, tail reqRun) []reqRun {
 // listed ones and the folded run, in widenedLast's order.
 func (c ParsedCost) requirementRuns() []reqRun {
 	return requirementRuns(c.Required, c.folded)
+}
+
+// coalesced is runs with adjacent runs of the same requirement joined,
+// whether or not one is the X part (#3941). For a breakdown that names
+// symbols to a player: "{B}×1000001", not "{B}" and "{B}×1000000".
+func coalesced(runs []reqRun) []reqRun {
+	var out []reqRun
+	for _, r := range runs {
+		r.x = false
+		out = appendTaggedReqRun(out, r)
+	}
+	return out
 }
 
 // reqRunsTotal is how many requirements the runs stand for.
@@ -123,7 +148,7 @@ func lastOfReqRuns(runs []reqRun, k int) []reqRun {
 	var out []reqRun
 	for i := len(runs) - 1; i >= 0 && k > 0; i-- {
 		take := min(k, runs[i].n)
-		out = append(out, reqRun{req: runs[i].req, n: take})
+		out = append(out, reqRun{req: runs[i].req, n: take, x: runs[i].x})
 		k -= take
 	}
 	slices.Reverse(out)
@@ -249,6 +274,8 @@ type colourSolver struct {
 	// failed marks, within one augmenting search, the requirement runs
 	// whose search has already failed (see augment).
 	failed []bool
+	// favor is the colours the X part takes first (see colouredPassX).
+	favor []string
 }
 
 // colouredPass pays each requirement in `reqs` with one mana, booking
@@ -278,10 +305,27 @@ type colourSolver struct {
 // however much mana the pool holds and however long the X (#3041,
 // #3904); see the file comment.
 func colouredPass(pool ManaPool, used []int, order []int, reqs []reqRun) (deferred, unpaid []reqRun) {
+	deferred, unpaid, _ = colouredPassX(pool, used, order, reqs, nil)
+	return deferred, unpaid
+}
+
+// colouredPassX is colouredPass that also reports which mana paid the
+// X part (#3941): xUsed[i] is how many of pool run i's mana went to the
+// requirement runs marked x, or nil when no run is marked. The bookings
+// are the same ones colouredPass makes.
+//
+// `favor` is the colours of mana the X part takes FIRST when it has a
+// choice (a spell that reads a colour spent on X: Soul Burn's {B}). It
+// reorders which of the runs the X part's walk takes from and nothing
+// else: every other requirement is walked as before and the augmenting
+// path still repairs any refusal, so whether the cost is payable never
+// depends on it. The X part is the last requirement walked, so the
+// printed coloured symbols have already taken what they need.
+func colouredPassX(pool ManaPool, used []int, order []int, reqs []reqRun, favor []string) (deferred, unpaid []reqRun, xUsed []int) {
 	if len(reqs) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
-	s := colourSolver{reqs: reqs, runs: make([]colourRun, 0, len(order))}
+	s := colourSolver{reqs: reqs, runs: make([]colourRun, 0, len(order)), favor: favor}
 	for _, i := range order {
 		if free := pool[i].N() - used[i]; free > 0 {
 			s.runs = append(s.runs, colourRun{pool: i, color: pool[i].Color, free: free})
@@ -296,15 +340,23 @@ func colouredPass(pool ManaPool, used []int, order []int, reqs []reqRun) (deferr
 			continue
 		}
 		if rr.req.AnyMana {
-			deferred = append(deferred, reqRun{req: rr.req, n: m})
+			deferred = append(deferred, reqRun{req: rr.req, n: m, x: rr.x})
 		} else {
-			unpaid = append(unpaid, reqRun{req: rr.req, n: m})
+			unpaid = append(unpaid, reqRun{req: rr.req, n: m, x: rr.x})
 		}
 	}
 	for _, c := range s.runs {
 		used[c.pool] += c.booked
+		for _, o := range c.owners {
+			if reqs[o.ri].x {
+				if xUsed == nil {
+					xUsed = make([]int, len(pool))
+				}
+				xUsed[c.pool] += o.n
+			}
+		}
 	}
-	return deferred, unpaid
+	return deferred, unpaid, xUsed
 }
 
 // walk is the first-match walk for m requirements of run ri: each takes
@@ -315,6 +367,26 @@ func colouredPass(pool ManaPool, used []int, order []int, reqs []reqRun) (deferr
 // the matching runs in order. Returns how many it could not book.
 func (s *colourSolver) walk(ri, m int) int {
 	opts := s.reqs[ri].req.Options
+	if s.reqs[ri].x && len(s.favor) > 0 {
+		// The X part takes the favoured colours' mana before any other:
+		// the same runs, in another order (colouredPassX).
+		for _, favoured := range [2]bool{true, false} {
+			for k := range s.runs {
+				if m == 0 {
+					break
+				}
+				c := &s.runs[k]
+				if !matchColor(c.color, opts) || containsFold(s.favor, c.color) != favoured {
+					continue
+				}
+				if t := min(m, c.free-c.booked); t > 0 {
+					c.bookN(ri, t)
+					m -= t
+				}
+			}
+		}
+		return m
+	}
 	for k := range s.runs {
 		if m == 0 {
 			break

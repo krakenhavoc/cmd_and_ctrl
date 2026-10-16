@@ -327,6 +327,7 @@ battlefield.cards[].provenance.mana[].Restrictions[]	string
 battlefield.cards[].provenance.mana[].Source	custom(uuid.UUID)
 battlefield.cards[].provenance.mana[].SourceKinds	number:uint16
 battlefield.cards[].provenance.mana[].count	number:int
+battlefield.cards[].provenance.mana[].forX	bool
 battlefield.cards[].provenance.mana[].riders	array
 battlefield.cards[].provenance.mana[].riders[]	object
 battlefield.cards[].provenance.mana[].riders[].applied	bool
@@ -870,6 +871,7 @@ exile.cards[].provenance.mana[].Restrictions[]	string
 exile.cards[].provenance.mana[].Source	custom(uuid.UUID)
 exile.cards[].provenance.mana[].SourceKinds	number:uint16
 exile.cards[].provenance.mana[].count	number:int
+exile.cards[].provenance.mana[].forX	bool
 exile.cards[].provenance.mana[].riders	array
 exile.cards[].provenance.mana[].riders[]	object
 exile.cards[].provenance.mana[].riders[].applied	bool
@@ -1769,6 +1771,7 @@ lastKnownStack[].card.provenance.mana[].Restrictions[]	string
 lastKnownStack[].card.provenance.mana[].Source	custom(uuid.UUID)
 lastKnownStack[].card.provenance.mana[].SourceKinds	number:uint16
 lastKnownStack[].card.provenance.mana[].count	number:int
+lastKnownStack[].card.provenance.mana[].forX	bool
 lastKnownStack[].card.provenance.mana[].riders	array
 lastKnownStack[].card.provenance.mana[].riders[]	object
 lastKnownStack[].card.provenance.mana[].riders[].applied	bool
@@ -1873,6 +1876,7 @@ lastKnownStack[].item.paid.Mana[].Restrictions[]	string
 lastKnownStack[].item.paid.Mana[].Source	custom(uuid.UUID)
 lastKnownStack[].item.paid.Mana[].SourceKinds	number:uint16
 lastKnownStack[].item.paid.Mana[].count	number:int
+lastKnownStack[].item.paid.Mana[].forX	bool
 lastKnownStack[].item.paid.Mana[].riders	array
 lastKnownStack[].item.paid.Mana[].riders[]	object
 lastKnownStack[].item.paid.Mana[].riders[].applied	bool
@@ -2263,6 +2267,7 @@ pausedModeWalk.item.paid.Mana[].Restrictions[]	string
 pausedModeWalk.item.paid.Mana[].Source	custom(uuid.UUID)
 pausedModeWalk.item.paid.Mana[].SourceKinds	number:uint16
 pausedModeWalk.item.paid.Mana[].count	number:int
+pausedModeWalk.item.paid.Mana[].forX	bool
 pausedModeWalk.item.paid.Mana[].riders	array
 pausedModeWalk.item.paid.Mana[].riders[]	object
 pausedModeWalk.item.paid.Mana[].riders[].applied	bool
@@ -2526,6 +2531,7 @@ pausedResolutionTail.item.paid.Mana[].Restrictions[]	string
 pausedResolutionTail.item.paid.Mana[].Source	custom(uuid.UUID)
 pausedResolutionTail.item.paid.Mana[].SourceKinds	number:uint16
 pausedResolutionTail.item.paid.Mana[].count	number:int
+pausedResolutionTail.item.paid.Mana[].forX	bool
 pausedResolutionTail.item.paid.Mana[].riders	array
 pausedResolutionTail.item.paid.Mana[].riders[]	object
 pausedResolutionTail.item.paid.Mana[].riders[].applied	bool
@@ -2955,6 +2961,13 @@ pendingChoices[].manaChosen	array
 pendingChoices[].manaChosen[]	string
 pendingChoices[].manaDifferent	number:int
 pendingChoices[].manaLabel	string
+pendingChoices[].manaPicksLeft	array
+pendingChoices[].manaPicksLeft[]	object
+pendingChoices[].manaPicksLeft[].amounts	map:string
+pendingChoices[].manaPicksLeft[].amounts{}	number:int
+pendingChoices[].manaPicksLeft[].different	number:int
+pendingChoices[].manaPicksLeft[].options	array
+pendingChoices[].manaPicksLeft[].options[]	string
 pendingChoices[].manaRestrictions	array
 pendingChoices[].manaRestrictions[]	string
 pendingChoices[].manaRiders	array
@@ -2971,6 +2984,8 @@ pendingChoices[].manaRiders[].trigger	string
 pendingChoices[].manaRiders[].untilEndOfTurn	bool
 pendingChoices[].manaRiders[].when	array
 pendingChoices[].manaRiders[].when[]	string
+pendingChoices[].manaSettled	array
+pendingChoices[].manaSettled[]	string
 pendingChoices[].manaSourceKinds	number:uint16
 pendingChoices[].manaTapped	bool
 pendingChoices[].mayCastCard	custom(uuid.UUID)
@@ -3125,6 +3140,7 @@ pendingTriggers[].paid.Mana[].Restrictions[]	string
 pendingTriggers[].paid.Mana[].Source	custom(uuid.UUID)
 pendingTriggers[].paid.Mana[].SourceKinds	number:uint16
 pendingTriggers[].paid.Mana[].count	number:int
+pendingTriggers[].paid.Mana[].forX	bool
 pendingTriggers[].paid.Mana[].riders	array
 pendingTriggers[].paid.Mana[].riders[]	object
 pendingTriggers[].paid.Mana[].riders[].applied	bool
@@ -3628,6 +3644,7 @@ phasedOut.cards[].provenance.mana[].Restrictions[]	string
 phasedOut.cards[].provenance.mana[].Source	custom(uuid.UUID)
 phasedOut.cards[].provenance.mana[].SourceKinds	number:uint16
 phasedOut.cards[].provenance.mana[].count	number:int
+phasedOut.cards[].provenance.mana[].forX	bool
 phasedOut.cards[].provenance.mana[].riders	array
 phasedOut.cards[].provenance.mana[].riders[]	object
 phasedOut.cards[].provenance.mana[].riders[].applied	bool
@@ -4372,6 +4389,7 @@ seats[].command.cards[].provenance.mana[].Restrictions[]	string
 seats[].command.cards[].provenance.mana[].Source	custom(uuid.UUID)
 seats[].command.cards[].provenance.mana[].SourceKinds	number:uint16
 seats[].command.cards[].provenance.mana[].count	number:int
+seats[].command.cards[].provenance.mana[].forX	bool
 seats[].command.cards[].provenance.mana[].riders	array
 seats[].command.cards[].provenance.mana[].riders[]	object
 seats[].command.cards[].provenance.mana[].riders[].applied	bool
@@ -4726,6 +4744,7 @@ seats[].companion.cards[].provenance.mana[].Restrictions[]	string
 seats[].companion.cards[].provenance.mana[].Source	custom(uuid.UUID)
 seats[].companion.cards[].provenance.mana[].SourceKinds	number:uint16
 seats[].companion.cards[].provenance.mana[].count	number:int
+seats[].companion.cards[].provenance.mana[].forX	bool
 seats[].companion.cards[].provenance.mana[].riders	array
 seats[].companion.cards[].provenance.mana[].riders[]	object
 seats[].companion.cards[].provenance.mana[].riders[].applied	bool
@@ -5083,6 +5102,7 @@ seats[].emblems.cards[].provenance.mana[].Restrictions[]	string
 seats[].emblems.cards[].provenance.mana[].Source	custom(uuid.UUID)
 seats[].emblems.cards[].provenance.mana[].SourceKinds	number:uint16
 seats[].emblems.cards[].provenance.mana[].count	number:int
+seats[].emblems.cards[].provenance.mana[].forX	bool
 seats[].emblems.cards[].provenance.mana[].riders	array
 seats[].emblems.cards[].provenance.mana[].riders[]	object
 seats[].emblems.cards[].provenance.mana[].riders[].applied	bool
@@ -5435,6 +5455,7 @@ seats[].graveyard.cards[].provenance.mana[].Restrictions[]	string
 seats[].graveyard.cards[].provenance.mana[].Source	custom(uuid.UUID)
 seats[].graveyard.cards[].provenance.mana[].SourceKinds	number:uint16
 seats[].graveyard.cards[].provenance.mana[].count	number:int
+seats[].graveyard.cards[].provenance.mana[].forX	bool
 seats[].graveyard.cards[].provenance.mana[].riders	array
 seats[].graveyard.cards[].provenance.mana[].riders[]	object
 seats[].graveyard.cards[].provenance.mana[].riders[].applied	bool
@@ -5785,6 +5806,7 @@ seats[].hand.cards[].provenance.mana[].Restrictions[]	string
 seats[].hand.cards[].provenance.mana[].Source	custom(uuid.UUID)
 seats[].hand.cards[].provenance.mana[].SourceKinds	number:uint16
 seats[].hand.cards[].provenance.mana[].count	number:int
+seats[].hand.cards[].provenance.mana[].forX	bool
 seats[].hand.cards[].provenance.mana[].riders	array
 seats[].hand.cards[].provenance.mana[].riders[]	object
 seats[].hand.cards[].provenance.mana[].riders[].applied	bool
@@ -6148,6 +6170,7 @@ seats[].library.cards[].provenance.mana[].Restrictions[]	string
 seats[].library.cards[].provenance.mana[].Source	custom(uuid.UUID)
 seats[].library.cards[].provenance.mana[].SourceKinds	number:uint16
 seats[].library.cards[].provenance.mana[].count	number:int
+seats[].library.cards[].provenance.mana[].forX	bool
 seats[].library.cards[].provenance.mana[].riders	array
 seats[].library.cards[].provenance.mana[].riders[]	object
 seats[].library.cards[].provenance.mana[].riders[].applied	bool
@@ -6212,6 +6235,7 @@ seats[].manaPool[].Restrictions[]	string
 seats[].manaPool[].Source	custom(uuid.UUID)
 seats[].manaPool[].SourceKinds	number:uint16
 seats[].manaPool[].count	number:int
+seats[].manaPool[].forX	bool
 seats[].manaPool[].riders	array
 seats[].manaPool[].riders[]	object
 seats[].manaPool[].riders[].applied	bool
@@ -6536,6 +6560,7 @@ seats[].sideboard.cards[].provenance.mana[].Restrictions[]	string
 seats[].sideboard.cards[].provenance.mana[].Source	custom(uuid.UUID)
 seats[].sideboard.cards[].provenance.mana[].SourceKinds	number:uint16
 seats[].sideboard.cards[].provenance.mana[].count	number:int
+seats[].sideboard.cards[].provenance.mana[].forX	bool
 seats[].sideboard.cards[].provenance.mana[].riders	array
 seats[].sideboard.cards[].provenance.mana[].riders[]	object
 seats[].sideboard.cards[].provenance.mana[].riders[].applied	bool
@@ -7106,6 +7131,7 @@ stack.cards[].provenance.mana[].Restrictions[]	string
 stack.cards[].provenance.mana[].Source	custom(uuid.UUID)
 stack.cards[].provenance.mana[].SourceKinds	number:uint16
 stack.cards[].provenance.mana[].count	number:int
+stack.cards[].provenance.mana[].forX	bool
 stack.cards[].provenance.mana[].riders	array
 stack.cards[].provenance.mana[].riders[]	object
 stack.cards[].provenance.mana[].riders[].applied	bool
@@ -7213,6 +7239,7 @@ stackMeta[].paid.Mana[].Restrictions[]	string
 stackMeta[].paid.Mana[].Source	custom(uuid.UUID)
 stackMeta[].paid.Mana[].SourceKinds	number:uint16
 stackMeta[].paid.Mana[].count	number:int
+stackMeta[].paid.Mana[].forX	bool
 stackMeta[].paid.Mana[].riders	array
 stackMeta[].paid.Mana[].riders[]	object
 stackMeta[].paid.Mana[].riders[].applied	bool
