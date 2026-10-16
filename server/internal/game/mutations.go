@@ -5289,6 +5289,15 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 	// Again now the resolution has closed: control over a forced spell
 	// lasts only while it resolves.
 	g.prunePlayerControlsLocked()
+	// #3856, CR 727.1: an effect restarted the game during the
+	// resolution this boundary follows. The game ends here and the new
+	// one begins; nothing of this boundary is owed to a game that no
+	// longer exists, and the new one is in its mulligan window, where
+	// nobody has priority. See restart.go.
+	if g.RestartPending != nil {
+		g.finishRestartLocked()
+		return false
+	}
 	// #2165, CR 724.1: an effect ended the turn during the resolution
 	// this boundary follows. The rest of the process — the 724.1c
 	// check, the skip to the cleanup step and that step itself — is

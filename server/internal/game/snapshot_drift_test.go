@@ -93,6 +93,11 @@ var gameFields = plan(
 	// process (724.1c onwards) has not run. Carried: a restore between
 	// the effect and its boundary must still skip to the cleanup step.
 	"TurnEndPending", carried, "",
+	// #3856, CR 727: a restart waiting on its resolution's boundary, and
+	// the new game's "then" waiting on its mulligans. Carried: a restore
+	// point taken in either gap must still finish the restart.
+	"RestartPending", carried, "",
+	"RestartTail", carried, "",
 	"Seats", carried, "",
 	"Battlefield", carried, "",
 	"Stack", carried, "",

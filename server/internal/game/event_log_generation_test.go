@@ -57,8 +57,11 @@ func TestEventLogIsReplacedOnlyWhereTheGenerationMoves(t *testing.T) {
 		"RestoreFrom": "bumps eventLogGen",
 		// #3613: a resolution that paused moves its "resolved" line
 		// by marking its own EventResolve, emitted under the same lock.
-		"deferResolveLogLineLocked":   "bumps eventLogGen",
-		"cloneLocked":                 "fills a new *Game",
+		"deferResolveLogLineLocked": "bumps eventLogGen",
+		"cloneLocked":               "fills a new *Game",
+		// #3856: the restarted game is built fresh by NewGame and
+		// adopted through RestoreFrom, which bumps the generation.
+		"buildRestartedGameLocked":    "fills a new *Game",
 		"restoreGame":                 "fills a new *Game",
 		"captureSnapshotEventsLocked": "fills a GameSnapshot",
 	}

@@ -54,6 +54,10 @@ func (g *Game) cloneLocked() *Game {
 		// #2165: CR 724.1's deferred half — the turn an effect ended
 		// whose cleanup step has not begun.
 		TurnEndPending: g.TurnEndPending,
+		// #3856, CR 727: a restart waiting on its boundary, and the
+		// new game's "then" waiting on the mulligans. Own copies.
+		RestartPending: cloneGameRestart(g.RestartPending),
+		RestartTail:    cloneGameRestart(g.RestartTail),
 		// #2881: the active player's standing end_turn. Its own
 		// pointer, so a clone never shares the live order.
 		passTurn: clonePassTurnOrder(g.passTurn),
@@ -1187,6 +1191,8 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.ActiveSeatLeftPending = src.ActiveSeatLeftPending
 	g.TurnChangePending = src.TurnChangePending
 	g.TurnEndPending = src.TurnEndPending
+	g.RestartPending = src.RestartPending
+	g.RestartTail = src.RestartTail
 	g.passTurn = clonePassTurnOrder(src.passTurn)
 	g.StackMeta = src.StackMeta
 	g.PendingTriggers = src.PendingTriggers
