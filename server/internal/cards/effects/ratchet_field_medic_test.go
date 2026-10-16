@@ -164,3 +164,46 @@ func TestRatchetRescueRacerTriggersOnlyOncePerTurn(t *testing.T) {
 	tfSettle(t, g)
 	wantFace(t, g, id, 1, "Ratchet, Rescue Racer")
 }
+
+// Lifelink damage and Ratchet's death can come together: a blocked
+// Ratchet gains its controller life and dies in the same combat damage
+// step. Its "you may convert Ratchet" then resolves with Ratchet in the
+// graveyard. CR 701.28a converts a permanent, so nothing happens: no
+// convert, no "when you do", and no effect error (catalog soak seed
+// 2026101600).
+func TestRatchetGoneBeforeItsLifeTriggerResolvesConvertsNothing(t *testing.T) {
+	g, me, _ := flipMain(t)
+	id := transformerIn(t, g, ratchetRow(), me)
+	cheap := artifactInGraveyard(me, "Cheap Rock", "{2}")
+
+	gainLifeNow(t, g, id, me, 3)
+	b25Destroy(g, id)
+	tfSettle(t, g)
+	if c := latestConfirmFor(g, me.ID); c != nil {
+		if err := g.ResolveConfirm(c.ID, me.ID, true); err != nil {
+			t.Fatalf("ResolveConfirm: %v", err)
+		}
+		tfSettle(t, g)
+	}
+	if errs := effectErrors(g); len(errs) != 0 {
+		t.Fatalf("effect errors: %v", errs)
+	}
+	if zone, _ := cardWhere(g, me, cheap); zone != "graveyard" {
+		t.Errorf("the artifact is in %s, want it left in the graveyard", zone)
+	}
+}
+
+// Rescue Racer is itself a nontoken artifact: dying beside another one
+// triggers it, and the convert finds no permanent to turn over.
+func TestRatchetRescueRacerDyingWithAnotherArtifactConvertsNothing(t *testing.T) {
+	g, me, _ := flipMain(t)
+	id := transformerConverted(t, g, ratchetRow(), me)
+	rock := pushCatalogPermanent(g, me.ID, "Rock", "Artifact", "", false)
+
+	b25Destroy(g, rock)
+	b25Destroy(g, id)
+	tfSettle(t, g)
+	if errs := effectErrors(g); len(errs) != 0 {
+		t.Fatalf("effect errors: %v", errs)
+	}
+}

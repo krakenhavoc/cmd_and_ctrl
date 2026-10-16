@@ -145,6 +145,12 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("P/T = %d/%d, want %d/%d", c.Power, c.Toughness, b.Power+3, b.Toughness-1)
 			}
 		}},
+		// #3996: CR 613.4d, after the 7c pump.
+		{"switchPT", []Mod{ModifyPTMod(3, 0), SwitchPTMod()}, func(t *testing.T, b, c Characteristic, _ *Game) {
+			if c.Power != b.Toughness || c.Toughness != b.Power+3 || !c.PTSwitched {
+				t.Errorf("P/T = %d/%d switched %v, want %d/%d switched", c.Power, c.Toughness, c.PTSwitched, b.Toughness, b.Power+3)
+			}
+		}},
 		// #1571: one requirement per mod, attributed to the source.
 		{"addAttackRequirement", []Mod{AddAttackRequirementMod(uuid.Nil), AddAttackRequirementMod(attackRequirementTestPlayer)}, func(t *testing.T, _, c Characteristic, _ *Game) {
 			if len(c.AttackRequirements) != 2 || c.AttackRequirements[0].OtherThan != uuid.Nil ||
@@ -255,7 +261,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModSetController: true, ModAddTypes: true, ModRemoveTypes: true, ModAddSubtypes: true,
 		ModAllCreatureTypes: true, ModSetColors: true, ModAddColors: true, ModAddKeywords: true, ModRemoveKeywords: true,
 		ModLoseAllAbilities: true, ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
-		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModGoad: true,
+		ModSetBaseToughness: true, ModModifyPT: true, ModSwitchPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModGoad: true,
 		ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 		ModCantAttackUnlessDefenderControls: true,
 		ModCantAttackPlayer:                 true, // #3400: cases in cards/effects/promise_of_loyalty_test.go
