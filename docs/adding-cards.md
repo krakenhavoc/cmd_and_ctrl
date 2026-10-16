@@ -10289,6 +10289,21 @@ ctx.SourcePermanent()                                                           
 - **A trigger condition must not call a locking `*Game` method** such as `ActivePlayer()`: the harvest already holds
   the lock. Read `g.Seats[g.Turn.ActiveSeat]`.
 
+### Pieces from the Squall deck (#3918)
+
+- **"You may cast Aura and Equipment spells as though they had flash"** is
+  `CastKindAsThoughFlash(game.PermissionFilter{AuraOrEquipmentOnly: true}, label)` (Sigarda's Aid).
+- **"You may cast this spell as though it had flash if <board condition>"** is an `AlternativeCost` at the printed cost
+  with `AsThoughFlash: true` and a `Condition` (Fated Clash: a creature attacking and a creature blocking).
+- **"When the chosen player loses the game"** watches `game.EventPlayerEliminated` and compares `ev.Actor` with the
+  permanent's `ChosenPlayer` (Shinryu, Transcendent Rival). A concession is a loss too (CR 104.3a).
+- **"Choose a creature an opponent controls" on a resolving trigger, remembered for a later "when the chosen creature
+  leaves"** stores the object with `g.SetChosenPermanentForEffect(source, game.ObjectRef{ID, Epoch})` and matches the
+  leaving object by its last-known epoch (Zenos yae Galvus).
+- **"Whenever one or more attacking creatures you control die, you may return one of them … Do this only once each
+  turn"** walks the trigger's batch with `diedWhileAttacking` and `leftUnderControlOf`, and records the use with
+  `g.NoteDoneThisTurn` only when a card is returned (Rinoa, Angel Wing).
+
 ### Statics that read block status or this turn's events, "can't be attacked", any-type mana, flash-if-it-targets (#3172, cav-h2)
 
 Pieces that used to be caveats; the engine notes are in the 2026-10-13 amendments of [ADR 0045](decisions/0045-combat-restrictions.md),
