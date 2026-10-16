@@ -22,6 +22,7 @@
     fitResultText,
     nudgeCrop,
     playmatSrc,
+    tableShownText,
     type CropOrigin,
   } from "../playmat";
 
@@ -46,6 +47,10 @@
     clampCropOrigin(mat.width, mat.height, sg.crop, moved ?? { x: sg.crop.x, y: sg.crop.y }),
   );
   const box = $derived(cropBoxStyle(mat.width, mat.height, sg.crop, origin));
+
+  // #3934: the table draws the mat to fill each seat's battlefield box,
+  // whose shape depends on the table; say what that leaves of this image.
+  const shown = $derived(tableShownText(sg.crop.width, sg.crop.height));
 
   const src = $derived(playmatSrc(mat.url));
   let failed = $state(false);
@@ -190,6 +195,13 @@
       Drag the outlined area, or use the arrow keys, to choose which part of the art is kept.
     {/if}
   </p>
+
+  {#if shown.length > 0}
+    <p class="help shown">
+      At the table the mat fills each battlefield, so it shows
+      {#each shown as line, i (line)}{i > 0 ? "; " : " "}{line}{/each}.
+    </p>
+  {/if}
 
   <div class="actions">
     <button type="button" class="primary" disabled={busy} onclick={() => onaccept(origin)}>

@@ -227,6 +227,31 @@ The cost is that the owner sees the middle 59% of the art's height behind their 
 - A per-viewer `object-position` for the own-seat panel (11.3).
 - Reordering slots. A slot is a place, not a rank; replace to move.
 
+### 12. Amendment (2026-10-16, #3934): the mat is the battlefield's box, and the prompt says what that cuts
+
+**The report.** Ian saw a mat "sized to the whole screen" with most of it cut off. **The premise is not what the code does**, and measuring is what showed it. `.playmat` is `position: absolute; inset: 0` inside `.panel.seat-panel`, an `<img>` at `width: 100%; height: 100%; object-fit: cover`. No `fixed`, no viewport units, no `window` read: the mat's box IS the seat's panel box. `tests-e2e/tests/playmat-shape-3934.spec.ts` stands a mat on every seat (the game socket's frames get a `playmat_url`; the route answers a 2400 x 1400 SVG) and, at 2, 3 and 4 seats and three viewports, asserts that each mat's box equals its panel's box (within the panel's 1px border each side). It passes, on the own seat and on the others, and the viewport is resized between measurements.
+
+**What is cut is what `cover` requires, and the boxes are narrower than 11.3 measured.** 11.3 measured only the four-seat table. The two- and three-seat layouts give the panel a different shape, and a 12:7 mat shows this much of its height (width is whole) at 1920 x 1080:
+
+| Table | Panel | Ratio | A 12:7 mat shows |
+|---|---|---|---|
+| 2 seats (both panels) | 1889 x 500 | 3.78 | 45% of the height |
+| 3 seats, across (two) | 940 x 350 | 2.69 | 64% of the height |
+| 3 seats, own | 1889 x 650 | 2.91 | 59% of the height |
+| 4 seats, across (three) | 624 x 350 | 1.78 | 96% of the height |
+| 4 seats, own | 1889 x 650 | 2.91 | 59% of the height |
+
+At 1366 x 768 the ratios are within 3% of those. On a 390 px phone the panels are near-square or portrait (1.32 at two seats, 0.86 at three, 0.60 across at four), so the mat is cut in WIDTH there (35% of it across a four-seat table).
+
+**The contract is unchanged.** One mat is one image seen in several box shapes, so no single stored shape fixes all of them, and the choice of `cover` (11.3, reason 2) stands: a mat that did not fill its box would show the table behind it. The 12:7 target stays the best compromise, since it is the paper shape and fits the shape most viewers see most (the four-seat across panels).
+
+**What changes.**
+
+- **The best-size prompt says what each table shape shows of the kept area**, from the same arithmetic `cover` does (`coverShown`, `tableShownText` in `lib/playmat.ts`; the shapes are `TABLE_SHAPES`, the measured ratios above): "At the table the mat fills each battlefield, so it shows a two-player table: the middle 45% of its height; ...". The person choosing which part of the art to keep (11.4) now sees what the table will do with it. The ratios in `TABLE_SHAPES` change with this section's table.
+- **The e2e spec** pins the box contract so a later change that sizes the mat against anything but the panel fails, and prints the shapes above so the table can be re-measured.
+
+**Not done.** A per-mat vertical focus (`object-position`), stored with the mat and applied by every viewer, which is the only thing that lets an owner choose WHICH band of a wide box shows. It stores something new about a person, so it brings the account-deletion inventory and the privacy page with it (AGENTS.md section 4), and it is its own change. Tracked as a follow-up issue. The own-seat `object-position` of 11.3 is the same idea.
+
 ## Alternatives considered
 
 - **Hotlink the pasted URL.** Rejected for the four reasons in decision 3.

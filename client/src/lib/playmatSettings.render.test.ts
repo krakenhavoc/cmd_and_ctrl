@@ -398,6 +398,16 @@ describe("the best-size prompt", () => {
     expect(w.getAttribute("aria-label")).toContain("up and down");
   });
 
+  // #3934: the table fills each battlefield box with the mat, so the
+  // prompt says what that leaves of the kept shape.
+  it("says what each table shape shows of the kept area", async () => {
+    const r = await withPrompt();
+    const t = text(promptOf(r.container)!);
+    expect(t).toContain("At the table the mat fills each battlefield");
+    expect(t).toContain("a two-player table: the middle 45% of its height");
+    expect(t).toContain("your own board: the middle 59% of its height");
+  });
+
   it("does not open for an image that fits", async () => {
     const r = await mount(account([]));
     click(byLabel(card(r.container, 1), "Add a playmat to slot 1")!);
