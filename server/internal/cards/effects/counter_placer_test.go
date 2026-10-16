@@ -47,6 +47,8 @@ var countersOnOptIns = map[string]string{
 	"Lae'zel, Vlaakith's Champion": `"on a creature or planeswalker you control or on
 		yourself" — the "or on yourself" clause was dead before ADR 0056
 		and shipped as a declared caveat.`,
+	"Innkeeper's Talent": `level 3: "If you would put one or more counters on a
+		permanent or player" — Vorinclex's doubling half, players included.`,
 }
 
 // TestNoCounterReplacementLeaksOntoAPlayerEvent is ADR 0056 test plan
