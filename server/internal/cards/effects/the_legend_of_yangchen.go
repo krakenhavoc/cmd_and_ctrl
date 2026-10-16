@@ -70,6 +70,7 @@ func yangchenChapterTwoMayDraw(g *game.Game, item *game.StackItem) error {
 		opponent := t.ID
 		return MayChoice{
 			Question: "The Legend of Yangchen — have target opponent draw three cards?",
+			Draws:    3, Drawer: opponent,
 			OnYes: func(ctx *Context) error {
 				if err := (DrawCards{Player: opponent, N: 3}).Apply(ctx); err != nil {
 					return err

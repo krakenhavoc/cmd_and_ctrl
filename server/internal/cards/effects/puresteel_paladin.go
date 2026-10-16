@@ -36,9 +36,9 @@ func init() {
 			GrantAbilities(puresteelPaladinMetalcraft, puresteelPaladinEquipGrant),
 		},
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventETB, puresteelPaladinEquipmentEntered,
+			OptionalDraw(On(game.EventETB, puresteelPaladinEquipmentEntered,
 				"Puresteel Paladin — draw a card", Do(DrawCards{N: 1})),
-				"Draw a card?"),
+				"Draw a card?", 1),
 		},
 	})
 }

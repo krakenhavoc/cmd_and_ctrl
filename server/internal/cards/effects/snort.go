@@ -55,6 +55,7 @@ func snortAsk(ctx *Context, players []uuid.UUID, discarded []uuid.UUID) error {
 	return MayChoice{
 		Player:   player,
 		Question: "Snort — discard your hand and draw five cards?",
+		Draws:    5,
 		OnYes: func(c *Context) error {
 			if _, err := discardWholeHand(c.Game, player); err != nil {
 				return err

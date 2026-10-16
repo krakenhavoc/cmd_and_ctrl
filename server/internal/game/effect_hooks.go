@@ -946,6 +946,18 @@ var CatalogTriggers func(oracleID string) []TriggeredAbility
 // nothing reachable from Game holds the closure.
 var CatalogTriggerInterveningIf func(t TriggeredAbility) func(g *Game, item *StackItem) bool
 
+// CatalogOptionalDraws returns how many cards an optional triggered
+// row's CR 603.5 "yes" is a choice to draw for the player asked, read as
+// an item of that row resolves: 1 for "you may draw a card", 2 for
+// Consecrated Sphinx, the event's amount for Cold-Eyed Selkie's "that
+// many", and 0 for a row whose "yes" is not a choice to draw. A player a
+// draw limit stops drawing that many can't choose to (CR 121.2b, CR
+// 121.3), so the question is not asked (optionalDrawRefusedLocked,
+// #4016). The cards/effects package answers it from what OptionalDraw
+// declared. A package hook rather than a field on TriggerOptionalPrompt,
+// for CatalogTriggerInterveningIf's reason.
+var CatalogOptionalDraws func(t TriggeredAbility, g *Game, item *StackItem) int
+
 // CatalogActivatedMayHelps returns an activated row's declared "would
 // 'yes' help?" for its resolution-time "you may" (ADR 0197 §10, #2731),
 // read as an item of that row asks, or nil when the row declares none.

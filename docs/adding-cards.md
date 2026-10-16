@@ -3557,10 +3557,17 @@ DrawLimits: PlayersCantDrawCards(),                        // Maralen of the Mor
 - **The count is cards actually drawn this turn** (`Game.DrawnThisTurn`):
   draws before the permanent arrived count, and a draw a replacement
   turned into something else does not.
-- **A choice to draw** (CR 121.3: a player who can't draw can't choose
-  to) can ask `Game.CanDrawForEffect(player)` or
-  `DrawsLeftThisTurnForEffect(player)` before offering it. The generic
-  "you may draw" prompts don't yet; a yes there draws nothing.
+- **A choice to draw** (#4016, CR 121.2b, 121.3, 121.3a) is not offered
+  to a player the limit stops drawing that many: declare the draw on the
+  prompt and the engine skips it. An optional trigger whose "yes" draws
+  uses `OptionalDraw(t, question, n)` (`OptionalDrawThatMany` for "that
+  many"; `MayDraw(row, n)` on a row that builds its `OptionalPrompt` with a
+  chooser) instead of `Optional`; the ability then resolves as a "no".
+  A `MayChoice` sets `Draws: n` (and `Drawer` when someone else
+  draws, as in Combustible Gearhulk); `OnNo` runs at once. "Draw up to
+  N" caps its choice with `Game.DrawChoiceCeilingForEffect(player, N)`.
+  A choice to draw multiple cards counts as one choice: under Narset,
+  "you may draw two cards" can't be taken at all (CR 121.2b).
 - A search or a "put into your hand" is not a draw (CR 121.5) and is
   never limited.
 
