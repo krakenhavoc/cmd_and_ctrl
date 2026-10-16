@@ -8785,11 +8785,19 @@ func stampNoUntap(g *game.Game, view *ZoneView) {
 }
 
 func projectedUntapSkipPlayers(g *game.Game, card *game.Card) []string {
-	if card == nil || len(card.NextUntapSkips) == 0 {
+	if card == nil {
 		return nil
 	}
-	seen := make(map[uuid.UUID]struct{}, len(card.NextUntapSkips))
-	players := make([]string, 0, len(card.NextUntapSkips))
+	// #3995: a player-wide skip ("lands target player controls don't
+	// untap during their next untap step") names no permanent, so it is
+	// asked of each one here and shown as the same next-step badge.
+	wide := g.PlayerUntapSkipsCoveringLocked(card)
+	if len(card.NextUntapSkips) == 0 && len(wide) == 0 {
+		return nil
+	}
+	seen := make(map[uuid.UUID]struct{}, len(card.NextUntapSkips)+len(wide))
+	players := make([]string, 0, len(card.NextUntapSkips)+len(wide))
+	keyed := make([]uuid.UUID, 0, len(card.NextUntapSkips)+len(wide))
 	for _, skip := range card.NextUntapSkips {
 		if skip.While != nil {
 			// A hold is projected as Static by stampNoUntap.
@@ -8799,6 +8807,10 @@ func projectedUntapSkipPlayers(g *game.Game, card *game.Card) []string {
 		if playerID == uuid.Nil {
 			playerID = card.Controller
 		}
+		keyed = append(keyed, playerID)
+	}
+	keyed = append(keyed, wide...)
+	for _, playerID := range keyed {
 		if playerID == uuid.Nil || !livePlayer(g, playerID) {
 			continue
 		}

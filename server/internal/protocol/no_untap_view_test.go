@@ -111,3 +111,35 @@ func TestNoUntapViewProjectsHoldsAsStatic(t *testing.T) {
 		t.Errorf("expired hold projected no_untap = %+v, want none", got)
 	}
 }
+
+// #3995: a player-wide skip ("lands target player controls don't untap
+// during their next untap step") names no permanent, so the view asks it
+// of each one and shows the next-step badge on the permanents of its
+// types that the named player controls, and on nothing else.
+func TestNoUntapViewProjectsAPlayerWideSkip(t *testing.T) {
+	g := buildActiveGame(t)
+	owner, other := g.Seats[0], g.Seats[1]
+	landID, bearID, theirLandID := uuid.New(), uuid.New(), uuid.New()
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(game.Card{InstanceID: landID, Name: "Land", TypeLine: "Land", Owner: owner.ID, Controller: owner.ID, Tapped: true})
+		g.Battlefield.PushTop(game.Card{InstanceID: bearID, Name: "Bear", TypeLine: "Creature — Bear", Owner: owner.ID, Controller: owner.ID, Tapped: true})
+		g.Battlefield.PushTop(game.Card{InstanceID: theirLandID, Name: "Their Land", TypeLine: "Land", Owner: other.ID, Controller: other.ID, Tapped: true})
+		if !g.SkipNextUntapStepForPlayerForEffect(owner.ID, uuid.Nil, []string{"land"}, false, "probe") {
+			t.Fatal("no skip recorded")
+		}
+	})
+	v := ViewOfGameFor(g, other.ID.String())
+	byID := map[string]CardView{}
+	for _, c := range v.Battlefield.Cards {
+		byID[c.InstanceID] = c
+	}
+	if got := byID[landID.String()].NoUntap; got == nil || got.Static || len(got.Next) != 1 || got.Next[0] != owner.ID.String() {
+		t.Errorf("land no_untap = %+v, want next [%s]", got, owner.ID)
+	}
+	if got := byID[bearID.String()].NoUntap; got != nil {
+		t.Errorf("creature no_untap = %+v, want none", got)
+	}
+	if got := byID[theirLandID.String()].NoUntap; got != nil {
+		t.Errorf("another player's land no_untap = %+v, want none", got)
+	}
+}

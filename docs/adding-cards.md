@@ -7692,6 +7692,22 @@ and persisted snapshots retain them. Exert, as it attacks and as a
 cost, has its own section below ([ADR 0130](decisions/0130-exert.md)). See [ADR 0058](decisions/0058-doesnt-untap.md) and
 [ADR 0070](decisions/0070-untap-step-choices.md).
 
+Those markers are for a set the card names ("those creatures"). When the
+card names a PLAYER's permanents instead ("Lands target player controls
+don't untap during their next untap step", "Lands you control don't
+untap during your next untap step", Blinding Beam's "Creatures don't
+untap during target player's next untap step"), use
+`PermanentsDontUntapNextStep{Player, Types, AnyController, Label}`, or
+`LandsYouControlDontUntapNextStep(ctx)` for the Amonkhet Last cycle
+(#3995, ADR 0058's 2026-10-16 amendment). It writes a rule read at that
+player's next untap step, not a marker per permanent, so a land played
+or a creature gained after the spell resolved is held too (CR 611.2c).
+`Types` are lowercase permanent types, any of them. Set `AnyController`
+only when the card names no controller (Blinding Beam): then a
+permanent another player controls that a permission would untap in
+that step stays tapped as well. The record is used up by that step, like
+a marker, and waits past a skipped one.
+
 For "it doesn't untap during its controller's untap step **for as long
 as** you control ~ / ~ remains tapped" (Ty Lee, Dungeon Geists, Rust
 Tick), use `TapAndHoldWhileYouControlThis` or

@@ -360,6 +360,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0188 Decision 3a (#3563): a step of one extra turn skipped.
 		// Its cases are in turn_skip_step_test.go.
 		ModSkipExtraTurnStep: true,
+		// ADR 0058 amendment 2026-10-16 (#3995): a player-wide untap
+		// skip. Its cases are in untap_player_skip_test.go.
+		ModSkipNextUntapStep: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {
