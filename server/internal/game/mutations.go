@@ -1052,7 +1052,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		}
 		otherX := !g.tapCostForCastParamsLocked(playerID, card, params).Empty()
 		if ac, aerr := ChosenAdditionalCost(AdditionalCostFor(CatalogKey(card)), params.CostBranch); aerr == nil && ac != nil {
-			otherX = otherX || ac.PayLifeX || ac.BlightX
+			otherX = otherX || ac.PayLifeX || ac.BlightX || (ac.ExileCards != nil && ac.ExileCards.CountFromX)
 		}
 		if err := validateOptionalCostX(optionalCosts, params.OptionalCosts, params.XValue, paidHasX, otherX); err != nil {
 			slog.Warn("cast_spell rejected: X does not fit the optional cost",
@@ -1450,11 +1450,12 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #3536: and the exile-cards-from-your-graveyard cost, with every card
 	// another component of this cast already spends (CR 118.3).
 	if err := g.validateCastExileCardsLocked(playerID, cardID, costPlan, params.ExileIDs,
-		castExileAlsoSpent(params)); err != nil {
+		castExileAlsoSpent(params), params.XValue); err != nil {
 		slog.Warn("cast_spell rejected: bad exile-cards payment",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
 			"exile_cards_received", len(params.ExileIDs),
+			"x_value", params.XValue,
 			"err", err,
 		)
 		return err

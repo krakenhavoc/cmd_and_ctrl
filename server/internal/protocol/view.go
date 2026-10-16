@@ -1419,6 +1419,14 @@ type AdditionalCostView struct {
 	ExileCostLabel   string   `json:"exile_cost_label,omitempty"`
 	ExileCostOptions []string `json:"exile_cost_options,omitempty"`
 	ExileCostZone    string   `json:"exile_cost_zone,omitempty"`
+	// ExileCostX marks "exile X cards from your graveyard" (#1948,
+	// Skeletal Scrying, Harvest Pyre): `demands_x` is set too, so the X
+	// prompt opens, and the picks on `exile_ids` must number exactly the
+	// announced X (ExileCostN is absent). ExileCostXMax is the largest X
+	// the graveyard can pay — every option — and is absent at 0 (X = 0
+	// is then the only announcement). The server refuses a larger X.
+	ExileCostX    bool `json:"exile_cost_x,omitempty"`
+	ExileCostXMax int  `json:"exile_cost_x_max,omitempty"`
 	// DemandsX marks a "pay X life" clause (Toxic Deluge). The
 	// client must open its X prompt for this card even though the
 	// printed mana cost has no {X} in it, and the announced X is
@@ -7655,7 +7663,7 @@ func printedCostAmong(offers []*game.AlternativeCost) bool {
 func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.AdditionalCost) *AdditionalCostView {
 	out := &AdditionalCostView{
 		DiscardCards: ac.DiscardCards,
-		DemandsX:     ac.PayLifeX || ac.BlightX,
+		DemandsX:     ac.PayLifeX || ac.BlightX || (ac.ExileCards != nil && ac.ExileCards.CountFromX),
 		Label:        ac.Label,
 		ManaCost:     ac.ManaCost,
 		PayLife:      ac.PayLife,
@@ -7696,13 +7704,19 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		out.ExileFromHandLabel = he.Label
 		out.ExileFromHandOptions = &LegalTargetsView{Min: 0, Max: len(opts), Cards: cardIDStrings(opts)}
 	}
-	if ec := ac.ExileCards; ec != nil && ec.N > 0 {
+	if ec := ac.ExileCards; ec != nil && (ec.N > 0 || ec.CountFromX) {
 		// #3536: the activation's own walk, so the picker offers exactly
 		// the cards the validator accepts (#544).
 		out.ExileCostN = ec.N
 		out.ExileCostLabel = ec.Label
 		out.ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(caster, castID, ec))
 		out.ExileCostZone = string(ec.Zone())
+		// #1948: the X form's count is the announced X, capped by the
+		// same walk the validator reads (ExileCardsXCeilingForEffect).
+		if ec.CountFromX {
+			out.ExileCostX = true
+			out.ExileCostXMax = g.ExileCardsXCeilingForEffect(caster, castID, ec)
+		}
 	}
 	if ac.BlightX {
 		// #2174: the same creature walk, and the ceiling the validator
