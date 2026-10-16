@@ -105,7 +105,7 @@ const maxCostedChain = 4
 //
 // Caller must hold g.mu.
 func (g *Game) autoTapCostedCost(asker uuid.UUID, source Card, a ManaAbilityShape) (ParsedCost, bool) {
-	if a.ManaCost == "" || !g.autoTapAcceptsBesidesManaCost(asker, source, a) {
+	if a.ManaCost == "" || !g.autoTapAcceptsBesidesManaCost(asker, source, a, nil) {
 		return ParsedCost{}, false
 	}
 	// The planner books a static output. A computed one may read what
@@ -155,13 +155,14 @@ func (g *Game) autoTapCostedAbilitiesFor(asker uuid.UUID, source Card) []autoTap
 
 // plannedAbilityLocked is the ability a plan entry booked, re-found
 // through the picker that offered it: the costed picker for a Costed
-// entry (#2455), autoTapAbilityForRef for every other. Nil when the
-// ability is no longer acceptable.
+// entry (#2455), autoTapAbilityForRef for every other, under the spend
+// context the plan was made in (#3874). Nil when the ability is no
+// longer acceptable.
 //
 // Caller must hold g.mu.
-func (g *Game) plannedAbilityLocked(asker uuid.UUID, source Card, planned plannedTap) *ManaAbilityShape {
+func (g *Game) plannedAbilityLocked(asker uuid.UUID, source Card, planned plannedTap, spend *ManaSpendContext) *ManaAbilityShape {
 	if !planned.Costed {
-		return g.autoTapAbilityForRef(asker, source, planned.Ref)
+		return g.autoTapAbilityForRef(asker, source, planned.Ref, spend)
 	}
 	for _, cand := range g.autoTapCostedAbilitiesFor(asker, source) {
 		if planned.Ref == "" || cand.ref == planned.Ref {
@@ -230,6 +231,12 @@ func (g *Game) autoTapCostedLocked(
 	if p == nil || g.producesManaReplacementsExistLocked() {
 		return nil, false
 	}
+	// #3874: no restricted output in a costed plan. The solver books a
+	// source's mana either to the cost or to fund a Signet's {1}, and
+	// restricted mana may pay only the spell: the executor's funding
+	// walk refuses it (payPlannedManaCostLocked), so a plan that booked
+	// it there would be refused after planning. Weaker, never wrong.
+	wish = wish.withoutRestricted()
 	costed := gatherSources(g, p.ID, excluded, wish, true)
 	costed = netPositiveCosted(costed)
 	if len(costed) == 0 {
