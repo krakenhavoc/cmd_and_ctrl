@@ -32,6 +32,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // and the auto-tapper's preview (producedManaPreviewLocked) has to agree.
 // Strictly weaker than printed: the Sphere taxes storm here and
 // leaves the big-mana lands alone.
+//
+// The caveat waits on the engine seam #3939 (triaged in #3863).
 func init() {
 	Register(Spec{
 		OracleID:     "fd50d76c-7654-47b9-a5b6-d075874e4357",

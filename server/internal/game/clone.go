@@ -857,6 +857,8 @@ func cloneStackItem(s *StackItem) *StackItem {
 		Uncopyable:       s.Uncopyable,
 		ExileWithCounter: s.ExileWithCounter,
 		Seq:              s.Seq,
+		// #3863
+		ExileInsteadOfGraveyard: s.ExileInsteadOfGraveyard,
 		// #789 / #761: what the announcement paid. Deep-copied
 		// (clonePaidCost reallocates the token slice and each
 		// token's Restrictions) because an undo snapshot that

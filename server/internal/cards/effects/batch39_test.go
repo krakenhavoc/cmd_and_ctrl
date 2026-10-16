@@ -638,9 +638,8 @@ func TestB39ShalaiAndHallarPingsForCountersOnYourCreatures(t *testing.T) {
 	rock := b12Permanent(g, me.ID, "Sol Ring", "Artifact")
 
 	before := opp.Life
-	// The EventResolve stamp is how the attribution read
-	// (b12CountersPlacedByYou) learns whose ability is placing the
-	// counters — All Will Be One's test sets the scene the same way.
+	// The EventResolve stamps set the scene as a real resolution would;
+	// who placed the counters does not matter to this card (#3863).
 	//
 	// Counters on an artifact you control: not a creature, no trigger.
 	g.WithWriteLock(func() {
@@ -669,6 +668,54 @@ func TestB39ShalaiAndHallarPingsForCountersOnYourCreatures(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if opp.Life != before-3 {
 		t.Errorf("three counters on your creature is three damage: %d → %d", before, opp.Life)
+	}
+}
+
+// #3863: the clause is passive ("are put on"), so an OPPONENT'S effect
+// growing your creature triggers it too, and the count is what this
+// placement added, not the creature's total.
+func TestB39ShalaiAndHallarCountsCountersAnOpponentPuts(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pushCatalogPermanent(g, me.ID, "Shalai and Hallar", "Legendary Creature — Angel Elf", b39ShalaiAndHallarOracle, false)
+	bear := seedBear(g, me.ID)
+	before := opp.Life
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventResolve, Actor: opp.ID})
+		_ = g.AddCounterByForEffect(opp.ID, bear, game.CounterPlusOne, 2)
+	})
+	b04WaitForPick(t, g, me.ID)
+	pickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	if opp.Life != before-2 {
+		t.Fatalf("two counters an opponent put on your creature are two damage: %d → %d", before, opp.Life)
+	}
+	// A second placement of one more is one damage, not three.
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventResolve, Actor: opp.ID})
+		_ = g.AddCounterForEffect(bear, game.CounterPlusOne, 1)
+	})
+	b04WaitForPick(t, g, me.ID)
+	pickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	if opp.Life != before-3 {
+		t.Errorf("one more counter is one more damage: %d → %d", before, opp.Life)
+	}
+}
+
+// #3863: counters a creature enters with are "put on" it (CR 122.6).
+func TestB39ShalaiAndHallarCountsCountersACreatureEntersWith(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pushCatalogPermanent(g, me.ID, "Shalai and Hallar", "Legendary Creature — Angel Elf", b39ShalaiAndHallarOracle, false)
+	before := opp.Life
+	castCatalogSpell(t, g, "Phantom Centaur", "Creature — Centaur Spirit", "9bb8c54b-1228-4b7c-8651-52cb5b0f6e72", nil)
+	passPriorityAroundTable(t, g)
+	b04WaitForPick(t, g, me.ID)
+	pickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	if opp.Life != before-3 {
+		t.Errorf("a creature entering with three counters is three damage: %d → %d", before, opp.Life)
 	}
 }
 

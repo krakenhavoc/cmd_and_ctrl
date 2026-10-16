@@ -1837,7 +1837,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// leaves the stack, however it leaves — the same replacement
 		// flashback's cost carries.
 		AltCostExiles: (alt != nil && alt.ExileOnLeavingStack) || (src.Kind == ZoneGraveyard && isAftermathHalf(card)),
-		CastFromZone:  src.Kind,
+		// #3863: "if that spell would be put into your graveyard,
+		// exile it instead" — the narrower clause, carried for the same
+		// reason.
+		ExileInsteadOfGraveyard: alt != nil && alt.ExileInsteadOfGraveyard && !card.PrepareCopy && !card.CardCopy,
+		CastFromZone:            src.Kind,
 		// #761: the mana that actually paid, or the fact that the
 		// engine waived the charge. Stamped here for the reason
 		// XValue is: by resolution the tokens are gone from the pool
@@ -4288,6 +4292,12 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// buyback or the Adventure to replace (paradigm.go).
 		paradigmRouteLocked(c, item, &r)
 	} else if altCostExilesFromStack(c, item) {
+		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
+	} else if !resolved && exilesInsteadOfGraveyard(item) {
+		// #3863: "if that spell would be put into your graveyard,
+		// exile it instead" — a countered or fizzled spell too. As it
+		// resolves the clause is one of the exits below instead, so it
+		// competes with buyback and rebound under CR 616.1.
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
 	} else if resolved {
 		// The three "as it resolves" exits (resolution_exits.go). Two

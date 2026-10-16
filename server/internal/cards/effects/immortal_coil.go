@@ -30,6 +30,8 @@ import (
 // The candidates are the cards in the graveyard when the damage was
 // prevented, and a pick that has left by the answer is made up from the
 // rest of them, so the count is never lower than printed.
+//
+// The caveat waits on the engine seam #2040 (triaged in #3863).
 func init() {
 	Register(Spec{
 		OracleID:     "c85fc672-12d8-4ab0-b18d-ccd590ac063c",
