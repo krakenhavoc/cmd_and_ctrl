@@ -976,6 +976,17 @@ type ActivatedAbilityShape struct {
 	// declared there alone. The engine never reads it; see Purpose.
 	Purpose Purpose
 
+	// MayQuestion is the ability's resolution-time "you may" when its
+	// whole effect is optional — "Boast — {1}: You may have Arni's base
+	// power become …" (Arni Brokenbrow, #2731). The question is asked
+	// as the ability resolves (CR 608.2d), by the machinery an optional
+	// trigger uses (ADR 0197 §10, optional_trigger.go): the activation
+	// stamps StackItem.Optional, the resolution asks a trigger_prompt,
+	// and "yes" runs Effect. Empty for every ability whose effect is
+	// not a "you may" as a whole. Plain data: a "you may" in the
+	// middle of an effect is effects.MayChoice instead.
+	MayQuestion string
+
 	// Effect runs at resolution against the live game. Same contract
 	// as TriggeredAbility's stack items: never capture a *Card,
 	// read what you need off the item and the game.
@@ -1382,6 +1393,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// borrower where it named the lender. Read here, while `source` still
 	// points at the object — a cost below may move it.
 	itemLabel := BorrowedLabel(ab.Label, origins.At(index), source.Name)
+	// ADR 0197 §10: the standing answer's label and its face-down
+	// silence, read for the same reason.
+	answerCard, answerFaceDown := source.Name, source.FaceDown
 	// CR 113.6: an ability functions only from the zone it says it
 	// functions from. Checked after the index lookup (so the index
 	// is the one the view and the enumerator published) and before
@@ -2218,6 +2232,9 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		item.Body = CatalogActivatedBodyKey
 		item.Params = EffectParams{Ability: abilityRef}
 	}
+	// ADR 0197 §10 (#2731): a "you may" ability carries its question
+	// onto the stack and asks it as it resolves (optional_trigger.go).
+	stampOptionalActivated(item, ab, abilityRef, answerCard, answerFaceDown)
 	g.StackMeta[itemID] = item
 	// #1547: what the mana did when it was spent. The cast path's
 	// call, for an ability: a rider whose filter admits an activation

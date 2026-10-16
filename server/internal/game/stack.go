@@ -629,8 +629,9 @@ type StackItem struct {
 	TargetsAnnouncePending bool
 
 	// Optional is the CR 603.5 "you may" of an optional triggered
-	// ability: who is asked and how, asked as the item resolves
-	// (#2494, optional_trigger.go). Nil for every mandatory item.
+	// ability, or of an activated ability whose whole effect is one
+	// (ADR 0197 §10, #2731): who is asked and how, asked as the item
+	// resolves (#2494, optional_trigger.go). Nil for every other item.
 	// Plain data, carried by Clone and the snapshot.
 	Optional *OptionalTrigger
 

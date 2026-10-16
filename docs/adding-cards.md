@@ -6567,6 +6567,18 @@ or `InterveningIf(cond, row)` around a hand-written Effect (Valakut,
 Land Tax). Then a condition that fails in response removes the trigger
 before its question is asked (#3907).
 
+**"You may" activated abilities.** When an activated ability's WHOLE
+effect is a "you may" ("Boast — {1}: You may have Arni's base power
+become …"), wrap the row in `YouMay(row, MayAtResolution{Question: "…"})`
+([may_at_resolution.go](../server/internal/cards/effects/may_at_resolution.go)).
+The question is asked as the ability resolves, by the optional-trigger
+path ([ADR 0197](decisions/0197-optional-triggers-ask-as-they-resolve.md)
+§10), "yes" runs the `Effect`, and a standing answer works on it. Set
+`Helps` only when a "yes" can leave the player worse off (Arni's base
+power can go down): the prompt then warns and the bot declines when it
+answers false. A "you may" partway through an effect ("Mill two cards.
+Then you may sacrifice this land") stays a `MayChoice` inside it.
+
 **"Unless that player pays {N}"** (Rhystic Study, Smothering Tithe,
 Esper Sentinel) is a `PayUnless` primitive the trigger's `Effect`
 applies: it queues a `pay_unless` prompt for the taxed player and

@@ -1817,6 +1817,12 @@ export interface PendingChoiceView {
   // artifact, Eternal Witness with an empty graveyard, etc.). The
   // modal warns the chooser. Absent/false otherwise.
   no_legal_target?: boolean;
+  // ADR 0197 §10 (#2731): populated for kind "trigger_prompt" — true
+  // when the ability itself says "Yes" would leave the chooser no
+  // better off as things stand (Arni Brokenbrow's new base power would
+  // be no higher than its current one). The dock warns. Absent/false
+  // otherwise.
+  no_gain?: boolean;
   // S19 sub-PR 6: populated for kind "pay_unless" — the cost the
   // chooser is being asked to pay ("{2}"). Same {choice_id, apply}
   // payload as the other yes/no kinds: apply=true pays (from pool,

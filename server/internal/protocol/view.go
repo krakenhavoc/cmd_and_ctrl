@@ -576,6 +576,13 @@ type PendingChoiceView struct {
 	// target or no target requirement. Added in S19 follow-up.
 	NoLegalTarget bool `json:"no_legal_target,omitempty"`
 
+	// NoGain marks a "trigger_prompt" whose "yes" would leave the
+	// chooser no better off as things stand, by its ability's own
+	// declaration (ADR 0197 §10, #2731: Arni Brokenbrow's new base power
+	// would be no higher than its current one). The client warns; the
+	// bot declines. Absent (false) when the ability declares nothing.
+	NoGain bool `json:"no_gain,omitempty"`
+
 	// PayCost populates the S19 "pay_unless" kind: the printed cost
 	// the chooser is being asked to pay ("{2}"). `{apply: true}`
 	// pays, `{apply: false}` declines. Absent for other kinds.
@@ -8706,6 +8713,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			Source:        uuidStringOrEmpty(c.Source),
 			Reason:        c.Reason,
 			NoLegalTarget: c.NoLegalTarget,
+			NoGain:        c.NoGain,
 			PayCost:       c.PayCost,
 			// ADR 0127 §8, filtered to the chooser in FilterViewFor.
 			AutoAnswerKey:    c.AutoAnswerKey,

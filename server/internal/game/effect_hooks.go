@@ -946,6 +946,16 @@ var CatalogTriggers func(oracleID string) []TriggeredAbility
 // nothing reachable from Game holds the closure.
 var CatalogTriggerInterveningIf func(t TriggeredAbility) func(g *Game, item *StackItem) bool
 
+// CatalogActivatedMayHelps returns an activated row's declared "would
+// 'yes' help?" for its resolution-time "you may" (ADR 0197 §10, #2731),
+// read as an item of that row asks, or nil when the row declares none.
+// The cards/effects package reads it off the declared ability
+// (effects.MayAtResolution.Helps). When it answers false the prompt
+// carries PendingChoice.NoGain: the client warns, and the bot declines.
+// A package hook rather than a field, so nothing reachable from Game
+// holds the closure.
+var CatalogActivatedMayHelps func(ref AbilityRef) func(g *Game, item *StackItem) bool
+
 // CatalogTriggerDoublers returns the CR 603.2d doublers declared by a
 // catalog card. It is a separate slot so game-package tests can stub the
 // count without importing the effects package.
