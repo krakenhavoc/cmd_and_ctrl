@@ -254,7 +254,7 @@ func (r CreateRoleToken) Apply(ctx *Context) error {
 		Controller: controller,
 		Source:     ctx.Source(),
 		Groups: []game.TokenGroup{{
-			Template: tokenFromCatalog(roleBuilder(r.Role)),
+			Template: ruleDefinedToken(tokenFromCatalog(roleBuilder(r.Role))),
 			Count:    1,
 		}},
 	}, func(g *game.Game, created []uuid.UUID) error {

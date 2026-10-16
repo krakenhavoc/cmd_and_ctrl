@@ -32,7 +32,7 @@ func init() {
 					if !ok {
 						return nil
 					}
-					return CreateToken{Template: tmpl, N: 1}.Apply(ctx)
+					return createTokenCopies(ctx, ctx.Controller(), tmpl, 1)
 				}),
 		},
 	})

@@ -57,7 +57,8 @@ func init() {
 				From: item.Controller, GrantTo: item.Controller, N: 2,
 				FaceDown:    true,
 				WhileExiled: true,
-				Condition:   &game.PermissionCondition{Key: game.CondControlSubtype, Subtype: "Wizard"},
+				// "A Wizard" is a word of the spell's text (#4005).
+				Condition: &game.PermissionCondition{Key: game.CondControlSubtype, Subtype: ctx.TextSubtype("Wizard")},
 			}.Apply(ctx)
 		},
 	})

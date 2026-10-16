@@ -61,7 +61,7 @@ func coriSteelCutterFlurry(g *game.Game, item *game.StackItem) error {
 		Controller: item.Controller,
 		Source:     item.SourceCardID,
 		Groups: []game.TokenGroup{{
-			Template: TokenCard("1/1 white Monk with prowess"),
+			Template: NewContext(g, item).TextToken(TokenCard("1/1 white Monk with prowess")),
 			Count:    1,
 		}},
 	}, func(g *game.Game, created []uuid.UUID) error {

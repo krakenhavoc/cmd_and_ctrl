@@ -32,7 +32,7 @@ func init() {
 					ev.TokenTemplatesMatch(func(t game.Card) bool { return t.HasSubtype("Treasure") })
 			},
 			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-				ev.TokenGroups = append(ev.TokenGroups, game.TokenGroup{Template: TreasureToken(), Count: 1})
+				ev.TokenGroups = append(ev.TokenGroups, game.TokenGroup{Template: ruleDefinedToken(TreasureToken()), Count: 1})
 				return nil
 			},
 			Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
