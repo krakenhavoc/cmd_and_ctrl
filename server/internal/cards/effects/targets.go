@@ -604,6 +604,30 @@ func ExiledWithThis(spec *game.TargetSpec) *game.TargetSpec {
 	return spec
 }
 
+// ControlledByThatPlayer narrows a TRIGGERED ability's clause to what
+// "that player" / "that opponent" controls, where the triggering event
+// names the player: the opponent the Dragons just dealt combat damage
+// to (Parapet Thrasher's "Destroy target artifact that opponent
+// controls", #3860). It is data on the clause
+// (game.TargetSpec.ControlledByThatPlayer), judged in the one shared
+// walk against the event the trigger carries, so the mode prompt (a
+// bullet with no such artifact is not on offer, CR 603.3c), the legal
+// set, the announce check (CR 601.2c), the resolution re-check (CR
+// 608.2b), the client's picker and the bot's moves are one answer.
+// Wrap the whole clause, like ExiledWithThis:
+//
+//	TargetPermanent("target artifact that opponent controls", Artifact())
+//
+// becomes ControlledByThatPlayer(TargetPermanent(…)). The player is the
+// event's Target, so use it on a trigger whose event has one (combat
+// damage to a player, a player being targeted, a spell cast at one);
+// on an event that names none the clause admits nothing, and on a spell
+// or activated ability it admits nothing too.
+func ControlledByThatPlayer(spec *game.TargetSpec) *game.TargetSpec {
+	spec.ControlledByThatPlayer = true
+	return spec
+}
+
 // SaddledThis narrows a clause to the creatures that saddled its own
 // source this turn (CR 702.171c): Giant Beaver's "target creature that
 // saddled it this turn". It is data on the clause

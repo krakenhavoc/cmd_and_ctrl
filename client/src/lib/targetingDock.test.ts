@@ -273,3 +273,59 @@ describe("the insufficient-mana request (S15, ADR 0111 PR 4)", () => {
     expect(r.secondary?.map((a) => a.label)).toEqual(["Cancel", "Cast anyway"]);
   });
 });
+
+// #3860, CR 601.2f: Terror of the Peaks charges life for a spell that
+// targets it. The server prices each candidate; the picker says so, and a
+// candidate the viewer cannot pay for is off the legal set (a player who
+// can't pay can't target it), with the dock saying why.
+describe("a spell's target prompt names the life a taxed target costs (#3860)", () => {
+  const spell = (over: Partial<NonNullable<CardView["legal_targets"]>> = {}) =>
+    card("Lightning Bolt", {
+      legal_targets: {
+        cards: ["dragon", "bear"],
+        min: 1,
+        max: 1,
+        life_taxes: { dragon: 3 },
+        ...over,
+      },
+    });
+  const view = () =>
+    ({
+      battlefield: {
+        kind: "battlefield",
+        count: 2,
+        cards: [
+          card("Terror of the Peaks", { instance_id: "dragon" }),
+          card("Bear", { instance_id: "bear" }),
+        ],
+      },
+      stack: { kind: "stack", count: 0, cards: [] },
+      seats: [{ id: "me", name: "LUke" }],
+      pending_choices: [],
+      pending_triggers: [],
+    }) as unknown as GameView;
+
+  it("says what naming the Dragon costs, and keeps it targetable", () => {
+    begin(spell(), "any");
+    const t = get(targeting)!;
+    expect(t.legal?.cards.has("dragon")).toBe(true);
+    const r = targetingRequest(t, view(), handlers());
+    expect(r.detail).toContain("Terror of the Peaks costs 3 life to target");
+    expect(r.detail).not.toContain("you can't pay it");
+  });
+
+  it("drops a target the viewer cannot pay for and says why", () => {
+    begin(spell({ life_taxes_unpayable: ["dragon"] }), "any");
+    const t = get(targeting)!;
+    expect(t.legal?.cards.has("dragon")).toBe(false);
+    expect(t.legal?.cards.has("bear")).toBe(true);
+    const r = targetingRequest(t, view(), handlers());
+    expect(r.detail).toContain("Terror of the Peaks costs 3 life to target (you can't pay it)");
+  });
+
+  it("says nothing when no target is taxed", () => {
+    begin(card("Lightning Bolt", { legal_targets: { cards: ["bear"], min: 1, max: 1 } }), "any");
+    const r = targetingRequest(get(targeting)!, view(), handlers());
+    expect(r.detail ?? "").not.toContain("life to target");
+  });
+});

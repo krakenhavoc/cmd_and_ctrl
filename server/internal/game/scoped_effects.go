@@ -450,6 +450,16 @@ const (
 	// the record's Controller. Not a layer operation: the targeting
 	// choke point reads it (hexproof_bypass.go).
 	ModWaiveHexproof ModKind = "waiveHexproof"
+	// ModCantBeTargetedByOpponents is "<affected> can't be the target of
+	// spells or abilities your opponents control [this turn]" (Vines of
+	// Vastwood, #3860). Reads nothing; "you" is the record's
+	// Controller, and an opponent is any player but them. Not a layer
+	// operation and not hexproof: the affected object keeps whatever
+	// abilities it has, and the one clause refuses spells and abilities
+	// controlled by the record's opponents even when the object itself
+	// belongs to one of them. The targeting choke point reads it
+	// (targeting_bar.go).
+	ModCantBeTargetedByOpponents ModKind = "cantBeTargetedByOpponents"
 )
 
 // ModBecomeCopy is "<affected> becomes a copy of <object> [until end of
@@ -1021,6 +1031,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// targeting.
 	ModCantHaveKeywords: {layer: Layer6Ability},
 	ModWaiveHexproof:    {reader: readerTargeting},
+	// #3860: Vines of Vastwood's "can't be the target of spells or
+	// abilities your opponents control this turn".
+	ModCantBeTargetedByOpponents: {reader: readerTargeting},
 	// #1593: layer 1, applied to the printed baseline before the pass.
 	ModBecomeCopy: {reader: readerCopy, layer: Layer1Copy},
 	// #2562: The Irencrag's "become a legendary Equipment artifact named

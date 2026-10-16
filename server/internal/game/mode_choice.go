@@ -55,7 +55,7 @@ func (g *Game) queueModePickLocked(tc TriggerContext, source Card, lki Character
 	// not on offer. They ride the prompt as the USED list, so the
 	// picker can show them greyed out rather than silently missing.
 	ab := ModeAbilityOf(source, t.Key)
-	options := g.choosableModeOptionsLocked(SourceObject(source.Controller, &source), ms, ab)
+	options := g.choosableModeOptionsLocked(SourceObject(source.Controller, &source).WithTrigger(tc), ms, ab)
 	if !EnoughChoosableModes(len(options), ms) {
 		return false
 	}

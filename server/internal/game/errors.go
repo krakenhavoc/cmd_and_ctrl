@@ -298,6 +298,14 @@ var (
 	// Added in S15 sub-PR 3.
 	ErrInsufficientMana = errors.New("game: insufficient mana")
 
+	// ErrCantPayTargetTax is returned by CastSpell when the spell's
+	// targets add a life cost its caster cannot pay (CR 601.2f, 119.4):
+	// Terror of the Peaks' "spells your opponents cast that target this
+	// creature cost an additional 3 life". A player who can't pay can't
+	// target it, so the enumerator never offers the cast either
+	// (target_tax.go, #3860). Wrapped with the sentence a player reads.
+	ErrCantPayTargetTax = errors.New("game: can't pay what targeting costs")
+
 	// ErrUnparseableCost is returned by CastSpell when the card's
 	// printed ManaCost can't be parsed. Split and adventure cards
 	// import a joined cost ("{1}{R} // {1}{U}") that ParseCost

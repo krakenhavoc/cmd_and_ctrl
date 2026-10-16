@@ -191,6 +191,7 @@ func buildDef(spec Spec) *game.CardDef {
 		ExhaustPermissions:                  spec.ExhaustPermissions,
 		BoastLimits:                         spec.BoastLimits,
 		AttackTaxes:                         spec.AttackTaxes,
+		TargetTaxes:                         spec.TargetTaxes,
 		BlockRules:                          spec.BlockRules,
 		AttackLimits:                        spec.AttackLimits,
 		ExertOnAttack:                       spec.ExertOnAttack,

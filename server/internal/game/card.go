@@ -1263,6 +1263,15 @@ type Card struct {
 	// Unimplemented by MayMakeManaUnautomated (ADR 0118 decision 8).
 	PrintsManaAbility bool
 
+	// PrintsTapAbility records that the card's printed oracle text has
+	// an activated ability with {T} in its cost, per
+	// PrintsTapAbilityText (#3860). Stamped by the deck importer beside
+	// PrintsManaAbility, for the same reason: game.Card carries no
+	// oracle text. Read through PrintedTapAbility, which prefers the
+	// active face's own text on a multi-faced card. A copiable value
+	// (PrintedValues), because a copy takes the copied card's text.
+	PrintsTapAbility bool
+
 	// ColorCDADropped records that a CR 707.9d copy exception gave
 	// this object a colour, so the copy did not take the copied
 	// object's colour-defining ability (devoid) at all. A copiable

@@ -390,6 +390,8 @@ func Register(spec Spec) {
 	// ADR 0109 §6: and for a targeting restriction, which must also say
 	// which zone it is about.
 	checkTargetingRestrictions(spec.Name, spec.TargetingRestrictions)
+	// #3860: a target tax names what it charges, whom and for what.
+	checkTargetTaxes(spec.Name, spec.TargetTaxes)
 	// ADR 0108 §10: a "dealt as though its source had" static names what
 	// the source is treated as having, and wither is about creatures only
 	// (CR 702.80a), so it can't be narrowed to damage dealt to a player.

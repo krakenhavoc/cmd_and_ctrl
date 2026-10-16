@@ -27,19 +27,19 @@ const parapetThrasherLabel = "Parapet Thrasher — Dragons dealt combat damage t
 // "Each other opponent" is every opponent of the controller except the
 // damaged one, and the damage comes from this creature.
 //
-// Simplification, declared: a mode's target clause is fixed on the
-// card and is never handed the trigger, so the artifact bullet offers
-// any artifact an OPPONENT controls and does nothing at resolution
-// unless THAT opponent — the one who was dealt damage — controls it.
-// The bullet can therefore be chosen and wasted where the printed card
-// would not offer it; it never destroys an artifact the printed card
-// could not.
+// "Target artifact that opponent controls" is a clause relative to the
+// trigger's event (#3860): ControlledByThatPlayer reads the damaged
+// player off the event the trigger carries, in the one shared target
+// walk. So the picker offers only that opponent's artifacts, a bullet
+// with none of them is not on offer (CR 603.3c — a mode with no legal
+// target can't be chosen, which leaves the other two for the turn's
+// remaining triggers), and an artifact that changes hands before the
+// ability resolves is an illegal target (CR 608.2b).
 func init() {
 	Register(Spec{
 		OracleID:        "722e23d5-4f2a-43cd-bbd5-baf56b76e68d",
 		Name:            "Parapet Thrasher",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The artifact choice offers any opponent's artifacts, and only destroys one controlled by the opponent who was dealt damage."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			parapetThrasherTrigger(),
@@ -52,18 +52,8 @@ func parapetThrasherTrigger() game.TriggeredAbility {
 		parapetThrasherLabel, func(_ *game.Game, _ *game.StackItem) error { return nil })
 	t.Modes = ChooseOneNotChosenThisTurn(
 		ModeDoing("Destroy target artifact that opponent controls.",
-			TargetPermanent("target artifact that opponent controls", Artifact(), OpponentControls()),
-			func(item *game.StackItem, ctx *Context, occ int) error {
-				t, ok := ModeTarget(ctx, occ)
-				if !ok {
-					return nil
-				}
-				c, ok := ctx.Game.LookupCardForEffect(t.ID)
-				if !ok || c.Controller != item.Trigger.Event.Target {
-					return nil
-				}
-				return DestroyTarget{Target: t.ID}.Apply(ctx)
-			}),
+			ControlledByThatPlayer(TargetPermanent("target artifact that opponent controls", Artifact())),
+			DestroyTheModesTarget),
 		ModeDoing("This creature deals 4 damage to each other opponent.", nil,
 			func(item *game.StackItem, ctx *Context, _ int) error {
 				that := item.Trigger.Event.Target

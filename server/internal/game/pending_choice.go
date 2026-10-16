@@ -3465,7 +3465,7 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 		// was harvested, which is exactly the source CR 702.16b wants:
 		// the permanent may have left between the trigger and the
 		// prompt, and its qualities then are what count.
-		lt := g.LegalTargetsForAnnouncedClauseForEffect(SourceObject(f.source.Controller, &f.source), f.steps, f.step, append([]TargetRef{}, f.picked...))
+		lt := g.LegalTargetsForAnnouncedClauseForEffect(SourceObject(f.source.Controller, &f.source).WithTrigger(f.tc), f.steps, f.step, append([]TargetRef{}, f.picked...))
 		lt = withoutPicked(lt, f.picked, clause.Distinct)
 		// #1559: a clause with a set rule can have candidates and
 		// still no legal SET of Min picks ("two target creatures
@@ -3664,7 +3664,7 @@ func (g *Game) ResolvePickTargetsDivided(choiceID, chooserID uuid.UUID, targets 
 		stamped = append(stamped, t)
 	}
 	all := append(append([]TargetRef(nil), frame.picked...), stamped...)
-	if err := g.validateAnnouncedTargetsWithLocked(SourceObject(chooserID, &frame.source), frame.steps[:frame.step+1], all, func(i int, _ TargetRef) bool { return i < len(frame.picked) }); err != nil {
+	if err := g.validateAnnouncedTargetsWithLocked(SourceObject(chooserID, &frame.source).WithTrigger(frame.tc), frame.steps[:frame.step+1], all, func(i int, _ TargetRef) bool { return i < len(frame.picked) }); err != nil {
 		return err
 	}
 	if step.Distinct {
