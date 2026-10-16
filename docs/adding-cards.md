@@ -4715,8 +4715,34 @@ to the restore-point census (`closure_fields.txt`). `Register` refuses an
 empty or unlabelled cost, a spell that can choose only one mode, and
 `TapCreatures` anywhere but `ModeSpec.Escalate`.
 
-**Still out:** entwine (one extra cost for choosing ALL modes, which
-the per-mode escalate cost does not express), and "enters with a
+**Entwine (CR 702.42, #3866, ADR 0065's 2026-10-16 amendment):**
+"Entwine [cost]" is ONE extra cost for choosing every mode, so it is two
+things the engine already has: an optional cost keyed `game.EntwineKey`,
+and #1655's announcement-driven mode count raised to every bullet while
+that cost is announced. Declare both halves; `Register` refuses either
+alone:
+
+```go
+OptionalCosts: []game.AdditionalCost{Entwine("{2}")},
+Modes:         Entwining(ChooseOne(…)),                                          // Spectral Shift
+OptionalCosts: []game.AdditionalCost{EntwineSacrifice(3, "three lands", Land())},
+Modes:         Entwining(ChooseOne(…)),                                          // Betrayal of Flesh
+OptionalCosts: []game.AdditionalCost{Entwine("{3}")},
+Modes:         Entwining(ChooseN("Choose two", 2, 2, …)),                         // Kaya's Guile: two, or all four
+```
+
+Unentwined, the printed count stands; entwined, every bullet and no
+fewer (a count between is refused). The cost is paid like kicker's — its
+mana joins the total at CR 601.2f, a sacrifice rides `sacrifice_ids` with
+the spell on the stack — and the bullets run in printed order (CR
+702.42b), which every modal spell already does. Write each bullet with
+`ModeDoing` and read its own target group with `ModeTarget(ctx, occ)`:
+entwined, both bullets have targets, and `item.Targets[0]` would hand the
+second bullet the first one's. The client offers "Entwine {2}" where it
+offers kicker and the picker reads `modes.if_optional_paid`; the bot
+enumerator offers the entwined cast as its own move.
+
+**Still out:** "enters with a
 counter for each time it was kicked" (Everflowing Chalice, Joraga
 Warcaller) — that count is read during the CR 614 entry pipeline,
 before the record reaches the permanent.
@@ -5957,6 +5983,27 @@ REDUCES the mana half, which the pricer does not read), Firecat Blitz's
 "Sacrifice X Mountains" on a flashback, and a "Flashback—Tap N
 creatures" price (Battle Screech, Prismatic Strands), which is a tap
 component the struct does not have.
+
+**Harmonize (#3931, CR 702.180, ADR 0135 amendment 2026-10-16):** a
+card that prints "Harmonize {cost}" opens the graveyard as flashback
+does and declares the offer with one constructor:
+
+```go
+CastableZones:    []game.ZoneKind{game.ZoneGraveyard},             // Channeled Dragonfire
+AlternativeCosts: []game.AlternativeCost{Harmonize("{5}{R}{R}")},
+```
+
+That is flashback's place and exile, a tap of UP TO one untapped
+creature you control (`game.HarmonizeTapCost()`, `TapOthersCost.UpTo`)
+on `alt_cost_ids`, and `ReducedByTappedPower`: the pricer takes the
+creature's power off the generic part, then off an {X} (Nature's Rhythm,
+Zenith Festival), never below {0}. Tapping none is a legal payment.
+Never hand-roll the struct; `Register` holds the flag and `UpTo`
+together over one creature. An effect that gives a card harmonize
+("gains harmonize until end of turn. Its harmonize cost is equal to its
+mana cost", Songcrafter Mage) is `GrantHarmonizeToCard`, Snapcaster's
+`GrantFlashbackToCard` under the `harmonize` key, so the granted offer
+taps and reduces exactly as a printed one does.
 
 **"Unless it escaped" — cast provenance (#653, CR 400.7d).** A
 permanent remembers how the spell that became it was cast:
