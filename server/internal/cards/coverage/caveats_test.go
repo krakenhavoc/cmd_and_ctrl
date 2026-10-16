@@ -61,8 +61,7 @@ a player right now.
 // cannot change in either direction without somebody saying why.
 //
 // Key is Finding.Key() — "<card name> / <mechanic>".
-var adoptableGaps = map[string]string{
-}
+var adoptableGaps = map[string]string{}
 
 // TestAdoptableGapsArePinned fails on any movement in that set.
 func TestAdoptableGapsArePinned(t *testing.T) {
