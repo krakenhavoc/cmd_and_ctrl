@@ -287,6 +287,11 @@ type AdditionalCost struct {
 	// fixed count: effects.Register refuses it on an optional cost, the
 	// "tap X" form, and beside teamwork or escalate's taps (one list
 	// cannot pay two). See tap_additional_cost.go.
+	//
+	// Or, on the mandatory slot only, "tap any number of untapped
+	// creatures you control" (#3961, TapOthersCost.AnyNumber): Burn at
+	// the Stake reads the count at resolution, Explosive Singularity as
+	// a discount (CostQuery.TappingToPay). None is a legal payment.
 	TapOthers *TapOthersCost
 
 	// Either is an either/or additional cost (ADR 0100 §2): "As an
@@ -1020,7 +1025,7 @@ func (g *Game) additionalCostPayableLocked(playerID, castID uuid.UUID, cost *Add
 	if cost.Sacrifice != nil {
 		// #3275: the permanents that can pay it, so one that can't be
 		// sacrificed doesn't count.
-		have := len(g.SacrificeCostCandidatesForEffect(playerID, cost.Sacrifice))
+		have := len(g.SacrificeCostCandidatesForEffect(playerID, uuid.Nil, cost.Sacrifice))
 		if have < SacrificeCostCount(cost.Sacrifice) {
 			return false
 		}

@@ -10,33 +10,25 @@ import (
 
 const filigreeFamiliarOracle = "b544f690-e4bf-4a5b-984d-9256518fd574"
 
-// Filigree Familiar's "{2}, Sacrifice: Add one mana of any color" is a mana
-// ability: it needs the {2}, sacrifices the Fox, adds the chosen colour, and
-// the dies trigger still draws afterwards.
-func TestFiligreeFamiliarSacrificeForAnyColor(t *testing.T) {
+// Filigree Familiar prints only the enters lifegain and the dies draw. It has
+// no mana ability (#3970): the catalog once invented "{2}, Sacrifice: Add one
+// mana of any color", which played stronger than printed.
+func TestFiligreeFamiliarHasNoManaAbility(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	id := pushCatalogPermanent(g, me.ID, "Filigree Familiar", "Artifact Creature — Fox", filigreeFamiliarOracle, false)
+	samiGiveColorless(me, 2)
 
 	if err := g.ActivateManaAbility(me.ID, id, 0, game.ManaAbilityParams{Colors: []string{"G"}}); err == nil {
-		t.Fatal("no {2} available: the activation should be refused")
+		t.Fatal("the Familiar has no mana ability: the activation should be refused")
 	}
 	if findBattlefieldCardForTest(g, id) == nil {
-		t.Fatal("a refused activation sacrificed the Familiar")
+		t.Error("a refused activation sacrificed the Familiar")
 	}
-	samiGiveColorless(me, 2)
-	handBefore := me.Hand.Size()
-	if err := g.ActivateManaAbility(me.ID, id, 0, game.ManaAbilityParams{Colors: []string{"G"}}); err != nil {
-		t.Fatalf("ActivateManaAbility: %v", err)
+	if got := dcSortedPool(me); len(got) != 2 {
+		t.Errorf("pool = %v: the {2} should be untouched", got)
 	}
-	if findBattlefieldCardForTest(g, id) != nil {
-		t.Error("the Familiar should be sacrificed")
-	}
-	if got := dcSortedPool(me); len(got) != 1 || got[0] != "G" {
-		t.Errorf("pool = %v, want [G]: the {2} paid, one green added", got)
-	}
-	passPriorityAroundTable(t, g)
-	if got := me.Hand.Size() - handBefore; got != 1 {
-		t.Errorf("dies trigger drew %d cards, want 1", got)
+	if spec, ok := Lookup(filigreeFamiliarOracle); !ok || len(spec.ManaAbilities) != 0 {
+		t.Errorf("catalog entry should list no mana abilities: %+v", spec.ManaAbilities)
 	}
 }

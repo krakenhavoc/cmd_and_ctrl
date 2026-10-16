@@ -494,6 +494,28 @@ func CostsLessPerExiledFromHand(per string, label string) game.CostModifier {
 	}, label)
 }
 
+// CostsLessPerTappedToPay is "This spell costs {per} less to cast for each
+// creature tapped this way" — Explosive Singularity's "{1} less" (#3961).
+// It reads game.CostQuery.TappingToPay, the count the announcement names
+// to the card's TapAnyNumberUntappedCost: CR 601.2b announces it before
+// 601.2f totals the cost, so the discount is part of the price CastSpell
+// charges, the auto-tap preview shows and the enumerator offers. A
+// reduction spends generic mana only and stops at zero, so Explosive
+// Singularity always costs at least its {R}{R}. `per` must be generic
+// mana; anything else panics at init.
+func CostsLessPerTappedToPay(per string, label string) game.CostModifier {
+	unit, err := game.ParseCost(per)
+	if err != nil || unit.XSlots > 0 || len(unit.Required) > 0 || unit.Generic < 1 {
+		panic(fmt.Sprintf("effects.CostsLessPerTappedToPay: %q is not a fixed generic amount (%v)", per, err))
+	}
+	return CostsLessEach(func(q game.CostQuery) int {
+		if q.TappingToPay < 1 {
+			return 0
+		}
+		return unit.Generic * q.TappingToPay
+	}, label)
+}
+
 // CardTypesAmongCardsInYourGraveyard counts the distinct card types
 // among the cards in the caster's graveyard, never counting the card
 // being cast — Emrakul, the Promised End's "{1} less to cast for each

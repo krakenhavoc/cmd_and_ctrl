@@ -124,6 +124,12 @@ func landBecomesOrChoose(ctx *Context, name string, dur func(ctx *Context, land 
 	if land == uuid.Nil {
 		return then(ctx)
 	}
+	// The printed types are words of the spell's or ability's text (CR
+	// 612.2, #3872): Tidal Warrior's "becomes an Island" under a Magical
+	// Hack makes a Forest. Read once, as it resolves; the effect it
+	// creates keeps that type whatever the text says later (CR 612.3's
+	// ruling). A choice among them offers each once.
+	types = textSubtypes(ctx, types)
 	become := func(ctx *Context, t string) error {
 		if d, ok := dur(ctx, land); ok {
 			label := name + " — that land is " + landTypeArticle(t)
@@ -144,6 +150,23 @@ func landBecomesOrChoose(ctx *Context, name string, dur func(ctx *Context, land 
 		question = name + " — choose " + joinOr(types)
 	}
 	return ChooseBasicLandTypeThen(ctx, question, types, become)
+}
+
+// textSubtypes is `printed` as the text of the object ctx resolves for
+// reads them (Context.TextSubtype), without repeats, in printed order.
+// The input itself when nothing changes.
+func textSubtypes(ctx *Context, printed []string) []string {
+	reader := ctx.textReader()
+	if reader == nil || len(printed) == 0 {
+		return printed
+	}
+	out := make([]string, 0, len(printed))
+	for _, p := range printed {
+		if now := reader.TextSubtype(p); !hasFold(out, now) {
+			out = append(out, now)
+		}
+	}
+	return out
 }
 
 // untilEndOfTurnFor is the duration "until end of turn" in the shape
@@ -261,7 +284,7 @@ func ChooseBasicLandTypeAsEnters(name string) func(*game.Card, *Context) error {
 func EnchantedLandIsTheChosenType() []game.StaticAbility {
 	out := make([]game.StaticAbility, 0, len(game.BasicLandTypes))
 	for _, t := range game.BasicLandTypes {
-		out = append(out, StaticWhenChosen(t, SetsBasicLandType(AttachedToSource, nil, []string{t})))
+		out = append(out, StaticWhenChosen(t, SetsChosenBasicLandType(AttachedToSource, nil, []string{t})))
 	}
 	return out
 }

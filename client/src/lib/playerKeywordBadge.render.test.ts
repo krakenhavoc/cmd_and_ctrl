@@ -214,6 +214,29 @@ describe("the seat's maximum hand size badge", () => {
   });
 });
 
+// ADR 0199 (#3953, CR 701.20a): a seat that plays with its hand revealed
+// says so, and names why, so the table knows why its hand is face up.
+describe("the seat's revealed-hand badge", () => {
+  const revealed = (sources?: string[]): PlayerView =>
+    ({ ...seat(), hand_revealed: sources }) as PlayerView;
+
+  it("is absent on a hidden hand", () => {
+    const { container } = render(PlayerIdentity as never, props(revealed(undefined)) as never);
+    expect(badges(container)).toHaveLength(0);
+  });
+
+  it("shows HAND OPEN with every source in its tooltip", () => {
+    const { container } = render(
+      PlayerIdentity as never,
+      props(revealed(["Telepathy", "Stromgald Spy"])) as never,
+    );
+    const got = badges(container);
+    expect(got).toHaveLength(1);
+    expect(got[0].text).toBe("HAND OPEN");
+    expect(got[0].title).toBe("Plays with their hand revealed — Telepathy, Stromgald Spy");
+  });
+});
+
 // #3262: two text badges beside the life chip widened its centred row
 // until the life total slid out of the panel. The badges now hang on
 // their own line under the chip, and the avatar makes room for them;

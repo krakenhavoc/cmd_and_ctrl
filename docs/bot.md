@@ -3176,6 +3176,23 @@ a deck someone built for it. The model tiers see their own sideboard in the
 board text (`your sideboard (outside the game): …`) and an opponent's as a
 count.
 
+A pick that then casts or plays what it names (Spawnsire of Ulamog's free
+cast, Wish; `choose_destination: "cast_free_outside"` / `"play_outside"`, #3955)
+is priced as the same take, and the enumerator offers every card a permission
+opens in the sideboard as a cast ("Cast Ulamog's Crusher from outside the
+game") or a land play at every price the engine accepts. An "any number" pick
+from the database also offers the whole suggestion list as one answer. The
+heuristic finds a card it owns outside the game when it prices the cast, and a
+free cast from outside costs it no card in hand.
+
+Wish gives the seat a standing right to play one card chosen when it is
+played. A seat whose pool is the card database is offered
+`outside_play` ("Wish: name a card you own from outside the game to play this
+turn", a `special_action`-kind move) while its sideboard is empty; the pick it
+opens is answered like any collection pick, and the named card is then cast
+as an ordinary move. A seat with a sideboard needs no such move: its cards
+are cast directly.
+
 ## Never offered a banned cast (#760)
 
 The announce-time cast gate (`game.CastGateLocked`) is called once per
@@ -3970,6 +3987,17 @@ line says `exiles the top 4 cards of your library`. Under
 was and buys nothing back, since exile is no graveyard to cast from, and
 the same `DredgeLibraryFloor` declines an exile that would leave fewer
 than 10 cards in the library. The baseline reads the exile as free.
+
+**"Tap any number of untapped creatures" is offered at each count**
+(#3961). Burn at the Stake and Explosive Singularity read the count, so
+the enumerator offers one cast per count: none, one to three creatures
+off the policy's cheapest-to-tap order, and every option, each priced
+with its own discount (an Explosive Singularity the lands alone cannot pay
+is offered only at the counts that make it affordable). The heuristic
+charges each tap as it does #3868's, and reads a damage entry declared
+`damage_per_tapped` at the count the move names, so Burn at the Stake
+taps the fewest creatures that kill its target. A cast that taps none for
+a damage that is all per-creature does nothing and is declined.
 
 **A spell whose target count is X is offered with X equal to the
 number of targets it picks.** Crackle with Power deals five times X

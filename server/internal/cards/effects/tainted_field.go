@@ -33,8 +33,8 @@ func init() {
 				Cost:     ManaAbilityCost{Tap: true},
 				Produced: "{W|B}",
 				Label:    "Add {W} or {B}. Activate only if you control a Swamp.",
-				Condition: func(g *game.Game, controller, _ uuid.UUID) bool {
-					return ControlsA("Swamp")(g, controller)
+				Condition: func(g *game.Game, controller, source uuid.UUID) bool {
+					return ControlsA(g.TextReaderOfForEffect(source).TextSubtype("Swamp"))(g, controller)
 				},
 			},
 		},

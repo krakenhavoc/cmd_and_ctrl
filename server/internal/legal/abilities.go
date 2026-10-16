@@ -1976,7 +1976,7 @@ func (e *enumerator) sacrificePool(sourceID uuid.UUID, selfToo bool, spec *game.
 	// hexproof / shroud gate must not shrink the pool. It is the
 	// seat's own permanents that can be sacrificed (#3275).
 	var pool []uuid.UUID
-	for _, id := range e.g.SacrificeCostCandidatesForEffect(e.seat, spec) {
+	for _, id := range e.g.SacrificeCostCandidatesForEffect(e.seat, sourceID, spec) {
 		if (selfToo || spec.ExcludeSource) && id == sourceID {
 			continue
 		}
@@ -2013,7 +2013,20 @@ func (e *enumerator) sacrificePool(sourceID uuid.UUID, selfToo bool, spec *game.
 // by game.SacrificeSetPaymentForEffect, which searches for a set that
 // fills every entry; nil when the board has none, so the ability is not
 // offered (#544).
+//
+// #3940: a clause with a DIFFERENCE rule ("three artifact tokens with
+// different names", TargetSpec.Different) is the same case: the first
+// three of the payment order may be two Clues. It is one payment from
+// game.SacrificeDifferentPaymentForEffect, the first permanent of each
+// key in payment order; nil when the board holds too few keys.
 func (e *enumerator) sacrificePayments(pool []uuid.UUID, spec *game.TargetSpec, sourceID uuid.UUID) [][]uuid.UUID {
+	if spec.Different != nil {
+		pay := e.g.SacrificeDifferentPaymentForEffect(spec, e.g.SacrificePaymentOrderForEffect(pool, sourceID))
+		if pay == nil {
+			return nil
+		}
+		return [][]uuid.UUID{pay}
+	}
 	if len(spec.EachOf) > 0 {
 		ordered := e.g.SacrificePaymentOrderForEffect(pool, sourceID)
 		pay := e.g.SacrificeSetPaymentForEffect(spec, ordered)

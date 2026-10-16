@@ -781,6 +781,10 @@ Halfling's legendary-only half are therefore not planned however well their ride
 would suit the spell; planning them would add a candidate. Floating mana they made
 is ranked like any other token (B4). Cavern's `{C}` and Halfling's `{C}` carry no rider.
 
+*Superseded for casts by [ADR 0040](0040-mana-pipeline.md)'s 2026-10-16 amendment
+(#3874):* a restricted ability is now a candidate for a cast its restrictions admit,
+and is then ranked here like any other source (its rider fires, so it comes first).
+
 ### B3. Colour readers: a new declaration, a static key and a bounded greedy
 
 Existing declarations expose the *kinds* of source (`WantsManaFrom`) and the
@@ -833,7 +837,7 @@ the payer's tokens are answered against the game at the spend
   `granted_mana_spent_readers` pins the pool order of one. Separable.
 - **Raising a rider above the thrift tiers.** Whether a firing Boseiju is worth two
   life is a player's call; the planner does not make it.
-- **Restricted mana abilities** (B2).
+- **Restricted mana abilities** (B2). Since done for casts by ADR 0040's 2026-10-16 amendment (#3874).
 - **Adamant "at least three" as a hard target.** The ordering concentrates red mana
   when the board has it; a card is not made castable or uncastable by it.
 

@@ -97,6 +97,8 @@ const (
 	TypeMulligan         = "mulligan"
 	TypeDiscardSelection = "discard_selection"
 	TypeSpecialAction    = "special_action"
+	// TypeOutsidePlay is #3955's Wish right: name a card to play.
+	TypeOutsidePlay = "outside_play"
 	// ADR 0121 §4: the opening roll's two seat-scoped verbs. Never
 	// host_roll_remaining (a bot is never the host) and never a table
 	// roll (it changes nothing in the game).

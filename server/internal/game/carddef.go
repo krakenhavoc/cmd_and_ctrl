@@ -540,6 +540,13 @@ type CardDef struct {
 	// library_top.go.
 	LibraryTopVisible LibraryTopVisibility
 
+	// HandsRevealed is whose hands this permanent's static reveals:
+	// "your opponents play with their hands revealed" (Telepathy) is
+	// HandRevealOpponents, "players play with their hands revealed"
+	// (Revelation) HandRevealEachPlayer. Read through
+	// CatalogHandsRevealed; see hand_revealed.go (ADR 0199).
+	HandsRevealed HandRevealScope
+
 	// DiscardByOpponent and DiscardByOpponentForHand are what the card
 	// declares about "if a spell or ability an opponent controls causes
 	// you to discard" (ADR 0153 §5): its own shape while it sits in a
@@ -1125,6 +1132,12 @@ func init() {
 			return d.LibraryTopVisible
 		}
 		return LibraryTopHidden
+	}
+	CatalogHandsRevealed = func(key string) HandRevealScope {
+		if d := catalogDef(key); d != nil {
+			return d.HandsRevealed
+		}
+		return HandRevealNone
 	}
 	CatalogTokenText = func(key string) string {
 		if d := catalogDef(key); d != nil {

@@ -33,7 +33,7 @@ func init() {
 				if len(colors) == 0 {
 					return nil
 				}
-				return PreventDamageFromChosenSource(ShieldYou, QueryColors(colors...)).Apply(ctx)
+				return PreventDamageFromChosenSource(ShieldYou, QueryColors(colors...)).WithChosenQueries().Apply(ctx)
 			},
 		}},
 	})

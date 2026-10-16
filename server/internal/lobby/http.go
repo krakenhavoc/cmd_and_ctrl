@@ -2407,6 +2407,15 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// clean 404 rather than a misleading "ok with empty plan."
 	card, ok := g.LookupCardForEffect(cardID)
 	if !ok {
+		// #3955: the caller's OWN card outside the game, which the index
+		// does not reach (CR 400.11c) and which a Wish play is previewed
+		// for. Read-only, and only the caller's own: another seat's
+		// container is a 404, as an unknown card is.
+		if oc, found := g.LookupOutsideCardForEffect(cardID); found && oc.Owner == p.PlayerID {
+			card, ok = oc, true
+		}
+	}
+	if !ok {
 		return httpError(http.StatusNotFound, "card not found in game")
 	}
 	// ?ability=<index> asks about a CR 602 activated ability's mana

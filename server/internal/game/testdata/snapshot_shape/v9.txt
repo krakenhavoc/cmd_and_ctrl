@@ -111,6 +111,7 @@ battlefield.cards[].durationCopyBase.GrantedAbilities[]	string
 battlefield.cards[].durationCopyBase.Keywords	array
 battlefield.cards[].durationCopyBase.Keywords[]	string
 battlefield.cards[].durationCopyBase.Layout	string
+battlefield.cards[].durationCopyBase.ManaAbilityText	number:uint8
 battlefield.cards[].durationCopyBase.ManaCost	string
 battlefield.cards[].durationCopyBase.Name	string
 battlefield.cards[].durationCopyBase.OracleID	string
@@ -185,6 +186,7 @@ battlefield.cards[].knownBy{}	bool
 battlefield.cards[].layout	string
 battlefield.cards[].lostLastCounter	bool
 battlefield.cards[].manaAbilityCount	number:int
+battlefield.cards[].manaAbilityText	number:uint8
 battlefield.cards[].manaCost	string
 battlefield.cards[].markedLethalByDeathtouch	bool
 battlefield.cards[].meld	object
@@ -283,6 +285,7 @@ battlefield.cards[].printedSelf.GrantedAbilities[]	string
 battlefield.cards[].printedSelf.Keywords	array
 battlefield.cards[].printedSelf.Keywords[]	string
 battlefield.cards[].printedSelf.Layout	string
+battlefield.cards[].printedSelf.ManaAbilityText	number:uint8
 battlefield.cards[].printedSelf.ManaCost	string
 battlefield.cards[].printedSelf.Name	string
 battlefield.cards[].printedSelf.OracleID	string
@@ -651,6 +654,7 @@ exile.cards[].durationCopyBase.GrantedAbilities[]	string
 exile.cards[].durationCopyBase.Keywords	array
 exile.cards[].durationCopyBase.Keywords[]	string
 exile.cards[].durationCopyBase.Layout	string
+exile.cards[].durationCopyBase.ManaAbilityText	number:uint8
 exile.cards[].durationCopyBase.ManaCost	string
 exile.cards[].durationCopyBase.Name	string
 exile.cards[].durationCopyBase.OracleID	string
@@ -725,6 +729,7 @@ exile.cards[].knownBy{}	bool
 exile.cards[].layout	string
 exile.cards[].lostLastCounter	bool
 exile.cards[].manaAbilityCount	number:int
+exile.cards[].manaAbilityText	number:uint8
 exile.cards[].manaCost	string
 exile.cards[].markedLethalByDeathtouch	bool
 exile.cards[].meld	object
@@ -823,6 +828,7 @@ exile.cards[].printedSelf.GrantedAbilities[]	string
 exile.cards[].printedSelf.Keywords	array
 exile.cards[].printedSelf.Keywords[]	string
 exile.cards[].printedSelf.Layout	string
+exile.cards[].printedSelf.ManaAbilityText	number:uint8
 exile.cards[].printedSelf.ManaCost	string
 exile.cards[].printedSelf.Name	string
 exile.cards[].printedSelf.OracleID	string
@@ -992,6 +998,7 @@ extraTurns[].effects[].mods[].copy[].GrantedAbilities[]	string
 extraTurns[].effects[].mods[].copy[].Keywords	array
 extraTurns[].effects[].mods[].copy[].Keywords[]	string
 extraTurns[].effects[].mods[].copy[].Layout	string
+extraTurns[].effects[].mods[].copy[].ManaAbilityText	number:uint8
 extraTurns[].effects[].mods[].copy[].ManaCost	string
 extraTurns[].effects[].mods[].copy[].Name	string
 extraTurns[].effects[].mods[].copy[].OracleID	string
@@ -1419,6 +1426,7 @@ lastKnownPermanents{}[].copiable.GrantedAbilities[]	string
 lastKnownPermanents{}[].copiable.Keywords	array
 lastKnownPermanents{}[].copiable.Keywords[]	string
 lastKnownPermanents{}[].copiable.Layout	string
+lastKnownPermanents{}[].copiable.ManaAbilityText	number:uint8
 lastKnownPermanents{}[].copiable.ManaCost	string
 lastKnownPermanents{}[].copiable.Name	string
 lastKnownPermanents{}[].copiable.OracleID	string
@@ -1453,6 +1461,11 @@ lastKnownPermanents{}[].renowned	bool
 lastKnownPermanents{}[].ringBearer	bool
 lastKnownPermanents{}[].suspected	bool
 lastKnownPermanents{}[].tapped	bool
+lastKnownPermanents{}[].textWords	array
+lastKnownPermanents{}[].textWords[]	object
+lastKnownPermanents{}[].textWords[].from	string
+lastKnownPermanents{}[].textWords[].kind	string
+lastKnownPermanents{}[].textWords[].to	string
 lastKnownPermanents{}[].toughness	number:int
 lastKnownStack	array
 lastKnownStack[]	object
@@ -1540,6 +1553,7 @@ lastKnownStack[].card.durationCopyBase.GrantedAbilities[]	string
 lastKnownStack[].card.durationCopyBase.Keywords	array
 lastKnownStack[].card.durationCopyBase.Keywords[]	string
 lastKnownStack[].card.durationCopyBase.Layout	string
+lastKnownStack[].card.durationCopyBase.ManaAbilityText	number:uint8
 lastKnownStack[].card.durationCopyBase.ManaCost	string
 lastKnownStack[].card.durationCopyBase.Name	string
 lastKnownStack[].card.durationCopyBase.OracleID	string
@@ -1614,6 +1628,7 @@ lastKnownStack[].card.knownBy{}	bool
 lastKnownStack[].card.layout	string
 lastKnownStack[].card.lostLastCounter	bool
 lastKnownStack[].card.manaAbilityCount	number:int
+lastKnownStack[].card.manaAbilityText	number:uint8
 lastKnownStack[].card.manaCost	string
 lastKnownStack[].card.markedLethalByDeathtouch	bool
 lastKnownStack[].card.meld	object
@@ -1712,6 +1727,7 @@ lastKnownStack[].card.printedSelf.GrantedAbilities[]	string
 lastKnownStack[].card.printedSelf.Keywords	array
 lastKnownStack[].card.printedSelf.Keywords[]	string
 lastKnownStack[].card.printedSelf.Layout	string
+lastKnownStack[].card.printedSelf.ManaAbilityText	number:uint8
 lastKnownStack[].card.printedSelf.ManaCost	string
 lastKnownStack[].card.printedSelf.Name	string
 lastKnownStack[].card.printedSelf.OracleID	string
@@ -2073,6 +2089,11 @@ lastKnownTriggerIdentity{}.textBox.from	string
 lastKnownTriggerIdentity{}.textBox.key	string
 lastKnownTriggerIdentity{}.textBox.keywords	array
 lastKnownTriggerIdentity{}.textBox.keywords[]	string
+lastKnownTriggerIdentity{}.textWords	array
+lastKnownTriggerIdentity{}.textWords[]	object
+lastKnownTriggerIdentity{}.textWords[].from	string
+lastKnownTriggerIdentity{}.textWords[].kind	string
+lastKnownTriggerIdentity{}.textWords[].to	string
 lastKnownTriggerIdentity{}.tokenKey	string
 lastResolvedVersion	number:uint64
 layerVersion	number:uint64
@@ -3391,6 +3412,7 @@ phasedOut.cards[].durationCopyBase.GrantedAbilities[]	string
 phasedOut.cards[].durationCopyBase.Keywords	array
 phasedOut.cards[].durationCopyBase.Keywords[]	string
 phasedOut.cards[].durationCopyBase.Layout	string
+phasedOut.cards[].durationCopyBase.ManaAbilityText	number:uint8
 phasedOut.cards[].durationCopyBase.ManaCost	string
 phasedOut.cards[].durationCopyBase.Name	string
 phasedOut.cards[].durationCopyBase.OracleID	string
@@ -3465,6 +3487,7 @@ phasedOut.cards[].knownBy{}	bool
 phasedOut.cards[].layout	string
 phasedOut.cards[].lostLastCounter	bool
 phasedOut.cards[].manaAbilityCount	number:int
+phasedOut.cards[].manaAbilityText	number:uint8
 phasedOut.cards[].manaCost	string
 phasedOut.cards[].markedLethalByDeathtouch	bool
 phasedOut.cards[].meld	object
@@ -3563,6 +3586,7 @@ phasedOut.cards[].printedSelf.GrantedAbilities[]	string
 phasedOut.cards[].printedSelf.Keywords	array
 phasedOut.cards[].printedSelf.Keywords[]	string
 phasedOut.cards[].printedSelf.Layout	string
+phasedOut.cards[].printedSelf.ManaAbilityText	number:uint8
 phasedOut.cards[].printedSelf.ManaCost	string
 phasedOut.cards[].printedSelf.Name	string
 phasedOut.cards[].printedSelf.OracleID	string
@@ -3781,6 +3805,7 @@ scopedEffects[].mods[].copy[].GrantedAbilities[]	string
 scopedEffects[].mods[].copy[].Keywords	array
 scopedEffects[].mods[].copy[].Keywords[]	string
 scopedEffects[].mods[].copy[].Layout	string
+scopedEffects[].mods[].copy[].ManaAbilityText	number:uint8
 scopedEffects[].mods[].copy[].ManaCost	string
 scopedEffects[].mods[].copy[].Name	string
 scopedEffects[].mods[].copy[].OracleID	string
@@ -4119,6 +4144,7 @@ seats[].command.cards[].durationCopyBase.GrantedAbilities[]	string
 seats[].command.cards[].durationCopyBase.Keywords	array
 seats[].command.cards[].durationCopyBase.Keywords[]	string
 seats[].command.cards[].durationCopyBase.Layout	string
+seats[].command.cards[].durationCopyBase.ManaAbilityText	number:uint8
 seats[].command.cards[].durationCopyBase.ManaCost	string
 seats[].command.cards[].durationCopyBase.Name	string
 seats[].command.cards[].durationCopyBase.OracleID	string
@@ -4193,6 +4219,7 @@ seats[].command.cards[].knownBy{}	bool
 seats[].command.cards[].layout	string
 seats[].command.cards[].lostLastCounter	bool
 seats[].command.cards[].manaAbilityCount	number:int
+seats[].command.cards[].manaAbilityText	number:uint8
 seats[].command.cards[].manaCost	string
 seats[].command.cards[].markedLethalByDeathtouch	bool
 seats[].command.cards[].meld	object
@@ -4291,6 +4318,7 @@ seats[].command.cards[].printedSelf.GrantedAbilities[]	string
 seats[].command.cards[].printedSelf.Keywords	array
 seats[].command.cards[].printedSelf.Keywords[]	string
 seats[].command.cards[].printedSelf.Layout	string
+seats[].command.cards[].printedSelf.ManaAbilityText	number:uint8
 seats[].command.cards[].printedSelf.ManaCost	string
 seats[].command.cards[].printedSelf.Name	string
 seats[].command.cards[].printedSelf.OracleID	string
@@ -4470,6 +4498,7 @@ seats[].companion.cards[].durationCopyBase.GrantedAbilities[]	string
 seats[].companion.cards[].durationCopyBase.Keywords	array
 seats[].companion.cards[].durationCopyBase.Keywords[]	string
 seats[].companion.cards[].durationCopyBase.Layout	string
+seats[].companion.cards[].durationCopyBase.ManaAbilityText	number:uint8
 seats[].companion.cards[].durationCopyBase.ManaCost	string
 seats[].companion.cards[].durationCopyBase.Name	string
 seats[].companion.cards[].durationCopyBase.OracleID	string
@@ -4544,6 +4573,7 @@ seats[].companion.cards[].knownBy{}	bool
 seats[].companion.cards[].layout	string
 seats[].companion.cards[].lostLastCounter	bool
 seats[].companion.cards[].manaAbilityCount	number:int
+seats[].companion.cards[].manaAbilityText	number:uint8
 seats[].companion.cards[].manaCost	string
 seats[].companion.cards[].markedLethalByDeathtouch	bool
 seats[].companion.cards[].meld	object
@@ -4642,6 +4672,7 @@ seats[].companion.cards[].printedSelf.GrantedAbilities[]	string
 seats[].companion.cards[].printedSelf.Keywords	array
 seats[].companion.cards[].printedSelf.Keywords[]	string
 seats[].companion.cards[].printedSelf.Layout	string
+seats[].companion.cards[].printedSelf.ManaAbilityText	number:uint8
 seats[].companion.cards[].printedSelf.ManaCost	string
 seats[].companion.cards[].printedSelf.Name	string
 seats[].companion.cards[].printedSelf.OracleID	string
@@ -4824,6 +4855,7 @@ seats[].emblems.cards[].durationCopyBase.GrantedAbilities[]	string
 seats[].emblems.cards[].durationCopyBase.Keywords	array
 seats[].emblems.cards[].durationCopyBase.Keywords[]	string
 seats[].emblems.cards[].durationCopyBase.Layout	string
+seats[].emblems.cards[].durationCopyBase.ManaAbilityText	number:uint8
 seats[].emblems.cards[].durationCopyBase.ManaCost	string
 seats[].emblems.cards[].durationCopyBase.Name	string
 seats[].emblems.cards[].durationCopyBase.OracleID	string
@@ -4898,6 +4930,7 @@ seats[].emblems.cards[].knownBy{}	bool
 seats[].emblems.cards[].layout	string
 seats[].emblems.cards[].lostLastCounter	bool
 seats[].emblems.cards[].manaAbilityCount	number:int
+seats[].emblems.cards[].manaAbilityText	number:uint8
 seats[].emblems.cards[].manaCost	string
 seats[].emblems.cards[].markedLethalByDeathtouch	bool
 seats[].emblems.cards[].meld	object
@@ -4996,6 +5029,7 @@ seats[].emblems.cards[].printedSelf.GrantedAbilities[]	string
 seats[].emblems.cards[].printedSelf.Keywords	array
 seats[].emblems.cards[].printedSelf.Keywords[]	string
 seats[].emblems.cards[].printedSelf.Layout	string
+seats[].emblems.cards[].printedSelf.ManaAbilityText	number:uint8
 seats[].emblems.cards[].printedSelf.ManaCost	string
 seats[].emblems.cards[].printedSelf.Name	string
 seats[].emblems.cards[].printedSelf.OracleID	string
@@ -5173,6 +5207,7 @@ seats[].graveyard.cards[].durationCopyBase.GrantedAbilities[]	string
 seats[].graveyard.cards[].durationCopyBase.Keywords	array
 seats[].graveyard.cards[].durationCopyBase.Keywords[]	string
 seats[].graveyard.cards[].durationCopyBase.Layout	string
+seats[].graveyard.cards[].durationCopyBase.ManaAbilityText	number:uint8
 seats[].graveyard.cards[].durationCopyBase.ManaCost	string
 seats[].graveyard.cards[].durationCopyBase.Name	string
 seats[].graveyard.cards[].durationCopyBase.OracleID	string
@@ -5247,6 +5282,7 @@ seats[].graveyard.cards[].knownBy{}	bool
 seats[].graveyard.cards[].layout	string
 seats[].graveyard.cards[].lostLastCounter	bool
 seats[].graveyard.cards[].manaAbilityCount	number:int
+seats[].graveyard.cards[].manaAbilityText	number:uint8
 seats[].graveyard.cards[].manaCost	string
 seats[].graveyard.cards[].markedLethalByDeathtouch	bool
 seats[].graveyard.cards[].meld	object
@@ -5345,6 +5381,7 @@ seats[].graveyard.cards[].printedSelf.GrantedAbilities[]	string
 seats[].graveyard.cards[].printedSelf.Keywords	array
 seats[].graveyard.cards[].printedSelf.Keywords[]	string
 seats[].graveyard.cards[].printedSelf.Layout	string
+seats[].graveyard.cards[].printedSelf.ManaAbilityText	number:uint8
 seats[].graveyard.cards[].printedSelf.ManaCost	string
 seats[].graveyard.cards[].printedSelf.Name	string
 seats[].graveyard.cards[].printedSelf.OracleID	string
@@ -5520,6 +5557,7 @@ seats[].hand.cards[].durationCopyBase.GrantedAbilities[]	string
 seats[].hand.cards[].durationCopyBase.Keywords	array
 seats[].hand.cards[].durationCopyBase.Keywords[]	string
 seats[].hand.cards[].durationCopyBase.Layout	string
+seats[].hand.cards[].durationCopyBase.ManaAbilityText	number:uint8
 seats[].hand.cards[].durationCopyBase.ManaCost	string
 seats[].hand.cards[].durationCopyBase.Name	string
 seats[].hand.cards[].durationCopyBase.OracleID	string
@@ -5594,6 +5632,7 @@ seats[].hand.cards[].knownBy{}	bool
 seats[].hand.cards[].layout	string
 seats[].hand.cards[].lostLastCounter	bool
 seats[].hand.cards[].manaAbilityCount	number:int
+seats[].hand.cards[].manaAbilityText	number:uint8
 seats[].hand.cards[].manaCost	string
 seats[].hand.cards[].markedLethalByDeathtouch	bool
 seats[].hand.cards[].meld	object
@@ -5692,6 +5731,7 @@ seats[].hand.cards[].printedSelf.GrantedAbilities[]	string
 seats[].hand.cards[].printedSelf.Keywords	array
 seats[].hand.cards[].printedSelf.Keywords[]	string
 seats[].hand.cards[].printedSelf.Layout	string
+seats[].hand.cards[].printedSelf.ManaAbilityText	number:uint8
 seats[].hand.cards[].printedSelf.ManaCost	string
 seats[].hand.cards[].printedSelf.Name	string
 seats[].hand.cards[].printedSelf.OracleID	string
@@ -5880,6 +5920,7 @@ seats[].library.cards[].durationCopyBase.GrantedAbilities[]	string
 seats[].library.cards[].durationCopyBase.Keywords	array
 seats[].library.cards[].durationCopyBase.Keywords[]	string
 seats[].library.cards[].durationCopyBase.Layout	string
+seats[].library.cards[].durationCopyBase.ManaAbilityText	number:uint8
 seats[].library.cards[].durationCopyBase.ManaCost	string
 seats[].library.cards[].durationCopyBase.Name	string
 seats[].library.cards[].durationCopyBase.OracleID	string
@@ -5954,6 +5995,7 @@ seats[].library.cards[].knownBy{}	bool
 seats[].library.cards[].layout	string
 seats[].library.cards[].lostLastCounter	bool
 seats[].library.cards[].manaAbilityCount	number:int
+seats[].library.cards[].manaAbilityText	number:uint8
 seats[].library.cards[].manaCost	string
 seats[].library.cards[].markedLethalByDeathtouch	bool
 seats[].library.cards[].meld	object
@@ -6052,6 +6094,7 @@ seats[].library.cards[].printedSelf.GrantedAbilities[]	string
 seats[].library.cards[].printedSelf.Keywords	array
 seats[].library.cards[].printedSelf.Keywords[]	string
 seats[].library.cards[].printedSelf.Layout	string
+seats[].library.cards[].printedSelf.ManaAbilityText	number:uint8
 seats[].library.cards[].printedSelf.ManaCost	string
 seats[].library.cards[].printedSelf.Name	string
 seats[].library.cards[].printedSelf.OracleID	string
@@ -6265,6 +6308,7 @@ seats[].sideboard.cards[].durationCopyBase.GrantedAbilities[]	string
 seats[].sideboard.cards[].durationCopyBase.Keywords	array
 seats[].sideboard.cards[].durationCopyBase.Keywords[]	string
 seats[].sideboard.cards[].durationCopyBase.Layout	string
+seats[].sideboard.cards[].durationCopyBase.ManaAbilityText	number:uint8
 seats[].sideboard.cards[].durationCopyBase.ManaCost	string
 seats[].sideboard.cards[].durationCopyBase.Name	string
 seats[].sideboard.cards[].durationCopyBase.OracleID	string
@@ -6339,6 +6383,7 @@ seats[].sideboard.cards[].knownBy{}	bool
 seats[].sideboard.cards[].layout	string
 seats[].sideboard.cards[].lostLastCounter	bool
 seats[].sideboard.cards[].manaAbilityCount	number:int
+seats[].sideboard.cards[].manaAbilityText	number:uint8
 seats[].sideboard.cards[].manaCost	string
 seats[].sideboard.cards[].markedLethalByDeathtouch	bool
 seats[].sideboard.cards[].meld	object
@@ -6437,6 +6482,7 @@ seats[].sideboard.cards[].printedSelf.GrantedAbilities[]	string
 seats[].sideboard.cards[].printedSelf.Keywords	array
 seats[].sideboard.cards[].printedSelf.Keywords[]	string
 seats[].sideboard.cards[].printedSelf.Layout	string
+seats[].sideboard.cards[].printedSelf.ManaAbilityText	number:uint8
 seats[].sideboard.cards[].printedSelf.ManaCost	string
 seats[].sideboard.cards[].printedSelf.Name	string
 seats[].sideboard.cards[].printedSelf.OracleID	string
@@ -6631,6 +6677,7 @@ seats[].statics[].gameEnd.cantWin	bool
 seats[].statics[].gameEnd.causes	array
 seats[].statics[].gameEnd.causes[]	string
 seats[].statics[].gameEnd.scope	number:uint8
+seats[].statics[].handRevealed	bool
 seats[].statics[].handSize	object
 seats[].statics[].handSize.active	bool
 seats[].statics[].handSize.at	number:int64
@@ -6831,6 +6878,7 @@ stack.cards[].durationCopyBase.GrantedAbilities[]	string
 stack.cards[].durationCopyBase.Keywords	array
 stack.cards[].durationCopyBase.Keywords[]	string
 stack.cards[].durationCopyBase.Layout	string
+stack.cards[].durationCopyBase.ManaAbilityText	number:uint8
 stack.cards[].durationCopyBase.ManaCost	string
 stack.cards[].durationCopyBase.Name	string
 stack.cards[].durationCopyBase.OracleID	string
@@ -6905,6 +6953,7 @@ stack.cards[].knownBy{}	bool
 stack.cards[].layout	string
 stack.cards[].lostLastCounter	bool
 stack.cards[].manaAbilityCount	number:int
+stack.cards[].manaAbilityText	number:uint8
 stack.cards[].manaCost	string
 stack.cards[].markedLethalByDeathtouch	bool
 stack.cards[].meld	object
@@ -7003,6 +7052,7 @@ stack.cards[].printedSelf.GrantedAbilities[]	string
 stack.cards[].printedSelf.Keywords	array
 stack.cards[].printedSelf.Keywords[]	string
 stack.cards[].printedSelf.Layout	string
+stack.cards[].printedSelf.ManaAbilityText	number:uint8
 stack.cards[].printedSelf.ManaCost	string
 stack.cards[].printedSelf.Name	string
 stack.cards[].printedSelf.OracleID	string

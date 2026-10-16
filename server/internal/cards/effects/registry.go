@@ -188,6 +188,7 @@ func Register(spec Spec) {
 		// a fixed count is what the announce path, the picker and the
 		// enumerator all read off it.
 		checkSacrificeClause(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice, false, false, false)
+		refuseSacrificeDifferent(spec.Name, fmt.Sprintf("alternative cost %q", ac.Key), ac.Sacrifice)
 		checkAltCostSetRule(spec.Name, ac)
 		checkAltCostXBound(spec, ac)
 		checkAltCostTapOthers(spec.Name, ac)
@@ -240,6 +241,10 @@ func Register(spec Spec) {
 	// game.CastPermission (ADR 0066). Refused at boot so the retired
 	// shape cannot come back through a card file.
 	for _, z := range spec.CastableZones {
+		if z == game.ZoneOutside {
+			panic(fmt.Sprintf("effects.Register: %q declares ZoneOutside in CastableZones — a cast from outside the game is a per-instance game.CastPermission (#3955, ADR 0198), never a card-level declaration",
+				spec.Name))
+		}
 		if z == game.ZoneExile {
 			panic(fmt.Sprintf("effects.Register: %q declares ZoneExile in CastableZones — an exile cast is a per-instance game.CastPermission, never a card-level declaration (#659, ADR 0066)",
 				spec.Name))
@@ -333,6 +338,7 @@ func Register(spec Spec) {
 		// every printed one sits (checkVariableSacrificePlan); no card
 		// prints a variable kicker or buyback.
 		checkSacrificeClause(spec.Name, fmt.Sprintf("optional cost %q", oc.Key), oc.Sacrifice, false, false, false)
+		refuseSacrificeDifferent(spec.Name, fmt.Sprintf("optional cost %q", oc.Key), oc.Sacrifice)
 		if oc.Empty() {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q demands nothing", spec.Name, oc.Key))
 		}
@@ -719,6 +725,7 @@ func Register(spec Spec) {
 		// announced X (CR 605.3b), so a "Sacrifice X …" clause there
 		// has nothing to read its count from.
 		checkSacrificeClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther, true, false, false)
+		refuseSacrificeDifferent(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.SacrificeOther)
 		checkTapOthersClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.TapOthers, false)
 		// #1228 / CR 113.6: the MANA half of the zone dimension, held
 		// to the same three rules the activated half is held to —
@@ -771,6 +778,7 @@ func Register(spec Spec) {
 		// rule that makes the flat payment list unambiguous is
 		// checkVariableSacrificePlan's.
 		checkSacrificeClause(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice, false, true, true)
+		refuseSacrificeDifferent(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice)
 	}
 	checkVariableSacrificePlan(spec)
 	checkSacrificeAllCost(spec)
@@ -1178,6 +1186,43 @@ func checkSacrificeClause(card, where string, spec *game.TargetSpec, allowOpen, 
 		panic(fmt.Sprintf("effects.Register: %q %s admits players — a sacrifice clause matches permanents only", card, where))
 	}
 	checkSacrificeSetRule(card, where, spec)
+	checkSacrificeDifferentRule(card, where, spec)
+}
+
+// checkSacrificeDifferentRule is #3940's guard for TargetSpec.Different
+// on a sacrifice clause ("three artifact tokens with different names").
+// The readers that honour it (the validator, the enumerator's one
+// payment, the view's keys and the client picker) read a FIXED count of
+// at least two, with no EachOf beside it: a count of one has nothing to
+// differ from, and a variable count or a kind rule as well would need a
+// search none of them makes. The rule needs its Key and its Label, as a
+// target clause's does.
+func checkSacrificeDifferentRule(card, where string, spec *game.TargetSpec) {
+	d := spec.Different
+	if d == nil {
+		return
+	}
+	switch {
+	case d.Key == nil || d.Label == "":
+		panic(fmt.Sprintf("effects.Register: %q %s has a difference rule with no Key or no Label — build it with EachDifferentName", card, where))
+	case spec.CountFromX || game.SacrificeCostVariable(spec) || game.SacrificeCostCount(spec) < 2:
+		panic(fmt.Sprintf("effects.Register: %q %s has a difference rule on %d to %d permanents — it reads a fixed count of two or more (SacrificeNDifferent)", card, where, spec.Min, spec.Max))
+	case len(spec.EachOf) > 0:
+		panic(fmt.Sprintf("effects.Register: %q %s has both a difference rule and a kind rule (EachOf) — no reader searches for a set under both", card, where))
+	}
+}
+
+// refuseSacrificeDifferent keeps a difference rule (#3940) off the
+// sacrifice clauses whose own payers or offer checks do not read it: a
+// mana ability's, a cast's additional cost (its payability check counts
+// candidates) and an optional or alternative cost. Only an activated ability's SacrificeOther carries one, which
+// is where the one printed card of the family (Transmutation Font) has
+// it. Widen this when a card needs it elsewhere, with that site's
+// payer.
+func refuseSacrificeDifferent(card, where string, spec *game.TargetSpec) {
+	if spec != nil && spec.Different != nil {
+		panic(fmt.Sprintf("effects.Register: %q %s has a difference rule on its sacrifice clause — only an activated ability's sacrifice cost reads one (#3940)", card, where))
+	}
 }
 
 // checkSacrificeSetRule is #2526's guard for TargetSpec.EachOf on a
@@ -1366,6 +1411,8 @@ func checkTapOthersClause(card, where string, tc *game.TapOthersCost, allowX boo
 			card, where, tc.Count))
 	}
 	switch {
+	case tc.AnyNumber:
+		panic(fmt.Sprintf("effects.Register: %q %s taps any number of permanents — only a spell's additional cost may (#3961)", card, where))
 	case tc.Filter.CountFromX && !allowX:
 		panic(fmt.Sprintf("effects.Register: %q %s taps X permanents but a mana ability has no X announcement", card, where))
 	case tc.Filter.CountFromX && tc.Count != 0:

@@ -1598,6 +1598,22 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// that does not happen must not leave a card in hand wearing
 		// its back face.
 		wasFace := setFaceInZoneLocked(src, cardID, params.Face)
+		// #3955: a land played from outside the game is in no zone the
+		// card index reaches (CR 400.11c), and its entry replacements
+		// ("enters tapped", a shockland's payment, Kismet's tapped
+		// entry) read it through the index. Open the one window in
+		// which the index sees it: from here until the land lands, is
+		// refused, or its paused entry is answered (the entry finisher
+		// closes the window for that last case).
+		entryPaused := false
+		if src.Kind == ZoneOutside {
+			g.outsideEntering = cardID
+			defer func() {
+				if !entryPaused {
+					g.outsideEntering = uuid.Nil
+				}
+			}()
+		}
 		// S17 sub-PR 4: run the CR 614 replacement pipeline so
 		// enters-tapped replacements (Kismet) + enters-with-counters
 		// effects fire before the land's ETB event. Pipeline runs
@@ -1628,9 +1644,13 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
+			entryPaused = true
 			// #2167: the play is made; only its entry waits on a
 			// prompt, so the type it used is spent now.
 			g.spendPermissionTypeLocked(playerID, grantCard, grant, permType)
+			if spendsGrant {
+				g.consumeLimitedGrantLocked(playerID, grantCard, grant)
+			}
 			return nil
 		}
 		if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
@@ -1667,6 +1687,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// #2167: Muldrotha's land play spends "land" — beside the turn's
 		// land drop, which the entry above has already counted.
 		g.spendPermissionTypeLocked(playerID, grantCard, grant, permType)
+		// #3955: a land played under a one-use permission (Wish) spends
+		// it, as a spell cast through it does at the end of this function.
+		if spendsGrant {
+			g.consumeLimitedGrantLocked(playerID, grantCard, grant)
+		}
 		// Playing a land is a special action (CR 116.2a); the player
 		// keeps priority and CR 117.5 drains any landfall-style
 		// triggers onto the stack here rather than at the next wrap.
@@ -2508,7 +2533,7 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	if !ok || !g.planFundsLocked(p, plan, short, cost, params.XValue, spendCtx) {
 		return &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spendCtx)}
 	}
-	g.materializePlanLocked(p, plan, short)
+	g.materializePlanInLocked(p, plan, short, spendCtx)
 	return nil
 }
 
@@ -2558,7 +2583,24 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 // Skips PendingChoiceMana entirely — the auto-tapper's contract
 // is "no further player decisions required". Caller must hold
 // g.mu and have validated the plan via autoTapLocked.
+//
+// This is the executor for a plan made with no spend context (a
+// prompt's cost, a hand-built plan): it re-finds no restricted
+// ability. A payer that planned under a context carries the plan out
+// with materializePlanInLocked and the same context.
 func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
+	g.materializePlanInLocked(p, plan, cost, ManaSpendContext{})
+}
+
+// materializePlanInLocked is materializePlanLocked under the spend
+// context the plan was made in (#3874). The planner admits a restricted
+// mana ability only for a cast its restrictions allow
+// (autoTapAdmitsRestricted), and the executor re-finds every planned
+// ability through the same picker, so it has to ask in the same context
+// or it would drop the Cavern of Souls the plan booked for the Elf.
+//
+// Caller must hold g.mu.
+func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost, spend ManaSpendContext) {
 	// Colour-picked one requirement at a time, a folded run written out
 	// (#3909).
 	pending := append([]ColorRequirement(nil), cost.unfolded().Required...)
@@ -2593,7 +2635,7 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		}
 		// #2455: a Costed entry re-finds its ability through the costed
 		// picker, every other through autoTapAbilityForRef.
-		ab := g.plannedAbilityLocked(p.ID, *card, planned)
+		ab := g.plannedAbilityLocked(p.ID, *card, planned, &spend)
 		if ab == nil {
 			continue
 		}
@@ -2884,12 +2926,13 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 			// requirements this cast still owes — the plan already
 			// priced the same window, so the ledger and the pool agree.
 			//
-			// Restrictions ride here too. autoTapAbilityFor already
-			// refuses restricted abilities, so this is belt-and-braces
-			// — but "the auto-tapper is the one path that mints
-			// unrestricted copies of restricted mana" is precisely the
-			// bug #259 warns about, and one line is cheaper than
-			// trusting a filter two files away.
+			// Restrictions ride here too. Since #3874 the planner
+			// books a restricted ability for a cast it admits (Cavern
+			// of Souls for the Elf), so this line is load-bearing: the
+			// token keeps its restriction, the cast's payment spends it
+			// under the same context, and "the auto-tapper is the one
+			// path that mints unrestricted copies of restricted mana"
+			// (the bug #259 warns about) cannot happen.
 			addedColors = append(addedColors, g.produceManaLocked(
 				p, cardID,
 				repeatColor(color, slot.AmountFor(color)),
@@ -3317,6 +3360,9 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		// for the same reason (March of Swirling Mist's "{2} less for
 		// each card exiled this way").
 		ExilingFromHand: len(params.ExileFromHandIDs),
+		// #3961: and the announced tap count (Explosive Singularity's
+		// "{1} less for each creature tapped this way").
+		TappingToPay: len(params.TeamworkIDs),
 		// ADR 0135 §4, CR 702.119a: emerge's reduction, read off the
 		// permanent the claimed offer names while it is still on the
 		// battlefield.
@@ -3573,6 +3619,22 @@ func (g *Game) castSourceZoneLocked(p *Player, cardID uuid.UUID, fromZone string
 		// even scope the cast to this player — CastSpell checks the
 		// per-card permission before it will move anything.
 		return g.Exile, nil
+	case ZoneOutside:
+		// #3955 (ADR 0198's 2026-10-16 amendment): the caster's own
+		// container of cards outside the game. Like exile this answers
+		// "which pile" only; a cast from it needs a live permission
+		// naming this card (validateCastPathLocked), and nothing a card
+		// prints opens it. The owner's pile and nobody else's: CR 400.11a
+		// puts a card outside the game with the player who owns it, and
+		// ADR 0167 section 5 closes it to whoever controls this player's
+		// turn.
+		if !g.outsidePoolOpenLocked(p.ID) {
+			return nil, ErrCardNotFound
+		}
+		if p.Sideboard != nil && p.Sideboard.Contains(cardID) {
+			return p.Sideboard, nil
+		}
+		return nil, ErrCardNotFound
 	default:
 		return nil, ErrZoneNotFound
 	}

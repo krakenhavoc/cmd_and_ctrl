@@ -271,6 +271,10 @@ export type ActionType =
   // ADR 0150 §4 (owner decision 5): `{choice_id?}` — the caster
   // withdraws the request for help an assisted cast is parked on.
   | "cancel_assist"
+  // #3955 (Wish): no params. Opens the outside pick over the card database
+  // so the holder of a "play a card you own from outside the game" right
+  // names the card to play now.
+  | "outside_play"
   // ADR 0193 (CR 732.2): demonstrate a loop. `loop_record_start`,
   // `loop_record_stop` and `loop_record_cancel` take no params;
   // `loop_propose` takes `{count}` (1–1000); `resolve_loop_proposal`
@@ -2011,7 +2015,10 @@ export interface PendingChoiceView {
   // "battlefield_tapped", or "cast_free" ("you may cast a spell from
   // your hand without paying its mana cost" — answering with a card
   // opens its cast at once), "cast_free_library" (the same over cards the
-  // chooser looked at on top of their own library, #2110), or "manifest" (ADR 0189: the named hand
+  // chooser looked at on top of their own library, #2110), "outside" (ADR 0191: the named cards
+  // come in from the chooser's sideboard), "cast_free_outside" / "play_outside" (#3955: the named
+  // sideboard cards are cast free, or played this turn, from outside the game; the pick opens the
+  // sideboard tab), or "manifest" (ADR 0189: the named hand
   // cards are put onto the battlefield face down as 2/2 creatures).
   // Absent on a plain discard or look.
   choose_destination?: string;
@@ -2570,6 +2577,12 @@ export interface PlayerView {
   // How many cards this seat owns outside the game. Public, like a
   // hand's size. Absent for a seat with none.
   sideboard_count?: number;
+  // #3955 (Wish): the seat's live "you may play a card you own from outside
+  // the game this turn" right, OWNER-ONLY. `can_name` is true when the seat's
+  // pool is the card database, so the `outside_play` action is how it names
+  // the card to play; with a sideboard its cards carry the cast surface
+  // directly.
+  outside_play?: { source_name: string; can_name?: boolean };
   // #1197/#1201 (CR 702.11d, CR 702.16i): the abilities this SEAT has
   // right now — bare engine tokens, "hexproof" or a general
   // "protection from <quality>" ("protection from everything" is the
@@ -2626,6 +2639,11 @@ export interface PlayerView {
   // from your hand — Memory Vessel"). While it is set `cant_play_lands`
   // carries the same clause; the badge row shows one NO HAND badge.
   cant_play_from_hand?: string;
+  // ADR 0199 (#3953, CR 701.20a): why this seat plays with its hand
+  // revealed right now ("Telepathy", "Stromgald Spy"). While it is set the
+  // hand's cards reach every seat face up, cards drawn later included.
+  // Absent when the hand is as hidden as any other.
+  hand_revealed?: string[];
   // ADR 0057 (#749, CR 104.3): the "can't lose the game" / "can't win
   // the game" gates on this seat. `cant_lose` lists the causes that
   // can't make this player lose right now ("life", "empty_draw",
@@ -2799,6 +2817,8 @@ export interface AdditionalCostView {
   // min / max the clause's count; the picks ride cast_spell as
   // `teamwork_ids`. Fewer cards than `min` means the cost cannot be paid
   // right now. A creature that arrived this turn may pay: it is not {T}.
+  // #3961: min 0 (max every option) is "tap any number of untapped
+  // creatures you control" (Burn at the Stake); none is a legal payment.
   tap_others_label?: string;
   tap_others_options?: LegalTargetsView;
   // #3175: a "you may exile any number of blue cards from your hand"
@@ -3691,6 +3711,9 @@ export interface TargetPurposeView {
   damage?: number;
   // #1944: the damage is the announced X; `damage` is then absent.
   damage_is_x?: boolean;
+  // #3961: the damage is this many times the number of creatures the
+  // cast's "tap any number" cost taps; `damage` is then absent.
+  damage_per_tapped?: number;
   // #3161: the spell puts the picked graveyard card onto the battlefield under its caster.
   reanimates?: boolean;
   // #2679: what the target's controller is given when it is removed.

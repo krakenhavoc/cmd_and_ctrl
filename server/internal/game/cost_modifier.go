@@ -203,6 +203,17 @@ type CostQuery struct {
 	// activation or special action.
 	ExilingFromHand int
 
+	// TappingToPay is how many permanents the announcement names to a
+	// "tap any number of untapped creatures you control" additional cost
+	// (#3961) — Explosive Singularity's "This spell costs {1} less to
+	// cast for each creature tapped this way". Announced at CR 601.2b,
+	// read at 601.2f, filled from len(CastSpellParams.TeamworkIDs) by the
+	// one pricer and per payment by the enumerator, as ExilingFromHand
+	// is. The list is the tap cost's alone on a card that carries one
+	// (effects.Register keeps teamwork and escalate's taps off it). Zero
+	// for an activation or special action.
+	TappingToPay int
+
 	// AltSacrificeManaValue is emerge's reduction (CR 702.119a, ADR 0135
 	// §4): the mana value of the permanent the claimed alternative cost
 	// sacrifices, when that offer is ReducedBySacrificedManaValue, read

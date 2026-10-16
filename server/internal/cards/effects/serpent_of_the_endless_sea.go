@@ -31,7 +31,7 @@ func init() {
 					return target.InstanceID == source.InstanceID
 				},
 				Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-					n := b08LandsWithSubtypeControlled(g, source.Controller, "Island")
+					n := b08LandsWithSubtypeControlled(g, source.Controller, source.TextSubtype("Island"))
 					c.Power = n
 					c.Toughness = n
 				},

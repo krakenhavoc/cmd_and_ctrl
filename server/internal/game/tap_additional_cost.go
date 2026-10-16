@@ -32,6 +32,13 @@ import "github.com/google/uuid"
 //     reads, so a resolution can name "the creature tapped to pay this
 //     spell's additional cost" (Swallow Whole).
 //
+// #3961 adds the "any number" form (TapOthersCost.AnyNumber, Burn at the
+// Stake, Explosive Singularity): the same list, validator and payer, with
+// the count the caster's from zero up. None is a legal payment, so the
+// cost never makes a spell uncastable, and the count is announced before
+// the total is settled (CR 601.2b before 601.2f), so the pricer reads it
+// as CostQuery.TappingToPay.
+//
 // No summoning-sickness check, deliberately: CR 302.6 hangs sickness on
 // a creature's own {T} abilities, and this is a cost that taps a
 // permanent, not the {T} symbol. A Vampire that entered this turn can

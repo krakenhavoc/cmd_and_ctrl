@@ -26,7 +26,28 @@ describe("castTapCost", () => {
     expect(castTapCost(newBlood, {})).toEqual({
       label: "an untapped Vampire you control",
       count: 1,
+      min: 1,
       options: ["vamp", "count"],
+    });
+  });
+
+  // #3961: "tap any number of untapped creatures you control" ships min 0;
+  // the picker may take none and up to every option.
+  it("reads an any-number clause as min 0, up to every option", () => {
+    const burn: CardView = {
+      ...newBlood,
+      name: "Burn at the Stake",
+      additional_cost: {
+        label: "Tap any number of untapped creatures you control",
+        tap_others_label: "any number of untapped creatures you control",
+        tap_others_options: { cards: ["a", "b", "c"], min: 0, max: 3 },
+      },
+    };
+    expect(castTapCost(burn, {})).toEqual({
+      label: "any number of untapped creatures you control",
+      count: 3,
+      min: 0,
+      options: ["a", "b", "c"],
     });
   });
 
@@ -130,5 +151,17 @@ describe("canCastFromHand — a tap cost nothing can pay", () => {
     expect(canCastFromHand(short, snapshot([short]), "p0").reason).toBe(
       "Needs 4 untapped permanents to tap",
     );
+  });
+
+  // #3961: "tap any number" is paid by tapping none, so an empty board is
+  // never the reason a Burn at the Stake can't be cast.
+  it("never blames an any-number cost", () => {
+    const burn: CardView = {
+      ...newBlood,
+      name: "Burn at the Stake",
+      additional_cost: { tap_others_options: { cards: [], min: 0, max: 0 } },
+    };
+    const reason = canCastFromHand(burn, snapshot([burn]), "p0").reason ?? "";
+    expect(reason).not.toMatch(/tap/i);
   });
 });

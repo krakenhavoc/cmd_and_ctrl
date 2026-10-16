@@ -594,6 +594,10 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	if p.holdsFlashSacrifice(st, card, cp) {
 		return flashSacrificeDeclined, "cast declined: sacrificed at cleanup, held for the main phase (#3712)"
 	}
+	// #3961: Burn at the Stake tapping no creature deals no damage.
+	if tapsNoneForDamage(card, cp) {
+		return tapsNoneDeclined, "cast declined: taps no creature, so it deals no damage"
+	}
 	// ADR 0135 §3: an awaken cast's last target is its own land, which
 	// awakenValue prices as the body it becomes; it is not a pump on a
 	// permanent of the bot's (OwnPermanentTarget), and it does not make
@@ -603,7 +607,7 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	// declares an entry for is priced by what the spell does to it, and
 	// the cast is then priced by its purpose rather than its mana value.
 	targetV, targetsPriced := p.pricedTargetsValue(st, targets, func(t targetRef) *protocol.TargetPurposeView {
-		return entryAtX(castEntryFor(card, cp, t), cp.XValue)
+		return entryAtTapped(entryAtX(castEntryFor(card, cp, t), cp.XValue), len(cp.TeamworkIDs))
 	}, card, card)
 	// ADR 0141: a bestowed cast's target is the creature it pumps, not
 	// a creature it removes (bestow.go).
@@ -879,6 +883,13 @@ func (st *state) castSource(id string) *protocol.CardView {
 		for i := range st.seat.Library.Cards {
 			if st.seat.Library.Cards[i].InstanceID == id {
 				return &st.seat.Library.Cards[i]
+			}
+		}
+		// #3955: a card the bot owns outside the game and may cast or
+		// play under a permission (Spawnsire of Ulamog, Wish).
+		for i := range st.seat.Sideboard {
+			if st.seat.Sideboard[i].InstanceID == id {
+				return &st.seat.Sideboard[i]
 			}
 		}
 	}

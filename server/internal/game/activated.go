@@ -2520,7 +2520,7 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 		// permanent to pay a cost does not target it (CR 601.2h), so
 		// the CR 702 keyword gate must not apply — Carrion Feeder can
 		// still eat your own hexproof creature.
-		if !g.specMatchLocked(SourceChooser(playerID), cost.SacrificeOther, TargetRef{Kind: TargetCard, ID: id}, false) {
+		if !g.specMatchLocked(g.costSourceLocked(playerID, sourceID), cost.SacrificeOther, TargetRef{Kind: TargetCard, ID: id}, false) {
 			return nil, ErrIllegalTarget
 		}
 		// Paying the same permanent twice (self-sacrifice plus the
@@ -2544,6 +2544,11 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 	// Forest.
 	if !g.sacrificeSetSatisfiedLocked(cost.SacrificeOther, chosen) {
 		return nil, ErrIllegalTarget
+	}
+	// #3940: "Sacrifice three artifact tokens with different names" —
+	// every pick needs a key and no two may share one (CR 201.2b).
+	if !g.sacrificeDifferentSatisfiedLocked(cost.SacrificeOther, chosen) {
+		return nil, sacrificeDifferentError(cost.SacrificeOther.Different)
 	}
 	return append(out, chosen...), nil
 }
@@ -2674,7 +2679,7 @@ func (g *Game) payAbilityManaCostNoteLocked(p *Player, sourceID uuid.UUID, sourc
 		if !ok || !g.planFundsLocked(p, plan, short, cost, x, spendCtx) {
 			return paid, note, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
 		}
-		g.materializePlanLocked(p, plan, short)
+		g.materializePlanInLocked(p, plan, short, spendCtx)
 	}
 	if !p.ManaPool.CanPayFor(cost, x, spendCtx) {
 		return paid, note, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}

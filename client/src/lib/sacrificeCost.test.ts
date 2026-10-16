@@ -10,10 +10,14 @@ import {
   fillsEachOf,
   chooseForMeState,
   chooseSacrificeForMe,
+  canFillDifferent,
   canFillShares,
+  chooseDifferentForMe,
   chooseSharedForMe,
+  differentAllows,
   exilePermanentAutoPick,
   exilePermanentOptions,
+  fitsDifferent,
   fitsShares,
   keepAvailablePicks,
   sharedKeys,
@@ -393,5 +397,61 @@ describe("the exile picker's skip", () => {
       "a",
       "c",
     ]);
+  });
+});
+
+// #3940: "Sacrifice three artifact tokens with different names" ships
+// `different` with each option's name as its key.
+describe("a difference rule on a sacrifice clause", () => {
+  const different = {
+    label: "each have a different name",
+    keys: { clue1: "clue", clue2: "clue", blood: "blood", food: "food" },
+  };
+
+  it("greys an option whose name is already picked, never a pick itself", () => {
+    expect(differentAllows(["clue1"], "clue2", different)).toBe(false);
+    expect(differentAllows(["clue1"], "blood", different)).toBe(true);
+    expect(differentAllows(["clue1"], "clue1", different)).toBe(true);
+    expect(differentAllows(["clue1"], "clue2", undefined)).toBe(true);
+  });
+
+  it("confirms only picks with different names, each with a name", () => {
+    expect(fitsDifferent(["clue1", "blood", "food"], different)).toBe(true);
+    expect(fitsDifferent(["clue1", "clue2", "blood"], different)).toBe(false);
+    // CR 201.2b: an option with no key can't be part of the payment.
+    expect(fitsDifferent(["clue1", "blood", "nameless"], different)).toBe(false);
+    expect(fitsDifferent(["clue1", "clue2"], undefined)).toBe(true);
+  });
+
+  it("is payable only with as many names as the count", () => {
+    expect(canFillDifferent(different, 3)).toBe(true);
+    expect(canFillDifferent(different, 4)).toBe(false);
+    expect(canFillDifferent(undefined, 9)).toBe(true);
+  });
+
+  it("chooses the first option of each name, in payment order", () => {
+    expect(chooseDifferentForMe(["clue1", "clue2", "blood", "food"], 3, different)).toEqual([
+      "clue1",
+      "blood",
+      "food",
+    ]);
+    expect(chooseDifferentForMe(["clue1", "clue2", "blood"], 3, different)).toEqual([]);
+  });
+
+  it("says the row can't be paid when two of three share a name", () => {
+    const twoNames = {
+      cards: ["clue1", "clue2", "blood"],
+      min: 3,
+      max: 3,
+      different: {
+        label: "each have a different name",
+        keys: { clue1: "clue", clue2: "clue", blood: "blood" },
+      },
+    };
+    const label = "three artifact tokens with different names";
+    expect(sacrificeShortfall(twoNames, label)).not.toBe("");
+    expect(sacrificeRangeShortfall(twoNames, label)).not.toBe("");
+    const threeNames = { cards: ["clue1", "blood", "food"], min: 3, max: 3, different };
+    expect(sacrificeShortfall(threeNames, label)).toBe("");
   });
 });

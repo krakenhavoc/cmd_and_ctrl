@@ -211,7 +211,11 @@ export interface CastChoices {
 // (Bolas's Citadel, Oracle of Mul Daya, Courser of Kruphix) — the same
 // wire word `castZoneFromWire` already accepts, sent by the PileBar
 // affordance on a visible, playable top card.
-export type CastSourceZone = "command" | "exile" | "graveyard" | "library";
+//
+// #3955: "outside" is the owner's own sideboard (ADR 0198's 2026-10-16
+// amendment), castable only under a granted permission (Spawnsire of
+// Ulamog's free cast, Wish's play).
+export type CastSourceZone = "command" | "exile" | "graveyard" | "library" | "outside";
 
 // applyCastChoices writes a CastChoices onto a cast_spell payload.
 // Undefined fields are omitted rather than sent as null — the server
@@ -1278,10 +1282,14 @@ export function castExilePermanentCost(
 
 // ClaimedTapCost is the "tap an untapped Vampire you control" additional
 // cost this cast pays (#3868): the clause as printed, how many to tap and
-// which permanents could pay it.
+// which permanents could pay it. `min` is the fewest the cast may name:
+// the count for a fixed clause, 0 for "tap any number of untapped
+// creatures you control" (#3961, Burn at the Stake), whose `count` is
+// then every option.
 export interface ClaimedTapCost {
   label: string;
   count: number;
+  min: number;
   options: string[];
 }
 
@@ -1295,10 +1303,14 @@ export function castTapCost(
   const cost = castAdditionalCost(card, choices);
   const opts = cost?.tap_others_options;
   if (!cost || !opts) return undefined;
+  const options = opts.cards ?? [];
+  const min = opts.min ?? 1;
   return {
     label: cost.tap_others_label ?? "an untapped permanent you control",
-    count: opts.min ?? 1,
-    options: opts.cards ?? [],
+    // #3961: min 0 is "any number": up to every option.
+    count: min === 0 ? options.length : min,
+    min,
+    options,
   };
 }
 

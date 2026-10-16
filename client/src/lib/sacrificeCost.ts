@@ -16,7 +16,12 @@
 // definition of "how many" and "can this be paid" and vitest can pin
 // both without mounting a component.
 
-import type { CardView, SacrificeGroupView, TargetSharesView } from "./protocol";
+import type {
+  CardView,
+  SacrificeGroupView,
+  TargetDifferenceView,
+  TargetSharesView,
+} from "./protocol";
 
 // SacrificeOptionsShape is the part of a LegalTargetsView the helpers
 // read. The menus' local cost shapes declare only cards / players, so
@@ -35,6 +40,9 @@ export interface SacrificeOptionsShape {
   // ADR 0137's amendment: a craft clause's "two that share a card type".
   // See fitsShares.
   shares?: TargetSharesView;
+  // #3940: "three artifact tokens with different names": no two picks
+  // may share a key. See fitsDifferent.
+  different?: TargetDifferenceView;
   // #2097: the clause takes every permanent in `cards` ("sacrifice all
   // creatures you control"). See sacrificesAll.
   all?: boolean;
@@ -57,7 +65,9 @@ export function sacrificeShortfall(opts: SacrificeOptionsShape | undefined, labe
   if (!opts) return "";
   const have = opts.cards?.length ?? 0;
   const need = sacrificeCount(opts);
-  if (have >= need && canFillEachOf(opts.each_of)) return "";
+  if (have >= need && canFillEachOf(opts.each_of) && canFillDifferent(opts.different, need)) {
+    return "";
+  }
   if (need === 1) return `nothing to sacrifice (${label})`;
   return `needs ${label} (you have ${have})`;
 }
@@ -220,7 +230,9 @@ export function sacrificeRangeShortfall(
   if (!opts) return "";
   const have = opts.cards?.length ?? 0;
   const need = sacrificeRange(opts).min;
-  if (have >= need && canFillEachOf(opts.each_of)) return "";
+  if (have >= need && canFillEachOf(opts.each_of) && canFillDifferent(opts.different, need)) {
+    return "";
+  }
   if (need === 1) return `nothing to sacrifice (${label})`;
   return `needs ${label} (you have ${have})`;
 }
@@ -414,6 +426,86 @@ export function chooseSharedForMe(
   for (const k of order) {
     const fit = options.filter((id) => (keys[id] ?? []).includes(k));
     if (fit.length >= need) return fit.slice(0, need);
+  }
+  return [];
+}
+
+// --- #3940: "with different names" ----------------------------------------
+//
+// A sacrifice clause with a difference rule ("Sacrifice three artifact
+// tokens with different names") ships `different`: the rule's words and
+// each option's key (its name). No two picks may share a key. The server
+// lists only options that have one (CR 201.2b: objects have different
+// names only if each has a name), so an option with no key can pay
+// nothing and is greyed here too. This is the server's own check
+// (game.sacrificeDifferentSatisfiedLocked), so Confirm never opens on a
+// payment the server would refuse.
+//
+// Absent `different` means no rule, and every function here then answers
+// "yes" / passes its input through.
+
+// differentKey is an option's key under the rule, or undefined.
+function differentKey(different: TargetDifferenceView, id: string): string | undefined {
+  return different.keys?.[id];
+}
+
+// fitsDifferent is the confirm gate: every pick has a key and no two
+// share one.
+export function fitsDifferent(
+  chosen: string[],
+  different: TargetDifferenceView | undefined,
+): boolean {
+  if (!different) return true;
+  const seen = new Set<string>();
+  for (const id of chosen) {
+    const k = differentKey(different, id);
+    if (k === undefined || seen.has(k)) return false;
+    seen.add(k);
+  }
+  return true;
+}
+
+// differentAllows is whether `id` may be added to `chosen`: it has a key
+// no pick so far holds. The greying test; a pick already made stays
+// clickable so it can be undone.
+export function differentAllows(
+  chosen: string[],
+  id: string,
+  different: TargetDifferenceView | undefined,
+): boolean {
+  if (!different || chosen.includes(id)) return true;
+  return fitsDifferent([...chosen, id], different);
+}
+
+// canFillDifferent is whether the options hold `need` different keys at
+// all: the "can this cost be paid" test for a greyed row.
+export function canFillDifferent(
+  different: TargetDifferenceView | undefined,
+  need: number,
+): boolean {
+  if (!different) return true;
+  return new Set(Object.values(different.keys ?? {})).size >= need;
+}
+
+// chooseDifferentForMe is "Choose for me" under the rule: the first
+// option of each key, in the server's payment order, until `need` are
+// picked. It is the enumerator's own payment
+// (game.SacrificeDifferentPaymentForEffect), so the button picks what a
+// bot would. Empty when the options hold too few keys.
+export function chooseDifferentForMe(
+  options: string[],
+  need: number,
+  different: TargetDifferenceView | undefined,
+): string[] {
+  if (!different) return chooseSacrificeForMe(options, need);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const id of options) {
+    const k = differentKey(different, id);
+    if (k === undefined || seen.has(k)) continue;
+    seen.add(k);
+    out.push(id);
+    if (out.length === need) return out;
   }
   return [];
 }

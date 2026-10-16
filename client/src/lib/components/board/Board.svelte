@@ -75,7 +75,7 @@
   import TargetingArrows from "./TargetingArrows.svelte";
   import VotingPanel from "./VotingPanel.svelte";
   import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
-  import { zoneBrowser, closeZoneBrowser } from "../../zoneBrowser";
+  import { zoneBrowser, closeZoneBrowser, openZoneBrowser } from "../../zoneBrowser";
   import {
     freeCastRequest,
     freeCastLocation,
@@ -83,6 +83,8 @@
     handFreeCastRequest,
     handFreeCastTarget,
     isFreeCastPick,
+    outsideCastRequest,
+    outsideCastReady,
   } from "../../freeCastRequest";
   import { phasedOutCards } from "../../phasedOut";
   import { canActivateSorcerySpeedAbility } from "../../timing";
@@ -747,10 +749,13 @@
   // #3868: "tap an untapped Vampire you control" as a spell's additional
   // cost (New Blood) — the sacrifice picker with the verb "Tap", over the
   // server's `tap_others_options`, the answer sent as `teamwork_ids`.
+  // #3961: "tap any number of untapped creatures" (Burn at the Stake) is
+  // the same picker with `min` 0 and every option as the ceiling.
   let addTapPrompt = $state<{
     card: CardView;
     label: string;
     count: number;
+    min: number;
     choices: CastChoices;
   } | null>(null);
   let addTapPromptOptionIDs = $state<string[]>([]);
@@ -861,8 +866,13 @@
     }
     const tc = castTapCost(card, choices);
     if (tc && choices.teamworkIDs === undefined) {
+      // #3961: none is the only answer to "any number" with nothing to tap.
+      if (tc.min === 0 && tc.options.length === 0) {
+        afterSacrificeCost(card, { ...choices, teamworkIDs: [] });
+        return;
+      }
       addTapPromptOptionIDs = tc.options;
-      addTapPrompt = { card, label: tc.label, count: tc.count, choices };
+      addTapPrompt = { card, label: tc.label, count: tc.count, min: tc.min, choices };
       return;
     }
     const he = castHandExileCost(card, choices);
@@ -1501,6 +1511,27 @@
     if (target === undefined) return;
     handFreeCastRequest.set(null);
     if (target) startHandFreeCast(target.card, target.key);
+  });
+
+  // #3955: "cast any number of Eldrazi cards you own from outside the game
+  // without paying their mana costs" (Spawnsire of Ulamog) and "you may
+  // play a card you own from outside the game this turn" (Wish). Answering
+  // the pick left a permission on each chosen card in the viewer's
+  // sideboard; once the frame carrying them arrives, the sideboard tab
+  // opens, where each granted card has its cast button (which hands off to
+  // the ordinary cast chain). Nothing granted, nothing opens.
+  $effect(() => {
+    if (!$outsideCastRequest) return;
+    const me = view.seats.find((s) => s.id === viewerID);
+    const ready = outsideCastReady(view.pending_choices, me?.sideboard, viewerID);
+    if (ready === undefined) return;
+    outsideCastRequest.set(false);
+    if (!ready || !me) return;
+    // One card granted (a Wish naming, a single Eldrazi): go straight into
+    // its cast or land play. Several: the tab, where each has its button.
+    const castable = (me.sideboard ?? []).filter((c) => c.castable_here === true);
+    if (castable.length === 1) handlePlayCard(castable[0], "outside");
+    else openZoneBrowser({ zoneKind: "sideboard", ownerID: me.id, ownerName: me.name });
   });
 
   // startHandFreeCast opens the cast of a hand card for its granted free
@@ -3748,6 +3779,7 @@
     count={sacrificeBounds.max}
     min={sacrificeBounds.min}
     eachOf={sacrificePrompt?.ability.sacrifice_options?.each_of}
+    different={sacrificePrompt?.ability.sacrifice_options?.different}
     onConfirm={confirmSacrifice}
     onCancel={() => {
       if (sacrificePrompt?.kind === "mana") resetManaCostPayment();
@@ -3822,6 +3854,7 @@
     label={addTapPrompt?.label ?? "an untapped permanent you control"}
     options={addTapPromptOptions}
     count={addTapPrompt?.count ?? 1}
+    min={addTapPrompt?.min}
     verb="Tap"
     castName={addTapPrompt?.card.name}
     additional

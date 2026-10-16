@@ -347,6 +347,13 @@ type TargetPurpose struct {
 	// Damage is then zero, and a reader takes the X the move names, as
 	// Sweep.AmountIsX does.
 	DamageIsX bool
+	// DamagePerTapped is the damage dealt to the target for each
+	// permanent the spell's "tap any number of untapped creatures" cost
+	// tapped (#3961): Burn at the Stake's "three times the number of
+	// creatures tapped this way" is 3. Damage is then zero, and a reader
+	// multiplies by the count the move names on teamwork_ids, as it
+	// reads DamageIsX's X.
+	DamagePerTapped int
 	// Returns is what the target's CONTROLLER is given when the spell
 	// or ability removes the target (#2679): Rapid Hybridization's 3/3
 	// Frog Lizard, Swords to Plowshares' life, Path to Exile's basic
@@ -393,7 +400,7 @@ func (r TargetReturn) IsZero() bool { return r == TargetReturn{} }
 
 // IsZero reports whether the entry says nothing about its target.
 func (t TargetPurpose) IsZero() bool {
-	return !t.HasPlayerAmount() && t.Damage == 0 && !t.DamageIsX && t.Returns.IsZero() && !t.Reanimates
+	return !t.HasPlayerAmount() && t.Damage == 0 && !t.DamageIsX && t.DamagePerTapped == 0 && t.Returns.IsZero() && !t.Reanimates
 }
 
 // HasPlayerAmount reports whether the entry names an amount only a

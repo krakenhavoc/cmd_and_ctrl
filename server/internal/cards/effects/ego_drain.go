@@ -38,7 +38,7 @@ func init() {
 			}).Apply(ctx); err != nil {
 				return err
 			}
-			if ControlsA("Faerie")(ctx.Game, item.Controller) {
+			if ControlsA(ctx.TextSubtype("Faerie"))(ctx.Game, item.Controller) {
 				return nil
 			}
 			return egoDrainExile(ctx.Game, item)

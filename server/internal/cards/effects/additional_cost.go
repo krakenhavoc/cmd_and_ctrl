@@ -336,11 +336,28 @@ func TapUntappedCost(n int, label string, preds ...CardPredicate) *game.Addition
 	}
 }
 
+// TapAnyNumberUntappedCost is "As an additional cost to cast this spell,
+// [you may] tap any number of untapped <permanents> you control" (#3961;
+// CR 601.2b / 601.2h): Burn at the Stake reads the count at resolution
+// (len(ctx.TappedToPay())), Explosive Singularity as a per-creature
+// discount (CostsLessPerTappedToPay). TapUntappedCost's shape with the
+// count the caster's, from none up to every option; the "you may" adds
+// nothing, since none is always a legal payment. `label` is the clause
+// without the verb ("any number of untapped creatures you control").
+// The mandatory slot only.
+func TapAnyNumberUntappedCost(label string, preds ...CardPredicate) *game.AdditionalCost {
+	tc := tapOthersPrice(0, label, preds...)
+	tc.AnyNumber = true
+	return &game.AdditionalCost{TapOthers: tc, Label: "Tap " + label}
+}
+
 // checkTapOthersCost is Register's guard for a tap-permanents additional
 // cost (#3868). It lives on the mandatory slot or on one of its either/or
 // branches (Disruption Protocol), with a fixed count, and never beside
 // teamwork or escalate's taps, which ride the same teamwork_ids list:
 // each refused shape would compile and then pay something no card prints.
+// The "any number" form (#3961) is the mandatory slot's alone, with no
+// fixed count beside it.
 func checkTapOthersCost(spec Spec) {
 	for _, oc := range spec.OptionalCosts {
 		if oc.TapOthers != nil {
@@ -363,7 +380,11 @@ func checkTapOthersCost(spec Spec) {
 			where = fmt.Sprintf("either/or branch %d", i-1)
 		}
 		switch {
-		case tc.Filter == nil || tc.Count < 1 || game.TapOthersCountFromX(tc):
+		case tc.AnyNumber && i > 0:
+			panic(fmt.Sprintf("effects.Register: %q %s taps any number of permanents — only the mandatory slot may (#3961)", spec.Name, where))
+		case tc.AnyNumber && (tc.Filter == nil || tc.Count != 0 || game.TapOthersCountFromX(tc)):
+			panic(fmt.Sprintf("effects.Register: %q %s taps any number of permanents beside a count — build it with TapAnyNumberUntappedCost (#3961)", spec.Name, where))
+		case !tc.AnyNumber && (tc.Filter == nil || tc.Count < 1 || game.TapOthersCountFromX(tc)):
 			panic(fmt.Sprintf("effects.Register: %q %s taps no fixed number of permanents — build it with TapUntappedCost (#3868)", spec.Name, where))
 		case tc.ExcludeSource:
 			panic(fmt.Sprintf("effects.Register: %q %s taps \"another\" permanent — a spell is not on the battlefield (#3868)", spec.Name, where))
@@ -485,6 +506,7 @@ func checkEitherCost(spec Spec) {
 			}
 		}
 		checkSacrificeClause(spec.Name, where, b.Sacrifice, false, false, false)
+		refuseSacrificeDifferent(spec.Name, where, b.Sacrifice)
 	}
 }
 

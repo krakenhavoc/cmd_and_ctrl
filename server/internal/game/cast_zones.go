@@ -97,6 +97,13 @@ var CatalogCastableZonesIf func(oracleID string) []ConditionalCastZone
 //
 // Caller must hold g.mu.
 func (g *Game) cardOpensZoneLocked(card Card, key string, zone ZoneKind) bool {
+	// Outside the game is opened by a per-instance permission and by
+	// nothing a card prints (#3955): a card-level declaration would open
+	// the whole of a sideboard to every copy of the card, which is
+	// Wish's permission without Wish.
+	if zone == ZoneOutside {
+		return false
+	}
 	if CardCastableFromZone(key, zone) {
 		return true
 	}
@@ -232,6 +239,12 @@ func castZoneFromWire(fromZone string) (ZoneKind, bool) {
 		return ZoneExile, true
 	case string(ZoneGraveyard):
 		return ZoneGraveyard, true
+	case string(ZoneOutside):
+		// ADR 0198's 2026-10-16 amendment (#3955): "cast ... from outside
+		// the game". Not a zone (CR 400.11) but the one container a
+		// permission can name; castSourceZoneLocked resolves it to the
+		// caller's own and only a granted permission opens it.
+		return ZoneOutside, true
 	case string(ZoneLibrary):
 		// S42, CR 401.5. The wire says "library"; the TOP-CARD half of
 		// the rule is enforced by the permission (CastPermission.

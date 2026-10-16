@@ -131,6 +131,10 @@ func (e *enumerator) castZones(anyGrant bool) []castZone {
 	if !anyGrant {
 		return out
 	}
+	// #3955: the cards this seat owns outside the game, castable only
+	// under a permission (a card's own text opens nothing there). Its
+	// OWN container only: another seat's is not reachable.
+	out = append(out, castZone{p.Sideboard, game.ZoneOutside, "outside", true})
 	for _, other := range g.Seats {
 		if other == nil || other.ID == e.seat {
 			continue
@@ -236,7 +240,7 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 	// empty list anyway — this just declines to build one for every
 	// card in a thirty-card graveyard on every bot decision.
 	switch kind {
-	case game.ZoneGraveyard, game.ZoneExile, game.ZoneLibrary:
+	case game.ZoneGraveyard, game.ZoneExile, game.ZoneLibrary, game.ZoneOutside:
 		// A card's own declaration opens ITS OWNER's zone and nobody
 		// else's: flashback, escape and Gravecrawler all print "your
 		// graveyard" (#1022), and nothing prints a library cast at all
@@ -356,7 +360,11 @@ func (e *enumerator) landPlayMove(card game.Card, kind game.ZoneKind, from strin
 		return
 	}
 	label := "Play " + card.Name
-	if kind != game.ZoneHand {
+	switch kind {
+	case game.ZoneHand:
+	case game.ZoneOutside:
+		label += " from outside the game"
+	default:
 		label += " from " + from
 	}
 	e.add(Move{
@@ -473,7 +481,11 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 					// #3175: a hand-exile cost (the Marches) is one announcement
 					// per count offered, each priced with its own discount.
 					for _, handExile := range e.handExilePayments(card) {
-						e.castMovesPayingOptional(card, from, perm, offer, chosen, to, branch, extra, handExile)
+						// #3961: and a "tap any number of untapped
+						// creatures" cost is one per count offered.
+						for _, tapAny := range e.tapAnyPayments(card) {
+							e.castMovesPayingOptional(card, from, perm, offer, chosen, to, branch, extra, handExile, tapAny)
+						}
 					}
 				}
 			}
@@ -691,7 +703,7 @@ func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.Addition
 // selections of exactly extra+1 modes are built, and the escalate
 // cost's discards and taps are demanded that many times — so a mode
 // count the seat cannot pay is not offered (#2126).
-func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int, giftTo uuid.UUID, branch *int, extra int, handExile []uuid.UUID) {
+func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int, giftTo uuid.UUID, branch *int, extra int, handExile, tapAny []uuid.UUID) {
 	g, p := e.g, e.p
 	// #662: the spell IS its own source (CR 702.16b), so every legal
 	// set below is computed against the card's colour and type. An
@@ -781,6 +793,9 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		Fuse: card.Fused,
 		// #3175: the hand cards this expansion exiles to a March.
 		ExileFromHandIDs: handExile,
+		// #3961: and the creatures it taps to a "tap any number" cost,
+		// whose count Explosive Singularity's discount reads.
+		TeamworkIDs: tapAny,
 	}
 	price, err := e.g.PriceCastForEffect(e.seat, card, announce)
 	if err != nil {
@@ -1059,7 +1074,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	if sacrifice != nil {
 		// Cost, not target — see SacrificeCostCandidatesForEffect,
 		// which also leaves out what can't be sacrificed (#3275).
-		pool := g.SacrificeCostCandidatesForEffect(e.seat, sacrifice)
+		pool := g.SacrificeCostCandidatesForEffect(e.seat, uuid.Nil, sacrifice)
 		if addCost != nil && addCost.SacrificeAll && addCost.Sacrifice == sacrifice {
 			// #2097: "sacrifice all" has one payment, the engine's own
 			// set (empty included). It is named on the move so a policy
@@ -1110,7 +1125,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// #3868: a mandatory "tap an untapped Vampire you control" names its
 	// permanents on the same list. effects.Register keeps it off a card
 	// with teamwork or escalate taps, so nothing else is on the list.
-	if tapIDs, ok := e.tapCastPayment(card.InstanceID, addCost); !ok {
+	if tapIDs, ok := e.tapCastPayment(card.InstanceID, addCost, tapAny); !ok {
 		return
 	} else if len(tapIDs) > 0 {
 		teamIDs = tapIDs
@@ -1192,6 +1207,7 @@ modeLoop:
 				AltSacrificeManaValue: altMV,
 				GrantReduction:        grantLess,
 				ExilingFromHand:       len(handExile),
+				TappingToPay:          len(tapAny),
 			})
 			if err != nil {
 				continue
@@ -1308,6 +1324,7 @@ modeLoop:
 					AltSacrificeManaValue: altMV,
 					GrantReduction:        grantLess,
 					ExilingFromHand:       len(handExile),
+					TappingToPay:          len(tapAny),
 				})
 				if err != nil {
 					continue
@@ -1386,6 +1403,7 @@ modeLoop:
 							AltSacrificeManaValue: altMV,
 							GrantReduction:        grantLess,
 							ExilingFromHand:       len(handExile),
+							TappingToPay:          len(tapAny),
 						})
 						if err != nil {
 							continue
@@ -1638,6 +1656,10 @@ func (e *enumerator) castMoveEmitter(
 			label += " from the command zone"
 		case "graveyard", "exile", "library":
 			label += " from " + from
+		case "outside":
+			// #3955: a model tier reads this line, and "outside" alone
+			// is not a place.
+			label += " from outside the game"
 		}
 		// #2167: which of the card's types a per-type permission spends.
 		if permType != "" {

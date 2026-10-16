@@ -240,6 +240,12 @@ func (c *Card) SetFace(i int) {
 	// #3860: the face that is up is the face whose text is read for
 	// "has an activated ability with {T}" (PrintedTapAbility).
 	c.PrintsTapAbility = PrintsTapAbilityText(f.TypeLine, f.OracleText)
+	// #3943: and for "has a mana ability" (HasPrintedManaAbility), on a
+	// card whose text the importer read. A card it never read keeps
+	// PrintedUnknown, so the catalog still answers for it.
+	if c.ManaAbilityText != PrintedUnknown {
+		c.ManaAbilityText = PrintedFactOf(ManaAbilityInText(f.TypeLine, f.OracleText))
+	}
 	// ADR 0107 §4: a double-faced card's printed keywords are the face
 	// that is up's too (CR 712.8d, 712.8e), and so are a flip card's
 	// (CR 710.2, ADR 0151 decision 3). Only when the importer recorded
