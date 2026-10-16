@@ -34,15 +34,16 @@ import (
 //     counters on are doubled too, and counters an opponent puts on
 //     your permanent are not.
 //
-// The caveat is Vorinclex's: a placement the engine records with no
-// placer (a paid cost, a permanent entering with counters) is credited
-// to the permanent's controller.
+// The engine records who puts every placement (#3942), so a cost you
+// pay, a permanent of yours entering with counters and your Saga's
+// lore counter are all doubled, and none of an opponent's is.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "915b75d1-b5e3-4aca-a54c-beaccef0a2e4",
 		Name:         "Innkeeper's Talent",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"At level 3, counters that no player is recorded as putting, such as a cost paid or a permanent entering with counters, count as put by that permanent's controller, so a few such placements are doubled or left alone wrongly."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(AtBeginningOfYourCombat("Innkeeper's Talent — put a +1/+1 counter on target creature you control",
 				PlusOneCounterOnChosenTarget),

@@ -110,7 +110,8 @@ func resolutionExitsLocked(c Card, item *StackItem) []resolutionExit {
 					if exiledCardByIDLocked(g, cardID) == nil {
 						return nil
 					}
-					return g.AddCounterForEffect(cardID, kind, 1)
+					// #3942: the spell's controller puts it.
+					return g.AddCounterByForEffect(controller, cardID, kind, 1)
 				}
 			},
 		})

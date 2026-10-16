@@ -25,8 +25,8 @@ import (
 // b22SelfDiedOrWasExiledFromBattlefield and its tuck
 // b22TuckThirdFromTop, the per-label "one or more" dedup is
 // OncePerBatch and its pick-prompt third leg
-// OncePerBatch, "which player is resolving" is
-// b11ResolvingController, the last-known power of a creature that is
+// OncePerBatch, "who put these counters" is b11CounterPlacerOf, the
+// last-known power of a creature that is
 // no longer on the battlefield is b17LastKnownPowerOffBattlefield,
 // the milled-creature batch is b17MilledCreatureCards, the first
 // legal target read is b16FirstLegalTargetCard and its destroy body
@@ -236,9 +236,8 @@ func b33OpponentsNontokenCreatureDied(ev game.Event, source *game.Card, g *game.
 // b33YouPutMinusCountersOnACreature is Nest of Scarabs' condition:
 // the event placed one or more -1/-1 counters on a creature, and the
 // player who PUT them is the source's controller —
-// b11CounterPlacerOf's reading of "whenever YOU put", which is the
-// placement's own actor when it named one and the resolving player
-// otherwise. The count of counters placed rides the event's delta,
+// b11CounterPlacerOf's reading of "whenever YOU put", the placement's
+// own actor. The count of counters placed rides the event's delta,
 // read again by the body.
 //
 // ADR 0056 makes this load-bearing: -1/-1 counters from a wither or

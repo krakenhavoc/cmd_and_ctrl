@@ -264,17 +264,16 @@ const (
 	// change, so a placement and a removal are the same event with a
 	// different number and neither carries the delta.
 	//
-	// ACTOR is the player who PUT the counters, when the placement
-	// came through the CR 614 counter window and named one
-	// (ReplacementEvent.CounterPlacer) — the source's controller for a
-	// CR 120.3d damage result, the proliferating player for CR 701.34.
-	// SOURCE is the card whose effect or damage placed them. Both stay
-	// uuid.Nil when the placement names neither, which is still most of
-	// them: applyCounterLocked is also reached from a paid cost, a
-	// trigger and the CR 704.5q cancel, and no single player is
-	// responsible for those. A "whenever YOU put" reader takes Actor
-	// first and falls back to its own heuristic on Nil (ADR 0056
-	// Decision 5).
+	// ACTOR is the player who PUT the counters. Every placement names
+	// one since #3942 (counter_placer.go): the controller of the
+	// resolving spell or ability, the source's controller for a
+	// CR 120.3d damage result, the proliferating player for CR 701.34,
+	// the payer of a cost, the activator of a mana ability, the
+	// controller of a permanent entering with counters (CR 122.6a), the
+	// seat making a sandbox edit. A REMOVAL (a lower Amount) names
+	// nobody, and neither does the CR 704.5q cancel. SOURCE is the card
+	// whose effect or damage placed them, when known. A "whenever YOU
+	// put" reader reads Actor (ADR 0056 Decision 5).
 	//
 	// Fires on AddCounter and on the SBA +1/+1 / -1/-1 cancel. The
 	// public log narrates it as the `counters` entry, for every kind

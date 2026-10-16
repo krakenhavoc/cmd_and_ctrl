@@ -172,7 +172,7 @@ func b27GreatestManaValueAmongArtifactsControlled(g *game.Game, controller uuid.
 // EventResolve naming the source and the label, and stays open until
 // the next thing that cannot happen mid-resolution — another
 // resolution, a cast, a mana ability, an attack, a fizzle or a step
-// beginning (b13ResolutionInProgressBy's boundary set). A card that
+// beginning. A card that
 // later left exile and came back under some other effect is not
 // counted: its newer move closes the older record. Only cards still
 // in exile are returned, oldest exile first, so the last entry is

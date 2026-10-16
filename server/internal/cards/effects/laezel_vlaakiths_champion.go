@@ -30,18 +30,14 @@ import (
 // opponent putting it, not "you".
 //
 // "If YOU would put" is narrower than Hardened Scales' passive "would
-// be put", and who is putting is now a fact on the event
-// (game.ReplacementEvent.CounterPlacer): the source's controller for a
-// CR 120.3d damage result, the proliferating player for CR 701.34.
-// When the event names no placer, the old reading stands — the player
-// whose spell or ability is resolving (b13ResolutionInProgressBy), the
-// way All Will Be One reads it — and a placement outside any
-// resolution (a loyalty cost, a Saga's lore counter, a permanent
-// entering with counters) is the permanent's controller's (CR 606.4,
-// 714.3) and counts. A placement of the controller's own that happens
-// to follow an opponent's resolution without a boundary between them
-// is still missed — weaker, never stronger, and now confined to the
-// placements that name nobody.
+// be put", and who is putting is a fact on the event
+// (game.ReplacementEvent.CounterPlacer), named by every placement since
+// #3942 (game/counter_placer.go): the controller of the resolving spell
+// or ability, the source's controller for a CR 120.3d damage result,
+// the proliferating player for CR 701.34, the payer of a loyalty cost
+// (CR 606.4), the controller of a permanent entering with counters
+// (CR 122.6a). This used to fall back to the last resolver in the log,
+// which outlived the resolution it named.
 //
 // Choose a Background is a deck-construction rule (CR 702.124), not
 // an in-game effect; the deck importer's business.
@@ -61,11 +57,7 @@ func init() {
 				if !laezelTargetIsYours(ev, g, src.Controller) {
 					return false
 				}
-				if by := ev.CounterPlacer; by != uuid.Nil {
-					return by == src.Controller
-				}
-				by := b13ResolutionInProgressBy(g)
-				return by == src.Controller || by == uuid.Nil
+				return ev.CounterPlacer == src.Controller
 			},
 			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 				ev.CounterDelta++

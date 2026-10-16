@@ -815,6 +815,14 @@ type Game struct {
 	// actions and is neither snapshotted nor cloned.
 	landingEntryCounters uuid.UUID
 
+	// counterPlacerScope is the stack of players an action that is not
+	// a resolution has named as the one putting any counters it places:
+	// the activator of a mana ability, the player taking a special
+	// action (#3942, counter_placer.go). Pushed and popped around one
+	// call, so it is empty between actions and is neither snapshotted
+	// nor cloned.
+	counterPlacerScope []uuid.UUID
+
 	// enteringTokens holds the tokens whose CR 614 battlefield-entry
 	// window is open and which are therefore in NO zone yet: minted,
 	// not pushed. A card entering the battlefield sits in the zone it

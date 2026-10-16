@@ -2601,6 +2601,9 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 //
 // Caller must hold g.mu.
 func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost, spend ManaSpendContext) {
+	// #3942: the mana abilities this activates are the payer's, and so
+	// is any counter they put (counter_placer.go).
+	defer g.pushCounterPlacerLocked(p.ID)()
 	// Colour-picked one requirement at a time, a folded run written out
 	// (#3909).
 	pending := append([]ColorRequirement(nil), cost.unfolded().Required...)
@@ -7281,6 +7284,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
+	// #3942: a mana ability resolves as it is activated (CR 605.3b), so
+	// no resolution is open to name the player putting a counter it
+	// places — "Put a charge counter on this artifact" is the
+	// activator's (counter_placer.go).
+	defer g.pushCounterPlacerLocked(playerID)()
 	// The ability list this resolves an index against is partly
 	// type-derived (CR 305.6), so it moves when a Layer-4 static
 	// does: under Urborg every land gains "{T}: Add {B}" and loses
@@ -10703,6 +10711,15 @@ func (g *Game) ChangePlayerLife(playerID uuid.UUID, delta int) (int, error) {
 // The card may be in any zone; rules that restrict counter types to
 // specific zones (loyalty only on planeswalkers, etc.) are deferred.
 func (g *Game) AddCounter(cardID uuid.UUID, name string, delta int) error {
+	return g.AddCounterBy(uuid.Nil, cardID, name, delta)
+}
+
+// AddCounterBy is AddCounter with the seat making the edit named as
+// the player putting the counters (#3942): a sandbox edit is that
+// seat's action, and "if you would put" asks about it like any other.
+// uuid.Nil (an admin edit) credits the card's controller
+// (counter_placer.go).
+func (g *Game) AddCounterBy(placer, cardID uuid.UUID, name string, delta int) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -10720,6 +10737,7 @@ func (g *Game) AddCounter(cardID uuid.UUID, name string, delta int) error {
 		CounterTarget: cardID,
 		CounterName:   name,
 		CounterDelta:  delta,
+		CounterPlacer: placer,
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
@@ -10740,11 +10758,11 @@ func (g *Game) AddCounter(cardID uuid.UUID, name string, delta int) error {
 // from AddCounter so the replacement pipeline and the AddCounterForEffect
 // helper can share the body.
 //
-// The placement names NO PLACER and no source. That is the right answer
-// for every caller that reaches this spelling — a paid cost, a
-// rules-driven removal, the CR 704.5q cancel, a sandbox edit — none of
-// which is a player putting counters on something (ADR 0056
-// Decision 5). A caller that DOES know calls applyCounterByLocked.
+// The caller names no placer and no source. Every caller of this
+// spelling is a removal (a rules-driven one, the CR 704.5q cancel, a
+// cost paid in counters), which names nobody; a placement made through
+// it would still get one from counter_placer.go (#3942). A caller that
+// knows the placer calls applyCounterByLocked.
 //
 // Caller must hold g.mu.
 func (g *Game) applyCounterLocked(cardID uuid.UUID, name string, delta int) error {
@@ -10765,6 +10783,11 @@ func (g *Game) applyCounterByLocked(cardID uuid.UUID, name string, delta int, pl
 	}
 	if delta == 0 {
 		return nil
+	}
+	if delta > 0 && placer == uuid.Nil {
+		// #3942: a placement that bypassed the CR 614 window still
+		// names who put the counters (counter_placer.go).
+		placer = g.counterPlacerForLocked(cardID, uuid.Nil)
 	}
 	z := g.findCardZoneLocked(cardID)
 	if z == nil {
