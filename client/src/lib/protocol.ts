@@ -2781,6 +2781,14 @@ export interface AdditionalCostView {
   // cannot be paid right now.
   exile_permanent_label?: string;
   exile_permanent_options?: LegalTargetsView;
+  // #3868: a "tap an untapped Vampire you control" additional cost (New
+  // Blood), on the cost or on one of its branches. `tap_others_options`
+  // lists the untapped permanents that could pay it, in payment order,
+  // min / max the clause's count; the picks ride cast_spell as
+  // `teamwork_ids`. Fewer cards than `min` means the cost cannot be paid
+  // right now. A creature that arrived this turn may pay: it is not {T}.
+  tap_others_label?: string;
+  tap_others_options?: LegalTargetsView;
   // #3175: a "you may exile any number of blue cards from your hand"
   // additional cost (March of Swirling Mist). `exile_from_hand_options`
   // lists the caster's hand cards that could pay it, min 0: none is always

@@ -266,6 +266,24 @@ func (c *Context) TappedPower() (power int, ok bool) {
 	return c.Game.PaidTapPowerForEffect(taps[0]), true
 }
 
+// TappedToPay is the permanents a tap-permanents cost tapped, as the
+// objects they were when tapped (instance ID and epoch), in the order
+// named — "the creature tapped to pay this spell's additional cost"
+// (Swallow Whole, #3868). A permanent that has since left and come back
+// is a new object (CR 400.7), which the epoch lets a reader tell. Nil
+// when the cost tapped nothing.
+func (c *Context) TappedToPay() []game.ObjectRef {
+	taps := c.Paid().TappedOthers
+	if len(taps) == 0 {
+		return nil
+	}
+	out := make([]game.ObjectRef, 0, len(taps))
+	for _, t := range taps {
+		out = append(out, game.ObjectRef{ID: t.ID, Epoch: t.Epoch})
+	}
+	return out
+}
+
 // Exiled is the cards the announcement's ExileCards cost exiled, in the
 // order the activator named them — "the card exiled this way" (Holistic
 // Wisdom), "the exiled card's power" (Dread Defiler). A fact about the
