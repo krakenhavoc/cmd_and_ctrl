@@ -64,6 +64,9 @@ func (p *Policy) valueOf(st *state, m legal.Move) (float64, string) {
 	if p.millCostShortLibrary(st, m.Cost.Mill) {
 		return millCostDeclined, "the mill would leave the library too short"
 	}
+	if p.libraryExileCostShortLibrary(st, m.Cost.LibraryExile) {
+		return millCostDeclined, "exiling from the library would leave it too short"
+	}
 	c, refuse := p.costValue(st, st.bf[m.Source.String()], *m.Cost)
 	if refuse {
 		return suicideValue, "would pay its last life"
@@ -173,6 +176,10 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 	// at the dredge's price for the same cards (mill_cost.go). The
 	// library floor is valueOf's, beside the Phyrexian one.
 	v += p.millCostValue(st, c.Mill)
+	// #3966: "Exile the top N cards of your library" (Seasoned
+	// Tactician, Arc-Slogger), a mill without the graveyard fuel
+	// (library_exile_cost.go). Its floor is valueOf's too.
+	v -= p.libraryExileCostValue(st, c.LibraryExile)
 	return v, false
 }
 

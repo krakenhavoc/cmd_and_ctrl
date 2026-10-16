@@ -3961,6 +3961,16 @@ mill worth more. A mill that would leave fewer than `DredgeLibraryFloor`
 with a mill component no longer counts as costing only mana and taps
 (ADR 0126 §5). The baseline reads the mill as free.
 
+**An "Exile the top N cards of your library" cost is priced like a
+mill without the fuel** (#3966). ADR 0109 §7's component names no card
+either, so `Move.Cost.LibraryExile` carries the count (Seasoned
+Tactician, Arc-Slogger, Phyrexian Devourer), and the MCP seat's move
+line says `exiles the top 4 cards of your library`. Under
+`PriceLibraryExileCost` each exiled card costs the `Weights.Library` it
+was and buys nothing back, since exile is no graveyard to cast from, and
+the same `DredgeLibraryFloor` declines an exile that would leave fewer
+than 10 cards in the library. The baseline reads the exile as free.
+
 **A spell whose target count is X is offered with X equal to the
 number of targets it picks.** Crackle with Power deals five times X
 damage to each of up to X targets, so the count and the announcement
