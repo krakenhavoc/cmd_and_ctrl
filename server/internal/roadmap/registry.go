@@ -1148,13 +1148,21 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#2013, ADR 0072's 2026-10-16 amendment): `Spec.PlayerKeywordsIf` declares a permanent's printed \"<condition>, you have <keyword>\" as a token plus a `While(g, source)` predicate, read through `game.CatalogPlayerKeywordsIf` by the same `playerAbilityTokensLocked` walk as `PlayerKeywords`. The condition is asked on every query with the permanent as it is now (CR 611.3a), so nothing is stored or swept. `YouHaveDuringYourTurn` and `YouHaveWhile` build the entries; `ThisHasDuringYourTurn` is the object half. Gruul Spellbreaker and Captain America, Super-Soldier ship Full.",
 	},
 	{
-		Slug: "abilities-cant-be-countered", Name: "Abilities that can't be countered", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Permanents that stop abilities from being countered as well as spells, such as Spider-Punk.",
-		Missing:     "Abilities can still be countered while a permanent says they can't be.",
-		Rules:       []string{"701.6a"},
-		Issue:       2014,
-		Waiting:     []string{"Spider-Punk"},
-		EngineNotes: "rules gate: countering an ability removes it from the stack (CR 701.6a), and nothing asks whether it may. The spell half is `spellCantBeCounteredLocked` (`game/cant_be_countered.go`, ADR 0106 §4); the likely shape is the same gate asked for an ability item. Spider-Punk's riot and \"Other Spiders you control have riot\" work (ADR 0109 PR 9, #1556), and \"Damage can't be prevented\" shipped with ADR 0107 PR 6; this is the card's last gap. Split off the riot row when riot closed.",
+		Slug: "abilities-cant-be-countered", Name: "Abilities that can't be countered", Kind: KindSeam, Status: StatusImplemented,
+		Summary: "Permanents that stop abilities from being countered as well as spells, such as Spider-Punk.",
+		Rules:   []string{"701.6a", "101.2", "613.11", "611.3a", "604.2", "605.3b"},
+		Issue:   2014,
+		ADR:     "0106-five-small-seams-from-the-s50-rechecks.md",
+		Probe: func(s effects.Spec) bool {
+			for _, sh := range s.SpellsCantBeCountered {
+				if sh.Abilities {
+					return true
+				}
+			}
+			return false
+		},
+		Examples:    []string{"Spider-Punk"},
+		EngineNotes: "**Shipped** (#2014, [ADR 0106 §4 amendment 2026-10-16](decisions/0106-five-small-seams-from-the-s50-rechecks.md)): `game.CounterShieldStatic.Abilities` extends a battlefield \"can't be countered\" static to activated and triggered abilities on the stack (CR 701.6a), built with `effects.SpellsAndAbilitiesCantBeCountered`. The ability half of the counter gate, `abilityCantBeCounteredLocked` (`game/cant_be_countered.go`), is asked by every counter verb for an ability item — `CounterTargetForEffect`, the to-zone and to-library counters, and so ward's and every counter-unless-paid decline — and judges `Whose` against the ability's controller (\"you cast\" never covers an ability). A covered ability stays a legal target: the Stifle resolves and does nothing (CR 101.2). The stack chip (`cant_be_countered`) now shows on an ability item too. The sandbox's manual counter is unchanged. No snapshot change: the static is catalog data.",
 	},
 	{
 		Slug: "all-activated-abilities-of", Name: "Having another card's activated abilities", Kind: KindSeam, Status: StatusImplemented,
@@ -1305,14 +1313,12 @@ var items = []Item{
 		Examples: []string{"Neoform"},
 	},
 	{
-		Slug: "delayed-return-of-sacrificed-card", Name: "Returning the card a cost sacrificed, later", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Spells that return the card they sacrificed to the battlefield at a later step, such as Rescue from the Underworld.",
-		Missing:     "Nothing follows a sacrificed card to the zone it went to and returns it later.",
-		Rules:       []string{"400.7", "603.7"},
-		Issue:       2099,
-		Tracked:     "#2099 (found landing the #2072 pool)",
-		Waiting:     []string{"Rescue from the Underworld"},
-		EngineNotes: "delayed trigger: `PaidCost.SacrificedObjects` (ADR 0113 §1) names the sacrificed permanent as it was on the battlefield. A keyed delayed body would have to follow it to the object it became in its next public zone (the graveyard, or the command zone for a commander, per the 2013-09-15 rulings), return nothing for a token, and refuse either card once it has left that zone (CR 400.7).",
+		Slug: "delayed-return-of-sacrificed-card", Name: "Returning the card a cost sacrificed, later", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Spells that return the card they sacrificed to the battlefield at a later step, such as Rescue from the Underworld, follow it to the zone it went to.",
+		Rules:    []string{"400.7", "400.7j", "603.7c"},
+		Issue:    2099,
+		ADR:      "0026-delayed-triggers.md",
+		Examples: []string{"Rescue from the Underworld"},
 	},
 	{
 		Slug: "variable-count-tap-others-cost", Name: "Variable-count tap-others cost", Kind: KindSeam, Status: StatusImplemented,
@@ -1994,14 +2000,14 @@ var items = []Item{
 		Examples: []string{"Sower of Discord"},
 	},
 	{
-		Slug: "exiled-with-ability-exiles", Name: "Cards an ability exiled, played later", Kind: KindSeam, Status: StatusMissing,
+		Slug: "exiled-with-ability-exiles", Name: "Cards an ability exiled, played later", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Permanents that exile cards with an ability and care when those cards are played later, like Prowl, Stoic Strategist.",
-		Missing:     "An ability can exile a card and let its owner play it, but the game does not remember which permanent exiled it, so Prowl, Stoic Strategist isn't available.",
-		Rules:       []string{"607.2a"},
+		Rules:       []string{"607.2a", "400.7"},
 		Issue:       2651,
-		ADR:         "0152-more-than-meets-the-eye-convert-and-living-metal.md",
-		Waiting:     []string{"Prowl, Stoic Strategist"},
-		EngineNotes: "Found by the Transformers batch (#3195). Prowl: \"exile up to one other target tapped creature or Vehicle. For as long as that card remains exiled, its owner may play it\" (`ExileWithPermission{WhileExiled}` does the exile and the permission) and \"Whenever a player plays a card exiled with Prowl, you draw a card and convert Prowl\". The trigger needs `Card.ExiledWith` stamped on an ability-resolution exile with the exiling object and ability (#2651; today only a replacement's exile writes it, and the `b27ExiledWith` log scan only sees cards still in exile), and a play/cast event that can read the link from exile. The back face's \"second time this ability has resolved this turn\" is `Game.ResolvedThisTurn`.",
+		Tracked:     "#2651 (found by the Transformers batch, #3195); ADR 0066 amendment of 2026-10-16",
+		ADR:         "0066-granted-cast-and-play-permissions.md",
+		Examples:    []string{"Prowl, Stoic Strategist"},
+		EngineNotes: "**Shipped** (#2651, ADR 0066 amendment of 2026-10-16). CR 607.2a links an ability to an ability, so a linked exile now stamps the ABILITY beside the object: `Card.ExiledWithAbility` is the catalog row (`AbilityRef`, ADR 0041 P9) of the item resolving when it is an ability of the `Card.ExiledWith` object. Every linked verb carries it with no caller change: `routeCardToZoneLocked` fills `zoneRoute.ExiledWithAbility` from `Game.resolving` (`linkedExileAbilityLocked`, only while a resolution is open), and the two landing functions stamp it beside the object only while the event still carries the route's own link, so a replacement's link (Valgavoth) names no ability. `Game.ExiledWithRowForEffect(source, slot, name)` reads the pair (`AbilityRef.IsRow`). A play from exile carries the link the card had, because the move clears it (CR 400.7): `Event.ExiledWith` / `ExiledWithAbility` on a spell's `EventCast` from exile and on a land's Played `EventZoneMove` from exile, read by `game.PlayedCardExiledWithRow`. Snapshot: two additive fields within v9 (`exiledWithAbility` on a card, `exiled_with` / `exiled_with_ability` on an event). `effects.ExileWithPermission{Linked: true}` is the linked exile with a play grant. **Cards:** Prowl, Stoic Strategist. The `b27ExiledWith` event-log readers keep their walk, which is already keyed on the ability's label: a restore point written before the stamp has none on the cards it exiled.",
 	},
 	{
 		Slug: "cast-a-copy-of-a-card-during-resolution", Name: "Casting a copy of a card during resolution", Kind: KindSeam, Status: StatusImplemented,

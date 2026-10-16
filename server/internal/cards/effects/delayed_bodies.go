@@ -254,6 +254,14 @@ var (
 	diedControllerLosesLifeEqualToToughnessBody = game.SimpleDelayedBody("dies/controller-loses-life-equal-to-toughness",
 		diedControllerLosesLifeEqualToToughness)
 
+	// Return every object <Objects> names that is still that object in
+	// a graveyard, exile or the command zone, together, under the
+	// delayed trigger's controller: "return that card and the sacrificed
+	// card to the battlefield under your control at the beginning of
+	// your next upkeep" (Rescue from the Underworld, #2099).
+	returnTheObjectsTogetherUnderYourControlBody = game.DelayedBody("return/the-objects-together-under-your-control",
+		returnTheObjectsTogetherUnderYourControl)
+
 	// "You may cast that card without paying its mana cost. If that
 	// spell would be put into your graveyard, exile it instead." (Power
 	// Pack, #1815): the payload card, if it is still in exile.

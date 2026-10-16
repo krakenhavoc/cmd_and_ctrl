@@ -1162,6 +1162,14 @@ type cardSnapshot struct {
 	// card in exile that nobody may play. An older file decodes as the
 	// zero ref, "exiled with nothing", which is every game before it.
 	ExiledWith PermissionCardRef `json:"exiledWith"`
+	// ExiledWithAbility is the ability half of that link (#2651): the
+	// catalog row of the ExiledWith object's ability that exiled the
+	// card. Additive within v9 (ADR 0066's 2026-10-16 amendment): a file
+	// without it restores the object link alone, which is every linked
+	// exile before it; a reader by row then finds nothing, as it would
+	// have found nothing before. A pointer, so a card no ability linked
+	// writes nothing (the #1492 omitzero rule).
+	ExiledWithAbility *AbilityRef `json:"exiledWithAbility,omitempty"`
 	// EncodedOn and EncodedAt are cipher's link (CR 702.99b, #3867):
 	// the creature object a card in exile is encoded on and when. Carried
 	// because nothing else records it, and additive within v7: a file
@@ -2463,6 +2471,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
+		ExiledWithAbility:        snapshotExiledWithAbility(c.ExiledWithAbility),
 		EncodedOn:                snapshotEncodedOn(c.EncodedOn),
 		EncodedAt:                c.EncodedAt,
 		PhasedOutBy:              c.PhasedOutBy,
@@ -3394,6 +3403,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
+		ExiledWithAbility:        restoreExiledWithAbility(c.ExiledWithAbility),
 		EncodedOn:                restoreEncodedOn(c.EncodedOn),
 		EncodedAt:                c.EncodedAt,
 		PhasedOutBy:              c.PhasedOutBy,

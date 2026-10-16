@@ -169,6 +169,14 @@ type zoneRoute struct {
 	// Game.ExileLinkedForEffect; the zero ref everywhere else.
 	ExiledWith PermissionCardRef
 
+	// ExiledWithAbility is which ability of the ExiledWith object is
+	// exiling the card (#2651, CR 607.2a): the resolving item's catalog
+	// row. Not set by callers: routeCardToZoneLocked fills it from the
+	// item resolving when the route names a link (linkedExileAbilityLocked),
+	// so every linked verb, hideaway's included, carries it without
+	// threading the item through.
+	ExiledWithAbility AbilityRef
+
 	// Mill flags a mill (CR 701.17) so the completed move emits
 	// EventMill rather than EventZoneMove. Only honoured when the
 	// move actually lands in a graveyard: a commander redirected to
@@ -570,6 +578,10 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 		// the resume rather than reading the slot again later.
 		r.Cause = g.resolutionCauseLocked()
 	}
+	if r.ExiledWith.ID != uuid.Nil && r.ExiledWithAbility == (AbilityRef{}) {
+		// #2651: the linked ability, captured here for the same reason.
+		r.ExiledWithAbility = g.linkedExileAbilityLocked(r.ExiledWith)
+	}
 	if src.Kind == ZoneStack && g.stackCopyLocked(r.CardID) {
 		// #1340, CR 707.10a / 704.5e: a COPY of a spell leaving the
 		// stack goes nowhere, whichever verb moved it. It skips the
@@ -853,7 +865,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	}
 	// #2530: "exiled with" the permanent whose replacement sent it
 	// here, stamped once the card has actually landed in exile.
-	stampExiledWithLocked(dstZone, ev.CardID, ev.ExiledWith)
+	stampExiledWithLocked(dstZone, ev.CardID, ev.ExiledWith, ev.exiledWithAbility())
 	stampExileCounterLocked(dstZone, ev.CardID, ev.ExileCounter)
 	if src.Kind == ZoneStack {
 		// #1318: the source zone decides, not a flag on the route. A
