@@ -273,6 +273,10 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.SearchGraveyardCards) > 0 {
 				cloned.SearchGraveyardCards = append([]uuid.UUID(nil), c.SearchGraveyardCards...)
 			}
+			// #3988: and the subset that sits in the searched hand.
+			if len(c.SearchHandCards) > 0 {
+				cloned.SearchHandCards = append([]uuid.UUID(nil), c.SearchHandCards...)
+			}
 			// S16.5 copy chooser: same reason again — the candidate
 			// list a Clone is choosing from is a slice.
 			if len(c.CopyOptions) > 0 {

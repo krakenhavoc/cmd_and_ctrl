@@ -57,6 +57,7 @@ func secondDoctorAsk(ctx *Context, order []uuid.UUID, i int, drew []uuid.UUID) e
 	return MayChoice{
 		Player:   asked,
 		Question: "The Second Doctor — draw a card?",
+		Draws:    1,
 		OnYes: func(ctx *Context) error {
 			next := append(append([]uuid.UUID(nil), drew...), asked)
 			return secondDoctorAsk(ctx, order, i+1, next)

@@ -56,9 +56,10 @@ func init() {
 					}
 					return ev.TokenTemplatesMatch(func(c game.Card) bool { return c.IsArtifact() })
 				},
-				Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+				Replace: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) error {
+					// "Thopter" is a word of the Automaton's text (#4005).
 					ev.TokenGroups = append(ev.TokenGroups, game.TokenGroup{
-						Template: TokenCard("1/1 colorless Thopter artifact with flying"),
+						Template: src.TokenThroughText(TokenCard("1/1 colorless Thopter artifact with flying")),
 						Count:    1,
 					})
 					return nil

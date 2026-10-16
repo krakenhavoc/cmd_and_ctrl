@@ -25,7 +25,7 @@ func init() {
 	Register(Spec{
 		OracleID: "9a1de7e4-9930-4db3-a8f3-d146d0abf38b",
 		Name:     "Edric, Spymaster of Trest",
-		Triggered: []game.TriggeredAbility{{
+		Triggered: []game.TriggeredAbility{MayDraw(game.TriggeredAbility{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 {
@@ -62,6 +62,6 @@ func init() {
 					return ev.Actor
 				},
 			},
-		}},
+		}, 1)},
 	})
 }

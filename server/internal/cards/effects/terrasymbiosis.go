@@ -47,7 +47,7 @@ func init() {
 		OracleID:     "4ac94586-3ac7-4ade-af31-ad0d0e3ffc4a",
 		Name:         "Terrasymbiosis",
 		Completeness: CompletenessFull,
-		Triggered:    []game.TriggeredAbility{Optional(t, "Terrasymbiosis — draw that many cards?")},
+		Triggered:    []game.TriggeredAbility{OptionalDrawThatMany(t, "Terrasymbiosis — draw that many cards?", terrasymbiosisDraws)},
 	})
 }
 
@@ -57,3 +57,12 @@ const terrasymbiosisLabel = "Terrasymbiosis — draw that many cards"
 // terrasymbiosisDone is the once-each-turn record's label: the cards
 // were drawn this turn (b28DoneThisTurn).
 const terrasymbiosisDone = "Terrasymbiosis — cards drawn this turn"
+
+// terrasymbiosisDraws is how many cards a "yes" draws: the counters put
+// in the batch (#4016, OptionalDrawThatMany).
+func terrasymbiosisDraws(g *game.Game, item *game.StackItem) int {
+	if item.Trigger == nil {
+		return 0
+	}
+	return CountersOfKindYouPutInTheSameBatch(g, item.Trigger.Event, item.Controller, game.CounterPlusOne)
+}

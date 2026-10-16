@@ -288,6 +288,13 @@ var canonicalKeywords = map[string]bool{
 	// catalog entry. Redundant (CR 702.88c): one instance or several
 	// is one exile and one delayed trigger.
 	KeywordRebound: true,
+	// cipher (CR 702.99) joins with #3867, in the same change that
+	// teaches the engine to honour it. Its consumer is the end of a
+	// spell's resolution (finishSpellResolutionStageLocked, through
+	// askCipherLocked in cipher.go), which reads it off the resolving
+	// card with HasKeyword, so a deck-imported card is encoded with no
+	// catalog entry; what the copy then does is the catalog's.
+	KeywordCipher: true,
 	// paradigm (CR 702.192) joins with #1866, in the same change that
 	// teaches the engine to honour it. Its consumer is the stack's
 	// graveyard route (routeStackCardToGraveyardLocked, through

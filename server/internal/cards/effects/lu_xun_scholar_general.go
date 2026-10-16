@@ -14,9 +14,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"horsemanship"},
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OptionalDraw(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Source == source.InstanceID && ev.Amount > 0 && ev.Target != source.Controller && g.PlayerByIDForEffect(ev.Target) != nil
-			}, "Lu Xun, Scholar General — draw a card", Do(DrawCards{N: 1})), "Lu Xun, Scholar General — draw a card?"),
+			}, "Lu Xun, Scholar General — draw a card", Do(DrawCards{N: 1})), "Lu Xun, Scholar General — draw a card?", 1),
 		},
 	})
 }

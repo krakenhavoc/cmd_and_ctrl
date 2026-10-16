@@ -88,6 +88,7 @@ func calamityRound(g *game.Game, item *game.StackItem, left int) error {
 			}
 			return CreateTokensAttackingYourChoice{
 				Template: tmpl,
+				Copy:     true,
 				N:        1,
 				Tapped:   true,
 				Prefer:   triggerAttackTarget(item),

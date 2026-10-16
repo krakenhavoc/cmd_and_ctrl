@@ -81,7 +81,7 @@ func (c CreateTokenCopy) Apply(ctx *Context) error {
 	if c.Except != nil {
 		c.Except(&tmpl)
 	}
-	return CreateToken{Controller: c.Controller, Template: tmpl, N: c.N}.Apply(ctx)
+	return createTokenCopies(ctx, c.Controller, tmpl, c.N)
 }
 
 // TokenCopyGainsHaste is the "except it has haste" exception clause

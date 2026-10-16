@@ -63,7 +63,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			// "You MAY draw two additional cards" — the first link of
 			// the chain, and the one the engine already had.
-			Optional(On(game.EventBeginDrawStep, ByYou, "Sylvan Library — draw two additional cards", func(g *game.Game, item *game.StackItem) error {
+			OptionalDraw(On(game.EventBeginDrawStep, ByYou, "Sylvan Library — draw two additional cards", func(g *game.Game, item *game.StackItem) error {
 				controller := item.Controller
 				if err := g.DrawNForEffect(controller, 2); err != nil {
 					return err
@@ -96,7 +96,7 @@ func init() {
 					},
 				})
 				return nil
-			}), "Sylvan Library — draw two additional cards?"),
+			}), "Sylvan Library — draw two additional cards?", 2),
 		},
 	})
 }

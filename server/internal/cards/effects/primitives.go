@@ -942,6 +942,11 @@ func (a AddCounter) Apply(ctx *Context) error {
 // Controller / InstanceID / Counters / KnownBy are overwritten —
 // callers only populate the "printed" fields (Name, TypeLine,
 // Power, Toughness).
+//
+// The template is a DESCRIPTION in the effect's text ("a 2/2 black
+// Zombie creature token"), so its colour and type words are read
+// through that text as the token is made (Context.TextToken, CR 612.2,
+// #4005). A copy is not a description: createTokenCopies makes one.
 type CreateToken struct {
 	Controller uuid.UUID
 	Template   game.Card
@@ -953,8 +958,35 @@ func (c CreateToken) Apply(ctx *Context) error {
 	if controller == uuid.Nil {
 		controller = ctx.Controller()
 	}
-	return ctx.Game.CreateTokenForEffect(controller, c.Template, c.N)
+	return ctx.Game.CreateTokenForEffect(controller, ctx.TextToken(c.Template), c.N)
 }
+
+// createTokenCopies is CreateToken for a template that is a COPY of an
+// object (CR 707.2): copiable values, which no text change reaches, so
+// they are not read through the creating effect's text. An exception
+// the copy effect prints ("except it's a 1/1 white Spirit") is applied
+// to the template by the caller, through its text.
+func createTokenCopies(ctx *Context, controller uuid.UUID, tmpl game.Card, n int) error {
+	if controller == uuid.Nil {
+		controller = ctx.Controller()
+	}
+	return ctx.Game.CreateTokenForEffect(controller, copiedToken(tmpl), n)
+}
+
+// copiedToken names a token template that is a copy of an object
+// (CR 707.2) where it is handed to the game's creation methods: no word
+// of the creating effect's text, so never read through it. An identity;
+// it exists so TestTokenDescriptionsReadThroughText can tell a copy from
+// a description.
+func copiedToken(tmpl game.Card) game.Card { return tmpl }
+
+// ruleDefinedToken names a token template the rules define rather than
+// the card's text: a keyword's token (living weapon's Germ, job select's
+// Hero, incubate's Incubator, whose only spelling on the card is
+// reminder text) and a predefined token (CR 111.10: a Treasure, a Food,
+// a Role), whose name is the whole of what the text says. It is never
+// read through that text. An identity, like copiedToken.
+func ruleDefinedToken(tmpl game.Card) game.Card { return tmpl }
 
 // ReturnFromGraveyard moves a card from a graveyard to `Dest`
 // (typically ZoneHand, occasionally ZoneBattlefield for
@@ -1119,6 +1151,13 @@ type SearchLibrary struct {
 	// as the card prints it; the engine decides whether the library was
 	// searched.
 	AlsoGraveyard bool
+	// AlsoGraveyardAndHand is "search that player's GRAVEYARD, HAND, AND
+	// library" (#3988, Kotose, the Silent Spider): the library owner's
+	// graveyard and hand are searched beside the library in one prompt,
+	// marked by zone. All three are named, so the library is always
+	// searched and shuffled; the searcher looks at the whole hand. See
+	// game.SearchLibrarySpec.AlsoGraveyardAndHand.
+	AlsoGraveyardAndHand bool
 	// EntersAttachedTo is "put that card onto the battlefield ATTACHED
 	// TO …" (Light-Paws, #3158): the found Aura enters attached to it,
 	// and one that can't legally enchant it stays in the library
@@ -1142,27 +1181,28 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		pred = func(c game.Card) bool { return printed(game.ThroughTextOf(reader, c)) }
 	}
 	return ctx.Game.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-		Player:             s.Player,
-		Source:             source,
-		Pred:               pred,
-		Dest:               s.Dest,
-		Limit:              s.Limit,
-		Reveal:             s.Reveal,
-		Shuffle:            s.Shuffle,
-		TappedOnEntry:      s.TappedOnEntry,
-		EntersWithCounters: s.EntersWithCounters,
-		Optional:           s.Optional,
-		UpTo:               s.UpTo,
-		Reason:             s.Reason,
-		Validate:           s.Validate,
-		Then:               s.Then,
-		ToTop:              s.ToTop,
-		Depth:              s.Depth,
-		LibraryOwner:       s.LibraryOwner,
-		Unbounded:          s.Unbounded,
-		FaceDown:           s.FaceDown,
-		AlsoGraveyard:      s.AlsoGraveyard,
-		EntersAttachedTo:   s.EntersAttachedTo,
+		Player:               s.Player,
+		Source:               source,
+		Pred:                 pred,
+		Dest:                 s.Dest,
+		Limit:                s.Limit,
+		Reveal:               s.Reveal,
+		Shuffle:              s.Shuffle,
+		TappedOnEntry:        s.TappedOnEntry,
+		EntersWithCounters:   s.EntersWithCounters,
+		Optional:             s.Optional,
+		UpTo:                 s.UpTo,
+		Reason:               s.Reason,
+		Validate:             s.Validate,
+		Then:                 s.Then,
+		ToTop:                s.ToTop,
+		Depth:                s.Depth,
+		LibraryOwner:         s.LibraryOwner,
+		Unbounded:            s.Unbounded,
+		FaceDown:             s.FaceDown,
+		AlsoGraveyard:        s.AlsoGraveyard,
+		AlsoGraveyardAndHand: s.AlsoGraveyardAndHand,
+		EntersAttachedTo:     s.EntersAttachedTo,
 	})
 }
 

@@ -1350,9 +1350,8 @@ Activated: []ActivatedAbility{{
   row; see [Declaring what a card does](#declaring-what-a-card-does-purpose-adr-0126-6).
 - `effects.Register` refuses `AnyPlayer` beside a `{T}`, loyalty, crew or
   sacrifice-this component and on a non-battlefield zone, and refuses
-  `ControllerLosesLife` on a row that is not `AnyPlayer`. An any-player
-  MANA ability (Mana Cache) and an ability of a spell on the stack
-  (Lightning Storm) are not modelled.
+  `ControllerLosesLife` on a row that is not `AnyPlayer`. An ability of
+  a spell on the stack (Lightning Storm) is not modelled.
 
 The rest is the engine's: `game.MayActivate` is the one gate the
 activation path, the enumerator and the view share; every seat's copy of
@@ -1368,6 +1367,27 @@ owner may activate this ability" (Personal Incarnation) is
 activator" reading, same registration limits as `AnyPlayer`; set at most
 one, and no `Purpose` on an opponents-only row. A GRANTED ability whose
 activator is the granting spell's controller (Martyrdom) has no shape yet.
+
+**An any-player MANA ability (ADR 0106 §1 amendment 2026-10-16, #1864).**
+The same bit on a `ManaAbility` row, Mana Cache's:
+
+```go
+ManaAbilities: []ManaAbility{{
+	Cost:      ManaAbilityCost{RemoveCounters: RemoveCountersFromThis(game.CounterCharge, 1).RemoveCounters},
+	Produced:  "{C}",
+	Label:     "Remove a charge counter from this enchantment: Add {C}. Any player may activate this ability but only during their turn before the end step.",
+	AnyPlayer: true,
+	Condition: DuringYourTurnBeforeTheEndStep(), // "their": the activator
+}},
+```
+
+The activator pays (a "from this" counter cost comes off the source
+whoever controls it), the mana goes into the activator's pool, and the
+`Condition`'s `controller` argument is the activator. The gate is
+`game.MayActivateMana`. `Register` refuses it beside a `{T}`,
+sacrifice-this, exert, put-a-counter or exile-this component and off the
+battlefield. The auto-tapper never plans a row with no `{T}`, so the
+activator floats the mana from the board.
 
 ### Declaring what a card does: Purpose (ADR 0126 §6)
 
@@ -2729,6 +2749,15 @@ through one of the doors.** Target clauses already are when they use
 (`ChosenColor`, `NamedTribe`) is not text: read it directly. The
 amendment lists the files that still hard-code a word.
 
+A token your card describes is words of its text too (#4005).
+`CreateToken`, `CreateTokenAdvanced` and `CreateTokensAttackingYourChoice`
+read the template through the text themselves. If you call
+`CreateTokenForEffect` and its kin, or build a `game.TokenGroup`, pass the
+template as `ctx.TextToken(t)` for a description, as `copiedToken(t)` for a
+copy of an object, or as `ruleDefinedToken(t)` for a keyword's token or a
+Treasure-style predefined token. `TestTokenDescriptionsReadThroughText`
+fails anything else.
+
 ### Adding a combat-keyword card (S18+)
 
 Creatures with printed combat keywords (flying, reach, deathtouch,
@@ -2798,6 +2827,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"undying"`, `"persist"` | Undying (CR 702.93) and persist (CR 702.79) — #2075, DIES keywords: `harvestLTB` derives one trigger per instance from the departed permanent's LAST-KNOWN ability list (`game/undying_persist.go`, CR 603.10a), checks the counters it last had, and the keyed bodies `undying/return` / `persist/return` return the card only while it is still the graveyard object it became (CR 400.7e), under its owner's control with the counter on the entry event (so Hardened Scales applies). Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is undying or persist and other tokens here needs no card file. Never write a "return it with a counter" dies trigger for either by hand ([ADR 0113 §4](decisions/0113-small-seams-for-the-s58-deck-requests.md#4-undying-and-persist-2075)) |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
 | `"rebound"` | Rebound (CR 702.88) — #1854, a SPELL's keyword read as it RESOLVES: `spellRebounds` (`game/rebound.go`) exiles a spell cast from its controller's hand instead of putting it into the graveyard, and the upkeep delayed trigger `rebound/cast` offers the free cast. Declare it on an instant or sorcery; the card file writes only the rest of its text. To GIVE a spell rebound (or any keyword) on the stack, use `ThatSpellGains{Keywords}` for "that spell gains …" from a cast trigger, and `SpellsYouControlHave(pred, kw…)` for "… spells you control have …" (a static with `AffectsSpells`, which never reaches a permanent); both are applied by the stack step of the layer pass (`game/spell_keywords.go`) ([ADR 0107 §3](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#3-rebound-1854)) |
+| `"cipher"` | Cipher (CR 702.99) — #3867, a SPELL's keyword read as it RESOLVES: once every prompt the spell's own text opened is answered, the engine asks its controller to exile it encoded on a creature they control (`game/cipher.go`, a keyed option pick). The creature then has a granted "whenever this creature deals combat damage to a player" trigger, one per encoded card, that offers its controller a free copy of the card; the copy runs the card's OnResolve again with new targets. Declare `PrintedKeywords: []string{game.KeywordCipher}` on the instant or sorcery and write only the rest of its text: never exile the card yourself. ([ADR 0093's 2026-10-16 amendment](decisions/0093-abilities-granted-to-other-permanents.md)) |
 | `"paradigm"` | Paradigm (CR 702.192) — #1866, a SPELL's keyword read as it RESOLVES: `spellHasParadigm` (`game/paradigm.go`) exiles the resolved spell, and the first resolution of a name by a player schedules the delayed trigger `paradigm/copy`, which fires at each of that player's precombat main phases for the rest of the game and offers a free cast of a copy of the exiled card (`CopyCardsAndOfferCastsForEffect`, #3258). Declare it on an instant or sorcery; the card file writes only the rest of its text (Decorum Dissertation) |
 | `"ascend"` | Ascend (CR 702.131) — #2696, read by the engine, never by a card file: a permanent with ascend gives its controller the city's blessing as soon as they control ten permanents, and an instant or sorcery with ascend gives it as the spell resolves (`game/citys_blessing.go`). Declare it as `game.KeywordAscend`; the card reads the designation, not the keyword. See "Ascend and the city's blessing" below ([ADR 0096 amendment 2026-10-08](decisions/0096-the-monarch-from-a-card-effect.md)) |
 | `"start your engines!"` | Start your engines! (CR 702.179) — #2122, the state-based action that gives a player with no speed a speed of 1 while they control a permanent with it (`game/speed.go`, CR 704.5aa). Declare it as `game.KeywordStartYourEngines`. The deck importer stamps it from Scryfall, so a speed card with no catalog entry still sets its controller's speed; its "Max speed —" ability still needs one. "Max speed — …" is NOT a keyword token: it is the `effects.MaxSpeed…` wrappers. See "Speed" below ([ADR 0138](decisions/0138-speed.md)) |
@@ -3558,10 +3588,17 @@ DrawLimits: PlayersCantDrawCards(),                        // Maralen of the Mor
 - **The count is cards actually drawn this turn** (`Game.DrawnThisTurn`):
   draws before the permanent arrived count, and a draw a replacement
   turned into something else does not.
-- **A choice to draw** (CR 121.3: a player who can't draw can't choose
-  to) can ask `Game.CanDrawForEffect(player)` or
-  `DrawsLeftThisTurnForEffect(player)` before offering it. The generic
-  "you may draw" prompts don't yet; a yes there draws nothing.
+- **A choice to draw** (#4016, CR 121.2b, 121.3, 121.3a) is not offered
+  to a player the limit stops drawing that many: declare the draw on the
+  prompt and the engine skips it. An optional trigger whose "yes" draws
+  uses `OptionalDraw(t, question, n)` (`OptionalDrawThatMany` for "that
+  many"; `MayDraw(row, n)` on a row that builds its `OptionalPrompt` with a
+  chooser) instead of `Optional`; the ability then resolves as a "no".
+  A `MayChoice` sets `Draws: n` (and `Drawer` when someone else
+  draws, as in Combustible Gearhulk); `OnNo` runs at once. "Draw up to
+  N" caps its choice with `Game.DrawChoiceCeilingForEffect(player, N)`.
+  A choice to draw multiple cards counts as one choice: under Narset,
+  "you may draw two cards" can't be taken at all (CR 121.2b).
 - A search or a "put into your hand" is not a draw (CR 121.5) and is
   never limited.
 
@@ -6841,6 +6878,15 @@ declared, not written inside the Effect: `Do(If{Cond: …, Then: …})`,
 or `InterveningIf(cond, row)` around a hand-written Effect (Valakut,
 Land Tax). Then a condition that fails in response removes the trigger
 before its question is asked (#3907).
+
+**"If it wasn't put onto the battlefield with this ability"** (#3933,
+CR 603.4, Kodama of the East Tree) is a flag, not a matcher: set
+`NotPutByThisAbility = true` on the entry row (an `On(game.EventETB, …)`
+with a declared Effect). The engine stamps every `EventETB` with the
+ability that made the entry (`Event.CauseSource`, the source object, and
+`Event.CauseAbility`, the catalog row; ADR 0013 §5ak) and skips the
+trigger when that is this row on this object. Never compare labels or
+scan the event log for it.
 
 **"You may" activated abilities.** When an activated ability's WHOLE
 effect is a "you may" ("Boast — {1}: You may have Arni's base power

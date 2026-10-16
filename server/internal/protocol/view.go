@@ -789,6 +789,15 @@ type PendingChoiceView struct {
 	// graveyard" prompt. Everything else in Options is a library card.
 	// Absent for a library-only search. Chooser-only, like Options.
 	SearchGraveyard []string `json:"search_graveyard,omitempty"`
+	// SearchHand (#3988) lists the instance IDs among Options that are in
+	// the searched player's hand, on a "search that player's graveyard,
+	// hand, and library" prompt (Kotose, the Silent Spider). Absent for
+	// every other search. Chooser-only, like Options.
+	SearchHand []string `json:"search_hand,omitempty"`
+	// SearchAllZones (#3988) marks a "search that player's graveyard, hand,
+	// and library" prompt: every zone is searched, so the library is
+	// shuffled whatever is taken. Chooser-only.
+	SearchAllZones bool `json:"search_all_zones,omitempty"`
 	// ExchangesText marks a "copy_target" prompt whose pick is the
 	// creature to exchange text boxes with, not the object to copy (ADR
 	// 0160 Decision 6, Deadpool, Trading Card). Same answer, same empty
@@ -2626,6 +2635,34 @@ type PlayerView struct {
 	// listed here: they are on the battlefield for everyone to read.
 	// Omitempty: absent for nearly every seat.
 	CounterShields []CounterShieldView `json:"counter_shields,omitempty"`
+
+	// DrawLimit is the per-turn draw limit on this player right now
+	// (CR 121.2b, #3927, #4016): Narset, Parter of Veils' "can't draw
+	// more than one card each turn", or Maralen of the Mornsong's
+	// "can't draw cards" as a limit of zero. Nil when none applies.
+	// Derived from the battlefield on every projection; public, since a
+	// draw that does nothing and a "you may draw" that is never asked
+	// are confusing unless the seat says why.
+	DrawLimit *DrawLimitView `json:"draw_limit,omitempty"`
+}
+
+// DrawLimitView is a seat's draw limit: Max is how many cards the
+// player may draw each turn (0 for "can't draw cards"), Left how many
+// more they may draw this turn, and Sources the permanents that impose
+// it, by name.
+type DrawLimitView struct {
+	Max     int      `json:"max"`
+	Left    int      `json:"left"`
+	Sources []string `json:"sources,omitempty"`
+}
+
+// viewOfDrawLimit projects the draw limit reaching p, or nil.
+func viewOfDrawLimit(g *game.Game, p *game.Player) *DrawLimitView {
+	st, ok := g.DrawLimitStatusLocked(p)
+	if !ok {
+		return nil
+	}
+	return &DrawLimitView{Max: st.Max, Left: st.Left, Sources: st.Sources}
 }
 
 // CounterShieldView is one "can't be countered" grant or unspent
@@ -4897,6 +4934,13 @@ type ManaAbilityView struct {
 	// "Add one mana of any color"). Empty falls back to the raw
 	// Produced string on the client side.
 	Label string `json:"label,omitempty"`
+	// AnyPlayer marks the mana ability's own "Any player may activate
+	// this ability" (Mana Cache; ADR 0106 §1 amendment 2026-10-16,
+	// #1864), as ActivatedAbilityView.AnyPlayer marks a CR 602 row.
+	// Every seat that does not control the permanent gets its own copy
+	// of the row stamped with that seat as the activator
+	// (stampAnyPlayerOffers): its condition, cost options and price.
+	AnyPlayer bool `json:"any_player,omitempty"`
 	// TapCost reflects the "{T}:" portion of the ability. Drives
 	// the client's greying of the menu entry when the source is
 	// tapped — or, for a creature source like Birds of Paradise,
@@ -8091,39 +8135,96 @@ func (c *CardView) stampAnyPlayerOffers(g *game.Game, card game.Card, controller
 			break
 		}
 	}
-	if !anyRow {
+	// #1864: and the CR 605 list's own "Any player may activate this
+	// ability" rows (Mana Cache), re-stamped the same way.
+	anyMana := false
+	for _, m := range c.ManaAbilities {
+		if m.AnyPlayer {
+			anyMana = true
+			break
+		}
+	}
+	if !anyRow && !anyMana {
 		return
 	}
 	for _, p := range g.Seats {
 		if p == nil || p.ID == controller {
 			continue
 		}
-		mine := viewOfActivatedAbilities(g, card, p.ID, game.ZoneBattlefield, restricted)
-		byIndex := make(map[int]ActivatedAbilityView, len(mine))
-		for _, a := range mine {
-			if a.reachesAcross() {
-				byIndex[a.Index] = a
-			}
+		rows := c.ActivatedAbilities
+		if anyRow {
+			rows = c.anyPlayerActivatedRowsFor(g, card, p.ID, restricted)
 		}
-		rows := make([]ActivatedAbilityView, len(c.ActivatedAbilities))
-		for i, a := range c.ActivatedAbilities {
-			if own, ok := byIndex[a.Index]; ok && a.reachesAcross() {
-				// The grantor's name rides the exported row only
-				// (stampGrantedAbilities); keep it on this copy too.
-				own.GrantedBy = a.GrantedBy
-				rows[i] = own
-				continue
-			}
-			rows[i] = a
+		mana := c.ManaAbilities
+		if anyMana {
+			mana = c.anyPlayerManaRowsFor(g, card, p.ID, restricted)
 		}
 		if c.abilityOffers == nil {
 			c.abilityOffers = make(map[string]abilityOfferRows, len(g.Seats))
 		}
 		c.abilityOffers[p.ID.String()] = abilityOfferRows{
 			ActivatedAbilities: rows,
-			ManaAbilities:      c.ManaAbilities,
+			ManaAbilities:      mana,
 		}
 	}
+}
+
+// anyPlayerActivatedRowsFor is one seat's copy of the permanent's CR 602
+// rows: each row that names an activator other than the controller is
+// re-stamped with `seat` as the activator, the rest are the exported
+// (public) rows.
+func (c *CardView) anyPlayerActivatedRowsFor(g *game.Game, card game.Card, seat uuid.UUID, restricted bool) []ActivatedAbilityView {
+	mine := viewOfActivatedAbilities(g, card, seat, game.ZoneBattlefield, restricted)
+	byIndex := make(map[int]ActivatedAbilityView, len(mine))
+	for _, a := range mine {
+		if a.reachesAcross() {
+			byIndex[a.Index] = a
+		}
+	}
+	rows := make([]ActivatedAbilityView, len(c.ActivatedAbilities))
+	for i, a := range c.ActivatedAbilities {
+		if own, ok := byIndex[a.Index]; ok && a.reachesAcross() {
+			// The grantor's name rides the exported row only
+			// (stampGrantedAbilities); keep it on this copy too.
+			own.GrantedBy = a.GrantedBy
+			rows[i] = own
+			continue
+		}
+		rows[i] = a
+	}
+	return rows
+}
+
+// anyPlayerManaRowsFor is anyPlayerActivatedRowsFor for the CR 605 list
+// (#1864): each any-player mana row is projected afresh and run through
+// the same five stamps the controller's rows get, with `seat` as the
+// activator — so its condition ("only during their turn"), its counter
+// and sacrifice options and its charged price are that seat's. The
+// other rows are the exported (public) ones.
+func (c *CardView) anyPlayerManaRowsFor(g *game.Game, card game.Card, seat uuid.UUID, restricted bool) []ManaAbilityView {
+	mine := viewOfManaAbilities(&card)
+	stampManaSacrificeOptions(g, &card, seat, mine)
+	stampManaConditions(g, &card, seat, mine, restricted)
+	stampManaIdentity(g, &card, seat, mine)
+	stampManaCounterCosts(g, &card, seat, mine)
+	stampManaChargedCost(g, &card, seat, mine)
+	byIndex := make(map[int]ManaAbilityView, len(mine))
+	for _, m := range mine {
+		if m.AnyPlayer {
+			byIndex[m.Index] = m
+		}
+	}
+	rows := make([]ManaAbilityView, len(c.ManaAbilities))
+	for i, m := range c.ManaAbilities {
+		if own, ok := byIndex[m.Index]; ok && m.AnyPlayer {
+			own.GrantedBy = m.GrantedBy
+			own.BorrowedFrom = m.BorrowedFrom
+			rows[i] = own
+			continue
+		}
+		rows[i] = m
+	}
+	return rows
 }
 
 // stampZoneAbilities fills CardView.ZoneAbilities for every card in
@@ -9136,6 +9237,10 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			for _, id := range c.SearchGraveyardCards {
 				v.SearchGraveyard = append(v.SearchGraveyard, id.String())
 			}
+			for _, id := range c.SearchHandCards {
+				v.SearchHand = append(v.SearchHand, id.String())
+			}
+			v.SearchAllZones = c.SearchesGraveyardHandAndLibrary()
 			v.Options = make([]CardView, 0, len(c.SearchCards))
 			for _, id := range c.SearchCards {
 				if card, ok := g.LookupCardForEffect(id); ok {
@@ -9852,6 +9957,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		CantWin:             g.CantWinForEffect(p),
 		EndGates:            viewOfGameEndGates(g.GameEndGatesForEffect(p)),
 		CounterShields:      viewOfCounterShields(g.CounterShieldGrantsForEffect(p)),
+		DrawLimit:           viewOfDrawLimit(g, p),
 	}
 	// #3016: how many trigger orders the seat remembered, for its menu.
 	pv.TriggerOrderMemoryCount = g.TriggerOrderMemoryCountLocked(p.ID)
@@ -10540,6 +10646,8 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].SearchMax = 0
 			out[i].SearchMin = 0
 			out[i].SearchGraveyard = nil
+			out[i].SearchHand = nil
+			out[i].SearchAllZones = false
 			continue
 		}
 		// ADR 0133: an opening-hand action's question names a card in the
@@ -12895,6 +13003,7 @@ func viewOfManaAbilitiesFromZone(c *game.Card, zone game.ZoneKind) []ManaAbility
 			ManaCost:      a.ManaCost,
 			Restrictions:  a.Restrictions,
 			Produced:      a.Produced,
+			AnyPlayer:     a.AnyPlayer,
 		})
 	}
 	return out

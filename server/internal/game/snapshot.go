@@ -1161,9 +1161,17 @@ type cardSnapshot struct {
 	// Terror Eater). Carried: a restore that dropped it would leave the
 	// card in exile that nobody may play. An older file decodes as the
 	// zero ref, "exiled with nothing", which is every game before it.
-	ExiledWith        PermissionCardRef `json:"exiledWith"`
-	StartingDefense   int               `json:"startingDefense,omitempty"`
-	ProtectorPlayerID uuid.UUID         `json:"protectorPlayerId,omitempty"`
+	ExiledWith PermissionCardRef `json:"exiledWith"`
+	// EncodedOn and EncodedAt are cipher's link (CR 702.99b, #3867):
+	// the creature object a card in exile is encoded on and when. Carried
+	// because nothing else records it, and additive within v7: a file
+	// without them restores no encoding, which is every game before it.
+	// A pointer, so a card that is not encoded writes nothing (the
+	// #1492 omitzero rule).
+	EncodedOn         *PermissionCardRef `json:"encodedOn,omitempty"`
+	EncodedAt         int64              `json:"encodedAt,omitempty"`
+	StartingDefense   int                `json:"startingDefense,omitempty"`
+	ProtectorPlayerID uuid.UUID          `json:"protectorPlayerId,omitempty"`
 
 	// The CR 702.26 phased-out status (#1199, ADR 0084). Meaningful
 	// only for a card in GameSnapshot.PhasedOut, and carried for
@@ -1672,6 +1680,7 @@ type pendingChoiceSnapshot struct {
 	PayCost              string      `json:"payCost,omitempty"`
 	SearchCards          []uuid.UUID `json:"searchCards,omitempty"`
 	SearchGraveyardCards []uuid.UUID `json:"searchGraveyardCards,omitempty"`
+	SearchHandCards      []uuid.UUID `json:"searchHandCards,omitempty"`
 	SearchMax            int         `json:"searchMax"`
 	SearchMin            int         `json:"searchMin,omitempty"`
 	MayCastCard          uuid.UUID   `json:"mayCastCard,omitempty"`
@@ -2454,6 +2463,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
+		EncodedOn:                snapshotEncodedOn(c.EncodedOn),
+		EncodedAt:                c.EncodedAt,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
@@ -2818,6 +2829,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PayCost:               c.PayCost,
 		SearchCards:           copyUUIDs(c.SearchCards),
 		SearchGraveyardCards:  copyUUIDs(c.SearchGraveyardCards),
+		SearchHandCards:       copyUUIDs(c.SearchHandCards),
 		SearchMax:             c.SearchMax,
 		SearchMin:             c.SearchMin,
 		MayCastCard:           c.MayCastCard,
@@ -3382,6 +3394,8 @@ func restoreCard(c *cardSnapshot) Card {
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
+		EncodedOn:                restoreEncodedOn(c.EncodedOn),
+		EncodedAt:                c.EncodedAt,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
@@ -3729,6 +3743,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PayCost:               c.PayCost,
 		SearchCards:           copyUUIDs(c.SearchCards),
 		SearchGraveyardCards:  copyUUIDs(c.SearchGraveyardCards),
+		SearchHandCards:       copyUUIDs(c.SearchHandCards),
 		SearchMax:             c.SearchMax,
 		SearchMin:             c.SearchMin,
 		MayCastCard:           c.MayCastCard,

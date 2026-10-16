@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/google/uuid"
 )
@@ -161,4 +162,62 @@ func (g *Game) drawForbiddenLocked(ev *ReplacementEvent) bool {
 		return false
 	}
 	return !g.canDrawLocked(g.playerByIDLocked(ev.DrawPlayer))
+}
+
+// CanChooseToDrawForEffect reports whether an effect may offer
+// `player` a CHOICE to draw n cards (#4016). CR 121.3: a player who
+// can't draw can't choose to. CR 121.2b: under "can't draw more than
+// one card each turn" a choice to draw more cards than the limit still
+// allows can't be taken either. CR 121.3a: the same holds when another
+// player makes the choice for the drawer. An empty library is no bar
+// (CR 121.3), so only the draw limits are read. Caller must hold g.mu.
+func (g *Game) CanChooseToDrawForEffect(player uuid.UUID, n int) bool {
+	left, limited := g.DrawsLeftThisTurnForEffect(player)
+	return !limited || n <= left
+}
+
+// DrawChoiceCeilingForEffect is the most cards a "draw up to n" choice
+// may name for `player`: n, or the draws a limit still allows this turn
+// when that is fewer (CR 121.2b, #4016). Caller must hold g.mu.
+func (g *Game) DrawChoiceCeilingForEffect(player uuid.UUID, n int) int {
+	if left, limited := g.DrawsLeftThisTurnForEffect(player); limited && left < n {
+		return left
+	}
+	return n
+}
+
+// DrawLimitStatus is a seat's draw limit as its badge shows it (#4016):
+// the cap, how many more cards it allows this turn, and the permanents
+// that impose it, by name, in battlefield order.
+type DrawLimitStatus struct {
+	Max     int
+	Left    int
+	Sources []string
+}
+
+// DrawLimitStatusLocked is the draw limit reaching p, and whether any
+// does. Sources are the permanents whose cap is the one that applies
+// (the lowest), each named once. Caller must hold g.mu. Reads only.
+func (g *Game) DrawLimitStatusLocked(p *Player) (DrawLimitStatus, bool) {
+	limit, limited := g.drawLimitForLocked(p)
+	if !limited {
+		return DrawLimitStatus{}, false
+	}
+	st := DrawLimitStatus{Max: limit, Left: max(limit-len(g.DrawnThisTurn[p.ID]), 0)}
+	for i := range g.Battlefield.Cards {
+		src := &g.Battlefield.Cards[i]
+		key := catalogAbilityKeyOf(src)
+		if key == "" {
+			continue
+		}
+		for _, s := range CatalogDrawLimits(key) {
+			if s.Max != limit || !drawLimitCovers(s.Whose, src, p.ID) {
+				continue
+			}
+			if !slices.Contains(st.Sources, src.Name) {
+				st.Sources = append(st.Sources, src.Name)
+			}
+		}
+	}
+	return st, true
 }

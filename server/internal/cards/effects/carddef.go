@@ -102,6 +102,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			Label:                     a.Label,
 			Exhaust:                   a.Exhaust,
 			OncePerTurn:               a.OncePerTurn,
+			AnyPlayer:                 a.AnyPlayer,
 			Rider:                     manaRider(a),
 			RiderSelfDamage:           a.PainToYou,
 			PreRider:                  a.PreRider,

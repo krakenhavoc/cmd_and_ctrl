@@ -22,9 +22,9 @@ func init() {
 		Name:         "Bred for the Hunt",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OptionalDraw(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return combatDamageToPlayerBy(ev, source.Controller, g) && b25DamageDealtByCounteredCreature(ev, g)
-			}, "Bred for the Hunt — draw a card", Do(DrawCards{N: 1})), "Bred for the Hunt: draw a card?"),
+			}, "Bred for the Hunt — draw a card", Do(DrawCards{N: 1})), "Bred for the Hunt: draw a card?", 1),
 		},
 	})
 }

@@ -159,7 +159,7 @@ func (e EmpowerJace) Apply(ctx *Context) error {
 	return ctx.Game.CreateTokensThenForEffect(game.TokenCreation{
 		Controller: player,
 		Source:     ctx.Source(),
-		Groups:     []game.TokenGroup{{Template: JaceToken(), Count: 1}},
+		Groups:     []game.TokenGroup{{Template: ruleDefinedToken(JaceToken()), Count: 1}},
 	}, func(g *game.Game, _ []uuid.UUID) error {
 		return place(g)
 	})

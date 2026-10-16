@@ -673,6 +673,11 @@ type Card struct {
 	// before this field, in which case the grant falls back to the
 	// permanent's own timestamp.
 	SuspectedAt int64
+	// EncodedAt is the CR 613.7 timestamp of EncodedOn's grant: the
+	// moment the card was encoded, which is when its static ability
+	// (CR 702.99a's second) began to function in exile. Zero beside a
+	// zero EncodedOn.
+	EncodedAt int64
 	// NamedTribe is the creature type chosen for this permanent by an
 	// "as this enters, choose a creature type" instruction (CR
 	// 614.12) — Cavern of Souls, Door of Destinies, Vanquisher's
@@ -1143,6 +1148,18 @@ type Card struct {
 	// read on every layer pass. Other ability exiles still keep the
 	// effects package's event-log record (b27ExiledWith).
 	ExiledWith PermissionCardRef
+
+	// EncodedOn is CR 702.99b's "encoded": the permanent OBJECT
+	// {instance, epoch} a card with cipher was exiled encoded on as its
+	// spell resolved (#3867, cipher.go). A separate link from ExiledWith
+	// on purpose: the creature did not exile the card (its spell did), so
+	// "cards exiled with" it must not see it (CR 607.2a). The card stays
+	// encoded for as long as it stays in exile and that object stays on
+	// the battlefield (CR 702.99c); the epoch is what ends the second
+	// half, so a creature that leaves and returns is a new object with
+	// nothing encoded on it. Cleared by MoveCard on every move. Carried by
+	// the snapshot.
+	EncodedOn PermissionCardRef
 
 	// PutInGraveyardFrom is the zone the card was put into THIS
 	// graveyard from — the arrival record "put into your graveyard from

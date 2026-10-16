@@ -44,7 +44,7 @@ func init() {
 			Effect:  CrewEffect("Smuggler's Copter"),
 		}},
 		Triggered: []game.TriggeredAbility{
-			Optional(OnAny([]game.EventKind{game.EventAttack, game.EventBlock},
+			OptionalDraw(OnAny([]game.EventKind{game.EventAttack, game.EventBlock},
 				func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return attackDeclared(ev, source) || selfBlocksOnce(ev, source)
 				},
@@ -52,7 +52,7 @@ func init() {
 				func(g *game.Game, item *game.StackItem) error {
 					return lootOne(g, item, 1)
 				},
-			), "Smuggler's Copter — draw a card, then discard a card?"),
+			), "Smuggler's Copter — draw a card, then discard a card?", 1),
 		},
 	})
 }

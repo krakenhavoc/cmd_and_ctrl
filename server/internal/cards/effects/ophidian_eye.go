@@ -36,9 +36,9 @@ func init() {
 		PrintedKeywords: []string{"flash"},
 		Targets:         EnchantCreature(),
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OptionalDraw(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return attachedCreatureDealtDamageToOpponent(ev, source, g)
-			}, "Ophidian Eye — draw a card", Do(DrawCards{N: 1})), "Ophidian Eye — draw a card?"),
+			}, "Ophidian Eye — draw a card", Do(DrawCards{N: 1})), "Ophidian Eye — draw a card?", 1),
 		},
 	})
 }

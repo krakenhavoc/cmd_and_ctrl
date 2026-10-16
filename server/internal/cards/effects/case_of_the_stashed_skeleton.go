@@ -61,7 +61,7 @@ func caseOfTheStashedSkeletonEnters(g *game.Game, item *game.StackItem) error {
 		Controller: item.Controller,
 		Source:     item.SourceCardID,
 		Groups: []game.TokenGroup{{
-			Template: TokenCard("2/1 black Skeleton"),
+			Template: NewContext(g, item).TextToken(TokenCard("2/1 black Skeleton")),
 			Count:    1,
 		}},
 	}, func(g *game.Game, created []uuid.UUID) error {

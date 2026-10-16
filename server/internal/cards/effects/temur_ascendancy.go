@@ -34,10 +34,10 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OptionalDraw(On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.IsCreature() && c.CurrentPower() >= 4
-			}, "Temur Ascendancy — draw a card", Do(DrawCards{N: 1})), "Temur Ascendancy — draw a card?"),
+			}, "Temur Ascendancy — draw a card", Do(DrawCards{N: 1})), "Temur Ascendancy — draw a card?", 1),
 		},
 	})
 }

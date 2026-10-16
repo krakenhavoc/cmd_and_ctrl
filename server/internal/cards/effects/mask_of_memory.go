@@ -64,6 +64,7 @@ func init() {
 func maskOfMemoryMayDrawTwo(g *game.Game, item *game.StackItem) error {
 	return MayChoice{
 		Question: "Mask of Memory — draw two cards, then discard a card?",
+		Draws:    2,
 		YesLabel: "Draw two",
 		NoLabel:  "Decline",
 		OnYes:    maskOfMemoryDrawThenDiscard,

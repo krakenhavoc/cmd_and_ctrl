@@ -112,6 +112,7 @@ func Register(spec Spec) {
 	}
 	for _, t := range spec.Triggered {
 		checkStateTrigger(spec.Name, t)
+		checkNotPutByThisAbility(spec.Name, t)
 		checkFlatClauses(spec.Name, t.Targets)
 		// A trigger announces no X, ever (#1559) — unlike an activated
 		// ability (#1723), there is no cost to check.
@@ -734,6 +735,8 @@ func Register(spec Spec) {
 		// every one of them a boot-time refusal rather than a
 		// mysteriously-dead card.
 		checkManaAbilityZones(spec.Name, i, ma)
+		// #1864: an any-player mana ability's limits.
+		checkAnyPlayerManaAbility(spec.Name, i, ma)
 		// #789: the counter components are one declaration with two
 		// owners, so they are checked by one function in both places.
 		checkCounterCost(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.RemoveCounters, ma.Cost.AddCounter)
@@ -2165,5 +2168,26 @@ func checkAbilityCostModifiers(name string, i int, ab ActivatedAbility) {
 		if why := m.UnitProblem(); why != "" {
 			panic(fmt.Sprintf("effects.Register: %q %s declares %s (ADR 0048 addendum §16)", name, where, why))
 		}
+	}
+}
+
+// checkNotPutByThisAbility holds TriggeredAbility.NotPutByThisAbility
+// (#3933, Kodama of the East Tree) to the shape it reads: an entry
+// trigger (it watches EventETB, the event the engine stamps with the
+// ability that made the entry) with a declared Effect, so the row has a
+// catalog identity to compare with. Anything else would silently
+// trigger off its own puts.
+func checkNotPutByThisAbility(card string, t game.TriggeredAbility) {
+	if !t.NotPutByThisAbility {
+		return
+	}
+	watchesETB := false
+	for _, k := range t.Watches {
+		if k == game.EventETB {
+			watchesETB = true
+		}
+	}
+	if !watchesETB || t.Effect == nil || t.Build != nil {
+		panic(fmt.Sprintf("effects.Register: %q declares %q not put by this ability without an EventETB watch and a declared Effect (#3933)", card, t.Key))
 	}
 }

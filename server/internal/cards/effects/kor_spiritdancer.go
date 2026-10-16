@@ -35,9 +35,9 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OptionalDraw(On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b18SpellCastByYouIsAura(ev, source, g)
-			}, "Kor Spiritdancer — draw a card", Do(DrawCards{N: 1})), "Kor Spiritdancer — draw a card?"),
+			}, "Kor Spiritdancer — draw a card", Do(DrawCards{N: 1})), "Kor Spiritdancer — draw a card?", 1),
 		},
 	})
 }

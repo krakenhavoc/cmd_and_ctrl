@@ -365,8 +365,9 @@ export function visibleHighlights(actions: LegalActions, live: boolean): LegalAc
  * the only entry it can hold for a permanent another player controls is
  * an "Any player may activate this ability" row (CR 602.2) the viewer
  * may activate right now. This answers exactly that: the live refs of
- * `cards`' any-player rows, for the cards in it that `viewerID` does
- * not control, and nothing for every other card or question. So the
+ * `cards`' any-player rows (activated rows and, since #1864, mana rows),
+ * for the cards in it that `viewerID` does not control, and nothing for
+ * every other card or question. So the
  * bolt pip and ring on an opponent's permanent mean what they mean on
  * the viewer's own, and nothing else of the viewer's (a combat ring, a
  * cast) leaks onto that panel through this lookup.
@@ -383,6 +384,10 @@ export function acrossActions(
 ): LegalActions {
   if (!viewerID || !actions.known) return NO_LEGAL_ACTIONS;
   const refs = new Map<string, readonly string[]>();
+  // #1864 (ADR 0106 §1 amendment 2026-10-16): and a mana ability's own
+  // "Any player may activate this ability" rows (Mana Cache), which the
+  // digest lists under `mana_abilities`.
+  const manaRefs = new Map<string, readonly string[]>();
   for (const c of cards) {
     if ((c.controller || c.owner) === viewerID) continue;
     const own = new Set(
@@ -392,22 +397,36 @@ export function acrossActions(
         )
         .map((a) => a.ref),
     );
-    if (own.size === 0) continue;
-    const live = actions.readyAbilityRefs(c.instance_id).filter((r) => own.has(r));
-    refs.set(c.instance_id, live);
+    if (own.size > 0) {
+      const live = actions.readyAbilityRefs(c.instance_id).filter((r) => own.has(r));
+      refs.set(c.instance_id, live);
+    }
+    const ownMana = new Set(
+      (c.mana_abilities ?? []).filter((a) => a.any_player && a.ref).map((a) => a.ref),
+    );
+    if (ownMana.size > 0) {
+      const live = actions.readyManaRefs(c.instance_id).filter((r) => ownMana.has(r));
+      manaRefs.set(c.instance_id, live);
+    }
   }
   const abilities = (id: string): readonly string[] => refs.get(id) ?? NONE;
-  const ACTIVATE: readonly ReadyKind[] = Object.freeze(["activate"]);
+  const mana = (id: string): readonly string[] => manaRefs.get(id) ?? NONE;
+  const kinds = (id: string): readonly ReadyKind[] => {
+    const out: ReadyKind[] = [];
+    if (abilities(id).length > 0) out.push("activate");
+    if (mana(id).length > 0) out.push("mana");
+    return out.length > 0 ? out : NO_KINDS;
+  };
   return {
     known: actions.known,
     exact: actions.exact,
     pass: actions.pass,
-    isReady: (id) => abilities(id).length > 0,
-    kinds: (id) => (abilities(id).length > 0 ? ACTIVATE : NO_KINDS),
+    isReady: (id) => abilities(id).length > 0 || mana(id).length > 0,
+    kinds,
     castableFrom: () => false,
     castIdleHint: () => undefined,
     readyAbilityRefs: abilities,
-    readyManaRefs: () => NONE,
+    readyManaRefs: mana,
     readySpecialActions: () => NONE,
     canAttack: () => false,
     attackTargets: () => NONE,
@@ -601,6 +620,22 @@ export function digestRefusesRow(
 ): boolean {
   if (!gate.exact || !ref) return false;
   return !gate.readyAbilityRefs(cardID).includes(ref);
+}
+
+/**
+ * digestRefusesManaRow is digestRefusesRow for a mana ability row: an
+ * "Any player may activate this ability" mana row on another player's
+ * permanent (Mana Cache, #1864), which the digest lists under
+ * `mana_abilities`. The same reading: anything less than the exact
+ * digest refuses nothing.
+ */
+export function digestRefusesManaRow(
+  gate: LegalActions,
+  cardID: string,
+  ref: string | undefined,
+): boolean {
+  if (!gate.exact || !ref) return false;
+  return !gate.readyManaRefs(cardID).includes(ref);
 }
 
 /**

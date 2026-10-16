@@ -3945,6 +3945,15 @@ func (g *Game) resolveTopOfStackLocked() error {
 //
 // Caller must hold g.mu, inside a resolution function.
 func (g *Game) finishSpellResolutionLocked(top Card, item *StackItem) error {
+	return g.finishSpellResolutionStageLocked(top, item, false)
+}
+
+// finishSpellResolutionStageLocked is finishSpellResolutionLocked with
+// cipher's question already answered or not (#3867): `cipherAsked` is
+// true when the tail runs again after it.
+//
+// Caller must hold g.mu, inside a resolution function.
+func (g *Game) finishSpellResolutionStageLocked(top Card, item *StackItem, cipherAsked bool) error {
 	// #489, CR 608.2n: the spell may have MOVED ITSELF. Everything
 	// below this line routes the object that is still on the stack —
 	// to the battlefield, out of existence, or to a graveyard — and a
@@ -3952,6 +3961,13 @@ func (g *Game) finishSpellResolutionLocked(top Card, item *StackItem) error {
 	// left. See spellMovedItselfLocked for why that is a return and
 	// not an error.
 	if g.spellMovedItselfLocked(top.InstanceID) {
+		return nil
+	}
+	// CR 702.99a (#3867): cipher's "you may exile this card encoded on
+	// a creature you control" is the spell's last instruction, asked once
+	// every earlier one is done. Encoded, the card has moved itself and
+	// the parked tail finds nothing to route (cipher.go).
+	if !cipherAsked && g.askCipherLocked(top, item) {
 		return nil
 	}
 	// CR 608.3f / CR 111.13 (also CR 707.10f): a resolving copy of a
@@ -7347,7 +7363,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		return ErrCardNotFound
 	}
 	if srcZone == ZoneBattlefield {
-		if card.Controller != playerID {
+		// ADR 0106 §1 amendment 2026-10-16 (#1864): the cheap refusal
+		// for a non-controller, unless some row says "Any player may
+		// activate this ability" (Mana Cache). The row actually named is
+		// held to MayActivateMana after the index lookup below.
+		if card.Controller != playerID && !HasAnyPlayerManaAbility(*card) {
 			return ErrCardCallerMismatch
 		}
 		// CR 602.5: an effect that stops this permanent's activated
@@ -7394,6 +7414,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		return ErrInvalidParam
 	}
 	ab := abilities[abilityIdx]
+	// CR 602.2 / 602.1b (#1864): who may activate THIS row — the
+	// controller, or anyone for an any-player row.
+	if !MayActivateMana(playerID, *card, srcZone, ab) {
+		return ErrCardCallerMismatch
+	}
 	// CR 113.6 (#1228): the ability has to function from the zone the
 	// card is in. After the index lookup, so the index judged is the
 	// one the view and the enumerator published, and before
@@ -7725,6 +7750,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// the battlefield has layers (CR 613 runs on permanents), so a
 	// Simian Spirit Guide in hand is the creature card it prints.
 	srcKinds := manaSourceKindsOf(*card)
+	// #1864: read before the cost runs, for the reason srcKinds is.
+	var acrossController uuid.UUID
+	if srcZone == ZoneBattlefield && card.Controller != playerID {
+		acrossController = card.Controller
+	}
 
 	// #1183: the activation record, in both scopes, written HERE —
 	// the moment every gate and every cost has been checked and the
@@ -7966,6 +7996,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// #1210: the same CardID stamp EventActivateAbility carries —
 		// see the auto-tapper's emit above.
 		CardID: cardID,
+		// #1864: the permanent's controller when somebody else
+		// activated its any-player row, as EventActivateAbility carries
+		// it (ADR 0106 §1 amendment 2026-10-01): the log's
+		// activate_across line. uuid.Nil for every other activation.
+		Target: acrossController,
 		// #1184: the ability's identity and its exhaust bit, the same
 		// two stamps ActivateCatalogAbility's EventActivateAbility
 		// carries. A mana ability is an activated ability (CR 605.1a),

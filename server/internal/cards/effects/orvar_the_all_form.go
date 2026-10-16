@@ -140,7 +140,7 @@ func orvarCopyOneOfThem(g *game.Game, item *game.StackItem) error {
 		if !ok {
 			return nil
 		}
-		return CreateToken{Template: tmpl, N: 1}.Apply(ctx)
+		return createTokenCopies(ctx, ctx.Controller(), tmpl, 1)
 	}
 	switch len(objects) {
 	case 0:
