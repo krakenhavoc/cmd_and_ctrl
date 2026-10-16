@@ -3220,6 +3220,25 @@ player controls an Island'") adds
 `game.CantAttackUnlessDefenderControlsMod(QuerySubtype("Island"))` to its
 `ScopedEffectFor` mods; see `veiled_serpent.go`.
 
+**"Can attack … as though it didn't have defender"**
+([ADR 0106 amendment 2026-10-16](decisions/0106-five-small-seams-from-the-s50-rechecks.md),
+#1936, CR 702.3b, CR 609.4) is the reverse: a waiver of defender on
+`Characteristic.DefenderWaivers`, asked of each target where defender is
+checked, so the keyword stays. When the waiver names whom the creature
+may attack, use it:
+
+```go
+Static: []game.StaticAbility{CanAttackPlayersWhoAttackedYouAsThoughNoDefender()}, // Weathered Sentinels
+Effect: CanAttackThisTurnAsThoughNoDefender("Hightide Hermit — …"),             // "can attack this turn", every target
+```
+
+A new per-target condition is a new field on `game.DefenderWaiver`, read
+in `waivesLocked`. Declaration, the enumerator's per-attacker list, the
+CR 508.1d search, the client and the bot all follow. Older cards that
+lift defender for every target (Stalked Researcher, Ghalta) write it as
+losing the keyword, which differs only to a card that counts creatures
+with defender; prefer the waiver for a new card.
+
 [ADR 0045](decisions/0045-combat-restrictions.md) has the
 taxonomy, including what the vocabulary deliberately cannot say:
 Silent Arbiter's and Crawlspace's count limits, which are set-shaped

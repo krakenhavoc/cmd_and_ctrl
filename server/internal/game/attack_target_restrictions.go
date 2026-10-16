@@ -473,7 +473,8 @@ func dropSelfAttackTargetRestrictions(ch *Characteristic, c *Card) {
 
 // canAttackTargetWithLocked reports whether `attacker` may be DECLARED
 // attacking `target`: CR 506.2 and 310.9b for its controller
-// (canAttackTargetLocked), then its own CR 508.1c target restrictions.
+// (canAttackTargetLocked), then its own CR 508.1c target restrictions,
+// then defender as its waivers leave it for this target (#1936).
 //
 // The declaration-time check. CR 508.7b's reselection and CR 508.4c's
 // "put onto the battlefield attacking" are exempt from restrictions on
@@ -492,7 +493,14 @@ func (g *Game) canAttackTargetWithLocked(attacker *Card, target uuid.UUID) error
 	if err := g.playerCantAttackRefusalLocked(attacker, target); err != nil {
 		return err
 	}
-	return g.attackTargetRestrictionRefusalLocked(attacker, target)
+	if err := g.attackTargetRestrictionRefusalLocked(attacker, target); err != nil {
+		return err
+	}
+	// #1936, CR 702.3b: defender, asked of this target, because a
+	// waiver may name whom the creature can attack (Weathered
+	// Sentinels). Last, as the single verb always refused it after the
+	// target checks.
+	return g.defenderRefusalLocked(attacker, target)
 }
 
 // AttackTargetsForAttackerForEffect lists every target `attacker` may
@@ -509,13 +517,15 @@ func (g *Game) AttackTargetsForAttackerForEffect(attacker *Card) []AttackTargetR
 		return nil
 	}
 	all := g.AttackTargetsForEffect(attacker.Controller)
-	if len(attacker.Effective().AttackTargetRestrictions) == 0 && !g.playerHasCantAttackGrantLocked(attacker.Controller) {
+	if len(attacker.Effective().AttackTargetRestrictions) == 0 && !g.playerHasCantAttackGrantLocked(attacker.Controller) &&
+		!HasKeyword(attacker, "defender") {
 		return all
 	}
 	out := all[:0:0]
 	for _, t := range all {
 		if g.playerCantAttackRefusalLocked(attacker, t.ID) == nil &&
-			g.attackTargetRestrictionRefusalLocked(attacker, t.ID) == nil {
+			g.attackTargetRestrictionRefusalLocked(attacker, t.ID) == nil &&
+			g.defenderRefusalLocked(attacker, t.ID) == nil {
 			out = append(out, t)
 		}
 	}
