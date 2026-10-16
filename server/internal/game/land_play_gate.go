@@ -45,7 +45,9 @@ import (
 //
 // A fourth record reaches this gate from beside it: Memory Vessel's
 // "can't play cards from their hand" (#2559, hand_play_ban.go), which
-// the cast gate reads too, refuses a land played out of the hand.
+// the cast gate reads too, refuses a land played out of the hand. A
+// fifth is its graveyard twin, Shaman's Trance's "can't play lands or
+// cast spells from their graveyards" (#1987, graveyard_play_ban.go).
 //
 // FOUR CALLERS, ONE FUNCTION, and that is the whole point (ADR 0033 §1):
 //
@@ -223,6 +225,12 @@ func (g *Game) LandPlayGateLocked(player uuid.UUID, card Card, fromZone ZoneKind
 		if reason, banSource, ok := g.handPlayBanLocked(player); ok {
 			return &CantPlayLandError{Reason: reason, Source: banSource}
 		}
+	}
+	// #1987: "can't play lands from their graveyards" (Shaman's
+	// Trance) bans a land played out of the player's own graveyard and
+	// no other.
+	if reason, banSource, ok := g.graveyardPlayBanLocked(player, card, fromZone); ok {
+		return &CantPlayLandError{Reason: reason, Source: banSource}
 	}
 	return nil
 }

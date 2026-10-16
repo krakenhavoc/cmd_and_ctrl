@@ -3454,6 +3454,17 @@ EntryRestrictions: []game.EntryRestriction{
 - "Whenever a player plays a land from exile or casts a spell from exile"
   is `aCardWasPlayedFromExile(ev, g)`; Prosper's "you" form is
   `b20PlayedACardFromExile`.
+- **"You may play lands and cast spells from other players' graveyards
+  this turn"** (Shaman's Trance, #1987): one stored
+  `game.CastPermission{Zone: game.ZoneGraveyard, Scope: game.ScopeStanding,
+  ZoneOwner: <seat>}` per other seat, through
+  `g.GrantCastPermissionForEffect`. `ZoneOwner` is what points a standing
+  grant at another pile; the cast path, the enumerator and the view already
+  follow it. The card's own flashback works there too.
+- **"Can't play lands or cast spells from their graveyards this turn"**:
+  `g.CantPlayFromOwnGraveyardThisTurnForEffect(source, players, label)`. One
+  stored `cantPlayFromOwnGraveyard` record that both gates read, for a card
+  in that player's own graveyard only.
 
 ### "Cards in graveyards can't be targeted" (ADR 0109 §6, #1885)
 

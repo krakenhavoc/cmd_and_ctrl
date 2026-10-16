@@ -586,7 +586,30 @@ func corpusBoards() []corpusBoard {
 		// the card the cost sacrificed, each with its CR 400.7 epoch in
 		// the graveyard (delayedTriggers[].params.objects).
 		{"delayed_trigger_objects", corpusDelayedTriggerObjects},
+		// v9, added by #1987 (ADR 0066 amendment 2026-10-16) as a new
+		// file: a resolved Shaman's Trance — the cantPlayFromOwnGraveyard
+		// record (a game-scope rule kind, one mod per other player) and
+		// the caster's stored standing permissions, one per other seat's
+		// graveyard (castPermissions[].zoneOwner over a graveyard).
+		{"shamans_trance", corpusShamansTrance},
 	}
+}
+
+// corpusShamansTrance is #1987's stored shapes: the own-graveyard ban
+// on every other player and a permission over each of their graveyards.
+func corpusShamansTrance(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	toMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	castCatalogSpell(t, g, shamansTranceName, "Instant", shamansTranceOracle, nil)
+	passPriorityAroundTable(t, g)
+	if n := len(g.ScopedEffects); n != 1 || g.ScopedEffects[0].Mods[0].Kind != game.ModCantPlayFromOwnGraveyard {
+		t.Fatalf("setup: scoped records = %+v, want one cantPlayFromOwnGraveyard", g.ScopedEffects)
+	}
+	if got, want := len(me.CastPermissions), len(g.Seats)-1; got != want {
+		t.Fatalf("setup: the caster holds %d permissions, want %d", got, want)
+	}
+	return g
 }
 
 // corpusDelayedTriggerObjects is #2099's stored shape: a delayed

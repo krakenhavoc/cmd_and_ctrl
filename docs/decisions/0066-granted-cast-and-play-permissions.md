@@ -829,7 +829,9 @@ printed cost puts a nil entry in the list (rule 4 of
 unpayable offer beside it. The OTHER direction is pinned too, and it is the
 one a reader will get wrong: a card that DECLARES and PRICES its own zone
 owes that price even under such a grant (rule 3), so an unpayable bound
-offer leaves no cast at all.
+offer leaves no cast at all. (Reversed by the 2026-10-16 amendment, #1987:
+the grant lets such a card be cast for its printed cost too, so it stays a
+cast surface on that price.)
 
 `stampGrantedPermissions`'s non-exile branch, which set the bit a second
 time behind a `cant_cast` guard, is now a `continue`. It also used to set it
@@ -4158,3 +4160,92 @@ or to another permanent does not; the back face's counters and its convert on th
 
 Back-out: stop filling `zoneRoute.ExiledWithAbility` and the Prowl tests that cast its card fail; drop the cast's
 `stampPlayedExiledWith` and the cast test fails while the land test passes.
+
+## Amendment — 2026-10-16 (#1987): playing from other players' graveyards, and a ban on playing from your own
+
+Shaman's Trance: "Other players can't play lands or cast spells from their graveyards this turn. You may play lands and cast
+spells from other players' graveyards this turn as though those cards were in your graveyard." Its two 2004-10-04 rulings:
+"This card does not allow you to activate the abilities of cards in other people's graveyards", and "You can use Flashback on
+cards to cast them."
+
+**The rules.** A spell may be cast only if a rule or effect allows it and none prohibits it (CR 601.3), and "can't" beats
+"may" (CR 101.2). The caster controls a spell cast from another player's graveyard (CR 601.2a), and it goes to its owner's
+graveyard afterwards (CR 400.3); a land played from there enters under the player who played it (CR 110.2) and is that
+turn's land play (CR 305.1, 305.2). "This turn" ends at cleanup (CR 514.2).
+
+### Decision 1 — the permission is a stored standing grant per other seat, and needs no new field
+
+#1022 and #1035 already gave a stored `ScopeStanding` permission a seat (`ZoneOwner`), and taught the cast path
+(`foreignPileForCastLocked`), the enumerator (`castZones` walks other seats' piles under any grant) and the view (the
+per-holder stamps of `stampGrantedPermissions`) to follow it. Xanathar's library grant was the only user. Shaman's Trance is
+`effects.GraveyardPlayThisTurn`'s grant (Yawgmoth's Will) pointed at another pile: one `CastPermission{Zone: graveyard,
+Scope: standing, ZoneOwner: <seat>}` per other seat still in the game, at the printed cost, until end of turn.
+
+Rejected: a new "every other graveyard" flag on one permission. It would be read in `permissionReachesPileLocked` only, so it
+is smaller, but it is a second spelling of a scope `ZoneOwner` already has, and every surface that reads `PileOwnerFor`
+would need to learn it.
+
+### Decision 2 — "as though those cards were in your graveyard" is the card's own text, and rule 3 gives way
+
+The card's own way out of a graveyard (flashback, escape, a Gravecrawler-style permission, an aftermath half) is opened by
+`cardOpensZoneLocked`, which asks the card and not whose pile it is in; the enumerator and the view open another seat's pile
+only under a permission. So under the grant those offers already reach the caster, which is the flashback ruling.
+
+What did not hold was the other price. `validateCastPathLocked`'s rule 3 ("a zone the card prices must be paid for") refused
+a cast at the printed cost of any card that also prints a graveyard price, even when a permission at the printed cost was the
+reason the cast was legal. That is wrong for Shaman's Trance, and it was already wrong for Yawgmoth's Will and Muldrotha over
+the caster's own graveyard. Rule 3 now gives way to a permission that names no price of its own (`AltCostKey` empty and
+`NamesPrice()` false): the caster may cast the card for its mana cost or claim its printed offer. A permission with a price
+(Snapcaster's flashback, Underworld Breach's escape, a flat `Cost`) is rule 4's and unchanged.
+
+This reverses a direction the view's #1015 section of this ADR pinned ("a card that DECLARES and PRICES its own zone owes
+that price even under such a grant"). That pin was the safe direction, weaker than printed, but not the rules: CR 601.3 makes
+the permission the reason the cast is legal, and nothing makes the card's own offer mandatory once something else allows the
+cast (Muldrotha's 2020-11-10 ruling, "If it has an alternative cost, you may cast it for that cost instead", reads the same
+way). `TestCastableHereUnderAPrintedCostGrantWhenTheCardsOwnPriceIsUnpayable` (protocol) replaces the test that pinned it.
+With no permission, rule 3 is unchanged: a flashback card in its owner's graveyard still owes flashback, and ADR 0118's
+granted offers still skip it. Under a printed-cost permission a granted offer (Jodah) now reaches such a card, which is
+CR 118.9a's "where the printed mana cost could be paid".
+
+### Decision 3 — the public stamp asks the pile rule too
+
+`CastPermissionOnCardForEffect`, the public `exile_play` read, asked a stored permission only whether it covered the card.
+A stored standing permission over a graveyard covered every graveyard card at the table, so the holder's grant over one
+seat's pile was stamped on every other pile, the holder's own included. It now asks `permissionReachesPileLocked` as the
+cast path does. A `ScopeCards` permission is unaffected (the pile rule passes it), and so is exile (shared).
+
+### Decision 4 — the ban is a rules-gate ScopedEffect read by both gates
+
+"Can't play lands or cast spells from their graveyards" is Memory Vessel's hand ban (the 2026-10-10 amendment, Decision 2)
+one zone over, stored for the same reasons: a new kind, `cantPlayFromOwnGraveyard` (reader `rule`, scope game, reads
+`Player`), registered by `Game.CantPlayFromOwnGraveyardThisTurnForEffect(source, players, label)`
+(`game/graveyard_play_ban.go`), one mod per banned player in one record, until end of turn. `uuid.Nil` names nobody, never
+everybody, because the printed form is "other players". The reader `graveyardPlayBanLocked` refuses a play only out of the
+banned player's OWN graveyard, told by the card's owner (a card in a graveyard is in its owner's, CR 404.1), and asks the
+duration itself. `CastGateLocked` and `LandPlayGateLocked` both ask it, so the cast path, a land played during a resolution,
+the enumerator and the view's `cant_cast` stamp all see it. Activated abilities of cards in a graveyard are not plays and
+stay open.
+
+### Snapshot
+
+Additive within v9: the mod kind `cantPlayFromOwnGraveyard`, and a stored permission with `zoneOwner` over a graveyard (the
+field existed). A binary from before this refuses a restore point naming the kind with `ErrUnknownEffectKey`; one that knows
+the field reads the permission as it is. Fixture `v9/shamans_trance.json`.
+
+**Card.** Shaman's Trance, with a caveat: the caster's own permissions over "your graveyard" (Underworld Breach's escape,
+Lurrus, Muldrotha) do not reach the other graveyards. The cards there are castable at their printed cost anyway; what is lost
+is the extra price such a permanent offers, which is the weaker direction. Its prompt picks among one permission per card,
+and teaching it to offer a standing permission's price beside a stored one's is a composition question for every graveyard
+grant, not this card's.
+
+**Tests.** `graveyard_play_ban_test.go` (game): the ban refuses a spell and a land out of the banned player's own graveyard
+and nothing else, and ends with the turn; an empty list bans nobody; a flashback card under a printed-cost permission is
+offered and cast at its printed cost; a stored grant over another graveyard is found on that pile only.
+`shamans_trance_test.go` (effects): every other graveyard opens and the caster's own does not; a land from another graveyard
+is the turn's land play under the caster with its owner kept; a Bolt cast from there is the caster's and returns to its
+owner's graveyard; a flashback card there offers both prices and flashes back; the ban and its `cant_cast`; both halves end
+with the turn; the enumerator and the view's `castable_here` offer the other graveyards to the caster only; a restore keeps
+both halves.
+
+Back-out: drop rule 3's exception and the flashback-offer tests fail; drop the pile check in `CastPermissionOnCardForEffect`
+and `TestAStoredGrantOverAnotherGraveyardIsOnlyOnThatPile` fails; drop either gate's read and the ban tests fail.

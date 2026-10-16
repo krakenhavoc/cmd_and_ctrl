@@ -2179,7 +2179,14 @@ func (g *Game) CastPermissionOnCardForEffect(card Card, zone ZoneKind) *CastPerm
 		}
 		for i := range p.CastPermissions {
 			perm := &p.CastPermissions[i]
-			if !perm.CoversCard(card, zone) {
+			// #1987: a STORED standing permission over a graveyard is
+			// over ONE seat's pile (its ZoneOwner, or its holder's own),
+			// and covering the card is not enough. Shaman's Trance
+			// grants one per other seat; without the pile rule the
+			// holder's grant over one opponent's graveyard would be
+			// stamped as the public `exile_play` on every card in every
+			// graveyard, the holder's own included.
+			if !perm.CoversCard(card, zone) || !permissionReachesPileLocked(p.ID, perm, card, zone) {
 				continue
 			}
 			if g.CastPermissionActiveForEffect(perm, p.ID) {
