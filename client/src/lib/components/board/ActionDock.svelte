@@ -465,10 +465,17 @@
 
   // ---- size ------------------------------------------------------------
   let root: HTMLElement | null = $state(null);
+  // #4065: the callback is untracked, as onStage's and onSheet's are.
+  // Game's onDockSize reads the size it last stored, so a tracked call
+  // made this effect depend on it: every resize re-ran the effect from
+  // inside the observer's own callback, and the new observer's first
+  // notification, at the same depth, went undelivered. That was the
+  // "ResizeObserver loop completed with undelivered notifications"
+  // error the client log showed after nearly every snapshot.
   $effect(() => {
     const el = root;
     if (!el || !onSize) return;
-    const report = (): void => onSize(el.offsetWidth, el.offsetHeight);
+    const report = (): void => untrack(() => onSize(el.offsetWidth, el.offsetHeight));
     report();
     if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(report);
