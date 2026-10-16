@@ -339,6 +339,13 @@ type Config struct {
 	// library under DredgeLibraryFloor declined. Off (the zero value)
 	// reads the mill as free, as before.
 	PriceMillCost bool
+	// PriceLibraryExileCost prices an "Exile the top N cards of your
+	// library" cost (#3966, legal.MoveCost.LibraryExile;
+	// library_exile_cost.go) as a mill without the graveyard fuel: each
+	// card at the Library weight it was, and a move that would leave the
+	// library under DredgeLibraryFloor declined. Off (the zero value)
+	// reads the exile as free, as before.
+	PriceLibraryExileCost bool
 	// ExertCostWeight scales an exert's cost: the creature's next-turn
 	// attack value plus its blocking value across the opponents' turns.
 	ExertCostWeight float64
@@ -578,7 +585,9 @@ type Config struct {
 	// bot's library. A dredge that would mill it below this is
 	// declined whatever it returns: mill N with a few cards left puts
 	// the CR 704.5b decking loss on a timer. A "Mill N cards" cost is
-	// held to the same floor under PriceMillCost (#3870).
+	// held to the same floor under PriceMillCost (#3870), and an
+	// "Exile the top N cards of your library" cost under
+	// PriceLibraryExileCost (#3966).
 	DredgeLibraryFloor int
 
 	// DevourCommander is what eating the bot's own commander costs on
@@ -801,6 +810,8 @@ func DefaultConfig() Config {
 
 		// #3870: a mill cost priced like the dredge's mill.
 		PriceMillCost: true,
+		// #3966: a library exile cost priced like a mill, without the fuel.
+		PriceLibraryExileCost: true,
 
 		LandColorNeed:       0.30,
 		DiscardByDistance:   true,
@@ -986,6 +997,8 @@ func BaselineConfig() Config {
 	c.ExertCostWeight = 0
 	// #3870: a mill cost, read as free before it.
 	c.PriceMillCost = false
+	// #3966: a library exile cost, read as free before it.
+	c.PriceLibraryExileCost = false
 	// #2675, #2690, #2676: combat priced by what combat does.
 	c.FocusNeedsValue = false
 	c.GangAwareAttacks = false

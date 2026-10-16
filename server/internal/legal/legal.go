@@ -411,6 +411,31 @@ type MoveCost struct {
 	// free. Always positive when present: the enumerator has already
 	// checked the library holds that many (CR 701.17b, CR 118.3).
 	Mill int `json:"mill,omitempty"`
+
+	// LibraryExile is how many cards the move exiles off the top of the
+	// seat's own library as its cost (#3966; the component is ADR 0109
+	// §7's "Exile the top N cards of your library", AbilityCost.
+	// ExileFromLibraryTop) — Seasoned Tactician's four, Arc-Slogger's
+	// ten, Phyrexian Devourer's one. Mill's sibling: the params name no
+	// card, so without it a policy would read the library it pays as
+	// free. Always positive when present: the enumerator has already
+	// checked the library holds that many (CR 118.3).
+	LibraryExile int `json:"library_exile,omitempty"`
+}
+
+// withLibraryExile adds an "Exile the top N cards of your library"
+// payment to a (possibly nil) MoveCost (#3966). Nil stays nil for zero
+// cards.
+func withLibraryExile(c *MoveCost, n int) *MoveCost {
+	if n <= 0 {
+		return c
+	}
+	out := MoveCost{}
+	if c != nil {
+		out = *c
+	}
+	out.LibraryExile = n
+	return &out
 }
 
 // withMill adds a "Mill N cards" payment to a (possibly nil) MoveCost

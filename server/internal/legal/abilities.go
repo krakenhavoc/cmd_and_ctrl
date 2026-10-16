@@ -955,6 +955,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								// #3870: and the cards a "Mill N cards" cost
 								// takes off the library, which it names none of.
 								cost = withMill(cost, ab.Cost.Mill)
+								// #3966: and the top cards an "Exile the top N
+								// cards of your library" cost takes, likewise.
+								cost = withLibraryExile(cost, ab.Cost.ExileFromLibraryTop)
 								if ab.Cost.RevealHand {
 									label += " revealing your hand"
 								}

@@ -3978,6 +3978,16 @@ mill worth more. A mill that would leave fewer than `DredgeLibraryFloor`
 with a mill component no longer counts as costing only mana and taps
 (ADR 0126 §5). The baseline reads the mill as free.
 
+**An "Exile the top N cards of your library" cost is priced like a
+mill without the fuel** (#3966). ADR 0109 §7's component names no card
+either, so `Move.Cost.LibraryExile` carries the count (Seasoned
+Tactician, Arc-Slogger, Phyrexian Devourer), and the MCP seat's move
+line says `exiles the top 4 cards of your library`. Under
+`PriceLibraryExileCost` each exiled card costs the `Weights.Library` it
+was and buys nothing back, since exile is no graveyard to cast from, and
+the same `DredgeLibraryFloor` declines an exile that would leave fewer
+than 10 cards in the library. The baseline reads the exile as free.
+
 **"Tap any number of untapped creatures" is offered at each count**
 (#3961). Burn at the Stake and Explosive Singularity read the count, so
 the enumerator offers one cast per count: none, one to three creatures
