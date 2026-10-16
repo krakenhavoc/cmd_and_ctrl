@@ -2612,12 +2612,34 @@ type SearchLibrarySpec struct {
 	// so all three are searched: the library is always searched, and the
 	// search always fires EventSearchLibrary and shuffles when Shuffle is
 	// set, whatever was taken. A hand is a hidden zone, so a search with
-	// a stated quality may find nothing there (CR 701.23b); every
-	// extraction card says "any number" (Unbounded) in any case. The
-	// searcher looks at the whole hand as they search it, so every card
-	// in it becomes known to them, and the owner keeps knowing their own
-	// cards. Dest must be a zone the cards leave to.
+	// a stated quality may find nothing there (CR 701.23b). Kotose and
+	// Surgical Extraction say "any number" (Unbounded); the rest of the
+	// family says "all" (TakeAll). The searcher looks at the whole hand
+	// as they search it, so every card in it becomes known to them, and
+	// the owner keeps knowing their own cards. Dest must be a zone the
+	// cards leave to.
 	AlsoGraveyardAndHand bool
+
+	// TakeAll is "search … for ALL cards with the same name …" on an
+	// AlsoGraveyardAndHand search (#4033: Eradicate, Extirpate, Quash,
+	// Scour, Splinter, Sowing Salt). There is no count, so it implies
+	// Unbounded. What it adds is the graveyard: a graveyard is a public
+	// zone (CR 400.2), and CR 701.23b's fail to find covers only hidden
+	// zones, so every graveyard match is found. Those matches are not
+	// offered as candidates, because nothing about them is a choice:
+	// they are taken with whatever the searcher picks from the hand and
+	// the library, which are hidden, so the searcher may still leave any
+	// of those (CR 701.23b). With no hidden match the search takes the
+	// graveyard's matches without a prompt. Ignored without
+	// AlsoGraveyardAndHand: "and/or graveyard" lets the searcher skip the
+	// graveyard, so nothing in it is forced.
+	TakeAll bool
+
+	// graveyardFinds is set by SearchLibraryThenForEffect, on the copy it
+	// carries to the take, for a TakeAll search: the graveyard matches the
+	// rules make the searcher find. executeSearchTakeLocked takes the ones
+	// still there with the searcher's picks. Never set by a card.
+	graveyardFinds []uuid.UUID
 
 	// libraryUntouched is set by executeSearchTakeLocked, on the copy it
 	// carries into the finish, when every card taken came out of the
@@ -2796,6 +2818,11 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
+	// #4033: "all cards" has no count.
+	takeAllInGraveyard := spec.TakeAll && spec.AlsoGraveyardAndHand
+	if takeAllInGraveyard {
+		spec.Unbounded = true
+	}
 	if spec.Limit <= 0 && !spec.Unbounded {
 		spec.Limit = 1
 	}
@@ -2819,6 +2846,12 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	if spec.searchesGraveyard() {
 		for _, c := range p.Graveyard.Cards {
 			if spec.Pred == nil || spec.Pred(c) {
+				if takeAllInGraveyard {
+					// #4033: found, not chosen (a public zone has no
+					// fail to find), so not a candidate either.
+					spec.graveyardFinds = append(spec.graveyardFinds, c.InstanceID)
+					continue
+				}
 				gyMatches = append(gyMatches, c.InstanceID)
 				matched = append(matched, c)
 			}
@@ -2842,6 +2875,11 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	matches = append(matches, gyMatches...)
 	matches = append(matches, handMatches...)
 	if len(matches) == 0 {
+		if len(spec.graveyardFinds) > 0 {
+			// #4033: nothing to choose, but the graveyard's matches
+			// are found all the same.
+			return g.executeSearchTakeLocked(spec, p, nil)
+		}
 		// Nothing to find. Still a search: the event fires and the
 		// shuffle happens, because the card said "then shuffle"
 		// unconditionally.
@@ -2964,6 +3002,19 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 //
 // Caller must hold g.mu.
 func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []uuid.UUID) error {
+	// #4033: "all cards" — the graveyard's matches are found with the
+	// searcher's picks, in one take. One that left the graveyard while
+	// the prompt was open is not there to find.
+	if len(spec.graveyardFinds) > 0 {
+		taken := make([]uuid.UUID, 0, len(spec.graveyardFinds)+len(ids))
+		for _, id := range spec.graveyardFinds {
+			if p.Graveyard.Contains(id) {
+				taken = append(taken, id)
+			}
+		}
+		ids = append(taken, ids...)
+		spec.graveyardFinds = nil
+	}
 	// #3998: "While an opponent is searching their library, they exile
 	// each card they find" (Opposition Agent). A replacement of the
 	// destination, whatever it was (hand, battlefield, top of the

@@ -362,6 +362,20 @@ func BoostTheModesTarget(power, toughness int, label string) func(item *game.Sta
 	}
 }
 
+// SwitchTheModesTarget is "switch target creature's power and
+// toughness until end of turn" as a modal bullet's body (Twisted
+// Reflection's second bullet, #3996), on this occurrence's own target
+// while it is still legal (CR 608.2b).
+func SwitchTheModesTarget(label string) func(item *game.StackItem, ctx *Context, occ int) error {
+	return func(_ *game.StackItem, ctx *Context, occ int) error {
+		t, ok := ModeTarget(ctx, occ)
+		if !ok {
+			return nil
+		}
+		return SwitchPTUntilEOT{Target: t.ID, Label: label}.Apply(ctx)
+	}
+}
+
 // TheModesTargetDiscards is "target player discards N cards" as a
 // modal bullet's body: that player chooses which (CR 701.9b), through
 // the ordinary discard prompt — Cerebral Confiscation's and Splitting

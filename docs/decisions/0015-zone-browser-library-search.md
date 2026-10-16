@@ -378,3 +378,53 @@ left "searches that also need the hand" uncovered.
 `TestExtractionSearch*` and `TestCloneCarriesTheHandCandidates` (game),
 `TestSearchPromptMarksTheHandHalf` (protocol) and the Kotose card tests
 each fail without the shape they name.
+
+## Amendment 2026-10-16 (b) — "all cards" in the extraction search (#4033)
+
+Kotose and Surgical Extraction say "any number of cards with the same
+name". The rest of the family (Eradicate, Extirpate, Quash, Scour,
+Splinter, Sowing Salt) says "**all** cards with the same name". The
+amendment above read every extraction card as "any number", which is
+right for those two only.
+
+### The rule (CR 701.23b, 400.2)
+
+CR 701.23b lets a searcher fail to find cards with a stated quality in a
+**hidden** zone. A graveyard is a public zone (CR 400.2), so the rule
+does not reach it: every card with that name in the graveyard is found
+and exiled. The hand and the library are hidden zones, even though the
+searcher looks at the whole hand, so the searcher may still leave any of
+their matches. There is no count, so "all" has no cap.
+
+### The shape
+
+- **`SearchLibrarySpec.TakeAll`** (catalog `SearchLibrary.TakeAll`), on
+  an `AlsoGraveyardAndHand` search. It implies `Unbounded`. Without
+  `AlsoGraveyardAndHand` it is ignored: "and/or graveyard" lets the
+  searcher skip the graveyard, so nothing in it is forced.
+- **The graveyard's matches are not candidates.** Nothing about them is
+  a choice, so the prompt offers only the hand's and the library's
+  matches, any number, none included. The graveyard's matches ride on
+  the spec in the continuation frame (unexported, never set by a card).
+  The take moves the ones still in the graveyard together with the
+  searcher's picks, so `Then` sees one found list. A match that left the
+  graveyard while the prompt was open is not found.
+- **No prompt when there is nothing to choose.** With no match in the
+  hand or the library, the graveyard's matches are taken without a
+  prompt, and the library is still searched and shuffled.
+- **No wire, snapshot or enumerator change.** The prompt is the
+  "graveyard, hand, and library" prompt above with no graveyard tiles,
+  its floor stays zero, and the card's prompt text says that every match
+  in the graveyard is exiled.
+
+The alternative was to offer the graveyard matches as locked picks: a
+new wire field naming the required candidates, a client that preselects
+them, and an enumerator floor. It reaches the same outcome with more
+moving parts, and a client that ignored the field could submit an answer
+the server must refuse.
+
+### Back-out
+
+`TestTakeAll*` (game) and the extraction family's card tests
+(`TestExtirpate*`, `TestEradicate*`, `TestScour*`, `TestSplinter*`,
+`TestSowingSalt*`, `TestQuash*`) fail without the shape.

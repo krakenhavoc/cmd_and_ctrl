@@ -232,6 +232,27 @@ var (
 	// "It assigns no combat damage this turn and you put a cube counter
 	// on this artifact" (Delif's Cube, #3531).
 	delifsCubeBody = game.SimpleDelayedBody("delifs-cube/no-combat-damage-and-a-cube-counter", delifsCube)
+
+	// "Whenever a creature is dealt damage" (Shriveling Rot, #3997): the
+	// creature a damage event reached, while it is a creature on the
+	// battlefield. With OncePerBatch it is one occurrence for each
+	// creature in each damage instance (CR 603.2c, 510.2).
+	eachCreatureDealtDamageCondition = game.DelayedEachCondition("damage/each-creature-dealt-damage", eachCreatureDealtDamage)
+
+	// "Whenever a creature dies" (Shriveling Rot, #3997): the creature an
+	// EventLTB to a graveyard names, if it was a creature as it last
+	// existed (CR 700.4, 603.10a).
+	eachCreatureDiedCondition = game.DelayedEachCondition("dies/each-creature", eachCreatureDied)
+
+	// "Destroy it" (Shriveling Rot, #3997): the payload's permanent, if
+	// it is still that object on the battlefield (CR 603.7c).
+	destroyThePayloadPermanentBody = game.SimpleDelayedBody("destroy/the-payload-permanent", destroyThePayloadPermanent)
+
+	// "That creature's controller loses life equal to its toughness"
+	// (Shriveling Rot, #3997): both read off the payload's object as it
+	// last existed on the battlefield (CR 608.2h).
+	diedControllerLosesLifeEqualToToughnessBody = game.SimpleDelayedBody("dies/controller-loses-life-equal-to-toughness",
+		diedControllerLosesLifeEqualToToughness)
 )
 
 // maxManaDrainRefund bounds the refund a restored Mana Drain may add. No

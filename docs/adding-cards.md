@@ -992,6 +992,8 @@ A damage shield takes the last two rows through `PreventDamageFromSource{Lasts: 
 
 Reach for `BoostUntilEOT` / `GrantKeywordUntilEOT` for the first row and `ScopedEffectFor{Target|Match, Mods, Duration, Label}` for everything else — a DATA record over the closed `game.*Mod` vocabulary (`SetBasePTMods`, `AddSubtypesMod`, `RemoveTypesMod`, `SetControllerMod`, … in `game/scoped_effects.go`), which the snapshot carries, so a table holding one is still a restore point ([ADR 0041](decisions/0041-game-persistence.md) phase 3, #1497). Every other until-end-of-turn builder (`RestrictUntilEOT`, `GrantAllCreatureTypesUntilEOT`, `BecomeCreatureUntilEOT` / crew) and prowess write the same record. So does a granted ABILITY for a duration, `GrantAbilitiesFor` (the `grantAbilities` mod; see "Granting an ability to another permanent" below). The closure-taking registry (`StaticForDuration`, `StaticUntilEOT`, `RegisterScopedStaticForEffect`, `Game.ScopedStatics`) was deleted in tier 3a, so nothing accepts a closure for one any more; an effect none of the mods can say is a new mod kind, not a closure. There is deliberately no `StaticUntilYourNextTurn` wrapper. A one-shot continuous effect from a resolving spell that changes characteristics or control must pin its affected set at resolution (CR 611.2c). A mass restriction changes neither and reads a live set instead (`RestrictUntilEOT{Scope}`, #1650). `ScopedEffectFor` does the pinning itself — its `Match` is resolved once, into `(InstanceID, EnteredBattlefieldAt)` pairs, so a permanent flickered in response is correctly a new object (CR 400.7). An indefinite effect pinned to its object survives that object phasing out and in (CR 702.26d); a "for as long as" duration that tracks a source ends when the source phases out (CR 702.26f). The two "for as long as" builders return `(Duration, bool)` and the bool is load-bearing: CR 611.2b says an effect whose condition is already false as it would begin never begins, so register nothing. See [ADR 0063](decisions/0063-durations-and-control.md) and [ADR 0035](decisions/0035-until-end-of-turn-effects.md).
 
+**Switching power and toughness (CR 613.4d, #3996).** "Switch target creature's power and toughness until end of turn" is `SwitchPTUntilEOT{Target|Match, Label}`, one `game.SwitchPTMod()` (`"switchPT"`) in layer 7d. In the engine that sublayer is still named `SubLayer7E_Switch`, from the older rules that put counters in 7d. It applies after every set, pump and P/T counter, whatever their timestamps, so a pump that resolves after the switch still lands before it, and two switches cancel. The counters are added after the layer pass, so a switch records `Characteristic.PTSwitched` and `ptWithCounters` swaps the counters' power and toughness too. Read P/T through `PowerToughness` / `CurrentToughness` as usual, never `Effective().Power` plus counters. Inside a modal bullet use `SwitchTheModesTarget(label)` (Twisted Reflection). "Switch this creature's power and toughness" as an ability's effect is `switchThisPT(label)`. "Switch target creature's …" over every still-legal target is `switchEachTargetPT(ctx, label)` (Inversion Behemoth's any number, Invert's up to two). "Each creature" is `Match: Creature()`, pinned when it resolves (CR 611.2c).
+
 **Control from effects (CR 613.1b, CR 701.12, S38).** "Gain control of target permanent" is `GainControl{Target, Controller, Duration, Label}` and "exchange control" is `ExchangeControl{A, B}`. Both are layer-2 scoped effects — data records with one `setController` mod (#1497) — in the same bucket Mind Control's Aura uses, which is what makes control revert by itself (`Card.BaseController`) and makes two control effects sort by timestamp (CR 613.7) with no card-side work. Do NOT write `Card.Controller`. Three things ride along and are why the printed cards look the way they do: the permanent leaves combat (CR 506.4, declaration and announcement both), it is summoning-sick under its new controller however long it has been in play (CR 302.6 — which is why Act of Treason also grants haste), and ownership never changes (CR 108.3). An exchange is ONE effect: both objects are checked before either half is registered and the two halves share a timestamp, so it fails whole (CR 701.12b). `Controller` defaults to the effect's controller; pass it explicitly for "target opponent gains control of ~" — that card still waits on the choose-a-player prompt, not on this primitive.
 
 **Control of a SPELL (ADR 0104, #1745).** "Gain control of target spell. You may choose new targets for it." is `GainControlOfSpell{Spell, ChooseNewTargets: true}`, and "exchange control of this creature and that spell" is `ExchangeControlOfSpellAnd{Spell, Permanent, ChooseNewTargets}`. It is the same layer-2 record as above, pinned to the stack object, so do NOT write `StackItem.Controller` either. The stack step of the layer pass materialises it before the primitive returns, and everything else follows with no card-side work:
@@ -3040,6 +3042,18 @@ too: `GainPlayerKeyword{Keyword: game.HexproofFromColor("U"), …}` or
 hexproof") waives the variant, and "can't have hexproof" strips it. The
 deck importer stamps the token for a card whose oracle line prints the
 variant (Knight of Grace), and never the broad `hexproof` beside it.
+
+**"You have hexproof" only some of the time (#2013, ADR 0072's amendment
+of 2026-10-16).** A permanent's printed "During your turn, you have
+hexproof" or "As long as … has a shield counter on him, you have
+hexproof" is `Spec.PlayerKeywordsIf`, not `PlayerKeywords`:
+`YouHaveDuringYourTurn(KeywordHexproof)`, or `YouHaveWhile(keyword,
+label, while)` for any other condition. The condition is asked on every
+query with the permanent as it is now, so it may only read, and it must
+not ask a player's abilities. "You and this creature have hexproof" is
+two declarations: the player half there, and the creature half as an
+ordinary layer-6 grant (`ThisHasDuringYourTurn(KeywordHexproof)`). Gruul
+Spellbreaker and Captain America, Super-Soldier are the two cards.
 
 **Ward costs** (`effects.Ward(cost, label)`): `WardMana("{2}")`,
 `WardWaterbend`, `WardLife(2)`, `WardSacrifice("a creature", Creature())`
@@ -6506,6 +6520,26 @@ The "attacks and isn't blocked" conditions live in
 turn, when target creature you control attacks and isn't blocked"
 (Delif's Cone, Delif's Cube), keyed by the creature as an object, so one
 that left and came back never fires it (CR 603.7c).
+
+**Once for each creature dealt damage at the same time (#3997,
+[ADR 0026](decisions/0026-delayed-triggers.md) amendment 2026-10-16).**
+"Until end of turn, whenever a creature is dealt damage, destroy it"
+(Shriveling Rot) is one occurrence for each creature, however many
+sources dealt it damage at once (CR 603.2c, 510.2), and the engine emits
+one `EventDealDamage` per source. Set `OncePerBatch: true` beside
+`Repeats` on a `DelayedOnEvent` whose condition is an each-condition: it
+then triggers once for each object in each event batch and damage
+instance, so a creature two blockers hit is one instance and two
+separate damage instructions are two. Without an each-condition,
+`OncePerBatch` keeps its Dalkovan Encampment meaning, once per batch for
+the whole trigger. Every each-condition instance's payload carries the
+object's epoch, read back with `ref.Object()`. The conditions and bodies
+for any creature are in
+[delayed_creature_events.go](../server/internal/cards/effects/delayed_creature_events.go):
+`eachCreatureDealtDamageCondition`, `eachCreatureDiedCondition`,
+`destroyThePayloadPermanentBody` ("destroy it", only while it is still
+that object) and `diedControllerLosesLifeEqualToToughnessBody` (the dead
+creature's controller and toughness as it last existed, CR 608.2h).
 
 **A reflexive trigger (CR 603.12, #636):** "<do something>. **When
 you do**, <do something else>" — Ziatora's fling, an Overlook land's
