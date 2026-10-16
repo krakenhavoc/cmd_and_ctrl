@@ -52,7 +52,7 @@ func lurkingEvilBecomesAHorror(g *game.Game, item *game.StackItem) error {
 		Mods: []game.Mod{
 			game.RemoveTypesMod("Enchantment"),
 			game.AddTypesMod("Creature"),
-			game.AddSubtypesMod("Phyrexian", "Horror"),
+			game.AddSubtypesMod(ctx.TextSubtypes("Phyrexian", "Horror")...),
 			game.SetBasePowerMod(4),
 			game.SetBaseToughnessMod(4),
 			game.AddKeywordsMod("flying"),

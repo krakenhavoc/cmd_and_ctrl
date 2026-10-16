@@ -43,7 +43,8 @@ func init() {
 				dead, ok := diedCreature(ev, g)
 				return ok && dead.InstanceID != source.InstanceID &&
 					leftUnderControlOf(ev, dead) == source.Controller &&
-					(leftAsSubtype(ev, dead, "Wolf") || leftAsSubtype(ev, dead, "Werewolf"))
+					// "Wolf or Werewolf" are words of the source's text (CR 612.2, #3984).
+					(leftAsSubtype(ev, dead, source.TextSubtype("Wolf")) || leftAsSubtype(ev, dead, source.TextSubtype("Werewolf")))
 			}, "Wedding Crasher — draw a card", Do(DrawCards{N: 1})),
 		},
 	})

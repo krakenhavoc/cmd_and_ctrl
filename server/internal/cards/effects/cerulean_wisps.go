@@ -46,7 +46,7 @@ func init() {
 			target := item.Targets[0].ID
 			if err := untilEndOfTurn(ctx, target, nil,
 				"Cerulean Wisps — that creature becomes blue",
-				game.SetColorsMod("U")); err != nil {
+				game.SetColorsMod(ctx.TextColors("U")...)); err != nil {
 				return err
 			}
 			if err := (UntapTarget{Target: target}).Apply(ctx); err != nil {

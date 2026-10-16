@@ -38,7 +38,7 @@ func init() {
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: WhileCitysBlessing(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.Controller == source.Controller &&
-					target.IsCreature() && target.HasSubtype("Saproling")
+					target.IsCreature() && target.HasSubtype(source.TextSubtype("Saproling")) // a word of the source's text (CR 612.2, #3984)
 			}),
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				c.Power += 2

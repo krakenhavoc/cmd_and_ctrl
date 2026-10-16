@@ -48,9 +48,11 @@ func init() {
 // Soldiers the controller controls and put a +1/+1 counter on each.
 func soldierMilitaryProgramCounters(item *game.StackItem, ctx *Context, _ int) error {
 	g, controller := ctx.Game, ctx.Controller()
+	// "Soldiers" is a word of the source's text (CR 612.2, #3984).
+	soldier := ctx.TextSubtype("Soldier")
 	var soldiers []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.IsCreature() && c.HasSubtype("Soldier") {
+		if c.Controller == controller && c.IsCreature() && c.HasSubtype(soldier) {
 			soldiers = append(soldiers, c.InstanceID)
 		}
 	}
@@ -67,7 +69,7 @@ func soldierMilitaryProgramCounters(item *game.StackItem, ctx *Context, _ int) e
 		Zone:     game.ZoneBattlefield,
 		Then: func(g *game.Game, picked []uuid.UUID) error {
 			for _, id := range picked {
-				if c, ok := g.LookupCardForEffect(id); !ok || !g.Battlefield.Contains(id) || c.Controller != controller || !c.HasSubtype("Soldier") {
+				if c, ok := g.LookupCardForEffect(id); !ok || !g.Battlefield.Contains(id) || c.Controller != controller || !c.HasSubtype(soldier) {
 					continue
 				}
 				if err := g.AddCounterForEffect(id, "+1/+1", 1); err != nil {

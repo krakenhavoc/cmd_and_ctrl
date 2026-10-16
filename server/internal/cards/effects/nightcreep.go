@@ -24,7 +24,7 @@ func init() {
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if err := (ScopedEffectFor{
 				Match:    Creature(),
-				Mods:     []game.Mod{game.SetColorsMod("B")},
+				Mods:     []game.Mod{game.SetColorsMod(ctx.TextColors("B")...)},
 				Duration: DurationUntilEndOfTurn(ctx),
 				Label:    "Nightcreep — all creatures are black",
 			}).Apply(ctx); err != nil {
@@ -32,7 +32,7 @@ func init() {
 			}
 			return LandBecomes{
 				Match:    Land(),
-				Types:    []string{"Swamp"},
+				Types:    ctx.TextSubtypes("Swamp"),
 				Duration: DurationUntilEndOfTurn(ctx),
 				Label:    "Nightcreep — all lands are Swamps",
 			}.Apply(ctx)

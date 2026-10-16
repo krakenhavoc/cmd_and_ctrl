@@ -110,7 +110,7 @@ func wrennPlusOne(g *game.Game, item *game.StackItem) error {
 		Target: targets[0].ID,
 		Mods: []game.Mod{
 			game.AddTypesMod("Creature"),
-			game.AddSubtypesMod("Elemental"),
+			game.AddSubtypesMod(ctx.TextSubtypes("Elemental")...),
 			game.SetBasePowerMod(3),
 			game.SetBaseToughnessMod(3),
 			game.AddKeywordsMod("vigilance", "hexproof", "haste"),

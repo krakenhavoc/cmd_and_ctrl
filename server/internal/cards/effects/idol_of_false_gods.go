@@ -70,7 +70,7 @@ func anotherEldraziYouControlDied(ev game.Event, source *game.Card, _ game.Chara
 		return false
 	}
 	dead, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Eldrazi")
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Eldrazi"))
 }
 
 // idolHasEightCounters is the statics' condition.

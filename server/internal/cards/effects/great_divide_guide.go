@@ -21,7 +21,8 @@ func init() {
 		Completeness: CompletenessFull,
 		Grants:       []AbilityGrant{AnyColorManaGrant(greatDivideGuideGrant)},
 		Static: []game.StaticAbility{GrantAbilities(func(target *game.Card, _ *game.Game, source *game.Card) bool {
-			return target.Controller == source.Controller && (target.IsLand() || target.HasSubtype("Ally"))
+			// "Ally" is a word of the source's text (CR 612.2, #3984).
+			return target.Controller == source.Controller && (target.IsLand() || target.HasSubtype(source.TextSubtype("Ally")))
 		}, greatDivideGuideGrant)},
 	})
 }

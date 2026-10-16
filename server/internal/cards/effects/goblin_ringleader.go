@@ -44,8 +44,10 @@ func init() {
 			WhenThisEnters("Goblin Ringleader — reveal four, take the Goblins",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
+					// "Goblin" is a word of the source's text (CR 612.2, #3984).
+					goblin := ctx.TextSubtype("Goblin")
 					return b41RevealTopThenTakeMatching(ctx, item.Controller, 4,
-						func(c game.Card) bool { return c.HasSubtype("Goblin") },
+						func(c game.Card) bool { return c.HasSubtype(goblin) },
 						"Goblin Ringleader — the top four cards of your library")
 				}),
 		},

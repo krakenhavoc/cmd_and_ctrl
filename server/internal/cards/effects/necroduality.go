@@ -42,5 +42,5 @@ func init() {
 // you control enters".
 func nontokenZombieEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	c, ok := enteredUnderYourControl(ev, source, g, false)
-	return ok && !c.IsToken() && c.HasSubtype("Zombie")
+	return ok && !c.IsToken() && c.HasSubtype(source.TextSubtype("Zombie")) // a word of the source's text (CR 612.2, #3984)
 }

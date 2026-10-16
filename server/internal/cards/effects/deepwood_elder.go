@@ -43,7 +43,7 @@ func init() {
 				}
 				return LandBecomes{
 					Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return lands[c.InstanceID] },
-					Types:    []string{"Forest"},
+					Types:    ctx.TextSubtypes("Forest"),
 					Duration: DurationUntilEndOfTurn(ctx),
 					Label:    "Deepwood Elder — those lands are Forests",
 				}.Apply(ctx)

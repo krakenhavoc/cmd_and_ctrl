@@ -35,7 +35,7 @@ func init() {
 			Key:        "Wrathful Raptors — the damaged Dinosaur deals that much damage to any non-Dinosaur target",
 			AtBatchEnd: ThatMuchDamage(),
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b24SubtypeYouControlDealtDamage(ev, source, g, "Dinosaur")
+				return b24SubtypeYouControlDealtDamage(ev, source, g, source.TextSubtype("Dinosaur"))
 			},
 			Targets: b24TargetAnyNotSubtype("Dinosaur"),
 			Effect:  damagedCreatureReflectsChosenAmount,

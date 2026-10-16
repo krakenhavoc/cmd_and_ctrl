@@ -90,6 +90,19 @@ func (c *Context) TextColor(letter string) string { return c.textReader().TextCo
 // TextSubtype is TextColor for a basic land type or creature type word.
 func (c *Context) TextSubtype(sub string) string { return c.textReader().TextSubtype(sub) }
 
+// TextColors is TextColor over a colour-setting effect's printed colours,
+// each once (game.Card.TextColors): "becomes a white and blue Bird" is
+// game.SetColorsMod(ctx.TextColors("W", "U")...).
+func (c *Context) TextColors(letters ...string) []string {
+	return c.textReader().TextColors(letters...)
+}
+
+// TextSubtypes is TextSubtype over a type-setting effect's printed types,
+// each once: game.AddSubtypesMod(ctx.TextSubtypes("Bird")...).
+func (c *Context) TextSubtypes(subs ...string) []string {
+	return c.textReader().TextSubtypes(subs...)
+}
+
 // Grantor returns the object that granted the resolving ability, for
 // an activated ability a layer-6 grant put on its source (ADR 0109 §2,
 // owner decision 2) — Teferi's Talent, for the −12 it gives the

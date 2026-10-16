@@ -103,10 +103,12 @@ func withSubtypeInAddition(printed, subtype string) string {
 
 // spiritsAndEnchantmentsYouControl counts "permanents you control that
 // are Spirits and/or enchantments" — Katilda's X. A permanent that is
-// both counts once.
+// both counts once. "Spirits" is a word of the source's text (CR 612.2,
+// #3984).
 func spiritsAndEnchantmentsYouControl(g *game.Game, source *game.Card) int {
+	spirit := source.TextSubtype("Spirit")
 	return permanentsYouControl(g, source, func(c *game.Card) bool {
-		return c.HasSubtype("Spirit") || c.IsEnchantment()
+		return c.HasSubtype(spirit) || c.IsEnchantment()
 	})
 }
 

@@ -52,9 +52,10 @@ func init() {
 
 // yourDetectives is the block scope "Detectives you control": the
 // attacker is a Detective and is controlled by the rule source's
-// controller.
+// controller. "Detectives" is a word of the source's text (CR 612.2,
+// #3984).
 func yourDetectives(_ *game.Game, c, source *game.Card) bool {
-	return source != nil && c.Controller == source.Controller && c.HasSubtype("Detective")
+	return source != nil && c.Controller == source.Controller && c.HasSubtype(source.TextSubtype("Detective"))
 }
 
 // youHaveTheCitysBlessingCast reads the blessing for the rule source's

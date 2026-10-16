@@ -126,6 +126,9 @@ type RedirectDamage struct {
 }
 
 func (r RedirectDamage) Apply(ctx *Context) error {
+	// The source queries are printed words (CR 612.2, #3984), read
+	// through the resolving object's text as the redirection is made.
+	r.Queries = queriesThroughText(ctx, r.Queries, false)
 	label := r.Label
 	if label == "" {
 		label = shieldSourceName(ctx)

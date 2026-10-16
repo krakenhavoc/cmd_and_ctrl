@@ -53,11 +53,12 @@ func b32EachOpponentGainsLifeRider(n int) func(g *game.Game, controller, source 
 // b32ElvesControlled counts the Elves `controller` controls —
 // Immaculate Magistrate's "for each Elf you control". Effective
 // subtypes, so a changeling is an Elf; the Magistrate herself is
-// one and counts, as printed.
-func b32ElvesControlled(g *game.Game, controller uuid.UUID) int {
+// one and counts, as printed. `elf` is the type as the counting
+// object's text reads it (TextSubtype, CR 612.2, #3984).
+func b32ElvesControlled(g *game.Game, controller uuid.UUID, elf string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.IsCreature() && c.HasSubtype("Elf") {
+		if c.Controller == controller && c.IsCreature() && c.HasSubtype(elf) {
 			n++
 		}
 	}
@@ -158,7 +159,8 @@ func b32EndStepAndYouGainedLifeThisTurnAtLeast(ev game.Event, source *game.Card,
 // token counts, since a token's entry emits the same EventETB.
 func b32AnotherFaerieYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
 	c, ok := enteredUnderYourControl(ev, source, g, true)
-	return ok && c.HasSubtype("Faerie")
+	// "Faerie" is a word of the source's text (CR 612.2, #3984).
+	return ok && c.HasSubtype(source.TextSubtype("Faerie"))
 }
 
 // b32TokenYouControlAttacked is Neyali's condition before the "one
@@ -254,7 +256,7 @@ func b32PutCountersPerElfOnChosenCreature(g *game.Game, item *game.StackItem) er
 	if !ok {
 		return nil
 	}
-	n := b32ElvesControlled(g, item.Controller)
+	n := b32ElvesControlled(g, item.Controller, ctx.TextSubtype("Elf"))
 	if n <= 0 {
 		return nil
 	}

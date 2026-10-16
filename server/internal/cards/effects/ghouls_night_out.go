@@ -78,7 +78,7 @@ func ghoulsNightOutRiders(ctx *Context, entered []uuid.UUID) error {
 		if err := (ScopedEffectFor{
 			Target: id,
 			Mods: []game.Mod{
-				game.AddSubtypesMod("Zombie"), game.AddColorsMod("B"),
+				game.AddSubtypesMod(ctx.TextSubtypes("Zombie")...), game.AddColorsMod(ctx.TextColors("B")...),
 				game.AddKeywordsMod(game.KeywordDecayed),
 			},
 			Duration: ctx.Game.PinnedTo(game.IndefiniteDuration(), id),

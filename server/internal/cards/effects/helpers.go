@@ -142,7 +142,11 @@ func returnTargetedCardToHand(g *game.Game, item *game.StackItem) error {
 // different costs around it.
 //
 // Post-layer subtypes are irrelevant here: the card being matched is
-// in a LIBRARY, where nothing changes its type line.
+// in a LIBRARY, where nothing changes its type line. The subtypes named
+// are words of the searching object's text (CR 612.2, #3984), read
+// through the lens the search lends (HasSubtypeWord): an Overlook
+// changed from "Forest" to "Swamp" and sacrificed to its own ability
+// finds a Swamp, from its last-known words.
 func IsBasicLandOfAnySubtype(subtypes ...string) func(game.Card) bool {
 	want := append([]string(nil), subtypes...)
 	return func(c game.Card) bool {
@@ -150,7 +154,7 @@ func IsBasicLandOfAnySubtype(subtypes ...string) func(game.Card) bool {
 			return false
 		}
 		for _, s := range want {
-			if c.HasSubtype(s) {
+			if c.HasSubtypeWord(s) {
 				return true
 			}
 		}
