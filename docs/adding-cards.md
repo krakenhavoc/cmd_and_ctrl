@@ -6501,6 +6501,26 @@ turn, when target creature you control attacks and isn't blocked"
 (Delif's Cone, Delif's Cube), keyed by the creature as an object, so one
 that left and came back never fires it (CR 603.7c).
 
+**Once for each creature dealt damage at the same time (#3997,
+[ADR 0026](decisions/0026-delayed-triggers.md) amendment 2026-10-16).**
+"Until end of turn, whenever a creature is dealt damage, destroy it"
+(Shriveling Rot) is one occurrence for each creature, however many
+sources dealt it damage at once (CR 603.2c, 510.2), and the engine emits
+one `EventDealDamage` per source. Set `OncePerBatch: true` beside
+`Repeats` on a `DelayedOnEvent` whose condition is an each-condition: it
+then triggers once for each object in each event batch and damage
+instance, so a creature two blockers hit is one instance and two
+separate damage instructions are two. Without an each-condition,
+`OncePerBatch` keeps its Dalkovan Encampment meaning, once per batch for
+the whole trigger. Every each-condition instance's payload carries the
+object's epoch, read back with `ref.Object()`. The conditions and bodies
+for any creature are in
+[delayed_creature_events.go](../server/internal/cards/effects/delayed_creature_events.go):
+`eachCreatureDealtDamageCondition`, `eachCreatureDiedCondition`,
+`destroyThePayloadPermanentBody` ("destroy it", only while it is still
+that object) and `diedControllerLosesLifeEqualToToughnessBody` (the dead
+creature's controller and toughness as it last existed, CR 608.2h).
+
 **A reflexive trigger (CR 603.12, #636):** "<do something>. **When
 you do**, <do something else>" — Ziatora's fling, an Overlook land's
 fetch, Invasion of Tarkir's damage. The second sentence is a trigger
