@@ -46,6 +46,15 @@ func (t Transform) Apply(ctx *Context) error {
 	if t.Target == uuid.Nil || ctx.isNewSourceObject(t.Target) { // #1432
 		return nil
 	}
+	// CR 701.27a transforms a permanent. A card that has left the
+	// battlefield has nothing to turn over, so the instruction does
+	// nothing (CR 608.2b), exactly as Convert does (#4038). The guard is
+	// here rather than in TransformPermanentForEffect, whose
+	// ErrCardNotFound for an ID that names no permanent is a contract
+	// its callers and tests rely on.
+	if z := ctx.Game.FindCardZoneForEffect(t.Target); z == nil || z.Kind != game.ZoneBattlefield {
+		return nil
+	}
 	return ctx.Game.TransformPermanentForEffect(t.Target)
 }
 
