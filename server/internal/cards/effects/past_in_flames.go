@@ -18,11 +18,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // your graveyard right now" would be strictly stronger than printed.
 //
 // The card also PRINTS flashback, which is the interaction worth
-// pinning: a granted permission never overrides an offer the card
-// itself makes, so Past in Flames flashed back under a second Past in
-// Flames still costs its printed {4}{R} rather than its {3}{R} mana
-// cost. The catalog is consulted first (ADR 0066 decision 3), and the
-// direction that survives is the one that errs against the player.
+// pinning: under a second Past in Flames it has two flashback
+// abilities (CR 113.2c), and its owner casts it with either (CR
+// 702.34a), for its printed {4}{R} or for its {3}{R} mana cost. The
+// printed one is claimed as "flashback", the granted one as
+// "flashback/granted" (game.GrantedInstanceKey, #3938, ADR 0066
+// decision 3 as amended 2026-10-16). Until that amendment the printed
+// cost was the only one offered, so the card's declared Full was not
+// true; it is now.
 //
 // No simplification.
 func init() {

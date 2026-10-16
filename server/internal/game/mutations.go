@@ -1205,7 +1205,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// claimed alternative cost ("X if its madness cost was paid") is
 	// fixed here, with the targets, and never re-read.
 	g.bindDivideAmountsLocked(steps, DivideAmountArgs{
-		Controller: playerID, Source: cardID, AltCost: params.AlternativeCost,
+		Controller: playerID, Source: cardID, AltCost: AltCostKeyword(params.AlternativeCost),
 	})
 	params.Targets = assignAnnouncedSlots(steps, params.Targets)
 	for _, i := range xSteps {
@@ -1846,7 +1846,10 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		Distribution: cloneDistributionLocked(params.Distribution),
 		HoldPriority: params.HoldPriority,
 		SplitSecond:  splitSecond,
-		AltCost:      params.AlternativeCost,
+		// #3938: the keyword, not the claim. A granted instance of
+		// flashback is flashback (CR 702.34a), so "if the flashback cost
+		// was paid" reads the same whichever instance paid it.
+		AltCost: AltCostKeyword(params.AlternativeCost),
 		// CR 702.143c, #658: a spell cast from a foretold card is a
 		// foretold spell, whatever cost paid for it. Read off the
 		// value copy taken out of the source zone above, which is the
