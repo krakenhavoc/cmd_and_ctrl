@@ -173,7 +173,8 @@ func (g *Game) takeOpeningHandActionLocked(seat, cardID uuid.UUID, act *OpeningH
 			return nil
 		}
 		for name, n := range act.EntersWithCounters {
-			if err := g.AddCounterForEffect(entered, name, n); err != nil {
+			// #3942: the player taking the opening-hand action.
+			if err := g.AddCounterByForEffect(seat, entered, name, n); err != nil {
 				return err
 			}
 		}

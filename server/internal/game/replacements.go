@@ -1023,11 +1023,14 @@ type ReplacementEvent struct {
 
 	// CounterPlacer is who PUTS or GIVES the counters — the player
 	// CR 120.3b and CR 120.3d name when damage from a source with
-	// infect, wither or toxic becomes counters, and the proliferating
-	// player for CR 701.34. uuid.Nil means UNKNOWN, not "nobody": a
-	// "if YOU would put" replacement reads it first and falls back to
-	// its own heuristic when it is Nil, which is weaker than printed
-	// rather than stronger.
+	// infect, wither or toxic becomes counters, the proliferating
+	// player for CR 701.34, and since #3942 everyone else too: a
+	// placement that does not name one gets one before the window
+	// opens (settleCounterPlacerLocked, counter_placer.go) — the open
+	// resolution's controller, the activator of a mana ability, the
+	// player taking a special action, or the permanent's controller.
+	// It is uuid.Nil only on a removal, and on a placement whose
+	// target is in no zone at all.
 	//
 	// It is NOT the same question as who controls the target. Vorinclex
 	// keyed its halving clause on the target's controller for want of
@@ -1070,6 +1073,15 @@ type ReplacementEvent struct {
 	// That is the Devoted Druid + Vizier ruling, and it is why a
 	// cost's counters open this window at all.
 	CounterFromCost bool
+
+	// CounterFromTurnBasedAction marks a placement a turn-based action
+	// makes rather than an effect: a Saga's lore counter as its
+	// controller's precombat main phase begins (CR 714.3c). The third
+	// sibling of CounterFromCombatDamage and CounterFromCost, for the
+	// same rule: CR 614.16 keeps "if an effect would put" (Doubling
+	// Season) off it, and a replacement that names no effect (Vorinclex,
+	// Monstrous Raider) applies (#3942).
+	CounterFromTurnBasedAction bool
 
 	// --- RepEventLife fields ---
 
@@ -1794,6 +1806,9 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 	if ev.ID == 0 {
 		ev.ID = ReplacementEventID(g.nextReplacementEventID.Add(1))
 	}
+	// #3942: a counter placement names its placer before any
+	// replacement reads it (counter_placer.go).
+	g.settleCounterPlacerLocked(ev)
 	if g.replacementsAppliedThisEvent == nil {
 		g.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool)
 	}

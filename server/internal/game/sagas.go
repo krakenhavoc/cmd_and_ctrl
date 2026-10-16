@@ -126,7 +126,10 @@ func (g *Game) sagaEntersWithLoreCounterLocked(cardID uuid.UUID) {
 	// zero and chapter I was lost. The chapters fire when the counter
 	// really lands, inline or from the resume, from
 	// applyCounterByLocked (loreCountersPutLocked).
-	err := g.AddCounterForEffect(cardID, CounterLore, 1)
+	//
+	// #3942, CR 122.6a: an "enters with" counter is put by the
+	// permanent's controller, not by whoever's spell put it there.
+	err := g.AddCounterByForEffect(card.Controller, cardID, CounterLore, 1)
 	if err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
@@ -140,11 +143,21 @@ func (g *Game) sagaEntersWithLoreCounterLocked(cardID uuid.UUID) {
 // at the start of the active player's precombat main phase: one lore
 // counter onto each Saga that player controls.
 //
-// NOT routed through the replacement pipeline, unlike the entry
-// counter above. This one is a turn-based action, not an effect, and
-// CR 614.1 replacements only replace events an EFFECT would cause —
-// which is exactly why a Doubling Season doubles a Saga's entry
-// counter and does nothing at all on subsequent turns.
+// Routed through the CR 614 window (#3942), marked
+// CounterFromTurnBasedAction. A replacement watches for an event
+// whatever causes it (CR 614.1), and CR 714.3c says "that player puts a
+// lore counter", so Vorinclex, Monstrous Raider doubles the lore
+// counter on your Saga and halves an opponent's to none. A replacement
+// worded "if an EFFECT would put" (Doubling Season) does not apply,
+// because a turn-based action is not an effect (CR 614.16): it doubles
+// a Saga's entry counter and does nothing at all on later turns. This
+// used to write the counter directly, which got Doubling Season right
+// and every replacement that names no effect wrong.
+//
+// It cannot pause: the action happens as the phase begins, with no
+// priority window to ask a CR 616 ordering question in, so the window
+// settles now (addCounterMustSettleNowLocked), as a mana ability's
+// does.
 //
 // The set of Sagas is collected before any counter is placed:
 // placing one emits a chapter event, a chapter ability can queue a
@@ -168,19 +181,26 @@ func (g *Game) advanceSagasForActiveSeatLocked() {
 		}
 	}
 	for _, id := range sagas {
-		g.advanceSagaLocked(id)
+		g.advanceSagaLocked(id, active.ID)
 	}
 }
 
-// advanceSagaLocked puts one lore counter on the named Saga; the
-// placement fires the chapter events it crossed
+// advanceSagaLocked has `player` put one lore counter on the named
+// Saga (CR 714.3c); the placement fires the chapter events it crossed
 // (loreCountersPutLocked). Caller must hold g.mu.
-func (g *Game) advanceSagaLocked(cardID uuid.UUID) {
+func (g *Game) advanceSagaLocked(cardID, player uuid.UUID) {
 	card := findBattlefieldCard(g, cardID)
 	if card == nil || !IsSaga(*card) {
 		return
 	}
-	if err := g.applyCounterLocked(cardID, CounterLore, 1); err != nil {
+	if _, err := g.addCounterMustSettleNowLocked(&ReplacementEvent{
+		Kind:                       RepEventCounter,
+		CounterTarget:              cardID,
+		CounterName:                CounterLore,
+		CounterDelta:               1,
+		CounterPlacer:              player,
+		CounterFromTurnBasedAction: true,
+	}); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Source:   cardID,
