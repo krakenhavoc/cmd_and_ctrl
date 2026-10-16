@@ -2615,6 +2615,24 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#3931, ADR 0135 amendment 2026-10-16). `effects.Harmonize(cost)` is flashback's graveyard offer (`FromZone` graveyard, `ExileOnLeavingStack`) whose card component is `game.HarmonizeTapCost()`, a `TapOthersCost` of up to one untapped creature you control (`TapOthersCost.UpTo`: bounds 0..1, so the offer is never withheld and naming none pays it), flagged `AlternativeCost.ReducedByTappedPower`. Emerge's shape with power for mana value: `CostQuery.AltTappedPower` is the named creature's power (clamped at zero) while it is still on the battlefield (`Game.AltTappedPowerForEffect`), filled by the one pricer from `CastSpellParams.AltCostIDs`, and `applyCostModifiersLocked` takes it off the generic part with the board's reductions, then off an announced X (#2701), never below {0} (CR 601.2f). The creature is tapped with the spell on the stack by the tap-others payer, may have arrived this turn (CR 302.6), and is kept away from the auto-tapper. `effects.Register` holds the flag and `UpTo` together over one creature and refuses `UpTo` on every other tap cost. The view ships `tap_options` (min 0, max 1), `reduces_by_power` and per-candidate `tap_prices`; the client's tap picker shows each creature's power and price and accepts none. The enumerator prices each creature on its own (`legal.harmonizePayments`), offers the affordable ones that save mana, ranked by the policy's tap price less the mana saved, then the empty payment when it is affordable. A granted harmonize (`CastPermission.AltCostKey` \"harmonize\", `effects.GrantHarmonizeToCard`) synthesises the same tap and reduction. **Cards** (12, all Full): Channeled Dragonfire, Glacial Dragonhunt, Mammoth Bellow, Nature's Rhythm, Roamer's Routine, Songcrafter Mage, Synchronized Charge, Unending Whisper, Ureni's Rebuff, Wild Ride, Winternight Stories and Zenith Festival. Ureni's Counsel is an Alchemy card and not Commander-legal.",
 	},
 	{
+		Slug: "entry-provenance", Name: "Which ability put a permanent onto the battlefield", Kind: KindSeam, Status: StatusImplemented,
+		Summary: "Triggers that care whether a permanent was put onto the battlefield by that very ability, such as Kodama of the East Tree's \"if it wasn't put onto the battlefield with this ability\".",
+		Rules:   []string{"603.4", "400.7"},
+		Issue:   3933,
+		Tracked: "#3933 (found in the #3654 top-1,000 sweep)",
+		ADR:     "0013-replacement-effects.md",
+		Probe: func(s effects.Spec) bool {
+			for _, t := range s.Triggered {
+				if t.NotPutByThisAbility {
+					return true
+				}
+			}
+			return false
+		},
+		Examples:    []string{"Kodama of the East Tree"},
+		EngineNotes: "**Shipped** (#3933, ADR 0013 §5ak). Every entry's `EventETB` is stamped, in `announceEntryLocked` (`stampEntryProvenanceLocked`, `game/entry_provenance.go`), from the item resolving while it happens: `CauseSource` (the item's `SourceObject`, CR 400.7) and `CauseAbility` (its catalog row, `Params.Ability`). Only while the resolution is open, and never on a spell resolving into a permanent. `TriggeredAbility.NotPutByThisAbility` skips an entry whose cause is the trigger's own source object and row (`harvestMatchLocked`), so one Kodama never chains off its own put while a second Kodama's put still triggers it. The cause is fixed with the event, so the CR 603.4 re-check agrees. `effects.Register` refuses the flag off an `EventETB` row with a declared Effect. A restore point taken mid-put does not carry the resolving item, so that one entry names no ability. **Cards** (1, Full): Kodama of the East Tree.",
+	},
+	{
 		Slug: "discard-alternative-cost", Name: "Alternative costs that discard cards", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Spells you may cast by discarding cards instead of paying their mana cost, such as Snag's \"You may discard a Forest card rather than pay this spell's mana cost\" and Foil's \"an Island card and another card\".",
 		Rules:       []string{"118.9", "601.2h", "701.9a"},
