@@ -232,14 +232,12 @@ const (
 // per payment at the top of the spend path and threaded down into
 // ManaPool.attemptSpend.
 //
-// The characteristics are the object's EFFECTIVE ones where the layer
-// engine has computed them (a permanent on the battlefield whose
-// ability is being activated) and its printed ones otherwise (a spell
-// on the stack, which the layer engine does not currently recompute).
-// That is the conservative direction: a type-changing continuous
-// effect that would ADD a type the restriction wants goes unnoticed
-// and the payment is refused, which is weaker than printed rather
-// than stronger.
+// The characteristics are the object's EFFECTIVE ones: a permanent's
+// layered characteristic, and for a card being cast the types and
+// colours a battlefield static gives it off the battlefield (#3862,
+// zone_layers.go) — a creature card in hand under a Maskwood Nexus is
+// every creature type, so Cavern of Souls mana named for Elf pays for
+// it. With no such static it is the printed card.
 type ManaSpendContext struct {
 	// Purpose is what is being paid for. SpendPurposeUnknown
 	// matches no restriction at all.

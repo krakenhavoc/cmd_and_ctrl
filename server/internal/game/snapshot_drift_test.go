@@ -171,6 +171,8 @@ var gameFields = plan(
 	"passTurn", dropped, "restores empty: the active player's standing end_turn (#2881, pass_turn.go); after a restore they hold priority as if they had not pressed it, and press it again. Nothing is passed that they did not pass",
 	"harvestDepth", rebuilt, "a pass-local counter: zero between trigger-harvest passes, which is the only time a snapshot is taken; a restored game starts at zero",
 	"mixedEntry", rebuilt, "zero outside the synchronous announcement of a simultaneous sacrifice and entry; no snapshot can be taken inside that announcement",
+	"arriving", rebuilt, "nil outside the synchronous AsEntersOthers clauses of one entry (#3862, as_enters_others.go); no snapshot can be taken inside them",
+	"zoneLayersStamped", rebuilt, "says the zone layer step has stamps to clear (#3862); a restored game has no stamps, and a restore in place sets it",
 	"eventLogGen", rebuilt, "names this *Game's log history; a restored game is a new receiver and starts a new one",
 	"logProjection", rebuilt, "derived cache of the public log; the first view of a restored game refolds Events",
 	// #1479: the card-location hint table. Every answer it gives is
@@ -634,6 +636,7 @@ var cardFields = plan(
 	"basePower", rebuilt, "the layer pass's power after layer 7b (CR 208.4b, Card.BasePower); derived, rebuilt by the recompute restore forces",
 	"stackGranted", rebuilt, "the keywords the stack step gave a spell (ADR 0107 §3); rebuilt from the ScopedEffect records and battlefield statics by the recompute restore forces",
 	"zoneGranted", rebuilt, "the ability bundles a battlefield static gave this card in a hand, graveyard or exile (ADR 0093 amendment 2026-10-13); rebuilt from the battlefield statics by the recompute restore forces",
+	"zoneLayered", rebuilt, "the types and colours a battlefield static gave this object off the battlefield (#3862, zone_layers.go); rebuilt from the battlefield statics by the recompute restore forces",
 )
 
 var playerFields = plan(
@@ -660,6 +663,7 @@ var playerFields = plan(
 	// for Companion's reason: nothing else on the board says what an
 	// effect could still bring in. Written only while it holds a card.
 	"Sideboard", carried, "",
+	"HasSideboard", carried, "",
 	"CommanderDamage", carried, "",
 	"LifeHistory", carried, "",
 	// The seat-turn counter "until your next turn" durations end on
@@ -838,6 +842,7 @@ var stackItemFields = plan(
 	// gave flashback to could then be flashed back again forever.
 	"AltCostExiles", carried, "",
 	"ExileWithCounter", carried, "",
+	"ExileInsteadOfGraveyard", carried, "",
 	"SplitSecond", carried, "",
 	// S30 spell copies (#95). Carried, and it has to be: a restore
 	// that lost the flag would route a resolving copy to a graveyard
@@ -1086,6 +1091,7 @@ var pendingChoiceFields = plan(
 	"DeclineLabel", carried, "",
 	"ChooseCards", carried, "",
 	"ChooseMin", carried, "",
+	"CollectionSuggestions", carried, "",
 	"ChooseMax", carried, "",
 	"ChoosePlayers", carried, "",
 	"ChooseSuggested", carried, "",

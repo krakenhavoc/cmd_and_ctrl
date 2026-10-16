@@ -15,10 +15,15 @@ import "github.com/google/uuid"
 //	           repeated (taking into account only replacement or
 //	           prevention effects that would now be applicable) …"
 //
-// Three rules replace that one event, and each is a static ability of
-// the spell or a rule of the game, never a self-replacement effect of
-// its resolution (CR 614.15), so none takes precedence under CR 616.1a:
+// These replace that one event, and each is a static ability of the
+// spell, a rule of the game or an effect from outside the spell, never
+// a self-replacement effect of its resolution (CR 614.15), so none
+// takes precedence under CR 616.1a:
 //
+//   - A GRANTED CAST'S "if that spell would be put into your graveyard,
+//     exile it instead" (StackItem.ExileInsteadOfGraveyard, #3863:
+//     Torrential Gearhulk, Emet-Selch of the Third Seat). Offered
+//     first, so a prompt that ends unanswered takes the exile.
 //   - REBOUND (CR 702.88a, rebound.go): exile it, and cast it free at
 //     its controller's next upkeep. Printed, or given to the spell by
 //     the stack step of the layer pass (spell_keywords.go).
@@ -27,7 +32,7 @@ import "github.com/google/uuid"
 //     cast the creature later (adventure.go).
 //
 // Each sends the card somewhere other than a graveyard, so once one is
-// applied the other two no longer apply (CR 616.1f): one choice, never
+// applied the others no longer apply (CR 616.1f): one choice, never
 // a sequence. Flashback (CR 702.34a) is not in the list. It replaces
 // every exit from the stack, so routeStackCardToGraveyardLocked
 // applies it before asking anything, and a spell cast with flashback
@@ -55,6 +60,17 @@ type resolutionExit struct {
 // Caller must hold g.mu.
 func resolutionExitsLocked(c Card, item *StackItem) []resolutionExit {
 	var out []resolutionExit
+	if exilesInsteadOfGraveyard(item) {
+		// #3863: the granted cast's replacement. Offered first: of the
+		// exits, it is the one that gives the player nothing back.
+		owner := c.Owner
+		out = append(out, resolutionExit{
+			label: "Exile it instead of putting it into your graveyard",
+			apply: func(r *zoneRoute) {
+				r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, owner
+			},
+		})
+	}
 	if spellRebounds(c, item) {
 		// CR 702.88a: exile it and, at the beginning of its
 		// controller's next upkeep, offer the free cast. The delayed
@@ -169,4 +185,12 @@ func (g *Game) chooseResolutionExitLocked(c Card, item *StackItem, r zoneRoute, 
 		return route(g, NoChoiceIndex)
 	}
 	return nil
+}
+
+// exilesInsteadOfGraveyard reports whether the spell carries a granted
+// cast's "if that spell would be put into your graveyard, exile it
+// instead" (StackItem.ExileInsteadOfGraveyard, #3863). Never for a
+// copy, which ceases to exist instead (CR 707.10a).
+func exilesInsteadOfGraveyard(item *StackItem) bool {
+	return item != nil && !item.IsCopy && item.ExileInsteadOfGraveyard
 }

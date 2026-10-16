@@ -386,6 +386,12 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    `Spec.AsEnters` is only for CR 614.12 "As ~ enters, choose …"
    effects, which are not triggers and correctly happen off the
    stack; it was called `OnETB` and misused for both until #578.
+   An "as this enters" clause that changes OTHER objects (Ixidron's
+   "turn all other nontoken creatures face down") goes in
+   `Spec.AsEntersOthers` instead: it runs before anything announces
+   the arrival, and `ctx.Game.ArrivingForEffect(id)` names the
+   permanents entering at the same time, which are not "other" ones
+   (ADR 0082 amendment 2026-10-15, #3862).
 
    **Declare `Completeness`.** Since
    [ADR 0042](decisions/0042-card-catalog-page.md) the prose
@@ -1111,6 +1117,11 @@ permanent (not only the first) and keeps a CREATURE's granted mana for
 last, so an auto-paid cast does not tap your attackers; a land's
 granted mana is an ordinary source. See `cryptolith_rite.go`,
 `chromatic_lantern.go`, `necrotic_sliver.go` and `squirrel_nest.go`.
+A granted "You can't lose the game and your opponents can't win the
+game." is a bundle with `GameEndGates: YouCantLoseOpponentsCantWin()`
+(Cloudsteel Kirin, ADR 0093 amendment 2026-10-15): the recipient has
+the gates for as long as it has the grant, and "you" is its
+controller.
 
 A granted TRIGGER goes in the bundle's `Triggered` slot, written with the
 ordinary trigger shapes, and `source` in its `AppliesTo` / `Build` is the
@@ -5953,9 +5964,12 @@ GrantCastFromYourGraveyard{                            // Past in Flames
     AltCostKey: "flashback", ExileOnResolution: true,
 }.Apply(ctx)
 // "you may cast target ... from your graveyard ... Do this only once
-// each turn": a pass-closed cast at the card's MANA cost, exiled
-// instead, whose FollowUp (game.RegisterCastFollowUp) writes the
-// once-each-turn tally only when the cast is made (#3785).
+// each turn": a pass-closed cast at the card's MANA cost, whose FollowUp
+// (game.RegisterCastFollowUp) writes the once-each-turn tally only when
+// the cast is made (#3785). "If that spell would be put into your
+// graveyard, exile it instead" is CastPermission.ExileInsteadOfGraveyard
+// (#3863): only a graveyard destination is replaced, unlike flashback's
+// ExileOnResolution, which replaces every way off the stack.
 OfferGraveyardCast{Target: id, SourceName: "Emet-Selch of the Third Seat",
     FollowUp: emetSelchCastTally}.Apply(ctx)             // Emet-Selch
 ```
@@ -8614,7 +8628,24 @@ and then discard the change to `docs/engine-seams.md`.
   effect that REPLACES the subtype list calls
   `Characteristic.SetSubtypes`; a static that spans layers and should
   survive its own source being silenced declares
-  `ContinuesAfterRemoval` on the later-layer halves (ADR 0067 §2).
+  `ContinuesAfterRemoval` on the later-layer halves (ADR 0067 §2),
+  and those halves carry on in the removal's own layer too, in
+  timestamp order (ADR 0067 amendment 2026-10-15). An "as long as it
+  has N or more counters" effect declares
+  `StartsAtCounters: game.CounterThreshold{Kind, AtLeast}` on every
+  half, so it sorts from the moment the Nth counter arrived (Idol of
+  False Gods).
+
+  A type or colour change that reaches objects OFF the battlefield
+  ("creature spells you control and creature cards you own that
+  aren't on the battlefield", "all cards that aren't on the
+  battlefield, spells … are colorless") is a second layer-4 or
+  layer-5 static with `AffectsZones`: `SpellsOnTheStack()` for spells
+  (the target's `Controller` is the spell's), `CardsOffTheBattlefield()`
+  for cards (use `Owner` for "you own"), `OffTheBattlefield()` for
+  both. See `maskwood_nexus.go`, `mycosynth_lattice.go` and
+  `secret_arcade_dusty_parlor.go` (ADR 0039 amendment 2026-10-15,
+  #3862). Arcane Adaptation and Encroaching Mycosynth are this shape.
   Adding a dependency-ordered bucket other than layer 4 needs a
   catalogued pair that wants it and a benchmark — the ADR has the
   numbers.

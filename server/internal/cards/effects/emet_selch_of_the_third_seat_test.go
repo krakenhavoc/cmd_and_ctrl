@@ -214,3 +214,45 @@ func TestEmetSelchTargetsOnlyInstantsAndSorceries(t *testing.T) {
 		t.Fatal("a trigger with no legal target went on the stack (CR 603.3d)")
 	}
 }
+
+// #3863: "If that spell would be put into your graveyard, exile it
+// instead" replaces a graveyard destination on every path, a counter
+// included: a countered spell is exiled.
+func TestEmetSelchExilesTheSpellWhenItIsCountered(t *testing.T) {
+	g, me, opp, emet := emetSetup(t)
+	div := gyCard(me, "Divination", "Sorcery", "{2}{U}", divinationOracle)
+	emetOffer(t, g, me, opp, emet, div)
+	floatForTest(g, me, "U")
+	if err := emetCast(g, me, div); err != nil {
+		t.Fatalf("cast Divination: %v", err)
+	}
+	g.WithWriteLock(func() {
+		if err := g.CounterTargetForEffect(div); err != nil {
+			t.Fatalf("counter: %v", err)
+		}
+	})
+	if me.Graveyard.Contains(div) || !inExile(g, div) {
+		t.Error("the countered spell goes to exile instead of the graveyard")
+	}
+}
+
+// #3863: and ONLY a graveyard destination. A spell returned to its
+// owner's hand goes there; flashback's wider "anywhere else" would
+// have exiled it.
+func TestEmetSelchLetsABouncedSpellGoToHand(t *testing.T) {
+	g, me, opp, emet := emetSetup(t)
+	div := gyCard(me, "Divination", "Sorcery", "{2}{U}", divinationOracle)
+	emetOffer(t, g, me, opp, emet, div)
+	floatForTest(g, me, "U")
+	if err := emetCast(g, me, div); err != nil {
+		t.Fatalf("cast Divination: %v", err)
+	}
+	g.WithWriteLock(func() {
+		if err := g.ReturnSpellToHandForEffect(div); err != nil {
+			t.Fatalf("return to hand: %v", err)
+		}
+	})
+	if inExile(g, div) || !me.Hand.Contains(div) {
+		t.Error("the spell returned to its owner's hand was exiled")
+	}
+}

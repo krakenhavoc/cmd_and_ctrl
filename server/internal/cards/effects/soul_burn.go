@@ -18,6 +18,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // least it could have been: black spent, minus every mana that paid
 // something other than X. That is never more than printed, and exact
 // when the {2}{B} was paid with other mana; the caveat says so.
+//
+// The caveat waits on the engine seam #3941 (triaged in #3863).
 func init() {
 	Register(Spec{
 		OracleID:       "063b0f5d-af27-4681-87b9-b553f6887061",

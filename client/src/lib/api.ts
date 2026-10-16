@@ -1739,6 +1739,30 @@ export async function searchDevCards(q: string, signal?: AbortSignal): Promise<D
   }
 }
 
+// searchOutsideCards is the search behind an "outside_collection" prompt
+// (ADR 0198): the cards in the database whose name matches `q` and that
+// the open pick `choiceID` would accept. The server answers only the seat
+// that owes the pick. Same row shape and the same "nothing to show right
+// now" posture on any failure as searchDevCards, for the same reason:
+// it runs on a debounce while the player types.
+export async function searchOutsideCards(
+  gameID: string,
+  choiceID: string,
+  q: string,
+  signal?: AbortSignal,
+): Promise<DevCardResult[]> {
+  try {
+    const res = await authFetch(
+      `/games/${encodeURIComponent(gameID)}/outside/cards?choice=${encodeURIComponent(choiceID)}&q=${encodeURIComponent(q)}`,
+      { method: "GET", signal },
+    );
+    const body = (await res.json()) as { cards?: DevCardResult[] };
+    return body.cards ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export interface DevSpawnRequest {
   scryfallID?: string;
   name?: string;

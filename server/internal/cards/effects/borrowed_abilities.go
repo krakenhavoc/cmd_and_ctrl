@@ -138,6 +138,17 @@ func BorrowedAbilitiesSpendableAsAnyColor(label, borrowLabel string) []game.AnyC
 	}}
 }
 
+// BorrowedAbilitiesSpendableAsAnyType is the wider rider "Mana of any
+// type can be spent to activate <those> abilities." (Sharkey, Tyrant of
+// the Shire): BorrowedAbilitiesSpendableAsAnyColor with AnyType, so
+// colourless is a type too and coloured mana may also pay a {C} symbol
+// in a lent cost (CR 106.1b no longer stops it).
+func BorrowedAbilitiesSpendableAsAnyType(label, borrowLabel string) []game.AnyColorSpendStatic {
+	out := BorrowedAbilitiesSpendableAsAnyColor(label, borrowLabel)
+	out[0].AnyType = true
+	return out
+}
+
 // checkStaticBorrows is ADR 0155 Decision 1's refusal. A borrow is an
 // ability-adding effect, CR 613.1f's layer 6, and the engine applies it
 // in its own step at the end of that bucket, so:
