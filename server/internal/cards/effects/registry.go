@@ -1072,9 +1072,12 @@ func checkTriggerZones(card, what string, triggers []game.TriggeredAbility) {
 //     single kind to name at announce (#625). Split across
 //     permanents it has one: #943 asks the kind per part, so an
 //     any-kind AMONG cost is a shape (Tekuthal, Inquiry Dominus) and
-//     is no longer refused here;
-//   - Among without a From clause names no permanents to split
-//     across, and Among with Variable is a shape no card prints;
+//     is no longer refused here. Nor is the same split across the
+//     source's own kinds, spelled Among with no From (#3987,
+//     Ghost-Spider's "Remove two counters from Ghost-Spider");
+//   - Among without a From clause is only that self form: any kinds,
+//     a fixed N of at least two. Among with Variable is a shape no
+//     card prints except Jetfire's one printed kind;
 //   - an add-a-counter cost with no kind, or none to add, would put
 //     nothing on and make the ability free.
 func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.CounterAddCost) {
@@ -1086,12 +1089,23 @@ func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.
 			panic(fmt.Sprintf("effects.Register: %q %s removes %d counters — a counter cost removes at least one", card, where, rc.N))
 		}
 		if rc.Counter == "" && !rc.Among && (rc.N > 1 || rc.Variable) {
-			panic(fmt.Sprintf("effects.Register: %q %s removes %d counters of any kind off one permanent — only \"a counter\" (N = 1) has an any-kind shape there; a removal that may mix kinds is spread across permanents (Among, #943)", card, where, rc.N))
+			panic(fmt.Sprintf("effects.Register: %q %s removes %d counters of any kind with one kind choice — a removal that may mix kinds asks the kind per part: RemoveCountersOfAnyKindsFromThis for this permanent (#3987), RemoveCountersAmong across permanents (#943)", card, where, rc.N))
 		}
-		if rc.Among {
-			if rc.From == nil {
-				panic(fmt.Sprintf("effects.Register: %q %s splits a counter removal among nothing — an Among cost needs its \"from among …\" clause", card, where))
+		if rc.Among && rc.From == nil {
+			// #3987: "Remove two counters from Ghost-Spider" splits across
+			// the SOURCE's kinds. Only that shape: with a printed kind
+			// there is one part and RemoveCountersFromThis says it, and no
+			// card prints a variable any-kind removal from itself.
+			switch {
+			case rc.Counter != "":
+				panic(fmt.Sprintf("effects.Register: %q %s splits a %s counter removal among nothing — use RemoveCountersFromThis, or give the Among cost its \"from among …\" clause", card, where, rc.Counter))
+			case rc.Variable:
+				panic(fmt.Sprintf("effects.Register: %q %s removes a variable number of counters of any kinds from itself — no printed card does", card, where))
+			case rc.N < 2:
+				panic(fmt.Sprintf("effects.Register: %q %s removes one counter of any kind from itself as an Among cost — use RemoveCountersFromThis(\"\", 1)", card, where))
 			}
+		}
+		if rc.Among && rc.From != nil {
 			// A variable count split across permanents is a shape since
 			// #3276 (Jetfire, Ingenious Scientist: "one or more +1/+1
 			// counters from among artifacts you control"). Only the
@@ -2076,6 +2090,12 @@ func checkLibraryCosts(name string, i int, cost game.AbilityCost) {
 func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 	if ec == nil {
 		return
+	}
+	if ec.CountFromX {
+		// #1948: "exile X cards" exists on a cast's mandatory slot only
+		// (checkCastExileCardsClause); no ability prints it.
+		panic(fmt.Sprintf("effects.Register: %q %s exiles X cards — the X form is a cast's additional cost only (#1948)",
+			name, where))
 	}
 	if ec.N <= 0 {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles %d cards — an exile cost exiles at least one",

@@ -129,6 +129,20 @@ func queriesThroughText(ctx *Context, qs []game.PermanentQuery, chosen bool) []g
 	return game.PermanentQueriesThroughTextOf(qs, ctx.textReader())
 }
 
+// recipientsThroughText is a recipient set's printed queries (#2045) as
+// the text of the object the shield resolves for now reads them
+// (CR 612.2, #3984): Pack Leader's "Dogs you control" under an
+// Artificial Evolution (Dog → Cat) protects Cats. Read once, as the
+// shield is made, like queriesThroughText; f itself is not written
+// through.
+func recipientsThroughText(ctx *Context, f game.DamageRecipientFilter) game.DamageRecipientFilter {
+	if len(f.Match) == 0 {
+		return f
+	}
+	f.Match = game.PermanentQueriesThroughTextOf(f.Match, ctx.textReader())
+	return f
+}
+
 // ShieldLasts is how long a PreventDamageFromSource shield lasts when
 // it is not "this turn".
 type ShieldLasts int
@@ -270,7 +284,7 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 		ProtectTypes:      protected.ProtectTypes,
 		ProtectPermanent:  protected.ProtectPermanent,
 		ProtectPermanents: many,
-		Recipients:        p.Protect.recipients,
+		Recipients:        recipientsThroughText(ctx, p.Protect.recipients),
 		CombatOnly:        p.CombatOnly,
 		Amount:            p.Amount,
 		Then:              p.Then,

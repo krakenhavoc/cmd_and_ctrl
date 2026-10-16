@@ -1368,23 +1368,56 @@ export interface ClaimedExileCardsCost {
   count: number;
   options: string[];
   cost: AdditionalCostView;
+  // #1948: the count is the announced X ("exile X cards"), so the picker
+  // opens after the X prompt; `count` is the X announced so far (0 until
+  // then).
+  fromX: boolean;
 }
 
 // castExileCardsCost is the exile-cards cost a cast pays, if any: the
-// card's mandatory additional cost. The prompt after the exile-a-permanent
-// step asks which cards to exile.
+// card's mandatory additional cost (or the chosen either/or branch). The
+// prompt after the exile-a-permanent step asks which cards to exile; for
+// the X form it is asked after the X prompt instead, with X as its count
+// and the "X" in its label replaced by the number.
 export function castExileCardsCost(
   card: CardView,
   choices: CastChoices | undefined,
 ): ClaimedExileCardsCost | undefined {
   const cost = castAdditionalCost(card, choices);
-  if (!cost || !cost.exile_cost_n) return undefined;
+  if (!cost) return undefined;
+  if (cost.exile_cost_x) {
+    const x = choices?.xValue ?? 0;
+    return {
+      label: (cost.exile_cost_label ?? "X cards").replace(/\bX\b/, String(x)),
+      count: x,
+      options: cost.exile_cost_options ?? [],
+      cost,
+      fromX: true,
+    };
+  }
+  if (!cost.exile_cost_n) return undefined;
   return {
     label: cost.exile_cost_label ?? "cards",
     count: cost.exile_cost_n,
     options: cost.exile_cost_options ?? [],
     cost,
+    fromX: false,
   };
+}
+
+// exileXChoice answers an "exile X cards" cost without a prompt when
+// there is nothing to choose (#1948): X = 0 names no card, and a
+// graveyard holding exactly X matching cards names all of them. Returns
+// the choices with `exileIDs` set, or undefined when the player must pick.
+export function exileXChoice(
+  cost: ClaimedExileCardsCost,
+  choices: CastChoices,
+): CastChoices | undefined {
+  if (cost.count <= 0) return { ...choices, exileIDs: [] };
+  if (cost.options.length <= cost.count) {
+    return { ...choices, exileIDs: cost.options.slice(0, cost.count) };
+  }
+  return undefined;
 }
 
 // castIsForbidden reports whether the server's own cast gate has
@@ -1537,7 +1570,15 @@ export function optionalCostXFloor(card: CardView, optionalCosts: number[] | und
 // the printed cost, which claims no offer, is therefore not bound by an
 // offer it is not using.
 export function xCeilingFor(card: CardView, altCost: string | undefined): number | undefined {
-  return alternativeCostByKey(card, altCost)?.x_max ?? card.x_max;
+  const ceiling = alternativeCostByKey(card, altCost)?.x_max ?? card.x_max;
+  // #1948: "exile X cards from your graveyard" — X is what the graveyard
+  // pays, the same number the server refuses above.
+  const ac = card.additional_cost;
+  if (ac?.exile_cost_x) {
+    const exileMax = ac.exile_cost_x_max ?? 0;
+    return ceiling === undefined ? exileMax : Math.min(ceiling, exileMax);
+  }
+  return ceiling;
 }
 
 // castLocksXAtZero reports CR 107.3b: a spell with {X} in its mana

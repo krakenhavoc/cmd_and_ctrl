@@ -39,6 +39,9 @@ import (
 // Post-layer subtype, read through the battlefield snapshot, so a
 // changeling counts and a creature that is only an Elf through a
 // type-changing effect counts too.
+//
+// `subtype` is judged as given: a caller reads its printed word through
+// its own text first (TextSubtype, CR 612.2, #3984).
 func b43CreaturesOfSubtypeControlled(g *game.Game, controller uuid.UUID, subtype string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
@@ -81,12 +84,15 @@ func b43TotalPowerControlled(g *game.Game, controller uuid.UUID) int {
 // already left the battlefield by the time the event is harvested
 // fails the lookup and the trigger does not fire — weaker than
 // printed, never stronger.
+//
+// `subtype` is the printed word, read through the source's text
+// (CR 612.2, #3984).
 func b43CreatureOfSubtypeYouControlDealtCombatDamageToPlayer(ev game.Event, source *game.Card, g *game.Game, subtype string) bool {
 	if !combatDamageToPlayerBy(ev, source.Controller, g) {
 		return false
 	}
 	src, ok := g.LookupCardForEffect(ev.Source)
-	return ok && src.HasSubtype(subtype)
+	return ok && src.HasSubtype(source.TextSubtype(subtype))
 }
 
 // b43ALandAnOpponentControlsEntered is Nightshade Harvester's
@@ -135,7 +141,8 @@ func b43NontokenMerfolkYouControlBecameTapped(ev game.Event, source *game.Card, 
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && !IsToken(c) && c.HasSubtype("Merfolk")
+	// "Merfolk" is a word of the source's text (CR 612.2, #3984).
+	return ok && !IsToken(c) && c.HasSubtype(source.TextSubtype("Merfolk"))
 }
 
 // b43YouWereDealtDamage is Darien, King of Kjeldor's "whenever you're

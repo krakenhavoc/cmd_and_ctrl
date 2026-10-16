@@ -74,7 +74,7 @@ func eowynShieldmaidenKnights(g *game.Game, item *game.StackItem) error {
 	}).Apply(ctx); err != nil {
 		return err
 	}
-	if b43CreaturesOfSubtypeControlled(g, item.Controller, "Human") < 6 {
+	if b43CreaturesOfSubtypeControlled(g, item.Controller, ctx.TextSubtype("Human")) < 6 {
 		return nil
 	}
 	return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)

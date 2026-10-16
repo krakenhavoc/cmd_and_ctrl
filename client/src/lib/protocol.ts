@@ -125,7 +125,10 @@ export interface ErrorPayload {
 // with the same count. `artifact_sources` asks, per mana, whether an
 // artifact made it (Coin of Mastery reads that).
 export interface PaperPaymentPrompt {
-  slots: { symbol: string; options: string[]; count?: number }[];
+  // `x` marks a slot of the cost's {X} part (#3941), the mana a "spend
+  // only <colours> mana on X" clause restricts; the mana declared for it
+  // carries `x: true`.
+  slots: { symbol: string; options: string[]; count?: number; x?: boolean }[];
   artifact_sources?: boolean;
 }
 
@@ -2845,6 +2848,13 @@ export interface AdditionalCostView {
   exile_cost_label?: string;
   exile_cost_options?: string[];
   exile_cost_zone?: ExileCostZone;
+  // #1948: "exile X cards from your graveyard" (Skeletal Scrying,
+  // Harvest Pyre). `demands_x` is set too, so the X prompt opens; the
+  // picks on `exile_ids` must number exactly the announced X
+  // (`exile_cost_n` is absent). `exile_cost_x_max` is the largest X the
+  // graveyard pays, absent at 0.
+  exile_cost_x?: boolean;
+  exile_cost_x_max?: number;
   payable?: boolean;
 }
 

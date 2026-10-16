@@ -110,11 +110,13 @@ func b16CreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) 
 
 // b16OtherCreaturesYouControlOfSubtype is "other <subtype>s you
 // control" — Lyra's Angels. Effective subtypes, so a changeling
-// counts.
+// counts. `subtype` is the printed word, read through the source's
+// text (CR 612.2, #3984): Lyra under Artificial Evolution pumps the
+// new type.
 func b16OtherCreaturesYouControlOfSubtype(subtype string) func(target *game.Card, g *game.Game, source *game.Card) bool {
 	return func(target *game.Card, _ *game.Game, source *game.Card) bool {
 		return target.InstanceID != source.InstanceID && target.IsCreature() &&
-			target.Controller == source.Controller && target.HasSubtype(subtype)
+			target.Controller == source.Controller && target.HasSubtype(source.TextSubtype(subtype))
 	}
 }
 
@@ -125,10 +127,11 @@ func b16DeathBaronApplies(target *game.Card, _ *game.Game, source *game.Card) bo
 	if !target.IsCreature() || target.Controller != source.Controller {
 		return false
 	}
-	if target.HasSubtype("Skeleton") {
+	// Both types are words of the source's text (CR 612.2, #3984).
+	if target.HasSubtype(source.TextSubtype("Skeleton")) {
 		return true
 	}
-	return target.InstanceID != source.InstanceID && target.HasSubtype("Zombie")
+	return target.InstanceID != source.InstanceID && target.HasSubtype(source.TextSubtype("Zombie"))
 }
 
 // --- trigger conditions ------------------------------------------

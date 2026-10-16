@@ -21,8 +21,9 @@ import (
 // effect with no duration (CR 611.2a), so it is a scoped effect pinned
 // to the returned object: it lasts exactly as long as that permanent
 // stays on the battlefield and is gone the moment it leaves (CR 400.7).
-// The two halves are game.AddSubtypesMod("Zombie") (layer 4) and
-// game.AddColorsMod("B") (layer 5), so the creature keeps every other
+// The two halves are game.AddSubtypesMod (layer 4, "Zombie") and
+// game.AddColorsMod (layer 5, black), each read through the ability's
+// text (CR 612.2, #3984), so the creature keeps every other
 // colour and type. It is applied from the return's continuation, after
 // any entry question has been answered.
 //
@@ -91,7 +92,7 @@ func lilianaDeathsMajestyReanimate(g *game.Game, item *game.StackItem) error {
 			for _, id := range entered {
 				if err := (ScopedEffectFor{
 					Target:   id,
-					Mods:     []game.Mod{game.AddSubtypesMod("Zombie"), game.AddColorsMod("B")},
+					Mods:     []game.Mod{game.AddSubtypesMod(ctx.TextSubtypes("Zombie")...), game.AddColorsMod(ctx.TextColors("B")...)},
 					Duration: ctx.Game.PinnedTo(game.IndefiniteDuration(), id),
 					Label:    "Liliana, Death's Majesty — it is a black Zombie in addition to its other colors and types",
 				}).Apply(ctx); err != nil {

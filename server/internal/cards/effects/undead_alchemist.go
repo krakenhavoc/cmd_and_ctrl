@@ -61,7 +61,8 @@ func undeadAlchemistMillInstead() game.ReplacementEffect {
 			if g.PlayerByIDForEffect(ev.DamageTarget) == nil {
 				return false
 			}
-			return damageSourceIsZombieControlledBy(ev, g, src.Controller)
+			// "Zombie" is a word of the source's text (CR 612.2, #3984).
+			return damageSourceIsZombieControlledBy(ev, g, src.Controller, src.TextSubtype("Zombie"))
 		},
 		Replace: func(ev *game.ReplacementEvent, g *game.Game, _ *game.Card) error {
 			n, player := ev.DamageAmount, ev.DamageTarget
@@ -80,7 +81,7 @@ func undeadAlchemistMillInstead() game.ReplacementEffect {
 // damageSourceIsZombieControlledBy reports whether a damage event's
 // source is a Zombie controlled by `controller`, as the source was when
 // the event was created.
-func damageSourceIsZombieControlledBy(ev *game.ReplacementEvent, g *game.Game, controller uuid.UUID) bool {
+func damageSourceIsZombieControlledBy(ev *game.ReplacementEvent, g *game.Game, controller uuid.UUID, zombie string) bool {
 	if lki := ev.SourceLKI; lki != nil && lki.Controller != uuid.Nil {
 		if lki.Controller != controller {
 			return false
@@ -89,14 +90,14 @@ func damageSourceIsZombieControlledBy(ev *game.ReplacementEvent, g *game.Game, c
 			return true
 		}
 		for _, s := range lki.Subtypes {
-			if strings.EqualFold(s, "Zombie") {
+			if strings.EqualFold(s, zombie) {
 				return true
 			}
 		}
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.DamageSource)
-	return ok && c.Controller == controller && c.HasSubtype("Zombie")
+	return ok && c.Controller == controller && c.HasSubtype(zombie)
 }
 
 // creatureCardMilledFromAnOpponent is "a creature card is put into an

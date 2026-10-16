@@ -60,8 +60,9 @@ func init() {
 						return nil
 					}
 					return SearchLibrary{
-						Player:    item.Controller,
-						Predicate: func(c game.Card) bool { return c.HasSubtype("Praetor") },
+						Player: item.Controller,
+						// SearchLibrary lends the source's text (CR 612.2, #3984).
+						Predicate: func(c game.Card) bool { return c.HasSubtypeWord("Praetor") },
 						Dest:      game.ZoneBattlefield,
 						Limit:     p.Library.Size(),
 						Shuffle:   true,

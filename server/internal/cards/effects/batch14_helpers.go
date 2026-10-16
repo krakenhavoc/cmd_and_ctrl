@@ -77,13 +77,14 @@ func printedB14ReplicatedRingToken() tokenTemplate {
 // creature the source's controller controls was declared as an
 // attacker and it is a Dragon. The Hellkite itself qualifies — the
 // printed text is "a Dragon you control", not "another". Effective
-// subtypes, so a changeling counts.
+// subtypes, so a changeling counts. "Dragon" is a word of the source's
+// text (CR 612.2, #3984), here and in Ganax's condition below.
 func b14DragonYouControlAttacked(ev game.Event, source *game.Card, g *game.Game) bool {
 	if !attackDeclaredByYou(ev, source.Controller) {
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.HasSubtype("Dragon")
+	return ok && c.HasSubtype(source.TextSubtype("Dragon"))
 }
 
 // b14SelfOrDragonYouControlEntered is Ganax's condition: the source
@@ -97,7 +98,7 @@ func b14SelfOrDragonYouControlEntered(ev game.Event, source *game.Card, g *game.
 		return true
 	}
 	c, ok := enteredUnderYourControl(ev, source, g, true)
-	return ok && c.HasSubtype("Dragon")
+	return ok && c.HasSubtype(source.TextSubtype("Dragon"))
 }
 
 // b14OpponentsEndStepBegan is "at the beginning of each opponent's

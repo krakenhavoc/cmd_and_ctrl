@@ -59,7 +59,7 @@ func sauronNecromancerRaise(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return nil
 	}
-	sauronWraithException(&tmpl)
+	sauronWraithExceptionFor(ctx.textReader())(&tmpl)
 	prefer := triggerAttackTarget(item)
 	sauron := game.ObjectRef{ID: item.SourceCardID, Epoch: -1}
 	if c, ok := g.LookupCardForEffect(item.SourceCardID); ok {
@@ -94,16 +94,25 @@ func sauronNecromancerRaise(g *game.Game, item *game.StackItem) error {
 
 // sauronWraithException is "except it's a 3/3 black Wraith with
 // menace", on a template that is also tapped: the colors and the
-// creature types are replaced, supertypes and card types stay.
-func sauronWraithException(t *game.Card) {
-	t.Power, t.Toughness = 3, 3
-	t.VariableToughness = false // a printed 3, not a `*` stand-in (#683)
-	t.SetCopyExceptionColors("B")
-	t.TypeLine = retypedTypeLine(t.TypeLine, "Wraith")
-	if !slices.Contains(t.Keywords, "menace") {
-		t.Keywords = append(t.Keywords, "menace")
+// creature types are replaced, supertypes and card types stay. Read in
+// the printed words; the trigger reads them through Sauron's text
+// (sauronWraithExceptionFor).
+func sauronWraithException(t *game.Card) { sauronWraithExceptionFor(nil)(t) }
+
+// sauronWraithExceptionFor is the exception with "black" and "Wraith"
+// read through `reader`, the object whose text it is (CR 612.2, #3984);
+// nil reads the printed words.
+func sauronWraithExceptionFor(reader *game.Card) func(*game.Card) {
+	return func(t *game.Card) {
+		t.Power, t.Toughness = 3, 3
+		t.VariableToughness = false // a printed 3, not a `*` stand-in (#683)
+		t.SetCopyExceptionColors(reader.TextColor("B"))
+		t.TypeLine = retypedTypeLine(t.TypeLine, reader.TextSubtype("Wraith"))
+		if !slices.Contains(t.Keywords, "menace") {
+			t.Keywords = append(t.Keywords, "menace")
+		}
+		t.Tapped = true
 	}
-	t.Tapped = true
 }
 
 // sauronNecromancerExileToken is the delayed trigger's body.

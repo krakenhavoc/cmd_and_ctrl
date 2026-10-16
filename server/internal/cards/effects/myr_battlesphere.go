@@ -42,9 +42,12 @@ func init() {
 
 // myrBattlesphereAttack offers the controller's untapped Myr.
 func myrBattlesphereAttack(g *game.Game, item *game.StackItem) error {
+	// "Myr" is a word of the source's text, read here and as the picks
+	// are checked (CR 612.2, #3984).
+	word := g.TextReaderForEffect(item).TextSubtype("Myr")
 	var myr []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == item.Controller && c.IsCreature() && !c.Tapped && c.HasSubtype("Myr") {
+		if c.Controller == item.Controller && c.IsCreature() && !c.Tapped && c.HasSubtype(word) {
 			myr = append(myr, c.InstanceID)
 		}
 	}
@@ -70,10 +73,11 @@ func myrBattlesphereAttack(g *game.Game, item *game.StackItem) error {
 // and, if any were, pumps the Battlesphere and hits what it attacks.
 func myrBattlesphereTapAndHit(g *game.Game, item *game.StackItem, picked []uuid.UUID) error {
 	ctx := NewContext(g, item)
+	word := ctx.TextSubtype("Myr")
 	x := 0
 	for _, id := range picked {
 		c, ok := g.LookupCardForEffect(id)
-		if !ok || c.Tapped || !c.IsCreature() || c.Controller != item.Controller || !c.HasSubtype("Myr") {
+		if !ok || c.Tapped || !c.IsCreature() || c.Controller != item.Controller || !c.HasSubtype(word) {
 			continue
 		}
 		if err := (TapTarget{Target: id}).Apply(ctx.asGroupMember()); err != nil {

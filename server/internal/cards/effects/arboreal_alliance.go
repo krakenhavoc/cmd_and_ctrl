@@ -44,7 +44,8 @@ func init() {
 					return false
 				}
 				c, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && c.IsCreature() && c.HasSubtype("Elf")
+				// "Elf" is a word of the source's text (CR 612.2, #3984).
+				return ok && c.IsCreature() && c.HasSubtype(source.TextSubtype("Elf"))
 			}, "Arboreal Alliance — populate", Do(Populate{}))),
 		},
 	})

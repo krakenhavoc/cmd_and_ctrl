@@ -55,8 +55,8 @@ func init() {
 					Target: item.SourceCardID,
 					Mods: []game.Mod{
 						game.AddTypesMod("Creature"),
-						game.AddSubtypesMod("Elemental"),
-						game.SetColorsMod("U", "R"),
+						game.AddSubtypesMod(g.TextReaderForEffect(item).TextSubtypes("Elemental")...),
+						game.SetColorsMod(g.TextReaderForEffect(item).TextColors("U", "R")...),
 						game.SetBasePowerMod(2),
 						game.SetBaseToughnessMod(1),
 						game.GrantAbilitiesMod(restlessSpireFirstStrikeGrant),

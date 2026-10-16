@@ -32,22 +32,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // whether or not the damage did (a fogged or prevented 2 still gains
 // the 2).
 //
-// THE −7 IS NOT REGISTERED, and that is a deliberate omission rather
-// than a stub, the same one Elspeth, Sun's Champion and Teferi, Hero
-// of Dominaria declare. Controlling another player during their turn
-// means playing from their hand, making their attacks and their
-// blocks; the engine has one seat per player and no shape for a
-// player acting as another. An ability whose label promised the
-// takeover and delivered only a loyalty payment would be a worse lie
-// than an ability that is not offered. The loyalty still accrues past
-// 7; the day player control lands, this card gains one entry and
-// nothing else changes.
+// THE −7 is turn control (CR 723.1, ADR 0167, #3857). Its target is
+// any player, so a Sorin player may point it at themselves for nothing,
+// and the controller makes every decision the controlled player is
+// asked for through the "Playing as" board swap. It is the plain form
+// of the effect: no extra turn afterwards (controlTargetPlayerNextTurn).
+// The control waits for the target's next turn that actually begins
+// (CR 723.1b) and ends with it.
 func init() {
 	Register(Spec{
 		OracleID:     "c151e8b7-4b28-4f03-8a81-9bf623f893d7",
 		Name:         "Sorin Markov",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The -7 ultimate isn't offered — controlling another player's turn doesn't exist yet."},
+		Completeness: CompletenessFull,
 		// Printed loyalty reaches the card through deck import
 		// (ADR 0032 §1); this is the fallback for tokens, fixtures
 		// and the dev spawner.
@@ -85,6 +81,12 @@ func init() {
 					}
 					return nil
 				},
+			},
+			{
+				Label:   "−7: You control target player during that player's next turn.",
+				Cost:    LoyaltyCost(-7),
+				Targets: TargetPlayer("target player"),
+				Effect:  controlTargetPlayerNextTurn("Sorin Markov"),
 			},
 		},
 	})

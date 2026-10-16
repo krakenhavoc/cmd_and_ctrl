@@ -29,7 +29,8 @@ func init() {
 					return err
 				}
 				card, ok := ctx.DiscardedCard()
-				if !ok || !card.HasSubtype("Zombie") {
+				// "Zombie" is a word of the source's text (CR 612.2, #3984).
+				if !ok || !card.HasSubtype(ctx.TextSubtype("Zombie")) {
 					return nil
 				}
 				tmpl := TokenCard("2/2 black Zombie")

@@ -349,13 +349,17 @@ type SacrificeKind struct {
 	Any bool
 }
 
-// Matches reports whether c is of this kind.
+// Matches reports whether c is of this kind. A subtype is a word of the
+// text of the object whose clause this is (CR 612.2, #3984), read through
+// the lens the cost walk lent `c` (HasSubtypeWord): "a Swamp" on a
+// permanent whose text now says "Island" is an Island. A copy lent
+// nothing reads the printed word.
 func (k SacrificeKind) Matches(c Card) bool {
 	if k.Any {
 		return true
 	}
 	for _, st := range k.Subtypes {
-		if c.HasSubtype(st) {
+		if c.HasSubtypeWord(st) {
 			return true
 		}
 	}
@@ -380,14 +384,16 @@ func SacrificeSetKinds(spec *TargetSpec) []SacrificeKind {
 // the candidate is of the entry's kind. The candidate is read from the
 // zone the cost component names (ADR 0135 §2): the battlefield for a
 // sacrifice, a hand for a discard. A candidate that is not in that zone
-// fits nothing. Caller must hold g.mu.
-func (g *Game) costSetFitsLocked(entries []SacrificeKind, zone ZoneKind, ids []uuid.UUID) [][]bool {
+// fits nothing. The kinds' words are read through `text`, the clause's
+// source's (costTextLocked, #3984); nil reads the printed words. Caller
+// must hold g.mu.
+func (g *Game) costSetFitsLocked(entries []SacrificeKind, zone ZoneKind, ids []uuid.UUID, text *TextWords) [][]bool {
 	fits := make([][]bool, len(entries))
 	for i := range entries {
 		fits[i] = make([]bool, len(ids))
 		for j, id := range ids {
 			if c, ok := g.costSetCardLocked(zone, id); ok {
-				fits[i][j] = entries[i].Matches(c)
+				fits[i][j] = entries[i].Matches(lendCostText(text, c))
 			}
 		}
 	}
@@ -452,15 +458,19 @@ func assignSacrificeSet(fits [][]bool, order []int) []int {
 // EachOf entry of `spec` one-to-one. A clause with no set rule is
 // satisfied by anything (its per-permanent check already ran). The
 // count is checked by the caller (SacrificeCountLegal); this judges the
-// kinds. Caller must hold g.mu.
-func (g *Game) sacrificeSetSatisfiedLocked(spec *TargetSpec, picks []uuid.UUID) bool {
-	return g.costSetSatisfiedLocked(spec, ZoneBattlefield, picks)
+// kinds, as the text of the ability's source `sourceID` names them
+// (costTextLocked, #3984; uuid.Nil reads the printed words). Caller must
+// hold g.mu.
+func (g *Game) sacrificeSetSatisfiedLocked(sourceID uuid.UUID, spec *TargetSpec, picks []uuid.UUID) bool {
+	return g.costSetSatisfiedLocked(spec, ZoneBattlefield, picks, g.costTextLocked(sourceID))
 }
 
 // costSetSatisfiedLocked is sacrificeSetSatisfiedLocked over the zone a
 // cost component names (ADR 0135 §2): a discard's picks are cards in
-// hand. Caller must hold g.mu.
-func (g *Game) costSetSatisfiedLocked(spec *TargetSpec, zone ZoneKind, picks []uuid.UUID) bool {
+// hand. `text` is the clause's source's text change, nil for the
+// printed words (a spell's alternative cost is paid before anything can
+// change its text). Caller must hold g.mu.
+func (g *Game) costSetSatisfiedLocked(spec *TargetSpec, zone ZoneKind, picks []uuid.UUID, text *TextWords) bool {
 	entries := SacrificeSetKinds(spec)
 	if len(entries) == 0 {
 		return true
@@ -472,14 +482,14 @@ func (g *Game) costSetSatisfiedLocked(spec *TargetSpec, zone ZoneKind, picks []u
 	for i := range order {
 		order[i] = i
 	}
-	return assignSacrificeSet(g.costSetFitsLocked(entries, zone, picks), order) != nil
+	return assignSacrificeSet(g.costSetFitsLocked(entries, zone, picks, text), order) != nil
 }
 
 // SacrificeSetSatisfiedForEffect is sacrificeSetSatisfiedLocked for a
 // reader outside the package (the legal enumerator's tests, the view).
 // Caller must hold g.mu (read or write).
-func (g *Game) SacrificeSetSatisfiedForEffect(spec *TargetSpec, picks []uuid.UUID) bool {
-	return g.sacrificeSetSatisfiedLocked(spec, picks)
+func (g *Game) SacrificeSetSatisfiedForEffect(sourceID uuid.UUID, spec *TargetSpec, picks []uuid.UUID) bool {
+	return g.sacrificeSetSatisfiedLocked(sourceID, spec, picks)
 }
 
 // SacrificeSetPaymentForEffect searches `candidates` (already in
@@ -493,21 +503,32 @@ func (g *Game) SacrificeSetSatisfiedForEffect(spec *TargetSpec, picks []uuid.UUI
 // pays the basics and keeps the dual — payment order alone would have
 // eaten whichever came first. Ties keep the order given.
 //
+// The kinds are read as the text of the ability's source `sourceID`
+// names them (costTextLocked, #3984), as the validator reads them.
+//
 // The result is in entry order. Caller must hold g.mu (read or write).
-func (g *Game) SacrificeSetPaymentForEffect(spec *TargetSpec, candidates []uuid.UUID) []uuid.UUID {
-	return g.CostSetPaymentForEffect(spec, ZoneBattlefield, candidates)
+func (g *Game) SacrificeSetPaymentForEffect(sourceID uuid.UUID, spec *TargetSpec, candidates []uuid.UUID) []uuid.UUID {
+	return g.costSetPaymentLocked(spec, ZoneBattlefield, candidates, g.costTextLocked(sourceID))
 }
 
 // CostSetPaymentForEffect is SacrificeSetPaymentForEffect over the zone
 // a cost component names (ADR 0135 §2): ZoneHand searches cards in hand
-// for a discard's set ("an Island card and another card"). Caller must
-// hold g.mu (read or write).
+// for a discard's set ("an Island card and another card"). It reads the
+// printed words: its one component is a spell's alternative cost, paid
+// before anything can change the spell's text. Caller must hold g.mu
+// (read or write).
 func (g *Game) CostSetPaymentForEffect(spec *TargetSpec, zone ZoneKind, candidates []uuid.UUID) []uuid.UUID {
+	return g.costSetPaymentLocked(spec, zone, candidates, nil)
+}
+
+// costSetPaymentLocked is the set search both payment readers share.
+// Caller must hold g.mu.
+func (g *Game) costSetPaymentLocked(spec *TargetSpec, zone ZoneKind, candidates []uuid.UUID, text *TextWords) []uuid.UUID {
 	entries := SacrificeSetKinds(spec)
 	if len(entries) == 0 {
 		return nil
 	}
-	fits := g.costSetFitsLocked(entries, zone, candidates)
+	fits := g.costSetFitsLocked(entries, zone, candidates, text)
 	versatility := make([]int, len(candidates))
 	for j := range candidates {
 		for i := range entries {
@@ -535,20 +556,29 @@ func (g *Game) CostSetPaymentForEffect(spec *TargetSpec, zone ZoneKind, candidat
 // SacrificeSetGroupsForEffect splits `candidates` by the EachOf entry
 // each could fill, for the protocol view. A candidate that fits two
 // entries (a Swamp Forest) appears under both. Nil without a set rule.
-// Caller must hold g.mu (read or write).
-func (g *Game) SacrificeSetGroupsForEffect(spec *TargetSpec, candidates []uuid.UUID) []SacrificeSetGroup {
-	return g.CostSetGroupsForEffect(spec, ZoneBattlefield, candidates)
+// The kinds are read through the text of the ability's source
+// `sourceID` (costTextLocked, #3984). Caller must hold g.mu (read or
+// write).
+func (g *Game) SacrificeSetGroupsForEffect(sourceID uuid.UUID, spec *TargetSpec, candidates []uuid.UUID) []SacrificeSetGroup {
+	return g.costSetGroupsLocked(spec, ZoneBattlefield, candidates, g.costTextLocked(sourceID))
 }
 
 // CostSetGroupsForEffect is SacrificeSetGroupsForEffect over the zone a
 // cost component names (ADR 0135 §2): ZoneHand groups a discard's cards
-// in hand. Caller must hold g.mu (read or write).
+// in hand, in the printed words (CostSetPaymentForEffect's reason).
+// Caller must hold g.mu (read or write).
 func (g *Game) CostSetGroupsForEffect(spec *TargetSpec, zone ZoneKind, candidates []uuid.UUID) []SacrificeSetGroup {
+	return g.costSetGroupsLocked(spec, zone, candidates, nil)
+}
+
+// costSetGroupsLocked is the grouping both view readers share. Caller
+// must hold g.mu.
+func (g *Game) costSetGroupsLocked(spec *TargetSpec, zone ZoneKind, candidates []uuid.UUID, text *TextWords) []SacrificeSetGroup {
 	entries := SacrificeSetKinds(spec)
 	if len(entries) == 0 {
 		return nil
 	}
-	fits := g.costSetFitsLocked(entries, zone, candidates)
+	fits := g.costSetFitsLocked(entries, zone, candidates, text)
 	out := make([]SacrificeSetGroup, len(entries))
 	for i := range entries {
 		out[i].Label = entries[i].Label

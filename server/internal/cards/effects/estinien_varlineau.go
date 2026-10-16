@@ -69,7 +69,7 @@ func init() {
 // Estinien (the object that has the ability) or by any Dragon.
 func estinienDrawAndLose(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	dragons := g.PlayersDealtCombatDamageThisTurnByAnySubtype("Dragon")
+	dragons := g.PlayersDealtCombatDamageThisTurnByAnySubtype(ctx.TextSubtype("Dragon"))
 	x := 0
 	for _, opp := range ctx.Opponents() {
 		var byEstinien bool

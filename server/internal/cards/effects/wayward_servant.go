@@ -20,7 +20,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, "Zombie")
+				return b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, source.TextSubtype("Zombie"))
 			}, "Wayward Servant — each opponent loses 1 life and you gain 1 life", Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})),
 		},
 	})

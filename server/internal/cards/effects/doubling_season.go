@@ -78,11 +78,12 @@ func init() {
 						// removal is not a placement (#1291).
 						return false
 					}
-					if ev.CounterFromCombatDamage || ev.CounterFromCost {
-						// Combat damage is a turn-based action and a
-						// paid cost (a blight, #1703) is not the
+					if ev.CounterFromCombatDamage || ev.CounterFromCost || ev.CounterFromTurnBasedAction {
+						// Combat damage and a Saga's lore counter
+						// (CR 714.3c, #3942) are turn-based actions,
+						// and a paid cost (a blight, #1703) is not the
 						// effect of a resolving spell or ability
-						// (CR 614.16) — neither is "an effect".
+						// (CR 614.16) — none is "an effect".
 						return false
 					}
 					target, ok := g.LookupCardForEffect(ev.CounterTarget)

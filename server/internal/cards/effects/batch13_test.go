@@ -878,11 +878,10 @@ func TestB13LaezelAddsOneCounterOfEachKindYouPut(t *testing.T) {
 	theirs := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
 
 	g.WithWriteLock(func() {
-		g.EmitEvent(game.Event{Kind: game.EventResolve, Actor: me.ID})
-		_ = g.AddCounterForEffect(bear, "+1/+1", 2)
-		_ = g.AddCounterForEffect(walker, "loyalty", 1)
-		_ = g.AddCounterForEffect(rock, "charge", 1)
-		_ = g.AddCounterForEffect(theirs, "+1/+1", 1)
+		_ = g.AddCounterByForEffect(me.ID, bear, "+1/+1", 2)
+		_ = g.AddCounterByForEffect(me.ID, walker, "loyalty", 1)
+		_ = g.AddCounterByForEffect(me.ID, rock, "charge", 1)
+		_ = g.AddCounterByForEffect(me.ID, theirs, "+1/+1", 1)
 	})
 	if got := b12Counter(t, g, bear, "+1/+1"); got != 3 {
 		t.Errorf("two +1/+1 counters become three: got %d", got)
@@ -896,12 +895,11 @@ func TestB13LaezelAddsOneCounterOfEachKindYouPut(t *testing.T) {
 	if got := b12Counter(t, g, theirs, "+1/+1"); got != 1 {
 		t.Errorf("an opponent's creature is untouched: got %d", got)
 	}
-	// A removal is not a placement, and an opponent's resolution is
-	// not you putting.
+	// A removal is not a placement, and an opponent putting a counter
+	// on your creature is not you putting.
 	g.WithWriteLock(func() {
 		_ = g.AddCounterForEffect(bear, "+1/+1", -1)
-		g.EmitEvent(game.Event{Kind: game.EventResolve, Actor: opp.ID})
-		_ = g.AddCounterForEffect(bear, "+1/+1", 1)
+		_ = g.AddCounterByForEffect(opp.ID, bear, "+1/+1", 1)
 	})
 	if got := b12Counter(t, g, bear, "+1/+1"); got != 3 {
 		t.Errorf("3 -1 +1 = 3 with neither the removal nor an opponent's placement increased: got %d", got)

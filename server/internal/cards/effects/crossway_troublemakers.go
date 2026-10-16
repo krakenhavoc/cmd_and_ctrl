@@ -40,8 +40,7 @@ func init() {
 		Name:         "Crossway Troublemakers",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
-			AttackingCreaturesHave("Attacking Vampires you control have deathtouch and lifelink.",
-				func(c *game.Card) bool { return c.HasSubtype("Vampire") }, "deathtouch", "lifelink"),
+			crosswayTroublemakersVampires(),
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
@@ -49,6 +48,19 @@ func init() {
 			}, "Crossway Troublemakers — pay 2 life, draw a card", crosswayMayPayTwoLifeToDraw),
 		},
 	})
+}
+
+// crosswayTroublemakersVampires is "Attacking Vampires you control have
+// deathtouch and lifelink". "Vampires" is a word of the source's text
+// (CR 612.2, #3984), so the shared static's scope is narrowed here,
+// where the static's source is read.
+func crosswayTroublemakersVampires() game.StaticAbility {
+	s := AttackingCreaturesHave("Attacking Vampires you control have deathtouch and lifelink.", nil, "deathtouch", "lifelink")
+	base := s.AppliesTo
+	s.AppliesTo = func(target *game.Card, g *game.Game, source *game.Card) bool {
+		return base(target, g, source) && target.HasSubtype(source.TextSubtype("Vampire"))
+	}
+	return s
 }
 
 // crosswayMayPayTwoLifeToDraw is the printed body: "you may pay 2

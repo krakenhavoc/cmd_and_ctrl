@@ -37,8 +37,10 @@ func init() {
 			if err != nil {
 				return err
 			}
+			// "Wizard" is a word of the spell's text (CR 612.2, #3984).
+			wizard := ctx.TextSubtype("Wizard")
 			for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-				if c.Controller != me || !IsToken(c) || !c.HasSubtype("Wizard") || slices.Contains(made, c.InstanceID) {
+				if c.Controller != me || !IsToken(c) || !c.HasSubtype(wizard) || slices.Contains(made, c.InstanceID) {
 					continue
 				}
 				if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {

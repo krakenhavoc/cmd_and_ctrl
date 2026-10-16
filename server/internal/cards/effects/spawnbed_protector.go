@@ -34,14 +34,14 @@ func init() {
 			{
 				Watches: []game.EventKind{game.EventBeginEndStep},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return ev.Actor == source.Controller && b28GraveyardHasCreatureCardOfSubtype(g, source.Controller, "Eldrazi")
+					return ev.Actor == source.Controller && b28GraveyardHasCreatureCardOfSubtype(g, source.Controller, source.TextSubtype("Eldrazi"))
 				},
 				Targets: TargetCardInGraveyard("up to one target Eldrazi creature card from your graveyard", YouOwn(), Creature(), HasSubtype("Eldrazi")).WithCount(0, 1),
 				Key:     b28SpawnbedProtectorLabel,
 				Effect:  b28ReturnChosenGraveyardCardToHandThenScions,
 			},
 			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return ev.Actor == source.Controller && !b28GraveyardHasCreatureCardOfSubtype(g, source.Controller, "Eldrazi")
+				return ev.Actor == source.Controller && !b28GraveyardHasCreatureCardOfSubtype(g, source.Controller, source.TextSubtype("Eldrazi"))
 			}, b28SpawnbedProtectorLabel, b28ReturnChosenGraveyardCardToHandThenScions),
 		},
 	})

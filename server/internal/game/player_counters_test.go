@@ -704,26 +704,33 @@ func TestProliferateNamesTheProliferatingPlayerAsThePlacer(t *testing.T) {
 	}
 }
 
-// TestAPlacementWithNoKnownPlacerCarriesNil pins the other direction.
-// uuid.Nil means UNKNOWN, and a "you put" reader falls back to its own
-// heuristic on it — which is weaker than printed rather than stronger,
-// and is what keeps a paid cost or a sandbox edit reading the way it
-// always has.
-func TestAPlacementWithNoKnownPlacerCarriesNil(t *testing.T) {
+// TestASandboxEditNamesItsPlacer pins the other direction, which #3942
+// reversed. A placement used to carry uuid.Nil when nobody named a
+// placer, and every "you put" reader guessed. Now a sandbox edit names
+// the seat making it, and an edit that names nobody (an admin's)
+// credits the card's controller (counter_placer.go).
+func TestASandboxEditNamesItsPlacer(t *testing.T) {
 	g := newActiveGame(t)
-	owner := g.Seats[0]
+	owner, other := g.Seats[0], g.Seats[1]
 	bear := pushTypedTestCard(g, Card{
 		Name: "Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 2,
 		Owner: owner.ID, Controller: owner.ID,
 	})
+	if err := g.AddCounterBy(other.ID, bear, CounterPlusOne, 1); err != nil {
+		t.Fatalf("AddCounterBy: %v", err)
+	}
 	if err := g.AddCounter(bear, CounterPlusOne, 1); err != nil {
 		t.Fatalf("AddCounter: %v", err)
 	}
+	var actors []uuid.UUID
 	g.ReadSnapshot(func() {
 		for _, ev := range g.Events {
-			if ev.Kind == EventCounterPlaced && ev.Target == bear && ev.Actor != uuid.Nil {
-				t.Errorf("the sandbox AddCounter verb named %v as the placer; a hand-edit is nobody putting counters", ev.Actor)
+			if ev.Kind == EventCounterPlaced && ev.Target == bear {
+				actors = append(actors, ev.Actor)
 			}
 		}
 	})
+	if len(actors) != 2 || actors[0] != other.ID || actors[1] != owner.ID {
+		t.Errorf("placers = %v, want [the seat making the edit %v, the card's controller %v]", actors, other.ID, owner.ID)
+	}
 }

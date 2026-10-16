@@ -150,6 +150,7 @@
     altCostPayDefinesX,
     altCostPayX,
     castExileCardsCost,
+    exileXChoice,
     tapCostOf,
     tapCostLimit,
     alternativeCostsOf,
@@ -804,6 +805,8 @@
     label: string;
     count: number;
     choices: CastChoices;
+    // #1948: the X form, asked after the X prompt, continues there.
+    afterX?: boolean;
   } | null>(null);
   const exileCardsOptions = $derived.by(() => {
     const p = exileCardsPrompt;
@@ -818,6 +821,10 @@
     const p = exileCardsPrompt;
     exileCardsPrompt = null;
     if (!p) return;
+    if (p.afterX) {
+      afterXCost(p.card, { ...p.choices, exileIDs: ids });
+      return;
+    }
     afterSacrificeCost(p.card, { ...p.choices, exileIDs: ids });
   }
 
@@ -887,7 +894,9 @@
       return;
     }
     const ec = castExileCardsCost(card, choices);
-    if (ec && choices.exileIDs === undefined) {
+    // #1948: "exile X cards" is asked after the X prompt (afterXCost),
+    // because its count is the X.
+    if (ec && !ec.fromX && choices.exileIDs === undefined) {
       if (ec.options.length > ec.count) {
         exileCardsPrompt = { card, cost: ec.cost, label: ec.label, count: ec.count, choices };
         return;
@@ -1190,6 +1199,26 @@
   // its picker until X is known, so this step has to come after the X
   // prompt rather than before it.
   function afterXCost(card: CardView, choices: CastChoices): void {
+    // #1948: "exile X cards from your graveyard" — the picker's count is
+    // the X just announced. X = 0 names nothing; a graveyard holding
+    // exactly X matching cards has nothing to ask.
+    const xc = castExileCardsCost(card, choices);
+    if (xc?.fromX && choices.exileIDs === undefined) {
+      const next = exileXChoice(xc, choices);
+      if (next) {
+        afterXCost(card, next);
+        return;
+      }
+      exileCardsPrompt = {
+        card,
+        cost: xc.cost,
+        label: xc.label,
+        count: xc.count,
+        choices,
+        afterX: true,
+      };
+      return;
+    }
     // CR 107.4f (#916): "{U/P} can be paid with either {U} or 2
     // life", and CR 601.2b makes which one part of announcing the
     // spell. Asked after X for the same reason the tap picker is:

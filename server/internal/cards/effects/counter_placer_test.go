@@ -315,11 +315,11 @@ func TestVorinclexAppliesToCountersOnPlayers(t *testing.T) {
 	}
 }
 
-// TestVorinclexFallsBackWhenNoPlacerIsNamed pins the declared caveat.
-// A placement that names nobody — a paid cost, a permanent entering
-// with counters, a sandbox edit — still reads the target's controller,
-// which is CR 606.4 and CR 714.3's answer for most of them.
-func TestVorinclexFallsBackWhenNoPlacerIsNamed(t *testing.T) {
+// TestVorinclexCreditsAnUnnamedEditToTheController pins the engine's
+// backstop (#3942, game/counter_placer.go): an edit that names nobody —
+// an admin's — outside any resolution is put by the permanent's
+// controller, so Vorinclex doubles it on its controller's creature.
+func TestVorinclexCreditsAnUnnamedEditToTheController(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0].ID
 	pushBattlefieldCardWithTimestamp(g, game.Card{
@@ -335,7 +335,7 @@ func TestVorinclexFallsBackWhenNoPlacerIsNamed(t *testing.T) {
 		t.Fatalf("AddCounter: %v", err)
 	}
 	if got := countersOn(g, mine, game.CounterPlusOne); got != 4 {
-		t.Errorf("counters = %d, want 4 — with no placer named the old reading stands", got)
+		t.Errorf("counters = %d, want 4 — an unnamed edit is the controller's", got)
 	}
 }
 

@@ -463,6 +463,36 @@ func (c *Card) TextSubtype(sub string) string {
 	return c.TextWords.subtype(sub)
 }
 
+// TextColors is TextColor over a list of colour words, each colour once
+// and in the order first read: a colour-setting effect's printed colours
+// ("becomes a white and blue Bird") as this object's text now says them
+// (#3984). Under "white → blue" that is one colour, blue.
+func (c *Card) TextColors(letters ...string) []string {
+	return textWordsOnce(letters, c.TextColor)
+}
+
+// TextSubtypes is TextSubtype over a list of subtype words, each once: a
+// type-setting effect's printed types ("becomes a Bird", "is a Zombie in
+// addition to its other types") as this object's text now says them.
+func (c *Card) TextSubtypes(subs ...string) []string {
+	return textWordsOnce(subs, c.TextSubtype)
+}
+
+// textWordsOnce maps each word through `read`, dropping a repeat.
+func textWordsOnce(words []string, read func(string) string) []string {
+	if len(words) == 0 {
+		return words
+	}
+	out := make([]string, 0, len(words))
+	for _, w := range words {
+		now := read(w)
+		if !typeListHas(out, now) {
+			out = append(out, now)
+		}
+	}
+	return out
+}
+
 // TextKeyword is the keyword token `tok` as this object's text now
 // reads it: the colour of "protection from <colour>", the land type of
 // a basic landwalk. For a static that grants a keyword its source
@@ -556,6 +586,33 @@ func (c Card) LentColor(letter string) string { return c.wordLens.color(letter) 
 // controller controls an Island", Vedalken Shackles' "the number of
 // Islands you control".
 func (c Card) LentSubtype(sub string) string { return c.wordLens.subtype(sub) }
+
+// manaTags reads a printed mana restriction's words through this text
+// (#3984): a "subtype:" tag's subtype and a "color:" tag's colour, each
+// the word as the text now says it. Every other tag, and a compound one,
+// is a word no text change names and comes back unchanged. Writes `tags`
+// in place, so callers pass a copy.
+func (w *TextWords) manaTags(tags []string) []string {
+	if w == nil {
+		return tags
+	}
+	for i, t := range tags {
+		switch {
+		case strings.HasPrefix(t, manaTagSubtype):
+			tags[i] = manaTagSubtype + w.subtype(t[len(manaTagSubtype):])
+		case strings.HasPrefix(t, manaTagColor):
+			tags[i] = manaTagColor + w.color(t[len(manaTagColor):])
+		}
+	}
+	return tags
+}
+
+// The two mana restriction tag prefixes that name a word of a card's
+// text (ManaRestrictSubtype, ManaRestrictColor).
+const (
+	manaTagSubtype = "subtype:"
+	manaTagColor   = "color:"
+)
 
 // --- materialising -------------------------------------------------
 
