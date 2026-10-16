@@ -67,7 +67,9 @@
     pileTop,
     seatSlots,
     stripContentBottom,
+    sameSpan,
     tableSeams,
+    type DockSpan,
   } from "../../stackPile";
   import { laneSpot } from "../../stackPosition";
   import { createStackPlacement } from "../../stackPlacement.svelte";
@@ -259,6 +261,8 @@
   let seamY = $state<number | null>(null);
   // #3380: the seam between two top-row seats, where the pile docks.
   let seamX = $state<number | null>(null);
+  // #4065: the full boards' span when the row holds a reflow avatar card.
+  let dock = $state<DockSpan | null>(null);
   let boardH = $state(0);
   let boardW = $state(0);
   let laneH = $state(0);
@@ -274,12 +278,19 @@
     boardH = b.height;
     boardW = b.width;
     // Half the grid's 8px gap above the self slot is the row seam.
-    ({ seamY, seamX } = tableSeams(b.width, seatSlots(boardEl)));
+    const seams = tableSeams(b.width, seatSlots(boardEl));
+    seamY = seams.seamY;
+    seamX = seams.seamX;
+    // A span is a new object on every measure, and this runs inside an
+    // effect: store it only when it moved, or the effect re-runs itself.
+    if (!sameSpan(dock, seams.dock)) dock = seams.dock;
     laneH = laneEl?.offsetHeight ?? 0;
     laneW = laneEl?.offsetWidth ?? 0;
     if (style === "pile") {
       stripBottom = stripContentBottom(boardEl);
-      const left = pileLeft({ boardW: b.width, pileW: laneW, seamX }) ?? PILE_INSET;
+      const left =
+        pileLeft({ boardW: b.width, pileW: laneW, seamX: seams.seamX, dock: seams.dock }) ??
+        PILE_INSET;
       fixtureTop = bottomLeftFixtureTop(boardEl, left + laneW, left);
     } else {
       stripBottom = null;
@@ -325,7 +336,9 @@
 
   // In pixels from the board's left edge, or null for the CSS fallback
   // (the centred styles, and the pile on a table with one top-row seat).
-  const laneLeft = $derived(style === "pile" ? pileLeft({ boardW, pileW: laneW, seamX }) : null);
+  const laneLeft = $derived(
+    style === "pile" ? pileLeft({ boardW, pileW: laneW, seamX, dock }) : null,
+  );
 
   // ---- #3429 movable ---------------------------------------------------
   const move = createStackPlacement({

@@ -718,10 +718,11 @@
               {#if isFresh("display.expandActivePlayer")}<span class="saved">✓ saved</span>{/if}
             </label>
             <p class="help">
-              Only does anything while opponent boards are summaries. Off means a board expands only
-              from something you did — a targeting prompt, block or attack mode, or pinning a seat.
-              It changes on a turn boundary either way, so it can't move the table under a click you
-              have already started.
+              With summaries, the active player's summary becomes a full board on their turn. With
+              the Reflow expand style below, it also makes room for them on full boards. Off means a
+              board expands only from something you did — a targeting prompt, or block or attack
+              mode. It changes on a turn boundary either way, so it can't move the table under a
+              click you have already started.
               {#if focusLayout}Off in the Focus table layout: hover an avatar instead.{/if}
             </p>
 
@@ -738,10 +739,14 @@
               {#if isFresh("display.expandStyle")}<span class="saved">✓</span>{/if}
             </label>
             <p class="help">
-              How an expanding board makes room. Reflow gives it a bigger share of the table and
-              shrinks the others; Overlay floats it on top. Both ship so they can be compared in a
-              real game — <strong>one of them will be removed</strong>, along with this setting,
-              once it is clear which feels better. Worth flipping mid-game to see the difference.
+              How the active player's board makes room on an opponent's turn. Reflow gives their
+              board most of the opponents' row and shrinks the other opponents to their avatar, name
+              and life; hover or click an avatar to see that board. Overlay keeps the opponents'
+              boards equal, as they are on your own turn. Reflow needs every opponent in one row
+              (the Row layout, or three players) and "Expand the active player" on. Both are here to
+              be compared in a real game — <strong>one of them will be removed</strong>, along with
+              this setting, once it is clear which feels better.
+              {#if focusLayout}No effect in the Focus table layout.{/if}
             </p>
 
             <label class="slider-row">

@@ -2,9 +2,15 @@ import { describe, it, expect } from "vitest";
 import type { CardView, GameView } from "./protocol";
 import type { TargetingState } from "./targeting";
 import {
+  decideReflow,
   decideSeatRendering,
   expansionSettingsFor,
+  interactionReason,
   legalDefenderIDs,
+  REFLOW_AVATAR_COLUMN,
+  reflowColumns,
+  type ReflowContext,
+  type ReflowSeat,
   seatControlsLegalTarget,
   seatHasAttackersOn,
   type ExpansionSettings,
@@ -170,6 +176,124 @@ describe("expansionSettingsFor", () => {
         focus,
       ).reason,
     ).toBe("blocking");
+  });
+});
+
+describe("interactionReason", () => {
+  it("names the trigger a live prompt needs, and nothing otherwise", () => {
+    expect(interactionReason(seat(), table())).toBeNull();
+    expect(interactionReason(seat({ controlsLegalTarget: true }), table())).toBe("targeting");
+    expect(
+      interactionReason(seat({ hasAttackersOnViewer: true }), table({ combatMode: "block" })),
+    ).toBe("blocking");
+    expect(
+      interactionReason(seat({ isLegalDefender: true }), table({ combatMode: "attack" })),
+    ).toBe("attacking");
+  });
+
+  it("ignores attackers and defenders outside their combat mode", () => {
+    expect(interactionReason(seat({ hasAttackersOnViewer: true }), table())).toBeNull();
+    expect(interactionReason(seat({ isLegalDefender: true }), table())).toBeNull();
+    expect(
+      interactionReason(seat({ isLegalDefender: true }), table({ combatMode: "block" })),
+    ).toBeNull();
+  });
+
+  it("is not the active-player expansion: a turn alone needs no board", () => {
+    expect(interactionReason(seat({ isActiveSeat: true }), table())).toBeNull();
+  });
+});
+
+// ADR 0077 §6 as amended 2026-10-16 (#4065): the reflow.
+describe("decideReflow", () => {
+  function opp(id: string, over: Partial<ReflowSeat> = {}): ReflowSeat {
+    return { id, isActiveSeat: false, needsBoard: false, ...over };
+  }
+  function ctx(over: Partial<ReflowContext> = {}): ReflowContext {
+    return {
+      style: "reflow",
+      expandActivePlayer: true,
+      opponentsShareRow: true,
+      spectator: false,
+      ...over,
+    };
+  }
+  // Bob's turn at a four-seat row table.
+  const bobsTurn = [opp("bob", { isActiveSeat: true }), opp("cat"), opp("dee")];
+
+  it("on an opponent's turn, that opponent is the focus and the others are avatar cards", () => {
+    const r = decideReflow(bobsTurn, ctx())!;
+    expect(r.focusSeatID).toBe("bob");
+    expect([...r.avatarSeatIDs].sort()).toEqual(["cat", "dee"]);
+  });
+
+  it("follows the active seat wherever it sits in the row", () => {
+    const r = decideReflow([opp("bob"), opp("cat"), opp("dee", { isActiveSeat: true })], ctx())!;
+    expect(r.focusSeatID).toBe("dee");
+    expect([...r.avatarSeatIDs].sort()).toEqual(["bob", "cat"]);
+  });
+
+  it("does nothing on the viewer's own turn: the row stays equal boards", () => {
+    expect(decideReflow([opp("bob"), opp("cat"), opp("dee")], ctx())).toBeNull();
+  });
+
+  it("does nothing with the overlay style, which keeps the boards equal", () => {
+    expect(decideReflow(bobsTurn, ctx({ style: "overlay" }))).toBeNull();
+  });
+
+  it("does nothing with the active-player expansion off", () => {
+    expect(decideReflow(bobsTurn, ctx({ expandActivePlayer: false }))).toBeNull();
+  });
+
+  it("does nothing in the focus layout, whose settings turn the expansion off", () => {
+    const off = expansionSettingsFor({
+      opponentDetail: "full",
+      expandActivePlayer: true,
+      tableLayout: "focus",
+    });
+    expect(decideReflow(bobsTurn, ctx({ expandActivePlayer: off.expandActivePlayer }))).toBeNull();
+  });
+
+  it("does nothing when the opponents do not share one row, or for a spectator", () => {
+    expect(decideReflow(bobsTurn, ctx({ opponentsShareRow: false }))).toBeNull();
+    expect(decideReflow(bobsTurn, ctx({ spectator: true }))).toBeNull();
+  });
+
+  it("does nothing with one opponent: there is nobody to shrink", () => {
+    expect(decideReflow([opp("bob", { isActiveSeat: true })], ctx())).toBeNull();
+  });
+
+  it("works at three players: one avatar card", () => {
+    const r = decideReflow([opp("bob", { isActiveSeat: true }), opp("cat")], ctx())!;
+    expect([...r.avatarSeatIDs]).toEqual(["cat"]);
+  });
+
+  it("never shrinks a seat a live prompt needs", () => {
+    const r = decideReflow(
+      [opp("bob", { isActiveSeat: true }), opp("cat", { needsBoard: true }), opp("dee")],
+      ctx(),
+    )!;
+    expect(r.focusSeatID).toBe("bob");
+    expect([...r.avatarSeatIDs]).toEqual(["dee"]);
+  });
+});
+
+describe("reflowColumns", () => {
+  it("gives the focus the row less the avatar cards' fixed columns", () => {
+    const r = { focusSeatID: "bob", avatarSeatIDs: new Set(["cat", "dee"]) };
+    expect(reflowColumns(["bob", "cat", "dee"], r)).toBe(
+      `minmax(0, 2fr) ${REFLOW_AVATAR_COLUMN} ${REFLOW_AVATAR_COLUMN}`,
+    );
+    expect(reflowColumns(["cat", "bob", "dee"], r)).toBe(
+      `${REFLOW_AVATAR_COLUMN} minmax(0, 2fr) ${REFLOW_AVATAR_COLUMN}`,
+    );
+  });
+
+  it("gives a board a prompt needs one share beside the focus's two", () => {
+    const r = { focusSeatID: "dee", avatarSeatIDs: new Set(["bob"]) };
+    expect(reflowColumns(["bob", "cat", "dee"], r)).toBe(
+      `${REFLOW_AVATAR_COLUMN} minmax(0, 1fr) minmax(0, 2fr)`,
+    );
   });
 });
 

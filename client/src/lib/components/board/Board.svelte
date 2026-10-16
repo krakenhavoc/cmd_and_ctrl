@@ -42,12 +42,16 @@
   import PlayerPanel from "./PlayerPanel.svelte";
   import SeatSummary from "./SeatSummary.svelte";
   import {
+    decideReflow,
     decideSeatRendering,
     expansionSettingsFor,
+    interactionReason,
     legalDefenderIDs,
+    reflowColumns,
     seatControlsLegalTarget,
     seatHasAttackersOn,
     type SeatDecision,
+    type SeatSignals,
   } from "../../expansion";
   import { settings } from "../../settings";
   import { opponentsInARow } from "../../tableLayout";
@@ -3266,22 +3270,64 @@
   // snapshot rather than per seat, because it reads the whole turn.
   const defenderIDs = $derived(legalDefenderIDs(view, viewerID));
 
-  function renderingFor(seat: PlayerView, pos: SeatPosition | null): SeatDecision {
+  function signalsFor(seat: PlayerView, pos: SeatPosition | null): SeatSignals {
     const controlled = cardsByController.get(seat.id) ?? [];
+    return {
+      isSelf: pos === "self",
+      isActiveSeat: seat.id === activeSeatID,
+      controlsLegalTarget:
+        seatControlsLegalTarget($targeting, seat.id, controlled) ||
+        controlled.some((c) => isBoardPickable($boardChoicePick, c.instance_id)),
+      hasAttackersOnViewer: seatHasAttackersOn(viewerID, controlled),
+      isLegalDefender: defenderIDs.has(seat.id),
+    };
+  }
+
+  function renderingFor(seat: PlayerView, pos: SeatPosition | null): SeatDecision {
     return decideSeatRendering(
-      {
-        isSelf: pos === "self",
-        isActiveSeat: seat.id === activeSeatID,
-        controlsLegalTarget:
-          seatControlsLegalTarget($targeting, seat.id, controlled) ||
-          controlled.some((c) => isBoardPickable($boardChoicePick, c.instance_id)),
-        hasAttackersOnViewer: seatHasAttackersOn(viewerID, controlled),
-        isLegalDefender: defenderIDs.has(seat.id),
-      },
+      signalsFor(seat, pos),
       { spectator: isSpectator, combatMode },
       expansionSettingsFor($settings.display),
     );
   }
+
+  // ---- Reflow (ADR 0077 §6, amended 2026-10-16, #4065) ----------------
+  //
+  // With "Expand style: Reflow", on an opponent's turn the active
+  // opponent's board takes most of the opponents' row and the others
+  // shrink to an avatar card; their avatar peeks and pins the expanded
+  // overlay below like any other. The decision is lib/expansion.ts's
+  // decideReflow; Board gathers the seats in column order and sets the
+  // row's columns. It follows the active seat, so it changes on a turn
+  // boundary, and a seat an open prompt needs is never an avatar card.
+  const opponentColumns: SeatPosition[] = ["next", "across", "across_next"];
+  const reflow = $derived.by(() => {
+    if (!placements) return null;
+    const table = { spectator: isSpectator, combatMode };
+    const opponents = [];
+    for (const pos of opponentColumns) {
+      const seat = placements[pos];
+      if (!seat) continue;
+      const sig = signalsFor(seat, pos);
+      opponents.push({
+        id: seat.id,
+        isActiveSeat: sig.isActiveSeat,
+        needsBoard: interactionReason(sig, table) !== null,
+      });
+    }
+    return decideReflow(opponents, {
+      style: $settings.display.expandStyle,
+      expandActivePlayer: expansionSettingsFor($settings.display).expandActivePlayer,
+      opponentsShareRow: opponentsInARow($settings.display.tableLayout) || opponentCount === 2,
+      spectator: isSpectator,
+    });
+  });
+  const reflowGridColumns = $derived.by(() => {
+    if (!reflow || !placements) return null;
+    const p = placements;
+    const ids = opponentColumns.flatMap((pos) => (p[pos] ? [p[pos].id] : []));
+    return reflowColumns(ids, reflow);
+  });
 
   // ---- The expanded board (ADR 0120) ----------------------------------
   //
@@ -3655,6 +3701,8 @@
   aria-disabled={disabled}
   data-opp-count={opponentCount}
   data-seat-count={view.seats.length}
+  data-reflow={reflow ? "" : undefined}
+  style:grid-template-columns={reflowGridColumns}
   bind:this={boardEl}
 >
   {#if placements}
@@ -3662,8 +3710,16 @@
       {@const seat = placements[pos]}
       {#if seat}
         {@const decision = renderingFor(seat, pos)}
-        <div class="slot" data-pos={pos} style:grid-area={pos}>
-          {#if decision.rendering === "summary"}
+        {@const avatarCard = reflow?.avatarSeatIDs.has(seat.id) ?? false}
+        <div
+          class="slot"
+          class:reflow-avatar={avatarCard}
+          class:reflow-focus={reflow?.focusSeatID === seat.id}
+          class:reflow-animate={reflow !== null && overlayMotion}
+          data-pos={pos}
+          style:grid-area={pos}
+        >
+          {#if avatarCard || decision.rendering === "summary"}
             <SeatSummary
               {seat}
               {view}
@@ -3683,6 +3739,7 @@
               onExpand={(from) => openExpanded(seat.id, from)}
               considering={seat.id === consideringSeatID}
               {legalGate}
+              {avatarCard}
             />
           {:else}
             {@render expandButton(seat)}
@@ -4497,6 +4554,31 @@
     min-width: 0;
     /* Anchors .expand-board. */
     position: relative;
+  }
+
+  /* ADR 0077 §6 as amended (#4065): the reflow's two new shapes come in
+     with a short fade when the turn moves to an opponent and animations
+     are on and motion is not reduced (Board adds .reflow-animate only
+     then). The columns themselves change at once: animating
+     grid-template-columns would resize every panel on the row each
+     frame, and every row fit with it. */
+  .slot.reflow-animate.reflow-avatar,
+  .slot.reflow-animate.reflow-focus {
+    animation: reflow-in 160ms var(--ease);
+  }
+  @keyframes reflow-in {
+    from {
+      opacity: 0.4;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .slot.reflow-animate.reflow-avatar,
+    .slot.reflow-animate.reflow-focus {
+      animation: none;
+    }
   }
 
   /* ADR 0120 §4: the expand button, at the slot's top-right corner
