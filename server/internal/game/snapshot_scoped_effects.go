@@ -429,6 +429,9 @@ func unknownScopedEffectFields(data []byte, schema int) ([]string, error) {
 		if err := nested(where+" ability", obj["ability"], abilityRefJSONKeys, false); err != nil {
 			return err
 		}
+		if err := nested(where+" objects", obj["objects"], objectRefJSONKeys, true); err != nil {
+			return err
+		}
 		return nested(where+" object", obj["object"], objectRefJSONKeys, false)
 	}
 	for _, rec := range envelope.ScopedEffects {

@@ -953,9 +953,12 @@ func (g *Game) sweepUnreachableBoundTriggersLocked() {
 	g.DelayedTriggers = kept
 }
 
-// cloneEffectParams copies the one slice EffectParams holds.
+// cloneEffectParams copies the slices and the pointer EffectParams holds.
 func cloneEffectParams(p EffectParams) EffectParams {
 	p.Filter.Types = copyStrings(p.Filter.Types)
+	if len(p.Objects) > 0 {
+		p.Objects = append([]ObjectRef(nil), p.Objects...)
+	}
 	if p.Ability != nil {
 		a := *p.Ability
 		p.Ability = &a

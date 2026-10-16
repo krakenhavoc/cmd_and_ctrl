@@ -580,7 +580,33 @@ func corpusBoards() []corpusBoard {
 		// pinned to the creature (a new vocabulary value an older
 		// binary must refuse rather than read as nothing).
 		{"cant_be_sacrificed", corpusCantBeSacrificed},
+		// v9, added by #2099 (ADR 0026's second 2026-10-16 amendment)
+		// as a new file: Rescue from the Underworld's upkeep return
+		// waiting, its body keyed and its two objects, the target and
+		// the card the cost sacrificed, each with its CR 400.7 epoch in
+		// the graveyard (delayedTriggers[].params.objects).
+		{"delayed_trigger_objects", corpusDelayedTriggerObjects},
 	}
+}
+
+// corpusDelayedTriggerObjects is #2099's stored shape: a delayed
+// trigger whose body names more than one object.
+func corpusDelayedTriggerObjects(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	target := pushGraveyardCardTyped(me, "Old Friend", "Creature — Human")
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Grizzly Bears", 2, 2))
+	if _, err := castWithTapParams(t, g, "Rescue from the Underworld", "Instant", "{4}{B}", rescueFromTheUnderworldOracle, game.CastSpellParams{
+		Targets:      []game.TargetRef{{Kind: game.TargetCard, ID: target}},
+		SacrificeIDs: []uuid.UUID{bear},
+	}); err != nil {
+		t.Fatalf("setup: cast Rescue from the Underworld: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if len(g.DelayedTriggers) != 1 || len(g.DelayedTriggers[0].Params.Objects) != 2 {
+		t.Fatalf("setup: want one delayed trigger naming two objects, got %+v", g.DelayedTriggers)
+	}
+	return g
 }
 
 // corpusManaPoolRuns is #3041's stored shape: a pool of runs, and a
