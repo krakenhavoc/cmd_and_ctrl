@@ -1184,6 +1184,17 @@ type Card struct {
 	// See printed_cache.go.
 	printed *printedEntry
 
+	// basePower is this permanent's BASE power as the last layer pass
+	// left it: its power once layers 1 to 7b have applied (the printed
+	// value, a copy effect, a characteristic-defining ability and every
+	// effect that SETS power), before any modification, counter or
+	// switch (CR 208.4b). Kutzil, Malamet Exemplar's "power greater than
+	// its base power" reads it through BasePower. Meaningful only while
+	// `effective` is set; off the battlefield BasePower reads the
+	// printed value. A derived cache like `effective`: never
+	// snapshotted, rebuilt by the recompute a restore forces.
+	basePower int
+
 	// stackGranted is the keyword abilities the stack step of the layer
 	// pass gave this SPELL (CR 613.1f, ADR 0107 §3, #1854): "that spell
 	// gains rebound", "instant and sorcery spells you control have
@@ -1251,6 +1262,15 @@ type Card struct {
 	// because game.Card carries no oracle text. Joined with
 	// Unimplemented by MayMakeManaUnautomated (ADR 0118 decision 8).
 	PrintsManaAbility bool
+
+	// PrintsTapAbility records that the card's printed oracle text has
+	// an activated ability with {T} in its cost, per
+	// PrintsTapAbilityText (#3860). Stamped by the deck importer beside
+	// PrintsManaAbility, for the same reason: game.Card carries no
+	// oracle text. Read through PrintedTapAbility, which prefers the
+	// active face's own text on a multi-faced card. A copiable value
+	// (PrintedValues), because a copy takes the copied card's text.
+	PrintsTapAbility bool
 
 	// ColorCDADropped records that a CR 707.9d copy exception gave
 	// this object a colour, so the copy did not take the copied
@@ -1774,6 +1794,20 @@ func clampPower(p int) int {
 		return 0
 	}
 	return p
+}
+
+// BasePower is the permanent's base power (CR 208.4b): the power the
+// layer pass had after layer 7b, so the printed value as changed by a
+// copy effect, a characteristic-defining ability or an effect that
+// sets power, and not by a pump, an anthem or a counter. Kutzil,
+// Malamet Exemplar compares it with PowerForComparison ("power greater
+// than its base power"). Off the battlefield no layer pass has run and
+// it is the printed power.
+func (c Card) BasePower() int {
+	if c.effective != nil {
+		return c.basePower
+	}
+	return printedShared(&c).Power
 }
 
 // PowerForComparison includes layers and counters without clamping negative

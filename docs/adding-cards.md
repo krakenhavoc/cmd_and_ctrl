@@ -35,6 +35,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Players can't play lands" (ADR 0109 §4, #1895)](#players-cant-play-lands-adr-0109-4-1895)
   - ["Each player may play the cards they exiled" and "can't play cards from your hand" (ADR 0066, #2559)](#each-player-may-play-the-cards-they-exiled-and-cant-play-cards-from-your-hand-adr-0066-2559)
   - ["Cards in graveyards can't be targeted" (ADR 0109 §6, #1885)](#cards-in-graveyards-cant-be-targeted-adr-0109-6-1885)
+  - [Targeting costs and bars (#3860)](#targeting-costs-and-bars-3860)
   - ["Spells you control can't be countered" (ADR 0106, #1806)](#spells-you-control-cant-be-countered-adr-0106-1806)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
@@ -3368,6 +3369,70 @@ TargetingRestrictions: []game.TargetingRestriction{
 - A restriction about graveyards is listed on
   `GameView.graveyard_target_bans`, which the graveyard viewer shows as a
   banner.
+
+### Targeting costs and bars (#3860)
+
+Four shapes that decide what a spell or ability may target, or what
+targeting it costs. All four are read at the engine's one targeting walk,
+so the picker, the bot, the announce gate (CR 601.2c) and the resolution
+re-check (CR 608.2b) agree without a line of your own.
+
+**A cost for targeting a permanent** — "Spells your opponents cast that
+target this creature cost an additional 3 life to cast" (Terror of the
+Peaks, [ADR 0080 amendment 2026-10-15](decisions/0080-attack-taxes.md)).
+It is CR 601.2f's additional cost charged by a permanent other than the
+spell, not a `CostModifier` (those price generic mana):
+
+```go
+TargetTaxes: []game.TargetTax{
+    OpponentsSpellsTargetingThisCostLife(3,
+        "Spells your opponents cast that target this creature cost an additional 3 life to cast."),
+},
+```
+
+`CastSpell` refuses a caster who can't pay it and charges it with the
+other additional costs; the enumerator prices each target set and drops
+the casts the seat can't afford; the picker shows what each candidate
+costs. Abilities that target the permanent pay nothing here (ward is the
+other half), and neither does the permanent's controller. A shape the
+constructor doesn't name writes a `game.TargetTax{Label, Life,
+AppliesTo(game.TargetTaxQuery)}` literal; `Register` refuses one with no
+label, no life or no `AppliesTo`.
+
+**"Can't be the target of spells or abilities your opponents control this
+turn"** (Vines of Vastwood, [ADR 0038 amendment
+2026-10-15](decisions/0038-protection-style-keywords.md)) is
+`CantBeTargetedByYourOpponentsUntilEOT{Target}`, not
+`GrantKeywordUntilEOT{"hexproof"}`. Hexproof protects against the
+creature's CONTROLLER's opponents, this protects against the CASTER's,
+and they differ the moment the target is somebody else's creature. It is
+a data record the targeting gate reads live, so a hexproof waiver can't
+lift it.
+
+**A clause relative to the event that fired the trigger** — "Destroy
+target artifact that opponent controls", where "that opponent" is the
+player the Dragons just dealt combat damage to (Parapet Thrasher, [ADR
+0019 amendment 2026-10-15](decisions/0019-structured-targeting.md)):
+
+```go
+ControlledByThatPlayer(TargetPermanent("target artifact that opponent controls", Artifact()))
+```
+
+The player is the triggering event's `Target`. On a trigger whose event
+names no player, and on a spell or an activated ability, it admits
+nothing. Use it on a mode's clause too: a bullet with no legal target is
+not on offer.
+
+**"Change a target … to this creature"** (Spellskite, Mizzium Meddler)
+needs nothing from a card file past `changeATargetToThisCreature`; when
+the same creature fills two instances of "target", the controller is
+asked which one changes (a keyed `option_pick`).
+
+**A creature "that has an activated ability with {T} in its cost"**
+(Magewright's Stone) reads the catalog's abilities AND the printed text
+the importer stamped (`Card.PrintsTapAbility`, set by
+`game.PrintsTapAbilityText`), so a creature the catalog doesn't run still
+counts. Read it with `b27HasTapAbility()`, not a hand-written predicate.
 
 ### "Spells you control can't be countered" (ADR 0106, #1806)
 

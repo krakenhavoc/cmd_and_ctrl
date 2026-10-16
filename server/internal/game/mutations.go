@@ -1315,6 +1315,36 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #3860, CR 601.2f: what the spell's TARGETS add to its cost -- Terror
+	// of the Peaks' "spells your opponents cast that target this creature
+	// cost an additional 3 life". It is an additional cost charged by a
+	// permanent other than the spell, so it is validated here with the
+	// rest of the announce-time choices (the targets are settled, CR
+	// 601.2c) and paid with the additional cost below, the spell already
+	// on the stack. CR 119.4: the caster may pay it only with the life
+	// they have left after every other life cost of this cast -- the
+	// Phyrexian symbols paid with life, the alternative cost's life and
+	// the additional cost's -- so the sum is what is checked.
+	targetTaxLines := g.castTargetTaxLinesLocked(playerID, card, params.Targets)
+	targetTax := 0
+	for _, l := range targetTaxLines {
+		targetTax += l.Life
+	}
+	if targetTax > 0 {
+		owed := targetTax + planLife(costPlan, params.XValue) + params.PhyrexianLife*PhyrexianLifePerSymbol
+		if alt != nil {
+			owed += alt.Life
+		}
+		if !g.CanPayLifeLocked(p, owed) {
+			slog.Warn("cast_spell rejected: can't pay the targeting tax",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"tax", targetTax,
+				"owed", owed,
+			)
+			return targetTaxRefusal(targetTaxLines, targetTax)
+		}
+	}
 	// #1727, CR 118.3: one permanent pays one sacrifice. The
 	// alternative cost's sacrifice (AltCostIDs) and the additional
 	// cost's (SacrificeIDs) are validated separately above, each
@@ -1916,7 +1946,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// The life the whole plan pays — a "pay X life" at the announced X,
 	// and a chosen branch's fixed "pay 3 life" (ADR 0100 §2) — the same
 	// sum the validator checked against CR 119.4.
-	payLife := planLife(costPlan, params.XValue)
+	payLife := planLife(costPlan, params.XValue) + targetTax
 	if err := g.payAdditionalCostLocked(playerID, params.DiscardIDs, params.SacrificeIDs, payLife, params.commanderAnswers); err != nil {
 		slog.Error("cast_spell: additional cost failed after validation",
 			"card_name", card.Name,
@@ -6589,7 +6619,7 @@ func (g *Game) DiscardSelection(playerID uuid.UUID, cardIDs []uuid.UUID) error {
 			// out of the turn and left the trigger waiting for the
 			// next player's upkeep.
 			if g.Turn.Step == StepCleanup {
-				g.exitCleanupStepLocked()
+				g.exitCleanupStepOnAnswerLocked()
 			}
 			return nil
 		},

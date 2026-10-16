@@ -18,19 +18,13 @@ import (
 // (CR 606.6), and the sweep reads it back. X = 0 is a real choice: it
 // exiles every coloured token, whose mana value is 0.
 //
-// THE −10 IS REGISTERED AND IS WEAKER THAN PRINTED: the life and the
-// seven cards happen, and the "put up to seven permanent cards from
-// your hand onto the battlefield" clause does not. The alternatives
-// are both worse than omitting it — auto-picking seven permanents is
-// a choice the player never made, and skipping the ability entirely
-// would throw away a life gain and a draw seven that work perfectly.
-// The move itself is no longer the obstacle: #654 shipped
-// PutFromHandOntoBattlefield, which puts ONE card. Ugin's clause
-// puts up to seven, one prompt with a count, so it needs the shared
-// primitive to grow a bound (or to be applied in a chain) before the
-// clause can be written honestly.
-// Ugin still has a plus, so nothing here leaves him able only to
-// tick down.
+// The −10 is complete (#3861). The life and the seven cards come
+// first; then one pick over the permanent cards in hand, floor zero
+// and ceiling seven, and the picks enter as ONE simultaneous batch
+// (PutFromHandOntoBattlefield with Max, the Selvala's Stampede shape,
+// ADR 0146 amendment 2026-10-13): every CR 614 window sees the board
+// as it stood before any of them arrived, and every ETB fires after
+// all have landed. A land put this way is not a land play (CR 305.4).
 //
 // Ugin is colorless and his +2 hits anything, which is the half of
 // the card that actually gets activated at a four-player table.
@@ -38,10 +32,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "eecb3047-a563-441a-9175-200421981ac3",
 		Name:         "Ugin, the Spirit Dragon",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The -10 gains the life and draws the cards, but doesn't put permanents from your hand onto the battlefield.",
-		},
+		Completeness: CompletenessFull,
 		// Printed loyalty reaches the card through deck import
 		// (ADR 0032 §1); this is the fallback for tokens, fixtures
 		// and the dev spawner.
@@ -73,16 +64,27 @@ func init() {
 				},
 			},
 			{
-				Label: "−10: You gain 7 life, draw seven cards, then put up to seven permanent cards from your hand onto the battlefield.",
-				Cost:  LoyaltyCost(-10),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (GainLife{Player: item.Controller, Amount: 7}).Apply(ctx); err != nil {
-						return err
-					}
-					return DrawCards{Player: item.Controller, N: 7}.Apply(ctx)
-				},
+				Label:  "−10: You gain 7 life, draw seven cards, then put up to seven permanent cards from your hand onto the battlefield.",
+				Cost:   LoyaltyCost(-10),
+				Effect: uginMinusTen,
 			},
 		},
 	})
+}
+
+// uginMinusTen is the ultimate in its printed order: the life, the
+// seven cards, then the pick over the hand those cards landed in.
+func uginMinusTen(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	if err := (GainLife{Player: item.Controller, Amount: 7}).Apply(ctx); err != nil {
+		return err
+	}
+	if err := (DrawCards{Player: item.Controller, N: 7}).Apply(ctx); err != nil {
+		return err
+	}
+	return PutFromHandOntoBattlefield{
+		Optional: true,
+		Max:      7,
+		Label:    "Ugin, the Spirit Dragon — put up to seven permanent cards from your hand onto the battlefield",
+	}.Apply(ctx)
 }

@@ -950,6 +950,12 @@ var items = []Item{
 		Probe:   func(s effects.Spec) bool { return len(s.AttackTaxes) > 0 },
 	},
 	{
+		Slug: "target-taxes", Name: "Targeting taxes", Kind: KindMechanic, Status: StatusImplemented,
+		Summary: "Permanents like Terror of the Peaks that make an opponent pay life to cast a spell that targets them.",
+		ADR:     "0080-attack-taxes.md",
+		Probe:   func(s effects.Spec) bool { return len(s.TargetTaxes) > 0 },
+	},
+	{
 		Slug: "player-protection", Name: "Hexproof and protection for players", Kind: KindMechanic, Status: StatusImplemented,
 		Summary:  "Effects that give you hexproof or protection, so opponents can't target you or damage you.",
 		ADR:      "0072-protection.md",

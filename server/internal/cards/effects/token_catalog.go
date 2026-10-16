@@ -268,6 +268,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// #2090: Awaken the Blood Avatar's Avatar, with an attack trigger.
 	printedBloodAvatarToken,
+
+	// #3861: Teferi, Temporal Pilgrim's Spirit, which grows on a draw.
+	printedTeferiPilgrimSpiritToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

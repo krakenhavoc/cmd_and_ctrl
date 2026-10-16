@@ -1079,3 +1079,45 @@ admits nothing. No wire change: the picker sees the ordinary legal set. Espers p
 Back-out: drop the flag in `AmongTheCardsNamed` and `TestEspersTargetIsLimitedToTheCardsExiledThisWay` fails (a
 creature card exiled before the spell is offered); stop stamping the payload on restore and
 `TestEspersTargetedTriggerSurvivesASnapshotRestore` fails.
+
+## Amendment (2026-10-15, #3860): which instance of "target" changes, and a clause relative to the trigger's event
+
+Two gaps in the targeting machinery, both found by the zero-caveats pass on six cards.
+
+**1. A retarget whose destination is fixed asks WHICH instance of "target" (CR 115.7b, CR 601.2c).**
+The 2026-10-01 amendment above declared a caveat: when the same object fills two instances of the word "target"
+(Azorius Ploy at one creature twice; CR 601.2c allows it unless the second says "another"), the object is one thing to
+click, and the engine changed the EARLIER slot. Which slot becomes Spellskite matters when the two sentences do
+different things, and Spellskite's 2020-08-07 ruling puts the choice with its controller.
+
+`finishPinnedRetargetLocked` (game/retarget.go) is now the one place a pinned retarget is carried out once the OBJECT is
+settled — whether the controller named it in the `retarget` prompt or it was the only one the board could offer. One
+slot holds the object: it changes, no prompt. Several do: a `PendingChoiceOptionPick` with one option per slot, each
+labelled "Change <the clause's own words>" (with "(first)" / "(second)" when the words repeat) and showing the creature
+in `Cards`. The continuation is a KEYED option pick (`retarget/pinned-slot`, option_pick_keyed.go) carrying the stack
+item, the object and the destination as plain ids, so a table waiting on the answer is still a restore point, as the
+object prompt before it always was. The slots are RECOMPUTED when the answer arrives, never trusted from the offer; a
+prompt that ends unanswered (its chooser left, CR 800.4a) changes nothing, which is CR 115.7a's "a change that is not
+made leaves the target alone". No wire change: `option_pick` already has a client, a bot policy (the first option is
+the always-legal one) and an enumerator row. Spellskite and Mizzium Meddler lose their caveat and ship `full`.
+
+**2. A target clause that is relative to the trigger's event: "target artifact that opponent controls".**
+`TargetSpec` clauses could be relative to their SOURCE (`RelativeToSource`, `CombatWithSource`, `ExiledWithSource`) but
+not to the EVENT that fired the ability. A mode's clause is fixed on the card before the trigger exists, so Parapet
+Thrasher's "Destroy target artifact that opponent controls" — "that opponent" being the player the Dragons just dealt
+combat damage to — offered every opponent's artifacts and wasted the bullet at resolution.
+
+`TargetSpec.ControlledByThatPlayer` (bool, built with `effects.ControlledByThatPlayer(spec)`) is the clause, judged in
+`sourceAdmits` beside the other relative gates. The event is `TargetSource.Trigger`, set by `WithTrigger` at every point
+a trigger's walk builds its source — the harvest's fillable check, the mode prompt, each pick step and its answer — and
+by `stackItemSourceLocked` from the item's carried context, so the legal set, the announce check (CR 601.2c), the
+resolution re-check (CR 608.2b), the picker and the bot's moves are one answer. A mode with no such artifact is not on
+offer at all (CR 603.3c), which leaves the other two bullets for the turn's remaining triggers. A walk with no trigger
+admits NOTHING, never everything. It is data on the spec, not a closure, for `RelativeToSource`'s reason: a spec rides a
+paused prompt and a stack item.
+
+Back-out: take the `min(len(slots), 1)` shortcut in `finishPinnedRetargetLocked` and
+`TestPinnedRetargetSameObjectInTwoClausesAsksWhichSlotChanges`, `TestSpellskiteAsksWhichInstanceOfTargetChangesToIt` and
+`TestMizziumMeddlerAsksWhichInstanceOfTargetChanges` fail; drop `thatPlayerAdmits` from `sourceAdmits` and
+`TestParapetThrasherOffersNoArtifactBulletWithoutThatOpponentsArtifact` fails; drop the item's trigger from
+`stackItemSourceLocked` and the resolution re-check fails (`TestParapetThrasherDestroysTheDamagedOpponentsArtifact`).

@@ -48,8 +48,18 @@ func b27SacrificeAForest() *game.TargetSpec {
 // activated abilities and its mana abilities, intrinsic land ones
 // included — so the answer is exactly the set of creatures the Stone
 // could usefully untap.
+//
+// #3860: and, for a creature the catalog does not run, what its
+// PRINTED text says (Card.PrintedTapAbility, stamped at import by
+// game.PrintsTapAbilityText) — the printed clause is about text, and an
+// uncatalogued Llanowar-alike has no ability the engine could list. The
+// two are joined by "or": the catalog also covers what a granting
+// permanent gave the creature, which no text read can see.
 func b27HasTapAbility() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		if c.PrintedTapAbility() {
+			return true
+		}
 		for _, a := range game.ActivatedAbilitiesForCard(c) {
 			if a.Cost.Tap {
 				return true

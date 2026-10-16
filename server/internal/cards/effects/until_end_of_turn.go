@@ -215,6 +215,27 @@ func (k GrantKeywordUntilEOT) Apply(ctx *Context) error {
 		game.AddKeywordsMod(k.Keywords...))
 }
 
+// CantBeTargetedByYourOpponentsUntilEOT is "target creature can't be
+// the target of spells or abilities your opponents control this turn"
+// (Vines of Vastwood, #3860).
+//
+// NOT hexproof, and not GrantKeywordUntilEOT{"hexproof"}: hexproof
+// refuses what the creature's CONTROLLER's opponents control, this
+// refuses what the CASTER's opponents control, and they differ whenever
+// the creature belongs to someone else. "You" is the controller of the
+// resolving spell or ability. The set is locked now (CR 611.2c) and the
+// effect follows the object (CR 400.7). See game/targeting_bar.go.
+type CantBeTargetedByYourOpponentsUntilEOT struct {
+	Target uuid.UUID
+	Label  string
+}
+
+func (c CantBeTargetedByYourOpponentsUntilEOT) Apply(ctx *Context) error {
+	return untilEndOfTurn(ctx, c.Target, nil,
+		eotLabel(c.Label, "can't be the target of spells or abilities your opponents control until end of turn"),
+		game.CantBeTargetedByOpponentsMod())
+}
+
 // eotHasAbility reports whether the keyword is already present.
 // Keeps a Layer 6 grant idempotent when two copies of the same
 // effect stack — "gains trample" twice is still just trample, and a

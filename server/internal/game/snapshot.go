@@ -835,14 +835,17 @@ type cardSnapshot struct {
 	NeedsEffect      bool           `json:"needsEffect"`
 	// PrintsManaAbility is Card.PrintsManaAbility (#2258). Additive;
 	// absent means false, which is what every older file says.
-	PrintsManaAbility bool                `json:"printsManaAbility,omitempty"`
-	Owner             uuid.UUID           `json:"owner"`
-	Controller        uuid.UUID           `json:"controller"`
-	Tapped            bool                `json:"tapped"`
-	NextUntapSkips    []untapSkipSnapshot `json:"nextUntapSkips,omitempty"`
-	BattleX           float64             `json:"battleX"`
-	BattleY           float64             `json:"battleY"`
-	Counters          map[string]int      `json:"counters,omitempty"`
+	PrintsManaAbility bool `json:"printsManaAbility,omitempty"`
+	// PrintsTapAbility is Card.PrintsTapAbility (#3860). Additive;
+	// absent means false, which is what every older file says.
+	PrintsTapAbility bool                `json:"printsTapAbility,omitempty"`
+	Owner            uuid.UUID           `json:"owner"`
+	Controller       uuid.UUID           `json:"controller"`
+	Tapped           bool                `json:"tapped"`
+	NextUntapSkips   []untapSkipSnapshot `json:"nextUntapSkips,omitempty"`
+	BattleX          float64             `json:"battleX"`
+	BattleY          float64             `json:"battleY"`
+	Counters         map[string]int      `json:"counters,omitempty"`
 	// Flipped is Card.Flipped (ADR 0151, CR 110.5): the flipped status.
 	// Additive within v8; absent means unflipped, which is true of every
 	// file written before flip cards could flip.
@@ -2338,6 +2341,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		DurationCopyBase:         copyPrintedValues(c.DurationCopyBase),
 		NeedsEffect:              c.NeedsEffect,
 		PrintsManaAbility:        c.PrintsManaAbility,
+		PrintsTapAbility:         c.PrintsTapAbility,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
@@ -3259,6 +3263,7 @@ func restoreCard(c *cardSnapshot) Card {
 		DurationCopyBase:         copyPrintedValues(c.DurationCopyBase),
 		NeedsEffect:              c.NeedsEffect,
 		PrintsManaAbility:        c.PrintsManaAbility,
+		PrintsTapAbility:         c.PrintsTapAbility,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,

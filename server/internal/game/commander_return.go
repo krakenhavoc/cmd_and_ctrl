@@ -326,5 +326,5 @@ func (g *Game) cleanupAfterCommanderReturnLocked(moved bool) {
 	if g.commanderReturnOpenLocked() {
 		return
 	}
-	g.exitCleanupStepLocked()
+	g.exitCleanupStepOnAnswerLocked()
 }

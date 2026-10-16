@@ -76,10 +76,9 @@ func TestUginPlusTwoKillsASmallCreature(t *testing.T) {
 	}
 }
 
-// TestUginMinusTenGainsLifeAndDraws pins the half of the ultimate
-// that ships. The "put up to seven permanent cards from your hand
-// onto the battlefield" clause is declared as a caveat and is
-// deliberately absent — there is no hand picker to ask with.
+// TestUginMinusTenGainsLifeAndDraws pins the life and the draw; the
+// "put up to seven permanent cards" pick that follows is
+// TestUginMinusTenPutsUpToSevenPermanentsFromHand (#3861).
 func TestUginMinusTenGainsLifeAndDraws(t *testing.T) {
 	g := newCatalogGame(t)
 	seat := g.Turn.ActiveSeat
@@ -366,16 +365,18 @@ func TestTeferiHeroPlusOneDrawsAndUntapsAtTheNextEndStep(t *testing.T) {
 
 // --- Karn Liberated ---------------------------------------------
 
-// TestKarnPlusFourMakesTheTargetDiscard — weaker than printed on
-// purpose: the card lands in the graveyard rather than exile, and
-// the choice is still the victim's.
-func TestKarnPlusFourMakesTheTargetDiscard(t *testing.T) {
+// TestKarnPlusFourMakesTheTargetExileFromHand — the target picks,
+// from their own hand, and the card goes to exile, not the graveyard
+// (#3861). Nobody is asked to discard.
+func TestKarnPlusFourMakesTheTargetExileFromHand(t *testing.T) {
 	g := newCatalogGame(t)
 	seat := g.Turn.ActiveSeat
 	owner := g.Seats[seat]
 	them := g.Seats[(seat+1)%len(g.Seats)]
 	karn := pushWalkerForTest(g, owner.ID, "Karn Liberated", karnLiberatedOracle, 6)
 	advanceToMainOf(t, g, seat)
+	keep := pushHandCardWithManaCost(them, "Their Keeper", "Creature — Bear", "{1}{G}")
+	lose := pushHandCardWithManaCost(them, "Their Loss", "Instant", "{U}")
 
 	err := g.ActivateCatalogAbility(owner.ID, karn, 0, game.ActivateAbilityParams{
 		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: them.ID}},
@@ -388,11 +389,55 @@ func TestKarnPlusFourMakesTheTargetDiscard(t *testing.T) {
 	}
 	passPriorityAroundTable(t, g)
 
-	if discardOwed(g, them.ID) != 1 {
-		t.Errorf("the target owes %d discards, want 1", discardOwed(g, them.ID))
+	if chooseCardsChoiceFor(g, owner.ID) != nil {
+		t.Error("Karn's controller was asked to pick from the target's hand")
 	}
-	if discardOwed(g, owner.ID) != 0 {
-		t.Error("Karn's controller was asked to discard")
+	pick := chooseCardsChoiceFor(g, them.ID)
+	if pick == nil {
+		t.Fatal("the target was not asked which card to exile")
+	}
+	if pick.ChooseMin != 1 || pick.ChooseMax != 1 {
+		t.Errorf("pick bounds = [%d, %d], want exactly one", pick.ChooseMin, pick.ChooseMax)
+	}
+	if !hasID(pick.ChooseCards, keep) || !hasID(pick.ChooseCards, lose) {
+		t.Errorf("the pick does not offer the whole hand: %v", pick.ChooseCards)
+	}
+	if err := g.ResolveChooseCards(pick.ID, them.ID, nil); err == nil {
+		t.Error("declining was accepted; exiling a card is not optional")
+	}
+	if err := g.ResolveChooseCards(pick.ID, them.ID, []uuid.UUID{lose}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	if z := g.FindCardZoneForEffect(lose); z == nil || z.Kind != game.ZoneExile {
+		t.Errorf("the chosen card is in %v, want exile", z)
+	}
+	if them.Graveyard.Contains(lose) {
+		t.Error("the chosen card went to the graveyard")
+	}
+	if !them.Hand.Contains(keep) {
+		t.Error("the card not chosen left the hand")
+	}
+}
+
+// TestKarnPlusFourOnAnEmptyHandAsksNothing — nothing to exile, no
+// prompt to wedge the table on.
+func TestKarnPlusFourOnAnEmptyHandAsksNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	seat := g.Turn.ActiveSeat
+	owner := g.Seats[seat]
+	them := g.Seats[(seat+1)%len(g.Seats)]
+	karn := pushWalkerForTest(g, owner.ID, "Karn Liberated", karnLiberatedOracle, 6)
+	advanceToMainOf(t, g, seat)
+	them.Hand.Cards = nil
+
+	if err := g.ActivateCatalogAbility(owner.ID, karn, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: them.ID}},
+	}); err != nil {
+		t.Fatalf("+4: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if pick := chooseCardsChoiceFor(g, them.ID); pick != nil {
+		t.Errorf("a player with no hand was asked: %+v", pick)
 	}
 }
 

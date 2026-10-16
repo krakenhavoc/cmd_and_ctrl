@@ -1172,38 +1172,6 @@ func TestB38ManaSculptCountersTheTargetSpell(t *testing.T) {
 	}
 }
 
-func TestB38VinesOfVastwoodGrantsHexproofToYourOwnCreature(t *testing.T) {
-	g := newCatalogGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
-	mine := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
-	theirs := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
-	// Declared caveat: only a creature you control is a legal target.
-	vines := uuid.New()
-	me.Hand.PushTop(game.Card{
-		InstanceID: vines, Name: "Vines of Vastwood", TypeLine: "Instant",
-		OracleID: b38VinesOfVastwoodOracle, Owner: me.ID, Controller: me.ID,
-	})
-	advanceToMain(t, g)
-	if err := g.CastSpell(me.ID, vines, game.CastSpellParams{
-		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: theirs}},
-	}); err == nil {
-		t.Fatal("the narrowed clause refuses an opponent's creature")
-	}
-	if err := g.CastSpell(me.ID, vines, game.CastSpellParams{
-		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: mine}},
-	}); err != nil {
-		t.Fatalf("cast Vines of Vastwood: %v", err)
-	}
-	passPriorityAroundTable(t, g)
-	if !hasEffectiveKeyword(t, g, mine, "hexproof") {
-		t.Error("\"can't be the target of spells or abilities your opponents control\" is hexproof")
-	}
-	// Declared caveat: no kicker, so no +4/+4.
-	if p, tough := b38PT(t, g, mine); p != 2 || tough != 2 {
-		t.Errorf("kicker is not implemented, so the body is untouched: %d/%d", p, tough)
-	}
-}
-
 func TestB38DruidsDeliveranceSavesItsControllerAndNobodyElse(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp, other := g.Seats[0], g.Seats[1], g.Seats[2]

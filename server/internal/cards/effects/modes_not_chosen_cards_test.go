@@ -160,15 +160,25 @@ func TestParapetThrasherUsesADifferentBulletInEachDamageStep(t *testing.T) {
 	advanceUntilModePick(t, g, me.ID)
 	// The first-strike step is its own batch: the Drake alone connects.
 	chooseModeNow(t, g, me.ID, []int{0, 1, 2}, 0)
-	// The declared simplification: any opponent's artifact is offered,
-	// and one the damaged opponent does not control is not destroyed.
-	pickCard(t, g, me.ID, othersArtifact)
-	passPriorityAroundTable(t, g)
-	if zoneOf(g, othersArtifact) != game.ZoneBattlefield {
-		t.Error("an artifact the damaged opponent doesn't control is not destroyed")
+	// #3860: "that opponent controls" — only the damaged player's
+	// artifacts are offered, and another opponent's is refused.
+	p := latestPickTarget(g, me.ID)
+	if p == nil {
+		t.Fatal("no pick_target prompt for the artifact bullet")
 	}
-	if zoneOf(g, victimsArtifact) != game.ZoneBattlefield {
-		t.Error("the damaged opponent's artifact was never the target")
+	if !hasID(p.PickTargetCards, victimsArtifact) || hasID(p.PickTargetCards, othersArtifact) {
+		t.Fatalf("only the damaged opponent's artifact is offered, got %v", p.PickTargetCards)
+	}
+	if err := g.ResolvePickTarget(p.ID, me.ID, game.TargetRef{Kind: game.TargetCard, ID: othersArtifact}); err == nil {
+		t.Fatal("an artifact another opponent controls is not a legal target")
+	}
+	pickCard(t, g, me.ID, victimsArtifact)
+	passPriorityAroundTable(t, g)
+	if zoneOf(g, victimsArtifact) != game.ZoneGraveyard {
+		t.Error("the damaged opponent's artifact is destroyed")
+	}
+	if zoneOf(g, othersArtifact) != game.ZoneBattlefield {
+		t.Error("an artifact the damaged opponent doesn't control is untouched")
 	}
 
 	// The regular damage step: the artifact bullet is used this turn.
@@ -204,6 +214,31 @@ func TestParapetThrasherDestroysTheDamagedOpponentsArtifact(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if z := zoneOf(g, relic); z != game.ZoneGraveyard {
 		t.Errorf("the damaged opponent's artifact is destroyed, zone %q", z)
+	}
+}
+
+// #3860: a bullet whose clause has no legal target is not on offer (CR
+// 603.3c). "That opponent controls" makes that mean the DAMAGED
+// opponent's artifacts: a relic on another opponent's side of the table
+// no longer keeps the destroy bullet alive.
+func TestParapetThrasherOffersNoArtifactBulletWithoutThatOpponentsArtifact(t *testing.T) {
+	g := newCatalogGame(t)
+	me, victim := seatsForCombat(g)
+	thrasher := b12Push(g, me.ID, "Parapet Thrasher", "Creature — Dragon", "722e23d5-4f2a-43cd-bbd5-baf56b76e68d", 4, 3)
+	var bystander *game.Player
+	for _, s := range g.Seats {
+		if s.ID != me.ID && s.ID != victim.ID {
+			bystander = s
+			break
+		}
+	}
+	relic := b12Permanent(g, bystander.ID, "Bystander's Relic", "Artifact")
+
+	attackWith(t, g, victim.ID, thrasher)
+	chooseModeNow(t, g, me.ID, []int{1, 2}, 1)
+	passPriorityAroundTable(t, g)
+	if z := zoneOf(g, relic); z != game.ZoneBattlefield {
+		t.Errorf("an artifact the damaged opponent doesn't control is untouched, zone %q", z)
 	}
 }
 

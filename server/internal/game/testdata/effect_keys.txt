@@ -257,3 +257,4 @@ body blitz/sacrifice
 body weeping-angel/owner-shuffles-it-in
 body ltb/sacrifice-the-source
 condition ltb/the-listed-object
+option retarget/pinned-slot

@@ -79,6 +79,7 @@
   import {
     freeCastRequest,
     freeCastLocation,
+    mayCastOfferOpen,
     handFreeCastRequest,
     handFreeCastTarget,
     isFreeCastPick,
@@ -1447,7 +1448,9 @@
     const id = $freeCastRequest;
     if (!id) return;
     const me = view.seats.find((s) => s.id === viewerID);
-    const target = freeCastLocation(view.exile?.cards, me?.library.cards, id);
+    // #3490: wait out the frame the answer was given on.
+    const offerOpen = mayCastOfferOpen(view.pending_choices, id, viewerID);
+    const target = freeCastLocation(view.exile?.cards, me?.library.cards, id, offerOpen);
     if (target === undefined) return;
     freeCastRequest.set(null);
     if (target) handlePlayCard(target.card, target.zone);

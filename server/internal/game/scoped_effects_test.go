@@ -283,6 +283,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// by targeting, not a layer, and its cases are in
 		// cant_have_1651_test.go here and in cards/effects.
 		ModCantHaveKeywords: true, ModWaiveHexproof: true,
+		// #3860: read by targeting, like the waiver. Its cases are in
+		// targeting_bar_test.go.
+		ModCantBeTargetedByOpponents: true,
 		// #1593: becomeCopy is layer 1, materialised onto the printed
 		// baseline before the pass rather than applied in it. Its cases
 		// are in duration_copy_test.go here and in cards/effects.

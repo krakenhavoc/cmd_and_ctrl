@@ -3465,7 +3465,7 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 		// was harvested, which is exactly the source CR 702.16b wants:
 		// the permanent may have left between the trigger and the
 		// prompt, and its qualities then are what count.
-		lt := g.LegalTargetsForAnnouncedClauseForEffect(SourceObject(f.source.Controller, &f.source), f.steps, f.step, append([]TargetRef{}, f.picked...))
+		lt := g.LegalTargetsForAnnouncedClauseForEffect(SourceObject(f.source.Controller, &f.source).WithTrigger(f.tc), f.steps, f.step, append([]TargetRef{}, f.picked...))
 		lt = withoutPicked(lt, f.picked, clause.Distinct)
 		// #1559: a clause with a set rule can have candidates and
 		// still no legal SET of Min picks ("two target creatures
@@ -3664,7 +3664,7 @@ func (g *Game) ResolvePickTargetsDivided(choiceID, chooserID uuid.UUID, targets 
 		stamped = append(stamped, t)
 	}
 	all := append(append([]TargetRef(nil), frame.picked...), stamped...)
-	if err := g.validateAnnouncedTargetsWithLocked(SourceObject(chooserID, &frame.source), frame.steps[:frame.step+1], all, func(i int, _ TargetRef) bool { return i < len(frame.picked) }); err != nil {
+	if err := g.validateAnnouncedTargetsWithLocked(SourceObject(chooserID, &frame.source).WithTrigger(frame.tc), frame.steps[:frame.step+1], all, func(i int, _ TargetRef) bool { return i < len(frame.picked) }); err != nil {
 		return err
 	}
 	if step.Distinct {
@@ -3972,6 +3972,28 @@ func (g *Game) queueMayPayLocked(
 		},
 	})
 	return nil
+}
+
+// QueueMayPayElseForEffect is QueueMayPayForEffect with a consequence on
+// BOTH answers: "you may pay <cost>. If you do, <onPay>. If you don't,
+// <onDecline>" — Springheart Nantuko's "if you didn't create a token
+// this way, create a 1/1 green Insect". It is the one pay-unless body
+// with the echo-style onPay beside the decline (payUnlessExtras), so
+// the dialog, the auto-tap and the "a yes you can't fund is a no" rule
+// are pay-unless's own.
+//
+// A chooser who is no longer seated is not asked and onDecline runs,
+// pay-unless's default: the answer that can no longer be given is the
+// payment.
+//
+// Caller must hold g.mu.
+func (g *Game) QueueMayPayElseForEffect(
+	chooser, source uuid.UUID,
+	cost, question string,
+	onPay, onDecline func(g *Game) error,
+) error {
+	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline,
+		TurnStep{}, uuid.Nil, nil, payUnlessExtras{onPay: onPay})
 }
 
 // QueueMayCastForEffect queues a "you may cast <card> without paying

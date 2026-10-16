@@ -227,6 +227,30 @@ The cost is that the owner sees the middle 59% of the art's height behind their 
 - A per-viewer `object-position` for the own-seat panel (11.3).
 - Reordering slots. A slot is a place, not a rank; replace to move.
 
+### 12. Amendment (2026-10-16, #3934, owner decision "show the whole mat"): contain, over a blurred copy
+
+**The report.** Ian saw a mat "sized to the whole screen" with most of it cut off. The sizing premise was wrong and the cut-off was real. `.playmat` is `position: absolute; inset: 0` inside `.panel.seat-panel`: no `fixed`, no viewport units, no read of `window`; its box was always the seat's panel. What cut the art was `object-fit: cover` in a box far wider than the mat. A 12:7 mat showed this much of its height at 1920 x 1080 (measured at 2, 3 and 4 seats in Chromium; 11.3 had measured only the four-seat table):
+
+| Table | Panel | Share of a 12:7 mat shown (cover) |
+|---|---|---|
+| 2 seats (both panels) | 1889 x 500 | 45% of the height |
+| 3 seats, across (two) | 940 x 350 | 64% |
+| 3 and 4 seats, own | 1889 x 650 | 59% |
+| 4 seats, across (three) | 624 x 350 | 96% |
+
+On a 390 px phone the panels are near-square or portrait (1.23 at two seats, 0.56 across at four), so cover cut the width instead.
+
+**The decision: show the whole mat.** This replaces 11.3's "cover is the mat" (its reason 2) and the "Not done" line about cropping.
+
+- **The mat is `object-fit: contain`**, centred, in the seat's panel. Nothing of it is cropped, at any table size or window size.
+- **Behind it, the leftover strips are a blurred, dimmed copy of the same image**: a second `<img class="backdrop">` with the same `src` (one request, one cache entry), `object-fit: cover`, `filter: blur(18px) brightness(0.7)`, scaled 1.08 so the blur's soft edge falls outside the clip. One static CSS filter, no script.
+- **The owner's wash (decision 10) is unchanged**: the `::after` scrim covers both layers at the owner's strength, so cards and text keep their contrast over the mat and the strips alike.
+- **An across-table opponent's mat is still turned 180 degrees with their board** (both layers).
+- **The 12:7 target (11.3) stays.** Contain makes the shape matter less (nothing is lost whatever it is) and a 12:7 mat fills a four-seat across panel (1.78) almost exactly. No other shape is better for the three-seat and two-seat boxes, which differ from each other. The best-size prompt now says only that the whole mat always shows at the table, over a blurred copy of itself that fills the sides.
+- **The size of the mat in a wide box is the cost**: a 12:7 mat is drawn 854 x 498 inside a 1889 x 500 two-seat panel. That is the trade the owner chose.
+
+`tests-e2e/tests/playmat-shape-3934.spec.ts` pins it at 2, 3 and 4 seats and three viewports: the backdrop layer is the panel's box (not the screen's), the mat is `contain`, and its drawn rectangle lies inside the panel, has the image's whole aspect ratio, is as large as fits, and is centred.
+
 ## Alternatives considered
 
 - **Hotlink the pasted URL.** Rejected for the four reasons in decision 3.
