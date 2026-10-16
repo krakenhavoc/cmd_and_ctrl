@@ -209,6 +209,12 @@ type PermissionFilter struct {
 	// because a land is never cast and a colorless land is not a spell.
 	ArtifactOrColorlessOnly bool `json:"artifactOrColorlessOnly,omitempty"`
 
+	// AuraOrEquipmentOnly is Sigarda's Aid's "Aura and Equipment
+	// spells" (#3918): an OR of two subtypes, read from the card's
+	// effective subtypes, so an Aura and an Equipment each qualify and
+	// a plain artifact or enchantment does not.
+	AuraOrEquipmentOnly bool `json:"auraOrEquipmentOnly,omitempty"`
+
 	// FromChosenType marks a filter whose creature type is the one
 	// named as the SOURCE permanent entered (CR 614.12, S26's
 	// Card.NamedTribe) — Realmwalker. The catalog declares the flag;
@@ -325,6 +331,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.ArtifactOrColorlessOnly && !c.IsArtifact() && !c.IsColorless() {
+		return false
+	}
+	if f.AuraOrEquipmentOnly && !c.HasSubtype("Aura") && !c.HasSubtype("Equipment") {
 		return false
 	}
 	if f.CreatureType != "" && !cardHasCreatureType(c, f.CreatureType) {
