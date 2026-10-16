@@ -24,9 +24,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	Register(Spec{
-		OracleID:     "623903de-3c04-4745-9af3-d7ec9fb2574d",
-		Name:         "Bite Down",
+	Register(bitingSpell("623903de-3c04-4745-9af3-d7ec9fb2574d", "Bite Down"))
+}
+
+// bitingSpell is the whole spec of a vanilla "target creature you control
+// deals damage equal to its power to target creature or planeswalker you
+// don't control" instant (Bite Down, Master's Rebuke).
+func bitingSpell(oracleID, name string) Spec {
+	return Spec{
+		OracleID:     oracleID,
+		Name:         name,
 		Completeness: CompletenessFull,
 		Targets: Clauses(
 			TargetCreature("target creature you control", YouControl()),
@@ -34,7 +41,7 @@ func init() {
 				Or(Creature(), Planeswalker()), OpponentControls()),
 		),
 		OnResolve: oneSidedBite,
-	})
+	}
 }
 
 // oneSidedBite is "target creature you control deals damage equal to
