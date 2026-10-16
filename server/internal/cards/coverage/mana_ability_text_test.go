@@ -25,8 +25,6 @@ var knownManaAbilityDisagreements = map[string]string{
 	"Deranged Assistant":   "mill cost; not a mana ability by CR 605.1a (#3971)",
 	"Charmed Pendant":      "mill cost; not a mana ability by CR 605.1a (#3971)",
 	"Chromatic Sphere":     "draws a card; not a mana ability by CR 605.1a (#3971)",
-	// The catalog is wrong: the card prints no mana ability (#3970).
-	"Filigree Familiar": "the catalog runs a mana ability the card does not print (#3970)",
 	// The classifier is right, the fixture can't show it: Dryad Arbor's
 	// {T}: Add {G} is its Forest type's (CR 305.6), read off the type
 	// line, which the fixture does not carry, and its reminder text is
