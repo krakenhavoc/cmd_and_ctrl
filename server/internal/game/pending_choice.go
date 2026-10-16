@@ -830,6 +830,14 @@ type PendingChoice struct {
 	// the search prompt.
 	SearchGraveyardCards []uuid.UUID
 
+	// SearchHandCards is the subset of SearchCards that sits in the
+	// searched player's HAND, for "search that player's graveyard, hand,
+	// and library" (#3988, Kotose, the Silent Spider). Empty for every
+	// other search. A candidate is checked against the zone it was
+	// offered from, as for SearchGraveyardCards. Wire-serialised as
+	// PendingChoiceView.SearchHand, chooser-only.
+	SearchHandCards []uuid.UUID
+
 	// SearchMax is how many of SearchCards the chooser may take.
 	SearchMax int
 

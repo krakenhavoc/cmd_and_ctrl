@@ -789,6 +789,15 @@ type PendingChoiceView struct {
 	// graveyard" prompt. Everything else in Options is a library card.
 	// Absent for a library-only search. Chooser-only, like Options.
 	SearchGraveyard []string `json:"search_graveyard,omitempty"`
+	// SearchHand (#3988) lists the instance IDs among Options that are in
+	// the searched player's hand, on a "search that player's graveyard,
+	// hand, and library" prompt (Kotose, the Silent Spider). Absent for
+	// every other search. Chooser-only, like Options.
+	SearchHand []string `json:"search_hand,omitempty"`
+	// SearchAllZones (#3988) marks a "search that player's graveyard, hand,
+	// and library" prompt: every zone is searched, so the library is
+	// shuffled whatever is taken. Chooser-only.
+	SearchAllZones bool `json:"search_all_zones,omitempty"`
 	// ExchangesText marks a "copy_target" prompt whose pick is the
 	// creature to exchange text boxes with, not the object to copy (ADR
 	// 0160 Decision 6, Deadpool, Trading Card). Same answer, same empty
@@ -9136,6 +9145,10 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			for _, id := range c.SearchGraveyardCards {
 				v.SearchGraveyard = append(v.SearchGraveyard, id.String())
 			}
+			for _, id := range c.SearchHandCards {
+				v.SearchHand = append(v.SearchHand, id.String())
+			}
+			v.SearchAllZones = c.SearchesGraveyardHandAndLibrary()
 			v.Options = make([]CardView, 0, len(c.SearchCards))
 			for _, id := range c.SearchCards {
 				if card, ok := g.LookupCardForEffect(id); ok {
@@ -10540,6 +10553,8 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].SearchMax = 0
 			out[i].SearchMin = 0
 			out[i].SearchGraveyard = nil
+			out[i].SearchHand = nil
+			out[i].SearchAllZones = false
 			continue
 		}
 		// ADR 0133: an opening-hand action's question names a card in the
