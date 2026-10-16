@@ -2451,6 +2451,8 @@ PreventDamageDealtTo(PreventionStatic{To: ToThisCreature, Then: removeACounterFr
 // once per SOURCE: three attackers, three counters (Nine Lives).
 PreventDamageASourceWouldDeal(PreventionStatic{To: ToYou, Then: nineLivesCounterBody, Label: …})
 // Gates and filters: Damage: CombatDamage, From: FromACreature(), While: WhileItHasAPlusOneCounter.
+// "If a spell you control would deal damage" is From: FromASpellYouControl() (Hostility);
+// "another creature you control" is To: ToAnotherCreatureYouControl (Vigor).
 
 // The scoped shields carry it too:
 PreventNextDamage{Target: id, Amount: 3, Then: countersOnItPerPreventedBody}    // Test of Faith
@@ -3912,6 +3914,11 @@ otherwise wrap the shape: `InGraveyard(Landfall(...))` is Bloodghast,
 shuffle (#2073: death, sacrifice, discard, mill or counter, one
 trigger per arrival; `ShuffleYourGraveyardIntoYourLibrary` is its
 effect),
+`WhenThisIsPutIntoAGraveyardFromAnywhereShuffleItIn(label)` is the
+whole "When ~ is put into a graveyard from anywhere, shuffle it into
+its owner's library" line (the Incarnations, Serra Avatar, #2038: the
+card goes in only while it is the object that arrived, and the
+library is shuffled either way, CR 701.24c),
 `InExile(AtYourUpkeep(...))` is suspend's countdown (#659). The
 wrapper sets `game.TriggeredAbility.Zones`, which REPLACES the default
 rather than adding to it — an ability printed to work from the
