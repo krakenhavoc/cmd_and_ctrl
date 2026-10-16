@@ -6764,6 +6764,15 @@ or `InterveningIf(cond, row)` around a hand-written Effect (Valakut,
 Land Tax). Then a condition that fails in response removes the trigger
 before its question is asked (#3907).
 
+**"If it wasn't put onto the battlefield with this ability"** (#3933,
+CR 603.4, Kodama of the East Tree) is a flag, not a matcher: set
+`NotPutByThisAbility = true` on the entry row (an `On(game.EventETB, …)`
+with a declared Effect). The engine stamps every `EventETB` with the
+ability that made the entry (`Event.CauseSource`, the source object, and
+`Event.CauseAbility`, the catalog row; ADR 0013 §5ak) and skips the
+trigger when that is this row on this object. Never compare labels or
+scan the event log for it.
+
 **"You may" activated abilities.** When an activated ability's WHOLE
 effect is a "you may" ("Boast — {1}: You may have Arni's base power
 become …"), wrap the row in `YouMay(row, MayAtResolution{Question: "…"})`

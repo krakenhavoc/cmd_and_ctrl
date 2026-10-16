@@ -1767,6 +1767,18 @@ type Event struct {
 	CauseController uuid.UUID     `json:"cause_controller,omitempty"`
 	CauseItem       uuid.UUID     `json:"cause_item,omitempty"`
 
+	// CauseSource and CauseAbility say WHICH ability put a permanent
+	// onto the battlefield, on its EventETB (#3933, entry_provenance.go):
+	// the resolving item's source object (StackItem.SourceObject) and its
+	// catalog row (StackItem.Params.Ability). Kodama of the East Tree's
+	// "if it wasn't put onto the battlefield with this ability" reads
+	// them (TriggeredAbility.NotPutByThisAbility). Nil on every other
+	// event, on an entry no ability made (a land played, a spell
+	// resolving into a permanent, a sandbox move), and on an entry made
+	// by a spell's effect, which has no catalog row of its own.
+	CauseSource  *ObjectRef  `json:"cause_source,omitempty"`
+	CauseAbility *AbilityRef `json:"cause_ability,omitempty"`
+
 	// PublicNames maps a referenced token's ID to its name, captured
 	// when the event was emitted so the log can still name a token that
 	// has since ceased to exist (#3609, public_names.go). Only tokens
