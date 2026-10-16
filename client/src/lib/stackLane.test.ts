@@ -230,6 +230,16 @@ describe("stack lane items", () => {
     expect(no.top?.chips.map((c) => c.label)).not.toContain("can't be countered");
   });
 
+  // #2014: "Spells and abilities can't be countered" (Spider-Punk) puts
+  // the same chip on an ability, worded for an ability.
+  it("shows the can't-be-countered chip on an ability", () => {
+    const t = { ...trigger("t1", ME, "rock", "Their Rock — do a thing"), cant_be_countered: true };
+    const m = buildStackLane(input({ stackItems: [t] }));
+    const chip = m.top?.chips.find((c) => c.label === "can't be countered");
+    expect(chip?.tone).toBe("flag");
+    expect(chip?.title).toMatch(/this ability can't be countered/);
+  });
+
   // ADR 0107 §5: the spell's own "the damage can't be prevented".
   it("shows a damage-can't-be-prevented chip, and only when the wire says so", () => {
     const yes = buildStackLane(

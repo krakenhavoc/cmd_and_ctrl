@@ -300,9 +300,9 @@ func TestOtherSourcesAreUnaffectedByAShield(t *testing.T) {
 	}
 }
 
-// "Spells … can't be countered" is about spells. An ability its
-// controller controls is still countered (CR 701.6b) — the gate is
-// never asked about one.
+// "Spells … can't be countered" is about spells. An ability is still
+// countered (CR 701.6a) unless a static says abilities too (#2014,
+// below).
 func TestCounterShieldDoesNotProtectAbilities(t *testing.T) {
 	withCounterShields(t, CounterShieldStatic{Whose: CounterShieldAnyPlayer})
 	g := newActiveGame(t)
@@ -325,5 +325,165 @@ func TestCounterShieldDoesNotProtectAbilities(t *testing.T) {
 	}
 	if _, ok := g.StackMeta[ability]; ok {
 		t.Error("the ability was not countered")
+	}
+}
+
+// --- #2014: "Spells and abilities can't be countered" ---------------
+
+// pushAbilityFor puts an activated or triggered ability on the stack,
+// controlled by `controller`, from the permanent `src`.
+func pushAbilityFor(g *Game, kind StackItemKind, controller *Player, src uuid.UUID) uuid.UUID {
+	id := uuid.New()
+	if g.StackMeta == nil {
+		g.StackMeta = map[uuid.UUID]*StackItem{}
+	}
+	g.StackMeta[id] = &StackItem{ID: id, Kind: kind, Controller: controller.ID,
+		Owner: controller.ID, SourceCardID: src, Label: "Test ability"}
+	return id
+}
+
+func abilityCantBeCountered(g *Game, id uuid.UUID) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.abilityCantBeCounteredLocked(g.StackMeta[id])
+}
+
+// A static that covers abilities stops every counter verb from
+// countering an activated or a triggered ability (CR 701.6a, CR
+// 101.2); the verb returns cleanly, as it does for a covered spell, so
+// the Stifle that asked resolves and does nothing. Without the static
+// each verb counters.
+func TestAnAbilityShieldStopsEveryCounterVerb(t *testing.T) {
+	verbs := []struct {
+		name    string
+		counter func(g *Game, id uuid.UUID) error
+	}{
+		{"counter", func(g *Game, id uuid.UUID) error { return g.CounterTargetForEffect(id) }},
+		{"counter to exile", func(g *Game, id uuid.UUID) error {
+			return g.CounterTargetToZoneForEffect(id, ZoneRef{Kind: ZoneExile})
+		}},
+		{"counter to the bottom of the library", func(g *Game, id uuid.UUID) error {
+			return g.CounterSpellToLibraryThenForEffect(id, TuckOptions{ToBottom: true}, nil)
+		}},
+		{"counter unless paid, declined", func(g *Game, id uuid.UUID) error { return g.counterIfStillOnStackLocked(id) }},
+	}
+	for _, v := range verbs {
+		for _, kind := range []StackItemKind{StackItemActivated, StackItemTriggered} {
+			for _, shielded := range []bool{true, false} {
+				name := v.name + "/" + string(kind) + "/unshielded"
+				if shielded {
+					name = v.name + "/" + string(kind) + "/shielded"
+				}
+				t.Run(name, func(t *testing.T) {
+					withCounterShields(t, CounterShieldStatic{Label: "Spells and abilities can't be countered.",
+						Whose: CounterShieldAnyPlayer, Abilities: true})
+					g := newActiveGame(t)
+					me, opp := g.Seats[0], g.Seats[1]
+					src := uuid.New()
+					if shielded {
+						src = pushShieldSource(g, me)
+					}
+					// An opponent's ability: the static says "abilities",
+					// with no "you".
+					ability := pushAbilityFor(g, kind, opp, src)
+					g.mu.Lock()
+					err := v.counter(g, ability)
+					g.mu.Unlock()
+					if err != nil {
+						t.Fatalf("counter: %v", err)
+					}
+					if _, onStack := g.StackMeta[ability]; onStack != shielded {
+						t.Errorf("on the stack after the counter: %v, want %v", onStack, shielded)
+					}
+					countered := false
+					for _, ev := range g.Events {
+						if ev.Kind == EventCounterSpell && ev.Target == ability {
+							countered = true
+						}
+					}
+					if countered == shielded {
+						t.Errorf("EventCounterSpell fired: %v, want %v", countered, !shielded)
+					}
+				})
+			}
+		}
+	}
+}
+
+// Whose abilities: "any player" covers every player's; "you control"
+// covers the static's controller's only; "you cast" covers none,
+// because an ability is never cast.
+func TestAnAbilityShieldWhose(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		whose        CounterShieldWhose
+		mine, theirs bool
+	}{
+		{"any player", CounterShieldAnyPlayer, true, true},
+		{"you control", CounterShieldYouControl, true, false},
+		{"you cast", CounterShieldYouCast, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			withCounterShields(t, CounterShieldStatic{Whose: tc.whose, Abilities: true})
+			g := newActiveGame(t)
+			me, opp := g.Seats[0], g.Seats[1]
+			src := pushShieldSource(g, me)
+			mine := pushAbilityFor(g, StackItemActivated, me, src)
+			theirs := pushAbilityFor(g, StackItemTriggered, opp, src)
+			if got := abilityCantBeCountered(g, mine); got != tc.mine {
+				t.Errorf("my ability covered: %v, want %v", got, tc.mine)
+			}
+			if got := abilityCantBeCountered(g, theirs); got != tc.theirs {
+				t.Errorf("an opponent's ability covered: %v, want %v", got, tc.theirs)
+			}
+		})
+	}
+}
+
+// A static with Abilities still covers spells as its Whose and Spell
+// say, and the ability gate answers false for a spell item.
+func TestAnAbilityShieldStillCoversSpells(t *testing.T) {
+	withCounterShields(t, CounterShieldStatic{Whose: CounterShieldAnyPlayer, Abilities: true})
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pushShieldSource(g, me)
+	spell := pushSpellFor(t, g, "Instant", opp, opp)
+	if !cantBeCountered(g, spell) {
+		t.Error("the spell half must cover an opponent's spell")
+	}
+	if abilityCantBeCountered(g, spell) {
+		t.Error("the ability gate answered for a spell")
+	}
+	if g.AbilityCantBeCounteredForEffect(spell) {
+		t.Error("the ability chip must not show on a spell")
+	}
+}
+
+// The chip on an ability reads the same gate, and the static ends with
+// its source (CR 611.3a, CR 604.2): an ability already on the stack can
+// be countered once the permanent has left.
+func TestAnAbilityShieldEndsWithItsSource(t *testing.T) {
+	withCounterShields(t, CounterShieldStatic{Whose: CounterShieldAnyPlayer, Abilities: true})
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	src := pushShieldSource(g, me)
+	ability := pushAbilityFor(g, StackItemTriggered, me, src)
+	if !g.AbilityCantBeCounteredForEffect(ability) {
+		t.Fatal("the chip must show while the shield is out")
+	}
+	if _, err := g.Battlefield.Remove(src); err != nil {
+		t.Fatal(err)
+	}
+	if g.AbilityCantBeCounteredForEffect(ability) {
+		t.Error("the shield outlived its source")
+	}
+	g.mu.Lock()
+	err := g.CounterTargetForEffect(ability)
+	g.mu.Unlock()
+	if err != nil {
+		t.Fatalf("counter: %v", err)
+	}
+	if _, ok := g.StackMeta[ability]; ok {
+		t.Error("the ability was not countered once the shield left")
 	}
 }

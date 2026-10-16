@@ -639,7 +639,10 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
       chips.push({
         label: "can't be countered",
         tone: "flag",
-        title: "this spell can't be countered — by its own text or by the mana that paid for it",
+        title:
+          item.kind === "spell"
+            ? "this spell can't be countered — a counterspell aimed at it does nothing"
+            : "this ability can't be countered — a Stifle aimed at it does nothing",
       });
     }
     // ADR 0107 §5: a Fog, a shield or protection will not stop this one.
