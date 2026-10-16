@@ -48,7 +48,9 @@ func TestCantBeSacrificedRefusesASacrificeCost(t *testing.T) {
 		t.Fatal("a refused payment moved something")
 	}
 	var cands []uuid.UUID
-	g.WithWriteLock(func() { cands = g.SacrificeCostCandidatesForEffect(me.ID, openSacrificeCost().SacrificeOther) })
+	g.WithWriteLock(func() {
+		cands = g.SacrificeCostCandidatesForEffect(me.ID, uuid.Nil, openSacrificeCost().SacrificeOther)
+	})
 	if slices.Contains(cands, kept) || !slices.Contains(cands, free) {
 		t.Errorf("cost candidates = %v, want the free rock and not the protected one", cands)
 	}

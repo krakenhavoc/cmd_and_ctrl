@@ -101,6 +101,32 @@ type PreventDamageFromSource struct {
 	// default to the card's name.
 	Question string
 	Label    string
+
+	// ChosenQueries says Queries name a colour or type that was CHOSEN
+	// (Prismatic Strands, Mourner's Shield), not printed: a text change
+	// never reaches those (CR 612.2). Printed queries — "a red source" —
+	// are read through the resolving object's text as the shield is
+	// made (queriesThroughText, #3872). Set with WithChosenQueries.
+	ChosenQueries bool
+}
+
+// WithChosenQueries marks the shield's Queries as chosen, not printed.
+func (p PreventDamageFromSource) WithChosenQueries() PreventDamageFromSource {
+	p.ChosenQueries = true
+	return p
+}
+
+// queriesThroughText is a shield's printed source queries as the text
+// of the object it resolves for now reads them (CR 612.2, #3872):
+// Circle of Protection: Red under a Sleight of Mind shields against "a
+// green source". Read once, as the shield is made; the shield keeps
+// that question whatever the text says later (CR 612.3's ruling). A
+// chosen query is returned as it is.
+func queriesThroughText(ctx *Context, qs []game.PermanentQuery, chosen bool) []game.PermanentQuery {
+	if chosen {
+		return qs
+	}
+	return game.PermanentQueriesThroughTextOf(qs, ctx.textReader())
 }
 
 // ShieldLasts is how long a PreventDamageFromSource shield lasts when
@@ -181,6 +207,7 @@ func (p PreventDamageFromSource) DealingTo(clause int) PreventDamageFromSource {
 }
 
 func (p PreventDamageFromSource) Apply(ctx *Context) error {
+	p.Queries = queriesThroughText(ctx, p.Queries, p.ChosenQueries)
 	label := p.Label
 	if label == "" {
 		label = shieldSourceName(ctx) + " — prevent damage from a source this turn"
@@ -267,6 +294,8 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 // the ability has no source object.
 func (p PreventDamageFromSource) filter(ctx *Context) (game.DamageSourceFilter, bool) {
 	f := p.Filter
+	// "nongreen", "non-Spider": printed words (CR 612.2, #3872).
+	f.Except = queriesThroughText(ctx, f.Except, false)
 	f.ExceptObjects = append([]game.ObjectRef(nil), f.ExceptObjects...)
 	if p.exceptThis {
 		ref, ok := ctx.SourceRef()

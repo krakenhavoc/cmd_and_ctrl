@@ -29,6 +29,19 @@ import (
 // So a literal colour letter or basic land type passed straight to
 // Card.HasColor, Card.HasSubtype or devotionTo is a finding, unless the
 // file is listed below with the reason the word is out of reach.
+//
+// Slice 2 (#3872) adds the helpers that take the word as an ARGUMENT
+// and judge it as given (textWordHelperArgs: ControlsA, the land
+// counts, b18ControlsPermanentOfColor…): a literal there is a finding
+// too, and the caller passes the word through its text instead
+// (ControlsA(ctx.TextSubtype("Faerie")), source.TextSubtype("Island")).
+// The helpers that read the word through the text THEMSELVES — the
+// predicate builders a lending walk evaluates (IsLandWithSubtype,
+// MatchLandSubtype, MatchColor…), the statics that read their source
+// (SetsBasicLandType, EachLandIsAlso), the effects that read their
+// context (TargetLandBecomes…, the prevention shields' QueryColors) —
+// are textWordDoors: a literal is how a card file names its word to
+// them, and text_word_helpers_test.go holds them to following a change.
 
 // textWordLiteralAllowed are the files whose literal is correctly
 // untranslated, each with the reason. Keep it short: a reason that is
@@ -39,6 +52,49 @@ var textWordLiteralAllowed = map[string]string{
 	// where no text change reaches (CR 400.7; a change lives on a
 	// permanent or a spell).
 	"marang_river_prowler.go": "graveyard-only clause",
+
+	// An alternative cost's condition ("If you control a Plains, you may
+	// tap an untapped creature you control rather than pay this spell's
+	// mana cost") is judged as the card is cast from a hand (CR 601.2b),
+	// before anything can change its text: a change lives on a permanent
+	// or a spell already on the stack.
+	"angelic_favor.go":  "alternative cost, judged as cast",
+	"lashknife.go":      "alternative cost, judged as cast",
+	"orims_cure.go":     "alternative cost, judged as cast",
+	"ramosian_rally.go": "alternative cost, judged as cast",
+	"sivvis_ruse.go":    "alternative cost, judged as cast",
+	"sivvis_valor.go":   "alternative cost, judged as cast",
+	"snuff_out.go":      "alternative cost, judged as cast",
+
+	// "This land enters tapped unless you control …": asked as the land
+	// enters, a new object no text change has reached (CR 400.7, 614.12).
+	"dwarven_mine.go":      "enters-tapped condition, judged as it enters",
+	"gingerbread_cabin.go": "enters-tapped condition, judged as it enters",
+	"idyllic_grange.go":    "enters-tapped condition, judged as it enters",
+}
+
+// textWordHelperArgs are effects-package helpers that take a colour or
+// land-type word as an argument and judge it AS GIVEN, with the index of
+// each such argument. The caller reads the word through its text first.
+var textWordHelperArgs = map[string][]int{
+	"ControlsA":                         {0},
+	"AnOpponentControlsAAndYouControlA": {0, 1},
+	"b08LandsWithSubtypeControlled":     {2},
+	"b12OtherMountainsControlled":       {3},
+	"b18ControlsPermanentOfColor":       {2},
+	"b33IslandsControlled":              {2},
+	"leftAsColor":                       {2},
+}
+
+// textWordDoors are the helpers that read a word argument through the
+// text of the object whose clause it is, so a literal passed to them
+// follows a change. text_word_helpers_test.go holds them to that; this
+// list is the scan's control that they are still in use.
+var textWordDoors = []string{
+	"IsLandWithSubtype", "IsBasicLandWithSubtype", "MatchLandSubtype", "MatchColor",
+	"MatchCreatureSubtype", "SetsBasicLandType", "EachLandIsAlso", "TargetLandBecomesUntilEOT",
+	"TargetLandBecomesWhileSourceRemains", "TargetLandBecomesIndefinitely",
+	"TargetLandBecomesUntilItsControllersNextTurn", "QueryColors",
 }
 
 // textWordReaders are the calls whose first (or, for devotionTo, last)
@@ -47,6 +103,13 @@ var textWordReaders = map[string]bool{
 	"HasColor":   true, // Card.HasColor(letter)
 	"HasSubtype": true, // Card.HasSubtype(sub), a method; the effects-package HasSubtype predicate reads through the lens
 	"devotionTo": true, // devotionTo(g, controller, letter)
+}
+
+// isTextWordArgument is isTextWordLiteral in any case: the helpers in
+// textWordHelperArgs compare case-insensitively, so "swamp" names the
+// word as surely as "Swamp" does.
+func isTextWordArgument(lit string) bool {
+	return isTextWordLiteral(lit) || game.IsBasicLandType(lit)
 }
 
 func isTextWordLiteral(lit string) bool {
@@ -72,6 +135,27 @@ func TestNoHardCodedTextWordsInCardFiles(t *testing.T) {
 			call, ok := n.(*ast.CallExpr)
 			if !ok || len(call.Args) == 0 {
 				return true
+			}
+			if id, ok := call.Fun.(*ast.Ident); ok {
+				seen[id.Name]++
+				for _, i := range textWordHelperArgs[id.Name] {
+					if i >= len(call.Args) {
+						continue
+					}
+					lit, ok := call.Args[i].(*ast.BasicLit)
+					if !ok || lit.Kind != token.STRING {
+						continue
+					}
+					word, err := strconv.Unquote(lit.Value)
+					if err != nil || !isTextWordArgument(word) {
+						continue
+					}
+					if _, ok := textWordLiteralAllowed[file]; ok {
+						usedAllowance[file] = true
+						continue
+					}
+					findings = append(findings, file+":"+strconv.Itoa(fset.Position(call.Pos()).Line)+" "+id.Name+"("+lit.Value+")")
+				}
 			}
 			var name string
 			arg := call.Args[0]
@@ -120,6 +204,16 @@ func TestNoHardCodedTextWordsInCardFiles(t *testing.T) {
 	for name := range textWordReaders {
 		if seen[name] == 0 {
 			t.Errorf("no catalog file calls %s — the scan is matching a name that no longer exists", name)
+		}
+	}
+	for name := range textWordHelperArgs {
+		if seen[name] == 0 {
+			t.Errorf("no catalog file calls %s — drop it from textWordHelperArgs", name)
+		}
+	}
+	for _, name := range textWordDoors {
+		if seen[name] == 0 {
+			t.Errorf("no catalog file calls %s — drop it from textWordDoors", name)
 		}
 	}
 	for file := range textWordLiteralAllowed {

@@ -36,7 +36,7 @@ func init() {
 			}).Apply(ctx); err != nil {
 				return err
 			}
-			if victim == uuid.Nil || !ControlsA("Warrior")(ctx.Game, ctx.Controller()) {
+			if victim == uuid.Nil || !ControlsA(ctx.TextSubtype("Warrior"))(ctx.Game, ctx.Controller()) {
 				return nil
 			}
 			return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -2)

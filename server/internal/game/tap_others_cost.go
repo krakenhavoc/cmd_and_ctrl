@@ -198,7 +198,7 @@ func (g *Game) TapOthersOptionsForEffect(playerID, sourceID uuid.UUID, tc *TapOt
 		return nil
 	}
 	var out []uuid.UUID
-	for _, id := range g.specCandidatesLocked(playerID, tc.Filter).Cards {
+	for _, id := range g.costCandidatesLocked(playerID, sourceID, tc.Filter).Cards {
 		if tc.ExcludeSource && id == sourceID {
 			continue
 		}
@@ -300,7 +300,7 @@ func (g *Game) validateTapOthersCostAtXLocked(playerID, sourceID uuid.UUID, tc *
 		// specMatchLocked(…, false), not targetLegalLocked: tapping a
 		// permanent to pay a cost does not target it (CR 601.2h /
 		// 602.2b), so the CR 702 keyword gate must not apply.
-		if !g.specMatchLocked(SourceChooser(playerID), tc.Filter, TargetRef{Kind: TargetCard, ID: id}, false) {
+		if !g.specMatchLocked(g.costSourceLocked(playerID, sourceID), tc.Filter, TargetRef{Kind: TargetCard, ID: id}, false) {
 			return ErrIllegalTarget
 		}
 	}

@@ -33,7 +33,7 @@ func unholyAnnexEndStep(g *game.Game, item *game.StackItem) error {
 	if err := (DrawCards{N: 1}).Apply(ctx); err != nil {
 		return err
 	}
-	if ControlsA("Demon")(g, item.Controller) {
+	if ControlsA(ctx.TextSubtype("Demon"))(g, item.Controller) {
 		return b40DrainEachOpponent(2)(g, item)
 	}
 	return g.ChangePlayerLifeForEffect(ctx.Source(), item.Controller, -2)

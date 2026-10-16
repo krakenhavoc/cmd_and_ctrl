@@ -1973,7 +1973,7 @@ func (e *enumerator) sacrificePool(sourceID uuid.UUID, selfToo bool, spec *game.
 	// hexproof / shroud gate must not shrink the pool. It is the
 	// seat's own permanents that can be sacrificed (#3275).
 	var pool []uuid.UUID
-	for _, id := range e.g.SacrificeCostCandidatesForEffect(e.seat, spec) {
+	for _, id := range e.g.SacrificeCostCandidatesForEffect(e.seat, sourceID, spec) {
 		if (selfToo || spec.ExcludeSource) && id == sourceID {
 			continue
 		}

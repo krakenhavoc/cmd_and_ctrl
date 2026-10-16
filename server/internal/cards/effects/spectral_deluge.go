@@ -69,6 +69,6 @@ func init() {
 // Kept beside the card because it is one card's sentence.
 func b41ToughnessAtMostYourIslands() CardPredicate {
 	return func(g *game.Game, caster uuid.UUID, c game.Card) bool {
-		return c.CurrentToughness() <= b08LandsWithSubtypeControlled(g, caster, "Island")
+		return c.CurrentToughness() <= b08LandsWithSubtypeControlled(g, caster, c.LentSubtype("Island"))
 	}
 }

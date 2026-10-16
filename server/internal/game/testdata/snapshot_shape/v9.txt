@@ -1461,6 +1461,11 @@ lastKnownPermanents{}[].renowned	bool
 lastKnownPermanents{}[].ringBearer	bool
 lastKnownPermanents{}[].suspected	bool
 lastKnownPermanents{}[].tapped	bool
+lastKnownPermanents{}[].textWords	array
+lastKnownPermanents{}[].textWords[]	object
+lastKnownPermanents{}[].textWords[].from	string
+lastKnownPermanents{}[].textWords[].kind	string
+lastKnownPermanents{}[].textWords[].to	string
 lastKnownPermanents{}[].toughness	number:int
 lastKnownStack	array
 lastKnownStack[]	object
@@ -2084,6 +2089,11 @@ lastKnownTriggerIdentity{}.textBox.from	string
 lastKnownTriggerIdentity{}.textBox.key	string
 lastKnownTriggerIdentity{}.textBox.keywords	array
 lastKnownTriggerIdentity{}.textBox.keywords[]	string
+lastKnownTriggerIdentity{}.textWords	array
+lastKnownTriggerIdentity{}.textWords[]	object
+lastKnownTriggerIdentity{}.textWords[].from	string
+lastKnownTriggerIdentity{}.textWords[].kind	string
+lastKnownTriggerIdentity{}.textWords[].to	string
 lastKnownTriggerIdentity{}.tokenKey	string
 lastResolvedVersion	number:uint64
 layerVersion	number:uint64
