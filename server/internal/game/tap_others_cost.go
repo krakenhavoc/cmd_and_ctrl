@@ -121,6 +121,15 @@ type TapOthersCost struct {
 	// PaidCost.TappedOthers at resolution (ctx.TappedToPay), and
 	// CostQuery.TappingToPay at CR 601.2f for a per-creature discount.
 	AnyNumber bool
+
+	// UpTo is "tapping UP TO Count untapped creatures you control"
+	// (#3931): harmonize's "tapping up to one untapped creature you
+	// control" (CR 702.180a). The payer names from zero to Count, so
+	// the cost is always payable and none is a legal payment. An
+	// alternative cost's card component only (AlternativeCost.TapOthers
+	// beside ReducedByTappedPower); effects.Register refuses it
+	// anywhere else.
+	UpTo bool
 }
 
 // Empty reports whether the cost demands nothing. Nil-safe, so the
@@ -145,14 +154,18 @@ func TapOthersCountFromX(c *TapOthersCost) bool {
 // TapOthersCostBounds is the payment width at an announced X. A
 // fixed clause returns Count / Count; a CountFromX clause returns X /
 // X; an AnyNumber clause (#3961) returns 0 / math.MaxInt, the options
-// being the only ceiling. Negative X is clamped to zero because the
-// announce path rejects it separately.
+// being the only ceiling; an UpTo clause (#3931) returns 0 / Count.
+// Negative X is clamped to zero because the announce path rejects it
+// separately.
 func TapOthersCostBounds(c *TapOthersCost, x int) (lo, hi int) {
 	if c == nil || c.Filter == nil {
 		return 0, 0
 	}
 	if c.AnyNumber {
 		return 0, math.MaxInt
+	}
+	if c.UpTo {
+		return 0, c.Count
 	}
 	if TapOthersCountFromX(c) {
 		if x < 0 {

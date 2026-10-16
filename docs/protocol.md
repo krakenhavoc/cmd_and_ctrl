@@ -2512,6 +2512,29 @@ spell on the stack, and the stack item's paid-cost record keeps the
 objects the alternative cost paid with (`PaidCost.AltCostObjects`, kept
 by a CR 707.10 copy and by the permanent the spell becomes).
 
+**Harmonize (#3931, CR 702.180, ADR 0135 amendment 2026-10-16).** A
+harmonize offer is keyed `harmonize`, labelled as printed ("Harmonize
+{5}{R}{R}"), and claimable only from the graveyard (`from_zone`
+`graveyard`), where flashback is. Its card half taps UP TO one untapped
+creature the viewer controls, so it carries `tap_options` with `min` 0
+and `max` 1 (tapping none is a legal payment, and the offer is stamped
+with no creature to tap), `pay_label` ("up to one untapped creature you
+control"), `reduces_by_power: true`, and `tap_prices`, keyed by the
+instance IDs in `tap_options`, each `{ power, price }`: the creature's
+power, clamped at zero, and the mana the cast owes with it tapped, priced
+by the server's one pricer. The reduction comes off the generic part, and
+off an announced {X} once the printed generic is gone (CR 601.2f), never
+below {0}; `mana_cost` stays the printed harmonize cost. `tap_prices` is
+per viewer and stripped from a public pile with `tap_options`. The pick
+rides `cast_spell` as `alt_cost_ids`, none or one creature; the auto-tap
+preview takes it the same way and prices the reduced cost. The creature
+is tapped at CR 601.2h with the spell on the stack, may have arrived this
+turn (CR 302.6), and is never tapped for the spell's mana. A tapped,
+opponent's or non-creature permanent, or two creatures, is refused as
+`bad_request` with nothing paid. A spell cast this way is exiled any time
+it would leave the stack. An effect that grants harmonize (Songcrafter
+Mage) stamps the same offer, priced at the card's mana cost.
+
 ## Optional additional costs and the cast gate (S42, ADR 0073)
 
 Two additive fields on `CardView` and one on `cast_spell`, both

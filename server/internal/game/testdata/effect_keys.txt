@@ -267,3 +267,4 @@ body pygmy-hippo/add-colorless
 body cipher/cast
 option cipher/encode
 body construct-a-cosmic-cube/control
+body glacial-dragonhunt/damage

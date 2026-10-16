@@ -2985,7 +2985,8 @@ export interface AlternativeCostView {
   // control that match, min == max == the count, in the shape an
   // ability's `tap_others_options` has, so the cast flow opens the tap
   // picker. Set instead of `pay_options` and `sacrifice_options`; the
-  // picked IDs ride `alt_cost_ids`.
+  // picked IDs ride `alt_cost_ids`. #3931: harmonize's "up to one
+  // untapped creature" is min 0, max 1 — tapping none is a payment.
   tap_options?: LegalTargetsView;
   // S28: the picker's prompt copy for `pay_options` ("a blue card"),
   // for `sacrifice_options` ("three creatures") or for `tap_options`
@@ -2998,6 +2999,13 @@ export interface AlternativeCostView {
   // instance IDs in `sacrifice_options`: the candidate's mana value and
   // the mana the cast pays with it sacrificed, from the server's pricer.
   sacrifice_prices?: Record<string, AltCostPriceView>;
+  // #3931: a harmonize offer (CR 702.180a) — the creature picked from
+  // `tap_options` reduces the cost by its power.
+  reduces_by_power?: boolean;
+  // #3931: a harmonize offer's price per candidate, keyed by the
+  // instance IDs in `tap_options`: the creature's power and the mana the
+  // cast pays with it tapped, from the server's pricer.
+  tap_prices?: Record<string, AltCostTapPriceView>;
   // CR 107.3b (#831): the card prints an {X} in its mana cost and
   // this offer does not, so claiming it fixes X at 0 — the cast flow
   // skips the X picker and sends nothing. Absent for nearly every
@@ -5274,5 +5282,12 @@ export interface AutoAnswerRuleView {
 // and the cast's mana cost with it sacrificed ("{1}{U}{U}").
 export interface AltCostPriceView {
   mana_value: number;
+  price: string;
+}
+
+// #3931: one harmonize candidate's price — the creature's power, and the
+// cast's mana cost with it tapped ("{2}{R}{R}").
+export interface AltCostTapPriceView {
+  power: number;
   price: string;
 }
