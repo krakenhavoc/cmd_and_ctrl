@@ -2250,8 +2250,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		g.consumeLimitedGrantLocked(playerID, grantCard, grant)
 	}
 	g.spendPermissionTypeLocked(playerID, grantCard, grant, permType)
-	for _, key := range promiseFollowUps {
-		if err := g.runCastFollowUpLocked(key, CastFollowUp{Player: playerID, Spell: cardID}); err != nil {
+	for _, f := range promiseFollowUps {
+		if err := g.runCastFollowUpLocked(f.Key, CastFollowUp{Player: playerID, Source: f.Source, Spell: cardID}); err != nil {
 			return err
 		}
 	}
