@@ -1124,6 +1124,14 @@ type Spec struct {
 	// permanent that lost its abilities is held to one. ADR 0145.
 	LoyaltyTwiceEachTurn bool
 
+	// ActivateAsThoughHaste declares the printed static "You may
+	// activate abilities of creatures you control as though those
+	// creatures had haste" (Thousand-Year Elixir, #3928): CR 302.6 no
+	// longer stops its controller paying a {T} or {Q} cost of a creature
+	// they control. The creatures gain no haste and still can't attack
+	// the turn they arrive (CR 609.4). Judged through CatalogAbilityKey.
+	ActivateAsThoughHaste bool
+
 	// ExtraVote declares the printed static "While voting, you get an
 	// additional vote" (game.ExtraVoteYouGet, Brago's Representative)
 	// or "While voting, you may vote an additional time"

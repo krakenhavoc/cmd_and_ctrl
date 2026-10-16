@@ -3202,6 +3202,14 @@ type CardView struct {
 	// activated-ability menu's affordance; the server does the real
 	// check.
 	SummoningSick bool `json:"summoning_sick,omitempty"`
+	// ActivatesAsThoughHaste marks a summoning-sick creature whose
+	// controller may still pay its {T} and {Q} costs, under an "as
+	// though those creatures had haste" static (Thousand-Year Elixir,
+	// #3928, CR 609.4). It can still not attack. The engine's gate
+	// (game.ActivationSummoningSickLocked) answers it, for the
+	// controller; another seat's "any player may activate" row stays
+	// sick. Set only beside summoning_sick.
+	ActivatesAsThoughHaste bool `json:"activates_as_though_haste,omitempty"`
 	// EchoDue marks a battlefield permanent whose echo will trigger at
 	// its controller's next upkeep (ADR 0108 §5 decision 5, CR 702.30a):
 	// it came under their control since the beginning of their most
@@ -7841,6 +7849,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		c.SpecialActions = viewOfSpecialActions(g, *card, controller, game.ZoneBattlefield)
 		c.LoyaltyActivated = g.LoyaltySpentLocked(instanceID)
 		c.EchoDue = g.EchoDueLocked(card)
+		c.ActivatesAsThoughHaste = c.SummoningSick && g.ActivatesAsThoughHasteLocked(card)
 		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
 		stampManaConditions(g, card, controller, c.ManaAbilities, restricted)
 		stampManaIdentity(g, card, controller, c.ManaAbilities)
@@ -7856,6 +7865,14 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		// the activator.
 		c.stampAnyPlayerOffers(g, *card, controller, restricted)
 	}
+}
+
+// ActivationSick reports whether CR 302.6 stops this permanent's
+// controller paying a {T} or {Q} cost of it: summoning_sick, and no "as
+// though those creatures had haste" static lifts it (#3928). Attacking
+// reads SummoningSick alone.
+func (c CardView) ActivationSick() bool {
+	return c.SummoningSick && !c.ActivatesAsThoughHaste
 }
 
 // reachesAcross reports whether the row names an activator other than
@@ -10890,6 +10907,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// "battle". Defense is also just the defense counter, and the
 	// counters map is already gone.
 	out.SummoningSick = false
+	out.ActivatesAsThoughHaste = false
 	// ADR 0108 §5: "echo due" says the card has echo.
 	out.EchoDue = false
 	out.LoyaltyActivated = false
@@ -11021,6 +11039,9 @@ func stampFaceDownPublicBody(out, orig CardView) CardView {
 	// opponent has to know whether the face-down 2/2 can attack this
 	// turn. It says "creature", which is already on the type line.
 	out.SummoningSick = orig.SummoningSick
+	// And so is whether its controller may still tap it for an
+	// ability: the permission comes from a face-up permanent.
+	out.ActivatesAsThoughHaste = orig.ActivatesAsThoughHaste
 	return out
 }
 

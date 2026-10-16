@@ -314,7 +314,10 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			if source.Tapped {
 				continue
 			}
-			if source.IsCreature() && game.HasSummoningSickness(source) {
+			// CR 302.6, through the gate ActivateCatalogAbility
+			// refuses with, so an "as though those creatures had
+			// haste" static (#3928) opens the same rows here.
+			if g.ActivationSummoningSickLocked(source, e.seat) {
 				continue
 			}
 		}
@@ -2259,7 +2262,8 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 			if source.Tapped {
 				continue
 			}
-			if source.IsCreature() && game.HasSummoningSickness(source) {
+			// CR 302.6, the gate ActivateManaAbility asks (#3928).
+			if g.ActivationSummoningSickLocked(source, e.seat) {
 				continue
 			}
 		}

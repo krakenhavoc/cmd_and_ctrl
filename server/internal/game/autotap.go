@@ -966,7 +966,7 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 			// Halfling played this turn is not a mana source, and
 			// planning it would produce a plan the executor now refuses,
 			// stranding whatever it had already tapped.
-			if manaTapBlockedBySickness(&c, picked) {
+			if g.manaTapBlockedBySicknessLocked(&c, picked, controller) {
 				continue
 			}
 			// #1210, CR 602.5: the board-wide "can't be activated"
@@ -1833,7 +1833,7 @@ func (g *Game) autoManaExileAbilityFor(asker uuid.UUID, source Card, abilities [
 // this source for this ability given its RemoveCounters component
 // (#789). The one copy of the rule the planner (gatherTapSources)
 // and the executor (materializePlanLocked) share, for the same
-// reason autoTapAbilityFor and manaTapBlockedBySickness are shared:
+// reason autoTapAbilityFor and manaTapBlockedBySicknessLocked are shared:
 // two copies drift, and when the planner's is the laxer one the
 // executor strands whatever the plan had already tapped.
 //
@@ -1875,7 +1875,7 @@ func manaCounterCostPlannable(c *Card, ab *ManaAbilityShape) bool {
 	return c.Counters[rc.Counter] >= rc.N
 }
 
-// manaTapBlockedBySickness reports whether CR 302.6 forbids tapping
+// manaTapBlockedBySicknessLocked reports whether CR 302.6 forbids tapping
 // this permanent for the given mana ability right now. The one copy
 // of the rule the auto-tapper's two halves share — the planner
 // (gatherTapSources) and the executor (materializePlanLocked) — for
@@ -1887,25 +1887,26 @@ func manaCounterCostPlannable(c *Card, ab *ManaAbilityShape) bool {
 // sacrifice or mana cost) is unaffected by summoning sickness, and
 // CR 302.6 is about CREATURES — a Sol Ring, a Treasure and a
 // fetchland all tap the turn they arrive. Haste is the read-time
-// bypass, handled inside HasSummoningSickness. The IsCreature prefix
-// is redundant since #530 and stays as documentation, matching
-// ActivateManaAbility's copy of the same gate.
+// bypass, handled inside HasSummoningSickness, and an "as though those
+// creatures had haste" static of the payer's (#3928) is the other,
+// handled by ActivationSummoningSickLocked, the gate ActivateManaAbility
+// asks.
 //
 // Layers must be fresh: both creature-hood and haste are effective
 // characteristics. The planner enters through ReadSnapshot and the
 // executor's callers already owe the same freshness for
-// ManaAbilitiesForCard.
-func manaTapBlockedBySickness(c *Card, ab *ManaAbilityShape) bool {
+// ManaAbilitiesForCard. Caller must hold g.mu.
+func (g *Game) manaTapBlockedBySicknessLocked(c *Card, ab *ManaAbilityShape, payer uuid.UUID) bool {
 	if c == nil || ab == nil || !ab.TapCost {
 		return false
 	}
-	return c.IsCreature() && HasSummoningSickness(c)
+	return g.ActivationSummoningSickLocked(c, payer)
 }
 
 // manaSourceTappedOut reports whether a permanent cannot pay the {T}
 // the picked ability owes because it is already tapped (#1242). The
 // one copy of the rule the planner (gatherTapSources) and the executor
-// (materializePlanLocked) share, for the reason manaTapBlockedBySickness
+// (materializePlanLocked) share, for the reason manaTapBlockedBySicknessLocked
 // is shared.
 //
 // Only a {T} cost is gated, which is the point: until #1242 the planner

@@ -16,6 +16,7 @@ import {
   abilityPopoverModel,
   abilityRowBlocked,
   abilityRowContext,
+  activationSick,
   battlefieldClickIntent,
   buildMenuSections,
   menuManaRows,
@@ -120,6 +121,23 @@ describe("abilityRowBlocked, one arm at a time (ADR 0117 §2)", () => {
     const sick = permanent({ summoning_sick: true });
     expect(blocked({ tap_cost: true }, "mana", sick)).toBe("summoning sickness");
     expect(blocked({ mana_cost: "{1}" }, "activated", sick)).toBe("");
+  });
+
+  it("4. an 'as though it had haste' static lifts it for the controller only (#3928)", () => {
+    const elixir = permanent({ summoning_sick: true, activates_as_though_haste: true });
+    expect(blocked({ tap_cost: true }, "mana", elixir)).toBe("");
+    expect(blocked({ tap_cost: true }, "activated", elixir)).toBe("");
+    // Another seat's any-player row: the permission is the controller's.
+    const theirs = {
+      ...elixir,
+      controller: "bob",
+      owner: "bob",
+      activated_abilities: [{ index: 0, tap_cost: true }],
+    };
+    expect(abilityRowContext(theirs, { viewerID: ME }).sick).toBe(true);
+    expect(activationSick(elixir)).toBe(false);
+    expect(activationSick(elixir, true)).toBe(true);
+    expect(activationSick(permanent({ activates_as_though_haste: true }))).toBe(false);
   });
 
   it("5. the shared costs: life, sacrifice, and the rest", () => {
