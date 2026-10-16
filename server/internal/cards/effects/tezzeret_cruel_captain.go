@@ -119,7 +119,7 @@ func tezzeretEmblemBody(g *game.Game, item *game.StackItem) error {
 				Target: t.ID,
 				Mods: []game.Mod{
 					game.AddTypesMod("Creature"),
-					game.AddSubtypesMod("Robot"),
+					game.AddSubtypesMod(ctx.TextSubtypes("Robot")...),
 					game.SetBasePowerMod(0),
 					game.SetBaseToughnessMod(0),
 				},

@@ -25,7 +25,8 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
-				return ok && (ev.CardID == source.InstanceID || c.HasSubtype("Phyrexian"))
+				// "Phyrexian" is a word of the source's text (CR 612.2, #3984).
+				return ok && (ev.CardID == source.InstanceID || c.HasSubtype(source.TextSubtype("Phyrexian")))
 			}, "Essence of Orthodoxy — incubate 2", Do(Incubate{N: 2})),
 		},
 	})

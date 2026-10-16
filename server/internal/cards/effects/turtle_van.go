@@ -46,12 +46,14 @@ func turtleVanCounter(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return nil
 	}
+	// "Mutant, Ninja or Turtle" are words of the source's text (CR 612.2, #3984).
+	mutant, ninja, turtle := ctx.TextSubtype("Mutant"), ctx.TextSubtype("Ninja"), ctx.TextSubtype("Turtle")
 	return g.AddCounterThenForEffect(id, game.CounterPlusOne, 1, func(g *game.Game, _ int) error {
 		c, found := g.LookupCardForEffect(id)
 		if !found || !onBattlefield(g, id) {
 			return nil
 		}
-		if !c.HasSubtype("Mutant") && !c.HasSubtype("Ninja") && !c.HasSubtype("Turtle") {
+		if !c.HasSubtype(mutant) && !c.HasSubtype(ninja) && !c.HasSubtype(turtle) {
 			return nil
 		}
 		n := c.Counters[game.CounterPlusOne]

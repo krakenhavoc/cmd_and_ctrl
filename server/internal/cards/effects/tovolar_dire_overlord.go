@@ -43,7 +43,8 @@ func init() {
 				return false
 			}
 			dealer, ok := g.LookupCardForEffect(ev.Source)
-			return ok && (dealer.HasSubtype("Wolf") || dealer.HasSubtype("Werewolf"))
+			// "Wolf or Werewolf" are words of the source's text (CR 612.2, #3984).
+			return ok && (dealer.HasSubtype(source.TextSubtype("Wolf")) || dealer.HasSubtype(source.TextSubtype("Werewolf")))
 		}, name+" — draw a card", Do(DrawCards{N: 1}))
 	}
 	Register(Spec{
@@ -54,7 +55,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			draw("Tovolar, Dire Overlord"),
 			On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return ev.Actor == source.Controller && tovolarControlsThreeWolves(g, source.Controller)
+				return ev.Actor == source.Controller && tovolarControlsThreeWolves(g, source.Controller, source)
 			}, "Tovolar, Dire Overlord — it becomes night, then transform any number of Human Werewolves", tovolarUpkeep),
 		},
 	})
@@ -85,11 +86,14 @@ func init() {
 }
 
 // tovolarControlsThreeWolves is the intervening if: three or more Wolves
-// and/or Werewolves under the controller's control.
-func tovolarControlsThreeWolves(g *game.Game, controller uuid.UUID) bool {
+// and/or Werewolves under the controller's control. The two types are
+// words of `reader`'s text (CR 612.2, #3984); a nil reader reads them as
+// printed.
+func tovolarControlsThreeWolves(g *game.Game, controller uuid.UUID, reader *game.Card) bool {
+	wolf, werewolf := reader.TextSubtype("Wolf"), reader.TextSubtype("Werewolf")
 	n := 0
 	for _, c := range g.Battlefield.Cards {
-		if c.Controller == controller && c.IsCreature() && (c.HasSubtype("Wolf") || c.HasSubtype("Werewolf")) {
+		if c.Controller == controller && c.IsCreature() && (c.HasSubtype(wolf) || c.HasSubtype(werewolf)) {
 			n++
 		}
 	}
@@ -99,10 +103,11 @@ func tovolarControlsThreeWolves(g *game.Game, controller uuid.UUID) bool {
 // tovolarUpkeep re-checks the condition (CR 603.4), makes it night, then
 // offers the Human Werewolves you control for the transform.
 func tovolarUpkeep(g *game.Game, item *game.StackItem) error {
-	if !tovolarControlsThreeWolves(g, item.Controller) {
+	if !tovolarControlsThreeWolves(g, item.Controller, g.TextReaderForEffect(item)) {
 		return nil
 	}
 	ctx := NewContext(g, item)
+	human, werewolf := ctx.TextSubtype("Human"), ctx.TextSubtype("Werewolf")
 	if err := (BecomeNight{}).Apply(ctx); err != nil {
 		return err
 	}
@@ -111,7 +116,7 @@ func tovolarUpkeep(g *game.Game, item *game.StackItem) error {
 		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
 			var out []uuid.UUID
 			for _, c := range g.Battlefield.Cards {
-				if c.Controller == of && c.IsCreature() && c.HasSubtype("Human") && c.HasSubtype("Werewolf") &&
+				if c.Controller == of && c.IsCreature() && c.HasSubtype(human) && c.HasSubtype(werewolf) &&
 					!game.HasKeyword(&c, "daybound") && !game.HasKeyword(&c, "nightbound") {
 					out = append(out, c.InstanceID)
 				}

@@ -49,7 +49,7 @@ func init() {
 					return false
 				}
 				dealer, ok := g.LookupCardForEffect(ev.Source)
-				return ok && isPirate(dealer)
+				return ok && isPirate(game.ThroughTextOf(source, dealer))
 			}, "Malcolm — create a Treasure", Do(CreateToken{
 				Template: TreasureToken(),
 				N:        1,

@@ -23,9 +23,11 @@ func init() {
 			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
+				// "Goblins" is a word of Krenko's text (CR 612.2, #3984).
+				goblin := ctx.TextSubtype("Goblin")
 				n := 0
 				for _, c := range g.BattlefieldCardsForEffect() {
-					if c.Controller == item.Controller && isGoblin(c) {
+					if c.Controller == item.Controller && isGoblin(c, goblin) {
 						n++
 					}
 				}
@@ -42,9 +44,10 @@ func init() {
 	})
 }
 
-// isGoblin reports whether a card is a Goblin creature. Reads the
-// post-layer subtypes so a creature that was turned into a Goblin
-// counts (CR 205.3 — type-changing effects apply).
-func isGoblin(c game.Card) bool {
-	return c.IsCreature() && c.HasSubtype("Goblin")
+// isGoblin reports whether a card is a Goblin creature, `goblin` being
+// the type as the source's text reads it. Reads the post-layer subtypes
+// so a creature that was turned into a Goblin counts (CR 205.3 —
+// type-changing effects apply).
+func isGoblin(c game.Card, goblin string) bool {
+	return c.IsCreature() && c.HasSubtype(goblin)
 }

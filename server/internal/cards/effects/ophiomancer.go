@@ -28,9 +28,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginUpkeep, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return !b05ControlsSubtype(g, source.Controller, "Snake")
+				return !b05ControlsSubtype(g, source.Controller, source.TextSubtype("Snake"))
 			}, "Ophiomancer — create a 1/1 Snake with deathtouch", func(g *game.Game, item *game.StackItem) error {
-				if b05ControlsSubtype(g, item.Controller, "Snake") {
+				if b05ControlsSubtype(g, item.Controller, g.TextReaderForEffect(item).TextSubtype("Snake")) {
 					return nil // CR 603.4: the condition is re-checked on resolution
 				}
 				return CreateToken{

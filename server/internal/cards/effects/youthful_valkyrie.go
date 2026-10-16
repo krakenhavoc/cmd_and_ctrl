@@ -25,7 +25,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, "Angel")
+				return b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, source.TextSubtype("Angel"))
 			}, "Youthful Valkyrie — put a +1/+1 counter on it", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})

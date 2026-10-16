@@ -95,8 +95,10 @@ func mogFinish(ctx *Context, dance *mogDance) error {
 		return nil
 	}
 	var moogles []uuid.UUID
+	// "Moogle" is a word of the source's text (CR 612.2, #3984).
+	moogle := ctx.TextSubtype("Moogle")
 	for _, c := range ctx.Game.Battlefield.Cards {
-		if c.Controller == ctx.Controller() && c.HasSubtype("Moogle") {
+		if c.Controller == ctx.Controller() && c.HasSubtype(moogle) {
 			moogles = append(moogles, c.InstanceID)
 		}
 	}

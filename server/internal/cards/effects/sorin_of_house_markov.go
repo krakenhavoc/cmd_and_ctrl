@@ -168,7 +168,7 @@ func sorinTakeAndTurn(g *game.Game, item *game.StackItem) error {
 	}
 	if err := (ScopedEffectFor{
 		Target:   target,
-		Mods:     []game.Mod{game.AddSubtypesMod("Vampire")},
+		Mods:     []game.Mod{game.AddSubtypesMod(ctx.TextSubtypes("Vampire")...)},
 		Duration: g.PinnedTo(game.IndefiniteDuration(), target),
 		Label:    "Sorin, Ravenous Neonate — it becomes a Vampire in addition to its other types",
 	}).Apply(ctx); err != nil {

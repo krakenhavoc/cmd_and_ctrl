@@ -1384,7 +1384,7 @@ func (e *enumerator) exilePermanentPayments(pool []uuid.UUID, ec *game.ExilePerm
 		}
 		return out
 	case len(ec.EachSubtype) > 0:
-		if pick := e.g.ExilePermanentsPaymentForEffect(e.seat, ec, ordered); pick != nil {
+		if pick := e.g.ExilePermanentsPaymentForEffect(e.seat, sourceID, ec, ordered); pick != nil {
 			return [][]uuid.UUID{pick}
 		}
 		return nil
@@ -2032,7 +2032,7 @@ func (e *enumerator) sacrificePayments(pool []uuid.UUID, spec *game.TargetSpec, 
 	}
 	if len(spec.EachOf) > 0 {
 		ordered := e.g.SacrificePaymentOrderForEffect(pool, sourceID)
-		pay := e.g.SacrificeSetPaymentForEffect(spec, ordered)
+		pay := e.g.SacrificeSetPaymentForEffect(sourceID, spec, ordered)
 		if pay == nil {
 			return nil
 		}

@@ -59,10 +59,12 @@ func init() {
 	})
 }
 
-// lilypadVillageAnimalEntered is the Village's surveil condition.
-func lilypadVillageAnimalEntered(g *game.Game, controller, _ uuid.UUID) bool {
+// lilypadVillageAnimalEntered is the Village's surveil condition. The
+// four types are words of the Village's text (CR 612.2, #3984).
+func lilypadVillageAnimalEntered(g *game.Game, controller, source uuid.UUID) bool {
+	reader := g.TextReaderOfForEffect(source)
 	for _, t := range []string{"Bird", "Frog", "Otter", "Rat"} {
-		if g.EnteredWithSubtypeThisTurn(controller, t) > 0 {
+		if g.EnteredWithSubtypeThisTurn(controller, reader.TextSubtype(t)) > 0 {
 			return true
 		}
 	}

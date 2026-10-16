@@ -73,12 +73,14 @@ func ghastlyMimicryUpkeep(g *game.Game, item *game.StackItem) error {
 	if !ok || !onBattlefield(g, item.SourceCardID) || aura.AttachedTo.Kind != game.TargetCard || aura.AttachedTo.ID == uuid.Nil {
 		return nil
 	}
+	// "Spirit" is a word of the Aura's text (CR 612.2, #3984).
+	spirit := g.TextReaderForEffect(item).TextSubtype("Spirit")
 	return CreateTokenCopy{
 		Controller: item.Controller,
 		Copy:       aura.AttachedTo.ID,
 		N:          1,
 		Except: func(t *game.Card) {
-			t.TypeLine = withSubtypeInAddition(t.TypeLine, "Spirit")
+			t.TypeLine = withSubtypeInAddition(t.TypeLine, spirit)
 		},
 	}.Apply(NewContext(g, item))
 }

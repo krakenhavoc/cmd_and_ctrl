@@ -35,11 +35,13 @@ func mirrorRoomCopy(g *game.Game, item *game.StackItem) error {
 		if t.Kind != game.TargetCard {
 			continue
 		}
+		// "Reflection" is a word of the door's text (CR 612.2, #3984).
+		reflection := ctx.TextSubtype("Reflection")
 		return CreateTokenCopy{
 			Controller: item.Controller,
 			Copy:       t.ID,
 			N:          1,
-			Except:     func(tok *game.Card) { tok.TypeLine = addedSubtypeTypeLine(tok.TypeLine, "Reflection") },
+			Except:     func(tok *game.Card) { tok.TypeLine = addedSubtypeTypeLine(tok.TypeLine, reflection) },
 		}.Apply(ctx)
 	}
 	return nil

@@ -44,7 +44,7 @@ var genesisChoice = NewVillainousChoice("genesis-of-the-daleks",
 			return DestroyAllMatching{
 				Match: genesisDalekCreature(),
 				Then: func(ctx *Context, _ []game.Card, _ int) error {
-					n := ctx.Game.DiedPowerWithSubtypeThisTurn("Dalek")
+					n := ctx.Game.DiedPowerWithSubtypeThisTurn(ctx.TextSubtype("Dalek"))
 					if n <= 0 {
 						return nil
 					}

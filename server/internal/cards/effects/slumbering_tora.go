@@ -18,6 +18,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // object it was: a Tora that left and came back is a new object and is
 // not animated (CR 400.7).
 //
+// "Spirit" and "Cat" are words of its text (CR 612.2, #3984): the
+// discard walk lends the Tora's text to each card in hand
+// (HasSubtypeWord), and the animation reads its type through the
+// resolving ability's text. "Arcane" is a spell type, which no
+// text-changing effect names.
+//
 // No simplification.
 func init() {
 	Register(Spec{
@@ -28,7 +34,7 @@ func init() {
 			Label:   "{2}, Discard a Spirit or Arcane card: This artifact becomes an X/X Cat artifact creature until end of turn, where X is the discarded card's mana value.",
 			Purpose: game.Purpose{Answers: game.AnswerAnimate},
 			Cost: Plus(ManaCost("{2}"), DiscardCardsMatching(1, "a Spirit or Arcane card", func(c game.Card) bool {
-				return c.HasSubtype("Spirit") || c.HasSubtype("Arcane")
+				return c.HasSubtypeWord("Spirit") || c.HasSubtype("Arcane")
 			})),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
@@ -37,7 +43,7 @@ func init() {
 					Target: item.SourceCardID,
 					Mods: append([]game.Mod{
 						game.AddTypesMod("Artifact", "Creature"),
-						game.AddSubtypesMod("Cat"),
+						game.AddSubtypesMod(ctx.TextSubtype("Cat")),
 					}, game.SetBasePTMods(x, x)...),
 					Duration: DurationUntilEndOfTurn(ctx),
 					Label:    "Slumbering Tora — becomes an X/X Cat artifact creature until end of turn",

@@ -49,8 +49,10 @@ func init() {
 			ChapterTrigger(4, SagaChapterLabel(name, 4, "put two +1/+1 counters on each other Moogle you control"),
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item).asGroupMember()
+					// "Moogle" is a word of the source's text (CR 612.2, #3984).
+					moogle := ctx.TextSubtype("Moogle")
 					for _, c := range g.BattlefieldCardsForEffect() {
-						if c.Controller != item.Controller || c.InstanceID == item.SourceCardID || !c.HasSubtype("Moogle") {
+						if c.Controller != item.Controller || c.InstanceID == item.SourceCardID || !c.HasSubtype(moogle) {
 							continue
 						}
 						if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterPlusOne, N: 2}).Apply(ctx); err != nil {

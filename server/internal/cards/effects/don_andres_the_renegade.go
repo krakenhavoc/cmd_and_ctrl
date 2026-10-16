@@ -40,9 +40,11 @@ func init() {
 				Label:     "Each creature you control but don't own is a Pirate in addition to its other types.",
 				Layer:     game.Layer4Type,
 				AppliesTo: donAndresStolenCreature,
-				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-					if !eotHasType(c.Subtypes, "Pirate") {
-						c.Subtypes = append(c.Subtypes, "Pirate")
+				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+					// "Pirate" is a word of the source's text (CR 612.2, #3984).
+					pirate := source.TextSubtype("Pirate")
+					if !eotHasType(c.Subtypes, pirate) {
+						c.Subtypes = append(c.Subtypes, pirate)
 					}
 				},
 			},

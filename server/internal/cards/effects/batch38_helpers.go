@@ -214,8 +214,10 @@ func b38ReanimateAskNext(g *game.Game, item *game.StackItem, question string, or
 // either of the statics this scopes (layer 6 and layer 7b) runs, so a
 // changeling that something made a Horror is exempt and a Horror that
 // lost the type is not.
-func b38SlimedNonHorror(target *game.Card, _ *game.Game, _ *game.Card) bool {
-	return target.IsCreature() && target.Counters["slime"] > 0 && !target.HasSubtype("Horror")
+//
+// "Horror" is a word of the source's text (CR 612.2, #3984).
+func b38SlimedNonHorror(target *game.Card, _ *game.Game, source *game.Card) bool {
+	return target.IsCreature() && target.Counters["slime"] > 0 && !target.HasSubtype(source.TextSubtype("Horror"))
 }
 
 // --- board reads ---------------------------------------------------
@@ -228,10 +230,13 @@ func b38SlimedNonHorror(target *game.Card, _ *game.Game, _ *game.Card) bool {
 // what "Faerie" means on a battlefield count: a Faerie ARTIFACT that
 // is not a creature would still carry the subtype, but no such card
 // exists and the printed clause means the bodies.
-func b38FaeriesYouControl(g *game.Game, controller uuid.UUID) int {
+//
+// `faerie` is the creature type as the counting object's text now reads
+// it (TextSubtype, CR 612.2, #3984).
+func b38FaeriesYouControl(g *game.Game, controller uuid.UUID, faerie string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.IsCreature() && c.HasSubtype("Faerie") {
+		if c.Controller == controller && c.IsCreature() && c.HasSubtype(faerie) {
 			n++
 		}
 	}
