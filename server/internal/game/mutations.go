@@ -2224,7 +2224,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #3781, CR 601.2i: "as you cast this spell" values are fixed here,
 	// with every cost paid and nobody yet holding priority.
 	g.stampCastTimeValuesLocked(card, g.StackMeta[cardID])
-	g.EmitEvent(Event{
+	castEv := Event{
 		Kind:    EventCast,
 		Actor:   playerID,
 		Source:  cardID,
@@ -2242,7 +2242,14 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		Unpaid:        paper.Free,
 		PaperPaid:     paperLogSymbols(params, paper),
 		PaperDeclared: paper.Declared && !paper.Free,
-	})
+	}
+	if src.Kind == ZoneExile {
+		// #2651: the CR 607.2a link the card had in exile, read off the
+		// copy taken before MoveCard cleared it, for "whenever a player
+		// plays a card exiled with Prowl".
+		stampPlayedExiledWith(&castEv, &card)
+	}
+	g.EmitEvent(castEv)
 	// CR 115.3: the objects named at 601.2c have now become targets.
 	// Emitted after EventCast so a "becomes the target" trigger and
 	// a "whenever a player casts a spell" trigger queue in printed
@@ -6132,7 +6139,7 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 		closeBatch = g.publishSimultaneousExitLocked(ev.zoneRoute.simultaneousExit)
 	}
 	defer closeBatch()
-	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, ev.ExiledWith, ev.ExileCounter)
+	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, exileLink{ref: ev.ExiledWith, ability: ev.exiledWithAbility()}, ev.ExileCounter)
 	// ADR 0178: a replacement's declared life change ("instead exile it
 	// and you gain 2 life") lands after the move and before the route's
 	// continuation, which waits for it if it pauses.
@@ -6166,14 +6173,15 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 // rather than a placement; every other caller passes false.
 //
 // exiledWith is ReplacementEvent.ExiledWith carried down the same way
-// (#2530): stamped onto the card as Card.ExiledWith once it has landed
-// in exile, and ignored for any other destination. The zero ref —
-// every caller but a replacement that declared the link — stamps
-// nothing. exileCounter is ReplacementEvent.ExileCounter, carried and
+// (#2530), with the linked ability beside it (#2651): stamped onto the
+// card as Card.ExiledWith and ExiledWithAbility once it has landed in
+// exile, and ignored for any other destination. The zero ref — every
+// caller but a replacement or a linked exile that declared the link —
+// stamps nothing. exileCounter is ReplacementEvent.ExileCounter, carried and
 // stamped the same way (Dauthi Voidwalker's void counter).
 //
 // Caller must hold g.mu.
-func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter bool, exiledWith PermissionCardRef, exileCounter string) error {
+func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter bool, exiledWith exileLink, exileCounter string) error {
 	var destZone *Zone
 	var actor uuid.UUID
 	switch dest {
@@ -6259,7 +6267,7 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	if shuffleAfter && dest == ZoneLibrary {
 		_ = g.ShuffleLibraryForEffect(destZone.Owner)
 	}
-	stampExiledWithLocked(destZone, cardID, exiledWith)
+	stampExiledWithLocked(destZone, cardID, exiledWith.ref, exiledWith.ability)
 	stampExileCounterLocked(destZone, cardID, exileCounter)
 	g.EmitEvent(Event{
 		Kind:    EventZoneMove,

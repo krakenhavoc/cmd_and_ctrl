@@ -470,6 +470,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// CR 607.2a / 400.7 (#2530): the "exiled with" link names the card
 	// as it sat in exile, and any move ends that object.
 	c.ExiledWith = PermissionCardRef{}
+	c.ExiledWithAbility = AbilityRef{}
 	// CR 702.99c / 400.7 (#3867): the card is encoded only while it
 	// stays in exile.
 	c.EncodedOn = PermissionCardRef{}

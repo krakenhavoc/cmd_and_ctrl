@@ -1149,6 +1149,24 @@ type Card struct {
 	// effects package's event-log record (b27ExiledWith).
 	ExiledWith PermissionCardRef
 
+	// ExiledWithAbility is the other half of CR 607.2a's link: WHICH
+	// ability of the ExiledWith object exiled the card, as the catalog
+	// row its stack item named (StackItem.Params.Ability, ADR 0041 P9).
+	// "The second ability refers only to cards in the exile zone that
+	// were put there as a result of an instruction to exile them in the
+	// first ability", so an object with two exiling abilities keeps two
+	// sets apart: Prowl, Stoic Strategist's "whenever a player plays a
+	// card exiled with Prowl" reads only what its attack trigger exiled
+	// (#2651, ADR 0066's 2026-10-16 amendment).
+	//
+	// Stamped beside ExiledWith by a linked exile (zoneRoute.ExiledWith)
+	// made while the item resolving is an ability of that same object;
+	// the zero ref when the link came from a replacement (Valgavoth: no
+	// ability resolved) or from an item with no catalog row (a legacy
+	// closure trigger), so a reader by row never matches those. Cleared
+	// by MoveCard with ExiledWith. Carried by the snapshot.
+	ExiledWithAbility AbilityRef
+
 	// EncodedOn is CR 702.99b's "encoded": the permanent OBJECT
 	// {instance, epoch} a card with cipher was exiled encoded on as its
 	// spell resolved (#3867, cipher.go). A separate link from ExiledWith

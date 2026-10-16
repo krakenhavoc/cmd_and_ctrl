@@ -4102,3 +4102,59 @@ spell cast as a waterbend {2} with X locked at 0. `waterbend_grant_view_test.go`
 Back-out: drop the `CastCostFor` clause and the cast is priced at its printed cost, so the colourless and enumerator tests
 fail; drop `InCost` and the {N} is charged twice, so every tap test fails; measure the budget against the base cost and
 `TestHamaReductionComesOffTheWaterbend` fails.
+
+## Amendment — 2026-10-16 (#2651): "exiled with" names the ability, and a play from exile carries the link
+
+The 2026-10-13 amendment stamped a resolving ability's linked exile with its source OBJECT only, and said the ability ref was
+not added. CR 607.2a links an ability to an ability: "the second ability refers only to cards in the exile zone that were put
+there as a result of an instruction to exile them in the first ability". An object with two exiling abilities, or a reader that
+has to see the link after the card has left exile, needs more than the object. Prowl, Stoic Strategist needs both: "Whenever
+Prowl attacks, exile up to one other target tapped creature or Vehicle. For as long as that card remains exiled, its owner may
+play it. Whenever a player plays a card exiled with Prowl, you draw a card and convert Prowl."
+
+- **The stamp names the ability too.** `Card.ExiledWithAbility` is the catalog row (`AbilityRef`, ADR 0041 P9) of the item
+  that was resolving when the card was exiled, beside `Card.ExiledWith`. That is the identity a stack item already carries
+  (`StackItem.Params.Ability`) and the one #3933's entry provenance reads (`Event.CauseAbility`). It is cleared by `MoveCard`
+  with the object half.
+- **No caller threads it.** `routeCardToZoneLocked` fills `zoneRoute.ExiledWithAbility` from `Game.resolving`
+  (`linkedExileAbilityLocked`) when the route names a link, and only while a resolution is open, the guard
+  `stampEntryProvenanceLocked` uses. It is the zero ref when nothing is resolving, when a spell is resolving, when the item has
+  no catalog row (a legacy closure trigger), or when the item's source object is not the one the route links to. So every linked
+  verb (`ExileLinkedForEffect`, `ExileLinkedThenForEffect`, the hideaway exile, the revealed-hand pick) stamps it without
+  change.
+- **A replacement's link names no ability.** The two landing functions take the ability from the event's route only while
+  `ReplacementEvent.ExiledWith` is still the route's own link (`ReplacementEvent.exiledWithAbility`). Valgavoth's replacement
+  writes its own link and resolves nothing, so CR 607.2b's link stays an object link.
+- **Readers.** `Game.ExiledWithRowForEffect(source, slot, name)` lists the cards in exile linked to that object by that row,
+  matched by `AbilityRef.IsRow`: the slot and the row's name (a triggered row's Key, an activated row's Label), as restore's
+  Q2 rule matches a row. `ExiledWithForEffect(source)` is unchanged, so the borrowers and Duplicant read every linked exile of
+  the object as before. This also closes the weakness ADR 0155 Decision 6 declared, for any reader that wants it.
+- **A play from exile carries the link.** Playing the card moves it out of exile and clears its link (CR 400.7), so a trigger on
+  the play has nothing left to read on the card. `Event.ExiledWith` and `Event.ExiledWithAbility` copy the link the card had onto
+  the spell's `EventCast` from exile (read off the copy `castSpellLocked` takes before the move) and onto a land's Played
+  `EventZoneMove` from exile (`entryLanding.playedFromExile`). `game.PlayedCardExiledWithRow(ev, source, slot, name)` is the
+  read. A card put onto the battlefield from exile is not played and carries nothing.
+- **The event-log readers stay.** The cards that read `b27ExiledWith` keep their walk. It is already keyed on the
+  ability (its label), so it is CR 607.2a-exact, and it runs at resolution, not on every layer pass. Moving them would make a
+  table restored from a file written before this amendment forget the cards it had exiled, because those cards carry no stamp.
+  Skyclave Apparition's `b27EverExiledWith` reads cards that have left exile, which the stamp cannot answer.
+- **Card side.** `effects.ExileWithPermission{Linked: true}` is the linked exile with the play grant.
+
+### Snapshot
+
+Additive within v9, omitted when empty: `…cards[].exiledWithAbility` (`{key, slot, ref, name}`) and `events[].exiled_with` /
+`events[].exiled_with_ability`. A file written before it restores the object link alone, which is every linked exile before it,
+and a reader by row finds nothing there, as it found nothing before. A binary before it drops the keys; it has no reader by row
+and no Prowl.
+
+**Card.** Prowl, Stoic Strategist // Prowl, Pursuit Vehicle, Full.
+
+**Tests.** `exiled_with_test.go` (game): the stamp carries the ability and `MoveCard` clears it; a route's ability rides only its
+own link; `PlayedCardExiledWithRow` matches a cast and a played land from exile, and not a put, another row, another object or a
+link with no ability; the ability survives a snapshot. `prowl_stoic_strategist_test.go` (effects): the attack trigger's exile is
+linked to the object and the row, and its owner may play it; only another tapped creature or Vehicle is a target; a cast from
+exile and a land played from exile draw and convert; a card linked by a replacement, by another row, to another Prowl object
+or to another permanent does not; the back face's counters and its convert on the second resolution.
+
+Back-out: stop filling `zoneRoute.ExiledWithAbility` and the Prowl tests that cast its card fail; drop the cast's
+`stampPlayedExiledWith` and the cast test fails while the land test passes.
