@@ -28,10 +28,10 @@ func init() {
 				func(_ *game.StackItem, ctx *Context, _ int) error {
 					return regenerateEachCreatureControlledBy(ctx, ctx.Controller())
 				}),
-			ModeDoing("Wail of the Nim deals 1 damage to each creature and each player.", nil,
+			ModeWithPurpose(ModeDoing("Wail of the Nim deals 1 damage to each creature and each player.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
 					return b23DamageEachCreatureAndEachPlayer(ctx, 1)
-				}),
+				}), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1}}),
 		)),
 	})
 }

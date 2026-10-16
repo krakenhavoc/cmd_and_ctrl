@@ -26,14 +26,18 @@ func init() {
 		Completeness:  CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{EntwineSacrifice(2, "two lands", Land())},
 		Modes: Entwining(ChooseOne(
-			ModeDoing("Destroy all creatures with power 2 or less.", nil,
+			ModeWithPurpose(ModeDoing("Destroy all creatures with power 2 or less.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
 					return DestroyAllMatching{Match: And(Creature(), PowerLE(2))}.Apply(ctx)
-				}),
-			ModeDoing("Destroy all creatures with power 3 or greater.", nil,
+				}), solarTideSweep),
+			ModeWithPurpose(ModeDoing("Destroy all creatures with power 3 or greater.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
 					return DestroyAllMatching{Match: And(Creature(), PowerGE(3))}.Apply(ctx)
-				}),
+				}), solarTideSweep),
 		)),
 	})
 }
+
+// solarTideSweep is each bullet's purpose (ADR 0126 §6): a creature
+// wipe that spares the creatures on the other side of its power line.
+var solarTideSweep = game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}}

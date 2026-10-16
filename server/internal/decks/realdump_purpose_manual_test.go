@@ -122,6 +122,7 @@ var reviewedNotAWipe = map[string]string{
 	"Jace, Reality Sculptor":                   "its 0 exiles all but the bottom card of each opponent's library, no permanents",
 	"Jace, the Mind Sculptor":                  "exiles a library",
 	"Karn Liberated":                           "restarts the game",
+	"Kaya's Guile":                             "each opponent sacrifices one creature: an edict, not a wipe",
 	"Last Laugh":                               "a ping engine that fires only when a permanent dies",
 	"Living Death":                             "a symmetric mass reanimation (purpose_test.go's noPrintedAmount)",
 	"Mandate of Peace":                         "ends combat and exiles the stack",
