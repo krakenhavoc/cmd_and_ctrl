@@ -355,6 +355,7 @@ var cardFields = plan(
 	"NeedsEffect", carried, "",
 	"PrintsManaAbility", carried, "",
 	"PrintsTapAbility", carried, "",
+	"ManaAbilityText", carried, "",
 	"Owner", carried, "",
 	"Controller", carried, "",
 	"Tapped", carried, "",
