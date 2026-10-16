@@ -4892,6 +4892,14 @@ export interface ManaAbilityView {
   // itself. Absent on every row that is not lent, and when the lender sits
   // in a hidden zone.
   borrowed_from?: GrantedByView;
+  // ADR 0106 §1 amendment 2026-10-16 (#1864): the mana ability's own
+  // "Any player may activate this ability" (Mana Cache), as on
+  // ActivatedAbilityView. Each seat that does not control the permanent
+  // gets the row stamped with that seat as the activator (its
+  // condition_unmet, its counter options); the mana goes to the
+  // activator's pool. Whether it is live for the viewer right now is the
+  // digest's answer. Absent on every other row.
+  any_player?: boolean;
   tap_cost?: boolean;
   sacrifice_cost?: boolean;
   // #1228: the "Exile this card from your hand" component of a mana

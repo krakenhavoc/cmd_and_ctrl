@@ -817,7 +817,7 @@ const (
 	EventBeginDrawStep EventKind = "begin_draw_step"
 
 	// EventManaAbilityActivated — a mana-producing ability fired.
-	// Actor = controller, Source and CardID = the permanent that
+	// Actor = activator (see below), Source and CardID = the permanent that
 	// produced the mana, Label = the ability's printed label and
 	// Exhaust = whether it prints the exhaust keyword (#1183). S15
 	// sub-PR 2.
@@ -830,6 +830,12 @@ const (
 	// than an error. Both emit sites set it: the hand click and the
 	// AUTO-TAPPER's executor, which activates the ability too
 	// (CR 605.3 — a mana ability is activated like any other).
+	//
+	// Actor is the ACTIVATOR, who is the controller except on an "Any
+	// player may activate this ability" row (Mana Cache, #1864). Target
+	// is then the permanent's controller, as on EventActivateAbility, and
+	// the public log narrates it as LogActivateAcross; uuid.Nil for every
+	// other activation, which stays off the log (CR 605.3b).
 	EventManaAbilityActivated EventKind = "mana_ability_activated"
 
 	// EventManaAdded — one mana token landed in a player's pool.

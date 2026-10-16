@@ -2,6 +2,7 @@ package effects
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -87,5 +88,30 @@ func checkAnyPlayerAbility(name, where string, ab ActivatedAbility) {
 			panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability that functions from the %s — only the battlefield is modelled (ADR 0106 §1)",
 				name, where, z))
 		}
+	}
+}
+
+// checkAnyPlayerManaAbility is checkAnyPlayerAbility for a MANA ability
+// (ADR 0106 §1 amendment 2026-10-16, #1864): the same refusals, for the
+// same reason. Who may tap, sacrifice, exert or put a counter on another
+// player's permanent is a rule no printed any-player mana ability needs,
+// and a hand ability's CR 108.4a owner rule would silently ignore the
+// permission.
+func checkAnyPlayerManaAbility(name string, i int, ma ManaAbility) {
+	if !ma.AnyPlayer {
+		return
+	}
+	where := fmt.Sprintf("mana ability %d", i)
+	switch {
+	case ma.Cost.Tap:
+		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability with a {T} cost — not modelled (ADR 0106 §1)", name, where))
+	case ma.Cost.Sacrifice:
+		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability that sacrifices its source — not modelled (ADR 0106 §1)", name, where))
+	case ma.Cost.Exert:
+		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability that exerts its source — not modelled (ADR 0106 §1)", name, where))
+	case ma.Cost.AddCounter != nil:
+		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability that puts a counter on its source — not modelled (ADR 0106 §1)", name, where))
+	case ma.Cost.ExileSelf || slices.ContainsFunc(ma.Zones, func(z game.ZoneKind) bool { return z != game.ZoneBattlefield }):
+		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability off the battlefield — only the battlefield is modelled (ADR 0106 §1)", name, where))
 	}
 }
