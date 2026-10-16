@@ -652,13 +652,15 @@ The shape is #1289's resolution pause, applied to the follow-up (`game/preventio
 4. **Combat answers before the state-based actions.** The catch-all flush that runs before the state-based actions in `stateChecksLocked` stops when a follow-up asks, and the boundary returns with the resolution held open. The answer's own boundary runs the remaining follow-ups and then the state-based actions. So a creature Khârn dealt lethal damage to is still on the battlefield while the question is open. CR 724.1c's check (`drain` false) cannot stop part-way, so there the prompt holds the next boundary instead.
 5. **Keyed questions keep the restore point.** `choose_cards` gains a keyed continuation, as the option pick did in #2854 (`game.RegisterChooseCardsThen`, `ChooseCardsPrompt.ThenKey` and `Carry`, ledger lines `choose <key>`). It rides `PendingChoice.PickThen` and `OptionCarry`, so a binary without it refuses a restore point naming the key. `ChoosePlayerPrompt.ThenKey` asks a keyed choose-a-player. A keyed pick gives up the closure-only `Validate` and `Zone` re-check, and its continuation re-checks what it needs.
 
+6. **Loops end with a decline.** Two Channel Harms aimed at each other's creatures ask back and forth until a player declines (the ruling). A bot that takes every offer would never stop. So the confirm carries `PendingChoice.DeclineEndsLoop` (wire `decline_ends_loop`) when Channel Harm is asked to deal damage it prevented from another Channel Harm, and the heuristic declines such a confirm. The flag is a hint, not a rule: both answers stay legal, and a person may keep the loop going.
+
 ### What it does not do
 
 A catalog effect written as plain sequential steps (`Do(DealDamage{…}, DrawCards{…})`) runs its later steps on the Go stack after the damage call returns. It already does the same after a CR 616 ordering prompt. The instruction-level forms wait: the `...ThenForEffect` continuations, the Each walks, and a modal item's bullets. Channel Harm's yes/no is a closure confirm, so a table waiting on it is not a restore point. The server keeps the one from before the damage, as every confirm does.
 
 ### Snapshot impact
 
-None on disk. The owed follow-ups, `resolutionOpen` and the prompt's `midResolution` stamp are already carried. A keyed `choose_cards` prompt reuses `pickThen` and `optionCarry`. `Game.followUpParks` is not carried: it is a closure, counted in `ContinuationCensus.ChoiceResumeFrames` like the CR 616 resume it sits beside, and its two `closure_fields.txt` lines raise that class's ceiling from 119 to 121.
+One additive field: `pendingChoices[].declineEndsLoop`, recorded in the v9 shape. A binary that drops it loses only the bot hint. The owed follow-ups, `resolutionOpen` and the prompt's `midResolution` stamp are already carried. A keyed `choose_cards` prompt reuses `pickThen` and `optionCarry`. `Game.followUpParks` is not carried: it is a closure, counted in `ContinuationCensus.ChoiceResumeFrames` like the CR 616 resume it sits beside, and its two `closure_fields.txt` lines raise that class's ceiling from 119 to 121. It cannot be data: the parked item is the catalog caller's own continuation, the `then` passed to `DealDamage…ThenForEffect` (about 40 call sites) and the engine's Each-walk step closure. A keyed form would mean keying every one of those callers.
 
 ### Cards
 

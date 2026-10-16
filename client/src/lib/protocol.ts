@@ -2006,6 +2006,10 @@ export interface PendingChoiceView {
   life_cost?: number;
   // Computed affordability of the mandatory life, including life locks.
   life_cost_unpayable?: boolean;
+  // #2040: a "confirm" whose accept would continue a loop the table is
+  // already in (Channel Harm against Channel Harm). A hint for bots;
+  // both answers stay legal and the client need not show it.
+  decline_ends_loop?: boolean;
   // #74: populated for kinds "choose_cards", "untap_choice",
   // "entry_reveal_from_hand", #1214's three resolution-time picks
   // ("reveal_pick", "their_permanents", "own_permanents") and ADR 0107's

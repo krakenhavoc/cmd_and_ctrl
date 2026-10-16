@@ -1676,7 +1676,9 @@ type pendingChoiceSnapshot struct {
 	MayCastKeyword       string      `json:"mayCastKeyword,omitempty"`
 	AcceptLabel          string      `json:"acceptLabel,omitempty"`
 	LifeCost             int         `json:"lifeCost,omitempty"`
-	DeclineLabel         string      `json:"declineLabel,omitempty"`
+	// DeclineEndsLoop is PendingChoice.DeclineEndsLoop (#2040).
+	DeclineEndsLoop bool   `json:"declineEndsLoop,omitempty"`
+	DeclineLabel    string `json:"declineLabel,omitempty"`
 	// OwedInStep: the step a pay-or-else prompt has to be answered in
 	// (#997). Carried so a restored game gates the same way, cheap
 	// and honest even though every prompt that sets it today also
@@ -2830,6 +2832,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		AcceptLabel:           c.AcceptLabel,
 		DeclineLabel:          c.DeclineLabel,
 		LifeCost:              c.LifeCost,
+		DeclineEndsLoop:       c.DeclineEndsLoop,
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
 		OptionalItem:          c.OptionalItem,
@@ -3739,6 +3742,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		AcceptLabel:           c.AcceptLabel,
 		DeclineLabel:          c.DeclineLabel,
 		LifeCost:              c.LifeCost,
+		DeclineEndsLoop:       c.DeclineEndsLoop,
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
 		OptionalItem:          c.OptionalItem,

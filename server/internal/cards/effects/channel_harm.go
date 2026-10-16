@@ -31,7 +31,7 @@ import (
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID:     "4b3d1cfb-9f1d-4e4e-a15a-2e248ff5bdfc",
+		OracleID:     channelHarmOracle,
 		Name:         "Channel Harm",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
@@ -43,6 +43,8 @@ func init() {
 		}.DealingTo(0)),
 	})
 }
+
+const channelHarmOracle = "4b3d1cfb-9f1d-4e4e-a15a-2e248ff5bdfc"
 
 // channelHarmMayDealBody is the additional effect: "you may have Channel
 // Harm deal that much damage to target creature".
@@ -64,6 +66,10 @@ func channelHarmMayDeal(g *game.Game, item *game.StackItem, p game.EffectParams)
 		Question:     fmt.Sprintf("Channel Harm — deal %d damage to %s?", n, name),
 		AcceptLabel:  fmt.Sprintf("Deal %d damage", n),
 		DeclineLabel: "Don't",
+		// The damage prevented was a Channel Harm's own: accepting
+		// continues the loop the ruling describes, and declining ends
+		// it. Bots read the hint (#2040).
+		DeclineEndsLoop: channelHarmPreventedAChannelHarm(g, item),
 		OnAccept: func(g *game.Game) error {
 			if !g.Battlefield.Contains(target) {
 				return nil
@@ -72,4 +78,14 @@ func channelHarmMayDeal(g *game.Game, item *game.StackItem, p game.EffectParams)
 		},
 	})
 	return nil
+}
+
+// channelHarmPreventedAChannelHarm reports whether the damage this
+// application prevented was dealt by a Channel Harm.
+func channelHarmPreventedAChannelHarm(g *game.Game, item *game.StackItem) bool {
+	if item.Trigger == nil {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(item.Trigger.Event.Source)
+	return ok && c.OracleID == channelHarmOracle
 }

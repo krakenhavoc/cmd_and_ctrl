@@ -244,6 +244,9 @@ type ConfirmPrompt struct {
 	// for the bot's pricing. The branch itself still performs (and
 	// re-checks) the payment — this is a declaration, not a deduction.
 	LifeCost int
+	// DeclineEndsLoop is PendingChoice.DeclineEndsLoop (#2040): accepting
+	// would continue a loop the table is already in.
+	DeclineEndsLoop bool
 	// OnAccept / OnDecline are the branches. Either may be nil. Both
 	// run with g.mu held and may queue further choices.
 	OnAccept, OnDecline func(g *Game) error
@@ -267,6 +270,8 @@ func (g *Game) QueueConfirmForEffect(p ConfirmPrompt) uuid.UUID {
 		AcceptLabel:  p.AcceptLabel,
 		DeclineLabel: p.DeclineLabel,
 		LifeCost:     p.LifeCost,
+
+		DeclineEndsLoop: p.DeclineEndsLoop,
 		confirmResume: &confirmFrame{
 			onAccept:  p.OnAccept,
 			onDecline: p.OnDecline,

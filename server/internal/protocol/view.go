@@ -741,6 +741,11 @@ type PendingChoiceView struct {
 	// LifeCostUnpayable marks a mandatory pay-unless life component
 	// that the chooser cannot pay, including a life-total lock.
 	LifeCostUnpayable bool `json:"life_cost_unpayable,omitempty"`
+	// DeclineEndsLoop marks a "confirm" whose accept would continue a
+	// loop the table is already in (#2040, Channel Harm against Channel
+	// Harm). A hint, not a rule: both answers stay legal, and declining
+	// is how the loop ends. Bots read it; the client may ignore it.
+	DeclineEndsLoop bool `json:"decline_ends_loop,omitempty"`
 
 	// Coin-call answers and the public progress of a flip chain.
 	AllowStop     bool `json:"allow_stop,omitempty"`
@@ -9125,6 +9130,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.AcceptLabel = c.AcceptLabel
 			v.DeclineLabel = c.DeclineLabel
 			v.LifeCost = c.LifeCost
+			v.DeclineEndsLoop = c.DeclineEndsLoop
 		}
 		// ADR 0115 decision 2: the one computed fact a CR 903.9a
 		// question carries. We are inside ViewOfGame's ReadSnapshot,
