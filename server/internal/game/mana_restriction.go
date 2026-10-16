@@ -596,3 +596,53 @@ func containsFold(xs []string, want string) bool {
 func (ctx ManaSpendContext) hasPaidForObject() bool {
 	return ctx.Purpose != SpendPurposeUnknown && ctx.Purpose != SpendPurposeTurnFaceUp
 }
+
+// ManaAbilityRestrictionsLocked is the spend restrictions one activation
+// of `a` on `source` would stamp on its mana now (restrictionsFor): the
+// computed list for a RestrictionsFunc row (Cavern of Souls' chosen
+// type), the declared list otherwise. The view stamps it on a battlefield
+// row whose list is computed, so a reader without a game handle sees the
+// restriction the mint will apply (#3976).
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) ManaAbilityRestrictionsLocked(controller, source uuid.UUID, a ManaAbilityShape) []string {
+	return restrictionsFor(g, &a, controller, source)
+}
+
+// CastAdmitsRestrictedMana reports whether mana carrying `restrictions`
+// may pay for casting a spell with this type line and these colours,
+// from the zone `fromZone` names on the wire ("" is the hand), under the
+// matcher the pool solver spends by (ManaSpendContext.allows). It also
+// refuses a symbol-level tag (ManaRestrictNoGeneric), which `allows`
+// cannot answer, exactly as autoTapAdmitsRestricted does.
+//
+// For a reader that holds no Card: the bot's turn planner asks it
+// through protocol, since a policy may not import this package (ADR 0033
+// §3, #3976). allCreatureTypes is the object's changeling answer
+// (HasAllCreatureTypes). An estimate, not a legality answer: the cast
+// itself is decided by the enumerator, under the cast's own context.
+func CastAdmitsRestrictedMana(restrictions []string, typeLine string, colors []string, allCreatureTypes bool, fromZone string) bool {
+	if len(restrictions) == 0 {
+		return true
+	}
+	for _, r := range restrictions {
+		if r == ManaRestrictNoGeneric {
+			return false
+		}
+	}
+	from, ok := castZoneFromWire(fromZone)
+	if !ok {
+		return false
+	}
+	supers, types, subs := parseTypeLine(typeLine)
+	ctx := ManaSpendContext{
+		Purpose:          SpendPurposeCast,
+		Types:            types,
+		Subtypes:         subs,
+		Supertypes:       supers,
+		Colors:           colors,
+		AllCreatureTypes: allCreatureTypes,
+		CastFrom:         from,
+	}
+	return ctx.allows(restrictions)
+}
