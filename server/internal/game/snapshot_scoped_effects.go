@@ -231,6 +231,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if !KnownOptionPickThen(c.PickThen) {
 				unknown = append(unknown, "option pick continuation "+c.PickThen)
 			}
+		case c.Kind == PendingChoiceChooseCards:
+			// #2040: a keyed choose_cards pick's continuation.
+			if !KnownChooseCardsThen(c.PickThen) {
+				unknown = append(unknown, "choose-cards continuation "+c.PickThen)
+			}
 		case !KnownRevealedPickThen(c.PickThen):
 			unknown = append(unknown, "revealed-hand pick continuation "+c.PickThen)
 		}

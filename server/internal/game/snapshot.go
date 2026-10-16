@@ -2166,6 +2166,15 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		cen.ChoiceResumeFrames++
 		cen.note("combat damage step holds its damage behind damage_assignment prompts")
 	}
+	// #2040: the rest of a damage instruction parked behind a prompt
+	// its instance's prevention follow-up asked. A closure, as the
+	// CR 616 resume beside it is: not carried, so a restart rewinds to
+	// before the damage. The owed follow-ups themselves are data
+	// (PreventionFollowUps).
+	if n := len(g.followUpParks); n > 0 {
+		cen.ChoiceResumeFrames += n
+		cen.note("%d damage instruction(s) wait behind a prevention follow-up's prompt", n)
+	}
 	// #2789: a modal item's later bullets parked behind one of those
 	// prompts (mode_walk.go).
 	s.PausedModeWalk = snapshotModeWalk(g, g.pausedModeWalk, cen)

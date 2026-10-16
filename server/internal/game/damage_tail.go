@@ -696,15 +696,22 @@ func (g *Game) runDamageTailLocked(ev *ReplacementEvent, dealt int) error {
 	}
 	// ADR 0108 PR 0: a single instruction's instance is over with its
 	// one event.
+	paused := false
 	if ev.damageTail.endsInstance {
 		ev.damageTail.endsInstance = false
-		g.endDamageInstanceLocked(ev.DamageInstance)
+		paused = g.endDamageInstanceLocked(ev.DamageInstance)
 	}
 	if ev.damageTail.then == nil {
 		return nil
 	}
 	then := ev.damageTail.then
 	ev.damageTail.then = nil
+	if paused {
+		// #2040: a follow-up of this instance is asking; the rest of the
+		// instruction waits for the answer.
+		g.parkFollowUpContinuationLocked(ev.DamageInstance, func(g *Game) error { return then(g, dealt) })
+		return nil
+	}
 	return then(g, dealt)
 }
 

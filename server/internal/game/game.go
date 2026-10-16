@@ -527,6 +527,13 @@ type Game struct {
 	// Empty between actions.
 	preventionFollowUps []PreventionFollowUp
 
+	// followUpParks is the rest of each damage instruction parked behind
+	// a prompt its instance's follow-up asked (#2040,
+	// prevention_then_pause.go), oldest first. Closures: a table holding
+	// one is not a restore point (ContinuationCensus counts them). Copy
+	// on write.
+	followUpParks []followUpPark
+
 	// damageInstanceSeq is the last DamageInstance handed out (ADR 0108
 	// PR 0, damage_instance.go). Monotone within a running game and
 	// cloned with it. Not serialised: restore sets it to the largest

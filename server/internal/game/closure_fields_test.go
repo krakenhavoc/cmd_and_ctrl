@@ -117,7 +117,15 @@ var closureClassCeilings = map[string]int{
 	// (ReplacementEffect.*, CopySelector.*, EntryHandReveal.*) + the
 	// one census:StackEffects line tier 4-final moved here
 	// (StackItem.Effect, through resolving.item).
-	"census:ChoiceResumeFrames": 119,
+	//
+	// 121 (#2040): + Game.followUpParks and followUpPark.run, the rest
+	// of a damage instruction parked behind a prompt its prevention
+	// follow-up asked (prevention_then_pause.go). Not a new kind of
+	// blocker: it is the same damageTail.then a CR 616 ordering prompt
+	// already holds (ReplacementEvent.damageTail, damageTail.then),
+	// waiting on a different prompt, and owner decision 4 keeps resume
+	// frames in scope for this counter. The prompts themselves are keyed.
+	"census:ChoiceResumeFrames": 121,
 	// 45 + the four census:StackEffects lines tier 4-final moved here
 	// under ADR 0041 P11, the counter an unkeyed stack item is folded
 	// into (owner decision, 2026-09-25): Game.StackMeta,

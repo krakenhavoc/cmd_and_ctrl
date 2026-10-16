@@ -210,6 +210,10 @@ func checkEffectKey(kind, key string) {
 	if _, dup := voteThens[key]; dup {
 		panic(fmt.Sprintf("game: %s key %q is already a vote continuation", kind, key))
 	}
+	// #2040: and a keyed choose_cards pick's.
+	if _, dup := chooseCardsThens[key]; dup {
+		panic(fmt.Sprintf("game: %s key %q is already a choose-cards continuation", kind, key))
+	}
 }
 
 // DelayedBody registers a body. Call it once, from a package-level var
@@ -398,11 +402,12 @@ func KnownEffectCondition(key string) bool { _, ok := lookupCondition(key); retu
 // RegisteredEffectKeys lists every registered key as "body <key>",
 // "condition <key>", "alias <old> <new>", a revealed-hand pick's
 // continuation (#2115) as "pick <key>", or a keyed option pick's
-// (#2854) as "option <key>", sorted, for the ledger.
+// (#2854) as "option <key>", a keyed choose_cards pick's (#2040) as
+// "choose <key>", sorted, for the ledger.
 func RegisteredEffectKeys() []string {
 	effectRegistryMu.RLock()
 	defer effectRegistryMu.RUnlock()
-	out := make([]string, 0, len(effectBodies)+len(effectConditions)+len(effectAliases)+len(revealedPickThens)+len(optionPickThens)+len(voteThens))
+	out := make([]string, 0, len(effectBodies)+len(effectConditions)+len(effectAliases)+len(revealedPickThens)+len(optionPickThens)+len(voteThens)+len(chooseCardsThens))
 	for k := range effectBodies {
 		out = append(out, "body "+k)
 	}
@@ -415,6 +420,7 @@ func RegisteredEffectKeys() []string {
 	out = append(out, registeredRevealedPickKeysLocked()...)
 	out = append(out, registeredOptionPickKeysLocked()...)
 	out = append(out, registeredVoteKeysLocked()...)
+	out = append(out, registeredChooseCardsKeysLocked()...)
 	sort.Strings(out)
 	return out
 }

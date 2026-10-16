@@ -5333,7 +5333,16 @@ func (g *Game) stateChecksLocked(drain bool) (sbaFired bool) {
 	// prevented this way" runs now, once per shield with the total —
 	// before the state-based actions, so a combat damage step's damage
 	// has all been dealt (CR 510.2) and nothing has died of it yet.
-	g.flushPreventionFollowUpsLocked()
+	//
+	// #2040: a follow-up that asks a question is answered before the
+	// state-based actions too. The boundary returns here, with the
+	// resolution held open behind the prompt, and the answer's own
+	// boundary runs the rest (prevention_then_pause.go). CR 724.1c's
+	// check (drain false) cannot stop part-way: its prompt holds the
+	// next boundary instead.
+	if g.flushPreventionFollowUpsLocked() && drain {
+		return sbaFired
+	}
 	// #2183: the batch is over before a player receives priority, so
 	// the AtBatchEnd triggers staged in it are asked now, before the
 	// state-based actions can take their sources away.

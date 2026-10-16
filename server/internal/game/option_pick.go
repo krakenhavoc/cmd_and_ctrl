@@ -369,6 +369,9 @@ func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 		err = g.settleRunLegLocked(c.promptRun, c.Chooser, nil)
 	case c.chooseCardsResume != nil:
 		err = c.chooseCardsResume.runWithNoChoice(g)
+	case isKeyedChooseCards(c):
+		// #2040: a keyed choose_cards pick, run with nobody's choice.
+		err = g.runKeyedChooseCardsLocked(c, nil, false)
 	case c.chooseValueResume != nil:
 		// A resolution-time "choose a creature type" whose chooser left
 		// (Patriarch's Bidding asks every seat in turn). "" is the

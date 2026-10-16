@@ -2429,6 +2429,18 @@ object whose static it is, CR 400.7); "that creature" (the recipient) is
 `Then` without `ThenPer`, and `TestPreventionStaticsOnlyPrevent` fails a
 prevention static whose `Replace` does anything but change the event.
 
+A body may ASK something (#2040, ADR 0108 amendment of 2026-10-16):
+queue the prompt and return. The engine runs the body with the
+resolution open. So the question is answered as the damage is prevented,
+before the rest of the damage instruction, the next follow-up, and the
+state-based actions after combat damage. Read anything that can change
+between applications live (Khârn reads its controller off
+`followUpThis`, not `item.Controller`). Ask with a KEYED prompt where
+one exists so the table stays a restore point:
+`game.ChoosePlayerPrompt{ThenKey: …}` for a player (Khârn the Betrayer),
+or `game.ChooseCardsPrompt{ThenKey: game.RegisterChooseCardsThen(…)}`
+for cards (Immortal Coil).
+
 #### "Instead exile it and you gain 2 life" (ADR 0178, #2950)
 
 A zone-change replacement whose modified event also changes a player's

@@ -338,6 +338,15 @@ type ChooseCardsPrompt struct {
 	// ChooseDestination. Zero declares nothing.
 	Destination ChooseDestination
 
+	// ThenKey is Then as a REGISTERED continuation
+	// (RegisterChooseCardsThen, choose_cards_keyed.go), and Carry the
+	// plain data it is handed with the answer (#2040). A prompt queued
+	// with a key holds no closure, so a table waiting on it is still a
+	// restore point. With a key, Then, Validate and Zone are ignored:
+	// the continuation re-checks what it needs.
+	ThenKey ChooseCardsThen
+	Carry   []uuid.UUID
+
 	// promptRun links the queued prompt to the RUN it is one leg of
 	// (PendingChoice.promptRun, prompt_run.go). Unexported because it
 	// is engine plumbing: two callers set it, the discard prompt
@@ -396,6 +405,24 @@ func (g *Game) QueueChooseCardsForEffect(p ChooseCardsPrompt) uuid.UUID {
 	}
 	if lo > hi {
 		lo = hi
+	}
+	if key := p.ThenKey.key; key != "" {
+		// #2040: a keyed pick carries no frame, so it stays a restore
+		// point (choose_cards_keyed.go).
+		return g.QueueChoiceForEffect(PendingChoice{
+			Kind:              PendingChoiceChooseCards,
+			Chooser:           p.Chooser,
+			FromPlayer:        from,
+			Count:             hi,
+			Source:            p.Source,
+			Reason:            p.Question,
+			ChooseCards:       append([]uuid.UUID(nil), p.Cards...),
+			ChooseMin:         lo,
+			ChooseMax:         hi,
+			ChooseDestination: p.Destination,
+			PickThen:          key,
+			OptionCarry:       copyUUIDs(p.Carry),
+		})
 	}
 	return g.QueueChoiceForEffect(PendingChoice{
 		Kind:        PendingChoiceChooseCards,
@@ -538,6 +565,14 @@ func (g *Game) resolveCardSetPick(kind PendingChoiceKind, choiceID, chooserID uu
 	}
 	if err := g.checkChooseCardsPicksLocked(choice, picks); err != nil {
 		return err
+	}
+	if isKeyedChooseCards(choice) {
+		// #2040: a keyed pick's continuation, looked up by its key.
+		keyed := *choice
+		g.dequeueChoiceLocked(idx)
+		g.emitChoiceEffectErrorLocked(chooserID, keyed.Source, g.runKeyedChooseCardsLocked(&keyed, picks, true))
+		g.runStateChecksLocked()
+		return nil
 	}
 	frame := choice.chooseCardsResume
 	source := choice.Source
