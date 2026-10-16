@@ -244,7 +244,7 @@ func TestACopyNeverSpendsANextSpellPromise(t *testing.T) {
 	grantPromise(g, me, NextSpellPromise{CantBeCountered: true, Reduce: 1}, "Test")
 	spell := pushSpellFor(t, g, "Instant", me, me)
 	g.WithWriteLock(func() { g.StackMeta[spell].IsCopy = true })
-	var keys []CastFollowUpKey
+	var keys []spentPromiseFollowUp
 	g.WithWriteLock(func() { keys = g.spendNextSpellPromisesLocked(me.ID, spell) })
 	if keys != nil || promisesOn(me) != 1 || cantBeCountered(g, spell) {
 		t.Error("a copy is not cast and spends nothing")
@@ -262,10 +262,18 @@ func TestNextSpellPromiseRunsItsRegisteredFollowUp(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	toMainPhase(t, g)
-	grantPromise(g, me, NextSpellPromise{FollowUp: key}, "Test")
+	source := uuid.New()
+	g.WithWriteLock(func() {
+		g.GrantNextSpellPromiseForEffect(me.ID, NextSpellPromise{FollowUp: key}, "Test", source, Duration{})
+	})
 	bear := castFromHand(t, g, me, "Grizzly Bears", "Creature — Bear")
 	if len(ran) != 1 || ran[0].Player != me.ID || ran[0].Spell != bear {
 		t.Fatalf("the follow-up ran %+v", ran)
+	}
+	// #3192: the body is told the promise's source, for an effect it
+	// makes on the spell ("it gains haste", Summon: Brynhildr).
+	if ran[0].Source != source {
+		t.Errorf("the follow-up was told source %v, want the promise's %v", ran[0].Source, source)
 	}
 	clearStack(g)
 	castFromHand(t, g, me, "Second Bear", "Creature — Bear")

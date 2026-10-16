@@ -431,6 +431,21 @@ type PendingChoice struct {
 	// stem Reason is rebuilt from after each answer.
 	ManaLabel string
 
+	// ManaSettled and ManaPicksLeft make one mana ability's whole output
+	// ONE production (#3939, CR 106.12b): the mana a replacement such as
+	// Damping Sphere's "if a land is tapped for two or more mana" has to
+	// see as a unit. When an activation has colours still to pick, the
+	// colours it already knows wait in ManaSettled instead of reaching
+	// the pool, the first pick is this choice, and the rest of the picks
+	// wait in ManaPicksLeft. Each answer moves its colours into
+	// ManaSettled and, while picks remain, rewrites the choice in place
+	// for the next one (a fresh ID, as a ManaDifferent pick does); the
+	// last answer produces ManaSettled in one window. Both are empty for
+	// an ordinary pick. Deep-copied by clone.go and carried by the
+	// snapshot.
+	ManaSettled   []string
+	ManaPicksLeft []ManaPickSlot
+
 	// ManaTapped marks a PendingChoiceMana that is part of TAPPING A
 	// PERMANENT FOR MANA (CR 106.12a) — a mana ability with a {T} cost
 	// whose colour the controller is still choosing.
@@ -1571,6 +1586,59 @@ func (g *Game) ResolvePendingChoice(choiceID, chooserID uuid.UUID, picks []uuid.
 	}
 }
 
+// nextManaPickLocked rewrites an answered pick in place for the next
+// pick its activation owes (#3939): `produced` joins ManaSettled, and the
+// choice takes the next slot's options, amounts and different-colours
+// count, with a fresh ID so every seat sees a new question — the way
+// advanceDifferentColorsPickLocked re-asks a different-colours pick.
+//
+// Caller must hold g.mu.
+func (g *Game) nextManaPickLocked(choice *PendingChoice, produced []string) {
+	choice.ManaSettled = append(append([]string(nil), choice.ManaSettled...), produced...)
+	next := choice.ManaPicksLeft[0]
+	choice.ManaPicksLeft = copyManaPickSlots(choice.ManaPicksLeft[1:])
+	choice.ColorOptions = append([]string(nil), next.Options...)
+	choice.ManaChosen = nil
+	choice.ManaDifferent = next.Different
+	if next.Different > 0 {
+		choice.ManaAmounts = nil
+		choice.Reason = differentColorsReason(choice.ManaLabel, nil, next.Different)
+	} else {
+		choice.ManaAmounts = copyManaAmounts(next.Amounts)
+		choice.Reason = choice.ManaLabel
+	}
+	choice.ID = uuid.New()
+	g.notePlayerDecisionLocked()
+}
+
+// ManaPickSlot is one colour pick an activation still owes after the
+// pick open now (PendingChoice.ManaPicksLeft, #3939): the options the
+// activation offered, already narrowed and ordered, the per-colour
+// amounts of a "N mana of any one color" pick, and N for an "N mana of
+// different colors" pick.
+type ManaPickSlot struct {
+	Options   []string       `json:"options"`
+	Amounts   map[string]int `json:"amounts,omitempty"`
+	Different int            `json:"different,omitempty"`
+}
+
+// copyManaPickSlots deep-copies a pick queue for the clone and the
+// snapshot.
+func copyManaPickSlots(in []ManaPickSlot) []ManaPickSlot {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]ManaPickSlot, len(in))
+	for i, s := range in {
+		out[i] = ManaPickSlot{
+			Options:   append([]string(nil), s.Options...),
+			Amounts:   copyManaAmounts(s.Amounts),
+			Different: s.Different,
+		}
+	}
+	return out
+}
+
 // ResolveManaChoice processes a resolve_choice action for a
 // PendingChoiceMana entry. The chooser picks one color from the
 // entry's ColorOptions; the picked color drops into their pool as
@@ -1638,6 +1706,17 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 			return nil
 		}
 		produced = all
+	}
+	// #3939, CR 106.12b: one activation is one production. While the
+	// activation still owes picks, this answer's colours join the ones
+	// it already knows and the choice is asked again for the next pick;
+	// the last answer produces the whole output in one window.
+	if len(choice.ManaPicksLeft) > 0 {
+		g.nextManaPickLocked(choice, produced)
+		return nil
+	}
+	if len(choice.ManaSettled) > 0 {
+		produced = append(append([]string(nil), choice.ManaSettled...), produced...)
 	}
 	tapped := choice.ManaTapped
 	// #1222: through the one production body, which opens the

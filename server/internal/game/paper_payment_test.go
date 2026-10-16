@@ -163,7 +163,9 @@ func TestCastAnywayAtTheBoundAsksForOneCountedSlot(t *testing.T) {
 	if !errors.As(err, &ask) {
 		t.Fatalf("err = %v, want *PaperPaymentRequiredError", err)
 	}
-	want := []PaperSlot{{Symbol: "{B}", Options: []string{"B"}, Count: MaxAnnouncedX + 1 - 10}}
+	// The pool's ten black paid the printed {B} and nine of the X, so
+	// every slot left is the X part (#3941).
+	want := []PaperSlot{{Symbol: "{B}", Options: []string{"B"}, Count: MaxAnnouncedX + 1 - 10, X: true}}
 	if !reflect.DeepEqual(ask.Slots, want) {
 		t.Fatalf("slots = %+v, want %+v", ask.Slots, want)
 	}

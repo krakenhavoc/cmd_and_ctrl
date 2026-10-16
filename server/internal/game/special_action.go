@@ -426,6 +426,9 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	if p == nil {
 		return ErrPlayerNotFound
 	}
+	// #3942: a counter a special action puts (CR 116.2) is put by the
+	// player taking it (counter_placer.go).
+	defer g.pushCounterPlacerLocked(playerID)()
 	// ADR 0189: a route only means something to turn_face_up, so it is
 	// refused on any other kind before the card is even looked for.
 	if params.Route != "" && kind != SpecialActionTurnFaceUp {

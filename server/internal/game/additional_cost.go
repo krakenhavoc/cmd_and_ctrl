@@ -344,9 +344,12 @@ type AdditionalCost struct {
 	// ability's component (ExileCost) on a cast. The caster names the
 	// cards on CastSpellParams.ExileIDs, they are exiled with the spell on
 	// the stack, and they are recorded on PaidCost.Exiled so the spell
-	// reads them at resolution (CR 608.2h). Graveyard only, a fixed count,
-	// on the mandatory slot only: effects.Register refuses the hand form,
-	// a non-positive N, an optional cost and an either/or branch.
+	// reads them at resolution (CR 608.2h). Graveyard only, never on an
+	// optional cost: effects.Register refuses the hand form and a
+	// non-positive N. #1948 (ADR 0189's 2026-10-16 amendment) adds the X
+	// form (ExileCost.CountFromX, "exile X cards", the mandatory slot
+	// only) and a fixed count on a branch of an either/or cost (Soaring
+	// Stoneglider's "exile two cards from your graveyard or pay {1}{W}").
 	ExileCards *ExileCost
 }
 
@@ -1044,6 +1047,12 @@ func (g *Game) additionalCostPayableLocked(playerID, castID uuid.UUID, cost *Add
 		return false
 	}
 	if !g.ExilePermanentsPayable(playerID, castID, cost.ExilePermanents) {
+		return false
+	}
+	// #1948: enough matching graveyard cards for a printed count
+	// (Soaring Stoneglider's "exile two cards from your graveyard"
+	// branch, CR 118.3). An X form is always payable at X = 0.
+	if ec := cost.ExileCards; ec != nil && !ec.CountFromX && len(g.ExileCostOptionsForEffect(playerID, castID, ec)) < ec.N {
 		return false
 	}
 	// #3868: enough untapped matching permanents to tap (CR 118.3).

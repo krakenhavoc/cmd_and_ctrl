@@ -24,6 +24,9 @@ export interface PaperMana {
   color: string;
   artifact?: boolean;
   count?: number;
+  // This mana paid for the cost's {X} part (#3941): set from the slot it
+  // answers, so the record keeps the caster's own allocation.
+  x?: boolean;
 }
 
 export interface PaperPayment {
@@ -79,10 +82,11 @@ export function declaredPayment(
   choices: PaperSlotChoice[],
 ): PaperPayment {
   return {
-    mana: choices.map((c) => {
+    mana: choices.map((c, i) => {
       const m: PaperMana = { color: c.color };
       if (prompt.artifact_sources && c.artifact) m.artifact = true;
       if (slotCount(c) > 1) m.count = slotCount(c);
+      if (prompt.slots[i]?.x) m.x = true;
       return m;
     }),
   };

@@ -109,6 +109,7 @@
             >{slot.symbol}{#if slotCount(slot) > 1}<span class="count">×{slotCount(slot)}</span
               >{/if}</span
           >
+          {#if slot.x}<span class="xtag">{L.paperSlotOnX}</span>{/if}
           <span class="options" role="group" aria-label={`paid for ${slot.symbol}`}>
             {#each slot.options as opt (opt)}
               <button
@@ -157,6 +158,16 @@
   }
   .count {
     color: var(--fg-muted);
+  }
+  /* A slot of the cost's {X} part: the mana a spend-only-on-X clause
+     restricts, shown apart so the player can see which mana pays X
+     (#3941). */
+  .xtag {
+    font-size: 12px;
+    color: var(--fg-muted);
+    border: 1px solid var(--border, currentColor);
+    border-radius: 4px;
+    padding: 0 4px;
   }
   .options {
     display: flex;

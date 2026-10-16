@@ -2077,6 +2077,12 @@ func checkExileCardsClause(name, where string, ec *game.ExileCost) {
 	if ec == nil {
 		return
 	}
+	if ec.CountFromX {
+		// #1948: "exile X cards" exists on a cast's mandatory slot only
+		// (checkCastExileCardsClause); no ability prints it.
+		panic(fmt.Sprintf("effects.Register: %q %s exiles X cards — the X form is a cast's additional cost only (#1948)",
+			name, where))
+	}
 	if ec.N <= 0 {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles %d cards — an exile cost exiles at least one",
 			name, where, ec.N))

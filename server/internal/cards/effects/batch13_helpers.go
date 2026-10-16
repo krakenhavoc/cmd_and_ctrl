@@ -127,27 +127,6 @@ func b13LastKnownPower(g *game.Game, cardID uuid.UUID, lki game.Characteristic) 
 	return p
 }
 
-// b13ResolutionInProgressBy is the controller of the spell or ability
-// whose resolution is happening right now — the Actor of the most
-// recent EventResolve — or uuid.Nil when an action that cannot happen
-// mid-resolution has been logged since: a cast, a mana ability, an
-// attack declaration, a fizzle, or a step beginning. It is
-// b12ResolvingController read from the end of the log rather than
-// from an event's position, for a replacement effect that has no
-// event of its own to anchor on.
-func b13ResolutionInProgressBy(g *game.Game) uuid.UUID {
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		switch ev := g.Events[i]; ev.Kind {
-		case game.EventResolve:
-			return ev.Actor
-		case game.EventCast, game.EventManaAbilityActivated, game.EventAttack, game.EventFizzle,
-			game.EventBeginUpkeep, game.EventBeginPrecombatMain, game.EventBeginEndStep:
-			return uuid.Nil
-		}
-	}
-	return uuid.Nil
-}
-
 // --- predicates --------------------------------------------------
 
 // b13WithoutPlusOneCounter is Wave Goodbye's "creature without a

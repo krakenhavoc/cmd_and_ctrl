@@ -10,9 +10,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The trigger is WheneverYouPutCountersOfKindOnACreature (#3929): once
 // per creature per placement (CR 603.2c), so Cathars' Crusade's counter
 // on each of five creatures is five triggers, and +1/+1 counters only. A
-// placement whose recorded placer is an opponent is not "you"; one with
-// no recorded placer is credited by b12CountersPlacedBy's rule, which
-// only ever credits too little.
+// placement whose recorded placer is an opponent is not "you" (every
+// placement records its placer, #3942).
 //
 // "That many" is the number of +1/+1 counters that placement put on the
 // creature, after replacements (a Hardened Scales'd single counter is

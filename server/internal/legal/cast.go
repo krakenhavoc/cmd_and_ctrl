@@ -888,6 +888,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// #2174: "blight X" is the other non-mana price on X.
 		xLifeCeiling = bx
 	}
+	if ex := e.exileXCeiling(card.InstanceID, addCost); ex != noXCeiling {
+		// #1948: and "exile X cards from your graveyard" — X is what the
+		// graveyard can pay. Skeletal Scrying's {X} in its mana cost is
+		// the same X, so the smaller of the two bounds it.
+		xLifeCeiling = ex
+	}
 	// #2581: and a printed "X can't be greater than <count>" bounds
 	// the same announcement without pricing it (x.go). Only where the
 	// cost this cast pays has an {X} to announce: a free cast's X is
@@ -1460,10 +1466,13 @@ modeLoop:
 					// seat can pay — but only where nothing else in the
 					// move is fixed by that X: a target count or a
 					// "mana value X or less" bound, a division, a
-					// sacrifice count, a delve payment sized to it.
+					// sacrifice count, a delve payment sized to it — or
+					// the graveyard cards an "exile X cards" cost names
+					// (#1948), which number exactly the announced X.
 					var xv *MoveValue
+					exileX := addCost != nil && addCost.ExileCards != nil && addCost.ExileCards.CountFromX
 					if (modeCost.XSlots > 0 || (addCost != nil && (addCost.PayLifeX || addCost.BlightX))) &&
-						len(xSteps) == 0 && !xBound && !varSac && dist == nil && len(payDelve) == 0 {
+						len(xSteps) == 0 && !xBound && !varSac && dist == nil && len(payDelve) == 0 && !exileX {
 						xv = openX(xFloor, payX)
 					}
 					queued[si] = append(queued[si], announcedCast{
@@ -1649,7 +1658,10 @@ func (e *enumerator) castMoveEmitter(
 	idle := e.idleCastHint(card, offer, chosen)
 	modeSpec := game.ModeSpecFor(game.CatalogKey(card))
 	permType := e.permType
+	exilePool := exileCardIDs
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, mana game.ParsedCost, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
+		// #1948: an "exile X cards" cost names exactly the announced X.
+		exileCardIDs := exileCardsForX(paying, exilePool, setX)
 		label := "Cast " + card.Name
 		switch from {
 		case "command":

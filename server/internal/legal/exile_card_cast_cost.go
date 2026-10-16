@@ -16,11 +16,46 @@ import (
 // false when the graveyard cannot cover the count, which drops the cast
 // from the move list (the view ships the same picker present and short,
 // and the cast gate greys it).
+//
+// #1948: for the X form ("exile X cards") the count is the X the move
+// announces, which is not known yet, so this returns EVERY candidate,
+// cheapest fuel first; exileCardsForX cuts it to the announced X when the
+// move is built, and exileXCeiling caps the X search at its length.
 func (e *enumerator) exileCardsCastPayment(castID uuid.UUID, mandatory *game.AdditionalCost) (ids []uuid.UUID, ok bool) {
 	if mandatory == nil || mandatory.ExileCards == nil {
 		return nil, true
 	}
+	if mandatory.ExileCards.CountFromX {
+		return e.cheapestFuelFirst(e.g.ExileCostOptionsForEffect(e.seat, castID, mandatory.ExileCards)), true
+	}
 	return e.exileCardsPayment(mandatory.ExileCards, castID, nil)
+}
+
+// exileXCeiling is the largest X an "exile X cards from your graveyard"
+// cost lets the seat announce (#1948): the engine's own
+// ExileCardsXCeilingForEffect, the number CastSpell refuses above, so the
+// enumerator never offers an X the engine refuses (#544). noXCeiling for
+// every other cost.
+func (e *enumerator) exileXCeiling(castID uuid.UUID, addCost *game.AdditionalCost) int {
+	if addCost == nil || addCost.ExileCards == nil || !addCost.ExileCards.CountFromX {
+		return noXCeiling
+	}
+	return e.g.ExileCardsXCeilingForEffect(e.seat, castID, addCost.ExileCards)
+}
+
+// exileCardsForX is the payment a move at X names: the first X of the
+// cheapest-first pool for the X form, the fixed payment otherwise.
+func exileCardsForX(paying *game.AdditionalCost, pool []uuid.UUID, x int) []uuid.UUID {
+	if paying == nil || paying.ExileCards == nil || !paying.ExileCards.CountFromX {
+		return pool
+	}
+	if x <= 0 {
+		return nil
+	}
+	if x > len(pool) {
+		x = len(pool)
+	}
+	return pool[:x]
 }
 
 // withoutIDs is pool with every id in `taken` removed, order kept. The
