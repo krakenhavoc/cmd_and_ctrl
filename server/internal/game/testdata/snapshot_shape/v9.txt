@@ -2939,6 +2939,7 @@ pendingChoices[].modeUsedIndex	array
 pendingChoices[].modeUsedIndex[]	number:int
 pendingChoices[].modeUsedLabel	array
 pendingChoices[].modeUsedLabel[]	string
+pendingChoices[].noGain	bool
 pendingChoices[].noLegalTarget	bool
 pendingChoices[].optionCarry	array
 pendingChoices[].optionCarry[]	custom(uuid.UUID)

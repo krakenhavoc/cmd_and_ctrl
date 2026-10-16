@@ -70,6 +70,7 @@ func Register(spec Spec) {
 	checkSpellXBound(spec.Name, spec.Targets)
 	checkExhaustAbilities(spec)
 	checkBoast(spec)
+	checkMayAtResolution(spec.Name, spec.Activated)
 	checkPlayerKeywords(spec)
 	checkHandSize(spec)
 	for _, a := range spec.Activated {

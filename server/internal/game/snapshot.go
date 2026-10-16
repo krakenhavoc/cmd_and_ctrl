@@ -1661,10 +1661,13 @@ type pendingChoiceSnapshot struct {
 	// resolving item whose CR 603.5 "you may" a trigger_prompt asks, and
 	// what a "yes" trades for. Plain data: the item rides the parked
 	// resolution tail, so the prompt is a restore point.
-	OptionalItem     uuid.UUID   `json:"optionalItem,omitempty"`
-	OptionalTradeFor uuid.UUID   `json:"optionalTradeFor,omitempty"`
-	ChooseCards      []uuid.UUID `json:"chooseCards,omitempty"`
-	ChooseMin        int         `json:"chooseMin,omitempty"`
+	OptionalItem     uuid.UUID `json:"optionalItem,omitempty"`
+	OptionalTradeFor uuid.UUID `json:"optionalTradeFor,omitempty"`
+	// NoGain is PendingChoice's (ADR 0197 §10, #2731): the row's "yes
+	// would not help" warning, computed as the question was asked.
+	NoGain      bool        `json:"noGain,omitempty"`
+	ChooseCards []uuid.UUID `json:"chooseCards,omitempty"`
+	ChooseMin   int         `json:"chooseMin,omitempty"`
 	// #2525: a proliferate's seats on offer and the engine's suggested
 	// answer. Carried for ChooseCards' reason — the prompt is its
 	// options — even though the prompt's continuation frame keeps a
@@ -2779,6 +2782,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		GuardsStackItem:      c.GuardsStackItem,
 		OptionalItem:         c.OptionalItem,
 		OptionalTradeFor:     c.OptionalTradeFor,
+		NoGain:               c.NoGain,
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChoosePlayers:        copyUUIDs(c.ChoosePlayers),
 		ChooseSuggested:      copyUUIDs(c.ChooseSuggested),
@@ -3679,6 +3683,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		GuardsStackItem:      c.GuardsStackItem,
 		OptionalItem:         c.OptionalItem,
 		OptionalTradeFor:     c.OptionalTradeFor,
+		NoGain:               c.NoGain,
 		ChooseCards:          copyUUIDs(c.ChooseCards),
 		ChoosePlayers:        copyUUIDs(c.ChoosePlayers),
 		ChooseSuggested:      copyUUIDs(c.ChooseSuggested),

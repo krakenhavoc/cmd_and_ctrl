@@ -63,6 +63,7 @@ func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 			OwnerOnly:     a.OwnerOnly,
 			GrantorOnly:   a.GrantorOnly,
 			Purpose:       a.Purpose,
+			MayQuestion:   a.May.question(),
 			Effect:        a.Effect,
 		}
 	}

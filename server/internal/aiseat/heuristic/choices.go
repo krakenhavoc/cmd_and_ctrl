@@ -575,6 +575,15 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return st.copyTargetValue(cp.CardIDs, lookup)
 
 	case choiceTriggerPrompt, choicePayUnless:
+		// ADR 0197 §10 (#2731): a "you may" whose own ability says the
+		// "yes" would not help on this board (Arni Brokenbrow's set
+		// would not raise its base power) is declined.
+		if kind == choiceTriggerPrompt && ch != nil && ch.NoGain {
+			if cp.Apply != nil && *cp.Apply {
+				return 0.25, "may: yes would not help now"
+			}
+			return 1, "may: decline, yes would not help"
+		}
 		// ADR 0104 (owner decision 8): a "yes" that TRADES the source
 		// for a spell — Perplexing Chimera — is taken only when the
 		// spell is worth the creature: mana value 5 or more, or a

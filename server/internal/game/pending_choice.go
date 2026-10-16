@@ -511,6 +511,13 @@ type PendingChoice struct {
 	OptionalItem     uuid.UUID
 	OptionalTradeFor uuid.UUID
 
+	// NoGain marks a resolution-time "you may" whose row says "yes"
+	// would leave the chooser no better off as things stand (ADR 0197
+	// §10, CatalogActivatedMayHelps): Arni Brokenbrow's new base power
+	// would be no higher than its old one. The client warns and the
+	// bot declines; the answer is still the player's. Plain data.
+	NoGain bool
+
 	// PickTargetPlayers / PickTargetCards are the legal-target set a
 	// PendingChoicePickTarget offers, computed when the trigger fired.
 	// Wire-serialised (as ID lists) so the client can highlight the

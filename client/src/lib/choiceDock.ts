@@ -240,8 +240,10 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
         hint:
           c.no_legal_target === true
             ? "No legal target — “Yes” passes without effect."
-            : "Fire the ability, or let it pass without effect.",
-        hintWarn: c.no_legal_target === true,
+            : c.no_gain === true
+              ? "“Yes” wouldn’t help right now."
+              : "Fire the ability, or let it pass without effect.",
+        hintWarn: c.no_legal_target === true || c.no_gain === true,
       };
     case "may_cast": {
       const words = mayCastCopy(c.may_cast_keyword, c.accept_label, c.decline_label);

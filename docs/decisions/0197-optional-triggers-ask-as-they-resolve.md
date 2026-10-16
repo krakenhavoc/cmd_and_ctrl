@@ -73,6 +73,18 @@ The question is plain data: `PendingChoice.OptionalItem` (the resolving item's I
 - **Smart auto-pass:** nothing relied on the old moment. An optional trigger on the stack is a stack item like any other, so a seat that stops on stack items now stops on it.
 - **Loops (ADR 0055 / 0193):** a recording replays answers by prompt shape in order; the prompt moved, and a loop recorded under this binary replays under it. An answer is still a player decision for the loop breaker; an automatic one is not (ADR 0127 §7).
 
+### 10. Activated abilities whose effect is a "you may"
+
+**Amendment (2026-10-15, [#2731](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2731)).** CR 608.2d makes the choices in an ability's effect as it resolves, so an activated ability whose whole effect is "you may …" asks at the same moment an optional trigger does. Arni Brokenbrow's boast ("{1}: You may have Arni's base power become 1 plus the greatest power among other creatures you control until end of turn") is the case that needed it: the set is a layer 7b base power, not a pump, so a "yes" with nothing bigger beside Arni makes it smaller, and the card had been left out rather than shipped with the "may" dropped.
+
+The row declares the question as plain data, `ActivatedAbilityShape.MayQuestion` (card files write `effects.YouMay(row, MayAtResolution{Question: …})`). The activation stamps `StackItem.Optional` from it, and from there the item takes §1's path unchanged: the resolution asks a `trigger_prompt` that names the item on the parked tail, "yes" runs the Effect inside the resolution, "no" runs nothing. The chooser is the ability's controller, the activator (CR 109.5). It is a restore point for the reason in §8, since an activated catalog item is rebuilt from its row. §4's intervening "if" does not apply: an activated ability has no trigger condition.
+
+- **Standing answers (§6).** The key is the activated row's, `<catalog key>|activated|<label>`, and the coverage rule is the trigger's: a row with a target clause or modes takes no standing answer. A key longer than ADR 0127's 256 bytes is not offered. A face-down source gets no key.
+- **"Yes" that would not help.** A row may also declare `MayAtResolution.Helps`, read as the question is asked through the package hook `game.CatalogActivatedMayHelps` (no closure is reachable from `Game`). When it answers false the prompt carries `PendingChoice.NoGain` (wire `no_gain`): the client's hint warns, and the heuristic bot declines. Arni's reads the base power its copiable values give it, so it ignores another effect that already set its base power. It is a warning only: both answers stay legal and the rules effect is the printed one. It is declared on activated rows only; no trigger needed one.
+- **Copies (CR 707.10).** A copy of an ability now carries the original's `Optional`, so a copied "you may", triggered or activated, asks its own question as it resolves. Before this a copied optional trigger resolved as if its controller had said yes.
+- **Seats.** The bot sees the `trigger_prompt` at resolution and prices it as §9 says, with `no_gain` declined. The MCP seat gets it as the ability resolves. The client renders it as a trigger's prompt.
+- **What stays a `MayChoice`.** A "you may" partway through an effect ("Mill two cards. Then you may sacrifice this land", Eden, Seat of the Sanctum) is asked after the part before it has happened, so it stays a `MayChoice` (#796) inside the Effect. The catalog sweep for this amendment found no other activated row whose whole effect is a "you may" that had been simplified: the rest are a put-from-hand, a search, a look or a retarget, each with its own decline.
+
 ## Consequences
 
 - The table matches CR 603.5: an opponent can respond to an optional trigger before its controller decides, and the controller decides with the board the ability resolves on.
@@ -84,4 +96,5 @@ The question is plain data: `PendingChoice.OptionalItem` (the resolving item's I
 ## Out of scope
 
 - Moving every hand-written optional intervening-if to `InterveningIf` (§4's amendment covers the mechanism and three cards).
-- Standing answers for targeted and modal optional triggers (§6).
+- Standing answers for targeted and modal optional triggers (§6), and for targeted and modal activated "you may" rows (§10).
+- Moving an activated row whose `MayChoice` is its whole effect to §10's declaration.

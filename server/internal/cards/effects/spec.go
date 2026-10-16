@@ -1815,7 +1815,17 @@ type ActivatedAbility struct {
 	// bot reaching across the table. ControllerLosesLife is refused off
 	// an AnyPlayer row. See game.Purpose and purpose.go.
 	Purpose game.Purpose
-	Effect  func(g *game.Game, item *game.StackItem) error
+	// May is the ability's resolution-time "you may" when its WHOLE
+	// effect is optional ("Boast — {1}: You may have Arni's base power
+	// become …"). The question is asked as the ability resolves and
+	// "yes" runs Effect, by the machinery an optional trigger uses (ADR
+	// 0197 §10, #2731); a standing answer (ADR 0127) works on it. Nil
+	// for every other ability. A "you may" partway through an effect
+	// ("Mill two cards. Then you may sacrifice this land") is a
+	// MayChoice inside Effect instead. See game.ActivatedAbilityShape.
+	// MayQuestion and may_at_resolution.go.
+	May    *MayAtResolution
+	Effect func(g *game.Game, item *game.StackItem) error
 }
 
 // ManaAbility is one mana-producing activated ability on a permanent.
