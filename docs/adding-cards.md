@@ -7355,9 +7355,13 @@ What the engine and the client do for you:
   the controlled player may only concede (CR 723.6).
 - A bot that controls a turn plays it passively (`aiseat.controlledTurnPolicy`).
 
-`BeginTurnControlForEffect` always owes an extra turn. A card with no
-extra turn (Mindslaver, Sorin Markov's −7) needs a `TurnControl` option
-for it first.
+`BeginTurnControlForEffect` owes an extra turn unless the request sets
+`TurnControl.NoExtraTurn`. A card with no extra turn ("You control
+target player during that player's next turn": Mindslaver, Worst Fears,
+Sorin Markov's −7, Construct a Cosmic Cube, and Cruel Entertainment's
+two halves) uses `controlTargetPlayerNextTurn(name)` or
+`controlPlayerNextTurn(g, item, controller, controlled, name)` from
+`cards/effects/turn_control_cards.go`, which set it.
 
 ### Adding a `PendingChoiceKind` (#730, #794)
 
