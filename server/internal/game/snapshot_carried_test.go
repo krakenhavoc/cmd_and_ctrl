@@ -358,6 +358,16 @@ var carriedFixture = map[string]any{
 			rest: []int{1, 0},
 		}
 	},
+	// #4012: the same, for an effect's parked steps.
+	"Game.pausedStepWalk": func(g *Game) any {
+		id := uuid.NewSHA1(uuid.Nil, []byte("Game.pausedStepWalk"))
+		me := g.Seats[0].ID
+		return &stepWalk{
+			item: &StackItem{ID: id, Kind: StackItemSpell, Controller: me, Owner: me,
+				SourceCardID: id, Label: "drift-Game.pausedStepWalk", XValue: 4, Seq: 5353},
+			path: []int{2, 1},
+		}
+	},
 	// #3613: the same, for the end of a paused resolution.
 	"Game.pausedResolutionTail": func(g *Game) any {
 		id := uuid.NewSHA1(uuid.Nil, []byte("Game.pausedResolutionTail"))

@@ -73,6 +73,12 @@ type Applier interface {
 // The first error stops the sequence and is reported as the item's
 // effect error; the item has still resolved (CR 608.2m).
 //
+// A step that asks something (a scry, a CR 616 ordering prompt, a
+// prevention follow-up's question) holds the steps after it until the
+// answer (CR 608.2c, #4012, do_walk.go) — when the Do is the item's
+// own Effect. A Do called from inside a hand-written closure runs its
+// steps back to back, as before.
+//
 // Not inlined, so every Do closure shares one code pointer and the
 // registry can recognise one (source_blind.go, #1968).
 //
@@ -84,13 +90,7 @@ func Do(steps ...Applier) Effect {
 			// (source_blind.go). Never a real item.
 			return doSteps(steps)
 		}
-		ctx := NewContext(g, item)
-		for _, s := range steps {
-			if err := s.Apply(ctx); err != nil {
-				return err
-			}
-		}
-		return nil
+		return runDoSteps(NewContext(g, item), steps, nil, ownsItemEffect != nil && ownsItemEffect(item, steps))
 	}
 }
 

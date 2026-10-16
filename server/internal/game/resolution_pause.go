@@ -128,6 +128,14 @@ func (g *Game) holdForOpenResolutionLocked() bool {
 	if g.resumeFollowUpParksLocked() {
 		return true
 	}
+	// #4012, CR 608.2c: the prompt an effect's step was waiting on is
+	// answered, so the effect's later steps run now, still inside the
+	// resolution (step_walk.go) — after the damage instruction's own
+	// continuation above, before a modal item's next bullet below. One
+	// of them may pause again.
+	if g.resumeStepWalkLocked() && g.pausedResolutionChoiceLocked() != nil {
+		return true
+	}
 	// #2789, CR 608.2c: the prompt a modal item's bullet was waiting on
 	// is answered, so its later bullets run now, still inside the
 	// resolution (mode_walk.go). One of them may pause again.
