@@ -2235,6 +2235,24 @@ func (e *enumerator) legalStepSets(src game.TargetSource, steps []game.Announced
 	out := [][]game.TargetRef{nil}
 	for i := range steps {
 		clause := steps[i].Clause
+		// #2055: an "of an opponent's choice" clause is not the
+		// controller's to pick. The announcement names nothing for it
+		// (the engine asks an opponent), so it adds no refs; it only
+		// keeps the prefixes some opponent could still complete
+		// (CR 601.2c), which is the engine's own gate.
+		if game.StepChosenByOpponent(steps[i]) {
+			kept := make([][]game.TargetRef, 0, len(out))
+			for _, prefix := range out {
+				if e.g.OpponentStepFillableForEffect(src, steps, i, prefix) {
+					kept = append(kept, prefix)
+				}
+			}
+			if len(kept) == 0 {
+				return nil
+			}
+			out = kept
+			continue
+		}
 		lt := e.g.LegalTargetsForAnnouncedClauseForEffect(src, steps, i, nil)
 		picks := e.legalTargetSetsFrom(&clause, budget, lt)
 		if len(picks) == 0 {

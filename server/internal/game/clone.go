@@ -862,6 +862,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		Label:            s.Label,
 		DoubledBy:        s.DoubledBy,
 		DoubledByName:    s.DoubledByName,
+		TargetChoosers:   copyTargetChoosers(s.TargetChoosers),
 		XValue:           s.XValue,
 		HoldPriority:     s.HoldPriority,
 		SplitSecond:      s.SplitSecond,
@@ -953,6 +954,7 @@ func clonePickTargetFrame(f *pickTargetFrame) *pickTargetFrame {
 	out.picked = append([]TargetRef(nil), f.picked...)
 	out.modes = append([]int(nil), f.modes...)
 	out.dist = cloneDistributionLocked(f.dist)
+	out.choosers = copyTargetChoosers(f.choosers)
 	return &out
 }
 

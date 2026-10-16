@@ -1734,8 +1734,9 @@
     // the server then refuses, with nothing on screen to say why. One
     // list, next to the type that declares the vocabulary, and a unit
     // test over it.
-    if (opensTargetPicker(mode)) {
-      beginTargeting(card, mode, choices, alt);
+    // #2055: a spell whose every target is an opponent's choice
+    // (Evangelize) has no walk; it is cast at once and the server asks.
+    if (opensTargetPicker(mode) && beginTargeting(card, mode, choices, alt)) {
       return;
     }
     // ADR 0202: a spell with no target of its own still asks for the

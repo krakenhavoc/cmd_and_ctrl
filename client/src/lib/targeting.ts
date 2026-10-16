@@ -517,14 +517,19 @@ export function begin(
   mode: TargetingMode,
   choices?: CastChoices,
   alt?: TargetClauseOverride,
-): void {
+): boolean {
   const lt = alt ? alt.legal_targets : card.legal_targets;
   // #764: a card with more than one clause walks them in printed
   // order. An alternative cost replaces the whole statement, so its
   // own clause list wins when it has one.
   const clauses = alt ? alt.clauses : card.clauses;
   const steps = [...stepsFor(mode, lt, clauses, 0, choices), ...spliceSteps(card, choices)];
+  // #2055: every clause is an opponent's choice (Evangelize) and no
+  // splice adds one: there is nothing for the caster to pick, and the
+  // caller casts at once.
+  if (steps.length === 0) return false;
   targeting.set(openWalk(card, steps, { choices }));
+  return true;
 }
 
 // spliceOffersOf is the cards in the viewer's hand that splice onto
@@ -567,6 +572,11 @@ export function beginSpliceOnly(card: CardView, choices: CastChoices, modes?: nu
 
 // stepsFor turns one statement — a single `legal_targets` or a
 // multi-entry `clauses` list — into the walk's steps.
+//
+// #2055: a clause "of an opponent's choice" is not a step. Its slot is
+// skipped (every other step keeps its own slot number), and the server
+// asks an opponent for it once the announcement arrives. A statement
+// made only of such clauses is an empty walk.
 export function stepsFor(
   mode: TargetingMode,
   lt: LegalTargetsView | undefined,
@@ -578,27 +588,37 @@ export function stepsFor(
   if (list.length === 0) {
     return [{ mode, min: 1, max: 1, modeIndex, slot: 0, distinct: false }];
   }
-  return list.map((c, slot) => ({
-    mode,
-    // #3860: a player who can't pay a card's life tax can't target it.
-    legal: {
-      players: new Set(c.players ?? []),
-      cards: new Set(withinX(c, choices).filter((id) => !c.life_taxes_unpayable?.includes(id))),
-    },
-    lifeTaxes: c.life_taxes,
-    lifeTaxesUnpayable: c.life_taxes_unpayable,
-    label: c.label,
-    ...countOf(c, choices),
-    modeIndex,
-    slot,
-    distinct: c.distinct === true,
-    different: c.different ? { label: c.different.label, keys: c.different.keys ?? {} } : undefined,
-    same: c.same ? { label: c.same.label, keys: c.same.keys ?? {} } : undefined,
-    relation: c.relation,
-    divide: c.divide ? divideTotal(c.divide, choices?.xValue) : undefined,
-    divideFromXUnresolved: c.divide?.from_x === true && choices?.xValue === undefined,
-    divideUpTo: c.divide?.up_to === true ? true : undefined,
-  }));
+  return list.flatMap((c, slot): TargetStep[] =>
+    c.chosen_by_opponent
+      ? []
+      : [
+          {
+            mode,
+            // #3860: a player who can't pay a card's life tax can't target it.
+            legal: {
+              players: new Set(c.players ?? []),
+              cards: new Set(
+                withinX(c, choices).filter((id) => !c.life_taxes_unpayable?.includes(id)),
+              ),
+            },
+            lifeTaxes: c.life_taxes,
+            lifeTaxesUnpayable: c.life_taxes_unpayable,
+            label: c.label,
+            ...countOf(c, choices),
+            modeIndex,
+            slot,
+            distinct: c.distinct === true,
+            different: c.different
+              ? { label: c.different.label, keys: c.different.keys ?? {} }
+              : undefined,
+            same: c.same ? { label: c.same.label, keys: c.same.keys ?? {} } : undefined,
+            relation: c.relation,
+            divide: c.divide ? divideTotal(c.divide, choices?.xValue) : undefined,
+            divideFromXUnresolved: c.divide?.from_x === true && choices?.xValue === undefined,
+            divideUpTo: c.divide?.up_to === true ? true : undefined,
+          },
+        ],
+  );
 }
 
 // divideTotal is the amount a divided clause splits (#1563) — the
@@ -1704,6 +1724,12 @@ export function beginForAbility(
           0,
           Object.keys(choices).length > 0 ? choices : undefined,
         );
+  // #2055: nothing for the controller to pick (Nova Pentacle's only
+  // clause is an opponent's choice); the caller activates at once.
+  if (steps.length === 0) {
+    targeting.set(null);
+    return;
+  }
   targeting.set(
     openWalk(card, steps, {
       // CR 602.2b: X was announced before the targets were chosen and

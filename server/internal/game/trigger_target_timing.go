@@ -100,6 +100,11 @@ func (g *Game) refreshTargetChoicesLocked() {
 		// #662: the SOURCE, not just the chooser. The frame keeps a
 		// value copy of the object whose ability is picking, which is
 		// what CR 702.16b tests the quality against.
+		// #2055: an opponent's step re-reads its clause with that
+		// opponent bound, so "they control" stays theirs.
+		if len(f.choosers) > 0 {
+			spec = &f.boundSteps()[f.step].Clause
+		}
 		lt := g.legalTargetsLocked(SourceObject(f.source.Controller, &f.source).WithTrigger(f.tc), spec)
 		if len(lt.Players) > 0 || len(lt.Cards) > 0 {
 			c.PickTargetPlayers, c.PickTargetCards = lt.Players, lt.Cards

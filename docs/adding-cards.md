@@ -200,6 +200,20 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    battlefield is removed for want of a target (CR 603.3d). Never
    approximate it with a `CardOK` over `Card.SaddledBy`: that forgets a
    Mount that has left (#3546, ADR 0186 section 3).
+   "Target … of an opponent's choice" wraps the clause in
+   `OfAnOpponentsChoice(spec)`, and "… they control" wraps that in
+   `TheyControl`: `TheyControl(OfAnOpponentsChoice(TargetCreature("target
+   creature of an opponent's choice they control")))` (Evangelize, Arena).
+   Write the predicates from the CONTROLLER's side ("you don't control" is
+   the controller's) and put "of an opponent's choice" in the label: the
+   opponent's prompt shows it. The engine leaves the clause out of the
+   controller's own announcement, asks the controller which opponent (only
+   when more than one could choose) and that opponent for the pick, before
+   anything is paid; legality is still judged for the controller, and the
+   chosen opponent rides the item for the resolution re-check and a
+   retarget. Read the pick at resolution with `ctx.ClauseTarget(slot)` like
+   any other clause. Not on a mode, and never divided or "up to"
+   (`effects.Register` refuses them). #2055, ADR 0019 amendment 2026-10-16.
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
    count on the same spec — `TargetCreature("two target nonartifact

@@ -1083,6 +1083,23 @@ type LegalTargetsView struct {
 	// the picker can grey what is already taken. Added by #764.
 	Distinct bool `json:"distinct,omitempty"`
 
+	// ChosenByOpponent marks a clause of a spell's or ability's own
+	// announcement that an opponent chooses ("target creature of an
+	// opponent's choice", #2055): the controller's picker skips it and
+	// sends no target for it; the server asks the controller which
+	// opponent and that opponent for the pick, as a pick_target whose
+	// `chosen_for` names the controller. `players` / `cards` are still
+	// the superset any opponent could pick from, so the client can tell
+	// whether the clause can be filled at all.
+	ChosenByOpponent bool `json:"chosen_by_opponent,omitempty"`
+
+	// ChosenFor is, on a pick_target prompt an opponent answers for
+	// such a clause, the controller of the spell or ability it is for
+	// (game.PendingChoice.PickTargetFor): the player who is targeting,
+	// whose effect this is. Absent on every prompt the controller
+	// answers themselves.
+	ChosenFor string `json:"chosen_for,omitempty"`
+
 	// Different is the clause's rule over the chosen SET (#1559, CR
 	// 601.2c): no two picks may share a key — "that each have a
 	// different mana value", "controlled by different players". The
@@ -7514,7 +7531,7 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 }
 
 func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
-	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, Distinct: spec.Distinct, Divide: divideView(spec.Divide)}
+	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, Distinct: spec.Distinct, Divide: divideView(spec.Divide), ChosenByOpponent: spec.ChosenByOpponent}
 	for _, id := range lt.Players {
 		view.Players = append(view.Players, id.String())
 	}
@@ -9702,6 +9719,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			// #1563: a divided trigger clause asks for the shares
 			// with the picks.
 			pt.Divide = divideView(game.PickTargetDivideForEffect(c))
+			// #2055: an opponent picking for someone else's spell or
+			// ability.
+			if c.PickTargetFor != uuid.Nil {
+				pt.ChosenFor = c.PickTargetFor.String()
+			}
 			v.PickTarget = pt
 		}
 		// PendingChoiceTriggerOrder — S19 sub-PR 8. Resolve each

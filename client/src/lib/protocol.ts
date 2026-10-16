@@ -3907,6 +3907,15 @@ export interface LegalTargetsView {
   // #764: this clause's picks must differ from every EARLIER
   // clause's ("a second target permanent you control").
   distinct?: boolean;
+  // #2055: a clause "of an opponent's choice". The controller's walk
+  // skips it and sends no target for it: the server asks the
+  // controller which opponent, and that opponent picks, through an
+  // ordinary pick_target. `players` / `cards` are the superset any
+  // opponent could pick from.
+  chosen_by_opponent?: boolean;
+  // #2055: on a pick_target an opponent answers for such a clause, the
+  // player whose spell or ability it is (the one still targeting).
+  chosen_for?: string;
   // #1559: the clause's rule over the chosen SET (CR 601.2c) — no two
   // picks may share a key ("that each have a different mana value",
   // "controlled by different players"). The picker greys a candidate
