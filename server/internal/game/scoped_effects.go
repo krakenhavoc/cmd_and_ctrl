@@ -523,6 +523,16 @@ const (
 	// creature would die this turn, exile it instead" reaches a creature
 	// that entered after the spell resolved (CR 611.2c).
 	ScopeCreatures AffectedScope = "creatures"
+	// ScopeDealtDamageBy is "creatures dealt damage by <that creature>
+	// this turn" (#1946, Runesword): the creatures the object named by
+	// each mod's Objects[0] has dealt damage to this turn, read live off
+	// TurnTally.DamagedObjects as the rule is asked (CR 611.2c: the
+	// effect changes no characteristic, so it reaches a creature damaged
+	// after it began). A mod's DamageSince narrows it to the damage dealt
+	// from that index of the record on. It carries only cantBeRegenerated
+	// and exileIfWouldDie (dealtDamageByScopeProblem), and as a permanent
+	// predicate on the layer pass it matches nothing.
+	ScopeDealtDamageBy AffectedScope = "dealtDamageBy"
 )
 
 // KnownAffectedScope reports whether this binary can interpret s.
@@ -530,7 +540,7 @@ func KnownAffectedScope(s AffectedScope) bool {
 	switch s {
 	case ScopeNone, ScopeOpponentsCreatures, ScopeGame, ScopeYourPermanents,
 		ScopeYourCreatures, ScopeCreaturesWithoutFlying, ScopeOpponentsAndTheirCreatures,
-		ScopeCreatures:
+		ScopeCreatures, ScopeDealtDamageBy:
 		return true
 	}
 	return false
@@ -711,6 +721,13 @@ type Mod struct {
 	// amendment): exactly one entry, required on that kind and refused
 	// on every other.
 	Words []TextWordChange `json:"words,omitempty"`
+	// DamageSince is a ScopeDealtDamageBy mod's start (#1946): only the
+	// TurnTally.DamagedObjects entries at this index or later count, so
+	// Runesword's "if the creature deals damage to a creature this turn"
+	// reads the damage dealt after the ability resolved. Zero is the
+	// whole turn. Refused on every other record
+	// (dealtDamageByScopeProblem).
+	DamageSince int `json:"damageSince,omitempty"`
 }
 
 // AffectedObject is one member of a ScopedEffect's affected set: the
@@ -1232,8 +1249,10 @@ func blockRequirementModProblem(m Mod) string {
 	if m.Kind != ModAddBlockRequirement {
 		// ADR 0107 §6: the next-damage shield names its chosen source
 		// here (nextFromSourceModProblem checks it).
+		// #1946: a ScopeDealtDamageBy record names the dealer here
+		// (dealtDamageByScopeProblem checks it).
 		if len(m.Objects) != 0 && !isNextFromSourceKind(m.Kind) && m.Kind != ModMultiplyDamage && m.Kind != ModPreventFromSource &&
-			m.Kind != ModRedirectDamage {
+			m.Kind != ModRedirectDamage && m.Kind != ModCantBeRegenerated && m.Kind != ModExileIfWouldDie {
 			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
 		}
 		return ""
@@ -1510,6 +1529,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 		panic(fmt.Sprintf("game: scoped effect %q %s", label, problem))
 	}
 	if problem := recipientFilterScopeProblem(scope, mods); problem != "" {
+		panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+	}
+	if problem := dealtDamageByScopeProblem(scope, mods); problem != "" {
 		panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 	}
 	// ADR 0109 Shared machinery 2: a duration restore would refuse is a

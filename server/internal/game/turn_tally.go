@@ -303,6 +303,16 @@ type TurnTally struct {
 	// NoncombatDamageThisTurnForEffect. Additive: omitted when empty,
 	// so an older snapshot reads back as no damage.
 	NoncombatDamage []NoncombatDamageRecord `json:"noncombatDamage,omitempty"`
+	// DamagedObjects records which permanent OBJECTS each source dealt
+	// damage to this turn (#1946): one entry per damage event to a
+	// permanent, in the order the damage was dealt, each side named by
+	// instance ID and ObjectEpoch (CR 400.7). Read through
+	// ObjectDealtDamageToObjectThisTurn and its siblings
+	// (dealt_damage_by.go): "creatures dealt damage by this creature this
+	// turn" (Bone Shaman, Runesword, Kumano). Never deduplicated, so an
+	// index into it is a moment in the turn (Mod.DamageSince). Additive:
+	// omitted when empty, so an older snapshot reads back as no records.
+	DamagedObjects []ObjectDamageRecord `json:"damagedObjects,omitempty"`
 	// LoopRun is Resolved restarted at every player decision: the
 	// CR 732 loop breaker's count of how many times one ability has
 	// resolved with nobody casting, activating, answering a prompt
@@ -1498,6 +1508,9 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	if len(t.DamageDealers) > 0 {
 		out.DamageDealers = append([]DamageDealtRecord(nil), t.DamageDealers...)
 	}
+	if len(t.DamagedObjects) > 0 {
+		out.DamagedObjects = append([]ObjectDamageRecord(nil), t.DamagedObjects...)
+	}
 	if len(t.NoncombatDamage) > 0 {
 		out.NoncombatDamage = make([]NoncombatDamageRecord, len(t.NoncombatDamage))
 		for i, r := range t.NoncombatDamage {
@@ -1569,7 +1582,13 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			}
 		})
 	case EventDealDamage:
-		if ev.Amount <= 0 || g.playerByIDLocked(ev.Target) == nil {
+		if ev.Amount <= 0 {
+			return
+		}
+		if g.playerByIDLocked(ev.Target) == nil {
+			// #1946: damage to a permanent, for "creatures dealt damage
+			// by this creature this turn".
+			g.recordDamagedObjectLocked(ev)
 			return
 		}
 		// #2105: the life the damage COST, not the damage — infect

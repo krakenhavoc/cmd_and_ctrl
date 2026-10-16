@@ -997,6 +997,7 @@ extraTurns[].effects[].mods[].copy[].TokenKey	string
 extraTurns[].effects[].mods[].copy[].Toughness	number:int
 extraTurns[].effects[].mods[].copy[].TypeLine	string
 extraTurns[].effects[].mods[].copy[].VariableToughness	bool
+extraTurns[].effects[].mods[].damageSince	number:int
 extraTurns[].effects[].mods[].extraTurn	number:int
 extraTurns[].effects[].mods[].grants	array
 extraTurns[].effects[].mods[].grants[]	string
@@ -3757,6 +3758,7 @@ scopedEffects[].mods[].copy[].TokenKey	string
 scopedEffects[].mods[].copy[].Toughness	number:int
 scopedEffects[].mods[].copy[].TypeLine	string
 scopedEffects[].mods[].copy[].VariableToughness	bool
+scopedEffects[].mods[].damageSince	number:int
 scopedEffects[].mods[].extraTurn	number:int
 scopedEffects[].mods[].grants	array
 scopedEffects[].mods[].grants[]	string
@@ -7325,6 +7327,15 @@ turnTally.damageDealers[].combat	bool
 turnTally.damageDealers[].epoch	number:int
 turnTally.damageDealers[].source	custom(uuid.UUID)
 turnTally.damageDealers[].victim	custom(uuid.UUID)
+turnTally.damagedObjects	array
+turnTally.damagedObjects[]	object
+turnTally.damagedObjects[].combat	bool
+turnTally.damagedObjects[].source	object
+turnTally.damagedObjects[].source.epoch	number:int
+turnTally.damagedObjects[].source.id	custom(uuid.UUID)
+turnTally.damagedObjects[].victim	object
+turnTally.damagedObjects[].victim.epoch	number:int
+turnTally.damagedObjects[].victim.id	custom(uuid.UUID)
 turnTally.diedPowerBySubtype	map:string
 turnTally.diedPowerBySubtype{}	number:int
 turnTally.diedSubtypes	map:string

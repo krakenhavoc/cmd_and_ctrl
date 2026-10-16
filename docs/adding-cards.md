@@ -2329,6 +2329,23 @@ destroy instruction's rider and the turn's mark. "When that creature dies
 this turn, exile it" (Whippoorwill) is a delayed trigger, not a
 replacement: `ExileWhenItDiesThisTurn`.
 
+**"Creatures dealt damage by this creature this turn"** (#1946, ADR 0108
+amendment of 2026-10-15). The turn keeps a record of which permanent
+objects each source dealt damage to (`TurnTally.DamagedObjects`; prevented
+damage is not there, and a flickered creature is a new object). Read it,
+never the event log:
+
+```go
+dealtDamageByThisTurn(g, source.InstanceID, ev.CardID)                 // Zurgo's dies trigger
+Replacements: []game.ReplacementEffect{ExileIfDealtDamageByThisWouldDie(label)}      // Kumano
+Replacements: []game.ReplacementEffect{ExileIfDealtDamageByEnchantedWouldDie(label)} // Kumano's Blessing
+AbilityGrant{DealtDamageCantBeRegenerated: DealtDamageByThisCantBeRegenerated(text)} // Bone Shaman
+// one creature's damage, from a resolving ability (Runesword); fromNow
+// counts only the damage dealt after it resolves:
+g.CantBeRegeneratedIfDealtDamageByForEffect(src, ref, true, label)
+g.ExileIfDealtDamageByWouldDieThisTurnForEffect(src, ref, uuid.Nil, false, label)
+```
+
 **"It deals double (triple) that damage instead" from a resolving spell
 or ability** ([ADR 0108](decisions/0108-turn-scoped-effects-object-history-and-damage-shields.md)
 §3, #1890). A static doubler on a permanent (Angrath's Marauders,
