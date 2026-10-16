@@ -2163,6 +2163,11 @@ func hasSubtype(c *Card, subtype string) bool {
 			return typeListHas(bestowBaseline(c).Subtypes, subtype)
 		}
 		_, _, printed := printedTypeParts(c)
+		if c.TextWords != nil {
+			// A spell whose type line a text change reached (CR 612.2,
+			// #3872): the baseline with the changed words.
+			printed = effectiveOf(c).Subtypes
+		}
 		if typeListHas(printed, subtype) {
 			return true
 		}

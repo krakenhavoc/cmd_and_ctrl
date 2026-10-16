@@ -35,7 +35,7 @@ func init() {
 			}
 			shield := PreventNextDamage{
 				Target: shielded.ID,
-				Amount: devotionTo(ctx.Game, ctx.Controller(), "W"),
+				Amount: devotionTo(ctx.Game, ctx.Controller(), ctx.TextColor("W")),
 				Then:   dealThatMuchToTheChosenTargetBody,
 				Label:  "Acolyte's Reward — prevent the next damage to it and deal that much",
 			}

@@ -210,7 +210,7 @@ func WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(creature Card
 			return true
 		}
 		c, ok := g.LookupCardForEffect(ev.Source)
-		return ok && creature(g, source.Controller, c)
+		return ok && creature(g, source.Controller, game.ThroughTextOf(source, c))
 	}, label, effect))
 }
 
@@ -340,7 +340,10 @@ func YouCast(spell CardPredicate) When {
 			return false
 		}
 		c, ok := g.LookupCardForEffect(ev.CardID)
-		return ok && (spell == nil || spell(g, source.Controller, c))
+		// The spell's colour or type is a word of the source's text
+		// (CR 612.2): "whenever you cast a blue spell" under a Sleight
+		// of Mind is "a red spell".
+		return ok && (spell == nil || spell(g, source.Controller, game.ThroughTextOf(source, c)))
 	}
 }
 
@@ -369,7 +372,7 @@ func AnOpponentCast(spell CardPredicate) When {
 			return false
 		}
 		c, ok := g.LookupCardForEffect(ev.CardID)
-		return ok && (spell == nil || spell(g, ev.Actor, c))
+		return ok && (spell == nil || spell(g, ev.Actor, game.ThroughTextOf(source, c)))
 	}
 }
 

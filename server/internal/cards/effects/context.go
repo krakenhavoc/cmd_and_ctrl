@@ -82,6 +82,15 @@ func (c *Context) textReader() *game.Card {
 	return &src
 }
 
+// TextColor is the colour letter the colour word `letter` reads as in
+// the text of the object this effect is (textReader): Pyroblast's
+// "if it's blue" is card.HasColor(ctx.TextColor("U")). The printed
+// letter when nothing changed the text.
+func (c *Context) TextColor(letter string) string { return c.textReader().TextColor(letter) }
+
+// TextSubtype is TextColor for a basic land type or creature type word.
+func (c *Context) TextSubtype(sub string) string { return c.textReader().TextSubtype(sub) }
+
 // Grantor returns the object that granted the resolving ability, for
 // an activated ability a layer-6 grant put on its source (ADR 0109 §2,
 // owner decision 2) — Teferi's Talent, for the −12 it gives the

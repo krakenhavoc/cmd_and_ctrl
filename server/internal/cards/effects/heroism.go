@@ -32,8 +32,9 @@ func init() {
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				g.RecomputeLayersIfStaleLocked()
+				red := ctx.TextColor("R")
 				for _, c := range g.BattlefieldCardsForEffect() {
-					if !c.IsCreature() || c.AttackingTarget == uuid.Nil || !c.HasColor("R") {
+					if !c.IsCreature() || c.AttackingTarget == uuid.Nil || !c.HasColor(red) {
 						continue
 					}
 					attacker := c.InstanceID

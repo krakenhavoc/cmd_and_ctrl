@@ -26,7 +26,7 @@ func init() {
 		"Roiling Canopy — target creature you control gets +3/+3 until end of turn",
 		func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)
-			if item.Trigger == nil || rfMiscAForestsYouControlOtherThan(g, item.Controller, item.Trigger.Event.CardID) < 5 {
+			if item.Trigger == nil || rfMiscAForestsYouControlOtherThan(g, item.Controller, item.Trigger.Event.CardID, ctx.TextSubtype("Forest")) < 5 {
 				return nil // CR 603.4 re-check; see the comment above
 			}
 			for _, t := range ctx.LegalTargets() {

@@ -31,7 +31,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // trigger's own key and label.
 var riveteersOverlookFetchBody = game.SimpleDelayedBody("overlook/riveteers-overlook-fetch",
 	b08OverlookFetchFor("Riveteers Overlook — a basic Swamp, Mountain, or Forest", func(c game.Card) bool {
-		return IsBasicLand(c) && (c.HasSubtype("Swamp") || c.HasSubtype("Mountain") || c.HasSubtype("Forest"))
+		return IsBasicLand(c) && (c.HasSubtypeWord("Swamp") || c.HasSubtypeWord("Mountain") || c.HasSubtypeWord("Forest"))
 	}))
 
 func init() {

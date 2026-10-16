@@ -29,5 +29,7 @@ func init() {
 // (a Gruul spell is both and is still discounted once, since
 // CostsLess applies its amount once per matching cast).
 func redOrGreenSpell() CostPredicate {
-	return func(q game.CostQuery) bool { return q.Card.HasColor("R") || q.Card.HasColor("G") }
+	return func(q game.CostQuery) bool {
+		return q.Card.HasColor(q.Source.TextColor("R")) || q.Card.HasColor(q.Source.TextColor("G"))
+	}
 }

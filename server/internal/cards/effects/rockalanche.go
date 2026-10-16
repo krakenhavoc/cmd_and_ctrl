@@ -67,7 +67,8 @@ func init() {
 // rockalancheForests is "the number of Forests you control", counted
 // at resolution over the effective type line.
 func rockalancheForests(ctx *Context) int {
+	forest := ctx.TextSubtype("Forest")
 	return countControlled(ctx.Game, ctx.Controller(), func(c game.Card) bool {
-		return c.HasSubtype("Forest")
+		return c.HasSubtype(forest)
 	})
 }

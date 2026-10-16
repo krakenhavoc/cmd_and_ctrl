@@ -20,8 +20,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	island := func(c game.Card) bool { return c.HasSubtype("Island") }
-	opponentHasIsland := OpponentControlsAtLeast(1, island)
+	// "Island" is a word of the Shaper's text (CR 612.2), read as the
+	// text now says it.
+	opponentHasIsland := func(g *game.Game, source *game.Card) bool {
+		island := source.TextSubtype("Island")
+		return OpponentControlsAtLeast(1, func(c game.Card) bool { return c.HasSubtype(island) })(g, source.Controller, source.InstanceID)
+	}
 	Register(Spec{
 		OracleID:      "cf4be71e-0a9a-47a3-b0ec-43e04c3c07a0",
 		Name:          "Tide Shaper",
@@ -31,7 +35,7 @@ func init() {
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-				return target.InstanceID == source.InstanceID && opponentHasIsland(g, source.Controller, source.InstanceID)
+				return target.InstanceID == source.InstanceID && opponentHasIsland(g, source)
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				c.Power++

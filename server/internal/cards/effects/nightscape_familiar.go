@@ -35,5 +35,7 @@ func init() {
 }
 
 func nightscapeBlueOrRedSpell() CostPredicate {
-	return func(q game.CostQuery) bool { return q.Card.HasColor("U") || q.Card.HasColor("R") }
+	return func(q game.CostQuery) bool {
+		return q.Card.HasColor(q.Source.TextColor("U")) || q.Card.HasColor(q.Source.TextColor("R"))
+	}
 }

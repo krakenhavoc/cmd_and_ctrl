@@ -31,7 +31,7 @@ func init() {
 					return true
 				}
 				c, ok := enteredUnderYourControl(ev, source, g, true)
-				return ok && c.IsCreature() && c.HasColor("B")
+				return ok && c.IsCreature() && c.HasColor(source.TextColor("B"))
 			}, "Ayara — each opponent loses 1, you gain 1", Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})),
 		},
 		Activated: []ActivatedAbility{{

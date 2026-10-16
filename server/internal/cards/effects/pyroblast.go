@@ -35,7 +35,7 @@ func init() {
 			}
 			target := item.Targets[0].ID
 			card, ok := ctx.Game.LookupCardForEffect(target)
-			if !ok || !card.HasColor("U") {
+			if !ok || !card.HasColor(ctx.TextColor("U")) {
 				return nil
 			}
 			switch {

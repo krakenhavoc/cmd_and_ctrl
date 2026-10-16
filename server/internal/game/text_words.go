@@ -301,12 +301,12 @@ func (w *TextWords) subtype(sub string) string {
 }
 
 // keyword is a printed keyword token as the text now reads: the colour
-// in "protection from <colour>" and "hexproof from <colour>", and the
-// land type in a basic landwalk ("swampwalk"). Every other token — and
-// these two shapes for a word the substitution leaves alone — comes back
-// unchanged. A creature type inside a protection quality ("protection
-// from Goblins") is NOT translated: the plural has no reliable singular
-// round trip, so it is one of the amendment's listed gaps.
+// in "protection from <colour>" and "hexproof from <colour>", the
+// creature type in "protection from <creature type>" (read and respelled
+// through the protection parser, protectionFromCreatureType, #3872), and
+// the land type in a basic landwalk ("swampwalk"). Every other token —
+// and these shapes for a word the substitution leaves alone — comes back
+// unchanged.
 func (w *TextWords) keyword(tok string) string {
 	if w == nil {
 		return tok
@@ -319,6 +319,9 @@ func (w *TextWords) keyword(tok string) string {
 		rest := strings.TrimSpace(lower[len(prefix):])
 		letter, ok := protectionColors[rest]
 		if !ok {
+			if prefix == protectionPrefix {
+				return w.protectionFromCreatureType(tok)
+			}
 			return tok
 		}
 		now := w.color(letter)
@@ -339,6 +342,52 @@ func (w *TextWords) keyword(tok string) string {
 		return strings.ToLower(now) + "walk"
 	}
 	return tok
+}
+
+// protectionFromCreatureType translates the creature type of a
+// "protection from <creature type, plural>" token ("protection from
+// Goblins" under "Goblin → Elf" is "protection from Elves"), and returns
+// any other token unchanged.
+//
+// The token names its type in the plural and the substitution holds
+// singulars, so the type is read the way the protection parser reads it
+// (ParseProtectionQuality, through singulars and CanonicalCreatureType),
+// and the new word is spelled back as a plural that the same parser
+// reads as the new type. A spelling that would not round-trip is never
+// written: the token then stays as printed rather than becoming a
+// protection from nothing.
+func (w *TextWords) protectionFromCreatureType(tok string) string {
+	q, ok := ParseProtectionQuality(tok)
+	if !ok || q.Kind != ProtectionQualitySubtype {
+		return tok
+	}
+	now := w.word(TextWordCreatureType, q.Value)
+	if now == q.Value {
+		return tok
+	}
+	for _, spelled := range creatureTypePlurals(now) {
+		if back, ok := parseQuality(spelled); ok && back.Kind == ProtectionQualitySubtype && back.Value == now {
+			return tok[:len(protectionPrefix)] + spelled
+		}
+	}
+	return tok
+}
+
+// creatureTypePlurals are the plural spellings to try for a creature
+// type, most natural first: Elf → Elves, Goblin → Goblins, and a word
+// English leaves alone or that ends in a sibilant (Merfolk, Fox) as it is.
+func creatureTypePlurals(t string) []string {
+	lower := strings.ToLower(t)
+	var out []string
+	switch {
+	case strings.HasSuffix(lower, "f"):
+		out = append(out, t[:len(t)-1]+"ves")
+	case strings.HasSuffix(lower, "folk"), strings.HasSuffix(lower, "kin"),
+		strings.HasSuffix(lower, "s"), strings.HasSuffix(lower, "x"), strings.HasSuffix(lower, "z"),
+		strings.HasSuffix(lower, "ch"), strings.HasSuffix(lower, "sh"):
+		out = append(out, t)
+	}
+	return append(out, t+"s", t)
 }
 
 // keywords translates a keyword list, returning the input itself when
@@ -459,6 +508,54 @@ func (c Card) HasColorWord(letter string) bool {
 func (c Card) HasSubtypeWord(sub string) bool {
 	return c.HasSubtype(c.wordLens.subtype(sub))
 }
+
+// ThroughTextOf is q with its subtype and colour words read as `reader`'s
+// text now says them (CR 612.2): Seasinger's "When you control no
+// Islands" under a Magical Hack asks about Forests. q itself is never
+// written through; with nothing to translate it comes back as it was.
+func (q PermanentQuery) ThroughTextOf(reader *Card) PermanentQuery {
+	if reader == nil || reader.TextWords == nil {
+		return q
+	}
+	if len(q.Subtypes) > 0 {
+		subs := make([]string, len(q.Subtypes))
+		for i, s := range q.Subtypes {
+			subs[i] = reader.TextSubtype(s)
+		}
+		q.Subtypes = subs
+	}
+	if len(q.Colors) > 0 {
+		colors := make([]string, len(q.Colors))
+		for i, c := range q.Colors {
+			colors[i] = reader.TextColor(c)
+		}
+		q.Colors = colors
+	}
+	return q
+}
+
+// PermanentQueriesThroughTextOf is ThroughTextOf over an any-of list.
+func PermanentQueriesThroughTextOf(qs []PermanentQuery, reader *Card) []PermanentQuery {
+	if reader == nil || reader.TextWords == nil || len(qs) == 0 {
+		return qs
+	}
+	out := make([]PermanentQuery, len(qs))
+	for i, q := range qs {
+		out[i] = q.ThroughTextOf(reader)
+	}
+	return out
+}
+
+// LentColor is the colour letter the colour word `letter` reads as in
+// the text ThroughTextOf lent this copy, or `letter` when it was lent
+// none. For a target clause whose word is not about the candidate
+// itself: "target creature whose controller controls a black permanent".
+func (c Card) LentColor(letter string) string { return c.wordLens.color(letter) }
+
+// LentSubtype is LentColor for a subtype word: Seasinger's "whose
+// controller controls an Island", Vedalken Shackles' "the number of
+// Islands you control".
+func (c Card) LentSubtype(sub string) string { return c.wordLens.subtype(sub) }
 
 // --- materialising -------------------------------------------------
 

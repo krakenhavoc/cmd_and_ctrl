@@ -33,7 +33,7 @@ func init() {
 				return target.InstanceID == source.InstanceID
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				c.Toughness = devotionTo(g, source.Controller, "W")
+				c.Toughness = devotionTo(g, source.Controller, source.TextColor("W"))
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
