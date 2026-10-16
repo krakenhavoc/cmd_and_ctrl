@@ -18,7 +18,7 @@ func init() {
 				if err != nil || len(results) == 0 {
 					return err
 				}
-				t := TokenCard("1/1 blue Faerie Dragon with flying")
+				t := ctx.TextToken(TokenCard("1/1 blue Faerie Dragon with flying"))
 				return g.CreateTokenForEffect(item.Controller, t, results[0])
 			}),
 		},

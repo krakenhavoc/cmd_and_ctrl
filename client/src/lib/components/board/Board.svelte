@@ -2824,7 +2824,12 @@
       ...manaAbilityRef(card, activate.index),
       ...manaColorParams(activate.colors),
     };
-    guardedSendAction("activate_mana_ability", params, card.controller);
+    // #1864: an "Any player may activate this ability" row on another
+    // player's permanent (Mana Cache) is the viewer's activation, and the
+    // mana goes to the viewer's pool (CR 602.1a, CR 106.4).
+    const activator =
+      ability?.any_player && viewerID && card.controller !== viewerID ? viewerID : card.controller;
+    guardedSendAction("activate_mana_ability", params, activator);
   }
 
   function confirmSacrifice(instanceIDs: string[]): void {

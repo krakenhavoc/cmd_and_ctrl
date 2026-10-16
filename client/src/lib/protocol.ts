@@ -1935,6 +1935,12 @@ export interface PendingChoiceView {
   // instance IDs among `options` that are in the searcher's graveyard.
   // Everything else is a library card. Absent for a library-only search.
   search_graveyard?: string[];
+  // #3988: on a "search that player's graveyard, hand, and library"
+  // prompt (Kotose, the Silent Spider), the instance IDs among `options`
+  // that are in the searched player's hand, and `search_all_zones` set:
+  // every zone is searched, so the library is shuffled whatever is taken.
+  search_hand?: string[];
+  search_all_zones?: boolean;
   // ADR 0160: a "copy_target" prompt whose pick is the creature to
   // exchange text boxes with rather than the object to copy (Deadpool,
   // Trading Card). Same {card_ids} answer, same empty decline.
@@ -4886,6 +4892,14 @@ export interface ManaAbilityView {
   // itself. Absent on every row that is not lent, and when the lender sits
   // in a hidden zone.
   borrowed_from?: GrantedByView;
+  // ADR 0106 §1 amendment 2026-10-16 (#1864): the mana ability's own
+  // "Any player may activate this ability" (Mana Cache), as on
+  // ActivatedAbilityView. Each seat that does not control the permanent
+  // gets the row stamped with that seat as the activator (its
+  // condition_unmet, its counter options); the mana goes to the
+  // activator's pool. Whether it is live for the viewer right now is the
+  // digest's answer. Absent on every other row.
+  any_player?: boolean;
   tap_cost?: boolean;
   sacrifice_cost?: boolean;
   // #1228: the "Exile this card from your hand" component of a mana

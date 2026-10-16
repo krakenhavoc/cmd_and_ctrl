@@ -78,7 +78,7 @@ func init() {
 
 // kujaEndStep is the front face's end-step ability.
 func kujaEndStep(g *game.Game, item *game.StackItem) error {
-	if _, err := g.CreateTokensForEffect(item.Controller, NoncreatureCastWizardToken(), 1, game.TokenEntryOptions{Tapped: true}); err != nil {
+	if _, err := g.CreateTokensForEffect(item.Controller, NewContext(g, item).TextToken(NoncreatureCastWizardToken()), 1, game.TokenEntryOptions{Tapped: true}); err != nil {
 		return err
 	}
 	wizards := 0

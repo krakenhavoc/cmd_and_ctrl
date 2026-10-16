@@ -314,7 +314,7 @@ PRs 1, 2 and 4 are small and touch nothing in combat or priority, so they can go
 
 ## Out of scope
 
-- Any-player **mana** abilities (Mana Cache), and any-player abilities on a spell (Lightning Storm). The spell half shipped in the 2026-10-16 amendment below (#1865).
+- Any-player **mana** abilities (Mana Cache), and any-player abilities on a spell (Lightning Storm). Both shipped in the 2026-10-16 amendments below (#1864, #1865).
 - A ScopedEffect mod kind that grants "can't attack its owner" (Elrond), and "can't be sacrificed" (Alexios).
 - Savage Summoning's other two one-use promises ("can be cast as though it had flash" and "enters with an additional +1/+1 counter"). It waits on the `cant-be-countered-grant` row.
 - "Can't be countered by blue or black spells" (Autumn's Veil), which depends on the counterer.
@@ -452,9 +452,27 @@ Still held, each for text outside this ADR: Martyr of Bones (a "reveal X black c
 
 ---
 
+## Amendment (2026-10-16): "Any player may activate this ability" on a mana ability (#1864)
+
+§1 decision 1 refused `AnyPlayer` on a mana ability and listed Mana Cache under Out of scope: the mana path asked the CR 602.2 controller question on its own, and Mana Cache also needs "only during their turn before the end step". This closes it on the same option A: a bit on the row, read through one gate.
+
+- **The declaration.** `effects.ManaAbility.AnyPlayer`, mirrored on `game.ManaAbilityShape`. CR 602.1b makes the permission part of the ability, so a copy or a grant of the row carries it and ability removal takes it, as on the CR 602 row. `Register` refuses it beside a `{T}`, sacrifice-this, exert, put-a-counter or exile-this component and on a row that functions off the battlefield, for decision 1's reason: no printed any-player mana ability has one, and who may tap another player's permanent would be an untested rule.
+- **The gate.** `game.MayActivateMana(player, source, zone, ab)`, `MayActivate`'s twin for the CR 605 list: on the battlefield the controller, or anyone when the row is `AnyPlayer`; off it the CR 108.4a owner. `ActivateManaAbility` asks it after the index lookup and keeps the cheap refusal before it for a permanent with no any-player mana row (`HasAnyPlayerManaAbility`). The enumerator's `manaMoves` visits another player's permanent only for such a row and holds each row to the same gate, so the bot and the client are offered exactly what the engine accepts (#544). Arrest and the board-wide gate still apply to everyone: they restrict the object, not the activator.
+- **What the activator does.** The activator pays the cost (CR 602.1a). A counter cost in the self form ("Remove a charge counter from this enchantment") names the source whoever controls it, so the counter-cost validator lets a player who may activate the row remove counters from that source and from nothing else of another player's (`counterCostPayerMayUse`). The mana goes into the activator's pool (CR 106.4), the `Condition`'s `controller` argument is the activator (CR 109.5), so Mana Cache's "their turn" is `IsYourTurn(g, controller)`, and the exhaust and once-per-turn tallies stay keyed by object (CR 602.5b).
+- **The view and the digest.** `mana_abilities[i].any_player`, additive. Every seat that does not control the permanent gets its own copy of the mana rows through the `abilityOffers` carrier, with each `AnyPlayer` row re-stamped for that seat (condition, counter options, price), as decision 5's amendment does for the CR 602 rows. ADR 0105's digest needs no change: the enumerator's mana move lands under the permanent's ID in `mana_abilities` for the activator alone.
+- **The client.** A seated viewer's click on another player's permanent with a live any-player mana row taps it for mana as its own source would be tapped, and its popover and override menu list only those rows; the action is sent as the viewer. ADR 0105's drop pip lights on that permanent when the viewer's digest lists the row. Smart autopass is unchanged: a mana move is never a response unless it interacts (#2853), and this one does not.
+- **The log.** `EventManaAbilityActivated` carries the permanent's controller in `Target` when somebody else activated its any-player row, exactly as `EventActivateAbility` does, and the public log tells it as `activate_across` ("Bob activated Alice's Mana Cache"). Every other mana activation stays off the log (CR 605.3b).
+- **The auto-tapper and the bot.** The auto-tapper plans only a source with `{T}`, a sacrifice-this or a declared once-each-turn free row, so it never spends Mana Cache's counters, for its controller or anyone else: the activator floats the mana from the board, as with Pentad Prism. This is the planner's existing posture, not a new limit: it costs the player a click, not an option. The heuristic never chooses a bare mana move (`ManaFloat` is priced below passing), so decision 8's "no purpose, no reach" holds without a purpose on the row; the model tiers see the move, labelled with the controller.
+
+Snapshot impact: none. The flag is catalog data, and the event field is the same `Target` the log projection already reads.
+
+Cards: Mana Cache (Full).
+
+---
+
 ## Amendment (2026-10-16): abilities of a spell on the stack (#1865)
 
-"Out of scope" above left one any-player card: Lightning Storm, whose ability belongs to a spell. "Lightning Storm deals X damage to any target, where X is 3 plus the number of charge counters on Lightning Storm. Discard a land card: Put two charge counters on Lightning Storm. You may choose a new target for it. Any player may activate this ability but only if Lightning Storm is on the stack." It is the only card that prints an activated ability working on the stack: a search of the Scryfall dump of 2026-10-13 for "only if/while … is on the stack" and "activate … on the stack" finds it alone. The rest of this section is checked in the code on `origin/develop` at `e2466a70` and against the pinned Comprehensive Rules (September 25, 2026).
+"Out of scope" above listed two any-player cards, and the amendment above took Mana Cache. This one takes Lightning Storm, whose ability belongs to a spell. "Lightning Storm deals X damage to any target, where X is 3 plus the number of charge counters on Lightning Storm. Discard a land card: Put two charge counters on Lightning Storm. You may choose a new target for it. Any player may activate this ability but only if Lightning Storm is on the stack." It is the only card that prints an activated ability working on the stack: a search of the Scryfall dump of 2026-10-13 for "only if/while … is on the stack" and "activate … on the stack" finds it alone. The rest of this section is checked in the code on `origin/develop` at `e2466a70` and against the pinned Comprehensive Rules (September 25, 2026).
 
 ### The rules
 

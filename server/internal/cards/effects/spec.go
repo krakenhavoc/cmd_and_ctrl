@@ -1996,6 +1996,24 @@ type ManaAbility struct {
 	// `OncePerTurn: true, Condition: DuringYourTurn()`.
 	OncePerTurn bool
 
+	// AnyPlayer is the mana ability's printed "Any player may activate
+	// this ability" (CR 602.2, CR 602.1b; ADR 0106 §1 amendment
+	// 2026-10-16, #1864) — Mana Cache's "Remove a charge counter from
+	// this enchantment: Add {C}. Any player may activate this ability
+	// but only during their turn before the end step."
+	//
+	// Nothing else to write: the activator pays the cost (CR 602.1a),
+	// the mana goes to the activator's pool (CR 106.4), and Condition's
+	// `controller` argument is the activator, so "their turn" is
+	// IsYourTurn(g, controller). The engine asks game.MayActivateMana.
+	// Register refuses it beside a {T}, sacrifice-this, exert,
+	// put-a-counter or exile-this component and off the battlefield —
+	// the limits ActivatedAbility.AnyPlayer has, and no printed
+	// any-player mana ability has one. The auto-tapper never plans
+	// another player's any-player row; that player activates it from
+	// the board.
+	AnyPlayer bool
+
 	// Rider is everything the oracle text says AFTER the "Add …"
 	// clause, as one callback: the painland cycle's "This land deals
 	// 1 damage to you", Ancient Tomb's "deals 2 damage to you". It

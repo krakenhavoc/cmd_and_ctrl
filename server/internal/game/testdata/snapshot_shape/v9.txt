@@ -3114,6 +3114,8 @@ pendingChoices[].searchCards	array
 pendingChoices[].searchCards[]	custom(uuid.UUID)
 pendingChoices[].searchGraveyardCards	array
 pendingChoices[].searchGraveyardCards[]	custom(uuid.UUID)
+pendingChoices[].searchHandCards	array
+pendingChoices[].searchHandCards[]	custom(uuid.UUID)
 pendingChoices[].searchMax	number:int
 pendingChoices[].searchMin	number:int
 pendingChoices[].source	custom(uuid.UUID)
@@ -4143,6 +4145,7 @@ seats[].castPermissions[].source	custom(uuid.UUID)
 seats[].castPermissions[].sourceName	string
 seats[].castPermissions[].timing	string
 seats[].castPermissions[].topOfLibraryOnly	bool
+seats[].castPermissions[].waterbendManaValue	bool
 seats[].castPermissions[].zone	string
 seats[].castPermissions[].zoneOwner	custom(uuid.UUID)
 seats[].citysBlessing	bool

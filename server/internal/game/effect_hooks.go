@@ -758,6 +758,26 @@ type ManaAbilityShape struct {
 	// effects.Register refuses a blank one.
 	OncePerTurn bool
 
+	// AnyPlayer is the mana ability's printed "Any player may activate
+	// this ability" (CR 602.2, CR 602.1b; ADR 0106 §1 amendment
+	// 2026-10-16, #1864) — Mana Cache's "Remove a charge counter from
+	// this enchantment: Add {C}". ActivatedAbilityShape.AnyPlayer's twin
+	// for the CR 605 list, read through MayActivateMana by the
+	// activation path, the legal-move enumerator and the view.
+	//
+	// The ACTIVATOR pays the cost (CR 602.1a), gets the mana (CR 106.4:
+	// "that mana goes into a player's mana pool" — the player whose
+	// ability it is, the activator, CR 602.2a) and is the "you" of the
+	// Condition (CR 109.5). The permanent's controller is unchanged.
+	// The auto-tapper never plans one for a player who does not
+	// control the permanent: it walks the planning player's own
+	// permanents only.
+	//
+	// effects.Register refuses it beside a {T}, sacrifice-this, exert,
+	// put-a-counter or exile-this component and off the battlefield,
+	// the limits ADR 0106 §1 decision 1 sets on the CR 602 flag.
+	AnyPlayer bool
+
 	// Rider is the post-production half of a mana ability whose
 	// oracle text continues past the "Add …" clause — the painland
 	// cycle's "This land deals 1 damage to you", Ancient Tomb's 2.

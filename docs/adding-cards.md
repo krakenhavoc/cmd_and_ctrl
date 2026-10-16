@@ -1349,7 +1349,7 @@ Activated: []ActivatedAbility{{
 - `effects.Register` refuses `AnyPlayer` beside a `{T}`, loyalty, crew or
   sacrifice-this component and on a zone other than the battlefield or
   the stack, and refuses `ControllerLosesLife` on a row that is not
-  `AnyPlayer`. An any-player MANA ability (Mana Cache) is not modelled.
+  `AnyPlayer`.
 - **An ability of a spell on the stack** (Lightning Storm, ADR 0106 §1
   amendment 2026-10-16, #1865) declares `Zones:
   []game.ZoneKind{game.ZoneStack}`. Its controller is the spell's, so
@@ -1373,6 +1373,27 @@ owner may activate this ability" (Personal Incarnation) is
 activator" reading, same registration limits as `AnyPlayer`; set at most
 one, and no `Purpose` on an opponents-only row. A GRANTED ability whose
 activator is the granting spell's controller (Martyrdom) has no shape yet.
+
+**An any-player MANA ability (ADR 0106 §1 amendment 2026-10-16, #1864).**
+The same bit on a `ManaAbility` row, Mana Cache's:
+
+```go
+ManaAbilities: []ManaAbility{{
+	Cost:      ManaAbilityCost{RemoveCounters: RemoveCountersFromThis(game.CounterCharge, 1).RemoveCounters},
+	Produced:  "{C}",
+	Label:     "Remove a charge counter from this enchantment: Add {C}. Any player may activate this ability but only during their turn before the end step.",
+	AnyPlayer: true,
+	Condition: DuringYourTurnBeforeTheEndStep(), // "their": the activator
+}},
+```
+
+The activator pays (a "from this" counter cost comes off the source
+whoever controls it), the mana goes into the activator's pool, and the
+`Condition`'s `controller` argument is the activator. The gate is
+`game.MayActivateMana`. `Register` refuses it beside a `{T}`,
+sacrifice-this, exert, put-a-counter or exile-this component and off the
+battlefield. The auto-tapper never plans a row with no `{T}`, so the
+activator floats the mana from the board.
 
 ### Declaring what a card does: Purpose (ADR 0126 §6)
 
@@ -2733,6 +2754,15 @@ through one of the doors.** Target clauses already are when they use
 `source.TextSubtype("Island")` for a land type. A CHOSEN colour or type
 (`ChosenColor`, `NamedTribe`) is not text: read it directly. The
 amendment lists the files that still hard-code a word.
+
+A token your card describes is words of its text too (#4005).
+`CreateToken`, `CreateTokenAdvanced` and `CreateTokensAttackingYourChoice`
+read the template through the text themselves. If you call
+`CreateTokenForEffect` and its kin, or build a `game.TokenGroup`, pass the
+template as `ctx.TextToken(t)` for a description, as `copiedToken(t)` for a
+copy of an object, or as `ruleDefinedToken(t)` for a keyword's token or a
+Treasure-style predefined token. `TestTokenDescriptionsReadThroughText`
+fails anything else.
 
 ### Adding a combat-keyword card (S18+)
 
@@ -6478,6 +6508,26 @@ The "attacks and isn't blocked" conditions live in
 turn, when target creature you control attacks and isn't blocked"
 (Delif's Cone, Delif's Cube), keyed by the creature as an object, so one
 that left and came back never fires it (CR 603.7c).
+
+**Once for each creature dealt damage at the same time (#3997,
+[ADR 0026](decisions/0026-delayed-triggers.md) amendment 2026-10-16).**
+"Until end of turn, whenever a creature is dealt damage, destroy it"
+(Shriveling Rot) is one occurrence for each creature, however many
+sources dealt it damage at once (CR 603.2c, 510.2), and the engine emits
+one `EventDealDamage` per source. Set `OncePerBatch: true` beside
+`Repeats` on a `DelayedOnEvent` whose condition is an each-condition: it
+then triggers once for each object in each event batch and damage
+instance, so a creature two blockers hit is one instance and two
+separate damage instructions are two. Without an each-condition,
+`OncePerBatch` keeps its Dalkovan Encampment meaning, once per batch for
+the whole trigger. Every each-condition instance's payload carries the
+object's epoch, read back with `ref.Object()`. The conditions and bodies
+for any creature are in
+[delayed_creature_events.go](../server/internal/cards/effects/delayed_creature_events.go):
+`eachCreatureDealtDamageCondition`, `eachCreatureDiedCondition`,
+`destroyThePayloadPermanentBody` ("destroy it", only while it is still
+that object) and `diedControllerLosesLifeEqualToToughnessBody` (the dead
+creature's controller and toughness as it last existed, CR 608.2h).
 
 **A reflexive trigger (CR 603.12, #636):** "<do something>. **When
 you do**, <do something else>" — Ziatora's fling, an Overlook land's

@@ -114,6 +114,7 @@ func (c CreateTokenAdvanced) Apply(ctx *Context) error {
 	if controller == uuid.Nil {
 		controller = ctx.Controller()
 	}
-	_, err := ctx.Game.CreateTokensForEffect(controller, c.Spec.Template, c.N, c.Spec.options())
+	// A description in the effect's text, read through it (#4005).
+	_, err := ctx.Game.CreateTokensForEffect(controller, ctx.TextToken(c.Spec.Template), c.N, c.Spec.options())
 	return err
 }
