@@ -60,24 +60,13 @@ const (
 
 func rinoaFliersPump(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
+	// Each half reads the set once as it applies (CR 611.2c). Neither
+	// changes flying, so both land on the same creatures.
 	fliers := And(Creature(), YouControl(), HasKeyword("flying"))
-	// The set is read once, before either half applies, so both halves
-	// land on the same creatures.
-	var ids []uuid.UUID
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if fliers(g, item.Controller, c) {
-			ids = append(ids, c.InstanceID)
-		}
+	if err := (BoostUntilEOT{Match: fliers, Power: 1, Toughness: 1, Label: "Rinoa, Angel Wing — +1/+1"}).Apply(ctx); err != nil {
+		return err
 	}
-	for _, id := range ids {
-		if err := (BoostUntilEOT{Target: id, Power: 1, Toughness: 1, Label: "Rinoa, Angel Wing — +1/+1"}).Apply(ctx); err != nil {
-			return err
-		}
-		if err := (GrantKeywordUntilEOT{Target: id, Keywords: []string{"vigilance"}, Label: "Rinoa, Angel Wing — vigilance"}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	return GrantKeywordUntilEOT{Match: fliers, Keywords: []string{"vigilance"}, Label: "Rinoa, Angel Wing — vigilance"}.Apply(ctx)
 }
 
 // rinoaAttackerYouControlDied is one death in the batch: a creature that
