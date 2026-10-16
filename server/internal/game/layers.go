@@ -641,6 +641,9 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	// enchantment and not a creature. One more source list into the
 	// same gather; see bestow.go.
 	out = append(out, g.bestowContinuousEffectsLocked()...)
+	// CR 702.99a (#3867): a card encoded on a creature gives it cipher's
+	// triggered ability. One more source list; see cipher.go.
+	out = append(out, g.cipherContinuousEffectsLocked()...)
 	if g.Battlefield == nil || CatalogStaticAbilities == nil {
 		return out
 	}

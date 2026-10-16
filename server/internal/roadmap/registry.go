@@ -1041,13 +1041,17 @@ var items = []Item{
 		EngineNotes: "modes: `game.ModeSpec` (`game/modes.go`) fixes how many modes a cast may choose, and nothing ties an additional cost to choosing them all (CR 702.42a). Escalate (#2126) and spree (#1330) are the nearest shapes: an additional cost chosen with the modes at announce. Spectral Shift's text change itself works (ADR 0160's 2026-10-15 amendment).",
 	},
 	{
-		Slug: "cipher", Name: "Cipher", Kind: KindSeam, Status: StatusMissing,
+		// #3867. Closed; history in Closed seams.
+		Slug: "cipher", Name: "Cipher", Kind: KindKeyword, Status: StatusImplemented,
 		Summary:     "Spells you may exile encoded on a creature you control, cast again for free each time it deals combat damage to a player, such as Trait Doctoring.",
-		Missing:     "Encoding a spell on a creature isn't supported yet.",
 		Rules:       []string{"702.99"},
 		Issue:       3867,
-		Waiting:     []string{"Trait Doctoring"},
-		EngineNotes: "nothing encodes a card on a permanent: no link from an exiled card to its creature (the nearest is `Card.ExiledWith`, CR 607.2a), no exile-as-it-resolves in place of the graveyard, and no free cast of a copy on combat damage. Trait Doctoring's text change itself works (ADR 0160's 2026-10-15 amendment).",
+		ADR:         "0093-abilities-granted-to-other-permanents.md",
+		Keywords:    []string{game.KeywordCipher},
+		Mechanic:    "cipher",
+		Printed:     printedKeyword("cipher"),
+		Examples:    []string{"Trait Doctoring", "Hidden Strings", "Stolen Identity", "Last Thoughts", "Hands of Binding"},
+		EngineNotes: "**Shipped** (#3867, ADR 0093's 2026-10-16 amendment): `game.KeywordCipher`, read off the resolving card. Cipher's spell ability is the spell's last instruction, asked once its own prompts are answered: a keyed option pick of the creatures its controller controls, or \"Don't encode it\" (`askCipherLocked`, the parked resolution tail's `cipherAsked`). Encoded, the card is exiled from the stack with `Card.EncodedOn` naming the creature object {instance, epoch} and `EncodedAt` its timestamp (a link of its own, not `ExiledWith`, so \"cards exiled with\" the creature never see it); a copy of the spell is never asked. The static ability is a layer-6 grant from the card in exile (`cipherContinuousEffectsLocked`, bundle `cipher/encoded`, text shown on the creature), so an ability removal newer than the encoding takes it and an older one does not. Each grant derives one trigger about its own card (`cipherTriggersFor`): on combat damage to a player, the creature's controller is offered a free copy of the card if it is still in exile (`CopyCardsAndOfferCastsForEffect`). The creature leaving ends the encoding (the epoch), the card leaving exile ends it (MoveCard), a change of controller does not. **Cards** (15, all Full): Trait Doctoring, Last Thoughts, Arcane Heist, Call of the Nightwing, Hands of Binding, Hidden Strings, Mental Vapors, Midnight Recovery, Paranoid Delusions, Shadow Slice, Stolen Identity, Undercity Plague, Voidwalk, Whispering Madness and Writ of Return.",
 	},
 	{
 		// #3868. Closed; history in Closed seams.

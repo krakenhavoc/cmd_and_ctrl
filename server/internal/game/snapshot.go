@@ -1161,9 +1161,17 @@ type cardSnapshot struct {
 	// Terror Eater). Carried: a restore that dropped it would leave the
 	// card in exile that nobody may play. An older file decodes as the
 	// zero ref, "exiled with nothing", which is every game before it.
-	ExiledWith        PermissionCardRef `json:"exiledWith"`
-	StartingDefense   int               `json:"startingDefense,omitempty"`
-	ProtectorPlayerID uuid.UUID         `json:"protectorPlayerId,omitempty"`
+	ExiledWith PermissionCardRef `json:"exiledWith"`
+	// EncodedOn and EncodedAt are cipher's link (CR 702.99b, #3867):
+	// the creature object a card in exile is encoded on and when. Carried
+	// because nothing else records it, and additive within v7: a file
+	// without them restores no encoding, which is every game before it.
+	// A pointer, so a card that is not encoded writes nothing (the
+	// #1492 omitzero rule).
+	EncodedOn         *PermissionCardRef `json:"encodedOn,omitempty"`
+	EncodedAt         int64              `json:"encodedAt,omitempty"`
+	StartingDefense   int                `json:"startingDefense,omitempty"`
+	ProtectorPlayerID uuid.UUID          `json:"protectorPlayerId,omitempty"`
 
 	// The CR 702.26 phased-out status (#1199, ADR 0084). Meaningful
 	// only for a card in GameSnapshot.PhasedOut, and carried for
@@ -2452,6 +2460,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
+		EncodedOn:                snapshotEncodedOn(c.EncodedOn),
+		EncodedAt:                c.EncodedAt,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
 		PhasedOutIndirect:        c.PhasedOutIndirect,
@@ -3378,6 +3388,8 @@ func restoreCard(c *cardSnapshot) Card {
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
+		EncodedOn:                restoreEncodedOn(c.EncodedOn),
+		EncodedAt:                c.EncodedAt,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
 		PhasedOutIndirect:        c.PhasedOutIndirect,

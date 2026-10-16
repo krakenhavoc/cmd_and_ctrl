@@ -3917,6 +3917,15 @@ func (g *Game) resolveTopOfStackLocked() error {
 //
 // Caller must hold g.mu, inside a resolution function.
 func (g *Game) finishSpellResolutionLocked(top Card, item *StackItem) error {
+	return g.finishSpellResolutionStageLocked(top, item, false)
+}
+
+// finishSpellResolutionStageLocked is finishSpellResolutionLocked with
+// cipher's question already answered or not (#3867): `cipherAsked` is
+// true when the tail runs again after it.
+//
+// Caller must hold g.mu, inside a resolution function.
+func (g *Game) finishSpellResolutionStageLocked(top Card, item *StackItem, cipherAsked bool) error {
 	// #489, CR 608.2n: the spell may have MOVED ITSELF. Everything
 	// below this line routes the object that is still on the stack —
 	// to the battlefield, out of existence, or to a graveyard — and a
@@ -3924,6 +3933,13 @@ func (g *Game) finishSpellResolutionLocked(top Card, item *StackItem) error {
 	// left. See spellMovedItselfLocked for why that is a return and
 	// not an error.
 	if g.spellMovedItselfLocked(top.InstanceID) {
+		return nil
+	}
+	// CR 702.99a (#3867): cipher's "you may exile this card encoded on
+	// a creature you control" is the spell's last instruction, asked once
+	// every earlier one is done. Encoded, the card has moved itself and
+	// the parked tail finds nothing to route (cipher.go).
+	if !cipherAsked && g.askCipherLocked(top, item) {
 		return nil
 	}
 	// CR 608.3f / CR 111.13 (also CR 707.10f): a resolving copy of a

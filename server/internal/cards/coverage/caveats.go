@@ -888,6 +888,17 @@ var mechanics = []Mechanic{
 		Adopt:      `PrintedKeywords: []string{game.KeywordRebound} — the engine does the rest`,
 	},
 	{
+		// #3867 (ADR 0093's 2026-10-16 amendment): cipher is a
+		// canonicalKeywords token read off the resolving spell at the end
+		// of its resolution (game/cipher.go). Same probe as rebound.
+		Name:       "cipher",
+		Phrases:    []string{"cipher"},
+		Implements: printedKeywordProbe(game.KeywordCipher),
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) contains "cipher"`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{game.KeywordCipher} — the engine does the rest`,
+	},
+	{
 		// #1866: paradigm is a canonicalKeywords token read off the
 		// resolving spell by the stack's graveyard route
 		// (game/paradigm.go). Same probe as rebound.
