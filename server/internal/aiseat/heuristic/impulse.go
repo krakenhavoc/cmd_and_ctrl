@@ -41,7 +41,7 @@ func (st *state) impulseValue(n int) float64 {
 	// The pool and the repeatable sources only (manaAvailable): a
 	// Treasure may be the one the cost sacrifices.
 	landLeft := st.seat.LandDropsPerTurn > st.seat.LandsPlayedThisTurn
-	if !landLeft && len(st.manaAvailable(false)) < impulseMana {
+	if !landLeft && len(st.manaAvailable(manaModel{})) < impulseMana {
 		return 0
 	}
 	return st.w.Hand * float64(n)

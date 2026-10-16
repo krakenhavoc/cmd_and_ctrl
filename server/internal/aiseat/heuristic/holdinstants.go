@@ -65,7 +65,7 @@ func (p *Policy) planEligibleIn(st *state, m legal.Move) bool {
 // instead, because a later member needs its mana. Then each held member
 // that draws or tutors is cast now if the mana left right after it is
 // more than none.
-func holdsFor(base []uint8, cands []*planCandidate, order []int, mask uint, scratch []uint8) (uint, bool) {
+func holdsFor(base []manaUnit, cands []*planCandidate, order []int, mask uint, scratch []manaUnit) (uint, bool) {
 	var held uint
 	for _, i := range order {
 		if bit := uint(1) << i; mask&bit != 0 && cands[i].instant {
@@ -166,7 +166,7 @@ func (p *Policy) holdRemainder(st *state, moves []legal.Move, vals []float64, i 
 		return false
 	}
 	cands := p.rankCandidates(st, []*planCandidate{{index: i, move: m, card: card, value: vals[i], cost: cost}})
-	held, _ := holdsFor(st.manaAvailable(p.cfg.PlanFilterLands), cands, []int{0}, 1, nil)
+	held, _ := holdsFor(st.manaAvailable(p.manaModel(st)), cands, []int{0}, 1, nil)
 	return held&1 != 0
 }
 

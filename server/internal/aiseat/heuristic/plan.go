@@ -56,9 +56,17 @@ import (
 // every member left is held the bot passes, and ADR 0126 §5 casts it in
 // the end step before the bot's turn (holdinstants.go).
 
+// manaUnit is one mana in the model. Its low byte is the symbols it can
+// pay for any cost: one bit per colour and {C}, and manaPain. A unit
+// from a source with a restricted row (manaClasses) also carries, above
+// that, the colours the restricted row makes and the row's restriction
+// class: those colours pay only for a cost that admits the class
+// (manaCost.admits).
+type manaUnit uint32
+
 // Colour masks for one mana in the model.
 const (
-	manaW uint8 = 1 << iota
+	manaW manaUnit = 1 << iota
 	manaU
 	manaB
 	manaR
@@ -69,13 +77,40 @@ const (
 	// its controller (Mana Confluence, Ancient Tomb, City of Brass). It
 	// is not a colour: the engine's auto-tapper spends such a source
 	// only once nothing painless is left, and the model does the same.
-	manaPain uint8 = 1 << 7
+	manaPain manaUnit = 1 << 7
 
 	manaAnyColor = manaW | manaU | manaB | manaR | manaG
 	// manaAny pays any symbol at all, {C} included (a snow symbol's
 	// stand-in).
 	manaAny = manaAnyColor | manaC
+
+	// manaRestrictedShift is where a unit keeps the symbols its
+	// restricted row pays (manaAny's layout, shifted), and
+	// manaClassShift its restriction class, 1-based (0 is none).
+	manaRestrictedShift = 8
+	manaClassShift      = 16
+	manaClassMax        = 1<<(32-manaClassShift) - 1
 )
+
+// class is u's restriction class: 0 for a unit any cost may spend.
+func (u manaUnit) class() int { return int(u >> manaClassShift) }
+
+// restricted is the symbols u pays only for a cost that admits its
+// class.
+func (u manaUnit) restricted() manaUnit { return (u >> manaRestrictedShift) & manaAny }
+
+// anyMask is every symbol u could pay for some cost.
+func (u manaUnit) anyMask() manaUnit { return u&manaAny | u.restricted() }
+
+// payable is the symbols u pays for cost c, with its pain bit: its
+// unrestricted symbols, and its restricted ones when c admits its class.
+func (u manaUnit) payable(c manaCost) manaUnit {
+	m := u & (manaAny | manaPain)
+	if c.admitsUnit(u) {
+		m |= u.restricted()
+	}
+	return m
+}
 
 // planEpsilon is how much more a plan must be worth than the best
 // single move, so a float rounding never replaces today's choice.
@@ -85,15 +120,25 @@ const planEpsilon = 1e-9
 // mask per coloured (or {C}) symbol.
 type manaCost struct {
 	generic int
-	colored []uint8
+	colored []manaUnit
+	// admits reports whether restricted mana of class k may pay this
+	// cost (state.castAdmits). Nil admits none: a filter's input, an
+	// activation, an opponent's tax.
+	admits func(k int) bool
 }
 
 func (c manaCost) total() int { return c.generic + len(c.colored) }
 
+// admitsUnit reports whether u's restricted symbols may pay c.
+func (c manaCost) admitsUnit(u manaUnit) bool {
+	k := u.class()
+	return k > 0 && c.admits != nil && c.admits(k)
+}
+
 // manaSource is one activation in the model: the mana it adds, one mask
 // per mana, and the mana it consumes first (a filter, a Signet's {1}).
 type manaSource struct {
-	units []uint8
+	units []manaUnit
 	input int
 	// in is the input as a cost: a Signet's {1}, or with
 	// Config.PlanFilterLands a filter land's {G/U}, which only its
@@ -101,7 +146,7 @@ type manaSource struct {
 	in manaCost
 	// fallback is what the source makes when the filter cannot be fed:
 	// the plain {C} row of a land that has one (Flooded Grove).
-	fallback []uint8
+	fallback []manaUnit
 }
 
 func (s manaSource) net() int { return len(s.units) - s.input }
@@ -186,7 +231,7 @@ func (p *Policy) planTurn(ctx context.Context, st *state, moves []legal.Move, va
 	}
 	mask, value, order, held, ok := p.bestSet(ctx, setSearch{
 		cands:   cands,
-		base:    st.manaAvailable(p.cfg.PlanFilterLands),
+		base:    st.manaAvailable(p.manaModel(st)),
 		want:    st.rampWants(),
 		sources: st.manaSourcesTotal(),
 		minSize: 2,
@@ -217,7 +262,7 @@ type setSearch struct {
 	// cands are in §4's order (planBefore).
 	cands []*planCandidate
 	// base is the mana there is to spend.
-	base []uint8
+	base []manaUnit
 	// want and sources are rampFor's, for the shared premium (§3).
 	want    []rampWant
 	sources int
@@ -253,7 +298,7 @@ func (p *Policy) bestSet(ctx context.Context, s setSearch) (uint, float64, []int
 	alt, amended := altOrder(cands)
 	bestMask, bestVal, bestHeld := uint(0), 0.0, uint(0)
 	var bestOrder []int
-	units := make([]uint8, 0, maxMana)
+	units := make([]manaUnit, 0, maxMana)
 	for mask := uint(1); mask < 1<<n; mask++ {
 		if mask%64 == 0 && ctx.Err() != nil {
 			break
@@ -322,7 +367,7 @@ func (p *Policy) bestSet(ctx context.Context, s setSearch) (uint, float64, []int
 
 // feasible is planFeasible, or with s.hold §5's holds and whether the
 // set is payable with them (holdsFor).
-func (s setSearch) feasible(cands []*planCandidate, order []int, mask uint, scratch []uint8) (uint, bool) {
+func (s setSearch) feasible(cands []*planCandidate, order []int, mask uint, scratch []manaUnit) (uint, bool) {
 	if s.hold {
 		return holdsFor(s.base, cands, order, mask, scratch)
 	}
@@ -359,7 +404,7 @@ func altOrder(cands []*planCandidate) ([]int, uint) {
 
 // setFeasible is planFeasible in §4's order, or in the order before its
 // amendment when the amended order cannot pay for the set.
-func setFeasible(base []uint8, cands []*planCandidate, mask uint, scratch []uint8) bool {
+func setFeasible(base []manaUnit, cands []*planCandidate, mask uint, scratch []manaUnit) bool {
 	if planFeasible(base, cands, identityOrder(len(cands)), mask, scratch) {
 		return true
 	}
@@ -447,7 +492,7 @@ func (p *Policy) rankCandidates(st *state, out []*planCandidate) []*planCandidat
 		if p.cfg.PricePurposes {
 			c.lands = max(0, ps.lands-len(cp.SacrificeIDs))
 		}
-		c.adds = castAddsMana(c.card, ps, p.cfg.PlanFilterLands)
+		c.adds = castAddsMana(c.card, ps, p.manaModel(st))
 		c.drawer = ps.draws > 0 || ps.tutors > 0
 		// The owner's decision of 2026-10-09 (ADR 0136 §5, question 2):
 		// only an instant-speed cast whose declared purpose is ramp or
@@ -510,7 +555,7 @@ func planBefore(a, b *planCandidate, base bool) bool {
 // set tried in the order before the amendment (the draw first): the
 // amendment changes which member goes first, never which sets the bot
 // can afford.
-func planFeasible(base []uint8, cands []*planCandidate, order []int, mask uint, scratch []uint8) bool {
+func planFeasible(base []manaUnit, cands []*planCandidate, order []int, mask uint, scratch []manaUnit) bool {
 	_, ok := planWalk(base, cands, order, mask, 0, -1, scratch)
 	return ok
 }
@@ -522,7 +567,7 @@ func planFeasible(base []uint8, cands []*planCandidate, order []int, mask uint, 
 // stays reserved, and what they add arrives only for each other. left
 // is the mana there is right after the candidate at index `after` is
 // paid and its mana added, -1 when it is not reached.
-func planWalk(base []uint8, cands []*planCandidate, order []int, mask, held uint, after int, scratch []uint8) (left int, ok bool) {
+func planWalk(base []manaUnit, cands []*planCandidate, order []int, mask, held uint, after int, scratch []manaUnit) (left int, ok bool) {
 	units := append(scratch[:0], base...)
 	seq := paySequence(order, mask, held)
 	left = -1
@@ -530,7 +575,7 @@ func planWalk(base []uint8, cands []*planCandidate, order []int, mask, held uint
 		c := cands[i]
 		// The coloured symbols of the members still to come: generic
 		// mana is paid around them.
-		var later []uint8
+		var later []manaUnit
 		for _, j := range seq[k+1:] {
 			later = append(later, cands[j].cost.colored...)
 		}
@@ -633,9 +678,14 @@ func (st *state) manaSourcesTotal() int {
 // it. A view from before that field is priced from the printed cost,
 // the announced X and the commander tax (CR 903.8); an alternative cost
 // it cannot read keeps the move out of the plan.
+//
+// Restricted mana pays it when its restriction admits this cast
+// (castAdmits).
 func (st *state) planCastCost(m legal.Move, card *protocol.CardView, cp castParams) (manaCost, bool) {
 	if m.Cost != nil && m.Cost.Mana != "" {
-		return parseManaCost(m.Cost.Mana, 0), true
+		c := parseManaCost(m.Cost.Mana, 0)
+		c.admits = st.castAdmits(card, cp.FromZone)
+		return c, true
 	}
 	if cp.AlternativeCost != "" || card.ManaCost == "" {
 		return manaCost{}, false
@@ -644,7 +694,80 @@ func (st *state) planCastCost(m legal.Move, card *protocol.CardView, cp castPara
 	if cp.FromZone == "command" && st.seat != nil {
 		c.generic += 2 * st.seat.CommanderCasts[card.InstanceID]
 	}
+	c.admits = st.castAdmits(card, cp.FromZone)
 	return c, true
+}
+
+// manaModel is how the plan reads the bot's mana sources (§2).
+type manaModel struct {
+	// filterLands is Config.PlanFilterLands: a filter land is its
+	// filter (manaSourceOf).
+	filterLands bool
+	// classes, with Config.PlanRestrictedMana, numbers the restricted
+	// rows the model counts. Nil leaves every restricted row out.
+	classes *manaClasses
+}
+
+// manaModel is the mana model p plans with in st.
+func (p *Policy) manaModel(st *state) manaModel {
+	mm := manaModel{filterLands: p.cfg.PlanFilterLands}
+	if p.cfg.PlanRestrictedMana {
+		mm.classes = st.restrictionClasses()
+	}
+	return mm
+}
+
+// manaClasses numbers the distinct restriction lists of the restricted
+// rows the model counts (ADR 0136's amendment of 2026-10-16), so a unit
+// can carry its row's list as one small number (manaUnit.class). Class
+// k is lists[k-1].
+type manaClasses struct {
+	lists [][]string
+	index map[string]int
+}
+
+// classOf is the class of restriction list rs, numbered on first sight;
+// 0 when there is no room for another.
+func (r *manaClasses) classOf(rs []string) int {
+	key := strings.Join(rs, "\x00")
+	if k, ok := r.index[key]; ok {
+		return k
+	}
+	if len(r.lists) >= manaClassMax {
+		return 0
+	}
+	if r.index == nil {
+		r.index = map[string]int{}
+	}
+	r.lists = append(r.lists, rs)
+	r.index[key] = len(r.lists)
+	return len(r.lists)
+}
+
+// restrictionClasses is this window's class numbering, one for the whole
+// decision, so every unit and every cost agree on it.
+func (st *state) restrictionClasses() *manaClasses {
+	if st.restrictClasses == nil {
+		st.restrictClasses = &manaClasses{}
+	}
+	return st.restrictClasses
+}
+
+// castAdmits is a cast's manaCost.admits: whether class k's restriction
+// list admits casting card from fromZone, asked of the engine's matcher
+// (protocol.ManaRestrictionsAdmitCast, the one auto-pay plans by) once
+// per class.
+func (st *state) castAdmits(card *protocol.CardView, fromZone string) func(k int) bool {
+	memo := map[int]bool{}
+	return func(k int) bool {
+		if v, ok := memo[k]; ok {
+			return v
+		}
+		r := st.restrictClasses
+		v := r != nil && k >= 1 && k <= len(r.lists) && protocol.ManaRestrictionsAdmitCast(r.lists[k-1], card, fromZone)
+		memo[k] = v
+		return v
+	}
 }
 
 // parseManaCost reads "{5}{G}{U}" into the model. X is x. A hybrid
@@ -666,7 +789,7 @@ func parseManaCost(s string, x int) manaCost {
 			c.colored = append(c.colored, manaAny)
 			continue
 		}
-		var mask uint8
+		var mask manaUnit
 		for _, part := range strings.Split(sym, "/") {
 			mask |= colorMask(part)
 		}
@@ -680,7 +803,7 @@ func parseManaCost(s string, x int) manaCost {
 }
 
 // colorMask is one mana letter's mask, 0 for anything else.
-func colorMask(letter string) uint8 {
+func colorMask(letter string) manaUnit {
 	switch letter {
 	case "W":
 		return manaW
@@ -700,10 +823,9 @@ func colorMask(letter string) uint8 {
 
 // manaAvailable is the mana the bot can make now (§2): its pool, and
 // each untapped permanent it controls with a repeatable mana ability it
-// can activate, filters already run. With filterLands, a filter land is
-// its filter (manaSourceOf).
-func (st *state) manaAvailable(filterLands bool) []uint8 {
-	var units []uint8
+// can activate, filters already run, read under mm (manaSourceOf).
+func (st *state) manaAvailable(mm manaModel) []manaUnit {
+	var units []manaUnit
 	if st.seat != nil {
 		for _, run := range st.seat.ManaPool {
 			if m := colorMask(run.Color); m != 0 {
@@ -719,7 +841,7 @@ func (st *state) manaAvailable(filterLands bool) []uint8 {
 		if c.Controller != st.me || c.Tapped || (isCreature(c) && c.ActivationSick()) {
 			continue
 		}
-		src, ok := manaSourceOf(c, filterLands)
+		src, ok := manaSourceOf(c, mm)
 		if !ok {
 			continue
 		}
@@ -740,30 +862,50 @@ func (st *state) manaAvailable(filterLands bool) []uint8 {
 // not greyed out. A life cost or a damage rider still counts. Rows that
 // net the same mana are merged, so a painland is one source of either
 // colour, and a filter row loses to a plain one that nets as much,
-// unless filterLands is set and the plain row makes only colourless
+// unless mm.filterLands is set and the plain row makes only colourless
 // mana: then the filter is the source (§2: "a filter ability (a Signet,
 // Flooded Grove) is an entry that consumes one mana and makes its
 // output"), its input paid with the colours it names, and the plain
 // row is what it makes when nothing can feed it. A
-// row whose mana may be spent only on some spells (Delighted Halfling's
-// colours, Ancient Ziggurat) is left out: the model cannot tell which
-// casts it pays for. A
 // land with no mana rows (a fetchland) makes no mana: every land that
 // taps for mana carries a row, its intrinsic ones included.
-func manaSourceOf(c *protocol.CardView, filterLands bool) (manaSource, bool) {
+//
+// A row whose mana may be spent only on some spells (Delighted
+// Halfling's colours, Cavern of Souls' chosen type, Ancient Ziggurat) is
+// counted only with mm.classes (Config.PlanRestrictedMana), and then
+// only for the casts its restriction admits (restrictedOverlay). Without
+// it the row is left out.
+func manaSourceOf(c *protocol.CardView, mm manaModel) (manaSource, bool) {
 	var best, filter manaSource
 	found, haveFilter := false, false
+	var rest []manaUnit
+	var restClass int
 	for i := range c.ManaAbilities {
 		ab := &c.ManaAbilities[i]
 		if !ab.TapCost || ab.SacrificeCost || ab.ExileSelf || ab.AddsNoMana || ab.ConditionUnmet ||
 			ab.Exhausted || ab.CantActivate != "" || ab.SacrificeLabel != "" || ab.TapOthersLabel != "" ||
 			ab.ExilePermanentLabel != "" || ab.Exert || ab.EnergyCost > 0 || ab.DiscardCostN > 0 ||
-			ab.ExileCostN > 0 || ab.CounterCostN > 0 || ab.CounterCostVariable || len(ab.Restrictions) > 0 {
+			ab.ExileCostN > 0 || ab.CounterCostN > 0 || ab.CounterCostVariable {
 			continue
 		}
 		cost := ab.ManaCost
 		if ab.ChargedManaCost != nil {
 			cost = *ab.ChargedManaCost
+		}
+		if len(ab.Restrictions) > 0 {
+			// The restricted row as mana a cast it admits may spend:
+			// painless and costing nothing but the tap, so that each
+			// unit is one mana of it. The largest such row is kept.
+			if mm.classes == nil || manaValue(cost, 0) > 0 || ab.LifeCost > 0 ||
+				strings.Contains(strings.ToLower(ab.Label), "damage to you") {
+				continue
+			}
+			if units := abilityUnits(ab); len(units) > len(rest) {
+				if k := mm.classes.classOf(ab.Restrictions); k > 0 {
+					rest, restClass = units, k
+				}
+			}
+			continue
 		}
 		src := manaSource{units: abilityUnits(ab), input: manaValue(cost, 0)}
 		src.in = manaCost{generic: src.input}
@@ -772,7 +914,7 @@ func manaSourceOf(c *protocol.CardView, filterLands bool) (manaSource, bool) {
 				src.units[k] |= manaPain
 			}
 		}
-		if filterLands && src.input > 0 && colouredOnly(src.units) && (!haveFilter || src.net() > filter.net()) {
+		if mm.filterLands && src.input > 0 && colouredOnly(src.units) && (!haveFilter || src.net() > filter.net()) {
 			filter, haveFilter = src, true
 			filter.in = parseManaCost(cost, 0)
 		}
@@ -792,11 +934,57 @@ func manaSourceOf(c *protocol.CardView, filterLands bool) (manaSource, bool) {
 		filter.fallback = best.units
 		return filter, true
 	}
+	if rest != nil && (!found || best.input == 0) {
+		var plain []manaUnit
+		if found {
+			plain = best.units
+		}
+		if units, ok := restrictedOverlay(plain, rest, restClass); ok {
+			return manaSource{units: units}, true
+		}
+	}
 	return best, found && best.net() > 0
 }
 
+// restrictedOverlay is one activation of a source with a plain row
+// (plain, nil when it has none) and a restricted row (rest, of class k)
+// as units (ADR 0136's amendment of 2026-10-16): unit i pays plain[i]
+// for any cost, and rest[i] too for a cost that admits k. It is exact
+// when no mix of the two rows can be spent that neither row makes: no
+// plain row (Ancient Ziggurat), one mana from each (Delighted
+// Halfling's {C} or a colour, Cavern of Souls'), or a restricted row
+// that makes at least as much, each mana of it paying what the plain
+// row's does (Eldrazi Temple's {C} or {C}{C}). Any other pair is not
+// overlaid (false), and the plain row alone is the source, as it was
+// before restricted rows were counted.
+func restrictedOverlay(plain, rest []manaUnit, k int) ([]manaUnit, bool) {
+	exact := len(plain) == 0 || (len(plain) == 1 && len(rest) == 1)
+	if !exact && len(rest) >= len(plain) {
+		exact = true
+		for i, u := range plain {
+			if u&manaPain != 0 || u&manaAny&^rest[i] != 0 {
+				exact = false
+				break
+			}
+		}
+	}
+	if !exact {
+		return nil, false
+	}
+	out := make([]manaUnit, max(len(plain), len(rest)))
+	for i := range out {
+		if i < len(plain) {
+			out[i] = plain[i]
+		}
+		if i < len(rest) {
+			out[i] |= (rest[i]&manaAny)<<manaRestrictedShift | manaUnit(k)<<manaClassShift
+		}
+	}
+	return out, true
+}
+
 // colouredOnly reports whether every unit is a painless coloured mana.
-func colouredOnly(units []uint8) bool {
+func colouredOnly(units []manaUnit) bool {
 	for _, u := range units {
 		if u&manaAnyColor == 0 || u&manaPain != 0 {
 			return false
@@ -806,7 +994,7 @@ func colouredOnly(units []uint8) bool {
 }
 
 // colouredAny reports whether any unit can be coloured mana.
-func colouredAny(units []uint8) bool {
+func colouredAny(units []manaUnit) bool {
 	for _, u := range units {
 		if u&manaAnyColor != 0 {
 			return true
@@ -820,13 +1008,13 @@ func colouredAny(units []uint8) bool {
 // the view stamps one (Command Tower, Birds of Paradise). An output the
 // view cannot size (Exotic Orchard, Cabal Coffers) is one mana of the
 // colours color_options names, or of no colour.
-func abilityUnits(ab *protocol.ManaAbilityView) []uint8 {
+func abilityUnits(ab *protocol.ManaAbilityView) []manaUnit {
 	slot := 0
-	optionMask := func() uint8 {
+	optionMask := func() manaUnit {
 		if slot >= len(ab.ColorOptions) {
 			return 0
 		}
-		var m uint8
+		var m manaUnit
 		for _, l := range ab.ColorOptions[slot] {
 			m |= colorMask(l)
 		}
@@ -835,11 +1023,11 @@ func abilityUnits(ab *protocol.ManaAbilityView) []uint8 {
 	}
 	if ab.Produced == "" {
 		if m := optionMask(); m != 0 {
-			return []uint8{m}
+			return []manaUnit{m}
 		}
-		return []uint8{manaC}
+		return []manaUnit{manaC}
 	}
-	var units []uint8
+	var units []manaUnit
 	for _, sym := range manaSymbols(ab.Produced) {
 		// #2558: "{W|U|B|R|G:2}" is two mana of different colors — one
 		// unit per mana, each from its own color_options list. A unit
@@ -847,7 +1035,7 @@ func abilityUnits(ab *protocol.ManaAbilityView) []uint8 {
 		// pair of any colours, which the server's move list corrects.
 		if k := strings.LastIndexByte(sym, ':'); k >= 0 {
 			if v, err := strconv.Atoi(sym[k+1:]); err == nil && v > 0 {
-				var mask uint8
+				var mask manaUnit
 				for _, opt := range strings.Split(sym[:k], "|") {
 					mask |= colorMask(opt)
 				}
@@ -862,7 +1050,7 @@ func abilityUnits(ab *protocol.ManaAbilityView) []uint8 {
 			}
 		}
 		n := 1
-		var mask uint8
+		var mask manaUnit
 		choice := strings.IndexByte(sym, '|') >= 0
 		for _, opt := range strings.Split(sym, "|") {
 			letter := opt
@@ -890,7 +1078,7 @@ func abilityUnits(ab *protocol.ManaAbilityView) []uint8 {
 		}
 	}
 	if len(units) == 0 {
-		return []uint8{manaC}
+		return []manaUnit{manaC}
 	}
 	return units
 }
@@ -900,15 +1088,15 @@ func abilityUnits(ab *protocol.ManaAbilityView) []uint8 {
 // untapped and has no summoning sickness, CR 302.6), a hasty creature's,
 // and one mana of any colour for each land its purpose says enters
 // untapped (PurposeView.lands_untapped, owner answer 4).
-func castAddsMana(c *protocol.CardView, ps purposeSet, filterLands bool) []manaSource {
+func castAddsMana(c *protocol.CardView, ps purposeSet, mm manaModel) []manaSource {
 	var out []manaSource
 	if !isLand(c) && isPermanentSpell(c) && (!isCreature(c) || hasKeyword(c, "haste")) {
-		if src, ok := manaSourceOf(c, filterLands); ok && len(c.ManaAbilities) > 0 {
+		if src, ok := manaSourceOf(c, mm); ok && len(c.ManaAbilities) > 0 {
 			out = append(out, src)
 		}
 	}
 	for k := 0; k < ps.landsUntapped; k++ {
-		out = append(out, manaSource{units: []uint8{manaAnyColor}})
+		out = append(out, manaSource{units: []manaUnit{manaAnyColor}})
 	}
 	return out
 }
@@ -923,72 +1111,108 @@ func castAddsMana(c *protocol.CardView, ps purposeSet, filterLands bool) []manaS
 // the unit the later members' symbols (later) need most. A plan that
 // survives that is one the engine will let the bot finish. It reorders
 // units in place.
-func payMana(units []uint8, cost manaCost, later []uint8) ([]uint8, bool) {
-	if cost.total() > len(units) {
-		return units, false
+//
+// Restricted mana (manaUnit.class) pays only a cost that admits it, and
+// goes first there (spendBefore). A unit the cost cannot spend at all
+// (restricted mana with no plain row, for a cast its restriction
+// refuses) is set aside and kept for the members after it.
+func payMana(units []manaUnit, cost manaCost, later []manaUnit) ([]manaUnit, bool) {
+	var aside []manaUnit
+	if unusable(units, cost) {
+		usable := make([]manaUnit, 0, len(units))
+		for _, u := range units {
+			if u.payable(cost)&manaAny != 0 {
+				usable = append(usable, u)
+			} else {
+				aside = append(aside, u)
+			}
+		}
+		units = usable
 	}
-	colored := append([]uint8(nil), cost.colored...)
+	if cost.total() > len(units) {
+		return append(units, aside...), false
+	}
+	colored := append([]manaUnit(nil), cost.colored...)
 	// The most constrained symbol first: fewest units can pay it.
 	sort.SliceStable(colored, func(i, j int) bool {
-		return payers(units, colored[i]) < payers(units, colored[j])
+		return payers(units, colored[i], cost) < payers(units, colored[j], cost)
 	})
 	for _, sym := range colored {
 		pick := -1
 		for k, u := range units {
-			if u&sym == 0 {
+			if u.payable(cost)&sym == 0 {
 				continue
 			}
-			if pick < 0 || spendBefore(u, units[pick], later) {
+			if pick < 0 || spendBefore(u, units[pick], later, cost) {
 				pick = k
 			}
 		}
 		if pick < 0 {
-			return units, false
+			return append(units, aside...), false
 		}
 		units = removeUnit(units, pick)
 	}
 	if cost.generic > len(units) {
-		return units, false
+		return append(units, aside...), false
 	}
-	engineOrder(units, later)
-	return units[cost.generic:], true
+	engineOrder(units, later, cost)
+	return append(units[cost.generic:], aside...), true
+}
+
+// unusable reports whether any unit can pay nothing of cost: restricted
+// mana with no plain row, which cost does not admit.
+func unusable(units []manaUnit, cost manaCost) bool {
+	for _, u := range units {
+		if u.class() != 0 && u.payable(cost)&manaAny == 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // engineOrder sorts units into the order the auto-tapper spends them on
-// generic mana, worst case first within its ties (payMana).
-func engineOrder(units, later []uint8) {
-	sort.SliceStable(units, func(i, j int) bool { return spendBefore(units[i], units[j], later) })
+// cost's generic mana, worst case first within its ties (payMana).
+func engineOrder(units, later []manaUnit, cost manaCost) {
+	sort.SliceStable(units, func(i, j int) bool { return spendBefore(units[i], units[j], later, cost) })
 }
 
-// spendBefore reports whether the auto-tapper spends a before b:
-// painless first, then the fewest colours (colourless is none), and
-// within a tie the one the later symbols need more.
-func spendBefore(a, b uint8, later []uint8) bool {
-	if pa, pb := a&manaPain != 0, b&manaPain != 0; pa != pb {
-		return !pa
+// spendBefore reports whether the auto-tapper spends a before b on cost:
+// painless first, then restricted mana the cost may spend (ADR 0040's
+// amendment of 2026-10-16 ranks it, and the rider it fires, ahead of
+// mana any cast could spend), then the fewest colours (colourless is
+// none), and within a tie the one the later symbols need more.
+func spendBefore(a, b manaUnit, later []manaUnit, cost manaCost) bool {
+	pa, pb := a.payable(cost), b.payable(cost)
+	if ap, bp := pa&manaPain != 0, pb&manaPain != 0; ap != bp {
+		return !ap
 	}
-	if ca, cb := bits.OnesCount8(a&manaAnyColor), bits.OnesCount8(b&manaAnyColor); ca != cb {
+	if ra, rb := cost.admitsUnit(a), cost.admitsUnit(b); ra != rb {
+		return ra
+	}
+	if ca, cb := bits.OnesCount32(uint32(pa&manaAnyColor)), bits.OnesCount32(uint32(pb&manaAnyColor)); ca != cb {
 		return ca < cb
 	}
 	return demand(a, later) > demand(b, later)
 }
 
-// demand is how many of the later symbols u could pay.
-func demand(u uint8, later []uint8) int {
+// demand is how many of the later symbols u could pay, its restricted
+// mana counted as if a later cost admits it: the worse case.
+func demand(u manaUnit, later []manaUnit) int {
 	n := 0
+	m := u.anyMask()
 	for _, sym := range later {
-		if u&sym != 0 {
+		if m&sym != 0 {
 			n++
 		}
 	}
 	return n
 }
 
-// payers is how many units can pay sym.
-func payers(units []uint8, sym uint8) int {
+// payers is how many units can pay sym for cost.
+func payers(units []manaUnit, sym manaUnit, cost manaCost) int {
 	n := 0
 	for _, u := range units {
-		if u&sym != 0 {
+		if u.payable(cost)&sym != 0 {
 			n++
 		}
 	}
@@ -1014,7 +1238,7 @@ func manaSymbols(s string) []string {
 	}
 }
 
-func removeUnit(units []uint8, k int) []uint8 {
+func removeUnit(units []manaUnit, k int) []manaUnit {
 	units[k] = units[len(units)-1]
 	return units[:len(units)-1]
 }
@@ -1023,20 +1247,22 @@ func removeUnit(units []uint8, k int) []uint8 {
 // is paid (engineOrder), and is not run when there is not enough to
 // feed it. A filter whose input names colours (PlanFilterLands) pays it
 // as a cast would (payMana), and makes its fallback when it cannot.
-func addSource(units []uint8, src manaSource, later []uint8) []uint8 {
+func addSource(units []manaUnit, src manaSource, later []manaUnit) []manaUnit {
 	if len(src.in.colored) > 0 {
-		rest, ok := payMana(append([]uint8(nil), units...), src.in, later)
+		rest, ok := payMana(append([]manaUnit(nil), units...), src.in, later)
 		if !ok {
 			return append(units, src.fallback...)
 		}
 		return append(rest, src.units...)
 	}
 	if src.input > 0 {
-		if len(units) < src.input {
-			return units
+		// Mana a cast's restriction admits does not feed a filter: its
+		// input is an activation's cost (manaCost.admits is nil).
+		rest, ok := payMana(units, manaCost{generic: src.input}, later)
+		if !ok {
+			return rest
 		}
-		engineOrder(units, later)
-		units = units[src.input:]
+		units = rest
 	}
 	return append(units, src.units...)
 }

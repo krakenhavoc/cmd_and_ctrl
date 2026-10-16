@@ -42,8 +42,8 @@ func planLand(produced string, opts ...func(*protocol.CardView)) protocol.CardVi
 	return c
 }
 
-func sortedUnits(u []uint8) []uint8 {
-	out := append([]uint8(nil), u...)
+func sortedUnits(u []manaUnit) []manaUnit {
+	out := append([]manaUnit(nil), u...)
 	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
 	return out
 }
@@ -75,31 +75,31 @@ func TestManaModelReadsWhatTheSeatCanMakeNow(t *testing.T) {
 		name string
 		bf   []protocol.CardView
 		pool []string
-		want []uint8
+		want []manaUnit
 	}{
-		{"an Island", []protocol.CardView{planLand("{U}")}, nil, []uint8{manaU}},
-		{"an Orchard names its colours", []protocol.CardView{orchard}, nil, []uint8{manaG | manaU}},
-		{"an output the view cannot size is one of no colour", []protocol.CardView{blankOrchard}, nil, []uint8{manaC}},
-		{"a filter eats a land and nets one", []protocol.CardView{planLand("{C}"), signet}, nil, []uint8{manaU, manaG}},
+		{"an Island", []protocol.CardView{planLand("{U}")}, nil, []manaUnit{manaU}},
+		{"an Orchard names its colours", []protocol.CardView{orchard}, nil, []manaUnit{manaG | manaU}},
+		{"an output the view cannot size is one of no colour", []protocol.CardView{blankOrchard}, nil, []manaUnit{manaC}},
+		{"a filter eats a land and nets one", []protocol.CardView{planLand("{C}"), signet}, nil, []manaUnit{manaU, manaG}},
 		{"a filter with nothing to eat adds nothing", []protocol.CardView{signet}, nil, nil},
-		{"a sick dork makes nothing, a ready one its colours", []protocol.CardView{sickDork, readyDork}, nil, []uint8{manaG | manaU}},
+		{"a sick dork makes nothing, a ready one its colours", []protocol.CardView{sickDork, readyDork}, nil, []manaUnit{manaG | manaU}},
 		{"tapped, greyed and one-shot sources make nothing", []protocol.CardView{tappedLand, greyed, treasure}, nil, nil},
-		{"Sol Ring makes two colourless", []protocol.CardView{solRing}, nil, []uint8{manaC, manaC}},
-		{"a painland is one mana of any of its colours", []protocol.CardView{painland}, nil, []uint8{manaG | manaU | manaC}},
+		{"Sol Ring makes two colourless", []protocol.CardView{solRing}, nil, []manaUnit{manaC, manaC}},
+		{"a painland is one mana of any of its colours", []protocol.CardView{painland}, nil, []manaUnit{manaG | manaU | manaC}},
 		{"Mana Confluence is painful", []protocol.CardView{{Name: "Mana Confluence", TypeLine: "Land", ManaAbilities: []protocol.ManaAbilityView{
-			{TapCost: true, Produced: "{W|U|B|R|G}", LifeCost: 1}}}}, nil, []uint8{manaAnyColor | manaPain}},
+			{TapCost: true, Produced: "{W|U|B|R|G}", LifeCost: 1}}}}, nil, []manaUnit{manaAnyColor | manaPain}},
 		{"Ancient Tomb's damage is painful", []protocol.CardView{{Name: "Ancient Tomb", TypeLine: "Land", ManaAbilities: []protocol.ManaAbilityView{
-			{TapCost: true, Produced: "{C}{C}", Label: "Add {C}{C}. Ancient Tomb deals 2 damage to you."}}}}, nil, []uint8{manaC | manaPain, manaC | manaPain}},
-		{"the floating pool counts", nil, []string{"R", "C"}, []uint8{manaR, manaC}},
+			{TapCost: true, Produced: "{C}{C}", Label: "Add {C}{C}. Ancient Tomb deals 2 damage to you."}}}}, nil, []manaUnit{manaC | manaPain, manaC | manaPain}},
+		{"the floating pool counts", nil, []string{"R", "C"}, []manaUnit{manaR, manaC}},
 		{"restricted mana is left out", []protocol.CardView{{Name: "Delighted Halfling", TypeLine: "Creature — Halfling", ManaAbilities: []protocol.ManaAbilityView{
-			{TapCost: true, Produced: "{C}"}, {TapCost: true, Produced: "{W|U|B|R|G}", Restrictions: []string{"legendary"}}}}}, nil, []uint8{manaC}},
+			{TapCost: true, Produced: "{C}"}, {TapCost: true, Produced: "{W|U|B|R|G}", Restrictions: []string{"legendary"}}}}}, nil, []manaUnit{manaC}},
 		{"a fetchland makes no mana", []protocol.CardView{{Name: "Fabled Passage", TypeLine: "Land"}}, nil, nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			p := New()
 			st := p.newState(aiseat.Input{Seat: me, View: planSeatView(me, c.bf, c.pool...)})
-			got := sortedUnits(st.manaAvailable(false))
+			got := sortedUnits(st.manaAvailable(manaModel{}))
 			want := sortedUnits(c.want)
 			if len(got) != len(want) {
 				t.Fatalf("units = %v, want %v", got, want)
@@ -116,34 +116,34 @@ func TestManaModelReadsWhatTheSeatCanMakeNow(t *testing.T) {
 func TestManaModelPaysColouredSymbolsFirst(t *testing.T) {
 	cases := []struct {
 		name  string
-		units []uint8
+		units []manaUnit
 		costs []string
 		ok    bool
 	}{
-		{"{1}{G} from an Island and a Forest", []uint8{manaU, manaG}, []string{"{1}{G}"}, true},
-		{"{G}{G} from an Island and a Forest", []uint8{manaU, manaG}, []string{"{G}{G}"}, false},
-		{"the flexible source is kept for the colour that needs it", []uint8{manaG | manaU, manaG}, []string{"{G}", "{U}"}, true},
-		{"a hybrid symbol takes either half", []uint8{manaU}, []string{"{G/U}"}, true},
-		{"a Phyrexian symbol is paid with its colour", []uint8{manaR}, []string{"{R/P}"}, true},
-		{"{C} wants colourless", []uint8{manaG}, []string{"{C}"}, false},
-		{"generic takes anything", []uint8{manaC, manaW}, []string{"{2}"}, true},
-		{"two casts, five of five", []uint8{manaG, manaG, manaU, manaC, manaC}, []string{"{2}", "{1}{G}{U}"}, true},
-		{"two casts, six of five", []uint8{manaG, manaG, manaU, manaC, manaC}, []string{"{3}", "{1}{G}{U}"}, false},
+		{"{1}{G} from an Island and a Forest", []manaUnit{manaU, manaG}, []string{"{1}{G}"}, true},
+		{"{G}{G} from an Island and a Forest", []manaUnit{manaU, manaG}, []string{"{G}{G}"}, false},
+		{"the flexible source is kept for the colour that needs it", []manaUnit{manaG | manaU, manaG}, []string{"{G}", "{U}"}, true},
+		{"a hybrid symbol takes either half", []manaUnit{manaU}, []string{"{G/U}"}, true},
+		{"a Phyrexian symbol is paid with its colour", []manaUnit{manaR}, []string{"{R/P}"}, true},
+		{"{C} wants colourless", []manaUnit{manaG}, []string{"{C}"}, false},
+		{"generic takes anything", []manaUnit{manaC, manaW}, []string{"{2}"}, true},
+		{"two casts, five of five", []manaUnit{manaG, manaG, manaU, manaC, manaC}, []string{"{2}", "{1}{G}{U}"}, true},
+		{"two casts, six of five", []manaUnit{manaG, manaG, manaU, manaC, manaC}, []string{"{3}", "{1}{G}{U}"}, false},
 		// The auto-tapper spends painless sources first, so Hedron
 		// Archive is paid with the Swamps and leaves Ancient Tomb.
-		{"a painful source is spent last", []uint8{manaC | manaPain, manaC | manaPain, manaB, manaB, manaB, manaB}, []string{"{4}", "{B}{B}"}, false},
-		{"pain is spent when it is all there is", []uint8{manaC | manaPain, manaC | manaPain, manaB, manaB}, []string{"{2}", "{B}{B}"}, false},
-		{"colourless before a colour", []uint8{manaC | manaPain, manaC | manaPain, manaB, manaB, manaB, manaB}, []string{"{B}{B}", "{2}"}, true},
+		{"a painful source is spent last", []manaUnit{manaC | manaPain, manaC | manaPain, manaB, manaB, manaB, manaB}, []string{"{4}", "{B}{B}"}, false},
+		{"pain is spent when it is all there is", []manaUnit{manaC | manaPain, manaC | manaPain, manaB, manaB}, []string{"{2}", "{B}{B}"}, false},
+		{"colourless before a colour", []manaUnit{manaC | manaPain, manaC | manaPain, manaB, manaB, manaB, manaB}, []string{"{B}{B}", "{2}"}, true},
 		// The auto-tapper does not know what comes next: a tie between a
 		// Mountain and an Island may spend the Island the next spell needs.
-		{"a tie is spent the worst way", []uint8{manaR, manaU}, []string{"{1}", "{U}"}, false},
+		{"a tie is spent the worst way", []manaUnit{manaR, manaU}, []string{"{1}", "{U}"}, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			units := append([]uint8(nil), c.units...)
+			units := append([]manaUnit(nil), c.units...)
 			ok := true
 			for i, cost := range c.costs {
-				var later []uint8
+				var later []manaUnit
 				for _, next := range c.costs[i+1:] {
 					later = append(later, parseManaCost(next, 0).colored...)
 				}
@@ -302,18 +302,18 @@ func TestManaModelRunsAFilterLand(t *testing.T) {
 		name string
 		on   bool
 		bf   []protocol.CardView
-		want []uint8
+		want []manaUnit
 	}{
-		{"off: its {C} row", false, []protocol.CardView{planLand("{U}"), grove()}, []uint8{manaU, manaC}},
-		{"on: an Island feeds it", true, []protocol.CardView{planLand("{U}"), grove()}, []uint8{gu, gu}},
-		{"on: a Swamp cannot feed it", true, []protocol.CardView{planLand("{B}"), grove()}, []uint8{manaB, manaC}},
-		{"on: alone it is its {C}", true, []protocol.CardView{grove()}, []uint8{manaC}},
+		{"off: its {C} row", false, []protocol.CardView{planLand("{U}"), grove()}, []manaUnit{manaU, manaC}},
+		{"on: an Island feeds it", true, []protocol.CardView{planLand("{U}"), grove()}, []manaUnit{gu, gu}},
+		{"on: a Swamp cannot feed it", true, []protocol.CardView{planLand("{B}"), grove()}, []manaUnit{manaB, manaC}},
+		{"on: alone it is its {C}", true, []protocol.CardView{grove()}, []manaUnit{manaC}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			p := New()
 			st := p.newState(aiseat.Input{Seat: me, View: planSeatView(me, c.bf)})
-			got := sortedUnits(st.manaAvailable(c.on))
+			got := sortedUnits(st.manaAvailable(manaModel{filterLands: c.on}))
 			want := sortedUnits(c.want)
 			if len(got) != len(want) {
 				t.Fatalf("units = %v, want %v", got, want)
