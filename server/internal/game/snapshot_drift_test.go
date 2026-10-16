@@ -814,6 +814,9 @@ var stackItemFields = plan(
 	"DoubledBy", carried, "",
 	"DoubledByName", carried, "",
 	"Targets", carried, "",
+	// ADR 0202 (#1989): the texts spliced onto a spell and their
+	// targets. Nothing else records which cards were spliced.
+	"Spliced", carried, "",
 	// #636 reflexive triggers: a pending trigger's payload is what
 	// the resolution that created it told it (the cards revealed,
 	// the creature sacrificed). Carried, and it has to be — the

@@ -212,6 +212,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 	}
 	// ADR 0107 §6: an owed follow-up names its body as a key.
 	for _, f := range s.PreventionFollowUps {
+		// #2047: a CR 615.13 announcement names no body; it is emitted
+		// as an event.
+		if f.Announce && f.Body == "" {
+			continue
+		}
 		if !KnownEffectBody(f.Body) {
 			unknown = append(unknown, "prevention follow-up body "+f.Body)
 		}

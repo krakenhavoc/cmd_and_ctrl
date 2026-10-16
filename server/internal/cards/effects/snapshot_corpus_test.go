@@ -179,7 +179,12 @@ func corpusBoards() []corpusBoard {
 		// it — the replacement mods, ScopeGame, ScopeYourPermanents,
 		// seq, amount and then on disk.
 		{"fog", corpusFog},
-		{"mending_hands_partial", corpusMendingHandsPartial},
+		// #2047: the board that wrote mending_hands_partial.json prevented damage
+		// without announcing it; a prevention that prevents something
+		// now emits EventDamagePrevented (CR 615.13), one more event in
+		// the log. The file stays and is still restored; the same board
+		// is a new file.
+		{"mending_hands_partial_announced", corpusMendingHandsPartial},
 		{"whip_redirect", corpusWhipRedirect},
 		{"cosmic_intervention", corpusCosmicIntervention},
 		// v7, added by tier 3b-2 (#1497) as new files: block-rule
@@ -314,7 +319,12 @@ func corpusBoards() []corpusBoard {
 		// follow-up body protecting a player and their creatures, already
 		// spent in this batch (SpentBatch); a no-choice "creature of the
 		// chosen type" shield; and a shield pinned to one permanent.
-		{"next_damage_shields", corpusNextDamageShields},
+		// #2047: the board that wrote next_damage_shields.json prevented damage
+		// without announcing it; a prevention that prevents something
+		// now emits EventDamagePrevented (CR 615.13), one more event in
+		// the log. The file stays and is still restored; the same board
+		// is a new file.
+		{"next_damage_shields_announced", corpusNextDamageShields},
 		// v7, added by ADR 0108 PR 1 (#1886, #1887) as a new file: the
 		// turn-scoped death and regeneration marks as data — a pinned
 		// exileIfWouldDie (Lava Coil), the same kind over the live
@@ -397,7 +407,12 @@ func corpusBoards() []corpusBoard {
 		// combat-only one pinned to a protected creature, Prismatic
 		// Strands' property-only shape, and Dark Sphere's half shield
 		// (Mod.Half on preventNextFromSource).
-		{"source_shields", corpusSourceShields},
+		// #2047: the board that wrote source_shields.json prevented damage
+		// without announcing it; a prevention that prevents something
+		// now emits EventDamagePrevented (CR 615.13), one more event in
+		// the log. The file stays and is still restored; the same board
+		// is a new file.
+		{"source_shields_announced", corpusSourceShields},
 		// v7, added by ADR 0109 PR 2 (#1894, #1604) as a new file: a
 		// duration with two conditions (Seasinger's "for as long as you
 		// control this creature and this creature remains tapped",
@@ -448,7 +463,12 @@ func corpusBoards() []corpusBoard {
 		// Archon's, whose follow-up deals its damage to a chosen player
 		// (Mod.To); and a combat shield with a follow-up (Inkshield's
 		// shape).
-		{"shield_follow_ups", corpusShieldFollowUps},
+		// #2047: the board that wrote shield_follow_ups.json prevented damage
+		// without announcing it; a prevention that prevents something
+		// now emits EventDamagePrevented (CR 615.13), one more event in
+		// the log. The file stays and is still restored; the same board
+		// is a new file.
+		{"shield_follow_ups_announced", corpusShieldFollowUps},
 		// v7, added by ADR 0108 PR 7 (#1904) as a new file: the
 		// recipient and to-and-by shields as data — Energy Arc's one
 		// to-and-by record over two creatures (Mod.AndDealtBy, an

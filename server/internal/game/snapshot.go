@@ -455,8 +455,10 @@ type GameSnapshot struct {
 
 	// PreventionFollowUps is Game.preventionFollowUps (ADR 0107 §6): the
 	// CR 615.5 follow-ups owed for an instance of damage a CR 616 prompt
-	// paused half way. Empty on nearly every file. A body key this binary
-	// does not have is refused (ErrUnknownEffectKey).
+	// paused half way, and the CR 615.13 announcements owed beside them
+	// (#2047: `announce`, additive within v9). Empty on nearly every file.
+	// A body key this binary does not have is refused
+	// (ErrUnknownEffectKey).
 	PreventionFollowUps []PreventionFollowUp `json:"preventionFollowUps,omitempty"`
 
 	// ResolutionOpen is Game.resolutionOpen (#1289,
@@ -1416,7 +1418,11 @@ type stackItemSnapshot struct {
 	DoubledBy     uuid.UUID   `json:"doubledBy,omitempty"`
 	DoubledByName string      `json:"doubledByName,omitempty"`
 	Targets       []TargetRef `json:"targets,omitempty"`
-	Payload       []TargetRef `json:"payload,omitempty"`
+	// Spliced is StackItem.Spliced (ADR 0202, #1989): the texts spliced
+	// onto a spell and their targets, by catalog key. Additive within v9:
+	// a file without it spliced nothing, which is every game before it.
+	Spliced []SplicedText `json:"spliced,omitempty"`
+	Payload []TargetRef   `json:"payload,omitempty"`
 	// Trigger is the triggering event (#1223). Carried, and it has
 	// to be: a targeted trigger waiting on its CR 603.3d prompt is a
 	// restorable snapshot, and a restore that lost the event would
@@ -2599,6 +2605,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		DoubledBy:        s.DoubledBy,
 		DoubledByName:    s.DoubledByName,
 		Targets:          copyTargetRefs(s.Targets),
+		Spliced:          cloneSplicedTexts(s.Spliced),
 		Payload:          copyTargetRefs(s.Payload),
 		Trigger:          cloneTriggerContext(s.Trigger),
 		Modes:            copyInts(s.Modes),
@@ -3584,6 +3591,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		DoubledBy:        s.DoubledBy,
 		DoubledByName:    s.DoubledByName,
 		Targets:          copyTargetRefs(s.Targets),
+		Spliced:          cloneSplicedTexts(s.Spliced),
 		Payload:          copyTargetRefs(s.Payload),
 		Trigger:          cloneTriggerContext(s.Trigger),
 		Modes:            copyInts(s.Modes),

@@ -128,6 +128,8 @@
     beginChoice as beginTargetingChoice,
     beginForAbility as beginTargetingForAbility,
     beginForModes as beginTargetingForModes,
+    beginSpliceOnly,
+    spliceOffersOf,
     advance,
     allPicks,
     choiceAnswer,
@@ -581,6 +583,7 @@
     giftOpponent?: string,
     costBranch?: number,
     assistPlayer?: string,
+    splices?: string[],
   ): void {
     const card = altCostPromptCard;
     const choices = altCostPromptChoices;
@@ -603,6 +606,9 @@
     // ADR 0150 §5: the helper asked, if any; the cast rides it as
     // `assist_player` and waits for their answer.
     if (assistPlayer !== undefined) next = { ...next, assistPlayer };
+    // ADR 0202: the cards spliced onto it, in the order ticked; their
+    // clauses join the target walk after the spell's own.
+    if (splices !== undefined && splices.length > 0) next = { ...next, splices };
     afterAltCost(card, next);
   }
 
@@ -1390,6 +1396,7 @@
     if (
       alternativeCostsOf(card).length > 0 ||
       optionalCostsOf(card).length > 0 ||
+      spliceOffersOf(card).length > 0 ||
       costBranchesOf(card).length > 0 ||
       assistOf(card, choices.forceCast === true) !== undefined
     ) {
@@ -1587,6 +1594,7 @@
       needsFacePicker(card) ||
       needsPermissionTypePicker(card) ||
       optionalCostsOf(card).length > 0 ||
+      spliceOffersOf(card).length > 0 ||
       costBranchesOf(card).length > 0 ||
       assistOf(card, false) !== undefined;
     if (asks) {
@@ -1731,6 +1739,10 @@
     if (opensTargetPicker(mode) && beginTargeting(card, mode, choices, alt)) {
       return;
     }
+    // ADR 0202: a spell with no target of its own still asks for the
+    // targets of the text spliced onto it (Glacial Ray onto Kodama's
+    // Reach).
+    if (beginSpliceOnly(card, choices)) return;
     const params: Record<string, unknown> = { instance_id: card.instance_id };
     applyCastChoices(params, choices);
     guardedSendAction("cast_spell", params, viewerID ?? undefined);

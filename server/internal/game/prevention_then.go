@@ -77,8 +77,10 @@ func (u PreventionUnit) Valid() bool { return u == ThenPerRecipient || u == Then
 // runReplaceLocked fires one gathered replacement's Replace — every
 // apply-loop path that applies an effect goes through here — and, for a
 // prevention static with an additional effect, owes that effect with what
-// the Replace prevented (CR 615.5). A Replace error is the effect's own
-// failure, logged; the event goes on.
+// the Replace prevented (CR 615.5). For every prevention effect that
+// prevented some damage it also owes CR 615.13's announcement
+// (damage_prevented.go). A Replace error is the effect's own failure,
+// logged; the event goes on.
 //
 // Caller must hold g.mu (write).
 func (g *Game) runReplaceLocked(ev *ReplacementEvent, a activeReplacement) {
@@ -89,8 +91,11 @@ func (g *Game) runReplaceLocked(ev *ReplacementEvent, a activeReplacement) {
 	if a.effect.Replace == nil {
 		return
 	}
-	measured := g.preventionStaticLocked(ev, a)
-	before := ev.DamageAmount
+	// CR 615.5 and 615.13 both read what a prevention effect prevented:
+	// the damage it took off the event, all of it when it cancelled it.
+	followUp := g.preventionStaticLocked(ev, a)
+	measured := followUp || preventionMeasuredLocked(ev, a)
+	before, target := ev.DamageAmount, ev.DamageTarget
 	if err := a.effect.Replace(ev, g, a.source); err != nil {
 		g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
 	}
@@ -101,7 +106,21 @@ func (g *Game) runReplaceLocked(ev *ReplacementEvent, a activeReplacement) {
 	if ev.Canceled {
 		after = 0
 	}
-	g.oweStaticFollowUpLocked(ev, a, max(before-after, 0), before)
+	prevented := max(before-after, 0)
+	if followUp {
+		g.oweStaticFollowUpLocked(ev, a, prevented, before)
+	}
+	// CR 615.13 (#2047, damage_prevented.go): an application that
+	// prevented some of the damage is what "whenever damage is
+	// prevented" triggers on.
+	g.announcePreventionLocked(ev, a, target, prevented, before)
+}
+
+// preventionMeasuredLocked reports whether `a` is a prevention effect
+// about to be applied to a damage event that still has damage in it: the
+// case whose Replace the apply loop measures.
+func preventionMeasuredLocked(ev *ReplacementEvent, a activeReplacement) bool {
+	return ev != nil && ev.Kind == RepEventDamage && !ev.Canceled && ev.DamageAmount > 0 && a.effect.Prevention
 }
 
 // preventionStaticLocked reports whether `a` is a prevention static with

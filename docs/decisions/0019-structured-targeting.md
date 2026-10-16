@@ -1122,6 +1122,54 @@ Back-out: take the `min(len(slots), 1)` shortcut in `finishPinnedRetargetLocked`
 `TestParapetThrasherOffersNoArtifactBulletWithoutThatOpponentsArtifact` fails; drop the item's trigger from
 `stackItemSourceLocked` and the resolution re-check fails (`TestParapetThrasherDestroysTheDamagedOpponentsArtifact`).
 
+## Amendment (2026-10-16, #1815): targets chosen at random
+
+Every target so far was chosen by a player: CR 115.7's retarget through the `retarget` prompt, a trigger's CR 603.3d
+target through `pick_target`. Chef's Kiss ("Copy it, then reselect the targets at random for the spell and the copy.
+The new targets can't be you or a permanent you control.") and Witch Hunt ("target opponent chosen at random") need the
+ENGINE to pick. Both picks are the same act: a uniform draw over the legal set the prompt would have offered, from the
+keyed "pick" stream (ADR 0054) keyed to the player and the source, so an undo replays it. Nothing new is persisted.
+
+**1. Reselecting a spell's targets at random (CR 115.7).** `Game.ReselectTargetsAtRandomForEffect(RandomRetarget)`
+(game/random_retarget.go) is the 2026-09-22 retarget with the chooser replaced by the draw; legality is unchanged and
+judged for the ITEM's controller. Three readings, each from the rulings:
+
+- The draw is over ALL legal targets, the current one included. "Reselect" is not CR 115.7a's "change to another":
+  Grip of Chaos's reminder "(Select from among all legal targets.)" and its ruling "it may still choose the original
+  one". The other reading (exclude the current target) would make the card stronger than printed.
+- Each instance of the word "target" is drawn on its own, in announce order ("a new target will be reselected at random
+  for each instance of the word target", Chef's Kiss 2021-06-18). A candidate is kept only when the list with it in that
+  slot passes `retargetCheckLocked`, so the duplicate rule, Distinct, the set rules and the relations hold and the final
+  list is legal (CR 115.7e).
+- A slot with nothing that could be selected keeps its target, even an illegal one ("If there are no legal targets that
+  could be selected, the targets remain unchanged"). `RandomRetarget.Exclude` is "can't be you or a permanent you
+  control": that player and the permanents they control are never drawn.
+
+The rewrite goes through `RetargetStackItemForEffect`, so the new targets become targets (CR 115.7) and a division
+travels with its slot (CR 115.7f). "Targets only a single permanent or player" is CR 115.9c, not `HasASingleTarget`'s
+slot count: `Game.StackItemSoleTargetForEffect` counts DIFFERENT objects and players, and the card predicate checks
+that one's current state (CR 115.9b). `CopySpellKeepingTargetsForEffect` makes "copy it" (CR 707.10, no new targets)
+and returns the copy's id so the card can reselect for it next.
+
+**2. "Target … chosen at random" on a trigger (CR 603.3d).** `TargetSpec.AtRandom` (`effects.ChosenAtRandom`) is data
+on the clause, for `RelativeToSource`'s reason. The trigger target walk (`queuePickTargetStepLocked`) computes the
+step's legal set exactly as for a prompt and, for a random clause, draws one target from it instead of queuing
+`pick_target`; with no legal target a required clause removes the ability as before. A reflexive trigger's clause is
+walked the same way. `effects.Register` refuses the flag on a spell's or an activated ability's clause (their targets
+are announced by the player in one message, CR 601.2c / 602.2b; Goblin Test Pilot waits on that, #4051) and on any
+clause but one undivided target, the only shape printed.
+
+**Owner decision not needed.** The rulings settle each reading above, and each is the rules-faithful option.
+
+**Cards:** Chef's Kiss, Witch Hunt, Scab-Clan Giant, Knight Rampager and Power Pack, all `full`. Grip of Chaos waits on
+a trigger for a triggered ability put on the stack (#4050); Explosion of Riches is card work (#4052).
+
+Back-out: leave the current target out of the draw and `TestChefsKissCanRedrawTheCurrentTarget` fails; drop the
+exclusion and `TestChefsKissNeverPicksAPermanentYouControl` fails; move a target with nothing selectable and
+`TestChefsKissKeepsTargetsWhenNothingElseCanBeSelected` fails; queue the `pick_target` prompt for a random clause and
+`TestWitchHuntGoesToAnOpponentChosenAtRandom` fails; draw from a private source and
+`TestChefsKissReplaysTheDrawAfterUndo` fails.
+
 ## Amendment (2026-10-16, #2055): a target chosen by an opponent ("target … of an opponent's choice")
 
 Ten Commander-legal cards print a target "of an opponent's choice" (Nova Pentacle, Evangelize, Preacher, Arena, Magus

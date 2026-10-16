@@ -361,6 +361,26 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    activated ability, a `Repeatable` spec or a raised count. A card
    that lets someone choose instead (Typhoid Mary) is not this.
 
+   **"Target … chosen at random" (#1815, CR 603.3d)** wraps a
+   **trigger's** clause in `ChosenAtRandom(spec)` (Witch Hunt's
+   `ChosenAtRandom(TargetPlayer("target opponent chosen at random",
+   Opponent()))`, Scab-Clan Giant, Power Pack). The engine draws the
+   target uniformly from the legal set as the trigger goes on the
+   stack, from the keyed random stream, and no `pick_target` prompt is
+   queued; with no legal target the trigger is removed. `Register`
+   refuses it on a spell, an activated ability (Goblin Test Pilot waits
+   on #4051) and any clause but one undivided target. "Choose an
+   opponent at random" that is not a target (Knight Rampager) is
+   `ChooseAtRandomForEffect` at resolution. "Reselect the targets at
+   random" for a spell on the stack (Chef's Kiss) is
+   `Game.ReselectTargetsAtRandomForEffect(game.RandomRetarget{…})`:
+   every target drawn from all its legal targets, the current one
+   included, less `Exclude` and that player's permanents; a target with
+   nothing to be keeps its target. "A spell that targets only a single
+   permanent or player" is `TargetsOnlyASinglePermanentOrPlayer()`
+   (CR 115.9c: different objects, so one creature targeted twice
+   counts).
+
    **"Choose one that hasn't been chosen [this turn]" (#1749,
    [ADR 0097](decisions/0097-modes-that-havent-been-chosen.md))**
    is a constructor, not a tally in the card file:
@@ -2465,6 +2485,8 @@ PreventDamageDealtTo(PreventionStatic{To: ToThisCreature, Then: removeACounterFr
 // once per SOURCE: three attackers, three counters (Nine Lives).
 PreventDamageASourceWouldDeal(PreventionStatic{To: ToYou, Then: nineLivesCounterBody, Label: …})
 // Gates and filters: Damage: CombatDamage, From: FromACreature(), While: WhileItHasAPlusOneCounter.
+// "If a spell you control would deal damage" is From: FromASpellYouControl() (Hostility);
+// "another creature you control" is To: ToAnotherCreatureYouControl (Vigor).
 
 // The scoped shields carry it too:
 PreventNextDamage{Target: id, Amount: 3, Then: countersOnItPerPreventedBody}    // Test of Faith
@@ -3926,6 +3948,11 @@ otherwise wrap the shape: `InGraveyard(Landfall(...))` is Bloodghast,
 shuffle (#2073: death, sacrifice, discard, mill or counter, one
 trigger per arrival; `ShuffleYourGraveyardIntoYourLibrary` is its
 effect),
+`WhenThisIsPutIntoAGraveyardFromAnywhereShuffleItIn(label)` is the
+whole "When ~ is put into a graveyard from anywhere, shuffle it into
+its owner's library" line (the Incarnations, Serra Avatar, #2038: the
+card goes in only while it is the object that arrived, and the
+library is shuffled either way, CR 701.24c),
 `InExile(AtYourUpkeep(...))` is suspend's countdown (#659). The
 wrapper sets `game.TriggeredAbility.Zones`, which REPLACES the default
 rather than adding to it — an ability printed to work from the
@@ -4849,6 +4876,27 @@ second bullet the first one's. The client offers "Entwine {2}" where it
 offers kicker and the picker reads `modes.if_optional_paid`; the bot
 enumerator offers the entwined cast as its own move.
 
+**Splice (CR 702.47, #1989, [ADR 0202](decisions/0202-splice.md)):**
+"Splice onto Arcane [cost]" is one field. Write the card exactly as you
+would to cast it alone — its `Targets` and `OnResolve` ARE the rules text
+a spell gains — and add:
+
+```go
+Splice: SpliceOntoArcane("{2}{R}{R}"),          // Overblaze
+Splice: SpliceOntoInstantOrSorcery("{2}{U}"),   // Everdream
+```
+
+The engine offers the card while it is in the caster's hand, charges the
+cost at CR 601.2f, reveals it, takes its text's targets and runs the body
+after the spell's own text against a view of the item whose `Targets` are
+the spliced text's own. The source is the spell (CR 702.47c), so read the
+target with `firstLegalTarget(ctx)` and deal damage from `ctx.Source()`,
+and name a shield or multiplier by the CARD's name in its `Label`, since
+the source's name is the spell's. `Register` refuses a splice with no mana
+cost (a non-mana splice cost waits on #4055), and a splice card with modes,
+an X, a division or a cost of its own. `TestSpliceMatchesThePrintedSplice`
+holds the declared quality and cost to the printed line.
+
 **Still out:** "enters with a
 counter for each time it was kicked" (Everflowing Chalice, Joraga
 Warcaller) — that count is read during the CR 614 entry pipeline,
@@ -5231,6 +5279,16 @@ sentence ("up to two target creatures", "those creatures") are one
 record too: `Protect: ShieldTheTargetPermanents` or `ShieldObjects(ids…)`.
 "You and permanents you control" is `ShieldYouAndPermanentsYouControl`.
 The rows and helpers are in `effects/shield_families_recipient.go`.
+
+**"Whenever damage … is prevented" (CR 615.13, #2047, ADR 0108
+amendment of 2026-10-16)** is a trigger on `game.EventDamagePrevented`,
+not a follow-up. The engine emits one per application of one prevention
+effect to one damage instance, per recipient, with `Target` the
+recipient and `Amount` the damage prevented, and none for damage that
+can't be prevented. "Dealt to you" is
+`WheneverDamageToYouIsPrevented(label, effect)` (Selfless Squire), read
+`item.Trigger.Event.Amount` for "that many". "Prevented this way" is
+still the effect's own `Then`, never this event.
 
 **Sources a property list can't describe (#2026, ADR 0108 §7 amendment
 of 2026-10-05).** "Non-Spider creatures", "creatures with power 3 or

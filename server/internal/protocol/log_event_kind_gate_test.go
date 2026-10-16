@@ -65,7 +65,7 @@ const (
 var silentEventKinds = map[string]string{
 	// --- already told, by another line -------------------------------
 	"EventEchoPaid":        "the payment itself is the line: the mana spent, the discard or the sacrifice (ADR 0108 §5); the event exists for Shah of Naar Isle's trigger, whose own line follows",
-	"EventDamagePrevented": "never emitted: it is only the context a prevention follow-up body is handed (ADR 0107 §6); the follow-up's own effect is what the table sees",
+	"EventDamagePrevented": "prevented damage is the damage line that is not written; the event is the context a prevention follow-up body is handed (ADR 0107 §6) and what a CR 615.13 \"whenever damage is prevented\" trigger watches (#2047), whose LogTrigger line is what the table sees",
 	"EventConcede":         "the EventPlayerEliminated that follows it (Label \"concede\") is the one line a concession writes (ADR 0057 Decision 1)",
 	"EventETB":             silentAlreadyToldAsAZoneMove,
 	"EventLTB":             silentAlreadyToldAsAZoneMove,

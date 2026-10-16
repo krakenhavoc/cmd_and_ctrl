@@ -32,6 +32,9 @@ export interface AutoTapCastParams {
   fromZone?: string;
   alternativeCost?: string;
   optionalCosts?: number[];
+  // ADR 0202: the cards spliced onto the spell. Each one's splice cost
+  // joins the total (CR 601.2f).
+  splices?: string[];
   tapIDs?: string[];
   face?: number;
   // #1242: the cards and permanents named to the additional cost.
@@ -75,6 +78,7 @@ export function castPreviewParams(choices: CastChoices | null | undefined): Auto
   if (choices.optionalCosts && choices.optionalCosts.length > 0) {
     out.optionalCosts = [...choices.optionalCosts];
   }
+  if (choices.splices && choices.splices.length > 0) out.splices = [...choices.splices];
   if (choices.tapIDs && choices.tapIDs.length > 0) out.tapIDs = [...choices.tapIDs];
   if (choices.face) out.face = choices.face;
   if (choices.sacrificeIDs && choices.sacrificeIDs.length > 0) {
@@ -128,6 +132,8 @@ export function castPreviewParamsFromPayload(
     );
     if (costs.length > 0) out.optionalCosts = costs;
   }
+  const splices = stringIDs(payload.splices);
+  if (splices.length > 0) out.splices = splices;
   if (Array.isArray(payload.tap_ids)) {
     const ids = payload.tap_ids.filter((s): s is string => typeof s === "string" && s !== "");
     if (ids.length > 0) out.tapIDs = ids;

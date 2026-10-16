@@ -1539,6 +1539,25 @@ type AdditionalCostView struct {
 // `optional_costs`, repeated once per payment for a repeatable one.
 // It is a POSITION and not a key, because that is what the engine's
 // paid record holds; `key` is here for the client's own labelling.
+// SpliceOfferView is one card the caster may splice onto the spell
+// being cast (ADR 0202, CR 702.47a).
+type SpliceOfferView struct {
+	// CardID is the hand card's instance ID — what `splices` names.
+	CardID string `json:"card_id"`
+	// Name is the card's name.
+	Name string `json:"name"`
+	// Label is the ability as printed: "Splice onto Arcane {1}{R}".
+	Label string `json:"label"`
+	// ManaCost is the splice cost.
+	ManaCost string `json:"mana_cost"`
+	// TargetMode, LegalTargets and Clauses are the spliced text's target
+	// clause, judged from the spell (CR 702.47c-d). Absent for a text
+	// with no target.
+	TargetMode   string             `json:"target_mode,omitempty"`
+	LegalTargets *LegalTargetsView  `json:"legal_targets,omitempty"`
+	Clauses      []LegalTargetsView `json:"clauses,omitempty"`
+}
+
 type OptionalCostView struct {
 	// Index is the cost's position in the card's OptionalCosts slice
 	// — the value the announcement names.
@@ -2135,7 +2154,12 @@ type StackItemView struct {
 	// make the table guess. The caster's hand card is gone by the
 	// time the spell is on the stack, so the labels have to travel
 	// with the item. Added by #764 (ADR 0065 §7).
-	ModeLabels   []string       `json:"mode_labels,omitempty"`
+	ModeLabels []string `json:"mode_labels,omitempty"`
+	// Spliced names the cards whose text was spliced onto this spell
+	// (ADR 0202, CR 702.47a), in the order that text happens. They were
+	// revealed as it was cast, so this is public. Their targets are in
+	// `targets`, each with `splice` naming its text.
+	Spliced      []string       `json:"spliced,omitempty"`
 	XValue       int            `json:"x_value,omitempty"`
 	Distribution map[string]int `json:"distribution,omitempty"`
 	HoldPriority bool           `json:"hold_priority,omitempty"`
@@ -2241,6 +2265,10 @@ type TargetRefView struct {
 	// always meant. Added by #764 (ADR 0065 §2).
 	Slot int `json:"slot,omitempty"`
 	Mode int `json:"mode,omitempty"`
+	// Splice names the spliced text this pick answers (ADR 0202,
+	// CR 702.47d): the 1-based position in the item's `spliced`. Omitted
+	// for the spell's own text.
+	Splice int `json:"splice,omitempty"`
 }
 
 // VoteView is the wire form of game.Vote. Ballots is keyed by voter
@@ -4020,6 +4048,13 @@ type CastSurfaceView struct {
 	// `alternative_costs`, because the client asks both questions in
 	// one modal.
 	OptionalCosts []OptionalCostView `json:"optional_costs,omitempty"`
+	// SpliceOffers are the cards in the caster's hand that may be
+	// spliced onto this spell as it is cast (CR 702.47a, ADR 0202), each
+	// with its splice cost and its text's target clause judged from this
+	// spell (CR 702.47c). The pick rides cast_spell as `splices`. Absent
+	// for every spell nothing in the hand splices onto. Per viewer, and
+	// never public: it names other cards in the hand.
+	SpliceOffers []SpliceOfferView `json:"splice_offers,omitempty"`
 	// Assist is a spell with assist's offer to this caster (CR
 	// 702.132a, ADR 0150 §5): who may be asked to help pay its generic
 	// mana and how much generic there is. Read by the cast flow's
@@ -6171,6 +6206,8 @@ func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	s.XMax = nil
 	// ADR 0150 §5: and assist's offer, which is "who may YOU ask".
 	s.Assist = nil
+	// ADR 0202: the splice offers name other cards in the hand.
+	s.SpliceOffers = nil
 	// #1221: an activation row is the same kind of answer as
 	// `castable_here` — "what may YOU announce from here" — and it
 	// carries legal sets of its own. None of it is public.
@@ -6750,6 +6787,10 @@ func stampCastTargetTaxes(g *game.Game, caster uuid.UUID, spell game.Card, out *
 		o := &out.OptionalCosts[i]
 		stampAll(o.LegalTargets, o.Clauses)
 	}
+	for i := range out.SpliceOffers {
+		o := &out.SpliceOffers[i]
+		stampAll(o.LegalTargets, o.Clauses)
+	}
 }
 
 // castStampsBaseFor is castStampsFor before the target-tax pass.
@@ -6824,6 +6865,11 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 		optional = g.OptionalCostsForCastLocked(caster, live)
 	}
 	out.OptionalCosts = viewOfOptionalCosts(g, caster, src, optional)
+	// ADR 0202: the cards in the caster's hand that splice onto this
+	// spell, asked of the engine's own offer walk.
+	if haveLive {
+		out.SpliceOffers = viewOfSpliceOffers(g, caster, src, live)
+	}
 	// ADR 0150 §5: assist's "choose another player", asked in the same
 	// modal as the gift's opponent. The total is the engine's own
 	// (AssistGenericLocked), so "up to {N}" is the cap the park uses.
@@ -9894,6 +9940,7 @@ func viewOfStackItem(it *game.StackItem) StackItemView {
 		Label:        it.Label,
 		Modes:        append([]int(nil), it.Modes...),
 		ModeLabels:   it.ModeLabels(),
+		Spliced:      it.SplicedNames(),
 		XValue:       it.XValue,
 		HoldPriority: it.HoldPriority,
 		SplitSecond:  it.SplitSecond,
@@ -9915,14 +9962,16 @@ func viewOfStackItem(it *game.StackItem) StackItemView {
 		view.DoubledBy = it.DoubledBy.String()
 		view.DoubledByName = it.DoubledByName
 	}
-	if len(it.Targets) > 0 {
-		view.Targets = make([]TargetRefView, len(it.Targets))
-		for i, t := range it.Targets {
+	// ADR 0202: the spell's whole target list, a spliced text's included.
+	if all := it.AllTargets(); len(all) > 0 {
+		view.Targets = make([]TargetRefView, len(all))
+		for i, t := range all {
 			view.Targets[i] = TargetRefView{
-				Kind: string(t.Kind),
-				ID:   uuidStringOrEmpty(t.ID),
-				Slot: t.Slot,
-				Mode: t.Mode,
+				Kind:   string(t.Kind),
+				ID:     uuidStringOrEmpty(t.ID),
+				Slot:   t.Slot,
+				Mode:   t.Mode,
+				Splice: t.Splice,
 			}
 		}
 	}
@@ -11229,6 +11278,8 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.Delve = nil
 	// ADR 0150: and so does "assist".
 	out.Assist = nil
+	// ADR 0202: an offer to splice onto it says it is an Arcane spell.
+	out.SpliceOffers = nil
 	// #916: derived from the mana cost, which is cleared above, so
 	// it goes with it — "two Phyrexian symbols" on a face-down card
 	// would name Dismember out loud.
@@ -13424,4 +13475,30 @@ func viewOfTriggerOrder(m game.TriggerOrderMode) string {
 		return ""
 	}
 	return m.Wire()
+}
+
+// viewOfSpliceOffers is the cards in the caster's hand that splice onto
+// `spell` (ADR 0202): the engine's offer walk, each text's clause judged
+// from the spell (CR 702.47c).
+func viewOfSpliceOffers(g *game.Game, caster uuid.UUID, src game.TargetSource, spell game.Card) []SpliceOfferView {
+	offers := g.SpliceOffersLocked(caster, spell, src)
+	if len(offers) == 0 {
+		return nil
+	}
+	out := make([]SpliceOfferView, 0, len(offers))
+	for _, o := range offers {
+		v := SpliceOfferView{
+			CardID:   o.CardID.String(),
+			Name:     o.Name,
+			Label:    o.Ability.Label(),
+			ManaCost: o.Ability.ManaCost,
+		}
+		if spec := o.Targets; spec != nil {
+			v.TargetMode = spec.Mode
+			v.LegalTargets = viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, spec), spec)
+			v.Clauses = viewOfClauses(g, src, spec)
+		}
+		out = append(out, v)
+	}
+	return out
 }

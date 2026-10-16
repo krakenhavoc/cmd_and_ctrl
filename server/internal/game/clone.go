@@ -904,6 +904,9 @@ func cloneStackItem(s *StackItem) *StackItem {
 		out.Targets = make([]TargetRef, len(s.Targets))
 		copy(out.Targets, s.Targets)
 	}
+	// ADR 0202: the spliced texts and their targets, deep-copied for
+	// the reason Targets is.
+	out.Spliced = cloneSplicedTexts(s.Spliced)
 	// ADR 0106 §4 (#1806): the spell's "can't be countered" marks.
 	// Plain values, so a fresh backing array is all the isolation an
 	// undo snapshot needs.

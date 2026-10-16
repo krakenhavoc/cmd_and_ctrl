@@ -107,6 +107,11 @@ type CardDef struct {
 	// Delve is CR 702.66: this spell may exile cards from its caster's
 	// graveyard to pay generic mana (ADR 0100). Read through DelveFor.
 	Delve bool
+	// Splice is CR 702.47's "Splice onto [quality] [cost]": while the
+	// card is in its owner's hand it may be revealed as they cast a spell
+	// of that quality, adding its rules text (the rest of this row) to
+	// the spell (#1989, ADR 0202). Read through SpliceAbilityFor.
+	Splice *SpliceAbility
 	// SpendOnly is the spell's own "Spend only black mana on X" (Drain
 	// Life, Consume Spirit) or "Spend only black and/or red mana on X"
 	// (Soul Burn), #2556: the colour half of a restriction on the mana
