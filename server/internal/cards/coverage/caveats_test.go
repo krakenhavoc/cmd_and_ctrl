@@ -71,14 +71,6 @@ var adoptableGaps = map[string]string{
 		granted one, and CR 702.34 would let its owner pick either cost.
 		Past in Flames has the same gap. Closing it means offering both
 		offers under one key, which is its own change to the cast path.`,
-	"Damping Sphere / storm": `A phrase collision, pinned rather than dodged
-		(#1258 added the storm row). The caveat's "storm tax" is Damping
-		Sphere's own "each spell costs {1} more for each other spell
-		that player has cast this turn", which works; the gap it
-		describes is the land-mana half. Damping Sphere has no storm and
-		never will, so there is nothing to adopt — but narrowing the row's
-		phrases to dodge one caveat would blind it to "storm isn't
-		implemented" on the next card.`,
 }
 
 // TestAdoptableGapsArePinned fails on any movement in that set.

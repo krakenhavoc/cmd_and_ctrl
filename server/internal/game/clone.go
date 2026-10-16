@@ -227,6 +227,12 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ManaChosen) > 0 {
 				cloned.ManaChosen = append([]string(nil), c.ManaChosen...)
 			}
+			// #3939: an activation's settled colours and the picks it
+			// still owes.
+			if len(c.ManaSettled) > 0 {
+				cloned.ManaSettled = append([]string(nil), c.ManaSettled...)
+			}
+			cloned.ManaPicksLeft = copyManaPickSlots(c.ManaPicksLeft)
 			if len(c.TriggerOrderIDs) > 0 {
 				cloned.TriggerOrderIDs = append([]uuid.UUID(nil), c.TriggerOrderIDs...)
 			}
