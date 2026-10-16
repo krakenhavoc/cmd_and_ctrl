@@ -25,6 +25,9 @@ import (
 //     — Beacon of Destiny
 //     RedirectDamage{Choose: true, Protect: ShieldYouAndPermanentsYouControl, Amount: 2, To: RedirectToClause(0)}
 //     — Harm's Way
+//     RedirectDamage{Protect: ShieldCreatures, To: RedirectToYou, Optional: true}
+//     — Blood of the Martyr's "you may have that damage dealt to you
+//       instead" (#2056)
 //
 //   - a static one ("All damage that would be dealt to you is dealt to
 //     enchanted creature instead", Pariah) is staticRedirection, a
@@ -93,11 +96,18 @@ type RedirectDamage struct {
 	FromThis bool
 	From     uuid.UUID
 	Queries  []game.PermanentQuery
+	// Filter is the rest of an unnamed source's description, read as the
+	// damage would be dealt (#2056, #2026's game.DamageSourceFilter):
+	// Kjeldoran Royal Guard's "by unblocked creatures" is Queries
+	// {creature} and Filter {Combat: unblocked}. Only with no Choose,
+	// FromThis or From.
+	Filter game.DamageSourceFilter
 
 	// Protect is whose damage is redirected. AlsoYou adds "and/or you" to
 	// a protected permanent ("this creature and/or you", Glarecaster).
 	// Opponents is "to an opponent" (Soltari Guerrillas), in place of
-	// Protect.
+	// Protect. A recipient set (ShieldCreatures, ShieldCreaturesYouControl,
+	// #2056) is read as the damage would be dealt and protects no player.
 	Protect   ShieldTarget
 	AlsoYou   bool
 	Opponents bool
@@ -115,6 +125,11 @@ type RedirectDamage struct {
 	// runs with the amount.
 	To   RedirectTo
 	Then game.BodyRef
+
+	// Optional is "you may have that damage dealt to <To> instead"
+	// (Blood of the Martyr, #2056): the controller is asked each time it
+	// would apply. Needs a To.
+	Optional bool
 
 	// UntilYourNextTurn is "until your next turn"; false is "this turn".
 	UntilYourNextTurn bool
@@ -141,12 +156,27 @@ func (r RedirectDamage) Apply(ctx *Context) error {
 		Next:              r.Next,
 		Amount:            r.Amount,
 		Then:              r.Then,
+		Optional:          r.Optional,
 		UntilYourNextTurn: r.UntilYourNextTurn,
 		Label:             label,
 	}
-	if r.Opponents {
+	if !r.Filter.IsZero() {
+		if r.Choose || r.FromThis || r.From != uuid.Nil {
+			return nil
+		}
+		f := r.Filter
+		// "non-<type>": printed words (CR 612.2, #3872).
+		f.Except = queriesThroughText(ctx, f.Except, false)
+		red.SourceFilter = f
+	}
+	switch {
+	case r.Opponents:
 		red.ProtectRecipients = game.DamageRecipientsOpponents
-	} else {
+	case r.Protect.kind == shieldRecipientSet:
+		// #2056: "creatures you control", "any creature" — read as the
+		// damage would be dealt; nothing is named now.
+		red.ProtectSet = recipientsThroughText(ctx, r.Protect.recipients)
+	default:
 		protected := game.NextDamageShield{Controller: ctx.Controller()}
 		if !(PreventNextDamageFromSource{Protect: r.Protect}).protect(ctx, &protected) {
 			return nil

@@ -496,6 +496,11 @@ func (g *Game) gatherScopedReplacementsLocked(ev *ReplacementEvent, applied map[
 				// Locked). Eye for an Eye's shape deals nothing instead
 				// (§9 decision 3) and does not.
 				a.effect.RedirectsDamage = redirectsAnywhere(m)
+				// #2056: "you may have that damage dealt to you instead"
+				// (Blood of the Martyr) is a "may" its controller answers
+				// for this event (offerOptionalReplacementLocked), asked
+				// once per event (CR 614.5).
+				a.effect.Optional = m.Optional
 			}
 			if m.Kind == ModMultiplyDamage {
 				// Two multipliers on one event (two Insults, an Insult and
@@ -571,6 +576,16 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 			return g.applyScopedReplacementLocked(e, mod, m, ev)
 		},
 		Controller: func(ev *ReplacementEvent, g *Game, _ *Card) uuid.UUID {
+			if kind == ModRedirectDamage {
+				// #2056: an optional redirection's "you may" is its
+				// record's controller's to answer
+				// (optionalReplacementChooserLocked reads this). The CR
+				// 616 ordering is still the affected player's: a damage
+				// event names its chooser itself (affectedPlayerForEvent).
+				if e, m, ok := g.scopedReplacementModLocked(seq, mod, kind); ok && m.Optional {
+					return e.Controller
+				}
+			}
 			switch kind {
 			case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModPreventNextCombatFromSource,
 				ModPreventFromSource, ModRedirectDamage:

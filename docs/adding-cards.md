@@ -5186,7 +5186,15 @@ declare `RedirectsDamage: true`. In practice:
   `RedirectToClause(i)`, `RedirectToEnchanted`, `RedirectToObject(id)`).
   `redirectRow` and `redirectSpell` wrap it; `enKorRow` is the en-Kor
   cycle's "{0}: the next 1 damage … is dealt to target creature you
-  control instead";
+  control instead". Since #2056 (ADR 0108 amendment 2026-10-16) it also
+  takes `Filter` (#2026's `game.DamageSourceFilter`, read as the damage
+  would be dealt: "by unblocked creatures" is `Queries:
+  {QueryTypes("creature")}` with `Filter: {Combat: unblocked}`, Kjeldoran
+  Royal Guard), the recipient sets `ShieldCreatures` and
+  `ShieldCreaturesYouControl` ("to creatures you control" without you,
+  Ascent of the Worthy), and `Optional` for "you may have that damage
+  dealt to you instead" (Blood of the Martyr), asked of the controller
+  through the `optional_replacement` prompt once per damage event;
 - a static one ("All damage that would be dealt to you is dealt to
   enchanted creature instead") is `staticRedirection(label,
   redirectWhere{applies, to})`, with `redirectYourDamageToAttached` and

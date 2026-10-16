@@ -44,6 +44,47 @@ func TestCommanderBouncedToHandStaysInHand(t *testing.T) {
 	}
 }
 
+// redirectDecision is the bot's answer, at `life`, to Blood of the
+// Martyr's "may" for `amount` damage to the creature `from` on `board`.
+func redirectDecision(t *testing.T, life int, board []protocol.CardView, from string, amount int) string {
+	t.Helper()
+	c := protocol.PendingChoiceView{
+		ID: optionalChoiceID, Kind: "optional_replacement", Chooser: seatID(0).String(), FromPlayer: seatID(0).String(), Count: 1,
+		Reason:         "Blood of the Martyr — have the damage dealt to you instead?",
+		RedirectAmount: amount, RedirectFrom: from, RedirectTo: seatID(0).String(),
+	}
+	v := newView([]protocol.PlayerView{newSeat(0, withLife(life)), newSeat(1)},
+		withTurn(5, 1, "combat_damage"), withBattlefield(board...), withChoice(c))
+	in := input(0, v, yesNoMoves(t, optionalChoiceID)...)
+	return chose(t, in, decide(t, heuristic.New(), in))
+}
+
+// TestRedirectToMeSavesOnlyMyDoomedCreature — #2056: the bot pays life
+// for a creature of its own that the damage would destroy, at a price
+// above its life floor, and for nothing else.
+func TestRedirectToMeSavesOnlyMyDoomedCreature(t *testing.T) {
+	mine, sturdy, theirs := cardID(1), cardID(2), cardID(3)
+	board := []protocol.CardView{
+		creature(mine, 0, "Bear", 2, 2),
+		creature(sturdy, 0, "Wall", 0, 6),
+		creature(theirs, 1, "Their Bear", 2, 2),
+	}
+	for _, c := range []struct {
+		name         string
+		life, amount int
+		from, want   string
+	}{
+		{"my creature would die", 30, 3, mine, "yes"},
+		{"my creature survives", 30, 3, sturdy, "no"},
+		{"an opponent's creature", 30, 3, theirs, "no"},
+		{"below the life floor", 12, 3, mine, "no"},
+	} {
+		if got := redirectDecision(t, c.life, board, c.from, c.amount); got != c.want {
+			t.Errorf("%s: chose %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
 // TestOtherOptionalReplacementsKeepTheYes — Library of Leng and Moonlit
 // Meditation carry nothing the bot can price, and the audit keeps their
 // yes (replacement.go says why).
