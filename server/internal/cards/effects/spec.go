@@ -1179,6 +1179,21 @@ type Spec struct {
 	// none.
 	OpponentsFaceVillainousChoicesAgain bool
 
+	// ControlsOpponentsSearches declares Opposition Agent's two printed
+	// statics (CR 723.2, #3998, ADR 0166's 2026-10-16 amendment): "You
+	// control your opponents while they're searching their libraries"
+	// and "While an opponent is searching their library, they exile
+	// each card they find. You may play those cards for as long as they
+	// remain exiled, and you may spend mana as though it were mana of
+	// any color to cast them." The engine does both in its one search
+	// primitive (game/search_control.go): a search prompt an opponent
+	// owes over their own library is this permanent's controller's to
+	// answer while it is open, and the cards found are exiled face up
+	// with a play permission for that controller. Judged through
+	// CatalogAbilityKey, so a permanent that lost its abilities does
+	// neither.
+	ControlsOpponentsSearches bool
+
 	// DamageCantBePrevented declares this permanent's printed "damage
 	// can't be prevented" statics (CR 615.12, ADR 0107 §5):
 	//

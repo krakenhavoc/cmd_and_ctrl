@@ -1623,7 +1623,10 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"ExtraVote": defFieldOwnRules,
 	// #3140: CR 701.55c, the count a villainous choice is faced.
 	"OpponentsFaceVillainousChoicesAgain": defFieldOwnRules,
-	"LifeForMana":                         defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
+	// #3998: Opposition Agent controls an opponent's search and exiles
+	// what it finds while its permanent is there.
+	"ControlsOpponentsSearches": defFieldOwnRules,
+	"LifeForMana":               defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
 	"GrantText": defFieldInert, "MadnessLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
 	"WantsDistinctColors": defFieldInert, "WantsManaFrom": defFieldInert, "WantsColors": defFieldInert, "ReadsManaSpent": defFieldInert,
 	"AdditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,

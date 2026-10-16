@@ -548,6 +548,8 @@ export interface GameView {
   // controller and `on_behalf_of` to the controlled player.
   // ADR 0167: `until` is "resolution" (Word of Command) or "turn" (the
   // whole of a turn another player plays, Emrakul, the Promised End).
+  // #3998: or "search" (Opposition Agent: only while the controlled
+  // player's search prompt is open).
   // One entry per controlled player: the effect that applies now.
   player_controls?: PlayerControlView[];
   // ADR 0167 §8: turn-long controls still waiting for the controlled
@@ -5262,7 +5264,7 @@ export interface PlayerControlView {
   controlled: string;
   source?: string;
   source_name?: string;
-  until: "resolution" | "turn";
+  until: "resolution" | "turn" | "search";
 }
 
 /** ADR 0167 §8: a turn-long control waiting for the controlled player's next turn. */
