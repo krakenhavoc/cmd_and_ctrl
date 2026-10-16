@@ -755,8 +755,10 @@ type CastPermission struct {
 	// — does not use it: "If you cast a spell from among the milled
 	// cards using another permission, Locke's effect doesn't apply"
 	// (ruling 2025-06-06). Read on ScopeCards permissions, the only ones
-	// that print it; playing a land is not casting a spell, and every
-	// permission that prints a count is CastOnly.
+	// that print it. A PLAY permission with a count spends it on a land play
+	// too (#3955; #3988, Kotose, the Silent Spider's "play one of the
+	// exiled cards"), and the play still uses one of the turn's land drops
+	// (CR 305.2).
 	CastsLeft int `json:"castsLeft,omitempty"`
 
 	// BudgetGroup ties several permissions into ONE budget: a cast that

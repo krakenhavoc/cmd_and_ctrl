@@ -140,6 +140,11 @@ func (g *Game) checkSearchPicksLocked(choice *PendingChoice, p *Player, picks []
 	for _, id := range choice.SearchGraveyardCards {
 		fromGraveyard[id] = true
 	}
+	// #3988: and which from the searched hand.
+	fromHand := make(map[uuid.UUID]bool, len(choice.SearchHandCards))
+	for _, id := range choice.SearchHandCards {
+		fromHand[id] = true
+	}
 	seen := make(map[uuid.UUID]bool, len(picks))
 	chosen := make([]Card, 0, len(picks))
 	for _, id := range picks {
@@ -155,11 +160,16 @@ func (g *Game) checkSearchPicksLocked(choice *PendingChoice, p *Player, picks []
 		if !ok {
 			return ErrCardNotFound
 		}
-		if fromGraveyard[id] {
+		switch {
+		case fromGraveyard[id]:
 			if !p.Graveyard.Contains(id) {
 				return ErrCardNotFound
 			}
-		} else if !p.Library.Contains(id) {
+		case fromHand[id]:
+			if !p.Hand.Contains(id) {
+				return ErrCardNotFound
+			}
+		case !p.Library.Contains(id):
 			return ErrCardNotFound
 		}
 		chosen = append(chosen, card)
@@ -181,14 +191,22 @@ func (g *Game) searchFloorLocked(choice *PendingChoice, p *Player) int {
 		return 0
 	}
 	inLibrary, inGraveyard := 0, 0
-	inGY := make(map[uuid.UUID]bool, len(choice.SearchGraveyardCards))
+	inGY := make(map[uuid.UUID]bool, len(choice.SearchGraveyardCards)+len(choice.SearchHandCards))
 	for _, id := range choice.SearchGraveyardCards {
 		inGY[id] = true
 		if p.Graveyard.Contains(id) {
 			inGraveyard++
 		}
 	}
-	if len(choice.SearchGraveyardCards) > 0 && choice.searchResume != nil {
+	// #3988: a hand candidate counts with the graveyard's, as a card
+	// outside the library.
+	for _, id := range choice.SearchHandCards {
+		inGY[id] = true
+		if p.Hand.Contains(id) {
+			inGraveyard++
+		}
+	}
+	if len(choice.SearchGraveyardCards)+len(choice.SearchHandCards) > 0 && choice.searchResume != nil {
 		// #3217: an "and/or graveyard" search recomputes its floor from
 		// the live zones: an unconditional one must find min(limit,
 		// cards in BOTH zones), and those cards may have left.
@@ -208,6 +226,14 @@ func (g *Game) searchFloorLocked(choice *PendingChoice, p *Player) int {
 		}
 	}
 	return min(choice.SearchMin, inLibrary)
+}
+
+// SearchesGraveyardHandAndLibrary reports whether a search prompt is
+// "search that player's graveyard, hand, and library" (#3988): all three
+// zones are searched, so the library is shuffled whatever is taken, and
+// the client says so rather than "and/or graveyard"'s hint.
+func (c *PendingChoice) SearchesGraveyardHandAndLibrary() bool {
+	return c != nil && c.searchResume != nil && c.searchResume.spec.AlsoGraveyardAndHand
 }
 
 // SearchFloorLocked is searchFloorLocked for the enumerator: how few

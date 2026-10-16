@@ -1119,6 +1119,13 @@ type SearchLibrary struct {
 	// as the card prints it; the engine decides whether the library was
 	// searched.
 	AlsoGraveyard bool
+	// AlsoGraveyardAndHand is "search that player's GRAVEYARD, HAND, AND
+	// library" (#3988, Kotose, the Silent Spider): the library owner's
+	// graveyard and hand are searched beside the library in one prompt,
+	// marked by zone. All three are named, so the library is always
+	// searched and shuffled; the searcher looks at the whole hand. See
+	// game.SearchLibrarySpec.AlsoGraveyardAndHand.
+	AlsoGraveyardAndHand bool
 	// EntersAttachedTo is "put that card onto the battlefield ATTACHED
 	// TO …" (Light-Paws, #3158): the found Aura enters attached to it,
 	// and one that can't legally enchant it stays in the library
@@ -1142,27 +1149,28 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		pred = func(c game.Card) bool { return printed(game.ThroughTextOf(reader, c)) }
 	}
 	return ctx.Game.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-		Player:             s.Player,
-		Source:             source,
-		Pred:               pred,
-		Dest:               s.Dest,
-		Limit:              s.Limit,
-		Reveal:             s.Reveal,
-		Shuffle:            s.Shuffle,
-		TappedOnEntry:      s.TappedOnEntry,
-		EntersWithCounters: s.EntersWithCounters,
-		Optional:           s.Optional,
-		UpTo:               s.UpTo,
-		Reason:             s.Reason,
-		Validate:           s.Validate,
-		Then:               s.Then,
-		ToTop:              s.ToTop,
-		Depth:              s.Depth,
-		LibraryOwner:       s.LibraryOwner,
-		Unbounded:          s.Unbounded,
-		FaceDown:           s.FaceDown,
-		AlsoGraveyard:      s.AlsoGraveyard,
-		EntersAttachedTo:   s.EntersAttachedTo,
+		Player:               s.Player,
+		Source:               source,
+		Pred:                 pred,
+		Dest:                 s.Dest,
+		Limit:                s.Limit,
+		Reveal:               s.Reveal,
+		Shuffle:              s.Shuffle,
+		TappedOnEntry:        s.TappedOnEntry,
+		EntersWithCounters:   s.EntersWithCounters,
+		Optional:             s.Optional,
+		UpTo:                 s.UpTo,
+		Reason:               s.Reason,
+		Validate:             s.Validate,
+		Then:                 s.Then,
+		ToTop:                s.ToTop,
+		Depth:                s.Depth,
+		LibraryOwner:         s.LibraryOwner,
+		Unbounded:            s.Unbounded,
+		FaceDown:             s.FaceDown,
+		AlsoGraveyard:        s.AlsoGraveyard,
+		AlsoGraveyardAndHand: s.AlsoGraveyardAndHand,
+		EntersAttachedTo:     s.EntersAttachedTo,
 	})
 }
 
