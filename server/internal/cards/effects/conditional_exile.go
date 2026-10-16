@@ -52,6 +52,18 @@ func forAsLongAsYouControlWindow(g *game.Game, source, player uuid.UUID) game.Du
 	}
 }
 
+// exileTopPlayableWhileYouControlThis is "exile the top card of your
+// library. You may play that card for as long as you control <this>"
+// (Lightning, Security Sergeant; Gwen Stacy): one card, the controller's
+// own library, with forAsLongAsYouControlWindow as the window.
+func exileTopPlayableWhileYouControlThis(g *game.Game, item *game.StackItem) error {
+	window := forAsLongAsYouControlWindow(g, item.SourceCardID, item.Controller)
+	return ExileTopWithPermission{
+		From: item.Controller, GrantTo: item.Controller, N: 1,
+		Window: &window,
+	}.Apply(NewContext(g, item))
+}
+
 // forAsLongAsOnBattlefieldWindow is "for as long as <source> remains on
 // the battlefield" / "as long as this Saga remains", with the same
 // never-started fallback.

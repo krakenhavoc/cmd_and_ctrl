@@ -1827,9 +1827,12 @@ func counterPaymentChoices(opts []game.CounterCostOption, rc *game.CounterRemova
 		if need > 0 {
 			return nil
 		}
+		// #3987's self form ("Remove two counters from Ghost-Spider")
+		// has the source as its one option, so the same walk drains its
+		// kinds; like every self payment it names no permanents.
 		return []counterChoice{{
 			parts: parts, total: rc.N, count: best,
-			fromOther: true, anyKind: rc.Counter == "", explicitCounts: true,
+			fromOther: rc.From != nil, anyKind: rc.Counter == "", explicitCounts: true,
 		}}
 	}
 	fromOther := rc.From != nil
