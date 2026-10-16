@@ -18,8 +18,8 @@ import (
 // once is still one. So the ability is OncePerBatch with the batch keyed
 // on the permanent the counters went on.
 //
-// Who put them is b12CountersPlacedByYou's attribution rule; the
-// creature is judged as it is on the battlefield when the event is
+// Who put them is the event's recorded placer (b12CountersPlacedByYou);
+// the creature is judged as it is on the battlefield when the event is
 // harvested.
 
 // WheneverYouPutOneOrMoreCountersOnACreature fires once per creature per
@@ -69,8 +69,7 @@ func creatureYouControl(_ *game.Game, source *game.Card, c game.Card) bool {
 // not trigger it. The effect reads "that many" with
 // CountersOfKindYouPutInTheSameBatch.
 //
-// Who put them is countersPutBy: the event's recorded placer when there
-// is one, b12CountersPlacedBy's attribution rule otherwise.
+// Who put them is countersPutBy: the event's recorded placer.
 func WheneverYouPutCountersOfKindOnACreature(kind string, match func(g *game.Game, source *game.Card, c game.Card) bool, label string, effect Effect) game.TriggeredAbility {
 	t := OncePerBatch(On(game.EventCounterPlaced, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		if source == nil || ev.Label != kind {
@@ -116,27 +115,8 @@ func CountersOfKindYouPutInTheSameBatch(g *game.Game, ev game.Event, you uuid.UU
 }
 
 // countersPutBy is how many counters ev placed and whether `you` put
-// them. The engine names the placer on the event (Event.Actor) when the
-// placement came through a path that knows it: an effect's
-// AddCounterBy, proliferate (CR 701.34a), a damage result (CR 120.3d).
-// That is read first. A placement that names nobody falls back to
-// b12CountersPlacedBy's rule, which credits it only when it can tell,
-// so the fallback is weaker than printed, never stronger.
+// them: b12CountersPlacedBy, which reads the placer every placement
+// names on the event (Event.Actor, #3942).
 func countersPutBy(ev game.Event, you uuid.UUID, g *game.Game, requireBattlefield bool) (int, bool) {
-	if ev.Actor == uuid.Nil {
-		return b12CountersPlacedBy(ev, you, g, requireBattlefield)
-	}
-	if ev.Kind != game.EventCounterPlaced || ev.Target == uuid.Nil || ev.Label == "" || ev.Actor != you {
-		return 0, false
-	}
-	if requireBattlefield {
-		if z := g.FindCardZoneForEffect(ev.Target); z == nil || z.Kind != game.ZoneBattlefield {
-			return 0, false
-		}
-	}
-	before, _ := b12CounterTotalBefore(ev, g)
-	if delta := ev.Amount - before; delta > 0 {
-		return delta, true
-	}
-	return 0, false
+	return b12CountersPlacedBy(ev, you, g, requireBattlefield)
 }

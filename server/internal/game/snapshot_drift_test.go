@@ -323,6 +323,7 @@ var gameFields = plan(
 	"stateTriggerHold", dropped, "not game state: it counts the open sections of one mutation the per-event check skips, defer-cleared, so it is zero between actions",
 	"stateTriggerChecking", dropped, "not game state: a re-entrancy guard for one check, defer-cleared, so it is false between actions",
 	"landingEntryCounters", dropped, "not game state: the permanent whose enters-with counters are landing inside one call, defer-cleared, so it is uuid.Nil between actions (#2123)",
+	"counterPlacerScope", dropped, "not game state: the players named as putting counters inside one mana ability or special action, pushed and popped around the call, so it is empty between actions (#3942)",
 )
 
 var cardFields = plan(
@@ -981,6 +982,8 @@ var pendingChoiceFields = plan(
 	"ManaDifferent", carried, "",
 	"ManaChosen", carried, "",
 	"ManaLabel", carried, "",
+	"ManaSettled", carried, "",
+	"ManaPicksLeft", carried, "",
 	// #763: whether answering this pick is "a permanent was tapped for
 	// mana" (CR 106.12a), which is what fires the triggered mana
 	// abilities. A restored Birds pick that lost it would put the mana

@@ -1397,6 +1397,12 @@ type Spec struct {
 	// Not set for a card whose cost already NAMES the colour (the pip
 	// pays it whatever the planner does), and not for converge or
 	// sunburst, which count the spread and set WantsDistinctColors.
+	//
+	// The one exception is a colour read off the mana spent on a
+	// restricted {X} (#3941, Soul Burn's "the amount of {B} spent on X",
+	// beside a printed {B}): the pip pays the {B}, but X is paid with
+	// black and/or red, and the declared colour is the one the payment
+	// puts on X first (game.ManaSpendContext.favoredOnX).
 	WantsColors []string
 
 	// AdditionalLandPlays declares the printed static "you may play

@@ -1057,7 +1057,8 @@ func dispatch(g *game.Game, a Action) error {
 		if err := requireCardController(g, overrideCaller(a), instanceID); err != nil {
 			return err
 		}
-		return g.AddCounter(instanceID, p.Name, p.Delta)
+		// #3942: the seat making the edit puts the counters.
+		return g.AddCounterBy(overrideCaller(a), instanceID, p.Name, p.Delta)
 
 	case TypeSetCommanderDamage:
 		// `from` is a COMMANDER CARD instance ID since S25 (#77); it

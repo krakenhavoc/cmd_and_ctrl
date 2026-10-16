@@ -1347,7 +1347,9 @@ a creature's mana and an animated Mutavault does while it is one.
   have been (the black spent, less every mana that paid something other than
   X), because `PaidCost.Mana` records the whole payment and not which cost
   component each token paid. The card says so in its caveat. Exact accounting
-  needs the payment to record the component.
+  needs the payment to record the component. *Superseded by
+  [ADR 0068](0068-the-mana-spent-on-a-spell.md)'s 2026-10-16 amendment (#3941):
+  the payment records the mana that paid X, and Soul Burn is Full.*
 
 Proof cards: Drain Life, Consume Spirit (full); Imperiosaur, Myr Superion
 (full); Soul Burn (caveat). Tracker

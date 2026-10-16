@@ -198,3 +198,46 @@ Two PRs, each shippable, after #3373:
 2. **Client and the card.** §9, plus Emrakul's `Spec` (the discount, the cast trigger, keywords), its effect key, the roadmap seam closed with its `docs/engine-seams/closed/` fragment, and `docs/adding-cards.md`'s recipe. Emrakul registers `full` here.
 
 The card ships in the client PR, not behind a caveat in the engine PR. Without the swap, a human who cast Emrakul would hold a turn they had no way to play. Bob's seat would sit on priority until someone undid the trigger. A caveat can't fix a stall, and putting the card in the second PR costs nothing.
+
+## Amendment (2026-10-16, #3857) — a control with no extra turn
+
+§1 gave `BeginTurnControlForEffect` one shape: the turn-long record and the
+extra turn it owes. Emrakul, the Promised End is the only card with the
+second half. "You control target player during that player's next turn"
+(Mindslaver, Worst Fears, Sorin Markov's −7, Construct a Cosmic Cube, and
+each half of Cruel Entertainment) is the first half alone, and "Out of
+scope" said this seam would cover it with `ExtraTurn` nil.
+
+**The change.** `TurnControl` gains `NoExtraTurn bool`. When it is set,
+`BeginTurnControlForEffect` mints no `NextExtraRef` and leaves
+`PlayerControl.ExtraTurn` nil. Nothing else in the engine moves:
+
+- `beginTurnControlsLocked` already guards `ExtraTurn != nil` before it
+  stamps the `Floor`, and `endTurnControlsLocked` already skips the
+  queueing for a nil `ExtraTurn`, so the record begins, applies and ends
+  exactly as a turn-long record always did (CR 723.1, 723.1a, 723.1b).
+- Routing, the view, the snapshot (`extraTurn` is already `omitempty`),
+  the client's "Playing as" swap and `controlledTurnPolicy` read the
+  record and never the extra turn, so they need nothing.
+- Not minting a ref matters: a later control's `Floor` and a later extra
+  turn's position (§3) are measured against `NextExtraRef`, and a ref
+  burned by a control that owes nothing would be a hole in that
+  sequence for no reason. `TestTurnControlWithoutAnExtraTurnOwesNone`
+  pins both the missing extra turn and the unspent ref.
+
+**The cards.** They share `cards/effects/turn_control_cards.go`
+(`controlTargetPlayerNextTurn` for the one-target cards,
+`controlPlayerNextTurn` for Cruel Entertainment's two directions). The
+target is "target player" (any player; the engine refuses a player
+targeting themselves and one who has left the game), except Construct a
+Cosmic Cube, whose reflexive trigger says "target opponent". Cruel
+Entertainment is two records, one each way, over two distinct targets;
+both records wait for their own player's next turn, so neither player is
+controlled for the other's turn, and neither owes an extra turn.
+
+**Left out, filed as seams.** Opposition Agent needs a control scoped to
+a search prompt plus an exile-and-play replacement on search results
+(#3998); Secret of Bloodbending needs a control for one combat phase and
+an optional waterbend additional cost (#3999); The Dominion Bracelet
+needs a cost that exiles the granting Equipment from a granted ability
+(#4000). The "Out of scope" list above is otherwise unchanged.

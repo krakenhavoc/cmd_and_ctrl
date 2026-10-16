@@ -1208,3 +1208,84 @@ unchanged.
   first, which is engine work, not a catalog fix.
 - **Combat and the manual mark**, unchanged from Decision 12's note:
   both keep `damageSourceLKILocked`, a current-zone read, by design.
+
+## Amendment 2026-10-16 — every counter placement names its placer (#3942) · Accepted · S76
+
+Issue [#3942](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3942),
+split out of the #3863 triage. Decision 5 gave the counter window a
+`CounterPlacer` and `EventCounterPlaced` an `Actor`, but left them
+`uuid.Nil` ("unknown") wherever a caller did not name one, which was most
+placements: every `AddCounterForEffect` from a resolving spell or ability,
+the counters a permanent enters with, a sandbox edit. The readers kept
+their heuristics for Nil: Vorinclex and Innkeeper's Talent fell back to
+the target's controller (so your spell's -1/-1 counter on an opponent's
+creature was halved, a declared caveat), and Lae'zel, `b11CounterPlacerOf`
+and `b12CountersPlacedBy` took the last `EventResolve` in the log. A
+card-side "whoever is resolving" is not reliable: the resolving slot is
+cleared only at the next event batch and the log heuristic never closes,
+so a placement made after a resolution had ended was credited to it.
+
+### Decision 13. The engine names the placer at the source
+
+A placement that does not name its placer gets one before the CR 614
+window opens (`server/internal/game/counter_placer.go`,
+`settleCounterPlacerLocked`, also applied to a placement that bypasses the
+window), from the first of:
+
+1. **The innermost named scope.** An action that is not a resolution
+   names its player: a mana ability's activator (CR 605.3b; the activation
+   paths and the auto-tap executor push it) and the player taking a
+   special action (CR 116.2). A scope pushed inside an open resolution
+   wins over it, so a mana ability activated to pay for something
+   mid-resolution (CR 605.3a) is the activator's.
+2. **The open resolution's controller** (CR 608.2c). "Open" is
+   `resolutionOpen`, which closes at the CR 704.3 boundary after the
+   resolution (#1289), not the resolving slot. A resolution paused on its
+   own prompt and restored from a snapshot has no slot, so the parked
+   tail's item answers.
+3. **The permanent's controller, or the player getting the counters.**
+   CR 122.6a for counters a permanent enters with, CR 606.4 for a loyalty
+   cost, CR 714.3c for a Saga's lore counter. Those sites name it
+   explicitly (the enters-with drain, the starting loyalty and defense
+   stamps, a Saga's entry counter, the opening-hand action, suspend), so
+   this arm is a backstop.
+
+An effect that says another player puts the counters names that player
+with `AddCounterByForEffect`, as before. A removal names nobody: CR 614
+replaces placements, and no reader asks who removed a counter. The sandbox
+verb names the seat making the edit (`Game.AddCounterBy`); an admin edit
+names nobody and takes arm 3.
+
+### Decision 14. A Saga's turn-based lore counter goes through the window
+
+CR 714.3c ("that player puts a lore counter on each Saga they control")
+was written straight to the counter map, on the reading that CR 614 only
+replaces an effect's events. CR 614.1 replaces events, whatever causes
+them; only a replacement worded "if an effect would put" is limited to
+effects (CR 614.16). The turn-based counter now opens the window, named
+(the active player) and marked `ReplacementEvent.CounterFromTurnBasedAction`
+(a sibling of `CounterFromCombatDamage` and `CounterFromCost`), and
+settles without pausing, as a mana ability's window does: there is no
+priority window as the phase begins to ask a CR 616 question in. Doubling
+Season declines the mark, so it still doubles a Saga's entry counter and
+not its turn counter. Vorinclex doubles your Saga's and halves an
+opponent's to none.
+
+### Readers
+
+`b11CounterPlacerOf`, `b12CountersPlacedBy` (and the helpers built on
+it: `countersPutBy`, `counterPlacedBy`, the loyalty-counter trigger), All
+Will Be One's player half, Lae'zel, Vorinclex and Innkeeper's Talent read
+the placer and nothing else. `b11ResolvingController`,
+`b12ResolvingController`, `b13ResolutionInProgressBy` and Vorinclex's
+`counterPlacerOrFallback` are gone. Vorinclex, Monstrous Raider and
+Innkeeper's Talent are Full.
+
+### Snapshots
+
+No field changes: `Event.Actor` already existed and is now set on more
+counter events. Six corpus boards whose counter events now carry an actor
+were renamed so their v9 fixtures stay as written and the new history is
+written beside them (the #2494 precedent). A counter event restored from
+an older file keeps its Nil actor and is credited to nobody, the weaker
+direction.

@@ -206,10 +206,16 @@ func kickerThatExiles() game.AdditionalCost {
 	return k
 }
 
-// Register's guards (ADR 0189 §2): the hand form, a non-positive count, an
-// optional cost and an either/or branch each compile and then charge
-// something no card prints, so they fail at boot.
+// Register's guards (ADR 0189 §2 and its 2026-10-16 amendment): the hand
+// form, a non-positive count, an optional cost, the X form in an either/or
+// branch, on an ability, beside another claim on X or with a printed count
+// each compile and then charge something no card prints, so they fail at
+// boot. A FIXED count in a branch is Soaring Stoneglider's, and allowed.
 func TestRegisterRefusesMisplacedExileCardsCosts(t *testing.T) {
+	xWithCount := ExileXFromGraveyardCost("X cards", nil)
+	xWithCount.ExileCards.N = 2
+	xAndLife := ExileXFromGraveyardCost("X cards", nil)
+	xAndLife.PayLifeX = true
 	for name, spec := range map[string]Spec{
 		"the hand form": {OracleID: "exilecards-hand", Name: "EC Hand",
 			AdditionalCost: &game.AdditionalCost{ExileCards: ExileCardsFromHand(1, "a card", nil), Label: "x"}},
@@ -219,10 +225,20 @@ func TestRegisterRefusesMisplacedExileCardsCosts(t *testing.T) {
 			AdditionalCost: ExileFromGraveyardCost(-2, "cards", nil)},
 		"an optional cost": {OracleID: "exilecards-optional", Name: "EC Optional",
 			OptionalCosts: []game.AdditionalCost{kickerThatExiles()}},
-		"an either/or branch": {OracleID: "exilecards-branch", Name: "EC Branch",
+		"the X form in an either/or branch": {OracleID: "exilecards-branch-x", Name: "EC Branch X",
 			AdditionalCost: EitherCost(
-				ExileFromGraveyardCost(2, "two cards", nil).Keyed("exile"),
+				ExileXFromGraveyardCost("X cards", nil).Keyed("exile"),
 				ManaAdditionalCost("{2}").Keyed("mana"))},
+		"the X form with a printed count": {OracleID: "exilecards-x-count", Name: "EC X Count",
+			AdditionalCost: xWithCount},
+		"the X form beside pay X life": {OracleID: "exilecards-x-life", Name: "EC X Life",
+			AdditionalCost: xAndLife},
+		"the X form on an activated ability": {OracleID: "exilecards-x-ability", Name: "EC X Ability",
+			Activated: []ActivatedAbility{{
+				Label:  "Exile X cards from your graveyard: Draw a card.",
+				Cost:   game.AbilityCost{ExileCards: &game.ExileCost{Label: "X cards", From: game.ZoneGraveyard, CountFromX: true}},
+				Effect: Do(DrawCards{N: 1}),
+			}}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			defer func() {

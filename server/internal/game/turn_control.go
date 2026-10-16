@@ -27,10 +27,16 @@ import "github.com/google/uuid"
 // order) and each owes its own extra turn (ruling).
 
 // TurnControl is what an effect asks for: Controller controls
-// Controlled during Controlled's next turn, and Controlled takes an
-// extra turn after it.
+// Controlled during Controlled's next turn, and (unless NoExtraTurn)
+// Controlled takes an extra turn after it.
 type TurnControl struct {
 	Controller, Controlled uuid.UUID
+	// NoExtraTurn is the plain "you control target player during that
+	// player's next turn" of Mindslaver, Worst Fears and Sorin Markov's
+	// -7 (ADR 0167, 2026-10-16 amendment). Emrakul, the Promised End's
+	// "after that turn, that player takes an extra turn" leaves it
+	// false.
+	NoExtraTurn bool
 	// Source is the card whose effect this is, and SourceName its name
 	// for the log and the view.
 	Source     uuid.UUID
@@ -44,7 +50,8 @@ type TurnControl struct {
 // owes its own extra turn.
 //
 // The extra turn's Ref is minted now, from NextExtraRef, so the turns
-// created later are told apart from it when it is queued.
+// created later are told apart from it when it is queued. A NoExtraTurn
+// control mints none and owes none.
 //
 // Caller must hold g.mu.
 func (g *Game) BeginTurnControlForEffect(tc TurnControl) bool {
@@ -52,7 +59,6 @@ func (g *Game) BeginTurnControlForEffect(tc TurnControl) bool {
 		!g.playerInGameLocked(tc.Controller) || !g.playerInGameLocked(tc.Controlled) {
 		return false
 	}
-	g.NextExtraRef++
 	rec := PlayerControl{
 		Controller: tc.Controller,
 		Controlled: tc.Controlled,
@@ -60,7 +66,10 @@ func (g *Game) BeginTurnControlForEffect(tc TurnControl) bool {
 		SourceName: tc.SourceName,
 		Stage:      ControlAwaitingTurn,
 		Until:      ControlUntilTurn,
-		ExtraTurn:  &AnchoredExtraTurn{Ref: g.NextExtraRef},
+	}
+	if !tc.NoExtraTurn {
+		g.NextExtraRef++
+		rec.ExtraTurn = &AnchoredExtraTurn{Ref: g.NextExtraRef}
 	}
 	// A fresh slice: an undo entry may share the old backing array.
 	next := make([]PlayerControl, len(g.PlayerControls), len(g.PlayerControls)+1)

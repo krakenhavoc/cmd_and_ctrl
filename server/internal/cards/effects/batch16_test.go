@@ -371,8 +371,9 @@ func TestB16RelicOfSauronMakesTwoPicksAndLoots(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, relic, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
+	// #3939: one choice, asked once per pick.
 	picks := 0
-	for _, c := range g.PendingChoices {
+	for c := riderLatestManaPick(g, me.ID); c != nil && picks < 8; c = riderLatestManaPick(g, me.ID) {
 		if c != nil && c.Kind == game.PendingChoiceMana && c.Chooser == me.ID {
 			picks++
 			if len(c.ColorOptions) != 3 {
