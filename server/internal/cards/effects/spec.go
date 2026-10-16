@@ -1115,6 +1115,25 @@ type Spec struct {
 	// Issue #1197, ADR 0072's 2026-09-22 amendment.
 	PlayerKeywords []string
 
+	// PlayerKeywordsIf declares a printed static that gives this
+	// permanent's CONTROLLER an ability only while a condition holds —
+	// "During your turn, you and this creature have hexproof" (Gruul
+	// Spellbreaker's player half; the creature half is an ordinary
+	// Static entry):
+	//
+	//	PlayerKeywordsIf: []game.PlayerKeywordIf{YouHaveDuringYourTurn(KeywordHexproof)},
+	//
+	// Derived exactly as PlayerKeywords is, and read by the same walk:
+	// the condition is asked on every query with the permanent as it is
+	// now (CR 611.3a), so nothing is written to the player and nothing
+	// has to be swept when the condition stops holding. Build entries
+	// with YouHaveDuringYourTurn or YouHaveWhile; Register holds each
+	// to PlayerKeywords' vocabulary and requires a condition and a
+	// label.
+	//
+	// Issue #2013, ADR 0072's 2026-10-16 amendment.
+	PlayerKeywordsIf []game.PlayerKeywordIf
+
 	// PlayerLifeTotalLocked declares the printed static "Your life
 	// total can't change" (CR 119.7, CR 119.8 — Platinum Emperion),
 	// about this permanent's CONTROLLER. True while the permanent is

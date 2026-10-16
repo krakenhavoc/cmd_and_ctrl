@@ -62,6 +62,7 @@ func TestFamilyConstructorLabels(t *testing.T) {
 		{"CantAttackUnlessYouHaveTheCitysBlessing", CantAttackUnlessYouHaveTheCitysBlessing().Label, "Can't attack unless you have the city's blessing."},
 		{"impendingNotACreature", impendingNotACreature().Label, "Isn't a creature while it has a time counter on it."},
 		{"firstStrikeDuringYourTurn", firstStrikeDuringYourTurn().Label, "Has first strike during your turn."},
+		{"ThisHasDuringYourTurn", ThisHasDuringYourTurn("hexproof").Label, "Has hexproof during your turn."},
 		{"GoadAttached", GoadAttached().Label, "Attached creature is goaded."},
 		{"b07TripleDamageFromYourSources", b07TripleDamageFromYourSources().RowLabel, "If a source you control would deal damage to a permanent or player, it deals triple that damage instead."},
 		{"CantAttackUnlessDefendingPlayerControls", CantAttackUnlessDefendingPlayerControls(QuerySubtype("Island")).Label, "Can't attack unless defending player controls an Island."},

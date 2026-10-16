@@ -3041,6 +3041,18 @@ hexproof") waives the variant, and "can't have hexproof" strips it. The
 deck importer stamps the token for a card whose oracle line prints the
 variant (Knight of Grace), and never the broad `hexproof` beside it.
 
+**"You have hexproof" only some of the time (#2013, ADR 0072's amendment
+of 2026-10-16).** A permanent's printed "During your turn, you have
+hexproof" or "As long as … has a shield counter on him, you have
+hexproof" is `Spec.PlayerKeywordsIf`, not `PlayerKeywords`:
+`YouHaveDuringYourTurn(KeywordHexproof)`, or `YouHaveWhile(keyword,
+label, while)` for any other condition. The condition is asked on every
+query with the permanent as it is now, so it may only read, and it must
+not ask a player's abilities. "You and this creature have hexproof" is
+two declarations: the player half there, and the creature half as an
+ordinary layer-6 grant (`ThisHasDuringYourTurn(KeywordHexproof)`). Gruul
+Spellbreaker and Captain America, Super-Soldier are the two cards.
+
 **Ward costs** (`effects.Ward(cost, label)`): `WardMana("{2}")`,
 `WardWaterbend`, `WardLife(2)`, `WardSacrifice("a creature", Creature())`
 and, since #3172, `WardDiscard(1)` ("Ward—Discard a card"). Each is one
