@@ -79,7 +79,10 @@ func init() {
 			ChapterTrigger(1, SagaChapterLabel(name, 1, digLabel), dig),
 			ChapterTrigger(2, SagaChapterLabel(name, 2, digLabel), dig),
 			ChapterTrigger(3, SagaChapterLabel(name, 3, digLabel), dig),
-			ChapterTrigger(4, SagaChapterLabel(name, 4, "choose up to three Doctors; you may exile all other creatures"), dayOfTheDoctorFinale),
+			// A board wipe that spares the chosen Doctors (ADR 0126 §6).
+			TriggerWithPurpose(
+				ChapterTrigger(4, SagaChapterLabel(name, 4, "choose up to three Doctors; you may exile all other creatures"), dayOfTheDoctorFinale),
+				game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepExile, Partial: true}}),
 		},
 	})
 }
