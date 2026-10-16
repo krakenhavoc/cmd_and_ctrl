@@ -42,6 +42,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
   - [Adding a triggered MANA ability (#763)](#adding-a-triggered-mana-ability-763)
   - [State triggers (ADR 0107, #1858)](#state-triggers-adr-0107-1858)
+  - ["Activates a mana ability of each land" (ADR 0200, #3952)](#activates-a-mana-ability-of-each-land-adr-0200-3952)
   - [Choices made at resolution (#796, #568)](#choices-made-at-resolution-796-568)
   - ["Reveals their hand. You choose a … card from it" (ADR 0116, #2078)](#reveals-their-hand-you-choose-a--card-from-it-adr-0116-2078)
   - [Adding a `PendingChoiceKind` (#730, #794)](#adding-a-pendingchoicekind-730-794)
@@ -6916,6 +6917,19 @@ Triggered: []game.TriggeredAbility{
 - In a test, push the permanents a condition needs BEFORE the card: a
   Task Mage Assembly that enters onto an empty board is sacrificed at
   once, which is the card.
+
+### "Activates a mana ability of each land" (ADR 0200, #3952)
+
+"<player> activates a mana ability of each land they control. Then that
+player loses all unspent mana" is `ActivateAManaAbilityOfEachLand{Player,
+Card, Then}` (`cards/effects/land_mana_each.go`). It asks the player one
+`option_pick` per land that has several ways (colours included), activates
+through the ordinary mana-ability path, empties the whole pool and hands
+`Then` the mana lost (`[]game.ManaToken`; count it with
+`game.TotalMana`). Don't tap the lands or empty the pool yourself: the
+player chooses, and a filter land is asked after the others. Drain Power
+adds the lost mana to its caster with `addManaLike`; Pygmy Hippo schedules
+its {C} for `game.NextMainPhaseThisTurnForEffect`.
 
 ### Choices made at resolution (#796, #568)
 
