@@ -136,6 +136,7 @@ var agentBadgeFields = map[string]bool{"Agent": true, "AgentClient": true, "IsAg
 var agentBadgeWriters = map[string]int{
 	"internal/game/mutations.go:SetAgent":      2, // the one setter: Agent = true, AgentClient = client
 	"internal/game/clone.go:clonePlayer":       2, // undo checkpoint copy
+	"internal/game/restart.go:restartedPlayer": 2, // CR 727: the same seat in the restarted game (#3856)
 	"internal/game/snapshot.go:snapshotPlayer": 2, // restore point capture
 	"internal/game/snapshot.go:restorePlayer":  2, // restore point read
 	"internal/protocol/view.go:viewOfPlayer":   2, // PlayerView projection

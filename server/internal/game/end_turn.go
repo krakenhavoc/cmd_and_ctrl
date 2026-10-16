@@ -240,7 +240,7 @@ func (g *Game) finishEndingTheTurnLocked() bool {
 //
 // Caller must hold g.mu.
 func (g *Game) cursorMovedSince(before Turn) bool {
-	return g.TurnEndPending ||
+	return g.TurnEndPending || g.RestartPending != nil ||
 		g.Turn.Seq != before.Seq ||
 		g.Turn.Step != before.Step ||
 		g.Turn.StepOrdinal != before.StepOrdinal

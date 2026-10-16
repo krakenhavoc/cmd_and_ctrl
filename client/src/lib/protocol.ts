@@ -1238,6 +1238,12 @@ export type LogKind =
   // `card_id` the card whose effect ended it. The stack's exile lines
   // and a `step` line for the cleanup step follow it.
   | "turn_ended"
+  // #3856, CR 727 (ADR 0201): the game was restarted (Karn Liberated's
+  // −14). `seat` is the player who restarted it and takes the new
+  // game's first turn, `card_id` / `label` the card, and `amount` how
+  // many exiled cards will enter under their control after the
+  // mulligans. Always the first line: the log begins again here.
+  | "game_restarted"
   // #1209, ADR 0082's 2026-09-23 amendment: a permanent that was
   // face up was turned face down (CR 708.2a). `card_id` is the
   // permanent; `target` is the object that did it (Ixidron, Cyber

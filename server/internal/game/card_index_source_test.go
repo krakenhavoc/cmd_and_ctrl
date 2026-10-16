@@ -104,6 +104,11 @@ func TestZoneCardsAreWrittenOnlyAtKnownPoints(t *testing.T) {
 		// duplicate into.
 		"cloneZone":   "fills the zone it has just made, from the zone it is copying",
 		"restoreZone": "fills the zone it has just made, from a snapshot",
+		// #3856: the restart's normaliser puts the one card it is about
+		// to MoveCard into a scratch zone it has just made; no live
+		// zone holds the scratch zone, and the caller gives every card
+		// it returns a new instance ID before placing it.
+		"restartCards": "fills a scratch zone it has just made, for one MoveCard",
 		// Moves that do their own remove-then-add, in one function.
 		"phaseOutLocked": "battlefield → PhasedOut: spliced out of one slice, then appended to the other",
 		"phaseInLocked":  "PhasedOut → battlefield: spliced out of one slice, then appended to the other",
