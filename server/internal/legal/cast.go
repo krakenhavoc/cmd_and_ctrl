@@ -812,7 +812,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// string as a free {0}. Every move this function builds pays the
 	// printed cost, so none of them is legal; the engine refuses the
 	// cast with ErrNoManaCost.
-	if game.HasNoManaCost(card) && offer == nil && (perm == nil || perm.Cost == "") {
+	if game.HasNoManaCost(card) && offer == nil && !perm.NamesPrice() {
 		return
 	}
 	optional := e.g.OptionalCostsForCastLocked(e.seat, card)

@@ -1485,6 +1485,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		budget := 0
 		if base, _, berr := g.printedCostLocked(p, card, params); berr == nil {
 			budget = tapPermanentsBudget(tapCost, base, params.XValue)
+			if !tapCost.Empty() && tapCost.InCost {
+				// #3989: a waterbend that IS the cost (Hama's grant)
+				// is measured against the total the modifiers leave,
+				// as an activated ability's is (WaterbendBudget): a
+				// reduction that took a {1} off leaves no symbol for
+				// a tap to pay (CR 118.9d, 701.67b).
+				untapped := params
+				untapped.TapIDs, untapped.DelveIDs = nil, nil
+				if total, terr := g.costAfterModifiersLocked(base, p, card, untapped); terr == nil {
+					budget = WaterbendBudget(tapCost, total, params.XValue)
+				}
+			}
 		}
 		if err := g.validateTapPermanentsCostLocked(playerID, tapCost, params.TapIDs, budget); err != nil {
 			slog.Warn("cast_spell rejected: bad tap-permanents cost payment",

@@ -79,9 +79,39 @@ func (g *Game) TapPermanentsCostForCastLocked(caster uuid.UUID, card Card, from 
 	return nil
 }
 
-// tapCostForCastParamsLocked is TapPermanentsCostForCastLocked with the
-// zone read off a cast's params, for the cast path.
+// WaterbendTapCost builds a "waterbend {N}" tap cost (effects.Waterbend),
+// for a cast permission whose price is a waterbend (#3989). The effects
+// package installs it, as it does ImproviseTapCost.
+var WaterbendTapCost func(cost string) *TapPermanentsCost
+
+// TapPermanentsCostForGrantLocked is TapPermanentsCostForCastLocked for
+// a cast made through `grant`, the permission the cast claims (nil for
+// none). A permission priced by waterbending the card's mana value
+// (CastPermission.WaterbendManaValue, Hama, the Bloodbender) owes that
+// waterbend: its {N} is what CastCostFor charges for the face being
+// cast, so the tap cost is marked InCost and the taps pay only that
+// {N} (CR 701.67b). It takes the place of any tap cost the card or the
+// board would give the spell, because the engine carries one tap cost
+// per cast; a convoke granted on top is the weaker-than-printed loss.
+// Caller must hold g.mu.
+func (g *Game) TapPermanentsCostForGrantLocked(caster uuid.UUID, card Card, from ZoneKind, grant *CastPermission) *TapPermanentsCost {
+	if grant != nil && grant.WaterbendManaValue && WaterbendTapCost != nil && !card.IsLand() {
+		if tc := WaterbendTapCost(WaterbendManaValueCost(card)); !tc.Empty() {
+			tc.InCost = true
+			return tc
+		}
+	}
+	return g.TapPermanentsCostForCastLocked(caster, card, from)
+}
+
+// tapCostForCastParamsLocked is TapPermanentsCostForGrantLocked with the
+// zone and the claimed permission read off a cast's params, for the cast
+// path: the same CastPermissionForClaimLocked lookup the pricer makes.
 func (g *Game) tapCostForCastParamsLocked(caster uuid.UUID, card Card, params CastSpellParams) *TapPermanentsCost {
 	from, _ := castZoneFromWire(params.FromZone)
-	return g.TapPermanentsCostForCastLocked(caster, card, from)
+	var grant *CastPermission
+	if caster != uuid.Nil && from != ZoneHand && from != ZoneCommand {
+		grant = g.CastPermissionForClaimLocked(caster, card, from, params.AlternativeCost)
+	}
+	return g.TapPermanentsCostForGrantLocked(caster, card, from, grant)
 }
