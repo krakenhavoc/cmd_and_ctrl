@@ -391,6 +391,10 @@ type entryLanding struct {
 	// entry that is a land PLAY (CR 305.1), false for every "put"
 	// path and for a token, which was never played. See Event.Played.
 	played bool
+	// playedFromExile is the card as it sat in exile, for a land PLAYED
+	// from exile (#2651): its CR 607.2a link, which MoveCard clears, is
+	// copied onto the Played EventZoneMove. Nil for every other entry.
+	playedFromExile *Card
 }
 
 // landEntryLocked performs the move a settled entry event describes and
@@ -414,6 +418,8 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 		// permanent it becomes is a bestowed Aura. Read off the stack
 		// card before MoveCard clears it (CR 400.7).
 		bestowed bool
+		// #2651: a land played from exile, read before MoveCard.
+		playedFromExile *Card
 	)
 	src := g.findCardZoneLocked(ev.CardID)
 	switch src {
@@ -447,6 +453,15 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 				if src.Cards[i].InstanceID == ev.CardID {
 					stackEpoch = src.Cards[i].ObjectEpoch
 					bestowed = src.Cards[i].Bestowed && ev.stackItem != nil
+					break
+				}
+			}
+		}
+		if src.Kind == ZoneExile && ev.landPlay {
+			for i := range src.Cards {
+				if src.Cards[i].InstanceID == ev.CardID {
+					before := src.Cards[i]
+					playedFromExile = &before
 					break
 				}
 			}
@@ -595,7 +610,7 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 			moved = *c
 		}
 	}
-	return entryLanding{ev: ev, moved: moved, srcKind: srcKind, srcOwner: srcOwner, entered: entered, played: ev.landPlay, doors: doors}, true, nil
+	return entryLanding{ev: ev, moved: moved, srcKind: srcKind, srcOwner: srcOwner, entered: entered, played: ev.landPlay, doors: doors, playedFromExile: playedFromExile}, true, nil
 }
 
 // announceEntryLocked emits what a landed permanent's arrival owes the
@@ -620,14 +635,19 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 			Played: l.played,
 		})
 	} else {
-		g.EmitEvent(Event{
+		move := Event{
 			Kind:    EventZoneMove,
 			Actor:   ev.Actor,
 			CardID:  l.entered,
 			OldZone: l.srcKind,
 			NewZone: ZoneBattlefield,
 			Played:  l.played,
-		})
+		}
+		if l.played {
+			// #2651: a land played from exile carries its link.
+			stampPlayedExiledWith(&move, l.playedFromExile)
+		}
+		g.EmitEvent(move)
 	}
 	// #1593: an "as this enters … until end of turn" copy gets its end
 	// here, once the zone move above has stamped the object the

@@ -174,7 +174,16 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    true}` (`Game.ExileLinkedForEffect`, ADR 0155 §8). Write the exile of
    any card whose other ability reads "exiled with this" as a linked one;
    older cards that exile from an ability without it still use the
-   event-log record (`b27ExiledWith`) and a choice. A face-down
+   event-log record (`b27ExiledWith`) and a choice. A linked exile also
+   stamps WHICH ability exiled the card (`Card.ExiledWithAbility`, the
+   resolving item's catalog row; #2651, ADR 0066 amendment 2026-10-16),
+   so a reader that must see only one ability's exiles (CR 607.2a) asks
+   `Game.ExiledWithRowForEffect(source, game.AbilitySlotTriggered,
+   label)`; "whenever a player plays a card exiled with this" reads the
+   link off the play's event with `game.PlayedCardExiledWithRow`
+   (Prowl, Stoic Strategist, whose exile is `ExileWithPermission{…,
+   Linked: true}`). Only a catalog row is named: a hand-written `Build`
+   with no `Effect` stamps the object alone. A face-down
    exiled card its chooser has not seen is never offered (#3259, ADR 0019
    amendment 2026-10-13).
    "Target creature that saddled it this turn" (Giant Beaver) and
