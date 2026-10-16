@@ -25,6 +25,10 @@
 // only happens on a turn boundary and therefore cannot land inside a
 // click the viewer has already started.
 //
+// The reflow below (decideReflow) obeys the same invariant: it follows
+// the active seat, so it changes on a turn boundary, and it never
+// shrinks a seat an open prompt needs.
+//
 // ADR 0077 also had a pin the viewer asked for, which expanded a
 // summary in place. ADR 0120 §6 retired it: a viewer who wants a seat's
 // board opens it in the expanded overlay (boardExpand.ts), drawn over
@@ -133,13 +137,8 @@ export function decideSeatRendering(
   // something you can always finish an interaction against — see
   // SeatSummary's click routing. Without these, a targeting prompt
   // could point at a seat the viewer has no way to click.
-  if (seat.controlsLegalTarget) return { rendering: "full", reason: "targeting" };
-  if (table.combatMode === "block" && seat.hasAttackersOnViewer) {
-    return { rendering: "full", reason: "blocking" };
-  }
-  if (table.combatMode === "attack" && seat.isLegalDefender) {
-    return { rendering: "full", reason: "attacking" };
-  }
+  const live = interactionReason(seat, table);
+  if (live) return { rendering: "full", reason: live };
 
   // Turn boundary, and opt-out-able. Unlike the three above this one
   // is a convenience rather than a requirement — nothing breaks with
@@ -149,6 +148,110 @@ export function decideSeatRendering(
   }
 
   return { rendering: "summary", reason: null };
+}
+
+/**
+ * interactionReason is the interaction trigger, if any, that needs this
+ * seat's cards on screen for a prompt the viewer has open: a targeting
+ * prompt with a legal target there, block mode against its attackers,
+ * or attack mode with it as a legal defender. Null when none applies.
+ *
+ * decideSeatRendering expands a summary for these, and decideReflow
+ * never shrinks a seat to an avatar card while one applies: a prompt
+ * that can only be answered by clicking a seat's card must find that
+ * card drawn.
+ */
+export function interactionReason(
+  seat: SeatSignals,
+  table: TableSignals,
+): "targeting" | "blocking" | "attacking" | null {
+  if (seat.controlsLegalTarget) return "targeting";
+  if (table.combatMode === "block" && seat.hasAttackersOnViewer) return "blocking";
+  if (table.combatMode === "attack" && seat.isLegalDefender) return "attacking";
+  return null;
+}
+
+// ---- Reflow (ADR 0077 §6, amended 2026-10-16, #4065) ----------------
+//
+// The "reflow" expand style. On an opponent's turn the active opponent's
+// board takes most of the opponents' row and the other opponents shrink
+// to an avatar card: name, avatar and life, the same identity the focus
+// layout's summaries lead with. Hovering or clicking that avatar opens
+// the seat's board in the expanded overlay (ADR 0120), so nothing is out
+// of reach.
+//
+// It changes only on a turn boundary, because the active seat changes
+// only there, and it never shrinks a seat a live prompt needs
+// (interactionReason): such a seat stays a full board beside the active
+// one. On the viewer's own turn there is no reflow at all, so the row is
+// the usual equal boards.
+
+/** The two expand styles (`display.expandStyle`). */
+export type ExpandStyle = "reflow" | "overlay";
+
+/** One opponent in the row. */
+export interface ReflowSeat {
+  id: string;
+  isActiveSeat: boolean;
+  /** interactionReason is not null for this seat. */
+  needsBoard: boolean;
+}
+
+export interface ReflowContext {
+  style: ExpandStyle;
+  /** After expansionSettingsFor, so the focus layout's "off" holds. */
+  expandActivePlayer: boolean;
+  /**
+   * Every opponent sits in the one top row: the row layout, and three
+   * players in the quadrant layout. A four-player quadrant table seats
+   * the next player beside you, so there is no one row to reflow.
+   */
+  opponentsShareRow: boolean;
+  spectator: boolean;
+}
+
+export interface Reflow {
+  /** The active opponent, whose board takes most of the row. */
+  focusSeatID: string;
+  /** The opponents drawn as avatar cards. */
+  avatarSeatIDs: ReadonlySet<string>;
+}
+
+/**
+ * decideReflow is the reflow, or null when the row stays equal boards:
+ * the overlay style, the active-player expansion off, a spectator, no
+ * single opponents' row, fewer than two opponents, or the viewer's own
+ * turn. `opponents` is every opponent in the row, the viewer excluded.
+ */
+export function decideReflow(opponents: readonly ReflowSeat[], ctx: ReflowContext): Reflow | null {
+  if (ctx.style !== "reflow" || !ctx.expandActivePlayer) return null;
+  if (ctx.spectator || !ctx.opponentsShareRow) return null;
+  if (opponents.length < 2) return null;
+  const focus = opponents.find((o) => o.isActiveSeat);
+  if (!focus) return null;
+  const avatars = new Set<string>();
+  for (const o of opponents) {
+    if (o.id !== focus.id && !o.needsBoard) avatars.add(o.id);
+  }
+  return { focusSeatID: focus.id, avatarSeatIDs: avatars };
+}
+
+/** The width of an avatar card's grid column. */
+export const REFLOW_AVATAR_COLUMN = "var(--reflow-avatar-w, 132px)";
+
+/**
+ * reflowColumns is the opponents' row's `grid-template-columns` under a
+ * reflow, one track per seat in `columnSeatIDs` order: an avatar card
+ * gets a fixed narrow column, the active opponent twice the share of
+ * any other full board, and a seat a prompt needs one share.
+ */
+export function reflowColumns(columnSeatIDs: readonly string[], reflow: Reflow): string {
+  return columnSeatIDs
+    .map((id) => {
+      if (reflow.avatarSeatIDs.has(id)) return REFLOW_AVATAR_COLUMN;
+      return id === reflow.focusSeatID ? "minmax(0, 2fr)" : "minmax(0, 1fr)";
+    })
+    .join(" ");
 }
 
 /**

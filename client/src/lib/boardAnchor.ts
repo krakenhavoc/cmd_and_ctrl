@@ -95,6 +95,17 @@ export function findSeatAnchor(
 }
 
 /**
+ * findStandIn is the element drawn in place of a seat's board when the
+ * board itself is not on the table: the reflow's avatar card (ADR 0077
+ * §6 as amended, #4065), which carries `data-seat-stand-in`. An arrow
+ * to or from a card of that seat ends on it, so it still points at the
+ * right player. Null when the seat's board is drawn, or nothing is.
+ */
+export function findStandIn(root: ParentNode, seatID: string): HTMLElement | null {
+  return findAnchor(root, `[data-seat-stand-in="${cssEscape(seatID)}"]`);
+}
+
+/**
  * cardAnchors is one element per instance ID under `root`, the one
  * findCardAnchor would return for that ID: an overlay copy beats the
  * table's, and otherwise the first in document order.

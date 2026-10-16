@@ -29,6 +29,14 @@
   // aria-label `"<name> board"`. A summary is still that seat's board,
   // so it keeps both. The expand control is labelled separately so a
   // screen reader user is told the full board is reachable.
+  //
+  // `avatarCard` (ADR 0077 §6 as amended, #4065) is the reflow's avatar
+  // card: the identity row alone — name, avatar, life — and the expand
+  // control, in a narrow column beside the active opponent's board. Its
+  // avatar peeks and pins the expanded overlay as every avatar does
+  // (ADR 0120). It is still the seat's region, and it carries
+  // `data-seat-stand-in` so an arrow to or from a card it is not drawing
+  // starts or ends on it (CombatArrows, boardAnchor.findStandIn).
 
   import type { ActionPayload, ActionType, CardView, GameView, PlayerView } from "../../protocol";
   import { defendingPlayerOf } from "../../attackTargets";
@@ -76,6 +84,11 @@
     // same defender gate PlayerPanel's identity uses (attackTargetOpen).
     // Absent means no information, and every opponent stays clickable.
     legalGate?: LegalActions;
+    /**
+     * Draw only the identity and the expand control: the reflow's avatar
+     * card (ADR 0077 §6 as amended, #4065).
+     */
+    avatarCard?: boolean;
   }
 
   const {
@@ -97,6 +110,7 @@
     onExpand,
     considering = false,
     legalGate = NO_LEGAL_ACTIONS,
+    avatarCard = false,
   }: Props = $props();
 
   const summary = $derived(buildSeatSummary(seat, controlledCards, view.battlefield?.cards ?? []));
@@ -230,167 +244,191 @@
   }
 </script>
 
-<div
-  class="summary seat-panel"
-  style:--seat-color={seatColor(seat.seat)}
-  class:eliminated={summary.eliminated}
-  class:active={isActive}
-  class:seat-turn={isActive}
-  role="region"
-  aria-label={L.seatBoard(seat.name)}
->
-  <div class="top">
-    <PlayerIdentity
-      {seat}
-      {commanderScryfallID}
-      isSelf={false}
-      {isActive}
-      {hasPriority}
-      {attackTargetable}
-      {isMonarch}
-      {isInitiative}
-      {sendAction}
-      {onDeclareAttack}
-      {onTargetPlayer}
-      {considering}
-    />
-    <!-- #2349: the seat's commander, face up with its tax, as it sits
-         beside the hand on a full board. -->
-    <CommandStrip {seat} compact />
-    <!-- ADR 0172: the seat's revealed companion, public, view only. -->
-    <CompanionSlot {seat} compact />
-    <button
-      class="expand"
-      type="button"
-      aria-label={`Show ${seat.name}'s full board`}
-      onclick={(e) => onExpand?.(e.currentTarget)}
-    >
-      ⤢
-    </button>
-  </div>
+{#snippet identity()}
+  <PlayerIdentity
+    {seat}
+    {commanderScryfallID}
+    isSelf={false}
+    {isActive}
+    {hasPriority}
+    {attackTargetable}
+    {isMonarch}
+    {isInitiative}
+    {sendAction}
+    {onDeclareAttack}
+    {onTargetPlayer}
+    {considering}
+  />
+{/snippet}
 
-  {#if summary.eliminated}
-    <!-- An eliminated seat keeps its identity and life and reports
+{#snippet expandControl()}
+  <button
+    class="expand"
+    type="button"
+    aria-label={`Show ${seat.name}'s full board`}
+    onclick={(e) => onExpand?.(e.currentTarget)}
+  >
+    ⤢
+  </button>
+{/snippet}
+
+{#if avatarCard}
+  <div
+    class="summary seat-panel avatar-card"
+    style:--seat-color={seatColor(seat.seat)}
+    class:eliminated={summary.eliminated}
+    class:active={isActive}
+    class:seat-turn={isActive}
+    role="region"
+    aria-label={L.seatBoard(seat.name)}
+    data-seat-stand-in={seat.id}
+  >
+    {@render identity()}
+    {@render expandControl()}
+  </div>
+{:else}
+  <div
+    class="summary seat-panel"
+    style:--seat-color={seatColor(seat.seat)}
+    class:eliminated={summary.eliminated}
+    class:active={isActive}
+    class:seat-turn={isActive}
+    role="region"
+    aria-label={L.seatBoard(seat.name)}
+  >
+    <div class="top">
+      {@render identity()}
+      <!-- #2349: the seat's commander, face up with its tax, as it sits
+         beside the hand on a full board. -->
+      <CommandStrip {seat} compact />
+      <!-- ADR 0172: the seat's revealed companion, public, view only. -->
+      <CompanionSlot {seat} compact />
+      {@render expandControl()}
+    </div>
+
+    {#if summary.eliminated}
+      <!-- An eliminated seat keeps its identity and life and reports
          nothing else. A read-out full of zeroes reads as a bug rather
          than as a player who is out. -->
-    <p class="out">out</p>
-  {:else}
-    <!-- Mana first. It is the "can they respond?" read, and it is the
+      <p class="out">out</p>
+    {:else}
+      <!-- Mana first. It is the "can they respond?" read, and it is the
          line this whole design exists to surface: today a player gets
          it by counting untapped lands by eye and guessing at colours.
 
          It is a FLOOR, not a total — see manaAvailable's contract.
          The dashed "?" pip is what says so visually; manaLabel names
          the source count so the spoken form carries the same caveat. -->
-    <div class="row mana" data-dice-avoid role="group" aria-label={manaLabel(summary.mana)}>
-      {#each manaPips as pip (pip.color)}
-        <span class="pip mana-pip" style:--pip-fill={pip.meta.fill} title={pip.meta.label}>
-          {pip.count}
-        </span>
-      {/each}
-      {#if summary.mana.flexible > 0}
-        <span class="pip mana-pip flexible" title="Colour not determined — any-colour or hybrid">
-          {summary.mana.flexible}?
-        </span>
-      {/if}
-      {#if summary.mana.sources === 0}
-        <span class="quiet">no mana</span>
-      {/if}
-    </div>
+      <div class="row mana" data-dice-avoid role="group" aria-label={manaLabel(summary.mana)}>
+        {#each manaPips as pip (pip.color)}
+          <span class="pip mana-pip" style:--pip-fill={pip.meta.fill} title={pip.meta.label}>
+            {pip.count}
+          </span>
+        {/each}
+        {#if summary.mana.flexible > 0}
+          <span class="pip mana-pip flexible" title="Colour not determined — any-colour or hybrid">
+            {summary.mana.flexible}?
+          </span>
+        {/if}
+        {#if summary.mana.sources === 0}
+          <span class="quiet">no mana</span>
+        {/if}
+      </div>
 
-    <!-- Combat math: what can block, and how hard it hits. Untapped is
+      <!-- Combat math: what can block, and how hard it hits. Untapped is
          the number you read on someone else's turn. -->
-    <div class="row counts" data-dice-avoid>
-      <span class="stat">
-        <strong>{summary.creatures.untapped}</strong> untapped
-      </span>
-      <span class="stat quiet">
-        of {summary.creatures.total} · {summary.creatures.untappedPower} power
-      </span>
-      <span class="stat quiet">{summary.handCount} in hand</span>
-      <span class="stat quiet" title="library">{summary.libraryCount} deck</span>
-      <button
-        class="pile"
-        type="button"
-        aria-label={pileLabel("grave", summary.graveyardCount)}
-        title={`grave · ${summary.graveyardCount}`}
-        onclick={openGraveyard}
-      >
-        gy {summary.graveyardCount}
-      </button>
-      <button
-        class="pile"
-        type="button"
-        aria-label={exileHeld > 0
-          ? `${pileLabel("exile", exileCount)}, ${exileHeld} theirs to play`
-          : pileLabel("exile", exileCount)}
-        title={exileHeld > 0
-          ? `exile · ${exileCount} · ${exileHeld} theirs to play`
-          : `exile · ${exileCount}`}
-        onclick={openExile}
-      >
-        ex {exileCount}{#if exileHeld > 0}<span class="held"> · {exileHeld} theirs</span>{/if}
-      </button>
-    </div>
+      <div class="row counts" data-dice-avoid>
+        <span class="stat">
+          <strong>{summary.creatures.untapped}</strong> untapped
+        </span>
+        <span class="stat quiet">
+          of {summary.creatures.total} · {summary.creatures.untappedPower} power
+        </span>
+        <span class="stat quiet">{summary.handCount} in hand</span>
+        <span class="stat quiet" title="library">{summary.libraryCount} deck</span>
+        <button
+          class="pile"
+          type="button"
+          aria-label={pileLabel("grave", summary.graveyardCount)}
+          title={`grave · ${summary.graveyardCount}`}
+          onclick={openGraveyard}
+        >
+          gy {summary.graveyardCount}
+        </button>
+        <button
+          class="pile"
+          type="button"
+          aria-label={exileHeld > 0
+            ? `${pileLabel("exile", exileCount)}, ${exileHeld} theirs to play`
+            : pileLabel("exile", exileCount)}
+          title={exileHeld > 0
+            ? `exile · ${exileCount} · ${exileHeld} theirs to play`
+            : `exile · ${exileCount}`}
+          onclick={openExile}
+        >
+          ex {exileCount}{#if exileHeld > 0}<span class="held"> · {exileHeld} theirs</span>{/if}
+        </button>
+      </div>
 
-    {#if summary.creatureCards.length > 0}
-      <div class="row pips" role="group" aria-label={`${seat.name}'s creatures`}>
-        {#each summary.creatureCards as c (c.instance_id)}
-          <!-- Each pip stays a real, hit-testable element with the
+      {#if summary.creatureCards.length > 0}
+        <div class="row pips" role="group" aria-label={`${seat.name}'s creatures`}>
+          {#each summary.creatureCards as c (c.instance_id)}
+            <!-- Each pip stays a real, hit-testable element with the
                card's instance id on it: a pip is a legal target and a
                legal block, and CombatArrows resolves an endpoint by
                measuring the element that carries the card. If the
                arrow layer keys off a different attribute than this,
                match it here rather than adding a second contract. -->
-          <button
-            class="pip creature-pip"
-            type="button"
-            data-card-id={c.instance_id}
-            class:tapped={c.tapped}
-            class:sick={c.summoning_sick}
-            class:attacking={!!c.attacking_target}
-            title={pipLabel(c)}
-            aria-label={pipLabel(c)}
-            onclick={() => handlePipClick(c)}
-          >
-            <span class="pt">{c.power ?? 0}/{c.toughness ?? 0}</span>
-            {#each pipKeywords(c) as k (k)}
-              {@const icon = KEYWORD_ICONS[k]}
-              {#if icon}
-                <!-- Same table and the same suppression as KeywordBadgeRow:
+            <button
+              class="pip creature-pip"
+              type="button"
+              data-card-id={c.instance_id}
+              class:tapped={c.tapped}
+              class:sick={c.summoning_sick}
+              class:attacking={!!c.attacking_target}
+              title={pipLabel(c)}
+              aria-label={pipLabel(c)}
+              onclick={() => handlePipClick(c)}
+            >
+              <span class="pt">{c.power ?? 0}/{c.toughness ?? 0}</span>
+              {#each pipKeywords(c) as k (k)}
+                {@const icon = KEYWORD_ICONS[k]}
+                {#if icon}
+                  <!-- Same table and the same suppression as KeywordBadgeRow:
                      KEYWORD_ICONS is literal SVG written in this repo, never
                      anything that came off the wire. The `{#if}` replaces the
                      old `?? ""` fallback, so an unmapped keyword renders
                      nothing at all rather than an empty span the pip still
                      pays gap for. -->
-                <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                <span class="kw" aria-hidden="true">{@html icon}</span>
-              {/if}
-            {/each}
-          </button>
-        {/each}
-      </div>
-    {/if}
+                  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                  <span class="kw" aria-hidden="true">{@html icon}</span>
+                {/if}
+              {/each}
+            </button>
+          {/each}
+        </div>
+      {/if}
 
-    {#if summary.structural.length > 0}
-      <div class="row structural">
-        {#each summary.structural as s (s.card.instance_id)}
-          <button
-            class="pip struct-pip"
-            type="button"
-            data-card-id={s.card.instance_id}
-            data-kind={s.kind}
-            title={s.card.name}
-            onclick={() => handlePipClick(s.card)}
-          >
-            <span class="name">{s.card.name}</span>
-            {#if s.counter !== undefined}<span class="counter">{s.counter}</span>{/if}
-          </button>
-        {/each}
-      </div>
+      {#if summary.structural.length > 0}
+        <div class="row structural">
+          {#each summary.structural as s (s.card.instance_id)}
+            <button
+              class="pip struct-pip"
+              type="button"
+              data-card-id={s.card.instance_id}
+              data-kind={s.kind}
+              title={s.card.name}
+              onclick={() => handlePipClick(s.card)}
+            >
+              <span class="name">{s.card.name}</span>
+              {#if s.counter !== undefined}<span class="counter">{s.counter}</span>{/if}
+            </button>
+          {/each}
+        </div>
+      {/if}
     {/if}
-  {/if}
-</div>
+  </div>
+{/if}
 
 <style>
   /* No container queries and no cqh-derived sizes: that is the point.
@@ -408,6 +446,13 @@
   }
   .summary.eliminated {
     opacity: 0.55;
+  }
+  /* The reflow's avatar card: the identity centred in its narrow
+     column, the expand control under it. */
+  .avatar-card {
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
   }
   .top {
     display: flex;

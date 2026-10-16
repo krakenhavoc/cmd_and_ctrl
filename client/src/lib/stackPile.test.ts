@@ -176,7 +176,8 @@ describe("geometry from rects", () => {
 // #3380, the ADR 0176 amendment (option a): with nothing saved, the pile
 // docks on the seam between the top row's seats instead of over a corner
 // seat. The slots below are Board.svelte's grids at a 1920×1000 board:
-// 6px padding, 8px gaps, the quadrant's 0.7fr / 1.3fr rows.
+// 6px padding, 8px gaps, the quadrant's 0.7fr / 1.3fr rows, and the row
+// layout's even split (#4066).
 describe("the pile's default spot", () => {
   const W = 1920;
   const H = 1000;
@@ -215,7 +216,10 @@ describe("the pile's default spot", () => {
 
   const spot = (slots: SeatSlot[]) => {
     const seams = tableSeams(W, slots);
-    return { ...seams, left: pileLeft({ boardW: W, pileW: PILE_W, seamX: seams.seamX }) };
+    return {
+      ...seams,
+      left: pileLeft({ boardW: W, pileW: PILE_W, seamX: seams.seamX, dock: seams.dock }),
+    };
   };
 
   it("keeps the left edge on a two-seat table, centred on the row seam", () => {
@@ -243,8 +247,9 @@ describe("the pile's default spot", () => {
   });
 
   it("takes the left of the two seams on a four-seat row table", () => {
-    // "next across across_next" over the full-width self.
-    const s = spot(grid([{ cols: 3 }, { cols: 3, spans: [3], self: 0 }], QUADRANT));
+    // "next across across_next" over the full-width self, split evenly
+    // since #4066.
+    const s = spot(grid([{ cols: 3 }, { cols: 3, spans: [3], self: 0 }], EVEN));
     const colW = (innerW - 2 * GAP) / 3;
     expect(s.seamX).toBeCloseTo(PAD + colW + GAP / 2);
     expect(s.left).toBe(Math.round(PAD + colW + GAP / 2 - PILE_W / 2));
@@ -272,5 +277,68 @@ describe("the pile's default spot", () => {
     // jsdom's unlaid-out slots have no size and no seam.
     const flat = [0, 1, 2].map(() => ({ left: 0, top: 0, width: 0, height: 0, self: false }));
     expect(tableSeams(W, flat).seamX).toBeNull();
+  });
+
+  // #4065, the reflow: the active opponent's board takes the row less
+  // two 132px avatar cards, and the pile stays over the full board.
+  describe("with the reflow's avatar cards in the row", () => {
+    const AV = 132;
+    const rowH = innerH / 2;
+    const top = (left: number, width: number, avatar = false): SeatSlot => ({
+      left,
+      top: PAD,
+      width,
+      height: rowH,
+      self: false,
+      avatar,
+    });
+    const self: SeatSlot = {
+      left: PAD,
+      top: PAD + rowH + GAP,
+      width: innerW,
+      height: rowH,
+      self: true,
+    };
+    const focusW = innerW - 2 * AV - 2 * GAP;
+
+    it("has no dock without an avatar card", () => {
+      const s = spot(grid([{ cols: 3 }, { cols: 3, spans: [3], self: 0 }], EVEN));
+      expect(s.dock).toBeNull();
+    });
+
+    it("docks at the focus board's left edge when the avatar cards are to its left", () => {
+      const focusLeft = PAD + 2 * (AV + GAP);
+      const s = spot([
+        top(PAD, AV, true),
+        top(PAD + AV + GAP, AV, true),
+        top(focusLeft, focusW),
+        self,
+      ]);
+      expect(s.dock).toEqual({ left: focusLeft, right: focusLeft + focusW });
+      expect(s.left).toBe(Math.round(focusLeft + PILE_INSET));
+    });
+
+    it("stays left of the avatar cards when they are to the focus board's right", () => {
+      const s = spot([
+        top(PAD, focusW),
+        top(PAD + focusW + GAP, AV, true),
+        top(PAD + focusW + GAP + AV + GAP, AV, true),
+        self,
+      ]);
+      expect(s.left! + PILE_W).toBeLessThanOrEqual(PAD + focusW - PILE_INSET + 0.5);
+      expect(s.left).toBeGreaterThanOrEqual(PAD + PILE_INSET);
+    });
+
+    it("never covers an avatar card when the focus board is between them", () => {
+      const focusLeft = PAD + AV + GAP;
+      const s = spot([
+        top(PAD, AV, true),
+        top(focusLeft, focusW),
+        top(focusLeft + focusW + GAP, AV, true),
+        self,
+      ]);
+      expect(s.left).toBeGreaterThanOrEqual(focusLeft + PILE_INSET);
+      expect(s.left! + PILE_W).toBeLessThanOrEqual(focusLeft + focusW - PILE_INSET + 0.5);
+    });
   });
 });

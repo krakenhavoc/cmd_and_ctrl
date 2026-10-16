@@ -166,7 +166,7 @@ If ADR 0119's pile lands first, PR 3 reads its width through `--stack-pile-clear
 
 ## Out of scope
 
-- **ADR 0077 §6** (`display.expandStyle`, reflow or overlay for the automatic expansions). Unchanged and still inert.
+- **ADR 0077 §6** (`display.expandStyle`, reflow or overlay for the automatic expansions). Unchanged and still inert. *(2026-10-16: reflow is now built, [ADR 0077's reflow amendment](0077-opponent-board-summary.md#amendment-2026-10-16-reflow-4065), and its avatar cards open this overlay.)*
 - **A board layout for phones.** §5 gives only the minimum.
 - **Expanding the stack, the command zone or a graveyard on their own.** The zone browser and ADR 0119 cover those.
 - **Remembering a pin** across games or reloads. It is per table by design.

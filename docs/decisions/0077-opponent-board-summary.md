@@ -24,6 +24,8 @@ whose `clamp()` floor is the thing that broke)
 less than it did.
 **Designs, does not decide:** which of the two expansion mechanisms wins (§6);
 whether `tableLayout` should be retired (§7).
+**Amended 2026-10-16 (#4065):** §6's reflow is built and specified; overlay is
+still open. See [Amendment: reflow](#amendment-2026-10-16-reflow-4065).
 
 ---
 
@@ -172,6 +174,85 @@ a prototype cannot settle, and switching mid-game is the only way to compare the
 on the same board. **One of the two, and the setting, will be deleted** once a
 few games have answered it. Nothing else should be built on `expandStyle`.
 
+> **Amended 2026-10-16 (#4065).** Reflow is built; overlay is not. See
+> [Amendment: reflow](#amendment-2026-10-16-reflow-4065) below. The default
+> stays `"overlay"` (#2433), which keeps the boards equal.
+
+### Amendment (2026-10-16): reflow (#4065)
+
+**Sprint:** S73 — Big boards: layout and per-action cost. **Issue:**
+[#4065](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4065), an in-app
+report that Reflow did nothing. It did nothing because neither style had ever
+been built, and under the default "Opponent boards: Full" (#2433)
+`decideSeatRendering` returns full for every opponent before the active-player
+rule, so nothing on the table changed at a turn boundary.
+
+**Owner decisions (2026-10-16), binding:**
+
+1. On an **opponent's** turn, with `expandStyle = "reflow"` and
+   `expandActivePlayer` on, the active opponent's board takes most of the
+   opponents' row. The other opponents shrink to an **avatar card** (name,
+   avatar, life, like the focus layout's), and hovering or clicking that avatar
+   opens the existing [ADR 0120](0120-expand-a-players-board.md) overlay of their
+   board.
+2. It applies under "Opponent boards: Full" as well as Summary.
+   `expandActivePlayer` off is today's equal boards.
+3. Both styles stay for now. `"overlay"` keeps today's behaviour, which is equal
+   boards; the Settings copy says so rather than claiming it floats anything.
+   The `expandStyle` default does not change.
+4. On the viewer's own turn the opponents' row stays equal boards. The
+   interaction triggers of §3 still apply, and a seat a live prompt needs is
+   never shrunk to an avatar card.
+
+**What is built.**
+
+- `expansion.ts` gains `interactionReason` (the three interaction triggers of
+  §3, now shared by `decideSeatRendering`), `decideReflow` and `reflowColumns`,
+  all pure and unit-tested. `decideReflow` takes the opponents in column order
+  and returns the focus seat (the active opponent) and the avatar-card seats
+  (every other opponent no live prompt needs), or null for equal boards.
+- `Board.svelte` sets the row's `grid-template-columns` from `reflowColumns`:
+  the focus gets two shares, a seat a prompt needs one share, an avatar card a
+  fixed 132px column (`--reflow-avatar-w`). Every panel stays in the board's one
+  grid, so `CombatArrows` keeps measuring both ends against `boardEl`.
+- The avatar card is `SeatSummary` with `avatarCard`: the summary's identity
+  (`PlayerIdentity`, which already peeks and pins the overlay) and its ⤢ expand
+  button, nothing else. It is still the seat's `region` named "<name> board".
+- It carries `data-seat-stand-in`. An arrow to or from a card that seat is not
+  drawing (a blocker, an attacked planeswalker, a spell's target) ends on the
+  avatar card instead of being dropped (`boardAnchor.findStandIn`, used by
+  `CombatArrows`). An attack on that player already lands on its avatar.
+  The stack pile's and fan lane's own target arrows are unchanged: they still
+  draw nothing to a permanent that is not on screen, as for a summary.
+- The stack pile (ADR 0119, #3380) docks on a seam of the top row. An avatar
+  card is narrower than the pile, so with one in the row the pile stays inside
+  the full boards' span (`stackPile.tableSeams().dock`) and never covers the
+  avatar a player hovers to see that seat's board.
+
+**Calls made here** (the owner's answers did not cover them; each can be
+overturned in review):
+
+1. **Only where the opponents share one row**: the row layout (the default),
+   and three players in the quadrant layout, where the two are the same seating.
+   A four-player quadrant table seats the next player beside you, so it has no
+   one opponents' row and keeps equal boards. The focus layout already draws
+   every opponent as a summary and turns `expandActivePlayer` off, so reflow
+   does nothing there either.
+2. **A seat a prompt needs takes one share, beside the focus's two.** Targeting
+   a creature, or a player, on a seat that is an avatar card makes it a full
+   board at once, because the viewer opened the prompt (§3's rule). When the
+   prompt ends it shrinks back.
+3. **No animated columns.** The columns change at once, on the turn boundary.
+   Animating `grid-template-columns` would resize every panel on the row each
+   frame and refit every row with it. The avatar card and the focus fade in over
+   160ms instead, only with animations on and reduced motion off.
+4. **The overlay style is not built.** It keeps the boards equal until a later
+   change builds it or deletes it with this setting.
+
+**Status.** §6 is half settled: reflow is specified and built, the overlay half is
+still open, and the ADR stays Proposed until a few games have answered which one
+stays.
+
 ## 7. Consequences
 
 **Existing players' tables change appearance on upgrade.** The v10 → v11 settings
@@ -247,6 +328,6 @@ The missing fix was width, not height.
 
 Proposed rather than Accepted. The derivations, the panel, the settings and the
 Board wiring have all landed, so the table does render summaries — but §6 is
-still open, neither expansion mechanism exists, and no game has been played
-against any of it. It becomes Accepted when reflow or overlay lands and a few
+still open. Reflow exists since 2026-10-16 (#4065); the overlay mechanism does
+not, and no game has compared them. It becomes Accepted when reflow or overlay lands and a few
 real games have answered §6.
