@@ -1719,6 +1719,19 @@ type AlternativeCostView struct {
 	// like `sacrifice_options`.
 	SacrificePrices map[string]AltCostPriceView `json:"sacrifice_prices,omitempty"`
 
+	// ReducesByPower marks a harmonize offer (#3931, CR 702.180a): the
+	// creature picked from `tap_options` (min 0, max 1: tapping none is
+	// legal) reduces the cost by its power, so the picker shows each
+	// candidate's price (`tap_prices`) and the auto-tap preview is asked
+	// with the pick. Absent for every other offer.
+	ReducesByPower bool `json:"reduces_by_power,omitempty"`
+
+	// TapPrices is a harmonize offer's price per candidate, keyed by the
+	// instance IDs in `tap_options`: the creature's power and the mana
+	// the cast pays with it tapped, priced as SacrificePrices is. Absent
+	// for every other offer. Per viewer, like `tap_options`.
+	TapPrices map[string]AltCostTapPriceView `json:"tap_prices,omitempty"`
+
 	// PayLabel is the picker's prompt copy for PayOptions,
 	// SacrificeOptions or TapOptions ("a blue card", "an Island you
 	// control", "three creatures"). Absent when there is nothing to pick.
@@ -6208,6 +6221,8 @@ func publicAlternativeCosts(offers []AlternativeCostView) []AlternativeCostView 
 		o.TapOptions = nil
 		// ADR 0135 §4: an emerge price per creature YOU control.
 		o.SacrificePrices = nil
+		// #3931: and a harmonize price per creature YOU control.
+		o.TapPrices = nil
 		// #3225: folded with the card's board-set ceiling, so it is the
 		// asking seat's number like the card's own `x_max`.
 		o.XMax = nil
@@ -7661,6 +7676,14 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			// ADR 0135 §1: the ability's tap-others block, with no
 			// source — the spell is not on the battlefield.
 			v.TapOptions = tapOthersCostOptions(g, caster, uuid.Nil, tc, false)
+			if ac.ReducedByTappedPower && live != nil {
+				// #3931: harmonize — each candidate's power and the
+				// price the cast pays with it tapped, from the pricer
+				// the payment is charged with. min 0: tapping none is
+				// a legal payment.
+				v.ReducesByPower = true
+				v.TapPrices = harmonizePricesView(g, caster, *live, zone, ac.Key, v.TapOptions)
+			}
 		}
 		out = append(out, v)
 	}
@@ -13150,6 +13173,45 @@ func emergePricesView(g *game.Game, caster uuid.UUID, card game.Card, zone game.
 			continue
 		}
 		out[raw] = AltCostPriceView{ManaValue: g.AltSacrificeManaValueForEffect(id), Price: price.Total.String()}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// AltCostTapPriceView is one harmonize candidate's price (#3931): the
+// creature's power, clamped at zero as the reduction reads it, and the
+// cast's mana cost with it tapped.
+type AltCostTapPriceView struct {
+	Power int    `json:"power"`
+	Price string `json:"price"`
+}
+
+// harmonizePricesView prices a harmonize cast once per tap candidate,
+// through game.PriceCastForEffect, as emergePricesView prices an emerge
+// cast, so the price beside a creature is the price the payment takes.
+// Caller must hold g.mu.
+func harmonizePricesView(g *game.Game, caster uuid.UUID, card game.Card, zone game.ZoneKind, key string, opts *LegalTargetsView) map[string]AltCostTapPriceView {
+	if opts == nil || len(opts.Cards) == 0 {
+		return nil
+	}
+	out := make(map[string]AltCostTapPriceView, len(opts.Cards))
+	for _, raw := range opts.Cards {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			continue
+		}
+		price, err := g.PriceCastForEffect(caster, card, game.CastSpellParams{
+			FromZone:        delveZoneWire(zone),
+			AlternativeCost: key,
+			AltCostIDs:      []uuid.UUID{id},
+			Face:            card.ActiveFace,
+		})
+		if err != nil {
+			continue
+		}
+		out[raw] = AltCostTapPriceView{Power: g.AltTappedPowerForEffect(id), Price: price.Total.String()}
 	}
 	if len(out) == 0 {
 		return nil

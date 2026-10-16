@@ -66,6 +66,7 @@ func Register(spec Spec) {
 		}
 	}
 	checkEscalate(spec)
+	checkEntwine(spec)
 	checkFlatClauses(spec.Name, spec.Targets)
 	checkSpellXBound(spec.Name, spec.Targets)
 	checkExhaustAbilities(spec)
@@ -193,6 +194,7 @@ func Register(spec Spec) {
 		checkAltCostXBound(spec, ac)
 		checkAltCostTapOthers(spec.Name, ac)
 		checkEmerge(spec.Name, ac)
+		checkHarmonize(spec.Name, ac)
 		checkAwaken(spec, ac)
 		checkCastsFace(spec, ac)
 		if ac.FaceDown == nil {
@@ -1427,6 +1429,8 @@ func checkTapOthersClause(card, where string, tc *game.TapOthersCost, allowX boo
 	switch {
 	case tc.AnyNumber:
 		panic(fmt.Sprintf("effects.Register: %q %s taps any number of permanents — only a spell's additional cost may (#3961)", card, where))
+	case tc.UpTo:
+		panic(fmt.Sprintf("effects.Register: %q %s taps up to a count of permanents — only harmonize's alternative cost may (#3931)", card, where))
 	case tc.Filter.CountFromX && !allowX:
 		panic(fmt.Sprintf("effects.Register: %q %s taps X permanents but a mana ability has no X announcement", card, where))
 	case tc.Filter.CountFromX && tc.Count != 0:
@@ -1530,7 +1534,30 @@ func checkAltCostTapOthers(card string, ac game.AlternativeCost) {
 	if tc.Filter != nil && tc.Filter.CountFromX {
 		panic(fmt.Sprintf("effects.Register: %q %s taps X permanents — an alternative cost taps a fixed number", card, where))
 	}
+	if tc.UpTo {
+		// #3931: harmonize's "up to one", judged by checkHarmonize; the
+		// rest of the clause is held to the ordinary shape.
+		plain := *tc
+		plain.UpTo = false
+		tc = &plain
+	}
 	checkTapOthersClause(card, where, tc, false)
+}
+
+// checkHarmonize holds ReducedByTappedPower (#3931, CR 702.180a) and
+// TapOthersCost.UpTo to the one shape harmonize prints: the two
+// together, over up to ONE creature. The pricer reads the one permanent
+// AltCostIDs names, so the flag beside anything else would price a
+// discount the card does not print, and "up to" without the reduction
+// is no printed alternative cost.
+func checkHarmonize(card string, ac game.AlternativeCost) {
+	upTo := ac.TapOthers != nil && ac.TapOthers.UpTo
+	if !ac.ReducedByTappedPower && !upTo {
+		return
+	}
+	if !ac.ReducedByTappedPower || !upTo || ac.TapOthers.Count != 1 {
+		panic(fmt.Sprintf("effects.Register: %q offers %q reduced by a tapped creature's power without tapping up to one creature, or the reverse (CR 702.180a) — build it with Harmonize", card, ac.Key))
+	}
 }
 
 // checkEmerge holds ReducedBySacrificedManaValue (ADR 0135 §4) to the

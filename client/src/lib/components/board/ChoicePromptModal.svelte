@@ -356,6 +356,16 @@
   // search_min then, and there is no such button.
   const isSearch = $derived(active?.kind === "search_library");
 
+  // #3998: a search another player owes (Opposition Agent controls them
+  // while they search, CR 723.2) is answered here by the controller.
+  // Its banner is the searcher's ("Search your library"), so say whose
+  // library it is.
+  function searchingFor(c: PendingChoiceView, label: string): string {
+    if (!c.on_behalf_of || c.on_behalf_of === viewerID) return label;
+    const who = snap.seats.find((s) => s.id === c.on_behalf_of)?.name;
+    return who ? `${label} (choosing for ${who})` : label;
+  }
+
   // S16.5 copy_target — "you may have this creature enter as a copy
   // of ...". Shares the card grid and the {choice_id, card_ids}
   // payload; like search, its floor is zero, because every printed
@@ -2040,7 +2050,7 @@
     const [label, src] = isSacrifice
       ? [c.reason || "Sacrifice a permanent", "sacrifice"]
       : isSearch
-        ? [c.reason || "Search your library", "search · CR 701.23"]
+        ? [searchingFor(c, c.reason || "Search your library"), "search · CR 701.23"]
         : isCopyTarget
           ? c.exchanges_text
             ? [c.reason || "Exchange text boxes with…", "text box · CR 612.5"]

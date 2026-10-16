@@ -410,6 +410,8 @@ func checkTapOthersCost(spec Spec) {
 			where = fmt.Sprintf("either/or branch %d", i-1)
 		}
 		switch {
+		case tc.UpTo:
+			panic(fmt.Sprintf("effects.Register: %q %s taps up to a count of permanents — only harmonize's alternative cost may (#3931)", spec.Name, where))
 		case tc.AnyNumber && i > 0:
 			panic(fmt.Sprintf("effects.Register: %q %s taps any number of permanents — only the mandatory slot may (#3961)", spec.Name, where))
 		case tc.AnyNumber && (tc.Filter == nil || tc.Count != 0 || game.TapOthersCountFromX(tc)):

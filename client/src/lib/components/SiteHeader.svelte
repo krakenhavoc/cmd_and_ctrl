@@ -46,6 +46,8 @@
   import ServerPing from "./ServerPing.svelte";
   import HelpMenu from "./HelpMenu.svelte";
   import BugReportModal from "./BugReportModal.svelte";
+  import BugReportDraftPill from "./BugReportDraftPill.svelte";
+  import { currentBugDraft } from "../bugReportDraft.svelte";
   import { bugReportConfig } from "../bugReportConfig";
   import DeleteAccountDialog from "./DeleteAccountDialog.svelte";
   import { PRIVACY_HASH } from "../privacy";
@@ -88,6 +90,14 @@
   let bugReportOn = $state(false);
   let bugAttachments = $state(false);
   let bugOpen = $state(false);
+  // Minimize (#4029): the draft outlives the form, and this pill, beside
+  // the bug button, opens it again. Focus goes to the pill that replaces
+  // the form.
+  let bugDraftPill = $state<BugReportDraftPill | null>(null);
+  function minimizeBugReport(): void {
+    bugOpen = false;
+    void tick().then(() => bugDraftPill?.focus());
+  }
   $effect(() => {
     if (!hasLinkedUser) return;
     void bugReportConfig().then((cfg) => {
@@ -348,6 +358,9 @@
         </a>
       {/if}
       {#if hasLinkedUser && bugReportOn}
+        {#if currentBugDraft() && !bugOpen}
+          <BugReportDraftPill bind:this={bugDraftPill} onrestore={() => (bugOpen = true)} />
+        {/if}
         <button
           type="button"
           class="bug-btn"
@@ -469,6 +482,7 @@
     attachments={bugAttachments}
     page={$route.name}
     onclose={() => (bugOpen = false)}
+    onminimize={minimizeBugReport}
   />
 {/if}
 

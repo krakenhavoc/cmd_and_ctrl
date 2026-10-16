@@ -25,6 +25,7 @@
     ActivatedAbilityView,
     AdditionalCostView,
     AltCostPriceView,
+    AltCostTapPriceView,
     CardView,
     GameView,
     LegalTargetsView,
@@ -187,6 +188,8 @@
   import { abilityMaxX, suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
   import { castPreviewParams } from "../../castPreview";
   import {
+    altCostTapRange,
+    altCostTapsNothingToAsk,
     castSacrificeRange,
     exilePermanentAutoPick,
     exilePermanentOptions,
@@ -1079,11 +1082,14 @@
   let altTapPromptChoices: CastChoices = {};
   let altTapPromptClause = $state<LegalTargetsView | undefined>(undefined);
   let altTapPromptLabel = $state("an untapped creature you control");
+  // #3931: a harmonize offer's price per creature, shown in the picker.
+  let altTapPromptPrices = $state<Record<string, AltCostTapPriceView> | undefined>(undefined);
   const altTapOptions = $derived.by(() => {
     if (!altTapPromptCard) return [];
     return orderSacrificeOptions(view.battlefield.cards, altTapPromptClause?.cards);
   });
-  const altTapBounds = $derived(sacrificeRange(altTapPromptClause));
+  // #3931: harmonize's "up to one" is min 0 — tapping none pays it.
+  const altTapBounds = $derived(altCostTapRange(altTapPromptClause));
 
   function confirmAltTap(instanceIDs: string[]): void {
     const card = altTapPromptCard;
@@ -1091,6 +1097,7 @@
     altTapPromptCard = null;
     altTapPromptChoices = {};
     altTapPromptClause = undefined;
+    altTapPromptPrices = undefined;
     if (!card) return;
     afterAltCostPayment(card, { ...choices, altCostIDs: instanceIDs });
   }
@@ -1118,9 +1125,15 @@
       return;
     }
     const tapClause = altCostTapClause(offer);
+    // #3931: "up to one" with nothing to tap has one answer — none.
+    if (altCostTapsNothingToAsk(tapClause)) {
+      afterAltCostPayment(card, { ...choices, altCostIDs: [] });
+      return;
+    }
     if (tapClause !== undefined) {
       altTapPromptClause = tapClause;
       altTapPromptLabel = offer?.pay_label ?? "an untapped creature you control";
+      altTapPromptPrices = offer?.reduces_by_power ? offer.tap_prices : undefined;
       altTapPromptChoices = choices;
       altTapPromptCard = card;
       return;
@@ -3981,11 +3994,13 @@
     min={altTapBounds.min}
     verb="Tap"
     castName={altTapPromptCard?.name}
+    tapPrices={altTapPromptPrices}
     onConfirm={confirmAltTap}
     onCancel={() => {
       altTapPromptCard = null;
       altTapPromptChoices = {};
       altTapPromptClause = undefined;
+      altTapPromptPrices = undefined;
     }}
   />
   <!-- ADR 0100: the count and the label are the cost THIS cast pays —

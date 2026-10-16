@@ -9,12 +9,13 @@ type PlayerControlView struct {
 	Controller string `json:"controller"`
 	Controlled string `json:"controlled"`
 	// Source is the card whose effect it is (Word of Command, Emrakul,
-	// the Promised End), and SourceName its name.
+	// the Promised End, Opposition Agent), and SourceName its name.
 	Source     string `json:"source,omitempty"`
 	SourceName string `json:"source_name,omitempty"`
 	// Until is how long the control lasts: "resolution" (Word of
-	// Command, ADR 0166) or "turn" (the whole of the controlled
-	// player's turn, ADR 0167).
+	// Command, ADR 0166), "turn" (the whole of the controlled
+	// player's turn, ADR 0167) or "search" (while the controlled player
+	// searches their library, Opposition Agent, #3998).
 	Until string `json:"until"`
 }
 
