@@ -632,6 +632,7 @@ var cardFields = plan(
 	"TextWords", rebuilt, "ADR 0160's 2026-10-15 amendment: derived from the changeText records in ScopedEffects by materialiseTextWordsLocked; restore forces a recompute",
 	"wordLens", rebuilt, "ADR 0160's 2026-10-15 amendment: set only on a value copy handed to a target predicate (ThroughTextOf), never on a card in a zone",
 	"printed", rebuilt, "printed-characteristic cache (#1498); self-validating, rebuilt by restoreZone's stamp or on the next zone insertion",
+	"basePower", rebuilt, "the layer pass's power after layer 7b (CR 208.4b, Card.BasePower); derived, rebuilt by the recompute restore forces",
 	"stackGranted", rebuilt, "the keywords the stack step gave a spell (ADR 0107 §3); rebuilt from the ScopedEffect records and battlefield statics by the recompute restore forces",
 	"zoneGranted", rebuilt, "the ability bundles a battlefield static gave this card in a hand, graveyard or exile (ADR 0093 amendment 2026-10-13); rebuilt from the battlefield statics by the recompute restore forces",
 	"zoneLayered", rebuilt, "the types and colours a battlefield static gave this object off the battlefield (#3862, zone_layers.go); rebuilt from the battlefield statics by the recompute restore forces",

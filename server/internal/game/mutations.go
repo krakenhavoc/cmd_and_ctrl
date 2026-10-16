@@ -6579,7 +6579,7 @@ func (g *Game) DiscardSelection(playerID uuid.UUID, cardIDs []uuid.UUID) error {
 			// out of the turn and left the trigger waiting for the
 			// next player's upkeep.
 			if g.Turn.Step == StepCleanup {
-				g.exitCleanupStepLocked()
+				g.exitCleanupStepOnAnswerLocked()
 			}
 			return nil
 		},

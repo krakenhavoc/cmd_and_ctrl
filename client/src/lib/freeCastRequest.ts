@@ -50,17 +50,40 @@ export function freeCastTarget(
 // Envoy) leaves it. The library copy of a card is only on the wire for a
 // seat that has looked at it, so a request for a card in neither place is
 // still "not yet".
+//
+// `offerOpen` is whether the may_cast prompt that offered the card is still
+// on the frame (mayCastOfferOpen). While it is, the answer has not landed
+// and the card has no grant yet, so that is "not yet" too. #3490: a rebound
+// or suspend card is in exile BEFORE the answer and not castable, so the
+// request used to be dropped as stale on the very frame "Cast it free" was
+// clicked on. Nothing opened, and the card stayed in exile.
 export function freeCastLocation(
   exile: CardView[] | undefined,
   library: CardView[] | undefined,
   id: string | null,
+  offerOpen = false,
 ): { card: CardView; zone: "exile" | "library" } | null | undefined {
   if (!id) return null;
+  if (offerOpen) return undefined;
   const inExile = exile?.find((c) => c.instance_id === id);
   if (inExile) return inExile.castable_here ? { card: inExile, zone: "exile" } : null;
   const inLibrary = library?.find((c) => c.instance_id === id);
   if (inLibrary) return inLibrary.castable_here ? { card: inLibrary, zone: "library" } : null;
   return undefined;
+}
+
+// mayCastOfferOpen reports whether the viewer still owes the may_cast
+// prompt offering card `id`: true on the frame "Cast it free" was clicked
+// on, false once the answer's frame (which carries the grant) arrives.
+export function mayCastOfferOpen(
+  pending: PendingChoiceView[] | undefined,
+  id: string | null,
+  viewerID: string | null,
+): boolean {
+  if (!id) return false;
+  return (pending ?? []).some(
+    (c) => c.kind === "may_cast" && c.may_cast_card === id && (!viewerID || c.chooser === viewerID),
+  );
 }
 
 // #3270 (CR 608.2g): "you may cast a spell from your hand without paying

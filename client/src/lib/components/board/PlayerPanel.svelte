@@ -823,7 +823,19 @@
       aria-hidden="true"
       style:--playmat-wash={seat.playmat_wash ? `${seat.playmat_wash}%` : undefined}
     >
+      <!-- #3934: the whole mat, contained; the strips it leaves are
+           this same image (one request, same src) blurred and dimmed. -->
       <img
+        class="backdrop"
+        src={playmat}
+        alt=""
+        draggable="false"
+        decoding="async"
+        referrerpolicy="no-referrer"
+        onerror={() => (playmatFailed = playmatURL)}
+      />
+      <img
+        class="mat"
         src={playmat}
         alt=""
         draggable="false"
@@ -1124,8 +1136,8 @@
   }
   /* ADR 0128: the seat owner's playmat, a background layer and nothing
      else. It takes no space in the grid (absolute), takes no pointer
-     events, and paints under every zone. `cover` and centred, as a mat
-     on a table would be. The scrim is theme-aware: it is the page's own
+     events, and paints under every zone. `contain` and centred over a blurred copy of itself (#3934), so
+     none of it is cropped. The scrim is theme-aware: it is the page's own
      background colour at partial opacity, so in a dark skin the mat is
      dimmed toward dark and in the light skin toward light, and the
      cards, chips and text above it keep their contrast either way. */
@@ -1141,9 +1153,22 @@
     display: block;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     object-position: center;
     user-select: none;
+  }
+  /* #3934: the leftover strips. Same image, filled (cover), blurred and
+     darkened; scaled up a little so the blur's soft edge falls outside
+     the clip. One static filter, no script. */
+  .playmat img.backdrop {
+    position: absolute;
+    inset: 0;
+    object-fit: cover;
+    filter: blur(18px) brightness(0.7);
+    transform: scale(1.08);
+  }
+  .playmat img.mat {
+    position: relative;
   }
   .playmat::after {
     content: "";
@@ -1160,6 +1185,9 @@
   @media (min-width: 600px) {
     .panel.opponent.flipped .playmat img {
       transform: rotate(180deg);
+    }
+    .panel.opponent.flipped .playmat img.backdrop {
+      transform: rotate(180deg) scale(1.08);
     }
   }
   /* ADR 0111 §4 (owner decision 1): the action dock owns the screen's

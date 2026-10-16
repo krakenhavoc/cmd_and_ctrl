@@ -398,6 +398,12 @@ describe("the best-size prompt", () => {
     expect(w.getAttribute("aria-label")).toContain("up and down");
   });
 
+  // #3934: the table shows the whole mat, contained.
+  it("says the whole mat shows at the table", async () => {
+    const r = await withPrompt();
+    expect(text(promptOf(r.container)!)).toContain("the whole mat always shows");
+  });
+
   it("does not open for an image that fits", async () => {
     const r = await mount(account([]));
     click(byLabel(card(r.container, 1), "Add a playmat to slot 1")!);

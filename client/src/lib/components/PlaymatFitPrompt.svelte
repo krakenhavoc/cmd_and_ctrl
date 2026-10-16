@@ -191,6 +191,11 @@
     {/if}
   </p>
 
+  <p class="help shown">
+    At the table the whole mat always shows: it is fitted inside each battlefield, over a blurred
+    copy of itself that fills the sides.
+  </p>
+
   <div class="actions">
     <button type="button" class="primary" disabled={busy} onclick={() => onaccept(origin)}>
       Fit to best size
