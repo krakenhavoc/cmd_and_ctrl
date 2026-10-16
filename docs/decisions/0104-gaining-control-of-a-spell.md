@@ -311,3 +311,7 @@ These are the questions as asked. The owner's answers follow.
 6. **The chip appears on the stack lane and on the permanent.** The permanent's chip is general: any permanent controlled by a player who does not own it shows it.
 7. **CR 708.5 literally.** A stolen face-down spell can be looked at by its new controller only. The caster loses the look.
 8. **The bot exchanges with Perplexing Chimera** when the spell's mana value is 5 or more, or it is a permanent spell.
+
+## Amendment (2026-10-16, #1815): Chef's Kiss ships
+
+The random-retarget row decision 2 parked Chef's Kiss on is closed by [ADR 0019's 2026-10-16 amendment](0019-structured-targeting.md#amendment-2026-10-16-1815-targets-chosen-at-random). Chef's Kiss takes the spell with `GainControlOfSpellForEffect` (a spell it already controls stays a legal target and is simply not stolen), copies it with its targets (`CopySpellKeepingTargetsForEffect`, CR 707.10), and reselects every target of the spell and the copy at random among the legal ones other than its controller and their permanents. Because the steal recomputes layer 2 before it returns, the reselection judges legality for the thief, so an opponent's "target creature you control" finds nothing it may draw and keeps its target, as the 2021-06-18 ruling says.

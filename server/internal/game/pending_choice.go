@@ -3589,6 +3589,14 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 			f.step++
 			continue
 		}
+		if clause.AtRandom {
+			// #1815: "target … chosen at random" — the engine draws it
+			// now, as the trigger goes on the stack, and nobody is
+			// asked.
+			f.picked = append(f.picked, g.drawTriggerTargetLocked(f, lt))
+			f.step++
+			continue
+		}
 		label := clause.Label
 		if label == "" {
 			label = "Choose a target"
