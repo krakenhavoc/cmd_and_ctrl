@@ -327,6 +327,21 @@ hand; Skullwinder wants the one with the worst graveyard). A card
 whose clause makes that gap matter should change the ordering the
 prompt is queued with, not teach a policy to special-case the card.
 
+**A target of somebody else's spell or ability (`pick_target`, #2055).**
+"Target creature of an opponent's choice" (Nova Pentacle, Evangelize,
+Arena) asks the bot to choose a target for an effect it does not control;
+the prompt's `pick_target.chosen_for` names the controller, and its legal
+set is judged for that controller. The enumerator offers it like any
+other pick_target. The heuristic gives up the least
+(`opponentsChoiceValue`, `heuristic/moves.go`): a permanent of its own is
+priced at what losing it costs and a card the controller would get back
+from their graveyard at what it is worth, so the worst of them is chosen;
+anything else (a creature or a player for a damage effect) is priced as
+the bot's own pick would be, which aims the effect away from itself. When
+the bot is the CONTROLLER, its enumerator names no target for such a
+clause and the "which opponent" question is the choose-a-player prompt
+above.
+
 **A pile split** needs no policy of its own. Its first half is an
 ordinary `choose_cards` prompt over public, revealed cards, so the
 existing card-set enumeration offers the subsets — including the empty

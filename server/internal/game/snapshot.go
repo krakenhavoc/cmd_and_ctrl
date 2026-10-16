@@ -1429,10 +1429,15 @@ type stackItemSnapshot struct {
 	Modes        []int             `json:"modes,omitempty"`
 	XValue       int               `json:"xValue"`
 	Distribution map[uuid.UUID]int `json:"distribution,omitempty"`
-	HoldPriority bool              `json:"holdPriority"`
-	CastFromZone ZoneKind          `json:"castFromZone,omitempty"`
-	AltCost      string            `json:"altCost,omitempty"`
-	Foretold     bool              `json:"foretold,omitempty"`
+	// TargetChoosers is StackItem.TargetChoosers (#2055): which opponent
+	// chose each "of an opponent's choice" clause. Additive within the
+	// schema version and omitted when empty, which is every item that
+	// has no such clause.
+	TargetChoosers []TargetChooser `json:"targetChoosers,omitempty"`
+	HoldPriority   bool            `json:"holdPriority"`
+	CastFromZone   ZoneKind        `json:"castFromZone,omitempty"`
+	AltCost        string          `json:"altCost,omitempty"`
+	Foretold       bool            `json:"foretold,omitempty"`
 	// OwnFlashCast (#3156): the spell was cast with its own flash
 	// permission when a sorcery couldn't have been. Carried: the timing
 	// of the cast cannot be recomputed after a restore.
@@ -2599,6 +2604,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		Modes:            copyInts(s.Modes),
 		XValue:           s.XValue,
 		Distribution:     copyIntMap(s.Distribution),
+		TargetChoosers:   copyTargetChoosers(s.TargetChoosers),
 		HoldPriority:     s.HoldPriority,
 		CastFromZone:     s.CastFromZone,
 		AltCost:          s.AltCost,
@@ -2887,13 +2893,17 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		// owner. Dropping it drops the announcement, not half of it —
 		// nothing was paid — but the census still says so.
 		"costCommanderResume": c.costCommanderResume != nil,
-		"pickTargetResume":    c.pickTargetResume != nil,
-		"copyResume":          c.copyResume != nil,
-		"triggerResume":       c.triggerResume != nil,
-		"payUnlessResume":     c.payUnlessResume != nil,
-		"mayCastResume":       c.mayCastResume != nil,
-		"searchResume":        c.searchResume != nil,
-		"scryResume":          c.scryResume != nil,
+		// #2055: a parked cast or activation waiting on an opponent's
+		// target (or the controller's choice of opponent). Plain data,
+		// but not written with the prompt, so the census says so.
+		"opponentTargetResume": c.opponentTargetResume != nil,
+		"pickTargetResume":     c.pickTargetResume != nil,
+		"copyResume":           c.copyResume != nil,
+		"triggerResume":        c.triggerResume != nil,
+		"payUnlessResume":      c.payUnlessResume != nil,
+		"mayCastResume":        c.mayCastResume != nil,
+		"searchResume":         c.searchResume != nil,
+		"scryResume":           c.scryResume != nil,
 		// ADR 0088's ordered placement: handed the answer, then
 		// places the pile and runs the rest of the card.
 		"libraryOrderResume": c.libraryOrderResume != nil,
@@ -3579,6 +3589,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		Modes:            copyInts(s.Modes),
 		XValue:           s.XValue,
 		Distribution:     copyIntMap(s.Distribution),
+		TargetChoosers:   copyTargetChoosers(s.TargetChoosers),
 		HoldPriority:     s.HoldPriority,
 		CastFromZone:     s.CastFromZone,
 		AltCost:          s.AltCost,

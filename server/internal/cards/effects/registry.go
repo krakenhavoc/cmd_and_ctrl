@@ -61,6 +61,7 @@ func Register(spec Spec) {
 				panic(fmt.Sprintf("effects.Register: %q mode %d has no label — the bullet is the whole of what the picker shows", spec.Name, i))
 			}
 			checkFlatClauses(spec.Name, o.Targets)
+			refuseOpponentChoice(spec.Name, "a mode's", o.Targets)
 			checkSpellXBound(spec.Name, o.Targets)
 			checkModeCost(spec.Name, "mode", i, o.Cost, true)
 		}
@@ -106,6 +107,7 @@ func Register(spec Spec) {
 					panic(fmt.Sprintf("effects.Register: %q activated mode %d has no label", spec.Name, i))
 				}
 				checkFlatClauses(spec.Name, o.Targets)
+				refuseOpponentChoice(spec.Name, "an activated mode's", o.Targets)
 				checkModeCost(spec.Name, "activated mode", i, o.Cost, false)
 			}
 		}
@@ -120,6 +122,7 @@ func Register(spec Spec) {
 		checkNoDivideX(spec.Name, "a trigger's", t.Targets)
 		if t.Modes != nil {
 			for _, o := range t.Modes.Options {
+				refuseOpponentChoice(spec.Name, "a trigger mode's", o.Targets)
 				checkNoXBound(spec.Name, "a trigger mode's", o.Targets, false, false)
 				checkNoDivideX(spec.Name, "a trigger mode's", o.Targets)
 			}
@@ -292,6 +295,7 @@ func Register(spec Spec) {
 				panic(fmt.Sprintf("effects.Register: %q is modal and its gift rewrites the target clause — put the clause on the mode", spec.Name))
 			}
 			checkFlatClauses(spec.Name, g.Targets)
+			refuseOpponentChoice(spec.Name, "a gift's", g.Targets)
 		}
 	}
 	seenOptional := make(map[string]bool, len(spec.OptionalCosts))
@@ -314,6 +318,7 @@ func Register(spec Spec) {
 				panic(fmt.Sprintf("effects.Register: %q is modal and optional cost %q rewrites the target clause — put the clause on the mode", spec.Name, oc.Key))
 			}
 			checkFlatClauses(spec.Name, oc.Targets)
+			refuseOpponentChoice(spec.Name, "an optional cost's", oc.Targets)
 		}
 		if oc.ChoosesOpponent || oc.Key == game.GiftKey {
 			panic(fmt.Sprintf("effects.Register: %q declares a gift cost in OptionalCosts — declare Spec.Gift and let buildDef grow the cost (ADR 0089)", spec.Name))
@@ -1640,6 +1645,7 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 			}
 		}
 		checkDivide(name, i, spec.Clause(i))
+		checkOpponentChoice(name, i, spec.Clause(i))
 		if d := spec.Clause(i).Different; d != nil && (d.Key == nil || d.Label == "") {
 			panic(fmt.Sprintf("effects.Register: %q target clause %d has a set rule with no Key or no Label — build it with EachDifferentManaValue / EachDifferentController / EachDifferentName", name, i))
 		}
@@ -1672,6 +1678,41 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 		}
 		if c.BoundByCountersRemoved && stats == 0 {
 			panic(fmt.Sprintf("effects.Register: %q target clause %d reads the counters removed but bounds no statistic — chain BoundByTheCountersRemoved after WithPowerAtMostX or its siblings", name, i))
+		}
+	}
+}
+
+// checkOpponentChoice validates an "of an opponent's choice" clause
+// (#2055, ADR 0019's 2026-10-16 amendment). "They control" means nothing
+// without an opponent choosing; and the clause is a plain one: chosen by
+// one opponent, at least one target, with no division, relation or set
+// rule tying it to the other clauses' picks and no X bound -- no printed
+// card has one, and the walk that asks the opponent judges one clause
+// alone.
+func checkOpponentChoice(name string, i int, c *game.TargetClause) {
+	if c.ControlledByChooser && !c.ChosenByOpponent {
+		panic(fmt.Sprintf("effects.Register: %q target clause %d says \"they control\" with no opponent choosing it — wrap it as TheyControl(OfAnOpponentsChoice(...))", name, i))
+	}
+	if !c.ChosenByOpponent {
+		return
+	}
+	switch {
+	case c.Divide != nil, c.Relation != nil, c.Different != nil, c.Same != nil, len(c.EachOf) > 0:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice and divides or relates its picks — no printed card does", name, i))
+	case c.CountFromX, c.ManaValueAtMostX, c.ManaValueEqualsX, c.PowerAtMostX, c.ToughnessAtMostX:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice bounded by X — no printed card is", name, i))
+	case c.Min < 1:
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is an opponent's choice of \"up to\" targets — no printed card is", name, i))
+	}
+}
+
+// refuseOpponentChoice refuses an "of an opponent's choice" clause where
+// the engine does not ask an opponent: a mode's clause, and a clause an
+// optional or gift cost swaps in (#2055).
+func refuseOpponentChoice(name, owner string, spec *game.TargetSpec) {
+	for i := 0; i < spec.ClauseCount(); i++ {
+		if spec.Clause(i).ChosenByOpponent {
+			panic(fmt.Sprintf("effects.Register: %q declares an opponent's-choice target on %s clause %d — only a spell's, an activated ability's or a trigger's own clause list is asked of an opponent", name, owner, i))
 		}
 	}
 }

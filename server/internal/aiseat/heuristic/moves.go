@@ -1062,6 +1062,34 @@ func (st *state) targetsValue(cfg Config, targets []targetRef) float64 {
 	return v
 }
 
+// opponentsChoiceValue prices a target the bot chooses for another
+// player's spell or ability ("target … of an opponent's choice", #2055).
+// The effect is the controller's, so what costs the bot is what it hands
+// over: a permanent of its own is priced at what losing it costs
+// (Evangelize and Arena take or fight the chooser's own creature), and a
+// card the controller would get back from their graveyard at what it is
+// worth (Mausoleum Turnkey), so the bot gives up the least. Anything else
+// (a creature or a player for a damage effect, Nova Pentacle and
+// Cuombajj Witches) is priced as the bot's own pick would be, which aims
+// it away from the bot.
+func (st *state) opponentsChoiceValue(cfg Config, controller string, targets []targetRef) float64 {
+	var v float64
+	for _, t := range targets {
+		if t.Kind == "card" {
+			if c := st.bf[t.ID]; c != nil && c.Controller == st.me {
+				v -= st.permanentValue(c)
+				continue
+			}
+			if c := st.graveyard[t.ID]; c != nil && c.Owner == controller {
+				v -= st.cardValue(cfg, c)
+				continue
+			}
+		}
+		v += st.targetsValue(cfg, []targetRef{t})
+	}
+	return v
+}
+
 func (st *state) cardTargetValue(cfg Config, id string) float64 {
 	if c := st.bf[id]; c != nil {
 		if c.Controller == st.me {

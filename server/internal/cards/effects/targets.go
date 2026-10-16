@@ -628,6 +628,41 @@ func ControlledByThatPlayer(spec *game.TargetSpec) *game.TargetSpec {
 	return spec
 }
 
+// OfAnOpponentsChoice is "target … of an opponent's choice" (#2055, ADR
+// 0019's 2026-10-16 amendment): as the spell or ability is put on the
+// stack, its controller chooses an opponent and THAT opponent chooses
+// the clause's targets (CR 601.2c; the Nova Pentacle, Evangelize and
+// Volcanic Offering rulings). The controller still targets, so the
+// clause's predicates are written from the controller's side ("you
+// don't control" is the controller's), and hexproof is judged for the
+// controller. It is data on the clause (game.TargetSpec.
+// ChosenByOpponent): the controller's payload leaves it out, the engine
+// asks the controller which opponent and that opponent for the picks,
+// and the client's walk and the bot's enumerator skip it. Wrap the
+// whole clause:
+//
+//	OfAnOpponentsChoice(TargetCreature("target creature of an opponent's choice"))
+//
+// With "they control", wrap that in TheyControl. Not on a mode's clause,
+// and never divided: effects.Register refuses both.
+func OfAnOpponentsChoice(spec *game.TargetSpec) *game.TargetSpec {
+	spec.ChosenByOpponent = true
+	return spec
+}
+
+// TheyControl is the "they control" of "target creature of an opponent's
+// choice they control" (Evangelize, Preacher, Arena): the candidate must
+// be controlled by the opponent who chooses it (game.TargetSpec.
+// ControlledByChooser), read at announce, at the CR 608.2b re-check and
+// at a retarget against the opponent the announcement named. Only on an
+// OfAnOpponentsChoice clause; effects.Register refuses it alone.
+//
+//	TheyControl(OfAnOpponentsChoice(TargetCreature("target creature of an opponent's choice they control")))
+func TheyControl(spec *game.TargetSpec) *game.TargetSpec {
+	spec.ControlledByChooser = true
+	return spec
+}
+
 // SaddledThis narrows a clause to the creatures that saddled its own
 // source this turn (CR 702.171c): Giant Beaver's "target creature that
 // saddled it this turn". It is data on the clause

@@ -1121,3 +1121,82 @@ Back-out: take the `min(len(slots), 1)` shortcut in `finishPinnedRetargetLocked`
 `TestMizziumMeddlerAsksWhichInstanceOfTargetChanges` fail; drop `thatPlayerAdmits` from `sourceAdmits` and
 `TestParapetThrasherOffersNoArtifactBulletWithoutThatOpponentsArtifact` fails; drop the item's trigger from
 `stackItemSourceLocked` and the resolution re-check fails (`TestParapetThrasherDestroysTheDamagedOpponentsArtifact`).
+
+## Amendment (2026-10-16, #2055): a target chosen by an opponent ("target … of an opponent's choice")
+
+Ten Commander-legal cards print a target "of an opponent's choice" (Nova Pentacle, Evangelize, Preacher, Arena, Magus
+of the Arena, Cuombajj Witches, Diaochan, Volcanic Offering, Mausoleum Turnkey, Karplusan Minotaur). Until now every
+target was chosen by the player putting the spell or ability on the stack. The rulings agree on the shape: as the spell
+or ability is put on the stack its CONTROLLER chooses an opponent, and THAT opponent chooses the target (Nova Pentacle,
+Evangelize, Preacher; CR 601.2c, via CR 602.2b for an activation and CR 603.3d for a trigger). The controller still
+controls it and is still the player targeting, so an opponent cannot name their own hexproof creature (Cuombajj
+Witches). With several such clauses the controller may name the same opponent or different ones (Volcanic Offering),
+and the choice of opponent is part of the announcement: a retarget keeps it, and "they control" then means the chosen
+opponent (Magus of the Arena, Evangelize).
+
+**1. Data on the clause.** `TargetSpec.ChosenByOpponent` (built with `effects.OfAnOpponentsChoice`) marks the clause;
+`TargetSpec.ControlledByChooser` (`effects.TheyControl`) is "… they control". Legality is judged for the controller
+in the one shared walk exactly as for any other clause; `chooserAdmits` beside the other relative gates reads the opponent
+bound onto the per-announcement clause copy (`bindStepChoosers`, like the X bound). Unbound — the legal set a snapshot
+ships before anyone is named — "they control" admits any opponent's creature: the superset, as an unbound X is.
+`StackItem.TargetChoosers` (`[]TargetChooser{Mode, Slot, Player}`) records who chose each such clause; it is carried by
+clone, snapshot (additive under v9, omitted when empty) and a CR 707.10 copy, and `itemAnnouncedClauses` binds it, so
+the CR 608.2b re-check and a CR 115.7 retarget read "they control" against the opponent the announcement named.
+`effects.Register` refuses "they control" alone, an opponent's clause on a mode, a gift or an optional cost's rewrite,
+and one that divides, relates, sets a set rule, is bounded by X or is "up to" — no printed card is any of those.
+
+**2. A spell or an activation is PARKED, the shape #1397 built.** The controller's payload names targets for their own
+clauses only (`StepsChosenByController`); a ref aimed at an opponent's clause is refused. `castSpellLocked` and
+`activateCatalogAbilityLocked` validate the announcement with the opponents' unanswered clauses left out
+(`splitOpponentTargets`), then park it where the CR 903.9 commander question parks, before anything is paid or moved
+(CR 601.2c precedes CR 601.2h). For the first unanswered clause the engine lists the opponents who could fill it (an
+opponent with no creature cannot choose "a creature they control"; none ⇒ the announcement is refused, as a spell with no
+legal target is). One ⇒ that opponent is named. More ⇒ the controller is asked with an ordinary choose-a-player option
+pick. The named opponent then gets an ordinary `pick_target` prompt over the clause's legal set (judged for the
+controller, bound to them), with `PickTargetFor` naming the controller. Each answer makes the whole announcement again
+with what has been chosen attached (`CastSpellParams.opponentPicks`, unexported, set only by the resume), so the re-run
+re-validates everything against the board as it is then; the final run pays and puts the item on the stack like any
+other. A re-run that no longer validates is the controller's log line, not the answering opponent's error. A second
+announcement of the same spell or ability while one is parked is refused (`ErrChoicePending`). The frame
+(`opponentTargetFrame`) is plain data, so the closure ratchet gains no route; a table waiting on it is not a restore
+point (`ContinuationCensus.ChoiceResumeFrames`), as no parked announcement is.
+
+**3. A trigger walks it.** A trigger's targets are already a server-side walk, one `pick_target` per clause
+(`pickTargetFrame`). An opponent's step adds the choose-an-opponent question in front of it (that option pick carries
+the walk as a marker, so the drain holds the batch behind it and an ended turn drops it with the walk) and sends the
+step's prompt to the named opponent; `ResolvePickTargets` judges the answer for the trigger's controller with the named
+opponents bound, and the item is stamped with `TargetChoosers`. No opponent able to choose a required clause removes the
+trigger (CR 603.3d).
+
+**4. Departures (CR 800.4).** A controller who leaves takes their announcement with them: an opponent's open pick for it
+is withdrawn and nothing runs (CR 800.4a, 800.4d). A choosing opponent who leaves is handled by the existing
+reassignment of a `pick_target` (CR 800.4g's "another opponent if possible"); the answer records whoever answered.
+
+**5. The wire, the client and the bot.** `LegalTargetsView.chosen_by_opponent` marks the clause: the client's walk skips
+it (every other step keeps its own slot), and a statement made only of such clauses opens no walk, so the announcement is
+sent at once. The opponent's prompt is an ordinary `pick_target` whose `pick_target.chosen_for` names the controller,
+answered on the board like any other. The enumerator names no target for an opponent's clause and offers the
+announcement only while some opponent could complete it (`OpponentStepFillableForEffect`). A bot choosing for somebody
+else's effect gives up the least: its own permanent is priced at what losing it costs and a card the controller gets back
+at what it is worth to them; anything else is priced as its own pick would be, which aims it away from itself.
+
+### Cards
+
+Nova Pentacle, Evangelize, Arena, Magus of the Arena, Cuombajj Witches, Volcanic Offering and Mausoleum Turnkey (Full).
+Left out: Preacher (the ability does nothing if Preacher was untapped at ANY point after activation; the engine reads
+"remains tapped" as the ability resolves, the gap Vedalken Shackles' family shares), Diaochan, Artful Beauty ("activate
+only during your turn, before attackers are declared" has no activation window), and Karplusan Minotaur ("whenever you
+lose a coin flip"). Filed as #4061, #4062 and #4063.
+
+### Tests
+
+`cards/effects/opponent_target_cards_test.go` drives every card through the real announce, prompt and resolve path:
+nothing paid while parked, a payload naming the opponent's target refused, only opponents who could choose offered,
+hexproof judged for the controller, "they control" re-checked at resolution, two clauses with two opponents, and the
+trigger walk. `legal/opponent_target_test.go` holds the enumerator to the controller's own clause, the view to
+`chosen_by_opponent` and `chosen_for`, and the opponent's owed pick to their own creatures. The client's
+`opponentChoiceTarget.test.ts` holds the walk.
+
+Back-out: drop `chooserAdmits` from `sourceAdmits` and the Evangelize and Arena tests offer every opponent's creature;
+skip the park and the Nova Pentacle test sees the cost paid before the target; drop `bindStepChoosers` from
+`itemAnnouncedClauses` and Evangelize takes a creature its opponent no longer controls.

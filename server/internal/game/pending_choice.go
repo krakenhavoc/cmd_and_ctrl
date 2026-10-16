@@ -581,6 +581,22 @@ type PendingChoice struct {
 	// Added in S20 sub-PR 2.
 	pickTargetResume *pickTargetFrame
 
+	// PickTargetFor is, on a pick_target an opponent answers for an "of
+	// an opponent's choice" clause (#2055), the player whose spell or
+	// ability it is: the controller, who is still the player targeting
+	// (CR 601.2c). uuid.Nil on every prompt the controller answers
+	// themselves. Read by the wire (a bot choosing for somebody else's
+	// effect prices the pick the other way round) and never by a rule.
+	PickTargetFor uuid.UUID
+
+	// opponentTargetResume is the parked announcement behind an "of an
+	// opponent's choice" clause (#2055, opponent_target.go): on the
+	// opponent's pick_target it is what the answer makes again; on the
+	// controller's choose-an-opponent option pick it is only a marker
+	// (the option pick's own continuation runs the answer). Plain data.
+	// Not serialised: a table waiting on it is not a restore point.
+	opponentTargetResume *opponentTargetFrame
+
 	// ModeOptionIndex / ModeOptionLabel are the options a
 	// PendingChoiceModePick offers, in printed order: the ModeSpec
 	// index of each option and its oracle bullet. Only the choosable
@@ -1241,6 +1257,12 @@ type pickTargetFrame struct {
 	// Distribution when the walk finishes.
 	dist map[uuid.UUID]int
 
+	// choosers are the opponents named for the walk's "of an opponent's
+	// choice" steps so far (#2055, opponent_target.go), stamped onto the
+	// item as its TargetChoosers when the walk finishes. Never written
+	// into steps, which an undo clone shares: boundSteps binds a copy.
+	choosers []TargetChooser
+
 	doubledBy doublerRef
 }
 
@@ -1251,6 +1273,30 @@ func (f *pickTargetFrame) currentClause() *TargetClause {
 		return nil
 	}
 	return &f.steps[f.step].Clause
+}
+
+// boundSteps is the walk's steps with the opponents named so far bound
+// onto their clauses (#2055): a fresh copy, since steps is shared.
+func (f *pickTargetFrame) boundSteps() []AnnouncedClause {
+	if len(f.choosers) == 0 {
+		return f.steps
+	}
+	out := append([]AnnouncedClause(nil), f.steps...)
+	bindStepChoosers(out, f.choosers)
+	return out
+}
+
+// stepChooser is the opponent named for step i, or uuid.Nil.
+func (f *pickTargetFrame) stepChooser(i int) uuid.UUID {
+	if i < 0 || i >= len(f.steps) {
+		return uuid.Nil
+	}
+	for _, ch := range f.choosers {
+		if ch.Mode == f.steps[i].Mode && ch.Slot == f.steps[i].Slot {
+			return ch.Player
+		}
+	}
+	return uuid.Nil
 }
 
 // triggerResumeFrame stashes the per-trigger continuation data the
@@ -3565,7 +3611,37 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 		// was harvested, which is exactly the source CR 702.16b wants:
 		// the permanent may have left between the trigger and the
 		// prompt, and its qualities then are what count.
-		lt := g.LegalTargetsForAnnouncedClauseForEffect(SourceObject(f.source.Controller, &f.source).WithTrigger(f.tc), f.steps, f.step, append([]TargetRef{}, f.picked...))
+		src := SourceObject(f.source.Controller, &f.source).WithTrigger(f.tc)
+		// #2055: an "of an opponent's choice" step is answered by the
+		// opponent the controller names (CR 603.3d with CR 601.2c), its
+		// legal set still judged for the controller.
+		chooser, forPlayer := f.source.Controller, uuid.Nil
+		if clause.ChosenByOpponent {
+			named := f.stepChooser(f.step)
+			if named == uuid.Nil {
+				eligible := g.opponentChoosersForStepLocked(src, f.boundSteps(), f.step, f.picked)
+				switch len(eligible) {
+				case 0:
+					if clause.Min > 0 {
+						// No opponent could choose a legal target: the
+						// ability is removed (CR 603.3d).
+						return
+					}
+					f.step++
+					continue
+				case 1:
+					named = eligible[0]
+					f.choosers = append(f.choosers, TargetChooser{Mode: f.steps[f.step].Mode, Slot: f.steps[f.step].Slot, Player: named})
+				default:
+					g.queueTriggerOpponentLocked(f, eligible)
+					return
+				}
+			}
+			chooser, forPlayer = named, f.source.Controller
+		}
+		steps := f.boundSteps()
+		clause = &steps[f.step].Clause
+		lt := g.LegalTargetsForAnnouncedClauseForEffect(src, steps, f.step, append([]TargetRef{}, f.picked...))
 		lt = withoutPicked(lt, f.picked, clause.Distinct)
 		// #1559: a clause with a set rule can have candidates and
 		// still no legal SET of Min picks ("two target creatures
@@ -3593,9 +3669,12 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 		if label == "" {
 			label = "Choose a target"
 		}
+		if forPlayer != uuid.Nil {
+			label = g.seatLabelLocked(forPlayer) + "'s " + f.source.Name + ": choose " + clauseLabel(clause)
+		}
 		g.QueueChoiceForEffect(PendingChoice{
 			Kind:              PendingChoicePickTarget,
-			Chooser:           f.source.Controller,
+			Chooser:           chooser,
 			Count:             1,
 			Source:            f.source.InstanceID,
 			Reason:            label,
@@ -3603,11 +3682,49 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 			PickTargetCards:   lt.Cards,
 			PickTargetMin:     clause.Min,
 			PickTargetMax:     clause.Max,
+			PickTargetFor:     forPlayer,
 			pickTargetResume:  f,
 		})
 		return
 	}
 	g.finishPickTargetLocked(f)
+}
+
+// queueTriggerOpponentLocked asks a trigger's controller which opponent
+// chooses the open step's targets (#2055). The answer continues the
+// walk on a copy of the frame, with that opponent named. The option
+// pick carries the frame as pickTargetResume too, as a MARKER: it is
+// part of the trigger's announcement, so the drain holds the batch
+// behind it (triggerAnnouncementOpenLocked), an ended turn drops it with
+// the walk, and it belongs to no resolution. Its answer is the option
+// pick's own continuation; ResolvePickTargets never sees it (its kind
+// is option_pick).
+//
+// Caller must hold g.mu.
+func (g *Game) queueTriggerOpponentLocked(f *pickTargetFrame, eligible []uuid.UUID) {
+	step := f.steps[f.step]
+	frame := f
+	g.QueueOptionPickForEffect(OptionPickPrompt{
+		Chooser:  f.source.Controller,
+		Source:   f.source.InstanceID,
+		Question: f.source.Name + ": choose an opponent to choose " + clauseLabel(&step.Clause),
+		Options:  g.seatChoiceOptionsLocked(eligible),
+		walk:     frame,
+		ThenSeat: func(g *Game, chosen uuid.UUID) error {
+			if chosen == uuid.Nil {
+				// Dropped unanswered: the controller has left, and the
+				// trigger is not put on the stack (CR 800.4d).
+				return nil
+			}
+			next := clonePickTargetFrame(frame)
+			next.choosers = append(next.choosers, TargetChooser{Mode: step.Mode, Slot: step.Slot, Player: chosen})
+			g.queuePickTargetStepLocked(next)
+			if !g.triggerAnnouncementOpenLocked() {
+				g.runStateChecksLocked()
+			}
+			return nil
+		},
+	})
 }
 
 // finishPickTargetLocked runs Build with every step answered and
@@ -3628,6 +3745,7 @@ func (g *Game) finishPickTargetLocked(f *pickTargetFrame) {
 	item.Targets = append([]TargetRef(nil), f.picked...)
 	item.Modes = append([]int(nil), f.modes...)
 	item.Distribution = cloneDistributionLocked(f.dist)
+	item.TargetChoosers = copyTargetChoosers(f.choosers)
 	item.targetSpec = f.spec
 	item.modeSpec = f.modeSpec
 	item.DoubledBy, item.DoubledByName = f.doubledBy.id, f.doubledBy.name
@@ -3740,6 +3858,14 @@ func (g *Game) ResolvePickTargetsDivided(choiceID, chooserID uuid.UUID, targets 
 	if cf := choice.copyResume; cf != nil {
 		return g.resolveCopyTargetsLocked(idx, cf, targets)
 	}
+	// #2055: an opponent choosing a target for a parked cast or
+	// activation. The answer makes the announcement again.
+	if of := choice.opponentTargetResume; of != nil {
+		if len(dist) > 0 {
+			return ErrInvalidParam
+		}
+		return g.resolveOpponentTargetsLocked(idx, choice, of, chooserID, targets)
+	}
 	frame := choice.pickTargetResume
 	step := frame.currentClause()
 	if frame == nil || !frame.ability.builds() || step == nil {
@@ -3764,7 +3890,15 @@ func (g *Game) ResolvePickTargetsDivided(choiceID, chooserID uuid.UUID, targets 
 		stamped = append(stamped, t)
 	}
 	all := append(append([]TargetRef(nil), frame.picked...), stamped...)
-	if err := g.validateAnnouncedTargetsWithLocked(SourceObject(chooserID, &frame.source).WithTrigger(frame.tc), frame.steps[:frame.step+1], all, func(i int, _ TargetRef) bool { return i < len(frame.picked) }); err != nil {
+	// #2055: judged for the trigger's CONTROLLER, who is not the chooser
+	// on an "of an opponent's choice" step, with the opponents named so
+	// far bound onto their clauses. The answering opponent is recorded
+	// as the step's chooser: a departure may have handed the prompt on
+	// (CR 800.4g).
+	if cur.Clause.ChosenByOpponent {
+		frame.choosers = withStepChooser(frame.choosers, cur, chooserID)
+	}
+	if err := g.validateAnnouncedTargetsWithLocked(SourceObject(frame.source.Controller, &frame.source).WithTrigger(frame.tc), frame.boundSteps()[:frame.step+1], all, func(i int, _ TargetRef) bool { return i < len(frame.picked) }); err != nil {
 		return err
 	}
 	if step.Distinct {

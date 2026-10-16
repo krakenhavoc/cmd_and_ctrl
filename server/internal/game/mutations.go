@@ -581,6 +581,13 @@ type CastSpellParams struct {
 	// assistPaid is the helper's answer, attached by the parked
 	// announcement's resume. Unexported, like commanderAnswers.
 	assistPaid *assistAnswer
+
+	// opponentPicks are the "of an opponent's choice" clauses already
+	// settled for a parked cast (#2055, opponent_target.go): the
+	// opponent the caster named for each, and that opponent's picks once
+	// they have answered. Unexported, and set only by the parked
+	// announcement's resume, so no payload answers for an opponent.
+	opponentPicks []opponentPick
 }
 
 // InsufficientManaError is returned by CastSpell when the Strict
@@ -1212,7 +1219,16 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	g.bindDivideAmountsLocked(steps, DivideAmountArgs{
 		Controller: playerID, Source: cardID, AltCost: AltCostKeyword(params.AlternativeCost),
 	})
-	params.Targets = assignAnnouncedSlots(steps, params.Targets)
+	// #2055: the payload names targets for the caster's own clauses
+	// only; an "of an opponent's choice" clause is the opponent's, and
+	// its answer rides params.opponentPicks (opponent_target.go).
+	params.Targets = assignAnnouncedSlots(StepsChosenByController(steps), params.Targets)
+	ownTargets := params.Targets
+	oppTargets, oppErr := splitOpponentTargets(steps, params.Targets, params.opponentPicks)
+	if oppErr != nil {
+		return oppErr
+	}
+	params.Targets = oppTargets.targets
 	for _, i := range xSteps {
 		// Max 0 reads as "unbounded" to the ordinary count check, so
 		// an X-counted step is checked for an EXACT count of X here.
@@ -1269,7 +1285,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// value, which "protection from mana value N or less" reads (#2181).
 	castSrc := SourceObject(playerID, &card)
 	castSrc.X = params.XValue
-	if err := g.validateAnnouncedTargetsLocked(castSrc, steps, params.Targets); err != nil {
+	if err := g.validateAnnouncedTargetsLocked(castSrc, oppTargets.check, params.Targets); err != nil {
 		slog.Warn("cast_spell rejected: illegal target",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
@@ -1282,7 +1298,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #1563, CR 601.2d: the division is announced with the targets,
 	// against the amount the announced X gives. The settled copy — a
 	// lone target handed the whole amount — is what the item stores.
-	dist, err := settleDistribution(steps, params.Targets, params.Distribution, params.XValue)
+	dist, err := settleDistribution(oppTargets.check, params.Targets, params.Distribution, params.XValue)
 	if err != nil {
 		slog.Warn("cast_spell rejected: bad division",
 			"card_name", card.Name,
@@ -1750,10 +1766,27 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if alt != nil && alt.ReturnToHand != nil {
 		asking = costCommanderMovesTo(ZoneHand, params.AltCostIDs...)
 	}
+	// #2055: an "of an opponent's choice" clause still unanswered parks
+	// the cast here, before anything is paid or moved (CR 601.2c comes
+	// before CR 601.2h): the caster names an opponent and that opponent
+	// picks, and each answer casts it again (opponent_target.go).
+	if len(oppTargets.pending) > 0 {
+		parked := params
+		parked.Targets = ownTargets
+		return g.parkForOpponentTargetLocked(&opponentTargetFrame{
+			controller: playerID,
+			cardID:     cardID,
+			name:       card.Name,
+			cast:       parked,
+		}, castSrc, oppTargets)
+	}
 	asked, answers := g.askCostCommanderLocked(playerID, asking, params.commanderAnswers, card.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {
 			again := params
 			again.commanderAnswers = answers
+			// The payload's own picks: the opponents' answers ride
+			// opponentPicks and are merged in again (#2055).
+			again.Targets = ownTargets
 			return g.castSpellLocked(playerID, cardID, again)
 		})
 	if asked {
@@ -1884,11 +1917,13 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		Owner:        card.Owner,
 		SourceCardID: cardID,
 		Targets:      append([]TargetRef(nil), params.Targets...),
-		Modes:        append([]int(nil), params.Modes...),
-		XValue:       params.XValue,
-		Distribution: cloneDistributionLocked(params.Distribution),
-		HoldPriority: params.HoldPriority,
-		SplitSecond:  splitSecond,
+		// #2055: who chose each "of an opponent's choice" clause.
+		TargetChoosers: copyTargetChoosers(oppTargets.choosers),
+		Modes:          append([]int(nil), params.Modes...),
+		XValue:         params.XValue,
+		Distribution:   cloneDistributionLocked(params.Distribution),
+		HoldPriority:   params.HoldPriority,
+		SplitSecond:    splitSecond,
 		// #3938: the keyword, not the claim. A granted instance of
 		// flashback is flashback (CR 702.34a), so "if the flashback cost
 		// was paid" reads the same whichever instance paid it.
@@ -5779,6 +5814,20 @@ func (g *Game) dropChoicesForPlayerLocked(playerID uuid.UUID) []*replacementResu
 		// is nobody left to make it (CR 800.4a), so the prompt is
 		// withdrawn and nothing runs.
 		if c != nil && c.Chooser != playerID && c.Assist != nil && c.Assist.Caster == playerID {
+			g.EmitEvent(Event{
+				Kind:   EventPendingChoiceDropped,
+				Actor:  c.Chooser,
+				Source: c.Source,
+				Label:  string(c.Kind),
+			})
+			continue
+		}
+		// #2055: an opponent choosing a target for the departed
+		// player's spell, ability or trigger. Nothing was paid or put
+		// on the stack, and there is nobody left to make the
+		// announcement (CR 800.4a, CR 800.4d), so the prompt is
+		// withdrawn and nothing runs.
+		if c != nil && c.Chooser != playerID && c.PickTargetFor == playerID {
 			g.EmitEvent(Event{
 				Kind:   EventPendingChoiceDropped,
 				Actor:  c.Chooser,

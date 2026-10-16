@@ -342,6 +342,17 @@ type StackItem struct {
 	// (CR 707.10), remapped by a retarget (CR 115.7c). #1563.
 	Distribution map[uuid.UUID]int
 
+	// TargetChoosers names, for each clause of the announcement that
+	// an opponent chose ("target creature of an opponent's choice",
+	// TargetSpec.ChosenByOpponent), the opponent who chose it (#2055).
+	// The choice of opponent is part of the announcement and cannot be
+	// changed (the Magus of the Arena ruling): it is bound onto the
+	// item's clause copies for the CR 608.2b re-check and for a CR
+	// 115.7 retarget, which both read "they control" against it.
+	// Carried by clone, snapshot and copy (CR 707.10). Nil on every
+	// item without such a clause.
+	TargetChoosers []TargetChooser
+
 	// Paid is what this announcement actually cost: the counters
 	// removed or added, the life paid, and — since #761 — the mana
 	// tokens that left the pool, or the fact that the engine waived
