@@ -111,7 +111,11 @@ func abilityRowsOf(c *Card, onBattlefield bool) []AbilityRow {
 	names := abilityRowNames(c)
 	var out []AbilityRow
 	for _, t := range triggersOf(c) {
-		if t.Keyword != "" {
+		// Cumulative upkeep keeps its row (#3869): it has no keyword
+		// chip, because it is not a canonicalKeywords token, so the row
+		// is where the tile shows it — as it did before the trigger
+		// carried a Keyword.
+		if t.Keyword != "" && t.Keyword != KeywordCumulativeUpkeep {
 			continue
 		}
 		label, generic := abilityRowText(t.Key, names, "Triggered ability")
@@ -274,14 +278,17 @@ var staticRowSlots = []staticRowSlot{
 	{field: "HandSize", label: handSizeRows},
 	{field: "ManaPool", label: manaPoolRows},
 	{field: "PlayerKeywords", label: playerKeywordRows},
+	{field: "PlayerKeywordsIf", fallback: "Gives you an ability some of the time", ownLabel: true},
 	{field: "PlayerLifeTotalLocked", label: boolRow("Your life total can't change.")},
 	{field: "DamageStaysThroughCleanup", label: boolRow("Damage isn't removed from this creature during cleanup steps.")},
 	{field: "LoyaltyTwiceEachTurn", label: boolRow("You may activate its loyalty abilities twice each turn rather than only once.")},
 	{field: "ActivateAsThoughHaste", label: boolRow("You may activate abilities of creatures you control as though those creatures had haste.")},
 	{field: "ExtraVote", label: extraVoteRows},
 	{field: "OpponentsFaceVillainousChoicesAgain", label: boolRow("If an opponent would face a villainous choice, they face that choice an additional time.")},
+	{field: "ControlsOpponentsSearches", label: boolRow("You control your opponents while they're searching their libraries, and they exile each card they find. You may play those cards.")},
 	{field: "DamageCantBePrevented", label: unpreventableDamageRows},
 	{field: "CantGainLife", fallback: "Life can't be gained", ownLabel: true},
+	{field: "DrawLimits", fallback: "Limits how many cards players draw", ownLabel: true},
 	{field: "DamageAsThough", fallback: "Changes how damage is dealt", ownLabel: true},
 	{field: "AnyColorSpend", label: anyColorSpendRows},
 	{field: "LifeForMana", fallback: "Lets you pay life for mana", ownLabel: true},

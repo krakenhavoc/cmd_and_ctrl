@@ -146,6 +146,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := skipExtraTurnStepModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #3995: a player-wide untap skip naming no player or no
+			// permanent type, or anyController on another kind.
+			if problem := skipNextUntapStepModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 		}
 		// ADR 0107 §3: a stack pin may carry only what this binary's
 		// stack step applies (layer 2 control, layer-6 keywords). A
@@ -207,6 +212,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 	}
 	// ADR 0107 §6: an owed follow-up names its body as a key.
 	for _, f := range s.PreventionFollowUps {
+		// #2047: a CR 615.13 announcement names no body; it is emitted
+		// as an event.
+		if f.Announce && f.Body == "" {
+			continue
+		}
 		if !KnownEffectBody(f.Body) {
 			unknown = append(unknown, "prevention follow-up body "+f.Body)
 		}
@@ -422,6 +432,9 @@ func unknownScopedEffectFields(data []byte, schema int) ([]string, error) {
 			return err
 		}
 		if err := nested(where+" ability", obj["ability"], abilityRefJSONKeys, false); err != nil {
+			return err
+		}
+		if err := nested(where+" objects", obj["objects"], objectRefJSONKeys, true); err != nil {
 			return err
 		}
 		return nested(where+" object", obj["object"], objectRefJSONKeys, false)

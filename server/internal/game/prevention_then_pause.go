@@ -155,12 +155,20 @@ func (g *Game) parkFollowUpContinuationLocked(inst DamageInstance, run func(g *G
 // then the instruction's continuation, oldest first. Reports whether it
 // is paused again — a follow-up or a continuation asked something new.
 //
+// The entries run before a continuation are its own instance's and every
+// EARLIER instance's still owed (instances are numbered in the order
+// they begin): an announcement (#2047, CR 615.13) or a follow-up an
+// earlier instruction owed behind the same question happened before
+// this instruction's damage, so it is emitted or run before this
+// instruction goes on. A later instance's entries wait for their own
+// park or the catch-all flush.
+//
 // Called from holdForOpenResolutionLocked, before a modal item's next
 // bullet. Caller must hold g.mu (write).
 func (g *Game) resumeFollowUpParksLocked() bool {
 	for len(g.followUpParks) > 0 {
 		p := g.followUpParks[0]
-		if g.runOwedFollowUpsLocked(func(f PreventionFollowUp) bool { return f.Instance == p.inst }) {
+		if g.runOwedFollowUpsLocked(func(f PreventionFollowUp) bool { return f.Instance != 0 && f.Instance <= p.inst }) {
 			return true
 		}
 		g.followUpParks = slices.Clone(g.followUpParks[1:])

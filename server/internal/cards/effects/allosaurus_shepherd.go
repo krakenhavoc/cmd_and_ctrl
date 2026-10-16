@@ -48,7 +48,7 @@ func allosaurusShepherdElvesBecomeDinosaurs(g *game.Game, item *game.StackItem) 
 		Mods: []game.Mod{
 			game.SetBasePowerMod(5),
 			game.SetBaseToughnessMod(5),
-			game.AddSubtypesMod("Dinosaur"),
+			game.AddSubtypesMod(ctx.TextSubtypes("Dinosaur")...),
 		},
 		Duration: DurationUntilEndOfTurn(ctx),
 		Label:    "Allosaurus Shepherd — each Elf creature you control is a 5/5 Dinosaur until end of turn",

@@ -1,0 +1,6 @@
+---
+title: "A delayed trigger once for each creature dealt damage at the same time"
+date: 2026-10-16
+issues: [3997]
+---
+**A delayed trigger once for each creature dealt damage at the same time** (#3997, CR 603.2c / 603.7b / 510.2, [ADR 0026](../../decisions/0026-delayed-triggers.md)'s 2026-10-16 amendment) — "Until end of turn, whenever a creature is dealt damage, destroy it" is one occurrence for each creature, however many sources dealt it damage at once, and the engine emits one `EventDealDamage` per source. `DelayedTrigger.OncePerBatch` on an each-condition (`game.DelayedEachCondition`) now fires once for each object in each event batch and damage instance (`objectsNotYetFiredInBatchLocked`, `game/delayed.go`), through the same `oncePerBatchFired` guard with the object and the `DamageInstance` as the key's second dimension. A double-blocked creature is one instance, and two separate damage instructions in one resolution are two. An each-condition instance's payload also records the object's CR 400.7 epoch, so "destroy it" and a last-known toughness read the object the event was about. No new snapshot field. The card side is `cards/effects/delayed_creature_events.go`: `eachCreatureDealtDamageCondition`, `eachCreatureDiedCondition`, `destroyThePayloadPermanentBody` and `diedControllerLosesLifeEqualToToughnessBody`. **Cards** (1, Full): Shriveling Rot.

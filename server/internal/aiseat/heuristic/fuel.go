@@ -80,8 +80,10 @@ func (p *Policy) CostFuelPrice(in aiseat.Input) legal.CostFuelOrder {
 		if c.Tap {
 			// ADR 0135 §1: a permanent a cost would TAP, priced as the
 			// cast prices it (valueOfCast), so the payment offered first
-			// is the one the bot then scores as cheapest.
-			return p.tapFuelValue(st, c.ID.String())
+			// is the one the bot then scores as cheapest. #3931: less the
+			// generic mana a harmonize tap saves, priced as emerge's is
+			// below; zero for every other tap cost.
+			return p.tapFuelValue(st, c.ID.String()) - p.cfg.SpellPerMana*float64(c.Saves)
 		}
 		// ADR 0135 §4 (owner decision 5): an emerge payment ranks by
 		// what the permanent is worth to keep LESS the generic mana it

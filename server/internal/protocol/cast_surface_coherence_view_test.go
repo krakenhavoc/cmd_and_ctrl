@@ -355,11 +355,15 @@ func TestCastableHereOnACardThatOpensItsZoneAtNoPrice(t *testing.T) {
 	}
 }
 
-// And rule 3 in the other direction, because the old view got this
-// wrong too: a card that declares AND prices its zone owes that price
-// even under a permission that would charge the printed cost, so an
-// unpayable bound offer leaves no cast at all.
-func TestCastableHereClearedWhenTheCardsOwnPriceIsOwedAndUnpayable(t *testing.T) {
+// And rule 3 in the other direction. Until #1987 a card that declares
+// AND prices its own zone owed that price even under a permission that
+// charges the printed cost, so an unpayable bound offer left no cast at
+// all. That was weaker than the rules: the permission is what makes the
+// cast legal (CR 601.3), and it lets the card be cast for its mana cost,
+// with the card's own offer as the other choice (ADR 0066 amendment
+// 2026-10-16, Decision 2). So the bit is set on the printed cost, and
+// the unpayable escape offer is not listed.
+func TestCastableHereUnderAPrintedCostGrantWhenTheCardsOwnPriceIsUnpayable(t *testing.T) {
 	const oracle = "test-view-declared-and-priced"
 	g := buildActiveGame(t)
 	me := g.Seats[0]
@@ -375,8 +379,14 @@ func TestCastableHereClearedWhenTheCardsOwnPriceIsOwedAndUnpayable(t *testing.T)
 	}
 
 	c := cardInSeatZone(t, ViewOfGameFor(g, me.ID.String()).Seats[0].Graveyard, spell)
-	if c.CastableHere {
-		t.Errorf("castable_here is set: the card's own graveyard price is owed (rule 3) and cannot be paid")
+	if !c.CastableHere {
+		t.Errorf("castable_here is clear: the permission lets the card be cast for its printed cost")
+	}
+	if c.AlternativeCostRequired {
+		t.Errorf("alternative_cost_required is set, but the printed cost is a choice under the permission")
+	}
+	if len(c.AlternativeCosts) != 0 {
+		t.Errorf("offers = %v, want none: the escape cost cannot be paid", keysOf(c.AlternativeCosts))
 	}
 }
 

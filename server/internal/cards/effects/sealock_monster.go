@@ -52,7 +52,7 @@ func sealockMonsterTrigger() game.TriggeredAbility {
 			}
 			return ScopedEffectFor{
 				Target:   land,
-				Mods:     []game.Mod{game.AddSubtypesMod("Island")},
+				Mods:     []game.Mod{game.AddSubtypesMod(ctx.TextSubtypes("Island")...)},
 				Duration: g.PinnedTo(game.IndefiniteDuration(), land),
 				Label:    "Sealock Monster — that land is an Island in addition to its other types",
 			}.Apply(ctx)

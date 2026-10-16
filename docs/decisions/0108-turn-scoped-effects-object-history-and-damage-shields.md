@@ -631,6 +631,62 @@ Additive within v9: `turnTally.damagedObjects` and `mods[].damageSince`, both om
 
 Bone Shaman and Runesword ship `full`. The record also ships the "If a creature dealt damage by this creature this turn would die, exile it instead" family as catalog replacements: Kumano, Master Yamabushi, Frostwielder, Incendiary Oracle, Kumano's Pupils, and Kumano's Blessing (the enchanted creature's damage), all `full`.
 
+## Amendment 2026-10-16 — §9: redirections that are optional, read combat, or spare you (#2056)
+
+Delivery PR 9 left three redirections the scoped kind could not express. Blood of the Martyr ("Until end of turn, if damage would be dealt to any creature, you may have that damage dealt to you instead") is optional each time, and a scoped replacement could not ask "may". Kjeldoran Royal Guard ("{T}: All combat damage that would be dealt to you by unblocked creatures this turn is dealt to this creature instead") must read whether the source is unblocked as the damage would be dealt, and `Queries` reads characteristics only. Ascent of the Worthy's chapters I and II ("Choose a creature you control. Until your next turn, all damage that would be dealt to creatures you control is dealt to that creature instead") protect your creatures and not you, and the record could protect a player and their permanents, a pinned permanent or opponents. This amendment is how `redirectDamage` names all three.
+
+### The rules
+
+- **CR 614.9:** a redirection that would redirect damage to or from a permanent that has left the battlefield or is no longer a battle, creature or planeswalker, or to or from a player who has left the game, does nothing.
+- **CR 614.5:** a replacement effect gets one opportunity to affect an event, so an optional redirection is decided once for each damage event it meets.
+- **CR 616.1:** the affected player, or the controller of the affected object, chooses the order of the replacement effects that apply to the event. That rule is about order only. The "you" of Blood of the Martyr's "you may" is its controller, so the yes or no is theirs, whoever's creature is being dealt the damage.
+- **CR 509.1h:** an attacking creature becomes blocked or unblocked as blockers are declared and stays so until it is removed from combat or the combat phase ends.
+- **CR 609.7b:** an effect that applies to sources with certain properties rechecks them as the damage would be dealt.
+- **CR 611.2c:** a continuous effect from a resolved spell or ability that changes no characteristic and no controller can affect objects that were not affected when it began. A redirection changes neither, so "creatures you control" is the set as the damage would be dealt: a creature that enters later is covered, and one you lose control of is not.
+- **CR 615.12** covers prevention effects only. "Damage can't be prevented" does not stop a redirection, which is a replacement effect (CR 614.1a), as §9 already says.
+
+### Decision
+
+1. **The source, through #2026's filter.** `redirectDamage` reads `Mod.SourceFilter` (`DamageSourceFilter`, at most one entry) with the same meaning it has on `preventFromSource`, off the same view of the source (`damageSourceViewLocked`) as the damage would be dealt. "By unblocked creatures" is `Queries {creature}` with `Combat: unblocked`. It is refused beside a pinned source (`Objects`), as on the shield.
+2. **The protected set, through #2045's filter.** `redirectDamage` reads `Mod.RecipientFilter` (`DamageRecipientFilter`, at most one entry) through `nextFromSourceProtectsLocked`, the reader the shield uses. "Creatures you control" is `Permanents`, `Match {creature}`, `Controller: you`; "any creature" leaves out the controller. It stands alone: it is refused beside a protected player or types, beside the `Recipients` vocabulary ("to an opponent"), beside a charge, and on a pinned record. Damage to the destination itself is not redirected, because a redirection to the event's own recipient never applies (`canRedirectDamageLocked`).
+3. **"You may", through the existing prompt.** A new `Mod.Optional` bool on `redirectDamage`, refused on every other kind, on a record that deals its damage nowhere instead (Eye for an Eye's shape), and beside a charge. The gather sets `ReplacementEffect.Optional` on the effect it hands the pipeline, and its `Controller` returns the record's controller, so `offerOptionalReplacementLocked` asks that player through the `optional_replacement` prompt. The CR 616 ordering is unchanged: a damage event names the affected player itself (`affectedPlayerForEvent`). A yes runs the redirection; a no marks it applied to that event and the damage is dealt where it was. A window that cannot ask (an event that must settle now, a chooser who has left) declines it, the weaker direction, as every other "may" replacement.
+4. **What the prompt says.** The question is written from the event as it stands when it is asked, so an earlier effect in a CR 616 chain is reflected: "Blood of the Martyr — have the 3 damage from Shock to Grizzly Bears dealt to you instead?". The view carries the same facts as data (`redirect_amount`, `redirect_from`, `redirect_to`, read by `Game.DamageRedirectOfferLocked` on every view, never stored). The heuristic bot says yes only when the damage would destroy a creature it controls and its life stays at or above its floor; before this, every unknown "may" replacement got the default yes, which would have paid life for opponents' creatures.
+5. **The card side.** `effects.RedirectDamage` gains `Filter` and `Optional`, and reads the recipient sets `ShieldCreatures` and `ShieldCreaturesYouControl`. Ascent of the Worthy's chapter III is `ReturnFromGraveyardWithCountersThenForEffect` with a flying counter and a layer-4 subtype grant pinned to the returned object, as Liliana, Death's Majesty's −3 is.
+
+### Snapshot impact
+
+- New `Mod` key `optional`. A binary from before this amendment refuses a file carrying it (an unknown mod key, ADR 0041 P4). It does not drop it, because the redirection would then apply without asking, which is stronger than printed.
+- `sourceFilter` and `recipientFilter` were already `Mod` keys. A file from this binary can now hold them on a `redirectDamage` mod, and an older binary refuses that record (`nextFromSourceModProblem` and `recipientFilterModProblem` reject either filter on that kind) rather than restoring a redirection that protects or redirects more than printed.
+- Additive under v9 (`-update-shape`). No fixture changes. No new closure route: every field is plain data, and the prompt question and the offer are computed, not stored.
+
+### Cards
+
+All three ship `full`: Blood of the Martyr, Kjeldoran Royal Guard and Ascent of the Worthy. The seam row `redirection-conditions` is closed.
+
+## Amendment 2026-10-16 — "whenever damage is prevented" (#2047)
+
+`game.EventDamagePrevented` was only the context a CR 615.5 follow-up body is handed, and nothing emitted it, so no triggered ability could watch for prevented damage. Selfless Squire ("Whenever damage that would be dealt to you is prevented, put that many +1/+1 counters on this creature") waited on it. It is the only card that prints a CR 615.13 trigger; every "prevented this way" clause is a follow-up, which §7 and §8 already run.
+
+### The rules
+
+- **CR 615.13:** "Some triggered abilities trigger when damage that would be dealt is prevented. Such an ability triggers each time a prevention effect is applied to one or more simultaneous damage events and prevents some or all of that damage."
+- **CR 615.12:** a prevention effect applied to damage that can't be prevented prevents nothing, so it is not an application CR 615.13 counts.
+- **CR 702.16e, CR 122.1c:** protection and a shield counter are prevention effects too.
+
+### Decision
+
+1. **The unit is the follow-up queue's.** One application of one prevention effect to the simultaneous events of one damage instance (PR 0) is one announcement, owed with the running total and emitted once, where a follow-up runs: as the instance ends, or at ADR 0107's flush points. A Fog stopping three attackers is one trigger for all of it. A charged shield and a "prevent all" that each stop part of one instance are two effects and two triggers.
+2. **Measured in one place.** `runReplaceLocked` already measured a §8 static's Replace before and after. It now measures every replacement that declares `Prevention` (a scoped shield, a catalog static, protection's built-in, a shield counter) and owes an announcement when the effect prevented at least 1. `TestDamageReplacementsDeclareWhetherTheyPrevent` already holds every damage replacement that reduces damage to that declaration. Under "damage can't be prevented", `settleUnpreventableLocked` settles the effect without running its Replace, so nothing is measured and nothing triggers, while the effect's own follow-up still runs with zero (§8).
+3. **One event per recipient.** The announcement is keyed on the effect (a scoped record's `Seq` and mod, a catalog static's object, epoch and slot, a built-in's own negative slot), the instance and the recipient. The event's `Target` is the recipient and `Amount` the damage prevented ("that many"), not the damage the effect met. Every printed CR 615.13 trigger names its recipient ("dealt to you"), so each sees one event per application. A trigger naming no recipient, or two, would count an application once per recipient; no card prints one.
+4. **Plain data on the existing queue.** The announcement is a `PreventionFollowUp` with `Announce` set and no body, so it is cloned, undone and carried by a restore point with the follow-ups, and it never merges with its effect's own follow-up.
+
+### Snapshot impact
+
+Additive within v9: `preventionFollowUps[].announce`, omitted when false. A binary from before this amendment refuses a current-schema file carrying it (PR 0's follow-up key check); it would otherwise read the entry as a follow-up with no body.
+
+### Cards
+
+Selfless Squire ships `full`: its enters shield is §7's `preventFromSource` protecting you, and its trigger is `effects.WheneverDamageToYouIsPrevented`. Any prevention effect that stops damage to its controller counts, not only its own shield.
 ## Amendment 2026-10-16 — §8: an additional effect that asks a question is answered at once (#2040)
 
 §8 runs a prevention effect's additional effect as its damage instance ends, through the follow-up queue (`game/prevention_then.go`). A body that has to ask something could only queue a prompt, and the code after the damage went on without the answer: the damage instruction's own continuation, the next owed follow-up, and after combat damage the state-based actions. Immortal Coil shipped with a caveat for it, and Khârn the Betrayer and Channel Harm waited.
@@ -653,6 +709,8 @@ The shape is #1289's resolution pause, applied to the follow-up (`game/preventio
 5. **Keyed questions keep the restore point.** `choose_cards` gains a keyed continuation, as the option pick did in #2854 (`game.RegisterChooseCardsThen`, `ChooseCardsPrompt.ThenKey` and `Carry`, ledger lines `choose <key>`). It rides `PendingChoice.PickThen` and `OptionCarry`, so a binary without it refuses a restore point naming the key. `ChoosePlayerPrompt.ThenKey` asks a keyed choose-a-player. A keyed pick gives up the closure-only `Validate` and `Zone` re-check, and its continuation re-checks what it needs.
 
 6. **Loops end with a decline.** Two Channel Harms aimed at each other's creatures ask back and forth until a player declines (the ruling). A bot that takes every offer would never stop. So the confirm carries `PendingChoice.DeclineEndsLoop` (wire `decline_ends_loop`) when Channel Harm is asked to deal damage it prevented from another Channel Harm, and the heuristic declines such a confirm. The flag is a hint, not a rule: both answers stay legal, and a person may keep the loop going.
+7. **Announcements wait in the same queue.** A CR 615.13 announcement (the #2047 amendment above) is an entry in the follow-up queue, so it is held behind an open question like any follow-up and emitted once, after the answer, in the order it was owed. That changes nothing a player can see: a triggered ability waits for the next time a player would receive priority (CR 603.3), and the question holds that boundary. Before a parked instruction goes on, every entry owed by its own instance and by any earlier one runs, so a Selfless Squire trigger owed by the first of two damage instructions is emitted before the second instruction continues. A held announcement is plain data in `preventionFollowUps`, so a table waiting on Khârn's keyed question with one held is still a restore point.
+8. **Optional redirections ask inside the event.** The #2056 amendment's "you may" redirection is an `optional_replacement` prompt on a paused damage event, and an instance with a paused event does not end, so its follow-ups cannot ask until that prompt is answered: the two questions are never open together for one instance. When Khârn's prevention and Blood of the Martyr both apply to one event, Khârn's controller orders them (CR 616.1), and a declined redirection is followed by Khârn's question. Damage dealt by an answer (Channel Harm's yes) can meet a redirection of its own; that prompt is asked after the first is answered and holds the instruction the same way.
 
 ### What it does not do
 

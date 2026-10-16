@@ -1015,16 +1015,19 @@ func TestB07MysticGateFiltersOneHybridIntoTwo(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, fresh, 1, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
+	// The two picks are one production (#3939, CR 106.12b): one choice,
+	// asked once per slot, and no mana until the last answer.
 	picks := 0
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceMana && c.Chooser == me.ID {
-			picks++
-			if len(c.ColorOptions) != 2 {
-				t.Errorf("each slot must offer exactly W and U, got %v", c.ColorOptions)
-			}
-			if err := g.ResolveManaChoice(c.ID, me.ID, "W"); err != nil {
-				t.Fatalf("ResolveManaChoice: %v", err)
-			}
+	for c := riderLatestManaPick(g, me.ID); c != nil && picks < 3; c = riderLatestManaPick(g, me.ID) {
+		picks++
+		if len(c.ColorOptions) != 2 {
+			t.Errorf("each slot must offer exactly W and U, got %v", c.ColorOptions)
+		}
+		if picks == 2 && me.ManaPool.Total() != 0 {
+			t.Errorf("mana arrived before the last pick: %v", batch01PoolColors(me))
+		}
+		if err := g.ResolveManaChoice(c.ID, me.ID, "W"); err != nil {
+			t.Fatalf("ResolveManaChoice: %v", err)
 		}
 	}
 	if picks != 2 {

@@ -523,8 +523,9 @@ type Game struct {
 	// preventionFollowUps are the next-damage shields' CR 615.5
 	// additional effects owed for an instance of damage that has not yet
 	// settled — one per shield and instance of damage, with the running
-	// total (ADR 0107 §6, ADR 0108 PR 0; prevent_next_from_source.go).
-	// Empty between actions.
+	// total (ADR 0107 §6, ADR 0108 PR 0; prevent_next_from_source.go),
+	// and CR 615.13's "damage was prevented" announcements owed the same
+	// way (#2047, damage_prevented.go). Empty between actions.
 	preventionFollowUps []PreventionFollowUp
 
 	// followUpParks is the rest of each damage instruction parked behind
@@ -831,6 +832,14 @@ type Game struct {
 	// instead while they land. Defer-cleared, so it is uuid.Nil between
 	// actions and is neither snapshotted nor cloned.
 	landingEntryCounters uuid.UUID
+
+	// counterPlacerScope is the stack of players an action that is not
+	// a resolution has named as the one putting any counters it places:
+	// the activator of a mana ability, the player taking a special
+	// action (#3942, counter_placer.go). Pushed and popped around one
+	// call, so it is empty between actions and is neither snapshotted
+	// nor cloned.
+	counterPlacerScope []uuid.UUID
 
 	// enteringTokens holds the tokens whose CR 614 battlefield-entry
 	// window is open and which are therefore in NO zone yet: minted,

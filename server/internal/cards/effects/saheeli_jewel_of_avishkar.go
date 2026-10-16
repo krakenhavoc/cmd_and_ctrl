@@ -21,7 +21,8 @@ func init() {
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			b16GrantKeywords(func(target *game.Card, _ *game.Game, source *game.Card) bool {
-				return target.IsCreature() && target.Controller == source.Controller && target.HasSubtype("Thopter")
+				// "Thopter" is a word of the source's text (CR 612.2, #3984).
+				return target.IsCreature() && target.Controller == source.Controller && target.HasSubtype(source.TextSubtype("Thopter"))
 			}, "haste"),
 		},
 		Triggered: []game.TriggeredAbility{

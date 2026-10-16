@@ -148,6 +148,58 @@ func Optional(t game.TriggeredAbility, question string) game.TriggeredAbility {
 	return t
 }
 
+// OptionalDraw is Optional for a "you may draw N cards": the "yes" is a
+// choice to draw n cards, so a player a draw limit stops drawing that
+// many isn't asked and the ability does nothing (CR 121.2b, CR 121.3,
+// #4016). Apply it to a trigger whose effect is that draw, or a draw
+// and what "if you do" adds to it.
+func OptionalDraw(t game.TriggeredAbility, question string, n int) game.TriggeredAbility {
+	return MayDraw(Optional(t, question), n)
+}
+
+// OptionalDrawThatMany is OptionalDraw for a count read as the ability
+// resolves: "you may draw that many cards".
+func OptionalDrawThatMany(t game.TriggeredAbility, question string, n func(g *game.Game, item *game.StackItem) int) game.TriggeredAbility {
+	t = Optional(t, question)
+	registerOptionalDraws(t.Key, n)
+	return t
+}
+
+// MayDraw declares an optional row's "yes" a choice to draw n cards
+// (OptionalDraw), for a row that builds its OptionalPrompt by hand
+// because it needs a Chooser (Edric's "its controller may draw").
+func MayDraw(t game.TriggeredAbility, n int) game.TriggeredAbility {
+	registerOptionalDraws(t.Key, func(*game.Game, *game.StackItem) int { return n })
+	return t
+}
+
+// optionalDraws is what OptionalDraw declared, by row Key. Written only
+// by init() registration and read after, so it needs no lock; kept off
+// the row so that nothing reachable from a Game holds the closure
+// (game.CatalogOptionalDraws).
+var optionalDraws = map[string]func(*game.Game, *game.StackItem) int{}
+
+func registerOptionalDraws(key string, n func(*game.Game, *game.StackItem) int) {
+	if key == "" {
+		panic("effects.OptionalDraw: the row needs a Key")
+	}
+	optionalDraws[key] = n
+}
+
+// rowOptionalDraws is game.CatalogOptionalDraws.
+func rowOptionalDraws(t game.TriggeredAbility, g *game.Game, item *game.StackItem) int {
+	if t.OptionalPrompt == nil {
+		return 0
+	}
+	n := optionalDraws[t.Key]
+	if n == nil {
+		return 0
+	}
+	return n(g, item)
+}
+
+func init() { game.CatalogOptionalDraws = rowOptionalDraws }
+
 // OncePerBatch marks a "whenever ONE OR MORE …" ability (#587): the
 // engine emits one event per creature that attacks, enters or deals
 // damage, and this makes the harvester fire on the FIRST event of a
@@ -430,6 +482,22 @@ func ThisDealtCombatDamageToAPlayer(ev game.Event, source *game.Card, _ game.Cha
 // positive amount). Fires once per life-gain event, as printed.
 func YouGainedLife(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return ev.Kind == game.EventChangeLife && ev.Target == source.Controller && ev.Amount > 0
+}
+
+// DamageToYouPrevented — "whenever damage that would be dealt to you is
+// prevented" (Selfless Squire; CR 615.13, #2047). The engine emits one
+// EventDamagePrevented per application of one prevention effect to one
+// damage instance, per recipient, and only when it prevented something,
+// with Amount the damage prevented ("that many"). Any prevention effect
+// counts, whoever controls it, protection included; damage that can't be
+// prevented emits nothing.
+func DamageToYouPrevented(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventDamagePrevented && ev.Target == source.Controller && ev.Amount > 0
+}
+
+// WheneverDamageToYouIsPrevented is the row for DamageToYouPrevented.
+func WheneverDamageToYouIsPrevented(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventDamagePrevented, DamageToYouPrevented, label, effect)
 }
 
 // ThisChangedController — the source permanent changed controller
@@ -1028,7 +1096,8 @@ func WhenEnchantedCreatureDies(label string, effect Effect) game.TriggeredAbilit
 func AnotherNontokenCreatureOfTypeEnteredUnderYourControl(subtype string) When {
 	return func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 		c, ok := enteredUnderYourControl(ev, source, g, true)
-		return ok && c.IsCreature() && !c.IsToken() && c.HasSubtype(subtype)
+		// The type is a word of the source's text (CR 612.2, #3984).
+		return ok && c.IsCreature() && !c.IsToken() && c.HasSubtype(source.TextSubtype(subtype))
 	}
 }
 

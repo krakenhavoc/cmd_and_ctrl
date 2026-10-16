@@ -294,6 +294,28 @@ describe("a card grid is a sheet", () => {
     ]);
   });
 
+  it("search: a search the viewer answers for another player names whose it is (#3998)", () => {
+    // Opposition Agent: the searcher's prompt arrives addressed to the
+    // controller, on the searcher's behalf.
+    const opts = [card("a", "Bear")];
+    const { sent } = mount(
+      snap({
+        kind: "search_library",
+        reason: "Demonic Tutor — a card",
+        on_behalf_of: "them",
+        search_max: 1,
+        search_min: 1,
+        options: opts,
+      }),
+    );
+    expectSheet("Demonic Tutor — a card (choosing for Them)");
+    // A lone match opens taken (#3053).
+    keyFromBody("Enter");
+    expect(sent).toEqual([
+      { type: "resolve_choice", params: { choice_id: "choice-1", card_ids: ["a"] } },
+    ]);
+  });
+
   it("search: library and graveyard copies of one name are two tiles, the graveyard one marked (#3217)", () => {
     const { sent } = mount(
       snap({
@@ -315,6 +337,41 @@ describe("a card grid is a sheet", () => {
     keyFromBody("Enter");
     expect(sent).toEqual([
       { type: "resolve_choice", params: { choice_id: "choice-1", card_ids: ["gy"] } },
+    ]);
+  });
+
+  it("search: graveyard, hand and library copies are three tiles, each marked (#3988)", () => {
+    const { sent } = mount(
+      snap({
+        kind: "search_library",
+        reason: "Kotose, the Silent Spider — cards named Lightning Bolt",
+        search_max: 3,
+        options: [
+          card("lib", "Lightning Bolt"),
+          card("gy", "Lightning Bolt"),
+          card("hand", "Lightning Bolt"),
+        ],
+        search_graveyard: ["gy"],
+        search_hand: ["hand"],
+        search_all_zones: true,
+      }),
+    );
+    expectSheet("Kotose, the Silent Spider — cards named Lightning Bolt");
+    const tiles = inSheet("button.card-pick");
+    expect(tiles).toHaveLength(3);
+    expect(tiles[0].textContent).not.toContain("Graveyard");
+    expect(tiles[0].textContent).not.toContain("Hand");
+    expect(tiles[1].textContent).toContain("Graveyard");
+    expect(tiles[2].textContent).toContain("Hand");
+    expect(sheetPanel()!.textContent).toContain("the library is shuffled either way");
+    expect(barButton("Find nothing")).not.toBeNull();
+    // Every match fits under the ceiling, so all three open taken (#3053);
+    // releasing the library copy leaves the graveyard and hand copies.
+    expect(tiles.every((t) => t.getAttribute("aria-pressed") === "true")).toBe(true);
+    click(tiles[0]);
+    keyFromBody("Enter");
+    expect(sent).toEqual([
+      { type: "resolve_choice", params: { choice_id: "choice-1", card_ids: ["gy", "hand"] } },
     ]);
   });
 

@@ -13,6 +13,7 @@ import type {
   OptionalCostView,
   PendingChoiceView,
   PlayerView,
+  SpliceOfferView,
   TapCostView,
 } from "./protocol";
 import type { CounterPayment } from "./counterCost";
@@ -101,6 +102,11 @@ export interface CastChoices {
   // payment for a multikicker. Undefined and [] are the same thing
   // to the server: decline them all.
   optionalCosts?: number[];
+  // ADR 0202 (CR 702.47a): the cards in the caster's hand revealed to
+  // splice onto this spell — `card_id`s from the card's `splice_offers`,
+  // in the order their text happens (the order they were ticked). Each
+  // text's clauses join the target walk after the spell's own.
+  splices?: string[];
   // CR 702.174a (#1267): the opponent a gift is promised to — a
   // player ID from the gift offer's `opponent_options`. Set exactly
   // when `optionalCosts` claims the gift offer; the server rejects it
@@ -235,6 +241,8 @@ export function applyCastChoices(
   // what every client that predates the kicker toggles sends.
   if (choices.optionalCosts !== undefined && choices.optionalCosts.length > 0)
     params.optional_costs = choices.optionalCosts;
+  // ADR 0202: omitted when nothing is spliced, the server default.
+  if (choices.splices !== undefined && choices.splices.length > 0) params.splices = choices.splices;
   // #1267: omitted unless a gift was promised — a stray one is an
   // error server-side, not a no-op.
   if (choices.giftOpponent !== undefined && choices.giftOpponent !== "")
@@ -449,6 +457,9 @@ export interface TargetStep {
   // slot is the clause index within that occurrence.
   modeIndex: number;
   slot: number;
+  // ADR 0202: the spliced text this step asks for, 1-based in the
+  // cast's `splices`; undefined for the spell's own text.
+  splice?: number;
   // distinct marks a clause whose picks must differ from every
   // EARLIER clause's ("a second target permanent you control").
   distinct: boolean;
@@ -483,6 +494,9 @@ export interface TargetRef {
   // reads as "the only clause".
   slot?: number;
   mode?: number;
+  // ADR 0202: the spliced text this pick answers (1-based); omitted for
+  // the spell's own text.
+  splice?: number;
 }
 
 export const targeting: Writable<TargetingState | null> = guardedWritable(null, "targeting");
@@ -503,18 +517,66 @@ export function begin(
   mode: TargetingMode,
   choices?: CastChoices,
   alt?: TargetClauseOverride,
-): void {
+): boolean {
   const lt = alt ? alt.legal_targets : card.legal_targets;
   // #764: a card with more than one clause walks them in printed
   // order. An alternative cost replaces the whole statement, so its
   // own clause list wins when it has one.
   const clauses = alt ? alt.clauses : card.clauses;
-  const steps = stepsFor(mode, lt, clauses, 0, choices);
+  const steps = [...stepsFor(mode, lt, clauses, 0, choices), ...spliceSteps(card, choices)];
+  // #2055: every clause is an opponent's choice (Evangelize) and no
+  // splice adds one: there is nothing for the caster to pick, and the
+  // caller casts at once.
+  if (steps.length === 0) return false;
   targeting.set(openWalk(card, steps, { choices }));
+  return true;
+}
+
+// spliceOffersOf is the cards in the viewer's hand that splice onto
+// `card` as it is cast (ADR 0202).
+export function spliceOffersOf(card: CardView): SpliceOfferView[] {
+  return card.splice_offers ?? [];
+}
+
+// spliceSteps is the target walk's steps for the spliced texts of a
+// cast (CR 702.47d): each ticked card's clauses, in the order ticked,
+// after the spell's own, each stamped with the text it answers. A text
+// with no target adds none.
+export function spliceSteps(card: CardView, choices: CastChoices | undefined): TargetStep[] {
+  const offers = spliceOffersOf(card);
+  const out: TargetStep[] = [];
+  (choices?.splices ?? []).forEach((id, k) => {
+    const offer = offers.find((o) => o.card_id === id);
+    if (!offer || (!offer.legal_targets && !(offer.clauses?.length ?? 0))) return;
+    const mode = (offer.target_mode || "any") as TargetingMode;
+    for (const s of stepsFor(mode, offer.legal_targets, offer.clauses, 0, choices)) {
+      out.push({
+        ...s,
+        splice: k + 1,
+        label: s.label ? `${s.label} (${offer.name})` : `${offer.name}'s target`,
+      });
+    }
+  });
+  return out;
+}
+
+// beginSpliceOnly opens the walk for a cast whose own text takes no
+// target but whose spliced text does (Glacial Ray spliced onto Kodama's
+// Reach). False, and nothing opened, when no spliced text targets.
+export function beginSpliceOnly(card: CardView, choices: CastChoices, modes?: number[]): boolean {
+  const steps = spliceSteps(card, choices);
+  if (steps.length === 0) return false;
+  targeting.set(openWalk(card, steps, modes !== undefined ? { choices, modes } : { choices }));
+  return true;
 }
 
 // stepsFor turns one statement — a single `legal_targets` or a
 // multi-entry `clauses` list — into the walk's steps.
+//
+// #2055: a clause "of an opponent's choice" is not a step. Its slot is
+// skipped (every other step keeps its own slot number), and the server
+// asks an opponent for it once the announcement arrives. A statement
+// made only of such clauses is an empty walk.
 export function stepsFor(
   mode: TargetingMode,
   lt: LegalTargetsView | undefined,
@@ -526,27 +588,37 @@ export function stepsFor(
   if (list.length === 0) {
     return [{ mode, min: 1, max: 1, modeIndex, slot: 0, distinct: false }];
   }
-  return list.map((c, slot) => ({
-    mode,
-    // #3860: a player who can't pay a card's life tax can't target it.
-    legal: {
-      players: new Set(c.players ?? []),
-      cards: new Set(withinX(c, choices).filter((id) => !c.life_taxes_unpayable?.includes(id))),
-    },
-    lifeTaxes: c.life_taxes,
-    lifeTaxesUnpayable: c.life_taxes_unpayable,
-    label: c.label,
-    ...countOf(c, choices),
-    modeIndex,
-    slot,
-    distinct: c.distinct === true,
-    different: c.different ? { label: c.different.label, keys: c.different.keys ?? {} } : undefined,
-    same: c.same ? { label: c.same.label, keys: c.same.keys ?? {} } : undefined,
-    relation: c.relation,
-    divide: c.divide ? divideTotal(c.divide, choices?.xValue) : undefined,
-    divideFromXUnresolved: c.divide?.from_x === true && choices?.xValue === undefined,
-    divideUpTo: c.divide?.up_to === true ? true : undefined,
-  }));
+  return list.flatMap((c, slot): TargetStep[] =>
+    c.chosen_by_opponent
+      ? []
+      : [
+          {
+            mode,
+            // #3860: a player who can't pay a card's life tax can't target it.
+            legal: {
+              players: new Set(c.players ?? []),
+              cards: new Set(
+                withinX(c, choices).filter((id) => !c.life_taxes_unpayable?.includes(id)),
+              ),
+            },
+            lifeTaxes: c.life_taxes,
+            lifeTaxesUnpayable: c.life_taxes_unpayable,
+            label: c.label,
+            ...countOf(c, choices),
+            modeIndex,
+            slot,
+            distinct: c.distinct === true,
+            different: c.different
+              ? { label: c.different.label, keys: c.different.keys ?? {} }
+              : undefined,
+            same: c.same ? { label: c.same.label, keys: c.same.keys ?? {} } : undefined,
+            relation: c.relation,
+            divide: c.divide ? divideTotal(c.divide, choices?.xValue) : undefined,
+            divideFromXUnresolved: c.divide?.from_x === true && choices?.xValue === undefined,
+            divideUpTo: c.divide?.up_to === true ? true : undefined,
+          },
+        ],
+  );
 }
 
 // divideTotal is the amount a divided clause splits (#1563) — the
@@ -695,7 +767,11 @@ export function openWalk(
 export function stamped(t: TargetingState): TargetRef[] {
   const cur = t.steps[t.step];
   if (!cur) return t.picked;
-  return t.picked.map((p) => ({ ...p, mode: cur.modeIndex, slot: cur.slot }));
+  return t.picked.map((p) =>
+    cur.splice
+      ? { ...p, mode: cur.modeIndex, slot: cur.slot, splice: cur.splice }
+      : { ...p, mode: cur.modeIndex, slot: cur.slot },
+  );
 }
 
 // allPicks is every pick of the walk so far, in step order.
@@ -846,7 +922,8 @@ export function confirm(): void {
 // option, not the card. `modes` is the full chosen set (the targeted
 // option plus any untargeted ones) and rides the cast.
 export function beginForModes(card: CardView, modes: number[], choices?: CastChoices): boolean {
-  const steps = modeSteps(card, modes, choices);
+  // ADR 0202: the spliced texts' clauses follow the chosen modes'.
+  const steps = [...modeSteps(card, modes, choices), ...spliceSteps(card, choices)];
   if (steps.length === 0) return false;
   targeting.set(openWalk(card, steps, { choices, modes }));
   return true;
@@ -1647,6 +1724,12 @@ export function beginForAbility(
           0,
           Object.keys(choices).length > 0 ? choices : undefined,
         );
+  // #2055: nothing for the controller to pick (Nova Pentacle's only
+  // clause is an opponent's choice); the caller activates at once.
+  if (steps.length === 0) {
+    targeting.set(null);
+    return;
+  }
   targeting.set(
     openWalk(card, steps, {
       // CR 602.2b: X was announced before the targets were chosen and

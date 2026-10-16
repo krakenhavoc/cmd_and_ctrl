@@ -93,5 +93,6 @@ const tyvarKellGrant = "tyvar-kell/tap-for-black"
 // a Kindred Elf enchantment included — not only Elf creatures, which is
 // all TribeFilter reads.
 func tyvarKellElvesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
-	return target.Controller == source.Controller && target.HasSubtype("Elf")
+	// "Elves" is a word of the source's text (CR 612.2, #3984).
+	return target.Controller == source.Controller && target.HasSubtype(source.TextSubtype("Elf"))
 }

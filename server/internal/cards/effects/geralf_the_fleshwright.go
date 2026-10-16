@@ -39,7 +39,7 @@ func init() {
 					if !ok || info.Left {
 						return nil
 					}
-					n := g.EnteredWithSubtypeThisTurn(item.Controller, "Zombie") - 1
+					n := g.EnteredWithSubtypeThisTurn(item.Controller, ctx.TextSubtype("Zombie")) - 1
 					if n <= 0 {
 						return nil
 					}
@@ -66,5 +66,5 @@ func youCastANonFirstSpellOnYourTurn(ev game.Event, source *game.Card, _ game.Ch
 // enters", the source included when it is one.
 func aZombieEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	c, ok := enteredUnderYourControl(ev, source, g, false)
-	return ok && c.HasSubtype("Zombie")
+	return ok && c.HasSubtype(source.TextSubtype("Zombie")) // a word of the source's text (CR 612.2, #3984)
 }

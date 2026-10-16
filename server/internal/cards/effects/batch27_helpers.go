@@ -88,7 +88,7 @@ func b27SelfOrNontokenZombieYouControlDied(ev game.Event, source *game.Card, g *
 		return false
 	}
 	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Zombie") && !IsToken(dead)
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Zombie")) && !IsToken(dead)
 }
 
 // b27ColorlessSpellWithManaValueAtLeastCastByYou is Sanctum of
@@ -112,7 +112,7 @@ func b27ColorlessSpellWithManaValueAtLeastCastByYou(ev game.Event, source *game.
 // control. Effective subtypes, so a changeling counts.
 func b27AnotherElfYouControlEntered(ev game.Event, source *game.Card, g *game.Game) (game.Card, bool) {
 	c, ok := enteredUnderYourControl(ev, source, g, true)
-	if !ok || !c.IsCreature() || !c.HasSubtype("Elf") {
+	if !ok || !c.IsCreature() || !c.HasSubtype(source.TextSubtype("Elf")) {
 		return game.Card{}, false
 	}
 	return c, true
@@ -172,7 +172,7 @@ func b27GreatestManaValueAmongArtifactsControlled(g *game.Game, controller uuid.
 // EventResolve naming the source and the label, and stays open until
 // the next thing that cannot happen mid-resolution — another
 // resolution, a cast, a mana ability, an attack, a fizzle or a step
-// beginning (b13ResolutionInProgressBy's boundary set). A card that
+// beginning. A card that
 // later left exile and came back under some other effect is not
 // counted: its newer move closes the older record. Only cards still
 // in exile are returned, oldest exile first, so the last entry is
@@ -298,8 +298,9 @@ func b27LastCreatureCardExiledWith(g *game.Game, source *game.Card) (game.Card, 
 // b27CreatureTypesPlusShapeshifter is the subtype list Duplicant
 // takes on: the exiled card's creature types (its land or other
 // subtypes stay behind), plus Shapeshifter — "It's still a
-// Shapeshifter."
-func b27CreatureTypesPlusShapeshifter(exiled game.Card) []string {
+// Shapeshifter." `shapeshifter` is that word as Duplicant's text now
+// reads it (TextSubtype, CR 612.2, #3984).
+func b27CreatureTypesPlusShapeshifter(exiled game.Card, shapeshifter string) []string {
 	_, _, subtypes := game.ParseTypeLine(exiled.TypeLine)
 	out := make([]string, 0, len(subtypes)+1)
 	for _, s := range subtypes {
@@ -307,8 +308,8 @@ func b27CreatureTypesPlusShapeshifter(exiled game.Card) []string {
 			out = append(out, s)
 		}
 	}
-	if !hasFold(out, "Shapeshifter") {
-		out = append(out, "Shapeshifter")
+	if !hasFold(out, shapeshifter) {
+		out = append(out, shapeshifter)
 	}
 	return out
 }
@@ -597,7 +598,7 @@ func b27DuplicantStatics() []game.StaticAbility {
 			DependsOnExile: true,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
 				if exiled, ok := b27LastCreatureCardExiledWith(g, source); ok {
-					c.SetSubtypes(b27CreatureTypesPlusShapeshifter(exiled))
+					c.SetSubtypes(b27CreatureTypesPlusShapeshifter(exiled, source.TextSubtype("Shapeshifter")))
 				}
 			},
 		},

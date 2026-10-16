@@ -56,6 +56,20 @@ func declaresAnyPlayerActivation(s effects.Spec) bool {
 	return false
 }
 
+// declaresStackActivation reports whether the spec prints an activated
+// ability that works while the card is a spell on the stack (Lightning
+// Storm; ADR 0106 §1 amendment 2026-10-16, #1865).
+func declaresStackActivation(s effects.Spec) bool {
+	for _, a := range s.Activated {
+		for _, z := range a.Zones {
+			if z == game.ZoneStack {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // declaresNamedActivator reports whether the spec prints an "Only your
 // opponents may activate" or "Only this creature's owner may activate"
 // row (ADR 0106 §1 amendment 2026-10-07, #1947), or grants an ability

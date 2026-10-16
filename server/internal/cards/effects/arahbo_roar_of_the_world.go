@@ -50,7 +50,7 @@ func init() {
 // anotherCatYouControlAttacked is "Whenever another Cat you control
 // attacks".
 func anotherCatYouControlAttacked(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return ev.CardID != source.InstanceID && attackDeclaredByYou(ev, source.Controller) && attackerHasSubtype(g, ev, "Cat")
+	return ev.CardID != source.InstanceID && attackDeclaredByYou(ev, source.Controller) && attackerHasSubtype(g, ev, source.TextSubtype("Cat"))
 }
 
 // arahboMayPayToPump is the attack trigger's body: the offer, then

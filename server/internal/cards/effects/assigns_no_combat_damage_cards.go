@@ -28,12 +28,20 @@ func assignsNoCombatDamageThisTurn(ctx *Context, label string) {
 // for an ability with none) and runs only on "yes". The caller adds the
 // target clause (Targeting, or TargetsFrom for "defending player controls").
 func unblockedAttackerMay(card, question string, do func(ctx *Context, target uuid.UUID) error) game.TriggeredAbility {
+	return unblockedAttackerMayDraw(card, question, 0, do)
+}
+
+// unblockedAttackerMayDraw is unblockedAttackerMay for a "yes" that is a
+// choice to draw `draws` cards (Ophidian's "you may draw a card"), which a
+// player a draw limit stops drawing can't take (MayChoice.Draws, #4016).
+func unblockedAttackerMayDraw(card, question string, draws int, do func(ctx *Context, target uuid.UUID) error) game.TriggeredAbility {
 	label := card + " — " + question
 	return WhenAttacksAndIsNotBlockedEffect(label, func(g *game.Game, item *game.StackItem, _ uuid.UUID) error {
 		ctx := NewContext(g, item)
 		target := firstLegalCardTarget(ctx)
 		return MayChoice{
 			Question: label + "?",
+			Draws:    draws,
 			OnYes: func(ctx *Context) error {
 				if err := do(ctx, target); err != nil {
 					return err

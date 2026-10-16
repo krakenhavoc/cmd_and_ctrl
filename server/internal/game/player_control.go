@@ -170,6 +170,8 @@ func (g *Game) controlLiveLocked(r PlayerControl) bool {
 			g.resolving.card.InstanceID == r.Card
 	case ControlTurn:
 		return r.UntilKind() == ControlUntilTurn && g.Turn.Seq == r.TurnSeq
+	case ControlSearching:
+		return g.searchControlLiveLocked(r)
 	}
 	return false
 }
@@ -471,6 +473,8 @@ func (g *Game) resolveControlledPlayLocked(idx int, c *PendingChoice, picks []uu
 // player left has its prompt withdrawn too. runStateChecksLocked calls
 // it once a resolution has closed.
 //
+// A search-scoped record (#3998) goes once its search prompt is gone.
+//
 // A turn-long record (ADR 0167 §6) goes here only while it waits and
 // its controlled player has left: that turn never begins, so there is
 // neither control nor an extra turn. Every other turn-long record ends
@@ -486,6 +490,13 @@ func (g *Game) prunePlayerControlsLocked() {
 		switch {
 		case r.UntilKind() == ControlUntilTurn:
 			if r.Stage != ControlAwaitingTurn || g.playerInGameLocked(r.Controlled) {
+				continue
+			}
+		case r.Stage == ControlSearching:
+			// #3998: the search is over once its prompt is answered or
+			// withdrawn. A departed player ends the control, never the
+			// search: the prompt stays the searcher's to answer.
+			if !gone && r.Prompt != uuid.Nil && g.choiceIndexLocked(r.Prompt) >= 0 {
 				continue
 			}
 		case gone:

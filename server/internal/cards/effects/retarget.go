@@ -211,6 +211,29 @@ func AnActivatedAbilityItem() StackItemPredicate {
 	}
 }
 
+// TargetsOnlyASinglePermanentOrPlayer is "target spell that targets
+// only a single permanent or player" (Chef's Kiss), read the way CR
+// 115.9c says: the spell chose exactly one DIFFERENT object or player
+// as its targets (as modified by effects that changed them), so a spell
+// that chose the same creature for two instances of the word "target"
+// qualifies (the 2021-06-18 Chef's Kiss ruling). That target's current
+// state is then checked (CR 115.9b): a permanent still on the
+// battlefield, or a player still in the game. One that has left is
+// ignored, and the spell then targets no permanent or player.
+func TargetsOnlyASinglePermanentOrPlayer() CardPredicate {
+	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
+		t, ok := g.StackItemSoleTargetForEffect(c.InstanceID)
+		if !ok {
+			return false
+		}
+		if t.Kind == game.TargetPlayer {
+			p := g.PlayerByIDForEffect(t.ID)
+			return p != nil && !p.Eliminated
+		}
+		return g.Battlefield.Contains(t.ID)
+	}
+}
+
 // TargetsOnlyACreature is "target spell that targets only a single
 // creature" (Muck Drubb): one slot, and what it names is a creature on
 // the battlefield. A player, a spell or a creature card elsewhere does

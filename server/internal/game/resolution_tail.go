@@ -66,6 +66,10 @@ type resolutionTail struct {
 	// item is the resolving stack item. A spell's item ID is its card's
 	// instance ID.
 	item *StackItem
+	// cipherAsked marks a tail parked behind cipher's encoding question
+	// (#3867, cipher.go): the resolution's log line is already written
+	// and the question is not asked again.
+	cipherAsked bool
 }
 
 // isSpell reports whether the parked resolution is a spell's, which has
@@ -131,7 +135,9 @@ func (g *Game) finishResolutionTailLocked() bool {
 	g.beginResolutionLocked()
 	defer g.endResolutionLocked()
 	defer g.recomputeSplitSecondLocked()
-	g.EmitEvent(resolutionFinishedEvent(t))
+	if !t.cipherAsked {
+		g.EmitEvent(resolutionFinishedEvent(t))
+	}
 	if !t.isSpell() {
 		return true
 	}
@@ -141,7 +147,7 @@ func (g *Game) finishResolutionTailLocked() bool {
 		// departing owner. Nothing is left on the stack to route.
 		return true
 	}
-	if err := g.finishSpellResolutionLocked(*card, t.item); err != nil {
+	if err := g.finishSpellResolutionStageLocked(*card, t.item, t.cipherAsked); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Actor:    t.item.Controller,
@@ -190,19 +196,22 @@ func cloneResolutionTail(t *resolutionTail) *resolutionTail {
 	if t == nil {
 		return nil
 	}
-	return &resolutionTail{item: cloneStackItem(t.item)}
+	return &resolutionTail{item: cloneStackItem(t.item), cipherAsked: t.cipherAsked}
 }
 
 // resolutionTailSnapshot is Game.pausedResolutionTail on disk.
 type resolutionTailSnapshot struct {
 	Item stackItemSnapshot `json:"item"`
+	// CipherAsked is resolutionTail.cipherAsked (#3867). Additive: a
+	// file without it is a tail no cipher question was asked for.
+	CipherAsked bool `json:"cipherAsked,omitempty"`
 }
 
 func snapshotResolutionTail(g *Game, t *resolutionTail, cen *ContinuationCensus) *resolutionTailSnapshot {
 	if t == nil || t.item == nil {
 		return nil
 	}
-	return &resolutionTailSnapshot{Item: snapshotStackItem(g, t.item, cen)}
+	return &resolutionTailSnapshot{Item: snapshotStackItem(g, t.item, cen), CipherAsked: t.cipherAsked}
 }
 
 func restoreResolutionTail(s *resolutionTailSnapshot) *resolutionTail {
@@ -213,5 +222,5 @@ func restoreResolutionTail(s *resolutionTailSnapshot) *resolutionTail {
 	if item == nil {
 		return nil
 	}
-	return &resolutionTail{item: item}
+	return &resolutionTail{item: item, cipherAsked: s.CipherAsked}
 }

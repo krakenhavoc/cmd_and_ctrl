@@ -19,6 +19,7 @@ import (
 //	SpellsYouControlCantBeCountered("Green spells you control can't be countered.", OfColor("G")) // Allosaurus Shepherd
 //	SpellsYouCastCantBeCountered("…", ManaValueGE(5))                                       // Thryx
 //	AnyPlayersSpellsCantBeCountered("Creature spells can't be countered.", Creature())       // Gaea's Herald
+//	SpellsAndAbilitiesCantBeCountered("Spells and abilities can't be countered.")            // Spider-Punk
 //
 // The predicates see the spell as it sits on the stack. The layer
 // pass does not recompute a card there, so a type, colour or power is
@@ -44,6 +45,17 @@ func SpellsYouCastCantBeCountered(label string, preds ...CardPredicate) game.Cou
 // countered" with no "you": every player's matching spell.
 func AnyPlayersSpellsCantBeCountered(label string, preds ...CardPredicate) game.CounterShieldStatic {
 	return counterShield(game.CounterShieldAnyPlayer, label, preds)
+}
+
+// SpellsAndAbilitiesCantBeCountered is "Spells and abilities can't be
+// countered" (Spider-Punk, #2014): every player's spells, and every
+// player's activated and triggered abilities on the stack (CR 701.6a).
+// A mana ability is never on the stack (CR 605.3b), so it needs no
+// word here.
+func SpellsAndAbilitiesCantBeCountered(label string) game.CounterShieldStatic {
+	s := counterShield(game.CounterShieldAnyPlayer, label, nil)
+	s.Abilities = true
+	return s
 }
 
 func counterShield(whose game.CounterShieldWhose, label string, preds []CardPredicate) game.CounterShieldStatic {

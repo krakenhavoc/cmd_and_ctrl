@@ -245,6 +245,7 @@ func (g *Game) AddCounterByMustSettleNowForEffect(placer, cardID uuid.UUID, name
 //
 // Caller must hold g.mu.
 func (g *Game) addCounterMustSettleNowLocked(ev *ReplacementEvent) (int, error) {
+	g.settleCounterPlacerLocked(ev)
 	cardID, name, delta, placer := ev.CounterTarget, ev.CounterName, ev.CounterDelta, ev.CounterPlacer
 	ev.mustSettleNow = true
 	out, err := g.applyReplacementsLocked(ev)

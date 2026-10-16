@@ -412,8 +412,11 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 			// ADR 0135 §4: an emerge offer's flag and prices.
 			ReducesByManaValue: true,
 			SacrificePrices:    map[string]AltCostPriceView{"x": {ManaValue: 4, Price: "{1}{U}{U}"}},
-			Discards:           true,
-			XLockedAtZero:      true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
+			// #3931: a harmonize offer's flag and prices.
+			ReducesByPower: true,
+			TapPrices:      map[string]AltCostTapPriceView{"x": {Power: 3, Price: "{2}{R}{R}"}},
+			Discards:       true,
+			XLockedAtZero:  true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
 			// #1686.
 			TimingClosed: true,
 			// #3225.
@@ -449,6 +452,8 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		XMax: new(int),
 		// ADR 0150 §5: the viewer's own assist offer.
 		Assist: &AssistOfferView{Max: 3, Players: []string{"p"}},
+		// ADR 0202: the viewer's own splice offers.
+		SpliceOffers: []SpliceOfferView{{CardID: "c", Name: "Glacial Ray", Label: "Splice onto Arcane {1}{R}", ManaCost: "{1}{R}", TargetMode: "any", LegalTargets: lt, Clauses: []LegalTargetsView{*lt, *lt}}},
 	}
 }
 
@@ -857,6 +862,9 @@ var castSurfaceScopes = map[string]castSurfaceScope{
 	"XMax": surfacePrivate,
 	// ADR 0150 §5: who the asking seat may ask to help pay.
 	"Assist": surfacePrivate,
+	// ADR 0202: the splice offers are other cards in the asking seat's
+	// hand.
+	"SpliceOffers": surfacePrivate,
 	// #2167: which types a per-type permission leaves is the holder's
 	// own budget.
 	"PermissionTypes": surfacePrivate,
@@ -980,6 +988,8 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// price per creature YOU control is one seat's.
 	"ReducesByManaValue": surfacePublicPile,
 	"SacrificePrices":    surfacePrivate,
+	"ReducesByPower":     surfacePublicPile,
+	"TapPrices":          surfacePrivate,
 	// #1686: same reasoning as PrintedCostTimingClosed above — public
 	// board state, not per-viewer.
 	"TimingClosed": surfacePublicPile,

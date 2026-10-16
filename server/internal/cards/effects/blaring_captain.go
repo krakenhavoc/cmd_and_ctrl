@@ -31,9 +31,11 @@ func init() {
 			PartnerWith("Blaring Captain", "Blaring Recruiter"),
 			WheneverThisAttacks("Blaring Captain — attacking Warriors get +1/+1",
 				func(g *game.Game, item *game.StackItem) error {
+					// "Warriors" is a word of the source's text (CR 612.2, #3984).
+					warrior := g.TextReaderForEffect(item).TextSubtype("Warrior")
 					return BoostUntilEOT{
 						Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-							return c.IsCreature() && c.HasSubtype("Warrior") && c.AttackingTarget != uuid.Nil
+							return c.IsCreature() && c.HasSubtype(warrior) && c.AttackingTarget != uuid.Nil
 						},
 						Power:     1,
 						Toughness: 1,

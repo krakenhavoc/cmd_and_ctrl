@@ -90,6 +90,17 @@ type MayChoice struct {
 	// deduction. Zero on most cards.
 	LifeCost int
 
+	// Draws, when above zero, says the YES branch is a choice to draw
+	// that many cards, for Drawer. A player a draw limit stops drawing
+	// that many can't choose to (CR 121.2b, CR 121.3), and neither can
+	// anyone choosing for them (CR 121.3a, Combustible Gearhulk's
+	// opponent), so nothing is asked and OnNo runs at once (#4016).
+	Draws int
+
+	// Drawer is who draws on a "yes". Zero means the player asked,
+	// which is what "you may draw" and "each player may draw" mean.
+	Drawer uuid.UUID
+
 	// OnYes / OnNo are the two branches. Either may be nil — a "you
 	// may" whose decline does nothing should not have to write an
 	// empty closure to say so. Both run with g.mu held and may queue
@@ -104,6 +115,18 @@ func (m MayChoice) Apply(ctx *Context) error {
 	}
 	item := ctx.Item
 	onYes, onNo := m.OnYes, m.OnNo
+	if m.Draws > 0 {
+		drawer := m.Drawer
+		if drawer == uuid.Nil {
+			drawer = chooser
+		}
+		if !ctx.Game.CanChooseToDrawForEffect(drawer, m.Draws) {
+			if onNo == nil {
+				return nil
+			}
+			return onNo(ctx)
+		}
+	}
 	ctx.Game.QueueConfirmForEffect(game.ConfirmPrompt{
 		Chooser:      chooser,
 		Source:       ctx.Source(),

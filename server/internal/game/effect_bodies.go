@@ -44,6 +44,14 @@ type EffectParams struct {
 	Cost   string     `json:"cost,omitempty"`
 	Name   string     `json:"name,omitempty"`
 	Filter CastFilter `json:"filter,omitempty"`
+	// Objects is the payload of a body that acts on MORE than one
+	// object, each a card and its CR 400.7 epoch (ADR 0026 amendment
+	// 2026-10-16, #2099): Rescue from the Underworld's "return that
+	// card and the sacrificed card", where each card returns only if it
+	// is still the object it was when the trigger was created. Object
+	// stays the one-object slot every earlier body reads. Nil for every
+	// other body.
+	Objects []ObjectRef `json:"objects,omitempty"`
 	// Ability names the catalog row an ability's stack item came from
 	// (ADR 0041 P9, tier 4): read by the catalog/* bodies and by
 	// restore, never by a delayed trigger. A pointer so it is omitted
@@ -445,7 +453,7 @@ func bodyEffect(key string, p EffectParams) func(g *Game, item *StackItem) error
 // isZero reports whether p carries nothing — what the snapshot omits.
 func (p EffectParams) isZero() bool {
 	return p.Player == uuid.Nil && p.Object == (ObjectRef{}) && p.Amount == 0 &&
-		p.Cost == "" && p.Name == "" && len(p.Filter.Types) == 0 && p.Ability == nil
+		p.Cost == "" && p.Name == "" && len(p.Filter.Types) == 0 && len(p.Objects) == 0 && p.Ability == nil
 }
 
 // effectParamsOrNil is the snapshot mirror's form: a copy, or nil when

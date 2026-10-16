@@ -280,6 +280,16 @@ type Characteristic struct {
 	// creature, never stored here.
 	AttackTargetRestrictions []AttackTargetRestriction `json:",omitempty"`
 
+	// DefenderWaivers are this creature's "can attack … as though it
+	// didn't have defender" (CR 702.3b, CR 609.4), each asked per target:
+	// Weathered Sentinels' "players who attacked you during their last
+	// turn", or Hightide Hermit's every target for a turn. ADR 0106's
+	// 2026-10-16 amendment (#1936), defender_waivers.go. The keyword
+	// stays: a waiver only answers whether defender stops one attack.
+	// Written by ordinary layer-6 statics and the ModWaiveDefender mod,
+	// only ever appended to.
+	DefenderWaivers []DefenderWaiver `json:",omitempty"`
+
 	// CantBeAttacked is "this permanent can't be attacked" (The
 	// Aetherspark, while it is attached to a creature): the target-keyed
 	// twin of AttackTargetRestrictions. Written by an ordinary layer
@@ -380,6 +390,25 @@ type Characteristic struct {
 	// abilities" takes it away), and read in one place, Card.CountedPower.
 	// Not snapshotted: the effective characteristics are recomputed.
 	CostPower []CostPowerRule `json:",omitempty"`
+
+	// PTSwitched records that layer 7d switched Power and Toughness an
+	// odd number of times (CR 613.4d, #3996). The pass has already
+	// swapped the two fields; the flag is for the counters, which
+	// ptWithCounters adds after the pass although CR 613.4c applies them
+	// before the switch: it crosses their deltas. Written only through
+	// SwitchPowerAndToughness.
+	PTSwitched bool `json:",omitempty"`
+}
+
+// SwitchPowerAndToughness is CR 613.4d's switch on a characteristic in
+// the middle of the layer pass (sublayer 7d, SubLayer7E_Switch): the power becomes the
+// toughness and the toughness the power, and the switch is recorded so
+// the P/T counters read after the pass are switched too. Two switches
+// undo each other. Every switch effect, a ScopedEffect's ModSwitchPT or a
+// static's Apply, goes through this.
+func SwitchPowerAndToughness(ch *Characteristic) {
+	ch.Power, ch.Toughness = ch.Toughness, ch.Power
+	ch.PTSwitched = !ch.PTSwitched
 }
 
 // CostPowerUse names the costs a CostPowerRule changes. A bitmask.
@@ -482,6 +511,7 @@ func (c Characteristic) clone() Characteristic {
 	out.BorrowedAbilities = append([]BorrowedAbility(nil), c.BorrowedAbilities...)
 	out.AttackRequirements = append([]AttackRequirement(nil), c.AttackRequirements...)
 	out.AttackTargetRestrictions = append([]AttackTargetRestriction(nil), c.AttackTargetRestrictions...)
+	out.DefenderWaivers = append([]DefenderWaiver(nil), c.DefenderWaivers...)
 	out.BlockRequirements = append([]BlockRequirement(nil), c.BlockRequirements...)
 	out.CantHave = append([]string(nil), c.CantHave...)
 	out.CostPower = append([]CostPowerRule(nil), c.CostPower...)

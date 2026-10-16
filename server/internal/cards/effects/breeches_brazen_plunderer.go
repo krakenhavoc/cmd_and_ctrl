@@ -58,7 +58,7 @@ func init() {
 						return false
 					}
 					dealer, ok := g.LookupCardForEffect(ev.Source)
-					return ok && isPirate(dealer)
+					return ok && isPirate(game.ThroughTextOf(source, dealer))
 				},
 				Key: "Breeches — exile their top card, playable this turn",
 				Effect: func(g *game.Game, item *game.StackItem) error {

@@ -915,3 +915,45 @@ is.
   name.
 - **Unanswered** — neither half grants anything.
 - **Kindred** joins the card-type words, because the prompt offers it.
+
+## Amendment (2026-10-16, #2013): a player's derived ability that holds only while a condition is true
+
+Gruul Spellbreaker prints "During your turn, you and this creature have
+hexproof." Captain America, Super-Soldier prints "As long as Captain
+America has a shield counter on him, you and other Heroes you control
+have hexproof." The creature halves are ordinary layer-6 grants with a
+condition. The player halves had no spelling: §A1's derived source,
+`Spec.PlayerKeywords`, is unconditional, true whenever the permanent is
+on the battlefield.
+
+- **The declaration.** `Spec.PlayerKeywordsIf []game.PlayerKeywordIf`,
+  beside `PlayerKeywords`. An entry is a token in the same vocabulary, a
+  `While func(g *Game, source Card) bool` and the printed sentence as
+  its `Label` (the tile's ability row). `YouHaveDuringYourTurn(keyword)`
+  and `YouHaveWhile(keyword, label, while)` build it, and `Register`
+  holds the token to `PlayerKeywords`' grammar and refuses an entry with
+  no condition or no label.
+- **Still derived, never stored.** `game.CatalogPlayerKeywordsIf` is
+  read by the same `playerAbilityTokensLocked` walk, right after the
+  unconditional tokens of the same permanent, keyed by
+  `CatalogAbilityKey` so a permanent that lost its abilities grants
+  neither. The condition is asked on every query with the permanent as
+  it is now. That is CR 611.3a: a static ability's effect is not locked
+  in. Nothing is written to the player, so there is nothing to sweep when
+  the turn changes or the counter goes, and nothing for undo, the
+  snapshot or a restore point to carry. A `PlayerStatic` can't hold the
+  predicate (it is plain data and goes into the snapshot), which is why
+  the grant is a catalog declaration and not a new payload on that slice.
+- **No new consumer.** Targeting (CR 702.11c), the CR 702.16e damage
+  built-in and the CR 702.16c attachment check all read the walk, and so
+  do the picker, the bot's enumerator and `PlayerView.keywords`.
+- **What `While` may do.** It runs under the game lock, read or write,
+  so it only reads. It must not ask a player's abilities, which would
+  recurse into the walk that called it. "Your turn" is the granting
+  permanent's controller's, read now, so a Spellbreaker that changes
+  control shields its new controller on their own turns.
+
+Citations in `player_statics.go` and `player_keywords.go` were moved to
+the September 25, 2026 numbering as they were touched: hexproof on a
+player is CR 702.11c, "hexproof from" CR 702.11d, and a player's
+protection from targeting CR 702.16b.

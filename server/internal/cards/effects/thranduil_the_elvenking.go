@@ -30,7 +30,8 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, true)
-				return ok && c.IsLegendary() && c.HasSubtype("Elf")
+				// "Elf" is a word of the source's text (CR 612.2, #3984).
+				return ok && c.IsLegendary() && c.HasSubtype(source.TextSubtype("Elf"))
 			}, "Thranduil — draw two cards, then discard a card", func(g *game.Game, item *game.StackItem) error {
 				return b16DrawThenDiscard(g, item, 2)
 			}),

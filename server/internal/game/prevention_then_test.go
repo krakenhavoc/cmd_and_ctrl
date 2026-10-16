@@ -289,7 +289,7 @@ func TestStaticFollowUpSurvivesARestorePoint(t *testing.T) {
 	b := pushColouredCreature(g, opp, "B", []string{"R"})
 	g.WithWriteLock(func() { g.markCombatDamageOnCardLocked(phantom, 2, a, CombatStepRegular) })
 	snap := g.CaptureSnapshot()
-	if snap == nil || len(snap.PreventionFollowUps) != 1 || !snap.PreventionFollowUps[0].Static {
+	if snap == nil || len(followUpsOnly(snap.PreventionFollowUps)) != 1 || !snap.PreventionFollowUps[0].Static {
 		t.Fatalf("snapshot owes %+v, want the static's follow-up", snap)
 	}
 	r, err := snap.RestoreStrict()

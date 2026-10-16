@@ -115,6 +115,11 @@
       return `Remove any number of ${kind}counters from ${from} to pay for this ability.${floor}`;
     }
     const what = n === 1 ? `a ${kind}counter` : `${n} ${kind}counters`;
+    if (ability.counter_cost_among && ability.counter_cost_self) {
+      // #3987: "Remove two counters from Ghost-Spider" — the rows are
+      // the kinds on the source, not permanents to split among.
+      return `Remove ${what} of any kinds from ${from} to pay for this ability. Choose how many of each.`;
+    }
     if (ability.counter_cost_among) {
       const mix = ability.counter_cost_kind ? "" : " Any kinds.";
       return `Remove ${what} from among ${from} to pay for this ability. Split them however you like.${mix}`;

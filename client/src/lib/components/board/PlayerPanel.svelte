@@ -48,6 +48,7 @@
   import { graveyardHostLabels } from "../../seatSummary";
   import { bucketForBattlefield, isCreature, isLand } from "../../cardTypes";
   import {
+    anyPlayerManaRows,
     battlefieldClickPlan,
     type BattlefieldClickPlan,
     type LoneAbilityRow,
@@ -572,6 +573,41 @@
   // manaAbilityNeedsPrompt is the one predicate; a plain "{T}: Add
   // {G}", and a Vivid land with charge counters on it, go straight to
   // the action as they always did.
+  //
+  // #1864 (ADR 0106 §1 amendment 2026-10-16): an opponent's panel gets
+  // the handler too when a seated viewer looks at it, for the "Any player
+  // may activate this ability" mana rows alone (Mana Cache). The viewer
+  // activates them, so the action is the viewer's and the mana lands in
+  // the viewer's pool; every other row of a permanent the viewer does
+  // not control is ignored here, as the server would refuse it.
+  function sendManaActivation(
+    card: CardView,
+    ability: ManaAbilityView | undefined,
+    abilityIndex: number,
+    player: string,
+    colors?: string[],
+    phyrexianLife?: number,
+  ): void {
+    if (ability && onManaAbilityCost && manaAbilityNeedsPrompt(ability)) {
+      onManaAbilityCost(card, ability, colors);
+      return;
+    }
+    // #1443: a colour chosen at the card rides the activation, so the
+    // server produces it with no second question.
+    sendAction(
+      "activate_mana_ability",
+      {
+        card_id: card.instance_id,
+        ability_index: abilityIndex,
+        // ADR 0093: the row this click meant, so a stale one is refused.
+        ...manaAbilityRef(card, abilityIndex),
+        ...manaColorParams(colors),
+        // ADR 0131 §2: the "Pay life for {B}…" row's claim.
+        ...(phyrexianLife ? { phyrexian_life: phyrexianLife } : {}),
+      },
+      player,
+    );
+  }
   const activateManaAbility = $derived(
     isSelf
       ? (card: CardView, abilityIndex: number, colors?: string[], phyrexianLife?: number) => {
@@ -581,27 +617,15 @@
           // whichever is present, exactly as the card menu does.
           const rows = card.mana_abilities ?? card.zone_mana_abilities ?? [];
           const ability = rows.find((a) => a.index === abilityIndex);
-          if (ability && onManaAbilityCost && manaAbilityNeedsPrompt(ability)) {
-            onManaAbilityCost(card, ability, colors);
-            return;
-          }
-          // #1443: a colour chosen at the card rides the activation,
-          // so the server produces it with no second question.
-          sendAction(
-            "activate_mana_ability",
-            {
-              card_id: card.instance_id,
-              ability_index: abilityIndex,
-              // ADR 0093: the row this click meant, so a stale one is refused.
-              ...manaAbilityRef(card, abilityIndex),
-              ...manaColorParams(colors),
-              // ADR 0131 §2: the "Pay life for {B}…" row's claim.
-              ...(phyrexianLife ? { phyrexian_life: phyrexianLife } : {}),
-            },
-            seat.id,
-          );
+          sendManaActivation(card, ability, abilityIndex, seat.id, colors, phyrexianLife);
         }
-      : undefined,
+      : viewerID && !spectator
+        ? (card: CardView, abilityIndex: number, colors?: string[], phyrexianLife?: number) => {
+            const ability = anyPlayerManaRows(card).find((a) => a.index === abilityIndex);
+            if (!ability) return;
+            sendManaActivation(card, ability, abilityIndex, viewerID, colors, phyrexianLife);
+          }
+        : undefined,
   );
 
   // ADR 0105 sub-PR 5: the player half of "the selected attacker's
@@ -763,7 +787,12 @@
       closeManaSourcePicker();
       return;
     }
-    const plan = manaClickPlan(card, { payerLife });
+    // #1864: on a permanent the viewer does not control, only its
+    // any-player mana rows (Mana Cache) are the viewer's to click.
+    const own = isSelf || (card.controller || card.owner) === viewerID;
+    const plan = manaClickPlan(own ? card : { ...card, mana_abilities: anyPlayerManaRows(card) }, {
+      payerLife,
+    });
     if (!plan || !activateManaAbility) return;
     if (plan.kind === "activate") {
       activateManaAbility(card, plan.index, plan.colors);

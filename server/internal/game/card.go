@@ -673,6 +673,11 @@ type Card struct {
 	// before this field, in which case the grant falls back to the
 	// permanent's own timestamp.
 	SuspectedAt int64
+	// EncodedAt is the CR 613.7 timestamp of EncodedOn's grant: the
+	// moment the card was encoded, which is when its static ability
+	// (CR 702.99a's second) began to function in exile. Zero beside a
+	// zero EncodedOn.
+	EncodedAt int64
 	// NamedTribe is the creature type chosen for this permanent by an
 	// "as this enters, choose a creature type" instruction (CR
 	// 614.12) — Cavern of Souls, Door of Destinies, Vanquisher's
@@ -1143,6 +1148,36 @@ type Card struct {
 	// read on every layer pass. Other ability exiles still keep the
 	// effects package's event-log record (b27ExiledWith).
 	ExiledWith PermissionCardRef
+
+	// ExiledWithAbility is the other half of CR 607.2a's link: WHICH
+	// ability of the ExiledWith object exiled the card, as the catalog
+	// row its stack item named (StackItem.Params.Ability, ADR 0041 P9).
+	// "The second ability refers only to cards in the exile zone that
+	// were put there as a result of an instruction to exile them in the
+	// first ability", so an object with two exiling abilities keeps two
+	// sets apart: Prowl, Stoic Strategist's "whenever a player plays a
+	// card exiled with Prowl" reads only what its attack trigger exiled
+	// (#2651, ADR 0066's 2026-10-16 amendment).
+	//
+	// Stamped beside ExiledWith by a linked exile (zoneRoute.ExiledWith)
+	// made while the item resolving is an ability of that same object;
+	// the zero ref when the link came from a replacement (Valgavoth: no
+	// ability resolved) or from an item with no catalog row (a legacy
+	// closure trigger), so a reader by row never matches those. Cleared
+	// by MoveCard with ExiledWith. Carried by the snapshot.
+	ExiledWithAbility AbilityRef
+
+	// EncodedOn is CR 702.99b's "encoded": the permanent OBJECT
+	// {instance, epoch} a card with cipher was exiled encoded on as its
+	// spell resolved (#3867, cipher.go). A separate link from ExiledWith
+	// on purpose: the creature did not exile the card (its spell did), so
+	// "cards exiled with" it must not see it (CR 607.2a). The card stays
+	// encoded for as long as it stays in exile and that object stays on
+	// the battlefield (CR 702.99c); the epoch is what ends the second
+	// half, so a creature that leaves and returns is a new object with
+	// nothing encoded on it. Cleared by MoveCard on every move. Carried by
+	// the snapshot.
+	EncodedOn PermissionCardRef
 
 	// PutInGraveyardFrom is the zone the card was put into THIS
 	// graveyard from — the arrival record "put into your graveyard from
@@ -1897,6 +1932,12 @@ func ptWithCounters(eff Characteristic, counters map[string]int) (power, toughne
 	power, toughness = eff.Power, eff.Toughness
 	if counters != nil {
 		dp, dt := PTCounterDelta(counters)
+		if eff.PTSwitched {
+			// CR 613.4d: the switch comes after the counters (7c), but
+			// the counters are read here, after the pass switched the
+			// rest. Crossing their deltas is the same answer.
+			dp, dt = dt, dp
+		}
 		power = SaturatingAdd(power, dp)
 		toughness = SaturatingAdd(toughness, dt)
 	}

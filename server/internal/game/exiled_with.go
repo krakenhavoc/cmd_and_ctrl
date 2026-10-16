@@ -29,6 +29,18 @@ import "github.com/google/uuid"
 // it (zoneRoute.ExiledWith), which seeds ReplacementEvent.ExiledWith, so
 // the stamp lands through the same two finishers as Valgavoth's and only
 // when the card really reaches exile.
+//
+// #2651 (ADR 0066's 2026-10-16 amendment) adds the ABILITY to the link.
+// CR 607.2a links one ability to another, not an object to an object:
+// "the second ability refers only to cards in the exile zone that were
+// put there as a result of an instruction to exile them in the first
+// ability". So a linked exile also stamps Card.ExiledWithAbility, the
+// catalog row (ADR 0041 P9's AbilityRef) of the resolving item, when
+// that item is an ability of the linked object. ExiledWithRowForEffect
+// reads the pair, and a play from exile carries it on its event
+// (Event.ExiledWith, Event.ExiledWithAbility) for a trigger that has to
+// see the link after the card has left exile: Prowl, Stoic Strategist's
+// "whenever a player plays a card exiled with Prowl".
 
 // ExileLinkedForEffect exiles `cardID` from wherever it is, linked to
 // the source OBJECT `source` (CR 607.2a): once it has landed in exile
@@ -83,6 +95,134 @@ func (g *Game) ExiledWithForEffect(source PermissionCardRef) []*Card {
 	return out
 }
 
+// ExiledWithRowForEffect is CR 607.2a's "cards exiled with [this]" read
+// by ability: the cards in exile linked to the source OBJECT `source`
+// whose link also names the ability row `slot` / `name`
+// (Card.ExiledWithAbility; AbilitySlotTriggered with the trigger's Key,
+// or AbilitySlotActivated with the row's Label), in exile order. A card
+// linked by a replacement, or by an item with no catalog row, names no
+// row and is never listed. Pointers into the exile zone, as for
+// ExiledWithForEffect.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) ExiledWithRowForEffect(source PermissionCardRef, slot, name string) []*Card {
+	var out []*Card
+	for _, c := range g.ExiledWithForEffect(source) {
+		if c.ExiledWithAbility.IsRow(slot, name) {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// IsRow reports whether the ref names the row `name` in the list
+// `slot` of its definition: a triggered row by its Key, an activated
+// row by its Label (AbilityRef.Name). The zero ref names no row. The
+// catalog key is not compared, so a row of a granted bundle with the
+// same label as a printed row would answer too; restore's Q2 rule makes
+// the same assumption that a label names one row of a list.
+func (r AbilityRef) IsRow(slot, name string) bool {
+	return r.Slot != "" && r.Slot == slot && r.Name == name
+}
+
+// exileLink is a linked exile's whole stamp, carried to the landing
+// functions as one value: the object (ExiledWith) and the ability
+// (ExiledWithAbility) that exiled the card.
+type exileLink struct {
+	ref     PermissionCardRef
+	ability AbilityRef
+}
+
+// linkedExileAbilityLocked is the ability half of a linked exile's
+// stamp (#2651): the catalog row of the item resolving now, when that
+// item is an ability whose source is the object the route links to.
+// The zero ref otherwise: nothing resolving, a spell resolving (a spell
+// is not an ability of the object), an item with no catalog row (a
+// legacy closure trigger), or a link to some other object.
+//
+// Only while a resolution is open (resolutionOpen), as
+// stampEntryProvenanceLocked reads it: Game.resolving is stale in the
+// window after an item has finished resolving.
+//
+// Caller must hold g.mu.
+func (g *Game) linkedExileAbilityLocked(source PermissionCardRef) AbilityRef {
+	if !g.resolutionOpen || g.resolving == nil || g.resolving.item == nil {
+		return AbilityRef{}
+	}
+	it := g.resolving.item
+	if it.Kind == StackItemSpell || it.Params.Ability == nil {
+		return AbilityRef{}
+	}
+	if PermissionCardRef(it.SourceObject) != source {
+		return AbilityRef{}
+	}
+	return *it.Params.Ability
+}
+
+// exiledWithAbility is the ability half of the event's link: the one
+// its route captured, and only while ExiledWith is still the object the
+// route linked to. A replacement that rewrote the link to its own
+// source (Valgavoth) is not that ability's exile, so it stamps none.
+func (ev *ReplacementEvent) exiledWithAbility() AbilityRef {
+	if ev.zoneRoute == nil || ev.ExiledWith.ID == uuid.Nil || ev.zoneRoute.ExiledWith != ev.ExiledWith {
+		return AbilityRef{}
+	}
+	return ev.zoneRoute.ExiledWithAbility
+}
+
+// stampPlayedExiledWith copies the link a card had in exile onto the
+// event of its play (#2651): an EventCast from exile, or a land's
+// Played EventZoneMove from exile. `c` is the card as it sat in exile,
+// read before the move cleared its link. A card with no link stamps
+// nothing.
+func stampPlayedExiledWith(ev *Event, c *Card) {
+	if c == nil || c.ExiledWith.ID == uuid.Nil {
+		return
+	}
+	ref := c.ExiledWith
+	ev.ExiledWith = &ref
+	if c.ExiledWithAbility != (AbilityRef{}) {
+		ab := c.ExiledWithAbility
+		ev.ExiledWithAbility = &ab
+	}
+}
+
+// PlayedCardExiledWithRow reports whether `ev` is the play of a card
+// from exile that was linked to the source OBJECT `source` by its
+// ability row `slot` / `name` (Event.ExiledWith, ExiledWithAbility):
+// Prowl, Stoic Strategist's "whenever a player plays a card exiled with
+// Prowl". A spell cast from exile, or a land played from exile; any
+// other event, or a card linked to another object or ability, is not.
+func PlayedCardExiledWithRow(ev Event, source PermissionCardRef, slot, name string) bool {
+	if ev.OldZone != ZoneExile || ev.ExiledWith == nil || ev.ExiledWithAbility == nil || source.ID == uuid.Nil {
+		return false
+	}
+	switch {
+	case ev.Kind == EventCast:
+	case ev.Kind == EventZoneMove && ev.NewZone == ZoneBattlefield && ev.Played:
+	default:
+		return false
+	}
+	return *ev.ExiledWith == source && ev.ExiledWithAbility.IsRow(slot, name)
+}
+
+// snapshotExiledWithAbility is the snapshot's spelling of
+// Card.ExiledWithAbility: nil for the zero ref.
+func snapshotExiledWithAbility(r AbilityRef) *AbilityRef {
+	if r == (AbilityRef{}) {
+		return nil
+	}
+	return &r
+}
+
+// restoreExiledWithAbility is its inverse.
+func restoreExiledWithAbility(r *AbilityRef) AbilityRef {
+	if r == nil {
+		return AbilityRef{}
+	}
+	return *r
+}
+
 // stampExileCounterLocked puts one `kind` counter on the card that has
 // just landed in `dst`, when `dst` is exile and the move declared one
 // (ReplacementEvent.ExileCounter). A no-op for every other destination,
@@ -104,18 +244,20 @@ func stampExileCounterLocked(dst *Zone, cardID uuid.UUID, kind string) {
 
 // stampExiledWithLocked writes the "exiled with" link onto the card
 // that has just landed in `dst`, when `dst` is exile and the move
-// declared a link. A no-op for every other destination, for the zero
-// ref, and for a card that is not in `dst` (a failed move).
+// declared a link: the object, and the ability when one is named
+// (#2651). A no-op for every other destination, for the zero ref, and
+// for a card that is not in `dst` (a failed move).
 //
 // Called after MoveCard, which has already cleared any older link:
 // the stamp names the move that just happened and no earlier one.
-func stampExiledWithLocked(dst *Zone, cardID uuid.UUID, ref PermissionCardRef) {
+func stampExiledWithLocked(dst *Zone, cardID uuid.UUID, ref PermissionCardRef, ability AbilityRef) {
 	if dst == nil || dst.Kind != ZoneExile || ref.ID == uuid.Nil {
 		return
 	}
 	for i := range dst.Cards {
 		if dst.Cards[i].InstanceID == cardID {
 			dst.Cards[i].ExiledWith = ref
+			dst.Cards[i].ExiledWithAbility = ability
 			return
 		}
 	}

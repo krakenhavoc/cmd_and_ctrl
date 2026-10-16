@@ -35,9 +35,10 @@ func init() {
 				"Brimaz, Blight of Oreskos — incubate X, where X is that spell's mana value",
 				incubateThatSpellsManaValue),
 			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b15EndStepBegan(ev) && source != nil && g.DiedWithSubtypeThisTurn(source.Controller, "Phyrexian") > 0
+				return b15EndStepBegan(ev) && source != nil && g.DiedWithSubtypeThisTurn(source.Controller, source.TextSubtype("Phyrexian")) > 0
 			}, label, func(g *game.Game, item *game.StackItem) error {
-				if g.DiedWithSubtypeThisTurn(item.Controller, "Phyrexian") == 0 {
+				// "Phyrexian" is a word of the source's text (CR 612.2, #3984).
+				if g.DiedWithSubtypeThisTurn(item.Controller, g.TextReaderForEffect(item).TextSubtype("Phyrexian")) == 0 {
 					return nil
 				}
 				return Proliferate{}.Apply(NewContext(g, item))

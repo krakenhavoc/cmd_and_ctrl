@@ -58,6 +58,7 @@ func celestusFlip(g *game.Game, item *game.StackItem) error {
 	}
 	return MayChoice{
 		Question: "The Celestus — draw a card, then discard a card?",
+		Draws:    1,
 		YesLabel: "Draw",
 		NoLabel:  "Decline",
 		OnYes: func(ctx *Context) error {

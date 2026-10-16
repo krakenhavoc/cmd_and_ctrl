@@ -442,6 +442,9 @@ func triggersOf(c *Card) []TriggeredAbility {
 	// with no key at all (an uncatalogued Monastery Swiftspear, a Monk
 	// token) still has them.
 	keyword := keywordTriggersFor(c)
+	// #3867, CR 702.99a: one cipher trigger per card encoded on it,
+	// derived from the layer-6 grant so each knows its own card.
+	keyword = append(keyword, cipherTriggersFor(c)...)
 	if CatalogTriggers == nil {
 		return keyword
 	}

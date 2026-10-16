@@ -30,5 +30,5 @@ func init() {
 // aPhyrexianYouControlDied is "whenever a Phyrexian you control dies".
 func aPhyrexianYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	dead, ok := diedCreature(ev, g)
-	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Phyrexian")
+	return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Phyrexian"))
 }

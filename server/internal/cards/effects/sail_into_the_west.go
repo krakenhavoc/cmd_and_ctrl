@@ -82,6 +82,7 @@ func embarkOffer(ctx *Context, player uuid.UUID) error {
 	return MayChoice{
 		Player:   player,
 		Question: "Sail into the West — discard your hand and draw seven cards?",
+		Draws:    7,
 		OnYes: func(c *Context) error {
 			if _, err := discardWholeHand(c.Game, player); err != nil {
 				return err

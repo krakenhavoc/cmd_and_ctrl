@@ -391,3 +391,118 @@ not the event's `Amount`. `dispatchEventDelayedTriggerLocked` now sets `item.Tri
 which is what "that much life" needs: Vizkopa Guildmage's "whenever you gain life this turn, each opponent loses that much
 life" is a repeating `DelayedOnEvent` on `EventChangeLife` whose body reads `ctx.Trigger().Event.Amount`. `Object` stays
 nil. Back-out: drop the line and `TestVizkopaGuildmageDrainsOpponentsByTheLifeYouGainThisTurn` fails.
+
+## Amendment (2026-10-16, [#3997](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3997)): once for each creature dealt damage at the same time
+
+Shriveling Rot's first bullet is "Until end of turn, whenever a creature is dealt damage, destroy it." It is a repeating
+delayed trigger (CR 603.7b), and its trigger event is a creature being dealt damage. Damage dealt at the same time is one
+event (CR 120.4b, 510.2), and an ability triggers once each time its event occurs, or once for each occurrence the event
+contains (CR 603.2c). So a creature that two blockers hit triggers it once, and two creatures hit at once trigger it twice.
+The engine emits one `EventDealDamage` per source. Read one event at a time, the trigger fired twice for the double-blocked
+creature, which destroyed it twice and got past a single regeneration shield. That is stronger than printed.
+
+**Decision.** `DelayedTrigger.OncePerBatch` on a trigger whose condition is an each-condition (`game.DelayedEachCondition`,
+[ADR 0187](0187-any-player-pays-per-object-graveyard-and-either-payments.md) amendment 2026-10-16) now means once for each
+OBJECT in each event batch, not once for the whole batch. The guard is the same `oncePerBatchAllowsLocked` test-and-set,
+with the object and the event's `DamageInstance` appended to the key, as `TriggeredAbility.BatchKey` appends a second
+dimension to a permanent's key (`objectsNotYetFiredInBatchLocked`, `game/delayed.go`). The damage instance is part of the key
+because the [ADR 0108](0108-turn-scoped-effects-object-history-and-damage-shields.md) 2026-10-13 amendment made it the engine's record of "at the same
+time". One combat damage step, or one damage instruction, is one instance. Two instructions in one resolution, such as a
+Fiery Confluence that chose the same mode twice, are two events and so two occurrences, which `BatchTotalDamage` already
+treats the same way. An event that is not damage has the zero instance, and its key is the object alone. Without an
+each-condition, `OncePerBatch` keeps the 2026-10-13 meaning (Dalkovan Encampment). No card combined the two before this, so
+nothing that shipped changes.
+
+The payload of an each-condition instance now records the object's CR 400.7 epoch (`TargetRef.Epoch`, the field #3859
+added for payloads). That is its live epoch, or the epoch it had when it last left the battlefield this turn. "Destroy it"
+then destroys only that object (CR 603.7c), and "that creature's controller loses life equal to its toughness" reads the
+creature as it last existed (CR 608.2h, `Game.PermanentForEffect`). Readers that use only the ID are unchanged.
+
+The second bullet ("whenever a creature dies, that creature's controller loses life equal to its toughness") needed no new
+engine shape. It is an each-condition on `EventLTB` to a graveyard (CR 700.4), with the controller and toughness read from
+the creature's last-known record.
+
+**Snapshot.** No new field. The epoch rides in `TargetRef.Epoch`, which is additive and omitted when zero, and the fired
+marks ride the existing `oncePerBatchFired` map. The four new keys (`damage/each-creature-dealt-damage`,
+`dies/each-creature`, `destroy/the-payload-permanent` and `dies/controller-loses-life-equal-to-toughness`) are in the
+effect-key ledger. An older binary refuses a restore point that names them (`ErrUnknownEffectKey`), so the schema stays at
+its version.
+
+**Not chosen.**
+
+- Staging the delayed trigger until the batch settles, as a permanent's `AtBatchEnd` does (`life_batch.go`). Staging
+  finds the ability again by key on a source permanent, and a delayed trigger has none. Building a second staging path
+  for one card would change nothing a player sees, because the instance goes on the stack at the same priority boundary
+  either way.
+- Keying on the batch alone, as `BatchTotalEvents` does. That merges two separate damage instructions in one resolution
+  into one trigger, which is weaker than printed. Keying on the damage instance follows the rules more closely.
+- A new `DelayedTrigger` field. It would be a snapshot change for a combination that has no other meaning.
+
+**Cards.** Shriveling Rot, `CompletenessFull`.
+
+Back-out: drop the each-condition branch in `fireEventDelayedTriggersLocked`. The double-blocked creature is then destroyed
+twice (`TestShrivelingRotDoubleBlockedAttackerTriggersOnce` and
+`TestShrivelingRotTriggersOnceForEachCreatureDealtDamageTogether` fail).
+
+## Amendment (2026-10-16, [#2099](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2099)): returning the card a cost sacrificed, later
+
+Rescue from the Underworld reads "As an additional cost to cast this spell, sacrifice a creature. Choose target creature
+card in your graveyard. Return that card and the sacrificed card to the battlefield under your control at the beginning
+of your next upkeep. Exile Rescue from the Underworld." Its delayed trigger names two objects, and one of them is a card
+the spell's COST moved. `PaidCost.SacrificedObjects` ([ADR 0113](0113-small-seams-for-the-s58-deck-requests.md) §1)
+names that card as the permanent it was on the battlefield. The trigger has to name the object it became.
+
+**Decision 1: a body's payload may name several objects.** `EffectParams.Objects` is a list of `ObjectRef`, each a card
+and its CR 400.7 epoch. `Object` stays the one-object slot every earlier body reads. `EffectParams` is the closed set of
+values a body may be handed, and its own comment says a body that needs a new kind of value gets a new field there.
+`DelayedTrigger.Cards` stays the IDs, for the wire view of what is still owed. A body checks the epochs itself, as
+Avacyn, Angel of Horror's does, because the fired item's target refs carry no epoch and no target clause.
+
+**Decision 2: the sacrificed card is the object one zone change later, in a public zone.** CR 400.7j: "If the cost of a
+spell or ability causes an object to move to a public zone, that spell or ability's effects can find that object."
+`MoveCard` bumps `Card.ObjectEpoch` once per zone change, so the object the sacrifice made is the card at the
+battlefield epoch plus one (`effects.cardTheCostMovedToAPublicZone`, beside the graveyard-only
+`inGraveyardOneMoveAfter`). The zone may be a graveyard, exile or the command zone, so a card a replacement such as Rest
+in Peace exiled is followed there (the 2013-09-15 ruling). The spell records that object as it resolves. A token has
+ceased to exist (CR 111.7) and a card in a hidden zone cannot be followed, so the trigger names the target alone (the
+2013-09-15 ruling for a token).
+
+**Decision 3: a commander its owner moves to the command zone does not return.** The 2013-09-15 ruling says a sacrificed
+commander returns "from the zone it went to". That ruling was written when a commander's move to the command zone was a
+replacement effect. Under the pinned rules it is a state-based action (CR 903.9a): the commander goes to the graveyard,
+which is the object CR 400.7j lets the spell find, and then moves again, which makes it a new object (CR 400.7). A
+delayed trigger that refers to a particular object does not affect it once it is no longer in the zone it is expected
+to be in (CR 603.7c). So a commander its owner leaves in the graveyard returns, and one moved to the command zone stays
+there. This follows the current rules over the older ruling, as the project's rules-strict preference asks.
+
+**Decision 4: one keyed body returns them together.** `return/the-objects-together-under-your-control` puts every object
+in `Objects` that is still that object, in a graveyard, exile or the command zone, onto the battlefield under the
+trigger's controller (CR 603.7d). It uses `PutOntoBattlefieldTogetherThenForEffect`, so the two cards enter as one event
+and each sees the other enter (CR 603.6a). A card that left its zone before the trigger resolves, even to come straight
+back, stays where it is, and the other still returns (CR 603.7c; the 2013-09-15 ruling). The trigger is `At:
+StepUpkeep` with `ControllerTurnOnly`, so another player's upkeep leaves it queued.
+
+If the target is illegal as the spell resolves, the spell does not resolve (CR 608.2b): no trigger, and the spell goes
+to the graveyard. Otherwise it exiles itself as it resolves, not when the trigger does (the 2013-09-15 ruling).
+
+**Snapshot.** Additive within schema v9: `objects` on every serialized `EffectParams` (`delayedTriggers[].params` and
+`condParams`, `stackMeta[].params`, `pendingTriggers[].params` and the paused and last-known items that carry one),
+omitted when empty and recorded in `testdata/snapshot_shape/v9.txt`. A file written before it reads as no objects. The
+strict restore checks each object's keys as it checks `params.object`, so an older binary refuses a restore point that
+names the field, and it refuses the new body key too (`ErrUnknownEffectKey`) rather than dropping the trigger. The corpus board `delayed_trigger_objects` freezes the
+shape.
+
+**Not chosen.**
+
+- Encoding the target's epoch in `Params.Amount` beside the sacrificed card in `Params.Object`, as Dash's body keeps one
+  epoch in `Amount`. No engine change, but two objects in two unrelated slots is a shape the next multi-object body
+  would have to copy or undo.
+- Two delayed triggers, one per card. The card prints one ability. Two would give players a response window between the
+  returns, and neither card would see the other enter.
+- Following the 2013 ruling for a commander moved to the command zone. That would return an object the current rules
+  say is new (CR 400.7, 903.9a), which is stronger than printed.
+
+**Cards.** Rescue from the Underworld, `CompletenessFull`. No other card in the Scryfall dump returns the card a cost
+sacrificed.
+
+Back-out: delete the card and its body. The field stays, since keys are append-only; nothing else reads it.

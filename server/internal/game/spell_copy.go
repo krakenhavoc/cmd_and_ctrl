@@ -540,11 +540,17 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 		Owner:        controller,
 		SourceCardID: copyCard.InstanceID,
 		Targets:      append([]TargetRef(nil), targets...),
+		// ADR 0202, CR 707.10: the copy copies the spell's text, the
+		// spliced text included, and the targets chosen for it.
+		Spliced:      cloneSplicedTexts(item.Spliced),
 		Modes:        append([]int(nil), item.Modes...),
 		XValue:       item.XValue,
 		Distribution: cloneDistributionLocked(item.Distribution),
 		AltCost:      item.AltCost,
-		SplitSecond:  item.SplitSecond,
+		// #2055, CR 707.10: the opponents named are a choice made as
+		// the original was announced, and the copy keeps them.
+		TargetChoosers: copyTargetChoosers(item.TargetChoosers),
+		SplitSecond:    item.SplitSecond,
 		// #3781, CR 707.10: what the original fixed as it was cast.
 		CastValues: copyStringIntMap(item.CastValues),
 		IsCopy:     true,

@@ -54,6 +54,7 @@ func kataraMayDrawPerExperience(g *game.Game, item *game.StackItem) error {
 	}
 	return MayChoice{
 		Question: "Katara, Waterbending Master — draw a card for each experience counter, then discard a card?",
+		Draws:    n,
 		YesLabel: "Draw",
 		NoLabel:  "Decline",
 		OnYes: func(ctx *Context) error {

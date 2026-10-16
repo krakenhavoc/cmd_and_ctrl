@@ -26,9 +26,11 @@ func init() {
 				Label:     "Commander creatures you own are Giants in addition to their other types.",
 				Layer:     game.Layer4Type,
 				AppliesTo: commanderCreatureYouOwn,
-				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-					if !hasFold(c.Subtypes, "Giant") {
-						c.Subtypes = append(c.Subtypes, "Giant")
+				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+					// "Giant" is a word of the source's text (CR 612.2, #3984).
+					giant := source.TextSubtype("Giant")
+					if !hasFold(c.Subtypes, giant) {
+						c.Subtypes = append(c.Subtypes, giant)
 					}
 				},
 			},

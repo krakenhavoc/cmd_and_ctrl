@@ -44,5 +44,5 @@ func init() {
 // youAttackWithAKnight is "Whenever you attack with one or more
 // Knights", one event of the batch.
 func youAttackWithAKnight(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	return attackDeclaredByYou(ev, source.Controller) && attackerHasSubtype(g, ev, "Knight")
+	return attackDeclaredByYou(ev, source.Controller) && attackerHasSubtype(g, ev, source.TextSubtype("Knight"))
 }

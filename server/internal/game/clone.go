@@ -231,6 +231,12 @@ func (g *Game) cloneLocked() *Game {
 			if len(c.ManaChosen) > 0 {
 				cloned.ManaChosen = append([]string(nil), c.ManaChosen...)
 			}
+			// #3939: an activation's settled colours and the picks it
+			// still owes.
+			if len(c.ManaSettled) > 0 {
+				cloned.ManaSettled = append([]string(nil), c.ManaSettled...)
+			}
+			cloned.ManaPicksLeft = copyManaPickSlots(c.ManaPicksLeft)
 			if len(c.TriggerOrderIDs) > 0 {
 				cloned.TriggerOrderIDs = append([]uuid.UUID(nil), c.TriggerOrderIDs...)
 			}
@@ -266,6 +272,10 @@ func (g *Game) cloneLocked() *Game {
 			// #3217: and the subset of it that sits in the graveyard.
 			if len(c.SearchGraveyardCards) > 0 {
 				cloned.SearchGraveyardCards = append([]uuid.UUID(nil), c.SearchGraveyardCards...)
+			}
+			// #3988: and the subset that sits in the searched hand.
+			if len(c.SearchHandCards) > 0 {
+				cloned.SearchHandCards = append([]uuid.UUID(nil), c.SearchHandCards...)
 			}
 			// S16.5 copy chooser: same reason again — the candidate
 			// list a Clone is choosing from is a slice.
@@ -857,6 +867,7 @@ func cloneStackItem(s *StackItem) *StackItem {
 		Label:            s.Label,
 		DoubledBy:        s.DoubledBy,
 		DoubledByName:    s.DoubledByName,
+		TargetChoosers:   copyTargetChoosers(s.TargetChoosers),
 		XValue:           s.XValue,
 		HoldPriority:     s.HoldPriority,
 		SplitSecond:      s.SplitSecond,
@@ -898,6 +909,9 @@ func cloneStackItem(s *StackItem) *StackItem {
 		out.Targets = make([]TargetRef, len(s.Targets))
 		copy(out.Targets, s.Targets)
 	}
+	// ADR 0202: the spliced texts and their targets, deep-copied for
+	// the reason Targets is.
+	out.Spliced = cloneSplicedTexts(s.Spliced)
 	// ADR 0106 §4 (#1806): the spell's "can't be countered" marks.
 	// Plain values, so a fresh backing array is all the isolation an
 	// undo snapshot needs.
@@ -945,6 +959,7 @@ func clonePickTargetFrame(f *pickTargetFrame) *pickTargetFrame {
 	out.picked = append([]TargetRef(nil), f.picked...)
 	out.modes = append([]int(nil), f.modes...)
 	out.dist = cloneDistributionLocked(f.dist)
+	out.choosers = copyTargetChoosers(f.choosers)
 	return &out
 }
 

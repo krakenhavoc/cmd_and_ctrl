@@ -667,6 +667,19 @@ type Spec struct {
 	// static or a trigger (Soulflayer, Ethereal Forager).
 	Delve bool
 
+	// Splice is CR 702.47's "Splice onto [quality] [cost]" (#1989, ADR
+	// 0202). Declare it with SpliceOntoArcane / SpliceOntoInstantOrSorcery
+	// and write the rest of the card as usual: its Targets and OnResolve
+	// ARE the rules text a spell gains when the card is spliced onto it.
+	//
+	//	Splice: SpliceOntoArcane("{2}{R}{R}"), // Overblaze
+	//
+	// The engine does the rest: the offer while the card is in hand, the
+	// cost at CR 601.2f, the reveal, the targets (CR 702.47d) and the
+	// text running after the main spell's (CR 702.47b) with the spell as
+	// its source (CR 702.47c). Only a mana splice cost is expressed.
+	Splice *game.SpliceAbility
+
 	// SpendOnly is the spell's own "Spend only black mana on X" (Drain
 	// Life, Consume Spirit) or "Spend only black and/or red mana on X"
 	// (Soul Burn) — a restriction on the mana that pays THIS spell
@@ -1115,6 +1128,25 @@ type Spec struct {
 	// Issue #1197, ADR 0072's 2026-09-22 amendment.
 	PlayerKeywords []string
 
+	// PlayerKeywordsIf declares a printed static that gives this
+	// permanent's CONTROLLER an ability only while a condition holds —
+	// "During your turn, you and this creature have hexproof" (Gruul
+	// Spellbreaker's player half; the creature half is an ordinary
+	// Static entry):
+	//
+	//	PlayerKeywordsIf: []game.PlayerKeywordIf{YouHaveDuringYourTurn(KeywordHexproof)},
+	//
+	// Derived exactly as PlayerKeywords is, and read by the same walk:
+	// the condition is asked on every query with the permanent as it is
+	// now (CR 611.3a), so nothing is written to the player and nothing
+	// has to be swept when the condition stops holding. Build entries
+	// with YouHaveDuringYourTurn or YouHaveWhile; Register holds each
+	// to PlayerKeywords' vocabulary and requires a condition and a
+	// label.
+	//
+	// Issue #2013, ADR 0072's 2026-10-16 amendment.
+	PlayerKeywordsIf []game.PlayerKeywordIf
+
 	// PlayerLifeTotalLocked declares the printed static "Your life
 	// total can't change" (CR 119.7, CR 119.8 — Platinum Emperion),
 	// about this permanent's CONTROLLER. True while the permanent is
@@ -1179,6 +1211,21 @@ type Spec struct {
 	// none.
 	OpponentsFaceVillainousChoicesAgain bool
 
+	// ControlsOpponentsSearches declares Opposition Agent's two printed
+	// statics (CR 723.2, #3998, ADR 0166's 2026-10-16 amendment): "You
+	// control your opponents while they're searching their libraries"
+	// and "While an opponent is searching their library, they exile
+	// each card they find. You may play those cards for as long as they
+	// remain exiled, and you may spend mana as though it were mana of
+	// any color to cast them." The engine does both in its one search
+	// primitive (game/search_control.go): a search prompt an opponent
+	// owes over their own library is this permanent's controller's to
+	// answer while it is open, and the cards found are exiled face up
+	// with a play permission for that controller. Judged through
+	// CatalogAbilityKey, so a permanent that lost its abilities does
+	// neither.
+	ControlsOpponentsSearches bool
+
 	// DamageCantBePrevented declares this permanent's printed "damage
 	// can't be prevented" statics (CR 615.12, ADR 0107 §5):
 	//
@@ -1204,6 +1251,18 @@ type Spec struct {
 	// game" forms are stored instead (PlayersCantGainLifeThisTurn,
 	// PlayerCantGainLifeForRestOfGame).
 	CantGainLife []game.CantGainLifeStatic
+
+	// DrawLimits declares this permanent's printed draw restrictions
+	// (CR 121.2b, #3927):
+	//
+	//	DrawLimits: EachOpponentCantDrawMoreThanOneCardEachTurn(), // Narset, Parter of Veils
+	//	DrawLimits: EachPlayerCantDrawMoreThanOneCardEachTurn(),   // Spirit of the Labyrinth
+	//	DrawLimits: PlayersCantDrawCards(),                        // Maralen of the Mornsong
+	//
+	// Read from the battlefield through game.CatalogDrawLimits, keyed by
+	// CatalogAbilityKey, before each individual draw's replacement
+	// window: a draw the cap forbids is not performed (draw_limit.go).
+	DrawLimits []game.DrawLimitStatic
 
 	// DamageAsThough declares this permanent's printed "damage is dealt
 	// as though its source had wither / infect" statics (CR 120.3, 609.4,
@@ -1397,6 +1456,12 @@ type Spec struct {
 	// Not set for a card whose cost already NAMES the colour (the pip
 	// pays it whatever the planner does), and not for converge or
 	// sunburst, which count the spread and set WantsDistinctColors.
+	//
+	// The one exception is a colour read off the mana spent on a
+	// restricted {X} (#3941, Soul Burn's "the amount of {B} spent on X",
+	// beside a printed {B}): the pip pays the {B}, but X is paid with
+	// black and/or red, and the declared colour is the one the payment
+	// puts on X first (game.ManaSpendContext.favoredOnX).
 	WantsColors []string
 
 	// AdditionalLandPlays declares the printed static "you may play
@@ -1758,7 +1823,9 @@ type ActivatedAbility struct {
 	// battlefield. Cycling declares ZoneHand; a graveyard activation
 	// (Reassembling Skeleton) will declare ZoneGraveyard. Build the
 	// entry with Cycling / Typecycling rather than setting this by
-	// hand. See game.ActivatedAbilityShape.Zones and ADR 0062.
+	// hand. See game.ActivatedAbilityShape.Zones and ADR 0062. A
+	// spell's ability that works while it is on the stack declares
+	// ZoneStack (Lightning Storm; ADR 0106 §1 amendment 2026-10-16).
 	Zones []game.ZoneKind
 	// Cycling marks the card's cycling ability (CR 702.29a), so
 	// activating it emits EventCycle. Set by the Cycling /
@@ -1834,7 +1901,8 @@ type ActivatedAbility struct {
 	// effect is then whoever activated it (CR 109.5) — Context.Controller
 	// — and "this permanent's controller" is Context.SourcePermanent()'s.
 	// Register refuses it beside a {T}, loyalty, crew or sacrifice-this
-	// component and on an ability with a non-battlefield zone. See
+	// component and on an ability with a zone other than the battlefield
+	// or the stack (Lightning Storm, #1865). See
 	// game.ActivatedAbilityShape.AnyPlayer.
 	AnyPlayer bool
 	// OpponentsOnly is "Only your opponents may activate this ability"
@@ -1959,6 +2027,24 @@ type ManaAbility struct {
 	// Condition beside it: Vivi is
 	// `OncePerTurn: true, Condition: DuringYourTurn()`.
 	OncePerTurn bool
+
+	// AnyPlayer is the mana ability's printed "Any player may activate
+	// this ability" (CR 602.2, CR 602.1b; ADR 0106 §1 amendment
+	// 2026-10-16, #1864) — Mana Cache's "Remove a charge counter from
+	// this enchantment: Add {C}. Any player may activate this ability
+	// but only during their turn before the end step."
+	//
+	// Nothing else to write: the activator pays the cost (CR 602.1a),
+	// the mana goes to the activator's pool (CR 106.4), and Condition's
+	// `controller` argument is the activator, so "their turn" is
+	// IsYourTurn(g, controller). The engine asks game.MayActivateMana.
+	// Register refuses it beside a {T}, sacrifice-this, exert,
+	// put-a-counter or exile-this component and off the battlefield —
+	// the limits ActivatedAbility.AnyPlayer has, and no printed
+	// any-player mana ability has one. The auto-tapper never plans
+	// another player's any-player row; that player activates it from
+	// the board.
+	AnyPlayer bool
 
 	// Rider is everything the oracle text says AFTER the "Add …"
 	// clause, as one callback: the painland cycle's "This land deals

@@ -25,6 +25,7 @@ func init() {
 			AtYourUpkeep("Bringer of the Blue Dawn — you may draw two cards", func(g *game.Game, item *game.StackItem) error {
 				return MayChoice{
 					Question: "Bringer of the Blue Dawn — draw two cards?",
+					Draws:    2,
 					OnYes: func(ctx *Context) error {
 						return DrawCards{Player: ctx.Controller(), N: 2}.Apply(ctx)
 					},

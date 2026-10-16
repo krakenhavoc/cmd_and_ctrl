@@ -23,6 +23,7 @@
 
   import type {
     AltCostPriceView,
+    AltCostTapPriceView,
     CardView,
     SacrificeGroupView,
     TargetDifferenceView,
@@ -101,6 +102,9 @@
     // pricer. Shown beside each option, so the player sees what each
     // creature saves.
     prices?: Record<string, AltCostPriceView>;
+    // #3931: a harmonize offer's price per creature (its power and what
+    // the spell costs with it tapped), from the server's pricer.
+    tapPrices?: Record<string, AltCostTapPriceView>;
     // #2097: the clause takes EVERY option ("sacrifice all creatures you
     // control"). Nothing is picked: the list shows what goes, all of it
     // marked, and the button confirms. onConfirm gets every option.
@@ -123,6 +127,7 @@
     castName,
     additional = false,
     prices,
+    tapPrices,
     all = false,
     onConfirm,
     onCancel,
@@ -247,6 +252,8 @@
     {/if}
     {#if countIsX}
       <p class="prompt-hint">The number you pick is X.</p>
+    {:else if range.min === 0 && range.max === 1 && options.length > 0}
+      <p class="prompt-hint">Pick one, or none.</p>
     {:else if range.min === 0 && options.length > 0}
       <p class="prompt-hint">Pick as many as you like, or none.</p>
     {/if}
@@ -294,6 +301,14 @@
                   class="note price"
                   title={`Mana value ${p.mana_value}: the spell costs ${p.price} with this sacrificed`}
                   >MV {p.mana_value} · costs {p.price}</span
+                >
+              {/if}
+              {#if tapPrices?.[c.instance_id]}
+                {@const p = tapPrices[c.instance_id]}
+                <span
+                  class="note price"
+                  title={`Power ${p.power}: the spell costs ${p.price} with this tapped`}
+                  >power {p.power} · costs {p.price}</span
                 >
               {/if}
             </button>

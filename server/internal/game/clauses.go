@@ -109,6 +109,9 @@ func (g *Game) itemAnnouncedClauses(item *StackItem) []AnnouncedClause {
 	// the item's payment record (CR 608.2b), which a CR 707.10 copy
 	// carries too.
 	bindStepsBound(steps, AnnouncedBound{X: item.XValue, CountersRemoved: item.Paid.CountersRemoved})
+	// #2055: "… they control" on an opponent's clause reads the opponent
+	// who chose it, at the re-check and at a retarget alike.
+	bindStepChoosers(steps, item.TargetChoosers)
 	return steps
 }
 

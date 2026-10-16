@@ -43,11 +43,17 @@ func init() {
 				Label:   "{20}: Cast any number of Eldrazi spells from among cards you own outside the game without paying their mana costs.",
 				Purpose: game.Purpose{Answers: game.AnswerValue},
 				Cost:    ManaCost("{20}"),
-				Effect: Do(PlayFromOutside{
-					Name:   "Spawnsire of Ulamog",
-					Clause: "any number of Eldrazi cards",
-					Match:  func(c game.Card) bool { return c.HasSubtype("Eldrazi") && !c.IsLand() },
-				}),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					ctx := NewContext(g, item)
+					// "Eldrazi" is a word of the source's text, read as
+					// the ability resolves (CR 612.2, 608.2h; #3984).
+					eldrazi := ctx.TextSubtype("Eldrazi")
+					return PlayFromOutside{
+						Name:   "Spawnsire of Ulamog",
+						Clause: "any number of Eldrazi cards",
+						Match:  func(c game.Card) bool { return c.HasSubtype(eldrazi) && !c.IsLand() },
+					}.Apply(ctx)
+				},
 			},
 		},
 	})

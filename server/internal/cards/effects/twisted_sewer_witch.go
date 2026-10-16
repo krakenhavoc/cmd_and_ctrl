@@ -29,9 +29,11 @@ func init() {
 					if err := (CreateToken{Controller: item.Controller, Template: CantBlockRatToken(), N: 1}).Apply(ctx); err != nil {
 						return err
 					}
+					// "Rat" is a word of the source's text (CR 612.2, #3984).
+					rat := ctx.TextSubtype("Rat")
 					var rats []game.Card
 					for _, c := range g.BattlefieldCardsForEffect() {
-						if c.Controller == item.Controller && c.IsCreature() && c.HasSubtype("Rat") {
+						if c.Controller == item.Controller && c.IsCreature() && c.HasSubtype(rat) {
 							rats = append(rats, c)
 						}
 					}

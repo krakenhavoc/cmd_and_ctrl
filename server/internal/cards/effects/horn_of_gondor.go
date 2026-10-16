@@ -29,7 +29,7 @@ func init() {
 			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
 			Cost:    Plus(ManaCost("{3}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				n := b43CreaturesOfSubtypeControlled(g, item.Controller, "Human")
+				n := b43CreaturesOfSubtypeControlled(g, item.Controller, g.TextReaderForEffect(item).TextSubtype("Human"))
 				if n <= 0 {
 					return nil
 				}

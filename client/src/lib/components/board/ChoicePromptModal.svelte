@@ -356,6 +356,16 @@
   // search_min then, and there is no such button.
   const isSearch = $derived(active?.kind === "search_library");
 
+  // #3998: a search another player owes (Opposition Agent controls them
+  // while they search, CR 723.2) is answered here by the controller.
+  // Its banner is the searcher's ("Search your library"), so say whose
+  // library it is.
+  function searchingFor(c: PendingChoiceView, label: string): string {
+    if (!c.on_behalf_of || c.on_behalf_of === viewerID) return label;
+    const who = snap.seats.find((s) => s.id === c.on_behalf_of)?.name;
+    return who ? `${label} (choosing for ${who})` : label;
+  }
+
   // S16.5 copy_target — "you may have this creature enter as a copy
   // of ...". Shares the card grid and the {choice_id, card_ids}
   // payload; like search, its floor is zero, because every printed
@@ -636,11 +646,24 @@
   // Command Tower in the library and one in the graveyard are two
   // different tiles — they are not the same pick.
   const searchGraveyardIDs = $derived(new Set(active?.search_graveyard ?? []));
+  // #3988: and the hand half of "search that player's graveyard, hand,
+  // and library" (Kotose, the Silent Spider).
+  const searchHandIDs = $derived(new Set(active?.search_hand ?? []));
+  function searchZoneKey(id: string): string {
+    if (searchGraveyardIDs.has(id)) return "gy:";
+    if (searchHandIDs.has(id)) return "hand:";
+    return "lib:";
+  }
+  function searchZoneCaption(id: string): string {
+    if (searchGraveyardIDs.has(id)) return "Graveyard · ";
+    if (searchHandIDs.has(id)) return "Hand · ";
+    return "";
+  }
   const searchGroups = $derived.by<CardView[][]>(() => {
     if (!isSearch) return [];
     const groups = new Map<string, CardView[]>();
     for (const c of optionCards) {
-      const zone = searchGraveyardIDs.has(c.instance_id) ? "gy:" : "lib:";
+      const zone = searchZoneKey(c.instance_id);
       const key = zone + (c.name || c.instance_id);
       const g = groups.get(key);
       if (g) g.push(c);
@@ -2040,7 +2063,7 @@
     const [label, src] = isSacrifice
       ? [c.reason || "Sacrifice a permanent", "sacrifice"]
       : isSearch
-        ? [c.reason || "Search your library", "search · CR 701.23"]
+        ? [searchingFor(c, c.reason || "Search your library"), "search · CR 701.23"]
         : isCopyTarget
           ? c.exchanges_text
             ? [c.reason || "Exchange text boxes with…", "text box · CR 612.5"]
@@ -2910,7 +2933,10 @@
           {:else}
             Take up to {pickMax} of these, or find nothing — you may always come up short.
           {/if}
-          {#if searchGraveyardIDs.size > 0}
+          {#if active?.search_all_zones}
+            You're searching their graveyard, hand and library. Cards marked Graveyard or Hand are
+            there, the rest are in the library, and the library is shuffled either way.
+          {:else if searchGraveyardIDs.size > 0}
             Cards marked Graveyard are public. Taking one means you never looked in your library, so
             it isn't shuffled; taking a library card, or nothing, shuffles it.
           {:else}
@@ -3134,7 +3160,7 @@
       {/if}
       <div class="card-grid">
         {#if isSearch}
-          {#each searchGroups as group ((searchGraveyardIDs.has(group[0].instance_id) ? "gy:" : "lib:") + (group[0].name || group[0].instance_id))}
+          {#each searchGroups as group (searchZoneKey(group[0].instance_id) + (group[0].name || group[0].instance_id))}
             {@const picked = groupPicked(group)}
             <button
               type="button"
@@ -3148,8 +3174,7 @@
               <Card card={group[0]} />
               <PickName card={group[0]} />
               <span class="source-caption">
-                {searchGraveyardIDs.has(group[0].instance_id) ? "Graveyard · " : ""}{group.length >
-                1
+                {searchZoneCaption(group[0].instance_id)}{group.length > 1
                   ? `×${group.length}`
                   : ""}{picked > 0 ? `${group.length > 1 ? " · " : ""}${picked} taken` : ""}
               </span>

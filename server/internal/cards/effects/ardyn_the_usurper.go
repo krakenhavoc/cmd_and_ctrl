@@ -47,14 +47,18 @@ func init() {
 // ardynStarscourge exiles the chosen card and, if it was exiled, makes
 // the Demon copy.
 func ardynStarscourge(g *game.Game, item *game.StackItem) error {
-	return ExileTargetThenTokenCopy(g, item, ardynDemonException)
+	return ExileTargetThenTokenCopy(g, item, ardynDemonExceptionThrough(g.TextReaderForEffect(item)))
 }
 
-// ardynDemonException is "except it's a 5/5 black Demon".
-func ardynDemonException(t *game.Card) {
-	t.Power = 5
-	t.Toughness = 5
-	t.VariableToughness = false
-	t.SetCopyExceptionColors("B")
-	t.TypeLine = retypedTypeLine(t.TypeLine, "Demon")
+// ardynDemonExceptionThrough is "except it's a 5/5 black Demon", with
+// "black" and "Demon" read through `reader`, the text of the ability
+// that makes the copy (CR 612.2, #3984); nil reads the printed words.
+func ardynDemonExceptionThrough(reader *game.Card) func(t *game.Card) {
+	return func(t *game.Card) {
+		t.Power = 5
+		t.Toughness = 5
+		t.VariableToughness = false
+		t.SetCopyExceptionColors(reader.TextColors("B")...)
+		t.TypeLine = retypedTypeLine(t.TypeLine, reader.TextSubtypes("Demon")...)
+	}
 }

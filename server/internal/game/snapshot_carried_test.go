@@ -939,5 +939,9 @@ func carriedTestParams(seed, cardType string) EffectParams {
 		Cost:   "{" + seed + "}",
 		Name:   seed,
 		Filter: CastFilter{Types: []string{cardType}},
+		Objects: []ObjectRef{
+			{ID: uuid.NewSHA1(uuid.Nil, []byte(seed+"/objects/0")), Epoch: 3},
+			{ID: uuid.NewSHA1(uuid.Nil, []byte(seed+"/objects/1")), Epoch: 9},
+		},
 	}
 }

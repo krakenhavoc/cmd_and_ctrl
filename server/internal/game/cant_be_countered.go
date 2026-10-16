@@ -48,9 +48,20 @@ import "github.com/google/uuid"
 // counterspell (CR 101.2: the "can't" only beats the counter itself).
 // The counterspell resolves and does nothing; it does not fizzle.
 //
-// Not modelled, deliberately: the manual CounterSpell sandbox action
-// honours none of these sources. It is the table's override, not a
-// rules verb.
+// ABILITIES (#2014, ADR 0106's 2026-10-16 amendment). To counter an
+// ability is to remove it from the stack too (CR 701.6a), and
+// "Spells and abilities can't be countered" (Spider-Punk) says it
+// can't happen. The ability half of the gate is
+// abilityCantBeCounteredLocked, asked by the same verbs for an
+// activated or triggered item. It has one source, the battlefield
+// static with Abilities set: no card prints a rider, a turn grant or
+// a mark for an ability. A Stifle aimed at a covered ability is
+// still a legal target, resolves and does nothing, exactly as a
+// Counterspell aimed at a covered spell does.
+//
+// Not modelled, deliberately: the manual CounterSpell and
+// CounterAbility sandbox actions honour none of these sources. They
+// are the table's override, not rules verbs.
 
 // CatalogCantBeCountered is the catalog hook the effects package
 // wires at init, mirroring CatalogTargetSpec / CatalogModeSpec /
@@ -149,14 +160,63 @@ func spellPrintsCantBeCountered(spell Card) bool {
 // SpellCantBeCounteredForEffect is spellCantBeCounteredLocked for a caller
 // that already holds the lock — the view projection (#1553), which shows
 // the table why a Counterspell will do nothing. A stack item that is not
-// a spell answers false: CR 101.2-style "can't be countered" is a
-// statement about a spell, and an ability is countered by other verbs.
+// a spell answers false; AbilityCantBeCounteredForEffect is the ability
+// half.
 func (g *Game) SpellCantBeCounteredForEffect(id uuid.UUID) bool {
 	item := g.StackMeta[id]
 	if item == nil || item.Kind != StackItemSpell {
 		return false
 	}
 	return g.spellCantBeCounteredLocked(id)
+}
+
+// AbilityCantBeCounteredForEffect is abilityCantBeCounteredLocked for a
+// caller that already holds the lock — the view's chip on an activated
+// or triggered item (#2014). A spell, or an id not on the stack,
+// answers false.
+func (g *Game) AbilityCantBeCounteredForEffect(id uuid.UUID) bool {
+	return g.abilityCantBeCounteredLocked(g.StackMeta[id])
+}
+
+// abilityCantBeCounteredLocked reports whether the activated or
+// triggered ability on the stack can't be countered (CR 701.6a,
+// CR 101.2): some permanent's static covers abilities, and this one's
+// controller (#2014). nil, or a spell item, answers false: a spell is
+// spellCantBeCounteredLocked's.
+//
+// A mana ability never gets here: it does not use the stack
+// (CR 605.3b), so there is nothing to counter.
+//
+// Caller must hold g.mu with fresh layers, as for the spell half.
+func (g *Game) abilityCantBeCounteredLocked(item *StackItem) bool {
+	if item == nil || (item.Kind != StackItemActivated && item.Kind != StackItemTriggered) {
+		return false
+	}
+	if CatalogCounterShields == nil || g.Battlefield == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		src := &g.Battlefield.Cards[i]
+		for _, s := range CounterShieldsForCard(*src) {
+			if !s.Abilities {
+				continue
+			}
+			switch s.Whose {
+			case CounterShieldYouControl:
+				if item.Controller == uuid.Nil || item.Controller != src.Controller {
+					continue
+				}
+			case CounterShieldAnyPlayer:
+			default:
+				// "You cast": an ability is activated or
+				// triggered, never cast, so no "spells you
+				// cast" wording reaches one.
+				continue
+			}
+			return true
+		}
+	}
+	return false
 }
 
 // --- source 4: the battlefield statics (ADR 0106 §4 decision 1) ----
@@ -213,6 +273,15 @@ type CounterShieldStatic struct {
 	// with the static, live off the battlefield. Nil covers every
 	// spell. Treat the game as read-only.
 	Spell func(g *Game, spell Card, source *Card) bool
+
+	// Abilities extends the static to activated and triggered
+	// abilities on the stack: "Spells and abilities can't be
+	// countered" (Spider-Punk, #2014). abilityCantBeCounteredLocked
+	// reads it, judging Whose against the ability's controller;
+	// CounterShieldYouCast never covers an ability, which is not
+	// cast. Spell narrows the spell half only. False for every
+	// spells-only static.
+	Abilities bool
 }
 
 // CatalogCounterShields returns the "spells can't be countered"
