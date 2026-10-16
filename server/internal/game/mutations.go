@@ -92,6 +92,11 @@ func (g *Game) DrawCard(playerID uuid.UUID) error {
 	if g.Turn.Step == StepDraw && g.activeSeatIDLocked() == playerID {
 		return nil
 	}
+	// #3927: the sandbox draw is still a draw (CR 121.2b). Refused out
+	// loud rather than ignored, so the button says why nothing moved.
+	if p := g.playerByIDLocked(playerID); p != nil && !g.canDrawLocked(p) {
+		return ErrDrawRestricted
+	}
 	if err := g.drawCardLocked(playerID); err != nil {
 		return err
 	}

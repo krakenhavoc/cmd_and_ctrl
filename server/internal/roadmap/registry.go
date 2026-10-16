@@ -1636,6 +1636,16 @@ var items = []Item{
 		EngineNotes: "**Shipped** (ADR 0107 §5 decision 6, owner decision 5, PR 6): CR 119.7 is a rules gate, `playerCantGainLifeLocked` (`game/cant_gain_life.go`), asked before the life window opens, so no \"if you would gain life\" replacement sees a gain that can't happen and no \"whenever you gain life\" trigger fires. Sources: battlefield statics (`Spec.CantGainLife`: players, your opponents, enchanted player) and `ModCantGainLife` records (this turn, or indefinite for the rest of the game). Lifelink damage is still dealt; an exchange of life totals that would raise a forbidden total doesn't happen. Sulfuric Vortex's and Flames of the Blood Hand's \"gains no life instead\" is a replacement, not this gate (`ModGainNoLife`). See Closed seams.",
 	},
 	{
+		Slug: "draw-limits", Name: "Players can't draw more than one card each turn", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Effects that stop players drawing more than one card each turn, or drawing at all, such as Narset, Parter of Veils, Spirit of the Labyrinth and Maralen of the Mornsong.",
+		Rules:       []string{"121.2b", "121.3", "614.17", "101.3"},
+		Issue:       3927,
+		Probe:       func(s effects.Spec) bool { return len(s.DrawLimits) > 0 },
+		Printed:     `(?i)can't draw (?:more than one card each turn|cards)`,
+		Examples:    []string{"Narset, Parter of Veils", "Spirit of the Labyrinth", "Leovold, Emissary of Trest", "Maralen of the Mornsong", "Mornsong Aria"},
+		EngineNotes: "**Shipped** (#3927): CR 121.2b is a rules gate, `Game.drawForbiddenLocked` (`game/draw_limit.go`), asked for each individual draw before its CR 614 window opens (`drawEventLocked`), so a draw the limit forbids is not performed: no replacement sees it (dredge, Underrealm Lich), no card moves, no `EventDrawCard`, no empty-library loss, and the rest of the instruction (later draws, a \"then\") goes on. The count is `Game.DrawnThisTurn`, the cards actually drawn this turn, so draws before the permanent arrived count and a replaced draw does not. Sources: battlefield statics only, `Spec.DrawLimits` (`EachOpponentCantDrawMoreThanOneCardEachTurn`, `EachPlayerCantDrawMoreThanOneCardEachTurn`, `PlayersCantDrawCards` at a cap of zero), read through `CatalogAbilityKey`. The sandbox draw returns `ErrDrawRestricted`. `Game.CanDrawForEffect` / `DrawsLeftThisTurnForEffect` are there for a card that offers a choice to draw (CR 121.3). Not yet: a \"may draw\" prompt is still asked of a player who can't draw (a yes draws nothing), and there is no player badge for the limit.",
+	},
+	{
 		Slug: "exile-if-it-would-die-this-turn", Name: "\"If it would die this turn, exile it instead\"", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Effects that exile a creature instead if it would die this turn, such as Disintegrate's and Lava Coil's.",
 		Rules:       []string{"614.1a", "700.4", "400.7", "514.2", "611.2c", "616.1"},
