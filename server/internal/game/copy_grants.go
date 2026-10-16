@@ -233,6 +233,14 @@ func mergeCatalogParts(parts []*CardDef) *CardDef {
 		if len(g.AttackLimits) > 0 {
 			merged.AttackLimits = append(append([]AttackLimit(nil), merged.AttackLimits...), g.AttackLimits...)
 		}
+		// #1946: a layer-6 grant may carry "creatures dealt damage by
+		// this creature this turn can't be regenerated" (Bone Shaman).
+		// Read live off the composite key, so "this creature" is the
+		// recipient and the rule ends with the grant.
+		if len(g.DealtDamageCantBeRegenerated) > 0 {
+			merged.DealtDamageCantBeRegenerated = append(append([]DealtDamageCantBeRegenerated(nil),
+				merged.DealtDamageCantBeRegenerated...), g.DealtDamageCantBeRegenerated...)
+		}
 	}
 	// ADR 0041 P9 (tier 4-2): a bundle granted twice contributes its
 	// triggered rows twice, and each copy is a different instance of

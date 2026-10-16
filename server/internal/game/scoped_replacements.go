@@ -377,15 +377,19 @@ func (g *Game) ExileIfCreaturesWouldDieThisTurnForEffect(sourceID, controller uu
 // the record covers. The permanent is judged as it is before the move —
 // the window runs while it is still on the battlefield — so a pinned
 // record matches the same object only (CR 400.7) and a scoped one reads
-// its type and controller then.
+// its type and controller then. A dealt-damage-by record (#1946,
+// Runesword) asks whether the creature is one its dealer damaged.
 //
 // Caller must hold g.mu.
-func exileIfWouldDieAppliesLocked(g *Game, e ScopedEffect, ev *ReplacementEvent) bool {
+func exileIfWouldDieAppliesLocked(g *Game, e ScopedEffect, m Mod, ev *ReplacementEvent) bool {
 	if ev.Kind != RepEventMove || ev.OldZone != ZoneBattlefield || ev.NewZone != ZoneGraveyard {
 		return false
 	}
 	if e.Scope == ScopeNone {
 		return scopedAffectsLiveObjectLocked(g, e, ev.CardID)
+	}
+	if e.Scope == ScopeDealtDamageBy {
+		return g.dealtDamageByModCoversLocked(m, findBattlefieldCard(g, ev.CardID))
 	}
 	c := findBattlefieldCard(g, ev.CardID)
 	return c != nil && scopePredicate(e.Scope, e.Controller)(c, g, nil)
@@ -406,6 +410,11 @@ func (g *Game) ExileIfItWouldDieLabels(cardID uuid.UUID) []string {
 		if e.Scope == ScopeNone && scopedEffectHasMod(e, ModExileIfWouldDie) && scopedAffectsLiveObjectLocked(g, *e, cardID) {
 			out = append(out, scopedEffectDisplayName(e))
 		}
+		// #1946: Runesword's record is about the creatures one object
+		// damaged, so it is a chip on each of them, not a banner.
+		if e.Scope == ScopeDealtDamageBy && g.dealtDamageByRecordCoversLocked(e, ModExileIfWouldDie, findBattlefieldCard(g, cardID)) {
+			out = append(out, scopedEffectDisplayName(e))
+		}
 	}
 	return out
 }
@@ -419,7 +428,7 @@ func (g *Game) ExileIfCreaturesWouldDieThisTurnLabels() []string {
 	var out []string
 	for i := range g.ScopedEffects {
 		e := &g.ScopedEffects[i]
-		if e.Scope == ScopeNone || !scopedEffectHasMod(e, ModExileIfWouldDie) {
+		if e.Scope == ScopeNone || e.Scope == ScopeDealtDamageBy || !scopedEffectHasMod(e, ModExileIfWouldDie) {
 			continue
 		}
 		out = append(out, scopedEffectDisplayName(e))
@@ -671,7 +680,7 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		// only. A gain of 0 is no life gain event at all.
 		return ev.Kind == RepEventLife && ev.LifeDelta > 0 && ev.LifePlayer == m.Player
 	case ModExileIfWouldDie:
-		return exileIfWouldDieAppliesLocked(g, e, ev)
+		return exileIfWouldDieAppliesLocked(g, e, m, ev)
 	case ModPreventNextFromSource, ModPreventNextCombatFromSource:
 		return g.nextFromSourceAppliesLocked(e, m, ev)
 	case ModPreventFromSource:

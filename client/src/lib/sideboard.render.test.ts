@@ -111,7 +111,11 @@ describe("the sideboard pile", () => {
     const pile = c.querySelector<HTMLElement>('[data-pile="sideboard"]');
     expect(pile, "a sideboard pile on your own seat").not.toBeNull();
     expect(pile!.getAttribute("aria-label")).toContain("sideboard: 2 cards");
-    expect(pile!.textContent).toContain("outside the game");
+    // #3832: "outside the game" explains the pile in its tooltip and
+    // accessible name; it is not text on the tile, where it overflowed.
+    expect(pile!.getAttribute("aria-label")).toContain("outside the game");
+    expect(pile!.getAttribute("title")).toContain("outside the game");
+    expect(pile!.textContent).not.toContain("outside the game");
     // Face down: no card name is rendered on the tile.
     expect(pile!.textContent).not.toContain("Burning Wish");
   });

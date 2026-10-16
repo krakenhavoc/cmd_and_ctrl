@@ -163,6 +163,12 @@ type CardDef struct {
 	// CatalogAttackLimits, keyed by CatalogAbilityKey; see
 	// attack_limits.go and ADR 0045 Decision 44 (#1507).
 	AttackLimits []AttackLimit
+	// DealtDamageCantBeRegenerated are this permanent's "creatures dealt
+	// damage by this creature this turn can't be regenerated this turn"
+	// statics (#1946, CR 701.19c) — Bone Shaman's granted ability. Read
+	// from the battlefield through CatalogDealtDamageCantBeRegenerated,
+	// keyed by CatalogAbilityKey; see dealt_damage_by.go.
+	DealtDamageCantBeRegenerated []DealtDamageCantBeRegenerated
 	// ExertOnAttack is the static ability "You may exert this creature
 	// as it attacks" (CR 701.43d, ADR 0130 §2). Read through
 	// CatalogExertOnAttack, keyed by CatalogAbilityKey; see exert.go.
@@ -768,6 +774,12 @@ func init() {
 	CatalogAttackLimits = func(key string) []AttackLimit {
 		if d := catalogDef(key); d != nil {
 			return d.AttackLimits
+		}
+		return nil
+	}
+	CatalogDealtDamageCantBeRegenerated = func(key string) []DealtDamageCantBeRegenerated {
+		if d := catalogDef(key); d != nil {
+			return d.DealtDamageCantBeRegenerated
 		}
 		return nil
 	}

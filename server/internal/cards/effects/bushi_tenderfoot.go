@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -16,10 +14,10 @@ import (
 //	          becomes blocked, it gets +2/+2 until end of turn.)"
 //
 // Audited against the engine (the issue's "check"): "dealt damage by
-// this creature this turn" is read off the turn's damage events, which
-// name the source and the damaged creature, as DealtDamageThisTurn does
-// for the victim alone. The source and the victim each start a new
-// record when they re-enter the battlefield (CR 400.7), so a creature
+// this creature this turn" is read off the turn's record of which
+// objects each source damaged (dealtDamageByThisTurn, #1946). The source
+// and the victim are each named by object, so either one re-entering the
+// battlefield is a new object (CR 400.7), and a creature
 // that was dealt damage, blinked and died is not the one that was
 // damaged. The trigger is "a creature dies", not "another", but a
 // Tenderfoot that dies with its victim is gone and has nothing to flip.
@@ -30,23 +28,6 @@ import (
 // No simplification.
 const bushiTenderfootOracleID = "82959ca2-cd96-4cca-9ce0-afb8db209860"
 
-// damagedBySinceEntering reports whether `source` dealt damage to
-// `victim` this turn, counting only the objects they are now: either
-// one entering the battlefield again starts over (CR 400.7). The damage
-// is the amount that was really dealt, after prevention.
-func damagedBySinceEntering(g *game.Game, source, victim uuid.UUID) bool {
-	dealt := false
-	for _, ev := range g.EventsThisTurn() {
-		switch {
-		case ev.Kind == game.EventZoneMove && ev.NewZone == game.ZoneBattlefield && (ev.CardID == source || ev.CardID == victim):
-			dealt = false
-		case ev.Kind == game.EventDealDamage && ev.Source == source && ev.Target == victim && ev.Amount > 0:
-			dealt = true
-		}
-	}
-	return dealt
-}
-
 func init() {
 	Register(Spec{
 		OracleID:     bushiTenderfootOracleID,
@@ -55,7 +36,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				_, died := diedCreature(ev, g)
-				return died && ev.CardID != source.InstanceID && damagedBySinceEntering(g, source.InstanceID, ev.CardID)
+				return died && ev.CardID != source.InstanceID && dealtDamageByThisTurn(g, source.InstanceID, ev.CardID)
 			}, "Bushi Tenderfoot — flip it", Do(FlipThis{})),
 		},
 	})

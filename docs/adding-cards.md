@@ -2329,6 +2329,23 @@ destroy instruction's rider and the turn's mark. "When that creature dies
 this turn, exile it" (Whippoorwill) is a delayed trigger, not a
 replacement: `ExileWhenItDiesThisTurn`.
 
+**"Creatures dealt damage by this creature this turn"** (#1946, ADR 0108
+amendment of 2026-10-15). The turn keeps a record of which permanent
+objects each source dealt damage to (`TurnTally.DamagedObjects`; prevented
+damage is not there, and a flickered creature is a new object). Read it,
+never the event log:
+
+```go
+dealtDamageByThisTurn(g, source.InstanceID, ev.CardID)                 // Zurgo's dies trigger
+Replacements: []game.ReplacementEffect{ExileIfDealtDamageByThisWouldDie(label)}      // Kumano
+Replacements: []game.ReplacementEffect{ExileIfDealtDamageByEnchantedWouldDie(label)} // Kumano's Blessing
+AbilityGrant{DealtDamageCantBeRegenerated: DealtDamageByThisCantBeRegenerated(text)} // Bone Shaman
+// one creature's damage, from a resolving ability (Runesword); fromNow
+// counts only the damage dealt after it resolves:
+g.CantBeRegeneratedIfDealtDamageByForEffect(src, ref, true, label)
+g.ExileIfDealtDamageByWouldDieThisTurnForEffect(src, ref, uuid.Nil, false, label)
+```
+
 **"It deals double (triple) that damage instead" from a resolving spell
 or ability** ([ADR 0108](decisions/0108-turn-scoped-effects-object-history-and-damage-shields.md)
 §3, #1890). A static doubler on a permanent (Angrath's Marauders,
@@ -10271,6 +10288,21 @@ ctx.SourcePermanent()                                                           
   `LosesAllAbilitiesAndHas(creatureTokensYouControl)` plus a `SubLayer7B_Set` static (Poppet Factory).
 - **A trigger condition must not call a locking `*Game` method** such as `ActivePlayer()`: the harvest already holds
   the lock. Read `g.Seats[g.Turn.ActiveSeat]`.
+
+### Pieces from the Squall deck (#3918)
+
+- **"You may cast Aura and Equipment spells as though they had flash"** is
+  `CastKindAsThoughFlash(game.PermissionFilter{AuraOrEquipmentOnly: true}, label)` (Sigarda's Aid).
+- **"You may cast this spell as though it had flash if <board condition>"** is an `AlternativeCost` at the printed cost
+  with `AsThoughFlash: true` and a `Condition` (Fated Clash: a creature attacking and a creature blocking).
+- **"When the chosen player loses the game"** watches `game.EventPlayerEliminated` and compares `ev.Actor` with the
+  permanent's `ChosenPlayer` (Shinryu, Transcendent Rival). A concession is a loss too (CR 104.3a).
+- **"Choose a creature an opponent controls" on a resolving trigger, remembered for a later "when the chosen creature
+  leaves"** stores the object with `g.SetChosenPermanentForEffect(source, game.ObjectRef{ID, Epoch})` and matches the
+  leaving object by its last-known epoch (Zenos yae Galvus).
+- **"Whenever one or more attacking creatures you control die, you may return one of them … Do this only once each
+  turn"** walks the trigger's batch with `diedWhileAttacking` and `leftUnderControlOf`, and records the use with
+  `g.NoteDoneThisTurn` only when a card is returned (Rinoa, Angel Wing).
 
 ### Statics that read block status or this turn's events, "can't be attacked", any-type mana, flash-if-it-targets (#3172, cav-h2)
 

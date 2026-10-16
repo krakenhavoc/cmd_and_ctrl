@@ -159,6 +159,11 @@ var (
 	// listed card that is still in a graveyard (CR 603.7c).
 	exileListedFromGraveyardBody = game.SimpleDelayedBody("dies/exile-from-graveyard", exileListedCardsFromGraveyard)
 
+	// The event condition of "when that creature leaves the battlefield
+	// this turn" (Runesword, #1946): an EventLTB of the listed object, to
+	// any zone. The trigger's duration is pinned to the object.
+	theListedObjectLeftCondition = game.DelayedCondition("ltb/the-listed-object", theListedObjectLeft)
+
 	// "Flip this creature" after the creature it damaged died (Initiate of
 	// Blood, #3216): the scheduling source flips if it is still that
 	// object.
