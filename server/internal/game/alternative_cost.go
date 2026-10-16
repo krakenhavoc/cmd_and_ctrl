@@ -218,6 +218,23 @@ type AlternativeCost struct {
 	// price and the enumerator) prices from CastSpellParams.AltCostIDs.
 	ReducedBySacrificedManaValue bool
 
+	// ReducedByTappedPower is harmonize's "If you cast this spell using
+	// its harmonize ability, its total cost is reduced by an amount of
+	// generic mana equal to the tapped creature's power" (CR 702.180a,
+	// #3931, ADR 0135 amendment 2026-10-16). Only beside a TapOthers of
+	// up to one creature (TapOthersCost.UpTo, Count 1); effects.Register
+	// refuses it anywhere else.
+	//
+	// Emerge's shape with a tap for a sacrifice: CR 702.180b chooses
+	// the creature as the cost is chosen (601.2b) and taps it as the
+	// total is paid (601.2h), so CR 601.2f totals the cost while it is
+	// untapped and on the battlefield. The pricer reads its power
+	// (clamped at zero) into CostQuery.AltTappedPower and
+	// applyCostModifiersLocked takes it off the generic part with the
+	// board's reductions. Naming no creature is a legal payment and
+	// reduces nothing.
+	ReducedByTappedPower bool
+
 	// DiscardFromHand is retrace's "discarding a land card in addition
 	// to paying its other costs" (CR 702.81a, #2528): a card from the
 	// caster's HAND, named in CastSpellParams.AltCostIDs and DISCARDED
@@ -851,6 +868,11 @@ func (g *Game) AlternativeCostPayableLocked(playerID, castID uuid.UUID, alt *Alt
 	}
 	spec, zone, want := alt.cardComponent()
 	if spec == nil {
+		return true
+	}
+	// #3931: harmonize taps UP TO one creature, so naming none pays it
+	// and the board never withholds the offer.
+	if alt.TapOthers != nil && alt.TapOthers.UpTo {
 		return true
 	}
 	setRule := len(SacrificeSetKinds(spec)) > 0

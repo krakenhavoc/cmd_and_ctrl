@@ -3371,6 +3371,9 @@ func (g *Game) costAfterModifiersLocked(cost ParsedCost, p *Player, card Card, p
 		// permanent the claimed offer names while it is still on the
 		// battlefield.
 		AltSacrificeManaValue: g.altSacrificeManaValueLocked(p.ID, card, params),
+		// #3931, CR 702.180a: harmonize's, read off the creature the
+		// claimed offer names while it is still untapped.
+		AltTappedPower: g.altTappedPowerLocked(p.ID, card, params),
 		// #3787: the cast permission's "cost {N} less" (Urianger Augurelt).
 		GrantReduction: g.grantReductionLocked(p.ID, card, fromZone, params),
 	})
