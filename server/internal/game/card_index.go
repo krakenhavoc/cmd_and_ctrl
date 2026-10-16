@@ -239,6 +239,17 @@ func (g *Game) locateCardLocked(cardID uuid.UUID) (*Zone, int) {
 	if cardIndexCrossCheck.Load() {
 		g.crossCheckCardLocked(cardID, z, pos)
 	}
+	if z == nil && cardID == g.outsideEntering && cardID != uuid.Nil {
+		// #3955: the land being played from outside the game, for the
+		// span of its entry. See Game.outsideEntering.
+		if oz := g.outsideCardZoneLocked(cardID); oz != nil {
+			for i := range oz.Cards {
+				if oz.Cards[i].InstanceID == cardID {
+					return oz, i
+				}
+			}
+		}
+	}
 	return z, pos
 }
 

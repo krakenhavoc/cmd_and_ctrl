@@ -240,6 +240,23 @@ export function grantedFace(card: CardView, grant: ExilePlayView | null): CardVi
 // the two readers can't drift into different opinions about which
 // faces a cast may choose.
 export function castableFromZone(card: CardView, zoneKind: BrowsableZone): boolean {
+  // #3955: the viewer's own sideboard under a granted cast or play
+  // (Spawnsire of Ulamog, Wish). The server stamps `castable_here` only
+  // on a card a live permission opens, so the bit alone is the gate.
+  if (zoneKind === "sideboard") {
+    return castableFaces(card, "outside").some((f) => f.castable_here === true);
+  }
   if (zoneKind !== "graveyard") return false;
   return castableFaces(card, "graveyard").some((f) => f.castable_here === true);
+}
+
+// outsideCastLabel is the button on a sideboard card the viewer may cast
+// or play (#3955): "cast free" for Spawnsire of Ulamog's {0} cast, "play"
+// for a land and for Wish's play at the card's own cost, "cast" otherwise.
+// The grant's own price rides `exile_play.cost_override`, the field every
+// cast permission stamps.
+export function outsideCastLabel(card: CardView): string {
+  if ((card.type_line ?? "").toLowerCase().includes("land")) return "play";
+  if (card.exile_play?.cost_override === "{0}") return "cast free";
+  return card.exile_play ? "play" : "cast";
 }

@@ -271,6 +271,10 @@ export type ActionType =
   // ADR 0150 §4 (owner decision 5): `{choice_id?}` — the caster
   // withdraws the request for help an assisted cast is parked on.
   | "cancel_assist"
+  // #3955 (Wish): no params. Opens the outside pick over the card database
+  // so the holder of a "play a card you own from outside the game" right
+  // names the card to play now.
+  | "outside_play"
   // ADR 0193 (CR 732.2): demonstrate a loop. `loop_record_start`,
   // `loop_record_stop` and `loop_record_cancel` take no params;
   // `loop_propose` takes `{count}` (1–1000); `resolve_loop_proposal`
@@ -2011,7 +2015,10 @@ export interface PendingChoiceView {
   // "battlefield_tapped", or "cast_free" ("you may cast a spell from
   // your hand without paying its mana cost" — answering with a card
   // opens its cast at once), "cast_free_library" (the same over cards the
-  // chooser looked at on top of their own library, #2110), or "manifest" (ADR 0189: the named hand
+  // chooser looked at on top of their own library, #2110), "outside" (ADR 0191: the named cards
+  // come in from the chooser's sideboard), "cast_free_outside" / "play_outside" (#3955: the named
+  // sideboard cards are cast free, or played this turn, from outside the game; the pick opens the
+  // sideboard tab), or "manifest" (ADR 0189: the named hand
   // cards are put onto the battlefield face down as 2/2 creatures).
   // Absent on a plain discard or look.
   choose_destination?: string;
@@ -2570,6 +2577,12 @@ export interface PlayerView {
   // How many cards this seat owns outside the game. Public, like a
   // hand's size. Absent for a seat with none.
   sideboard_count?: number;
+  // #3955 (Wish): the seat's live "you may play a card you own from outside
+  // the game this turn" right, OWNER-ONLY. `can_name` is true when the seat's
+  // pool is the card database, so the `outside_play` action is how it names
+  // the card to play; with a sideboard its cards carry the cast surface
+  // directly.
+  outside_play?: { source_name: string; can_name?: boolean };
   // #1197/#1201 (CR 702.11d, CR 702.16i): the abilities this SEAT has
   // right now — bare engine tokens, "hexproof" or a general
   // "protection from <quality>" ("protection from everything" is the

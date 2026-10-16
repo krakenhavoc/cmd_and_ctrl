@@ -75,7 +75,7 @@
   import TargetingArrows from "./TargetingArrows.svelte";
   import VotingPanel from "./VotingPanel.svelte";
   import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
-  import { zoneBrowser, closeZoneBrowser } from "../../zoneBrowser";
+  import { zoneBrowser, closeZoneBrowser, openZoneBrowser } from "../../zoneBrowser";
   import {
     freeCastRequest,
     freeCastLocation,
@@ -83,6 +83,8 @@
     handFreeCastRequest,
     handFreeCastTarget,
     isFreeCastPick,
+    outsideCastRequest,
+    outsideCastReady,
   } from "../../freeCastRequest";
   import { phasedOutCards } from "../../phasedOut";
   import { canActivateSorcerySpeedAbility } from "../../timing";
@@ -1501,6 +1503,27 @@
     if (target === undefined) return;
     handFreeCastRequest.set(null);
     if (target) startHandFreeCast(target.card, target.key);
+  });
+
+  // #3955: "cast any number of Eldrazi cards you own from outside the game
+  // without paying their mana costs" (Spawnsire of Ulamog) and "you may
+  // play a card you own from outside the game this turn" (Wish). Answering
+  // the pick left a permission on each chosen card in the viewer's
+  // sideboard; once the frame carrying them arrives, the sideboard tab
+  // opens, where each granted card has its cast button (which hands off to
+  // the ordinary cast chain). Nothing granted, nothing opens.
+  $effect(() => {
+    if (!$outsideCastRequest) return;
+    const me = view.seats.find((s) => s.id === viewerID);
+    const ready = outsideCastReady(view.pending_choices, me?.sideboard, viewerID);
+    if (ready === undefined) return;
+    outsideCastRequest.set(false);
+    if (!ready || !me) return;
+    // One card granted (a Wish naming, a single Eldrazi): go straight into
+    // its cast or land play. Several: the tab, where each has its button.
+    const castable = (me.sideboard ?? []).filter((c) => c.castable_here === true);
+    if (castable.length === 1) handlePlayCard(castable[0], "outside");
+    else openZoneBrowser({ zoneKind: "sideboard", ownerID: me.id, ownerName: me.name });
   });
 
   // startHandFreeCast opens the cast of a hand card for its granted free

@@ -211,7 +211,11 @@ export interface CastChoices {
 // (Bolas's Citadel, Oracle of Mul Daya, Courser of Kruphix) — the same
 // wire word `castZoneFromWire` already accepts, sent by the PileBar
 // affordance on a visible, playable top card.
-export type CastSourceZone = "command" | "exile" | "graveyard" | "library";
+//
+// #3955: "outside" is the owner's own sideboard (ADR 0198's 2026-10-16
+// amendment), castable only under a granted permission (Spawnsire of
+// Ulamog's free cast, Wish's play).
+export type CastSourceZone = "command" | "exile" | "graveyard" | "library" | "outside";
 
 // applyCastChoices writes a CastChoices onto a cast_spell payload.
 // Undefined fields are omitted rather than sent as null — the server
