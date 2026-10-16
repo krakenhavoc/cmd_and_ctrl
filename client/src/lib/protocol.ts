@@ -2009,6 +2009,13 @@ export interface PendingChoiceView {
   // (CR 702.52a) — N, the number of cards the yes mills. The card it
   // returns rides `source`. Computed by the server on every view.
   dredge?: number;
+  // #2056: populated for an "optional_replacement" that offers a "may"
+  // redirection (Blood of the Martyr): the damage, the player or
+  // permanent it would be dealt to, and where the yes deals it instead.
+  // Computed by the server on every view.
+  redirect_amount?: number;
+  redirect_from?: string;
+  redirect_to?: string;
   // #2419: populated for an "entry_sacrifice" that is devour (CR
   // 702.82a) — N, the +1/+1 counters each sacrificed creature buys, and
   // what the entering creature's own "for each creature it devoured"
@@ -2264,9 +2271,11 @@ export interface StackItemView {
   distribution?: Record<string, number>;
   hold_priority?: boolean;
   split_second?: boolean;
-  // #1553: the spell can't be countered — its own printed rider or the
-  // mana that paid for it (Cavern of Souls). Read from the engine's one
-  // counter gate; absent when false and on ability items.
+  // #1553: the spell can't be countered — its own printed rider, the
+  // mana that paid for it (Cavern of Souls), or a permanent's static.
+  // #2014: also an ability a permanent says can't be countered
+  // (Spider-Punk). Read from the engine's one counter gate; absent when
+  // false.
   cant_be_countered?: boolean;
   // ADR 0107 §5: the spell's own "the damage can't be prevented", under
   // its condition as it stands now (Combust; Banefire with X of 5 or

@@ -63,6 +63,7 @@ func Register(spec Spec) {
 			checkFlatClauses(spec.Name, o.Targets)
 			checkSpellXBound(spec.Name, o.Targets)
 			checkModeCost(spec.Name, "mode", i, o.Cost, true)
+			checkTargetAtRandom(spec.Name, "a spell's mode", o.Targets, false)
 		}
 	}
 	checkEscalate(spec)
@@ -70,6 +71,7 @@ func Register(spec Spec) {
 	checkSplice(spec)
 	checkFlatClauses(spec.Name, spec.Targets)
 	checkSpellXBound(spec.Name, spec.Targets)
+	checkTargetAtRandom(spec.Name, "a spell's", spec.Targets, false)
 	checkExhaustAbilities(spec)
 	checkBoast(spec)
 	checkMayAtResolution(spec.Name, spec.Activated)
@@ -77,6 +79,7 @@ func Register(spec Spec) {
 	checkHandSize(spec)
 	for _, a := range spec.Activated {
 		checkFlatClauses(spec.Name, a.Targets)
+		checkTargetAtRandom(spec.Name, "an activated ability's", a.Targets, false)
 		// #1723: an X-bound target clause is allowed on an activated
 		// ability whose OWN cost announces an X (CR 602.2b) — Lazav,
 		// the Multifarious's "{X}: ... with mana value X". Still
@@ -108,6 +111,7 @@ func Register(spec Spec) {
 				}
 				checkFlatClauses(spec.Name, o.Targets)
 				checkModeCost(spec.Name, "activated mode", i, o.Cost, false)
+				checkTargetAtRandom(spec.Name, "an activated mode's", o.Targets, false)
 			}
 		}
 	}
@@ -119,10 +123,12 @@ func Register(spec Spec) {
 		// ability (#1723), there is no cost to check.
 		checkNoXBound(spec.Name, "a trigger's", t.Targets, false, false)
 		checkNoDivideX(spec.Name, "a trigger's", t.Targets)
+		checkTargetAtRandom(spec.Name, "a trigger's", t.Targets, true)
 		if t.Modes != nil {
 			for _, o := range t.Modes.Options {
 				checkNoXBound(spec.Name, "a trigger mode's", o.Targets, false, false)
 				checkNoDivideX(spec.Name, "a trigger mode's", o.Targets)
+				checkTargetAtRandom(spec.Name, "a trigger mode's", o.Targets, true)
 			}
 		}
 		if t.Modes != nil && t.Targets != nil {
@@ -1789,6 +1795,27 @@ func checkRaisedModeMax(name, owner string, ms *game.ModeSpec) {
 	// printed minimum — either would be a count no printed card has.
 	if ms.RaisedMin != 0 && (ms.RaisedMin <= ms.Min || ms.RaisedMin > ms.RaisedMax) {
 		panic(fmt.Sprintf("effects.Register: %q %s raises Min %d to %d with a raised Max of %d", name, owner, ms.Min, ms.RaisedMin, ms.RaisedMax))
+	}
+}
+
+// checkTargetAtRandom validates "target … chosen at random" (#1815,
+// game.TargetSpec.AtRandom): only a triggered ability's clause may
+// carry it (`allowed`), since only a trigger's targets are chosen by
+// the engine (CR 603.3d), and only on a clause that picks exactly one
+// target and divides nothing — the shape every printed card has, and
+// the only one the walk's draw honours.
+func checkTargetAtRandom(name, owner string, spec *game.TargetSpec, allowed bool) {
+	for i := 0; i < spec.ClauseCount(); i++ {
+		c := spec.Clause(i)
+		if !c.AtRandom {
+			continue
+		}
+		if !allowed {
+			panic(fmt.Sprintf("effects.Register: %q declares a target chosen at random on %s target clause %d — only a triggered ability's target is chosen by the engine (#1815)", name, owner, i))
+		}
+		if c.Min != 1 || c.Max != 1 || c.Divide != nil {
+			panic(fmt.Sprintf("effects.Register: %q declares a target chosen at random on %s target clause %d that is not exactly one undivided target", name, owner, i))
+		}
 	}
 }
 

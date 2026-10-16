@@ -719,6 +719,18 @@ type PendingChoiceView struct {
 	// Absent on every other prompt.
 	Dredge int `json:"dredge,omitempty"`
 
+	// RedirectAmount, RedirectFrom and RedirectTo populate an
+	// "optional_replacement" that offers a "may" redirection (#2056,
+	// Blood of the Martyr's "you may have that damage dealt to you
+	// instead"): the damage, the player or permanent it would be dealt
+	// to, and the player or permanent the yes deals it to instead. Read
+	// off the paused event on every view, never stored. A bot weighs the
+	// creature it would save against the life it would pay (#2056).
+	// Absent on every other prompt.
+	RedirectAmount int    `json:"redirect_amount,omitempty"`
+	RedirectFrom   string `json:"redirect_from,omitempty"`
+	RedirectTo     string `json:"redirect_to,omitempty"`
+
 	// Devour, DevourDraw and DevourLife populate an "entry_sacrifice"
 	// that is CR 702.82a's devour (#2419): N, the +1/+1 counters each
 	// creature sacrificed buys the entering creature, and what its own
@@ -2137,10 +2149,14 @@ type StackItemView struct {
 	SplitSecond  bool           `json:"split_second,omitempty"`
 	// CantBeCountered is true for a spell that can't be countered:
 	// its own printed "this spell can't be countered" (Supreme
-	// Verdict, Thrun) or the mana that paid for it (Cavern of Souls,
-	// Delighted Halfling, Boseiju, #1547). Read from the engine's one
-	// gate, so the badge and the counter verbs cannot disagree. Public:
-	// it is a fact about a spell everyone can see. Added in #1553.
+	// Verdict, Thrun), the mana that paid for it (Cavern of Souls,
+	// Delighted Halfling, Boseiju, #1547), a mark or a turn grant, or
+	// a permanent's static (ADR 0106 §4). Since #2014 it is also true
+	// for an activated or triggered ability a permanent says can't be
+	// countered ("Spells and abilities can't be countered",
+	// Spider-Punk). Read from the engine's one gate, so the badge and
+	// the counter verbs cannot disagree. Public: it is a fact about an
+	// object everyone can see. Added in #1553.
 	CantBeCountered bool `json:"cant_be_countered,omitempty"`
 	// DamageCantBePrevented is true for a spell whose own text says
 	// its damage can't be prevented, under its condition as it stands
@@ -9373,6 +9389,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c.Kind == game.PendingChoiceOptionalReplacement {
 			v.Dredge = c.DredgeOffer()
 			v.PlayableFromZone = c.CommanderHeadedFor() == game.ZoneHand
+			// #2056: a "may" redirection's damage, recipient and
+			// destination.
+			if n, from, to := g.DamageRedirectOfferLocked(c); n > 0 {
+				v.RedirectAmount, v.RedirectFrom, v.RedirectTo = n, from.String(), to.String()
+			}
 		}
 		if c.Kind == game.PendingChoiceEntrySacrifice {
 			v.Devour, v.DevourDraw, v.DevourLife = c.DevourOffer()
@@ -9809,6 +9830,7 @@ func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
 	for _, item := range abilities {
 		v := viewOfStackItem(item)
 		v.AbilityText = abilityTextOf(g, item)
+		v.CantBeCountered = g.AbilityCantBeCounteredForEffect(item.ID) // #2014
 		entries = append(entries, entry{item.Seq, v})
 	}
 	if held != nil && !seen[held.ID] && g.StackMeta[held.ID] == nil {

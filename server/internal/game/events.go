@@ -1724,6 +1724,18 @@ type Event struct {
 	// clause that cares. Added for #1326.
 	Played bool `json:"played,omitempty"`
 
+	// ExiledWith and ExiledWithAbility are the CR 607.2a link a card
+	// PLAYED FROM EXILE had while it sat there (Card.ExiledWith and
+	// Card.ExiledWithAbility): set on the EventCast of a spell cast from
+	// exile and on the Played EventZoneMove of a land played from exile,
+	// when the card carried a link. The move clears the card's own
+	// link (CR 400.7), so the event is the only place "whenever a player
+	// plays a card exiled with Prowl" (Prowl, Stoic Strategist) can read
+	// it (#2651, ADR 0066's 2026-10-16 amendment). Nil on every other
+	// event. Engine-internal: protocol/log.go does not project them.
+	ExiledWith        *PermissionCardRef `json:"exiled_with,omitempty"`
+	ExiledWithAbility *AbilityRef        `json:"exiled_with_ability,omitempty"`
+
 	// Unpaid marks an EventCast whose caster DECLARED it cast without
 	// paying its mana cost — an effect on paper (#3855, the paper
 	// payment picker's free answer). The log reads it to say "<player>

@@ -1148,13 +1148,21 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#2013, ADR 0072's 2026-10-16 amendment): `Spec.PlayerKeywordsIf` declares a permanent's printed \"<condition>, you have <keyword>\" as a token plus a `While(g, source)` predicate, read through `game.CatalogPlayerKeywordsIf` by the same `playerAbilityTokensLocked` walk as `PlayerKeywords`. The condition is asked on every query with the permanent as it is now (CR 611.3a), so nothing is stored or swept. `YouHaveDuringYourTurn` and `YouHaveWhile` build the entries; `ThisHasDuringYourTurn` is the object half. Gruul Spellbreaker and Captain America, Super-Soldier ship Full.",
 	},
 	{
-		Slug: "abilities-cant-be-countered", Name: "Abilities that can't be countered", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Permanents that stop abilities from being countered as well as spells, such as Spider-Punk.",
-		Missing:     "Abilities can still be countered while a permanent says they can't be.",
-		Rules:       []string{"701.6a"},
-		Issue:       2014,
-		Waiting:     []string{"Spider-Punk"},
-		EngineNotes: "rules gate: countering an ability removes it from the stack (CR 701.6a), and nothing asks whether it may. The spell half is `spellCantBeCounteredLocked` (`game/cant_be_countered.go`, ADR 0106 §4); the likely shape is the same gate asked for an ability item. Spider-Punk's riot and \"Other Spiders you control have riot\" work (ADR 0109 PR 9, #1556), and \"Damage can't be prevented\" shipped with ADR 0107 PR 6; this is the card's last gap. Split off the riot row when riot closed.",
+		Slug: "abilities-cant-be-countered", Name: "Abilities that can't be countered", Kind: KindSeam, Status: StatusImplemented,
+		Summary: "Permanents that stop abilities from being countered as well as spells, such as Spider-Punk.",
+		Rules:   []string{"701.6a", "101.2", "613.11", "611.3a", "604.2", "605.3b"},
+		Issue:   2014,
+		ADR:     "0106-five-small-seams-from-the-s50-rechecks.md",
+		Probe: func(s effects.Spec) bool {
+			for _, sh := range s.SpellsCantBeCountered {
+				if sh.Abilities {
+					return true
+				}
+			}
+			return false
+		},
+		Examples:    []string{"Spider-Punk"},
+		EngineNotes: "**Shipped** (#2014, [ADR 0106 §4 amendment 2026-10-16](decisions/0106-five-small-seams-from-the-s50-rechecks.md)): `game.CounterShieldStatic.Abilities` extends a battlefield \"can't be countered\" static to activated and triggered abilities on the stack (CR 701.6a), built with `effects.SpellsAndAbilitiesCantBeCountered`. The ability half of the counter gate, `abilityCantBeCounteredLocked` (`game/cant_be_countered.go`), is asked by every counter verb for an ability item — `CounterTargetForEffect`, the to-zone and to-library counters, and so ward's and every counter-unless-paid decline — and judges `Whose` against the ability's controller (\"you cast\" never covers an ability). A covered ability stays a legal target: the Stifle resolves and does nothing (CR 101.2). The stack chip (`cant_be_countered`) now shows on an ability item too. The sandbox's manual counter is unchanged. No snapshot change: the static is catalog data.",
 	},
 	{
 		Slug: "all-activated-abilities-of", Name: "Having another card's activated abilities", Kind: KindSeam, Status: StatusImplemented,
@@ -2004,14 +2012,14 @@ var items = []Item{
 		Examples: []string{"Sower of Discord"},
 	},
 	{
-		Slug: "exiled-with-ability-exiles", Name: "Cards an ability exiled, played later", Kind: KindSeam, Status: StatusMissing,
+		Slug: "exiled-with-ability-exiles", Name: "Cards an ability exiled, played later", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Permanents that exile cards with an ability and care when those cards are played later, like Prowl, Stoic Strategist.",
-		Missing:     "An ability can exile a card and let its owner play it, but the game does not remember which permanent exiled it, so Prowl, Stoic Strategist isn't available.",
-		Rules:       []string{"607.2a"},
+		Rules:       []string{"607.2a", "400.7"},
 		Issue:       2651,
-		ADR:         "0152-more-than-meets-the-eye-convert-and-living-metal.md",
-		Waiting:     []string{"Prowl, Stoic Strategist"},
-		EngineNotes: "Found by the Transformers batch (#3195). Prowl: \"exile up to one other target tapped creature or Vehicle. For as long as that card remains exiled, its owner may play it\" (`ExileWithPermission{WhileExiled}` does the exile and the permission) and \"Whenever a player plays a card exiled with Prowl, you draw a card and convert Prowl\". The trigger needs `Card.ExiledWith` stamped on an ability-resolution exile with the exiling object and ability (#2651; today only a replacement's exile writes it, and the `b27ExiledWith` log scan only sees cards still in exile), and a play/cast event that can read the link from exile. The back face's \"second time this ability has resolved this turn\" is `Game.ResolvedThisTurn`.",
+		Tracked:     "#2651 (found by the Transformers batch, #3195); ADR 0066 amendment of 2026-10-16",
+		ADR:         "0066-granted-cast-and-play-permissions.md",
+		Examples:    []string{"Prowl, Stoic Strategist"},
+		EngineNotes: "**Shipped** (#2651, ADR 0066 amendment of 2026-10-16). CR 607.2a links an ability to an ability, so a linked exile now stamps the ABILITY beside the object: `Card.ExiledWithAbility` is the catalog row (`AbilityRef`, ADR 0041 P9) of the item resolving when it is an ability of the `Card.ExiledWith` object. Every linked verb carries it with no caller change: `routeCardToZoneLocked` fills `zoneRoute.ExiledWithAbility` from `Game.resolving` (`linkedExileAbilityLocked`, only while a resolution is open), and the two landing functions stamp it beside the object only while the event still carries the route's own link, so a replacement's link (Valgavoth) names no ability. `Game.ExiledWithRowForEffect(source, slot, name)` reads the pair (`AbilityRef.IsRow`). A play from exile carries the link the card had, because the move clears it (CR 400.7): `Event.ExiledWith` / `ExiledWithAbility` on a spell's `EventCast` from exile and on a land's Played `EventZoneMove` from exile, read by `game.PlayedCardExiledWithRow`. Snapshot: two additive fields within v9 (`exiledWithAbility` on a card, `exiled_with` / `exiled_with_ability` on an event). `effects.ExileWithPermission{Linked: true}` is the linked exile with a play grant. **Cards:** Prowl, Stoic Strategist. The `b27ExiledWith` event-log readers keep their walk, which is already keyed on the ability's label: a restore point written before the stamp has none on the cards it exiled.",
 	},
 	{
 		Slug: "cast-a-copy-of-a-card-during-resolution", Name: "Casting a copy of a card during resolution", Kind: KindSeam, Status: StatusImplemented,
@@ -2183,12 +2191,29 @@ var items = []Item{
 		Examples: []string{"Aethersnatch", "Invert Polarity"},
 	},
 	{
-		Slug: "random-retarget", Name: "Choosing a spell's new targets at random", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Effects that reselect a spell's targets at random, such as Chef's Kiss.",
-		Missing:     "A spell's or ability's targets can only be chosen by a player, not picked at random.",
-		Issue:       1815,
-		Waiting:     []string{"Chef's Kiss", "Witch Hunt"},
-		EngineNotes: "retargeting is always a choice: CR 115.7's offer is the `retarget` prompt (`OfferRetargetForEffect`, #1196). Chef's Kiss steals a spell (ADR 0104, shipped), copies it, and then \"reselect[s] the targets at random for the spell and the copy\", excluding the new controller and their permanents — a pick from the legal set through the keyed RNG (ADR 0054), with no player asked. It also needs a \"targets only a single permanent or player\" predicate: `HasASingleTarget` counts slots and does not look at what the slot names. Witch Hunt (moved here by ADR 0107 PR 6, whose \"Players can't gain life\" it otherwise needed) chooses its end-step trigger's target \"at random\" when the trigger is put on the stack (CR 603.3d) — the same pick from the legal set through the keyed RNG.",
+		Slug: "random-retarget", Name: "Targets chosen at random", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Effects that pick targets at random instead of letting a player choose, such as Chef's Kiss reselecting a spell's targets at random and Witch Hunt's \"target opponent chosen at random\". Every legal target has the same chance, the pick comes from the game's seeded random stream, and nobody is asked.",
+		Rules:    []string{"115.7", "115.9c", "603.3d"},
+		Issue:    1815,
+		Examples: []string{"Chef's Kiss", "Witch Hunt", "Scab-Clan Giant"},
+	},
+	{
+		Slug: "put-onto-the-stack-trigger", Name: "Triggers when a spell or ability is put onto the stack", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Abilities that trigger whenever any spell or ability is put onto the stack, such as Grip of Chaos.",
+		Missing:     "Nothing can trigger when a triggered ability is put onto the stack.",
+		Rules:       []string{"603.3", "115.9a"},
+		Issue:       4050,
+		Waiting:     []string{"Grip of Chaos"},
+		EngineNotes: "event: a spell (`EventCast`, `EventSpellCopied`) and an activated ability (`EventActivateAbility`) have watchable events, but a triggered ability going on the stack emits only `EventTrigger`, which the harvester refuses to watch so a trigger cannot re-enter the harvest. Grip of Chaos needs a watchable \"a triggered ability was put on the stack\" event from the drain that places it (CR 603.3), shaped so its own untargeted trigger and two Grips cannot loop. The reselection itself shipped with #1815 (`ReselectTargetsAtRandomForEffect` with no exclusion), and \"if it has a single target\" is CR 115.9a's count of instances, an intervening if (CR 603.4). Found landing #1815.",
+	},
+	{
+		Slug: "random-target-on-activation", Name: "An activated ability's target chosen at random", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Activated abilities whose target is chosen at random, such as Goblin Test Pilot's \"any target chosen at random\".",
+		Missing:     "Only a triggered ability's target can be chosen at random, not an activated ability's.",
+		Rules:       []string{"602.2b", "601.2c"},
+		Issue:       4051,
+		Waiting:     []string{"Goblin Test Pilot"},
+		EngineNotes: "target clause: `TargetSpec.AtRandom` (`effects.ChosenAtRandom`, #1815) is honoured only by the trigger target walk (CR 603.3d), and `effects.Register` refuses it on an activated ability. An activation announces its targets with the activation (CR 602.2b, CR 601.2c) in one message, so a random clause needs the announce gate to draw it instead (keyed stream, replayed by undo), the client not to open the picker for it and the bot enumerator not to enumerate it. Found landing #1815.",
 	},
 	{
 		Slug: "state-triggers", Name: "Abilities that trigger on a game state", Kind: KindSeam, Status: StatusImplemented,
@@ -2725,7 +2750,7 @@ var items = []Item{
 		ADR:         "0108-turn-scoped-effects-object-history-and-damage-shields.md",
 		Printed:     `(?i)\b(is|be) dealt to (this|enchanted|equipped|the chosen|that|its|you|target|another|any)\b[^.]*\binstead\b|\bdeals? that (much )?damage to (you|itself|its controller)\b[^.]*\binstead\b|\binstead that source deals that much damage to you\b`,
 		Examples:    []string{"Beacon of Destiny", "Harm's Way", "Pariah"},
-		EngineNotes: "**Shipped** (ADR 0108 §9, owner decision 1, Delivery PR 9): one primitive, `redirectDamageEventLocked` (`game/redirect_damage.go`; `RedirectDamageEventForEffect` is its catalog face), rewrites a damage event's recipient and its damage tail's kind together, so redirected damage lands through the player path or the permanent path its new recipient takes, and does nothing when CR 614.9 says so (an end that has left, is no longer a battle, creature or planeswalker, or a player who has left the game). The damage keeps its source, combat status, deathtouch, lifelink, infect, wither and commander tally (CR 120.4b), meets the new recipient's shields and protection (CR 616.2), and is never redirected by the same effect again (CR 614.5). The scoped kind is `ModRedirectDamage`, plain data: the one source vocabulary (`Objects`, `SourceZone`, `Queries`), what it protects (`Player`, `Types`, a pinned permanent, a pinned permanent and its controller, or `Recipients: opponents`), how long (`Next`, spent per damage instance; `Amount`, CR 615.7's charge, which joins `chargedShieldCharge` and so `divide_shield`; or all turn), `CombatOnly`, and where to: `Mod.To` (one object, epoch-pinned) or `Mod.ToSourceController`. A charge smaller than an event splits it: the rest stays, and the redirected part is dealt as its own event as the original ends, with what was already applied to it. A record with no destination and a `Then` is Eye for an Eye: the event is dealt as it was and the follow-up runs with the amount. It is a replacement, not a prevention effect, so CR 615.12 leaves it alone; `RedirectsDamage` makes \"can't be dealt instead\" (Lava Burst, Whippoorwill) settle it unrun and unspent. A catalog static redirection declares `RedirectsDamage`, calls the primitive (`TestDamageReplacementsDeclareWhetherTheyPrevent` fails a `Replace` that writes `DamageTarget` by hand), and has no shared identity, so two Pariahs are ordered (CR 616.1). Helpers: `effects.RedirectDamage` with a `RedirectTo` (`RedirectToThis`, `RedirectToYou`, `RedirectToSourceController`, `RedirectToClause`, `RedirectToEnchanted`), `ShieldThis`, `ShieldClause`, `enKorRow`, `staticRedirection`, `Bushido` and `Flanking`. Moved elsewhere: Sivvi's Valor (#2030, its alternative cost taps a creature; since shipped with ADR 0135 PR 3), Nova Pentacle (#2055, a target of an opponent's choice), Blood of the Martyr, Kjeldoran Royal Guard and Ascent of the Worthy (#2056), Heroic Sacrifice (#2057), Ancient Adamantoise (#2058), Personal Incarnation and Martyrdom (#1947). See Closed seams.",
+		EngineNotes: "**Shipped** (ADR 0108 §9, owner decision 1, Delivery PR 9): one primitive, `redirectDamageEventLocked` (`game/redirect_damage.go`; `RedirectDamageEventForEffect` is its catalog face), rewrites a damage event's recipient and its damage tail's kind together, so redirected damage lands through the player path or the permanent path its new recipient takes, and does nothing when CR 614.9 says so (an end that has left, is no longer a battle, creature or planeswalker, or a player who has left the game). The damage keeps its source, combat status, deathtouch, lifelink, infect, wither and commander tally (CR 120.4b), meets the new recipient's shields and protection (CR 616.2), and is never redirected by the same effect again (CR 614.5). The scoped kind is `ModRedirectDamage`, plain data: the one source vocabulary (`Objects`, `SourceZone`, `Queries`), what it protects (`Player`, `Types`, a pinned permanent, a pinned permanent and its controller, or `Recipients: opponents`), how long (`Next`, spent per damage instance; `Amount`, CR 615.7's charge, which joins `chargedShieldCharge` and so `divide_shield`; or all turn), `CombatOnly`, and where to: `Mod.To` (one object, epoch-pinned) or `Mod.ToSourceController`. A charge smaller than an event splits it: the rest stays, and the redirected part is dealt as its own event as the original ends, with what was already applied to it. A record with no destination and a `Then` is Eye for an Eye: the event is dealt as it was and the follow-up runs with the amount. It is a replacement, not a prevention effect, so CR 615.12 leaves it alone; `RedirectsDamage` makes \"can't be dealt instead\" (Lava Burst, Whippoorwill) settle it unrun and unspent. A catalog static redirection declares `RedirectsDamage`, calls the primitive (`TestDamageReplacementsDeclareWhetherTheyPrevent` fails a `Replace` that writes `DamageTarget` by hand), and has no shared identity, so two Pariahs are ordered (CR 616.1). Helpers: `effects.RedirectDamage` with a `RedirectTo` (`RedirectToThis`, `RedirectToYou`, `RedirectToSourceController`, `RedirectToClause`, `RedirectToEnchanted`), `ShieldThis`, `ShieldClause`, `enKorRow`, `staticRedirection`, `Bushido` and `Flanking`. Moved elsewhere: Sivvi's Valor (#2030, its alternative cost taps a creature; since shipped with ADR 0135 PR 3), Nova Pentacle (#2055, a target of an opponent's choice), Blood of the Martyr, Kjeldoran Royal Guard and Ascent of the Worthy (#2056; since shipped with ADR 0108's 2026-10-16 amendment), Heroic Sacrifice (#2057), Ancient Adamantoise (#2058), Personal Incarnation and Martyrdom (#1947). See Closed seams.",
 	},
 	{
 		Slug: "target-chosen-by-an-opponent", Name: "Targets an opponent chooses", Kind: KindSeam, Status: StatusMissing,
@@ -2738,14 +2763,14 @@ var items = []Item{
 		EngineNotes: "target clause: a clause whose chooser is an opponent the controller names as the spell or ability is put on the stack (CR 601.2c), before costs. 10 Commander-legal cards print \"of an opponent's choice\" (Arena, Evangelize, Preacher, Volcanic Offering …), none catalogued. Nova Pentacle's redirection itself is ADR 0108 §9's `effects.RedirectDamage`.",
 	},
 	{
-		Slug: "redirection-conditions", Name: "Redirections that are optional, read combat, or spare you", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Damage redirections the redirection effect can't express yet: Blood of the Martyr's \"you may have that damage dealt to you instead\", Kjeldoran Royal Guard's damage \"by unblocked creatures\", and Ascent of the Worthy's \"damage that would be dealt to creatures you control\".",
-		Missing:     "A redirection from a spell or ability can't be optional, can't ask whether the source is unblocked, and can't protect your creatures without protecting you.",
-		Rules:       []string{"614.9", "509.1h", "616.1"},
+		Slug: "redirection-conditions", Name: "Redirections that are optional, read combat, or spare you", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Damage redirections that are optional (Blood of the Martyr's \"you may have that damage dealt to you instead\"), that read combat (Kjeldoran Royal Guard's damage \"by unblocked creatures\"), or that protect your creatures without you (Ascent of the Worthy's \"damage that would be dealt to creatures you control\").",
+		Rules:       []string{"614.9", "614.5", "509.1h", "611.2c", "616.1"},
 		Issue:       2056,
-		Tracked:     "#2056 (found landing ADR 0108 PR 9, #1905)",
-		Waiting:     []string{"Ascent of the Worthy", "Blood of the Martyr", "Kjeldoran Royal Guard"},
-		EngineNotes: "scoped kind: `ModRedirectDamage` (ADR 0108 §9) has no optional flag (a scoped replacement can't ask its controller \"may\"), its source recheck (`Queries`) reads characteristics and not combat state, and its protected set is a player and their permanents, a pinned permanent, or opponents. The statics Veteran Bodyguard and Weathered Bodyguards ship, because a catalog replacement can call `UnblockedAttackerForEffect`.",
+		Tracked:     "#2056 (found landing ADR 0108 PR 9, #1905); ADR 0108 amendment 2026-10-16",
+		ADR:         "0108-turn-scoped-effects-object-history-and-damage-shields.md",
+		Examples:    []string{"Ascent of the Worthy", "Blood of the Martyr", "Kjeldoran Royal Guard"},
+		EngineNotes: "**Shipped** (#2056, ADR 0108 amendment 2026-10-16): `ModRedirectDamage` reads three more fields, each a vocabulary another kind already had. `Mod.SourceFilter` (#2026's `DamageSourceFilter`) is read off the same view of the source `preventFromSource` reads, as the damage would be dealt (CR 609.7b), so \"by unblocked creatures\" is `Queries {creature}` with `Combat: unblocked` (CR 509.1h). `Mod.RecipientFilter` (#2045's `DamageRecipientFilter`) is the protected set read as the damage would be dealt (CR 611.2c): \"creatures you control\" without you, \"any creature\"; it stands alone, beside no player, recipients vocabulary or charge. `Mod.Optional` makes the gathered effect a \"may\" (`ReplacementEffect.Optional`) its record's controller answers through the existing `optional_replacement` prompt, once per damage event (CR 614.5); the CR 616 ordering stays the affected player's, and a window that cannot ask declines it. The prompt's reason names the damage as it stands when asked, and the view carries `redirect_amount`, `redirect_from` and `redirect_to` (`Game.DamageRedirectOfferLocked`); the heuristic bot says yes only to save its own creature from lethal damage above its life floor. Card side: `effects.RedirectDamage` gains `Filter` and `Optional` and reads `ShieldCreatures` / `ShieldCreaturesYouControl`. Cards: Blood of the Martyr, Kjeldoran Royal Guard and Ascent of the Worthy (its chapter III returns with a flying counter and an indefinite Angel Warrior subtype grant pinned to the object), all Full.",
 	},
 	{
 		Slug: "targeted-delayed-death-trigger", Name: "A delayed death trigger that targets and moves counters", Kind: KindSeam, Status: StatusImplemented,

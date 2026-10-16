@@ -613,6 +613,9 @@ var cardFields = plan(
 	// #2530: the "exiled with" link, one field over from HiddenBy and
 	// for the same reason — the zero value is a legal state.
 	"ExiledWith", carried, "",
+	// #2651: the ability half of that link (CR 607.2a). The zero ref is
+	// a legal state too: a replacement's link, or a file before it.
+	"ExiledWithAbility", carried, "",
 	// #3867: cipher's encoding (CR 702.99b) and its layer-6 timestamp.
 	// Nothing else records either, and "not encoded" is a legal zero.
 	"EncodedOn", carried, "",

@@ -174,7 +174,16 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    true}` (`Game.ExileLinkedForEffect`, ADR 0155 §8). Write the exile of
    any card whose other ability reads "exiled with this" as a linked one;
    older cards that exile from an ability without it still use the
-   event-log record (`b27ExiledWith`) and a choice. A face-down
+   event-log record (`b27ExiledWith`) and a choice. A linked exile also
+   stamps WHICH ability exiled the card (`Card.ExiledWithAbility`, the
+   resolving item's catalog row; #2651, ADR 0066 amendment 2026-10-16),
+   so a reader that must see only one ability's exiles (CR 607.2a) asks
+   `Game.ExiledWithRowForEffect(source, game.AbilitySlotTriggered,
+   label)`; "whenever a player plays a card exiled with this" reads the
+   link off the play's event with `game.PlayedCardExiledWithRow`
+   (Prowl, Stoic Strategist, whose exile is `ExileWithPermission{…,
+   Linked: true}`). Only a catalog row is named: a hand-written `Build`
+   with no `Effect` stamps the object alone. A face-down
    exiled card its chooser has not seen is never offered (#3259, ADR 0019
    amendment 2026-10-13).
    "Target creature that saddled it this turn" (Giant Beaver) and
@@ -337,6 +346,26 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    is a plain choose-one: `Register` refuses it on a spell, an
    activated ability, a `Repeatable` spec or a raised count. A card
    that lets someone choose instead (Typhoid Mary) is not this.
+
+   **"Target … chosen at random" (#1815, CR 603.3d)** wraps a
+   **trigger's** clause in `ChosenAtRandom(spec)` (Witch Hunt's
+   `ChosenAtRandom(TargetPlayer("target opponent chosen at random",
+   Opponent()))`, Scab-Clan Giant, Power Pack). The engine draws the
+   target uniformly from the legal set as the trigger goes on the
+   stack, from the keyed random stream, and no `pick_target` prompt is
+   queued; with no legal target the trigger is removed. `Register`
+   refuses it on a spell, an activated ability (Goblin Test Pilot waits
+   on #4051) and any clause but one undivided target. "Choose an
+   opponent at random" that is not a target (Knight Rampager) is
+   `ChooseAtRandomForEffect` at resolution. "Reselect the targets at
+   random" for a spell on the stack (Chef's Kiss) is
+   `Game.ReselectTargetsAtRandomForEffect(game.RandomRetarget{…})`:
+   every target drawn from all its legal targets, the current one
+   included, less `Exclude` and that player's permanents; a target with
+   nothing to be keeps its target. "A spell that targets only a single
+   permanent or player" is `TargetsOnlyASinglePermanentOrPlayer()`
+   (CR 115.9c: different objects, so one creature targeted twice
+   counts).
 
    **"Choose one that hasn't been chosen [this turn]" (#1749,
    [ADR 0097](decisions/0097-modes-that-havent-been-chosen.md))**
@@ -3533,6 +3562,7 @@ Three different statements, three different slots:
 | "This spell can't be countered." | `Spec.CantBeCountered: true` |
 | "…and that spell can't be countered" on mana | a spend rider, `SpentSpellCantBeCountered` |
 | "<These> spells [you control / you cast] can't be countered." on a permanent | `Spec.SpellsCantBeCountered` |
+| "Spells and abilities can't be countered." on a permanent | `Spec.SpellsCantBeCountered` with `SpellsAndAbilitiesCantBeCountered` (#2014) |
 
 The third is a list of `game.CounterShieldStatic`, built with the
 constructor whose name says whose spells, and filtered with ordinary
@@ -3558,6 +3588,11 @@ SpellsCantBeCountered: []game.CounterShieldStatic{
   colours and power, with X in the mana value.
 - A card that prints both the rider and a static (Prowling Serpopard)
   declares both. Neither does the other's job.
+- **Abilities too** (#2014). A static whose `Abilities` is set also
+  covers activated and triggered abilities on the stack, judged against
+  the ability's controller; "you cast" never covers one. Every counter
+  verb asks for an ability item, so a Stifle aimed at it resolves and
+  does nothing. Spider-Punk is the one card that prints it.
 
 The other three shapes are effects, not slots: a card's `OnResolve` or
 ability `Effect` applies a primitive from the same file (ADR 0106 PR 3).
@@ -5192,7 +5227,15 @@ declare `RedirectsDamage: true`. In practice:
   `RedirectToClause(i)`, `RedirectToEnchanted`, `RedirectToObject(id)`).
   `redirectRow` and `redirectSpell` wrap it; `enKorRow` is the en-Kor
   cycle's "{0}: the next 1 damage … is dealt to target creature you
-  control instead";
+  control instead". Since #2056 (ADR 0108 amendment 2026-10-16) it also
+  takes `Filter` (#2026's `game.DamageSourceFilter`, read as the damage
+  would be dealt: "by unblocked creatures" is `Queries:
+  {QueryTypes("creature")}` with `Filter: {Combat: unblocked}`, Kjeldoran
+  Royal Guard), the recipient sets `ShieldCreatures` and
+  `ShieldCreaturesYouControl` ("to creatures you control" without you,
+  Ascent of the Worthy), and `Optional` for "you may have that damage
+  dealt to you instead" (Blood of the Martyr), asked of the controller
+  through the `optional_replacement` prompt once per damage event;
 - a static one ("All damage that would be dealt to you is dealt to
   enchanted creature instead") is `staticRedirection(label,
   redirectWhere{applies, to})`, with `redirectYourDamageToAttached` and
