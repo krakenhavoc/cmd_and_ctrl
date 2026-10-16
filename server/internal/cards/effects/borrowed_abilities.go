@@ -52,7 +52,7 @@ type LenderPredicate func(g *game.Game, source *game.Card, c game.Card) bool
 // LenderPredicate whose caster is the borrowing source's controller.
 func ByController(p CardPredicate) LenderPredicate {
 	return func(g *game.Game, source *game.Card, c game.Card) bool {
-		return p(g, source.Controller, c)
+		return p(g, source.Controller, game.ThroughTextOf(source, c))
 	}
 }
 

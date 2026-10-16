@@ -81,19 +81,23 @@ func b12CardExiledFromYourLibraryOrGraveyard(ev game.Event, source *game.Card, g
 // one.
 func b12MountainYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
 	c, ok := enteredUnderYourControl(ev, source, g, false)
-	return ok && c.HasSubtype("Mountain")
+	// "Mountain" is a word of the source's text (CR 612.2).
+	return ok && c.HasSubtype(source.TextSubtype("Mountain"))
 }
 
 // b12OtherMountainsControlled counts the Mountains `controller`
 // controls other than `except` — Valakut's "at least five OTHER
 // Mountains", where the exception is the Mountain that just entered.
-func b12OtherMountainsControlled(g *game.Game, controller, except uuid.UUID) int {
+// `mountain` is the land type as the counting object's text now reads
+// it (TextSubtype, CR 612.2): Valakut under a Magical Hack counts
+// Islands.
+func b12OtherMountainsControlled(g *game.Game, controller, except uuid.UUID, mountain string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.InstanceID == except || c.Controller != controller {
 			continue
 		}
-		if c.HasSubtype("Mountain") {
+		if c.HasSubtype(mountain) {
 			n++
 		}
 	}

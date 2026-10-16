@@ -1132,10 +1132,19 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 	if source == uuid.Nil && ctx != nil {
 		source = ctx.Source()
 	}
+	// "Search your library for a Plains card": the land type is a word
+	// of the searching object's text, so the predicate reads it as that
+	// text now says it (CR 612.2) when the predicate asks through
+	// HasSubtypeWord / HasColorWord.
+	pred := s.Predicate
+	if reader := ctx.textReader(); reader != nil && pred != nil {
+		printed := pred
+		pred = func(c game.Card) bool { return printed(game.ThroughTextOf(reader, c)) }
+	}
 	return ctx.Game.SearchLibraryThenForEffect(game.SearchLibrarySpec{
 		Player:             s.Player,
 		Source:             source,
-		Pred:               s.Predicate,
+		Pred:               pred,
 		Dest:               s.Dest,
 		Limit:              s.Limit,
 		Reveal:             s.Reveal,

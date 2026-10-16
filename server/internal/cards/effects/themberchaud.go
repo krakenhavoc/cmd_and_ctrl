@@ -41,7 +41,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters(label, func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				x := mountainsControlledBy(g, item.Controller)
+				x := mountainsControlledBy(g, item.Controller, ctx.TextSubtype("Mountain"))
 				self := item.SourceCardID
 				if sourceIsNewObject(g, item) {
 					self = uuid.Nil
@@ -55,7 +55,8 @@ func init() {
 }
 
 // mountainsControlledBy counts the Mountains `controller` controls, by
-// effective subtype.
-func mountainsControlledBy(g *game.Game, controller uuid.UUID) int {
-	return b12OtherMountainsControlled(g, controller, uuid.Nil)
+// effective subtype; `mountain` is the word as Themberchaud's text reads
+// it (CR 612.2).
+func mountainsControlledBy(g *game.Game, controller uuid.UUID, mountain string) int {
+	return b12OtherMountainsControlled(g, controller, uuid.Nil, mountain)
 }

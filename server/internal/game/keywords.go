@@ -708,8 +708,9 @@ func forEachAbilityToken(c *Card, fn func(token string) bool) {
 	// Off-battlefield path: the card's own printed keywords first
 	// (S21 sub-PR 1 — a token template's keywords are plain data on
 	// the Card and always were), then the catalog. Lookup-miss
-	// (non-catalog card) returns nil → no keywords.
-	for _, a := range c.Keywords {
+	// (non-catalog card) returns nil → no keywords. A spell's changed
+	// words read as its text now says them (CR 612.2, #3872).
+	for _, a := range c.TextWords.keywords(c.Keywords) {
 		if !fn(a) {
 			return
 		}

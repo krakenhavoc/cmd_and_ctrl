@@ -75,7 +75,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Gray Merchant of Asphodel — drain for your devotion to black", func(g *game.Game, item *game.StackItem) error {
-				return b21DrainEachOpponentAndGainTheTotal(g, item, devotionTo(g, item.Controller, "B"))
+				return b21DrainEachOpponentAndGainTheTotal(g, item, devotionTo(g, item.Controller, NewContext(g, item).TextColor("B")))
 			}),
 		},
 	})

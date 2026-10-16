@@ -23,7 +23,7 @@ func init() {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil
 			}
-			n := swampsControlledBy(ctx.Game, ctx.Controller())
+			n := swampsControlledBy(ctx.Game, ctx.Controller(), ctx.TextSubtype("Swamp"))
 			return BoostUntilEOT{
 				Target:    item.Targets[0].ID,
 				Power:     -n,

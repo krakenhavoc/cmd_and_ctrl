@@ -67,7 +67,7 @@ func init() {
 			Layer: game.Layer4Type,
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 				return target.InstanceID == source.InstanceID &&
-					devotionTo(g, source.Controller, "B") < 5
+					devotionTo(g, source.Controller, source.TextColor("B")) < 5
 			},
 			// "Isn't a creature" removes the creature type; the Legendary
 			// and Enchantment halves of the printed line stay. The God

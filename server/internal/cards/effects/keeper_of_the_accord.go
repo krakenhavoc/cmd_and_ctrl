@@ -65,7 +65,7 @@ func init() {
 					return SearchLibrary{
 						Player: item.Controller,
 						Predicate: func(c game.Card) bool {
-							return IsBasicLand(c) && c.HasSubtype("Plains")
+							return IsBasicLand(c) && c.HasSubtypeWord("Plains")
 						},
 						Dest:          game.ZoneBattlefield,
 						Limit:         1,

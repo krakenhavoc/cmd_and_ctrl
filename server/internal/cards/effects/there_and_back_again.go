@@ -32,7 +32,7 @@ func init() {
 			ChapterTrigger(2, "There and Back Again — search for a Mountain card", func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
 					Player:    item.Controller,
-					Predicate: func(c game.Card) bool { return c.HasSubtype("Mountain") },
+					Predicate: func(c game.Card) bool { return c.HasSubtypeWord("Mountain") },
 					Dest:      game.ZoneBattlefield,
 					Limit:     1,
 					Shuffle:   true,

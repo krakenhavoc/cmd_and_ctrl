@@ -44,8 +44,11 @@ func init() {
 // resolves (CR 608.2b).
 func seasingerControllerHasAnIsland() CardPredicate {
 	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
+		// "Island" is a word of Seasinger's text, lent to the candidate
+		// by the targeting walk (LentSubtype, CR 612.2).
+		island := c.LentSubtype("Island")
 		for _, p := range g.BattlefieldCardsForEffect() {
-			if p.Controller == c.Controller && p.HasSubtype("Island") {
+			if p.Controller == c.Controller && p.HasSubtype(island) {
 				return true
 			}
 		}

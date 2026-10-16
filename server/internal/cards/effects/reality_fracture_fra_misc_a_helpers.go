@@ -104,11 +104,12 @@ func rfMiscAConfidantEndStep(g *game.Game, item *game.StackItem) error {
 }
 
 // rfMiscAForestsYouControlOtherThan counts the Forests `controller`
-// controls apart from `except` (post-layer land types).
-func rfMiscAForestsYouControlOtherThan(g *game.Game, controller, except uuid.UUID) int {
+// controls apart from `except` (post-layer land types). `forest` is the
+// land type as the counting object's text now reads it (CR 612.2).
+func rfMiscAForestsYouControlOtherThan(g *game.Game, controller, except uuid.UUID, forest string) int {
 	n := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.InstanceID != except && c.HasSubtype("Forest") {
+		if c.Controller == controller && c.InstanceID != except && c.HasSubtype(forest) {
 			n++
 		}
 	}
@@ -119,9 +120,10 @@ func rfMiscAForestsYouControlOtherThan(g *game.Game, controller, except uuid.UUI
 // condition, intervening-if included: a Forest you control entered and
 // you control at least five other Forests.
 func rfMiscAForestEnteredWithFiveOthers(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	forest := source.TextSubtype("Forest")
 	c, ok := enteredUnderYourControl(ev, source, g, false)
-	if !ok || !c.HasSubtype("Forest") {
+	if !ok || !c.HasSubtype(forest) {
 		return false
 	}
-	return rfMiscAForestsYouControlOtherThan(g, source.Controller, c.InstanceID) >= 5
+	return rfMiscAForestsYouControlOtherThan(g, source.Controller, c.InstanceID, forest) >= 5
 }
