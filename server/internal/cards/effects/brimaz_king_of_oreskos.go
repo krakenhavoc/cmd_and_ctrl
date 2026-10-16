@@ -61,7 +61,7 @@ func init() {
 					if item.Trigger == nil {
 						return nil
 					}
-					return g.CreateTokensBlockingForEffect(item.Controller, TokenCard("1/1 white Cat Soldier with vigilance"), 1, item.Trigger.Event.Target)
+					return g.CreateTokensBlockingForEffect(item.Controller, NewContext(g, item).TextToken(TokenCard("1/1 white Cat Soldier with vigilance")), 1, item.Trigger.Event.Target)
 				}),
 		},
 	})

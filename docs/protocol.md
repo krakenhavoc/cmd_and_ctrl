@@ -1635,7 +1635,7 @@ canonical type definition. High-level shape:
   - `control` — a permanent changed controller (CR 613.1b). `seat` is the player who GAINED control and `target_seat` the one who lost it, which is one sentence for a gain, an exchange (CR 701.12) and a duration expiring: "P1 gained control of Grizzly Bears from P2".
   - `special_action` — a CR 116.2 special action: foretell, suspend, plot, turning face up. `label` is the action as the card prints it ("Foretell {2}"). The card's zone move says only that a card left a hand for exile; this says which action it was.
   - `companion_revealed` — a seat revealed its companion as the game began (CR 103.2b, [ADR 0172](decisions/0172-companion-a-card-outside-the-game.md) §5), one line per seat with one, in turn order from the starting player: "Alice revealed Jegantha, the Wellspring as their companion". `card_id` is the companion, which is public. Taking it later is an ordinary `special_action` line.
-  - `activate_across` — a player activated the "Any player may activate this ability" row of a permanent another player controls (CR 602.2, [ADR 0106 §1](decisions/0106-five-small-seams-from-the-s50-rechecks.md), #1793): "Bob activated Alice's Xantcha, Sleeper Agent". `actor` is the activator, `card_id` the permanent and `target_seat` its controller. Every other activation is an `activate` entry (below).
+  - `activate_across` — a player activated the "Any player may activate this ability" row of a permanent another player controls (CR 602.2, [ADR 0106 §1](decisions/0106-five-small-seams-from-the-s50-rechecks.md), #1793), activated or, since #1864, mana (Mana Cache): "Bob activated Alice's Xantcha, Sleeper Agent". `actor` is the activator, `card_id` the permanent and `target_seat` its controller. Every other activation is an `activate` entry (below).
   - `auto_answer` — the server answered a prompt with its chooser's standing answer ([ADR 0127](decisions/0127-answering-repeated-prompts-for-you.md) §6): "Bob paid {1} for Rhystic Study (automatic)", "Bob didn't pay for Rhystic Study (automatic)", "Alice answered Yes to Consecrated Sphinx — draw two cards (automatic)". `seat` is the chooser and `card_id` the card that asked. `call` is the answer — `"pay"`, `"dont_pay"`, `"yes"`, `"no"`, or `"order"` for a remembered trigger order (#3016: "Luke ordered Pitiless Plunderer — create a Treasure, then Falkenrath Noble — drain 1 (automatic)", with `label` the rows' stack labels in resolution order joined by ", then ", which the stack shows every seat anyway, and no `card_id`) — and is public, as the answer is at a paper table; so is "(automatic)", because CR 732.1a asks that the table understand each player's shortcut. `label` is the cost paid on a `pay`, or the optional trigger's stack label on a `yes` / `no` about a trigger, and is redacted with the card's name: a viewer who may not identify the card reads "Bob paid for a card (automatic)". `auto_answer_key` is the key of the rule that answered, on the **chooser's own view only** (`FilterViewFor` clears it for everyone else); the chooser's notice uses it for "Ask me next time".
   - `cycle` — a cycling (CR 702.29b). It **replaces** the `zone` entry for the discard that paid the cost, the way a `sacrifice` entry replaces the zone move it causes, and keeps that entry's `seq`.
   - `counters` — the count of one counter kind on one card changed (CR 122). `label` is the kind (`"+1/+1"`), `amount` the count **after** the change — the engine's event carries no delta, so a placement and a removal are the same line with a different number, and `amount` ≤ 0 means the last one came off. **Loyalty and lore counters get no line**: a planeswalker's loyalty moves on every activation and every point of damage, both of which are already entries, and a lore counter's advance is the `saga_chapter` line below. The rule is `counterKindIsNarrated` in `log.go`.
@@ -3503,6 +3503,20 @@ Feral Hydra, Excavation) says everyone.
   Alice's Xantcha, Sleeper Agent", with `target_seat` the controller.
   An activation by the permanent's own controller is not narrated, as
   before.
+- **`any_player: true` on a `mana_abilities[i]` row** (2026-10-16,
+  #1864). The CR 605 list's own "Any player may activate this ability"
+  (Mana Cache). Additive, absent on every other row. A non-controller
+  may send `activate_mana_ability` for that row; the server refuses any
+  other mana row of a permanent the caller does not control with `game:
+  caller does not control this card`. The activator pays the cost (a
+  self-form counter cost removes the counter from the source whoever
+  controls it), the mana goes into the activator's pool, and the row's
+  `condition_unmet` is read with the activator as "their". The row rides
+  the per-seat copy exactly as an `any_player` activated row does, the
+  digest lists it under `mana_abilities` (`{"kinds": ["mana"],
+  "mana_abilities": ["own:0"], …}`), and the activation is an
+  `activate_across` log line. A mana activation by the controller stays
+  off the log.
 
 ## Declared purpose: what a spell or an ability does (ADR 0126 §6, 2026-10-06)
 

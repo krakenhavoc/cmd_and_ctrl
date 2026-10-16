@@ -78,6 +78,37 @@ func MayActivate(player uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbili
 	return source.Owner == player
 }
 
+// MayActivateMana is MayActivate for one row of the CR 605 list (ADR
+// 0106 §1 amendment 2026-10-16, #1864): on the battlefield the
+// permanent's controller, or anyone when the row says "Any player may
+// activate this ability" (Mana Cache); off it, the CR 108.4a owner. The
+// one predicate ActivateManaAbility, internal/legal's manaMoves and the
+// view share, so a seat is never offered a mana activation the engine
+// refuses (#544).
+//
+// CanActivateManaAbilities (Arrest) and the board-wide gate restrict
+// the object, not the activator, and each caller asks them beside this.
+func MayActivateMana(player uuid.UUID, source Card, zone ZoneKind, ab ManaAbilityShape) bool {
+	if zone == ZoneBattlefield {
+		return source.Controller == player || ab.AnyPlayer
+	}
+	return source.Owner == player
+}
+
+// HasAnyPlayerManaAbility reports whether any mana ability `c` offers
+// right now says "Any player may activate this ability". The fast
+// negative the activation path, the enumerator and the view take for a
+// permanent the player does not control; the row named is still held to
+// MayActivateMana.
+func HasAnyPlayerManaAbility(c Card) bool {
+	for _, ab := range ManaAbilitiesForCard(c) {
+		if ab.AnyPlayer {
+			return true
+		}
+	}
+	return false
+}
+
 // ReachesAcross reports whether the row names an activator other than
 // the plain controller: any player, only the controller's opponents,
 // only the owner, or only the player who granted the row.

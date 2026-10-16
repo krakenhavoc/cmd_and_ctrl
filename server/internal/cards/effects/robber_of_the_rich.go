@@ -46,11 +46,14 @@ func init() {
 				if !moreCardsInHand(g, item.Controller, defender) {
 					return nil
 				}
+				ctx := NewContext(g, item)
+				// "A Rogue" is a word of the Robber's text, fixed as the
+				// permission is granted (CR 612.2, 608.2h; #4005).
 				return ExileTopWithPermission{
 					From: defender, GrantTo: item.Controller, N: 1,
 					CastOnly: true, AnyColor: true, WhileExiled: true,
-					Condition: &game.PermissionCondition{Key: game.CondAttackedWithSubtype, Subtype: "Rogue"},
-				}.Apply(NewContext(g, item))
+					Condition: &game.PermissionCondition{Key: game.CondAttackedWithSubtype, Subtype: ctx.TextSubtype("Rogue")},
+				}.Apply(ctx)
 			}),
 		},
 	})

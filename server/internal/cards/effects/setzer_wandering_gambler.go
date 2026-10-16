@@ -56,6 +56,6 @@ func setzerTappedTreasures(g *game.Game, item *game.StackItem) error {
 	if item.Controller == uuid.Nil {
 		return nil
 	}
-	_, err := g.CreateTokensForEffect(item.Controller, TreasureToken(), 2, game.TokenEntryOptions{Tapped: true})
+	_, err := g.CreateTokensForEffect(item.Controller, ruleDefinedToken(TreasureToken()), 2, game.TokenEntryOptions{Tapped: true})
 	return err
 }

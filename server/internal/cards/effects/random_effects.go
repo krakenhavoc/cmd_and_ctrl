@@ -39,7 +39,7 @@ func treasureTokens(g *game.Game, controller uuid.UUID, n int) error {
 	if n <= 0 {
 		return nil
 	}
-	return g.CreateTokenForEffect(controller, TreasureToken(), n)
+	return g.CreateTokenForEffect(controller, ruleDefinedToken(TreasureToken()), n)
 }
 
 func randomCardToHandOrBattlefield(g *game.Game, id uuid.UUID) error {

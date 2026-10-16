@@ -60,6 +60,7 @@ func sandstormCrasherCopy(g *game.Game, item *game.StackItem) error {
 	}
 	return CreateTokensAttackingYourChoice{
 		Template: tmpl,
+		Copy:     true,
 		N:        1,
 		Tapped:   true,
 		Prefer:   triggerAttackTarget(item),

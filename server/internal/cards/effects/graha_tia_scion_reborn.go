@@ -103,6 +103,6 @@ func grahaTiaPayAndCreate(ctx *Context, x int) error {
 	if x > 0 {
 		opts.Counters = map[string]int{game.CounterPlusOne: x}
 	}
-	_, err := g.CreateTokensForEffect(item.Controller, TokenCard("1/1 colorless Hero"), 1, opts)
+	_, err := g.CreateTokensForEffect(item.Controller, NewContext(g, item).TextToken(TokenCard("1/1 colorless Hero")), 1, opts)
 	return err
 }

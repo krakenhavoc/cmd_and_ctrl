@@ -67,7 +67,10 @@ func Improvise() *game.TapPermanentsCost {
 	}
 }
 
-func init() { game.ImproviseTapCost = Improvise() }
+func init() {
+	game.ImproviseTapCost = Improvise()
+	game.WaterbendTapCost = Waterbend
+}
 
 // Waterbend is "Waterbend {cost}. (While paying a waterbend cost,
 // you can tap your artifacts and creatures to help. Each one pays

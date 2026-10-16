@@ -4040,3 +4040,65 @@ offers, cast for {3}{R}, exiled).
 Back-out: restore the `seen` early return in `CastOffersForLocked`, and both effects tests and
 `TestGrantedFlashbackBesideAPrintedOneIsASecondOffer` fail on the offer list. Record the claim instead of the keyword on the stack,
 and the stack-item assertions fail.
+
+
+## Amendment — 2026-10-16 (#3989): a granted cast paid by waterbending its mana value
+
+Hama, the Bloodbender: "For as long as you control Hama, you may cast the exiled card during your turn by waterbending {X}
+rather than paying its mana cost, where X is its mana value." The permission, the window and the timing already existed
+(`forAsLongAsYouControlThisWindow`, `TimingYourTurnOnly`). The price did not: `CastPermission.Cost` is plain mana, and
+`TapPermanentsCostForCastLocked` found a tap cost only on the card, on a next-spell promise or on a permanent's grant.
+
+**The rules.** CR 701.67a: "Waterbend [cost]" means "Pay [cost]. For each generic mana in that cost, you may tap an
+untapped artifact or creature you control rather than pay that mana." CR 701.67b: when the waterbend cost is part of a
+spell's total cost, the taps may pay only the generic mana in the waterbend cost. Hama's waterbend is not an additional
+cost but the ALTERNATIVE cost (CR 118.9: "rather than paying its mana cost"), so CR 118.9d applies: additional costs, cost
+increases and cost reductions are applied to it. And the card's own {X}: the cast pays neither its mana cost nor an
+alternative cost that includes that X, so 0 is the only legal choice (CR 107.3b).
+
+**Options.**
+
+1. *Cost "{0}" plus a waterbend {N} added on top*, as Waterbender's Restoration's printed waterbend is. Simple, but the
+   {N} would be added after the cost modifiers (`costAfterTapsLocked` runs last), so a reduction would find {0} to reduce
+   and be lost, and the enumerator, which prices `CastPrice.Base`, would see a free spell.
+2. *Stamp `Cost: "{N}"` at grant and grant convoke-like taps.* The mana value is the face being cast (CR 202.3d for a
+   split card), unknown at grant, and taps that pay any generic would pay a tax or a kicker too (stronger than printed).
+3. **The waterbend {N} is the cost being paid, and the taps cover only it** (chosen; the most CR-faithful). The same split
+   an activated ability's "Waterbend {N}:" already makes (`waterbend_cost.go`): the mana lives in the cost, and the tap
+   clause names which part of it the taps may pay.
+
+**Decision.**
+
+- **`CastPermission.WaterbendManaValue`** (bool). `Cost` stays empty. `NamesPrice()` reports a permission that prices the
+  cast itself (a `Cost`, or this), and the readers that asked `Cost != ""` for that question now ask it: CR 118.6's
+  printed-cost check, the printed alternative costs a permission at the printed cost lets a card use, the claimability of a
+  granted offer, and the enumerator's no-mana-cost gate.
+- **`CastCostFor` charges `WaterbendManaValueCost(card)`**, "{N}" for the face being cast with {X} at 0 (the same read as
+  Bolas's Citadel's life), so the commander tax and every cost modifier apply to it (CR 118.9d), the X lock holds
+  (CR 107.3b), and `CastPrice.Base` is the waterbend's mana, which is what the enumerator and the view price.
+- **`TapPermanentsCostForGrantLocked`** is `TapPermanentsCostForCastLocked` for the permission the cast claims. Under a
+  waterbend permission it hands back `effects.Waterbend("{N}")` (installed as `game.WaterbendTapCost`) marked
+  **`TapPermanentsCost.InCost`**: its Extra is already in the cost, so `tapPermanentsAdjusted` takes the taps off it rather
+  than adding it, and the cast validator measures the budget against the total the modifiers leave (`WaterbendBudget`, as
+  for an ability), so a tap never pays a Thalia tax, a kicker or a {1} a reduction already removed (CR 701.67b). The
+  validator, the pricer, the view's tap picker (`castStampsBaseFor`) and the cast path all ask it.
+- **One tap cost per cast.** Under the permission the waterbend replaces any convoke or improvise the card or the board
+  would give the spell. A spell with both is rare and the loss is the weaker direction.
+
+### Snapshot
+
+Additive within v9, omitted when false: `seats[].castPermissions[].waterbendManaValue`. A file written before it has no such
+permission. A binary from before it drops the key and reads Hama's permission as a cast at the printed mana cost, which is
+only for a table restored across the upgrade while Hama's card is still in exile.
+
+**Card.** Hama, the Bloodbender, declared with a caveat: "A spell cast this way can't also use convoke or improvise." (the one-tap-cost limit above).
+
+**Tests.** `hama_the_bloodbender_test.go` (effects): the mill and the noncreature, nonland pick; the permission ends when Hama
+leaves; the cast paid by three taps, by {3} of colourless mana, by two taps and {1}; four taps refused; not on an opponent's
+turn; Thalia's {1} paid with mana and never a tap; Goblin Electromancer's reduction coming off the waterbend; an {X}{U}{U}
+spell cast as a waterbend {2} with X locked at 0. `waterbend_grant_view_test.go` (protocol): the view's tap picker reads
+"Waterbend {3}" with a budget of 3, and the enumerator offers the cast at three mana and not at two.
+
+Back-out: drop the `CastCostFor` clause and the cast is priced at its printed cost, so the colourless and enumerator tests
+fail; drop `InCost` and the {N} is charged twice, so every tap test fails; measure the budget against the base cost and
+`TestHamaReductionComesOffTheWaterbend` fails.

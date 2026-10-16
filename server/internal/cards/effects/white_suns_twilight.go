@@ -35,7 +35,7 @@ func init() {
 			return ctx.Game.CreateTokensThenForEffect(game.TokenCreation{
 				Controller: item.Controller,
 				Source:     ctx.Source(),
-				Groups:     []game.TokenGroup{{Template: PhyrexianMiteToken(), Count: x}},
+				Groups:     []game.TokenGroup{{Template: ctx.TextToken(PhyrexianMiteToken()), Count: x}},
 			}, func(g *game.Game, created []uuid.UUID) error {
 				if x < 5 {
 					return nil

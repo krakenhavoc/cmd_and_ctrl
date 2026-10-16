@@ -45,7 +45,7 @@ func init() {
 			if lands > 0 {
 				opts.Counters = map[string]int{"+1/+1": lands}
 			}
-			_, err := ctx.Game.CreateTokensForEffect(item.Controller, TokenCard("1/1 colorless Hero"), 1, opts)
+			_, err := ctx.Game.CreateTokensForEffect(item.Controller, ctx.TextToken(TokenCard("1/1 colorless Hero")), 1, opts)
 			return err
 		},
 	})

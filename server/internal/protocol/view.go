@@ -4934,6 +4934,13 @@ type ManaAbilityView struct {
 	// "Add one mana of any color"). Empty falls back to the raw
 	// Produced string on the client side.
 	Label string `json:"label,omitempty"`
+	// AnyPlayer marks the mana ability's own "Any player may activate
+	// this ability" (Mana Cache; ADR 0106 §1 amendment 2026-10-16,
+	// #1864), as ActivatedAbilityView.AnyPlayer marks a CR 602 row.
+	// Every seat that does not control the permanent gets its own copy
+	// of the row stamped with that seat as the activator
+	// (stampAnyPlayerOffers): its condition, cost options and price.
+	AnyPlayer bool `json:"any_player,omitempty"`
 	// TapCost reflects the "{T}:" portion of the ability. Drives
 	// the client's greying of the menu entry when the source is
 	// tapped — or, for a creature source like Birds of Paradise,
@@ -6806,7 +6813,8 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 	if haveLive {
 		// A permanent may grant this spell convoke (Hoarding Broodlord's
 		// "spells you cast from exile", Dazzling Theater's creature spells).
-		tc = g.TapPermanentsCostForCastLocked(caster, live, kind)
+		// #3989: a permission priced by waterbending (Hama) owes its own.
+		tc = g.TapPermanentsCostForGrantLocked(caster, live, kind, grant)
 	}
 	if !tc.Empty() {
 		out.TapCost = viewOfTapCost(g, caster, f.manaCost, tc)
@@ -8128,39 +8136,96 @@ func (c *CardView) stampAnyPlayerOffers(g *game.Game, card game.Card, controller
 			break
 		}
 	}
-	if !anyRow {
+	// #1864: and the CR 605 list's own "Any player may activate this
+	// ability" rows (Mana Cache), re-stamped the same way.
+	anyMana := false
+	for _, m := range c.ManaAbilities {
+		if m.AnyPlayer {
+			anyMana = true
+			break
+		}
+	}
+	if !anyRow && !anyMana {
 		return
 	}
 	for _, p := range g.Seats {
 		if p == nil || p.ID == controller {
 			continue
 		}
-		mine := viewOfActivatedAbilities(g, card, p.ID, game.ZoneBattlefield, restricted)
-		byIndex := make(map[int]ActivatedAbilityView, len(mine))
-		for _, a := range mine {
-			if a.reachesAcross() {
-				byIndex[a.Index] = a
-			}
+		rows := c.ActivatedAbilities
+		if anyRow {
+			rows = c.anyPlayerActivatedRowsFor(g, card, p.ID, restricted)
 		}
-		rows := make([]ActivatedAbilityView, len(c.ActivatedAbilities))
-		for i, a := range c.ActivatedAbilities {
-			if own, ok := byIndex[a.Index]; ok && a.reachesAcross() {
-				// The grantor's name rides the exported row only
-				// (stampGrantedAbilities); keep it on this copy too.
-				own.GrantedBy = a.GrantedBy
-				rows[i] = own
-				continue
-			}
-			rows[i] = a
+		mana := c.ManaAbilities
+		if anyMana {
+			mana = c.anyPlayerManaRowsFor(g, card, p.ID, restricted)
 		}
 		if c.abilityOffers == nil {
 			c.abilityOffers = make(map[string]abilityOfferRows, len(g.Seats))
 		}
 		c.abilityOffers[p.ID.String()] = abilityOfferRows{
 			ActivatedAbilities: rows,
-			ManaAbilities:      c.ManaAbilities,
+			ManaAbilities:      mana,
 		}
 	}
+}
+
+// anyPlayerActivatedRowsFor is one seat's copy of the permanent's CR 602
+// rows: each row that names an activator other than the controller is
+// re-stamped with `seat` as the activator, the rest are the exported
+// (public) rows.
+func (c *CardView) anyPlayerActivatedRowsFor(g *game.Game, card game.Card, seat uuid.UUID, restricted bool) []ActivatedAbilityView {
+	mine := viewOfActivatedAbilities(g, card, seat, game.ZoneBattlefield, restricted)
+	byIndex := make(map[int]ActivatedAbilityView, len(mine))
+	for _, a := range mine {
+		if a.reachesAcross() {
+			byIndex[a.Index] = a
+		}
+	}
+	rows := make([]ActivatedAbilityView, len(c.ActivatedAbilities))
+	for i, a := range c.ActivatedAbilities {
+		if own, ok := byIndex[a.Index]; ok && a.reachesAcross() {
+			// The grantor's name rides the exported row only
+			// (stampGrantedAbilities); keep it on this copy too.
+			own.GrantedBy = a.GrantedBy
+			rows[i] = own
+			continue
+		}
+		rows[i] = a
+	}
+	return rows
+}
+
+// anyPlayerManaRowsFor is anyPlayerActivatedRowsFor for the CR 605 list
+// (#1864): each any-player mana row is projected afresh and run through
+// the same five stamps the controller's rows get, with `seat` as the
+// activator — so its condition ("only during their turn"), its counter
+// and sacrifice options and its charged price are that seat's. The
+// other rows are the exported (public) ones.
+func (c *CardView) anyPlayerManaRowsFor(g *game.Game, card game.Card, seat uuid.UUID, restricted bool) []ManaAbilityView {
+	mine := viewOfManaAbilities(&card)
+	stampManaSacrificeOptions(g, &card, seat, mine)
+	stampManaConditions(g, &card, seat, mine, restricted)
+	stampManaIdentity(g, &card, seat, mine)
+	stampManaCounterCosts(g, &card, seat, mine)
+	stampManaChargedCost(g, &card, seat, mine)
+	byIndex := make(map[int]ManaAbilityView, len(mine))
+	for _, m := range mine {
+		if m.AnyPlayer {
+			byIndex[m.Index] = m
+		}
+	}
+	rows := make([]ManaAbilityView, len(c.ManaAbilities))
+	for i, m := range c.ManaAbilities {
+		if own, ok := byIndex[m.Index]; ok && m.AnyPlayer {
+			own.GrantedBy = m.GrantedBy
+			own.BorrowedFrom = m.BorrowedFrom
+			rows[i] = own
+			continue
+		}
+		rows[i] = m
+	}
+	return rows
 }
 
 // stampZoneAbilities fills CardView.ZoneAbilities for every card in
@@ -12939,6 +13004,7 @@ func viewOfManaAbilitiesFromZone(c *game.Card, zone game.ZoneKind) []ManaAbility
 			ManaCost:      a.ManaCost,
 			Restrictions:  a.Restrictions,
 			Produced:      a.Produced,
+			AnyPlayer:     a.AnyPlayer,
 		})
 	}
 	return out

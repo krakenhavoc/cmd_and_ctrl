@@ -33,7 +33,7 @@ func init() {
 		Triggered:    []game.TriggeredAbility{commandTheStageReturn()},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			me := ctx.Controller()
-			made, err := ctx.Game.CreateTokensForEffect(me, TokenCard("2/2 colorless Wizard Soldier named Cadet"), 1, game.TokenEntryOptions{})
+			made, err := ctx.Game.CreateTokensForEffect(me, ctx.TextToken(TokenCard("2/2 colorless Wizard Soldier named Cadet")), 1, game.TokenEntryOptions{})
 			if err != nil {
 				return err
 			}

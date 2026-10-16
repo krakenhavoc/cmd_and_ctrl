@@ -91,10 +91,13 @@ var silentEventKinds = map[string]string{
 	"EventBeginEndStep":       silentStepSpine,
 
 	// --- mana --------------------------------------------------------
-	"EventManaAdded":            silentManaBookkeeping,
-	"EventManaSpent":            silentManaBookkeeping,
-	"EventManaPoolEmptied":      silentManaBookkeeping,
-	"EventManaAbilityActivated": silentManaBookkeeping,
+	"EventManaAdded":       silentManaBookkeeping,
+	"EventManaSpent":       silentManaBookkeeping,
+	"EventManaPoolEmptied": silentManaBookkeeping,
+	// EventManaAbilityActivated left this list with #1864: it is silent
+	// bookkeeping (CR 605.3b) except when a player activates the "Any
+	// player may activate this ability" mana row of a permanent another
+	// player controls (Mana Cache), which is a LogActivateAcross line.
 
 	// --- diagnostics --------------------------------------------------
 	"EventEffectError":             silentServerDiagnostic,

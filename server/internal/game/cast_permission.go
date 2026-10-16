@@ -471,6 +471,21 @@ type CastPermission struct {
 	// before this.
 	CostLess int `json:"costLess,omitempty"`
 
+	// WaterbendManaValue is Hama, the Bloodbender's "you may cast the
+	// exiled card ... by waterbending {X} rather than paying its mana
+	// cost, where X is its mana value" (CR 701.67a, ADR 0066's
+	// 2026-10-16 amendment, #3989). The waterbend is the alternative
+	// cost (CR 118.9): CastCostFor charges "{N}", N the mana value of
+	// the face being cast with any {X} at 0 (CR 107.3b), so the
+	// commander tax and the board's cost modifiers apply to it
+	// (CR 118.9d), and TapPermanentsCostForGrantLocked hands the cast a
+	// waterbend {N} tap cost marked InCost, so tapped artifacts and
+	// creatures pay that {N} and nothing else (CR 701.67b). The
+	// validator, the pricer, the tap picker in the view and the
+	// enumerator all read those two. Cost stays empty: this is the
+	// price. Not applied to a land, which is not cast.
+	WaterbendManaValue bool `json:"waterbendManaValue,omitempty"`
+
 	// LifeEqualToManaValue is Bolas's Citadel: "pay life equal to its
 	// mana value rather than pay its mana cost". A COST (CR 119.4),
 	// so a player without the life cannot claim it at all —
@@ -984,6 +999,14 @@ func (p *CastPermission) NamedFace() (int, bool) {
 		return 0, false
 	}
 	return p.Faces[0], true
+}
+
+// NamesPrice reports whether the permission prices the cast itself
+// rather than letting it pay the card's printed mana cost: a flat Cost
+// (airbend, cascade) or a waterbend of the card's mana value (#3989).
+// Nil-safe.
+func (p *CastPermission) NamesPrice() bool {
+	return p != nil && (p.Cost != "" || p.WaterbendManaValue)
 }
 
 // AlternativeCostFor synthesises the CR 118.9 offer this permission
@@ -1866,6 +1889,16 @@ func stampStandingPermissionLocked(perm CastPermission, p *Player, c *Card) (Cas
 	// derived permission can afford to spell it: nothing stored, so
 	// nothing to expire.
 	perm.Duration = WhileInZoneDuration()
+	// "A Zombie creature spell" (Gisa and Geralf), "Goblin spells"
+	// (Conspicuous Snoop) and "Merfolk and Druid cards" (Deeproot
+	// Historian) are words of the granting permanent's text (CR 612.2,
+	// #4005). The permission is derived from the battlefield on every
+	// query, so it reads the text as it is now, and the label the client
+	// shows says the same word.
+	if filter := perm.Filter.ThroughTextOf(c); filter != perm.Filter {
+		perm.Label = relabelChangedWords(perm.Label, perm.Filter, filter)
+		perm.Filter = filter
+	}
 	if perm.Filter.FromChosenType {
 		// Realmwalker: "the chosen type". A permanent whose entry
 		// choice has not been answered yet names no type and grants
@@ -1881,6 +1914,74 @@ func stampStandingPermissionLocked(perm CastPermission, p *Player, c *Card) (Cas
 		perm.Filter.ExiledWith = PermissionCardRef{ID: c.InstanceID, Epoch: c.ObjectEpoch}
 	}
 	return perm, true
+}
+
+// relabelChangedWords respells a derived permission's label for the
+// creature types a text change replaced in its filter, word for word:
+// the label is the clause as printed ("cast a Zombie creature spell"),
+// and a player reading it should see the word the text now says.
+func relabelChangedWords(label string, was, now PermissionFilter) string {
+	pairs := [][2]string{{was.CreatureType, now.CreatureType}}
+	for i := range was.CreatureTypesAny {
+		pairs = append(pairs, [2]string{was.CreatureTypesAny[i], now.CreatureTypesAny[i]})
+	}
+	for _, p := range pairs {
+		if p[0] != "" && p[0] != p[1] {
+			label = replaceWholeWord(label, p[0], p[1])
+		}
+	}
+	return label
+}
+
+// replaceWholeWord replaces each occurrence of `word` in `s` that is not
+// part of a longer word, and mends the indefinite article in front of it
+// ("a Zombie" → "an Elf").
+func replaceWholeWord(s, word, with string) string {
+	isLetter := func(b byte) bool {
+		return b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z'
+	}
+	var out strings.Builder
+	prev := byte(' ')
+	for {
+		i := strings.Index(s, word)
+		if i < 0 {
+			out.WriteString(s)
+			return out.String()
+		}
+		end := i + len(word)
+		before := prev
+		if i > 0 {
+			before = s[i-1]
+		}
+		if !isLetter(before) && (end == len(s) || !isLetter(s[end])) {
+			out.WriteString(mendArticle(s[:i], with))
+			out.WriteString(with)
+		} else {
+			out.WriteString(s[:end])
+		}
+		prev = s[end-1]
+		s = s[end:]
+	}
+}
+
+// mendArticle rewrites a trailing "a " or "an " in `lead` for `next`.
+func mendArticle(lead, next string) string {
+	for _, art := range []string{"a ", "an ", "A ", "An "} {
+		if !strings.HasSuffix(lead, art) {
+			continue
+		}
+		head := lead[:len(lead)-len(art)]
+		if head != "" && head[len(head)-1] != ' ' && head[len(head)-1] != '(' {
+			continue
+		}
+		mended := withArticle(next)
+		mended = mended[:len(mended)-len(next)]
+		if art[0] == 'A' {
+			mended = strings.ToUpper(mended[:1]) + mended[1:]
+		}
+		return head + mended
+	}
+	return lead
 }
 
 // sweepCastPermissionsLocked drops permissions whose CR 611.2
