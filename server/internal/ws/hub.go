@@ -1492,6 +1492,14 @@ func classifyActionError(err error) (code, message string) {
 		return protocol.CodeBadRequest,
 			"this card's mana cost can't be read, so it can't be cast yet — " +
 				strings.TrimPrefix(err.Error(), "game: ")
+	case errors.Is(err, game.ErrCantPayTargetTax):
+		// #3860, CR 601.2f: a permanent adds life to the cost of a spell
+		// that targets it (Terror of the Peaks) and the caster can't pay
+		// it. The refusal names the permanent and the life; the picker's
+		// per-target note (legal_targets.life_taxes) is the same figure,
+		// so the client should never reach this and a stale click does.
+		return protocol.CodeBadRequest,
+			"you can't cast that — " + strings.TrimPrefix(err.Error(), "game: can't pay what targeting costs: ")
 	case errors.Is(err, game.ErrInvalidFace):
 		// ADR 0034: the client asked for a printed face this card
 		// does not offer. Either a stale client sending a face for a

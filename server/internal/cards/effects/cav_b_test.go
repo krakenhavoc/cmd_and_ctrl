@@ -274,8 +274,8 @@ func TestFlashForTwoMoreLeavesThePrintedCastAlone(t *testing.T) {
 
 const vinesOfVastwoodOracle = "8998d211-5ca6-41d2-bc64-f51f70bd41e5"
 
-// Vines of Vastwood: hexproof for the turn either way; kicked ({G} more)
-// the creature also gets +4/+4.
+// Vines of Vastwood: the creature can't be targeted by the caster's
+// opponents either way; kicked ({G} more) it also gets +4/+4.
 func TestVinesOfVastwoodKickerAddsPlusFourPlusFour(t *testing.T) {
 	for _, kicked := range []bool{false, true} {
 		g := newCatalogGame(t)
@@ -300,8 +300,8 @@ func TestVinesOfVastwoodKickerAddsPlusFourPlusFour(t *testing.T) {
 			t.Fatalf("kicked=%v: %v", kicked, err)
 		}
 		passPriorityAroundTable(t, g)
-		if !eotHasAbility(effectiveAbilities(t, g, bear), "hexproof") {
-			t.Errorf("kicked=%v: the bear should have hexproof", kicked)
+		if eotHasAbility(effectiveAbilities(t, g, bear), "hexproof") {
+			t.Errorf("kicked=%v: Vines is not hexproof (#3860), the keyword must not appear", kicked)
 		}
 		want := 2
 		if kicked {

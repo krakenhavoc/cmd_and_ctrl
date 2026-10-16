@@ -149,6 +149,11 @@ type CardDef struct {
 	// (CR 508.1a, ADR 0080) — Propaganda, Ghostly Prison, Windborn
 	// Muse. Read from the battlefield through AttackTaxesForCard.
 	AttackTaxes []AttackTax
+	// TargetTaxes are the "spells <whom> cast that target <what> cost an
+	// additional N life" statics this permanent contributes (CR 601.2f,
+	// #3860) -- Terror of the Peaks. Read from the battlefield through
+	// TargetTaxesForCard.
+	TargetTaxes []TargetTax
 	// BlockRules are the CR 509.1b block restrictions with a
 	// parameter this permanent imposes while it is on the battlefield
 	// — "can't be blocked except by Walls" (Prowler's Helm), "can't
@@ -762,6 +767,12 @@ func init() {
 	CatalogAttackTaxes = func(key string) []AttackTax {
 		if d := catalogDef(key); d != nil {
 			return d.AttackTaxes
+		}
+		return nil
+	}
+	CatalogTargetTaxes = func(key string) []TargetTax {
+		if d := catalogDef(key); d != nil {
+			return d.TargetTaxes
 		}
 		return nil
 	}

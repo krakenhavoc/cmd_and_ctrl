@@ -3892,6 +3892,20 @@ paid with life that make the move payable, after mana. The heuristic
 prices a life-paid ward like a Phyrexian cast: declined below the floor
 of 10, and below the all-mana answer above it.
 
+**A tax for targeting is a pure price too.** Terror of the Peaks makes
+an opponent's spell that targets it cost an additional 3 life
+([ADR 0080](decisions/0080-attack-taxes.md)'s 2026-10-15 amendment,
+#3860). The enumerator prices every target set with the accessor the
+engine charges with, so a cast at the Dragon carries the 3 life in
+`Move.Cost.Life` and, broken out, in `target_tax_life`; the label says
+`paying 3 life for what it targets`. A seat that cannot pay it (CR 119.4,
+against the sum of every life cost of the cast, Phyrexian symbols and an
+alternative cost's life included) is not offered that target at all, and
+every other target of the same spell still is. The heuristic reads
+`target_tax_life` as buying nothing, like Phyrexian life: of two equal
+targets it takes the untaxed one, and it refuses a tax that would pay its
+last life.
+
 **"Discard your hand" is priced by the hand it throws away.** Lion's
 Eye Diamond, Diamond Lion, Null Brooch and Slate of Ancestry
 ([#1600](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1600)) pay

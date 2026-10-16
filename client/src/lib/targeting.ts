@@ -452,6 +452,10 @@ export interface TargetStep {
   different?: SetRule;
   // #1807: the clause's sameness rule, when it prints one.
   same?: SetRule;
+  // #3860: the extra life naming each card costs (CR 601.2f), and the
+  // cards whose tax the viewer cannot pay — already left out of `legal`.
+  lifeTaxes?: Record<string, number>;
+  lifeTaxesUnpayable?: string[];
   // #1563: the amount the clause divides among its picks, resolved
   // against the announced X. Undefined for a clause that divides
   // nothing.
@@ -520,7 +524,13 @@ export function stepsFor(
   }
   return list.map((c, slot) => ({
     mode,
-    legal: { players: new Set(c.players ?? []), cards: new Set(withinX(c, choices)) },
+    // #3860: a player who can't pay a card's life tax can't target it.
+    legal: {
+      players: new Set(c.players ?? []),
+      cards: new Set(withinX(c, choices).filter((id) => !c.life_taxes_unpayable?.includes(id))),
+    },
+    lifeTaxes: c.life_taxes,
+    lifeTaxesUnpayable: c.life_taxes_unpayable,
     label: c.label,
     ...countOf(c, choices),
     modeIndex,

@@ -1022,6 +1022,26 @@ type LegalTargetsView struct {
 	// the player confirm with fewer.
 	UpToX bool `json:"up_to_x,omitempty"`
 
+	// LifeTaxes is the extra life each legal card costs the caster to
+	// name, keyed by wire id (CR 601.2f, #3860): Terror of the Peaks'
+	// "spells your opponents cast that target this creature cost an
+	// additional 3 life to cast". Present only on a SPELL's target
+	// clause, only for the cards that carry a tax, and priced by the
+	// same CastTargetTaxForEffect the cast gate charges and the move
+	// list prices with, so the picker's "3 life" and the refusal
+	// cannot disagree. A card whose tax the viewer cannot pay stays in
+	// `cards` (it is a legal target, and the picker explains itself) and
+	// is also named in `life_taxes_unpayable`, because a player who
+	// can't pay can't target it: the move list drops the cast, and the
+	// picker greys the card with the reason instead of letting the click
+	// be refused.
+	LifeTaxes map[string]int `json:"life_taxes,omitempty"`
+	// LifeTaxesUnpayable lists the cards in LifeTaxes whose tax the
+	// viewer cannot pay right now (CR 119.4), on the viewer's own life
+	// total and nothing else: a cast with other life costs may be
+	// priced out sooner, and the move list is the last word.
+	LifeTaxesUnpayable []string `json:"life_taxes_unpayable,omitempty"`
+
 	// Label is the clause's printed wording — "target creature you
 	// control". Absent for a single-clause statement, where the
 	// banner reads the card's target_mode as it always has; present
@@ -6516,6 +6536,73 @@ func (f *CardFaceView) stampsFor(seat uuid.UUID, s castStamps) {
 //
 // Caller must hold g.mu.
 func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind game.ZoneKind, grant *game.CastPermission) castStamps {
+	out := castStampsBaseFor(g, caster, c, f, kind, grant)
+	// #3860: what each legal target would cost the caster to name, for a
+	// board where something charges for it. Asked of the engine's own
+	// accessor and only when a tax exists at all, so no board without
+	// one pays for the walk.
+	if g.TargetTaxesExistForEffect() {
+		if live, ok := liveCardForView(g, c); ok {
+			live.SetFace(f.index)
+			stampCastTargetTaxes(g, caster, live, &out)
+		}
+	}
+	return out
+}
+
+// stampCastTargetTaxes writes the per-target life tax onto every target
+// clause a spell's stamps carry: the card's own, its multi-clause
+// statement, each mode's, and each alternative or optional cost that
+// rewrites the clause. Caller must hold g.mu.
+func stampCastTargetTaxes(g *game.Game, caster uuid.UUID, spell game.Card, out *castStamps) {
+	seat := g.PlayerByIDForEffect(caster)
+	stamp := func(v *LegalTargetsView) {
+		if v == nil {
+			return
+		}
+		for _, id := range v.Cards {
+			uid, err := uuid.Parse(id)
+			if err != nil {
+				continue
+			}
+			tax := g.TargetTaxOnTargetForEffect(caster, spell, uid)
+			if tax <= 0 {
+				continue
+			}
+			if v.LifeTaxes == nil {
+				v.LifeTaxes = make(map[string]int)
+			}
+			v.LifeTaxes[id] = tax
+			if !g.CanPayLifeLocked(seat, tax) {
+				v.LifeTaxesUnpayable = append(v.LifeTaxesUnpayable, id)
+			}
+		}
+	}
+	stampAll := func(single *LegalTargetsView, clauses []LegalTargetsView) {
+		stamp(single)
+		for i := range clauses {
+			stamp(&clauses[i])
+		}
+	}
+	stampAll(out.LegalTargets, out.Clauses)
+	if out.Modes != nil {
+		for i := range out.Modes.Options {
+			o := &out.Modes.Options[i]
+			stampAll(o.LegalTargets, o.Clauses)
+		}
+	}
+	for i := range out.AlternativeCosts {
+		a := &out.AlternativeCosts[i]
+		stampAll(a.LegalTargets, a.Clauses)
+	}
+	for i := range out.OptionalCosts {
+		o := &out.OptionalCosts[i]
+		stampAll(o.LegalTargets, o.Clauses)
+	}
+}
+
+// castStampsBaseFor is castStampsFor before the target-tax pass.
+func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind game.ZoneKind, grant *game.CastPermission) castStamps {
 	key := f.key
 	// #662 / #979: the source of a SPELL is the spell itself, so every
 	// legal-target stamp below names the card rather than only its

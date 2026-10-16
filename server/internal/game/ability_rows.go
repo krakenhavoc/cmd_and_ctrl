@@ -250,6 +250,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "ExhaustPermissions", fallback: "Exhaust abilities can be activated again", ownLabel: true},
 	{field: "BoastLimits", fallback: "Creatures can boast more than once each turn", ownLabel: true},
 	{field: "AttackTaxes", fallback: "Attack tax", ownLabel: true},
+	{field: "TargetTaxes", fallback: "Targeting tax", ownLabel: true},
 	{field: "BlockRules", label: blockRuleRows},
 	{field: "AttackLimits", label: attackLimitRows},
 	{field: "DealtDamageCantBeRegenerated", fallback: "Creatures it damaged can't be regenerated", ownLabel: true},

@@ -389,3 +389,40 @@ sharing is one level down and was already shared.
 swing.** Rejected: ADR 0033 §1 ruled subsets out for reasons that have
 nothing to do with cost, and the per-verb-call charge composes
 correctly without them (§5).
+
+## Amendment (2026-10-15, #3860): target taxes — "spells your opponents cast that target this creature cost an additional 3 life"
+
+Terror of the Peaks. The cost-modifier engine (ADR 0048) prices GENERIC MANA, so a non-mana component added by a
+permanent other than the spell had nowhere to live; the card shipped a caveat. It is this ADR's shape one verb over: a
+COST a permanent adds to a game action, keyed on what the action NAMES. An attack tax is keyed on the defending player and
+charged at the declaration; a **target tax** is keyed on a spell's targets and charged at CR 601.2f, after the targets are
+announced (CR 601.2c) and before the costs are paid (CR 601.2h).
+
+- **`Spec.TargetTaxes []game.TargetTax`** (game/target_tax.go): `{Label, Life, AppliesTo(TargetTaxQuery), ActiveWhen}`, a
+  struct of hooks like `AttackTax`, collected through `CatalogTargetTaxes` keyed by `CatalogAbilityKey` (so a Dragon that
+  lost its abilities taxes nothing, CR 613.1f) and gated by a designation in one accessor, `TargetTaxesForCard`.
+  `effects.OpponentsSpellsTargetingThisCostLife(n, label)` is the Terror constructor: the caster is anyone but the
+  permanent's controller, and the target is the permanent itself — structural, so a card file cannot widen it. `Register`
+  refuses a tax with no label, no life or no `AppliesTo`.
+- **One question, four askers.** `castTargetTaxLinesLocked(caster, spell, targets)` answers "how much extra life does this
+  spell at these targets cost?", charging each tax source once however many of the spell's targets name it (two Dragons
+  named cost 6). `CastSpell` refuses a caster who can't pay it (`ErrCantPayTargetTax`, CR 119.4) against the SUM of every
+  life cost of the one cast — the Phyrexian symbols paid with life, the alternative cost's life, the additional cost's —
+  and pays it with the additional cost, the spell already on the stack. The enumerator prices each target set with the
+  same accessor, so a table with a tax on it takes the per-target path (as a mana price that reads targets does), reserves
+  the tax out of the life total before the Phyrexian and "pay X life" searches, and drops a cast the seat can't pay:
+  **a player who can't pay can't target it**. The view names each legal target's tax in the spell's clause.
+- **The bot sees it.** The move carries the price in `Cost.Life` and, broken out, `Cost.TargetTaxLife`: the heuristic reads
+  it as a pure price (no `LifePayoff` proxy, as for Phyrexian life), so an equally good untaxed target wins, and a tax that
+  would take its last life is refused.
+- **Wire.** `LegalTargetsView.life_taxes` (target id → life) and `life_taxes_unpayable` on a SPELL's clauses, absent when no
+  candidate is taxed; `MoveCost.target_tax_life`. The client drops an unpayable candidate from the legal set and the
+  dock says what naming each taxed candidate costs. See docs/protocol.md.
+- **What it does not tax.** Abilities that target the permanent (ward's business, ADR 0038), and a copy of a spell (it is
+  not cast, CR 707.10). Its own controller's spells are free.
+
+Terror of the Peaks ships `full`. Back-out: drop the validation in `castSpellLocked` and
+`TestTerrorOfThePeaksRefusesACasterWhoCannotPay` fails; drop `+ targetTax` from the payment and
+`TestTerrorOfThePeaksTaxesAnOpponentsSpellThatTargetsIt` fails; drop the enumerator's `CanPayLifeLocked(setReserved)` and
+`TestEnumeratorDropsACastTheSeatCannotPayTheTaxFor` fails; drop `-c.TargetTaxLife` from the heuristic and
+`TestHeuristicPrefersTheUntaxedTargetOfTwoEqualOnes` fails.

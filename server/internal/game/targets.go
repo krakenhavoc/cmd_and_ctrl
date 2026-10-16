@@ -84,6 +84,33 @@ type TargetSource struct {
 	// the record does not carry (#1863). Nil for a live source.
 	Departed   *PermanentInfo
 	DepartedID uuid.UUID
+
+	// Trigger is the event that fired the triggered ability this walk
+	// belongs to, for a clause described RELATIVE TO THAT EVENT: "target
+	// artifact that opponent controls", where "that opponent" is the
+	// player the Dragons just dealt combat damage to (Parapet Thrasher,
+	// #3860; TargetSpec.ControlledByThatPlayer). Nil for every walk that
+	// is not a trigger's — a spell, an activation, a cost payment — and
+	// a clause that reads it then admits nothing.
+	//
+	// Set by WithTrigger at every point a trigger's target walk builds
+	// its source (the harvest's fillable check, the mode prompt, each
+	// pick step and its answer) and by stackItemSourceLocked from the
+	// item's carried context (the resolution re-check, CR 608.2b), so the
+	// legal set, the announce gate, the re-check and the bot's moves are
+	// one answer.
+	Trigger *TriggerContext
+}
+
+// WithTrigger is this source judging a clause for the triggered ability
+// the event `tc` fired. A zero context (one that did not Fire) leaves
+// the source as it was.
+func (s TargetSource) WithTrigger(tc TriggerContext) TargetSource {
+	if !tc.Fired() {
+		return s
+	}
+	s.Trigger = &tc
+	return s
 }
 
 // PowerToughness is the source's power and toughness as a
@@ -199,6 +226,19 @@ func (g *Game) stackItemSourceLocked(item *StackItem) TargetSource {
 	if item == nil {
 		return TargetSource{}
 	}
+	src := g.stackItemSourceBaseLocked(item)
+	if item.Trigger != nil {
+		// #3860: a triggered item re-checks a clause that is relative to
+		// its event ("that opponent controls") against the event it
+		// carries.
+		src = src.WithTrigger(*item.Trigger)
+	}
+	return src
+}
+
+// stackItemSourceBaseLocked is stackItemSourceLocked before the trigger
+// context is attached.
+func (g *Game) stackItemSourceBaseLocked(item *StackItem) TargetSource {
 	if item.SourceCardID != uuid.Nil {
 		if item.Kind != StackItemSpell {
 			if rec, ok := g.departedAbilitySourceLocked(item); ok {
@@ -401,6 +441,27 @@ type TargetSpec struct {
 	// 608.2h). With no source at all the clause admits NOTHING. Build
 	// one with effects.ExiledWithThis.
 	ExiledWithSource bool
+
+	// ControlledByThatPlayer is "that opponent controls" / "that player
+	// controls" on a TRIGGERED ability's clause: the candidate must be
+	// controlled by the player the triggering event's Target names -- the
+	// player the Dragons dealt combat damage to (Parapet Thrasher's
+	// "Destroy target artifact that opponent controls", #3860). A
+	// candidate controlled by anyone else is not offered, announced or
+	// kept at resolution.
+	//
+	// DATA, not a closure, for the reason RelativeToSource is: CardOK is
+	// handed the caster and the candidate, never the event, so a closure
+	// cannot say "that player", and a mode's clause is fixed on the card
+	// before the trigger exists. It is judged beside CardOK in the one
+	// shared walk (sourceAdmits), so the mode prompt (a bullet with no
+	// such artifact is not on offer, CR 603.3c), the legal set, the
+	// announce check (CR 601.2c), the resolution re-check (CR 608.2b), the
+	// client's picker and the bot's moves are one answer. The event is
+	// TargetSource.Trigger; a walk with none -- a spell, an activation --
+	// admits NOTHING, never everything. Build one with
+	// effects.ControlledByThatPlayer.
+	ControlledByThatPlayer bool
 
 	// PaidForSource is "that crewed it" / "that saddled it": the
 	// candidate must be a creature tapped to pay a crew (PaidCrewed) or
@@ -1509,13 +1570,28 @@ func (s *TargetSpec) paidForAdmits(g *Game, src TargetSource, c Card) bool {
 	return slices.Contains(paid, c.InstanceID)
 }
 
+// thatPlayerAdmits is ControlledByThatPlayer's gate: true without the
+// flag, and with it only a candidate controlled by the player the
+// triggering event names as its Target. No trigger, or an event that
+// names no player, admits nothing.
+func (s *TargetSpec) thatPlayerAdmits(src TargetSource, c Card) bool {
+	if !s.ControlledByThatPlayer {
+		return true
+	}
+	if src.Trigger == nil || !src.Trigger.Fired() {
+		return false
+	}
+	that := src.Trigger.Event.Target
+	return that != uuid.Nil && c.Controller == that
+}
+
 // sourceAdmits is the source-relative gate: RelativeToSource's stat
 // comparisons, CombatWithSource's combat relation, ExiledWithSource's
 // exile link and PaidForSource's crew / saddle payment. True with none
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) {
+	if !s.thatPlayerAdmits(src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

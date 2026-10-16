@@ -116,6 +116,7 @@ battlefield.cards[].durationCopyBase.Name	string
 battlefield.cards[].durationCopyBase.OracleID	string
 battlefield.cards[].durationCopyBase.Power	number:int
 battlefield.cards[].durationCopyBase.PrintedPTKnown	bool
+battlefield.cards[].durationCopyBase.PrintsTapAbility	bool
 battlefield.cards[].durationCopyBase.ProducedMana	array
 battlefield.cards[].durationCopyBase.ProducedMana[]	string
 battlefield.cards[].durationCopyBase.ScryfallID	string
@@ -287,6 +288,7 @@ battlefield.cards[].printedSelf.Name	string
 battlefield.cards[].printedSelf.OracleID	string
 battlefield.cards[].printedSelf.Power	number:int
 battlefield.cards[].printedSelf.PrintedPTKnown	bool
+battlefield.cards[].printedSelf.PrintsTapAbility	bool
 battlefield.cards[].printedSelf.ProducedMana	array
 battlefield.cards[].printedSelf.ProducedMana[]	string
 battlefield.cards[].printedSelf.ScryfallID	string
@@ -296,6 +298,7 @@ battlefield.cards[].printedSelf.Toughness	number:int
 battlefield.cards[].printedSelf.TypeLine	string
 battlefield.cards[].printedSelf.VariableToughness	bool
 battlefield.cards[].printsManaAbility	bool
+battlefield.cards[].printsTapAbility	bool
 battlefield.cards[].producedMana	array
 battlefield.cards[].producedMana[]	string
 battlefield.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -653,6 +656,7 @@ exile.cards[].durationCopyBase.Name	string
 exile.cards[].durationCopyBase.OracleID	string
 exile.cards[].durationCopyBase.Power	number:int
 exile.cards[].durationCopyBase.PrintedPTKnown	bool
+exile.cards[].durationCopyBase.PrintsTapAbility	bool
 exile.cards[].durationCopyBase.ProducedMana	array
 exile.cards[].durationCopyBase.ProducedMana[]	string
 exile.cards[].durationCopyBase.ScryfallID	string
@@ -824,6 +828,7 @@ exile.cards[].printedSelf.Name	string
 exile.cards[].printedSelf.OracleID	string
 exile.cards[].printedSelf.Power	number:int
 exile.cards[].printedSelf.PrintedPTKnown	bool
+exile.cards[].printedSelf.PrintsTapAbility	bool
 exile.cards[].printedSelf.ProducedMana	array
 exile.cards[].printedSelf.ProducedMana[]	string
 exile.cards[].printedSelf.ScryfallID	string
@@ -833,6 +838,7 @@ exile.cards[].printedSelf.Toughness	number:int
 exile.cards[].printedSelf.TypeLine	string
 exile.cards[].printedSelf.VariableToughness	bool
 exile.cards[].printsManaAbility	bool
+exile.cards[].printsTapAbility	bool
 exile.cards[].producedMana	array
 exile.cards[].producedMana[]	string
 exile.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -991,6 +997,7 @@ extraTurns[].effects[].mods[].copy[].Name	string
 extraTurns[].effects[].mods[].copy[].OracleID	string
 extraTurns[].effects[].mods[].copy[].Power	number:int
 extraTurns[].effects[].mods[].copy[].PrintedPTKnown	bool
+extraTurns[].effects[].mods[].copy[].PrintsTapAbility	bool
 extraTurns[].effects[].mods[].copy[].ProducedMana	array
 extraTurns[].effects[].mods[].copy[].ProducedMana[]	string
 extraTurns[].effects[].mods[].copy[].ScryfallID	string
@@ -1417,6 +1424,7 @@ lastKnownPermanents{}[].copiable.Name	string
 lastKnownPermanents{}[].copiable.OracleID	string
 lastKnownPermanents{}[].copiable.Power	number:int
 lastKnownPermanents{}[].copiable.PrintedPTKnown	bool
+lastKnownPermanents{}[].copiable.PrintsTapAbility	bool
 lastKnownPermanents{}[].copiable.ProducedMana	array
 lastKnownPermanents{}[].copiable.ProducedMana[]	string
 lastKnownPermanents{}[].copiable.ScryfallID	string
@@ -1537,6 +1545,7 @@ lastKnownStack[].card.durationCopyBase.Name	string
 lastKnownStack[].card.durationCopyBase.OracleID	string
 lastKnownStack[].card.durationCopyBase.Power	number:int
 lastKnownStack[].card.durationCopyBase.PrintedPTKnown	bool
+lastKnownStack[].card.durationCopyBase.PrintsTapAbility	bool
 lastKnownStack[].card.durationCopyBase.ProducedMana	array
 lastKnownStack[].card.durationCopyBase.ProducedMana[]	string
 lastKnownStack[].card.durationCopyBase.ScryfallID	string
@@ -1708,6 +1717,7 @@ lastKnownStack[].card.printedSelf.Name	string
 lastKnownStack[].card.printedSelf.OracleID	string
 lastKnownStack[].card.printedSelf.Power	number:int
 lastKnownStack[].card.printedSelf.PrintedPTKnown	bool
+lastKnownStack[].card.printedSelf.PrintsTapAbility	bool
 lastKnownStack[].card.printedSelf.ProducedMana	array
 lastKnownStack[].card.printedSelf.ProducedMana[]	string
 lastKnownStack[].card.printedSelf.ScryfallID	string
@@ -1717,6 +1727,7 @@ lastKnownStack[].card.printedSelf.Toughness	number:int
 lastKnownStack[].card.printedSelf.TypeLine	string
 lastKnownStack[].card.printedSelf.VariableToughness	bool
 lastKnownStack[].card.printsManaAbility	bool
+lastKnownStack[].card.printsTapAbility	bool
 lastKnownStack[].card.producedMana	array
 lastKnownStack[].card.producedMana[]	string
 lastKnownStack[].card.protectorPlayerId	custom(uuid.UUID)
@@ -3379,6 +3390,7 @@ phasedOut.cards[].durationCopyBase.Name	string
 phasedOut.cards[].durationCopyBase.OracleID	string
 phasedOut.cards[].durationCopyBase.Power	number:int
 phasedOut.cards[].durationCopyBase.PrintedPTKnown	bool
+phasedOut.cards[].durationCopyBase.PrintsTapAbility	bool
 phasedOut.cards[].durationCopyBase.ProducedMana	array
 phasedOut.cards[].durationCopyBase.ProducedMana[]	string
 phasedOut.cards[].durationCopyBase.ScryfallID	string
@@ -3550,6 +3562,7 @@ phasedOut.cards[].printedSelf.Name	string
 phasedOut.cards[].printedSelf.OracleID	string
 phasedOut.cards[].printedSelf.Power	number:int
 phasedOut.cards[].printedSelf.PrintedPTKnown	bool
+phasedOut.cards[].printedSelf.PrintsTapAbility	bool
 phasedOut.cards[].printedSelf.ProducedMana	array
 phasedOut.cards[].printedSelf.ProducedMana[]	string
 phasedOut.cards[].printedSelf.ScryfallID	string
@@ -3559,6 +3572,7 @@ phasedOut.cards[].printedSelf.Toughness	number:int
 phasedOut.cards[].printedSelf.TypeLine	string
 phasedOut.cards[].printedSelf.VariableToughness	bool
 phasedOut.cards[].printsManaAbility	bool
+phasedOut.cards[].printsTapAbility	bool
 phasedOut.cards[].producedMana	array
 phasedOut.cards[].producedMana[]	string
 phasedOut.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -3766,6 +3780,7 @@ scopedEffects[].mods[].copy[].Name	string
 scopedEffects[].mods[].copy[].OracleID	string
 scopedEffects[].mods[].copy[].Power	number:int
 scopedEffects[].mods[].copy[].PrintedPTKnown	bool
+scopedEffects[].mods[].copy[].PrintsTapAbility	bool
 scopedEffects[].mods[].copy[].ProducedMana	array
 scopedEffects[].mods[].copy[].ProducedMana[]	string
 scopedEffects[].mods[].copy[].ScryfallID	string
@@ -4102,6 +4117,7 @@ seats[].command.cards[].durationCopyBase.Name	string
 seats[].command.cards[].durationCopyBase.OracleID	string
 seats[].command.cards[].durationCopyBase.Power	number:int
 seats[].command.cards[].durationCopyBase.PrintedPTKnown	bool
+seats[].command.cards[].durationCopyBase.PrintsTapAbility	bool
 seats[].command.cards[].durationCopyBase.ProducedMana	array
 seats[].command.cards[].durationCopyBase.ProducedMana[]	string
 seats[].command.cards[].durationCopyBase.ScryfallID	string
@@ -4273,6 +4289,7 @@ seats[].command.cards[].printedSelf.Name	string
 seats[].command.cards[].printedSelf.OracleID	string
 seats[].command.cards[].printedSelf.Power	number:int
 seats[].command.cards[].printedSelf.PrintedPTKnown	bool
+seats[].command.cards[].printedSelf.PrintsTapAbility	bool
 seats[].command.cards[].printedSelf.ProducedMana	array
 seats[].command.cards[].printedSelf.ProducedMana[]	string
 seats[].command.cards[].printedSelf.ScryfallID	string
@@ -4282,6 +4299,7 @@ seats[].command.cards[].printedSelf.Toughness	number:int
 seats[].command.cards[].printedSelf.TypeLine	string
 seats[].command.cards[].printedSelf.VariableToughness	bool
 seats[].command.cards[].printsManaAbility	bool
+seats[].command.cards[].printsTapAbility	bool
 seats[].command.cards[].producedMana	array
 seats[].command.cards[].producedMana[]	string
 seats[].command.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -4450,6 +4468,7 @@ seats[].companion.cards[].durationCopyBase.Name	string
 seats[].companion.cards[].durationCopyBase.OracleID	string
 seats[].companion.cards[].durationCopyBase.Power	number:int
 seats[].companion.cards[].durationCopyBase.PrintedPTKnown	bool
+seats[].companion.cards[].durationCopyBase.PrintsTapAbility	bool
 seats[].companion.cards[].durationCopyBase.ProducedMana	array
 seats[].companion.cards[].durationCopyBase.ProducedMana[]	string
 seats[].companion.cards[].durationCopyBase.ScryfallID	string
@@ -4621,6 +4640,7 @@ seats[].companion.cards[].printedSelf.Name	string
 seats[].companion.cards[].printedSelf.OracleID	string
 seats[].companion.cards[].printedSelf.Power	number:int
 seats[].companion.cards[].printedSelf.PrintedPTKnown	bool
+seats[].companion.cards[].printedSelf.PrintsTapAbility	bool
 seats[].companion.cards[].printedSelf.ProducedMana	array
 seats[].companion.cards[].printedSelf.ProducedMana[]	string
 seats[].companion.cards[].printedSelf.ScryfallID	string
@@ -4630,6 +4650,7 @@ seats[].companion.cards[].printedSelf.Toughness	number:int
 seats[].companion.cards[].printedSelf.TypeLine	string
 seats[].companion.cards[].printedSelf.VariableToughness	bool
 seats[].companion.cards[].printsManaAbility	bool
+seats[].companion.cards[].printsTapAbility	bool
 seats[].companion.cards[].producedMana	array
 seats[].companion.cards[].producedMana[]	string
 seats[].companion.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -4801,6 +4822,7 @@ seats[].emblems.cards[].durationCopyBase.Name	string
 seats[].emblems.cards[].durationCopyBase.OracleID	string
 seats[].emblems.cards[].durationCopyBase.Power	number:int
 seats[].emblems.cards[].durationCopyBase.PrintedPTKnown	bool
+seats[].emblems.cards[].durationCopyBase.PrintsTapAbility	bool
 seats[].emblems.cards[].durationCopyBase.ProducedMana	array
 seats[].emblems.cards[].durationCopyBase.ProducedMana[]	string
 seats[].emblems.cards[].durationCopyBase.ScryfallID	string
@@ -4972,6 +4994,7 @@ seats[].emblems.cards[].printedSelf.Name	string
 seats[].emblems.cards[].printedSelf.OracleID	string
 seats[].emblems.cards[].printedSelf.Power	number:int
 seats[].emblems.cards[].printedSelf.PrintedPTKnown	bool
+seats[].emblems.cards[].printedSelf.PrintsTapAbility	bool
 seats[].emblems.cards[].printedSelf.ProducedMana	array
 seats[].emblems.cards[].printedSelf.ProducedMana[]	string
 seats[].emblems.cards[].printedSelf.ScryfallID	string
@@ -4981,6 +5004,7 @@ seats[].emblems.cards[].printedSelf.Toughness	number:int
 seats[].emblems.cards[].printedSelf.TypeLine	string
 seats[].emblems.cards[].printedSelf.VariableToughness	bool
 seats[].emblems.cards[].printsManaAbility	bool
+seats[].emblems.cards[].printsTapAbility	bool
 seats[].emblems.cards[].producedMana	array
 seats[].emblems.cards[].producedMana[]	string
 seats[].emblems.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -5147,6 +5171,7 @@ seats[].graveyard.cards[].durationCopyBase.Name	string
 seats[].graveyard.cards[].durationCopyBase.OracleID	string
 seats[].graveyard.cards[].durationCopyBase.Power	number:int
 seats[].graveyard.cards[].durationCopyBase.PrintedPTKnown	bool
+seats[].graveyard.cards[].durationCopyBase.PrintsTapAbility	bool
 seats[].graveyard.cards[].durationCopyBase.ProducedMana	array
 seats[].graveyard.cards[].durationCopyBase.ProducedMana[]	string
 seats[].graveyard.cards[].durationCopyBase.ScryfallID	string
@@ -5318,6 +5343,7 @@ seats[].graveyard.cards[].printedSelf.Name	string
 seats[].graveyard.cards[].printedSelf.OracleID	string
 seats[].graveyard.cards[].printedSelf.Power	number:int
 seats[].graveyard.cards[].printedSelf.PrintedPTKnown	bool
+seats[].graveyard.cards[].printedSelf.PrintsTapAbility	bool
 seats[].graveyard.cards[].printedSelf.ProducedMana	array
 seats[].graveyard.cards[].printedSelf.ProducedMana[]	string
 seats[].graveyard.cards[].printedSelf.ScryfallID	string
@@ -5327,6 +5353,7 @@ seats[].graveyard.cards[].printedSelf.Toughness	number:int
 seats[].graveyard.cards[].printedSelf.TypeLine	string
 seats[].graveyard.cards[].printedSelf.VariableToughness	bool
 seats[].graveyard.cards[].printsManaAbility	bool
+seats[].graveyard.cards[].printsTapAbility	bool
 seats[].graveyard.cards[].producedMana	array
 seats[].graveyard.cards[].producedMana[]	string
 seats[].graveyard.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -5491,6 +5518,7 @@ seats[].hand.cards[].durationCopyBase.Name	string
 seats[].hand.cards[].durationCopyBase.OracleID	string
 seats[].hand.cards[].durationCopyBase.Power	number:int
 seats[].hand.cards[].durationCopyBase.PrintedPTKnown	bool
+seats[].hand.cards[].durationCopyBase.PrintsTapAbility	bool
 seats[].hand.cards[].durationCopyBase.ProducedMana	array
 seats[].hand.cards[].durationCopyBase.ProducedMana[]	string
 seats[].hand.cards[].durationCopyBase.ScryfallID	string
@@ -5662,6 +5690,7 @@ seats[].hand.cards[].printedSelf.Name	string
 seats[].hand.cards[].printedSelf.OracleID	string
 seats[].hand.cards[].printedSelf.Power	number:int
 seats[].hand.cards[].printedSelf.PrintedPTKnown	bool
+seats[].hand.cards[].printedSelf.PrintsTapAbility	bool
 seats[].hand.cards[].printedSelf.ProducedMana	array
 seats[].hand.cards[].printedSelf.ProducedMana[]	string
 seats[].hand.cards[].printedSelf.ScryfallID	string
@@ -5671,6 +5700,7 @@ seats[].hand.cards[].printedSelf.Toughness	number:int
 seats[].hand.cards[].printedSelf.TypeLine	string
 seats[].hand.cards[].printedSelf.VariableToughness	bool
 seats[].hand.cards[].printsManaAbility	bool
+seats[].hand.cards[].printsTapAbility	bool
 seats[].hand.cards[].producedMana	array
 seats[].hand.cards[].producedMana[]	string
 seats[].hand.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -5847,6 +5877,7 @@ seats[].library.cards[].durationCopyBase.Name	string
 seats[].library.cards[].durationCopyBase.OracleID	string
 seats[].library.cards[].durationCopyBase.Power	number:int
 seats[].library.cards[].durationCopyBase.PrintedPTKnown	bool
+seats[].library.cards[].durationCopyBase.PrintsTapAbility	bool
 seats[].library.cards[].durationCopyBase.ProducedMana	array
 seats[].library.cards[].durationCopyBase.ProducedMana[]	string
 seats[].library.cards[].durationCopyBase.ScryfallID	string
@@ -6018,6 +6049,7 @@ seats[].library.cards[].printedSelf.Name	string
 seats[].library.cards[].printedSelf.OracleID	string
 seats[].library.cards[].printedSelf.Power	number:int
 seats[].library.cards[].printedSelf.PrintedPTKnown	bool
+seats[].library.cards[].printedSelf.PrintsTapAbility	bool
 seats[].library.cards[].printedSelf.ProducedMana	array
 seats[].library.cards[].printedSelf.ProducedMana[]	string
 seats[].library.cards[].printedSelf.ScryfallID	string
@@ -6027,6 +6059,7 @@ seats[].library.cards[].printedSelf.Toughness	number:int
 seats[].library.cards[].printedSelf.TypeLine	string
 seats[].library.cards[].printedSelf.VariableToughness	bool
 seats[].library.cards[].printsManaAbility	bool
+seats[].library.cards[].printsTapAbility	bool
 seats[].library.cards[].producedMana	array
 seats[].library.cards[].producedMana[]	string
 seats[].library.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -6229,6 +6262,7 @@ seats[].sideboard.cards[].durationCopyBase.Name	string
 seats[].sideboard.cards[].durationCopyBase.OracleID	string
 seats[].sideboard.cards[].durationCopyBase.Power	number:int
 seats[].sideboard.cards[].durationCopyBase.PrintedPTKnown	bool
+seats[].sideboard.cards[].durationCopyBase.PrintsTapAbility	bool
 seats[].sideboard.cards[].durationCopyBase.ProducedMana	array
 seats[].sideboard.cards[].durationCopyBase.ProducedMana[]	string
 seats[].sideboard.cards[].durationCopyBase.ScryfallID	string
@@ -6400,6 +6434,7 @@ seats[].sideboard.cards[].printedSelf.Name	string
 seats[].sideboard.cards[].printedSelf.OracleID	string
 seats[].sideboard.cards[].printedSelf.Power	number:int
 seats[].sideboard.cards[].printedSelf.PrintedPTKnown	bool
+seats[].sideboard.cards[].printedSelf.PrintsTapAbility	bool
 seats[].sideboard.cards[].printedSelf.ProducedMana	array
 seats[].sideboard.cards[].printedSelf.ProducedMana[]	string
 seats[].sideboard.cards[].printedSelf.ScryfallID	string
@@ -6409,6 +6444,7 @@ seats[].sideboard.cards[].printedSelf.Toughness	number:int
 seats[].sideboard.cards[].printedSelf.TypeLine	string
 seats[].sideboard.cards[].printedSelf.VariableToughness	bool
 seats[].sideboard.cards[].printsManaAbility	bool
+seats[].sideboard.cards[].printsTapAbility	bool
 seats[].sideboard.cards[].producedMana	array
 seats[].sideboard.cards[].producedMana[]	string
 seats[].sideboard.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -6792,6 +6828,7 @@ stack.cards[].durationCopyBase.Name	string
 stack.cards[].durationCopyBase.OracleID	string
 stack.cards[].durationCopyBase.Power	number:int
 stack.cards[].durationCopyBase.PrintedPTKnown	bool
+stack.cards[].durationCopyBase.PrintsTapAbility	bool
 stack.cards[].durationCopyBase.ProducedMana	array
 stack.cards[].durationCopyBase.ProducedMana[]	string
 stack.cards[].durationCopyBase.ScryfallID	string
@@ -6963,6 +7000,7 @@ stack.cards[].printedSelf.Name	string
 stack.cards[].printedSelf.OracleID	string
 stack.cards[].printedSelf.Power	number:int
 stack.cards[].printedSelf.PrintedPTKnown	bool
+stack.cards[].printedSelf.PrintsTapAbility	bool
 stack.cards[].printedSelf.ProducedMana	array
 stack.cards[].printedSelf.ProducedMana[]	string
 stack.cards[].printedSelf.ScryfallID	string
@@ -6972,6 +7010,7 @@ stack.cards[].printedSelf.Toughness	number:int
 stack.cards[].printedSelf.TypeLine	string
 stack.cards[].printedSelf.VariableToughness	bool
 stack.cards[].printsManaAbility	bool
+stack.cards[].printsTapAbility	bool
 stack.cards[].producedMana	array
 stack.cards[].producedMana[]	string
 stack.cards[].protectorPlayerId	custom(uuid.UUID)

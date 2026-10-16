@@ -20,23 +20,32 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // information, approximated by the value captured in Build. The
 // Dragon itself is the damage source, so a damage doubler applies.
 //
-// Declared simplification, WEAKER than printed: the life tax on
-// spells that target it is not implemented. The cost-modifier engine
-// (game.CostModifier, S28) prices GENERIC MANA only — its kinds are
-// CostIncrease, CostReduction and CostFloor — and "costs an additional
-// 3 life" is a non-mana component an opponent's static would add to a
-// cast it does not own. That needs a new modifier kind that survives
-// the cast gate, the legal-move enumerator's per-target-set pricing
-// (ReadsTargets), the CR 119.4 life check and the payment itself (#3172
-// slice cav-e judged it past the small-helper line and left it). The
-// card is played for the trigger, which is complete.
+// "Spells your opponents cast that target this creature cost an
+// additional 3 life to cast" is Spec.TargetTaxes (#3860, ADR 0048's
+// addendum on target taxes): CR 601.2f's additional cost, charged by a
+// permanent other than the spell and read once the spell's targets are
+// announced. The cost-modifier engine (game.CostModifier, S28) prices
+// GENERIC MANA only, so this is the AttackTax family's sibling
+// (game/target_tax.go) rather than a modifier: the cast gate refuses a
+// caster who can't pay the life (CR 119.4) and charges it with the other
+// additional costs, the spell already on the stack; the legal-move
+// enumerator prices each target set and drops the ones the caster can't
+// afford, so neither the picker nor a bot is offered a cast that would
+// be refused; and the view names the tax beside the Dragon in the
+// picker. It is charged once however many of the spell's targets name
+// the Dragon, does not apply to the Dragon's own controller or to an
+// ability that targets it (that is ward's business), and goes away with
+// the Dragon's abilities (CR 613.1f).
 func init() {
 	Register(Spec{
 		OracleID:        "f8e17f4f-080d-4bba-bd05-ca27e94ccecc",
 		Name:            "Terror of the Peaks",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"Opponents' spells that target it do not cost an additional 3 life."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
+		TargetTaxes: []game.TargetTax{
+			OpponentsSpellsTargetingThisCostLife(3,
+				"Spells your opponents cast that target this creature cost an additional 3 life to cast."),
+		},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

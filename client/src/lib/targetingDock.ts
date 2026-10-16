@@ -135,6 +135,29 @@ function priceLine(state: TargetingState, view: GameView | null | undefined): st
   return targetPriceSummary(prices, (id) => names.get(id));
 }
 
+// lifeTaxLine is #3860's note: a permanent that charges life for a spell
+// that targets it (Terror of the Peaks, CR 601.2f). The server prices
+// each candidate (`life_taxes`) the same way it charges and the move list
+// prices, so the number is read here, never worked out. A card whose tax
+// the viewer cannot pay is already off the board's legal set; the line
+// says why, because a missing highlight explains nothing.
+export function lifeTaxLine(state: TargetingState, view: GameView | null | undefined): string {
+  const step = state.steps[state.step];
+  const taxes = step?.lifeTaxes;
+  if (!taxes || !view) return "";
+  const names = new Map<string, string>();
+  for (const c of view.battlefield.cards) names.set(c.instance_id, c.name);
+  const unpayable = new Set(step.lifeTaxesUnpayable ?? []);
+  return Object.entries(taxes)
+    .map(([id, n]) => {
+      const name = names.get(id) ?? "that permanent";
+      return unpayable.has(id)
+        ? `${name} costs ${n} life to target (you can't pay it)`
+        : `${name} costs ${n} life to target`;
+    })
+    .join(" · ");
+}
+
 // targetingDetail is everything after the sentence, " · "-separated:
 // where the walk is, how many targets are legal, the set rules, the
 // doubler, the division, the pick tally and the price.
@@ -164,6 +187,8 @@ export function targetingDetail(state: TargetingState, view?: GameView | null): 
   }
   const price = priceLine(state, view);
   if (price) parts.push(`costs ${price}`);
+  const tax = lifeTaxLine(state, view);
+  if (tax) parts.push(tax);
   return parts.join(" · ");
 }
 

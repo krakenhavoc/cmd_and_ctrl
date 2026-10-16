@@ -109,7 +109,14 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 		// above it. Proxied, the bot would pay 4 life for a Dismember
 		// with three Swamps untapped because the arithmetic called it
 		// a profit.
-		v += p.cfg.LifePayoff*float64(c.Life-c.PhyrexianLife) - st.w.LifeCostValue(life, c.Life)
+		//
+		// #3860: and from the life a target tax charges (Terror of the
+		// Peaks' "spells your opponents cast that target this creature
+		// cost an additional 3 life"). That life buys nothing either: it
+		// is the same spell at a worse price for naming the taxed
+		// permanent, so it is a pure price, and a bolt at the Dragon
+		// scores below the same bolt at a creature that is free to name.
+		v += p.cfg.LifePayoff*float64(c.Life-c.PhyrexianLife-c.TargetTaxLife) - st.w.LifeCostValue(life, c.Life)
 	}
 	if c.Loyalty != 0 {
 		// Loyalty counters are board value the evaluation already

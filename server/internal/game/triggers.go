@@ -907,7 +907,7 @@ func (g *Game) dispatchTriggerInstanceLocked(ev Event, source Card, lki Characte
 	// #662: `source` is the value copy of the permanent whose ability
 	// this is, which is the object CR 702.16b tests the quality
 	// against — not its controller.
-	src := SourceObject(source.Controller, &source)
+	src := SourceObject(source.Controller, &source).WithTrigger(tc)
 	spec := g.triggerTargetsLocked(t, tc, &source)
 	if t.Modes == nil && spec != nil &&
 		g.anyClauseUnfillableLocked(src, AnnouncedClauses(spec, nil, nil)) {

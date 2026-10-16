@@ -809,6 +809,23 @@ type Spec struct {
 	// attack_tax.go. Nil for nearly every card.
 	AttackTaxes []game.AttackTax
 
+	// TargetTaxes is a cost a permanent adds to spells that TARGET
+	// something: "Spells your opponents cast that target this creature
+	// cost an additional 3 life to cast" (Terror of the Peaks, #3860).
+	//
+	// CR 601.2f's additional costs, charged by a permanent other than
+	// the spell and read once the spell's targets are announced (CR
+	// 601.2c). The AttackTax family one verb over (ADR 0080): a static of
+	// the permanent, collected through the catalog key, gated by a
+	// designation in one accessor. CastSpell refuses a caster who can't
+	// pay it and charges it with the other additional costs; the
+	// legal-move enumerator prices each target set and drops the ones the
+	// caster can't afford; the view names each legal target's tax.
+	//
+	// Build the entries with OpponentsSpellsTargetingThisCostLife in
+	// target_tax.go. Nil for nearly every card.
+	TargetTaxes []game.TargetTax
+
 	// BlockRules are the CR 509.1b block restrictions with a
 	// PARAMETER this permanent imposes while it is on the battlefield
 	// (ADR 0045 addendum, Decision 11): "can't be blocked except by
