@@ -205,6 +205,22 @@ var (
 	// if the source is still on the battlefield as the object <Amount>
 	// names, and its owner says yes (Shirei, Shizo's Caretaker).
 	shireiReturnBody = game.DelayedBody("shirei/return-if-still-on-the-battlefield", shireiReturn)
+
+	// "You may choose to have it deal damage equal to its power to a
+	// target creature. If you do, it assigns no combat damage this turn"
+	// (Gaze of Pain, #3531): "it" is the instance's payload, and the
+	// target clause is chosen as each instance goes on the stack (ADR
+	// 0187 amendment 2026-10-16).
+	gazeOfPainBody = game.TargetedDelayedBody("gaze-of-pain/damage-equal-to-its-power", simpleBody(gazeOfPain),
+		constTargets(func() *game.TargetSpec { return TargetCreature("target creature") }))
+
+	// "You may gain life equal to its power. If you do, it assigns no
+	// combat damage this turn" (Delif's Cone, #3531).
+	delifsConeBody = game.SimpleDelayedBody("delifs-cone/gain-life-equal-to-its-power", delifsCone)
+
+	// "It assigns no combat damage this turn and you put a cube counter
+	// on this artifact" (Delif's Cube, #3531).
+	delifsCubeBody = game.SimpleDelayedBody("delifs-cube/no-combat-damage-and-a-cube-counter", delifsCube)
 )
 
 // maxManaDrainRefund bounds the refund a restored Mana Drain may add. No
