@@ -199,7 +199,15 @@ describe("a seat's playmat on the board", () => {
       /\.playmat\s*\{[^}]*position:\s*absolute;[^}]*z-index:\s*-1;[^}]*pointer-events:\s*none;/s,
     );
     expect(src).toMatch(/\.panel\s*\{[^}]*isolation:\s*isolate;/s);
-    expect(src).toMatch(/object-fit:\s*cover;/);
+    // #3934: the whole mat is shown (contained) over a blurred, filled copy.
+    expect(src).toMatch(/object-fit:\s*contain;/);
+    expect(src).toMatch(
+      /\.playmat img\.backdrop\s*\{[^}]*object-fit:\s*cover;[^}]*filter:\s*blur\(/s,
+    );
+    const r = mountPanel(gameView(MINE, THEIRS), true);
+    const imgs = r.container.querySelectorAll(".playmat img");
+    expect(imgs).toHaveLength(2);
+    expect(imgs[0].getAttribute("src")).toBe(imgs[1].getAttribute("src"));
     // The scrim is the page's own background colour, so it follows the skin.
     expect(src).toMatch(/\.playmat::after\s*\{[^}]*color-mix\(in srgb, var\(--bg\)/s);
   });
