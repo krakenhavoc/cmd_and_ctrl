@@ -257,7 +257,7 @@
     readyCount={exileReady}
     note={exileHeld > 0 ? `${exileHeld} theirs to play` : undefined}
   />
-  {#if isSelf && sideboardCards.length > 0}
+  {#if isSelf && (sideboardCards.length > 0 || seat.outside_play?.can_name)}
     <!-- ADR 0191: the cards your deck owns outside the game. Yours alone
          (the server sends a count to everyone else), face down because
          it is not a zone anyone else may look into, and it opens the

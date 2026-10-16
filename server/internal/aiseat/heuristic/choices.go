@@ -1024,7 +1024,7 @@ func (st *state) valueTakenFromGraveyard(cfg Config, ch *protocol.PendingChoiceV
 // sets. "You may reveal" takes the best card rather than none, because
 // a taken card is never worth less than nothing.
 func (st *state) valueTakenFromOutside(cfg Config, ch *protocol.PendingChoiceView, named []string) (float64, bool) {
-	if ch == nil || ch.ChooseDestination != chooseFromOutside || len(ch.Options) == 0 || st.seat == nil {
+	if ch == nil || !isOutsidePick(ch.ChooseDestination) || len(ch.Options) == 0 || st.seat == nil {
 		return 0, false
 	}
 	side := make(map[string]bool, len(st.seat.Sideboard))
@@ -1048,6 +1048,22 @@ func (st *state) valueTakenFromOutside(cfg Config, ch *protocol.PendingChoiceVie
 
 // chooseFromOutside is game.ChooseFromOutside on the wire.
 const chooseFromOutside = "outside"
+
+// The two destinations of a pick whose cards are then CAST or PLAYED from
+// outside the game rather than brought into the hand (game.
+// ChooseCastFreeFromOutside, game.ChoosePlayFromOutside, #3955).
+const (
+	chooseCastFreeFromOutside = "cast_free_outside"
+	choosePlayFromOutside     = "play_outside"
+)
+
+// isOutsidePick is whether a choose_cards destination takes cards from
+// the bot's own container outside the game, whatever it then does with
+// them. Each is priced as the take it is: a card named for a free cast
+// is worth at least what bringing it into the hand is.
+func isOutsidePick(dest string) bool {
+	return dest == chooseFromOutside || dest == chooseCastFreeFromOutside || dest == choosePlayFromOutside
+}
 
 // chooseManifest is game.ChooseManifest on the wire: the named cards
 // from the bot's own hand are manifested (Kozilek, the Broken Reality).

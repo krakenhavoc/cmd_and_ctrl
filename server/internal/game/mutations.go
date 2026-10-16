@@ -1598,6 +1598,22 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// that does not happen must not leave a card in hand wearing
 		// its back face.
 		wasFace := setFaceInZoneLocked(src, cardID, params.Face)
+		// #3955: a land played from outside the game is in no zone the
+		// card index reaches (CR 400.11c), and its entry replacements
+		// ("enters tapped", a shockland's payment, Kismet's tapped
+		// entry) read it through the index. Open the one window in
+		// which the index sees it: from here until the land lands, is
+		// refused, or its paused entry is answered (the entry finisher
+		// closes the window for that last case).
+		entryPaused := false
+		if src.Kind == ZoneOutside {
+			g.outsideEntering = cardID
+			defer func() {
+				if !entryPaused {
+					g.outsideEntering = uuid.Nil
+				}
+			}()
+		}
 		// S17 sub-PR 4: run the CR 614 replacement pipeline so
 		// enters-tapped replacements (Kismet) + enters-with-counters
 		// effects fire before the land's ETB event. Pipeline runs
@@ -1628,9 +1644,13 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
+			entryPaused = true
 			// #2167: the play is made; only its entry waits on a
 			// prompt, so the type it used is spent now.
 			g.spendPermissionTypeLocked(playerID, grantCard, grant, permType)
+			if spendsGrant {
+				g.consumeLimitedGrantLocked(playerID, grantCard, grant)
+			}
 			return nil
 		}
 		if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
@@ -1667,6 +1687,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// #2167: Muldrotha's land play spends "land" — beside the turn's
 		// land drop, which the entry above has already counted.
 		g.spendPermissionTypeLocked(playerID, grantCard, grant, permType)
+		// #3955: a land played under a one-use permission (Wish) spends
+		// it, as a spell cast through it does at the end of this function.
+		if spendsGrant {
+			g.consumeLimitedGrantLocked(playerID, grantCard, grant)
+		}
 		// Playing a land is a special action (CR 116.2a); the player
 		// keeps priority and CR 117.5 drains any landfall-style
 		// triggers onto the stack here rather than at the next wrap.
@@ -3591,6 +3616,22 @@ func (g *Game) castSourceZoneLocked(p *Player, cardID uuid.UUID, fromZone string
 		// even scope the cast to this player — CastSpell checks the
 		// per-card permission before it will move anything.
 		return g.Exile, nil
+	case ZoneOutside:
+		// #3955 (ADR 0198's 2026-10-16 amendment): the caster's own
+		// container of cards outside the game. Like exile this answers
+		// "which pile" only; a cast from it needs a live permission
+		// naming this card (validateCastPathLocked), and nothing a card
+		// prints opens it. The owner's pile and nobody else's: CR 400.11a
+		// puts a card outside the game with the player who owns it, and
+		// ADR 0167 section 5 closes it to whoever controls this player's
+		// turn.
+		if !g.outsidePoolOpenLocked(p.ID) {
+			return nil, ErrCardNotFound
+		}
+		if p.Sideboard != nil && p.Sideboard.Contains(cardID) {
+			return p.Sideboard, nil
+		}
+		return nil, ErrCardNotFound
 	default:
 		return nil, ErrZoneNotFound
 	}

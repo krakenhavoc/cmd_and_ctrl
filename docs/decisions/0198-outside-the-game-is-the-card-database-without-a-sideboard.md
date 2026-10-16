@@ -90,7 +90,7 @@ New in this change, each Full:
 - **Coax from the Blind Eternities:** "You may reveal an Eldrazi card you own from outside the game or choose a face-up Eldrazi card you own in exile. Put that card into your hand." The player is first offered their face-up Eldrazi cards in exile, with "none" meaning "look outside the game instead"; declining that leads to the outside pick. The two branches are the same choice asked in order.
 - **Karn, the Great Creator:** the static (`OpponentsSourcesCantActivate` over artifacts), the +1 (until your next turn, up to one target noncreature artifact becomes an artifact creature with base power and toughness equal to its mana value) and the −2, which is Coax's shape for artifacts.
 
-**Not in this change: Spawnsire of Ulamog's {20}.** "Cast any number of Eldrazi spells from among cards you own outside the game without paying their mana costs" needs a cast from the outside-the-game container: `castSourceZoneLocked`, the cast-permission lookup, the view's castable flags and the zone browser's cast button all assume a zone a `ZoneRef` reaches, and none of them reaches `ZoneOutside`. That is its own seam, filed as [#3955](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3955); Spawnsire keeps its caveat until it lands. Wish ("you may play a card you own from outside the game this turn") waits on the same seam.
+**Not in this change: Spawnsire of Ulamog's {20}.** "Cast any number of Eldrazi spells from among cards you own outside the game without paying their mana costs" needs a cast from the outside-the-game container: `castSourceZoneLocked`, the cast-permission lookup, the view's castable flags and the zone browser's cast button all assume a zone a `ZoneRef` reaches, and none of them reaches `ZoneOutside`. That is its own seam, filed as [#3955](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3955); Spawnsire keeps its caveat until it lands. Wish ("you may play a card you own from outside the game this turn") waits on the same seam. *Built by the amendment of 2026-10-16 at the end of this ADR.*
 
 ## Compatibility
 
@@ -106,3 +106,65 @@ New in this change, each Full:
 - **`internal/lobby`:** the route's gates (spectator, another seat, a closed pick) and its filtering.
 - **Cards:** each wish in a deck with no sideboard, Extrapolate's pair, and the new cards.
 - **Client:** the picker.
+
+---
+
+## Amendment (2026-10-16, #3955): a card outside the game can be cast or played
+
+**Status:** Accepted · 2026-10-16 · S76. **Issue:** [#3955](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3955), filed by the #3858 builder, assigned to the owner. **Numbering:** an amendment, so no number was taken. **Builds on:** [ADR 0066](0066-granted-cast-and-play-permissions.md) (a permission is a statement about an object), [ADR 0099](0099-discover.md) §4 and #3270 (a free cast during a resolution, "now or never"), [ADR 0191](0191-a-sideboard-is-the-outside-the-game-pool.md) (the container).
+
+### Context
+
+Both pools end with the chosen card in `Player.Sideboard`, a `ZoneOutside` container, and nothing could cast from it: `castZoneFromWire` had no value for it, `castSourceZoneLocked` no case, a grant is made through the card index (which deliberately does not cover the container, CR 400.11c), the view stamped cast surfaces for zones only, the sideboard tab was read only and the enumerator walked zones. Two printed cards waited: **Spawnsire of Ulamog**, "{20}: Cast any number of Eldrazi spells from among cards you own outside the game without paying their mana costs", and **Wish**, "You may play a card you own from outside the game this turn".
+
+### Decision
+
+**1. A cast from outside the game is a per-instance permission over the container, claimed with an ordinary `cast_spell`.** Nothing about the cast changes shape; the container becomes one more place a `CastPermission` can name.
+
+- `cast_spell { from_zone: "outside" }` (`castZoneFromWire`). `castSourceZoneLocked` resolves it to the **caster's own** container and refuses it while another player makes their decisions (ADR 0167 §5). It answers "which pile", never "may you".
+- **Only a permission opens it.** A card can declare nothing that does: `cardOpensZoneLocked` answers false for `ZoneOutside`, and `effects.Register` panics on a `CastableZones` that names it, as it does for exile. A card-level declaration would open a whole sideboard to every copy of the card, which is Wish's permission without Wish.
+- **The grant doors** are `FreeCastFromOutsideForEffect` and `PlayFromOutsideForEffect` (`game/cast_outside.go`). They look in the holder's container, because `GrantCastPermissionOverCardForEffect` cannot (it finds the card by index), and refuse a card the holder does not own ("a card you own"). The permission is an ordinary `ScopeCards` permission with `Zone: ZoneOutside`; the epoch it names is the card's, as ever (CR 400.7), so a card that is cast and comes back is a new object.
+- **The sweep** finds the named card in the container (`anyNamedObjectStillThereLocked` falls back to `outsideCardZoneLocked`), so a live grant is not dropped at the next cleanup as "the card is gone".
+
+**2. The two grants.**
+
+| | Spawnsire's cast | Wish's right |
+| --- | --- | --- |
+| scope | `ScopeCards`: one permission per picked card | `ScopeStanding`: one permission over the whole container, `CastsLeft: 1` |
+| chosen | when the ability resolves (the printed text says "cast any number ... from among cards you own") | **when the card is played**, not when Wish resolves (section 6) |
+| price | `Cost: "{0}"` (X locked at 0, additional costs still paid, CR 118.9 / 107.3b) | the card's own cost |
+| timing | `TimingFlash` (CR 608.2g: the cast is part of the resolution) | `TimingNormal` |
+| a land | refused (`CastOnly`: a land is played, not cast, CR 305.1) | played, and it is the turn's land drop (it spends the right) |
+| window | pass-closed: `LapseOnPass: LapseStaysOutside` | until end of turn, spent by the first card played |
+| not used | the card stays outside the game | the card stays outside the game |
+
+`LapseStaysOutside` is `LapseStaysInHand`'s sibling: nothing moves when the window shuts, the grant is just gone. Nothing leaves the container except to the stack (or the battlefield, for a land), as a cast does (CR 601.2a).
+
+**3. The pick (Spawnsire).** `effects.PlayFromOutside` asks the owner through `QueueOutsidePickForEffect`, so both pools apply unchanged: the sideboard as a `choose_cards`, the database as an `outside_collection` whose answer mints the named cards. `OutsidePickPrompt` gained `Destination` (default `outside`); the two new destinations are `cast_free_outside` and `play_outside`. Spawnsire's pick is "any number": `Min 0`, `Max game.OutsideAnyNumber` (100), a bound on the size of an answer, not on the game. Each picked card carries its **own** grant, so casting one leaves the others open (a grant naming all of them would be spent by the first cast), and the holder's next priority pass ends every one together. This is `grantFreeHandCastsFrom`'s shape for the container, and it is the same sandbox simplification every "you may cast it" a resolution offers takes (ADR 0066, ADR 0091): the casts are ordinary `cast_spell`s taken after the pick rather than a frame inside the resolution.
+
+**4. A land played from outside the game keeps its entry replacements.** The entry pipeline (`ReplacementEvent`, the self-replacements, a shockland's payment, Kismet) reads the entering land through `LookupCardForEffect`, which cannot see the container. `Game.outsideEntering` opens one window, for the land being played, from the replacement pass until it lands (or is refused, or its paused entry is answered); the card index consults it only when the lookup would otherwise miss (`locateCardLocked`). Cloned for undo, not snapshotted (`enteringTokens`' posture). Temple of Abandon enters tapped as a replacement (no tap event); a shockland asks and resumes.
+
+**5. The view, the enumerator, the bot and the client.**
+
+- The view stamps a card in the **owner's** sideboard with the same cast surface a graveyard or exile card carries (`castable_here`, `alternative_costs`, `cast_prices`, `legal_targets`, `clauses`, `exile_play`) through the one `castStampsFor`, for a card a live permission opens (`stampOutsideCasts`). It reaches the owner alone, because the sideboard does. `liveCardForView` and `castSourceOf` fall back to the read-only `LookupOutsideCardForEffect`, which exists for the surfaces that SHOW or CHECK a card and which no effect may use. The auto-tap preview reads the caller's own container card the same way and answers 404 for anyone else's.
+- The enumerator walks the seat's own container (only when something is granted) and offers the cast at every price the engine accepts, labelled "... from outside the game". A collection pick that says "any number" also offers the whole suggestion list as one answer, which a pair-capped expansion would never reach.
+- The heuristic prices a pick over its own sideboard or the database as the take it is for all three destinations, and finds a card it owns outside the game when it prices a cast of it. A free cast from outside is not charged a card in hand.
+- The client's sideboard tab shows a button on each card the server marks `castable_here` ("cast free", "play", "cast") that hands the card to the one cast chain with `from_zone: "outside"`. Answering a `cast_free_outside` or `play_outside` pick waits for the frame carrying the grants, then goes straight into the cast chain when exactly one card is castable and opens the tab otherwise, so the player never has to find it. An "any number" database pick may take the same name more than once (a player may own two copies of an Eldrazi): the picker adds a copy per click and a row's "-" takes one back (`allowsRepeatedNames`: a ceiling above two; a pair keeps its toggle, since no set rule asks for more than two names).
+
+**6. Wish names its card when it is played, not when it resolves.** (This replaces the first cut of this amendment, which named the card at resolution in both pools. That was weaker than printed: a Wish followed by a draw could not use what it drew, so grading Wish Full would have been a false grade.) "You may play a card you own from outside the game this turn" is a permission that names no card. `GrantOutsidePlayRight` stores `OutsidePlayRightPermission` when Wish resolves: `ScopeStanding`, `CastsLeft: 1`, until end of turn, the card's own timing and cost. A standing permission covers a card that does not exist yet, which is the point.
+
+- **A sideboard pool** needs nothing more. Every card in the container is castable or playable under the right, so the sideboard tab shows the button on all of them, and the first card played, a land included, spends it (`consumeLimitedGrantLocked`; the land branch of `castSpellLocked` now spends a one-use permission as a spell cast does).
+- **The database pool** names its card at that moment with the `outside_play` action (`actions.TypeOutsidePlay`, no params, `Game.NameOutsideCardToPlay`). It opens the ordinary `outside_collection` pick (any card in the database, `Min 0`, `Max 1`, destination `play_outside`); answering mints the card into the container, where the standing right already covers it, and the client starts the cast or the land play at once (the one granted card goes straight into the cast chain). The action is taken while holding priority, at any time the right is live: the card is then cast at whatever timing *it* allows, so a sorcery named on another player's turn is minted and waits for its window (it can be cast from the tab later this turn).
+- **Cancelling the pick spends nothing.** The right is spent by a card played, not by a card named; a declined pick mints nothing, and a named card that is never played stays outside the game with the right still live until end of turn.
+- **A sideboard pool is never asked to name a card** (`CanNameOutsideCardLocked` is false when `HasSideboard`; the action is refused with `ErrNoPlayPermission`), because naming a database card would add a card the deck does not own.
+- **Wire:** `PlayerView.outside_play { source_name, can_name }`, owner only, present while the right is live; `can_name` is true for the database pool. The enumerator offers the action (`Kind: special_action`, `type: outside_play`) to a database-pool seat holding the right whose container is empty. The engine accepts it whenever the right is live; the empty container is bot policy, so an automated seat that named a sorcery it cannot cast yet does not name a fresh card at every priority. A human has the button regardless (sideboard tab and pile).
+- The per-card `PlayFromOutsideForEffect` grant of the first cut is gone; nothing plays one card by name any more.
+
+### Not changed
+
+- The pool and its rules (sections 1 to 6 of the ADR above), the controlled-turn rule and the minting. A card the effect leaves outside stays in the container.
+- No snapshot field: a `CastPermission` already persists `zone` and `lapseOnPass` as strings, and a permission naming the container restores like any other. `SnapshotSchemaVersion` is unchanged.
+
+### Validation
+
+`game` (cast, land play, lapse, end-of-turn sweep, independence of the grants, ownership, controlled-turn, no card-level opening), `protocol` (the owner's stamps and nobody else's), `legal` (every move offered is accepted, a play pays, a cast-only grant offers no land, "any number"), `aiseat/heuristic`, `lobby` (the preview), `cards/effects` (Wish and Spawnsire over both pools, Wish choosing at play time, the right spent once, a cancelled naming spending nothing, a Temple entering tapped, a shockland pausing and resuming) and the client (the tab's button, the Wish button and pile, the any-number picker with repeated names, the request that opens the cast).

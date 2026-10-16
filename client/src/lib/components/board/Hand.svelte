@@ -153,6 +153,12 @@
   // the reconcile, the sorts, the storage and its failures — is
   // handOrder.ts.
   const gameID = $derived(snap?.id ?? null);
+  // ADR 0199: while the viewer plays with their hand revealed every card
+  // is known to every seat, and the seat's HAND OPEN badge says so once;
+  // a count on each card would only repeat it.
+  const ownHandRevealed = $derived(
+    isSelf && (snap?.seats.find((s) => s.id === viewerID)?.hand_revealed?.length ?? 0) > 0,
+  );
 
   // #671: seat IDs on a hand card's known_by_seats, as names.
   function knownByNames(ids: string[]): string {
@@ -743,7 +749,7 @@
                 : undefined}
           />
         </div>
-        {#if isSelf && (c.known_by_seats?.length ?? 0) > 0}
+        {#if isSelf && !ownHandRevealed && (c.known_by_seats?.length ?? 0) > 0}
           <!-- #671: which other seats currently know this card. -->
           <span class="known-by" title="Known by {knownByNames(c.known_by_seats ?? [])}">
             {c.known_by_seats?.length}

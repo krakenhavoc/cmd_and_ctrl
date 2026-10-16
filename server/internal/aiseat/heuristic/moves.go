@@ -874,6 +874,13 @@ func (st *state) castSource(id string) *protocol.CardView {
 				return &st.seat.Library.Cards[i]
 			}
 		}
+		// #3955: a card the bot owns outside the game and may cast or
+		// play under a permission (Spawnsire of Ulamog, Wish).
+		for i := range st.seat.Sideboard {
+			if st.seat.Sideboard[i].InstanceID == id {
+				return &st.seat.Sideboard[i]
+			}
+		}
 	}
 	return nil
 }

@@ -451,8 +451,8 @@ func TestDeadpoolExchangesAsHeEnters(t *testing.T) {
 	if got := tbActivatedLabels(t, g, fam); !slices.Equal(got, []string{deadpoolSacLabel}) {
 		t.Errorf("the Familiar has Deadpool's sacrifice ability; rows = %v", got)
 	}
-	if got := len(game.ManaAbilitiesForCard(gaLayered(t, g, dp))); got != 1 {
-		t.Errorf("Deadpool has the Familiar's mana ability; %d rows", got)
+	if got := len(game.ManaAbilitiesForCard(gaLayered(t, g, dp))); got != 0 {
+		t.Errorf("the Familiar prints no mana ability, so Deadpool has none; %d rows", got)
 	}
 	if d := gaLayered(t, g, dp); d.CurrentPower() != 5 || d.TextBoxFrom() != "Filigree Familiar" {
 		t.Errorf("Deadpool is still a 5/3 with the Familiar's text; got %d power, from %q", d.CurrentPower(), d.TextBoxFrom())

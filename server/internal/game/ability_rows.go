@@ -295,6 +295,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "CastTimings", fallback: "Changes when spells can be cast", ownLabel: true},
 	{field: "GrantedAlternativeCosts", elemLabel: grantedAlternativeCostRow},
 	{field: "LibraryTopVisible", label: libraryTopRows},
+	{field: "HandsRevealed", label: handsRevealedRows},
 }
 
 // staticRowSlotIndex is each staticRowSlots entry's field index in
@@ -416,6 +417,16 @@ func libraryTopRows(v reflect.Value) []string {
 		return []string{"You may look at the top card of your library any time."}
 	case LibraryTopRevealed:
 		return []string{"Play with the top card of your library revealed."}
+	}
+	return nil
+}
+
+func handsRevealedRows(v reflect.Value) []string {
+	switch scope, _ := v.Interface().(HandRevealScope); scope {
+	case HandRevealOpponents:
+		return []string{"Your opponents play with their hands revealed."}
+	case HandRevealEachPlayer:
+		return []string{"Players play with their hands revealed."}
 	}
 	return nil
 }

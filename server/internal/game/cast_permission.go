@@ -1913,6 +1913,12 @@ func (g *Game) sweepCastPermissionsLocked(endOfTurn bool) {
 func (g *Game) anyNamedObjectStillThereLocked(perm CastPermission) bool {
 	for _, ref := range perm.Cards {
 		zone := g.findCardZoneLocked(ref.ID)
+		if zone == nil && perm.Zone == ZoneOutside {
+			// #3955: a card outside the game is in no zone the index
+			// reaches (CR 400.11c), so a permission over one finds it in
+			// the containers.
+			zone = g.outsideCardZoneLocked(ref.ID)
+		}
 		if zone == nil || zone.Kind != perm.Zone {
 			continue
 		}

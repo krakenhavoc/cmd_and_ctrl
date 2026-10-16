@@ -2483,6 +2483,14 @@ type PlayerView struct {
 	// PUBLIC, the way a hand's size is; absent for a seat with none.
 	SideboardCount int `json:"sideboard_count,omitempty"`
 
+	// OutsidePlay is the seat's live "you may play a card you own from
+	// outside the game this turn" right (Wish, #3955): present while it
+	// is held and unspent. OWNER-ONLY, like the sideboard. The card is
+	// chosen when the player plays it: with a sideboard its cards carry
+	// the cast surface directly; without one `can_name` is true and the
+	// `outside_play` action opens the pick over the card database.
+	OutsidePlay *OutsidePlayView `json:"outside_play,omitempty"`
+
 	// Keywords are the abilities this PLAYER has right now
 	// (CR 702.11d, CR 702.16i) — engine tokens, "hexproof" or
 	// "protection from everything". Derived grants from a controlled
@@ -2556,6 +2564,13 @@ type PlayerView struct {
 	// is set, `cant_play_lands` carries the same clause too, because
 	// the ban refuses every land out of the hand.
 	CantPlayFromHand string `json:"cant_play_from_hand,omitempty"`
+
+	// HandRevealed names why this player plays with their hand revealed
+	// right now ("Telepathy", "Stromgald Spy"), or is empty (ADR 0199,
+	// #3953). Public: the cards themselves reach every seat through the
+	// hand's projection while it is set, and this is the seat's banner
+	// that says why.
+	HandRevealed []string `json:"hand_revealed,omitempty"`
 
 	// CantLose lists the causes that can't make this player lose the
 	// game right now ("life", "empty_draw", "poison",
@@ -5336,6 +5351,9 @@ func ViewOfGame(g *game.Game) GameView {
 		anyGrant := g.AnyCastPermissionsForEffect()
 		stampLegalTargets(g, view.Seats, anyGrant)
 		if anyGrant {
+			// #3955: the cards a seat owns outside the game that a
+			// permission lets it cast or play.
+			stampOutsideCasts(g, view.Seats)
 			// Exile has no owner, so no seat's answer is the public
 			// one and every holder is filed per seat (uuid.Nil skips
 			// nobody).
@@ -5357,6 +5375,7 @@ func ViewOfGame(g *game.Game) GameView {
 			}
 		}
 		stampLibraryTop(g, view.Seats)
+		stampHandRevealed(view.Seats)
 		stampDiscardByOpponent(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
 		stampZoneAbilities(g, view.Seats, &view.Exile)
@@ -6898,8 +6917,14 @@ func castStampsBaseFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, 
 		}
 	}
 	switch kind {
-	case game.ZoneGraveyard, game.ZoneLibrary:
+	case game.ZoneGraveyard, game.ZoneLibrary, game.ZoneOutside:
+		// ZoneOutside (#3955): the owner's sideboard card under a cast
+		// permission, the one way it is ever a cast surface.
 		out.CastableHere = haveLive && typesOK && castableNow(g, caster, gated, kind, grant, out.CantCast, offers)
+		if kind == game.ZoneOutside && haveLive {
+			// The sideboard tab's price tag, as the exile strip's.
+			out.CastPrices = viewOfCastPrices(g, caster, live, offers, kind)
+		}
 	case game.ZoneExile:
 		// #1389: exile joins them, for the castable-from-exile strip.
 		// A seat reaches this only through stampGrantedPermissions,
@@ -7422,6 +7447,8 @@ func delveZoneWire(kind game.ZoneKind) string {
 		return "exile"
 	case game.ZoneLibrary:
 		return "library"
+	case game.ZoneOutside:
+		return "outside"
 	}
 	return ""
 }
@@ -9762,6 +9789,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		CantGainLife:        g.PlayerCantGainLifeLocked(p),
 		CantPlayLands:       g.LandPlayBanFor(p.ID),
 		CantPlayFromHand:    g.HandPlayBanFor(p.ID),
+		HandRevealed:        g.HandRevealedLocked(p.ID),
 		CantLose:            lossCauseStrings(g.CantLoseCausesForEffect(p)),
 		CantWin:             g.CantWinForEffect(p),
 		EndGates:            viewOfGameEndGates(g.GameEndGatesForEffect(p)),
@@ -10189,10 +10217,18 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// else's: not an opponent, not a spectator, not the admin view,
 		// and not the controller of the owner's turn (CR 723.4).
 		out.Sideboard = nil
+		// #3955: and so is the Wish right (a controller of the seat's
+		// turn is offered nothing from outside the game).
+		if p.ID != viewerID {
+			out.OutsidePlay = nil
+		}
 		if p.ID == viewerID && len(p.Sideboard) > 0 {
 			out.Sideboard = make([]CardView, len(p.Sideboard))
 			for i, c := range p.Sideboard {
 				out.Sideboard[i] = redactCardForViewer(c, isKnower(c))
+				// #3955: the per-face cast stamps of a card the owner
+				// may cast from here, resolved to the owner's own.
+				applyFaceCastStampsFor(&out.Sideboard[i], viewerID, out.Sideboard[i].KnownByYou, playingFor)
 			}
 		}
 		// Opponent hand: strip only UNREVEALED cards (seated-viewer
@@ -11612,6 +11648,59 @@ func stampGrantedPermissions(g *game.Game, seats []PlayerView, zone *ZoneView, l
 	}
 }
 
+// OutsidePlayView is a seat's Wish right as the wire carries it.
+type OutsidePlayView struct {
+	// SourceName is the card that granted it ("Wish").
+	SourceName string `json:"source_name"`
+	// CanName is true when the seat's pool is the card database, so the
+	// `outside_play` action is how it names the card to play.
+	CanName bool `json:"can_name,omitempty"`
+}
+
+// stampOutsideCasts files the cast surface of a seat's cards outside the
+// game (#3955, ADR 0198's 2026-10-16 amendment): for each card in the
+// seat's sideboard that a live permission lets the seat cast or play, the
+// same price list, target clauses and `castable_here` bit a graveyard or
+// exile card carries, through the same castStampsFor.
+//
+// Written straight onto the card rather than filed per seat: the
+// sideboard reaches its OWNER alone (FilterViewFor drops it for every
+// other viewer, ADR 0191 section 7), so there is no second reader whose
+// answer could differ. The seat is always the pile's owner, because a
+// permission over a container is the holder's own (grantOutsideCastLocked).
+//
+// Runs under the read lock ViewOfGame already holds.
+func stampOutsideCasts(g *game.Game, seats []PlayerView) {
+	for si := range seats {
+		seat := &seats[si]
+		caster, err := uuid.Parse(seat.ID)
+		if err != nil {
+			continue
+		}
+		if right := g.OutsidePlayRightLocked(caster); right != nil {
+			seat.OutsidePlay = &OutsidePlayView{
+				SourceName: right.SourceName,
+				CanName:    g.CanNameOutsideCardLocked(caster),
+			}
+		}
+		for ci := range seat.Sideboard {
+			c := &seat.Sideboard[ci]
+			live, ok := liveCardForView(g, c)
+			if !ok {
+				continue
+			}
+			grant := grantedCast(g, caster, live, game.ZoneOutside)
+			if grant == nil {
+				continue
+			}
+			s := castStampsFor(g, caster, c, activeFace(c), game.ZoneOutside, grant)
+			s.ExilePlay = exilePlayViewOf(g, live, grant)
+			s.applyTo(c)
+			stampCastableFaces(g, caster, c, game.ZoneOutside, grant, false)
+		}
+	}
+}
+
 // exilePlayViewOf projects one permission over one card into the
 // `exile_play` wire shape. One constructor, because the field is
 // stamped twice now: publicly, for whichever live permission the
@@ -11660,7 +11749,13 @@ func liveCardForView(g *game.Game, c *CardView) (game.Card, bool) {
 	if err != nil {
 		return game.Card{}, false
 	}
-	return g.LookupCardForEffect(id)
+	if live, ok := g.LookupCardForEffect(id); ok {
+		return live, true
+	}
+	// #3955: the owner's sideboard card under a cast permission. The
+	// lookup is read-only and only the view and the enumerator use it
+	// (CR 400.11c is about effects, which cannot reach the container).
+	return g.LookupOutsideCardForEffect(id)
 }
 
 // cantCastReason is the printed clause behind a refused cast, for the
@@ -11805,6 +11900,35 @@ func stampLibraryTop(g *game.Game, seats []PlayerView) {
 		}
 		for _, k := range knowers {
 			top.knowers[k.String()] = true
+		}
+	}
+}
+
+// stampHandRevealed makes every card in a hand its owner plays with
+// revealed (Telepathy, Revelation, Stromgald Spy; ADR 0199) known to
+// every seat, the way stampLibraryTop does for a revealed top card and
+// for its reasons: the view runs under a read lock, and the set of
+// cards is whatever is in the hand NOW, so a card drawn while the
+// effect lasts is shown and nothing is remembered once it ends.
+//
+// Reads the seat's own HandRevealed, which the seat projection has
+// already derived, so the battlefield is walked once per seat.
+func stampHandRevealed(seats []PlayerView) {
+	for si := range seats {
+		seat := &seats[si]
+		if len(seat.HandRevealed) == 0 || len(seat.Hand.Cards) == 0 {
+			continue
+		}
+		for ci := range seat.Hand.Cards {
+			c := &seat.Hand.Cards[ci]
+			if c.knowers == nil {
+				c.knowers = make(map[string]bool, len(seats))
+			}
+			for _, other := range seats {
+				if other.ID != "" {
+					c.knowers[other.ID] = true
+				}
+			}
 		}
 	}
 }
@@ -12332,6 +12456,12 @@ func castSourceOf(g *game.Game, caster uuid.UUID, instanceID string) game.Target
 	// the target walk only reads it under the lock the view holds.
 	c, ok := g.LookupCardPtrForEffect(id)
 	if !ok {
+		// #3955: a card outside the game is in no indexed zone, and its
+		// colours still decide whether a protected creature is a legal
+		// target of the spell it would become.
+		if oc, found := g.LookupOutsideCardForEffect(id); found {
+			return game.SourceObject(caster, &oc)
+		}
 		return game.SourceChooser(caster)
 	}
 	return game.SourceObject(caster, c)

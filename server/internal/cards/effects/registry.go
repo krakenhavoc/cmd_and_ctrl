@@ -241,6 +241,10 @@ func Register(spec Spec) {
 	// game.CastPermission (ADR 0066). Refused at boot so the retired
 	// shape cannot come back through a card file.
 	for _, z := range spec.CastableZones {
+		if z == game.ZoneOutside {
+			panic(fmt.Sprintf("effects.Register: %q declares ZoneOutside in CastableZones — a cast from outside the game is a per-instance game.CastPermission (#3955, ADR 0198), never a card-level declaration",
+				spec.Name))
+		}
 		if z == game.ZoneExile {
 			panic(fmt.Sprintf("effects.Register: %q declares ZoneExile in CastableZones — an exile cast is a per-instance game.CastPermission, never a card-level declaration (#659, ADR 0066)",
 				spec.Name))

@@ -158,7 +158,12 @@ func (g *Game) queueCollectionPickLocked(p OutsidePickPrompt) bool {
 	// pairs to offer, and never fewer than the cap.
 	limit := collectionSuggestionCap
 	if max > limit {
+		// Bounded: an "any number" pick (OutsideAnyNumber) does not
+		// need the whole database listed, only enough to start from.
 		limit = max
+		if limit > collectionSearchCap {
+			limit = collectionSearchCap
+		}
 	}
 	suggestions := CollectionSuggestionsForEffect(p.Match, limit)
 	if len(suggestions) == 0 {
@@ -173,7 +178,7 @@ func (g *Game) queueCollectionPickLocked(p OutsidePickPrompt) bool {
 		Reason:                p.Question,
 		ChooseMin:             min,
 		ChooseMax:             max,
-		ChooseDestination:     ChooseFromOutside,
+		ChooseDestination:     p.outsideDestination(),
 		CollectionSuggestions: suggestions,
 		// A library search's frame: Pred is the per-card filter, Validate
 		// the set rule, Then the continuation. Reused so the closure

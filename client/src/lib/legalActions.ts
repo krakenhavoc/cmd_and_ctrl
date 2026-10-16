@@ -39,7 +39,14 @@ import type { AutopassVerdict } from "./autopassDecision";
 import { viewForSeat } from "./playingAs";
 
 /** A zone a card can be "ready" in — the piles, the hand, the table. */
-export type ReadyZone = "hand" | "graveyard" | "exile" | "library" | "command" | "battlefield";
+export type ReadyZone =
+  | "hand"
+  | "graveyard"
+  | "exile"
+  | "library"
+  | "command"
+  | "battlefield"
+  | "outside";
 
 /** A digested move kind: never pass, choice or mulligan. */
 export type ReadyKind = LegalSourceView["kinds"][number];
@@ -248,6 +255,8 @@ function cardsIn(view: GameView, zone: ReadyZone, seatID: string | undefined): C
   }
   if (seatID === undefined) return [];
   const seat = view.seats?.find((s) => s.id === seatID);
+  // #3955: the owner's cards outside the game (a flat list, not a pile).
+  if (zone === "outside") return seat?.sideboard ?? [];
   return seat?.[zone]?.cards ?? [];
 }
 
@@ -915,7 +924,15 @@ export function actionableCount(
   seatID: string,
 ): number {
   if (!view || !legal.known) return 0;
-  const zones: ReadyZone[] = ["hand", "battlefield", "graveyard", "exile", "library", "command"];
+  const zones: ReadyZone[] = [
+    "hand",
+    "battlefield",
+    "graveyard",
+    "exile",
+    "library",
+    "command",
+    "outside",
+  ];
   let n = 0;
   for (const zone of zones) {
     for (const c of cardsIn(view, zone, seatID)) {
