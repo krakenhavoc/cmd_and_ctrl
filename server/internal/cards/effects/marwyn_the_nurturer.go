@@ -33,7 +33,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, "Elf")
+				return b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, source.TextSubtype("Elf"))
 			}, "Marwyn — put a +1/+1 counter on Marwyn", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 		ManaAbilities: []ManaAbility{{

@@ -23,9 +23,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OptionalDraw(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b17AnotherNontokenCreatureDied(ev, source, g)
-			}, "Harvester of Souls — draw a card", Do(DrawCards{N: 1})), "Harvester of Souls — draw a card?"),
+			}, "Harvester of Souls — draw a card", Do(DrawCards{N: 1})), "Harvester of Souls — draw a card?", 1),
 		},
 	})
 }

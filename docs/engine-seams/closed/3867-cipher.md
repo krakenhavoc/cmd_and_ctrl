@@ -1,0 +1,10 @@
+---
+title: "Cipher: a spell encoded on a creature, cast again on combat damage"
+date: 2026-10-16
+issues: [3867]
+---
+**Cipher: a spell encoded on a creature, cast again on combat damage** (#3867, CR 702.99, [ADR 0093](../../decisions/0093-abilities-granted-to-other-permanents.md)'s 2026-10-16 amendment) — `game.KeywordCipher` is read off the resolving card, so a card file declares it in `PrintedKeywords` and nothing else.
+- **Encoding.** The spell ability is the spell's last instruction, asked once every prompt its own text opened is answered: a keyed option pick (a restore point) of the creatures the spell's controller controls, or "Don't encode it". The resolution tail waits on it (`resolutionTail.cipherAsked`, carried by the snapshot). Encoded, the card is exiled from the stack and `Card.EncodedOn` names the creature object {instance, epoch}, with `Card.EncodedAt` its timestamp; both are additive snapshot fields, cleared by `MoveCard`. It is not `ExiledWith`: the creature did not exile the card. A copy of the spell is never asked.
+- **The creature's ability** is a layer-6 grant from the card in exile (`cipherContinuousEffectsLocked`, bundle `cipher/encoded`, its text shown on the creature with the card as grantor), at the encoding's timestamp: a newer "loses all abilities" takes it, an older one does not. Each grant derives one trigger about its own card (`cipherTriggersFor`, beside the keyword triggers), controlled by the creature's controller. On combat damage to a player it offers a free copy of the card, if the card is still in exile, through `CopyCardsAndOfferCastsForEffect`.
+- **Ending.** The creature leaving the battlefield ends the encoding (a new epoch), the card leaving exile ends it, and a change of controller or type does not (CR 702.99c).
+- **Cards** (15, all Full): Trait Doctoring, Last Thoughts, Arcane Heist, Call of the Nightwing, Hands of Binding, Hidden Strings, Mental Vapors, Midnight Recovery, Paranoid Delusions, Shadow Slice, Stolen Identity, Undercity Plague, Voidwalk, Whispering Madness and Writ of Return.

@@ -702,6 +702,11 @@ func dispatch(g *game.Game, a Action) error {
 			// ordinary "decline them all" case, and absent on a card
 			// that offers none is every cast the engine has ever had.
 			OptionalCosts []int `json:"optional_costs,omitempty"`
+			// ADR 0202 (#1989) — the cards in the caster's hand revealed
+			// to splice onto this spell (CR 702.47a), in the order their
+			// effects happen. A spliced text's targets ride `targets`
+			// with `splice` naming the card (1-based, in this order).
+			Splices []string `json:"splices,omitempty"`
 			// ADR 0100 §2 — which branch of an either/or additional
 			// cost is paid, as an index into the card's branches
 			// ("sacrifice an artifact or discard a card"). Required on
@@ -842,6 +847,13 @@ func dispatch(g *game.Game, a Action) error {
 		if len(p.OptionalCosts) > 0 {
 			params.OptionalCosts = append([]int(nil), p.OptionalCosts...)
 		}
+		for i, raw := range p.Splices {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return fmt.Errorf("cast_spell splices[%d]: %w", i, err)
+			}
+			params.Splices = append(params.Splices, id)
+		}
 		if p.CostBranch != nil {
 			b := *p.CostBranch
 			params.CostBranch = &b
@@ -914,7 +926,7 @@ func dispatch(g *game.Game, a Action) error {
 		if len(p.Targets) > 0 {
 			params.Targets = make([]game.TargetRef, 0, len(p.Targets))
 			for i, t := range p.Targets {
-				ref, err := t.toRef()
+				ref, err := t.toCastRef()
 				if err != nil {
 					return fmt.Errorf("cast_spell targets[%d]: %w", i, err)
 				}
@@ -1057,7 +1069,8 @@ func dispatch(g *game.Game, a Action) error {
 		if err := requireCardController(g, overrideCaller(a), instanceID); err != nil {
 			return err
 		}
-		return g.AddCounter(instanceID, p.Name, p.Delta)
+		// #3942: the seat making the edit puts the counters.
+		return g.AddCounterBy(overrideCaller(a), instanceID, p.Name, p.Delta)
 
 	case TypeSetCommanderDamage:
 		// `from` is a COMMANDER CARD instance ID since S25 (#77); it
@@ -2833,6 +2846,10 @@ type castTargetWire struct {
 	// by walking the clauses in order.
 	Slot int `json:"slot,omitempty"`
 	Mode int `json:"mode,omitempty"`
+	// Splice names the spliced text this pick answers (ADR 0202,
+	// CR 702.47d): the 1-based position of its card in the cast's
+	// `splices`. Absent (0) is the spell's own text.
+	Splice int `json:"splice,omitempty"`
 }
 
 // damageAssignmentParam is one {blocker_id, amount} pair from a
@@ -2892,9 +2909,20 @@ func parseDistribution(distribution map[string]int) (map[uuid.UUID]int, error) {
 }
 
 func (t castTargetWire) toRef() (game.TargetRef, error) {
-	ref := game.TargetRef{Kind: game.TargetRefKind(t.Kind), Slot: t.Slot, Mode: t.Mode}
-	if ref.Slot < 0 || ref.Mode < 0 {
-		return game.TargetRef{}, fmt.Errorf("slot / mode must not be negative")
+	// ADR 0202: only a cast splices; anywhere else a spliced text's
+	// target is a payload that meant something else.
+	if t.Splice != 0 {
+		return game.TargetRef{}, fmt.Errorf("splice names a spliced text, which only a cast has")
+	}
+	return t.toCastRef()
+}
+
+// toCastRef is toRef for a cast_spell target, which may answer a
+// spliced text (ADR 0202, CR 702.47d).
+func (t castTargetWire) toCastRef() (game.TargetRef, error) {
+	ref := game.TargetRef{Kind: game.TargetRefKind(t.Kind), Slot: t.Slot, Mode: t.Mode, Splice: t.Splice}
+	if ref.Slot < 0 || ref.Mode < 0 || ref.Splice < 0 {
+		return game.TargetRef{}, fmt.Errorf("slot / mode / splice must not be negative")
 	}
 	switch ref.Kind {
 	case game.TargetSelf, game.TargetNone:

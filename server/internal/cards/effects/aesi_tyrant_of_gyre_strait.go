@@ -22,10 +22,10 @@ func init() {
 		AdditionalLandPlays: 1,
 		Purpose:             game.Purpose{ExtraLandDrops: 1},
 		Triggered: []game.TriggeredAbility{
-			Optional(
+			OptionalDraw(
 				LandfallPaying("Aesi — you may draw a card (landfall)", game.LandfallPayoff{Draws: 1},
 					Do(DrawCards{N: 1})),
-				"Aesi, Tyrant of Gyre Strait — draw a card?"),
+				"Aesi, Tyrant of Gyre Strait — draw a card?", 1),
 		},
 	})
 }

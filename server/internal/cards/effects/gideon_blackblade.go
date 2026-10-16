@@ -48,11 +48,12 @@ func init() {
 				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 					return gideonBlackbladeIsACreature(target, g, source)
 				},
-				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
 					if !slices.Contains(c.Types, "Creature") {
 						c.Types = append(c.Types, "Creature")
 					}
-					for _, st := range []string{"Human", "Soldier"} {
+					// "Human Soldier" are words of his text (CR 612.2, #3984).
+					for _, st := range source.TextSubtypes("Human", "Soldier") {
 						if !slices.Contains(c.Subtypes, st) {
 							c.Subtypes = append(c.Subtypes, st)
 						}

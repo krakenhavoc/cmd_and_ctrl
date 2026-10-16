@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -23,10 +25,16 @@ func init() {
 		Completeness:   CompletenessFull,
 		AdditionalCost: BeholdOrPay("an", "Elf", "{2}"),
 		ManaAbilities: []ManaAbility{{
-			Cost:      ManaAbilityCost{Tap: true},
-			Produced:  "{G}{G}",
-			Label:     "Add {G}{G}",
-			Condition: GraveyardAtLeast(1, func(c game.Card) bool { return c.HasSubtype("Elf") }),
+			Cost:     ManaAbilityCost{Tap: true},
+			Produced: "{G}{G}",
+			Label:    "Add {G}{G}",
+			// "Elf" in the condition is a word of the permanent's text
+			// (CR 612.2, #3984); the behold cost's is judged as the spell is
+			// cast, before anything can change it.
+			Condition: func(g *game.Game, controller, source uuid.UUID) bool {
+				elf := g.TextReaderOfForEffect(source).TextSubtype("Elf")
+				return GraveyardAtLeast(1, func(c game.Card) bool { return c.HasSubtype(elf) })(g, controller, source)
+			},
 		}},
 	})
 }

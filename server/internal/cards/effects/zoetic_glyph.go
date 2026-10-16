@@ -32,12 +32,14 @@ func init() {
 			{
 				Layer:     game.Layer4Type,
 				AppliesTo: AttachedToSource,
-				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
 					if !zoeticHas(c.Types, "Creature") {
 						c.Types = append(c.Types, "Creature")
 					}
-					if !zoeticHas(c.Subtypes, "Golem") {
-						c.Subtypes = append(c.Subtypes, "Golem")
+					// "Golem" is a word of the Aura's text (CR 612.2, #3984).
+					golem := source.TextSubtype("Golem")
+					if !zoeticHas(c.Subtypes, golem) {
+						c.Subtypes = append(c.Subtypes, golem)
 					}
 				},
 			},

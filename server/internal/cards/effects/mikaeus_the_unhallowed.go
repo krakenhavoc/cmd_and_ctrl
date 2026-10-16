@@ -18,8 +18,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
+	// "Human" is a word of Mikaeus's text, read through the source in
+	// the statics and the trigger (CR 612.2, #3984).
 	nonHumans := func(target *game.Card, g *game.Game, source *game.Card) bool {
-		return TribeFilter{Others: true, YoursOnly: true}.Matches(target, g, source) && !target.HasSubtype("Human")
+		return TribeFilter{Others: true, YoursOnly: true}.Matches(target, g, source) && !target.HasSubtype(source.TextSubtype("Human"))
 	}
 	Register(Spec{
 		OracleID:        "5d27c63e-d1ef-48af-b51d-01ebc6daeac9",
@@ -48,7 +50,7 @@ func init() {
 					return false
 				}
 				c, ok := g.LookupCardForEffect(ev.Source)
-				return ok && c.HasSubtype("Human")
+				return ok && c.HasSubtype(source.TextSubtype("Human"))
 			}, "Mikaeus, the Unhallowed — destroy the Human that damaged you", destroyTheCreatureThatDealtTheDamage),
 		},
 	})

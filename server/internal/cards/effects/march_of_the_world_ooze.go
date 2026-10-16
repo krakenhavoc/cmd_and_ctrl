@@ -60,13 +60,15 @@ func init() {
 				Label:     "Creatures you control are Oozes in addition to their other types.",
 				Layer:     game.Layer4Type,
 				AppliesTo: b41CreatureYouControlStatic,
-				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+					// "Ooze" is a word of the source's text (CR 612.2, #3984).
+					ooze := source.TextSubtype("Ooze")
 					for _, s := range c.Subtypes {
-						if equalFoldASCIIEffects(s, "Ooze") {
+						if equalFoldASCIIEffects(s, ooze) {
 							return
 						}
 					}
-					c.Subtypes = append(c.Subtypes, "Ooze")
+					c.Subtypes = append(c.Subtypes, ooze)
 				},
 			},
 		},

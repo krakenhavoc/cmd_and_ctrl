@@ -113,3 +113,41 @@ func TestRegisterRejectsAnAnyKindCostOfMoreThanOne(t *testing.T) {
 		})
 	})
 }
+
+// #3987: "Remove two counters from Ghost-Spider" is Among with no From,
+// and only for any kinds and a fixed count of at least two. The other
+// spellings are a different cost or one no card prints.
+func TestRegisterAcceptsOnlyTheSelfAnyKindsAmongShape(t *testing.T) {
+	registerForTest(t, Spec{
+		OracleID: "counter-cost-test-self-any-kinds",
+		Name:     "Self Any Kinds",
+		Activated: []ActivatedAbility{{
+			Label:  "Remove two counters from this creature: do nothing",
+			Cost:   RemoveCountersOfAnyKindsFromThis(2),
+			Effect: func(*game.Game, *game.StackItem) error { return nil },
+		}},
+	})
+	selfAmong := func(kind string, n int, variable bool) game.AbilityCost {
+		return game.AbilityCost{RemoveCounters: &game.CounterRemovalCost{Counter: kind, N: n, Among: true, Variable: variable}}
+	}
+	for _, tc := range []struct {
+		id, want string
+		cost     game.AbilityCost
+	}{
+		{"counter-cost-test-self-among-kind", "RemoveCountersFromThis", selfAmong("+1/+1", 2, false)},
+		{"counter-cost-test-self-among-variable", "variable number", selfAmong("", 1, true)},
+		{"counter-cost-test-self-among-one", "one counter of any kind", selfAmong("", 1, false)},
+	} {
+		mustPanic(t, tc.want, func() {
+			Register(Spec{
+				OracleID: tc.id,
+				Name:     tc.id,
+				Activated: []ActivatedAbility{{
+					Label:  "Remove counters from this: do nothing",
+					Cost:   tc.cost,
+					Effect: func(*game.Game, *game.StackItem) error { return nil },
+				}},
+			})
+		})
+	}
+}

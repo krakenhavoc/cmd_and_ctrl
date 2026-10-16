@@ -40,6 +40,6 @@ func skyclaveRelicCopies(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return nil
 	}
-	_, err := g.CreateTokensForEffect(item.Controller, tmpl, 2, game.TokenEntryOptions{Tapped: true})
+	_, err := g.CreateTokensForEffect(item.Controller, copiedToken(tmpl), 2, game.TokenEntryOptions{Tapped: true})
 	return err
 }

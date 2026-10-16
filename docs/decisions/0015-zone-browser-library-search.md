@@ -324,3 +324,107 @@ engine searched one library only. This is that day.
 
 Each shape has a named test that fails without it; the table is in the PR
 body for #3217.
+
+## Amendment 2026-10-16 — search a player's graveyard, hand, and library (#3988)
+
+Kotose, the Silent Spider prints the extraction search: "Search that
+player's graveyard, hand, and library for any number of cards with the
+same name as that card and exile them. Then that player shuffles." The
+Surgical Extraction family prints the same clause. The amendment above
+left "searches that also need the hand" uncovered.
+
+### The rule (CR 701.23)
+
+- **All three zones are searched.** The clause says "and", not "and/or",
+  so the library is always searched. The search event fires and "then
+  that player shuffles" happens whatever was taken, including when every
+  card taken came from the graveyard or the hand, and when nothing was
+  taken. This differs from the "and/or graveyard" search above, which does
+  not shuffle a library it did not look in.
+- **The searcher looks at the whole hand.** Searching a zone is looking at
+  every card in it. The library's cards are forgotten at the shuffle, but
+  the hand's are not: every card in the searched hand becomes known to
+  the searcher, the ones that do not match too. Only the searcher learns
+  them; no one else does.
+- **Any number, none included.** The extraction cards say "any number", so
+  the floor is zero (`Unbounded`). A hand is a hidden zone, so a
+  stated-quality search could fail to find there in any case (CR 701.23b).
+  For the floor rule, a hand candidate counts beside the graveyard's.
+
+### The shape
+
+- **`SearchLibrarySpec.AlsoGraveyardAndHand`** (catalog
+  `SearchLibrary.AlsoGraveyardAndHand`), with `LibraryOwner` naming the
+  searched player. The graveyard and hand are the library owner's. The
+  graveyard half reuses the "and/or" plumbing (`searchesGraveyard()`), and
+  `libraryUntouched` is never set, so the shuffle is unconditional. The
+  destination is a zone the cards leave to. A battlefield entry from the
+  hand opens the CR 614 window with `OldZone` hand, though no card needs it
+  yet.
+- **`PendingChoice.SearchHandCards`** (snapshot `searchHandCards`, additive
+  in v9 with its shape recorded; `Clone` copies it) is the subset of
+  `SearchCards` in the hand. As with the graveyard, `checkSearchPicksLocked`
+  checks a candidate against the zone it was offered from, and
+  `searchFloorLocked` counts the live hand.
+- **Wire.** `search_hand` (omitempty) marks the hand candidates, and
+  `search_all_zones` tells the client that every zone is searched (read
+  through `PendingChoice.SearchesGraveyardHandAndLibrary`, not stored). Both
+  are chooser-only, like `options[]`. The search sheet captions hand tiles
+  "Hand", and its hint says that the library is shuffled either way. The
+  enumerator needs no change, for the reason the amendment above gives.
+
+### Back-out
+
+`TestExtractionSearch*` and `TestCloneCarriesTheHandCandidates` (game),
+`TestSearchPromptMarksTheHandHalf` (protocol) and the Kotose card tests
+each fail without the shape they name.
+
+## Amendment 2026-10-16 (b) — "all cards" in the extraction search (#4033)
+
+Kotose and Surgical Extraction say "any number of cards with the same
+name". The rest of the family (Eradicate, Extirpate, Quash, Scour,
+Splinter, Sowing Salt) says "**all** cards with the same name". The
+amendment above read every extraction card as "any number", which is
+right for those two only.
+
+### The rule (CR 701.23b, 400.2)
+
+CR 701.23b lets a searcher fail to find cards with a stated quality in a
+**hidden** zone. A graveyard is a public zone (CR 400.2), so the rule
+does not reach it: every card with that name in the graveyard is found
+and exiled. The hand and the library are hidden zones, even though the
+searcher looks at the whole hand, so the searcher may still leave any of
+their matches. There is no count, so "all" has no cap.
+
+### The shape
+
+- **`SearchLibrarySpec.TakeAll`** (catalog `SearchLibrary.TakeAll`), on
+  an `AlsoGraveyardAndHand` search. It implies `Unbounded`. Without
+  `AlsoGraveyardAndHand` it is ignored: "and/or graveyard" lets the
+  searcher skip the graveyard, so nothing in it is forced.
+- **The graveyard's matches are not candidates.** Nothing about them is
+  a choice, so the prompt offers only the hand's and the library's
+  matches, any number, none included. The graveyard's matches ride on
+  the spec in the continuation frame (unexported, never set by a card).
+  The take moves the ones still in the graveyard together with the
+  searcher's picks, so `Then` sees one found list. A match that left the
+  graveyard while the prompt was open is not found.
+- **No prompt when there is nothing to choose.** With no match in the
+  hand or the library, the graveyard's matches are taken without a
+  prompt, and the library is still searched and shuffled.
+- **No wire, snapshot or enumerator change.** The prompt is the
+  "graveyard, hand, and library" prompt above with no graveyard tiles,
+  its floor stays zero, and the card's prompt text says that every match
+  in the graveyard is exiled.
+
+The alternative was to offer the graveyard matches as locked picks: a
+new wire field naming the required candidates, a client that preselects
+them, and an enumerator floor. It reaches the same outcome with more
+moving parts, and a client that ignored the field could submit an answer
+the server must refuse.
+
+### Back-out
+
+`TestTakeAll*` (game) and the extraction family's card tests
+(`TestExtirpate*`, `TestEradicate*`, `TestScour*`, `TestSplinter*`,
+`TestSowingSalt*`, `TestQuash*`) fail without the shape.

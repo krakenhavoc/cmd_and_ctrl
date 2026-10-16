@@ -1,0 +1,6 @@
+---
+title: "Returning the card a cost sacrificed, later"
+date: 2026-10-16
+issues: [2099]
+---
+**Returning the card a cost sacrificed, later** (#2099, CR 400.7 / 400.7j / 603.7c / 903.9a, [ADR 0026](../../decisions/0026-delayed-triggers.md)'s second 2026-10-16 amendment) — a delayed trigger's body can name more than one object: `game.EffectParams.Objects`, each a card and its CR 400.7 epoch, additive within the snapshot schema and refused by an older binary's strict restore. `effects.cardTheCostMovedToAPublicZone` follows a permanent on `PaidCost.SacrificedObjects` to the object it became one zone change later, in a graveyard, or in exile or the command zone when a replacement sent it there instead (CR 400.7j). A token, a card in a hidden zone, and a card that has moved again since find nothing. That includes a sacrificed commander its owner moved to the command zone, because CR 903.9a's state-based action is a second zone change. The keyed body `return/the-objects-together-under-your-control` puts every named object that is still that object onto the battlefield under the trigger's controller as one simultaneous entry, through `PutOntoBattlefieldTogetherThenForEffect`. **Card** (1, Full): Rescue from the Underworld.

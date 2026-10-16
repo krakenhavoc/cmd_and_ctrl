@@ -6,7 +6,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// player_keywords.go — the card-facing half of CR 702.16i / CR 702.11d
+// player_keywords.go — the card-facing half of CR 702.16b / CR 702.11c
 // (#1197, ADR 0072's 2026-09-22 amendment): giving a PLAYER an
 // ability.
 //
@@ -15,7 +15,10 @@ import (
 //   - a permanent's printed static, "You have hexproof" — declare
 //     Spec.PlayerKeywords and write no code at all. The engine reads
 //     the battlefield on every query, so two of them compose and one
-//     leaving cannot revoke the other's grant.
+//     leaving cannot revoke the other's grant. A static that holds
+//     only some of the time, "During your turn, you … have hexproof"
+//     (#2013), is Spec.PlayerKeywordsIf, built with YouHaveDuringYourTurn
+//     or YouHaveWhile below.
 //   - a resolved spell or trigger, "you gain protection from
 //     everything until your next turn" — GainPlayerKeyword below,
 //     which stores the grant with its CR 611.2 duration.
@@ -42,11 +45,45 @@ const ProtectionFromEverything = "protection from everything"
 // ability belongs to; the engine reads that, not the token.
 const ProtectionFromEachOfYourOpponents = game.ProtectionFromEachOfYourOpponents
 
-// KeywordHexproof is CR 702.11d's token, re-exported from the engine
+// KeywordHexproof is CR 702.11c's token, re-exported from the engine
 // so a card file spells it once and the compiler checks it. The
 // constant itself lives in game/player_statics.go, beside the reader
 // that compares against it.
 const KeywordHexproof = game.KeywordHexproof
+
+// YouHaveWhile is a permanent's printed "<condition>, you have
+// <keyword>": the controller has the ability while `while` holds, asked
+// on every query with the permanent as it is now (CR 611.3a). For
+// Spec.PlayerKeywordsIf. `label` is the printed sentence, for the
+// tile's ability row.
+//
+// `while` runs under the game lock and may only read; it must not ask a
+// player's abilities (that recurses into the walk that called it).
+func YouHaveWhile(keyword, label string, while func(g *game.Game, source game.Card) bool) game.PlayerKeywordIf {
+	return game.PlayerKeywordIf{Keyword: keyword, Label: label, While: while}
+}
+
+// YouHaveDuringYourTurn is "During your turn, you have <keyword>" —
+// Gruul Spellbreaker's player half (#2013, CR 702.11c). "Your turn" is
+// the granting permanent's controller's, read now, so a permanent that
+// changes control grants on its new controller's turns.
+func YouHaveDuringYourTurn(keyword string) game.PlayerKeywordIf {
+	return YouHaveWhile(keyword, "During your turn, you have "+keyword+".",
+		func(g *game.Game, source game.Card) bool { return isActivePlayer(g, source.Controller) })
+}
+
+// ThisHasDuringYourTurn is "This creature has <keyword> during your
+// turn" — the object half of Gruul Spellbreaker's static, a layer-6
+// grant to the source itself (firstStrikeDuringYourTurn's shape, for
+// any keyword). The layer pass is recomputed as the turn changes, so
+// the keyword is gone on an opponent's turn.
+func ThisHasDuringYourTurn(keyword string) game.StaticAbility {
+	ab := KeywordGrant(func(target *game.Card, g *game.Game, source *game.Card) bool {
+		return target.InstanceID == source.InstanceID && isActivePlayer(g, source.Controller)
+	}, keyword)
+	ab.Label = "Has " + keyword + " during your turn."
+	return ab
+}
 
 // GainPlayerKeyword is "you gain <ability> until <duration>" — the
 // GRANTED half of a player-level ability.

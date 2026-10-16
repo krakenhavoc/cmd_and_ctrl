@@ -25,8 +25,8 @@ import (
 // b22SelfDiedOrWasExiledFromBattlefield and its tuck
 // b22TuckThirdFromTop, the per-label "one or more" dedup is
 // OncePerBatch and its pick-prompt third leg
-// OncePerBatch, "which player is resolving" is
-// b11ResolvingController, the last-known power of a creature that is
+// OncePerBatch, "who put these counters" is b11CounterPlacerOf, the
+// last-known power of a creature that is
 // no longer on the battlefield is b17LastKnownPowerOffBattlefield,
 // the milled-creature batch is b17MilledCreatureCards, the first
 // legal target read is b16FirstLegalTargetCard and its destroy body
@@ -138,9 +138,10 @@ func b33CountersPlacedDelta(ev game.Event, kind string, g *game.Game) int {
 // commonest case Alela is printed for, since she makes the Faeries
 // herself. The tally records the subtype AT THE DAMAGE, while the
 // Faerie is still on the battlefield, so a traded token counts and a
-// changeling counts.
-func b33PlayersDealtCombatDamageThisTurnByYourFaeries(g *game.Game, controller uuid.UUID) map[uuid.UUID]bool {
-	return g.PlayersDealtCombatDamageThisTurnBySubtype(controller, "Faerie")
+// changeling counts. `faerie` is the creature type as the asking
+// object's text now reads it (CR 612.2, #3984).
+func b33PlayersDealtCombatDamageThisTurnByYourFaeries(g *game.Game, controller uuid.UUID, faerie string) map[uuid.UUID]bool {
+	return g.PlayersDealtCombatDamageThisTurnBySubtype(controller, faerie)
 }
 
 // b33CreatureOfPlayerHitByYourFaeries is Alela's target predicate: a
@@ -153,7 +154,8 @@ func b33CreatureOfPlayerHitByYourFaeries(g *game.Game, caster uuid.UUID, c game.
 	if !c.IsCreature() {
 		return false
 	}
-	return b33PlayersDealtCombatDamageThisTurnByYourFaeries(g, caster)[c.Controller]
+	// The targeting walk lends the source's text (LentSubtype).
+	return b33PlayersDealtCombatDamageThisTurnByYourFaeries(g, caster, c.LentSubtype("Faerie"))[c.Controller]
 }
 
 // --- trigger conditions ------------------------------------------
@@ -166,7 +168,8 @@ func b33FaerieYouControlDealtCombatDamageToPlayer(ev game.Event, source *game.Ca
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Source)
-	return ok && c.HasSubtype("Faerie")
+	// "Faerie" is a word of the source's text (CR 612.2, #3984).
+	return ok && c.HasSubtype(source.TextSubtype("Faerie"))
 }
 
 // b33SmallCreatureYouControlAttacked is Raid Bombardment's condition:
@@ -188,7 +191,7 @@ func b33BirdYouControlAttacked(ev game.Event, source *game.Card, g *game.Game) b
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsCreature() && c.HasSubtype("Bird")
+	return ok && c.IsCreature() && c.HasSubtype(source.TextSubtype("Bird"))
 }
 
 // b33LandYouControlEntered is Maja's landfall: a land entered under
@@ -238,9 +241,8 @@ func b33OpponentsNontokenCreatureDied(ev game.Event, source *game.Card, g *game.
 // b33YouPutMinusCountersOnACreature is Nest of Scarabs' condition:
 // the event placed one or more -1/-1 counters on a creature, and the
 // player who PUT them is the source's controller —
-// b11CounterPlacerOf's reading of "whenever YOU put", which is the
-// placement's own actor when it named one and the resolving player
-// otherwise. The count of counters placed rides the event's delta,
+// b11CounterPlacerOf's reading of "whenever YOU put", the placement's
+// own actor. The count of counters placed rides the event's delta,
 // read again by the body.
 //
 // ADR 0056 makes this load-bearing: -1/-1 counters from a wither or

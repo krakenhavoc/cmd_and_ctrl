@@ -187,13 +187,36 @@ func (s TargetSource) lend(c Card) Card {
 // Caller must hold g.mu.
 func (g *Game) costSourceLocked(playerID, sourceID uuid.UUID) TargetSource {
 	src := SourceChooser(playerID)
+	src.text = g.costTextLocked(sourceID)
+	return src
+}
+
+// costTextLocked is the text change a cost clause of the ability on
+// `sourceID` reads its words through (costSourceLocked's rule): the
+// permanent's, or nil — the printed words — for anything not on the
+// battlefield, uuid.Nil included. The cost walks that match a card with
+// no TargetSpec (a set rule's kinds, a reveal, discard or exile clause;
+// #3984) lend it with lendCostText.
+//
+// Caller must hold g.mu.
+func (g *Game) costTextLocked(sourceID uuid.UUID) *TextWords {
 	if sourceID == uuid.Nil {
-		return src
+		return nil
 	}
 	if c := findBattlefieldCard(g, sourceID); c != nil {
-		src.text = c.TextWords
+		return c.TextWords
 	}
-	return src
+	return nil
+}
+
+// lendCostText gives the cost candidate `c` the text a cost clause reads
+// its words through (costTextLocked), as TargetSource.lend does for a
+// walk with a TargetSpec. Nil text lends nothing.
+func lendCostText(text *TextWords, c Card) Card {
+	if text != nil {
+		c.wordLens = text
+	}
+	return c
 }
 
 // costCandidatesLocked is specCandidatesLocked for a cost of the ability
@@ -510,6 +533,43 @@ type TargetSpec struct {
 	// effects.ControlledByThatPlayer.
 	ControlledByThatPlayer bool
 
+	// ChosenByOpponent is "target … of an opponent's choice" (#2055,
+	// ADR 0019's 2026-10-16 amendment): as the spell or ability is put
+	// on the stack, its controller chooses one of their opponents, and
+	// THAT opponent chooses this clause's targets (CR 601.2c, CR
+	// 602.2b, CR 603.3d; the Nova Pentacle, Evangelize and Volcanic
+	// Offering rulings). The controller still controls the spell or
+	// ability and is still the player targeting: legality is judged
+	// for the controller exactly as for any other clause, so an
+	// opponent cannot name their own hexproof creature (the Cuombajj
+	// Witches ruling).
+	//
+	// DATA, not a prompt shape: the announce paths (opponent_target.go)
+	// leave such a clause out of the controller's own picks, ask the
+	// controller which opponent, and ask that opponent for the picks;
+	// the client's walk and the bot's enumerator skip it the same way.
+	// Build it with effects.OfAnOpponentsChoice.
+	ChosenByOpponent bool
+
+	// ControlledByChooser is "… they control" on a ChosenByOpponent
+	// clause: the candidate must be controlled by the opponent who
+	// chooses it (Evangelize, Preacher, Arena). The opponent is bound
+	// onto the per-announcement clause copy (chooser below) once the
+	// controller has named them, and onto the item for the CR 608.2b
+	// re-check and a CR 115.7 retarget ("the new target must be a
+	// creature controlled by the chosen opponent"). A copy with no
+	// opponent bound yet -- the legal set a snapshot ships before
+	// anyone is chosen -- admits a creature any opponent of the
+	// controller controls: the superset, as ManaValueAtMostX's unbound
+	// set is. Meaningless without ChosenByOpponent; effects.Register
+	// refuses it alone. Build it with effects.TheyControl.
+	ControlledByChooser bool
+
+	// chooser is the opponent who chooses this clause, once bound
+	// (bindStepChoosers). Unexported and never set on a catalog spec,
+	// only on the value copies AnnouncedClauses hands out, like xBound.
+	chooser uuid.UUID
+
 	// PaidForSource is "that crewed it" / "that saddled it": the
 	// candidate must be a creature tapped to pay a crew (PaidCrewed) or
 	// saddle (PaidSaddled) cost of the clause's own source this turn, and
@@ -551,6 +611,22 @@ type TargetSpec struct {
 	AmongPayload bool
 	// AmongCards is AmongPayload's derived set; never set by a card.
 	AmongCards []uuid.UUID
+
+	// AtRandom is "target … chosen at random" on a TRIGGERED ability's
+	// clause: Witch Hunt's "target opponent chosen at random", Scab-Clan
+	// Giant's "target creature an opponent controls chosen at random"
+	// (#1815). Nobody is asked: as the trigger is put on the stack (CR
+	// 603.3d) the engine draws the target uniformly from the clause's
+	// legal set through the keyed random stream (ADR 0054), so an undo
+	// replays the draw ("all possible legal targets must have an equal
+	// chance of being chosen", the Witch Hunt ruling). With no legal
+	// target the ability is removed, as any required clause's is.
+	//
+	// Honoured only by the trigger target walk (queuePickTargetStepLocked);
+	// effects.Register refuses it anywhere else, and on a clause that
+	// picks anything but exactly one target. Built with
+	// effects.ChosenAtRandom.
+	AtRandom bool
 
 	// PlayerOK is the candidate predicate for player targets. Nil
 	// means every seated, non-eliminated player qualifies. Same
@@ -1632,13 +1708,28 @@ func (s *TargetSpec) thatPlayerAdmits(src TargetSource, c Card) bool {
 	return that != uuid.Nil && c.Controller == that
 }
 
+// chooserAdmits is ControlledByChooser's gate (#2055): true without the
+// flag; with it, a candidate controlled by the opponent bound as the
+// clause's chooser, or -- before one is bound -- by any player other
+// than the walk's controller (every other player is an opponent in a
+// free-for-all game, GiftOpponentsLocked's rule).
+func (s *TargetSpec) chooserAdmits(src TargetSource, c Card) bool {
+	if !s.ControlledByChooser {
+		return true
+	}
+	if s.chooser != uuid.Nil {
+		return c.Controller == s.chooser
+	}
+	return c.Controller != uuid.Nil && c.Controller != src.Controller
+}
+
 // sourceAdmits is the source-relative gate: RelativeToSource's stat
 // comparisons, CombatWithSource's combat relation, ExiledWithSource's
 // exile link and PaidForSource's crew / saddle payment. True with none
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.thatPlayerAdmits(src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) {
+	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

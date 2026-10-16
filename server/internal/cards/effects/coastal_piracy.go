@@ -16,9 +16,9 @@ func init() {
 		Name:         "Coastal Piracy",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OptionalDraw(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Target != source.Controller && combatDamageToPlayerBy(ev, source.Controller, g)
-			}, "Coastal Piracy — draw a card", Do(DrawCards{N: 1})), "Coastal Piracy — draw a card?"),
+			}, "Coastal Piracy — draw a card", Do(DrawCards{N: 1})), "Coastal Piracy — draw a card?", 1),
 		},
 	})
 }

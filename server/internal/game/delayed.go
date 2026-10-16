@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"slices"
+	"strconv"
 
 	"github.com/google/uuid"
 )
@@ -294,6 +295,12 @@ type DelayedTrigger struct {
 	// the trigger fires once for each event batch (the guard
 	// TriggeredAbility.OncePerBatch uses, keyed by the trigger's ID).
 	// Meaningful only with Repeats; a one-shot trigger fires once anyway.
+	//
+	// With an each-condition it fires once for each OBJECT in each batch
+	// (and each damage instance) instead (#3997): "whenever a creature is
+	// dealt damage this turn" (Shriveling Rot) is one occurrence for each
+	// creature dealt damage at the same time, however many sources dealt
+	// it. See objectsNotYetFiredInBatchLocked.
 	OncePerBatch bool
 
 	// ManaTapSubtype and ManaAdds are the CR 605.1b twin: a triggered
@@ -653,13 +660,6 @@ func (g *Game) fireEventDelayedTriggersLocked(pass *harvestPass) {
 		}
 		objects, matched := dt.matchEventLocked(ev, g)
 		if matched && !g.delayedTriggerSuppressedLocked(pass, dt) {
-			// CR 603.2c: a "whenever you attack" fires once for the
-			// whole declaration. Test-and-set, so it sits last: a match
-			// the trigger did not take must not use the batch up.
-			if dt.OncePerBatch && !g.oncePerBatchAllowsLocked(ev.Batch, dt.ID, "delayed-once-per-batch") {
-				keep = append(keep, dt)
-				continue
-			}
 			if !dt.Repeats && len(objects) > 1 {
 				// CR 603.7b: a trigger with no stated duration triggers
 				// once. Every each-condition a one-shot trigger names
@@ -667,6 +667,22 @@ func (g *Game) fireEventDelayedTriggersLocked(pass *harvestPass) {
 				// this is never a choice in practice; the first object
 				// in the condition's order is the one.
 				objects = objects[:1]
+			}
+			// CR 603.2c: a "whenever you attack" fires once for the
+			// whole declaration, and a "whenever a creature is dealt
+			// damage" once for each creature the damage reached.
+			// Test-and-set, so it sits last: a match the trigger did not
+			// take must not use the batch up.
+			if dt.OncePerBatch {
+				if objects == nil {
+					if !g.oncePerBatchAllowsLocked(ev.Batch, dt.ID, "delayed-once-per-batch") {
+						keep = append(keep, dt)
+						continue
+					}
+				} else if objects = g.objectsNotYetFiredInBatchLocked(dt, ev, objects); len(objects) == 0 {
+					keep = append(keep, dt)
+					continue
+				}
 			}
 			fire = append(fire, delayedFiring{dt: dt, objects: objects})
 			if dt.Repeats {
@@ -694,6 +710,37 @@ func (g *Game) fireEventDelayedTriggersLocked(pass *harvestPass) {
 			g.dispatchEventDelayedTriggerLocked(pass, f.dt, obj)
 		}
 	}
+}
+
+// objectsNotYetFiredInBatchLocked is OncePerBatch for an each-condition
+// (#3997): the trigger fires once for each OBJECT in each event batch,
+// rather than once for the whole batch. It keeps the objects the trigger
+// has not fired for yet in ev's batch and records them as fired.
+//
+// "Until end of turn, whenever a creature is dealt damage, destroy it"
+// (Shriveling Rot) is one occurrence for each creature dealt damage at
+// the same time (CR 603.2c, 120.4b, 510.2), and the engine emits one
+// EventDealDamage per source. A creature two blockers hit triggers it
+// once, not twice. A damage event's own instance is part of the key
+// (ADR 0108 amendment 2026-10-13, batch_total.go): two damage
+// instructions of one resolution (a Fiery Confluence that chose the same
+// mode twice) are two events, so they are two occurrences. Every other
+// event has the zero instance and keys on the object alone.
+//
+// The record is the oncePerBatchFired map the permanents' OncePerBatch
+// guard uses, with the object as the key's second dimension, as
+// TriggeredAbility.BatchKey adds one.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) objectsNotYetFiredInBatchLocked(dt *DelayedTrigger, ev Event, objects []uuid.UUID) []uuid.UUID {
+	instance := strconv.FormatUint(uint64(ev.DamageInstance), 10)
+	var out []uuid.UUID
+	for _, obj := range objects {
+		if g.oncePerBatchAllowsLocked(ev.Batch, dt.ID, "delayed-once-per-batch|"+obj.String()+"|"+instance) {
+			out = append(out, obj)
+		}
+	}
+	return out
 }
 
 // delayedFiring is one delayed trigger an event fired, and the objects
@@ -770,7 +817,16 @@ func (g *Game) dispatchEventDelayedTriggerLocked(pass *harvestPass, dt *DelayedT
 	var payload []TargetRef
 	switch {
 	case object != uuid.Nil:
-		payload = []TargetRef{{Kind: TargetCard, ID: object}}
+		// #3997: with the object's CR 400.7 epoch, so "destroy it" and
+		// "its toughness" read the object the event was about and not a
+		// new one its card has become since (CR 603.7c, 608.2h). A card
+		// that is not on the battlefield and has not left it this turn
+		// records epoch zero, and its readers go by the ID.
+		ref := TargetRef{Kind: TargetCard, ID: object}
+		if o, ok := g.PermanentRefForEffect(object); ok {
+			ref.Epoch = o.Epoch
+		}
+		payload = []TargetRef{ref}
 	case ev.CardID != uuid.Nil:
 		payload = []TargetRef{{Kind: TargetCard, ID: ev.CardID}}
 	}
@@ -897,9 +953,12 @@ func (g *Game) sweepUnreachableBoundTriggersLocked() {
 	g.DelayedTriggers = kept
 }
 
-// cloneEffectParams copies the one slice EffectParams holds.
+// cloneEffectParams copies the slices and the pointer EffectParams holds.
 func cloneEffectParams(p EffectParams) EffectParams {
 	p.Filter.Types = copyStrings(p.Filter.Types)
+	if len(p.Objects) > 0 {
+		p.Objects = append([]ObjectRef(nil), p.Objects...)
+	}
 	if p.Ability != nil {
 		a := *p.Ability
 		p.Ability = &a

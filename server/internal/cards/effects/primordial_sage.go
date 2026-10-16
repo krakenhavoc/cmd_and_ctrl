@@ -30,12 +30,12 @@ func init() {
 		Name:         "Primordial Sage",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Optional(
+			OptionalDraw(
 				WheneverYouCast(Creature(), "Primordial Sage — draw a card",
 					func(g *game.Game, item *game.StackItem) error {
 						return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 					}),
-				"Primordial Sage — draw a card?"),
+				"Primordial Sage — draw a card?", 1),
 		},
 	})
 }

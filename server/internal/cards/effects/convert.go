@@ -66,6 +66,14 @@ func (c Convert) Apply(ctx *Context) error {
 	if c.Target == uuid.Nil || ctx.isNewSourceObject(c.Target) { // #1432
 		return nil
 	}
+	// CR 701.28a converts a permanent. A card that has left the
+	// battlefield has nothing to turn over, so the instruction does
+	// nothing (CR 608.2b): Ratchet, Field Medic's lifelink trigger
+	// resolving after Ratchet died in the same combat, or Rescue Racer's
+	// own trigger after it died beside another artifact.
+	if z := ctx.Game.FindCardZoneForEffect(c.Target); z == nil || z.Kind != game.ZoneBattlefield {
+		return nil
+	}
 	return ctx.Game.ConvertPermanentForEffect(c.Target)
 }
 

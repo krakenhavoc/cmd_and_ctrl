@@ -34,7 +34,8 @@ func init() {
 					return false
 				}
 				c, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && c.HasSubtype("Wraith")
+				// "Wraiths" is a word of the source's text (CR 612.2, #3984).
+				return ok && c.HasSubtype(source.TextSubtype("Wraith"))
 			}, "Witch-king, Sky Scourge — exile the top X cards, X the attacking Wraiths' total power; you may play them this turn",
 				witchKingImpulse)),
 		},
@@ -42,20 +43,22 @@ func init() {
 }
 
 func witchKingImpulse(g *game.Game, item *game.StackItem) error {
-	batch := NewContext(g, item).Trigger().Event.Batch
+	ctx := NewContext(g, item)
+	batch := ctx.Trigger().Event.Batch
+	wraith := ctx.TextSubtype("Wraith")
 	total := 0
 	for _, ev := range g.EventsThisTurn() {
 		if ev.Kind != game.EventAttack || ev.Batch != batch || ev.Actor != item.Controller {
 			continue
 		}
 		if c, ok := battlefieldCardForEffect(g, ev.CardID); ok {
-			if c.HasSubtype("Wraith") && c.PowerForComparison() > 0 {
+			if c.HasSubtype(wraith) && c.PowerForComparison() > 0 {
 				total += c.PowerForComparison()
 			}
 			continue
 		}
 		if info, ok := g.LastKnownPermanentForEffect(ev.CardID); ok && info.Power > 0 &&
-			(info.Characteristic.AllCreatureTypes || hasFold(info.Characteristic.Subtypes, "Wraith")) {
+			(info.Characteristic.AllCreatureTypes || hasFold(info.Characteristic.Subtypes, wraith)) {
 			total += info.Power
 		}
 	}

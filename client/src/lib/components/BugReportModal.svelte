@@ -22,10 +22,16 @@
   // "here it is".
   //
   // Unlike the server-driven prompt modals (discard / choice), this one
-  // is user-opened and user-dismissable: Cancel closes it and nothing
-  // is sent.
+  // is user-opened and user-dismissable: Cancel closes it, discards the
+  // draft and sends nothing.
+  //
+  // Minimize (#4029) closes the modal and keeps the draft. The fields
+  // live in lib/bugReportDraft.svelte.ts, not here, so this component
+  // can be unmounted and mounted again with nothing lost: the host
+  // swaps the form for a pill (BugReportDraftPill) and the page under it
+  // is free to use meanwhile.
 
-  import { onDestroy, untrack } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { submitBugReport, type BugReportResult } from "../api";
   import {
     BUG_DESC_MAX,
@@ -34,7 +40,6 @@
     BUG_MAX_TOTAL_IMAGE_BYTES,
     BUG_TITLE_MAX,
     BUG_IMAGE_TYPES,
-    DEFAULT_BUG_KIND,
     acceptableImages,
     buildBugContext,
     bugKindSpec,
@@ -45,11 +50,12 @@
     validateAttachments,
     validateBugReport,
     type BugLogEntry,
-    type BugReportKind,
   } from "../bugReport";
+  import { discardBugDraft, openBugDraft } from "../bugReportDraft.svelte";
   import { recentClientErrors } from "../clientErrors";
   import type { LogEntry } from "../ws";
   import type { GameView } from "../protocol";
+  import Icon from "./Icon.svelte";
   import ModalLayer from "./ModalLayer.svelte";
 
   interface Props {
@@ -68,44 +74,71 @@
     // page names where a report filed outside a game came from (#3492,
     // the site header's button): a route name, with gameID "".
     page?: string;
+    // onclose is Cancel and Done: the draft is gone either way.
     onclose: () => void;
+    // onminimize leaves the draft in place; the host unmounts the form
+    // and shows the pill.
+    onminimize: () => void;
   }
 
-  const { gameID, view, seq, connection, wsLog, attachments, page = "", onclose }: Props = $props();
+  const {
+    gameID,
+    view,
+    seq,
+    connection,
+    wsLog,
+    attachments,
+    page = "",
+    onclose,
+    onminimize,
+  }: Props = $props();
 
-  let kind = $state<BugReportKind>(DEFAULT_BUG_KIND);
-  let title = $state("");
-  let description = $state("");
-  let includeContext = $state(true);
-  let includeLog = $state(true);
-  let showLog = $state(false);
-  let images = $state<File[]>([]);
+  // The draft: a fresh one the first time the form opens, the same one
+  // after a minimize. The log and the context are captured only on the
+  // first open (below), so a restore sends the moment the bug happened.
+  // A restore keeping the original capture is deliberate: the reporter
+  // minimises to go and look at the page, and by then the log has moved
+  // on (and may now hold their own screenshot hunting).
+  //
+  // Snapshotted once, not recomputed as frames keep arriving: the log
+  // the reporter reviews in the disclosure has to be the log that gets
+  // sent, and a live buffer would mean those two differ by however long
+  // they spent typing. untrack makes the one-shot read explicit: wsLog
+  // keeps growing while the modal is open, and subscribing here would
+  // let the reviewed log and the submitted log drift apart.
+  const { draft, restored } = untrack(() =>
+    openBugDraft(() => ({
+      capturedLog: collectBugLog(wsLog, recentClientErrors()),
+      context: buildBugContext(gameID, view, seq, connection, page),
+    })),
+  );
+  const capturedLog = draft.capturedLog;
+  const inGame = (draft.context.game_id ?? "").length > 0;
+
   let submitting = $state(false);
   let error = $state<string | null>(null);
   let sent = $state<BugReportResult | null>(null);
   let fileInput = $state<HTMLInputElement | null>(null);
+  let titleInput = $state<HTMLInputElement | null>(null);
+
+  // Coming back to a draft, put the caret where the reporter left off
+  // work: the title, since the pill that had focus is gone.
+  onMount(() => {
+    if (restored) titleInput?.focus();
+  });
 
   // The kind drives the copy and the attachments. The server keeps
   // its own copy of this table and re-derives everything from the
   // kind name — this one exists so the form can tell the reporter
   // what it is about to send.
-  const spec = $derived(bugKindSpec(kind));
-  const autoAttached = $derived(describeBugAttachments(spec, gameID.length > 0));
+  const spec = $derived(bugKindSpec(draft.kind));
+  const autoAttached = $derived(describeBugAttachments(spec, inGame));
 
-  // Snapshotted once when the modal opens, not recomputed as frames
-  // keep arriving: the log the reporter reviews in the disclosure has
-  // to be the log that gets sent, and a live buffer would mean those
-  // two differ by however long they spent typing.
-  // untrack makes the one-shot read explicit: wsLog keeps growing while
-  // the modal is open, and subscribing here would let the reviewed log
-  // and the submitted log drift apart.
-  const capturedLog: BugLogEntry[] = untrack(() => collectBugLog(wsLog, recentClientErrors()));
-
-  // Context is snapshotted at submit time, but summarised live so the
+  // The context is the one the draft was opened with, summarised so the
   // reporter can see what the checkbox will attach.
   const contextSummary = $derived.by(() => {
-    const ctx = buildBugContext(gameID, view, seq, connection, page);
-    const bits = gameID ? [`game ${gameID.slice(0, 8)}`] : [];
+    const ctx = draft.context;
+    const bits = ctx.game_id ? [`game ${ctx.game_id.slice(0, 8)}`] : [];
     if (ctx.page) bits.push(`page ${ctx.page}`);
     if (ctx.turn) bits.push(`turn ${ctx.turn}, ${ctx.phase}/${ctx.step}`);
     if (ctx.seq) bits.push(`seq ${ctx.seq}`);
@@ -113,18 +146,10 @@
     return bits.join(" \u00b7 ");
   });
 
-  const totalImageBytes = $derived(images.reduce((n, f) => n + f.size, 0));
+  const totalImageBytes = $derived(draft.images.reduce((n, f) => n + f.size, 0));
 
-  // Object URLs for the thumbnails, revoked when the set changes or the
-  // modal closes — a leaked blob URL pins the whole image in memory for
-  // the life of the tab.
-  let previews = $state<string[]>([]);
-  $effect(() => {
-    const urls = images.map((f) => URL.createObjectURL(f));
-    previews = urls;
-    return () => urls.forEach((u) => URL.revokeObjectURL(u));
-  });
-  onDestroy(() => previews.forEach((u) => URL.revokeObjectURL(u)));
+  // The thumbnails' object URLs are the draft's (they must survive a
+  // minimize) and are revoked when it is discarded or sent.
 
   // addFiles vets and appends. Non-image entries are dropped silently
   // when they arrived alongside images (a clipboard paste carries
@@ -137,14 +162,14 @@
       error = "attachments must be PNG, JPEG, GIF, or WebP images";
       return;
     }
-    const next = [...images, ...usable];
+    const next = [...draft.images, ...usable];
     const problem = validateAttachments(next);
     if (problem) {
       error = problem;
       return;
     }
     error = null;
-    images = next;
+    draft.setImages(next);
   }
 
   function onPick(ev: Event): void {
@@ -179,12 +204,13 @@
   }
 
   function removeImage(i: number): void {
-    images = images.filter((_, j) => j !== i);
+    draft.setImages(draft.images.filter((_, j) => j !== i));
     error = null;
   }
 
   async function submit(): Promise<void> {
-    const problem = validateBugReport(title, description) ?? validateAttachments(images);
+    const problem =
+      validateBugReport(draft.title, draft.description) ?? validateAttachments(draft.images);
     if (problem) {
       error = problem;
       return;
@@ -193,22 +219,30 @@
     error = null;
     try {
       const res = await submitBugReport({
-        title: title.trim(),
-        kind,
-        description,
-        context: includeContext ? buildBugContext(gameID, view, seq, connection, page) : undefined,
+        title: draft.title.trim(),
+        kind: draft.kind,
+        description: draft.description,
+        context: draft.includeContext ? draft.context : undefined,
         // The server drops a log the kind doesn't take; not sending
         // one in the first place keeps "what the form showed" and
         // "what left the browser" the same thing.
-        log: spec.log && includeLog ? capturedLog : undefined,
-        images,
+        log: spec.log && draft.includeLog ? capturedLog : undefined,
+        images: draft.images,
       });
       sent = res;
+      // Filed: the draft and its screenshots are done with. The form
+      // keeps its own reference to read the kind for the thank-you.
+      discardBugDraft();
     } catch (e) {
       error = e instanceof Error ? e.message : "filing the issue failed";
     } finally {
       submitting = false;
     }
+  }
+
+  function cancel(): void {
+    discardBugDraft();
+    onclose();
   }
 
   // Same fixed-width shape the server renders, so what the reporter
@@ -254,7 +288,22 @@
         <button type="button" class="submit" onclick={onclose}>Done</button>
       </div>
     {:else}
-      <h2 id="bug-report-title">{spec.heading}</h2>
+      <div class="head">
+        <h2 id="bug-report-title">{spec.heading}</h2>
+        <!-- Minimize keeps the draft; Cancel discards it. Disabled
+             while filing: the result is shown here, so the form has to
+             be on screen to receive it. -->
+        <button
+          type="button"
+          class="minimize"
+          aria-label="Minimize the report"
+          title="Minimize — keep this draft and get back to the page"
+          onclick={onminimize}
+          disabled={submitting}
+        >
+          <Icon name="chevron-down" size={16} />
+        </button>
+      </div>
 
       <!-- The kind comes first: it decides the wording of everything
            below and what the report attaches. Real radios rather than
@@ -266,8 +315,8 @@
              container is laid out differently across browsers. -->
         <div class="kind-row">
           {#each BUG_KINDS as k (k.kind)}
-            <label class="kind" class:picked={kind === k.kind}>
-              <input type="radio" name="bug-kind" value={k.kind} bind:group={kind} />
+            <label class="kind" class:picked={draft.kind === k.kind}>
+              <input type="radio" name="bug-kind" value={k.kind} bind:group={draft.kind} />
               <span>{k.chip}</span>
             </label>
           {/each}
@@ -293,19 +342,20 @@
           type="text"
           maxlength={BUG_TITLE_MAX}
           placeholder={spec.titlePlaceholder}
-          bind:value={title}
+          bind:this={titleInput}
+          bind:value={draft.title}
           disabled={submitting}
         />
       </label>
       <label class="field">
         <span class="field-label">
-          Details <span class="muted">({description.length}/{BUG_DESC_MAX})</span>
+          Details <span class="muted">({draft.description.length}/{BUG_DESC_MAX})</span>
         </span>
         <textarea
           rows="6"
           maxlength={BUG_DESC_MAX}
           placeholder={spec.detailsPlaceholder}
-          bind:value={description}
+          bind:value={draft.description}
           disabled={submitting}
         ></textarea>
       </label>
@@ -315,17 +365,17 @@
           <span class="field-label">
             Screenshots
             <span class="muted">
-              — paste, drop, or pick · {images.length}/{BUG_MAX_IMAGES}
-              {#if images.length > 0}
+              — paste, drop, or pick · {draft.images.length}/{BUG_MAX_IMAGES}
+              {#if draft.images.length > 0}
                 · {formatBytes(totalImageBytes)} of {formatBytes(BUG_MAX_TOTAL_IMAGE_BYTES)}
               {/if}
             </span>
           </span>
-          {#if images.length > 0}
+          {#if draft.images.length > 0}
             <ul class="shots">
-              {#each images as file, i (file.name + file.size + i)}
+              {#each draft.images as file, i (file.name + file.size + i)}
                 <li>
-                  <img src={previews[i]} alt={file.name} />
+                  <img src={draft.previews[i]} alt={file.name} />
                   <button
                     type="button"
                     class="remove"
@@ -344,7 +394,7 @@
               type="button"
               class="pick"
               onclick={() => fileInput?.click()}
-              disabled={submitting || images.length >= BUG_MAX_IMAGES}
+              disabled={submitting || draft.images.length >= BUG_MAX_IMAGES}
             >
               Add image…
             </button>
@@ -362,16 +412,16 @@
       {/if}
 
       <label class="context">
-        <input type="checkbox" bind:checked={includeContext} disabled={submitting} />
+        <input type="checkbox" bind:checked={draft.includeContext} disabled={submitting} />
         <span
-          >attach {gameID ? "game" : "page"} context
+          >attach {inGame ? "game" : "page"} context
           <span class="muted">({contextSummary})</span></span
         >
       </label>
 
       {#if spec.log && capturedLog.length > 0}
         <label class="context">
-          <input type="checkbox" bind:checked={includeLog} disabled={submitting} />
+          <input type="checkbox" bind:checked={draft.includeLog} disabled={submitting} />
           <span>
             attach recent activity log
             <span class="muted">({capturedLog.length} entries)</span>
@@ -380,12 +430,12 @@
               class="peek"
               onclick={(e) => {
                 e.preventDefault();
-                showLog = !showLog;
-              }}>{showLog ? "hide" : "show"}</button
+                draft.showLog = !draft.showLog;
+              }}>{draft.showLog ? "hide" : "show"}</button
             >
           </span>
         </label>
-        {#if showLog}
+        {#if draft.showLog}
           <pre class="logpeek">{capturedLog.map(logLine).join("\n")}</pre>
           <p class="muted small">
             Frames this browser sent and received, plus any JavaScript errors. No hidden game state
@@ -398,14 +448,14 @@
         <p class="error" role="alert">{error}</p>
       {/if}
       <div class="footer">
-        <button type="button" class="cancel" onclick={onclose} disabled={submitting}>
+        <button type="button" class="cancel" onclick={cancel} disabled={submitting}>
           Cancel
         </button>
         <button
           type="button"
           class="submit"
           onclick={submit}
-          disabled={submitting || title.trim().length === 0}
+          disabled={submitting || draft.title.trim().length === 0}
         >
           {submitting ? "Filing…" : spec.cta}
         </button>
@@ -458,6 +508,38 @@
       opacity: 1;
       transform: translateY(0) scale(1);
     }
+  }
+  .head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .minimize {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    margin: -4px -8px 0 0;
+    padding: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--fg-muted);
+    border: 1px solid transparent;
+    cursor: pointer;
+  }
+  .minimize:hover:not(:disabled) {
+    color: var(--fg);
+    border-color: var(--border-strong);
+  }
+  .minimize:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .minimize:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
   h2 {
     margin: 0 0 6px;

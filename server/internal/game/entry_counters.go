@@ -440,7 +440,15 @@ func (g *Game) applyEntryCountersLocked(cardID uuid.UUID, counters map[string]in
 	prev := g.landingEntryCounters
 	g.landingEntryCounters = cardID
 	defer func() { g.landingEntryCounters = prev }()
+	// #3942, CR 122.6a: the effect giving a permanent counters as it
+	// enters may name who puts them; none of ours does, so its
+	// controller puts them — not the controller of the spell or ability
+	// that put it onto the battlefield.
+	placer := uuid.Nil
+	if c, ok := g.LookupCardForEffect(cardID); ok {
+		placer = c.Controller
+	}
 	for _, name := range kinds {
-		_ = g.AddCounterForEffect(cardID, name, counters[name])
+		_ = g.AddCounterByForEffect(placer, cardID, name, counters[name])
 	}
 }

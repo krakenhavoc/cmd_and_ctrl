@@ -25,9 +25,9 @@ func init() {
 		Name:         "Sygg, River Cutthroat",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OptionalDraw(On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b36EndStepAndAnOpponentLostThree(ev, source, g)
-			}, "Sygg, River Cutthroat — draw a card", b36DrawIfAnOpponentLostThree), "Sygg, River Cutthroat — an opponent lost 3 or more life this turn. Draw a card?"),
+			}, "Sygg, River Cutthroat — draw a card", b36DrawIfAnOpponentLostThree), "Sygg, River Cutthroat — an opponent lost 3 or more life this turn. Draw a card?", 1),
 		},
 	})
 }

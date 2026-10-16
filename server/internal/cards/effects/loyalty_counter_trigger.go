@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // loyalty_counter_trigger.go — #2797: "Whenever you put one or more
 // loyalty counters on a planeswalker" (Inspired Tethermage).
@@ -26,14 +22,10 @@ import (
 // Aragorn's "one or more counters on THIS permanent" needs is the wrong
 // tool for "on a planeswalker".
 //
-// WHO PUT THEM. A loyalty cost names its placer (the activating player,
-// CR 606.4), and so does an effect that goes through AddCounterBy…, and
-// the event carries that player as Actor: that is read first. A
-// placement that names nobody falls back to b12CountersPlacedBy's rules,
-// which credit a planeswalker's controller and only while nobody else's
-// resolution is in progress. The fallback is weaker than printed where it
-// is wrong (a counter you put on an opponent's planeswalker with an effect
-// that names no placer is not credited), never stronger.
+// WHO PUT THEM is the event's Actor. A loyalty cost names its placer
+// (the activating player, CR 606.4), and since #3942 so does every other
+// placement: the controller of the resolving spell or ability, or the
+// planeswalker's controller for the loyalty it enters with (CR 122.6a).
 //
 // A removal (a −N cost, damage) and a placement of nothing are not
 // placements. A planeswalker entering with its loyalty counters IS: CR 122.6
@@ -49,13 +41,6 @@ func YouPutLoyaltyCountersOnAPlaneswalker(ev game.Event, source *game.Card, _ ga
 	target, ok := g.LookupCardForEffect(ev.Target)
 	if !ok || !target.IsPlaneswalker() || !onBattlefield(g, ev.Target) {
 		return false
-	}
-	if ev.Actor != uuid.Nil {
-		if ev.Actor != source.Controller {
-			return false
-		}
-		before, _ := b12CounterTotalBefore(ev, g)
-		return ev.Amount > before
 	}
 	_, placed := b12CountersPlacedBy(ev, source.Controller, g, true)
 	return placed

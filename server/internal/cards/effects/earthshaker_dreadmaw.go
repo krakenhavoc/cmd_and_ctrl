@@ -23,7 +23,7 @@ func init() {
 		PrintedKeywords: []string{"trample"},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Earthshaker Dreadmaw — draw a card for each other Dinosaur you control", func(g *game.Game, item *game.StackItem) error {
-				n := b22OtherCreaturesOfSubtypeControlled(g, item.Controller, item.SourceCardID, "Dinosaur")
+				n := b22OtherCreaturesOfSubtypeControlled(g, item.Controller, item.SourceCardID, g.TextReaderForEffect(item).TextSubtype("Dinosaur"))
 				return DrawCards{Player: item.Controller, N: n}.Apply(NewContext(g, item))
 			}),
 		},

@@ -812,7 +812,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// string as a free {0}. Every move this function builds pays the
 	// printed cost, so none of them is legal; the engine refuses the
 	// cast with ErrNoManaCost.
-	if game.HasNoManaCost(card) && offer == nil && (perm == nil || perm.Cost == "") {
+	if game.HasNoManaCost(card) && offer == nil && !perm.NamesPrice() {
 		return
 	}
 	optional := e.g.OptionalCostsForCastLocked(e.seat, card)
@@ -1005,6 +1005,10 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 			// permanent's mana value — and offered best first, up to the
 			// cap, among the payments the seat can afford.
 			altCostSets = e.emergePayments(card, offer, pool, cost, fromZone, spend, xFloor)
+		} else if offer.ReducedByTappedPower {
+			// #3931: harmonize's tap is priced per creature as emerge's
+			// sacrifice is (CR 702.180a), and tapping none is legal.
+			altCostSets = e.harmonizePayments(card, offer, pool, cost, fromZone, spend, xFloor)
 		} else if offer.PaymentDefinesX() {
 			// #3175: "a white card with mana value X" — the card is the X
 			// announcement, so each payment carries its own X.
@@ -1046,6 +1050,8 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// every announcement below; the other payments are repriced on their
 	// own when they are offered against it (first.base).
 	altMV := emergeManaValue(g, offer, altCostSets[0])
+	// #3931: and harmonize's, by the tapped creature's power.
+	altPower := harmonizePower(g, offer, altCostSets[0])
 	// #3787: the permission's own "cost {N} less" (Urianger Augurelt), read
 	// off the permission the announcement is made under, as the engine's
 	// pricer reads it off the one the cast claims.
@@ -1211,6 +1217,7 @@ modeLoop:
 				Controller:            e.seat,
 				FromZone:              fromZone,
 				AltSacrificeManaValue: altMV,
+				AltTappedPower:        altPower,
 				GrantReduction:        grantLess,
 				ExilingFromHand:       len(handExile),
 				TappingToPay:          len(tapAny),
@@ -1328,6 +1335,7 @@ modeLoop:
 					FromZone:              fromZone,
 					Targets:               targets,
 					AltSacrificeManaValue: altMV,
+					AltTappedPower:        altPower,
 					GrantReduction:        grantLess,
 					ExilingFromHand:       len(handExile),
 					TappingToPay:          len(tapAny),
@@ -1407,6 +1415,7 @@ modeLoop:
 							Targets:               tgts,
 							Sacrificing:           len(sacs),
 							AltSacrificeManaValue: altMV,
+							AltTappedPower:        altPower,
 							GrantReduction:        grantLess,
 							ExilingFromHand:       len(handExile),
 							TappingToPay:          len(tapAny),
@@ -2226,6 +2235,24 @@ func (e *enumerator) legalStepSets(src game.TargetSource, steps []game.Announced
 	out := [][]game.TargetRef{nil}
 	for i := range steps {
 		clause := steps[i].Clause
+		// #2055: an "of an opponent's choice" clause is not the
+		// controller's to pick. The announcement names nothing for it
+		// (the engine asks an opponent), so it adds no refs; it only
+		// keeps the prefixes some opponent could still complete
+		// (CR 601.2c), which is the engine's own gate.
+		if game.StepChosenByOpponent(steps[i]) {
+			kept := make([][]game.TargetRef, 0, len(out))
+			for _, prefix := range out {
+				if e.g.OpponentStepFillableForEffect(src, steps, i, prefix) {
+					kept = append(kept, prefix)
+				}
+			}
+			if len(kept) == 0 {
+				return nil
+			}
+			out = kept
+			continue
+		}
 		lt := e.g.LegalTargetsForAnnouncedClauseForEffect(src, steps, i, nil)
 		picks := e.legalTargetSetsFrom(&clause, budget, lt)
 		if len(picks) == 0 {

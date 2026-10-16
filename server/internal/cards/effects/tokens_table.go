@@ -124,6 +124,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 green Forest Dryad":                        {Name: "Forest Dryad", TypeLine: "Token Land Creature — Forest Dryad", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Elf Warrior":                         {Name: "Elf Warrior", TypeLine: "Token Creature — Elf Warrior", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Snake":                               {Name: "Snake", TypeLine: "Token Creature — Snake", Power: 1, Toughness: 1, Colors: []string{"G"}},
+	"5/4 green Snake":                               {Name: "Snake", TypeLine: "Token Creature — Snake", Power: 5, Toughness: 4, Colors: []string{"G"}},
 	"1/1 green Insect":                              {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Insect with flying and deathtouch":   {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"flying", "deathtouch"}},
 	"2/1 white Insect with flying":                  {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 2, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
@@ -240,6 +241,7 @@ var tokenTable = map[string]game.Card{
 	"5/3 green Elemental":                           {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 5, Toughness: 3, Colors: []string{"G"}},
 	"5/5 red Dragon Spirit with flying":             {Name: "Dragon Spirit", TypeLine: "Token Creature — Dragon Spirit", Power: 5, Toughness: 5, Colors: []string{"R"}, Keywords: []string{"flying"}},
 	"5/5 white Horse":                               {Name: "Horse", TypeLine: "Token Creature — Horse", Power: 5, Toughness: 5, Colors: []string{"W"}},
+	"5/5 green Elephant":                            {Name: "Elephant", TypeLine: "Token Creature — Elephant", Power: 5, Toughness: 5, Colors: []string{"G"}},
 	"5/5 red and green Elemental":                   {Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 5, Toughness: 5, Colors: []string{"R", "G"}},
 	"4/4 red and green Beast with trample":          {Name: "Beast", TypeLine: "Token Creature — Beast", Power: 4, Toughness: 4, Colors: []string{"R", "G"}, Keywords: []string{"trample"}},
 	"8/8 blue Leviathan with hexproof":              {Name: "Leviathan", TypeLine: "Token Creature — Leviathan", Power: 8, Toughness: 8, Colors: []string{"U"}, Keywords: []string{"hexproof"}},
@@ -267,4 +269,8 @@ var tokenTable = map[string]game.Card{
 
 	// #2466: its own alignment block, so a long key does not re-flow the table above.
 	"2/2 red and white Dinosaur with flying and haste": {Name: "Dinosaur", TypeLine: "Token Creature — Dinosaur", Power: 2, Toughness: 2, Colors: []string{"R", "W"}, Keywords: []string{"flying", "haste"}},
+
+	// #2038: Hostility's and Worldspine Wurm's tokens.
+	"3/1 red Elemental Shaman with haste": {Name: "Elemental Shaman", TypeLine: "Token Creature — Elemental Shaman", Power: 3, Toughness: 1, Colors: []string{"R"}, Keywords: []string{"haste"}},
+	"5/5 green Wurm with trample":         {Name: "Wurm", TypeLine: "Token Creature — Wurm", Power: 5, Toughness: 5, Colors: []string{"G"}, Keywords: []string{"trample"}},
 }

@@ -25,6 +25,7 @@
     ActivatedAbilityView,
     AdditionalCostView,
     AltCostPriceView,
+    AltCostTapPriceView,
     CardView,
     GameView,
     LegalTargetsView,
@@ -127,6 +128,8 @@
     beginChoice as beginTargetingChoice,
     beginForAbility as beginTargetingForAbility,
     beginForModes as beginTargetingForModes,
+    beginSpliceOnly,
+    spliceOffersOf,
     advance,
     allPicks,
     choiceAnswer,
@@ -187,6 +190,8 @@
   import { abilityMaxX, suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
   import { castPreviewParams } from "../../castPreview";
   import {
+    altCostTapRange,
+    altCostTapsNothingToAsk,
     castSacrificeRange,
     exilePermanentAutoPick,
     exilePermanentOptions,
@@ -578,6 +583,7 @@
     giftOpponent?: string,
     costBranch?: number,
     assistPlayer?: string,
+    splices?: string[],
   ): void {
     const card = altCostPromptCard;
     const choices = altCostPromptChoices;
@@ -600,6 +606,9 @@
     // ADR 0150 §5: the helper asked, if any; the cast rides it as
     // `assist_player` and waits for their answer.
     if (assistPlayer !== undefined) next = { ...next, assistPlayer };
+    // ADR 0202: the cards spliced onto it, in the order ticked; their
+    // clauses join the target walk after the spell's own.
+    if (splices !== undefined && splices.length > 0) next = { ...next, splices };
     afterAltCost(card, next);
   }
 
@@ -1079,11 +1088,14 @@
   let altTapPromptChoices: CastChoices = {};
   let altTapPromptClause = $state<LegalTargetsView | undefined>(undefined);
   let altTapPromptLabel = $state("an untapped creature you control");
+  // #3931: a harmonize offer's price per creature, shown in the picker.
+  let altTapPromptPrices = $state<Record<string, AltCostTapPriceView> | undefined>(undefined);
   const altTapOptions = $derived.by(() => {
     if (!altTapPromptCard) return [];
     return orderSacrificeOptions(view.battlefield.cards, altTapPromptClause?.cards);
   });
-  const altTapBounds = $derived(sacrificeRange(altTapPromptClause));
+  // #3931: harmonize's "up to one" is min 0 — tapping none pays it.
+  const altTapBounds = $derived(altCostTapRange(altTapPromptClause));
 
   function confirmAltTap(instanceIDs: string[]): void {
     const card = altTapPromptCard;
@@ -1091,6 +1103,7 @@
     altTapPromptCard = null;
     altTapPromptChoices = {};
     altTapPromptClause = undefined;
+    altTapPromptPrices = undefined;
     if (!card) return;
     afterAltCostPayment(card, { ...choices, altCostIDs: instanceIDs });
   }
@@ -1118,9 +1131,15 @@
       return;
     }
     const tapClause = altCostTapClause(offer);
+    // #3931: "up to one" with nothing to tap has one answer — none.
+    if (altCostTapsNothingToAsk(tapClause)) {
+      afterAltCostPayment(card, { ...choices, altCostIDs: [] });
+      return;
+    }
     if (tapClause !== undefined) {
       altTapPromptClause = tapClause;
       altTapPromptLabel = offer?.pay_label ?? "an untapped creature you control";
+      altTapPromptPrices = offer?.reduces_by_power ? offer.tap_prices : undefined;
       altTapPromptChoices = choices;
       altTapPromptCard = card;
       return;
@@ -1377,6 +1396,7 @@
     if (
       alternativeCostsOf(card).length > 0 ||
       optionalCostsOf(card).length > 0 ||
+      spliceOffersOf(card).length > 0 ||
       costBranchesOf(card).length > 0 ||
       assistOf(card, choices.forceCast === true) !== undefined
     ) {
@@ -1574,6 +1594,7 @@
       needsFacePicker(card) ||
       needsPermissionTypePicker(card) ||
       optionalCostsOf(card).length > 0 ||
+      spliceOffersOf(card).length > 0 ||
       costBranchesOf(card).length > 0 ||
       assistOf(card, false) !== undefined;
     if (asks) {
@@ -1713,10 +1734,15 @@
     // the server then refuses, with nothing on screen to say why. One
     // list, next to the type that declares the vocabulary, and a unit
     // test over it.
-    if (opensTargetPicker(mode)) {
-      beginTargeting(card, mode, choices, alt);
+    // #2055: a spell whose every target is an opponent's choice
+    // (Evangelize) has no walk; it is cast at once and the server asks.
+    if (opensTargetPicker(mode) && beginTargeting(card, mode, choices, alt)) {
       return;
     }
+    // ADR 0202: a spell with no target of its own still asks for the
+    // targets of the text spliced onto it (Glacial Ray onto Kodama's
+    // Reach).
+    if (beginSpliceOnly(card, choices)) return;
     const params: Record<string, unknown> = { instance_id: card.instance_id };
     applyCastChoices(params, choices);
     guardedSendAction("cast_spell", params, viewerID ?? undefined);
@@ -2811,7 +2837,12 @@
       ...manaAbilityRef(card, activate.index),
       ...manaColorParams(activate.colors),
     };
-    guardedSendAction("activate_mana_ability", params, card.controller);
+    // #1864: an "Any player may activate this ability" row on another
+    // player's permanent (Mana Cache) is the viewer's activation, and the
+    // mana goes to the viewer's pool (CR 602.1a, CR 106.4).
+    const activator =
+      ability?.any_player && viewerID && card.controller !== viewerID ? viewerID : card.controller;
+    guardedSendAction("activate_mana_ability", params, activator);
   }
 
   function confirmSacrifice(instanceIDs: string[]): void {
@@ -3756,6 +3787,7 @@
       considering={consideringSeatID !== null && consideringSeatID === prioritySeatID}
       onCounter={counterStackItem}
       onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
+      onActivateAbility={isSpectator ? undefined : handleActivateAbility}
       position={savedStackPosition(view, viewerID)}
       onSave={isSpectator ? undefined : (pos) => saveStackPosition(view.id, pos)}
       onReset={isSpectator ? undefined : () => clearStackPosition(view.id)}
@@ -3781,6 +3813,7 @@
         splitSecondActive={view.split_second_active === true}
         onCounter={counterStackItem}
         onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
+        onActivateAbility={isSpectator ? undefined : handleActivateAbility}
         {boardEl}
         position={savedStackPosition(view, viewerID)}
         onSave={isSpectator ? undefined : (pos) => saveStackPosition(view.id, pos)}
@@ -3981,11 +4014,13 @@
     min={altTapBounds.min}
     verb="Tap"
     castName={altTapPromptCard?.name}
+    tapPrices={altTapPromptPrices}
     onConfirm={confirmAltTap}
     onCancel={() => {
       altTapPromptCard = null;
       altTapPromptChoices = {};
       altTapPromptClause = undefined;
+      altTapPromptPrices = undefined;
     }}
   />
   <!-- ADR 0100: the count and the label are the cost THIS cast pays —

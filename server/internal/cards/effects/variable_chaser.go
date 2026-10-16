@@ -35,6 +35,7 @@ func init() {
 				if err := (MayChoice{
 					Player:   player,
 					Question: "Arc of Fortune — discard your hand and draw seven cards?",
+					Draws:    7,
 					OnYes: func(ctx *Context) error {
 						if _, err := discardWholeHand(ctx.Game, player); err != nil {
 							return err

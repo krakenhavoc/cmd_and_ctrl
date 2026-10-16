@@ -107,6 +107,11 @@ type CardDef struct {
 	// Delve is CR 702.66: this spell may exile cards from its caster's
 	// graveyard to pay generic mana (ADR 0100). Read through DelveFor.
 	Delve bool
+	// Splice is CR 702.47's "Splice onto [quality] [cost]": while the
+	// card is in its owner's hand it may be revealed as they cast a spell
+	// of that quality, adding its rules text (the rest of this row) to
+	// the spell (#1989, ADR 0202). Read through SpliceAbilityFor.
+	Splice *SpliceAbility
 	// SpendOnly is the spell's own "Spend only black mana on X" (Drain
 	// Life, Consume Spirit) or "Spend only black and/or red mana on X"
 	// (Soul Burn), #2556: the colour half of a restriction on the mana
@@ -320,6 +325,12 @@ type CardDef struct {
 	// card's own zone; see game.CatalogPlayerKeywords and ADR 0072's
 	// 2026-09-22 amendment (#1197).
 	PlayerKeywords []string
+	// PlayerKeywordsIf are this permanent's printed statics that give
+	// its CONTROLLER an ability only while a condition holds — "During
+	// your turn, you … have hexproof" (Gruul Spellbreaker). Read beside
+	// PlayerKeywords by the same walk; see game.CatalogPlayerKeywordsIf
+	// and ADR 0072's 2026-10-16 amendment (#2013).
+	PlayerKeywordsIf []PlayerKeywordIf
 	// PlayerLifeTotalLocked is this permanent's printed "Your life
 	// total can't change" (CR 119.7 / CR 119.8 — Platinum Emperion),
 	// about its CONTROLLER. Read from the battlefield through
@@ -353,6 +364,14 @@ type CardDef struct {
 	// battlefield through CatalogExtraVillainousChoice, keyed by
 	// CatalogAbilityKey; see villainous_choice.go.
 	OpponentsFaceVillainousChoicesAgain bool
+	// ControlsOpponentsSearches is this permanent's printed "You
+	// control your opponents while they're searching their libraries.
+	// While an opponent is searching their library, they exile each
+	// card they find. You may play those cards …" (Opposition Agent,
+	// CR 723.2, #3998). Read from the battlefield through
+	// CatalogControlsOpponentsSearches, keyed by CatalogAbilityKey; see
+	// search_control.go.
+	ControlsOpponentsSearches bool
 	// DamageCantBePrevented are this permanent's printed "damage can't
 	// be prevented" statics (CR 615.12, ADR 0107 §5). Read from the
 	// battlefield through CatalogUnpreventableDamage, keyed by
@@ -362,6 +381,11 @@ type CardDef struct {
 	// statics (CR 119.7, ADR 0107 §5). Read from the battlefield
 	// through CatalogCantGainLife; see cant_gain_life.go.
 	CantGainLife []CantGainLifeStatic
+	// DrawLimits are this permanent's printed "can't draw more than one
+	// card each turn" and "can't draw cards" statics (CR 121.2b, #3927).
+	// Read from the battlefield through CatalogDrawLimits; see
+	// draw_limit.go.
+	DrawLimits []DrawLimitStatic
 	// DamageAsThough are this permanent's printed "damage is dealt as
 	// though its source had wither / infect" statics (ADR 0108 §10). Read
 	// from the battlefield through CatalogDamageAsThough, keyed by
@@ -961,6 +985,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogPlayerKeywordsIf = func(key string) []PlayerKeywordIf {
+		if d := catalogDef(key); d != nil {
+			return d.PlayerKeywordsIf
+		}
+		return nil
+	}
 	CatalogPlayerLifeTotalLocked = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.PlayerLifeTotalLocked
@@ -987,6 +1017,10 @@ func init() {
 		d := catalogDef(key)
 		return d != nil && d.OpponentsFaceVillainousChoicesAgain
 	}
+	CatalogControlsOpponentsSearches = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.ControlsOpponentsSearches
+	}
 	CatalogUnpreventableDamage = func(key string) []UnpreventableDamageStatic {
 		if d := catalogDef(key); d != nil {
 			return d.DamageCantBePrevented
@@ -996,6 +1030,12 @@ func init() {
 	CatalogCantGainLife = func(key string) []CantGainLifeStatic {
 		if d := catalogDef(key); d != nil {
 			return d.CantGainLife
+		}
+		return nil
+	}
+	CatalogDrawLimits = func(key string) []DrawLimitStatic {
+		if d := catalogDef(key); d != nil {
+			return d.DrawLimits
 		}
 		return nil
 	}

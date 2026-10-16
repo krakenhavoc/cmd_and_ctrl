@@ -4145,6 +4145,51 @@ The CR 616 order answer and the "may" answer find the source again by
 that object before applying it, and drop the effect if its source has
 left.
 
+### 5ak. Amendment, 2026-10-16: an entry names the ability that made it
+
+*Amendment, 2026-10-16, branch `feat/3933-kodama-entry-provenance`, #3933.*
+
+Kodama of the East Tree: "Whenever another permanent you control enters,
+if it wasn't put onto the battlefield with this ability, you may put a
+permanent card with equal or lesser mana value from your hand onto the
+battlefield." The intervening "if" (CR 603.4) needs to know which ability
+put a permanent onto the battlefield, and no entry event said. Without it
+one Kodama chains off its own puts until the hand is empty.
+
+**Decision.** §5ad's inference, on the entry: an effect entry runs while
+the item that made it is resolving, and `Game.resolving` names that item
+through every paused continuation of its resolution (Kodama's put waits
+on a prompt). So the entry's `EventETB` is stamped at the one place every
+entry announces itself (`announceEntryLocked`,
+`stampEntryProvenanceLocked` in `game/entry_provenance.go`), never by its
+~40 callers, with two new fields: `CauseSource` (the item's
+`SourceObject`, CR 400.7) and `CauseAbility` (its catalog row,
+`Params.Ability`, ADR 0041 P9). Both are pointers with `omitempty`, so
+the change is additive within the snapshot version and no fixture moves.
+§5ad's `Cause` fields stay empty on an `EventETB`, as they always were:
+frozen fixtures hold those zero values. It is stamped only while the resolution is
+open (`resolutionOpen`), never in the window after it finished where
+`Game.resolving` is stale and a land may be played, and never on a spell
+resolving into a permanent, which nothing "put" there.
+
+`TriggeredAbility.NotPutByThisAbility` is the condition: an `EventETB`
+whose `CauseSource` is this trigger's source object and whose
+`CauseAbility` is this trigger's own row
+(`TriggeredAbilityRef`) does not trigger it (`harvestMatchLocked`).
+Object and row together are "this ability": a Kodama that left and came
+back is a new object with a new ability, and a second Kodama's put
+triggers the first, as printed. The cause is fixed with the event, so the
+CR 603.4 check as the ability resolves always agrees with the one as it
+triggered; there is nothing to re-read. `effects.Register` refuses the
+flag off an `EventETB` row with a declared Effect, since only such a row
+has an identity to compare.
+
+**Limits, declared.** A restore point taken while an ability is paused
+mid-put does not carry `Game.resolving`, so an entry finished after the
+restore names no ability and could trigger its maker once more. An ability
+copy (CR 707.10) carries its original's row, so it counts as the same
+ability; no card in the catalog copies a Kodama trigger.
+
 ### 6. Six pipeline integration points (five mutations + step transition)
 
 The core five mutations named in the sprint plan are the rules-
@@ -4798,3 +4843,52 @@ anywhere, instead exile it with a void counter on it" is
   fails (no counter on a milled card). Delete the call in
   `executeBattlefieldLeaveLocked`: `TestDauthiVoidwalkerExilesADyingOpponentCreature`
   fails.
+
+## Amendment 2026-10-16 — a mana ability's production is one event (#3939)
+
+§5ab Decision 1 opened the production window once per mana SLOT, so
+Ancient Tomb's `{C}{C}` was two events of one mana each. CR 106.12b says
+the replacement modifies "the mana production event while such an ability
+is resolving and producing mana", which is the ability's whole output, and
+Damping Sphere's "if a land is tapped for two or more mana, it produces {C}
+instead of any other type and amount" can only be answered against it.
+
+- **One window per activation.** `ActivateManaAbility` collects every colour
+  it knows (fixed slots, colours named up front) and produces them in one
+  `produceManaLocked` call. When the activation also has colours to pick,
+  nothing reaches the pool yet. One `PendingChoiceMana` is asked once per
+  pick, carrying the known colours in `ManaSettled` and the picks still owed
+  in `ManaPicksLeft` (a `ManaPickSlot` each). Every answer but the last
+  rewrites the choice in place with a fresh ID, the way #2558's
+  different-colours pick does. The last produces everything in one window
+  and fires the triggered mana abilities once, so a filter land is one tap
+  for Mana Flare too. Both fields are additive snapshot data inside v9.
+- **The auto-tap executor** produces each source's whole output in one call
+  too. It books the ledger from what arrived (`bookProduced`): each colour
+  it meant to book is booked if it arrived, and anything that arrived beyond
+  what it asked for is booked as surplus. `produceManaLocked`'s own surplus
+  booking counts per colour, not off the tail. `MultiplyMana` repeats each
+  mana in place, so the tail of a doubled `{W}{U}` is not its surplus.
+- **The planner** (`priceWholeOutputLocked`) previews a source of two or more
+  slots as one production, beside the per-slot preview. When they agree,
+  which is every board without a whole-output replacement (a doubler is per
+  mana), nothing changes. When they disagree, a source of fixed slots is
+  priced as the whole preview (Ancient Tomb under a Sphere is one `{C}`
+  slot). A source with a pick is declined, the #2558 posture, and the player
+  taps it by hand.
+- **Order** stays §5ab Decision 2's: a production cannot pause, so the
+  gathered order applies. "Two or more" is read off the event as it stands,
+  so Mana Reflection doubling a Forest's `{G}` makes the Sphere apply to the
+  `{G}{G}`. This is the CR 616.1e re-check after each replacement.
+
+- **Snapshots.** `manaSettled` and `manaPicksLeft` are recorded in the v9
+  shape as additive fields. A file written before them has no grouped pick
+  to resume. A binary from before them restoring a newer file mid-pick drops
+  the colours the activation had settled, and loses that one activation's
+  mana, not the game. One corpus board,
+  `granted_mana_spent_readers`, minted one production id per slot, so the
+  ids after it moved. Its v9 fixture stays as written, and the same board is
+  a new file (`granted_mana_spent_readers_one_production`, the #2494
+  precedent).
+
+Damping Sphere ships `full`.

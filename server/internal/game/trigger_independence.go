@@ -1314,9 +1314,9 @@ var characteristicModKinds = map[ModKind]bool{
 	ModAddSubtypes: true, ModAllCreatureTypes: true, ModSetColors: true, ModAddColors: true,
 	ModAddKeywords: true, ModRemoveKeywords: true, ModLoseAllAbilities: true,
 	ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
-	ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModGoad: true,
+	ModSetBaseToughness: true, ModModifyPT: true, ModSwitchPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModGoad: true,
 	ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
-	ModGrantAbilities: true, ModBorrowAbilities: true, ModCantAttackUnlessDefenderControls: true, ModCantAttackPlayer: true, ModCantAttackOwner: true,
+	ModGrantAbilities: true, ModBorrowAbilities: true, ModCantAttackUnlessDefenderControls: true, ModCantAttackPlayer: true, ModCantAttackOwner: true, ModWaiveDefender: true,
 	ModSetBasicLandTypes: true, ModLoseLandTypes: true, ModCantHaveKeywords: true,
 	ModBecomeCopy: true, ModExchangeText: true, ModChangeText: true, ModCantBeBlockedExceptBy: true,
 	ModLimitBlockersPerDefender: true, ModCantBeBlockedByPlayer: true,
@@ -1599,7 +1599,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"EntersWithCountersFromCast": defFieldInert, "PrintedKeywords": defFieldInert,
 	"ManaTriggers": defFieldInert, "AdditionalCost": defFieldInert,
 	"OptionalCosts": defFieldInert, "AlternativeCosts": defFieldInert,
-	"TapCost": defFieldInert, "Delve": defFieldInert, "SpendOnly": defFieldInert,
+	"TapCost": defFieldInert, "Delve": defFieldInert, "Splice": defFieldInert, "SpendOnly": defFieldInert,
 	"SpendOnlySources": defFieldInert, "SpellsYouCastHaveDelve": defFieldInert, "SplitSecondGrants": defFieldInert, "GrantedOptionalCosts": defFieldInert, "GrantedTapCosts": defFieldInert,
 	"CostModifiers": defFieldInert, "SelfCostModifiers": defFieldInert,
 	"ExhaustPermissions": defFieldInert, "BoastLimits": defFieldInert,
@@ -1623,7 +1623,10 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"ExtraVote": defFieldOwnRules,
 	// #3140: CR 701.55c, the count a villainous choice is faced.
 	"OpponentsFaceVillainousChoicesAgain": defFieldOwnRules,
-	"LifeForMana":                         defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
+	// #3998: Opposition Agent controls an opponent's search and exiles
+	// what it finds while its permanent is there.
+	"ControlsOpponentsSearches": defFieldOwnRules,
+	"LifeForMana":               defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
 	"GrantText": defFieldInert, "MadnessLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
 	"WantsDistinctColors": defFieldInert, "WantsManaFrom": defFieldInert, "WantsColors": defFieldInert, "ReadsManaSpent": defFieldInert,
 	"AdditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
@@ -1638,8 +1641,9 @@ var cardDefFieldClass = map[string]defFieldClass{
 
 	"HexproofBypasses": defFieldRules, "WardSuppressions": defFieldRules,
 	"TargetingRestrictions": defFieldRules, "PlayerKeywords": defFieldRules,
+	"PlayerKeywordsIf":      defFieldRules,
 	"PlayerLifeTotalLocked": defFieldRules, "DamageCantBePrevented": defFieldRules,
-	"CantGainLife": defFieldRules, "DamageAsThough": defFieldRules,
+	"CantGainLife": defFieldRules, "DrawLimits": defFieldRules, "DamageAsThough": defFieldRules,
 	"LegendRuleExemptions": defFieldRules, "ZeroLoyaltyExemptions": defFieldRules,
 	"OpponentEffectProtections": defFieldRules, "GameEndGates": defFieldRules,
 	"DealtDamageCantBeRegenerated": defFieldRules,

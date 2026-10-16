@@ -47,8 +47,10 @@ func init() {
 // stingFirstStrike is "Equipped creature has first strike as long as it's
 // blocking or blocked by a Goblin or Orc."
 func stingFirstStrike() game.StaticAbility {
-	st := GrantToAttachedWhile(func(host *game.Card, g *game.Game, _ *game.Card) bool {
-		isGoblinOrOrc := func(c *game.Card) bool { return c.HasSubtype("Goblin") || c.HasSubtype("Orc") }
+	st := GrantToAttachedWhile(func(host *game.Card, g *game.Game, source *game.Card) bool {
+		// "Goblin or Orc" are words of the source's text (CR 612.2, #3984).
+		goblin, orc := source.TextSubtype("Goblin"), source.TextSubtype("Orc")
+		isGoblinOrOrc := func(c *game.Card) bool { return c.HasSubtype(goblin) || c.HasSubtype(orc) }
 		if g.Battlefield == nil {
 			return false
 		}

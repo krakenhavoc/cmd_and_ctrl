@@ -1037,3 +1037,57 @@ activated abilities only (the amendment of 2026-10-13), so `checkZoneGrantBundle
 `TestCloudsteelKirinProtectsTheEquippedCreaturesController`,
 `TestCloudsteelKirinGrantsCantLoseToACreatureThatLostItsAbilitiesFirst` and
 `TestCloudsteelKirinsGrantEndsWhenTheCreatureLosesItsAbilitiesLater` (`internal/cards/effects`).
+
+## Amendment 2026-10-16 — a card in exile grants cipher's ability to the creature it is encoded on (#3867)
+
+**Sprint:** S76 — Cards: incubate, face-down and outside the game.
+
+CR 702.99a: cipher "represents two abilities. The first is a spell ability that functions while the
+spell with cipher is on the stack. The second is a static ability that functions while the card with
+cipher is in the exile zone." The static ability is "for as long as this card is encoded on that
+creature, that creature has 'Whenever this creature deals combat damage to a player, you may copy
+the encoded card and you may cast the copy without paying its mana cost.'" CR 702.99c keeps the card
+encoded while it stays exiled and the creature stays on the battlefield, through a change of
+controller or of type.
+
+That is a layer-6 grant whose grantor is a card in EXILE, which no grant before it had. Two things
+were missing: a link from the exiled card to the creature, and a trigger that knows WHICH card to
+copy when two are encoded on one creature.
+
+**1. The spell ability.** It is the spell's last instruction, so it is asked at the end of the
+resolution (`finishSpellResolutionStageLocked`), after every prompt the spell's own text opened has
+been answered: a keyed option pick (`cipher/encode`, a restore point) of the creatures the spell's
+controller controls, plus "Don't encode it". Not a target. Encoded, the card is exiled from the stack
+and `Card.EncodedOn` names the creature OBJECT `{instance, epoch}` (with `Card.EncodedAt`, the
+timestamp); declined, the resolution ends as before. The resolution tail is parked behind the
+question (`resolutionTail.cipherAsked`, carried by the snapshot), so the exit runs after the answer
+and the question is not asked twice. A copy of the spell, or a card copy made to be cast (CR 707.12),
+is not "represented by a card" and is never asked. `EncodedOn` is its own field, not
+`Card.ExiledWith`: the creature did not exile the card, so "cards exiled with" it must not see it (CR
+607.2a). `MoveCard` clears it, and a creature that leaves and returns is a new epoch.
+
+**2. The static ability** is one more source list in the layer pass (`cipherContinuousEffectsLocked`):
+one layer-6 effect per encoded card, at `EncodedAt` (CR 613.7), applying to the linked object and
+granting the bundle `cipher/encoded` with the encoded card as grantor. So a "loses all abilities"
+newer than the encoding takes the ability away and an older one does not (Decision 3), and the view
+lists the ability on the creature by its bundle text, which `effects` files as a text-only bundle.
+
+**3. The triggered ability is derived from the grant**, one per grant, the way prowess and
+annihilator are derived from their keywords (`cipherTriggersFor`, read by `triggersOf`): each grant
+carries its grantor, so each trigger is about its own card, and two cards encoded on one creature are
+two triggers. It belongs to the creature, so the creature's controller controls it. Its body is keyed
+(`cipher/cast`): it copies the encoded card if it is still in exile and offers the copy free through
+`CopyCardsAndOfferCastsForEffect` (ADR 0066's 2026-10-13 amendment). The "you may" is taking the
+offer; a copy not cast ceases to exist (CR 704.5e).
+
+**Alternatives considered.** A trigger declared on the cipher card in exile (`TriggeredAbility.Zones`,
+#925) would know its card without a grant, but the ability would not be the creature's: a later
+"loses all abilities" on the creature would not stop it, and the view would not show it on the
+creature. A per-card bundle key would make two copies of one card encoded on one creature
+indistinguishable. Reusing `ExiledWith` was rejected above.
+
+**Cards.** Trait Doctoring and Last Thoughts first, with the cipher cards whose spell text the engine
+expresses. Pinned by `cipher_test.go` (`internal/cards/effects`): encoding, declining, no creature,
+the combat-damage copy, the creature leaving, a change of controller, an ability removal
+older and newer than the encoding, a restore with the question
+open, and Trait Doctoring's prompt order.

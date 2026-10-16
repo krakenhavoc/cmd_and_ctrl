@@ -94,7 +94,7 @@ func myriadChooseOpponents(ctx *Context, name string, tmpl game.Card, opponents 
 	return (MayChoice{Question: name + " — myriad: create a copy attacking " + p.Name + " or a planeswalker they control?",
 		YesLabel: "Create copy", NoLabel: "Skip opponent",
 		OnYes: func(ctx *Context) error {
-			chosen := append(slices.Clone(groups), game.TokenGroup{Template: tmpl, Count: 1, Entry: game.TokenEntryOptions{Tapped: true}, AttackOpponent: opponent})
+			chosen := append(slices.Clone(groups), game.TokenGroup{Template: copiedToken(tmpl), Count: 1, Entry: game.TokenEntryOptions{Tapped: true}, AttackOpponent: opponent})
 			return myriadChooseOpponents(ctx, name, tmpl, opponents[1:], chosen)
 		},
 		OnNo: func(ctx *Context) error { return myriadChooseOpponents(ctx, name, tmpl, opponents[1:], groups) },

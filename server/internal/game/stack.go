@@ -92,6 +92,14 @@ type TargetRef struct {
 	// own target group. Added by #764.
 	Mode int
 
+	// Splice is the spliced text this ref answers (CR 702.47d, #1989):
+	// zero for the spell's own text, k for the k-th entry of
+	// StackItem.Spliced (1-based). Slot and Mode then index that text's
+	// own clause list. Zero, and so absent on disk and on the wire, for
+	// every ref that is not a spliced text's — which is every ref there
+	// was before splice.
+	Splice int `json:"splice,omitempty"`
+
 	// Epoch is the CR 400.7 object epoch of the permanent this ref
 	// named when a PAYLOAD recorded it (StackItem.Payload), so the
 	// resolving ability can read that object's last-known information
@@ -275,6 +283,15 @@ type StackItem struct {
 	// mutations.go.
 	Targets []TargetRef
 
+	// Spliced is the rules text other cards added to this spell by
+	// splice (CR 702.47a, #1989, ADR 0202), in the order their effects
+	// happen (CR 702.47b), each with the targets chosen for it
+	// (CR 702.47d). Targets above stays the spell's own text's, so every
+	// reader of item.Targets reads what it always did; AllTargets is the
+	// spell's whole target list. Nil for every spell nothing was spliced
+	// onto and for every ability. A CR 707.10 copy carries it.
+	Spliced []SplicedText
+
 	// Payload is what the effect that CREATED this item had to tell
 	// it — the cards that were revealed, the creature that was
 	// sacrificed, the player that was chosen. A reflexive trigger
@@ -341,6 +358,17 @@ type StackItem struct {
 	// redistributed (CR 608.2b). Carried by clone, snapshot and copy
 	// (CR 707.10), remapped by a retarget (CR 115.7c). #1563.
 	Distribution map[uuid.UUID]int
+
+	// TargetChoosers names, for each clause of the announcement that
+	// an opponent chose ("target creature of an opponent's choice",
+	// TargetSpec.ChosenByOpponent), the opponent who chose it (#2055).
+	// The choice of opponent is part of the announcement and cannot be
+	// changed (the Magus of the Arena ruling): it is bound onto the
+	// item's clause copies for the CR 608.2b re-check and for a CR
+	// 115.7 retarget, which both read "they control" against it.
+	// Carried by clone, snapshot and copy (CR 707.10). Nil on every
+	// item without such a clause.
+	TargetChoosers []TargetChooser
 
 	// Paid is what this announcement actually cost: the counters
 	// removed or added, the life paid, and — since #761 — the mana

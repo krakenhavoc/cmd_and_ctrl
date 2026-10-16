@@ -74,3 +74,28 @@ func TestBotNeverTakesAnOpponentsOnlyRow(t *testing.T) {
 		t.Errorf("activated an opponent's opponents-only row with no declared purpose")
 	}
 }
+
+// #1865 (ADR 0106 §1 amendment 2026-10-16): an any-player row of a SPELL
+// on the stack is held to the same rule. Lightning Storm's row declares
+// no Draws or ControllerLosesLife, so the bot never pumps an opponent's
+// storm, which may be aimed at it, however cheap the land it would
+// discard.
+func TestBotNeverPumpsAnOpponentsSpellOnTheStack(t *testing.T) {
+	const stormMove = "Lightning Storm (controlled by Seat1): Discard a land card: Put two charge counters on Lightning Storm. You may choose a new target for it."
+	storm := spell(cardID(4), 1, "Lightning Storm", "{1}{R}{R}")
+	storm.ZoneAbilities = []protocol.ActivatedAbilityView{{
+		Index: 0, Ref: "own:0", Label: "Discard a land card: Put two charge counters on Lightning Storm.",
+		AnyPlayer: true,
+	}}
+	v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)},
+		withBattlefield(land(cardID(10), 0)),
+		withStack(storm),
+		withTurn(3, 0, "postcombat_main"))
+	in := input(0, v, passMove(0), activateMove(t, 0, cardID(4), stormMove, nil))
+	// A flat activation worth far more than any response threshold, so
+	// nothing but the purpose rule stands between it and the pass.
+	d := decideWith(t, in, func(c *heuristic.Config) { c.ActivateBase = 10 })
+	if got := chose(t, in, d); got == stormMove {
+		t.Errorf("pumped an opponent's Lightning Storm: a spell's row with no priced purpose must never be chosen")
+	}
+}

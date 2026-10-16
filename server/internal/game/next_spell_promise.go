@@ -251,11 +251,20 @@ func (g *Game) affinityCountLocked(player uuid.UUID, cardType string) int {
 	return n
 }
 
+// spentPromiseFollowUp is one follow-up a spent promise owes: its key
+// and the source that made the promise, which the body is told as
+// CastFollowUp.Source ("it gains haste until end of turn" is an effect
+// FROM that source, Summon: Brynhildr, #3192).
+type spentPromiseFollowUp struct {
+	Key    CastFollowUpKey
+	Source uuid.UUID
+}
+
 // spendNextSpellPromisesLocked is CR 601.2i for the one-use promise:
 // the spell `spellID` has just become cast by `caster`, so every live
 // promise of the caster's whose filter it matches is taken off
 // Player.Statics and its riders land on the spell's item. A spell that
-// matches none changes nothing. It returns the follow-up keys of the
+// matches none changes nothing. It returns the follow-ups of the
 // promises it spent, for castSpellLocked to run once EventCast is out.
 //
 // Replaces the statics slice rather than compacting it, and the mark
@@ -263,7 +272,7 @@ func (g *Game) affinityCountLocked(player uuid.UUID, cardType string) int {
 // sweepPlayerStaticsLocked gives: an undo snapshot shares the arrays.
 //
 // Caller must hold g.mu (write).
-func (g *Game) spendNextSpellPromisesLocked(caster, spellID uuid.UUID) []CastFollowUpKey {
+func (g *Game) spendNextSpellPromisesLocked(caster, spellID uuid.UUID) []spentPromiseFollowUp {
 	p := g.playerByIDLocked(caster)
 	item := g.StackMeta[spellID]
 	spell := g.spellCardOnStackLocked(spellID)
@@ -273,7 +282,7 @@ func (g *Game) spendNextSpellPromisesLocked(caster, spellID uuid.UUID) []CastFol
 	var (
 		kept      []PlayerStatic
 		spent     []PlayerStatic
-		followUps []CastFollowUpKey
+		followUps []spentPromiseFollowUp
 	)
 	for _, s := range p.Statics {
 		if g.livePromise(s) && !s.NextSpell.EveryMatchingSpell && s.NextSpell.Filter.Matches(*spell) {
@@ -297,7 +306,7 @@ func (g *Game) spendNextSpellPromisesLocked(caster, spellID uuid.UUID) []CastFol
 				PromisedCounter{Kind: np.CounterKind, Count: np.Counters, Source: s.Source, SourceName: s.Label})
 		}
 		if np.FollowUp != "" {
-			followUps = append(followUps, np.FollowUp)
+			followUps = append(followUps, spentPromiseFollowUp{Key: np.FollowUp, Source: s.Source})
 		}
 	}
 	return followUps

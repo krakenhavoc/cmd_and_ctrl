@@ -29,7 +29,8 @@ func init() {
 			Label: "Pegasus creatures you control have lifelink.",
 			Layer: game.Layer6Ability,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
-				return target.Controller == source.Controller && target.IsCreature() && target.HasSubtype("Pegasus")
+				// "Pegasus" is a word of the source's text (CR 612.2, #3984).
+				return target.Controller == source.Controller && target.IsCreature() && target.HasSubtype(source.TextSubtype("Pegasus"))
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				for _, k := range c.Abilities {

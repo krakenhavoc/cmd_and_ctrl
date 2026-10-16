@@ -387,7 +387,7 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 	// zone-bound offer); this lists it. A permission with a price of its
 	// own ("without paying its mana cost", escape, Bolas's Citadel)
 	// lists none: CR 118.9a allows one alternative cost per cast.
-	if grant != nil && grant.AltCostKey == "" && grant.Cost == "" && zone != ZoneHand && zone != ZoneCommand {
+	if grant != nil && grant.AltCostKey == "" && !grant.NamesPrice() && zone != ZoneHand && zone != ZoneCommand {
 		for _, ac := range AlternativeCostsOfferedFromZone(CatalogKey(card), ZoneHand) {
 			if ac.FromZone != "" {
 				continue
@@ -508,6 +508,10 @@ func (g *Game) castUsesGrantLocked(card Card, srcKind ZoneKind, alt *Alternative
 //     Cost (airbend's {2}, cascade's {0}) names no claimable offer
 //     and charges itself.
 //
+// Rule 3 gives way to a permission at the printed cost (#1987): a
+// flashback card under Shaman's Trance or Yawgmoth's Will may be cast
+// for its mana cost as well as flashed back.
+//
 // An offer a battlefield static GRANTS (ADR 0118 §3, Jodah) is judged
 // by one rule of its own instead, CR 118.9a's: it may be claimed only
 // where the printed mana cost could be paid. See
@@ -577,6 +581,18 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 		if offer := grant.AlternativeCostFor(card); offer != nil && alt == nil {
 			return ErrCastCostRequired
 		}
+		return nil
+	}
+	// Rule 4's mirror (#1987): the card's own price must never take away
+	// a path a permission opens either. A permission that lets the card
+	// be cast out of this zone at its printed cost (Shaman's Trance,
+	// Yawgmoth's Will, Muldrotha) lets a flashback card there be cast for
+	// its mana cost OR flashed back, and the caster picks; demanding the
+	// flashback cost would make the permission worth nothing on the one
+	// card that also prints a way out. A permission with a price of its
+	// own (Snapcaster's flashback, escape, a flat Cost) is rule 4's and
+	// is not this.
+	if grant != nil && alt == nil && grant.AltCostKey == "" && !grant.NamesPrice() {
 		return nil
 	}
 	// Rule 3. Reached for a card that opens the zone itself, whether or

@@ -33,12 +33,14 @@ func init() {
 		Triggered:    []game.TriggeredAbility{commandTheStageReturn()},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			me := ctx.Controller()
-			made, err := ctx.Game.CreateTokensForEffect(me, TokenCard("2/2 colorless Wizard Soldier named Cadet"), 1, game.TokenEntryOptions{})
+			made, err := ctx.Game.CreateTokensForEffect(me, ctx.TextToken(TokenCard("2/2 colorless Wizard Soldier named Cadet")), 1, game.TokenEntryOptions{})
 			if err != nil {
 				return err
 			}
+			// "Wizard" is a word of the spell's text (CR 612.2, #3984).
+			wizard := ctx.TextSubtype("Wizard")
 			for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-				if c.Controller != me || !IsToken(c) || !c.HasSubtype("Wizard") || slices.Contains(made, c.InstanceID) {
+				if c.Controller != me || !IsToken(c) || !c.HasSubtype(wizard) || slices.Contains(made, c.InstanceID) {
 					continue
 				}
 				if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {

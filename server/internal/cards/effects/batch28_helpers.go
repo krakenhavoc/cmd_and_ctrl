@@ -118,7 +118,7 @@ func b28DragonYouControlTargetedByOpponent(ev game.Event, source *game.Card, g *
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.Controller == source.Controller && c.HasSubtype("Dragon")
+	return ok && c.Controller == source.Controller && c.HasSubtype(source.TextSubtype("Dragon"))
 }
 
 // b28YouSacrificedArtifactOrCreature is Ravenous Squirrel's condition
@@ -177,7 +177,8 @@ func b28GraveyardHasCreatureCardOfSubtype(g *game.Game, player uuid.UUID, subtyp
 // CR 614 replacement on the entry of a permanent under the source's
 // controller's control. Renata's shape (b27OtherCreaturesYouControlEnterWithACounter)
 // with the "what enters" test as a parameter; `match` receives the
-// entering card, still in its old zone.
+// entering card, still in its old zone, lent the source's text so a
+// word it names follows a text change (HasSubtypeWord, CR 612.2, #3984).
 func b28PermanentsYouControlEnterWithACounter(label string, match func(game.Card) bool) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventZoneMove},
@@ -186,7 +187,7 @@ func b28PermanentsYouControlEnterWithACounter(label string, match func(game.Card
 				return false
 			}
 			entering, ok := g.LookupCardForEffect(ev.CardID)
-			return ok && entering.Controller == src.Controller && match(entering)
+			return ok && entering.Controller == src.Controller && match(game.ThroughTextOf(src, entering))
 		},
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 			ev.AddCounterAtETB("+1/+1", 1)
@@ -421,7 +422,8 @@ func b28SearchDragonsNotNamed(g *game.Game, item *game.StackItem, except string,
 	return SearchLibrary{
 		Player: item.Controller,
 		Predicate: func(c game.Card) bool {
-			return c.HasSubtype("Dragon") && c.Name != except
+			// SearchLibrary lends the source's text (CR 612.2, #3984).
+			return c.HasSubtypeWord("Dragon") && c.Name != except
 		},
 		Dest:     game.ZoneHand,
 		Limit:    5,

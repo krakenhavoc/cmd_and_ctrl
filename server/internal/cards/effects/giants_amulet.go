@@ -65,7 +65,7 @@ func giantsAmuletMayPayForAGiant(g *game.Game, item *game.StackItem) error {
 		Cost:     "{3}{U}",
 		Question: "Giant's Amulet — pay {3}{U} to create a 4/4 blue Giant Wizard and attach the Amulet to it?",
 		OnPay: func(ctx *Context) error {
-			return createTokenAndAttachSource(ctx.Game, ctx.Item, giantsAmuletGiantToken)
+			return createTokenAndAttachSource(ctx.Game, ctx.Item, giantsAmuletGiantToken, true)
 		},
 	}.Apply(NewContext(g, item))
 }

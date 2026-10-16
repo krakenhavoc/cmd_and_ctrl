@@ -65,7 +65,7 @@ func rfSpellBGreatestPowerYouControl(ctx *Context, player uuid.UUID) int {
 // rfSpellBCadetWithHaste is "Create a 2/2 colorless Wizard Soldier
 // creature token named Cadet. It gains haste until end of turn."
 func rfSpellBCadetWithHaste(_ *game.StackItem, ctx *Context, _ int) error {
-	made, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), TokenCard("2/2 colorless Wizard Soldier named Cadet"), 1, game.TokenEntryOptions{})
+	made, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), ctx.TextToken(TokenCard("2/2 colorless Wizard Soldier named Cadet")), 1, game.TokenEntryOptions{})
 	if err != nil {
 		return err
 	}

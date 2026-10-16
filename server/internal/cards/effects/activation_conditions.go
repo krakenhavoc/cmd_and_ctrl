@@ -318,3 +318,19 @@ func ACreatureDiedThisTurn() ActivationCondition {
 		return b11CreaturesDiedThisTurn(g) > 0
 	}
 }
+
+// DuringYourTurnBeforeTheEndStep — "…but only during their turn before
+// the end step" (Mana Cache, #1864). "Their" is the activator (CR
+// 109.5: the condition's `controller` is whoever activates, which on an
+// any-player row is not the permanent's controller), and "before the
+// end step" is every step of the turn that comes before it: the
+// beginning phase, both main phases and combat, extra ones included. The
+// end step and the cleanup step are not.
+func DuringYourTurnBeforeTheEndStep() ActivationCondition {
+	return func(g *game.Game, controller, _ uuid.UUID) bool {
+		if !IsYourTurn(g, controller) {
+			return false
+		}
+		return g.Turn.Step != game.StepEnd && g.Turn.Step != game.StepCleanup
+	}
+}

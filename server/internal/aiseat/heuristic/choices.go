@@ -271,6 +271,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		if cp.Target != nil {
 			targets = append(append([]targetRef(nil), targets...), *cp.Target)
 		}
+		// #2055: the bot is choosing a target of somebody else's spell
+		// or ability ("of an opponent's choice").
+		if ch != nil && ch.PickTarget != nil && ch.PickTarget.ChosenFor != "" && ch.PickTarget.ChosenFor != st.me {
+			return st.opponentsChoiceValue(p.cfg, ch.PickTarget.ChosenFor, targets), "choose for an opponent's effect"
+		}
 		return st.targetsValue(p.cfg, targets), "pick target"
 
 	case choiceSacrifice:

@@ -63,7 +63,9 @@ func b21CreatureOfSubtypeYouControlAttacked(ev game.Event, source *game.Card, g 
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.HasSubtype(subtype)
+	// `subtype` is the printed word, read through the source's text
+	// (CR 612.2, #3984).
+	return ok && c.HasSubtype(source.TextSubtype(subtype))
 }
 
 // b21AngelYouControlEntered is Seraph Sanctuary's second trigger:
@@ -72,7 +74,7 @@ func b21CreatureOfSubtypeYouControlAttacked(ev game.Event, source *game.Card, g 
 // and can never match, so no "another" guard is needed.
 func b21AngelYouControlEntered(ev game.Event, source *game.Card, g *game.Game) bool {
 	c, ok := enteredUnderYourControl(ev, source, g, false)
-	return ok && c.IsCreature() && c.HasSubtype("Angel")
+	return ok && c.IsCreature() && c.HasSubtype(source.TextSubtype("Angel"))
 }
 
 // b21DragonYouControlDealtDamage is Wrathful Red Dragon's condition:
@@ -89,7 +91,7 @@ func b21DragonYouControlDealtDamage(ev game.Event, source *game.Card, g *game.Ga
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Target)
-	return ok && c.Controller == source.Controller && c.HasSubtype("Dragon")
+	return ok && c.Controller == source.Controller && c.HasSubtype(source.TextSubtype("Dragon"))
 }
 
 // b21ArtifactOrCreatureYouControlDied is the granted trigger on Agent
@@ -139,7 +141,8 @@ func b21TargetAnyNonDragon() *game.TargetSpec {
 	spec.Label = "any target that isn't a Dragon"
 	base := spec.CardOK
 	spec.CardOK = func(g *game.Game, caster uuid.UUID, c game.Card, z game.ZoneKind) bool {
-		return base(g, caster, c, z) && !c.HasSubtype("Dragon")
+		// The targeting walk lends the source's text (CR 612.2, #3984).
+		return base(g, caster, c, z) && !c.HasSubtypeWord("Dragon")
 	}
 	return spec
 }

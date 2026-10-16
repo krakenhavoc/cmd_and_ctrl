@@ -48,6 +48,7 @@
 
   import { onDestroy, untrack } from "svelte";
   import type { StackLaneItem, StackLaneStyle, StackLaneStyleProps } from "../../stackLane";
+  import StackAbilityButtons from "./StackAbilityButtons.svelte";
   import {
     TOP_ARROW_COLOR,
     curvePath,
@@ -290,6 +291,11 @@
       {/if}
     </div>
     {#if item.kind !== "pending"}
+      <StackAbilityButtons
+        {item}
+        enabled={model.priority.viewerHolds}
+        onActivate={controls.activate}
+      />
       <button
         type="button"
         class="act counter-btn"

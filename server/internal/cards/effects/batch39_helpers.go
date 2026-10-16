@@ -84,8 +84,9 @@ func b39SeaMonsterYouControlDealtCombatDamageToPlayer(ev game.Event, source *gam
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.Source)
-	return ok && (c.HasSubtype("Kraken") || c.HasSubtype("Leviathan") ||
-		c.HasSubtype("Octopus") || c.HasSubtype("Serpent"))
+	// The four types are words of the source's text (CR 612.2, #3984).
+	return ok && (c.HasSubtype(source.TextSubtype("Kraken")) || c.HasSubtype(source.TextSubtype("Leviathan")) ||
+		c.HasSubtype(source.TextSubtype("Octopus")) || c.HasSubtype(source.TextSubtype("Serpent")))
 }
 
 // b39AnotherCreatureYouControlDied is Erebos, Bleak-Hearted's

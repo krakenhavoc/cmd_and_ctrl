@@ -161,24 +161,20 @@ func TestSelvalaAddsOneAnyColorPickPerPointOfGreatestPower(t *testing.T) {
 	if err := g.ActivateManaAbility(me.ID, selvala, 0, game.ManaAbilityParams{}); err != nil {
 		t.Fatalf("ActivateManaAbility: %v", err)
 	}
-	picks := 0
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceMana && c.Chooser == me.ID {
-			picks++
-		}
-	}
-	if picks != 5 {
-		t.Fatalf("%d colour picks, want 5 — one per point of greatest power", picks)
-	}
-	// Answering them differently is the "any COMBINATION" half.
-	for _, color := range []string{"W", "U", "B", "R", "G"} {
+	// One pick per point of greatest power, asked one at a time on one
+	// choice (#3939: the five are one production). Answering them
+	// differently is the "any COMBINATION" half.
+	for i, color := range []string{"W", "U", "B", "R", "G"} {
 		c := riderLatestManaPick(g, me.ID)
 		if c == nil {
-			t.Fatalf("ran out of picks before %s", color)
+			t.Fatalf("ran out of picks before %s: %d colour picks, want 5 — one per point of greatest power", color, i)
 		}
 		if err := g.ResolveManaChoice(c.ID, me.ID, color); err != nil {
 			t.Fatalf("ResolveManaChoice(%s): %v", color, err)
 		}
+	}
+	if c := riderLatestManaPick(g, me.ID); c != nil {
+		t.Fatalf("a sixth colour pick is open: %+v", c)
 	}
 	if got := len(batch01PoolColors(me)); got != 5 {
 		t.Fatalf("pool holds %d mana, want 5", got)

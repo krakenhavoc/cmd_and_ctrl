@@ -43,12 +43,15 @@ func init() {
 			Cost:         Plus(ManaCost("{1}{G}"), TapCost()),
 			SorcerySpeed: true,
 			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				// "Wolf or Werewolf" are words of the Piper's text, read as
+				// the ability resolves (CR 612.2, #3984).
 				return PutFromHandOntoBattlefield{
 					Match:    Creature(),
 					Optional: true,
 					Label:    "Howlpack Piper — you may put a creature card from your hand onto the battlefield",
-					Then:     howlpackPiperUntap,
-				}.Apply(NewContext(g, item))
+					Then:     howlpackPiperUntap(ctx.TextSubtype("Wolf"), ctx.TextSubtype("Werewolf")),
+				}.Apply(ctx)
 			},
 		}},
 	})
@@ -73,15 +76,18 @@ func init() {
 }
 
 // howlpackPiperUntap is "If it's a Wolf or Werewolf, untap this
-// creature": the permanent that arrived is read through the layers, and
+// creature", `wolf` and `werewolf` being the types as the Piper's text
+// reads them: the permanent that arrived is read through the layers, and
 // the Piper must still be in play to untap.
-func howlpackPiperUntap(g *game.Game, res PutFromHandResult) error {
-	if res.Entered == uuid.Nil {
-		return nil
+func howlpackPiperUntap(wolf, werewolf string) func(*game.Game, PutFromHandResult) error {
+	return func(g *game.Game, res PutFromHandResult) error {
+		if res.Entered == uuid.Nil {
+			return nil
+		}
+		c, ok := g.LookupCardForEffect(res.Entered)
+		if !ok || !(c.HasSubtype(wolf) || c.HasSubtype(werewolf)) {
+			return nil
+		}
+		return UntapTarget{Target: res.Source}.Apply(NewContext(g, &game.StackItem{SourceCardID: res.Source, Controller: res.Player}))
 	}
-	c, ok := g.LookupCardForEffect(res.Entered)
-	if !ok || !(c.HasSubtype("Wolf") || c.HasSubtype("Werewolf")) {
-		return nil
-	}
-	return UntapTarget{Target: res.Source}.Apply(NewContext(g, &game.StackItem{SourceCardID: res.Source, Controller: res.Player}))
 }

@@ -343,6 +343,21 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			}
 			v, reason = pv, "activate another player's ability"
 		}
+		// #1865 (ADR 0106 §1 amendment 2026-10-16): an ability of a SPELL
+		// on the stack (Lightning Storm). Another player's spell is across
+		// the table exactly as their permanent is, and held to the same
+		// rule: only a declared purpose buys this seat anything. Pumping
+		// an opponent's storm that may be aimed at the bot is the gift
+		// owner decision 2 forbids.
+		if src == nil {
+			if spell := st.stack[cp.SourceCardID]; spell != nil && spell.Controller != "" && spell.Controller != st.me {
+				pv, ok := st.anyPlayerPurposeValue(spell, cp.AbilityIndex)
+				if !ok {
+					return anyPlayerDeclined, "another player's spell's ability with no declared purpose"
+				}
+				v, reason, across = pv, "activate another player's spell's ability", true
+			}
+		}
 		// #2449: moving an Equipment between the bot's own creatures
 		// buys only what the new host gains (equip_move.go). Priced
 		// flat, a free equip beat passing from either side for ever.
@@ -976,6 +991,12 @@ func (st *state) anyPlayerPurposeValue(src *protocol.CardView, index int) (float
 			break
 		}
 	}
+	// #1865: a spell on the stack carries its rows on zone_abilities.
+	for i := range src.ZoneAbilities {
+		if row == nil && src.ZoneAbilities[i].Index == index {
+			row = &src.ZoneAbilities[i]
+		}
+	}
 	if row == nil || !row.AnyPlayer || !row.Purpose.Priced() {
 		return 0, false
 	}
@@ -1037,6 +1058,34 @@ func (st *state) targetsValue(cfg Config, targets []targetRef) float64 {
 		default:
 			v += st.cardTargetValue(cfg, t.ID)
 		}
+	}
+	return v
+}
+
+// opponentsChoiceValue prices a target the bot chooses for another
+// player's spell or ability ("target … of an opponent's choice", #2055).
+// The effect is the controller's, so what costs the bot is what it hands
+// over: a permanent of its own is priced at what losing it costs
+// (Evangelize and Arena take or fight the chooser's own creature), and a
+// card the controller would get back from their graveyard at what it is
+// worth (Mausoleum Turnkey), so the bot gives up the least. Anything else
+// (a creature or a player for a damage effect, Nova Pentacle and
+// Cuombajj Witches) is priced as the bot's own pick would be, which aims
+// it away from the bot.
+func (st *state) opponentsChoiceValue(cfg Config, controller string, targets []targetRef) float64 {
+	var v float64
+	for _, t := range targets {
+		if t.Kind == "card" {
+			if c := st.bf[t.ID]; c != nil && c.Controller == st.me {
+				v -= st.permanentValue(c)
+				continue
+			}
+			if c := st.graveyard[t.ID]; c != nil && c.Owner == controller {
+				v -= st.cardValue(cfg, c)
+				continue
+			}
+		}
+		v += st.targetsValue(cfg, []targetRef{t})
 	}
 	return v
 }

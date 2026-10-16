@@ -566,3 +566,24 @@ func (g *Game) SpellBaseControllerForEffect(spellID uuid.UUID) (uuid.UUID, bool)
 	}
 	return item.Controller, true
 }
+
+// DamageSourceSpellControllerForEffect is the controller of `sourceID`
+// when that damage source is a SPELL: on the stack, or the spell
+// resolving right now, which is where a spell is when it deals its
+// damage (CR 608.2n moves it to the graveyard only as the last step of
+// its resolution). False for anything else: a permanent, a card in a
+// graveyard, an ability. A copy of a spell is a spell (CR 707.10).
+// Hostility's "if a spell you control would deal damage" reads it
+// (#2038).
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) DamageSourceSpellControllerForEffect(sourceID uuid.UUID) (uuid.UUID, bool) {
+	if sourceID == uuid.Nil {
+		return uuid.Nil, false
+	}
+	_, item, ok := g.stackSpellLocked(sourceID)
+	if !ok || item == nil || item.Kind != StackItemSpell {
+		return uuid.Nil, false
+	}
+	return item.Controller, true
+}

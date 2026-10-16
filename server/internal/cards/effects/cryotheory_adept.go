@@ -24,17 +24,7 @@ func init() {
 			Zones:        []game.ZoneKind{game.ZoneGraveyard},
 			SorcerySpeed: true,
 			Targets:      TargetCreature("target creature"),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				ts := ctx.LegalTargets()
-				if len(ts) == 0 {
-					return nil
-				}
-				if err := (TapTarget{Target: ts[0].ID}).Apply(ctx); err != nil {
-					return err
-				}
-				return AddCounter{Target: ts[0].ID, Kind: game.CounterStun, N: 1}.Apply(ctx)
-			},
+			Effect:       tapTargetAndStunIt,
 		}},
 	})
 }

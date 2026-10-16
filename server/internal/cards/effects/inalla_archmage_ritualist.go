@@ -79,7 +79,7 @@ func inallaHastyCopy(ctx *Context, controller, wizard uuid.UUID) error {
 	if !ok {
 		return nil
 	}
-	made, err := ctx.Game.CreateTokensForEffect(controller, tmpl, 1, game.TokenEntryOptions{
+	made, err := ctx.Game.CreateTokensForEffect(controller, copiedToken(tmpl), 1, game.TokenEntryOptions{
 		Keywords: []string{"haste"},
 	})
 	if err != nil || len(made) == 0 {

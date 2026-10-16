@@ -134,7 +134,11 @@ func corpusBoards() []corpusBoard {
 		{"mass_diminish", corpusMassDiminish},
 		// v7, added by tier 2 (#1497) as new files: delayed triggers as data.
 		{"earthbend", corpusEarthbend},
-		{"suspend_haste", corpusSuspendHaste},
+		// #3942: the board that wrote suspend_haste.json logged a counter
+		// placement with no placer, a history this engine no longer
+		// makes (every placement names who put the counters). The file
+		// stays and is still restored; the same board is a new file.
+		{"suspend_haste_counter_placer", corpusSuspendHaste},
 		// v7, added by the #1568 review as new files: params, condParams
 		// and a fired keyed item on disk.
 		{"queued_mana_drain", corpusQueuedManaDrain},
@@ -175,7 +179,12 @@ func corpusBoards() []corpusBoard {
 		// it — the replacement mods, ScopeGame, ScopeYourPermanents,
 		// seq, amount and then on disk.
 		{"fog", corpusFog},
-		{"mending_hands_partial", corpusMendingHandsPartial},
+		// #2047: the board that wrote mending_hands_partial.json prevented damage
+		// without announcing it; a prevention that prevents something
+		// now emits EventDamagePrevented (CR 615.13), one more event in
+		// the log. The file stays and is still restored; the same board
+		// is a new file.
+		{"mending_hands_partial_announced", corpusMendingHandsPartial},
 		{"whip_redirect", corpusWhipRedirect},
 		{"cosmic_intervention", corpusCosmicIntervention},
 		// v7, added by tier 3b-2 (#1497) as new files: block-rule
@@ -246,7 +255,11 @@ func corpusBoards() []corpusBoard {
 		// and their CR 613.7c timestamps (counterStampedAt), one older and
 		// one newer than a "loses all abilities" record on the same
 		// creature, so a restore keeps the order.
-		{"keyword_counters", corpusKeywordCounters},
+		// #3942: the board that wrote keyword_counters.json logged a counter
+		// placement with no placer, a history this engine no longer
+		// makes (every placement names who put the counters). The file
+		// stays and is still restored; the same board is a new file.
+		{"keyword_counters_counter_placer", corpusKeywordCounters},
 		// v7, added by ADR 0100 sub-PR 1 as a new file: a delved spell
 		// on the stack — PaidCost.Delved, the objects in exile, on disk.
 		{"delved_spell_on_stack", corpusDelvedSpellOnStack},
@@ -269,7 +282,11 @@ func corpusBoards() []corpusBoard {
 		// v7, added by ADR 0100 sub-PR 2 as a new file: the CR 607.2q
 		// delve link on a permanent (CastProvenance.Delved) and on a
 		// departed one's last-known information (PermanentInfo.Delved).
-		{"delve_linked_permanents", corpusDelveLinkedPermanents},
+		// #3942: the board that wrote delve_linked_permanents.json logged a counter
+		// placement with no placer, a history this engine no longer
+		// makes (every placement names who put the counters). The file
+		// stays and is still restored; the same board is a new file.
+		{"delve_linked_permanents_counter_placer", corpusDelveLinkedPermanents},
 		// v7, added by ADR 0106 PR 3 (#1806) as a new file: "can't be
 		// countered" as data — a turn grant and an unspent one-use
 		// promise on a seat (PlayerStatic.CantBeCountered), and a spell
@@ -302,7 +319,12 @@ func corpusBoards() []corpusBoard {
 		// follow-up body protecting a player and their creatures, already
 		// spent in this batch (SpentBatch); a no-choice "creature of the
 		// chosen type" shield; and a shield pinned to one permanent.
-		{"next_damage_shields", corpusNextDamageShields},
+		// #2047: the board that wrote next_damage_shields.json prevented damage
+		// without announcing it; a prevention that prevents something
+		// now emits EventDamagePrevented (CR 615.13), one more event in
+		// the log. The file stays and is still restored; the same board
+		// is a new file.
+		{"next_damage_shields_announced", corpusNextDamageShields},
 		// v7, added by ADR 0108 PR 1 (#1886, #1887) as a new file: the
 		// turn-scoped death and regeneration marks as data — a pinned
 		// exileIfWouldDie (Lava Coil), the same kind over the live
@@ -385,14 +407,23 @@ func corpusBoards() []corpusBoard {
 		// combat-only one pinned to a protected creature, Prismatic
 		// Strands' property-only shape, and Dark Sphere's half shield
 		// (Mod.Half on preventNextFromSource).
-		{"source_shields", corpusSourceShields},
+		// #2047: the board that wrote source_shields.json prevented damage
+		// without announcing it; a prevention that prevents something
+		// now emits EventDamagePrevented (CR 615.13), one more event in
+		// the log. The file stays and is still restored; the same board
+		// is a new file.
+		{"source_shields_announced", corpusSourceShields},
 		// v7, added by ADR 0109 PR 2 (#1894, #1604) as a new file: a
 		// duration with two conditions (Seasinger's "for as long as you
 		// control this creature and this creature remains tapped",
 		// Duration.Also) and a counter-held one (Minas Morgul's "for as
 		// long as that creature has a shadow counter on it",
 		// WhilePinnedHasCounter with its CounterKind).
-		{"durations", corpusDurations},
+		// #3942: the board that wrote durations.json logged a counter
+		// placement with no placer, a history this engine no longer
+		// makes (every placement names who put the counters). The file
+		// stays and is still restored; the same board is a new file.
+		{"durations_counter_placer", corpusDurations},
 		// v7, added by ADR 0109 PR 6 (#1899) as a new file: Narset
 		// Transcendent's −2 waiting — a delayed trigger naming the
 		// condition key cast/you-next-cast-from-hand and the body key
@@ -404,7 +435,11 @@ func corpusBoards() []corpusBoard {
 		// loseLandTypes kind, in Ultima, Origin of Oblivion's record
 		// (loses all land types and abilities and has "{T}: Add {C}"
 		// for as long as the land has a blight counter on it).
-		{"lose_land_types", corpusLoseLandTypes},
+		// #3942: the board that wrote lose_land_types.json logged a counter
+		// placement with no placer, a history this engine no longer
+		// makes (every placement names who put the counters). The file
+		// stays and is still restored; the same board is a new file.
+		{"lose_land_types_counter_placer", corpusLoseLandTypes},
 		// v7, added by ADR 0109 PR 4 (#1604) as a new file: a granted
 		// loyalty ability on the stack, named by its grant ref and
 		// carrying its grantor (Teferi's Talent's −12, stackMeta's
@@ -416,14 +451,24 @@ func corpusBoards() []corpusBoard {
 		// "when you next cast an artifact spell" delayed trigger, and a
 		// Dragon that kept the haste-until-end-of-turn its spell was given
 		// (a record re-pinned to the permanent with its duration).
-		{"granted_mana_spent_readers", corpusGrantedManaSpentReaders},
+		// #3939: the board that wrote granted_mana_spent_readers.json
+		// produced a multi-mana ability slot by slot, one production id
+		// per slot; an activation is one production now, so the ids
+		// minted after it moved. The file stays and is still restored;
+		// the same board is a new file.
+		{"granted_mana_spent_readers_one_production", corpusGrantedManaSpentReaders},
 		// v7, added by ADR 0108 PR 8 (#1906) as a new file: the scoped
 		// shields' CR 615.5 follow-ups (owner decision 2) as data — Test
 		// of Faith's charged shield with its Then, partly spent; Vengeful
 		// Archon's, whose follow-up deals its damage to a chosen player
 		// (Mod.To); and a combat shield with a follow-up (Inkshield's
 		// shape).
-		{"shield_follow_ups", corpusShieldFollowUps},
+		// #2047: the board that wrote shield_follow_ups.json prevented damage
+		// without announcing it; a prevention that prevents something
+		// now emits EventDamagePrevented (CR 615.13), one more event in
+		// the log. The file stays and is still restored; the same board
+		// is a new file.
+		{"shield_follow_ups_announced", corpusShieldFollowUps},
 		// v7, added by ADR 0108 PR 7 (#1904) as a new file: the
 		// recipient and to-and-by shields as data — Energy Arc's one
 		// to-and-by record over two creatures (Mod.AndDealtBy, an
@@ -508,7 +553,11 @@ func corpusBoards() []corpusBoard {
 		// window ended (duration.Ended) and the second's open, both
 		// UntilSourceExilesAnother naming the Amulet object
 		// (duration.Source, duration.SourceEpoch).
-		{"until_you_exile_another", corpusUntilYouExileAnother},
+		// #3942: the board that wrote until_you_exile_another.json logged a counter
+		// placement with no placer, a history this engine no longer
+		// makes (every placement names who put the counters). The file
+		// stays and is still restored; the same board is a new file.
+		{"until_you_exile_another_counter_placer", corpusUntilYouExileAnother},
 		// v8, added by ADR 0172 (#3401) as a new file: a companion
 		// waiting outside the game (seats[].companion) for seat 0, and
 		// seat 1's companion already taken into its hand
@@ -531,7 +580,56 @@ func corpusBoards() []corpusBoard {
 		// pinned to the creature (a new vocabulary value an older
 		// binary must refuse rather than read as nothing).
 		{"cant_be_sacrificed", corpusCantBeSacrificed},
+		// v9, added by #2099 (ADR 0026's second 2026-10-16 amendment)
+		// as a new file: Rescue from the Underworld's upkeep return
+		// waiting, its body keyed and its two objects, the target and
+		// the card the cost sacrificed, each with its CR 400.7 epoch in
+		// the graveyard (delayedTriggers[].params.objects).
+		{"delayed_trigger_objects", corpusDelayedTriggerObjects},
+		// v9, added by #1987 (ADR 0066 amendment 2026-10-16) as a new
+		// file: a resolved Shaman's Trance — the cantPlayFromOwnGraveyard
+		// record (a game-scope rule kind, one mod per other player) and
+		// the caster's stored standing permissions, one per other seat's
+		// graveyard (castPermissions[].zoneOwner over a graveyard).
+		{"shamans_trance", corpusShamansTrance},
 	}
+}
+
+// corpusShamansTrance is #1987's stored shapes: the own-graveyard ban
+// on every other player and a permission over each of their graveyards.
+func corpusShamansTrance(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	toMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	castCatalogSpell(t, g, shamansTranceName, "Instant", shamansTranceOracle, nil)
+	passPriorityAroundTable(t, g)
+	if n := len(g.ScopedEffects); n != 1 || g.ScopedEffects[0].Mods[0].Kind != game.ModCantPlayFromOwnGraveyard {
+		t.Fatalf("setup: scoped records = %+v, want one cantPlayFromOwnGraveyard", g.ScopedEffects)
+	}
+	if got, want := len(me.CastPermissions), len(g.Seats)-1; got != want {
+		t.Fatalf("setup: the caster holds %d permissions, want %d", got, want)
+	}
+	return g
+}
+
+// corpusDelayedTriggerObjects is #2099's stored shape: a delayed
+// trigger whose body names more than one object.
+func corpusDelayedTriggerObjects(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	target := pushGraveyardCardTyped(me, "Old Friend", "Creature — Human")
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Grizzly Bears", 2, 2))
+	if _, err := castWithTapParams(t, g, "Rescue from the Underworld", "Instant", "{4}{B}", rescueFromTheUnderworldOracle, game.CastSpellParams{
+		Targets:      []game.TargetRef{{Kind: game.TargetCard, ID: target}},
+		SacrificeIDs: []uuid.UUID{bear},
+	}); err != nil {
+		t.Fatalf("setup: cast Rescue from the Underworld: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if len(g.DelayedTriggers) != 1 || len(g.DelayedTriggers[0].Params.Objects) != 2 {
+		t.Fatalf("setup: want one delayed trigger naming two objects, got %+v", g.DelayedTriggers)
+	}
+	return g
 }
 
 // corpusManaPoolRuns is #3041's stored shape: a pool of runs, and a

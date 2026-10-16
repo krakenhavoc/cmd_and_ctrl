@@ -128,6 +128,30 @@ func asPaid(t *testing.T, r *rand.Rand, run, unit ParsedCost, pool ManaPool) (Pa
 	return run, unit
 }
 
+// withoutX is a spent record with the X marks (#3941) taken off and the
+// runs they split joined again. Both sides of the comparison go through
+// it, so it compares the mana and not how it was cut up: the unit fold,
+// whose requirements are not marked, records no marks at all. The marks
+// are checked on their own in mana_paid_x_test.go; this comparison is
+// about WHICH mana paid.
+func withoutX(spent []ManaToken) []ManaToken {
+	var out []ManaToken
+	for _, t := range spent {
+		t.ForX = false
+		out = appendRun(out, t)
+	}
+	return out
+}
+
+// slotsWithoutX is a picker's slots with the X marks taken off.
+func slotsWithoutX(slots []PaperSlot) []PaperSlot {
+	out := slices.Clone(slots)
+	for i := range out {
+		out[i].X = false
+	}
+	return out
+}
+
 // foldCheck is one reader's answer on the run and on the list.
 type foldCheck struct {
 	name      string
@@ -171,9 +195,9 @@ func TestFoldedRunMatchesTheUnitFold(t *testing.T) {
 			shr, shu := pool.shortfallFor(run, x, ctx, strategy), pool.shortfallFor(unit, x, ctx, strategy)
 			s := fmt.Sprint(strategy)
 			checks = append(checks,
-				foldCheck{"spend " + s, fmt.Sprint(sr, okr, pr), fmt.Sprint(su, oku, pu)},
-				foldCheck{"waived spend " + s, fmt.Sprint(wsr, fullr, wr), fmt.Sprint(wsu, fullu, wu)},
-				foldCheck{"shortfall " + s, fmt.Sprint(shr.String(), shr.slots()), fmt.Sprint(shu.String(), shu.slots())},
+				foldCheck{"spend " + s, fmt.Sprint(withoutX(sr), okr, pr), fmt.Sprint(withoutX(su), oku, pu)},
+				foldCheck{"waived spend " + s, fmt.Sprint(withoutX(wsr), fullr, wr), fmt.Sprint(withoutX(wsu), fullu, wu)},
+				foldCheck{"shortfall " + s, fmt.Sprint(shr.String(), slotsWithoutX(shr.slots())), fmt.Sprint(shu.String(), shu.slots())},
 			)
 		}
 		for _, ch := range checks {

@@ -41,7 +41,7 @@ func init() {
 			}),
 			Optional(Landfall("Avenger of Zendikar — +1/+1 counter on each Plant (landfall)", func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				for _, id := range b02PlantsYouControl(g, item.Controller) {
+				for _, id := range b02PlantsYouControl(g, item.Controller, g.TextReaderForEffect(item).TextSubtype("Plant")) {
 					if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx.asGroupMember()); err != nil {
 						return err
 					}

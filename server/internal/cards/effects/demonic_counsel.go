@@ -35,7 +35,8 @@ func init() {
 				}.Apply(ctx)
 			}
 			return b06TutorToHand("Demonic Counsel — a Demon card, revealed, to hand",
-				func(c game.Card) bool { return c.HasSubtype("Demon") })(item, ctx)
+				// SearchLibrary lends the spell's text (CR 612.2, #3984).
+				func(c game.Card) bool { return c.HasSubtypeWord("Demon") })(item, ctx)
 		},
 	})
 }

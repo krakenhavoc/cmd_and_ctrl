@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strconv"
+
+	"github.com/google/uuid"
+)
 
 // cast_cost.go — which cost a cast is actually paying, and the one
 // thing that settles on its own: CR 107.3b's value of X.
@@ -63,6 +67,15 @@ func CastCostFor(card Card, alt *AlternativeCost, grant *CastPermission) CastCos
 	}
 	if grant != nil && grant.Cost != "" {
 		paid, altX = grant.Cost, false
+	}
+	if grant != nil && grant.WaterbendManaValue && !card.IsLand() {
+		// #3989: "by waterbending {X} rather than paying its mana
+		// cost, where X is its mana value". The waterbend is the
+		// alternative cost, and its mana is the cost paid (CR 118.9),
+		// so the commander tax and every cost modifier apply to it
+		// (CR 118.9d). The taps that may pay it are the tap cost
+		// TapPermanentsCostForGrantLocked hands the cast.
+		paid, altX = WaterbendManaValueCost(card), false
 	}
 	return CastCost{Printed: card.ManaCost, Paid: paid, AltIncludesX: altX}
 }
@@ -287,4 +300,21 @@ func (g *Game) priceCastLocked(playerID uuid.UUID, card Card, params CastSpellPa
 		budget = delveBudget(pre, params.XValue)
 	}
 	return CastPrice{CastCost: chosen, Card: card, Base: base, Total: total, DelveBudget: budget}, nil
+}
+
+// WaterbendManaValueCost is the waterbend cost of a cast permission
+// priced by waterbending the card's mana value (#3989, Hama, the
+// Bloodbender), in brace notation: "{N}" for the face being cast. An
+// {X} in the card's mana cost counts as 0: the cast pays neither its
+// mana cost nor an alternative cost that includes the card's X, so 0
+// is the only legal choice (CR 107.3b). A card with no mana cost has
+// mana value 0 (CR 202.3a) and costs {0}. A cost the engine cannot
+// read is handed back as printed, so the pricer refuses the cast
+// rather than guessing at it.
+func WaterbendManaValueCost(card Card) string {
+	mv, ok := lifeEqualToManaValue(card)
+	if !ok {
+		return card.ManaCost
+	}
+	return "{" + strconv.Itoa(mv) + "}"
 }

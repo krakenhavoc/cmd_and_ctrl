@@ -327,6 +327,21 @@ hand; Skullwinder wants the one with the worst graveyard). A card
 whose clause makes that gap matter should change the ordering the
 prompt is queued with, not teach a policy to special-case the card.
 
+**A target of somebody else's spell or ability (`pick_target`, #2055).**
+"Target creature of an opponent's choice" (Nova Pentacle, Evangelize,
+Arena) asks the bot to choose a target for an effect it does not control;
+the prompt's `pick_target.chosen_for` names the controller, and its legal
+set is judged for that controller. The enumerator offers it like any
+other pick_target. The heuristic gives up the least
+(`opponentsChoiceValue`, `heuristic/moves.go`): a permanent of its own is
+priced at what losing it costs and a card the controller would get back
+from their graveyard at what it is worth, so the worst of them is chosen;
+anything else (a creature or a player for a damage effect) is priced as
+the bot's own pick would be, which aims the effect away from itself. When
+the bot is the CONTROLLER, its enumerator names no target for such a
+clause and the "which opponent" question is the choose-a-player prompt
+above.
+
 **A pile split** needs no policy of its own. Its first half is an
 ordinary `choose_cards` prompt over public, revealed cards, so the
 existing card-set enumeration offers the subsets — including the empty
@@ -415,6 +430,15 @@ answer of its own (`aiseat/heuristic/replacement.go`, `dredge.go`):
   name the discarded card (it is in a hand), so the bot cannot price it, and
   keeping a card beats losing it. Moonlit Meditation enchants a permanent
   the bot chose, and the copies are the Aura's only text.
+- **A "may" redirection to the bot** (#2056, Blood of the Martyr's "you may
+  have that damage dealt to you instead"; the prompt carries
+  `redirect_amount`, `redirect_from` and `redirect_to`): yes only when the
+  damage would destroy a creature the bot controls (its toughness less the
+  damage already marked) and the bot's life stays at or above
+  `phyrexianLifeFloor` (10) after paying it. An opponent's creature, a
+  creature that survives the hit, or a price below the floor is a no.
+  Deathtouch and indestructible are not read, so it errs toward keeping the
+  life.
 - **Unleash**: unchanged, see riot and unleash above.
 - **A shockland's "pay 2 life"** (`entry_pay_life`): the pay move now carries
   its life as `cost.life`. The bot pays only when the untapped land lets it
@@ -2828,6 +2852,14 @@ mandatory one and a kicker's — is not enumerated, for the reason
 escape's exile-from-graveyard cost is not: the two pools have to be
 searched together into one flat list, and no card asks for it.
 
+**A bot never splices** ([ADR 0202](decisions/0202-splice.md) §8).
+Splicing reveals a second card from the hand and adds its whole text
+and its splice cost to an Arcane spell (CR 702.47). The enumerator
+offers no `splices`: each splice card is another set of targets and
+another price on top of the modes x targets x optional costs product,
+and a bot holding both cards can still cast each on its own. A bot's
+cast never names a `splice` target either.
+
 ## Enumerating a cast from a zone that is not the hand (#673)
 
 A bot casts from every zone the engine would accept a cast from —
@@ -3228,6 +3260,13 @@ while that controller is a live opponent whose life can matter. A row
 with no purpose scores below passing, so a bot never pumps an
 opponent's Flailing Ogre or grows an opponent's Feral Hydra with its own
 mana. Its own permanents' rows are scored like any other ability.
+
+An any-player MANA ability (Mana Cache, #1864) is offered the same way,
+as a `mana` move labelled with the controller, to the seats
+`game.MayActivateMana` names. The heuristic prices every bare mana move
+below passing (`ManaFloat`), so it never floats mana off an opponent's
+Mana Cache, or its own; the auto-tapper does not plan a source with no
+`{T}` either.
 
 ## Never offered an attack it cannot pay for (#1063)
 

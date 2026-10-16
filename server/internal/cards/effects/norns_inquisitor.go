@@ -62,5 +62,6 @@ func aPermanentYouControlTransformedIntoAPhyrexian(ev game.Event, source *game.C
 	if !ok || c.Controller != source.Controller {
 		return false
 	}
-	return c.HasSubtype("Phyrexian")
+	// "Phyrexian" is a word of the source's text (CR 612.2, #3984).
+	return c.HasSubtype(source.TextSubtype("Phyrexian"))
 }

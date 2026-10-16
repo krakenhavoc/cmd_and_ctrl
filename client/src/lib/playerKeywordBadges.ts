@@ -23,7 +23,7 @@
 // copy of either would be free to drift from the card badge's.
 
 import { KEYWORD_ICONS } from "./keywordIcons";
-import type { CounterShieldView, GameEndGateView } from "./protocol";
+import type { CounterShieldView, DrawLimitView, GameEndGateView } from "./protocol";
 
 export interface PlayerKeywordBadge {
   // The raw wire token — also the {#each} key, since two Leylines
@@ -244,6 +244,43 @@ export function maxHandSizeBadges(seat?: SeatMaxHandSize): PlayerKeywordBadge[] 
   ];
 }
 
+// #4016 (CR 121.2b, CR 121.3): a per-turn draw limit on a seat (Narset,
+// Parter of Veils; Spirit of the Labyrinth; Maralen of the Mornsong as a
+// limit of zero). A draw that does nothing, or a "you may draw" that is
+// never asked, is confusing unless the seat says why. The sources and
+// the draws left this turn are the tooltip.
+export interface SeatDrawLimit {
+  draw_limit?: DrawLimitView;
+}
+
+/** The draw-limit badge for one seat, or none. */
+export function drawLimitBadges(seat?: SeatDrawLimit): PlayerKeywordBadge[] {
+  const limit = seat?.draw_limit;
+  if (!limit) return [];
+  const sources = limit.sources ?? [];
+  const from = sources.length > 0 ? ` — ${sources.join(", ")}` : "";
+  if (limit.max <= 0) {
+    return [
+      { key: "draw-limit", short: "NO DRAW", title: `Can't draw cards${from}`, kind: "protection" },
+    ];
+  }
+  const each = limit.max === 1 ? "one card" : `${limit.max} cards`;
+  const left =
+    limit.left <= 0
+      ? "No draws left this turn"
+      : limit.left === 1
+        ? "1 draw left this turn"
+        : `${limit.left} draws left this turn`;
+  return [
+    {
+      key: "draw-limit",
+      short: `DRAW MAX ${limit.max}`,
+      title: `Can't draw more than ${each} each turn${from}. ${left}.`,
+      kind: "protection",
+    },
+  ];
+}
+
 const CANT_GAIN_LIFE_BADGE: PlayerKeywordBadge = {
   key: "cant-gain-life",
   short: "NO GAIN",
@@ -266,7 +303,8 @@ export function playerKeywordBadges(
     SeatCantPlayLands &
     SeatCantPlayFromHand &
     SeatMaxHandSize &
-    SeatHandRevealed,
+    SeatHandRevealed &
+    SeatDrawLimit,
 ): PlayerKeywordBadge[] {
   const seen = new Set<string>();
   const badges: PlayerKeywordBadge[] = [];
@@ -331,5 +369,6 @@ export function playerKeywordBadges(
   badges.push(...counterShieldBadges(endGates));
   badges.push(...maxHandSizeBadges(endGates));
   badges.push(...handRevealedBadges(endGates));
+  badges.push(...drawLimitBadges(endGates));
   return badges;
 }

@@ -123,7 +123,9 @@ func (g *Game) suspendLocked(p *Player, cardID uuid.UUID, sa SpecialAction) erro
 		// counters are the suspended state. Through the counter
 		// primitive so the placement is one event the log and any
 		// future counter payoff can see.
-		return g.AddCounterForEffect(landed[0], CounterTime, n)
+		// #3942: named, because a commander's CR 903.9 answer can run
+		// this after the special action has returned.
+		return g.AddCounterByForEffect(owner, landed[0], CounterTime, n)
 	})
 }
 

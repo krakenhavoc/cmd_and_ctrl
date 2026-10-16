@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -463,6 +464,36 @@ func (c *Card) TextSubtype(sub string) string {
 	return c.TextWords.subtype(sub)
 }
 
+// TextColors is TextColor over a list of colour words, each colour once
+// and in the order first read: a colour-setting effect's printed colours
+// ("becomes a white and blue Bird") as this object's text now says them
+// (#3984). Under "white → blue" that is one colour, blue.
+func (c *Card) TextColors(letters ...string) []string {
+	return textWordsOnce(letters, c.TextColor)
+}
+
+// TextSubtypes is TextSubtype over a list of subtype words, each once: a
+// type-setting effect's printed types ("becomes a Bird", "is a Zombie in
+// addition to its other types") as this object's text now says them.
+func (c *Card) TextSubtypes(subs ...string) []string {
+	return textWordsOnce(subs, c.TextSubtype)
+}
+
+// textWordsOnce maps each word through `read`, dropping a repeat.
+func textWordsOnce(words []string, read func(string) string) []string {
+	if len(words) == 0 {
+		return words
+	}
+	out := make([]string, 0, len(words))
+	for _, w := range words {
+		now := read(w)
+		if !typeListHas(out, now) {
+			out = append(out, now)
+		}
+	}
+	return out
+}
+
 // TextKeyword is the keyword token `tok` as this object's text now
 // reads it: the colour of "protection from <colour>", the land type of
 // a basic landwalk. For a static that grants a keyword its source
@@ -472,6 +503,61 @@ func (c *Card) TextKeyword(tok string) string {
 		return tok
 	}
 	return c.TextWords.keyword(tok)
+}
+
+// TokenThroughText is the token a description in this object's text
+// makes, as the text now says it (CR 612.2, #4005): "create a 2/2 black
+// Zombie creature token" under a Sleight of Mind (black → blue) makes a
+// blue Zombie, and under an Artificial Evolution (Zombie → Elf) a black
+// Elf. The template's colours, its subtypes (a creature type or a basic
+// land type), and the words its keywords name ("protection from white",
+// "islandwalk") are read through the text. A token the description names
+// only by its subtypes is named after them (CR 111.4), so its name
+// follows; a token with a name of its own ("named Cadet") keeps it.
+//
+// Only for a token DESCRIBED by the text. A copy's template is copiable
+// values (CR 707.2), which a text change never touches, and a token a
+// keyword action defines (living weapon's Germ, incubate's Incubator) is
+// no word of the text at all. A template with faces is returned as it is.
+// A nil reader, or one whose words are printed, returns `tmpl` itself.
+func (c *Card) TokenThroughText(tmpl Card) Card {
+	if c == nil || c.TextWords == nil || len(tmpl.Faces) > 0 {
+		return tmpl
+	}
+	w := c.TextWords
+	if len(tmpl.Colors) > 0 {
+		tmpl.Colors = textWordsOnce(tmpl.Colors, w.color)
+	}
+	supers, types, subs := ParseTypeLine(tmpl.TypeLine)
+	if now := textWordsOnce(subs, w.subtype); !slices.Equal(now, subs) {
+		if tmpl.Name == strings.Join(subs, " ") {
+			tmpl.Name = strings.Join(now, " ")
+		}
+		tmpl.TypeLine = composeTypeLine(supers, types, now)
+	}
+	tmpl.Keywords = w.keywords(tmpl.Keywords)
+	return tmpl
+}
+
+// ThroughTextOf is f with the creature types it names read as `reader`'s
+// text now says them (CR 612.2, #4005): Gisa and Geralf's "a Zombie
+// creature spell" under an Artificial Evolution (Zombie → Elf) opens Elf
+// creature spells. A type chosen as the source entered (FromChosenType,
+// Realmwalker) is not a word of its text and is left alone; so is a
+// filter whose words nothing changed, which comes back as it was.
+func (f PermissionFilter) ThroughTextOf(reader *Card) PermissionFilter {
+	if reader == nil || reader.TextWords == nil {
+		return f
+	}
+	if f.CreatureType != "" && !f.FromChosenType {
+		f.CreatureType = reader.TextSubtype(f.CreatureType)
+	}
+	for i, t := range f.CreatureTypesAny {
+		if t != "" {
+			f.CreatureTypesAny[i] = reader.TextSubtype(t)
+		}
+	}
+	return f
 }
 
 // TextChanges renders this object's changed words for the wire
@@ -556,6 +642,33 @@ func (c Card) LentColor(letter string) string { return c.wordLens.color(letter) 
 // controller controls an Island", Vedalken Shackles' "the number of
 // Islands you control".
 func (c Card) LentSubtype(sub string) string { return c.wordLens.subtype(sub) }
+
+// manaTags reads a printed mana restriction's words through this text
+// (#3984): a "subtype:" tag's subtype and a "color:" tag's colour, each
+// the word as the text now says it. Every other tag, and a compound one,
+// is a word no text change names and comes back unchanged. Writes `tags`
+// in place, so callers pass a copy.
+func (w *TextWords) manaTags(tags []string) []string {
+	if w == nil {
+		return tags
+	}
+	for i, t := range tags {
+		switch {
+		case strings.HasPrefix(t, manaTagSubtype):
+			tags[i] = manaTagSubtype + w.subtype(t[len(manaTagSubtype):])
+		case strings.HasPrefix(t, manaTagColor):
+			tags[i] = manaTagColor + w.color(t[len(manaTagColor):])
+		}
+	}
+	return tags
+}
+
+// The two mana restriction tag prefixes that name a word of a card's
+// text (ManaRestrictSubtype, ManaRestrictColor).
+const (
+	manaTagSubtype = "subtype:"
+	manaTagColor   = "color:"
+)
 
 // --- materialising -------------------------------------------------
 
