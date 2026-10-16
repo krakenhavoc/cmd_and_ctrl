@@ -2052,8 +2052,13 @@ card says after "proliferate" goes in `Proliferate{Then: func(g
 *game.Game) error {…}}` and not on the next line — Steady Progress draws
 from its `Then`. Capture scalars, never the `*Context`. Explicit lists
 (`Proliferate{Cards: …, Players: …}`) skip the prompt. A card that only
-proliferates is `CompletenessFull`; there is no caveat to write. In a
-test, `settleAnsweringProliferate(t, g)` takes the suggested answer and
+proliferates is `CompletenessFull`; there is no caveat to write. A card
+that goes on about what the proliferate did ("permanents that had a
+counter put on them this way", Ripples of Potential) calls
+`game.ProliferateChoosingThenForEffect`, whose continuation gets a
+`game.Proliferated`: the permanents and players that really received a
+counter, across every pass of "proliferate twice", after every counter
+has landed (#3930). In a test, `settleAnsweringProliferate(t, g)` takes the suggested answer and
 `answerProliferate(t, g, picks…)` takes a chosen one.
 
 **The mill AMOUNT is a replaceable quantity too** (#569,

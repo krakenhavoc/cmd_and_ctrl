@@ -122,6 +122,43 @@ func (g *Game) AddPlayerCounterByForEffect(placer, playerID uuid.UUID, name stri
 	return g.applyPlayerCounterLocked(out)
 }
 
+// addPlayerCounterByThenLocked is AddPlayerCounterByForEffect with a
+// continuation, the player twin of AddCounterByThenForEffect: `then`
+// runs once the placement has settled, inline on the ordinary path and
+// from the CR 616 resume when the window paused, told the delta that
+// landed (zero for one replaced away). Proliferate's player half
+// sequences behind it (#3930).
+//
+// Caller must hold g.mu.
+func (g *Game) addPlayerCounterByThenLocked(placer, playerID uuid.UUID, name string, delta int, then func(g *Game, placed int) error) error {
+	if name == "" {
+		return ErrInvalidParam
+	}
+	if delta == 0 {
+		if then != nil {
+			return then(g, 0)
+		}
+		return nil
+	}
+	switch p := g.playerByIDLocked(playerID); {
+	case p == nil:
+		return ErrPlayerNotFound
+	case p.Eliminated:
+		return ErrPlayerEliminated
+	}
+	ev := &ReplacementEvent{
+		Kind:          RepEventCounter,
+		CounterPlayer: playerID,
+		CounterPlacer: placer,
+		CounterName:   name,
+		CounterDelta:  delta,
+	}
+	if then != nil {
+		ev.counterTail = &counterTail{then: then}
+	}
+	return g.placeCountersThroughReplacementsLocked(ev)
+}
+
 // applyPlayerCounterLocked is the landed body of a settled player
 // counter placement: the map write, the legacy int mirror and the
 // event. The counterpart of applyCounterLocked, and reached from the
