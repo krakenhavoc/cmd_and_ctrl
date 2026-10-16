@@ -226,7 +226,8 @@ func CanActivateManaAbilities(c *Card) bool {
 // AttackerEligible reports whether card `a` could be declared as an
 // attacker by `seat` right now, ignoring which defender it would be
 // pointed at: a creature that seat controls, untapped (CR 508.1a),
-// not already attacking, without defender (CR 702.3), not summoning
+// not already attacking, without defender (CR 702.3) unless something
+// waives it for some target (#1936), not summoning
 // sick (CR 302.6), and under no "can't attack" restriction
 // (CR 508.1c).
 //
@@ -264,7 +265,11 @@ func AttackerEligible(a *Card, seat uuid.UUID) bool {
 	if a.AttackingTarget != uuid.Nil {
 		return false
 	}
-	if HasKeyword(a, "defender") || HasSummoningSickness(a) {
+	// #1936: a creature with defender is let through when something
+	// lets it attack some target as though it didn't have defender
+	// (CR 609.4). Which targets is the per-target predicate's question
+	// (canAttackTargetWithLocked, defender_waivers.go).
+	if (HasKeyword(a, "defender") && !hasDefenderWaiver(a)) || HasSummoningSickness(a) {
 		return false
 	}
 	return CanAttack(a)

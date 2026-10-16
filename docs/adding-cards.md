@@ -3220,6 +3220,25 @@ player controls an Island'") adds
 `game.CantAttackUnlessDefenderControlsMod(QuerySubtype("Island"))` to its
 `ScopedEffectFor` mods; see `veiled_serpent.go`.
 
+**"Can attack … as though it didn't have defender"**
+([ADR 0106 amendment 2026-10-16](decisions/0106-five-small-seams-from-the-s50-rechecks.md),
+#1936, CR 702.3b, CR 609.4) is the reverse: a waiver of defender on
+`Characteristic.DefenderWaivers`, asked of each target where defender is
+checked, so the keyword stays. When the waiver names whom the creature
+may attack, use it:
+
+```go
+Static: []game.StaticAbility{CanAttackPlayersWhoAttackedYouAsThoughNoDefender()}, // Weathered Sentinels
+Effect: CanAttackThisTurnAsThoughNoDefender("Hightide Hermit — …"),             // "can attack this turn", every target
+```
+
+A new per-target condition is a new field on `game.DefenderWaiver`, read
+in `waivesLocked`. Declaration, the enumerator's per-attacker list, the
+CR 508.1d search, the client and the bot all follow. Older cards that
+lift defender for every target (Stalked Researcher, Ghalta) write it as
+losing the keyword, which differs only to a card that counts creatures
+with defender; prefer the waiver for a new card.
+
 [ADR 0045](decisions/0045-combat-restrictions.md) has the
 taxonomy, including what the vocabulary deliberately cannot say:
 Silent Arbiter's and Crawlspace's count limits, which are set-shaped
@@ -6532,6 +6551,22 @@ The "attacks and isn't blocked" conditions live in
 turn, when target creature you control attacks and isn't blocked"
 (Delif's Cone, Delif's Cube), keyed by the creature as an object, so one
 that left and came back never fires it (CR 603.7c).
+
+**"When that creature dies this turn, <something with a target>" (#2057).**
+`whenThatCreatureDiesThisTurn(ctx, creature, label, body)` in
+[delayed_that_creature_dies.go](../server/internal/cards/effects/delayed_that_creature_dies.go)
+is the same shape for a death: the each-condition `dies/that-creature`
+names the creature by `CondParams.Object`, so one that left and came back
+never fires it, and the instance's payload is that object with its epoch.
+Register the body with `game.TargetedDelayedBody` and its clause is chosen
+as the trigger goes on the stack (CR 603.3d). "Its counters" are the dead
+creature's last-known record (`Game.PermanentForEffect` on
+`payloadObject(ctx)`, CR 608.2h); `putCountersThen` puts each kind through
+the counter window in turn and runs what follows once the last has landed
+(Heroic Sacrifice). Fatal Fissure's body is earthbend 4 with
+`EarthbendTargets`. An untargeted "when it dies this turn" may still use
+`ExileWhenItDiesThisTurn`'s `Cards` shape (Whippoorwill), but a targeted
+body must not carry `Cards`.
 
 **Once for each creature dealt damage at the same time (#3997,
 [ADR 0026](decisions/0026-delayed-triggers.md) amendment 2026-10-16).**

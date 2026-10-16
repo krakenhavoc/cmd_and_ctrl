@@ -504,3 +504,36 @@ None. `Zones`, `AnyPlayer` and `Purpose` are catalog data. The ability item name
 ### Cards
 
 Lightning Storm (Full).
+
+---
+
+## Amendment (2026-10-16): attacking certain players as though it didn't have defender (#1936)
+
+Weathered Sentinels: "This creature can attack players who attacked you during their last turn as though it didn't have defender." ADR 0108 §6 shipped the condition (`AttackedYouDuringTheirLastTurn`). What was missing is a waiver of defender that names WHOM the creature may attack. It is §2's per-target shape turned the other way: §2 forbids some targets to a creature that may otherwise attack, and this permits some targets to a creature that may otherwise attack nothing.
+
+### The rules
+
+- **CR 702.3b:** "A creature with defender can't attack."
+- **CR 609.4:** an "as though" effect "applies only to the stated effect … For all other purposes, treat the game normally." The creature keeps defender: a card that counts creatures with defender still counts it, and only the refusal of this attack is lifted.
+- **CR 508.1c / 508.1d:** defender is a restriction on the declaration, so CR 508.1d's maximum is counted "without disobeying" it. A goaded Sentinels attacks if able (CR 701.15b), and it is able only at a player the waiver reaches.
+- **CR 508.1b:** each attacker attacks a player, a planeswalker or a battle. An attack on a planeswalker or a battle is neither an attack "on you" for the condition (ADR 0108 §6 already reads it so) nor an attack on "a player" for the permission.
+
+### Options
+
+- **A. A waiver on the characteristic, asked per target (chosen).** `Characteristic.DefenderWaivers []DefenderWaiver{Source, SourceName, OnlyPlayersWhoAttackedYou}`, written by an ordinary layer-6 static and only ever appended to. One function, `defenderRefusalLocked(attacker, target)`, is CR 702.3b: nil without defender, or when a waiver covers the target.
+- **B. Lose the keyword while the condition holds**, as Stalked Researcher and Ghalta write the every-target form. It cannot be per target: the condition is about the defending player, and a creature either has the keyword or does not. In Commander it would let the Sentinels attack every opponent once any one of them had attacked you, which is stronger than printed.
+
+### Decision (A)
+
+1. **Where defender is asked.** `AttackerEligible` knows no target, and is the one attacker-side list that the bulk verb, the enumerator and the CR 508.1d search share (#544). It lets a creature with defender through only when the creature has a waiver. `canAttackTargetWithLocked` asks `defenderRefusalLocked` last, after CR 506.2 and the creature's restrictions, which is where the single verb has always refused defender. `AttackTargetsForAttackerForEffect` and `attackRequirementCandidatesLocked` drop a target it refuses. So both declaration verbs, the enumerator, the ADR 0105 digest's `attack_targets`, the client's per-attacker gate and the bot all read the one answer, and no client or bot code changes.
+2. **The condition** is read live at declaration, per target: `AttackedYouDuringTheirLastTurn(target, attacker.Controller)`. "You" is the creature's current controller, so a stolen Sentinels answers to its new controller's history.
+3. **The refusal.** A creature with defender and no waiver keeps the bare `ErrDefender`. One whose waivers miss the target gets a `*DefenderWaiverError` wrapping it: "Weathered Sentinels has defender: it can attack only players who attacked you during their last turn."
+4. **The every-target form for a turn** is a `ScopedEffect` mod kind, `waiveDefender` (`WaiveDefenderMod`, layer 6), which appends a waiver with no clause. Hightide Hermit's "Pay {E}{E}: This creature can attack this turn as though it didn't have defender" is an until-end-of-turn record of it (CR 514.2). It is an effect, not an ability the creature gains, so a "loses all abilities" leaves it. The cards that already lift defender by losing the keyword keep doing so: they differ only to a card that counts creatures with defender, and moving them is not in scope.
+5. **Ability removal.** The Sentinels' waiver is its own static, applied only while it has its abilities, and a creature that loses all abilities loses defender with them.
+6. **The view** carries nothing new. Whom the creature may attack is the digest's per-attacker answer, as in §2.
+
+### Snapshot impact
+
+`DefenderWaivers` reaches the snapshot only through `lastKnownBattlefield`, as `AttackTargetRestrictions` does, and `waiveDefender` is a new mod kind. Both are additive under the current schema version.
+
+Cards: Weathered Sentinels, Hightide Hermit (Full).

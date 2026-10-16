@@ -9393,11 +9393,10 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			// ADR 0106 §2 (#1794): the creature's own CR 508.1c target
 			// restrictions ("can't attack its owner") ride the same
 			// check, refused with a sentence naming them.
+			// #1936: and defender (CR 702.3b), asked per target there
+			// because a waiver may name whom it can attack.
 			if err := g.canAttackTargetWithLocked(card, targetPlayerID); err != nil {
 				return err
-			}
-			if HasKeyword(card, "defender") {
-				return ErrDefender
 			}
 			if HasSummoningSickness(card) {
 				return ErrSummoningSick
