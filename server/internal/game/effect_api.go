@@ -1669,6 +1669,13 @@ func (g *Game) CounterTargetForEffect(stackID uuid.UUID) error {
 		}
 		return g.counterSpellLocked(stackID, nil)
 	case StackItemActivated, StackItemTriggered:
+		// #2014: "Spells and abilities can't be countered" (Spider-Punk).
+		// The ability stays a legal target, as a covered spell does.
+		if g.abilityCantBeCounteredLocked(item) {
+			slog.Info("counter had no effect: ability can't be countered",
+				"ability_id", stackID)
+			return nil
+		}
 		return g.counterAbilityLocked(stackID)
 	default:
 		return ErrCardNotOnStack
@@ -1703,6 +1710,11 @@ func (g *Game) CounterTargetToZoneForEffect(stackID uuid.UUID, dst ZoneRef) erro
 		}
 		return g.counterSpellLocked(stackID, &dst)
 	case StackItemActivated, StackItemTriggered:
+		if g.abilityCantBeCounteredLocked(item) {
+			slog.Info("counter had no effect: ability can't be countered",
+				"ability_id", stackID)
+			return nil
+		}
 		return g.counterAbilityLocked(stackID)
 	default:
 		return ErrCardNotOnStack
@@ -1740,6 +1752,10 @@ func (g *Game) CounterSpellToLibraryThenForEffect(stackID uuid.UUID, at TuckOpti
 		return tell(g, false)
 	}
 	if item.Kind == StackItemActivated || item.Kind == StackItemTriggered {
+		if g.abilityCantBeCounteredLocked(item) {
+			slog.Info("counter had no effect: ability can't be countered", "ability_id", stackID)
+			return tell(g, false)
+		}
 		if err := g.counterAbilityLocked(stackID); err != nil {
 			return err
 		}

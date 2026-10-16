@@ -2113,10 +2113,14 @@ type StackItemView struct {
 	SplitSecond  bool           `json:"split_second,omitempty"`
 	// CantBeCountered is true for a spell that can't be countered:
 	// its own printed "this spell can't be countered" (Supreme
-	// Verdict, Thrun) or the mana that paid for it (Cavern of Souls,
-	// Delighted Halfling, Boseiju, #1547). Read from the engine's one
-	// gate, so the badge and the counter verbs cannot disagree. Public:
-	// it is a fact about a spell everyone can see. Added in #1553.
+	// Verdict, Thrun), the mana that paid for it (Cavern of Souls,
+	// Delighted Halfling, Boseiju, #1547), a mark or a turn grant, or
+	// a permanent's static (ADR 0106 §4). Since #2014 it is also true
+	// for an activated or triggered ability a permanent says can't be
+	// countered ("Spells and abilities can't be countered",
+	// Spider-Punk). Read from the engine's one gate, so the badge and
+	// the counter verbs cannot disagree. Public: it is a fact about an
+	// object everyone can see. Added in #1553.
 	CantBeCountered bool `json:"cant_be_countered,omitempty"`
 	// DamageCantBePrevented is true for a spell whose own text says
 	// its damage can't be prevented, under its condition as it stands
@@ -9763,6 +9767,7 @@ func viewOfStackItemsInStackOrder(g *game.Game) []StackItemView {
 	for _, item := range abilities {
 		v := viewOfStackItem(item)
 		v.AbilityText = abilityTextOf(g, item)
+		v.CantBeCountered = g.AbilityCantBeCounteredForEffect(item.ID) // #2014
 		entries = append(entries, entry{item.Seq, v})
 	}
 	if held != nil && !seen[held.ID] && g.StackMeta[held.ID] == nil {

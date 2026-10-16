@@ -1148,13 +1148,21 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#2013, ADR 0072's 2026-10-16 amendment): `Spec.PlayerKeywordsIf` declares a permanent's printed \"<condition>, you have <keyword>\" as a token plus a `While(g, source)` predicate, read through `game.CatalogPlayerKeywordsIf` by the same `playerAbilityTokensLocked` walk as `PlayerKeywords`. The condition is asked on every query with the permanent as it is now (CR 611.3a), so nothing is stored or swept. `YouHaveDuringYourTurn` and `YouHaveWhile` build the entries; `ThisHasDuringYourTurn` is the object half. Gruul Spellbreaker and Captain America, Super-Soldier ship Full.",
 	},
 	{
-		Slug: "abilities-cant-be-countered", Name: "Abilities that can't be countered", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Permanents that stop abilities from being countered as well as spells, such as Spider-Punk.",
-		Missing:     "Abilities can still be countered while a permanent says they can't be.",
-		Rules:       []string{"701.6a"},
-		Issue:       2014,
-		Waiting:     []string{"Spider-Punk"},
-		EngineNotes: "rules gate: countering an ability removes it from the stack (CR 701.6a), and nothing asks whether it may. The spell half is `spellCantBeCounteredLocked` (`game/cant_be_countered.go`, ADR 0106 §4); the likely shape is the same gate asked for an ability item. Spider-Punk's riot and \"Other Spiders you control have riot\" work (ADR 0109 PR 9, #1556), and \"Damage can't be prevented\" shipped with ADR 0107 PR 6; this is the card's last gap. Split off the riot row when riot closed.",
+		Slug: "abilities-cant-be-countered", Name: "Abilities that can't be countered", Kind: KindSeam, Status: StatusImplemented,
+		Summary: "Permanents that stop abilities from being countered as well as spells, such as Spider-Punk.",
+		Rules:   []string{"701.6a", "101.2", "613.11", "611.3a", "604.2", "605.3b"},
+		Issue:   2014,
+		ADR:     "0106-five-small-seams-from-the-s50-rechecks.md",
+		Probe: func(s effects.Spec) bool {
+			for _, sh := range s.SpellsCantBeCountered {
+				if sh.Abilities {
+					return true
+				}
+			}
+			return false
+		},
+		Examples:    []string{"Spider-Punk"},
+		EngineNotes: "**Shipped** (#2014, [ADR 0106 §4 amendment 2026-10-16](decisions/0106-five-small-seams-from-the-s50-rechecks.md)): `game.CounterShieldStatic.Abilities` extends a battlefield \"can't be countered\" static to activated and triggered abilities on the stack (CR 701.6a), built with `effects.SpellsAndAbilitiesCantBeCountered`. The ability half of the counter gate, `abilityCantBeCounteredLocked` (`game/cant_be_countered.go`), is asked by every counter verb for an ability item — `CounterTargetForEffect`, the to-zone and to-library counters, and so ward's and every counter-unless-paid decline — and judges `Whose` against the ability's controller (\"you cast\" never covers an ability). A covered ability stays a legal target: the Stifle resolves and does nothing (CR 101.2). The stack chip (`cant_be_countered`) now shows on an ability item too. The sandbox's manual counter is unchanged. No snapshot change: the static is catalog data.",
 	},
 	{
 		Slug: "all-activated-abilities-of", Name: "Having another card's activated abilities", Kind: KindSeam, Status: StatusImplemented,

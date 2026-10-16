@@ -88,3 +88,40 @@ func TestCantBeCounteredIsOmittedWhenFalse(t *testing.T) {
 		t.Errorf("should be omitted: %s", b)
 	}
 }
+
+// #2014: a permanent whose static covers abilities ("Spells and
+// abilities can't be countered", Spider-Punk) puts the same flag on an
+// activated or triggered item; without it the ability shows nothing.
+func TestAbilityItemShowsCantBeCountered(t *testing.T) {
+	const shieldOracle = "abilities-uncounterable"
+	old := game.CatalogCounterShields
+	game.CatalogCounterShields = func(key string) []game.CounterShieldStatic {
+		if key == shieldOracle {
+			return []game.CounterShieldStatic{{Whose: game.CounterShieldAnyPlayer, Abilities: true}}
+		}
+		return nil
+	}
+	t.Cleanup(func() { game.CatalogCounterShields = old })
+
+	g := buildActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	ability := uuid.New()
+	g.WithWriteLock(func() {
+		if g.StackMeta == nil {
+			g.StackMeta = map[uuid.UUID]*game.StackItem{}
+		}
+		g.StackMeta[ability] = &game.StackItem{ID: ability, Kind: game.StackItemTriggered,
+			Controller: opp.ID, Owner: opp.ID, SourceCardID: uuid.New(), Label: "A trigger"}
+	})
+	if stackItemView(t, g, ability).CantBeCountered {
+		t.Fatal("no shield yet: the ability must not show")
+	}
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(game.Card{InstanceID: uuid.New(), Name: "Spider-Punk",
+			TypeLine: "Legendary Creature — Spider Human Hero", OracleID: shieldOracle,
+			Owner: me.ID, Controller: me.ID})
+	})
+	if !stackItemView(t, g, ability).CantBeCountered {
+		t.Error("an ability a battlefield static covers must show")
+	}
+}
