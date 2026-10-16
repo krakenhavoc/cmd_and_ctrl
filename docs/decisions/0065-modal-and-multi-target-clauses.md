@@ -1515,6 +1515,12 @@ amendment applies the mode walk's mechanism to steps.
   next bullet and the resolution's tail, which are later ones. A resumed
   step may pause again. `finishResolutionTailLocked` waits for the walk
   as it waits for the bullets.
+- Before the next step runs, the prevention follow-ups still owed run
+  (`resumeStepWalkLocked`). A CR 615.13 announcement (#2047, Selfless
+  Squire) or another follow-up held behind the answered question was
+  owed by an earlier step's damage, so it happens before the next step
+  (CR 615.5). If one of them asks, the walk stays parked behind that
+  question.
 - The parked position is data: the stack item and a path of step
   indexes. No closure is stored, so the closure ratchet does not move
   (`Game.pausedStepWalk` and `stepWalk.item` are `keyed`, like the mode
@@ -1562,4 +1568,7 @@ Tests: `effects/do_walk_test.go`. They cover a Khârn the Betrayer
 question mid-`Do`, live and across a strict restore; Vivi's damage
 waiting on the CR 616 counter order, live and across an undo, with the
 census unchanged; a scry with no `Then` mid-`Do`, live and across a
-strict restore; and a scry inside an `If`'s steps across a restore.
+strict restore; a scry inside an `If`'s steps across a restore; and a
+first step whose one instance deals damage to Khârn and to a player
+with Selfless Squire's shield, where the next step sees the Squire's
+announcement already made, live and across a strict restore.

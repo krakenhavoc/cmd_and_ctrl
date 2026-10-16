@@ -68,7 +68,8 @@ import "slices"
 // A catalog effect written as a plain sequence of steps
 // (Do(DealDamage{…}, DrawCards{…})) waits too since #4012: the steps
 // after the one that asked are parked in Game.pausedStepWalk and resumed
-// after the damage instruction's own continuation (step_walk.go). A Do
+// after the damage instruction's own continuation and the follow-ups
+// still owed, announcements included (step_walk.go). A Do
 // run from inside a hand-written closure still runs its later steps on
 // the Go stack, as it does after a CR 616 ordering prompt.
 

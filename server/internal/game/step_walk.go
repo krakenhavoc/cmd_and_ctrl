@@ -96,11 +96,22 @@ func (g *Game) ParkEffectStepsForEffect(item *StackItem, path []int) bool {
 // resolution function so the boundary stays held while they run.
 // Reports whether there was a walk to resume.
 //
+// The prevention follow-ups still owed run first (#2040): a CR 615.13
+// announcement (#2047) or a follow-up held behind the answered question
+// was owed by an earlier step's damage, so it happens before the next
+// step (CR 615.5, CR 608.2c). Every entry owed now is an earlier step's:
+// the walk has not resumed, and an earlier resolution's entries were
+// flushed at the priority boundary before this item resolved. If one of
+// them asks, the walk stays parked behind the new question.
+//
 // Caller must hold g.mu in write mode.
 func (g *Game) resumeStepWalkLocked() bool {
 	w := g.pausedStepWalk
 	if w == nil {
 		return false
+	}
+	if g.flushPreventionFollowUpsLocked() {
+		return true
 	}
 	g.pausedStepWalk = nil
 	if g.State != StateActive || ResumeEffectSteps == nil {

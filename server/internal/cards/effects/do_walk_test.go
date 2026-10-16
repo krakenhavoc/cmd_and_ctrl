@@ -25,6 +25,35 @@ func (s doWalkProbeDamage) Apply(ctx *Context) error {
 	return ctx.Game.DealDamageToCreatureForEffect(ctx.Item.SourceCardID, ctx.Item.Targets[0].ID, s.N)
 }
 
+// doWalkProbeKharnAndYou is "this deals 1 damage to the first target
+// and 2 damage to you" as one instance, so a Khârn question and a
+// Selfless Squire announcement are owed by the same damage.
+type doWalkProbeKharnAndYou struct{}
+
+func (doWalkProbeKharnAndYou) Apply(ctx *Context) error {
+	g, it := ctx.Game, ctx.Item
+	return g.DamageInstanceForEffect(func() error {
+		if err := g.DealDamageToCreatureForEffect(it.SourceCardID, it.Targets[0].ID, 1); err != nil {
+			return err
+		}
+		return g.DealDamageToPlayerForEffect(it.SourceCardID, it.Controller, 2)
+	})
+}
+
+// doWalkSquireSeen records, as the next step begins, how many Selfless
+// Squire triggers the earlier step's damage has produced (-1: not run).
+var (
+	doWalkSquire     uuid.UUID
+	doWalkSquireSeen = -1
+)
+
+type doWalkProbeSeeSquire struct{}
+
+func (doWalkProbeSeeSquire) Apply(ctx *Context) error {
+	doWalkSquireSeen = squireTriggersLocked(ctx.Game, doWalkSquire)
+	return nil
+}
+
 // doWalkAlways is a condition that holds, so an If's steps run.
 type doWalkAlways struct{}
 
@@ -53,6 +82,12 @@ func init() {
 				Cost:    TapCost(),
 				Purpose: game.Purpose{Answers: game.AnswerValue},
 				Effect:  Do(If{Cond: doWalkAlways{}, Then: []Applier{Scry{N: 1}, DrawCards{N: 1}}}, GainLife{Amount: 1}),
+			},
+			{
+				Label:   "{T}: Do Walk Probe deals 1 damage to target creature and 2 damage to you. Then look.",
+				Cost:    TapCost(),
+				Targets: TargetCreature("target creature"),
+				Effect:  Do(doWalkProbeKharnAndYou{}, doWalkProbeSeeSquire{}),
 			},
 		},
 	})
@@ -200,5 +235,47 @@ func TestDoStepsInsideAnIfWaitForTheScry(t *testing.T) {
 	}
 	if !me.Hand.Contains(ids[1]) || me.Hand.Size() != hand+1 || me.Life != life+1 {
 		t.Fatalf("hand %d (Second %v), life %d; want %d (true), %d", me.Hand.Size(), me.Hand.Contains(ids[1]), me.Life, hand+1, life+1)
+	}
+}
+
+// Khârn the Betrayer and Selfless Squire, dealt damage by one instance
+// in a Do's first step: Khârn asks, and the Squire's announcement (#2047,
+// CR 615.13) waits behind the question (#2040). The next step waits too,
+// and when it runs the announcement has already been emitted, because
+// it belongs to the earlier step's damage (CR 615.5, CR 608.2c). Live
+// and across a strict restore taken while the question is open.
+func TestDoStepAfterKharnWaitsForTheSquiresAnnouncement(t *testing.T) {
+	for _, restored := range []bool{false, true} {
+		g := newCatalogGame(t)
+		me, third := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+2)%len(g.Seats)]
+		kharn := kharnPush(g, me.ID, me.ID)
+		doWalkSquire = castSquire(t, g)
+		doWalkSquireSeen = -1
+		life := me.Life
+		doWalkProbe(t, g, me.ID, 3, kharn)
+		if latestChoiceOfKindFor(g, game.PendingChoiceOptionPick, me.ID) == nil {
+			t.Fatal("Khârn's question is not open")
+		}
+		if n := squireTriggers(g, doWalkSquire); n != 0 || doWalkSquireSeen != -1 {
+			t.Fatalf("%d Squire triggers and the next step saw %d with the question open; want 0 and not run", n, doWalkSquireSeen)
+		}
+		if restored {
+			g = restoreRoundTrip(t, g, true)
+			me = g.Seats[g.Turn.ActiveSeat]
+		}
+		kharnAnswer(t, g, me.ID, third.ID)
+		if doWalkSquireSeen != 1 {
+			t.Fatalf("restored=%v: the next step saw %d Squire triggers, want 1 — the announcement first", restored, doWalkSquireSeen)
+		}
+		if n := squireTriggers(g, doWalkSquire); n != 1 {
+			t.Fatalf("restored=%v: %d Squire triggers after the answer, want 1", restored, n)
+		}
+		settleOrderingTriggers(t, g)
+		if n := countersOn(g, doWalkSquire, game.CounterPlusOne); n != 2 || me.Life != life {
+			t.Fatalf("restored=%v: Squire counters %d (want 2), life %d (want %d)", restored, n, me.Life, life)
+		}
+		if got := kharnController(t, g, kharn); got != third.ID {
+			t.Fatalf("restored=%v: Khârn's controller %s, want %s", restored, got, third.ID)
+		}
 	}
 }
