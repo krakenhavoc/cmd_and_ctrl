@@ -286,6 +286,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "OpponentsFaceVillainousChoicesAgain", label: boolRow("If an opponent would face a villainous choice, they face that choice an additional time.")},
 	{field: "DamageCantBePrevented", label: unpreventableDamageRows},
 	{field: "CantGainLife", fallback: "Life can't be gained", ownLabel: true},
+	{field: "DrawLimits", fallback: "Limits how many cards players draw", ownLabel: true},
 	{field: "DamageAsThough", fallback: "Changes how damage is dealt", ownLabel: true},
 	{field: "AnyColorSpend", label: anyColorSpendRows},
 	{field: "LifeForMana", fallback: "Lets you pay life for mana", ownLabel: true},
