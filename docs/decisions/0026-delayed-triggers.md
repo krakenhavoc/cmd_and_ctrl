@@ -391,3 +391,55 @@ not the event's `Amount`. `dispatchEventDelayedTriggerLocked` now sets `item.Tri
 which is what "that much life" needs: Vizkopa Guildmage's "whenever you gain life this turn, each opponent loses that much
 life" is a repeating `DelayedOnEvent` on `EventChangeLife` whose body reads `ctx.Trigger().Event.Amount`. `Object` stays
 nil. Back-out: drop the line and `TestVizkopaGuildmageDrainsOpponentsByTheLifeYouGainThisTurn` fails.
+
+## Amendment (2026-10-16, [#3997](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3997)): once for each creature dealt damage at the same time
+
+Shriveling Rot's first bullet is "Until end of turn, whenever a creature is dealt damage, destroy it." It is a repeating
+delayed trigger (CR 603.7b), and its trigger event is a creature being dealt damage. Damage dealt at the same time is one
+event (CR 120.4b, 510.2), and an ability triggers once each time its event occurs, or once for each occurrence the event
+contains (CR 603.2c). So a creature that two blockers hit triggers it once, and two creatures hit at once trigger it twice.
+The engine emits one `EventDealDamage` per source. Read one event at a time, the trigger fired twice for the double-blocked
+creature, which destroyed it twice and got past a single regeneration shield. That is stronger than printed.
+
+**Decision.** `DelayedTrigger.OncePerBatch` on a trigger whose condition is an each-condition (`game.DelayedEachCondition`,
+[ADR 0187](0187-any-player-pays-per-object-graveyard-and-either-payments.md) amendment 2026-10-16) now means once for each
+OBJECT in each event batch, not once for the whole batch. The guard is the same `oncePerBatchAllowsLocked` test-and-set,
+with the object and the event's `DamageInstance` appended to the key, as `TriggeredAbility.BatchKey` appends a second
+dimension to a permanent's key (`objectsNotYetFiredInBatchLocked`, `game/delayed.go`). The damage instance is part of the key
+because the [ADR 0108](0108-turn-scoped-effects-object-history-and-damage-shields.md) 2026-10-13 amendment made it the engine's record of "at the same
+time". One combat damage step, or one damage instruction, is one instance. Two instructions in one resolution, such as a
+Fiery Confluence that chose the same mode twice, are two events and so two occurrences, which `BatchTotalDamage` already
+treats the same way. An event that is not damage has the zero instance, and its key is the object alone. Without an
+each-condition, `OncePerBatch` keeps the 2026-10-13 meaning (Dalkovan Encampment). No card combined the two before this, so
+nothing that shipped changes.
+
+The payload of an each-condition instance now records the object's CR 400.7 epoch (`TargetRef.Epoch`, the field #3859
+added for payloads). That is its live epoch, or the epoch it had when it last left the battlefield this turn. "Destroy it"
+then destroys only that object (CR 603.7c), and "that creature's controller loses life equal to its toughness" reads the
+creature as it last existed (CR 608.2h, `Game.PermanentForEffect`). Readers that use only the ID are unchanged.
+
+The second bullet ("whenever a creature dies, that creature's controller loses life equal to its toughness") needed no new
+engine shape. It is an each-condition on `EventLTB` to a graveyard (CR 700.4), with the controller and toughness read from
+the creature's last-known record.
+
+**Snapshot.** No new field. The epoch rides in `TargetRef.Epoch`, which is additive and omitted when zero, and the fired
+marks ride the existing `oncePerBatchFired` map. The four new keys (`damage/each-creature-dealt-damage`,
+`dies/each-creature`, `destroy/the-payload-permanent` and `dies/controller-loses-life-equal-to-toughness`) are in the
+effect-key ledger. An older binary refuses a restore point that names them (`ErrUnknownEffectKey`), so the schema stays at
+its version.
+
+**Not chosen.**
+
+- Staging the delayed trigger until the batch settles, as a permanent's `AtBatchEnd` does (`life_batch.go`). Staging
+  finds the ability again by key on a source permanent, and a delayed trigger has none. Building a second staging path
+  for one card would change nothing a player sees, because the instance goes on the stack at the same priority boundary
+  either way.
+- Keying on the batch alone, as `BatchTotalEvents` does. That merges two separate damage instructions in one resolution
+  into one trigger, which is weaker than printed. Keying on the damage instance follows the rules more closely.
+- A new `DelayedTrigger` field. It would be a snapshot change for a combination that has no other meaning.
+
+**Cards.** Shriveling Rot, `CompletenessFull`.
+
+Back-out: drop the each-condition branch in `fireEventDelayedTriggersLocked`. The double-blocked creature is then destroyed
+twice (`TestShrivelingRotDoubleBlockedAttackerTriggersOnce` and
+`TestShrivelingRotTriggersOnceForEachCreatureDealtDamageTogether` fail).

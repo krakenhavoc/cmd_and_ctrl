@@ -268,3 +268,7 @@ body cipher/cast
 option cipher/encode
 body construct-a-cosmic-cube/control
 body glacial-dragonhunt/damage
+body destroy/the-payload-permanent
+body dies/controller-loses-life-equal-to-toughness
+condition damage/each-creature-dealt-damage
+condition dies/each-creature
