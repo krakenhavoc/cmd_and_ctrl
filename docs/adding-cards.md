@@ -5176,6 +5176,16 @@ record too: `Protect: ShieldTheTargetPermanents` or `ShieldObjects(ids…)`.
 "You and permanents you control" is `ShieldYouAndPermanentsYouControl`.
 The rows and helpers are in `effects/shield_families_recipient.go`.
 
+**"Whenever damage … is prevented" (CR 615.13, #2047, ADR 0108
+amendment of 2026-10-16)** is a trigger on `game.EventDamagePrevented`,
+not a follow-up. The engine emits one per application of one prevention
+effect to one damage instance, per recipient, with `Target` the
+recipient and `Amount` the damage prevented, and none for damage that
+can't be prevented. "Dealt to you" is
+`WheneverDamageToYouIsPrevented(label, effect)` (Selfless Squire), read
+`item.Trigger.Event.Amount` for "that many". "Prevented this way" is
+still the effect's own `Then`, never this event.
+
 **Sources a property list can't describe (#2026, ADR 0108 §7 amendment
 of 2026-10-05).** "Non-Spider creatures", "creatures with power 3 or
 less", "attacking creatures", "unblocked creatures", "colorless

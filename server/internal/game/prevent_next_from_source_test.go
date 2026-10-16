@@ -264,7 +264,7 @@ func TestOwedFollowUpSurvivesARestorePoint(t *testing.T) {
 	shieldAgainst(t, g, me.ID, src, testFollowUp(&calls))
 	g.WithWriteLock(func() { g.markCombatDamageToPlayerLocked(me.ID, src, 3, CombatStepRegular) })
 	snap := g.CaptureSnapshot()
-	if snap == nil || len(snap.PreventionFollowUps) != 1 || snap.PreventionFollowUps[0].Instance == 0 {
+	if snap == nil || len(followUpsOnly(snap.PreventionFollowUps)) != 1 || snap.PreventionFollowUps[0].Instance == 0 {
 		t.Fatalf("snapshot owes %v, want the one follow-up, with its instance", snap)
 	}
 	r, err := snap.RestoreStrict()

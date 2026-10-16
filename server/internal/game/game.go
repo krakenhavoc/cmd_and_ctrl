@@ -523,8 +523,9 @@ type Game struct {
 	// preventionFollowUps are the next-damage shields' CR 615.5
 	// additional effects owed for an instance of damage that has not yet
 	// settled — one per shield and instance of damage, with the running
-	// total (ADR 0107 §6, ADR 0108 PR 0; prevent_next_from_source.go).
-	// Empty between actions.
+	// total (ADR 0107 §6, ADR 0108 PR 0; prevent_next_from_source.go),
+	// and CR 615.13's "damage was prevented" announcements owed the same
+	// way (#2047, damage_prevented.go). Empty between actions.
 	preventionFollowUps []PreventionFollowUp
 
 	// damageInstanceSeq is the last DamageInstance handed out (ADR 0108

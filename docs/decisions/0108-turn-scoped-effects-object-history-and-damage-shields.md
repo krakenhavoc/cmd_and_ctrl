@@ -630,3 +630,28 @@ Additive within v9: `turnTally.damagedObjects` and `mods[].damageSince`, both om
 ### Cards
 
 Bone Shaman and Runesword ship `full`. The record also ships the "If a creature dealt damage by this creature this turn would die, exile it instead" family as catalog replacements: Kumano, Master Yamabushi, Frostwielder, Incendiary Oracle, Kumano's Pupils, and Kumano's Blessing (the enchanted creature's damage), all `full`.
+
+## Amendment 2026-10-16 — "whenever damage is prevented" (#2047)
+
+`game.EventDamagePrevented` was only the context a CR 615.5 follow-up body is handed, and nothing emitted it, so no triggered ability could watch for prevented damage. Selfless Squire ("Whenever damage that would be dealt to you is prevented, put that many +1/+1 counters on this creature") waited on it. It is the only card that prints a CR 615.13 trigger; every "prevented this way" clause is a follow-up, which §7 and §8 already run.
+
+### The rules
+
+- **CR 615.13:** "Some triggered abilities trigger when damage that would be dealt is prevented. Such an ability triggers each time a prevention effect is applied to one or more simultaneous damage events and prevents some or all of that damage."
+- **CR 615.12:** a prevention effect applied to damage that can't be prevented prevents nothing, so it is not an application CR 615.13 counts.
+- **CR 702.16e, CR 122.1c:** protection and a shield counter are prevention effects too.
+
+### Decision
+
+1. **The unit is the follow-up queue's.** One application of one prevention effect to the simultaneous events of one damage instance (PR 0) is one announcement, owed with the running total and emitted once, where a follow-up runs: as the instance ends, or at ADR 0107's flush points. A Fog stopping three attackers is one trigger for all of it. A charged shield and a "prevent all" that each stop part of one instance are two effects and two triggers.
+2. **Measured in one place.** `runReplaceLocked` already measured a §8 static's Replace before and after. It now measures every replacement that declares `Prevention` (a scoped shield, a catalog static, protection's built-in, a shield counter) and owes an announcement when the effect prevented at least 1. `TestDamageReplacementsDeclareWhetherTheyPrevent` already holds every damage replacement that reduces damage to that declaration. Under "damage can't be prevented", `settleUnpreventableLocked` settles the effect without running its Replace, so nothing is measured and nothing triggers, while the effect's own follow-up still runs with zero (§8).
+3. **One event per recipient.** The announcement is keyed on the effect (a scoped record's `Seq` and mod, a catalog static's object, epoch and slot, a built-in's own negative slot), the instance and the recipient. The event's `Target` is the recipient and `Amount` the damage prevented ("that many"), not the damage the effect met. Every printed CR 615.13 trigger names its recipient ("dealt to you"), so each sees one event per application. A trigger naming no recipient, or two, would count an application once per recipient; no card prints one.
+4. **Plain data on the existing queue.** The announcement is a `PreventionFollowUp` with `Announce` set and no body, so it is cloned, undone and carried by a restore point with the follow-ups, and it never merges with its effect's own follow-up.
+
+### Snapshot impact
+
+Additive within v9: `preventionFollowUps[].announce`, omitted when false. A binary from before this amendment refuses a current-schema file carrying it (PR 0's follow-up key check); it would otherwise read the entry as a follow-up with no body.
+
+### Cards
+
+Selfless Squire ships `full`: its enters shield is §7's `preventFromSource` protecting you, and its trigger is `effects.WheneverDamageToYouIsPrevented`. Any prevention effect that stops damage to its controller counts, not only its own shield.

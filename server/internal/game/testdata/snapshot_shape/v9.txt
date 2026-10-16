@@ -3772,6 +3772,7 @@ playerControls[].turnSeq	number:int
 playerControls[].until	string
 preventionFollowUps	array
 preventionFollowUps[]	object
+preventionFollowUps[].announce	bool
 preventionFollowUps[].batch	number:uint64
 preventionFollowUps[].body	string
 preventionFollowUps[].combat	bool
