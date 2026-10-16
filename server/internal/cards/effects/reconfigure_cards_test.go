@@ -448,3 +448,50 @@ func TestTheRealityChipPlaysFromTheTopWhileAttached(t *testing.T) {
 		t.Error("the top is not playable while the Chip is attached")
 	}
 }
+
+// #3862: the quoted ability is GRANTED to the equipped creature at the
+// Kirin's attach timestamp (CR 613.7e), so a creature that lost all its
+// abilities before the Kirin was attached still gets it (CR 613.6,
+// timestamp order), and one that loses them afterwards does not.
+func TestCloudsteelKirinGrantsCantLoseToACreatureThatLostItsAbilitiesFirst(t *testing.T) {
+	g := newTwoSeatCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	bear := seedBear(g, me.ID)
+	kirin := seedReconfigure(g, me.ID, "Cloudsteel Kirin", "Kirin", cloudsteelKirinOracle, 3, 2)
+	g.WithWriteLock(func() {
+		g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(bear),
+			[]game.Mod{game.LoseAllAbilitiesMod()}, game.IndefiniteDuration(), "test — loses all abilities")
+	})
+	reconfigureOnto(t, g, me.ID, kirin, bear, cloudsteelKirinOracle)
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		if len(g.CantLoseCausesForEffect(me)) == 0 {
+			t.Error("the Kirin attached after the removal gives no \"can't lose\"")
+		}
+	})
+	me.Life = -3
+	checkState(t, g)
+	if me.Eliminated {
+		t.Fatal("lost the game: the Kirin's grant is newer than the removal and survives it")
+	}
+}
+
+func TestCloudsteelKirinsGrantEndsWhenTheCreatureLosesItsAbilitiesLater(t *testing.T) {
+	g := newTwoSeatCatalogGame(t)
+	me := g.Seats[0]
+	advanceToMain(t, g)
+	bear := seedBear(g, me.ID)
+	kirin := seedReconfigure(g, me.ID, "Cloudsteel Kirin", "Kirin", cloudsteelKirinOracle, 3, 2)
+	reconfigureOnto(t, g, me.ID, kirin, bear, cloudsteelKirinOracle)
+	g.WithWriteLock(func() {
+		g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(bear),
+			[]game.Mod{game.LoseAllAbilitiesMod()}, game.IndefiniteDuration(), "test — loses all abilities")
+	})
+	g.WithWriteLock(func() {
+		g.RecomputeLayersIfStaleLocked()
+		if got := g.CantLoseCausesForEffect(me); len(got) != 0 {
+			t.Errorf("can't-lose causes %v after a newer removal, want none", got)
+		}
+	})
+}

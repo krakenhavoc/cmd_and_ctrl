@@ -219,6 +219,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// object's, and the new one is not given it until the next layer
 	// pass (the layer-version bump on a card entering such a zone).
 	c.zoneGranted = nil
+	// #3862 / CR 400.7: and the types and colours a static gave the
+	// object off the battlefield. The new object is stamped by the next
+	// pass (the layer-version bump on a move between such zones).
+	c.zoneLayered = nil
 	// ADR 0141 / CR 400.7, CR 702.103: bestowed belongs to the spell
 	// and the permanent it becomes, never to the card. Every zone
 	// change ends it, a resolving one included: the battlefield entry

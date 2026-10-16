@@ -375,6 +375,7 @@ func (g *Game) runRouteTailLocked(r *zoneRoute) error {
 			return err
 		}
 		if ok {
+			g.runAsEntersOthersLocked([]entryLanding{l})
 			g.announceEntryLocked(l)
 			g.runEntryHooksLocked(l)
 			g.pruneChoicesAfterArrivalLocked()
@@ -952,6 +953,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	}
 	if entryLanded {
 		g.mixedEntry = previousMixed
+		g.runAsEntersOthersLocked([]entryLanding{landing})
 		g.announceEntryLocked(landing)
 		g.runEntryHooksLocked(landing)
 		g.pruneChoicesAfterArrivalLocked()

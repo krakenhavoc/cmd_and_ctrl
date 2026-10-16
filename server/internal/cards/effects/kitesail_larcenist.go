@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Kitesail Larcenist — Creature — Human Pirate {2}{U}, 2/3:
 //
@@ -12,67 +16,107 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 artifact: Add one mana of any color' and lose all other
 //	 abilities."
 //
-// The two keywords ship; the enters trigger does not ship at all.
-// A 2/3 flier with ward {1} for three is a real card, and half a
-// Treasure-ifying trigger would not be — see below on why there is no
-// honest partial here.
+// The enters trigger is three existing shapes (#3863):
 //
-// # The three questions the trigger asks, answered separately
+//   - THE TARGETS. "For each player, choose up to one … that player
+//     controls" is one "up to one" clause per player, each bound to its
+//     player: the controller's own (another artifact or creature, so
+//     never the Larcenist itself), then the 1st, 2nd and 3rd seats after
+//     theirs in turn order (controlledByNthOpponent, Lich's Relic's
+//     binding). A clause for a seat the table does not have offers
+//     nothing. Binding is the point: a permanent that changes hands in
+//     response is an illegal target for the clause it was chosen under
+//     (CR 608.2b), even if it moved to another player.
+//   - THE TREASURE. Vraska, Betrayal's Sting's three mods at one
+//     timestamp: layer 4 sets the types to Artifact — Treasure, which
+//     takes every other card type and subtype with it and keeps the
+//     supertypes (CR 205.1a); layer 6 removes every ability, then grants
+//     the Treasure mana ability as a registered bundle (ADR 0093), the
+//     removal first so the grant survives it.
+//   - THE DURATION. "For as long as this creature remains on the
+//     battlefield" is CR 611.2b (DurationWhileSourceRemains): a
+//     Larcenist that leaves before its trigger resolves changes nothing,
+//     and one that leaves later gives every chosen permanent its
+//     characteristics back. The chosen set is locked as the ability
+//     resolves (CR 611.2c), each permanent pinned to the object it is,
+//     so one that leaves and returns is a new object the effect no
+//     longer reaches (CR 400.7).
 //
-// (a) THE TARGET CLAUSE. "For each player, choose up to one other
-// target artifact or creature that player controls" is one optional
-// target SLOT PER PLAYER, and the number of slots is not known when
-// the card is registered. game.TargetSpec grew multi-clause statements
-// in #764 (TargetSpec.Rest, built with Clauses(first, then…)), but the
-// list is FLAT and FIXED at catalog-build time: there is no clause
-// count derived from the seat count, and nothing scopes a clause's
-// candidate set to "the player this slot belongs to". Hard-coding four
-// clauses would be wrong at any other table size and wrong again the
-// moment a player is eliminated. This is the smaller of the two gaps
-// and could be a per-player clause generator; it is recorded on the
-// seam list rather than invented here.
+// A chosen permanent that is sacrificed for its Treasure mana is gone for
+// good, as printed.
 //
-// (b) THE TYPE CHANGE AND THE ABILITY LOSS. Both of these DO have a
-// shape. Layer 4 is authoritative since S24 (ADR 0039) and layer 6's
-// removal reaches the Catalog* hooks (ADR 0046), so "become Treasure
-// artifacts" is a layer-4 static and "lose all other abilities" is
-// LoseAllAbilities() — a DECLARATION (RemovesAbilities: true), never
-// something an Apply closure does by hand.
-//
-// (c) THE ABILITY IT GRANTS. The chosen permanents gain "{T},
-// Sacrifice this artifact: Add one mana of any color" — a MANA ability
-// given to another permanent by a continuous effect. This used to be
-// the blocker (#754) and is not any more: ADR 0093 lets a static grant
-// one (Chromatic Lantern, Cryptolith Rite, Gemhide Sliver), and its
-// PR 4 (#1584, shipped in #1603) lets a resolving ability grant one for
-// a duration, as effects.GrantAbilitiesFor. What is still needed here
-// is a registered bundle holding the Treasure mana ability, and the
-// card has not been rebuilt on it yet.
-//
-// # Why there is no partial
-//
-// Shipping (b) without (c) would turn an opponent's Sol Ring into a
-// Treasure that cannot be tapped for anything — strictly better
-// removal than the card prints. Shipping (c) without (b) is not a
-// thing. And the duration, which looked like the third problem, is
-// not one: "for as long as this creature remains on the battlefield"
-// is CR 611.2b and has had a shape since #755 / ADR 0063
-// (DurationWhileSourceRemains + ScopedEffectFor with a Match,
-// the same machinery Sower of Temptation uses). With the grant (c)
-// built, the one gap left is the per-player target clause (a), and
-// the file is written so that when it lands the whole ability can be
-// added in one place.
+// No simplification.
+const (
+	kitesailLarcenistTreasureGrant = "kitesail-larcenist/treasure-mana"
+	kitesailLarcenistEntersLabel   = "Kitesail Larcenist — the chosen permanents become Treasure artifacts"
+)
+
 func init() {
+	enters := WhenThisEnters(kitesailLarcenistEntersLabel, kitesailLarcenistTreasureify)
+	enters.Targets = kitesailLarcenistClauses()
 	Register(Spec{
-		OracleID:     "2452be47-cc23-47f7-a3a1-fec900bb0119",
-		Name:         "Kitesail Larcenist",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The ability that turns other permanents into Treasures when this creature enters isn't implemented — nothing happens when it arrives.",
-		},
+		OracleID:        "2452be47-cc23-47f7-a3a1-fec900bb0119",
+		Name:            "Kitesail Larcenist",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
+		Grants: []AbilityGrant{{
+			Key: kitesailLarcenistTreasureGrant,
+			Mana: []ManaAbility{{
+				Cost:     ManaAbilityCost{Tap: true, Sacrifice: true},
+				Produced: "{W|U|B|R|G}",
+				Label:    "{T}, Sacrifice this artifact: Add one mana of any color",
+			}},
+			Text: "{T}, Sacrifice this artifact: Add one mana of any color.",
+		}},
 		Triggered: []game.TriggeredAbility{
 			Ward(WardMana("{1}"), "Kitesail Larcenist — ward {1}"),
+			enters,
 		},
 	})
+}
+
+// kitesailLarcenistClauses is "for each player, up to one other target
+// artifact or creature that player controls": the controller's clause
+// first, then one per opponent seat in turn order.
+func kitesailLarcenistClauses() *game.TargetSpec {
+	artifactOrCreature := Or(Artifact(), Creature())
+	yours := Another(TargetPermanent("up to one other target artifact or creature you control",
+		YouControl(), artifactOrCreature)).WithCount(0, 1)
+	var rest []*game.TargetSpec
+	for n := 1; n < game.MaxPlayers; n++ {
+		rest = append(rest, TargetPermanent(
+			"up to one target artifact or creature controlled by the "+nthOpponentWords[n]+" opponent after you in turn order",
+			controlledByNthOpponent(n), artifactOrCreature).WithCount(0, 1))
+	}
+	return Clauses(yours, rest...)
+}
+
+// kitesailLarcenistTreasureify turns every still-legal chosen permanent
+// into a Treasure with no other abilities, for as long as the Larcenist
+// remains on the battlefield.
+func kitesailLarcenistTreasureify(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	chosen := map[uuid.UUID]bool{}
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetCard {
+			chosen[t.ID] = true
+		}
+	}
+	if len(chosen) == 0 {
+		return nil
+	}
+	dur, ok := DurationWhileSourceRemains(ctx, ctx.Source())
+	if !ok {
+		return nil
+	}
+	return ScopedEffectFor{
+		Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return chosen[c.InstanceID] },
+		Mods: []game.Mod{
+			game.SetTypesMod([]string{"Artifact"}, []string{"Treasure"}),
+			game.LoseAllAbilitiesMod(),
+			game.GrantAbilitiesMod(kitesailLarcenistTreasureGrant),
+		},
+		Duration: dur,
+		Label:    "Kitesail Larcenist — a Treasure artifact",
+	}.Apply(ctx)
 }

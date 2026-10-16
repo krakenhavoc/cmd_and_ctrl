@@ -746,8 +746,11 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// Cleansing whose OWNER leaves took the permanent with them.
 	PendingChoicePutInLibrary:  {},
 	PendingChoiceSearchLibrary: {},
-	PendingChoiceMayCast:       {},
-	PendingChoiceCopyTarget:    {},
+	// ADR 0198: the chooser's own collection, which CR 800.4a takes out
+	// of the game with them. Nothing was minted, so nothing is left.
+	PendingChoiceOutsideCollection: {},
+	PendingChoiceMayCast:           {},
+	PendingChoiceCopyTarget:        {},
 	// creature_type: the stored as-enters form has no frame and is just
 	// dropped; the resolution-time form (#2382) runs its continuation
 	// with "" so Patriarch's Bidding's later seats are still asked.

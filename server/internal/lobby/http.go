@@ -671,6 +671,10 @@ func Handler(c Config) http.Handler {
 	// can show the user which permanents will tap before they
 	// confirm. Read-only — no game state mutates.
 	mux.Handle("GET /games/{id}/auto-tap-preview", auth.Middleware(c.Auth)(handlerFunc(c, autoTapPreview)))
+	// ADR 0198 §3: the card search behind a pick from the card database
+	// as the chooser's collection. Answers only the seat that owes the
+	// named pick, and only with cards it would accept. Read-only.
+	mux.Handle(OutsideCardsRoute, auth.Middleware(c.Auth)(handlerFunc(c, outsideCardSearch)))
 	mux.Handle("POST /games/{id}/decks", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, uploadDeck))))
 	// Seat a deck already in the caller's library (ADR 0051 decision
 	// 7, S34 sub-PR 5) without re-pasting it. Same rate bucket as

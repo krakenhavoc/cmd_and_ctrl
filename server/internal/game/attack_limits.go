@@ -86,6 +86,15 @@ const (
 	// returns is a new object with a fresh count (CR 400.7), and two
 	// Wanderers each protect only themselves.
 	AttackLimitAttackingThis
+
+	// AttackLimitOnlyAlone is "this creature can only attack alone" —
+	// Master of Cruelties (#3531, ADR 0187 amendment 2026-10-16, CR
+	// 506.5, 508.1c). A restriction on its own source: while the source
+	// is attacking, every attacking creature counts, so with Max 1 no
+	// other creature may attack beside it; while it is not attacking,
+	// nothing counts, so other creatures attack freely and the source
+	// may not join them. Max is always 1.
+	AttackLimitOnlyAlone
 )
 
 // AttackLimit is one "no more than N creatures can attack …" static
@@ -128,6 +137,10 @@ func (l AttackLimit) counts(target uuid.UUID, source *Card) bool {
 		// The permanent itself: an attack on its controller names the
 		// seat, so it never matches.
 		return source != nil && target == source.InstanceID
+	case AttackLimitOnlyAlone:
+		// Every attack, but only while the source is among them: see
+		// attackLimitSource.countIn.
+		return source != nil
 	}
 	return false
 }
@@ -225,6 +238,8 @@ func (e *AttackLimitError) Sentence(viewer uuid.UUID) string {
 		}
 	case AttackLimitAttackingThis:
 		return s + " " + nameOr(e.SourceName, "that permanent") + " each combat."
+	case AttackLimitOnlyAlone:
+		return nameOr(e.SourceName, "That creature") + " can only attack alone."
 	}
 	s += " each combat"
 	if e.SourceName != "" {
@@ -306,7 +321,12 @@ func (g *Game) currentAttackAssignmentLocked() map[uuid.UUID]uuid.UUID {
 }
 
 // countIn is how many of the attacks in `assign` this limit counts.
+// "Can only attack alone" counts every attack while its source is one of
+// them and none otherwise (AttackLimitOnlyAlone).
 func (l attackLimitSource) countIn(assign map[uuid.UUID]uuid.UUID) int {
+	if l.limit.Scope == AttackLimitOnlyAlone && !l.sourceAttacksIn(assign) {
+		return 0
+	}
 	n := 0
 	for _, target := range assign {
 		if l.limit.counts(target, l.source) {
@@ -314,6 +334,16 @@ func (l attackLimitSource) countIn(assign map[uuid.UUID]uuid.UUID) int {
 		}
 	}
 	return n
+}
+
+// sourceAttacksIn reports whether the limit's own source is one of the
+// attacks in `assign`.
+func (l attackLimitSource) sourceAttacksIn(assign map[uuid.UUID]uuid.UUID) bool {
+	if l.source == nil {
+		return false
+	}
+	_, ok := assign[l.source.InstanceID]
+	return ok
 }
 
 // AttackLimitRoomForEffect is how many MORE creatures may be declared
@@ -344,6 +374,11 @@ func (g *Game) AttackLimitRoomForEffect(target uuid.UUID) (room int, limited boo
 	before := g.currentAttackAssignmentLocked()
 	for _, l := range limits {
 		if !l.limit.counts(target, l.source) {
+			continue
+		}
+		if l.limit.Scope == AttackLimitOnlyAlone && !l.sourceAttacksIn(before) {
+			// It limits nobody until its own creature attacks; that
+			// creature joining others is the declaration's refusal.
 			continue
 		}
 		r := l.limit.Max - l.countIn(before)

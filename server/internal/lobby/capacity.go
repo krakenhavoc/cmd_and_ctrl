@@ -110,22 +110,30 @@ func (l *Lobby) reserveLocked(cost int, reason string) error {
 }
 
 // reserveLoad is reserveLocked for a caller that does not hold l.mu.
-// The returned func releases the reservation and is safe to call once.
-func (l *Lobby) reserveLoad(cost int, reason string) (release func(), err error) {
+// release gives the reservation back and is safe to call once. A caller
+// that registers the table it reserved for calls releaseLocked in the
+// same l.mu section that adds the entry, so the table is never counted
+// twice (as an entry and as a reservation) for a concurrent create to
+// trip over (#3957); it holds l.mu. Either is a no-op after the other.
+func (l *Lobby) reserveLoad(cost int, reason string) (release, releaseLocked func(), err error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if err := l.reserveLocked(cost, reason); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	released := false
-	return func() {
-		l.mu.Lock()
-		defer l.mu.Unlock()
+	releaseLocked = func() {
 		if !released {
 			released = true
 			l.reserved -= cost
 		}
-	}, nil
+	}
+	release = func() {
+		l.mu.Lock()
+		defer l.mu.Unlock()
+		releaseLocked()
+	}
+	return release, releaseLocked, nil
 }
 
 // botSeatFitsLocked refuses a bot seat that would push the load past

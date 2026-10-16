@@ -516,6 +516,16 @@ type CastPermission struct {
 	// that keeps Snapcaster's gift from being infinite.
 	ExileOnResolution bool `json:"exileOnResolution,omitempty"`
 
+	// ExileInsteadOfGraveyard is the narrower clause "If that spell
+	// would be put into your graveyard, exile it instead" (Torrential
+	// Gearhulk, Emet-Selch of the Third Seat; #3863). Unlike
+	// ExileOnResolution it replaces only a move to its owner's
+	// graveyard, however the spell gets there (it resolves, is
+	// countered, or fizzles); a spell bounced to a hand or shuffled into
+	// a library goes there. Carried onto the stack item as
+	// StackItem.ExileInsteadOfGraveyard.
+	ExileInsteadOfGraveyard bool `json:"exileInsteadOfGraveyard,omitempty"`
+
 	// AnyColor lets the holder spend mana as though it were mana of
 	// any color for this card (Breeches, Brazen Plunderer).
 	AnyColor bool `json:"anyColor,omitempty"`
@@ -1035,6 +1045,7 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 		out.PayLabel = "a card"
 	}
 	out.ExileOnLeavingStack = p.ExileOnResolution
+	out.ExileInsteadOfGraveyard = p.ExileInsteadOfGraveyard
 	if out.Label == "" {
 		out.Label = p.AltCostKey
 	}

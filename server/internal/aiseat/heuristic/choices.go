@@ -61,7 +61,36 @@ const (
 	choiceCommanderReturn     = "commander_return"
 	choicePayAmount           = "pay_amount"
 	choiceAuraHost            = "aura_host"
+	choiceOutsideCollection   = "outside_collection"
 )
+
+// valueTakenFromCollection scores one answer to an outside_collection
+// prompt (ADR 0198): a card named from the card database comes into the
+// bot's hand, so the answer is worth what valueTakenFromOutside says a
+// sideboard card is worth — each named card's value plus the take floor.
+// The cards are the prompt's suggestions (collection_options), matched by
+// name. Declining scores zero, so a "you may" takes the best card rather
+// than none, and an answer naming a card the view does not carry still
+// scores the floor, never less than nothing.
+func (st *state) valueTakenFromCollection(cfg Config, ch *protocol.PendingChoiceView, names []string) (float64, string) {
+	if len(names) == 0 {
+		return 0, "take nothing from outside the game"
+	}
+	byName := map[string]*protocol.CardView{}
+	if ch != nil {
+		for i := range ch.CollectionOptions {
+			byName[ch.CollectionOptions[i].Name] = &ch.CollectionOptions[i]
+		}
+	}
+	var v float64
+	for _, n := range names {
+		v += libraryTakeFloor
+		if c := byName[n]; c != nil {
+			v += st.cardValue(cfg, c)
+		}
+	}
+	return v, "take the best card from outside the game"
+}
 
 // damageSourceThreat ranks a choose_source candidate (ADR 0107 §6
 // decision 4): below zero for the bot's own, above every permanent for an
@@ -134,6 +163,8 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 	}
 
 	switch kind {
+	case choiceOutsideCollection:
+		return st.valueTakenFromCollection(p.cfg, ch, cp.CardNames)
 	case choicePayAmount:
 		return st.payAmountValue(ch, cp.Amount)
 	case choiceEntryController:

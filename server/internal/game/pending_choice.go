@@ -967,6 +967,14 @@ type PendingChoice struct {
 	// bot that keeps picking one holds the table forever.
 	ChooseMin, ChooseMax int
 
+	// CollectionSuggestions are the card NAMES a
+	// PendingChoiceOutsideCollection suggests (ADR 0198): cards in the
+	// database that satisfy the effect's filter, in the collection's
+	// suggestion order. Plain data. The client shows them before the
+	// player searches, and the enumerator offers them as the answers a
+	// bot can give. Empty for every other kind.
+	CollectionSuggestions []string
+
 	// ChoosePlayers are the SEATS a PendingChoiceProliferate offers
 	// alongside ChooseCards (CR 701.34a: "permanents and/or players").
 	// A seat is named in the answer's card_ids by its player ID, so

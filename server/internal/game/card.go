@@ -280,6 +280,13 @@ type Card struct {
 	// cleared wherever Counters is, and not a copiable value (CR 707.2).
 	// nil means no keyword counter has been stamped — an unstamped one
 	// is ordered at the permanent's own timestamp.
+	//
+	// #3862: it also holds, under a "<kind>>=<n>" key, the moment the
+	// count of a kind reached a threshold a static declares
+	// (StaticAbility.StartsAtCounters, counter_thresholds.go) — Idol of
+	// False Gods' eighth +1/+1 counter. Written by
+	// stampCounterThresholdsLocked beside the keyword stamp; the key
+	// cannot be a keyword counter kind, so the two readers never meet.
 	CounterStampedAt map[string]int64
 
 	// IsCommander lives in the bool block at the end of Card, for alignment.
@@ -1226,6 +1233,23 @@ type Card struct {
 	// change, because a grant to a card ends with the object (CR 400.7).
 	zoneGranted []GrantedAbility
 
+	// zoneLayered is this object's characteristic after layers 4 and 5
+	// while it is NOT on the battlefield (#3862, ADR 0039 amendment
+	// 2026-10-15): Mycosynth Lattice's colourless card in a hand,
+	// Maskwood Nexus' every-type creature spell. Written by
+	// zoneLayerPassLocked (zone_layers.go), read by the type and colour
+	// readers where they would otherwise fall through to the printed
+	// card. Nil when no static reaches the object, which is nearly
+	// always.
+	//
+	// A derived cache like `effective`: never snapshotted (a restore
+	// forces a recompute, which rebuilds it from the battlefield
+	// statics), always replaced with a fresh value and never written
+	// after its pass, and cleared by MoveCard on every zone change,
+	// because a characteristic an effect gave an object is that
+	// object's (CR 400.7).
+	zoneLayered *Characteristic
+
 	// --- bools --------------------------------------------------------
 	//
 	// Every bool on Card lives here, together, rather than beside the
@@ -2008,11 +2032,13 @@ func (c Card) ToughnessIsKnown() bool {
 //     recompute would recurse through applyLayerLocked forever;
 //     keeping Effective() passive is the invariant that forbids it.
 //  2. Off the battlefield the cache is nil and these fall through
-//     to the printed type line verbatim — byte-identical to the
-//     pre-change behaviour for every card in a hand, library,
-//     graveyard, exile or on the stack. CR 113.6: a static ability
-//     only does anything while its source is on the battlefield,
-//     so there is nothing for the effective view to say there.
+//     to the printed type line — unless a battlefield static over
+//     objects off the battlefield has stamped the object
+//     (Card.zoneLayered, #3862, ADR 0039's 2026-10-15 amendment):
+//     Maskwood Nexus' creature card in a hand, Mycosynth Lattice's
+//     colourless spell. With no such static every card in a hand,
+//     library, graveyard, exile or on the stack reads printed, as
+//     before.
 //  3. Freshness is the caller's job, exactly as it already was for
 //     CurrentPower / CurrentToughness: a write path that reads
 //     types after a state change calls
@@ -2114,6 +2140,11 @@ func (c Card) HasCardType(lowerType string) bool { return hasCardType(&c, lowerT
 // that hold a pointer (#1498).
 func hasCardType(c *Card, lowerType string) bool {
 	if c.effective == nil {
+		// #3862: off the battlefield, a static's layer-4 answer for the
+		// object (zone_layers.go) before the printed card's.
+		if z := c.zoneLayered; z != nil {
+			return typeListHas(z.Types, lowerType)
+		}
 		if c.faceDownPermanent() {
 			return typeListHas(faceDownCharacteristic(*c).Types, lowerType)
 		}
@@ -2144,6 +2175,15 @@ func (c Card) HasSubtype(subtype string) bool { return hasSubtype(&c, subtype) }
 
 // hasSubtype is HasSubtype without the receiver copy (#2113).
 func hasSubtype(c *Card, subtype string) bool {
+	// #3862: off the battlefield, a static's layer-4 answer for the
+	// object (zone_layers.go), built on the same baseline the branches
+	// below read, face-down and bestowed included.
+	if c.effective == nil && c.zoneLayered != nil {
+		if typeListHas(c.zoneLayered.Subtypes, subtype) {
+			return true
+		}
+		return IsCreatureType(subtype) && HasAllCreatureTypes(c)
+	}
 	// CR 708.2: a face-down permanent has no subtypes but the ones an
 	// effect LISTED for it (#1270) — Cyber Conversion's Cyberman,
 	// Yedora's Forest — so it is not a Human, not an Elf, and — the
@@ -2183,6 +2223,9 @@ func hasSubtype(c *Card, subtype string) bool {
 // the one supertype the legend rule asks about.
 func (c Card) HasSupertype(supertype string) bool {
 	if c.effective == nil {
+		if z := c.zoneLayered; z != nil {
+			return typeListHas(z.Supertypes, supertype)
+		}
 		// CR 708.2: no supertypes either — a face-down legendary
 		// permanent is not legendary, which is why two face-down
 		// copies of the same legend can coexist.
@@ -2301,6 +2344,11 @@ func NewCommander(name string, owner uuid.UUID) Card {
 func (c Card) EffectiveColors() []string {
 	if c.effective != nil {
 		return c.effective.Colors
+	}
+	// #3862: off the battlefield, a static's layer-5 answer for the
+	// object (zone_layers.go) — Mycosynth Lattice's colourless card.
+	if z := c.zoneLayered; z != nil {
+		return z.Colors
 	}
 	// CR 708.2: a face-down permanent is COLOURLESS, whatever the
 	// card underneath costs or Scryfall stamped. Guarded on the

@@ -19,6 +19,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // so an artifact whose mana ability the game does not know about is
 // not offered. Weaker than printed, never stronger; the basic-land
 // half is complete.
+//
+// The caveat waits on the engine seam #3943 (triaged in #3863).
 func init() {
 	Register(Spec{
 		OracleID:     "373395b2-f04b-46c9-b9f4-4f6815b71009",

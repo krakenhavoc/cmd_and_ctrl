@@ -241,6 +241,14 @@ func mergeCatalogParts(parts []*CardDef) *CardDef {
 			merged.DealtDamageCantBeRegenerated = append(append([]DealtDamageCantBeRegenerated(nil),
 				merged.DealtDamageCantBeRegenerated...), g.DealtDamageCantBeRegenerated...)
 		}
+		// #3862: a layer-6 grant may carry "you can't lose the game and
+		// your opponents can't win the game" (Cloudsteel Kirin). Read live
+		// off the composite key, so "you" is the recipient's controller
+		// and the gate ends with the grant (CR 613.6's timestamp order
+		// against a removal is the grant's own).
+		if len(g.GameEndGates) > 0 {
+			merged.GameEndGates = append(append([]GameEndGate(nil), merged.GameEndGates...), g.GameEndGates...)
+		}
 	}
 	// ADR 0041 P9 (tier 4-2): a bundle granted twice contributes its
 	// triggered rows twice, and each copy is a different instance of

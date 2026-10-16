@@ -11,6 +11,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	AttackLimits: []game.AttackLimit{NoMoreThanNCanAttackEachCombat(1)},    // Silent Arbiter
 //	AttackLimits: []game.AttackLimit{NoMoreThanNCanAttackYouEachCombat(2)}, // Crawlspace
 //	AttackLimits: []game.AttackLimit{NoMoreThanNCanAttackThisEachCombat(1)}, // The Eternal Wanderer
+//	AttackLimits: []game.AttackLimit{CanOnlyAttackAlone()},                  // Master of Cruelties
 //	AttackLimits: []game.AttackLimit{AsLongAs(ThisIsTapped,                  // Mirri, Weatherlight Duelist
 //	    NoMoreThanNCanAttackYouEachCombat(1))},
 //
@@ -44,6 +45,15 @@ func NoMoreThanNCanAttackYouEachCombat(n int) game.AttackLimit {
 // number (#1534).
 func NoMoreThanNCanAttackThisEachCombat(n int) game.AttackLimit {
 	return game.AttackLimit{Scope: game.AttackLimitAttackingThis, Max: n}
+}
+
+// CanOnlyAttackAlone — "This creature can only attack alone" (Master of
+// Cruelties, #3531; CR 506.5, 508.1c). A restriction on the creature
+// itself: it may be declared only into an empty declaration, and no
+// other creature may then join it. Other creatures attack freely while it
+// stays home.
+func CanOnlyAttackAlone() game.AttackLimit {
+	return game.AttackLimit{Scope: game.AttackLimitOnlyAlone, Max: 1}
 }
 
 // AsLongAs gates a limit on a condition of its source — "As long as

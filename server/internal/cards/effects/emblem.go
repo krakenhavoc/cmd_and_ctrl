@@ -200,6 +200,10 @@ func checkEmblemSpec(name string, e *EmblemSpec) {
 		if s.AffectsSpells {
 			panic(fmt.Sprintf("effects.Register: %s emblem static %d affects spells — only a battlefield permanent's static over spells is applied", name, i))
 		}
+		// #3862: likewise the zone layer step.
+		if len(s.AffectsZones) > 0 {
+			panic(fmt.Sprintf("effects.Register: %s emblem static %d affects objects off the battlefield — only a battlefield permanent's static over them is applied", name, i))
+		}
 	}
 }
 

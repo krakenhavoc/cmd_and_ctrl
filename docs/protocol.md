@@ -666,6 +666,35 @@ chooser's sideboard. Its `options[]` are those cards, sent to the chooser only
 (every other seat gets the open prompt and nothing about its cards), and the
 answer is the usual `resolve_choice { choice_id, card_ids }`.
 
+### `outside_collection` — a card from the card database (ADR 0198)
+
+When the chooser's deck seated **no** sideboard, the same effects ask
+`kind: "outside_collection"` instead: the player's pool of cards outside the
+game is the whole card database, the casual "your personal collection"
+([ADR 0198](decisions/0198-outside-the-game-is-the-card-database-without-a-sideboard.md)).
+A deck with a sideboard never sees this kind; its pool stays the sideboard,
+even once it is empty.
+
+- `collection_options[]` are suggested cards (each a `CardView` with **no**
+  `instance_id`, since no card exists yet), the ones the effect's filter
+  accepts, cards the engine automates first. `choose_min`, `choose_max` and
+  `choose_destination: "outside"` carry the bounds. All of it is sent to the
+  chooser only; every other seat sees the open prompt and whose it is.
+- The chooser may search the whole database for any card the effect would
+  accept: `GET /games/{id}/outside/cards?choice=<choice_id>&q=<text>`
+  ([lobby.md](lobby.md)).
+- The answer is `resolve_choice { choice_id, card_names: ["Card Name", ...] }`,
+  by name, routed by kind. An empty or absent `card_names` declines when
+  `choose_min` is 0. The server refuses (`bad_request`) a name the database
+  does not have, a card the filter refuses, a set its rule refuses ("two cards
+  with different names") and a count outside the bounds, and leaves the prompt
+  open.
+- Each named card is then created as a real card the chooser owns, built the
+  way a deck import builds it, and the effect continues exactly as for a
+  sideboard pick: a revealed card rides `reveals[]` with `from: "outside"`, and
+  the card arrives in the hand. A card the effect leaves outside (Extrapolate the
+  Impossible's other card) stays in the owner's `sideboard` list.
+
 `choose_destination: "manifest"` is "manifest N cards from your hand"
 (Kozilek, the Broken Reality; Scroll of Fate; [ADR 0189](decisions/0189-the-rest-of-face-down-and-manifest-dread.md)
 decision 3): the picked hand cards are put onto the battlefield face down as
