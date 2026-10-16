@@ -265,6 +265,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// #3767: the first Vehicle tokens, with crew.
 	printedBlackjackToken,
 	printedVehicleCrew1Token,
+
+	// #2090: Awaken the Blood Avatar's Avatar, with an attack trigger.
+	printedBloodAvatarToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

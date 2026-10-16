@@ -99,6 +99,31 @@ func b03OpponentControlsMoreLands(g *game.Game, controller uuid.UUID) bool {
 // not cast, so it has its own event (EventSpellCopied).
 var magecraftEvents = []game.EventKind{game.EventCast, game.EventSpellCopied}
 
+// Magecraft is the ability word's trigger (CR 207.2c): "Whenever you
+// cast or copy an instant or sorcery spell, <effect>" (#2090).
+//
+// It fires once per spell cast and once per spell copy, never twice for
+// one object (CR 707.10 and 707.12):
+//
+//   - A copy put on the stack (Twincast, storm, casualty, Doublecast,
+//     a Chain's "copy this spell") is created, not cast. Every such copy
+//     is made by game.createSpellCopyLocked, which emits
+//     EventSpellCopied and no EventCast.
+//   - A copy CAST from another zone (Mizzix's Mastery, Spellweaver
+//     Volute, a prepared card) is cast: it emits EventCast as it goes on
+//     the stack and nothing as the card copy is made, so it triggers
+//     once, as a cast, and a card copy nobody casts triggers nothing.
+//
+// "You" is the copy's controller, the player who copied it (CR 707.10b):
+// an opponent's Reverberate on your spell is their copy and triggers
+// their magecraft, not yours. Wrap it in Targeting for a magecraft with
+// a target (Extus, Oriq Overlord).
+func Magecraft(label string, effect Effect) game.TriggeredAbility {
+	return OnAny(magecraftEvents, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		return instantOrSorceryCastOrCopiedByYou(ev, source, g)
+	}, label, effect)
+}
+
 // instantOrSorceryCastOrCopiedByYou is magecraft's trigger condition:
 // the controller cast or copied an instant or sorcery spell.
 func instantOrSorceryCastOrCopiedByYou(ev game.Event, source *game.Card, g *game.Game) bool {
@@ -109,9 +134,9 @@ func instantOrSorceryCastOrCopiedByYou(ev game.Event, source *game.Card, g *game
 	return ok && (spell.IsInstant() || spell.IsSorcery())
 }
 
-// instantOrSorceryCastByYou is the magecraft-shaped condition
-// Guttersnipe shares with Storm-Kiln Artist: the controller cast an
-// instant or sorcery.
+// instantOrSorceryCastByYou is Guttersnipe's condition: the controller
+// CAST an instant or sorcery. A copy does not satisfy it (CR 707.10);
+// "cast or copy" is Magecraft above.
 func instantOrSorceryCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
 		return false

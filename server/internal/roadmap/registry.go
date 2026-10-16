@@ -1265,14 +1265,12 @@ var items = []Item{
 		Examples: []string{"Vicious Betrayal", "Torgaar, Famine Incarnate", "Plumb the Forbidden", "Fling", "Corpse Cobble"},
 	},
 	{
-		Slug: "spell-copied-trigger", Name: "Magecraft's \"or copy\"", Kind: KindSeam, Status: StatusMissing,
+		Slug: "spell-copied-trigger", Name: "Magecraft's \"or copy\"", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Abilities that trigger whenever you cast or copy an instant or sorcery spell, such as Extus, Oriq Overlord's magecraft.",
-		Missing:     "Only casting a spell triggers them. Copying one does not.",
-		Rules:       []string{"707.10", "707.12"},
+		Rules:       []string{"207.2c", "707.10", "707.10b", "707.12"},
 		Issue:       2090,
-		Tracked:     "#2090 (found landing ADR 0113 §1, #2072)",
-		Waiting:     []string{"Extus, Oriq Overlord"},
-		EngineNotes: "trigger: `CopySpellForEffect` (`game/spell_copy.go`) puts a copy on the stack and emits no event of its own (a copy is not cast, CR 707.10), so a magecraft trigger can watch only `EventCast`. Needs an event where a spell copy is put on the stack, carrying the copy and its controller, and a shared cast-or-copied condition: one trigger per copy, none for a card copied in another zone unless that copy is then cast (CR 707.12). Archmage Emeritus, Sedgemoor Witch and Storm-Kiln Artist ship with a caveat for this gap. Extus's back face, Awaken the Blood Avatar, pays ADR 0100's variable sacrifice cost and discount today.",
+		Examples:    []string{"Extus, Oriq Overlord", "Archmage Emeritus", "Sedgemoor Witch", "Storm-Kiln Artist"},
+		EngineNotes: "**Shipped** (#2090): every spell copy put on the stack is made by `createSpellCopyLocked` (`game/spell_copy.go`), behind `CopySpellForEffect` and `CopyLastKnownSpellForEffect` (Twincast, storm, casualty, Doublecast, a Chain's \"copy this spell\"), and it emits `EventSpellCopied` (Actor the copy's controller, CardID the copy, Source the original) and no `EventCast` (CR 707.10). A copy of a card cast from another zone (Mizzix's Mastery, Spellweaver Volute, a prepared card) is cast (CR 707.12): it emits `EventCast` and nothing as the card copy is made, so it counts once, as a cast, and a card copy nobody casts counts nothing. `effects.Magecraft(label, effect)` is the shared trigger, watching both events through `instantOrSorceryCastOrCopiedByYou`; \"you\" is the copy's controller (CR 707.10b), so an opponent's copy of your spell triggers theirs. Cards: Extus, Oriq Overlord // Awaken the Blood Avatar (Full, with the Avatar token's attack trigger); Archmage Emeritus, Sedgemoor Witch and Storm-Kiln Artist moved onto the shared trigger.",
 	},
 	{
 		Slug: "sacrifice-all-cast-cost", Name: "\"Sacrifice all creatures you control\" as a cost", Kind: KindSeam, Status: StatusPartial,
