@@ -1044,6 +1044,16 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 		out.DiscardFromHand = discardAnyCardSpec()
 		out.PayLabel = "a card"
 	}
+	if p.AltCostKey == AltCostKeyHarmonize {
+		// #3931: "gains harmonize" (Songcrafter Mage) is the keyword,
+		// so the granted offer taps up to one creature and is reduced
+		// by its power (CR 702.180a) exactly as a printed one is. Read
+		// off the key, like madness's life, so the permission stores
+		// nothing new.
+		out.TapOthers = HarmonizeTapCost()
+		out.ReducedByTappedPower = true
+		out.PayLabel = HarmonizeTapLabel
+	}
 	out.ExileOnLeavingStack = p.ExileOnResolution
 	out.ExileInsteadOfGraveyard = p.ExileInsteadOfGraveyard
 	if out.Label == "" {

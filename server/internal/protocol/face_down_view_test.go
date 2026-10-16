@@ -412,8 +412,11 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 			// ADR 0135 §4: an emerge offer's flag and prices.
 			ReducesByManaValue: true,
 			SacrificePrices:    map[string]AltCostPriceView{"x": {ManaValue: 4, Price: "{1}{U}{U}"}},
-			Discards:           true,
-			XLockedAtZero:      true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
+			// #3931: a harmonize offer's flag and prices.
+			ReducesByPower: true,
+			TapPrices:      map[string]AltCostTapPriceView{"x": {Power: 3, Price: "{2}{R}{R}"}},
+			Discards:       true,
+			XLockedAtZero:  true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
 			// #1686.
 			TimingClosed: true,
 			// #3225.
@@ -980,6 +983,8 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// price per creature YOU control is one seat's.
 	"ReducesByManaValue": surfacePublicPile,
 	"SacrificePrices":    surfacePrivate,
+	"ReducesByPower":     surfacePublicPile,
+	"TapPrices":          surfacePrivate,
 	// #1686: same reasoning as PrintedCostTimingClosed above — public
 	// board state, not per-viewer.
 	"TimingClosed": surfacePublicPile,

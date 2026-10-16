@@ -353,6 +353,14 @@ type CardDef struct {
 	// battlefield through CatalogExtraVillainousChoice, keyed by
 	// CatalogAbilityKey; see villainous_choice.go.
 	OpponentsFaceVillainousChoicesAgain bool
+	// ControlsOpponentsSearches is this permanent's printed "You
+	// control your opponents while they're searching their libraries.
+	// While an opponent is searching their library, they exile each
+	// card they find. You may play those cards …" (Opposition Agent,
+	// CR 723.2, #3998). Read from the battlefield through
+	// CatalogControlsOpponentsSearches, keyed by CatalogAbilityKey; see
+	// search_control.go.
+	ControlsOpponentsSearches bool
 	// DamageCantBePrevented are this permanent's printed "damage can't
 	// be prevented" statics (CR 615.12, ADR 0107 §5). Read from the
 	// battlefield through CatalogUnpreventableDamage, keyed by
@@ -991,6 +999,10 @@ func init() {
 	CatalogExtraVillainousChoice = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.OpponentsFaceVillainousChoicesAgain
+	}
+	CatalogControlsOpponentsSearches = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.ControlsOpponentsSearches
 	}
 	CatalogUnpreventableDamage = func(key string) []UnpreventableDamageStatic {
 		if d := catalogDef(key); d != nil {
