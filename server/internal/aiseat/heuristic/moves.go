@@ -61,6 +61,9 @@ func (p *Policy) valueOf(st *state, m legal.Move) (float64, string) {
 	if m.Cost.PhyrexianLife > 0 && st.myLife()-m.Cost.Life < phyrexianLifeFloor {
 		return phyrexianLifeDeclined, "Phyrexian life would take it below the floor"
 	}
+	if p.millCostShortLibrary(st, m.Cost.Mill) {
+		return millCostDeclined, "the mill would leave the library too short"
+	}
 	c, refuse := p.costValue(st, st.bf[m.Source.String()], *m.Cost)
 	if refuse {
 		return suicideValue, "would pay its last life"
@@ -166,6 +169,10 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 	if c.Exert && p.cfg.PriceExert && src != nil {
 		v -= p.costExertCost(st, src)
 	}
+	// #3870: "Mill N cards" (Sinister Concoction, Rot Farm Skeleton),
+	// at the dredge's price for the same cards (mill_cost.go). The
+	// library floor is valueOf's, beside the Phyrexian one.
+	v += p.millCostValue(st, c.Mill)
 	return v, false
 }
 

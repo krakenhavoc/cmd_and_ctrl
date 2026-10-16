@@ -949,6 +949,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								cost = withHandDiscard(cost, handN)
 								// #3250: and "Reveal your hand", which names no card.
 								cost = withRevealHand(cost, ab.Cost.RevealHand)
+								// #3870: and the cards a "Mill N cards" cost
+								// takes off the library, which it names none of.
+								cost = withMill(cost, ab.Cost.Mill)
 								if ab.Cost.RevealHand {
 									label += " revealing your hand"
 								}
@@ -2457,6 +2460,8 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 							cost = withCounterPrice(cost, price)
 						}
 						cost = withHandDiscard(cost, handN)
+						// #3870: Millikin's "Mill a card".
+						cost = withMill(cost, ab.MillCost)
 						e.add(Move{
 							Type:   TypeActivateManaAbility,
 							Player: e.seat,
