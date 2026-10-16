@@ -257,7 +257,7 @@ func TestUnknownParamsFieldsAreRefused(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.ScheduleDelayedTriggerForEffect(DelayedTrigger{
 			Controller: me, At: StepEnd, Label: "params", Body: body,
-			Params: EffectParams{Amount: 3, Object: ObjectRef{ID: me, Epoch: 1}},
+			Params: EffectParams{Amount: 3, Object: ObjectRef{ID: me, Epoch: 1}, Objects: []ObjectRef{{ID: me, Epoch: 2}}},
 		})
 		g.ScheduleDelayedTriggerForEffect(DelayedTrigger{
 			Controller: me, On: []EventKind{EventCast}, Label: "condParams", Body: body,
@@ -285,6 +285,10 @@ func TestUnknownParamsFieldsAreRefused(t *testing.T) {
 		"params": func(s map[string]any) { dt(s, 0)["params"].(map[string]any)["futureCount"] = 7 },
 		"params.object": func(s map[string]any) {
 			dt(s, 0)["params"].(map[string]any)["object"].(map[string]any)["zone"] = "exile"
+		},
+		// #2099: an object of the many-object payload is checked too.
+		"params.objects": func(s map[string]any) {
+			dt(s, 0)["params"].(map[string]any)["objects"].([]any)[0].(map[string]any)["zone"] = "exile"
 		},
 		"condParams": func(s map[string]any) { dt(s, 1)["condParams"].(map[string]any)["futureField"] = 1 },
 		"condParams.filter": func(s map[string]any) {

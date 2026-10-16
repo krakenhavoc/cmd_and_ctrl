@@ -2267,9 +2267,11 @@ export interface StackItemView {
   distribution?: Record<string, number>;
   hold_priority?: boolean;
   split_second?: boolean;
-  // #1553: the spell can't be countered — its own printed rider or the
-  // mana that paid for it (Cavern of Souls). Read from the engine's one
-  // counter gate; absent when false and on ability items.
+  // #1553: the spell can't be countered — its own printed rider, the
+  // mana that paid for it (Cavern of Souls), or a permanent's static.
+  // #2014: also an ability a permanent says can't be countered
+  // (Spider-Punk). Read from the engine's one counter gate; absent when
+  // false.
   cant_be_countered?: boolean;
   // ADR 0107 §5: the spell's own "the damage can't be prevented", under
   // its condition as it stands now (Combust; Banefire with X of 5 or

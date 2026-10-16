@@ -1148,13 +1148,21 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#2013, ADR 0072's 2026-10-16 amendment): `Spec.PlayerKeywordsIf` declares a permanent's printed \"<condition>, you have <keyword>\" as a token plus a `While(g, source)` predicate, read through `game.CatalogPlayerKeywordsIf` by the same `playerAbilityTokensLocked` walk as `PlayerKeywords`. The condition is asked on every query with the permanent as it is now (CR 611.3a), so nothing is stored or swept. `YouHaveDuringYourTurn` and `YouHaveWhile` build the entries; `ThisHasDuringYourTurn` is the object half. Gruul Spellbreaker and Captain America, Super-Soldier ship Full.",
 	},
 	{
-		Slug: "abilities-cant-be-countered", Name: "Abilities that can't be countered", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Permanents that stop abilities from being countered as well as spells, such as Spider-Punk.",
-		Missing:     "Abilities can still be countered while a permanent says they can't be.",
-		Rules:       []string{"701.6a"},
-		Issue:       2014,
-		Waiting:     []string{"Spider-Punk"},
-		EngineNotes: "rules gate: countering an ability removes it from the stack (CR 701.6a), and nothing asks whether it may. The spell half is `spellCantBeCounteredLocked` (`game/cant_be_countered.go`, ADR 0106 §4); the likely shape is the same gate asked for an ability item. Spider-Punk's riot and \"Other Spiders you control have riot\" work (ADR 0109 PR 9, #1556), and \"Damage can't be prevented\" shipped with ADR 0107 PR 6; this is the card's last gap. Split off the riot row when riot closed.",
+		Slug: "abilities-cant-be-countered", Name: "Abilities that can't be countered", Kind: KindSeam, Status: StatusImplemented,
+		Summary: "Permanents that stop abilities from being countered as well as spells, such as Spider-Punk.",
+		Rules:   []string{"701.6a", "101.2", "613.11", "611.3a", "604.2", "605.3b"},
+		Issue:   2014,
+		ADR:     "0106-five-small-seams-from-the-s50-rechecks.md",
+		Probe: func(s effects.Spec) bool {
+			for _, sh := range s.SpellsCantBeCountered {
+				if sh.Abilities {
+					return true
+				}
+			}
+			return false
+		},
+		Examples:    []string{"Spider-Punk"},
+		EngineNotes: "**Shipped** (#2014, [ADR 0106 §4 amendment 2026-10-16](decisions/0106-five-small-seams-from-the-s50-rechecks.md)): `game.CounterShieldStatic.Abilities` extends a battlefield \"can't be countered\" static to activated and triggered abilities on the stack (CR 701.6a), built with `effects.SpellsAndAbilitiesCantBeCountered`. The ability half of the counter gate, `abilityCantBeCounteredLocked` (`game/cant_be_countered.go`), is asked by every counter verb for an ability item — `CounterTargetForEffect`, the to-zone and to-library counters, and so ward's and every counter-unless-paid decline — and judges `Whose` against the ability's controller (\"you cast\" never covers an ability). A covered ability stays a legal target: the Stifle resolves and does nothing (CR 101.2). The stack chip (`cant_be_countered`) now shows on an ability item too. The sandbox's manual counter is unchanged. No snapshot change: the static is catalog data.",
 	},
 	{
 		Slug: "all-activated-abilities-of", Name: "Having another card's activated abilities", Kind: KindSeam, Status: StatusImplemented,
@@ -1305,14 +1313,12 @@ var items = []Item{
 		Examples: []string{"Neoform"},
 	},
 	{
-		Slug: "delayed-return-of-sacrificed-card", Name: "Returning the card a cost sacrificed, later", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Spells that return the card they sacrificed to the battlefield at a later step, such as Rescue from the Underworld.",
-		Missing:     "Nothing follows a sacrificed card to the zone it went to and returns it later.",
-		Rules:       []string{"400.7", "603.7"},
-		Issue:       2099,
-		Tracked:     "#2099 (found landing the #2072 pool)",
-		Waiting:     []string{"Rescue from the Underworld"},
-		EngineNotes: "delayed trigger: `PaidCost.SacrificedObjects` (ADR 0113 §1) names the sacrificed permanent as it was on the battlefield. A keyed delayed body would have to follow it to the object it became in its next public zone (the graveyard, or the command zone for a commander, per the 2013-09-15 rulings), return nothing for a token, and refuse either card once it has left that zone (CR 400.7).",
+		Slug: "delayed-return-of-sacrificed-card", Name: "Returning the card a cost sacrificed, later", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Spells that return the card they sacrificed to the battlefield at a later step, such as Rescue from the Underworld, follow it to the zone it went to.",
+		Rules:    []string{"400.7", "400.7j", "603.7c"},
+		Issue:    2099,
+		ADR:      "0026-delayed-triggers.md",
+		Examples: []string{"Rescue from the Underworld"},
 	},
 	{
 		Slug: "variable-count-tap-others-cost", Name: "Variable-count tap-others cost", Kind: KindSeam, Status: StatusImplemented,
@@ -2151,16 +2157,17 @@ var items = []Item{
 		ADR:         "0108-turn-scoped-effects-object-history-and-damage-shields.md",
 		Printed:     `(?i)\b(attacked|attacked you) during (your|its controller's|their) last turn\b`,
 		Examples:    []string{"Goblin Rock Sled", "Giant Turtle", "Tangle Kelp", "Avenge", "O-Kagachi, Vengeful Kami"},
-		EngineNotes: "**Shipped** (ADR 0108 §6, #1882). `Player.LastTurnAttacks` is the `AttackRecord`s (`TurnTally.Attacks`: attacker, object epoch, defender) of the last turn that player took. `recordLastTurnAttacksLocked` copies the ending turn's tally onto its active player at the top of `beginNextTurnLocked`, before `g.Turn` and the tally are replaced, so \"your last turn\" is the most recent turn YOU took: an extra turn replaces the record (CR 500.7), a seat that never begins a turn (CR 800.4k) leaves its record alone, and an empty record is written too. Only declarations are recorded (CR 508.4) and each is keyed by object (CR 400.7). Readers: `Game.AttackedDuringControllersLastTurn(card)` (the card's current controller's record), `AttackedYouDuringTheirLastTurn(player, you)` and `AnyPlayerAttackedYouDuringTheirLastTurn(you)` (a planeswalker or battle you control is not you). Cards: `effects.doesntUntapIfItAttackedDuringYourLastTurn` (an `UntapStepRestriction`), `CantAttackIfItAttackedDuringYourLastTurn` (a layer-6 `CantAttack` static whose condition changes only as a turn begins, where the layer cache is already invalidated), `APlayerAttackedYouDuringTheirLastTurn` (a `CostPredicate`) and `TargetNonlandPermanentOfThePlayerHit` (a `TargetsFrom` clause read off the trigger's event). Snapshot: one additive field, `playerSnapshot.lastTurnAttacks`, classified `carried`. Not covered: Weathered Sentinels (see `attack-as-though-no-defender-per-target`).",
+		EngineNotes: "**Shipped** (ADR 0108 §6, #1882). `Player.LastTurnAttacks` is the `AttackRecord`s (`TurnTally.Attacks`: attacker, object epoch, defender) of the last turn that player took. `recordLastTurnAttacksLocked` copies the ending turn's tally onto its active player at the top of `beginNextTurnLocked`, before `g.Turn` and the tally are replaced, so \"your last turn\" is the most recent turn YOU took: an extra turn replaces the record (CR 500.7), a seat that never begins a turn (CR 800.4k) leaves its record alone, and an empty record is written too. Only declarations are recorded (CR 508.4) and each is keyed by object (CR 400.7). Readers: `Game.AttackedDuringControllersLastTurn(card)` (the card's current controller's record), `AttackedYouDuringTheirLastTurn(player, you)` and `AnyPlayerAttackedYouDuringTheirLastTurn(you)` (a planeswalker or battle you control is not you). Cards: `effects.doesntUntapIfItAttackedDuringYourLastTurn` (an `UntapStepRestriction`), `CantAttackIfItAttackedDuringYourLastTurn` (a layer-6 `CantAttack` static whose condition changes only as a turn begins, where the layer cache is already invalidated), `APlayerAttackedYouDuringTheirLastTurn` (a `CostPredicate`) and `TargetNonlandPermanentOfThePlayerHit` (a `TargetsFrom` clause read off the trigger's event). Snapshot: one additive field, `playerSnapshot.lastTurnAttacks`, classified `carried`. Weathered Sentinels' waiver of defender is its own row, `attack-as-though-no-defender-per-target` (#1936).",
 	},
 	{
-		Slug: "attack-as-though-no-defender-per-target", Name: "Attacking certain players as though it didn't have defender", Kind: KindSeam, Status: StatusMissing,
+		Slug: "attack-as-though-no-defender-per-target", Name: "Attacking certain players as though it didn't have defender", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "A defender that can attack only certain players as though it didn't have defender, such as Weathered Sentinels, which can attack players who attacked you during their last turn.",
-		Missing:     "A creature with defender can't attack at all; an effect that waives defender for particular defending players isn't modelled.",
-		Rules:       []string{"702.3b", "508.1c", "508.5"},
-		Issue:       1882,
-		Waiting:     []string{"Weathered Sentinels", "Hightide Hermit"},
-		EngineNotes: "ADR 0108 §6's `AttackedYouDuringTheirLastTurn` is the condition (it shipped with #1882). What is missing is the waiver: `defender` is a keyword that refuses every declaration, and nothing lets a static say \"as though it didn't have defender\" against some defending players only, the way `AttackTargetRestriction` is asked per target. It needs a per-target exemption read where the defender check is made (CR 702.3b), for both the engine's declaration check and the enumerator's per-attacker target list. Hightide Hermit (ADR 0129 PR 1, #1995) needs the same waiver against every defending player for a turn, without losing the keyword: \"Pay {E}{E}: This creature can attack this turn as though it didn't have defender.\"",
+		Rules:       []string{"702.3b", "609.4", "508.1c", "508.1d"},
+		Issue:       1936,
+		ADR:         "0106-five-small-seams-from-the-s50-rechecks.md",
+		Printed:     `(?i)\bcan attack (players|this turn) [^.]*as though it didn't have defender\b`,
+		Examples:    []string{"Weathered Sentinels", "Hightide Hermit"},
+		EngineNotes: "**Shipped** (ADR 0106 amendment 2026-10-16, #1936). `Characteristic.DefenderWaivers []game.DefenderWaiver{Source, SourceName, OnlyPlayersWhoAttackedYou}` is \"can attack … as though it didn't have defender\" (CR 609.4), asked per target by `defenderRefusalLocked`, the CR 702.3b check: `AttackerEligible` lets a creature with defender through only when it has a waiver, and `canAttackTargetWithLocked` (both declaration verbs), `AttackTargetsForAttackerForEffect` (the enumerator, so the ADR 0105 digest, the client's per-attacker gate and the bot) and the CR 508.1d search refuse a target no waiver covers. `OnlyPlayersWhoAttackedYou` reads ADR 0108 §6's `AttackedYouDuringTheirLastTurn(target, controller)` live at declaration, players only. The keyword stays. The refusal is a `*DefenderWaiverError` wrapping `ErrDefender`. Card side: `effects.CanAttackPlayersWhoAttackedYouAsThoughNoDefender()` (a layer-6 self static) and `CanAttackThisTurnAsThoughNoDefender(label)`, an until-end-of-turn `ScopedEffect` mod kind `waiveDefender` (`game.WaiveDefenderMod`, layer 6) that waives defender for every target. Snapshot: additive (`lastKnownBattlefield[].DefenderWaivers`, a new mod kind). Older cards that lift defender for every target still write it as losing the keyword.",
 	},
 	{
 		Slug: "control-of-a-spell", Name: "Gaining control of a spell", Kind: KindSeam, Status: StatusImplemented,

@@ -266,6 +266,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModCantAttackUnlessDefenderControls: true,
 		ModCantAttackPlayer:                 true, // #3400: cases in cards/effects/promise_of_loyalty_test.go
 		ModCantAttackOwner:                  true, // ADR 0180: cases in cant_attack_owner_mod_test.go
+		ModWaiveDefender:                    true, // #1936: cases in defender_waivers_test.go
 		ModSetBasicLandTypes:                true,
 		ModLoseLandTypes:                    true,
 		// ADR 0093 PR 4 (#1584): its cases are in scoped_grants_test.go,

@@ -3220,6 +3220,25 @@ player controls an Island'") adds
 `game.CantAttackUnlessDefenderControlsMod(QuerySubtype("Island"))` to its
 `ScopedEffectFor` mods; see `veiled_serpent.go`.
 
+**"Can attack … as though it didn't have defender"**
+([ADR 0106 amendment 2026-10-16](decisions/0106-five-small-seams-from-the-s50-rechecks.md),
+#1936, CR 702.3b, CR 609.4) is the reverse: a waiver of defender on
+`Characteristic.DefenderWaivers`, asked of each target where defender is
+checked, so the keyword stays. When the waiver names whom the creature
+may attack, use it:
+
+```go
+Static: []game.StaticAbility{CanAttackPlayersWhoAttackedYouAsThoughNoDefender()}, // Weathered Sentinels
+Effect: CanAttackThisTurnAsThoughNoDefender("Hightide Hermit — …"),             // "can attack this turn", every target
+```
+
+A new per-target condition is a new field on `game.DefenderWaiver`, read
+in `waivesLocked`. Declaration, the enumerator's per-attacker list, the
+CR 508.1d search, the client and the bot all follow. Older cards that
+lift defender for every target (Stalked Researcher, Ghalta) write it as
+losing the keyword, which differs only to a card that counts creatures
+with defender; prefer the waiver for a new card.
+
 [ADR 0045](decisions/0045-combat-restrictions.md) has the
 taxonomy, including what the vocabulary deliberately cannot say:
 Silent Arbiter's and Crawlspace's count limits, which are set-shaped
@@ -3514,6 +3533,7 @@ Three different statements, three different slots:
 | "This spell can't be countered." | `Spec.CantBeCountered: true` |
 | "…and that spell can't be countered" on mana | a spend rider, `SpentSpellCantBeCountered` |
 | "<These> spells [you control / you cast] can't be countered." on a permanent | `Spec.SpellsCantBeCountered` |
+| "Spells and abilities can't be countered." on a permanent | `Spec.SpellsCantBeCountered` with `SpellsAndAbilitiesCantBeCountered` (#2014) |
 
 The third is a list of `game.CounterShieldStatic`, built with the
 constructor whose name says whose spells, and filtered with ordinary
@@ -3539,6 +3559,11 @@ SpellsCantBeCountered: []game.CounterShieldStatic{
   colours and power, with X in the mana value.
 - A card that prints both the rider and a static (Prowling Serpopard)
   declares both. Neither does the other's job.
+- **Abilities too** (#2014). A static whose `Abilities` is set also
+  covers activated and triggered abilities on the stack, judged against
+  the ability's controller; "you cast" never covers one. Every counter
+  verb asks for an ability item, so a Stifle aimed at it resolves and
+  does nothing. Spider-Punk is the one card that prints it.
 
 The other three shapes are effects, not slots: a card's `OnResolve` or
 ability `Effect` applies a primitive from the same file (ADR 0106 PR 3).
