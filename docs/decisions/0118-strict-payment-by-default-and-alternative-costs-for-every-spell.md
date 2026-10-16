@@ -318,3 +318,33 @@ does not run — but that granting effect is not happening in this game either. 
 Back-out: drop the `PrintedTapAbility()` line in `b27HasTapAbility` and
 `TestMagewrightsStoneUntapsAnUncataloguedCreatureWithAPrintedTapAbility` fails; drop the importer's stamp and
 `TestImporterStampsPrintsTapAbility` fails.
+
+## Amendment 2026-10-16 — "a card with a mana ability" is what the card prints (#3943)
+
+Moonsilver Key searches for "an artifact card with a mana ability". It asked the catalog, so an artifact the catalog does
+not run was never found. Scryfall's `produced_mana` is no answer: it is set for any card that makes mana, including Su-Chi
+("When this creature dies, add {C}{C}{C}{C}", a trigger that is not a mana ability, CR 605.5a), a card whose Treasure is
+in reminder text, and an Equipment that grants a mana ability. Of the 3,965 artifact cards in the dump, 85 carry
+`produced_mana` and have no mana ability of their own. `PrintsManaAbility` (decision 8) is no answer either: it flags any
+"Add" clause on purpose, for a warning that should over-report.
+
+The source of truth is the printed text, read by the rules' definition. `game.ManaAbilityInText` (game/mana_ability_text.go)
+recognises CR 605.1a's activated mana ability ("[cost]: [effect]" whose effect could add mana, with no target, not a
+loyalty ability, and whose cost and effect move no card to or from a library) and CR 605.1b's triggered one ("Whenever"
+a mana event, add mana, no target), plus the intrinsic ability of a land's basic land type (CR 305.6). Quoted text is a
+grant, not the card's own. A sentence of an effect that creates a delayed trigger ("When that mana is spent …", "Draw a
+card at the beginning of the next turn's upkeep") belongs to that trigger. The importer stamps the answer as
+`Card.ManaAbilityText`, a `PrintedFact`: unknown (never read), no or yes. `SetFace` re-derives it from the face that is
+up, so a card in a library is judged on its front face (CR 712.8a). It is a copiable value, carried in restore points
+(additive; absent means unknown), and a face-down card has none (CR 708.2a).
+
+`game.HasPrintedManaAbility` reads the stamp whenever the text was read, catalogued card or not, and asks the catalog
+only for a card whose text never was. It does not join the two by "or", as #3860 did for {T} abilities, because here the
+catalog is sometimes wrong by the rules: it runs Millikin's "{T}, Mill a card: Add {C}" and Chromatic Sphere's "Add one
+mana of any color. Draw a card." as mana abilities, and CR 605.1a says neither is one (#3971). For a card in a library the
+printed text is the whole answer, since nothing grants a library card an ability.
+
+`TestManaAbilityTextAgreesWithTheCatalog` checks the classifier against every catalogued face (6,437, of which 833
+print a mana ability). Seven disagree, each pinned with its reason: the five CR 605.1a cards (#3971), Filigree Familiar,
+whose catalog entry runs a mana ability the card does not print (#3970), and Dryad Arbor, whose Forest type the fixture
+can't show. Moonsilver Key ships `full`.

@@ -866,9 +866,14 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		// cost, for Magewright's Stone's "creature that has an activated
 		// ability with {T}" on a creature the catalog does not run.
 		PrintsTapAbility: game.PrintsTapAbilityText(c.TypeLine, oracleTexts(c)...),
-		ManaCost:         c.ManaCost,
-		ProducedMana:     append([]string(nil), c.ProducedMana...),
-		Colors:           append([]string(nil), c.Colors...),
+		// #3943: and whether it has a mana ability as CR 605.1 defines
+		// one, for Moonsilver Key's "an artifact card with a mana
+		// ability". SetFace(0) below narrows a multi-faced card to its
+		// front face, which is the card in a library (CR 712.8a).
+		ManaAbilityText: game.PrintedFactOf(game.ManaAbilityInText(c.TypeLine, oracleTexts(c)...)),
+		ManaCost:        c.ManaCost,
+		ProducedMana:    append([]string(nil), c.ProducedMana...),
+		Colors:          append([]string(nil), c.Colors...),
 		// CR 903.4 Commander colour identity. Already parsed off
 		// the Scryfall record and already trusted by
 		// deck/validate.go; issue #276 was that it had no path onto

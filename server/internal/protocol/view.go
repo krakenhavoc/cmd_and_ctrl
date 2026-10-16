@@ -12387,6 +12387,14 @@ func sacrificeCostOptions(g *game.Game, controller uuid.UUID, spec *game.TargetS
 	// #2526: a set rule ("a Swamp and a Forest") ships its entries so the
 	// picker can hold confirm until the picks fill them all.
 	out.EachOf = setGroupsView(g.SacrificeSetGroupsForEffect(spec, ordered))
+	// #3940: a difference rule ("three artifact tokens with different
+	// names") ships each option's key under the target picker's own
+	// field, so the cost picker can grey a permanent whose key an earlier
+	// pick holds. Every option has a key: one without can't pay (CR
+	// 201.2b) and was never listed.
+	if spec != nil && spec.Different != nil {
+		out.Different = setRuleView(spec.Different.Label, g.TargetDifferenceKeysForEffect(spec, ordered))
+	}
 	return out
 }
 

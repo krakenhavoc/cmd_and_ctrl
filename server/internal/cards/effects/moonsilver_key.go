@@ -14,19 +14,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // b15ArtifactWithManaAbilityOrBasicLand. The searcher chooses (the
 // S22 chooser), so with more than one match the prompt opens.
 //
-// Sandbox simplification: "an artifact card with a mana ability" is
-// answered by the catalog — the same lookup the battlefield uses —
-// so an artifact whose mana ability the game does not know about is
-// not offered. Weaker than printed, never stronger; the basic-land
-// half is complete.
-//
-// The caveat waits on the engine seam #3943 (triaged in #3863).
+// "An artifact card with a mana ability" is about what the card prints
+// (#3943). The deck importer reads every card's printed text once for a
+// mana ability as CR 605.1a/b defines one (game.ManaAbilityInText) and
+// stamps the answer on the card, so an artifact the catalog does not
+// run is found when its text has one (Sol Ring, Mind Stone), and one
+// whose only mana is not a mana ability is not: Su-Chi's dies trigger
+// (CR 605.5a), Chromatic Sphere's draw and Millikin's mill (each moves
+// a card from a library, CR 605.1a). Scryfall's produced_mana would
+// find all three. The catalog answers only for a card whose text was
+// never read.
 func init() {
 	Register(Spec{
 		OracleID:     "373395b2-f04b-46c9-b9f4-4f6815b71009",
 		Name:         "Moonsilver Key",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Only artifacts whose mana ability the game already knows about can be found; any basic land can."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, {T}, Sacrifice this artifact: Search your library for an artifact card with a mana ability or a basic land card, reveal it, put it into your hand, then shuffle.",
 			Purpose: game.Purpose{Answers: game.AnswerValue},
