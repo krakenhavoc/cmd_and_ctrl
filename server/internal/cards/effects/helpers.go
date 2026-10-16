@@ -1590,3 +1590,14 @@ func bounceEachLegalTarget(g *game.Game, item *game.StackItem) error {
 	}
 	return nil
 }
+
+// replacementSourceController is a static replacement's Controller when
+// the effect is controlled by its source's controller (CR 616.1): the
+// usual case for a permanent's own replacement effect. uuid.Nil for a
+// missing source.
+func replacementSourceController(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+	if src == nil {
+		return uuid.Nil
+	}
+	return src.Controller
+}

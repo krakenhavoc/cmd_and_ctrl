@@ -218,7 +218,9 @@ func (g *Game) permanentCantBeRegeneratedLocked(c *Card) bool {
 			return true
 		}
 	}
-	return false
+	// #1946: "creatures dealt damage by <it> this turn can't be
+	// regenerated" — Runesword's record and Bone Shaman's static.
+	return g.dealtDamageCantBeRegeneratedLocked(c)
 }
 
 // PermanentCantBeRegeneratedForEffect is permanentCantBeRegeneratedLocked

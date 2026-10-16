@@ -35,8 +35,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // # The counter trigger
 //
 // "Whenever a creature dealt damage by Zurgo Helmsmasher this turn dies"
-// reads the turn's damage events through damagedBySinceEntering (Bushi
-// Tenderfoot's read): the source and the victim each start over when they
+// reads the turn's record of damaged objects through dealtDamageByThisTurn
+// (#1946): the source and the victim are each a new object once they
 // re-enter the battlefield (CR 400.7), and the damage counts as dealt
 // after prevention. Zurgo must still be on the battlefield to get the
 // counter, and the creature that died may be any player's.
@@ -58,7 +58,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				_, died := diedCreature(ev, g)
-				return died && ev.CardID != source.InstanceID && damagedBySinceEntering(g, source.InstanceID, ev.CardID)
+				return died && ev.CardID != source.InstanceID && dealtDamageByThisTurn(g, source.InstanceID, ev.CardID)
 			}, "Zurgo Helmsmasher — put a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
 				if !onBattlefield(g, item.SourceCardID) {
 					return nil

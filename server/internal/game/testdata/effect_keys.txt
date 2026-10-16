@@ -255,3 +255,5 @@ body extra-combat/untap-all-you-control
 body extra-combat/untap-attackers-at-that-combat
 body blitz/sacrifice
 body weeping-angel/owner-shuffles-it-in
+body ltb/sacrifice-the-source
+condition ltb/the-listed-object

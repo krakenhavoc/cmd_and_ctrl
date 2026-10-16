@@ -93,6 +93,14 @@ type AbilityGrant struct {
 	// limit is gone the pass its grant is.
 	AttackLimits []game.AttackLimit
 
+	// DealtDamageCantBeRegenerated is a granted "Creatures dealt damage by
+	// this creature this turn can't be regenerated this turn." — the
+	// ability Bone Shaman gains (#1946). Not a layer effect either: the
+	// regeneration gate reads it live under the recipient's composite
+	// key, so "this creature" is the recipient and the rule is gone the
+	// pass its grant is.
+	DealtDamageCantBeRegenerated []game.DealtDamageCantBeRegenerated
+
 	// Zone is where the bundle's RECIPIENTS are: empty is the battlefield,
 	// as for every bundle before #3233. A hand, graveyard or exile bundle
 	// ("each creature card in your hand has ninjutsu {2}{U}{B}") is given
@@ -154,6 +162,8 @@ func buildGrantDef(gr AbilityGrant) *game.CardDef {
 
 		LegendRuleExemptions: gr.LegendRuleExempt,
 		AttackLimits:         gr.AttackLimits,
+
+		DealtDamageCantBeRegenerated: gr.DealtDamageCantBeRegenerated,
 	}
 }
 
@@ -232,7 +242,8 @@ func checkGrants(name string, grants []AbilityGrant) {
 		if gr.Key == "" {
 			panic("effects.Register: " + name + " declares an ability grant with no Key — the recipient has no name to carry")
 		}
-		if len(gr.Triggered) == 0 && len(gr.Static) == 0 && len(gr.Activated) == 0 && len(gr.Mana) == 0 && len(gr.LegendRuleExempt) == 0 && len(gr.AttackLimits) == 0 {
+		if len(gr.Triggered) == 0 && len(gr.Static) == 0 && len(gr.Activated) == 0 && len(gr.Mana) == 0 && len(gr.LegendRuleExempt) == 0 && len(gr.AttackLimits) == 0 &&
+			len(gr.DealtDamageCantBeRegenerated) == 0 {
 			panic("effects.Register: " + name + " declares the ability grant " + gr.Key + " with no abilities — a grant gives an ability or nothing")
 		}
 		if gr.Text == "" {
@@ -320,7 +331,8 @@ func checkZoneGrantBundle(name string, gr AbilityGrant, where func(kind string, 
 	if why := game.GrantZoneUnsupported(gr.Zone); why != "" {
 		panic(fmt.Sprintf("effects.Register: %q ability grant %s is given to cards in %s — %s", name, gr.Key, gr.Zone, why))
 	}
-	if len(gr.Triggered) > 0 || len(gr.Static) > 0 || len(gr.Mana) > 0 || len(gr.LegendRuleExempt) > 0 || len(gr.AttackLimits) > 0 {
+	if len(gr.Triggered) > 0 || len(gr.Static) > 0 || len(gr.Mana) > 0 || len(gr.LegendRuleExempt) > 0 || len(gr.AttackLimits) > 0 ||
+		len(gr.DealtDamageCantBeRegenerated) > 0 {
 		panic(fmt.Sprintf("effects.Register: %q ability grant %s is given to cards in %s but declares more than activated abilities — only an activated ability is modelled on a card off the battlefield", name, gr.Key, gr.Zone))
 	}
 	for i, a := range gr.Activated {

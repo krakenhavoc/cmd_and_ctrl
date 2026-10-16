@@ -1678,14 +1678,16 @@ var items = []Item{
 		EngineNotes: "tokens: the Roles are token templates (`role_tokens.go`) made by `CreateRoleToken`, and `attachmentSBALocked` applies CR 704.5z (ADR 0036 amendment 2026-10-08). Faunsbane Troll's \"Sacrifice an Aura attached to this creature\" cost is `TargetSpec.AttachedToSource`. A Role that gives the enchanted creature a triggered ability (Sorcerer: scry on attack; Young Hero: a counter on attack; Chef: a Food on attack) is a layer-6 grant of an ADR 0093 bundle that the token template declares in `tokenTemplate.Grants` (ADR 0093 amendment 2026-10-08), so the trigger's source is the enchanted creature. Virtuous is a layer 7c count of the Role controller's enchantments. Questing waits on `AbilityGrant` having no slot for a block rule or for `DamageCantBePrevented`, which Questing Beast declares on its own spec.",
 	},
 	{
-		Slug: "dealt-damage-by-this-creature-this-turn", Name: "Creatures dealt damage by one creature this turn", Kind: KindSeam, Status: StatusMissing,
+		// #1946 (ADR 0108 amendment of 2026-10-15). Closed; history in
+		// Closed seams.
+		Slug: "dealt-damage-by-this-creature-this-turn", Name: "Creatures dealt damage by one creature this turn", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Effects about the creatures a particular creature has dealt damage to this turn, such as Bone Shaman's and Runesword's.",
-		Missing:     "A card can't yet keep track of the creatures one creature has dealt damage to this turn, so it can't stop them regenerating or exile them when they die.",
-		Rules:       []string{"701.19c", "614.1a", "611.2c"},
+		Rules:       []string{"701.19c", "614.1a", "611.2c", "400.7"},
 		Issue:       1946,
+		ADR:         "0108-turn-scoped-effects-object-history-and-damage-shields.md",
 		Tracked:     "#1946 (found landing ADR 0108 PR 1, #1886, #1887)",
-		Waiting:     []string{"Bone Shaman", "Runesword"},
-		EngineNotes: "live set: ADR 0108 PR 1's `cantBeRegenerated` and `exileIfWouldDie` are pinned to one object or a fixed scope, and no `AffectedScope` is \"dealt damage by object X this turn\", read live and including damage dealt before the effect began. Marking each creature as it is dealt damage would outlast Bone Shaman leaving or losing the ability (stronger than printed), and a delayed trigger arrives after the creature has died. Zurgo Helmsmasher's caveat is the same missing history.",
+		Examples:    []string{"Bone Shaman", "Runesword", "Kumano, Master Yamabushi", "Kumano's Blessing"},
+		EngineNotes: "**Shipped** (#1946, ADR 0108 amendment of 2026-10-15). `TurnTally.DamagedObjects` records every damage event dealt to a permanent this turn as a (source, victim) pair of `ObjectRef`s, combat or not, from the `EventDealDamage` listener, so damage prevented to 0 is not recorded and a flickered creature is a new object on either side (CR 400.7); it resets with the turn and is carried by clone, undo and the snapshot. Readers: `ObjectDealtDamageToObjectThisTurn`, `PermanentDealtDamageToPermanentThisTurn`. Runesword's riders are `ScopeDealtDamageBy` records whose `cantBeRegenerated` or `exileIfWouldDie` mod names the dealer (`Mod.DamageSince` for damage dealt from now on). Bone Shaman's gained ability is `CardDef.DealtDamageCantBeRegenerated`, an `AbilityGrant` slot read live, so it ends when the creature leaves or loses it. Both reach the one regeneration gate. The \"If a creature dealt damage by this creature this turn would die, exile it instead\" statics are `effects.ExileIfDealtDamageByThisWouldDie` and `ExileIfDealtDamageByEnchantedWouldDie`. Zurgo Helmsmasher and Bushi Tenderfoot read the record. See Closed seams.",
 	},
 	{
 		// #1947 (ADR 0106's 2026-10-07 and 2026-10-09 amendments). Closed;

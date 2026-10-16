@@ -604,3 +604,29 @@ Ten cards print "whenever this is dealt damage, … that much" (Repercussion, Ba
 ### Cards
 
 All thirteen go `full`, and Widespread Brutality's stale caveat ("one after another") goes with them: its damage is one `DamageInstanceForEffect` scope and the new test pins one shared instance. Ob Nixilis, Captive Kingpin keeps the life-loss reading unchanged.
+
+## Amendment 2026-10-15 — §1 and §2: creatures dealt damage by one object this turn (#1946)
+
+§1's `exileIfWouldDie` and §2's `cantBeRegenerated` were pinned to one object or a fixed scope. Bone Shaman ("Creatures dealt damage by this creature this turn can't be regenerated this turn", gained until end of turn) and Runesword ("If the creature deals damage to a creature this turn, the creature dealt damage can't be regenerated this turn. If a creature dealt damage by the targeted creature would die this turn, exile that creature instead") need a set that is read live: the creatures one object has dealt damage to this turn, including damage dealt before the effect began. Marking each creature as it was dealt damage would have outlasted Bone Shaman leaving or losing the ability, which is stronger than printed.
+
+### The rules
+
+- **CR 701.19c:** a permanent that can't be regenerated ignores its shields, and the shields are not used up.
+- **CR 614.1a, 700.4:** "exile it instead" replaces the move to a graveyard that is a death.
+- **CR 611.2c:** an effect that changes no characteristic reaches objects that were not affected when it began.
+- **CR 400.7:** a permanent that leaves and returns is a new object, as a source and as a victim.
+
+### Decision
+
+1. **A per-turn record, `TurnTally.DamagedObjects`.** One `ObjectDamageRecord{Source, Victim, Combat}` per damage event dealt to a permanent, each side an `ObjectRef` (instance ID and `ObjectEpoch`), written by the tally listener from `EventDealDamage`. The event carries the damage actually dealt, so damage prevented to 0 leaves no entry. Combat and noncombat damage are both recorded, nothing is deduplicated, and the turn boundary clears it. Read through `ObjectDealtDamageToObjectThisTurn` (by refs) and `PermanentDealtDamageToPermanentThisTurn` (by card, each read as the permanent object it is or most recently was this turn). Zurgo Helmsmasher's and Bushi Tenderfoot's dies triggers read it instead of scanning the event log.
+2. **`ScopeDealtDamageBy` (Runesword).** A new `AffectedScope`: the creatures the object named by each mod's `Objects[0]` has dealt damage to this turn, read as the rule is asked. It carries only `cantBeRegenerated` and `exileIfWouldDie`. A new `Mod.DamageSince` narrows a mod to the record from an index on, for "if the creature deals damage … this turn", which looks forward from the resolution. The record lasts until cleanup whatever becomes of the dealer. Its exile is a chip on each covered creature, not the game banner.
+3. **`CardDef.DealtDamageCantBeRegenerated` (Bone Shaman).** A static read live off the battlefield under the permanent's `CatalogAbilityKey`, like `CantGainLife`, and an `AbilityGrant` slot, like `AttackLimits` (#2821), so a duration grant can give it. It is gone the moment the permanent leaves or loses the ability.
+4. **One gate.** `regenerationRefusedLocked` reads both through `permanentCantBeRegeneratedLocked`, so the shield built-in, every static regeneration and the NO REGEN chip see them.
+
+### Snapshot impact
+
+Additive within v9: `turnTally.damagedObjects` and `mods[].damageSince`, both omitted when empty. A binary without this amendment refuses a file holding a `dealtDamageBy` record (unknown scope, ADR 0041 P4).
+
+### Cards
+
+Bone Shaman and Runesword ship `full`. The record also ships the "If a creature dealt damage by this creature this turn would die, exile it instead" family as catalog replacements: Kumano, Master Yamabushi, Frostwielder, Incendiary Oracle, Kumano's Pupils, and Kumano's Blessing (the enchanted creature's damage), all `full`.

@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // static_regeneration.go — CR 701.19b, "If this creature would be
 // destroyed, regenerate it" (Clergy and Knight of the Holy Nimbus): a
@@ -34,12 +30,7 @@ func RegenerateIfThisWouldBeDestroyed() game.ReplacementEffect {
 			g.RegenerateInsteadForEffect(ev)
 			return nil
 		},
-		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
-			if src == nil {
-				return uuid.Nil
-			}
-			return src.Controller
-		},
-		Label: "If this creature would be destroyed, regenerate it",
+		Controller: replacementSourceController,
+		Label:      "If this creature would be destroyed, regenerate it",
 	}
 }

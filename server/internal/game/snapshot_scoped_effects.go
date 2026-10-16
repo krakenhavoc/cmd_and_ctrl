@@ -158,6 +158,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 		if problem := recipientFilterScopeProblem(e.Scope, e.Mods); problem != "" {
 			unknown = append(unknown, problem)
 		}
+		// #1946: a dealt-damage-by record names one dealer per mod, and
+		// its fields on any other record are a newer binary's shape.
+		if problem := dealtDamageByScopeProblem(e.Scope, e.Mods); problem != "" {
+			unknown = append(unknown, problem)
+		}
 		if !KnownAffectedScope(e.Scope) {
 			unknown = append(unknown, "scoped-effect scope "+string(e.Scope))
 		}
