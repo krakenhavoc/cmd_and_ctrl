@@ -1015,6 +1015,21 @@ func plusOneCountersOnThis(n int) Effect {
 	}
 }
 
+// tapTargetAndStunIt is "Tap target creature. Put a stun counter on it."
+// (Cryotheory Adept, Loch Mare): the first legal target is tapped and
+// gets one stun counter; a target gone by resolution gets nothing.
+func tapTargetAndStunIt(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	ts := ctx.LegalTargets()
+	if len(ts) == 0 {
+		return nil
+	}
+	if err := (TapTarget{Target: ts[0].ID}).Apply(ctx); err != nil {
+		return err
+	}
+	return AddCounter{Target: ts[0].ID, Kind: game.CounterStun, N: 1}.Apply(ctx)
+}
+
 func putIndestructibleCounterOnSource() Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		if !b15OnBattlefield(g, item.SourceCardID) {

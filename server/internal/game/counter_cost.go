@@ -23,15 +23,23 @@ import (
 //	any-kind
 //	among      "Remove three counters from among other artifacts,
 //	           creatures, and planeswalkers you control"  Counter == "" && Among
+//	any kinds
+//	off self   "Remove two counters from Ghost-Spider"
+//	                                     Counter == "" && Among && From == nil
 //
-// The last one is #943's, and it is the seam's final printed shape:
-// Tekuthal, Inquiry Dominus removes three counters of WHATEVER kinds
-// happen to be there, so the payment names a kind per permanent as
-// well as a count. It is the among form with the kind question asked
+// The sixth is #943's: Tekuthal, Inquiry Dominus removes three
+// counters of WHATEVER kinds happen to be there, so the payment names
+// a kind per permanent as well as a count. It is the among form with the kind question asked
 // once per part instead of once per payment — not a sixth component.
 //
+// #3987 adds the any-kind among form's self case: Ghost-Spider, Gnarlbark
+// Elm, Loch Mare and Reaping Willow remove two counters of whatever kinds
+// they hold from THEMSELVES, so the payment splits across the source's
+// kinds rather than across permanents. It is the among payment with the
+// source as its one candidate, every part naming the source.
+//
 // One type, one validator, one candidate walk, one client picker and
-// one enumerator arm cover all six. The alternative — a sibling
+// one enumerator arm cover all seven. The alternative — a sibling
 // type per shape — was rejected in the ADR 0020 addendum: four
 // validators that must agree about "you control it and it is not
 // targeted" is four chances to disagree, and #544's lesson is that
@@ -70,7 +78,9 @@ type CounterRemovalCost struct {
 	// (#943), so "remove three counters from among …" of any kind is
 	// a shape — Tekuthal, Inquiry Dominus prints it, and a loyalty
 	// counter off a planeswalker plus two +1/+1 counters off a
-	// creature is a legal payment.
+	// creature is a legal payment. "Remove two counters from this
+	// creature" is the same question asked of the source's kinds, so
+	// it is spelled Among with no From (#3987).
 	Counter string
 
 	// N is how many counters are removed — or, when Variable is set,
@@ -98,8 +108,13 @@ type CounterRemovalCost struct {
 	// Stark Upgrade's "Remove two +1/+1 counters from among
 	// artifacts you control" is the shape; so is Hopeful Initiate's.
 	//
-	// Meaningless without From (there is only one source); Register
-	// refuses that. With Variable the activator announces BOTH the
+	// Without From it is the any-kind self form (#3987): "Remove two
+	// counters from Ghost-Spider" takes two counters of whatever kinds
+	// the source holds, one part per kind, every part on the source. A
+	// +1/+1 and a shield counter is a legal payment. Register accepts
+	// that only for an empty Counter and a fixed N: with a printed kind
+	// there is one part and RemoveCountersFromThis already says it.
+	// With Variable the activator announces BOTH the
 	// total and the split (#3276, Jetfire, Ingenious Scientist's "one
 	// or more +1/+1 counters from among artifacts you control"):
 	// the parts may total anything from N up to what the matched
@@ -462,7 +477,15 @@ func (g *Game) validateCounterRemovalLocked(playerID, sourceID uuid.UUID, rc *Co
 
 	// --- the permanents ------------------------------------------
 	ids := pay.SourceIDs
-	if rc.From == nil {
+	if rc.From == nil && rc.Among {
+		// #3987's self among form: every part is the source, once per
+		// kind it pays in. The (permanent, kind) key below is what stops
+		// one kind being named twice.
+		var err error
+		if ids, err = selfAmongIDs(sourceID, pay); err != nil {
+			return counterPayment{}, err
+		}
+	} else if rc.From == nil {
 		switch {
 		case len(ids) == 0:
 			ids = []uuid.UUID{sourceID}
@@ -556,6 +579,33 @@ func (g *Game) validateCounterRemovalLocked(playerID, sourceID uuid.UUID, rc *Co
 		return counterPayment{}, ErrInvalidParam
 	}
 	return counterPayment{parts: parts, total: total}, nil
+}
+
+// selfAmongIDs is the permanent list of a payment for #3987's self among
+// form ("Remove two counters from Ghost-Spider"): the source, once per
+// part. A payment may leave the permanents out, as every self payment
+// does, and then has one part per count it sends (one part, the printed
+// count, when it sends none); or it may name the source for every part.
+// Naming any other permanent is refused: the cost takes counters from
+// the source and nothing else.
+func selfAmongIDs(sourceID uuid.UUID, pay CounterCostPayment) ([]uuid.UUID, error) {
+	if len(pay.SourceIDs) > 0 {
+		for _, id := range pay.SourceIDs {
+			if id != sourceID {
+				return nil, ErrInvalidParam
+			}
+		}
+		return pay.SourceIDs, nil
+	}
+	n := len(pay.Counts)
+	if n == 0 {
+		n = 1
+	}
+	ids := make([]uuid.UUID, n)
+	for i := range ids {
+		ids[i] = sourceID
+	}
+	return ids, nil
 }
 
 // counterPaymentKinds resolves the counter kind each part of a
