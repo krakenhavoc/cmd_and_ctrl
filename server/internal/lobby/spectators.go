@@ -264,7 +264,8 @@ func removeSpectator(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if !CanRemoveSeat(p, meta, c.isAdmin(p)) {
+	admin := c.isAdmin(p)
+	if !CanRemoveSeat(p, meta, admin) {
 		return ErrNotSeatManager
 	}
 	if c.SpectatorHub == nil {
@@ -283,6 +284,9 @@ func removeSpectator(c Config, w http.ResponseWriter, r *http.Request) error {
 	// tries straight away is already refused.
 	c.SpectatorHub.EvictSpectator(id, specID)
 	c.logger().Info("spectator removed", "game_id", id, "spectator_id", specID, "blocked", blocked)
+	if admin {
+		c.ModLog.SeatRemoved(p, id, meta.Name, SpectatorDisplayName(who.Name), true, blocked)
+	}
 	return writeJSON(w, http.StatusOK, removeSpectatorResponse{
 		Blocked:    blocked,
 		Spectators: spectatorLines(c.SpectatorHub.Spectators(id)),

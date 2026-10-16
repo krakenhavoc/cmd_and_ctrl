@@ -199,6 +199,15 @@ the host, so a rebuild of production does not repeat it.
   server sends DMs over REST, and the gateway bot keeps only the
   unprivileged `Guilds` intent.
 
+**The community server needs more (ADR 0156, amendment 2026-10-16).**
+Authorizing with `permissions=0` is still right, but on the C2 server
+the bot's role is then given permissions by hand: voice rooms (ADR
+0159 §7) already give it Manage Roles server-wide, and the access-request
+buttons (#3325) need its role dragged **above Elder Dragon Highlander**
+in Server Settings → Roles (still below the moderators' roles), because
+Discord lets a bot grant only roles below its own. This reverses the
+earlier "keep it at the bottom" advice.
+
 **Re-authorize every already-authorized guild once (owner action).** A
 guild authorized under the old `scope=applications.commands` URL has the
 commands but not the bot user. Open the URL above, pick that guild, and

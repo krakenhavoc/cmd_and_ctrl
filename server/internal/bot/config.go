@@ -86,6 +86,26 @@ type Config struct {
 	// watcher off, and then the bot does not ask Discord for the
 	// privileged Message Content intent at all. /c2-card works either way.
 	CardChannelIDs []string
+
+	// AccessRequestChannelID is the community server's #account-requests
+	// channel (ADR 0156's 2026-10-16 amendment, #3325). A member without
+	// the player role who posts there gets an access request with
+	// Approve and Decline buttons for the mods. Empty turns it off, and
+	// then the bot does not ask Discord for message events on its
+	// account. Needs PlayerRoleID.
+	AccessRequestChannelID string
+
+	// PlayerRoleID is the role Approve grants: Elder Dragon Highlander on
+	// the C2 server, the same CMDCTRL_DISCORD_PLAYER_ROLE_ID the server's
+	// sign-up gate checks (ADR 0156 §1). The bot needs Manage Roles and a
+	// role above it.
+	PlayerRoleID string
+
+	// ModLogChannelID is the private #mod-log channel, the same
+	// CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID the server posts its entries to.
+	// The bot adds a line there when a mod approves or declines an access
+	// request. Empty: it adds nothing.
+	ModLogChannelID string
 }
 
 // ConfigFromEnv reads the CMDCTRL_* env vars. Missing optional
@@ -102,7 +122,25 @@ func ConfigFromEnv() Config {
 		AdminUserIDs:   splitGuildIDs(os.Getenv("CMDCTRL_DISCORD_ADMIN_USER_IDS")),
 		AdminRoleIDs:   splitGuildIDs(os.Getenv("CMDCTRL_DISCORD_ADMIN_ROLE_IDS")),
 		CardChannelIDs: splitGuildIDs(os.Getenv("CMDCTRL_DISCORD_CARD_CHANNEL_IDS")),
+
+		AccessRequestChannelID: strings.TrimSpace(os.Getenv(AccessRequestChannelEnv)),
+		PlayerRoleID:           strings.TrimSpace(os.Getenv(PlayerRoleEnv)),
+		ModLogChannelID:        strings.TrimSpace(os.Getenv(ModLogChannelEnv)),
 	}
+}
+
+// The variables behind the access requests and the mod log (ADR 0156's
+// 2026-10-16 amendment). The player role and the mod log channel are
+// the server's variables of the same names.
+const (
+	AccessRequestChannelEnv = "CMDCTRL_DISCORD_ACCESS_REQUEST_CHANNEL_ID"
+	PlayerRoleEnv           = "CMDCTRL_DISCORD_PLAYER_ROLE_ID"
+	ModLogChannelEnv        = "CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID"
+)
+
+// AccessRequestsEnabled reports whether the bot posts access requests.
+func (c Config) AccessRequestsEnabled() bool {
+	return c.AccessRequestChannelID != "" && c.PlayerRoleID != ""
 }
 
 // Disabled reports whether the bot should no-op at startup.
@@ -134,7 +172,32 @@ func (c Config) Validate() error {
 	if c.ClientBaseURL == "" {
 		return errors.New("CMDCTRL_CLIENT_BASE_URL is required")
 	}
+	for _, v := range []struct{ name, value string }{
+		{AccessRequestChannelEnv, c.AccessRequestChannelID},
+		{PlayerRoleEnv, c.PlayerRoleID},
+		{ModLogChannelEnv, c.ModLogChannelID},
+	} {
+		if v.value != "" && !isSnowflake(v.value) {
+			return fmt.Errorf("%s is not a Discord id (digits only, at most 20)", v.name)
+		}
+	}
+	if c.AccessRequestChannelID != "" && c.PlayerRoleID == "" {
+		return fmt.Errorf("%s is set but %s is not: Approve grants that role, so name it", AccessRequestChannelEnv, PlayerRoleEnv)
+	}
 	return nil
+}
+
+// isSnowflake reports whether s looks like a Discord id: 1 to 20 digits.
+func isSnowflake(s string) bool {
+	if s == "" || len(s) > 20 {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // Redacted returns a loggable copy with the two secrets replaced
@@ -150,6 +213,10 @@ func (c Config) Redacted() map[string]any {
 		"admin_user_ids":   c.AdminUserIDs,
 		"admin_role_ids":   c.AdminRoleIDs,
 		"card_channel_ids": c.CardChannelIDs,
+
+		"access_request_channel_id": c.AccessRequestChannelID,
+		"player_role_id":            c.PlayerRoleID,
+		"mod_log_channel_id":        c.ModLogChannelID,
 	}
 }
 
@@ -160,6 +227,12 @@ func (c Config) Redacted() map[string]any {
 // doc comment.
 func (c Config) IsAdmin(i *discordgo.Interaction) bool {
 	userID, roles := interactionInvoker(i)
+	return c.isAdminID(userID, roles)
+}
+
+// isAdminID is IsAdmin for a user id and roles read from somewhere other
+// than an interaction (a message's author, for the access requests).
+func (c Config) isAdminID(userID string, roles []string) bool {
 	if userID == "" {
 		return false
 	}
