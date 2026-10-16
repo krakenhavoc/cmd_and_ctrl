@@ -6,6 +6,7 @@
   // draws only the items, off the shared model in lib/stackLane.ts.
 
   import type { StackLaneItem, StackLaneStyle, StackLaneStyleProps } from "../../stackLane";
+  import StackAbilityButtons from "./StackAbilityButtons.svelte";
   import { cardImageURL } from "../../cardImage";
   import { cardArt } from "../../cardArt";
   import Icon from "../Icon.svelte";
@@ -105,6 +106,11 @@
             {/if}
           </div>
         </div>
+        <StackAbilityButtons
+          {item}
+          enabled={model.priority.viewerHolds}
+          onActivate={controls.activate}
+        />
         <button
           type="button"
           class="act counter-btn"

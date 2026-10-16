@@ -217,6 +217,7 @@ func buildDef(spec Spec) *game.CardDef {
 		HandSize:                            handSizeStatics(spec),
 		ManaPool:                            spec.ManaPool,
 		PlayerKeywords:                      spec.PlayerKeywords,
+		PlayerKeywordsIf:                    spec.PlayerKeywordsIf,
 		PlayerLifeTotalLocked:               spec.PlayerLifeTotalLocked,
 		DamageStaysThroughCleanup:           spec.DamageStaysThroughCleanup,
 		LoyaltyTwiceEachTurn:                spec.LoyaltyTwiceEachTurn,

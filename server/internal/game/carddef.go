@@ -320,6 +320,12 @@ type CardDef struct {
 	// card's own zone; see game.CatalogPlayerKeywords and ADR 0072's
 	// 2026-09-22 amendment (#1197).
 	PlayerKeywords []string
+	// PlayerKeywordsIf are this permanent's printed statics that give
+	// its CONTROLLER an ability only while a condition holds — "During
+	// your turn, you … have hexproof" (Gruul Spellbreaker). Read beside
+	// PlayerKeywords by the same walk; see game.CatalogPlayerKeywordsIf
+	// and ADR 0072's 2026-10-16 amendment (#2013).
+	PlayerKeywordsIf []PlayerKeywordIf
 	// PlayerLifeTotalLocked is this permanent's printed "Your life
 	// total can't change" (CR 119.7 / CR 119.8 — Platinum Emperion),
 	// about its CONTROLLER. Read from the battlefield through
@@ -971,6 +977,12 @@ func init() {
 	CatalogPlayerKeywords = func(key string) []string {
 		if d := catalogDef(key); d != nil {
 			return d.PlayerKeywords
+		}
+		return nil
+	}
+	CatalogPlayerKeywordsIf = func(key string) []PlayerKeywordIf {
+		if d := catalogDef(key); d != nil {
+			return d.PlayerKeywordsIf
 		}
 		return nil
 	}

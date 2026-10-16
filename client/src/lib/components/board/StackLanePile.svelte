@@ -56,6 +56,7 @@
   import { cardArt } from "../../cardArt";
   import { boardExpandLayout } from "../../boardExpand";
   import Icon from "../Icon.svelte";
+  import StackAbilityButtons from "./StackAbilityButtons.svelte";
 
   interface Props extends StackLaneStyleProps {
     styleName: StackLaneStyle;
@@ -223,6 +224,17 @@
 <svelte:window onkeydown={onWindowKey} />
 
 {#snippet counterButton(item: StackLaneItem, small: boolean)}
+  <!-- #1865: a spell's own stack ability (Lightning Storm) sits beside
+       Counter on the top card. A peek's name line has room for Counter
+       alone; a storm under its own ability is back on top, button and
+       all, before it can resolve. -->
+  {#if !small}
+    <StackAbilityButtons
+      {item}
+      enabled={model.priority.viewerHolds}
+      onActivate={controls.activate}
+    />
+  {/if}
   <button
     type="button"
     class="act counter-btn"

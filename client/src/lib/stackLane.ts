@@ -53,7 +53,14 @@
 // to "<name> resolves next". A wrong summary on the stack is worse than
 // none: the player is deciding whether to respond to it.
 
-import type { CardView, PendingChoiceView, PlayerView, StackItemView, ZoneView } from "./protocol";
+import type {
+  ActivatedAbilityView,
+  CardView,
+  PendingChoiceView,
+  PlayerView,
+  StackItemView,
+  ZoneView,
+} from "./protocol";
 import { seatColor } from "./colors";
 import { doubledTriggerLabel } from "./triggerDoubling";
 import { previewableCard } from "./stackPreview";
@@ -186,6 +193,14 @@ export interface StackLaneItem {
   targetedBy: string[];
   /** The overlay's chips, in the order it has always drawn them. */
   chips: StackLaneChip[];
+  /**
+   * #1865 (ADR 0106 §1 amendment 2026-10-16): the activated abilities
+   * this spell offers the VIEWER while it is on the stack — Lightning
+   * Storm's "Discard a land card: …", which any player may activate. The
+   * stack card's `zone_abilities`, which the server sends only to a seat
+   * that may activate them. Empty for every other item.
+   */
+  abilities: ActivatedAbilityView[];
   /** The wire item, for handlers that send it back (counter, target). */
   raw: StackItemView;
 }
@@ -259,6 +274,12 @@ export interface StackLaneInput {
 export interface StackLaneControls {
   /** Counter an item (counter_spell / counter_ability). */
   counter(item: StackLaneItem): void;
+  /**
+   * #1865: activate one of the item's `abilities` (by its wire index)
+   * through Board's announce chain. Absent where nothing can announce
+   * (a spectator's lane).
+   */
+  activate?(item: StackLaneItem, abilityIndex: number): void;
   /** True when an in-progress targeting prompt may point at this item. */
   targetable(item: StackLaneItem): boolean;
   /** Complete that prompt on this item. */
@@ -580,6 +601,17 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
       });
     }
     if (item.x_value) chips.push({ label: `X = ${item.x_value}`, tone: "plain" });
+    // #1865: counters on a spell (Lightning Storm's charge counters) are
+    // part of what it will do, and public.
+    for (const [counter, n] of Object.entries(card?.counters ?? {})) {
+      if (n > 0) {
+        chips.push({
+          label: `${n} ${counter}`,
+          tone: "plain",
+          title: `${n} ${counter} ${n === 1 ? "counter" : "counters"} on this spell`,
+        });
+      }
+    }
     // S22: an overloaded Rift wipes and a hard-cast one bounces one thing.
     if (item.alt_cost) chips.push({ label: item.alt_cost, tone: "flag" });
     // #1267 (CR 702.174): a promised gift changes what the spell does,
@@ -656,6 +688,8 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
       doubledLabel: doubledTriggerLabel(item.doubled_by, item.doubled_by_name),
       targetedBy: [],
       chips: chipsFor(item, kind),
+      abilities:
+        isStack && item.kind === "spell" ? (stackCards.get(item.id)?.zone_abilities ?? []) : [],
       raw: item,
     };
   }

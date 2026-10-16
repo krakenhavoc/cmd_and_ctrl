@@ -1158,6 +1158,12 @@ type SearchLibrary struct {
 	// searched and shuffled; the searcher looks at the whole hand. See
 	// game.SearchLibrarySpec.AlsoGraveyardAndHand.
 	AlsoGraveyardAndHand bool
+	// TakeAll is "search … for ALL cards with the same name" on an
+	// AlsoGraveyardAndHand search (#4033, Eradicate and the rest of the
+	// extraction family): every graveyard match is found, a public zone
+	// having no fail to find, and the searcher picks any number from the
+	// hand and the library. See game.SearchLibrarySpec.TakeAll.
+	TakeAll bool
 	// EntersAttachedTo is "put that card onto the battlefield ATTACHED
 	// TO …" (Light-Paws, #3158): the found Aura enters attached to it,
 	// and one that can't legally enchant it stays in the library
@@ -1202,6 +1208,7 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		FaceDown:             s.FaceDown,
 		AlsoGraveyard:        s.AlsoGraveyard,
 		AlsoGraveyardAndHand: s.AlsoGraveyardAndHand,
+		TakeAll:              s.TakeAll,
 		EntersAttachedTo:     s.EntersAttachedTo,
 	})
 }

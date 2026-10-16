@@ -74,6 +74,11 @@ const (
 	ModSetBasePower     ModKind = "setBasePower"     // layer 7b
 	ModSetBaseToughness ModKind = "setBaseToughness" // layer 7b
 	ModModifyPT         ModKind = "modifyPT"         // layer 7c
+	// ModSwitchPT is "switch <affected>'s power and toughness" (CR
+	// 613.4d, #3996): layer 7d, after every set, modify and counter.
+	// Reads nothing. See SwitchPowerAndToughness for how the counters
+	// read after the pass are switched too.
+	ModSwitchPT ModKind = "switchPT" // layer 7d (SubLayer7E_Switch)
 	// ModAddAttackRequirement is a CR 508.1d attack requirement
 	// (#1571): "attacks … if able", or — with Player set — "attacks a
 	// player other than Player if able". Layer 6 for the reason
@@ -971,6 +976,7 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSetBasePower:     {layer: Layer7PT, subLayer: SubLayer7B_Set},
 	ModSetBaseToughness: {layer: Layer7PT, subLayer: SubLayer7B_Set},
 	ModModifyPT:         {layer: Layer7PT, subLayer: SubLayer7C_Modify},
+	ModSwitchPT:         {layer: Layer7PT, subLayer: SubLayer7E_Switch},
 	// #1571
 	ModAddAttackRequirement: {layer: Layer6Ability},
 	// #3172
@@ -1375,6 +1381,10 @@ func SetBasePTMods(power, toughness int) []Mod {
 func ModifyPTMod(power, toughness int) Mod {
 	return Mod{Kind: ModModifyPT, Power: power, Toughness: toughness}
 }
+
+// SwitchPTMod is "switch its power and toughness" (layer 7d, CR
+// 613.4d). Reads nothing.
+func SwitchPTMod() Mod { return Mod{Kind: ModSwitchPT} }
 
 // ---------------------------------------------------------------
 // Registration
@@ -2180,6 +2190,10 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.Power += p
 			ch.Toughness += t
+		}
+	case ModSwitchPT:
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			SwitchPowerAndToughness(ch)
 		}
 	}
 	return nil

@@ -1985,21 +1985,44 @@ func checkOneExhaustAbility(name, kind string, i int, label string, exhaust bool
 // Shroud is refused: no card prints shroud on a player, and a token
 // with no card behind it is what game.CanonicalKeywords refuses a
 // bare "protection" for.
+//
+// PlayerKeywordsIf (#2013) is held to the same vocabulary, and each
+// entry must carry its condition and its printed sentence: a nil While
+// would grant nothing, silently, and an empty Label would leave the
+// tile's row saying nothing about when the ability holds.
 func checkPlayerKeywords(spec Spec) {
 	for i, kw := range spec.PlayerKeywords {
-		if kw == game.KeywordHexproof || kw == game.ProtectionFromTheChosenCardType {
-			continue
+		if !playerKeywordHonoured(kw) {
+			panic(fmt.Sprintf("effects.Register: %q PlayerKeywords[%d] = %q is not a player ability the engine honours — "+
+				"use %q or a \"protection from <quality>\" token the closed grammar parses (ADR 0072, #1197)",
+				spec.Name, i, kw, game.KeywordHexproof))
 		}
-		if _, ok := game.ParseProtectionQuality(kw); ok {
-			continue
-		}
-		if _, ok := game.ParseHexproofFromQuality(kw); ok {
-			continue
-		}
-		panic(fmt.Sprintf("effects.Register: %q PlayerKeywords[%d] = %q is not a player ability the engine honours — "+
-			"use %q or a \"protection from <quality>\" token the closed grammar parses (ADR 0072, #1197)",
-			spec.Name, i, kw, game.KeywordHexproof))
 	}
+	for i, kw := range spec.PlayerKeywordsIf {
+		if !playerKeywordHonoured(kw.Keyword) {
+			panic(fmt.Sprintf("effects.Register: %q PlayerKeywordsIf[%d].Keyword = %q is not a player ability the engine honours — "+
+				"use %q or a \"protection from <quality>\" token the closed grammar parses (ADR 0072, #2013)",
+				spec.Name, i, kw.Keyword, game.KeywordHexproof))
+		}
+		if kw.While == nil || kw.Label == "" {
+			panic(fmt.Sprintf("effects.Register: %q PlayerKeywordsIf[%d] needs a condition and a label — "+
+				"build it with YouHaveDuringYourTurn or YouHaveWhile (#2013)", spec.Name, i))
+		}
+	}
+}
+
+// playerKeywordHonoured reports whether a token is one the player walk's
+// consumers read: bare hexproof, the chosen-card-type placeholder, or a
+// protection or hexproof-from token the closed grammar parses.
+func playerKeywordHonoured(kw string) bool {
+	if kw == game.KeywordHexproof || kw == game.ProtectionFromTheChosenCardType {
+		return true
+	}
+	if _, ok := game.ParseProtectionQuality(kw); ok {
+		return true
+	}
+	_, ok := game.ParseHexproofFromQuality(kw)
+	return ok
 }
 
 // checkAbilityWaterbend refuses, at boot, an activated ability whose

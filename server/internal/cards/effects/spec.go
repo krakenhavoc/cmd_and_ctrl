@@ -1115,6 +1115,25 @@ type Spec struct {
 	// Issue #1197, ADR 0072's 2026-09-22 amendment.
 	PlayerKeywords []string
 
+	// PlayerKeywordsIf declares a printed static that gives this
+	// permanent's CONTROLLER an ability only while a condition holds —
+	// "During your turn, you and this creature have hexproof" (Gruul
+	// Spellbreaker's player half; the creature half is an ordinary
+	// Static entry):
+	//
+	//	PlayerKeywordsIf: []game.PlayerKeywordIf{YouHaveDuringYourTurn(KeywordHexproof)},
+	//
+	// Derived exactly as PlayerKeywords is, and read by the same walk:
+	// the condition is asked on every query with the permanent as it is
+	// now (CR 611.3a), so nothing is written to the player and nothing
+	// has to be swept when the condition stops holding. Build entries
+	// with YouHaveDuringYourTurn or YouHaveWhile; Register holds each
+	// to PlayerKeywords' vocabulary and requires a condition and a
+	// label.
+	//
+	// Issue #2013, ADR 0072's 2026-10-16 amendment.
+	PlayerKeywordsIf []game.PlayerKeywordIf
+
 	// PlayerLifeTotalLocked declares the printed static "Your life
 	// total can't change" (CR 119.7, CR 119.8 — Platinum Emperion),
 	// about this permanent's CONTROLLER. True while the permanent is
@@ -1791,7 +1810,9 @@ type ActivatedAbility struct {
 	// battlefield. Cycling declares ZoneHand; a graveyard activation
 	// (Reassembling Skeleton) will declare ZoneGraveyard. Build the
 	// entry with Cycling / Typecycling rather than setting this by
-	// hand. See game.ActivatedAbilityShape.Zones and ADR 0062.
+	// hand. See game.ActivatedAbilityShape.Zones and ADR 0062. A
+	// spell's ability that works while it is on the stack declares
+	// ZoneStack (Lightning Storm; ADR 0106 §1 amendment 2026-10-16).
 	Zones []game.ZoneKind
 	// Cycling marks the card's cycling ability (CR 702.29a), so
 	// activating it emits EventCycle. Set by the Cycling /
@@ -1867,7 +1888,8 @@ type ActivatedAbility struct {
 	// effect is then whoever activated it (CR 109.5) — Context.Controller
 	// — and "this permanent's controller" is Context.SourcePermanent()'s.
 	// Register refuses it beside a {T}, loyalty, crew or sacrifice-this
-	// component and on an ability with a non-battlefield zone. See
+	// component and on an ability with a zone other than the battlefield
+	// or the stack (Lightning Storm, #1865). See
 	// game.ActivatedAbilityShape.AnyPlayer.
 	AnyPlayer bool
 	// OpponentsOnly is "Only your opponents may activate this ability"

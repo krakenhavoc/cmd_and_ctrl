@@ -225,6 +225,17 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}StackLaneHost.svelte`, `${BOARD}StackOverlay.svelte`],
     doc: "the stack pile (ADR 0119), and the floating stack overlay; the tutorial's stack step anchors here",
   }),
+  stackAbility: dynamicLabel({
+    stem: " on the stack: ",
+    match: "contains",
+    shape: "Activate <card name> on the stack: <cost>",
+    make: (card: string, cost: string) => `Activate ${card} on the stack: ${cost}`,
+    example: ["Lightning Storm", "Discard a land card"],
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}StackAbilityButtons.svelte`],
+    doc: "#1865: a spell's ability that works while it is on the stack (Lightning Storm's discard a land card), on every stack surface beside Counter; offered to each seat that may activate it",
+  }),
   attention: label({
     name: "attention",
     kind: "aria",

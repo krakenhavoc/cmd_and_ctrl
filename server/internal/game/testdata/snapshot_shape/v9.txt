@@ -1268,6 +1268,7 @@ lastKnownBattlefield{}.GrantedAbilities[].Key	string
 lastKnownBattlefield{}.GrantedAbilities[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.Name	string
 lastKnownBattlefield{}.PTDefined	bool
+lastKnownBattlefield{}.PTSwitched	bool
 lastKnownBattlefield{}.Power	number:int
 lastKnownBattlefield{}.RemovedOwnAbilities	array
 lastKnownBattlefield{}.RemovedOwnAbilities[]	object
@@ -1408,6 +1409,7 @@ lastKnownPermanents{}[].characteristic.GrantedAbilities[].Key	string
 lastKnownPermanents{}[].characteristic.GrantedAbilities[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.Name	string
 lastKnownPermanents{}[].characteristic.PTDefined	bool
+lastKnownPermanents{}[].characteristic.PTSwitched	bool
 lastKnownPermanents{}[].characteristic.Power	number:int
 lastKnownPermanents{}[].characteristic.RemovedOwnAbilities	array
 lastKnownPermanents{}[].characteristic.RemovedOwnAbilities[]	object
@@ -2979,6 +2981,7 @@ pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Key	string
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.Name	string
 pendingChoices[].damageAssignment.SourceLKI.PTDefined	bool
+pendingChoices[].damageAssignment.SourceLKI.PTSwitched	bool
 pendingChoices[].damageAssignment.SourceLKI.Power	number:int
 pendingChoices[].damageAssignment.SourceLKI.RemovedOwnAbilities	array
 pendingChoices[].damageAssignment.SourceLKI.RemovedOwnAbilities[]	object
