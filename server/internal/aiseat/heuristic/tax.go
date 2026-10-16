@@ -95,7 +95,7 @@ func (p *Policy) notePlan(st *state, moves []legal.Move, plan []aiseat.PlanMembe
 		v, _ := p.valueOf(st, m)
 		t.members = append(t.members, plannedCast{
 			id: card.InstanceID, name: card.Name, cost: cost, value: v,
-			adds: castAddsMana(card, castPurpose(card, cp), p.cfg.PlanFilterLands),
+			adds: castAddsMana(card, castPurpose(card, cp), p.manaModel(st)),
 			held: pm.Held,
 		})
 	}
@@ -152,7 +152,7 @@ func (p *Policy) taxAgainstPlan(st *state, ch *protocol.PendingChoiceView) (decl
 	// The next member: the first one still to cast, in hand or in the
 	// command zone and not held for the end step. The members before it
 	// that are still on the stack add their mana once they resolve.
-	var units []uint8
+	var units []manaUnit
 	var next *plannedCast
 	var pending []manaSource
 	for i := range t.members {
@@ -171,15 +171,15 @@ func (p *Policy) taxAgainstPlan(st *state, ch *protocol.PendingChoiceView) (decl
 	if next == nil {
 		return false, "", false
 	}
-	units = st.manaAvailable(p.cfg.PlanFilterLands)
+	units = st.manaAvailable(p.manaModel(st))
 	for _, a := range pending {
 		units = addSource(units, a, next.cost.colored)
 	}
-	if _, payable := payMana(append([]uint8(nil), units...), next.cost, nil); !payable {
+	if _, payable := payMana(append([]manaUnit(nil), units...), next.cost, nil); !payable {
 		return false, "", false
 	}
 	tax := parseManaCost(ch.PayCost, 0)
-	rest, paid := payMana(append([]uint8(nil), units...), tax, next.cost.colored)
+	rest, paid := payMana(append([]manaUnit(nil), units...), tax, next.cost.colored)
 	if !paid {
 		return false, "", false
 	}

@@ -4357,7 +4357,7 @@ announces X and the pitched card must have exactly that mana value; the
 spell reads it with `ctx.X()`. Register allows the bound only on a one-card
 hand pitch of a card that declares `XMatters`.
 
-**Exile cards from your graveyard as an additional cost (#3536):** "As an additional cost to cast this spell, exile six cards from your graveyard" (Abhorrent Oculus) is `AdditionalCost: ExileFromGraveyardCost(6, "six cards", nil)` (pass a predicate for "exile a creature card"): the activated ability's `ExileCost` on a cast, so the walk, the validator and the payer are the ability's. The caster names the cards on `exile_ids`; they are exiled with the spell on the stack, so a graveyard-leaves watcher triggers above it and a countered spell does not give them back. Read them with `ctx.Exiled()`. It is an ADDITIONAL cost, so an alternative cost or a "cast without paying its mana cost" still demands it. Mandatory slot, fixed count, graveyard only: Register refuses the hand form, a non-positive count, an optional cost and an either/or branch.
+**Exile cards from your graveyard as an additional cost (#3536):** "As an additional cost to cast this spell, exile six cards from your graveyard" (Abhorrent Oculus) is `AdditionalCost: ExileFromGraveyardCost(6, "six cards", nil)` (pass a predicate for "exile a creature card"): the activated ability's `ExileCost` on a cast, so the walk, the validator and the payer are the ability's. The caster names the cards on `exile_ids`; they are exiled with the spell on the stack, so a graveyard-leaves watcher triggers above it and a countered spell does not give them back. Read them with `ctx.Exiled()`. It is an ADDITIONAL cost, so an alternative cost or a "cast without paying its mana cost" still demands it. Graveyard only: Register refuses the hand form, a non-positive count and an optional cost. **"Exile X cards from your graveyard" (#1948)** is `AdditionalCost: ExileXFromGraveyardCost("X cards", nil)` with `XMatters: true`: the count is the X announced with the cast (the mana cost's {X} too, if it has one), so read the number with `ctx.X()` (Skeletal Scrying, Harvest Pyre, Chill Haunting). The X form is the mandatory slot's only and may not share X with pay X life, blight X or a waterbend {X}. A fixed count may be a branch of `EitherCost` (Soaring Stoneglider: `EitherCost(ExileFromGraveyardCost(2, "two cards", nil).Keyed("exile"), ManaAdditionalCost("{1}{W}").Keyed("mana"))`).
 
 **Blight X (#2174):** "As an additional cost to cast this spell, blight X.
 X can't be greater than the greatest toughness among creatures you
@@ -4513,6 +4513,20 @@ remains", Pick Up the Pace). Use `WhileExiled` for "for as long as it remains
 exiled" and the default for "this turn". The attack conditions read tallies
 written as each attacker is declared, so a token that died in combat still
 counts, and every tally resets at the turn boundary.
+
+The second slice (#3192) added three pieces beside it. For a window on the
+resolving ability's OWN source use `forAsLongAsThisRemainsWindow(g, item)`
+("for as long as Intet remains on the battlefield", "as long as this Saga
+remains") or `forAsLongAsYouControlThisWindow(g, item)` ("for as long as you
+control this creature"): they also refuse a source that left and came back
+(CR 400.7). A card the effect has CHOSEN, rather than the top N, goes to exile
+face down with its grant through
+`g.ExileCardsFaceDownWithPermissionForEffect(ids, holder, perm)` (Vivien,
+Champion of the Wilds' −2), which makes the holder its one viewer. And "when
+you next cast a creature spell this turn, it gains haste until end of turn"
+(Summon: Brynhildr) is a `GrantNextSpellPromise` whose `FollowUp` calls
+`g.GrantKeywordsToSpellForEffect(f.Source, f.Spell, …)`: a promise's follow-up
+is now told the promise's source as `CastFollowUp.Source`.
 
 **"Exile that card with a <counter> counter on it instead of putting it into
 your graveyard as it resolves" (#3213, ADR 0107 amendment of 2026-10-13):**
@@ -7355,9 +7369,13 @@ What the engine and the client do for you:
   the controlled player may only concede (CR 723.6).
 - A bot that controls a turn plays it passively (`aiseat.controlledTurnPolicy`).
 
-`BeginTurnControlForEffect` always owes an extra turn. A card with no
-extra turn (Mindslaver, Sorin Markov's −7) needs a `TurnControl` option
-for it first.
+`BeginTurnControlForEffect` owes an extra turn unless the request sets
+`TurnControl.NoExtraTurn`. A card with no extra turn ("You control
+target player during that player's next turn": Mindslaver, Worst Fears,
+Sorin Markov's −7, Construct a Cosmic Cube, and Cruel Entertainment's
+two halves) uses `controlTargetPlayerNextTurn(name)` or
+`controlPlayerNextTurn(g, item, controller, controlled, name)` from
+`cards/effects/turn_control_cards.go`, which set it.
 
 ### Adding a `PendingChoiceKind` (#730, #794)
 

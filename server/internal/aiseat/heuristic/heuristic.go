@@ -463,6 +463,13 @@ type Config struct {
 	// names, instead of the plain {C} row that nets as much. Off (the
 	// zero value) models the land as its {C} row, as PR 4 shipped.
 	PlanFilterLands bool
+	// PlanRestrictedMana counts a mana ability whose mana may be spent
+	// only on some spells (Cavern of Souls' chosen type, Delighted
+	// Halfling's legendary spells) toward the casts its restriction
+	// admits, and never toward the rest, as auto-pay plans it (ADR 0136's
+	// amendment of 2026-10-16, #3976). Off (the zero value) leaves such a
+	// row out of the plan's mana model, as ADR 0136 §2 shipped.
+	PlanRestrictedMana bool
 	// PlanRockTwoTurns weighs a mana source against the turn's chosen
 	// line over two turns when this turn's mana pays for one or the
 	// other, not both (ADR 0136's amendment of 2026-10-09, rocknow.go):
@@ -822,6 +829,7 @@ func DefaultConfig() Config {
 		PlanMaxCards:        10,
 		PlanLandDropsAsRamp: true,
 		PlanFilterLands:     true,
+		PlanRestrictedMana:  true,
 		// A quarter off next turn: see ADR 0136's amendment of
 		// 2026-10-09 for the reason.
 		PlanRockTwoTurns:     true,
@@ -1027,6 +1035,7 @@ func BaselineConfig() Config {
 	c.PlanMaxCards = 0
 	c.PlanLandDropsAsRamp = false
 	c.PlanFilterLands = false
+	c.PlanRestrictedMana = false
 	c.PlanRockTwoTurns = false
 	c.PlanNextTurnDiscount = 0
 	// ADR 0126 §2's amendment of 2026-10-09: an idle late rock.
@@ -1175,6 +1184,9 @@ type state struct {
 	// the start of a later turn of mine (afterExchange, afterWait):
 	// every permanent of mine has untapped, whatever its Tapped says.
 	laterTurn bool
+	// restrictClasses numbers the restricted mana rows the turn plan
+	// counts in this decision (manaClasses), made on first use.
+	restrictClasses *manaClasses
 }
 
 func (p *Policy) newState(in aiseat.Input) *state {

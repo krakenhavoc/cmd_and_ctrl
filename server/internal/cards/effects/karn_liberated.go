@@ -15,36 +15,38 @@ import (
 //	      cards exiled with Karn. Then put those cards onto the
 //	      battlefield under your control."
 //
-// The −3 is complete and is what the card does at a four-player
-// table: colorless unconditional removal that answers anything,
-// including an indestructible or regenerating permanent, because
-// exile is not destruction. Routed through the engine's shared exit,
-// so a COMMANDER exiled by it gets the CR 903.9 prompt and its owner
-// may choose the command zone instead (#529 / #539).
+// The −3 is colorless unconditional removal that answers anything,
+// including an indestructible or regenerating permanent, because exile
+// is not destruction. Routed through the engine's shared exit, so a
+// COMMANDER exiled by it gets the CR 903.9 prompt and its owner may
+// choose the command zone instead (#529 / #539).
 //
-// The +4 is complete (#3861): the TARGET player picks the card from
-// their own hand and it is exiled. It is the pick-from-hand prompt
-// Chrome Mox uses (game.ChooseCardsPrompt with Zone: ZoneHand), with
-// the target as the chooser and a floor of one, because "exiles a
-// card" is not a "may". A player with an empty hand is not asked:
-// there is nothing to exile. Until #3861 it was a discard, which put
-// the card in a graveyard it could be recurred from.
+// The +4: the TARGET player picks the card from their own hand and it
+// is exiled (#3861). It is the pick-from-hand prompt Chrome Mox uses
+// (game.ChooseCardsPrompt with Zone: ZoneHand), with the target as the
+// chooser and a floor of one, because "exiles a card" is not a "may".
+// A player with an empty hand is not asked: there is nothing to exile.
 //
-// THE −14 IS NOT REGISTERED, and this is the one omission in the
-// catalog that needs no argument. "Restart the game" is not an
-// effect; it is a second game, seeded from the exile pile of the
-// first, with new hands, new mulligans and a new turn order. There
-// is no approximation of it that is recognisably the same ability,
-// and a −14 that did something smaller would be a different card
-// wearing Karn's text. The loyalty still accrues past 14.
+// Both exiles are LINKED to this Karn object (CR 607.2a,
+// Game.ExileLinkedForEffect), which is what "cards exiled with Karn
+// Liberated" reads. A Karn that left the battlefield and came back is a
+// new object with no claim on what the old one exiled (CR 400.7), and
+// so is another Karn Liberated.
+//
+// The −14 restarts the game (CR 727, #3856, ADR 0201). The non-Aura
+// permanent cards exiled with this Karn are exempt (CR 727.5): they
+// stay in exile while every other card goes back to its owner's deck,
+// the new game begins with Karn's controller as the starting player
+// (CR 727.1a), and once the mulligans are over those cards enter the
+// battlefield under that player's control (CR 727.4). An Aura, an
+// instant or a sorcery exiled with Karn is not exempt and goes back to
+// its owner's deck like everything else. The engine does the restart;
+// this card only names the exempt cards.
 func init() {
 	Register(Spec{
 		OracleID:     "0ca233f4-1b7f-4807-ab6e-2b1f5439b3db",
 		Name:         "Karn Liberated",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The -14 isn't offered — restarting the game isn't something this engine can do.",
-		},
+		Completeness: CompletenessFull,
 		// Printed loyalty reaches the card through deck import
 		// (ADR 0032 §1); this is the fallback for tokens, fixtures
 		// and the dev spawner.
@@ -60,17 +62,23 @@ func init() {
 				Label:   "−3: Exile target permanent.",
 				Cost:    LoyaltyCost(-3),
 				Targets: TargetPermanent("target permanent"),
-				Effect:  exileEveryLegalCardTarget,
+				Effect:  karnMinusThree,
+			},
+			{
+				Label:  "−14: Restart the game, leaving in exile all non-Aura permanent cards exiled with Karn. Then put those cards onto the battlefield under your control.",
+				Cost:   LoyaltyCost(-14),
+				Effect: karnMinusFourteen,
 			},
 		},
 	})
 }
 
 // karnPlusFour asks the target player to exile a card from their hand.
-// Package-level, and its continuation too, so the queued prompt
-// captures nothing.
+// Package-level; its continuation captures only the Karn object ref,
+// which is plain data.
 func karnPlusFour(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
+	link, _ := ctx.SourceRef()
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetPlayer {
 			continue
@@ -94,10 +102,43 @@ func karnPlusFour(g *game.Game, item *game.StackItem) error {
 			// Re-checked on submit: the pick must still be in that
 			// player's hand when the answer arrives.
 			Zone: game.ZoneHand,
-			// Chrome Mox's continuation, shared as Semblance Anvil
-			// shares it: exile the one card picked.
-			Then: chromeMoxExileThePick,
+			Then: func(g *game.Game, picked []uuid.UUID) error {
+				if len(picked) == 0 {
+					return nil
+				}
+				return g.ExileLinkedForEffect(link, picked[0])
+			},
 		})
 	}
+	return nil
+}
+
+// karnMinusThree exiles the target permanent, linked to this Karn.
+func karnMinusThree(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		if err := (ExileTarget{Target: t.ID, Linked: true}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// karnMinusFourteen restarts the game, exempting the non-Aura permanent
+// cards in exile that this Karn object exiled.
+func karnMinusFourteen(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	var exempt []uuid.UUID
+	if link, ok := ctx.SourceRef(); ok {
+		for _, c := range g.ExiledWithForEffect(game.PermissionCardRef(link)) {
+			if c.IsPermanent() && !c.IsAura() {
+				exempt = append(exempt, c.InstanceID)
+			}
+		}
+	}
+	g.RestartTheGameForEffect(item.Controller, item.SourceCardID, exempt)
 	return nil
 }

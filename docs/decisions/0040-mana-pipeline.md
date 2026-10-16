@@ -1347,7 +1347,9 @@ a creature's mana and an animated Mutavault does while it is one.
   have been (the black spent, less every mana that paid something other than
   X), because `PaidCost.Mana` records the whole payment and not which cost
   component each token paid. The card says so in its caveat. Exact accounting
-  needs the payment to record the component.
+  needs the payment to record the component. *Superseded by
+  [ADR 0068](0068-the-mana-spent-on-a-spell.md)'s 2026-10-16 amendment (#3941):
+  the payment records the mana that paid X, and Soul Burn is Full.*
 
 Proof cards: Drain Life, Consume Spirit (full); Imperiosaur, Myr Superion
 (full); Soul Burn (caveat). Tracker
@@ -1468,7 +1470,7 @@ when nothing else can pay. Ancient Ziggurat, Eldrazi Temple's cast half, and the
 rest of the restricted-mana group follow the same rule.
 `cards/effects/autotap_restricted_test.go` pins the two printed cards.
 
-**Still not done.** The bot's own turn planner (`aiseat/heuristic`
-`manaSourceOf`) still leaves restricted rows out of its estimate of the mana it
-has: "the model cannot tell which casts it pays for". That is a planning estimate,
-not a legality answer. The bot's moves come from the enumerator above.
+**Still not done**, when this amendment was written: the bot's own turn planner
+(`aiseat/heuristic` `manaSourceOf`) left restricted rows out of its estimate of
+the mana it has. [ADR 0136's amendment of 2026-10-16](0136-planning-the-turns-mana.md#amendment-2026-10-16-restricted-mana-counts-for-the-casts-it-admits-3976)
+(#3976) counts them for the casts they admit, through the matcher above.

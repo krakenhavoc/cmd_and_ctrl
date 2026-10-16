@@ -208,7 +208,11 @@ func (c ParsedCost) foldSpendOnly(x int) ParsedCost {
 	}
 	// The run's options are a clipped copy, so an append to them copies
 	// instead of writing into the restriction.
-	out.folded = reqRun{req: ColorRequirement{Options: slices.Clip(append([]string(nil), allowed...))}, n: n}
+	// The "on X" form's run is the mana paid for {X}, and is marked so
+	// the pool solver can record which mana paid it (#3941). The
+	// whole-cost form restricts generic and coloured mana alike, so its
+	// run is not X.
+	out.folded = reqRun{req: ColorRequirement{Options: slices.Clip(append([]string(nil), allowed...))}, n: n, x: lim.XOnly}
 	return out
 }
 

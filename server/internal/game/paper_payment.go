@@ -102,6 +102,13 @@ type PaperMana struct {
 	Color    string `json:"color"`
 	Artifact bool   `json:"artifact,omitempty"`
 	Count    int    `json:"count,omitempty"`
+	// X says this mana paid for the {X} part of the cost (#3941). The
+	// picker sets it on the mana it prefilled from a slot marked X, so
+	// the caster's own allocation (CR 601.2h) is what the record keeps.
+	// Optional: a declaration with no X marks has the engine assign the
+	// mana to the slots, giving the X part the colours the card reads
+	// first.
+	X bool `json:"x,omitempty"`
 }
 
 // PaperPayment is the caster's answer to a PaperPaymentRequiredError
@@ -122,6 +129,11 @@ type PaperSlot struct {
 	Symbol  string   `json:"symbol"`
 	Options []string `json:"options"`
 	Count   int      `json:"count,omitempty"`
+	// X marks a slot of the {X} part of the cost (#3941), which a
+	// "spend only <colours> mana on X" clause restricts. The picker
+	// shows these apart from the rest and marks the mana it declares for
+	// them (PaperMana.X).
+	X bool `json:"x,omitempty"`
 }
 
 // ErrPaperPaymentRequired is the sentinel a *PaperPaymentRequiredError
@@ -159,13 +171,16 @@ var paperSymbols = []string{"W", "U", "B", "R", "G", "C"}
 type paperShortfall struct {
 	reqs    []reqRun
 	generic int
+	// favor is the colours the X part takes first when a declaration
+	// leaves the allocation to the engine (#3941).
+	favor []string
 }
 
 // shortfallFor is what SpendWhatPaysForWith would leave unpaid, read
 // without spending.
 func (p ManaPool) shortfallFor(cost ParsedCost, xValue int, ctx ManaSpendContext, strategy ManaSpendStrategy) paperShortfall {
-	_, unpaid, need := p.allocateRest(cost, xValue, ctx, strategy)
-	return paperShortfall{reqs: unpaid, generic: need}
+	_, _, unpaid, need := p.allocateRest(cost, xValue, ctx, strategy)
+	return paperShortfall{reqs: unpaid, generic: need, favor: ctx.favoredOnX()}
 }
 
 func (s paperShortfall) amount() int { return satAddMana(reqRunsTotal(s.reqs), s.generic) }
@@ -181,7 +196,7 @@ func (s paperShortfall) slots() []PaperSlot {
 		if len(opts) == 0 {
 			opts = append([]string(nil), paperSymbols...)
 		}
-		out = appendPaperSlots(out, PaperSlot{Symbol: "{" + formatRequirement(r.req) + "}", Options: opts}, r.n)
+		out = appendPaperSlots(out, PaperSlot{Symbol: "{" + formatRequirement(r.req) + "}", Options: opts, X: r.x}, r.n)
 	}
 	if s.generic > 0 {
 		out = appendPaperSlots(out, PaperSlot{Symbol: "{1}", Options: append([]string(nil), paperSymbols...)}, s.generic)
@@ -211,7 +226,7 @@ func (s paperShortfall) String() string {
 	if s.generic > 0 {
 		b.WriteString("{" + strconv.Itoa(s.generic) + "}")
 	}
-	for _, r := range s.reqs {
+	for _, r := range coalesced(s.reqs) {
 		writeSymbolRun(&b, "{"+formatRequirement(r.req)+"}", r.n)
 	}
 	return b.String()
@@ -241,7 +256,7 @@ func (s paperShortfall) tokensFor(d PaperPayment) ([]ManaToken, error) {
 	}
 	pool := make(ManaPool, len(d.Mana))
 	order := make([]int, len(d.Mana))
-	total := 0
+	total, marked := 0, 0
 	for i, m := range d.Mana {
 		if !isColorSymbol(m.Color) && m.Color != "C" {
 			return nil, ErrInvalidPaperPayment
@@ -251,6 +266,9 @@ func (s paperShortfall) tokensFor(d PaperPayment) ([]ManaToken, error) {
 			return nil, ErrInvalidPaperPayment
 		}
 		total += n
+		if m.X {
+			marked += n
+		}
 		pool[i] = ManaToken{Color: m.Color}.withN(n)
 		if m.Artifact {
 			pool[i].SourceKinds = ManaSourceArtifact
@@ -260,11 +278,76 @@ func (s paperShortfall) tokensFor(d PaperPayment) ([]ManaToken, error) {
 	if total != amount {
 		return nil, ErrInvalidPaperPayment
 	}
+	if marked > 0 {
+		return s.markedTokens(d, pool)
+	}
+	// No marks (#3941): the caster named the mana and left the matching
+	// to the engine, which gives the X part the colours the card reads
+	// first (the same choice the pool's payment makes).
 	used := make([]int, len(pool))
-	if _, unpaid := colouredPass(pool, used, order, s.reqs); len(unpaid) > 0 {
+	_, unpaid, xUsed := colouredPassX(pool, used, order, s.reqs, s.favor)
+	if len(unpaid) > 0 {
 		return nil, ErrInvalidPaperPayment
 	}
-	return []ManaToken(pool), nil
+	out := make([]ManaToken, 0, len(pool)+1)
+	for i, t := range pool {
+		xu := 0
+		if xUsed != nil {
+			xu = xUsed[i]
+		}
+		if xu > 0 {
+			x := t.withN(xu)
+			x.ForX = true
+			out = append(out, x)
+		}
+		if rest := t.N() - xu; rest > 0 {
+			out = append(out, t.withN(rest))
+		}
+	}
+	return out, nil
+}
+
+// markedTokens is tokensFor for a declaration that says which mana paid
+// the X part (#3941): the marked mana must be exactly the X slots' worth
+// and pay them, and the rest must pay everything else, each against its
+// own requirements. The marked tokens are recorded ForX.
+func (s paperShortfall) markedTokens(d PaperPayment, pool ManaPool) ([]ManaToken, error) {
+	var xReqs, otherReqs []reqRun
+	for _, r := range s.reqs {
+		if r.x {
+			xReqs = append(xReqs, r)
+		} else {
+			otherReqs = append(otherReqs, r)
+		}
+	}
+	var xPool, otherPool ManaPool
+	for i, m := range d.Mana {
+		if m.X {
+			xPool = append(xPool, pool[i])
+		} else {
+			otherPool = append(otherPool, pool[i])
+		}
+	}
+	if len(xReqs) == 0 || TotalMana(xPool) != reqRunsTotal(xReqs) {
+		return nil, ErrInvalidPaperPayment
+	}
+	pays := func(p ManaPool, reqs []reqRun) bool {
+		order := make([]int, len(p))
+		for i := range order {
+			order[i] = i
+		}
+		_, unpaid := colouredPass(p, make([]int, len(p)), order, reqs)
+		return len(unpaid) == 0
+	}
+	if !pays(xPool, xReqs) || !pays(otherPool, otherReqs) {
+		return nil, ErrInvalidPaperPayment
+	}
+	out := make([]ManaToken, len(pool))
+	for i, t := range pool {
+		t.ForX = d.Mana[i].X
+		out[i] = t
+	}
+	return out, nil
 }
 
 // paperSymbolsOf is a declaration as a cost string for the log, in the

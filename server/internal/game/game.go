@@ -84,6 +84,16 @@ type Game struct {
 	// Plain data, carried by Clone and the snapshot.
 	TurnEndPending bool
 
+	// RestartPending is a restart of the game an effect asked for (CR
+	// 727, #3856, restart.go): Karn Liberated's −14 has resolved, and
+	// the resolution's CR 704.3 boundary ends this game and begins the
+	// new one, which consumes it. RestartTail is the new game's half of
+	// the effect, "then put those cards onto the battlefield", waiting
+	// for the mulligans to end (CR 727.4). Plain data, carried by Clone,
+	// RestoreFrom and the snapshot.
+	RestartPending *GameRestart
+	RestartTail    *GameRestart
+
 	// passTurn is the active player's standing end_turn (#2881,
 	// pass_turn.go): priority is passed for them whenever they hold it
 	// until their turn ends. Carried by Clone and RestoreFrom so an undo
@@ -815,6 +825,14 @@ type Game struct {
 	// actions and is neither snapshotted nor cloned.
 	landingEntryCounters uuid.UUID
 
+	// counterPlacerScope is the stack of players an action that is not
+	// a resolution has named as the one putting any counters it places:
+	// the activator of a mana ability, the player taking a special
+	// action (#3942, counter_placer.go). Pushed and popped around one
+	// call, so it is empty between actions and is neither snapshotted
+	// nor cloned.
+	counterPlacerScope []uuid.UUID
+
 	// enteringTokens holds the tokens whose CR 614 battlefield-entry
 	// window is open and which are therefore in NO zone yet: minted,
 	// not pushed. A card entering the battlefield sits in the zone it
@@ -1400,23 +1418,7 @@ func (g *Game) start(key *[32]byte, mode startMode) error {
 	// No "<= 0 means default" rewrite here any more (ADR 0075 §2.2):
 	// NewGame sets the defaults, and a limit of 0 set in the lobby is
 	// a table that wants no undos.
-	// S13.5: collect every seated player's ID so command-zone
-	// initialisation can mark all knowers in one pass.
-	allSeatedIDs := make([]uuid.UUID, 0, len(g.Seats))
-	for _, p := range g.Seats {
-		allSeatedIDs = append(allSeatedIDs, p.ID)
-	}
-	for _, p := range g.Seats {
-		p.UndosRemaining = g.Settings.UndoLimit
-		p.Life = g.Settings.StartingLife
-		// Command-zone cards are public — every seated player sees
-		// them per CR 400.2.
-		for i := range p.Command.Cards {
-			p.Command.Cards[i].AddKnowersAll(allSeatedIDs)
-		}
-	}
-	g.State = StateActive
-	g.MulligansOpen = true
+	g.beginPregameLocked()
 	// Step entry hooks (auto-untap, auto-draw, etc.) intentionally do
 	// NOT fire at Start — the cursor sits idle on Untap until the
 	// mulligan window closes (KeepHand triggers them when MulligansOpen
@@ -1433,6 +1435,40 @@ func (g *Game) start(key *[32]byte, mode startMode) error {
 		g.rollOpeningAutomaticallyLocked()
 	}
 	return nil
+}
+
+// beginPregameLocked is the part of the pregame procedure that comes
+// before the starting player is known: each player's starting life
+// total (CR 103.4) and undo budget, the command zone made public (CR
+// 400.2), the game made active and the mulligan window opened. Start
+// runs it, and so does a restart (CR 727.1, restart.go), so a new game
+// begins the same way however it began. A seat that has left the game
+// (only possible on a restart) is not touched.
+//
+// Caller must hold g.mu (write).
+func (g *Game) beginPregameLocked() {
+	// S13.5: collect every seated player's ID so command-zone
+	// initialisation can mark all knowers in one pass.
+	allSeatedIDs := make([]uuid.UUID, 0, len(g.Seats))
+	for _, p := range g.Seats {
+		if p != nil {
+			allSeatedIDs = append(allSeatedIDs, p.ID)
+		}
+	}
+	for _, p := range g.Seats {
+		if p == nil || p.Eliminated {
+			continue
+		}
+		p.UndosRemaining = g.Settings.UndoLimit
+		p.Life = g.Settings.StartingLife
+		// Command-zone cards are public — every seated player sees
+		// them per CR 400.2.
+		for i := range p.Command.Cards {
+			p.Command.Cards[i].AddKnowersAll(allSeatedIDs)
+		}
+	}
+	g.State = StateActive
+	g.MulligansOpen = true
 }
 
 // OpeningHandSize is the number of cards each player draws when the

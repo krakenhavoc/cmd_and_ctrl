@@ -1136,8 +1136,8 @@ func TestB39SorinMinusThreeSetsTheLifeTotalInBothDirections(t *testing.T) {
 	}
 
 	spec, _ := Lookup(b39SorinMarkovOracle)
-	if len(spec.Activated) != 2 {
-		t.Errorf("the -7 is deliberately not offered: %d abilities", len(spec.Activated))
+	if len(spec.Activated) != 3 {
+		t.Errorf("Sorin offers +2, -3 and the -7 turn control (#3857): %d abilities", len(spec.Activated))
 	}
 }
 

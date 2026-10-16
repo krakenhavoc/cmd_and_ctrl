@@ -354,6 +354,14 @@ type GameSnapshot struct {
 	// with nobody on priority until the next AdvanceStep, which is
 	// weaker than the card and never stronger.
 	TurnEndPending bool `json:"turnEndPending,omitempty"`
+	// RestartPending and RestartTail are CR 727's deferred halves
+	// (#3856, ADR 0201): a restart waiting on its resolution's boundary,
+	// and the new game's "then" waiting on the mulligans. Additive in
+	// v9. An older binary that drops the tail begins the first turn
+	// without the exempted cards, which stay in exile: weaker than the
+	// card, never stronger.
+	RestartPending *GameRestart `json:"restartPending,omitempty"`
+	RestartTail    *GameRestart `json:"restartTail,omitempty"`
 
 	// StackMeta is a SLICE, not a map: map iteration order is
 	// unspecified and the stack is ordered by Seq anyway. Sorted on
@@ -1595,6 +1603,8 @@ type pendingChoiceSnapshot struct {
 	ManaDifferent        int                    `json:"manaDifferent,omitempty"`
 	ManaChosen           []string               `json:"manaChosen,omitempty"`
 	ManaLabel            string                 `json:"manaLabel,omitempty"`
+	ManaSettled          []string               `json:"manaSettled,omitempty"`
+	ManaPicksLeft        []ManaPickSlot         `json:"manaPicksLeft,omitempty"`
 	ManaTapped           bool                   `json:"manaTapped,omitempty"`
 	ReplacementEffectIDs []ReplacementEffectID  `json:"replacementEffectIds,omitempty"`
 	DamageAssignment     *DamageAssignmentFrame `json:"damageAssignment,omitempty"`
@@ -2044,6 +2054,8 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		ActiveSeatLeftPending: g.ActiveSeatLeftPending,
 		TurnChangePending:     g.TurnChangePending,
 		TurnEndPending:        g.TurnEndPending,
+		RestartPending:        cloneGameRestart(g.RestartPending),
+		RestartTail:           cloneGameRestart(g.RestartTail),
 		turnSeqPresent:        true,
 	}
 	s.OncePerBatchFired = copyStringUint64Map(g.oncePerBatchFired)
@@ -2761,6 +2773,8 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ManaDifferent:         c.ManaDifferent,
 		ManaChosen:            copyStrings(c.ManaChosen),
 		ManaLabel:             c.ManaLabel,
+		ManaSettled:           copyStrings(c.ManaSettled),
+		ManaPicksLeft:         copyManaPickSlots(c.ManaPicksLeft),
 		ManaTapped:            c.ManaTapped,
 		ReplacementEffectIDs:  copyReplacementEffectIDs(c.ReplacementEffectIDs),
 		NoLegalTarget:         c.NoLegalTarget,
@@ -3009,6 +3023,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.ActiveSeatLeftPending = s.ActiveSeatLeftPending
 	g.TurnChangePending = s.TurnChangePending
 	g.TurnEndPending = s.TurnEndPending
+	g.RestartPending = cloneGameRestart(s.RestartPending)
+	g.RestartTail = cloneGameRestart(s.RestartTail)
 	g.eventSeq = s.EventSeq
 	g.eventBatch = s.EventBatch
 	g.resolutionOpen = s.ResolutionOpen
@@ -3668,6 +3684,8 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ManaDifferent:         c.ManaDifferent,
 		ManaChosen:            copyStrings(c.ManaChosen),
 		ManaLabel:             c.ManaLabel,
+		ManaSettled:           copyStrings(c.ManaSettled),
+		ManaPicksLeft:         copyManaPickSlots(c.ManaPicksLeft),
 		ManaTapped:            c.ManaTapped,
 		ReplacementEffectIDs:  copyReplacementEffectIDs(c.ReplacementEffectIDs),
 		NoLegalTarget:         c.NoLegalTarget,

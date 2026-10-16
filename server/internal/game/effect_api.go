@@ -2033,9 +2033,10 @@ func (g *Game) AddCounterForEffect(cardID uuid.UUID, name string, delta int) err
 //
 // It rides the window on ReplacementEvent.CounterPlacer and lands on
 // the emitted EventCounterPlaced as Actor, so "if YOU would put" and
-// "whenever YOU put" read a fact instead of guessing from the last
-// resolution. uuid.Nil means unknown and is what the plain spelling
-// above passes; a reader falls back to its own heuristic then.
+// "whenever YOU put" read a fact. uuid.Nil, which the plain spelling
+// above passes, means "whoever the rule says" (#3942,
+// counter_placer.go): the controller of the open resolution, which is
+// right for every effect that does not say another player puts them.
 //
 // Caller must already hold g.mu.
 func (g *Game) AddCounterByForEffect(placer, cardID uuid.UUID, name string, delta int) error {

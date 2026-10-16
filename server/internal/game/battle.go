@@ -78,7 +78,8 @@ func (g *Game) stampBattleEntryLocked(cardID uuid.UUID, oracleID string) {
 			// Through the CR 614 pipeline, like the loyalty stamp:
 			// "enters with N defense counters" is a counter placement
 			// an effect causes, so a Doubling Season doubles it.
-			if err := g.AddCounterForEffect(cardID, CounterDefense, defense); err != nil {
+			// #3942, CR 122.6a: put by the battle's controller.
+			if err := g.AddCounterByForEffect(controller, cardID, CounterDefense, defense); err != nil {
 				g.EmitEvent(Event{Kind: EventEffectError, Source: cardID, ErrorMsg: err.Error()})
 			}
 		}

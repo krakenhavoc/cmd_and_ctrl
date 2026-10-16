@@ -113,38 +113,15 @@ func b11CountersWerePlaced(ev game.Event, target uuid.UUID, kind string, g *game
 // b11CounterPlacerOf is who PUT the counters this EventCounterPlaced
 // reports — "whenever YOU put one or more counters".
 //
-// ev.Actor is the fact when the placement named a placer (ADR 0056
-// Decision 5): the source's controller for a CR 120.3d damage result,
-// the proliferating player for CR 701.34. It is uuid.Nil for the
-// placements that name nobody — a paid cost, a permanent entering with
-// counters, the CR 704.5q cancel, a sandbox edit — and only then does
-// this fall back to b11ResolvingController's heuristic below.
-//
-// One helper rather than each card reaching for ev.Actor, because the
-// fallback is the part that is easy to forget: reading ev.Actor alone
-// would make every cost-paid counter stop counting, which is a
-// REGRESSION on cards that read correctly today.
-func b11CounterPlacerOf(ev game.Event, g *game.Game) uuid.UUID {
-	if ev.Actor != uuid.Nil {
-		return ev.Actor
-	}
-	return b11ResolvingController(g)
-}
-
-// b11ResolvingController is the controller of the spell or ability
-// whose resolution is in progress — the Actor of the most recent
-// EventResolve, which the engine emits BEFORE it runs an item's
-// effect. It is the FALLBACK reading of "whenever YOU put counters"
-// (b11CounterPlacerOf is the reading): counters land during a
-// resolution, and the player resolving is the player putting them.
-// uuid.Nil when nothing has resolved yet.
-func b11ResolvingController(g *game.Game) uuid.UUID {
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		if g.Events[i].Kind == game.EventResolve {
-			return g.Events[i].Actor
-		}
-	}
-	return uuid.Nil
+// It is ev.Actor. Since #3942 every placement names its placer at the
+// source (game/counter_placer.go): the controller of the resolving
+// spell or ability, the payer of a cost, the activator of a mana
+// ability, the controller of a permanent entering with counters
+// (CR 122.6a), the source's controller for a CR 120.3d damage result.
+// A removal names nobody and is not a placement anyway. The g argument
+// is kept so the callers read the same as the other "you put" helpers.
+func b11CounterPlacerOf(ev game.Event, _ *game.Game) uuid.UUID {
+	return ev.Actor
 }
 
 // b11OpponentControlsMoreThanYou is Keeper of the Accord's

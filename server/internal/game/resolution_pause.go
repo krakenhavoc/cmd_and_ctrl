@@ -177,7 +177,7 @@ func (g *Game) SettleResolution() {
 // begun (TurnEndPending, end_turn.go, #2165) is owed the same boundary
 // and gets it here too. Caller must hold g.mu.
 func (g *Game) settleResolutionLocked() {
-	if (!g.resolutionOpen && !g.TurnEndPending) || g.State != StateActive {
+	if (!g.resolutionOpen && !g.TurnEndPending && g.RestartPending == nil) || g.State != StateActive {
 		return
 	}
 	g.runStateChecksLocked()
