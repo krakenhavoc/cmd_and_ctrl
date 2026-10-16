@@ -41,7 +41,7 @@ func init() {
 			TribalKeywordGrant(TribeFilter{Tribes: []string{"Zombie"}, Others: true, YoursOnly: true}, "flying"),
 		},
 		Triggered: []game.TriggeredAbility{
-			Optional(withAtBatchEnd(
+			OptionalDrawThatMany(withAtBatchEnd(
 				On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return b41ZombieYouControlDealtCombatDamageToAnOpponent(ev, source, g) &&
 						b41FirstZombieHitOnThatOpponent(ev, source, g)
@@ -49,7 +49,13 @@ func init() {
 					func(g *game.Game, item *game.StackItem) error {
 						return lootOne(g, item, settledEventAmount(item))
 					}), ThatManyEvents()),
-				"Hordewing Skaab — draw cards equal to the number of opponents dealt damage, then discard that many?"),
+				"Hordewing Skaab — draw cards equal to the number of opponents dealt damage, then discard that many?", hordewingSkaabDraws),
 		},
 	})
+}
+
+// hordewingSkaabDraws is how many cards a "yes" draws: one for each
+// opponent dealt damage (#4016, OptionalDrawThatMany).
+func hordewingSkaabDraws(_ *game.Game, item *game.StackItem) int {
+	return settledEventAmount(item)
 }

@@ -421,6 +421,16 @@ type TriggeredAbility struct {
 	// there and was swallowing the next one. See event_batch.go.
 	OncePerBatch bool
 
+	// NotPutByThisAbility is the intervening "if it wasn't put onto the
+	// battlefield with this ability" (#3933, CR 603.4: Kodama of the East
+	// Tree). An EventETB whose entry this very ability made — the event's
+	// CauseSource is this source object and its CauseAbility this row —
+	// does not trigger it, so one Kodama cannot chain off itself. The
+	// cause is fixed with the event, so the check as it resolves always
+	// agrees with the one as it triggered. The row must be nameable
+	// (a declared Effect); effects.Register holds that.
+	NotPutByThisAbility bool
+
 	// SubjectIsEventSource makes the trigger's subject
 	// (TriggerContext.Object) the event's SOURCE rather than its
 	// object: "whenever a creature you control deals combat damage to
@@ -871,6 +881,11 @@ func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteri
 		return
 	}
 	if g.triggerSuppressedLocked(pass, source, lki, &t, origin) {
+		return
+	}
+	// #3933, CR 603.4: "if it wasn't put onto the battlefield with this
+	// ability" — the entry this ability made itself does not trigger it.
+	if t.NotPutByThisAbility && enteredWithThisAbility(pass.ev, &source, t) {
 		return
 	}
 	if t.OncePerBatch && !g.oncePerBatchAllowsLocked(pass.ev.Batch, source.InstanceID, oncePerBatchKeyLocked(t, pass.ev, &source, g)) {

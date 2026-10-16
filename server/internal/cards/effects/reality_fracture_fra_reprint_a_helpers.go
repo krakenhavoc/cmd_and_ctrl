@@ -79,7 +79,9 @@ var rfReprintAOccultEpiphanyDiscard = game.RegisterDrawThen("occult-epiphany-dis
 		if n == 0 {
 			return nil
 		}
-		return g.CreateTokenForEffect(player, TokenCard("1/1 white Spirit with flying"), n)
+		// The Spirits are words of the spell's text (#4005).
+		spirit := g.TextReaderOfForEffect(d.Source).TokenThroughText(TokenCard("1/1 white Spirit with flying"))
+		return g.CreateTokenForEffect(player, spirit, n)
 	})
 })
 

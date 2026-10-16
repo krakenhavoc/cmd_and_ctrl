@@ -268,6 +268,9 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 			continue
 		}
 		for _, gr := range CatalogGrantedAlternativeCosts(key) {
+			// Rooftop Storm's "Zombie creature spells" is a word of the
+			// source's text (CR 612.2, #4005).
+			gr.Spells = gr.Spells.ThroughTextOf(src)
 			if gr.Offer.Key == "" || !gr.reaches(zone) || !gr.covers(g, playerID, card) || seen[gr.Offer.Key] {
 				continue
 			}

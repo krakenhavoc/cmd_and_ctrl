@@ -59,6 +59,7 @@ func init() {
 					}
 					return MayChoice{
 						Question: "Corruption of Towashi — draw a card?",
+						Draws:    1,
 						OnYes: func(ctx *Context) error {
 							if !notYetDone(ctx.Game, ctx.Item.SourceCardID) {
 								return nil

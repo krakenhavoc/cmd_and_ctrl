@@ -24,10 +24,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordEvolve},
 		Triggered: []game.TriggeredAbility{
-			Optional(WheneverACounterIsPutOnThis(game.CounterPlusOne, "Fathom Mage — you may draw a card",
+			OptionalDraw(WheneverACounterIsPutOnThis(game.CounterPlusOne, "Fathom Mage — you may draw a card",
 				func(g *game.Game, item *game.StackItem) error {
 					return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-				}), "Fathom Mage — draw a card?"),
+				}), "Fathom Mage — draw a card?", 1),
 		},
 	})
 }

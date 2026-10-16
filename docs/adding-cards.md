@@ -2727,6 +2727,15 @@ through one of the doors.** Target clauses already are when they use
 (`ChosenColor`, `NamedTribe`) is not text: read it directly. The
 amendment lists the files that still hard-code a word.
 
+A token your card describes is words of its text too (#4005).
+`CreateToken`, `CreateTokenAdvanced` and `CreateTokensAttackingYourChoice`
+read the template through the text themselves. If you call
+`CreateTokenForEffect` and its kin, or build a `game.TokenGroup`, pass the
+template as `ctx.TextToken(t)` for a description, as `copiedToken(t)` for a
+copy of an object, or as `ruleDefinedToken(t)` for a keyword's token or a
+Treasure-style predefined token. `TestTokenDescriptionsReadThroughText`
+fails anything else.
+
 ### Adding a combat-keyword card (S18+)
 
 Creatures with printed combat keywords (flying, reach, deathtouch,
@@ -3557,10 +3566,17 @@ DrawLimits: PlayersCantDrawCards(),                        // Maralen of the Mor
 - **The count is cards actually drawn this turn** (`Game.DrawnThisTurn`):
   draws before the permanent arrived count, and a draw a replacement
   turned into something else does not.
-- **A choice to draw** (CR 121.3: a player who can't draw can't choose
-  to) can ask `Game.CanDrawForEffect(player)` or
-  `DrawsLeftThisTurnForEffect(player)` before offering it. The generic
-  "you may draw" prompts don't yet; a yes there draws nothing.
+- **A choice to draw** (#4016, CR 121.2b, 121.3, 121.3a) is not offered
+  to a player the limit stops drawing that many: declare the draw on the
+  prompt and the engine skips it. An optional trigger whose "yes" draws
+  uses `OptionalDraw(t, question, n)` (`OptionalDrawThatMany` for "that
+  many"; `MayDraw(row, n)` on a row that builds its `OptionalPrompt` with a
+  chooser) instead of `Optional`; the ability then resolves as a "no".
+  A `MayChoice` sets `Draws: n` (and `Drawer` when someone else
+  draws, as in Combustible Gearhulk); `OnNo` runs at once. "Draw up to
+  N" caps its choice with `Game.DrawChoiceCeilingForEffect(player, N)`.
+  A choice to draw multiple cards counts as one choice: under Narset,
+  "you may draw two cards" can't be taken at all (CR 121.2b).
 - A search or a "put into your hand" is not a draw (CR 121.5) and is
   never limited.
 
@@ -6840,6 +6856,15 @@ declared, not written inside the Effect: `Do(If{Cond: …, Then: …})`,
 or `InterveningIf(cond, row)` around a hand-written Effect (Valakut,
 Land Tax). Then a condition that fails in response removes the trigger
 before its question is asked (#3907).
+
+**"If it wasn't put onto the battlefield with this ability"** (#3933,
+CR 603.4, Kodama of the East Tree) is a flag, not a matcher: set
+`NotPutByThisAbility = true` on the entry row (an `On(game.EventETB, …)`
+with a declared Effect). The engine stamps every `EventETB` with the
+ability that made the entry (`Event.CauseSource`, the source object, and
+`Event.CauseAbility`, the catalog row; ADR 0013 §5ak) and skips the
+trigger when that is this row on this object. Never compare labels or
+scan the event log for it.
 
 **"You may" activated abilities.** When an activated ability's WHOLE
 effect is a "you may" ("Boast — {1}: You may have Arni's base power

@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -502,6 +503,61 @@ func (c *Card) TextKeyword(tok string) string {
 		return tok
 	}
 	return c.TextWords.keyword(tok)
+}
+
+// TokenThroughText is the token a description in this object's text
+// makes, as the text now says it (CR 612.2, #4005): "create a 2/2 black
+// Zombie creature token" under a Sleight of Mind (black → blue) makes a
+// blue Zombie, and under an Artificial Evolution (Zombie → Elf) a black
+// Elf. The template's colours, its subtypes (a creature type or a basic
+// land type), and the words its keywords name ("protection from white",
+// "islandwalk") are read through the text. A token the description names
+// only by its subtypes is named after them (CR 111.4), so its name
+// follows; a token with a name of its own ("named Cadet") keeps it.
+//
+// Only for a token DESCRIBED by the text. A copy's template is copiable
+// values (CR 707.2), which a text change never touches, and a token a
+// keyword action defines (living weapon's Germ, incubate's Incubator) is
+// no word of the text at all. A template with faces is returned as it is.
+// A nil reader, or one whose words are printed, returns `tmpl` itself.
+func (c *Card) TokenThroughText(tmpl Card) Card {
+	if c == nil || c.TextWords == nil || len(tmpl.Faces) > 0 {
+		return tmpl
+	}
+	w := c.TextWords
+	if len(tmpl.Colors) > 0 {
+		tmpl.Colors = textWordsOnce(tmpl.Colors, w.color)
+	}
+	supers, types, subs := ParseTypeLine(tmpl.TypeLine)
+	if now := textWordsOnce(subs, w.subtype); !slices.Equal(now, subs) {
+		if tmpl.Name == strings.Join(subs, " ") {
+			tmpl.Name = strings.Join(now, " ")
+		}
+		tmpl.TypeLine = composeTypeLine(supers, types, now)
+	}
+	tmpl.Keywords = w.keywords(tmpl.Keywords)
+	return tmpl
+}
+
+// ThroughTextOf is f with the creature types it names read as `reader`'s
+// text now says them (CR 612.2, #4005): Gisa and Geralf's "a Zombie
+// creature spell" under an Artificial Evolution (Zombie → Elf) opens Elf
+// creature spells. A type chosen as the source entered (FromChosenType,
+// Realmwalker) is not a word of its text and is left alone; so is a
+// filter whose words nothing changed, which comes back as it was.
+func (f PermissionFilter) ThroughTextOf(reader *Card) PermissionFilter {
+	if reader == nil || reader.TextWords == nil {
+		return f
+	}
+	if f.CreatureType != "" && !f.FromChosenType {
+		f.CreatureType = reader.TextSubtype(f.CreatureType)
+	}
+	for i, t := range f.CreatureTypesAny {
+		if t != "" {
+			f.CreatureTypesAny[i] = reader.TextSubtype(t)
+		}
+	}
+	return f
 }
 
 // TextChanges renders this object's changed words for the wire

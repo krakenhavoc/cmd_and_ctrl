@@ -36,9 +36,9 @@ func init() {
 		Name:         "Rogue's Gloves",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OptionalDraw(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return attachedCreatureDealtCombatDamageToPlayer(ev, source, g)
-			}, "Rogue's Gloves — draw a card", Do(DrawCards{N: 1})), "Rogue's Gloves — draw a card?"),
+			}, "Rogue's Gloves — draw a card", Do(DrawCards{N: 1})), "Rogue's Gloves — draw a card?", 1),
 		},
 		Activated: []ActivatedAbility{
 			EquipAbility("{2}"),

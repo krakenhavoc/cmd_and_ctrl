@@ -30,7 +30,7 @@ func init() {
 			Cost:    PayEnergy(3),
 			Purpose: game.Purpose{Answers: game.AnswerValue, Tokens: 1},
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				_, err := g.CreateTokensForEffect(item.Controller, assemblyLineRobotToken(), 1, game.TokenEntryOptions{Tapped: true})
+				_, err := g.CreateTokensForEffect(item.Controller, NewContext(g, item).TextToken(assemblyLineRobotToken()), 1, game.TokenEntryOptions{Tapped: true})
 				return err
 			},
 		}},

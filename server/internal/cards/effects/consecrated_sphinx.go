@@ -24,7 +24,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			Optional(WheneverAnOpponentDraws("Consecrated Sphinx — draw two cards", Do(DrawCards{N: 2})), "Consecrated Sphinx — draw two cards?"),
+			OptionalDraw(WheneverAnOpponentDraws("Consecrated Sphinx — draw two cards", Do(DrawCards{N: 2})), "Consecrated Sphinx — draw two cards?", 2),
 		},
 	})
 }

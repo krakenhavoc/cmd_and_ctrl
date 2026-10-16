@@ -73,6 +73,7 @@ func palantirAskOpponent(g *game.Game, item *game.StackItem) error {
 		return MayChoice{
 			Player:   opponent,
 			Question: "Palantír of Orthanc — let its controller draw a card?",
+			Draws:    1, Drawer: item.Controller,
 			YesLabel: "They draw a card",
 			NoLabel:  "They mill instead and I lose life",
 			OnYes: func(ctx *Context) error {

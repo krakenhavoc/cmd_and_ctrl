@@ -148,6 +148,58 @@ func Optional(t game.TriggeredAbility, question string) game.TriggeredAbility {
 	return t
 }
 
+// OptionalDraw is Optional for a "you may draw N cards": the "yes" is a
+// choice to draw n cards, so a player a draw limit stops drawing that
+// many isn't asked and the ability does nothing (CR 121.2b, CR 121.3,
+// #4016). Apply it to a trigger whose effect is that draw, or a draw
+// and what "if you do" adds to it.
+func OptionalDraw(t game.TriggeredAbility, question string, n int) game.TriggeredAbility {
+	return MayDraw(Optional(t, question), n)
+}
+
+// OptionalDrawThatMany is OptionalDraw for a count read as the ability
+// resolves: "you may draw that many cards".
+func OptionalDrawThatMany(t game.TriggeredAbility, question string, n func(g *game.Game, item *game.StackItem) int) game.TriggeredAbility {
+	t = Optional(t, question)
+	registerOptionalDraws(t.Key, n)
+	return t
+}
+
+// MayDraw declares an optional row's "yes" a choice to draw n cards
+// (OptionalDraw), for a row that builds its OptionalPrompt by hand
+// because it needs a Chooser (Edric's "its controller may draw").
+func MayDraw(t game.TriggeredAbility, n int) game.TriggeredAbility {
+	registerOptionalDraws(t.Key, func(*game.Game, *game.StackItem) int { return n })
+	return t
+}
+
+// optionalDraws is what OptionalDraw declared, by row Key. Written only
+// by init() registration and read after, so it needs no lock; kept off
+// the row so that nothing reachable from a Game holds the closure
+// (game.CatalogOptionalDraws).
+var optionalDraws = map[string]func(*game.Game, *game.StackItem) int{}
+
+func registerOptionalDraws(key string, n func(*game.Game, *game.StackItem) int) {
+	if key == "" {
+		panic("effects.OptionalDraw: the row needs a Key")
+	}
+	optionalDraws[key] = n
+}
+
+// rowOptionalDraws is game.CatalogOptionalDraws.
+func rowOptionalDraws(t game.TriggeredAbility, g *game.Game, item *game.StackItem) int {
+	if t.OptionalPrompt == nil {
+		return 0
+	}
+	n := optionalDraws[t.Key]
+	if n == nil {
+		return 0
+	}
+	return n(g, item)
+}
+
+func init() { game.CatalogOptionalDraws = rowOptionalDraws }
+
 // OncePerBatch marks a "whenever ONE OR MORE …" ability (#587): the
 // engine emits one event per creature that attacks, enters or deals
 // damage, and this makes the harvester fire on the FIRST event of a

@@ -789,6 +789,15 @@ type PendingChoiceView struct {
 	// graveyard" prompt. Everything else in Options is a library card.
 	// Absent for a library-only search. Chooser-only, like Options.
 	SearchGraveyard []string `json:"search_graveyard,omitempty"`
+	// SearchHand (#3988) lists the instance IDs among Options that are in
+	// the searched player's hand, on a "search that player's graveyard,
+	// hand, and library" prompt (Kotose, the Silent Spider). Absent for
+	// every other search. Chooser-only, like Options.
+	SearchHand []string `json:"search_hand,omitempty"`
+	// SearchAllZones (#3988) marks a "search that player's graveyard, hand,
+	// and library" prompt: every zone is searched, so the library is
+	// shuffled whatever is taken. Chooser-only.
+	SearchAllZones bool `json:"search_all_zones,omitempty"`
 	// ExchangesText marks a "copy_target" prompt whose pick is the
 	// creature to exchange text boxes with, not the object to copy (ADR
 	// 0160 Decision 6, Deadpool, Trading Card). Same answer, same empty
@@ -2626,6 +2635,34 @@ type PlayerView struct {
 	// listed here: they are on the battlefield for everyone to read.
 	// Omitempty: absent for nearly every seat.
 	CounterShields []CounterShieldView `json:"counter_shields,omitempty"`
+
+	// DrawLimit is the per-turn draw limit on this player right now
+	// (CR 121.2b, #3927, #4016): Narset, Parter of Veils' "can't draw
+	// more than one card each turn", or Maralen of the Mornsong's
+	// "can't draw cards" as a limit of zero. Nil when none applies.
+	// Derived from the battlefield on every projection; public, since a
+	// draw that does nothing and a "you may draw" that is never asked
+	// are confusing unless the seat says why.
+	DrawLimit *DrawLimitView `json:"draw_limit,omitempty"`
+}
+
+// DrawLimitView is a seat's draw limit: Max is how many cards the
+// player may draw each turn (0 for "can't draw cards"), Left how many
+// more they may draw this turn, and Sources the permanents that impose
+// it, by name.
+type DrawLimitView struct {
+	Max     int      `json:"max"`
+	Left    int      `json:"left"`
+	Sources []string `json:"sources,omitempty"`
+}
+
+// viewOfDrawLimit projects the draw limit reaching p, or nil.
+func viewOfDrawLimit(g *game.Game, p *game.Player) *DrawLimitView {
+	st, ok := g.DrawLimitStatusLocked(p)
+	if !ok {
+		return nil
+	}
+	return &DrawLimitView{Max: st.Max, Left: st.Left, Sources: st.Sources}
 }
 
 // CounterShieldView is one "can't be countered" grant or unspent
@@ -9137,6 +9174,10 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			for _, id := range c.SearchGraveyardCards {
 				v.SearchGraveyard = append(v.SearchGraveyard, id.String())
 			}
+			for _, id := range c.SearchHandCards {
+				v.SearchHand = append(v.SearchHand, id.String())
+			}
+			v.SearchAllZones = c.SearchesGraveyardHandAndLibrary()
 			v.Options = make([]CardView, 0, len(c.SearchCards))
 			for _, id := range c.SearchCards {
 				if card, ok := g.LookupCardForEffect(id); ok {
@@ -9853,6 +9894,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		CantWin:             g.CantWinForEffect(p),
 		EndGates:            viewOfGameEndGates(g.GameEndGatesForEffect(p)),
 		CounterShields:      viewOfCounterShields(g.CounterShieldGrantsForEffect(p)),
+		DrawLimit:           viewOfDrawLimit(g, p),
 	}
 	// #3016: how many trigger orders the seat remembered, for its menu.
 	pv.TriggerOrderMemoryCount = g.TriggerOrderMemoryCountLocked(p.ID)
@@ -10541,6 +10583,8 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].SearchMax = 0
 			out[i].SearchMin = 0
 			out[i].SearchGraveyard = nil
+			out[i].SearchHand = nil
+			out[i].SearchAllZones = false
 			continue
 		}
 		// ADR 0133: an opening-hand action's question names a card in the

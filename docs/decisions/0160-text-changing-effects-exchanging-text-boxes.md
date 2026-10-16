@@ -588,3 +588,60 @@ permanent enters (the Roads, Unbreathing Horde).
   path, which does not lend the granting permanent's text.
 - **A copy exception applied as a permanent enters as a copy** (Phantasmal Image's "it's an Illusion"):
   out of reach by rule, like any enters condition.
+
+## Follow-up 2026-10-16, slice 4 — token descriptions and cast-permission filters (#4005)
+
+**Status:** Accepted · 2026-10-16. No new decision: the two classes slice 3 left are moved onto the same
+doors, and a token template now says what it is where it is handed to the engine.
+
+### Token descriptions
+
+"Create a 2/2 black Zombie creature token" is words of the creating object's text (CR 612.2), so the
+token's colours and types follow a change. `Card.TokenThroughText(tmpl)` reads a template through a
+text: its colours (each once), the basic land types and creature types on its type line, and the words
+its keywords name ("protection from white", "islandwalk"). A token the description names only by its
+subtypes is named after them (CR 111.4), so "Zombie" becomes "Elf"; a token with a name of its own
+("named Cadet") keeps it. `Context.TextToken` is the effect's door. `CreateToken`, `CreateTokenAdvanced`
+and `CreateTokensAttackingYourChoice` read their template through it as the tokens are made, which
+covers the catalog's several hundred token specs without touching them. Krenko, Mob Boss under a Sleight
+of Mind (red → blue) and an Artificial Evolution (Goblin → Elf) makes blue Elves.
+
+Two kinds of template are not descriptions, and are never read:
+
+- **A copy** (CR 707.2) is copiable values, which no text change reaches. `CreateTokenCopy` and the
+  cards that copy an object (Cleaver Skaab, Necroduality, Orvar, Mechanized Production, myriad,
+  Saheeli, Skyclave Relic, Nacatl War-Pride, Inalla, Sandstorm Crasher, Calamity, Sauron) hand it over as
+  `copiedToken(t)`. An exception the copy effect prints ("except it's a black Zombie") is the
+  effect's text, and slice 3 already reads it.
+- **A token the rules define**: a keyword's token (living weapon's Germ, job select's Hero, incubate's
+  Incubator, mobilize's Warriors, empower's Jace), whose only spelling on the card is reminder text, and
+  a predefined token (CR 111.10: a Treasure, a Food, a Role). These are handed over as
+  `ruleDefinedToken(t)`.
+
+A card file that calls the game's creation methods itself (`CreateTokenForEffect` and its kin, or a
+`game.TokenGroup`) names its template with one of the three. A replacement that adds a group reads it
+through its source (Stridehangar Automaton's Thopter, `src.TokenThroughText`), and a registered
+continuation through `TextReaderOfForEffect` (Occult Epiphany's Spirits).
+`TestTokenDescriptionsReadThroughText` holds every card file to that. A variable passes when every
+assignment to it in the same declaration is one of the three calls.
+
+### Cast-permission filters and conditions
+
+A standing permission is derived from the battlefield on every query, so the derivation
+(`stampStandingPermissionLocked`) reads its filter's creature types through the granting permanent
+(`PermissionFilter.ThroughTextOf`) and respells its label to match. Gisa and Geralf under "Zombie → Elf"
+casts an Elf creature spell from the graveyard, and its button says so. Conspicuous Snoop and Deeproot
+Historian work the same way. A type chosen as the source entered (Realmwalker's `FromChosenType`) is
+not a word of its text and is left alone. Rooftop Storm's granted alternative cost reads its "Zombie
+creature spells" through its source as the offers are derived (`grantedAlternativeCostsLocked`).
+
+A permission an effect grants is fixed as the effect resolves (CR 608.2h), so its condition's creature
+type is read through the resolving text there: Robber of the Rich's "a Rogue" and Flameshape's "a
+Wizard" are `ctx.TextSubtype(...)`, as Possibility Technician's "a Kavu" already was. The guard fails a
+literal creature type in a `game.PermissionCondition`. It also fails one in a `game.PermissionFilter`
+outside the files whose filter the engine derives (`permissionFilterDerived`).
+
+### Still not reached
+
+- **A copy exception applied as a permanent enters as a copy** (Phantasmal Image's "it's an Illusion"):
+  out of reach by rule, like any enters condition.

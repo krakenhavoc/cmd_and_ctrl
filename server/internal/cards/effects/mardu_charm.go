@@ -47,7 +47,7 @@ func marduCharmWarriors(item *game.StackItem, ctx *Context, _ int) error {
 	return ctx.Game.CreateTokensThenForEffect(game.TokenCreation{
 		Controller: item.Controller,
 		Source:     item.SourceCardID,
-		Groups:     []game.TokenGroup{{Template: TokenCard("1/1 white Warrior"), Count: 2}},
+		Groups:     []game.TokenGroup{{Template: ctx.TextToken(TokenCard("1/1 white Warrior")), Count: 2}},
 	}, func(g *game.Game, created []uuid.UUID) error {
 		next := NewContext(g, item)
 		for _, id := range created {

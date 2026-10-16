@@ -653,6 +653,14 @@ export interface CounterShieldView {
   next_only?: boolean;
 }
 
+// A seat's draw limit (#4016): `max` cards each turn (0 for "can't draw
+// cards"), `left` more this turn, imposed by `sources` (card names).
+export interface DrawLimitView {
+  max: number;
+  left: number;
+  sources?: string[];
+}
+
 export interface GameEndGateView {
   source?: string;
   source_name: string;
@@ -1927,6 +1935,12 @@ export interface PendingChoiceView {
   // instance IDs among `options` that are in the searcher's graveyard.
   // Everything else is a library card. Absent for a library-only search.
   search_graveyard?: string[];
+  // #3988: on a "search that player's graveyard, hand, and library"
+  // prompt (Kotose, the Silent Spider), the instance IDs among `options`
+  // that are in the searched player's hand, and `search_all_zones` set:
+  // every zone is searched, so the library is shuffled whatever is taken.
+  search_hand?: string[];
+  search_all_zones?: boolean;
   // ADR 0160: a "copy_target" prompt whose pick is the creature to
   // exchange text boxes with rather than the object to copy (Deadpool,
   // Trading Card). Same {card_ids} answer, same empty decline.
@@ -2672,6 +2686,10 @@ export interface PlayerView {
   // this turn", an unused Insist. Public, and absent for nearly every
   // seat.
   counter_shields?: CounterShieldView[];
+  // #3927, #4016 (CR 121.2b): the per-turn draw limit on this seat
+  // (Narset, Parter of Veils; Maralen of the Mornsong as a limit of 0).
+  // Derived, public, and absent when no limit applies.
+  draw_limit?: DrawLimitView;
 }
 
 // One emblem (CR 114). `label` is the board name ("Elspeth, Sun's

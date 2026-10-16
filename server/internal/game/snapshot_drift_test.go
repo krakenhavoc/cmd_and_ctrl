@@ -1084,6 +1084,7 @@ var pendingChoiceFields = plan(
 	"GuardsStackItem", carried, "",
 	"SearchCards", carried, "",
 	"SearchGraveyardCards", carried, "",
+	"SearchHandCards", carried, "",
 	"SearchMax", carried, "",
 	"SearchMin", carried, "",
 	// S28 cascade: which card the "you may cast it without paying
