@@ -738,6 +738,11 @@ type Mod struct {
 	// whole turn. Refused on every other record
 	// (dealtDamageByScopeProblem).
 	DamageSince int `json:"damageSince,omitempty"`
+	// AnyController is ModSkipNextUntapStep's "Creatures don't untap"
+	// (Blinding Beam, #3995): every permanent of its Types that would
+	// untap in Player's untap step, not only the ones Player controls.
+	// Refused on every other kind (skipNextUntapStepModProblem).
+	AnyController bool `json:"anyController,omitempty"`
 }
 
 // AffectedObject is one member of a ScopedEffect's affected set: the
@@ -1054,6 +1059,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSkipTurns: {reader: readerRule},
 	// ADR 0188 Decision 3a (#3563): a step of one extra turn skipped.
 	ModSkipExtraTurnStep: {reader: readerRule},
+	// ADR 0058 amendment 2026-10-16 (#3995): a player-wide "don't untap
+	// during <player>'s next untap step".
+	ModSkipNextUntapStep: {reader: readerRule},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1535,6 +1543,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := skipExtraTurnStepModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := skipNextUntapStepModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 	}

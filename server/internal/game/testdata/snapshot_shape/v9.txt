@@ -130,6 +130,10 @@ battlefield.cards[].enchantReturned	object
 battlefield.cards[].enchantReturned.epoch	number:int
 battlefield.cards[].enchantReturned.id	custom(uuid.UUID)
 battlefield.cards[].enchantSwapped	bool
+battlefield.cards[].encodedAt	number:int64
+battlefield.cards[].encodedOn	object
+battlefield.cards[].encodedOn.epoch	number:int
+battlefield.cards[].encodedOn.id	custom(uuid.UUID)
 battlefield.cards[].enteredBattlefieldAt	number:int64
 battlefield.cards[].entryOrdinal	number:int64
 battlefield.cards[].exertOnAttack	bool
@@ -682,6 +686,10 @@ exile.cards[].enchantReturned	object
 exile.cards[].enchantReturned.epoch	number:int
 exile.cards[].enchantReturned.id	custom(uuid.UUID)
 exile.cards[].enchantSwapped	bool
+exile.cards[].encodedAt	number:int64
+exile.cards[].encodedOn	object
+exile.cards[].encodedOn.epoch	number:int
+exile.cards[].encodedOn.id	custom(uuid.UUID)
 exile.cards[].enteredBattlefieldAt	number:int64
 exile.cards[].entryOrdinal	number:int64
 exile.cards[].exertOnAttack	bool
@@ -968,6 +976,7 @@ extraTurns[].effects[].mods	array
 extraTurns[].effects[].mods[]	object
 extraTurns[].effects[].mods[].amount	number:int
 extraTurns[].effects[].mods[].andDealtBy	bool
+extraTurns[].effects[].mods[].anyController	bool
 extraTurns[].effects[].mods[].borrows	array
 extraTurns[].effects[].mods[].borrows[]	object
 extraTurns[].effects[].mods[].borrows[].color	string
@@ -1582,6 +1591,10 @@ lastKnownStack[].card.enchantReturned	object
 lastKnownStack[].card.enchantReturned.epoch	number:int
 lastKnownStack[].card.enchantReturned.id	custom(uuid.UUID)
 lastKnownStack[].card.enchantSwapped	bool
+lastKnownStack[].card.encodedAt	number:int64
+lastKnownStack[].card.encodedOn	object
+lastKnownStack[].card.encodedOn.epoch	number:int
+lastKnownStack[].card.encodedOn.id	custom(uuid.UUID)
 lastKnownStack[].card.enteredBattlefieldAt	number:int64
 lastKnownStack[].card.entryOrdinal	number:int64
 lastKnownStack[].card.exertOnAttack	bool
@@ -2497,6 +2510,7 @@ pausedModeWalk.key	string
 pausedModeWalk.rest	array
 pausedModeWalk.rest[]	number:int
 pausedResolutionTail	object
+pausedResolutionTail.cipherAsked	bool
 pausedResolutionTail.item	object
 pausedResolutionTail.item.altCost	string
 pausedResolutionTail.item.altCostExiles	bool
@@ -3487,6 +3501,10 @@ phasedOut.cards[].enchantReturned	object
 phasedOut.cards[].enchantReturned.epoch	number:int
 phasedOut.cards[].enchantReturned.id	custom(uuid.UUID)
 phasedOut.cards[].enchantSwapped	bool
+phasedOut.cards[].encodedAt	number:int64
+phasedOut.cards[].encodedOn	object
+phasedOut.cards[].encodedOn.epoch	number:int
+phasedOut.cards[].encodedOn.id	custom(uuid.UUID)
 phasedOut.cards[].enteredBattlefieldAt	number:int64
 phasedOut.cards[].entryOrdinal	number:int64
 phasedOut.cards[].exertOnAttack	bool
@@ -3834,6 +3852,7 @@ scopedEffects[].mods	array
 scopedEffects[].mods[]	object
 scopedEffects[].mods[].amount	number:int
 scopedEffects[].mods[].andDealtBy	bool
+scopedEffects[].mods[].anyController	bool
 scopedEffects[].mods[].borrows	array
 scopedEffects[].mods[].borrows[]	object
 scopedEffects[].mods[].borrows[].color	string
@@ -4232,6 +4251,10 @@ seats[].command.cards[].enchantReturned	object
 seats[].command.cards[].enchantReturned.epoch	number:int
 seats[].command.cards[].enchantReturned.id	custom(uuid.UUID)
 seats[].command.cards[].enchantSwapped	bool
+seats[].command.cards[].encodedAt	number:int64
+seats[].command.cards[].encodedOn	object
+seats[].command.cards[].encodedOn.epoch	number:int
+seats[].command.cards[].encodedOn.id	custom(uuid.UUID)
 seats[].command.cards[].enteredBattlefieldAt	number:int64
 seats[].command.cards[].entryOrdinal	number:int64
 seats[].command.cards[].exertOnAttack	bool
@@ -4587,6 +4610,10 @@ seats[].companion.cards[].enchantReturned	object
 seats[].companion.cards[].enchantReturned.epoch	number:int
 seats[].companion.cards[].enchantReturned.id	custom(uuid.UUID)
 seats[].companion.cards[].enchantSwapped	bool
+seats[].companion.cards[].encodedAt	number:int64
+seats[].companion.cards[].encodedOn	object
+seats[].companion.cards[].encodedOn.epoch	number:int
+seats[].companion.cards[].encodedOn.id	custom(uuid.UUID)
 seats[].companion.cards[].enteredBattlefieldAt	number:int64
 seats[].companion.cards[].entryOrdinal	number:int64
 seats[].companion.cards[].exertOnAttack	bool
@@ -4945,6 +4972,10 @@ seats[].emblems.cards[].enchantReturned	object
 seats[].emblems.cards[].enchantReturned.epoch	number:int
 seats[].emblems.cards[].enchantReturned.id	custom(uuid.UUID)
 seats[].emblems.cards[].enchantSwapped	bool
+seats[].emblems.cards[].encodedAt	number:int64
+seats[].emblems.cards[].encodedOn	object
+seats[].emblems.cards[].encodedOn.epoch	number:int
+seats[].emblems.cards[].encodedOn.id	custom(uuid.UUID)
 seats[].emblems.cards[].enteredBattlefieldAt	number:int64
 seats[].emblems.cards[].entryOrdinal	number:int64
 seats[].emblems.cards[].exertOnAttack	bool
@@ -5298,6 +5329,10 @@ seats[].graveyard.cards[].enchantReturned	object
 seats[].graveyard.cards[].enchantReturned.epoch	number:int
 seats[].graveyard.cards[].enchantReturned.id	custom(uuid.UUID)
 seats[].graveyard.cards[].enchantSwapped	bool
+seats[].graveyard.cards[].encodedAt	number:int64
+seats[].graveyard.cards[].encodedOn	object
+seats[].graveyard.cards[].encodedOn.epoch	number:int
+seats[].graveyard.cards[].encodedOn.id	custom(uuid.UUID)
 seats[].graveyard.cards[].enteredBattlefieldAt	number:int64
 seats[].graveyard.cards[].entryOrdinal	number:int64
 seats[].graveyard.cards[].exertOnAttack	bool
@@ -5649,6 +5684,10 @@ seats[].hand.cards[].enchantReturned	object
 seats[].hand.cards[].enchantReturned.epoch	number:int
 seats[].hand.cards[].enchantReturned.id	custom(uuid.UUID)
 seats[].hand.cards[].enchantSwapped	bool
+seats[].hand.cards[].encodedAt	number:int64
+seats[].hand.cards[].encodedOn	object
+seats[].hand.cards[].encodedOn.epoch	number:int
+seats[].hand.cards[].encodedOn.id	custom(uuid.UUID)
 seats[].hand.cards[].enteredBattlefieldAt	number:int64
 seats[].hand.cards[].entryOrdinal	number:int64
 seats[].hand.cards[].exertOnAttack	bool
@@ -6013,6 +6052,10 @@ seats[].library.cards[].enchantReturned	object
 seats[].library.cards[].enchantReturned.epoch	number:int
 seats[].library.cards[].enchantReturned.id	custom(uuid.UUID)
 seats[].library.cards[].enchantSwapped	bool
+seats[].library.cards[].encodedAt	number:int64
+seats[].library.cards[].encodedOn	object
+seats[].library.cards[].encodedOn.epoch	number:int
+seats[].library.cards[].encodedOn.id	custom(uuid.UUID)
 seats[].library.cards[].enteredBattlefieldAt	number:int64
 seats[].library.cards[].entryOrdinal	number:int64
 seats[].library.cards[].exertOnAttack	bool
@@ -6403,6 +6446,10 @@ seats[].sideboard.cards[].enchantReturned	object
 seats[].sideboard.cards[].enchantReturned.epoch	number:int
 seats[].sideboard.cards[].enchantReturned.id	custom(uuid.UUID)
 seats[].sideboard.cards[].enchantSwapped	bool
+seats[].sideboard.cards[].encodedAt	number:int64
+seats[].sideboard.cards[].encodedOn	object
+seats[].sideboard.cards[].encodedOn.epoch	number:int
+seats[].sideboard.cards[].encodedOn.id	custom(uuid.UUID)
 seats[].sideboard.cards[].enteredBattlefieldAt	number:int64
 seats[].sideboard.cards[].entryOrdinal	number:int64
 seats[].sideboard.cards[].exertOnAttack	bool
@@ -6974,6 +7021,10 @@ stack.cards[].enchantReturned	object
 stack.cards[].enchantReturned.epoch	number:int
 stack.cards[].enchantReturned.id	custom(uuid.UUID)
 stack.cards[].enchantSwapped	bool
+stack.cards[].encodedAt	number:int64
+stack.cards[].encodedOn	object
+stack.cards[].encodedOn.epoch	number:int
+stack.cards[].encodedOn.id	custom(uuid.UUID)
 stack.cards[].enteredBattlefieldAt	number:int64
 stack.cards[].entryOrdinal	number:int64
 stack.cards[].exertOnAttack	bool

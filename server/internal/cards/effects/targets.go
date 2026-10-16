@@ -872,6 +872,12 @@ func Legendary() CardPredicate {
 	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsLegendary() }
 }
 
+// Snow passes for a permanent with the snow supertype (CR 205.4a), read
+// off its effective type line: Icebreaker Kraken's "snow lands".
+func Snow() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.HasSupertype("snow") }
+}
+
 // YourCommander passes for a card that is the caster's own commander
 // (Card.IsCommander, CR 903.4) currently under the caster's control —
 // Commander's Plate's cheaper "equip commander" clause. Ownership
