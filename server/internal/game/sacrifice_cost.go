@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/google/uuid"
@@ -558,4 +559,93 @@ func (g *Game) CostSetGroupsForEffect(spec *TargetSpec, zone ZoneKind, candidate
 		}
 	}
 	return out
+}
+
+// --- #3940: a sacrifice clause with a difference rule -----------------
+//
+// "Sacrifice three artifact tokens with different names" (Transmutation
+// Font) is a rule over an ATTRIBUTE of the picks, not over their kinds:
+// no two may share a name. It is the target clause's set rule
+// (TargetSpec.Different, #1559) on a sacrifice clause, read by the same
+// four readers a sacrifice clause has: the validator
+// (validateSacrificeCostLocked), the enumerator's one payment
+// (SacrificeDifferentPaymentForEffect), the protocol view (which ships
+// each candidate's key under `different`, the target picker's field) and
+// the client's cost picker, which greys a candidate whose key an earlier
+// pick holds.
+//
+// One reading differs from the target clause's on purpose. A target pick
+// with no key conflicts with nothing (TargetDifference's lenient
+// reading). A cost reads CR 201.2b instead: objects "have different
+// names only if each of them has at least one name", so a permanent the
+// rule cannot read a key off (a face-down permanent has no name) can
+// never be part of the payment. SacrificeCostCandidatesForEffect drops
+// it from every candidate walk, and the validator refuses it.
+
+// sacrificeDifferentKeyLocked is the set-rule key of a permanent under a
+// sacrifice clause's difference rule, or false when it has none. Caller
+// must hold g.mu.
+func (g *Game) sacrificeDifferentKeyLocked(spec *TargetSpec, id uuid.UUID) (string, bool) {
+	return g.targetDifferenceKeyLocked(spec, TargetRef{Kind: TargetCard, ID: id})
+}
+
+// sacrificeDifferentSatisfiedLocked reports whether every pick has a key
+// under spec.Different and no two share one (CR 201.2b). A clause with no
+// difference rule is satisfied by anything. Caller must hold g.mu.
+func (g *Game) sacrificeDifferentSatisfiedLocked(spec *TargetSpec, picks []uuid.UUID) bool {
+	if spec == nil || spec.Different == nil {
+		return true
+	}
+	seen := make(map[string]bool, len(picks))
+	for _, id := range picks {
+		k, ok := g.sacrificeDifferentKeyLocked(spec, id)
+		if !ok || seen[k] {
+			return false
+		}
+		seen[k] = true
+	}
+	return true
+}
+
+// SacrificeDifferentPaymentForEffect is the one payment of a FIXED
+// sacrifice clause with a difference rule: the first permanent of each
+// key, in the order given (callers pass SacrificePaymentOrderForEffect's
+// order), until the count is met. Nil when the candidates hold fewer
+// distinct keys than the count, so the cost cannot be paid.
+//
+// Taking the first of each key is never worse than any other choice:
+// permanents that share a key are interchangeable as far as the rule is
+// concerned, so the earliest in payment order (a token before a
+// nontoken, the cheaper first) is the one to lose. Caller must hold g.mu
+// (read or write).
+func (g *Game) SacrificeDifferentPaymentForEffect(spec *TargetSpec, candidates []uuid.UUID) []uuid.UUID {
+	n := SacrificeCostCount(spec)
+	if spec == nil || spec.Different == nil || n < 1 {
+		return nil
+	}
+	out := make([]uuid.UUID, 0, n)
+	seen := make(map[string]bool, n)
+	for _, id := range candidates {
+		k, ok := g.sacrificeDifferentKeyLocked(spec, id)
+		if !ok || seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, id)
+		if len(out) == n {
+			return out
+		}
+	}
+	return nil
+}
+
+// sacrificeDifferentError is the validator's refusal for a payment that
+// breaks the clause's difference rule. It wraps ErrIllegalTarget, as the
+// other per-pick refusals of a sacrifice payment do, and names the rule.
+func sacrificeDifferentError(d *TargetDifference) error {
+	label := "each be different"
+	if d != nil && d.Label != "" {
+		label = d.Label
+	}
+	return fmt.Errorf("%w: the permanents you sacrifice must %s", ErrIllegalTarget, label)
 }
