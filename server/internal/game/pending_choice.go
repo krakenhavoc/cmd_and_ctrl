@@ -2057,6 +2057,11 @@ func (g *Game) queueOptionalReplacementPromptLocked(ev *ReplacementEvent, chosen
 	if reason == "" {
 		reason = chosen.effect.Label
 	}
+	if q := g.redirectQuestionLocked(ev, chosen); q != "" {
+		// #2056: a "may" redirection says which damage it is asking
+		// about, as the event stands now.
+		reason = q
+	}
 	choice := PendingChoice{
 		Kind:                 PendingChoiceOptionalReplacement,
 		Chooser:              chooser,

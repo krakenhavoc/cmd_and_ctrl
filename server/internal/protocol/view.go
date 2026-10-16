@@ -719,6 +719,18 @@ type PendingChoiceView struct {
 	// Absent on every other prompt.
 	Dredge int `json:"dredge,omitempty"`
 
+	// RedirectAmount, RedirectFrom and RedirectTo populate an
+	// "optional_replacement" that offers a "may" redirection (#2056,
+	// Blood of the Martyr's "you may have that damage dealt to you
+	// instead"): the damage, the player or permanent it would be dealt
+	// to, and the player or permanent the yes deals it to instead. Read
+	// off the paused event on every view, never stored. A bot weighs the
+	// creature it would save against the life it would pay (#2056).
+	// Absent on every other prompt.
+	RedirectAmount int    `json:"redirect_amount,omitempty"`
+	RedirectFrom   string `json:"redirect_from,omitempty"`
+	RedirectTo     string `json:"redirect_to,omitempty"`
+
 	// Devour, DevourDraw and DevourLife populate an "entry_sacrifice"
 	// that is CR 702.82a's devour (#2419): N, the +1/+1 counters each
 	// creature sacrificed buys the entering creature, and what its own
@@ -9327,6 +9339,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c.Kind == game.PendingChoiceOptionalReplacement {
 			v.Dredge = c.DredgeOffer()
 			v.PlayableFromZone = c.CommanderHeadedFor() == game.ZoneHand
+			// #2056: a "may" redirection's damage, recipient and
+			// destination.
+			if n, from, to := g.DamageRedirectOfferLocked(c); n > 0 {
+				v.RedirectAmount, v.RedirectFrom, v.RedirectTo = n, from.String(), to.String()
+			}
 		}
 		if c.Kind == game.PendingChoiceEntrySacrifice {
 			v.Devour, v.DevourDraw, v.DevourLife = c.DevourOffer()

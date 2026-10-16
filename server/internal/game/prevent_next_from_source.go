@@ -250,10 +250,13 @@ func nextFromSourceModProblem(m Mod) string {
 		// ADR 0108 §9: a redirection reads the one source vocabulary
 		// (Objects, SourceZone, Queries) and the "next time" spend
 		// (redirectDamageModProblem checks it).
+		// #2056: and #2026's source filter (redirectDamageModProblem
+		// checks it too).
+		filtered := len(m.SourceFilter) != 0
 		if m.Kind == ModRedirectDamage {
-			sourced, queries = false, false
+			sourced, queries, filtered = false, false, false
 		}
-		if sourced || queries || m.Half || m.AndDealtBy || len(m.SourceFilter) != 0 {
+		if sourced || queries || m.Half || m.AndDealtBy || filtered {
 			return fmt.Sprintf("mod %q carries a damage-source field only preventNextFromSource reads", m.Kind)
 		}
 		return ""
