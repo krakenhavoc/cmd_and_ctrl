@@ -1,12 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
+import { writeFileSync } from "node:fs";
+import path from "node:path";
 import { adminLogin, createGame, startGameAs, uploadDeckAs } from "./lobby-api";
 import { makeCommanderDeck } from "./deck-fixture";
 import { openAdminClient } from "./s19-helpers";
 import { closeAll, joinAsPlayer, type JoinedPlayer } from "./players";
 
-// #3934: a seat's playmat covers THAT seat's battlefield box, not the
-// screen. The server mints a real mat only for a signed-in account, so
-// the spec stands one in: the game socket's frames get a playmat_url on
+// #3934: a seat's playmat is shown WHOLE (object-fit: contain) inside THAT
+// seat's battlefield box, over a blurred copy of itself that fills the
+// strips; the copy is the box (not the screen). The server mints a real
+// mat only for a signed-in account, so the spec stands one in: the game socket's frames get a playmat_url on
 // every seat, and the route is answered with a labelled SVG.
 
 const MAT = "/playmats/11111111-1111-4111-8111-111111111111";
@@ -47,16 +50,6 @@ async function standInMats(page: Page): Promise<void> {
       }
     });
   });
-}
-
-// What the mat shows of its image: the cover scale, and the fraction
-// of the image's width and height that lands inside the box.
-function coverShown(box: Box) {
-  const s = Math.max(box.width / MAT_W, box.height / MAT_H);
-  return {
-    w: Math.min(1, box.width / (MAT_W * s)),
-    h: Math.min(1, box.height / (MAT_H * s)),
-  };
 }
 
 for (const seats of [2, 3, 4]) {
@@ -116,33 +109,76 @@ for (const seats of [2, 3, 4]) {
         await page.waitForTimeout(500);
         const rows = await page.evaluate(() =>
           [...document.querySelectorAll<HTMLElement>(".panel.seat-panel")].map((p) => {
-            const m = p.querySelector<HTMLElement>(".playmat img");
-            const r = (e: Element) => {
-              const b = e.getBoundingClientRect();
-              return { x: b.x, y: b.y, width: b.width, height: b.height };
-            };
+            const mat = p.querySelector<HTMLImageElement>(".playmat img.mat");
+            const back = p.querySelector<HTMLImageElement>(".playmat img.backdrop");
+            const r = (b: DOMRect) => ({ x: b.x, y: b.y, width: b.width, height: b.height });
+            // Where object-fit: contain really paints the image: the
+            // largest rectangle of its own shape inside the element box.
+            let drawn: { x: number; y: number; width: number; height: number } | null = null;
+            if (mat) {
+              const b = mat.getBoundingClientRect();
+              const k = Math.min(b.width / mat.naturalWidth, b.height / mat.naturalHeight);
+              const w = mat.naturalWidth * k;
+              const h = mat.naturalHeight * k;
+              drawn = { x: b.x + (b.width - w) / 2, y: b.y + (b.height - h) / 2, width: w, height: h };
+            }
             return {
-              self: p.classList.contains("seat-self") || !p.classList.contains("opponent"),
-              panel: r(p),
-              mat: m ? r(m) : null,
-              fit: m ? getComputedStyle(m).objectFit : null,
+              self: !p.classList.contains("opponent"),
+              panel: r(p.getBoundingClientRect()),
+              // Layout size: the blur's scale-up is a transform and not part of it.
+              back: back ? { width: back.offsetWidth, height: back.offsetHeight } : null,
+              mat: mat ? r(mat.getBoundingClientRect()) : null,
+              fit: mat ? getComputedStyle(mat).objectFit : null,
+              backFit: back ? getComputedStyle(back).objectFit : null,
+              drawn,
             };
           }),
         );
-        const lines = rows.map((r) => {
-          const c = coverShown(r.panel);
-          return `${r.self ? "self" : "opp "} ${Math.round(r.panel.width)}x${Math.round(r.panel.height)} ratio ${(r.panel.width / r.panel.height).toFixed(2)} shows ${(c.w * 100).toFixed(0)}% w x ${(c.h * 100).toFixed(0)}% h; mat ${r.mat ? `${Math.round(r.mat.width)}x${Math.round(r.mat.height)}` : "none"}`;
-        });
+        const lines = rows.map(
+          (r) =>
+            `${r.self ? "self" : "opp "} panel ${Math.round(r.panel.width)}x${Math.round(r.panel.height)} (${(r.panel.width / r.panel.height).toFixed(2)}); mat drawn ${r.drawn ? `${Math.round(r.drawn.width)}x${Math.round(r.drawn.height)}` : "none"}`,
+        );
         console.log(`${seats} seats @ ${size.width}x${size.height}\n  ${lines.join("\n  ")}`);
+        const shot = await page.screenshot();
         await testInfo.attach(`${seats}-seats-${size.width}x${size.height}`, {
-          body: await page.screenshot(),
+          body: shot,
           contentType: "image/png",
         });
+        if (process.env.PLAYMAT_SHOT_DIR) {
+          writeFileSync(
+            path.join(process.env.PLAYMAT_SHOT_DIR, `${seats}-seats-${size.width}x${size.height}.png`),
+            shot,
+          );
+        }
         for (const r of rows) {
-          if (!r.mat) continue;
-          // The mat IS the panel's box: not the screen's.
-          expect(Math.abs(r.mat.width - r.panel.width)).toBeLessThan(4);
-          expect(Math.abs(r.mat.height - r.panel.height)).toBeLessThan(4);
+          // The backdrop layer is the panel's box: not the screen's.
+          if (!r.back || !r.drawn) {
+            expect.soft(false, "both mat layers are drawn").toBe(true);
+            continue;
+          }
+          const box = r.back;
+          expect.soft(Math.abs(box.width - r.panel.width), "backdrop width").toBeLessThan(4);
+          expect.soft(Math.abs(box.height - r.panel.height), "backdrop height").toBeLessThan(4);
+          // The mat itself is shown whole: contained, nothing cropped.
+          expect.soft(r.fit, "mat object-fit").toBe("contain");
+          expect.soft(r.backFit, "backdrop object-fit").toBe("cover");
+          const d = r.drawn;
+          // It fits inside the panel...
+          expect.soft(d.x, "inside left").toBeGreaterThanOrEqual(r.panel.x - 0.5);
+          expect.soft(d.y, "inside top").toBeGreaterThanOrEqual(r.panel.y - 0.5);
+          expect.soft(d.x + d.width, "inside right").toBeLessThanOrEqual(r.panel.x + r.panel.width + 0.5);
+          expect.soft(d.y + d.height, "inside bottom").toBeLessThanOrEqual(r.panel.y + r.panel.height + 0.5);
+          // ...at the image's whole aspect ratio...
+          expect.soft(d.width / d.height, "aspect").toBeCloseTo(MAT_W / MAT_H, 2);
+          // ...touching the panel on at least one axis (as large as it can be)...
+          const slackX = r.panel.width - d.width;
+          const slackY = r.panel.height - d.height;
+          expect.soft(Math.min(slackX, slackY), "as large as fits").toBeLessThan(4);
+          // ...and centred.
+          const cx = d.x + d.width / 2 - (r.panel.x + r.panel.width / 2);
+          const cy = d.y + d.height / 2 - (r.panel.y + r.panel.height / 2);
+          expect.soft(Math.abs(cx), "centred x").toBeLessThan(3);
+          expect.soft(Math.abs(cy), "centred y").toBeLessThan(3);
         }
       }
     } finally {

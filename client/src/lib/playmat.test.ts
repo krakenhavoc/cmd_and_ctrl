@@ -17,8 +17,6 @@ import {
   isPlaymatsMode,
   playmatShownFor,
   playmatSrc,
-  coverShown,
-  tableShownText,
 } from "./playmat";
 import {
   SYNCED_FIELDS,
@@ -199,42 +197,5 @@ describe("the prompt's words", () => {
     expect(
       fitResultText({ ...big, target_width: 800, target_height: 467, smaller: true }),
     ).toContain("may look soft");
-  });
-});
-
-// #3934: the mat covers each seat's battlefield box, so what shows of it
-// is the cover arithmetic over the box's shape.
-describe("what the table shows of a mat", () => {
-  it("shows all of an image in a box of its own shape", () => {
-    expect(coverShown(2400, 1400, 2400 / 1400)).toEqual({ w: 1, h: 1 });
-  });
-
-  it("crops the height of an image in a box wider than it", () => {
-    const c = coverShown(2400, 1400, 3.8);
-    expect(c.w).toBe(1);
-    expect(c.h).toBeCloseTo(1.714 / 3.8, 2);
-  });
-
-  it("crops the width of an image in a box taller than it", () => {
-    const c = coverShown(2400, 1400, 0.6);
-    expect(c.h).toBe(1);
-    expect(c.w).toBeCloseTo(0.6 / 1.714, 2);
-  });
-
-  it("is the whole image for a size it cannot use", () => {
-    expect(coverShown(0, 0, 2)).toEqual({ w: 1, h: 1 });
-  });
-
-  it("names each table shape that cuts a 12:7 mat, widest first", () => {
-    const lines = tableShownText(2400, 1400);
-    expect(lines[0]).toBe("a two-player table: the middle 45% of its height");
-    expect(lines).toContain("your own board: the middle 59% of its height");
-    expect(lines).toContain("a four-player table, across: the middle 95% of its height");
-  });
-
-  it("names the width cut, not the height, for a box narrower than the image", () => {
-    const lines = tableShownText(3800, 1000);
-    expect(lines).toContain("a four-player table, across: the middle 47% of its width");
-    expect(lines.some((l) => l.startsWith("a two-player table"))).toBe(false);
   });
 });

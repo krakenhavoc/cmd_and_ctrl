@@ -398,14 +398,10 @@ describe("the best-size prompt", () => {
     expect(w.getAttribute("aria-label")).toContain("up and down");
   });
 
-  // #3934: the table fills each battlefield box with the mat, so the
-  // prompt says what that leaves of the kept shape.
-  it("says what each table shape shows of the kept area", async () => {
+  // #3934: the table shows the whole mat, contained.
+  it("says the whole mat shows at the table", async () => {
     const r = await withPrompt();
-    const t = text(promptOf(r.container)!);
-    expect(t).toContain("At the table the mat fills each battlefield");
-    expect(t).toContain("a two-player table: the middle 45% of its height");
-    expect(t).toContain("your own board: the middle 59% of its height");
+    expect(text(promptOf(r.container)!)).toContain("the whole mat always shows");
   });
 
   it("does not open for an image that fits", async () => {

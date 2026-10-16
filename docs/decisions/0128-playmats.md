@@ -227,30 +227,29 @@ The cost is that the owner sees the middle 59% of the art's height behind their 
 - A per-viewer `object-position` for the own-seat panel (11.3).
 - Reordering slots. A slot is a place, not a rank; replace to move.
 
-### 12. Amendment (2026-10-16, #3934): the mat is the battlefield's box, and the prompt says what that cuts
+### 12. Amendment (2026-10-16, #3934, owner decision "show the whole mat"): contain, over a blurred copy
 
-**The report.** Ian saw a mat "sized to the whole screen" with most of it cut off. **The premise is not what the code does**, and measuring is what showed it. `.playmat` is `position: absolute; inset: 0` inside `.panel.seat-panel`, an `<img>` at `width: 100%; height: 100%; object-fit: cover`. No `fixed`, no viewport units, no `window` read: the mat's box IS the seat's panel box. `tests-e2e/tests/playmat-shape-3934.spec.ts` stands a mat on every seat (the game socket's frames get a `playmat_url`; the route answers a 2400 x 1400 SVG) and, at 2, 3 and 4 seats and three viewports, asserts that each mat's box equals its panel's box (within the panel's 1px border each side). It passes, on the own seat and on the others, and the viewport is resized between measurements.
+**The report.** Ian saw a mat "sized to the whole screen" with most of it cut off. The sizing premise was wrong and the cut-off was real. `.playmat` is `position: absolute; inset: 0` inside `.panel.seat-panel`: no `fixed`, no viewport units, no read of `window`; its box was always the seat's panel. What cut the art was `object-fit: cover` in a box far wider than the mat. A 12:7 mat showed this much of its height at 1920 x 1080 (measured at 2, 3 and 4 seats in Chromium; 11.3 had measured only the four-seat table):
 
-**What is cut is what `cover` requires, and the boxes are narrower than 11.3 measured.** 11.3 measured only the four-seat table. The two- and three-seat layouts give the panel a different shape, and a 12:7 mat shows this much of its height (width is whole) at 1920 x 1080:
+| Table | Panel | Share of a 12:7 mat shown (cover) |
+|---|---|---|
+| 2 seats (both panels) | 1889 x 500 | 45% of the height |
+| 3 seats, across (two) | 940 x 350 | 64% |
+| 3 and 4 seats, own | 1889 x 650 | 59% |
+| 4 seats, across (three) | 624 x 350 | 96% |
 
-| Table | Panel | Ratio | A 12:7 mat shows |
-|---|---|---|---|
-| 2 seats (both panels) | 1889 x 500 | 3.78 | 45% of the height |
-| 3 seats, across (two) | 940 x 350 | 2.69 | 64% of the height |
-| 3 seats, own | 1889 x 650 | 2.91 | 59% of the height |
-| 4 seats, across (three) | 624 x 350 | 1.78 | 96% of the height |
-| 4 seats, own | 1889 x 650 | 2.91 | 59% of the height |
+On a 390 px phone the panels are near-square or portrait (1.23 at two seats, 0.56 across at four), so cover cut the width instead.
 
-At 1366 x 768 the ratios are within 3% of those. On a 390 px phone the panels are near-square or portrait (1.32 at two seats, 0.86 at three, 0.60 across at four), so the mat is cut in WIDTH there (35% of it across a four-seat table).
+**The decision: show the whole mat.** This replaces 11.3's "cover is the mat" (its reason 2) and the "Not done" line about cropping.
 
-**The contract is unchanged.** One mat is one image seen in several box shapes, so no single stored shape fixes all of them, and the choice of `cover` (11.3, reason 2) stands: a mat that did not fill its box would show the table behind it. The 12:7 target stays the best compromise, since it is the paper shape and fits the shape most viewers see most (the four-seat across panels).
+- **The mat is `object-fit: contain`**, centred, in the seat's panel. Nothing of it is cropped, at any table size or window size.
+- **Behind it, the leftover strips are a blurred, dimmed copy of the same image**: a second `<img class="backdrop">` with the same `src` (one request, one cache entry), `object-fit: cover`, `filter: blur(18px) brightness(0.7)`, scaled 1.08 so the blur's soft edge falls outside the clip. One static CSS filter, no script.
+- **The owner's wash (decision 10) is unchanged**: the `::after` scrim covers both layers at the owner's strength, so cards and text keep their contrast over the mat and the strips alike.
+- **An across-table opponent's mat is still turned 180 degrees with their board** (both layers).
+- **The 12:7 target (11.3) stays.** Contain makes the shape matter less (nothing is lost whatever it is) and a 12:7 mat fills a four-seat across panel (1.78) almost exactly. No other shape is better for the three-seat and two-seat boxes, which differ from each other. The best-size prompt now says only that the whole mat always shows at the table, over a blurred copy of itself that fills the sides.
+- **The size of the mat in a wide box is the cost**: a 12:7 mat is drawn 854 x 498 inside a 1889 x 500 two-seat panel. That is the trade the owner chose.
 
-**What changes.**
-
-- **The best-size prompt says what each table shape shows of the kept area**, from the same arithmetic `cover` does (`coverShown`, `tableShownText` in `lib/playmat.ts`; the shapes are `TABLE_SHAPES`, the measured ratios above): "At the table the mat fills each battlefield, so it shows a two-player table: the middle 45% of its height; ...". The person choosing which part of the art to keep (11.4) now sees what the table will do with it. The ratios in `TABLE_SHAPES` change with this section's table.
-- **The e2e spec** pins the box contract so a later change that sizes the mat against anything but the panel fails, and prints the shapes above so the table can be re-measured.
-
-**Not done.** A per-mat vertical focus (`object-position`), stored with the mat and applied by every viewer, which is the only thing that lets an owner choose WHICH band of a wide box shows. It stores something new about a person, so it brings the account-deletion inventory and the privacy page with it (AGENTS.md section 4), and it is its own change. Tracked as a follow-up issue. The own-seat `object-position` of 11.3 is the same idea.
+`tests-e2e/tests/playmat-shape-3934.spec.ts` pins it at 2, 3 and 4 seats and three viewports: the backdrop layer is the panel's box (not the screen's), the mat is `contain`, and its drawn rectangle lies inside the panel, has the image's whole aspect ratio, is as large as fits, and is centred.
 
 ## Alternatives considered
 
