@@ -188,6 +188,19 @@ type StaticAbility struct {
 	// See ContinuousEffect.ContinuesAfterRemoval; ADR 0067 §2.
 	ContinuesAfterRemoval bool
 
+	// StartsAtCounters declares a static whose effect begins when its
+	// SOURCE gets its Nth counter of a kind — Idol of False Gods' "As
+	// long as this artifact has eight or more +1/+1 counters on it" —
+	// and gives the effect the timestamp of that moment when it is
+	// later than the source's own (#3862, ADR 0067 amendment
+	// 2026-10-15). The Idol's ruling is the reason: one that lost its
+	// abilities before its eighth counter has annihilator 2, one that
+	// lost them afterwards does not, so the effect sorts at the eighth
+	// counter, not at the Idol's entry. The condition itself stays in
+	// AppliesTo; this says only when it began. The zero value is "the
+	// source's own timestamp", which is every other static.
+	StartsAtCounters CounterThreshold
+
 	// GrantAbilities names the catalog ability bundles this static
 	// GIVES every object it applies to (CR 113.10, ADR 0093) —
 	// Cryptolith Rite's "{T}: Add one mana of any color", Chromatic
@@ -665,9 +678,12 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 				continue
 			}
 			out = append(out, staticContinuousEffect{
-				ability:   ab,
-				source:    src,
-				timestamp: ts,
+				ability: ab,
+				source:  src,
+				// #3862: an "as long as it has N or more counters"
+				// effect sorts at the moment it began, when that is
+				// later (counter_thresholds.go).
+				timestamp: staticTimestamp(src, ab, ts),
 				live:      true,
 			})
 		}
@@ -754,7 +770,9 @@ func (g *Game) applyLayerLocked(effects []ContinuousEffect, l Layer, sub SubLaye
 //   - IN the removal's bucket, timestamp order decides, which is
 //     what `HasLostAllAbilities` already answers: two Song of the
 //     Dryads each enchanting the other settle on "the earlier one
-//     wins" rather than on a paradox.
+//     wins" rather than on a paradox. The exception is the one the
+//     next bullet makes: an effect that started in an earlier layer
+//     carries on in this one too, at its own timestamp (#3862).
 //   - AFTER it, the source's effects stop — unless this effect is the
 //     later-layer half of one that already started applying to this
 //     object, which CR 613.6 says carries on regardless
@@ -853,7 +871,7 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 		if grants != nil {
 			st.noteGrants(target, grants, grantor, eff.Timestamp())
 		}
-		st.recordApplied(src, target)
+		st.recordApplied(src, target, bucketIndex)
 	}
 }
 

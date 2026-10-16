@@ -10673,6 +10673,9 @@ func (g *Game) applyCounterByLocked(cardID uuid.UUID, name string, delta int, pl
 			// ADR 0101 / CR 613.7c: a keyword counter's timestamp moves
 			// on every placement and stays put on a removal.
 			z.Cards[i].stampKeywordCounter(name, delta, newAmount, timeNowUnixNano)
+			// #3862: and the moment a declared "N or more counters"
+			// threshold was reached (counter_thresholds.go).
+			stampCounterThresholdsLocked(&z.Cards[i], name, newAmount-delta, newAmount, timeNowUnixNano)
 			if z.Cards[i].Counters[name] <= 0 {
 				delete(z.Cards[i].Counters, name)
 				if len(z.Cards[i].Counters) == 0 {

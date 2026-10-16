@@ -29,21 +29,25 @@ import (
 //
 // The three statics are ONE printed effect that starts in layer 4. An
 // Idol that loses its abilities stays a creature (layer 4 comes before a
-// layer 6 removal, CR 613.6, ADR 0067 section 2), and its layer 7b half
-// declares ContinuesAfterRemoval so the 0/0 base keeps applying after the
-// removal, ahead of an older effect's base power and toughness.
+// layer 6 removal, CR 613.6, ADR 0067 section 2), and its layer 6 and 7b
+// halves declare ContinuesAfterRemoval, so they carry on past the
+// removal in timestamp order (#3862): the 0/0 base keeps applying ahead
+// of an older effect's base power and toughness, and the annihilator
+// survives a removal older than the effect but not one newer than it.
 //
-// Declared simplification, weaker than printed: a removal OLDER than the
-// Idol also takes the layer 6 annihilator, because the engine orders every
-// layer 6 removal before the effects of the source it silences whatever
-// the timestamps (ADR 0093 decision 3), and a layer 6 effect cannot
-// continue within the removal's own layer.
+// "Older than the effect" is the ruling's measure, not the Idol's
+// entry: "If Idol of False Gods loses its abilities before gaining its
+// eighth +1/+1 counter, it will have annihilator 2; otherwise, it
+// won't." The effect begins at the eighth counter, so all three statics
+// declare StartsAtCounters and sort at that moment
+// (game/counter_thresholds.go).
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "b30d583b-e770-47e8-9f26-fca7ef43285c",
 		Name:         "Idol of False Gods",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"If another effect that was on the battlefield before Idol of False Gods takes away its abilities, it can wrongly lose the attack ability it gets at eight counters."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{C}, {T}: Create a 0/1 colorless Eldrazi Spawn creature token with \"Sacrifice this token: Add {C}.\"",
 			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
@@ -74,14 +78,20 @@ func idolHasEightCounters(target *game.Card, _ *game.Game, source *game.Card) bo
 	return target.InstanceID == source.InstanceID && target.Counters[game.CounterPlusOne] >= 8
 }
 
+// idolEighthCounter is the moment the statics' effect begins.
+var idolEighthCounter = game.CounterThreshold{Kind: game.CounterPlusOne, AtLeast: 8}
+
 // idolOfFalseGodsStatics are the three statics of "it's a 0/0 creature
 // in addition to its other types and it has annihilator 2".
 func idolOfFalseGodsStatics() []game.StaticAbility {
 	return []game.StaticAbility{
 		{
-			Label:     "As long as this artifact has eight or more +1/+1 counters on it, it's a creature in addition to its other types.",
-			Layer:     game.Layer4Type,
-			AppliesTo: idolHasEightCounters,
+			// The one row the three statics show (the other two continue
+			// it), so it carries the whole sentence.
+			Label:            "As long as this artifact has eight or more +1/+1 counters on it, it's a 0/0 creature in addition to its other types and it has annihilator 2.",
+			Layer:            game.Layer4Type,
+			AppliesTo:        idolHasEightCounters,
+			StartsAtCounters: idolEighthCounter,
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				if !slices.Contains(c.Types, "Creature") {
 					c.Types = append(c.Types, "Creature")
@@ -96,6 +106,7 @@ func idolOfFalseGodsStatics() []game.StaticAbility {
 			// One printed effect that starts in layer 4: CR 613.6 keeps
 			// its later layers applying past an older ability removal.
 			ContinuesAfterRemoval: true,
+			StartsAtCounters:      idolEighthCounter,
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				c.Power, c.Toughness = 0, 0
 			},
@@ -104,6 +115,10 @@ func idolOfFalseGodsStatics() []game.StaticAbility {
 			Label:     "As long as this artifact has eight or more +1/+1 counters on it, it has annihilator 2.",
 			Layer:     game.Layer6Ability,
 			AppliesTo: idolHasEightCounters,
+			// The same effect, so CR 613.6 carries it past a removal that
+			// silences the Idol in this very layer, in timestamp order.
+			ContinuesAfterRemoval: true,
+			StartsAtCounters:      idolEighthCounter,
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				c.Abilities = game.AppendKeywordAbility(c.Abilities, "annihilator 2")
 			},

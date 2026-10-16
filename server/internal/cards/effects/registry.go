@@ -831,6 +831,10 @@ func Register(spec Spec) {
 	// ADR 0093 amendment 2026-10-13: and the zone-grant statics, so the
 	// layer pass finds a Satoru by one map read per permanent.
 	game.IndexZoneGrants(spec.OracleID, spec.Static)
+	// #3862: and the counter kinds a static's "as long as it has N or
+	// more counters" begins on, so a counter placement on any other
+	// kind pays one map read.
+	game.IndexCounterThresholds(spec.Static)
 	// #623 / CR 114: a card that makes an emblem files a SECOND def
 	// for the emblem object, under "emblem:<this key>". It goes in
 	// `defs` and not in `registry`, so the engine finds the emblem's

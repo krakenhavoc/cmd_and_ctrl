@@ -280,6 +280,13 @@ type Card struct {
 	// cleared wherever Counters is, and not a copiable value (CR 707.2).
 	// nil means no keyword counter has been stamped — an unstamped one
 	// is ordered at the permanent's own timestamp.
+	//
+	// #3862: it also holds, under a "<kind>>=<n>" key, the moment the
+	// count of a kind reached a threshold a static declares
+	// (StaticAbility.StartsAtCounters, counter_thresholds.go) — Idol of
+	// False Gods' eighth +1/+1 counter. Written by
+	// stampCounterThresholdsLocked beside the keyword stamp; the key
+	// cannot be a keyword counter kind, so the two readers never meet.
 	CounterStampedAt map[string]int64
 
 	// IsCommander lives in the bool block at the end of Card, for alignment.
