@@ -6523,6 +6523,22 @@ turn, when target creature you control attacks and isn't blocked"
 (Delif's Cone, Delif's Cube), keyed by the creature as an object, so one
 that left and came back never fires it (CR 603.7c).
 
+**"When that creature dies this turn, <something with a target>" (#2057).**
+`whenThatCreatureDiesThisTurn(ctx, creature, label, body)` in
+[delayed_that_creature_dies.go](../server/internal/cards/effects/delayed_that_creature_dies.go)
+is the same shape for a death: the each-condition `dies/that-creature`
+names the creature by `CondParams.Object`, so one that left and came back
+never fires it, and the instance's payload is that object with its epoch.
+Register the body with `game.TargetedDelayedBody` and its clause is chosen
+as the trigger goes on the stack (CR 603.3d). "Its counters" are the dead
+creature's last-known record (`Game.PermanentForEffect` on
+`payloadObject(ctx)`, CR 608.2h); `putCountersThen` puts each kind through
+the counter window in turn and runs what follows once the last has landed
+(Heroic Sacrifice). Fatal Fissure's body is earthbend 4 with
+`EarthbendTargets`. An untargeted "when it dies this turn" may still use
+`ExileWhenItDiesThisTurn`'s `Cards` shape (Whippoorwill), but a targeted
+body must not carry `Cards`.
+
 **Once for each creature dealt damage at the same time (#3997,
 [ADR 0026](decisions/0026-delayed-triggers.md) amendment 2026-10-16).**
 "Until end of turn, whenever a creature is dealt damage, destroy it"

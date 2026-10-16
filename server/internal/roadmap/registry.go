@@ -2737,14 +2737,13 @@ var items = []Item{
 		EngineNotes: "scoped kind: `ModRedirectDamage` (ADR 0108 §9) has no optional flag (a scoped replacement can't ask its controller \"may\"), its source recheck (`Queries`) reads characteristics and not combat state, and its protected set is a player and their permanents, a pinned permanent, or opponents. The statics Veteran Bodyguard and Weathered Bodyguards ship, because a catalog replacement can call `UnblockedAttackerForEffect`.",
 	},
 	{
-		Slug: "targeted-delayed-death-trigger", Name: "A delayed death trigger that targets and moves counters", Kind: KindSeam, Status: StatusMissing,
+		Slug: "targeted-delayed-death-trigger", Name: "A delayed death trigger that targets and moves counters", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "\"When that creature dies this turn, put its counters on up to one target creature you control\", as Heroic Sacrifice prints.",
-		Missing:     "Nothing moves a dead creature's counters onto another creature.",
 		Rules:       []string{"603.7c", "603.3d", "608.2h"},
 		Issue:       2057,
 		Tracked:     "#2057 (found landing ADR 0108 PR 9, #1905)",
-		Waiting:     []string{"Heroic Sacrifice"},
-		EngineNotes: "delayed trigger: `ExileWhenItDiesThisTurn` (Whippoorwill) is untargeted; a delayed trigger can target since #3531 (`game.TargetedDelayedBody`, ADR 0187 amendment 2026-10-16). Heroic Sacrifice's needs \"up to one target creature you control\", chosen as it triggers, and the counters the creature had as it last existed on the battlefield. Its redirection is ADR 0108 §9's `effects.RedirectDamage`.",
+		Examples:    []string{"Heroic Sacrifice", "Fatal Fissure"},
+		EngineNotes: "**Shipped** (#2057), from existing engine shapes: `effects.whenThatCreatureDiesThisTurn` (`cards/effects/delayed_that_creature_dies.go`) schedules a one-shot delayed trigger on `EventLTB` whose each-condition, `dies/that-creature`, names the creature by `CondParams.Object` (its instance ID and CR 400.7 epoch), so one that left and came back never fires it (CR 603.7c), and the fired instance's payload is that object. Its body is a `game.TargetedDelayedBody` (ADR 0187 amendment 2026-10-16), so the target is chosen as it goes on the stack (CR 603.3d). Heroic Sacrifice reads \"its counters\" from the creature's last-known record (`Game.PermanentForEffect`, CR 608.2h) and puts each kind on the target through the counter window, one after another, then draws; its redirection is ADR 0108 §9's `effects.RedirectDamage`. Fatal Fissure's body is earthbend 4, with earthbend's own \"target land you control\". Whippoorwill and Together Forever keep the untargeted `Cards` shape.",
 	},
 	{
 		Slug: "damage-not-removed-at-cleanup", Name: "\"Damage isn't removed from this creature during cleanup steps\"", Kind: KindSeam, Status: StatusImplemented,
