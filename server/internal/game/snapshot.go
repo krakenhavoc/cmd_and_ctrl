@@ -853,7 +853,10 @@ type cardSnapshot struct {
 	// CounterStampedAt is Card.CounterStampedAt (ADR 0101): the CR
 	// 613.7c timestamp of each keyword counter kind. Additive within v7;
 	// an older file has none, and an unstamped keyword counter is
-	// ordered at its permanent's own timestamp.
+	// ordered at its permanent's own timestamp. #3862 adds keys of a
+	// second shape, "<kind>>=<n>" (counter_thresholds.go), to the same
+	// map: additive, an older binary never asks for them, and an
+	// unstamped threshold sorts at the permanent's own timestamp.
 	CounterStampedAt map[string]int64 `json:"counterStampedAt,omitempty"`
 	IsCommander      bool             `json:"isCommander"`
 	// IsCompanion is Card.IsCompanion (ADR 0172 §4). Additive within

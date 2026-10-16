@@ -549,6 +549,10 @@ func (g *Game) cloneLocked() *Game {
 	// matches the original's at capture time.
 	out.layerVersion.Store(g.layerVersion.Load())
 	out.lastResolvedVersion.Store(g.lastResolvedVersion.Load())
+	// #3862: the cards carry their zone layer stamps across (cloneCard
+	// copies the pointer, which is never written after its pass), so
+	// the flag that says to clear them goes with them.
+	out.zoneLayersStamped = g.zoneLayersStamped
 	out.libraryTopWatch = append([]libraryTopMark(nil), g.libraryTopWatch...)
 	return out
 }
@@ -1312,6 +1316,9 @@ func (g *Game) RestoreFrom(src *Game) {
 	// snapshot-time state and must not be served as-is.
 	g.lastResolvedVersion.Store(src.lastResolvedVersion.Load())
 	g.layerVersion.Store(src.layerVersion.Load() + 1)
+	// #3862: the adopted cards may carry zone layer stamps; the forced
+	// recompute re-derives or clears them.
+	g.zoneLayersStamped = true
 	// ADR 0121 §5: a table roll is not part of the game, so an undo
 	// takes none back. tableRollNext is NOT restored (carried forward,
 	// like Settings): a roll after the undo is a fresh one, not a replay

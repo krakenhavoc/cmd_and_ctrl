@@ -111,10 +111,15 @@ func turnSingleTargetFaceDownAs(listed func() *game.FaceDownListing) func(g *gam
 // or CR 111 stops a token being turned face down, and Cyber
 // Conversion may hit one. The exclusion is on this card because the
 // card prints it.
+//
+// "Other" is the creatures that were on the battlefield before this
+// entry: a creature entering at the same time as Ixidron enters face up
+// (its ruling), so a permanent arriving in the same entry is left out
+// (game.ArrivingForEffect, #3862).
 func otherNontokenCreaturesOnBattlefield(g *game.Game, self uuid.UUID) []uuid.UUID {
 	var ids []uuid.UUID
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.InstanceID == self || c.IsToken() || !c.IsCreature() {
+		if c.InstanceID == self || c.IsToken() || !c.IsCreature() || g.ArrivingForEffect(c.InstanceID) {
 			continue
 		}
 		ids = append(ids, c.InstanceID)

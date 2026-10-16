@@ -97,6 +97,18 @@ type Game struct {
 	// removed a whole departed player's cards under it (#2608). Not
 	// part of a snapshot: a clone is only ever taken between passes.
 	harvestDepth int
+	// arriving is the permanents of the entry whose AsEntersOthers
+	// clauses are running (as_enters_others.go, #3862): on the
+	// battlefield, but not there yet for "all other creatures". Nil
+	// outside that synchronous call, so never part of a snapshot.
+	arriving []uuid.UUID
+	// zoneLayersStamped is true while some object off the battlefield
+	// may carry a zone layer stamp (Card.zoneLayered, zone_layers.go), so
+	// the pass that finds no static over such objects knows to clear
+	// them once and is otherwise free. Rebuilt state: a clone copies it,
+	// a restore in place sets it (one clearing walk at worst), and a
+	// game restored from a file has no stamps.
+	zoneLayersStamped bool
 	// mixedEntry is the arriving permanent excluded from the simultaneous
 	// exit's look-back harvest. Zero outside that synchronous announcement.
 	mixedEntry uuid.UUID

@@ -696,7 +696,15 @@ func effectiveOf(c *Card) Characteristic {
 	if c.effective != nil {
 		return *c.effective
 	}
-	ch := printedShared(c)
+	var ch Characteristic
+	if c.zoneLayered != nil {
+		// #3862: off the battlefield, the types and colours a static
+		// gave this object (zone_layers.go) are its baseline here. The
+		// stamp's slices are shared under the same read-only rule.
+		ch = *c.zoneLayered
+	} else {
+		ch = printedShared(c)
+	}
 	// CR 122.1b / ADR 0101 Decision 4: a keyword counter on a card in
 	// another zone gives it that keyword. No layer pass runs there, so
 	// the counter's keyword is added straight onto the baseline — the

@@ -1,6 +1,7 @@
 # ADR 0067 — Layer dependency ordering (CR 613.8) and effects that outlive their source (CR 613.6)
 
 **Status:** Accepted · 2026-09-18 · S38 ("Layers: dependency ordering, ability grants, ability removal") · tracked on [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668), [#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669) and [#670](https://github.com/krakenhavoc/cmd_and_ctrl/issues/670).
+**Amended:** 2026-10-15 — Decision 2's removal bucket, for an effect that started in an earlier layer, and the timestamp of an effect that begins at a counter threshold ([#3862](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3862)); see the amendment at the end.
 **Numbering:** checked on 2026-09-18 against every remote branch after
 `git fetch origin` (the AGENTS.md §4 loop over `git branch -r` +
 `git ls-tree`). `0061`-`0064`, `0066` and `0069` exist; `0065`, `0067`
@@ -349,3 +350,65 @@ right answer by recomputing, and no schema version moves.
   string nothing prints into the wire type line and into every
   subtype loop in the engine. The flag plus one funnel
   (`SetSubtypes`) buys the same property with no leak.
+
+## Amendment (2026-10-15, #3862): an effect that started earlier carries on in the removal's own layer, and dates from when it began
+
+Idol of False Gods reads "As long as this artifact has eight or more +1/+1 counters on it, it's a 0/0
+creature in addition to its other types and it has annihilator 2." That is one continuous effect in
+layers 4, 6 and 7b. Its 2024-06-07 ruling says: "If Idol of False Gods loses its abilities before
+gaining its eighth +1/+1 counter, it will have annihilator 2; otherwise, it won't." The card shipped
+with a caveat because Decision 2's table gets both halves of that wrong when the removal is older.
+
+**1. The removal's own bucket.** Decision 2's middle row said that, in the removal's bucket,
+"timestamp order decides, via `Card.HasLostAllAbilities`", and an effect of a source silenced
+earlier in that bucket was skipped. That is right for an effect whose FIRST layer is the removal's
+own (two Song of the Dryads), and wrong for one that has already started in an earlier layer. CR
+613.6 says such an effect "will continue to be applied to the same set of objects in each other
+applicable layer", and the removal's own layer is one of them. So the row now reads:
+
+| bucket | what happens | why |
+|---|---|---|
+| the removal's own bucket | an effect that started applying to that object in an EARLIER bucket and declares `ContinuesAfterRemoval` applies, in timestamp order; any other effect of the silenced source is skipped | CR 613.6, and the earlier rule for the Songs |
+
+`layerPassState.started` records the first bucket in which each (source, object) pair applied, and
+`stillApplies` asks "started in an earlier bucket" instead of "the bucket is after the removal's".
+The rows before and after are unchanged.
+
+**2. The layer-6 pre-sort.** ADR 0093 Decision 3 orders a removal before every effect whose source it
+applies to, because the removal changes that effect's existence (CR 613.8a). A continuing effect is
+the exception. Once it has started in an earlier layer, the removal can no longer change its
+existence, so the two are independent and keep timestamp order.
+`orderRemovalsBeforeTheirVictimsLocked` skips an effect that declares `ContinuesAfterRemoval` and
+whose source has started in an earlier bucket. The result is that a removal older than the effect
+applies first and the annihilator is appended after it. A removal newer than the effect applies
+after it and takes the keyword away.
+
+**3. When the effect began.** "Older than the effect" is the ruling's measure. A plain reading of CR
+613.7a would date the Idol's effect from the Idol's own timestamp, and then no removal that arrived
+after the Idol could ever be older than it. The ruling dates it from the eighth counter.
+`StaticAbility.StartsAtCounters` (`game.CounterThreshold{Kind, AtLeast}`) declares that. When a
+counter placement takes the count from below the threshold to at or above it,
+`stampCounterThresholdsLocked` records the moment in `Card.CounterStampedAt`, under a key of its own
+(`"+1/+1>=8"`). When the count falls below the threshold, the record is deleted. A ninth counter
+changes nothing, because the effect did not begin again. The gather gives each such static the later
+of the source's timestamp and that moment (`staticTimestamp`). This is history the board cannot
+recompute, so it is data:
+
+- It rides the snapshot in the existing `counterStampedAt` map. The change is additive within v9,
+  and an older binary never asks for the new key.
+- It is cleared with the counters and on every zone change (CR 400.7).
+- A threshold with no record (an older file, or a card that entered with its counters) sorts at the
+  source's own timestamp, which is the earliest moment the effect could have begun.
+
+The counter kinds that carry a threshold are indexed at registration
+(`IndexCounterThresholds`). A placement of any other kind pays one map read.
+
+**Cards.** Idol of False Gods is now Full. All three of its statics declare `StartsAtCounters`, and
+the layer 6 and 7b ones declare `ContinuesAfterRemoval`. The Idol's ability chip shows the whole
+sentence once, on the layer-4 row.
+
+Pinned by `TestIdolOfFalseGodsKeepsAnnihilatorUnderAnOlderRemoval`,
+`TestIdolOfFalseGodsThatLostItsAbilitiesBeforeTheEighthCounterHasAnnihilator`,
+`TestIdolOfFalseGodsANinthCounterDoesNotOutrunALaterRemoval` and the existing
+`TestIdolOfFalseGodsStaysACreatureWhenItLosesItsAbilities` and
+`TestIdolOfFalseGodsBasePTOutlivesAnOlderRemoval` (`internal/cards/effects`).

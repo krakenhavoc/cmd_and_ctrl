@@ -6942,6 +6942,9 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 		// ADR 0090, CR 722.3a — the sandbox move lands a preparation
 		// card prepared exactly as any other entry does.
 		g.applyEntersPreparedLocked(cardID, out.EntersPrepared)
+		// #3862: and its "as this enters" clause over other objects,
+		// before the arrival is announced (as_enters_others.go).
+		g.runAsEntersOthersForMoveLocked(cardID)
 	}
 
 	g.EmitEvent(Event{
@@ -8714,7 +8717,10 @@ func printedIdentityOf(c *Card) (colors []string, known bool) {
 			colors = original.Colors
 		}
 	} else if len(colors) == 0 {
-		colors = c.Effective().Colors
+		// The PRINTED colours (CR 903.4): a Mycosynth Lattice makes the
+		// commander colourless in every zone (#3862) and leaves its
+		// colour identity alone.
+		colors = printedShared(c).Colors
 	}
 	if len(colors) == 0 {
 		colors = distinctColorsInManaCost(cost)
@@ -10713,6 +10719,9 @@ func (g *Game) applyCounterByLocked(cardID uuid.UUID, name string, delta int, pl
 			// ADR 0101 / CR 613.7c: a keyword counter's timestamp moves
 			// on every placement and stays put on a removal.
 			z.Cards[i].stampKeywordCounter(name, delta, newAmount, timeNowUnixNano)
+			// #3862: and the moment a declared "N or more counters"
+			// threshold was reached (counter_thresholds.go).
+			stampCounterThresholdsLocked(&z.Cards[i], name, newAmount-delta, newAmount, timeNowUnixNano)
 			if z.Cards[i].Counters[name] <= 0 {
 				delete(z.Cards[i].Counters, name)
 				if len(z.Cards[i].Counters) == 0 {
