@@ -62,9 +62,9 @@ var defaultTriggerZones = []ZoneKind{ZoneBattlefield}
 // may reveal this card from your hand as you draw it"), which is the
 // only ability that watches from there — and the index keeps the walk
 // to the events it declares, so a hand is walked for EventDrawCard
-// and for nothing else. The library has no card asking yet, and a
-// zone nothing walks would be a declaration the engine silently
-// ignored. `effects.Register` refuses the rest at boot.
+// and for nothing else. A zone nothing walks would be a declaration the
+// engine silently ignored, so `effects.Register` refuses the rest at
+// boot (the battlefield, the stack, anything not listed here).
 //
 // The command zone joined with eminence triggers (#2802, ADR 0140
 // amendment): "Whenever you cast another Vampire spell, if Edgar Markov
@@ -72,7 +72,13 @@ var defaultTriggerZones = []ZoneKind{ZoneBattlefield}
 // declares BOTH zones, {ZoneBattlefield, ZoneCommand} — the one shape
 // in which the battlefield is named alongside another zone, because
 // the printed text names it.
-var supportedTriggerZones = []ZoneKind{ZoneGraveyard, ZoneExile, ZoneHand, ZoneCommand}
+//
+// The library joined with the discard family (#3859, ADR 0153's
+// 2026-10-15 amendment): a card that Library of Leng put on top of its
+// owner's library was still discarded, and "when a spell or ability an
+// opponent controls causes you to discard this card" looks back at the
+// discard (CR 603.10a) wherever the card went.
+var supportedTriggerZones = []ZoneKind{ZoneGraveyard, ZoneExile, ZoneHand, ZoneCommand, ZoneLibrary}
 
 // TriggerZones is the zones a triggered ability watches from. Never
 // empty.
@@ -106,14 +112,14 @@ func TriggerWatchesFromZone(t TriggeredAbility, zone ZoneKind) bool {
 // leave a card with a trigger nothing ever walks.
 func TriggerZoneUnsupported(zone ZoneKind) string {
 	switch zone {
-	case ZoneGraveyard, ZoneExile, ZoneHand, ZoneCommand:
+	case ZoneGraveyard, ZoneExile, ZoneHand, ZoneCommand, ZoneLibrary:
 		return ""
 	case ZoneBattlefield:
 		return "the battlefield is what an empty Zones means — declare nothing"
 	case ZoneStack:
 		return "a trigger on a spell on the stack is TriggeredAbility.FromStack (cascade, CR 702.85a)"
 	default:
-		return "only the graveyard, exile, the hand and the command zone are walked (#925, #1665, #2802); add the zone to supportedTriggerZones with the card that needs it"
+		return "only the graveyard, exile, the hand, the library and the command zone are walked (#925, #1665, #2802, #3859); add the zone to supportedTriggerZones with the card that needs it"
 	}
 }
 
@@ -234,20 +240,26 @@ func (g *Game) harvestFromDeclaredZones(pass *harvestPass) {
 
 // triggerZonesOfKindLocked is every zone of `kind` the declared-zone
 // harvest walks. zonesOfKindLocked answers for the shared zones and
-// the per-seat graveyards and hands; the command zone is answered
-// here, one per seat, rather than added there, because
+// the per-seat graveyards and hands; the command zone and the library
+// are answered here, one per seat, rather than added there, because
 // zonesOfKindLocked is also the TARGET zone walk and nothing targets a
-// card in a command zone.
+// card in a command zone or a library.
 //
 // Caller must hold g.mu.
 func (g *Game) triggerZonesOfKindLocked(kind ZoneKind) []*Zone {
-	if kind != ZoneCommand {
+	if kind != ZoneCommand && kind != ZoneLibrary {
 		return g.zonesOfKindLocked(kind)
 	}
 	out := make([]*Zone, 0, len(g.Seats))
 	for _, p := range g.Seats {
-		if p != nil && p.Command != nil {
-			out = append(out, p.Command)
+		if p == nil {
+			continue
+		}
+		if z := p.Command; kind == ZoneCommand && z != nil {
+			out = append(out, z)
+		}
+		if z := p.Library; kind == ZoneLibrary && z != nil {
+			out = append(out, z)
 		}
 	}
 	return out

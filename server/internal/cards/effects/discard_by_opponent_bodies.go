@@ -101,6 +101,13 @@ func opponentCausedYourDiscard(ev game.Event, dt *game.DelayedTrigger, _ *game.G
 // resolves.
 func scheduleReturnOfThisCard(g *game.Game, item *game.StackItem, label string, body game.BodyRef) error {
 	id := item.SourceCardID
+	if g.AbilitySourceLeftBattlefieldForEffect(item) {
+		// The card is a different object than the one that was discarded
+		// (CR 400.7): madness's "if you don't cast it, put it into your
+		// graveyard" exiled and then buried it, so there is no card in the
+		// graveyard to follow.
+		return nil
+	}
 	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
 		return nil
 	}
@@ -114,4 +121,20 @@ func scheduleReturnOfThisCard(g *game.Game, item *game.StackItem, label string, 
 		Body:   body,
 		Params: game.EffectParams{Object: game.ObjectRef{ID: id, Epoch: c.ObjectEpoch}},
 	}.Apply(NewContext(g, item))
+}
+
+// returnDiscardedCardToHand is Quagnoth's "return it to your hand": the
+// discarded card, as the object that was discarded (CR 400.7), comes back
+// from the graveyard, exile (madness, Rest in Peace), the top of a library
+// (Library of Leng) or the command zone, wherever the discard left it.
+func returnDiscardedCardToHand(g *game.Game, item *game.StackItem) error {
+	if g.AbilitySourceLeftBattlefieldForEffect(item) {
+		return nil
+	}
+	id := item.SourceCardID
+	if z := g.FindCardZoneForEffect(id); z != nil && z.Kind == game.ZoneGraveyard {
+		return ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}.Apply(NewContext(g, item))
+	}
+	_, err := g.ReturnFromAnyZoneToHandForEffect(item.Controller, id, id)
+	return err
 }

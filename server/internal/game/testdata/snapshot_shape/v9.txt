@@ -41,6 +41,7 @@ battlefield.cards[].attachedTo.ID	custom(uuid.UUID)
 battlefield.cards[].attachedTo.Kind	string
 battlefield.cards[].attachedTo.Mode	number:int
 battlefield.cards[].attachedTo.Slot	number:int
+battlefield.cards[].attachedTo.epoch	number:int
 battlefield.cards[].attackingTarget	custom(uuid.UUID)
 battlefield.cards[].baseController	custom(uuid.UUID)
 battlefield.cards[].battleX	number:float64
@@ -577,6 +578,7 @@ exile.cards[].attachedTo.ID	custom(uuid.UUID)
 exile.cards[].attachedTo.Kind	string
 exile.cards[].attachedTo.Mode	number:int
 exile.cards[].attachedTo.Slot	number:int
+exile.cards[].attachedTo.epoch	number:int
 exile.cards[].attackingTarget	custom(uuid.UUID)
 exile.cards[].baseController	custom(uuid.UUID)
 exile.cards[].battleX	number:float64
@@ -1257,6 +1259,7 @@ lastKnownPermanents{}[].attachedTo.ID	custom(uuid.UUID)
 lastKnownPermanents{}[].attachedTo.Kind	string
 lastKnownPermanents{}[].attachedTo.Mode	number:int
 lastKnownPermanents{}[].attachedTo.Slot	number:int
+lastKnownPermanents{}[].attachedTo.epoch	number:int
 lastKnownPermanents{}[].attachments	array
 lastKnownPermanents{}[].attachments[]	object
 lastKnownPermanents{}[].attachments[].epoch	number:int
@@ -1458,6 +1461,7 @@ lastKnownStack[].card.attachedTo.ID	custom(uuid.UUID)
 lastKnownStack[].card.attachedTo.Kind	string
 lastKnownStack[].card.attachedTo.Mode	number:int
 lastKnownStack[].card.attachedTo.Slot	number:int
+lastKnownStack[].card.attachedTo.epoch	number:int
 lastKnownStack[].card.attackingTarget	custom(uuid.UUID)
 lastKnownStack[].card.baseController	custom(uuid.UUID)
 lastKnownStack[].card.battleX	number:float64
@@ -1919,6 +1923,7 @@ lastKnownStack[].item.payload[].ID	custom(uuid.UUID)
 lastKnownStack[].item.payload[].Kind	string
 lastKnownStack[].item.payload[].Mode	number:int
 lastKnownStack[].item.payload[].Slot	number:int
+lastKnownStack[].item.payload[].epoch	number:int
 lastKnownStack[].item.promisedCounters	array
 lastKnownStack[].item.promisedCounters[]	object
 lastKnownStack[].item.promisedCounters[].count	number:int
@@ -1940,6 +1945,7 @@ lastKnownStack[].item.targets[].ID	custom(uuid.UUID)
 lastKnownStack[].item.targets[].Kind	string
 lastKnownStack[].item.targets[].Mode	number:int
 lastKnownStack[].item.targets[].Slot	number:int
+lastKnownStack[].item.targets[].epoch	number:int
 lastKnownStack[].item.trigger	object
 lastKnownStack[].item.trigger.Event	object
 lastKnownStack[].item.trigger.Event.actor	custom(uuid.UUID)
@@ -2047,6 +2053,7 @@ lastKnownTriggerIdentity{}.attachedTo.ID	custom(uuid.UUID)
 lastKnownTriggerIdentity{}.attachedTo.Kind	string
 lastKnownTriggerIdentity{}.attachedTo.Mode	number:int
 lastKnownTriggerIdentity{}.attachedTo.Slot	number:int
+lastKnownTriggerIdentity{}.attachedTo.epoch	number:int
 lastKnownTriggerIdentity{}.oracleID	string
 lastKnownTriggerIdentity{}.textBox	object
 lastKnownTriggerIdentity{}.textBox.from	string
@@ -2300,6 +2307,7 @@ pausedModeWalk.item.payload[].ID	custom(uuid.UUID)
 pausedModeWalk.item.payload[].Kind	string
 pausedModeWalk.item.payload[].Mode	number:int
 pausedModeWalk.item.payload[].Slot	number:int
+pausedModeWalk.item.payload[].epoch	number:int
 pausedModeWalk.item.promisedCounters	array
 pausedModeWalk.item.promisedCounters[]	object
 pausedModeWalk.item.promisedCounters[].count	number:int
@@ -2321,6 +2329,7 @@ pausedModeWalk.item.targets[].ID	custom(uuid.UUID)
 pausedModeWalk.item.targets[].Kind	string
 pausedModeWalk.item.targets[].Mode	number:int
 pausedModeWalk.item.targets[].Slot	number:int
+pausedModeWalk.item.targets[].epoch	number:int
 pausedModeWalk.item.trigger	object
 pausedModeWalk.item.trigger.Event	object
 pausedModeWalk.item.trigger.Event.actor	custom(uuid.UUID)
@@ -2560,6 +2569,7 @@ pausedResolutionTail.item.payload[].ID	custom(uuid.UUID)
 pausedResolutionTail.item.payload[].Kind	string
 pausedResolutionTail.item.payload[].Mode	number:int
 pausedResolutionTail.item.payload[].Slot	number:int
+pausedResolutionTail.item.payload[].epoch	number:int
 pausedResolutionTail.item.promisedCounters	array
 pausedResolutionTail.item.promisedCounters[]	object
 pausedResolutionTail.item.promisedCounters[].count	number:int
@@ -2581,6 +2591,7 @@ pausedResolutionTail.item.targets[].ID	custom(uuid.UUID)
 pausedResolutionTail.item.targets[].Kind	string
 pausedResolutionTail.item.targets[].Mode	number:int
 pausedResolutionTail.item.targets[].Slot	number:int
+pausedResolutionTail.item.targets[].epoch	number:int
 pausedResolutionTail.item.trigger	object
 pausedResolutionTail.item.trigger.Event	object
 pausedResolutionTail.item.trigger.Event.actor	custom(uuid.UUID)
@@ -2985,6 +2996,7 @@ pendingChoices[].retargetNext[].ID	custom(uuid.UUID)
 pendingChoices[].retargetNext[].Kind	string
 pendingChoices[].retargetNext[].Mode	number:int
 pendingChoices[].retargetNext[].Slot	number:int
+pendingChoices[].retargetNext[].epoch	number:int
 pendingChoices[].retargetOptional	bool
 pendingChoices[].retargetPolicy	number:uint8
 pendingChoices[].retargetReason	string
@@ -2994,6 +3006,7 @@ pendingChoices[].retargetTo.ID	custom(uuid.UUID)
 pendingChoices[].retargetTo.Kind	string
 pendingChoices[].retargetTo.Mode	number:int
 pendingChoices[].retargetTo.Slot	number:int
+pendingChoices[].retargetTo.epoch	number:int
 pendingChoices[].sacrificeOptions	array
 pendingChoices[].sacrificeOptions[]	custom(uuid.UUID)
 pendingChoices[].scryCards	array
@@ -3152,6 +3165,7 @@ pendingTriggers[].payload[].ID	custom(uuid.UUID)
 pendingTriggers[].payload[].Kind	string
 pendingTriggers[].payload[].Mode	number:int
 pendingTriggers[].payload[].Slot	number:int
+pendingTriggers[].payload[].epoch	number:int
 pendingTriggers[].promisedCounters	array
 pendingTriggers[].promisedCounters[]	object
 pendingTriggers[].promisedCounters[].count	number:int
@@ -3173,6 +3187,7 @@ pendingTriggers[].targets[].ID	custom(uuid.UUID)
 pendingTriggers[].targets[].Kind	string
 pendingTriggers[].targets[].Mode	number:int
 pendingTriggers[].targets[].Slot	number:int
+pendingTriggers[].targets[].epoch	number:int
 pendingTriggers[].trigger	object
 pendingTriggers[].trigger.Event	object
 pendingTriggers[].trigger.Event.actor	custom(uuid.UUID)
@@ -3288,6 +3303,7 @@ phasedOut.cards[].attachedTo.ID	custom(uuid.UUID)
 phasedOut.cards[].attachedTo.Kind	string
 phasedOut.cards[].attachedTo.Mode	number:int
 phasedOut.cards[].attachedTo.Slot	number:int
+phasedOut.cards[].attachedTo.epoch	number:int
 phasedOut.cards[].attackingTarget	custom(uuid.UUID)
 phasedOut.cards[].baseController	custom(uuid.UUID)
 phasedOut.cards[].battleX	number:float64
@@ -4008,6 +4024,7 @@ seats[].command.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].command.cards[].attachedTo.Kind	string
 seats[].command.cards[].attachedTo.Mode	number:int
 seats[].command.cards[].attachedTo.Slot	number:int
+seats[].command.cards[].attachedTo.epoch	number:int
 seats[].command.cards[].attackingTarget	custom(uuid.UUID)
 seats[].command.cards[].baseController	custom(uuid.UUID)
 seats[].command.cards[].battleX	number:float64
@@ -4355,6 +4372,7 @@ seats[].companion.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].companion.cards[].attachedTo.Kind	string
 seats[].companion.cards[].attachedTo.Mode	number:int
 seats[].companion.cards[].attachedTo.Slot	number:int
+seats[].companion.cards[].attachedTo.epoch	number:int
 seats[].companion.cards[].attackingTarget	custom(uuid.UUID)
 seats[].companion.cards[].baseController	custom(uuid.UUID)
 seats[].companion.cards[].battleX	number:float64
@@ -4705,6 +4723,7 @@ seats[].emblems.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].emblems.cards[].attachedTo.Kind	string
 seats[].emblems.cards[].attachedTo.Mode	number:int
 seats[].emblems.cards[].attachedTo.Slot	number:int
+seats[].emblems.cards[].attachedTo.epoch	number:int
 seats[].emblems.cards[].attackingTarget	custom(uuid.UUID)
 seats[].emblems.cards[].baseController	custom(uuid.UUID)
 seats[].emblems.cards[].battleX	number:float64
@@ -5050,6 +5069,7 @@ seats[].graveyard.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].graveyard.cards[].attachedTo.Kind	string
 seats[].graveyard.cards[].attachedTo.Mode	number:int
 seats[].graveyard.cards[].attachedTo.Slot	number:int
+seats[].graveyard.cards[].attachedTo.epoch	number:int
 seats[].graveyard.cards[].attackingTarget	custom(uuid.UUID)
 seats[].graveyard.cards[].baseController	custom(uuid.UUID)
 seats[].graveyard.cards[].battleX	number:float64
@@ -5393,6 +5413,7 @@ seats[].hand.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].hand.cards[].attachedTo.Kind	string
 seats[].hand.cards[].attachedTo.Mode	number:int
 seats[].hand.cards[].attachedTo.Slot	number:int
+seats[].hand.cards[].attachedTo.epoch	number:int
 seats[].hand.cards[].attackingTarget	custom(uuid.UUID)
 seats[].hand.cards[].baseController	custom(uuid.UUID)
 seats[].hand.cards[].battleX	number:float64
@@ -5748,6 +5769,7 @@ seats[].library.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].library.cards[].attachedTo.Kind	string
 seats[].library.cards[].attachedTo.Mode	number:int
 seats[].library.cards[].attachedTo.Slot	number:int
+seats[].library.cards[].attachedTo.epoch	number:int
 seats[].library.cards[].attackingTarget	custom(uuid.UUID)
 seats[].library.cards[].baseController	custom(uuid.UUID)
 seats[].library.cards[].battleX	number:float64
@@ -6129,6 +6151,7 @@ seats[].sideboard.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].sideboard.cards[].attachedTo.Kind	string
 seats[].sideboard.cards[].attachedTo.Mode	number:int
 seats[].sideboard.cards[].attachedTo.Slot	number:int
+seats[].sideboard.cards[].attachedTo.epoch	number:int
 seats[].sideboard.cards[].attackingTarget	custom(uuid.UUID)
 seats[].sideboard.cards[].baseController	custom(uuid.UUID)
 seats[].sideboard.cards[].battleX	number:float64
@@ -6687,6 +6710,7 @@ stack.cards[].attachedTo.ID	custom(uuid.UUID)
 stack.cards[].attachedTo.Kind	string
 stack.cards[].attachedTo.Mode	number:int
 stack.cards[].attachedTo.Slot	number:int
+stack.cards[].attachedTo.epoch	number:int
 stack.cards[].attackingTarget	custom(uuid.UUID)
 stack.cards[].baseController	custom(uuid.UUID)
 stack.cards[].battleX	number:float64
@@ -7151,6 +7175,7 @@ stackMeta[].payload[].ID	custom(uuid.UUID)
 stackMeta[].payload[].Kind	string
 stackMeta[].payload[].Mode	number:int
 stackMeta[].payload[].Slot	number:int
+stackMeta[].payload[].epoch	number:int
 stackMeta[].promisedCounters	array
 stackMeta[].promisedCounters[]	object
 stackMeta[].promisedCounters[].count	number:int
@@ -7172,6 +7197,7 @@ stackMeta[].targets[].ID	custom(uuid.UUID)
 stackMeta[].targets[].Kind	string
 stackMeta[].targets[].Mode	number:int
 stackMeta[].targets[].Slot	number:int
+stackMeta[].targets[].epoch	number:int
 stackMeta[].trigger	object
 stackMeta[].trigger.Event	object
 stackMeta[].trigger.Event.actor	custom(uuid.UUID)

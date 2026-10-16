@@ -19,28 +19,27 @@ import (
 // token appears only when the enchantment really left the battlefield.
 //
 // The second is the family's "this card" trigger (ADR 0153 §4): it
-// watches from the GRAVEYARD, like cycling's "when you cycle this card",
+// watches from wherever the card landed (WhereverDiscarded, #3859),
 // on a discard an opponent's spell or ability caused (the stack item's
 // controller, CR 113.8). It carries an intervening "if" (CR 603.4), so
 // the Plains is checked when the discard happens and again as the
-// ability resolves; "you" is the card's owner while it sits in the
-// graveyard (CR 108.4).
+// ability resolves; "you" is the card's owner wherever it landed
+// (CR 108.4).
 //
-// Caveat, declared: if madness or Rest in Peace sends the discarded card
-// to exile instead of the graveyard, its ability does not trigger from
-// exile (owner decision 6).
+// No simplification: the discard ability is watched from wherever the
+// discard left the card (WhereverDiscarded, #3859), so madness or Rest in
+// Peace sending it to exile instead of the graveyard does not stop it.
 func init() {
 	Register(Spec{
 		OracleID:          "17c4807c-158e-4a86-90f1-d8fb2ebe892a",
 		Name:              "Ajani's Last Stand",
-		Completeness:      CompletenessCaveats,
-		Caveats:           []string{discardTriggerFromExileCaveat},
+		Completeness:      CompletenessFull,
 		DiscardByOpponent: game.DiscardByOpponentTrigger,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, creatureOrPlaneswalkerYouControlDied,
 				"Ajani's Last Stand — you may sacrifice it to create a 4/4 white Avatar with flying",
 				ajanisLastStandSacrifice),
-			InGraveyard(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
+			WhereverDiscarded(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
 				return DiscardedByAnOpponent(true)(ev, source, ch, g) && controlsPlains(g, source.Controller)
 			}, "Ajani's Last Stand — discarded: create a 4/4 white Avatar with flying", func(g *game.Game, item *game.StackItem) error {
 				if !controlsPlains(g, item.Controller) {
@@ -51,11 +50,6 @@ func init() {
 		},
 	})
 }
-
-// discardTriggerFromExileCaveat is the player-facing line every "this
-// card" discard trigger of the family carries (ADR 0153 owner decision
-// 6).
-const discardTriggerFromExileCaveat = "If madness or another effect sends the discarded card to exile instead of your graveyard, its discard ability does not trigger."
 
 // creatureOrPlaneswalkerYouControlDied is "whenever a creature or
 // planeswalker you control dies", read from the permanent's last-known

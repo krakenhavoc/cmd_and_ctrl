@@ -91,6 +91,28 @@ type TargetRef struct {
 	// different Mode values, which is what gives each occurrence its
 	// own target group. Added by #764.
 	Mode int
+
+	// Epoch is the CR 400.7 object epoch of the permanent this ref
+	// named when a PAYLOAD recorded it (StackItem.Payload), so the
+	// resolving ability can read that object's last-known information
+	// (CR 608.2h) even when its card has since come back as a new one:
+	// Orvar's "create a token that's a copy of one of those permanents".
+	// Zero everywhere else, and for a payload that records no object:
+	// epoch zero is a real epoch, but a ref whose reader wants the
+	// object builds it with PayloadObjectRef and reads it back with
+	// ObjectRef. Never part of a target announcement. Added by #3859.
+	Epoch int `json:"epoch,omitempty"`
+}
+
+// PayloadObjectRef is the Payload entry that records one permanent
+// OBJECT (a card and its CR 400.7 epoch).
+func PayloadObjectRef(o ObjectRef) TargetRef {
+	return TargetRef{Kind: TargetCard, ID: o.ID, Epoch: o.Epoch}
+}
+
+// Object reads a payload entry back as the object it recorded.
+func (r TargetRef) Object() ObjectRef {
+	return ObjectRef{ID: r.ID, Epoch: r.Epoch}
 }
 
 // StackItem is the metadata for one item on the stack. Lives in

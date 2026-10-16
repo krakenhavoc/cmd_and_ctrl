@@ -25,15 +25,19 @@ import (
 // and the LEAVE is what pays the owner, in the currency of the card's
 // mana value, as a token they create (not the Apparition's controller).
 //
-// Declared weaker than printed: the mana value is read from the card
-// as it sits in exile when the Apparition leaves, so a card that has
-// already been moved out of exile by something else pays nothing.
+// The exiled card is remembered, not looked up in exile: a card that
+// something else has already moved out of exile (CR 608.2h) still pays its
+// owner, X being the mana value it had as it last existed in exile
+// (#3859). A mana value is a printed fact that does not change with the
+// zone, and it is read with {X} counted as 0, which is what a card in
+// exile has (CR 202.3e), whatever the card is doing now.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "d90af00a-d322-4265-9954-7b1e80702e18",
 		Name:         "Skyclave Apparition",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"If the exiled card has left exile by the time Skyclave Apparition leaves the battlefield, its owner doesn't get the Illusion token."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				WhenThisEnters(skyclaveApparitionExileLabel, b27ExileChosenTarget),
@@ -51,16 +55,12 @@ const skyclaveApparitionExileLabel = "Skyclave Apparition — exile up to one ta
 // Illusion, X being the exiled card's mana value.
 func skyclaveApparitionPayOwner(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	for _, id := range b27ExiledWith(g, item.SourceCardID, skyclaveApparitionExileLabel) {
+	for _, id := range b27EverExiledWith(g, item.SourceCardID, skyclaveApparitionExileLabel) {
 		c, ok := g.LookupCardForEffect(id)
 		if !ok {
 			continue
 		}
-		x, known := g.ManaValueForEffect(c)
-		if !known {
-			continue
-		}
-		if err := illusionTokenFor(ctx, c.Owner, x); err != nil {
+		if err := illusionTokenFor(ctx, c.Owner, c.ManaValueWithX(0)); err != nil {
 			return err
 		}
 	}
