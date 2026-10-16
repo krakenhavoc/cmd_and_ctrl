@@ -73,6 +73,48 @@ Set up by the owner on 2026-10-13. Discord holds them, not this repo; recorded h
 
 The request runs through Discord's onboarding. One question is "request account access"; answering yes adds the member to the access-request channel, where a mod grants Elder Dragon Highlander. Taking the role away ends that person's account access at their next renewal (item 5).
 
+#### Amendment (S77, 2026-10-16, [#3325](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3325)): approve from Discord, and a mod log
+
+Mods had to grant Elder Dragon Highlander by hand in Server Settings, and what happened in the app (reports, tables ended, people removed) was visible only in the admin view. This amendment adds two things and changes the bot's place in the role list.
+
+**1. Approve and Decline buttons on access requests.** With `CMDCTRL_DISCORD_ACCESS_REQUEST_CHANNEL_ID` (the access-request channel, #account-requests on the C2 server) and `CMDCTRL_DISCORD_PLAYER_ROLE_ID` set in the gateway bot's environment:
+
+- **The request.** The first message a member without the player role posts in that channel gets a reply from the bot: an *Access request* naming the member, with **Approve** and **Decline**. The bot reads who posted and their roles, never the text, so it needs only the unprivileged Guild Messages intent. Bots, webhooks, system messages, members who already hold the role and people on the bot's admin lists get nothing. At most one request per member per 24 hours, remembered in memory (a restart may post a second one). Nothing is stored.
+- **Who may press.** A member who could grant the role by hand: Manage Roles or Administrator in that channel, as Discord computes it for the interaction, or someone on `CMDCTRL_DISCORD_ADMIN_USER_IDS` / `CMDCTRL_DISCORD_ADMIN_ROLE_IDS`. Anyone else gets an ephemeral refusal. The buttons give no one a power they did not already have.
+- **Approve** grants the role (`PUT /guilds/{guild}/members/{user}/roles/{role}`, with an audit-log reason naming the mod) and edits the request to say who approved it and that the member can sign in. **Decline** changes nothing on Discord and edits the request to say who declined it. Either way the buttons are removed. The buttons are stateless (`c2-access:approve:<user id>`), so a request posted before a restart still works.
+- **The gate is unchanged.** Approve only grants the role that item 3 already checks; a member is let in at their next sign-in exactly as if a mod had given the role by hand.
+
+**2. The mod log.** `CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID` names a private channel that only moderators can read. The server posts to it with the bot token (the same REST path as ADR 0174's results and ADR 0196's bug forum), and the gateway bot adds a line when a request is approved or declined:
+
+| Entry | Says |
+|---|---|
+| Player report | the table's name, the reported seat's (or spectator's) name, the reason |
+| Table ended / restored / deleted | the table's name, and which admin |
+| Seat removed / Spectator removed | the table, the name the seat had there, whether it was blocked, and which admin. Only an admin's removals: a host managing their own table is not a mod action. |
+| Sessions revoked | the account's display name, how many open connections closed, and which admin |
+| Access request approved / declined | the member and the mod, as Discord mentions (an embed never notifies) |
+
+Each server entry links into the admin view (Reports, the table, the account) when `CMDCTRL_PUBLIC_BASE_URL` is set. "Which admin" is an allowlisted admin's display name, or "the admin token" for the shared credential, which is also what the bot's `/c2-end` uses.
+
+**Privacy (ADR 0149).** An entry carries only what an admin already reads in the admin view, and less: **never the reporter's name, the chat excerpt, an account id or a Discord id** in the server's entries. Nothing new is stored by the server, so `accountdelete.Inventory` and the privacy schema version do not change. What is new is that a copy reaches Discord and stays until a moderator deletes it, unlike the report itself, which is removed after 90 days. The privacy page says so in the Player reports entry and in what Discord receives.
+
+Posting never blocks or fails the request that caused it: one goroutine per entry, at most eight at once (past that an entry is dropped with a WARN), up to three attempts while Discord rate-limits or does not answer, then a WARN. Unset, or no bot token: nothing is posted. A malformed id stops the boot of the server and of the bot.
+
+**3. The bot's role (reverses earlier advice).** ADR 0004 and `deploy/README.md` authorized the bot with no permissions, and ADR 0159 §7 asked for its role to be kept below the moderators'. To grant a role, Discord requires the bot to hold **Manage Roles** and its own highest role to sit **above the role it grants**. So, on the C2 server:
+
+- the bot's role (`cmd_and_ctrl`) holds Manage Roles (voice rooms already gave it this server-wide), and
+- it is dragged **above Elder Dragon Highlander** in Server Settings → Roles, while staying below the moderators' roles. Discord never lets it grant or remove a role at or above its own, so it can still not touch a moderator.
+- In #account-requests it needs View Channel, Send Messages, Embed Links and Read Message History; in #mod-log, View Channel, Send Messages and Embed Links. #mod-log denies View Channel to @everyone.
+
+These are owner actions in Discord; no code or deploy does them. Until they are done, Approve answers the mod with an ephemeral message saying exactly this.
+
+**Calls made here** (the owner can overturn any in review):
+
+- **The trigger is the member's first message in the channel**, not a new onboarding role or a "Request access" button. It matches today's copy ("say hi in #account-requests"), needs no privileged intent and no extra role, and asks nothing new of the member.
+- **"A mod" is Discord's own Manage Roles,** plus the bot's admin lists, rather than a new variable.
+- **The reporter is not named in #mod-log.** Discord keeps the message for as long as a moderator leaves it there, and the person who reported is the one most at risk if it leaks; the admin Reports view has the name.
+- **Ban sync is not built.** Revoking sessions when a member is banned or loses the role, at once rather than at renewal, needs a gateway listener this ADR rejected under Consequences. It waits for an owner decision on #3325.
+
 ### 2. A guest practice game
 
 Owner answer 4. Today the practice table needs a session, so a stranger must sign in with Discord first. Under the gate that would shut out everyone not yet approved, and it already falls short of S70's exit criterion 3.

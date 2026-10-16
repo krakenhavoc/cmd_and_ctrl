@@ -314,6 +314,13 @@ type Config struct {
 	// token are set.
 	BugForum *BugForum
 
+	// ModLog posts player reports and admin actions to the community
+	// server's private #mod-log channel (ADR 0156's 2026-10-16
+	// amendment, #3325). Nil turns it off: nothing is posted. Production
+	// wires it when CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID and the bot token
+	// are set.
+	ModLog *ModLog
+
 	// BugLimits tunes the throttle in front of POST /bugreport (ADR
 	// 0017 §10): per-account window, daily cap, dedupe window. The zero
 	// value means the defaults; production sets nothing.
@@ -1929,11 +1936,21 @@ func deleteGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	// The name, for the mod log, before the table is gone.
+	var name string
+	if c.ModLog != nil {
+		if meta, gerr := c.Lobby.Get(id); gerr == nil {
+			name = meta.Name
+		}
+	}
 	if err := c.Lobby.Delete(id); err != nil {
 		return err
 	}
 	if c.Evictor != nil {
 		c.Evictor.EvictGame(id)
+	}
+	if p, ok := auth.PrincipalFromContext(r.Context()); ok {
+		c.ModLog.TableDeleted(p, name)
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
@@ -1970,6 +1987,9 @@ func setGameArchived(c Config, w http.ResponseWriter, r *http.Request, archived 
 	}
 	if archived && c.Evictor != nil {
 		c.Evictor.EvictGame(id)
+	}
+	if p, ok := auth.PrincipalFromContext(r.Context()); ok {
+		c.ModLog.TableArchived(p, id, meta.Name, archived)
 	}
 	// The listing already strips these; an archive response is a
 	// listing row, not an ownership grant.
