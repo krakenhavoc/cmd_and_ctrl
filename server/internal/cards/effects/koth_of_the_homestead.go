@@ -24,7 +24,7 @@ func init() {
 			Targeting(
 				On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					c, ok := enteredUnderYourControl(ev, source, g, false)
-					return ok && c.IsLand() && c.HasSubtype("Plains")
+					return ok && c.IsLand() && c.HasSubtype(source.TextSubtype("Plains"))
 				}, "Koth of the Homestead — a +1/+1 counter on target creature",
 					putACounterOnTheTarget(game.CounterPlusOne)),
 				TargetCreature("target creature")),

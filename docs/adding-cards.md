@@ -4280,6 +4280,22 @@ on the battlefield (Soul Exchange's "if the exiled creature was a Thrull"),
 or `ctx.Exiled()` for the bare IDs. Mandatory slot only; Register refuses
 it in an optional cost, an either/or branch and the craft forms.
 
+**Tap an untapped permanent you control as an additional cost (#3868):**
+"As an additional cost to cast this spell, tap an untapped Vampire you
+control" (New Blood) is `AdditionalCost: TapUntappedCost(1, "an untapped
+Vampire you control", Creature(), Subtype("Vampire"))`: the activated
+abilities' `TapOthersCost` on a cast, so the walk, the validator and the
+payer are theirs. The label is the clause without the verb; the predicates
+say what may pay (untapped and "you control" are the validator's). The
+caster names the permanents on `teamwork_ids`; they are tapped with the
+spell on the stack, and a creature that arrived this turn may pay (it is
+not {T}, CR 302.6). Read them back with `ctx.TappedToPay()` (Swallow
+Whole's "the creature tapped to pay"). It is an additional cost, so a
+flashback cast pays it too. It may also be a branch of `EitherCost`
+(Disruption Protocol's "tap an untapped artifact you control or pay {1}").
+Register refuses it in an optional cost, the "tap X" and "another" forms,
+and beside teamwork or escalate's taps, which ride the same list.
+
 **Exile any number of cards from your hand for a discount (#3175):** the
 Marches' "As an additional cost to cast this spell, you may exile any
 number of blue cards from your hand. This spell costs {2} less to cast for

@@ -317,7 +317,7 @@ func b36TapChosenCreature(g *game.Game, item *game.StackItem) error {
 // controller's devotion to red, counted as the trigger resolves —
 // the Fanatic's own {R} included while he is still there.
 func b36DamageEachOpponentForDevotionToRed(g *game.Game, item *game.StackItem) error {
-	n := devotionTo(g, item.Controller, "R")
+	n := devotionTo(g, item.Controller, NewContext(g, item).TextColor("R"))
 	if n <= 0 {
 		return nil
 	}

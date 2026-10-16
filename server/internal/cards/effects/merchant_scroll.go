@@ -20,7 +20,7 @@ func init() {
 		Name:         "Merchant Scroll",
 		Completeness: CompletenessFull,
 		OnResolve: b06TutorToHand("Merchant Scroll — a blue instant card", func(c game.Card) bool {
-			return c.IsInstant() && c.HasColor("U")
+			return c.IsInstant() && c.HasColorWord("U")
 		}),
 	})
 }

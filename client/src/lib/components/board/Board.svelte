@@ -143,6 +143,7 @@
     castBlightOffer,
     castRevealCost,
     castExilePermanentCost,
+    castTapCost,
     castHandExileCost,
     altCostPayDefinesX,
     altCostPayX,
@@ -743,6 +744,27 @@
     afterSacrificeCost(p.card, { ...p.choices, exilePermanentIDs: ids });
   }
 
+  // #3868: "tap an untapped Vampire you control" as a spell's additional
+  // cost (New Blood) — the sacrifice picker with the verb "Tap", over the
+  // server's `tap_others_options`, the answer sent as `teamwork_ids`.
+  let addTapPrompt = $state<{
+    card: CardView;
+    label: string;
+    count: number;
+    choices: CastChoices;
+  } | null>(null);
+  let addTapPromptOptionIDs = $state<string[]>([]);
+  const addTapPromptOptions = $derived.by(() =>
+    orderSacrificeOptions(view.battlefield.cards, addTapPromptOptionIDs),
+  );
+
+  function confirmAddTap(ids: string[]): void {
+    const p = addTapPrompt;
+    addTapPrompt = null;
+    if (!p) return;
+    afterSacrificeCost(p.card, { ...p.choices, teamworkIDs: ids });
+  }
+
   // #3175: "you may exile any number of blue cards from your hand" (March
   // of Swirling Mist) — the same picker with the verb "Exile", over the
   // server's `exile_from_hand_options`, any number including none. The
@@ -835,6 +857,12 @@
     if (ex && choices.exilePermanentIDs === undefined) {
       exilePromptOptionIDs = ex.options;
       exilePrompt = { card, label: ex.label, count: ex.count, choices };
+      return;
+    }
+    const tc = castTapCost(card, choices);
+    if (tc && choices.teamworkIDs === undefined) {
+      addTapPromptOptionIDs = tc.options;
+      addTapPrompt = { card, label: tc.label, count: tc.count, choices };
       return;
     }
     const he = castHandExileCost(card, choices);
@@ -3787,6 +3815,19 @@
     onConfirm={confirmExilePermanent}
     onCancel={() => (exilePrompt = null)}
   />
+  <!-- #3868: tap an untapped Vampire you control, as a spell's additional
+       cost. The picks ride cast_spell's teamwork_ids. -->
+  <SacrificeCostModal
+    source={addTapPrompt?.card ?? null}
+    label={addTapPrompt?.label ?? "an untapped permanent you control"}
+    options={addTapPromptOptions}
+    count={addTapPrompt?.count ?? 1}
+    verb="Tap"
+    castName={addTapPrompt?.card.name}
+    additional
+    onConfirm={confirmAddTap}
+    onCancel={() => (addTapPrompt = null)}
+  />
   <!-- #3175: exile any number of blue cards from your hand (a March). -->
   <SacrificeCostModal
     source={handExilePrompt?.card ?? null}
@@ -3796,6 +3837,7 @@
     min={0}
     verb="Exile"
     castName={handExilePrompt?.card.name}
+    additional
     onConfirm={confirmHandExile}
     onCancel={() => (handExilePrompt = null)}
   />

@@ -123,6 +123,10 @@ func selfAttackTargetRestriction(r game.AttackTargetRestriction) game.StaticAbil
 			r := r
 			if source != nil {
 				r.Source, r.SourceName = source.InstanceID, source.Name
+				// "Unless defending player controls an Island" names
+				// its land type in the source's text (CR 612.2).
+				r.DefenderMustControl = game.PermanentQueriesThroughTextOf(r.DefenderMustControl, source)
+				r.ControllerMustControlMore = game.PermanentQueriesThroughTextOf(r.ControllerMustControlMore, source)
 			}
 			c.AttackTargetRestrictions = append(c.AttackTargetRestrictions, r)
 		},

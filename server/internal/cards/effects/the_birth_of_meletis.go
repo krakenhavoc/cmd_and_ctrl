@@ -40,9 +40,11 @@ func meletisFetchPlains(g *game.Game, item *game.StackItem) error {
 
 // isBasicPlains matches a BASIC Plains, both halves enforced: the
 // printed text names the supertype as well as the land type, so a
-// Sacred Foundry is not a legal fetch even though it is a Plains.
+// Sacred Foundry is not a legal fetch even though it is a Plains. The
+// land type is a word of the Saga's text, read through the text the
+// search lends (CR 612.2).
 func isBasicPlains(c game.Card) bool {
-	return IsBasicLand(c) && c.HasSubtype("Plains")
+	return IsBasicLand(c) && c.HasSubtypeWord("Plains")
 }
 
 func meletisWall(g *game.Game, item *game.StackItem) error {

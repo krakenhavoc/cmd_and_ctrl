@@ -1,7 +1,9 @@
 // Command cmd_and_ctrl-bot is the S12.5 Discord slash-command bot.
 // It runs as a second systemd unit next to the game server and
 // exposes /c2-invite + /c2-games + /c2-end + /c2-deck-check +
-// /c2-deck-req against an allow-listed set of guilds. Every command
+// /c2-deck-req against an allow-listed set of guilds, and answers
+// access requests in #account-requests with Approve and Decline
+// buttons (ADR 0156's 2026-10-16 amendment). Every command
 // works by calling back into the game server's admin HTTP API over
 // loopback — the bot never mutates game state directly.
 //
@@ -60,6 +62,12 @@ func main() {
 	if len(cfg.CardChannelIDs) > 0 {
 		session.Identify.Intents |= discordgo.IntentsGuildMessages | discordgo.IntentsMessageContent
 	}
+	// Access requests (ADR 0156's 2026-10-16 amendment, #3325) need to
+	// see who posts in #account-requests, which is the unprivileged
+	// Guild Messages intent; they never read the text.
+	if cfg.AccessRequestsEnabled() {
+		session.Identify.Intents |= discordgo.IntentsGuildMessages
+	}
 
 	client := bot.NewServerClient(cfg.ServerBaseURL, cfg.AdminToken)
 	handler := bot.NewHandler(cfg, client, log)
@@ -70,6 +78,11 @@ func main() {
 	session.AddHandler(handler.Dispatch)
 	if len(cfg.CardChannelIDs) > 0 {
 		session.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) { handler.HandleMessage(s, m) })
+	}
+	if cfg.AccessRequestsEnabled() {
+		session.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) { handler.HandleAccessRequestMessage(s, m) })
+		log.Info("access requests on: a member without the player role who posts in the channel gets Approve and Decline buttons",
+			"channel", cfg.AccessRequestChannelID)
 	}
 
 	// Guild allow-list enforcement happens in two places:

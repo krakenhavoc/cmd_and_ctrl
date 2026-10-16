@@ -117,9 +117,12 @@ func AttackingYou() CardPredicate {
 // (CR 608.2b).
 func PowerAtMostIslandsYouControl() CardPredicate {
 	return func(g *game.Game, caster uuid.UUID, c game.Card) bool {
+		// "Islands" is a word of the source's text, lent to the
+		// candidate by the targeting walk (LentSubtype, CR 612.2).
+		island := c.LentSubtype("Island")
 		islands := 0
 		for _, p := range g.BattlefieldCardsForEffect() {
-			if p.Controller == caster && p.HasSubtype("Island") {
+			if p.Controller == caster && p.HasSubtype(island) {
 				islands++
 			}
 		}

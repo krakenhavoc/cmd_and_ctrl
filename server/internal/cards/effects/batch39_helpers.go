@@ -36,7 +36,10 @@ import (
 // the Plains SUBTYPE on its printed type line. Deliberately not "a
 // basic Plains" — the printed text says "a Plains card", so a
 // shockland, a Snow-Covered Plains and a typed tapland all qualify.
-func b39IsPlainsCard(c game.Card) bool { return c.HasSubtype("Plains") }
+//
+// "Plains" is a word of the searching card's text, read through the
+// text SearchLibrary lends (HasSubtypeWord, CR 612.2).
+func b39IsPlainsCard(c game.Card) bool { return c.HasSubtypeWord("Plains") }
 
 // b39IsVampireOrWizardCreatureCard is Bloodline Necromancer's
 // reanimation filter, read off a card in a graveyard: a creature card

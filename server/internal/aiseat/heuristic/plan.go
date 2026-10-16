@@ -716,7 +716,7 @@ func (st *state) manaAvailable(filterLands bool) []uint8 {
 	var filters []manaSource
 	for i := range st.view.Battlefield.Cards {
 		c := &st.view.Battlefield.Cards[i]
-		if c.Controller != st.me || c.Tapped || (isCreature(c) && c.SummoningSick) {
+		if c.Controller != st.me || c.Tapped || (isCreature(c) && c.ActivationSick()) {
 			continue
 		}
 		src, ok := manaSourceOf(c, filterLands)

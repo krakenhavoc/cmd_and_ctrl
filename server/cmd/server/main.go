@@ -814,6 +814,22 @@ func main() {
 		log.Info("bug report mirror off; set "+discord.BugForumEnv+" to enable", "var", discord.BugForumEnv)
 	}
 
+	// The mod log (ADR 0156's 2026-10-16 amendment, #3325): player
+	// reports and admin actions posted to a private channel. Its links
+	// into the admin view use the public origin; without one, entries
+	// are posted without links.
+	var modLog *lobby.ModLog
+	switch {
+	case cfg.ModLog.Enabled():
+		modLog = lobby.NewModLog(cfg.ModLog, publicBase, log)
+		log.Info("mod log on: player reports and admin actions are posted to a Discord channel", "var", discord.ModLogChannelEnv)
+	case cfg.ModLog.MissingToken():
+		log.Info("mod log off: "+discord.ModLogChannelEnv+" is set but "+discord.BotTokenEnv+
+			" is not (it is provisioned on production only)", "var", discord.BotTokenEnv)
+	default:
+		log.Info("mod log off; set "+discord.ModLogChannelEnv+" to enable", "var", discord.ModLogChannelEnv)
+	}
+
 	lobbyCfg := lobby.Config{
 		Lobby:       l,
 		Auth:        authenticator,
@@ -860,6 +876,7 @@ func main() {
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
 		BugForum:          bugForum,
+		ModLog:            modLog,
 		DeckRequestFiler:  deckRequestFiler,
 		DeckRequests:      newDeckRequestStore(database),
 		AdminViews:        newAdminViewStore(database),
@@ -1111,6 +1128,10 @@ type config struct {
 	// CMDCTRL_DISCORD_BUG_FORUM_ID, a forum channel, with the bot token.
 	// A malformed id fails the boot; no bot token leaves it off.
 	BugForum discord.BugForum
+	// ModLog is the mod log (ADR 0156's 2026-10-16 amendment):
+	// CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID, a private channel, with the bot
+	// token. A malformed id fails the boot; no bot token leaves it off.
+	ModLog discord.ModLog
 	// Shops is ADR 0179's shop link templates, one CMDCTRL_SHOP_*
 	// variable per retailer. Unset: no shop links. A malformed template
 	// fails the boot, naming the variable.
@@ -1416,6 +1437,12 @@ func loadConfig(log *slog.Logger) config {
 		os.Exit(1)
 	}
 	c.BugForum = bugForum
+	modLog, mlerr := discord.ModLogFromEnv(os.Getenv)
+	if mlerr != nil {
+		log.Error("mod log config invalid", "err", mlerr)
+		os.Exit(1)
+	}
+	c.ModLog = modLog
 	// ADR 0179: a typo in a shop template stops the boot rather than
 	// serving links that go somewhere unexpected.
 	shops, serr := shoplinks.FromEnv(os.Getenv)

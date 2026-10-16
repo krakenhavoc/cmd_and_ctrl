@@ -44,7 +44,7 @@ func init() {
 				Cost:  LoyaltyCost(1),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return EmpowerJace{Count: func(ctx *Context) int {
-						return islandsControlledBy(ctx.Game, ctx.Controller())
+						return islandsControlledBy(ctx.Game, ctx.Controller(), ctx.TextSubtype("Island"))
 					}}.Apply(NewContext(g, item))
 				},
 			},
@@ -66,12 +66,13 @@ func init() {
 }
 
 // islandsControlledBy is "the number of Islands you control": any
-// permanent with the Island land type, basic or not. Caller holds g.mu.
-func islandsControlledBy(g *game.Game, player uuid.UUID) int {
+// permanent with the Island land type, basic or not. `island` is the
+// word as Jace's text now reads it (CR 612.2). Caller holds g.mu.
+func islandsControlledBy(g *game.Game, player uuid.UUID, island string) int {
 	g.RecomputeLayersIfStaleLocked()
 	n := 0
 	for _, c := range g.Battlefield.Cards {
-		if c.Controller == player && c.HasSubtype("Island") {
+		if c.Controller == player && c.HasSubtype(island) {
 			n++
 		}
 	}

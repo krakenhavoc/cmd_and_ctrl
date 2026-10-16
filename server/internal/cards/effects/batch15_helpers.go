@@ -43,7 +43,7 @@ func b15RedSpellCastByYou(ev game.Event, source *game.Card, g *game.Game) bool {
 		return false
 	}
 	spell, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && spell.HasColor("R")
+	return ok && spell.HasColor(source.TextColor("R"))
 }
 
 // b15AnotherNontokenCreatureYouControlEntered is Soul of the

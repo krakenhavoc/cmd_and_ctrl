@@ -39,8 +39,9 @@ func init() {
 			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
+				green := ctx.TextColor("G")
 				for _, c := range g.BattlefieldCardsForEffect() {
-					if !c.IsCreature() || !c.HasColor("G") || !b06EnteredThisTurn(g, c.InstanceID) {
+					if !c.IsCreature() || !c.HasColor(green) || !b06EnteredThisTurn(g, c.InstanceID) {
 						continue
 					}
 					if err := (AddCounter{Target: c.InstanceID, Kind: "+1/+1", N: 1}).Apply(ctx.asGroupMember()); err != nil {

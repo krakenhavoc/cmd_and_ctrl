@@ -1552,8 +1552,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// CR 302.6: a creature's {T} ability needs it to have been
 		// under your control since your most recent turn began.
 		// Non-creature sources (Krenko is a creature; an artifact
-		// with {T} isn't) are never sick.
-		if source.IsCreature() && HasSummoningSickness(source) {
+		// with {T} isn't) are never sick, and an "as though those
+		// creatures had haste" static of the activator's lifts it
+		// (#3928, CR 609.4).
+		if g.ActivationSummoningSickLocked(source, playerID) {
 			return ErrSummoningSick
 		}
 	}

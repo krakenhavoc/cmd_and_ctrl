@@ -56,7 +56,7 @@ func init() {
 // of the resolution, and carried into the continuation by value.
 func thassasOracleResolve(g *game.Game, item *game.StackItem) error {
 	me := item.Controller
-	x := devotionTo(g, me, "U")
+	x := devotionTo(g, me, NewContext(g, item).TextColor("U"))
 	looked := g.LookAtTopOfPlayersLibraryForEffect(me, me, x)
 	return RevealPick{
 		Player:   me,

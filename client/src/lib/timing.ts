@@ -424,6 +424,18 @@ function castClauseDenial(
   if (!faces.some(exileOK)) {
     return named(faces.find((f) => !exileOK(f)) ?? card, "Nothing to exile");
   }
+  // #3868: a "tap an untapped Vampire you control" cost with too few
+  // untapped permanents to tap (CR 118.3). A branch's tap is judged by the
+  // branch's own `payable` below.
+  const tapOK = (face: CardView): boolean => {
+    const opts = face.additional_cost?.tap_others_options;
+    return !opts || (opts.cards?.length ?? 0) >= (opts.min ?? 1);
+  };
+  if (!faces.some(tapOK)) {
+    const blocked = faces.find((f) => !tapOK(f)) ?? card;
+    const need = blocked.additional_cost?.tap_others_options?.min ?? 1;
+    return named(blocked, need > 1 ? `Needs ${need} untapped permanents to tap` : "Nothing to tap");
+  }
   // #3536: an "exile N cards from your graveyard" cost the graveyard cannot
   // cover (CR 118.3). The server ships the count and the cards that could
   // pay; five options for a count of six is the verdict.

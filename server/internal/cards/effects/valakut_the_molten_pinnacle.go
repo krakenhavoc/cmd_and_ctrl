@@ -42,14 +42,14 @@ func init() {
 		Triggered: []game.TriggeredAbility{InterveningIf(CondBoard{
 			Name: "you control at least five other Mountains",
 			Test: func(ctx *Context) bool {
-				return b12OtherMountainsControlled(ctx.Game, ctx.Controller(), ctx.Item.Trigger.Event.CardID) >= 5
+				return b12OtherMountainsControlled(ctx.Game, ctx.Controller(), ctx.Item.Trigger.Event.CardID, ctx.TextSubtype("Mountain")) >= 5
 			},
 		}, game.TriggeredAbility{
 			Watches: []game.EventKind{game.EventETB},
 			Key:     "Valakut, the Molten Pinnacle — 3 damage to any target",
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b12MountainYouControlEntered(ev, source, g) &&
-					b12OtherMountainsControlled(g, source.Controller, ev.CardID) >= 5
+					b12OtherMountainsControlled(g, source.Controller, ev.CardID, source.TextSubtype("Mountain")) >= 5
 			},
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Valakut, the Molten Pinnacle — deal 3 damage to any target?"},
 			Targets:        TargetAny(),
