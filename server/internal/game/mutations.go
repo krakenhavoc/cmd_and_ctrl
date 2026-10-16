@@ -327,6 +327,14 @@ type CastSpellParams struct {
 	// one is rejected, not ignored. Added in ADR 0073 (#664).
 	OptionalCosts []int
 
+	// Splices names the cards in the caster's hand revealed to splice
+	// onto this spell (CR 601.2b, 702.47a), in the order their effects
+	// will happen (CR 702.47b). Each one's splice cost joins the total at
+	// CR 601.2f, and its text's targets ride Targets with
+	// TargetRef.Splice naming it (1-based, in this order). Empty is the
+	// ordinary cast. ADR 0202 (#1989).
+	Splices []uuid.UUID
+
 	// CostBranch names which branch of an either/or additional cost the
 	// caster is paying (CR 601.2b, ADR 0100 §2) — an index into the
 	// card's AdditionalCost.Either: Demand Answers' "sacrifice an
@@ -581,6 +589,13 @@ type CastSpellParams struct {
 	// assistPaid is the helper's answer, attached by the parked
 	// announcement's resume. Unexported, like commanderAnswers.
 	assistPaid *assistAnswer
+
+	// splicedRefs are the refs of Targets that answer a spliced text
+	// (TargetRef.Splice > 0), taken out of Targets as the cast begins so
+	// that everything reading Targets reads the spell's own text's, as
+	// it always has (ADR 0202). Kept on the params so a parked
+	// announcement's resume casts again with them.
+	splicedRefs []TargetRef
 }
 
 // InsufficientManaError is returned by CastSpell when the Strict
@@ -657,6 +672,14 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			"x_max", MaxAnnouncedX,
 		)
 		return ErrInvalidParam
+	}
+	// ADR 0202, CR 702.47d: a spliced text's targets ride the one flat
+	// list, marked with the text they answer. They are taken out here,
+	// before anything reads the list, so the spell's own text is judged
+	// exactly as before and each spliced text is judged on its own below.
+	// A parked cast's resume arrives with them already taken out.
+	if main, spliced := splitSplicedRefs(params.Targets); len(spliced) > 0 {
+		params.Targets, params.splicedRefs = main, spliced
 	}
 	// CR 601.2c's announce-time target check runs against the
 	// battlefield through predicates that read effective types, so
@@ -1160,6 +1183,28 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// ADR 0202, CR 601.2b / 702.47a-b: the cards revealed to splice onto
+	// this spell, announced with the modes and the optional costs and
+	// before the targets, because each spliced text brings its own
+	// (CR 702.47d).
+	spliced, err := g.announcedSplicesLocked(playerID, card, cardID, params.Splices)
+	if err != nil {
+		slog.Warn("cast_spell rejected: bad splice",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"splices", len(params.Splices),
+			"err", err,
+		)
+		return err
+	}
+	_, splicedRefs, ok := spliceRefsOf(params.splicedRefs, len(spliced))
+	if !ok {
+		slog.Warn("cast_spell rejected: a target names a text nothing was spliced for",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+		)
+		return ErrInvalidParam
+	}
 	// S20: structured targeting. Cards with a TargetSpec — declared
 	// on the card, or on the chosen mode of a modal card — get their
 	// announce-time targets validated against it (CR 601.2c): zone,
@@ -1279,6 +1324,24 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// ADR 0202, CR 702.47d: each spliced text's targets, against its own
+	// clause list and judged from this spell (CR 702.47c: the spell keeps
+	// its own characteristics). A text with a required target that cannot
+	// be given one cannot be spliced (CR 702.47b).
+	if err := g.validateSplicedTargetsLocked(castSrc, spliced, splicedRefs); err != nil {
+		slog.Warn("cast_spell rejected: illegal target for a spliced text",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"err", err,
+		)
+		return err
+	}
+	// The spell's whole target list (CR 702.47d): what a "spell that
+	// targets" tax and a "becomes the target" trigger see.
+	allTargets := params.Targets
+	for _, sp := range spliced {
+		allTargets = append(append([]TargetRef(nil), allTargets...), sp.Targets...)
+	}
 	// #1563, CR 601.2d: the division is announced with the targets,
 	// against the amount the announced X gives. The settled copy — a
 	// lone target handed the whole amount — is what the item stores.
@@ -1333,7 +1396,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// they have left after every other life cost of this cast -- the
 	// Phyrexian symbols paid with life, the alternative cost's life and
 	// the additional cost's -- so the sum is what is checked.
-	targetTaxLines := g.castTargetTaxLinesLocked(playerID, card, params.Targets)
+	targetTaxLines := g.castTargetTaxLinesLocked(playerID, card, allTargets)
 	targetTax := 0
 	for _, l := range targetTaxLines {
 		targetTax += l.Life
@@ -1884,6 +1947,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		Owner:        card.Owner,
 		SourceCardID: cardID,
 		Targets:      append([]TargetRef(nil), params.Targets...),
+		Spliced:      cloneSplicedTexts(spliced),
 		Modes:        append([]int(nil), params.Modes...),
 		XValue:       params.XValue,
 		Distribution: cloneDistributionLocked(params.Distribution),
@@ -2131,6 +2195,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// spell on the stack, so the table sees the Elf the Vanquisher paid
 	// with. Nothing moves.
 	g.payRevealLocked(playerID, cardID, costPlan, params.RevealIDs)
+	// ADR 0202, CR 702.47a-b: the spliced cards are revealed, all at once,
+	// and stay in the hand.
+	g.revealSplicesLocked(playerID, cardID, card.Name, spliced)
 	if splitSecond {
 		g.SplitSecondActive = true
 	} else {
@@ -2254,7 +2321,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// Emitted after EventCast so a "becomes the target" trigger and
 	// a "whenever a player casts a spell" trigger queue in printed
 	// order.
-	g.emitAnnouncedTargetsLocked(playerID, cardID, cardID, params.Targets)
+	g.emitAnnouncedTargetsLocked(playerID, cardID, cardID, allTargets)
 	// ADR 0099 §5: a cast that used a pass-closed grant (discover,
 	// cascade) spends it, so the caster's next pass does not lapse a
 	// card that is already on the stack — and a discover grant's cast
@@ -3570,6 +3637,13 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	if err != nil {
 		return ParsedCost{}, chosen, err
 	}
+	// ADR 0202, CR 702.47a: each spliced card's splice cost is an
+	// additional cost, so its mana joins here, beside the optional
+	// costs', for the same reason.
+	cost, err = g.spliceManaLocked(cost, p.ID, params.Splices)
+	if err != nil {
+		return ParsedCost{}, chosen, err
+	}
 	// S21 sub-PR 6: "you may spend mana as though it were mana of any
 	// color to cast those spells" (Breeches, Brazen Plunderer). Widens
 	// the colored slots to any mana. #1573: "mana of any TYPE" (Hostage
@@ -3896,7 +3970,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 	if g.bestowTargetIllegalLocked(&top, item) {
 		g.endBestowOnStackLocked(&top, item)
 	}
-	if spellAllTargetsIllegalLocked(g, item) {
+	if spellWithSplicedTextAllTargetsIllegalLocked(g, item) {
 		// "Countered by game rules" — permanents and non-permanents
 		// alike go to the owner's graveyard (CR 608.2b). The
 		// announce-time choices on StackMeta are discarded along
@@ -3939,12 +4013,23 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// controller's permanents before any of its other instructions, so
 	// "if you have the city's blessing" below reads the answer.
 	g.ascendSpellLocked(&top, item)
-	g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
+	// ADR 0202, CR 608.2b: a spell with spliced text resolves while any of
+	// its texts has a legal target, and a text whose every target is
+	// illegal does nothing. Only a spliced spell can get here with its own
+	// text in that state; for every other spell this is always true.
+	ownText := len(item.Spliced) == 0 || !textTargetsAllIllegalLocked(g, item)
+	if ownText {
+		g.fireEffectResolverLocked(item, CatalogKey(top), top.InstanceID)
+	}
 	// CR 608.2c / 700.2d: each chosen bullet's own body, in printed
 	// order, once per occurrence. A modal card that branches inside
 	// its OnResolve on ctx.HasMode declares no ModeOption.Effect and
 	// this is a no-op for it (#764).
-	g.runChosenModeEffectsLocked(item, ModeSpecFor(CatalogKey(top)), CatalogKey(top))
+	//
+	// ADR 0202, CR 702.47b: then each spliced text, in the order the
+	// caster chose, after the main spell's (spliced texts wait for a
+	// prompt an earlier instruction opened, as a later bullet does).
+	g.runSpellBodiesLocked(item, ModeSpecFor(CatalogKey(top)), CatalogKey(top), ownText)
 	// #3613, CR 608.2c / 608.2n: an effect that asked something is not
 	// finished until the answer is in, so neither is the spell. The
 	// rest of this resolution — the exit below and the log's

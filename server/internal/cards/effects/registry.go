@@ -68,6 +68,7 @@ func Register(spec Spec) {
 	}
 	checkEscalate(spec)
 	checkEntwine(spec)
+	checkSplice(spec)
 	checkFlatClauses(spec.Name, spec.Targets)
 	checkSpellXBound(spec.Name, spec.Targets)
 	checkTargetAtRandom(spec.Name, "a spell's", spec.Targets, false)

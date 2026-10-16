@@ -633,6 +633,15 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
     } else if (item.modes && item.modes.length > 0) {
       chips.push({ label: `modes: ${item.modes.join(", ")}`, tone: "plain" });
     }
+    // ADR 0202 (CR 702.47): the text spliced onto it, revealed as it was
+    // cast and part of what it will do, in the order that text happens.
+    for (const name of item.spliced ?? []) {
+      chips.push({
+        label: `+ ${name}`,
+        tone: "flag",
+        title: `${name} is spliced onto this spell — its text happens after the spell's own`,
+      });
+    }
     if (item.split_second) chips.push({ label: "split-second", tone: "flag" });
     // #1553: tell the table before a Counterspell finds out the hard way.
     if (item.cant_be_countered) {

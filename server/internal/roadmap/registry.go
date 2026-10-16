@@ -1685,15 +1685,27 @@ var items = []Item{
 		EngineNotes: "TargetSpec.Relation binds a single later pick to a required single earlier pick in the same mode occurrence. **Shipped** (ADR 0065 amendments of 2026-10-11 and 2026-10-15). InGraveyardOfTargetsController, AttachedToTarget and ControlledByTargetsController are the card-facing constructors. Announcement, resolution, trigger prompts, copy and retarget prompts, bot enumeration and the client picker share the relationship; retargeting commits the completed set together. Fiery Annihilation, Goblin Welder and Breaking of the Fellowship are Full. Welder's sacrifice and return share a settled entry and exit route, so observers see the finished board and either replacement window can pause and undo. The same-controller relationship reads an anchor that has left the battlefield by its last-known controller (CR 608.2h, `Game.LastKnownPermanentForEffect`), so Breaking of the Fellowship still resolves, and the Ring still tempts, when its first creature dies in response.",
 	},
 	{
-		// #1989 (found landing ADR 0108 PR 2, #1890).
-		Slug: "splice", Name: "Splice onto Arcane", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Cards you may reveal from your hand as you cast an Arcane spell, paying their splice cost to add their text to that spell, such as Overblaze.",
-		Missing:     "Splicing isn't supported yet, so a card with splice can only be cast on its own; those cards are left out rather than shipped without it.",
-		Rules:       []string{"702.47a"},
+		// #1989. Closed; history in Closed seams.
+		Slug: "splice", Name: "Splice onto Arcane", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Cards you may reveal from your hand as you cast an Arcane spell, paying their splice cost to add their text to that spell, such as Overblaze and Desperate Ritual.",
+		Rules:       []string{"702.47"},
 		Issue:       1989,
-		Tracked:     "#1989 (found landing ADR 0108 PR 2, #1890)",
-		Waiting:     []string{"Candles' Glow", "Overblaze"},
-		EngineNotes: "cast path: nothing reveals a second card from the hand as a spell is cast, adds its splice cost to the total, or appends its rules text to the spell (CR 702.47a); the spliced card stays in the hand. No catalogued card prints splice; the catalog's Arcane spells (Kodama's Reach, Devouring Greed) note that Arcane matters only to splice. Overblaze's own text is ADR 0108 §3's `multiplyDamage` pinned to its target, so splice is its only gap.",
+		ADR:         "0202-splice.md",
+		Probe:       func(s effects.Spec) bool { return s.Splice != nil },
+		Printed:     printedLine("splice onto"),
+		Examples:    []string{"Desperate Ritual", "Goryo's Vengeance", "Overblaze", "Glacial Ray", "Candles' Glow"},
+		EngineNotes: "**Shipped** (#1989, [ADR 0202](decisions/0202-splice.md)): a card declares `Spec.Splice` (`effects.SpliceOntoArcane(cost)`, `SpliceOntoInstantOrSorcery(cost)`), and its own `Targets` and `OnResolve` are the text a spell gains. The cast names the revealed hand cards in `CastSpellParams.Splices` (`cast_spell.splices`), in the order their effects happen (CR 702.47b), checked with the rest of CR 601.2b; each spliced text's targets ride the flat target list with `TargetRef.Splice` and are judged against the card's own clause from the spell (CR 702.47c-d). The splice costs' mana joins the one pricer at CR 601.2f. `StackItem.Spliced` carries the texts (snapshot and clone, a CR 707.10 copy too); at resolution the main text runs, then each spliced text against a view of the item holding its own targets, waiting for a prompt an earlier instruction opened (the bullet walk, `modeWalk.splices`). A spell is countered by the rules only when every target of every text is illegal, and a text whose own targets are all gone does nothing. The hand card's `splice_offers` lists what may be spliced onto it (per viewer); the stack item shows `spliced`. Bots never splice. **Cards** (21, all Full): Overblaze, Glacial Ray, Desperate Ritual, Goryo's Vengeance, Candles' Glow, Kodama's Might, Wear Away, Consuming Vortex, Spiritual Visit, Vital Surge, Dampen Thought, Soulless Revival, Lifted by Clouds, Hideous Laughter, Strange Inversion, Psychic Puppetry, Blessed Breath, Into the Fray, Evermind, Everdream and Splicer's Skill. A splice cost that is not mana waits on #4055.",
+	},
+	{
+		// #4055 (found landing splice, #1989).
+		Slug: "splice-non-mana-cost", Name: "A splice cost that isn't mana", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Splice cards whose splice cost is something other than mana, such as Veil of Secrecy's returning a blue creature.",
+		Missing:     "Only a mana splice cost can be paid, so the cards whose splice cost is a creature, a sacrifice, cards from a graveyard or an opponent's life are left out rather than shipped without it.",
+		Rules:       []string{"702.47a"},
+		Issue:       4055,
+		Tracked:     "#4055 (found landing splice, #1989)",
+		Waiting:     []string{"Veil of Secrecy", "Horobi's Whisper", "Roar of Jukai", "Hundred-Talon Strike", "Torrent of Stone"},
+		EngineNotes: "cast path: `game.SpliceAbility` carries `ManaCost` only and `effects.Register` (`checkSplice`) refuses a splice without one. The likely shape is a `game.AdditionalCost` on the splice ability whose non-mana half (return to hand, exile cards from a graveyard, sacrifice, tap another creature) joins the cast's one payment plan at CR 601.2h, as ADR 0073 pays an optional cost's, with the payment ids announced beside `splices`; \"An opponent gains 5 life\" needs a chosen opponent, as gift's does.",
 	},
 	{
 		Slug: "role-tokens", Name: "Role tokens", Kind: KindSeam, Status: StatusPartial,

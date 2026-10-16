@@ -540,6 +540,9 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 		Owner:        controller,
 		SourceCardID: copyCard.InstanceID,
 		Targets:      append([]TargetRef(nil), targets...),
+		// ADR 0202, CR 707.10: the copy copies the spell's text, the
+		// spliced text included, and the targets chosen for it.
+		Spliced:      cloneSplicedTexts(item.Spliced),
 		Modes:        append([]int(nil), item.Modes...),
 		XValue:       item.XValue,
 		Distribution: cloneDistributionLocked(item.Distribution),

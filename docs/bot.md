@@ -2837,6 +2837,14 @@ mandatory one and a kicker's — is not enumerated, for the reason
 escape's exile-from-graveyard cost is not: the two pools have to be
 searched together into one flat list, and no card asks for it.
 
+**A bot never splices** ([ADR 0202](decisions/0202-splice.md) §8).
+Splicing reveals a second card from the hand and adds its whole text
+and its splice cost to an Arcane spell (CR 702.47). The enumerator
+offers no `splices`: each splice card is another set of targets and
+another price on top of the modes x targets x optional costs product,
+and a bot holding both cards can still cast each on its own. A bot's
+cast never names a `splice` target either.
+
 ## Enumerating a cast from a zone that is not the hand (#673)
 
 A bot casts from every zone the engine would accept a cast from —

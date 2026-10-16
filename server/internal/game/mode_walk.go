@@ -59,6 +59,9 @@ type modeWalk struct {
 	key string
 	// rest is the occurrence indexes still to run, in printed order.
 	rest []int
+	// splices is the spliced texts still to run after them (ADR 0202,
+	// CR 702.47b), as indexes into item.Spliced, in order.
+	splices []int
 }
 
 // spec is the ModeSpec the parked bullets come from.
@@ -78,9 +81,40 @@ func (w *modeWalk) spec() *ModeSpec {
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) runModeOccurrencesLocked(item *StackItem, ms *ModeSpec, key string, occs []int) {
+	g.runBodyWalkLocked(item, ms, key, occs, nil)
+}
+
+// runSpellBodiesLocked runs a resolving spell's chosen bullets, then its
+// spliced texts (ADR 0202, CR 702.47b: "The effects of the main spell
+// must happen first"). `ownText` false skips the bullets: the spell's
+// own text had targets and every one is illegal, so it does nothing
+// (CR 608.2b) while a spliced text with a legal target still resolves.
+//
+// Caller must hold g.mu in write mode, inside the resolution function.
+func (g *Game) runSpellBodiesLocked(item *StackItem, ms *ModeSpec, key string, ownText bool) {
+	if item == nil {
+		return
+	}
+	var occs []int
+	if ms != nil && ownText {
+		occs = PrintedModeOrder(item.Modes)
+	}
+	var splices []int
+	for k := range item.Spliced {
+		splices = append(splices, k)
+	}
+	g.runBodyWalkLocked(item, ms, key, occs, splices)
+}
+
+// runBodyWalkLocked is the walk itself: the occurrences, then the
+// spliced texts, parking whatever is left as soon as the resolution is
+// paused on a prompt.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) runBodyWalkLocked(item *StackItem, ms *ModeSpec, key string, occs, splices []int) {
 	for i, occ := range occs {
 		if g.resolutionOpen && g.pausedResolutionChoiceLocked() != nil {
-			g.pausedModeWalk = &modeWalk{item: item, key: key, rest: append([]int(nil), occs[i:]...)}
+			g.pausedModeWalk = &modeWalk{item: item, key: key, rest: append([]int(nil), occs[i:]...), splices: copyInts(splices)}
 			return
 		}
 		opt := item.Modes[occ]
@@ -100,6 +134,13 @@ func (g *Game) runModeOccurrencesLocked(item *StackItem, ms *ModeSpec, key strin
 			})
 		}
 	}
+	for i, k := range splices {
+		if g.resolutionOpen && g.pausedResolutionChoiceLocked() != nil {
+			g.pausedModeWalk = &modeWalk{item: item, key: key, splices: append([]int(nil), splices[i:]...)}
+			return
+		}
+		g.runSplicedTextLocked(item, k)
+	}
 }
 
 // resumeModeWalkLocked runs the parked bullets, if any, inside a
@@ -118,9 +159,11 @@ func (g *Game) resumeModeWalkLocked() bool {
 	}
 	g.beginResolutionLocked()
 	defer g.endResolutionLocked()
-	if ms := w.spec(); ms != nil {
-		g.runModeOccurrencesLocked(w.item, ms, w.key, w.rest)
+	ms := w.spec()
+	if ms == nil {
+		w.rest = nil
 	}
+	g.runBodyWalkLocked(w.item, ms, w.key, w.rest, w.splices)
 	return true
 }
 
@@ -129,7 +172,7 @@ func cloneModeWalk(w *modeWalk) *modeWalk {
 	if w == nil {
 		return nil
 	}
-	return &modeWalk{item: cloneStackItem(w.item), key: w.key, rest: append([]int(nil), w.rest...)}
+	return &modeWalk{item: cloneStackItem(w.item), key: w.key, rest: append([]int(nil), w.rest...), splices: copyInts(w.splices)}
 }
 
 // modeWalkSnapshot is Game.pausedModeWalk on disk.
@@ -137,13 +180,16 @@ type modeWalkSnapshot struct {
 	Item stackItemSnapshot `json:"item"`
 	Key  string            `json:"key,omitempty"`
 	Rest []int             `json:"rest"`
+	// Splices is modeWalk.splices (ADR 0202): the spliced texts still to
+	// run. Additive within v9; a file without it has none.
+	Splices []int `json:"splices,omitempty"`
 }
 
 func snapshotModeWalk(g *Game, w *modeWalk, cen *ContinuationCensus) *modeWalkSnapshot {
 	if w == nil || w.item == nil {
 		return nil
 	}
-	return &modeWalkSnapshot{Item: snapshotStackItem(g, w.item, cen), Key: w.key, Rest: copyInts(w.rest)}
+	return &modeWalkSnapshot{Item: snapshotStackItem(g, w.item, cen), Key: w.key, Rest: copyInts(w.rest), Splices: copyInts(w.splices)}
 }
 
 func restoreModeWalk(s *modeWalkSnapshot) *modeWalk {
@@ -151,5 +197,5 @@ func restoreModeWalk(s *modeWalkSnapshot) *modeWalk {
 		return nil
 	}
 	item, _ := restoreStackItem(&s.Item)
-	return &modeWalk{item: item, key: s.Key, rest: copyInts(s.Rest)}
+	return &modeWalk{item: item, key: s.Key, rest: copyInts(s.Rest), splices: copyInts(s.Splices)}
 }
