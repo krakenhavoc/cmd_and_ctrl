@@ -668,6 +668,9 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		"golden_wish.go": true, "death_wish.go": true,
 		// "Exile Alchemist's Gambit." (ADR 0188, #3563)
 		"alchemists_gambit.go": true,
+		// "Put Approach of the Second Sun into its owner's library
+		// seventh from the top." (#3654)
+		"approach_of_the_second_sun.go": true,
 	}
 	isSelf := func(e ast.Expr) bool {
 		s := exprString(e)

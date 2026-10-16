@@ -1125,6 +1125,11 @@ func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 	st := newLayerPassState(effects)
 	for i, b := range layerOrder {
 		g.applyLayerLocked(effects, b.Layer, b.SubLayer, b.has7Sub, i, st)
+		if b.Layer == Layer7PT && b.SubLayer == SubLayer7B_Set {
+			// CR 208.4b: what the pass holds now is each permanent's
+			// base power (Card.BasePower).
+			g.recordBasePowerLocked()
+		}
 		if b.Layer == Layer6Ability {
 			// #1651: "can't have" beats every grant in the bucket,
 			// whatever its timestamp (CR 101.2). See cant_have.go.
@@ -1148,6 +1153,24 @@ func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 	g.foldDecayedLocked()
 	// CR 701.60c (#2737): a suspected permanent's granted "can't block".
 	g.foldSuspectedCantBlockLocked()
+}
+
+// recordBasePowerLocked stamps every permanent's power as it stands
+// after layer 7b onto Card.basePower: the base power CR 208.4b names,
+// which the later 7c to 7e buckets and the counters read on top of it
+// leave alone. Run once per pass, between those buckets.
+//
+// Caller holds g.mu in write mode (the layer pass).
+func (g *Game) recordBasePowerLocked() {
+	if g.Battlefield == nil {
+		return
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.effective != nil {
+			c.basePower = c.effective.Power
+		}
+	}
 }
 
 // materialiseControlLocked copies layer 2's output back onto

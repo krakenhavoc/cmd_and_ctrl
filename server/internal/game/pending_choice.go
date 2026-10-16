@@ -3974,6 +3974,28 @@ func (g *Game) queueMayPayLocked(
 	return nil
 }
 
+// QueueMayPayElseForEffect is QueueMayPayForEffect with a consequence on
+// BOTH answers: "you may pay <cost>. If you do, <onPay>. If you don't,
+// <onDecline>" — Springheart Nantuko's "if you didn't create a token
+// this way, create a 1/1 green Insect". It is the one pay-unless body
+// with the echo-style onPay beside the decline (payUnlessExtras), so
+// the dialog, the auto-tap and the "a yes you can't fund is a no" rule
+// are pay-unless's own.
+//
+// A chooser who is no longer seated is not asked and onDecline runs,
+// pay-unless's default: the answer that can no longer be given is the
+// payment.
+//
+// Caller must hold g.mu.
+func (g *Game) QueueMayPayElseForEffect(
+	chooser, source uuid.UUID,
+	cost, question string,
+	onPay, onDecline func(g *Game) error,
+) error {
+	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline,
+		TurnStep{}, uuid.Nil, nil, payUnlessExtras{onPay: onPay})
+}
+
 // QueueMayCastForEffect queues a "you may cast <card> without paying
 // its mana cost" prompt for `chooser`, asked from inside a resolving
 // ability (cascade). `source` attributes the prompt to the card whose
