@@ -665,13 +665,18 @@ func (g *Game) untapStepSetLocked(activePlayer uuid.UUID) []uuid.UUID {
 		}
 		// CR 502.3: the active player's own permanents, always.
 		if c.Controller == activePlayer {
-			if untapStepRestrictedBy(c, g, restrictions) || g.untapSkippedForLocked(c, activePlayer) {
+			if untapStepRestrictedBy(c, g, restrictions) || g.untapSkippedForLocked(c, activePlayer) ||
+				g.playerUntapSkippedLocked(c, activePlayer) {
 				continue
 			}
 			ids = append(ids, c.InstanceID)
 			continue
 		}
-		if g.untapSkippedForLocked(c, activePlayer) {
+		// A player-wide skip (#3995) holds whatever the reason for
+		// untapping, as a player-keyed marker does: Blinding Beam's
+		// "Creatures don't untap during target player's next untap
+		// step" keeps a Seedborn Muse's creatures tapped too.
+		if g.untapSkippedForLocked(c, activePlayer) || g.playerUntapSkippedLocked(c, activePlayer) {
 			continue
 		}
 		for _, bp := range permissions {
@@ -757,6 +762,7 @@ func (g *Game) performUntapStepLocked(seat int) (paused bool) {
 	// already upright and therefore absent from this set. Kept before any
 	// emits so listeners cannot observe a half-used step.
 	g.consumeUntapSkipsLocked(activePlayer)
+	g.consumePlayerUntapSkipsLocked(activePlayer)
 	if plan := g.untapChoicePlanLocked(activePlayer, ids); plan != nil {
 		g.queueUntapChoiceLocked(activePlayer, plan)
 		return true

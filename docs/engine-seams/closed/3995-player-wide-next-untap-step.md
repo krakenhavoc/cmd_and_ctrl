@@ -1,0 +1,6 @@
+---
+title: "Permanents a player controls don't untap during their next untap step"
+date: 2026-10-16
+issues: [3995]
+---
+**Permanents a player controls don't untap during their next untap step** (#3995, CR 502.3 / 611.2c, [ADR 0058](../../decisions/0058-doesnt-untap.md)'s 2026-10-16 amendment) — "Lands target player controls don't untap during their next untap step" names no permanent, so it reaches a land played or a creature gained after the spell resolved. It is a rule read at that player's next untap step: one `ScopedEffect` (`ScopeGame`, `IndefiniteDuration`) with a `ModSkipNextUntapStep` mod naming the player, the permanent types and whether any controller's permanents are covered (Blinding Beam's bare "Creatures"), written by `Game.SkipNextUntapStepForPlayerForEffect` and used up by that step where the per-permanent markers are, so it waits past a skipped untap step. An older binary refuses a restore point that carries one. The view projects it as the `no_untap.next` badge on the permanents it holds. The card side is `effects.PermanentsDontUntapNextStep` and `effects.LandsYouControlDontUntapNextStep`. **Cards** (9, all Full): Blinding Beam, Mana Vapors, Misstep, Exhaustion, Bontu's Last Reckoning, Rhonas's Last Stand, Oketra's Last Mercy, Kefnet's Last Word and Icebreaker Kraken. Hazoret's Undying Fury waits on its free cast (#4021).

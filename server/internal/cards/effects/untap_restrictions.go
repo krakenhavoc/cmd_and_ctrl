@@ -143,3 +143,49 @@ func holdTargetIDs(ctx *Context) []uuid.UUID {
 	}
 	return ids
 }
+
+// PermanentsDontUntapNextStep is the player-wide "<types> <player>
+// controls don't untap during <player>'s next untap step" (#3995, CR
+// 502.3): Mana Vapors' lands, Misstep's creatures, Exhaustion's
+// creatures and lands, the Amonkhet Last cycle's "Lands you control
+// don't untap during your next untap step".
+//
+// Unlike DoesntUntapNextUntapStep it names no permanent. It is a rule
+// read at that player's next untap step, so it covers a land played or a
+// creature gained after the spell resolved (CR 611.2c: it changes no
+// characteristic, so its set is not locked), and nothing a player
+// stops controlling before then.
+//
+// Player is whose untap step; Types are lowercase permanent types, any
+// of them. AnyController is Blinding Beam's bare "Creatures don't untap
+// during target player's next untap step": every permanent of those
+// types that would untap in that step, a Seedborn Muse's included, not
+// only the ones Player controls. A Player who has left the game is
+// recorded nothing.
+type PermanentsDontUntapNextStep struct {
+	Player        uuid.UUID
+	Types         []string
+	AnyController bool
+	Label         string
+}
+
+// Apply implements Primitive.
+func (p PermanentsDontUntapNextStep) Apply(ctx *Context) error {
+	label := p.Label
+	if label == "" && ctx.Item != nil {
+		label = ctx.Item.Label
+	}
+	ctx.Game.SkipNextUntapStepForPlayerForEffect(p.Player, ctx.Source(), p.Types, p.AnyController, label)
+	return nil
+}
+
+// LandsYouControlDontUntapNextStep is the Amonkhet Last cycle's "Lands
+// you control don't untap during your next untap step", "you" being the
+// resolving item's controller.
+func LandsYouControlDontUntapNextStep(ctx *Context) error {
+	return PermanentsDontUntapNextStep{
+		Player: ctx.Controller(),
+		Types:  []string{"land"},
+		Label:  "Lands you control don't untap during your next untap step",
+	}.Apply(ctx)
+}

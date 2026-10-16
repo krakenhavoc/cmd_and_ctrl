@@ -146,6 +146,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := skipExtraTurnStepModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #3995: a player-wide untap skip naming no player or no
+			// permanent type, or anyController on another kind.
+			if problem := skipNextUntapStepModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 		}
 		// ADR 0107 §3: a stack pin may carry only what this binary's
 		// stack step applies (layer 2 control, layer-6 keywords). A
