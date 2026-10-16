@@ -118,6 +118,10 @@ func (g *Game) sacrificeableLocked(ids []uuid.UUID) []uuid.UUID {
 // clause's words are read through (costSourceLocked, #3872): uuid.Nil
 // for a spell's additional cost, which reads its printed words.
 //
+// #3940: under a difference rule ("with different names") a permanent
+// with no key can never be part of the payment (CR 201.2b), so it is no
+// candidate either.
+//
 // Caller must hold g.mu (read or write).
 func (g *Game) SacrificeCostCandidatesForEffect(playerID, sourceID uuid.UUID, spec *TargetSpec) []uuid.UUID {
 	var out []uuid.UUID
@@ -125,6 +129,11 @@ func (g *Game) SacrificeCostCandidatesForEffect(playerID, sourceID uuid.UUID, sp
 		c := findBattlefieldCard(g, id)
 		if c == nil || c.Controller != playerID || g.permanentCantBeSacrificedLocked(c) {
 			continue
+		}
+		if spec != nil && spec.Different != nil {
+			if _, ok := g.sacrificeDifferentKeyLocked(spec, id); !ok {
+				continue
+			}
 		}
 		out = append(out, id)
 	}

@@ -2697,6 +2697,12 @@ func (e *enumerator) collectionAnswers(g *game.Game, c *game.PendingChoice) [][]
 			}
 		}
 	}
+	// "Any number" (Spawnsire of Ulamog's cast, #3955): the whole
+	// suggestion list is one more answer, which is the set a bot that
+	// paid {20} wants and the pairs above would never reach.
+	if hi = min(c.ChooseMax, len(names)); hi > 2 && lo <= hi {
+		try(append([]string(nil), names[:hi]...))
+	}
 	return out
 }
 

@@ -1552,8 +1552,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// CR 302.6: a creature's {T} ability needs it to have been
 		// under your control since your most recent turn began.
 		// Non-creature sources (Krenko is a creature; an artifact
-		// with {T} isn't) are never sick.
-		if source.IsCreature() && HasSummoningSickness(source) {
+		// with {T} isn't) are never sick, and an "as though those
+		// creatures had haste" static of the activator's lifts it
+		// (#3928, CR 609.4).
+		if g.ActivationSummoningSickLocked(source, playerID) {
 			return ErrSummoningSick
 		}
 	}
@@ -2543,6 +2545,11 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 	if !g.sacrificeSetSatisfiedLocked(cost.SacrificeOther, chosen) {
 		return nil, ErrIllegalTarget
 	}
+	// #3940: "Sacrifice three artifact tokens with different names" —
+	// every pick needs a key and no two may share one (CR 201.2b).
+	if !g.sacrificeDifferentSatisfiedLocked(cost.SacrificeOther, chosen) {
+		return nil, sacrificeDifferentError(cost.SacrificeOther.Different)
+	}
 	return append(out, chosen...), nil
 }
 
@@ -2672,7 +2679,7 @@ func (g *Game) payAbilityManaCostNoteLocked(p *Player, sourceID uuid.UUID, sourc
 		if !ok || !g.planFundsLocked(p, plan, short, cost, x, spendCtx) {
 			return paid, note, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
 		}
-		g.materializePlanLocked(p, plan, short)
+		g.materializePlanInLocked(p, plan, short, spendCtx)
 	}
 	if !p.ManaPool.CanPayFor(cost, x, spendCtx) {
 		return paid, note, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}

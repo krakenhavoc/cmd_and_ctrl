@@ -61,6 +61,21 @@ func SacrificeN(n int, label string, preds ...CardPredicate) game.AbilityCost {
 	return game.AbilityCost{SacrificeOther: sacrificeSpec(label, preds...).WithCount(n, n)}
 }
 
+// SacrificeNDifferent is SacrificeN with a rule over the set: no two of
+// the n permanents may share the key d reads (#3940). Transmutation
+// Font's "Sacrifice three artifact tokens with different names" is
+//
+//	SacrificeNDifferent(3, "three artifact tokens with different names",
+//	    EachDifferentName(), Artifact(), IsTokenPredicate())
+//
+// It is the target clause's set rule (TargetSpec.Different) on a
+// sacrifice clause. A cost reads it strictly (CR 201.2b): a permanent
+// with no name can't pay it at all. Register allows it on an activated
+// ability's cost only, at a count of two or more.
+func SacrificeNDifferent(n int, label string, d *game.TargetDifference, preds ...CardPredicate) game.AbilityCost {
+	return game.AbilityCost{SacrificeOther: sacrificeSpec(label, preds...).WithCount(n, n).EachDifferent(d)}
+}
+
 // Another is the printed word "another" / "other" on a clause: the
 // object the ability belongs to is not an eligible pick. It compares
 // OBJECTS (game.TargetSpec.ExcludeSource, CR 109.1), so a second card

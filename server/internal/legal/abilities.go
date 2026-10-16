@@ -314,7 +314,10 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			if source.Tapped {
 				continue
 			}
-			if source.IsCreature() && game.HasSummoningSickness(source) {
+			// CR 302.6, through the gate ActivateCatalogAbility
+			// refuses with, so an "as though those creatures had
+			// haste" static (#3928) opens the same rows here.
+			if g.ActivationSummoningSickLocked(source, e.seat) {
 				continue
 			}
 		}
@@ -949,6 +952,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								cost = withHandDiscard(cost, handN)
 								// #3250: and "Reveal your hand", which names no card.
 								cost = withRevealHand(cost, ab.Cost.RevealHand)
+								// #3870: and the cards a "Mill N cards" cost
+								// takes off the library, which it names none of.
+								cost = withMill(cost, ab.Cost.Mill)
 								if ab.Cost.RevealHand {
 									label += " revealing your hand"
 								}
@@ -2004,7 +2010,20 @@ func (e *enumerator) sacrificePool(sourceID uuid.UUID, selfToo bool, spec *game.
 // by game.SacrificeSetPaymentForEffect, which searches for a set that
 // fills every entry; nil when the board has none, so the ability is not
 // offered (#544).
+//
+// #3940: a clause with a DIFFERENCE rule ("three artifact tokens with
+// different names", TargetSpec.Different) is the same case: the first
+// three of the payment order may be two Clues. It is one payment from
+// game.SacrificeDifferentPaymentForEffect, the first permanent of each
+// key in payment order; nil when the board holds too few keys.
 func (e *enumerator) sacrificePayments(pool []uuid.UUID, spec *game.TargetSpec, sourceID uuid.UUID) [][]uuid.UUID {
+	if spec.Different != nil {
+		pay := e.g.SacrificeDifferentPaymentForEffect(spec, e.g.SacrificePaymentOrderForEffect(pool, sourceID))
+		if pay == nil {
+			return nil
+		}
+		return [][]uuid.UUID{pay}
+	}
 	if len(spec.EachOf) > 0 {
 		ordered := e.g.SacrificePaymentOrderForEffect(pool, sourceID)
 		pay := e.g.SacrificeSetPaymentForEffect(spec, ordered)
@@ -2259,7 +2278,8 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 			if source.Tapped {
 				continue
 			}
-			if source.IsCreature() && game.HasSummoningSickness(source) {
+			// CR 302.6, the gate ActivateManaAbility asks (#3928).
+			if g.ActivationSummoningSickLocked(source, e.seat) {
 				continue
 			}
 		}
@@ -2457,6 +2477,8 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 							cost = withCounterPrice(cost, price)
 						}
 						cost = withHandDiscard(cost, handN)
+						// #3870: Millikin's "Mill a card".
+						cost = withMill(cost, ab.MillCost)
 						e.add(Move{
 							Type:   TypeActivateManaAbility,
 							Player: e.seat,

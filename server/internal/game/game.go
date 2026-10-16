@@ -834,6 +834,17 @@ type Game struct {
 	// map the same paused window is holding. See token_create.go.
 	enteringTokens []Card
 
+	// outsideEntering is the one card of the container outside the game
+	// (Player.Sideboard) the card index may see: the land being PLAYED
+	// from there, for the span of its CR 614 entry (#3955, ADR 0198's
+	// 2026-10-16 amendment). A card outside the game is in no zone the
+	// index reaches (CR 400.11c), and the entry replacements ("enters
+	// tapped", a shockland's payment, Kismet) and the entry itself read
+	// the entering land through it. uuid.Nil between plays. Clone copies
+	// it so an undo across a paused entry still finds the land; the
+	// persisted snapshot does not carry it, for enteringTokens' reason.
+	outsideEntering uuid.UUID
+
 	// resolving is the stack item whose resolution is in flight, plus
 	// the card it was (CR 608.2n last-known information), held for
 	// exactly one event batch — see resolving_item.go (#920).

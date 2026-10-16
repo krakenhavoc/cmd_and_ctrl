@@ -197,6 +197,9 @@ type Handler struct {
 	// cardLimiter rate-limits the watcher's replies per channel.
 	cards       *cardLookup
 	cardLimiter *channelLimiter
+	// access remembers which members already have an access request
+	// posted in #account-requests (access.go).
+	access *accessRequests
 }
 
 // NewHandler wires the bot's configuration and HTTP client into
@@ -207,6 +210,7 @@ func NewHandler(cfg Config, client *ServerClient, log *slog.Logger) *Handler {
 		confirmations: newEndConfirmations(),
 		deckSources:   newDeckSourceStore(),
 		cardLimiter:   &channelLimiter{},
+		access:        newAccessRequests(),
 	}
 	h.cards = newCardLookup(client.Catalog, func() time.Time { return h.now() })
 	return h

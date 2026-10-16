@@ -267,7 +267,7 @@ func (g *Game) AutoTapPlanPreferringExcluding(
 		var plan tapPlan
 		plan, ok = g.autoTapPreferringLocked(controller, cost, xValue, excluded, prefer)
 		if ok {
-			out = g.describePlanLocked(controller, plan)
+			out = g.describePlanLocked(controller, plan, ManaSpendContext{})
 		}
 	})
 	return out, ok
@@ -279,8 +279,13 @@ func (g *Game) AutoTapPlanPreferringExcluding(
 // find (unreachable under one snapshot) is still listed, by ID alone,
 // so the list never has fewer entries than the plan.
 //
+// `spend` is the context the plan was made under (#3874): the executor
+// re-finds a restricted ability only in it, so the description must
+// too, or a Cavern of Souls planned for an Elf would be listed with no
+// payment at all.
+//
 // Caller must hold g.mu.
-func (g *Game) describePlanLocked(controller uuid.UUID, plan tapPlan) []AutoTapPlanEntry {
+func (g *Game) describePlanLocked(controller uuid.UUID, plan tapPlan, spend ManaSpendContext) []AutoTapPlanEntry {
 	if len(plan) == 0 {
 		return nil
 	}
@@ -290,7 +295,7 @@ func (g *Game) describePlanLocked(controller uuid.UUID, plan tapPlan) []AutoTapP
 		entry := AutoTapPlanEntry{CardID: planned.CardID}
 		if c, ok := g.cardInZoneLocked(g.Battlefield, planned.CardID); ok {
 			entry.Name, entry.Zone = c.Name, ZoneBattlefield
-			if ab := g.plannedAbilityLocked(controller, c, planned); ab != nil {
+			if ab := g.plannedAbilityLocked(controller, c, planned, &spend); ab != nil {
 				entry.Taps, entry.Sacrifices = ab.TapCost, ab.SacrificeCost
 				entry.OncePerTurn = autoTapFreeOncePerTurn(*ab)
 				entry.Life, entry.Damage = ab.LifeCost, ab.RiderSelfDamage
@@ -632,6 +637,11 @@ func sortTapSources(sources []tapSource) {
 		if sources[i].RiderRank != sources[j].RiderRank {
 			return sources[i].RiderRank < sources[j].RiderRank
 		}
+		// #3874: restricted mana this cast may spend before mana any
+		// cast could — see tapSource.Restricted.
+		if sources[i].Restricted != sources[j].Restricted {
+			return sources[i].Restricted
+		}
 		return restrictivenessScore(sources[i]) < restrictivenessScore(sources[j])
 	})
 }
@@ -744,6 +754,17 @@ type tapSource struct {
 	// comparators and is consulted nowhere a source could be dropped.
 	// Zero on every source of every cast that names no object.
 	RiderRank int8
+
+	// Restricted marks a candidate whose mana carries a spend
+	// restriction (#3874): Cavern of Souls' coloured half, a Delighted
+	// Halfling's legendary-only half, Ancient Ziggurat. It is a
+	// candidate at all only because the cast being paid for is one the
+	// restriction admits (autoTapAdmitsRestricted). An ORDERING key below
+	// RiderRank in both comparators: mana that can pay only for some
+	// spells is spent on one it can pay for before mana that could pay
+	// for anything, the rule the pool solver already spends by (ADR 0040
+	// §4, restricted mana first).
+	Restricted bool
 
 	// ReadsColor marks a source whose colours the spell being cast reads
 	// back (#3853): it can make a colour a Spec.WantsColors card names,
@@ -924,11 +945,18 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 		// not only the first. The candidates of one permanent are
 		// alternatives — tapPlan.hasCard keeps the solver from booking
 		// two of them — and each carries the ref the executor fires by.
-		cands := g.autoTapAbilitiesFor
+		//
+		// #3874: the spend context the wish carries is what admits a
+		// restricted ability (Cavern of Souls' coloured half for a
+		// creature spell of the chosen type); the costed pass never
+		// takes one — see autoTapWish.restrictedSpend.
+		var cands []autoTapCandidate
 		if costed {
-			cands = g.autoTapCostedAbilitiesFor
+			cands = g.autoTapCostedAbilitiesFor(controller, c)
+		} else {
+			cands = g.autoTapAbilitiesFor(controller, c, wish.restrictedSpend())
 		}
-		for _, cand := range cands(controller, c) {
+		for _, cand := range cands {
 			picked := &cand.ab
 			// ADR 0135 §4 (owner decision 3): a permanent named to a
 			// sacrifice cost on this cast may still tap for mana (CR
@@ -966,7 +994,7 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 			// Halfling played this turn is not a mana source, and
 			// planning it would produce a plan the executor now refuses,
 			// stranding whatever it had already tapped.
-			if manaTapBlockedBySickness(&c, picked) {
+			if g.manaTapBlockedBySicknessLocked(&c, picked, controller) {
 				continue
 			}
 			// #1210, CR 602.5: the board-wide "can't be activated"
@@ -1027,6 +1055,9 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 				// #3853: what this ability's spend riders would do for
 				// the spell being cast.
 				RiderRank: wish.riderRank(picked.SpendRiders),
+				// #3874: restricted output the cast's spend context
+				// admitted (the picker refuses it in every other).
+				Restricted: manaAbilityRestricted(*picked),
 				// #1242: Frozen is a claim about an UNTAP the source would
 				// miss, so it is asked only of a source this plan taps. A
 				// sacrifice-only source is gone, not tapped.
@@ -1409,17 +1440,23 @@ func appendTapSource(out []tapSource, proto tapSource, slots []ProducedManaEntry
 //     planner (autotap_costed.go) solves the second cost too, funding
 //     a Signet's {1} from the plan's other sources;
 //
-//   - RESTRICTED output is a decision, not a resource (Ancient
-//     Ziggurat, Eldrazi Temple, Delighted Halfling's coloured half).
-//     Spending a restricted token on the cast in front of you may be
-//     right or may waste the only mana that could have cast the
-//     creature you were saving it for, and the planner cannot know
-//     which. It plans around them; the player clicks them.
+//   - RESTRICTED output (Ancient Ziggurat, Eldrazi Temple, Cavern of
+//     Souls' and Delighted Halfling's coloured halves) is planned only
+//     for a CAST its restrictions admit (#3874, ADR 0040 amendment
+//     2026-10-16). With the spell known and the restriction satisfied
+//     the restriction is a filter the cast already passes, not a
+//     decision: Cavern's mana for the Elf it was named for is the mana
+//     the card exists to make, and its rider fires. Every other
+//     payment — a cast the restriction refuses, an activation, a
+//     payment with no stated object — still plans around it, as S32
+//     did for all of them ("a decision, not a resource"): there the
+//     planner cannot know which spell the mana was being kept for. See
+//     autoTapAdmitsRestricted.
 //
-// The last two are simplifications, both in the WEAKER-than-printed
-// direction: the cards are fully activatable by hand from the
-// permanent's ability menu, and mana already floated from them is
-// spent by the cast path like any other (that is the point of the
+// The mana-cost and restricted bullets are simplifications, both in the
+// WEAKER-than-printed direction: the cards are fully activatable by hand
+// from the permanent's ability menu, and mana already floated from them
+// is spent by the cast path like any other (that is the point of the
 // spend context — see mana_restriction.go).
 //
 // The painland and Talisman cycles offer the planner BOTH halves since
@@ -1484,8 +1521,12 @@ type autoTapCandidate struct {
 // The executor re-finds the ability the plan booked by its ref
 // (autoTapAbilityForRef), so the two halves still read one picker.
 //
+// `spend` is the payment the plan is for (#3874): a restricted ability
+// is a candidate only when it admits it (autoTapAdmitsRestricted). Nil
+// for a caller with no payment in hand, which admits none.
+//
 // Caller must hold g.mu.
-func (g *Game) autoTapAbilitiesFor(asker uuid.UUID, source Card) []autoTapCandidate {
+func (g *Game) autoTapAbilitiesFor(asker uuid.UUID, source Card, spend *ManaSpendContext) []autoTapCandidate {
 	abilities, origins := ManaAbilitiesWithOrigins(source)
 	var out []autoTapCandidate
 	for i := range abilities {
@@ -1496,7 +1537,7 @@ func (g *Game) autoTapAbilitiesFor(asker uuid.UUID, source Card) []autoTapCandid
 		if o.Borrowed && o.Lent != nil && o.Lent.EachOncePerTurn {
 			continue
 		}
-		if !g.autoTapAbilityAccepts(asker, source, abilities[i]) {
+		if !g.autoTapAbilityAcceptsFor(asker, source, abilities[i], spend) {
 			continue
 		}
 		// ADR 0155 §11: a borrowed row is planned like a granted one.
@@ -1512,21 +1553,27 @@ func (g *Game) autoTapAbilitiesFor(asker uuid.UUID, source Card) []autoTapCandid
 // whose planner has one ability) and gets the first acceptable one,
 // which is what every plan meant before ADR 0093.
 //
+// `spend` is the context the plan was made under (#3874), so a
+// restricted ability the planner booked for this cast is re-found and
+// one it could not have booked is not. An empty ref ignores it: "the
+// first acceptable ability" keeps the meaning it had before restricted
+// output could be planned.
+//
 // Caller must hold g.mu.
-func (g *Game) autoTapAbilityForRef(asker uuid.UUID, source Card, ref string) *ManaAbilityShape {
+func (g *Game) autoTapAbilityForRef(asker uuid.UUID, source Card, ref string, spend *ManaSpendContext) *ManaAbilityShape {
 	if ref == "" && len(layeredBorrows(&source)) == 0 {
 		return g.autoTapAbilityFor(asker, source, ManaAbilitiesForCard(source))
 	}
 	if ref == "" {
 		// A borrower: the first candidate the planner would offer, so a
 		// row it never plans (a once-each-turn lent row) is not fired.
-		if cands := g.autoTapAbilitiesFor(asker, source); len(cands) > 0 {
+		if cands := g.autoTapAbilitiesFor(asker, source, nil); len(cands) > 0 {
 			ab := cands[0].ab
 			return &ab
 		}
 		return nil
 	}
-	for _, cand := range g.autoTapAbilitiesFor(asker, source) {
+	for _, cand := range g.autoTapAbilitiesFor(asker, source, spend) {
 		if cand.ref == ref {
 			ab := cand.ab
 			return &ab
@@ -1536,11 +1583,21 @@ func (g *Game) autoTapAbilityForRef(asker uuid.UUID, source Card, ref string) *M
 }
 
 // autoTapAbilityAccepts is autoTapAbilityFor's test for ONE ability —
-// the demand and the exclusions documented above.
+// the demand and the exclusions documented above — for a payment whose
+// object is not known, which admits no restricted output.
 //
 // Caller must hold g.mu.
 func (g *Game) autoTapAbilityAccepts(asker uuid.UUID, source Card, a ManaAbilityShape) bool {
-	if !g.autoTapAcceptsBesidesManaCost(asker, source, a) {
+	return g.autoTapAbilityAcceptsFor(asker, source, a, nil)
+}
+
+// autoTapAbilityAcceptsFor is autoTapAbilityAccepts for the payment
+// `spend` describes (#3874): the same test, with a restricted ability
+// accepted when that payment is a cast its restrictions admit.
+//
+// Caller must hold g.mu.
+func (g *Game) autoTapAbilityAcceptsFor(asker uuid.UUID, source Card, a ManaAbilityShape, spend *ManaSpendContext) bool {
+	if !g.autoTapAcceptsBesidesManaCost(asker, source, a, spend) {
 		return false
 	}
 	if a.ManaCost != "" {
@@ -1563,10 +1620,12 @@ func (g *Game) autoTapAbilityAccepts(asker uuid.UUID, source Card, a ManaAbility
 // autoTapAcceptsBesidesManaCost is autoTapAbilityAccepts without its
 // mana-cost exclusion: the demand and every other exclusion. The
 // ordinary picker adds "and owes no mana"; #2455's costed picker
-// (autoTapCostedCost) adds "and owes mana the plan can fund".
+// (autoTapCostedCost) adds "and owes mana the plan can fund", and passes
+// no spend context, so a costed source with restricted output is never
+// planned.
 //
 // Caller must hold g.mu.
-func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a ManaAbilityShape) bool {
+func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a ManaAbilityShape, spend *ManaSpendContext) bool {
 	// CR 113.6 (#1228): an ability that functions only from a
 	// HAND is not a battlefield permanent's mana ability, even
 	// when the card somehow reaches the battlefield — a Simian
@@ -1636,7 +1695,9 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	if EnergyShortfall(g.playerByIDLocked(asker), a.EnergyCost) != nil {
 		return false
 	}
-	if len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {
+	// #3874: restricted output only for a cast it admits — see the
+	// RESTRICTED bullet above and autoTapAdmitsRestricted.
+	if manaAbilityRestricted(a) && !g.autoTapAdmitsRestricted(asker, source, a, spend) {
 		return false
 	}
 	// #789: a cost that PUTS a counter on the source spends a
@@ -1688,6 +1749,55 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 		return false
 	}
 	return true
+}
+
+// manaAbilityRestricted reports whether an ability's mana carries a spend
+// restriction: a declared list (Delighted Halfling) or one computed at
+// activation (Cavern of Souls' chosen type).
+func manaAbilityRestricted(a ManaAbilityShape) bool {
+	return len(a.Restrictions) > 0 || a.RestrictionsFunc != nil
+}
+
+// autoTapAdmitsRestricted reports whether the auto-tapper may plan a
+// mana ability whose output is restricted, for the payment `spend`
+// describes (#3874, ADR 0040 amendment 2026-10-16). Three demands:
+//
+//   - the payment is a CAST. That is the one payment whose object every
+//     payer names (ManaSpendForCast and its siblings); an activation, a
+//     prompt's cost and a caller with no context leave restricted output
+//     to the click, as S32 left all of it. Eldrazi Temple's "activate
+//     abilities of colorless Eldrazi" half is therefore still hand-tapped
+//     for an activation.
+//   - the restrictions, resolved for this source exactly as the mint
+//     will resolve them (restrictionsFor: Cavern's chosen type is read
+//     now), admit the spell (ManaSpendContext.allows, the one matcher the
+//     pool solver spends by). A Cavern with no type named admits nothing,
+//     because its "subtype:" tag names no type.
+//   - no symbol-level tag (ManaRestrictNoGeneric, Jegantha). Whether that
+//     mana pays is a question about which SYMBOL it pays, which
+//     `allows` cannot answer and the planner's slot arithmetic does not
+//     ask: it would book the mana for a generic pip the payment then
+//     refuses it for.
+//
+// The candidate set therefore depends on the spell, and the payability
+// bound is kept by every payer asking with the same context: the cast
+// gate (applyAutoTapLocked), the legal-move enumerator (canPayExcluding)
+// and the preview all pass the cast's ManaSpendForCast* context to
+// autoTapTopUpLocked, and the executor re-finds the ability under the
+// context the plan was made in (materializePlanInLocked).
+//
+// Caller must hold g.mu.
+func (g *Game) autoTapAdmitsRestricted(asker uuid.UUID, source Card, a ManaAbilityShape, spend *ManaSpendContext) bool {
+	if spend == nil || spend.Purpose != SpendPurposeCast {
+		return false
+	}
+	rs := restrictionsFor(g, &a, asker, source.InstanceID)
+	for _, r := range rs {
+		if r == ManaRestrictNoGeneric {
+			return false
+		}
+	}
+	return spend.allows(rs)
 }
 
 // autoTapFreeOncePerTurn reports whether a battlefield mana ability
@@ -1833,7 +1943,7 @@ func (g *Game) autoManaExileAbilityFor(asker uuid.UUID, source Card, abilities [
 // this source for this ability given its RemoveCounters component
 // (#789). The one copy of the rule the planner (gatherTapSources)
 // and the executor (materializePlanLocked) share, for the same
-// reason autoTapAbilityFor and manaTapBlockedBySickness are shared:
+// reason autoTapAbilityFor and manaTapBlockedBySicknessLocked are shared:
 // two copies drift, and when the planner's is the laxer one the
 // executor strands whatever the plan had already tapped.
 //
@@ -1875,7 +1985,7 @@ func manaCounterCostPlannable(c *Card, ab *ManaAbilityShape) bool {
 	return c.Counters[rc.Counter] >= rc.N
 }
 
-// manaTapBlockedBySickness reports whether CR 302.6 forbids tapping
+// manaTapBlockedBySicknessLocked reports whether CR 302.6 forbids tapping
 // this permanent for the given mana ability right now. The one copy
 // of the rule the auto-tapper's two halves share — the planner
 // (gatherTapSources) and the executor (materializePlanLocked) — for
@@ -1887,25 +1997,26 @@ func manaCounterCostPlannable(c *Card, ab *ManaAbilityShape) bool {
 // sacrifice or mana cost) is unaffected by summoning sickness, and
 // CR 302.6 is about CREATURES — a Sol Ring, a Treasure and a
 // fetchland all tap the turn they arrive. Haste is the read-time
-// bypass, handled inside HasSummoningSickness. The IsCreature prefix
-// is redundant since #530 and stays as documentation, matching
-// ActivateManaAbility's copy of the same gate.
+// bypass, handled inside HasSummoningSickness, and an "as though those
+// creatures had haste" static of the payer's (#3928) is the other,
+// handled by ActivationSummoningSickLocked, the gate ActivateManaAbility
+// asks.
 //
 // Layers must be fresh: both creature-hood and haste are effective
 // characteristics. The planner enters through ReadSnapshot and the
 // executor's callers already owe the same freshness for
-// ManaAbilitiesForCard.
-func manaTapBlockedBySickness(c *Card, ab *ManaAbilityShape) bool {
+// ManaAbilitiesForCard. Caller must hold g.mu.
+func (g *Game) manaTapBlockedBySicknessLocked(c *Card, ab *ManaAbilityShape, payer uuid.UUID) bool {
 	if c == nil || ab == nil || !ab.TapCost {
 		return false
 	}
-	return c.IsCreature() && HasSummoningSickness(c)
+	return g.ActivationSummoningSickLocked(c, payer)
 }
 
 // manaSourceTappedOut reports whether a permanent cannot pay the {T}
 // the picked ability owes because it is already tapped (#1242). The
 // one copy of the rule the planner (gatherTapSources) and the executor
-// (materializePlanLocked) share, for the reason manaTapBlockedBySickness
+// (materializePlanLocked) share, for the reason manaTapBlockedBySicknessLocked
 // is shared.
 //
 // Only a {T} cost is gated, which is the point: until #1242 the planner
@@ -2323,6 +2434,7 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 		costTier   int
 		rider      int8 // #3853: -1 fires, +1 held back
 		reads      bool // #3853: makes a colour the spell reads
+		restricted bool // #3874: restricted mana this cast may spend
 		demand     int  // #3604: distinct colours the hand still wants
 		tier       int  // 0 = colorless-only, else how many colours (#2278)
 		slotCnt    int
@@ -2346,6 +2458,7 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 			costTier:   s.costTier(),
 			rider:      s.RiderRank,
 			reads:      s.ReadsColor,
+			restricted: s.Restricted,
 			demand:     s.HandDemand,
 			tier:       t,
 			slotCnt:    len(s.Slots),
@@ -2433,6 +2546,12 @@ func orderUnusedByGenericPreference(sources []tapSource, used []bool) []int {
 		}
 		if out[a].reads != out[b].reads {
 			return out[a].reads
+		}
+		// #3874: restricted mana this cast may spend goes before mana
+		// any cast could, above the hand's demand: the Ziggurat's {G}
+		// can pay for no noncreature spell in that hand.
+		if out[a].restricted != out[b].restricted {
+			return out[a].restricted
 		}
 		// #3604: a source of a colour the rest of the hand still needs
 		// comes after one of a colour it does not, above the colour-count

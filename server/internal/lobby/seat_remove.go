@@ -342,6 +342,12 @@ func removeSeat(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	// ?block=true also blocks the removed seat from this table (#2984).
 	block := r.URL.Query().Get("block") == "true"
+	// The seat's name, for the mod log, while it is still at the table.
+	var seatName string
+	if seat, found := findSeat(meta.Players, playerID); found {
+		seatName = seat.Name
+	}
+	table := meta.Name
 	if meta.State == string(game.StateLobby) {
 		meta, err = c.Lobby.RemoveSeatBlocking(id, playerID, block)
 	} else if !admin {
@@ -356,6 +362,11 @@ func removeSeat(c Config, w http.ResponseWriter, r *http.Request) error {
 	// straight away is already refused.
 	if c.SeatEvictor != nil {
 		c.SeatEvictor.EvictSeat(id, playerID)
+	}
+	// A host or creator managing their own table is not a mod action;
+	// an admin removing anyone is (#3325).
+	if admin {
+		c.ModLog.SeatRemoved(p, id, table, seatName, false, block)
 	}
 	return writeJSON(w, http.StatusOK, redactMetaFor(p, admin, id, meta))
 }

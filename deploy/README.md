@@ -59,6 +59,16 @@ CD is gated `if: env.IS_DEV != 'true'`; do not work around that by hand.
    is also the server's admin allowlist, which a separate step writes to
    `/etc/cmd_and_ctrl/env` on both hosts.
 
+   Three more are written the same way, always, empty included
+   (#3968, ADR 0156 amendment 2026-10-16): the Actions **variables**
+   `CMDCTRL_DISCORD_ACCESS_REQUEST_CHANNEL_ID`, `CMDCTRL_DISCORD_PLAYER_ROLE_ID`
+   and `CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID` (Discord ids). The access-request
+   buttons need the channel and the role together; the mod log line needs
+   its channel. Unset leaves the feature off. A value that is not a Discord
+   id, or a channel without the role, fails the step before anything is
+   written. The server's "community" step writes the role and
+   `CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID` to `/etc/cmd_and_ctrl/env` too.
+
    `CMDCTRL_SERVER_BASE_URL` and `CMDCTRL_CLIENT_BASE_URL` are left to
    their defaults, which are production's values. The step skips while
    the secret is unset, or while the `cmdctrl-bot` group does not exist.
@@ -198,6 +208,15 @@ the host, so a rebuild of production does not repeat it.
   blocked the bot. It needs no privileged gateway intent either. The
   server sends DMs over REST, and the gateway bot keeps only the
   unprivileged `Guilds` intent.
+
+**The community server needs more (ADR 0156, amendment 2026-10-16).**
+Authorizing with `permissions=0` is still right, but on the C2 server
+the bot's role is then given permissions by hand: voice rooms (ADR
+0159 §7) already give it Manage Roles server-wide, and the access-request
+buttons (#3325) need its role dragged **above Elder Dragon Highlander**
+in Server Settings → Roles (still below the moderators' roles), because
+Discord lets a bot grant only roles below its own. This reverses the
+earlier "keep it at the bottom" advice.
 
 **Re-authorize every already-authorized guild once (owner action).** A
 guild authorized under the old `scope=applications.commands` URL has the

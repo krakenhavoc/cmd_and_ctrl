@@ -316,6 +316,74 @@ func ExileFromGraveyardCost(n int, label string, match func(game.Card) bool) *ga
 	}
 }
 
+// TapUntappedCost is "As an additional cost to cast this spell, tap N
+// untapped <permanents> you control" (New Blood's "an untapped Vampire
+// you control", Shared Discovery's "four untapped creatures you
+// control", #3868; CR 601.2h): the ability's and the alternative cost's
+// TapOthersCost on a cast's mandatory slot. `label` is the clause
+// without the verb, as printed, and `preds` say what may pay (the
+// "untapped" and "you control" halves are the validator's, never the
+// filter's). The caster names the permanents on cast_spell as
+// teamwork_ids; they are tapped with the spell on the stack, and a
+// creature that came under their control this turn may pay — this is
+// not the {T} symbol (CR 302.6). Read back at resolution through
+// ctx.TappedToPay(). Charged under every alternative cost and flashback,
+// as every additional cost is.
+func TapUntappedCost(n int, label string, preds ...CardPredicate) *game.AdditionalCost {
+	return &game.AdditionalCost{
+		TapOthers: tapOthersPrice(n, label, preds...),
+		Label:     "Tap " + label,
+	}
+}
+
+// checkTapOthersCost is Register's guard for a tap-permanents additional
+// cost (#3868). It lives on the mandatory slot or on one of its either/or
+// branches (Disruption Protocol), with a fixed count, and never beside
+// teamwork or escalate's taps, which ride the same teamwork_ids list:
+// each refused shape would compile and then pay something no card prints.
+func checkTapOthersCost(spec Spec) {
+	for _, oc := range spec.OptionalCosts {
+		if oc.TapOthers != nil {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q taps permanents — only the mandatory slot may (#3868)", spec.Name, oc.Key))
+		}
+	}
+	ac := spec.AdditionalCost
+	if ac == nil {
+		return
+	}
+	taps := false
+	for i, b := range append([]game.AdditionalCost{*ac}, ac.Either...) {
+		tc := b.TapOthers
+		if tc == nil {
+			continue
+		}
+		taps = true
+		where := "additional cost"
+		if i > 0 {
+			where = fmt.Sprintf("either/or branch %d", i-1)
+		}
+		switch {
+		case tc.Filter == nil || tc.Count < 1 || game.TapOthersCountFromX(tc):
+			panic(fmt.Sprintf("effects.Register: %q %s taps no fixed number of permanents — build it with TapUntappedCost (#3868)", spec.Name, where))
+		case tc.ExcludeSource:
+			panic(fmt.Sprintf("effects.Register: %q %s taps \"another\" permanent — a spell is not on the battlefield (#3868)", spec.Name, where))
+		case tc.Label == "":
+			panic(fmt.Sprintf("effects.Register: %q %s taps permanents with no label — the picker shows it", spec.Name, where))
+		}
+	}
+	if !taps {
+		return
+	}
+	for _, oc := range spec.OptionalCosts {
+		if oc.Teamwork != 0 {
+			panic(fmt.Sprintf("effects.Register: %q pairs a mandatory tap cost with teamwork — they share teamwork_ids (#3868)", spec.Name))
+		}
+	}
+	if spec.Modes != nil && spec.Modes.Escalate != nil && spec.Modes.Escalate.TapCreatures != 0 {
+		panic(fmt.Sprintf("effects.Register: %q pairs a mandatory tap cost with escalate's taps — they share teamwork_ids (#3868)", spec.Name))
+	}
+}
+
 // checkEitherCost is Register's guard for an either/or cost (ADR 0100
 // §2). Each refused shape compiles and then pays something the card
 // does not print:
@@ -417,6 +485,7 @@ func checkEitherCost(spec Spec) {
 			}
 		}
 		checkSacrificeClause(spec.Name, where, b.Sacrifice, false, false, false)
+		refuseSacrificeDifferent(spec.Name, where, b.Sacrifice)
 	}
 }
 

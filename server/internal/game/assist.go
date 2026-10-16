@@ -385,7 +385,7 @@ func (g *Game) payAssistLocked(c *assistCharge, cardID uuid.UUID) ([]ManaToken, 
 		return nil, nil
 	}
 	if len(c.plan) > 0 {
-		g.materializePlanLocked(c.helper, c.plan, c.short)
+		g.materializePlanInLocked(c.helper, c.plan, c.short, c.spend)
 	}
 	share := ParsedCost{Generic: c.amount}
 	spent, ok := c.helper.ManaPool.SpendManaForWith(share, 0, c.spend, SpendPreserveColors)

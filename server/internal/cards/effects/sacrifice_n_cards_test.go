@@ -48,10 +48,10 @@ func TestSacrificeNCardsAreRegistered(t *testing.T) {
 			t.Errorf("%s ships without a Completeness declaration", name)
 		}
 	}
-	// Transmutation Font keeps its caveat: "with different names" is a
-	// set-level restriction #747 left out of scope.
-	if spec, _ := Lookup(b32TransmutationFontOracle); spec.Completeness != CompletenessCaveats || len(spec.Activated) != 3 {
-		t.Error("Transmutation Font's tutor stays a declared omission")
+	// Transmutation Font's "with different names" is a set rule on the
+	// clause (#3940), so the tutor ships with it.
+	if spec, _ := Lookup(b32TransmutationFontOracle); spec.Completeness != CompletenessFull || len(spec.Activated) != 4 {
+		t.Error("Transmutation Font ships its tutor, Full")
 	}
 }
 

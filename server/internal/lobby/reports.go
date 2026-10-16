@@ -280,6 +280,7 @@ func reportPlayer(c Config, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	c.logger().Info("player report filed", "game_id", id, "report_id", rec.ID)
+	c.ModLog.Report(rec)
 	return writeJSON(w, http.StatusCreated, reportFiled{ID: rec.ID.String()})
 }
 

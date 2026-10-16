@@ -211,7 +211,11 @@ export interface CastChoices {
 // (Bolas's Citadel, Oracle of Mul Daya, Courser of Kruphix) — the same
 // wire word `castZoneFromWire` already accepts, sent by the PileBar
 // affordance on a visible, playable top card.
-export type CastSourceZone = "command" | "exile" | "graveyard" | "library";
+//
+// #3955: "outside" is the owner's own sideboard (ADR 0198's 2026-10-16
+// amendment), castable only under a granted permission (Spawnsire of
+// Ulamog's free cast, Wish's play).
+export type CastSourceZone = "command" | "exile" | "graveyard" | "library" | "outside";
 
 // applyCastChoices writes a CastChoices onto a cast_spell payload.
 // Undefined fields are omitted rather than sent as null — the server
@@ -1271,6 +1275,32 @@ export function castExilePermanentCost(
   if (!cost || !opts) return undefined;
   return {
     label: cost.exile_permanent_label ?? "a permanent you control",
+    count: opts.min ?? 1,
+    options: opts.cards ?? [],
+  };
+}
+
+// ClaimedTapCost is the "tap an untapped Vampire you control" additional
+// cost this cast pays (#3868): the clause as printed, how many to tap and
+// which permanents could pay it.
+export interface ClaimedTapCost {
+  label: string;
+  count: number;
+  options: string[];
+}
+
+// castTapCost is the tap-permanents cost a cast pays, if any: the card's
+// mandatory additional cost, or the chosen either/or branch's (Disruption
+// Protocol). The picks ride cast_spell as `teamwork_ids`.
+export function castTapCost(
+  card: CardView,
+  choices: CastChoices | undefined,
+): ClaimedTapCost | undefined {
+  const cost = castAdditionalCost(card, choices);
+  const opts = cost?.tap_others_options;
+  if (!cost || !opts) return undefined;
+  return {
+    label: cost.tap_others_label ?? "an untapped permanent you control",
     count: opts.min ?? 1,
     options: opts.cards ?? [],
   };

@@ -271,6 +271,24 @@ type AdditionalCost struct {
 	// only on a ModeSpec.Escalate cost.
 	TapCreatures int
 
+	// TapOthers is "As an additional cost to cast this spell, tap an
+	// untapped Vampire you control" (New Blood, #3868; CR 601.2h): the
+	// activated ability's and the alternative cost's TapOthersCost on a
+	// cast's mandatory slot, so the candidate walk, validator and payer
+	// are theirs. The caster names the permanents on
+	// CastSpellParams.TeamworkIDs, the list escalate's taps already ride
+	// (both are "tap permanents you control as a cost"). Tapping is not
+	// the {T} symbol, so a creature that came under the caster's control
+	// this turn may pay (CR 302.6). They are tapped with the spell on the
+	// stack and recorded on PaidCost.TappedOthers, which Swallow Whole's
+	// "the creature tapped to pay this spell's additional cost" reads.
+	// The mandatory slot or one of its either/or branches (Disruption
+	// Protocol's "tap an untapped artifact you control or pay {1}"), a
+	// fixed count: effects.Register refuses it on an optional cost, the
+	// "tap X" form, and beside teamwork or escalate's taps (one list
+	// cannot pay two). See tap_additional_cost.go.
+	TapOthers *TapOthersCost
+
 	// Either is an either/or additional cost (ADR 0100 §2): "As an
 	// additional cost to cast this spell, sacrifice an artifact or
 	// discard a card" (Demand Answers). Each entry is one BRANCH, an
@@ -402,7 +420,7 @@ func (c *AdditionalCost) MaxPayments() int {
 func (c *AdditionalCost) Empty() bool {
 	return c == nil || (c.DiscardCards == 0 && c.Sacrifice == nil && !c.PayLifeX && c.ManaCost == "" && !c.ChoosesOpponent &&
 		c.Teamwork == 0 && c.Blight == 0 && !c.BlightX && c.PayLife == 0 && c.Energy == 0 && c.TapCreatures == 0 && len(c.Either) == 0 &&
-		c.Reveal == nil && c.ExilePermanents.Empty() && c.ExileFromHand == nil && c.ExileCards == nil)
+		c.Reveal == nil && c.ExilePermanents.Empty() && c.ExileFromHand == nil && c.ExileCards == nil && c.TapOthers.Empty())
 }
 
 // CardsDemanded reports whether paying this cost needs the caster to
@@ -414,7 +432,8 @@ func (c *AdditionalCost) Empty() bool {
 // repeated one is refused with the rest. Nil-safe.
 func (c *AdditionalCost) CardsDemanded() bool {
 	return c != nil && (c.DiscardCards > 0 || c.Sacrifice != nil || c.PayLifeX || c.Teamwork > 0 || c.Blight > 0 || c.BlightX ||
-		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0 || c.Reveal != nil || !c.ExilePermanents.Empty() || c.ExileFromHand != nil || c.ExileCards != nil)
+		c.TapCreatures > 0 || c.PayLife > 0 || len(c.Either) > 0 || c.Reveal != nil || !c.ExilePermanents.Empty() || c.ExileFromHand != nil || c.ExileCards != nil ||
+		!c.TapOthers.Empty())
 }
 
 // CatalogAdditionalCost is the catalog hook the effects package
@@ -1013,6 +1032,10 @@ func (g *Game) additionalCostPayableLocked(playerID, castID uuid.UUID, cost *Add
 		return false
 	}
 	if !g.ExilePermanentsPayable(playerID, castID, cost.ExilePermanents) {
+		return false
+	}
+	// #3868: enough untapped matching permanents to tap (CR 118.3).
+	if !g.TapOthersPayable(playerID, castID, cost.TapOthers) {
 		return false
 	}
 	return true

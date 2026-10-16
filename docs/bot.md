@@ -3176,6 +3176,23 @@ a deck someone built for it. The model tiers see their own sideboard in the
 board text (`your sideboard (outside the game): …`) and an opponent's as a
 count.
 
+A pick that then casts or plays what it names (Spawnsire of Ulamog's free
+cast, Wish; `choose_destination: "cast_free_outside"` / `"play_outside"`, #3955)
+is priced as the same take, and the enumerator offers every card a permission
+opens in the sideboard as a cast ("Cast Ulamog's Crusher from outside the
+game") or a land play at every price the engine accepts. An "any number" pick
+from the database also offers the whole suggestion list as one answer. The
+heuristic finds a card it owns outside the game when it prices the cast, and a
+free cast from outside costs it no card in hand.
+
+Wish gives the seat a standing right to play one card chosen when it is
+played. A seat whose pool is the card database is offered
+`outside_play` ("Wish: name a card you own from outside the game to play this
+turn", a `special_action`-kind move) while its sideboard is empty; the pick it
+opens is answered like any collection pick, and the named card is then cast
+as an ordinary move. A seat with a sideboard needs no such move: its cards
+are cast directly.
+
 ## Never offered a banned cast (#760)
 
 The announce-time cast gate (`game.CastGateLocked`) is called once per
@@ -3948,6 +3965,18 @@ sink is used when what it buys is worth more than its counters. The
 baseline prices energy at nothing. The model tiers and the MCP seat read
 each seat's energy and other player counters on its board-text line
 ("4 energy, 2 poison").
+
+**A "Mill N cards" cost is priced like a dredge's mill** (#3870). The
+component (#3845) names no card, so `Move.Cost.Mill` carries the count,
+on activated and mana abilities alike (Sinister Concoction, Rot Farm
+Skeleton, Millikin), and the MCP seat's move line says `mills 4 cards
+from your library`. Under `PriceMillCost` the heuristic prices each
+milled card as the dredge answer does: the mean fuel value of its
+graveyard less `Weights.Library`, so a graveyard it casts from makes the
+mill worth more. A mill that would leave fewer than `DredgeLibraryFloor`
+(10) cards in the library is declined, whatever the ability buys. A row
+with a mill component no longer counts as costing only mana and taps
+(ADR 0126 §5). The baseline reads the mill as free.
 
 **A spell whose target count is X is offered with X equal to the
 number of targets it picks.** Crackle with Power deals five times X

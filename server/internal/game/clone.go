@@ -498,6 +498,7 @@ func (g *Game) cloneLocked() *Game {
 	// answer with the mark gone — and the effect would fire a second
 	// time. Deep-copied, because the live pipeline writes the inner
 	// sets in place.
+	out.outsideEntering = g.outsideEntering
 	if len(g.enteringTokens) > 0 {
 		// #762: a token whose entry paused on a replacement prompt is
 		// here and nowhere else. An undo across that prompt has to
@@ -1295,6 +1296,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	// prompts still owing it — see cloneLocked.
 	g.promptRuns = src.promptRuns
 	g.enteringTokens = src.enteringTokens
+	g.outsideEntering = src.outsideEntering
 	// #920: the resolving item rewinds with the prompt that is reading
 	// it — see cloneLocked.
 	g.resolving = src.resolving

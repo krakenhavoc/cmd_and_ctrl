@@ -97,6 +97,8 @@ const (
 	TypeMulligan         = "mulligan"
 	TypeDiscardSelection = "discard_selection"
 	TypeSpecialAction    = "special_action"
+	// TypeOutsidePlay is #3955's Wish right: name a card to play.
+	TypeOutsidePlay = "outside_play"
 	// ADR 0121 §4: the opening roll's two seat-scoped verbs. Never
 	// host_roll_remaining (a bot is never the host) and never a table
 	// roll (it changes nothing in the game).
@@ -400,6 +402,29 @@ type MoveCost struct {
 	// read the activation as free and could repeat it every priority.
 	// A reveal is always payable (an empty hand pays it).
 	RevealHand bool `json:"reveal_hand,omitempty"`
+
+	// Mill is how many cards the move mills off the seat's own library
+	// as its cost (#3870; the component is #3845's "Mill N cards",
+	// CR 701.17a) — Sinister Concoction's "Mill a card", Rot Farm
+	// Skeleton's "Mill four cards", Millikin's mana row. The params name
+	// no card, so without it a policy would read the library it pays as
+	// free. Always positive when present: the enumerator has already
+	// checked the library holds that many (CR 701.17b, CR 118.3).
+	Mill int `json:"mill,omitempty"`
+}
+
+// withMill adds a "Mill N cards" payment to a (possibly nil) MoveCost
+// (#3870). Nil stays nil for zero cards.
+func withMill(c *MoveCost, n int) *MoveCost {
+	if n <= 0 {
+		return c
+	}
+	out := MoveCost{}
+	if c != nil {
+		out = *c
+	}
+	out.Mill = n
+	return &out
 }
 
 // withRevealHand marks a (possibly nil) MoveCost as revealing the
