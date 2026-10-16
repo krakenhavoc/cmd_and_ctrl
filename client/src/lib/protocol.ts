@@ -651,6 +651,14 @@ export interface CounterShieldView {
   next_only?: boolean;
 }
 
+// A seat's draw limit (#4016): `max` cards each turn (0 for "can't draw
+// cards"), `left` more this turn, imposed by `sources` (card names).
+export interface DrawLimitView {
+  max: number;
+  left: number;
+  sources?: string[];
+}
+
 export interface GameEndGateView {
   source?: string;
   source_name: string;
@@ -2670,6 +2678,10 @@ export interface PlayerView {
   // this turn", an unused Insist. Public, and absent for nearly every
   // seat.
   counter_shields?: CounterShieldView[];
+  // #3927, #4016 (CR 121.2b): the per-turn draw limit on this seat
+  // (Narset, Parter of Veils; Maralen of the Mornsong as a limit of 0).
+  // Derived, public, and absent when no limit applies.
+  draw_limit?: DrawLimitView;
 }
 
 // One emblem (CR 114). `label` is the board name ("Elspeth, Sun's

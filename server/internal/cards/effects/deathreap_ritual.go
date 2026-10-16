@@ -22,14 +22,14 @@ func init() {
 		Name:         "Deathreap Ritual",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventBeginEndStep, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OptionalDraw(On(game.EventBeginEndStep, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b15EndStepBegan(ev) && b11CreaturesDiedThisTurn(g) > 0
 			}, "Deathreap Ritual — draw a card (morbid)", func(g *game.Game, item *game.StackItem) error {
 				if b11CreaturesDiedThisTurn(g) == 0 {
 					return nil
 				}
 				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-			}), "Deathreap Ritual — a creature died this turn: draw a card?"),
+			}), "Deathreap Ritual — a creature died this turn: draw a card?", 1),
 		},
 	})
 }

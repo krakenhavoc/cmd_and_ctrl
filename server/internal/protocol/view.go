@@ -2613,6 +2613,34 @@ type PlayerView struct {
 	// listed here: they are on the battlefield for everyone to read.
 	// Omitempty: absent for nearly every seat.
 	CounterShields []CounterShieldView `json:"counter_shields,omitempty"`
+
+	// DrawLimit is the per-turn draw limit on this player right now
+	// (CR 121.2b, #3927, #4016): Narset, Parter of Veils' "can't draw
+	// more than one card each turn", or Maralen of the Mornsong's
+	// "can't draw cards" as a limit of zero. Nil when none applies.
+	// Derived from the battlefield on every projection; public, since a
+	// draw that does nothing and a "you may draw" that is never asked
+	// are confusing unless the seat says why.
+	DrawLimit *DrawLimitView `json:"draw_limit,omitempty"`
+}
+
+// DrawLimitView is a seat's draw limit: Max is how many cards the
+// player may draw each turn (0 for "can't draw cards"), Left how many
+// more they may draw this turn, and Sources the permanents that impose
+// it, by name.
+type DrawLimitView struct {
+	Max     int      `json:"max"`
+	Left    int      `json:"left"`
+	Sources []string `json:"sources,omitempty"`
+}
+
+// viewOfDrawLimit projects the draw limit reaching p, or nil.
+func viewOfDrawLimit(g *game.Game, p *game.Player) *DrawLimitView {
+	st, ok := g.DrawLimitStatusLocked(p)
+	if !ok {
+		return nil
+	}
+	return &DrawLimitView{Max: st.Max, Left: st.Left, Sources: st.Sources}
 }
 
 // CounterShieldView is one "can't be countered" grant or unspent
@@ -9817,6 +9845,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		CantWin:             g.CantWinForEffect(p),
 		EndGates:            viewOfGameEndGates(g.GameEndGatesForEffect(p)),
 		CounterShields:      viewOfCounterShields(g.CounterShieldGrantsForEffect(p)),
+		DrawLimit:           viewOfDrawLimit(g, p),
 	}
 	// #3016: how many trigger orders the seat remembered, for its menu.
 	pv.TriggerOrderMemoryCount = g.TriggerOrderMemoryCountLocked(p.ID)

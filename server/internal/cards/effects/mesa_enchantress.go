@@ -19,13 +19,13 @@ func init() {
 		Name:         "Mesa Enchantress",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OptionalDraw(On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.Actor != source.Controller {
 					return false
 				}
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && spell.IsEnchantment()
-			}, "Mesa Enchantress — draw a card", Do(DrawCards{N: 1})), "Mesa Enchantress — draw a card?"),
+			}, "Mesa Enchantress — draw a card", Do(DrawCards{N: 1})), "Mesa Enchantress — draw a card?", 1),
 		},
 	})
 }

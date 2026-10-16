@@ -20,10 +20,10 @@ func init() {
 		Name:         "Garruk's Packleader",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			OptionalDraw(On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, true)
 				return ok && c.IsCreature() && c.CurrentPower() >= 3
-			}, "Garruk's Packleader — draw a card", Do(DrawCards{N: 1})), "Garruk's Packleader — draw a card?"),
+			}, "Garruk's Packleader — draw a card", Do(DrawCards{N: 1})), "Garruk's Packleader — draw a card?", 1),
 		},
 	})
 }

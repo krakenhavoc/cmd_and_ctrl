@@ -61,10 +61,17 @@ func shahAskOpponents(ctx *Context, opps []uuid.UUID, chosen []int) error {
 		}
 		return nil
 	}
+	// CR 121.2b: a draw limit caps how many the opponent may choose to
+	// draw, and one who can't draw at all isn't asked (#4016).
+	who := opps[len(chosen)]
+	ceiling := ctx.Game.DrawChoiceCeilingForEffect(who, len(shahDrawOptions)-1)
+	if ceiling <= 0 {
+		return shahAskOpponents(ctx, opps, append(append([]int(nil), chosen...), 0))
+	}
 	return PickOption{
-		Player:   opps[len(chosen)],
+		Player:   who,
 		Question: "Shah of Naar Isle — you may draw up to three cards",
-		Options:  shahDrawOptions,
+		Options:  shahDrawOptions[:ceiling+1],
 		Then: func(ctx *Context, index int) error {
 			if index < 0 {
 				index = 0

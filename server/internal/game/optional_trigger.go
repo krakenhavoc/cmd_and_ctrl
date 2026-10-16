@@ -167,11 +167,17 @@ func optionalChooser(item *StackItem) uuid.UUID {
 // askOptionalTriggerLocked asks an optional item's "you may" as it
 // resolves, after the CR 608.2b target check. A chooser who has left
 // the game cannot take the option: QueueChoiceForEffect drops the
-// prompt, nothing waits, and the item resolves doing nothing.
+// prompt, nothing waits, and the item resolves doing nothing. Nor can a
+// chooser take a "yes" that is a choice to draw cards a draw limit
+// stops them drawing (optionalDrawRefusedLocked): nothing is asked, and
+// the item resolves the same way.
 //
 // Caller must hold g.mu in write mode, inside the resolution function.
 func (g *Game) askOptionalTriggerLocked(item *StackItem) {
 	o := item.Optional
+	if g.optionalDrawRefusedLocked(item) {
+		return
+	}
 	g.QueueChoiceForEffect(PendingChoice{
 		Kind:             PendingChoiceTriggerPrompt,
 		Chooser:          optionalChooser(item),
@@ -186,6 +192,24 @@ func (g *Game) askOptionalTriggerLocked(item *StackItem) {
 		OptionalItem:     item.ID,
 		OptionalTradeFor: o.TradeFor,
 	})
+}
+
+// optionalDrawRefusedLocked reports whether an optional item's row
+// declares its "yes" a choice to draw (CatalogOptionalDraws) that its
+// chooser can't make on this board: a draw limit stops them drawing that
+// many more cards this turn (CR 121.2b, CR 121.3, #4016). An item with
+// no catalog row, or a row that declares nothing, is asked as usual.
+// Caller must hold g.mu.
+func (g *Game) optionalDrawRefusedLocked(item *StackItem) bool {
+	if CatalogOptionalDraws == nil || item.Params.Ability == nil {
+		return false
+	}
+	row, _, outcome := resolveTriggeredAbilityRef(*item.Params.Ability)
+	if outcome == abilityRefLost || row.OptionalPrompt == nil {
+		return false
+	}
+	n := CatalogOptionalDraws(row, g, item)
+	return n > 0 && !g.CanChooseToDrawForEffect(optionalChooser(item), n)
 }
 
 // FizzleCallCondition is Event.Call on the EventFizzle of an optional

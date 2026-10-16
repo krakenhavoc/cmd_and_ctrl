@@ -55,6 +55,7 @@ func combustibleGearhulkAsk(g *game.Game, item *game.StackItem) error {
 		return MayChoice{
 			Player:   t.ID,
 			Question: "Combustible Gearhulk — let its controller draw three cards?",
+			Draws:    3, Drawer: ctx.Controller(),
 			YesLabel: "They draw three",
 			NoLabel:  "They mill three and it deals damage to you",
 			OnYes:    combustibleGearhulkDrawThree,

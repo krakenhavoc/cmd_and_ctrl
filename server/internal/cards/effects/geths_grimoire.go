@@ -19,9 +19,9 @@ func init() {
 		Name:         "Geth's Grimoire",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+			OptionalDraw(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b18OpponentDiscarded(ev, source)
-			}, "Geth's Grimoire — draw a card", Do(DrawCards{N: 1})), "Geth's Grimoire — draw a card?"),
+			}, "Geth's Grimoire — draw a card", Do(DrawCards{N: 1})), "Geth's Grimoire — draw a card?", 1),
 		},
 	})
 }

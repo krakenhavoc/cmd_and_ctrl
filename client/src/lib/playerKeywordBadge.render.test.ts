@@ -237,6 +237,53 @@ describe("the seat's revealed-hand badge", () => {
   });
 });
 
+// #4016 (CR 121.2b, CR 121.3): a seat under a draw limit says so, names
+// the permanents imposing it, and says how many draws are left, so a
+// draw that does nothing (or a "you may draw" never asked) has a reason.
+describe("the seat's draw-limit badge", () => {
+  const limited = (draw_limit?: PlayerView["draw_limit"]): PlayerView =>
+    ({ ...seat(), draw_limit }) as PlayerView;
+
+  it("is absent when no limit applies", () => {
+    const { container } = render(PlayerIdentity as never, props(limited(undefined)) as never);
+    expect(badges(container)).toHaveLength(0);
+  });
+
+  it("shows DRAW MAX 1 with the source and the draws left", () => {
+    const { container } = render(
+      PlayerIdentity as never,
+      props(limited({ max: 1, left: 0, sources: ["Narset, Parter of Veils"] })) as never,
+    );
+    const got = badges(container);
+    expect(got).toHaveLength(1);
+    expect(got[0].text).toBe("DRAW MAX 1");
+    expect(got[0].title).toBe(
+      "Can't draw more than one card each turn — Narset, Parter of Veils. No draws left this turn.",
+    );
+  });
+
+  it("counts a draw still to come", () => {
+    const { container } = render(
+      PlayerIdentity as never,
+      props(limited({ max: 1, left: 1, sources: ["Spirit of the Labyrinth"] })) as never,
+    );
+    expect(badges(container)[0].title).toBe(
+      "Can't draw more than one card each turn — Spirit of the Labyrinth. 1 draw left this turn.",
+    );
+  });
+
+  it("shows NO DRAW for a limit of zero", () => {
+    const { container } = render(
+      PlayerIdentity as never,
+      props(limited({ max: 0, left: 0, sources: ["Maralen of the Mornsong"] })) as never,
+    );
+    const got = badges(container);
+    expect(got).toHaveLength(1);
+    expect(got[0].text).toBe("NO DRAW");
+    expect(got[0].title).toBe("Can't draw cards — Maralen of the Mornsong");
+  });
+});
+
 // #3262: two text badges beside the life chip widened its centred row
 // until the life total slid out of the panel. The badges now hang on
 // their own line under the chip, and the avatar makes room for them;
