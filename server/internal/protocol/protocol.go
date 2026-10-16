@@ -236,6 +236,10 @@ type PaperPaymentSlot struct {
 	Symbol  string   `json:"symbol"`
 	Options []string `json:"options"`
 	Count   int      `json:"count,omitempty"`
+	// X marks a slot of the {X} part of the cost (#3941): the mana a
+	// "spend only <colours> mana on X" clause restricts. The mana the
+	// client declares for it carries `x: true`.
+	X bool `json:"x,omitempty"`
 }
 
 // ActionPayload is the payload body for a Kind == KindAction frame

@@ -676,7 +676,8 @@ counting reader grows with the mana spent, so a lower bound is never
 stronger than printed. `None` is the one reader that shrinks as the
 mana grows, so it ignores the tokens and keeps answering false.
 Readers that mix the figures non-monotonically opt out through
-`Known()`, as Soul Burn already does.
+`Known()` (Soul Burn did until #3941; it now reads a count that only
+grows with the mana spent, and has no such opt-out).
 
 ### Why this removes Path of Ancestry's caveat honestly
 
@@ -992,3 +993,126 @@ found none of; one added later declares `ReadsOpponentsCasts` (or
 - The bot. Every cast and activation the enumerator offers is strict
   and auto-tapped, so it never waives a payment and never sees the
   question (`TestBotMovesNeverWaiveAPaymentSomethingReads`).
+
+## Amendment (2026-10-16, [#3941](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3941)): which mana paid {X}
+
+Soul Burn's "You gain life equal to the damage dealt, but not more than
+the amount of {B} spent on X" asks something the record could not
+answer. `PaidCost.Mana` said how much black paid for the WHOLE spell,
+not which of it paid for {X}, so the card counted the black on X as the
+least it could have been and carried a caveat. The pool solver had the
+answer all along: it matches every mana to a requirement and threw the
+match away. This amendment keeps it.
+
+### C1. The record: `ManaToken.ForX`
+
+A spent run that paid the restricted {X} part of the cost carries
+`ForX`. It is an additive field on the token, so it rides everywhere the
+token already does: `PaidCost.Mana` on the stack item, `CastProvenance`,
+the snapshot (v9 shape updated with `-update-shape`; nothing renamed or
+retyped). `ManaSpent.OnX()` is the readable view, the same questions
+asked of the marked mana: Soul Burn's reader is
+`ManaSpent().OnX().Count("B")`. A run that is part X and part not is
+split into two adjacent runs, so a run stays "the same mana in every
+respect a reader can tell apart" (`sameRun` includes the mark).
+
+Only a RESTRICTED {X} is recorded. "Spend only <colours> mana on X" is
+folded into coloured requirements (`foldSpendOnly`, ADR 0040), and the
+fold's run is the one requirement that is exactly X, so it is marked
+(`reqRun.x`) and kept as its own run even beside an identical printed
+symbol (Drain Life's {X}{1}{B} has black on both). An unrestricted {X}
+is generic mana: any mana pays it, the generic pass does not tell it
+from the rest of the cost, and no printed card reads it. The whole-cost
+form of the clause (Throne of Eldraine) restricts generic and coloured
+mana alike, so its run is not X.
+
+The mark is in the coloured pass only. A slot a spend grant widened to
+any mana (Chromatic Orrery) pays the part of X its printed colours
+cannot in the generic pass, and that overflow is not marked. That is the
+weaker direction: the recorded X share, and so the black counted on it,
+is a lower bound there.
+
+### C2. Who chooses (CR 601.2h)
+
+The caster chooses which mana pays which part of a cost. For a payment
+the engine takes from the pool it makes the choice for them, in the
+caster's favour, and for a payment declared on paper it records the
+choice the caster made:
+
+1. **The pool solver, for an auto-paid or pool-paid cast.** The X part
+   takes the colours the spell reads first. That is `Spec.WantsColors`
+   (ADR 0068 B3) read for the X run: Soul Burn declares `B`, so the
+   printed {B} is paid first and X then takes black before red. This is
+   the choice that maximises the card's benefit. The old rule credited
+   the fewest black that could have paid X, which is the engine guessing
+   against the caster; crediting a figure no payment made would be
+   guessing for them. Putting black on X when the pool has it is what a
+   player paying for Soul Burn would choose, and it is the allocation
+   the record then states as a fact. It is an ORDER inside the X run's
+   walk and nothing else (B1's bound): `TestTheXWishNeverChangesWhatIsPayable` runs 3000
+   random costs and pools with and without the wish and requires the
+   same answer to "payable?", the same total spent and the same X
+   share. No pool payment lets the caster name the allocation (the pool
+   has never had a per-mana picker), so the solver's choice is the
+   caster's; the declared payment in 3 is where one can be stated.
+2. **The auto-tapper.** It is unchanged. Soul Burn's `WantsColors` ranks
+   black-making sources first for the pips it has a free choice of
+   (ADR 0068 B3), which is what puts the Swamps in the plan;
+   `TestSoulBurnAutoPayPutsTheBlackOnX` pins three Swamps and three
+   Mountains.
+3. **A declared paper payment (#3855), by the caster.** The picker lists
+   the shortfall slot by slot, and a slot of the X part now arrives
+   marked (`PaperSlot.X`, `paper_payment.slots[].x`). The client shows
+   them with an "on X" tag and marks the mana it declares for them
+   (`PaperMana.X`, `paper_payment.mana[].x`), so the record keeps the
+   caster's own allocation. The server checks it: the marked mana must
+   be exactly the X slots' worth and pay them, the unmarked mana must
+   pay the rest, and a mark with no X slot, a colour X does not admit or
+   the wrong count is refused as an invalid declaration with nothing
+   paid. A declaration that marks nothing (an older client, a script)
+   leaves the matching to the engine, which gives X the favoured colour
+   first, exactly as the pool does. A cast declared free keeps the share
+   the pool paid (CR 601.2h, as the #3855 amendment already says).
+
+### C3. What a waived, undeclared payment records
+
+Soul Burn reads its own payment (`ReadsOwnPayment`), so a shortfall is
+always asked about and the record is exact; the question is never
+skipped for it. A record the engine did not see anyway (a copy of the
+spell, CR 707.10, records a real zero) has no marked mana, so the card
+gains nothing: weaker than printed, never stronger. The old
+`Known()` opt-out in Soul Burn goes: `OnX().Count("B")` only grows with
+the mana spent, so a lower bound is safe, and the "readers that mix the
+figures non-monotonically opt out through Known()" sentence under #3844
+no longer has a catalog example.
+
+### C4. Cards
+
+Soul Burn is `CompletenessFull`, its caveat gone, and declares
+`WantsColors: B`. Drain Life and Consume Spirit read nothing of the
+record (Drain Life caps its gain by the target, Consume Spirit gains X),
+so they were exact before and are untouched; their X is black only, so
+the mark is X black mana and the card text could be written either way.
+Crypt Rats and Crimson Hellkite pay a restricted X on an activation and
+do not read what paid it.
+
+### Out of scope
+
+- An unrestricted {X} (above). If a card ever reads "the {B} spent on
+  X" with an X any mana can pay, the generic pass needs the same
+  bookkeeping; nothing prints it today.
+- The widened-slot overflow under Chromatic Orrery (C1).
+- A client control to move one declared mana between an X slot and a
+  generic one after the prefill: the picker offers each slot only its
+  own options, so the allocation is the slot order. Marks follow the
+  slot, which is the caster's choice of which symbol answers it.
+
+### Tests
+
+`game/mana_paid_x_test.go` (the mark, the unmerged X run, the
+restricted-only rule, the wish and its payability bound, the declared
+and undeclared paper payments, a counted X slot), `game/folded_run_test.go`
+(the run fold still answers as the unit fold, with the marks taken off),
+`cards/effects/soul_burn_x_test.go` (the card, the auto-pay, the
+caster's declared allocation, a refused mark) and
+`client/src/lib/paperPayment.test.ts`.
