@@ -1641,6 +1641,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 
 	"HexproofBypasses": defFieldRules, "WardSuppressions": defFieldRules,
 	"TargetingRestrictions": defFieldRules, "PlayerKeywords": defFieldRules,
+	"PlayerKeywordsIf":      defFieldRules,
 	"PlayerLifeTotalLocked": defFieldRules, "DamageCantBePrevented": defFieldRules,
 	"CantGainLife": defFieldRules, "DrawLimits": defFieldRules, "DamageAsThough": defFieldRules,
 	"LegendRuleExemptions": defFieldRules, "ZeroLoyaltyExemptions": defFieldRules,

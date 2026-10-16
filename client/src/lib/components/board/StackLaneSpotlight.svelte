@@ -9,6 +9,7 @@
   // model didn't derive honestly.
 
   import type { StackLaneItem, StackLaneStyle, StackLaneStyleProps } from "../../stackLane";
+  import StackAbilityButtons from "./StackAbilityButtons.svelte";
   import { cardImageURL } from "../../cardImage";
   import { cardArt } from "../../cardArt";
   import Icon from "../Icon.svelte";
@@ -104,6 +105,11 @@
             {/each}
           </div>
         {/if}
+        <StackAbilityButtons
+          item={top}
+          enabled={model.priority.viewerHolds}
+          onActivate={controls.activate}
+        />
         <button
           type="button"
           class="act counter-btn"
@@ -180,6 +186,12 @@
                 {/if}
               </div>
             </div>
+            <StackAbilityButtons
+              {item}
+              small
+              enabled={model.priority.viewerHolds}
+              onActivate={controls.activate}
+            />
             <button
               type="button"
               class="act counter-btn"

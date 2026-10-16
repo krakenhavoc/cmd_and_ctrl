@@ -278,6 +278,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "HandSize", label: handSizeRows},
 	{field: "ManaPool", label: manaPoolRows},
 	{field: "PlayerKeywords", label: playerKeywordRows},
+	{field: "PlayerKeywordsIf", fallback: "Gives you an ability some of the time", ownLabel: true},
 	{field: "PlayerLifeTotalLocked", label: boolRow("Your life total can't change.")},
 	{field: "DamageStaysThroughCleanup", label: boolRow("Damage isn't removed from this creature during cleanup steps.")},
 	{field: "LoyaltyTwiceEachTurn", label: boolRow("You may activate its loyalty abilities twice each turn rather than only once.")},
