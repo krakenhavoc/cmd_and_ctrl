@@ -3492,6 +3492,7 @@ Three different statements, three different slots:
 | "This spell can't be countered." | `Spec.CantBeCountered: true` |
 | "…and that spell can't be countered" on mana | a spend rider, `SpentSpellCantBeCountered` |
 | "<These> spells [you control / you cast] can't be countered." on a permanent | `Spec.SpellsCantBeCountered` |
+| "Spells and abilities can't be countered." on a permanent | `Spec.SpellsCantBeCountered` with `SpellsAndAbilitiesCantBeCountered` (#2014) |
 
 The third is a list of `game.CounterShieldStatic`, built with the
 constructor whose name says whose spells, and filtered with ordinary
@@ -3517,6 +3518,11 @@ SpellsCantBeCountered: []game.CounterShieldStatic{
   colours and power, with X in the mana value.
 - A card that prints both the rider and a static (Prowling Serpopard)
   declares both. Neither does the other's job.
+- **Abilities too** (#2014). A static whose `Abilities` is set also
+  covers activated and triggered abilities on the stack, judged against
+  the ability's controller; "you cast" never covers one. Every counter
+  verb asks for an ability item, so a Stifle aimed at it resolves and
+  does nothing. Spider-Punk is the one card that prints it.
 
 The other three shapes are effects, not slots: a card's `OnResolve` or
 ability `Effect` applies a primitive from the same file (ADR 0106 PR 3).

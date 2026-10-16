@@ -467,3 +467,19 @@ Still held, each for text outside this ADR: Martyr of Bones (a "reveal X black c
 Snapshot impact: none. The flag is catalog data, and the event field is the same `Target` the log projection already reads.
 
 Cards: Mana Cache (Full).
+
+---
+
+## Amendment (2026-10-16): abilities that can't be countered (#2014)
+
+§4 built the gate for spells only. To counter an *ability* is the same act, "cancel it, removing it from the stack" (CR 701.6a), and Spider-Punk's "Spells and abilities can't be countered" says that can't happen to any activated or triggered ability (CR 101.2). Stifle, Disallow, Tale's End, Voidslime, Sublime Epiphany's second mode and every ward trigger counter abilities today, so the clause has something to stop. This extends §4 on its own option A: one more source at the one gate, not a characteristic stamped on the stack item.
+
+- **The declaration.** `game.CounterShieldStatic.Abilities bool`: the battlefield static covers activated and triggered abilities on the stack as well as spells. `effects.SpellsAndAbilitiesCantBeCountered(label)` builds Spider-Punk's any-player form. It rides `Spec.SpellsCantBeCountered`, so it is catalog data read live off the battlefield and keyed by `CatalogAbilityKey`, like every §4 static: it ends when its source leaves, phases out or loses its abilities (CR 611.3a, 604.2, 613.1f).
+- **The gate.** `abilityCantBeCounteredLocked(item)` is the ability half of the gate. It asks the battlefield statics with `Abilities` set. `Whose` is judged against the ability's controller: "any player" covers every ability, "you control" covers its controller's, and "you cast" covers none, because an ability is activated or triggered, never cast. `Spell` narrows the spell half only. It has no other source, because no card prints a rider, a turn grant or a mark for an ability.
+- **The verbs.** `CounterTargetForEffect`, `CounterTargetToZoneForEffect` and `CounterSpellToLibraryThenForEffect` ask it for an activated or triggered item before `counterAbilityLocked`. The counter-unless-paid decline (ward included) goes through `CounterTargetForEffect`, so it follows. As with a spell, a covered ability stays a legal target: the Stifle resolves and does nothing, and it does not fizzle. The sandbox's manual `CounterAbility` is the table's override and, like `CounterSpell`, asks nothing.
+- **What the table sees.** `StackItemView.cant_be_countered` is now set on an ability item too, from the same gate, and the stack lane's chip is worded for an ability. The field already existed, so the wire change is a value it can now carry, not a new field.
+- **A mana ability** never reaches the stack (CR 605.3b), so nothing about it changes.
+
+Snapshot impact: none. The flag is catalog data.
+
+Cards: Spider-Punk (Full). Its riot, "Other Spiders you control have riot" and "Damage can't be prevented" already worked (ADR 0109 §10, ADR 0107 §5). The riot grant is not narrowed to creatures: "Spiders" names a creature type, which a kindred permanent shares (CR 205.3m). No other Commander-legal card prints "abilities can't be countered".
