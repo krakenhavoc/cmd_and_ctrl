@@ -453,7 +453,7 @@ func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSp
 			fail(fmt.Sprintf("names slot %d twice", e.Slot))
 		}
 		seen[e.Slot] = true
-		if e.Draws < 0 || e.Discards < 0 || e.ExtraTurns < 0 || e.Tokens < 0 || e.LifeGain < 0 || e.LifeLoss < 0 || e.Damage < 0 {
+		if e.Draws < 0 || e.Discards < 0 || e.ExtraTurns < 0 || e.Tokens < 0 || e.LifeGain < 0 || e.LifeLoss < 0 || e.Damage < 0 || e.DamagePerTapped < 0 {
 			fail(fmt.Sprintf("has a negative amount on slot %d", e.Slot))
 		}
 		if e.IsZero() {
@@ -466,7 +466,10 @@ func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSp
 		if e.DamageIsX && e.Damage != 0 {
 			fail(fmt.Sprintf("sets both Damage and DamageIsX on slot %d", e.Slot))
 		}
-		if (e.Damage != 0 || e.DamageIsX) && !clause.Players && !slices.Contains(clause.Zones, game.ZoneBattlefield) {
+		if e.DamagePerTapped != 0 && (e.Damage != 0 || e.DamageIsX) {
+			fail(fmt.Sprintf("sets DamagePerTapped beside Damage or DamageIsX on slot %d", e.Slot))
+		}
+		if (e.Damage != 0 || e.DamageIsX || e.DamagePerTapped != 0) && !clause.Players && !slices.Contains(clause.Zones, game.ZoneBattlefield) {
 			fail(fmt.Sprintf("deals damage to slot %d, whose clause %q can target neither a player nor a permanent", e.Slot, clause.Label))
 		}
 		if e.Reanimates && !slices.Contains(clause.Zones, game.ZoneGraveyard) {
@@ -517,6 +520,15 @@ func DamageToTarget(slot, n int) game.TargetPurpose {
 // Awakened Inferno's −X is ForTargets(DamageXToTarget(0)).
 func DamageXToTarget(slot int) game.TargetPurpose {
 	return game.TargetPurpose{Slot: slot, DamageIsX: true}
+}
+
+// DamagePerTappedToTarget is the target entry for "deals damage to" the
+// pick of clause `slot` equal to `per` times the number of creatures the
+// spell's "tap any number" cost tapped (#3961): Burn at the Stake is
+// ForTargets(DamagePerTappedToTarget(0, 3)). The bot reads the count the
+// move names, so tapping more is worth what the damage buys.
+func DamagePerTappedToTarget(slot, per int) game.TargetPurpose {
+	return game.TargetPurpose{Slot: slot, DamagePerTapped: per}
 }
 
 // Reanimates is the target entry for a spell that puts the graveyard

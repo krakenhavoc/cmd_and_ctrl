@@ -747,10 +747,13 @@
   // #3868: "tap an untapped Vampire you control" as a spell's additional
   // cost (New Blood) — the sacrifice picker with the verb "Tap", over the
   // server's `tap_others_options`, the answer sent as `teamwork_ids`.
+  // #3961: "tap any number of untapped creatures" (Burn at the Stake) is
+  // the same picker with `min` 0 and every option as the ceiling.
   let addTapPrompt = $state<{
     card: CardView;
     label: string;
     count: number;
+    min: number;
     choices: CastChoices;
   } | null>(null);
   let addTapPromptOptionIDs = $state<string[]>([]);
@@ -861,8 +864,13 @@
     }
     const tc = castTapCost(card, choices);
     if (tc && choices.teamworkIDs === undefined) {
+      // #3961: none is the only answer to "any number" with nothing to tap.
+      if (tc.min === 0 && tc.options.length === 0) {
+        afterSacrificeCost(card, { ...choices, teamworkIDs: [] });
+        return;
+      }
       addTapPromptOptionIDs = tc.options;
-      addTapPrompt = { card, label: tc.label, count: tc.count, choices };
+      addTapPrompt = { card, label: tc.label, count: tc.count, min: tc.min, choices };
       return;
     }
     const he = castHandExileCost(card, choices);
@@ -3822,6 +3830,7 @@
     label={addTapPrompt?.label ?? "an untapped permanent you control"}
     options={addTapPromptOptions}
     count={addTapPrompt?.count ?? 1}
+    min={addTapPrompt?.min}
     verb="Tap"
     castName={addTapPrompt?.card.name}
     additional

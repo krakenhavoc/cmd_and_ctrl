@@ -4296,6 +4296,18 @@ flashback cast pays it too. It may also be a branch of `EitherCost`
 Register refuses it in an optional cost, the "tap X" and "another" forms,
 and beside teamwork or escalate's taps, which ride the same list.
 
+"Tap any number of untapped creatures you control" (#3961) is
+`TapAnyNumberUntappedCost("any number of untapped creatures you control",
+Creature())`: the same list, validator and payer, with the count the
+caster's from none up. A "you may" in front adds nothing. Read the count at
+resolution as `len(ctx.TappedToPay())` (Burn at the Stake) or, for "costs
+{1} less for each creature tapped this way", add
+`CostsLessPerTappedToPay("{1}", label)` to `SelfCostModifiers` (Explosive
+Singularity). A damage amount per creature tapped is declared
+`ForTargets(DamagePerTappedToTarget(slot, per))`. The mandatory slot only:
+Register refuses it in a branch, beside a count, and on an ability or an
+alternative cost.
+
 **Exile any number of cards from your hand for a discount (#3175):** the
 Marches' "As an additional cost to cast this spell, you may exile any
 number of blue cards from your hand. This spell costs {2} less to cast for

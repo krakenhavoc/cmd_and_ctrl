@@ -3961,6 +3961,17 @@ mill worth more. A mill that would leave fewer than `DredgeLibraryFloor`
 with a mill component no longer counts as costing only mana and taps
 (ADR 0126 §5). The baseline reads the mill as free.
 
+**"Tap any number of untapped creatures" is offered at each count**
+(#3961). Burn at the Stake and Explosive Singularity read the count, so
+the enumerator offers one cast per count: none, one to three creatures
+off the policy's cheapest-to-tap order, and every option, each priced
+with its own discount (an Explosive Singularity the lands alone cannot pay
+is offered only at the counts that make it affordable). The heuristic
+charges each tap as it does #3868's, and reads a damage entry declared
+`damage_per_tapped` at the count the move names, so Burn at the Stake
+taps the fewest creatures that kill its target. A cast that taps none for
+a damage that is all per-creature does nothing and is declined.
+
 **A spell whose target count is X is offered with X equal to the
 number of targets it picks.** Crackle with Power deals five times X
 damage to each of up to X targets, so the count and the announcement

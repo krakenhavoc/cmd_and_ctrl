@@ -128,6 +128,47 @@ func entryAtX(e *protocol.TargetPurposeView, x int) *protocol.TargetPurposeView 
 	return &out
 }
 
+// entryAtTapped is a target entry with its tap count resolved (#3961): an
+// entry declared DamagePerTapped (Burn at the Stake's "three times the
+// number of creatures tapped this way") deals that many times the
+// creatures the cast names to its "tap any number" cost. Every other
+// entry is returned as it is. A copy, so the card's own view is
+// untouched. Each tap is charged in valueOfCast, so the count the policy
+// takes is the one whose damage is worth its blockers.
+func entryAtTapped(e *protocol.TargetPurposeView, tapped int) *protocol.TargetPurposeView {
+	if e == nil || e.DamagePerTapped == 0 {
+		return e
+	}
+	out := *e
+	out.Damage = e.DamagePerTapped * max(tapped, 0)
+	out.DamagePerTapped = 0
+	return &out
+}
+
+// tapsNoneDeclined is what a cast that does nothing for want of a tap is
+// worth: below passing, so the card is kept for a turn it can do
+// something. phyrexianLifeDeclined's shape.
+const tapsNoneDeclined = -1.0
+
+// tapsNoneForDamage reports a cast whose declared purpose is only damage
+// per creature tapped (#3961, Burn at the Stake) that names no creature
+// to its "tap any number" cost: legal, and a card thrown away. Read off
+// the card's own statement; a modal or alternative-cost statement is not
+// this shape.
+func tapsNoneForDamage(c *protocol.CardView, cp castParams) bool {
+	if c == nil || len(cp.TeamworkIDs) > 0 || c.Purpose == nil || c.Purpose.Targets == nil {
+		return false
+	}
+	found := false
+	for _, e := range *c.Purpose.Targets {
+		if e.DamagePerTapped == 0 || givesPlayer(&e) || e.Returns != nil || e.Reanimates {
+			return false
+		}
+		found = true
+	}
+	return found
+}
+
 // pricedTargetsValue prices a move's targets: each pick whose declared
 // entry this Config prices goes through giftsValue (a player) or
 // damageCardValue (a permanent), and every other pick through

@@ -473,7 +473,11 @@ func (e *enumerator) castMovesForCard(card game.Card, from string, kind game.Zon
 					// #3175: a hand-exile cost (the Marches) is one announcement
 					// per count offered, each priced with its own discount.
 					for _, handExile := range e.handExilePayments(card) {
-						e.castMovesPayingOptional(card, from, perm, offer, chosen, to, branch, extra, handExile)
+						// #3961: and a "tap any number of untapped
+						// creatures" cost is one per count offered.
+						for _, tapAny := range e.tapAnyPayments(card) {
+							e.castMovesPayingOptional(card, from, perm, offer, chosen, to, branch, extra, handExile, tapAny)
+						}
 					}
 				}
 			}
@@ -691,7 +695,7 @@ func costPaymentDemands(mandatory *game.AdditionalCost, optional []game.Addition
 // selections of exactly extra+1 modes are built, and the escalate
 // cost's discards and taps are demanded that many times — so a mode
 // count the seat cannot pay is not offered (#2126).
-func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int, giftTo uuid.UUID, branch *int, extra int, handExile []uuid.UUID) {
+func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *game.CastPermission, offer *game.AlternativeCost, chosen []int, giftTo uuid.UUID, branch *int, extra int, handExile, tapAny []uuid.UUID) {
 	g, p := e.g, e.p
 	// #662: the spell IS its own source (CR 702.16b), so every legal
 	// set below is computed against the card's colour and type. An
@@ -781,6 +785,9 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		Fuse: card.Fused,
 		// #3175: the hand cards this expansion exiles to a March.
 		ExileFromHandIDs: handExile,
+		// #3961: and the creatures it taps to a "tap any number" cost,
+		// whose count Explosive Singularity's discount reads.
+		TeamworkIDs: tapAny,
 	}
 	price, err := e.g.PriceCastForEffect(e.seat, card, announce)
 	if err != nil {
@@ -1110,7 +1117,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// #3868: a mandatory "tap an untapped Vampire you control" names its
 	// permanents on the same list. effects.Register keeps it off a card
 	// with teamwork or escalate taps, so nothing else is on the list.
-	if tapIDs, ok := e.tapCastPayment(card.InstanceID, addCost); !ok {
+	if tapIDs, ok := e.tapCastPayment(card.InstanceID, addCost, tapAny); !ok {
 		return
 	} else if len(tapIDs) > 0 {
 		teamIDs = tapIDs
@@ -1192,6 +1199,7 @@ modeLoop:
 				AltSacrificeManaValue: altMV,
 				GrantReduction:        grantLess,
 				ExilingFromHand:       len(handExile),
+				TappingToPay:          len(tapAny),
 			})
 			if err != nil {
 				continue
@@ -1308,6 +1316,7 @@ modeLoop:
 					AltSacrificeManaValue: altMV,
 					GrantReduction:        grantLess,
 					ExilingFromHand:       len(handExile),
+					TappingToPay:          len(tapAny),
 				})
 				if err != nil {
 					continue
@@ -1386,6 +1395,7 @@ modeLoop:
 							AltSacrificeManaValue: altMV,
 							GrantReduction:        grantLess,
 							ExilingFromHand:       len(handExile),
+							TappingToPay:          len(tapAny),
 						})
 						if err != nil {
 							continue
