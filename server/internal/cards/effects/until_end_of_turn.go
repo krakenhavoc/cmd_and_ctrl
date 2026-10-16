@@ -143,6 +143,56 @@ func (b BoostUntilEOT) Apply(ctx *Context) error {
 		game.ModifyPTMod(b.Power, b.Toughness))
 }
 
+// SwitchPTUntilEOT is "switch target creature's power and toughness
+// until end of turn" (CR 613.4d, #3996): Twisted Image, About Face,
+// Crag Puca's ability on itself. Layer 7d, so it switches the creature's
+// P/T after every set, pump and counter, whatever their timestamps, and
+// a pump that arrives later is still applied before the switch. Two
+// switches on one creature undo each other.
+//
+// Target pins it to one permanent; Match is the mass form ("switch each
+// creature's power and toughness"), its set locked at resolution (CR
+// 611.2c).
+type SwitchPTUntilEOT struct {
+	Target uuid.UUID
+	Match  CardPredicate
+	Label  string
+}
+
+func (s SwitchPTUntilEOT) Apply(ctx *Context) error {
+	return untilEndOfTurn(ctx, s.Target, s.Match,
+		eotLabel(s.Label, "switch power and toughness until end of turn"),
+		game.SwitchPTMod())
+}
+
+// switchThisPT is "switch this creature's power and toughness until end
+// of turn" as an ability's effect (Crag Puca, Aquamoeba, Valakut
+// Fireboar). The source must still be the permanent the ability came
+// from: one that left and came back is a new object (CR 400.7).
+func switchThisPT(label string) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		if !sourceIsStillThisPermanent(g, item) {
+			return nil
+		}
+		return SwitchPTUntilEOT{Target: item.SourceCardID, Label: label}.Apply(NewContext(g, item))
+	}
+}
+
+// switchEachTargetPT is "switch target creature's power and toughness
+// until end of turn" over every still-legal card target of the item (CR
+// 608.2b): Merfolk Thaumaturgist's one, Inversion Behemoth's any number.
+func switchEachTargetPT(ctx *Context, label string) error {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		if err := (SwitchPTUntilEOT{Target: t.ID, Label: label}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // untilEndOfTurn is the one body every until-end-of-turn primitive
 // shares: `mods` over the set `target` / `match` names, locked now
 // (CR 611.2c), ending in this turn's cleanup step (CR 514.2).

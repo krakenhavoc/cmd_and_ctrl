@@ -380,6 +380,25 @@ type Characteristic struct {
 	// abilities" takes it away), and read in one place, Card.CountedPower.
 	// Not snapshotted: the effective characteristics are recomputed.
 	CostPower []CostPowerRule `json:",omitempty"`
+
+	// PTSwitched records that layer 7d switched Power and Toughness an
+	// odd number of times (CR 613.4d, #3996). The pass has already
+	// swapped the two fields; the flag is for the counters, which
+	// ptWithCounters adds after the pass although CR 613.4c applies them
+	// before the switch: it crosses their deltas. Written only through
+	// SwitchPowerAndToughness.
+	PTSwitched bool `json:",omitempty"`
+}
+
+// SwitchPowerAndToughness is CR 613.4d's switch on a characteristic in
+// the middle of the layer pass (sublayer 7d, SubLayer7E_Switch): the power becomes the
+// toughness and the toughness the power, and the switch is recorded so
+// the P/T counters read after the pass are switched too. Two switches
+// undo each other. Every switch effect, a ScopedEffect's ModSwitchPT or a
+// static's Apply, goes through this.
+func SwitchPowerAndToughness(ch *Characteristic) {
+	ch.Power, ch.Toughness = ch.Toughness, ch.Power
+	ch.PTSwitched = !ch.PTSwitched
 }
 
 // CostPowerUse names the costs a CostPowerRule changes. A bitmask.
