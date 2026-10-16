@@ -1345,6 +1345,19 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		if !CanActivateAbilities(source) {
 			return ErrCantActivate
 		}
+	} else if srcZone == ZoneStack {
+		// CR 113.6 / ADR 0106 §1 amendment 2026-10-16 (#1865): an
+		// ability of a SPELL, which functions on the stack only when it
+		// says so (Lightning Storm). A spell has a controller (CR 112.2),
+		// so the battlefield's rule applies: the spell's controller, or
+		// anyone when a row says "Any player may activate this ability".
+		// The row named is held to MayActivate below, as on the
+		// battlefield. Arrest and its kin restrict a permanent; layer 6
+		// has nothing to say about a spell, so CanActivateAbilities is
+		// not asked.
+		if source.Controller != playerID && !HasAnyPlayerAbility(*source) {
+			return ErrCardCallerMismatch
+		}
 	} else if source.Owner != playerID {
 		// CR 108.4: a card outside the battlefield and the stack has
 		// no controller, so its owner is the "you" of the printed
@@ -1381,7 +1394,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// ordinary activation by the controller (or owner, off the
 	// battlefield).
 	var anyPlayerActivatedFrom uuid.UUID
-	if srcZone == ZoneBattlefield && source.Controller != playerID {
+	if (srcZone == ZoneBattlefield || srcZone == ZoneStack) && source.Controller != playerID {
 		anyPlayerActivatedFrom = source.Controller
 	}
 	// ADR 0041 P9 (#1497, tier 4): which catalog row this is, named

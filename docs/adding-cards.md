@@ -1349,9 +1349,17 @@ Activated: []ActivatedAbility{{
   declares neither. A sweep on the row (Warmonger) is declared as on any
   row; see [Declaring what a card does](#declaring-what-a-card-does-purpose-adr-0126-6).
 - `effects.Register` refuses `AnyPlayer` beside a `{T}`, loyalty, crew or
-  sacrifice-this component and on a non-battlefield zone, and refuses
-  `ControllerLosesLife` on a row that is not `AnyPlayer`. An ability of
-  a spell on the stack (Lightning Storm) is not modelled.
+  sacrifice-this component and on a zone other than the battlefield or
+  the stack, and refuses `ControllerLosesLife` on a row that is not
+  `AnyPlayer`.
+- **An ability of a spell on the stack** (Lightning Storm, ADR 0106 §1
+  amendment 2026-10-16, #1865) declares `Zones:
+  []game.ZoneKind{game.ZoneStack}`. Its controller is the spell's, so
+  `MayActivate` reads it as on the battlefield. An effect that acts on
+  "this spell" gets it from `g.AbilitySourceSpellForEffect(item)`, which
+  says no once the spell has resolved or been countered (CR 400.7), and
+  the spell reads its own counters at resolution with
+  `ctx.Game.LookupCardForEffect(item.ID)`.
 
 The rest is the engine's: `game.MayActivate` is the one gate the
 activation path, the enumerator and the view share; every seat's copy of
