@@ -103,14 +103,16 @@ var lilianaDarkRealmsPump game.OptionPickThen
 
 // lilianaDarkRealmsIsSwampCard is "a Swamp card": any card with the
 // Swamp subtype in the library, basic or not.
+// "Swamp" is a word of Liliana's text, read through the text the
+// search lends (CR 612.2).
 func lilianaDarkRealmsIsSwampCard(c game.Card) bool {
-	return c.HasSubtype("Swamp")
+	return c.HasSubtypeWord("Swamp")
 }
 
 // lilianaDarkRealmsSwampsYouControl is the emblem grant's recipient set:
 // every Swamp (by its effective subtypes) the emblem's owner controls.
 func lilianaDarkRealmsSwampsYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
-	return target.Controller == source.Controller && target.HasSubtype("Swamp")
+	return target.Controller == source.Controller && target.HasSubtype(source.TextSubtype("Swamp"))
 }
 
 // lilianaDarkRealmsAskSign asks whether the target gets +X/+X or -X/-X.
@@ -143,7 +145,7 @@ func lilianaDarkRealmsPumped(ctx *Context, r game.OptionPicked) error {
 	if r.Option == nil || len(r.Carry) == 0 || !onBattlefield(ctx.Game, r.Carry[0]) {
 		return nil
 	}
-	x := swampsControlledBy(ctx.Game, ctx.Controller())
+	x := swampsControlledBy(ctx.Game, ctx.Controller(), ctx.TextSubtype("Swamp"))
 	sign, mark := 1, "+"
 	if r.Option.Label == "-X/-X" {
 		sign, mark = -1, "-"

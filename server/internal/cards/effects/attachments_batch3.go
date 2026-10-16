@@ -168,8 +168,12 @@ func landsControlledBy(g *game.Game, source *game.Card) int {
 // a Dryad Arbor both count and a Forest that has been turned into an
 // Island does not. HasSubtype is the accessor that answers that
 // correctly (and post-layer, so a Urborg-style type grant lands).
+//
+// "Forest" is a word of the source's text (CR 612.2), so a Magical Hack
+// on Blanchwood Armor counts Islands instead.
 func forestsControlledBy(g *game.Game, source *game.Card) int {
-	return permanentsYouControl(g, source, func(c *game.Card) bool { return c.HasSubtype("Forest") })
+	forest := source.TextSubtype("Forest")
+	return permanentsYouControl(g, source, func(c *game.Card) bool { return c.HasSubtype(forest) })
 }
 
 // otherEnchantmentsOnTheBattlefield counts "each OTHER enchantment on

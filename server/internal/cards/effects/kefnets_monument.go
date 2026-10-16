@@ -17,7 +17,7 @@ func init() {
 		Completeness: CompletenessFull,
 		CostModifiers: []game.CostModifier{
 			CostsLess(1, "Blue creature spells you cast cost {1} less to cast", YourSpell(), func(q game.CostQuery) bool {
-				return q.Card.IsCreature() && q.Card.HasColor("U")
+				return q.Card.IsCreature() && q.Card.HasColor(q.Source.TextColor("U"))
 			}),
 		},
 		Triggered: []game.TriggeredAbility{

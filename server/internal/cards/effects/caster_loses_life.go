@@ -20,9 +20,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 func castersLoseLife(label string, n int, spellOK func(spell game.Card) bool) game.TriggeredAbility {
 	return game.TriggeredAbility{
 		Watches: []game.EventKind{game.EventCast},
-		AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
+		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 			spell, ok := g.LookupCardForEffect(ev.CardID)
-			return ok && spellOK(spell)
+			// Lent the source's text, so a colour word the clause reads
+			// through HasColorWord follows a text change (CR 612.2).
+			return ok && spellOK(game.ThroughTextOf(source, spell))
 		},
 		Key: label,
 		Effect: func(g *game.Game, item *game.StackItem) error {

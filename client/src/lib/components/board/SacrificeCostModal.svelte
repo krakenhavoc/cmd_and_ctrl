@@ -83,6 +83,10 @@
     // then reads "Tap an untapped creature you control to cast Orim's
     // Cure."
     castName?: string;
+    // #3868: the spell's cost is an ADDITIONAL one (New Blood's "tap an
+    // untapped Vampire you control"), so the sheet says so while the hint
+    // still names the spell. Only read with castName.
+    additional?: boolean;
     // ADR 0135 §4: an emerge offer's price per candidate (its mana value
     // and what the spell costs with it sacrificed), from the server's
     // pricer. Shown beside each option, so the player sees what each
@@ -107,6 +111,7 @@
     eachOf,
     shares,
     castName,
+    additional = false,
     prices,
     all = false,
     onConfirm,
@@ -198,7 +203,7 @@
 {#if source}
   <DockSheet
     label={source.name}
-    src={castName ? "alternative cost" : "additional cost"}
+    src={castName && !additional ? "alternative cost" : "additional cost"}
     width={560}
     sheetKey={`sac:${source.instance_id}:${verb}:${label}`}
     count={chooseForMeButton.shown

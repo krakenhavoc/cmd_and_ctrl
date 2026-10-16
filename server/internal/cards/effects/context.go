@@ -82,6 +82,15 @@ func (c *Context) textReader() *game.Card {
 	return &src
 }
 
+// TextColor is the colour letter the colour word `letter` reads as in
+// the text of the object this effect is (textReader): Pyroblast's
+// "if it's blue" is card.HasColor(ctx.TextColor("U")). The printed
+// letter when nothing changed the text.
+func (c *Context) TextColor(letter string) string { return c.textReader().TextColor(letter) }
+
+// TextSubtype is TextColor for a basic land type or creature type word.
+func (c *Context) TextSubtype(sub string) string { return c.textReader().TextSubtype(sub) }
+
 // Grantor returns the object that granted the resolving ability, for
 // an activated ability a layer-6 grant put on its source (ADR 0109 §2,
 // owner decision 2) — Teferi's Talent, for the −12 it gives the
@@ -264,6 +273,24 @@ func (c *Context) TappedPower() (power int, ok bool) {
 		return 0, false
 	}
 	return c.Game.PaidTapPowerForEffect(taps[0]), true
+}
+
+// TappedToPay is the permanents a tap-permanents cost tapped, as the
+// objects they were when tapped (instance ID and epoch), in the order
+// named — "the creature tapped to pay this spell's additional cost"
+// (Swallow Whole, #3868). A permanent that has since left and come back
+// is a new object (CR 400.7), which the epoch lets a reader tell. Nil
+// when the cost tapped nothing.
+func (c *Context) TappedToPay() []game.ObjectRef {
+	taps := c.Paid().TappedOthers
+	if len(taps) == 0 {
+		return nil
+	}
+	out := make([]game.ObjectRef, 0, len(taps))
+	for _, t := range taps {
+		out = append(out, game.ObjectRef{ID: t.ID, Epoch: t.Epoch})
+	}
+	return out
 }
 
 // Exiled is the cards the announcement's ExileCards cost exiled, in the

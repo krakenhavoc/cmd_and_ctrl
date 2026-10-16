@@ -150,9 +150,14 @@ func (t ChangeTextWord) Apply(ctx *Context) error {
 // choose-a-creature-type prompt. Except names types the NEW word may not
 // be ("The new creature type can't be Wall"); the replaced word is
 // always excluded too, since a word can't be changed to itself.
+//
+// To fixes the new word instead ("replacing all instances of one
+// creature type with Vampire", New Blood, #3868): only the replaced word
+// is asked, and To itself is not offered for it.
 type ChangeCreatureTypeWord struct {
 	Target         uuid.UUID
 	Except         []string
+	To             string
 	UntilEndOfTurn bool
 }
 
@@ -164,6 +169,22 @@ func (t ChangeCreatureTypeWord) Apply(ctx *Context) error {
 	chooser, source, target, eot := ctx.Controller(), ctx.Source(), t.Target, t.UntilEndOfTurn
 	except := append([]string(nil), t.Except...)
 	name := cardNameFor(g, source)
+	if fixed := t.To; fixed != "" {
+		g.QueueCreatureTypeChoiceThenForEffect(game.CreatureTypePrompt{
+			Chooser:  chooser,
+			Source:   source,
+			Question: fmt.Sprintf("%s — choose the creature type to replace with %s", name, fixed),
+			Except:   []string{fixed},
+			Then: func(g *game.Game, from string) error {
+				if from == "" || from == fixed {
+					return nil
+				}
+				changeTextWordNow(g, source, target, game.TextWordCreatureType, from, fixed, from, fixed, name, eot)
+				return nil
+			},
+		})
+		return nil
+	}
 	g.QueueCreatureTypeChoiceThenForEffect(game.CreatureTypePrompt{
 		Chooser:  chooser,
 		Source:   source,

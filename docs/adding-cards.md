@@ -2053,8 +2053,13 @@ card says after "proliferate" goes in `Proliferate{Then: func(g
 *game.Game) error {…}}` and not on the next line — Steady Progress draws
 from its `Then`. Capture scalars, never the `*Context`. Explicit lists
 (`Proliferate{Cards: …, Players: …}`) skip the prompt. A card that only
-proliferates is `CompletenessFull`; there is no caveat to write. In a
-test, `settleAnsweringProliferate(t, g)` takes the suggested answer and
+proliferates is `CompletenessFull`; there is no caveat to write. A card
+that goes on about what the proliferate did ("permanents that had a
+counter put on them this way", Ripples of Potential) calls
+`game.ProliferateChoosingThenForEffect`, whose continuation gets a
+`game.Proliferated`: the permanents and players that really received a
+counter, across every pass of "proliferate twice", after every counter
+has landed (#3930). In a test, `settleAnsweringProliferate(t, g)` takes the suggested answer and
 `answerProliferate(t, g, picks…)` takes a chosen one.
 
 **The mill AMOUNT is a replaceable quantity too** (#569,
@@ -4288,6 +4293,22 @@ dies). Read it back with `ctx.ExiledPermanents()`, each as it last existed
 on the battlefield (Soul Exchange's "if the exiled creature was a Thrull"),
 or `ctx.Exiled()` for the bare IDs. Mandatory slot only; Register refuses
 it in an optional cost, an either/or branch and the craft forms.
+
+**Tap an untapped permanent you control as an additional cost (#3868):**
+"As an additional cost to cast this spell, tap an untapped Vampire you
+control" (New Blood) is `AdditionalCost: TapUntappedCost(1, "an untapped
+Vampire you control", Creature(), Subtype("Vampire"))`: the activated
+abilities' `TapOthersCost` on a cast, so the walk, the validator and the
+payer are theirs. The label is the clause without the verb; the predicates
+say what may pay (untapped and "you control" are the validator's). The
+caster names the permanents on `teamwork_ids`; they are tapped with the
+spell on the stack, and a creature that arrived this turn may pay (it is
+not {T}, CR 302.6). Read them back with `ctx.TappedToPay()` (Swallow
+Whole's "the creature tapped to pay"). It is an additional cost, so a
+flashback cast pays it too. It may also be a branch of `EitherCost`
+(Disruption Protocol's "tap an untapped artifact you control or pay {1}").
+Register refuses it in an optional cost, the "tap X" and "another" forms,
+and beside teamwork or escalate's taps, which ride the same list.
 
 **Exile any number of cards from your hand for a discount (#3175):** the
 Marches' "As an additional cost to cast this spell, you may exile any

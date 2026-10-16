@@ -231,6 +231,10 @@ func zoneLayerBaseline(c *Card) Characteristic {
 	ch.Types = append([]string(nil), ch.Types...)
 	ch.Subtypes = append([]string(nil), ch.Subtypes...)
 	ch.Colors = append([]string(nil), ch.Colors...)
+	// Layer 3 before layer 4: a spell's changed words (CR 612.2, #3872).
+	if c.TextWords != nil && !c.faceDownPermanent() {
+		c.TextWords.applyToBaseline(&ch)
+	}
 	return ch
 }
 

@@ -228,6 +228,8 @@ func (h *Handler) dispatchComponent(ctx context.Context, s *discordgo.Session, i
 		h.dispatchEndComponent(ctx, s, i, customID)
 	case strings.HasPrefix(customID, deckRequestCustomIDPrefix):
 		h.dispatchDeckRequestComponent(ctx, s, i, customID)
+	case strings.HasPrefix(customID, accessCustomIDPrefix):
+		h.dispatchAccessComponent(ctx, s, i, customID)
 	}
 }
 

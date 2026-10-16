@@ -700,10 +700,21 @@ func effectiveOf(c *Card) Characteristic {
 	if c.zoneLayered != nil {
 		// #3862: off the battlefield, the types and colours a static
 		// gave this object (zone_layers.go) are its baseline here. The
-		// stamp's slices are shared under the same read-only rule.
+		// stamp's slices are shared under the same read-only rule. Its
+		// baseline already carries the text change (zoneLayerBaseline).
 		ch = *c.zoneLayered
 	} else {
 		ch = printedShared(c)
+		// Layer 3 (CR 612.2) for an object no layer pass reaches: a SPELL
+		// whose text was changed on the stack reads its changed type line
+		// and keywords now, not only once it resolves (ADR 0160, #3872).
+		// TextWords is set only on battlefield permanents and stack
+		// spells, and a permanent has its pass's characteristic, so this
+		// is the spell's case. It never writes through the shared
+		// baseline: a changed list comes back as a new slice.
+		if c.TextWords != nil && !c.faceDownPermanent() {
+			c.TextWords.applyToBaseline(&ch)
+		}
 	}
 	// CR 122.1b / ADR 0101 Decision 4: a keyword counter on a card in
 	// another zone gives it that keyword. No layer pass runs there, so

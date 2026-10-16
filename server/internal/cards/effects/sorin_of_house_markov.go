@@ -174,7 +174,7 @@ func sorinTakeAndTurn(g *game.Game, item *game.StackItem) error {
 	}).Apply(ctx); err != nil {
 		return err
 	}
-	if !sorinControlsAnotherWhitePermanent(g, you, target, item.SourceCardID) {
+	if !sorinControlsAnotherWhitePermanent(g, you, target, item.SourceCardID, ctx.TextColor("W")) {
 		return nil
 	}
 	return AddCounter{Target: target, Kind: game.CounterLifelink, N: 1}.Apply(ctx)
@@ -182,14 +182,15 @@ func sorinTakeAndTurn(g *game.Game, item *game.StackItem) error {
 
 // sorinControlsAnotherWhitePermanent is the −6's condition: a white
 // permanent `you` control other than the stolen creature and Sorin.
-// Colours are read post-layer (HasColor reads EffectiveColors).
-func sorinControlsAnotherWhitePermanent(g *game.Game, you, stolen, sorin uuid.UUID) bool {
+// Colours are read post-layer (HasColor reads EffectiveColors). `white`
+// is the colour word as Sorin's text now reads it (CR 612.2).
+func sorinControlsAnotherWhitePermanent(g *game.Game, you, stolen, sorin uuid.UUID, white string) bool {
 	g.RecomputeLayersIfStaleLocked()
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != you || c.InstanceID == stolen || c.InstanceID == sorin {
 			continue
 		}
-		if c.HasColor("W") {
+		if c.HasColor(white) {
 			return true
 		}
 	}

@@ -3949,6 +3949,18 @@ baseline prices energy at nothing. The model tiers and the MCP seat read
 each seat's energy and other player counters on its board-text line
 ("4 energy, 2 poison").
 
+**A "Mill N cards" cost is priced like a dredge's mill** (#3870). The
+component (#3845) names no card, so `Move.Cost.Mill` carries the count,
+on activated and mana abilities alike (Sinister Concoction, Rot Farm
+Skeleton, Millikin), and the MCP seat's move line says `mills 4 cards
+from your library`. Under `PriceMillCost` the heuristic prices each
+milled card as the dredge answer does: the mean fuel value of its
+graveyard less `Weights.Library`, so a graveyard it casts from makes the
+mill worth more. A mill that would leave fewer than `DredgeLibraryFloor`
+(10) cards in the library is declined, whatever the ability buys. A row
+with a mill component no longer counts as costing only mana and taps
+(ADR 0126 §5). The baseline reads the mill as free.
+
 **A spell whose target count is X is offered with X equal to the
 number of targets it picks.** Crackle with Power deals five times X
 damage to each of up to X targets, so the count and the announcement

@@ -32,7 +32,9 @@ func init() {
 		Name:         "Dwarven Mine",
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTappedUnless(func(g *game.Game, controller uuid.UUID) bool {
-			return b12OtherMountainsControlled(g, controller, uuid.Nil) >= 3
+			// Asked as the land enters, a new object no text change has
+			// reached yet (CR 400.7), so the printed word stands.
+			return b12OtherMountainsControlled(g, controller, uuid.Nil, "Mountain") >= 3
 		})},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

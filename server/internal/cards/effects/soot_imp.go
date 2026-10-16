@@ -22,7 +22,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			castersLoseLife("Soot Imp — that player loses 1 life", 1,
-				func(spell game.Card) bool { return !spell.HasColor("B") }),
+				func(spell game.Card) bool { return !spell.HasColorWord("B") }),
 		},
 	})
 }

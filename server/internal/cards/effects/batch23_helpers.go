@@ -50,7 +50,7 @@ func b23AnotherGreenCreatureYouControlEntered(ev game.Event, source *game.Card, 
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.HasColor("G")
+	return ok && c.HasColor(source.TextColor("G"))
 }
 
 // b23DragonYouControlEntered is Encroaching Dragonstorm's second

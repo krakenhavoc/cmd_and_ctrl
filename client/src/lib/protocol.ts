@@ -2798,6 +2798,14 @@ export interface AdditionalCostView {
   // cannot be paid right now.
   exile_permanent_label?: string;
   exile_permanent_options?: LegalTargetsView;
+  // #3868: a "tap an untapped Vampire you control" additional cost (New
+  // Blood), on the cost or on one of its branches. `tap_others_options`
+  // lists the untapped permanents that could pay it, in payment order,
+  // min / max the clause's count; the picks ride cast_spell as
+  // `teamwork_ids`. Fewer cards than `min` means the cost cannot be paid
+  // right now. A creature that arrived this turn may pay: it is not {T}.
+  tap_others_label?: string;
+  tap_others_options?: LegalTargetsView;
   // #3175: a "you may exile any number of blue cards from your hand"
   // additional cost (March of Swirling Mist). `exile_from_hand_options`
   // lists the caster's hand cards that could pay it, min 0: none is always
@@ -4460,6 +4468,11 @@ export interface CardView extends CastSurfaceView {
   // S21 sub-PR 2: CR 302.6 summoning sickness — entered this turn
   // without haste, so it can't attack or pay a {T} cost.
   summoning_sick?: boolean;
+  // #3928: a summoning-sick creature whose controller may still pay its
+  // {T} costs, under an "as though those creatures had haste" static
+  // (Thousand-Year Elixir, CR 609.4). It still can't attack. Only ever
+  // set beside `summoning_sick`; read through `activationSick`.
+  activates_as_though_haste?: boolean;
   // ADR 0108 §5: this permanent's echo triggers at its controller's
   // next upkeep (CR 702.30a). Derived on the server; never set on a
   // face-down permanent.

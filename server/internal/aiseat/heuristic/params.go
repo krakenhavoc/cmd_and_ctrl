@@ -72,6 +72,13 @@ type castParams struct {
 	// additional cost spends (#3536) — the same resource escape's exiled
 	// graveyard and delve are, priced the same way.
 	ExileIDs []string `json:"exile_ids"`
+	// TeamworkIDs are the creatures tapped for teamwork or escalate, or
+	// the permanents a mandatory tap cost taps (#3868, New Blood). Only
+	// the last are priced (valueOfCast), as an alternative cost's taps are.
+	TeamworkIDs []string `json:"teamwork_ids"`
+	// CostBranch is the either/or additional cost's branch the cast pays
+	// (ADR 0100 §2), nil for a card with none.
+	CostBranch *int `json:"cost_branch"`
 }
 
 type activateParams struct {

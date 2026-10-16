@@ -23,7 +23,7 @@ func init() {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil
 			}
-			x := swampsControlledBy(ctx.Game, ctx.Controller())
+			x := swampsControlledBy(ctx.Game, ctx.Controller(), ctx.TextSubtype("Swamp"))
 			if err := (DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: x}).Apply(ctx); err != nil {
 				return err
 			}
