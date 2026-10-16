@@ -935,6 +935,14 @@ type PendingChoice struct {
 	// affordability when it runs, because life can move between the question and the answer.
 	LifeCost int
 
+	// DeclineEndsLoop marks a confirm whose ACCEPT would continue a loop
+	// the table is already in (#2040): Channel Harm asked to deal damage
+	// that it prevented from another Channel Harm. Declining is how the
+	// ruling says such a loop ends. It changes nothing the engine
+	// accepts; it is a hint on the wire for a policy that would
+	// otherwise take every offer and ping-pong forever.
+	DeclineEndsLoop bool
+
 	// confirmResume is the server-only continuation pair for a
 	// PendingChoiceConfirm: one closure per branch. Not serialised.
 	// See chained_choice.go.

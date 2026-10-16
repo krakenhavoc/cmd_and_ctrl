@@ -687,3 +687,39 @@ Additive within v9: `preventionFollowUps[].announce`, omitted when false. A bina
 ### Cards
 
 Selfless Squire ships `full`: its enters shield is §7's `preventFromSource` protecting you, and its trigger is `effects.WheneverDamageToYouIsPrevented`. Any prevention effect that stops damage to its controller counts, not only its own shield.
+## Amendment 2026-10-16 — §8: an additional effect that asks a question is answered at once (#2040)
+
+§8 runs a prevention effect's additional effect as its damage instance ends, through the follow-up queue (`game/prevention_then.go`). A body that has to ask something could only queue a prompt, and the code after the damage went on without the answer: the damage instruction's own continuation, the next owed follow-up, and after combat damage the state-based actions. Immortal Coil shipped with a caveat for it, and Khârn the Betrayer and Channel Harm waited.
+
+### The rules
+
+- **CR 615.5:** "the rest of the effect takes place immediately afterward."
+- **Khârn the Betrayer's rulings:** the control change "is part of the replacement effect and happens immediately, even if you are in the middle of resolving the spell or ability and it has more instructions to perform after taking damage." A spell that deals it damage several times hands it to a new player each time. The Sigil of Corruption trigger waits until the spell has finished, as every trigger does (CR 603.3).
+- **Channel Harm's rulings:** the target is chosen on cast. Whether to deal the damage is decided as the damage is prevented.
+- **CR 704.3, 510.2:** state-based actions are checked only when a player would receive priority, and a combat damage step's damage is dealt all at once.
+
+### Decision
+
+The shape is #1289's resolution pause, applied to the follow-up (`game/prevention_then_pause.go`).
+
+1. **The body runs with the resolution open.** `runFollowUpAskingLocked` opens the resolution around a follow-up body, so a blocking prompt it queues is stamped `midResolution`. That alone holds the CR 704.3 boundary, parks a modal item's later bullets (`mode_walk.go`) and its exit (`resolution_tail.go`). When the body asks nothing, the flag goes back to what it was.
+2. **One question at a time.** While such a prompt is open, no other follow-up runs (`followUpsHeldLocked`). The rest stay owed, in order, and are run after the answer. So a second instance's "an opponent of your choice" is asked of the player the first answer gave Khârn to. Khârn's body reads its controller live and recomputes the layers after the control change, so the new controller is the controller for the rest of the instruction.
+3. **The instruction waits.** `endDamageInstanceLocked` reports the pause, and the instruction whose instance asked parks its continuation (`Game.followUpParks`): `runDamageTailLocked`'s `then` and an Each walk's total. When the last prompt is answered, `holdForOpenResolutionLocked` runs that instance's remaining follow-ups, then the continuation, oldest first, before a modal item's next bullet, because the continuation belongs to the earlier instruction.
+4. **Combat answers before the state-based actions.** The catch-all flush that runs before the state-based actions in `stateChecksLocked` stops when a follow-up asks, and the boundary returns with the resolution held open. The answer's own boundary runs the remaining follow-ups and then the state-based actions. So a creature Khârn dealt lethal damage to is still on the battlefield while the question is open. CR 724.1c's check (`drain` false) cannot stop part-way, so there the prompt holds the next boundary instead.
+5. **Keyed questions keep the restore point.** `choose_cards` gains a keyed continuation, as the option pick did in #2854 (`game.RegisterChooseCardsThen`, `ChooseCardsPrompt.ThenKey` and `Carry`, ledger lines `choose <key>`). It rides `PendingChoice.PickThen` and `OptionCarry`, so a binary without it refuses a restore point naming the key. `ChoosePlayerPrompt.ThenKey` asks a keyed choose-a-player. A keyed pick gives up the closure-only `Validate` and `Zone` re-check, and its continuation re-checks what it needs.
+
+6. **Loops end with a decline.** Two Channel Harms aimed at each other's creatures ask back and forth until a player declines (the ruling). A bot that takes every offer would never stop. So the confirm carries `PendingChoice.DeclineEndsLoop` (wire `decline_ends_loop`) when Channel Harm is asked to deal damage it prevented from another Channel Harm, and the heuristic declines such a confirm. The flag is a hint, not a rule: both answers stay legal, and a person may keep the loop going.
+7. **Announcements wait in the same queue.** A CR 615.13 announcement (the #2047 amendment above) is an entry in the follow-up queue, so it is held behind an open question like any follow-up and emitted once, after the answer, in the order it was owed. That changes nothing a player can see: a triggered ability waits for the next time a player would receive priority (CR 603.3), and the question holds that boundary. Before a parked instruction goes on, every entry owed by its own instance and by any earlier one runs, so a Selfless Squire trigger owed by the first of two damage instructions is emitted before the second instruction continues. A held announcement is plain data in `preventionFollowUps`, so a table waiting on Khârn's keyed question with one held is still a restore point.
+8. **Optional redirections ask inside the event.** The #2056 amendment's "you may" redirection is an `optional_replacement` prompt on a paused damage event, and an instance with a paused event does not end, so its follow-ups cannot ask until that prompt is answered: the two questions are never open together for one instance. When Khârn's prevention and Blood of the Martyr both apply to one event, Khârn's controller orders them (CR 616.1), and a declined redirection is followed by Khârn's question. Damage dealt by an answer (Channel Harm's yes) can meet a redirection of its own; that prompt is asked after the first is answered and holds the instruction the same way.
+
+### What it does not do
+
+A catalog effect written as plain sequential steps (`Do(DealDamage{…}, DrawCards{…})`) runs its later steps on the Go stack after the damage call returns. It already does the same after a CR 616 ordering prompt. The instruction-level forms wait: the `...ThenForEffect` continuations, the Each walks, and a modal item's bullets. Channel Harm's yes/no is a closure confirm, so a table waiting on it is not a restore point. The server keeps the one from before the damage, as every confirm does.
+
+### Snapshot impact
+
+One additive field: `pendingChoices[].declineEndsLoop`, recorded in the v9 shape. A binary that drops it loses only the bot hint. The owed follow-ups, `resolutionOpen` and the prompt's `midResolution` stamp are already carried. A keyed `choose_cards` prompt reuses `pickThen` and `optionCarry`. `Game.followUpParks` is not carried: it is a closure, counted in `ContinuationCensus.ChoiceResumeFrames` like the CR 616 resume it sits beside, and its two `closure_fields.txt` lines raise that class's ceiling from 119 to 121. It cannot be data: the parked item is the catalog caller's own continuation, the `then` passed to `DealDamage…ThenForEffect` (about 40 call sites) and the engine's Each-walk step closure. A keyed form would mean keying every one of those callers.
+
+### Cards
+
+Khârn the Betrayer and Channel Harm ship `full`. Immortal Coil loses its caveat and is `full`.

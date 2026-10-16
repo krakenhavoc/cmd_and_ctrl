@@ -24,22 +24,20 @@ import (
 // The last line is a CR 603.8 state trigger (ADR 0107 PR 1): checked only
 // as it triggers, and its controller loses as it resolves (the rulings).
 //
-// Simplification: when there is a choice to make, it is put to the
-// player as a prompt, which the engine answers after the spell or ability
-// that dealt the damage has finished, rather than immediately (CR 615.5).
-// The candidates are the cards in the graveyard when the damage was
-// prevented, and a pick that has left by the answer is made up from the
-// rest of them, so the count is never lower than printed.
+// The choice is made as the damage is prevented (CR 615.5; #2040, ADR
+// 0108 amendment of 2026-10-16): the rest of the damage instruction, and
+// after combat damage the state-based actions, wait for the answer. The
+// prompt's continuation is a registered key, so a table waiting on it is
+// still a restore point; it exiles the picks still in the graveyard and
+// makes any shortfall up from the other candidates, so the count is never
+// lower than printed.
 //
-// The caveat waits on the engine seam #2040 (triaged in #3863).
+// No simplifications.
 func init() {
 	Register(Spec{
 		OracleID:     "c85fc672-12d8-4ab0-b18d-ccd590ac063c",
 		Name:         "Immortal Coil",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"When you must choose which cards to exile, you choose after the spell or ability that dealt the damage has finished.",
-		},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{T}, Exile two cards from your graveyard: Draw a card.",
 			Purpose: game.Purpose{Answers: game.AnswerValue},
@@ -84,20 +82,23 @@ func immortalCoilExile(g *game.Game, item *game.StackItem, p game.EffectParams) 
 		g.ExileCardsForEffect(cards)
 		return nil
 	}
-	owner := you.ID
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:  owner,
+		Chooser:  you.ID,
 		Source:   item.SourceCardID,
 		Question: fmt.Sprintf("Immortal Coil — exile %d cards from your graveyard", n),
 		Cards:    cards,
 		Min:      n,
 		Max:      n,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			return immortalCoilExilePicked(g, owner, cards, picked, n)
-		},
+		ThenKey:  immortalCoilExileChosen,
 	})
 	return nil
 }
+
+// immortalCoilExileChosen is the keyed answer to "which cards". Its key
+// is an on-disk identity: never renamed, never reused.
+var immortalCoilExileChosen = game.RegisterChooseCardsThen("choose-cards/immortal-coil-exile", func(g *game.Game, r game.CardsChosen) error {
+	return immortalCoilExilePicked(g, r.Chooser, r.Candidates, r.Picked, r.Min)
+})
 
 // immortalCoilExilePicked exiles the picks still in the owner's
 // graveyard, and makes any shortfall up from the other candidates still

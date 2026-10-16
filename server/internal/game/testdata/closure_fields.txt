@@ -86,6 +86,7 @@ Game.Seats                                   census:IntrinsicAbilityCards       
 Game.Stack                                   census:IntrinsicAbilityCards       # Game.Stack
 Game.StackMeta                               census:IntrinsicAbilityCards       # Game.StackMeta
 Game.enteringTokens                          census:ChoiceResumeFrames          # Game.enteringTokens
+Game.followUpParks                           census:ChoiceResumeFrames          # Game.followUpParks
 Game.lastKnownStack                          census:IntrinsicAbilityCards       # Game.lastKnownStack
 Game.logProjection                           rebuilt                            # Game.logProjection
 Game.pausedModeWalk                          keyed                              # Game.pausedModeWalk
@@ -196,6 +197,7 @@ entryBatch.then                              census:ChoiceResumeFrames          
 entryBatchMember.out                         census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch.members.out
 entryTail.batch                              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch
 entryTail.then                               census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.then
+followUpPark.run                             census:ChoiceResumeFrames          # Game.followUpParks.run
 keywordActionTail.amassed                    census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.keywordAction.amassed
 keywordActionTail.armyToken                  census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.keywordAction.armyToken
 keywordActionTail.then                       census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.keywordAction.then

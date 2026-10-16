@@ -559,6 +559,13 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// heuristic sees today (#507's flat-ActivateBase note), but
 		// either answer clears the prompt, so the seat cannot stall.
 		if cp.Apply != nil && *cp.Apply {
+			if ch != nil && ch.DeclineEndsLoop {
+				// #2040: accepting would continue a loop the table is
+				// already in (Channel Harm against Channel Harm). Two
+				// seats that take every offer would ping-pong forever;
+				// declining is how the ruling ends it.
+				return 0.25, "confirm: decline, to end the loop"
+			}
 			if m.Cost != nil {
 				// Same pricing the priority window uses (#547), reached
 				// through a prompt instead of an activated ability:

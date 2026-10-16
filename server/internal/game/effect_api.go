@@ -1030,10 +1030,14 @@ func (g *Game) dealDamageEachStepLocked(source uuid.UUID, targets []uuid.UUID, a
 		// target is gone. Skip it and keep the total.
 		targets = rest
 	}
-	if walk.owned {
-		g.endDamageInstanceLocked(walk.inst)
-	}
+	paused := walk.owned && g.endDamageInstanceLocked(walk.inst)
 	if then == nil {
+		return nil
+	}
+	if paused {
+		// #2040: a follow-up of the walk's instance is asking; the
+		// caller's total waits for the answer.
+		g.parkFollowUpContinuationLocked(walk.inst, func(g *Game) error { return then(g, dealtSoFar) })
 		return nil
 	}
 	return then(g, dealtSoFar)

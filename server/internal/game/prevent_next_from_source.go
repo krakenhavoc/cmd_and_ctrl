@@ -749,42 +749,30 @@ func (g *Game) queuePreventionFollowUpLocked(e ScopedEffect, m Mod, ev *Replacem
 // CR 510.2 — and nothing has died of it yet), and as play moves on to a
 // new event batch (beginEventBatchLocked), whichever comes first. A
 // follow-up's own damage can meet another shield with a follow-up, so the
-// flush repeats, bounded, until nothing is owed.
+// flush goes on, bounded, until nothing is owed.
+//
+// A follow-up that ASKS stops the flush (#2040, prevention_then_pause.go):
+// the rest stay owed until the answer, and the result reports the pause,
+// so the priority boundary returns without the state-based actions.
 //
 // Caller must hold g.mu (write).
-func (g *Game) flushPreventionFollowUpsLocked() {
-	for round := 0; round < 8 && len(g.preventionFollowUps) > 0; round++ {
-		pending := g.preventionFollowUps
-		g.preventionFollowUps = nil
-		for _, f := range pending {
-			g.runPreventionFollowUpLocked(f)
-		}
-	}
+func (g *Game) flushPreventionFollowUpsLocked() (paused bool) {
+	return g.runOwedFollowUpsLocked(func(PreventionFollowUp) bool { return true })
 }
 
 // flushPreventionFollowUpsForInstanceLocked runs the follow-ups owed for
 // one instance of damage, as it ends (CR 615.5: "immediately afterward"),
 // and leaves every other entry owed. A follow-up's own damage is a new
-// instance, which runs its own as it ends.
+// instance, which runs its own as it ends. Reports whether one of them
+// asked a question, or waits behind one (#2040): the instruction's
+// continuation then waits for the answer.
 //
 // Caller must hold g.mu (write).
-func (g *Game) flushPreventionFollowUpsForInstanceLocked(inst DamageInstance) {
-	due := func(f PreventionFollowUp) bool { return f.Instance == inst }
-	if inst == 0 || !slices.ContainsFunc(g.preventionFollowUps, due) {
-		return
+func (g *Game) flushPreventionFollowUpsForInstanceLocked(inst DamageInstance) (paused bool) {
+	if inst == 0 {
+		return false
 	}
-	var run, kept []PreventionFollowUp
-	for _, f := range g.preventionFollowUps {
-		if due(f) {
-			run = append(run, f)
-		} else {
-			kept = append(kept, f)
-		}
-	}
-	g.preventionFollowUps = kept
-	for _, f := range run {
-		g.runPreventionFollowUpLocked(f)
-	}
+	return g.runOwedFollowUpsLocked(func(f PreventionFollowUp) bool { return f.Instance == inst })
 }
 
 // runPreventionFollowUpLocked runs one follow-up body. It is the rest of

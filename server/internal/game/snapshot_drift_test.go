@@ -262,6 +262,7 @@ var gameFields = plan(
 	// record would let every first-striker deal its damage again in
 	// the regular step.
 	"firstStrikeStepParticipants", carried, "",
+	"followUpParks", dropped, "#2040: the rest of a damage instruction parked behind a prompt its prevention follow-up asked; counted in ContinuationCensus.ChoiceResumeFrames, so a table holding one is not a restore point; Clone shares it (copy on write) for undo",
 	"heldCombatDamage", dropped, "#3665: a combat damage step's damage held behind its damage_assignment prompts; counted in ContinuationCensus.ChoiceResumeFrames, so a table holding it is not a restore point; Clone shares it (copy on write) for undo",
 	"lastKnownBattlefield", carried, "",
 	"lastKnownTriggerIdentity", carried, "",
@@ -1111,6 +1112,7 @@ var pendingChoiceFields = plan(
 	// it would render a question nobody can answer.
 	"AcceptLabel", carried, "",
 	"LifeCost", carried, "",
+	"DeclineEndsLoop", carried, "",
 	"DeclineLabel", carried, "",
 	"ChooseCards", carried, "",
 	"ChooseMin", carried, "",

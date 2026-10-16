@@ -1706,7 +1706,9 @@ type pendingChoiceSnapshot struct {
 	MayCastKeyword       string      `json:"mayCastKeyword,omitempty"`
 	AcceptLabel          string      `json:"acceptLabel,omitempty"`
 	LifeCost             int         `json:"lifeCost,omitempty"`
-	DeclineLabel         string      `json:"declineLabel,omitempty"`
+	// DeclineEndsLoop is PendingChoice.DeclineEndsLoop (#2040).
+	DeclineEndsLoop bool   `json:"declineEndsLoop,omitempty"`
+	DeclineLabel    string `json:"declineLabel,omitempty"`
 	// OwedInStep: the step a pay-or-else prompt has to be answered in
 	// (#997). Carried so a restored game gates the same way, cheap
 	// and honest even though every prompt that sets it today also
@@ -2195,6 +2197,15 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	if g.heldCombatDamage != nil {
 		cen.ChoiceResumeFrames++
 		cen.note("combat damage step holds its damage behind damage_assignment prompts")
+	}
+	// #2040: the rest of a damage instruction parked behind a prompt
+	// its instance's prevention follow-up asked. A closure, as the
+	// CR 616 resume beside it is: not carried, so a restart rewinds to
+	// before the damage. The owed follow-ups themselves are data
+	// (PreventionFollowUps).
+	if n := len(g.followUpParks); n > 0 {
+		cen.ChoiceResumeFrames += n
+		cen.note("%d damage instruction(s) wait behind a prevention follow-up's prompt", n)
 	}
 	// #2789: a modal item's later bullets parked behind one of those
 	// prompts (mode_walk.go).
@@ -2859,6 +2870,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		AcceptLabel:           c.AcceptLabel,
 		DeclineLabel:          c.DeclineLabel,
 		LifeCost:              c.LifeCost,
+		DeclineEndsLoop:       c.DeclineEndsLoop,
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
 		OptionalItem:          c.OptionalItem,
@@ -3780,6 +3792,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		AcceptLabel:           c.AcceptLabel,
 		DeclineLabel:          c.DeclineLabel,
 		LifeCost:              c.LifeCost,
+		DeclineEndsLoop:       c.DeclineEndsLoop,
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
 		OptionalItem:          c.OptionalItem,

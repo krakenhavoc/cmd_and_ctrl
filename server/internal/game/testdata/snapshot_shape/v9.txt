@@ -3136,6 +3136,7 @@ pendingChoices[].damageAssignment.SourceLKI.Types[]	string
 pendingChoices[].damageAssignment.SourceLifelink	bool
 pendingChoices[].damageAssignment.SourceToxic	number:int
 pendingChoices[].damageAssignment.SourceWither	bool
+pendingChoices[].declineEndsLoop	bool
 pendingChoices[].declineLabel	string
 pendingChoices[].discardLabel	string
 pendingChoices[].discardOptions	array

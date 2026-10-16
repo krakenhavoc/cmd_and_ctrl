@@ -104,6 +104,14 @@ type ChoosePlayerPrompt struct {
 	// before it was answered (#1006). Runs with g.mu held; may queue
 	// further choices, which is how a chain continues.
 	Then func(g *Game, chosen uuid.UUID) error
+
+	// ThenKey is Then as a REGISTERED option-pick continuation, with
+	// Carry the plain data it is handed (#2040, option_pick_keyed.go): a
+	// table waiting on the answer stays a restore point. The chosen seat
+	// is the continuation's Option.Player; Option is nil when nobody was
+	// chosen. With a key, Then and Item are ignored.
+	ThenKey OptionPickThen
+	Carry   []uuid.UUID
 }
 
 // QueueChoosePlayerForEffect queues a "choose a player" and returns
@@ -130,6 +138,16 @@ func (g *Game) QueueChoosePlayerForEffect(p ChoosePlayerPrompt) uuid.UUID {
 		return uuid.Nil
 	}
 	options := g.seatChoiceOptionsLocked(eligible)
+	if p.ThenKey.key != "" {
+		return g.QueueOptionPickForEffect(OptionPickPrompt{
+			Chooser:  p.Chooser,
+			Source:   p.Source,
+			Question: p.Question,
+			Options:  options,
+			ThenKey:  p.ThenKey,
+			Carry:    p.Carry,
+		})
+	}
 	item := p.Item
 	then := p.Then
 	queued := g.QueueOptionPickForEffect(OptionPickPrompt{

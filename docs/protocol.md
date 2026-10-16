@@ -513,6 +513,12 @@ The computed `life_cost_unpayable: true` marks an unaffordable or locked life
 payment; the client disables Pay while keeping decline available. Both fields
 are omitted when zero/false. Existing answer payloads are unchanged.
 
+**Loop hint (#2040):** a `confirm` pending choice may carry
+`decline_ends_loop: true` when accepting would continue a loop the table is
+already in. Channel Harm sets it when it is asked to deal damage it prevented
+from another Channel Harm. It is a hint for bots: both answers stay legal, and
+the field is omitted when false.
+
 
 `activate_mana_ability` also accepts `tap_ids?: ["<uuid>", ...]` for a
 mana ability's fixed-count `tap_others_options` cost (#758). This field is

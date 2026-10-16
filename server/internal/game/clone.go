@@ -391,6 +391,9 @@ func (g *Game) cloneLocked() *Game {
 	// ADR 0107 §6: owed follow-ups rewind with the shields they belong
 	// to. Copy on write everywhere, so the slice is shared.
 	out.preventionFollowUps = g.preventionFollowUps
+	// #2040: the parked continuations take the live *Game as an
+	// argument, so a clone shares them (copy on write).
+	out.followUpParks = g.followUpParks
 	// ADR 0108 PR 0: the instance counter rewinds with the records that
 	// name its IDs, and the combat step's instance with the batch it is
 	// keyed on, so a re-done instance can never reuse an ID an undone
@@ -1271,6 +1274,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.batchLifeLost = cloneBatchLifeLossTotals(src.batchLifeLost)
 	g.stagedBatchTriggers = src.stagedBatchTriggers
 	g.preventionFollowUps = src.preventionFollowUps
+	g.followUpParks = src.followUpParks
 	g.damageInstanceSeq = src.damageInstanceSeq
 	g.openDamageInstance = src.openDamageInstance
 	g.combatDamageInstance = src.combatDamageInstance

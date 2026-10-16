@@ -51,7 +51,10 @@ import "github.com/google/uuid"
 // before the state-based actions, and as a new event batch opens). A
 // creature killed by the same combat damage is still on the battlefield
 // to trigger. The queue is in the snapshot, so a table paused inside the
-// instance keeps what it owes.
+// instance keeps what it owes. While a follow-up's question is open
+// (#2040, prevention_then_pause.go) it waits with the rest of the queue
+// and is emitted once, in order, after the answer: the trigger would not
+// go on the stack before then anyway (CR 603.3).
 
 // announcePreventionLocked owes CR 615.13's "damage was prevented" for one
 // application of the prevention effect `a` to `ev`, which prevented
