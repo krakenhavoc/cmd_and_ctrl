@@ -5430,6 +5430,7 @@ func ViewOfGame(g *game.Game) GameView {
 		stampDiscardByOpponent(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
 		stampZoneAbilities(g, view.Seats, &view.Exile)
+		stampStackAbilities(g, &view.Stack)
 		stampCombatTargets(g, &view)
 		stampNoUntap(g, &view.Battlefield)
 		stampDeathMarks(g, &view.Battlefield)
@@ -8261,6 +8262,53 @@ func stampZoneAbilitiesInPile(g *game.Game, zone *ZoneView, kind game.ZoneKind, 
 	}
 }
 
+// stampStackAbilities fills CardView.ZoneAbilities on the spells on the
+// stack whose activated abilities function there (CR 113.6, ADR 0106 §1
+// amendment 2026-10-16, #1865): Lightning Storm's "Discard a land card:
+// …", which any player may activate.
+//
+// stampZoneAbilities' rows, one zone over, and per SEAT rather than per
+// owner: a spell has a controller (CR 112.2), and an any-player row is
+// every seat's to activate, each with its own price, hand and verdicts
+// (CR 602.1a, CR 109.5). So every seat game.MayActivate lets activate at
+// least one row gets its own copy, stamped with itself as the activator,
+// and only the rows it may activate. They ride castOffers, as the hand's
+// and the graveyard's do, because a discard option lists the activator's
+// HAND; FilterViewFor promotes the viewer's own (applyCastStampsFor).
+//
+// Runs under the read lock ViewOfGame already holds.
+func stampStackAbilities(g *game.Game, stack *ZoneView) {
+	if stack == nil || len(stack.Cards) == 0 {
+		return
+	}
+	restricted := false
+	restrictedRead := false
+	for ci := range stack.Cards {
+		c := &stack.Cards[ci]
+		card, ok := liveCardForAbilityRows(g, c)
+		if !ok || !game.HasStackAbility(*card) {
+			continue
+		}
+		if !restrictedRead {
+			restricted, restrictedRead = g.AnyActivationRestrictionsForEffect(), true
+		}
+		raw, origins := game.ActivatedAbilitiesWithOrigins(*card)
+		for _, p := range g.Seats {
+			if p == nil {
+				continue
+			}
+			rows := viewOfActivatedAbilities(g, *card, p.ID, game.ZoneStack, restricted)
+			mine := rows[:0:0]
+			for _, r := range rows {
+				if r.Index >= 0 && r.Index < len(raw) && game.MayActivate(p.ID, *card, game.ZoneStack, raw[r.Index], origins.At(r.Index)) {
+					mine = append(mine, r)
+				}
+			}
+			c.stampZoneAbilitiesFor(p.ID, mine)
+		}
+	}
+}
+
 // liveCardForAbilityRows resolves a projected card back to the
 // engine's own Card so the ability rows can be computed off it, and
 // declines the ones that could not have any.
@@ -10369,7 +10417,9 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// ADR 0155 Decision 10: and a borrowed row's lender in a hidden
 		// zone reaches the seats that may see it there.
 		Battlefield: applyLenderKnowersFor(applyAbilityOffersFor(redactZone(v.Battlefield, isKnower), viewerID, playingFor...), viewerID, seatIDs),
-		Stack:       redactZone(v.Stack, isKnower),
+		// #1865: a spell's stack abilities (Lightning Storm) are every
+		// seat's to activate, each with its own rows (stampStackAbilities).
+		Stack: applyCastStampsFor(redactZone(v.Stack, isKnower), viewerID, playingFor...),
 		// #978: exile is the one SHARED zone that carries
 		// announce-time cast stamps, and they were computed for one
 		// seat — the holder of the CastPermission that opened the

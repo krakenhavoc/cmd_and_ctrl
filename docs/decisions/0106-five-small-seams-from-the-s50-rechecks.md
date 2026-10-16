@@ -314,7 +314,7 @@ PRs 1, 2 and 4 are small and touch nothing in combat or priority, so they can go
 
 ## Out of scope
 
-- Any-player **mana** abilities (Mana Cache), and any-player abilities on a spell (Lightning Storm).
+- Any-player **mana** abilities (Mana Cache), and any-player abilities on a spell (Lightning Storm). The spell half shipped in the 2026-10-16 amendment below (#1865).
 - A ScopedEffect mod kind that grants "can't attack its owner" (Elrond), and "can't be sacrificed" (Alexios).
 - Savage Summoning's other two one-use promises ("can be cast as though it had flash" and "enters with an additional +1/+1 counter"). It waits on the `cant-be-countered-grant` row.
 - "Can't be countered by blue or black spells" (Autumn's Veil), which depends on the counterer.
@@ -449,3 +449,40 @@ Cards: Martyrdom (Full).
 §5 shipped with four cards of the "from a single graveyard" family held for their other text. One of those holds has lapsed without any change to this ADR's machinery: Qutrub Forayer waited on "target creature that was dealt damage this turn", and the engine has recorded that since Covert Cutpurse (#1855, `DealtDamageThisTurn`, which reads the turn's damage events and treats a creature that entered afterwards as a new object, CR 400.7). The card is built on the two halves that exist: a modal enters trigger (CR 700.2) whose first bullet targets a damaged creature and whose second bullet is the `Same` clause (`upToNCardsFromASingleGraveyard(2)`). Each bullet reads its own target group by occurrence (`ModeTargets`), so the second bullet's `exileTheModesTargetCards` re-checks each pick at resolution (CR 608.2b) and the sameness rule is judged at announce exactly as for a spell. A bullet with no legal target cannot be chosen (CR 603.3c), so with no damaged creature on the table only the graveyard bullet is offered; the enumerator and the bot take the mode through the existing mode-pick path, so no new choice exists. Full, no caveat.
 
 Still held, each for text outside this ADR: Martyr of Bones (a "reveal X black cards" activation cost), Feral Deathgorger // Dusk Sight (Omen, CR 720.3d) and Spellweaver Helix (casting a copy of an exiled card).
+
+---
+
+## Amendment (2026-10-16): abilities of a spell on the stack (#1865)
+
+"Out of scope" above left one any-player card: Lightning Storm, whose ability belongs to a spell. "Lightning Storm deals X damage to any target, where X is 3 plus the number of charge counters on Lightning Storm. Discard a land card: Put two charge counters on Lightning Storm. You may choose a new target for it. Any player may activate this ability but only if Lightning Storm is on the stack." It is the only card that prints an activated ability working on the stack: a search of the Scryfall dump of 2026-10-13 for "only if/while … is on the stack" and "activate … on the stack" finds it alone. The rest of this section is checked in the code on `origin/develop` at `e2466a70` and against the pinned Comprehensive Rules (September 25, 2026).
+
+### The rules
+
+- **CR 113.6:** "Abilities of an instant or sorcery spell usually function only while that object is on the stack." The card's activation instruction says so of this one, and **CR 602.1b** makes that instruction (and "Any player may activate this ability") part of the ability, functioning at all times.
+- **CR 602.2:** only an object's controller may activate its ability "unless the object specifically says otherwise". **CR 112.2:** "A spell's controller is, by default, the player who put it on the stack. Every spell has a controller." So the battlefield's rule (decision 2) applies to a spell unchanged.
+- **CR 602.1a / 109.5 / 113.8:** the activator pays the cost (their own land card), controls the ability, and is its "you": the player who activated it chooses the new target, not the spell's controller. The issue text said the spell's controller; the rules say otherwise.
+- **CR 115.7d:** "choose new targets" lets the chooser leave a target unchanged; a changed target must be legal. Legality is the spell's, so hexproof and protection are judged against Lightning Storm and its controller.
+- **CR 122.1 / 400.7 / 707.2:** counters sit on the spell object, cease to exist when it changes zones, and are not copied. A copy of Lightning Storm starts with none.
+
+### What existed
+
+The source of an activation is already found in whatever zone holds it (`findCardAndZoneLocked`, ADR 0062), the stack included. `Card.Controller` on the stack is layer 2's answer (`stackControlPassLocked`, ADR 0104). Counters can be put on any card in any zone through the replacement window (`AddCounterByForEffect`). CR 115.7's retarget, with the item's own legality and a chooser who is not the item's controller, is `game.OfferRetargetForEffect` (ADR 0019's amendments, `effects.ChangeTargets`), and its prompt is data, so a table waiting on it is a restore point. The spell card on the stack, its counters included, is already in the snapshot.
+
+### Decision
+
+1. **Declaration.** A row declares `Zones: []game.ZoneKind{game.ZoneStack}`, as a cycling row declares the hand. `effects.Register` now allows `AnyPlayer` (and the other named activators) on a stack row; every other non-battlefield zone is still refused. The cost components that need a permanent are refused there as for any non-battlefield zone.
+2. **Who may activate.** `game.MayActivate` answers for `ZoneStack` exactly as for the battlefield: the spell's controller, or anyone for an `AnyPlayer` row. `ActivateCatalogAbility` gains the stack arm beside the battlefield one: a non-controller is let past only when the spell has a row that reaches across, and the named row is then held to `MayActivate`. Arrest-style "its activated abilities can't be activated" restricts a permanent and is not asked of a spell; the board-wide gate (Pithing Needle naming it) is asked as for every activation. The announce event's `Target` names the spell's controller when somebody else activated it, so the log reads "Bob activated Alice's Lightning Storm".
+3. **The effect acts on the spell only while it is the same object.** `game.AbilitySourceSpellForEffect(item)` is the spell the ability came from while it is still on the stack with the epoch the ability was activated from (CR 400.7). Countered or resolved in response, the ability does nothing: no counters on the card in the graveyard, and no prompt.
+4. **The enumerator** walks the stack after the other zones, through the same `abilityMovesForSource`: the seat's own spells, and another player's for the rows that reach across. The fast negative is `game.HasStackAbility`, since almost no spell has such a row. The label names the spell's controller for a non-controller, as for a permanent.
+5. **The view.** `stampStackAbilities` puts each seat's own copy of the rows on the stack card's `zone_abilities`, stamped with that seat as the activator (its price, verdicts and the land cards in its own hand), through `castOffers`; `FilterViewFor` now promotes the viewer's copy on the stack as it does in exile. Only the rows `MayActivate` opens to that seat are filed, and a spectator gets none. ADR 0105's digest needed no change.
+6. **The client.** Every stack surface (the docked card and the four lane styles) draws a button per row beside Counter (`StackAbilityButtons`, labelled `L.stackAbility`), live while the viewer holds priority, and hands the row to Board's announce chain, which asks for the land card as it does for cycling. The spell's counters are a chip ("2 charge").
+7. **Autopass.** The row declares `Answers: AnswerPrevent` (it redirects damage, ADR 0142), which is threat-gated (the ADR 0009 amendment of #3555): it counts as a response only for a seat an opponent's item threatens, which is the player the storm is aimed at. Decision 7's "another player's permanent is never a response" is about a permanent that sits on the table for the rest of the game; a spell's ability exists only while the spell waits, so it is a real response window and is classified like any other move. The client's `activatesAcross` reads battlefield controllers only, so it needed no change.
+8. **The bot.** Decision 8 applies to a spell as to a permanent: the heuristic reaches across to another player's spell only for a row whose `Purpose` it prices, and Lightning Storm's declares no draws or life loss, so a bot never pumps an opponent's storm (which may be aimed at it). On its own storm it prices the activation as any other row: the flat activation value less what the discarded land is worth to it. Redirecting a storm aimed at the bot is a follow-up.
+
+### Snapshot impact
+
+None. `Zones`, `AnyPlayer` and `Purpose` are catalog data. The ability item names its catalog row (ADR 0041 P9) and restores from it; the counters ride the spell card, which the stack zone already carries.
+
+### Cards
+
+Lightning Storm (Full).

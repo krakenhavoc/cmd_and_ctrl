@@ -150,6 +150,25 @@ func (e *enumerator) activatedMoves() {
 			e.abilityMovesForSource(src, zone.kind, restricted)
 		}
 	}
+	// CR 113.6 / ADR 0106 §1 amendment 2026-10-16 (#1865): an ability of
+	// a SPELL that functions while it is on the stack (Lightning Storm).
+	// A spell has a controller (CR 112.2), so the walk is the
+	// battlefield's: the seat's own spells, and another player's for its
+	// "Any player may activate this ability" rows, each row held to
+	// game.MayActivate in the body. The fast negative is a row that
+	// functions from the stack at all, which almost no spell has.
+	if g.Stack != nil {
+		for i := range g.Stack.Cards {
+			src := &g.Stack.Cards[i]
+			if !game.HasStackAbility(*src) {
+				continue
+			}
+			if src.Controller != e.seat && !game.HasAnyPlayerAbility(*src) {
+				continue
+			}
+			e.abilityMovesForSource(src, game.ZoneStack, restricted)
+		}
+	}
 }
 
 // abilityZone is one non-battlefield pile the activation walk visits,

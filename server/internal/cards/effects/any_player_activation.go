@@ -46,9 +46,11 @@ func checkGrantorOnlyIsGranted(name string, i int, ab ActivatedAbility) {
 //   - A {T}, loyalty, crew, sacrifice-this or exert component on an any-player
 //     row. No printed card has one, and who may tap or sacrifice
 //     another player's permanent is a rule nobody has tested.
-//   - A zone other than the battlefield. MayActivate keeps the CR 108.4a
-//     owner rule off the battlefield, so the permission would be
-//     silently ignored there.
+//   - A zone other than the battlefield or the stack. MayActivate keeps
+//     the CR 108.4a owner rule in every other zone, so the permission
+//     would be silently ignored there. The stack is allowed since #1865
+//     (ADR 0106 §1 amendment 2026-10-16): a spell has a controller
+//     (CR 112.2), and Lightning Storm is any-player.
 //
 // What the row's Purpose may say is checkActivatedPurpose's (purpose.go):
 // ControllerLosesLife only here, on an any-player row.
@@ -83,8 +85,8 @@ func checkAnyPlayerAbility(name, where string, ab ActivatedAbility) {
 		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability that exerts its source — not modelled (ADR 0106 §1, ADR 0130 §4)", name, where))
 	}
 	for _, z := range ab.Zones {
-		if z != game.ZoneBattlefield {
-			panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability that functions from the %s — only the battlefield is modelled (ADR 0106 §1)",
+		if z != game.ZoneBattlefield && z != game.ZoneStack {
+			panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability that functions from the %s — only the battlefield and the stack are modelled (ADR 0106 §1)",
 				name, where, z))
 		}
 	}
