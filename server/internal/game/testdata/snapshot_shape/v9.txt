@@ -2736,6 +2736,8 @@ pendingChoices[].coinAllowStop	bool
 pendingChoices[].coinCount	number:int
 pendingChoices[].coinMaxUsefulWins	number:int
 pendingChoices[].coinWins	number:int
+pendingChoices[].collectionSuggestions	array
+pendingChoices[].collectionSuggestions[]	string
 pendingChoices[].colorOptions	array
 pendingChoices[].colorOptions[]	string
 pendingChoices[].colorPurpose	string
@@ -5780,6 +5782,7 @@ seats[].hand.cards[].variableToughness	bool
 seats[].hand.kind	string
 seats[].hand.owner	custom(uuid.UUID)
 seats[].handKept	bool
+seats[].hasSideboard	bool
 seats[].id	custom(uuid.UUID)
 seats[].isAgent	bool
 seats[].isBot	bool

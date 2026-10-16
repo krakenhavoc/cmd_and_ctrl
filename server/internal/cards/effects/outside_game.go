@@ -18,7 +18,9 @@ import (
 //
 // It asks the owner to choose from their sideboard (a choose_cards
 // prompt over cards only they can see) and brings the choice into their
-// hand. With nothing to choose from it does nothing and asks nothing: a
+// hand. A player whose deck seated no sideboard chooses from the card
+// database instead (ADR 0198): the same filter, minted into a real card
+// they own, and the same reveal and move. With nothing to choose from it does nothing and asks nothing: a
 // clause that finds no card is not an error (CR 608.2c's "as much as
 // possible"). While another player controls the owner's turn the pool is
 // closed (ADR 0167 §5, CR 723.4) and it finds nothing.

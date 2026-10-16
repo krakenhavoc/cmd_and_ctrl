@@ -612,6 +612,30 @@ func (i *Index) FindByOracleID(oracleID uuid.UUID) (Card, bool) {
 	return c, ok
 }
 
+// Playable reports whether c is a printing of a real, playable card
+// rather than a token, an art-series card, a reversible novelty or
+// another placeholder record (isPlayablePrint).
+func (c Card) Playable() bool { return isPlayablePrint(c) }
+
+// EachOracle calls fn once per oracle ID the index holds, with the
+// representative printing FindByOracleID would return and how many
+// printings of that card the dump carries (a reprint count, which is a
+// fair proxy for how widely played a card is). Order is unspecified.
+// fn runs under the index's read lock and must not call back into it.
+func (i *Index) EachOracle(fn func(c Card, printings int)) {
+	i.mu.RLock()
+	defer i.mu.RUnlock()
+	counts := make(map[uuid.UUID]int, len(i.byOracle))
+	for _, c := range i.byID {
+		if c.OracleID != uuid.Nil {
+			counts[c.OracleID]++
+		}
+	}
+	for id, c := range i.byOracle {
+		fn(c, counts[id])
+	}
+}
+
 // FindByName resolves a card name to a Card. Matching is case- and
 // whitespace-insensitive; for split / double-faced cards both the
 // full printed name ("Fire // Ice") and the front-face name ("Fire")

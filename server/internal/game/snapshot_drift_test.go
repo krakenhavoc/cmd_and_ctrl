@@ -660,6 +660,7 @@ var playerFields = plan(
 	// for Companion's reason: nothing else on the board says what an
 	// effect could still bring in. Written only while it holds a card.
 	"Sideboard", carried, "",
+	"HasSideboard", carried, "",
 	"CommanderDamage", carried, "",
 	"LifeHistory", carried, "",
 	// The seat-turn counter "until your next turn" durations end on
@@ -1087,6 +1088,7 @@ var pendingChoiceFields = plan(
 	"DeclineLabel", carried, "",
 	"ChooseCards", carried, "",
 	"ChooseMin", carried, "",
+	"CollectionSuggestions", carried, "",
 	"ChooseMax", carried, "",
 	"ChoosePlayers", carried, "",
 	"ChooseSuggested", carried, "",
