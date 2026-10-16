@@ -59,22 +59,39 @@ func init() {
 // commander is on the battlefield, or in a graveyard — does nothing,
 // which is what the printed card does too.
 func commandBeaconToHand(g *game.Game, item *game.StackItem) error {
+	return putCommanderIntoHand(g, item, "Command Beacon", false)
+}
+
+// putCommanderIntoHand is "Put your commander into your hand from the
+// command zone" — Command Beacon, and Road of Return's second bullet.
+// With two (partners, a Background) the player chooses which (CR
+// 608.2c); with none nothing happens. `name` heads the question.
+// `commandersOnly` narrows the candidates to the commanders the
+// controller owns (Road of Return); Command Beacon keeps every card in
+// its activator's command zone, as it always has.
+func putCommanderIntoHand(g *game.Game, item *game.StackItem, name string, commandersOnly bool) error {
 	p := g.PlayerByIDForEffect(item.Controller)
-	if p == nil || p.Command == nil || len(p.Command.Cards) == 0 {
+	if p == nil || p.Command == nil {
 		return nil
-	}
-	if len(p.Command.Cards) == 1 {
-		return g.BounceToHandForEffect(p.Command.Cards[0].InstanceID)
 	}
 	candidates := make([]uuid.UUID, 0, len(p.Command.Cards))
 	for _, c := range p.Command.Cards {
+		if commandersOnly && (!c.IsCommander || c.Owner != item.Controller) {
+			continue
+		}
 		candidates = append(candidates, c.InstanceID)
+	}
+	switch len(candidates) {
+	case 0:
+		return nil
+	case 1:
+		return g.BounceToHandForEffect(candidates[0])
 	}
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:    item.Controller,
 		FromPlayer: item.Controller,
 		Source:     item.SourceCardID,
-		Question:   "Command Beacon — put which commander into your hand?",
+		Question:   name + " — put which commander into your hand?",
 		Cards:      candidates,
 		Min:        1,
 		Max:        1,

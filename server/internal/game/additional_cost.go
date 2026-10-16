@@ -500,6 +500,13 @@ const (
 	// (validateGiftChoiceLocked). Everything the gift DOES is the
 	// card's, grown by effects.Gift (ADR 0089).
 	GiftKey = "gift"
+	// EntwineKey is CR 702.42's entwine: an optional additional cost
+	// paid at most once, whose announcement raises the spell's mode
+	// count to every bullet (ADR 0065's 2026-10-16 amendment, #3866).
+	// The engine reads it only through the mode count's condition
+	// (effects.WasEntwined), so the cost, its validation and its
+	// payment are kicker's.
+	EntwineKey = "entwine"
 )
 
 // OptionalCostTimesPaid counts how many times the optional cost whose
