@@ -8677,7 +8677,10 @@ func printedIdentityOf(c *Card) (colors []string, known bool) {
 			colors = original.Colors
 		}
 	} else if len(colors) == 0 {
-		colors = c.Effective().Colors
+		// The PRINTED colours (CR 903.4): a Mycosynth Lattice makes the
+		// commander colourless in every zone (#3862) and leaves its
+		// colour identity alone.
+		colors = printedShared(c).Colors
 	}
 	if len(colors) == 0 {
 		colors = distinctColorsInManaCost(cost)

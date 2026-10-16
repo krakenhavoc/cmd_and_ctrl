@@ -1388,12 +1388,11 @@ var items = []Item{
 		EngineNotes: "**The keyword action shipped** (ADR 0082 amendment 2026-10-07, #2570; see Closed seams): `Game.ManifestDreadThenForEffect` (`game/manifest_dread.go`) looks at the top two cards (controller-only knowledge), asks a `choose_cards` prompt (hideaway's, so the enumerator and both bots already answer it), manifests the chosen card through the CR 614 face-down entry and puts the other into its owner's graveyard. The continuation is told `ManifestDreadResult{Manifested, Graveyarded}`, and `EventManifestDread` carries both for \"whenever you manifest dread\". Turning a permanent face up as an effect shipped too (ADR 0082 second amendment 2026-10-07, #2590): `Game.TurnFaceUpForEffect` (`game/face_down.go`) shares the special action's tail, pays nothing, and refuses a manifested noncreature card (CR 701.40b); Hauntwoods Shrieker, Zimone, Mystery Unraveler and Staff Room are complete. Defiant Survivor shipped with `effects.Survival` and `YourSecondMainPhaseBegan` (#3535, ADR 0189 slice 1), and Abhorrent Oculus with `AdditionalCost.ExileCards` (#3536, ADR 0189 slice 2; see the exile-from-graveyard row), so every printing card is complete.",
 	},
 	{
-		Slug: "rooms", Name: "Rooms", Kind: KindSeam, Status: StatusPartial,
+		Slug: "rooms", Name: "Rooms", Kind: KindSeam, Status: StatusImplemented,
 		Summary: "Rooms work: cast either half, the other door starts locked, and you can pay a locked door's cost to unlock it. Every split card can be cast as either half, with fuse and aftermath.",
 		Rules:   []string{"709.3", "709.4", "709.5", "702.102", "702.127"},
 		Issue:   1756,
 		ADR:     "0103-rooms.md",
-		Missing: "Five Rooms play only part of their text, because one door does something the engine can't do yet: a standing pay-{0} or pay-life cast (Charred Foyer, Cramped Vents), giving spells convoke (Dazzling Theater), and making a permanent spell an enchantment while it is on the stack (Secret Arcade).",
 		Tracked: "#1756",
 		// Walk-In Closet // Forgotten Cellar landed with
 		// exile-instead-of-graveyard-this-turn (#1823, ADR 0108 §4), the
@@ -1401,7 +1400,10 @@ var items = []Item{
 		// with caveats on their blocked doors (#2555).
 		// The four manifest-dread doors (Weight Room, Ticket Booth, Slimy
 		// Aquarium, Experimental Lab) landed with manifest dread (#2570,
-		// ADR 0082 amendment 2026-10-07).
+		// ADR 0082 amendment 2026-10-07). The last caveated door, Secret
+		// Arcade's permanent spells that are enchantments on the stack,
+		// landed with the zone layer step (#3862, ADR 0039 amendment
+		// 2026-10-15), so no Room plays only part of its text.
 		Examples:    []string{"Roaring Furnace // Steaming Sauna"},
 		EngineNotes: "**Built by [ADR 0103](decisions/0103-rooms.md)** (#1756), on ADR 0071's designation gate. `Card.Unlocked` holds a Room's two CR 709.5c designations; `materialiseSplit` keeps a split card's name, cost and colours right in every zone (the whole card off the stack, the cast half on it, the unlocked doors on the battlefield); a Room spell enters with its cast door unlocked (CR 709.5d) and `EventDoorUnlocked` fires after the ETB (CR 709.5h); the `unlock` special action (CR 709.5e) is derived from the card, so an uncatalogued Room can be unlocked too; `UnlockDoorForEffect` / `LockDoorForEffect` are the instructions (CR 709.5f-g) and `EventRoomFullyUnlocked` the full unlock (CR 709.5i). `effects.Room` builds a Room's Spec with every ability gated on its door, and Register refuses an ungated one. Every split card casts either half (CR 709.3); aftermath's half only from a graveyard (CR 702.127a); fuse from hand (CR 702.102). The cards themselves are catalogued separately (ADR 0103 PRs 3 and 4).",
 	},

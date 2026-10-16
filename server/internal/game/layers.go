@@ -454,6 +454,26 @@ type StaticAbility struct {
 	// effects.Register refuses another at boot.
 	GrantZone ZoneKind
 
+	// AffectsZones declares a layer-4 or layer-5 static whose objects
+	// are NOT on the battlefield (#3862, ADR 0039 amendment 2026-10-15):
+	// Mycosynth Lattice's "All cards that aren't on the battlefield,
+	// spells, and permanents are colorless", Maskwood Nexus' "creature
+	// spells you control and creature cards you own that aren't on the
+	// battlefield", Secret Arcade's "permanent spells you control". Each
+	// entry is a zone whose objects AppliesTo is asked of: ZoneStack (a
+	// spell), ZoneHand, ZoneLibrary, ZoneGraveyard, ZoneExile and
+	// ZoneCommand (a card). For a spell, target.Controller is the
+	// spell's controller (layer 2 has settled it); for a card it is its
+	// owner, which is the "you own" of the printed text (CR 108.4).
+	//
+	// The battlefield pass never gathers it: the permanent half of such
+	// a sentence is a static of its own. The zone layer step
+	// (zone_layers.go) applies these after layer 2, in layer order and
+	// then timestamp order, and stamps the result on the object, where
+	// the type and colour readers find it (Card.zoneLayered).
+	// effects.Register refuses one outside layers 4 and 5.
+	AffectsZones []ZoneKind
+
 	// Label is this static's player-facing wording, as a stack label
 	// is for a triggered or activated row: "Attacks each combat if
 	// able." Shown in the art tile's static-ability chip (#2219,
@@ -675,6 +695,11 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 			// hand, graveyard or exile is the zone grant step's
 			// (zone_grants.go), never the battlefield's.
 			if ab.GrantZone != "" {
+				continue
+			}
+			// #3862: and a static over objects off the battlefield is the
+			// zone layer step's (zone_layers.go).
+			if len(ab.AffectsZones) > 0 {
 				continue
 			}
 			out = append(out, staticContinuousEffect{
@@ -1049,6 +1074,11 @@ func (g *Game) recomputeLayersLocked() {
 	// ninjutsu" (Satoru Umezawa). After layer 2 for the same reason: the
 	// "you" of a static reads the controller the pass just settled.
 	g.zoneGrantPassLocked()
+	// #3862: and layers 4 and 5 for every object off the battlefield —
+	// Mycosynth Lattice's colourless cards and spells, Maskwood Nexus'
+	// every-type creature cards (zone_layers.go). After layer 2 for the
+	// same reason as the two steps above.
+	g.zoneLayerPassLocked()
 	// #1313: untap holds end with their CR 611.2b duration, and the
 	// board those durations read — who controls the source, whether it
 	// is still here — is settled only now, after layer 2 has been
@@ -1134,6 +1164,9 @@ func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 				c.TextWords.applyToBaseline(&printed)
 			}
 			c.effective = &printed
+			// #3862: a permanent has no zone layer stamp, whatever
+			// route brought it here (zone_layers.go).
+			c.zoneLayered = nil
 		}
 	}
 	effects := g.activeStaticAbilitiesLocked()

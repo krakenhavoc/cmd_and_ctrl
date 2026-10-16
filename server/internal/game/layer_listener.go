@@ -206,6 +206,16 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		zoneGrantStaticIsLiveLocked(g, ev.NewZone) {
 		g.layerVersion.Add(1)
 	}
+	// #3862: a card moving between two zones off the battlefield is a
+	// new object (CR 400.7) that has lost its zone layer stamp
+	// (MoveCard), and a Mycosynth Lattice makes it colourless again from
+	// the moment it arrives. Conditional in the same mould: a table with
+	// no such permanent pays one battlefield walk per such move.
+	if ev.NewZone != ev.OldZone && ev.NewZone != "" && ev.OldZone != "" &&
+		ev.NewZone != ZoneBattlefield && ev.OldZone != ZoneBattlefield &&
+		zoneLayerStaticIsLiveLocked(g) {
+		g.layerVersion.Add(1)
+	}
 	switch ev.Kind {
 	case EventZoneMove:
 		if ev.OldZone == ZoneBattlefield || ev.NewZone == ZoneBattlefield {
@@ -444,6 +454,12 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// nothing on the battlefield. Gated the same way, so a table
 		// with no such permanent pays nothing per cast.
 		if spellStaticIsLiveLocked(g) {
+			g.layerVersion.Add(1)
+		}
+		// #3862: and a static over objects off the battlefield
+		// (Maskwood Nexus' "creature spells you control") reaches the
+		// new spell the same way (zone_layers.go).
+		if zoneLayerStaticIsLiveLocked(g) {
 			g.layerVersion.Add(1)
 		}
 	case EventTapCard, EventUntapCard:

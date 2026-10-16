@@ -111,8 +111,8 @@ func TestChromaticOrreryIsOnlyItsControllers(t *testing.T) {
 }
 
 // "Players may": Mycosynth Lattice covers every player, so an opponent's
-// Lattice lets me pay a {U} with red. Its colourless line is still the
-// one caveat.
+// Lattice lets me pay a {U} with red. Its colourless line reaches every
+// zone since #3862, so the card is complete.
 func TestMycosynthLatticeLetsEveryPlayerSpendManaAsAnyColor(t *testing.T) {
 	g, me, opp := spendTable(t)
 	pushCatalogPermanent(g, opp.ID, "Mycosynth Lattice", "Artifact", mycosynthLatticeOracle, false)
@@ -124,8 +124,8 @@ func TestMycosynthLatticeLetsEveryPlayerSpendManaAsAnyColor(t *testing.T) {
 		t.Fatalf("red for {U} under an opponent's Lattice: %v", err)
 	}
 	spec, _ := Lookup(mycosynthLatticeOracle)
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Errorf("the Lattice keeps one caveat, for its colorless line: %v", spec.Caveats)
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Errorf("the Lattice is complete since #3862; caveats %v", spec.Caveats)
 	}
 }
 

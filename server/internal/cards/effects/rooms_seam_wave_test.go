@@ -25,24 +25,14 @@ const (
 	secretArcadeOracle = "c8abde48-a07a-42a0-a43b-c357e6d9cad4"
 )
 
-func TestRoomsSeamWaveDeclareTheirGaps(t *testing.T) {
-	// Moldering Gym, Ticket Booth and Underwater Tunnel are not here any
-	// more: their manifest-dread doors shipped with #2570 and they are
-	// complete. So is Experimental Lab // Staff Room, whose Staff Room
-	// turns a creature face up since #2590, and Dazzling Theater // Prop
-	// Room, whose Theater gives creature spells convoke since #2137.
-	// Charred Foyer // Warped Space and Cramped Vents // Access Maze
-	// completed with #3174's door-gated granted alternative costs.
-	for _, id := range []string{secretArcadeOracle} {
-		spec, ok := Lookup(id)
-		if !ok {
-			t.Fatalf("%s is not registered", id)
-		}
-		if spec.Completeness != CompletenessCaveats || len(spec.Caveats) == 0 {
-			t.Errorf("%s ships a door that does nothing, so it must declare caveats", spec.Name)
-		}
-	}
-}
+// The seam wave's Rooms are all complete now. Moldering Gym, Ticket
+// Booth and Underwater Tunnel shipped their manifest-dread doors with
+// #2570; Experimental Lab // Staff Room turns a creature face up since
+// #2590, and Dazzling Theater // Prop Room gives creature spells convoke
+// since #2137. Charred Foyer // Warped Space and Cramped Vents // Access
+// Maze completed with #3174's door-gated granted alternative costs, and
+// Secret Arcade // Dusty Parlor with #3862's permanent spells that are
+// enchantments on the stack.
 
 func TestMolderingGymFetchesABasicLandTapped(t *testing.T) {
 	g := newCatalogGame(t)
