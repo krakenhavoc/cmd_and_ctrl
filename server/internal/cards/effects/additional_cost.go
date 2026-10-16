@@ -417,6 +417,7 @@ func checkEitherCost(spec Spec) {
 			}
 		}
 		checkSacrificeClause(spec.Name, where, b.Sacrifice, false, false, false)
+		refuseSacrificeDifferent(spec.Name, where, b.Sacrifice)
 	}
 }
 

@@ -10428,10 +10428,10 @@ DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b
 - **"Cast one of the revealed cards" from the library, as printed:** bottom the rest first, so the pick IS the top card (still
   known from the reveal, so its owner's pile shows it), then grant a `ScopeCards` permission in `ZoneLibrary` with
   `LapseOnPass: LapseToLibraryBottom`; the lapse bottoms an uncast pick out of the zone the grant opens. Sunbird's Invocation.
-- **Cards that stay caveated**, with the gap named: Transmutation Font (a "different names" rule over a three-permanent
-  sacrifice), Vorinclex, Monstrous Raider (counter placements that name no
-  placer). Tower Winder landed Full with #3217, and The Warring Triad
-  with #3845 (mill as a cost).
+- **Cards that stay caveated**, with the gap named: Vorinclex, Monstrous Raider (counter placements that name no
+  placer). Tower Winder landed Full with #3217, The Warring Triad
+  with #3845 (mill as a cost), and Transmutation Font with #3940 (a "different names" rule on a sacrifice clause,
+  `SacrificeNDifferent`).
 
 ### Adding a `Spec` slot (#622)
 

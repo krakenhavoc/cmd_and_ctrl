@@ -2543,6 +2543,11 @@ func (g *Game) validateSacrificeCostLocked(playerID, sourceID uuid.UUID, cost Ab
 	if !g.sacrificeSetSatisfiedLocked(cost.SacrificeOther, chosen) {
 		return nil, ErrIllegalTarget
 	}
+	// #3940: "Sacrifice three artifact tokens with different names" —
+	// every pick needs a key and no two may share one (CR 201.2b).
+	if !g.sacrificeDifferentSatisfiedLocked(cost.SacrificeOther, chosen) {
+		return nil, sacrificeDifferentError(cost.SacrificeOther.Different)
+	}
 	return append(out, chosen...), nil
 }
 

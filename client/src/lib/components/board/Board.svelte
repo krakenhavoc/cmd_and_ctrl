@@ -3720,6 +3720,7 @@
     count={sacrificeBounds.max}
     min={sacrificeBounds.min}
     eachOf={sacrificePrompt?.ability.sacrifice_options?.each_of}
+    different={sacrificePrompt?.ability.sacrifice_options?.different}
     onConfirm={confirmSacrifice}
     onCancel={() => {
       if (sacrificePrompt?.kind === "mana") resetManaCostPayment();
