@@ -1914,6 +1914,12 @@ func ptWithCounters(eff Characteristic, counters map[string]int) (power, toughne
 	power, toughness = eff.Power, eff.Toughness
 	if counters != nil {
 		dp, dt := PTCounterDelta(counters)
+		if eff.PTSwitched {
+			// CR 613.4d: the switch comes after the counters (7c), but
+			// the counters are read here, after the pass switched the
+			// rest. Crossing their deltas is the same answer.
+			dp, dt = dt, dp
+		}
 		power = SaturatingAdd(power, dp)
 		toughness = SaturatingAdd(toughness, dt)
 	}

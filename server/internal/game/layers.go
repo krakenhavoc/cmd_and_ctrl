@@ -73,6 +73,13 @@ const (
 //	7d — counter modifications (+1/+1, -1/-1)
 //	7e — switch effects (P/T swap)
 //
+// The names follow the older Comprehensive Rules. The pinned edition
+// (AGENTS.md §6) applies counters in 7c with the modifying effects (CR
+// 613.4c) and calls the switch layer 7d (CR 613.4d). The order is the
+// same: the engine adds the P/T counters after the pass
+// (ptWithCounters), and a switch crosses them (Characteristic.PTSwitched,
+// #3996). SubLayer7D_Counters has no effects in it.
+//
 // Sub-layer is ignored for layers 1-6.
 type SubLayer int
 
