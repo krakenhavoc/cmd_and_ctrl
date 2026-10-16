@@ -315,6 +315,12 @@ type AlternativeCost struct {
 	// all. Flashback is the keyword that carries the clause.
 	ExileOnLeavingStack bool
 
+	// ExileInsteadOfGraveyard is the narrower "if that spell would be
+	// put into your graveyard, exile it instead" a granted cast carries
+	// (CastPermission.ExileInsteadOfGraveyard, #3863): only a move to
+	// its owner's graveyard is replaced. Stamped onto the stack item.
+	ExileInsteadOfGraveyard bool
+
 	// WarpExile is warp's "exile this permanent at the beginning of
 	// the next end step, then you may cast it from exile on a later
 	// turn" (CR 702.185a).

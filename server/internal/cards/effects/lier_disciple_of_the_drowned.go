@@ -23,6 +23,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // prints its own flashback is offered only that one. CR 702.34 would let
 // its owner pick either flashback cost; the printed one is kept, which
 // can only cost the player more.
+//
+// The caveat waits on the engine seam #3938 (triaged in #3863).
 func init() {
 	Register(Spec{
 		OracleID:     "f224db3d-cdd2-43f2-b625-4b861efa6449",

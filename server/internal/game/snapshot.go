@@ -1419,9 +1419,14 @@ type stackItemSnapshot struct {
 	// restore that lost it would send the marked spell to the
 	// graveyard as it resolves.
 	ExileWithCounter string `json:"exileWithCounter,omitempty"`
-	Seq              uint64 `json:"seq"`
-	Ordered          bool   `json:"ordered"`
-	Commutes         bool   `json:"commutes,omitempty"` // #1511
+	// ExileInsteadOfGraveyard (#3863) is Torrential Gearhulk's and
+	// Emet-Selch's "if that spell would be put into your graveyard,
+	// exile it instead". Carried: a restore that lost it would let the
+	// spell reach the graveyard.
+	ExileInsteadOfGraveyard bool   `json:"exileInsteadOfGraveyard,omitempty"`
+	Seq                     uint64 `json:"seq"`
+	Ordered                 bool   `json:"ordered"`
+	Commutes                bool   `json:"commutes,omitempty"` // #1511
 
 	// TargetsAnnouncePending is StackItem.TargetsAnnouncePending
 	// (#1539): a queued trigger whose targets are chosen and whose
@@ -2555,14 +2560,16 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		ExileWithCounter: s.ExileWithCounter,
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
-		Commutes:         s.Commutes,
-		Paid:             clonePaidCost(s.Paid),
-		HasEffect:        s.Effect != nil,
-		HasTargetSpec:    s.targetSpec != nil,
-		HasModeSpec:      s.modeSpec != nil,
-		OracleID:         oracleID,
-		Body:             s.Body,
-		Params:           effectParamsOrNil(s.Params),
+		// #3863
+		ExileInsteadOfGraveyard: s.ExileInsteadOfGraveyard,
+		Commutes:                s.Commutes,
+		Paid:                    clonePaidCost(s.Paid),
+		HasEffect:               s.Effect != nil,
+		HasTargetSpec:           s.targetSpec != nil,
+		HasModeSpec:             s.modeSpec != nil,
+		OracleID:                oracleID,
+		Body:                    s.Body,
+		Params:                  effectParamsOrNil(s.Params),
 	}
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
 	out.PromisedCounters = copyPromisedCounters(s.PromisedCounters) // #1852
@@ -3522,10 +3529,12 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		ExileWithCounter: s.ExileWithCounter,
 		Seq:              s.Seq,
 		Ordered:          s.Ordered,
-		Commutes:         s.Commutes,
-		Paid:             clonePaidCost(s.Paid),
-		Body:             s.Body,
-		Params:           effectParamsValue(s.Params),
+		// #3863
+		ExileInsteadOfGraveyard: s.ExileInsteadOfGraveyard,
+		Commutes:                s.Commutes,
+		Paid:                    clonePaidCost(s.Paid),
+		Body:                    s.Body,
+		Params:                  effectParamsValue(s.Params),
 		// Effect stays nil unless the item is keyed. A SPELL does not
 		// need one — resolution dispatches through EffectResolver by
 		// oracle ID — but an ability does, which is why a stack item

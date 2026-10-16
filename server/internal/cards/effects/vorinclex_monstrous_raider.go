@@ -46,6 +46,8 @@ import (
 // A counter REMOVAL is not a placement and no replacement applies to
 // it (CR 614.1) — which is also what keeps damage-driven loyalty loss
 // out of this, since that path bypasses the pipeline entirely.
+//
+// The caveat waits on the engine seam #3942 (triaged in #3863).
 func init() {
 	Register(Spec{
 		OracleID:        "5a3fdf5a-bff8-4896-b288-3f43f9a72d9b",

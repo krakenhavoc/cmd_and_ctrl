@@ -5953,9 +5953,12 @@ GrantCastFromYourGraveyard{                            // Past in Flames
     AltCostKey: "flashback", ExileOnResolution: true,
 }.Apply(ctx)
 // "you may cast target ... from your graveyard ... Do this only once
-// each turn": a pass-closed cast at the card's MANA cost, exiled
-// instead, whose FollowUp (game.RegisterCastFollowUp) writes the
-// once-each-turn tally only when the cast is made (#3785).
+// each turn": a pass-closed cast at the card's MANA cost, whose FollowUp
+// (game.RegisterCastFollowUp) writes the once-each-turn tally only when
+// the cast is made (#3785). "If that spell would be put into your
+// graveyard, exile it instead" is CastPermission.ExileInsteadOfGraveyard
+// (#3863): only a graveyard destination is replaced, unlike flashback's
+// ExileOnResolution, which replaces every way off the stack.
 OfferGraveyardCast{Target: id, SourceName: "Emet-Selch of the Third Seat",
     FollowUp: emetSelchCastTally}.Apply(ctx)             // Emet-Selch
 ```

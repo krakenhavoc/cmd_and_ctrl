@@ -16,10 +16,13 @@ import (
 // additional costs are still paid), any-timing (CR 608.2g), cast-only,
 // pass-closed permission over the target card in the graveyard. The
 // holder's next priority pass closes it and the card simply stays where
-// it is. "Exile it instead" is the permission's ExileOnResolution, the
-// replacement flashback uses, so the spell is exiled whether it
-// resolves, is countered or fizzles. The target is chosen as the
-// trigger goes on the stack and re-checked as it resolves (CR 608.2b).
+// it is. "If that spell would be put into your graveyard, exile it
+// instead" is the permission's ExileInsteadOfGraveyard (#3863): the
+// spell is exiled whether it resolves, is countered or fizzles, and a
+// spell returned to its owner's hand or put into a library goes there,
+// as printed (flashback's wider "anywhere else" would exile it). The
+// target is chosen as the trigger goes on the stack and re-checked as
+// it resolves (CR 608.2b).
 //
 // No simplification.
 func init() {
@@ -36,14 +39,14 @@ func init() {
 					return nil
 				}
 				g.GrantCastPermissionToCardsForEffect(game.CastPermission{
-					Player:            item.Controller,
-					Zone:              game.ZoneGraveyard,
-					Duration:          g.UntilEndOfTurnDuration(),
-					Cost:              "{0}",
-					AltCostKey:        game.AltCostKeyGrantedCost,
-					Timing:            game.TimingFlash,
-					CastOnly:          true,
-					ExileOnResolution: true,
+					Player:                  item.Controller,
+					Zone:                    game.ZoneGraveyard,
+					Duration:                g.UntilEndOfTurnDuration(),
+					Cost:                    "{0}",
+					AltCostKey:              game.AltCostKeyGrantedCost,
+					Timing:                  game.TimingFlash,
+					CastOnly:                true,
+					ExileInsteadOfGraveyard: true,
 					// A pass closes the window; nothing moves, the card
 					// stays in the graveyard.
 					LapseOnPass: game.LapseStaysInHand,

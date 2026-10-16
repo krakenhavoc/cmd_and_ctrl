@@ -31,6 +31,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // out rather than shipping a cheaper one. The Font is still
 // recognisably itself: a colourless Blood / Clue / Food engine.
 // Weaker than printed, never stronger.
+//
+// The caveat waits on the engine seam #3940 (triaged in #3863).
 func init() {
 	Register(Spec{
 		OracleID:     "a68e57f3-f138-4c26-b8d5-55d1adec44a8",

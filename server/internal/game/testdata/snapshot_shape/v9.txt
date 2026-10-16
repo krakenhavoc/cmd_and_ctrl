@@ -1819,6 +1819,7 @@ lastKnownStack[].item.distribution{}	number:int
 lastKnownStack[].item.doubledBy	custom(uuid.UUID)
 lastKnownStack[].item.doubledByName	string
 lastKnownStack[].item.entersTapped	bool
+lastKnownStack[].item.exileInsteadOfGraveyard	bool
 lastKnownStack[].item.exileWithCounter	string
 lastKnownStack[].item.faceDown	string
 lastKnownStack[].item.foretold	bool
@@ -2203,6 +2204,7 @@ pausedModeWalk.item.distribution{}	number:int
 pausedModeWalk.item.doubledBy	custom(uuid.UUID)
 pausedModeWalk.item.doubledByName	string
 pausedModeWalk.item.entersTapped	bool
+pausedModeWalk.item.exileInsteadOfGraveyard	bool
 pausedModeWalk.item.exileWithCounter	string
 pausedModeWalk.item.faceDown	string
 pausedModeWalk.item.foretold	bool
@@ -2465,6 +2467,7 @@ pausedResolutionTail.item.distribution{}	number:int
 pausedResolutionTail.item.doubledBy	custom(uuid.UUID)
 pausedResolutionTail.item.doubledByName	string
 pausedResolutionTail.item.entersTapped	bool
+pausedResolutionTail.item.exileInsteadOfGraveyard	bool
 pausedResolutionTail.item.exileWithCounter	string
 pausedResolutionTail.item.faceDown	string
 pausedResolutionTail.item.foretold	bool
@@ -3061,6 +3064,7 @@ pendingTriggers[].distribution{}	number:int
 pendingTriggers[].doubledBy	custom(uuid.UUID)
 pendingTriggers[].doubledByName	string
 pendingTriggers[].entersTapped	bool
+pendingTriggers[].exileInsteadOfGraveyard	bool
 pendingTriggers[].exileWithCounter	string
 pendingTriggers[].faceDown	string
 pendingTriggers[].foretold	bool
@@ -3965,6 +3969,7 @@ seats[].castPermissions[].duration.SourceEnteredAt	number:int64
 seats[].castPermissions[].duration.SourceEpoch	number:int
 seats[].castPermissions[].energyEqualToManaValue	bool
 seats[].castPermissions[].entersTapped	bool
+seats[].castPermissions[].exileInsteadOfGraveyard	bool
 seats[].castPermissions[].exileOnResolution	bool
 seats[].castPermissions[].exileOtherFromGraveyard	number:int
 seats[].castPermissions[].faces	array
@@ -7105,6 +7110,7 @@ stackMeta[].distribution{}	number:int
 stackMeta[].doubledBy	custom(uuid.UUID)
 stackMeta[].doubledByName	string
 stackMeta[].entersTapped	bool
+stackMeta[].exileInsteadOfGraveyard	bool
 stackMeta[].exileWithCounter	string
 stackMeta[].faceDown	string
 stackMeta[].foretold	bool
