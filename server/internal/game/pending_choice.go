@@ -2057,6 +2057,11 @@ func (g *Game) queueOptionalReplacementPromptLocked(ev *ReplacementEvent, chosen
 	if reason == "" {
 		reason = chosen.effect.Label
 	}
+	if q := g.redirectQuestionLocked(ev, chosen); q != "" {
+		// #2056: a "may" redirection says which damage it is asking
+		// about, as the event stands now.
+		reason = q
+	}
 	choice := PendingChoice{
 		Kind:                 PendingChoiceOptionalReplacement,
 		Chooser:              chooser,
@@ -3581,6 +3586,14 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 			}
 			// "Up to one target" with nothing to point at: the step is
 			// answered by choosing nothing.
+			f.step++
+			continue
+		}
+		if clause.AtRandom {
+			// #1815: "target … chosen at random" — the engine draws it
+			// now, as the trigger goes on the stack, and nobody is
+			// asked.
+			f.picked = append(f.picked, g.drawTriggerTargetLocked(f, lt))
 			f.step++
 			continue
 		}

@@ -60,8 +60,9 @@ import "github.com/google/uuid"
 // prevention (preventionAppliedToUnpreventableLocked).
 //
 // CR 615.13's "whenever damage is prevented" triggers have nothing to
-// see either: nothing was prevented, and the engine emits no prevention
-// event to trigger on.
+// see: nothing was prevented, and a prevention effect settled here never
+// reaches runReplaceLocked, which is the only place the engine owes
+// EventDamagePrevented (#2047, damage_prevented.go).
 
 // DamageMarks are the riders a damage INSTRUCTION can carry about its
 // own damage. The zero value is ordinary damage.

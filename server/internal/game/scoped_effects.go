@@ -681,6 +681,13 @@ type Mod struct {
 	// the source's last-known information as the damage would be dealt.
 	// Refused on every other kind, and beside To (redirectDamageModProblem).
 	ToSourceController bool `json:"toSourceController,omitempty"`
+	// Optional is ModRedirectDamage's "you may have that damage dealt to
+	// you instead" (Blood of the Martyr; ADR 0108 amendment 2026-10-16,
+	// #2056): the redirection is a "may" its record's controller answers
+	// each time it would apply (CR 614.5's one opportunity per event).
+	// Refused on every other kind, on a record that deals its damage
+	// nowhere instead, and beside a charge (redirectDamageModProblem).
+	Optional bool `json:"optional,omitempty"`
 	// SourceZone, Queries and SpentBatch are ModPreventNextFromSource's
 	// (ADR 0107 §6, #1860; prevent_next_from_source.go), refused on every
 	// other kind. SourceZone is the zone the chosen source (Objects[0])
@@ -719,6 +726,8 @@ type Mod struct {
 	// record's. At most one entry, read as the damage would be dealt
 	// (CR 609.7b), refused on every other kind and beside a pinned source
 	// or AndDealtBy. A slice for the reason Objects is one.
+	// ModRedirectDamage reads it too, with the same meaning (#2056:
+	// Kjeldoran Royal Guard's "by unblocked creatures").
 	SourceFilter []DamageSourceFilter `json:"sourceFilter,omitempty"`
 	// ThenPer is ModPreventFromSource's unit for its follow-up (#2026):
 	// ThenPerSource runs Then once per damage SOURCE within one damage
@@ -736,7 +745,9 @@ type Mod struct {
 	// control", "to artifact creatures". At most one entry, read as the
 	// damage would be dealt (CR 611.2c, 615.1), on an unpinned record
 	// that names no Player or Types and no charge; refused on every
-	// other kind. A slice for the reason Objects is one.
+	// other kind but ModRedirectDamage, which reads it the same way
+	// (#2056: Ascent of the Worthy's "creatures you control", Blood of
+	// the Martyr's "any creature"). A slice for the reason Objects is one.
 	RecipientFilter []DamageRecipientFilter `json:"recipientFilter,omitempty"`
 	// Sources, Recipients and Next are ModMultiplyDamage's (ADR 0108 §3,
 	// #1890; multiply_damage.go), refused on every other kind. Sources is

@@ -2009,6 +2009,13 @@ export interface PendingChoiceView {
   // (CR 702.52a) — N, the number of cards the yes mills. The card it
   // returns rides `source`. Computed by the server on every view.
   dredge?: number;
+  // #2056: populated for an "optional_replacement" that offers a "may"
+  // redirection (Blood of the Martyr): the damage, the player or
+  // permanent it would be dealt to, and where the yes deals it instead.
+  // Computed by the server on every view.
+  redirect_amount?: number;
+  redirect_from?: string;
+  redirect_to?: string;
   // #2419: populated for an "entry_sacrifice" that is devour (CR
   // 702.82a) — N, the +1/+1 counters each sacrificed creature buys, and
   // what the entering creature's own "for each creature it devoured"

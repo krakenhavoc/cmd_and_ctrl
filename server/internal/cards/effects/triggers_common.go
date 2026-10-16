@@ -484,6 +484,22 @@ func YouGainedLife(ev game.Event, source *game.Card, _ game.Characteristic, _ *g
 	return ev.Kind == game.EventChangeLife && ev.Target == source.Controller && ev.Amount > 0
 }
 
+// DamageToYouPrevented — "whenever damage that would be dealt to you is
+// prevented" (Selfless Squire; CR 615.13, #2047). The engine emits one
+// EventDamagePrevented per application of one prevention effect to one
+// damage instance, per recipient, and only when it prevented something,
+// with Amount the damage prevented ("that many"). Any prevention effect
+// counts, whoever controls it, protection included; damage that can't be
+// prevented emits nothing.
+func DamageToYouPrevented(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventDamagePrevented && ev.Target == source.Controller && ev.Amount > 0
+}
+
+// WheneverDamageToYouIsPrevented is the row for DamageToYouPrevented.
+func WheneverDamageToYouIsPrevented(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventDamagePrevented, DamageToYouPrevented, label, effect)
+}
+
 // ThisChangedController — the source permanent changed controller
 // (EventControlChanged, #930). ev.Target is the player who lost it
 // and ev.Actor the player who gained it; the engine emits the event

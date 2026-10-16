@@ -455,8 +455,10 @@ type GameSnapshot struct {
 
 	// PreventionFollowUps is Game.preventionFollowUps (ADR 0107 §6): the
 	// CR 615.5 follow-ups owed for an instance of damage a CR 616 prompt
-	// paused half way. Empty on nearly every file. A body key this binary
-	// does not have is refused (ErrUnknownEffectKey).
+	// paused half way, and the CR 615.13 announcements owed beside them
+	// (#2047: `announce`, additive within v9). Empty on nearly every file.
+	// A body key this binary does not have is refused
+	// (ErrUnknownEffectKey).
 	PreventionFollowUps []PreventionFollowUp `json:"preventionFollowUps,omitempty"`
 
 	// ResolutionOpen is Game.resolutionOpen (#1289,

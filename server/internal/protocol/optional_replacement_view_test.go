@@ -86,3 +86,37 @@ func TestCommanderHeadedForAHandIsPlayableFromZone(t *testing.T) {
 		}
 	}
 }
+
+// #2056: a "may" redirection (Blood of the Martyr) carries the damage,
+// the creature it would be dealt to and the player the yes deals it to.
+func TestOptionalRedirectionCarriesItsOffer(t *testing.T) {
+	g := buildActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	bear := game.Card{InstanceID: uuid.New(), Name: "Bear", TypeLine: "Creature — Bear", Power: 2, Toughness: 4,
+		Owner: opp.ID, Controller: opp.ID}
+	rod := game.Card{InstanceID: uuid.New(), Name: "Rod", TypeLine: "Artifact", Owner: opp.ID, Controller: opp.ID}
+	g.WithWriteLock(func() {
+		g.Battlefield.PushTop(bear)
+		g.Battlefield.PushTop(rod)
+		g.RecomputeLayersIfStaleLocked()
+		if !g.RedirectDamageThisTurnForEffect(game.DamageRedirection{
+			Controller: me.ID, To: me.ID, Optional: true, Label: "Blood of the Martyr",
+			ProtectSet: game.DamageRecipientFilter{Permanents: true, Match: []game.PermanentQuery{{Types: []string{"creature"}}}},
+		}) {
+			t.Fatal("no redirection")
+		}
+		if err := g.DealDamageToCreatureForEffect(rod.InstanceID, bear.InstanceID, 3); err != nil {
+			t.Fatal(err)
+		}
+	})
+	ch := onlyChoiceView(t, g)
+	if ch.Kind != string(game.PendingChoiceOptionalReplacement) || ch.Chooser != me.ID.String() {
+		t.Fatalf("prompt %q for %q, want the may for its controller", ch.Kind, ch.Chooser)
+	}
+	if ch.RedirectAmount != 3 || ch.RedirectFrom != bear.InstanceID.String() || ch.RedirectTo != me.ID.String() {
+		t.Errorf("offer %d from %q to %q, want 3 from the Bear to me", ch.RedirectAmount, ch.RedirectFrom, ch.RedirectTo)
+	}
+	if ch.Dredge != 0 || ch.PlayableFromZone {
+		t.Error("a redirection is neither a dredge nor the commander question")
+	}
+}
