@@ -31,7 +31,7 @@ func init() {
 				for _, t := range ctx.LegalTargets() {
 					if err := CounterThenWhileItHasIt(ctx, t.ID, "awakening",
 						"Liege of the Tangle — an 8/8 green Elemental creature while it has an awakening counter",
-						game.AddTypesMod("Creature"), game.AddSubtypesMod("Elemental"), game.SetColorsMod("G"),
+						game.AddTypesMod("Creature"), game.AddSubtypesMod(ctx.TextSubtypes("Elemental")...), game.SetColorsMod(ctx.TextColors("G")...),
 						game.SetBasePowerMod(8), game.SetBaseToughnessMod(8)); err != nil {
 						return err
 					}

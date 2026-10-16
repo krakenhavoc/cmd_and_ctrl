@@ -28,10 +28,12 @@ func init() {
 		ManaAbilities: []ManaAbility{{
 			Cost:  ManaAbilityCost{Tap: true},
 			Label: "Add {G} for each Elf on the battlefield",
-			ProducedAmount: func(g *game.Game, _, _ uuid.UUID) game.ManaAmount {
+			ProducedAmount: func(g *game.Game, _, source uuid.UUID) game.ManaAmount {
+				// "Elf" is a word of the source's text (CR 612.2, #3984).
+				elf := g.TextReaderOfForEffect(source).TextSubtype("Elf")
 				n := 0
 				for _, c := range g.BattlefieldCardsForEffect() {
-					if c.HasSubtype("Elf") {
+					if c.HasSubtype(elf) {
 						n++
 					}
 				}

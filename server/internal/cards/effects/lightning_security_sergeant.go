@@ -26,13 +26,8 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
-			WheneverThisDealsCombatDamageToAPlayer("Lightning, Security Sergeant — exile the top card of your library", func(g *game.Game, item *game.StackItem) error {
-				window := forAsLongAsYouControlWindow(g, item.SourceCardID, item.Controller)
-				return ExileTopWithPermission{
-					From: item.Controller, GrantTo: item.Controller, N: 1,
-					Window: &window,
-				}.Apply(NewContext(g, item))
-			}),
+			WheneverThisDealsCombatDamageToAPlayer("Lightning, Security Sergeant — exile the top card of your library",
+				exileTopPlayableWhileYouControlThis),
 		},
 	})
 }

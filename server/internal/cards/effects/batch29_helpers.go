@@ -95,9 +95,10 @@ func b29EnchantmentsControlled(g *game.Game, controller uuid.UUID) int {
 
 // b29SpiritsControlled counts the Spirits `controller` controls —
 // effective subtypes, so a changeling and a Spirit Cleric token both
-// count.
-func b29SpiritsControlled(g *game.Game, controller uuid.UUID) int {
-	return b26PermanentsOfSubtypeControlled(g, controller, "Spirit")
+// count. `spirit` is the creature type as the counting object's text
+// now reads it (TextSubtype, CR 612.2, #3984).
+func b29SpiritsControlled(g *game.Game, controller uuid.UUID, spirit string) int {
+	return b26PermanentsOfSubtypeControlled(g, controller, spirit)
 }
 
 // b29LastKnownToughnessOffBattlefield is the toughness a card had
@@ -272,9 +273,11 @@ func b29ExileAttackersThenTheyFetchBasics(ctx *Context, player uuid.UUID) error 
 // tapped as it enters (#1867); then every Human is destroyed, once
 // that entry has finished.
 func b29ReturnZombieCardsTappedThenDestroyHumans(ctx *Context) error {
+	// "Zombie" is a word of the spell's text (CR 612.2, #3984).
+	zombie := ctx.TextSubtype("Zombie")
 	return ReturnFromGraveyardTogether{
 		Targets: graveyardCardIDs(ctx, ctx.Controller(), func(c game.Card) bool {
-			return c.IsCreature() && c.HasSubtype("Zombie")
+			return c.IsCreature() && c.HasSubtype(zombie)
 		}),
 		Tapped: true,
 		Then: func(ctx *Context, _ []uuid.UUID) error {

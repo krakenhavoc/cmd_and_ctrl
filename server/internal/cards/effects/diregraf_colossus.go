@@ -26,7 +26,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			b19EntersWithCountersCounted("+1/+1", func(g *game.Game, src *game.Card) int {
-				return b19ZombieCardsInGraveyard(g, src.Controller)
+				return b19ZombieCardsInGraveyard(g, src.Controller, src.TextSubtype("Zombie"))
 			}, "Diregraf Colossus: enters with a +1/+1 counter per Zombie card in your graveyard"),
 		},
 		Triggered: []game.TriggeredAbility{

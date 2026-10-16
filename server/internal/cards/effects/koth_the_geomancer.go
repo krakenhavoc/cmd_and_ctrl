@@ -26,7 +26,7 @@ func init() {
 				if err := damageToEachOpponent(g, item, 1); err != nil {
 					return err
 				}
-				if !rfCreatureCEnteredLandHasSubtype(g, item, "Mountain") {
+				if !rfCreatureCEnteredLandHasSubtype(g, item, g.TextReaderForEffect(item).TextSubtype("Mountain")) {
 					return nil
 				}
 				return AddMana{Produced: "{R}"}.Apply(NewContext(g, item))

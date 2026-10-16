@@ -29,10 +29,12 @@ func init() {
 }
 
 func kazaRoilChaserPromise(g *game.Game, item *game.StackItem) error {
+	// "Wizards" is a word of the source's text (CR 612.2, #3984).
+	wizard := g.TextReaderForEffect(item).TextSubtype("Wizard")
 	x := 0
 	for i := range g.Battlefield.Cards {
 		c := g.Battlefield.Cards[i]
-		if c.Controller == item.Controller && c.HasSubtype("Wizard") {
+		if c.Controller == item.Controller && c.HasSubtype(wizard) {
 			x++
 		}
 	}

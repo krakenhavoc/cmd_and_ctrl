@@ -197,6 +197,45 @@ const CASES: Case[] = [
     confirms: [[{ cardID: "pw1", kind: "loyalty", count: 4, n: 1 }]],
   },
   {
+    // #3987: "Remove two counters from Ghost-Spider" — the among
+    // stepper over the source's own kinds.
+    title: "the self any-kinds counter picker",
+    component: CounterCostModal as never,
+    props: (c) => ({
+      card: card("gs", "Ghost-Spider"),
+      ability: {
+        index: 0,
+        counter_cost_n: 2,
+        counter_cost_self: true,
+        counter_cost_among: true,
+        counter_cost_options: [
+          {
+            card_id: "gs",
+            kinds: [
+              { kind: "+1/+1", count: 1 },
+              { kind: "shield", count: 1 },
+            ],
+          },
+        ],
+      },
+      board: [card("gs", "Ghost-Spider")],
+      onConfirm: (choices: unknown[]) => c.confirmed.push([choices]),
+      onCancel: () => c.cancelled++,
+    }),
+    dialog: "Ghost-Spider",
+    primary: "Remove",
+    pick: (sheet) => {
+      for (const b of sheet.querySelectorAll<HTMLElement>('button[aria-label^="Remove one more"]'))
+        click(b);
+    },
+    confirms: [
+      [
+        { cardID: "gs", kind: "+1/+1", count: 1, n: 1 },
+        { cardID: "gs", kind: "shield", count: 1, n: 1 },
+      ],
+    ],
+  },
+  {
     title: "the face picker",
     component: FacePickerModal as never,
     props: (c) => ({
@@ -366,6 +405,15 @@ const CASES: Case[] = [
     confirms: [{ mana: [{ color: "B" }, { color: "W" }, { color: "C" }] }],
   },
 ];
+
+describe("the self any-kinds counter picker (#3987)", () => {
+  it("says the counters come off this permanent, in any kinds", () => {
+    mount(CASES.find((k) => k.title === "the self any-kinds counter picker")!);
+    expect(sheetPanel()!.querySelector(".prompt-hint")!.textContent).toBe(
+      "Remove 2 counters of any kinds from this permanent to pay for this ability. Choose how many of each.",
+    );
+  });
+});
 
 describe("the paper payment picker (#3855)", () => {
   it("prefills the shortfall, and Cast without paying its mana cost answers free", () => {

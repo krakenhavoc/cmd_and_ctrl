@@ -57,7 +57,7 @@ func init() {
 						}
 						return untilEndOfTurn(ctx, t.ID, nil,
 							"Kargan Intimidator — becomes a Coward until end of turn",
-							game.AddSubtypesMod("Coward"))
+							game.AddSubtypesMod(ctx.TextSubtypes("Coward")...))
 					}),
 				ModeDoing("Target Warrior gains trample until end of turn.",
 					TargetCreature("target Warrior", OfCreatureType("Warrior")),

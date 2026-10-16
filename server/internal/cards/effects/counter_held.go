@@ -60,7 +60,7 @@ func CounterThenWhileItHasIt(ctx *Context, object uuid.UUID, kind, label string,
 func FloodTargetLand(ctx *Context, name string) error {
 	return CounterThenWhileItHasIt(ctx, FirstLegalBattlefieldTarget(ctx), "flood",
 		name+" — an Island in addition to its other types while it has a flood counter",
-		game.AddSubtypesMod("Island"))
+		game.AddSubtypesMod(ctx.TextSubtypes("Island")...))
 }
 
 // GrantWhileItHasCounter puts a <kind> counter on `object`, then gives

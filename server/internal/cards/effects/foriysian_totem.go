@@ -54,9 +54,9 @@ func init() {
 
 func foriysianTotemAnimate(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	mods := append([]game.Mod{game.AddTypesMod("Artifact", "Creature"), game.AddSubtypesMod("Giant")},
+	mods := append([]game.Mod{game.AddTypesMod("Artifact", "Creature"), game.AddSubtypesMod(ctx.TextSubtypes("Giant")...)},
 		game.SetBasePTMods(4, 4)...)
-	mods = append(mods, game.SetColorsMod("R"), game.AddKeywordsMod("trample"))
+	mods = append(mods, game.SetColorsMod(ctx.TextColors("R")...), game.AddKeywordsMod("trample"))
 	return ScopedEffectFor{
 		Target:   ctx.Source(),
 		Mods:     mods,

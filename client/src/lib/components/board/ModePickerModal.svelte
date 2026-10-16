@@ -53,9 +53,25 @@
     const id = card?.instance_id ?? null;
     if (id !== lastCardID) {
       lastCardID = id;
-      chosen = [];
+      chosen = allModesForced(card?.modes ?? null);
     }
   });
+
+  // allModesForced is the opening selection when the cost the caster
+  // just ticked leaves no choice: an entwined spell (CR 702.42a, #3866)
+  // must take every bullet, so the picker opens with them all chosen, in
+  // printed order (the order CR 702.42b resolves them in). Only for a
+  // count the optional cost raised (`if_optional_paid`, which
+  // modesUnderChoices has switched to): a printed "choose two" of two
+  // still opens empty. Empty when any bullet cannot be taken: the cast
+  // is not possible then, and the disabled bullet says why.
+  function allModesForced(s: CardView["modes"] | null): number[] {
+    if (!s || s.repeatable || s.options.length === 0) return [];
+    const raised = s.if_optional_paid;
+    if (!raised || s.min !== raised.min || s.min !== s.options.length) return [];
+    if (!s.options.every((o) => modeOptionCastable(o))) return [];
+    return s.options.map((_, i) => i);
+  }
 
   const count = $derived(chosen.length);
   const canConfirm = $derived(

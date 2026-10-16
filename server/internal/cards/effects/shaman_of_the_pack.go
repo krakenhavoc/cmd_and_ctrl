@@ -36,7 +36,7 @@ func init() {
 			Key:       "Shaman of the Pack — target opponent loses life for each Elf you control",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return b43TargetPlayerLoses(g, item,
-					b43CreaturesOfSubtypeControlled(g, item.Controller, "Elf"))
+					b43CreaturesOfSubtypeControlled(g, item.Controller, g.TextReaderForEffect(item).TextSubtype("Elf")))
 			},
 		}},
 	})

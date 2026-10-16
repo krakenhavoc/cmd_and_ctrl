@@ -223,10 +223,12 @@ type TurnManaTrigger struct {
 
 func (t TurnManaTrigger) Apply(ctx *Context) error {
 	ctx.Game.ScheduleDelayedTriggerForEffect(game.DelayedTrigger{
-		Controller:     ctx.Controller(),
-		SourceCardID:   ctx.Source(),
-		Label:          t.Label,
-		ManaTapSubtype: t.Subtype,
+		Controller:   ctx.Controller(),
+		SourceCardID: ctx.Source(),
+		Label:        t.Label,
+		// High Tide's "an Island": a word of the spell's text, read
+		// once as the trigger is made (CR 612.2, #3984).
+		ManaTapSubtype: ctx.TextSubtype(t.Subtype),
 		ManaAdds:       t.Adds,
 		Repeats:        true,
 

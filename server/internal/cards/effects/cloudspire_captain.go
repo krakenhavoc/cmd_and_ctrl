@@ -31,8 +31,11 @@ func init() {
 				Layer:    game.Layer7PT,
 				SubLayer: game.SubLayer7C_Modify,
 				AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
+					// "Mounts" is a word of the source's text (CR 612.2,
+					// #3984); Vehicle is an artifact type, which no text
+					// change reaches.
 					return target.Controller == source.Controller &&
-						(target.HasSubtype("Mount") || target.HasSubtype("Vehicle"))
+						(target.HasSubtype(source.TextSubtype("Mount")) || target.HasSubtype("Vehicle"))
 				},
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 					c.Power++

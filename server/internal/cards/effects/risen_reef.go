@@ -44,7 +44,8 @@ func init() {
 // control enters".
 func risenReefElementalEntered(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 	c, ok := enteredUnderYourControl(ev, source, g, false)
-	return ok && (c.InstanceID == source.InstanceID || c.HasSubtype("Elemental"))
+	// "Elemental" is a word of the source's text (CR 612.2, #3984).
+	return ok && (c.InstanceID == source.InstanceID || c.HasSubtype(source.TextSubtype("Elemental")))
 }
 
 func risenReefLook(g *game.Game, item *game.StackItem) error {

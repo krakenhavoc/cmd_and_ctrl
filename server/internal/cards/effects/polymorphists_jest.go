@@ -40,7 +40,7 @@ func init() {
 			}
 			return untilEndOfTurn(ctx, uuid.Nil, And(Creature(), ControlledBy(item.Targets[0].ID)),
 				"Polymorphist's Jest — a blue 1/1 Frog with no abilities",
-				game.SetCreatureTypesMod("Frog"), game.SetColorsMod("U"), game.LoseAllAbilitiesMod(),
+				game.SetCreatureTypesMod(ctx.TextSubtypes("Frog")...), game.SetColorsMod(ctx.TextColors("U")...), game.LoseAllAbilitiesMod(),
 				game.SetBasePowerMod(1), game.SetBaseToughnessMod(1))
 		},
 	})

@@ -632,7 +632,7 @@ var mechanics = []Mechanic{
 		},
 		Evidence:   "the spec declares RemoveCounters on an activated or mana ability's cost",
 		Confidence: Exact,
-		Adopt:      `RemoveCountersFromThis / RemoveCountersFrom / RemoveCountersXFromThis / RemoveCountersAmong — see effects/activated.go`,
+		Adopt:      `RemoveCountersFromThis / RemoveCountersOfAnyKindsFromThis / RemoveCountersFrom / RemoveCountersXFromThis / RemoveCountersAmong — see effects/activated.go`,
 	},
 	{
 		// ADR 0093: a layer-6 grant of an ability bundle to OTHER

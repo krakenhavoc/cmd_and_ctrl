@@ -80,14 +80,19 @@ func SacrificePayment(n int, noun, plural string, of game.PermanentQuery) Upkeep
 
 // times is the payment made `n` times over, all at once: a cumulative
 // upkeep's cost for each age counter (CR 702.24a). A mana cost repeats
-// its symbols; a discard or sacrifice multiplies its count.
+// its symbols; a discard, sacrifice or life payment (LifePayment,
+// any_player_pays.go — Decomposition's granted "Cumulative upkeep—Pay 1
+// life", #3869) multiplies its count.
 func (p UpkeepPayment) times(n int, noun, plural string) UpkeepPayment {
 	if p.Action == nil {
 		return UpkeepPayment{Mana: strings.Repeat(p.Mana, n)}
 	}
 	count := p.Action.Count * n
-	if p.Action.Kind == game.PayActionDiscard {
+	switch p.Action.Kind {
+	case game.PayActionDiscard:
 		return DiscardPayment(count)
+	case game.PayActionLife:
+		return LifePayment(count)
 	}
 	return SacrificePayment(count, noun, plural, p.Action.Of)
 }

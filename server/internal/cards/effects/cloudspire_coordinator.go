@@ -31,7 +31,9 @@ func init() {
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				x := g.EnteredWithSubtypeThisTurn(item.Controller, "Mount") +
+				// "Mount" is a word of the source's text (CR 612.2, #3984);
+				// "Vehicle" is an artifact type, which no text change names.
+				x := g.EnteredWithSubtypeThisTurn(item.Controller, g.TextReaderForEffect(item).TextSubtype("Mount")) +
 					g.EnteredWithSubtypeThisTurn(item.Controller, "Vehicle")
 				if x <= 0 {
 					return nil

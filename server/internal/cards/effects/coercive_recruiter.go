@@ -47,7 +47,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
-				return ok && isPirate(c)
+				return ok && isPirate(game.ThroughTextOf(source, c))
 			}, "Coercive Recruiter — gain control of target creature until end of turn",
 				coerciveRecruiterEffect), TargetCreature("target creature")),
 		},
@@ -83,5 +83,5 @@ func coerciveRecruiterEffect(g *game.Game, item *game.StackItem) error {
 	}
 	return untilEndOfTurn(ctx, target, nil,
 		"Coercive Recruiter — becomes a Pirate in addition to its other types",
-		game.AddSubtypesMod("Pirate"))
+		game.AddSubtypesMod(ctx.TextSubtypes("Pirate")...))
 }

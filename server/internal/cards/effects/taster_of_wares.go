@@ -56,9 +56,11 @@ func tasterOfWaresEnters(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	controller := item.Controller
+	// "Goblin" is a word of the source's text (CR 612.2, #3984).
+	goblin := ctx.TextSubtype("Goblin")
 	x := 0
 	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == controller && c.HasSubtype("Goblin") {
+		if c.Controller == controller && c.HasSubtype(goblin) {
 			x++
 		}
 	}

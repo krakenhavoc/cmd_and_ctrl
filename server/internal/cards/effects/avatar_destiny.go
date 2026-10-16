@@ -48,9 +48,11 @@ func init() {
 			{
 				Layer:     game.Layer4Type,
 				AppliesTo: AttachedToSource,
-				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
-					if !eotHasType(c.Subtypes, "Avatar") {
-						c.Subtypes = append(c.Subtypes, "Avatar")
+				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+					// "Avatar" is a word of the Aura's text (CR 612.2, #3984).
+					avatar := source.TextSubtype("Avatar")
+					if !eotHasType(c.Subtypes, avatar) {
+						c.Subtypes = append(c.Subtypes, avatar)
 					}
 				},
 			},

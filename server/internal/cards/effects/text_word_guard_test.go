@@ -42,6 +42,14 @@ import (
 // context (TargetLandBecomes…, the prevention shields' QueryColors) —
 // are textWordDoors: a literal is how a card file names its word to
 // them, and text_word_helpers_test.go holds them to following a change.
+//
+// #3984 widens the words to creature types (Artificial Evolution), read
+// from the engine's vetted CR 205.3m list (game.AllCreatureTypes) in its
+// canonical spelling, and adds the colour- and type-setting mods
+// (textWordGameMods: "becomes a white and blue Bird"), the turn tallies
+// that take a creature type (textWordMethodArgs), and the creature-type
+// helpers of the tribal files. text_word_remainder_test.go is its rules
+// test.
 
 // textWordLiteralAllowed are the files whose literal is correctly
 // untranslated, each with the reason. Keep it short: a reason that is
@@ -71,6 +79,28 @@ var textWordLiteralAllowed = map[string]string{
 	"dwarven_mine.go":      "enters-tapped condition, judged as it enters",
 	"gingerbread_cabin.go": "enters-tapped condition, judged as it enters",
 	"idyllic_grange.go":    "enters-tapped condition, judged as it enters",
+	"roads.go":             "enters-tapped condition, judged as it enters",
+	// "Enters with a +1/+1 counter for each other Zombie you control" is
+	// a replacement read as the creature enters, the same new object.
+	"unbreathing_horde.go": "enters-with-counters count, judged as it enters",
+
+	// Clauses that work only from a graveyard (#3984), where no text
+	// change reaches, like Marang River Prowler's.
+	"gravecrawler.go": "graveyard-only clause",
+	"quakebringer.go": "graveyard-only clause",
+	// Embalm and eternalize are activated from the graveyard; the token's
+	// "except it's a white Zombie" is that card's printed text (CR 400.7).
+	"embalm.go": "graveyard-only ability",
+	// Submerge's "If an opponent controls a Forest and you control an
+	// Island, you may cast this spell without paying its mana cost".
+	"submerge.go": "alternative cost, judged as cast",
+
+	// "This spell costs {2} less to cast if you control a Wolf or
+	// Werewolf", and a modal spell's "if you control a Wizard as you
+	// cast this spell, choose two" (Flame of Anor): judged as the card
+	// is cast (CR 601.2b, 601.2f), before anything can change its text.
+	"wolfkin_outcast.go": "self cost reduction, judged as cast",
+	"modes.go":           "mode count condition, judged as cast",
 }
 
 // textWordHelperArgs are effects-package helpers that take a colour or
@@ -84,6 +114,62 @@ var textWordHelperArgs = map[string][]int{
 	"b18ControlsPermanentOfColor":       {2},
 	"b33IslandsControlled":              {2},
 	"leftAsColor":                       {2},
+
+	// #3984: helpers that take a creature type (or a land type) and judge
+	// it as given.
+	"leftAsSubtype":                    {2},
+	"hasSubtype":                       {1},
+	"attackerHasSubtype":               {2},
+	"attackersOfSubtypeInTheSameBatch": {3},
+	"permanentWasCreatureType":         {1},
+	"addedSubtypeTypeLine":             {1},
+	"retypedTypeLine":                  {fromArg(1)},
+	"b05ControlsSubtype":               {2},
+	"b10AnotherPermanentWithSubtypeEnteredUnderYourControl": {3},
+	"b19ZombieCardsInGraveyard":                             {2},
+	"b22OtherCreaturesOfSubtypeControlled":                  {3},
+	"b24AttackingCreaturesOfSubtype":                        {2},
+	"b24CombatDamageToPlayerByYourCreatureOfSubtypes":       {fromArg(3)},
+	"b24SubtypeYouControlDealtDamage":                       {3},
+	"b26PermanentsOfSubtypeControlled":                      {2},
+	"b27CreatureTypesPlusShapeshifter":                      {1},
+	"b28GraveyardHasCreatureCardOfSubtype":                  {2},
+	"b29SpiritsControlled":                                  {2},
+	"b33PlayersDealtCombatDamageThisTurnByYourFaeries":      {2},
+	"b34GoblinsEnteredUnderYourControlThisTurn":             {2},
+	"b38FaeriesYouControl":                                  {2},
+	"b42CountCreaturesWithSubtype":                          {1},
+	"b43CreaturesOfSubtypeControlled":                       {2},
+	"rfCreatureCEnteredLandHasSubtype":                      {2},
+}
+
+// fromArg(i) in textWordHelperArgs is "argument i and every one after
+// it is a word" (a variadic list).
+func fromArg(i int) int { return -1 - i }
+
+// textWordMethodArgs are Game methods (the turn tallies) that take a
+// creature type and judge it as given, with the index of the word: the
+// caller passes ctx.TextSubtype("Dragon").
+var textWordMethodArgs = map[string]int{
+	"EnteredWithSubtypeThisTurn":                   1,
+	"DiedWithSubtypeThisTurn":                      1,
+	"PlayersDealtCombatDamageThisTurnBySubtype":    1,
+	"PlayersDealtCombatDamageThisTurnByAnySubtype": 0,
+	"DiedPowerWithSubtypeThisTurn":                 0,
+}
+
+// textWordGameMods are the game package's colour- and type-setting mods
+// (#3984): every argument is a word of the text of the object that
+// creates the effect ("becomes a white and blue Bird", "is a black
+// Zombie in addition to its other colours and types"). A card file
+// passes each through that object's text: game.SetColorsMod(
+// ctx.TextColor("W"), ctx.TextColor("U")), game.AddSubtypesMod(
+// ctx.TextSubtype("Bird")), source.TextColor in a static.
+var textWordGameMods = map[string]bool{
+	"SetColorsMod":        true,
+	"AddColorsMod":        true,
+	"AddSubtypesMod":      true,
+	"SetCreatureTypesMod": true,
 }
 
 // textWordDoors are the helpers that read a word argument through the
@@ -95,6 +181,18 @@ var textWordDoors = []string{
 	"MatchCreatureSubtype", "SetsBasicLandType", "EachLandIsAlso", "TargetLandBecomesUntilEOT",
 	"TargetLandBecomesWhileSourceRemains", "TargetLandBecomesIndefinitely",
 	"TargetLandBecomesUntilItsControllersNextTurn", "QueryColors",
+	// #3984: creature types, colour- and type-setting statics, costs and
+	// mana restrictions.
+	"OfCreatureType", "Subtype", "QuerySubtype", "exceptSubtypes",
+	"AttachedIsAlso", "SetAttachedColors", "SetAttachedTypes",
+	"OtherSpellOfCreatureType", "SpellOfCreatureType",
+	"AnotherNontokenCreatureOfTypeEnteredUnderYourControl",
+	"thisEnchantmentBecomesACreature", "b24TargetAnyNotSubtype",
+	"b16OtherCreaturesYouControlOfSubtype", "b21CreatureOfSubtypeYouControlAttacked",
+	"SacrificeSubtype", "RevealX", "CraftWithEachOf", "CraftWithOneOrMoreSubtype",
+	"ManaRestrictSubtype", "ManaRestrictColor",
+	"anotherEnteredWithSubtypeThisTurn", "b43CreatureOfSubtypeYouControlDealtCombatDamageToPlayer",
+	"IsBasicLandOfAnySubtype", "IsLandWithAnySubtype", "CraftWithSubtype", "frodoSauronsBaneIs",
 }
 
 // textWordReaders are the calls whose first (or, for devotionTo, last)
@@ -109,15 +207,26 @@ var textWordReaders = map[string]bool{
 // textWordHelperArgs compare case-insensitively, so "swamp" names the
 // word as surely as "Swamp" does.
 func isTextWordArgument(lit string) bool {
-	return isTextWordLiteral(lit) || game.IsBasicLandType(lit)
+	return isTextWordLiteral(lit) || game.IsBasicLandType(lit) || game.IsCreatureType(lit)
 }
 
+// isTextWordLiteral is a colour letter, a basic land type, or (#3984) a
+// creature type, each in the spelling a card file writes it: the
+// creature types are the engine's vetted CR 205.3m vocabulary
+// (game.AllCreatureTypes, generated from the catalog's type lines), in
+// its canonical spelling, so a word that merely looks like one ("Arcane",
+// "Vehicle", "Food", "Equipment" are not creature types) is never a
+// finding.
 func isTextWordLiteral(lit string) bool {
 	switch lit {
 	case "W", "U", "B", "R", "G":
 		return true
 	}
-	return game.IsBasicLandType(lit) && strings.ToUpper(lit[:1]) == lit[:1]
+	if game.IsBasicLandType(lit) && strings.ToUpper(lit[:1]) == lit[:1] {
+		return true
+	}
+	canon, ok := game.CanonicalCreatureType(lit)
+	return ok && canon == lit
 }
 
 func TestNoHardCodedTextWordsInCardFiles(t *testing.T) {
@@ -136,25 +245,51 @@ func TestNoHardCodedTextWordsInCardFiles(t *testing.T) {
 			if !ok || len(call.Args) == 0 {
 				return true
 			}
+			// argFinding records a literal word handed to a helper that
+			// judges it as given.
+			argFinding := func(name string, arg ast.Expr) {
+				lit, ok := arg.(*ast.BasicLit)
+				if !ok || lit.Kind != token.STRING {
+					return
+				}
+				word, err := strconv.Unquote(lit.Value)
+				if err != nil || !isTextWordArgument(word) {
+					return
+				}
+				if _, ok := textWordLiteralAllowed[file]; ok {
+					usedAllowance[file] = true
+					return
+				}
+				findings = append(findings, file+":"+strconv.Itoa(fset.Position(call.Pos()).Line)+" "+name+"("+lit.Value+")")
+			}
 			if id, ok := call.Fun.(*ast.Ident); ok {
 				seen[id.Name]++
 				for _, i := range textWordHelperArgs[id.Name] {
-					if i >= len(call.Args) {
+					if i < 0 {
+						if from := -1 - i; from < len(call.Args) {
+							for _, a := range call.Args[from:] {
+								argFinding(id.Name, a)
+							}
+						}
 						continue
 					}
-					lit, ok := call.Args[i].(*ast.BasicLit)
-					if !ok || lit.Kind != token.STRING {
-						continue
+					if i < len(call.Args) {
+						argFinding(id.Name, call.Args[i])
 					}
-					word, err := strconv.Unquote(lit.Value)
-					if err != nil || !isTextWordArgument(word) {
-						continue
+				}
+			}
+			if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
+				if i, ok := textWordMethodArgs[sel.Sel.Name]; ok {
+					seen["."+sel.Sel.Name]++
+					if i < len(call.Args) {
+						argFinding(sel.Sel.Name, call.Args[i])
 					}
-					if _, ok := textWordLiteralAllowed[file]; ok {
-						usedAllowance[file] = true
-						continue
+				}
+				if pkg, ok := sel.X.(*ast.Ident); ok && pkg.Name == "game" && textWordGameMods[sel.Sel.Name] {
+					seen["game."+sel.Sel.Name]++
+					for _, a := range call.Args {
+						argFinding("game."+sel.Sel.Name, a)
 					}
-					findings = append(findings, file+":"+strconv.Itoa(fset.Position(call.Pos()).Line)+" "+id.Name+"("+lit.Value+")")
 				}
 			}
 			var name string
@@ -206,6 +341,16 @@ func TestNoHardCodedTextWordsInCardFiles(t *testing.T) {
 			t.Errorf("no catalog file calls %s — the scan is matching a name that no longer exists", name)
 		}
 	}
+	for name := range textWordMethodArgs {
+		if seen["."+name] == 0 {
+			t.Errorf("no catalog file calls .%s — drop it from textWordMethodArgs", name)
+		}
+	}
+	for name := range textWordGameMods {
+		if seen["game."+name] == 0 {
+			t.Errorf("no catalog file calls game.%s — drop it from textWordGameMods", name)
+		}
+	}
 	for name := range textWordHelperArgs {
 		if seen[name] == 0 {
 			t.Errorf("no catalog file calls %s — drop it from textWordHelperArgs", name)
@@ -226,7 +371,7 @@ func TestNoHardCodedTextWordsInCardFiles(t *testing.T) {
 		return
 	}
 	sort.Strings(findings)
-	t.Errorf("%d colour word(s) or basic land type(s) hard-coded where a text-changing effect can't reach them (#3872, CR 612.2).\n"+
+	t.Errorf("%d colour word(s), basic land type(s) or creature type(s) hard-coded where a text-changing effect can't reach them (#3872, #3984, CR 612.2).\n"+
 		"Read the word through the object whose text it is: source.TextColor(\"U\") / source.TextSubtype(\"Island\") "+
 		"for a static or trigger, ctx.TextColor in an effect, or HasColorWord / HasSubtypeWord inside a predicate a "+
 		"lending helper evaluates (ADR 0160's 2026-10-15 amendment). If the word really is out of reach, list the file "+

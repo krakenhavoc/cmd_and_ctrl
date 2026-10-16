@@ -53,7 +53,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
-				return ok && (c.InstanceID == source.InstanceID || isPirate(c))
+				return ok && (c.InstanceID == source.InstanceID || isPirate(game.ThroughTextOf(source, c)))
 			}, "Gemcutter Buccaneer — create a tapped Treasure", Do(CreateToken{
 				Template: tappedTreasureToken(),
 				N:        1,
