@@ -397,6 +397,17 @@ export function acrossFor(card: CardView, viewerID: string | null | undefined): 
   return !!viewerID && !!card.activated_abilities && (card.controller || card.owner) !== viewerID;
 }
 
+// activationSick is CR 302.6 for a {T} row: the card is summoning sick
+// and no "as though those creatures had haste" static (Thousand-Year
+// Elixir, #3928) lets its controller tap it anyway. The permission is
+// the controller's alone, so an `across` row (another seat activating
+// an any-player ability) reads plain `summoning_sick`, as the server's
+// gate does. Attacking never reads this: the creature has no haste.
+export function activationSick(card: CardView, across = false): boolean {
+  if (!card.summoning_sick) return false;
+  return across || !card.activates_as_though_haste;
+}
+
 // menuManaRows is menuAbilityRows for the CR 605 list: a permanent's
 // mana rows are its controller's alone (a mana ability is never an
 // any-player row, ADR 0106 §1), so a viewer who does not control it
@@ -1148,14 +1159,15 @@ export function abilityRowContext(
   } = {},
 ): AbilityRowContext {
   const viewerID = opts.viewerID ?? null;
+  const across = acrossFor(card, viewerID);
   return {
     card,
     tapped: !!card.tapped,
-    sick: !!card.summoning_sick,
+    sick: activationSick(card, across),
     payerLife: opts.payerLife,
     timingWords: opts.timingWords,
     legalGate: opts.legalGate,
-    across: acrossFor(card, viewerID),
+    across,
     loyalty: { card, view: opts.view, viewerID },
   };
 }
@@ -1363,7 +1375,7 @@ function abilityRowItems(
   const ctx: AbilityRowContext = {
     card,
     tapped: !!card.tapped,
-    sick: !!card.summoning_sick,
+    sick: activationSick(card),
     payerLife: view.seats.find((s) => s.id === (card.controller || card.owner))?.life,
     loyalty: { card, view, viewerID },
   };
@@ -1527,7 +1539,7 @@ function anyPlayerAbilityItems(
   const ctx: AbilityRowContext = {
     card,
     tapped: !!card.tapped,
-    sick: !!card.summoning_sick,
+    sick: activationSick(card, true),
     payerLife: view.seats.find((s) => s.id === viewerID)?.life,
     legalGate: gate,
     across: true,

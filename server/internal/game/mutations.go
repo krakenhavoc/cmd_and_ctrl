@@ -2601,7 +2601,7 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		// that built it by hand. A source that has become sick since
 		// the plan was made drops silently, exactly as a gate that
 		// stopped holding does above.
-		if manaTapBlockedBySickness(card, ab) {
+		if g.manaTapBlockedBySicknessLocked(card, ab, p.ID) {
 			continue
 		}
 		// S32 (#352): the gate and the derived/scaled output are
@@ -7345,8 +7345,9 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// exempts a creature — since #530 HasSummoningSickness
 		// really does handle both, and the IsCreature prefix here is
 		// redundant. It stays as documentation: this is the rule
-		// about creatures.
-		if card.IsCreature() && HasSummoningSickness(card) {
+		// about creatures. #3928: an "as though those creatures had
+		// haste" static of the activator's lifts it.
+		if g.ActivationSummoningSickLocked(card, playerID) {
 			return ErrSummoningSick
 		}
 	}

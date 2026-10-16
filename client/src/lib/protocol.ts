@@ -4455,6 +4455,11 @@ export interface CardView extends CastSurfaceView {
   // S21 sub-PR 2: CR 302.6 summoning sickness — entered this turn
   // without haste, so it can't attack or pay a {T} cost.
   summoning_sick?: boolean;
+  // #3928: a summoning-sick creature whose controller may still pay its
+  // {T} costs, under an "as though those creatures had haste" static
+  // (Thousand-Year Elixir, CR 609.4). It still can't attack. Only ever
+  // set beside `summoning_sick`; read through `activationSick`.
+  activates_as_though_haste?: boolean;
   // ADR 0108 §5: this permanent's echo triggers at its controller's
   // next upkeep (CR 702.30a). Derived on the server; never set on a
   // face-down permanent.

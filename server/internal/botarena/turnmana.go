@@ -327,7 +327,7 @@ func manaLeft(v *protocol.GameView, seat string) int {
 	}
 	for i := range v.Battlefield.Cards {
 		c := &v.Battlefield.Cards[i]
-		if c.Controller != seat || c.Tapped || c.SummoningSick {
+		if c.Controller != seat || c.Tapped || c.ActivationSick() {
 			continue
 		}
 		n += sourceMana(c)
