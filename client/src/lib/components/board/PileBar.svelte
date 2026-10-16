@@ -261,7 +261,9 @@
     <!-- ADR 0191: the cards your deck owns outside the game. Yours alone
          (the server sends a count to everyone else), face down because
          it is not a zone anyone else may look into, and it opens the
-         read-only zone browser tab. -->
+         read-only zone browser tab. #3832: "outside the game" is a
+         tooltip and part of the accessible name, not text on the tile,
+         where it overflowed the rail. -->
     <PileButton
       label="sideboard"
       pile="sideboard"
@@ -274,7 +276,7 @@
       }}
       faceDown
       onClick={openSideboard}
-      note="outside the game"
+      hint="outside the game"
     />
   {/if}
 </div>
