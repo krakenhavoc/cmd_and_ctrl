@@ -194,6 +194,26 @@ func b27GreatestManaValueAmongArtifactsControlled(g *game.Game, controller uuid.
 // or merely re-resolving the label, says nothing of the kind on its
 // own.
 func b27ExiledWith(g *game.Game, source uuid.UUID, label string) []uuid.UUID {
+	return b27ExiledWithRecord(g, source, label, true)
+}
+
+// b27EverExiledWith is b27ExiledWith for a reader that wants the cards
+// the source exiled whether or not they are still in exile (#3859): a
+// leaves-the-battlefield ability that reads "the exiled card" by
+// last-known information (CR 608.2h), Skyclave Apparition's "X is the
+// mana value of the exiled card". A card that was exiled and has since
+// gone anywhere else is still listed, in the order it was exiled, and the
+// reader looks it up wherever it is now. The same re-entry boundary
+// applies (CR 400.7): an incarnation that left and came back remembers
+// nothing of the first.
+func b27EverExiledWith(g *game.Game, source uuid.UUID, label string) []uuid.UUID {
+	return b27ExiledWithRecord(g, source, label, false)
+}
+
+// b27ExiledWithRecord is the one walk behind both readers. stillInExile
+// closes a card's record when it moves again and lists only cards that
+// are in exile now.
+func b27ExiledWithRecord(g *game.Game, source uuid.UUID, label string, stillInExile bool) []uuid.UUID {
 	open := false
 	order := map[uuid.UUID]int{}
 	for _, ev := range g.Events {
@@ -217,15 +237,23 @@ func b27ExiledWith(g *game.Game, source uuid.UUID, label string) []uuid.UUID {
 			order[ev.CardID] = len(order) + 1
 			continue
 		}
-		delete(order, ev.CardID)
+		if stillInExile {
+			delete(order, ev.CardID)
+		}
 	}
 	if len(order) == 0 || g.Exile == nil {
 		return nil
 	}
 	out := make([]uuid.UUID, 0, len(order))
-	for _, c := range g.Exile.Cards {
-		if _, ok := order[c.InstanceID]; ok {
-			out = append(out, c.InstanceID)
+	if stillInExile {
+		for _, c := range g.Exile.Cards {
+			if _, ok := order[c.InstanceID]; ok {
+				out = append(out, c.InstanceID)
+			}
+		}
+	} else {
+		for id := range order {
+			out = append(out, id)
 		}
 	}
 	for i := 1; i < len(out); i++ {

@@ -13,7 +13,8 @@ func TestTriggerZonesAcceptTheEminenceShape(t *testing.T) {
 		{[]ZoneKind{ZoneCommand}, true},
 		{[]ZoneKind{ZoneBattlefield, ZoneCommand}, true},
 		{[]ZoneKind{ZoneBattlefield}, false},
-		{[]ZoneKind{ZoneBattlefield, ZoneLibrary}, false},
+		{[]ZoneKind{ZoneBattlefield, ZoneOutside}, false},
+		{[]ZoneKind{ZoneLibrary}, true},
 		{[]ZoneKind{ZoneStack}, false},
 	} {
 		zone, why := TriggerZonesUnsupported(tc.zones)
