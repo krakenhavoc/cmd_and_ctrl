@@ -7363,7 +7363,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		return ErrCardNotFound
 	}
 	if srcZone == ZoneBattlefield {
-		if card.Controller != playerID {
+		// ADR 0106 §1 amendment 2026-10-16 (#1864): the cheap refusal
+		// for a non-controller, unless some row says "Any player may
+		// activate this ability" (Mana Cache). The row actually named is
+		// held to MayActivateMana after the index lookup below.
+		if card.Controller != playerID && !HasAnyPlayerManaAbility(*card) {
 			return ErrCardCallerMismatch
 		}
 		// CR 602.5: an effect that stops this permanent's activated
@@ -7410,6 +7414,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		return ErrInvalidParam
 	}
 	ab := abilities[abilityIdx]
+	// CR 602.2 / 602.1b (#1864): who may activate THIS row — the
+	// controller, or anyone for an any-player row.
+	if !MayActivateMana(playerID, *card, srcZone, ab) {
+		return ErrCardCallerMismatch
+	}
 	// CR 113.6 (#1228): the ability has to function from the zone the
 	// card is in. After the index lookup, so the index judged is the
 	// one the view and the enumerator published, and before
@@ -7741,6 +7750,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// the battlefield has layers (CR 613 runs on permanents), so a
 	// Simian Spirit Guide in hand is the creature card it prints.
 	srcKinds := manaSourceKindsOf(*card)
+	// #1864: read before the cost runs, for the reason srcKinds is.
+	var acrossController uuid.UUID
+	if srcZone == ZoneBattlefield && card.Controller != playerID {
+		acrossController = card.Controller
+	}
 
 	// #1183: the activation record, in both scopes, written HERE —
 	// the moment every gate and every cost has been checked and the
@@ -7982,6 +7996,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// #1210: the same CardID stamp EventActivateAbility carries —
 		// see the auto-tapper's emit above.
 		CardID: cardID,
+		// #1864: the permanent's controller when somebody else
+		// activated its any-player row, as EventActivateAbility carries
+		// it (ADR 0106 §1 amendment 2026-10-01): the log's
+		// activate_across line. uuid.Nil for every other activation.
+		Target: acrossController,
 		// #1184: the ability's identity and its exhaust bit, the same
 		// two stamps ActivateCatalogAbility's EventActivateAbility
 		// carries. A mana ability is an activated ability (CR 605.1a),

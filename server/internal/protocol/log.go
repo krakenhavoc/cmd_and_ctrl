@@ -1833,6 +1833,22 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		}
 		return base, true
 
+	case game.EventManaAbilityActivated:
+		// #1864: a mana ability gets no line (CR 605.3b), except the
+		// one LogActivateAcross tells: somebody activated the "Any
+		// player may activate this ability" mana row of a permanent
+		// another player controls (Mana Cache). The event carries that
+		// controller in Target only then.
+		if ev.Target == uuid.Nil {
+			return base, false
+		}
+		base.Kind = LogActivateAcross
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		if seat := seatOf(ev.Target); seat != NoSeat {
+			base.TargetSeat = &seat
+		}
+		return base, true
+
 	case game.EventTrigger:
 		// ADR 0119 §5. Every activation also emits EventTrigger, as a
 		// breadcrumb naming its source in CardID as well as Source

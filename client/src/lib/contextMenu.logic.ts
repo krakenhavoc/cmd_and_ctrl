@@ -49,6 +49,7 @@ import { isPlaneswalker } from "./cardTypes";
 import { counterCostBlocked } from "./counterCost";
 import {
   NO_LEGAL_ACTIONS,
+  digestRefusesManaRow,
   digestRefusesRow,
   digestRefusesSpecial,
   readyFirst,
@@ -311,7 +312,7 @@ export function canOverride(card: CardView, viewerID: string | null, isAdmin: bo
 
 // anyPlayerRows is a permanent's "Any player may activate this
 // ability" rows (CR 602.2, ADR 0106 §1). Only `activated_abilities`:
-// the declaration is refused on a mana ability, and no printed
+// the mana rows are anyPlayerManaRows (#1864), and no printed
 // any-player ability functions from a hidden zone.
 export function anyPlayerRows(card: CardView): ActivatedAbilityView[] {
   return (card.activated_abilities ?? []).filter((a) => a.any_player === true);
@@ -357,15 +358,26 @@ function openAcrossRows(card: CardView, viewerID: string): ActivatedAbilityView[
   );
 }
 
+// anyPlayerManaRows is the CR 605 list's "Any player may activate this
+// ability" rows (Mana Cache; ADR 0106 §1 amendment 2026-10-16, #1864):
+// the mana rows a viewer who does not control the permanent may
+// activate on it. Battlefield rows only (`mana_abilities`): no printed
+// any-player mana ability functions from another zone, and the server
+// refuses one there.
+export function anyPlayerManaRows(card: CardView): ManaAbilityView[] {
+  return (card.mana_abilities ?? []).filter((a) => a.any_player === true);
+}
+
 // mayActivateAcross is CR 602.2's exception for the client: a SEATED
 // viewer who does not control the permanent may still open it for its
-// any-player rows (ADR 0106 §1 decision 6). A spectator never may: a
-// spectator activates nothing. The viewer's own permanent answers
-// false, because its controller already has the whole menu.
+// any-player rows (ADR 0106 §1 decision 6), activated or mana (#1864).
+// A spectator never may: a spectator activates nothing. The viewer's
+// own permanent answers false, because its controller already has the
+// whole menu.
 export function mayActivateAcross(card: CardView, viewerID: string | null): boolean {
   if (!viewerID) return false;
   if ((card.controller || card.owner) === viewerID) return false;
-  return openAcrossRows(card, viewerID).length > 0;
+  return openAcrossRows(card, viewerID).length > 0 || anyPlayerManaRows(card).length > 0;
 }
 
 // menuAbilityRows is the activated-ability rows the ability popover
@@ -393,8 +405,15 @@ export function menuAbilityRows(
 // popover then lists only its any-player rows, and greys any the exact
 // digest leaves out. Card and the click rule both ask this, so they
 // agree on which rows a viewer sees.
+//
+// #1864: a permanent with only mana rows (Mana Cache) counts too, so its
+// any-player mana row is greyed on the digest the same way.
 export function acrossFor(card: CardView, viewerID: string | null | undefined): boolean {
-  return !!viewerID && !!card.activated_abilities && (card.controller || card.owner) !== viewerID;
+  return (
+    !!viewerID &&
+    (!!card.activated_abilities || !!card.mana_abilities) &&
+    (card.controller || card.owner) !== viewerID
+  );
 }
 
 // activationSick is CR 302.6 for a {T} row: the card is summoning sick
@@ -409,9 +428,10 @@ export function activationSick(card: CardView, across = false): boolean {
 }
 
 // menuManaRows is menuAbilityRows for the CR 605 list: a permanent's
-// mana rows are its controller's alone (a mana ability is never an
-// any-player row, ADR 0106 §1), so a viewer who does not control it
-// gets none — an opponent's Aura drawn on the viewer's own creature
+// mana rows are its controller's, so a viewer who does not control it
+// gets only its "Any player may activate this ability" rows (Mana
+// Cache; ADR 0106 §1 amendment 2026-10-16, #1864) and none of the
+// others — an opponent's Aura drawn on the viewer's own creature
 // included. `viewerID` undefined passes the rows through (a hand card,
 // whose list is `zone_mana_abilities`, CR 113.6).
 export function menuManaRows(
@@ -421,7 +441,8 @@ export function menuManaRows(
   const rows = collapseBorrowed(card.mana_abilities ?? card.zone_mana_abilities ?? []);
   if (viewerID === undefined) return rows;
   if (viewerID === null) return [];
-  return (card.controller || card.owner) === viewerID ? rows : [];
+  if ((card.controller || card.owner) === viewerID) return rows;
+  return card.mana_abilities ? rows.filter((a) => a.any_player === true) : [];
 }
 
 // BattlefieldClickIntent is what a plain left-click on a battlefield
@@ -1237,6 +1258,20 @@ export function abilityRowBlocked(
   ) {
     return ABILITY_NOT_RIGHT_NOW;
   }
+  // #1864: an any-player MANA row on another player's permanent (Mana
+  // Cache) is greyed on the digest the same way.
+  if (
+    kind === "mana" &&
+    ctx.across &&
+    (a as Partial<ManaAbilityView>).any_player === true &&
+    digestRefusesManaRow(
+      ctx.legalGate ?? NO_LEGAL_ACTIONS,
+      ctx.cardID ?? ctx.card?.instance_id ?? "",
+      a.ref,
+    )
+  ) {
+    return ABILITY_NOT_RIGHT_NOW;
+  }
   return "";
 }
 
@@ -1545,11 +1580,25 @@ function anyPlayerAbilityItems(
     across: true,
     loyalty: { card, view, viewerID },
   };
+  // #1864: and its any-player mana rows (Mana Cache), whose mana goes to
+  // the viewer's pool.
+  const readyMana = legal.readyManaRefs(card.instance_id);
+  const mana = anyPlayerManaRows(card).map((a): MenuItem => {
+    const blocked = abilityRowBlocked(a, "mana", ctx);
+    return {
+      id: `mana-${a.index}`,
+      label: a.label || a.produced || "add mana",
+      hint: blocked || chargedManaCostNote(a) || undefined,
+      disabled: !!blocked,
+      ready: (!blocked && !!a.ref && readyMana.includes(a.ref)) || undefined,
+      activate: { kind: "mana", index: a.index },
+    };
+  });
   const items = openAcrossRows(card, viewerID).map((a) => {
     const blocked = abilityRowBlocked(a, "activated", ctx);
     return activatedItem(a, blocked, !blocked && !!a.ref && readyAbilities.includes(a.ref));
   });
-  return readyFirst(items, (i) => i.ready === true);
+  return readyFirst([...mana, ...items], (i) => i.ready === true);
 }
 
 // MAX_MANUAL_MINUS caps the manual minus rows. Karn Liberated's −14

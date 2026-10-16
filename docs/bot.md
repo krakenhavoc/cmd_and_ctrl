@@ -3229,6 +3229,13 @@ with no purpose scores below passing, so a bot never pumps an
 opponent's Flailing Ogre or grows an opponent's Feral Hydra with its own
 mana. Its own permanents' rows are scored like any other ability.
 
+An any-player MANA ability (Mana Cache, #1864) is offered the same way,
+as a `mana` move labelled with the controller, to the seats
+`game.MayActivateMana` names. The heuristic prices every bare mana move
+below passing (`ManaFloat`), so it never floats mana off an opponent's
+Mana Cache, or its own; the auto-tapper does not plan a source with no
+`{T}` either.
+
 ## Never offered an attack it cannot pay for (#1063)
 
 The same shape, one step over. Propaganda, Ghostly Prison and Sphere of

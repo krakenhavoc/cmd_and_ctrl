@@ -251,7 +251,7 @@ func (g *Game) CounterCostOptionsForEffect(playerID, sourceID uuid.UUID, rc *Cou
 			continue
 		}
 		c := findBattlefieldCard(g, id)
-		if c == nil || c.Controller != playerID {
+		if c == nil || !counterCostPayerMayUse(c, playerID, sourceID, rc) {
 			continue
 		}
 		kinds := g.counterKindsPaying(c, rc.Counter, floor)
@@ -262,6 +262,23 @@ func (g *Game) CounterCostOptionsForEffect(playerID, sourceID uuid.UUID, rc *Cou
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].most() > out[j].most() })
 	return out
+}
+
+// counterCostPayerMayUse reports whether `c` may pay part of `rc` for
+// an activation by `playerID` of an ability of `sourceID`. A cost that
+// names other permanents ("from a creature you control") is paid with
+// the activator's own. The SELF form ("Remove a charge counter from this
+// enchantment") names the source, whoever controls it: the activation
+// path has already decided this player may activate the ability, and
+// for an "Any player may activate this ability" row (Mana Cache, #1864,
+// CR 602.1a) that is a player who does not control it. For every other
+// row the activation gate has already required the controller, so the
+// answer there is unchanged.
+func counterCostPayerMayUse(c *Card, playerID, sourceID uuid.UUID, rc *CounterRemovalCost) bool {
+	if c.Controller == playerID {
+		return true
+	}
+	return rc.From == nil && c.InstanceID == sourceID
 }
 
 // CounterCostPayable reports whether `rc` could be paid at all right
@@ -542,9 +559,9 @@ func (g *Game) validateCounterRemovalLocked(playerID, sourceID uuid.UUID, rc *Co
 			return counterPayment{}, ErrCardNotFound
 		}
 		// "a planeswalker you control": a cost is paid with your own
-		// permanents. The source is already known to be the
-		// activator's.
-		if c.Controller != playerID {
+		// permanents. The source itself is the exception (#1864): see
+		// counterCostPayerMayUse.
+		if !counterCostPayerMayUse(c, playerID, sourceID, rc) {
 			return counterPayment{}, ErrCardCallerMismatch
 		}
 		// specMatchLocked(..., false), not targetLegalLocked: choosing
