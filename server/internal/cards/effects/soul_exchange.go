@@ -41,8 +41,10 @@ func init() {
 		Purpose:        ForTargets(Reanimates(0)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			wasThrull := false
+			// "Thrull" is a word of the spell's text (CR 612.2, #3984).
+			thrull := ctx.TextSubtype("Thrull")
 			for _, info := range ctx.ExiledPermanents() {
-				if permanentWasCreatureType(info, "Thrull") {
+				if permanentWasCreatureType(info, thrull) {
 					wasThrull = true
 				}
 			}

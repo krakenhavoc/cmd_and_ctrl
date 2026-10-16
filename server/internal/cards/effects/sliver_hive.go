@@ -46,8 +46,9 @@ func init() {
 			Label:   "{5}, {T}: Create a 1/1 colorless Sliver creature token. Activate only if you control a Sliver.",
 			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
 			Cost:    Plus(ManaCost("{5}"), TapCost()),
+			// ControlsAtLeast lends the source's text (CR 612.2, #3984).
 			Condition: ControlsAtLeast(1, func(c game.Card) bool {
-				return c.HasSubtype("Sliver")
+				return c.HasSubtypeWord("Sliver")
 			}),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 colorless Sliver"), N: 1}.Apply(NewContext(g, item))

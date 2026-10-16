@@ -83,13 +83,15 @@ func breachAskNext(g *game.Game, item *game.StackItem, order, chosen []uuid.UUID
 // in addition to its other types.
 func breachPhyrexians(ctx *Context, _ []uuid.UUID) error {
 	caster := ctx.Controller()
+	// "Phyrexian" is a word of the spell's text (CR 612.2, #3984).
+	phyrexian := ctx.TextSubtypes("Phyrexian")
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if c.Controller != caster || !c.IsCreature() {
 			continue
 		}
 		if err := (ScopedEffectFor{
 			Target:   c.InstanceID,
-			Mods:     []game.Mod{game.AddSubtypesMod("Phyrexian")},
+			Mods:     []game.Mod{game.AddSubtypesMod(phyrexian...)},
 			Duration: ctx.Game.PinnedTo(game.IndefiniteDuration(), c.InstanceID),
 			Label:    "Breach the Multiverse — a Phyrexian in addition to its other types",
 		}).Apply(ctx.asGroupMember()); err != nil {

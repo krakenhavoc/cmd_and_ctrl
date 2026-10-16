@@ -38,7 +38,7 @@ func init() {
 						return true
 					}
 					dead, ok := diedCreature(ev, g)
-					return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Elemental")
+					return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, source.TextSubtype("Elemental"))
 				},
 				Targets: TargetAny(),
 				Purpose: ForTargets(DamageToTarget(0, 3)),

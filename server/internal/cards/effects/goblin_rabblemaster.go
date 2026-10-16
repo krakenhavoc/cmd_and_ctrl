@@ -52,12 +52,14 @@ func init() {
 // +1/+0 until end of turn for each one.
 func rabblemasterPumpForOtherAttackingGoblins(g *game.Game, item *game.StackItem) error {
 	n := 0
+	// "Goblin" is a word of the source's text (CR 612.2, #3984).
+	goblin := g.TextReaderForEffect(item).TextSubtype("Goblin")
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.InstanceID == item.SourceCardID {
 			continue
 		}
-		if c.IsCreature() && c.HasSubtype("Goblin") && c.AttackingTarget != uuid.Nil {
+		if c.IsCreature() && c.HasSubtype(goblin) && c.AttackingTarget != uuid.Nil {
 			n++
 		}
 	}

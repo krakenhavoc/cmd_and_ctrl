@@ -61,7 +61,7 @@ func printedSpiritClericToken() tokenTemplate {
 				return target.InstanceID == source.InstanceID
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				n := b29SpiritsControlled(g, source.Controller)
+				n := b29SpiritsControlled(g, source.Controller, source.TextSubtype("Spirit"))
 				c.Power = n
 				c.Toughness = n
 			},

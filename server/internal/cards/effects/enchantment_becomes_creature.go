@@ -51,7 +51,8 @@ func thisEnchantmentBecomesACreature(subtype string, power, toughness int, label
 			Mods: append([]game.Mod{
 				game.RemoveTypesMod("Enchantment"),
 				game.AddTypesMod("Creature"),
-				game.AddSubtypesMod(subtype),
+				// A word of the enchantment's text (CR 612.2, #3984).
+				game.AddSubtypesMod(g.TextReaderForEffect(item).TextSubtypes(subtype)...),
 				game.SetBasePowerMod(power),
 				game.SetBaseToughnessMod(toughness),
 			}, with...),

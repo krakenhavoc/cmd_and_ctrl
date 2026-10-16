@@ -69,8 +69,8 @@ func chronatogTotemAnimate(g *game.Game, item *game.StackItem) error {
 		Target: item.SourceCardID,
 		Mods: append([]game.Mod{
 			game.AddTypesMod("Artifact", "Creature"),
-			game.AddSubtypesMod("Atog"),
-			game.SetColorsMod("U"),
+			game.AddSubtypesMod(ctx.TextSubtypes("Atog")...),
+			game.SetColorsMod(ctx.TextColors("U")...),
 		}, game.SetBasePTMods(1, 2)...),
 		Duration: DurationUntilEndOfTurn(ctx),
 		Label:    "Chronatog Totem — becomes a 1/2 blue Atog artifact creature",

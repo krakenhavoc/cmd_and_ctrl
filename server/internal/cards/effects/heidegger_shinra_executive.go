@@ -38,8 +38,10 @@ func init() {
 							return nil
 						}
 						x := 0
+						// "Soldiers" is a word of the source's text (CR 612.2, #3984).
+						soldier := ctx.TextSubtype("Soldier")
 						for _, c := range g.BattlefieldCardsForEffect() {
-							if c.Controller == item.Controller && c.IsCreature() && c.HasSubtype("Soldier") {
+							if c.Controller == item.Controller && c.IsCreature() && c.HasSubtype(soldier) {
 								x++
 							}
 						}

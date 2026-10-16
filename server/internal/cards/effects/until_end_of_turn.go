@@ -83,9 +83,14 @@ func eotSnapshot(ctx *Context, target uuid.UUID, match CardPredicate) eotAffecte
 	}
 	out := eotAffected{}
 	caster := ctx.Controller()
+	// A Match's colour and type words are the resolving object's text
+	// (CR 612.2, #3984): each candidate is lent it, as MatchingBattlefield
+	// does, so "each Elf creature you control" under an Artificial
+	// Evolution names the new type.
+	reader := ctx.textReader()
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if match != nil {
-			if !match(ctx.Game, caster, c) {
+			if !match(ctx.Game, caster, game.ThroughTextOf(reader, c)) {
 				continue
 			}
 		} else if c.InstanceID != target {

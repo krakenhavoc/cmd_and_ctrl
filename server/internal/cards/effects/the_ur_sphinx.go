@@ -59,7 +59,7 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return attackDeclaredByYou(ev, source.Controller) && attackerHasSubtype(g, ev, "Sphinx")
+				return attackDeclaredByYou(ev, source.Controller) && attackerHasSubtype(g, ev, source.TextSubtype("Sphinx"))
 			}, urSphinxTriggerLabel, urSphinxMillAndCast)),
 		},
 	})
@@ -70,6 +70,8 @@ const urSphinxTriggerLabel = "The Ur-Sphinx — each player mills that many card
 // attackerHasSubtype reports whether the creature the attack event
 // declares has the creature type, as it is now (changelings count,
 // CR 702.73a). The Ur-Sphinx's Sphinxes and The Ur-Dragon's Dragons.
+// `subtype` is judged as given: a caller reads its printed word through
+// its own text first (TextSubtype, CR 612.2, #3984).
 func attackerHasSubtype(g *game.Game, ev game.Event, subtype string) bool {
 	c, ok := g.LookupCardForEffect(ev.CardID)
 	return ok && c.IsCreature() && c.HasSubtype(subtype)
@@ -102,7 +104,7 @@ func urSphinxMillAndCast(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
-	n := attackersOfSubtypeInTheSameBatch(g, item.Trigger.Event, item.Controller, "Sphinx")
+	n := attackersOfSubtypeInTheSameBatch(g, item.Trigger.Event, item.Controller, g.TextReaderForEffect(item).TextSubtype("Sphinx"))
 	if n <= 0 {
 		return nil
 	}

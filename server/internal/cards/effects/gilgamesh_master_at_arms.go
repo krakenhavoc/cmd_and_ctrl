@@ -74,13 +74,15 @@ func gilgameshLookAndPut(g *game.Game, item *game.StackItem) error {
 // entered (a floor of zero is the "may"), then the Samurai it goes on.
 func gilgameshAttach(g *game.Game, item *game.StackItem) error {
 	controller := item.Controller
+	// "Samurai" is a word of the source's text (CR 612.2, #3984).
+	word := g.TextReaderForEffect(item).TextSubtype("Samurai")
 	var equipment []uuid.UUID
 	for _, id := range NewContext(g, item).PayloadCards() {
 		if c, ok := g.LookupCardForEffect(id); ok && c.HasSubtype("Equipment") && g.Battlefield.Contains(id) {
 			equipment = append(equipment, id)
 		}
 	}
-	if len(equipment) == 0 || len(gilgameshSamurai(g, controller)) == 0 {
+	if len(equipment) == 0 || len(gilgameshSamurai(g, controller, word)) == 0 {
 		return nil
 	}
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
@@ -96,7 +98,7 @@ func gilgameshAttach(g *game.Game, item *game.StackItem) error {
 				return nil
 			}
 			attachment := picked[0]
-			samurai := gilgameshSamurai(g, controller)
+			samurai := gilgameshSamurai(g, controller, word)
 			if len(samurai) == 0 {
 				return nil
 			}
@@ -113,7 +115,7 @@ func gilgameshAttach(g *game.Game, item *game.StackItem) error {
 						return nil
 					}
 					host, ok := g.LookupCardForEffect(hosts[0])
-					if !ok || host.Controller != controller || !host.HasSubtype("Samurai") {
+					if !ok || host.Controller != controller || !host.HasSubtype(word) {
 						return nil
 					}
 					return g.AttachForEffect(attachment, game.TargetRef{Kind: game.TargetCard, ID: hosts[0]})
@@ -125,11 +127,12 @@ func gilgameshAttach(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
-// gilgameshSamurai lists the Samurai creatures a player controls.
-func gilgameshSamurai(g *game.Game, controller uuid.UUID) []uuid.UUID {
+// gilgameshSamurai lists the Samurai creatures a player controls,
+// `samurai` being the creature type as the source's text reads it.
+func gilgameshSamurai(g *game.Game, controller uuid.UUID, samurai string) []uuid.UUID {
 	var out []uuid.UUID
 	for _, c := range g.Battlefield.Cards {
-		if c.Controller == controller && c.IsCreature() && c.HasSubtype("Samurai") {
+		if c.Controller == controller && c.IsCreature() && c.HasSubtype(samurai) {
 			out = append(out, c.InstanceID)
 		}
 	}

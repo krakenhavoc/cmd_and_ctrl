@@ -38,7 +38,7 @@ func init() {
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.InstanceID != source.InstanceID &&
 					target.Controller == source.Controller &&
-					target.IsCreature() && target.HasSubtype("Dwarf")
+					target.IsCreature() && target.HasSubtype(source.TextSubtype("Dwarf")) // a word of the source's text (CR 612.2, #3984)
 			},
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				c.Power++
@@ -56,8 +56,9 @@ func init() {
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
 					Player: item.Controller,
+					// SearchLibrary lends the source's text (CR 612.2).
 					Predicate: func(c game.Card) bool {
-						return c.IsArtifact() || c.HasSubtype("Dragon")
+						return c.IsArtifact() || c.HasSubtypeWord("Dragon")
 					},
 					Dest:    game.ZoneBattlefield,
 					Limit:   1,

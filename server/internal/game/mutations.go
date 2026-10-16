@@ -2940,7 +2940,7 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 				p, cardID,
 				repeatColor(color, slot.AmountFor(color)),
 				restrictionsFor(g, ab, p.ID, cardID),
-				ab.SpendRiders,
+				spendRidersFor(g, ab, cardID),
 				// #1212: what the source WAS, snapshotted off the copy
 				// taken before the tap — the same copy the triggered
 				// mana abilities below use, so the two can never
@@ -3179,7 +3179,7 @@ func (g *Game) materializeExiledManaSourceLocked(
 			p, cardID,
 			repeatColor(color, slot.AmountFor(color)),
 			restrictionsFor(g, ab, p.ID, cardID),
-			ab.SpendRiders,
+			spendRidersFor(g, ab, cardID),
 			srcKinds,
 			// CR 106.12a: not a tap for mana. The card was never
 			// tapped and was never a permanent.
@@ -8057,7 +8057,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 						p, cardID,
 						append([]string(nil), named...),
 						restrictionsFor(g, &ab, playerID, cardID),
-						ab.SpendRiders,
+						spendRidersFor(g, &ab, cardID),
 						srcKinds,
 						ab.TapCost,
 						nil,
@@ -8071,7 +8071,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 				Source:           cardID,
 				ManaRestrictions: restrictionsFor(g, &ab, playerID, cardID),
 				ManaSourceKinds:  srcKinds,
-				ManaRiders:       copyManaRiders(ab.SpendRiders),
+				ManaRiders:       spendRidersFor(g, &ab, cardID),
 				ManaTapped:       ab.TapCost,
 			}, options, n, ab.Label)
 			continue
@@ -8092,7 +8092,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 				p, cardID,
 				[]string{options[0]},
 				restrictionsFor(g, &ab, playerID, cardID),
-				ab.SpendRiders,
+				spendRidersFor(g, &ab, cardID),
 				srcKinds,
 				ab.TapCost,
 				nil,
@@ -8115,7 +8115,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 					p, cardID,
 					repeatColor(color, slot.AmountFor(color)),
 					restrictionsFor(g, &ab, playerID, cardID),
-					ab.SpendRiders,
+					spendRidersFor(g, &ab, cardID),
 					srcKinds,
 					ab.TapCost,
 					nil,
@@ -8149,7 +8149,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			// #1547: and the spend riders, for the reason the
 			// restrictions ride here — a Cavern of Souls pick answered
 			// without them would mint mana whose spell CAN be countered.
-			ManaRiders: copyManaRiders(ab.SpendRiders),
+			ManaRiders: spendRidersFor(g, &ab, cardID),
 			// #742: "N mana of any one color" — one pick, N tokens.
 			ManaAmounts: copyManaAmounts(slot.Amounts),
 			// #763: this pick is part of TAPPING A PERMANENT FOR MANA

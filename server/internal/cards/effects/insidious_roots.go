@@ -44,6 +44,9 @@ func init() {
 // insidiousRootsGrow is the trigger's resolution.
 func insidiousRootsGrow(g *game.Game, item *game.StackItem) error {
 	controller := item.Controller
+	// "Plant" is a word of the source's text, read as the trigger
+	// resolves (CR 612.2, #3984).
+	plant := g.TextReaderForEffect(item).TextSubtype("Plant")
 	return g.CreateTokensThenForEffect(game.TokenCreation{
 		Controller: controller,
 		Source:     item.SourceCardID,
@@ -53,7 +56,7 @@ func insidiousRootsGrow(g *game.Game, item *game.StackItem) error {
 		// off the board, not "this permanent".
 		ctx := NewContext(g, item).asGroupMember()
 		for _, c := range g.BattlefieldCardsForEffect() {
-			if c.Controller != controller || !c.HasSubtype("Plant") {
+			if c.Controller != controller || !c.HasSubtype(plant) {
 				continue
 			}
 			if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {

@@ -62,7 +62,7 @@ func dreadhordeBigZombieTokenAttacked(ev game.Event, source *game.Card, _ game.C
 		return false
 	}
 	return c.Controller == source.Controller && c.IsToken() &&
-		c.HasSubtype("Zombie") && c.CurrentPower() >= 6
+		c.HasSubtype(source.TextSubtype("Zombie")) && c.CurrentPower() >= 6 // a word of the source's text (CR 612.2, #3984)
 }
 
 // dreadhordeGrantLifelink is "it gains lifelink until end of turn" —

@@ -216,7 +216,7 @@ func b11DwarfYouControlBecameTapped(ev game.Event, source *game.Card, g *game.Ga
 		return false
 	}
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || c.Controller != source.Controller || !c.HasSubtype("Dwarf") {
+	if !ok || c.Controller != source.Controller || !c.HasSubtype(source.TextSubtype("Dwarf")) {
 		return false
 	}
 	if ev.Kind == game.EventAttack && !c.Tapped {
