@@ -356,6 +356,21 @@ func TestSpawnsireCastsEldraziFromTheDatabaseWithoutASideboard(t *testing.T) {
 	}
 }
 
+// A card file cannot open the container for every copy of itself: a
+// CastableZones that names it is refused at boot, as exile is.
+func TestRegisterRefusesACardLevelOutsideCastZone(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("a card declaring ZoneOutside in CastableZones was registered")
+		}
+	}()
+	Register(Spec{
+		OracleID:      "test-outside-castable-zone",
+		Name:          "Sideboard Opener",
+		CastableZones: []game.ZoneKind{game.ZoneOutside},
+	})
+}
+
 func TestSpawnsireAndWishAreFull(t *testing.T) {
 	for _, id := range []string{spawnsireOracle, wishOracle} {
 		spec, ok := Lookup(id)

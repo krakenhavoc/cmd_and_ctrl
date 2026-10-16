@@ -218,25 +218,31 @@ func TestPlayFromOutsideEndsWithTheTurn(t *testing.T) {
 	}
 }
 
-// A live play window is not swept as "the card is gone" at the next step:
-// the sweep finds the named card in the container (it is in no zone the
-// card index reaches), so Wish's play is still good in the second main
-// phase.
-func TestPlayFromOutsideSurvivesStepChanges(t *testing.T) {
-	g := outsideGameInMain(t, outsideCreature("Costly", "{1}"))
+// A live play window is not swept as "the card is gone" when the end step
+// begins (the end step sweeps cast permissions before its triggers): the
+// sweep finds the named card in the container, which is in no zone the
+// card index reaches, so Wish's play of an instant is still good in the
+// end step of the turn it was granted.
+func TestPlayFromOutsideSurvivesTheEndStepSweep(t *testing.T) {
+	g := outsideGameInMain(t, withCost(sbCard("Quick Bolt", "Instant"), "{1}"))
 	me := g.Seats[0]
 	id := me.SideboardCards()[0].InstanceID
 	if !grantPlay(g, me, id) {
 		t.Fatal("grant refused")
 	}
-	advanceTo(t, g, StepPostcombatMain)
+	advanceTo(t, g, StepEnd)
 	if len(me.CastPermissions) != 1 {
-		t.Fatalf("the play window was swept mid-turn: %+v", me.CastPermissions)
+		t.Fatalf("the play window was swept as the end step began: %+v", me.CastPermissions)
 	}
 	fundOutside(me)
 	if err := g.CastSpell(me.ID, id, CastSpellParams{FromZone: "outside", Strict: true}); err != nil {
-		t.Fatalf("play in the second main phase: %v", err)
+		t.Fatalf("play an instant in the end step: %v", err)
 	}
+}
+
+func withCost(c Card, cost string) Card {
+	c.ManaCost = cost
+	return c
 }
 
 func fundOutside(p *Player) {
@@ -328,6 +334,11 @@ func TestNoCardOpensOutsideByItsOwnText(t *testing.T) {
 	g := newActiveGame(t)
 	c := NewCard("Anything", g.Seats[0].ID)
 	c.TypeLine = "Creature"
+	// Even a (refused-at-boot) declaration naming the container opens
+	// nothing: the engine does not read it.
+	prev := CatalogCastableZones
+	CatalogCastableZones = func(string) []ZoneKind { return []ZoneKind{ZoneOutside} }
+	t.Cleanup(func() { CatalogCastableZones = prev })
 	var opens bool
 	g.WithWriteLock(func() { opens = g.cardOpensZoneLocked(c, "any-key", ZoneOutside) })
 	if opens {

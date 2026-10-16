@@ -126,9 +126,9 @@ func (g *Game) PlayFromOutsideForEffect(player, source, cardID uuid.UUID, source
 // grantOutsideCastLocked is GrantCastPermissionOverCardForEffect for a
 // card in the holder's container, which that door cannot reach because
 // the card index does not cover ZoneOutside (CR 400.11c). The container
-// is the HOLDER's own and the card must be theirs: "a card you own" is
-// the printed clause, and a permission over someone else's sideboard has
-// no card to print it.
+// is the HOLDER's own, and every card in it is theirs (CR 400.11a puts a
+// card outside the game with the player who owns it), which is "a card
+// you own": a permission over someone else's sideboard finds no card.
 //
 // Caller must hold g.mu (write).
 func (g *Game) grantOutsideCastLocked(cardID uuid.UUID, perm CastPermission) bool {
@@ -140,7 +140,7 @@ func (g *Game) grantOutsideCastLocked(cardID uuid.UUID, perm CastPermission) boo
 		return false
 	}
 	for _, c := range p.Sideboard.Cards {
-		if c.InstanceID != cardID || c.Owner != perm.Player {
+		if c.InstanceID != cardID {
 			continue
 		}
 		perm.Zone = ZoneOutside
