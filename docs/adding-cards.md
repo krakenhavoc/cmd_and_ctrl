@@ -338,6 +338,26 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    activated ability, a `Repeatable` spec or a raised count. A card
    that lets someone choose instead (Typhoid Mary) is not this.
 
+   **"Target … chosen at random" (#1815, CR 603.3d)** wraps a
+   **trigger's** clause in `ChosenAtRandom(spec)` (Witch Hunt's
+   `ChosenAtRandom(TargetPlayer("target opponent chosen at random",
+   Opponent()))`, Scab-Clan Giant, Power Pack). The engine draws the
+   target uniformly from the legal set as the trigger goes on the
+   stack, from the keyed random stream, and no `pick_target` prompt is
+   queued; with no legal target the trigger is removed. `Register`
+   refuses it on a spell, an activated ability (Goblin Test Pilot waits
+   on #4051) and any clause but one undivided target. "Choose an
+   opponent at random" that is not a target (Knight Rampager) is
+   `ChooseAtRandomForEffect` at resolution. "Reselect the targets at
+   random" for a spell on the stack (Chef's Kiss) is
+   `Game.ReselectTargetsAtRandomForEffect(game.RandomRetarget{…})`:
+   every target drawn from all its legal targets, the current one
+   included, less `Exclude` and that player's permanents; a target with
+   nothing to be keeps its target. "A spell that targets only a single
+   permanent or player" is `TargetsOnlyASinglePermanentOrPlayer()`
+   (CR 115.9c: different objects, so one creature targeted twice
+   counts).
+
    **"Choose one that hasn't been chosen [this turn]" (#1749,
    [ADR 0097](decisions/0097-modes-that-havent-been-chosen.md))**
    is a constructor, not a tally in the card file:

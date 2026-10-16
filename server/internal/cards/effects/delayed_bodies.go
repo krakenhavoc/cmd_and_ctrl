@@ -253,6 +253,11 @@ var (
 	// last existed on the battlefield (CR 608.2h).
 	diedControllerLosesLifeEqualToToughnessBody = game.SimpleDelayedBody("dies/controller-loses-life-equal-to-toughness",
 		diedControllerLosesLifeEqualToToughness)
+
+	// "You may cast that card without paying its mana cost. If that
+	// spell would be put into your graveyard, exile it instead." (Power
+	// Pack, #1815): the payload card, if it is still in exile.
+	powerPackCastExiledBody = game.SimpleDelayedBody("power-pack/cast-exiled-free", powerPackCastExiled)
 )
 
 // maxManaDrainRefund bounds the refund a restored Mana Drain may add. No
