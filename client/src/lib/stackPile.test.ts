@@ -176,7 +176,8 @@ describe("geometry from rects", () => {
 // #3380, the ADR 0176 amendment (option a): with nothing saved, the pile
 // docks on the seam between the top row's seats instead of over a corner
 // seat. The slots below are Board.svelte's grids at a 1920×1000 board:
-// 6px padding, 8px gaps, the quadrant's 0.7fr / 1.3fr rows.
+// 6px padding, 8px gaps, the quadrant's 0.7fr / 1.3fr rows, and the row
+// layout's even split (#4066).
 describe("the pile's default spot", () => {
   const W = 1920;
   const H = 1000;
@@ -243,8 +244,9 @@ describe("the pile's default spot", () => {
   });
 
   it("takes the left of the two seams on a four-seat row table", () => {
-    // "next across across_next" over the full-width self.
-    const s = spot(grid([{ cols: 3 }, { cols: 3, spans: [3], self: 0 }], QUADRANT));
+    // "next across across_next" over the full-width self, split evenly
+    // since #4066.
+    const s = spot(grid([{ cols: 3 }, { cols: 3, spans: [3], self: 0 }], EVEN));
     const colW = (innerW - 2 * GAP) / 3;
     expect(s.seamX).toBeCloseTo(PAD + colW + GAP / 2);
     expect(s.left).toBe(Math.round(PAD + colW + GAP / 2 - PILE_W / 2));

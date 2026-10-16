@@ -4675,9 +4675,9 @@
        the hand fan horizontally (--card-h floors at 168px, so the
        cards do not shrink to fit), which is what the reporter hit.
        Both opponents now share the top row and self spans the full
-       width below. This makes the quadrant and row layouts identical
-       at three players, which is intended: there is no third
-       arrangement worth having here. `next` is in the top row so it
+       width below. The quadrant and row layouts seat three players
+       the same way, which is intended (the row layout's rows are split
+       evenly since #4066; this one keeps the shorter top row). `next` is in the top row so it
        renders flipped — see the markup above. */
     grid-template-areas:
       "next   across"
@@ -4695,24 +4695,32 @@
       "next   self";
   }
 
-  /* Row layout (settings.display.tableLayout = "row"; quadrant is the
-     default):
+  /* Row layout (settings.display.tableLayout = "row", the default):
      every opponent sits in the top row in turn order, left to right,
      and the self panel takes the full width below. All opponents
-     are `flipped` (hand at the top edge). */
+     are `flipped` (hand at the top edge).
+
+     #4066: the table is split evenly, your board the bottom half and
+     the opponents the top half, as the one-opponent table (#3032) and
+     the focus layout (#2336) already are. It was 0.7fr / 1.3fr, which
+     left three opponents a thin strip each; the self panel's hand fan
+     and battlefield still fit a half-height row, because --card-h is a
+     share of the panel's height with a 168px floor. */
   /* grid-template-rows is restated in both rules rather than
      inherited from the quadrant rules above: they match the same
-     element, so editing one silently changed the other. */
+     element, so editing one silently changed the other. The quadrant
+     layout keeps its 0.7 / 1.3 split: its bottom row also holds an
+     opponent. */
   :global(:root[data-table-layout="row"]) .board[data-opp-count="2"] {
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: minmax(0, 0.7fr) minmax(0, 1.3fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
       "next across"
       "self self";
   }
   :global(:root[data-table-layout="row"]) .board[data-opp-count="3"] {
     grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: minmax(0, 0.7fr) minmax(0, 1.3fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
       "next across across_next"
       "self self   self";

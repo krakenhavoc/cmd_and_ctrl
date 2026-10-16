@@ -777,10 +777,11 @@
             </label>
             <p class="help">
               Quadrant keeps the around-the-table seating. Row seats the opponents in turn order
-              across the top and gives your board the full width. At three players those two are the
-              same — you need the whole bottom row there either way. Focus gives your board the
-              bottom half and splits the top half between the opponents, each drawn as a summary;
-              hover their avatar to see their whole board, or click it to keep it open.
+              across the top half and gives your board the full width of the bottom half. At three
+              players both seat the opponents in one row, and Row splits the table evenly. Focus
+              gives your board the bottom half and splits the top half between the opponents, each
+              drawn as a summary; hover their avatar to see their whole board, or click it to keep
+              it open.
             </p>
 
             <label class="slider-row">

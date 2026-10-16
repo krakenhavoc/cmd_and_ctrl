@@ -90,9 +90,10 @@ export interface Settings {
     // across-table seats on top); "row" puts every opponent in turn
     // order across the top and gives your panel the full width.
     //
-    // #956 note: at THREE players those two are now identical — the
-    // viewer needs the whole bottom row there, and there is no third
-    // arrangement worth having.
+    // #956 note: at THREE players those two seat the table the same
+    // way — the viewer needs the whole bottom row there. Since #4066
+    // the row layout splits the table evenly between your board and the
+    // opponents' row, and quadrant keeps its shorter top row.
     //
     // "focus" (#2336) is the row arrangement split evenly: your board is
     // the bottom half, and every opponent is a summary in the top half,
