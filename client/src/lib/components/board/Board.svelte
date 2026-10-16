@@ -3774,6 +3774,7 @@
       considering={consideringSeatID !== null && consideringSeatID === prioritySeatID}
       onCounter={counterStackItem}
       onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
+      onActivateAbility={isSpectator ? undefined : handleActivateAbility}
       position={savedStackPosition(view, viewerID)}
       onSave={isSpectator ? undefined : (pos) => saveStackPosition(view.id, pos)}
       onReset={isSpectator ? undefined : () => clearStackPosition(view.id)}
@@ -3799,6 +3800,7 @@
         splitSecondActive={view.split_second_active === true}
         onCounter={counterStackItem}
         onTargetStackItem={(item) => completeTargetedCast("card", item.id)}
+        onActivateAbility={isSpectator ? undefined : handleActivateAbility}
         {boardEl}
         position={savedStackPosition(view, viewerID)}
         onSave={isSpectator ? undefined : (pos) => saveStackPosition(view.id, pos)}

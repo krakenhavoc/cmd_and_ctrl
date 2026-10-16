@@ -343,6 +343,21 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			}
 			v, reason = pv, "activate another player's ability"
 		}
+		// #1865 (ADR 0106 §1 amendment 2026-10-16): an ability of a SPELL
+		// on the stack (Lightning Storm). Another player's spell is across
+		// the table exactly as their permanent is, and held to the same
+		// rule: only a declared purpose buys this seat anything. Pumping
+		// an opponent's storm that may be aimed at the bot is the gift
+		// owner decision 2 forbids.
+		if src == nil {
+			if spell := st.stack[cp.SourceCardID]; spell != nil && spell.Controller != "" && spell.Controller != st.me {
+				pv, ok := st.anyPlayerPurposeValue(spell, cp.AbilityIndex)
+				if !ok {
+					return anyPlayerDeclined, "another player's spell's ability with no declared purpose"
+				}
+				v, reason, across = pv, "activate another player's spell's ability", true
+			}
+		}
 		// #2449: moving an Equipment between the bot's own creatures
 		// buys only what the new host gains (equip_move.go). Priced
 		// flat, a free equip beat passing from either side for ever.
@@ -974,6 +989,12 @@ func (st *state) anyPlayerPurposeValue(src *protocol.CardView, index int) (float
 		if src.ActivatedAbilities[i].Index == index {
 			row = &src.ActivatedAbilities[i]
 			break
+		}
+	}
+	// #1865: a spell on the stack carries its rows on zone_abilities.
+	for i := range src.ZoneAbilities {
+		if row == nil && src.ZoneAbilities[i].Index == index {
+			row = &src.ZoneAbilities[i]
 		}
 	}
 	if row == nil || !row.AnyPlayer || !row.Purpose.Priced() {

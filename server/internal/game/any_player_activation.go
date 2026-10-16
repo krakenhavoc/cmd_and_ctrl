@@ -44,10 +44,10 @@ import "github.com/google/uuid"
 // the Holy Nimbus) is every player BUT the controller, and "Only this
 // creature's owner may activate this ability" (Personal Incarnation) is
 // the owner alone, so the controller of a stolen one cannot. Off the
-// battlefield
-// the CR 108.4a owner rule is unchanged: no printed any-player ability
-// functions from a hidden zone, and Register refuses one that declares
-// a zone (checkAnyPlayerAbility in the effects package).
+// battlefield and the stack the CR 108.4a owner rule is unchanged: no
+// printed any-player ability functions from a hidden zone, and Register
+// refuses one that declares such a zone (checkAnyPlayerAbility in the
+// effects package).
 //
 // A third named activator is the granting effect's "you" (ADR 0106 §1
 // amendment 2026-10-09, #1947): Martyrdom's granted "Only you may
@@ -58,11 +58,19 @@ import "github.com/google/uuid"
 // GrantorOnly row with no recorded grantor is open to nobody, which is
 // weaker than printed, never stronger.
 //
+// On the STACK (ADR 0106 §1 amendment 2026-10-16, #1865) the object is
+// a spell, and every spell has a controller (CR 112.2, ADR 0104), so the
+// battlefield's answer applies to it unchanged: the spell's controller,
+// or anyone for an "Any player may activate this ability" row. Lightning
+// Storm is the one printed card. Card.Controller on the stack is layer
+// 2's answer (stackControlPassLocked), so a spell somebody has taken is
+// the taker's to pump.
+//
 // CanActivateAbilities (Arrest) and the board-wide gate are NOT asked
 // here. They restrict the object or the ability, not the activator, so
 // they apply to every player and are asked by each caller beside this.
 func MayActivate(player uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbilityShape, origin AbilityOrigin) bool {
-	if zone == ZoneBattlefield {
+	if zone == ZoneBattlefield || zone == ZoneStack {
 		switch {
 		case ab.AnyPlayer:
 			return true
