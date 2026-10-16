@@ -34,6 +34,7 @@ tests-e2e/
     ├── mulligan.spec.ts       # keep / mulligan dialog + the opening-hand roll call
     ├── opp-clip-2961.spec.ts  # #2961: an opponent's creatures keep their P/T badge inside their panel at 1280x720 and 1600x900
     ├── players.ts             # shared joinAsPlayer (invite flow → seated on the game route)
+    ├── rebound-3490.spec.ts   # #3490: rebound (Quantum Misalignment) end to end on default settings: exiled, the upkeep offer in the upkeep after a discard-ended turn, "Cast it free" opens targeting with nothing passing under it, cast free, into the graveyard
     ├── s19-deck-fixture.ts    # two 100-card decks built around the S19 trigger cards
     ├── s19-helpers.ts         # S19 game setup via admin WS (join, decks, keep_hand)
     ├── s19-triggers.spec.ts   # S19 triggered abilities: chooser modal, targets, resolution
