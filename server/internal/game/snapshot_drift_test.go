@@ -211,6 +211,8 @@ var gameFields = plan(
 	// CR 704.3 boundary. Carried with each choice's midResolution.
 	"resolutionOpen", carried, "",
 	"pausedModeWalk", carried, "",
+	// #4012: an effect's later steps, parked behind the same prompt.
+	"pausedStepWalk", carried, "",
 	// #3613: the end of that resolution, parked behind the same prompt.
 	"pausedResolutionTail", carried, "",
 	"resolutionDepth", dropped, "not game state: it counts resolution functions on the Go stack, so it is zero between actions (#1289)",

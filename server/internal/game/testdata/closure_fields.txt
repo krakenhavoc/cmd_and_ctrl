@@ -91,6 +91,7 @@ Game.lastKnownStack                          census:IntrinsicAbilityCards       
 Game.logProjection                           rebuilt                            # Game.logProjection
 Game.pausedModeWalk                          keyed                              # Game.pausedModeWalk
 Game.pausedResolutionTail                    keyed                              # Game.pausedResolutionTail
+Game.pausedStepWalk                          keyed                              # Game.pausedStepWalk
 Game.promptRuns                              census:ChoiceResumeFrames          # Game.promptRuns
 Game.resolving                               census:ChoiceResumeFrames          # Game.resolving
 Game.scopedEffectMemo                        rebuilt                            # Game.scopedEffectMemo
@@ -229,6 +230,7 @@ resolvingItem.card                           census:ChoiceResumeFrames          
 resolvingItem.item                           census:ChoiceResumeFrames          # Game.resolving.item
 scopedEffectAdapterMemo.effects              rebuilt                            # Game.scopedEffectMemo.effects
 searchResumeFrame.spec                       census:ChoiceResumeFrames          # Game.PendingChoices.searchResume.spec
+stepWalk.item                                keyed                              # Game.pausedStepWalk.item
 tokenTail.then                               census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.tokenTail.then
 triggerResumeFrame.ability                   census:ChoiceResumeFrames          # Game.PendingChoices.triggerResume.ability
 triggerResumeFrame.source                    census:ChoiceResumeFrames          # Game.PendingChoices.triggerResume.source

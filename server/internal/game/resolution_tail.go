@@ -84,7 +84,7 @@ func (g *Game) holdResolutionTailLocked(item *StackItem, resolveSeq uint64) bool
 	if item == nil || !g.resolutionOpen {
 		return false
 	}
-	if g.pausedModeWalk == nil && g.pausedResolutionChoiceLocked() == nil {
+	if g.pausedModeWalk == nil && g.pausedStepWalk == nil && g.pausedResolutionChoiceLocked() == nil {
 		return false
 	}
 	g.deferResolveLogLineLocked(resolveSeq)
@@ -114,13 +114,14 @@ func (g *Game) deferResolveLogLineLocked(seq uint64) {
 }
 
 // finishResolutionTailLocked runs the parked tail, if any, and reports
-// whether there was one. It waits for parked bullets: those are earlier
-// instructions than anything the tail does.
+// whether there was one. It waits for parked bullets and parked effect
+// steps (step_walk.go): those are earlier instructions than anything the
+// tail does.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) finishResolutionTailLocked() bool {
 	t := g.pausedResolutionTail
-	if t == nil || g.pausedModeWalk != nil {
+	if t == nil || g.pausedModeWalk != nil || g.pausedStepWalk != nil {
 		return false
 	}
 	g.pausedResolutionTail = nil

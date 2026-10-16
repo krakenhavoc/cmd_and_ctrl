@@ -3787,6 +3787,15 @@ adds a target clause; the effect then reads `item.Targets[0]`, so it
 is a closure rather than `Do`. Add a missing shape or predicate to
 `triggers_common.go`, not to the card file.
 
+**Prefer `Do` when a step can ask something.** A `Do` that is the
+row's own Effect waits for a step's prompt before it runs the next
+step (CR 608.2c, #4012, `effects/do_walk.go`). That covers a scry, a
+CR 616 ordering prompt and a prevention follow-up's question, and it
+survives a restore. A `Do` called from inside a closure
+(`Do(...)(g, item)`) cannot wait, and neither can plain statements in a
+closure. If a later instruction must read the ANSWER, not just come
+after it, it still goes in the asking primitive's `Then`.
+
 For a graveyard watcher that must have been there before a creature died,
 use `g.InSameSimultaneousExitForEffect(source.InstanceID, ev.CardID)` to
 exclude an actual shared exit (#3417, ADR 0018 amendment). `Event.Batch`

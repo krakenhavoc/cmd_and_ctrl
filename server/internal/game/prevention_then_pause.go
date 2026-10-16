@@ -65,12 +65,12 @@ import "slices"
 // restore point from before the damage — exactly what a damage event
 // paused on a CR 616 ordering prompt does.
 //
-// WHAT IT DOES NOT DO. A catalog effect written as a plain sequence of
-// steps (Do(DealDamage{…}, DrawCards{…})) runs its later steps on the
-// Go stack after the damage call returns, prompt or no prompt, as it
-// already does after a CR 616 ordering prompt. The instruction-level
-// forms — the ...ThenForEffect continuations, the Each walks, a modal
-// item's bullets — wait.
+// A catalog effect written as a plain sequence of steps
+// (Do(DealDamage{…}, DrawCards{…})) waits too since #4012: the steps
+// after the one that asked are parked in Game.pausedStepWalk and resumed
+// after the damage instruction's own continuation (step_walk.go). A Do
+// run from inside a hand-written closure still runs its later steps on
+// the Go stack, as it does after a CR 616 ordering prompt.
 
 // followUpPark is the rest of one damage instruction, parked behind a
 // prompt its instance's follow-up asked.

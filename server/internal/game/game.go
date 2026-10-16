@@ -912,6 +912,12 @@ type Game struct {
 	// Clone and the persisted snapshot carry it. See mode_walk.go.
 	pausedModeWalk *modeWalk
 
+	// pausedStepWalk is the rest of the resolving item's effect steps,
+	// parked behind a prompt an earlier step queued (#4012, CR 608.2c).
+	// Non-nil only while a resolution is open and paused. Clone and the
+	// persisted snapshot carry it. See step_walk.go.
+	pausedStepWalk *stepWalk
+
 	// pausedResolutionTail is the end of a resolution parked behind one
 	// of its own prompts (#3613, CR 608.2n): a spell's exit from the
 	// stack and the log's "resolved" line. Non-nil only while a
