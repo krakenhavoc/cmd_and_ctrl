@@ -64,19 +64,28 @@ func LivingWeapon(cardName string) game.TriggeredAbility {
 // everything off the item it is handed, and is therefore safe across
 // the Clone an undo restores.
 func livingWeaponCreateGermAndAttach(g *game.Game, item *game.StackItem) error {
-	return createTokenAndAttachSource(g, item, livingWeaponGermToken)
+	return createTokenAndAttachSource(g, item, livingWeaponGermToken, false)
 }
 
 // createTokenAndAttachSource is "create <this token>, then attach this
 // Equipment to it" for the keywords that print it: living weapon and
 // job select. The attach rides the creation's continuation for the
 // reason the file comment gives.
-func createTokenAndAttachSource(g *game.Game, item *game.StackItem, template string) error {
+//
+// The keywords' tokens are defined by their rules, not by words of the
+// card's text; a card that prints its own ("create a 4/4 blue Giant
+// Wizard creature token, then attach this Equipment to it") is
+// `described`, and its token is read through its text (#4005).
+func createTokenAndAttachSource(g *game.Game, item *game.StackItem, template string, described bool) error {
+	tmpl := ruleDefinedToken(TokenCard(template))
+	if described {
+		tmpl = NewContext(g, item).TextToken(TokenCard(template))
+	}
 	return g.CreateTokensThenForEffect(game.TokenCreation{
 		Controller: item.Controller,
 		Source:     item.SourceCardID,
 		Groups: []game.TokenGroup{{
-			Template: TokenCard(template),
+			Template: tmpl,
 			Count:    1,
 		}},
 	}, func(g *game.Game, created []uuid.UUID) error {

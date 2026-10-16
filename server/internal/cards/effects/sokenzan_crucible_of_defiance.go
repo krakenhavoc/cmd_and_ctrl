@@ -47,7 +47,7 @@ func sokenzanChannel(g *game.Game, item *game.StackItem) error {
 	return g.CreateTokensThenForEffect(game.TokenCreation{
 		Controller: item.Controller,
 		Source:     item.SourceCardID,
-		Groups:     []game.TokenGroup{{Template: TokenCard("1/1 colorless Spirit"), Count: 2}},
+		Groups:     []game.TokenGroup{{Template: NewContext(g, item).TextToken(TokenCard("1/1 colorless Spirit")), Count: 2}},
 	}, func(g *game.Game, created []uuid.UUID) error {
 		next := NewContext(g, item)
 		for _, id := range created {

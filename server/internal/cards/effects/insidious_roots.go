@@ -50,7 +50,7 @@ func insidiousRootsGrow(g *game.Game, item *game.StackItem) error {
 	return g.CreateTokensThenForEffect(game.TokenCreation{
 		Controller: controller,
 		Source:     item.SourceCardID,
-		Groups:     []game.TokenGroup{{Template: TokenCard("0/1 green Plant"), Count: 1}},
+		Groups:     []game.TokenGroup{{Template: g.TextReaderForEffect(item).TokenThroughText(TokenCard("0/1 green Plant")), Count: 1}},
 	}, func(g *game.Game, _ []uuid.UUID) error {
 		// asGroupMember (#1463): "each Plant you control" is a set read
 		// off the board, not "this permanent".

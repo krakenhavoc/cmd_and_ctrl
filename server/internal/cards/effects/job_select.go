@@ -17,7 +17,7 @@ const jobSelectHeroToken = "1/1 colorless Hero"
 func JobSelect(cardName string) game.TriggeredAbility {
 	return WhenThisEnters(cardName+" — job select: create a 1/1 Hero and attach this to it",
 		func(g *game.Game, item *game.StackItem) error {
-			return createTokenAndAttachSource(g, item, jobSelectHeroToken)
+			return createTokenAndAttachSource(g, item, jobSelectHeroToken, false)
 		})
 }
 

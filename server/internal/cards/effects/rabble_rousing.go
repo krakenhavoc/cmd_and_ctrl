@@ -88,7 +88,7 @@ func rabbleRousingResolve(g *game.Game, item *game.StackItem, ref game.Permissio
 		Controller: controller,
 		Source:     item.SourceCardID,
 		Groups: []game.TokenGroup{{
-			Template: TokenCard("1/1 green and white Citizen"),
+			Template: NewContext(g, item).TextToken(TokenCard("1/1 green and white Citizen")),
 			Count:    n,
 		}},
 	}, offer)

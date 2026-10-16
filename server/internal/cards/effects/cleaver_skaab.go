@@ -35,7 +35,7 @@ func init() {
 				if !ok {
 					return nil
 				}
-				return CreateToken{Template: tmpl, N: 2}.Apply(ctx)
+				return createTokenCopies(ctx, ctx.Controller(), tmpl, 2)
 			},
 		}},
 	})

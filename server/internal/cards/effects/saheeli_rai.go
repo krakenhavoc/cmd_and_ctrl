@@ -139,7 +139,7 @@ func saheeliHastyArtifactCopy(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	tmpl.TypeLine = saheeliArtifactInAddition(tmpl.TypeLine)
-	made, err := g.CreateTokensForEffect(item.Controller, tmpl, 1, game.TokenEntryOptions{
+	made, err := g.CreateTokensForEffect(item.Controller, copiedToken(tmpl), 1, game.TokenEntryOptions{
 		Keywords: []string{"haste"},
 	})
 	if err != nil {

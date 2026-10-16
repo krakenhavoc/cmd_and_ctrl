@@ -69,7 +69,7 @@ func saheeliGiftedCopyArtifacts(g *game.Game, item *game.StackItem) error {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == item.Controller && c.IsArtifact() {
 			if tmpl, ok := TokenCopyTemplate(g, c.InstanceID); ok {
-				groups = append(groups, game.TokenGroup{Template: tmpl, Count: 1})
+				groups = append(groups, game.TokenGroup{Template: copiedToken(tmpl), Count: 1})
 			}
 		}
 	}

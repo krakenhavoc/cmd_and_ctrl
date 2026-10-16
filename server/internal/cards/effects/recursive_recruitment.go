@@ -31,7 +31,7 @@ func init() {
 					}
 				}
 			}
-			_, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), TokenCard("2/2 colorless Wizard Soldier named Cadet"), 2, opts)
+			_, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), ctx.TextToken(TokenCard("2/2 colorless Wizard Soldier named Cadet")), 2, opts)
 			return err
 		},
 	})

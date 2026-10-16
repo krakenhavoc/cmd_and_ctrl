@@ -40,7 +40,7 @@ func init() {
 			Key: "Parhelion II — two attacking 4/4 Angels",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return g.CreateTokensAttackingForEffect(
-					item.Controller, TokenCard("4/4 white Angel with flying and vigilance"), 2, item.Trigger.Event.Target)
+					item.Controller, NewContext(g, item).TextToken(TokenCard("4/4 white Angel with flying and vigilance")), 2, item.Trigger.Event.Target)
 			},
 		}},
 	})
