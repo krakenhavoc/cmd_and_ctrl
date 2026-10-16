@@ -2845,6 +2845,13 @@ export interface AdditionalCostView {
   exile_cost_label?: string;
   exile_cost_options?: string[];
   exile_cost_zone?: ExileCostZone;
+  // #1948: "exile X cards from your graveyard" (Skeletal Scrying,
+  // Harvest Pyre). `demands_x` is set too, so the X prompt opens; the
+  // picks on `exile_ids` must number exactly the announced X
+  // (`exile_cost_n` is absent). `exile_cost_x_max` is the largest X the
+  // graveyard pays, absent at 0.
+  exile_cost_x?: boolean;
+  exile_cost_x_max?: number;
   payable?: boolean;
 }
 

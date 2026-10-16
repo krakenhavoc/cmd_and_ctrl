@@ -251,3 +251,17 @@ Slices 1, 2, 4 and 5 are independent. Slice 3 depends on slice 2. Each slice upd
 4. **Scheming Silvertongue moves to the second-main-phase condition in slice 1.**
 5. **Scroll of Fate ships in slice 4.**
 6. **Graveyard only:** `Register` refuses the hand form of `ExileCards` on a spell (decision 2).
+
+## Amendment (2026-10-16, #1948): the X forms and the either/or branch
+
+Decision 2 left "the X forms (Skeletal Scrying, Harvest Pyre, Chill Haunting, Haunting Misery), and Soaring Stoneglider's either/or branch" on #1948. Both ship now, as two small extensions of the same component, so the walk, the validator, the payer and the record stay the ones decision 2 chose.
+
+**1. "Exile X cards from your graveyard" is the X the cast announces.** `game.ExileCost` gains `CountFromX`, built by `effects.ExileXFromGraveyardCost(label, match)` with `N` zero. CR 601.2b announces X with the spell, and CR 107.3i makes every X on the object one number, so the count is `CastSpellParams.XValue`: Skeletal Scrying's {X} in its mana cost and its exile are the same X, and Harvest Pyre, whose mana cost has no {X}, announces one anyway, the way Toxic Deluge's "pay X life" and Soul Immolation's "blight X" do. The caster names exactly X cards on `exile_ids`; X = 0 names none and is legal. The largest X is what the graveyard can pay (CR 118.3): `Game.ExileCardsXCeilingForEffect`, the number of cards the clause's own walk offers, read by the validator (an X above it is refused before anything moves), the view (`additional_cost.exile_cost_x`, `exile_cost_x_max`, and `demands_x`) and the enumerator, so the three agree (#544). The spell reads X through `ctx.X()`, which is also the number exiled. A free cast of Skeletal Scrying is X = 0 by CR 107.3b, as for any {X} spell; a free Harvest Pyre still announces X, as Toxic Deluge does.
+
+- **Client.** The X prompt opens for the card (it demands X) and is capped at `exile_cost_x_max`; the graveyard picker opens after it, sized to X, with the "X" in the clause replaced by the number. X = 0, or a graveyard holding exactly X matching cards, needs no picker.
+- **Enumerator.** The X search is capped by the ceiling, the move names the first X cards of the policy's cheapest-fuel-first order, and the move never carries an open X range, because its `exile_ids` fix the X.
+- **Guards.** `effects.Register` refuses the X form on an activated or mana ability, on an optional cost, on an either/or branch, beside pay X life, blight X or a waterbend {X} (one announced X can't pay both), and with a printed count beside it.
+
+**2. A fixed count may be a branch of an either/or cost.** Soaring Stoneglider's "exile two cards from your graveyard or pay {1}{W}" is `EitherCost(ExileFromGraveyardCost(2, …).Keyed("exile"), ManaAdditionalCost("{1}{W}").Keyed("mana"))`. `ChosenAdditionalCost` already hands the chosen branch to the plan as its mandatory entry (ADR 0100 §2), so the validator and payer needed nothing; `AdditionalCostBranchPayableLocked` now counts the graveyard for an exile branch, which is what the view's `branches[].payable`, the enumerator and `CastSpell` ask. The X form stays off a branch: no printed card puts one there.
+
+**Rejected:** a separate "exile X" component. It would be a second walk and a second validator for one clause, the thing decision 2 avoided. **Rejected:** letting the enumerator offer an open X range for these casts, as it does for a plain {X} spell. The exiled cards are named per X, so a range would hand a seat an X its `exile_ids` don't match.
