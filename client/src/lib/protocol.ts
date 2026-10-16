@@ -2011,7 +2011,10 @@ export interface PendingChoiceView {
   // "battlefield_tapped", or "cast_free" ("you may cast a spell from
   // your hand without paying its mana cost" — answering with a card
   // opens its cast at once), "cast_free_library" (the same over cards the
-  // chooser looked at on top of their own library, #2110), or "manifest" (ADR 0189: the named hand
+  // chooser looked at on top of their own library, #2110), "outside" (ADR 0191: the named cards
+  // come in from the chooser's sideboard), "cast_free_outside" / "play_outside" (#3955: the named
+  // sideboard cards are cast free, or played this turn, from outside the game; the pick opens the
+  // sideboard tab), or "manifest" (ADR 0189: the named hand
   // cards are put onto the battlefield face down as 2/2 creatures).
   // Absent on a plain discard or look.
   choose_destination?: string;

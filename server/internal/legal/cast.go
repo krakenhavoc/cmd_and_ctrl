@@ -131,6 +131,10 @@ func (e *enumerator) castZones(anyGrant bool) []castZone {
 	if !anyGrant {
 		return out
 	}
+	// #3955: the cards this seat owns outside the game, castable only
+	// under a permission (a card's own text opens nothing there). Its
+	// OWN container only: another seat's is not reachable.
+	out = append(out, castZone{p.Sideboard, game.ZoneOutside, "outside", true})
 	for _, other := range g.Seats {
 		if other == nil || other.ID == e.seat {
 			continue
@@ -236,7 +240,7 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 	// empty list anyway — this just declines to build one for every
 	// card in a thirty-card graveyard on every bot decision.
 	switch kind {
-	case game.ZoneGraveyard, game.ZoneExile, game.ZoneLibrary:
+	case game.ZoneGraveyard, game.ZoneExile, game.ZoneLibrary, game.ZoneOutside:
 		// A card's own declaration opens ITS OWNER's zone and nobody
 		// else's: flashback, escape and Gravecrawler all print "your
 		// graveyard" (#1022), and nothing prints a library cast at all
@@ -356,7 +360,11 @@ func (e *enumerator) landPlayMove(card game.Card, kind game.ZoneKind, from strin
 		return
 	}
 	label := "Play " + card.Name
-	if kind != game.ZoneHand {
+	switch kind {
+	case game.ZoneHand:
+	case game.ZoneOutside:
+		label += " from outside the game"
+	default:
 		label += " from " + from
 	}
 	e.add(Move{
@@ -1638,6 +1646,10 @@ func (e *enumerator) castMoveEmitter(
 			label += " from the command zone"
 		case "graveyard", "exile", "library":
 			label += " from " + from
+		case "outside":
+			// #3955: a model tier reads this line, and "outside" alone
+			// is not a place.
+			label += " from outside the game"
 		}
 		// #2167: which of the card's types a per-type permission spends.
 		if permType != "" {

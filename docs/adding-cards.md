@@ -9946,13 +9946,32 @@ the Impossible does (a pair with different names, then an opponent's
 `RevealPick`). Read a candidate with `LookupOutsideCardForEffect`, never
 `LookupCardForEffect`, which cannot see these cards on purpose.
 
-What is still missing: Karn, the Great Creator's "or choose a face-up
-artifact card you own in exile", Spawnsire of Ulamog's {20} (casting from
-outside the game), Research // Development (shuffling cards in from outside
-the game), learn, and the wishes that put a cost or a type clause beside
-the same shape (Coax from the Blind Eternities, Wish). Cunning, Glittering,
-Golden and Death Wish and Fae of Wishes // Granted are the same
-`TakeFromOutside` with their own clause (#3525).
+**Casting or playing a card from outside the game** (Spawnsire of Ulamog's
+{20}, Wish; #3955, [ADR
+0198](decisions/0198-outside-the-game-is-the-card-database-without-a-sideboard.md)
+amendment of 2026-10-16) is `PlayFromOutside` (`effects/play_from_outside.go`),
+the cast half of the same seam. It asks through the same
+`QueueOutsidePickForEffect`, so the sideboard and the database both apply, and
+grants a permission over each picked card in the container:
+
+```go
+PlayFromOutside{Name: "Spawnsire of Ulamog", Clause: "any number of Eldrazi cards",
+    Free: true, Match: func(c game.Card) bool { return c.HasSubtype("Eldrazi") && !c.IsLand() }}
+PlayFromOutside{Name: "Wish", Clause: "a card", Max: 1} // played, at its own cost, this turn
+```
+
+`Free` is the pass-closed `{0}` cast (`game.FreeCastFromOutsidePermission`,
+the cards not cast stay outside the game); without it the permission is
+`game.PlayFromOutsidePermission` (until end of turn, a land included). The cast
+itself is a `cast_spell` with `from_zone: "outside"` from the sideboard tab. A
+card file never declares the container in `CastableZones` (`Register` panics):
+a card-level declaration would open every copy's sideboard, and the permission
+is per instance. Test with `castFromOutside` in `play_from_outside_test.go`.
+
+What is still missing: Research // Development (shuffling cards in from outside
+the game) and learn. Cunning, Glittering, Golden and Death Wish and Fae of
+Wishes // Granted are the same `TakeFromOutside` with their own clause (#3525);
+Coax from the Blind Eternities and Karn, the Great Creator shipped with ADR 0198.
 
 ### Renown (CR 702.112, #2049)
 

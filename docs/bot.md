@@ -3176,6 +3176,15 @@ a deck someone built for it. The model tiers see their own sideboard in the
 board text (`your sideboard (outside the game): …`) and an opponent's as a
 count.
 
+A pick that then casts or plays what it names (Spawnsire of Ulamog's free
+cast, Wish; `choose_destination: "cast_free_outside"` / `"play_outside"`, #3955)
+is priced as the same take, and the enumerator offers every card a permission
+opens in the sideboard as a cast ("Cast Ulamog's Crusher from outside the
+game") or a land play at every price the engine accepts. An "any number" pick
+from the database also offers the whole suggestion list as one answer. The
+heuristic finds a card it owns outside the game when it prices the cast, and a
+free cast from outside costs it no card in hand.
+
 ## Never offered a banned cast (#760)
 
 The announce-time cast gate (`game.CastGateLocked`) is called once per

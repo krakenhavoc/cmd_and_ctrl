@@ -146,7 +146,9 @@
     handFreeCastRequest,
     isFreeCastPick,
     isLibraryFreeCastPick,
+    isOutsideCastPick,
     mayCastKeywordsThatOpenACast,
+    outsideCastRequest,
   } from "../../freeCastRequest";
 
   interface Props {
@@ -601,6 +603,10 @@
     if (isLibraryFreeCastPick(active) && selected.size > 0) {
       freeCastRequest.set(Array.from(selected)[0] ?? null);
     }
+    // #3955: the same for cards owned outside the game (Spawnsire of
+    // Ulamog's free cast, Wish's play): Board opens the sideboard tab,
+    // where every granted card carries its cast button.
+    if (isOutsideCastPick(active) && selected.size > 0) outsideCastRequest.set(true);
     answer({ card_ids: Array.from(selected) });
   }
 
@@ -823,6 +829,8 @@
 
   function takeCollection(): void {
     if (!canTakeCollection(collectionPicked, collectionMin, collectionMax)) return;
+    // #3955: a pick that casts or plays what it names (see submit).
+    if (isOutsideCastPick(active)) outsideCastRequest.set(true);
     answer({ card_names: collectionPicked });
   }
 
@@ -2951,6 +2959,16 @@
           {:else if active.choose_destination === "sacrifice"}
             <!-- #3664: an "each player sacrifices" edict (CR 101.4). -->
             The permanents you pick are sacrificed once every player has chosen, all at the same time.
+          {:else if active.choose_destination === "cast_free_outside"}
+            <!-- #3955: Spawnsire of Ulamog's {20}. -->
+            These are the cards you own outside the game: your sideboard. Each one you pick can be cast
+            from your sideboard without paying its mana cost, until you next pass priority; the ones you
+            leave stay outside the game.
+          {:else if active.choose_destination === "play_outside"}
+            <!-- #3955: Wish. -->
+            These are the cards you own outside the game: your sideboard. The one you pick can be played
+            from your sideboard until the end of this turn, for its own cost; if you don't play it, it
+            stays outside the game.
           {:else if active.choose_destination === "outside"}
             <!-- ADR 0191: a pick over the cards your deck owns outside the game. -->
             These are the cards you own outside the game: your sideboard. Only you can see them, and the
