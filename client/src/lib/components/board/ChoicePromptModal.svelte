@@ -130,8 +130,11 @@
     COLLECTION_MIN_QUERY,
     canTakeCollection,
     collectionRows,
+    allowsRepeatedNames,
+    pickedCount,
     takeCollectionLabel,
     toggleCollectionPick,
+    unpickOneCollection,
   } from "../../outsideCollection";
   import {
     canPayCards,
@@ -793,6 +796,8 @@
   });
   const collectionMax = $derived(Math.max(active?.choose_max ?? 1, 1));
   const collectionMin = $derived(active?.choose_min ?? 0);
+  // #3955: an "any number" pick takes the same name more than once.
+  const collectionRepeats = $derived(allowsRepeatedNames(collectionMax));
   const collectionList = $derived(
     collectionRows(active?.collection_options ?? [], collectionResults, collectionQuery),
   );
@@ -2447,19 +2452,37 @@
       {/if}
       <div class="type-list">
         {#each collectionList as row (row.name)}
-          <button
-            type="button"
-            class="type-pick collection-row"
-            class:picked={collectionPicked.includes(row.name)}
-            aria-pressed={collectionPicked.includes(row.name)}
-            onclick={() => toggleCollection(row.name)}
-          >
-            <span class="collection-name">{row.name}</span>
-            {#if row.manaCost}
-              <span class="pick-cost"><ManaCost cost={row.manaCost} size={14} /></span>
+          {@const copies = pickedCount(collectionPicked, row.name)}
+          <div class="collection-item">
+            <button
+              type="button"
+              class="type-pick collection-row"
+              class:picked={copies > 0}
+              aria-pressed={copies > 0}
+              onclick={() => toggleCollection(row.name)}
+            >
+              <span class="collection-name">{row.name}</span>
+              {#if collectionRepeats && copies > 0}
+                <span class="collection-copies" aria-label={`${copies} chosen`}>×{copies}</span>
+              {/if}
+              {#if row.manaCost}
+                <span class="pick-cost"><ManaCost cost={row.manaCost} size={14} /></span>
+              {/if}
+              <span class="collection-type">{row.typeLine}</span>
+            </button>
+            {#if collectionRepeats && copies > 0}
+              <!-- An "any number" pick takes a name as often as it is
+                   clicked; this takes one copy back. -->
+              <button
+                type="button"
+                class="type-pick collection-less"
+                aria-label={`take one ${row.name} back`}
+                onclick={() => (collectionPicked = unpickOneCollection(collectionPicked, row.name))}
+              >
+                −
+              </button>
             {/if}
-            <span class="collection-type">{row.typeLine}</span>
-          </button>
+          </div>
         {:else}
           <p class="prompt-hint">
             {collectionQuery.trim().length >= COLLECTION_MIN_QUERY
@@ -3450,6 +3473,11 @@
   }
   /* ADR 0198: a row of the outside-the-game picker is a card, so it is a
      full-width row with its cost and type line, not a pill. */
+  .collection-item {
+    display: flex;
+    gap: 6px;
+    align-items: stretch;
+  }
   .collection-row {
     display: flex;
     align-items: center;
@@ -3457,6 +3485,16 @@
     width: 100%;
     border-radius: 8px;
     text-align: left;
+  }
+  .collection-copies {
+    color: var(--accent-strong);
+    font-family: var(--font-mono);
+    font-weight: 700;
+  }
+  .collection-less {
+    flex: 0 0 auto;
+    border-radius: 8px;
+    padding: 0 12px;
   }
   .collection-row.picked {
     border-color: var(--accent);

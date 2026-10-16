@@ -89,21 +89,29 @@ func (g *Game) FreeCastFromOutsidePermission(player, source uuid.UUID, sourceNam
 	}
 }
 
-// PlayFromOutsidePermission is "you may play a card you own from outside
-// the game this turn": until end of turn, at the card's own timing, for
-// its own cost, a land included (and so not cast-only). Nothing closes it
-// early. A card not played stays outside the game.
+// OutsidePlayRightPermission is "you may play a card you own from outside
+// the game this turn" (Wish): a STANDING, one-use permission over the
+// holder's whole container, until end of turn, at the card's own timing
+// and for its own cost, a land included (so not cast-only). Standing
+// rather than named per card, because the printed card does not choose
+// when it resolves but when it is played (CR 400.11): the card is named
+// at that moment (NameOutsideCardToPlay for a database pool; a sideboard
+// pool just casts the card it wants), so the permission has to cover a
+// card that does not exist yet. CastsLeft 1 spends it on the first card
+// played or cast through it; a pick that is cancelled spends nothing.
 //
 // Caller must hold g.mu.
-func (g *Game) PlayFromOutsidePermission(player, source uuid.UUID, sourceName string) CastPermission {
+func (g *Game) OutsidePlayRightPermission(player, source uuid.UUID, sourceName string) CastPermission {
 	return CastPermission{
 		Player:     player,
 		Zone:       ZoneOutside,
+		Scope:      ScopeStanding,
 		Duration:   g.UntilEndOfTurnDuration(),
 		Timing:     TimingNormal,
+		CastsLeft:  1,
 		Source:     source,
 		SourceName: sourceName,
-		Label:      sourceName + " — play it from outside the game",
+		Label:      sourceName + " — play a card from outside the game",
 	}
 }
 
@@ -115,12 +123,81 @@ func (g *Game) FreeCastFromOutsideForEffect(player, source, cardID uuid.UUID, so
 	return g.grantOutsideCastLocked(cardID, g.FreeCastFromOutsidePermission(player, source, sourceName))
 }
 
-// PlayFromOutsideForEffect opens the play window over one card in
-// `player`'s container. Reports whether it was there to be granted.
+// GrantOutsidePlayRightForEffect stores the Wish right for `player`.
+// Reports whether it was stored: nothing is granted to a player outside
+// the game or whose decisions someone else makes (ADR 0167 §5).
 //
 // Caller must hold g.mu (write).
-func (g *Game) PlayFromOutsideForEffect(player, source, cardID uuid.UUID, sourceName string) bool {
-	return g.grantOutsideCastLocked(cardID, g.PlayFromOutsidePermission(player, source, sourceName))
+func (g *Game) GrantOutsidePlayRightForEffect(player, source uuid.UUID, sourceName string) bool {
+	if !g.outsidePoolOpenLocked(player) {
+		return false
+	}
+	g.GrantCastPermissionForEffect(g.OutsidePlayRightPermission(player, source, sourceName))
+	return true
+}
+
+// OutsidePlayRightLocked is the live Wish right `player` holds, or nil:
+// a stored standing permission over the container with a use left.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) OutsidePlayRightLocked(player uuid.UUID) *CastPermission {
+	p := g.playerByIDLocked(player)
+	if p == nil {
+		return nil
+	}
+	for i := range p.CastPermissions {
+		perm := &p.CastPermissions[i]
+		if perm.Zone == ZoneOutside && perm.Scope == ScopeStanding && perm.CastsLeft > 0 &&
+			g.CastPermissionActiveForEffect(perm, player) {
+			out := *perm
+			return &out
+		}
+	}
+	return nil
+}
+
+// CanNameOutsideCardLocked is whether the player can be asked to name a
+// card from the card database to play under their Wish right: they hold
+// the right, their pool is the database (a sideboard pool casts its own
+// cards directly, under the same right), and the pool is open.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) CanNameOutsideCardLocked(player uuid.UUID) bool {
+	p := g.playerByIDLocked(player)
+	return p != nil && !p.HasSideboard && OutsideCollection != nil &&
+		g.outsidePoolOpenLocked(player) && g.OutsidePlayRightLocked(player) != nil
+}
+
+// NameOutsideCardToPlay is the Wish right's action (`outside_play`): it
+// opens the outside pick — any card in the card database — at the moment
+// the player wants to play one. Answering it mints the named card into
+// the container, where the standing right already covers it, and the
+// client starts its cast or land play at once. Declining spends nothing,
+// since the right is spent by a card played, not by a card named.
+//
+// Takes the write lock.
+func (g *Game) NameOutsideCardToPlay(player uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	if !g.CanNameOutsideCardLocked(player) {
+		return ErrNoPlayPermission
+	}
+	right := g.OutsidePlayRightLocked(player)
+	if !g.QueueOutsidePickForEffect(OutsidePickPrompt{
+		Player:      player,
+		Source:      right.Source,
+		Question:    right.SourceName + " — name a card you own from outside the game to play this turn",
+		Min:         0,
+		Max:         1,
+		Destination: ChoosePlayFromOutside,
+	}) {
+		return ErrNoPlayPermission
+	}
+	g.noteActionTakenLocked(player)
+	return nil
 }
 
 // grantOutsideCastLocked is GrantCastPermissionOverCardForEffect for a

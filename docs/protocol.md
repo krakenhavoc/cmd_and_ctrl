@@ -701,11 +701,29 @@ Two more destinations on the same two prompts (`choose_cards` over the
 sideboard, `outside_collection` over the database) say what the effect does
 with the picked cards: `choose_destination: "cast_free_outside"` is Spawnsire
 of Ulamog's "cast any number of Eldrazi cards you own from outside the game
-without paying their mana costs" (`choose_min` 0, `choose_max` up to 100), and
-`"play_outside"` is Wish's "you may play a card you own from outside the game
-this turn" (up to one). The answer is the usual one for the kind. It leaves a
-**cast permission on each picked card in the sideboard**, and the effect asks
-for nothing more.
+without paying their mana costs" (`choose_min` 0, `choose_max` up to 100; an
+`outside_collection` pick with a ceiling above two may name the same card more
+than once, since a player may own two copies), and `"play_outside"` is the
+pick Wish's right opens (below). The answer is the usual one for the kind. A
+Spawnsire pick leaves a **cast permission on each picked card in the
+sideboard**, and the effect asks for nothing more.
+
+**Wish** ("you may play a card you own from outside the game this turn") names
+no card when it resolves: it stores a standing, one-use, until-end-of-turn
+right, and the card is chosen when it is played. `PlayerView.outside_play`
+(`{ "source_name": "Wish", "can_name"?: true }`, the owner's own seat only)
+says the right is live. With a sideboard every card in `sideboard` carries the
+cast surface below and the first one played (a land included) spends the right.
+With no sideboard `can_name` is true and the **`outside_play`** action (no
+params, priority holder, the seat's own) opens an `outside_collection` pick
+with `choose_destination: "play_outside"`, `choose_min` 0 and `choose_max` 1
+over the whole card database; answering it creates the card in `sideboard`,
+where the right already covers it, and the client starts its cast or land play.
+Declining spends nothing. `outside_play` is refused ("no permission to play this card from here") without a live
+right, for a seat with a sideboard, and while another player makes the seat's
+decisions. It is also a `special_action`-kind move in `legal_moves`
+(`type: "outside_play"`), offered to a database-pool seat holding the right with
+an empty `sideboard`.
 
 The cast is an ordinary `cast_spell` with `from_zone: "outside"`, taken by the
 owner afterwards. It is refused (`card cannot be cast from that zone`) without
@@ -717,7 +735,7 @@ A sideboard card a live permission opens carries the cast surface a graveyard
 or exile card does, on its owner's frame only: `castable_here`,
 `alternative_costs`, `cast_prices`, `legal_targets`, `clauses`, and an
 `exile_play` naming the grant (`cost_override: "{0}"`, `cast_only` and
-`closes_on_pass` for Spawnsire's cast; none of them for Wish's play, which is
+`closes_on_pass` for Spawnsire's cast; none of them for Wish's right, which is
 until end of turn at the card's own cost and timing, a land included). The
 free cast closes at the holder's next `pass_priority` and the card stays in
 `sideboard`; a card that is cast or played leaves it (CR 601.2a). Cast moves in

@@ -9949,24 +9949,29 @@ the Impossible does (a pair with different names, then an opponent's
 **Casting or playing a card from outside the game** (Spawnsire of Ulamog's
 {20}, Wish; #3955, [ADR
 0198](decisions/0198-outside-the-game-is-the-card-database-without-a-sideboard.md)
-amendment of 2026-10-16) is `PlayFromOutside` (`effects/play_from_outside.go`),
-the cast half of the same seam. It asks through the same
-`QueueOutsidePickForEffect`, so the sideboard and the database both apply, and
-grants a permission over each picked card in the container:
+amendment of 2026-10-16) is two primitives in `effects/play_from_outside.go`,
+the cast half of the same seam. The cast itself is a `cast_spell` with
+`from_zone: "outside"` from the sideboard tab.
 
 ```go
+// a free cast of cards PICKED now: a pass-closed {0} permission per card
+// (game.FreeCastFromOutsidePermission); the cards not cast stay outside
 PlayFromOutside{Name: "Spawnsire of Ulamog", Clause: "any number of Eldrazi cards",
-    Free: true, Match: func(c game.Card) bool { return c.HasSubtype("Eldrazi") && !c.IsLand() }}
-PlayFromOutside{Name: "Wish", Clause: "a card", Max: 1} // played, at its own cost, this turn
+    Match: func(c game.Card) bool { return c.HasSubtype("Eldrazi") && !c.IsLand() }}
+// a right to play a card chosen LATER: standing, one use, until end of turn
+GrantOutsidePlayRight{Name: "Wish"}
 ```
 
-`Free` is the pass-closed `{0}` cast (`game.FreeCastFromOutsidePermission`,
-the cards not cast stay outside the game); without it the permission is
-`game.PlayFromOutsidePermission` (until end of turn, a land included). The cast
-itself is a `cast_spell` with `from_zone: "outside"` from the sideboard tab. A
-card file never declares the container in `CastableZones` (`Register` panics):
-a card-level declaration would open every copy's sideboard, and the permission
-is per instance. Test with `castFromOutside` in `play_from_outside_test.go`.
+`PlayFromOutside` asks through `QueueOutsidePickForEffect`, so the sideboard and
+the database both apply. `GrantOutsidePlayRight` names nothing: a printed
+"you may play a card you own from outside the game" chooses the card when it
+is played, so the right is a `ScopeStanding` permission with `CastsLeft: 1`
+(`game.OutsidePlayRightPermission`), and the `outside_play` action names a
+database card at that moment. Do not pick at resolution for a "may play" card:
+that is weaker than printed. A card file never declares the container in
+`CastableZones` (`Register` panics): a card-level declaration would open every
+copy's sideboard. Tests: `castFromOutside` in `play_from_outside_test.go`,
+`resolveWish` / `nameWished` in `wish_test.go`.
 
 What is still missing: Research // Development (shuffling cards in from outside
 the game) and learn. Cunning, Glittering, Golden and Death Wish and Fae of

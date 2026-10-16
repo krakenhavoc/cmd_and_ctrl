@@ -1648,6 +1648,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// #2167: the play is made; only its entry waits on a
 			// prompt, so the type it used is spent now.
 			g.spendPermissionTypeLocked(playerID, grantCard, grant, permType)
+			if spendsGrant {
+				g.consumeLimitedGrantLocked(playerID, grantCard, grant)
+			}
 			return nil
 		}
 		if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
@@ -1684,6 +1687,11 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// #2167: Muldrotha's land play spends "land" — beside the turn's
 		// land drop, which the entry above has already counted.
 		g.spendPermissionTypeLocked(playerID, grantCard, grant, permType)
+		// #3955: a land played under a one-use permission (Wish) spends
+		// it, as a spell cast through it does at the end of this function.
+		if spendsGrant {
+			g.consumeLimitedGrantLocked(playerID, grantCard, grant)
+		}
 		// Playing a land is a special action (CR 116.2a); the player
 		// keeps priority and CR 117.5 drains any landfall-style
 		// triggers onto the stack here rather than at the next wrap.

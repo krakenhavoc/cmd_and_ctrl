@@ -38,9 +38,9 @@ func grantFree(g *Game, p *Player, id uuid.UUID) bool {
 	return ok
 }
 
-func grantPlay(g *Game, p *Player, id uuid.UUID) bool {
+func grantPlay(g *Game, p *Player, _ uuid.UUID) bool {
 	var ok bool
-	g.WithWriteLock(func() { ok = g.PlayFromOutsideForEffect(p.ID, uuid.New(), id, "Test Wish") })
+	g.WithWriteLock(func() { ok = g.GrantOutsidePlayRightForEffect(p.ID, uuid.New(), "Test Wish") })
 	return ok
 }
 

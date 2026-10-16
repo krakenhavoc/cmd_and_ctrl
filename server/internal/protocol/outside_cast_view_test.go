@@ -88,9 +88,9 @@ func TestOutsideCardWithAFreeCastGrantIsCastableOnTheOwnersFrame(t *testing.T) {
 }
 
 func TestOutsideLandUnderAPlayGrantIsPlayable(t *testing.T) {
-	g, card := outsideCastGame(t, "Land", "")
+	g, _ := outsideCastGame(t, "Land", "")
 	owner := g.Seats[0].ID
-	g.WithWriteLock(func() { g.PlayFromOutsideForEffect(owner, uuid.New(), card.InstanceID, "Test Wish") })
+	g.WithWriteLock(func() { g.GrantOutsidePlayRightForEffect(owner, uuid.New(), "Test Wish") })
 	if got := outsideView(t, g, owner.String()); !got.CastableHere {
 		t.Errorf("a land under a play grant in the main phase is not castable_here: %+v", got)
 	}

@@ -317,6 +317,22 @@
     sendAction("move_card", payload, viewerID);
   }
 
+  // #3955 (Wish): "you may play a card you own from outside the game this
+  // turn" with the card database as the pool. The card is named when it is
+  // played, so the right shows a button that opens the pick; naming it mints
+  // the card and the board starts its cast or land play at once. Only on the
+  // viewer's own sideboard tab.
+  const wishRight = $derived(
+    zoneKind === "sideboard" && viewerID && viewerID === ownerSeat.id
+      ? view.seats.find((s) => s.id === ownerSeat.id)?.outside_play
+      : undefined,
+  );
+  function nameWishedCard(): void {
+    if (!viewerID) return;
+    sendAction("outside_play", undefined, viewerID);
+    onClose();
+  }
+
   // Tabs switch zones for the same owner without closing (the stack
   // is a shared zone with no owner, so it stays a single view).
   // ADR 0191: the viewer's own sideboard is a fourth tab, offered only on
@@ -328,7 +344,11 @@
       { kind: "command", label: "command" },
     ];
     const own = view.seats.find((s) => s.id === ownerSeat.id);
-    if (viewerID && viewerID === ownerSeat.id && (own?.sideboard?.length ?? 0) > 0) {
+    if (
+      viewerID &&
+      viewerID === ownerSeat.id &&
+      ((own?.sideboard?.length ?? 0) > 0 || own?.outside_play?.can_name)
+    ) {
       base.push({ kind: "sideboard", label: "sideboard" });
     }
     return base;
@@ -412,6 +432,19 @@
     {#each targetBans as ban (ban)}
       <p class="zb-ban" role="note">{ban}</p>
     {/each}
+    {#if wishRight?.can_name}
+      <div class="zb-wish">
+        <button
+          type="button"
+          class="primary"
+          data-testid="name-outside-card"
+          onclick={nameWishedCard}
+          title="Pick any card from the card database; it is played now, at its own timing and cost"
+        >
+          Name a card to play ({wishRight.source_name})
+        </button>
+      </div>
+    {/if}
     {#if zoneKind === "sideboard"}
       <p class="zb-ban" role="note">
         Cards you own outside the game. Only an effect can reach them: one that brings a card in, or
@@ -659,6 +692,9 @@
     color: var(--fg-muted);
     font-size: 13px;
     margin: 4px 0 0;
+  }
+  .zb-wish {
+    display: flex;
   }
   .zb-ban {
     color: var(--fg-muted);

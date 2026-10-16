@@ -69,7 +69,7 @@ func TestEnumeratorOffersAFreeCastFromOutsideOnlyUnderAPermission(t *testing.T) 
 
 func TestEnumeratorOffersAPlayFromOutsideAtItsCost(t *testing.T) {
 	g, seat, card := newOutsideTable(t, "Creature — Bear", "{2}")
-	g.WithWriteLock(func() { g.PlayFromOutsideForEffect(seat.ID, uuid.New(), card.InstanceID, "Test Wish") })
+	g.WithWriteLock(func() { g.GrantOutsidePlayRightForEffect(seat.ID, uuid.New(), "Test Wish") })
 
 	// A play pays the card's own cost: unfunded, the bot is offered
 	// nothing (a free cast would have been offered); funded, it is.
@@ -86,7 +86,7 @@ func TestEnumeratorOffersAPlayFromOutsideAtItsCost(t *testing.T) {
 
 func TestEnumeratorOffersALandPlayFromOutside(t *testing.T) {
 	g, seat, card := newOutsideTable(t, "Basic Land — Forest", "")
-	g.WithWriteLock(func() { g.PlayFromOutsideForEffect(seat.ID, uuid.New(), card.InstanceID, "Test Wish") })
+	g.WithWriteLock(func() { g.GrantOutsidePlayRightForEffect(seat.ID, uuid.New(), "Test Wish") })
 	moves := legal.EnumerateFor(g, seat.ID)
 	found := false
 	for _, m := range moves {

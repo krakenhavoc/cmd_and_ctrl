@@ -40,10 +40,37 @@ export function collectionRows(
 }
 
 /**
- * Click a row: a picked name is unpicked; with a ceiling of one the click
- * replaces the pick; otherwise a name is added while there is room.
+ * Whether the same name may be picked more than once. A player may own two
+ * copies of a card, so an "any number" pick (Spawnsire of Ulamog's cast,
+ * #3955, whose ceiling is 100) takes a name as often as it is clicked. No
+ * prompt with a set rule asks for more than two cards ("exactly two with
+ * different names"), so a ceiling above two is the "any number" shape and
+ * a ceiling of two or less keeps the toggle.
+ */
+export function allowsRepeatedNames(max: number): boolean {
+  return max > 2;
+}
+
+/** How many times `name` is picked. */
+export function pickedCount(picked: string[], name: string): number {
+  return picked.filter((n) => n === name).length;
+}
+
+/** Take one copy of `name` back: the last one picked. */
+export function unpickOneCollection(picked: string[], name: string): string[] {
+  const i = picked.lastIndexOf(name);
+  return i < 0 ? picked : [...picked.slice(0, i), ...picked.slice(i + 1)];
+}
+
+/**
+ * Click a row: where names repeat (an "any number" pick) the click adds
+ * another copy while there is room, and a row's own "-" takes one back
+ * (unpickOneCollection); otherwise a picked name is unpicked, with a
+ * ceiling of one the click replaces the pick, and a name is added while
+ * there is room.
  */
 export function toggleCollectionPick(picked: string[], name: string, max: number): string[] {
+  if (allowsRepeatedNames(max)) return picked.length >= max ? picked : [...picked, name];
   if (picked.includes(name)) return picked.filter((n) => n !== name);
   if (max <= 1) return [name];
   if (picked.length >= max) return picked;

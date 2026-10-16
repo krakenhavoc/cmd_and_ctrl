@@ -45,6 +45,7 @@ var turnRulesVerbs = map[Type]struct{}{
 	TypeActivateLoyalty:     {},
 	TypeActivateManaAbility: {},
 	TypeSpecialAction:       {},
+	TypeOutsidePlay:         {},
 	TypeDeclareAttacker:     {},
 	TypeDeclareAttackers:    {},
 	TypeResolveChoice:       {},

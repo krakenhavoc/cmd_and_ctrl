@@ -1518,7 +1518,12 @@
     const ready = outsideCastReady(view.pending_choices, me?.sideboard, viewerID);
     if (ready === undefined) return;
     outsideCastRequest.set(false);
-    if (ready && me) openZoneBrowser({ zoneKind: "sideboard", ownerID: me.id, ownerName: me.name });
+    if (!ready || !me) return;
+    // One card granted (a Wish naming, a single Eldrazi): go straight into
+    // its cast or land play. Several: the tab, where each has its button.
+    const castable = (me.sideboard ?? []).filter((c) => c.castable_here === true);
+    if (castable.length === 1) handlePlayCard(castable[0], "outside");
+    else openZoneBrowser({ zoneKind: "sideboard", ownerID: me.id, ownerName: me.name });
   });
 
   // startHandFreeCast opens the cast of a hand card for its granted free

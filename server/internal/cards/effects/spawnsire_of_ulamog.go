@@ -46,7 +46,6 @@ func init() {
 				Effect: Do(PlayFromOutside{
 					Name:   "Spawnsire of Ulamog",
 					Clause: "any number of Eldrazi cards",
-					Free:   true,
 					Match:  func(c game.Card) bool { return c.HasSubtype("Eldrazi") && !c.IsLand() },
 				}),
 			},

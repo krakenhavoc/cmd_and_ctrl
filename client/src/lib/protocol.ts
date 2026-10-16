@@ -271,6 +271,10 @@ export type ActionType =
   // ADR 0150 §4 (owner decision 5): `{choice_id?}` — the caster
   // withdraws the request for help an assisted cast is parked on.
   | "cancel_assist"
+  // #3955 (Wish): no params. Opens the outside pick over the card database
+  // so the holder of a "play a card you own from outside the game" right
+  // names the card to play now.
+  | "outside_play"
   // ADR 0193 (CR 732.2): demonstrate a loop. `loop_record_start`,
   // `loop_record_stop` and `loop_record_cancel` take no params;
   // `loop_propose` takes `{count}` (1–1000); `resolve_loop_proposal`
@@ -2573,6 +2577,12 @@ export interface PlayerView {
   // How many cards this seat owns outside the game. Public, like a
   // hand's size. Absent for a seat with none.
   sideboard_count?: number;
+  // #3955 (Wish): the seat's live "you may play a card you own from outside
+  // the game this turn" right, OWNER-ONLY. `can_name` is true when the seat's
+  // pool is the card database, so the `outside_play` action is how it names
+  // the card to play; with a sideboard its cards carry the cast surface
+  // directly.
+  outside_play?: { source_name: string; can_name?: boolean };
   // #1197/#1201 (CR 702.11d, CR 702.16i): the abilities this SEAT has
   // right now — bare engine tokens, "hexproof" or a general
   // "protection from <quality>" ("protection from everything" is the

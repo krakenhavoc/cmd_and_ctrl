@@ -2483,6 +2483,14 @@ type PlayerView struct {
 	// PUBLIC, the way a hand's size is; absent for a seat with none.
 	SideboardCount int `json:"sideboard_count,omitempty"`
 
+	// OutsidePlay is the seat's live "you may play a card you own from
+	// outside the game this turn" right (Wish, #3955): present while it
+	// is held and unspent. OWNER-ONLY, like the sideboard. The card is
+	// chosen when the player plays it: with a sideboard its cards carry
+	// the cast surface directly; without one `can_name` is true and the
+	// `outside_play` action opens the pick over the card database.
+	OutsidePlay *OutsidePlayView `json:"outside_play,omitempty"`
+
 	// Keywords are the abilities this PLAYER has right now
 	// (CR 702.11d, CR 702.16i) — engine tokens, "hexproof" or
 	// "protection from everything". Derived grants from a controlled
@@ -10200,6 +10208,11 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// else's: not an opponent, not a spectator, not the admin view,
 		// and not the controller of the owner's turn (CR 723.4).
 		out.Sideboard = nil
+		// #3955: and so is the Wish right (a controller of the seat's
+		// turn is offered nothing from outside the game).
+		if p.ID != viewerID {
+			out.OutsidePlay = nil
+		}
 		if p.ID == viewerID && len(p.Sideboard) > 0 {
 			out.Sideboard = make([]CardView, len(p.Sideboard))
 			for i, c := range p.Sideboard {
@@ -11626,6 +11639,15 @@ func stampGrantedPermissions(g *game.Game, seats []PlayerView, zone *ZoneView, l
 	}
 }
 
+// OutsidePlayView is a seat's Wish right as the wire carries it.
+type OutsidePlayView struct {
+	// SourceName is the card that granted it ("Wish").
+	SourceName string `json:"source_name"`
+	// CanName is true when the seat's pool is the card database, so the
+	// `outside_play` action is how it names the card to play.
+	CanName bool `json:"can_name,omitempty"`
+}
+
 // stampOutsideCasts files the cast surface of a seat's cards outside the
 // game (#3955, ADR 0198's 2026-10-16 amendment): for each card in the
 // seat's sideboard that a live permission lets the seat cast or play, the
@@ -11642,12 +11664,15 @@ func stampGrantedPermissions(g *game.Game, seats []PlayerView, zone *ZoneView, l
 func stampOutsideCasts(g *game.Game, seats []PlayerView) {
 	for si := range seats {
 		seat := &seats[si]
-		if len(seat.Sideboard) == 0 {
-			continue
-		}
 		caster, err := uuid.Parse(seat.ID)
 		if err != nil {
 			continue
+		}
+		if right := g.OutsidePlayRightLocked(caster); right != nil {
+			seat.OutsidePlay = &OutsidePlayView{
+				SourceName: right.SourceName,
+				CanName:    g.CanNameOutsideCardLocked(caster),
+			}
 		}
 		for ci := range seat.Sideboard {
 			c := &seat.Sideboard[ci]
