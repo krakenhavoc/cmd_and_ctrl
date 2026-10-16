@@ -4103,6 +4103,7 @@ seats[].castPermissions[].source	custom(uuid.UUID)
 seats[].castPermissions[].sourceName	string
 seats[].castPermissions[].timing	string
 seats[].castPermissions[].topOfLibraryOnly	bool
+seats[].castPermissions[].waterbendManaValue	bool
 seats[].castPermissions[].zone	string
 seats[].castPermissions[].zoneOwner	custom(uuid.UUID)
 seats[].citysBlessing	bool

@@ -409,7 +409,7 @@ func (g *Game) grantedOfferClaimableLocked(card Card, zone ZoneKind, alt *Altern
 	if err := g.validateCastPathLocked(card, zone, nil, under); err != nil {
 		return err
 	}
-	if under != nil && (under.Cost != "" || under.AltCostKey != "") {
+	if under != nil && (under.NamesPrice() || under.AltCostKey != "") {
 		return ErrCastCostRequired
 	}
 	return nil

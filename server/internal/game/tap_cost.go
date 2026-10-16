@@ -98,6 +98,18 @@ type TapPermanentsCost struct {
 	// cost is generic-only, so in practice the whole of it is
 	// payable that way.
 	Extra string
+
+	// InCost says Extra's mana is ALREADY in the cost the cast pays,
+	// rather than added on top of it (#3989). Hama, the Bloodbender's
+	// "cast the exiled card by waterbending {X} rather than paying its
+	// mana cost" makes the waterbend the alternative cost itself
+	// (CR 118.9), so CastCostFor charges its {N} and the cost
+	// modifiers apply to it (CR 118.9d). The taps then pay only that
+	// waterbend's generic, never a tax or a kicker beside it
+	// (CR 701.67b): the same split an activated ability's
+	// "Waterbend {N}:" makes (waterbend_cost.go). False for every tap
+	// cost written before it, whose Extra is added.
+	InCost bool
 }
 
 // Empty reports whether the cost offers nothing. Nil-safe, so the
@@ -212,6 +224,16 @@ func tapPermanentsAdjusted(cost ParsedCost, c *TapPermanentsCost, payers []Card,
 		paid := len(payers)
 		if paid > owed {
 			paid = owed
+		}
+		if c.InCost {
+			// #3989: the waterbend {N} is the cost being paid, already
+			// in `cost`, so the taps come off it rather than leaving
+			// an added {N} unpaid. Never below {0} (CR 601.2f).
+			if paid > out.Generic {
+				paid = out.Generic
+			}
+			out.Generic -= paid
+			return out
 		}
 		out.Generic += owed - paid
 		out.Required = append(out.Required, extra.Required...)
