@@ -366,7 +366,7 @@ func (g *Game) AutoTapPlanToppingUp(
 		var plan tapPlan
 		plan, _, ok = g.autoTapTopUpLocked(controller, cost, xValue, spend, excluded, prefer)
 		if ok {
-			out = g.describePlanLocked(controller, plan)
+			out = g.describePlanLocked(controller, plan, spend)
 		}
 	})
 	return out, ok
@@ -403,6 +403,6 @@ func (g *Game) planFundsLocked(p *Player, plan tapPlan, short, cost ParsedCost, 
 	if tp == nil {
 		return false
 	}
-	trial.materializePlanLocked(tp, plan, short)
+	trial.materializePlanInLocked(tp, plan, short, ctx)
 	return tp.ManaPool.CanPayFor(cost, xValue, ctx)
 }

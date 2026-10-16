@@ -33,18 +33,23 @@ import (
 // # The bound is #1212's, unchanged
 //
 // ORDERING ONLY. Nothing here adds or drops a candidate source or a pool
-// token, and nothing here is consulted by a payability test, so the
+// token (#3874's restrictedSpend is the one exception, and it is a
+// question the picker asks, not a ranking: see its comment), and nothing
+// here is consulted by a payability test, so the
 // legal-move enumerator (which asks the same planner for a bool) and the
 // cast gate keep agreeing: a cast is offered exactly when it can be
 // paid. Every key is a tiebreak below the planner's own thrift tiers —
 // the sacrifice, hand, pain, energy and frozen tiers — because a rider or
 // a colour reading is a bonus, and a bonus does not cost a Treasure.
 //
-// Consequently a source the planner REFUSES stays refused (a restricted
-// mana ability — Cavern of Souls' coloured half, a Delighted Halfling's
-// legendary-only half — is "a decision, not a resource", autotap.go's
-// autoTapAbilityAccepts), however well its rider would suit the spell.
-// The floating mana such a source made is ranked like any other token.
+// Consequently a source the planner REFUSES stays refused, however well
+// its rider would suit the spell. #3874 changed which those are, and
+// changed it in the PICKER rather than here: a restricted mana ability
+// (Cavern of Souls' coloured half, a Delighted Halfling's legendary-only
+// half) is a candidate for a cast its restrictions admit
+// (autoTapAdmitsRestricted), and once it is one this file ranks it like
+// any other — its rider fires, so RiderRank puts it first. The floating
+// mana such a source made is ranked like any other token.
 //
 // The wish is derived from the ManaSpendContext every cast payment already
 // threads through the planner and the pool, so no payer had to learn a new
@@ -347,6 +352,10 @@ type autoTapWish struct {
 	kinds ManaSourceKinds
 	spend ManaSpendContext
 
+	// plain is set for #2455's costed planner, which takes no restricted
+	// output (#3874; see restrictedSpend).
+	plain bool
+
 	g          *Game
 	controller uuid.UUID
 	card       *Card
@@ -361,6 +370,33 @@ type autoTapWish struct {
 // Caller must hold g.mu.
 func (g *Game) autoTapWishFor(controller uuid.UUID, ctx ManaSpendContext, kinds ManaSourceKinds) *autoTapWish {
 	return &autoTapWish{kinds: kinds, spend: ctx, g: g, controller: controller}
+}
+
+// restrictedSpend is the payment a restricted mana ability is asked to
+// admit (#3874): the cast this wish was built for, or nil — no wish, the
+// costed planner, or a payment that is not a cast (autoTapAdmitsRestricted
+// asks the purpose again; nil just says it sooner).
+//
+// It is the one thing on the wish that is not an ordering: it ADDS
+// candidates. The bound that keeps the enumerator and the cast gate
+// agreeing is that both build the wish from the same cast context, which
+// autoTapTopUpLocked does for every payer.
+func (w *autoTapWish) restrictedSpend() *ManaSpendContext {
+	if w == nil || w.plain || w.spend.Purpose != SpendPurposeCast {
+		return nil
+	}
+	return &w.spend
+}
+
+// withoutRestricted is the wish with restrictedSpend switched off, for
+// the costed planner.
+func (w *autoTapWish) withoutRestricted() *autoTapWish {
+	if w == nil {
+		return &autoTapWish{plain: true}
+	}
+	c := *w
+	c.plain = true
+	return &c
 }
 
 // kindSet is #1212's source wish, zero for no wish.

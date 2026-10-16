@@ -2674,7 +2674,7 @@ func (g *Game) payAbilityManaCostNoteLocked(p *Player, sourceID uuid.UUID, sourc
 		if !ok || !g.planFundsLocked(p, plan, short, cost, x, spendCtx) {
 			return paid, note, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
 		}
-		g.materializePlanLocked(p, plan, short)
+		g.materializePlanInLocked(p, plan, short, spendCtx)
 	}
 	if !p.ManaPool.CanPayFor(cost, x, spendCtx) {
 		return paid, note, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, x, spendCtx)}
