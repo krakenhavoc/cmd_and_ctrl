@@ -2006,6 +2006,11 @@ func dispatch(g *game.Game, a Action) error {
 			// engine validates only its shape. Routed by presence,
 			// like CreatureType and Color above.
 			CardName string `json:"card_name"`
+			// CardNames answers a PendingChoiceOutsideCollection (ADR
+			// 0198): the cards taken from the database as a player's
+			// collection, by name. Routed by the choice's KIND, because
+			// the empty list (decline) is an ordinary answer.
+			CardNames []string `json:"card_names"`
 			// Graveyard answers a PendingChoiceSurveil (CR 701.25)
 			// alongside TopOrder: the looked-at cards going to the
 			// chooser's graveyard. Its PRESENCE is what distinguishes
@@ -2063,6 +2068,11 @@ func dispatch(g *game.Game, a Action) error {
 		// commonest value may be zero.
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoicePayAmount {
 			return g.ResolvePayAmount(choiceID, a.Player, p.Amount)
+		}
+		// ADR 0198: "a card you own from outside the game" from the card
+		// database. Routed by kind: declining is the empty list.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceOutsideCollection {
+			return g.ResolveOutsideCollection(choiceID, a.Player, p.CardNames)
 		}
 		// #568, CR 608.2: "choose one of the following", addressed to
 		// any seat. Routed by kind for the same reason the shortcut

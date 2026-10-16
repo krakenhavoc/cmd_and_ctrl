@@ -152,8 +152,20 @@ type OutsidePickPrompt struct {
 // (seatDeckCard). Nobody else is, and the wire withholds the prompt's
 // options from every other seat (filterPendingChoices).
 //
+// A player whose deck seated no sideboard chooses from the card
+// database instead (ADR 0198): the same filter, bounds, set rule and
+// continuation, asked as a PendingChoiceOutsideCollection whose answer
+// mints the named cards into the container before Then runs. The pool
+// is closed the same way for both.
+//
 // Caller must hold g.mu.
 func (g *Game) QueueOutsidePickForEffect(p OutsidePickPrompt) bool {
+	if pl := g.playerByIDLocked(p.Player); pl != nil && !pl.HasSideboard {
+		if !g.outsidePoolOpenLocked(p.Player) {
+			return false
+		}
+		return g.queueCollectionPickLocked(p)
+	}
 	cands := g.OutsideCandidatesForEffect(p.Player, p.Match)
 	if len(cands) == 0 {
 		return false

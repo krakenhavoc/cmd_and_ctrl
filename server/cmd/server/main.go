@@ -575,6 +575,13 @@ func main() {
 	// Scryfall index at all leaves TokenArtResolver nil, and every
 	// token keeps today's text rendering.
 	game.TokenArtResolver = tokenart.HookFunc(cardIdx, log)
+	// ADR 0198: a player whose deck seated no sideboard takes "a card
+	// you own from outside the game" from the card database. With no
+	// index the hook stays nil and such a player has nothing outside the
+	// game, which is ADR 0191's behaviour.
+	if cardIdx != nil {
+		game.OutsideCollection = deck.NewCollection(cardIdx)
+	}
 	// Timed and logged unconditionally (#524): the strong hypothesis
 	// on #515 is that startup — not this restore pass — dominates the
 	// restart window, and that hypothesis needs a number rather than
