@@ -1,6 +1,6 @@
 <script lang="ts">
   import Wordmark from "../lib/components/Wordmark.svelte";
-  import { onDestroy, onMount, untrack } from "svelte";
+  import { onDestroy, onMount, tick, untrack } from "svelte";
   import { get } from "svelte/store";
   import { GameClient } from "../lib/ws";
   import { endCueFor, gameOverText } from "../lib/gameOutcome";
@@ -25,6 +25,8 @@
   import { seatColor } from "../lib/colors";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
+  import BugReportDraftPill from "../lib/components/BugReportDraftPill.svelte";
+  import { currentBugDraft } from "../lib/bugReportDraft.svelte";
   import { bugReportConfig } from "../lib/bugReportConfig";
   import {
     discordAuthEnabled,
@@ -426,6 +428,14 @@
   // offering an upload that 503s.
   let bugReportAttachments = $state(false);
   let bugReportOpen = $state(false);
+  // Minimize (#4029): the draft stays in lib/bugReportDraft.svelte.ts and
+  // the command bar shows a pill that opens it again. Focus goes to the
+  // pill, which replaces the form on screen.
+  let bugDraftPill = $state<BugReportDraftPill | null>(null);
+  function minimizeBugReport(): void {
+    bugReportOpen = false;
+    void tick().then(() => bugDraftPill?.focus());
+  }
 
   // #720 / #266: the <svelte:boundary> around <Board> below. A throw
   // while rendering the table, or in one of its `$effect`s, used to
@@ -2878,6 +2888,9 @@
            three-dot menu (#1952): the report that asked for it came from
            somebody who did not look in the menu. Same gate as before. -->
       {#if bugReportAvailable}
+        {#if currentBugDraft() && !bugReportOpen}
+          <BugReportDraftPill bind:this={bugDraftPill} onrestore={() => (bugReportOpen = true)} />
+        {/if}
         <button
           class="ibtn"
           title={L.reportABug}
@@ -3591,6 +3604,7 @@
       wsLog={$log}
       attachments={bugReportAttachments}
       onclose={() => (bugReportOpen = false)}
+      onminimize={minimizeBugReport}
     />
   {/if}
 </section>
