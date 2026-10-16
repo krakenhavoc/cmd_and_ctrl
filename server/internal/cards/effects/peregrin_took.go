@@ -57,7 +57,7 @@ func peregrinTookFoodReplacement() game.ReplacementEffect {
 			return ev.Kind == game.RepEventCreateTokens && ev.TokenCount() > 0 && ev.TokenController == src.Controller
 		},
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
-			ev.TokenGroups = append(ev.TokenGroups, game.TokenGroup{Template: FoodToken(), Count: 1})
+			ev.TokenGroups = append(ev.TokenGroups, game.TokenGroup{Template: ruleDefinedToken(FoodToken()), Count: 1})
 			return nil
 		},
 		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {

@@ -28,12 +28,13 @@ func Mobilize(name string, n int) game.TriggeredAbility {
 	label := name + " — mobilize " + strconv.Itoa(n)
 	return WheneverThisAttacks(label, func(g *game.Game, item *game.StackItem) error {
 		return CreateTokensAttackingYourChoice{
-			Template: TokenCard("1/1 red Warrior"),
-			N:        n,
-			Tapped:   true,
-			Prefer:   triggerAttackTarget(item),
-			Label:    name,
-			Then:     mobilizeSacrificeAtEndStep,
+			Template:    TokenCard("1/1 red Warrior"),
+			RuleDefined: true,
+			N:           n,
+			Tapped:      true,
+			Prefer:      triggerAttackTarget(item),
+			Label:       name,
+			Then:        mobilizeSacrificeAtEndStep,
 		}.Apply(NewContext(g, item))
 	})
 }

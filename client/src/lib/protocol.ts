@@ -1935,6 +1935,12 @@ export interface PendingChoiceView {
   // instance IDs among `options` that are in the searcher's graveyard.
   // Everything else is a library card. Absent for a library-only search.
   search_graveyard?: string[];
+  // #3988: on a "search that player's graveyard, hand, and library"
+  // prompt (Kotose, the Silent Spider), the instance IDs among `options`
+  // that are in the searched player's hand, and `search_all_zones` set:
+  // every zone is searched, so the library is shuffled whatever is taken.
+  search_hand?: string[];
+  search_all_zones?: boolean;
   // ADR 0160: a "copy_target" prompt whose pick is the creature to
   // exchange text boxes with rather than the object to copy (Deadpool,
   // Trading Card). Same {card_ids} answer, same empty decline.

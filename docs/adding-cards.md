@@ -2727,6 +2727,15 @@ through one of the doors.** Target clauses already are when they use
 (`ChosenColor`, `NamedTribe`) is not text: read it directly. The
 amendment lists the files that still hard-code a word.
 
+A token your card describes is words of its text too (#4005).
+`CreateToken`, `CreateTokenAdvanced` and `CreateTokensAttackingYourChoice`
+read the template through the text themselves. If you call
+`CreateTokenForEffect` and its kin, or build a `game.TokenGroup`, pass the
+template as `ctx.TextToken(t)` for a description, as `copiedToken(t)` for a
+copy of an object, or as `ruleDefinedToken(t)` for a keyword's token or a
+Treasure-style predefined token. `TestTokenDescriptionsReadThroughText`
+fails anything else.
+
 ### Adding a combat-keyword card (S18+)
 
 Creatures with printed combat keywords (flying, reach, deathtouch,

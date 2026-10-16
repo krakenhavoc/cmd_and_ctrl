@@ -63,7 +63,7 @@ func nacatlWarPrideCopies(g *game.Game, item *game.StackItem) error {
 	}
 	tmpl.Tapped = true
 	tmpl.AttackingTarget = target
-	made, err := g.CreateTokensForEffect(item.Controller, tmpl, x, game.TokenEntryOptions{Tapped: true})
+	made, err := g.CreateTokensForEffect(item.Controller, copiedToken(tmpl), x, game.TokenEntryOptions{Tapped: true})
 	if err != nil {
 		return err
 	}

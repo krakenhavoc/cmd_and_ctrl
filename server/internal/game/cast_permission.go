@@ -755,8 +755,10 @@ type CastPermission struct {
 	// — does not use it: "If you cast a spell from among the milled
 	// cards using another permission, Locke's effect doesn't apply"
 	// (ruling 2025-06-06). Read on ScopeCards permissions, the only ones
-	// that print it; playing a land is not casting a spell, and every
-	// permission that prints a count is CastOnly.
+	// that print it. A PLAY permission with a count spends it on a land play
+	// too (#3955; #3988, Kotose, the Silent Spider's "play one of the
+	// exiled cards"), and the play still uses one of the turn's land drops
+	// (CR 305.2).
 	CastsLeft int `json:"castsLeft,omitempty"`
 
 	// BudgetGroup ties several permissions into ONE budget: a cast that
@@ -1864,6 +1866,16 @@ func stampStandingPermissionLocked(perm CastPermission, p *Player, c *Card) (Cas
 	// derived permission can afford to spell it: nothing stored, so
 	// nothing to expire.
 	perm.Duration = WhileInZoneDuration()
+	// "A Zombie creature spell" (Gisa and Geralf), "Goblin spells"
+	// (Conspicuous Snoop) and "Merfolk and Druid cards" (Deeproot
+	// Historian) are words of the granting permanent's text (CR 612.2,
+	// #4005). The permission is derived from the battlefield on every
+	// query, so it reads the text as it is now, and the label the client
+	// shows says the same word.
+	if filter := perm.Filter.ThroughTextOf(c); filter != perm.Filter {
+		perm.Label = relabelChangedWords(perm.Label, perm.Filter, filter)
+		perm.Filter = filter
+	}
 	if perm.Filter.FromChosenType {
 		// Realmwalker: "the chosen type". A permanent whose entry
 		// choice has not been answered yet names no type and grants
@@ -1879,6 +1891,74 @@ func stampStandingPermissionLocked(perm CastPermission, p *Player, c *Card) (Cas
 		perm.Filter.ExiledWith = PermissionCardRef{ID: c.InstanceID, Epoch: c.ObjectEpoch}
 	}
 	return perm, true
+}
+
+// relabelChangedWords respells a derived permission's label for the
+// creature types a text change replaced in its filter, word for word:
+// the label is the clause as printed ("cast a Zombie creature spell"),
+// and a player reading it should see the word the text now says.
+func relabelChangedWords(label string, was, now PermissionFilter) string {
+	pairs := [][2]string{{was.CreatureType, now.CreatureType}}
+	for i := range was.CreatureTypesAny {
+		pairs = append(pairs, [2]string{was.CreatureTypesAny[i], now.CreatureTypesAny[i]})
+	}
+	for _, p := range pairs {
+		if p[0] != "" && p[0] != p[1] {
+			label = replaceWholeWord(label, p[0], p[1])
+		}
+	}
+	return label
+}
+
+// replaceWholeWord replaces each occurrence of `word` in `s` that is not
+// part of a longer word, and mends the indefinite article in front of it
+// ("a Zombie" → "an Elf").
+func replaceWholeWord(s, word, with string) string {
+	isLetter := func(b byte) bool {
+		return b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z'
+	}
+	var out strings.Builder
+	prev := byte(' ')
+	for {
+		i := strings.Index(s, word)
+		if i < 0 {
+			out.WriteString(s)
+			return out.String()
+		}
+		end := i + len(word)
+		before := prev
+		if i > 0 {
+			before = s[i-1]
+		}
+		if !isLetter(before) && (end == len(s) || !isLetter(s[end])) {
+			out.WriteString(mendArticle(s[:i], with))
+			out.WriteString(with)
+		} else {
+			out.WriteString(s[:end])
+		}
+		prev = s[end-1]
+		s = s[end:]
+	}
+}
+
+// mendArticle rewrites a trailing "a " or "an " in `lead` for `next`.
+func mendArticle(lead, next string) string {
+	for _, art := range []string{"a ", "an ", "A ", "An "} {
+		if !strings.HasSuffix(lead, art) {
+			continue
+		}
+		head := lead[:len(lead)-len(art)]
+		if head != "" && head[len(head)-1] != ' ' && head[len(head)-1] != '(' {
+			continue
+		}
+		mended := withArticle(next)
+		mended = mended[:len(mended)-len(next)]
+		if art[0] == 'A' {
+			mended = strings.ToUpper(mended[:1]) + mended[1:]
+		}
+		return head + mended
+	}
+	return lead
 }
 
 // sweepCastPermissionsLocked drops permissions whose CR 611.2

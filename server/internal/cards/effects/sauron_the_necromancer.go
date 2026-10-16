@@ -72,6 +72,7 @@ func sauronNecromancerRaise(g *game.Game, item *game.StackItem) error {
 			return CreateTokensAttackingYourChoice{
 				Controller: item.Controller,
 				Template:   tmpl,
+				Copy:       true,
 				N:          1,
 				Tapped:     true,
 				Prefer:     prefer,

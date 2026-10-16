@@ -93,12 +93,19 @@ func XAsHighAsYouCan(_ *Context, ceiling int) int { return ceiling }
 //
 // Then runs with every token made, also when there is nothing to
 // attack (CR 508.4a: they are made, not attacking).
+//
+// Template is a description in the effect's text, read through it as
+// the tokens are made (Context.TextToken, #4005), unless Copy (copiable
+// values, CR 707.2: Sandstorm Crasher, Calamity) or RuleDefined (a
+// keyword's token: mobilize's Warriors) says it is no word of the text.
 type CreateTokensAttackingYourChoice struct {
-	Controller uuid.UUID
-	Template   game.Card
-	N          int
-	Tapped     bool
-	Prefer     uuid.UUID
+	Controller  uuid.UUID
+	Template    game.Card
+	Copy        bool
+	RuleDefined bool
+	N           int
+	Tapped      bool
+	Prefer      uuid.UUID
 	// Label names the card in the questions.
 	Label string
 	Then  func(ctx *Context, created []uuid.UUID) error
@@ -154,12 +161,19 @@ func (c CreateTokensAttackingYourChoice) ask(ctx *Context, controller uuid.UUID,
 // create makes the tokens in one creation, shares[i] of them attacking
 // targets[i] (or none attacking when there is no target).
 func (c CreateTokensAttackingYourChoice) create(ctx *Context, controller uuid.UUID, targets []uuid.UUID, shares []int) error {
+	tmpl := ctx.TextToken(c.Template)
+	switch {
+	case c.Copy:
+		tmpl = copiedToken(c.Template)
+	case c.RuleDefined:
+		tmpl = ruleDefinedToken(c.Template)
+	}
 	var groups []game.TokenGroup
 	for i, n := range shares {
 		if n <= 0 {
 			continue
 		}
-		grp := game.TokenGroup{Template: c.Template, Count: n, Entry: game.TokenEntryOptions{Tapped: c.Tapped}}
+		grp := game.TokenGroup{Template: tmpl, Count: n, Entry: game.TokenEntryOptions{Tapped: c.Tapped}}
 		if i < len(targets) {
 			grp.Attacking = targets[i]
 		}

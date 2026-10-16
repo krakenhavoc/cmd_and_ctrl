@@ -46,7 +46,7 @@ func inTheDarknessWraith(g *game.Game, item *game.StackItem) error {
 	return g.CreateTokensThenForEffect(game.TokenCreation{
 		Controller: item.Controller,
 		Source:     item.SourceCardID,
-		Groups:     []game.TokenGroup{{Template: TokenCard("3/3 black Wraith with menace"), Count: 1}},
+		Groups:     []game.TokenGroup{{Template: NewContext(g, item).TextToken(TokenCard("3/3 black Wraith with menace")), Count: 1}},
 	}, func(g *game.Game, _ []uuid.UUID) error { return tempt(g) })
 }
 
