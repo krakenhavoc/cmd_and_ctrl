@@ -667,6 +667,19 @@ type Spec struct {
 	// static or a trigger (Soulflayer, Ethereal Forager).
 	Delve bool
 
+	// Splice is CR 702.47's "Splice onto [quality] [cost]" (#1989, ADR
+	// 0202). Declare it with SpliceOntoArcane / SpliceOntoInstantOrSorcery
+	// and write the rest of the card as usual: its Targets and OnResolve
+	// ARE the rules text a spell gains when the card is spliced onto it.
+	//
+	//	Splice: SpliceOntoArcane("{2}{R}{R}"), // Overblaze
+	//
+	// The engine does the rest: the offer while the card is in hand, the
+	// cost at CR 601.2f, the reveal, the targets (CR 702.47d) and the
+	// text running after the main spell's (CR 702.47b) with the spell as
+	// its source (CR 702.47c). Only a mana splice cost is expressed.
+	Splice *game.SpliceAbility
+
 	// SpendOnly is the spell's own "Spend only black mana on X" (Drain
 	// Life, Consume Spirit) or "Spend only black and/or red mana on X"
 	// (Soul Burn) — a restriction on the mana that pays THIS spell

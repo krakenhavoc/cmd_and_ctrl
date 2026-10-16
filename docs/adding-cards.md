@@ -4820,6 +4820,27 @@ second bullet the first one's. The client offers "Entwine {2}" where it
 offers kicker and the picker reads `modes.if_optional_paid`; the bot
 enumerator offers the entwined cast as its own move.
 
+**Splice (CR 702.47, #1989, [ADR 0202](decisions/0202-splice.md)):**
+"Splice onto Arcane [cost]" is one field. Write the card exactly as you
+would to cast it alone — its `Targets` and `OnResolve` ARE the rules text
+a spell gains — and add:
+
+```go
+Splice: SpliceOntoArcane("{2}{R}{R}"),          // Overblaze
+Splice: SpliceOntoInstantOrSorcery("{2}{U}"),   // Everdream
+```
+
+The engine offers the card while it is in the caster's hand, charges the
+cost at CR 601.2f, reveals it, takes its text's targets and runs the body
+after the spell's own text against a view of the item whose `Targets` are
+the spliced text's own. The source is the spell (CR 702.47c), so read the
+target with `firstLegalTarget(ctx)` and deal damage from `ctx.Source()`,
+and name a shield or multiplier by the CARD's name in its `Label`, since
+the source's name is the spell's. `Register` refuses a splice with no mana
+cost (a non-mana splice cost waits on #4055), and a splice card with modes,
+an X, a division or a cost of its own. `TestSpliceMatchesThePrintedSplice`
+holds the declared quality and cost to the printed line.
+
 **Still out:** "enters with a
 counter for each time it was kicked" (Everflowing Chalice, Joraga
 Warcaller) — that count is read during the CR 614 entry pipeline,

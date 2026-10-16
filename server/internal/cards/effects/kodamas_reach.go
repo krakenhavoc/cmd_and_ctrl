@@ -9,7 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	your hand, then shuffle."
 //
 // Functionally identical to Cultivate (the Arcane subtype matters
-// only to splice, which the engine has no notion of), so it shares
+// only to splice, which reads the type line, ADR 0202), so it shares
 // cultivateSearch: one optional search per destination, the first
 // deferring its shuffle, the second shuffling once. "Up to two" is
 // honoured (#2942) — see cultivate.go.

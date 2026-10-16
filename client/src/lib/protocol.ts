@@ -2256,6 +2256,10 @@ export interface StackItemView {
   // spell is on the stack, so the overlay reads the labels off the
   // item rather than printing raw indexes.
   mode_labels?: string[];
+  // ADR 0202 (CR 702.47a): the cards whose text was spliced onto this
+  // spell, in the order that text happens. Their targets are in
+  // `targets`, each with `splice` naming its text.
+  spliced?: string[];
   x_value?: number;
   distribution?: Record<string, number>;
   hold_priority?: boolean;
@@ -2313,6 +2317,9 @@ export interface TargetRefView {
   // announcement.
   slot?: number;
   mode?: number;
+  // ADR 0202: the spliced text this pick answered, 1-based in the
+  // item's `spliced`. Omitted for the spell's own text.
+  splice?: number;
 }
 
 // CouncilVoteView is a rules vote in progress (ADR 0146, CR 701.38), as
@@ -2876,6 +2883,21 @@ export interface AdditionalCostView {
   exile_cost_x?: boolean;
   exile_cost_x_max?: number;
   payable?: boolean;
+}
+
+// SpliceOfferView is one card in the viewer's hand that may be spliced
+// onto the spell being cast (ADR 0202, CR 702.47a): "Splice onto Arcane
+// {1}{R}". `card_id` rides cast_spell in `splices`, and the text's target
+// clause (judged from the spell, CR 702.47c) adds steps to the target
+// walk whose picks carry `splice`.
+export interface SpliceOfferView {
+  card_id: string;
+  name: string;
+  label: string;
+  mana_cost: string;
+  target_mode?: string;
+  legal_targets?: LegalTargetsView;
+  clauses?: LegalTargetsView[];
 }
 
 // OptionalCostView is one "you may pay an additional cost as you
@@ -4038,6 +4060,9 @@ export interface CastSurfaceView {
   // same picker the alternative costs open, because CR 601.2b
   // announces them together. Absent for nearly every card.
   optional_costs?: OptionalCostView[];
+  // ADR 0202: the cards in the viewer's hand that splice onto this
+  // spell, offered as toggles beside the optional costs. Per viewer.
+  splice_offers?: SpliceOfferView[];
   // ADR 0150 §5 (CR 702.132a): a spell with assist's offer to this
   // caster — who may be asked to help pay its generic mana, and how
   // much generic there is. The cast modal's Assist row reads it and the

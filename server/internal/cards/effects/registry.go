@@ -67,6 +67,7 @@ func Register(spec Spec) {
 	}
 	checkEscalate(spec)
 	checkEntwine(spec)
+	checkSplice(spec)
 	checkFlatClauses(spec.Name, spec.Targets)
 	checkSpellXBound(spec.Name, spec.Targets)
 	checkExhaustAbilities(spec)

@@ -452,6 +452,8 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		XMax: new(int),
 		// ADR 0150 §5: the viewer's own assist offer.
 		Assist: &AssistOfferView{Max: 3, Players: []string{"p"}},
+		// ADR 0202: the viewer's own splice offers.
+		SpliceOffers: []SpliceOfferView{{CardID: "c", Name: "Glacial Ray", Label: "Splice onto Arcane {1}{R}", ManaCost: "{1}{R}", TargetMode: "any", LegalTargets: lt, Clauses: []LegalTargetsView{*lt, *lt}}},
 	}
 }
 
@@ -860,6 +862,9 @@ var castSurfaceScopes = map[string]castSurfaceScope{
 	"XMax": surfacePrivate,
 	// ADR 0150 §5: who the asking seat may ask to help pay.
 	"Assist": surfacePrivate,
+	// ADR 0202: the splice offers are other cards in the asking seat's
+	// hand.
+	"SpliceOffers": surfacePrivate,
 	// #2167: which types a per-type permission leaves is the holder's
 	// own budget.
 	"PermissionTypes": surfacePrivate,
