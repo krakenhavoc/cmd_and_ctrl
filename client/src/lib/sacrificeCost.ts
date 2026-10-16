@@ -259,6 +259,21 @@ export function castSacrificeRange(opts: SacrificeOptionsShape | undefined): Sac
   return sacrificeRange(opts);
 }
 
+// altCostTapRange is the bounds the tap picker enforces for an offer's
+// tap half. A fixed clause is min == max == the count, as sacrificeRange
+// reads it; harmonize's "up to one untapped creature" (#3931, CR
+// 702.180a) ships min 0, max 1, and tapping none is a legal payment.
+export function altCostTapRange(opts: SacrificeOptionsShape | undefined): SacrificeRange {
+  if (opts?.min === 0 && (opts.max ?? 0) > 0) return { min: 0, max: opts.max ?? 0 };
+  return sacrificeRange(opts);
+}
+
+// altCostTapsNothingToAsk reports an offer's tap half that has one
+// answer, none: it may tap nothing and nothing can be tapped (#3931).
+export function altCostTapsNothingToAsk(opts: SacrificeOptionsShape | undefined): boolean {
+  return opts !== undefined && altCostTapRange(opts).min === 0 && (opts.cards ?? []).length === 0;
+}
+
 // castSacrificeFloor is how many permanents the cast must be able to
 // sacrifice to be castable at all — 0 for the two variable counts.
 export function castSacrificeFloor(opts: SacrificeOptionsShape | undefined): number {

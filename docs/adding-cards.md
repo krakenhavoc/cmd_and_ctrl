@@ -5984,6 +5984,27 @@ REDUCES the mana half, which the pricer does not read), Firecat Blitz's
 creatures" price (Battle Screech, Prismatic Strands), which is a tap
 component the struct does not have.
 
+**Harmonize (#3931, CR 702.180, ADR 0135 amendment 2026-10-16):** a
+card that prints "Harmonize {cost}" opens the graveyard as flashback
+does and declares the offer with one constructor:
+
+```go
+CastableZones:    []game.ZoneKind{game.ZoneGraveyard},             // Channeled Dragonfire
+AlternativeCosts: []game.AlternativeCost{Harmonize("{5}{R}{R}")},
+```
+
+That is flashback's place and exile, a tap of UP TO one untapped
+creature you control (`game.HarmonizeTapCost()`, `TapOthersCost.UpTo`)
+on `alt_cost_ids`, and `ReducedByTappedPower`: the pricer takes the
+creature's power off the generic part, then off an {X} (Nature's Rhythm,
+Zenith Festival), never below {0}. Tapping none is a legal payment.
+Never hand-roll the struct; `Register` holds the flag and `UpTo`
+together over one creature. An effect that gives a card harmonize
+("gains harmonize until end of turn. Its harmonize cost is equal to its
+mana cost", Songcrafter Mage) is `GrantHarmonizeToCard`, Snapcaster's
+`GrantFlashbackToCard` under the `harmonize` key, so the granted offer
+taps and reduces exactly as a printed one does.
+
 **"Unless it escaped" — cast provenance (#653, CR 400.7d).** A
 permanent remembers how the spell that became it was cast:
 `Card.Provenance` is a `CastProvenance{AltCost, FromZone}` written at

@@ -700,8 +700,9 @@ type TargetCandidate struct {
 	// reduction, the sacrificed permanent's mana value as the pricer
 	// takes it off. The policy prices the saving in its own units and
 	// subtracts it from what the candidate is worth to keep, so a spent
-	// six-drop can rank ahead of a token that saves nothing. Zero for
-	// every other cost.
+	// six-drop can rank ahead of a token that saves nothing. A harmonize
+	// tap (#3931) sets it beside Tap: the tapped creature's power as the
+	// pricer takes it off. Zero for every other cost.
 	Saves int
 }
 
