@@ -253,6 +253,14 @@ var (
 	// last existed on the battlefield (CR 608.2h).
 	diedControllerLosesLifeEqualToToughnessBody = game.SimpleDelayedBody("dies/controller-loses-life-equal-to-toughness",
 		diedControllerLosesLifeEqualToToughness)
+
+	// Return every object <Objects> names that is still that object in
+	// a graveyard, exile or the command zone, together, under the
+	// delayed trigger's controller: "return that card and the sacrificed
+	// card to the battlefield under your control at the beginning of
+	// your next upkeep" (Rescue from the Underworld, #2099).
+	returnTheObjectsTogetherUnderYourControlBody = game.DelayedBody("return/the-objects-together-under-your-control",
+		returnTheObjectsTogetherUnderYourControl)
 )
 
 // maxManaDrainRefund bounds the refund a restored Mana Drain may add. No
