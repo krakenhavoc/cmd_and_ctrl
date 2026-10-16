@@ -40,9 +40,8 @@ import "github.com/google/uuid"
 // damage replacement that reduces the damage to declaring Prevention).
 // Under "damage can't be prevented" the apply loop settles a prevention
 // effect without running its Replace (settleUnpreventableLocked), so it
-// is never measured and never announced: Leyline of Punishment and
-// Skullcrack switch the trigger off with the prevention, as will every
-// later "damage can't be prevented" (Spider-Punk, #4044).
+// is never measured and never announced: Leyline of Punishment,
+// Spider-Punk and Skullcrack switch the trigger off with the prevention.
 //
 // WHEN IT IS EMITTED. The announcement joins the follow-up queue as an
 // entry of its own (PreventionFollowUp.Announce), owed for the instance,

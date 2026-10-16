@@ -103,6 +103,25 @@ func TestSelflessSquireNothingForUnpreventableDamage(t *testing.T) {
 	}
 }
 
+// Spider-Punk's "Damage can't be prevented" switches the trigger off with
+// the prevention: the damage is dealt and nothing triggers.
+func TestSelflessSquireNothingUnderSpiderPunk(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	a := pr7Creature(g, opp.ID, "A", 3, "R")
+	squire := castSquire(t, g)
+	pushCatalogPermanent(g, opp.ID, "Spider-Punk", "Legendary Creature — Spider Human Hero", "03bf7a90-78c1-4e83-8553-e22d85e49876", false)
+	life := me.Life
+	pr7Hit(t, g, a, me.ID, 3)
+	passPriorityAroundTable(t, g)
+	if me.Life != life-3 {
+		t.Fatalf("life %d, want %d", me.Life, life-3)
+	}
+	if n := countersOn(g, squire, game.CounterPlusOne); n != 0 || squireTriggers(g, squire) != 0 {
+		t.Fatalf("%d counters, %d triggers, want none", n, squireTriggers(g, squire))
+	}
+}
+
 // Any prevention effect counts, not only the Squire's own: Riot Control's
 // shield grows a Squire that was already on the battlefield. Damage
 // prevented to another player, or to a creature you control, does not.
