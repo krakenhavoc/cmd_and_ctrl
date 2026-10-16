@@ -4514,6 +4514,20 @@ exiled" and the default for "this turn". The attack conditions read tallies
 written as each attacker is declared, so a token that died in combat still
 counts, and every tally resets at the turn boundary.
 
+The second slice (#3192) added three pieces beside it. For a window on the
+resolving ability's OWN source use `forAsLongAsThisRemainsWindow(g, item)`
+("for as long as Intet remains on the battlefield", "as long as this Saga
+remains") or `forAsLongAsYouControlThisWindow(g, item)` ("for as long as you
+control this creature"): they also refuse a source that left and came back
+(CR 400.7). A card the effect has CHOSEN, rather than the top N, goes to exile
+face down with its grant through
+`g.ExileCardsFaceDownWithPermissionForEffect(ids, holder, perm)` (Vivien,
+Champion of the Wilds' −2), which makes the holder its one viewer. And "when
+you next cast a creature spell this turn, it gains haste until end of turn"
+(Summon: Brynhildr) is a `GrantNextSpellPromise` whose `FollowUp` calls
+`g.GrantKeywordsToSpellForEffect(f.Source, f.Spell, …)`: a promise's follow-up
+is now told the promise's source as `CastFollowUp.Source`.
+
 **"Exile that card with a <counter> counter on it instead of putting it into
 your graveyard as it resolves" (#3213, ADR 0107 amendment of 2026-10-13):**
 Goliath Daydreamer. A cast trigger marks the spell on the stack with
