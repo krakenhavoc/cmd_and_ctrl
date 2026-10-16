@@ -37,6 +37,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Cards in graveyards can't be targeted" (ADR 0109 §6, #1885)](#cards-in-graveyards-cant-be-targeted-adr-0109-6-1885)
   - [Targeting costs and bars (#3860)](#targeting-costs-and-bars-3860)
   - ["Spells you control can't be countered" (ADR 0106, #1806)](#spells-you-control-cant-be-countered-adr-0106-1806)
+  - ["Play with their hands revealed" (ADR 0199, #3953)](#play-with-their-hands-revealed-adr-0199-3953)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
   - [Adding a triggered ability (S19+)](#adding-a-triggered-ability-s19)
@@ -3513,6 +3514,19 @@ GrantCounterShield{From: "Determined", ExceptThis: true, Grant: SpellsCantBeCoun
   stolen spell keeps it; a copy does not get it (CR 707.2).
 - `From` is the card's name, shown on the seat's NO COUNTER badge
   (`counter_shields` on the player view) beside the printed `text`.
+
+### "Play with their hands revealed" (ADR 0199, #3953)
+
+A permanent whose static reveals hands declares `Spec.HandsRevealed`:
+`game.HandRevealOpponents` for "Your opponents play with their hands
+revealed" (Telepathy), `game.HandRevealEachPlayer` for "Players play with
+their hands revealed" (Revelation). A resolved ability that reveals a
+hand for a duration calls `ctx.Game.GrantHandRevealedForEffect(player,
+label, source, d)` with a duration from `durations.go` (Stromgald Spy uses
+`DurationWhileSourceRemains`, and registers nothing when it returns
+false). Never stamp `KnownBy` on the hand's cards for these: the view
+derives the reveal per frame (`game.HandRevealedLocked`), so cards drawn
+later are shown and the hand is hidden again when the effect ends.
 
 ### Maximum hand size (ADR 0113 §3, #2074)
 
