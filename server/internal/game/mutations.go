@@ -6902,6 +6902,9 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 		// ADR 0090, CR 722.3a — the sandbox move lands a preparation
 		// card prepared exactly as any other entry does.
 		g.applyEntersPreparedLocked(cardID, out.EntersPrepared)
+		// #3862: and its "as this enters" clause over other objects,
+		// before the arrival is announced (as_enters_others.go).
+		g.runAsEntersOthersForMoveLocked(cardID)
 	}
 
 	g.EmitEvent(Event{

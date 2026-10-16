@@ -71,6 +71,19 @@ type Spec struct {
 	// nearly every card.
 	AsEnters func(card *game.Card, ctx *Context) error
 
+	// AsEntersOthers is an "as this enters" clause that changes OTHER
+	// objects — Ixidron's "As this creature enters, turn all other
+	// nontoken creatures face down." (#3862). It is part of the entry
+	// (CR 614.1c), so the engine runs it after the permanent has landed
+	// and BEFORE any event announces its arrival: nothing, not even a
+	// "whenever another creature enters" ability of one of the objects
+	// it changes, ever sees the board in between. The permanents
+	// entering at the same time are on the battlefield but are not
+	// "other" ones that were there: ask ctx.Game.ArrivingForEffect and
+	// leave them alone. Same contract as AsEnters otherwise (off the
+	// stack, Item is nil). Nil for nearly every card.
+	AsEntersOthers func(card *game.Card, ctx *Context) error
+
 	// AsTransformsInto is the face's "As this permanent transforms
 	// into <this face>, …" clause (Sephiroth, One-Winged Angel's Super
 	// Nova), declared on the Spec of the face being turned TO — a back

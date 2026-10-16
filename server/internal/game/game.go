@@ -97,6 +97,11 @@ type Game struct {
 	// removed a whole departed player's cards under it (#2608). Not
 	// part of a snapshot: a clone is only ever taken between passes.
 	harvestDepth int
+	// arriving is the permanents of the entry whose AsEntersOthers
+	// clauses are running (as_enters_others.go, #3862): on the
+	// battlefield, but not there yet for "all other creatures". Nil
+	// outside that synchronous call, so never part of a snapshot.
+	arriving []uuid.UUID
 	// mixedEntry is the arriving permanent excluded from the simultaneous
 	// exit's look-back harvest. Zero outside that synchronous announcement.
 	mixedEntry uuid.UUID

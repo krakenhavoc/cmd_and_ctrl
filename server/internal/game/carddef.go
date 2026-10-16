@@ -38,6 +38,12 @@ type CardDef struct {
 	// AsEnters runs the card's CR 614.12 "as enters" hook; nil for
 	// nearly every card.
 	AsEnters func(g *Game, cardID uuid.UUID) error
+	// AsEntersOthers runs the card's "as this enters" clause that
+	// changes OTHER objects (Ixidron), as part of the entry: after the
+	// landing and before any event announces it, with the permanents
+	// arriving in the same entry marked (ArrivingForEffect). #3862,
+	// as_enters_others.go. Nil for nearly every card.
+	AsEntersOthers func(g *Game, cardID uuid.UUID) error
 	// AsTransformsInto runs the face's "As this permanent transforms
 	// into <this face>, …" clause (Sephiroth, One-Winged Angel's Super
 	// Nova), registered on the face being turned TO. The transform
