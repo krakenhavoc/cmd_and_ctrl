@@ -35,6 +35,7 @@
   import { turnSkipChip } from "../../turn";
   import { avatarExpand } from "../../boardExpand";
   import EmblemLevelChip from "./EmblemLevelChip.svelte";
+  import DungeonChip from "./DungeonChip.svelte";
   import ManaPoolPips from "./ManaPoolPips.svelte";
   import Icon from "../Icon.svelte";
   import AgentChip from "../AgentChip.svelte";
@@ -626,6 +627,15 @@
           </span>
         {/if}
       {/each}
+    </div>
+  {/if}
+
+  <!-- The dungeon (ADR 0203, CR 309): the card in the command zone and
+       the room the venture marker is in, or the dungeons completed. A
+       dungeon card is face up, so it is shown on every seat. -->
+  {#if seat.dungeon || (seat.completed_dungeons?.length ?? 0) > 0}
+    <div class="emblems" aria-label="dungeon">
+      <DungeonChip dungeon={seat.dungeon} completed={seat.completed_dungeons ?? []} />
     </div>
   {/if}
 

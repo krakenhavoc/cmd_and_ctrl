@@ -176,6 +176,9 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			unknown = append(unknown, "scoped-effect scope "+string(e.Scope))
 		}
 	}
+	// ADR 0203: a venture marker on a dungeon or room this binary does
+	// not register.
+	unknown = append(unknown, unknownDungeonKeys(s.Seats)...)
 	// ADR 0109 Shared machinery 2: every stored duration, wherever it
 	// is — a scoped effect's, a delayed trigger's, a cast permission's,
 	// a player static's, an untap hold's — is one this binary can read,

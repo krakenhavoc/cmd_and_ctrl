@@ -66,6 +66,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [A loyalty cost of −X (ADR 0032 amendment 2026-10-10, #1944)](#a-loyalty-cost-of-x-adr-0032-amendment-2026-10-10-1944)
   - [Planeswalker statics, eminence and loyalty timing (ADR 0140 and amendments, #2797)](#planeswalker-statics-eminence-and-loyalty-timing-adr-0140-and-amendments-2797)
   - [The Ring tempts you (ADR 0114, #2076)](#the-ring-tempts-you-adr-0114-2076)
+  - [The initiative and dungeons (ADR 0203, #4096)](#the-initiative-and-dungeons-adr-0203-4096)
   - [Voting: will of the council and council's dilemma (ADR 0146, #2143, CR 701.38)](#voting-will-of-the-council-and-councils-dilemma-adr-0146-2143-cr-70138)
   - [Designations: Class levels, solved Cases, station thresholds (#757, #759)](#designations-class-levels-solved-cases-station-thresholds-757-759)
   - [Bestow (ADR 0141, #2862, CR 702.103)](#bestow-adr-0141-2862-cr-702103)
@@ -9732,6 +9733,37 @@ The Questing Role ("has all the abilities of Questing Beast") does not
 exist yet: a grant bundle has no slot for Questing Beast's block
 restriction or its damage-prevention rule. Questing Cosplayer waits on
 it (#1945).
+
+### The initiative and dungeons (ADR 0203, #4096)
+
+The initiative (CR 726) and its three inherent triggered abilities run in
+the engine (`game/initiative.go`), and so does venturing into a dungeon
+(CR 309, CR 701.49, `game/dungeon.go`). A card only says:
+
+| Printed text | Write |
+|---|---|
+| "When this <permanent> enters, you take the initiative." | `WhenThisEntersYouTakeTheInitiative(name)` |
+| "you take the initiative" inside an effect | `TakeTheInitiative{}` (a `Do` step; Player defaults to the controller) |
+| "At the beginning of your end step, if you have the initiative, …" | `IfYouHaveTheInitiative(AtYourEndStep(label, effect))` — an intervening "if" (CR 603.4); write the effect as a `Do` so it keeps its footprint |
+| "Whenever you complete a dungeon, …" | `WheneverYouCompleteADungeon(label, effect)` |
+| "if you've completed a dungeon" | `YouCompletedADungeon(g, you)`, read where the card reads it |
+| "if you have the initiative" | `YouHaveTheInitiative(g, you)` |
+
+Taking the initiative never ventures by itself: the venture is the
+initiative's own trigger ("Whenever a player takes the initiative, that
+player ventures into Undercity"), so it goes on the stack after the spell
+or ability that gave it has finished resolving, and taking it again while
+you have it still ventures (CR 726.5).
+
+**A dungeon is a `DungeonSpec`** in `cards/effects/dungeons.go`: rooms in
+printed order, each with its arrows (`LeadsTo`), its printed text, an
+optional target clause and an `Effect`. The room abilities are ordinary
+catalog triggers, so a room that targets gets the trigger targeting and
+restores like any other row. Only the Undercity is filed. **Do not ship a
+plain "venture into the dungeon" card** until Lost Mine of Phandelver,
+Dungeon of the Mad Mage and Tomb of Annihilation are rows too: a venture
+that can enter only some of them is a choice the rules give and the card
+would not.
 
 ### Ascend and the city's blessing (ADR 0096 amendment 2026-10-08, #2696, CR 702.131)
 

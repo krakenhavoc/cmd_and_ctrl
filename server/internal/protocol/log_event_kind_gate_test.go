@@ -135,7 +135,8 @@ var silentEventKinds = map[string]string{
 	// player who left. The holder itself is GameView.monarch. The kind
 	// exists for "whenever you become the monarch" to watch and for
 	// the layer pass to invalidate on.
-	"EventMonarchChanged": "the LogResolve of the ability that moved the crown (or the LogEliminated of the monarch who left, CR 725.4) already says so, and GameView.monarch carries the holder (#1722)",
+	"EventInitiativeTaken": "the LogResolve of the spell or ability that gave it (or the LogEliminated of the holder who left, CR 726.4) already says so, GameView.initiative carries the holder, and the venture it triggers is narrated as LogVenture (ADR 0203)",
+	"EventMonarchChanged":  "the LogResolve of the ability that moved the crown (or the LogEliminated of the monarch who left, CR 725.4) already says so, and GameView.monarch carries the holder (#1722)",
 
 	// --- visible board state -------------------------------------------
 	"EventTapCard":         silentBoardStateIsVisible,

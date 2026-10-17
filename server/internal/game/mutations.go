@@ -5433,6 +5433,12 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	if g.startYourEnginesSBALocked() {
 		fired = true
 	}
+	// CR 704.5t (309.6, ADR 0203): a venture marker on a dungeon's
+	// bottommost room with no room ability of it still waiting to
+	// leave the stack completes the dungeon. See dungeon.go.
+	if g.dungeonCompletionSBALocked() {
+		fired = true
+	}
 	// ADR 0091, CR 702.75a: the controller of a hideaway permanent may
 	// look at the card it hid. Not a state-based action and never
 	// "fired" — it keeps a knower set current as control moves.
@@ -11244,21 +11250,36 @@ func (g *Game) SetMonarch(playerID uuid.UUID) error {
 	return nil
 }
 
-// SetInitiative designates the given player as having the initiative
-// (Commander Legends: Battle for Baldur's Gate — venture into the
-// Undercity at the start of upkeep; combat damage transfers initiative).
-// Pass uuid.Nil to clear. Same sandbox / non-enforcement posture as
-// SetMonarch — the marker is what's surfaced.
+// SetInitiative is the sandbox's set_initiative: `playerID` takes the
+// initiative, or uuid.Nil clears it.
+//
+// ADR 0203 (#4096): a take by hand is the same take a card makes
+// (takeInitiativeLocked), so the player ventures into Undercity exactly
+// as they would have — the sandbox action is a way to reach a game
+// state, not a way around what that state means, as ADR 0096 §1 says
+// of the manual crown. Clearing the marker is a table correction: it
+// emits EventInitiativeTaken with no Actor, which nothing triggers on.
+//
+// Returns ErrPlayerNotFound if playerID isn't seated or has left the
+// game, or ErrGameNotActive in lobby/ended state.
 func (g *Game) SetInitiative(playerID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
-	if playerID != uuid.Nil && g.playerByIDLocked(playerID) == nil {
+	if playerID == uuid.Nil {
+		if g.Initiative != uuid.Nil {
+			previous := g.Initiative
+			g.Initiative = uuid.Nil
+			g.EmitEvent(Event{Kind: EventInitiativeTaken, Target: previous})
+		}
+		return nil
+	}
+	if p := g.playerByIDLocked(playerID); p == nil || p.Eliminated {
 		return ErrPlayerNotFound
 	}
-	g.Initiative = playerID
+	g.takeInitiativeLocked(playerID, uuid.Nil)
 	return nil
 }
 

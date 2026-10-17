@@ -135,6 +135,7 @@ var reviewedNotAWipe = map[string]string{
 	"Sundial of the Infinite":                  "ends the turn",
 	"Synthetic Destiny":                        "exiles only its caster's creatures, then returns that many from the library",
 	"Time Stop":                                "ends the turn",
+	"Trailblazer's Torch":                      "2 damage only to the creatures blocking the equipped creature",
 	"Ugin's Binding":                           "a single target, and an exile from the graveyard",
 	"Ugin, the Spirit Dragon":                  "the -X sweep is not registered (its caveat says so)",
 	"Vault 11: Voter's Dilemma":                "destroys only the creatures with the most votes, one per voter at most: removal, not a wipe",

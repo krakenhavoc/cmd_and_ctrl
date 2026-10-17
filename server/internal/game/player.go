@@ -486,6 +486,20 @@ type Player struct {
 	// amendment, #2696). Carried by Clone, the snapshot and undo, and
 	// public on the wire.
 	CitysBlessing bool
+
+	// Dungeon is the dungeon card this player owns in the command zone
+	// and the room their venture marker is in (CR 309.4), nil when they
+	// own none. Written only by dungeon.go (enterDungeonLocked,
+	// moveVentureMarkerLocked, completeDungeonLocked). Public: a dungeon
+	// card and its marker are face up in the command zone. ADR 0203.
+	Dungeon *DungeonState
+
+	// CompletedDungeons are the dungeons this player has completed this
+	// game (CR 309.7), by key, in the order completed. "If you've
+	// completed a dungeon" reads its length; "if you haven't completed
+	// Tomb of Annihilation" reads its keys. Written only by
+	// completeDungeonLocked. ADR 0203.
+	CompletedDungeons []string
 }
 
 // newPlayer constructs a player with empty zones and their starting

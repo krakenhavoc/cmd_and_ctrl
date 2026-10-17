@@ -404,7 +404,7 @@ func TestRestartClassifiesEveryPlayerField(t *testing.T) {
 		"mulliganBottoming": true, "UndosRemaining": true, "AttemptedEmptyDraw": true,
 		"CommanderCasts": true, "Counters": true, "MaxHandSize": true, "MaxHandSizeAt": true,
 		"LandDropsPerTurn": true, "ManaPool": true, "CastPermissions": true, "Statics": true,
-		"CitysBlessing": true,
+		"CitysBlessing": true, "Dungeon": true, "CompletedDungeons": true,
 	}
 	typ := reflect.TypeOf(Player{})
 	for i := 0; i < typ.NumField(); i++ {
