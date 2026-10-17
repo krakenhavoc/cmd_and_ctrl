@@ -488,6 +488,23 @@ export function fitRow(
       // so hold the full overlap until the resize observer re-measures.
       const k = scale !== was || scale < 1 ? 1 : stripOpen(spread, packed, available);
       node.style.setProperty("--strip-k", k.toFixed(3));
+      // #4090: the strip takes the room the other zones leave, but no
+      // more than its piles need laid edge to edge, so the back row's
+      // zones sit together instead of the lands sitting at one end of a
+      // wide empty strip. Only at full card size: a shrunk row has
+      // already used all its room, and its spread width is the shrunk
+      // one.
+      const row = node.parentElement;
+      if (row) {
+        if (scale >= 1 && was >= 1 && spread > 0) {
+          const rowPad =
+            (parseFloat(rowStyle?.paddingLeft ?? "0") || 0) +
+            (parseFloat(rowStyle?.paddingRight ?? "0") || 0);
+          row.style.setProperty("--strip-spread", `${Math.ceil(spread + rowPad)}px`);
+        } else {
+          row.style.removeProperty("--strip-spread");
+        }
+      }
     }
   };
   const schedule = (): void => {

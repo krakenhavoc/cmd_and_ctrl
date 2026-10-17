@@ -1483,6 +1483,10 @@
      overlaps them only when they no longer fit. */
   .grid-middle > :global(.row.strip) {
     flex: 1 1 0;
+    /* #4090: but no wider than its lands laid edge to edge (fitRow
+       publishes --strip-spread), so the zones beside it sit against it
+       rather than across an empty strip. */
+    max-width: var(--strip-spread, 100%);
   }
   /* #3028: a zone takes no more than its share of the row by pile
      count (--row-share, set on the row from backRow.ts), so a long

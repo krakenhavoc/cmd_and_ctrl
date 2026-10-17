@@ -577,7 +577,9 @@
   }
   .row-label {
     position: absolute;
-    top: 4px;
+    /* #4090: the label's 16px line fills the row's 18px top padding, so
+       nothing in the row (a card, a pile badge) reaches into it. */
+    top: 1px;
     left: 6px;
     display: inline-flex;
     align-items: baseline;
