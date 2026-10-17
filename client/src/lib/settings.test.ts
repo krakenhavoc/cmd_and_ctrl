@@ -146,6 +146,36 @@ describe("settings", () => {
     expect(SYNCED_FIELDS.animations.combat).toBe("synced");
   });
 
+  // ADR 0119 amendment 2026-10-16 §D: the stack's arrival trace is on by
+  // default, synced, filled into an older blob by the merge with no
+  // version bump (as dice and combat were), and a stored `false` holds.
+  it("defaults animations.stackArrival on, syncs it, and fills it into an older blob", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 28, animations: { enabled: true, combat: false } }),
+    );
+    const { settings, defaultSettings, SYNCED_FIELDS, SETTINGS_VERSION, applySyncedCopy } =
+      await freshModule();
+    expect(SETTINGS_VERSION).toBe(28);
+    expect(defaultSettings().animations.stackArrival).toBe(true);
+    const s = get(settings);
+    expect(s.animations.stackArrival).toBe(true);
+    expect(s.animations.combat).toBe(false);
+    expect(SYNCED_FIELDS.animations.stackArrival).toBe("synced");
+    // An account copy that turned it off carries the choice to this device.
+    const synced = applySyncedCopy(s, { animations: { stackArrival: false } }, 28);
+    expect(synced.animations.stackArrival).toBe(false);
+  });
+
+  it("keeps a stored animations.stackArrival = false", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 28, animations: { enabled: true, stackArrival: false } }),
+    );
+    const { settings } = await freshModule();
+    expect(get(settings).animations.stackArrival).toBe(false);
+  });
+
   // #3586: v27 → v28 adds gameplay.attackDefault. Existing players stay
   // on today's behaviour ("ask"); a chosen mode survives; junk is "ask".
   it("migrates v27 to v28 with attackDefault on Choose each time", async () => {

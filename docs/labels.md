@@ -149,6 +149,7 @@ registered, or when this file is stale.
 | `replayTutorial` | `Replay the tutorial` | menuitem | text | `lib/components/board/GameMenu.svelte`<br>`lib/components/Settings.svelte` | Settings → Advanced, and the ⋯ menu on the practice table only: opens a fresh practice table |
 | `legalNotice` | `Legal notice` | menuitem | text | `lib/components/board/GameMenu.svelte` | the ⋯ menu's Help group: opens the fan-content notice, which the site footer carries everywhere else (#2982) |
 | `showTips` | `Show tips` | checkbox | text | `lib/components/Settings.svelte` | Settings → Advanced: on unless Hide tips was pressed on a tip |
+| `stackArrivalToggle` | `Stack: trace each spell or ability in from its source` | checkbox | text | `lib/components/Settings.svelte` | Settings → Animations: the arrival trace, animations.stackArrival (ADR 0119 amendment 2026-10-16 §D) |
 | `startPractice` | `Start practice` | link | text | `routes/LobbyPractice.hint.ts`<br>`routes/Lobby.svelte` | the lobby.practice tip's action, to #/practice, and the Lobby's Practice game card; the tip's Got it reads Not now beside it |
 | `tip` | `tip` | complementary | aria | `lib/components/hints/HintCard.svelte` | a first-use hint's card (ADR 0125 §3.6); one at a time, and Go to the tip (i) moves focus to it |
 | `keyboardShortcuts` | `keyboard shortcuts` | dialog | text | `lib/components/ShortcutsOverlay.svelte` | the keymap overlay (?), named by its heading |

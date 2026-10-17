@@ -631,6 +631,17 @@
                 />
                 Combat: attackers lunge and hits land
               </label>
+              <!-- ADR 0119 amendment 2026-10-16 §D. Off, the card still
+                   appears on the stack and its arrows still draw; only the
+                   trace from its source goes. -->
+              <label class="inline">
+                <input
+                  type="checkbox"
+                  checked={$settings.animations.stackArrival}
+                  onchange={(e) => change("animations", "stackArrival", e.currentTarget.checked)}
+                />
+                {L.stackArrivalToggle}
+              </label>
             </fieldset>
           {:else if activeTab === "display"}
             <h3>Display</h3>

@@ -65,6 +65,7 @@
   import StackLinger from "./StackLinger.svelte";
   import FieldMotion from "./FieldMotion.svelte";
   import CastFlight from "./CastFlight.svelte";
+  import StackArrival from "./StackArrival.svelte";
   import { provideLifeCauses } from "../../lifeCause";
   import {
     DEFAULT_STACK_STYLE,
@@ -3825,6 +3826,12 @@
   <StackTargetRings {view} {viewerID} {boardEl} />
   <TargetingArrows {view} {boardEl} />
   <HoverZoomOverlay {view} />
+  <!-- ADR 0119 amendment 2026-10-16 §D: a new stack item's trace runs
+       from its source to where the stack draws it, in the caster's seat
+       colour. Before the stack host, so the arrows' hold is on the board
+       before the host's arrows mount. z 39, aria-hidden, no pointer
+       events. -->
+  <StackArrival {view} {boardEl} {beatsPrimeKey} />
   <!-- Attention strip: one column over the table (the middle
        opponent's hand row in the row layout, the top-left seat's
        hand row otherwise) that stacks every live prompt — the stack
