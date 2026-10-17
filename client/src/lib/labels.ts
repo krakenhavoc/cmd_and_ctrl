@@ -1133,6 +1133,13 @@ export const LABEL_SPECS = {
     owners: ["lib/components/Settings.svelte"],
     doc: "Settings → Advanced: on unless Hide tips was pressed on a tip",
   }),
+  stackArrivalToggle: label({
+    name: "Stack: trace each spell or ability in from its source",
+    kind: "text",
+    role: "checkbox",
+    owners: ["lib/components/Settings.svelte"],
+    doc: "Settings → Animations: the arrival trace, animations.stackArrival (ADR 0119 amendment 2026-10-16 §D)",
+  }),
   startPractice: label({
     name: "Start practice",
     kind: "text",

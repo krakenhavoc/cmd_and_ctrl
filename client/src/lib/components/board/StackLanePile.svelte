@@ -67,6 +67,7 @@
     pileDepth,
   } from "../../stackPile";
   import { cardImageURL } from "../../cardImage";
+  import { identityEdgeBackground } from "../../stackIdentityEdge";
   import { cardArt } from "../../cardArt";
   import { boardExpandLayout } from "../../boardExpand";
   import Icon from "../Icon.svelte";
@@ -308,6 +309,7 @@
     {@const topAbility = isAbility(top)}
     {@const topSrc = topAbility ? null : imageOf(top, "normal")}
     {@const topRing = targetedRing(top)}
+    {@const topEdge = identityEdgeBackground(top.previewCard, topAbility ? 63 / 88 : 488 / 680)}
     {@const chips = chipsOf(top)}
     <div class="cards" bind:this={cardsEl} style:--rise={`${cascade.rise}px`}>
       {#if more > 0}
@@ -399,8 +401,10 @@
         class:previewable={top.previewCard !== null}
         class:ability={topAbility}
         class:no-art={!topAbility && topSrc === null}
+        class:edged={topEdge !== null}
         style:--seat-color={top.casterColor}
         style:--targeted-ring={topRing}
+        style:--identity-edge={topEdge}
         data-stack-item-id={top.id}
         title={top.previewCard ? `${top.text} — hover to preview` : top.text}
         onpointerenter={() => controls.hoverEnter(top)}
@@ -408,23 +412,33 @@
         onfocusin={() => controls.hoverEnter(top)}
         onfocusout={() => controls.hoverLeave(top)}
       >
-        {#if topAbility}
-          <StackAbilityCard item={top} />
-        {:else if topSrc}
-          <img
-            class="card-img"
-            src={topSrc}
-            alt={altOf(top)}
-            decoding="async"
-            use:cardArt={topSrc}
-          />
-        {:else}
-          <span class="no-art-glyph" aria-hidden="true">
-            <Icon name={top.kind === "spell" ? "spark" : "bolt"} size={28} />
-          </span>
+        {#if topEdge !== null}
+          <!-- ADR 0119 amendment 2026-10-16 §C: the colour-identity edge,
+               hard W U B R G bands round the card under a low glow of the
+               same colours. Behind the face, which covers all but its
+               rim; hidden with the card while a cast flight lands. -->
+          <span class="identity-glow" aria-hidden="true"></span>
+          <span class="identity-edge" aria-hidden="true"></span>
         {/if}
-        <span class="seat-band" aria-hidden="true"></span>
-        {@render targetButton(top)}
+        <div class="top-face">
+          {#if topAbility}
+            <StackAbilityCard item={top} />
+          {:else if topSrc}
+            <img
+              class="card-img"
+              src={topSrc}
+              alt={altOf(top)}
+              decoding="async"
+              use:cardArt={topSrc}
+            />
+          {:else}
+            <span class="no-art-glyph" aria-hidden="true">
+              <Icon name={top.kind === "spell" ? "spark" : "bolt"} size={28} />
+            </span>
+          {/if}
+          <span class="seat-band" aria-hidden="true"></span>
+          {@render targetButton(top)}
+        </div>
       </div>
     </div>
     <div class="caption" style:--seat-color={top.casterColor}>
@@ -753,6 +767,10 @@
   }
 
   /* ---- the top card ------------------------------------------------- */
+  /* The top card is a stacking context (z-index) of three layers: its
+     own box-shadow (the ring and the drop shadow), then the identity
+     glow and edge, then the face, which clips the art to the card's
+     corners and covers the edge but for its rim. */
   .top-card {
     position: relative;
     z-index: 5;
@@ -760,13 +778,18 @@
     width: var(--card-w);
     aspect-ratio: 488 / 680;
     border-radius: calc(var(--card-w) * 0.0475);
-    overflow: hidden;
-    background: var(--surface-sunken);
     box-shadow:
       0 0 0 2px var(--accent),
       0 8px 24px rgba(0, 0, 0, 0.55);
     --art-error-top: 8px;
     --art-error-right: 8px;
+  }
+  .top-face {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    background: var(--surface-sunken);
   }
   .top-card.previewable {
     cursor: zoom-in;
@@ -774,6 +797,8 @@
   /* An ability card (StackAbilityCard): a card's 63:88, not a scan's. */
   .top-card.ability {
     aspect-ratio: 63 / 88;
+  }
+  .top-card.ability .top-face {
     background: var(--surface);
   }
   .top-card.targeted {
@@ -786,6 +811,48 @@
     box-shadow:
       var(--ring),
       0 0 18px var(--accent-soft);
+  }
+
+  /* ---- the colour-identity edge (ADR 0119 amendment 2026-10-16 §C) ----
+     It replaces the accent ring as the top card's edge, so there is one
+     edge and not two: 3px of hard bands from the fixed --identity-*
+     tokens (lib/stackIdentityEdge.ts), still, the site mark's language.
+     A ring that means something more sits outside it, over a 1px gap of
+     the ground: the targeted ring, or the accent while the card is a
+     legal target. The seat band stays inside the face, on its left. */
+  .top-card.edged {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  }
+  .top-card.edged.targeted {
+    box-shadow:
+      0 0 0 4px var(--bg),
+      0 0 0 7px var(--targeted-ring),
+      0 8px 24px rgba(0, 0, 0, 0.55);
+  }
+  .top-card.edged.cast-targetable {
+    box-shadow:
+      0 0 0 4px var(--bg),
+      0 0 0 6px var(--accent),
+      0 0 18px var(--accent-soft);
+  }
+  .identity-edge,
+  .identity-glow {
+    position: absolute;
+    inset: -3px;
+    border-radius: calc(var(--card-w) * 0.0475 + 3px);
+    background: var(--identity-edge);
+    pointer-events: none;
+  }
+  /* Low and soft: the colours, not a halo. */
+  .identity-glow {
+    inset: -2px;
+    filter: blur(9px);
+    opacity: 0.32;
+  }
+  /* High contrast has no glows (its --ready-glow is transparent): the
+     bands alone, which read on its black. */
+  :global(:root[data-theme="high-contrast"]) .identity-glow {
+    display: none;
   }
   .card-img {
     width: 100%;
@@ -1058,7 +1125,10 @@
     stroke-dasharray: 6 5;
     stroke-linecap: round;
     filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.6));
-    animation: arrow-in 180ms var(--ease) both;
+    /* --stack-arrival-hold: while a new item's arrival trace runs
+       (StackArrival.svelte sets it on the board), an arrow that mounts
+       waits for the trace to land. */
+    animation: arrow-in 180ms var(--ease) var(--stack-arrival-hold, 0ms) both;
   }
   .arrow.from-top {
     stroke-width: 3;
