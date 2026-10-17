@@ -286,6 +286,7 @@
   class="pile"
   class:shrunk
   class:inward-left={inward === "left"}
+  class:narrow={cardW < 260}
   data-stack-body={styleName}
   style:--card-w={`${cardW}px`}
   style:--pile-w={`${cascade.width}px`}
@@ -681,6 +682,17 @@
     font-size: 11px;
     font-weight: 600;
     color: var(--seat-color);
+  }
+  /* Below a 260px top card the strips give their width to the title:
+     the seat band already says whose card it is, and the caster's name
+     stays for a screen reader. */
+  .pile.narrow .peek-caster {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .seat-band {
     position: absolute;
