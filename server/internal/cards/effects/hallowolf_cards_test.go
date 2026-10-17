@@ -8,10 +8,10 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// hallowolf_cards_test.go — the nine Hallowolf (#4071) cards that sit on
+// hallowolf_cards_test.go — the eight Hallowolf (#4071) cards that sit on
 // existing seams: Full Moon's Rise, Cemetery Prowler, Nightpack Ambusher,
 // Castle Embereth, Howlpack Resurgence, Moonlight Hunt, Master's Rebuke,
-// Werewolf Pack Leader and Hollowhenge Overlord.
+// and Hollowhenge Overlord.
 
 const (
 	hwFullMoonsRise      = "3aef097b-711a-4463-a59c-831e4dd5e69a"
@@ -21,7 +21,6 @@ const (
 	hwHowlpackResurgence = "614c3f71-e231-4c12-9e6b-cb8ea1d100bf"
 	hwMoonlightHunt      = "f38a6cb4-79dd-4c12-9896-8c6655e275f8"
 	hwMastersRebuke      = "e68ff836-6e51-4c3a-91e5-f0d649297245"
-	hwWerewolfPackLeader = "086a911f-9ed4-4260-ae46-58c9333b95f5"
 	hwHollowhengeOverlrd = "0e2418f8-2f32-4f79-8ce7-44eae8e764cb"
 )
 
@@ -67,7 +66,6 @@ func TestHWHallowolfCardsAreRegistered(t *testing.T) {
 		hwHowlpackResurgence: CompletenessFull,
 		hwMoonlightHunt:      CompletenessFull,
 		hwMastersRebuke:      CompletenessFull,
-		hwWerewolfPackLeader: CompletenessCaveats,
 		hwHollowhengeOverlrd: CompletenessFull,
 	} {
 		spec, ok := Lookup(oracle)
@@ -257,45 +255,6 @@ func TestHWCastleEmberethPumpsCreaturesYouControl(t *testing.T) {
 	}
 	if c := layeredCard(t, g, theirs); c.CurrentPower() != 2 {
 		t.Errorf("their creature power %d, want 2", c.CurrentPower())
-	}
-}
-
-func TestHWWerewolfPackLeaderPackTacticsDrawsOnlyWithSixPower(t *testing.T) {
-	for _, tc := range []struct {
-		name  string
-		other int
-		draws int
-	}{{"total power 6", 3, 1}, {"total power 5", 2, 0}} {
-		t.Run(tc.name, func(t *testing.T) {
-			g := newCatalogGame(t)
-			me, opp := g.Seats[0], g.Seats[1]
-			leader := pushDiesCreatureForTest(g, me.ID, "Werewolf Pack Leader", hwWerewolfPackLeader, "Creature — Human Werewolf", 3, 3)
-			other := pushVanillaCreature(g, me.ID, "Bear", tc.other, tc.other)
-			before := me.Hand.Size()
-			hwDeclare(t, g, opp.ID, leader, other)
-			passPriorityAroundTable(t, g)
-			if got := me.Hand.Size() - before; got != tc.draws {
-				t.Errorf("cards drawn = %d, want %d", got, tc.draws)
-			}
-		})
-	}
-}
-
-func TestHWWerewolfPackLeaderActivationSetsBaseStatsAndTrample(t *testing.T) {
-	g := newCatalogGame(t)
-	me := g.Seats[0]
-	leader := pushDiesCreatureForTest(g, me.ID, "Werewolf Pack Leader", hwWerewolfPackLeader, "Creature — Human Werewolf", 3, 3)
-	advanceToStepInTurn(t, g, game.StepPrecombatMain)
-	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{G}{C}{C}{C}"); err != nil {
-		t.Fatalf("AddManaForEffect: %v", err)
-	}
-	if err := g.ActivateCatalogAbility(me.ID, leader, 0, game.ActivateAbilityParams{}); err != nil {
-		t.Fatalf("ActivateCatalogAbility: %v", err)
-	}
-	passPriorityAroundTable(t, g)
-	c := layeredCard(t, g, leader)
-	if c.CurrentPower() != 5 || c.CurrentToughness() != 3 || !hwHasKeyword(c, "trample") {
-		t.Errorf("leader %d/%d trample=%v, want 5/3 trample", c.CurrentPower(), c.CurrentToughness(), hwHasKeyword(c, "trample"))
 	}
 }
 
