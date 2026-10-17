@@ -66,6 +66,13 @@ const DIAMOND = "M16 5.5L26 16L16 26.5L6 16ZM16 10L21.7 16L16 22L10.3 16Z";
 // counter's own colour (counterTypes.ts).
 const BOLT = "M18.5 4.5L8.5 18H15L13 27.5L23.5 13.5H17L18.5 4.5Z";
 
+// Tap ({T}, CR 107.5): an arrow turning a quarter-plus clockwise, its
+// head pointing down at the right, on the generic grey disc. Not mana;
+// drawn with the symbols because an activated ability's cost prints it
+// among them (the stack's ability card, ADR 0119 §E).
+const TAP =
+  "M7 19A9 9 0 0 1 25 19L27.5 19L23.25 25.5L19 19L21.5 19A5.5 5.5 0 0 0 10.5 19L10.5 24L7 24Z";
+
 export const MANA_SYMBOL_META: Readonly<Record<string, ManaSymbolMeta>> = {
   W: { name: "White", fill: "#f8f6d8", glyph: sun() },
   U: { name: "Blue", fill: "#c1d7e9", glyph: DROP },
@@ -76,6 +83,7 @@ export const MANA_SYMBOL_META: Readonly<Record<string, ManaSymbolMeta>> = {
   // Not mana: {E} is one energy counter (CR 107.14). Drawn with the
   // mana symbols because a cost prints it among them.
   E: { name: "Energy", fill: "#e0c050", glyph: BOLT },
+  T: { name: "Tap", fill: "#cac5c0", glyph: TAP },
 };
 
 /** A generic, X, hybrid or snow symbol: grey disc, text on top. */
@@ -100,7 +108,8 @@ export type PipKind =
   | "hybrid"
   | "phyrexian"
   | "snow"
-  | "energy";
+  | "energy"
+  | "tap";
 
 export interface ManaPip {
   /** The symbol with braces stripped, upper-cased: "U", "2", "W/U", "U/P". */
@@ -116,6 +125,7 @@ function pipKind(sym: string): PipKind {
   if (sym === "C") return "colourless";
   if (sym === "S") return "snow";
   if (sym === "E") return "energy";
+  if (sym === "T") return "tap";
   if (COLOUR_LETTERS.includes(sym)) return "colour";
   if (/\/P$/.test(sym)) return "phyrexian";
   if (sym.includes("/")) return "hybrid";
@@ -177,6 +187,8 @@ export function pipWords(p: ManaPip): string {
       return "snow";
     case "energy":
       return "energy";
+    case "tap":
+      return "tap";
     case "phyrexian":
       return `${colourName(p.symbol.split("/")[0])} or 2 life`;
     default:

@@ -269,25 +269,92 @@ describe("the pile (ADR 0119 §1)", () => {
     expect(p.q('.peek[data-stack-item-id="bolt"]')?.classList.contains("targeted")).toBe(true);
   });
 
-  it("draws an ability as its source's card with a band carrying its label and kind", () => {
+  it("draws an ability as an ability card: its source's art crop and name, its kind, its text", () => {
     const p = mountPile(gameView([viviTrigger], { stackCards: [] }));
-    const band = p.q(".top-card .ability-band");
-    expect(band?.querySelector(".kind-tag")?.textContent).toBe("triggered ability");
-    expect(band?.querySelector(".title")?.textContent).toBe(
+    const face = p.q(".top-card.ability .ability-card");
+    expect(face?.dataset.abilityKind).toBe("triggered");
+    expect(face?.querySelector(".kind-line")?.textContent).toBe("triggered ability");
+    expect(face?.querySelector(".source-name")?.textContent).toBe("Vivi Ornitier");
+    expect(face?.querySelector(".ability-text")?.textContent).toBe(
       "Vivi Ornitier — put a +1/+1 counter on Vivi",
     );
-    expect(p.q(".top-card img")?.getAttribute("src")).toContain("sf-vivi");
-    expect(p.q(".top-card img")?.getAttribute("alt")).toBe("Vivi Ornitier. Flying");
-    // The band says the kind; the chips do not repeat it.
+    const img = p.q(".top-card img");
+    expect(img?.getAttribute("src")).toContain("sf-vivi");
+    expect(img?.getAttribute("src")).toContain("art_crop");
+    // The alt is the source's name and the ability's text (ADR 0119 §B).
+    expect(img?.getAttribute("alt")).toBe(
+      "Vivi Ornitier. Vivi Ornitier — put a +1/+1 counter on Vivi",
+    );
+    // A triggered ability has no cost badge (call 23).
+    expect(face?.querySelector(".cost-badge")).toBeNull();
+    // The card says the kind; the chips do not repeat it, nor the caption the title.
     expect(p.qa(".caption .chip").map((c) => c.textContent)).not.toContain("triggered");
+    expect(p.q(".caption .top-title")).toBeNull();
   });
 
-  it("#3830: puts an ability's printed text on its band and its peeking line", () => {
+  it("badges a loyalty ability with its signed cost and an activated one with its symbols", () => {
+    const sorin = card("sorin", "Sorin, Vampire Lord", OPP, {
+      type_line: "Legendary Planeswalker — Sorin",
+    });
+    const minus = {
+      id: "loy",
+      kind: "activated",
+      controller: OPP,
+      owner: OPP,
+      source_card_id: "sorin",
+      label: "−2: Sorin deals 4 damage to any target. You gain 4 life.",
+      ability_text: "−2: Sorin deals 4 damage to any target. You gain 4 life.",
+    } as StackItemView;
+    const view = gameView([minus], { stackCards: [] });
+    (view.battlefield.cards as CardView[]).push(sorin);
+    const p = mountPile(view);
+    const face = p.q(".ability-card");
+    expect(face?.dataset.abilityKind).toBe("loyalty");
+    expect(face?.querySelector(".kind-line")?.textContent).toBe("loyalty ability");
+    const badge = face?.querySelector<HTMLElement>(".cost-badge");
+    expect(badge?.textContent?.trim()).toBe("\u22122");
+    expect(badge?.dataset.costKind).toBe("loyalty");
+    cleanup();
+
+    const tap = {
+      ...minus,
+      id: "act",
+      source_card_id: "vivi",
+      label: "Vivi Ornitier — mana",
+      ability_text: "{0}: Add {U} or {R}. Activate only during your turn and only once each turn.",
+    } as StackItemView;
+    const q = mountPile(gameView([tap], { stackCards: [] }));
+    expect(q.q(".ability-card")?.dataset.abilityKind).toBe("activated");
+    expect(q.q(".kind-line")?.textContent).toBe("activated ability");
+    expect(q.q(".cost-badge .mana-cost")?.getAttribute("data-cost")).toBe("{0}");
+  });
+
+  it("draws a hidden source's ability on the card back's pattern with the model's name", () => {
+    const faceDown = card("fd", "", OPP, { known_by_you: false, scryfall_id: undefined });
+    const trig = {
+      id: "fd-trig",
+      kind: "triggered",
+      controller: OPP,
+      owner: OPP,
+      source_card_id: "fd",
+      label: "a face-down creature's trigger",
+    } as StackItemView;
+    const view = gameView([trig], { stackCards: [] });
+    (view.battlefield.cards as CardView[]).push(faceDown);
+    const p = mountPile(view);
+    const img = p.q(".ability-card img");
+    expect(img?.getAttribute("src")).toBe("/card-back.jpg");
+    expect(p.q(".ability-card")?.classList.contains("hidden")).toBe(true);
+    expect(p.q(".ability-card .source-name")?.textContent).toBe("face-down card");
+    expect(p.q(".ability-card .ability-text")?.textContent).toBe("a face-down creature's trigger");
+  });
+
+  it("#3830: puts an ability's printed text on its card and its peeking line", () => {
     const printed =
       "Whenever Vivi Ornitier deals noncombat damage to a player, put a +1/+1 counter on it.";
     const withText = { ...viviTrigger, ability_text: printed };
     const top = mountPile(gameView([withText], { stackCards: [] }));
-    expect(top.q(".top-card .ability-band .title")?.textContent).toBe(printed);
+    expect(top.q(".top-card .ability-card .ability-text")?.textContent).toBe(printed);
     expect(top.q(".top-card")?.getAttribute("title")).toBe(`${printed} — hover to preview`);
 
     // Under a spell, the peeking line truncates it and its title has all of it.

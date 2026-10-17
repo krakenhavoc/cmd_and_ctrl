@@ -17,8 +17,9 @@
   //     the caster's colour, the title as text, and Counter;
   //   - the top card, the Scryfall `normal` image at the host's width,
   //     the caster's colour as a band on its left edge. An ability has
-  //     no card of its own (CR 405.1), so it is drawn as its source's
-  //     card with a band across the text box carrying its kind and
+  //     no card of its own (CR 405.1), so it is drawn as a C2 ability
+  //     card (StackAbilityCard; ADR 0119 amendment 2026-10-16 §B, §E):
+  //     its source's art crop and name, its cost badge, its kind, and
   //     its printed text (#3830), or its label when it has none.
   //     Every line too narrow for the text (the lower items, the
   //     "+N more" rows, the pending rows) truncates it and carries all
@@ -57,6 +58,7 @@
   import { boardExpandLayout } from "../../boardExpand";
   import Icon from "../Icon.svelte";
   import StackAbilityButtons from "./StackAbilityButtons.svelte";
+  import StackAbilityCard from "./StackAbilityCard.svelte";
 
   interface Props extends StackLaneStyleProps {
     styleName: StackLaneStyle;
@@ -91,13 +93,12 @@
   }
 
   // ---- per-item helpers -------------------------------------------------
-  function kindTag(item: StackLaneItem): string | null {
-    if (item.kind === "triggered") return "triggered ability";
-    if (item.kind === "activated") return "activated ability";
-    return null;
+  /** An ability on the stack: drawn as an ability card, not a card image. */
+  function isAbility(item: StackLaneItem): boolean {
+    return item.kind === "triggered" || item.kind === "activated";
   }
 
-  // The model's chips, less the kind chip the ability band already says.
+  // The model's chips, less the kind chip the ability card already says.
   function chipsOf(item: StackLaneItem) {
     return item.chips.filter((c) => !(item.raw.kind !== "spell" && c.label === item.raw.kind));
   }
@@ -270,9 +271,9 @@
   bind:this={rootEl}
 >
   {#if top}
-    {@const topSrc = imageOf(top, "normal")}
+    {@const topAbility = isAbility(top)}
+    {@const topSrc = topAbility ? null : imageOf(top, "normal")}
     {@const topRing = targetedRing(top)}
-    {@const tag = kindTag(top)}
     {@const chips = chipsOf(top)}
     <div class="cards" bind:this={cardsEl}>
       {#if more > 0}
@@ -327,7 +328,8 @@
         class:targeted={topRing !== null}
         class:cast-targetable={controls.targetable(top)}
         class:previewable={top.previewCard !== null}
-        class:no-art={topSrc === null}
+        class:ability={topAbility}
+        class:no-art={!topAbility && topSrc === null}
         style:--seat-color={top.casterColor}
         style:--targeted-ring={topRing}
         data-stack-item-id={top.id}
@@ -337,7 +339,9 @@
         onfocusin={() => controls.hoverEnter(top)}
         onfocusout={() => controls.hoverLeave(top)}
       >
-        {#if topSrc}
+        {#if topAbility}
+          <StackAbilityCard item={top} />
+        {:else if topSrc}
           <img
             class="card-img"
             src={topSrc}
@@ -351,12 +355,6 @@
           </span>
         {/if}
         <span class="seat-band" aria-hidden="true"></span>
-        {#if tag}
-          <div class="ability-band">
-            <span class="kind-tag" data-tag={top.kind}>{tag}</span>
-            <span class="title band-title" class:long={top.text.length > 110}>{top.text}</span>
-          </div>
-        {/if}
         {@render targetButton(top)}
       </div>
     </div>
@@ -367,7 +365,7 @@
         <span class="grow"></span>
         {@render counterButton(top, false)}
       </div>
-      {#if !tag}
+      {#if !topAbility}
         <div class="title top-title">{top.text}</div>
       {/if}
       {#if top.targets.length > 0}
@@ -613,6 +611,11 @@
   .top-card.previewable {
     cursor: zoom-in;
   }
+  /* An ability card (StackAbilityCard): a card's 63:88, not a scan's. */
+  .top-card.ability {
+    aspect-ratio: 63 / 88;
+    background: var(--surface);
+  }
   .top-card.targeted {
     box-shadow:
       0 0 0 2px var(--accent),
@@ -638,59 +641,6 @@
     justify-content: center;
     color: var(--seat-color);
     background: color-mix(in srgb, var(--seat-color) 14%, var(--surface-raised));
-  }
-  /* An ability: its source's card, with a band across the text box. */
-  .ability-band {
-    position: absolute;
-    left: 5px;
-    right: 0;
-    top: 60%;
-    bottom: 7%;
-    padding: 8px 10px;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    background: color-mix(in srgb, var(--surface) 92%, transparent);
-    border-top: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-    border-bottom: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-    overflow: hidden;
-  }
-  .kind-tag {
-    align-self: flex-start;
-    font-family: var(--font-mono);
-    font-size: 9px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 1px 6px;
-    border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--magenta) 26%, var(--surface));
-    color: var(--magenta);
-  }
-  .kind-tag[data-tag="activated"] {
-    background: color-mix(in srgb, var(--mint) 22%, var(--surface));
-    color: var(--mint);
-  }
-  .band-title {
-    font-size: 13px;
-    line-height: 1.3;
-    font-weight: 600;
-    color: var(--fg);
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 4;
-    line-clamp: 4;
-    -webkit-box-orient: vertical;
-    /* #3830: a modal ability's "•" lines each start a line. */
-    white-space: pre-line;
-  }
-  /* #3830: the printed text of a long ability fits the text box in
-     smaller type; the card's title attribute has all of it. */
-  .band-title.long {
-    font-size: 11.5px;
-    line-height: 1.25;
-    -webkit-line-clamp: 6;
-    line-clamp: 6;
   }
   .target-btn {
     position: absolute;
