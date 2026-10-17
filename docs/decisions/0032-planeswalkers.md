@@ -786,3 +786,39 @@ exemption, so Hall never leaves a legend pair behind
 `v8/legend_rule_doesnt_apply.json`.
 
 **Cards.** Hall of Echoes (Full).
+
+## Amendment (2026-10-16, #4087): every permanent type has a group of its own on the board
+
+§7 recorded that planeswalkers were bucketed into a battlefield row literally labelled
+`"enchant / artifact"`. Ian's Sorin game (several walkers out at once) showed what that costs:
+walkers stacked between artifacts and enchantments, and the row's overlap (`--fit-overlap`) laid
+one over another, hiding the loyalty that is the whole point of a walker.
+
+**The groups.** A seat's board is six labelled groups: creatures, lands, planeswalkers, battles,
+artifacts, enchantments. A group with no card is not drawn (the lands row, which every board has,
+is the exception). A permanent whose type line names none of the six (no type line at all) goes to
+an `other` group so it is never dropped.
+
+**One card, one group.** A permanent with several types is drawn once, in the first group that
+applies (`cardTypes.ts` `bucketForBattlefield`):
+
+`creature > planeswalker > battle > land > artifact > enchantment`
+
+An Artifact Creature, an Enchantment Creature, Dryad Arbor and an animated land are creatures (that
+is where combat is tracked); a planeswalker that is also a creature is a creature and still shows
+its loyalty; an Artifact Land is a land and piles with the basics; an Enchantment Artifact is an
+artifact.
+
+**Planeswalkers and battles are never stacked.** Their rows (`BattlefieldRow` `spread`) do not
+overlap piles and do not fold identical permanents into one pile; a crowded back row shrinks the
+other zones first, and a walker never goes below the smallest card a row shrinks to. The loyalty
+pip on `Card.svelte` is sized with the card (13px to 20px) instead of the 11px every other pip
+uses.
+
+**Width.** `backRow.ts` shares the back row between the zones by pile count, a walker or battle
+pile counting double. A back row too crowded for every zone scrolls sideways inside its own box
+(it used to spill under the player rail); an across-table opponent's row starts at the lands and
+walkers and scrolls the artifacts and enchantments away first.
+
+Tests: `cardTypes.test.ts`, `backRow.test.ts`, `typeGroups.render.test.ts`, and
+`tests-e2e/tests/type-groups-4087.spec.ts` (2, 3 and 4 seats at 1920x1080, 1366x768 and 390x844).

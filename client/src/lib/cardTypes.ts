@@ -1,8 +1,9 @@
 // Card type predicates and battlefield bucketing for the per-type
 // player panel layout. The server sends one Battlefield zone per
 // game with every permanent in a single Cards[] slice; the client
-// splits that visually into CREATURES, LANDS, and a right-column
-// catch-all for ARTIFACTS / ENCHANTMENTS / PLANESWALKERS / BATTLES.
+// splits that visually into one group per permanent type (#4087):
+// CREATURES, LANDS, PLANESWALKERS, BATTLES, ARTIFACTS and ENCHANTMENTS,
+// plus an OTHER group for a card whose type line names none of them.
 //
 // Predicates match Scryfall's printed type-line text. They're case-
 // insensitive and use word boundaries so "Saga — Enchantment" doesn't
@@ -38,21 +39,46 @@ export function isBattle(c: CardView): boolean {
   return !!c.type_line && /\bbattle\b/i.test(c.type_line);
 }
 
-// BattlefieldBucket names the per-player visual sub-zone a card lands
-// in. "right" is the catch-all column for non-creature, non-land
-// permanents.
-export type BattlefieldBucket = "creature" | "land" | "right";
+// BattlefieldBucket names the per-player visual group a card lands in.
+// "other" holds a permanent whose type line names none of the six (a
+// card with no type line at all, a placeholder), so it is still drawn
+// somewhere rather than dropped.
+export type BattlefieldBucket =
+  | "creature"
+  | "land"
+  | "planeswalker"
+  | "battle"
+  | "artifact"
+  | "enchantment"
+  | "other";
 
-// bucketForBattlefield maps a card to its visual bucket. Precedence
-// matters because real Magic cards mix types: an Artifact Creature
-// (e.g. Solemn Simulacrum) belongs in CREATURES, and a Land Creature
-// (e.g. Dryad Arbor) also belongs in CREATURES — creatures dominate
-// because that's where players track combat. Pure Lands go to LANDS;
-// everything else falls into the right column.
+// bucketForBattlefield maps a card to its visual group. A permanent
+// lands in EXACTLY ONE group, the first that applies, because real
+// Magic cards mix types and drawing one in two groups would double it:
+//
+//   creature > planeswalker > battle > land > artifact > enchantment
+//
+//   - Creature first: an Artifact Creature (Solemn Simulacrum), an
+//     Enchantment Creature (Eidolon of Blood) and a Land Creature (Dryad
+//     Arbor, an animated Mutavault) are tracked in combat, which is
+//     where players look for creatures. A planeswalker that is also a
+//     creature (a Gideon until end of turn) goes there too, and still
+//     shows its loyalty pip.
+//   - Planeswalker and battle before land / artifact / enchantment: they
+//     are the permanents an attacker picks as a target and that carry a
+//     counter to track, so they must never be lost among the rest.
+//   - Land before artifact and enchantment: an Artifact Land (Seat of the
+//     Synod) taps for mana beside the basics and piles with them.
+//   - Artifact before enchantment: an Enchantment Artifact (Bident of
+//     Thassa) sits with the artifacts.
 export function bucketForBattlefield(c: CardView): BattlefieldBucket {
   if (isCreature(c)) return "creature";
+  if (isPlaneswalker(c)) return "planeswalker";
+  if (isBattle(c)) return "battle";
   if (isLand(c)) return "land";
-  return "right";
+  if (isArtifact(c)) return "artifact";
+  if (isEnchantment(c)) return "enchantment";
+  return "other";
 }
 
 // SeatPosition is one of four quadrants on the table:

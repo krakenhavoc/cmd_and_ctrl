@@ -71,9 +71,17 @@ test.describe("board layout", () => {
       selfBoard.getByRole("list", { name: "creatures" }),
     ).toBeAttached();
     await expect(selfBoard.getByRole("list", { name: "lands" })).toBeAttached();
-    await expect(
-      selfBoard.getByRole("list", { name: "enchant / artifact" }),
-    ).toBeAttached();
+    // #4087: the other permanent types (planeswalkers, battles,
+    // artifacts, enchantments) each have a group of their own, drawn
+    // only while the seat controls one, so an empty board has none.
+    for (const type of [
+      "planeswalkers",
+      "battles",
+      "artifacts",
+      "enchantments",
+    ]) {
+      await expect(selfBoard.getByRole("list", { name: type })).toHaveCount(0);
+    }
     await expect(page.getByLabel("your hand")).toBeVisible();
     await expect(page.getByLabel("Alice piles")).toBeVisible();
 

@@ -33,7 +33,7 @@
     isBoardPicked,
     type BoardChoicePick,
   } from "../../boardChoicePick";
-  import { fitRow, type RowReport } from "../../rowFit";
+  import { fitRow, MIN_CARD_H, type RowReport } from "../../rowFit";
   import { namePileKey, pileDepths, STRIP_DEPTH } from "../../landStrip";
   import {
     NO_COMBAT_RINGS,
@@ -100,6 +100,13 @@
     // glance, and hovering a pile spreads it so each copy can be
     // clicked on its own.
     strip?: boolean;
+    // #4087: never overlap the piles (planeswalkers and battles). A row
+    // that does not fit shrinks its cards, then wraps, then scrolls;
+    // the cards never sit on one another.
+    spread?: boolean;
+    // #3028 / #4087: the share of the back row this zone may take, 0..1
+    // (backRow.ts). Unset: the whole row.
+    share?: number;
     // S24: the Equipment and Auras attached to each host, keyed by
     // the host's instance ID. Derived by PlayerPanel from the
     // one-directional `attached_to` on the wire. They are drawn
@@ -184,6 +191,8 @@
     payerLife,
     compact = false,
     strip = false,
+    spread = false,
+    share = 1,
     attachmentsByHost = {},
     curseTargets = {},
     takenFrom = {},
@@ -201,6 +210,15 @@
   }: Props = $props();
 
   const held = $derived(hold && cards.length === 0);
+
+  // #4087: the least width a spread row asks of the back row: every card
+  // at the smallest size a row shrinks to (rowFit MIN_CARD_H, 5:7), a
+  // gap between them, and the row's padding. A crowded back row shrinks
+  // the other zones before it takes that from walkers, which never
+  // overlap and so cannot give up more. An inline min-width, because the
+  // panel's flipped layout sets its own on every zone.
+  const spreadMin = (n: number): number =>
+    Math.ceil((MIN_CARD_H * 5) / 7) * n + 12 * Math.max(0, n - 1) + 12;
 
   // ADR 0120 §3: the surface this row is drawn on, table or expanded.
   const surface = popoverSurface();
@@ -279,7 +297,9 @@
     ].join("|");
   }
   const entries = $derived.by((): RowEntry[] => {
-    if (!onGroupClick) {
+    // #4087: a spread row never folds identical permanents into a pile
+    // either; two copies of one walker are two loyalty totals.
+    if (!onGroupClick || spread) {
       return sorted.map((c) => ({ kind: "card" as const, key: c.instance_id, card: c }));
     }
     const t = $targeting;
@@ -368,7 +388,16 @@
   }
 </script>
 
-<div class="row" class:compact class:strip class:held data-zone={label}>
+<div
+  class="row"
+  class:compact
+  class:strip
+  class:spread
+  class:held
+  data-zone={label}
+  style:--row-share={share}
+  style:min-width={spread ? `${spreadMin(cards.length)}px` : undefined}
+>
   <!-- #2995: the dice stay off the label (DiceLayer, data-dice-avoid). -->
   <span class="row-label" aria-hidden="true" data-dice-avoid>
     <span class="row-name">{label}</span>
@@ -384,7 +413,7 @@
     class="row-cards"
     role="list"
     aria-label={label}
-    use:fitRow={{ strip, budget, hold: held, onDemand: (d) => (demand = d) }}
+    use:fitRow={{ strip, spread, budget, hold: held, onDemand: (d) => (demand = d) }}
   >
     {#each piles as p (p.key)}
       {@const depths = pileDepths(p.cards.length)}
