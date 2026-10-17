@@ -121,8 +121,12 @@ for (const seats of [2, 3, 4]) {
       for (const size of SIZES) {
         await page.setViewportSize(size);
         // Every seat's board has reached the page, whatever the layout.
+        // #4111: the page works through every state frame of the burst
+        // above, about 150ms each on four full boards, so it gets longer
+        // than the default; the count only climbs (#634).
         await expect(page.locator(".seat-panel .row[data-zone] .card[data-instance-id]")).toHaveCount(
           seats * ON_BOARD.length,
+          { timeout: 60_000 },
         );
         await page.waitForTimeout(700);
         const shot = await page.screenshot();

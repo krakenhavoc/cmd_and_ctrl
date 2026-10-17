@@ -408,7 +408,7 @@ export function fitRow(
       return;
     }
     // What the row's cards measure now, at `scale`, and at full size.
-    const widths = piles.map((p) => p.offsetWidth);
+    const widths = piles.map((p) => p.getBoundingClientRect().width);
     const lineH = lineHeight(
       piles.map((p) => p.offsetHeight),
       scale,
@@ -422,7 +422,7 @@ export function fitRow(
     const shape: RowShape = {
       // Fractional widths: offsetWidth rounds, and twenty rounded piles
       // can be 10px off, a line's worth of difference at the break.
-      widths: piles.map((p) => p.getBoundingClientRect().width / scale),
+      widths: widths.map((w) => w / scale),
       gap,
       // A few px short of the measured width, so the browser's own line
       // breaking never needs a line fitWrap did not.
