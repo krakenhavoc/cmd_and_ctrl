@@ -133,6 +133,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := setCreatureTypesModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #4072: a subtype loss naming no subtype.
+			if problem := loseSubtypesModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// #3398: an attack tax with no player or an unreadable cost.
 			if problem := attackTaxModProblem(m); problem != "" {
 				unknown = append(unknown, problem)

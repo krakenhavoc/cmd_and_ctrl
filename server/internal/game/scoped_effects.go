@@ -1101,6 +1101,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModSetTypes:   {layer: Layer4Type},
 	// #2144: "becomes a Frog" (set_creature_types.go).
 	ModSetCreatureTypes: {layer: Layer4Type},
+	// #4072: "isn't a Human" (lose_subtypes.go).
+	ModLoseSubtypes: {layer: Layer4Type},
 	// #3398: a duration-bound attack tax, read by the attack pricer.
 	ModAttackTax: {reader: readerRule},
 	// ADR 0188 Decision 1 (#3559): the skip-your-next-turn debt.
@@ -1585,6 +1587,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 		if problem := setCreatureTypesModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
+		if problem := loseSubtypesModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
 		if problem := textBoxModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
@@ -2053,6 +2058,11 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		types, subtypes, supertypes := m.Types, m.Subtypes, m.Supertypes
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.setTypes(types, subtypes, supertypes)
+		}
+	case ModLoseSubtypes:
+		subtypes := m.Subtypes
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.loseSubtypes(subtypes)
 		}
 	case ModSetCreatureTypes:
 		subtypes := m.Subtypes
