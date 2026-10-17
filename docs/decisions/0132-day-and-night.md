@@ -159,3 +159,47 @@ Each change was reverted by itself and the named test watched fail, then restore
 - **Pricing the toggle in the heuristic** (section 10).
 - **The other 37 cards** (#2586).
 - **Enters-or-transforms-into triggers, the "as this transforms into Curse of Leeches" attach (built: [ADR 0079](0079-transforming-a-permanent.md), amendment 2026-10-09, decision 11), and Tovolar, Dire Overlord's "it becomes night. Then transform any number of Human Werewolves"** (a permanent with daybound can't be transformed by the instruction, CR 702.145b, so the second sentence does nothing to a real werewolf): each is a slice's decision, listed under #2586.
+
+## Amendment 2026-10-16 (#4071): the Innistrad werewolves' "last turn", and "can't transform"
+
+Issue [#4071](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4071) (the Hallowolf deck request, S58 — Deck requests, October batch). The deck runs eleven original Innistrad werewolves and Immerwolf. They are not daybound: each face prints its own upkeep trigger, and none of them is turned over by the day/night rules. Every behaviour below is fixed by the Comprehensive Rules; no owner decision was needed. Every rule was read in the pinned text (`MagicCompRules 20260925.txt`).
+
+> Front: "At the beginning of each upkeep, if no spells were cast last turn, transform this creature."
+> Back: "At the beginning of each upkeep, if a player cast two or more spells last turn, transform this creature."
+> Immerwolf: "Non-Human Werewolves you control can't transform."
+
+### Decision 11. "Last turn" is every player's spells, recorded beside CR 502.2's count
+
+Both triggers are intervening-if triggers (CR 603.4: checked as the upkeep begins and again as the trigger resolves), on every player's upkeep. Their conditions are not CR 502.2's: "no spells were cast last turn" counts every player's spells during the previous turn, and "a player cast two or more spells last turn" asks whether any ONE player did, so two players casting one spell each is two spells but not the second condition. Section 2's `PrevTurnSpells` is only the previous turn's active player's count, so it cannot answer either.
+
+`DayNightState` gains three fields, written by `recordPrevTurnAllSpellsLocked` from `recordPrevTurnSpellsLocked`, so at the same moment (as each turn closes, before the rotation replaces the tally): `PrevTurnAllSpells` (the total), `PrevTurnMostSpells` (the most any one player cast) and `PrevTurnAllKnown`. Copies are not cast (CR 707.10), so `CastTally.Total` is the right number, and an eliminated player's tally is still in the map by ID. The readers are `Game.NoSpellsWereCastLastTurnForEffect` and `Game.APlayerCastTwoOrMoreSpellsLastTurnForEffect`; both are false until a turn has ended, so the game's first turn, which has no last turn, triggers neither.
+
+`PrevTurnAllKnown` is its own flag rather than a reuse of `PrevTurnKnown` for the snapshot's sake. The three keys are additive within schema v9 (`TestSnapshotShapeIsRecorded` records `dayNight.prevTurnAllSpells`, `.prevTurnMostSpells` and `.prevTurnAllKnown`), and a file written before them has `PrevTurnKnown` set with no all-player record. If that read as "no spells", every Innistrad werewolf on a restored board would turn over at the next upkeep; with its own flag it reads as no record for one turn. A binary from before this change drops the keys and has no card that reads them.
+
+The card side is `effects.TransformAtUpkeepIfNoSpellsLastTurn(name)` and `TransformAtUpkeepIfAPlayerCastTwoSpellsLastTurn(name)` (`effects/innistrad_werewolves.go`): an `EventBeginUpkeep` trigger with the condition in `AppliesTo` and again in the effect, resolving to `TransformThis`, so CR 701.27f applies (a permanent that has turned over since the trigger went on the stack is left alone). "Whenever this creature transforms into <face>" is `ThisTransformedInto(face)` (CR 701.27e, Brutal Cathar's reading of `EventTransform.Amount`). The werewolves are not daybound, so section 6's refusal does not touch them: `TransformPermanentForEffect` turns them over.
+
+### Decision 12. "Can't transform" is a characteristic a layer static sets, and both turn-over routes obey it
+
+CR 101.2: when an effect directs something to happen and another says it can't, the "can't" wins. CR 701.28f: a permanent that can't transform can't convert either. Immerwolf's restriction is a static ability of Immerwolf, so it is the `CantBeSacrificed` shape: `Characteristic.CantTransform`, set by an ordinary layer static from the restricting permanent (`effects.NonHumanWerewolvesYouControlCantTransform`, layer 6) over each permanent its filter covers. The filter reads the permanent's face as it is now (CR 712.18 keeps the object; its type line follows the face), so a Human Werewolf front is not covered and still turns over, and the non-Human Werewolf back it lands on is covered and cannot turn back. The types are words of Immerwolf's text (CR 612.2). It is not an ability of the covered permanent, so that permanent losing its abilities does not lift it.
+
+`cantTransformLocked` (`game/cant_transform.go`) refreshes the layer cache and reads the flag. Both in-place turn-over routes ask it:
+
+- `turnOverForEffectLocked`, the guarded entry of `TransformPermanentForEffect` and `ConvertPermanentForEffect`: the werewolves' own triggers, Moonmist, Vildin-Pack Alpha's "you may transform it". The instruction does nothing, as CR 701.27c treats an object that can't transform: no error and no `EventTransform`.
+- `settleDayNightLocked`, the daybound / nightbound turn-over (CR 702.145c, 702.145f). A nightbound Werewolf that isn't a Human (Tovolar, the Midnight Scourge) stays on its back face by day while you control Immerwolf. Because that turn-over happens "any time" the board and the designation disagree, `dayNightListener` now also settles when a permanent leaves the battlefield: Immerwolf leaving by day turns Tovolar over at once.
+
+What it does not stop is a permanent entering transformed (CR 702.145b's first ability, CR 712.14a): that permanent never transformed (CR 712.18), so nothing was refused, and `dayNightEntryLocked` is unchanged.
+
+`Game.CanTransformForEffect(id)` answers the whole question (a double-faced permanent with a permanent face to turn to, no daybound or nightbound, no "can't transform"), so a card that offers "you may transform it" asks only when "yes" would do something. Vildin-Pack Alpha's trigger is the first reader.
+
+### Decision 13. "That player or that planeswalker's controller": a player anchors the same-controller target relation
+
+Ravager of the Fells: "it deals 2 damage to target opponent or planeswalker and 2 damage to up to one target creature that player or that planeswalker's controller controls." The second clause is `ControlledByTargetsController` over the first (the target relations of [ADR 0065](0065-modal-and-multi-target-clauses.md), #1943). `relationAnchorControllerLocked` read only a permanent anchor; a player anchor now answers with that player. The announcement, the resolution re-check (CR 608.2b) and the client's relation pairs share the gate, so nothing else changed.
+
+### Tests
+
+- `game/werewolf_transform_test.go`: the two conditions on the real rotation of a four-player game, on turn 1 (neither), after no spells, one spell by the active player, one by an opponent, one player casting two or three, and two players casting one each (neither); this turn's spells do not move last turn's record; the record through a JSON snapshot round trip and an undo, and a pre-amendment file reading as no record; a non-Human Werewolf held and a Human Werewolf front not, for transform and convert, and another player's werewolf not; a nightbound non-Human Werewolf held by day and released when the restrictor leaves; a Human daybound front still turning over at night.
+- `cards/effects/innistrad_werewolf_cards_test.go`: every card on imported rows; a front turning over on an opponent's upkeep after a quiet turn; an opponent's single spell keeping it up; the back turning back only for one player's two spells, by tally and by two real casts; Immerwolf holding a back face and not a front, its lord, and its release; Immerwolf keeping Tovolar, the Midnight Scourge up by day; Huntmaster's entry and turn-back triggers and the Ravager's related targets (another player's creature refused); the Ransacker's destroy-and-burn; Vildin-Pack Alpha asking about a werewolf that can transform and not about a daybound one; the hand-size characteristic-defining abilities; Krallenhorde Howler's discount; Duskwatch Recruiter's look; Tovolar's Magehunter; both Mayor lords and the Alpha's end-step Wolf; Instigator Gang's attackers; Daybreak Ranger's shot and Nightfall Predator's fight.
+
+### Out of scope
+
+- **A control or type change that moves a permanent into or out of a "can't transform" while it is day or night** is noticed at the next entry, exit or flip, the "any time" approximation section 4 already records for a granted keyword.

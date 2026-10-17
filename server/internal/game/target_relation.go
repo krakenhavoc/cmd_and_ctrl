@@ -16,7 +16,8 @@ const (
 	TargetAttachedTo             TargetRelationKind = "attached_to"
 	// TargetControlledBySameController is "another target creature that
 	// player controls", where that player controls the earlier target
-	// (Breaking of the Fellowship). An anchor that has left the
+	// (Breaking of the Fellowship), or IS the earlier target when it is a
+	// player (Ravager of the Fells). An anchor that has left the
 	// battlefield answers with its last-known controller (CR 608.2h).
 	TargetControlledBySameController TargetRelationKind = "same_controller"
 )
@@ -71,7 +72,14 @@ func (g *Game) TargetRelationMatchesForEffect(clause *TargetClause, ref TargetRe
 // controller, since it is still in the zone the effect expects. A card
 // that never left the battlefield this turn and is not on it answers
 // nothing.
+//
+// An anchor that is a PLAYER is "that player" itself: Ravager of the
+// Fells' "target opponent or planeswalker and up to one target creature
+// that player or that planeswalker's controller controls" (#4071).
 func (g *Game) relationAnchorControllerLocked(anchor TargetRef) (uuid.UUID, bool) {
+	if anchor.Kind == TargetPlayer {
+		return anchor.ID, anchor.ID != uuid.Nil
+	}
 	if anchor.Kind != TargetCard {
 		return uuid.Nil, false
 	}

@@ -405,7 +405,10 @@ continuations.unpersistableRng	bool
 createdAt	custom(time.Time)
 dayNight	object
 dayNight.designation	string
+dayNight.prevTurnAllKnown	bool
+dayNight.prevTurnAllSpells	number:int
 dayNight.prevTurnKnown	bool
+dayNight.prevTurnMostSpells	number:int
 dayNight.prevTurnSpells	number:int
 delayedTriggers	array
 delayedTriggers[]	object
@@ -1274,6 +1277,7 @@ lastKnownBattlefield{}.CantBeAttacked	bool
 lastKnownBattlefield{}.CantBeSacrificed	bool
 lastKnownBattlefield{}.CantHave	array
 lastKnownBattlefield{}.CantHave[]	string
+lastKnownBattlefield{}.CantTransform	bool
 lastKnownBattlefield{}.Colors	array
 lastKnownBattlefield{}.Colors[]	string
 lastKnownBattlefield{}.ControlSource	custom(uuid.UUID)
@@ -1416,6 +1420,7 @@ lastKnownPermanents{}[].characteristic.CantBeAttacked	bool
 lastKnownPermanents{}[].characteristic.CantBeSacrificed	bool
 lastKnownPermanents{}[].characteristic.CantHave	array
 lastKnownPermanents{}[].characteristic.CantHave[]	string
+lastKnownPermanents{}[].characteristic.CantTransform	bool
 lastKnownPermanents{}[].characteristic.Colors	array
 lastKnownPermanents{}[].characteristic.Colors[]	string
 lastKnownPermanents{}[].characteristic.ControlSource	custom(uuid.UUID)
@@ -3396,6 +3401,7 @@ pendingChoices[].damageAssignment.SourceLKI.CantBeAttacked	bool
 pendingChoices[].damageAssignment.SourceLKI.CantBeSacrificed	bool
 pendingChoices[].damageAssignment.SourceLKI.CantHave	array
 pendingChoices[].damageAssignment.SourceLKI.CantHave[]	string
+pendingChoices[].damageAssignment.SourceLKI.CantTransform	bool
 pendingChoices[].damageAssignment.SourceLKI.Colors	array
 pendingChoices[].damageAssignment.SourceLKI.Colors[]	string
 pendingChoices[].damageAssignment.SourceLKI.ControlSource	custom(uuid.UUID)
