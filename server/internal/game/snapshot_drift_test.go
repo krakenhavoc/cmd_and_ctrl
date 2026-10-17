@@ -725,6 +725,9 @@ var playerFields = plan(
 	"Agent", carried, "",
 	"AgentClient", carried, "",
 	"CitysBlessing", carried, "",
+	// ADR 0203: the venture marker and the completed dungeons.
+	"Dungeon", carried, "",
+	"CompletedDungeons", carried, "",
 	"AttemptedEmptyDraw", carried, "",
 	"CommanderCasts", carried, "",
 	"Counters", carried, "",

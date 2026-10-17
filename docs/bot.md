@@ -308,6 +308,15 @@ that many cards in hand, and never an option that costs its last life
 (`heuristic/villainous_choice.go`). A prompt whose options carry no harm
 keeps the enumerator's first answer.
 
+**A venture's next room (`option_pick` again, ADR 0203, #4096, CR
+701.49b).** When two arrows lead on from the bot's room, the enumerator
+offers both and each option names its room (`pick_options[].room`). The
+heuristic prices the room by its key against the board it can see: Forge
+only with a creature of its own to take the counters (otherwise the
+required target is an enemy creature), Arena only with an enemy creature
+to goad, Trap! highest, then Catacombs, Archives, Stash and Lost Well
+(`heuristic/venture.go`).
+
 **A choose-a-player prompt (`option_pick` again, #929).** "Choose a
 player" / "choose an opponent" — Gluntch, Skullwinder, Slithermuse —
 is an option pick whose branches are SEATS, one option per eligible

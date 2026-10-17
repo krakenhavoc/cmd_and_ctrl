@@ -95,6 +95,12 @@ type PutFromLibraryOntoBattlefield struct {
 
 	// Tapped is the clause's own "onto the battlefield tapped".
 	Tapped bool
+	// Counters are the counters the put says each card enters with —
+	// the Undercity's Throne of the Dead Three: "Put a creature card
+	// from among them onto the battlefield with three +1/+1 counters on
+	// it" (ADR 0203). Seeded onto the entry, so they are there as the
+	// permanent enters and go through the CR 614 counter pipeline.
+	Counters map[string]int
 
 	// Validate is the clause's rule about the picked SET, as opposed
 	// to Match's rule about each card: "any number of nonland
@@ -156,7 +162,7 @@ func (p PutFromLibraryOntoBattlefield) Apply(ctx *Context) error {
 	source := ctx.Source()
 	cards := append([]uuid.UUID(nil), p.Cards...)
 	then := p.Then
-	opts := game.LibraryEntryOptions{Controller: player, Tapped: p.Tapped}
+	opts := game.LibraryEntryOptions{Controller: player, Tapped: p.Tapped, EntersWithCounters: p.Counters}
 	report := func(g *game.Game, entered []uuid.UUID) error {
 		if then == nil {
 			return nil

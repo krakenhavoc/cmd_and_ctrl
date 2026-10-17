@@ -227,6 +227,10 @@ var carriedFixture = map[string]any{
 	// a key it has no body or condition for, so an invented one would
 	// fail the restore rather than test the carry.
 	"DelayedTrigger.Body": carriedTestBodyKey,
+	// ADR 0203: restore refuses a venture marker on a dungeon or room
+	// this binary does not register, so the marker names a registered
+	// test dungeon.
+	"Player.Dungeon": &DungeonState{ID: uuid.MustParse("00000000-0000-0000-0000-000000004096"), Key: carriedTestDungeon, Room: "second"},
 	// ADR 0107 §6: an owed follow-up names its body the same way, so
 	// its container is built with a registered one.
 	"Game.preventionFollowUps": func(g *Game) any {
@@ -916,6 +920,18 @@ var (
 	carriedTestVoteKey = RegisterVoteThen(testEffectKeyPrefix+"carried-vote",
 		func(*Game, VoteResult) error { return nil })
 )
+
+// carriedTestDungeon is a dungeon registered for the carried probes
+// (ADR 0203). Its key is in the test namespace, and no game test
+// ventures into the dungeon without naming one, so it is never offered.
+var carriedTestDungeon = func() string {
+	key := testEffectKeyPrefix + "carried-dungeon"
+	RegisterDungeon(DungeonDef{Key: key, Name: "Test Dungeon", VentureIntoOnly: true, Rooms: []DungeonRoom{
+		{Key: "first", Name: "First", Text: "Nothing.", LeadsTo: []string{"second"}},
+		{Key: "second", Name: "Second", Text: "Nothing."},
+	}})
+	return key
+}()
 
 // carriedTestRiderCount is the counted-rider key the carried probes use
 // for ManaSpendRider.Count (ADR 0109 §11): restore refuses a count key

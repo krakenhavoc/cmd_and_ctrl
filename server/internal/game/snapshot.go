@@ -746,23 +746,29 @@ type playerSnapshot struct {
 	// AutoAnswers is Player.AutoAnswers (ADR 0127 §8). Additive: a file
 	// written before it restores with none, which asks every prompt;
 	// the client's reconcile sends the rules again on the next frame.
-	AutoAnswers        map[string]AutoAnswer `json:"autoAnswers,omitempty"`
-	MulligansTaken     int                   `json:"mulligansTaken"`
-	DeckImported       bool                  `json:"deckImported"`
-	UndosRemaining     int                   `json:"undosRemaining"`
-	DiscordID          string                `json:"discordId,omitempty"`
-	DiscordAvatarHash  string                `json:"discordAvatarHash,omitempty"`
-	DisplayName        string                `json:"displayName,omitempty"`
-	IsBot              bool                  `json:"isBot,omitempty"`
-	BotTier            string                `json:"botTier,omitempty"`
-	BotDeck            string                `json:"botDeck,omitempty"`
-	Agent              bool                  `json:"isAgent,omitempty"`       // ADR 0122 §7, additive in schema 7
-	AgentClient        string                `json:"agentClient,omitempty"`   // ADR 0122 §7, additive in schema 7
-	CitysBlessing      bool                  `json:"citysBlessing,omitempty"` // CR 702.131c, #2696, additive in schema 7
-	AttemptedEmptyDraw bool                  `json:"losesAtNextSba"`
-	CommanderCasts     map[uuid.UUID]int     `json:"commanderCasts,omitempty"`
-	Counters           map[string]int        `json:"counters,omitempty"`
-	MaxHandSize        int                   `json:"maxHandSize"`
+	AutoAnswers       map[string]AutoAnswer `json:"autoAnswers,omitempty"`
+	MulligansTaken    int                   `json:"mulligansTaken"`
+	DeckImported      bool                  `json:"deckImported"`
+	UndosRemaining    int                   `json:"undosRemaining"`
+	DiscordID         string                `json:"discordId,omitempty"`
+	DiscordAvatarHash string                `json:"discordAvatarHash,omitempty"`
+	DisplayName       string                `json:"displayName,omitempty"`
+	IsBot             bool                  `json:"isBot,omitempty"`
+	BotTier           string                `json:"botTier,omitempty"`
+	BotDeck           string                `json:"botDeck,omitempty"`
+	Agent             bool                  `json:"isAgent,omitempty"`       // ADR 0122 §7, additive in schema 7
+	AgentClient       string                `json:"agentClient,omitempty"`   // ADR 0122 §7, additive in schema 7
+	CitysBlessing     bool                  `json:"citysBlessing,omitempty"` // CR 702.131c, #2696, additive in schema 7
+	// Dungeon is the player's dungeon card and venture marker (CR
+	// 309.4, ADR 0203); CompletedDungeons the dungeons they completed
+	// (CR 309.7), by key. Additive within v8: a file without them
+	// restores a player in no dungeon who has completed none.
+	Dungeon            *DungeonState     `json:"dungeon,omitempty"`
+	CompletedDungeons  []string          `json:"completedDungeons,omitempty"`
+	AttemptedEmptyDraw bool              `json:"losesAtNextSba"`
+	CommanderCasts     map[uuid.UUID]int `json:"commanderCasts,omitempty"`
+	Counters           map[string]int    `json:"counters,omitempty"`
+	MaxHandSize        int               `json:"maxHandSize"`
 	// MaxHandSizeAt is the grant's timestamp (ADR 0113 §3, #2074).
 	// Additive within v7: a file without it restores a grant that
 	// sorts first.
@@ -2573,6 +2579,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Agent:                 p.Agent,
 		AgentClient:           p.AgentClient,
 		CitysBlessing:         p.CitysBlessing,
+		Dungeon:               cloneDungeonState(p.Dungeon),
+		CompletedDungeons:     append([]string(nil), p.CompletedDungeons...),
 		AttemptedEmptyDraw:    p.AttemptedEmptyDraw,
 		CommanderCasts:        copyIntMap(p.CommanderCasts),
 		Counters:              copyStringIntMap(p.Counters),
@@ -3544,6 +3552,8 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Agent:              p.Agent,
 		AgentClient:        p.AgentClient,
 		CitysBlessing:      p.CitysBlessing,
+		Dungeon:            cloneDungeonState(p.Dungeon),
+		CompletedDungeons:  append([]string(nil), p.CompletedDungeons...),
 		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
 		Counters:           copyStringIntMap(p.Counters),
 		MaxHandSize:        p.MaxHandSize,

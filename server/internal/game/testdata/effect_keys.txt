@@ -285,3 +285,7 @@ body channel-harm/may-deal-that-much
 body sorin-imperious-bloodlord/strike
 choose choose-cards/port-of-karfell-return
 body overcharged-amalgam/counter
+body initiative/take
+body initiative/venture
+option venture/dungeon
+option venture/room

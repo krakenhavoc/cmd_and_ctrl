@@ -183,12 +183,13 @@ type Game struct {
 	// S10.
 	Monarch uuid.UUID
 
-	// Initiative is the player ID currently designated as having taken
-	// the initiative (Commander Legends: Battle for Baldur's Gate
-	// mechanic; player ventures into the Undercity at the start of
-	// their upkeep). uuid.Nil means "unassigned". Sandbox-only marker;
-	// venturing is resolved manually until rules graft work lands.
-	// Added in S10.
+	// Initiative is the player ID who has the initiative (CR 726).
+	// uuid.Nil means nobody has taken it yet. Added in S10 as a
+	// sandbox marker; since ADR 0203 (#4096) the engine runs the
+	// designation's three inherent triggered abilities — the upkeep
+	// venture, the combat-damage steal and the venture on taking it —
+	// and CR 726.4's hand-on, in initiative.go. Given to a player only
+	// by takeInitiativeLocked.
 	Initiative uuid.UUID
 
 	// DayNight is the game's day/night designation (CR 731) and the one
@@ -1184,6 +1185,10 @@ func NewGame() *Game {
 	// PendingTriggers first — CR 603.3b reorders anything that
 	// actually matters. See monarch.go.
 	g.Listeners = append(g.Listeners, monarchTriggers{})
+	// ADR 0203, CR 726.2: the initiative's three inherent triggered
+	// abilities have no source either, so they ride the registry for
+	// the monarch's reason and right after it. See initiative.go.
+	g.Listeners = append(g.Listeners, initiativeTriggers{})
 	// ADR 0138, CR 702.179d: speed's inherent once-per-turn trigger has
 	// no source either, so it rides the registry for the monarch's
 	// reason and right after it. See speed.go.

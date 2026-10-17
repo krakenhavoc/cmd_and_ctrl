@@ -106,6 +106,11 @@ const (
 	FootprintCondNoSpellsCast FootprintCond = "no_spells_cast"
 	// FootprintCondMonarch: the item's controller is the monarch (Ginger).
 	FootprintCondMonarch FootprintCond = "monarch"
+	// FootprintCondInitiative: the item's controller has the initiative
+	// (Passageway Seer, ADR 0203). No step in the vocabulary takes the
+	// initiative; only an item with no footprint can, and such an item
+	// already conflicts with everything.
+	FootprintCondInitiative FootprintCond = "initiative"
 	// FootprintCondSource: a fact about the item's source object, such as
 	// its counters (Runaway Steam-Kin's "fewer than three").
 	FootprintCondSource FootprintCond = "source"
@@ -720,6 +725,8 @@ func (g *Game) addConditionReadLocked(a *triggerAccess, t *StackItem, s Footprin
 		return g.CastTallyFor(you).Total == 0
 	case FootprintCondMonarch:
 		a.monarchRead = true
+	case FootprintCondInitiative:
+		// Nothing a footprinted step does moves the initiative.
 	case FootprintCondSource:
 		a.reads[t.SourceCardID] = true
 	case FootprintCondBoard:

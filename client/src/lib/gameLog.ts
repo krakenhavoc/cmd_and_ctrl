@@ -211,6 +211,10 @@ const LOG_TONE: Record<LogKind, string> = {
   // The blessing is a designation earned off the board, toned with the
   // other board-state lines.
   citys_blessing: "tone-zone",
+  // ADR 0203: a venture marker moving and a dungeon completed are facts
+  // about a player's command zone, toned with the other board-state lines.
+  venture: "tone-zone",
+  dungeon_completed: "tone-zone",
   // A player's speed changed (ADR 0138): a fact about a player, like
   // the turn line, not about a card.
   speed: "tone-zone",
