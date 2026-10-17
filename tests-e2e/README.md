@@ -33,6 +33,7 @@ tests-e2e/
     ├── lobby.spec.ts          # admin lobby create / list / refresh / table cards
     ├── mulligan.spec.ts       # keep / mulligan dialog + the opening-hand roll call
     ├── opp-clip-2961.spec.ts  # #2961: an opponent's creatures keep their P/T badge inside their panel at 1280x720 and 1600x900
+    ├── type-groups-4087.spec.ts # #4087: a labelled group per permanent type (creatures, lands, planeswalkers, battles, artifacts, enchantments); walkers and battles never overlap and show a readable loyalty pip, at 2, 3 and 4 seats and three viewports
     ├── playmat-shape-3934.spec.ts # #3934, ADR 0128 §12: a playmat is shown whole (contain, centred) over a blurred backdrop that is its seat's battlefield box, at 2, 3 and 4 seats and three viewports
     ├── players.ts             # shared joinAsPlayer (invite flow → seated on the game route)
     ├── rebound-3490.spec.ts   # #3490: rebound (Quantum Misalignment) end to end on default settings: exiled, the upkeep offer in the upkeep after a discard-ended turn, "Cast it free" opens targeting with nothing passing under it, cast free, into the graveyard

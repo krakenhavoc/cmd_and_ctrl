@@ -312,6 +312,8 @@ function roomOf(node: HTMLElement): number {
 export interface FitRowOptions {
   /** The land strip: piles overlap by design and never wrap. */
   strip?: boolean;
+  /** #4087: never overlap the piles (planeswalkers): shrink, wrap, then scroll. */
+  spread?: boolean;
   /** #3044: the height the panel gives this row, 0 when unknown. */
   budget?: number;
   /** #3893: an empty row keeps one card's line (lineHeight). */
@@ -472,7 +474,7 @@ export function fitRow(
     // The piles were measured at `was`; the overlap is for the new size.
     const ratio = scale / was;
     const px =
-      strip || wrap
+      strip || wrap || opts.spread
         ? 0
         : fitOverlap(
             widths.map((w) => w * ratio),

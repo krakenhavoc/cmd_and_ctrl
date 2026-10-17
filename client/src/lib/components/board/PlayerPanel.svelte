@@ -5,7 +5,7 @@
   //   ┌─────────────────────────────────────────────┐
   //   │  creatures (full width)                     │
   //   ├──────────────────────┬──────────────────────┤
-  //   │  lands               │  enchant / artifact  │
+  //   │  lands · planeswalkers · battles · artifacts · enchantments │
   //   ├─────────────────────────────────────────────┤
   //   │  ⭕ piles  hand (peek) ……………… dock cell (self)│
   //   └─────────────────────────────────────────────┘
@@ -46,7 +46,19 @@
   import { ringBearerNames } from "../../ringEmblem";
   import { cantAttackByCard } from "../../cantAttack";
   import { graveyardHostLabels } from "../../seatSummary";
-  import { bucketForBattlefield, isCreature, isLand } from "../../cardTypes";
+  import {
+    bucketForBattlefield,
+    isCreature,
+    isLand,
+    type BattlefieldBucket,
+  } from "../../cardTypes";
+  import {
+    BACK_ZONES,
+    ZONE_LABEL,
+    backRowShares,
+    isSpreadZone,
+    type BackZone,
+  } from "../../backRow";
   import {
     anyPlayerManaRows,
     battlefieldClickPlan,
@@ -370,7 +382,7 @@
 
   // S24 (ADR 0036 decision 14 item 3): a Curse enchants a PLAYER, so
   // it has no host card to hide behind and stays in its controller's
-  // "enchant / artifact" row. Without a badge naming its victim the
+  // "enchantments" row. Without a badge naming its victim the
   // board says nothing about who is being cursed, which is the whole
   // card — so each such permanent gets the enchanted seat's name.
   //
@@ -445,15 +457,33 @@
       : (canActivateSorcerySpeedAbility(view, viewerID).reason ?? ""),
   );
 
-  // #3028: the back row's two zones share its width by how many piles
-  // each draws. The land strip takes what the other zone leaves
-  // (#2960), and at full card size a long artifact row left it a
-  // sliver, so the other zone is capped at its share. With no land
-  // piles it may take the whole row.
+  // #3028: the back row's zones share its width by how many piles each
+  // draws. The land strip takes what the others leave (#2960), and at
+  // full card size a long artifact row left it a sliver, so each other
+  // zone is capped at its share. With no land piles they split the row.
+  //
+  // #4087: every permanent type has a zone of its own: planeswalkers,
+  // battles, artifacts, enchantments, and "other" for a card whose type
+  // line names none. A zone is drawn only while it holds a card, so a
+  // count left by a row that has gone is ignored (backZones below).
+  // backRowShares weighs a planeswalker or battle pile up, since it is
+  // never overlapped.
   let landPiles = $state(0);
-  let otherPiles = $state(0);
-  const otherShare = $derived(
-    landPiles > 0 && otherPiles > 0 ? otherPiles / (otherPiles + landPiles) : 1,
+  let zonePiles = $state<Record<BackZone, number>>({
+    planeswalker: 0,
+    battle: 0,
+    artifact: 0,
+    enchantment: 0,
+    other: 0,
+  });
+  const backZones = $derived(BACK_ZONES.filter((z) => buckets[z].length > 0));
+  const shares = $derived(
+    backRowShares(
+      landPiles,
+      Object.fromEntries(backZones.map((z) => [z, zonePiles[z]])) as Partial<
+        Record<BackZone, number>
+      >,
+    ),
   );
 
   // #3044: the height the creature row and the back row share, and
@@ -465,11 +495,19 @@
   type Demand = RowReport | null;
   let creatureDemand = $state<Demand>(null);
   let landDemand = $state<Demand>(null);
-  let otherDemand = $state<Demand>(null);
+  let zoneDemand = $state<Record<BackZone, Demand>>({
+    planeswalker: null,
+    battle: null,
+    artifact: null,
+    enchantment: null,
+    other: null,
+  });
   let fieldH = $state(0);
   const budgets = $derived.by(() => {
     if (fieldH <= 0 || !creatureDemand) return [0, 0];
-    const back = [landDemand, otherDemand].filter((d): d is NonNullable<Demand> => !!d);
+    const back = [landDemand, ...backZones.map((z) => zoneDemand[z])].filter(
+      (d): d is NonNullable<Demand> => !!d,
+    );
     const backDemand = {
       base: Math.max(0, ...back.map((d) => d.base)),
       want: Math.max(0, ...back.map((d) => d.want)),
@@ -544,7 +582,15 @@
   }
 
   const buckets = $derived.by(() => {
-    const out = { creature: [] as CardView[], land: [] as CardView[], right: [] as CardView[] };
+    const out: Record<BattlefieldBucket, CardView[]> = {
+      creature: [],
+      land: [],
+      planeswalker: [],
+      battle: [],
+      artifact: [],
+      enchantment: [],
+      other: [],
+    };
     for (const c of controlledCards) {
       if (hostedCardIDs.has(c.instance_id)) continue;
       out[bucketForBattlefield(c)].push(c);
@@ -907,7 +953,7 @@
   <!-- The back row: land piles first, then the other permanents,
        both shrink-wrapped and centred as one group so the row grows
        out from the middle like the creature row above it. -->
-  <div class="grid-middle" style:--other-share={otherShare}>
+  <div class="grid-middle">
     <BattlefieldRow
       bind:pileCount={landPiles}
       label={L.lands}
@@ -938,35 +984,43 @@
       onSpecialAction={sendSpecialAction}
       onGroupClick={(k) => (openGroupKey = k)}
     />
-    <BattlefieldRow
-      bind:pileCount={otherPiles}
-      label="enchant / artifact"
-      {attachmentsByHost}
-      {curseTargets}
-      {takenFrom}
-      {ringBearers}
-      {cantAttack}
-      cards={buckets.right}
-      budget={budgets[1]}
-      bind:demand={otherDemand}
-      compact
-      {viewerID}
-      {selectedCombatCardID}
-      {stagedAttackers}
-      onCardClick={handleCardClick}
-      onActivateManaAbility={activateManaAbility}
-      onRawTap={activateManaAbility ? onTapToggle : undefined}
-      {view}
-      {clickInert}
-      {onActivateAbility}
-      sorcerySpeedBlocked={rowTimingWords}
-      {payerLife}
-      legal={rowLegal}
-      combat={rings}
-      legalGate={rowGate}
-      onSpecialAction={sendSpecialAction}
-      onGroupClick={(k) => (openGroupKey = k)}
-    />
+    {#each backZones as z (z)}
+      <!-- #4087: one zone per permanent type, drawn only while it holds
+           a card. Planeswalkers and battles never overlap or fold into
+           a pile (BattlefieldRow `spread`), so two walkers cannot hide
+           each other's loyalty. -->
+      <BattlefieldRow
+        bind:pileCount={zonePiles[z]}
+        label={ZONE_LABEL[z]}
+        {attachmentsByHost}
+        {curseTargets}
+        {takenFrom}
+        {ringBearers}
+        {cantAttack}
+        cards={buckets[z]}
+        budget={budgets[1]}
+        bind:demand={zoneDemand[z]}
+        share={shares[z]}
+        compact
+        spread={isSpreadZone(z)}
+        {viewerID}
+        {selectedCombatCardID}
+        {stagedAttackers}
+        onCardClick={handleCardClick}
+        onActivateManaAbility={activateManaAbility}
+        onRawTap={activateManaAbility ? onTapToggle : undefined}
+        {view}
+        {clickInert}
+        {onActivateAbility}
+        sorcerySpeedBlocked={rowTimingWords}
+        {payerLife}
+        legal={rowLegal}
+        combat={rings}
+        legalGate={rowGate}
+        onSpecialAction={sendSpecialAction}
+        onGroupClick={(k) => (openGroupKey = k)}
+      />
+    {/each}
   </div>
   <div class="grid-bottom">
     {#if coached}
@@ -1392,15 +1446,36 @@
        rather than spilling left over the piles beside it (#2438). */
     justify-content: safe center;
     align-items: flex-start;
-    gap: 24px;
+    gap: 14px;
+    /* #4087: with a zone per permanent type a narrow panel (a phone, a
+       four-seat across row) cannot hold them side by side. They scroll
+       sideways inside the back row, as a crowded row always has, rather
+       than spilling out under the player rail. */
+    overflow-x: auto;
+    overflow-y: hidden;
   }
   /* Each back-row zone takes the width of its cards, no more, so the
      two read as one centred group. An empty zone keeps enough width
      to show its label. */
   .grid-middle > :global(.row) {
     flex: 0 1 auto;
-    min-width: 160px;
+    min-width: 112px;
     max-width: 100%;
+  }
+  /* #4087: with a zone per permanent type the back row can hold up to
+     six, so a zone other than the lands asks for just enough to show
+     its label ("enchantments" and its count). */
+  .grid-middle > :global(.row:not(.strip)) {
+    min-width: 72px;
+  }
+  /* A phone-wide panel has about 245px beside the player rail: let each
+     zone ask for less than a card and a half, so two or three show at
+     once and the rest scroll, instead of the lands taking all of it. */
+  @container (max-width: 480px) {
+    .grid-middle > :global(.row),
+    .grid-middle > :global(.row:not(.strip)) {
+      min-width: 88px;
+    }
   }
   /* #2960: the land strip takes the room the other back-row zone leaves
      instead of shrink-wrapping its overlapped cards. fitRow then opens
@@ -1409,11 +1484,12 @@
   .grid-middle > :global(.row.strip) {
     flex: 1 1 0;
   }
-  /* #3028: the other zone takes no more than its share of the row by
-     pile count (--other-share, set by the panel), so a long artifact
-     row shrinks its own cards instead of crushing the lands. */
+  /* #3028: a zone takes no more than its share of the row by pile
+     count (--row-share, set on the row from backRow.ts), so a long
+     artifact row shrinks its own cards instead of crushing the lands.
+     #4087: that holds for each of the zones, one per permanent type. */
   .grid-middle > :global(.row:not(.strip)) {
-    max-width: calc(var(--other-share, 1) * 100%);
+    max-width: calc(var(--row-share, 1) * 100%);
   }
   .grid-bottom {
     grid-area: bottom;
@@ -1613,8 +1689,20 @@
       top: auto;
       bottom: 3px;
     }
-    .panel.opponent.flipped .grid-bottom,
+    /* #4087: the back row is mirrored with `direction: rtl`, not
+       row-reverse. A reversed flex line that overflows spills past its
+       far edge, where a scroll container cannot reach it, so a crowded
+       back row would lose zones for good. In rtl the row starts at the
+       right (the lands, then the walkers) and what does not fit spills
+       left, into scroll range: the enchantments and artifacts are the
+       ones that scroll away. The zones read left to right as ever. */
     .panel.opponent.flipped .grid-middle {
+      direction: rtl;
+    }
+    .panel.opponent.flipped .grid-middle > :global(.row) {
+      direction: ltr;
+    }
+    .panel.opponent.flipped .grid-bottom {
       flex-direction: row-reverse;
     }
     /* #2486: and what they hold faces them, as it would across a real
@@ -1666,7 +1754,12 @@
     /* Room for "Enchant / artifact 3" when the panel has it; under that
        the label ends in "…" rather than scrolling the row. */
     .panel.opponent.flipped .grid-middle > :global(.row) {
-      min-width: min(124px, 44%);
+      min-width: min(88px, 44%);
+    }
+    /* #4087: up to five other zones sit beside the lands, so they ask
+       for no more than their label ("enchantments" ends in "…"). */
+    .panel.opponent.flipped .grid-middle > :global(.row:not(.strip)) {
+      min-width: 72px;
     }
   }
   /* A narrow self panel (the quadrant's bottom right): the dock is
