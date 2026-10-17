@@ -43,6 +43,7 @@
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
   import { cardImageURL } from "../../cardImage";
   import { L } from "../../labels";
+  import { slotDips, type HandNotch } from "../../seatNotch";
   import { untrack } from "svelte";
   import { get } from "svelte/store";
   import {
@@ -121,6 +122,12 @@
     // in the card's ability popover. Self hands only; the server
     // strips `special_actions` from every other seat's hand anyway.
     onSpecialAction?: (action: MenuAction) => void;
+    // ADR 0204 §3 (call 4): where the viewer's avatar sits over this fan,
+    // in this strip's x (seatNotch.ts). A card under it dips by the
+    // notch's depth, so the fan's arc dips at its centre and no card is
+    // ever behind the avatar. Null (every other hand) leaves the fan as
+    // it was.
+    notch?: HandNotch | null;
   }
 
   const {
@@ -136,6 +143,7 @@
     legal = NO_LEGAL_ACTIONS,
     legalGate = NO_LEGAL_ACTIONS,
     onSpecialAction,
+    notch = null,
   }: Props = $props();
 
   // ADR 0118 §2: with strict payment on, every card in the viewer's own
@@ -257,6 +265,32 @@
       : { overlap: handOverlap(cards.length, overlapBase), tilt: 1, scroll: false },
   );
   const overlap = $derived(fit.overlap);
+
+  // ADR 0204 §3: each card's dip under the viewer's avatar, from where
+  // its slot is laid out (offsetLeft is before the fan's tilt and the
+  // lift), re-read when the notch, the cards or the strip change.
+  let dips = $state<number[]>([]);
+  function measureDips(): void {
+    const el = handEl;
+    if (!el || !notch) {
+      if (dips.length) dips = [];
+      return;
+    }
+    const spans = [...el.querySelectorAll<HTMLElement>(":scope > .hand-slot")].map((s) => ({
+      left: s.offsetLeft - el.scrollLeft,
+      right: s.offsetLeft - el.scrollLeft + s.offsetWidth,
+    }));
+    const next = slotDips(spans, notch);
+    if (next.length !== dips.length || next.some((d, i) => d !== dips[i])) dips = next;
+  }
+  $effect(() => {
+    void notch;
+    void cards.length;
+    void overlap;
+    void room;
+    void layout;
+    untrack(measureDips);
+  });
 
   // Once an order is saved, keep it in step with the hand: a card that
   // left drops out and a new one is recorded at the right end, so a
@@ -703,9 +737,12 @@
       title={isSelf && !leg.legal ? slotTitle(c, leg.reason ?? "") : undefined}
       onpointerdown={dragEnabled ? (ev) => onSlotPointerDown(ev, c, i) : undefined}
       onclickcapture={dragEnabled ? onSlotClickCapture : undefined}
+      style:--dip={dips[i] ? `${dips[i]}px` : undefined}
       style:transform={layout === "stacked"
-        ? gapX || "none"
-        : `${gapX}rotate(${fanAngle(i, cards.length) * fit.tilt}deg) translateY(${fanLift(i, cards.length) * fit.tilt}px)`}
+        ? dips[i] || gapX
+          ? `${gapX}translateY(var(--dip-now, 0px))`
+          : "none"
+        : `${gapX}rotate(${fanAngle(i, cards.length) * fit.tilt}deg) translateY(calc(${fanLift(i, cards.length) * fit.tilt}px + var(--dip-now, 0px)))`}
       style:--slot-rot="{layout === 'stacked' ? 0 : fanAngle(i, cards.length) * fit.tilt}deg"
     >
       <!-- #2396: .rise lifts the card on hover while the slot stays put
@@ -967,6 +1004,15 @@
      cascades from the card-size setting) rather than the container,
      because a % margin-left in flexbox resolves against the flex
      container, pushing cards off-screen. */
+  /* ADR 0204 §3: a card under the viewer's avatar rests lower by its
+     --dip; while the hand is lifted every card rises whole, so the dip
+     goes and the lifted card shows over the avatar (the hand is z 20). */
+  .hand-slot {
+    --dip-now: var(--dip, 0px);
+  }
+  .hand:not(.opponent):hover > .hand-slot {
+    --dip-now: 0px;
+  }
   .hand-slot {
     margin-left: calc(var(--card-w, 80px) * -1 * var(--hand-overlap, 0.5));
     transform-origin: bottom center;

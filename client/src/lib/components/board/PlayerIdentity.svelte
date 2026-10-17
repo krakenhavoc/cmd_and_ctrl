@@ -66,6 +66,18 @@
     // the threshold; this component only renders the chip. Bots keep
     // their own botThinking chip regardless of this prop.
     considering?: boolean;
+    // ADR 0204 §1: the identity sits at the middle of its seat's hand
+    // edge, over the fan (PlayerPanel), rather than in a rail. The same
+    // pieces are drawn; from 600px up the satellites (the mana pool on
+    // the left, the markers and steppers on the right) sit beside the
+    // portrait instead of under it, and the name shares its line with
+    // the tags, so the identity is as short as it can be over the
+    // battlefield. Unset (SeatSummary, a phone's rail) it is unchanged.
+    seated?: boolean;
+    // ADR 0204 §2 (call 2): the face-down fan behind an opponent's avatar
+    // hides its centre, so the count rides beside the portrait. Null
+    // shows nothing (the viewer's own seat, or the count setting off).
+    handCount?: number | null;
   }
 
   const {
@@ -81,6 +93,8 @@
     onTargetPlayer,
     commanderScryfallID = null,
     considering = false,
+    seated = false,
+    handCount = null,
   }: Props = $props();
 
   const targetableByCast = $derived.by(() => {
@@ -274,59 +288,66 @@
   class:cast-targetable={targetableByCast}
   class:cast-picked={pickedByCast}
   class:eliminated={seat.eliminated}
+  class:seated
   class:bot={isBot}
+  data-seat-identity={seated ? seat.id : undefined}
   class:thinking={(botThinking || agentThinking || considering) && animateThinking}
   style:--seat-color={seatColor(seat.seat)}
 >
-  <span class="name" data-dice-avoid title={displayLabel}>{displayLabel}</span>
-  <!-- ADR 0075 §2.1: the table's host, visible to everyone. It is a
+  <!-- ADR 0204: the name and its tags. `display: contents` in a rail,
+       so each is its own line as before; one wrapping line when seated. -->
+  <div class="name-line">
+    <span class="name" data-dice-avoid title={displayLabel}>{displayLabel}</span>
+    <!-- ADR 0075 §2.1: the table's host, visible to everyone. It is a
        seat ROLE — who may change the house rules and spawn — and is
        unrelated to the monarch, whose crown sits in the marker column
        on the avatar row. Hence a chip next to the name, where the BOT
        chip lives, rather than a second crown: two crowns on one seat
        meaning two different things is exactly the confusion to avoid,
        and the glyph is kept small and paired with the word. -->
-  {#if seat.is_host}
-    <span
-      class="tag host"
-      title="Table host — sets this table's house rules, alongside the server admin"
-    >
-      <Icon name="crown" size={9} /> host
-    </span>
-  {/if}
-  {#if isBot}
-    <span class="tag bot" data-dice-avoid title={botTitle}
-      >{botThinking ? "thinking…" : botLabel}</span
-    >
-  {:else if isAgent}
-    <!-- ADR 0122 §7: an outside AI agent plays this seat. Same slot as
+    {#if seat.is_host}
+      <span
+        class="tag host"
+        title="Table host — sets this table's house rules, alongside the server admin"
+      >
+        <Icon name="crown" size={9} /> host
+      </span>
+    {/if}
+    {#if isBot}
+      <span class="tag bot" data-dice-avoid title={botTitle}
+        >{botThinking ? "thinking…" : botLabel}</span
+      >
+    {:else if isAgent}
+      <!-- ADR 0122 §7: an outside AI agent plays this seat. Same slot as
          the bot chip, so a seat is a bot, an agent or neither, never
          two; its own look, so it never reads as the server's bot. -->
-    <AgentChip {seat} thinking={agentThinking} />
-  {:else if showConsidering}
-    <!-- #1307: same slot the bot chip sits in, on a human seat that
+      <AgentChip {seat} thinking={agentThinking} />
+    {:else if showConsidering}
+      <!-- #1307: same slot the bot chip sits in, on a human seat that
          has been holding priority in a public response window longer
          than an automatic pass would take. Derived from public timing
          alone, so a real hold, a bluff and someone away from the
          keyboard all show exactly this. -->
-    <span class="tag considering" title="holding priority">considering…</span>
-  {/if}
-  {#if standIn}
-    <span
-      class="tag bot stand-in"
-      data-dice-avoid
-      title={`A bot has been playing this seat since ${standInSinceText(seat.stand_in?.since)}`}
-      >(bot)</span
-    >
-  {/if}
-  {#if voiceBadge}
-    <span class="tag voice-seat" data-dice-avoid title={voiceBadge.title}>{voiceBadge.glyph}</span>
-  {/if}
-  {#if presence}
-    <span class="tag presence {presence.kind}" data-dice-avoid title={presence.title}
-      >{presence.text}</span
-    >
-  {/if}
+      <span class="tag considering" title="holding priority">considering…</span>
+    {/if}
+    {#if standIn}
+      <span
+        class="tag bot stand-in"
+        data-dice-avoid
+        title={`A bot has been playing this seat since ${standInSinceText(seat.stand_in?.since)}`}
+        >(bot)</span
+      >
+    {/if}
+    {#if voiceBadge}
+      <span class="tag voice-seat" data-dice-avoid title={voiceBadge.title}>{voiceBadge.glyph}</span
+      >
+    {/if}
+    {#if presence}
+      <span class="tag presence {presence.kind}" data-dice-avoid title={presence.title}
+        >{presence.text}</span
+      >
+    {/if}
+  </div>
 
   <div class="core-row">
     <!-- Left: mana pool floats alongside the avatar instead of stacking
@@ -469,6 +490,19 @@
          any ad-hoc player counters. Stacked vertically so they don't
          push the panel taller; each row is the same height as a
          single chip. -->
+    {#if handCount !== null}
+      <!-- ADR 0204 §2 (call 2): the fan's centre is behind the portrait,
+           so the count rides on the portrait's lower edge, on the side
+           away from the piles (PlayerPanel), where it is never covered. -->
+      <span
+        class="marker hand-count"
+        data-hand-count={handCount}
+        title={`${handCount} ${handCount === 1 ? "card" : "cards"} in hand`}
+        aria-label={`${handCount} ${handCount === 1 ? "card" : "cards"} in hand`}
+        ><Icon name="hand" size={11} />{handCount}</span
+      >
+    {/if}
+
     <div class="side right">
       <!-- The city's blessing (CR 702.131c, #2696): a designation ascend
            gives and nothing takes away, so there is no toggle. Shown on
@@ -1267,5 +1301,100 @@
     color: var(--priority);
     border-color: rgba(255, 208, 122, 0.4);
     background: rgba(255, 208, 122, 0.12);
+  }
+  /* ADR 0204: the name and its tags are each a line of the column in a
+     rail, as they always were. */
+  .name-line {
+    display: contents;
+  }
+  /* ADR 0204 §2: an opponent's hand count, beside the portrait, since
+     the face-down fan's centre is behind it. Only where the identity is
+     seated over its fan, which is from 600px up (PlayerPanel). */
+  .marker.hand-count {
+    display: none;
+    color: var(--fg);
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    border-color: var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ADR 0204 §1: seated at the middle of the hand's edge (PlayerPanel),
+     over the fan and the battlefield's edge, not in a rail. The pieces
+     are the rail's; only where they sit changes. The name shares a line
+     with its tags, and the satellites of the portrait (the mana pool on
+     the left, the markers and steppers on the right) hang beside it from
+     its top edge, out of the layout box, so the box is the name and the
+     portrait and is centred on the portrait. Hanging from the top, the
+     viewer's steppers end above the hand they sit over (§3). */
+  @media (min-width: 600px) {
+    /* The box is the name line and the portrait; only what is drawn
+       takes the pointer, so the box's empty corners never cover the
+       commander or the fan beside it. */
+    .identity.seated {
+      gap: 2px;
+      width: max-content;
+      max-width: min(240px, 100%);
+      pointer-events: none;
+    }
+    .identity.seated > *,
+    .identity.seated .name-line > * {
+      pointer-events: auto;
+    }
+    .identity.seated .name-line {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 2px 4px;
+      max-width: 100%;
+      pointer-events: none;
+    }
+    .identity.seated .name-line > .tag {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+    .identity.seated .name {
+      max-width: 140px;
+    }
+    .identity.seated > .core-row {
+      position: relative;
+      flex-direction: row;
+      justify-content: center;
+      align-items: flex-start;
+      pointer-events: none;
+    }
+    .identity.seated > .core-row > * {
+      pointer-events: auto;
+    }
+    .identity.seated .side {
+      position: absolute;
+      top: 0;
+      flex-direction: column;
+      flex-wrap: wrap;
+      max-height: var(--avatar-size);
+      max-width: none;
+      width: max-content;
+      gap: 3px;
+      margin-top: 0;
+    }
+    .identity.seated .side.left {
+      right: calc(50% + var(--avatar-size) / 2 + 5px);
+      align-items: flex-end;
+      align-content: flex-end;
+    }
+    .identity.seated .side.right {
+      left: calc(50% + var(--avatar-size) / 2 + 5px);
+      align-items: flex-start;
+    }
+    /* On the portrait's lower edge, overlapping its rim, on the left by
+       default; PlayerPanel moves it to the right where the piles are on
+       the left. */
+    .identity.seated .marker.hand-count {
+      display: inline-flex;
+      position: absolute;
+      bottom: 0;
+      right: calc(50% + 24px);
+      z-index: 1;
+    }
   }
 </style>

@@ -10,7 +10,9 @@ import {
   PILE_INSET,
   PILE_MARGIN,
   PILE_MIN_ROOM,
+  PILE_LANE_EXTRA_W,
   PILE_SHRUNK_W,
+  avatarClampsFrom,
   cascadeDim,
   cascadeInward,
   cascadeLayout,
@@ -19,6 +21,7 @@ import {
   fixtureTopFrom,
   pendingHeight,
   pileBounds,
+  pileColumn,
   pileDepth,
   pileFallsBack,
   pileFit,
@@ -266,6 +269,42 @@ describe("geometry from rects", () => {
     expect(fixtureTopFrom(board, [coach], 1110, 810)).toBe(null);
     expect(fixtureTopFrom(board, [coach], 1110, 315)).toBe(null);
     expect(fixtureTopFrom(board, [coach], 1110, 300)).toBe(550);
+  });
+
+  // ADR 0204 §4: the default spot covers no avatar. A top-row avatar
+  // over the pile's column pushes its top down; yours keeps its bottom up.
+  it("clamps the pile between the avatars over its column", () => {
+    const seamY = 400;
+    const top = { left: 300, top: 60, width: 120, height: 110 }; // board y 10..120
+    const mine = { left: 380, top: 700, width: 160, height: 110 }; // board y 650..760
+    const clamps = avatarClampsFrom(board, [top, mine], seamY, 150, 450);
+    expect(clamps).toEqual({ above: 120, below: 650 });
+  });
+
+  it("ignores avatars beside the pile's column and ones not drawn", () => {
+    const right = { left: 700, top: 60, width: 120, height: 110 };
+    const none = { left: 300, top: 700, width: 0, height: 0 };
+    expect(avatarClampsFrom(board, [right, none], 400, 150, 450)).toEqual({
+      above: null,
+      below: null,
+    });
+  });
+
+  it("splits a seamless board's avatars at its middle", () => {
+    const high = { left: 300, top: 100, width: 100, height: 100 }; // centre 100
+    const low = { left: 300, top: 600, width: 100, height: 100 }; // centre 600
+    expect(avatarClampsFrom(board, [high, low], null, 150, 450)).toEqual({
+      above: 150,
+      below: 550,
+    });
+  });
+
+  it("reads the clamps over the pile's widest column, not its drawn width", () => {
+    // 1400×900: the card wants min(max(200, 270), 280, 336) = 270.
+    const c = pileColumn(1400, 900, 700);
+    expect(c.right - c.left).toBe(270 + PILE_LANE_EXTRA_W);
+    expect((c.left + c.right) / 2).toBe(700);
+    expect(pileColumn(1400, 900, null).left).toBe(PILE_INSET);
   });
 
   it("sums the strip's blocks rather than reading its last bottom", () => {

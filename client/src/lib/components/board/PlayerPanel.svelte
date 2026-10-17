@@ -98,6 +98,13 @@
   import { groupMembersOf } from "../../tokenGroups";
   import { L } from "../../labels";
   import { allocateRowHeights, type RowReport } from "../../rowFit";
+  import {
+    backRowSplit,
+    handNotch,
+    seatOverhang,
+    type BackRowSplit,
+    type HandNotch,
+  } from "../../seatNotch";
   import { canOverride, type MenuAction } from "../../contextMenu.logic";
   import {
     NO_COMBAT_RINGS,
@@ -512,8 +519,135 @@
       base: Math.max(0, ...back.map((d) => d.base)),
       want: Math.max(0, ...back.map((d) => d.want)),
     };
-    return allocateRowHeights(fieldH, [creatureDemand, backDemand]);
+    // ADR 0204: the band the row beside the hand keeps clear under the
+    // avatar is height the two rows do not get.
+    return allocateRowHeights(Math.max(0, fieldH - seatNotch), [creatureDemand, backDemand]);
   });
+
+  // ADR 0204: what the seated identity keeps clear. `seatNotch` is the
+  // depth of the band the battlefield row beside the hand keeps clear
+  // under the avatar (call 3); `ownHandNotch` is where the viewer's
+  // avatar sits over their own fan, so the cards under it dip (call 4).
+  // Both are read off the laid-out boxes (seatNotch.ts decides), and are
+  // zero and null where the identity is not seated (a phone's rail).
+  let seatNotch = $state(0);
+  let ownHandNotch = $state<HandNotch | null>(null);
+  // Your back row parted around your avatar (backRowSplit), where the
+  // two share height; null elsewhere.
+  let backSplit = $state<BackRowSplit | null>(null);
+  function sameSplit(a: BackRowSplit | null, b: BackRowSplit | null): boolean {
+    return (
+      a === b || (!!a && !!b && a.lands === b.lands && a.notch === b.notch && a.right === b.right)
+    );
+  }
+  function sameNotch(a: HandNotch | null, b: HandNotch | null): boolean {
+    return (
+      a === b || (!!a && !!b && a.left === b.left && a.right === b.right && a.depth === b.depth)
+    );
+  }
+  function seatRoom(node: HTMLElement, isFlipped: boolean) {
+    if (typeof ResizeObserver === "undefined") return {};
+    let flip = isFlipped;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const id = node.querySelector<HTMLElement>(":scope > .rail > .identity");
+      const bottom = node.querySelector<HTMLElement>(":scope > .grid-bottom");
+      if (!id || !bottom || getComputedStyle(id).position !== "absolute") {
+        if (seatNotch !== 0) seatNotch = 0;
+        if (ownHandNotch) ownHandNotch = null;
+        if (backSplit) backSplit = null;
+        return;
+      }
+      const p = node.getBoundingClientRect();
+      const ir = id.getBoundingClientRect();
+      const disc = id.querySelector(".avatar-wrap")?.getBoundingClientRect();
+      const life = id.querySelector(".life-row")?.getBoundingClientRect();
+      const kw = id.querySelector(".seat-keywords")?.getBoundingClientRect();
+      const lowest = Math.max(ir.bottom, life?.bottom ?? 0, kw?.bottom ?? 0);
+      const br = bottom.getBoundingClientRect();
+      // Your own back row parts around your avatar where the two share
+      // height (backRowSplit): on a wide board, and on a short one whose
+      // back row spills into the dock's row. Then no band is kept, and
+      // your creatures keep their height.
+      const docked = node.classList.contains("docked");
+      const wide = docked && node.clientWidth - 16 >= 1100;
+      const mid = node.querySelector<HTMLElement>(":scope > .grid-middle");
+      const spacer = bottom
+        .querySelector<HTMLElement>(":scope > .dock-spacer")
+        ?.getBoundingClientRect();
+      const rows = mid ? [...mid.children].map((e) => e.getBoundingClientRect().bottom) : [];
+      const tight = Math.max(0, ...rows) > br.top + 1;
+      const split = docked && !!mid && !!spacer && (wide || tight);
+      const v = split
+        ? 0
+        : seatOverhang({
+            identity: { top: ir.top - p.top, bottom: lowest - p.top },
+            handRow: { top: br.top - p.top, bottom: br.bottom - p.top },
+            rowGap: parseFloat(getComputedStyle(node).rowGap) || 0,
+            handOnTop: flip,
+          });
+      if (v !== seatNotch) seatNotch = v;
+      let nextSplit: BackRowSplit | null = null;
+      if (split && mid && spacer) {
+        const sides = [...id.querySelectorAll<HTMLElement>(".side")]
+          .map((e) => e.getBoundingClientRect())
+          .filter((r) => r.width > 0);
+        const mr = mid.getBoundingClientRect();
+        nextSplit = backRowSplit({
+          panelW: p.width,
+          start: mr.left - p.left + (parseFloat(getComputedStyle(mid).paddingLeft) || 0),
+          avatar: {
+            left: Math.min(ir.left, ...sides.map((r) => r.left)) - p.left,
+            right: Math.max(ir.right, ...sides.map((r) => r.right)) - p.left,
+          },
+          dockLeft: spacer.left - p.left,
+        });
+      }
+      if (!sameSplit(nextSplit, backSplit)) backSplit = nextSplit;
+      const zone = bottom.querySelector<HTMLElement>(":scope > .hand-zone");
+      const hand = zone?.querySelector<HTMLElement>(":scope > .hand");
+      let next: HandNotch | null = null;
+      if (isSelf && !flip && disc && zone && hand) {
+        next = handNotch({
+          avatar: {
+            left: Math.min(disc.left, life?.left ?? disc.left),
+            right: Math.max(disc.right, life?.right ?? disc.right),
+          },
+          avatarBottom: lowest,
+          // A card at rest shows from the strip's top, under its padding.
+          handTop: zone.getBoundingClientRect().top + 4,
+          handLeft: hand.getBoundingClientRect().left,
+        });
+      }
+      if (!sameNotch(next, ownHandNotch)) ownHandNotch = next;
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    const ro = new ResizeObserver(schedule);
+    ro.observe(node);
+    for (const sel of [
+      ":scope > .rail > .identity",
+      ":scope > .grid-bottom",
+      ":scope > .grid-bottom > .hand-zone",
+      ":scope > .grid-middle",
+    ]) {
+      const el = node.querySelector(sel);
+      if (el) ro.observe(el);
+    }
+    schedule();
+    return {
+      update(f: boolean) {
+        flip = f;
+        schedule();
+      },
+      destroy() {
+        if (frame) cancelAnimationFrame(frame);
+        ro.disconnect();
+      },
+    };
+  }
 
   // fieldHeight measures the panel's height less its hand row (the
   // first grid track on an across-table panel, the last otherwise), its
@@ -886,9 +1020,15 @@
   class:seat-turn={isActive}
   style:--seat-color={seatColor(seat.seat)}
   style:--creature-min={creatureDemand?.used ? `${creatureDemand.used}px` : undefined}
+  style:--seat-notch={seatNotch ? `${seatNotch}px` : undefined}
+  class:back-split={backSplit !== null}
+  style:--seat-split-lands={backSplit ? `${backSplit.lands}px` : undefined}
+  style:--seat-split-notch={backSplit ? `${backSplit.notch}px` : undefined}
+  style:--seat-split-right={backSplit ? `${backSplit.right}px` : undefined}
   role={expanded ? "group" : "region"}
   aria-label={expanded ? undefined : isSelf ? L.yourBoard : L.seatBoard(seat.name)}
   use:fieldHeight={flipped}
+  use:seatRoom={flipped}
 >
   {#if playmat}
     <!-- ADR 0128: the owner's playmat, under everything. An <img> and
@@ -1050,6 +1190,7 @@
         {legal}
         legalGate={rowGate}
         onSpecialAction={sendSpecialAction}
+        notch={isSelf ? ownHandNotch : null}
       />
     </div>
     {#if isSelf}
@@ -1109,6 +1250,8 @@
       {onDeclareAttack}
       {onTargetPlayer}
       {considering}
+      seated
+      handCount={!isSelf && $settings.display.showOpponentHandCount ? seat.hand.count : null}
     />
     <div class="rail-gap"></div>
     <PileBar
@@ -1591,17 +1734,17 @@
         max(36px, calc(var(--card-h) * var(--hand-peek) - 30px))
       );
       --thumb-w: calc(var(--thumb-h) * 5 / 7);
-      grid-template-columns: auto minmax(0, 1fr) var(--rail-w);
       /* #3028: the piles sit in the hand's row, against the bottom
          edge like the hand, as an across-table opponent's sit in theirs
-         against the top edge (#2491), so the two boards mirror. */
+         against the top edge (#2491), so the two boards mirror.
+         ADR 0204 §3: there is no rail; your identity sits over the
+         middle of your hand (below), and the battlefield takes the rail's
+         width back. */
+      grid-template-columns: auto minmax(0, 1fr);
       grid-template-areas:
-        "creatures creatures rail"
-        "middle    middle    rail"
-        "piles     bottom    bottom";
-    }
-    .panel.self.docked .rail {
-      display: contents;
+        "creatures creatures"
+        "middle    middle"
+        "piles     bottom";
     }
     /* The bottom row is the hand's peek, not the dock's height: the
        dock rises over the back row's right end instead, which the back
@@ -1610,25 +1753,7 @@
       height: 0;
     }
     .panel.self.docked .grid-middle {
-      padding-right: max(0px, calc(var(--dock-w, 0px) - var(--rail-w)));
-    }
-    .panel.self.docked .rail-gap {
-      display: none;
-    }
-    .panel.self.docked .rail > :global(.identity) {
-      grid-area: rail;
-      align-self: start;
-    }
-    .panel.self.docked .rail > :global(.pile-bar) {
-      grid-area: piles;
-      grid-template-columns: repeat(3, 52px);
-      width: auto;
-      align-self: end;
-    }
-    /* As on the top-row panels: the tile's title and aria-label still
-       carry the pile's name, so the piles stay one short row. */
-    .panel.self.docked .rail :global(.pile .label) {
-      display: none;
+      padding-right: var(--dock-w, 0px);
     }
     /* #2990, #2409, #3028: the coach card sits in the bottom-left
        corner, where the piles are, and is taller than the hand row, so
@@ -1660,14 +1785,16 @@
      piles leave it and the creatures keep its full height. */
   @media (min-width: 600px) {
     .panel.opponent.flipped {
-      grid-template-columns: var(--rail-w) minmax(0, 1fr) auto;
+      grid-template-columns: minmax(0, 1fr) auto;
       grid-template-rows: auto 1fr minmax(var(--creature-min, 0px), auto);
       /* #2491: the piles sit in the hand's row, against the top edge
-         like the hand, not in the back row under it. */
+         like the hand, not in the back row under it. ADR 0204 §2: the
+         identity sits over the middle of the hand (below), so the rail's
+         column is the battlefield's again. */
       grid-template-areas:
-        "bottom bottom    piles"
-        "rail   middle    middle"
-        "rail   creatures creatures";
+        "bottom    piles"
+        "middle    middle"
+        "creatures creatures";
     }
     /* #2491, #3028: their commander is tucked half behind the top edge,
        as yours is behind the bottom one, so their board mirrors yours:
@@ -1680,7 +1807,12 @@
        row; the strip keeps the hand's height and lets its card
        overflow. The tax goes to the edge you can see. */
     .panel.opponent.flipped :global(.command-strip) {
-      --strip-h: max(168px, var(--card-h));
+      /* ADR 0204 §5: and no wider than the room left of the avatar, less
+         the hand count on the portrait's rim. */
+      --strip-h: min(
+        max(168px, var(--card-h)),
+        (var(--seat-side) - var(--seat-badge, 24px) - 4px) * 7 / 5
+      );
       height: calc(var(--card-h) * var(--hand-peek, 0.55));
       align-self: flex-start;
       align-items: flex-start;
@@ -1736,20 +1868,7 @@
     .panel.opponent.flipped .hand-zone > :global(.hand > .empty) {
       transform: rotate(180deg);
     }
-    .panel.opponent.flipped .rail {
-      display: contents;
-    }
-    .panel.opponent.flipped .rail-gap {
-      display: none;
-    }
-    .panel.opponent.flipped .rail > :global(.identity) {
-      grid-area: rail;
-      align-self: end;
-    }
     .panel.opponent.flipped .rail > :global(.pile-bar) {
-      grid-area: piles;
-      grid-template-columns: repeat(3, 52px);
-      width: auto;
       align-self: start;
     }
     /* A top-row panel is narrow: the two back-row zones may give up
@@ -1772,6 +1891,214 @@
       min-width: 64px;
     }
   }
+  /* ADR 0204: seats at the table. From 600px up every panel's identity
+     sits at the middle of the edge its hand is on, in front of the fan,
+     as a player holds their cards: a top-row opponent's at the top centre
+     (§2), an upright opponent's at the bottom centre (§1), yours just above
+     the middle of your hand (§3). The rail is gone: it is `display:
+     contents`, its identity is placed over the panel, and its piles sit at
+     the far end of the hand's edge (an upright panel's bottom left, as
+     yours are; a top-row panel's top right). A phone keeps the rail. */
+  @media (min-width: 600px) {
+    .panel:not(.flipped):not(.docked) {
+      grid-template-columns: auto minmax(0, 1fr);
+      grid-template-areas:
+        "creatures creatures"
+        "middle    middle"
+        "piles     bottom";
+    }
+    .rail {
+      display: contents;
+    }
+    .rail-gap {
+      display: none;
+    }
+    /* §5: the room either side of the avatar on the hand's edge, for
+       the commander strip and the piles. They shrink to it rather than
+       slide under the avatar: the piles' tiles narrow (here) and the
+       commander card gets smaller (below). A container unit, so it is
+       read against this panel wherever it is used. */
+    .panel {
+      --seat-side: calc(50cqw - var(--avatar-size-base) * var(--card-scale, 1) / 2 - 14px);
+    }
+    .rail > :global(.pile-bar) {
+      --pile-col: clamp(24px, (var(--seat-side) - 8px) / 3, 52px);
+      grid-area: piles;
+      grid-template-columns: repeat(3, var(--pile-col));
+      width: auto;
+      align-self: end;
+    }
+    /* §2: the hand count sits on the commander's side of the portrait,
+       away from the wider piles: the left on a top-row panel, the right
+       on an upright one (its piles are at the bottom left). */
+    .panel:not(.flipped) .rail > :global(.identity .hand-count) {
+      right: auto;
+      left: calc(50% + 24px);
+    }
+    /* An upright opponent's commander, at its hand's right end, no wider
+       than the room right of the avatar either. */
+    .panel.opponent:not(.flipped) :global(.command-strip) {
+      --strip-h: min(
+        calc(var(--card-h) * 0.42),
+        (var(--seat-side) - var(--seat-badge, 24px) - 4px) * 7 / 5
+      );
+    }
+    /* The promise tokens leave the hand's edge, which the avatar now
+       holds the middle of: they hang just off it on the battlefield's
+       side, at the commander's end (z over the back row's corner). */
+    .panel.opponent .grid-bottom {
+      position: relative;
+    }
+    .panel.opponent .grid-bottom > :global(.promises) {
+      position: absolute;
+      right: 0;
+      bottom: calc(100% + 4px);
+      z-index: 4;
+    }
+    .panel.opponent.flipped .grid-bottom > :global(.promises) {
+      right: auto;
+      left: 0;
+      bottom: auto;
+      top: calc(100% + 4px);
+    }
+    /* The tile's title and aria-label still carry the pile's name, so
+       the piles stay one short row. Each thumb fits its column, in
+       proportion, however narrow the room beside the avatar is. */
+    .rail :global(.pile .label) {
+      display: none;
+    }
+    .rail > :global(.pile-bar .thumb) {
+      --pile-thumb-w: min(var(--thumb-w), calc(var(--pile-col) - 8px));
+      --pile-thumb-h: min(var(--thumb-h), calc((var(--pile-col) - 8px) * 7 / 5));
+      width: var(--pile-thumb-w);
+      height: var(--pile-thumb-h);
+      --card-w: var(--pile-thumb-w);
+      --card-h: var(--pile-thumb-h);
+    }
+    /* The identity is centred on the panel, over the fan (z above the
+       hand's 1 and the commander strip's 6). An opponent's sits against
+       its hand's edge and overhangs toward the battlefield. */
+    .rail > :global(.identity) {
+      position: absolute;
+      left: 50%;
+      translate: -50% 0;
+      z-index: 7;
+    }
+    .panel:not(.flipped) .rail > :global(.identity) {
+      bottom: 4px;
+    }
+    .panel.flipped .rail > :global(.identity) {
+      top: 2px;
+    }
+    /* §3: yours is centred over your hand's edge, which ends at the
+       dock (ADR 0111 owns the corner), so it is never under the dock. It
+       sits under the hand's hover lift (z 20), which shows whole cards
+       over it. On a narrow board (below) the bottom row is the dock's
+       height and the avatar stands in it, just above the hand and the
+       piles; on a wide one it straddles the line between the battlefield
+       and the hand. */
+    .panel.self.docked .rail > :global(.identity) {
+      /* Its steppers (about 130px right of its centre) end short of the
+         dock too. */
+      left: clamp(
+        56px,
+        calc((100% - var(--dock-w, 0px)) / 2),
+        calc(100% - var(--dock-w, 0px) - 130px)
+      );
+      bottom: calc(8px + var(--card-h) * var(--hand-peek, 0.4) + 14px);
+      z-index: 5;
+    }
+    /* §2, §3 (call 3): the battlefield row beside the hand keeps clear
+       the depth the identity reaches into it (--seat-notch, measured),
+       so no permanent sits under the avatar. The row hugs the far side
+       of its area, so the band is the spare height first and costs the
+       rows only what that does not cover (the row budgets know). */
+    .panel.flipped .grid-middle {
+      padding-top: var(--seat-notch, 0px);
+    }
+    .panel:not(.flipped) .grid-middle {
+      padding-bottom: var(--seat-notch, 0px);
+    }
+  }
+  /* ADR 0204 §5: a panel too narrow for the hand count beside the
+     portrait as well (three opponents in a row on a tablet). The count
+     rides on the portrait over its life chip instead, so the commander
+     has all the room left of the avatar; the avatar keeps its centre and
+     nothing goes under it. */
+  @media (min-width: 600px) {
+    @container (max-width: 319px) {
+      .panel.flipped .rail > :global(.identity .hand-count),
+      .panel:not(.flipped) .rail > :global(.identity .hand-count) {
+        left: 50%;
+        right: auto;
+        bottom: 22px;
+        translate: -50% 0;
+      }
+      .grid-bottom {
+        --seat-badge: 0px;
+      }
+    }
+  }
+  /* ADR 0204 §3: a board of your own too narrow to seat you left of the
+     dock (the quadrant's bottom right on a tablet): you stand just above
+     the dock, at the middle of your board, and the back row keeps the
+     band you reach into clear (--seat-notch). */
+  @media (min-width: 600px) {
+    @container (max-width: 489px) {
+      .panel.self.docked .rail > :global(.identity) {
+        left: 50%;
+        bottom: calc(8px + var(--dock-h, 170px) + 8px);
+      }
+    }
+  }
+  /* ADR 0204 §3: on a wide board of your own the bottom row is only the
+     hand's peek and the dock rises over the back row's right end. Your
+     avatar straddles the line between the battlefield and the hand by
+     --seat-dip, and the cards under it dip below it (Hand's notch, call
+     4). */
+  @media (min-width: 600px) {
+    @container (min-width: 1100px) {
+      .panel.self.docked .rail > :global(.identity) {
+        --seat-dip: 10px;
+        bottom: calc(8px + var(--card-h) * var(--hand-peek, 0.4) - var(--seat-dip));
+      }
+    }
+    /* Call 3: where your back row shares height with your avatar (a wide
+       board, or a short one whose back row spills into the dock's row),
+       it parts around it rather than giving the creatures' height to a
+       band: the lands left of the avatar, the other permanents right of
+       it up to the dock, and a clear notch between, the width of the
+       avatar and its steppers (backRowSplit, measured). The lands take
+       the column left of the notch and sit against its right end; the
+       notch is an empty ::before; the rest follow it. */
+    .panel.self.docked.back-split .grid-middle {
+      justify-content: flex-start;
+      gap: 14px;
+      padding-right: var(--seat-split-right);
+    }
+    .panel.self.docked.back-split .grid-middle::before {
+      content: "";
+      order: 1;
+      flex: 0 0 calc(var(--seat-split-notch) - 28px);
+    }
+    .panel.self.docked.back-split .grid-middle > :global(.row) {
+      order: 2;
+      max-width: none;
+    }
+    .panel.self.docked.back-split .grid-middle > :global(.row.strip) {
+      order: 0;
+      flex: 0 0 var(--seat-split-lands);
+      min-width: 0;
+      max-width: none;
+    }
+    .panel.self.docked.back-split .grid-middle > :global(.row.strip .row-cards) {
+      justify-content: flex-end;
+    }
+    .panel.self.docked.back-split .grid-middle > :global(.row.strip .row-label) {
+      left: auto;
+      right: 6px;
+    }
+  }
   /* A narrow self panel (the quadrant's bottom right): the dock is
      wider than the room right of the back row, so the back row keeps
      its full width and the bottom row keeps the dock's height, as
@@ -1788,7 +2115,7 @@
       .panel.self.docked .grid-middle {
         padding-right: 0;
       }
-      .panel.self.docked :is(.grid-creatures, .grid-middle, .grid-bottom) {
+      .panel.self.docked :is(.grid-creatures, .grid-middle, .grid-bottom, .rail) {
         --card-h: clamp(
           100px,
           calc((100cqh - var(--dock-h, 170px) - 64px) / 1.5 * var(--card-scale, 1)),

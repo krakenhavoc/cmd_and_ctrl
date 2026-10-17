@@ -438,12 +438,60 @@ describe("placement (ADR 0120 §2)", () => {
       const o = overlay()!;
       const left = parseFloat(o.style.left);
       const width = parseFloat(o.style.width);
+      // Full height from the board's 10px inset, unless it opens below
+      // the avatar (ADR 0204 §4).
+      const top = o.style.top ? parseFloat(o.style.top) : 10;
       const a = boxes[id];
       expect(width, id).toBeGreaterThan(0);
-      const overlaps = left < a.left + a.width && a.left < left + width;
+      const overlaps = left < a.left + a.width && a.left < left + width && top < a.top + a.height;
       expect(overlaps, `overlay covers ${id}'s avatar`).toBe(false);
       click(tableAvatar(id));
       expect(overlay()).toBeNull();
     }
+  });
+
+  // ADR 0204 §4 (call 5): a top-row seat's avatar is at the top centre of
+  // its panel, so its board opens below it, toward the table's centre, in
+  // the wider half, 8px under it. Your own (and an upright seat's) still
+  // opens beside it.
+  it("opens below a top-row avatar and beside your own", () => {
+    mountBoard();
+    const board = document.querySelector<HTMLElement>(".board")!;
+    board.getBoundingClientRect = () => rect(0, 0, 1600, 900);
+    const boxes: Record<string, DOMRect> = {
+      [BOB]: rect(230, 10, 84, 84),
+      [CAT]: rect(758, 10, 84, 84),
+      [DEE]: rect(1290, 10, 84, 84),
+      [ME]: rect(500, 700, 84, 84),
+    };
+    for (const id of [BOB, CAT, DEE, ME]) {
+      tableAvatar(id).getBoundingClientRect = () => boxes[id];
+    }
+    for (const id of [BOB, CAT, DEE]) {
+      const panel = tableAvatar(id).closest(".panel")!;
+      expect(panel.classList.contains("flipped"), id).toBe(true);
+      click(tableAvatar(id));
+      const o = overlay()!;
+      const a = boxes[id];
+      expect(parseFloat(o.style.top), id).toBe(a.top + a.height + 8);
+      const left = parseFloat(o.style.left);
+      const width = parseFloat(o.style.width);
+      // Under the avatar's own column, in the wider half beside it.
+      expect(left, id).toBeLessThanOrEqual(a.left);
+      expect(left + width, id).toBeGreaterThanOrEqual(a.left + a.width);
+      click(tableAvatar(id));
+    }
+    // Bob is left of centre, so his opens rightward; Dee's leftward.
+    click(tableAvatar(BOB));
+    expect(parseFloat(overlay()!.style.left)).toBe(230);
+    click(tableAvatar(BOB));
+    click(tableAvatar(DEE));
+    expect(parseFloat(overlay()!.style.left) + parseFloat(overlay()!.style.width)).toBe(1374);
+    click(tableAvatar(DEE));
+    click(tableAvatar(ME));
+    expect(overlay()!.style.top).toBe("");
+    const left = parseFloat(overlay()!.style.left);
+    const width = parseFloat(overlay()!.style.width);
+    expect(left + width <= 500 - 8 || left >= 584 + 8).toBe(true);
   });
 });

@@ -247,6 +247,30 @@ describe("placement (ADR 0120 §2)", () => {
     }
   });
 
+  // ADR 0204 §4 (call 5): a top-row avatar sits at the top centre of its
+  // panel; its board opens below it, in the wider half beside it, under
+  // the avatar's own column.
+  it("opens below a top-row avatar, 8px under it, in the wider half", () => {
+    const a = { left: 300, top: 10, width: 84, height: 110 };
+    const s = placeOverlay(a, { boardWidth: 1800, edge: 6, below: true });
+    expect(s.top).toBe(10 + 110 + 8);
+    expect(s.side).toBe("right");
+    expect(s.left).toBe(300);
+    expect(s.width).toBe(1200);
+    const r = placeOverlay({ ...a, left: 1500 }, { boardWidth: 1800, edge: 6, below: true });
+    expect(r.side).toBe("left");
+    expect(r.left + r.width).toBe(1584);
+    expect(r.width).toBe(1200);
+  });
+
+  it("below an avatar, still starts right of the stack pile's clearance", () => {
+    const a = { left: 650, top: 10, width: 84, height: 110 };
+    const s = placeOverlay(a, { boardWidth: 1000, leftClear: 300, below: true });
+    expect(s.side).toBe("left");
+    expect(s.left).toBe(300);
+    expect(s.width).toBe(734 - 300);
+  });
+
   it("starts right of the stack pile's clearance", () => {
     const s = placeOverlay(avatar(900), { boardWidth: 1000, leftClear: 300 });
     expect(s.side).toBe("left");

@@ -280,6 +280,11 @@ flight does not).
   footer. The bottom-right corner belongs to the action dock; the stack pile is
   left; the hover zoom is top-right; the coach card is bottom-left (ADR 0111 §4,
   ADR 0119 §1). New table UI must not cover the dock (`--dock-w`, `--dock-h`).
+- **Every seat sits at the middle of its hand's edge** (ADR 0204): a top-row
+  opponent's avatar at the top centre of their board, in front of their fan; an
+  upright one's at the bottom centre; yours just above the middle of your hand,
+  left of the dock. Nothing is placed under an avatar, and an avatar covers no
+  card in your hand.
 - **Installed app.** Under `display-mode: standalone` `#app` pays back the
   safe-area insets; respect them in anything fixed to an edge.
 

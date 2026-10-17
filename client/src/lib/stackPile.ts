@@ -290,6 +290,33 @@ export function pileLeft({ boardW, pileW, seamX, dock = null }: PileLeftInput): 
   return Math.round(Math.min(Math.max(seamX - pileW / 2, PILE_INSET), max));
 }
 
+/** The most the pile's panel adds to its top card's width: padding and the cascade's steps. */
+export const PILE_LANE_EXTRA_W = 80;
+
+/**
+ * ADR 0204 §4: the column the pile's default spot takes at its widest,
+ * in board pixels: its top card at the width it wants before a short
+ * band shrinks it, plus the panel. The avatar clamps are read over this
+ * column rather than over the pile's drawn width, so a clamp that
+ * shrinks the pile cannot take itself away.
+ */
+export function pileColumn(
+  boardW: number,
+  boardH: number,
+  seamX: number | null,
+  dock: DockSpan | null = null,
+): { left: number; right: number } {
+  const want = Math.floor(
+    Math.min(
+      Math.min(Math.max(PILE_CARD_MIN_W, PILE_CARD_HEIGHT_SHARE * boardH), PILE_CARD_MAX_W),
+      PILE_CARD_WIDTH_SHARE * boardW,
+    ),
+  );
+  const w = want + PILE_LANE_EXTRA_W;
+  const left = pileLeft({ boardW, pileW: w, seamX, dock }) ?? PILE_INSET;
+  return { left, right: left + w };
+}
+
 /** The grid's gap between seats (Board.svelte's `.board { gap }`). */
 export const SEAT_GAP = 8;
 
@@ -429,6 +456,45 @@ export function fixtureTopFrom(
   return top;
 }
 
+/** What the pile's default spot keeps clear of the seats' avatars, in board pixels. */
+export interface AvatarClamps {
+  /** The lowest bottom of an avatar above the row seam over the pile's column, or null. */
+  above: number | null;
+  /** The highest top of an avatar below the row seam over the pile's column, or null. */
+  below: number | null;
+}
+
+/**
+ * ADR 0204 §4: the pile's default spot covers no avatar. Each seat's
+ * identity over the pile's column (`pileLeft` to `pileRight`, board
+ * pixels) is a clamp: one above the row seam (a top-row opponent's, at
+ * its top edge) pushes the pile's top below it, as the attention strip
+ * does; one below (yours, over your hand) keeps the pile's bottom above
+ * it, as a bottom-left fixture does. A spectator's grid has no seam, so
+ * the board's middle splits them.
+ */
+export function avatarClampsFrom(
+  board: Rect,
+  avatars: readonly Rect[],
+  seamY: number | null,
+  pileLeft: number,
+  pileRight: number,
+): AvatarClamps {
+  const mid = seamY ?? board.height / 2;
+  let above: number | null = null;
+  let below: number | null = null;
+  for (const r of avatars) {
+    if (r.width <= 0 || r.height <= 0) continue;
+    const left = r.left - board.left;
+    if (left >= pileRight || left + r.width <= pileLeft) continue;
+    const top = r.top - board.top;
+    const bottom = top + r.height;
+    if ((top + bottom) / 2 < mid) above = above === null ? bottom : Math.max(above, bottom);
+    else below = below === null ? top : Math.min(below, top);
+  }
+  return { above, below };
+}
+
 /**
  * The bottom of a column of blocks laid out from `top` with `gap`
  * between them, or null when none has height. The strip is such a
@@ -468,6 +534,22 @@ export function stripContentBottom(board: HTMLElement): number | null {
   const gap = parseFloat(style?.rowGap ?? "") || 6;
   const top = strip.getBoundingClientRect().top - board.getBoundingClientRect().top;
   return columnBottom(top, heights, gap);
+}
+
+/** Marks a seated identity (PlayerIdentity), which the pile's default spot keeps clear of. */
+export const SEAT_IDENTITY_ATTR = "data-seat-identity";
+
+/** avatarClampsFrom over every seated identity in the board's seat slots. */
+export function seatAvatarClamps(
+  board: HTMLElement,
+  seamY: number | null,
+  pileLeft: number,
+  pileRight: number,
+): AvatarClamps {
+  const rects = Array.from(
+    board.querySelectorAll<HTMLElement>(`:scope > .slot [${SEAT_IDENTITY_ATTR}]`),
+  ).map((el) => el.getBoundingClientRect());
+  return avatarClampsFrom(board.getBoundingClientRect(), rects, seamY, pileLeft, pileRight);
 }
 
 /** fixtureTopFrom over every marked fixture in the document. */
