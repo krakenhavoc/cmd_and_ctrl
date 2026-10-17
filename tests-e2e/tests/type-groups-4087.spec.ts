@@ -17,7 +17,10 @@ import { adminMoveByName, findCardOnBattlefield, openAdminClient } from "./s19-h
 //   - no two cards in the planeswalker / battle rows overlap, and the
 //     point at each one's centre paints that card;
 //   - each walker's loyalty pip is at least 13px and inside its card;
-//   - every group lies inside its seat's panel.
+//   - every group lies inside its seat's panel;
+//   - (#4090) a group's label box meets no card, badge or arrival tag
+//     in its own row, and the back row's groups sit together: no gap
+//     between neighbouring groups is wider than one card.
 //
 // SHOT_DIR writes the screenshots; SHOT_ONLY=1 takes them without
 // asserting (the "before" run against a build that predates the groups).
@@ -135,6 +138,23 @@ for (const seats of [2, 3, 4]) {
               zone: row.dataset.zone ?? "",
               spread: row.classList.contains("spread"),
               box: r(row.getBoundingClientRect()),
+              label: (() => {
+                const l = row.querySelector<HTMLElement>(".row-label");
+                return l ? r(l.getBoundingClientRect()) : null;
+              })(),
+              // Everything in the row the label must stay clear of: its
+              // cards, their badges and pile counts, and the "new" tag
+              // of an arrival ring drawn over it.
+              things: [
+                ...row.querySelectorAll<HTMLElement>(".card[data-instance-id], .badge, .pile-count, .count"),
+                ...[...document.querySelectorAll<HTMLElement>("[data-field-arrival] .tag")].filter((t) => {
+                  const b = row.getBoundingClientRect();
+                  const tb = t.getBoundingClientRect();
+                  return tb.x < b.right && tb.right > b.left && tb.y < b.bottom && tb.bottom > b.top;
+                }),
+              ]
+                .map((e) => r(e.getBoundingClientRect()))
+                .filter((b) => b.width > 0 && b.height > 0),
               hiddenX: row.scrollWidth - row.clientWidth,
               cards: [...row.querySelectorAll<HTMLElement>(".card[data-instance-id]")].map((c) => {
                 const cb = c.getBoundingClientRect();
@@ -175,6 +195,44 @@ for (const seats of [2, 3, 4]) {
           const zones = panel.rows.map((r) => r.zone);
           for (const z of ["creatures", "lands", "planeswalkers", "battles", "artifacts", "enchantments"]) {
             expect(zones, `${where}: ${z} group`).toContain(z);
+          }
+          // #4090: a label has room of its own. Only boxes that are on
+          // screen count: a scrolled-away card is clipped by its row.
+          for (const row of panel.rows) {
+            if (!row.label) continue;
+            const rb = row.box;
+            for (const t of row.things) {
+              const inRow = t.x < rb.x + rb.width && t.x + t.width > rb.x;
+              if (!inRow) continue;
+              expect
+                .soft(overlap(row.label, t), `${where}: ${row.zone} label meets a card or badge`)
+                .toBeLessThan(1);
+            }
+          }
+          // #4090: the back row's groups sit together, whichever end
+          // they start from.
+          // Measured between the groups' cards, not their row boxes: the
+          // land strip's box used to run on, empty, to the row's far end.
+          const span = (r: (typeof panel.rows)[number]) => ({
+            zone: r.zone,
+            left: Math.min(...r.cards.map((c) => c.box.x)),
+            right: Math.max(...r.cards.map((c) => c.box.x + c.box.width)),
+          });
+          const back = panel.rows
+            .filter((r) => r.zone !== "creatures" && r.cards.length > 0)
+            .map(span)
+            .sort((a, b) => a.left - b.left);
+          const cardW = panel.rows.find((r) => r.zone === "creatures")?.cards[0]?.box.width ?? 56;
+          // A phone's cards are 30-60px and a group's label ("Lands 1")
+          // needs about 64px of its own, so there the allowance is 96px
+          // (a scrolling row, see the screenshots); at desktop widths it
+          // is one card.
+          const allowed = size.width >= 600 ? cardW : 96;
+          for (let i = 1; i < back.length; i++) {
+            const gap = back[i].left - back[i - 1].right;
+            expect
+              .soft(gap, `${where}: gap between ${back[i - 1].zone} and ${back[i].zone}`)
+              .toBeLessThanOrEqual(allowed);
           }
           const count = (z: string) => panel.rows.find((r) => r.zone === z)?.cards.length ?? 0;
           expect(count("planeswalkers"), `${where}: walkers`).toBe(WALKERS.length);
