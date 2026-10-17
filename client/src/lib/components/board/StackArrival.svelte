@@ -10,8 +10,10 @@
   // and the end, the item where the stack draws it (a lower card of the
   // pile's cascade by its visible strip), and runs a trace along the
   // stack arrows' curve between them in the caster's seat colour. An end
-  // that is not drawn (behind "+N more", a collapsed panel) or a start
-  // that is not on screen at all traces nothing.
+  // that is not drawn (behind "+N more", a collapsed panel) traces
+  // nothing, and so does a start that does not show: off the board, or
+  // under the stack panel (the opponent's avatar on a two-seat table,
+  // where the pile docks over it).
   //
   // While a trace runs, the board carries `--stack-arrival-hold`, and the
   // pile's target arrows that mount in that window wait it out, so they
@@ -27,7 +29,7 @@
   import { settings } from "../../settings";
   import { seatColor } from "../../colors";
   import { cardSelector, findAnchor, hasSize, seatSelector } from "../../boardAnchor";
-  import { ARROW_FROM_ATTR, boxCentre, curvePath, insideBox, type Box } from "../../stackArrows";
+  import { ARROW_FROM_ATTR, curvePath, type Box } from "../../stackArrows";
   import { stackItemSelector } from "../../castFlight";
   import {
     arrivalAllowed,
@@ -35,6 +37,7 @@
     arrivalDuration,
     curveLength,
     emptyArrivalTracker,
+    startShows,
     tracePlan,
     trackArrivals,
     type Arrival,
@@ -80,20 +83,22 @@
     return { left: r.left - b.left, top: r.top - b.top, width: r.width, height: r.height };
   }
 
-  /** On screen: it has a size and its centre is on the board. */
-  function onBoard(el: HTMLElement, b: DOMRect): boolean {
-    if (!hasSize(el)) return false;
-    return insideBox(boxCentre(toBox(el.getBoundingClientRect(), b)), {
-      left: 0,
-      top: 0,
-      width: b.width,
-      height: b.height,
-    });
-  }
-
-  function findStart(board: HTMLElement, a: Arrival, b: DOMRect): HTMLElement | null {
+  /**
+   * The start: the ability's source permanent, else the caster's avatar,
+   * whichever shows first (startShows: on the board, not under the stack
+   * panel `cover`).
+   */
+  function findStart(
+    board: HTMLElement,
+    a: Arrival,
+    b: DOMRect,
+    cover: Box | null,
+  ): HTMLElement | null {
     const accept = (el: HTMLElement) =>
-      el.closest(STACK_SURFACES) === null && el.closest(OVERLAYS) === null && onBoard(el, b);
+      el.closest(STACK_SURFACES) === null &&
+      el.closest(OVERLAYS) === null &&
+      hasSize(el) &&
+      startShows(toBox(el.getBoundingClientRect(), b), b, cover);
     if (a.sourceCardID) {
       const src = findAnchor(board, cardSelector(a.sourceCardID), { accept });
       if (src) return src;
@@ -137,14 +142,16 @@
     let longest = 0;
     for (const a of arrivals) {
       const end = findEnd(board, a);
-      const start = end ? findStart(board, a, b) : null;
-      if (!end || !start) continue;
+      if (!end) continue;
       const lane = end.closest<HTMLElement>(".stack-lane");
+      const cover = lane ? toBox(lane.getBoundingClientRect(), b) : null;
+      const start = findStart(board, a, b, cover);
+      if (!start) continue;
       const curve = arrivalCurve(
         toBox(start.getBoundingClientRect(), b),
         toBox(end.getBoundingClientRect(), b),
         b,
-        lane ? toBox(lane.getBoundingClientRect(), b) : null,
+        cover,
       );
       const plan = tracePlan(curveLength(curve));
       const delay = a.delayMs * scale;
@@ -265,7 +272,10 @@
     stroke-width: 2.5;
     stroke-linecap: round;
     stroke-dashoffset: var(--from);
-    animation: arrival-run var(--dur) var(--ease) var(--delay) both;
+    /* Not --ease, which spends most of its travel in the first fifth:
+       the head eases out of the source and settles into the card, so
+       the run is seen and not a blink. */
+    animation: arrival-run var(--dur) cubic-bezier(0.35, 0, 0.25, 1) var(--delay) both;
   }
   /* The head: the seat colour lifted toward the ink, a touch wider. */
   .seg.head {

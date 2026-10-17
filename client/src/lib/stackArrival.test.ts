@@ -14,6 +14,7 @@ import {
   arrivalDuration,
   curveLength,
   emptyArrivalTracker,
+  startShows,
   tracePlan,
   trackArrivals,
   TRACE_TAIL_MAX,
@@ -184,6 +185,19 @@ describe("arrivalCurve", () => {
     expect(inLane(kept.cx, kept.cy)).toBe(false);
     expect(kept.x1).toBe(free.x1);
     expect(kept.x2).toBe(free.x2);
+  });
+});
+
+describe("startShows", () => {
+  const board = { width: 1400, height: 900 };
+  it("needs a start on the board, with a size, and not under the stack panel", () => {
+    expect(startShows({ left: 1200, top: 40, width: 60, height: 60 }, board)).toBe(true);
+    expect(startShows({ left: 1500, top: 40, width: 60, height: 60 }, board)).toBe(false);
+    expect(startShows({ left: 100, top: 40, width: 0, height: 0 }, board)).toBe(false);
+    // A two-seat table: the pile docks over the opponent's avatar.
+    const pile = { left: 12, top: 150, width: 280, height: 540 };
+    expect(startShows({ left: 30, top: 310, width: 84, height: 84 }, board, pile)).toBe(false);
+    expect(startShows({ left: 1200, top: 40, width: 60, height: 60 }, board, pile)).toBe(true);
   });
 });
 

@@ -35,6 +35,7 @@ import {
   boxCentre,
   controlTowardCentre,
   edgePoint,
+  insideBox,
   type Box,
   type Curve,
 } from "./stackArrows";
@@ -154,6 +155,24 @@ export function arrivalCurve(
   return { x1: start.x, y1: start.y, cx: ctrl.x, cy: ctrl.y, x2: end.x, y2: end.y };
 }
 
+/**
+ * Whether a trace may start from `start` (board coordinates): its centre
+ * is on the board, and not under the stack panel (`cover`), where it
+ * cannot be seen. On a two-seat table the pile docks on the left, over
+ * the opponent's avatar: a trace from there would run inside the card
+ * it lands on. The same test the target arrows use (stackArrows.ts).
+ */
+export function startShows(
+  start: Box,
+  board: { width: number; height: number },
+  cover?: Box | null,
+): boolean {
+  if (start.width <= 0 && start.height <= 0) return false;
+  const c = boxCentre(start);
+  if (!insideBox(c, { left: 0, top: 0, width: board.width, height: board.height })) return false;
+  return !(cover && insideBox(c, cover));
+}
+
 /** A quadratic curve's length, by sampling it. */
 export function curveLength(c: Curve, samples = 32): number {
   let len = 0;
@@ -213,8 +232,8 @@ export function tracePlan(length: number): TracePlan {
     segments.push({
       len: TRACE_DASH,
       back: TRACE_HEAD_LEN + TRACE_DASH_GAP + i * step,
-      // From 0.75 behind the head down toward 0.15 at the end.
-      opacity: Math.round((0.75 - (0.6 * i) / Math.max(1, n - 1)) * 100) / 100,
+      // From 0.85 behind the head down to 0.2 at the end.
+      opacity: Math.round((0.85 - (0.65 * i) / Math.max(1, n - 1)) * 100) / 100,
       head: false,
     });
   }

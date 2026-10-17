@@ -707,3 +707,47 @@ describe("the pile on a real board", () => {
     expect(b.sent).toEqual([{ type: "counter_spell", params: { instance_id: "cs" } }]);
   });
 });
+
+describe("the top item's colour-identity edge (ADR 0119 amendment 2026-10-16 §C)", () => {
+  it("edges the top card in its colours, and only the top card", () => {
+    const blue = card("cs", "Counterspell", OPP, { type_line: "Instant", colors: ["U"] });
+    const p = mountPile(gameView(three, { stackCards: [bolt, blue] }));
+    const top = p.q(".top-card");
+    expect(top?.classList.contains("edged")).toBe(true);
+    expect(top?.style.getPropertyValue("--identity-edge")).toBe("var(--identity-u)");
+    expect(p.qa(".top-card .identity-edge")).toHaveLength(1);
+    expect(p.qa(".top-card .identity-glow")).toHaveLength(1);
+    // Lower cards keep the seat band alone.
+    expect(p.qa(".peek .identity-edge")).toHaveLength(0);
+    // The face still holds the art, the seat band and the stack item ID.
+    expect(top?.dataset.stackItemId).toBe("cs");
+    expect(p.q(".top-card .top-face img")).not.toBeNull();
+    expect(p.q(".top-card .top-face .seat-band")).not.toBeNull();
+  });
+
+  it("bands a multicolour item and gives a colourless one --identity-c", () => {
+    const gold = card("cs", "Counterspell", OPP, { type_line: "Instant", colors: ["U", "W"] });
+    const p = mountPile(gameView(three, { stackCards: [bolt, gold] }));
+    const edge = p.q(".top-card")?.style.getPropertyValue("--identity-edge") ?? "";
+    expect(edge).toMatch(/^conic-gradient\(from [\d.]+deg, var\(--identity-w\) 0deg/);
+    expect(edge).toContain("var(--identity-u)");
+    cleanup();
+    const q = mountPile(gameView(three));
+    expect(q.q(".top-card")?.style.getPropertyValue("--identity-edge")).toBe("var(--identity-c)");
+  });
+
+  it("edges an ability in its source's colours", () => {
+    const red = { ...vivi, colors: ["R"] };
+    const v = gameView([viviTrigger], { stackCards: [] });
+    (v.battlefield as unknown as { cards: CardView[] }).cards = [red];
+    const p = mountPile(v);
+    expect(p.q(".top-card")?.style.getPropertyValue("--identity-edge")).toBe("var(--identity-r)");
+  });
+
+  it("keeps the accent ring, with no edge, for a card the viewer may not see", () => {
+    const hidden = { ...counterspell, known_by_you: false, colors: ["U"] } as CardView;
+    const p = mountPile(gameView(three, { stackCards: [bolt, hidden] }));
+    expect(p.q(".top-card")?.classList.contains("edged")).toBe(false);
+    expect(p.q(".top-card .identity-edge")).toBeNull();
+  });
+});
