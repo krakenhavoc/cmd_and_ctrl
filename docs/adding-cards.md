@@ -1711,6 +1711,15 @@ OptionalCosts: []game.AdditionalCost{ReplicatePayEnergy(3, 10)}, // "Replicate�
 Triggered:     []game.TriggeredAbility{Replicate()},
 ```
 
+A replicate cost that taps a permanent (#4092, Psionic Ritual's
+"Replicate—Tap an untapped Horror you control") is
+`ReplicateTapping("an untapped Horror you control", 10,
+OfCreatureType("Horror"))` beside the same `Replicate()`. Each payment taps
+one; the permanents ride `cast_spell`'s `teamwork_ids`, N payments naming
+N, and the cast path sums the payments into one demand. It is the one
+optional cost that may tap, and never beside a mandatory tap cost,
+teamwork or escalate's taps (they share the list).
+
 Equip and unearth with an energy cost are `EquipPayingAbility("Equip—Pay
 {E}{E}", PayEnergy(2))` and `UnearthPaying("Unearth—Pay eight {E}",
 PayEnergy(8))`. Reconfigure is not implemented (`reconfigure`, #2639).

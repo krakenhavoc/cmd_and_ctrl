@@ -2964,6 +2964,13 @@ export interface OptionalCostView {
   // `teamwork_ids`.
   teamwork?: number;
   teamwork_options?: LegalTargetsView;
+  // #4092: a replicate cost that taps a permanent (Psionic Ritual's
+  // "Replicate—Tap an untapped Horror you control"). `min` / `max` are
+  // what ONE payment taps; paying the offer N times names N times that
+  // many on `teamwork_ids`. `max_times` is capped at what the options
+  // cover, and fewer options than `min` means it cannot be taken now.
+  tap_others_label?: string;
+  tap_others_options?: LegalTargetsView;
   // #1703: blight N (CR 701.68a) — put `blight` -1/-1 counters on one
   // creature you control. `blight_options` is your creatures;
   // present-and-empty means you control none. The pick rides

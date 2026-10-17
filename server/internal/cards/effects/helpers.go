@@ -782,6 +782,20 @@ func returnFirstLegalGraveyardTargetToBattlefieldTapped(g *game.Game, item *game
 	return nil
 }
 
+// returnFirstLegalGraveyardTargetUnderYourControl is "put target … card
+// from a graveyard onto the battlefield under your control" — Captain
+// N'ghathrod's end step, Ruthless Technomancer's return: the card enters
+// under the item's controller, whoever owns it.
+func returnFirstLegalGraveyardTargetUnderYourControl(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetCard {
+			return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield, Controller: item.Controller}.Apply(ctx)
+		}
+	}
+	return nil
+}
+
 // exileEveryLegalCardTarget is "exile up to N target permanents": each
 // card target still legal as the ability resolves is exiled (CR 608.2b)
 // — Karn Liberated's −3 and Angel of the Ruins.

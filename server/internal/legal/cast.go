@@ -1142,6 +1142,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	} else if len(tapIDs) > 0 {
 		teamIDs = tapIDs
 	}
+	// #4092: or a replicate cost's, one Horror per payment announced.
+	if tapIDs, ok := e.optionalTapCastPayment(card.InstanceID, optional, chosen); !ok {
+		return
+	} else if len(tapIDs) > 0 {
+		teamIDs = tapIDs
+	}
 	// CR 702.120a: Collective Effort's taps, one creature per extra mode,
 	// on the same list teamwork's ride.
 	if escalate != nil && escalate.TapCreatures > 0 {
@@ -1725,7 +1731,8 @@ func (e *enumerator) castMoveEmitter(
 		label += exileLabel(g, exileCardIDs)
 		// #3868: and the permanents a mandatory tap cost taps — a Vampire
 		// tapped for New Blood is a blocker the seat gives up.
-		if paying != nil && !paying.TapOthers.Empty() {
+		// #4092: or a replicate cost's Horrors.
+		if paying != nil && !paying.TapOthers.Empty() || optionalTaps(optional, chosen) {
 			label += tapLabel(g, teamIDs)
 		}
 		// ADR 0100: the delved and the undelved casts are otherwise the

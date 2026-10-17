@@ -387,12 +387,19 @@ func TapAnyNumberUntappedCost(label string, preds ...CardPredicate) *game.Additi
 // teamwork or escalate's taps, which ride the same teamwork_ids list:
 // each refused shape would compile and then pay something no card prints.
 // The "any number" form (#3961) is the mandatory slot's alone, with no
-// fixed count beside it.
+// fixed count beside it. The one optional cost that may tap is a
+// replicate cost (#4092, checkReplicateTapCost), and never beside a
+// mandatory one.
 func checkTapOthersCost(spec Spec) {
-	for _, oc := range spec.OptionalCosts {
-		if oc.TapOthers != nil {
-			panic(fmt.Sprintf("effects.Register: %q optional cost %q taps permanents — only the mandatory slot may (#3868)", spec.Name, oc.Key))
+	if checkReplicateTapCost(spec) {
+		if ac := spec.AdditionalCost; ac != nil {
+			for _, b := range append([]game.AdditionalCost{*ac}, ac.Either...) {
+				if b.TapOthers != nil {
+					panic(fmt.Sprintf("effects.Register: %q pairs a mandatory tap cost with a replicate tap cost — they share teamwork_ids (#4092)", spec.Name))
+				}
+			}
 		}
+		checkTapListAlone(spec)
 	}
 	ac := spec.AdditionalCost
 	if ac == nil {
@@ -434,6 +441,45 @@ func checkTapOthersCost(spec Spec) {
 	}
 	if spec.Modes != nil && spec.Modes.Escalate != nil && spec.Modes.Escalate.TapCreatures != 0 {
 		panic(fmt.Sprintf("effects.Register: %q pairs a mandatory tap cost with escalate's taps — they share teamwork_ids (#3868)", spec.Name))
+	}
+}
+
+// checkReplicateTapCost is the optional-cost half of checkTapOthersCost
+// (#4092): a tap-permanents component on an optional cost is a replicate
+// cost's (ReplicateTapping), one per card, a fixed count of at least one
+// per payment, labelled for the picker. Reports whether the card has one.
+func checkReplicateTapCost(spec Spec) bool {
+	taps := false
+	for _, oc := range spec.OptionalCosts {
+		tc := oc.TapOthers
+		if tc == nil {
+			continue
+		}
+		switch {
+		case oc.Key != game.ReplicateKey:
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q taps permanents — only the mandatory slot and a replicate cost may (#3868, #4092)", spec.Name, oc.Key))
+		case tc.UpTo || tc.AnyNumber || tc.ExcludeSource || tc.Filter == nil || tc.Count < 1 || game.TapOthersCountFromX(tc):
+			panic(fmt.Sprintf("effects.Register: %q replicate cost taps no fixed number of permanents — build it with ReplicateTapping (#4092)", spec.Name))
+		case tc.Label == "":
+			panic(fmt.Sprintf("effects.Register: %q replicate cost taps permanents with no label — the picker shows it (#4092)", spec.Name))
+		case taps:
+			panic(fmt.Sprintf("effects.Register: %q declares two optional costs that tap permanents — they share teamwork_ids (#4092)", spec.Name))
+		}
+		taps = true
+	}
+	return taps
+}
+
+// checkTapListAlone refuses teamwork and escalate's taps beside a
+// replicate tap cost (#4092): all three ride the one teamwork_ids list.
+func checkTapListAlone(spec Spec) {
+	for _, oc := range spec.OptionalCosts {
+		if oc.Teamwork != 0 {
+			panic(fmt.Sprintf("effects.Register: %q pairs a replicate tap cost with teamwork — they share teamwork_ids (#4092)", spec.Name))
+		}
+	}
+	if spec.Modes != nil && spec.Modes.Escalate != nil && spec.Modes.Escalate.TapCreatures != 0 {
+		panic(fmt.Sprintf("effects.Register: %q pairs a replicate tap cost with escalate's taps — they share teamwork_ids (#4092)", spec.Name))
 	}
 }
 

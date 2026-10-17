@@ -1620,6 +1620,17 @@ type OptionalCostView struct {
 	Teamwork        int               `json:"teamwork,omitempty"`
 	TeamworkOptions *LegalTargetsView `json:"teamwork_options,omitempty"`
 
+	// TapOthersLabel / TapOthersOptions are a replicate cost that taps a
+	// permanent (#4092, Psionic Ritual's "Replicate—Tap an untapped
+	// Horror you control"): AdditionalCostView's two fields of the same
+	// names, off the same engine walk. min / max are what ONE payment
+	// taps; paying the offer N times names N times that many on
+	// cast_spell's `teamwork_ids`. max_times is capped at the payments
+	// the options cover, and an options list shorter than `min` means
+	// the offer cannot be taken right now (CR 118.3).
+	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
+	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
+
 	// Blight is the N of "you may blight N" (CR 701.68a): put N -1/-1
 	// counters on a creature you control. BlightOptions is the
 	// viewer's creatures, present-and-empty when they control none (CR
@@ -7948,6 +7959,17 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 			v.TeamworkOptions = &LegalTargetsView{Min: 1, Max: 0}
 			if g.TeamworkPayableForEffect(caster, oc.Teamwork) {
 				v.TeamworkOptions.Cards = cardIDStrings(g.TeamworkOptionsForEffect(caster))
+			}
+		}
+		// #4092: a replicate cost that taps — each payment taps Count of
+		// the options, so the stepper stops at what they cover.
+		if tc := oc.TapOthers; !tc.Empty() {
+			v.TapOthersLabel = tc.Label
+			v.TapOthersOptions = tapOthersCostOptions(g, caster, uuid.Nil, tc, false)
+			if tc.Count > 0 {
+				if affordable := len(v.TapOthersOptions.Cards) / tc.Count; affordable < v.MaxTimes {
+					v.MaxTimes = max(affordable, 1)
+				}
 			}
 		}
 		if oc.Blight > 0 {

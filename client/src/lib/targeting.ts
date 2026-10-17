@@ -1232,6 +1232,12 @@ export function optionalCostPayOptions(offer: OptionalCostView): string[] | unde
   // present-and-empty is an offer the board cannot pay right now.
   if (offer.teamwork_options) return offer.teamwork_options.cards ?? [];
   if (offer.blight_options) return offer.blight_options.cards ?? [];
+  // #4092: a replicate cost that taps — too few to tap is an offer that
+  // cannot be taken now.
+  if (offer.tap_others_options) {
+    const cards = offer.tap_others_options.cards ?? [];
+    return cards.length < (offer.tap_others_options.min ?? 1) ? [] : cards;
+  }
   if (!offer.sacrifice_options) return undefined;
   return offer.sacrifice_options.cards ?? [];
 }
@@ -1379,7 +1385,7 @@ export function castTapCost(
 ): ClaimedTapCost | undefined {
   const cost = castAdditionalCost(card, choices);
   const opts = cost?.tap_others_options;
-  if (!cost || !opts) return undefined;
+  if (!cost || !opts) return castReplicateTapCost(card, choices);
   const options = opts.cards ?? [];
   const min = opts.min ?? 1;
   return {
@@ -1388,6 +1394,33 @@ export function castTapCost(
     count: min === 0 ? options.length : min,
     min,
     options,
+  };
+}
+
+// castReplicateTapCost is a claimed replicate offer that taps (#4092,
+// Psionic Ritual): each payment the cast announces taps the offer's
+// count, so paying it twice asks for two Horrors on the same picker and
+// the same `teamwork_ids` list.
+function castReplicateTapCost(
+  card: CardView,
+  choices: CastChoices | undefined,
+): ClaimedTapCost | undefined {
+  let offer: OptionalCostView | undefined;
+  let times = 0;
+  for (const index of choices?.optionalCosts ?? []) {
+    const o = optionalCostsOf(card)[index];
+    if (o?.tap_others_options) {
+      offer = o;
+      times++;
+    }
+  }
+  if (!offer?.tap_others_options) return undefined;
+  const count = (offer.tap_others_options.min ?? 1) * times;
+  return {
+    label: offer.tap_others_label ?? "an untapped permanent you control",
+    count,
+    min: count,
+    options: offer.tap_others_options.cards ?? [],
   };
 }
 

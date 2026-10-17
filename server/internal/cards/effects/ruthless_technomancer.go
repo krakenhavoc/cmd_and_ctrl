@@ -72,15 +72,7 @@ func init() {
 			Cost:  Plus(ManaCost("{2}{B}"), SacrificeX("X artifacts", Artifact()), MinX(1)),
 			Targets: TargetCardInGraveyard("target creature card with power X or less from your graveyard", Creature(), YouOwn()).
 				WithPowerAtMostX(),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetCard {
-						return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield, Controller: item.Controller}.Apply(ctx)
-					}
-				}
-				return nil
-			},
+			Effect: returnFirstLegalGraveyardTargetUnderYourControl,
 		}},
 	})
 }

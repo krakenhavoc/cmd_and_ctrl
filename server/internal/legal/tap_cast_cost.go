@@ -36,6 +36,46 @@ func (e *enumerator) tapCastPayment(castID uuid.UUID, mandatory *game.Additional
 	return append([]uuid.UUID(nil), pool[:tc.Count]...), true
 }
 
+// optionalTapCastPayment is tapCastPayment for a replicate cost that taps
+// (#4092, Psionic Ritual's "Replicate—Tap an untapped Horror you
+// control"): every announced payment of it taps its Count, so the set
+// `chosen` names demands their sum, off the same walk in the same
+// cheapest-to-tap order. ok is false when the seat controls too few,
+// which drops that announced set (CR 118.3) while the smaller sets stay
+// offered. effects.Register keeps it off a card with a mandatory tap cost,
+// so the two never both fill the list.
+func (e *enumerator) optionalTapCastPayment(castID uuid.UUID, optional []game.AdditionalCost, chosen []int) (ids []uuid.UUID, ok bool) {
+	var tc *game.TapOthersCost
+	need := 0
+	for _, i := range chosen {
+		if i < 0 || i >= len(optional) || optional[i].TapOthers.Empty() {
+			continue
+		}
+		tc = optional[i].TapOthers
+		need += tc.Count
+	}
+	if tc == nil {
+		return nil, true
+	}
+	pool := e.cheapestTapFirst(e.g.TapOthersOptionsForEffect(e.seat, castID, tc))
+	if len(pool) < need {
+		return nil, false
+	}
+	return append([]uuid.UUID(nil), pool[:need]...), true
+}
+
+// optionalTaps reports whether the announced set `chosen` pays an
+// optional cost that taps permanents (#4092), so the move's label names
+// them.
+func optionalTaps(optional []game.AdditionalCost, chosen []int) bool {
+	for _, i := range chosen {
+		if i >= 0 && i < len(optional) && !optional[i].TapOthers.Empty() {
+			return true
+		}
+	}
+	return false
+}
+
 // tapAnyPayments is the payments a cast offers a mandatory "tap any number
 // of untapped creatures you control" additional cost (#3961): Burn at the
 // Stake's damage and Explosive Singularity's discount are both the count.
