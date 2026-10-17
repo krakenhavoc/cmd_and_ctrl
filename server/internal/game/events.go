@@ -635,6 +635,34 @@ const (
 	// Source and CardID, and no label; it gets no `trigger` line.
 	EventTrigger EventKind = "trigger"
 
+	// EventTriggerPlaced — a triggered ability was put onto the stack
+	// by the CR 603.3b drain (drainPendingTriggersAPNAPLocked). Actor is
+	// the ability's controller, Source its source object, StackItemID
+	// the item now on the stack and Label its label.
+	//
+	// EventTrigger's watchable twin (#4050, #4092). EventTrigger is the
+	// "an item reached PendingTriggers" breadcrumb and the harvester
+	// refuses to walk it, so nothing could trigger on a triggered
+	// ability at all. This kind is emitted once per item, in placement
+	// order, after the WHOLE batch is on the stack — the moment ward's
+	// EventBecomesTarget is announced (announcePlacedTargetsLocked) — so
+	// an ability it triggers lands on a fresh PendingTriggers and goes on
+	// the stack ABOVE the ability it watched, whichever seat controls it.
+	// That is the printed answer for Aboleth Spawn ("will always go on
+	// the stack on top of the entering creature's triggered ability that
+	// caused it to trigger", 2022-06-10 ruling).
+	//
+	// It cannot loop by itself: a watcher's own trigger is placed in turn
+	// and emits this event, but a watcher that reads the placed item's
+	// triggering event (StackItem.Trigger) finds an EventTriggerPlaced
+	// there, not the event it filters on. A COPY of an ability is created
+	// rather than placed (CR 707.10a, ability_copy.go) and emits nothing.
+	//
+	// Emitted only while a permanent on the battlefield watches it
+	// (triggerPlacedWatchedLocked), so a table without one keeps the
+	// event log it had before the kind existed.
+	EventTriggerPlaced EventKind = "trigger_placed"
+
 	// EventActivateAbility — a player ACTIVATED an activated ability
 	// (CR 602.2b), announced onto the stack. Actor is the activator,
 	// Source and CardID are the permanent (or, since #660, the hand
