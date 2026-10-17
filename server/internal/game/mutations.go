@@ -4805,6 +4805,14 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if pw.Controller != playerID {
 		return ErrCardCallerMismatch
 	}
+	// The catalog's activation restrictions (activation_gate.go): a
+	// Phyrexian Revoker or Pithing Needle naming this walker stops its
+	// loyalty abilities too (CR 606.1). The catalogued path asks the same
+	// gate in activateCatalogAbilityLocked; this sandbox verb used to
+	// skip it.
+	if err := g.ActivationGateLocked(playerID, *pw, ZoneBattlefield, ActivationAbility{Label: label, Loyalty: true}); err != nil {
+		return err
+	}
 	// #1474: a planeswalker an effect has already paused on its way
 	// out is gone as far as the rules are concerned, and its loyalty
 	// cost is paid by that object. The catalogued path refuses it in
