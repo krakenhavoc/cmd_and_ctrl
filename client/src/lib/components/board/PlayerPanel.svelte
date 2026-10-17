@@ -1487,6 +1487,9 @@
        publishes --strip-spread), so the zones beside it sit against it
        rather than across an empty strip. */
     max-width: var(--strip-spread, 100%);
+    /* Room for "Lands 1" and a card, not a card and a half: the zones
+       beside it are what the spare width is for. */
+    min-width: 64px;
   }
   /* #3028: a zone takes no more than its share of the row by pile
      count (--row-share, set on the row from backRow.ts), so a long
@@ -1764,6 +1767,9 @@
        for no more than their label ("enchantments" ends in "…"). */
     .panel.opponent.flipped .grid-middle > :global(.row:not(.strip)) {
       min-width: 72px;
+    }
+    .panel.opponent.flipped .grid-middle > :global(.row.strip) {
+      min-width: 64px;
     }
   }
   /* A narrow self panel (the quadrant's bottom right): the dock is

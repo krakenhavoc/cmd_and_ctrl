@@ -211,15 +211,28 @@ for (const seats of [2, 3, 4]) {
           }
           // #4090: the back row's groups sit together, whichever end
           // they start from.
+          // Measured between the groups' cards, not their row boxes: the
+          // land strip's box used to run on, empty, to the row's far end.
+          const span = (r: (typeof panel.rows)[number]) => ({
+            zone: r.zone,
+            left: Math.min(...r.cards.map((c) => c.box.x)),
+            right: Math.max(...r.cards.map((c) => c.box.x + c.box.width)),
+          });
           const back = panel.rows
-            .filter((r) => r.zone !== "creatures" && r.box.width > 0)
-            .sort((a, b) => a.box.x - b.box.x);
+            .filter((r) => r.zone !== "creatures" && r.cards.length > 0)
+            .map(span)
+            .sort((a, b) => a.left - b.left);
           const cardW = panel.rows.find((r) => r.zone === "creatures")?.cards[0]?.box.width ?? 56;
+          // A phone's cards are 30-60px and a group's label ("Lands 1")
+          // needs about 64px of its own, so there the allowance is 96px
+          // (a scrolling row, see the screenshots); at desktop widths it
+          // is one card.
+          const allowed = size.width >= 600 ? cardW : 96;
           for (let i = 1; i < back.length; i++) {
-            const gap = back[i].box.x - (back[i - 1].box.x + back[i - 1].box.width);
+            const gap = back[i].left - back[i - 1].right;
             expect
               .soft(gap, `${where}: gap between ${back[i - 1].zone} and ${back[i].zone}`)
-              .toBeLessThanOrEqual(cardW);
+              .toBeLessThanOrEqual(allowed);
           }
           const count = (z: string) => panel.rows.find((r) => r.zone === z)?.cards.length ?? 0;
           expect(count("planeswalkers"), `${where}: walkers`).toBe(WALKERS.length);
