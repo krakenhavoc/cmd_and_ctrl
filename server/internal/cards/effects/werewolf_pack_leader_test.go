@@ -15,28 +15,7 @@ const (
 	hwMikaeus            = "5d27c63e-d1ef-48af-b51d-01ebc6daeac9"
 )
 
-func hwHasKeyword(c game.Card, kw string) bool {
-	for _, a := range c.Effective().Abilities {
-		if a == kw {
-			return true
-		}
-	}
-	return false
-}
-
-// hwDeclare declares the creatures as one attack declaration (CR 508.1),
-// so a trigger that reads the whole declaration sees all of it.
-func hwDeclare(t *testing.T, g *game.Game, defender uuid.UUID, attackers ...uuid.UUID) {
-	t.Helper()
-	advanceTo(t, g, game.StepDeclareAttackers)
-	var decls []game.AttackDeclaration
-	for _, id := range attackers {
-		decls = append(decls, game.AttackDeclaration{Attacker: id, Target: defender})
-	}
-	if _, err := g.DeclareAttackers(decls); err != nil {
-		t.Fatalf("DeclareAttackers: %v", err)
-	}
-}
+// hwHasKeyword and hwDeclare live in hallowolf_cards_test.go.
 
 func TestHWWerewolfPackLeaderIsFull(t *testing.T) {
 	spec, ok := Lookup(hwWerewolfPackLeader)
