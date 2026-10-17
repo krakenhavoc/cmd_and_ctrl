@@ -253,6 +253,104 @@ overturned in review):
 still open, and the ADR stays Proposed until a few games have answered which one
 stays.
 
+### Amendment (2026-10-17): stacked avatar cards that summarise (#4102)
+
+**Status:** Accepted · 2026-10-17 · S73 — Big boards: layout and per-action cost. The owner accepted it the same day, calls 5–8 included.
+**Issue:** [#4102](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4102), an
+in-app report: *"When the avatars are in this view, they should still show a
+summarized list of hand count, untapped lands, etc."* Written plan-first; no
+code changed with it.
+
+**Owner request and answers (2026-10-17), binding.** The owner asked for
+Reflow's other opponents to be **stacked vertically**, noting that turn order
+could become hard to read. The answers:
+
+1. **One column, fixed on the left** of the opponents' row, so the active
+   board keeps one place every turn.
+2. **Ordered by who plays next, with chips**: the top card is the seat that
+   plays soonest after the active one, and each card says when it plays.
+3. **Each card summarises** the seat's cards in hand, mana available,
+   creatures, and deck, graveyard and exile (#4102).
+4. **This amendment first, then the build.**
+
+**The column.**
+
+- Whenever reflow applies (the 2026-10-16 amendment's rules are unchanged),
+  every avatar card goes into **one column at the left end** of the opponents'
+  row, stacked top to bottom. The full boards (the focus's two shares, and one
+  share for a seat a live prompt needs) fill the rest of the row in turn order,
+  left to right.
+- The row's columns become `var(--reflow-avatar-w) minmax(0, 2fr)` (plus a
+  `minmax(0, 1fr)` for a prompt-needed seat). The avatar seats share the one
+  column through their grid rows, not one column each. `--reflow-avatar-w`
+  becomes a real token, **176px**, wide enough for the summary below; 132px was
+  only a fallback.
+- With two opponents the column holds one card. With three it holds two, each
+  half the row's height.
+- The cards stay in the board's one grid, so `CombatArrows`, `data-seat-stand-in`
+  and the stack pile's `tableSeams().dock` keep working. The pile's default spot
+  moves right of the column, and never covers a card.
+- The ADR 0120 overlay opens beside the card, which is now always to its right,
+  over the active board's left part. It still never covers the card.
+- The cards' DOM order is their visual order, so a screen reader meets them in
+  the order they play.
+
+**Turn order.**
+
+- The cards are sorted by **how soon each seat plays after the active one**,
+  counting round the table from the active seat in seat (turn) order. So the
+  top card is always the next opponent to play.
+- Each card carries a mono chip naming **who plays right before it**:
+  - **NEXT UP**: it plays straight after the active player.
+  - **AFTER YOU**: the viewer's turn comes right before it.
+  - **AFTER <NAME>**: another opponent's turn comes right before it.
+
+  For example, at a table of you, Bot 1, Bot 2 and Bot 3 seated in that order:
+  on Bot 2's turn the column reads Bot 3 · NEXT UP, then Bot 1 · AFTER YOU. On
+  Bot 3's turn it reads Bot 1 · AFTER YOU, then Bot 2 · AFTER BOT 1.
+- The order is the seating order. Extra turns, skipped turns and turn-order
+  changes are not predicted (the chip would be a guess). The active board's gold
+  `--priority` ring stays the one signal of whose turn it is now.
+- An eliminated opponent's card sorts last, with no chip, and shows "out" as a
+  summary does.
+- At a turn boundary the cards reorder at once and fade in over 160ms, the same
+  rule as the columns (call 3 of the 2026-10-16 amendment). They don't glide.
+
+**The summary (#4102).** Under the identity (avatar, name, bot chip, life and
+markers, all unchanged), each card shows a compact read-out built by the same
+`buildSeatSummary` (§4: deterministic, no ranking):
+
+- **in hand**: `N in hand`;
+- **mana available**: the per-colour pips of §5, a floor, with the same "N?"
+  pip and "no mana";
+- **creatures**: `N untapped of M · P power`;
+- **zones**: `deck N`, plus graveyard and exile counts as buttons that open the
+  zone browser, as on a summary.
+
+The card is a size container. On a short card (a 1024×768 board gives each of
+two cards about 170px) the avatar steps down from 84px to 56px. The read-out
+keeps its four lines in that order, and the zones line folds into one
+`deck · gy · ex` line before anything is dropped. The ⤢ expand button stays.
+Text uses the mono voice for labels and counts, and `--fg-muted`, never
+`--fg-dim`, for anything a player reads to act (DESIGN.md §2).
+
+**Calls made here** (each can be overturned in review):
+
+5. **176px column** (`--reflow-avatar-w`), and the avatar steps down to 56px on
+   short cards.
+6. **The chip names the turn before it**, not an ordinal: NEXT UP, AFTER YOU,
+   AFTER <NAME>.
+7. **Seat order, not a prediction**: extra and skipped turns aren't foreseen.
+8. **The pile docks right of the column** by default, and the overlay opens to
+   the card's right.
+
+**Delivery.** One client PR, after the seats-at-the-table PR (ADR 0204, #4104),
+since both touch the seat layout: `expansion.ts` (`reflowColumns`, the sort and
+the chip text, pure and unit-tested), `Board.svelte`'s reflow grid, and
+`SeatSummary.svelte`'s avatar card. A branch E2E before merge, and screenshots at
+1024×768 and 1440×900 with two and three opponents, on each opponent's turn,
+under War room, Classic and High contrast. Closes #4102.
+
 ## 7. Consequences
 
 **Existing players' tables change appearance on upgrade.** The v10 → v11 settings
