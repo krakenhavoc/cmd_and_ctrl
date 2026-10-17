@@ -309,6 +309,16 @@ type Characteristic struct {
 	// leaves it where it is (CR 101.2).
 	CantBeSacrificed bool `json:",omitempty"`
 
+	// CantTransform is "this permanent can't transform" (CR 101.2):
+	// Immerwolf's "Non-Human Werewolves you control can't transform"
+	// (ADR 0132 amendment 2026-10-16, #4071). Written by an ordinary
+	// static in layer 6 from the restricting permanent, not by an ability
+	// of this one, so this permanent losing its abilities does not lift
+	// it. cantTransformLocked reads it, and every in-place turn-over asks
+	// it: an instruction to transform or convert (CR 701.28f), and the
+	// daybound / nightbound turn-over (cant_transform.go).
+	CantTransform bool `json:",omitempty"`
+
 	// BlockRequirements are the CR 509.1c requirements this object
 	// carries — "blocks each combat if able" on a would-be blocker
 	// (Watchdog, Grand Melee's second line), and on an attacker "all

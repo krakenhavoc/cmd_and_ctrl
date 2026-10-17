@@ -70,6 +70,21 @@ type DayNightState struct {
 	// the check has nothing to read and does not happen.
 	PrevTurnSpells int  `json:"prevTurnSpells,omitempty"`
 	PrevTurnKnown  bool `json:"prevTurnKnown,omitempty"`
+
+	// PrevTurnAllSpells and PrevTurnMostSpells are the previous turn's
+	// spells counted across EVERY player, not only its active one: how
+	// many were cast in all, and the most any single player cast. The
+	// Innistrad werewolves' upkeep triggers read them ("if no spells were
+	// cast last turn", "if a player cast two or more spells last turn",
+	// CR 603.4; ADR 0132 amendment 2026-10-16, #4071), which CR 502.2's
+	// count cannot answer: an opponent's instant in your turn counts for
+	// the werewolf and not for the day/night check. PrevTurnAllKnown says
+	// they were recorded. It is its own flag, not PrevTurnKnown, so a game
+	// saved before these fields existed (PrevTurnKnown set, these zero)
+	// reads as "no record" for one turn rather than as "no spells".
+	PrevTurnAllSpells  int  `json:"prevTurnAllSpells,omitempty"`
+	PrevTurnMostSpells int  `json:"prevTurnMostSpells,omitempty"`
+	PrevTurnAllKnown   bool `json:"prevTurnAllKnown,omitempty"`
 }
 
 // snapshotDayNight is the snapshot's pointer form: nil for the zero
@@ -190,6 +205,43 @@ func (g *Game) recordPrevTurnSpellsLocked() {
 	}
 	g.DayNight.PrevTurnSpells = g.CastTallyFor(g.Seats[seat].ID).Total
 	g.DayNight.PrevTurnKnown = true
+	g.recordPrevTurnAllSpellsLocked()
+}
+
+// recordPrevTurnAllSpellsLocked copies the ending turn's spells cast by
+// every player — the total, and the most any one player cast — beside
+// the active player's count (ADR 0132 amendment 2026-10-16, #4071).
+// The tally keeps an eliminated player's entry by ID, so a spell they
+// cast before leaving still counts as one cast that turn. Copies are
+// not cast (CR 707.10), so CastTally.Total is the right number here
+// too.
+//
+// Caller must hold g.mu.
+func (g *Game) recordPrevTurnAllSpellsLocked() {
+	total, most := 0, 0
+	for _, t := range g.SpellsCastThisTurn {
+		total += t.Total
+		most = max(most, t.Total)
+	}
+	g.DayNight.PrevTurnAllSpells = total
+	g.DayNight.PrevTurnMostSpells = most
+	g.DayNight.PrevTurnAllKnown = true
+}
+
+// NoSpellsWereCastLastTurnForEffect is the front face's condition on
+// every Innistrad werewolf: "if no spells were cast last turn", by any
+// player during the previous turn. False on the game's first turn,
+// which has no last turn. Caller must hold g.mu.
+func (g *Game) NoSpellsWereCastLastTurnForEffect() bool {
+	return g.DayNight.PrevTurnAllKnown && g.DayNight.PrevTurnAllSpells == 0
+}
+
+// APlayerCastTwoOrMoreSpellsLastTurnForEffect is the back face's: "if a
+// player cast two or more spells last turn". One player, so two players
+// casting one spell each is not it. False on the game's first turn.
+// Caller must hold g.mu.
+func (g *Game) APlayerCastTwoOrMoreSpellsLastTurnForEffect() bool {
+	return g.DayNight.PrevTurnAllKnown && g.DayNight.PrevTurnMostSpells >= 2
 }
 
 // dayNightTurnCheckLocked is CR 731.2 / 502.2: the check that changes
@@ -266,7 +318,10 @@ func (g *Game) settleDayNightLocked() {
 		c := &g.Battlefield.Cards[i]
 		frontDaybound := c.ActiveFace == 0 && HasKeyword(c, KeywordDaybound)
 		backNightbound := c.ActiveFace == 1 && HasKeyword(c, KeywordNightbound)
-		if (night && frontDaybound || !night && backNightbound) && CanTransform(*c) {
+		// A permanent that can't transform (Immerwolf's "Non-Human
+		// Werewolves you control can't transform") stays as it is:
+		// "can't" beats the daybound / nightbound instruction (CR 101.2).
+		if (night && frontDaybound || !night && backNightbound) && CanTransform(*c) && !g.cantTransformLocked(c) {
 			g.transformInPlaceLocked(c)
 		}
 	}
@@ -299,6 +354,14 @@ type dayNightListener struct{}
 func (dayNightListener) OnEvent(g *Game, ev Event) {
 	switch ev.Kind {
 	case EventZoneMove:
+		if ev.OldZone == ZoneBattlefield && ev.NewZone != ZoneBattlefield {
+			// A permanent leaving can lift a "can't transform": Immerwolf
+			// leaves by day with a Tovolar, the Midnight Scourge still out,
+			// and CR 702.145f turns Tovolar over then (ADR 0132 amendment
+			// 2026-10-16).
+			g.settleDayNightLocked()
+			return
+		}
 		if ev.NewZone != ZoneBattlefield {
 			return
 		}

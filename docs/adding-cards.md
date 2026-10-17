@@ -9622,6 +9622,26 @@ Test them through `deck.ToGameCard` (`werewolfRow` in
 `werewolf_cards_test.go`), because the per-face keywords reach the card
 only through the importer.
 
+**The original Innistrad werewolves are not daybound** (ADR 0132
+amendment 2026-10-16, #4071). Each face prints its own upkeep trigger,
+and an instruction may transform them:
+
+```go
+Triggered: []game.TriggeredAbility{TransformAtUpkeepIfNoSpellsLastTurn("Kruin Outlaw")},             // front
+Triggered: []game.TriggeredAbility{TransformAtUpkeepIfAPlayerCastTwoSpellsLastTurn("Terror of Kruin Pass")}, // back
+On(game.EventTransform, ThisTransformedInto(1), "…", effect)   // "whenever this transforms into <back face>"
+Static: []game.StaticAbility{NonHumanWerewolvesYouControlCantTransform()} // Immerwolf
+```
+
+"Last turn" counts every player's spells
+(`Game.NoSpellsWereCastLastTurnForEffect`,
+`APlayerCastTwoOrMoreSpellsLastTurnForEffect`), not CR 502.2's active
+player only. Before offering "you may transform it", ask
+`Game.CanTransformForEffect(id)`: it is false for a daybound or
+nightbound permanent and for one a "can't transform" effect covers. See
+[huntmaster_of_the_fells.go](../server/internal/cards/effects/huntmaster_of_the_fells.go)
+and [geier_reach_bandit.go](../server/internal/cards/effects/geier_reach_bandit.go).
+
 ### Role tokens (ADR 0036 and ADR 0093 amendments 2026-10-08, #1945, CR 111.10 / 303.7a / 704.5z)
 
 A Role is a token Aura ("Token Enchantment — Aura Role") created
