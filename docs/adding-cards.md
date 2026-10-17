@@ -8435,6 +8435,13 @@ changes in the same record, one timestamp (Polymorphist's Jest,
 Frodo, Sauron's Bane). Don't use `SetTypesMod` for this: it sets the
 card types too, so an artifact creature would stop being an artifact.
 
+**"…and isn't a Human"** is `game.LoseSubtypesMod(ctx.TextSubtype("Human"))`
+in the same kind of record (#4072, layer 4, CR 613.1d): it removes the
+named subtypes and nothing else, so a Human lord stops pumping the
+creature while the effect lasts (Werewolf Pack Leader). The kind
+`loseSubtypes` is an on-disk identity. A changeling stays every
+creature type, since that is a flag and not a list.
+
 Ask "do these two creatures share a type" with
 `game.SharesCreatureType`, never with a subtype-slice intersection —
 the helper knows Forest on Dryad Arbor is a land type and that a

@@ -170,6 +170,7 @@ var textWordGameMods = map[string]bool{
 	"AddColorsMod":        true,
 	"AddSubtypesMod":      true,
 	"SetCreatureTypesMod": true,
+	"LoseSubtypesMod":     true,
 }
 
 // textWordDoors are the helpers that read a word argument through the
