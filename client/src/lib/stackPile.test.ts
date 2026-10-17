@@ -9,15 +9,20 @@ import {
   PILE_CHROME_H,
   PILE_INSET,
   PILE_MARGIN,
-  PILE_PEEK_OFFSET,
+  PILE_MIN_ROOM,
   PILE_SHRUNK_W,
+  cascadeDim,
+  cascadeInward,
+  cascadeLayout,
+  cascadeStep,
   columnBottom,
   fixtureTopFrom,
   pendingHeight,
   pileBounds,
-  pileCardWidth,
   pileDepth,
   pileFallsBack,
+  pileFit,
+  pileHeight,
   pileLeft,
   pileTop,
   tableSeams,
@@ -84,35 +89,128 @@ describe("the pile's top edge", () => {
 });
 
 describe("the top card's width", () => {
-  const roomy = { boardW: 1600, room: 2000, peeking: 0, pendingCount: 0 };
+  const roomy = { boardW: 1600, room: 2000, lower: 0, pendingCount: 0 };
 
   it("is 30% of the board's height between 200 and 280px", () => {
-    expect(pileCardWidth({ ...roomy, boardH: 900 })).toBe(270);
-    expect(pileCardWidth({ ...roomy, boardH: 500 })).toBe(PILE_CARD_MIN_W);
-    expect(pileCardWidth({ ...roomy, boardH: 1400 })).toBe(PILE_CARD_MAX_W);
+    expect(pileFit({ ...roomy, boardH: 900 }).cardWidth).toBe(270);
+    expect(pileFit({ ...roomy, boardH: 500 }).cardWidth).toBe(PILE_CARD_MIN_W);
+    expect(pileFit({ ...roomy, boardH: 1400 }).cardWidth).toBe(PILE_CARD_MAX_W);
   });
 
   it("is never more than 24% of the board's width", () => {
-    expect(pileCardWidth({ ...roomy, boardH: 900, boardW: 1000 })).toBe(240);
+    expect(pileFit({ ...roomy, boardH: 900, boardW: 1000 }).cardWidth).toBe(240);
   });
 
-  it("shrinks on a short band so the pile fits, down to the targeting size", () => {
-    const peeking = 4;
-    const room = 600;
-    const fits = Math.floor((room - PILE_CHROME_H - peeking * PILE_PEEK_OFFSET) / CARD_RATIO);
-    expect(pileCardWidth({ boardW: 1600, boardH: 900, room, peeking, pendingCount: 0 })).toBe(fits);
-    expect(pileCardWidth({ boardW: 1600, boardH: 900, room: 300, peeking, pendingCount: 0 })).toBe(
-      PILE_SHRUNK_W,
-    );
+  it("shrinks only when one cascade step does not fit at full size, down to the targeting size", () => {
+    const room = 500;
+    const fits = Math.floor((room - PILE_CHROME_H) / (CARD_RATIO * 1.12));
+    const f = pileFit({ boardW: 1600, boardH: 900, room, lower: 4, pendingCount: 0 });
+    expect(f).toEqual({ cardWidth: fits, shown: 1, more: 3 });
+    expect(pileFit({ boardW: 1600, boardH: 900, room: 300, lower: 4, pendingCount: 0 })).toEqual({
+      cardWidth: PILE_SHRUNK_W,
+      shown: 1,
+      more: 3,
+    });
+    // A lone top card has no step to fit.
+    const alone = pileFit({ boardW: 1600, boardH: 900, room, lower: 0, pendingCount: 0 });
+    expect(alone.cardWidth).toBe(Math.floor((room - PILE_CHROME_H) / CARD_RATIO));
   });
 
   it("makes room for the pending triggers listed under it", () => {
     const room = 600;
-    const a = pileCardWidth({ boardW: 1600, boardH: 900, room, peeking: 0, pendingCount: 0 });
-    const b = pileCardWidth({ boardW: 1600, boardH: 900, room, peeking: 0, pendingCount: 3 });
-    expect(b).toBeLessThan(a);
+    const a = pileFit({ boardW: 1600, boardH: 900, room, lower: 0, pendingCount: 0 });
+    const b = pileFit({ boardW: 1600, boardH: 900, room, lower: 0, pendingCount: 3 });
+    expect(b.cardWidth).toBeLessThan(a.cardWidth);
     expect(pendingHeight(0)).toBe(0);
     expect(pendingHeight(3)).toBeGreaterThan(pendingHeight(1));
+  });
+});
+
+describe("the cascade (ADR 0119 amendment §A)", () => {
+  it("steps 12% of the top card's height a step", () => {
+    expect(cascadeStep(270)).toBe(Math.round(0.12 * 270 * CARD_RATIO)); // 45px
+    expect(cascadeStep(PILE_CARD_MIN_W)).toBe(33);
+  });
+
+  it("dims 28% a step, capped at 60%", () => {
+    expect([0, 1, 2, 3, 4].map(cascadeDim)).toEqual([0, 0.28, 0.56, 0.6, 0.6]);
+  });
+
+  it("puts each lower card up, inward to the right and 4% smaller, on the left half", () => {
+    const c = cascadeLayout(250, 4, "right");
+    const step = cascadeStep(250);
+    expect(c.step).toBe(step);
+    expect(c.rise).toBe(4 * step);
+    expect(c.topLeft).toBe(0);
+    // The deepest card overhangs the top card's inward edge by 2% a step.
+    expect(c.width).toBe(250 + 20);
+    expect(c.cards).toEqual([
+      { depth: 1, left: 15, top: 3 * step, width: 240, dim: 0.28 },
+      { depth: 2, left: 30, top: 2 * step, width: 230, dim: 0.56 },
+      { depth: 3, left: 45, top: step, width: 220, dim: 0.6 },
+      { depth: 4, left: 60, top: 0, width: 210, dim: 0.6 },
+    ]);
+    // Each card's strip shows exactly one step above the card in front.
+    for (let i = 1; i < c.cards.length; i++) {
+      expect(c.cards[i - 1].top - c.cards[i].top).toBe(step);
+    }
+    expect(c.rise - c.cards[0].top).toBe(step);
+  });
+
+  it("mirrors to the left on the right half: the outer (right) edges step in", () => {
+    const c = cascadeLayout(250, 4, "left");
+    expect(c.width).toBe(270);
+    expect(c.topLeft).toBe(20);
+    const topRight = c.topLeft + 250;
+    expect(c.cards.map((k) => topRight - (k.left + k.width))).toEqual([15, 30, 45, 60]);
+    expect(c.cards.map((k) => k.left)).toEqual([15, 10, 5, 0]);
+  });
+
+  it("is just the top card with nothing under it", () => {
+    expect(cascadeLayout(250, 0, "right")).toEqual({
+      width: 250,
+      rise: 0,
+      step: 0,
+      topLeft: 0,
+      cards: [],
+    });
+  });
+
+  it("steps toward the board's centre", () => {
+    expect(cascadeInward({ left: 12, width: 290, boardW: 1400 })).toBe("right");
+    expect(cascadeInward({ left: 1000, width: 290, boardW: 1400 })).toBe("left");
+    // Docked on the middle seam: the default.
+    expect(cascadeInward({ left: 555, width: 290, boardW: 1400 })).toBe("right");
+    expect(cascadeInward({ left: 0, width: 0, boardW: 0 })).toBe("right");
+  });
+});
+
+describe("the cascade's depth on a board", () => {
+  // The band a board of this height gives with nothing in the strip.
+  const room = (boardH: number) => pileBounds({ boardH, stripBottom: null, fixtureTop: null }).room;
+  const fit = (boardH: number, lower: number, pendingCount = 0) =>
+    pileFit({ boardW: 1600, boardH, room: room(boardH), lower, pendingCount });
+
+  it("shows all four lower cards on a 1440×900 table's board", () => {
+    expect(fit(820, 6)).toEqual({ cardWidth: 246, shown: 4, more: 2 });
+    expect(fit(820, 2)).toEqual({ cardWidth: 246, shown: 2, more: 0 });
+  });
+
+  it("sheds lower cards before it shrinks the top card, down to one", () => {
+    // Boards this short want the 200px card; each shorter one drops a step.
+    const want = PILE_CARD_MIN_W;
+    const at = (n: number) => Math.ceil(pileHeight(want, n, 0)) + 2 * PILE_MARGIN;
+    for (const n of [4, 3, 2, 1]) {
+      expect(fit(at(n), 4)).toMatchObject({ cardWidth: want, shown: n, more: 4 - n });
+      // A pixel short of n steps shows n − 1 (still at full size), or at one, shrinks.
+      const short = fit(at(n) - 1, 4);
+      if (n > 1) expect(short).toMatchObject({ cardWidth: want, shown: n - 1 });
+      else expect(short.cardWidth).toBeLessThan(want);
+    }
+  });
+
+  it("counts the pending triggers against the cascade, not just the card", () => {
+    expect(fit(820, 4, 6).shown).toBeLessThan(fit(820, 4, 0).shown);
   });
 });
 
@@ -125,9 +223,14 @@ describe("the compact fallback", () => {
     expect(pileFallsBack({ phone: false, boardH: 900, stripBottom: 200 })).toBe(false);
   });
 
-  it("is taken on a board too short for a 200px card between the strip and the bottom", () => {
+  it("is taken on a board too short for a 200px card and one cascade step", () => {
     const card = PILE_CARD_MIN_W * CARD_RATIO; // ≈ 279px
-    const fitsExactly = card + 2 * PILE_MARGIN;
+    expect(PILE_MIN_ROOM).toBe(card + cascadeStep(PILE_CARD_MIN_W)); // ≈ 312px
+    const fitsExactly = PILE_MIN_ROOM + 2 * PILE_MARGIN;
+    // A board that fits the card alone but not the step falls back.
+    expect(pileFallsBack({ phone: false, boardH: card + 2 * PILE_MARGIN, stripBottom: null })).toBe(
+      true,
+    );
     expect(pileFallsBack({ phone: false, boardH: fitsExactly, stripBottom: null })).toBe(false);
     expect(pileFallsBack({ phone: false, boardH: fitsExactly - 1, stripBottom: null })).toBe(true);
     expect(pileFallsBack({ phone: false, boardH: 500, stripBottom: 250 })).toBe(true);

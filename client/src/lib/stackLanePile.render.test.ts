@@ -472,6 +472,90 @@ describe("the pile (ADR 0119 §1)", () => {
   });
 });
 
+describe("the cascade (ADR 0119 amendment §A)", () => {
+  it("draws each lower item as a card: its face, its seat band, its title and Counter on the strip", () => {
+    const p = mountPile(gameView(three));
+    const bolt = p.q('.peek[data-stack-item-id="bolt"]')!;
+    // A spell's face is its normal image, hidden from a screen reader:
+    // the strip says it in text.
+    const face = bolt.querySelector(".peek-face")!;
+    expect(face.getAttribute("aria-hidden")).toBe("true");
+    expect(face.querySelector("img")?.getAttribute("src")).toContain("sf-bolt");
+    expect(face.querySelector("img")?.getAttribute("src")).not.toContain("art_crop");
+    expect(bolt.querySelector(".seat-band")).not.toBeNull();
+    expect(bolt.style.getPropertyValue("--seat-color")).not.toBe("");
+    const strip = bolt.querySelector<HTMLElement>(".peek-line[data-stack-arrow-from]")!;
+    expect(strip.querySelector(".peek-title")?.textContent).toBe("Lightning Bolt");
+    expect(strip.querySelector(".peek-caster")?.textContent).toBe("You");
+    expect(strip.querySelector(".counter-btn")?.getAttribute("aria-label")).toBe(
+      "Counter Lightning Bolt",
+    );
+    // An ability's face is the ability card, hidden the same way.
+    const trig = p.q('.peek[data-stack-item-id="trig-vivi"]')!;
+    expect(trig.classList.contains("ability")).toBe(true);
+    expect(trig.querySelector(".peek-face .ability-card")?.getAttribute("data-ability-kind")).toBe(
+      "triggered",
+    );
+    expect(trig.querySelector(".peek-face")?.getAttribute("aria-hidden")).toBe("true");
+    expect(trig.querySelector(".peek-title")?.textContent).toBe(viviTrigger.label);
+  });
+
+  it("steps each card up, inward and smaller, dimmer the deeper it sits", () => {
+    const items: StackItemView[] = [];
+    const cards: CardView[] = [];
+    for (let i = 0; i < 5; i++) {
+      cards.push(card(`s${i}`, `Spell ${i}`, OPP, { type_line: "Instant" }));
+      items.push(spell(`s${i}`, OPP));
+    }
+    const p = mountPile(gameView(items, { stackCards: cards }), {
+      pile: { cardWidth: 250, shrunk: false },
+    });
+    const peeks = p.qa(".peek");
+    // Deepest first in the DOM; each nearer one is drawn over it.
+    expect(peeks.map((e) => e.dataset.depth)).toEqual(["4", "3", "2", "1"]);
+    expect(peeks.map((e) => e.style.left)).toEqual(["60px", "45px", "30px", "15px"]);
+    expect(peeks.map((e) => e.style.width)).toEqual(["210px", "220px", "230px", "240px"]);
+    expect(peeks.map((e) => Number(e.style.zIndex))).toEqual([1, 2, 3, 4]);
+    expect(peeks.map((e) => e.style.getPropertyValue("--dim"))).toEqual([
+      "0.6",
+      "0.6",
+      "0.56",
+      "0.28",
+    ]);
+    const tops = peeks.map((e) => parseFloat(e.style.top));
+    expect(tops[0]).toBe(0);
+    expect(tops[1] - tops[0]).toBeGreaterThan(0);
+    // The pile is as wide as the cascade's overhang; the top card at its left.
+    const pile = p.q(".pile")!;
+    expect(pile.style.getPropertyValue("--pile-w")).toBe("270px");
+    expect(pile.style.getPropertyValue("--top-left")).toBe("0px");
+  });
+
+  it("steps left when the host says the pile sits on the right half", () => {
+    const p = mountPile(gameView(three), {
+      pile: { cardWidth: 250, shrunk: false, inward: "left" },
+    });
+    const pile = p.q(".pile")!;
+    expect(pile.classList.contains("inward-left")).toBe(true);
+    expect(pile.style.getPropertyValue("--top-left")).toBe("10px");
+    expect(p.qa(".peek").map((e) => e.style.left)).toEqual(["0px", "5px"]);
+  });
+
+  it("shows only as many lower cards as the host fits, the rest behind '+N more'", () => {
+    const items: StackItemView[] = [];
+    const cards: CardView[] = [];
+    for (let i = 0; i < 5; i++) {
+      cards.push(card(`s${i}`, `Spell ${i}`, OPP, { type_line: "Instant" }));
+      items.push(spell(`s${i}`, OPP));
+    }
+    const p = mountPile(gameView(items, { stackCards: cards }), {
+      pile: { cardWidth: 250, shrunk: false, lowerShown: 2 },
+    });
+    expect(p.qa(".peek-title").map((e) => e.textContent)).toEqual(["Spell 2", "Spell 3"]);
+    expect(p.q(".more-chip")?.textContent?.trim()).toBe("+2 more");
+  });
+});
+
 describe("the pile on a real board", () => {
   function mountBoard(view: GameView) {
     const sent: { type: ActionType; params?: unknown }[] = [];

@@ -9,12 +9,18 @@
   // and the controls, and positions the pile.
   //
   // Layout, top to bottom:
-  //   - the "+N more" chip, when more than four items sit under the top
-  //     one. It opens the whole stack as a column of compact rows over
-  //     the pile, top first; Escape or a second click closes it;
-  //   - up to four lower items, deepest first, each a 34px name line
-  //     cut from its card's top edge (a `normal` image's name bar):
-  //     the caster's colour, the title as text, and Counter;
+  //   - the "+N more" chip, on the cascade's outer top corner, when
+  //     more items sit under the top one than the cascade shows. It
+  //     opens the whole stack as a column of compact rows over the
+  //     pile, top first; Escape or a second click closes it;
+  //   - the cascade (ADR 0119 amendment 2026-10-16 §A): up to four
+  //     lower items as CARDS behind the top one, the same face the top
+  //     slot would draw, each a step up and toward the board's centre,
+  //     a little smaller and dimmed under a --bg scrim (lib/stackPile.ts
+  //     cascadeLayout). The strip of each that shows carries the
+  //     caster's colour band, the title as text, and Counter; hovering
+  //     one lifts the scrim and opens the hover zoom. The host says how
+  //     many show (fewer on a short band) and which way is inward;
   //   - the top card, the Scryfall `normal` image at the host's width,
   //     the caster's colour as a band on its left edge. An ability has
   //     no card of its own (CR 405.1), so it is drawn as a C2 ability
@@ -37,8 +43,9 @@
   // the lower items are what the viewer has to click.
   //
   // Arrows: the fan's machinery (lib/stackArrows.ts). A board arrow
-  // runs from the top card (gold) and from each peeking line (the
-  // caster's colour) to each permanent or player it targets. The
+  // runs from the top card (gold) and from each lower card's visible
+  // strip (the caster's colour; `data-stack-arrow-from`) to each
+  // permanent or player it targets. The
   // `data-stack-lane-target` ring on each target is StackTargetRings'
   // job, for every style (ADR 0119 §4). A target that is
   // another stack item gets no arc here; the target line and the ring
@@ -52,7 +59,13 @@
     measureStackArrows,
     type StackArrow,
   } from "../../stackArrows";
-  import { PILE_CARD_MAX_W, PILE_SHRUNK_W, pileDepth } from "../../stackPile";
+  import {
+    PILE_CARD_MAX_W,
+    PILE_PEEK_MAX,
+    PILE_SHRUNK_W,
+    cascadeLayout,
+    pileDepth,
+  } from "../../stackPile";
   import { cardImageURL } from "../../cardImage";
   import { cardArt } from "../../cardArt";
   import { boardExpandLayout } from "../../boardExpand";
@@ -71,9 +84,14 @@
 
   const top = $derived(model.stackItems[0] ?? null);
   const depth = $derived(pileDepth(model.stackItems.length));
+  // The cascade's depth: the host's fit (fewer on a short band), never
+  // more than pileDepth allows.
+  const shown = $derived(Math.max(0, Math.min(depth.peeking, pile?.lowerShown ?? depth.peeking)));
   // Nearest the top card first; drawn deepest first, so reversed below.
-  const peeking = $derived(shrunk ? [] : model.stackItems.slice(1, 1 + depth.peeking));
-  const more = $derived(shrunk ? 0 : depth.more);
+  const peeking = $derived(shrunk ? [] : model.stackItems.slice(1, 1 + shown));
+  const more = $derived(shrunk ? 0 : depth.peeking + depth.more - shown);
+  const inward = $derived(pile?.inward ?? "right");
+  const cascade = $derived(cascadeLayout(cardW, peeking.length, inward));
   const showPending = $derived(model.pendingTriggers.length > 0 && (!shrunk || top === null));
 
   // ---- "+N more" ------------------------------------------------------
@@ -199,6 +217,7 @@
   $effect(() => {
     void model;
     void cardW;
+    void cascade;
     // ADR 0120 §3: the expanded board opening, closing, changing seat
     // or resizing moves the anchors too, with no snapshot.
     void $boardExpandLayout;
@@ -266,8 +285,11 @@
 <div
   class="pile"
   class:shrunk
+  class:inward-left={inward === "left"}
   data-stack-body={styleName}
   style:--card-w={`${cardW}px`}
+  style:--pile-w={`${cascade.width}px`}
+  style:--top-left={`${cascade.topLeft}px`}
   bind:this={rootEl}
 >
   {#if top}
@@ -275,7 +297,7 @@
     {@const topSrc = topAbility ? null : imageOf(top, "normal")}
     {@const topRing = targetedRing(top)}
     {@const chips = chipsOf(top)}
-    <div class="cards" bind:this={cardsEl}>
+    <div class="cards" bind:this={cardsEl} style:--rise={`${cascade.rise}px`}>
       {#if more > 0}
         <button
           type="button"
@@ -287,22 +309,31 @@
           +{more} more
         </button>
       {/if}
-      <!-- Lower items, deepest first. -->
-      {#each [...peeking].reverse() as item (item.id)}
-        {@const src = imageOf(item, "normal")}
+      <!-- The cascade's lower cards, deepest first, so each is drawn
+           behind the one nearer the top. -->
+      {#each [...peeking].reverse() as item, i (item.id)}
+        {@const ability = isAbility(item)}
+        {@const src = ability ? null : imageOf(item, "normal")}
         {@const ring = targetedRing(item)}
-        {@const d = (item.position ?? 2) - 1}
+        {@const g = cascade.cards[peeking.length - 1 - i]}
         <!-- Pointer and focus only drive the hover preview; the controls
              inside are the buttons. -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
           class="peek"
+          class:ability
           class:targeted={ring !== null}
           class:cast-targetable={controls.targetable(item)}
           class:previewable={item.previewCard !== null}
           style:--seat-color={item.casterColor}
           style:--targeted-ring={ring}
-          style:--depth={d}
+          style:--dim={g.dim}
+          style:--strip-h={`${cascade.step}px`}
+          style:left={`${g.left}px`}
+          style:top={`${g.top}px`}
+          style:width={`${g.width}px`}
+          style:z-index={PILE_PEEK_MAX + 1 - g.depth}
+          data-depth={g.depth}
           data-stack-item-id={item.id}
           title={item.previewCard ? `${item.text} — hover to preview` : item.text}
           onpointerenter={() => controls.hoverEnter(item)}
@@ -310,16 +341,31 @@
           onfocusin={() => controls.hoverEnter(item)}
           onfocusout={() => controls.hoverLeave(item)}
         >
-          {#if src}
-            <img class="peek-img" {src} alt="" loading="lazy" decoding="async" />
-          {/if}
+          <!-- The face is what the eye reads; the strip below says it in
+               text, so the face is hidden from a screen reader. -->
+          <div class="peek-face" aria-hidden="true">
+            {#if ability}
+              <StackAbilityCard {item} />
+            {:else if src}
+              <img class="peek-img" {src} alt="" loading="lazy" decoding="async" />
+            {:else}
+              <span class="no-art-glyph">
+                <Icon name="spark" size={22} />
+              </span>
+            {/if}
+          </div>
+          <span class="peek-scrim" aria-hidden="true"></span>
           <span class="seat-band" aria-hidden="true"></span>
-          <span class="peek-line">
-            <span class="peek-title">{item.text}</span>
-            <span class="peek-caster">{whoOf(item)}</span>
-          </span>
           {@render targetButton(item)}
-          {@render counterButton(item, true)}
+          <!-- `data-stack-arrow-from` (ARROW_FROM_ATTR): its arrows leave
+               from this strip, the part of the card that shows. -->
+          <span class="peek-line" data-stack-arrow-from>
+            <span class="peek-label">
+              <span class="peek-title">{item.text}</span>
+              <span class="peek-caster">{whoOf(item)}</span>
+            </span>
+            {@render counterButton(item, true)}
+          </span>
         </div>
       {/each}
       <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -491,41 +537,46 @@
 <style>
   .pile {
     position: relative;
-    width: var(--card-w);
+    width: var(--pile-w, var(--card-w));
     display: flex;
     flex-direction: column;
     gap: 8px;
     min-height: 0;
   }
+  /* The cascade box: the lower cards are placed in it from
+     lib/stackPile.ts cascadeLayout, and the top card sits `--rise`
+     below its top edge, so the box is as tall as what it draws. */
   .cards {
     position: relative;
     display: flex;
     flex-direction: column;
-    /* Room for the "+N more" chip on the top edge. */
-    padding-top: 0;
+    padding-top: var(--rise, 0px);
+    /* The cards' z-indexes order them against each other only. */
+    isolation: isolate;
   }
+  /* Room for the "+N more" chip on the outer top corner. */
   .cards:has(.more-chip) {
-    padding-top: 14px;
+    padding-top: calc(var(--rise, 0px) + 14px);
+  }
+  .cards:has(.more-chip) > .peek {
+    margin-top: 14px;
   }
 
-  /* ---- the lower items: a 34px name line cut from each card's top ---- */
+  /* ---- the cascade's lower cards (ADR 0119 amendment §A) -------------- */
   .peek {
-    position: relative;
+    position: absolute;
     box-sizing: border-box;
-    height: 34px;
-    /* Each deeper card is a little narrower, so the pile reads as cards
-       behind cards rather than as a list. */
-    margin: 0 calc(var(--depth, 1) * 5px);
-    border-radius: 10px 10px 0 0;
+    aspect-ratio: 488 / 680;
+    border-radius: calc(var(--card-w) * 0.0475);
     overflow: hidden;
-    background: color-mix(in srgb, var(--seat-color) 16%, var(--surface-raised));
-    border: 1px solid var(--border-strong);
-    border-bottom: none;
-    box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.35);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0 6px 0 12px;
+    background: var(--surface-sunken);
+    box-shadow:
+      0 0 0 1px var(--border-strong),
+      0 -3px 10px rgba(0, 0, 0, 0.45);
+  }
+  .peek.ability {
+    aspect-ratio: 63 / 88;
+    background: var(--surface);
   }
   .peek.previewable {
     cursor: zoom-in;
@@ -533,40 +584,87 @@
   .peek.targeted {
     box-shadow:
       inset 0 0 0 2px var(--targeted-ring),
-      0 -2px 6px rgba(0, 0, 0, 0.35);
+      0 -3px 10px rgba(0, 0, 0, 0.45);
   }
   .peek.cast-targetable {
     box-shadow:
       inset 0 0 0 2px var(--accent),
       0 0 12px var(--accent-soft);
   }
-  .peek-img {
+  .peek-face {
     position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: auto;
-    display: block;
+    inset: 0;
     pointer-events: none;
   }
-  /* The name line covers the printed name bar, the card's own frame
-     showing through toward the right. Counter sits over its end. */
+  .peek-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  /* The step's dimming: a --bg scrim, 28% a step up to 60%. Hovering or
+     focusing the card lifts it, so the card brightens to full while the
+     hover zoom opens. */
+  .peek-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: var(--bg);
+    opacity: var(--dim, 0.28);
+    transition: opacity 120ms var(--ease);
+  }
+  .peek:hover .peek-scrim,
+  .peek:focus-within .peek-scrim {
+    opacity: 0;
+  }
+  /* The strip that shows above the card in front: the title over the
+     printed name bar (or the ability card's art), Counter at its end. It
+     takes no pointer itself, so a click on it reaches the Target
+     button under it; Counter takes its own. */
   .peek-line {
     position: absolute;
-    inset: 0 0 0 5px;
+    left: 5px;
+    right: 0;
+    top: 0;
+    height: var(--strip-h, 34px);
+    z-index: 3;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 0 76px 0 9px;
-    background: linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--surface) 95%, transparent) 0%,
-      color-mix(in srgb, var(--surface) 88%, transparent) 65%,
-      color-mix(in srgb, var(--surface) 60%, transparent) 100%
-    );
+    padding: 0 6px 0 7px;
+    pointer-events: none;
   }
-  .peek > .counter-btn {
+  .peek-line > .counter-btn {
     margin-left: auto;
+    pointer-events: auto;
+  }
+  /* The title and caster on a tab of the panel's surface, as narrow as
+     they are: the card's own top, dimmed by its step, shows around it,
+     so the strip reads as the edge of a card and not as a list row. */
+  .peek-label {
+    flex: 0 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    box-shadow: 0 0 0 1px var(--border-strong);
+  }
+  /* Counter on a strip sits over the card's mana cost: without priority
+     it is dimmed by colour, not opacity, so the cost does not show
+     through it. */
+  .peek-line > .counter-btn:disabled {
+    opacity: 1;
+    color: var(--fg-muted);
+  }
+  /* The ability card's cost badge sits where the label does; the label
+     starts with the same cost. */
+  .peek-face :global(.cost-badge) {
+    display: none;
   }
   .peek-title {
     min-width: 0;
@@ -591,12 +689,15 @@
     bottom: 0;
     width: 5px;
     background: var(--seat-color);
-    z-index: 1;
+    /* Over a lower card's scrim: the seat colour is never dimmed. */
+    z-index: 2;
   }
 
   /* ---- the top card ------------------------------------------------- */
   .top-card {
     position: relative;
+    z-index: 5;
+    margin-left: var(--top-left, 0px);
     width: var(--card-w);
     aspect-ratio: 488 / 680;
     border-radius: calc(var(--card-w) * 0.0475);
@@ -663,6 +764,9 @@
     flex-direction: column;
     gap: 3px;
     min-width: 0;
+    /* Under the top card, not under the cascade's overhang. */
+    margin-left: var(--top-left, 0px);
+    width: var(--card-w);
   }
   .who-row {
     display: flex;
@@ -751,9 +855,11 @@
   }
 
   /* ---- "+N more" -------------------------------------------------------- */
+  /* On the outer top corner, which the cascade leaves open: it steps
+     toward the board's centre. */
   .more-chip {
     position: absolute;
-    right: 6px;
+    left: 0;
     top: 0;
     z-index: 6;
     height: 22px;
@@ -766,6 +872,10 @@
     background: var(--surface);
     border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
     color: var(--accent);
+  }
+  .pile.inward-left .more-chip {
+    left: auto;
+    right: 0;
   }
   .all-items {
     position: absolute;
