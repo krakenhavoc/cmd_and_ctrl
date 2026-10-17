@@ -210,6 +210,10 @@ var (
 	// way, put a +1/+1 counter on target creature you control."
 	agathasSoulCauldronCounterBody = game.ReflexiveBody("agathas-soul-cauldron/counter", simpleBody(PlusOneCounterOnChosenTarget),
 		constTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
+
+	// Sorin, Imperious Bloodlord (#4077): "When you do, Sorin deals 3
+	// damage to any target and you gain 3 life."
+	sorinImperiousStrikeBody = game.ReflexiveBody("sorin-imperious-bloodlord/strike", simpleBody(sorinImperiousStrike), constTargets(TargetAny))
 )
 
 // simpleBody adapts a no-params reflexive body — every one of them

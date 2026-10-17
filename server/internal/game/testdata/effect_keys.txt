@@ -282,3 +282,4 @@ body kharn-the-betrayer/opponent-gains-control
 choose choose-cards/immortal-coil-exile
 option option-pick/kharn-the-betrayer-opponent
 body channel-harm/may-deal-that-much
+body sorin-imperious-bloodlord/strike
