@@ -356,3 +356,26 @@ a `ReflexiveTrigger` carrying X in `Params.Amount`, targeted when it goes on the
 nothing: they are the same two prompts.
 
 Back-out: drop the `Symbol` field and its branch in `QueueMayPayXForEffect`; `TestLeylineTyrantDiesPayRedForThatMuchDamage` fails.
+
+## Amendment (2026-10-17, #4092): a replicate cost that taps a permanent
+
+Psionic Ritual prints "Replicate—Tap an untapped Horror you control." §5 gave replicate one non-mana component, energy, and
+ADR 0073 §4 lets only a mana-only optional cost repeat, because N card-shaped payments per cast had no wire. Tapping has one:
+#3868's `AdditionalCost.TapOthers` already rides `cast_spell`'s `teamwork_ids` on the mandatory slot. Decisions:
+
+1. **The cost.** `effects.ReplicateTapping(label, max, preds…)` is the optional cost keyed `replicate` with a `TapOthers` of
+   one permanent per payment. `effects.Register` allows `TapOthers` on an optional cost only there (a fixed count, a label,
+   one such cost per card), and never beside a mandatory tap cost, teamwork or escalate's taps, since all of them share the
+   list. ADR 0073 §4's repeat rule exempts the tap component of a replicate cost and nothing else.
+2. **The cast path.** A cost paid N times is N plan entries (`castCostPayments`), so `game.planTapOthers` sums their counts
+   into one demand. The existing validator then checks the whole list at once (exactly that many, each once, the caster's,
+   untapped, matching without targeting, not also convoking) and the existing payer taps them with the spell on the stack
+   and records them on `PaidCost.TappedOthers`. Tapping is not the {T} symbol (CR 302.6) and paying a cost does not target.
+3. **The wire.** `OptionalCostView` gains `tap_others_label` / `tap_others_options` in `AdditionalCostView`'s shape, one
+   payment's count as `min` / `max`, with `max_times` capped at the payments the options cover. The client's tap picker
+   asks for `min` × the payments claimed and greys the offer when too few can pay. No snapshot change.
+4. **The bot.** The enumerator names `min` × the payments of each announced set off the engine's walk in its cheapest-to-tap
+   order (`optionalTapCastPayment`), drops a set the seat cannot pay, and names the permanents in the move's label.
+
+Back-out: make `planTapOthers` return the first entry unsummed; `TestNghaPsionicRitualReplicateTapsOneHorrorPerPayment`
+fails (one Horror pays two replicates).

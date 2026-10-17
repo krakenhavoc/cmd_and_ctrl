@@ -360,7 +360,15 @@ func Register(spec Spec) {
 		// ADR 0073 §4: only a mana-only cost may be paid more than
 		// once. Every printed multikicker is mana, and N card-shaped
 		// payments per cast is a wire shape nothing asks for.
-		if oc.MaxPayments() > 1 && oc.CardsDemanded() {
+		// #4092: a replicate cost that taps one permanent per payment is
+		// the exception — its N payments are N names on teamwork_ids, one
+		// list the cast path sums (game.planTapOthers), so nothing else
+		// card-shaped may ride beside it.
+		tapless := oc
+		if oc.Key == game.ReplicateKey {
+			tapless.TapOthers = nil
+		}
+		if oc.MaxPayments() > 1 && tapless.CardsDemanded() {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q repeats and demands cards or permanents — only a mana-only cost may repeat", spec.Name, oc.Key))
 		}
 		// #3232: an {X} in an optional cost is the caster's one announced

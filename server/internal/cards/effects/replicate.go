@@ -61,6 +61,34 @@ func ReplicatePayEnergy(n, max int) game.AdditionalCost {
 	}
 }
 
+// ReplicateTapping is "Replicate—Tap an untapped <permanent> you
+// control" (Psionic Ritual's "an untapped Horror you control", #4092):
+// the optional cost, paid any number of times, each payment tapping one
+// permanent through the TapOthersCost New Blood's mandatory slot already
+// carries (TapUntappedCost). The permanents ride cast_spell's
+// teamwork_ids, N payments naming N of them; the cast path sums the
+// payments into one demand (game.planTapOthers), validates the list as
+// one (each once, the caster's, untapped, matching without targeting)
+// and taps them with the spell on the stack. Tapping is not the {T}
+// symbol, so a Horror that arrived this turn pays (CR 302.6). `label`
+// is the clause without the verb, `max` the per-announcement cap
+// ReplicatePayEnergy's comment explains; the permanents the caster
+// controls bound it long before. Register keeps it off a card with a
+// mandatory tap cost, teamwork or escalate taps: one list cannot pay
+// two clauses.
+func ReplicateTapping(label string, max int, preds ...CardPredicate) game.AdditionalCost {
+	if max < 1 {
+		max = 1
+	}
+	return game.AdditionalCost{
+		Optional:  true,
+		Key:       game.ReplicateKey,
+		TapOthers: tapOthersPrice(1, label, preds...),
+		Repeat:    max,
+		Label:     "Replicate—Tap " + label,
+	}
+}
+
 // Replicate is the keyword's trigger: "When you cast this spell, if a
 // replicate cost was paid for it, copy it for each time its replicate
 // cost was paid. If the spell has any targets, you may choose new
