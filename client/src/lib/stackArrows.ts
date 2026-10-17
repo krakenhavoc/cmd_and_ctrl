@@ -339,6 +339,13 @@ export interface MeasureInput {
 }
 
 /**
+ * Marks the part of a stack tile an arrow leaves from, when that is
+ * not the whole tile: a lower card in the pile's cascade, whose visible
+ * strip is all of it that shows.
+ */
+export const ARROW_FROM_ATTR = "data-stack-arrow-from";
+
+/**
  * Measure every planned arrow against the live DOM. An arrow is left
  * out — never drawn to a guessed position — when its tile or target is
  * not on screen, when its tile is scrolled out of the lane, or when
@@ -364,12 +371,15 @@ export function measureStackArrows(input: MeasureInput): MeasuredArrows {
   const marked = new Map<HTMLElement, MarkedTarget>();
 
   for (const plan of planArrows(items)) {
-    const src = lane.querySelector<HTMLElement>(targetSelector("stack", plan.itemID));
+    const tile = lane.querySelector<HTMLElement>(targetSelector("stack", plan.itemID));
+    // A tile mostly hidden behind another (the pile's cascade, ADR 0119
+    // amendment §A) names the part of it that shows.
+    const src = tile?.querySelector<HTMLElement>(`[${ARROW_FROM_ATTR}]`) ?? tile;
     if (!src || !hasSize(src)) continue;
     const dst = findTarget(board, lane, plan.targetKind, plan.targetID);
     if (!dst) continue;
     if (plan.layer === "lane") {
-      if (dst === src) continue;
+      if (dst === tile || dst === src) continue;
       const curve = laneArc(
         relativeTo(src.getBoundingClientRect(), laneOrigin),
         relativeTo(dst.getBoundingClientRect(), laneOrigin),

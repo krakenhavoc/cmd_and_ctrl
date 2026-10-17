@@ -3559,8 +3559,9 @@
   // the stack, the docked card is not rendered.
   //
   // ADR 0119 §1: `pile`, the default, falls back to the docked card on
-  // a phone and on a board too short for a 200px top card between the
-  // strip and the bottom (lib/stackPile.ts). The stored setting is not
+  // a phone and on a board too short for a 200px top card plus one
+  // cascade step between the strip and the bottom (lib/stackPile.ts,
+  // the ADR 0119 amendment §A). The stored setting is not
   // touched, so the pile comes back when the window grows.
   let pileFallback = $state(false);
   $effect(() => {

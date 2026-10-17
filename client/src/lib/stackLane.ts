@@ -298,6 +298,13 @@ export interface StackPileSizing {
   cardWidth: number;
   /** True while the viewer chooses a target: top card only, small. */
   shrunk: boolean;
+  /**
+   * Lower cards the cascade shows (lib/stackPile.ts pileFit): fewer
+   * than four on a short band. Unset: as many as pileDepth allows.
+   */
+  lowerShown?: number;
+  /** Which way the cascade steps, toward the board's centre. Unset: right. */
+  inward?: "right" | "left";
 }
 
 /** Props every floating lane style component takes. */
