@@ -7843,6 +7843,21 @@ payment: "When this creature's echo cost is paid" is
 `WhenEchoIsPaid(label, effect)`. Like cumulative upkeep it is not a
 `canonicalKeywords` token; the trigger carries `game.KeywordEcho`.
 
+### Exploit (#4092, CR 702.110)
+
+`Exploit(name, payoff)` ([exploit.go](../server/internal/cards/effects/exploit.go))
+goes in `Triggered`: `Exploit("Overcharged Amalgam",
+overchargedAmalgamCounterBody)`. It is the ETB "you may sacrifice a creature"
+(the exploiter itself is a legal pick), asked as the ability resolves. The
+card's own "when this creature exploits a creature, …" is the `payoff`: a
+registered reflexive body (`reflexive_bodies.go`, with its target clause
+beside it) that goes on the stack above the exploit ability only if a
+creature really left, carrying the sacrificed card as its payload. Pass
+`game.BodyRef{}` for a card that prints no payoff. A creature that was
+removed from the battlefield before the exploit ability resolved still lets
+you sacrifice another creature, but makes no payoff; sacrificing the
+exploiter itself does. Like echo it is not a `canonicalKeywords` token.
+
 ### The CR 732 loop breaker (#628)
 
 Two permanents that trigger each other loop forever. The server never

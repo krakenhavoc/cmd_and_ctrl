@@ -214,6 +214,14 @@ var (
 	// Sorin, Imperious Bloodlord (#4077): "When you do, Sorin deals 3
 	// damage to any target and you gain 3 life."
 	sorinImperiousStrikeBody = game.ReflexiveBody("sorin-imperious-bloodlord/strike", simpleBody(sorinImperiousStrike), constTargets(TargetAny))
+
+	// Overcharged Amalgam (#4092): "When this creature exploits a
+	// creature, counter target spell, activated ability, or triggered
+	// ability."
+	overchargedAmalgamCounterBody = game.ReflexiveBody("overcharged-amalgam/counter", simpleBody(overchargedAmalgamCounter),
+		constTargets(func() *game.TargetSpec {
+			return TargetSpellOrAbility("target spell, activated ability, or triggered ability")
+		}))
 )
 
 // simpleBody adapts a no-params reflexive body — every one of them
