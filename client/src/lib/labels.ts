@@ -1334,6 +1334,13 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}StandInBanner.svelte`],
     doc: "the banner a player sees on their own seat while a bot plays it: they play it again (ADR 0177 §6)",
   }),
+  holdShiftToFlip: label({
+    name: "Hold Shift to flip",
+    kind: "text",
+    role: "note",
+    owners: [`${BOARD}HoverZoomOverlay.svelte`],
+    doc: "the hover zoom's hint under a two-faced card's inset, on pointer devices only (#4106): holding Shift shows the other face big",
+  }),
 } satisfies Record<string, LabelSpec>;
 
 export type LabelKey = keyof typeof LABEL_SPECS;
