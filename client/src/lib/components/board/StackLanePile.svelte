@@ -121,6 +121,17 @@
     return item.chips.filter((c) => !(item.raw.kind !== "spell" && c.label === item.raw.kind));
   }
 
+  /**
+   * What a lower ability card's strip shows instead of its text: its
+   * source's name. Null for a spell, and for a source the viewer may not
+   * see, whose strip keeps the title as it is.
+   */
+  function stripNameOf(item: StackLaneItem): string | null {
+    if (!isAbility(item) || item.previewCard === null) return null;
+    const name = item.previewCard.name || item.sourceName;
+    return name && name !== item.text ? name : null;
+  }
+
   function whoOf(item: StackLaneItem): string {
     return item.casterIsViewer ? "You" : item.casterName;
   }
@@ -317,6 +328,7 @@
         {@const src = ability ? null : imageOf(item, "normal")}
         {@const ring = targetedRing(item)}
         {@const g = cascade.cards[peeking.length - 1 - i]}
+        {@const short = stripNameOf(item)}
         <!-- Pointer and focus only drive the hover preview; the controls
              inside are the buttons. -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -362,7 +374,17 @@
                from this strip, the part of the card that shows. -->
           <span class="peek-line" data-stack-arrow-from>
             <span class="peek-label">
-              <span class="peek-title">{item.text}</span>
+              {#if short !== null}
+                <!-- An ability's strip names its source: the start of its
+                     text ("{3}{W}, {T}: Put a +…") does not read at a
+                     glance. The full text stays as the title, for a
+                     screen reader and the specs, and in the tooltip. -->
+                <span class="peek-kind" aria-hidden="true"><Icon name="bolt" size={11} /></span>
+                <span class="peek-source" aria-hidden="true">{short}</span>
+                <span class="peek-title visually-hidden">{item.text}</span>
+              {:else}
+                <span class="peek-title">{item.text}</span>
+              {/if}
               <span class="peek-caster">{whoOf(item)}</span>
             </span>
             {@render counterButton(item, true)}
@@ -682,6 +704,31 @@
     font-size: 11px;
     font-weight: 600;
     color: var(--seat-color);
+  }
+  .peek-source {
+    min-width: 0;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 12.5px;
+    color: var(--fg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* The ability mark, the glyph the pile's no-art abilities use. */
+  .peek-kind {
+    flex: 0 0 auto;
+    align-self: center;
+    display: inline-flex;
+    color: var(--fg-muted);
+  }
+  .peek-title.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   /* Below a 260px top card the strips give their width to the title:
      the seat band already says whose card it is, and the caster's name

@@ -497,7 +497,42 @@ describe("the cascade (ADR 0119 amendment §A)", () => {
       "triggered",
     );
     expect(trig.querySelector(".peek-face")?.getAttribute("aria-hidden")).toBe("true");
-    expect(trig.querySelector(".peek-title")?.textContent).toBe(viviTrigger.label);
+    // Its strip shows its source's name, marked as an ability; the full
+    // text stays the title (visually hidden), the tooltip and Counter's name.
+    const source = trig.querySelector(".peek-source");
+    expect(source?.textContent).toBe("Vivi Ornitier");
+    expect(source?.getAttribute("aria-hidden")).toBe("true");
+    expect(trig.querySelector(".peek-kind")).not.toBeNull();
+    const title = trig.querySelector(".peek-title");
+    expect(title?.textContent).toBe(viviTrigger.label);
+    expect(title?.classList.contains("visually-hidden")).toBe(true);
+    expect(trig.getAttribute("title")).toBe(`${viviTrigger.label} — hover to preview`);
+    expect(trig.querySelector(".counter-btn")?.getAttribute("aria-label")).toBe(
+      `Counter ${viviTrigger.label}`,
+    );
+    // A spell's strip is its title, as before.
+    expect(bolt.querySelector(".peek-source")).toBeNull();
+    expect(bolt.querySelector(".peek-title")?.classList.contains("visually-hidden")).toBe(false);
+  });
+
+  it("keeps the title on the strip of an ability whose source the viewer may not see", () => {
+    const faceDown = card("fd", "", OPP, { known_by_you: false, scryfall_id: undefined });
+    const trig = {
+      id: "fd-trig",
+      kind: "triggered",
+      controller: OPP,
+      owner: OPP,
+      source_card_id: "fd",
+      label: "a face-down creature's trigger",
+    } as StackItemView;
+    const view = gameView([trig, spell("cs", OPP)]);
+    (view.battlefield.cards as CardView[]).push(faceDown);
+    const p = mountPile(view);
+    const peek = p.q('.peek[data-stack-item-id="fd-trig"]')!;
+    expect(peek.querySelector(".peek-source")).toBeNull();
+    const title = peek.querySelector(".peek-title");
+    expect(title?.textContent).toBe("a face-down creature's trigger");
+    expect(title?.classList.contains("visually-hidden")).toBe(false);
   });
 
   it("steps each card up, inward and smaller, dimmer the deeper it sits", () => {
