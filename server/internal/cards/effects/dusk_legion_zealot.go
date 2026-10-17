@@ -29,14 +29,7 @@ func init() {
 		Name:         "Dusk Legion Zealot",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Dusk Legion Zealot — draw a card, lose 1 life",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					return GainLife{Player: item.Controller, Amount: -1}.Apply(ctx)
-				}),
+			WhenThisEnters("Dusk Legion Zealot — draw a card, lose 1 life", drawACardAndLoseALife),
 		},
 	})
 }

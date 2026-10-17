@@ -78,6 +78,13 @@ func symbolIsAnyColor(options, colors []string) bool {
 // godUnlessDevotionToColors is the God clause for "As long as your
 // devotion to <colour> and <colour> is less than <threshold>, <this>
 // isn't a creature" (Mogis, God of Slaughter: black and red, seven).
+//
+// Every two-colour God prints seven, so the threshold is always 7 today;
+// it stays a parameter because it is the printed number, read at the call
+// site next to the colours it belongs to (unparam notices at the fourth
+// caller).
+//
+//nolint:unparam // the printed threshold, kept at the call site
 func godUnlessDevotionToColors(threshold int, colors ...string) game.StaticAbility {
 	return game.StaticAbility{
 		Label: fmt.Sprintf("Isn't a creature unless your devotion to %s is %d or more.", colorWords(colors), threshold),
