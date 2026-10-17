@@ -41,6 +41,13 @@ export interface CardMeta {
     type_line?: string;
     oracle_text?: string;
     mana_cost?: string;
+    /** A face's printed stats. Scryfall puts them on the FACE of a
+     * double-faced card and leaves the top level empty, so the hover
+     * panel reads them here (#4106). Strings, empty for none. */
+    power?: string;
+    toughness?: string;
+    loyalty?: string;
+    defense?: string;
   }>;
 }
 
