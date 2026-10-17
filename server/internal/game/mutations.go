@@ -6671,7 +6671,70 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	}
 	g.recomputeSplitSecondLocked()
 	g.announcePlacedTargetsLocked(announce)
+	g.announcePlacedTriggersLocked(bySeat, numSeats)
 	return true
+}
+
+// announcePlacedTriggersLocked emits one EventTriggerPlaced per item
+// the drain just put on the stack, in placement order (APNAP), once
+// every item of the batch is there (#4050, #4092). An ability that
+// triggers on one lands on the emptied PendingTriggers and is the NEXT
+// batch, so it goes on the stack above the item it watched: the same
+// timing announcePlacedTargetsLocked gives ward.
+//
+// Gated on a watcher being there (triggerPlacedWatchedLocked), as the
+// layer engine's DependsOn* bumps are: the event is emitted only while
+// some permanent has an ability that watches it. A table without one
+// keeps the event log it always had, which is what holds the snapshot
+// corpus (frozen event logs) and costs a table nothing for a card it
+// does not have.
+//
+// Caller must hold g.mu.
+func (g *Game) announcePlacedTriggersLocked(bySeat map[int][]*StackItem, numSeats int) {
+	if !g.triggerPlacedWatchedLocked() {
+		return
+	}
+	for offset := 0; offset < numSeats; offset++ {
+		seat := (g.Turn.ActiveSeat + offset) % numSeats
+		for _, t := range bySeat[seat] {
+			if g.StackMeta[t.ID] != t {
+				// Gone already: an earlier placement's event set off
+				// something that removed it, so there is nothing on
+				// the stack to announce.
+				continue
+			}
+			g.EmitEvent(Event{
+				Kind:        EventTriggerPlaced,
+				Actor:       t.Controller,
+				Source:      t.SourceCardID,
+				StackItemID: t.ID,
+				Label:       t.Label,
+			})
+		}
+	}
+}
+
+// triggerPlacedWatchedLocked reports whether any permanent on the
+// battlefield has a triggered ability that watches EventTriggerPlaced
+// from there — the same enumeration harvestFromZone walks
+// (triggersOf, so an ability-removing effect or an unmet designation
+// gate counts as no watcher). Only the battlefield: no emblem and no
+// other-zone ability watches the kind, and one that does joins this
+// check in the change that declares it.
+//
+// Caller must hold g.mu.
+func (g *Game) triggerPlacedWatchedLocked() bool {
+	if g.Battlefield == nil || CatalogTriggers == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		for _, t := range triggersOf(&g.Battlefield.Cards[i]) {
+			if triggerWatches(t.Watches, EventTriggerPlaced) && TriggerWatchesFromZone(t, ZoneBattlefield) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // announcePlacedTargetsLocked emits the CR 115.3 "becomes the target"

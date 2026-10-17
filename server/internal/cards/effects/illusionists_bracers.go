@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Illusionist's Bracers — Artifact — Equipment {2}:
 //
@@ -37,7 +33,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventActivateAbility, illusionistsBracersWatchesEquippedCreature,
-				"Illusionist's Bracers — copy that ability", illusionistsBracersCopyActivatedAbility),
+				"Illusionist's Bracers — copy that ability", copyTheTriggeringAbility),
 		},
 		Activated: []ActivatedAbility{
 			EquipAbility("{3}"),
@@ -47,17 +43,4 @@ func init() {
 
 func illusionistsBracersWatchesEquippedCreature(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 	return source.IsAttachedTo(ev.CardID)
-}
-
-func illusionistsBracersCopyActivatedAbility(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	ability := ctx.Trigger().Event.StackItemID
-	if ability == uuid.Nil {
-		return nil
-	}
-	return CopyAbility{
-		ItemID:           ability,
-		Controller:       item.Controller,
-		ChooseNewTargets: true,
-	}.Apply(ctx)
 }
