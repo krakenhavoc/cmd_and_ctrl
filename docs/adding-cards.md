@@ -8199,6 +8199,22 @@ hid. The link is an object reference, so a triggered payoff captures
 re-reading the source at resolution. The three Lorwyn lands are a table
 in `hideaway_lands.go`; a new land of the same shape is a row.
 
+### Adding a "search, exile it face down, later chapters use it" card (#4077)
+
+When a search exiles a card that a LATER ability of the same permanent
+names ("the exiled card" — The Creation of Avacyn), link the search to the
+permanent object. `SearchLibrary{Dest: game.ZoneExile, FaceDown:
+game.FaceDownHidden, LinkTo: ref}` stamps `Card.ExiledWith` (and
+`HiddenBy`, so the permanent's controller may look at it); `ref` is
+`g.SourceObjectForEffect(item)`. The later ability lists the card with
+`g.ExiledWithForEffect(ref)`. Two verbs in
+[exiled_card_chapters.go](../server/internal/game/exiled_card_chapters.go)
+cover the payoffs: `TurnExiledFaceUpForEffect` (shows it to every seat)
+and `PutExiledCreatureOntoBattlefieldOrHandForEffect` (the "you may put
+it onto the battlefield, otherwise into its owner's hand" prompt). The
+worked card is
+[the_creation_of_avacyn.go](../server/internal/cards/effects/the_creation_of_avacyn.go).
+
 ### Adding a manifest dread card (S43+, ADR 0082 amendment 2026-10-07)
 
 Manifest dread (CR 701.62a) is the choice manifest does not have: look

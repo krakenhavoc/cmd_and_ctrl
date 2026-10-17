@@ -1170,6 +1170,11 @@ type SearchLibrary struct {
 	// (CR 303.4i). Leave it zero otherwise; a found Aura then chooses
 	// what it enchants as it enters (CR 303.4f).
 	EntersAttachedTo game.TargetRef
+	// LinkTo is "exiled with <this>" (CR 607.2a): the exiled cards are
+	// linked to this permanent object, and with FaceDown set to
+	// game.FaceDownHidden its controller may look at them. See
+	// game.SearchLibrarySpec.LinkTo.
+	LinkTo game.PermissionCardRef
 }
 
 func (s SearchLibrary) Apply(ctx *Context) error {
@@ -1210,6 +1215,7 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		AlsoGraveyardAndHand: s.AlsoGraveyardAndHand,
 		TakeAll:              s.TakeAll,
 		EntersAttachedTo:     s.EntersAttachedTo,
+		LinkTo:               s.LinkTo,
 	})
 }
 
