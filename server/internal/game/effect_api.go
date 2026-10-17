@@ -2513,6 +2513,17 @@ type SearchLibrarySpec struct {
 	// Aura chooses its host as it enters (aura_host.go).
 	EntersAttachedTo TargetRef
 
+	// LinkTo is CR 607.2a's "exiled with <this>" for a search that exiles
+	// what it finds (#4077, The Creation of Avacyn): the taken cards
+	// carry Card.ExiledWith naming this OBJECT, so a later chapter of
+	// the same permanent finds "the exiled card" with ExiledWithForEffect
+	// and a different object (or the same card back from a bounce) finds
+	// nothing. Combined with FaceDownHidden the card is also HiddenBy
+	// this object, so the controller of the permanent that exiled it may
+	// look at it (CR 406.3, the hideaway viewer rule). Plain data, no
+	// closure. Meaningful only with Dest ZoneExile; zero links nothing.
+	LinkTo PermissionCardRef
+
 	// Optional marks a "you MAY search" — the whole search is optional,
 	// which is a different thing from failing to find (#3053).
 	//
@@ -3103,7 +3114,14 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 	// CR 903.9's offer, are not in it — the same reading the
 	// battlefield branch has used since #478, where a fetched permanent
 	// whose entry was replaced away is not "found" either.
-	return g.routeAllThenLocked(searchRoute(spec.Player, spec.Dest, spec.FaceDown), ids, func(g *Game, found []uuid.UUID) error {
+	route := searchRoute(spec.Player, spec.Dest, spec.FaceDown)
+	if spec.Dest == ZoneExile && spec.LinkTo.ID != uuid.Nil {
+		route.ExiledWith = spec.LinkTo
+		if spec.FaceDown == FaceDownHidden {
+			route.HiddenBy = spec.LinkTo
+		}
+	}
+	return g.routeAllThenLocked(route, ids, func(g *Game, found []uuid.UUID) error {
 		p := g.playerByIDLocked(spec.libraryOwnerID())
 		if p == nil {
 			return ErrPlayerNotFound
