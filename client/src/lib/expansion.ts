@@ -43,6 +43,7 @@
 import type { CardView, GameView } from "./protocol";
 import type { TableLayout } from "./tableLayout";
 import { isLegalCardTarget, isLegalPlayerTarget, type TargetingState } from "./targeting";
+import { L } from "./labels";
 
 export type SeatRendering = "summary" | "full";
 
@@ -175,10 +176,12 @@ export function interactionReason(
 //
 // The "reflow" expand style. On an opponent's turn the active opponent's
 // board takes most of the opponents' row and the other opponents shrink
-// to an avatar card: name, avatar and life, the same identity the focus
-// layout's summaries lead with. Hovering or clicking that avatar opens
-// the seat's board in the expanded overlay (ADR 0120), so nothing is out
-// of reach.
+// to an avatar card: the identity the focus layout's summaries lead
+// with, and since #4102 a compact read-out of hand, mana, creatures and
+// piles. The cards stack in one column at the row's left end, in the
+// order the seats play (reflowAvatarOrder, reflowGrid; ADR 0077 as
+// amended 2026-10-17). Hovering or clicking that avatar opens the seat's
+// board in the expanded overlay (ADR 0120), so nothing is out of reach.
 //
 // It changes only on a turn boundary, because the active seat changes
 // only there, and it never shrinks a seat a live prompt needs
@@ -236,22 +239,146 @@ export function decideReflow(opponents: readonly ReflowSeat[], ctx: ReflowContex
   return { focusSeatID: focus.id, avatarSeatIDs: avatars };
 }
 
-/** The width of an avatar card's grid column. */
-export const REFLOW_AVATAR_COLUMN = "var(--reflow-avatar-w, 132px)";
+/** The width of the avatar cards' column: a token, 176px (app.css). */
+export const REFLOW_AVATAR_COLUMN = "var(--reflow-avatar-w)";
+
+/** One opponent's cell in the reflow's grid. */
+export interface ReflowCell {
+  id: string;
+  /** The seat's grid-area name (its SeatPosition). */
+  area: string;
+}
+
+/** The board's grid under a reflow, as inline style values. */
+export interface ReflowGrid {
+  columns: string;
+  rows: string;
+  areas: string;
+}
 
 /**
- * reflowColumns is the opponents' row's `grid-template-columns` under a
- * reflow, one track per seat in `columnSeatIDs` order: an avatar card
- * gets a fixed narrow column, the active opponent twice the share of
- * any other full board, and a seat a prompt needs one share.
+ * reflowGrid is the board's grid under a reflow (ADR 0077, amended
+ * 2026-10-17, #4102). Every avatar card goes in ONE column at the left
+ * end of the opponents' row, stacked top to bottom in `avatarOrder`
+ * (reflowAvatarOrder's order), each in a grid row of its own, so two
+ * cards are each half the row's height. The full boards fill the rest
+ * of the row in `columnCells` order (turn order): the focus with two
+ * shares, a seat a prompt needs with one. The viewer's board spans the
+ * bottom row. `split` is the layout's top and bottom row shares (1 and 1
+ * in the row layout, 0.7 and 1.3 in the quadrant one), and the avatar
+ * rows share the top one evenly. Every seat stays a cell of the board's
+ * one grid, so CombatArrows and boardAnchor keep measuring against it.
  */
-export function reflowColumns(columnSeatIDs: readonly string[], reflow: Reflow): string {
-  return columnSeatIDs
-    .map((id) => {
-      if (reflow.avatarSeatIDs.has(id)) return REFLOW_AVATAR_COLUMN;
-      return id === reflow.focusSeatID ? "minmax(0, 2fr)" : "minmax(0, 1fr)";
-    })
-    .join(" ");
+export function reflowGrid(
+  columnCells: readonly ReflowCell[],
+  avatarOrder: readonly string[],
+  reflow: Reflow,
+  split: readonly [number, number] = [1, 1],
+): ReflowGrid {
+  const areaOf = new Map(columnCells.map((c) => [c.id, c.area]));
+  const avatars = avatarOrder.flatMap((id) => {
+    const area = areaOf.get(id);
+    return area && reflow.avatarSeatIDs.has(id) ? [area] : [];
+  });
+  const boards = columnCells.filter((c) => !reflow.avatarSeatIDs.has(c.id));
+  const tracks: string[] = boards.map((c) =>
+    c.id === reflow.focusSeatID ? "minmax(0, 2fr)" : "minmax(0, 1fr)",
+  );
+  if (avatars.length > 0) tracks.unshift(REFLOW_AVATAR_COLUMN);
+  const boardAreas = boards.map((c) => c.area).join(" ");
+  const topRows = Math.max(1, avatars.length);
+  const share = Number((split[0] / topRows).toFixed(4));
+  const rows = [
+    ...Array.from({ length: topRows }, () => `minmax(0, ${share}fr)`),
+    `minmax(0, ${split[1]}fr)`,
+  ];
+  const top =
+    avatars.length > 0
+      ? avatars.map((a) => `"${[a, boardAreas].filter(Boolean).join(" ")}"`)
+      : [`"${boardAreas}"`];
+  const self = `"${Array.from({ length: tracks.length }, () => "self").join(" ")}"`;
+  return { columns: tracks.join(" "), rows: rows.join(" "), areas: [...top, self].join(" ") };
+}
+
+// ---- The avatar cards' turn order (ADR 0077, amended 2026-10-17) ------
+//
+// The column reads in the order the seats play: the top card is the
+// seat that plays soonest after the active one, counting round the table
+// in seat order. Each card says who plays right before it. It is the
+// seating order, not a prediction: extra turns, skipped turns and
+// turn-order changes are not foreseen (call 7), and the active board's
+// gold ring stays the one signal of whose turn it is now.
+
+/** One seat at the table, in seat (turn) order, the viewer included. */
+export interface TurnOrderSeat {
+  id: string;
+  name: string;
+  eliminated?: boolean;
+}
+
+/** One avatar card, in the column's order. */
+export interface AvatarCardOrder {
+  id: string;
+  /**
+   * Who plays right before this seat: "Next up", "After you" or "After
+   * <name>" (labels.ts; drawn upper case). Null for a seat that is out.
+   */
+  chip: string | null;
+  /** The seat is out of the game: it sorts last and shows "out". */
+  out: boolean;
+}
+
+/**
+ * reflowAvatarOrder sorts the avatar-card seats by how soon each plays
+ * after `activeID`, counting round `seats` (every seat, in seat order)
+ * from the active seat, and names who plays right before each. A seat
+ * that is out plays no turn, so it is skipped when finding the seat
+ * before, and an eliminated avatar seat sorts last with no chip. An ID
+ * in `avatarIDs` that is not at the table, or is the active seat, is
+ * dropped.
+ */
+export function reflowAvatarOrder(
+  seats: readonly TurnOrderSeat[],
+  activeID: string,
+  viewerID: string | null,
+  avatarIDs: Iterable<string>,
+): AvatarCardOrder[] {
+  const n = seats.length;
+  const active = seats.findIndex((s) => s.id === activeID);
+  if (active < 0) return [];
+  const want = new Set(avatarIDs);
+  const live: { order: AvatarCardOrder; d: number }[] = [];
+  const out: { order: AvatarCardOrder; d: number }[] = [];
+  seats.forEach((s, i) => {
+    if (!want.has(s.id) || i === active) return;
+    const d = (i - active + n) % n;
+    if (s.eliminated) out.push({ order: { id: s.id, chip: null, out: true }, d });
+    else
+      live.push({ order: { id: s.id, chip: chipFor(seats, i, active, viewerID), out: false }, d });
+  });
+  const byDistance = (a: { d: number }, b: { d: number }) => a.d - b.d;
+  return [...live.sort(byDistance), ...out.sort(byDistance)].map((x) => x.order);
+}
+
+// The chip for the seat at index `i`: the nearest seat before it that is
+// still in the game, which is the active seat (Next up), the viewer
+// (After you) or another opponent (After <name>).
+function chipFor(
+  seats: readonly TurnOrderSeat[],
+  i: number,
+  active: number,
+  viewerID: string | null,
+): string {
+  const n = seats.length;
+  for (let k = 1; k < n; k++) {
+    const j = (i - k + n) % n;
+    if (j === active) return L.reflowNextUp;
+    const s = seats[j];
+    if (s.eliminated) continue;
+    if (s.id === viewerID) return L.reflowAfterYou;
+    return L.reflowAfter(s.name);
+  }
+  return L.reflowNextUp;
 }
 
 /**

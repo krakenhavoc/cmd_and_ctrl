@@ -483,4 +483,54 @@ describe("the pile's default spot", () => {
       expect(s.left! + PILE_W).toBeLessThanOrEqual(focusLeft + focusW - PILE_INSET + 0.5);
     });
   });
+
+  // ADR 0077 as amended 2026-10-17 (#4102): the avatar cards stack in
+  // one 176px column at the row's left, each half the row's height, and
+  // the pile's default spot sits right of the column.
+  describe("with the reflow's avatar cards stacked in one column", () => {
+    const COL = 176;
+    const rowH = innerH / 2;
+    const cardH = (rowH - GAP) / 2;
+    const card = (i: number): SeatSlot => ({
+      left: PAD,
+      top: PAD + i * (cardH + GAP),
+      width: COL,
+      height: cardH,
+      self: false,
+      avatar: true,
+    });
+    const focusLeft = PAD + COL + GAP;
+    const focusW = innerW - COL - GAP;
+    const focus: SeatSlot = { left: focusLeft, top: PAD, width: focusW, height: rowH, self: false };
+    const self: SeatSlot = {
+      left: PAD,
+      top: PAD + rowH + GAP,
+      width: innerW,
+      height: rowH,
+      self: true,
+    };
+
+    it("docks right of the column with two cards, never over either", () => {
+      const s = spot([card(0), card(1), focus, self]);
+      expect(s.dock).toEqual({ left: focusLeft, right: focusLeft + focusW });
+      expect(s.left).toBe(Math.round(focusLeft + PILE_INSET));
+      expect(s.left).toBeGreaterThan(PAD + COL);
+    });
+
+    it("docks right of the column with one card", () => {
+      const one: SeatSlot = { ...card(0), height: rowH };
+      const s = spot([one, focus, self]);
+      expect(s.dock).toEqual({ left: focusLeft, right: focusLeft + focusW });
+      expect(s.left).toBeGreaterThan(PAD + COL);
+    });
+
+    it("stays over the full boards when a prompt keeps a second board beside the focus", () => {
+      const half = (focusW - GAP) / 3;
+      const needed: SeatSlot = { ...focus, width: half };
+      const wide: SeatSlot = { ...focus, left: focusLeft + half + GAP, width: focusW - half - GAP };
+      const s = spot([{ ...card(0), height: rowH }, needed, wide, self]);
+      expect(s.dock).toEqual({ left: focusLeft, right: focusLeft + focusW });
+      expect(s.left).toBeGreaterThanOrEqual(focusLeft + PILE_INSET);
+    });
+  });
 });
