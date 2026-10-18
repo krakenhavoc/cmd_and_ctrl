@@ -221,8 +221,25 @@ test.describe("expanded board (#2208)", () => {
         const handTops = [...o.querySelectorAll(".hand-zone .hand-slot")].map(
           (e) => e.getBoundingClientRect().top,
         );
-        return { heights, scrolls, strip, handTops };
+        // Every battlefield tile takes its own clicks: nothing from the
+        // strip (the hand's fan) is the top element over any of it.
+        const covered = [
+          ...o.querySelectorAll<HTMLElement>(
+            ".grid-creatures [data-instance-id], .grid-middle [data-instance-id]",
+          ),
+        ]
+          .filter((e) => {
+            const r = e.getBoundingClientRect();
+            return [0.5, 0.9].some((f) =>
+              document
+                .elementFromPoint(r.left + r.width / 2, r.top + r.height * f)
+                ?.closest(".grid-bottom"),
+            );
+          })
+          .map((e) => e.getAttribute("aria-label"));
+        return { heights, scrolls, strip, handTops, covered };
       });
+      expect(m.covered, `${width}×${height}`).toEqual([]);
       const label = `${width}×${height}`;
       expect(m.heights.length, label).toBeGreaterThanOrEqual(2);
       expect(

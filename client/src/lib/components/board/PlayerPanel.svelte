@@ -2256,11 +2256,17 @@
      Every width: the overlay keeps this layout on a phone too (§5).
      The :not(.flipped) is always true here (an expanded panel is never
      flipped); it weighs these rules as much as the seated layout's
-     .panel:not(.flipped):not(.docked), which they come after. */
+     .panel:not(.flipped):not(.docked), which they come after.
+
+     The floor is rowFit's MIN_CARD_H (56px), not a table panel's: the
+     overlay stops above the dock (§2), so with a request open it can be
+     under 400px tall, and a higher floor made the rows taller than the
+     panel, so the back row ran down under the strip and the hand's
+     cards took its clicks (#4122's branch E2E). */
   .panel.expanded:not(.flipped) {
     --x-strip-h: clamp(64px, 10cqh, 96px);
     --card-h: clamp(
-      96px,
+      56px,
       calc((100cqh - 52px - var(--x-strip-h) - 100px) / 2 * var(--card-scale, 1)),
       calc(240px * var(--card-scale, 1))
     );
@@ -2269,12 +2275,20 @@
     --thumb-h: calc(var(--x-strip-h) - 14px);
     --thumb-w: calc(var(--thumb-h) * 5 / 7);
     grid-template-columns: auto minmax(0, 1fr);
-    grid-template-rows: auto minmax(var(--creature-min, 0px), auto) 1fr auto;
+    grid-template-rows: auto minmax(var(--creature-min, 0px), auto) minmax(0, 1fr) auto;
     grid-template-areas:
       "head      head"
       "creatures creatures"
       "middle    middle"
       "piles     bottom";
+  }
+  /* The back row never reaches past its track into the strip: should
+     the cards still not fit (the card-size setting at "large" in a short
+     overlay), it is cut at the strip's hairline rather than drawn under
+     the hand, whose cards would take its clicks. The table's back row
+     keeps its min-content minimum (#3893). */
+  .panel.expanded:not(.flipped) .grid-middle {
+    min-height: 0;
   }
   .panel.expanded:not(.flipped) .rail {
     display: contents;

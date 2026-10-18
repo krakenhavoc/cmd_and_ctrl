@@ -578,4 +578,26 @@ describe("the overlay's layout (#4122)", () => {
     expect(block).toContain("calc(240px * var(--card-scale, 1))");
     expect(block).not.toContain("--card-scale-opponent");
   });
+
+  // #4122's branch E2E: with a dock request open the overlay is short,
+  // and a 96px floor made the rows taller than the panel. The back row
+  // ran down under the strip and the opponent's face-down fan took the
+  // click meant for a card in it. The floor is rowFit's MIN_CARD_H, the
+  // back row's track may shrink to nothing, and the back row is cut at
+  // its track rather than reaching under the strip.
+  it("never lets the back row reach under the strip", () => {
+    const src = readFileSync("src/lib/components/board/PlayerPanel.svelte", "utf8");
+    const at = src.indexOf("  .panel.expanded:not(.flipped) {");
+    const block = src.slice(at, src.indexOf("\n  }", at));
+    expect(block).toMatch(/--card-h: clamp\(\s*56px,/);
+    expect(block).toContain(
+      "grid-template-rows: auto minmax(var(--creature-min, 0px), auto) minmax(0, 1fr) auto;",
+    );
+    const mid = src.indexOf("  .panel.expanded:not(.flipped) .grid-middle {");
+    expect(mid).toBeGreaterThan(0);
+    expect(src.slice(mid, src.indexOf("\n  }", mid))).toContain("min-height: 0;");
+    // .grid-middle itself clips what does not fit, vertically.
+    const base = src.indexOf("  .grid-middle {");
+    expect(src.slice(base, src.indexOf("\n  }", base))).toContain("overflow-y: hidden;");
+  });
 });

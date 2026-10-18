@@ -365,6 +365,12 @@ the piles and the hand fan.
 - **The card size at 1024×768 is about 180px, not 200px.** A top-row seat's
   overlay opens below its avatar (ADR 0204 §4), so it is shorter than the
   board. The size comes from the overlay's height.
+- **The card size's floor is 56px (rowFit's `MIN_CARD_H`), not 96px.** The
+  overlay stops above the dock, so while a request is open it can be under 400px
+  tall. With a 96px floor the rows were taller than the panel. The back row then
+  ran under the strip, and the face-down fan took a target click (the branch
+  E2E). The back row's track can also shrink to nothing, and the back row is
+  cut at its track rather than reaching under the strip.
 - **The Playwright check uses the two-player fixture**, at the three sizes. The
   suite has no three- or four-player setup. The PR's screenshots cover 3 and 4
   seats from a fixture rendering of the real `Board`.
