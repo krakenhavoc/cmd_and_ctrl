@@ -140,4 +140,107 @@ test.describe("expanded board (#2208)", () => {
     await expect(expanded).toHaveCount(0);
     await expect(tableRegions).toHaveCount(1);
   });
+
+  // ADR 0120 as amended 2026-10-18 (#4122): the overlay is a reading
+  // surface. At each screen size the header names the seat, the
+  // battlefield groups draw at one card size, nothing in it scrolls
+  // sideways, and the hand stays in its strip. The opponent's Sol Ring
+  // (artifacts) and Glorious Anthem (enchantments) are two back-row
+  // groups that a table panel draws a step smaller than its creatures.
+  test("lays the board out evenly, under a header naming the seat (#4122)", async ({
+    browser,
+    request,
+  }, testInfo) => {
+    test.slow();
+    setup = await setupS19Game(browser, request);
+    const { admin, caster, opponent } = setup;
+    const page = caster.page;
+
+    for (const name of [CARDS.SolRing, CARDS.GloriousAnthem]) {
+      await adminMoveByName(
+        admin,
+        opponent.playerID,
+        name,
+        "library",
+        "battlefield",
+      );
+    }
+    await admin.waitFor(
+      (v) =>
+        findCardOnBattlefield(v, CARDS.SolRing) !== null &&
+        findCardOnBattlefield(v, CARDS.GloriousAnthem) !== null,
+      "Sol Ring and Glorious Anthem on battlefield",
+    );
+
+    const table = page.getByRole("region", {
+      name: "Opponent board",
+      exact: true,
+    });
+    const avatar = table.locator(`[data-seat-id="${opponent.playerID}"]`);
+    const expanded = page.getByRole("region", {
+      name: "Opponent's board, expanded",
+    });
+
+    for (const [width, height] of [
+      [1024, 768],
+      [1440, 900],
+      [1920, 1080],
+    ]) {
+      await page.setViewportSize({ width, height });
+      await page.mouse.move(2, 2);
+      await avatar.click();
+      await expect(expanded).toBeVisible();
+      await expect(expanded.locator(".head")).toContainText("Opponent");
+      await expect(
+        expanded.getByRole("button", { name: "Sol Ring", exact: true }),
+      ).toBeVisible();
+      await page.mouse.move(2, 2);
+      // Let the rows fit and the fade finish.
+      await page.waitForTimeout(600);
+
+      const m = await expanded.evaluate((o) => {
+        // Upright box heights: a tapped card's turn is a transform, so
+        // offsetHeight is the same for it as for an untapped one.
+        const heights = [
+          ...o.querySelectorAll<HTMLElement>(
+            ".grid-creatures [data-instance-id], .grid-middle [data-instance-id]",
+          ),
+        ].map((e) => e.offsetHeight);
+        const scrolls = [...o.querySelectorAll<HTMLElement>("*")]
+          .filter((e) => {
+            const x = getComputedStyle(e).overflowX;
+            return (
+              (x === "auto" || x === "scroll") &&
+              e.scrollWidth > e.clientWidth + 1
+            );
+          })
+          .map((e) => e.className);
+        const strip = o
+          .querySelector(".grid-bottom")!
+          .getBoundingClientRect().top;
+        const handTops = [...o.querySelectorAll(".hand-zone .hand-slot")].map(
+          (e) => e.getBoundingClientRect().top,
+        );
+        return { heights, scrolls, strip, handTops };
+      });
+      const label = `${width}×${height}`;
+      expect(m.heights.length, label).toBeGreaterThanOrEqual(2);
+      expect(
+        Math.max(...m.heights) - Math.min(...m.heights),
+        label,
+      ).toBeLessThanOrEqual(1);
+      expect(m.scrolls, label).toEqual([]);
+      for (const top of m.handTops)
+        expect(top, label).toBeGreaterThanOrEqual(m.strip - 1);
+
+      await testInfo.attach(`expanded-${width}x${height}.png`, {
+        body: await page.screenshot(),
+        contentType: "image/png",
+      });
+
+      // Unpin, which closes it.
+      await avatar.click();
+      await expect(expanded).toHaveCount(0);
+    }
+  });
 });

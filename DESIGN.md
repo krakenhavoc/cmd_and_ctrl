@@ -290,6 +290,11 @@ flight does not).
   2026-10-17): `--reflow-avatar-w` (176px) wide, stacked in the order the seats
   play, each with a mono turn chip and a four-line read-out. The active board
   fills the rest; the stack pile and an expanded board open right of the column.
+- **An expanded board is a reading surface**
+  ([ADR 0120](docs/decisions/0120-expand-a-players-board.md), amended
+  2026-10-18): a header with the seat's one identity, its turn chip and the pin;
+  every battlefield group, the command zone included, at one card size capped at
+  240px; and a short strip along the bottom for the piles and the hand.
 - **Installed app.** Under `display-mode: standalone` `#app` pays back the
   safe-area insets; respect them in anything fixed to an edge.
 

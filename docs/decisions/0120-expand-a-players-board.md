@@ -187,9 +187,10 @@ The owner's answers did not settle these. Each is decided above, and each can be
 
 ### Amendment (2026-10-18): even card sizes, a seat strip and a header (#4122)
 
-**Status:** Proposed · 2026-10-18 · S73 — Big boards: layout and per-action cost.
+**Status:** Accepted · 2026-10-18 · S73 — Big boards: layout and per-action cost.
+The owner accepted it as written the same day, calls 9–16 included.
 **Issue:** [#4122](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4122). Written
-plan-first; no code changed with it. Checked on `origin/develop` at `c2fe92bd1`.
+plan-first; checked on `origin/develop` at `c2fe92bd1`.
 
 **Owner scope (2026-10-18), binding.**
 
@@ -352,6 +353,21 @@ the eight above):
 and the header. Should the overlay show it once, in the header (call 12), or
 twice? *Recommended: once, in the header.* A second disc would be decoration, and
 it would make the player's own click target and arrow anchor ambiguous.
+**Owner answer (2026-10-18), binding:** once, in the header. The strip holds only
+the piles and the hand fan.
+
+**As built (2026-10-18).** Three details differ from the plan below:
+
+- **Your own castable strip stays in your strip.** On your own seat, the commander
+  is in the strip you cast from (ExileStrip, #2202), not in `CommandStrip`.
+  It stays beside your hand, sized to the strip like the hand. Only another
+  seat's command zone moves to the back row.
+- **The card size at 1024×768 is about 180px, not 200px.** A top-row seat's
+  overlay opens below its avatar (ADR 0204 §4), so it is shorter than the
+  board. The size comes from the overlay's height.
+- **The Playwright check uses the two-player fixture**, at the three sizes. The
+  suite has no three- or four-player setup. The PR's screenshots cover 3 and 4
+  seats from a fixture rendering of the real `Board`.
 
 **Delivery.** One client PR into `develop` (S73, closes #4122), once the owner has
 accepted this amendment:

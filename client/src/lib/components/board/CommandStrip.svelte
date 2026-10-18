@@ -23,9 +23,13 @@
     seat: Pick<PlayerView, "id" | "name" | "command" | "commander_casts">;
     // A SeatSummary's row: smaller cards, no hand beside them.
     compact?: boolean;
+    // ADR 0120 as amended 2026-10-18 (call 10): a group of the expanded
+    // overlay's back row, labelled like the zones beside it and drawn at
+    // the size the panel gives it (--strip-h, set by PlayerPanel).
+    row?: boolean;
   }
 
-  const { seat, compact = false }: Props = $props();
+  const { seat, compact = false, row = false }: Props = $props();
 
   const cards = $derived(seat.command?.cards ?? []);
 
@@ -38,9 +42,15 @@
   <div
     class="command-strip"
     class:compact
+    class:row
     role="group"
     aria-label={L.commandZone(seat.name, seat.command?.count ?? cards.length)}
   >
+    {#if row}
+      <span class="row-label" aria-hidden="true" data-dice-avoid>
+        <span class="row-name">Command</span><span class="row-count">{cards.length}</span>
+      </span>
+    {/if}
     {#each cards as card (card.instance_id)}
       {@const tax = commanderTax(seat.commander_casts?.[card.instance_id])}
       <div class="slot" title={`${card.name} · command zone`}>
@@ -73,6 +83,40 @@
     --strip-h: 56px;
     align-self: center;
     padding: 0;
+  }
+  /* A back-row group in the expanded overlay: the zone rows' padding
+     and label (BattlefieldRow's .row and .row-label), so it reads as one
+     of them. */
+  .command-strip.row {
+    position: relative;
+    align-self: flex-start;
+    gap: 8px;
+    padding: 18px 6px 6px;
+  }
+  .row-label {
+    position: absolute;
+    top: 1px;
+    left: 6px;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    font-family: var(--font-ui);
+    font-size: 11px;
+    letter-spacing: 0.01em;
+    color: var(--fg-dim);
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .row-count {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--fg-muted);
+    background: var(--overlay);
+    border-radius: 999px;
+    padding: 0 6px;
+    line-height: 16px;
   }
   .slot {
     --card-h: var(--strip-h);
