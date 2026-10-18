@@ -361,6 +361,35 @@ the chip text, pure and unit-tested), `Board.svelte`'s reflow grid, and
 1024×768 and 1440×900 with two and three opponents, on each opponent's turn,
 under War room, Classic and High contrast. Closes #4102.
 
+### Amendment (2026-10-18): a targeted seat opens beside the active one (#4115)
+
+**Status:** Accepted · 2026-10-18 · S73 — Big boards: layout and per-action cost.
+**Issue:** [#4115](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4115), an
+in-app report. Bot 1 cast Beast Within on Bot 3's Armament Dragon while Bot 3 was
+an avatar card, and nothing on the table showed the target without the overlay.
+
+**Owner answers (2026-10-18), binding.**
+
+1. **Expand, settle-safe.** While a stack item targets a seat that would be an
+   avatar card, the seat is a full board beside the active one. That is either
+   the player itself or the controller of a battlefield permanent the item
+   targets.
+2. **50/50.** The active board gives up its second share, and the boards split
+   the row evenly. A seat a prompt needs keeps one share, as before.
+
+**The invariant changes.** §3 and `expansion.ts` held that a board moves only on
+a viewer's action or a turn change, never on a table event, because a move can
+land under a click already in flight. This is the one table event that moves
+the row, and it keeps the reason for the rule:
+- the change goes through a **settle gate** (`settleGate.ts`), which applies it
+  only once no pointer button is down and the pointer has been still for 150ms;
+- the board fades in over 160ms, as on a turn change;
+- the row goes back when the item leaves the stack, through the same gate.
+
+Targets off the battlefield (a spell on the stack, a card in a graveyard) name
+no board, so they open nothing. A target on the active seat or on you changes
+nothing, because those boards are already drawn.
+
 ## 7. Consequences
 
 **Existing players' tables change appearance on upgrade.** The v10 → v11 settings

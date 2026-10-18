@@ -329,6 +329,62 @@ describe("reflow on an opponent's turn", () => {
   });
 });
 
+// ADR 0077 as amended 2026-10-18 (#4115): Bob's spell targets Dee's bear,
+// so Dee's board opens beside Bob's, 50/50, once the pointer is at rest.
+describe("a stack item targeting an avatar-card seat", () => {
+  const targetingDee = () => {
+    const view = gameView(1);
+    view.stack_items = [
+      {
+        id: "beast-within",
+        controller: BOB,
+        source_card_id: "bw",
+        targets: [{ kind: "card", id: "dee-bear" }],
+      } as unknown as StackItemView,
+    ];
+    return view;
+  };
+
+  it("opens the targeted seat's board beside the active one, split evenly", () => {
+    mountBoard(1, targetingDee());
+    // Not at once: the settle gate waits for a still pointer.
+    expect(isAvatarCard("Dee")).toBe(true);
+    vi.advanceTimersByTime(150);
+    flushSync();
+    expect(isFullBoard("Dee")).toBe(true);
+    expect(isFullBoard("Bob")).toBe(true);
+    expect(isAvatarCard("Cat")).toBe(true);
+    expect(board().style.gridTemplateColumns).toBe(
+      "var(--reflow-avatar-w) minmax(0, 1fr) minmax(0, 1fr)",
+    );
+    expect(region("Dee")!.closest(".slot")!.classList.contains("reflow-targeted")).toBe(true);
+  });
+
+  it("waits while a pointer button is down, so a click is never moved", () => {
+    mountBoard(1, targetingDee());
+    window.dispatchEvent(new Event("pointerdown"));
+    vi.advanceTimersByTime(2000);
+    flushSync();
+    expect(isAvatarCard("Dee")).toBe(true);
+    window.dispatchEvent(new Event("pointerup"));
+    vi.advanceTimersByTime(150);
+    flushSync();
+    expect(isFullBoard("Dee")).toBe(true);
+  });
+
+  it("goes back to an avatar card when the item leaves the stack", () => {
+    const { setProps } = mountBoard(1, targetingDee());
+    vi.advanceTimersByTime(150);
+    flushSync();
+    expect(isFullBoard("Dee")).toBe(true);
+    setProps({ view: gameView(1) } as never);
+    vi.advanceTimersByTime(150);
+    flushSync();
+    expect(isAvatarCard("Dee")).toBe(true);
+    expect(board().style.gridTemplateColumns).toBe("var(--reflow-avatar-w) minmax(0, 2fr)");
+  });
+});
+
 describe("no reflow", () => {
   function expectEqualRow(): void {
     expect(avatarCards()).toHaveLength(0);

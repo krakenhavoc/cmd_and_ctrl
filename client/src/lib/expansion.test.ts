@@ -16,6 +16,7 @@ import {
   type ReflowSeat,
   seatControlsLegalTarget,
   seatHasAttackersOn,
+  stackTargetSeatIDs,
   type ExpansionSettings,
   type SeatSignals,
   type TableSignals,
@@ -278,6 +279,59 @@ describe("decideReflow", () => {
     )!;
     expect(r.focusSeatID).toBe("bob");
     expect([...r.avatarSeatIDs]).toEqual(["dee"]);
+    expect(r.evenSplit).toBe(false);
+  });
+
+  // #4115: a seat a stack item targets is a board too, and the row splits evenly.
+  it("draws a targeted seat as a full board and splits the row evenly", () => {
+    const r = decideReflow(
+      [opp("bob", { isActiveSeat: true }), opp("cat"), opp("dee", { targeted: true })],
+      ctx(),
+    )!;
+    expect(r.focusSeatID).toBe("bob");
+    expect([...r.avatarSeatIDs]).toEqual(["cat"]);
+    expect(r.evenSplit).toBe(true);
+  });
+
+  it("ignores a target on the active seat: it is already the focus", () => {
+    const r = decideReflow(
+      [opp("bob", { isActiveSeat: true, targeted: true }), opp("cat"), opp("dee")],
+      ctx(),
+    )!;
+    expect([...r.avatarSeatIDs].sort()).toEqual(["cat", "dee"]);
+    expect(r.evenSplit).toBe(false);
+  });
+});
+
+describe("stackTargetSeatIDs", () => {
+  const view = (targets: { kind: string; id?: string }[][]): GameView =>
+    ({
+      battlefield: {
+        cards: [
+          { instance_id: "dragon", owner: "dee", controller: "dee" },
+          { instance_id: "stolen", owner: "cat", controller: "bob" },
+        ],
+      },
+      stack_items: targets.map((t, i) => ({ id: `s${i}`, targets: t })),
+    }) as unknown as GameView;
+
+  it("names a targeted player and a targeted permanent's controller", () => {
+    const ids = stackTargetSeatIDs(
+      view([[{ kind: "card", id: "dragon" }], [{ kind: "player", id: "cat" }]]),
+    );
+    expect([...ids].sort()).toEqual(["cat", "dee"]);
+  });
+
+  it("names the controller, not the owner, of a borrowed permanent", () => {
+    expect([...stackTargetSeatIDs(view([[{ kind: "card", id: "stolen" }]]))]).toEqual(["bob"]);
+  });
+
+  it("leaves out targets off the battlefield, self and none", () => {
+    const ids = stackTargetSeatIDs(
+      view([[{ kind: "card", id: "a-spell" }, { kind: "self" }, { kind: "none" }]]),
+    );
+    expect(ids.size).toBe(0);
+    expect(stackTargetSeatIDs({ stack_items: [] } as unknown as GameView).size).toBe(0);
   });
 });
 
@@ -332,6 +386,13 @@ describe("reflowGrid", () => {
     const g = reflowGrid(cells, ["bob"], r);
     expect(g.columns).toBe(`${REFLOW_AVATAR_COLUMN} minmax(0, 1fr) minmax(0, 2fr)`);
     expect(g.areas).toBe('"next across across_next" "self self self"');
+  });
+
+  it("splits the boards evenly when a targeted seat sits beside the focus (#4115)", () => {
+    const r = { focusSeatID: "bob", avatarSeatIDs: new Set(["cat"]), evenSplit: true };
+    const g = reflowGrid(cells, ["cat"], r);
+    expect(g.columns).toBe(`${REFLOW_AVATAR_COLUMN} minmax(0, 1fr) minmax(0, 1fr)`);
+    expect(g.areas).toBe('"across next across_next" "self self self"');
   });
 
   it("has no column when no seat is an avatar card", () => {
