@@ -2128,6 +2128,18 @@
     color: #b8e0b8;
     background: rgba(20, 40, 20, 0.92);
     border-color: rgba(150, 200, 150, 0.5);
+    /* #4087: the number a planeswalker is read by, so it is the biggest
+       thing on the card face, sized with the card (13px at the
+       smallest a row shrinks to, 20px on a large one) instead of the
+       11px every other pip uses. */
+    --loyalty-size: clamp(13px, calc(var(--card-h, 123px) * 0.14), 20px);
+    font-size: var(--loyalty-size);
+    font-weight: 800;
+    line-height: 1.15;
+    min-width: calc(var(--loyalty-size) * 1.9);
+    text-align: center;
+    box-sizing: border-box;
+    padding: 1px 6px;
   }
   .badge.loyalty.with-pt {
     /* A creature planeswalker (#2046): loyalty rides above P/T. */

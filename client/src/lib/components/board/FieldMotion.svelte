@@ -399,7 +399,9 @@
   .tag {
     position: absolute;
     left: 50%;
-    top: -9px;
+    /* #4090: inside the card's top edge, not above it: above it the tag
+       was over the row's label (the group's name and count). */
+    top: 3px;
     transform: translateX(-50%);
     padding: 1px 6px;
     border-radius: 999px;

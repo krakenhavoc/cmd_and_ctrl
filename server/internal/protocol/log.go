@@ -461,6 +461,17 @@ const (
 	// ability or a clause of a resolving spell), so without a line the
 	// marker beside the player's name would appear unexplained. #2696.
 	LogCitysBlessing LogKind = "citys_blessing"
+	// LogVenture — a player moved their venture marker into a room (CR
+	// 309.4, ADR 0203). `Actor` is the player; `Label` is "<dungeon> —
+	// <room>". Narrated because the marker moves in the middle of a
+	// resolving venture, and the room ability it triggers is named only
+	// by its own stack line.
+	LogVenture LogKind = "venture"
+	// LogDungeonCompleted — a player completed a dungeon (CR 309.7).
+	// `Actor` is the player; `Label` is the dungeon's name. Narrated
+	// because the state-based action that completes it (CR 704.5t) has
+	// no spell or ability behind it.
+	LogDungeonCompleted LogKind = "dungeon_completed"
 	// LogSpeed — a player's speed changed (CR 702.179, ADR 0138).
 	// `Actor` is the player and `Amount` the new speed. Narrated
 	// because the start-your-engines state-based action gives a
@@ -2087,6 +2098,17 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventVentureRoom:
+		// ADR 0203. A dungeon card and its marker are public.
+		base.Kind = LogVenture
+		base.Label = ventureRoomName(ev.Label)
+		return base, true
+
+	case game.EventDungeonCompleted:
+		base.Kind = LogDungeonCompleted
+		base.Label = dungeonName(ev.Label)
+		return base, true
+
 	case game.EventCitysBlessing:
 		// CR 702.131. The granting object is a public permanent or the
 		// resolving spell, so the card reference is safe on the wire.
@@ -3084,6 +3106,10 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("It becomes %s", e.Label)
 	case LogCitysBlessing:
 		return fmt.Sprintf("%s gets the city's blessing", actor)
+	case LogVenture:
+		return fmt.Sprintf("%s ventures into %s", actor, e.Label)
+	case LogDungeonCompleted:
+		return fmt.Sprintf("%s completes %s", actor, e.Label)
 	case LogSpeed:
 		if e.Amount >= game.MaxSpeed {
 			return fmt.Sprintf("%s has max speed", actor)
@@ -3794,4 +3820,27 @@ func paperPaidSuffix(e LogEvent) string {
 		return ", paying " + e.PaperPaid + " on paper"
 	}
 	return ""
+}
+
+// dungeonName is a dungeon's printed name from its key, the key itself
+// when this binary does not register it.
+func dungeonName(key string) string {
+	if d := game.DungeonByKey(key); d != nil {
+		return d.Name
+	}
+	return key
+}
+
+// ventureRoomName renders an EventVentureRoom label ("undercity/forge")
+// as "Undercity — Forge".
+func ventureRoomName(label string) string {
+	dungeon, room := game.SplitVentureRoomLabel(label)
+	d := game.DungeonByKey(dungeon)
+	if d == nil {
+		return label
+	}
+	if r := d.Room(room); r != nil {
+		return d.Name + " — " + r.Name
+	}
+	return d.Name
 }

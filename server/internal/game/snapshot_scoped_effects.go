@@ -133,6 +133,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := setCreatureTypesModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #4072: a subtype loss naming no subtype.
+			if problem := loseSubtypesModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			// #3398: an attack tax with no player or an unreadable cost.
 			if problem := attackTaxModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
@@ -172,6 +176,9 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			unknown = append(unknown, "scoped-effect scope "+string(e.Scope))
 		}
 	}
+	// ADR 0203: a venture marker on a dungeon or room this binary does
+	// not register.
+	unknown = append(unknown, unknownDungeonKeys(s.Seats)...)
 	// ADR 0109 Shared machinery 2: every stored duration, wherever it
 	// is — a scoped effect's, a delayed trigger's, a cast permission's,
 	// a player static's, an untap hold's — is one this binary can read,

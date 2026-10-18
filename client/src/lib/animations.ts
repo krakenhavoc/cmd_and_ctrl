@@ -49,6 +49,10 @@ type AnimationConfig = {
   dice: boolean;
   // ADR 0134 §5: attackers lunge and hits land.
   combat: boolean;
+  // ADR 0119 amendment 2026-10-16 §D: the stack's arrival trace
+  // (StackArrival.svelte reads the setting itself; kept here so the
+  // whole group is mirrored).
+  stackArrival: boolean;
 };
 const cfg: AnimationConfig = {
   enabled: true,
@@ -62,6 +66,7 @@ const cfg: AnimationConfig = {
   damagePopups: true,
   dice: true,
   combat: true,
+  stackArrival: true,
 };
 export function setAnimationConfig(next: Partial<AnimationConfig>): void {
   Object.assign(cfg, next);

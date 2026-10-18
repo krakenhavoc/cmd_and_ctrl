@@ -474,6 +474,12 @@ type GameSnapshot struct {
 	// behaviour (the later bullets had already run). No schema bump.
 	PausedModeWalk *modeWalkSnapshot `json:"pausedModeWalk,omitempty"`
 
+	// PausedStepWalk is Game.pausedStepWalk (#4012, step_walk.go): the
+	// resolving item's effect steps parked behind a prompt an earlier
+	// step queued. A file written before it restores nil, which is the
+	// old behaviour (the later steps had already run). No schema bump.
+	PausedStepWalk *stepWalkSnapshot `json:"pausedStepWalk,omitempty"`
+
 	// PausedResolutionTail is Game.pausedResolutionTail (#3613,
 	// resolution_tail.go): the end of a resolution parked behind one of
 	// its own prompts. A file written before it restores nil, which is
@@ -740,23 +746,29 @@ type playerSnapshot struct {
 	// AutoAnswers is Player.AutoAnswers (ADR 0127 §8). Additive: a file
 	// written before it restores with none, which asks every prompt;
 	// the client's reconcile sends the rules again on the next frame.
-	AutoAnswers        map[string]AutoAnswer `json:"autoAnswers,omitempty"`
-	MulligansTaken     int                   `json:"mulligansTaken"`
-	DeckImported       bool                  `json:"deckImported"`
-	UndosRemaining     int                   `json:"undosRemaining"`
-	DiscordID          string                `json:"discordId,omitempty"`
-	DiscordAvatarHash  string                `json:"discordAvatarHash,omitempty"`
-	DisplayName        string                `json:"displayName,omitempty"`
-	IsBot              bool                  `json:"isBot,omitempty"`
-	BotTier            string                `json:"botTier,omitempty"`
-	BotDeck            string                `json:"botDeck,omitempty"`
-	Agent              bool                  `json:"isAgent,omitempty"`       // ADR 0122 §7, additive in schema 7
-	AgentClient        string                `json:"agentClient,omitempty"`   // ADR 0122 §7, additive in schema 7
-	CitysBlessing      bool                  `json:"citysBlessing,omitempty"` // CR 702.131c, #2696, additive in schema 7
-	AttemptedEmptyDraw bool                  `json:"losesAtNextSba"`
-	CommanderCasts     map[uuid.UUID]int     `json:"commanderCasts,omitempty"`
-	Counters           map[string]int        `json:"counters,omitempty"`
-	MaxHandSize        int                   `json:"maxHandSize"`
+	AutoAnswers       map[string]AutoAnswer `json:"autoAnswers,omitempty"`
+	MulligansTaken    int                   `json:"mulligansTaken"`
+	DeckImported      bool                  `json:"deckImported"`
+	UndosRemaining    int                   `json:"undosRemaining"`
+	DiscordID         string                `json:"discordId,omitempty"`
+	DiscordAvatarHash string                `json:"discordAvatarHash,omitempty"`
+	DisplayName       string                `json:"displayName,omitempty"`
+	IsBot             bool                  `json:"isBot,omitempty"`
+	BotTier           string                `json:"botTier,omitempty"`
+	BotDeck           string                `json:"botDeck,omitempty"`
+	Agent             bool                  `json:"isAgent,omitempty"`       // ADR 0122 §7, additive in schema 7
+	AgentClient       string                `json:"agentClient,omitempty"`   // ADR 0122 §7, additive in schema 7
+	CitysBlessing     bool                  `json:"citysBlessing,omitempty"` // CR 702.131c, #2696, additive in schema 7
+	// Dungeon is the player's dungeon card and venture marker (CR
+	// 309.4, ADR 0203); CompletedDungeons the dungeons they completed
+	// (CR 309.7), by key. Additive within v8: a file without them
+	// restores a player in no dungeon who has completed none.
+	Dungeon            *DungeonState     `json:"dungeon,omitempty"`
+	CompletedDungeons  []string          `json:"completedDungeons,omitempty"`
+	AttemptedEmptyDraw bool              `json:"losesAtNextSba"`
+	CommanderCasts     map[uuid.UUID]int `json:"commanderCasts,omitempty"`
+	Counters           map[string]int    `json:"counters,omitempty"`
+	MaxHandSize        int               `json:"maxHandSize"`
 	// MaxHandSizeAt is the grant's timestamp (ADR 0113 §3, #2074).
 	// Additive within v7: a file without it restores a grant that
 	// sorts first.
@@ -2210,6 +2222,9 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	// #2789: a modal item's later bullets parked behind one of those
 	// prompts (mode_walk.go).
 	s.PausedModeWalk = snapshotModeWalk(g, g.pausedModeWalk, cen)
+	// #4012: an effect's later steps parked behind one of them
+	// (step_walk.go).
+	s.PausedStepWalk = snapshotStepWalk(g, g.pausedStepWalk, cen)
 	// #3613: the end of the resolution parked behind those prompts.
 	s.PausedResolutionTail = snapshotResolutionTail(g, g.pausedResolutionTail, cen)
 
@@ -2564,6 +2579,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Agent:                 p.Agent,
 		AgentClient:           p.AgentClient,
 		CitysBlessing:         p.CitysBlessing,
+		Dungeon:               cloneDungeonState(p.Dungeon),
+		CompletedDungeons:     append([]string(nil), p.CompletedDungeons...),
 		AttemptedEmptyDraw:    p.AttemptedEmptyDraw,
 		CommanderCasts:        copyIntMap(p.CommanderCasts),
 		Counters:              copyStringIntMap(p.Counters),
@@ -3079,6 +3096,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.eventBatch = s.EventBatch
 	g.resolutionOpen = s.ResolutionOpen
 	g.pausedModeWalk = restoreModeWalk(s.PausedModeWalk)
+	g.pausedStepWalk = restoreStepWalk(s.PausedStepWalk)
 	g.pausedResolutionTail = restoreResolutionTail(s.PausedResolutionTail)
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 	g.preventionFollowUps = clonePreventionFollowUps(s.PreventionFollowUps)
@@ -3534,6 +3552,8 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Agent:              p.Agent,
 		AgentClient:        p.AgentClient,
 		CitysBlessing:      p.CitysBlessing,
+		Dungeon:            cloneDungeonState(p.Dungeon),
+		CompletedDungeons:  append([]string(nil), p.CompletedDungeons...),
 		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
 		Counters:           copyStringIntMap(p.Counters),
 		MaxHandSize:        p.MaxHandSize,

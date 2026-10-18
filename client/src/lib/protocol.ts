@@ -1218,6 +1218,12 @@ export type LogKind =
   // #2696 (CR 702.131): a player got the city's blessing. `seat` is who,
   // `card_id` the ascend permanent or spell whose check granted it.
   | "citys_blessing"
+  // ADR 0203 (#4096): a player moved their venture marker into a room
+  // (CR 309.4). `seat` is who; `label` is "<dungeon> — <room>".
+  | "venture"
+  // ADR 0203: a player completed a dungeon (CR 309.7). `label` is its
+  // name.
+  | "dungeon_completed"
   // ADR 0138 (#2122): a player's speed changed (CR 702.179). `seat` is
   // the player and `amount` the new speed. Narrated because the
   // start-your-engines state-based action has no card behind it.
@@ -2155,6 +2161,13 @@ export interface PickOptionView {
    * The client shows the option's label and nothing of this.
    */
   harm?: number;
+  /**
+   * ADR 0203 (#4096): the dungeon and room a venture prompt's branch
+   * enters, by key — `room` on "choose the next room", `dungeon` alone on
+   * "choose a dungeon". Absent on every other option.
+   */
+  dungeon?: string;
+  room?: string;
 }
 
 export interface ReplacementOptionView {
@@ -2539,6 +2552,13 @@ export interface PlayerView {
   // ascend gives and nothing takes away. Public, identical for every
   // viewer; absent until the seat has it.
   citys_blessing?: boolean;
+  // ADR 0203 (#4096, CR 309.4): the dungeon card this player owns in the
+  // command zone, its rooms and the room their venture marker is in.
+  // Public, identical for every viewer; absent when they own none.
+  dungeon?: DungeonView;
+  // ADR 0203 (CR 309.7): the names of the dungeons this player has
+  // completed, in order, repeats included. Absent when none.
+  completed_dungeons?: string[];
   // ADR 0188 Decision 9 (#3559, CR 614.10): how many of this player's
   // next turns they will skip. Public, identical for every viewer; absent
   // at zero.
@@ -2710,6 +2730,25 @@ export interface PlayerView {
   // (Narset, Parter of Veils; Maralen of the Mornsong as a limit of 0).
   // Derived, public, and absent when no limit applies.
   draw_limit?: DrawLimitView;
+}
+
+// ADR 0203 (#4096): a player's dungeon card (CR 309). `rooms` are in
+// printed order, the topmost first; `room` is the key of the room the
+// venture marker is in.
+export interface DungeonView {
+  id: string;
+  key: string;
+  name: string;
+  room: string;
+  rooms: DungeonRoomView[];
+}
+
+export interface DungeonRoomView {
+  key: string;
+  name: string;
+  text: string;
+  // The keys of the rooms its arrows point to; absent for the last room.
+  leads_to?: string[];
 }
 
 // One emblem (CR 114). `label` is the board name ("Elspeth, Sun's
@@ -2964,6 +3003,13 @@ export interface OptionalCostView {
   // `teamwork_ids`.
   teamwork?: number;
   teamwork_options?: LegalTargetsView;
+  // #4092: a replicate cost that taps a permanent (Psionic Ritual's
+  // "Replicate—Tap an untapped Horror you control"). `min` / `max` are
+  // what ONE payment taps; paying the offer N times names N times that
+  // many on `teamwork_ids`. `max_times` is capped at what the options
+  // cover, and fewer options than `min` means it cannot be taken now.
+  tap_others_label?: string;
+  tap_others_options?: LegalTargetsView;
   // #1703: blight N (CR 701.68a) — put `blight` -1/-1 counters on one
   // creature you control. `blight_options` is your creatures;
   // present-and-empty means you control none. The pick rides

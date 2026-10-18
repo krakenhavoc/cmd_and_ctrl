@@ -22,6 +22,8 @@ func init() {
 	Register(Spec{
 		OracleID: "7b459306-149b-4f43-abc1-2dd70c748c0e",
 		Name:     "Ravenous Chupacabra",
+		// No simplification: audited against the printed text (#4092).
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

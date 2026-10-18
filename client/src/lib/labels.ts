@@ -148,6 +148,31 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}PlayerPanel.svelte`, `${BOARD}SeatSummary.svelte`],
     doc: "another seat's board panel; the tutorial's attack step points at the bot's while it plays (the stem also ends other names, so anchor by the full name)",
   }),
+  reflowNextUp: label({
+    name: "Next up",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/expansion.ts"],
+    doc: "ADR 0077 (amended 2026-10-17, #4102): the chip on a reflow avatar card whose seat plays straight after the active player (drawn upper case)",
+  }),
+  reflowAfterYou: label({
+    name: "After you",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/expansion.ts"],
+    doc: "ADR 0077 (amended 2026-10-17, #4102): the chip on a reflow avatar card whose seat plays straight after the viewer (drawn upper case)",
+  }),
+  reflowAfter: dynamicLabel({
+    stem: "After ",
+    match: "prefix",
+    shape: "After <name>",
+    make: (name: string) => `After ${name}`,
+    example: ["Practice Bot"],
+    kind: "text",
+    role: "generic",
+    owners: ["lib/expansion.ts"],
+    doc: "ADR 0077 (amended 2026-10-17, #4102): the chip on a reflow avatar card naming the opponent who plays right before it (drawn upper case)",
+  }),
   yourHand: label({
     name: "your hand",
     kind: "aria",
@@ -1133,6 +1158,13 @@ export const LABEL_SPECS = {
     owners: ["lib/components/Settings.svelte"],
     doc: "Settings → Advanced: on unless Hide tips was pressed on a tip",
   }),
+  stackArrivalToggle: label({
+    name: "Stack: trace each spell or ability in from its source",
+    kind: "text",
+    role: "checkbox",
+    owners: ["lib/components/Settings.svelte"],
+    doc: "Settings → Animations: the arrival trace, animations.stackArrival (ADR 0119 amendment 2026-10-16 §D)",
+  }),
   startPractice: label({
     name: "Start practice",
     kind: "text",
@@ -1326,6 +1358,13 @@ export const LABEL_SPECS = {
     role: "button",
     owners: [`${BOARD}StandInBanner.svelte`],
     doc: "the banner a player sees on their own seat while a bot plays it: they play it again (ADR 0177 §6)",
+  }),
+  holdShiftToFlip: label({
+    name: "Hold Shift to flip",
+    kind: "text",
+    role: "note",
+    owners: [`${BOARD}HoverZoomOverlay.svelte`],
+    doc: "the hover zoom's hint under a two-faced card's inset, on pointer devices only (#4106): holding Shift shows the other face big",
   }),
 } satisfies Record<string, LabelSpec>;
 

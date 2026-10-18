@@ -4805,6 +4805,14 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if pw.Controller != playerID {
 		return ErrCardCallerMismatch
 	}
+	// The catalog's activation restrictions (activation_gate.go): a
+	// Phyrexian Revoker or Pithing Needle naming this walker stops its
+	// loyalty abilities too (CR 606.1). The catalogued path asks the same
+	// gate in activateCatalogAbilityLocked; this sandbox verb used to
+	// skip it.
+	if err := g.ActivationGateLocked(playerID, *pw, ZoneBattlefield, ActivationAbility{Label: label, Loyalty: true}); err != nil {
+		return err
+	}
 	// #1474: a planeswalker an effect has already paused on its way
 	// out is gone as far as the rules are concerned, and its loyalty
 	// cost is paid by that object. The catalogued path refuses it in
@@ -5423,6 +5431,12 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// CR 702.179a (ADR 0138): a player with no speed who controls a
 	// permanent with start your engines! gets speed 1. See speed.go.
 	if g.startYourEnginesSBALocked() {
+		fired = true
+	}
+	// CR 704.5t (309.6, ADR 0203): a venture marker on a dungeon's
+	// bottommost room with no room ability of it still waiting to
+	// leave the stack completes the dungeon. See dungeon.go.
+	if g.dungeonCompletionSBALocked() {
 		fired = true
 	}
 	// ADR 0091, CR 702.75a: the controller of a hideaway permanent may
@@ -6671,7 +6685,70 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	}
 	g.recomputeSplitSecondLocked()
 	g.announcePlacedTargetsLocked(announce)
+	g.announcePlacedTriggersLocked(bySeat, numSeats)
 	return true
+}
+
+// announcePlacedTriggersLocked emits one EventTriggerPlaced per item
+// the drain just put on the stack, in placement order (APNAP), once
+// every item of the batch is there (#4050, #4092). An ability that
+// triggers on one lands on the emptied PendingTriggers and is the NEXT
+// batch, so it goes on the stack above the item it watched: the same
+// timing announcePlacedTargetsLocked gives ward.
+//
+// Gated on a watcher being there (triggerPlacedWatchedLocked), as the
+// layer engine's DependsOn* bumps are: the event is emitted only while
+// some permanent has an ability that watches it. A table without one
+// keeps the event log it always had, which is what holds the snapshot
+// corpus (frozen event logs) and costs a table nothing for a card it
+// does not have.
+//
+// Caller must hold g.mu.
+func (g *Game) announcePlacedTriggersLocked(bySeat map[int][]*StackItem, numSeats int) {
+	if !g.triggerPlacedWatchedLocked() {
+		return
+	}
+	for offset := 0; offset < numSeats; offset++ {
+		seat := (g.Turn.ActiveSeat + offset) % numSeats
+		for _, t := range bySeat[seat] {
+			if g.StackMeta[t.ID] != t {
+				// Gone already: an earlier placement's event set off
+				// something that removed it, so there is nothing on
+				// the stack to announce.
+				continue
+			}
+			g.EmitEvent(Event{
+				Kind:        EventTriggerPlaced,
+				Actor:       t.Controller,
+				Source:      t.SourceCardID,
+				StackItemID: t.ID,
+				Label:       t.Label,
+			})
+		}
+	}
+}
+
+// triggerPlacedWatchedLocked reports whether any permanent on the
+// battlefield has a triggered ability that watches EventTriggerPlaced
+// from there — the same enumeration harvestFromZone walks
+// (triggersOf, so an ability-removing effect or an unmet designation
+// gate counts as no watcher). Only the battlefield: no emblem and no
+// other-zone ability watches the kind, and one that does joins this
+// check in the change that declares it.
+//
+// Caller must hold g.mu.
+func (g *Game) triggerPlacedWatchedLocked() bool {
+	if g.Battlefield == nil || CatalogTriggers == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		for _, t := range triggersOf(&g.Battlefield.Cards[i]) {
+			if triggerWatches(t.Watches, EventTriggerPlaced) && TriggerWatchesFromZone(t, ZoneBattlefield) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // announcePlacedTargetsLocked emits the CR 115.3 "becomes the target"
@@ -11173,21 +11250,36 @@ func (g *Game) SetMonarch(playerID uuid.UUID) error {
 	return nil
 }
 
-// SetInitiative designates the given player as having the initiative
-// (Commander Legends: Battle for Baldur's Gate — venture into the
-// Undercity at the start of upkeep; combat damage transfers initiative).
-// Pass uuid.Nil to clear. Same sandbox / non-enforcement posture as
-// SetMonarch — the marker is what's surfaced.
+// SetInitiative is the sandbox's set_initiative: `playerID` takes the
+// initiative, or uuid.Nil clears it.
+//
+// ADR 0203 (#4096): a take by hand is the same take a card makes
+// (takeInitiativeLocked), so the player ventures into Undercity exactly
+// as they would have — the sandbox action is a way to reach a game
+// state, not a way around what that state means, as ADR 0096 §1 says
+// of the manual crown. Clearing the marker is a table correction: it
+// emits EventInitiativeTaken with no Actor, which nothing triggers on.
+//
+// Returns ErrPlayerNotFound if playerID isn't seated or has left the
+// game, or ErrGameNotActive in lobby/ended state.
 func (g *Game) SetInitiative(playerID uuid.UUID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
 		return ErrGameNotActive
 	}
-	if playerID != uuid.Nil && g.playerByIDLocked(playerID) == nil {
+	if playerID == uuid.Nil {
+		if g.Initiative != uuid.Nil {
+			previous := g.Initiative
+			g.Initiative = uuid.Nil
+			g.EmitEvent(Event{Kind: EventInitiativeTaken, Target: previous})
+		}
+		return nil
+	}
+	if p := g.playerByIDLocked(playerID); p == nil || p.Eliminated {
 		return ErrPlayerNotFound
 	}
-	g.Initiative = playerID
+	g.takeInitiativeLocked(playerID, uuid.Nil)
 	return nil
 }
 

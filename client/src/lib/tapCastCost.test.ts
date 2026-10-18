@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyCastChoices, castTapCost } from "./targeting";
+import { applyCastChoices, castTapCost, optionalCostPayOptions } from "./targeting";
 import { castPreviewParams } from "./castPreview";
 import { canCastFromHand } from "./timing";
 import type { CardView, GameView, PlayerView, ZoneView } from "./protocol";
@@ -78,6 +78,49 @@ describe("castTapCost", () => {
     };
     expect(castTapCost(protocol, { costBranch: 0 })?.options).toEqual(["rock"]);
     expect(castTapCost(protocol, { costBranch: 1 })).toBeUndefined();
+  });
+});
+
+// #4092: Psionic Ritual's "Replicate—Tap an untapped Horror you control" —
+// each claimed payment taps one, on the same picker and list.
+describe("castTapCost — a replicate cost that taps", () => {
+  const ritual: CardView = {
+    ...newBlood,
+    name: "Psionic Ritual",
+    additional_cost: undefined,
+    optional_costs: [
+      {
+        index: 0,
+        key: "replicate",
+        label: "Replicate—Tap an untapped Horror you control",
+        max_times: 2,
+        tap_others_label: "an untapped Horror you control",
+        tap_others_options: { cards: ["h1", "h2"], min: 1, max: 1 },
+      },
+    ],
+  };
+
+  it("asks for one Horror per payment announced", () => {
+    expect(castTapCost(ritual, { optionalCosts: [0, 0] })).toEqual({
+      label: "an untapped Horror you control",
+      count: 2,
+      min: 2,
+      options: ["h1", "h2"],
+    });
+    expect(castTapCost(ritual, { optionalCosts: [0] })?.count).toBe(1);
+  });
+
+  it("asks nothing when the replicate cost is not paid", () => {
+    expect(castTapCost(ritual, {})).toBeUndefined();
+    expect(castTapCost(ritual, { optionalCosts: [] })).toBeUndefined();
+  });
+
+  it("greys the offer when no Horror can pay", () => {
+    const offer = ritual.optional_costs![0];
+    expect(optionalCostPayOptions(offer)).toEqual(["h1", "h2"]);
+    expect(
+      optionalCostPayOptions({ ...offer, tap_others_options: { cards: [], min: 1, max: 1 } }),
+    ).toEqual([]);
   });
 });
 

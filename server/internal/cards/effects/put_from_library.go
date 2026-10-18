@@ -57,10 +57,12 @@ import (
 //
 // # It queues; it does not finish
 //
-// Apply returns once the prompt is queued. Anything sequenced after it
-// in the same Do(…) runs BEFORE the player answers, so "the rest on
-// the bottom of your library in a random order" — which must know
-// which cards were NOT chosen — goes in Then. Then runs in every case:
+// Apply returns once the prompt is queued. The next step of a Do that
+// is the item's own Effect waits for the answer (#4012, do_walk.go),
+// but it cannot read the answer, and a Do run from inside a hand-written
+// closure does not wait at all. So "the rest on the bottom of your
+// library in a random order" — which must know which cards were NOT
+// chosen — goes in Then. Then runs in every case:
 // after the answer, immediately when there was nothing to choose from,
 // immediately when All or a forced answer made the choice for the
 // player, and even when the put itself returned an error (with whatever
@@ -93,6 +95,12 @@ type PutFromLibraryOntoBattlefield struct {
 
 	// Tapped is the clause's own "onto the battlefield tapped".
 	Tapped bool
+	// Counters are the counters the put says each card enters with —
+	// the Undercity's Throne of the Dead Three: "Put a creature card
+	// from among them onto the battlefield with three +1/+1 counters on
+	// it" (ADR 0203). Seeded onto the entry, so they are there as the
+	// permanent enters and go through the CR 614 counter pipeline.
+	Counters map[string]int
 
 	// Validate is the clause's rule about the picked SET, as opposed
 	// to Match's rule about each card: "any number of nonland
@@ -154,7 +162,7 @@ func (p PutFromLibraryOntoBattlefield) Apply(ctx *Context) error {
 	source := ctx.Source()
 	cards := append([]uuid.UUID(nil), p.Cards...)
 	then := p.Then
-	opts := game.LibraryEntryOptions{Controller: player, Tapped: p.Tapped}
+	opts := game.LibraryEntryOptions{Controller: player, Tapped: p.Tapped, EntersWithCounters: p.Counters}
 	report := func(g *game.Game, entered []uuid.UUID) error {
 		if then == nil {
 			return nil

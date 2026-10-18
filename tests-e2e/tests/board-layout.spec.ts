@@ -71,9 +71,17 @@ test.describe("board layout", () => {
       selfBoard.getByRole("list", { name: "creatures" }),
     ).toBeAttached();
     await expect(selfBoard.getByRole("list", { name: "lands" })).toBeAttached();
-    await expect(
-      selfBoard.getByRole("list", { name: "enchant / artifact" }),
-    ).toBeAttached();
+    // #4087: the other permanent types (planeswalkers, battles,
+    // artifacts, enchantments) each have a group of their own, drawn
+    // only while the seat controls one, so an empty board has none.
+    for (const type of [
+      "planeswalkers",
+      "battles",
+      "artifacts",
+      "enchantments",
+    ]) {
+      await expect(selfBoard.getByRole("list", { name: type })).toHaveCount(0);
+    }
     await expect(page.getByLabel("your hand")).toBeVisible();
     await expect(page.getByLabel("Alice piles")).toBeVisible();
 
@@ -194,6 +202,39 @@ test.describe("board layout", () => {
     const clear =
       piles.y + piles.height <= box.y + 1 || piles.x + piles.width <= box.x + 1;
     expect(clear, "the self piles overlap the action dock").toBe(true);
+
+    // ADR 0204: each player sits at the middle of their hand's edge. Bob,
+    // across the table, is at the top centre of his board, over his fan;
+    // you are at the bottom of yours, over your hand, left of the dock
+    // and never under it. (The hand-reach check above already holds that
+    // your avatar covers none of your cards.)
+    const bobBoard = (await page
+      .getByRole("region", { name: "Bob board" })
+      .boundingBox())!;
+    const bobSeat = (await page
+      .locator(`.board > .slot [data-seat-identity="${bob.playerID}"]`)
+      .boundingBox())!;
+    expect(
+      Math.abs(
+        bobSeat.x + bobSeat.width / 2 - (bobBoard.x + bobBoard.width / 2),
+      ),
+      "Bob's avatar is centred on his board",
+    ).toBeLessThan(6);
+    expect(
+      bobSeat.y - bobBoard.y,
+      "Bob's avatar is at his top edge",
+    ).toBeLessThan(24);
+    const selfPanel = (await selfBoard.boundingBox())!;
+    const mySeat = (await page
+      .locator(`.board > .slot [data-seat-identity="${alice.playerID}"]`)
+      .boundingBox())!;
+    expect(
+      mySeat.y + mySeat.height / 2,
+      "your avatar is in the bottom half of your board",
+    ).toBeGreaterThan(selfPanel.y + selfPanel.height / 2);
+    const underDock =
+      mySeat.x + mySeat.width > box.x && mySeat.y + mySeat.height > box.y;
+    expect(underDock, "your avatar is under the action dock").toBe(false);
 
     // ADR 0111 §5: the bluff split button is always on the table, even
     // on a default install where neither bluff setting is on.

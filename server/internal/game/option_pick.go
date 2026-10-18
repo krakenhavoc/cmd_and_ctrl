@@ -180,6 +180,15 @@ type ChoiceOption struct {
 	// nothing more: the engine never reads it, the branch does the
 	// harm.
 	Harm int `json:",omitempty"`
+
+	// Dungeon and Room name the dungeon card and the room this branch
+	// enters, by key, on a venture prompt (CR 701.49, ADR 0203): Room
+	// on "choose the next room", Dungeon alone on "choose a dungeon".
+	// The venture's keyed continuation reads them, which is what makes
+	// the answer independent of the option order, and a bot prices the
+	// room by its key. Empty on every other option.
+	Dungeon string `json:",omitempty"`
+	Room    string `json:",omitempty"`
 }
 
 // cloneChoiceOptions deep-copies an option list. Each option owns a

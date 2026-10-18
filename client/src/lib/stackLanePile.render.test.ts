@@ -60,14 +60,17 @@ beforeEach(() => {
       } as DOMRect;
     }
     const top = this.hasAttribute("data-instance-id") ? 700 : 10;
+    // ADR 0204 §4: the seats' avatars, at the board's right edge, away
+    // from the pile's column, which keeps clear of any it overlaps.
+    const left = this.hasAttribute("data-seat-identity") ? 1290 : 10;
     return {
-      left: 10,
+      left,
       top,
       width: 100,
       height: 140,
-      right: 110,
+      right: left + 100,
       bottom: top + 140,
-      x: 10,
+      x: left,
       y: top,
       toJSON: () => ({}),
     } as DOMRect;
@@ -269,25 +272,92 @@ describe("the pile (ADR 0119 §1)", () => {
     expect(p.q('.peek[data-stack-item-id="bolt"]')?.classList.contains("targeted")).toBe(true);
   });
 
-  it("draws an ability as its source's card with a band carrying its label and kind", () => {
+  it("draws an ability as an ability card: its source's art crop and name, its kind, its text", () => {
     const p = mountPile(gameView([viviTrigger], { stackCards: [] }));
-    const band = p.q(".top-card .ability-band");
-    expect(band?.querySelector(".kind-tag")?.textContent).toBe("triggered ability");
-    expect(band?.querySelector(".title")?.textContent).toBe(
+    const face = p.q(".top-card.ability .ability-card");
+    expect(face?.dataset.abilityKind).toBe("triggered");
+    expect(face?.querySelector(".kind-line")?.textContent).toBe("triggered ability");
+    expect(face?.querySelector(".source-name")?.textContent).toBe("Vivi Ornitier");
+    expect(face?.querySelector(".ability-text")?.textContent).toBe(
       "Vivi Ornitier — put a +1/+1 counter on Vivi",
     );
-    expect(p.q(".top-card img")?.getAttribute("src")).toContain("sf-vivi");
-    expect(p.q(".top-card img")?.getAttribute("alt")).toBe("Vivi Ornitier. Flying");
-    // The band says the kind; the chips do not repeat it.
+    const img = p.q(".top-card img");
+    expect(img?.getAttribute("src")).toContain("sf-vivi");
+    expect(img?.getAttribute("src")).toContain("art_crop");
+    // The alt is the source's name and the ability's text (ADR 0119 §B).
+    expect(img?.getAttribute("alt")).toBe(
+      "Vivi Ornitier. Vivi Ornitier — put a +1/+1 counter on Vivi",
+    );
+    // A triggered ability has no cost badge (call 23).
+    expect(face?.querySelector(".cost-badge")).toBeNull();
+    // The card says the kind; the chips do not repeat it, nor the caption the title.
     expect(p.qa(".caption .chip").map((c) => c.textContent)).not.toContain("triggered");
+    expect(p.q(".caption .top-title")).toBeNull();
   });
 
-  it("#3830: puts an ability's printed text on its band and its peeking line", () => {
+  it("badges a loyalty ability with its signed cost and an activated one with its symbols", () => {
+    const sorin = card("sorin", "Sorin, Vampire Lord", OPP, {
+      type_line: "Legendary Planeswalker — Sorin",
+    });
+    const minus = {
+      id: "loy",
+      kind: "activated",
+      controller: OPP,
+      owner: OPP,
+      source_card_id: "sorin",
+      label: "−2: Sorin deals 4 damage to any target. You gain 4 life.",
+      ability_text: "−2: Sorin deals 4 damage to any target. You gain 4 life.",
+    } as StackItemView;
+    const view = gameView([minus], { stackCards: [] });
+    (view.battlefield.cards as CardView[]).push(sorin);
+    const p = mountPile(view);
+    const face = p.q(".ability-card");
+    expect(face?.dataset.abilityKind).toBe("loyalty");
+    expect(face?.querySelector(".kind-line")?.textContent).toBe("loyalty ability");
+    const badge = face?.querySelector<HTMLElement>(".cost-badge");
+    expect(badge?.textContent?.trim()).toBe("\u22122");
+    expect(badge?.dataset.costKind).toBe("loyalty");
+    cleanup();
+
+    const tap = {
+      ...minus,
+      id: "act",
+      source_card_id: "vivi",
+      label: "Vivi Ornitier — mana",
+      ability_text: "{0}: Add {U} or {R}. Activate only during your turn and only once each turn.",
+    } as StackItemView;
+    const q = mountPile(gameView([tap], { stackCards: [] }));
+    expect(q.q(".ability-card")?.dataset.abilityKind).toBe("activated");
+    expect(q.q(".kind-line")?.textContent).toBe("activated ability");
+    expect(q.q(".cost-badge .mana-cost")?.getAttribute("data-cost")).toBe("{0}");
+  });
+
+  it("draws a hidden source's ability on the card back's pattern with the model's name", () => {
+    const faceDown = card("fd", "", OPP, { known_by_you: false, scryfall_id: undefined });
+    const trig = {
+      id: "fd-trig",
+      kind: "triggered",
+      controller: OPP,
+      owner: OPP,
+      source_card_id: "fd",
+      label: "a face-down creature's trigger",
+    } as StackItemView;
+    const view = gameView([trig], { stackCards: [] });
+    (view.battlefield.cards as CardView[]).push(faceDown);
+    const p = mountPile(view);
+    const img = p.q(".ability-card img");
+    expect(img?.getAttribute("src")).toBe("/card-back.jpg");
+    expect(p.q(".ability-card")?.classList.contains("hidden")).toBe(true);
+    expect(p.q(".ability-card .source-name")?.textContent).toBe("face-down card");
+    expect(p.q(".ability-card .ability-text")?.textContent).toBe("a face-down creature's trigger");
+  });
+
+  it("#3830: puts an ability's printed text on its card and its peeking line", () => {
     const printed =
       "Whenever Vivi Ornitier deals noncombat damage to a player, put a +1/+1 counter on it.";
     const withText = { ...viviTrigger, ability_text: printed };
     const top = mountPile(gameView([withText], { stackCards: [] }));
-    expect(top.q(".top-card .ability-band .title")?.textContent).toBe(printed);
+    expect(top.q(".top-card .ability-card .ability-text")?.textContent).toBe(printed);
     expect(top.q(".top-card")?.getAttribute("title")).toBe(`${printed} — hover to preview`);
 
     // Under a spell, the peeking line truncates it and its title has all of it.
@@ -405,6 +475,125 @@ describe("the pile (ADR 0119 §1)", () => {
   });
 });
 
+describe("the cascade (ADR 0119 amendment §A)", () => {
+  it("draws each lower item as a card: its face, its seat band, its title and Counter on the strip", () => {
+    const p = mountPile(gameView(three));
+    const bolt = p.q('.peek[data-stack-item-id="bolt"]')!;
+    // A spell's face is its normal image, hidden from a screen reader:
+    // the strip says it in text.
+    const face = bolt.querySelector(".peek-face")!;
+    expect(face.getAttribute("aria-hidden")).toBe("true");
+    expect(face.querySelector("img")?.getAttribute("src")).toContain("sf-bolt");
+    expect(face.querySelector("img")?.getAttribute("src")).not.toContain("art_crop");
+    expect(bolt.querySelector(".seat-band")).not.toBeNull();
+    expect(bolt.style.getPropertyValue("--seat-color")).not.toBe("");
+    const strip = bolt.querySelector<HTMLElement>(".peek-line[data-stack-arrow-from]")!;
+    expect(strip.querySelector(".peek-title")?.textContent).toBe("Lightning Bolt");
+    expect(strip.querySelector(".peek-caster")?.textContent).toBe("You");
+    expect(strip.querySelector(".counter-btn")?.getAttribute("aria-label")).toBe(
+      "Counter Lightning Bolt",
+    );
+    // An ability's face is the ability card, hidden the same way.
+    const trig = p.q('.peek[data-stack-item-id="trig-vivi"]')!;
+    expect(trig.classList.contains("ability")).toBe(true);
+    expect(trig.querySelector(".peek-face .ability-card")?.getAttribute("data-ability-kind")).toBe(
+      "triggered",
+    );
+    expect(trig.querySelector(".peek-face")?.getAttribute("aria-hidden")).toBe("true");
+    // Its strip shows its source's name, marked as an ability; the full
+    // text stays the title (visually hidden), the tooltip and Counter's name.
+    const source = trig.querySelector(".peek-source");
+    expect(source?.textContent).toBe("Vivi Ornitier");
+    expect(source?.getAttribute("aria-hidden")).toBe("true");
+    expect(trig.querySelector(".peek-kind")).not.toBeNull();
+    const title = trig.querySelector(".peek-title");
+    expect(title?.textContent).toBe(viviTrigger.label);
+    expect(title?.classList.contains("visually-hidden")).toBe(true);
+    expect(trig.getAttribute("title")).toBe(`${viviTrigger.label} — hover to preview`);
+    expect(trig.querySelector(".counter-btn")?.getAttribute("aria-label")).toBe(
+      `Counter ${viviTrigger.label}`,
+    );
+    // A spell's strip is its title, as before.
+    expect(bolt.querySelector(".peek-source")).toBeNull();
+    expect(bolt.querySelector(".peek-title")?.classList.contains("visually-hidden")).toBe(false);
+  });
+
+  it("keeps the title on the strip of an ability whose source the viewer may not see", () => {
+    const faceDown = card("fd", "", OPP, { known_by_you: false, scryfall_id: undefined });
+    const trig = {
+      id: "fd-trig",
+      kind: "triggered",
+      controller: OPP,
+      owner: OPP,
+      source_card_id: "fd",
+      label: "a face-down creature's trigger",
+    } as StackItemView;
+    const view = gameView([trig, spell("cs", OPP)]);
+    (view.battlefield.cards as CardView[]).push(faceDown);
+    const p = mountPile(view);
+    const peek = p.q('.peek[data-stack-item-id="fd-trig"]')!;
+    expect(peek.querySelector(".peek-source")).toBeNull();
+    const title = peek.querySelector(".peek-title");
+    expect(title?.textContent).toBe("a face-down creature's trigger");
+    expect(title?.classList.contains("visually-hidden")).toBe(false);
+  });
+
+  it("steps each card up, inward and smaller, dimmer the deeper it sits", () => {
+    const items: StackItemView[] = [];
+    const cards: CardView[] = [];
+    for (let i = 0; i < 5; i++) {
+      cards.push(card(`s${i}`, `Spell ${i}`, OPP, { type_line: "Instant" }));
+      items.push(spell(`s${i}`, OPP));
+    }
+    const p = mountPile(gameView(items, { stackCards: cards }), {
+      pile: { cardWidth: 250, shrunk: false },
+    });
+    const peeks = p.qa(".peek");
+    // Deepest first in the DOM; each nearer one is drawn over it.
+    expect(peeks.map((e) => e.dataset.depth)).toEqual(["4", "3", "2", "1"]);
+    expect(peeks.map((e) => e.style.left)).toEqual(["60px", "45px", "30px", "15px"]);
+    expect(peeks.map((e) => e.style.width)).toEqual(["210px", "220px", "230px", "240px"]);
+    expect(peeks.map((e) => Number(e.style.zIndex))).toEqual([1, 2, 3, 4]);
+    expect(peeks.map((e) => e.style.getPropertyValue("--dim"))).toEqual([
+      "0.6",
+      "0.6",
+      "0.56",
+      "0.28",
+    ]);
+    const tops = peeks.map((e) => parseFloat(e.style.top));
+    expect(tops[0]).toBe(0);
+    expect(tops[1] - tops[0]).toBeGreaterThan(0);
+    // The pile is as wide as the cascade's overhang; the top card at its left.
+    const pile = p.q(".pile")!;
+    expect(pile.style.getPropertyValue("--pile-w")).toBe("270px");
+    expect(pile.style.getPropertyValue("--top-left")).toBe("0px");
+  });
+
+  it("steps left when the host says the pile sits on the right half", () => {
+    const p = mountPile(gameView(three), {
+      pile: { cardWidth: 250, shrunk: false, inward: "left" },
+    });
+    const pile = p.q(".pile")!;
+    expect(pile.classList.contains("inward-left")).toBe(true);
+    expect(pile.style.getPropertyValue("--top-left")).toBe("10px");
+    expect(p.qa(".peek").map((e) => e.style.left)).toEqual(["0px", "5px"]);
+  });
+
+  it("shows only as many lower cards as the host fits, the rest behind '+N more'", () => {
+    const items: StackItemView[] = [];
+    const cards: CardView[] = [];
+    for (let i = 0; i < 5; i++) {
+      cards.push(card(`s${i}`, `Spell ${i}`, OPP, { type_line: "Instant" }));
+      items.push(spell(`s${i}`, OPP));
+    }
+    const p = mountPile(gameView(items, { stackCards: cards }), {
+      pile: { cardWidth: 250, shrunk: false, lowerShown: 2 },
+    });
+    expect(p.qa(".peek-title").map((e) => e.textContent)).toEqual(["Spell 2", "Spell 3"]);
+    expect(p.q(".more-chip")?.textContent?.trim()).toBe("+2 more");
+  });
+});
+
 describe("the pile on a real board", () => {
   function mountBoard(view: GameView) {
     const sent: { type: ActionType; params?: unknown }[] = [];
@@ -519,5 +708,49 @@ describe("the pile on a real board", () => {
     const b = mountBoard(gameView(three));
     click(b.q('.stack-lane .counter-btn[aria-label="Counter Counterspell"]')!);
     expect(b.sent).toEqual([{ type: "counter_spell", params: { instance_id: "cs" } }]);
+  });
+});
+
+describe("the top item's colour-identity edge (ADR 0119 amendment 2026-10-16 §C)", () => {
+  it("edges the top card in its colours, and only the top card", () => {
+    const blue = card("cs", "Counterspell", OPP, { type_line: "Instant", colors: ["U"] });
+    const p = mountPile(gameView(three, { stackCards: [bolt, blue] }));
+    const top = p.q(".top-card");
+    expect(top?.classList.contains("edged")).toBe(true);
+    expect(top?.style.getPropertyValue("--identity-edge")).toBe("var(--identity-u)");
+    expect(p.qa(".top-card .identity-edge")).toHaveLength(1);
+    expect(p.qa(".top-card .identity-glow")).toHaveLength(1);
+    // Lower cards keep the seat band alone.
+    expect(p.qa(".peek .identity-edge")).toHaveLength(0);
+    // The face still holds the art, the seat band and the stack item ID.
+    expect(top?.dataset.stackItemId).toBe("cs");
+    expect(p.q(".top-card .top-face img")).not.toBeNull();
+    expect(p.q(".top-card .top-face .seat-band")).not.toBeNull();
+  });
+
+  it("bands a multicolour item and gives a colourless one --identity-c", () => {
+    const gold = card("cs", "Counterspell", OPP, { type_line: "Instant", colors: ["U", "W"] });
+    const p = mountPile(gameView(three, { stackCards: [bolt, gold] }));
+    const edge = p.q(".top-card")?.style.getPropertyValue("--identity-edge") ?? "";
+    expect(edge).toMatch(/^conic-gradient\(from [\d.]+deg, var\(--identity-w\) 0deg/);
+    expect(edge).toContain("var(--identity-u)");
+    cleanup();
+    const q = mountPile(gameView(three));
+    expect(q.q(".top-card")?.style.getPropertyValue("--identity-edge")).toBe("var(--identity-c)");
+  });
+
+  it("edges an ability in its source's colours", () => {
+    const red = { ...vivi, colors: ["R"] };
+    const v = gameView([viviTrigger], { stackCards: [] });
+    (v.battlefield as unknown as { cards: CardView[] }).cards = [red];
+    const p = mountPile(v);
+    expect(p.q(".top-card")?.style.getPropertyValue("--identity-edge")).toBe("var(--identity-r)");
+  });
+
+  it("keeps the accent ring, with no edge, for a card the viewer may not see", () => {
+    const hidden = { ...counterspell, known_by_you: false, colors: ["U"] } as CardView;
+    const p = mountPile(gameView(three, { stackCards: [bolt, hidden] }));
+    expect(p.q(".top-card")?.classList.contains("edged")).toBe(false);
+    expect(p.q(".top-card .identity-edge")).toBeNull();
   });
 });

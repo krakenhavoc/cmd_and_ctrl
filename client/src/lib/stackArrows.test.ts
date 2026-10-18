@@ -17,6 +17,7 @@ import {
   boardCurve,
   boxCentre,
   controlTowardCentre,
+  ARROW_FROM_ATTR,
   curvePath,
   edgePoint,
   insideBox,
@@ -332,6 +333,20 @@ describe("measureStackArrows", () => {
     expect(arc.x2).toBe(378 + 65);
     expect(arc.y2).toBe(485 - 420 - TARGET_GAP);
 
+    board.remove();
+  });
+
+  it("leaves from the part of a tile it names, the pile cascade's visible strip", () => {
+    const { board, lane, track, q } = dom();
+    const tile = q('[data-stack-item-id="bolt"]');
+    const strip = document.createElement("span");
+    strip.setAttribute(ARROW_FROM_ATTR, "");
+    tile.appendChild(strip);
+    stubRect(strip, 600, 485, 60, 30);
+    const m = measureStackArrows({ board, lane, track, items: model().items });
+    const toBirds = m.board.find((a) => a.targetID === "birds")!;
+    // Straight above the strip's centre (630), not the tile's (643).
+    expect([toBirds.x1, toBirds.y1]).toEqual([630 - 100, 380 - 50]);
     board.remove();
   });
 

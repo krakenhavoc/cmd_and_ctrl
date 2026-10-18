@@ -16,8 +16,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // turn something else tapped it.
 func init() {
 	Register(Spec{
-		OracleID: "31f15274-301b-47c5-ba19-0ced04520878",
-		Name:     "Wayfarer's Bauble",
+		OracleID:     "31f15274-301b-47c5-ba19-0ced04520878",
+		Name:         "Wayfarer's Bauble",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, {T}, Sacrifice Wayfarer's Bauble: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
 			Purpose: game.Purpose{Answers: game.AnswerValue, Lands: 1},

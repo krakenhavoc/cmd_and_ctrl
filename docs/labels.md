@@ -27,6 +27,9 @@ registered, or when this file is stale.
 |---|---|---|---|---|---|
 | `yourBoard` | `your board` | region | aria | `lib/components/board/PlayerPanel.svelte` | the viewer's own board panel; scopes the tutorial's lands and creatures anchors |
 | `seatBoard` | `<name> board` (ends with ` board`) | region | aria | `lib/components/board/PlayerPanel.svelte`<br>`lib/components/board/SeatSummary.svelte` | another seat's board panel; the tutorial's attack step points at the bot's while it plays (the stem also ends other names, so anchor by the full name) |
+| `reflowNextUp` | `Next up` | generic | text | `lib/expansion.ts` | ADR 0077 (amended 2026-10-17, #4102): the chip on a reflow avatar card whose seat plays straight after the active player (drawn upper case) |
+| `reflowAfterYou` | `After you` | generic | text | `lib/expansion.ts` | ADR 0077 (amended 2026-10-17, #4102): the chip on a reflow avatar card whose seat plays straight after the viewer (drawn upper case) |
+| `reflowAfter` | `After <name>` (starts with `After `) | generic | text | `lib/expansion.ts` | ADR 0077 (amended 2026-10-17, #4102): the chip on a reflow avatar card naming the opponent who plays right before it (drawn upper case) |
 | `yourHand` | `your hand` | generic | aria | `lib/components/board/Hand.svelte` | the viewer's hand; the tutorial's read-hand, play-land and cast-creature steps anchor here |
 | `lands` | `lands` | list | aria | `lib/components/board/PlayerPanel.svelte` | a board's land row; every board has one, so anchor it within your board |
 | `creatures` | `creatures` | list | aria | `lib/components/board/PlayerPanel.svelte` | a board's creature row; every board has one, so anchor it within your board |
@@ -149,6 +152,7 @@ registered, or when this file is stale.
 | `replayTutorial` | `Replay the tutorial` | menuitem | text | `lib/components/board/GameMenu.svelte`<br>`lib/components/Settings.svelte` | Settings → Advanced, and the ⋯ menu on the practice table only: opens a fresh practice table |
 | `legalNotice` | `Legal notice` | menuitem | text | `lib/components/board/GameMenu.svelte` | the ⋯ menu's Help group: opens the fan-content notice, which the site footer carries everywhere else (#2982) |
 | `showTips` | `Show tips` | checkbox | text | `lib/components/Settings.svelte` | Settings → Advanced: on unless Hide tips was pressed on a tip |
+| `stackArrivalToggle` | `Stack: trace each spell or ability in from its source` | checkbox | text | `lib/components/Settings.svelte` | Settings → Animations: the arrival trace, animations.stackArrival (ADR 0119 amendment 2026-10-16 §D) |
 | `startPractice` | `Start practice` | link | text | `routes/LobbyPractice.hint.ts`<br>`routes/Lobby.svelte` | the lobby.practice tip's action, to #/practice, and the Lobby's Practice game card; the tip's Got it reads Not now beside it |
 | `tip` | `tip` | complementary | aria | `lib/components/hints/HintCard.svelte` | a first-use hint's card (ADR 0125 §3.6); one at a time, and Go to the tip (i) moves focus to it |
 | `keyboardShortcuts` | `keyboard shortcuts` | dialog | text | `lib/components/ShortcutsOverlay.svelte` | the keymap overlay (?), named by its heading |
@@ -173,3 +177,4 @@ registered, or when this file is stale.
 | `awayConcede` | `Concede for <name>` (starts with `Concede for `) | button | text | `lib/away.ts` | the away offer's concession, made for the away player |
 | `awayWait` | `Keep waiting` | button | text | `lib/away.ts` | the away offer's third answer: hide the offer for another away time |
 | `takeBackSeat` | `Take it back` | button | text | `lib/components/board/StandInBanner.svelte` | the banner a player sees on their own seat while a bot plays it: they play it again (ADR 0177 §6) |
+| `holdShiftToFlip` | `Hold Shift to flip` | note | text | `lib/components/board/HoverZoomOverlay.svelte` | the hover zoom's hint under a two-faced card's inset, on pointer devices only (#4106): holding Shift shows the other face big |

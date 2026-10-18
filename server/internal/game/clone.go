@@ -540,6 +540,8 @@ func (g *Game) cloneLocked() *Game {
 	out.resolutionOpen = g.resolutionOpen
 	// #2789: the bullets parked behind that paused prompt.
 	out.pausedModeWalk = cloneModeWalk(g.pausedModeWalk)
+	// #4012: the effect steps parked behind that paused prompt.
+	out.pausedStepWalk = cloneStepWalk(g.pausedStepWalk)
 	// #3613: the end of that resolution, parked behind the same prompt.
 	out.pausedResolutionTail = cloneResolutionTail(g.pausedResolutionTail)
 	if len(g.replacementsAppliedThisEvent) > 0 {
@@ -733,6 +735,8 @@ func clonePlayer(p *Player) *Player {
 		AgentClient:       p.AgentClient,
 		CitysBlessing:     p.CitysBlessing,
 		HasSideboard:      p.HasSideboard,
+		Dungeon:           cloneDungeonState(p.Dungeon),
+		CompletedDungeons: append([]string(nil), p.CompletedDungeons...),
 	}
 	out.Library = cloneZone(p.Library)
 	out.Hand = cloneZone(p.Hand)
@@ -1327,6 +1331,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.resolving = src.resolving
 	g.resolutionOpen = src.resolutionOpen
 	g.pausedModeWalk = src.pausedModeWalk
+	g.pausedStepWalk = src.pausedStepWalk
 	g.pausedResolutionTail = src.pausedResolutionTail
 	// The randomness rewinds with everything else: the key, the
 	// per-stream draw counters and the turn they belong to (ADR 0054

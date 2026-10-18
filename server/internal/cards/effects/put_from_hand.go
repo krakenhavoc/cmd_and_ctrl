@@ -34,12 +34,12 @@ import (
 //
 // # It queues; it does not finish
 //
-// Apply returns as soon as the prompt is QUEUED. Anything sequenced
-// after it in the same Do(…) runs BEFORE the player answers, which is
-// the property that matters when writing a card: a rider that must
-// happen after the land arrives ("if you put a Cave onto the
-// battlefield this way, you gain 4 life") goes in Then, not in the
-// next slot of the Do.
+// Apply returns as soon as the prompt is QUEUED. The next step of a Do
+// that is the item's own Effect waits for the answer (#4012,
+// do_walk.go), but it cannot read the answer, and a Do run from inside a
+// hand-written closure does not wait at all. So a rider that depends on
+// what arrived ("if you put a Cave onto the battlefield this way, you
+// gain 4 life") goes in Then, not in the next slot of the Do.
 //
 // A player with no matching card in hand is never prompted — there is
 // nothing to ask about, and QueueChooseCardsForEffect deliberately

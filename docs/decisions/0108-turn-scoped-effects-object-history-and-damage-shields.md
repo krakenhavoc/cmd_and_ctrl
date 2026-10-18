@@ -714,7 +714,7 @@ The shape is #1289's resolution pause, applied to the follow-up (`game/preventio
 
 ### What it does not do
 
-A catalog effect written as plain sequential steps (`Do(DealDamage{…}, DrawCards{…})`) runs its later steps on the Go stack after the damage call returns. It already does the same after a CR 616 ordering prompt. The instruction-level forms wait: the `...ThenForEffect` continuations, the Each walks, and a modal item's bullets. Channel Harm's yes/no is a closure confirm, so a table waiting on it is not a restore point. The server keeps the one from before the damage, as every confirm does.
+A catalog effect written as plain sequential steps (`Do(DealDamage{…}, DrawCards{…})`) runs its later steps on the Go stack after the damage call returns. It already does the same after a CR 616 ordering prompt. (Closed by #4012, [ADR 0065's amendment of 2026-10-16](0065-modal-and-multi-target-clauses.md#amendment-2026-10-16-a-dos-later-steps-wait-for-an-earlier-steps-prompt-4012): a `Do` that is the item's own Effect now parks its later steps.) The instruction-level forms wait: the `...ThenForEffect` continuations, the Each walks, and a modal item's bullets. Channel Harm's yes/no is a closure confirm, so a table waiting on it is not a restore point. The server keeps the one from before the damage, as every confirm does.
 
 ### Snapshot impact
 

@@ -66,6 +66,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [A loyalty cost of −X (ADR 0032 amendment 2026-10-10, #1944)](#a-loyalty-cost-of-x-adr-0032-amendment-2026-10-10-1944)
   - [Planeswalker statics, eminence and loyalty timing (ADR 0140 and amendments, #2797)](#planeswalker-statics-eminence-and-loyalty-timing-adr-0140-and-amendments-2797)
   - [The Ring tempts you (ADR 0114, #2076)](#the-ring-tempts-you-adr-0114-2076)
+  - [The initiative and dungeons (ADR 0203, #4096)](#the-initiative-and-dungeons-adr-0203-4096)
   - [Voting: will of the council and council's dilemma (ADR 0146, #2143, CR 701.38)](#voting-will-of-the-council-and-councils-dilemma-adr-0146-2143-cr-70138)
   - [Designations: Class levels, solved Cases, station thresholds (#757, #759)](#designations-class-levels-solved-cases-station-thresholds-757-759)
   - [Bestow (ADR 0141, #2862, CR 702.103)](#bestow-adr-0141-2862-cr-702103)
@@ -1710,6 +1711,15 @@ Raptor). Replicate is two declarations, refused one without the other:
 OptionalCosts: []game.AdditionalCost{ReplicatePayEnergy(3, 10)}, // "Replicate—Pay {E}{E}{E}"
 Triggered:     []game.TriggeredAbility{Replicate()},
 ```
+
+A replicate cost that taps a permanent (#4092, Psionic Ritual's
+"Replicate—Tap an untapped Horror you control") is
+`ReplicateTapping("an untapped Horror you control", 10,
+OfCreatureType("Horror"))` beside the same `Replicate()`. Each payment taps
+one; the permanents ride `cast_spell`'s `teamwork_ids`, N payments naming
+N, and the cast path sums the payments into one demand. It is the one
+optional cost that may tap, and never beside a mandatory tap cost,
+teamwork or escalate's taps (they share the list).
 
 Equip and unearth with an energy cost are `EquipPayingAbility("Equip—Pay
 {E}{E}", PayEnergy(2))` and `UnearthPaying("Unearth—Pay eight {E}",
@@ -3955,6 +3965,15 @@ conditions is `OnAny([]game.EventKind{…}, …)`. `Targeting(t, spec)`
 adds a target clause; the effect then reads `item.Targets[0]`, so it
 is a closure rather than `Do`. Add a missing shape or predicate to
 `triggers_common.go`, not to the card file.
+
+**Prefer `Do` when a step can ask something.** A `Do` that is the
+row's own Effect waits for a step's prompt before it runs the next
+step (CR 608.2c, #4012, `effects/do_walk.go`). That covers a scry, a
+CR 616 ordering prompt and a prevention follow-up's question, and it
+survives a restore. A `Do` called from inside a closure
+(`Do(...)(g, item)`) cannot wait, and neither can plain statements in a
+closure. If a later instruction must read the ANSWER, not just come
+after it, it still goes in the asking primitive's `Then`.
 
 For a graveyard watcher that must have been there before a creature died,
 use `g.InSameSimultaneousExitForEffect(source.InstanceID, ev.CardID)` to
@@ -6974,6 +6993,7 @@ devoid either.
 | "Whenever a spell or ability you control exiles one or more permanents" | `EventZoneMove` | `ev.OldZone == ZoneBattlefield && game.ExiledBySpellOrAbilityOf(ev, source.Controller)` plus `OncePerBatch` (Ranar the Ever-Watchful, #1320). Reads `ev.Cause` / `ev.CauseController`, which a routed move fills from the resolving item; a cost, a special action or a manual move names its own cause and never matches |
 | "Whenever ~ becomes the target of a spell or ability" | `EventBecomesTarget` | `ev.CardID == source.InstanceID` — `CardID` repeats `Target` when the target is a card and is `uuid.Nil` for a player, so reading `CardID` is what keeps a player-targeting spell from matching. `ev.Actor` is the targeting player, `ev.Source` its source |
 | "Whenever another creature you control becomes the target…" | `EventBecomesTarget` | `targetedAnotherCreatureYouControl(ev, source, g)` (Monk Gyatso) — excludes the source, checks the target is still on the battlefield, then reads its type and controller. Fires once per target **slot** (CR 115.3), at **announce** (CR 601.2c), so the trigger goes on the stack ABOVE the spell that targeted and resolves first — which is the whole card |
+| "Whenever a triggered ability … triggers" / "is put onto the stack" | `EventTriggerPlaced` | Read the placed item with `g.StackItemForEffect(ev.StackItemID)` and filter on its own triggering event, `item.Trigger.Event` and `item.Trigger.Object` (Aboleth Spawn, #4092). Emitted once per triggered ability after the whole batch is on the stack, so the watcher goes on ABOVE what it watched. The drain only emits it while a permanent on the battlefield watches the kind; a watcher in another zone or on an emblem has to join `triggerPlacedWatchedLocked` first. Copy it with `copyTheTriggeringAbility` |
 | "At the beginning of your upkeep" | `EventBeginUpkeep` | `ev.Actor == source.Controller` |
 | "Whenever you win a coin flip" | `EventFlipCoin` | `YouWonACoinFlip` / `WheneverYouWinACoinFlip` (#3767, ADR 0054 amendment 2026-10-15) — `ev.Won` and `ev.Actor == source.Controller`; one event per coin, so it fires once per won flip. A bare "flip a coin" whose winning only matters to such a trigger is the called `FlipACoin{}` (Setzer, Tavern Scoundrel) |
 | "At the beginning of your end step" | `EventBeginEndStep` | `ev.Actor == source.Controller` — drop the check for "the beginning of the end step" (any player's) |
@@ -7825,6 +7845,21 @@ payment: "When this creature's echo cost is paid" is
 `WhenEchoIsPaid(label, effect)`. Like cumulative upkeep it is not a
 `canonicalKeywords` token; the trigger carries `game.KeywordEcho`.
 
+### Exploit (#4092, CR 702.110)
+
+`Exploit(name, payoff)` ([exploit.go](../server/internal/cards/effects/exploit.go))
+goes in `Triggered`: `Exploit("Overcharged Amalgam",
+overchargedAmalgamCounterBody)`. It is the ETB "you may sacrifice a creature"
+(the exploiter itself is a legal pick), asked as the ability resolves. The
+card's own "when this creature exploits a creature, …" is the `payoff`: a
+registered reflexive body (`reflexive_bodies.go`, with its target clause
+beside it) that goes on the stack above the exploit ability only if a
+creature really left, carrying the sacrificed card as its payload. Pass
+`game.BodyRef{}` for a card that prints no payoff. A creature that was
+removed from the battlefield before the exploit ability resolved still lets
+you sacrifice another creature, but makes no payoff; sacrificing the
+exploiter itself does. Like echo it is not a `canonicalKeywords` token.
+
 ### The CR 732 loop breaker (#628)
 
 Two permanents that trigger each other loop forever. The server never
@@ -8190,6 +8225,22 @@ hid. The link is an object reference, so a triggered payoff captures
 re-reading the source at resolution. The three Lorwyn lands are a table
 in `hideaway_lands.go`; a new land of the same shape is a row.
 
+### Adding a "search, exile it face down, later chapters use it" card (#4077)
+
+When a search exiles a card that a LATER ability of the same permanent
+names ("the exiled card" — The Creation of Avacyn), link the search to the
+permanent object. `SearchLibrary{Dest: game.ZoneExile, FaceDown:
+game.FaceDownHidden, LinkTo: ref}` stamps `Card.ExiledWith` (and
+`HiddenBy`, so the permanent's controller may look at it); `ref` is
+`g.SourceObjectForEffect(item)`. The later ability lists the card with
+`g.ExiledWithForEffect(ref)`. Two verbs in
+[exiled_card_chapters.go](../server/internal/game/exiled_card_chapters.go)
+cover the payoffs: `TurnExiledFaceUpForEffect` (shows it to every seat)
+and `PutExiledCreatureOntoBattlefieldOrHandForEffect` (the "you may put
+it onto the battlefield, otherwise into its owner's hand" prompt). The
+worked card is
+[the_creation_of_avacyn.go](../server/internal/cards/effects/the_creation_of_avacyn.go).
+
 ### Adding a manifest dread card (S43+, ADR 0082 amendment 2026-10-07)
 
 Manifest dread (CR 701.62a) is the choice manifest does not have: look
@@ -8425,6 +8476,13 @@ supertypes and other subtypes stay (CR 205.1a). Put the card's other
 changes in the same record, one timestamp (Polymorphist's Jest,
 Frodo, Sauron's Bane). Don't use `SetTypesMod` for this: it sets the
 card types too, so an artifact creature would stop being an artifact.
+
+**"…and isn't a Human"** is `game.LoseSubtypesMod(ctx.TextSubtype("Human"))`
+in the same kind of record (#4072, layer 4, CR 613.1d): it removes the
+named subtypes and nothing else, so a Human lord stops pumping the
+creature while the effect lasts (Werewolf Pack Leader). The kind
+`loseSubtypes` is an on-disk identity. A changeling stays every
+creature type, since that is a flag and not a list.
 
 Ask "do these two creatures share a type" with
 `game.SharesCreatureType`, never with a subtype-slice intersection —
@@ -9613,6 +9671,26 @@ Test them through `deck.ToGameCard` (`werewolfRow` in
 `werewolf_cards_test.go`), because the per-face keywords reach the card
 only through the importer.
 
+**The original Innistrad werewolves are not daybound** (ADR 0132
+amendment 2026-10-16, #4071). Each face prints its own upkeep trigger,
+and an instruction may transform them:
+
+```go
+Triggered: []game.TriggeredAbility{TransformAtUpkeepIfNoSpellsLastTurn("Kruin Outlaw")},             // front
+Triggered: []game.TriggeredAbility{TransformAtUpkeepIfAPlayerCastTwoSpellsLastTurn("Terror of Kruin Pass")}, // back
+On(game.EventTransform, ThisTransformedInto(1), "…", effect)   // "whenever this transforms into <back face>"
+Static: []game.StaticAbility{NonHumanWerewolvesYouControlCantTransform()} // Immerwolf
+```
+
+"Last turn" counts every player's spells
+(`Game.NoSpellsWereCastLastTurnForEffect`,
+`APlayerCastTwoOrMoreSpellsLastTurnForEffect`), not CR 502.2's active
+player only. Before offering "you may transform it", ask
+`Game.CanTransformForEffect(id)`: it is false for a daybound or
+nightbound permanent and for one a "can't transform" effect covers. See
+[huntmaster_of_the_fells.go](../server/internal/cards/effects/huntmaster_of_the_fells.go)
+and [geier_reach_bandit.go](../server/internal/cards/effects/geier_reach_bandit.go).
+
 ### Role tokens (ADR 0036 and ADR 0093 amendments 2026-10-08, #1945, CR 111.10 / 303.7a / 704.5z)
 
 A Role is a token Aura ("Token Enchantment — Aura Role") created
@@ -9655,6 +9733,37 @@ The Questing Role ("has all the abilities of Questing Beast") does not
 exist yet: a grant bundle has no slot for Questing Beast's block
 restriction or its damage-prevention rule. Questing Cosplayer waits on
 it (#1945).
+
+### The initiative and dungeons (ADR 0203, #4096)
+
+The initiative (CR 726) and its three inherent triggered abilities run in
+the engine (`game/initiative.go`), and so does venturing into a dungeon
+(CR 309, CR 701.49, `game/dungeon.go`). A card only says:
+
+| Printed text | Write |
+|---|---|
+| "When this <permanent> enters, you take the initiative." | `WhenThisEntersYouTakeTheInitiative(name)` |
+| "you take the initiative" inside an effect | `TakeTheInitiative{}` (a `Do` step; Player defaults to the controller) |
+| "At the beginning of your end step, if you have the initiative, …" | `IfYouHaveTheInitiative(AtYourEndStep(label, effect))` — an intervening "if" (CR 603.4); write the effect as a `Do` so it keeps its footprint |
+| "Whenever you complete a dungeon, …" | `WheneverYouCompleteADungeon(label, effect)` |
+| "if you've completed a dungeon" | `YouCompletedADungeon(g, you)`, read where the card reads it |
+| "if you have the initiative" | `YouHaveTheInitiative(g, you)` |
+
+Taking the initiative never ventures by itself: the venture is the
+initiative's own trigger ("Whenever a player takes the initiative, that
+player ventures into Undercity"), so it goes on the stack after the spell
+or ability that gave it has finished resolving, and taking it again while
+you have it still ventures (CR 726.5).
+
+**A dungeon is a `DungeonSpec`** in `cards/effects/dungeons.go`: rooms in
+printed order, each with its arrows (`LeadsTo`), its printed text, an
+optional target clause and an `Effect`. The room abilities are ordinary
+catalog triggers, so a room that targets gets the trigger targeting and
+restores like any other row. Only the Undercity is filed. **Do not ship a
+plain "venture into the dungeon" card** until Lost Mine of Phandelver,
+Dungeon of the Mad Mage and Tomb of Annihilation are rows too: a venture
+that can enter only some of them is a choice the rules give and the card
+would not.
 
 ### Ascend and the city's blessing (ADR 0096 amendment 2026-10-08, #2696, CR 702.131)
 

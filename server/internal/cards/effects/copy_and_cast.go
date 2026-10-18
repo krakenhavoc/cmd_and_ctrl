@@ -102,3 +102,17 @@ func (c CopyAndCast) Apply(ctx *Context) error {
 	ctx.Game.CopyCardsAndOfferCastsForEffect(offer, c.Cards)
 	return nil
 }
+
+// exileCopyCastThenExileSelf is the body Mizzix's Mastery and Psionic
+// Ritual share: exile `ids` through the CR 614 window, copy only the
+// cards that really reached exile with a free-cast offer each (CR
+// 707.12), then exile the spell itself ("Exile <this>").
+func exileCopyCastThenExileSelf(item *game.StackItem, ctx *Context, ids []uuid.UUID) error {
+	return ctx.Game.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
+		ctx := NewContext(g, item)
+		if err := (CopyAndCast{Cards: exiled, Free: true}).Apply(ctx); err != nil {
+			return err
+		}
+		return ExileTarget{Target: item.SourceCardID}.Apply(ctx)
+	})
+}

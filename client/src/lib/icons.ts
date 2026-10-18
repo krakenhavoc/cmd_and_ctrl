@@ -151,6 +151,8 @@ export const ICONS = {
   diamond: [p("M12 3l8 9-8 9-8-9z")],
   cycle: [p("M20 12a8 8 0 1 1-2.5-5.8"), p("M20 4v5h-5")],
   flag: [p("M5 21V4h12l-2 4 2 4H5")],
+  // ADR 0203: a dungeon (CR 309) — an arched door with a ring pull.
+  door: [p("M6 21V9a6 6 0 0 1 12 0v12"), p("M4 21h16"), c(14.5, 14.5, 1, true)],
   // ADR 0120 §4: the expanded board's pin toggle — a push pin.
   pin: [p("M8 3h8"), p("M10 3v6l-4 5h12l-4-5V3"), p("M12 14v7")],
   hand: [

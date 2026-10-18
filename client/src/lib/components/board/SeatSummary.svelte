@@ -30,9 +30,11 @@
   // so it keeps both. The expand control is labelled separately so a
   // screen reader user is told the full board is reachable.
   //
-  // `avatarCard` (ADR 0077 §6 as amended, #4065) is the reflow's avatar
-  // card: the identity row alone — name, avatar, life — and the expand
-  // control, in a narrow column beside the active opponent's board. Its
+  // `avatarCard` (ADR 0077 §6 as amended, #4065 and #4102) is the
+  // reflow's avatar card: a turn chip, the identity — name, avatar, life
+  // — the expand control, and four read-out lines (in hand, mana,
+  // creatures, piles), in one column of cards at the left end of the
+  // opponents' row. Its
   // avatar peeks and pins the expanded overlay as every avatar does
   // (ADR 0120). It is still the seat's region, and it carries
   // `data-seat-stand-in` so an arrow to or from a card it is not drawing
@@ -85,10 +87,17 @@
     // Absent means no information, and every opponent stays clickable.
     legalGate?: LegalActions;
     /**
-     * Draw only the identity and the expand control: the reflow's avatar
-     * card (ADR 0077 §6 as amended, #4065).
+     * Draw the reflow's avatar card (ADR 0077 §6 as amended, #4065, and
+     * 2026-10-17, #4102): the identity, the expand control and a compact
+     * read-out of hand, mana, creatures and piles.
      */
     avatarCard?: boolean;
+    /**
+     * The avatar card's turn chip, who plays right before this seat
+     * ("Next up", "After you", "After <name>"; expansion.ts's
+     * reflowAvatarOrder). Null draws none.
+     */
+    turnChip?: string | null;
   }
 
   const {
@@ -111,6 +120,7 @@
     considering = false,
     legalGate = NO_LEGAL_ACTIONS,
     avatarCard = false,
+    turnChip = null,
   }: Props = $props();
 
   const summary = $derived(buildSeatSummary(seat, controlledCards, view.battlefield?.cards ?? []));
@@ -272,7 +282,58 @@
   </button>
 {/snippet}
 
+<!-- The mana read and the two openable piles, shared by the summary and
+     the avatar card so the two cannot drift apart. -->
+{#snippet manaRead()}
+  {#each manaPips as pip (pip.color)}
+    <span class="pip mana-pip" style:--pip-fill={pip.meta.fill} title={pip.meta.label}>
+      {pip.count}
+    </span>
+  {/each}
+  {#if summary.mana.flexible > 0}
+    <span class="pip mana-pip flexible" title="Colour not determined — any-colour or hybrid">
+      {summary.mana.flexible}?
+    </span>
+  {/if}
+  {#if summary.mana.sources === 0}
+    <span class="quiet">no mana</span>
+  {/if}
+{/snippet}
+
+{#snippet graveButton()}
+  <button
+    class="pile"
+    type="button"
+    aria-label={pileLabel("grave", summary.graveyardCount)}
+    title={`grave · ${summary.graveyardCount}`}
+    onclick={openGraveyard}
+  >
+    gy {summary.graveyardCount}
+  </button>
+{/snippet}
+
+{#snippet exileButton()}
+  <button
+    class="pile"
+    type="button"
+    aria-label={exileHeld > 0
+      ? `${pileLabel("exile", exileCount)}, ${exileHeld} theirs to play`
+      : pileLabel("exile", exileCount)}
+    title={exileHeld > 0
+      ? `exile · ${exileCount} · ${exileHeld} theirs to play`
+      : `exile · ${exileCount}`}
+    onclick={openExile}
+  >
+    ex {exileCount}{#if exileHeld > 0}<span class="held"> · {exileHeld} theirs</span>{/if}
+  </button>
+{/snippet}
+
 {#if avatarCard}
+  <!-- ADR 0077 as amended 2026-10-17 (#4102): one card in the reflow's
+       column. Its turn chip and the expand control on top, the identity,
+       then four read-out lines: in hand, mana, creatures, piles. The card
+       is a size container: a short one steps the avatar down to 56px and
+       folds the piles into one line (the container queries below). -->
   <div
     class="summary seat-panel avatar-card"
     style:--seat-color={seatColor(seat.seat)}
@@ -283,8 +344,42 @@
     aria-label={L.seatBoard(seat.name)}
     data-seat-stand-in={seat.id}
   >
-    {@render identity()}
-    {@render expandControl()}
+    <div class="card-head">
+      {#if turnChip && !summary.eliminated}
+        <span class="turn-chip" class:next={turnChip === L.reflowNextUp} title={turnChip}
+          >{turnChip}</span
+        >
+      {/if}
+      {@render expandControl()}
+    </div>
+    <div class="card-identity">
+      {@render identity()}
+    </div>
+    {#if summary.eliminated}
+      <p class="out">out</p>
+    {:else}
+      <div class="readout" data-dice-avoid>
+        <p class="line hand"><strong>{summary.handCount}</strong> in hand</p>
+        <div class="line mana" role="group" aria-label={manaLabel(summary.mana)}>
+          {@render manaRead()}
+        </div>
+        <p class="line creatures">
+          <span class="keep"
+            ><strong>{summary.creatures.untapped}</strong> untapped of
+            <strong>{summary.creatures.total}</strong></span
+          >
+          <span class="keep">· <strong>{summary.creatures.untappedPower}</strong> power</span>
+        </p>
+        <div class="line zones">
+          <span class="zone deck" title="library">deck <strong>{summary.libraryCount}</strong></span
+          >
+          <span class="sep fold" aria-hidden="true">·</span>
+          {@render graveButton()}
+          <span class="sep" aria-hidden="true">·</span>
+          {@render exileButton()}
+        </div>
+      </div>
+    {/if}
   </div>
 {:else}
   <div
@@ -320,19 +415,7 @@
          The dashed "?" pip is what says so visually; manaLabel names
          the source count so the spoken form carries the same caveat. -->
       <div class="row mana" data-dice-avoid role="group" aria-label={manaLabel(summary.mana)}>
-        {#each manaPips as pip (pip.color)}
-          <span class="pip mana-pip" style:--pip-fill={pip.meta.fill} title={pip.meta.label}>
-            {pip.count}
-          </span>
-        {/each}
-        {#if summary.mana.flexible > 0}
-          <span class="pip mana-pip flexible" title="Colour not determined — any-colour or hybrid">
-            {summary.mana.flexible}?
-          </span>
-        {/if}
-        {#if summary.mana.sources === 0}
-          <span class="quiet">no mana</span>
-        {/if}
+        {@render manaRead()}
       </div>
 
       <!-- Combat math: what can block, and how hard it hits. Untapped is
@@ -346,28 +429,8 @@
         </span>
         <span class="stat quiet">{summary.handCount} in hand</span>
         <span class="stat quiet" title="library">{summary.libraryCount} deck</span>
-        <button
-          class="pile"
-          type="button"
-          aria-label={pileLabel("grave", summary.graveyardCount)}
-          title={`grave · ${summary.graveyardCount}`}
-          onclick={openGraveyard}
-        >
-          gy {summary.graveyardCount}
-        </button>
-        <button
-          class="pile"
-          type="button"
-          aria-label={exileHeld > 0
-            ? `${pileLabel("exile", exileCount)}, ${exileHeld} theirs to play`
-            : pileLabel("exile", exileCount)}
-          title={exileHeld > 0
-            ? `exile · ${exileCount} · ${exileHeld} theirs to play`
-            : `exile · ${exileCount}`}
-          onclick={openExile}
-        >
-          ex {exileCount}{#if exileHeld > 0}<span class="held"> · {exileHeld} theirs</span>{/if}
-        </button>
+        {@render graveButton()}
+        {@render exileButton()}
       </div>
 
       {#if summary.creatureCards.length > 0}
@@ -431,9 +494,11 @@
 {/if}
 
 <style>
-  /* No container queries and no cqh-derived sizes: that is the point.
-     Every size here is fixed, so the summary reads identically in a
-     quadrant, in a third of a top row, and at any window height. */
+  /* No container queries and no cqh-derived sizes in the summary: that
+     is the point. Every size here is fixed, so the summary reads
+     identically in a quadrant, in a third of a top row, and at any
+     window height. The avatar card below is the one exception, and it
+     still changes rather than scales: at a set height it swaps a size. */
   .summary {
     display: flex;
     flex-direction: column;
@@ -447,12 +512,184 @@
   .summary.eliminated {
     opacity: 0.55;
   }
-  /* The reflow's avatar card: the identity centred in its narrow
-     column, the expand control under it. */
+  /* The reflow's avatar card (ADR 0077 as amended 2026-10-17, #4102):
+     a size container in the 176px column (--reflow-avatar-w). Labels and
+     counts are the mono voice; what a player reads to act is --fg-muted
+     or --fg, never --fg-dim (DESIGN.md §2). */
   .avatar-card {
+    container: avatar-card / size;
+    gap: 3px;
+    padding: 5px 8px 6px;
+  }
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    min-height: 20px;
+    flex: 0 0 auto;
+  }
+  .turn-chip {
+    margin-right: auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 2px 7px;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-sunken);
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+  /* The seat that plays next reads a step brighter than the rest. */
+  .turn-chip.next {
+    color: var(--fg);
+    border-color: color-mix(in srgb, var(--fg) 45%, transparent);
+  }
+  .avatar-card .expand {
+    color: var(--fg-muted);
+    padding: 3px 6px;
+  }
+  .card-identity {
+    --avatar-size-base: 84px;
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+    flex: 0 0 auto;
+  }
+  /* The identity takes the card's width, so its name and tags (BOT,
+     considering…, offline) share one wrapping line, as a seated identity
+     does (ADR 0204), instead of a line each as in a rail. */
+  .card-identity :global(.identity) {
+    width: 100%;
+  }
+  .card-identity :global(.name-line) {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 2px 4px;
+    max-width: 100%;
+  }
+  .card-identity :global(.name-line > .tag) {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+  .card-identity :global(.core-row) {
+    gap: 0;
+  }
+  /* The identity and the read-out sit together, centred in the room
+     under the head. */
+  .card-identity {
+    margin-top: auto;
+  }
+  .readout {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+    margin-top: 4px;
+    margin-bottom: auto;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    line-height: 1.3;
+    color: var(--fg-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .line {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 3px 4px;
+    min-width: 0;
+    text-align: center;
+  }
+  .line strong {
+    color: var(--fg);
+    font-weight: 700;
+  }
+  /* "N untapped of M" and "· P power" break between them, not inside. */
+  .line .keep {
+    white-space: nowrap;
+  }
+  .readout .mana-pip {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    padding: 1px 4px;
+    min-width: 16px;
+  }
+  .readout .quiet {
+    color: var(--fg-muted);
+    font-size: 11px;
+  }
+  /* The piles: the deck on a line of its own and the two openable piles
+     under it on a tall card, folded into one "deck · gy · ex" line on a
+     short one, before anything is dropped. */
+  .zones .sep {
+    color: var(--fg-muted);
+  }
+  .zones .deck {
+    flex-basis: 100%;
+  }
+  .zones .sep.fold {
+    display: none;
+  }
+  .readout .pile {
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+  }
+  .readout .pile:hover {
+    color: var(--fg);
+  }
+  @container avatar-card (max-height: 239px) {
+    .card-identity {
+      --avatar-size-base: 56px;
+    }
+    .avatar-card .readout {
+      gap: 3px;
+      margin-top: 2px;
+    }
+    .zones .deck {
+      flex-basis: auto;
+    }
+    .zones .sep.fold {
+      display: inline;
+    }
+  }
+  /* The shortest step (two cards on a 1024×768 board are about 170px):
+     the same four lines, packed tighter. */
+  @container avatar-card (max-height: 199px) {
+    .card-head {
+      min-height: 16px;
+    }
+    .turn-chip {
+      padding: 1px 6px;
+      font-size: 9px;
+    }
+    .avatar-card .expand {
+      padding: 1px 5px;
+      font-size: 12px;
+    }
+    .card-identity :global(.identity) {
+      gap: 1px;
+    }
+    .avatar-card .readout {
+      gap: 1px;
+      margin-top: 0;
+      line-height: 1.2;
+    }
+    .readout .mana-pip {
+      padding: 0 4px;
+      line-height: 1.25;
+    }
   }
   .top {
     display: flex;

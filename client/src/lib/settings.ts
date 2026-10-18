@@ -70,6 +70,11 @@ export interface Settings {
     // switch off, or reduced motion) combat shows as it did before:
     // badges, the life popup, the log and the first-strike text cue.
     combat: boolean;
+    // ADR 0119 amendment 2026-10-16 §D: a trace in the caster's seat
+    // colour runs from an item's source to the stack as it goes on. Off
+    // (or the master switch off, or reduced motion) the card still
+    // appears and the arrows still draw; only the trace goes.
+    stackArrival: boolean;
   };
 
   display: {
@@ -486,6 +491,7 @@ export function defaultSettings(): Settings {
       damagePopups: true,
       dice: true,
       combat: true,
+      stackArrival: true,
     },
     display: {
       theme: DEFAULT_SKIN,
@@ -650,6 +656,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     damagePopups: "synced",
     dice: "synced",
     combat: "synced",
+    stackArrival: "synced",
   },
   display: {
     theme: "synced",
@@ -1460,6 +1467,7 @@ settings.subscribe((s) => {
     damagePopups: s.animations.damagePopups,
     dice: s.animations.dice,
     combat: s.animations.combat,
+    stackArrival: s.animations.stackArrival,
   });
 });
 

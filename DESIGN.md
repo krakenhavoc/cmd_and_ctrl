@@ -280,6 +280,16 @@ flight does not).
   footer. The bottom-right corner belongs to the action dock; the stack pile is
   left; the hover zoom is top-right; the coach card is bottom-left (ADR 0111 §4,
   ADR 0119 §1). New table UI must not cover the dock (`--dock-w`, `--dock-h`).
+- **Every seat sits at the middle of its hand's edge** (ADR 0204): a top-row
+  opponent's avatar at the top centre of their board, in front of their fan; an
+  upright one's at the bottom centre; yours just above the middle of your hand,
+  left of the dock. Nothing is placed under an avatar, and an avatar covers no
+  card in your hand.
+- **Reflow's avatar cards are one column at the left** of the opponents' row
+  ([ADR 0077](docs/decisions/0077-opponent-board-summary.md), amended
+  2026-10-17): `--reflow-avatar-w` (176px) wide, stacked in the order the seats
+  play, each with a mono turn chip and a four-line read-out. The active board
+  fills the rest; the stack pile and an expanded board open right of the column.
 - **Installed app.** Under `display-mode: standalone` `#app` pays back the
   safe-area insets; respect them in anything fixed to an edge.
 

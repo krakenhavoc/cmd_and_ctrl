@@ -1029,6 +1029,14 @@ type PickOptionView struct {
 	// in cards (#3140): a villainous choice's two bad options, so a bot
 	// can take the lesser. A hint; absent when the card gave none.
 	Harm int `json:"harm,omitempty"`
+	// Dungeon and Room name the dungeon and the room a venture prompt's
+	// branch enters, by key (CR 701.49, ADR 0203): Room on "choose the
+	// next room", Dungeon alone on "choose a dungeon". Public — a
+	// dungeon card is face up. The client may draw the room map with
+	// them; a bot prices the room by its key. Absent on every other
+	// option.
+	Dungeon string `json:"dungeon,omitempty"`
+	Room    string `json:"room,omitempty"`
 }
 
 // LegalTargetsView is the wire shape of game.LegalTargets: player
@@ -1619,6 +1627,17 @@ type OptionalCostView struct {
 	// as it does for a crew picker.
 	Teamwork        int               `json:"teamwork,omitempty"`
 	TeamworkOptions *LegalTargetsView `json:"teamwork_options,omitempty"`
+
+	// TapOthersLabel / TapOthersOptions are a replicate cost that taps a
+	// permanent (#4092, Psionic Ritual's "Replicate—Tap an untapped
+	// Horror you control"): AdditionalCostView's two fields of the same
+	// names, off the same engine walk. min / max are what ONE payment
+	// taps; paying the offer N times names N times that many on
+	// cast_spell's `teamwork_ids`. max_times is capped at the payments
+	// the options cover, and an options list shorter than `min` means
+	// the offer cannot be taken right now (CR 118.3).
+	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
+	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
 
 	// Blight is the N of "you may blight N" (CR 701.68a): put N -1/-1
 	// counters on a creature you control. BlightOptions is the
@@ -2415,6 +2434,14 @@ type PlayerView struct {
 	// designation ascend gives, kept for the rest of the game. Public
 	// and identical for every viewer, like the monarch. #2696.
 	CitysBlessing bool `json:"citys_blessing,omitempty"`
+	// Dungeon is the dungeon card this player owns in the command zone,
+	// with its rooms and the room their venture marker is in (CR 309.4,
+	// ADR 0203). Absent when they own none. Public and identical for
+	// every viewer: a dungeon card and its marker are face up.
+	Dungeon *DungeonView `json:"dungeon,omitempty"`
+	// CompletedDungeons are the names of the dungeons this player has
+	// completed (CR 309.7), in order, repeats included. Absent when none.
+	CompletedDungeons []string `json:"completed_dungeons,omitempty"`
 
 	// PlaymatURL is the same-origin URL of the playmat the seat's
 	// signed-in owner chose (ADR 0128), drawn behind that seat's
@@ -7950,6 +7977,17 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 				v.TeamworkOptions.Cards = cardIDStrings(g.TeamworkOptionsForEffect(caster))
 			}
 		}
+		// #4092: a replicate cost that taps — each payment taps Count of
+		// the options, so the stepper stops at what they cover.
+		if tc := oc.TapOthers; !tc.Empty() {
+			v.TapOthersLabel = tc.Label
+			v.TapOthersOptions = tapOthersCostOptions(g, caster, uuid.Nil, tc, false)
+			if tc.Count > 0 {
+				if affordable := len(v.TapOthersOptions.Cards) / tc.Count; affordable < v.MaxTimes {
+					v.MaxTimes = max(affordable, 1)
+				}
+			}
+		}
 		if oc.Blight > 0 {
 			v.Blight = oc.Blight
 			v.BlightOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.BlightOptionsForEffect(caster))}
@@ -9526,7 +9564,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			c.Kind == game.PendingChoiceEntryReadAhead) && len(c.PickOptions) > 0 {
 			v.PickOptions = make([]PickOptionView, 0, len(c.PickOptions))
 			for _, opt := range c.PickOptions {
-				out := PickOptionView{Label: opt.Label, LifeCost: opt.LifeCost, ManaCost: opt.ManaCost, Harm: opt.Harm}
+				out := PickOptionView{Label: opt.Label, LifeCost: opt.LifeCost, ManaCost: opt.ManaCost, Harm: opt.Harm, Dungeon: opt.Dungeon, Room: opt.Room}
 				if opt.Player != uuid.Nil {
 					out.Player = opt.Player.String()
 				}
@@ -10081,6 +10119,8 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		IsAgent:               p.Agent,
 		AgentClient:           p.AgentClient,
 		CitysBlessing:         p.CitysBlessing,
+		Dungeon:               dungeonView(p.Dungeon),
+		CompletedDungeons:     completedDungeonNames(p.CompletedDungeons),
 		TurnSkips:             g.TurnSkipsForLocked(p.ID),
 		CommanderCasts:        cmdrCasts,
 		Counters:              cloneStringIntMap(p.Counters),
@@ -13505,6 +13545,60 @@ func viewOfSpliceOffers(g *game.Game, caster uuid.UUID, src game.TargetSource, s
 			v.Clauses = viewOfClauses(g, src, spec)
 		}
 		out = append(out, v)
+	}
+	return out
+}
+
+// DungeonView is a player's dungeon card on the wire (ADR 0203): the
+// card's rooms in printed order, the topmost first, and the room the
+// venture marker is in.
+type DungeonView struct {
+	// ID is the dungeon card's object ID — the source of its room
+	// abilities on the stack.
+	ID   string `json:"id"`
+	Key  string `json:"key"`
+	Name string `json:"name"`
+	// Room is the key of the room the venture marker is in.
+	Room  string            `json:"room"`
+	Rooms []DungeonRoomView `json:"rooms"`
+}
+
+// DungeonRoomView is one room of a dungeon card.
+type DungeonRoomView struct {
+	Key  string `json:"key"`
+	Name string `json:"name"`
+	Text string `json:"text"`
+	// LeadsTo are the keys of the rooms its arrows point to; empty for
+	// the bottommost room.
+	LeadsTo []string `json:"leads_to,omitempty"`
+}
+
+// dungeonView projects a player's dungeon state, nil for none (or for
+// a dungeon this binary does not register, which restore refuses).
+func dungeonView(d *game.DungeonState) *DungeonView {
+	if d == nil {
+		return nil
+	}
+	def := game.DungeonByKey(d.Key)
+	if def == nil {
+		return nil
+	}
+	out := &DungeonView{ID: d.ID.String(), Key: def.Key, Name: def.Name, Room: d.Room}
+	out.Rooms = make([]DungeonRoomView, len(def.Rooms))
+	for i, r := range def.Rooms {
+		out.Rooms[i] = DungeonRoomView{Key: r.Key, Name: r.Name, Text: r.Text, LeadsTo: append([]string(nil), r.LeadsTo...)}
+	}
+	return out
+}
+
+// completedDungeonNames renders completed dungeon keys as names.
+func completedDungeonNames(keys []string) []string {
+	if len(keys) == 0 {
+		return nil
+	}
+	out := make([]string, len(keys))
+	for i, k := range keys {
+		out[i] = dungeonName(k)
 	}
 	return out
 }

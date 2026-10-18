@@ -6,8 +6,9 @@
 // in the top row it docks in the middle of the table, on the seam
 // between them (#3380, the ADR 0176 amendment). StackLaneHost measures the board
 // and hands the numbers here; everything that is a decision — the
-// card's width, how many lower items peek out, where the pile's top
-// edge goes, and when the board is too small for it and the compact
+// card's width, how many lower cards the cascade shows and where each
+// one sits (the ADR 0119 amendment of 2026-10-16, §A), where the pile's
+// top edge goes, and when the board is too small for it and the compact
 // card is drawn instead — is a pure function pinned by
 // stackPile.test.ts. The two DOM readers at the bottom only collect
 // rects for them.
@@ -31,9 +32,19 @@ export const PILE_CARD_WIDTH_SHARE = 0.24;
 /** The top card while the viewer chooses a target (§1, "shrinks"). */
 export const PILE_SHRUNK_W = 160;
 
-/** Each lower item peeks out this far above the one in front: a `normal` image's name bar at 280px. */
-export const PILE_PEEK_OFFSET = 34;
-/** At most this many lower items peek out; deeper ones are behind "+N more". */
+/**
+ * The cascade (ADR 0119 amendment 2026-10-16 §A, call 18): each lower
+ * card sits one step behind the card in front of it, up by 12% of the
+ * top card's height and inward (toward the board's centre) by 6% of its
+ * width, and 4% smaller. The step up is the strip of it that shows.
+ */
+export const CASCADE_STEP_UP = 0.12;
+export const CASCADE_STEP_IN = 0.06;
+export const CASCADE_SCALE_STEP = 0.04;
+/** Each step dims its card under a `--bg` scrim this much more, up to the cap. */
+export const CASCADE_DIM_STEP = 0.28;
+export const CASCADE_DIM_MAX = 0.6;
+/** At most this many lower cards show; deeper ones are behind "+N more". */
 export const PILE_PEEK_MAX = 4;
 
 /**
@@ -94,33 +105,136 @@ export function pileBounds({ boardH, stripBottom, fixtureTop }: PileBoundsInput)
   return { minTop, maxBottom, room: Math.max(0, maxBottom - minTop) };
 }
 
-export interface PileCardWidthInput {
+/** The strip of each lower card that shows above the one in front, in px. */
+export function cascadeStep(cardW: number): number {
+  return Math.round(CASCADE_STEP_UP * cardW * CARD_RATIO);
+}
+
+/** How strongly the `--bg` scrim dims a lower card `depth` steps behind the top one (0–1). */
+export function cascadeDim(depth: number): number {
+  if (depth <= 0) return 0;
+  return Math.min(CASCADE_DIM_MAX, Math.round(depth * CASCADE_DIM_STEP * 100) / 100);
+}
+
+/** Which way the cascade steps: toward the board's centre. */
+export type CascadeInward = "right" | "left";
+
+export interface CascadeInwardInput {
+  /** The pile's drawn left edge in board pixels (its anchor or a saved spot). */
+  left: number;
+  /** The pile's measured width. */
+  width: number;
+  boardW: number;
+}
+
+/**
+ * The pile on the left half steps right; on the right half (dragged
+ * there, ADR 0176) it steps left. The middle counts as the left half,
+ * so a pile docked on the seam keeps the default.
+ */
+export function cascadeInward({ left, width, boardW }: CascadeInwardInput): CascadeInward {
+  if (boardW <= 0) return "right";
+  return left + width / 2 > boardW / 2 ? "left" : "right";
+}
+
+/** One lower card, in the cascade box's pixels. */
+export interface CascadeCard {
+  /** 1 for the card right behind the top one. */
+  depth: number;
+  left: number;
+  top: number;
+  width: number;
+  /** The scrim's strength, cascadeDim(depth). */
+  dim: number;
+}
+
+/**
+ * The cascade box: the top card and the lower cards behind it. Its top
+ * edge is the deepest card's; the top card sits `rise` below it, at
+ * `topLeft`. Each lower card is offset from the top card's top-outer
+ * corner (the corner away from the board's centre) and scaled about
+ * it, so exactly `step` of each shows above the card in front, and the
+ * deeper cards overhang the top card's inward edge by 2% of its width a
+ * step, which the box's width includes.
+ */
+export interface CascadeLayout {
+  width: number;
+  rise: number;
+  step: number;
+  topLeft: number;
+  /** Nearest the top card first. */
+  cards: CascadeCard[];
+}
+
+export function cascadeLayout(cardW: number, shown: number, inward: CascadeInward): CascadeLayout {
+  const n = Math.max(0, Math.floor(shown));
+  const step = n > 0 ? cascadeStep(cardW) : 0;
+  const extra = Math.round(cardW * (CASCADE_STEP_IN - CASCADE_SCALE_STEP) * n);
+  const topLeft = inward === "left" ? extra : 0;
+  const cards: CascadeCard[] = [];
+  for (let d = 1; d <= n; d++) {
+    const width = Math.round(cardW * (1 - CASCADE_SCALE_STEP * d));
+    const shift = Math.round(cardW * CASCADE_STEP_IN * d);
+    const left = inward === "left" ? topLeft + cardW - shift - width : shift;
+    cards.push({ depth: d, left, top: (n - d) * step, width, dim: cascadeDim(d) });
+  }
+  return { width: cardW + extra, rise: n * step, step, topLeft, cards };
+}
+
+export interface PileFitInput {
   boardW: number;
   boardH: number;
   /** PileBounds.room. */
   room: number;
-  /** Lower items peeking out (pileDepth().peeking). */
-  peeking: number;
+  /** Items under the top one (the stack's size less one). */
+  lower: number;
   /** Pending triggers listed under the pile. */
   pendingCount: number;
 }
 
-/**
- * The top card's width. The ADR's clamp, capped by the board's width,
- * and on a short board shrunk until the whole pile fits between the
- * strip and the bottom — but not below the targeting size, under which
- * the text is not worth drawing; the panel scrolls instead.
- */
-export function pileCardWidth(i: PileCardWidthInput): number {
-  const want = Math.min(
-    Math.max(PILE_CARD_MIN_W, PILE_CARD_HEIGHT_SHARE * i.boardH),
-    PILE_CARD_MAX_W,
+export interface PileFit {
+  /** The top card's width in px. */
+  cardWidth: number;
+  /** Lower cards the cascade shows. */
+  shown: number;
+  /** Lower items behind "+N more". */
+  more: number;
+}
+
+/** The pile's height for a top card `cardW` wide with `shown` lower cards, chrome included. */
+export function pileHeight(cardW: number, shown: number, pendingCount: number): number {
+  return (
+    cardW * CARD_RATIO + shown * cascadeStep(cardW) + PILE_CHROME_H + pendingHeight(pendingCount)
   );
-  const budget =
-    i.room - PILE_CHROME_H - i.peeking * PILE_PEEK_OFFSET - pendingHeight(i.pendingCount);
-  const byRoom = Math.max(PILE_SHRUNK_W, budget / CARD_RATIO);
-  const byWidth = PILE_CARD_WIDTH_SHARE * i.boardW;
-  return Math.floor(Math.min(want, byRoom, byWidth));
+}
+
+/**
+ * The top card's width and the cascade's depth (§1, amendment §A, call
+ * 19). The card wants the ADR's clamp, capped by the board's width. On
+ * a short band the cascade sheds lower cards first, down to one, so the
+ * top card keeps its reading size; only when one step still does not
+ * fit does the card shrink, never below the targeting size (the panel
+ * scrolls instead).
+ */
+export function pileFit(i: PileFitInput): PileFit {
+  const lower = Math.max(0, Math.floor(i.lower));
+  const max = Math.min(lower, PILE_PEEK_MAX);
+  const want = Math.floor(
+    Math.min(
+      Math.min(Math.max(PILE_CARD_MIN_W, PILE_CARD_HEIGHT_SHARE * i.boardH), PILE_CARD_MAX_W),
+      PILE_CARD_WIDTH_SHARE * i.boardW,
+    ),
+  );
+  const least = Math.min(1, max);
+  for (let n = max; n >= least; n--) {
+    if (pileHeight(want, n, i.pendingCount) <= i.room) {
+      return { cardWidth: want, shown: n, more: lower - n };
+    }
+  }
+  const budget = i.room - PILE_CHROME_H - pendingHeight(i.pendingCount);
+  const byRoom = budget / (CARD_RATIO * (1 + CASCADE_STEP_UP * least));
+  const cardWidth = Math.floor(Math.min(want, Math.max(PILE_SHRUNK_W, byRoom)));
+  return { cardWidth, shown: least, more: lower - least };
 }
 
 export interface PileTopInput extends PileBoundsInput {
@@ -174,6 +288,33 @@ export function pileLeft({ boardW, pileW, seamX, dock = null }: PileLeftInput): 
   if (seamX === null) return null;
   const max = Math.max(PILE_INSET, boardW - pileW - PILE_INSET);
   return Math.round(Math.min(Math.max(seamX - pileW / 2, PILE_INSET), max));
+}
+
+/** The most the pile's panel adds to its top card's width: padding and the cascade's steps. */
+export const PILE_LANE_EXTRA_W = 80;
+
+/**
+ * ADR 0204 §4: the column the pile's default spot takes at its widest,
+ * in board pixels: its top card at the width it wants before a short
+ * band shrinks it, plus the panel. The avatar clamps are read over this
+ * column rather than over the pile's drawn width, so a clamp that
+ * shrinks the pile cannot take itself away.
+ */
+export function pileColumn(
+  boardW: number,
+  boardH: number,
+  seamX: number | null,
+  dock: DockSpan | null = null,
+): { left: number; right: number } {
+  const want = Math.floor(
+    Math.min(
+      Math.min(Math.max(PILE_CARD_MIN_W, PILE_CARD_HEIGHT_SHARE * boardH), PILE_CARD_MAX_W),
+      PILE_CARD_WIDTH_SHARE * boardW,
+    ),
+  );
+  const w = want + PILE_LANE_EXTRA_W;
+  const left = pileLeft({ boardW, pileW: w, seamX, dock }) ?? PILE_INSET;
+  return { left, right: left + w };
 }
 
 /** The grid's gap between seats (Board.svelte's `.board { gap }`). */
@@ -264,17 +405,22 @@ export interface PileFallbackInput {
   stripBottom: number | null;
 }
 
+/** The shortest band the pile is drawn in: a 200px top card and one cascade step. */
+export const PILE_MIN_ROOM = PILE_CARD_MIN_W * CARD_RATIO + cascadeStep(PILE_CARD_MIN_W);
+
 /**
  * True when the board draws the compact card instead of the pile, the
  * stored setting untouched: on a phone (owner answer 3), and on a board
- * too short for a 200px top card between the strip and the bottom. An
- * unmeasured board (height 0, the first frame) is not short.
+ * too short for a 200px top card plus one cascade step between the
+ * strip and the bottom (amendment §A). It does not ask how deep the
+ * stack is, so the board does not flip between the two as items come
+ * and go. An unmeasured board (height 0, the first frame) is not short.
  */
 export function pileFallsBack({ phone, boardH, stripBottom }: PileFallbackInput): boolean {
   if (phone) return true;
   if (boardH <= 0) return false;
   const { room } = pileBounds({ boardH, stripBottom, fixtureTop: null });
-  return room < PILE_CARD_MIN_W * CARD_RATIO;
+  return room < PILE_MIN_ROOM;
 }
 
 // ---------------------------------------------------------------- //
@@ -308,6 +454,45 @@ export function fixtureTopFrom(
     top = top === null ? t : Math.min(top, t);
   }
   return top;
+}
+
+/** What the pile's default spot keeps clear of the seats' avatars, in board pixels. */
+export interface AvatarClamps {
+  /** The lowest bottom of an avatar above the row seam over the pile's column, or null. */
+  above: number | null;
+  /** The highest top of an avatar below the row seam over the pile's column, or null. */
+  below: number | null;
+}
+
+/**
+ * ADR 0204 §4: the pile's default spot covers no avatar. Each seat's
+ * identity over the pile's column (`pileLeft` to `pileRight`, board
+ * pixels) is a clamp: one above the row seam (a top-row opponent's, at
+ * its top edge) pushes the pile's top below it, as the attention strip
+ * does; one below (yours, over your hand) keeps the pile's bottom above
+ * it, as a bottom-left fixture does. A spectator's grid has no seam, so
+ * the board's middle splits them.
+ */
+export function avatarClampsFrom(
+  board: Rect,
+  avatars: readonly Rect[],
+  seamY: number | null,
+  pileLeft: number,
+  pileRight: number,
+): AvatarClamps {
+  const mid = seamY ?? board.height / 2;
+  let above: number | null = null;
+  let below: number | null = null;
+  for (const r of avatars) {
+    if (r.width <= 0 || r.height <= 0) continue;
+    const left = r.left - board.left;
+    if (left >= pileRight || left + r.width <= pileLeft) continue;
+    const top = r.top - board.top;
+    const bottom = top + r.height;
+    if ((top + bottom) / 2 < mid) above = above === null ? bottom : Math.max(above, bottom);
+    else below = below === null ? top : Math.min(below, top);
+  }
+  return { above, below };
 }
 
 /**
@@ -349,6 +534,22 @@ export function stripContentBottom(board: HTMLElement): number | null {
   const gap = parseFloat(style?.rowGap ?? "") || 6;
   const top = strip.getBoundingClientRect().top - board.getBoundingClientRect().top;
   return columnBottom(top, heights, gap);
+}
+
+/** Marks a seated identity (PlayerIdentity), which the pile's default spot keeps clear of. */
+export const SEAT_IDENTITY_ATTR = "data-seat-identity";
+
+/** avatarClampsFrom over every seated identity in the board's seat slots. */
+export function seatAvatarClamps(
+  board: HTMLElement,
+  seamY: number | null,
+  pileLeft: number,
+  pileRight: number,
+): AvatarClamps {
+  const rects = Array.from(
+    board.querySelectorAll<HTMLElement>(`:scope > .slot [${SEAT_IDENTITY_ATTR}]`),
+  ).map((el) => el.getBoundingClientRect());
+  return avatarClampsFrom(board.getBoundingClientRect(), rects, seamY, pileLeft, pileRight);
 }
 
 /** fixtureTopFrom over every marked fixture in the document. */

@@ -64,13 +64,7 @@ func init() {
 					}
 				}
 			}
-			return ctx.Game.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-				ctx := NewContext(g, item)
-				if err := (CopyAndCast{Cards: exiled, Free: true}).Apply(ctx); err != nil {
-					return err
-				}
-				return ExileTarget{Target: item.SourceCardID}.Apply(ctx)
-			})
+			return exileCopyCastThenExileSelf(item, ctx, ids)
 		},
 	})
 }

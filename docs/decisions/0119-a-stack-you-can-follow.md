@@ -5,7 +5,7 @@
 **Owner decisions:** the request of 2026-10-04 and the three answers given the same day, quoted under [Owner request and answers](#owner-request-and-answers-2026-10-04). They are binding. This ADR also makes sixteen smaller calls the answers did not cover. They are listed under [Calls made here](#calls-made-here) so the owner can overturn any of them in review, before the PR that implements each one lands.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-04. I ran `git fetch --all --prune` and listed `docs/decisions/` on all 40 remote heads, including `origin/develop`, `origin/main`, the S59 branches (`feat/s59-2201-lone-ability-click`, `feat/s59-2202-commander-strip`, `fix/s59-2203-land-drop-highlight`) and the card, chore, docs, feat, fix, repro and wip branches. The highest number on any of them is 0117. **0118 is reserved** for strict mana payment by default ([#2188](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2188), S59 tracker [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2189)) and is not written yet. No branch has 0119, so this ADR takes **0119**.
 **Amends:** [ADR 0009](0009-smart-priority-autopass.md), the #1307 amendment's "Considering a response…" section (the 800 ms delay assumed an automatic pass lands in one round trip; §2 adds a hold before it). [ADR 0111](0111-action-dock.md) §4 (the stack card leaves the attention strip when the pile is the style) and §1's status line (it also shows the hold's countdown). [ADR 0075](0075-table-settings-and-host-controls.md) §2.2 (a bot pace preset also sets a stack hold).
-**Amended by:** [ADR 0176](0176-a-movable-stack-panel.md), the 2026-10-15 amendment (#3380): with two or more seats in the top row, the pile's default spot is centred on the seam between them instead of 12px from the left edge. [ADR 0143](0143-gameplay-settings-overhaul.md) §2.6 (S60): the personal `stackHoldMs` is gone (settings v26). The table's pace, the host's **Table pace** (`settings.bot_pace`, formerly "Bot speed"), sets the hold for people and bots alike: Fast 0 s, Normal 2 s, Slow 3 s, the `botPacePresets` numbers. Settings → Gameplay → Reading time says which pace the table is at.
+**Amended by:** [ADR 0176](0176-a-movable-stack-panel.md), the 2026-10-15 amendment (#3380): with two or more seats in the top row, the pile's default spot is centred on the seam between them instead of 12px from the left edge. [ADR 0143](0143-gameplay-settings-overhaul.md) §2.6 (S60): the personal `stackHoldMs` is gone (settings v26). The table's pace, the host's **Table pace** (`settings.bot_pace`, formerly "Bot speed"), sets the hold for people and bots alike: Fast 0 s, Normal 2 s, Slow 3 s, the `botPacePresets` numbers. Settings → Gameplay → Reading time says which pace the table is at. The 2026-10-16 amendment ([below](#amendment-2026-10-16-the-cascade-ability-cards-and-arrival)): the pile's lower items become a cascade of cards, an ability gets its own card, and the top item gains a colour-identity edge, an arrival trace and a cost badge.
 **Builds on:** [ADR 0007](0007-stack-foundation.md) (the stack, and the caster keeping priority), [ADR 0018](0018-triggers-on-the-stack.md) §4 and §5 (wire order by `Seq`; autopass through triggers), [ADR 0037](0037-unimplemented-card-signal.md) (the `manual` chip), [ADR 0053](0053-combat-damage-beats.md) (display-only sequencing from cached geometry), [ADR 0104](0104-gaining-control-of-a-spell.md) §6 (the taken-from chip), [ADR 0110](0110-remember-me.md) §4 (synced settings).
 
 This ADR was written plan-first. No code changed with it. The changes land in the PRs listed under [Delivery](#delivery).
@@ -288,3 +288,105 @@ The owner's answers did not settle these. Each is decided above, and each can be
 14. **The follow arrow is for a pointer only,** not touch or keyboard (§4).
 15. **The trigger line is written when the ability triggers.** Identical consecutive lines collapse. Mana abilities are not logged. The ring stays 200 unless PR 7's measurement says otherwise (§5).
 16. **The tutorial copy says "on the left of the table",** which is true for the pile and for compact (§6).
+
+---
+
+## Amendment 2026-10-16: the cascade, ability cards and arrival
+
+**Status:** Accepted · 2026-10-16 · S73 — Big boards: layout and per-action cost. Written plan-first; no code changed with it. The owner accepted it the same day, calls 17–23 included.
+
+### Owner request and answers (2026-10-16)
+
+The owner shared screenshots of another client's stack (a large top item on one side, earlier items as cards behind it, an "Ability" card for abilities, a coloured halo, a sweeping arc and a loyalty-cost badge) and asked to take inspiration from it. The answers, which are binding:
+
+1. **An ability gets its own card**, not its source's card with a band over the text box.
+2. **The cascade is the new default for the pile's lower items. Compact stays for smaller screens.**
+3. **All three of the top item's colour aura, an arrival arc and a loyalty/cost badge,** with the instruction: *"I don't want to blatantly rip them off, we should make it our own."*
+
+So each piece below starts from what is already C2's: steel surfaces and flat chrome (DESIGN.md §1), the seat colours, the hard-edged W U B R G bands of the site mark and the Decks grid's identity aura (ADR 0158 §2), the mono type voice, and the stack's own gold arrows (§4). Nothing copies the other client's frame, ornament, halo shape or arc.
+
+### A. The cascade
+
+The pile's lower items stop being 34px name strips and become **cards**, set behind the top card in a cascade:
+
+- Each lower item is the same card face the top item would show (a spell's `normal` image, or the ability card of §B), offset **up and inward** by one step per depth (a step is 12% of the top card's height up and 6% of its width toward the board's centre), and scaled down 4% per step. It reads as depth on a table, not as a fanned hand.
+- Lower cards are **dimmed** (a `--bg` scrim at 28% per step, capped at 60%) so the top card is unmistakably the one resolving next. Each keeps its seat-colour left band and its title as real text on its visible strip, so e2e specs and screen readers still read every item.
+- **Depth:** up to four lower cards, then the existing **"+N more"** chip and its scrolling list, unchanged.
+- **Counter** stays on every item: on the top card's caption, and on the visible strip of each lower card.
+- **Hover:** a lower card brightens to full and opens the hover zoom, as the name strips do today. Clicking it does not reorder anything (the stack's order is the rules', CR 405.2).
+- **While the viewer chooses a target**, the pile still shrinks to its top card alone (§1), so the cascade never covers a target.
+- **Fit:** the cascade grows the pile's footprint upward. The host clamps it below the attention strip as today; when the cascade at full depth would not fit, it shows fewer lower cards (down to one) before falling back to compact.
+- **Smaller screens keep compact** (answer 2). The rule is §1's, unchanged: at `max-width: 599px`, and on a board too short for a 200px top card plus one cascade step, the board renders the compact card without touching the stored setting.
+
+This changes the `pile` style; it is not a sixth style. So no setting migrates, and `pile` stays the default.
+
+### B. The ability card
+
+A triggered or activated ability on the stack (CR 113.3, 405.1) is drawn as a **C2 ability card**, a card-sized panel in the card's 63:88 proportions so it sits in the cascade like a spell:
+
+- **Top:** the source's art crop (`art_crop`), full width, with the source's name over its lower edge in the display voice. A face-down or hidden source (`previewCard` null) shows the card back's pattern instead of art and the name the model gives.
+- **Kind line:** in the mono voice, the exact kind: `TRIGGERED ABILITY`, `ACTIVATED ABILITY`, or `LOYALTY ABILITY`. It names what the rules call it rather than a generic "Ability".
+- **Text:** the ability's verbatim text (`text`) in the ui voice at reading size, on `--surface`, with no Magic-style text box ornament. A long text scrolls inside the card, not off it.
+- **Edge:** the seat-colour left band every pile item has, and the colour-identity edge of §C.
+- The source's full card is one hover away, as today.
+
+The spell side is unchanged: a spell is its own `normal` image.
+
+### C. The colour-identity edge (the aura)
+
+The top item gets a **colour-identity edge**: a 3px border built from the `--identity-*` tokens as **hard-edged bands**, the same visual language as the site's W U B R G mark, under a soft outer glow of the same colours at low strength.
+
+- A mono-coloured item is one colour all round; a multicolour item splits the edge into equal bands in W U B R G order, clockwise from the top-left; a colourless item uses `--identity-c`. The colours are the item's card colours (for an ability, its source's), read from the card view the item already carries.
+- It is **still**: no pulse, no flare. The table's identity is calm (DESIGN.md §1), and motion belongs to §D.
+- Only the top item has it. Lower cards keep the seat band alone, so the edge also says "this one is next".
+- It is a stack-lane glow, which DESIGN.md already reserves for the stack lanes. It never touches a permanent, so it can't be confused with `--target`'s ring on the board.
+
+### D. The arrival trace
+
+When an item goes on the stack, a **trace** runs from its source to the pile:
+
+- The source is the caster's avatar for a spell, and the source permanent for an ability (the element §4 already finds, `data-stack-source`).
+- The trace follows the same curve family as the stack's target arrows (`stackArrows.ts`), drawn in the **caster's seat colour**: a short bright head with a fading tail that travels the curve in about 320ms (scaled by `animations.speed`). It lands as the new card settles onto the cascade, and then the gold target arrows draw as they do today.
+- One trace per item; a burst of triggers runs them staggered by 80ms, at most four at once, and the rest arrive without a trace.
+- **Gated three ways** (DESIGN.md §4): `data-reduce-motion`, `animations.enabled`, and its own per-effect toggle `animations.stackArrival` (default on). Nothing is lost without it: the card still appears and the arrows still draw.
+
+### E. The cost badge
+
+An ability card carries a small badge on its top-left corner, in the mono voice on a `--surface-raised` chip with a hairline in the seat colour:
+
+- **A loyalty ability:** its loyalty cost, signed (`+1`, `−2`, `0`), read from the verbatim text's leading cost.
+- **An activated ability:** its cost (mana symbols as the hand's cost pips draw them, and `{T}` as the tap symbol).
+- **A triggered ability:** no badge; its kind line says what it is.
+
+A spell has no badge, since its mana cost is printed on its image.
+
+### What doesn't change
+
+- The pile is the default, stays on the left and stays movable (ADR 0176). The hover zoom keeps the top right, and the dock keeps the bottom right.
+- The header, summary, Counter, chips, target line, rings, gold arrows, linger (§3) and the shrink while targeting.
+- Fan, spotlight, ribbon and compact stay selectable as they are.
+- No protocol, snapshot or server change. Everything here is drawn from what the client already receives (`kind`, `text`, `sourceName`, `artCard`, `previewCard`, the caster's seat).
+
+### Accessible names and contracts
+
+Nothing is renamed. Each lower card keeps the title text and the `Counter` button its name strip has today. The ability card's image alt is the source's name and the ability's text. Labels for the new toggle go through `labels.ts`.
+
+### Delivery
+
+1. **The ability card (§B) and the cost badge (§E).** These are drawn in both the top slot and, later, the cascade, so they come first.
+2. **The cascade (§A)** replaces the name strips and adds the fit rules.
+3. **The colour-identity edge (§C) and the arrival trace (§D)**, plus the `animations.stackArrival` toggle in Settings → Animations.
+
+Each PR runs the client tests, the e2e typecheck and a branch E2E, with screenshots at 1024×768 and 1440×900 under War room, Classic and High contrast (DESIGN.md §2: every new colour must work in every picker skin).
+
+### Calls made in this amendment
+
+Each can be overturned in review:
+
+17. **The cascade changes `pile`; it is not a new style,** so nothing migrates (§A).
+18. **Cascade geometry:** up 12% and inward 6% per step, 4% smaller, dimmed 28% per step, four deep, then "+N more" (§A).
+19. **The cascade sheds depth before falling back to compact** when it doesn't fit (§A).
+20. **The kind line names the rules' kind** (triggered, activated, loyalty), not a generic "Ability" (§B).
+21. **The aura is a still, hard-banded colour-identity edge on the top item only,** in the site mark's language, not a soft animated halo (§C).
+22. **The arrival trace runs along the stack-arrow curve in the caster's seat colour,** about 320ms, with its own toggle (§D).
+23. **The badge shows loyalty and activated costs only;** a triggered ability and a spell have none (§E).

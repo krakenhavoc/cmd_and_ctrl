@@ -46,15 +46,32 @@ import "github.com/google/uuid"
 // hexproof Vampire pays too.
 
 // planTapOthers is the tap-permanents component the announced plan
-// demands, or nil. effects.Register allows it only on the mandatory
-// slot, so there is at most one.
+// demands, or nil. effects.Register allows it on the mandatory slot, or
+// (#4092) on a replicate cost, never both, so every entry that carries
+// one carries the same clause. A replicate cost paid N times is N plan
+// entries (castCostPayments), and its demand is their sum: "Replicate—
+// Tap an untapped Horror you control" paid twice taps two Horrors, on
+// the one teamwork_ids list, validated and tapped together. One entry
+// is returned as declared.
 func planTapOthers(plan []costPayment) *TapOthersCost {
+	var found *TapOthersCost
+	count := 0
 	for _, pay := range plan {
-		if !pay.cost.TapOthers.Empty() {
-			return pay.cost.TapOthers
+		tc := pay.cost.TapOthers
+		if tc.Empty() {
+			continue
 		}
+		if found == nil {
+			found = tc
+		}
+		count += tc.Count
 	}
-	return nil
+	if found == nil || count == found.Count {
+		return found
+	}
+	sum := *found
+	sum.Count = count
+	return &sum
 }
 
 // validateCastTapOthersLocked checks the permanents named to pay the

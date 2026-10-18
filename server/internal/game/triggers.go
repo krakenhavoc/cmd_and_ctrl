@@ -672,6 +672,9 @@ func (triggerHarvester) OnEvent(g *Game, ev Event) {
 	// #623 / CR 114.3: an emblem's triggered abilities function in the
 	// command zone. One more zone into the same walk — see emblem.go.
 	g.harvestFromEmblemsLocked(&pass)
+	// ADR 0203 / CR 309.4c: a dungeon card's room abilities function in
+	// the command zone, and trigger as the venture marker moves.
+	g.harvestFromDungeonsLocked(&pass)
 	// #925: abilities that declared another zone (CR 113.6) — a
 	// graveyard card's "when you cycle this card", suspend's exile
 	// countdown. Indexed at Register, so an event kind nothing

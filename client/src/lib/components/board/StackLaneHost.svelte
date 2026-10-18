@@ -31,7 +31,9 @@
   // vertically on the same seam but kept below
   // the attention strip's content and above a bottom-left fixture (the
   // tutorial's coach card, the dev dock), with its card sized to the
-  // room it has (lib/stackPile.ts). It also gets a collapse button on
+  // room it has and its cascade of lower cards as deep as fits, stepping
+  // toward the board's centre (lib/stackPile.ts pileFit, cascadeInward;
+  // the ADR 0119 amendment §A). It also gets a collapse button on
   // the header, and shrinks while the viewer chooses a target.
   //
   // #3429, ADR 0176: movable. The header is a drag handle for every
@@ -60,11 +62,13 @@
   import {
     PILE_INSET,
     bottomLeftFixtureTop,
+    cascadeInward,
     pileBounds,
-    pileCardWidth,
-    pileDepth,
+    pileColumn,
+    pileFit,
     pileLeft,
     pileTop,
+    seatAvatarClamps,
     seatSlots,
     stripContentBottom,
     sameSpan,
@@ -272,6 +276,11 @@
   let stripBottom = $state<number | null>(null);
   let fixtureTop = $state<number | null>(null);
 
+  const maxOf = (a: number | null, b: number | null): number | null =>
+    a === null ? b : b === null ? a : Math.max(a, b);
+  const minOf = (a: number | null, b: number | null): number | null =>
+    a === null ? b : b === null ? a : Math.min(a, b);
+
   function measure(): void {
     if (!boardEl) return;
     const b = boardEl.getBoundingClientRect();
@@ -287,11 +296,18 @@
     laneH = laneEl?.offsetHeight ?? 0;
     laneW = laneEl?.offsetWidth ?? 0;
     if (style === "pile") {
-      stripBottom = stripContentBottom(boardEl);
       const left =
         pileLeft({ boardW: b.width, pileW: laneW, seamX: seams.seamX, dock: seams.dock }) ??
         PILE_INSET;
-      fixtureTop = bottomLeftFixtureTop(boardEl, left + laneW, left);
+      // ADR 0204 §4: the default spot keeps clear of the seats' avatars
+      // too, above and below; a pile the viewer has moved is where they
+      // put it, avatar or not.
+      const column = pileColumn(b.width, b.height, seams.seamX, seams.dock);
+      const avatars = move.placed
+        ? { above: null, below: null }
+        : seatAvatarClamps(boardEl, seams.seamY, column.left, column.right);
+      stripBottom = maxOf(stripContentBottom(boardEl), avatars.above);
+      fixtureTop = minOf(bottomLeftFixtureTop(boardEl, left + laneW, left), avatars.below);
     } else {
       stripBottom = null;
       fixtureTop = null;
@@ -306,6 +322,9 @@
     void style;
     void collapsed;
     void model.items.length;
+    // ADR 0204 §4: moving the pile, or resetting it, changes whether
+    // the avatars clamp it.
+    void move.placed;
     measure();
     if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(() => measure());
@@ -379,18 +398,31 @@
     return !model.stackItems.some((it) => isLegalCardTarget(t, it.id));
   });
 
+  // The ADR 0119 amendment §A: the cascade steps toward the board's
+  // centre, so a pile dragged onto the right half (ADR 0176) steps left.
+  // Read off where the pile is drawn; its width does not depend on the
+  // side, so this cannot feed back into itself.
+  const pileInward = $derived(
+    cascadeInward({ left: spot.left ?? PILE_INSET, width: laneW, boardW }),
+  );
+
   const pileSizing = $derived.by((): StackPileSizing | undefined => {
     if (style !== "pile") return undefined;
-    if (boardH <= 0 || boardW <= 0) return { cardWidth: 240, shrunk: pileShrunk };
+    if (boardH <= 0 || boardW <= 0) {
+      return { cardWidth: 240, shrunk: pileShrunk, inward: pileInward };
+    }
     const { room } = pileBounds({ boardH, stripBottom, fixtureTop });
+    const fit = pileFit({
+      boardW,
+      boardH,
+      room,
+      lower: Math.max(0, stackCount - 1),
+      pendingCount: model.pendingTriggers.length,
+    });
     return {
-      cardWidth: pileCardWidth({
-        boardW,
-        boardH,
-        room,
-        peeking: pileDepth(stackCount).peeking,
-        pendingCount: model.pendingTriggers.length,
-      }),
+      cardWidth: fit.cardWidth,
+      lowerShown: fit.shown,
+      inward: pileInward,
       shrunk: pileShrunk,
     };
   });

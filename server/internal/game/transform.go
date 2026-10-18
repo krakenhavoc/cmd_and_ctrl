@@ -197,6 +197,12 @@ func (g *Game) turnOverForEffectLocked(cardID uuid.UUID, converted bool) error {
 	if hasDayNightKeyword(card) {
 		return nil
 	}
+	// CR 101.2 (ADR 0132 amendment 2026-10-16): a "can't transform"
+	// effect (Immerwolf) beats the instruction, and CR 701.28f carries
+	// it to a convert.
+	if g.cantTransformLocked(card) {
+		return nil
+	}
 	g.turnOverInPlaceLocked(card, converted)
 	return nil
 }

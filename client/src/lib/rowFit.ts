@@ -312,6 +312,8 @@ function roomOf(node: HTMLElement): number {
 export interface FitRowOptions {
   /** The land strip: piles overlap by design and never wrap. */
   strip?: boolean;
+  /** #4087: never overlap the piles (planeswalkers): shrink, wrap, then scroll. */
+  spread?: boolean;
   /** #3044: the height the panel gives this row, 0 when unknown. */
   budget?: number;
   /** #3893: an empty row keeps one card's line (lineHeight). */
@@ -406,7 +408,7 @@ export function fitRow(
       return;
     }
     // What the row's cards measure now, at `scale`, and at full size.
-    const widths = piles.map((p) => p.offsetWidth);
+    const widths = piles.map((p) => p.getBoundingClientRect().width);
     const lineH = lineHeight(
       piles.map((p) => p.offsetHeight),
       scale,
@@ -420,7 +422,7 @@ export function fitRow(
     const shape: RowShape = {
       // Fractional widths: offsetWidth rounds, and twenty rounded piles
       // can be 10px off, a line's worth of difference at the break.
-      widths: piles.map((p) => p.getBoundingClientRect().width / scale),
+      widths: widths.map((w) => w / scale),
       gap,
       // A few px short of the measured width, so the browser's own line
       // breaking never needs a line fitWrap did not.
@@ -472,7 +474,7 @@ export function fitRow(
     // The piles were measured at `was`; the overlap is for the new size.
     const ratio = scale / was;
     const px =
-      strip || wrap
+      strip || wrap || opts.spread
         ? 0
         : fitOverlap(
             widths.map((w) => w * ratio),
@@ -486,6 +488,23 @@ export function fitRow(
       // so hold the full overlap until the resize observer re-measures.
       const k = scale !== was || scale < 1 ? 1 : stripOpen(spread, packed, available);
       node.style.setProperty("--strip-k", k.toFixed(3));
+      // #4090: the strip takes the room the other zones leave, but no
+      // more than its piles need laid edge to edge, so the back row's
+      // zones sit together instead of the lands sitting at one end of a
+      // wide empty strip. Only at full card size: a shrunk row has
+      // already used all its room, and its spread width is the shrunk
+      // one.
+      const row = node.parentElement;
+      if (row) {
+        if (scale >= 1 && was >= 1 && spread > 0) {
+          const rowPad =
+            (parseFloat(rowStyle?.paddingLeft ?? "0") || 0) +
+            (parseFloat(rowStyle?.paddingRight ?? "0") || 0);
+          row.style.setProperty("--strip-spread", `${Math.ceil(spread + rowPad)}px`);
+        } else {
+          row.style.removeProperty("--strip-spread");
+        }
+      }
     }
   };
   const schedule = (): void => {

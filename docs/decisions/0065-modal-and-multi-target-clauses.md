@@ -1484,3 +1484,91 @@ raises the count to every option, the picker opens with them all chosen.
 
 Proof card: Spectral Shift (Full), with the other entwine cards whose
 bullets the engine expresses.
+
+## Amendment 2026-10-16: a Do's later steps wait for an earlier step's prompt (#4012)
+
+**The gap.** The 2026-10-09 amendment parked a modal item's later
+bullets behind an earlier bullet's prompt. One level down, the steps
+of a single effect still ran back to back. `effects.Do(steps...)` is
+how most catalog abilities spell "do this, then that", and a step that
+asks something (a scry with no `Then`, a CR 616 ordering prompt on its
+damage, counters or life, a prevention follow-up's question from
+ADR 0108's 2026-10-16 amendment) only queues the prompt and returns.
+The next step then ran before the answer. Vivi Ornitier dealt its
+damage while its +1/+1 counter waited on the Doubling Season /
+Hardened Scales order. A `Do(Scry{N: 2}, DrawCards{N: 1})` would draw
+the old top card. CR 608.2c is the same rule as before. This
+amendment applies the mode walk's mechanism to steps.
+
+**What changed.**
+
+- Before each step, the `Do` asks the engine whether the resolution
+  is paused on one of its own prompts
+  (`Game.ParkEffectStepsForEffect`, `game/step_walk.go`). If it is,
+  the position of that step is parked in `Game.pausedStepWalk` and the
+  `Do` returns. The resolution stays open (#1289), so the CR 704.3
+  boundary is held.
+- `holdForOpenResolutionLocked` resumes the parked steps through
+  `game.ResumeEffectSteps` (wired by `effects/do_walk.go`). They run
+  after the damage instruction's own parked continuation
+  (`followUpParks`, the earlier instruction) and before a modal item's
+  next bullet and the resolution's tail, which are later ones. A resumed
+  step may pause again. `finishResolutionTailLocked` waits for the walk
+  as it waits for the bullets.
+- Before the next step runs, the prevention follow-ups still owed run
+  (`resumeStepWalkLocked`). A CR 615.13 announcement (#2047, Selfless
+  Squire) or another follow-up held behind the answered question was
+  owed by an earlier step's damage, so it happens before the next step
+  (CR 615.5). If one of them asks, the walk stays parked behind that
+  question.
+- The parked position is data: the stack item and a path of step
+  indexes. No closure is stored, so the closure ratchet does not move
+  (`Game.pausedStepWalk` and `stepWalk.item` are `keyed`, like the mode
+  walk's) and no census counter rises. Clone and the snapshot carry it
+  (`GameSnapshot.PausedStepWalk`, additive in schema v9). A binary from
+  before this change drops the key and would lose the parked steps of a
+  game restored mid-prompt.
+- **Only the `Do` that is the item's own Effect parks.** Resuming has
+  to find the same steps again from data. A stamped ability's Effect is
+  re-derived from its catalog row on restore (ADR 0041 P9), and the
+  `Do` answers the existing steps probe (`doStepsOf`, #1968) with the
+  same steps. The check is identity of the steps' backing array, so a
+  second `Do` with equal primitives is not mistaken for it. A `Do` run
+  from a hand-written closure (`Do(...)(g, item)`, an `InterveningIf`
+  around a hand-written Effect, a `MayAtResolution` wrapper, a delayed
+  trigger's keyed body) cannot be found again, so it runs its steps back
+  to back as before. That is the old behaviour, not a new failure.
+- **An `If` step is walked one level down.** The path has one index
+  per level, so the steps inside an `If`'s `Then` park and resume too.
+  `AtYourEndStepIfACreatureDied` wraps its steps that way. The condition
+  is checked once, as the `If` step begins, and is not checked again on
+  resume.
+
+**Cards whose behaviour changes.** A catalog row whose Effect is a `Do`
+with a step that can ask before its last step:
+
+- CR 616 counter order: Vivi Ornitier.
+- Damage to a player (CR 616 order, a prevention follow-up): Aurelia,
+  the Law Above; Vindictive Vampire; Midnight Reaper.
+- A life gain with two replacements to order, then something else:
+  Dovin Baan, Orazca Relic, Woodweaver's Puzzleknot (both abilities),
+  Guide of Souls, Reservoir Walker, Tatyova, Benthic Druid, Vaultborn
+  Tyrant, Lotho, Corrupt Shirriff, Tangled Skyline.
+- A draw or mill whose replacement asks, then something else: Bilbo's
+  Ring, Chulane, Teller of Tales, Goldbug, Scrappy Scout, Insidious
+  Fungus, Rogue Refiner, Spelunking, Inverted Iceberg.
+- A colour pick for added mana, then the rest: Domri, Anarch of Bolas.
+
+The seventeen drain rows (`EachOpponentLosesLife` or
+`TargetPlayerLosesLife`, then `GainLife`) change only when a life-loss
+replacement asks. On every one of these the later step now happens after
+the answer. Before, it happened before the answer.
+
+Tests: `effects/do_walk_test.go`. They cover a Khârn the Betrayer
+question mid-`Do`, live and across a strict restore; Vivi's damage
+waiting on the CR 616 counter order, live and across an undo, with the
+census unchanged; a scry with no `Then` mid-`Do`, live and across a
+strict restore; a scry inside an `If`'s steps across a restore; and a
+first step whose one instance deals damage to Khârn and to a player
+with Selfless Squire's shield, where the next step sees the Squire's
+announcement already made, live and across a strict restore.

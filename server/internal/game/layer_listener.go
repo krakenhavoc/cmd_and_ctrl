@@ -238,6 +238,11 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// does not move to announce, exactly as the monarchy is. The
 		// werewolves' own turn-over bumps through EventTransform.
 		g.layerVersion.Add(1)
+	case EventDungeonCompleted, EventInitiativeTaken:
+		// ADR 0203: "as long as you've completed a dungeon" (Nadaar,
+		// Gloom Stalker) and "if you have the initiative" are layer
+		// inputs no permanent moving stands in for, as the monarchy is.
+		g.layerVersion.Add(1)
 	case EventCitysBlessing:
 		// #2696: "as long as you have the city's blessing" (Tendershoot
 		// Dryad, Snubhorn Sentry, Skymarcher Aspirant) is a layer input

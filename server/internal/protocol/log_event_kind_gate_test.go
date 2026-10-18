@@ -71,6 +71,7 @@ var silentEventKinds = map[string]string{
 	"EventLTB":             silentAlreadyToldAsAZoneMove,
 	"EventDiscardCard":     silentAlreadyToldAsAZoneMove,
 	"EventBecomesTarget":   "the cast or activation line already named the spell; targeting is announce-time bookkeeping the stack view carries",
+	"EventTriggerPlaced":   "the trigger was already a LogTrigger line when it was queued, and the stack view shows it placed; the kind exists for abilities that trigger on a triggered ability going on the stack (Aboleth Spawn, #4092)",
 	"EventSpellCopied":     "the copy is a spell on the stack the table is looking at, and whatever made it (a storm trigger, a Twincast) is a log line of its own; the kind exists for magecraft (CR 207.2c)",
 	"EventBecomesBlocked":  "the LogBlock entry for the blocker is the same fact from the other side",
 	"EventVotesFinished":   "every ballot is already a LogVote line as it is cast (ADR 0146), or a secret vote's LogVotesRevealed line just before it (ADR 0180), and a \"whenever players finish voting\" ability is a LogTrigger line when it is queued; the event exists for those triggers' ballots",
@@ -134,7 +135,8 @@ var silentEventKinds = map[string]string{
 	// player who left. The holder itself is GameView.monarch. The kind
 	// exists for "whenever you become the monarch" to watch and for
 	// the layer pass to invalidate on.
-	"EventMonarchChanged": "the LogResolve of the ability that moved the crown (or the LogEliminated of the monarch who left, CR 725.4) already says so, and GameView.monarch carries the holder (#1722)",
+	"EventInitiativeTaken": "the LogResolve of the spell or ability that gave it (or the LogEliminated of the holder who left, CR 726.4) already says so, GameView.initiative carries the holder, and the venture it triggers is narrated as LogVenture (ADR 0203)",
+	"EventMonarchChanged":  "the LogResolve of the ability that moved the crown (or the LogEliminated of the monarch who left, CR 725.4) already says so, and GameView.monarch carries the holder (#1722)",
 
 	// --- visible board state -------------------------------------------
 	"EventTapCard":         silentBoardStateIsVisible,
